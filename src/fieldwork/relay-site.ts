@@ -3,6 +3,7 @@ import type { Obstacle, Point2 } from '../navigation/grid';
 import { terrainHeight } from '../world/ground';
 import type { RelayPhase } from './relay-procedure';
 import type { FieldIncident } from './field-incident';
+import type { PowerNetwork } from '../systems/power-network';
 
 export type RelayBeacon = { lamp: THREE.Mesh; light: THREE.PointLight };
 const metal = (color: number, emissive = 0x000000) =>
@@ -135,6 +136,33 @@ export class RelaySite {
 
     obstacles.push({ kind: 'box', x: location.x, z: location.z, halfX: 0.84, halfZ: 0.55 });
     this.labelPoint.set(location.x, this.group.position.y + 3.35, location.z);
+  }
+
+  updateFromNetwork(network: PowerNetwork, open: boolean, seconds: number, camera: THREE.Camera) {
+    // Preserve the existing hinged door / local electrical meshes, while
+    // deriving indicator and radio behavior from the actual upstream graph.
+    this.update(open ? 'inspected' : 'idle', 0, seconds, camera);
+    const inlet = network.voltageAt('relay') > 0;
+    const load = network.mastOnline;
+    this.indicatorMaterial.color.setHex(inlet ? 0xd8b379 : 0x97604f);
+    this.indicatorMaterial.emissive.setHex(inlet ? 0xe1af61 : 0x54291e);
+    this.indicatorMaterial.emissiveIntensity = inlet ? 1.4 : .18;
+    this.serviceLight.intensity = inlet ? 0.65 : 0;
+    const mastLamp = this.beacon.lamp.material as THREE.MeshStandardMaterial;
+    mastLamp.color.setHex(load ? 0xffd995 : 0x79766b);
+    mastLamp.emissive.setHex(0xffaf58);
+    const flash = load && Math.sin(seconds * 3.25) > -.1;
+    mastLamp.emissiveIntensity = flash ? 2.5 : 0;
+    this.beacon.light.intensity = flash ? 1.55 : 0;
+    this.fuse.visible = !network.repaired || ['fuse','terminal','contactor'].includes(network.fault);
+    this.fuseMaterial.color.setHex(network.fault==='fuse' && !network.repaired ? 0xb44f39 : 0xc7b47a);
+    (this.terminal.material as THREE.MeshStandardMaterial).color.setHex(
+      network.fault==='terminal' && !network.repaired ? 0x9b593c : 0xc4ab76);
+    this.cable.rotation.z = network.fault==='terminal' && !network.repaired ? -.31 : 0;
+    this.contactor.rotation.x = network.fault==='contactor' && !network.repaired ? .48 : 0;
+    this.spark.visible = network.transientArc>0 && network.fault==='terminal' &&
+      !network.breakerClosed && Math.sin(seconds*32)>-.35;
+    this.marker.visible = !load;
   }
 
   resetIncident() {
