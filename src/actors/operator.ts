@@ -41,6 +41,8 @@ export class Operator {
   private readonly muzzle = new THREE.Group();
   private combatAim: Point2 | null = null;
   private muzzlePulse = 0;
+  private impactPulse = 0;
+  private stress = 0;
   private incapacitated = false;
 
   constructor(scene: THREE.Scene, start: Point2, identity: 'rook' | 'mica' | 'hostile' = 'rook') {
@@ -212,6 +214,8 @@ export class Operator {
     this.combatAim=target;
   }
   fireImpulse() { this.muzzlePulse=.12; }
+  hitImpulse() { this.impactPulse=.36; }
+  setStress(amount:number){this.stress=Math.max(0,Math.min(1,amount));}
   setIncapacitated(value:boolean) {
     this.incapacitated=value;
     if(value) {this.clearRoute();this.driveIntent=null;this.combatAim=null;}
@@ -245,6 +249,7 @@ export class Operator {
   update(delta: number, navigation: NavigationGrid) {
     const dt = Math.min(Math.max(delta, 0), 0.05);
     this.muzzlePulse=Math.max(0,this.muzzlePulse-dt);
+    this.impactPulse=Math.max(0,this.impactPulse-dt);
     const position = this.group.position;
     let desiredX = 0, desiredZ = 0;
 
@@ -355,7 +360,7 @@ export class Operator {
     this.meterProbe.visible = measuring;
     this.tool.visible = work > 0.4 && ['replacing', 'inspected'].includes(this.workPhase);
     if (armed && !working) {
-      this.arms[1].rotation.x = -1.3-(this.muzzlePulse>0?.22:0);
+      this.arms[1].rotation.x = -1.3-(this.muzzlePulse>0?.22:0)+Math.sin(this.socialClock*17)*this.stress*.08;
       this.arms[1].rotation.z=-.20;
       this.arms[0].rotation.x=-.86;
     }
@@ -367,7 +372,9 @@ export class Operator {
     this.torso.position.y = Math.abs(Math.sin(this.stride)) * 0.055 * w * (1 - work) -
       0.28 * work - (this.incapacitated? .55:0);
     this.torso.rotation.x=this.incapacitated ? -.9 : this.torso.rotation.x;
-    this.torso.rotation.z = Math.sin(this.stride) * 0.024 * w * (1 - work);
+    this.torso.rotation.z = Math.sin(this.stride) * 0.024 * w * (1 - work) +
+      this.impactPulse*Math.sin(this.socialClock*29)*.24 -
+      this.stress*.10;
     if(!this.incapacitated)this.torso.rotation.x = -0.04 * w + 0.20 * work;
     if(this.incapacitated){
       this.torso.rotation.z=-.42;

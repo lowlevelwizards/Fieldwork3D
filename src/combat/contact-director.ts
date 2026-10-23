@@ -51,6 +51,7 @@ export class ContactDirector {
     if(e.type==='shot'){
       const shooter=this.targets[e.shot.from];
       shooter.fireImpulse();
+      if(e.shot.hit&&e.shot.at)this.targets[e.shot.at].hitImpulse();
       this.createTrace(e.shot.start,e.shot.end,e.shot.blocked,e.shot.hit);
       if(e.shot.hit && e.shot.at && this.simulation.fighters[e.shot.at].hp===0){
         this.targets[e.shot.at].setIncapacitated(true);
@@ -166,6 +167,9 @@ export class ContactDirector {
     this.synchronize();
     this.simulation.update(dt);
     const fighters=this.simulation.fighters;
+    for(const id of Object.keys(this.targets) as FighterId[]){
+      this.targets[id].setStress(fighters[id].suppressed);
+    }
     const playerTarget=fighters[this.selected].hp>0?fighters[this.selected]:
       fighters[this.simulation.nearestEnemy('rook')??'patrol-a'];
     if(this.tactical&&fighters.rook.hp>0&&playerTarget.hp>0)
