@@ -4,9 +4,9 @@
  */
 export type SupplyStage =
   | 'standby' | 'fetching' | 'retrieving' | 'delivering'
-  | 'handoff' | 'delivered' | 'returning' | 'finished';
+  | 'handoff' | 'delivered' | 'energizing' | 'returning' | 'finished';
 
-export type CrewEvent = 'collect' | 'handoff' | 'delivered' | 'isolated' | 'finished';
+export type CrewEvent = 'collect' | 'handoff' | 'delivered' | 'isolated' | 'energized' | 'finished';
 export type CrewAssignment = 'fuse' | 'terminal' | 'isolation';
 export type CrewSnapshot = {
   stage: SupplyStage; hasTruckFuse: boolean; micaHasFuse: boolean;
@@ -37,6 +37,13 @@ export class CrewMission {
     this.timer = 0;
     return true;
   }
+  requestReenergize() {
+    if (this.stage !== 'delivered' || !this.powerIsolated) return false;
+    this.stage = 'energizing';
+    this.timer = 0;
+    return true;
+  }
+
   // The distance checks are supplied by the physical world, not fabricated
   // arrival timers. They must remain true to transition.
   advance(dt: number, micaAtTruck: boolean, micaNearRook: boolean, crewAtTruck: boolean): CrewEvent | null {
@@ -71,6 +78,15 @@ export class CrewMission {
         this.stage = 'delivered';
         this.timer = 0;
         return 'delivered';
+      }
+    }
+    if (this.stage === 'energizing' && micaAtTruck) {
+      this.timer += delta;
+      if (this.timer >= 1.15) {
+        this.powerIsolated = false;
+        this.timer = 0;
+        this.stage = 'delivered';
+        return 'energized';
       }
     }
     if (this.stage === 'returning' && crewAtTruck) {

@@ -36,10 +36,10 @@ export class CompanionController {
     let mode: 'none' | 'carry' | 'collect' | 'handoff' | 'receive' | 'wait' = 'wait';
     let face: Point2 | null = null;
 
-    if (stage === 'fetching' || stage === 'retrieving') {
+    if (stage === 'fetching' || stage === 'retrieving' || stage === 'energizing') {
       goal = depot.standPoint;
       face = { x: 8, z: 7 };
-      mode = stage === 'retrieving' ? 'collect' : 'none';
+      mode = stage === 'retrieving' || stage === 'energizing' ? 'collect' : 'none';
     } else if (stage === 'delivering' || stage === 'handoff') {
       // Stage moves with Rook: delivery survives him walking away mid-route.
       const options = [

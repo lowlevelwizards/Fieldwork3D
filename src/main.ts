@@ -143,6 +143,10 @@ function workAction() {
     return;
   }
   if (incident.busy) return;
+  if (incident.phase === 'prepared' && mission.powerIsolated) {
+    showMessage('WAITING FOR MICA TO RECONNECT POWER', 2.2);
+    return;
+  }
   if (!nearRelay()) {
     if (pathRook(world.relay.standPoint)) {
       approachRelay = true;
@@ -278,7 +282,11 @@ function onIncidentChange(phase: IncidentPhase) {
     if (incident.needsSupply && incident.testsPerformed === 0) {
       mission.installFuse(); world.depot.item.visible = false;
     }
-    audio.play('tool'); showMessage('MECHANISM SECURED · READY TO TEST', 2.5);
+    audio.play('tool');
+    if (mission.powerIsolated && mission.requestReenergize()) {
+      audio.play('radio');
+      showMessage('MICA · RE-ENERGIZING SUPPLY BEFORE TEST', 3);
+    } else showMessage('MECHANISM SECURED · READY TO TEST', 2.5);
   } else if (phase === 'testing') { audio.play('switch'); showMessage('TESTING UNDER POWER'); }
   else if (phase === 'secondary') {
     audio.play('arc'); audio.play('radio');
@@ -305,6 +313,10 @@ function onCrewEvent(event: string) {
     world.depot.setIsolated(true);
     audio.play('switch');
     showMessage('MICA · CIRCUIT ISOLATED', 2.1);
+  } else if (event === 'energized') {
+    world.depot.setIsolated(false);
+    audio.play('switch');
+    showMessage('SUPPLY RECONNECTED · READY FOR TEST', 2.3);
   } else if (event === 'delivered') {
     world.depot.attachTo(rook.itemAnchor);
     audio.play('tool'); audio.play('radio');
@@ -328,6 +340,7 @@ function positionPrompt() {
   } else if (nearRelay() && !incident.busy && !incident.finished) {
     label = incident.actionLabel;
     if (incident.workReady && !readyForWork()) label = null;
+    if (incident.phase === 'prepared' && mission.powerIsolated) label = null;
     pos = world.relay.labelPoint;
   }
   const mayDefer = nearRelay() && ['diagnosed','secondary','prepared'].includes(incident.phase);
