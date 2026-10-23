@@ -70,7 +70,7 @@ export class RelaySite {
     block(this.group, [0.38, 0.1, 0.21], [0.25, 1.28, 0.61], bronze);
 
     // Distinct serviceable internals: terminal clamp, wired feed, contactor.
-    this.terminal = block(this.group, [0.36,0.26,0.27], [-0.28,1.46,0.70], bronze);
+    this.terminal = block(this.group, [0.36,0.26,0.27], [-0.28,1.46,0.70], metal(0xbca773));
     this.cable = block(this.group, [0.11,0.70,0.12], [-0.30,1.07,0.73], trim);
     this.contactor = new THREE.Group();
     this.contactor.position.set(0.34,0.97,0.68);

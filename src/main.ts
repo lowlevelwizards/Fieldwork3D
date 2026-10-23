@@ -330,9 +330,11 @@ function positionPrompt() {
     if (incident.workReady && !readyForWork()) label = null;
     pos = world.relay.labelPoint;
   }
+  const mayDefer = nearRelay() && ['diagnosed','secondary','prepared'].includes(incident.phase);
   contextAction.hidden = !label || !pos;
-  deferAction.hidden = !(nearRelay() && ['diagnosed','secondary','prepared'].includes(incident.phase));
-  if (!label || !pos) return;
+  deferAction.hidden = !mayDefer;
+  if (!pos && mayDefer) pos = world.relay.labelPoint;
+  if (!pos) return;
   const projected = pos.clone().project(camera.camera);
   if (projected.z < -1 || projected.z > 1 || Math.abs(projected.x) > 0.95 ||
       Math.abs(projected.y) > 0.86) {
@@ -345,8 +347,10 @@ function positionPrompt() {
   const y = (-projected.y * 0.5 + 0.5) * box.height;
   const px = Math.min(box.width - 95, Math.max(95, x));
   const py = Math.min(box.height - 50, Math.max(50, y));
-  contextAction.textContent = label;
-  contextAction.setAttribute('aria-label', label);
+  if (label) {
+    contextAction.textContent = label;
+    contextAction.setAttribute('aria-label', label);
+  }
   contextAction.style.left = px + 'px';
   contextAction.style.top = py + 'px';
   contextAction.style.setProperty('--progress', incident.completion * 100 + '%');
