@@ -6,9 +6,6 @@ import { ContactSimulation, type ContactEvent, type FighterId, type Order, visib
 
 const distance=(a:Point2,b:Point2)=>Math.hypot(a.x-b.x,a.z-b.z);
 type Trace={body:THREE.Mesh;timer:number};
-const mat=(color:number)=>new THREE.MeshStandardMaterial({
- color,flatShading:true,roughness:.83,metalness:.05
-});
 /** All physical combat actors live in the SAME world and navigation mesh as
  * work operators. Tactical decisions propose routes; only Operator executes. */
 export class ContactDirector {
@@ -159,14 +156,14 @@ export class ContactDirector {
     const path=this.nav.findPath(actor.position,target);
     if(path.length)actor.follow(path);
   }
-  private synchronize(rook:Operator,mica:Operator){
+  private synchronize(){
     for(const id of Object.keys(this.targets) as FighterId[]){
       const operator=this.targets[id];
       this.simulation.setPosition(id,operator.position,operator.group.rotation.y,operator.moving);
     }
   }
   update(dt:number,rook:Operator,mica:Operator){
-    this.synchronize(rook,mica);
+    this.synchronize();
     this.simulation.update(dt);
     const fighters=this.simulation.fighters;
     const playerTarget=fighters[this.selected].hp>0?fighters[this.selected]:
