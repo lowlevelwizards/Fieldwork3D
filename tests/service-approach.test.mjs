@@ -35,3 +35,15 @@ test('all network service anchors have an actual physical approach from the truc
  assert.ok(hasArrived(path.at(-1),point),'arrived '+JSON.stringify(point));
  }
 });
+
+test('route end reserves movement deadband so a braking operator still arrives',()=>{
+ const nav=new NavigationGrid([
+  {kind:'box',x:-3,z:-6.7,halfX:1.007,halfZ:.61},
+  {kind:'box',x:1.3,z:-9.3,halfX:.84,halfZ:.55}
+ ]);
+ const anchor={x:-3,z:-4.85};
+ const route=serviceApproach(nav,{x:10,z:10},anchor);
+ assert.ok(route.length>0);
+ const end=route.at(-1);
+ assert.ok(Math.hypot(end.x-anchor.x,end.z-anchor.z)<1.12-.35);
+});

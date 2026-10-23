@@ -73,6 +73,9 @@ let stepDistance=0, micaSteps=0;
 let lastRookPos=rook.position, lastMicaPos=mica.position;
 let outcomeRecorded=false;
 let repairGuidanceShown=false;
+let pendingStuckSeconds=0;
+let pendingReplans=0;
+let lastPendingPosition:Point2|null=null;
 
 const raycaster=new THREE.Raycaster();
 const pointer=new THREE.Vector2();
@@ -147,6 +150,9 @@ function pathStation(id:StationId) {
     return false;
   }
   rook.follow(route);
+  pendingStuckSeconds=0;
+  pendingReplans=0;
+  lastPendingPosition=null;
   world.placeWaypoint(route[route.length-1]);
   markerTime=0;autoReturn=false;
   return true;
@@ -311,6 +317,7 @@ function newJob() {
   selectedStation=null;pendingStation=null;inspecting=null;
   inspectionTimer=0;
   autoReturn=false;outcomeRecorded=false;repairGuidanceShown=false;
+  pendingStuckSeconds=0;pendingReplans=0;lastPendingPosition=null;
   world.waypoint.visible=false;
   toast('NEW SERVICE CALL · TRACE THE DEAD CIRCUIT',3.3);
 }
@@ -516,6 +523,35 @@ renderer.setAnimationLoop(()=>{
   if(driving||(rook.moving&&(pendingStation!==null||autoReturn)))camera.follow(rook.position,dt);
   camera.update(dt);
 
+  if(pendingStation && !nearStation(pendingStation)){
+    const here=rook.position;
+    if(lastPendingPosition && dist(here,lastPendingPosition)<.006)
+      pendingStuckSeconds+=dt;
+    else pendingStuckSeconds=0;
+    lastPendingPosition=here;
+    if(pendingStuckSeconds>.85){
+      pendingStuckSeconds=0;
+      const station=pendingStation;
+      if(pendingReplans<2) {
+        const repairRoute=serviceApproach(nav,here,stations[station].standPoint);
+        if(repairRoute.length){
+          pendingReplans++;
+          rook.follow(repairRoute);
+          toast('FINDING A CLEARER APPROACH',1.5);
+        } else {
+          pendingStation=null;
+          toast('CANNOT REACH THE SERVICE POSITION · TRY WALKING AROUND',3.1);
+        }
+      } else {
+        pendingStation=null;
+        rook.clearRoute();
+        toast('SERVICE APPROACH BLOCKED · MOVE AND TAP AGAIN',3.1);
+      }
+    }
+  } else {
+    lastPendingPosition=null;
+    pendingStuckSeconds=0;
+  }
   if(pendingStation && nearStation(pendingStation)){
     const reached=pendingStation;
     pendingStation=null;
