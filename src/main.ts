@@ -767,6 +767,12 @@ renderer.setAnimationLoop(()=>{
       toast('ARMED CONTACT · COVER OR WITHDRAW',2.4);
     } else if(contact.simulation.resolved && contact.simulation.crewAlive) {
       toast('CONTACT ENDED · RETURN TO THE WORK',2.9);
+      notebook.note('The immediate threat has ended. Resume the service job.');
+      updateNotebook();
+    } else if(!contact.danger) {
+      toast('CONTACT LOST · CREW RESUMING TASKS',3.0);
+      notebook.note('Patrol lost contact. Original crew obligations are still active.');
+      updateNotebook();
     }
   }
   if(surveyTarget && !contact.danger){
@@ -793,7 +799,9 @@ renderer.setAnimationLoop(()=>{
   }
   const atTruck=dist(mica.position,world.depot.standPoint)<.88;
   const nearRook=dist(mica.position,rook.position)<1.86;
-  const evt=crew.advance(dt,atTruck,nearRook,closeToTruck());
+  // Durable obligations wait, not silently complete, when the team is
+  // pinned down. Mica resumes the same retrieval/handoff afterward.
+  const evt=contact.danger?null:crew.advance(dt,atTruck,nearRook,closeToTruck());
   if(evt)onCrewEvent(evt);
   if(crew.stage!==previousCueStage){
     previousCueStage=crew.stage;
