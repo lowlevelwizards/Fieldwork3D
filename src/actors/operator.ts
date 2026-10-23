@@ -26,6 +26,7 @@ export class Operator {
   private readonly tool = new THREE.Group();
   private readonly meter = new THREE.Group();
   private readonly meterProbe = new THREE.Group();
+  readonly probeTip = new THREE.Object3D();
   private meterTexture: THREE.CanvasTexture | null = null;
   private meterCanvas: HTMLCanvasElement | null = null;
   private lastVoltage = -1;
@@ -130,6 +131,8 @@ export class Operator {
       this.meter.add(screen);
       this.setMeterReading(0);
       this.arms[1].add(this.meterProbe);
+      this.meterProbe.add(this.probeTip);
+      this.probeTip.position.set(0.12,-0.58,0.41);
       part(this.meterProbe, 0.07, 0.58, 0.07, 0.12, -1.13, 0.41, accent);
       part(this.meterProbe, 0.045, 0.25, 0.045, 0.12, -0.71, 0.41, boots);
       const cable = new THREE.Mesh(

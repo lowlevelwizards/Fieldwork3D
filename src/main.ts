@@ -636,6 +636,11 @@ renderer.setAnimationLoop(()=>{
   world.powerYard.setWorkFocus(inspecting ??
     (job.phase==='working' && nearStation(job.target) ? job.target : null));
   world.powerYard.update(job.network,dt,seconds);
+  if(inspecting) {
+    rook.group.updateMatrixWorld(true);
+    world.powerYard.setProbeContact(inspecting,
+      rook.probeTip.getWorldPosition(new THREE.Vector3()));
+  } else world.powerYard.setProbeContact(null,null);
   world.powerYard.showServiceGuide(job.diagnosed&&!job.finished?job.target:null,seconds);
   world.relay.updateFromNetwork(job.network,
     inspecting==='relay'||selectedStation==='relay'&&

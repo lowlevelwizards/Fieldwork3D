@@ -27,6 +27,8 @@ export class PowerYard {
   private feederWhole: THREE.Mesh | null = null;
   private readonly junctionScorch: THREE.MeshStandardMaterial;
   private workFocus: StationId | null = null;
+  private readonly testLeads: THREE.Line[] = [];
+  private readonly testPads: THREE.Mesh[] = [];
   private readonly breakerArm = new THREE.Group();
   private readonly junctionCover = new THREE.Group();
   private readonly sourceLamp: THREE.Mesh;
@@ -69,6 +71,21 @@ export class PowerYard {
     this.serviceGuide.add(center);
     this.serviceGuide.visible=false;
     scene.add(this.serviceGuide);
+    // Two contact studs and their very thin leads make meter testing happen
+    // at actual 3D electrical terminals rather than only in a text overlay.
+    for(const color of [0x9b4839,0x363c38]){
+      const geometry=new THREE.BufferGeometry();
+      geometry.setAttribute('position',new THREE.BufferAttribute(new Float32Array(9),3));
+      const lead=new THREE.Line(geometry,new THREE.LineBasicMaterial({color,depthTest:true}));
+      lead.frustumCulled=false;
+      lead.visible=false;
+      scene.add(lead);
+      this.testLeads.push(lead);
+      const stud=new THREE.Mesh(new THREE.SphereGeometry(.075,7,6),std(color));
+      stud.visible=false;
+      scene.add(stud);
+      this.testPads.push(stud);
+    }
     const generator=create('generator',-18,-7.5,-5.4,3.2,2.25,2.2);
     box(generator,steel,3.45,.33,2.55,0,.24,0);
     box(generator,olive,2.6,1.58,1.85,0,1.12,0);
@@ -216,6 +233,30 @@ export class PowerYard {
   }
 
   setWorkFocus(station:StationId|null){this.workFocus=station;}
+
+  setProbeContact(station:StationId|null,tip:THREE.Vector3|null){
+    for(let i=0;i<2;i++){
+      this.testLeads[i].visible=station!==null && tip!==null;
+      this.testPads[i].visible=station!==null && tip!==null;
+    }
+    if(!station||!tip)return;
+    const s=this.stations[station];
+    const h=station==='generator'?1.59:station==='switchgear'?1.62:
+      station==='junction'?1.07:1.52;
+    const front=station==='generator'?1.06:station==='relay'?.64:
+      station==='junction'?.76:.72;
+    for(let i=0;i<2;i++){
+      const end=new THREE.Vector3(s.location.x+(i===0?-.14:.14),
+        terrainHeight(s.location.x,s.location.z)+h,s.location.z+front);
+      this.testPads[i].position.copy(end);
+      const array=(this.testLeads[i].geometry.getAttribute('position') as THREE.BufferAttribute).array as Float32Array;
+      const offset=i===0?-.045:.045;
+      array.set([tip.x+offset,tip.y,tip.z,
+        (tip.x+end.x)*.5+offset,(tip.y+end.y)*.5-.14,(tip.z+end.z)*.5,
+        end.x,end.y,end.z]);
+      this.testLeads[i].geometry.attributes.position.needsUpdate=true;
+    }
+  }
 
   /** Bind the existing relay's selection surface, avoiding duplicate cabinet mesh. */
   setRelayHitbox(hitbox:THREE.Mesh){this.stations.relay.hitbox=hitbox;}
