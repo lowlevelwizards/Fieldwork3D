@@ -4,7 +4,7 @@ import { FieldAudio } from './audio/field-audio';
 import { OPERATOR_START } from './constants';
 import { CompanionController } from './crew/companion-controller';
 import { CrewMission } from './crew/crew-mission';
-import { RelayProcedure, type RelayPhase } from './fieldwork/relay-procedure';
+import { FieldIncident, planIncident, type IncidentPhase } from './fieldwork/field-incident';
 import { TacticalCamera } from './input/tactical-camera';
 import { TouchControls } from './input/touch-controls';
 import type { Axis } from './input/control-math';
@@ -15,6 +15,7 @@ import './style.css';
 const viewport = document.querySelector<HTMLElement>('#viewport')!;
 const message = document.querySelector<HTMLElement>('#message')!;
 const contextAction = document.querySelector<HTMLButtonElement>('#contextAction')!;
+const deferAction = document.querySelector<HTMLButtonElement>('#deferAction')!;
 const renderer = new THREE.WebGLRenderer({
   antialias: true, alpha: false, powerPreference: 'high-performance',
 });
@@ -30,130 +31,189 @@ const world = createWorld();
 const nav = new NavigationGrid(world.obstacles);
 const rook = new Operator(world.scene, OPERATOR_START, 'rook');
 const mica = new Operator(world.scene, { x: 8.2, z: 10.8 }, 'mica');
-const teammate = new CompanionController(mica, nav);
+const companion = new CompanionController(mica, nav);
 const mission = new CrewMission();
-let procedure = new RelayProcedure();
 const camera = new TacticalCamera(renderer.domElement);
 const audio = new FieldAudio();
+const historyKey = 'fieldwork3d.incident-history.v1';
+let incidentIndex = 0;
+let restoredCount = 0, deferredCount = 0;
+try {
+  const history = JSON.parse(localStorage.getItem(historyKey) || '{}') as {
+    next?: number; restored?: number; deferred?: number;
+  };
+  incidentIndex = Math.max(0, Math.min(10000, Math.floor(Number(history.next) || 0)));
+  restoredCount = Math.max(0, Math.floor(Number(history.restored) || 0));
+  deferredCount = Math.max(0, Math.floor(Number(history.deferred) || 0));
+} catch { /* Keep the current session playable without browser storage. */ }
+let incident = new FieldIncident(planIncident(incidentIndex));
+let previousPhase: IncidentPhase = incident.phase;
+let previousStage = mission.stage;
+let approachRelay = false, autoReturn = false;
+let toastDeadline = 0, markerTime = 0, runtimeSeconds = 0;
+let footDistance = 0, micaFootDistance = 0;
+let lastFootLocation = rook.position, lastMicaFootLocation = mica.position;
+let handoffInProgress = false;
+let outcomeRecorded = false;
 
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
-let toastDeadline = 0, markerTime = 0, runtimeSeconds = 0;
-let previousPhase: RelayPhase = procedure.phase;
-let previousStage = mission.stage;
-let approachRelay = false, autoReturn = false;
-let stepDistance = 0;
-let lastStepLocation = rook.position;
-let lastMicaStepLocation = mica.position;
-let micaStepDistance = 0;
-let priorHanding = false;
-
 const distance = (a: Point2, b: Point2) => Math.hypot(a.x - b.x, a.z - b.z);
-function showMessage(text: string, seconds = 1.7) {
+function showMessage(text: string, seconds = 1.9) {
   message.textContent = text;
   message.classList.add('visible');
   toastDeadline = performance.now() + seconds * 1000;
 }
-function nearRelay() { return distance(rook.position, world.relay.standPoint) < 0.49; }
-function nearDepot() { return distance(rook.position, world.depot.returnPoint) < 1.8; }
-function getRay(clientX: number, clientY: number) {
-  const bounds = renderer.domElement.getBoundingClientRect();
-  if (!bounds.width || !bounds.height) return false;
-  pointer.set(((clientX - bounds.left) / bounds.width) * 2 - 1,
-    -(((clientY - bounds.top) / bounds.height) * 2 - 1));
+function nearRelay() { return distance(rook.position, world.relay.standPoint) < 0.50; }
+function crewAtTruck() {
+  return distance(rook.position, world.depot.returnPoint) < 1.85 &&
+    distance(mica.position, world.depot.secondReturnPoint) < 1.24;
+}
+function readyForWork(): boolean {
+  if (!nearRelay()) return false;
+  if (incident.phase === 'secondary') return mission.powerIsolated;
+  if (incident.requiresIsolation && !mission.powerIsolated) return false;
+  return incident.needsSupply ? mission.rookHasFuse : true;
+}
+
+function getRay(x: number, y: number) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  if (!rect.width || !rect.height) return false;
+  pointer.set(((x - rect.left) / rect.width) * 2 - 1,
+    -(((y - rect.top) / rect.height) * 2 - 1));
   raycaster.setFromCamera(pointer, camera.camera);
   return true;
 }
-function pickObject(clientX: number, clientY: number, mesh: THREE.Object3D) {
-  return getRay(clientX, clientY) && raycaster.intersectObject(mesh, false).length > 0;
+function hit(x: number, y: number, target: THREE.Object3D) {
+  return getRay(x, y) && raycaster.intersectObject(target, false).length > 0;
 }
-
 function pathRook(target: Point2, auto = false) {
   const path = nav.findPath(rook.position, target);
-  if (!path.length) { showMessage('NO ACCESSIBLE ROUTE'); return false; }
+  if (!path.length) {
+    showMessage('NO ACCESSIBLE ROUTE');
+    return false;
+  }
   rook.follow(path);
   world.placeWaypoint(path[path.length - 1]);
   markerTime = 0;
   autoReturn = auto;
   return true;
 }
-
 function goHome() {
   if (mission.stage !== 'returning') return;
   pathRook(world.depot.returnPoint, true);
-  showMessage('CREW RETURNING TO TRUCK', 2);
+  showMessage('CREW RETURNING TO TRUCK', 2.0);
 }
-
-function resetJob() {
+function recordOutcome() {
+  if (outcomeRecorded || !incident.outcome) return;
+  outcomeRecorded = true;
+  if (incident.outcome === 'restored') restoredCount++;
+  else deferredCount++;
+  try {
+    localStorage.setItem(historyKey, JSON.stringify({
+      next: incidentIndex + 1, restored: restoredCount, deferred: deferredCount,
+    }));
+  } catch { /* session only */ }
+}
+function newJob() {
+  if (mission.stage !== 'finished') return;
+  incidentIndex++;
+  incident = new FieldIncident(planIncident(incidentIndex));
+  previousPhase = incident.phase;
   mission.reset();
-  procedure.reset();
-  previousPhase = procedure.phase;
-  previousStage = mission.stage;
-  approachRelay = false; autoReturn = false;
+  companion.reset();
   world.depot.resetItem();
-  teammate.reset();
+  world.depot.setIsolated(false);
+  world.relay.resetIncident();
+  previousStage = mission.stage;
+  outcomeRecorded = false;
+  approachRelay = false;
+  autoReturn = false;
+  handoffInProgress = false;
   world.waypoint.visible = false;
   contextAction.hidden = true;
-  showMessage('CEDAR RELAY · NEW SERVICE CALL', 2.4);
+  deferAction.hidden = true;
+  showMessage('CEDAR RELAY · NEW SERVICE CALL', 2.5);
 }
 
-function relayInteract() {
+function workAction() {
   audio.unlock();
-  if (procedure.complete) {
+  if (incident.finished) {
     if (mission.stage === 'returning') goHome();
-    else showMessage('RELAY ONLINE');
     return;
   }
-  if (procedure.busy || procedure.travelling) return;
-  if (procedure.phase === 'inspected' && !mission.rookHasFuse) {
-    showMessage('MICA IS BRINGING THE SPARE FUSE', 2.3);
-    return;
-  }
-  if (nearRelay()) {
-    if (procedure.interact(true, mission.rookHasFuse)) {
-      rook.clearRoute();
-      world.waypoint.visible = false;
-      approachRelay = false;
+  if (incident.busy) return;
+  if (!nearRelay()) {
+    if (pathRook(world.relay.standPoint)) {
+      approachRelay = true;
+      incident.interact(false, false);
     }
     return;
   }
-  if (pathRook(world.relay.standPoint)) {
-    approachRelay = true;
-    if (procedure.phase === 'idle') procedure.interact(false);
+  if (incident.workReady && !readyForWork()) {
+    showMessage(incident.requiresIsolation ? 'MICA ISOLATING THE SUPPLY' :
+      'MICA FETCHING REQUIRED PART', 2.0);
+    return;
+  }
+  if (incident.interact(true, readyForWork())) {
+    rook.clearRoute();
+    world.waypoint.visible = false;
+    approachRelay = false;
+    if (incident.phase === 'working') audio.play('tool');
   }
 }
 
-function depotInteract() {
+function deferJob() {
+  if (!nearRelay() || !incident.defer()) return;
+  incident.stopHolding();
+  mission.finishJob(false);
+  recordOutcome();
+  showMessage('JOB DEFERRED · RELAY STILL OFFLINE', 2.8);
+  goHome();
+}
+function depotAction() {
   audio.unlock();
   if (mission.stage === 'returning') goHome();
-  else if (mission.stage === 'finished') resetJob();
-  else showMessage('TRUCK SUPPLIES · SPARE FUSE', 1.8);
+  else if (mission.stage === 'finished') newJob();
+  else showMessage('TRUCK EQUIPMENT · SERVICE SUPPLIES', 1.5);
 }
 
 renderer.domElement.addEventListener('pointerdown', () => audio.unlock(), { passive: true });
-contextAction.addEventListener('pointerdown', () => audio.unlock(), { passive: true });
-contextAction.addEventListener('click', () => {
-  if (mission.stage === 'finished' || mission.stage === 'returning') depotInteract();
-  else relayInteract();
-});
-
-const touch = new TouchControls(renderer.domElement, camera, (x, y) => {
-  if (pickObject(x, y, world.relay.hitbox)) { relayInteract(); return; }
-  if (pickObject(x, y, world.depot.hitbox)) { depotInteract(); return; }
-  const point = camera.groundPoint(x, y);
-  if (!point) { showMessage('OUTSIDE THE FIELD AREA'); return; }
-  if (distance(point, world.relay.location) < 1.35) { relayInteract(); return; }
-  if (distance(point, { x: 8, z: 7 }) < 1.35) { depotInteract(); return; }
-  if (procedure.busy) return;
-  if (pathRook(point)) {
-    approachRelay = false;
-    procedure.cancelApproach();
+contextAction.addEventListener('pointerdown', (event) => {
+  audio.unlock();
+  if (incident.workReady || incident.phase === 'working') {
+    workAction();
+    // Prevent a synthetic click after the hold gesture completes.
+    event.preventDefault();
   }
 });
+contextAction.addEventListener('click', () => {
+  if (mission.stage === 'finished' || mission.stage === 'returning') depotAction();
+  else if (incident.phase !== 'working') workAction();
+});
+deferAction.addEventListener('click', deferJob);
+const stopHold = () => incident.stopHolding();
+window.addEventListener('pointerup', stopHold);
+window.addEventListener('pointercancel', stopHold);
+window.addEventListener('blur', stopHold);
 
+const touch = new TouchControls(renderer.domElement, camera, (x, y) => {
+  if (hit(x, y, world.relay.hitbox)) { workAction(); return; }
+  if (hit(x, y, world.depot.hitbox)) { depotAction(); return; }
+  const point = camera.groundPoint(x, y);
+  if (!point) { showMessage('OUTSIDE THE FIELD AREA'); return; }
+  if (distance(point, world.relay.location) < 1.35) { workAction(); return; }
+  if (distance(point, { x: 8, z: 7 }) < 1.35) { depotAction(); return; }
+  if (incident.busy || incident.isHolding) return;
+  if (pathRook(point)) {
+    approachRelay = false;
+    incident.cancelApproach();
+  }
+});
 const pressed = new Set<string>();
 const movementCodes = new Set([
-  'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyW', 'KeyA', 'KeyS', 'KeyD',
+  'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+  'KeyW', 'KeyA', 'KeyS', 'KeyD',
 ]);
 window.addEventListener('keydown', event => {
   if (event.code === 'KeyF' && !event.repeat) camera.focus(rook.position);
@@ -162,15 +222,18 @@ window.addEventListener('keydown', event => {
   else if (event.code === 'Equal' || event.code === 'NumpadAdd') camera.zoom(0.87);
   else if (event.code === 'Minus' || event.code === 'NumpadSubtract') camera.zoom(1.13);
   else if (event.code === 'KeyM' && !event.repeat) audio.toggleMute();
-  else if (event.code === 'KeyR' && event.shiftKey && !event.repeat) resetJob();
-  else if (event.code === 'KeyT' && !event.repeat) depotInteract();
+  else if (event.code === 'KeyR' && event.shiftKey && !event.repeat && mission.stage === 'finished') newJob();
+  else if (event.code === 'KeyT' && !event.repeat) depotAction();
+  else if (event.code === 'Space' && !event.repeat) workAction();
   else if (movementCodes.has(event.code)) pressed.add(event.code);
   else return;
   event.preventDefault();
 });
-window.addEventListener('keyup', event => pressed.delete(event.code));
+window.addEventListener('keyup', event => {
+  pressed.delete(event.code);
+  if (event.code === 'Space') stopHold();
+});
 window.addEventListener('blur', () => pressed.clear());
-
 function keyboardAxis(): Axis {
   const x = Number(pressed.has('ArrowRight') || pressed.has('KeyD')) -
     Number(pressed.has('ArrowLeft') || pressed.has('KeyA'));
@@ -179,17 +242,15 @@ function keyboardAxis(): Axis {
   const length = Math.hypot(x, y);
   return length > 1 ? { x: x / length, y: y / length } : { x, y };
 }
-
-let previousWidth = 0, previousHeight = 0, previousPixelRatio = 0;
+let lastWidth = 0, lastHeight = 0, lastRatio = 0;
 function resize() {
   const box = viewport.getBoundingClientRect();
   const width = Math.max(1, Math.round(box.width));
   const height = Math.max(1, Math.round(box.height));
   const ratio = Math.min(window.devicePixelRatio || 1, 1.6);
-  if (width === previousWidth && height === previousHeight && ratio === previousPixelRatio) return;
-  previousWidth = width; previousHeight = height; previousPixelRatio = ratio;
-  renderer.setPixelRatio(ratio);
-  renderer.setSize(width, height, false);
+  if (width === lastWidth && height === lastHeight && ratio === lastRatio) return;
+  lastWidth = width; lastHeight = height; lastRatio = ratio;
+  renderer.setPixelRatio(ratio); renderer.setSize(width, height, false);
   camera.resize(width, height);
 }
 const observer = new ResizeObserver(resize);
@@ -199,90 +260,98 @@ window.visualViewport?.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => {
   requestAnimationFrame(() => { resize(); requestAnimationFrame(resize); });
 });
-resize();
-camera.focus(rook.position);
-camera.update(0);
+resize(); camera.focus(rook.position); camera.update(0);
 
-function onPhaseChanged(phase: RelayPhase) {
-  switch (phase) {
-    case 'opening': audio.play('latch'); showMessage('OPENING SERVICE PANEL'); break;
-    case 'open': showMessage('ELECTRICAL ASSEMBLY EXPOSED'); break;
-    case 'inspecting': audio.play('inspect'); showMessage('INSPECTING FUSE'); break;
-    case 'inspected':
-      mission.diagnose();
-      audio.play('radio');
-      showMessage('BLOWN FUSE · MICA FETCHING SPARE', 2.5);
-      break;
-    case 'replacing':
-      audio.play('tool'); showMessage('INSTALLING REPLACEMENT');
-      break;
-    case 'replaced':
-      if (mission.installFuse()) {
-        world.depot.item.visible = false;
-      }
-      showMessage('FUSE SECURED');
-      break;
-    case 'closing': audio.play('switch'); showMessage('CLOSING SERVICE PANEL'); break;
-    case 'complete':
-      if (mission.restorePower()) {
-        audio.play('power');
-        showMessage('CEDAR RELAY ONLINE · RETURN TO TRUCK', 3);
-        goHome();
-      }
-      break;
+function onIncidentChange(phase: IncidentPhase) {
+  if (phase === 'opening') { audio.play('latch'); showMessage('OPENING SERVICE PANEL'); }
+  else if (phase === 'open') showMessage('PANEL OPEN · CHECK COMPONENTS');
+  else if (phase === 'inspecting') { audio.play('inspect'); showMessage('INSPECTING RELAY'); }
+  else if (phase === 'diagnosed') {
+    const assignment = incident.fault === 'fuse' ? 'fuse' :
+      incident.fault === 'terminal' ? 'terminal' : 'isolation';
+    mission.diagnose(assignment);
+    world.depot.setAssignment(assignment);
+    audio.play('radio');
+    showMessage(incident.diagnosis + (assignment === 'isolation' ?
+      ' · MICA ISOLATING POWER' : ' · MICA RETRIEVING EQUIPMENT'), 3.5);
+  } else if (phase === 'prepared') {
+    if (incident.needsSupply && incident.testsPerformed === 0) {
+      mission.installFuse(); world.depot.item.visible = false;
+    }
+    audio.play('tool'); showMessage('MECHANISM SECURED · READY TO TEST', 2.5);
+  } else if (phase === 'testing') { audio.play('switch'); showMessage('TESTING UNDER POWER'); }
+  else if (phase === 'secondary') {
+    audio.play('arc'); audio.play('radio');
+    if (!mission.reassignIsolation()) showMessage('PROTECTION TRIPPED · ISOLATE POWER', 3.2);
+    else showMessage('TERMINAL ARC · MICA ISOLATING SUPPLY', 3.6);
+  } else if (phase === 'closing') { audio.play('latch'); showMessage('TEST PASSED · CLOSING PANEL'); }
+  else if (phase === 'complete') {
+    mission.finishJob(true);
+    recordOutcome();
+    audio.play('power');
+    showMessage('RELAY RESTORED · RETURN TO TRUCK', 3.3);
+    goHome();
+  } else if (phase === 'deferred') {
+    showMessage('RELAY OFFLINE · FOLLOW-UP REQUIRED', 2.5);
   }
 }
 
-function crewEvent(which: string) {
-  if (which === 'collect') {
+function onCrewEvent(event: string) {
+  if (event === 'collect') {
     world.depot.attachTo(mica.itemAnchor);
-    audio.play('latch');
-    audio.play('radio');
-    showMessage('MICA · SPARE RETRIEVED', 1.8);
-  } else if (which === 'delivered') {
+    audio.play('latch'); audio.play('radio');
+    showMessage('MICA · EQUIPMENT RETRIEVED', 1.8);
+  } else if (event === 'isolated') {
+    world.depot.setIsolated(true);
+    audio.play('switch');
+    showMessage('MICA · CIRCUIT ISOLATED', 2.1);
+  } else if (event === 'delivered') {
     world.depot.attachTo(rook.itemAnchor);
-    audio.play('tool');
-    audio.play('radio');
-    showMessage('MICA → ROOK · SPARE HANDED OVER', 2.2);
-  } else if (which === 'finished') {
-    audio.play('power');
-    showMessage('CREW HOME · OPERATION COMPLETE', 3.1);
+    audio.play('tool'); audio.play('radio');
+    showMessage('MICA → ROOK · EQUIPMENT HANDOFF', 2.3);
+  } else if (event === 'finished') {
+    world.depot.setIsolated(false);
     world.waypoint.visible = false;
     autoReturn = false;
+    showMessage(incident.outcome === 'restored' ?
+      'CREW HOME · SERVICE COMPLETE' : 'CREW HOME · RETURN VISIT NEEDED', 3.1);
   }
 }
 
-// A single world-projected control, never a persistent mission HUD.
 function positionPrompt() {
   let label: string | null = null;
-  let p: THREE.Vector3 | null = null;
+  let pos: THREE.Vector3 | null = null;
   if (mission.stage === 'finished') {
-    label = 'ANOTHER JOB';
-    p = world.depot.labelPoint;
+    label = 'ANOTHER JOB'; pos = world.depot.labelPoint;
   } else if (mission.stage === 'returning') {
-    label = 'RETURN TO TRUCK';
-    p = world.depot.labelPoint;
-  } else if (nearRelay() && !procedure.busy && !procedure.travelling &&
-    !procedure.complete && procedure.prompt) {
-    label = procedure.phase === 'inspected' && !mission.rookHasFuse
-      ? null : procedure.prompt;
-    p = world.relay.labelPoint;
+    label = 'RETURN TO TRUCK'; pos = world.depot.labelPoint;
+  } else if (nearRelay() && !incident.busy && !incident.finished) {
+    label = incident.actionLabel;
+    if (incident.workReady && !readyForWork()) label = null;
+    pos = world.relay.labelPoint;
   }
-  contextAction.hidden = !label || !p;
-  if (!label || !p) return;
-  const projected = p.clone().project(camera.camera);
-  if (projected.z < -1 || projected.z > 1 ||
-    Math.abs(projected.x) > 0.95 || Math.abs(projected.y) > 0.87) {
+  contextAction.hidden = !label || !pos;
+  deferAction.hidden = !(nearRelay() && ['diagnosed','secondary','prepared'].includes(incident.phase));
+  if (!label || !pos) return;
+  const projected = pos.clone().project(camera.camera);
+  if (projected.z < -1 || projected.z > 1 || Math.abs(projected.x) > 0.95 ||
+      Math.abs(projected.y) > 0.86) {
     contextAction.hidden = true;
+    deferAction.hidden = true;
     return;
   }
   const box = viewport.getBoundingClientRect();
-  contextAction.textContent = label;
-  contextAction.setAttribute('aria-label', label);
   const x = (projected.x * 0.5 + 0.5) * box.width;
   const y = (-projected.y * 0.5 + 0.5) * box.height;
-  contextAction.style.left = Math.min(box.width - 89, Math.max(89, x)) + 'px';
-  contextAction.style.top = Math.min(box.height - 35, Math.max(49, y)) + 'px';
+  const px = Math.min(box.width - 95, Math.max(95, x));
+  const py = Math.min(box.height - 50, Math.max(50, y));
+  contextAction.textContent = label;
+  contextAction.setAttribute('aria-label', label);
+  contextAction.style.left = px + 'px';
+  contextAction.style.top = py + 'px';
+  contextAction.style.setProperty('--progress', incident.completion * 100 + '%');
+  deferAction.style.left = px + 'px';
+  deferAction.style.top = Math.min(box.height - 22, py + 47) + 'px';
 }
 
 const clock = new THREE.Clock();
@@ -290,95 +359,93 @@ renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05);
   runtimeSeconds += dt;
   touch.update(dt);
-
   const keys = keyboardAxis();
   const wantsDrive = touch.driving || keys.x !== 0 || keys.y !== 0;
-  const driving = wantsDrive && !procedure.busy;
+  const driving = wantsDrive && !incident.busy && !incident.isHolding;
   if (driving) {
     autoReturn = false;
-    if (procedure.travelling) {
-      approachRelay = false;
-      procedure.cancelApproach();
-      rook.clearRoute();
+    if (incident.phase === 'approaching') {
+      approachRelay = false; incident.cancelApproach(); rook.clearRoute();
     }
   }
   const axis = touch.driving ? touch.move : keys;
   rook.setDrive(driving ? camera.screenDirection(axis) : null);
   const meeting = mission.stage === 'handoff';
-  rook.setWork(nearRelay() && !meeting ? procedure.phase : 'idle', world.relay.location);
+  const workPhase = nearRelay() && !meeting ?
+    incident.phase === 'working' ? 'replacing' :
+    incident.phase === 'opening' ? 'opening' :
+    incident.phase === 'inspecting' ? 'inspecting' :
+    ['open','diagnosed','prepared','secondary','testing','closing'].includes(incident.phase)
+      ? 'inspected' : 'idle' : 'idle';
+  rook.setWork(workPhase, world.relay.location);
   rook.setSocialPose(meeting ? 'receive' : 'none', meeting ? mica.position : null);
   rook.update(dt, nav);
   if (driving || (rook.moving && (approachRelay || autoReturn))) camera.follow(rook.position, dt);
   camera.update(dt);
 
-  const near = nearRelay();
-  if (approachRelay && near) {
-    if (procedure.travelling) procedure.update(0, true);
-    else procedure.interact(true, mission.rookHasFuse);
+  if (approachRelay && nearRelay()) {
+    incident.update(0, true, readyForWork(), mission.powerIsolated);
+    if (incident.phase === 'idle') incident.interact(true, false);
+    else if (incident.phase !== 'opening' && incident.phase !== 'working')
+      incident.interact(true, readyForWork());
     approachRelay = false;
     rook.clearRoute();
     world.waypoint.visible = false;
   }
-  procedure.update(dt, near);
-  if (procedure.phase !== previousPhase) {
-    onPhaseChanged(procedure.phase);
-    previousPhase = procedure.phase;
+  const serviceEvent = incident.update(dt, nearRelay(), readyForWork(), mission.powerIsolated);
+  if (incident.phase !== previousPhase) {
+    onIncidentChange(incident.phase);
+    previousPhase = incident.phase;
+  }
+  if (serviceEvent === 'trip') {
+    world.depot.setIsolated(false);
   }
 
-  teammate.update(dt, rook, mission, world.depot);
-  const micaAtTruck = distance(mica.position, world.depot.standPoint) < 0.86;
+  companion.update(dt, rook, mission, world.depot);
+  const micaAtTruck = distance(mica.position, world.depot.standPoint) < 0.88;
   const micaNearRook = distance(mica.position, rook.position) < 1.85;
-  const crewHome = nearDepot() &&
-    distance(mica.position, world.depot.secondReturnPoint) < 1.2;
-  const event = mission.advance(dt, micaAtTruck, micaNearRook, crewHome);
-  if (event) crewEvent(event);
+  const event = mission.advance(dt, micaAtTruck, micaNearRook, crewAtTruck());
+  if (event) onCrewEvent(event);
 
-  // During handoff the unique fuse visibly travels between two extended hands.
   if (mission.stage === 'handoff') {
     rook.group.updateMatrixWorld(true);
     mica.group.updateMatrixWorld(true);
-    if (!priorHanding) {
+    if (!handoffInProgress) {
       world.scene.add(world.depot.item);
-      priorHanding = true;
+      handoffInProgress = true;
     }
     const from = mica.itemAnchor.getWorldPosition(new THREE.Vector3());
     const to = rook.itemAnchor.getWorldPosition(new THREE.Vector3());
     const t = THREE.MathUtils.smoothstep(mission.timer / 1.25, 0, 1);
     world.depot.item.position.lerpVectors(from, to, t);
     world.depot.item.position.y += Math.sin(t * Math.PI) * 0.18;
-    world.depot.item.rotation.set(0, 0, Math.sin(t * Math.PI) * 0.28);
-  } else if (priorHanding) {
-    priorHanding = false;
+    world.depot.item.rotation.z = Math.sin(t * Math.PI) * 0.28;
+  } else if (handoffInProgress) {
+    handoffInProgress = false;
     if (mission.micaHasFuse) world.depot.attachTo(mica.itemAnchor);
     else if (mission.rookHasFuse) world.depot.attachTo(rook.itemAnchor);
   }
-
   if (mission.stage !== previousStage) {
     previousStage = mission.stage;
-    if (mission.stage === 'retrieving') showMessage('MICA · OPENING EQUIPMENT BOX', 1.7);
-    if (mission.stage === 'returning') {
-      autoReturn = true;
+    if (mission.stage === 'retrieving') {
+      showMessage(mission.assignment === 'isolation' ?
+        'MICA · SWITCHING OFF SUPPLY' : 'MICA · OPENING EQUIPMENT BOX', 1.9);
     }
   }
   world.depot.update(mission.stage === 'retrieving', mission.hasTruckFuse,
     mission.timer);
-  world.relay.update(procedure.phase, procedure.progress, runtimeSeconds, camera.camera);
-  audio.update(procedure.complete);
+  world.relay.updateIncident(incident, runtimeSeconds, camera.camera);
+  audio.update(incident.phase === 'complete');
 
-  const p = rook.position;
-  stepDistance += distance(p, lastStepLocation);
-  if (stepDistance > 1.45) {
-    audio.play('footstep');
-    stepDistance %= 1.45;
+  const here = rook.position, there = mica.position;
+  footDistance += distance(here, lastFootLocation);
+  micaFootDistance += distance(there, lastMicaFootLocation);
+  if (footDistance >= 1.45) { audio.play('footstep'); footDistance %= 1.45; }
+  if (micaFootDistance >= 1.45) {
+    if (distance(here, there) < 16) audio.play('footstep');
+    micaFootDistance %= 1.45;
   }
-  lastStepLocation = p;
-  const mp = mica.position;
-  micaStepDistance += distance(mp, lastMicaStepLocation);
-  if (micaStepDistance > 1.45) {
-    if (distance(mp, rook.position) < 16) audio.play('footstep');
-    micaStepDistance %= 1.45;
-  }
-  lastMicaStepLocation = mp;
+  lastFootLocation = here; lastMicaFootLocation = there;
 
   if (world.waypoint.visible) {
     markerTime += dt;
@@ -386,8 +453,7 @@ renderer.setAnimationLoop(() => {
     if (!rook.moving && markerTime > 0.25) world.waypoint.visible = false;
   }
   if (toastDeadline && performance.now() > toastDeadline) {
-    message.classList.remove('visible');
-    toastDeadline = 0;
+    message.classList.remove('visible'); toastDeadline = 0;
   }
   positionPrompt();
   renderer.render(world.scene, camera.camera);
