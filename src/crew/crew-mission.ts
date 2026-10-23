@@ -6,7 +6,8 @@ export type SupplyStage =
   | 'standby' | 'fetching' | 'retrieving' | 'delivering'
   | 'handoff' | 'delivered' | 'returning' | 'finished';
 
-export type CrewEvent = 'collect' | 'handoff' | 'delivered' | 'finished';
+export type CrewEvent = 'collect' | 'handoff' | 'delivered' | 'isolated' | 'finished';
+export type CrewAssignment = 'fuse' | 'terminal' | 'isolation';
 export type CrewSnapshot = {
   stage: SupplyStage; hasTruckFuse: boolean; micaHasFuse: boolean;
   rookHasFuse: boolean; relayPowered: boolean;
@@ -18,10 +19,22 @@ export class CrewMission {
   hasTruckFuse = true;
   micaHasFuse = false;
   rookHasFuse = false;
+  assignment: CrewAssignment = 'fuse';
+  powerIsolated = false;
 
-  diagnose() {
+  diagnose(assignment: CrewAssignment = 'fuse') {
     if (this.stage !== 'standby') return false;
+    this.assignment = assignment;
     this.stage = 'fetching';
+    return true;
+  }
+
+  reassignIsolation() {
+    if (this.stage !== 'delivered') return false;
+    this.assignment = 'isolation';
+    this.stage = 'fetching';
+    this.powerIsolated = false;
+    this.timer = 0;
     return true;
   }
   // The distance checks are supplied by the physical world, not fabricated
@@ -34,9 +47,14 @@ export class CrewMission {
     if (this.stage === 'retrieving' && micaAtTruck) {
       this.timer += delta;
       if (this.timer >= 1.35) {
+        this.timer = 0;
+        if (this.assignment === 'isolation') {
+          this.powerIsolated = true;
+          this.stage = 'delivered';
+          return 'isolated';
+        }
         this.hasTruckFuse = false;
         this.micaHasFuse = true;
-        this.timer = 0;
         this.stage = 'delivering';
         return 'collect';
       }
@@ -67,16 +85,23 @@ export class CrewMission {
     this.rookHasFuse = false;
     return true;
   }
+  finishJob(restored: boolean) {
+    if (this.stage === 'returning' || this.stage === 'finished') return false;
+    this.relayPowered = restored;
+    this.stage = 'returning';
+    this.timer = 0;
+    return true;
+  }
+
   restorePower() {
     if (this.stage !== 'delivered' || this.rookHasFuse) return false;
-    this.relayPowered = true;
-    this.stage = 'returning';
-    return true;
+    return this.finishJob(true);
   }
   reset() {
     this.stage = 'standby';
     this.timer = 0; this.relayPowered = false;
     this.hasTruckFuse = true; this.micaHasFuse = false; this.rookHasFuse = false;
+    this.assignment = 'fuse'; this.powerIsolated = false;
   }
   get snapshot(): CrewSnapshot {
     return {
