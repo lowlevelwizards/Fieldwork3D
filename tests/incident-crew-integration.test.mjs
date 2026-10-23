@@ -54,6 +54,8 @@ test('three service procedures execute through crew logistics and equipment effe
       tick(i, crew, 45, true, true);
       assert.equal(i.phase, 'prepared');
       i.interact(true, true);
+      tick(i, crew, 60);
+    } else {
       tick(i, crew, 30);
     }
     assert.equal(i.phase, 'complete');
