@@ -1,57 +1,53 @@
-# Fieldwork 3D — 0.0.8: The Operator's Eye
+# Fieldwork 3D — 0.0.9: First Contact
 
-A mobile-first, isometric Three.js/TypeScript game about a small crew understanding and repairing a connected physical worksite.
+**Live game:** https://lowlevelwizards.github.io/Fieldwork3D/
 
-**Live:** https://lowlevelwizards.github.io/Fieldwork3D/
+Fieldwork is a mobile-first, isometric, handcrafted Three.js/TypeScript world where small teams navigate, inspect, repair, protect, and survive in one continuous environment. 0.0.9 introduces the first **actual combat encounter at Cedar Relay** without replacing the existing operations or porting the legacy Fieldwork AI2 runtime.
 
-## What's different
+## Playing First Contact
 
-0.0.8 focuses on *seeing, testing and understanding* the systems introduced in 0.0.7 without adding another map or overwhelming the scene with UI.
+Two distinct armed patrol operators move near the eastern service road. They see along a real facing direction, remember last-known positions, and investigate shots they hear. They have finite ammunition, reload, take cover when wounded or suppressed, and may lose contact with the crew.
 
-- **Rook's handheld meter:** During an actual equipment inspection Rook draws a chunky pixel-display multimeter and brings a probe toward the physical connection. The small local readout comes from the electrical network, not a fake hint. Rook takes a moment to obtain the reading.
-- **Better physical clues:** The generator has an operable starter and rotating fan, the switchgear's breaker changes position, an open feeder has a visibly discontinuous cable, and damaged junction terminals are scorched behind a hinged service cover.
-- **A fold-out field notebook:** The small ▤ notebook icon sits unobtrusively beneath CEDAR RELAY. Open it to see only **measurements Rook or Mica actually made**, their source, a hypothesis based on observed evidence, the crew's current action, and recent events. No unexplored machine conditions appear here.
-- **Legible autonomous behavior:** Mica briefly displays a localized activity cue when they begin fetching, delivering, isolating, reconnecting or returning. The notebook also records brief radio reports and observed actions.
-- **Physical machine-to-machine work:** Tap a machine to walk to its service position. Tapping while nearby makes Rook use the meter; after diagnosis, hold the machine's local repair control to work. A small marker indicates the diagnosed worksite, not merely the powerless downstream relay.
-- **More reliable approach and recovery:** A machine interaction can no longer silently end at an unreachable pathfinding cell. Work anchors use collision-checked approach positions; operators retain their existing causal obligations across movement and handoff interruptions.
-- **Regression coverage:** All six network fault cases, secondary terminal trips, handoffs, supply isolation, power reconnection, deferred work and route approaches have explicit automated checks.
+- **Tap an armed patrol operator** to select them as a target (a small ring marks the selection).
+- **Tap ⌖** below the top-right scene information to raise/lower the tactical controls; this does not pause the world.
+- **Hold FIRE** to fire repeated deliberate shots at the selected target. Gunfire is blocked by the **same real shed, trees and machine obstacles** used for movement. Hits and misses create momentary tracers/impacts.
+- **↻** reloads a finite magazine (9 rounds, 36 spare). **◎** cycles between known opponents.
+- **MICA · FOLLOW** cycles through FOLLOW, HOLD, COVER, WITHDRAW. The same physical operator who carries tools and repairs circuits also uses those orders under threat.
+- **AID MICA** appears if Mica is incapacitated. Rook physically approaches and gives aid if there is no exposed enemy dangerously close. Once both hostiles are down, Mica can also assist an incapacitated Rook.
+- **REGROUP · RETRY** appears after a resolved contact or if Rook is down. It resets the training encounter without losing the electrical incident.
 
-## Basic flow
+The existing worksite remains functional during combat. Contact can interrupt diagnosis, a repair hold, or a supply run; the prior job obligation is not destroyed. Afterwards, return to the same investigation, isolate power and restore service. You can instead withdraw or leave unresolved work.
 
-1. Start at the truck. Mica independently checks the generator while you choose where to investigate.
-2. Tap the generator, switchgear, relay cabinet, junction or mast to examine it. Rook walks over, stops, turns, produces a meter, makes contact and records the voltage.
-3. Open the tiny notebook (▤) only if you need to review observations or what Mica reported.
-4. Once someone locates the actual defective equipment, the worksite marker and a **GO TO...** control direct Rook to it.
-5. Mica gets needed materials or isolates the supply. Inspect the physical equipment, then press and **hold** the contextual control to perform the action. Interrupting the hold does not finish the job by magic.
-6. Mica reconnects the supply before an energized **TEST CIRCUIT**. If a damaged terminal reveals another trip, repeat isolation, repair and test.
-7. Watch the site light up when power genuinely reaches the radio mast; the crew returns to the truck. **ANOTHER JOB** begins a fresh incident.
+### Desktop keys
 
-A job may still be intentionally **LEAVE FOR LATER** if it cannot be completed. The environment stays unpowered and the result is recorded.
+WASD / arrows move; F/Q/E focus/orbit; M sound; Space service action. New: **C** tactical mode, **J** fire while held, **G** reload, **X** next target, **V** cycle Mica tactical order.
 
-## Controls
+### Implemented combat foundations
 
-- **Tap a machine:** path to its physical working position; if already near, inspect/act
-- **Press-and-hold local repair control:** manipulate parts (no timing minigame)
-- **▤ notebook:** expand or close the optional field notebook
-- **Two mobile thumbs:** lower-left move stick, lower-right rotate stick
-- **Pinch / twist / upper-area drag:** zoom, rotate and pan the isometric view
-- **WASD/arrows:** move on desktop; **F/Q/E:** focus/rotate; **M:** toggle sound
+- Real line-segment cover and ballistic obstruction for both sides
+- Short-range detection cone, hearing, last-known enemy positions and search
+- Physically represented low-poly hostile operators, aiming, muzzle flash, gunshot, impact, recoil/flinch
+- Ammo/reload cycles, suppression, injury/knockdown and recoverable incapacitation
+- Autonomous patrol routes, enemy fire, approximate cover seeking, retreat when wounded
+- Mica covering, following, holding and withdrawing within the same world as field repairs
+- Hostile contact affecting the original machine-repair mission; no dedicated combat level
+- Mobile controls that remain hidden until the player selects tactical mode or contact begins
+- Small fast pure-simulation tests around sight, hearing, cover, ammo, hits and treatment
 
-The quiet place/time/weather header remains. The meter and Mica's activity captions appear only while relevant.
+### Not yet complete
 
-## Architecture and test commands
+0.0.9 is a **working First Contact vertical slice**, not a claim that ten large combat roadmap builds have all shipped. Directional body-region armor, explicit lean/crouch, advanced bounding and flanking, dragging and casualty extraction, multiple hostile factions and reinforcement schedules, world-scale territory persistence, a multi-site mission day, and a complete debrief are still future builds. The foundational behavior is deliberately small and modular so those systems can be added without rebuilding everything.
 
-- `src/systems/power-network.ts`: actual network continuity and fault propagation
-- `src/fieldwork/network-job.ts`: observed diagnosis, guarded repairs, tests and outcomes
-- `src/fieldwork/field-notebook.ts`: small, pure, provenance-tracked observational memory
-- `src/actors/operator.ts`: character motion and procedural meter/physical tool handling
-- `src/world/power-yard.ts`: working site props, disconnected cable, serviceable panel and physical state visuals
-- `src/navigation/service-approach.ts`: collision-safe route and arrival checks
-- `src/crew/crew-mission.ts`: Mica's supply and electrical-work obligations
-- `tests/crew-network-operation.test.mjs`: six-incident end-to-end simulations
-- `tests/service-approach.test.mjs`: physically achievable service-position routes
+## Technical architecture
 
-Node.js 22+:
+- `src/combat/contact-simulation.ts` — headless, deterministic perception, cover, projectiles, ammunition, wounds, suppression and treatment.
+- `src/combat/contact-director.ts` — actual 3D patrol models, independent movement, tactical route choice, hit effects and coordinated Mica action.
+- `src/actors/operator.ts` — shared procedural rigs for Rook, Mica and distinct patrol operators.
+- `src/main.ts` — unified mission and combat controls; original repair, inspection and crew flows remain.
+- `src/fieldwork/`, `src/systems/power-network.ts`, `src/world/` — existing connected Cedar Relay systems preserved.
+- `tests/contact-simulation.test.mjs` — cover, perception, hearing, finite ammo, reload, injury and rescue tests.
+
+Build locally with Node 22+:
 
 ```sh
 npm install
@@ -61,15 +57,14 @@ npm run check
 npm run build
 ```
 
-GitHub Actions validates `main` and deploys the compiled Vite output to GitHub Pages. The project deliberately avoids loading the much larger legacy Fieldwork AI architecture until additional behavior is justified by actual gameplay.
+GitHub Actions checks `main` and deploys the production build to Pages.
 
-## Milestones
+## Previous milestones
 
-- 0.0.1 — Cedar Relay miniature and locomotion
-- 0.0.2 — Mobile movement and orbit
-- 0.0.3 — Orthographic isometric camera and quiet interface
-- 0.0.4 — Physical machine repair
-- 0.0.5 — Autonomous two-person cooperation
-- 0.0.6 — Different fault conditions and physical job sequences
-- 0.0.7 — Real site-wide power connectivity
-- **0.0.8 — Observable diagnosis, meter, evidence notebook, legible crew behavior and reliable interactions**
+- 0.0.1–0.0.3 — miniature world, Rook locomotion, isometric camera and mobile controls
+- 0.0.4 — physical relay service and procedural sound
+- 0.0.5 — cooperating crew with physical spare parts
+- 0.0.6 — conditional faults, manipulation and testing
+- 0.0.7 — an interconnected electrical facility
+- 0.0.8 — handheld meter, field notes and legible system observations
+- **0.0.9 — First Contact: tactical combat in the same functioning worksite**
