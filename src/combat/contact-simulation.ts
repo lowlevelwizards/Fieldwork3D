@@ -8,7 +8,7 @@ export type Fighter = {
   id:FighterId; team:Team; position:Point2; facing:number;
   hp:number; maxHp:number; ammo:number; reserve:number; maxAmmo:number;
   cooldown:number; reload:number; suppressed:number; moving:boolean;
-  state:Alertness; lastKnown:Point2|null; memory:number;
+  state:Alertness; lastKnown:Point2|null; memory:number; searchTimer:number;
 };
 export type Shot = {
   from:FighterId; at:FighterId|null; start:Point2; end:Point2;
@@ -142,7 +142,7 @@ export class ContactSimulation {
       victim.hp=Math.max(0,victim.hp-shot.damage);
       shot.impacts.push({...victim.position});
       victim.suppressed=clamp(victim.suppressed+.22,0,1);
-      victim.lastKnown={...f.position};victim.memory=10;
+      victim.lastKnown={...f.position};victim.memory=10;victim.searchTimer=0;
       victim.state=victim.hp===0?'down':'engaged';
     }else if(blockedAt)shot.impacts.push({...blockedAt});
     else { // Miss rounds still create an atmospheric impact nearby.
@@ -154,7 +154,7 @@ export class ContactSimulation {
     if(hit&&victim.hp<=0)this.report({type:'down',id:target});
     for(const other of Object.values(this.fighters)){
       if(other.team!==f.team&&other.hp>0&&distance(other.position,f.position)<23){
-        other.lastKnown={...f.position};other.memory=10;
+        other.lastKnown={...f.position};other.memory=10;other.searchTimer=0;
         if(other.state==='unaware'){other.state='suspicious';this.report({type:'heard',observer:other.id});}
       }
     }
@@ -183,13 +183,17 @@ export class ContactSimulation {
         const difference=Math.abs(Math.atan2(Math.sin(angle-f.facing),Math.cos(angle-f.facing)));
         if(len<17 && (difference<1.25||len<4.2) && visible(f.position,target.position,this.obstacles)){
           const initial=f.state==='unaware'||f.state==='searching';
-          f.state='engaged';f.lastKnown={...target.position};f.memory=10;this.active=true;
+          f.state='engaged';f.lastKnown={...target.position};f.memory=10;f.searchTimer=0;this.active=true;
           if(initial)this.report({type:'spotted',observer:f.id,target:target.id});
           break;
         }
       }
-      if(f.state==='engaged'&&f.memory<=0)f.state='searching';
-      if(f.state==='suspicious'&&f.memory<=0)f.state='searching';
+      if((f.state==='engaged'||f.state==='suspicious')&&f.memory<=0){
+        f.state='searching';f.searchTimer=6;
+      } else if(f.state==='searching'){
+        f.searchTimer=Math.max(0,f.searchTimer-step);
+        if(f.searchTimer===0){f.state='unaware';f.lastKnown=null;}
+      }
     }
   }
   nearestEnemy(id:FighterId):FighterId|null{

@@ -121,9 +121,14 @@ export class ContactDirector {
   }
   reload(){this.tactical=true;return this.simulation.reload('rook');}
   get danger(){
-    return this.simulation.active && this.simulation.patrolAlive && this.simulation.crewAlive;
+    if(!this.simulation.patrolAlive||!this.simulation.crewAlive)return false;
+    return (['patrol-a','patrol-b'] as const).some(id=>{
+      const f=this.simulation.fighters[id];
+      return f.hp>0 && (f.state==='engaged'||f.state==='suspicious'||
+        (f.state==='searching'&&f.searchTimer>0));
+    });
   }
-  get showControls(){return this.tactical||this.simulation.active;}
+  get showControls(){return this.tactical||this.danger;}
   /** Hit actual procedural body meshes, not a gigantic invisible click surface. */
   pick(x:number,y:number,camera:THREE.Camera,canvas:HTMLCanvasElement):FighterId|null{
     const rect=canvas.getBoundingClientRect();

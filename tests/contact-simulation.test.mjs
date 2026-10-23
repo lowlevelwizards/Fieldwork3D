@@ -81,3 +81,16 @@ test('downed crew can receive nearby aid outside visible enemy fire',()=>{
  assert.equal(c.fighters.mica.hp,100);
  assert.equal(c.active,false);
 });
+
+test('patrol gives up a stale search so interrupted ordinary work can resume',()=>{
+ const c=new ContactSimulation([{kind:'box',x:5,z:0,halfX:1,halfZ:2}]);
+ c.setPosition('rook',{x:0,z:0});c.setPosition('mica',{x:38,z:25});
+ c.setPosition('patrol-a',{x:10,z:0},0);c.setPosition('patrol-b',{x:34,z:28});
+ c.fire('rook','patrol-a');
+ assert.equal(c.fighters['patrol-a'].state,'suspicious');
+ for(let i=0;i<230;i++)c.update(.05);
+ assert.equal(c.fighters['patrol-a'].state,'searching');
+ for(let i=0;i<130;i++)c.update(.05);
+ assert.equal(c.fighters['patrol-a'].state,'unaware');
+ assert.equal(c.fighters['patrol-a'].lastKnown,null);
+});
