@@ -1,3 +1,7 @@
+// Exact 3:4 isometric elevation: projected x, y and z axes have equal scale.
+export const ISOMETRIC_ELEVATION = Math.atan(1 / Math.SQRT2);
+export const ISOMETRIC_YAW = Math.PI / 4;
+
 export type Axis = { x: number; y: number };
 export type GroundDirection = { x: number; z: number };
 
@@ -24,7 +28,7 @@ export function maxViewHeight(aspect: number): number {
 }
 
 export function initialViewHeight(aspect: number): number {
-  return Math.min(maxViewHeight(aspect), aspect >= 1.3 ? 30 : 39);
+  return Math.min(maxViewHeight(aspect), aspect >= 1.3 ? 27 : 36);
 }
 
 export function stickZone(x: number, y: number, width: number, height: number): 'left' | 'right' | null {

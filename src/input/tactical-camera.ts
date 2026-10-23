@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Point2 } from '../navigation/grid';
-import { initialViewHeight, maxViewHeight, screenToGround, type Axis } from './control-math';
+import { initialViewHeight, maxViewHeight, screenToGround, ISOMETRIC_ELEVATION, ISOMETRIC_YAW, type Axis } from './control-math';
 import { WORLD_DEPTH, WORLD_WIDTH } from '../constants';
 
 export class TacticalCamera {
@@ -10,8 +10,8 @@ export class TacticalCamera {
   private readonly desiredTarget = this.target.clone();
   private height = 38;
   private desiredHeight = 38;
-  private yaw = 0.78;
-  private pitch = 0.82;
+  private yaw = ISOMETRIC_YAW;
+  private readonly pitch = ISOMETRIC_ELEVATION;
   private width = 1;
   private viewportHeight = 1;
   private isSized = false;
@@ -49,9 +49,10 @@ export class TacticalCamera {
     );
   }
 
-  orbit(horizontal: number, vertical: number) {
+  orbit(horizontal: number, _vertical = 0) {
+    // True isometric orthographic camera: yaw rotates around the ground;
+    // pitch is fixed so roofs, walls and characters keep consistent proportions.
     this.yaw += horizontal;
-    this.pitch = THREE.MathUtils.clamp(this.pitch + vertical, 0.50, 1.31);
     this.constrain();
   }
 

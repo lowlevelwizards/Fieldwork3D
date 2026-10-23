@@ -50,8 +50,7 @@ export class TouchControls {
     const base = document.createElement('div');
     base.className = 'floating-stick floating-stick--' + zone;
     base.setAttribute('aria-hidden', 'true');
-    base.innerHTML = '<div class="stick-ring"></div><div class="stick-knob"></div><span class="stick-caption">' +
-      (zone === 'left' ? 'MOVE' : 'ORBIT') + '</span>';
+    base.innerHTML = '<div class="stick-ring"></div><div class="stick-knob"></div>';
     parent.appendChild(base);
     return base;
   }
@@ -200,7 +199,7 @@ export class TouchControls {
   update(dt: number) {
     if (this.right.x !== 0 || this.right.y !== 0) {
       const amount = Math.min(dt, 0.05);
-      this.tacticalCamera.orbit(-this.right.x * amount * 1.85, this.right.y * amount * 0.95);
+      this.tacticalCamera.orbit(-this.right.x * amount * 1.85, 0);
     }
   }
 

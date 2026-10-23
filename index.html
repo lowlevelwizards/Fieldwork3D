@@ -3,50 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
-  <meta name="theme-color" content="#192b2d" />
-  <meta name="description" content="Fieldwork 3D — a miniature world of small teams doing necessary work." />
-  <title>FIELDWORK / Cedar Relay</title>
+  <meta name="theme-color" content="#1b302e" />
+  <meta name="description" content="Fieldwork 3D — a living miniature world." />
+  <title>Fieldwork 3D · Cedar Relay</title>
 </head>
 <body>
   <div id="app">
-    <div id="viewport" aria-label="Interactive 3D scene"></div>
-    <header class="topbar">
-      <div class="identity">
-        <div class="identity-mark" aria-hidden="true"><span></span><span></span><span></span></div>
-        <div>
-          <div class="wordmark">FIELDWORK<span class="accent">3D</span></div>
-          <div class="edition">FIELD PROTOTYPE <span id="buildVersion">0.0.2</span></div>
-        </div>
-      </div>
-      <div class="mission">
-        <div class="tiny muted">SECTOR 01 <span class="dot">◆</span> 07:14 / OVERCAST</div>
-        <div class="mission-name">CEDAR RELAY <span class="mission-flag">FIELD TEST</span></div>
+    <div id="viewport" aria-label="Interactive isometric Three.js field scene"></div>
+
+    <!-- Quiet scene metadata: no persistent debug/status panels or button tray. -->
+    <header class="scene-hud" aria-label="Scene information">
+      <span class="place-name">CEDAR RELAY</span>
+      <div class="scene-conditions" aria-label="Scene time and simulated weather">
+        <span class="clock-label"><time datetime="07:14">07:14</time></span>
+        <span class="separator" aria-hidden="true">·</span>
+        <span class="weather-label">OVERCAST</span>
       </div>
     </header>
-    <div class="orientation-tip" aria-hidden="true">Landscape view recommended for wider visibility</div>
-    <aside class="operator-card" aria-label="Operator details">
-      <div class="card-tag">ACTIVE OPERATOR <span class="live-indicator"></span></div>
-      <div class="operator-line"><span class="avatar">01</span><span><strong>ROOK</strong><small>FIELD TECHNICIAN</small></span></div>
-      <div class="readout"><span class="readout-icon">◎</span><span id="operatorState" role="status" aria-live="polite">STANDING BY</span></div>
-      <div class="coords" id="operatorCoords">GRID — / —</div>
-    </aside>
-    <div class="objective">
-      <span class="objective-dash"></span>
-      <div><span class="tiny">INITIAL RECON</span><strong>Explore the relay site</strong><span class="objective-description">Tap the ground to move Rook.</span></div>
-    </div>
-    <nav class="camera-controls" aria-label="Camera controls">
-      <button id="orbitLeft" aria-label="Rotate camera left" title="Rotate left">↶</button>
-      <button id="orbitRight" aria-label="Rotate camera right" title="Rotate right">↷</button>
-      <span class="control-divider"></span>
-      <button id="zoomIn" aria-label="Zoom in" title="Zoom in">+</button>
-      <button id="zoomOut" aria-label="Zoom out" title="Zoom out">−</button>
-      <button id="focusOperator" class="focus-button" aria-label="Focus camera on operator" title="Find operator">⌖</button>
-    </nav>
-    <footer class="footbar">
-      <div class="instruction desktop-instruction">CLICK TO MOVE <span>•</span> DRAG TO PAN <span>•</span> RIGHT DRAG TO ORBIT <span>•</span> SCROLL TO ZOOM</div>
-      <div class="instruction touch-instruction">LOWER LEFT: MOVE <span>•</span> LOWER RIGHT: ORBIT <span>•</span> TAP: WAYPOINT <span>•</span> TWO FINGERS: PAN / ZOOM</div>
-      <div class="footer-mark">VERDIGRIS // 001</div>
-    </footer>
+
     <div id="message" role="status" aria-live="polite"></div>
   </div>
   <script type="module" src="/src/main.ts"></script>

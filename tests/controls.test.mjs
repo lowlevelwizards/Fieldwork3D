@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canStartIndependentSticks, initialViewHeight, maxViewHeight, screenToGround, stickAxis, stickZone } from '../src/input/control-math.ts';
+import { ISOMETRIC_ELEVATION, ISOMETRIC_YAW, canStartIndependentSticks, initialViewHeight, maxViewHeight, screenToGround, stickAxis, stickZone } from '../src/input/control-math.ts';
 
 test('stick centers with deadzone and clamps magnitude', () => {
   assert.deepEqual(stickAxis(2, -3), { x: 0, y: 0 });
@@ -37,4 +37,13 @@ test('pinches near the center are not misclassified as simultaneous joysticks', 
   assert.equal(canStartIndependentSticks({ x: 350, y: 530 }, { x: 455, y: 540 }, 800, 600), false);
   assert.equal(canStartIndependentSticks({ x: 110, y: 530 }, { x: 680, y: 540 }, 800, 600), true);
   assert.equal(canStartIndependentSticks({ x: 90, y: 150 }, { x: 680, y: 530 }, 800, 600), false);
+});
+
+test('isometric camera uses exactly equal projected xyz axis components', () => {
+  const x = Math.sin(ISOMETRIC_YAW) * Math.cos(ISOMETRIC_ELEVATION);
+  const y = Math.sin(ISOMETRIC_ELEVATION);
+  const z = Math.cos(ISOMETRIC_YAW) * Math.cos(ISOMETRIC_ELEVATION);
+  assert.ok(Math.abs(x - y) < 1e-10);
+  assert.ok(Math.abs(z - y) < 1e-10);
+  assert.ok(Math.abs(ISOMETRIC_ELEVATION * 180 / Math.PI - 35.26438968) < 1e-6);
 });

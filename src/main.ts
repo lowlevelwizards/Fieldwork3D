@@ -9,8 +9,6 @@ import { createWorld } from './world/create-world';
 import './style.css';
 
 const viewport = document.querySelector<HTMLElement>('#viewport')!;
-const status = document.querySelector<HTMLElement>('#operatorState')!;
-const coordinates = document.querySelector<HTMLElement>('#operatorCoords')!;
 const message = document.querySelector<HTMLElement>('#message')!;
 document.querySelector<HTMLElement>('#buildVersion')!.textContent = BUILD_VERSION;
 
@@ -36,7 +34,6 @@ const nav = new NavigationGrid(world.obstacles);
 const operator = new Operator(world.scene, OPERATOR_START);
 const controls = new TacticalCamera(renderer.domElement);
 let toastDeadline = 0;
-let lastState = '';
 let markerTime = 0;
 
 function showMessage(text: string, seconds = 1.7) {
@@ -55,14 +52,6 @@ const touch = new TouchControls(renderer.domElement, controls, (clientX, clientY
   markerTime = 0;
 });
 
-const activate = (id: string, callback: () => void) => {
-  document.querySelector<HTMLButtonElement>(id)!.addEventListener('click', callback);
-};
-activate('#zoomIn', () => controls.zoom(0.78));
-activate('#zoomOut', () => controls.zoom(1.28));
-activate('#orbitLeft', () => controls.orbit(Math.PI / 8, 0));
-activate('#orbitRight', () => controls.orbit(-Math.PI / 8, 0));
-activate('#focusOperator', () => controls.focus(operator.position));
 
 const pressed = new Set<string>();
 const movementCodes = new Set([
@@ -119,10 +108,8 @@ resize();
 controls.update(0);
 
 const clock = new THREE.Clock();
-let elapsed = 0;
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05);
-  elapsed += dt;
   touch.update(dt);
 
   const keys = keyboardAxis();
@@ -138,16 +125,6 @@ renderer.setAnimationLoop(() => {
     const scale = 1 + Math.sin(markerTime * 4) * 0.08;
     world.waypoint.scale.setScalar(scale);
     if (!operator.moving && markerTime > 0.25) world.waypoint.visible = false;
-  }
-  const state = operator.moving ? 'MOVING' : 'STANDING BY';
-  if (state !== lastState) {
-    status.textContent = state;
-    lastState = state;
-  }
-  if (elapsed > 0.2) {
-    const p = operator.position;
-    coordinates.textContent = `GRID ${p.x.toFixed(1)} / ${p.z.toFixed(1)}`;
-    elapsed = 0;
   }
   if (toastDeadline && performance.now() > toastDeadline) {
     message.classList.remove('visible');
