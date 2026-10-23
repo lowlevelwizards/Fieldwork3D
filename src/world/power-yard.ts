@@ -33,7 +33,6 @@ export class PowerYard {
   private readonly cableRuns: { from:StationId;to:StationId;material:THREE.MeshStandardMaterial }[]=[];
   private readonly shedLights: THREE.Mesh[] = [];
   private readonly humLamp: THREE.PointLight;
-  private current = 0;
   private lastGeneratorOn = false;
   constructor(scene: THREE.Scene, obstacles: Obstacle[]) {
     const olive=std(0x607367),steel=std(0x394e4c),dark=std(0x2b3f41),
@@ -173,7 +172,7 @@ export class PowerYard {
   update(network:PowerNetwork,dt:number,seconds:number){
     const power=network.energized;
     this.generatorRotor.rotation.z+=network.generatorRunning?dt*9:dt*.08;
-    this.breakerArm.rotation.x+=(network.breakerClosed?0:-.68-this.breakerArm.rotation.x)*.18;
+    this.breakerArm.rotation.x+=((network.breakerClosed?0:-.68)-this.breakerArm.rotation.x)*.18;
     this.junctionCover.rotation.y+=((network.fault==='junction'&&!network.repaired?-.15:0)-this.junctionCover.rotation.y)*.14;
     const glow=(obj:THREE.Mesh,on:boolean)=>{
       const m=obj.material as THREE.MeshStandardMaterial;
@@ -185,7 +184,7 @@ export class PowerYard {
     glow(this.switchLamp,network.voltageAt('switchgear')>0);
     glow(this.junctionLamp,network.voltageAt('junction')>0);
     glow(this.workLamp,network.voltageAt('switchgear')>0);
-    this.humLamp.intensity=power.has('switchgear')?.50:0;
+    this.humLamp.intensity=power.has('switchgear')?0.50:0;
     for(const l of this.shedLights)glow(l,power.has('switchgear'));
     for(const wire of this.cableRuns){
       const on=power.has(wire.from)&&power.has(wire.to);

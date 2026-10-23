@@ -3,6 +3,7 @@ import type { Obstacle, Point2 } from '../navigation/grid';
 import { terrainHeight, createGround } from './ground';
 import { createProps } from './props';
 import { TruckDepot } from '../crew/truck-depot';
+import { PowerYard } from './power-yard';
 import type { RelaySite } from '../fieldwork/relay-site';
 
 export type Diorama = {
@@ -10,6 +11,7 @@ export type Diorama = {
   obstacles: Obstacle[];
   relay: RelaySite;
   depot: TruckDepot;
+  powerYard: PowerYard;
   waypoint: THREE.Group;
   placeWaypoint: (point: Point2) => void;
 };
@@ -36,6 +38,8 @@ export function createWorld(): Diorama {
   createGround(scene);
   const { obstacles, relay } = createProps(scene);
   const depot = new TruckDepot(scene, obstacles);
+  const powerYard = new PowerYard(scene, obstacles);
+  powerYard.setRelayHitbox(relay.hitbox);
   const waypoint = new THREE.Group();
   const ring = new THREE.Mesh(
     new THREE.RingGeometry(0.53, 0.68, 32),
@@ -57,5 +61,5 @@ export function createWorld(): Diorama {
     waypoint.position.set(point.x, terrainHeight(point.x, point.z) + 0.1, point.z);
     waypoint.visible = true;
   };
-  return { scene, obstacles, relay, depot, waypoint, placeWaypoint };
+  return { scene, obstacles, relay, depot, powerYard, waypoint, placeWaypoint };
 }
