@@ -166,8 +166,10 @@ export class RelaySite {
       incident.fault === 'terminal' && affected ? 0x94523f : 0xbca773);
     this.cable.rotation.z = incident.fault === 'terminal' && affected ? -0.28 : 0;
     this.contactor.rotation.x = incident.fault === 'contactor' && affected ? 0.52 : 0.0;
-    this.spark.visible = exposed && incident.tripped && incident.phase === 'secondary' &&
-      Math.sin(seconds * 27) > 0.55;
+    // An electrical trip is a short-lived arc, not an indefinitely sparking
+    // cabinet. Once isolated, the effect disappears immediately.
+    this.spark.visible = exposed && incident.tripFlashTime > 0 &&
+      !incident.circuitIsolated && Math.sin(seconds * 27) > -0.55;
     this.spark.rotation.z = seconds * 4;
     const deferred = incident.phase === 'deferred';
     if (deferred) {

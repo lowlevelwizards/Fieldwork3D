@@ -37,6 +37,7 @@ export class FieldIncident {
   replacementInstalled = false;
   tripped = false;
   testsPerformed = 0;
+  tripFlashTime = 0;
   outcome: IncidentOutcome = null;
   private holding = false;
   private recovering = false;
@@ -87,7 +88,7 @@ export class FieldIncident {
     if (this.phase === 'open') { this.transition('inspecting'); return true; }
     if (this.phase === 'prepared') { this.transition('testing'); return true; }
     if (this.workReady && ready) {
-      this.recovering = this.phase === 'secondary';
+      this.recovering = this.recovering || this.phase === 'secondary';
       this.transition('working');
       this.holding = true;
       return true;
@@ -111,6 +112,7 @@ export class FieldIncident {
   update(dt: number, near: boolean, available: boolean, isolated: boolean): ServiceEvent {
     const delta = clamp(dt, 0, 0.1);
     this.circuitIsolated = isolated;
+    this.tripFlashTime = Math.max(0, this.tripFlashTime - delta);
     if (this.phase === 'approaching' && near) this.transition('opening');
     if (this.phase === 'opening' || this.phase === 'inspecting' || this.phase === 'testing' || this.phase === 'closing') {
       this.timer += delta;
@@ -122,6 +124,7 @@ export class FieldIncident {
           this.plan.oxidation > 0.7 && this.testsPerformed === 1;
         if (shouldTrip) {
           this.tripped = true;
+          this.tripFlashTime = 0.75;
           this.recovering = true;
           this.replacementInstalled = false;
           this.progress = 0;

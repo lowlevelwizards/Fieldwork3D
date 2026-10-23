@@ -78,3 +78,15 @@ test('deferred repair remains unpowered and cannot complete', () => {
   assert.equal(i.update(20, true, true, true), null);
   assert.equal(i.outcome, 'deferred');
 });
+
+test('arc lasts briefly and electrical isolation immediately extinguishes it', () => {
+  const i = new FieldIncident(planIncident(1)); inspect(i);
+  i.interact(true, true); advance(i, 3, true, false, true);
+  i.interact(true, true);
+  assert.equal(advance(i, 1.3), 'trip');
+  assert.ok(i.tripFlashTime > 0);
+  i.update(.1, true, false, true);
+  assert.equal(i.circuitIsolated, true);
+  advance(i, 2, true, true);
+  assert.equal(i.tripFlashTime, 0);
+});
