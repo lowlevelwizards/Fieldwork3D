@@ -204,7 +204,7 @@ body { overscroll-behavior: none; }
  display:flex;flex-direction:column;gap:7px;align-items:stretch;
  box-shadow:0 6px 20px rgba(15,25,23,.3);
 }
-.tactical-panel[hidden],#tacticalReset[hidden]{display:none!important;}
+.tactical-panel[hidden],#tacticalReset[hidden],#tacticalAssist[hidden]{display:none!important;}
 .tactical-status{
  white-space:nowrap;font:700 10px/1.3 "SFMono-Regular",Consolas,monospace;
  color:#e9d7b7;text-align:center;

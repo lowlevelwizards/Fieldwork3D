@@ -40,6 +40,7 @@ const tacticalReload=document.querySelector<HTMLButtonElement>('#tacticalReload'
 const tacticalTarget=document.querySelector<HTMLButtonElement>('#tacticalTarget')!;
 const tacticalOrder=document.querySelector<HTMLButtonElement>('#tacticalOrder')!;
 const tacticalReset=document.querySelector<HTMLButtonElement>('#tacticalReset')!;
+const tacticalAssist=document.querySelector<HTMLButtonElement>('#tacticalAssist')!;
 const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.6));
 renderer.shadowMap.enabled=true;
@@ -60,6 +61,9 @@ const audio=new FieldAudio();
 const contact=new ContactDirector(world.scene,nav,world.obstacles,rook,mica,onContactEvent);
 let firingHeld=false;
 let previousDanger=false;
+let assistRequested=false;
+let assistSeconds=0;
+let automaticRescueSeconds=0;
 const orders:Order[]=['follow','hold','cover','withdraw'];
 const contactHud=()=>{
   const armed=contact.showControls;
@@ -78,6 +82,8 @@ const contactHud=()=>{
   tacticalOrder.textContent='MICA · '+contact.simulation.order.toUpperCase();
   tacticalReset.hidden=!(contact.simulation.resolved||
     contact.simulation.fighters.rook.hp===0);
+  tacticalAssist.hidden=!(contact.simulation.fighters.mica.hp===0&&rookState.hp>0);
+  tacticalAssist.textContent=assistRequested?'AID MICA · '+Math.floor(assistSeconds/3*100)+'%':'AID MICA';
 };
 tacticalToggle.addEventListener('click',()=>{
   contact.tactical=!contact.tactical;
@@ -97,11 +103,22 @@ tacticalOrder.addEventListener('click',()=>{
   const idx=orders.indexOf(contact.simulation.order);
   contact.setOrder(orders[(idx+1)%orders.length]);contactHud();
 });
- tacticalReset.addEventListener('click',()=>resetContact());
+ tacticalAssist.addEventListener('click',()=>{
+  const injured=contact.simulation.fighters.mica;
+  if(injured.hp>0)return;
+  assistRequested=true;assistSeconds=0;audio.unlock();
+  const target={x:mica.position.x+1.0,z:mica.position.z+.15};
+  if(dist(rook.position,mica.position)>2 && nav.canOccupy(target)){
+    pathRook(target);
+    toast('ROOK MOVING TO ASSIST MICA',2.6);
+  } else toast('ROOK · PROVIDE FIELD AID',2.1);
+});
+tacticalReset.addEventListener('click',()=>resetContact());
 function resetContact(){
   contact.resetEncounter();
   companion.reset();
   firingHeld=false;
+  assistRequested=false;assistSeconds=0;automaticRescueSeconds=0;
   toast('CREW REGROUPED · CONTACT RESET',3);
   contactHud();
 }
@@ -612,16 +629,20 @@ renderer.setAnimationLoop(()=>{
   touch.update(dt);
   const keys=keyboardAxis();
   const wantDrive=touch.driving||keys.x!==0||keys.y!==0;
-  const driving=wantDrive&&!job.isHolding&&!inspecting;
+  const driving=wantDrive&&!job.isHolding&&!inspecting&&
+    contact.simulation.fighters.rook.hp>0;
   if(driving){autoReturn=false;pendingStation=null;}
   const axis=touch.driving?touch.move:keys;
   rook.setDrive(driving?camera.screenDirection(axis):null);
   const inWork=Boolean(inspecting)||job.phase==='working';
+  const aiding=assistRequested&&contact.simulation.fighters.mica.hp===0&&
+    dist(rook.position,mica.position)<2.05&&contact.simulation.fighters.rook.hp>0;
   const workingAt=inspecting??selectedStation;
   const meeting=crew.stage==='handoff';
-  rook.setWork(inWork && workingAt && nearStation(workingAt) && !meeting ?
+  rook.setWork(aiding?'replacing':
+    inWork && workingAt && nearStation(workingAt) && !meeting ?
     inspecting?'inspecting':'replacing':'idle',
-    workingAt?stations[workingAt].location:stations.relay.location);
+    aiding?mica.position:workingAt?stations[workingAt].location:stations.relay.location);
   rook.setSocialPose(meeting?'receive':'none',meeting?mica.position:null);
   rook.update(dt,nav);
   if(driving||(rook.moving&&(pendingStation!==null||autoReturn)))camera.follow(rook.position,dt);
@@ -703,6 +724,41 @@ renderer.setAnimationLoop(()=>{
     stations.generator.standPoint:null;
   contact.update(dt,rook,mica);
   if(!contact.danger)companion.update(dt,rook,crew,world.depot,surveyTarget);
+  if(assistRequested){
+    if(contact.simulation.fighters.mica.hp>0) {
+      assistRequested=false;assistSeconds=0;
+    } else if(aiding) {
+      assistSeconds+=dt;
+      if(assistSeconds>=3.0){
+        if(contact.revive('rook','mica')){
+          audio.play('tool');
+          toast('MICA STABILIZED · MOVEMENT RESTORED',3.1);
+          notebook.note('Rook stabilized Mica after the contact.');
+          updateNotebook();
+          assistRequested=false;assistSeconds=0;
+        } else {
+          assistRequested=false;assistSeconds=0;
+          toast('EXPOSED TO ENEMY FIRE · TREAT FROM COVER',3.0);
+        }
+      }
+    } else assistSeconds=0;
+  }
+  // No unwinnable softlock when Rook is down and Mica survives a contact.
+  if(contact.simulation.fighters.rook.hp===0 &&
+    !contact.simulation.patrolAlive&&contact.simulation.fighters.mica.hp>0){
+    if(dist(mica.position,rook.position)>1.75){
+      const path=nav.findPath(mica.position,{x:rook.position.x+1.0,z:rook.position.z});
+      if(path.length)mica.follow(path);
+      automaticRescueSeconds=0;
+    } else {
+      automaticRescueSeconds+=dt;
+      if(automaticRescueSeconds>=3 && contact.revive('mica','rook')){
+        toast('MICA STABILIZED ROOK · CREW CAN WITHDRAW',3.5);
+        notebook.note('Mica stabilized Rook after the firefight.');
+        automaticRescueSeconds=0;updateNotebook();
+      }
+    }
+  }
   if(contact.danger!==previousDanger){
     previousDanger=contact.danger;
     if(contact.danger) {
