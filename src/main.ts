@@ -11,6 +11,7 @@ import { TacticalCamera } from './input/tactical-camera';
 import { TouchControls } from './input/touch-controls';
 import type { Axis } from './input/control-math';
 import { NavigationGrid, type Point2 } from './navigation/grid';
+import { serviceApproach,hasArrived } from './navigation/service-approach';
 import type { StationId } from './systems/power-network';
 import { createWorld } from './world/create-world';
 import './style.css';
@@ -125,7 +126,7 @@ function toast(text:string,duration=2.1) {
   toastDeadline=performance.now()+duration*1000;
 }
 function nearStation(id:StationId) {
-  return dist(rook.position,stations[id].standPoint)<.88;
+  return hasArrived(rook.position,stations[id].standPoint);
 }
 function closeToTruck() {
   return dist(rook.position,world.depot.returnPoint)<1.82 &&
@@ -137,6 +138,17 @@ function pathRook(point:Point2,returning=false) {
   rook.follow(path);
   world.placeWaypoint(path[path.length-1]);
   markerTime=0;autoReturn=returning;
+  return true;
+}
+function pathStation(id:StationId) {
+  const route=serviceApproach(nav,rook.position,stations[id].standPoint);
+  if(!route.length){
+    toast('NO SAFE APPROACH TO '+stationDisplayName[id]+' · TRY A DIFFERENT ANGLE',3.0);
+    return false;
+  }
+  rook.follow(route);
+  world.placeWaypoint(route[route.length-1]);
+  markerTime=0;autoReturn=false;
   return true;
 }
 function stationRay(x:number,y:number):StationId|null {
@@ -182,7 +194,7 @@ function goToFault() {
       job.phase==='prepared'?'TEST CIRCUIT':'HOLD THE REPAIR CONTROL'),2.8);
     return;
   }
-  if(pathRook(stations[target].standPoint)){
+  if(pathStation(target)){
     pendingStation=target;
     toast('ROOK HEADING TO '+stationDisplayName[target],2.4);
   }
@@ -204,19 +216,18 @@ function startInspect(id:StationId) {
 function inspectOrWork(id:StationId) {
   audio.unlock();
   if(crew.stage==='finished'||crew.stage==='returning')return;
-  // After diagnosis an unrelated machine still has readable voltage, but
-  // repeated taps must not trap the player in the same 0 V inspection loop.
-  if(diagnosedDestination(job,id)){
-    selectedStation=id;
-    toast(inspectionGuidance(job,id)+' · GO TO '+stationDisplayName[job.target],3.3);
-    return;
-  }
+  // After diagnosis other machines remain inspectable: the equipment
+  // investigation must never become a one-way quest gate.
   selectedStation=id;
   if(!nearStation(id)){
-    if(pathRook(stations[id].standPoint)) {
+    if(pathStation(id)) {
       pendingStation=id;
       inspecting=null;
     }
+    return;
+  }
+  if(diagnosedDestination(job,id)) {
+    startInspect(id);
     return;
   }
   if(!job.diagnosed) {
@@ -513,8 +524,11 @@ renderer.setAnimationLoop(()=>{
     if(job.diagnosed && reached===job.target){
       rook.clearRoute();
       world.waypoint.visible=false;
+      const available=job.canStart(!job.requiresHardware||crew.rookHasFuse,
+        job.network.breakerIsolated&&crew.powerIsolated);
       toast('AT '+stationDisplayName[reached]+' · '+
-        (job.phase==='prepared'?'TEST THE CIRCUIT':'HOLD TO REPAIR'),2.7);
+        (job.phase==='prepared'?'TEST THE CIRCUIT':
+          available?'HOLD TO REPAIR':'AWAITING CREW SUPPORT'),2.7);
     } else startInspect(reached);
   }
   if(inspecting){
