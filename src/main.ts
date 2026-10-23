@@ -633,6 +633,8 @@ renderer.setAnimationLoop(()=>{
   }
   world.depot.update(crew.stage==='retrieving',crew.hasTruckFuse,crew.timer);
   world.depot.setIsolated(job.network.breakerIsolated);
+  world.powerYard.setWorkFocus(inspecting ??
+    (job.phase==='working' && nearStation(job.target) ? job.target : null));
   world.powerYard.update(job.network,dt,seconds);
   world.powerYard.showServiceGuide(job.diagnosed&&!job.finished?job.target:null,seconds);
   world.relay.updateFromNetwork(job.network,
