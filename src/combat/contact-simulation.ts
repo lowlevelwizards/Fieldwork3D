@@ -90,6 +90,25 @@ export class ContactSimulation {
     const f=this.fighters[id];f.position={...pos};f.moving=moving;
     if(facing!==undefined)f.facing=facing;
   }
+  reset() {
+    this.fighters.rook=make('rook','crew',{x:10.7,z:10.15});
+    this.fighters.mica=make('mica','crew',{x:8.2,z:10.8});
+    this.fighters['patrol-a']=make('patrol-a','patrol',{x:28,z:11});
+    this.fighters['patrol-b']=make('patrol-b','patrol',{x:31,z:8});
+    this.order='follow';this.active=false;this.time=0;this.rng=214513;
+  }
+  revive(helper:FighterId,subject:FighterId):boolean {
+    const a=this.fighters[helper],b=this.fighters[subject];
+    if(a.team!==b.team||helper===subject||a.hp<=0||b.hp>0||
+      distance(a.position,b.position)>2.1)return false;
+    for(const threat of Object.values(this.fighters)){
+      if(threat.team!==a.team&&threat.hp>0&&
+        distance(threat.position,b.position)<10 &&
+        visible(threat.position,b.position,this.obstacles))return false;
+    }
+    b.hp=34;b.suppressed=.45;b.state='searching';b.memory=0;
+    return true;
+  }
   get crewAlive(){return ['rook','mica'].some(id=>this.fighters[id as FighterId].hp>0);}
   get patrolAlive(){return ['patrol-a','patrol-b'].some(id=>this.fighters[id as FighterId].hp>0);}
   get resolved(){return this.active && (!this.crewAlive||!this.patrolAlive);}

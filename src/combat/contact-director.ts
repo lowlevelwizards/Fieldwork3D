@@ -77,6 +77,30 @@ export class ContactDirector {
     p.position.copy(b);
     this.scene.add(p);this.effects.push({body:p,timer:.23});
   }
+  resetEncounter() {
+    this.simulation.reset();
+    this.selected='patrol-a';
+    this.tactical=true;this.decision=0;
+    const positions:Record<FighterId,Point2>={
+      rook:{x:10.7,z:10.15},mica:{x:8.2,z:10.8},
+      'patrol-a':{x:28,z:11},'patrol-b':{x:31,z:8}
+    };
+    for(const id of Object.keys(this.targets) as FighterId[]){
+      const actor=this.targets[id];const p=positions[id];
+      const dest=this.nav.canOccupy(p)?p:actor.position;
+      actor.setIncapacitated(false);actor.setCombat(null);actor.clearRoute();
+      actor.group.position.set(dest.x,terrainHeight(dest.x,dest.z),dest.z);
+      this.simulation.setPosition(id,dest);
+    }
+    this.patrolPhase=0;this.cycle=0;
+  }
+  revive(helper:FighterId,subject:FighterId){
+    if(this.simulation.revive(helper,subject)){
+      this.targets[subject].setIncapacitated(false);
+      return true;
+    }
+    return false;
+  }
   select(id:FighterId) {
     if(this.simulation.fighters[id].team!=='patrol'||this.simulation.fighters[id].hp===0)return false;
     this.selected=id;this.tactical=true;return true;

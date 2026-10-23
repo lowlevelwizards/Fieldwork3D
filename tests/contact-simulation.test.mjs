@@ -25,7 +25,7 @@ test('finite magazine, reload time, ammo consumption and non-friendly fire',()=>
  for(let i=0;i<9;i++){
   const shot=c.fire('rook','patrol-a');if(shot)fired++;
   c.fighters['patrol-a'].hp=100;
-  c.update(.5);
+  for(let n=0;n<10;n++)c.update(.05);
  }
  assert.equal(fired,9);assert.equal(c.fighters.rook.ammo,0);
  assert.equal(c.fire('rook','patrol-a'),null);
@@ -37,6 +37,7 @@ test('finite magazine, reload time, ammo consumption and non-friendly fire',()=>
 test('patrol only sees targets within cone, range and obstruction',()=>{
  const sim=new ContactSimulation([]);
  sim.setPosition('patrol-a',{x:0,z:0},0);
+ sim.setPosition('mica',{x:38,z:25});
  sim.setPosition('rook',{x:0,z:-11});
  sim.update(.05);
  assert.equal(sim.fighters['patrol-a'].state,'unaware');
@@ -47,7 +48,8 @@ test('patrol only sees targets within cone, range and obstruction',()=>{
 });
 test('gunshot noise causes suspicion and search even without clear sight',()=>{
  const sim=new ContactSimulation([{kind:'box',x:5,z:0,halfX:1,halfZ:2}]);
- sim.setPosition('rook',{x:0,z:0});sim.setPosition('patrol-a',{x:10,z:0},0);
+ sim.setPosition('rook',{x:0,z:0});sim.setPosition('mica',{x:38,z:25});
+ sim.setPosition('patrol-a',{x:10,z:0},0);
  sim.fire('rook','patrol-a');
  assert.equal(sim.fighters['patrol-a'].state,'suspicious');
  for(let i=0;i<220;i++)sim.update(.05);
@@ -65,4 +67,17 @@ test('suppression and injuries have real persisted values, patrol ends when both
  sim.fighters['patrol-a'].hp=0;sim.fighters['patrol-b'].hp=0;
  assert.equal(sim.patrolAlive,false);
  assert.equal(sim.resolved,true);
+});
+
+test('downed crew can receive nearby aid outside visible enemy fire',()=>{
+ const c=new ContactSimulation([{kind:'box',x:5,z:0,halfX:1,halfZ:2}]);
+ c.setPosition('rook',{x:0,z:0});c.setPosition('mica',{x:1.4,z:0});
+ c.setPosition('patrol-a',{x:10,z:0});c.setPosition('patrol-b',{x:27,z:0});
+ c.fighters.mica.hp=0;c.fighters.mica.state='down';
+ assert.equal(c.revive('rook','mica'),true);
+ assert.equal(c.fighters.mica.hp,34);
+ assert.ok(c.fighters.mica.suppressed>0);
+ c.reset();
+ assert.equal(c.fighters.mica.hp,100);
+ assert.equal(c.active,false);
 });

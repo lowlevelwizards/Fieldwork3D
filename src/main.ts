@@ -76,7 +76,8 @@ const contactHud=()=>{
   tacticalFire.disabled=rookState.hp===0||!contact.simulation.patrolAlive;
   tacticalReload.disabled=rookState.reserve===0||rookState.ammo===rookState.maxAmmo||rookState.reload>0;
   tacticalOrder.textContent='MICA · '+contact.simulation.order.toUpperCase();
-  tacticalReset.hidden=!contact.simulation.resolved;
+  tacticalReset.hidden=!(contact.simulation.resolved||
+    contact.simulation.fighters.rook.hp===0);
 };
 tacticalToggle.addEventListener('click',()=>{
   contact.tactical=!contact.tactical;
@@ -96,7 +97,14 @@ tacticalOrder.addEventListener('click',()=>{
   const idx=orders.indexOf(contact.simulation.order);
   contact.setOrder(orders[(idx+1)%orders.length]);contactHud();
 });
-tacticalReset.addEventListener('click',()=>resetContact());
+ tacticalReset.addEventListener('click',()=>resetContact());
+function resetContact(){
+  contact.resetEncounter();
+  companion.reset();
+  firingHeld=false;
+  toast('CREW REGROUPED · CONTACT RESET',3);
+  contactHud();
+}
 const historyKey='fieldwork3d.network-history.v1';
 let jobNumber=0;
 let restoredCount=0, deferredCount=0;
