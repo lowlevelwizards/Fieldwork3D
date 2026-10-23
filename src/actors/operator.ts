@@ -24,6 +24,11 @@ export class Operator {
   private workTime = 0;
   private faceTarget: Point2 | null = null;
   private readonly tool = new THREE.Group();
+  private readonly meter = new THREE.Group();
+  private readonly meterProbe = new THREE.Group();
+  private meterTexture: THREE.CanvasTexture | null = null;
+  private meterCanvas: HTMLCanvasElement | null = null;
+  private lastVoltage = -1;
   readonly itemAnchor = new THREE.Group();
   private readonly head = new THREE.Group();
   private social: 'none' | 'carry' | 'collect' | 'handoff' | 'receive' | 'wait' = 'none';
@@ -104,6 +109,42 @@ export class Operator {
     part(this.tool, 0.38, 0.12, 0.12, 0.16, -0.64, 0.18, boots);
     this.tool.visible = false;
 
+    if (!this.alternate) {
+      // Handheld low-poly meter in the left hand; real probes contact the
+      // inspected machine as the operator turns and reaches forward.
+      this.arms[0].add(this.meter);
+      part(this.meter, 0.33, 0.52, 0.17, 0, -1.07, 0.29, boots);
+      part(this.meter, 0.28, 0.35, 0.035, 0, -1.02, 0.39, kit);
+      for (let i = 0; i < 2; i++) {
+        part(this.meter, 0.065, 0.065, 0.04, -0.075 + i * 0.15, -1.22, 0.43, accent);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = 128; canvas.height = 96;
+      this.meterCanvas = canvas;
+      this.meterTexture = new THREE.CanvasTexture(canvas);
+      this.meterTexture.magFilter = THREE.NearestFilter;
+      this.meterTexture.minFilter = THREE.NearestFilter;
+      const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.20),
+        new THREE.MeshBasicMaterial({ map: this.meterTexture, transparent: false }));
+      screen.position.set(0, -0.96, 0.414);
+      this.meter.add(screen);
+      this.setMeterReading(0);
+      this.arms[1].add(this.meterProbe);
+      part(this.meterProbe, 0.07, 0.58, 0.07, 0.12, -1.13, 0.41, accent);
+      part(this.meterProbe, 0.045, 0.25, 0.045, 0.12, -0.71, 0.41, boots);
+      const cable = new THREE.Mesh(
+        new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+          new THREE.Vector3(-.03,-1.30,.33),
+          new THREE.Vector3(.07,-1.43,.51),
+          new THREE.Vector3(.16,-1.25,.51),
+          new THREE.Vector3(.12,-1.04,.41),
+        ]), 10, 0.017, 4, false),
+        material(0x9e4d3d));
+      this.meterProbe.add(cable);
+      this.meter.visible = false;
+      this.meterProbe.visible = false;
+    }
+
     const groundShadow = new THREE.Mesh(
       new THREE.CircleGeometry(0.85, 20),
       new THREE.MeshBasicMaterial({ color: 0x152b2c, transparent: true, opacity: 0.17, depthWrite: false }),
@@ -120,6 +161,21 @@ export class Operator {
   setWork(phase: RelayPhase, target: Point2) {
     this.workPhase = phase;
     this.faceTarget = phase === 'idle' || phase === 'approaching' || phase === 'complete' ? null : target;
+  }
+
+  setMeterReading(voltage: number) {
+    const rounded = Math.round(voltage * 10) / 10;
+    if (rounded === this.lastVoltage || !this.meterCanvas || !this.meterTexture) return;
+    this.lastVoltage = rounded;
+    const g = this.meterCanvas.getContext('2d');
+    if (!g) return;
+    g.fillStyle = '#2c4032'; g.fillRect(0, 0, 128, 96);
+    g.fillStyle = '#c8e5a2'; g.font = 'bold 46px monospace';
+    g.textAlign = 'right';
+    g.fillText(rounded.toFixed(1), 115, 53);
+    g.font = '16px monospace';
+    g.fillText('V AC', 111, 78);
+    this.meterTexture.needsUpdate = true;
   }
 
   clearRoute() { this.route.length = 0; }
@@ -251,7 +307,15 @@ export class Operator {
       (0.97 - handMovement) * work;
     this.arms[0].rotation.z = -0.08 * work;
     this.arms[1].rotation.z = -0.18 * work;
-    this.tool.visible = work > 0.4 && ['inspecting', 'replacing', 'inspected'].includes(this.workPhase);
+    const measuring = this.workPhase === 'inspecting' && work > 0.35 && !this.alternate;
+    this.meter.visible = measuring;
+    this.meterProbe.visible = measuring;
+    this.tool.visible = work > 0.4 && ['replacing', 'inspected'].includes(this.workPhase);
+    if (measuring) {
+      // Meter stays near Rook's chest; probe arm reaches the equipment.
+      this.arms[0].rotation.x = -0.52;
+      this.arms[1].rotation.x = -1.27 + Math.sin(this.workTime * 3.6) * 0.035;
+    }
     this.torso.position.y = Math.abs(Math.sin(this.stride)) * 0.055 * w * (1 - work) -
       0.28 * work;
     this.torso.rotation.z = Math.sin(this.stride) * 0.024 * w * (1 - work);
