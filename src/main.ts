@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Operator } from './actors/operator';
-import { BUILD_VERSION, OPERATOR_START } from './constants';
+import { OPERATOR_START } from './constants';
 import { TacticalCamera } from './input/tactical-camera';
 import { TouchControls } from './input/touch-controls';
 import type { Axis } from './input/control-math';
@@ -10,7 +10,6 @@ import './style.css';
 
 const viewport = document.querySelector<HTMLElement>('#viewport')!;
 const message = document.querySelector<HTMLElement>('#message')!;
-document.querySelector<HTMLElement>('#buildVersion')!.textContent = BUILD_VERSION;
 
 let renderer: THREE.WebGLRenderer;
 try {
