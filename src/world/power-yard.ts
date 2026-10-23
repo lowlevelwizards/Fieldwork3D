@@ -21,7 +21,6 @@ const box=(g:THREE.Object3D,m:THREE.Material,w:number,h:number,d:number,x:number
 /** Handcrafted, lightweight physical representation of a coupled facility. */
 export class PowerYard {
   readonly stations: Record<StationId,ServiceStation>;
-  private readonly groups: Partial<Record<StationId,THREE.Group>> = {};
   private readonly generatorRotor = new THREE.Group();
   private readonly breakerArm = new THREE.Group();
   private readonly junctionCover = new THREE.Group();
@@ -39,7 +38,6 @@ export class PowerYard {
       cream=std(0xbbb28d),rust=std(0x95724c),glass=std(0x656b63,0x1b2e25);
     const create=(id:StationId,x:number,z:number,standingZ:number,w:number,h:number,d:number):THREE.Group=>{
       const g=new THREE.Group();g.position.set(x,terrainHeight(x,z),z);scene.add(g);
-      this.groups[id]=g;
       const hitbox=new THREE.Mesh(new THREE.BoxGeometry(w+1.1,h+.7,d+1.15),
         new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,colorWrite:false}));
       hitbox.position.set(0,h/2,.1);g.add(hitbox);
@@ -124,7 +122,7 @@ export class PowerYard {
 
     // Cable runs are actual contiguous 3D paths across the yard, not UI lines.
     // Tall timber poles support slightly sagging insulated spans.
-    const nodes:[
+    const nodes=[
       {id:'generator' as StationId,x:-18,z:-7.5},
       {id:'switchgear' as StationId,x:-3,z:-6.7},
       {id:'relay' as StationId,x:1.3,z:-9.3},
