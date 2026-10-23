@@ -1,65 +1,77 @@
-# FIELDWORK 3D
+# Fieldwork 3D
 
-**0.0.3 — Quiet World / Isometric Camera**
+**0.0.4 — The World Becomes Tangible**
 
-A fresh mobile-first, isometric Three.js + TypeScript Fieldwork prototype. One operator, a small weathered industrial relay site, and a genuinely interactive tactical camera. Build 0.0.3 removes persistent interface chrome in favor of an unobstructed view, and locks the orthographic camera to a true 35.264° isometric elevation while keeping horizontal orbit. The original [Fieldwork repository](https://github.com/lowlevelwizards/fieldwork) is deliberately untouched and remains a reference, not a runtime dependency.
+A mobile-first, quiet isometric Three.js diorama about operators doing purposeful work in a physical world. The original [Fieldwork project](https://github.com/lowlevelwizards/fieldwork) is kept intact as a reference. This is a clean Three.js / TypeScript reboot.
 
-## Run locally
+## Play Cedar Relay
 
-Requires Node.js 22 or newer.
+Visit https://lowlevelwizards.github.io/Fieldwork3D/
 
-```bash
-npm install
-npm run dev
-```
+The scene starts with an offline utility relay cabinet on the apron beyond the repair shed. Look for the subtle amber marker above its enclosure.
 
-Open the local URL displayed by Vite, including from another device on your network.
+**Repair walkthrough**
 
-```bash
-npm test       # deterministic collision/navigation tests
-npm run check  # TypeScript
-npm run build  # production bundle in dist/
-npm run preview
-```
+1. Tap the cabinet (or its marker) to route Rook to the front of the enclosure. The route avoids buildings, trees and the cabinet itself.
+2. Rook turns to the cabinet, kneels and pulls its hinged door open.
+3. Tap **INSPECT FUSE** when the localized action chip appears.
+4. Tap **REPLACE FUSE** to watch the physical component exchange.
+5. Tap **RESTORE POWER** to close the cabinet and activate the tower beacon and low electrical hum.
+
+The repair state persists across refreshes in the browser's local storage. On desktop, **Shift+R** clears the completed incident for testing.
+
+The job is deliberately small and direct. No inventory, mission-generator, factions or AI authority system is imported yet. The pure repair procedure is separate from the rendering and may later be driven by the player or a causal AI actor.
 
 ## Controls
 
 | Input | Action |
 | --- | --- |
-| Tap / left-click ground | Move Rook, detouring around solid obstacles |
-| Drag upper scene | Pan camera |\n| Drag lower-left (touch) | Floating analog move stick |\n| Drag lower-right (touch) | Floating analog orbit stick |\n| Touch both lower sides | Move and orbit simultaneously |
-| Two-finger pinch | Zoom; available when fingers start near each other |
-| Two-finger twist | Orbit; fingers rotate the scene in the same direction |
-| Right-drag / Shift-drag | Orbit camera on desktop |
+| Tap/click the ground | Route Rook to the waypoint |
+| Tap/click the relay cabinet | Approach/interact |
+| Context action chip (only near cabinet) | Proceed to the next work action |
+| Drag lower left on mobile | Floating analog movement |
+| Drag lower right on mobile | Floating horizontal orbit |
+| Two-finger pinch/twist | Zoom / orbit |
+| Drag upper scene | Pan |
 | Mouse wheel | Zoom |
-| No persistent buttons | Controls appear under your thumbs only |
-| F, Q, E | Focus, orbit left, orbit right (desktop) |
-| WASD / arrow keys | Move operator on desktop |
+| Right-drag / Shift-drag | Orbit |
+| WASD / arrows | Camera-relative direct movement |
+| F / Q / E | Focus operator / rotate left / rotate right |
+| M | Toggle procedural sound |
+| Shift+R | Reset repair state (desktop testing) |
 
-Camera gestures do not issue move commands. Clicking a prop snaps to a nearby accessible position if one exists.
+Audio is synthesized locally with Web Audio and starts only after a user gesture, as required by mobile browsers. It includes very quiet wind, footsteps, cabinet latches, tools, switching and a powered transformer hum.
 
-## World and implementation
+## Architecture
 
-- **Environment:** generated gently undulating terrain with vertex colors, a dirt-road ribbon, roadside puddles, pine trees, shrubs, low-poly rocks, grass instancing, a repair shed, service cabin, radio mast, parked truck, fences and industrial clutter.
-- **Operator:** modular procedural Three.js meshes with visible arms, hip/knee/ankle joints, field pack, distance-driven walk cycle, acceleration/braking, collision sliding, heading interpolation and ground-relative placement.
-- **Navigation:** a 1m deterministic grid, clearance around buildings and trees, eight-direction A*, corner-cut prevention and line-of-sight path smoothing.
-- **Camera:** true isometric orthographic projection (35.264° elevation, 45° initial yaw). Horizontal rotation remains available without pitch drift. Keeps aspect-aware landscape/portrait framing, scene panning, pinch/twist gestures, twin sticks and desktop pan/orbit.
-- **UI:** only Cedar Relay, the in-game time (07:14), and simulated weather (overcast). All operator, objective, debug, footer and camera-control overlays are removed. Touch sticks remain invisible until used.
+- `src/world/`: handcrafted geometry, stable scene layout, collision footprints, relay state lighting.
+- `src/actors/operator.ts`: one articulated character, locomotion, kneeling and reach/tool pose.
+- `src/fieldwork/relay-procedure.ts`: deterministic, testable task phases and action obligations.
+- `src/fieldwork/relay-site.ts`: physical cabinet door, replaceable fuse, selection surface, work anchor and tower beacon.
+- `src/navigation/grid.ts`: pathfinding and movement collision.
+- `src/input/`: floating sticks, touch gestures and fixed-elevation orthographic camera.
+- `src/audio/field-audio.ts`: low-volume synthesized tactile and environmental cues.
 
-No AI V2 internals, combat, inventory, faction or campaign logic have been migrated. This is intentional: the aim is to establish the *physical player experience* first.
+## Run and verify
 
-## Deploy to iPhone through GitHub Pages
+Requires Node.js 22+.
 
-The repository contains `.github/workflows/pages.yml`. In **Settings → Pages → Build and deployment**, set **Source: GitHub Actions** to enable deployment. Future pushes to `main` build and publish automatically. The relative Vite asset base supports hosting at `/Fieldwork3D/`.
+```bash
+npm install
+npm run dev
+npm test
+npm run check
+npm run build
+```
 
-Expected site after a successful deployment: https://lowlevelwizards.github.io/Fieldwork3D/
+The GitHub Actions checks run tests and build. On pushes to main, the Pages workflow publishes the Vite production output in `dist/`, not the raw repository.
 
-## Roadmap
+## Milestones
 
-- 0.0.1: Cedar Relay diorama, operator, navigation and camera — complete.\n- 0.0.2: Floating controls, frame correction, grounded locomotion — complete.
-- 0.0.2: richer locomotion, physical interactions and tactile action feedback.
-- 0.0.3: one complete, playable repair-and-recovery incident.
-- 0.0.4: reintroduce *selected* causal AI concepts through a newly scoped actor architecture.
-- 0.0.5: persistence, ecology of operations and a wider working world.
+- 0.0.1 — Procedural relay diorama and pathfinding.
+- 0.0.2 — Floating thumb controls and grounded movement.
+- 0.0.3 — Quiet HUD and true isometric orthographic camera.
+- **0.0.4 — Corrected geometry, staged physical relay repair, contextual interaction, sound and persistent result.**
+- Next — More compelling body mechanics, richer interactables and the first complete leave-site / return loop.
 
-Make one coherent playable slice better before adding more systems.
+Keep the world physical, playable and legible before extending the AI or campaign.

@@ -36,7 +36,7 @@ export class RelaySite {
 
   constructor(scene: THREE.Scene, obstacles: Obstacle[], location: Point2, beacon: RelayBeacon) {
     this.location = location;
-    this.standPoint = { x: location.x, z: location.z + 1.85 };
+    this.standPoint = { x: location.x, z: location.z + 1.43 };
     this.beacon = beacon;
     this.group.position.set(location.x, terrainHeight(location.x, location.z), location.z);
     scene.add(this.group);

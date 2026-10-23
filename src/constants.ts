@@ -1,6 +1,6 @@
 export const WORLD_WIDTH = 84;
 export const WORLD_DEPTH = 64;
-export const BUILD_VERSION = '0.0.3';
+export const BUILD_VERSION = '0.0.4';
 export const LOCATION_NAME = 'CEDAR RELAY';
 export const OPERATOR_START = { x: -27, z: 10 };
 export const COLORS = {
