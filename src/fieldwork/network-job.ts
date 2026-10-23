@@ -46,7 +46,7 @@ export class NetworkJob {
   }
   canStart(supplied:boolean,isolated:boolean){
     return (this.phase==='diagnosed'||this.phase==='secondary'||this.phase==='working') &&
-      (!this.requiresHardware||supplied) && (!this.requiresIsolation||isolated);
+      (!this.requiresHardware||supplied) && (!this.requiresIsolation||(isolated&&this.network.breakerIsolated));
   }
   begin(supplied:boolean,isolated:boolean):boolean{
     if(!this.canStart(supplied,isolated))return false;

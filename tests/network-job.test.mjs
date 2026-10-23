@@ -18,6 +18,8 @@ test('repairs need actual hardware, isolation, proximity and sustained contact',
  const j=new NetworkJob(1);j.inspect('switchgear');
  assert.equal(j.begin(false,false),false);
  assert.equal(j.begin(true,false),false);
+ assert.equal(j.begin(true,true),false);
+ j.network.isolate();
  assert.equal(j.begin(true,true),true);
  j.release();
  for(let i=0;i<30;i++)j.update(.05,true,true,true);
