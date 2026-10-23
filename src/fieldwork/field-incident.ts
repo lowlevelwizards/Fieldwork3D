@@ -39,6 +39,7 @@ export class FieldIncident {
   testsPerformed = 0;
   outcome: IncidentOutcome = null;
   private holding = false;
+  private recovering = false;
 
   constructor(plan: IncidentPlan) { this.plan = plan; }
 
@@ -49,7 +50,7 @@ export class FieldIncident {
   get finished() { return this.phase === 'complete' || this.phase === 'deferred'; }
   get needsSupply() { return this.fault === 'fuse' || this.fault === 'terminal'; }
   get workReady() { return this.phase === 'diagnosed' || this.phase === 'secondary'; }
-  get requiresIsolation() { return this.fault === 'contactor' || this.phase === 'secondary'; }
+  get requiresIsolation() { return this.fault === 'contactor' || (this.phase === 'secondary' || this.recovering); }
   get actionLabel(): string | null {
     switch (this.phase) {
       case 'idle': return 'CHECK RELAY';
@@ -64,7 +65,7 @@ export class FieldIncident {
   }
   get workDuration() {
     const base = this.fault === 'fuse' ? 1.25 : this.fault === 'terminal' ? 1.7 : 1.95;
-    return this.phase === 'secondary' ? 1.3 : base + this.plan.resistance * 0.7;
+    return this.recovering ? 1.3 : base + this.plan.resistance * 0.7;
   }
   get completion() { return clamp(this.progress / Math.max(0.1, this.workDuration), 0, 1); }
 
@@ -78,6 +79,7 @@ export class FieldIncident {
     if (this.phase === 'open') { this.transition('inspecting'); return true; }
     if (this.phase === 'prepared') { this.transition('testing'); return true; }
     if (this.workReady && ready) {
+      this.recovering = this.phase === 'secondary';
       this.transition('working');
       this.holding = true;
       return true;
@@ -112,6 +114,7 @@ export class FieldIncident {
           this.plan.oxidation > 0.7 && this.testsPerformed === 1;
         if (shouldTrip) {
           this.tripped = true;
+          this.recovering = true;
           this.replacementInstalled = false;
           this.progress = 0;
           this.transition('secondary');
