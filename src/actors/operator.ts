@@ -36,16 +36,23 @@ export class Operator {
   private socialTarget: Point2 | null = null;
   private socialClock = 0;
   private readonly alternate: boolean;
+  private readonly hostile: boolean;
+  private readonly firearm = new THREE.Group();
+  private readonly muzzle = new THREE.Group();
+  private combatAim: Point2 | null = null;
+  private muzzlePulse = 0;
+  private incapacitated = false;
 
-  constructor(scene: THREE.Scene, start: Point2, identity: 'rook' | 'mica' = 'rook') {
+  constructor(scene: THREE.Scene, start: Point2, identity: 'rook' | 'mica' | 'hostile' = 'rook') {
     this.alternate = identity === 'mica';
-    const jacket = material(this.alternate ? 0x687f76 : 0x53665d);
-    const jacketShade = material(this.alternate ? 0x3f595b : 0x364a45);
-    const fabric = material(this.alternate ? 0x596268 : 0x66695b);
+    this.hostile = identity === 'hostile';
+    const jacket = material(this.hostile ? 0x84684e : this.alternate ? 0x687f76 : 0x53665d);
+    const jacketShade = material(this.hostile ? 0x574739 : this.alternate ? 0x3f595b : 0x364a45);
+    const fabric = material(this.hostile ? 0x5f574a : this.alternate ? 0x596268 : 0x66695b);
     const boots = material(0x313d3c);
-    const kit = material(this.alternate ? 0x8b7662 : 0xa18a61);
-    const face = material(this.alternate ? 0xab896e : 0xbda287);
-    const accent = material(this.alternate ? 0xd0b67e : 0xc08a59);
+    const kit = material(this.hostile ? 0x7b604b : this.alternate ? 0x8b7662 : 0xa18a61);
+    const face = material(this.hostile ? 0xba9980 : this.alternate ? 0xab896e : 0xbda287);
+    const accent = material(this.hostile ? 0xb66f4d : this.alternate ? 0xd0b67e : 0xc08a59);
 
     const part = (parent: THREE.Object3D, w: number, h: number, d: number,
       x: number, y: number, z: number, mat: THREE.Material) => {
@@ -70,9 +77,14 @@ export class Operator {
     part(this.head, 0.57, 0.25, 0.54, 0, 2.66, 0.01, jacketShade);
     part(this.head, 0.57, 0.06, 0.25, 0, 2.59, 0.34, jacketShade);
     part(this.head, 0.17, 0.1, 0.05, 0, 2.42, 0.265, boots);
-    if (this.alternate) {
+    if (this.alternate || this.hostile) {
       part(this.torso, 0.93, 0.15, 0.56, 0, 2.09, 0, accent);
       part(this.torso, 0.25, 0.45, 0.17, -0.5, 1.65, 0.08, accent);
+    }
+    if (this.hostile) {
+      // Ochre patrol cap and visibly distinct short back pack.
+      part(this.head, .72,.16,.71,0,2.78,.02,jacketShade);
+      part(this.torso,.73,.8,.32,0,1.69,-.46,jacketShade);
     }
 
     for (const side of [-1, 1]) {
@@ -110,7 +122,22 @@ export class Operator {
     part(this.tool, 0.38, 0.12, 0.12, 0.16, -0.64, 0.18, boots);
     this.tool.visible = false;
 
-    if (!this.alternate) {
+    this.arms[1].add(this.firearm);
+    // A clean chunky receiver, wooden grip and physically forward barrel.
+    part(this.firearm,.17,.28,.60,.1,-1.00,.49,jacketShade);
+    part(this.firearm,.18,.20,.34,.10,-1.12,.18,kit);
+    part(this.firearm,.10,.10,.37,.10,-.99,.94,boots);
+    this.firearm.add(this.muzzle);
+    this.muzzle.position.set(.10,-.99,1.17);
+    const blast=new THREE.Mesh(new THREE.ConeGeometry(.18,.48,5),
+      new THREE.MeshBasicMaterial({color:0xffd489,depthWrite:false,transparent:true,opacity:.89}));
+    blast.rotation.x=Math.PI/2;
+    blast.position.z=.21;
+    this.muzzle.add(blast);
+    this.firearm.visible=false;
+    this.muzzle.visible=false;
+
+    if (identity === 'rook') {
       // Handheld low-poly meter in the left hand; real probes contact the
       // inspected machine as the operator turns and reaches forward.
       this.arms[0].add(this.meter);
@@ -181,6 +208,15 @@ export class Operator {
     this.meterTexture.needsUpdate = true;
   }
 
+  setCombat(target: Point2 | null) {
+    this.combatAim=target;
+  }
+  fireImpulse() { this.muzzlePulse=.12; }
+  setIncapacitated(value:boolean) {
+    this.incapacitated=value;
+    if(value) {this.clearRoute();this.driveIntent=null;this.combatAim=null;}
+  }
+  get down(){return this.incapacitated;}
   clearRoute() { this.route.length = 0; }
 
   setSocialPose(mode: 'none' | 'carry' | 'collect' | 'handoff' | 'receive' | 'wait',
@@ -208,6 +244,7 @@ export class Operator {
 
   update(delta: number, navigation: NavigationGrid) {
     const dt = Math.min(Math.max(delta, 0), 0.05);
+    this.muzzlePulse=Math.max(0,this.muzzlePulse-dt);
     const position = this.group.position;
     let desiredX = 0, desiredZ = 0;
 
@@ -237,7 +274,7 @@ export class Operator {
     // timed phase is running. Thumb locomotion may resume between stages.
     const working = !['idle', 'approaching', 'complete'].includes(this.workPhase);
     const busy = ['opening', 'inspecting', 'replacing', 'closing'].includes(this.workPhase);
-    if (busy) { desiredX = 0; desiredZ = 0; }
+    if (busy || this.incapacitated) { desiredX = 0; desiredZ = 0; }
     const currentSpeed = Math.hypot(this.velocity.x, this.velocity.z);
     const targetSpeed = Math.hypot(desiredX, desiredZ);
     const limit = (targetSpeed > currentSpeed ? 8.2 : 12.0) * dt;
@@ -266,7 +303,7 @@ export class Operator {
     }
     position.y = terrainHeight(position.x, position.z);
     const speed = Math.hypot(movedX, movedZ) / Math.max(dt, 0.0001);
-    const gazeTarget = this.socialTarget ?? this.faceTarget;
+    const gazeTarget = this.combatAim ?? this.socialTarget ?? this.faceTarget;
     if (speed > 0.03 || (gazeTarget && this.velocityMagnitude < 0.4)) {
       const heading = gazeTarget && this.velocityMagnitude < 0.4
         ? Math.atan2(gazeTarget.x - position.x, gazeTarget.z - position.z)
@@ -310,19 +347,35 @@ export class Operator {
       (0.97 - handMovement) * work;
     this.arms[0].rotation.z = -0.08 * work;
     this.arms[1].rotation.z = -0.18 * work;
+    const armed = this.combatAim!==null&&!this.incapacitated;
+    this.firearm.visible=armed&&!working;
+    this.muzzle.visible=this.muzzlePulse>0;
     const measuring = this.workPhase === 'inspecting' && work > 0.35 && !this.alternate;
     this.meter.visible = measuring;
     this.meterProbe.visible = measuring;
     this.tool.visible = work > 0.4 && ['replacing', 'inspected'].includes(this.workPhase);
+    if (armed && !working) {
+      this.arms[1].rotation.x = -1.3-(this.muzzlePulse>0?.22:0);
+      this.arms[1].rotation.z=-.20;
+      this.arms[0].rotation.x=-.86;
+    }
     if (measuring) {
       // Meter stays near Rook's chest; probe arm reaches the equipment.
       this.arms[0].rotation.x = -0.52;
       this.arms[1].rotation.x = -1.27 + Math.sin(this.workTime * 3.6) * 0.035;
     }
     this.torso.position.y = Math.abs(Math.sin(this.stride)) * 0.055 * w * (1 - work) -
-      0.28 * work;
+      0.28 * work - (this.incapacitated? .55:0);
+    this.torso.rotation.x=this.incapacitated ? -.9 : this.torso.rotation.x;
     this.torso.rotation.z = Math.sin(this.stride) * 0.024 * w * (1 - work);
-    this.torso.rotation.x = -0.04 * w + 0.20 * work;
+    if(!this.incapacitated)this.torso.rotation.x = -0.04 * w + 0.20 * work;
+    if(this.incapacitated){
+      this.torso.rotation.z=-.42;
+      for(const leg of this.legs){
+        leg.hip.rotation.x=-.83;
+        leg.knee.rotation.x=1.20;
+      }
+    }
     this.socialClock += dt;
     this.head.rotation.y = 0.10 * Math.sin(this.socialClock * 0.47) +
       (this.socialTarget ? 0.045 * Math.sin(this.socialClock * 0.9) : 0);
