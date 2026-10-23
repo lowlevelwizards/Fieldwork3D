@@ -99,3 +99,21 @@ body { overscroll-behavior: none; }
 @media (prefers-reduced-motion: reduce) {
   .floating-stick, #message { transition: none; }
 }
+
+/* One local contextual command. All other UI stays out of the diorama. */
+.context-action {
+  position: absolute; z-index: 4;
+  transform: translate(-50%, -50%);
+  padding: 10px 16px;
+  border: 1px solid rgba(247,222,160,.91);
+  border-radius: 4px;
+  background: rgba(33,55,49,.9);
+  color: #f8e3a9;
+  font: 700 11px/1.2 "SFMono-Regular", Consolas, monospace;
+  letter-spacing: .095em;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(19,32,27,.25);
+  touch-action: manipulation;
+}
+.context-action:active { background: rgba(113,100,65,.96); }
+.context-action[hidden] { display: none !important; }

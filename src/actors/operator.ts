@@ -157,7 +157,8 @@ export class Operator {
     // Procedural actions have exclusive locomotion ownership while their
     // timed phase is running. Thumb locomotion may resume between stages.
     const working = !['idle', 'approaching', 'complete'].includes(this.workPhase);
-    if (working) { desiredX = 0; desiredZ = 0; }
+    const busy = ['opening', 'inspecting', 'replacing', 'closing'].includes(this.workPhase);
+    if (busy) { desiredX = 0; desiredZ = 0; }
     const currentSpeed = Math.hypot(this.velocity.x, this.velocity.z);
     const targetSpeed = Math.hypot(desiredX, desiredZ);
     const limit = (targetSpeed > currentSpeed ? 8.2 : 12.0) * dt;
