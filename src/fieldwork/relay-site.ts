@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Obstacle, Point2 } from '../navigation/grid';
 import { terrainHeight } from '../world/ground';
 import type { RelayPhase } from './relay-procedure';
+import type { FieldIncident } from './field-incident';
 
 export type RelayBeacon = { lamp: THREE.Mesh; light: THREE.PointLight };
 const metal = (color: number, emissive = 0x000000) =>
@@ -33,6 +34,10 @@ export class RelaySite {
   private readonly indicatorMaterial: THREE.MeshStandardMaterial;
   private readonly beacon: RelayBeacon;
   private readonly serviceLight: THREE.PointLight;
+  private readonly terminal: THREE.Mesh;
+  private readonly contactor: THREE.Group;
+  private readonly spark: THREE.Group;
+  private readonly cable: THREE.Mesh;
 
   constructor(scene: THREE.Scene, obstacles: Obstacle[], location: Point2, beacon: RelayBeacon) {
     this.location = location;
@@ -63,6 +68,26 @@ export class RelaySite {
     this.fuse = block(this.group, [0.23, 0.55, 0.18], [0.25, 1.58, 0.64], this.fuseMaterial);
     block(this.group, [0.38, 0.1, 0.21], [0.25, 1.88, 0.61], bronze);
     block(this.group, [0.38, 0.1, 0.21], [0.25, 1.28, 0.61], bronze);
+
+    // Distinct serviceable internals: terminal clamp, wired feed, contactor.
+    this.terminal = block(this.group, [0.36,0.26,0.27], [-0.28,1.46,0.70], bronze);
+    this.cable = block(this.group, [0.11,0.70,0.12], [-0.30,1.07,0.73], trim);
+    this.contactor = new THREE.Group();
+    this.contactor.position.set(0.34,0.97,0.68);
+    this.group.add(this.contactor);
+    block(this.contactor, [0.42,0.42,0.22], [0,0,0], black);
+    block(this.contactor, [0.19,0.30,0.14], [0,0.13,0.14], bronze);
+    this.spark = new THREE.Group();
+    this.spark.position.set(-0.28,1.47,0.82);
+    this.group.add(this.spark);
+    const glow = new THREE.MeshBasicMaterial({ color: 0xffd18c, transparent: true, opacity: 0.85 });
+    for (let i = 0; i < 5; i++) {
+      const arc = new THREE.Mesh(new THREE.ConeGeometry(0.06,0.42,3), glow);
+      arc.rotation.z = i * Math.PI * 2 / 5;
+      arc.position.set(Math.cos(i * 1.25) * 0.17, Math.sin(i * 1.25) * 0.12,0);
+      this.spark.add(arc);
+    }
+    this.spark.visible = false;
 
     // Door hinge on the left, swinging physically outward to the operator.
     this.door.position.set(-0.76, 0, 0.58);
@@ -110,6 +135,41 @@ export class RelaySite {
 
     obstacles.push({ kind: 'box', x: location.x, z: location.z, halfX: 0.84, halfZ: 0.55 });
     this.labelPoint.set(location.x, this.group.position.y + 3.35, location.z);
+  }
+
+  updateIncident(incident: FieldIncident, seconds: number, camera: THREE.Camera) {
+    const p = incident.phase;
+    const phase: RelayPhase =
+      p === 'idle' || p === 'approaching' ? 'idle' :
+      p === 'opening' || p === 'open' || p === 'inspecting' ? p :
+      p === 'working' ? 'replacing' :
+      p === 'prepared' || p === 'testing' || p === 'secondary' || p === 'diagnosed' ? 'inspected' :
+      p === 'closing' ? 'closing' :
+      p === 'complete' ? 'complete' : 'open';
+    const progress = p === 'opening' ? incident.timer / 1.25 :
+      p === 'closing' ? incident.timer / 1.35 : incident.completion;
+    this.update(phase, progress, seconds, camera);
+    const exposed = ['open','inspecting','diagnosed','working','prepared','testing','secondary','deferred'].includes(p);
+    this.fuse.visible = incident.fault === 'fuse' || !incident.diagnosed;
+    this.terminal.visible = incident.fault === 'terminal' || !incident.diagnosed;
+    this.cable.visible = incident.fault === 'terminal' || !incident.diagnosed;
+    this.contactor.visible = incident.fault === 'contactor' || !incident.diagnosed;
+    const affected = incident.diagnosed && !incident.replacementInstalled;
+    this.fuseMaterial.color.setHex(affected ? 0xb44f39 : 0xcbb77d);
+    (this.terminal.material as THREE.MeshStandardMaterial).color.setHex(
+      incident.fault === 'terminal' && affected ? 0x94523f : 0xbca773);
+    this.cable.rotation.z = incident.fault === 'terminal' && affected ? -0.28 : 0;
+    this.contactor.rotation.x = incident.fault === 'contactor' && affected ? 0.52 : 0.0;
+    this.spark.visible = exposed && incident.tripped && incident.phase === 'secondary' &&
+      Math.sin(seconds * 27) > 0.55;
+    this.spark.rotation.z = seconds * 4;
+    const deferred = incident.phase === 'deferred';
+    if (deferred) {
+      this.indicatorMaterial.color.setHex(0xa59458);
+      this.indicatorMaterial.emissive.setHex(0x8f5c28);
+      this.indicatorMaterial.emissiveIntensity = 0.75;
+      this.marker.visible = false;
+    }
   }
 
   update(phase: RelayPhase, progress: number, seconds: number, camera: THREE.Camera) {

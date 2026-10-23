@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Obstacle, Point2 } from '../navigation/grid';
 import { terrainHeight } from '../world/ground';
+import type { CrewAssignment } from './crew-mission';
 
 /** Truck-side equipment box, with a single tangible fuse that changes hands. */
 export class TruckDepot {
@@ -68,6 +69,13 @@ export class TruckDepot {
     this.item.rotation.set(0, 0, Math.PI * 0.06);
     this.item.scale.setScalar(1.1);
     this.item.visible = true;
+  }
+
+  setAssignment(which: CrewAssignment) {
+    const material = this.item.children[0] instanceof THREE.Mesh ?
+      this.item.children[0].material as THREE.MeshStandardMaterial : null;
+    if (material) material.color.setHex(which === 'terminal' ? 0x83b1a2 : 0xd8b973);
+    this.item.scale.setScalar(which === 'terminal' ? 1.22 : 1.0);
   }
 
   update(retrieving: boolean, hasTruckFuse: boolean, phaseTime: number) {
