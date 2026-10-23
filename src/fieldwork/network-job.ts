@@ -18,6 +18,7 @@ export class NetworkJob {
   }
   get target():StationId{return faultStation(this.network.fault);}
   get diagnosed(){return this.phase!=='searching';}
+  get isHolding(){return this.holding;}
   get finished(){return this.phase==='complete'||this.phase==='deferred';}
   get requiresHardware(){return this.network.fault!=='contactor' && !this.secondRepair;}
   get requiresIsolation(){return this.network.fault!=='generator';}
