@@ -49,6 +49,7 @@ export class FieldIncident {
   get busy() { return ['opening','inspecting','testing','closing'].includes(this.phase); }
   get finished() { return this.phase === 'complete' || this.phase === 'deferred'; }
   get needsSupply() { return this.fault === 'fuse' || this.fault === 'terminal'; }
+  get isHolding() { return this.holding; }
   get workReady() { return this.phase === 'diagnosed' || this.phase === 'secondary'; }
   get requiresIsolation() { return this.fault === 'contactor' || (this.phase === 'secondary' || this.recovering); }
   get actionLabel(): string | null {
@@ -59,6 +60,9 @@ export class FieldIncident {
         return this.fault === 'fuse' ? 'HOLD TO FIT FUSE' :
           this.fault === 'terminal' ? 'HOLD TO SECURE' : 'HOLD TO FREE CONTACTOR';
       case 'secondary': return 'HOLD TO RESEAT';
+      case 'working': return this.recovering ? 'HOLD TO RESEAT' :
+        this.fault === 'fuse' ? 'HOLD TO FIT FUSE' :
+        this.fault === 'terminal' ? 'HOLD TO SECURE' : 'HOLD TO FREE CONTACTOR';
       case 'prepared': return 'TEST CIRCUIT';
       default: return null;
     }
@@ -71,7 +75,11 @@ export class FieldIncident {
 
   interact(near: boolean, ready: boolean): boolean {
     if (!near && this.phase !== 'idle') return false;
-    if (this.busy || this.finished || this.phase === 'working') return false;
+    if (this.busy || this.finished) return false;
+    if (this.phase === 'working') {
+      if (near && ready) { this.holding = true; return true; }
+      return false;
+    }
     if (this.phase === 'idle') {
       this.transition(near ? 'opening' : 'approaching');
       return true;
