@@ -28,7 +28,6 @@ export class ContactDirector {
     {x:27,z:9},{x:23,z:10},{x:28,z:12},{x:30,z:7}
   ];
   private callback:(event:ContactEvent)=>void;
-  private lastDanger=false;
   constructor(scene:THREE.Scene,nav:NavigationGrid,obstacles:readonly Obstacle[],
     rook:Operator,mica:Operator,onEvent:(event:ContactEvent)=>void){
     this.scene=scene;this.nav=nav;this.callback=onEvent;
@@ -224,7 +223,6 @@ export class ContactDirector {
         else if(this.cycle%2===0)this.simulation.fire('mica',foe);
       }
     }else mica.setCombat(null);
-    this.lastDanger=this.danger;
     this.indicator.visible=this.tactical&&fighters[this.selected].hp>0;
     if(this.indicator.visible){
       const p=fighters[this.selected].position;
