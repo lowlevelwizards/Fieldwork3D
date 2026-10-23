@@ -522,6 +522,10 @@ renderer.setAnimationLoop(()=>{
   world.relay.updateFromNetwork(job.network,
     inspecting==='relay'||selectedStation==='relay'&&
       nearStation('relay')&&job.phase==='working',seconds,camera.camera);
+  // The old cabinet marker was misleading: if the generator or feeder is
+  // broken, the relay is only a symptom. The marked machine must be the
+  // diagnosed fault, not every downstream appliance without voltage.
+  if(job.diagnosed && job.target!=='relay')world.relay.marker.visible=false;
   audio.update(job.network.mastOnline,job.network.generatorRunning);
 
   stepDistance+=dist(rook.position,lastRookPos);
