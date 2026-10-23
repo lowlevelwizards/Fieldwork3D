@@ -22,6 +22,11 @@ const box=(g:THREE.Object3D,m:THREE.Material,w:number,h:number,d:number,x:number
 export class PowerYard {
   readonly stations: Record<StationId,ServiceStation>;
   private readonly generatorRotor = new THREE.Group();
+  private readonly generatorStarter = new THREE.Group();
+  private readonly feederFragments: THREE.Mesh[] = [];
+  private feederWhole: THREE.Mesh | null = null;
+  private readonly junctionScorch: THREE.MeshStandardMaterial;
+  private workFocus: StationId | null = null;
   private readonly breakerArm = new THREE.Group();
   private readonly junctionCover = new THREE.Group();
   private readonly sourceLamp: THREE.Mesh;
@@ -78,6 +83,10 @@ export class PowerYard {
     }
     generator.add(this.generatorRotor);
     this.generatorRotor.position.set(0.90,1.25,1.02);
+    generator.add(this.generatorStarter);
+    this.generatorStarter.position.set(-.45,1.85,1.03);
+    box(this.generatorStarter,rust,.18,.55,.15,0,.20,0);
+    box(this.generatorStarter,cream,.44,.15,.21,0,.51,0);
     const fan=new THREE.Mesh(new THREE.CylinderGeometry(.39,.39,.10,8),dark);
     fan.rotation.x=Math.PI/2;this.generatorRotor.add(fan);
     for(let i=0;i<4;i++){
@@ -106,10 +115,17 @@ export class PowerYard {
 
     const joint=create('junction',24,-23,-20.8,1.9,1.95,1.1);
     box(joint,steel,1.9,1.8,1.1,0,.97,0);
-    box(joint,olive,1.64,1.56,.15,0,1.02,.62);
-    joint.add(this.junctionCover);this.junctionCover.position.set(-.8,1.03,.71);
-    box(this.junctionCover,cream,1.5,.12,.12,.79,.10,.05);
-    for(let i=0;i<3;i++)box(joint,rust,.26,.44,.12,-.45+i*.45,.94,.74);
+    // An actual hinged cover with visible interior terminals, not a
+    // decorative stripe hovering over a sealed wall.
+    const internal=box(joint,dark,1.62,1.55,.11,0,1.0,.57);
+    internal.receiveShadow=true;
+    this.junctionScorch=std(0x917550);
+    box(joint,this.junctionScorch,0.45,.54,.18,0,1.0,.67);
+    joint.add(this.junctionCover);
+    this.junctionCover.position.set(-.81,.26,.69);
+    box(this.junctionCover,olive,1.64,1.55,.13,.82,.77,.04);
+    box(this.junctionCover,cream,.21,.49,.12,1.48,.78,.14);
+    for(let i=0;i<3;i++)box(joint,rust,.26,.44,.16,-.48+i*.48,.94,.78);
     this.junctionLamp=new THREE.Mesh(new THREE.SphereGeometry(.1,8,6),glass);
     this.junctionLamp.position.set(.62,1.70,.65);joint.add(this.junctionLamp);
 
@@ -168,6 +184,20 @@ export class PowerYard {
       const cableMaterial=std(0x434f4a);
       const tube=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),pts.length*2,.055,5,false),cableMaterial);
       scene.add(tube);this.cableRuns.push({from:a.id,to:b.id,material:cableMaterial});
+      if(a.id==='switchgear' && b.id==='relay'){
+        this.feederWhole=tube;
+        // An open circuit has a REAL visible gap between two cable ends.
+        // Restoring continuity swaps these sections for the intact cable.
+        for(const fragment of [pts.slice(0,Math.max(3,Math.floor(pts.length*.42))),
+          pts.slice(-Math.max(3,Math.floor(pts.length*.42)))]) {
+          const mesh=new THREE.Mesh(new THREE.TubeGeometry(
+            new THREE.CatmullRomCurve3(fragment),fragment.length*3,.061,5,false),
+            std(0x464d47));
+          mesh.visible=false;
+          scene.add(mesh);
+          this.feederFragments.push(mesh);
+        }
+      }
     }
     for(let i=0;i<4;i++){
       const l=new THREE.Mesh(new THREE.BoxGeometry(.29,.14,.29),
@@ -185,14 +215,24 @@ export class PowerYard {
     this.serviceGuide.scale.setScalar(1+Math.sin(seconds*2.8)*.06);
   }
 
+  setWorkFocus(station:StationId|null){this.workFocus=station;}
+
   /** Bind the existing relay's selection surface, avoiding duplicate cabinet mesh. */
   setRelayHitbox(hitbox:THREE.Mesh){this.stations.relay.hitbox=hitbox;}
 
   update(network:PowerNetwork,dt:number,seconds:number){
     const power=network.energized;
-    this.generatorRotor.rotation.z+=network.generatorRunning?dt*9:dt*.08;
+    this.generatorRotor.rotation.z+=network.generatorRunning?dt*9:0;
+    this.generatorStarter.rotation.x+=((network.generatorRunning?0:-.65)-
+      this.generatorStarter.rotation.x)*.15;
     this.breakerArm.rotation.x+=((network.breakerClosed?0:-.68)-this.breakerArm.rotation.x)*.18;
-    this.junctionCover.rotation.y+=((network.fault==='junction'&&!network.repaired?-.15:0)-this.junctionCover.rotation.y)*.14;
+    this.junctionCover.rotation.y+=((this.workFocus==='junction'?-1.65:0)-
+      this.junctionCover.rotation.y)*.17;
+    this.junctionScorch.color.setHex(network.fault==='junction'&&!network.repaired?
+      0x2a2523:0xb69c72);
+    this.junctionScorch.emissive.setHex(network.fault==='junction'&&network.transientArc>0?
+      0xf68d30:0x000000);
+    this.junctionScorch.emissiveIntensity=network.transientArc>0?0.7:0;
     const glow=(obj:THREE.Mesh,on:boolean)=>{
       const m=obj.material as THREE.MeshStandardMaterial;
       m.color.setHex(on?0xe7c991:0x877663);
@@ -205,6 +245,9 @@ export class PowerYard {
     glow(this.workLamp,network.voltageAt('switchgear')>0);
     this.humLamp.intensity=power.has('switchgear')?0.50:0;
     for(const l of this.shedLights)glow(l,power.has('switchgear'));
+    const openFeeder=network.fault==='feeder'&&!network.repaired;
+    if(this.feederWhole)this.feederWhole.visible=!openFeeder;
+    for(const fragment of this.feederFragments)fragment.visible=openFeeder;
     for(const wire of this.cableRuns){
       const on=power.has(wire.from)&&power.has(wire.to);
       wire.material.color.setHex(on?0x9b855b:0x3f504b);
