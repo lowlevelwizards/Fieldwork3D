@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { terrainHeight } from '../world/ground';
 import type { NavigationGrid, Point2 } from '../navigation/grid';
+import type { RelayPhase } from '../fieldwork/relay-procedure';
 
 const material = (color: number) => new THREE.MeshStandardMaterial({
   color, roughness: 0.92, metalness: 0.02, flatShading: true,
@@ -18,6 +19,11 @@ export class Operator {
   private stride = 0;
   private animationWeight = 0;
   private readonly maxSpeed = 3.4;
+  private workPhase: RelayPhase = 'idle';
+  private workWeight = 0;
+  private workTime = 0;
+  private faceTarget: Point2 | null = null;
+  private readonly tool = new THREE.Group();
 
   constructor(scene: THREE.Scene, start: Point2) {
     const jacket = material(0x53665d);
@@ -77,6 +83,13 @@ export class Operator {
       this.arms.push(arm);
     }
 
+    // The folding work tool is attached to Rook's right forearm, visible
+    // while handling the relay enclosure rather than an abstract progress bar.
+    this.arms[1].add(this.tool);
+    part(this.tool, 0.11, 0.62, 0.10, 0.16, -0.95, 0.18, kit);
+    part(this.tool, 0.38, 0.12, 0.12, 0.16, -0.64, 0.18, boots);
+    this.tool.visible = false;
+
     const groundShadow = new THREE.Mesh(
       new THREE.CircleGeometry(0.85, 20),
       new THREE.MeshBasicMaterial({ color: 0x152b2c, transparent: true, opacity: 0.17, depthWrite: false }),
@@ -89,6 +102,16 @@ export class Operator {
   }
 
   get position(): Point2 { return { x: this.group.position.x, z: this.group.position.z }; }
+
+  setWork(phase: RelayPhase, target: Point2) {
+    this.workPhase = phase;
+    this.faceTarget = phase === 'idle' || phase === 'approaching' || phase === 'complete' ? null : target;
+  }
+
+  clearRoute() { this.route.length = 0; }
+
+  get velocityMagnitude() { return Math.hypot(this.velocity.x, this.velocity.z); }
+
 
   get moving(): boolean {
     return this.route.length > 0 || Math.hypot(this.velocity.x, this.velocity.z) > 0.13;
@@ -131,6 +154,10 @@ export class Operator {
       }
     }
 
+    // Procedural actions have exclusive locomotion ownership while their
+    // timed phase is running. Thumb locomotion may resume between stages.
+    const working = !['idle', 'approaching', 'complete'].includes(this.workPhase);
+    if (working) { desiredX = 0; desiredZ = 0; }
     const currentSpeed = Math.hypot(this.velocity.x, this.velocity.z);
     const targetSpeed = Math.hypot(desiredX, desiredZ);
     const limit = (targetSpeed > currentSpeed ? 8.2 : 12.0) * dt;
@@ -159,8 +186,10 @@ export class Operator {
     }
     position.y = terrainHeight(position.x, position.z);
     const speed = Math.hypot(movedX, movedZ) / Math.max(dt, 0.0001);
-    if (speed > 0.03) {
-      const heading = Math.atan2(movedX, movedZ);
+    if (speed > 0.03 || (this.faceTarget && this.velocityMagnitude < 0.4)) {
+      const heading = this.faceTarget && this.velocityMagnitude < 0.4
+        ? Math.atan2(this.faceTarget.x - position.x, this.faceTarget.z - position.z)
+        : Math.atan2(movedX, movedZ);
       const angularDifference = Math.atan2(
         Math.sin(heading - this.group.rotation.y),
         Math.cos(heading - this.group.rotation.y),
@@ -173,23 +202,38 @@ export class Operator {
     const weight = Math.min(1, speed / 2.6);
     this.animationWeight += (weight - this.animationWeight) * (1 - Math.exp(-dt * 11));
     const w = this.animationWeight;
+    const desiredWork = working ? 1 : 0;
+    this.workWeight += (desiredWork - this.workWeight) * (1 - Math.exp(-dt * 5));
+    if (working) this.workTime += dt;
+    else this.workTime = 0;
+    const work = this.workWeight;
     for (let i = 0; i < this.legs.length; i++) {
       const phase = this.stride + i * Math.PI;
       const swing = Math.sin(phase);
       const forwardSwing = swing * 0.40 * w;
       const kneeBend = Math.max(0, -swing) * 0.48 * w;
       const leg = this.legs[i];
-      leg.hip.rotation.x = forwardSwing;
-      leg.knee.rotation.x = kneeBend;
-      leg.ankle.rotation.x = -forwardSwing - kneeBend * 0.65;
+      // A planted kneeling stance and one raised working knee.
+      leg.hip.rotation.x = forwardSwing * (1 - work) + (i === 0 ? 0.57 : -0.18) * work;
+      leg.knee.rotation.x = kneeBend * (1 - work) + (i === 0 ? -0.94 : 0.86) * work;
+      leg.ankle.rotation.x = (-forwardSwing - kneeBend * 0.65) * (1 - work) +
+        (i === 0 ? 0.37 : -0.35) * work;
       // Small swing-foot clearance, while the planted foot stays near the surface.
-      leg.ankle.position.y = -0.53 + Math.max(0, -swing) * 0.12 * w;
+      leg.ankle.position.y = -0.53 + Math.max(0, -swing) * 0.12 * w * (1 - work);
     }
-    this.arms[0].rotation.x = -Math.sin(this.stride) * 0.27 * w;
-    this.arms[1].rotation.x = Math.sin(this.stride) * 0.27 * w;
-    this.torso.position.y = Math.abs(Math.sin(this.stride)) * 0.055 * w;
-    this.torso.rotation.z = Math.sin(this.stride) * 0.024 * w;
-    this.torso.rotation.x = -0.04 * w;
+    const handMovement = Math.sin(this.workTime * 10) * 0.12 *
+      (this.workPhase === 'replacing' || this.workPhase === 'inspecting' ? 1 : 0.2);
+    this.arms[0].rotation.x = -Math.sin(this.stride) * 0.27 * w * (1 - work) -
+      (0.59 + handMovement) * work;
+    this.arms[1].rotation.x = Math.sin(this.stride) * 0.27 * w * (1 - work) -
+      (0.97 - handMovement) * work;
+    this.arms[0].rotation.z = -0.08 * work;
+    this.arms[1].rotation.z = -0.18 * work;
+    this.tool.visible = work > 0.4 && ['inspecting', 'replacing', 'inspected'].includes(this.workPhase);
+    this.torso.position.y = Math.abs(Math.sin(this.stride)) * 0.055 * w * (1 - work) -
+      0.28 * work;
+    this.torso.rotation.z = Math.sin(this.stride) * 0.024 * w * (1 - work);
+    this.torso.rotation.x = -0.04 * w + 0.20 * work;
 
     // Use a small deadband for stable arrival, after deceleration completes.
     if (!this.driveIntent && !this.route.length && targetSpeed < 0.001 && currentSpeed < 0.035) {
