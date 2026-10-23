@@ -4,474 +4,481 @@ import { FieldAudio } from './audio/field-audio';
 import { OPERATOR_START } from './constants';
 import { CompanionController } from './crew/companion-controller';
 import { CrewMission } from './crew/crew-mission';
-import { FieldIncident, planIncident, type IncidentPhase } from './fieldwork/field-incident';
+import { NetworkJob } from './fieldwork/network-job';
 import { TacticalCamera } from './input/tactical-camera';
 import { TouchControls } from './input/touch-controls';
 import type { Axis } from './input/control-math';
 import { NavigationGrid, type Point2 } from './navigation/grid';
+import type { StationId } from './systems/power-network';
 import { createWorld } from './world/create-world';
 import './style.css';
 
-const viewport = document.querySelector<HTMLElement>('#viewport')!;
-const message = document.querySelector<HTMLElement>('#message')!;
-const contextAction = document.querySelector<HTMLButtonElement>('#contextAction')!;
-const deferAction = document.querySelector<HTMLButtonElement>('#deferAction')!;
-const renderer = new THREE.WebGLRenderer({
-  antialias: true, alpha: false, powerPreference: 'high-performance',
-});
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.6));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.12;
-renderer.outputColorSpace = THREE.SRGBColorSpace;
+const viewport=document.querySelector<HTMLElement>('#viewport')!;
+const message=document.querySelector<HTMLElement>('#message')!;
+const contextAction=document.querySelector<HTMLButtonElement>('#contextAction')!;
+const deferAction=document.querySelector<HTMLButtonElement>('#deferAction')!;
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.6));
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.12;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
 viewport.appendChild(renderer.domElement);
 
-const world = createWorld();
-const nav = new NavigationGrid(world.obstacles);
-const rook = new Operator(world.scene, OPERATOR_START, 'rook');
-const mica = new Operator(world.scene, { x: 8.2, z: 10.8 }, 'mica');
-const companion = new CompanionController(mica, nav);
-const mission = new CrewMission();
-const camera = new TacticalCamera(renderer.domElement);
-const audio = new FieldAudio();
-const historyKey = 'fieldwork3d.incident-history.v1';
-let incidentIndex = 0;
-let restoredCount = 0, deferredCount = 0;
+const world=createWorld();
+const nav=new NavigationGrid(world.obstacles);
+const rook=new Operator(world.scene,OPERATOR_START,'rook');
+const mica=new Operator(world.scene,{x:8.2,z:10.8},'mica');
+const companion=new CompanionController(mica,nav);
+const crew=new CrewMission();
+const camera=new TacticalCamera(renderer.domElement);
+const audio=new FieldAudio();
+const historyKey='fieldwork3d.network-history.v1';
+let jobNumber=0;
+let restoredCount=0, deferredCount=0;
 try {
-  const history = JSON.parse(localStorage.getItem(historyKey) || '{}') as {
-    next?: number; restored?: number; deferred?: number;
+  const saved=JSON.parse(localStorage.getItem(historyKey)||'{}') as {
+    next?:number;restored?:number;deferred?:number;
   };
-  incidentIndex = Math.max(0, Math.min(10000, Math.floor(Number(history.next) || 0)));
-  restoredCount = Math.max(0, Math.floor(Number(history.restored) || 0));
-  deferredCount = Math.max(0, Math.floor(Number(history.deferred) || 0));
-} catch { /* Keep the current session playable without browser storage. */ }
-let incident = new FieldIncident(planIncident(incidentIndex));
-let previousPhase: IncidentPhase = incident.phase;
-let previousStage = mission.stage;
-let approachRelay = false, autoReturn = false;
-let toastDeadline = 0, markerTime = 0, runtimeSeconds = 0;
-let footDistance = 0, micaFootDistance = 0;
-let lastFootLocation = rook.position, lastMicaFootLocation = mica.position;
-let handoffInProgress = false;
-let outcomeRecorded = false;
+  jobNumber=Math.max(0,Math.min(10000,Math.floor(Number(saved.next)||0)));
+  restoredCount=Math.max(0,Math.floor(Number(saved.restored)||0));
+  deferredCount=Math.max(0,Math.floor(Number(saved.deferred)||0));
+} catch { /* Restricted browser storage is optional. */ }
+let job=new NetworkJob(jobNumber);
+let surveyDone=false, surveyClock=0;
+let selectedStation:StationId|null=null;
+let pendingStation:StationId|null=null;
+let inspectionTimer=0, inspecting:StationId|null=null;
+let autoReturn=false, handoffInProgress=false;
+let markerTime=0, seconds=0, toastDeadline=0;
+let stepDistance=0, micaSteps=0;
+let lastRookPos=rook.position, lastMicaPos=mica.position;
+let outcomeRecorded=false;
+const raycaster=new THREE.Raycaster();
+const pointer=new THREE.Vector2();
+const stations=world.powerYard.stations;
+const dist=(a:Point2,b:Point2)=>Math.hypot(a.x-b.x,a.z-b.z);
 
-const raycaster = new THREE.Raycaster();
-const pointer = new THREE.Vector2();
-const distance = (a: Point2, b: Point2) => Math.hypot(a.x - b.x, a.z - b.z);
-function showMessage(text: string, seconds = 1.9) {
-  message.textContent = text;
+function toast(text:string,duration=2.1) {
+  message.textContent=text;
   message.classList.add('visible');
-  toastDeadline = performance.now() + seconds * 1000;
+  toastDeadline=performance.now()+duration*1000;
 }
-function nearRelay() { return distance(rook.position, world.relay.standPoint) < 0.50; }
-function crewAtTruck() {
-  return distance(rook.position, world.depot.returnPoint) < 1.85 &&
-    distance(mica.position, world.depot.secondReturnPoint) < 1.24;
+function nearStation(id:StationId) {
+  return dist(rook.position,stations[id].standPoint)<.88;
 }
-function readyForWork(): boolean {
-  if (!nearRelay()) return false;
-  if (incident.phase === 'secondary') return mission.powerIsolated;
-  if (incident.requiresIsolation && !mission.powerIsolated) return false;
-  return incident.needsSupply ? mission.rookHasFuse : true;
+function closeToTruck() {
+  return dist(rook.position,world.depot.returnPoint)<1.82 &&
+    dist(mica.position,world.depot.secondReturnPoint)<1.25;
 }
-
-function getRay(x: number, y: number) {
-  const rect = renderer.domElement.getBoundingClientRect();
-  if (!rect.width || !rect.height) return false;
-  pointer.set(((x - rect.left) / rect.width) * 2 - 1,
-    -(((y - rect.top) / rect.height) * 2 - 1));
-  raycaster.setFromCamera(pointer, camera.camera);
-  return true;
-}
-function hit(x: number, y: number, target: THREE.Object3D) {
-  return getRay(x, y) && raycaster.intersectObject(target, false).length > 0;
-}
-function pathRook(target: Point2, auto = false) {
-  const path = nav.findPath(rook.position, target);
-  if (!path.length) {
-    showMessage('NO ACCESSIBLE ROUTE');
-    return false;
-  }
+function pathRook(point:Point2,returning=false) {
+  const path=nav.findPath(rook.position,point);
+  if(!path.length){toast('NO ACCESSIBLE ROUTE');return false;}
   rook.follow(path);
-  world.placeWaypoint(path[path.length - 1]);
-  markerTime = 0;
-  autoReturn = auto;
+  world.placeWaypoint(path[path.length-1]);
+  markerTime=0;autoReturn=returning;
   return true;
+}
+function stationRay(x:number,y:number):StationId|null {
+  const rect=renderer.domElement.getBoundingClientRect();
+  if(!rect.width||!rect.height)return null;
+  pointer.set(((x-rect.left)/rect.width)*2-1,-(((y-rect.top)/rect.height)*2-1));
+  raycaster.setFromCamera(pointer,camera.camera);
+  let hit:StationId|null=null;
+  let near=Infinity;
+  for(const id of ['generator','switchgear','relay','junction','mast'] as StationId[]) {
+    const contact=raycaster.intersectObject(stations[id].hitbox,false)[0];
+    if(contact && contact.distance<near){near=contact.distance;hit=id;}
+  }
+  return hit;
+}
+function declareDiagnosis(station:StationId) {
+  const {observation,newDiagnosis}=job.inspect(station);
+  if(station==='generator' && surveyDone)toast('MICA RADIO · '+observation.description,3.0);
+  else toast(observation.description,2.6);
+  if(!newDiagnosis)return;
+  const assignment=job.network.fault==='contactor'?'isolation':
+    job.network.fault==='fuse'?'fuse':'terminal';
+  crew.diagnose(assignment);
+  world.depot.setAssignment(assignment);
+  audio.play('radio');
+  toast('FAULT LOCATED · '+job.network.fault.toUpperCase()+
+    (assignment==='isolation'?' · MICA ISOLATING':' · MICA FETCHING SUPPLIES'),3.8);
+  selectedStation=job.target;
+}
+function startInspect(id:StationId) {
+  if(job.finished)return;
+  if(inspecting||job.isHolding)return;
+  selectedStation=id;
+  pendingStation=null;
+  inspecting=id;
+  inspectionTimer=0;
+  rook.clearRoute();
+  world.waypoint.visible=false;
+  audio.play('inspect');
+}
+function inspectOrWork(id:StationId) {
+  audio.unlock();
+  if(crew.stage==='finished'||crew.stage==='returning')return;
+  selectedStation=id;
+  if(!nearStation(id)){
+    if(pathRook(stations[id].standPoint)) {
+      pendingStation=id;
+      inspecting=null;
+    }
+    return;
+  }
+  if(id!==job.target || !job.diagnosed) {
+    startInspect(id);
+    return;
+  }
+  if(job.phase==='prepared'){
+    if(job.network.breakerIsolated){
+      toast('MICA MUST RESTORE SUPPLY BEFORE TEST',2.5);
+      return;
+    }
+    const result=job.test();
+    audio.play(result==='trip'?'arc':'switch');
+    if(result==='complete'){
+      crew.finishJob(true);
+      recordOutcome();
+      audio.play('power');
+      toast('SITE ENERGIZED · RADIOS ONLINE · RETURN TO TRUCK',3.4);
+      goHome();
+    } else if(result==='trip') {
+      world.depot.setIsolated(true);
+      audio.play('radio');
+      if(crew.reassignIsolation()) toast('TERMINAL ARCED · MICA ISOLATING THE CIRCUIT',3.6);
+      else toast('PROTECTION TRIPPED · CIRCUIT OFFLINE',3.2);
+    } else toast('POWER NOT REACHING MAST · CONTINUE TRACING',2.5);
+    return;
+  }
+  if(job.phase==='diagnosed'||job.phase==='secondary'||job.phase==='working'){
+    const supplied=!job.requiresHardware||crew.rookHasFuse;
+    const isolated=job.network.breakerIsolated&&crew.powerIsolated;
+    if(!job.canStart(supplied,isolated)) {
+      toast(job.requiresIsolation&&!isolated?'WAITING FOR MICA TO ISOLATE POWER':
+        'WAITING FOR MICA TO DELIVER EQUIPMENT',2.8);
+    } else toast('HOLD THE REPAIR CONTROL TO WORK',1.8);
+  }
 }
 function goHome() {
-  if (mission.stage !== 'returning') return;
-  pathRook(world.depot.returnPoint, true);
-  showMessage('CREW RETURNING TO TRUCK', 2.0);
+  if(crew.stage!=='returning')return;
+  pendingStation=null;inspecting=null;
+  pathRook(world.depot.returnPoint,true);
+  toast('CREW RETURNING TO TRUCK',2.1);
+}
+function deferJob() {
+  if(!job.diagnosed||job.finished||!nearStation(job.target)||!job.defer())return;
+  crew.finishJob(false);
+  recordOutcome();
+  audio.play('radio');
+  toast('UNRESOLVED FAULT · RETURN VISIT REQUIRED',3.2);
+  goHome();
 }
 function recordOutcome() {
-  if (outcomeRecorded || !incident.outcome) return;
-  outcomeRecorded = true;
-  if (incident.outcome === 'restored') restoredCount++;
+  if(outcomeRecorded||!job.finished)return;
+  outcomeRecorded=true;
+  if(job.phase==='complete')restoredCount++;
   else deferredCount++;
   try {
-    localStorage.setItem(historyKey, JSON.stringify({
-      next: incidentIndex + 1, restored: restoredCount, deferred: deferredCount,
+    localStorage.setItem(historyKey,JSON.stringify({
+      next:jobNumber+1,restored:restoredCount,deferred:deferredCount
     }));
-  } catch { /* session only */ }
+  } catch { /* Continuing without persistence is safe. */ }
 }
 function newJob() {
-  if (mission.stage !== 'finished') return;
-  incidentIndex++;
-  incident = new FieldIncident(planIncident(incidentIndex));
-  previousPhase = incident.phase;
-  mission.reset();
+  if(crew.stage!=='finished')return;
+  jobNumber++;
+  job=new NetworkJob(jobNumber);
+  crew.reset();
   companion.reset();
   world.depot.resetItem();
   world.depot.setIsolated(false);
   world.relay.resetIncident();
-  previousStage = mission.stage;
-  outcomeRecorded = false;
-  approachRelay = false;
-  autoReturn = false;
-  handoffInProgress = false;
-  world.waypoint.visible = false;
-  contextAction.hidden = true;
-  deferAction.hidden = true;
-  showMessage('CEDAR RELAY · NEW SERVICE CALL', 2.5);
-}
-
-function workAction() {
-  audio.unlock();
-  if (incident.finished) {
-    if (mission.stage === 'returning') goHome();
-    return;
-  }
-  if (incident.busy) return;
-  if (incident.phase === 'prepared' && mission.powerIsolated) {
-    showMessage('WAITING FOR MICA TO RECONNECT POWER', 2.2);
-    return;
-  }
-  if (!nearRelay()) {
-    if (pathRook(world.relay.standPoint)) {
-      approachRelay = true;
-      incident.interact(false, false);
-    }
-    return;
-  }
-  if (incident.workReady && !readyForWork()) {
-    showMessage(incident.requiresIsolation ? 'MICA ISOLATING THE SUPPLY' :
-      'MICA FETCHING REQUIRED PART', 2.0);
-    return;
-  }
-  if (incident.interact(true, readyForWork())) {
-    rook.clearRoute();
-    world.waypoint.visible = false;
-    approachRelay = false;
-    if (incident.phase === 'working') audio.play('tool');
-  }
-}
-
-function deferJob() {
-  if (!nearRelay() || !incident.defer()) return;
-  incident.stopHolding();
-  mission.finishJob(false);
-  recordOutcome();
-  showMessage('JOB DEFERRED · RELAY STILL OFFLINE', 2.8);
-  goHome();
+  handoffInProgress=false;
+  surveyDone=false;surveyClock=0;
+  selectedStation=null;pendingStation=null;inspecting=null;
+  inspectionTimer=0;
+  autoReturn=false;outcomeRecorded=false;
+  world.waypoint.visible=false;
+  toast('NEW SERVICE CALL · TRACE THE DEAD CIRCUIT',3.3);
 }
 function depotAction() {
   audio.unlock();
-  if (mission.stage === 'returning') goHome();
-  else if (mission.stage === 'finished') newJob();
-  else showMessage('TRUCK EQUIPMENT · SERVICE SUPPLIES', 1.5);
+  if(crew.stage==='finished')newJob();
+  else if(crew.stage==='returning')goHome();
+  else toast('TRUCK · SPARES AND DISTRIBUTION DISCONNECT',2);
 }
-
-renderer.domElement.addEventListener('pointerdown', () => audio.unlock(), { passive: true });
-contextAction.addEventListener('pointerdown', (event) => {
+function handleContextDown() {
   audio.unlock();
-  if (incident.workReady || incident.phase === 'working') {
-    workAction();
-    // Prevent a synthetic click after the hold gesture completes.
-    event.preventDefault();
+  if(crew.stage==='finished'||crew.stage==='returning'){depotAction();return;}
+  if(selectedStation!==job.target || !nearStation(job.target))return;
+  if(job.phase==='diagnosed'||job.phase==='secondary'||job.phase==='working'){
+    const supplied=!job.requiresHardware||crew.rookHasFuse;
+    const isolated=job.network.breakerIsolated&&crew.powerIsolated;
+    if(job.begin(supplied,isolated)){
+      audio.play('tool');
+      rook.clearRoute();world.waypoint.visible=false;
+    }
+  } else inspectOrWork(job.target);
+}
+renderer.domElement.addEventListener('pointerdown',()=>audio.unlock(),{passive:true});
+contextAction.addEventListener('pointerdown',event=>{
+  // Work begins on pointer-down so holding is meaningful on iPhone.
+  if(job.phase==='diagnosed'||job.phase==='secondary'||job.phase==='working') {
+    event.preventDefault();handleContextDown();
   }
 });
-contextAction.addEventListener('click', () => {
-  if (mission.stage === 'finished' || mission.stage === 'returning') depotAction();
-  else if (incident.phase !== 'working') workAction();
+contextAction.addEventListener('click',()=>{
+  if(job.phase!=='working'&&job.phase!=='diagnosed'&&job.phase!=='secondary')handleContextDown();
 });
-deferAction.addEventListener('click', deferJob);
-const stopHold = () => incident.stopHolding();
-window.addEventListener('pointerup', stopHold);
-window.addEventListener('pointercancel', stopHold);
-window.addEventListener('blur', stopHold);
+deferAction.addEventListener('click',deferJob);
+const stopHold=()=>job.release();
+window.addEventListener('pointerup',stopHold);
+window.addEventListener('pointercancel',stopHold);
+window.addEventListener('blur',stopHold);
 
-const touch = new TouchControls(renderer.domElement, camera, (x, y) => {
-  if (hit(x, y, world.relay.hitbox)) { workAction(); return; }
-  if (hit(x, y, world.depot.hitbox)) { depotAction(); return; }
-  const point = camera.groundPoint(x, y);
-  if (!point) { showMessage('OUTSIDE THE FIELD AREA'); return; }
-  if (distance(point, world.relay.location) < 1.35) { workAction(); return; }
-  if (distance(point, { x: 8, z: 7 }) < 1.35) { depotAction(); return; }
-  if (incident.busy || incident.isHolding) return;
-  if (pathRook(point)) {
-    approachRelay = false;
-    incident.cancelApproach();
-  }
+const touch=new TouchControls(renderer.domElement,camera,(x,y)=>{
+  const station=stationRay(x,y);
+  if(station){inspectOrWork(station);return;}
+  const point=camera.groundPoint(x,y);
+  if(!point){toast('OUTSIDE THE FIELD AREA');return;}
+  if(dist(point,{x:8,z:7})<1.30){depotAction();return;}
+  if(job.isHolding||inspecting)return;
+  if(pathRook(point)){pendingStation=null;}
 });
-const pressed = new Set<string>();
-const movementCodes = new Set([
-  'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
-  'KeyW', 'KeyA', 'KeyS', 'KeyD',
-]);
-window.addEventListener('keydown', event => {
-  if (event.code === 'KeyF' && !event.repeat) camera.focus(rook.position);
-  else if (event.code === 'KeyQ' && !event.repeat) camera.orbit(Math.PI / 8, 0);
-  else if (event.code === 'KeyE' && !event.repeat) camera.orbit(-Math.PI / 8, 0);
-  else if (event.code === 'Equal' || event.code === 'NumpadAdd') camera.zoom(0.87);
-  else if (event.code === 'Minus' || event.code === 'NumpadSubtract') camera.zoom(1.13);
-  else if (event.code === 'KeyM' && !event.repeat) audio.toggleMute();
-  else if (event.code === 'KeyR' && event.shiftKey && !event.repeat && mission.stage === 'finished') newJob();
-  else if (event.code === 'KeyT' && !event.repeat) depotAction();
-  else if (event.code === 'Space' && !event.repeat) workAction();
-  else if (movementCodes.has(event.code)) pressed.add(event.code);
+const pressed=new Set<string>();
+const movementCodes=new Set(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','KeyW','KeyA','KeyS','KeyD']);
+window.addEventListener('keydown',event=>{
+  if(event.code==='KeyF'&&!event.repeat)camera.focus(rook.position);
+  else if(event.code==='KeyQ'&&!event.repeat)camera.orbit(Math.PI/8,0);
+  else if(event.code==='KeyE'&&!event.repeat)camera.orbit(-Math.PI/8,0);
+  else if(event.code==='Equal'||event.code==='NumpadAdd')camera.zoom(.87);
+  else if(event.code==='Minus'||event.code==='NumpadSubtract')camera.zoom(1.13);
+  else if(event.code==='KeyM'&&!event.repeat)audio.toggleMute();
+  else if(event.code==='KeyT'&&!event.repeat)depotAction();
+  else if(event.code==='KeyR'&&event.shiftKey&&!event.repeat)newJob();
+  else if(event.code==='Space')handleContextDown();
+  else if(movementCodes.has(event.code))pressed.add(event.code);
   else return;
   event.preventDefault();
 });
-window.addEventListener('keyup', event => {
+window.addEventListener('keyup',event=>{
   pressed.delete(event.code);
-  if (event.code === 'Space') stopHold();
+  if(event.code==='Space')stopHold();
 });
-window.addEventListener('blur', () => pressed.clear());
-function keyboardAxis(): Axis {
-  const x = Number(pressed.has('ArrowRight') || pressed.has('KeyD')) -
-    Number(pressed.has('ArrowLeft') || pressed.has('KeyA'));
-  const y = Number(pressed.has('ArrowUp') || pressed.has('KeyW')) -
-    Number(pressed.has('ArrowDown') || pressed.has('KeyS'));
-  const length = Math.hypot(x, y);
-  return length > 1 ? { x: x / length, y: y / length } : { x, y };
+window.addEventListener('blur',()=>pressed.clear());
+function keyboardAxis():Axis {
+  const x=Number(pressed.has('ArrowRight')||pressed.has('KeyD'))-
+    Number(pressed.has('ArrowLeft')||pressed.has('KeyA'));
+  const y=Number(pressed.has('ArrowUp')||pressed.has('KeyW'))-
+    Number(pressed.has('ArrowDown')||pressed.has('KeyS'));
+  const l=Math.hypot(x,y);
+  return l>1?{x:x/l,y:y/l}:{x,y};
 }
-let lastWidth = 0, lastHeight = 0, lastRatio = 0;
-function resize() {
-  const box = viewport.getBoundingClientRect();
-  const width = Math.max(1, Math.round(box.width));
-  const height = Math.max(1, Math.round(box.height));
-  const ratio = Math.min(window.devicePixelRatio || 1, 1.6);
-  if (width === lastWidth && height === lastHeight && ratio === lastRatio) return;
-  lastWidth = width; lastHeight = height; lastRatio = ratio;
-  renderer.setPixelRatio(ratio); renderer.setSize(width, height, false);
-  camera.resize(width, height);
+let previousWidth=0,previousHeight=0,previousRatio=0;
+function resize(){
+  const rect=viewport.getBoundingClientRect();
+  const width=Math.max(1,Math.round(rect.width));
+  const height=Math.max(1,Math.round(rect.height));
+  const ratio=Math.min(window.devicePixelRatio||1,1.6);
+  if(width===previousWidth&&height===previousHeight&&ratio===previousRatio)return;
+  previousWidth=width;previousHeight=height;previousRatio=ratio;
+  renderer.setPixelRatio(ratio);renderer.setSize(width,height,false);
+  camera.resize(width,height);
 }
-const observer = new ResizeObserver(resize);
-observer.observe(viewport);
-window.addEventListener('resize', resize);
-window.visualViewport?.addEventListener('resize', resize);
-window.addEventListener('orientationchange', () => {
-  requestAnimationFrame(() => { resize(); requestAnimationFrame(resize); });
+new ResizeObserver(resize).observe(viewport);
+window.addEventListener('resize',resize);
+window.visualViewport?.addEventListener('resize',resize);
+window.addEventListener('orientationchange',()=>{
+  requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 });
-resize(); camera.focus(rook.position); camera.update(0);
+resize();camera.focus(rook.position);camera.update(0);
 
-function onIncidentChange(phase: IncidentPhase) {
-  if (phase === 'opening') { audio.play('latch'); showMessage('OPENING SERVICE PANEL'); }
-  else if (phase === 'open') showMessage('PANEL OPEN · CHECK COMPONENTS');
-  else if (phase === 'inspecting') { audio.play('inspect'); showMessage('INSPECTING RELAY'); }
-  else if (phase === 'diagnosed') {
-    const assignment = incident.fault === 'fuse' ? 'fuse' :
-      incident.fault === 'terminal' ? 'terminal' : 'isolation';
-    mission.diagnose(assignment);
-    world.depot.setAssignment(assignment);
-    audio.play('radio');
-    showMessage(incident.diagnosis + (assignment === 'isolation' ?
-      ' · MICA ISOLATING POWER' : ' · MICA RETRIEVING EQUIPMENT'), 3.5);
-  } else if (phase === 'prepared') {
-    if (incident.needsSupply && incident.testsPerformed === 0) {
-      mission.installFuse(); world.depot.item.visible = false;
-    }
-    audio.play('tool');
-    if (mission.powerIsolated && mission.requestReenergize()) {
-      audio.play('radio');
-      showMessage('MICA · RE-ENERGIZING SUPPLY BEFORE TEST', 3);
-    } else showMessage('MECHANISM SECURED · READY TO TEST', 2.5);
-  } else if (phase === 'testing') { audio.play('switch'); showMessage('TESTING UNDER POWER'); }
-  else if (phase === 'secondary') {
-    audio.play('arc'); audio.play('radio');
-    if (!mission.reassignIsolation()) showMessage('PROTECTION TRIPPED · ISOLATE POWER', 3.2);
-    else showMessage('TERMINAL ARC · MICA ISOLATING SUPPLY', 3.6);
-  } else if (phase === 'closing') { audio.play('latch'); showMessage('TEST PASSED · CLOSING PANEL'); }
-  else if (phase === 'complete') {
-    mission.finishJob(true);
-    recordOutcome();
-    audio.play('power');
-    showMessage('RELAY RESTORED · RETURN TO TRUCK', 3.3);
-    goHome();
-  } else if (phase === 'deferred') {
-    showMessage('RELAY OFFLINE · FOLLOW-UP REQUIRED', 2.5);
-  }
-}
-
-function onCrewEvent(event: string) {
-  if (event === 'collect') {
+function onCrewEvent(event:string){
+  if(event==='collect') {
     world.depot.attachTo(mica.itemAnchor);
-    audio.play('latch'); audio.play('radio');
-    showMessage('MICA · EQUIPMENT RETRIEVED', 1.8);
-  } else if (event === 'isolated') {
+    audio.play('latch');audio.play('radio');
+    toast('MICA · REQUIRED SPARE RETRIEVED',2);
+  } else if(event==='delivered') {
+    world.depot.attachTo(rook.itemAnchor);
+    audio.play('tool');audio.play('radio');
+    toast('MICA → ROOK · EQUIPMENT DELIVERED',2.3);
+    if(job.requiresIsolation&&crew.reassignIsolation()){
+      toast('SPARE RECEIVED · MICA NOW ISOLATING SUPPLY',2.8);
+    }
+  } else if(event==='isolated'){
+    job.network.isolate();
     world.depot.setIsolated(true);
     audio.play('switch');
-    showMessage('MICA · CIRCUIT ISOLATED', 2.1);
-  } else if (event === 'energized') {
+    toast('MICA · BREAKER OPEN · CIRCUIT SAFE',2.8);
+  } else if(event==='energized'){
+    const closed=job.network.reenergize();
+    world.depot.setIsolated(!closed);
+    audio.play(closed?'switch':'arc');
+    toast(closed?'SUPPLY RESTORED · TEST THE CIRCUIT':
+      'BREAKER TRIPPED · FAULT STILL PRESENT',2.6);
+  } else if(event==='finished'){
     world.depot.setIsolated(false);
-    audio.play('switch');
-    showMessage('SUPPLY RECONNECTED · READY FOR TEST', 2.3);
-  } else if (event === 'delivered') {
-    world.depot.attachTo(rook.itemAnchor);
-    audio.play('tool'); audio.play('radio');
-    showMessage('MICA → ROOK · EQUIPMENT HANDOFF', 2.3);
-  } else if (event === 'finished') {
-    world.depot.setIsolated(false);
-    world.waypoint.visible = false;
-    autoReturn = false;
-    showMessage(incident.outcome === 'restored' ?
-      'CREW HOME · SERVICE COMPLETE' : 'CREW HOME · RETURN VISIT NEEDED', 3.1);
+    world.waypoint.visible=false;
+    autoReturn=false;
+    toast(job.phase==='complete'?'CREW HOME · NETWORK RESTORED':
+      'CREW HOME · FOLLOW-UP REQUIRED',3.5);
   }
 }
-
-function positionPrompt() {
-  let label: string | null = null;
-  let pos: THREE.Vector3 | null = null;
-  if (mission.stage === 'finished') {
-    label = 'ANOTHER JOB'; pos = world.depot.labelPoint;
-  } else if (mission.stage === 'returning') {
-    label = 'RETURN TO TRUCK'; pos = world.depot.labelPoint;
-  } else if (nearRelay() && !incident.busy && !incident.finished) {
-    label = incident.actionLabel;
-    if (incident.workReady && !readyForWork()) label = null;
-    if (incident.phase === 'prepared' && mission.powerIsolated) label = null;
-    pos = world.relay.labelPoint;
+function updatePrompt(){
+  let label:string|null=null,position:THREE.Vector3|null=null;
+  if(crew.stage==='finished'){
+    label='ANOTHER JOB';position=world.depot.labelPoint;
+  } else if(crew.stage==='returning'){
+    label='RETURN TO TRUCK';position=world.depot.labelPoint;
+  } else if(selectedStation && nearStation(selectedStation) && !inspecting && !job.finished){
+    position=stations[selectedStation].labelPoint;
+    if(job.diagnosed && selectedStation===job.target) {
+      if(job.phase==='prepared'){
+        if(!job.network.breakerIsolated)label=job.actionLabel;
+      } else if(job.canStart(!job.requiresHardware||crew.rookHasFuse,
+        job.network.breakerIsolated&&crew.powerIsolated))label=job.actionLabel;
+    } else if(!job.diagnosed)label='INSPECT EQUIPMENT';
   }
-  const mayDefer = nearRelay() && ['diagnosed','secondary','prepared'].includes(incident.phase);
-  contextAction.hidden = !label || !pos;
-  deferAction.hidden = !mayDefer;
-  if (!pos && mayDefer) pos = world.relay.labelPoint;
-  if (!pos) return;
-  const projected = pos.clone().project(camera.camera);
-  if (projected.z < -1 || projected.z > 1 || Math.abs(projected.x) > 0.95 ||
-      Math.abs(projected.y) > 0.86) {
-    contextAction.hidden = true;
-    deferAction.hidden = true;
-    return;
+  const mayDefer=job.diagnosed && !job.finished && nearStation(job.target) &&
+    (job.phase==='diagnosed'||job.phase==='prepared'||job.phase==='secondary');
+  contextAction.hidden=!label||!position;
+  deferAction.hidden=!mayDefer;
+  if(!position && mayDefer)position=stations[job.target].labelPoint;
+  if(!position)return;
+  const proj=position.clone().project(camera.camera);
+  if(proj.z< -1||proj.z>1||Math.abs(proj.x)>.96||Math.abs(proj.y)>.89){
+    contextAction.hidden=true;deferAction.hidden=true;return;
   }
-  const box = viewport.getBoundingClientRect();
-  const x = (projected.x * 0.5 + 0.5) * box.width;
-  const y = (-projected.y * 0.5 + 0.5) * box.height;
-  const px = Math.min(box.width - 95, Math.max(95, x));
-  const py = Math.min(box.height - 50, Math.max(50, y));
-  if (label) {
-    contextAction.textContent = label;
-    contextAction.setAttribute('aria-label', label);
-  }
-  contextAction.style.left = px + 'px';
-  contextAction.style.top = py + 'px';
-  contextAction.style.setProperty('--progress', incident.completion * 100 + '%');
-  deferAction.style.left = px + 'px';
-  deferAction.style.top = Math.min(box.height - 22, py + 47) + 'px';
+  const rect=viewport.getBoundingClientRect();
+  const x=Math.min(rect.width-95,Math.max(95,(proj.x*.5+.5)*rect.width));
+  const y=Math.min(rect.height-48,Math.max(48,(-proj.y*.5+.5)*rect.height));
+  if(label){contextAction.textContent=label;contextAction.setAttribute('aria-label',label);}
+  contextAction.style.left=x+'px';contextAction.style.top=y+'px';
+  contextAction.style.setProperty('--progress',job.phase==='working' ?
+    Math.min(100,job.progress/job.holdSeconds*100)+'%':'0%');
+  deferAction.style.left=x+'px';
+  deferAction.style.top=Math.min(rect.height-24,y+47)+'px';
 }
 
-const clock = new THREE.Clock();
-renderer.setAnimationLoop(() => {
-  const dt = Math.min(clock.getDelta(), 0.05);
-  runtimeSeconds += dt;
+toast('TRACE THE DEAD CIRCUIT · TAP EQUIPMENT TO INSPECT',3.2);
+const clock=new THREE.Clock();
+renderer.setAnimationLoop(()=>{
+  const dt=Math.min(clock.getDelta(),.05);
+  seconds+=dt;
   touch.update(dt);
-  const keys = keyboardAxis();
-  const wantsDrive = touch.driving || keys.x !== 0 || keys.y !== 0;
-  const driving = wantsDrive && !incident.busy && !incident.isHolding;
-  if (driving) {
-    autoReturn = false;
-    if (incident.phase === 'approaching') {
-      approachRelay = false; incident.cancelApproach(); rook.clearRoute();
-    }
-  }
-  const axis = touch.driving ? touch.move : keys;
-  rook.setDrive(driving ? camera.screenDirection(axis) : null);
-  const meeting = mission.stage === 'handoff';
-  const workPhase = nearRelay() && !meeting ?
-    incident.phase === 'working' ? 'replacing' :
-    incident.phase === 'opening' ? 'opening' :
-    incident.phase === 'inspecting' ? 'inspecting' :
-    ['open','diagnosed','prepared','secondary','testing','closing'].includes(incident.phase)
-      ? 'inspected' : 'idle' : 'idle';
-  rook.setWork(workPhase, world.relay.location);
-  rook.setSocialPose(meeting ? 'receive' : 'none', meeting ? mica.position : null);
-  rook.update(dt, nav);
-  if (driving || (rook.moving && (approachRelay || autoReturn))) camera.follow(rook.position, dt);
+  const keys=keyboardAxis();
+  const wantDrive=touch.driving||keys.x!==0||keys.y!==0;
+  const driving=wantDrive&&!job.isHolding&&!inspecting;
+  if(driving){autoReturn=false;pendingStation=null;}
+  const axis=touch.driving?touch.move:keys;
+  rook.setDrive(driving?camera.screenDirection(axis):null);
+  const inWork=Boolean(inspecting)||job.phase==='working';
+  const workingAt=inspecting??selectedStation;
+  const meeting=crew.stage==='handoff';
+  rook.setWork(inWork && workingAt && nearStation(workingAt) && !meeting ?
+    inspecting?'inspecting':'replacing':'idle',
+    workingAt?stations[workingAt].location:stations.relay.location);
+  rook.setSocialPose(meeting?'receive':'none',meeting?mica.position:null);
+  rook.update(dt,nav);
+  if(driving||(rook.moving&&(pendingStation!==null||autoReturn)))camera.follow(rook.position,dt);
   camera.update(dt);
 
-  if (approachRelay && nearRelay()) {
-    incident.update(0, true, readyForWork(), mission.powerIsolated);
-    if (incident.phase === 'idle') incident.interact(true, false);
-    else if (incident.phase !== 'opening' && incident.phase !== 'working')
-      incident.interact(true, readyForWork());
-    approachRelay = false;
-    rook.clearRoute();
-    world.waypoint.visible = false;
+  if(pendingStation && nearStation(pendingStation)){
+    startInspect(pendingStation);
   }
-  const serviceEvent = incident.update(dt, nearRelay(), readyForWork(), mission.powerIsolated);
-  if (incident.phase !== previousPhase) {
-    onIncidentChange(incident.phase);
-    previousPhase = incident.phase;
+  if(inspecting){
+    if(!nearStation(inspecting)){inspecting=null;inspectionTimer=0;}
+    else {
+      inspectionTimer+=dt;
+      if(inspectionTimer>=1.10){
+        const id=inspecting;inspecting=null;inspectionTimer=0;
+        declareDiagnosis(id);
+      }
+    }
   }
-  if (serviceEvent === 'trip') {
-    world.depot.setIsolated(false);
+  const workAtTarget=nearStation(job.target);
+  const supplied=!job.requiresHardware||crew.rookHasFuse;
+  const isolated=job.network.breakerIsolated&&crew.powerIsolated;
+  const worked=job.update(dt,workAtTarget,supplied,isolated);
+  if(worked==='repaired'){
+    if(!job.network.repaired){toast('REPAIR INCOMPLETE');}
+    else {
+      if(!job.network.breakerIsolated) {
+        audio.play('power');
+        toast('FAULT CLEARED · TEST THE NETWORK',2.3);
+      } else if(crew.requestReenergize()) {
+        audio.play('radio');
+        toast('MICA RETURNING TO RECONNECT SUPPLY',3);
+      } else toast('FAULT CLEARED · NEED POWER RESTORED',2.3);
+      if(crew.rookHasFuse){crew.installFuse();world.depot.item.visible=false;}
+    }
   }
 
-  companion.update(dt, rook, mission, world.depot);
-  const micaAtTruck = distance(mica.position, world.depot.standPoint) < 0.88;
-  const micaNearRook = distance(mica.position, rook.position) < 1.85;
-  const event = mission.advance(dt, micaAtTruck, micaNearRook, crewAtTruck());
-  if (event) onCrewEvent(event);
+  const surveyTarget=!surveyDone&&crew.stage==='standby'?
+    stations.generator.standPoint:null;
+  companion.update(dt,rook,crew,world.depot,surveyTarget);
+  if(surveyTarget){
+    if(dist(mica.position,surveyTarget)<.96){
+      surveyClock+=dt;
+      if(surveyClock>=1.2){
+        surveyDone=true;
+        const finding=job.inspect('generator');
+        audio.play('radio');
+        toast('MICA RADIO · '+finding.observation.description,3.0);
+        if(finding.newDiagnosis){
+          const assignment='terminal';
+          crew.diagnose(assignment);
+          world.depot.setAssignment(assignment);
+          selectedStation='generator';
+          toast('MICA FOUND GENERATOR FAILURE · FETCHING PARTS',3.5);
+        }
+      }
+    } else surveyClock=0;
+  }
+  const atTruck=dist(mica.position,world.depot.standPoint)<.88;
+  const nearRook=dist(mica.position,rook.position)<1.86;
+  const evt=crew.advance(dt,atTruck,nearRook,closeToTruck());
+  if(evt)onCrewEvent(evt);
 
-  if (mission.stage === 'handoff') {
+  if(crew.stage==='handoff'){
     rook.group.updateMatrixWorld(true);
     mica.group.updateMatrixWorld(true);
-    if (!handoffInProgress) {
-      world.scene.add(world.depot.item);
-      handoffInProgress = true;
-    }
-    const from = mica.itemAnchor.getWorldPosition(new THREE.Vector3());
-    const to = rook.itemAnchor.getWorldPosition(new THREE.Vector3());
-    const t = THREE.MathUtils.smoothstep(mission.timer / 1.25, 0, 1);
-    world.depot.item.position.lerpVectors(from, to, t);
-    world.depot.item.position.y += Math.sin(t * Math.PI) * 0.18;
-    world.depot.item.rotation.z = Math.sin(t * Math.PI) * 0.28;
-  } else if (handoffInProgress) {
-    handoffInProgress = false;
-    if (mission.micaHasFuse) world.depot.attachTo(mica.itemAnchor);
-    else if (mission.rookHasFuse) world.depot.attachTo(rook.itemAnchor);
+    if(!handoffInProgress){world.scene.add(world.depot.item);handoffInProgress=true;}
+    const from=mica.itemAnchor.getWorldPosition(new THREE.Vector3());
+    const to=rook.itemAnchor.getWorldPosition(new THREE.Vector3());
+    const t=THREE.MathUtils.smoothstep(crew.timer/1.25,0,1);
+    world.depot.item.position.lerpVectors(from,to,t);
+    world.depot.item.position.y+=Math.sin(t*Math.PI)*.18;
+  } else if(handoffInProgress){
+    handoffInProgress=false;
+    if(crew.micaHasFuse)world.depot.attachTo(mica.itemAnchor);
+    else if(crew.rookHasFuse)world.depot.attachTo(rook.itemAnchor);
   }
-  if (mission.stage !== previousStage) {
-    previousStage = mission.stage;
-    if (mission.stage === 'retrieving') {
-      showMessage(mission.assignment === 'isolation' ?
-        'MICA · SWITCHING OFF SUPPLY' : 'MICA · OPENING EQUIPMENT BOX', 1.9);
-    }
-  }
-  world.depot.update(mission.stage === 'retrieving', mission.hasTruckFuse,
-    mission.timer);
-  world.relay.updateIncident(incident, runtimeSeconds, camera.camera);
-  audio.update(incident.phase === 'complete');
+  world.depot.update(crew.stage==='retrieving',crew.hasTruckFuse,crew.timer);
+  world.depot.setIsolated(job.network.breakerIsolated);
+  world.powerYard.update(job.network,dt,seconds);
+  world.relay.updateFromNetwork(job.network,
+    inspecting==='relay'||selectedStation==='relay'&&
+      nearStation('relay')&&job.phase==='working',seconds,camera.camera);
+  audio.update(job.network.mastOnline);
 
-  const here = rook.position, there = mica.position;
-  footDistance += distance(here, lastFootLocation);
-  micaFootDistance += distance(there, lastMicaFootLocation);
-  if (footDistance >= 1.45) { audio.play('footstep'); footDistance %= 1.45; }
-  if (micaFootDistance >= 1.45) {
-    if (distance(here, there) < 16) audio.play('footstep');
-    micaFootDistance %= 1.45;
+  stepDistance+=dist(rook.position,lastRookPos);
+  micaSteps+=dist(mica.position,lastMicaPos);
+  if(stepDistance>1.45){audio.play('footstep');stepDistance%=1.45;}
+  if(micaSteps>1.45){if(dist(mica.position,rook.position)<16)audio.play('footstep');micaSteps%=1.45;}
+  lastRookPos=rook.position;lastMicaPos=mica.position;
+  if(world.waypoint.visible){
+    markerTime+=dt;
+    world.waypoint.scale.setScalar(1+Math.sin(markerTime*4)*.08);
+    if(!rook.moving&&markerTime>.25)world.waypoint.visible=false;
   }
-  lastFootLocation = here; lastMicaFootLocation = there;
-
-  if (world.waypoint.visible) {
-    markerTime += dt;
-    world.waypoint.scale.setScalar(1 + Math.sin(markerTime * 4) * 0.08);
-    if (!rook.moving && markerTime > 0.25) world.waypoint.visible = false;
+  if(toastDeadline && performance.now()>toastDeadline){
+    message.classList.remove('visible');toastDeadline=0;
   }
-  if (toastDeadline && performance.now() > toastDeadline) {
-    message.classList.remove('visible'); toastDeadline = 0;
-  }
-  positionPrompt();
-  renderer.render(world.scene, camera.camera);
+  updatePrompt();
+  renderer.render(world.scene,camera.camera);
 });
