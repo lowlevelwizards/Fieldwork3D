@@ -6,12 +6,14 @@ export type JobPhase = 'searching' | 'diagnosed' | 'working' | 'prepared' |
   'secondary' | 'complete' | 'deferred';
 export class NetworkJob {
   readonly network:PowerNetwork;
+  readonly index:number;
   readonly observations = new Map<StationId,Inspection>();
   phase:JobPhase='searching';
   progress=0;
   holding=false;
   private secondRepair=false;
-  constructor(readonly index:number) {
+  constructor(index:number) {
+    this.index=index;
     this.network=new PowerNetwork(nextNetworkFault(index),index);
   }
   get target():StationId{return faultStation(this.network.fault);}

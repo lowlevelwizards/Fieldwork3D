@@ -214,6 +214,8 @@ function depotAction() {
 function handleContextDown() {
   audio.unlock();
   if(crew.stage==='finished'||crew.stage==='returning'){depotAction();return;}
+  if(!selectedStation)return;
+  if(!job.diagnosed && nearStation(selectedStation)){startInspect(selectedStation);return;}
   if(selectedStation!==job.target || !nearStation(job.target))return;
   if(job.phase==='diagnosed'||job.phase==='secondary'||job.phase==='working'){
     const supplied=!job.requiresHardware||crew.rookHasFuse;
