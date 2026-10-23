@@ -61,6 +61,15 @@ export class TacticalCamera {
     this.desiredHeight = Math.min(this.desiredHeight, 30);
   }
 
+  follow(point: Point2, dt: number) {
+    // Direct steering keeps Rook in view; manual panning and waypoint navigation
+    // remain freely explorable with a separate tactical camera.
+    const factor = 1 - Math.exp(-Math.min(dt, 0.05) * 3.6);
+    this.desiredTarget.x += (point.x - this.desiredTarget.x) * factor;
+    this.desiredTarget.z += (point.z - this.desiredTarget.z) * factor;
+    this.constrain();
+  }
+
   private constrain() {
     // Keep the camera's point of attention well inside the playable terrain.
     // Retain a smaller travel range as the orthographic viewport grows.
@@ -83,8 +92,9 @@ export class TacticalCamera {
       this.height = this.desiredHeight = initialViewHeight(newAspect);
       this.isSized = true;
     } else if ((oldAspect < 1) !== (newAspect < 1)) {
-      // Explicit rotation policy: landscape is wider, not a stretched portrait crop.
-      this.height = this.desiredHeight = initialViewHeight(newAspect);
+      // Preserve a smooth zoom transition when rotating the display.
+      this.desiredHeight = initialViewHeight(newAspect);
+      this.height = Math.min(this.height, maxViewHeight(newAspect));
     } else {
       this.desiredHeight = Math.min(this.desiredHeight, maxViewHeight(newAspect));
       this.height = Math.min(this.height, maxViewHeight(newAspect));

@@ -130,6 +130,7 @@ renderer.setAnimationLoop(() => {
   const axis = touch.driving ? touch.move : keys;
   operator.setDrive(driving ? controls.screenDirection(axis) : null);
   operator.update(dt, nav);
+  if (driving) controls.follow(operator.position, dt);
   controls.update(dt);
 
   if (world.waypoint.visible) {
