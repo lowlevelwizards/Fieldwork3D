@@ -1,56 +1,68 @@
 # Fieldwork 3D
 
-**0.0.5 — The First Crew**
+**0.0.6 — Things Go Wrong**
 
-A mobile-first, isometric Three.js and TypeScript game about doing purposeful work in a physical world. The original [Fieldwork](https://github.com/lowlevelwizards/fieldwork) is preserved as an architecture/reference archive.
+A tiny Three.js / TypeScript isometric world where a persistent two-person service crew has to **observe a physical problem, make a diagnosis, obtain the right help, manipulate the equipment, and test the result**. The original [Fieldwork](https://github.com/lowlevelwizards/fieldwork) remains a reference archive rather than a dependency.
 
-## Try the two-person service operation
+## Play
 
-Open https://lowlevelwizards.github.io/Fieldwork3D/
+https://lowlevelwizards.github.io/Fieldwork3D/
 
-1. Rook and Mica start near the service truck.
-2. Tap the relay cabinet by the shed; Rook approaches and opens it. Tap **INSPECT FUSE**.
-3. Once Rook finds the damaged fuse, Mica autonomously walks back to the truck-side equipment box, opens it and retrieves **one physical spare fuse**.
-4. Mica navigates back to Rook, holds out the part and completes a close-range handoff. This job persists even if Rook moves away during delivery; Mica adapts to Rook's current position.
-5. Tap **REPLACE FUSE** and **RESTORE POWER** near the cabinet. The replacement is consumed in the cabinet, the tower beacon starts blinking, and the crew returns to the truck.
-6. When both crew members arrive, tap **ANOTHER JOB** to replay without refreshing or editing the browser's storage.
+Cedar Relay begins beside the equipment truck. Tap the electrical cabinet near the shed and use the context controls **only at the cabinet**.
 
-The job does not silently auto-complete: collection, handoff and return depend on real physical proximity. The crew obligation is held in an easily testable, pure TypeScript state machine, separate from rendering and navigation.
+There are now three genuinely different service cases, cycling across jobs:
+
+| Fault (discovered through inspection) | Mica's task | Rook's physical work | What testing can uncover |
+| --- | --- | --- | --- |
+| Blown fuse | Retrieve and deliver the spare | Hold the local control to install it | Relay powers up after testing |
+| Loose terminal | Retrieve and deliver terminal hardware | Hold to secure the connection | Poorly oxidized contacts arc and trip on the first test |
+| Jammed contactor | Walk to the truck-side disconnect and isolate supply | Hold to free the jammed contactor | Safe re-energization after inspection |
+
+After opening the cabinet, use **INSPECT** to discover the issue. The crew doesn't assume a diagnosis in advance. Mica autonomously takes the assignment appropriate to the discovered fault, using the existing navigation and physical work anchors.
+
+When hardware is available or isolation is confirmed, the in-world action changes into a **HOLD TO...** control. Keep your thumb on it until the work is physically completed. Pausing the hold preserves most of your progress; departing from the enclosure interrupts the task. There are no reaction-time minigames.
+
+After performing the procedure, press **TEST CIRCUIT**. Some corroded terminal conditions produce a real follow-on fault: the connection arcs, the protective system trips, and Mica returns to isolate the feed so Rook can reseat the damaged connection before repeating the test. The surprise derives from recorded mechanical condition in the selected incident, not an arbitrary combat event or render-frame random number.
+
+The crew may also **LEAVE FOR LATER**, returning to the truck with the relay left offline. Power restoration, unresolved condition, consumed supplies, beacon color, work sounds, and repair history are all grounded in the outcome. A completed or deferred call ends when *both* operators return to the truck. Use **ANOTHER JOB** to advance to the next case without refreshing.
+
+The next incident index and aggregate restored/deferred counts are saved locally. An incomplete call can be retried without overwriting the history.
 
 ## Controls
 
 | Input | Action |
 | --- | --- |
-| Tap/click ground | Route Rook |
-| Tap/click cabinet | Rook approaches and works on it |
-| Cabinet chip | Inspect / replace / restore |
-| Lower-left drag | Floating movement joystick |
-| Lower-right drag | Floating horizontal orbit joystick |
-| Pinch / two-finger twist | Zoom / rotate |
-| Drag upper scene | Pan view |
-| Tap the supply box | Supply context; return route after repair |
-| Truck chip | Return crew / repeat operation |
+| Tap/click ground | Move Rook with collision-aware navigation |
+| Tap/click cabinet | Approach, open or inspect |
+| Contextual service control | Hold to manipulate equipment / tap to test |
+| Leave for Later (at cabinet) | Defer the fault and return crew |
+| Lower-left drag (touch) | Floating movement stick |
+| Lower-right drag (touch) | Floating yaw/orbit stick |
+| Two-finger pinch/twist | Zoom/orbit |
+| Drag open scene | Pan |
+| Tap truck | Return / new job when applicable |
 | WASD / arrows | Direct movement on desktop |
-| F, Q, E | Focus Rook / rotate view |
-| M | Toggle synthesized audio |
-| Shift+R | Reset operation on desktop |
+| F, Q, E | Focus/rotate |
+| Space (desktop) | Context action (hold during repair) |
+| M | Mute/unmute procedural audio |
 
-The interface remains quiet: the only persistent labels are place, in-game time and weather; work actions appear in the world only when relevant.
+The HUD remains only the location, in-world time and weather. Other prompts appear only at physical interaction locations or as brief feedback.
 
-## Structure
+## Architecture
 
-- `src/crew/crew-mission.ts`: deterministic obligation and component ownership, transition guards, return and replay.
-- `src/crew/companion-controller.ts`: follower, navigator and task executor for Mica.
-- `src/crew/truck-depot.ts`: working supply compartment and the single transferable physical spare part.
-- `src/actors/operator.ts`: two visually distinct low-poly operators, walking, glancing, work and handoff poses.
-- `src/fieldwork/`: cabinet and staged physical repair.
-- `src/input/`: orthographic isometric camera and floating touch controls.
-- `src/navigation/`: collision-aware A* routing.
-- `src/audio/`: mobile-aware procedural wind, footsteps, repair sounds and powered relay hum.
+- `src/fieldwork/field-incident.ts` — deterministic diagnosis, equipment wear, distinct fault procedures, hold progress, fault-derived test trip and two outcomes.
+- `src/fieldwork/relay-site.ts` — distinct low-poly terminal, cable, fuse, contactor, indicator and intermittent spark effects.
+- `src/crew/crew-mission.ts` — durable delivery/isolation/return obligations; component ownership and power-isolation gating.
+- `src/crew/companion-controller.ts` — Mica's independent physical navigation and cooperation.
+- `src/crew/truck-depot.ts` — supply compartment, tangible delivered component and a visual electrical disconnect.
+- `src/actors/operator.ts` — articulated crew with locomotion, crouching, tool, handoff and idle behavior.
+- `src/input/` — twin touch controls and fixed-elevation orthographic camera.
+- `src/audio/` — restrained Web Audio feedback, footsteps, radio calls and faults.
+- `tests/` — fast pure simulation tests, incident/crew integration, repair gating and route reachability.
 
-## Development
+## Build and deployment
 
-Node.js 22 or newer.
+Requires Node.js 22+.
 
 ```sh
 npm install
@@ -60,14 +72,15 @@ npm run check
 npm run build
 ```
 
-On push, GitHub Actions tests the project and deploys the compiled Vite output through Pages.
+GitHub Actions validates pushes to `main` and deploys the Vite production output to GitHub Pages. No AI2 runtime has been copied into the fresh game.
 
 ## Milestones
 
-- 0.0.1: Cedar Relay scene, operator, movement and pathfinding
-- 0.0.2: floating controls and more grounded movement
-- 0.0.3: minimal HUD and true isometric orthographic view
-- 0.0.4: functional relay cabinet and individual repair
-- **0.0.5: two-person cooperation, physical supplies, autonomous delivery, handoff, return and replay**
+- 0.0.1 — Cedar Relay diorama, operator and navigation
+- 0.0.2 — Responsive floating joysticks and better locomotion
+- 0.0.3 — Quiet HUD and true isometric orthographic camera
+- 0.0.4 — Tangible relay cabinet service
+- 0.0.5 — Two people retrieving and transferring a physical spare
+- **0.0.6 — Variable faults, actual diagnosis, independent crew roles, interactive manipulation, conditional complications, visible persistent outcomes**
 
-Next: improve visual body dynamics and hand-placement, more convincing tool physics, dynamic site disruptions and additional roles, without rebuilding a huge AI framework.
+Further work should deepen systems only in response to an observable gameplay opportunity, not rebuild an enormous invisible AI stack.
