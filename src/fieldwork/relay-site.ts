@@ -36,7 +36,7 @@ export class RelaySite {
 
   constructor(scene: THREE.Scene, obstacles: Obstacle[], location: Point2, beacon: RelayBeacon) {
     this.location = location;
-    this.standPoint = { x: location.x, z: location.z + 1.43 };
+    this.standPoint = { x: location.x, z: location.z + 1.32 };
     this.beacon = beacon;
     this.group.position.set(location.x, terrainHeight(location.x, location.z), location.z);
     scene.add(this.group);
@@ -91,7 +91,7 @@ export class RelaySite {
     this.group.add(this.hitbox);
 
     const mark = new THREE.Mesh(
-      new THREE.RingGeometry(0.17, 0.245, 24),
+      new THREE.RingGeometry(0.29, 0.39, 24),
       new THREE.MeshBasicMaterial({ color: 0xe6cd92, transparent: true, opacity: 0.9,
         depthTest: false, depthWrite: false, side: THREE.DoubleSide }),
     );

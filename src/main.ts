@@ -59,7 +59,7 @@ function showMessage(text: string, seconds = 1.65) {
 
 function nearRelay() {
   return Math.hypot(operator.position.x - world.relay.standPoint.x,
-    operator.position.z - world.relay.standPoint.z) < 0.95;
+    operator.position.z - world.relay.standPoint.z) < 0.48;
 }
 
 function pickRelay(clientX: number, clientY: number) {

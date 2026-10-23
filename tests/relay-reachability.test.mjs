@@ -12,7 +12,7 @@ test('Cedar Relay service point is approachable from the operator start', () => 
     { kind: 'box', x: 5, z: -12.7, halfX: 0.56, halfZ: 0.56 },
   ];
   const nav = new NavigationGrid(obstacles);
-  const stand = { x: 1.3, z: -7.87 };
+  const stand = { x: 1.3, z: -7.98 };
   const route = nav.findPath({ x: -27, z: 10 }, stand);
   assert.ok(route.length > 0);
   assert.ok(nav.canOccupy(stand));
