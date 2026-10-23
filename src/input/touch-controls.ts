@@ -1,5 +1,5 @@
 import type { Axis } from './control-math';
-import { stickAxis, stickZone } from './control-math';
+import { canStartIndependentSticks, stickAxis, stickZone } from './control-math';
 import { TacticalCamera } from './tactical-camera';
 
 type Role = 'pending' | 'left' | 'right' | 'pan' | 'orbit' | 'gesture';
@@ -95,7 +95,12 @@ export class TouchControls {
     if (this.pointers.size === 2) {
       this.hadMultiple = true;
       const pair = [...this.pointers.values()];
-      const independent = pair.every(p => p.zone) && pair[0].zone !== pair[1].zone;
+      const bounds = this.canvas.getBoundingClientRect();
+      const independent = canStartIndependentSticks(
+        { x: pair[0].startX - bounds.left, y: pair[0].startY - bounds.top },
+        { x: pair[1].startX - bounds.left, y: pair[1].startY - bounds.top },
+        bounds.width, bounds.height,
+      );
       if (!independent) {
         pair.forEach(p => p.role = 'gesture');
         this.hide('left'); this.hide('right');

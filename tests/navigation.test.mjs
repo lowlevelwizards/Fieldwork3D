@@ -36,3 +36,15 @@ test('out-of-bounds destinations find an in-bounds landing', () => {
   const path = nav.findPath({ x: 0, z: 0 }, { x: 100, z: 100 });
   assert.equal(path.length, 0);
 });
+
+test('continuous movement respects exact obstacle and map clearance', () => {
+  const nav = new NavigationGrid([
+    { kind: 'circle', x: 2.5, z: -1, radius: 1.5 },
+    { kind: 'box', x: -4, z: 3, halfX: 2, halfZ: 1.2 },
+  ], 1, 24, 24);
+  assert.equal(nav.canOccupy({ x: 2.5, z: -1 }), false);
+  assert.equal(nav.canOccupy({ x: 3.9, z: -1 }), false);
+  assert.equal(nav.canOccupy({ x: -4, z: 4.4 }), false);
+  assert.equal(nav.canOccupy({ x: 0, z: 0 }), true);
+  assert.equal(nav.canOccupy({ x: 12, z: 0 }), false);
+});

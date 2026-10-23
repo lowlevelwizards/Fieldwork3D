@@ -31,3 +31,14 @@ export function stickZone(x: number, y: number, width: number, height: number): 
   if (y < height * 0.42) return null;
   return x < width * 0.5 ? 'left' : 'right';
 }
+
+export function canStartIndependentSticks(
+  a: { x: number; y: number }, b: { x: number; y: number },
+  width: number, height: number,
+): boolean {
+  const zoneA = stickZone(a.x, a.y, width, height);
+  const zoneB = stickZone(b.x, b.y, width, height);
+  if (!zoneA || !zoneB || zoneA === zoneB) return false;
+  // Fingers close together at the center are a pinch/twist, not two controls.
+  return Math.hypot(a.x - b.x, a.y - b.y) >= Math.min(180, width * 0.37);
+}

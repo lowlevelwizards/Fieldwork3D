@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { initialViewHeight, maxViewHeight, screenToGround, stickAxis, stickZone } from '../src/input/control-math.ts';
+import { canStartIndependentSticks, initialViewHeight, maxViewHeight, screenToGround, stickAxis, stickZone } from '../src/input/control-math.ts';
 
 test('stick centers with deadzone and clamps magnitude', () => {
   assert.deepEqual(stickAxis(2, -3), { x: 0, y: 0 });
@@ -31,4 +31,10 @@ test('floating thumb zones leave upper scene free for taps and pans', () => {
   assert.equal(stickZone(100, 100, 400, 800), null);
   assert.equal(stickZone(50, 600, 400, 800), 'left');
   assert.equal(stickZone(340, 600, 400, 800), 'right');
+});
+
+test('pinches near the center are not misclassified as simultaneous joysticks', () => {
+  assert.equal(canStartIndependentSticks({ x: 350, y: 530 }, { x: 455, y: 540 }, 800, 600), false);
+  assert.equal(canStartIndependentSticks({ x: 110, y: 530 }, { x: 680, y: 540 }, 800, 600), true);
+  assert.equal(canStartIndependentSticks({ x: 90, y: 150 }, { x: 680, y: 530 }, 800, 600), false);
 });
