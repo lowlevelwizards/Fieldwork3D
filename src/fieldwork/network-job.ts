@@ -1,4 +1,4 @@
-import {PowerNetwork,nextNetworkFault,faultStation,type StationId,type Inspection} from '../systems/power-network';
+import {PowerNetwork,nextNetworkFault,faultStation,type StationId,type Inspection} from '../systems/power-network.ts';
 
 /** Observation-and-repair loop, independent of WebGL, locomotion and UI.
  * Exactly one machine needs work. The clue is not known until inspected. */
