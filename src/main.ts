@@ -466,7 +466,7 @@ renderer.setAnimationLoop(()=>{
   world.relay.updateFromNetwork(job.network,
     inspecting==='relay'||selectedStation==='relay'&&
       nearStation('relay')&&job.phase==='working',seconds,camera.camera);
-  audio.update(job.network.mastOnline);
+  audio.update(job.network.mastOnline,job.network.generatorRunning);
 
   stepDistance+=dist(rook.position,lastRookPos);
   micaSteps+=dist(mica.position,lastMicaPos);

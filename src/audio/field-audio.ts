@@ -4,6 +4,7 @@ export class FieldAudio {
   private context: AudioContext | null = null;
   private ambience: GainNode | null = null;
   private powerHum: GainNode | null = null;
+  private generatorHum: GainNode | null = null;
   private muted = false;
   private lastStep = 0;
 
@@ -40,6 +41,15 @@ export class FieldAudio {
         this.powerHum.gain.value = 0;
         hum.connect(this.powerHum).connect(ctx.destination);
         hum.start();
+        // The generator rumbles independently of downstream load voltage.
+        // One low-volume triangle oscillator is inexpensive on mobile Safari.
+        const engine = ctx.createOscillator();
+        engine.type = 'triangle';
+        engine.frequency.value = 37;
+        this.generatorHum = ctx.createGain();
+        this.generatorHum.gain.value = 0;
+        engine.connect(this.generatorHum).connect(ctx.destination);
+        engine.start();
       }
       if (this.context.state === 'suspended') void this.context.resume();
     } catch {
@@ -104,9 +114,11 @@ export class FieldAudio {
     }
   }
 
-  update(powered: boolean) {
+  update(powered: boolean, generatorRunning = powered) {
     const ctx = this.context;
     if (!ctx || !this.powerHum) return;
     this.powerHum.gain.setTargetAtTime(powered && !this.muted ? 0.012 : 0, ctx.currentTime, 0.3);
+    this.generatorHum?.gain.setTargetAtTime(
+      generatorRunning && !this.muted ? 0.014 : 0, ctx.currentTime, 0.45);
   }
 }
