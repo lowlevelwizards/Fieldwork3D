@@ -29,7 +29,12 @@ export class TruckDepot {
       parent.add(mesh);
       return mesh;
     };
-    cube(this.group, 0, 0.45, 0, 1.75, 0.85, 1.2, body);
+    // Hollow enclosure rather than a solid block under the closed lid.
+    cube(this.group, 0, 0.16, 0, 1.75, 0.32, 1.2, body);
+    for (const sign of [-1, 1]) {
+      cube(this.group, 0, 0.59, sign * 0.53, 1.75, 0.54, 0.14, body);
+      cube(this.group, sign * 0.81, 0.59, 0, 0.13, 0.54, 1.18, body);
+    }
     for (const x of [-0.76, 0.76]) cube(this.group, x, 0.46, 0.61, 0.12, 0.69, 0.1, edge);
     cube(this.group, 0, 0.15, 0.68, 1.78, 0.11, 0.13, dark);
     cube(this.group, 0, 0.51, 0.64, 0.38, 0.20, 0.08, edge);
@@ -48,7 +53,7 @@ export class TruckDepot {
     cube(this.item, 0, -0.22, 0, 0.28, 0.07, 0.16, dark);
     plug.castShadow = true;
     this.group.add(this.item);
-    this.item.position.set(0.3, 1.07, 0.15);
+    this.item.position.set(0.3, 0.58, 0.15);
 
     this.hitbox = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.9, 1.9),
       new THREE.MeshBasicMaterial({ opacity: 0, transparent: true, colorWrite: false, depthWrite: false }));
@@ -71,13 +76,13 @@ export class TruckDepot {
     this.indicator.color.setHex(hasTruckFuse ? 0xc7b780 : 0x515957);
     if (this.item.parent === this.group) {
       this.item.visible = hasTruckFuse;
-      this.item.position.set(0.3, 1.07 + (retrieving ? Math.sin(phaseTime * 3.3) * 0.03 : 0), 0.15);
+      this.item.position.set(0.3, 0.58 + (retrieving ? Math.sin(phaseTime * 3.3) * 0.03 : 0), 0.15);
     }
   }
 
   resetItem() {
     this.group.add(this.item);
-    this.item.position.set(0.3, 1.07, 0.15);
+    this.item.position.set(0.3, 0.58, 0.15);
     this.item.rotation.set(0, 0, 0);
     this.item.scale.setScalar(1);
     this.item.visible = true;

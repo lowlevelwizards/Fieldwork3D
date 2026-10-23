@@ -44,6 +44,8 @@ let previousStage = mission.stage;
 let approachRelay = false, autoReturn = false;
 let stepDistance = 0;
 let lastStepLocation = rook.position;
+let lastMicaStepLocation = mica.position;
+let micaStepDistance = 0;
 let priorHanding = false;
 
 const distance = (a: Point2, b: Point2) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -208,6 +210,7 @@ function onPhaseChanged(phase: RelayPhase) {
     case 'inspecting': audio.play('inspect'); showMessage('INSPECTING FUSE'); break;
     case 'inspected':
       mission.diagnose();
+      audio.play('radio');
       showMessage('BLOWN FUSE · MICA FETCHING SPARE', 2.5);
       break;
     case 'replacing':
@@ -234,10 +237,12 @@ function crewEvent(which: string) {
   if (which === 'collect') {
     world.depot.attachTo(mica.itemAnchor);
     audio.play('latch');
+    audio.play('radio');
     showMessage('MICA · SPARE RETRIEVED', 1.8);
   } else if (which === 'delivered') {
     world.depot.attachTo(rook.itemAnchor);
     audio.play('tool');
+    audio.play('radio');
     showMessage('MICA → ROOK · SPARE HANDED OVER', 2.2);
   } else if (which === 'finished') {
     audio.play('power');
@@ -367,6 +372,13 @@ renderer.setAnimationLoop(() => {
     stepDistance %= 1.45;
   }
   lastStepLocation = p;
+  const mp = mica.position;
+  micaStepDistance += distance(mp, lastMicaStepLocation);
+  if (micaStepDistance > 1.45) {
+    if (distance(mp, rook.position) < 16) audio.play('footstep');
+    micaStepDistance %= 1.45;
+  }
+  lastMicaStepLocation = mp;
 
   if (world.waypoint.visible) {
     markerTime += dt;
