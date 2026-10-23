@@ -33,6 +33,7 @@ export class PowerYard {
   private readonly shedLights: THREE.Mesh[] = [];
   private readonly humLamp: THREE.PointLight;
   private lastGeneratorOn = false;
+  private readonly serviceGuide: THREE.Group;
   constructor(scene: THREE.Scene, obstacles: Obstacle[]) {
     const olive=std(0x607367),steel=std(0x394e4c),dark=std(0x2b3f41),
       cream=std(0xbbb28d),rust=std(0x95724c),glass=std(0x656b63,0x1b2e25);
@@ -51,6 +52,18 @@ export class PowerYard {
     // Assign in a deliberately linear order so all footprints are registered
     // before pathfinding rebuilds its occupancy grid.
     this.stations={} as Record<StationId,ServiceStation>;
+    this.serviceGuide=new THREE.Group();
+    const ring=new THREE.Mesh(new THREE.RingGeometry(.75,.88,28),
+      new THREE.MeshBasicMaterial({color:0xe6c882,transparent:true,opacity:.70,
+        side:THREE.DoubleSide,depthWrite:false}));
+    ring.rotation.x=-Math.PI/2;
+    this.serviceGuide.add(ring);
+    const center=new THREE.Mesh(new THREE.SphereGeometry(.095,6,5),
+      new THREE.MeshBasicMaterial({color:0xffe1a1}));
+    center.position.y=.22;
+    this.serviceGuide.add(center);
+    this.serviceGuide.visible=false;
+    scene.add(this.serviceGuide);
     const generator=create('generator',-18,-7.5,-5.4,3.2,2.25,2.2);
     box(generator,steel,3.45,.33,2.55,0,.24,0);
     box(generator,olive,2.6,1.58,1.85,0,1.12,0);
@@ -162,6 +175,14 @@ export class PowerYard {
       l.position.set(-7.1+i*1.26,terrainHeight(-7.1+i*1.26,-8.6)+3.1,-8.6);
       scene.add(l);this.shedLights.push(l);
     }
+  }
+
+  showServiceGuide(id:StationId|null,seconds:number){
+    this.serviceGuide.visible=id!==null;
+    if(!id)return;
+    const p=this.stations[id].location;
+    this.serviceGuide.position.set(p.x,terrainHeight(p.x,p.z)+.15,p.z);
+    this.serviceGuide.scale.setScalar(1+Math.sin(seconds*2.8)*.06);
   }
 
   /** Bind the existing relay's selection surface, avoiding duplicate cabinet mesh. */

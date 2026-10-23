@@ -5,6 +5,7 @@ import { OPERATOR_START } from './constants';
 import { CompanionController } from './crew/companion-controller';
 import { CrewMission } from './crew/crew-mission';
 import { NetworkJob } from './fieldwork/network-job';
+import { inspectionGuidance, diagnosedDestination, stationDisplayName } from './fieldwork/service-guidance';
 import { TacticalCamera } from './input/tactical-camera';
 import { TouchControls } from './input/touch-controls';
 import type { Axis } from './input/control-math';
@@ -56,24 +57,6 @@ let stepDistance=0, micaSteps=0;
 let lastRookPos=rook.position, lastMicaPos=mica.position;
 let outcomeRecorded=false;
 let repairGuidanceShown=false;
-const stationName:Record<StationId,string>={
-  generator:'GENERATOR',switchgear:'SWITCHGEAR',relay:'RELAY CABINET',
-  junction:'JUNCTION BOX',mast:'RADIO MAST'
-};
-function clueFor(station:StationId) {
-  const reading=job.network.inspection(station);
-  if(job.diagnosed)
-    return reading.description+' · FAULT AT '+stationName[job.target];
-  if(station==='relay' && reading.voltage===0)
-    return 'RELAY INPUT 0 V · CHECK SWITCHGEAR UPSTREAM';
-  if(station==='relay' && reading.voltage>0)
-    return 'RELAY INPUT LIVE · CHECK RELAY COMPONENTS';
-  if(station==='switchgear' && reading.voltage===0)
-    return 'SWITCHGEAR OFFLINE · CHECK GENERATOR AND BREAKER';
-  if(station==='switchgear' && reading.voltage>0)
-    return reading.description+' · TRACE FEEDER AND RELAY';
-  return reading.description;
-}
 
 const raycaster=new THREE.Raycaster();
 const pointer=new THREE.Vector2();
@@ -114,9 +97,9 @@ function stationRay(x:number,y:number):StationId|null {
   return hit;
 }
 function declareDiagnosis(station:StationId) {
-  const {observation,newDiagnosis}=job.inspect(station);
-  if(station==='generator' && surveyDone)toast('MICA RADIO · '+clueFor(station),3.2);
-  else toast(clueFor(station),3.2);
+  const {newDiagnosis}=job.inspect(station);
+  if(station==='generator' && surveyDone)toast('MICA RADIO · '+inspectionGuidance(job,station),3.2);
+  else toast(inspectionGuidance(job,station),3.2);
   if(!newDiagnosis)return;
   const assignment=job.network.fault==='contactor'?'isolation':
     job.network.fault==='fuse'?'fuse':'terminal';
@@ -127,7 +110,7 @@ function declareDiagnosis(station:StationId) {
     (assignment==='isolation'?' · MICA ISOLATING':' · MICA FETCHING SUPPLIES'),3.8);
   repairGuidanceShown=false;
   selectedStation=job.target;
-  toast('FAULT AT '+stationName[job.target]+' · TAP GO TO '+stationName[job.target],4.0);
+  toast('FAULT AT '+stationDisplayName[job.target]+' · TAP GO TO '+stationDisplayName[job.target],4.0);
 }
 function goToFault() {
   if(!job.diagnosed || job.finished)return;
@@ -136,13 +119,13 @@ function goToFault() {
   inspecting=null;
   if(nearStation(target)) {
     pendingStation=null;
-    toast('AT '+stationName[target]+' · '+(
+    toast('AT '+stationDisplayName[target]+' · '+(
       job.phase==='prepared'?'TEST CIRCUIT':'HOLD THE REPAIR CONTROL'),2.8);
     return;
   }
   if(pathRook(stations[target].standPoint)){
     pendingStation=target;
-    toast('ROOK HEADING TO '+stationName[target],2.4);
+    toast('ROOK HEADING TO '+stationDisplayName[target],2.4);
   }
 }
 function startInspect(id:StationId) {
@@ -161,9 +144,9 @@ function inspectOrWork(id:StationId) {
   if(crew.stage==='finished'||crew.stage==='returning')return;
   // After diagnosis an unrelated machine still has readable voltage, but
   // repeated taps must not trap the player in the same 0 V inspection loop.
-  if(job.diagnosed && id!==job.target){
+  if(diagnosedDestination(job,id)){
     selectedStation=id;
-    toast(clueFor(id)+' · GO TO '+stationName[job.target],3.3);
+    toast(inspectionGuidance(job,id)+' · GO TO '+stationDisplayName[job.target],3.3);
     return;
   }
   selectedStation=id;
@@ -356,7 +339,7 @@ function onCrewEvent(event:string){
   } else if(event==='delivered') {
     world.depot.attachTo(rook.itemAnchor);
     audio.play('tool');audio.play('radio');
-    toast('MICA → ROOK · SPARE DELIVERED · GO TO '+stationName[job.target],3.5);
+    toast('MICA → ROOK · SPARE DELIVERED · GO TO '+stationDisplayName[job.target],3.5);
     repairGuidanceShown=false;
     if(job.requiresIsolation&&crew.reassignIsolation()){
       toast('SPARE RECEIVED · MICA NOW ISOLATING SUPPLY',2.8);
@@ -389,7 +372,7 @@ function updatePrompt(){
   } else if(job.diagnosed && !job.finished && !nearStation(job.target) &&
       !inspecting && !pendingStation){
     // One small, actionable label above Rook, not a permanent quest HUD.
-    label='GO TO '+stationName[job.target];
+    label='GO TO '+stationDisplayName[job.target];
     position=new THREE.Vector3(rook.position.x,
       rook.group.position.y+3.85,rook.position.z);
     selectedStation=job.target;
@@ -454,7 +437,7 @@ renderer.setAnimationLoop(()=>{
     if(job.diagnosed && reached===job.target){
       rook.clearRoute();
       world.waypoint.visible=false;
-      toast('AT '+stationName[reached]+' · '+
+      toast('AT '+stationDisplayName[reached]+' · '+
         (job.phase==='prepared'?'TEST THE CIRCUIT':'HOLD TO REPAIR'),2.7);
     } else startInspect(reached);
   }
@@ -515,7 +498,7 @@ renderer.setAnimationLoop(()=>{
   if(job.diagnosed && !repairGuidanceShown && crew.rookHasFuse &&
      !nearStation(job.target) && crew.stage==='delivered') {
     repairGuidanceShown=true;
-    toast('SPARE RECEIVED · GO TO '+stationName[job.target],3.5);
+    toast('SPARE RECEIVED · GO TO '+stationDisplayName[job.target],3.5);
   }
 
   if(crew.stage==='handoff'){
@@ -535,6 +518,7 @@ renderer.setAnimationLoop(()=>{
   world.depot.update(crew.stage==='retrieving',crew.hasTruckFuse,crew.timer);
   world.depot.setIsolated(job.network.breakerIsolated);
   world.powerYard.update(job.network,dt,seconds);
+  world.powerYard.showServiceGuide(job.diagnosed&&!job.finished?job.target:null,seconds);
   world.relay.updateFromNetwork(job.network,
     inspecting==='relay'||selectedStation==='relay'&&
       nearStation('relay')&&job.phase==='working',seconds,camera.camera);
