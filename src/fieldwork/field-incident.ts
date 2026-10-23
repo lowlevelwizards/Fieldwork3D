@@ -86,7 +86,11 @@ export class FieldIncident {
       return true;
     }
     if (this.phase === 'open') { this.transition('inspecting'); return true; }
-    if (this.phase === 'prepared') { this.transition('testing'); return true; }
+    if (this.phase === 'prepared') {
+      if (this.circuitIsolated) return false;
+      this.transition('testing');
+      return true;
+    }
     if (this.workReady && ready) {
       this.recovering = this.recovering || this.phase === 'secondary';
       this.transition('working');

@@ -43,6 +43,13 @@ test('three service procedures execute through crew logistics and equipment effe
     tick(i, crew, 80, true, true);
     assert.equal(i.phase, 'prepared');
     if (i.needsSupply) assert.equal(crew.installFuse(), true);
+    if (crew.powerIsolated) {
+      assert.equal(i.interact(true, true), false);
+      assert.equal(crew.requestReenergize(), true);
+      for (let t = 0; t < 30; t++) crew.advance(.05, true, false, false);
+      assert.equal(crew.powerIsolated, false);
+      i.update(0, true, true, crew.powerIsolated);
+    }
     assert.equal(i.interact(true, true), true);
     tick(i, crew, 30);
     if (i.phase === 'secondary') {
@@ -53,7 +60,11 @@ test('three service procedures execute through crew logistics and equipment effe
       i.interact(true, true);
       tick(i, crew, 45, true, true);
       assert.equal(i.phase, 'prepared');
-      i.interact(true, true);
+      assert.equal(crew.requestReenergize(), true);
+      for (let t = 0; t < 30; t++) crew.advance(.05, true, false, false);
+      assert.equal(crew.powerIsolated, false);
+      i.update(0, true, true, false);
+      assert.equal(i.interact(true, true), true);
       tick(i, crew, 60);
     } else {
       tick(i, crew, 30);

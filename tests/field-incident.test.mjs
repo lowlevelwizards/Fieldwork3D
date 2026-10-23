@@ -65,6 +65,7 @@ test('corroded terminal trips on first test and must be isolated and reseated', 
   assert.equal(i.phase, 'secondary');
   i.interact(true, true); advance(i, 2, true, true, true);
   assert.equal(i.phase, 'prepared');
+  i.update(0, true, true, false);
   i.interact(true, true);
   assert.equal(advance(i, 3), 'restored');
   assert.equal(i.testsPerformed, 2);
@@ -89,4 +90,15 @@ test('arc lasts briefly and electrical isolation immediately extinguishes it', (
   assert.equal(i.circuitIsolated, true);
   advance(i, 2, true, true);
   assert.equal(i.tripFlashTime, 0);
+});
+
+test('an isolated repair cannot be tested before reconnecting supply', () => {
+  const i = new FieldIncident(planIncident(2)); inspect(i);
+  i.interact(true, true);
+  advance(i, 3, true, true, true);
+  assert.equal(i.phase, 'prepared');
+  assert.equal(i.circuitIsolated, true);
+  assert.equal(i.interact(true, true), false);
+  i.update(0, true, true, false);
+  assert.equal(i.interact(true, true), true);
 });
