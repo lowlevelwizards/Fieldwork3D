@@ -22,7 +22,7 @@ After opening the cabinet, use **INSPECT** to discover the issue. The crew doesn
 
 When hardware is available or isolation is confirmed, the in-world action changes into a **HOLD TO...** control. Keep your thumb on it until the work is physically completed. Pausing the hold preserves most of your progress; departing from the enclosure interrupts the task. There are no reaction-time minigames.
 
-After performing the procedure, press **TEST CIRCUIT**. Some corroded terminal conditions produce a real follow-on fault: the connection arcs, the protective system trips, and Mica returns to isolate the feed so Rook can reseat the damaged connection before repeating the test. The surprise derives from recorded mechanical condition in the selected incident, not an arbitrary combat event or render-frame random number.
+After work on an isolated circuit, Mica must return to the truck disconnect and **reconnect power** before **TEST CIRCUIT** becomes available. Testing then follows the actual power state. Some corroded terminal conditions produce a real follow-on fault: the connection arcs, the protective system trips, and Mica returns to isolate the feed so Rook can reseat the damaged connection; Mica then reconnects supply before the second test. The surprise derives from recorded mechanical condition in the selected incident, not an arbitrary combat event or render-frame random number.
 
 The crew may also **LEAVE FOR LATER**, returning to the truck with the relay left offline. Power restoration, unresolved condition, consumed supplies, beacon color, work sounds, and repair history are all grounded in the outcome. A completed or deferred call ends when *both* operators return to the truck. Use **ANOTHER JOB** to advance to the next case without refreshing.
 
