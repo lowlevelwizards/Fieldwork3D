@@ -5,6 +5,7 @@ import { OPERATOR_START } from './constants';
 import { CompanionController } from './crew/companion-controller';
 import { CrewMission } from './crew/crew-mission';
 import { NetworkJob } from './fieldwork/network-job';
+import { FieldNotebook, crewActivity, stationLabel } from './fieldwork/field-notebook';
 import { inspectionGuidance, diagnosedDestination, stationDisplayName } from './fieldwork/service-guidance';
 import { TacticalCamera } from './input/tactical-camera';
 import { TouchControls } from './input/touch-controls';
@@ -18,6 +19,16 @@ const viewport=document.querySelector<HTMLElement>('#viewport')!;
 const message=document.querySelector<HTMLElement>('#message')!;
 const contextAction=document.querySelector<HTMLButtonElement>('#contextAction')!;
 const deferAction=document.querySelector<HTMLButtonElement>('#deferAction')!;
+const notebookToggle=document.querySelector<HTMLButtonElement>('#notebookToggle')!;
+const notebookPanel=document.querySelector<HTMLElement>('#notebookPanel')!;
+const notebookEvidence=document.querySelector<HTMLElement>('#notebookEvidence')!;
+const notebookLead=document.querySelector<HTMLElement>('#notebookLead')!;
+const notebookCrew=document.querySelector<HTMLElement>('#notebookCrew')!;
+const notebookEvents=document.querySelector<HTMLElement>('#notebookEvents')!;
+const meterHud=document.querySelector<HTMLElement>('#meterHud')!;
+const meterNumber=document.querySelector<HTMLElement>('#meterNumber')!;
+const meterStation=document.querySelector<HTMLElement>('#meterStation')!;
+const crewCue=document.querySelector<HTMLElement>('#crewCue')!;
 const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.6));
 renderer.shadowMap.enabled=true;
@@ -47,6 +58,10 @@ try {
   deferredCount=Math.max(0,Math.floor(Number(saved.deferred)||0));
 } catch { /* Restricted browser storage is optional. */ }
 let job=new NetworkJob(jobNumber);
+let notebook=new FieldNotebook();
+let notebookOpen=false;
+let previousCueStage=crew.stage;
+let crewCueDeadline=0;
 let surveyDone=false, surveyClock=0;
 let selectedStation:StationId|null=null;
 let pendingStation:StationId|null=null;
@@ -63,6 +78,47 @@ const pointer=new THREE.Vector2();
 const stations=world.powerYard.stations;
 const dist=(a:Point2,b:Point2)=>Math.hypot(a.x-b.x,a.z-b.z);
 
+function updateNotebook() {
+  if(!notebookOpen)return;
+  const known=notebook.sorted();
+  notebookEvidence.replaceChildren();
+  if(!known.length){
+    const empty=document.createElement('p');
+    empty.textContent='No readings yet. Test a machine to begin.';
+    empty.className='notebook-empty';
+    notebookEvidence.append(empty);
+  }
+  for(const r of known){
+    const item=document.createElement('div');
+    item.className='evidence-row';
+    const details=document.createElement('span');
+    details.textContent=stationLabel[r.station]+' · '+r.observer;
+    const value=document.createElement('strong');
+    value.textContent=r.voltage.toFixed(1)+' V';
+    item.append(details,value);
+    const note=document.createElement('small');
+    note.textContent=r.description;
+    notebookEvidence.append(item,note);
+  }
+  notebookLead.textContent=notebook.lead(job);
+  notebookCrew.textContent=crewActivity(crew,!surveyDone);
+  notebookEvents.replaceChildren();
+  for(const text of notebook.events.slice(-3)){
+    const entry=document.createElement('p');
+    entry.textContent=text;
+    notebookEvents.append(entry);
+  }
+}
+notebookToggle.addEventListener('click',()=>{
+  notebookOpen=!notebookOpen;
+  notebookPanel.hidden=!notebookOpen;
+  notebookToggle.setAttribute('aria-expanded',String(notebookOpen));
+  updateNotebook();
+});
+notebookPanel.querySelector<HTMLButtonElement>('#closeNotebook')?.addEventListener('click',()=>{
+  notebookOpen=false;notebookPanel.hidden=true;
+  notebookToggle.setAttribute('aria-expanded','false');
+});
 function toast(text:string,duration=2.1) {
   message.textContent=text;
   message.classList.add('visible');
@@ -97,7 +153,10 @@ function stationRay(x:number,y:number):StationId|null {
   return hit;
 }
 function declareDiagnosis(station:StationId) {
-  const {newDiagnosis}=job.inspect(station);
+  const {newDiagnosis,observation}=job.inspect(station);
+  notebook.record(observation,'ROOK');
+  if(newDiagnosis)notebook.note('Rook identified a fault at '+stationLabel[station]+'.');
+  updateNotebook();
   if(station==='generator' && surveyDone)toast('MICA RADIO · '+inspectionGuidance(job,station),3.2);
   else toast(inspectionGuidance(job,station),3.2);
   if(!newDiagnosis)return;
@@ -135,6 +194,9 @@ function startInspect(id:StationId) {
   pendingStation=null;
   inspecting=id;
   inspectionTimer=0;
+  rook.setMeterReading(job.network.voltageAt(id));
+  meterNumber.textContent=job.network.voltageAt(id).toFixed(1);
+  meterStation.textContent=stationLabel[id];
   rook.clearRoute();
   world.waypoint.visible=false;
   audio.play('inspect');
@@ -169,12 +231,16 @@ function inspectOrWork(id:StationId) {
     const result=job.test();
     audio.play(result==='trip'?'arc':'switch');
     if(result==='complete'){
+      notebook.note('Power verified at the mast. Site restored.');
+      updateNotebook();
       crew.finishJob(true);
       recordOutcome();
       audio.play('power');
       toast('SITE ENERGIZED · RADIOS ONLINE · RETURN TO TRUCK',3.4);
       goHome();
     } else if(result==='trip') {
+      notebook.note('Protection tripped during test. Power must be isolated before reseating.');
+      updateNotebook();
       world.depot.setIsolated(true);
       audio.play('radio');
       if(crew.reassignIsolation()) toast('TERMINAL ARCED · MICA ISOLATING THE CIRCUIT',3.6);
@@ -200,6 +266,8 @@ function goHome() {
 function deferJob() {
   if(!job.diagnosed||job.finished||!nearStation(job.target)||!job.defer())return;
   crew.finishJob(false);
+  notebook.note('Repair deferred. Site remains offline.');
+  updateNotebook();
   recordOutcome();
   audio.play('radio');
   toast('UNRESOLVED FAULT · RETURN VISIT REQUIRED',3.2);
@@ -220,6 +288,8 @@ function newJob() {
   if(crew.stage!=='finished')return;
   jobNumber++;
   job=new NetworkJob(jobNumber);
+  notebook=new FieldNotebook();
+  updateNotebook();
   crew.reset();
   companion.reset();
   world.depot.resetItem();
@@ -336,10 +406,12 @@ function onCrewEvent(event:string){
     world.depot.attachTo(mica.itemAnchor);
     audio.play('latch');audio.play('radio');
     toast('MICA · REQUIRED SPARE RETRIEVED',2);
+    notebook.note('Mica retrieved the required part.');
   } else if(event==='delivered') {
     world.depot.attachTo(rook.itemAnchor);
     audio.play('tool');audio.play('radio');
     toast('MICA → ROOK · SPARE DELIVERED · GO TO '+stationDisplayName[job.target],3.5);
+    notebook.note('Mica transferred a replacement to Rook.');
     repairGuidanceShown=false;
     if(job.requiresIsolation&&crew.reassignIsolation()){
       toast('SPARE RECEIVED · MICA NOW ISOLATING SUPPLY',2.8);
@@ -349,19 +421,23 @@ function onCrewEvent(event:string){
     world.depot.setIsolated(true);
     audio.play('switch');
     toast('MICA · BREAKER OPEN · CIRCUIT SAFE',2.8);
+    notebook.note('Mica isolated the distribution breaker.');
   } else if(event==='energized'){
     const closed=job.network.reenergize();
     world.depot.setIsolated(!closed);
     audio.play(closed?'switch':'arc');
     toast(closed?'SUPPLY RESTORED · TEST THE CIRCUIT':
       'BREAKER TRIPPED · FAULT STILL PRESENT',2.6);
+    notebook.note(closed?'Mica reconnected the supply.':'Breaker retripped during reconnection.');
   } else if(event==='finished'){
     world.depot.setIsolated(false);
     world.waypoint.visible=false;
     autoReturn=false;
     toast(job.phase==='complete'?'CREW HOME · NETWORK RESTORED':
       'CREW HOME · FOLLOW-UP REQUIRED',3.5);
+    notebook.note('Both operators returned to the truck.');
   }
+  updateNotebook();
 }
 function updatePrompt(){
   let label:string|null=null,position:THREE.Vector3|null=null;
@@ -478,6 +554,9 @@ renderer.setAnimationLoop(()=>{
       if(surveyClock>=1.2){
         surveyDone=true;
         const finding=job.inspect('generator');
+        notebook.record(finding.observation,'MICA');
+        notebook.note('Mica reported a source-power measurement over radio.');
+        updateNotebook();
         audio.play('radio');
         toast('MICA RADIO · '+finding.observation.description,3.0);
         if(finding.newDiagnosis){
@@ -495,6 +574,12 @@ renderer.setAnimationLoop(()=>{
   const nearRook=dist(mica.position,rook.position)<1.86;
   const evt=crew.advance(dt,atTruck,nearRook,closeToTruck());
   if(evt)onCrewEvent(evt);
+  if(crew.stage!==previousCueStage){
+    previousCueStage=crew.stage;
+    crewCue.textContent=crewActivity(crew,!surveyDone);
+    crewCueDeadline=seconds+3.0;
+    updateNotebook();
+  }
   if(job.diagnosed && !repairGuidanceShown && crew.rookHasFuse &&
      !nearStation(job.target) && crew.stage==='delivered') {
     repairGuidanceShown=true;
@@ -514,6 +599,23 @@ renderer.setAnimationLoop(()=>{
     handoffInProgress=false;
     if(crew.micaHasFuse)world.depot.attachTo(mica.itemAnchor);
     else if(crew.rookHasFuse)world.depot.attachTo(rook.itemAnchor);
+  }
+  const measuring=Boolean(inspecting);
+  meterHud.hidden=!measuring;
+  if(measuring){
+    const p=new THREE.Vector3(rook.position.x,rook.group.position.y+3.5,rook.position.z)
+      .project(camera.camera);
+    const screen=viewport.getBoundingClientRect();
+    meterHud.style.left=Math.min(screen.width-72,Math.max(72,(p.x*.5+.5)*screen.width))+'px';
+    meterHud.style.top=Math.min(screen.height-75,Math.max(69,(-p.y*.5+.5)*screen.height))+'px';
+  }
+  crewCue.hidden=seconds>=crewCueDeadline;
+  if(!crewCue.hidden){
+    const p=new THREE.Vector3(mica.position.x,mica.group.position.y+3.6,mica.position.z)
+      .project(camera.camera);
+    const screen=viewport.getBoundingClientRect();
+    crewCue.style.left=Math.min(screen.width-84,Math.max(84,(p.x*.5+.5)*screen.width))+'px';
+    crewCue.style.top=Math.min(screen.height-69,Math.max(65,(-p.y*.5+.5)*screen.height))+'px';
   }
   world.depot.update(crew.stage==='retrieving',crew.hasTruckFuse,crew.timer);
   world.depot.setIsolated(job.network.breakerIsolated);

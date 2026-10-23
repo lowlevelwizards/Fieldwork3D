@@ -21,6 +21,22 @@
       </div>
     </header>
 
+    <button type="button" id="notebookToggle" aria-controls="notebookPanel"
+      aria-expanded="false" title="Open field notebook" aria-label="Field notebook">▤</button>
+    <aside id="notebookPanel" class="notebook-panel" aria-label="Field notebook" hidden>
+      <div class="notebook-header"><strong>FIELD NOTES</strong><button id="closeNotebook" type="button" aria-label="Close notebook">×</button></div>
+      <div class="notebook-heading">OBSERVATIONS</div>
+      <div id="notebookEvidence" class="notebook-evidence"></div>
+      <div class="notebook-heading">CURRENT LEAD</div>
+      <p id="notebookLead"></p>
+      <div class="notebook-heading">CREW</div>
+      <p id="notebookCrew"></p>
+      <div id="notebookEvents" class="notebook-events"></div>
+    </aside>
+    <div id="meterHud" class="meter-hud" hidden>
+      <span id="meterStation">Equipment</span><strong><span id="meterNumber">0.0</span> V AC</strong>
+    </div>
+    <div id="crewCue" class="crew-cue" hidden></div>
     <button type="button" id="contextAction" class="context-action" hidden
       aria-label="Work on the relay cabinet">INSPECT</button>
     <button type="button" id="deferAction" class="context-action defer-action" hidden
