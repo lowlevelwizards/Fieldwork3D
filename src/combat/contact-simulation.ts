@@ -63,7 +63,7 @@ const make=(id:FighterId,team:Team,pos:Point2):Fighter=>({
  id,team,position:{...pos},facing:team==='patrol'?-2.7:0,
  hp:100,maxHp:100,ammo:CREW_WEAPON.magazine,reserve:CREW_WEAPON.reserve,
  maxAmmo:CREW_WEAPON.magazine,cooldown:0,reload:0,suppressed:0,moving:false,
- state:'unaware',lastKnown:null,memory:0
+ state:'unaware',lastKnown:null,memory:0,searchTimer:0
 });
 /** Small deterministic tactical kernel, intentionally independent of Three.js.
  * Navigation/animations execute intents, while this model owns perception,
