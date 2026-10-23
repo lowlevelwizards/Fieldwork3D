@@ -36,6 +36,8 @@ test('no fault information before inspection, fuse requires supply and physical 
   assert.equal(i.phase, 'working');
   advance(i, 2.2, true, true, true);
   assert.equal(i.phase, 'prepared');
+  // Bench test reconnects power before attempting an energized test.
+  i.update(0, true, true, false);
   i.interact(true, true);
   assert.equal(advance(i, 3), 'restored');
   assert.equal(i.outcome, 'restored');
