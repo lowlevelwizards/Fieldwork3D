@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Obstacle } from '../navigation/grid';
 import { distanceToRoad, terrainHeight } from './ground';
+import { RelaySite, type RelayBeacon } from '../fieldwork/relay-site';
 
 const materials = new Map<number, THREE.MeshStandardMaterial>();
 function mat(color: number) {
@@ -39,13 +40,30 @@ function shed(scene: THREE.Scene, obstacles: Obstacle[], x: number, z: number) {
   cuboid(g, 0xadb09b, -3.15, 2.5, 3.58, 1.42, 1.12, 0.12);
   cuboid(g, 0x32474b, -3.15, 2.5, 3.68, 1.20, 0.90, 0.09);
   cuboid(g, 0xa58f60, 0, 1.9, 3.69, 0.07, 2.2, 0.12);
-  for (const zSign of [-1, 1]) {
-    const roof = cuboid(g, 0x465c58, 0, 4.67, zSign * 1.83, 11.0, 0.24, 4.4);
-    roof.rotation.x = zSign * -0.29;
-    cuboid(g, 0x998b68, -4.4, 2.75, zSign * 3.56, 0.12, 1.3, 0.12);
+  // Proper pitched gable: the crown is HIGHER than the two eaves.
+  // RotationX sign is opposite the slope in Y/Z space.
+  for (const side of [-1, 1]) {
+    const roof = cuboid(g, 0x435b57, 0, 5.02, side * 1.93, 11.05, 0.18, 4.06);
+    roof.rotation.x = side * 0.27;
+    cuboid(g, 0x968c6e, -4.4, 2.75, side * 3.56, 0.12, 1.3, 0.12);
+    for (let i = 0; i < 6; i++) {
+      const rib = cuboid(g, 0x536d65, -4.8 + i * 1.92, 5.13, side * 1.93, 0.065, 0.07, 3.96);
+      rib.rotation.x = side * 0.27;
+    }
+    cuboid(g, 0x4b5149, 0, 4.40, side * 3.91, 11.2, 0.13, 0.12);
   }
-  for (let i = 0; i < 7; i++) {
-    cuboid(g, 0x5b6964, -4.5 + i * 1.5, 4.55, -1.83, 0.08, 0.13, 4.0).rotation.x = 0.29;
+  cuboid(g, 0x8b846b, 0, 5.60, 0, 11.15, 0.18, 0.21);
+  // Close the gables, instead of leaving roof plates apparently hovering.
+  const gableMaterial = new THREE.MeshStandardMaterial({ color: 0x69746d, roughness: 1, side: THREE.DoubleSide });
+  for (const x of [-5.13, 5.13]) {
+    const face = new THREE.BufferGeometry();
+    face.setAttribute('position', new THREE.Float32BufferAttribute([
+      x, 4.10, -3.80, x, 4.10, 3.80, x, 5.54, 0,
+    ], 3));
+    face.computeVertexNormals();
+    const triangle = new THREE.Mesh(face, gableMaterial);
+    triangle.castShadow = true;
+    g.add(triangle);
   }
   // Service pipes, loading apron, and a painted utility placard.
   cylinder(g, 0x3c4c50, 0.18, 0.18, 4.9, 8, 3.9, 2.5, -3.25);
@@ -62,26 +80,51 @@ function utilityCabin(scene: THREE.Scene, obstacles: Obstacle[], x: number, z: n
   cylinder(g, 0x38484b, 0.37, 0.37, 1.2, 7, -2.15, 3.62, -1.32);
   obstacles.push({ kind: 'box', x, z, halfX: 3.3, halfZ: 2.65 });
 }
-function radioMast(scene: THREE.Scene, obstacles: Obstacle[], x: number, z: number) {
+function radioMast(scene: THREE.Scene, obstacles: Obstacle[], x: number, z: number): RelayBeacon {
   const g = siteGroup(scene, x, z);
   const steel = 0x697472, yellow = 0xb9a064;
+  // Legs have a broad FOUNDATION and converge toward the crown.
+  // Each tier's cross braces attach at the actual leg positions.
+  const widthAt = (y: number) => 1.30 - y * 0.06;
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    const pole = cylinder(g, steel, 0.065, 0.095, 12, 6, sx * 0.92, 6, sz * 0.92);
-    pole.rotation.z = sx * -0.058;
-    pole.rotation.x = sz * 0.058;
+    const a = new THREE.Vector3(sx * widthAt(0), 0.15, sz * widthAt(0));
+    const b = new THREE.Vector3(sx * widthAt(12), 12, sz * widthAt(12));
+    const delta = b.clone().sub(a);
+    const pole = cylinder(g, steel, 0.075, 0.115, delta.length(), 6,
+      (a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
+    pole.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), delta.normalize());
+    cuboid(g, 0x77786c, a.x, 0.13, a.z, 0.54, 0.22, 0.54);
   }
-  for (let y = 1.5; y < 12; y += 2.2) {
-    cuboid(g, steel, 0, y, 0.8, 2.3, 0.08, 0.11);
-    cuboid(g, steel, 0, y, -0.8, 2.3, 0.08, 0.11);
-    cuboid(g, steel, 0.8, y, 0, 0.11, 0.08, 2.3);
-    cuboid(g, steel, -0.8, y, 0, 0.11, 0.08, 2.3);
+  for (let y = 1.7; y < 12; y += 2.2) {
+    const extent = widthAt(y);
+    cuboid(g, steel, 0, y, extent, extent * 2, 0.095, 0.1);
+    cuboid(g, steel, 0, y, -extent, extent * 2, 0.095, 0.1);
+    cuboid(g, steel, extent, y, 0, 0.1, 0.095, extent * 2);
+    cuboid(g, steel, -extent, y, 0, 0.1, 0.095, extent * 2);
+    if (y + 2.2 < 12) {
+      const next = widthAt(y + 2.2);
+      for (const side of [-1, 1]) {
+        const a = new THREE.Vector3(-extent, y, side * extent);
+        const b = new THREE.Vector3(next, y + 2.2, side * next);
+        const vector = b.clone().sub(a);
+        const brace = cylinder(g, steel, 0.045, 0.045, vector.length(), 5,
+          (a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
+        brace.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), vector.normalize());
+      }
+    }
   }
-  cylinder(g, yellow, 0.22, 0.22, 0.55, 8, 0, 12.35, 0);
+  // Radio hardware sits at the top, not underneath the tower.
+  cuboid(g, steel, 0, 12.05, 0, 1.25, 0.23, 1.25);
+  cylinder(g, yellow, 0.22, 0.22, 0.55, 8, 0, 12.43, 0);
   const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6),
-    new THREE.MeshStandardMaterial({ color: 0xeeb77c, emissive: 0x8c492c, emissiveIntensity: 1 }));
-  lamp.position.y = 12.8;
+    new THREE.MeshStandardMaterial({ color: 0x847969, emissive: 0xffab49, emissiveIntensity: 0 }));
+  lamp.position.y = 12.85;
   g.add(lamp);
+  const light = new THREE.PointLight(0xffaf58, 0, 11, 2);
+  light.position.set(0, 12.85, 0);
+  g.add(light);
   obstacles.push({ kind: 'circle', x, z, radius: 1.5 });
+  return { lamp, light };
 }
 function truck(scene: THREE.Scene, obstacles: Obstacle[], x: number, z: number) {
   const g = siteGroup(scene, x, z);
@@ -175,13 +218,13 @@ function grass(scene: THREE.Scene, obstacles: readonly Obstacle[], random: () =>
   scene.add(blades);
 }
 
-export function createProps(scene: THREE.Scene): Obstacle[] {
+export function createProps(scene: THREE.Scene): { obstacles: Obstacle[]; relay: RelaySite } {
   const obstacles: Obstacle[] = [];
   shed(scene, obstacles, -9, -13);
   utilityCabin(scene, obstacles, 19, -17);
-  radioMast(scene, obstacles, 29, -19);
+  const beacon = radioMast(scene, obstacles, 29, -19);
   truck(scene, obstacles, 12, 4);
-  for (const [x, z, size] of [[-23, -8, 1.1], [-21.6, -8, 0.82], [2, -10, 1.0], [3.3, -10.5, 0.8],
+  for (const [x, z, size] of [[-23, -8, 1.1], [-21.6, -8, 0.82], [5.0, -12.7, 1.0], [6.5, -13.1, 0.8],
     [16.5, -11, 1.2], [17.9, -11, 0.85]] as const) {
     crate(scene, x, z, size);
     obstacles.push({ kind: 'box', x, z, halfX: size * 0.56, halfZ: size * 0.56 });
@@ -190,12 +233,8 @@ export function createProps(scene: THREE.Scene): Obstacle[] {
   fence(scene, -27, -17, 7, 1.57);
   fence(scene, 26, -12, 7, -0.15);
 
-  // Small service fixtures that give the location a readable working purpose.
-  const relay = siteGroup(scene, 1.3, -9.3);
-  cuboid(relay, 0x485b59, 0, 1.1, 0, 1.4, 2.2, 0.9);
-  cuboid(relay, 0xd1b879, 0, 1.66, 0.48, 0.9, 0.42, 0.1);
-  cylinder(relay, 0x3c514f, 0.045, 0.045, 2.6, 6, 0.4, 3.25, -0.12);
-  obstacles.push({ kind: 'box', x: 1.3, z: -9.3, halfX: 0.9, halfZ: 0.7 });
+  // Functional repair site has a collision footprint and a reachable work point.
+  const relay = new RelaySite(scene, obstacles, { x: 1.3, z: -9.3 }, beacon);
 
   let state = 230926;
   const random = () => ((state = (Math.imul(1664525, state) + 1013904223) >>> 0) / 4294967296);
@@ -223,5 +262,5 @@ export function createProps(scene: THREE.Scene): Obstacle[] {
     else shrubs(scene, x, z, 0.55 + random() * 0.75);
   }
   grass(scene, obstacles, random);
-  return obstacles;
+  return { obstacles, relay };
 }

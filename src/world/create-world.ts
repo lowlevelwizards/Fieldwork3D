@@ -2,10 +2,12 @@ import * as THREE from 'three';
 import type { Obstacle, Point2 } from '../navigation/grid';
 import { terrainHeight, createGround } from './ground';
 import { createProps } from './props';
+import type { RelaySite } from '../fieldwork/relay-site';
 
 export type Diorama = {
   scene: THREE.Scene;
   obstacles: Obstacle[];
+  relay: RelaySite;
   waypoint: THREE.Group;
   placeWaypoint: (point: Point2) => void;
 };
@@ -30,7 +32,7 @@ export function createWorld(): Diorama {
   scene.add(sun);
   scene.add(sun.target);
   createGround(scene);
-  const obstacles = createProps(scene);
+  const { obstacles, relay } = createProps(scene);
   const waypoint = new THREE.Group();
   const ring = new THREE.Mesh(
     new THREE.RingGeometry(0.53, 0.68, 32),
@@ -52,5 +54,5 @@ export function createWorld(): Diorama {
     waypoint.position.set(point.x, terrainHeight(point.x, point.z) + 0.1, point.z);
     waypoint.visible = true;
   };
-  return { scene, obstacles, waypoint, placeWaypoint };
+  return { scene, obstacles, relay, waypoint, placeWaypoint };
 }
