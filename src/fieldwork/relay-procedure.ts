@@ -50,7 +50,7 @@ export class RelayProcedure {
   }
 
   /** Request an action. World code must establish proximity before applying it. */
-  interact(near: boolean): boolean {
+  interact(near: boolean, hasReplacement = true): boolean {
     if (this.busy || this.complete || this.travelling) return false;
     if (this.phase === 'idle') {
       this.change(near ? 'opening' : 'approaching');
@@ -58,11 +58,13 @@ export class RelayProcedure {
     }
     if (!near) return false;
     if (this.phase === 'open') this.change('inspecting');
-    else if (this.phase === 'inspected') this.change('replacing');
+    else if (this.phase === 'inspected' && hasReplacement) this.change('replacing');
     else if (this.phase === 'replaced') this.change('closing');
     else return false;
     return true;
   }
+
+  reset() { this.change('idle'); }
 
   cancelApproach() {
     if (this.phase === 'approaching') this.change('idle');

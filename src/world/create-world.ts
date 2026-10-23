@@ -2,12 +2,14 @@ import * as THREE from 'three';
 import type { Obstacle, Point2 } from '../navigation/grid';
 import { terrainHeight, createGround } from './ground';
 import { createProps } from './props';
+import { TruckDepot } from '../crew/truck-depot';
 import type { RelaySite } from '../fieldwork/relay-site';
 
 export type Diorama = {
   scene: THREE.Scene;
   obstacles: Obstacle[];
   relay: RelaySite;
+  depot: TruckDepot;
   waypoint: THREE.Group;
   placeWaypoint: (point: Point2) => void;
 };
@@ -33,6 +35,7 @@ export function createWorld(): Diorama {
   scene.add(sun.target);
   createGround(scene);
   const { obstacles, relay } = createProps(scene);
+  const depot = new TruckDepot(scene, obstacles);
   const waypoint = new THREE.Group();
   const ring = new THREE.Mesh(
     new THREE.RingGeometry(0.53, 0.68, 32),
@@ -54,5 +57,5 @@ export function createWorld(): Diorama {
     waypoint.position.set(point.x, terrainHeight(point.x, point.z) + 0.1, point.z);
     waypoint.visible = true;
   };
-  return { scene, obstacles, relay, waypoint, placeWaypoint };
+  return { scene, obstacles, relay, depot, waypoint, placeWaypoint };
 }

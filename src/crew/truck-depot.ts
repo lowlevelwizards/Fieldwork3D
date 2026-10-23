@@ -9,6 +9,7 @@ export class TruckDepot {
   readonly returnPoint: Point2 = { x: 10.7, z: 8.9 };
   readonly secondReturnPoint: Point2 = { x: 8.0, z: 8.5 };
   readonly hitbox: THREE.Mesh;
+  readonly labelPoint = new THREE.Vector3(8, 3.05, 7);
   readonly item: THREE.Group;
   private lid = new THREE.Group();
   private indicator: THREE.MeshStandardMaterial;
