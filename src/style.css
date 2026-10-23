@@ -185,3 +185,46 @@ body { overscroll-behavior: none; }
 .meter-hud strong{font-size:15px;color:#d5e4aa;}
 .meter-hud strong span{font-size:15px;opacity:1;}
 .crew-cue{font-size:9px;background:rgba(43,66,63,.88);border-color:rgba(147,188,178,.6);}
+
+/* Combat affordances appear only when armed or spotted; fieldwork HUD stays quiet. */
+#tacticalToggle{
+ position:absolute;z-index:6;
+ top:max(calc(env(safe-area-inset-top) + 38px),49px);
+ right:max(env(safe-area-inset-right),15px);
+ width:37px;height:35px;border:1px solid rgba(233,198,148,.65);
+ border-radius:5px;background:rgba(32,50,45,.65);
+ color:#e8d4a1;font-size:24px;line-height:1;touch-action:manipulation;
+}
+#tacticalToggle[aria-pressed=true]{background:rgba(106,67,44,.88);border-color:#f0bd7a;}
+.tactical-panel{
+ position:absolute;right:max(14px,env(safe-area-inset-right));
+ bottom:max(62px,calc(env(safe-area-inset-bottom) + 54px));
+ z-index:7;padding:8px;background:rgba(27,47,42,.9);
+ border:1px solid rgba(218,191,141,.6);border-radius:7px;
+ display:flex;flex-direction:column;gap:7px;align-items:stretch;
+ box-shadow:0 6px 20px rgba(15,25,23,.3);
+}
+.tactical-panel[hidden],#tacticalReset[hidden]{display:none!important;}
+.tactical-status{
+ white-space:nowrap;font:700 10px/1.3 "SFMono-Regular",Consolas,monospace;
+ color:#e9d7b7;text-align:center;
+}
+.tactical-actions{display:flex;gap:6px;align-items:center;justify-content:space-between;}
+.tactical-actions button,.tactical-order{
+ color:#ecd5a0;background:#334f48;border:1px solid #9d9c75;
+ font:700 11px/1.1 "SFMono-Regular",Consolas,monospace;
+ border-radius:4px;min-height:37px;min-width:38px;padding:7px 10px;
+ touch-action:none;
+}
+.tactical-actions .tactical-fire{
+ width:73px;min-height:60px;background:#8c513e;
+ color:#ffedca;border-color:#e9ad80;letter-spacing:.14em;
+}
+.tactical-actions button:disabled{opacity:.33;}
+.tactical-order{
+ padding:7px 8px;touch-action:manipulation;font-size:9px;color:#c9e0d1;
+}
+@media(max-height:400px) {
+ .tactical-panel{bottom:max(18px,env(safe-area-inset-bottom));right:9px;padding:5px;}
+ .tactical-actions .tactical-fire{min-height:45px;width:64px;}
+}

@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { Operator } from './actors/operator';
+import { ContactDirector } from './combat/contact-director';
+import type { ContactEvent, Order } from './combat/contact-simulation';
 import { FieldAudio } from './audio/field-audio';
 import { OPERATOR_START } from './constants';
 import { CompanionController } from './crew/companion-controller';
@@ -30,6 +32,14 @@ const meterHud=document.querySelector<HTMLElement>('#meterHud')!;
 const meterNumber=document.querySelector<HTMLElement>('#meterNumber')!;
 const meterStation=document.querySelector<HTMLElement>('#meterStation')!;
 const crewCue=document.querySelector<HTMLElement>('#crewCue')!;
+const tacticalToggle=document.querySelector<HTMLButtonElement>('#tacticalToggle')!;
+const tacticalPanel=document.querySelector<HTMLElement>('#tacticalPanel')!;
+const tacticalStatus=document.querySelector<HTMLElement>('#tacticalStatus')!;
+const tacticalFire=document.querySelector<HTMLButtonElement>('#tacticalFire')!;
+const tacticalReload=document.querySelector<HTMLButtonElement>('#tacticalReload')!;
+const tacticalTarget=document.querySelector<HTMLButtonElement>('#tacticalTarget')!;
+const tacticalOrder=document.querySelector<HTMLButtonElement>('#tacticalOrder')!;
+const tacticalReset=document.querySelector<HTMLButtonElement>('#tacticalReset')!;
 const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.6));
 renderer.shadowMap.enabled=true;
@@ -47,6 +57,46 @@ const companion=new CompanionController(mica,nav);
 const crew=new CrewMission();
 const camera=new TacticalCamera(renderer.domElement);
 const audio=new FieldAudio();
+const contact=new ContactDirector(world.scene,nav,world.obstacles,rook,mica,onContactEvent);
+let firingHeld=false;
+let previousDanger=false;
+const orders:Order[]=['follow','hold','cover','withdraw'];
+const contactHud=()=>{
+  const armed=contact.showControls;
+  tacticalPanel.hidden=!armed;
+  tacticalToggle.setAttribute('aria-pressed',String(contact.tactical));
+  if(!armed)return;
+  const rookState=contact.simulation.fighters.rook;
+  const enemy=contact.simulation.fighters[contact.selected];
+  const label=contact.selected==='patrol-a'?'PATROL 01':'PATROL 02';
+  tacticalStatus.textContent='ROOK '+Math.ceil(rookState.hp)+' · '+
+    String(rookState.ammo).padStart(2,'0')+'/'+rookState.reserve+
+    (rookState.reload>0?' · RELOADING':'')+
+    ' · '+label+' '+Math.ceil(enemy.hp)+'%';
+  tacticalFire.disabled=rookState.hp===0||!contact.simulation.patrolAlive;
+  tacticalReload.disabled=rookState.reserve===0||rookState.ammo===rookState.maxAmmo||rookState.reload>0;
+  tacticalOrder.textContent='MICA · '+contact.simulation.order.toUpperCase();
+  tacticalReset.hidden=!contact.simulation.resolved;
+};
+tacticalToggle.addEventListener('click',()=>{
+  contact.tactical=!contact.tactical;
+  if(contact.tactical)camera.focus(rook.position);
+  contactHud();
+});
+tacticalFire.addEventListener('pointerdown',e=>{
+  e.preventDefault();audio.unlock();firingHeld=true;contact.fire();
+});
+const releaseFire=()=>{firingHeld=false;};
+window.addEventListener('pointerup',releaseFire);
+window.addEventListener('pointercancel',releaseFire);
+window.addEventListener('blur',releaseFire);
+tacticalReload.addEventListener('click',()=>{audio.unlock();if(contact.reload())audio.play('reload');});
+tacticalTarget.addEventListener('click',()=>{contact.cycleTarget();contactHud();});
+tacticalOrder.addEventListener('click',()=>{
+  const idx=orders.indexOf(contact.simulation.order);
+  contact.setOrder(orders[(idx+1)%orders.length]);contactHud();
+});
+tacticalReset.addEventListener('click',()=>resetContact());
 const historyKey='fieldwork3d.network-history.v1';
 let jobNumber=0;
 let restoredCount=0, deferredCount=0;
@@ -123,6 +173,36 @@ notebookPanel.querySelector<HTMLButtonElement>('#closeNotebook')?.addEventListen
   notebookOpen=false;notebookPanel.hidden=true;
   notebookToggle.setAttribute('aria-expanded','false');
 });
+function onContactEvent(event:ContactEvent) {
+  if(event.type==='spotted') {
+    audio.play('radio');
+    notebook.note('Mica: armed patrol contact near the worksite.');
+    toast('CONTACT! · TWO ARMED OPERATORS',3.0);
+    contact.tactical=true;
+    job.release();
+    updateNotebook();
+  } else if(event.type==='shot'){
+    const shot=event.shot;
+    audio.play('gunshot');
+    if(shot.hit){
+      audio.play('hit');
+      if(shot.at==='rook'||shot.at==='mica'){
+        notebook.note(shot.at==='rook'?'Rook is hit — consider withdrawing.':
+          'Mica has been hit; protect and regroup.');
+        toast(shot.at==='rook'?'ROOK HIT · SEEK COVER':'MICA HIT · REGROUP',1.7);
+        updateNotebook();
+      }
+    } else if(shot.blocked)audio.play('impact');
+  } else if(event.type==='down'){
+    audio.play('impact');
+    const who=event.id==='rook'?'ROOK':event.id==='mica'?'MICA':'PATROL OPERATOR';
+    notebook.note(who+' incapacitated during contact.');
+    toast(who+' DOWN',3);
+    updateNotebook();
+  } else if(event.type==='heard'){
+    if(event.observer==='patrol-a')toast('GUNSHOT HEARD · PATROL INVESTIGATING',2.1);
+  }
+}
 function toast(text:string,duration=2.1) {
   message.textContent=text;
   message.classList.add('visible');
@@ -363,6 +443,13 @@ window.addEventListener('pointercancel',stopHold);
 window.addEventListener('blur',stopHold);
 
 const touch=new TouchControls(renderer.domElement,camera,(x,y)=>{
+  const fighter=contact.pick(x,y,camera.camera,renderer.domElement);
+  if(fighter){
+    contact.select(fighter);
+    toast('TARGET SELECTED · '+(fighter==='patrol-a'?'PATROL 01':'PATROL 02'),1.8);
+    contactHud();
+    return;
+  }
   const station=stationRay(x,y);
   if(station){inspectOrWork(station);return;}
   const point=camera.groundPoint(x,y);
@@ -380,6 +467,14 @@ window.addEventListener('keydown',event=>{
   else if(event.code==='Equal'||event.code==='NumpadAdd')camera.zoom(.87);
   else if(event.code==='Minus'||event.code==='NumpadSubtract')camera.zoom(1.13);
   else if(event.code==='KeyM'&&!event.repeat)audio.toggleMute();
+  else if(event.code==='KeyC'&&!event.repeat){contact.tactical=!contact.tactical;contactHud();}
+  else if(event.code==='KeyX'&&!event.repeat){contact.cycleTarget();contactHud();}
+  else if(event.code==='KeyG'&&!event.repeat){if(contact.reload())audio.play('reload');}
+  else if(event.code==='KeyV'&&!event.repeat) {
+    const i=orders.indexOf(contact.simulation.order);
+    contact.setOrder(orders[(i+1)%orders.length]);contactHud();
+  }
+  else if(event.code==='KeyJ'){firingHeld=true;contact.fire();}
   else if(event.code==='KeyT'&&!event.repeat)depotAction();
   else if(event.code==='KeyR'&&event.shiftKey&&!event.repeat)newJob();
   else if(event.code==='Space')handleContextDown();
@@ -390,6 +485,7 @@ window.addEventListener('keydown',event=>{
 window.addEventListener('keyup',event=>{
   pressed.delete(event.code);
   if(event.code==='Space')stopHold();
+  if(event.code==='KeyJ')releaseFire();
 });
 window.addEventListener('blur',()=>pressed.clear());
 function keyboardAxis():Axis {
@@ -597,8 +693,19 @@ renderer.setAnimationLoop(()=>{
 
   const surveyTarget=!surveyDone&&crew.stage==='standby'?
     stations.generator.standPoint:null;
-  companion.update(dt,rook,crew,world.depot,surveyTarget);
-  if(surveyTarget){
+  contact.update(dt,rook,mica);
+  if(!contact.danger)companion.update(dt,rook,crew,world.depot,surveyTarget);
+  if(contact.danger!==previousDanger){
+    previousDanger=contact.danger;
+    if(contact.danger) {
+      job.release();
+      audio.play('radio');
+      toast('ARMED CONTACT · COVER OR WITHDRAW',2.4);
+    } else if(contact.simulation.resolved && contact.simulation.crewAlive) {
+      toast('CONTACT ENDED · RETURN TO THE WORK',2.9);
+    }
+  }
+  if(surveyTarget && !contact.danger){
     if(dist(mica.position,surveyTarget)<.96){
       surveyClock+=dt;
       if(surveyClock>=1.2){
@@ -700,6 +807,8 @@ renderer.setAnimationLoop(()=>{
   if(toastDeadline && performance.now()>toastDeadline){
     message.classList.remove('visible');toastDeadline=0;
   }
+  if(firingHeld)contact.fire();
+  contactHud();
   updatePrompt();
   renderer.render(world.scene,camera.camera);
 });
