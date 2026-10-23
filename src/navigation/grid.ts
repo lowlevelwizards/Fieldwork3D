@@ -1,4 +1,4 @@
-import { WORLD_DEPTH, WORLD_WIDTH } from '../constants';
+import { WORLD_DEPTH, WORLD_WIDTH } from '../constants.ts';
 
 export type Point2 = { x: number; z: number };
 export type Obstacle =

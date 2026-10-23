@@ -35,6 +35,7 @@ let toastDeadline = 0;
 let lastState = '';
 let markerTime = 0;
 let keyMovement = { x: 0, z: 0 };
+let keyboardActive = false;
 
 function showMessage(text: string, seconds = 2) {
   message.textContent = text;
@@ -99,10 +100,14 @@ renderer.setAnimationLoop(() => {
 
   // Keyboard navigation is useful on desktop and avoids a second control path for the operator.
   if (keyMovement.x || keyMovement.z) {
+    keyboardActive = true;
     const p = operator.position;
     const step = 2.0;
     const target = { x: p.x + keyMovement.x * step, z: p.z + keyMovement.z * step };
     if (nav.isWalkable(target)) operator.follow([target]);
+  } else if (keyboardActive) {
+    operator.follow([]);
+    keyboardActive = false;
   }
   operator.update(dt);
   controls.update(dt);

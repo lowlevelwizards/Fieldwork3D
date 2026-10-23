@@ -7,6 +7,7 @@ export class TacticalCamera {
   private readonly canvas: HTMLCanvasElement;
   private readonly onTap: (x: number, y: number) => void;
   private readonly pointers = new Map<number, Contact>();
+  private readonly origins = new Map<number, Contact>();
   private target = new THREE.Vector3(-8, 0, -1);
   private desiredTarget = this.target.clone();
   private height = 36;
@@ -35,6 +36,7 @@ export class TacticalCamera {
     this.canvas.setPointerCapture(event.pointerId);
     if (this.pointers.size === 0) { this.dragged = false; this.multiTouch = false; }
     this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    this.origins.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (this.pointers.size > 1) { this.multiTouch = true; this.dragged = true; }
   };
 
@@ -46,7 +48,8 @@ export class TacticalCamera {
       const dx = event.clientX - previous.x;
       const dy = event.clientY - previous.y;
       // Tiny movements are deliberately ignored, so a tap isn't interpreted as a pan.
-      if (Math.hypot(dx, dy) > 2) this.dragged = true;
+      const origin = this.origins.get(event.pointerId)!;
+      if (Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > 5) this.dragged = true;
       if (this.dragged && !this.multiTouch) {
         if (event.buttons === 2 || (event.pointerType === 'mouse' && event.shiftKey)) {
           this.orbit(dx * 0.007, -dy * 0.005);
@@ -78,15 +81,17 @@ export class TacticalCamera {
 
   private pointerUp = (event: PointerEvent) => {
     if (!this.pointers.has(event.pointerId)) return;
-    const original = this.pointers.get(event.pointerId)!;
+    const original = this.origins.get(event.pointerId)!;
     const isTap = this.pointers.size === 1 && !this.dragged && !this.multiTouch &&
       event.button !== 2 && Math.hypot(event.clientX - original.x, event.clientY - original.y) < 9;
     this.pointers.delete(event.pointerId);
+    this.origins.delete(event.pointerId);
     if (this.canvas.hasPointerCapture(event.pointerId)) this.canvas.releasePointerCapture(event.pointerId);
     if (isTap) this.onTap(event.clientX, event.clientY);
   };
   private pointerCancel = (event: PointerEvent) => {
     this.pointers.delete(event.pointerId);
+    this.origins.delete(event.pointerId);
   };
   private wheel = (event: WheelEvent) => {
     event.preventDefault();

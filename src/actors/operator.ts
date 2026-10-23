@@ -41,7 +41,7 @@ export class Operator {
     part(this.torso, 0.12, 0.85, 0.07, -0.25, 1.72, 0.28, kit).rotation.z = -0.28;
     part(this.torso, 0.35, 0.47, 0.22, 0.31, 1.58, 0.34, jacketShade);
     part(this.torso, 0.66, 0.84, 0.25, 0, 1.67, -0.4, kit); // supply pack
-    part(this.torso, 0.47, 0.26, 0.28, 0, 2.0, -0.55, 0.03 ? kit : kit);
+    part(this.torso, 0.47, 0.26, 0.28, 0, 2.0, -0.55, kit);
     part(this.torso, 0.12, 0.45, 0.12, 0.27, 2.29, -0.56, jacketShade);
     part(this.torso, 0.44, 0.42, 0.42, 0, 2.42, 0.04, face);
     part(this.torso, 0.57, 0.25, 0.54, 0, 2.66, 0.01, jacketShade); // cap
