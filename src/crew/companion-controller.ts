@@ -53,13 +53,13 @@ export class CompanionController {
     } else if (stage === 'returning' || stage === 'finished') {
       goal = depot.secondReturnPoint;
       face = rook.position;
-      mode = mission.micaHasFuse ? 'carry' : 'wait';
+      mode = mission.micaHasFuse ? 'carry' : dist(here, depot.secondReturnPoint) > 1.1 ? 'none' : 'wait';
     } else if (stage === 'standby') {
       // Natural offset rather than copying Rook's exact position.
       const follow = { x: receiver.x + 1.65, z: receiver.z + 1.02 };
       goal = dist(here, follow) > 3.2 ? follow : null;
       face = receiver;
-      mode = 'wait';
+      mode = dist(here, follow) > 3.2 ? 'none' : 'wait';
     } else if (stage === 'delivered') {
       const wait = { x: receiver.x + 2.2, z: receiver.z + 1.2 };
       goal = dist(here, wait) > 3.1 ? wait : null;

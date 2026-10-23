@@ -273,6 +273,7 @@ function positionPrompt() {
   }
   const box = viewport.getBoundingClientRect();
   contextAction.textContent = label;
+  contextAction.setAttribute('aria-label', label);
   const x = (projected.x * 0.5 + 0.5) * box.width;
   const y = (-projected.y * 0.5 + 0.5) * box.height;
   contextAction.style.left = Math.min(box.width - 89, Math.max(89, x)) + 'px';

@@ -52,3 +52,18 @@ test('approach is interruptible, completed work initializes restored', () => {
   restored.update(10, true);
   assert.equal(restored.phase, 'complete');
 });
+
+test('crew repair cannot replace a component until a real spare arrives', () => {
+  const p = new RelayProcedure();
+  p.interact(true);
+  finishTimed(p);
+  p.interact(true);
+  finishTimed(p);
+  assert.equal(p.phase, 'inspected');
+  assert.equal(p.interact(true, false), false);
+  assert.equal(p.phase, 'inspected');
+  assert.equal(p.interact(true, true), true);
+  assert.equal(p.phase, 'replacing');
+  p.reset();
+  assert.equal(p.phase, 'idle');
+});

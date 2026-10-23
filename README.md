@@ -1,62 +1,58 @@
 # Fieldwork 3D
 
-**0.0.4 — The World Becomes Tangible**
+**0.0.5 — The First Crew**
 
-A mobile-first, quiet isometric Three.js diorama about operators doing purposeful work in a physical world. The original [Fieldwork project](https://github.com/lowlevelwizards/fieldwork) is kept intact as a reference. This is a clean Three.js / TypeScript reboot.
+A mobile-first, isometric Three.js and TypeScript game about doing purposeful work in a physical world. The original [Fieldwork](https://github.com/lowlevelwizards/fieldwork) is preserved as an architecture/reference archive.
 
-## Play Cedar Relay
+## Try the two-person service operation
 
-Visit https://lowlevelwizards.github.io/Fieldwork3D/
+Open https://lowlevelwizards.github.io/Fieldwork3D/
 
-The scene starts with an offline utility relay cabinet on the apron beyond the repair shed. Look for the subtle amber marker above its enclosure.
+1. Rook and Mica start near the service truck.
+2. Tap the relay cabinet by the shed; Rook approaches and opens it. Tap **INSPECT FUSE**.
+3. Once Rook finds the damaged fuse, Mica autonomously walks back to the truck-side equipment box, opens it and retrieves **one physical spare fuse**.
+4. Mica navigates back to Rook, holds out the part and completes a close-range handoff. This job persists even if Rook moves away during delivery; Mica adapts to Rook's current position.
+5. Tap **REPLACE FUSE** and **RESTORE POWER** near the cabinet. The replacement is consumed in the cabinet, the tower beacon starts blinking, and the crew returns to the truck.
+6. When both crew members arrive, tap **ANOTHER JOB** to replay without refreshing or editing the browser's storage.
 
-**Repair walkthrough**
-
-1. Tap the cabinet (or its marker) to route Rook to the front of the enclosure. The route avoids buildings, trees and the cabinet itself.
-2. Rook turns to the cabinet, kneels and pulls its hinged door open.
-3. Tap **INSPECT FUSE** when the localized action chip appears.
-4. Tap **REPLACE FUSE** to watch the physical component exchange.
-5. Tap **RESTORE POWER** to close the cabinet and activate the tower beacon and low electrical hum.
-
-The repair state persists across refreshes in the browser's local storage. On desktop, **Shift+R** clears the completed incident for testing.
-
-The job is deliberately small and direct. No inventory, mission-generator, factions or AI authority system is imported yet. The pure repair procedure is separate from the rendering and may later be driven by the player or a causal AI actor.
+The job does not silently auto-complete: collection, handoff and return depend on real physical proximity. The crew obligation is held in an easily testable, pure TypeScript state machine, separate from rendering and navigation.
 
 ## Controls
 
 | Input | Action |
 | --- | --- |
-| Tap/click the ground | Route Rook to the waypoint |
-| Tap/click the relay cabinet | Approach/interact |
-| Context action chip (only near cabinet) | Proceed to the next work action |
-| Drag lower left on mobile | Floating analog movement |
-| Drag lower right on mobile | Floating horizontal orbit |
-| Two-finger pinch/twist | Zoom / orbit |
-| Drag upper scene | Pan |
-| Mouse wheel | Zoom |
-| Right-drag / Shift-drag | Orbit |
-| WASD / arrows | Camera-relative direct movement |
-| F / Q / E | Focus operator / rotate left / rotate right |
-| M | Toggle procedural sound |
-| Shift+R | Reset repair state (desktop testing) |
+| Tap/click ground | Route Rook |
+| Tap/click cabinet | Rook approaches and works on it |
+| Cabinet chip | Inspect / replace / restore |
+| Lower-left drag | Floating movement joystick |
+| Lower-right drag | Floating horizontal orbit joystick |
+| Pinch / two-finger twist | Zoom / rotate |
+| Drag upper scene | Pan view |
+| Tap the supply box | Supply context; return route after repair |
+| Truck chip | Return crew / repeat operation |
+| WASD / arrows | Direct movement on desktop |
+| F, Q, E | Focus Rook / rotate view |
+| M | Toggle synthesized audio |
+| Shift+R | Reset operation on desktop |
 
-Audio is synthesized locally with Web Audio and starts only after a user gesture, as required by mobile browsers. It includes very quiet wind, footsteps, cabinet latches, tools, switching and a powered transformer hum.
+The interface remains quiet: the only persistent labels are place, in-game time and weather; work actions appear in the world only when relevant.
 
-## Architecture
+## Structure
 
-- `src/world/`: handcrafted geometry, stable scene layout, collision footprints, relay state lighting.
-- `src/actors/operator.ts`: one articulated character, locomotion, kneeling and reach/tool pose.
-- `src/fieldwork/relay-procedure.ts`: deterministic, testable task phases and action obligations.
-- `src/fieldwork/relay-site.ts`: physical cabinet door, replaceable fuse, selection surface, work anchor and tower beacon.
-- `src/navigation/grid.ts`: pathfinding and movement collision.
-- `src/input/`: floating sticks, touch gestures and fixed-elevation orthographic camera.
-- `src/audio/field-audio.ts`: low-volume synthesized tactile and environmental cues.
+- `src/crew/crew-mission.ts`: deterministic obligation and component ownership, transition guards, return and replay.
+- `src/crew/companion-controller.ts`: follower, navigator and task executor for Mica.
+- `src/crew/truck-depot.ts`: working supply compartment and the single transferable physical spare part.
+- `src/actors/operator.ts`: two visually distinct low-poly operators, walking, glancing, work and handoff poses.
+- `src/fieldwork/`: cabinet and staged physical repair.
+- `src/input/`: orthographic isometric camera and floating touch controls.
+- `src/navigation/`: collision-aware A* routing.
+- `src/audio/`: mobile-aware procedural wind, footsteps, repair sounds and powered relay hum.
 
-## Run and verify
+## Development
 
-Requires Node.js 22+.
+Node.js 22 or newer.
 
-```bash
+```sh
 npm install
 npm run dev
 npm test
@@ -64,14 +60,14 @@ npm run check
 npm run build
 ```
 
-The GitHub Actions checks run tests and build. On pushes to main, the Pages workflow publishes the Vite production output in `dist/`, not the raw repository.
+On push, GitHub Actions tests the project and deploys the compiled Vite output through Pages.
 
 ## Milestones
 
-- 0.0.1 — Procedural relay diorama and pathfinding.
-- 0.0.2 — Floating thumb controls and grounded movement.
-- 0.0.3 — Quiet HUD and true isometric orthographic camera.
-- **0.0.4 — Corrected geometry, staged physical relay repair, contextual interaction, sound and persistent result.**
-- Next — More compelling body mechanics, richer interactables and the first complete leave-site / return loop.
+- 0.0.1: Cedar Relay scene, operator, movement and pathfinding
+- 0.0.2: floating controls and more grounded movement
+- 0.0.3: minimal HUD and true isometric orthographic view
+- 0.0.4: functional relay cabinet and individual repair
+- **0.0.5: two-person cooperation, physical supplies, autonomous delivery, handoff, return and replay**
 
-Keep the world physical, playable and legible before extending the AI or campaign.
+Next: improve visual body dynamics and hand-placement, more convincing tool physics, dynamic site disruptions and additional roles, without rebuilding a huge AI framework.
