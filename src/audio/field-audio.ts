@@ -1,4 +1,4 @@
-type SoundEvent = 'footstep' | 'latch' | 'inspect' | 'tool' | 'switch' | 'power' | 'radio';
+type SoundEvent = 'footstep' | 'latch' | 'inspect' | 'tool' | 'switch' | 'power' | 'radio' | 'arc';
 
 export class FieldAudio {
   private context: AudioContext | null = null;
@@ -92,6 +92,9 @@ export class FieldAudio {
       this.tone(230, 0.12, 0.026, 'square', 0.55);
     } else if (which === 'switch') {
       this.tone(290, 0.09, 0.05, 'square', 0.55);
+    } else if (which === 'arc') {
+      this.tone(1250, 0.07, 0.042, 'sawtooth', 0.3);
+      this.tone(360, 0.13, 0.019, 'square', 0.33);
     } else if (which === 'radio') {
       this.tone(710, 0.065, 0.017, 'sine', 1.07);
       this.tone(960, 0.10, 0.014, 'sine', 0.88);

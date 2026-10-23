@@ -137,6 +137,12 @@ export class RelaySite {
     this.labelPoint.set(location.x, this.group.position.y + 3.35, location.z);
   }
 
+  resetIncident() {
+    this.door.rotation.y = 0;
+    this.spark.visible = false;
+    this.marker.visible = true;
+  }
+
   updateIncident(incident: FieldIncident, seconds: number, camera: THREE.Camera) {
     const p = incident.phase;
     const phase: RelayPhase =

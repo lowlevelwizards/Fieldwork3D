@@ -117,3 +117,23 @@ body { overscroll-behavior: none; }
 }
 .context-action:active { background: rgba(113,100,65,.96); }
 .context-action[hidden] { display: none !important; }
+
+/* Scene-projected work control: progress fills the button while held.
+   Never a full-screen minigame or persistent interface strip. */
+#contextAction {
+  min-width: 142px;
+  background: linear-gradient(to right,
+    rgba(178,145,79,.90) 0%, rgba(178,145,79,.90) var(--progress,0%),
+    rgba(33,55,49,.91) var(--progress,0%),
+    rgba(33,55,49,.91) 100%);
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+}
+.defer-action {
+  border-color: rgba(236,213,161,.45);
+  color: rgba(249,231,190,.82);
+  font-size: 9px;
+  padding: 7px 10px;
+  background: rgba(31,49,46,.75);
+}

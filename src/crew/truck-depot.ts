@@ -14,6 +14,8 @@ export class TruckDepot {
   readonly item: THREE.Group;
   private lid = new THREE.Group();
   private indicator: THREE.MeshStandardMaterial;
+  private isolator = new THREE.Group();
+  private isolated = false;
 
   constructor(scene: THREE.Scene, obstacles: Obstacle[]) {
     this.group.position.set(8.0, terrainHeight(8.0, 7.0), 7.0);
@@ -56,6 +58,13 @@ export class TruckDepot {
     this.group.add(this.item);
     this.item.position.set(0.3, 0.58, 0.15);
 
+    // Operable supply disconnect at the truck, turned by Mica before jam work
+    // or when an overloaded terminal trips protective power.
+    this.isolator.position.set(-1.03, 0.88, -0.30);
+    this.group.add(this.isolator);
+    cube(this.isolator, 0, 0, 0, 0.40, 0.82, 0.35, dark);
+    cube(this.isolator, 0, 0.18, 0.25, 0.16, 0.43, 0.16, edge);
+
     this.hitbox = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.9, 1.9),
       new THREE.MeshBasicMaterial({ opacity: 0, transparent: true, colorWrite: false, depthWrite: false }));
     this.hitbox.position.set(0, 0.96, 0);
@@ -71,6 +80,10 @@ export class TruckDepot {
     this.item.visible = true;
   }
 
+  setIsolated(value: boolean) {
+    this.isolated = value;
+  }
+
   setAssignment(which: CrewAssignment) {
     const material = this.item.children[0] instanceof THREE.Mesh ?
       this.item.children[0].material as THREE.MeshStandardMaterial : null;
@@ -81,6 +94,7 @@ export class TruckDepot {
   update(retrieving: boolean, hasTruckFuse: boolean, phaseTime: number) {
     const desired = retrieving ? -1.35 : 0;
     this.lid.rotation.x += (desired - this.lid.rotation.x) * 0.15;
+    this.isolator.rotation.x += ((this.isolated ? -0.70 : 0) - this.isolator.rotation.x) * 0.18;
     this.indicator.color.setHex(hasTruckFuse ? 0xc7b780 : 0x515957);
     if (this.item.parent === this.group) {
       this.item.visible = hasTruckFuse;
@@ -95,5 +109,6 @@ export class TruckDepot {
     this.item.scale.setScalar(1);
     this.item.visible = true;
     this.lid.rotation.x = 0;
+    this.setIsolated(false);
   }
 }
