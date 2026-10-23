@@ -24,7 +24,7 @@ export class CompanionController {
     this.mica.setSocialPose('none');
   }
 
-  update(dt: number, rook: Operator, mission: CrewMission, depot: TruckDepot) {
+  update(dt: number, rook: Operator, mission: CrewMission, depot: TruckDepot, surveyTarget: Point2 | null = null) {
     const stage = mission.stage;
     if (stage !== this.lastStage) {
       this.lastStage = stage;
@@ -54,6 +54,12 @@ export class CompanionController {
       goal = depot.secondReturnPoint;
       face = rook.position;
       mode = mission.micaHasFuse ? 'carry' : dist(here, depot.secondReturnPoint) > 1.1 ? 'none' : 'wait';
+    } else if (stage === 'standby' && surveyTarget) {
+      // Separate independent inspection. Mica takes a real navigable route,
+      // reports only after physically arriving, and can be reassigned later.
+      goal = surveyTarget;
+      face = { x: surveyTarget.x, z: surveyTarget.z - 1.4 };
+      mode = dist(here, surveyTarget) < 1.0 ? 'collect' : 'none';
     } else if (stage === 'standby') {
       // Natural offset rather than copying Rook's exact position.
       const follow = { x: receiver.x + 1.65, z: receiver.z + 1.02 };
