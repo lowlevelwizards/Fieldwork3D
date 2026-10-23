@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { Operator } from './actors/operator';
 import { BUILD_VERSION, OPERATOR_START } from './constants';
 import { TacticalCamera } from './input/tactical-camera';
+import { TouchControls } from './input/touch-controls';
+import type { Axis } from './input/control-math';
 import { NavigationGrid } from './navigation/grid';
 import { createWorld } from './world/create-world';
 import './style.css';
@@ -14,13 +16,14 @@ document.querySelector<HTMLElement>('#buildVersion')!.textContent = BUILD_VERSIO
 
 let renderer: THREE.WebGLRenderer;
 try {
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+  renderer = new THREE.WebGLRenderer({
+    antialias: true, alpha: false, powerPreference: 'high-performance',
+  });
 } catch {
   viewport.innerHTML = '<div style="padding:28px;color:#fff;background:#253a39">Unable to start WebGL. Try a browser with hardware acceleration enabled.</div>';
   throw new Error('Fieldwork 3D requires WebGL');
 }
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.6));
-renderer.setSize(viewport.clientWidth, viewport.clientHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -31,19 +34,18 @@ viewport.appendChild(renderer.domElement);
 const world = createWorld();
 const nav = new NavigationGrid(world.obstacles);
 const operator = new Operator(world.scene, OPERATOR_START);
+const controls = new TacticalCamera(renderer.domElement);
 let toastDeadline = 0;
 let lastState = '';
 let markerTime = 0;
-let keyMovement = { x: 0, z: 0 };
-let keyboardActive = false;
 
-function showMessage(text: string, seconds = 2) {
+function showMessage(text: string, seconds = 1.7) {
   message.textContent = text;
   message.classList.add('visible');
   toastDeadline = performance.now() + seconds * 1000;
 }
 
-const controls = new TacticalCamera(renderer.domElement, (clientX, clientY) => {
+const touch = new TouchControls(renderer.domElement, controls, (clientX, clientY) => {
   const point = controls.groundPoint(clientX, clientY);
   if (!point) { showMessage('OUTSIDE THE FIELD AREA'); return; }
   const path = nav.findPath(operator.position, point);
@@ -52,72 +54,91 @@ const controls = new TacticalCamera(renderer.domElement, (clientX, clientY) => {
   world.placeWaypoint(path[path.length - 1]);
   markerTime = 0;
 });
-controls.resize(viewport.clientWidth, viewport.clientHeight);
 
 const activate = (id: string, callback: () => void) => {
   document.querySelector<HTMLButtonElement>(id)!.addEventListener('click', callback);
 };
 activate('#zoomIn', () => controls.zoom(0.78));
 activate('#zoomOut', () => controls.zoom(1.28));
-activate('#orbitLeft', () => controls.orbit(-Math.PI / 8, 0));
-activate('#orbitRight', () => controls.orbit(Math.PI / 8, 0));
+activate('#orbitLeft', () => controls.orbit(Math.PI / 8, 0));
+activate('#orbitRight', () => controls.orbit(-Math.PI / 8, 0));
 activate('#focusOperator', () => controls.focus(operator.position));
 
+const pressed = new Set<string>();
+const movementCodes = new Set([
+  'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyW', 'KeyA', 'KeyS', 'KeyD',
+]);
 window.addEventListener('keydown', event => {
-  if (event.repeat && ['KeyF', 'KeyQ', 'KeyE'].includes(event.code)) return;
-  switch (event.code) {
-    case 'KeyF': controls.focus(operator.position); break;
-    case 'KeyQ': controls.orbit(-Math.PI / 8, 0); break;
-    case 'KeyE': controls.orbit(Math.PI / 8, 0); break;
-    case 'Equal': case 'NumpadAdd': controls.zoom(0.83); break;
-    case 'Minus': case 'NumpadSubtract': controls.zoom(1.2); break;
-    case 'ArrowLeft': case 'KeyA': keyMovement.x = -1; break;
-    case 'ArrowRight': case 'KeyD': keyMovement.x = 1; break;
-    case 'ArrowUp': case 'KeyW': keyMovement.z = -1; break;
-    case 'ArrowDown': case 'KeyS': keyMovement.z = 1; break;
-    default: return;
-  }
+  if (event.code === 'KeyF' && !event.repeat) controls.focus(operator.position);
+  else if (event.code === 'KeyQ' && !event.repeat) controls.orbit(Math.PI / 8, 0);
+  else if (event.code === 'KeyE' && !event.repeat) controls.orbit(-Math.PI / 8, 0);
+  else if (event.code === 'Equal' || event.code === 'NumpadAdd') controls.zoom(0.87);
+  else if (event.code === 'Minus' || event.code === 'NumpadSubtract') controls.zoom(1.13);
+  else if (movementCodes.has(event.code)) pressed.add(event.code);
+  else return;
   event.preventDefault();
 });
-window.addEventListener('keyup', event => {
-  if (['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD'].includes(event.code)) keyMovement.x = 0;
-  if (['ArrowUp', 'ArrowDown', 'KeyW', 'KeyS'].includes(event.code)) keyMovement.z = 0;
-});
-window.addEventListener('blur', () => { keyMovement = { x: 0, z: 0 }; });
+window.addEventListener('keyup', event => pressed.delete(event.code));
+window.addEventListener('blur', () => pressed.clear());
+
+function keyboardAxis(): Axis {
+  const x = Number(pressed.has('ArrowRight') || pressed.has('KeyD')) -
+    Number(pressed.has('ArrowLeft') || pressed.has('KeyA'));
+  const y = Number(pressed.has('ArrowUp') || pressed.has('KeyW')) -
+    Number(pressed.has('ArrowDown') || pressed.has('KeyS'));
+  const length = Math.hypot(x, y);
+  return length > 1 ? { x: x / length, y: y / length } : { x, y };
+}
+
+// Canvas dimensions come from the element's actual CSS size, not screen.width,
+// which can lag an iPhone orientation change. ResizeObserver also catches
+// viewport/safe-area changes that never fire a traditional window resize.
+let previousWidth = 0, previousHeight = 0, previousPixelRatio = 0;
 function resize() {
-  const width = viewport.clientWidth, height = viewport.clientHeight;
+  const box = viewport.getBoundingClientRect();
+  const width = Math.max(1, Math.round(box.width));
+  const height = Math.max(1, Math.round(box.height));
+  const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.6);
+  if (width === previousWidth && height === previousHeight && pixelRatio === previousPixelRatio) return;
+  previousWidth = width; previousHeight = height; previousPixelRatio = pixelRatio;
+  renderer.setPixelRatio(pixelRatio);
   renderer.setSize(width, height, false);
   controls.resize(width, height);
 }
+const observer = new ResizeObserver(resize);
+observer.observe(viewport);
 window.addEventListener('resize', resize);
-window.addEventListener('orientationchange', resize);
+window.visualViewport?.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => {
+  requestAnimationFrame(() => {
+    resize();
+    requestAnimationFrame(resize);
+  });
+});
+resize();
+controls.update(0);
 
 const clock = new THREE.Clock();
 let elapsed = 0;
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05);
   elapsed += dt;
+  touch.update(dt);
 
-  // Keyboard navigation is useful on desktop and avoids a second control path for the operator.
-  if (keyMovement.x || keyMovement.z) {
-    keyboardActive = true;
-    const p = operator.position;
-    const step = 2.0;
-    const target = { x: p.x + keyMovement.x * step, z: p.z + keyMovement.z * step };
-    if (nav.isWalkable(target)) operator.follow([target]);
-  } else if (keyboardActive) {
-    operator.follow([]);
-    keyboardActive = false;
-  }
-  operator.update(dt);
+  const keys = keyboardAxis();
+  const driving = touch.driving || keys.x !== 0 || keys.y !== 0;
+  const axis = touch.driving ? touch.move : keys;
+  operator.setDrive(driving ? controls.screenDirection(axis) : null);
+  operator.update(dt, nav);
   controls.update(dt);
+
   if (world.waypoint.visible) {
     markerTime += dt;
     const scale = 1 + Math.sin(markerTime * 4) * 0.08;
     world.waypoint.scale.setScalar(scale);
     if (!operator.moving && markerTime > 0.25) world.waypoint.visible = false;
   }
-  const state = operator.moving ? 'MOVING TO WAYPOINT' : 'STANDING BY';
+  const state = operator.moving ? 'MOVING' : 'STANDING BY';
   if (state !== lastState) {
     status.textContent = state;
     lastState = state;

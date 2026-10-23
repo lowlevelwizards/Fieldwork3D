@@ -17,9 +17,11 @@ export class NavigationGrid {
   private readonly columns: number;
   private readonly rows: number;
   private readonly blockedCells: Uint8Array;
+  private readonly obstacles: readonly Obstacle[];
 
   constructor(obstacles: readonly Obstacle[], cellSize = 1, width = WORLD_WIDTH, depth = WORLD_DEPTH) {
     this.cellSize = cellSize;
+    this.obstacles = obstacles;
     this.width = width;
     this.depth = depth;
     this.columns = Math.floor(width / cellSize) + 1;
@@ -60,6 +62,14 @@ export class NavigationGrid {
   }
   private open(col: number, row: number) {
     return this.inside(col, row) && !this.blockedCells[this.index(col, row)];
+  }
+
+  // Exact geometry clearance for continuous joystick locomotion. A coarse A* cell
+  // is not a reliable collision test for a sub-cell step near cover or tree trunks.
+  canOccupy(p: Point2, radius = 0.35) {
+    if (Math.abs(p.x) > this.width / 2 - radius - 0.5 ||
+        Math.abs(p.z) > this.depth / 2 - radius - 0.5) return false;
+    return !this.obstacles.some(obstacle => this.collides(p, obstacle, radius));
   }
 
   isWalkable(p: Point2) {
