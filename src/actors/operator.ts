@@ -24,15 +24,22 @@ export class Operator {
   private workTime = 0;
   private faceTarget: Point2 | null = null;
   private readonly tool = new THREE.Group();
+  readonly itemAnchor = new THREE.Group();
+  private readonly head = new THREE.Group();
+  private social: 'none' | 'carry' | 'collect' | 'handoff' | 'receive' | 'wait' = 'none';
+  private socialTarget: Point2 | null = null;
+  private socialClock = 0;
+  private readonly alternate: boolean;
 
-  constructor(scene: THREE.Scene, start: Point2) {
-    const jacket = material(0x53665d);
-    const jacketShade = material(0x364a45);
-    const fabric = material(0x66695b);
+  constructor(scene: THREE.Scene, start: Point2, identity: 'rook' | 'mica' = 'rook') {
+    this.alternate = identity === 'mica';
+    const jacket = material(this.alternate ? 0x687f76 : 0x53665d);
+    const jacketShade = material(this.alternate ? 0x3f595b : 0x364a45);
+    const fabric = material(this.alternate ? 0x596268 : 0x66695b);
     const boots = material(0x313d3c);
-    const kit = material(0xa18a61);
-    const face = material(0xbda287);
-    const accent = material(0xc08a59);
+    const kit = material(this.alternate ? 0x8b7662 : 0xa18a61);
+    const face = material(this.alternate ? 0xab896e : 0xbda287);
+    const accent = material(this.alternate ? 0xd0b67e : 0xc08a59);
 
     const part = (parent: THREE.Object3D, w: number, h: number, d: number,
       x: number, y: number, z: number, mat: THREE.Material) => {
@@ -52,10 +59,15 @@ export class Operator {
     part(this.torso, 0.66, 0.84, 0.25, 0, 1.67, -0.4, kit);
     part(this.torso, 0.47, 0.26, 0.28, 0, 2.0, -0.55, kit);
     part(this.torso, 0.12, 0.45, 0.12, 0.27, 2.29, -0.56, jacketShade);
-    part(this.torso, 0.44, 0.42, 0.42, 0, 2.42, 0.04, face);
-    part(this.torso, 0.57, 0.25, 0.54, 0, 2.66, 0.01, jacketShade);
-    part(this.torso, 0.57, 0.06, 0.25, 0, 2.59, 0.34, jacketShade);
-    part(this.torso, 0.17, 0.1, 0.05, 0, 2.42, 0.265, boots);
+    this.torso.add(this.head);
+    part(this.head, 0.44, 0.42, 0.42, 0, 2.42, 0.04, face);
+    part(this.head, 0.57, 0.25, 0.54, 0, 2.66, 0.01, jacketShade);
+    part(this.head, 0.57, 0.06, 0.25, 0, 2.59, 0.34, jacketShade);
+    part(this.head, 0.17, 0.1, 0.05, 0, 2.42, 0.265, boots);
+    if (this.alternate) {
+      part(this.torso, 0.93, 0.15, 0.56, 0, 2.09, 0, accent);
+      part(this.torso, 0.25, 0.45, 0.17, -0.5, 1.65, 0.08, accent);
+    }
 
     for (const side of [-1, 1]) {
       const hip = new THREE.Group();
@@ -85,6 +97,8 @@ export class Operator {
 
     // The folding work tool is attached to Rook's right forearm, visible
     // while handling the relay enclosure rather than an abstract progress bar.
+    this.arms[1].add(this.itemAnchor);
+    this.itemAnchor.position.set(0.15, -1.1, 0.37);
     this.arms[1].add(this.tool);
     part(this.tool, 0.11, 0.62, 0.10, 0.16, -0.95, 0.18, kit);
     part(this.tool, 0.38, 0.12, 0.12, 0.16, -0.64, 0.18, boots);
@@ -109,6 +123,12 @@ export class Operator {
   }
 
   clearRoute() { this.route.length = 0; }
+
+  setSocialPose(mode: 'none' | 'carry' | 'collect' | 'handoff' | 'receive' | 'wait',
+    target: Point2 | null = null) {
+    this.social = mode;
+    this.socialTarget = target;
+  }
 
   get velocityMagnitude() { return Math.hypot(this.velocity.x, this.velocity.z); }
 
@@ -187,9 +207,10 @@ export class Operator {
     }
     position.y = terrainHeight(position.x, position.z);
     const speed = Math.hypot(movedX, movedZ) / Math.max(dt, 0.0001);
-    if (speed > 0.03 || (this.faceTarget && this.velocityMagnitude < 0.4)) {
-      const heading = this.faceTarget && this.velocityMagnitude < 0.4
-        ? Math.atan2(this.faceTarget.x - position.x, this.faceTarget.z - position.z)
+    const gazeTarget = this.socialTarget ?? this.faceTarget;
+    if (speed > 0.03 || (gazeTarget && this.velocityMagnitude < 0.4)) {
+      const heading = gazeTarget && this.velocityMagnitude < 0.4
+        ? Math.atan2(gazeTarget.x - position.x, gazeTarget.z - position.z)
         : Math.atan2(movedX, movedZ);
       const angularDifference = Math.atan2(
         Math.sin(heading - this.group.rotation.y),
@@ -235,6 +256,23 @@ export class Operator {
       0.28 * work;
     this.torso.rotation.z = Math.sin(this.stride) * 0.024 * w * (1 - work);
     this.torso.rotation.x = -0.04 * w + 0.20 * work;
+    this.socialClock += dt;
+    this.head.rotation.y = 0.10 * Math.sin(this.socialClock * 0.47) +
+      (this.socialTarget ? 0.045 * Math.sin(this.socialClock * 0.9) : 0);
+    if (this.social === 'carry' || this.social === 'collect') {
+      this.arms[1].rotation.x = -0.45;
+      this.arms[1].rotation.z = -0.19;
+    } else if (this.social === 'handoff') {
+      this.arms[1].rotation.x = -1.18 - Math.sin(this.socialClock * 3.2) * 0.05;
+      this.arms[1].rotation.z = -0.36;
+    } else if (this.social === 'receive') {
+      this.arms[1].rotation.x = -1.18;
+      this.arms[1].rotation.z = -0.19;
+      this.arms[0].rotation.x = -0.6;
+    } else if (this.social === 'wait') {
+      this.arms[1].rotation.x *= 0.3;
+      this.arms[0].rotation.x *= 0.3;
+    }
 
     // Use a small deadband for stable arrival, after deceleration completes.
     if (!this.driveIntent && !this.route.length && targetSpeed < 0.001 && currentSpeed < 0.035) {
