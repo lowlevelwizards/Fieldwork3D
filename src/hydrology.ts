@@ -178,7 +178,7 @@ export function buildWatershed(cells: TerrainCell[] = makeTerrainCells()): Water
     const next=downhill[cell.index];
     if(next>=0)flowAccumulation[next]+=flowAccumulation[cell.index];
   }
-  const channels=cells.map((cell,i)=>{
+  const channels=cells.map((_,i)=>{
     // A measured contributing catchment distinguishes concentrated
     // stream channels from diffuse wet ground. Incised tributaries may
     // carry less flow until their upstream watershed grows.
