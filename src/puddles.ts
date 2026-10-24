@@ -31,19 +31,72 @@ function submergedPolygon(triangle:Vertex[], level:number):Vertex[] {
  */
 export class PuddleField {
   private readonly surface:THREE.Mesh;
-  private readonly material:THREE.MeshPhongMaterial;
+  private readonly material:THREE.ShaderMaterial;
   private lastVolumes:number[]=[];
 
   constructor(scene:THREE.Scene){
-    this.material=new THREE.MeshPhongMaterial({
-      color:0x648792,
-      specular:0xc5d6d1,
-      shininess:110,
+    // The old Phong material sampled bright sky colors as specular, which
+    // bleached the ponds into opaque-looking white discs in midday sun.
+    // A restrained, depth-sensitive shader keeps water dark and translucent
+    // at the shore while preserving an occasional small sky/sun glint.
+    this.material=new THREE.ShaderMaterial({
       transparent:true,
-      opacity:.74,
       depthTest:true,
       depthWrite:false,
       side:THREE.DoubleSide,
+      toneMapped:false,
+      uniforms:{
+        deepColor:{value:new THREE.Color(0x274750)},
+        shoreColor:{value:new THREE.Color(0x516b65)},
+        skyColor:{value:new THREE.Color(0x7c969b)},
+        sunlight:{value:0},
+        sunDirection:{value:new THREE.Vector3(0,1,0)},
+        hour:{value:0},
+        rainfall:{value:0},
+      },
+      vertexShader:`
+        attribute float aDepth;
+        varying float vDepth;
+        varying vec3 vWorld;
+        void main(){
+          vDepth = aDepth;
+          vec4 world=modelMatrix*vec4(position,1.0);
+          vWorld=world.xyz;
+          gl_Position=projectionMatrix*viewMatrix*world;
+        }
+      `,
+      fragmentShader:`
+        uniform vec3 deepColor;
+        uniform vec3 shoreColor;
+        uniform vec3 skyColor;
+        uniform float sunlight;
+        uniform vec3 sunDirection;
+        uniform float hour;
+        uniform float rainfall;
+        varying float vDepth;
+        varying vec3 vWorld;
+        void main(){
+          // Shoreline tint fades through the first few centimetres.
+          float depthFactor=smoothstep(0.0,0.075,vDepth);
+          float shoreFade=smoothstep(0.001,0.028,vDepth);
+          vec3 viewDirection=normalize(cameraPosition-vWorld);
+          float grazing=pow(1.0-max(dot(vec3(0.0,1.0,0.0),viewDirection),0.0),3.0);
+          vec3 color=mix(shoreColor,deepColor,depthFactor);
+          color=mix(color,skyColor,0.10+0.14*grazing);
+          // Only a restrained glint, never a broad white Phong highlight.
+          vec3 reflection=reflect(-normalize(sunDirection),vec3(0.0,1.0,0.0));
+          float glint=pow(max(dot(viewDirection,reflection),0.0),95.0);
+          color+=vec3(0.12,0.13,0.11)*glint*min(1.0,sunlight/2.2);
+          // Fine surface disturbance comes from the same world clock and
+          // intensifies during rainfall. A paused world freezes its water.
+          float ripple=sin(vWorld.x*29.0+hour*8.0)
+                      *sin(vWorld.z*23.0-hour*6.5);
+          color+=vec3(.018,.022,.022)*ripple*(.20+.80*rainfall)*shoreFade;
+          float opacity=mix(.13,.91,shoreFade);
+          gl_FragColor=vec4(max(color,vec3(0.0)),opacity);
+          #include <colorspace_fragment>
+        }
+      `,
     });
     this.surface=new THREE.Mesh(new THREE.BufferGeometry(),this.material);
     // Shadows and shallow mist (1) come before water (2); rain (3/4)
@@ -54,13 +107,14 @@ export class PuddleField {
   }
 
   update(water:TerrainWater,env:EnvironmentState,rainAmount:number):void {
-    // A restrained environmental tint suggests reflection without expensive
-    // water render targets or pretending to have wave/fluid simulation.
-    const reflected=new THREE.Color(env.skyHorizon);
-    reflected.lerp(new THREE.Color(0x3b6068),.45);
-    this.material.color.copy(reflected);
-    this.material.specular.setHex(env.skyMiddle);
-    this.material.opacity=.65+Math.min(.13,rainAmount*.09);
+    // Daylight can tint the sky reflection, but cannot wash ponds to white.
+    const skyTint=this.material.uniforms.skyColor.value as THREE.Color;
+    skyTint.setHex(env.skyHorizon).lerp(new THREE.Color(0x526f78),.82);
+    const sunDir=this.material.uniforms.sunDirection.value as THREE.Vector3;
+    sunDir.set(env.sunDirection.x,env.sunDirection.y,env.sunDirection.z);
+    this.material.uniforms.sunlight.value=env.sunlight;
+    this.material.uniforms.hour.value=env.hour;
+    this.material.uniforms.rainfall.value=rainAmount;
 
     const volumes=water.watershed.basins.map(b=>water.basinLiters(b.id));
     const changed=volumes.length!==this.lastVolumes.length ||
@@ -68,7 +122,7 @@ export class PuddleField {
     if(!changed)return;
     this.lastVolumes=volumes;
     const positions:number[]=[];
-    const normals:number[]=[];
+    const depths:number[]=[];
     const {watershed}=water;
     for(const basin of watershed.basins){
       const level=water.surfaceLevel(basin.id);
@@ -96,14 +150,19 @@ export class PuddleField {
             const area=(b.x-a.x)*(c.z-a.z)-(b.z-a.z)*(c.x-a.x);
             if(Math.abs(area)<1e-9)continue;
             positions.push(a.x,y,a.z,b.x,y,b.z,c.x,y,c.z);
-            normals.push(0,1,0,0,1,0,0,1,0);
+            // Depth is measured from the actual terrain at each vertex.
+            // Water is strongest in the deeper centre and transparent where
+            // it crosses the ground contour: no artificial hard white rim.
+            depths.push(Math.max(0,level-a.h),
+                        Math.max(0,level-b.h),
+                        Math.max(0,level-c.h));
           }
         }
       }
     }
     const geometry=new THREE.BufferGeometry();
     geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
-    geometry.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));
+    geometry.setAttribute('aDepth',new THREE.Float32BufferAttribute(depths,1));
     if(positions.length)geometry.computeBoundingSphere();
     this.surface.geometry.dispose();
     this.surface.geometry=geometry;
