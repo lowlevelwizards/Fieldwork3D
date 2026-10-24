@@ -328,3 +328,34 @@ Test clear vs stormy hours, then orbit close to a river junction: its shape
 should remain coherent and wet ground should fade naturally into neighboring
 similar terrain without blue tiling. Real iPhone screenshots remain necessary
 to validate visual quality beyond automated tests.
+
+## Build 024 — Hydraulic river stages and connected surface water
+
+- Live river reaches now use trapezoidal cross-sections: the actual routed
+  litres determine water depth and wetted width; bankfull storage depends
+  on channel size and its upslope contributing area.
+- Above bankfull, *existing conserved flood litres* raise stage and allow
+  water to spread over lower neighboring floodplain terrain. No fixed
+  0.2 m stream-width cap or permanently separate narrow blue stream.
+- Moving water responds to receiving water-surface elevation: downstream
+  backwater slows transport, floodwater spreads according to local head,
+  and water on channel cells can re-enter the main stream after recession.
+  All changes preserve the original rain/soil/import/export mass budget.
+- LLW-browser-inspired channel pruning removes short weak visual runoff
+  spurs without modifying the physical downhill graph or discarding water.
+- River ribbons, overbank water, and volume-solved standing ponds are
+  sampled into **one** lit mesh with consistent water tint and stage.
+  Pond surfaces remain horizontal; streams descend; bank edges are
+  clipped by the actual landform and fade into nearby damp soil.
+- The existing independent flow and pond renderer files remain available
+  as historical comparison modules but are no longer instantiated in the
+  production scene. The unified renderer is hydraulic-surface-field.ts.
+- Physically stored water and ruts retain the original snapshot format.
+  New regression tests cover channel stage/width, pond fill/spill,
+  edge pruning, rendering integration and mass preservation.
+
+On a phone, compare low water against a rain-driven rise, especially
+near a confluence and a depression. Inspect whether floodwater spreads
+into a wider shared surface rather than producing parallel river teeth.
+This remains a simplified shallow-water approximation, not a full
+momentum-conserving fluid solver; visual polish still needs device review.
