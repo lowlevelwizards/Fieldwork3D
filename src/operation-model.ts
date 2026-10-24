@@ -1,4 +1,4 @@
-import { terrainHeight,cellIndexAt } from './terrain-model.ts';
+import { cellIndexAt } from './terrain-model.ts';
 import { slopeAt } from './traffic-model.ts';
 import { concealmentAt,type Plant } from './vegetation-model.ts';
 import type { TerrainWater } from './hydrology.ts';
