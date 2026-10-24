@@ -24,3 +24,19 @@ test('zoom is bounded and changes orthographic size, not camera pitch', () => {
   assert.equal(clampZoom(100), 2.5);
   assert.ok(viewSize(844, 390, 2).height < viewSize(844, 390, 1).height);
 });
+
+test('distance in the mist attenuates visibility without changing world geometry', async () => {
+  const { ATMOSPHERE, visibleLightFraction } =
+    await import('../src/environment-conditions.ts');
+  assert.ok(ATMOSPHERE.hazeDensity > 0);
+  assert.equal(visibleLightFraction(0), 1);
+  assert.ok(visibleLightFraction(15) > visibleLightFraction(30));
+  assert.ok(visibleLightFraction(30) > visibleLightFraction(60));
+  assert.ok(visibleLightFraction(60) > 0);
+});
+test('light is directional, fixed, and above the ground', async () => {
+  const { DAYLIGHT } = await import('../src/environment-conditions.ts');
+  assert.ok(DAYLIGHT.direction.y > 0);
+  assert.ok(Math.hypot(DAYLIGHT.direction.x, DAYLIGHT.direction.z) > 0);
+  assert.ok(DAYLIGHT.intensity > 0);
+});

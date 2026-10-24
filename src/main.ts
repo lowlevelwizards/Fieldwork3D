@@ -1,26 +1,48 @@
 import * as THREE from 'three';
 import { cameraOffset, clampZoom, viewSize } from './camera-model';
+import { ATMOSPHERE, DAYLIGHT } from './environment-conditions';
 import './style.css';
 
-// Build 000: one slab in an otherwise empty scene. No actors or game loop.
+// Ground Zero: a slab, incident light, its cast shadow, and a misty sky.
+ // No actors, objects, game events, or simulated weather cycle.
 const mount = document.querySelector<HTMLCanvasElement>('#app');
 if (!mount) throw new Error('Missing ground viewport');
 const canvas: HTMLCanvasElement = mount;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xbfc9c2);
+// Transparent clear reveals the sky gradient behind the canvas.
+ // The world itself uses explicit distance-dependent atmospheric scattering.
+scene.fog = new THREE.FogExp2(ATMOSPHERE.hazeColor, ATMOSPHERE.hazeDensity);
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
   antialias: true,
   powerPreference: 'low-power',
+  alpha: true,
 });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.12;
+renderer.setClearColor(0xffffff, 0);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-scene.add(new THREE.HemisphereLight(0xeaf1e2, 0x655a49, 2.1));
-const sun = new THREE.DirectionalLight(0xffe5b9, 2.2);
-sun.position.set(-6, 14, 10);
+// Sky fill and a directional light are separate, verifiable illumination.
+scene.add(new THREE.HemisphereLight(
+  DAYLIGHT.skyFillColor, DAYLIGHT.groundFillColor, DAYLIGHT.skyFillIntensity,
+));
+const sun = new THREE.DirectionalLight(DAYLIGHT.color, DAYLIGHT.intensity);
+sun.position.set(DAYLIGHT.direction.x, DAYLIGHT.direction.y, DAYLIGHT.direction.z);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.camera.left = -10;
+sun.shadow.camera.right = 10;
+sun.shadow.camera.top = 10;
+sun.shadow.camera.bottom = -10;
+sun.shadow.camera.near = 0.5;
+sun.shadow.camera.far = 38;
+sun.shadow.bias = -0.00012;
 scene.add(sun);
 
 // A single physical mesh, 10 m by 10 m, with its top at y = 0.
@@ -36,7 +58,59 @@ const ground = new THREE.Mesh(
   [earth, earth, grass, earth, earth, earth],
 );
 ground.position.y = -0.4;
+ground.castShadow = true;
+ground.receiveShadow = true;
 scene.add(ground);
+
+// Shadow catcher: a transparent presentation surface, not another world tile.
+// It lets the one block actually occlude the directional light.
+const shadow = new THREE.Mesh(
+  new THREE.PlaneGeometry(19, 19),
+  new THREE.ShadowMaterial({ color: 0x344136, opacity: 0.26 }),
+);
+shadow.rotation.x = -Math.PI / 2;
+shadow.position.y = -0.92;
+shadow.receiveShadow = true;
+scene.add(shadow);
+
+// A thin, soft-edged fog veil is a visual representation of low-lying mist.
+// It has no collision, resources, weather logic, or gameplay state.
+const veil = new THREE.Mesh(
+  new THREE.PlaneGeometry(13, 13),
+  new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    fog: false,
+    uniforms: {
+      hazeColor: { value: new THREE.Color(ATMOSPHERE.mistColor) },
+      opacity: { value: ATMOSPHERE.groundMistOpacity },
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 hazeColor;
+      uniform float opacity;
+      varying vec2 vUv;
+      void main() {
+        vec2 p = (vUv - 0.5) * 2.0;
+        float edgeFade = 1.0 - smoothstep(0.47, 0.97, max(abs(p.x), abs(p.y)));
+        float wisp = 0.5 + 0.5 * sin(vUv.x * 18.0 + sin(vUv.y * 11.0) * 2.6)
+                                   * cos(vUv.y * 12.0 - vUv.x * 5.0);
+        gl_FragColor = vec4(hazeColor, opacity * edgeFade * (0.55 + 0.8 * wisp));
+      }
+    `,
+  }),
+);
+veil.rotation.x = -Math.PI / 2;
+veil.position.y = 0.14;
+veil.renderOrder = 1;
+scene.add(veil);
 
 const camera = new THREE.OrthographicCamera(-8, 8, 6, -6, 0.1, 120);
 const state = { yaw: Math.PI / 4, zoom: 1 };

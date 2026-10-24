@@ -1,6 +1,13 @@
 :root {
   color-scheme: light;
-  background: #bfc9c2;
+  /* Sky is a distant visual field, not a second patch of terrain. */
+  background: linear-gradient(
+    to bottom,
+    #aebfbe 0%,
+    #c5d2c9 40%,
+    #d3ddd3 70%,
+    #dce1d6 100%
+  );
   -webkit-tap-highlight-color: transparent;
 }
 * { box-sizing: border-box; }

@@ -1,23 +1,32 @@
-# Fieldwork — Ground Zero / Build 000
+# Fieldwork — Ground Zero / Build 003: The Misty Region
 
-A clean reset of Fieldwork3D. There is **one 10 × 10 meter ground slab**, shown
-through a fixed-elevation orthographic isometric camera. This is the complete scene.
+A tiny, deliberately causal diorama. The world contains **one 10 × 10-meter
+ground block**. It is surrounded by a softly lit sky and a static atmosphere.
 
-## Controls
-- **One-finger horizontal drag / mouse drag:** rotate horizontally around the block.
-- **Pinch / mouse wheel:** zoom in or out.
-- **Q / E or left / right arrows:** orbit on desktop.
-- **+ / -:** zoom on desktop.
+## What is true
 
-The camera retains its elevation throughout, and the slab is framed in both phone
-orientations at the default zoom. Rendering happens only when the view changes.
+1. **Ground**: one physical slab with a solid top at y = 0.
+2. **Light**: one directional source and a weak sky/ground fill.
+3. **Shadow**: the slab blocks directional light, casting a physically
+   aligned shadow onto an invisible presentation-only receiver below.
+4. **Sky**: a muted overcast sky gradient behind the orthographic scene.
+5. **Atmosphere**: distance-based exponential-squared haze and a static,
+   soft-edged low-lying mist veil, both visually observable.
 
-**Intentionally absent:** people, items, factions, combat, missions, repairs,
-navigation, autonomous behavior, HUDs, and world simulation.
+Sky, fog and mist are **rendering representations**, not yet a simulated
+gas, moving weather system, clouds, temperature, wind or time of day.
+The visual shadow receiver and transparent mist sheet are not simulated
+terrain tiles or world objects.
 
-The previous full prototype is preserved at
+## Camera
+- Touch/mouse drag horizontally to orbit (pitch stays fixed).
+- Pinch or mouse wheel to zoom.
+- Q/E or left/right to orbit; +/- to zoom on desktop.
+
+The renderer only draws when a view changes. There are no actors, props,
+factions, jobs, combat, inventory, UI panels, clocks or scripted encounters.
+
+Older Fieldwork3D builds remain available on
 [`archive/pre-ground-zero-2026-10-23`](../../tree/archive/pre-ground-zero-2026-10-23).
-Build 001 must be discussed and verified separately; no new atom is implied.
 
-Local development: `npm install && npm run dev`. Verification:
-`npm test && npm run build`.
+Local validation: `npm install && npm test && npm run build`.
