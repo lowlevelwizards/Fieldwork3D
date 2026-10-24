@@ -114,3 +114,28 @@ clouds. Real hydrology and saved volumes are unchanged.
 `tests/water-visual.test.mjs` asserts that the checkerboard shader cannot
 return by accident, that RGB + alpha derive from water depth, and that a
 scene-lit material is used.
+
+## Build 015.2 — Ground surface continuity
+
+This is a **render-only** refinement based on iPhone screenshots showing
+disconnected mottled patches around the ponds. Hydrology, drainage routes,
+material categories, physical soil moisture, reservoirs, and saves are intact.
+
+- A normalized, separable 5×5 Gaussian filter smooths the display moisture
+  field without writing to the 32×32 physical soil grid.
+- Every shared corner and cell-center terrain vertex bilinearly samples the
+  same continuous visual moisture field. Earlier, those vertex types used
+  different averaging rules, exposing individual triangular color fans.
+- Ground wetness now uses a restrained nonlinear blend (maximum 75% of
+  the wet palette instead of 94%).
+- Concavity shading is reduced to a subtle 0.96–1.01 multiplier instead of
+  the previous much darker 0.78 minimum.
+- Visual sand, clay, rock and organic transitions are broadened through
+  smoother color weights; the *categorical physical types* stay identical.
+- Pond shoreline alpha now reaches true zero at the terrain contact line,
+  removing an unnecessary always-visible overlay at the very edge.
+
+No water amounts, soil properties, or basin elevations were changed.
+The additional tests check continuity, saturation invariants, physics
+preservation, and the water mass budget. The target is a connected ground
+surface, not dark scattered stains.

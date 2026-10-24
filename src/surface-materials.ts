@@ -44,7 +44,7 @@ export function infiltrationBudgetLiters(x:number,z:number,hours:number):number 
 /**
  * Only the presentation is feathered. Physical cell kinds, capacities and
  * infiltration rates still come from surfaceAt() without interpolation.
- * A small 3x3 spatial filter prevents ruler-straight paint borders.
+ * Broad smoothstep transitions prevent ruler-straight paint borders.
  */
 const smoothWeight = (a:number,b:number,x:number):number => {
   const t=Math.max(0,Math.min(1,(x-a)/(b-a)));
@@ -54,14 +54,14 @@ export function visualMaterialWeights(x:number,z:number):Record<SurfaceKind,numb
   // Continuous visual geological transitions. The underlying categorical
   // surfaceAt() remains unchanged for soil and runoff calculations.
   const elevation=terrainHeight(x,z);
-  const clay=1-smoothWeight(-.105,-.028,elevation);
-  const sand=smoothWeight(1.07,2.28,x)*smoothWeight(-.30,1.20,z);
+  const clay=1-smoothWeight(-.14,.025,elevation);
+  const sand=smoothWeight(.65,2.75,x)*smoothWeight(-.65,1.55,z);
   const rock=Math.max(
-    (1-smoothWeight(-3.4,-2.12,x))*smoothWeight(-.36,.82,z),
-    smoothWeight(.041,.105,elevation),
+    (1-smoothWeight(-3.80,-1.85,x))*smoothWeight(-.70,1.02,z),
+    smoothWeight(.025,.122,elevation),
   );
-  const organic=smoothWeight(-1.36,-.22,x)*
-    (1-smoothWeight(1.04,2.17,x))*smoothWeight(-1.54,-.20,z);
+  const organic=smoothWeight(-1.65,-.03,x)*
+    (1-smoothWeight(.85,2.35,x))*smoothWeight(-1.70,-.04,z);
   // Preserve the categorical ordering of clay, sand, rock, organic, loam.
   let remaining=1;
   const weightedClay=remaining*clay; remaining-=weightedClay;

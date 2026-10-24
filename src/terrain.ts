@@ -1,5 +1,9 @@
 import * as THREE from 'three';
 import { SURFACE, visualMaterialWeights, type SurfaceKind } from './surface-materials';
+import {
+  smoothDisplayMoisture, sampleDisplayMoisture, reliefBrightness,
+  displayWetnessWeight,
+} from './terrain-display-model';
 import type { TerrainWater } from './hydrology';
 import {
   GRID_CELLS, WORLD_SIZE, WORLD_HALF, SUBSTRATE_BOTTOM,
@@ -86,7 +90,7 @@ export function makeTerrainGeometry(): THREE.BufferGeometry {
       +terrainHeight(x,z-delta)+terrainHeight(x,z+delta)
     )*.25;
     // Concave low spots have darker ambient contact, even before rain.
-    const relief=Math.max(.78,Math.min(1.04,1-(average-local)*2.9));
+    const relief=reliefBrightness(local,average);
     for(let c=0;c<3;c++){
       let a=0,b=0;
       const channel=c===0 ? 'r' : c===1 ? 'g' : 'b';
@@ -116,23 +120,19 @@ export function updateTerrainMoisture(geometry:THREE.BufferGeometry,water:Terrai
   const wet=geometry.userData.visualWet as Float32Array;
   const n=GRID_CELLS;
   const topVertices=(n+1)*(n+1)+n*n;
+  const physicalMoisture=new Float32Array(n*n);
+  for(let i=0;i<physicalMoisture.length;i++){
+    physicalMoisture[i]=water.soilFraction(i);
+  }
+  const displayMoisture=smoothDisplayMoisture(physicalMoisture,n);
+  const positions=geometry.getAttribute('position') as THREE.BufferAttribute;
   for(let i=0;i<topVertices;i++){
-    let fraction=0;
-    if(i>=(n+1)*(n+1)){
-      const index=i-(n+1)*(n+1);
-      fraction=water.soilFraction(index);
-    }else{
-      const row=Math.floor(i/(n+1)),col=i%(n+1);
-      let sum=0,count=0;
-      for(const dr of [-1,0])for(const dc of [-1,0]){
-        const rr=row+dr,cc=col+dc;
-        if(rr>=0&&rr<n&&cc>=0&&cc<n){
-          sum+=water.soilFraction(rr*n+cc);count++;
-        }
-      }
-      fraction=count>0?sum/count:0;
-    }
-    const t=Math.min(1,Math.max(0,fraction))*.94;
+    // Sample the exact same bilinear field at both shared grid corners
+    // and hydrology-cell centers. No distinct averaging rules or seams.
+    const fraction=sampleDisplayMoisture(
+      displayMoisture,positions.getX(i),positions.getZ(i),n,
+    );
+    const t=displayWetnessWeight(fraction);
     const k=i*3;
     attribute.setXYZ(i,
       dry[k]+(wet[k]-dry[k])*t,

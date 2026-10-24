@@ -18,6 +18,6 @@ export function waterAppearanceAtDepth(depthMeters:number):WaterAppearance {
   // Color deepens slowly; shoreline alpha fades entirely at the exact edge,
   // revealing the underlying ground that produced the physical catchment.
   const depthMix=smooth(.004,.09,depth);
-  const opacity=.05+.76*smooth(0,.028,depth);
+  const opacity=.77*smooth(0,.028,depth);
   return { depthMix, opacity };
 }
