@@ -23,8 +23,13 @@ const PORT=4178;
 const url=`http://127.0.0.1:${PORT}/river-lab.html`;
 const directory=resolve('river-lab-captures');
 await mkdir(directory,{recursive:true});
-const server=spawn('npm',['run','dev','--','--host','127.0.0.1','--port',String(PORT),'--strictPort'],{
-  stdio:'pipe',env:{...process.env,CI:'true'},
+// Start Vite directly, not through npm: killing npm leaves the Vite child
+// alive holding stdout/stderr pipes, and the CI job never terminates.
+const server=spawn(process.execPath,[
+  'node_modules/vite/bin/vite.js',
+  '--host','127.0.0.1','--port',String(PORT),'--strictPort',
+],{
+  stdio:'ignore',env:{...process.env,CI:'true'},
 });
 let browser;
 try{
@@ -74,4 +79,5 @@ try{
 }finally{
   if(browser)await browser.close();
   server.kill('SIGTERM');
+  // Child process stdio is ignored so no orphaned pipes keep Node alive.
 }
