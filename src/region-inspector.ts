@@ -80,7 +80,8 @@ export function mountRegionInspector():void{
     '<path d="'+river+'" fill="none" stroke="#92c1c4" stroke-width="4" stroke-linecap="round"/>'+
     sites+'<text x="245" y="12" text-anchor="end" font-size="9" fill="#f3f5e9">N ↑</text>'+
     '<text x="245" y="488" text-anchor="end" font-size="9" fill="#f3f5e9">S ↓</text></svg>'+
-    '<p>Ten planned settlement sites occupy valley terraces along two strategic road corridors. Snow and wetlands follow regional altitude and temperature. This is the strategic atlas, not a fully simulated 180 km battlefield.</p>'+\n    '<a href=\"./operation.html\" class=\"region-map-operation\">PLAY OPERATION 001 · WEATHER STATION</a>';
+    '<p>Ten planned settlement sites occupy valley terraces along two strategic road corridors. Snow and wetlands follow regional altitude and temperature. This is the strategic atlas, not a fully simulated 180 km battlefield.</p>'+
+    '<a href=\"./operation.html\" class=\"region-map-operation\">PLAY OPERATION 001 · WEATHER STATION</a>';
   toggle.addEventListener('click',()=>{
     panel.hidden=!panel.hidden;
     toggle.setAttribute('aria-expanded',String(!panel.hidden));
