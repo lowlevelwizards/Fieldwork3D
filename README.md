@@ -139,3 +139,28 @@ No water amounts, soil properties, or basin elevations were changed.
 The additional tests check continuity, saturation invariants, physics
 preservation, and the water mass budget. The target is a connected ground
 surface, not dark scattered stains.
+
+## Build 016 — Mud and Ground Trafficability
+
+Weather now affects tactical mobility. Soil saturation, physical material
+(clay, loam, sand, organic soil, rock), slope, water depth, and vehicle load
+determine bearing strength (kPa), traction, movement factor and rutting.
+Wet rock loses grip but never becomes mud. Saturated clay/organic soil
+restrict heavy wheeled loads much more than people on foot.
+
+Open **GROUND TEST** at the bottom of the viewport. Switch FOOT/VEHICLE
+and tap or drag to simulate passage. The temporary green→red ground overlay
+shows relative traversability. The probe readout reports moisture, bearing
+capacity, traction, two movement factors and rut depth. Heavy repeated
+passage produces visible, persistent tracks that recover gradually as soil
+dries. Turn inspection off to orbit the camera again. CLEAR TRACKS is
+separate from the existing CLEAR WATER button.
+
+Ruts live in a separate ground-condition state layer and persist locally.
+They affect future movement results but do not yet physically excavate the
+heightfield, alter watersheds, or change water volumes; that would be a
+separate erosion/hydrological geometry atom. No actors, vehicles, factions
+or arbitrary mud overlays were introduced.
+
+New tests verify mobility consequences, slow recovery, persistence,
+determinism, saturation contrasts and unchanged water conservation.
