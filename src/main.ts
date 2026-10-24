@@ -90,7 +90,7 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.12;
+renderer.toneMappingExposure = .96;
 renderer.setClearColor(0xffffff, 0);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -121,7 +121,7 @@ scene.add(sun);
 // A single physical mesh, 10 m by 10 m, with its top at y = 0.
 // Different top/side materials still represent ONE continuous block.
 const grass = new THREE.MeshStandardMaterial({
-  color: 0xffffff,vertexColors:true,roughness: 1,flatShading:true,
+  color: 0xffffff,vertexColors:true,roughness:1,flatShading:false,
 });
 const earth = new THREE.MeshStandardMaterial({
   color: 0x756959, roughness: 1, flatShading: true,
@@ -213,7 +213,7 @@ function applyEnvironment(e: EnvironmentState) {
     e.sunDirection.y * 25,
     e.sunDirection.z * 25,
   );
-  sun.intensity = e.sunlight * (1 - storm * .46);
+  sun.intensity = e.sunlight * .91 * (1 - storm * .46);
   sun.color.setHex(e.sunColor);
   skyFill.color.setHex(e.fillColor);
   skyFill.groundColor.setHex(e.groundFillColor);
@@ -225,7 +225,7 @@ function applyEnvironment(e: EnvironmentState) {
   shadowMaterial.opacity = e.shadowOpacity;
   const material = veil.material as THREE.ShaderMaterial;
   (material.uniforms.hazeColor.value as THREE.Color).setHex(e.mistColor);
-  material.uniforms.opacity.value = Math.min(.65, e.mistOpacity + storm * .10);
+  material.uniforms.opacity.value = Math.min(.55, e.mistOpacity * .85 + storm * .08);
   (material.uniforms.windShift.value as THREE.Vector2).set(drift.x*.07,drift.z*.18);
 
   clouds.update(e.hour, e, cloudCoverOverride, storm);

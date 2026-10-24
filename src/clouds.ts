@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { terrainHeight } from './terrain-model';
 import type { EnvironmentState } from './environment-conditions';
 import {
   CLOUD_COUNT, REGION_HALF_WIDTH, cloudAt, cloudCoverAtHour,
@@ -102,9 +103,12 @@ export class CloudField {
         clippingPlanes: regionMask,
         toneMapped: false,
       });
-      const shadow = new THREE.Mesh(new THREE.PlaneGeometry(3.75, 2.95), shadowMaterial);
+      // A subdivided decal follows the actual terrain rather than floating
+      // as a perfectly horizontal sheet above valleys and low slopes.
+      const shadow = new THREE.Mesh(new THREE.PlaneGeometry(3.75, 2.95, 12, 10), shadowMaterial);
       shadow.rotation.x = -Math.PI / 2;
       shadow.renderOrder = 1;
+      shadow.frustumCulled = false;
       shadow.scale.set(sample.scale, sample.scale, 1);
       scene.add(shadow);
       this.clouds.push({ visual, material, shadow, shadowMaterial });
@@ -114,10 +118,13 @@ export class CloudField {
   /** Every position, coverage and shadow derives from the same world hour. */
   update(hour: number, e: EnvironmentState, overrideCoverage: number | null, rainAmount = 0): number {
     const coverage = overrideCoverage ?? cloudCoverAtHour(hour);
-    const sunBlend = Math.min(1, e.sunlight / 1.6);
-    this.color.setHex(0x8296a6);
+    // Strong daylight previously bleached Lambert clouds nearly white.
+    // Keep modest warmth without letting overexposed whites erase the forms.
+    const sunBlend = Math.min(.28, e.sunlight / 8.0);
+    this.color.setHex(0x8b9faa);
     this.sunlit.setHex(e.sunColor);
     this.color.lerp(this.sunlit, sunBlend);
+    this.color.multiplyScalar(.86);
     // More cover means heavier, darker clouds; rainfall deepens the underbellies.
     const darkening = Math.min(.88,
       Math.max(0, (coverage - .49) / .51) * .58 + rainAmount * .30);
@@ -135,7 +142,18 @@ export class CloudField {
       cloud.material.color.copy(this.color);
 
       const groundPosition = cloudShadowAt(sampled, e.sunDirection);
-      cloud.shadow.position.set(groundPosition.x, .025 + index * .00004, groundPosition.z);
+      cloud.shadow.position.set(groundPosition.x, 0, groundPosition.z);
+      // PlaneGeometry is rotated -90 degrees: local (x,y,z) maps to
+      // world (x,z,-y). Therefore its local Z attribute is world height.
+      // Drape the shadow over the actual topography, with a tiny offset
+      // to prevent z fighting, instead of drawing across empty air.
+      const shadowPos=cloud.shadow.geometry.getAttribute('position') as THREE.BufferAttribute;
+      for(let vertex=0;vertex<shadowPos.count;vertex++){
+        const worldX=groundPosition.x+shadowPos.getX(vertex)*sampled.scale;
+        const worldZ=groundPosition.z-shadowPos.getY(vertex)*sampled.scale;
+        shadowPos.setZ(vertex,terrainHeight(worldX,worldZ)+.009+index*.000008);
+      }
+      shadowPos.needsUpdate=true;
       cloud.shadowMaterial.opacity =
         cloudShadowStrength(e.sunlight, e.sunDirection.y, presence) * (1 - rainAmount * .72);
       cloud.shadow.visible = cloud.shadowMaterial.opacity > .001 &&

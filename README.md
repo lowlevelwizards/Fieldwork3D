@@ -64,3 +64,33 @@ Historical reference:
 [LLW browser hydrology](https://github.com/lowlevelwizards/llw-browser/blob/main/hydrology.js).
 
 Validate: `npm install && npm test && npm run check && npm run build`.
+
+## Build 015 — Ground & Water Visual Integrity
+
+This build does not introduce a new physical process and does not modify
+the hydrology/catchment calculations, material storage capacities, or
+saved-water schema.
+
+- **Pond surfaces:** replaces the overbright Phong specular material with
+  controlled dark slate-colored water, depth-sensitive transparency at
+  terrain-clipped shores, small sunlight highlights, and understated
+  clock/rain-driven ripple detail. No reflection camera or expensive
+  planar reflection textures.
+- **Material transitions:** the five underlying physical material categories
+  stay unchanged. Visual colors are smoothly blended across neighboring
+  geological samples, calculated once and cached on the terrain geometry.
+- **Depression legibility:** shallow concave terrain regions receive a
+  small, geometry-derived ambient-darkness adjustment. Grass uses smooth
+  geometric normals instead of hard faceting; elevation is not exaggerated.
+- **Lighting:** less overexposed midday sunlight, slightly restrained haze,
+  and cloud colors that do not blow out to pure ivory at noon.
+- **Cloud shadows:** ground shadow decals follow real terrain elevation
+  instead of hovering across depressions.
+- **Preserved:** cloud/rain transparency ordering, mobile camera controls,
+  conserved water volume, local soil moisture, terrain-cell elevations,
+  real runoff paths, and persisted saves.
+
+The screenshots that motivated Build 015 showed white, opaque-looking pond
+discs and geometric sand/soil boundaries. These changes target those exact
+failure modes. Deployment passing does not substitute for a real iPhone
+visual check.

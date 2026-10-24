@@ -34,3 +34,15 @@ test('sun and wind increase evaporation while cloud shading reduces it',()=>{
   assert.ok(midday>clouded && clouded>midnight);
   for(let h=0;h<24;h+=.1)assert.ok(evaporationMmPerHour(h,.5)>0);
 });
+
+test('visual material blending is smooth near borders without changing physical kind',async()=>{
+  const { visualMaterialWeights } = await import('../src/surface-materials.ts');
+  const atBorder=visualMaterialWeights(1.70,1.0);
+  assert.ok(atBorder.sand>0 && atBorder.sand<1);
+  const total=Object.values(atBorder).reduce((a,b)=>a+b,0);
+  assert.ok(Math.abs(total-1)<1e-10);
+  // Physics stays discrete on either side of the exact same geological seam.
+  assert.notEqual(surfaceAt(1.69,1.0).kind,surfaceAt(1.71,1.0).kind);
+  assert.ok(Math.abs(visualMaterialWeights(1.69,1.0).sand-
+    visualMaterialWeights(1.71,1.0).sand)<.2);
+});
