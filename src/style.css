@@ -121,3 +121,13 @@ html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
   .water-status{font-size:9px;gap:5px;}
   .water-status button{width:42px;}
 }
+
+/* Long water budget becomes two readable rows on a narrow phone. */
+@media (max-width: 440px) {
+  .water-status { flex-wrap:wrap; }
+  .water-status span:nth-child(2) {
+    order:3; width:100%; margin-left:0;
+    font-size:10px; letter-spacing:.025em;
+  }
+  .water-status button { margin-left:auto; }
+}

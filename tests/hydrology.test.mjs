@@ -54,17 +54,22 @@ test('rain enters catchments, fills basins, and exports overflow without losing 
   assert.ok(water.totalDepositedLiters()>5);
   assert.ok(water.totalLiters()>0);
   assert.ok(water.exportedLiters()>0);
-  assert.ok(Math.abs(water.totalLiters()+water.exportedLiters()-water.totalDepositedLiters())<.00005);
+  assert.ok(water.totalSoilLiters()>0);
+  assert.ok(water.evaporatedLiters()>0);
+  assert.ok(Math.abs(water.massBalanceError())<.00005);
   for(const b of watershed.basins)assert.ok(water.basinLiters(b.id)<=b.capacityLiters+1e-8);
 });
-test('dryness cannot remove standing water, and time scrub does not simulate time',()=>{
+test('dry weather evaporates measured water, and paused scrubbing never changes state',()=>{
   const water=new TerrainWater(watershed);
   water.advance(5,3,1);
   const before=water.snapshot();
-  assert.equal(water.advance(6,3,0),0);
-  assert.ok(Math.abs(water.totalLiters()-before.basins.reduce((s,b)=>s+b.litres,0))<1e-8);
+  assert.equal(water.advance(10,3,0),0);
+  assert.equal(water.totalDepositedLiters(),before.totalDepositedLiters);
+  assert.ok(water.evaporatedLiters() > (before.evaporatedLiters ?? 0));
+  assert.ok(Math.abs(water.massBalanceError())<.00005);
+  const after=water.snapshot();
   assert.equal(water.advance(22,0,null),0);
-  assert.deepEqual(water.snapshot(),before);
+  assert.deepEqual(water.snapshot(),after);
 });
 test('saved basin water and exported volume persist using stable sink identifiers',()=>{
   const water=new TerrainWater(watershed);
@@ -86,4 +91,55 @@ test('same rain integrated in small vs large steps produces near-identical total
 test('the terrain topography grid has the expected exact 100 m2 footprint',()=>{
   assert.equal(watershed.cells.length,1024);
   assert.ok(Math.abs(CELL_AREA * watershed.cells.length-100)<1e-9);
+});
+
+test('dry soil intercepts rain before all of it becomes runoff',()=>{
+  const water=new TerrainWater(watershed);
+  const incoming=water.advance(5,1,1);
+  assert.ok(incoming>0);
+  assert.ok(water.totalSoilLiters()>0);
+  assert.ok(water.totalSoilLiters()<incoming);
+  assert.ok(Math.abs(water.massBalanceError())<.00005);
+});
+
+test('soil storage is bounded by material capacity, not a visual tint',()=>{
+  const water=new TerrainWater(watershed);
+  for(let t=0;t<24;t+=.2)water.advance(t,.2,1);
+  for(const cell of watershed.cells){
+    const volume=water.soilLiters(cell.index);
+    assert.ok(volume>=-1e-8 && volume<=water.soilCapacity(cell.index)+1e-8);
+    assert.ok(water.soilFraction(cell.index)>=-1e-8);
+    assert.ok(water.soilFraction(cell.index)<=1+1e-8);
+  }
+  assert.ok(Math.abs(water.massBalanceError())<.0001);
+});
+
+test('new soil and evaporation state survives reload; legacy water still loads',()=>{
+  const water=new TerrainWater(watershed);
+  water.advance(5,2,1);
+  const restored=new TerrainWater(buildWatershed(makeTerrainCells()),water.snapshot());
+  assert.deepEqual(restored.snapshot(),water.snapshot());
+  assert.ok(Math.abs(restored.massBalanceError())<.00005);
+
+  const previous=water.snapshot();
+  const legacy=new TerrainWater(watershed,{
+    basins:previous.basins,
+    exportedLiters:previous.exportedLiters,
+    totalDepositedLiters:previous.basins.reduce((sum,b)=>sum+b.litres,0)+previous.exportedLiters,
+  });
+  assert.equal(legacy.totalSoilLiters(),0);
+  assert.equal(legacy.evaporatedLiters(),0);
+  assert.ok(Math.abs(legacy.massBalanceError())<.00005);
+});
+
+test('CLEAR empties every reservoir and resets the water budget',()=>{
+  const water=new TerrainWater(watershed);
+  water.advance(7,2,1);
+  water.clear();
+  assert.equal(water.totalLiters(),0);
+  assert.equal(water.totalSoilLiters(),0);
+  assert.equal(water.evaporatedLiters(),0);
+  assert.equal(water.exportedLiters(),0);
+  assert.equal(water.totalDepositedLiters(),0);
+  assert.equal(water.massBalanceError(),0);
 });
