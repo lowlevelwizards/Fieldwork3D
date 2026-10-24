@@ -31,7 +31,9 @@ export const RAIN_WINDOWS: readonly RainWindow[] = [
 ];
 
 function windowStrength(hour: number, event: RainWindow): number {
-  const h = wrapHour(hour);
+  // Preserve exact interval endpoints before applying modulo: adding 24 and
+  // subtracting it again can nudge decimal hours by a floating-point ULP.
+  const h = hour >= 0 && hour < 24 ? hour : wrapHour(hour);
   if (h <= event.start || h >= event.end) return 0;
   if (h < event.peak) return smoothstep(event.start, event.peak, h) * event.strength;
   return (1 - smoothstep(event.peak, event.end, h)) * event.strength;
