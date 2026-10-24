@@ -16,10 +16,10 @@ export const SUBSTRATE_BOTTOM = -0.8;
 const clamp=(v:number,min=0,max=1)=>Math.max(min,Math.min(max,v));
 const smooth=(v:number)=>{const t=clamp(v);return t*t*(3-2*t);};
 
-/** Main course always runs north to south, gently wandering within valley. */
-export function valleyAxisX(z:number):number{
-  return .33*Math.sin(z*.48)+.16*Math.sin(z*.92+.6);
-}
+import { mainRiverCenterX, mainRiverIncisionAt } from './river-geography.ts';
+
+/** Terrain and water meshes use the exact same authored river corridor. */
+export const valleyAxisX=mainRiverCenterX;
 export type ChannelProfile={centerX:number;widthM:number;incisionM:number};
 /** Tributary centerlines converge with the main river, no disjoint ponds. */
 export function tributaryAt(z:number,side:'west'|'east'):ChannelProfile|null{
@@ -68,7 +68,7 @@ export function terrainHeight(x:number,z:number):number {
     *highSlope;
   // Floodplain deposition flattens the immediate valley floor.
   const floodplain=.018*smooth((distance-.72)/1.2);
-  const mainIncision=.082*Math.exp(-Math.pow(distance/.46,2));
+  const mainIncision=mainRiverIncisionAt(x,z);
   let tributaryIncision=0;
   for(const side of ['west','east'] as const){
     const arm=tributaryAt(z,side);
