@@ -1,22 +1,65 @@
 :root {
-  color-scheme: light;
-  /* Sky is a distant visual field, not a second patch of terrain. */
+  color-scheme: dark;
+  --sky-top: #172333;
+  --sky-middle: #28374a;
+  --sky-horizon: #465260;
+  --sky-bottom: #4d5860;
+  -webkit-tap-highlight-color: transparent;
   background: linear-gradient(
     to bottom,
-    #aebfbe 0%,
-    #c5d2c9 40%,
-    #d3ddd3 70%,
-    #dce1d6 100%
+    var(--sky-top) 0%,
+    var(--sky-middle) 45%,
+    var(--sky-horizon) 75%,
+    var(--sky-bottom) 100%
   );
-  -webkit-tap-highlight-color: transparent;
 }
 * { box-sizing: border-box; }
-html, body, #app {
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  margin: 0;
-  overflow: hidden;
+html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; }
+#app {
+  position: fixed; inset: 0; display: block; width: 100%; height: 100%;
+  touch-action: none;
 }
-html, body { overscroll-behavior: none; }
-#app { display: block; touch-action: none; }
+.time-inspector {
+  position: fixed;
+  z-index: 2;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(520px, calc(100% - 34px));
+  padding: 10px 14px;
+  border: 1px solid rgba(236, 240, 226, .20);
+  border-radius: 12px;
+  color: #e5e9dc;
+  background: rgba(20, 32, 37, .70);
+  box-shadow: 0 5px 20px rgba(12, 20, 23, .15);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+.time-inspector__row { display: flex; align-items: center; gap: 11px; }
+.time-inspector__phase { margin-left: auto; font-size: 10px; letter-spacing: .15em; color: #bac8c1; white-space: nowrap; }
+.time-inspector output { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 15px; letter-spacing: .03em; }
+.time-inspector button {
+  border: 1px solid rgba(239, 236, 213, .27);
+  border-radius: 7px;
+  background: rgba(225, 230, 217, .09);
+  color: #f2e8cf;
+  width: 36px; height: 34px; flex-shrink: 0;
+  padding: 0;
+  font-size: 16px;
+  cursor: pointer;
+}
+.time-inspector button:focus-visible, .time-inspector input:focus-visible {
+  outline: 2px solid #e7bd81;
+  outline-offset: 3px;
+}
+.time-inspector input[type="range"] {
+  width: 100%; margin: 8px 0 0; height: 22px;
+  accent-color: #dfc69a;
+  touch-action: pan-x;
+  cursor: pointer;
+}
+@media (max-height: 360px) {
+  .time-inspector { padding: 6px 12px; bottom: max(4px, env(safe-area-inset-bottom)); }
+  .time-inspector input[type="range"] { margin-top: 2px; }
+}

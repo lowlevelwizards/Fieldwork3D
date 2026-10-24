@@ -1,18 +1,31 @@
 import * as THREE from 'three';
 import { cameraOffset, clampZoom, viewSize } from './camera-model';
-import { ATMOSPHERE, DAYLIGHT } from './environment-conditions';
+import {
+  DAY_LENGTH_SECONDS, INITIAL_HOUR, advanceHour, clockLabel, cssColor,
+  environmentAtHour, type EnvironmentState,
+} from './environment-conditions';
 import './style.css';
 
-// Ground Zero: a slab, incident light, its cast shadow, and a misty sky.
- // No actors, objects, game events, or simulated weather cycle.
+// Ground Zero: one slab. The clock now drives light, sky, shadow, and mist.
+// No simulated weather, characters, faction logic, or gameplay objects.
 const mount = document.querySelector<HTMLCanvasElement>('#app');
 if (!mount) throw new Error('Missing ground viewport');
 const canvas: HTMLCanvasElement = mount;
+const timeToggle = document.querySelector<HTMLButtonElement>('#timeToggle');
+const timeScrub = document.querySelector<HTMLInputElement>('#timeScrub');
+const timeLabel = document.querySelector<HTMLOutputElement>('#timeLabel');
+const phaseLabel = document.querySelector<HTMLElement>('#phaseLabel');
+if (!timeToggle || !timeScrub || !timeLabel || !phaseLabel) {
+  throw new Error('Missing time-of-day inspector');
+}
+const controls = { toggle: timeToggle, scrub: timeScrub, clock: timeLabel, phase: phaseLabel };
 
+let hour = INITIAL_HOUR;
+let playing = true;
 const scene = new THREE.Scene();
-// Transparent clear reveals the sky gradient behind the canvas.
- // The world itself uses explicit distance-dependent atmospheric scattering.
-scene.fog = new THREE.FogExp2(ATMOSPHERE.hazeColor, ATMOSPHERE.hazeDensity);
+// Transparent rendering exposes the time-varying gradient beneath canvas.
+const initial = environmentAtHour(hour);
+scene.fog = new THREE.FogExp2(initial.hazeColor, initial.hazeDensity);
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -28,12 +41,17 @@ renderer.setClearColor(0xffffff, 0);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-// Sky fill and a directional light are separate, verifiable illumination.
-scene.add(new THREE.HemisphereLight(
-  DAYLIGHT.skyFillColor, DAYLIGHT.groundFillColor, DAYLIGHT.skyFillIntensity,
-));
-const sun = new THREE.DirectionalLight(DAYLIGHT.color, DAYLIGHT.intensity);
-sun.position.set(DAYLIGHT.direction.x, DAYLIGHT.direction.y, DAYLIGHT.direction.z);
+// Fill and directional sunlight are physically distinct illumination sources.
+const skyFill = new THREE.HemisphereLight(
+  initial.fillColor, initial.groundFillColor, initial.fillIntensity,
+);
+scene.add(skyFill);
+const sun = new THREE.DirectionalLight(initial.sunColor, initial.sunlight);
+sun.position.set(
+  initial.sunDirection.x * 25,
+  initial.sunDirection.y * 25,
+  initial.sunDirection.z * 25,
+);
 sun.castShadow = true;
 sun.shadow.mapSize.set(1024, 1024);
 sun.shadow.camera.left = -10;
@@ -64,9 +82,11 @@ scene.add(ground);
 
 // Shadow catcher: a transparent presentation surface, not another world tile.
 // It lets the one block actually occlude the directional light.
+const shadowMaterial = new THREE.ShadowMaterial({
+  color: 0x344136, opacity: initial.shadowOpacity,
+});
 const shadow = new THREE.Mesh(
-  new THREE.PlaneGeometry(19, 19),
-  new THREE.ShadowMaterial({ color: 0x344136, opacity: 0.26 }),
+  new THREE.PlaneGeometry(19, 19), shadowMaterial,
 );
 shadow.rotation.x = -Math.PI / 2;
 shadow.position.y = -0.92;
@@ -83,8 +103,8 @@ const veil = new THREE.Mesh(
     side: THREE.DoubleSide,
     fog: false,
     uniforms: {
-      hazeColor: { value: new THREE.Color(ATMOSPHERE.mistColor) },
-      opacity: { value: ATMOSPHERE.groundMistOpacity },
+      hazeColor: { value: new THREE.Color(initial.mistColor) },
+      opacity: { value: initial.mistOpacity },
     },
     vertexShader: `
       varying vec2 vUv;
@@ -111,6 +131,58 @@ veil.rotation.x = -Math.PI / 2;
 veil.position.y = 0.14;
 veil.renderOrder = 1;
 scene.add(veil);
+
+function applyEnvironment(e: EnvironmentState) {
+  // Visual output is entirely derived from the single authoritative clock.
+  sun.position.set(
+    e.sunDirection.x * 25,
+    e.sunDirection.y * 25,
+    e.sunDirection.z * 25,
+  );
+  sun.intensity = e.sunlight;
+  sun.color.setHex(e.sunColor);
+  skyFill.color.setHex(e.fillColor);
+  skyFill.groundColor.setHex(e.groundFillColor);
+  skyFill.intensity = e.fillIntensity;
+  if (scene.fog instanceof THREE.FogExp2) {
+    scene.fog.color.setHex(e.hazeColor);
+    scene.fog.density = e.hazeDensity;
+  }
+  shadowMaterial.opacity = e.shadowOpacity;
+  const material = veil.material as THREE.ShaderMaterial;
+  (material.uniforms.hazeColor.value as THREE.Color).setHex(e.mistColor);
+  material.uniforms.opacity.value = e.mistOpacity;
+
+  const sky = document.documentElement.style;
+  sky.setProperty('--sky-top', cssColor(e.skyTop));
+  sky.setProperty('--sky-middle', cssColor(e.skyMiddle));
+  sky.setProperty('--sky-horizon', cssColor(e.skyHorizon));
+  sky.setProperty('--sky-bottom', cssColor(e.skyBottom));
+  controls.clock.value = clockLabel(e.hour);
+  controls.clock.textContent = clockLabel(e.hour);
+  controls.phase.textContent = e.phase.toUpperCase();
+  controls.scrub.value = String(Math.round(e.hour * 60));
+}
+
+function updatePlayButton() {
+  controls.toggle.textContent = playing ? 'Ⅱ' : '▶';
+  controls.toggle.setAttribute('aria-label', playing ? 'Pause time' : 'Resume time');
+  controls.toggle.setAttribute('aria-pressed', String(!playing));
+  controls.toggle.title = playing ? 'Pause' : 'Play';
+}
+
+controls.toggle.addEventListener('click', () => {
+  playing = !playing;
+  updatePlayButton();
+});
+controls.scrub.addEventListener('input', () => {
+  // Manual inspection pauses the clock rather than fighting the user's thumb.
+  playing = false;
+  updatePlayButton();
+  hour = Number(controls.scrub.value) / 60;
+  applyEnvironment(environmentAtHour(hour));
+  render();
+});
 
 const camera = new THREE.OrthographicCamera(-8, 8, 6, -6, 0.1, 120);
 const state = { yaw: Math.PI / 4, zoom: 1 };
@@ -218,4 +290,28 @@ window.addEventListener('keydown', (event) => {
 window.addEventListener('resize', resize);
 window.visualViewport?.addEventListener('resize', resize);
 
+// Simulated time advances only with elapsed wall-clock time while playing.
+// Cap the update rate for battery life, but retain responsive camera input.
+applyEnvironment(initial);
+updatePlayButton();
 resize();
+
+let lastFrame = performance.now();
+let accumulated = 0;
+function tick(now: number) {
+  const dt = Math.max(0, Math.min((now - lastFrame) / 1000, 0.2));
+  lastFrame = now;
+  if (playing) {
+    accumulated += dt;
+    if (accumulated >= 1 / 30) {
+      hour = advanceHour(hour, accumulated, DAY_LENGTH_SECONDS);
+      accumulated = 0;
+      applyEnvironment(environmentAtHour(hour));
+      render();
+    }
+  } else {
+    accumulated = 0;
+  }
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);

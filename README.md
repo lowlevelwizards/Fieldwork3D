@@ -1,32 +1,42 @@
-# Fieldwork — Ground Zero / Build 003: The Misty Region
+# Fieldwork — Ground Zero / Build 004: Time of Day
 
-A tiny, deliberately causal diorama. The world contains **one 10 × 10-meter
-ground block**. It is surrounded by a softly lit sky and a static atmosphere.
+One 10 × 10 m slab, an orthographic camera, and a deterministic 24-hour
+environmental cycle. We have **not** introduced people, game objects, weather
+fronts, schedules, or gameplay logic.
 
-## What is true
+## One cause, several observable consequences
 
-1. **Ground**: one physical slab with a solid top at y = 0.
-2. **Light**: one directional source and a weak sky/ground fill.
-3. **Shadow**: the slab blocks directional light, casting a physically
-   aligned shadow onto an invisible presentation-only receiver below.
-4. **Sky**: a muted overcast sky gradient behind the orthographic scene.
-5. **Atmosphere**: distance-based exponential-squared haze and a static,
-   soft-edged low-lying mist veil, both visually observable.
+One authoritative floating-point clock is measured in hours (0–24).
+Every frame, the world samples time-dependent environmental conditions:
 
-Sky, fog and mist are **rendering representations**, not yet a simulated
-gas, moving weather system, clouds, temperature, wind or time of day.
-The visual shadow receiver and transparent mist sheet are not simulated
-terrain tiles or world objects.
+- Sun direction and elevation follow a continuous arc (no direct sun at night).
+- The directional light changes color and strength from sunrise through dusk.
+- The hemisphere fill shifts between cool moonless nights and warm days.
+- The sky gradient interpolates continuously from midnight through dawn,
+  midday, sunset, blue hour, and back to midnight.
+- Fog color/density and low-lying mist opacity increase toward dawn and
+  evening, reducing toward midday.
+- The slab's physically cast shadow follows the sun and fades at night.
 
-## Camera
-- Touch/mouse drag horizontally to orbit (pitch stays fixed).
-- Pinch or mouse wheel to zoom.
-- Q/E or left/right to orbit; +/- to zoom on desktop.
+All values are derived from `src/environment-conditions.ts` without
+separate independent clocks. The palette has authored keyframes with smooth
+cyclic interpolation; colors and intensities do not snap at midnight.
 
-The renderer only draws when a view changes. There are no actors, props,
-factions, jobs, combat, inventory, UI panels, clocks or scripted encounters.
+This remains a **visual model** of atmosphere: no meteorology, temperature,
+actual moving air, moonlight physics or other new gameplay systems.
 
-Older Fieldwork3D builds remain available on
+## How to verify
+
+- A full simulated day takes **4 real minutes** by default, starting at 05:15.
+- **Pause/resume** using the small control at the bottom.
+- **Drag the timeline** to inspect any time; dragging pauses playback.
+- One-finger horizontal drag rotates the camera without changing elevation.
+- Pinch or scroll to zoom; Q/E and +/- are desktop alternatives.
+
+Check pre-dawn mist, warm low-angle sunrise, clear midday, orange sunset,
+and dark cool night. Play/pause and scrub should not alter ground geometry.
+
+The previous full prototype is archived on
 [`archive/pre-ground-zero-2026-10-23`](../../tree/archive/pre-ground-zero-2026-10-23).
 
 Local validation: `npm install && npm test && npm run build`.

@@ -7,7 +7,15 @@
   <title>Fieldwork — Ground Zero</title>
 </head>
 <body>
-  <canvas id="app" aria-label="Single isometric ground block; drag horizontally to rotate and pinch or scroll to zoom"></canvas>
+  <canvas id="app" aria-label="Single isometric ground block with changing daylight and mist; drag to orbit and pinch to zoom"></canvas>
+  <section class="time-inspector" aria-label="Time of day">
+    <div class="time-inspector__row">
+      <button type="button" id="timeToggle" aria-label="Pause time" aria-pressed="false">Ⅱ</button>
+      <output id="timeLabel" for="timeScrub">05:15</output>
+      <span class="time-inspector__phase" id="phaseLabel">PRE-DAWN</span>
+    </div>
+    <input type="range" id="timeScrub" aria-label="Set time of day" min="0" max="1440" step="1" value="315" />
+  </section>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
