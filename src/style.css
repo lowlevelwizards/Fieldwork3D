@@ -63,3 +63,14 @@ html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
   .time-inspector { padding: 6px 12px; bottom: max(4px, env(safe-area-inset-bottom)); }
   .time-inspector input[type="range"] { margin-top: 2px; }
 }
+
+/* Build 005: coverage inspection only. */
+.cloud-inspector { display:flex; align-items:center; gap:10px; margin-top:4px;
+  padding-top:5px; border-top:1px solid rgba(236,240,226,.14); }
+.cloud-inspector label { width:91px; flex-shrink:0; white-space:nowrap;
+  font-size:10px; letter-spacing:.07em; color:#d6dcd4; }
+.cloud-inspector input[type="range"] { flex:1; min-width:0; width:auto; margin:0; }
+.cloud-inspector button { min-width:44px; width:auto; height:28px;
+  padding:0 7px; font-size:10px; letter-spacing:.07em;
+  background:rgba(225,230,217,.15); }
+.cloud-inspector button.manual { background:transparent; color:#aab9af; }

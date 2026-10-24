@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
   <meta name="theme-color" content="#c5d2c9" />
-  <title>Fieldwork — Ground Zero</title>
+  <title>Fieldwork — Ground Zero · Clouds</title>
 </head>
 <body>
   <canvas id="app" aria-label="Single isometric ground block with changing daylight and mist; drag to orbit and pinch to zoom"></canvas>
@@ -15,6 +15,11 @@
       <span class="time-inspector__phase" id="phaseLabel">PRE-DAWN</span>
     </div>
     <input type="range" id="timeScrub" aria-label="Set time of day" min="0" max="1440" step="1" value="315" />
+    <div class="cloud-inspector">
+      <label id="cloudCoverLabel" for="cloudCover">CLOUDS 70%</label>
+      <input type="range" id="cloudCover" aria-label="Cloud coverage percentage" min="0" max="100" step="1" value="70" />
+      <button type="button" id="cloudAuto" aria-label="Restore automatic cloud coverage" aria-pressed="true">AUTO</button>
+    </div>
   </section>
   <script type="module" src="/src/main.ts"></script>
 </body>

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { cameraOffset, clampZoom, viewSize } from './camera-model';
+import { CloudField } from './clouds';
 import {
   DAY_LENGTH_SECONDS, INITIAL_HOUR, advanceHour, clockLabel, cssColor,
   environmentAtHour, type EnvironmentState,
@@ -15,13 +16,19 @@ const timeToggle = document.querySelector<HTMLButtonElement>('#timeToggle');
 const timeScrub = document.querySelector<HTMLInputElement>('#timeScrub');
 const timeLabel = document.querySelector<HTMLOutputElement>('#timeLabel');
 const phaseLabel = document.querySelector<HTMLElement>('#phaseLabel');
-if (!timeToggle || !timeScrub || !timeLabel || !phaseLabel) {
+const cloudCoverInput = document.querySelector<HTMLInputElement>('#cloudCover');
+const cloudCoverLabel = document.querySelector<HTMLElement>('#cloudCoverLabel');
+const cloudAuto = document.querySelector<HTMLButtonElement>('#cloudAuto');
+if (!timeToggle || !timeScrub || !timeLabel || !phaseLabel || !cloudCoverInput || !cloudCoverLabel || !cloudAuto) {
   throw new Error('Missing time-of-day inspector');
 }
-const controls = { toggle: timeToggle, scrub: timeScrub, clock: timeLabel, phase: phaseLabel };
+const controls = { toggle: timeToggle, scrub: timeScrub, clock: timeLabel, phase: phaseLabel,
+  cloudCover: cloudCoverInput, cloudLabel: cloudCoverLabel, cloudAuto };
 
 let hour = INITIAL_HOUR;
 let playing = true;
+// Null restores natural cover. An override is inspection only, not another clock.
+let cloudCoverOverride: number | null = null;
 const scene = new THREE.Scene();
 // Transparent rendering exposes the time-varying gradient beneath canvas.
 const initial = environmentAtHour(hour);
@@ -40,6 +47,7 @@ renderer.toneMappingExposure = 1.12;
 renderer.setClearColor(0xffffff, 0);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.localClippingEnabled = true;
 
 // Fill and directional sunlight are physically distinct illumination sources.
 const skyFill = new THREE.HemisphereLight(
@@ -132,6 +140,9 @@ veil.position.y = 0.14;
 veil.renderOrder = 1;
 scene.add(veil);
 
+// All clouds and their projected shadows are clipped to the original slab.
+const clouds = new CloudField(scene);
+
 function applyEnvironment(e: EnvironmentState) {
   // Visual output is entirely derived from the single authoritative clock.
   sun.position.set(
@@ -152,6 +163,12 @@ function applyEnvironment(e: EnvironmentState) {
   const material = veil.material as THREE.ShaderMaterial;
   (material.uniforms.hazeColor.value as THREE.Color).setHex(e.mistColor);
   material.uniforms.opacity.value = e.mistOpacity;
+
+  const cover = clouds.update(e.hour, e, cloudCoverOverride);
+  controls.cloudCover.value = String(Math.round(cover * 100));
+  controls.cloudLabel.textContent = 'CLOUDS ' + Math.round(cover * 100) + '%';
+  controls.cloudAuto.setAttribute('aria-pressed', String(cloudCoverOverride === null));
+  controls.cloudAuto.classList.toggle('manual', cloudCoverOverride !== null);
 
   const sky = document.documentElement.style;
   sky.setProperty('--sky-top', cssColor(e.skyTop));
@@ -180,6 +197,17 @@ controls.scrub.addEventListener('input', () => {
   playing = false;
   updatePlayButton();
   hour = Number(controls.scrub.value) / 60;
+  applyEnvironment(environmentAtHour(hour));
+  render();
+});
+
+controls.cloudCover.addEventListener('input', () => {
+  cloudCoverOverride = Number(controls.cloudCover.value) / 100;
+  applyEnvironment(environmentAtHour(hour));
+  render();
+});
+controls.cloudAuto.addEventListener('click', () => {
+  cloudCoverOverride = null;
   applyEnvironment(environmentAtHour(hour));
   render();
 });
