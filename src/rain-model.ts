@@ -6,6 +6,30 @@
 import { cloudCoverAtHour } from './cloud-model.ts';
 import { wrapHour } from './environment-conditions.ts';
 
+// Rain must originate BELOW the lowest block in the cloud formation.
+// In clouds.ts the lowest lobe bottom is y = -0.195 * cloud.scale.
+export const CLOUD_UNDERSIDE_OFFSET = 0.195;
+export const RAIN_CEILING_GAP = 0.08;
+export const RAIN_STREAK_LENGTH = 0.21;
+
+export function rainEmissionCeiling(cloud: { y: number; scale: number }): number {
+  return Math.max(0.05, cloud.y - CLOUD_UNDERSIDE_OFFSET * cloud.scale - RAIN_CEILING_GAP);
+}
+
+/**
+ * A drop starts immediately under a cloud and travels DOWN toward y=0.
+ * The higher trailing end of its streak follows the lower leading end.
+ * Values outside [0, ceiling] are clipped by the rendering shader.
+ */
+export function rainStreakHeight(
+  progress: number,
+  trailingEnd: 0 | 1,
+  ceiling: number,
+): number {
+  return ceiling - progress * (ceiling + RAIN_STREAK_LENGTH) +
+    trailingEnd * RAIN_STREAK_LENGTH;
+}
+
 export type RainPhase = 'dry' | 'drizzle' | 'rain' | 'downpour';
 export type RainState = {
   amount: number;

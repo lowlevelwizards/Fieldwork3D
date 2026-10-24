@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { CLOUD_COUNT, REGION_HALF_WIDTH, cloudAt, cloudPresence } from './cloud-model';
-import type { RainState } from './rain-model';
+import {
+  RAIN_STREAK_LENGTH, rainEmissionCeiling, type RainState,
+} from './rain-model';
 
 /**
  * Light-weight, clock-driven rain rendering.
@@ -65,6 +67,8 @@ export class RainField {
         toneMapped: false,
         uniforms: {
           hour: { value: 0 },
+          ceiling: { value: 3.4 },
+          streakLength: { value: RAIN_STREAK_LENGTH },
           alpha: { value: 0 },
           color: { value: new THREE.Color(0xa8bec6) },
         },
@@ -72,12 +76,22 @@ export class RainField {
           attribute float aSeed;
           attribute float aEnd;
           uniform float hour;
+          uniform float ceiling;
+          uniform float streakLength;
           varying vec3 vWorld;
+          varying float vRawHeight;
           varying float vFlicker;
           void main() {
+            // phase rises with time, so Y MUST fall with time.
             float phase = fract(aSeed + hour * 12.0);
             vec3 p = position;
-            p.y = max(0.05, .10 + phase * 3.22 - aEnd * .21);
+            // Lower leading tip, higher trailing tip. Never start above
+            // the actual underside of the parent cloud.
+            float rawHeight = ceiling
+              - phase * (ceiling + streakLength)
+              + aEnd * streakLength;
+            vRawHeight = rawHeight;
+            p.y = clamp(rawHeight, 0.025, ceiling);
             p.x += aEnd * .095;
             vec4 world = modelMatrix * vec4(p, 1.0);
             vWorld = world.xyz;
@@ -88,9 +102,14 @@ export class RainField {
         fragmentShader: `
           uniform float alpha;
           uniform vec3 color;
+          uniform float ceiling;
           varying vec3 vWorld;
+          varying float vRawHeight;
           varying float vFlicker;
           void main() {
+            // Clip at both the ground and the cloud underside, including
+            // the upper end of a streak while it first enters the curtain.
+            if (vRawHeight < 0.025 || vRawHeight > ceiling) discard;
             // World-space rain lives only inside the original square region.
             if (abs(vWorld.x) > 5.0 || abs(vWorld.z) > 5.0) discard;
             gl_FragColor = vec4(color, alpha * vFlicker);
@@ -171,6 +190,7 @@ export class RainField {
         && Math.abs(sampled.x) < REGION_HALF_WIDTH + 3.5
         && Math.abs(sampled.z) < REGION_HALF_WIDTH + 3.5;
       curtain.material.uniforms.hour.value = hour;
+      curtain.material.uniforms.ceiling.value = rainEmissionCeiling(sampled);
       curtain.material.uniforms.alpha.value = Math.min(.65, strength * .72);
 
       for (let j = 0; j < IMPACTS_PER_CLOUD; j++) {
