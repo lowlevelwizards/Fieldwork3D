@@ -24,7 +24,7 @@ try{
   const page=await browser.newPage({
     viewport:{width:390,height:844},deviceScaleFactor:1,
   });
-  const errors:string[]=[];
+  const errors=[];
   page.on('pageerror',e=>errors.push(String(e)));
   await page.goto('http://127.0.0.1:4179/operation.html',{
     waitUntil:'domcontentloaded',timeout:20000,
