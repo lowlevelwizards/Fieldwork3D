@@ -4,7 +4,7 @@ import { terrainHeight } from './terrain-model';
 import { VegetationField } from './vegetation-field';
 import { TerrainWater } from './hydrology';
 import { newOperation,orderMove,setPosture,stepOperation,STRUCTURES,
-  type Operation, type Actor } from './operation-model';
+  type Operation } from './operation-model';
 
 const canvas=document.querySelector<HTMLCanvasElement>('#operationCanvas');
 const status=document.querySelector<HTMLElement>('#status');
