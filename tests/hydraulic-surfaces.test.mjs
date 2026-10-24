@@ -135,7 +135,9 @@ test('the production scene uses one volume-driven water surface, not three overl
   assert.ok(src.includes('selectVisibleRiverLinks('));
   assert.ok(src.includes('water.channelWettedWidthAtCell('));
   assert.ok(src.includes('water.surfaceLevel('));
-  assert.ok(src.includes('floodDisplayDepth('));
+  assert.ok(src.includes('clipWaterTriangle('));
+  assert.ok(src.includes('water.floodLiters('));
+  assert.ok(!src.includes('floodDisplayDepth('));
   assert.ok(src.includes('new THREE.MeshStandardMaterial('));
   assert.ok(src.includes('Float32BufferAttribute(rgba,4)'));
   assert.ok(!src.includes('Math.random('));
