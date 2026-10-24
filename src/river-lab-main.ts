@@ -20,7 +20,7 @@ let debug=params.get('debug')==='1';
 let overhead=params.get('view')==='overhead';
 const canvas=document.querySelector<HTMLCanvasElement>('#riverCanvas');
 const status=document.querySelector<HTMLElement>('#status');
-const debugButton=document.querySelector<HTMLButtonElement>('#debug');
+const debugButton=document.querySelector<HTMLButtonElement>('#debug')!;
 if(!canvas||!status||!debugButton)throw new Error('River lab missing UI');
 const output=status;
 const canvasView=canvas;
