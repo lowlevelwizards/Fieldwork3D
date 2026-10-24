@@ -1,14 +1,17 @@
 import * as THREE from 'three';
 import { cameraOffset, clampZoom, viewSize } from './camera-model';
 import { CloudField } from './clouds';
+import { cloudCoverAtHour } from './cloud-model';
+import { RainField } from './rain';
+import { rainAtHour } from './rain-model';
 import {
   DAY_LENGTH_SECONDS, INITIAL_HOUR, advanceHour, clockLabel, cssColor,
   environmentAtHour, type EnvironmentState,
 } from './environment-conditions';
 import './style.css';
 
-// Ground Zero: one slab. The clock now drives light, sky, shadow, and mist.
-// No simulated weather, characters, faction logic, or gameplay objects.
+// Ground Zero: one slab. The clock drives light, clouds, rainfall, mist and damp ground.
+// No gameplay characters, navigation, economy or faction logic.
 const mount = document.querySelector<HTMLCanvasElement>('#app');
 if (!mount) throw new Error('Missing ground viewport');
 const canvas: HTMLCanvasElement = mount;
@@ -19,11 +22,14 @@ const phaseLabel = document.querySelector<HTMLElement>('#phaseLabel');
 const cloudCoverInput = document.querySelector<HTMLInputElement>('#cloudCover');
 const cloudCoverLabel = document.querySelector<HTMLElement>('#cloudCoverLabel');
 const cloudAuto = document.querySelector<HTMLButtonElement>('#cloudAuto');
-if (!timeToggle || !timeScrub || !timeLabel || !phaseLabel || !cloudCoverInput || !cloudCoverLabel || !cloudAuto) {
+const rainLabel = document.querySelector<HTMLElement>('#rainLabel');
+if (!timeToggle || !timeScrub || !timeLabel || !phaseLabel ||
+    !cloudCoverInput || !cloudCoverLabel || !cloudAuto || !rainLabel) {
   throw new Error('Missing time-of-day inspector');
 }
 const controls = { toggle: timeToggle, scrub: timeScrub, clock: timeLabel, phase: phaseLabel,
-  cloudCover: cloudCoverInput, cloudLabel: cloudCoverLabel, cloudAuto };
+  cloudCover: cloudCoverInput, cloudLabel: cloudCoverLabel, cloudAuto,
+  rainLabel };
 
 let hour = INITIAL_HOUR;
 let playing = true;
@@ -87,6 +93,10 @@ ground.position.y = -0.4;
 ground.castShadow = true;
 ground.receiveShadow = true;
 scene.add(ground);
+const dryGrass = grass.color.clone();
+const wetGrass = new THREE.Color(0x3d5e53);
+const dryEarth = earth.color.clone();
+const wetEarth = new THREE.Color(0x484641);
 
 // Shadow catcher: a transparent presentation surface, not another world tile.
 // It lets the one block actually occlude the directional light.
@@ -142,35 +152,49 @@ scene.add(veil);
 
 // All clouds and their projected shadows are clipped to the original slab.
 const clouds = new CloudField(scene);
+const rainField = new RainField(scene);
+const rainFogTone = new THREE.Color(0x91a0a6);
 
 function applyEnvironment(e: EnvironmentState) {
+  const cover = cloudCoverOverride ?? cloudCoverAtHour(e.hour);
+  const rain = rainAtHour(e.hour, cover, cloudCoverOverride !== null);
+  const storm = rain.amount;
+
+  // A heavy rain layer blocks/directly scatters light, adding soft haze.
+  grass.color.copy(dryGrass).lerp(wetGrass, rain.wetness * .82);
+  earth.color.copy(dryEarth).lerp(wetEarth, rain.wetness * .57);
   // Visual output is entirely derived from the single authoritative clock.
   sun.position.set(
     e.sunDirection.x * 25,
     e.sunDirection.y * 25,
     e.sunDirection.z * 25,
   );
-  sun.intensity = e.sunlight;
+  sun.intensity = e.sunlight * (1 - storm * .46);
   sun.color.setHex(e.sunColor);
   skyFill.color.setHex(e.fillColor);
   skyFill.groundColor.setHex(e.groundFillColor);
-  skyFill.intensity = e.fillIntensity;
+  skyFill.intensity = e.fillIntensity * (1 - storm * .20);
   if (scene.fog instanceof THREE.FogExp2) {
-    scene.fog.color.setHex(e.hazeColor);
-    scene.fog.density = e.hazeDensity;
+    scene.fog.color.setHex(e.hazeColor).lerp(rainFogTone, storm * .26);
+    scene.fog.density = e.hazeDensity + storm * .012;
   }
   shadowMaterial.opacity = e.shadowOpacity;
   const material = veil.material as THREE.ShaderMaterial;
   (material.uniforms.hazeColor.value as THREE.Color).setHex(e.mistColor);
-  material.uniforms.opacity.value = e.mistOpacity;
+  material.uniforms.opacity.value = Math.min(.65, e.mistOpacity + storm * .10);
 
-  const cover = clouds.update(e.hour, e, cloudCoverOverride);
+  clouds.update(e.hour, e, cloudCoverOverride, storm);
+  rainField.update(e.hour, rain);
+  controls.rainLabel.textContent =
+    'RAIN ' + Math.round(storm * 100) + '% · ' + rain.phase.toUpperCase();
+  controls.rainLabel.dataset.phase = rain.phase;
   controls.cloudCover.value = String(Math.round(cover * 100));
   controls.cloudLabel.textContent = 'CLOUDS ' + Math.round(cover * 100) + '%';
   controls.cloudAuto.setAttribute('aria-pressed', String(cloudCoverOverride === null));
   controls.cloudAuto.classList.toggle('manual', cloudCoverOverride !== null);
 
   const sky = document.documentElement.style;
+  sky.setProperty('--storm-dim', String(storm * .25));
   sky.setProperty('--sky-top', cssColor(e.skyTop));
   sky.setProperty('--sky-middle', cssColor(e.skyMiddle));
   sky.setProperty('--sky-horizon', cssColor(e.skyHorizon));

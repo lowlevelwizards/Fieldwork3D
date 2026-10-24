@@ -1,40 +1,47 @@
-# Fieldwork — Ground Zero / Build 005: Moving Clouds
+# Fieldwork — Ground Zero / Build 006: Rain
 
-The diorama still has **one 10 × 10 meter physical ground slab**.
-Simple Minecraft-like clouds now drift across its sky, changing in
-coverage through the existing day/night clock.
+The 10 × 10 metre diorama now experiences rain. No new terrain or actors
+have been added. Rain follows the clouds and the same reversible world clock.
 
-## Atomic truths and consequences
+## Cause and effect
 
-- Cloud groups travel horizontally. Their positions are deterministic
-  functions of the *existing* world clock. Time pause also pauses clouds.
-- Cloud coverage increases near dawn and evening and clears at midday.
-- Clouds fade in/out with coverage without sudden spawning.
-- Their blocky bodies are clipped by four world-space planes at the
-  region's exact ±5 metre boundaries.
-- Blurred ground shadows project away from the light, following the same
-  clouds and clipped to the region. They fade out at low sun angles and
-  disappear at night.
-- Their colors follow changing daylight and twilight illumination.
+1. **Cloud cover** controls the amount of moisture available: low coverage
+   is dry, increasing coverage produces drizzle, rain, or a downpour.
+2. **Authored rain fronts** determine varying onset, duration, intensity
+   and taper-off times. They are deterministic functions of world hour,
+   not a second weather clock or a random timer.
+3. **Cloud undersides darken** with rising cover and rain, and direct
+   sunlight dims in heavy precipitation.
+4. **Raindrops** form thin diagonal falling streaks directly under the
+   moving blocky clouds. They wrap from cloud height to the ground.
+   Both curtains and small ground-hit flecks are region-clipped.
+5. **Ground wetness** darkens the existing grass and earth after showers.
+   It lingers and recedes, computed from recent rainfall, so scrubbing
+   time always reproduces the same ground condition.
+6. **Atmosphere** becomes slightly hazier during heavy rainfall. Rain
+   does not create pools, runoff, soil moisture gameplay or erosion yet.
 
-This is a minimal visual model of clouds and moving shadow, not simulated
-vapor, wind fluid dynamics, storms, or gameplay visibility modifiers. The
-ground shadows are efficient soft projected decals, not ray-traced shadows.
+All visuals are designed to be lightweight on mobile: reused geometry,
+GPU shader animation for raindrops and a limited set of inexpensive
+surface-hit points.
 
-## Controls and verification
+## How to inspect
 
-- A 24-hour cycle lasts **4 real minutes**.
-- Play/pause time or scrub using the existing bottom timeline.
-- **CLOUDS** slider: override coverage from 0–100%.
-- **AUTO**: resume the natural day/night coverage pattern.
-- One-finger/mouse horizontal drag: orbit; pinch/wheel: zoom.
+- A full 24-hour cycle runs in four real minutes.
+- Pause/play or scrub the day/night time slider; paused rain freezes.
+- The **CLOUDS** slider overrides coverage. At ~60% it is mostly dry;
+  around 70-85% drizzle/rain becomes possible; near 100% it can pour.
+- **AUTO** restores cloud cover and naturally varying rainy intervals.
+- The **PRECIPITATION** readout shows current rain intensity and type.
+- Orbit and zoom as before.
 
-Inspect sunrise at 06:30, midday at 12:30, sunset at 18:30 and night
-at 00:00. Cloud shadows should be strongest under the midday sun, and
-both cloud geometry and shadows stop at the slab edge.
+Rain fronts occur at different hours, with strongest sustained showers
+around the misty early morning and another in the evening. During
+daylight rain the sun and cloud shadows dim; at night, rain remains
+visible in the cool ambient light.
 
-No characters, gameplay, world economy, AI, missions or props were added.
-Earlier builds are preserved on
+This is still a compact environmental experiment, not full simulated
+meteorology. Previous game prototype: 
 [`archive/pre-ground-zero-2026-10-23`](../../tree/archive/pre-ground-zero-2026-10-23).
 
-Local checks: `npm install && npm test && npm run build`.
+Tests: `npm install && npm test && npm run build`.

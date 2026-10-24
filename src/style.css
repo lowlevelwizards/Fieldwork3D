@@ -4,8 +4,11 @@
   --sky-middle: #28374a;
   --sky-horizon: #465260;
   --sky-bottom: #4d5860;
+  --storm-dim: 0;
   -webkit-tap-highlight-color: transparent;
-  background: linear-gradient(
+  background:
+    linear-gradient(rgba(27, 40, 52, var(--storm-dim)), rgba(27, 40, 52, var(--storm-dim))),
+    linear-gradient(
     to bottom,
     var(--sky-top) 0%,
     var(--sky-middle) 45%,
@@ -74,3 +77,18 @@ html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
   padding:0 7px; font-size:10px; letter-spacing:.07em;
   background:rgba(225,230,217,.15); }
 .cloud-inspector button.manual { background:transparent; color:#aab9af; }
+
+.rain-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 3px;
+  gap: 6px;
+  color: #b9cbd0;
+  font-size: 10px;
+  letter-spacing: .1em;
+  font-variant-numeric: tabular-nums;
+}
+.rain-status span[data-phase="downpour"] { color: #c2e3f2; }
+.rain-status span[data-phase="rain"] { color: #b5d4e0; }
+.rain-status span[data-phase="dry"] { color: #9fabab; }

@@ -50,6 +50,7 @@ export class CloudField {
   private readonly clouds: VisualCloud[] = [];
   private readonly color = new THREE.Color();
   private readonly sunlit = new THREE.Color();
+  private readonly stormTint = new THREE.Color(0x354552);
 
   constructor(scene: THREE.Scene) {
     const cube = new THREE.BoxGeometry(1, 1, 1);
@@ -107,12 +108,16 @@ export class CloudField {
   }
 
   /** Every position, coverage and shadow derives from the same world hour. */
-  update(hour: number, e: EnvironmentState, overrideCoverage: number | null): number {
+  update(hour: number, e: EnvironmentState, overrideCoverage: number | null, rainAmount = 0): number {
     const coverage = overrideCoverage ?? cloudCoverAtHour(hour);
     const sunBlend = Math.min(1, e.sunlight / 1.6);
     this.color.setHex(0x8296a6);
     this.sunlit.setHex(e.sunColor);
     this.color.lerp(this.sunlit, sunBlend);
+    // More cover means heavier, darker clouds; rainfall deepens the underbellies.
+    const darkening = Math.min(.88,
+      Math.max(0, (coverage - .49) / .51) * .58 + rainAmount * .30);
+    this.color.lerp(this.stormTint, darkening);
 
     for (let index = 0; index < this.clouds.length; index++) {
       const cloud = this.clouds[index];
@@ -127,7 +132,8 @@ export class CloudField {
 
       const groundPosition = cloudShadowAt(sampled, e.sunDirection);
       cloud.shadow.position.set(groundPosition.x, .025 + index * .00004, groundPosition.z);
-      cloud.shadowMaterial.opacity = cloudShadowStrength(e.sunlight, e.sunDirection.y, presence);
+      cloud.shadowMaterial.opacity =
+        cloudShadowStrength(e.sunlight, e.sunDirection.y, presence) * (1 - rainAmount * .72);
       cloud.shadow.visible = cloud.shadowMaterial.opacity > .001 &&
         Math.abs(groundPosition.x) < edge + 3 && Math.abs(groundPosition.z) < edge + 3;
     }

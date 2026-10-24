@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
   <meta name="theme-color" content="#c5d2c9" />
-  <title>Fieldwork — Ground Zero · Clouds</title>
+  <title>Fieldwork — Ground Zero · Rain</title>
 </head>
 <body>
   <canvas id="app" aria-label="Single isometric ground block with changing daylight and mist; drag to orbit and pinch to zoom"></canvas>
@@ -19,6 +19,10 @@
       <label id="cloudCoverLabel" for="cloudCover">CLOUDS 70%</label>
       <input type="range" id="cloudCover" aria-label="Cloud coverage percentage" min="0" max="100" step="1" value="70" />
       <button type="button" id="cloudAuto" aria-label="Restore automatic cloud coverage" aria-pressed="true">AUTO</button>
+    </div>
+    <div class="rain-status">
+      <span>PRECIPITATION</span>
+      <span id="rainLabel" role="status" aria-live="off">RAIN 0% · DRY</span>
     </div>
   </section>
   <script type="module" src="/src/main.ts"></script>
