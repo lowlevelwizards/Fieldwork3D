@@ -7,7 +7,7 @@
  * a shallow surface-condition layer until physical reshaping is implemented.
  */
 import { GRID_CELLS, CELL_SIZE, terrainHeight } from './terrain-model.ts';
-import { SURFACE, type SurfaceKind } from './surface-materials.ts';
+import { surfaceAt as physicalSurfaceAt, type SurfaceKind } from './surface-materials.ts';
 
 export type TrafficKind = 'foot' | 'vehicle';
 export type TrafficCondition = 'firm' | 'slow' | 'difficult' | 'blocked';
@@ -105,16 +105,10 @@ export function observeCell(
   const cell=context.watershed.cells[index];
   // SurfaceKind comes from the same categorical physical soil properties
   // used by infiltration in Build 014; visual feathering cannot change it.
-  const material=Object.values(SURFACE).find(s=>s.kind===materialAtCell(cell.x,cell.z))?.kind
-    ?? 'loam';
+  const material=physicalSurfaceAt(cell.x,cell.z).kind;
   return evaluateTraffic(material,context.soilFraction(index),
     standingDepthAt(index,context),slopeAt(cell.x,cell.z),rutDepthM,kind);
 }
-function materialAtCell(x:number,z:number):SurfaceKind{
-  // Kept as an ordinary import to reuse the exact hydrology classification.
-  return physicalSurfaceAt(x,z);
-}
-import { surfaceAt as physicalSurfaceAt } from './surface-materials.ts';
 
 export class GroundLoad {
   readonly rutDepths:Float32Array;

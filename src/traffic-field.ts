@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GRID_CELLS, CELL_SIZE, WORLD_HALF, terrainHeight } from './terrain-model';
+import { CELL_SIZE, terrainHeight } from './terrain-model';
 import { surfaceAt } from './surface-materials';
 import { evaluateTraffic, slopeAt, type TrafficKind, type GroundLoad } from './traffic-model';
 import type { TerrainWater } from './hydrology';
