@@ -37,8 +37,8 @@ export function clipWaterTriangle(
   const vertices=[a,b,c];
   // Refuse triangles bridging implausible local steps in water surface
   // elevation. They are unrelated patches, not the wall of a river.
-  const levels=vertices.filter(v=>wetSignal(v)>0).map(v=>v.waterY);
-  if(levels.length>1 && Math.max(...levels)-Math.min(...levels)>.12)return [];
+  const levels=vertices.map(v=>v.waterY);
+  if(Math.max(...levels)-Math.min(...levels)>.12)return [];
   let output:WaterVertex[]=[];
   for(let i=0;i<3;i++){
     const first=vertices[i],second=vertices[(i+1)%3];
