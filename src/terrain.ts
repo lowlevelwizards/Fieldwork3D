@@ -18,11 +18,21 @@ export function makeTerrainGeometry(): THREE.BufferGeometry {
     }
   }
   const vertex = (r: number,c: number) => r * (n + 1) + c;
+  const cellCenterBase = position.length / 3;
+  // Each heightfield cell has a real center vertex. The hydrology reads
+  // EXACTLY these elevations, so water never floats above a fictitious hollow
+  // or gets hidden under a flat diagonal between four higher corners.
+  for(let row=0;row<n;row++) for(let col=0;col<n;col++){
+    const x=-WORLD_HALF+WORLD_SIZE*(col+.5)/n;
+    const z=-WORLD_HALF+WORLD_SIZE*(row+.5)/n;
+    position.push(x,terrainHeight(x,z),z);
+  }
   for (let row=0;row<n;row++) for(let col=0;col<n;col++){
-    const a=vertex(row,col),b=vertex(row,col+1);
-    const c=vertex(row+1,col),d=vertex(row+1,col+1);
-    // Counter-clockwise when looking down at the grassy surface.
-    indices.push(a,c,b,b,c,d);
+    const tl=vertex(row,col),tr=vertex(row,col+1);
+    const bl=vertex(row+1,col),br=vertex(row+1,col+1);
+    const center=cellCenterBase+row*n+col;
+    // Counter-clockwise toward +Y, four triangle fans per hydrology cell.
+    indices.push(tl,center,tr,tr,center,br,br,center,bl,bl,center,tl);
   }
   groups.push({start:0,count:indices.length,materialIndex:0});
   const sidesStart=indices.length;
