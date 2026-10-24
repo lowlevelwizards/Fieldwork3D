@@ -1,5 +1,5 @@
 import {
-  MAIN_RIVER, clamp, mainRiverPosition, mainRiverStations,
+  clamp, mainRiverPosition, mainRiverStations,
 } from './river-geography.ts';
 import { terrainHeight, type TerrainCell } from './terrain-model.ts';
 import type { TerrainWater } from './hydrology.ts';
