@@ -21,8 +21,12 @@ export class ContactDirector {
   private patrolPhase=0;
   private decision=0;
   private cycle=0;
+  private openingElapsed=0;
+  private warnedAt=-1;
+  private readonly approachTime=5.5;
+  private aimDirection:Point2|null=null;
   private patrolRoute:readonly Point2[]=[
-    {x:27,z:9},{x:23,z:10},{x:28,z:12},{x:30,z:7}
+    {x:34,z:23},{x:31,z:20},{x:29,z:18},{x:27,z:15},{x:31,z:20}
   ];
   private callback:(event:ContactEvent)=>void;
   constructor(scene:THREE.Scene,nav:NavigationGrid,obstacles:readonly Obstacle[],
@@ -30,8 +34,8 @@ export class ContactDirector {
     this.scene=scene;this.nav=nav;this.callback=onEvent;
     this.simulation=new ContactSimulation(obstacles,e=>this.onEvent(e));
     const viable=(options:Point2[]):Point2=>options.find(p=>nav.canOccupy(p))??options[0];
-    const a=viable([{x:28,z:11},{x:27,z:10},{x:30,z:10}]);
-    const b=viable([{x:31,z:8},{x:29,z:7},{x:29,z:11}]);
+    const a=viable([{x:35,z:23},{x:34,z:22},{x:33,z:20}]);
+    const b=viable([{x:38,z:24},{x:37,z:21},{x:36,z:22}]);
     this.hostiles={
       'patrol-a':new Operator(scene,a,'hostile'),
       'patrol-b':new Operator(scene,b,'hostile'),
@@ -78,10 +82,11 @@ export class ContactDirector {
   resetEncounter() {
     this.simulation.reset();
     this.selected='patrol-a';
-    this.tactical=true;this.decision=0;
+    this.tactical=false;this.decision=0;
+    this.openingElapsed=0;this.warnedAt=-1;this.aimDirection=null;
     const positions:Record<FighterId,Point2>={
       rook:{x:10.7,z:10.15},mica:{x:8.2,z:10.8},
-      'patrol-a':{x:28,z:11},'patrol-b':{x:31,z:8}
+      'patrol-a':{x:35,z:23},'patrol-b':{x:38,z:24}
     };
     for(const id of Object.keys(this.targets) as FighterId[]){
       const actor=this.targets[id];const p=positions[id];
@@ -111,13 +116,15 @@ export class ContactDirector {
     this.tactical=true;
   }
   setOrder(order:Order){this.simulation.order=order;this.tactical=true;}
+  setAim(direction:Point2|null) {
+    const length=direction?Math.hypot(direction.x,direction.z):0;
+    this.aimDirection=direction&&length>.15?
+      {x:direction.x/length,z:direction.z/length}:null;
+    if(this.aimDirection)this.tactical=true;
+  }
   fire(){
-    this.tactical=true;
-    const target=this.simulation.fighters[this.selected].hp>0?this.selected:
-      this.simulation.nearestEnemy('rook');
-    if(!target)return null;
-    this.targets.rook.setCombat(this.simulation.fighters[target].position);
-    return this.simulation.fire('rook',target);
+    if(!this.aimDirection)return null;
+    return this.simulation.fireDirection('rook',this.aimDirection);
   }
   reload(){this.tactical=true;return this.simulation.reload('rook');}
   get danger(){
@@ -170,18 +177,28 @@ export class ContactDirector {
   }
   update(dt:number,rook:Operator,mica:Operator){
     this.synchronize();
-    this.simulation.update(dt);
+    this.openingElapsed+=dt;
     const fighters=this.simulation.fighters;
+    // Patrol begins beyond immediate gunfire distance and approaches in
+    // the world. Warn before awareness becomes an exchange of bullets.
+    const proximity=Math.min(...(['patrol-a','patrol-b'] as const).map(id=>
+      Math.min(distance(fighters[id].position,rook.position),
+        distance(fighters[id].position,mica.position))));
+    if(this.warnedAt<0&&this.openingElapsed>2.3&&proximity<34){
+      this.warnedAt=this.openingElapsed;
+      this.callback({type:'warning'});
+    }
+    this.simulation.update(dt);
     for(const id of Object.keys(this.targets) as FighterId[]){
       this.targets[id].setStress(fighters[id].suppressed);
     }
-    const playerTarget=fighters[this.selected].hp>0?fighters[this.selected]:
-      fighters[this.simulation.nearestEnemy('rook')??'patrol-a'];
-    if(this.tactical&&fighters.rook.hp>0&&playerTarget.hp>0)
-      rook.setCombat(playerTarget.position);
+    if(this.aimDirection&&fighters.rook.hp>0)
+      rook.setCombat({x:rook.position.x+this.aimDirection.x*8,
+        z:rook.position.z+this.aimDirection.z*8});
     else rook.setCombat(null);
     this.decision-=dt;
-    if(this.decision<=0){
+    const decisionTick=this.decision<=0;
+    if(decisionTick){
       this.decision=.9;
       this.cycle++;
       for(const id of ['patrol-a','patrol-b'] as const){
@@ -232,9 +249,13 @@ export class ContactDirector {
         const idTarget=this.simulation.nearestEnemy(id);
         const enemy=idTarget?fighters[idTarget]:null;
         actor.setCombat(f.state==='engaged'&&enemy?.hp?enemy.position:null);
-        if(f.state==='engaged'&&enemy&&this.cycle%2===0
-          &&distance(f.position,enemy.position)<24
-          &&visible(f.position,enemy.position,this.simulation.obstacles)){
+        // A visible approach and reaction window before the first shot.
+        // Never fire automatically every animation frame.
+        if(f.state==='engaged'&&enemy&&decisionTick&&this.cycle%2===0 &&
+          this.warnedAt>=0 &&
+          this.openingElapsed-this.warnedAt>this.approachTime &&
+          distance(f.position,enemy.position)<17 &&
+          visible(f.position,enemy.position,this.simulation.obstacles)){
           if(f.ammo===0)this.simulation.reload(id);
           else this.simulation.fire(id,idTarget!);
         }
@@ -250,13 +271,16 @@ export class ContactDirector {
       if(foe&&fighters.mica.hp>0&&distance(mica.position,fighters[foe].position)<23&&
         visible(mica.position,fighters[foe].position,this.simulation.obstacles)){
         if(fighters.mica.ammo===0)this.simulation.reload('mica');
-        else if(this.cycle%2===0)this.simulation.fire('mica',foe);
+        else if(decisionTick&&this.cycle%2===0)this.simulation.fire('mica',foe);
       }
     }else mica.setCombat(null);
-    this.indicator.visible=this.tactical&&fighters[this.selected].hp>0;
-    if(this.indicator.visible){
-      const p=fighters[this.selected].position;
-      this.indicator.position.set(p.x,terrainHeight(p.x,p.z)+.12,p.z);
+    // The ring is a ground-anchored aim point, never an enemy lock.
+    this.indicator.visible=this.aimDirection!==null&&fighters.rook.hp>0;
+    if(this.indicator.visible&&this.aimDirection){
+      const p=rook.position;
+      const x=p.x+this.aimDirection.x*7;
+      const z=p.z+this.aimDirection.z*7;
+      this.indicator.position.set(x,terrainHeight(x,z)+.12,z);
       this.indicator.rotation.y+=dt*.8;
     }
     for(let i=this.effects.length-1;i>=0;i--){

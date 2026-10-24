@@ -19,7 +19,8 @@ export type ContactEvent =
   | {type:'spotted';observer:FighterId;target:FighterId}
   | {type:'down';id:FighterId}
   | {type:'reload';id:FighterId}
-  | {type:'heard';observer:FighterId};
+  | {type:'heard';observer:FighterId}
+  | {type:'warning'};
 export const CREW_WEAPON = {magazine:9,reserve:36,shotInterval:.42,reloadSeconds:1.75,
   range:25,damage:31,optimal:11} as const;
 const distance=(a:Point2,b:Point2)=>Math.hypot(a.x-b.x,a.z-b.z);
