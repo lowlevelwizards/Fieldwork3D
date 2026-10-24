@@ -3,8 +3,9 @@ import { cameraOffset, clampZoom, viewSize } from './camera-model';
 import './style.css';
 
 // Build 000: one slab in an otherwise empty scene. No actors or game loop.
-const canvas = document.querySelector<HTMLCanvasElement>('#app');
-if (!canvas) throw new Error('Missing ground viewport');
+const mount = document.querySelector<HTMLCanvasElement>('#app');
+if (!mount) throw new Error('Missing ground viewport');
+const canvas: HTMLCanvasElement = mount;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xbfc9c2);
