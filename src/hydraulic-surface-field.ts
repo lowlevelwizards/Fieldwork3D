@@ -14,7 +14,6 @@ import {
   type WaterVertex,
 } from './water-surface-geometry';
 
-type Point={x:number;z:number};
 const lerp=(a:number,b:number,t:number)=>a+(b-a)*t;
 const clamp=(v:number,a:number,b:number)=>Math.max(a,Math.min(b,v));
 const smooth=(v:number)=>{const t=clamp(v,0,1);return t*t*(3-2*t);};
