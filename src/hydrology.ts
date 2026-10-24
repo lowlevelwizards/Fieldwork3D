@@ -4,7 +4,9 @@
  * downhill/catchment/minimax-escape/volume-at-level approach.
  *
  * Unlike LLW's one-shot normalized runoff, this is incremental litres.
- * No absorption, evaporation, groundwater, or fluid momentum.
+ * Atoms 011-014 add per-cell soil storage, rate-limited infiltration,
+ * real evaporation, wind, and surface material differences.
+ * No groundwater movement or fluid momentum.
  */
 import {
   CELL_AREA, cellIndexAt, isEdgeCell,
@@ -13,6 +15,10 @@ import {
 import { CLOUD_COUNT, cloudAt, cloudCoverAtHour, cloudPresence } from './cloud-model.ts';
 import { rainIntensityAtHour } from './rain-model.ts';
 import { wrapHour } from './environment-conditions.ts';
+import { evaporationMmPerHour } from './evaporation-model.ts';
+import {
+  infiltrationBudgetLiters, soilCapacityLiters, surfaceAt,
+} from './surface-materials.ts';
 
 export const PEAK_RAIN_MM_PER_HOUR = 28;
 const EPS = 1e-8;
@@ -218,6 +224,9 @@ export type WaterState = {
   basins: {sinkIndex:number;litres:number}[];
   exportedLiters:number;
   totalDepositedLiters:number;
+  // Optional for compatibility with Build 010 saves.
+  soilLiters?:number[];
+  evaporatedLiters?:number;
 };
 
 export class TerrainWater {
@@ -225,10 +234,15 @@ export class TerrainWater {
   private readonly water: number[];
   private exported=0;
   private deposited=0;
+  private evaporated=0;
+  private readonly soil:number[];
+  private readonly soilCaps:number[];
 
   constructor(watershed: Watershed = buildWatershed(), saved?: unknown) {
     this.watershed=watershed;
     this.water=watershed.basins.map(()=>0);
+    this.soil=watershed.cells.map(()=>0);
+    this.soilCaps=watershed.cells.map(c=>soilCapacityLiters(c.x,c.z));
     if(saved && typeof saved==='object'){
       const record=saved as Partial<WaterState>;
       if(Array.isArray(record.basins)){
@@ -243,6 +257,17 @@ export class TerrainWater {
       }
       if(typeof record.totalDepositedLiters==='number' && Number.isFinite(record.totalDepositedLiters)){
         this.deposited=Math.max(0,record.totalDepositedLiters);
+      }
+      if(Array.isArray(record.soilLiters) && record.soilLiters.length===this.soil.length) {
+        for(let i=0;i<this.soil.length;i++){
+          const raw=record.soilLiters[i];
+          if(typeof raw==='number'&&Number.isFinite(raw)&&raw>=0){
+            this.soil[i]=Math.min(raw,this.soilCaps[i]);
+          }
+        }
+      }
+      if(typeof record.evaporatedLiters==='number'&&Number.isFinite(record.evaporatedLiters)){
+        this.evaporated=Math.max(0,record.evaporatedLiters);
       }
       this.routeOverflow();
     }
@@ -297,17 +322,66 @@ export class TerrainWater {
       const hour=wrapHour(startHour+(i+.5)*dt);
       const cover=overrideCover===null?cloudCoverAtHour(hour):clamp01(overrideCover);
       const intensity=rainIntensityAtHour(hour,cover,overrideCover!==null);
-      if(intensity<=0)continue;
-      const rainfallLitresPerCell=(PEAK_RAIN_MM_PER_HOUR/1000)*intensity*dt*CELL_AREA*1000;
-      const clouds=visibleClouds(hour,cover);
-      for(const cell of this.watershed.cells){
+      const rainfallLitresPerCell=PEAK_RAIN_MM_PER_HOUR*intensity*dt*CELL_AREA;
+      const clouds=intensity>0 ? visibleClouds(hour,cover):[];
+      const remainingIntake=this.watershed.cells.map(c=>
+        infiltrationBudgetLiters(c.x,c.z,dt));
+
+      // 011: local rain first fills available porous storage. Only the
+      // remaining water moves downslope to a surface depression or exits.
+      if(intensity>0)for(const cell of this.watershed.cells){
         const exposure=cloudExposure(cell,clouds);
         if(exposure<=0)continue;
         const amount=rainfallLitresPerCell*exposure;
         deposited+=amount;
+        const available=Math.max(0,this.soilCaps[cell.index]-this.soil[cell.index]);
+        const absorbed=Math.min(amount,available,remainingIntake[cell.index]);
+        this.soil[cell.index]+=absorbed;
+        remainingIntake[cell.index]-=absorbed;
+        const runoff=amount-absorbed;
         const basin=this.watershed.cellBasin[cell.index];
-        if(basin>=0)this.water[basin]+=amount;
-        else this.exported+=amount;
+        if(basin>=0)this.water[basin]+=runoff;
+        else this.exported+=runoff;
+      }
+
+      // 011: existing ponds also seep into their submerged soil cells.
+      // Use only leftover per-step intake to avoid double dipping rain.
+      for(const basin of this.watershed.basins){
+        if(this.water[basin.id]<=EPS)continue;
+        const level=solveWaterLevel(this.watershed,basin,this.water[basin.id]);
+        if(level===null)continue;
+        for(const index of basin.cellIndexes){
+          if(this.water[basin.id]<=EPS)break;
+          if(this.watershed.cells[index].height>=level-EPS)continue;
+          const capacity=Math.max(0,this.soilCaps[index]-this.soil[index]);
+          const absorbed=Math.min(capacity,remainingIntake[index],this.water[basin.id]);
+          if(absorbed<=0)continue;
+          this.water[basin.id]-=absorbed;
+          this.soil[index]+=absorbed;
+          remainingIntake[index]-=absorbed;
+        }
+      }
+
+      // 012: sunlight, cloud shade and wind remove ACTUAL stored water.
+      const evap=evaporationMmPerHour(hour,cover)*dt*CELL_AREA;
+      for(const cell of this.watershed.cells){
+        const index=cell.index;
+        const amount=Math.min(this.soil[index],
+          evap*surfaceAt(cell.x,cell.z).evaporationMultiplier);
+        this.soil[index]-=amount;
+        this.evaporated+=amount;
+      }
+      for(const basin of this.watershed.basins){
+        if(this.water[basin.id]<=EPS)continue;
+        const level=solveWaterLevel(this.watershed,basin,this.water[basin.id]);
+        if(level===null)continue;
+        let submerged=0;
+        for(const index of basin.cellIndexes){
+          if(this.watershed.cells[index].height<level-EPS)submerged++;
+        }
+        const amount=Math.min(this.water[basin.id],evap*submerged);
+        this.water[basin.id]-=amount;
+        this.evaporated+=amount;
       }
       this.routeOverflow();
     }
@@ -319,6 +393,18 @@ export class TerrainWater {
   totalLiters():number {return this.water.reduce((a,b)=>a+b,0);}
   exportedLiters():number {return this.exported;}
   totalDepositedLiters():number {return this.deposited;}
+  evaporatedLiters():number {return this.evaporated;}
+  soilLiters(index:number):number {return this.soil[index]??0;}
+  soilCapacity(index:number):number {return this.soilCaps[index]??0;}
+  soilFraction(index:number):number {
+    return this.soilCaps[index]>0 ? this.soil[index]/this.soilCaps[index]:0;
+  }
+  totalSoilLiters():number {return this.soil.reduce((a,b)=>a+b,0);}
+  /** Cumulative rain = pond + soil + exported + evaporated. */
+  massBalanceError():number {
+    return this.deposited-this.totalLiters()-this.totalSoilLiters()
+      -this.exported-this.evaporated;
+  }
   surfaceLevel(id:number):number|null {
     const basin=this.watershed.basins[id];
     return basin?solveWaterLevel(this.watershed,basin,this.water[id]):null;
@@ -330,7 +416,13 @@ export class TerrainWater {
       })),
       exportedLiters:this.exported,
       totalDepositedLiters:this.deposited,
+      soilLiters:[...this.soil],
+      evaporatedLiters:this.evaporated,
     };
   }
-  clear():void {this.water.fill(0);this.exported=0;this.deposited=0;}
+  clear():void {
+    this.water.fill(0);
+    this.soil.fill(0);
+    this.exported=0;this.deposited=0;this.evaporated=0;
+  }
 }
