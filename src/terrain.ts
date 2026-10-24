@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { surfaceAt } from './surface-materials';
+import { SURFACE, visualMaterialWeights, type SurfaceKind } from './surface-materials';
 import type { TerrainWater } from './hydrology';
 import {
   GRID_CELLS, WORLD_SIZE, WORLD_HALF, SUBSTRATE_BOTTOM,
@@ -67,23 +67,55 @@ export function makeTerrainGeometry(): THREE.BufferGeometry {
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   for(const group of groups) geometry.addGroup(group.start,group.count,group.materialIndex);
-  // One color per top vertex; one white multiplier per earth-wall vertex.
+  // Precompute geological color mixing once. The simulation still uses
+  // discrete material classes, but their color boundaries are feathered
+  // over surrounding samples so they look deposited, not painted squares.
+  const topCount=(n+1)*(n+1)+n*n;
+  const dry=new Float32Array(topCount*3);
+  const wet=new Float32Array(topCount*3);
+  const kinds:SurfaceKind[]=['loam','clay','sand','rock','organic'];
+  const dryColors=kinds.map(kind=>new THREE.Color(SURFACE[kind].dryColor));
+  const wetColors=kinds.map(kind=>new THREE.Color(SURFACE[kind].wetColor));
+  for(let i=0;i<topCount;i++){
+    const x=position[i*3],z=position[i*3+2];
+    const mix=visualMaterialWeights(x,z);
+    const local=terrainHeight(x,z);
+    const delta=.47;
+    const average=(
+      terrainHeight(x-delta,z)+terrainHeight(x+delta,z)
+      +terrainHeight(x,z-delta)+terrainHeight(x,z+delta)
+    )*.25;
+    // Concave low spots have darker ambient contact, even before rain.
+    const relief=Math.max(.78,Math.min(1.04,1-(average-local)*2.9));
+    for(let c=0;c<3;c++){
+      let a=0,b=0;
+      for(let k=0;k<kinds.length;k++){
+        const weight=mix[kinds[k]];
+        a+=dryColors[k].getComponent(c)*weight;
+        b+=wetColors[k].getComponent(c)*weight;
+      }
+      dry[i*3+c]=a*relief;
+      wet[i*3+c]=b*relief;
+    }
+  }
+  geometry.userData.visualDry=dry;
+  geometry.userData.visualWet=wet;
   const colors=new Float32Array(position.length);
   colors.fill(1);
   geometry.setAttribute('color',new THREE.BufferAttribute(colors,3));
   return geometry;
 }
 
-/** Update only the existing one-piece terrain vertex colors from ACTUAL water in soil. */
+/** Local soil moisture modulates the already-feathered material colors.
+ * Water mass and catchment geometry are never affected by visual blending.
+ */
 export function updateTerrainMoisture(geometry:THREE.BufferGeometry,water:TerrainWater):void {
   const attribute=geometry.getAttribute('color') as THREE.BufferAttribute;
-  const position=geometry.getAttribute('position') as THREE.BufferAttribute;
+  const dry=geometry.userData.visualDry as Float32Array;
+  const wet=geometry.userData.visualWet as Float32Array;
   const n=GRID_CELLS;
   const topVertices=(n+1)*(n+1)+n*n;
-  const color=new THREE.Color(),wet=new THREE.Color();
   for(let i=0;i<topVertices;i++){
-    const x=position.getX(i),z=position.getZ(i);
-    const properties=surfaceAt(x,z);
     let fraction=0;
     if(i>=(n+1)*(n+1)){
       const index=i-(n+1)*(n+1);
@@ -99,10 +131,12 @@ export function updateTerrainMoisture(geometry:THREE.BufferGeometry,water:Terrai
       }
       fraction=count>0?sum/count:0;
     }
-    color.setHex(properties.dryColor);
-    wet.setHex(properties.wetColor);
-    color.lerp(wet,Math.min(1,fraction)*.92);
-    attribute.setXYZ(i,color.r,color.g,color.b);
+    const t=Math.min(1,Math.max(0,fraction))*.94;
+    const k=i*3;
+    attribute.setXYZ(i,
+      dry[k]+(wet[k]-dry[k])*t,
+      dry[k+1]+(wet[k+1]-dry[k+1])*t,
+      dry[k+2]+(wet[k+2]-dry[k+2])*t);
   }
   attribute.needsUpdate=true;
 }

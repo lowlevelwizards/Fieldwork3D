@@ -40,3 +40,21 @@ export function soilCapacityLiters(x: number,z: number): number {
 export function infiltrationBudgetLiters(x:number,z:number,hours:number):number {
   return surfaceAt(x,z).intakeMmPerHour * CELL_AREA * Math.max(0,hours);
 }
+
+/**
+ * Only the presentation is feathered. Physical cell kinds, capacities and
+ * infiltration rates still come from surfaceAt() without interpolation.
+ * A small 3x3 spatial filter prevents ruler-straight paint borders.
+ */
+export function visualMaterialWeights(x:number,z:number):Record<SurfaceKind,number>{
+  const result:Record<SurfaceKind,number>={
+    loam:0,clay:0,sand:0,rock:0,organic:0,
+  };
+  const offsets=[-.47,0,.47];
+  const weights=[1,2,1];
+  for(let zi=0;zi<3;zi++)for(let xi=0;xi<3;xi++){
+    const kind=surfaceAt(x+offsets[xi],z+offsets[zi]).kind;
+    result[kind]+=weights[xi]*weights[zi]/16;
+  }
+  return result;
+}
