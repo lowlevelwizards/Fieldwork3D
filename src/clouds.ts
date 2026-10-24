@@ -81,6 +81,10 @@ export class CloudField {
         const part = new THREE.Mesh(cube, material);
         part.position.set(form.x, form.y, form.z);
         part.scale.set(form.w, form.h, form.d);
+        // Transparent puddles (2), rain (3), and ground impacts (4) must
+        // composite BEFORE overhead clouds. Cloud material does not write
+        // depth, so draw order is needed even when geometry is higher.
+        part.renderOrder = 5;
         visual.add(part);
       }
       visual.scale.setScalar(sample.scale);
