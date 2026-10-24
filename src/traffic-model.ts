@@ -114,6 +114,7 @@ export class GroundLoad {
   readonly rutDepths:Float32Array;
   readonly rutAngles:Float32Array;
   private revision=0;
+  private recoverySinceVisualRefresh=0;
 
   constructor(saved?:unknown) {
     this.rutDepths=new Float32Array(GRID_CELLS*GRID_CELLS);
@@ -160,8 +161,8 @@ export class GroundLoad {
    * Soil drying permits gradual recovery, not instant erasure. The wetter
    * the ground, the more ruts persist. Rock is unaffected.
    */
-  advance(hours:number,ctx:TrafficContext):void{
-    if(!Number.isFinite(hours)||hours<=0)return;
+  advance(hours:number,ctx:TrafficContext):boolean{
+    if(!Number.isFinite(hours)||hours<=0)return false;
     let changed=false;
     for(let i=0;i<this.rutDepths.length;i++){
       const before=this.rutDepths[i];
@@ -173,12 +174,22 @@ export class GroundLoad {
       const recovery=.00055*spec.recovery*(.10+.90*dry)*hours;
       const after=Math.max(0,before-recovery);
       if(Math.abs(after-before)>1e-10){
-        this.rutDepths[i]=after;changed=true;
+        this.rutDepths[i]=after;
+        changed=true;
+        this.recoverySinceVisualRefresh+=before-after;
       }
     }
-    if(changed)this.revision++;
+    // Do not rebuild track geometry for microscopic drying per render frame.
+    if(this.recoverySinceVisualRefresh>.002){
+      this.revision++;
+      this.recoverySinceVisualRefresh=0;
+    }
+    return changed;
   }
-  clear():void{this.rutDepths.fill(0);this.rutAngles.fill(0);this.revision++;}
+  clear():void{
+    this.rutDepths.fill(0);this.rutAngles.fill(0);
+    this.recoverySinceVisualRefresh=0;this.revision++;
+  }
   snapshot():GroundConditionState{
     return {rutDepths:Array.from(this.rutDepths),rutAngles:Array.from(this.rutAngles)};
   }

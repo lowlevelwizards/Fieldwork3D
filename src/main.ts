@@ -553,9 +553,9 @@ function tick(now: number) {
       // The cloud slider changes future rainfall, not past puddle history.
       const elapsedWorldHours = accumulated * 24 / DAY_LENGTH_SECONDS;
       const addedLitres = standingWater.advance(hour, elapsedWorldHours, cloudCoverOverride);
-      const beforeRuts=groundLoad.getRevision();
-      groundLoad.advance(elapsedWorldHours,standingWater);
-      if(groundLoad.getRevision()!==beforeRuts)groundNeedsSave=true;
+      if(groundLoad.advance(elapsedWorldHours,standingWater)){
+        groundNeedsSave=true;
+      }
       // Water can change even on a dry day due to evaporation/seepage.
       if (addedLitres > 0 || elapsedWorldHours > 0) waterNeedsSave = true;
       hour = advanceHour(hour, accumulated, DAY_LENGTH_SECONDS);

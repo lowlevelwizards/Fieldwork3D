@@ -56,9 +56,9 @@ test('heavy load leaves more and deeper ruts on saturated clay than dry',()=>{
   const a=dry.pass(index,ctx(0),'vehicle');
   const b=soaked.pass(index,ctx(1),'vehicle',Math.PI/2);
   assert.ok(b>a);
-  assert.equal(soaked.rutAngles[index],Math.PI/2);
+  assert.ok(Math.abs(soaked.rutAngles[index]-Math.PI/2)<1e-6);
   for(let i=0;i<60;i++)soaked.pass(index,ctx(1),'vehicle');
-  assert.ok(soaked.rutDepths[index]<=MAX_RUT_DEPTH_M);
+  assert.ok(soaked.rutDepths[index]<=MAX_RUT_DEPTH_M+1e-6);
   assert.ok(soaked.rutDepths[index]>.025);
   assert.deepEqual(water.snapshot(),before);
 });
@@ -111,7 +111,7 @@ test('tracks persist across reload and clear independently of water',()=>{
     rutDepths:Array(1024).fill(9000),
     rutAngles:Array(1024).fill(Number.NaN),
   });
-  assert.ok(corrupt.rutDepths.every(d=>d===MAX_RUT_DEPTH_M));
+  assert.ok(corrupt.rutDepths.every(d=>Math.abs(d-MAX_RUT_DEPTH_M)<1e-6));
   assert.ok(corrupt.rutAngles.every(a=>a===0));
 });
 
