@@ -92,13 +92,16 @@ test('heavy-rain and saved-water ledgers are not mutated by render-side helpers'
 
 test('Build 024.1 does not draw a single global 96x96 grid of raised water',()=>{
   const source=readFileSync(new URL('../src/hydraulic-surface-field.ts',import.meta.url),'utf8');
-  assert.ok(source.includes('clipWaterTriangle('));
-  assert.ok(source.includes('watershed.basins'));
-  assert.ok(source.includes('water.channelWettedWidthAtCell('));
-  assert.ok(source.includes('selectVisibleRiverLinks('));
-  assert.ok(source.includes('water.floodLiters('));
+  const model=readFileSync(new URL('../src/hydraulic-water-mesh-model.ts',import.meta.url),'utf8');
+  assert.ok(source.includes('buildHydraulicWaterMesh(water,4)'));
+  assert.ok(model.includes('clipWaterTriangle('));
+  assert.ok(model.includes('watershed.basins'));
+  assert.ok(model.includes('water.channelWettedWidthAtCell('));
+  assert.ok(model.includes('selectVisibleRiverLinks('));
+  assert.ok(model.includes('water.floodLiters('));
   assert.ok(!source.includes('const verts:Vertex[]=new Array'));
   assert.ok(!source.includes('floodDisplayDepth('));
   assert.ok(source.includes('depthWrite:false'));
   assert.ok(source.includes('MeshStandardMaterial('));
+  assert.ok(source.includes('side:THREE.FrontSide'));
 });
