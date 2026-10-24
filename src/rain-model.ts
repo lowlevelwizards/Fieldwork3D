@@ -3,8 +3,8 @@
  * plus authored, variable-length moisture-front windows.
  * Everything is reproducible from world hour and the cloud-cover setting.
  */
-import { cloudCoverAtHour } from './cloud-model';
-import { wrapHour } from './environment-conditions';
+import { cloudCoverAtHour } from './cloud-model.ts';
+import { wrapHour } from './environment-conditions.ts';
 
 export type RainPhase = 'dry' | 'drizzle' | 'rain' | 'downpour';
 export type RainState = {
