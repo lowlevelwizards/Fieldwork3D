@@ -6,8 +6,7 @@ import { RainField } from './rain';
 import { TerrainWater } from './hydrology';
 import { makeTerrainGeometry, updateTerrainMoisture } from './terrain';
 import { windAtHour, windDriftAtHour } from './wind-model';
-import { PuddleField } from './puddles';
-import { FlowField } from './flow-field';
+import { HydraulicSurfaceField } from './hydraulic-surface-field';
 import { mountRegionInspector } from './region-inspector';
 import { GroundLoad, type TrafficKind } from './traffic-model';
 import { TrafficField } from './traffic-field';
@@ -229,8 +228,7 @@ scene.add(veil);
 // All clouds and their projected shadows are clipped to the original slab.
 const clouds = new CloudField(scene);
 const rainField = new RainField(scene);
-const puddles = new PuddleField(scene);
-const flowField = new FlowField(scene);
+const waterSurface = new HydraulicSurfaceField(scene);
 mountRegionInspector();
 const trafficField = new TrafficField(scene,standingWater);
 const rainFogTone = new THREE.Color(0x91a0a6);
@@ -267,8 +265,7 @@ function applyEnvironment(e: EnvironmentState) {
 
   clouds.update(e.hour, e, cloudCoverOverride, storm);
   rainField.update(e.hour, rain);
-  puddles.update(standingWater, e, storm);
-  flowField.update(standingWater);
+  waterSurface.update(standingWater);
   trafficField.update(standingWater,groundLoad,e.hour,trafficKind);
   updateTrafficStatus();
   controls.waterLabel.textContent =
@@ -335,7 +332,7 @@ controls.cloudAuto.addEventListener('click', () => {
 controls.clearWater.addEventListener('click', () => {
   standingWater.clear();
   saveStandingWater();
-  flowField.update(standingWater,true);
+  waterSurface.update(standingWater,true);
   applyEnvironment(environmentAtHour(hour));
   render();
 });
