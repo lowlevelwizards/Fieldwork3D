@@ -4,7 +4,8 @@ import { CloudField } from './clouds';
 import { cloudCoverAtHour } from './cloud-model';
 import { RainField } from './rain';
 import { TerrainWater } from './hydrology';
-import { makeTerrainGeometry } from './terrain';
+import { makeTerrainGeometry, updateTerrainMoisture } from './terrain';
+import { windAtHour, windDriftAtHour } from './wind-model';
 import { PuddleField } from './puddles';
 import { rainAtHour } from './rain-model';
 import {
@@ -28,14 +29,16 @@ const cloudAuto = document.querySelector<HTMLButtonElement>('#cloudAuto');
 const rainLabel = document.querySelector<HTMLElement>('#rainLabel');
 const waterLabel = document.querySelector<HTMLElement>('#waterLabel');
 const clearWaterButton = document.querySelector<HTMLButtonElement>('#waterClear');
+const windLabel = document.querySelector<HTMLElement>('#windLabel');
+const evapLabel = document.querySelector<HTMLElement>('#evapLabel');
 if (!timeToggle || !timeScrub || !timeLabel || !phaseLabel ||
     !cloudCoverInput || !cloudCoverLabel || !cloudAuto || !rainLabel ||
-    !waterLabel || !clearWaterButton) {
+    !waterLabel || !clearWaterButton || !windLabel || !evapLabel) {
   throw new Error('Missing time-of-day inspector');
 }
 const controls = { toggle: timeToggle, scrub: timeScrub, clock: timeLabel, phase: phaseLabel,
   cloudCover: cloudCoverInput, cloudLabel: cloudCoverLabel, cloudAuto,
-  rainLabel, waterLabel, clearWater: clearWaterButton };
+  rainLabel, waterLabel, clearWater: clearWaterButton, windLabel, evapLabel };
 
 let hour = INITIAL_HOUR;
 let playing = true;
@@ -43,12 +46,17 @@ let playing = true;
 let cloudCoverOverride: number | null = null;
 // Surface water is an accumulated world quantity, deliberately separate from
 // the reversible time-of-day preview (scrubbing time deposits nothing).
-const WATER_SAVE_KEY = 'fieldwork-ground-zero-water-008';
+const WATER_SAVE_KEY = 'fieldwork-ground-zero-water-011';
+const PREVIOUS_WATER_SAVE_KEY = 'fieldwork-ground-zero-water-008';
 const LEGACY_WATER_SAVE_KEY = 'fieldwork-ground-zero-water-007';
 let savedVolumes: unknown;
 try {
   const json = window.localStorage.getItem(WATER_SAVE_KEY);
   if (json) savedVolumes = JSON.parse(json);
+  else {
+    const previous=window.localStorage.getItem(PREVIOUS_WATER_SAVE_KEY);
+    if(previous) savedVolumes=JSON.parse(previous);
+  }
 } catch { /* private browsing or disabled storage still supports water */ }
 const standingWater = new TerrainWater(undefined, savedVolumes);
 // First upgrade: translate previously saved decorative puddle quantities
@@ -113,7 +121,7 @@ scene.add(sun);
 // A single physical mesh, 10 m by 10 m, with its top at y = 0.
 // Different top/side materials still represent ONE continuous block.
 const grass = new THREE.MeshStandardMaterial({
-  color: 0x7c9072, roughness: 1, flatShading: true,
+  color: 0xffffff,vertexColors:true,roughness: 1,flatShading:true,
 });
 const earth = new THREE.MeshStandardMaterial({
   color: 0x756959, roughness: 1, flatShading: true,
@@ -127,10 +135,8 @@ const ground = new THREE.Mesh(
 ground.castShadow = true;
 ground.receiveShadow = true;
 scene.add(ground);
-const dryGrass = grass.color.clone();
-const wetGrass = new THREE.Color(0x3d5e53);
-const dryEarth = earth.color.clone();
-const wetEarth = new THREE.Color(0x484641);
+// Earth sides remain the original solid substrate; material identity and
+// actual soil moisture appear on the top vertices of this one mesh.
 
 // Shadow catcher: a transparent presentation surface, not another world tile.
 // It lets the one block actually occlude the directional light.
@@ -157,6 +163,7 @@ const veil = new THREE.Mesh(
     uniforms: {
       hazeColor: { value: new THREE.Color(initial.mistColor) },
       opacity: { value: initial.mistOpacity },
+      windShift: { value: new THREE.Vector2() },
     },
     vertexShader: `
       varying vec2 vUv;
@@ -168,12 +175,13 @@ const veil = new THREE.Mesh(
     fragmentShader: `
       uniform vec3 hazeColor;
       uniform float opacity;
+      uniform vec2 windShift;
       varying vec2 vUv;
       void main() {
         vec2 p = (vUv - 0.5) * 2.0;
         float edgeFade = 1.0 - smoothstep(0.47, 0.97, max(abs(p.x), abs(p.y)));
-        float wisp = 0.5 + 0.5 * sin(vUv.x * 18.0 + sin(vUv.y * 11.0) * 2.6)
-                                   * cos(vUv.y * 12.0 - vUv.x * 5.0);
+        float wisp = 0.5 + 0.5 * sin(vUv.x * 18.0 + windShift.x + sin(vUv.y * 11.0) * 2.6)
+                                   * cos(vUv.y * 12.0 - windShift.y - vUv.x * 5.0);
         gl_FragColor = vec4(hazeColor, opacity * edgeFade * (0.55 + 0.8 * wisp));
       }
     `,
@@ -195,9 +203,10 @@ function applyEnvironment(e: EnvironmentState) {
   const rain = rainAtHour(e.hour, cover, cloudCoverOverride !== null);
   const storm = rain.amount;
 
-  // A heavy rain layer blocks/directly scatters light, adding soft haze.
-  grass.color.copy(dryGrass).lerp(wetGrass, rain.wetness * .82);
-  earth.color.copy(dryEarth).lerp(wetEarth, rain.wetness * .57);
+  // Actual moisture controls local color, not recently authored rain.
+  updateTerrainMoisture(ground.geometry,standingWater);
+  const wind=windAtHour(e.hour);
+  const drift=windDriftAtHour(e.hour);
   // Visual output is entirely derived from the single authoritative clock.
   sun.position.set(
     e.sunDirection.x * 25,
@@ -217,13 +226,18 @@ function applyEnvironment(e: EnvironmentState) {
   const material = veil.material as THREE.ShaderMaterial;
   (material.uniforms.hazeColor.value as THREE.Color).setHex(e.mistColor);
   material.uniforms.opacity.value = Math.min(.65, e.mistOpacity + storm * .10);
+  (material.uniforms.windShift.value as THREE.Vector2).set(drift.x*.07,drift.z*.18);
 
   clouds.update(e.hour, e, cloudCoverOverride, storm);
   rainField.update(e.hour, rain);
   puddles.update(standingWater, e, storm);
   controls.waterLabel.textContent =
-    'PONDS ' + standingWater.totalLiters().toFixed(1) + ' L'
+    'PONDS ' + standingWater.totalLiters().toFixed(0) + ' L'
+    + ' · SOIL ' + standingWater.totalSoilLiters().toFixed(0) + ' L'
     + ' · EXIT ' + standingWater.exportedLiters().toFixed(0) + ' L';
+  controls.windLabel.textContent='WIND ' + wind.speed.toFixed(1) + ' m/h';
+  controls.evapLabel.textContent='EVAP ' +
+    standingWater.evaporatedLiters().toFixed(1) + ' L';
   controls.rainLabel.textContent =
     'RAIN ' + Math.round(storm * 100) + '% · ' + rain.phase.toUpperCase();
   controls.rainLabel.dataset.phase = rain.phase;
@@ -406,7 +420,8 @@ function tick(now: number) {
       // The cloud slider changes future rainfall, not past puddle history.
       const elapsedWorldHours = accumulated * 24 / DAY_LENGTH_SECONDS;
       const addedLitres = standingWater.advance(hour, elapsedWorldHours, cloudCoverOverride);
-      if (addedLitres > 0) waterNeedsSave = true;
+      // Water can change even on a dry day due to evaporation/seepage.
+      if (addedLitres > 0 || elapsedWorldHours > 0) waterNeedsSave = true;
       hour = advanceHour(hour, accumulated, DAY_LENGTH_SECONDS);
       accumulated = 0;
       applyEnvironment(environmentAtHour(hour));

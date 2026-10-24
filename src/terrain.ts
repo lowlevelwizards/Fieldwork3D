@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { surfaceAt } from './surface-materials';
+import type { TerrainWater } from './hydrology';
 import {
   GRID_CELLS, WORLD_SIZE, WORLD_HALF, SUBSTRATE_BOTTOM,
   terrainHeight,
@@ -65,5 +67,42 @@ export function makeTerrainGeometry(): THREE.BufferGeometry {
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   for(const group of groups) geometry.addGroup(group.start,group.count,group.materialIndex);
+  // One color per top vertex; one white multiplier per earth-wall vertex.
+  const colors=new Float32Array(position.length);
+  colors.fill(1);
+  geometry.setAttribute('color',new THREE.BufferAttribute(colors,3));
   return geometry;
+}
+
+/** Update only the existing one-piece terrain vertex colors from ACTUAL water in soil. */
+export function updateTerrainMoisture(geometry:THREE.BufferGeometry,water:TerrainWater):void {
+  const attribute=geometry.getAttribute('color') as THREE.BufferAttribute;
+  const position=geometry.getAttribute('position') as THREE.BufferAttribute;
+  const n=GRID_CELLS;
+  const topVertices=(n+1)*(n+1)+n*n;
+  const color=new THREE.Color(),wet=new THREE.Color();
+  for(let i=0;i<topVertices;i++){
+    const x=position.getX(i),z=position.getZ(i);
+    const properties=surfaceAt(x,z);
+    let fraction=0;
+    if(i>=(n+1)*(n+1)){
+      const index=i-(n+1)*(n+1);
+      fraction=water.soilFraction(index);
+    }else{
+      const row=Math.floor(i/(n+1)),col=i%(n+1);
+      let sum=0,count=0;
+      for(const dr of [-1,0])for(const dc of [-1,0]){
+        const rr=row+dr,cc=col+dc;
+        if(rr>=0&&rr<n&&cc>=0&&cc<n){
+          sum+=water.soilFraction(rr*n+cc);count++;
+        }
+      }
+      fraction=count>0?sum/count:0;
+    }
+    color.setHex(properties.dryColor);
+    wet.setHex(properties.wetColor);
+    color.lerp(wet,Math.min(1,fraction)*.92);
+    attribute.setXYZ(i,color.r,color.g,color.b);
+  }
+  attribute.needsUpdate=true;
 }

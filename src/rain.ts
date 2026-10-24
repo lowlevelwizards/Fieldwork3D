@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { windAtHour } from './wind-model';
 import { terrainHeight } from './terrain-model';
 import { CLOUD_COUNT, REGION_HALF_WIDTH, cloudAt, cloudPresence } from './cloud-model';
 import {
@@ -70,6 +71,7 @@ export class RainField {
           hour: { value: 0 },
           ceiling: { value: 3.4 },
           streakLength: { value: RAIN_STREAK_LENGTH },
+          windVector: { value: new THREE.Vector2() },
           alpha: { value: 0 },
           color: { value: new THREE.Color(0xa8bec6) },
         },
@@ -79,6 +81,7 @@ export class RainField {
           uniform float hour;
           uniform float ceiling;
           uniform float streakLength;
+          uniform vec2 windVector;
           varying vec3 vWorld;
           varying float vRawHeight;
           varying float vFlicker;
@@ -93,7 +96,9 @@ export class RainField {
               + aEnd * streakLength;
             vRawHeight = rawHeight;
             p.y = clamp(rawHeight, 0.025, ceiling);
-            p.x += aEnd * .095;
+            // The same moving air pushes each falling drop downwind.
+            p.x += aEnd * .095 + (ceiling-p.y) * windVector.x * .016;
+            p.z += (ceiling-p.y) * windVector.y * .016;
             vec4 world = modelMatrix * vec4(p, 1.0);
             vWorld = world.xyz;
             vFlicker = .70 + .30 * aSeed;
@@ -173,6 +178,7 @@ export class RainField {
 
   update(hour: number, rain: RainState): void {
     const amount = rain.amount;
+    const wind=windAtHour(hour);
     const overcast = rain.cover;
     this.impactMaterial.uniforms.hour.value = hour;
     this.impactMaterial.uniforms.amount.value = amount;
@@ -191,6 +197,7 @@ export class RainField {
         && Math.abs(sampled.x) < REGION_HALF_WIDTH + 3.5
         && Math.abs(sampled.z) < REGION_HALF_WIDTH + 3.5;
       curtain.material.uniforms.hour.value = hour;
+      (curtain.material.uniforms.windVector.value as THREE.Vector2).set(wind.x,wind.z);
       curtain.material.uniforms.ceiling.value = rainEmissionCeiling(sampled);
       curtain.material.uniforms.alpha.value = Math.min(.65, strength * .72);
 
@@ -198,8 +205,8 @@ export class RainField {
         const i = index * IMPACTS_PER_CLOUD + j;
         const x = (hash(i * 4 + 36) - .5) * 3.2;
         const z = (hash(i * 4 + 37) - .5) * 2.6;
-        const worldX = sampled.x + x * sampled.scale;
-        const worldZ = sampled.z + z * sampled.scale;
+        const worldX = sampled.x + x * sampled.scale + wind.x * .05;
+        const worldZ = sampled.z + z * sampled.scale + wind.z * .05;
         this.impactPositions[3 * i] = worldX;
         this.impactPositions[3 * i + 1] = terrainHeight(worldX,worldZ) + .042;
         this.impactPositions[3 * i + 2] = worldZ;

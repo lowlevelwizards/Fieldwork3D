@@ -2,6 +2,8 @@
  * Build 005 — Clouds. Deterministic cloud cover and wind drift sampled
  * from the existing clock. No independently ticking weather simulation.
  */
+import { windDriftAtHour } from './wind-model.ts';
+
 export const CLOUD_COUNT = 18;
 export const REGION_HALF_WIDTH = 5;
 export const CLOUD_TRAVEL_SPAN = 32;
@@ -49,11 +51,12 @@ export function cloudPresence(coverage: number, rank: number): number {
  */
 export function cloudAt(index: number, hour: number): CloudSample {
   const fast = index % 3 === 0;
-  const velocity = fast ? 16 : 8; // world metres per simulated hour
+  const drift=windDriftAtHour(hour);
   return {
-    x: -16 + mod(hash(index * 7 + 1) * CLOUD_TRAVEL_SPAN + hour * velocity, CLOUD_TRAVEL_SPAN),
+    // Both layers sample the SAME wind field; upper clouds travel faster.
+    x: -16 + mod(hash(index * 7 + 1) * CLOUD_TRAVEL_SPAN + drift.x * (fast ? 2 : 1), CLOUD_TRAVEL_SPAN),
     z: -4.45 + hash(index * 7 + 2) * 8.9 +
-      .25 * Math.sin((hour / 8) * Math.PI * 2 + index * .7),
+      drift.z * (fast ? 1.15 : .8),
     y: CLOUD_HEIGHT + (index % 4) * .15,
     scale: .78 + hash(index * 7 + 3) * .78,
     rank: .04 + hash(index * 7 + 4) * .91,
