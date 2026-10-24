@@ -1,5 +1,5 @@
 import { GRID_CELLS,CELL_SIZE,WORLD_HALF,terrainHeight } from './terrain-model.ts';
-import { type TerrainWater } from './hydrology.ts';
+import { TerrainWater } from './hydrology.ts';
 import { clipWaterTriangle, type WaterVertex } from './water-surface-geometry.ts';
 
 /** Standing-water surfaces use a *basin-wide* constant elevation. Their
@@ -58,8 +58,7 @@ export function makeReferencePond(watershedWater:TerrainWater):TerrainWater{
     .sort((a,b)=>b.capacityLiters-a.capacityLiters);
   if(!available.length)return watershedWater;
   const basin=available[0],litres=basin.capacityLiters*.63;
-  return new (watershedWater.constructor as typeof TerrainWater)(
-    watershedWater.watershed,{
+  return new TerrainWater(watershedWater.watershed,{
       basins:[{sinkIndex:basin.sinkIndex,litres}],
       totalDepositedLiters:litres,
     });
