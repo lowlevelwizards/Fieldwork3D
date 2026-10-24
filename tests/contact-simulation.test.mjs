@@ -103,7 +103,7 @@ test('right-stick rays shoot where aimed, never auto-select a target',()=>{
  assert.equal(miss.hit,false);
  assert.equal(miss.at,null);
  assert.equal(s.fighters['patrol-a'].hp,100);
- s.update(.5);
+ for(let i=0;i<5;i++)s.update(.1);
  const aimed=s.fireDirection('rook',{x:1,z:0});
  assert.equal(aimed.hit,true);
  assert.equal(aimed.at,'patrol-a');
