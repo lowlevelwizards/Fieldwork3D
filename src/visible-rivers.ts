@@ -16,7 +16,7 @@ export function selectVisibleRiverLinks(
   for(let pass=0;pass<3;pass++){
     let changed=false;
     for(const chain of extractChannelChains(downhill,keep,catchment)){
-      const first=chain[0],last=chain[chain.length-1];
+      const first=chain[0];
       const length=chain.length-1;
       const maxCatchment=Math.max(...chain.slice(0,-1).map(i=>catchment[i]));
       const fromBoundary=first<gridSize||first>=gridSize*(gridSize-1)||
