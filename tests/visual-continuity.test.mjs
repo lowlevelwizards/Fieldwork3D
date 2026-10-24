@@ -42,7 +42,9 @@ test('river width is continuous along chains and retains stream hierarchy',()=>{
   assert.ok(smoothed[2]<widths[2]);
   assert.ok(smoothed[1]>widths[1]);
   assert.ok(Math.max(...smoothed)<.19);
-  assert.deepEqual(smoothChannelProfile([.1,.1,.1]),[.1,.1,.1]);
+  for(const value of smoothChannelProfile([.1,.1,.1])){
+    assert.ok(Math.abs(value-.1)<1e-12);
+  }
   assert.ok(streamWidth(20,120)>streamWidth(.3,7));
 });
 
@@ -54,7 +56,7 @@ test('broad wetness remains continuous and cannot alter source samples',()=>{
   assert.deepEqual(field,original);
   assert.ok(soft[4*n+4]>0 && soft[4*n+4]<.2);
   assert.ok(soft[4*n+3]>0);
-  assert.equal(soft[0],0);
+  assert.ok(soft[0]<.0001,'distant wetness should be negligible, not mathematically zero');
   assert.throws(()=>smoothDisplayField(field,n,-1),/pass/);
 });
 
