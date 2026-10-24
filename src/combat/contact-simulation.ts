@@ -82,8 +82,8 @@ export class ContactSimulation {
     this.fighters={
       rook:make('rook','crew',{x:10.7,z:10.15}),
       mica:make('mica','crew',{x:8.2,z:10.8}),
-      'patrol-a':make('patrol-a','patrol',{x:23,z:5}),
-      'patrol-b':make('patrol-b','patrol',{x:29,z:7}),
+      'patrol-a':make('patrol-a','patrol',{x:35,z:23}),
+      'patrol-b':make('patrol-b','patrol',{x:38,z:24}),
     };
   }
   setPosition(id:FighterId,pos:Point2,facing?:number,moving=false) {
@@ -93,8 +93,8 @@ export class ContactSimulation {
   reset() {
     this.fighters.rook=make('rook','crew',{x:10.7,z:10.15});
     this.fighters.mica=make('mica','crew',{x:8.2,z:10.8});
-    this.fighters['patrol-a']=make('patrol-a','patrol',{x:28,z:11});
-    this.fighters['patrol-b']=make('patrol-b','patrol',{x:31,z:8});
+    this.fighters['patrol-a']=make('patrol-a','patrol',{x:35,z:23});
+    this.fighters['patrol-b']=make('patrol-b','patrol',{x:38,z:24});
     this.order='follow';this.active=false;this.time=0;this.rng=214513;
   }
   revive(helper:FighterId,subject:FighterId):boolean {
@@ -132,13 +132,13 @@ export class ContactSimulation {
     const d=distance(f.position,victim.position);
     const blockedAt=obstruction(f.position,victim.position,this.obstacles);
     const inRange=d<=CREW_WEAPON.range;
-    const chance=clamp(.94-Math.max(0,d-CREW_WEAPON.optimal)*.026-
-      (f.moving?.14:0)-f.suppressed*.38, .2,.96);
+    const chance=clamp((.94-Math.max(0,d-CREW_WEAPON.optimal)*.026-
+      (f.moving?.14:0)-f.suppressed*.38)*(f.team==='patrol'?.58:1),.12,.96);
     const hit=!blockedAt && inRange && this.random()<chance;
     const shot:Shot={from:id,at:target,start:{...f.position},end:blockedAt??{...victim.position},
       blocked:Boolean(blockedAt),hit,damage:0,impacts:[]};
     if(hit){
-      shot.damage=CREW_WEAPON.damage;
+      shot.damage=f.team==='patrol'?16:CREW_WEAPON.damage;
       victim.hp=Math.max(0,victim.hp-shot.damage);
       shot.impacts.push({...victim.position});
       victim.suppressed=clamp(victim.suppressed+.22,0,1);
@@ -156,6 +156,62 @@ export class ContactSimulation {
       if(other.team!==f.team&&other.hp>0&&distance(other.position,f.position)<23){
         other.lastKnown={...f.position};other.memory=10;other.searchTimer=0;
         if(other.state==='unaware'){other.state='suspicious';this.report({type:'heard',observer:other.id});}
+      }
+    }
+    return shot;
+  }
+  /**
+   * True twin-stick firing. The vector is in world space and is NEVER snapped
+   * to a selected enemy. Targets are tested by distance from the bullet ray,
+   * with terrain obstruction taking priority over anything behind the cover.
+   */
+  fireDirection(id:FighterId,vector:Point2):Shot|null{
+    const shooter=this.fighters[id];
+    const norm=Math.hypot(vector.x,vector.z);
+    if(norm<.15||shooter.hp<=0||shooter.cooldown>0||shooter.reload>0)return null;
+    if(shooter.ammo<=0){this.reload(id);return null;}
+    shooter.ammo--;
+    shooter.cooldown=CREW_WEAPON.shotInterval;
+    this.active=true;
+    const dir={x:vector.x/norm,z:vector.z/norm};
+    const start={...shooter.position};
+    const far={x:start.x+dir.x*CREW_WEAPON.range,z:start.z+dir.z*CREW_WEAPON.range};
+    const blocked=obstruction(start,far,this.obstacles);
+    const maxDistance=blocked?distance(start,blocked):CREW_WEAPON.range;
+    let victim:Fighter|null=null;
+    let victimT=Infinity;
+    for(const fighter of Object.values(this.fighters)){
+      if(fighter.team===shooter.team||fighter.hp<=0)continue;
+      const vx=fighter.position.x-start.x,vz=fighter.position.z-start.z;
+      const projected=vx*dir.x+vz*dir.z;
+      const perp=Math.abs(vx*dir.z-vz*dir.x);
+      // Character diameter gives generous but physical touch accuracy.
+      if(projected>0 && projected<maxDistance && perp<.72 && projected<victimT){
+        victim=fighter;victimT=projected;
+      }
+    }
+    const end=victim?{...victim.position}:blocked??far;
+    const shot:Shot={from:id,at:victim?.id??null,start,end,
+      blocked:!victim&&Boolean(blocked),hit:!!victim,
+      damage:0,impacts:[]};
+    if(victim){
+      shot.damage=CREW_WEAPON.damage;
+      victim.hp=Math.max(0,victim.hp-shot.damage);
+      victim.suppressed=clamp(victim.suppressed+.24,0,1);
+      victim.state=victim.hp===0?'down':'engaged';
+      victim.lastKnown=start;victim.memory=10;victim.searchTimer=0;
+    }
+    shot.impacts.push({...end});
+    this.report({type:'shot',shot});
+    if(victim?.hp===0)this.report({type:'down',id:victim.id});
+    for(const other of Object.values(this.fighters)){
+      if(other.team!==shooter.team&&other.hp>0&&
+        distance(other.position,start)<23){
+        other.lastKnown=start;other.memory=10;other.searchTimer=0;
+        if(other.state==='unaware'){
+          other.state='suspicious';
+          this.report({type:'heard',observer:other.id});
+        }
       }
     }
     return shot;

@@ -94,3 +94,31 @@ test('patrol gives up a stale search so interrupted ordinary work can resume',()
  assert.equal(c.fighters['patrol-a'].state,'unaware');
  assert.equal(c.fighters['patrol-a'].lastKnown,null);
 });
+
+test('right-stick rays shoot where aimed, never auto-select a target',()=>{
+ const s=new ContactSimulation([]);
+ s.setPosition('rook',{x:0,z:0});s.setPosition('patrol-a',{x:8,z:0});
+ s.setPosition('patrol-b',{x:0,z:8});
+ const miss=s.fireDirection('rook',{x:1,z:1});
+ assert.equal(miss.hit,false);
+ assert.equal(miss.at,null);
+ assert.equal(s.fighters['patrol-a'].hp,100);
+ s.update(.5);
+ const aimed=s.fireDirection('rook',{x:1,z:0});
+ assert.equal(aimed.hit,true);
+ assert.equal(aimed.at,'patrol-a');
+ assert.equal(s.fighters['patrol-a'].hp,69);
+});
+test('a cover panel stops a free-aimed bullet before it reaches a target',()=>{
+ const s=new ContactSimulation([{kind:'box',x:3,z:0,halfX:1,halfZ:1}]);
+ s.setPosition('rook',{x:0,z:0});s.setPosition('patrol-a',{x:7,z:0});
+ const shot=s.fireDirection('rook',{x:1,z:0});
+ assert.equal(shot.blocked,true);
+ assert.equal(shot.hit,false);
+ assert.equal(s.fighters['patrol-a'].hp,100);
+});
+test('invalid aim input does not spend ammunition',()=>{
+ const s=new ContactSimulation([]);
+ assert.equal(s.fireDirection('rook',{x:0,z:0}),null);
+ assert.equal(s.fighters.rook.ammo,9);
+});
