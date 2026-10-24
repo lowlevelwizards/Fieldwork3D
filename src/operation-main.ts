@@ -141,8 +141,8 @@ function updateScene():void{
 }
 let lastPanel=-Infinity;
 function updateHud(now:number):void{
-  if(now-lastPanel<200)return;
-  lastPanel=now;
+  if(Number.isFinite(now)&&now-lastPanel<200)return;
+  if(Number.isFinite(now))lastPanel=now;
   const alive=world.actors.filter(a=>a.health>0);
   const contractors=alive.filter(a=>a.faction==='contractors').length;
   const wardens=alive.filter(a=>a.faction==='wardens').length;
