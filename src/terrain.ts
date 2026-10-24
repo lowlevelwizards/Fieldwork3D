@@ -7,7 +7,7 @@ import {
 import type { TerrainWater } from './hydrology';
 import {
   GRID_CELLS, WORLD_SIZE, WORLD_HALF, SUBSTRATE_BOTTOM,
-  terrainHeight,
+  terrainHeight, localChannelProximity,
 } from './terrain-model';
 
 /** A single indexed mesh with a continuous heightfield top and solid earth walls. */
@@ -91,6 +91,10 @@ export function makeTerrainGeometry(): THREE.BufferGeometry {
     )*.25;
     // Concave low spots have darker ambient contact, even before rain.
     const relief=reliefBrightness(local,average);
+    // Exposed stream beds and the inner muddy banks belong to the landform,
+    // even after rain stops. They are earth colors, never decorative water.
+    const bank=Math.pow(localChannelProximity(x,z),1.3);
+    const sediment=[1-.105*bank,1-.135*bank,1-.12*bank];
     for(let c=0;c<3;c++){
       let a=0,b=0;
       const channel=c===0 ? 'r' : c===1 ? 'g' : 'b';
@@ -99,8 +103,8 @@ export function makeTerrainGeometry(): THREE.BufferGeometry {
         a+=dryColors[k][channel]*weight;
         b+=wetColors[k][channel]*weight;
       }
-      dry[i*3+c]=a*relief;
-      wet[i*3+c]=b*relief;
+      dry[i*3+c]=a*relief*sediment[c];
+      wet[i*3+c]=b*relief*sediment[c];
     }
   }
   geometry.userData.visualDry=dry;
@@ -122,7 +126,11 @@ export function updateTerrainMoisture(geometry:THREE.BufferGeometry,water:Terrai
   const topVertices=(n+1)*(n+1)+n*n;
   const physicalMoisture=new Float32Array(n*n);
   for(let i=0;i<physicalMoisture.length;i++){
-    physicalMoisture[i]=water.soilFraction(i);
+    // Shallow overland water and measured inundation leave the surface
+    // visibly damp, without changing the physical soil-water ledger.
+    // The same display filter feathers the edges across adjacent cells.
+    const pooled=Math.min(1,water.waterDepthAtCell(i)/.055);
+    physicalMoisture[i]=Math.max(water.soilFraction(i),pooled*.74);
   }
   const displayMoisture=smoothDisplayMoisture(physicalMoisture,n);
   const positions=geometry.getAttribute('position') as THREE.BufferAttribute;
