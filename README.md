@@ -94,3 +94,23 @@ The screenshots that motivated Build 015 showed white, opaque-looking pond
 discs and geometric sand/soil boundaries. These changes target those exact
 failure modes. Deployment passing does not substitute for a real iPhone
 visual check.
+
+## Build 015.1 — Corrected water lighting and checkerboard regression
+
+The initial 015 visual pass had two presentation bugs:
+- It used an explicitly unlit `ShaderMaterial` that ignored the world's
+  directional sun, ambient hemisphere, fog, exposure and scene tonemapping.
+- Its "rain ripples" used two multiplied high-frequency sine waves, producing
+  a visible stationary checkerboard across ponds.
+
+Build 015.1 removes the entire unlit ripple shader, uses a light-responsive
+`MeshStandardMaterial` instead, and fades shorelines with vertex RGBA
+derived from measured local depth. The water receives the **same actual
+sunlight, nighttime ambient lighting, fog and tonemapping** as the ground;
+its color is not chosen from a separate authored time palette. Water remains
+terrain-clipped, region-confined and correctly ordered behind overhead
+clouds. Real hydrology and saved volumes are unchanged.
+
+`tests/water-visual.test.mjs` asserts that the checkerboard shader cannot
+return by accident, that RGB + alpha derive from water depth, and that a
+scene-lit material is used.

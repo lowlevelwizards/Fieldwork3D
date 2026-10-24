@@ -76,6 +76,7 @@ export class PuddleField {
     this.lastVolumes=volumes;
     const positions:number[]=[];
     const colors:number[]=[];
+    const tint=this.shoreColor.clone();
     const {watershed}=water;
     for(const basin of watershed.basins){
       const level=water.surfaceLevel(basin.id);
@@ -108,7 +109,7 @@ export class PuddleField {
             // material, so no fragment sine-grids or unlit coloring remain.
             for(const point of [a,b,c]){
               const appearance=waterAppearanceAtDepth(level-point.h);
-              const tint=this.shoreColor.clone().lerp(this.deepColor,appearance.depthMix);
+              tint.copy(this.shoreColor).lerp(this.deepColor,appearance.depthMix);
               colors.push(tint.r,tint.g,tint.b,appearance.opacity);
             }
           }
