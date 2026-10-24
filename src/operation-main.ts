@@ -41,13 +41,12 @@ updateTerrainMoisture(ground.geometry,water);
 scene.add(ground);
 const plants=new VegetationField(scene);
 plants.update(water);
-const buildings:THREE.Object3D[]=[];
 for(const [index,structure] of STRUCTURES.entries()){
   const shade=index<2?0x716d5a:0x817964;
   const roof=new THREE.Mesh(new THREE.BoxGeometry(structure.w,.37,structure.d),
     new THREE.MeshStandardMaterial({color:shade,roughness:.96}));
   roof.position.set(structure.x,terrainHeight(structure.x,structure.z)+.24,structure.z);
-  scene.add(roof);buildings.push(roof);
+  scene.add(roof);
   if(index<2){
     const top=new THREE.Mesh(
       new THREE.BoxGeometry(structure.w*.86,.055,structure.d*.88),
