@@ -194,6 +194,11 @@ export function stepOperation(world:Operation,dt:number,plants:readonly Plant[],
   const seconds=clamp(dt,0,.1);world.elapsed+=seconds;
   const blues=world.actors.filter(a=>a.faction==='contractors'&&a.health>0);
   const reds=world.actors.filter(a=>a.faction==='wardens'&&a.health>0);
+  if(world.carrier!==null&&!blues.some(a=>a.id===world.carrier)){
+    const fallen=world.actors.find(a=>a.id===world.carrier)!;
+    world.intel={x:fallen.x,z:fallen.z};world.carrier=null;
+    world.phase='collect';message(world,'Carrier down. Recover the logs.');
+  }
   for(const a of world.actors){a.cooldown=Math.max(0,a.cooldown-seconds);
     a.alert=Math.max(0,a.alert-seconds);}
   for(const enemy of reds){
