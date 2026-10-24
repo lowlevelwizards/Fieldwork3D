@@ -84,8 +84,10 @@ test('water visuals read but never mutate the physical reservoirs',()=>{
 test('flow rendering uses lit depth-feathered geometry, not debug graph edges',()=>{
   const src=readFileSync(new URL('../src/flow-field.ts',import.meta.url),'utf8');
   assert.match(src,/visibleStream\(/);
-  assert.match(src,/flowCurvePoint\(/);
-  assert.match(src,/cornerDepth\(/);
+  assert.match(src,/extractChannelChains\(/);
+  assert.match(src,/channelChainPoint\(/);
+  assert.match(src,/floodDisplayDepth\(/);
+  assert.match(src,/sampleDisplayMoisture\(/);
   assert.match(src,/Float32BufferAttribute\(colors,4\)/);
   assert.match(src,/new THREE\.MeshStandardMaterial\(/);
   assert.doesNotMatch(src,/ShaderMaterial|Math\.random\(/);

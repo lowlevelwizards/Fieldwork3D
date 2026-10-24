@@ -39,3 +39,93 @@ export function floodOpacity(depth:number):number{
   if(!Number.isFinite(depth)||depth<=0)return 0;
   return clamp(Math.sqrt(depth)*1.9,0,.78);
 }
+
+/** A visual chain comprises downhill grid links; each link belongs to one chain.
+ * At a junction, the most contributing incoming branch continues as the trunk,
+ * while other branches terminate at the exact same physical confluence.
+ */
+export function extractChannelChains(
+  downhill:readonly number[], active:readonly boolean[], contributing:readonly number[],
+):number[][] {
+  if(downhill.length!==active.length||active.length!==contributing.length)
+    throw new Error('Channel arrays must have matching lengths');
+  const n=downhill.length;
+  const incoming:number[][]=Array.from({length:n},()=>[]);
+  for(let i=0;i<n;i++){
+    const target=downhill[i];
+    if(active[i]&&target>=0&&target<n&&target!==i)incoming[target].push(i);
+  }
+  const trunk=new Int32Array(n).fill(-1);
+  for(let i=0;i<n;i++){
+    for(const upstream of incoming[i]){
+      const best=trunk[i];
+      if(best<0||contributing[upstream]>contributing[best]||
+        (contributing[upstream]===contributing[best]&&upstream<best)){
+        trunk[i]=upstream;
+      }
+    }
+  }
+  const visited=new Uint8Array(n);
+  const chains:number[][]=[];
+  const walk=(start:number)=>{
+    const chain=[start];
+    let current=start;
+    while(active[current]&&!visited[current]){
+      const next=downhill[current];
+      if(next<0||next>=n||next===current)break;
+      visited[current]=1;
+      chain.push(next);
+      // A side tributary terminates at the confluence. The trunk
+      // occupies the following edge so no graph edge is duplicated.
+      if(!active[next]||trunk[next]!==current)break;
+      current=next;
+    }
+    if(chain.length>1)chains.push(chain);
+  };
+  for(let i=0;i<n;i++){
+    if(!active[i]||downhill[i]<0||downhill[i]>=n)continue;
+    if(trunk[i]<0)walk(i);
+  }
+  // Defensive coverage for unexpected cycles or malformed inputs.
+  for(let i=0;i<n;i++){
+    if(active[i]&&!visited[i]&&downhill[i]>=0&&downhill[i]<n)walk(i);
+  }
+  return chains;
+}
+
+/** Neighbor-aware stream width/opacity: identical junction positions never
+ * receive repeated, independently changing per-link start/end profiles.
+ */
+export function smoothChannelProfile(values:readonly number[],radius=2):number[]{
+  if(radius<0||!Number.isInteger(radius))throw new Error('Invalid profile radius');
+  return values.map((v,i)=>{
+    let sum=0,weight=0;
+    for(let j=Math.max(0,i-radius);j<=Math.min(values.length-1,i+radius);j++){
+      const w=radius+1-Math.abs(j-i);
+      sum+=values[j]*w;
+      weight+=w;
+    }
+    return weight?(.30*v+.70*sum/weight):v;
+  });
+}
+
+export function channelChainPoint(
+  points:readonly ChannelPoint[],segment:number,t:number,
+):ChannelPoint {
+  if(points.length<2||segment<0||segment>=points.length-1)
+    throw new Error('Expected a downstream polyline segment');
+  const start=points[segment],end=points[segment+1];
+  const previous=points[segment-1]??{
+    x:2*start.x-end.x,z:2*start.z-end.z,
+  };
+  const following=points[segment+2]??{
+    x:2*end.x-start.x,z:2*end.z-start.z,
+  };
+  return flowCurvePoint(previous,start,end,following,t);
+}
+
+/** Core bank shape stays distinct while the drying fringe merges into soil. */
+export function bankFringeWeight(proximity:number):number{
+  const u=clamp((proximity-.08)/.85,0,1);
+  return u*u*(3-2*u);
+}
