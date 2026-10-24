@@ -63,10 +63,13 @@ export function hydraulicStage(
     return (Math.max(0,channelLitres)+Math.max(0,floodLitres))/
       (CELL_AREA*1000);
   }
-  const contained=Math.min(channelCapacity(section),Math.max(0,channelLitres));
-  const excess=Math.max(0,channelLitres-channelCapacity(section))+
-    Math.max(0,floodLitres);
-  return channelDepthForLitres(section,contained)+excess/(CELL_AREA*1000);
+  // Flood and channel are two accounting reservoirs, not two competing
+  // water surfaces. Recover their common level from the combined volume.
+  const total=Math.max(0,channelLitres)+Math.max(0,floodLitres);
+  const capacity=channelCapacity(section);
+  const contained=Math.min(capacity,total);
+  return channelDepthForLitres(section,contained)+
+    Math.max(0,total-capacity)/(CELL_AREA*1000);
 }
 
 export function channelWettedWidth(section:HydraulicSection,stage:number):number {
