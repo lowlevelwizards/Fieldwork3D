@@ -164,3 +164,99 @@ or arbitrary mud overlays were introduced.
 
 New tests verify mobility consequences, slow recovery, persistence,
 determinism, saturation contrasts and unchanged water conservation.
+
+## Builds 017–021 — Verdigris Valley & Connected Watershed
+
+Fieldwork's environmental testbed now samples a geographically coherent,
+north-to-south valley instead of a generic plateau scattered with basins.
+This is groundwork for an **asymmetric tactical warzone**, not a sandbox
+ecology game.
+
+### 017 — The valley has a shape
+
+- A 180 km **regional model** defines six fixed north-to-south identities:
+  Northline Peaks, Timberline, Cutwoods, Breadlands, Flooded Belt, and
+  Verdigris City. The major valley corridor and north-to-south downhill
+  relationship persist under bounded deterministic campaign seeds.
+- The 10×10 m live hydrology testbed is a **representative local valley
+  section**, not a 180 km landscape shrunk to 10 metres. It now features
+  a lower meandering central floor, taller lateral flanks and ridges,
+  two incised tributary gullies, and small perched side depressions.
+- The read-only **VERDIGRIS / REGION** button shows the continental valley
+  identity and the main river corridor. Regional rendering and detailed
+  local simulation use separate spatial scales by design. There is not yet
+  a tile-streaming system for thousands of adjacent local sections.
+
+### 018 — Connected drainage
+
+- The authoritative watershed retains its strict downhill cell routing
+  and now computes upstream contributing area for every cell, identifying
+  concentrated channels from actual topography.
+- Rain not absorbed by soil enters **moving local runoff storage**, passes
+  one downhill neighbor at a time, and spends measurable time in each cell.
+  It no longer instantly teleports to a remote sink or map edge.
+- Northern boundary inflow (16 L/hour at test scale) is modeled as an
+  explicit **regional headwater import**, separately recorded from local
+  rainfall. It provides a small persistent stream between storms.
+
+### 019 — Visible streams / river sections
+
+- Connected strips of physically lit water appear along the same actual
+  downhill links used by the transport model. Their presence follows
+  **real stored runoff**, not a permanently drawn blue line.
+- Tributary concentration, discharge storage, depth estimates and
+  downhill residence time are measured. The streams form a live local
+  network feeding the main valley outlet. Flow speed is currently
+  approximated from channel/overland residence time, not solved from
+  full shallow-water momentum equations.
+
+### 020 — Rising water and overbank flooding
+
+- Each measured channel has finite storage before it overtops.
+  Overflow enters a separate, conserved overbank reservoir.
+- Floodwater temporarily occupies neighboring low terrain when the
+  hydraulic head is sufficient, and drains much more slowly than
+  stream water. Rain uphill can therefore raise downstream flows later.
+- The environment inspector now shows SURFACE/ SOIL/ EXIT plus cumulative
+  UPSTREAM import, in-channel water and overbank FLOOD water. The existing
+  ground-load inspector uses the new flood + channel depth so deep
+  water reduces actual trafficability.
+- **Water accounting:** local rainfall + imported upstream water =
+  ponds + overland/channel water + inundation + soil water + outlet export
+  + evaporation. The separate saved-water key for 017 migrates older
+  compatible basin and soil saves to the altered terrain where possible,
+  preserving their litres as moving water if old sink sites no longer exist.
+
+### 021 — Terrain-forming processes (generation-time first pass)
+
+- The initial local valley surface encodes **channel incision** for the
+  north–south course and tributary gullies, and broad floodplain
+  deposition as an exceptionally low-gradient valley floor.
+- This is deterministic, authored *generation-time geomorphology*, not
+  an active sediment-transport or landscape-modifying erosion solver.
+  Dynamic erosion, deposition mass, sediment grain sorting, changing
+  channel bed elevations, and run-time recomputation of drainage graphs
+  remain deliberate future work.
+
+### How to test
+
+1. Open the 017–021 build. Orbit the new terrain: a falling north–south
+   valley corridor now exists between two continuous flanking slopes.
+2. Select **VERDIGRIS / REGION** to see the stable large-scale north-to-
+   south shape. The live slab is a separate detailed watershed slice.
+3. Turn CLOUDS to 0 and run time: the stream continues from the explicitly
+   metered upstream boundary and eventually exits the south.
+4. Turn CLOUDS to 100% and run several world-hours: rainfall infiltrates,
+   tributaries carry runoff, and some channels fill and spill onto adjacent
+   floodplain terrain. UPSTREAM, CHANNEL, FLOOD, SOIL, EXIT and EVAP change
+   according to their respective stores.
+5. Enable GROUND TEST and compare FOOT vs VEHICLE near the river/flooded
+   ground. Passing feet/vehicles still make ruts; their state persists
+   independently from water.
+6. Use CLEAR to reset all water reservoirs, including imported upstream
+   volume and inundation. CLEAR TRACKS remains a separate operation.
+
+This is a validated *simulation and build* pass. Phone visual quality and
+actual camera readability still require screenshot feedback from the
+device. No generated military campaign, roads, settlements, actors or
+moving AI units have been introduced.
