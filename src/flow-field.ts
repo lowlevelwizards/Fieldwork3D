@@ -13,6 +13,7 @@ export class FlowField {
   private readonly overbank:THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>;
   private readonly channelTint=new THREE.Color(0x426c79);
   private readonly floodTint=new THREE.Color(0x456f77);
+  private lastRebuildMs=Number.NEGATIVE_INFINITY;
   constructor(scene:THREE.Scene){
     const material=new THREE.MeshStandardMaterial({
       color:0xffffff,vertexColors:true,
@@ -33,7 +34,12 @@ export class FlowField {
     this.overbank.renderOrder=2.12;
     scene.add(this.overbank);
   }
-  update(water:TerrainWater):void{
+  update(water:TerrainWater,force=false):void{
+    // Mobile: 6–8 mesh updates/second is more than enough for slow river
+    // elevation changes. Simulation still integrates at its normal rate.
+    const now=performance.now();
+    if(!force && now-this.lastRebuildMs<160)return;
+    this.lastRebuildMs=now;
     const pos:number[]=[];
     const rgb:number[]=[];
     const floodPos:number[]=[];

@@ -335,6 +335,7 @@ controls.cloudAuto.addEventListener('click', () => {
 controls.clearWater.addEventListener('click', () => {
   standingWater.clear();
   saveStandingWater();
+  flowField.update(standingWater,true);
   applyEnvironment(environmentAtHour(hour));
   render();
 });

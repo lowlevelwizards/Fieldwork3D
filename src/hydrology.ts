@@ -390,14 +390,30 @@ export class TerrainWater {
         }
       }
       if(this.flood[i]>EPS){
-        // Overbank water spreads and drains more slowly than channel water.
+        // Overbank water can occupy adjacent low-lying floodplain cells.
+        // Hydraulic head (terrain + inundation depth) permits lateral
+        // spreading while gravity preferentially drains downstream.
         const sent=this.flood[i]*(1-Math.exp(-dt/.52));
         this.flood[i]-=sent;
-        if(downstream>=0)floodArrivals[downstream]+=sent;
+        const head=cell.height+this.flood[i]/(1000*CELL_AREA);
+        const neighbors=cell.neighbors.filter(n=>
+          n!==downstream && this.watershed.cells[n].height<head-.004);
+        let lateral=0;
+        if(neighbors.length){
+          const weights=neighbors.map(n=>
+            Math.max(.001,head-this.watershed.cells[n].height));
+          const weightSum=weights.reduce((a,b)=>a+b,0);
+          lateral=sent*.43;
+          for(let k=0;k<neighbors.length;k++){
+            floodArrivals[neighbors[k]]+=lateral*weights[k]/weightSum;
+          }
+        }
+        const forward=sent-lateral;
+        if(downstream>=0)floodArrivals[downstream]+=forward;
         else{
           const basin=this.watershed.cellBasin[i];
-          if(basin>=0)this.water[basin]+=sent;
-          else this.exported+=sent;
+          if(basin>=0)this.water[basin]+=forward;
+          else this.exported+=forward;
         }
       }
     }

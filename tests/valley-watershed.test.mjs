@@ -91,8 +91,8 @@ test('intense wet weather can fill channels and make real flood storage',()=>{
   const water=new TerrainWater();
   for(let h=0;h<16;h+=2)water.advance(5+h,2,1);
   assert.ok(water.totalDepositedLiters()>0);
-  assert.ok(water.totalSurfaceLiters===undefined);
-  assert.ok(water.totalFloodLiters()>=0);
+  assert.ok(water.totalFloodLiters()>0,
+    'sustained upstream rain should overtop channels onto floodplains');
   assert.ok(water.totalChannelLiters()>0);
   assert.ok(Math.abs(water.massBalanceError())<.0001);
   const before=water.snapshot();
