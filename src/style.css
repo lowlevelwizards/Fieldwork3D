@@ -92,3 +92,22 @@ html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
 .rain-status span[data-phase="downpour"] { color: #c2e3f2; }
 .rain-status span[data-phase="rain"] { color: #b5d4e0; }
 .rain-status span[data-phase="dry"] { color: #9fabab; }
+
+/* Build 007 — a minimal physical-water readout and a test reset. */
+.water-status {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:8px; margin-top:5px; padding-top:6px;
+  border-top:1px solid rgba(236,240,226,.13);
+  font-size:10px; letter-spacing:.07em; color:#c3d8d7;
+  font-variant-numeric:tabular-nums;
+}
+.water-status span:first-child { white-space:nowrap; }
+.water-status span:nth-child(2) { margin-left:auto; color:#d0e8e8; }
+.water-status button {
+  flex-shrink:0; font-size:10px; letter-spacing:.06em;
+  width:48px; height:26px; color:#c9d7d5;
+}
+@media (max-height: 380px) {
+  .water-status { margin-top:2px; padding-top:3px; }
+  .rain-status { margin-top:1px; }
+}

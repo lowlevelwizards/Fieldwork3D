@@ -3,6 +3,8 @@ import { cameraOffset, clampZoom, viewSize } from './camera-model';
 import { CloudField } from './clouds';
 import { cloudCoverAtHour } from './cloud-model';
 import { RainField } from './rain';
+import { StandingWater } from './standing-water';
+import { PuddleField } from './puddles';
 import { rainAtHour } from './rain-model';
 import {
   DAY_LENGTH_SECONDS, INITIAL_HOUR, advanceHour, clockLabel, cssColor,
@@ -23,18 +25,39 @@ const cloudCoverInput = document.querySelector<HTMLInputElement>('#cloudCover');
 const cloudCoverLabel = document.querySelector<HTMLElement>('#cloudCoverLabel');
 const cloudAuto = document.querySelector<HTMLButtonElement>('#cloudAuto');
 const rainLabel = document.querySelector<HTMLElement>('#rainLabel');
+const waterLabel = document.querySelector<HTMLElement>('#waterLabel');
+const clearWaterButton = document.querySelector<HTMLButtonElement>('#waterClear');
 if (!timeToggle || !timeScrub || !timeLabel || !phaseLabel ||
-    !cloudCoverInput || !cloudCoverLabel || !cloudAuto || !rainLabel) {
+    !cloudCoverInput || !cloudCoverLabel || !cloudAuto || !rainLabel ||
+    !waterLabel || !clearWaterButton) {
   throw new Error('Missing time-of-day inspector');
 }
 const controls = { toggle: timeToggle, scrub: timeScrub, clock: timeLabel, phase: phaseLabel,
   cloudCover: cloudCoverInput, cloudLabel: cloudCoverLabel, cloudAuto,
-  rainLabel };
+  rainLabel, waterLabel, clearWater: clearWaterButton };
 
 let hour = INITIAL_HOUR;
 let playing = true;
 // Null restores natural cover. An override is inspection only, not another clock.
 let cloudCoverOverride: number | null = null;
+// Surface water is an accumulated world quantity, deliberately separate from
+// the reversible time-of-day preview (scrubbing time deposits nothing).
+const WATER_SAVE_KEY = 'fieldwork-ground-zero-water-007';
+let savedVolumes: unknown;
+try {
+  const json = window.localStorage.getItem(WATER_SAVE_KEY);
+  if (json) savedVolumes = JSON.parse(json);
+} catch { /* private browsing or disabled storage still supports water */ }
+const standingWater = new StandingWater(savedVolumes);
+let waterNeedsSave = false;
+function saveStandingWater(): void {
+  try {
+    window.localStorage.setItem(WATER_SAVE_KEY,
+      JSON.stringify(standingWater.snapshot().volumesLiters));
+    waterNeedsSave = false;
+  } catch { /* storage is optional; water still accumulates this session */ }
+}
+
 const scene = new THREE.Scene();
 // Transparent rendering exposes the time-varying gradient beneath canvas.
 const initial = environmentAtHour(hour);
@@ -153,6 +176,7 @@ scene.add(veil);
 // All clouds and their projected shadows are clipped to the original slab.
 const clouds = new CloudField(scene);
 const rainField = new RainField(scene);
+const puddles = new PuddleField(scene);
 const rainFogTone = new THREE.Color(0x91a0a6);
 
 function applyEnvironment(e: EnvironmentState) {
@@ -185,6 +209,9 @@ function applyEnvironment(e: EnvironmentState) {
 
   clouds.update(e.hour, e, cloudCoverOverride, storm);
   rainField.update(e.hour, rain);
+  puddles.update(standingWater, e, storm);
+  controls.waterLabel.textContent =
+    'WATER ' + standingWater.totalLiters().toFixed(1) + ' L';
   controls.rainLabel.textContent =
     'RAIN ' + Math.round(storm * 100) + '% · ' + rain.phase.toUpperCase();
   controls.rainLabel.dataset.phase = rain.phase;
@@ -232,6 +259,12 @@ controls.cloudCover.addEventListener('input', () => {
 });
 controls.cloudAuto.addEventListener('click', () => {
   cloudCoverOverride = null;
+  applyEnvironment(environmentAtHour(hour));
+  render();
+});
+controls.clearWater.addEventListener('click', () => {
+  standingWater.clear();
+  saveStandingWater();
   applyEnvironment(environmentAtHour(hour));
   render();
 });
@@ -349,6 +382,7 @@ updatePlayButton();
 resize();
 
 let lastFrame = performance.now();
+let lastWaterSave = lastFrame;
 let accumulated = 0;
 function tick(now: number) {
   const dt = Math.max(0, Math.min((now - lastFrame) / 1000, 0.2));
@@ -356,6 +390,11 @@ function tick(now: number) {
   if (playing) {
     accumulated += dt;
     if (accumulated >= 1 / 30) {
+      // Integrate REAL deposited water before advancing the world clock.
+      // The cloud slider changes future rainfall, not past puddle history.
+      const elapsedWorldHours = accumulated * 24 / DAY_LENGTH_SECONDS;
+      const addedLitres = standingWater.advance(hour, elapsedWorldHours, cloudCoverOverride);
+      if (addedLitres > 0) waterNeedsSave = true;
       hour = advanceHour(hour, accumulated, DAY_LENGTH_SECONDS);
       accumulated = 0;
       applyEnvironment(environmentAtHour(hour));
@@ -364,6 +403,13 @@ function tick(now: number) {
   } else {
     accumulated = 0;
   }
+  if (waterNeedsSave && now - lastWaterSave > 1800) {
+    saveStandingWater();
+    lastWaterSave = now;
+  }
   requestAnimationFrame(tick);
 }
+window.addEventListener('pagehide', () => {
+  if (waterNeedsSave) saveStandingWater();
+});
 requestAnimationFrame(tick);

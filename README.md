@@ -1,47 +1,48 @@
-# Fieldwork — Ground Zero / Build 006: Rain
+# Fieldwork — Ground Zero / Build 007: Water Accumulates
 
-The 10 × 10 metre diorama now experiences rain. No new terrain or actors
-have been added. Rain follows the clouds and the same reversible world clock.
+The small diorama now stores **actual litres of standing water** from rain.
+The world still consists of the original 10 × 10 m ground block, moving
+clouds, atmosphere and one clock. No river, particles-based water fluid
+solver, groundwater, new terrain mesh or game characters were introduced.
 
-## Cause and effect
+## The new causal fact
 
-1. **Cloud cover** controls the amount of moisture available: low coverage
-   is dry, increasing coverage produces drizzle, rain, or a downpour.
-2. **Authored rain fronts** determine varying onset, duration, intensity
-   and taper-off times. They are deterministic functions of world hour,
-   not a second weather clock or a random timer.
-3. **Cloud undersides darken** with rising cover and rain, and direct
-   sunlight dims in heavy precipitation.
-4. **Raindrops** form thin diagonal falling streaks directly under the
-   moving blocky clouds. They wrap from cloud height to the ground.
-   Both curtains and small ground-hit flecks are region-clipped.
-5. **Ground wetness** darkens the existing grass and earth after showers.
-   It lingers and recedes, computed from recent rainfall, so scrubbing
-   time always reproduces the same ground condition.
-6. **Atmosphere** becomes slightly hazier during heavy rainfall. Rain
-   does not create pools, runoff, soil moisture gameplay or erosion yet.
+1. Rainfall delivers water to the ground below moving cloud footprints.
+2. Nine small, fixed low spots retain the rain they receive. The local
+   rainfall depends on cloud positions, coverage and precipitation strength.
+3. The amount stored is **state**, not an effect of the current sky color.
+   Each catchment has its own water volume measured in litres.
+4. Shallow irregular puddle visuals expand with their accumulated volume,
+   respond to the current sky and lighting, and stay inside the original tile.
+5. Water is NOT removed just because the rain stops or it becomes sunny.
+   This build intentionally has **no evaporation, soil absorption, runoff,
+   drainage or flow.** Water also does not disappear when the clock loops.
+6. The water volumes persist in browser local storage across reloads
+   where the browser permits it.
 
-All visuals are designed to be lightweight on mobile: reused geometry,
-GPU shader animation for raindrops and a limited set of inexpensive
-surface-hit points.
+This first model only assigns rain to nine small illustrative catchments.
+It does **not** yet conserve *all* rainfall outside those basins or model
+overflow routing, and its footprints remain fixed once full. The total
+standing-water value is the water retained by the modelled catchments,
+not a claim of complete rainfall accounting.
 
-## How to inspect
+## How to verify
 
-- A full 24-hour cycle runs in four real minutes.
-- Pause/play or scrub the day/night time slider; paused rain freezes.
-- The **CLOUDS** slider overrides coverage. At ~60% it is mostly dry;
-  around 70-85% drizzle/rain becomes possible; near 100% it can pour.
-- **AUTO** restores cloud cover and naturally varying rainy intervals.
-- The **PRECIPITATION** readout shows current rain intensity and type.
-- Orbit and zoom as before.
+- Set CLOUDS near 100%, then **resume time**. Watch the puddles grow as
+  water lands under drifting clouds.
+- Lower CLOUDS or pause time. The puddles remain.
+- Change the time slider: it previews other lighting and rain conditions,
+  but **does not retroactively deposit or remove water**.
+- The STANDING WATER readout reports the sum retained, in litres.
+- CLEAR empties puddles for another experiment.
+- Rain and clouds still respond to the old controls and 4-minute day.
 
-Rain fronts occur at different hours, with strongest sustained showers
-around the misty early morning and another in the evening. During
-daylight rain the sun and cloud shadows dim; at night, rain remains
-visible in the cool ambient light.
+Note: A later comparative investigation of the **LLW browser water system**
+is deliberately out of scope for this minimal accumulation atom. Before
+attempting full surface hydrology, study that implementation's methods
+and decide what applies to Fieldwork's terrain and performance envelope.
 
-This is still a compact environmental experiment, not full simulated
-meteorology. Previous game prototype: 
+Older full prototype is preserved at
 [`archive/pre-ground-zero-2026-10-23`](../../tree/archive/pre-ground-zero-2026-10-23).
 
-Tests: `npm install && npm test && npm run build`.
+Validation: `npm install && npm test && npm run build`.

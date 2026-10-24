@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
   <meta name="theme-color" content="#c5d2c9" />
-  <title>Fieldwork — Ground Zero · Rain</title>
+  <title>Fieldwork — Ground Zero · Puddles</title>
 </head>
 <body>
   <canvas id="app" aria-label="Single isometric ground block with changing daylight and mist; drag to orbit and pinch to zoom"></canvas>
@@ -23,6 +23,11 @@
     <div class="rain-status">
       <span>PRECIPITATION</span>
       <span id="rainLabel" role="status" aria-live="off">RAIN 0% · DRY</span>
+    </div>
+    <div class="water-status">
+      <span>STANDING WATER</span>
+      <span id="waterLabel" aria-live="off">WATER 0.0 L</span>
+      <button type="button" id="waterClear" aria-label="Clear accumulated puddles" title="Reset accumulated water">CLEAR</button>
     </div>
   </section>
   <script type="module" src="/src/main.ts"></script>
