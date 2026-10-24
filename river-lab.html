@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <title>Fieldwork · River Geometry Lab 025</title>
+  <style>
+    *{box-sizing:border-box} html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#b8cdd0;font-family:ui-monospace,monospace}
+    canvas{width:100%;height:100%;display:block;touch-action:none}
+    .panel{position:fixed;bottom:max(14px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(580px,calc(100% - 26px));color:#e2ebe6;background:#203338e8;border:1px solid #a0b7b2;border-radius:12px;padding:12px;z-index:2;box-shadow:0 5px 22px #14252833}
+    .heading{font-size:13px;font-weight:700;letter-spacing:.13em;margin-bottom:8px}
+    .sub{font-size:11px;color:#b7d1cf;line-height:1.5;margin-top:7px}
+    .controls{display:flex;flex-wrap:wrap;gap:5px}
+    button{font:11px ui-monospace,monospace;color:#c2d9d8;background:#34484a;border:1px solid #637a77;border-radius:6px;padding:8px 10px;cursor:pointer}
+    button[aria-pressed=true]{color:#1e3334;background:#cfdecf;border-color:#e8f1e4}
+    .top{position:fixed;top:max(14px,env(safe-area-inset-top));right:13px;font:11px ui-monospace,monospace;color:#e0e8df;background:#253b40ee;border-radius:7px;padding:10px;z-index:3}
+    #status{font-variant-numeric:tabular-nums}
+  </style>
+</head>
+<body>
+  <canvas id="riverCanvas" aria-label="Fieldwork River Geometry Lab prototype, drag to orbit, pinch to zoom"></canvas>
+  <div class="top">VERDIGRIS / RIVER LAB 025</div>
+  <section class="panel" aria-label="River prototype scenarios">
+    <div class="heading">CONTINUOUS RIVER · GEOMETRY PROOF</div>
+    <div class="controls" id="scenarios">
+      <button type="button" data-scenario="dry">DRY</button>
+      <button type="button" data-scenario="normal">NORMAL</button>
+      <button type="button" data-scenario="high">HIGH</button>
+      <button type="button" data-scenario="flood">FLOOD</button>
+      <button type="button" data-scenario="recession">RECEDING</button>
+      <button type="button" data-scenario="pond">POND</button>
+      <button type="button" data-scenario="live">LIVE LEDGER</button>
+    </div>
+    <div class="controls" style="margin-top:8px">
+      <button type="button" id="debug">GEOMETRY OVERLAY</button>
+      <button type="button" id="overhead">TOP DOWN</button>
+      <button type="button" id="oblique">OBLIQUE</button>
+      <a href="./" style="margin-left:auto;color:#b7d1cf;font-size:11px;padding:9px 2px">REGION</a>
+    </div>
+    <div class="sub" id="status">Initializing continuous terrain and water geometry…</div>
+    <div class="sub">Prototype only · geography is shared with Verdigris. Fixed scenario levels are visual fixtures; LIVE LEDGER reads the real conserved water simulation. No live renderer replaced.</div>
+  </section>
+  <script type="module" src="./src/river-lab-main.ts"></script>
+</body>
+</html>
