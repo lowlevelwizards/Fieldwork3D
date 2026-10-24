@@ -301,3 +301,30 @@ Validate with `npm test && npm run check && npm run build`.
 Visual checks on an actual phone are still needed; CI cannot certify
 aesthetics or transparency on mobile GPUs.
 
+
+## Build 023 — Continuous visual terrain and stream geometry
+
+This is a display-continuity pass over the existing conserved watershed,
+not another fluid solver or map-system rewrite. The physical 32×32 grid,
+measured terrain elevations, saved stores and groundwater/mobility behavior
+remain authoritative.
+
+- The visible channel graph is traced into continuous primary-stream and
+  tributary chains. Each active downhill link belongs to one rendered chain,
+  confluences share positions, and all width/depth/opacity samples blend
+  along entire paths. Fine spline sampling removes width jumps at cell joins.
+- Soil saturation, runoff and floodwater feed separate display layers.
+  Broad smoothing merges similar areas; elevation-guided bilateral filtering
+  protects ridges, steep banks and gully walls from color bleeding.
+- Floods render on a 3× finer *visual* grid (96×96) with shared vertex
+  samples from the filtered depth field, reducing triangular fan artifacts.
+  This affects drawn translucency only, not water locations or litres.
+- Sediment-colored channel fringes transition through existing vegetation/
+  soil colors, while strong elevation boundaries remain readable.
+- The simulated water budget, infiltration, rainfall, headwater import,
+  evaporation, catchments, trafficability and persisted saves are unchanged.
+
+Test clear vs stormy hours, then orbit close to a river junction: its shape
+should remain coherent and wet ground should fade naturally into neighboring
+similar terrain without blue tiling. Real iPhone screenshots remain necessary
+to validate visual quality beyond automated tests.
