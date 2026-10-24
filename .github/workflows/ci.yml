@@ -1,4 +1,4 @@
-name: Fieldwork 3D checks
+name: Fieldwork Ground Zero checks
 on:
   push:
     branches: [main]
@@ -16,7 +16,7 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Navigation tests
+      - name: Camera tests
         run: npm test
       - name: Typecheck
         run: npm run check

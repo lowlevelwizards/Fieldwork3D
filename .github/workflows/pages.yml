@@ -1,4 +1,4 @@
-name: Deploy Fieldwork 3D
+name: Deploy Fieldwork Ground Zero
 on:
   push:
     branches: [main]
