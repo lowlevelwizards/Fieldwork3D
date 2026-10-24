@@ -260,3 +260,44 @@ This is a validated *simulation and build* pass. Phone visual quality and
 actual camera readability still require screenshot feedback from the
 device. No generated military campaign, roads, settlements, actors or
 moving AI units have been introduced.
+
+## Build 022 — Natural valley and visible water
+
+The original runoff view drew almost every wet downhill graph edge as an
+opaque straight blue strip. Storms made hundreds of parallel, evenly spaced
+marks; overbank water was displayed as isolated triangular cell fans. Both
+looked more like a hydrology debugger than a valley.
+
+- **Physical valley relief:** stronger lateral shoulders and low continuous
+  ridges, plus slightly curved and more deeply incised tributary gullies.
+  The authoritative grid samples this same revised heightfield; there is
+  no render-only elevation displacement.
+- **Measured river network:** concentrated catchments and water actually
+  held in runoff storage create the visible stream ribbons. Diffuse runoff
+  remains physical but no longer generates hundreds of blue graph edges.
+  Branches gradually widen with contributing area and volume.
+- **Connected water surfaces:** each drawn link follows the real downhill
+  neighbor graph; smooth Hermite tangents reduce straight stair-stepped
+  segments, and transparent bank fringes meet earth instead of hard blue
+  strips. The water color is lit by the scene's ordinary lighting.
+- **Floodplains:** a continuous, shared-corner visual flood-depth field
+  replaces each cell's sharp blue triangular spokes. Every sample is derived
+  from physical overbank litres. Pools and shores fade smoothly.
+- **Wet banks and soils:** exposed channel beds have a restrained earth/
+  sediment tint; actual local surface water also informs display moisture
+  through a filtered visual-only layer. No decorative water reservoirs.
+- **Preserved:** rain imports, transport, infiltration, evaporation,
+  conserved litres, persistent water/traffic saves, Ground Test, region
+  identity and cloud/clock controls.
+
+Try a dry preview, then CLOUDS 100% for several hours: gullies and the
+larger valley channel should be readable without an all-over blue mesh;
+lower ground wets and floods as real storage rises. Compare FOOT and VEHICLE
+along the banks. The geometry change can move historic basin locations,
+but the existing save migration routes old basin litres into physical
+surface water rather than discarding them.
+
+Validate with `npm test && npm run check && npm run build`.
+Visual checks on an actual phone are still needed; CI cannot certify
+aesthetics or transparency on mobile GPUs.
+
