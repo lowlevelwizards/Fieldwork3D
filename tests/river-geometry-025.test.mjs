@@ -60,6 +60,12 @@ test('continuous river geometry grows wider with water level and dries without c
   assert.ok(medianWidth(normal)<medianWidth(high));
   assert.ok(medianWidth(high)<medianWidth(flood));
   assert.ok(medianWidth(recession)<medianWidth(high));
+  // Ordinary flow must not mistake the neighboring tributary gully for
+  // several metres of extra main-river width (a screenshot regression).
+  const maximumWidth=mesh=>Math.max(...mesh.widths.map(w=>w.left+w.right));
+  assert.ok(maximumWidth(normal)<=1.08001);
+  assert.ok(maximumWidth(high)<=1.502);
+  assert.ok(maximumWidth(flood)>maximumWidth(high));
   assert.ok(RIVER_TEST_LEVELS.recession>RIVER_TEST_LEVELS.normal);
 });
 
