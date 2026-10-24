@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import { SURFACE, visualMaterialWeights, type SurfaceKind } from './surface-materials';
 import {
-  smoothDisplayMoisture, sampleDisplayMoisture, reliefBrightness,
+  composeDisplayWetness, sampleDisplayMoisture, reliefBrightness,
   displayWetnessWeight,
 } from './terrain-display-model';
 import type { TerrainWater } from './hydrology';
+import { bankFringeWeight } from './drainage-visual-model';
 import {
-  GRID_CELLS, WORLD_SIZE, WORLD_HALF, SUBSTRATE_BOTTOM,
+  GRID_CELLS, CELL_SIZE, WORLD_SIZE, WORLD_HALF, SUBSTRATE_BOTTOM,
   terrainHeight, localChannelProximity,
 } from './terrain-model';
 
@@ -93,7 +94,7 @@ export function makeTerrainGeometry(): THREE.BufferGeometry {
     const relief=reliefBrightness(local,average);
     // Exposed stream beds and the inner muddy banks belong to the landform,
     // even after rain stops. They are earth colors, never decorative water.
-    const bank=Math.pow(localChannelProximity(x,z),1.3);
+    const bank=bankFringeWeight(localChannelProximity(x,z));
     const sediment=[1-.105*bank,1-.135*bank,1-.12*bank];
     for(let c=0;c<3;c++){
       let a=0,b=0;
@@ -124,15 +125,22 @@ export function updateTerrainMoisture(geometry:THREE.BufferGeometry,water:Terrai
   const wet=geometry.userData.visualWet as Float32Array;
   const n=GRID_CELLS;
   const topVertices=(n+1)*(n+1)+n*n;
-  const physicalMoisture=new Float32Array(n*n);
-  for(let i=0;i<physicalMoisture.length;i++){
-    // Shallow overland water and measured inundation leave the surface
-    // visibly damp, without changing the physical soil-water ledger.
-    // The same display filter feathers the edges across adjacent cells.
-    const pooled=Math.min(1,water.waterDepthAtCell(i)/.055);
-    physicalMoisture[i]=Math.max(water.soilFraction(i),pooled*.74);
+  // Separate measured signals: do not treat one flooded cell as a dark
+  // triangle and do not spread wetness across a ridgeline. The smoothing
+  // output exists only for vertex colors; water conservation is unchanged.
+  const soil=new Float32Array(n*n);
+  const runoffDepth=new Float32Array(n*n);
+  const floodDepth=new Float32Array(n*n);
+  const elevation=new Float32Array(n*n);
+  const cellArea=CELL_SIZE*CELL_SIZE;
+  for(let i=0;i<soil.length;i++){
+    soil[i]=water.soilFraction(i);
+    runoffDepth[i]=water.runoffLiters(i)/(1000*cellArea);
+    floodDepth[i]=water.floodLiters(i)/(1000*cellArea);
+    elevation[i]=water.watershed.cells[i].height;
   }
-  const displayMoisture=smoothDisplayMoisture(physicalMoisture,n);
+  const displayMoisture=composeDisplayWetness(
+    soil,runoffDepth,floodDepth,elevation,n);
   const positions=geometry.getAttribute('position') as THREE.BufferAttribute;
   for(let i=0;i<topVertices;i++){
     // Sample the exact same bilinear field at both shared grid corners
