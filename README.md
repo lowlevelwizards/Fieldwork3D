@@ -389,3 +389,31 @@ flood-contour polish. A later pass may blend neighboring, physically
 connected flood cells more deeply, but must not recreate the old global
 raised grid. Verify on iPhone after clear/dry weather and several simulated
 rainy hours; CI checks geometry properties but does not render screenshots.
+
+## Build 024.2 — Continuous water footprint, not translucent tiles
+
+The 024.1 repair removed the dark hanging river wall but still generated
+overlapping stream ribbons, flood-cell plates and separate pond geometry.
+The transparent, double-sided triangles produced a pale checkerboard river
+and occasional thin, raised triangular artifacts on mobile.
+
+- A pure, testable `hydraulic-water-mesh-model.ts` now samples **one** water
+  footprint from the authoritative stream, flood and basin stores.
+- Each surface sample resolves to a single supported hydraulic water level
+  and coverage. Cells without physical water cannot independently draw
+  translucent plates, and channels are no longer stacked on flood or pond
+  meshes.
+- Terrain shore clipping is still used, but never stitches large height
+  discontinuities into steep water triangles. Connected reaches use a
+  finer visual grid than the 32×32 physical simulation.
+- One-sided `FrontSide` geometry, correct upward winding and a blue-green
+  transparent water material prevent backface overdraw and crossed quads.
+- The rainfall, soil, channel capacity, pond, flood, backwater, saves, and
+  trafficability simulation are unchanged.
+- Regression tests inspect actual generated triangles in dry, wet, replayed,
+  and different-detail conditions, including height spans, alpha bounds,
+  normal orientation, finite coordinates, and mass-preserving reads.
+
+This pass deliberately prioritizes eliminating water-grid geometry artifacts
+and rendering contradictions over ornamental water effects. Real iPhone
+review is still needed to assess the final shoreline and river appearance.
