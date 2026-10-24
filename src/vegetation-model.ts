@@ -1,4 +1,4 @@
-import { cellIndexAt,localChannelProximity, terrainHeight, WORLD_HALF } from './terrain-model.ts';
+import { cellIndexAt,localChannelProximity, WORLD_HALF } from './terrain-model.ts';
 import { surfaceAt } from './surface-materials.ts';
 import { slopeAt } from './traffic-model.ts';
 
