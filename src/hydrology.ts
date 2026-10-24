@@ -13,6 +13,10 @@ import {
   makeTerrainCells, type TerrainCell,
 } from './terrain-model.ts';
 import { CLOUD_COUNT, cloudAt, cloudCoverAtHour, cloudPresence } from './cloud-model.ts';
+import {
+  hydraulicSection, channelCapacity, hydraulicStage, channelWettedWidth,
+  type HydraulicSection,
+} from './hydraulic-section.ts';
 import { rainIntensityAtHour } from './rain-model.ts';
 import { wrapHour } from './environment-conditions.ts';
 import { evaporationMmPerHour } from './evaporation-model.ts';
@@ -252,8 +256,6 @@ export type WaterState = {
 };
 
 const RIVER_HEADWATER_LITRES_PER_HOUR=16;
-const CHANNEL_BANKFULL_DEPTH_M=.066;
-const CHANNEL_AREA_FRACTION=.55;
 
 /**
  * One 32×32 local watershed. Sources: rain on each actual physical cell
@@ -361,12 +363,36 @@ export class TerrainWater {
     }
   }
 
-  /** Channel water volume supported before it spills over the banks. */
+  /** Physical cross-section grows with contributing catchment area. */
+  channelSection(index:number):HydraulicSection{
+    return hydraulicSection(this.watershed.flowAccumulation[index],
+      this.watershed.channels[index]);
+  }
+
+  /** Litres contained inside the local channel banks before overbanking. */
   channelCapacityLiters(index:number):number{
-    const channel=this.watershed.channels[index];
-    return CELL_AREA*1000*(channel
-      ? CHANNEL_BANKFULL_DEPTH_M*CHANNEL_AREA_FRACTION
-      : .012);
+    return channelCapacity(this.channelSection(index));
+  }
+
+  /** Moving water and flooding share one hydraulic stage at each cell. */
+  channelStageAtCell(index:number):number{
+    return hydraulicStage(this.channelSection(index),
+      this.runoff[index],this.flood[index]);
+  }
+
+  channelWettedWidthAtCell(index:number):number{
+    return channelWettedWidth(this.channelSection(index),this.channelStageAtCell(index));
+  }
+
+  /** Pond surface is level; flowing water has a downhill-changing surface. */
+  waterSurfaceElevationAtCell(index:number):number|null{
+    const cell=this.watershed.cells[index];
+    if(!cell)return null;
+    const basin=this.watershed.cellBasin[index];
+    const pond=basin<0?null:this.surfaceLevel(basin);
+    const moving=this.runoff[index]+this.flood[index]>EPS
+      ?cell.height+this.channelStageAtCell(index):null;
+    return pond===null?moving:moving===null?pond:Math.max(pond,moving);
   }
 
   private transport(dt:number):void {
@@ -380,7 +406,16 @@ export class TerrainWater {
       if(this.runoff[i]>EPS){
         const channel=this.watershed.channels[i];
         const tau=channel?.105:.34;
-        const sent=this.runoff[i]*(1-Math.exp(-dt/tau));
+        // Downstream impoundment reduces the head gradient and backs flow
+        // into the upstream reach. Water can only leave the cell when its
+        // current free surface is higher than the receiving surface.
+        const surface=cell.height+this.channelStageAtCell(i);
+        const receiver=downstream<0?Number.NEGATIVE_INFINITY:
+          this.watershed.cells[downstream].height+
+          this.channelStageAtCell(downstream);
+        const gradient=downstream<0?1:Math.max(0,Math.min(1,
+          (surface-receiver)/.045));
+        const sent=this.runoff[i]*(1-Math.exp(-dt/tau))*gradient;
         this.runoff[i]-=sent;
         if(downstream>=0)arrivals[downstream]+=sent;
         else {
@@ -393,22 +428,31 @@ export class TerrainWater {
         // Overbank water can occupy adjacent low-lying floodplain cells.
         // Hydraulic head (terrain + inundation depth) permits lateral
         // spreading while gravity preferentially drains downstream.
+        const head=cell.height+this.channelStageAtCell(i);
         const sent=this.flood[i]*(1-Math.exp(-dt/.52));
-        this.flood[i]-=sent;
-        const head=cell.height+this.flood[i]/(1000*CELL_AREA);
         const neighbors=cell.neighbors.filter(n=>
-          n!==downstream && this.watershed.cells[n].height<head-.004);
+          n!==downstream &&
+          head>this.watershed.cells[n].height+
+            this.channelStageAtCell(n)+.003);
         let lateral=0;
         if(neighbors.length){
           const weights=neighbors.map(n=>
-            Math.max(.001,head-this.watershed.cells[n].height));
+            Math.max(.001,head-this.watershed.cells[n].height-
+              this.channelStageAtCell(n)));
           const weightSum=weights.reduce((a,b)=>a+b,0);
           lateral=sent*.43;
           for(let k=0;k<neighbors.length;k++){
             floodArrivals[neighbors[k]]+=lateral*weights[k]/weightSum;
           }
         }
-        const forward=sent-lateral;
+        // A high receiving surface creates backwater; retain the forward
+        // part in this cell rather than forcing it through the dammed reach.
+        const receiver=downstream<0?Number.NEGATIVE_INFINITY:
+          this.watershed.cells[downstream].height+
+          this.channelStageAtCell(downstream);
+        const forwardAllowed=downstream<0||head>receiver+.002;
+        const forward=forwardAllowed?sent-lateral:0;
+        this.flood[i]-=lateral+forward;
         if(downstream>=0)floodArrivals[downstream]+=forward;
         else{
           const basin=this.watershed.cellBasin[i];
@@ -427,6 +471,14 @@ export class TerrainWater {
       if(over>0){
         this.runoff[i]-=over;
         this.flood[i]+=over;
+      }
+      // When the river subsides, floodwater in its channel cells rejoins
+      // moving flow. This moves litres between stores, never creates any.
+      if(this.watershed.channels[i]){
+        const space=Math.max(0,this.channelCapacityLiters(i)-this.runoff[i]);
+        const reenter=Math.min(space,this.flood[i]*(1-Math.exp(-dt/.28)));
+        this.flood[i]-=reenter;
+        this.runoff[i]+=reenter;
       }
     }
   }
@@ -549,11 +601,7 @@ export class TerrainWater {
     const pondLevel=basin>=0?this.surfaceLevel(basin):null;
     const pondDepth=pondLevel===null?0:
       Math.max(0,pondLevel-this.watershed.cells[index].height);
-    const channelArea=this.watershed.channels[index]?
-      CELL_AREA*CHANNEL_AREA_FRACTION:CELL_AREA;
-    const moving=this.runoff[index]/(1000*channelArea);
-    const flooded=this.flood[index]/(1000*CELL_AREA);
-    return Math.max(pondDepth,moving+flooded);
+    return Math.max(pondDepth,this.channelStageAtCell(index));
   }
   snapshot():WaterState{
     return {
