@@ -35,9 +35,7 @@ const crewCue=document.querySelector<HTMLElement>('#crewCue')!;
 const tacticalToggle=document.querySelector<HTMLButtonElement>('#tacticalToggle')!;
 const tacticalPanel=document.querySelector<HTMLElement>('#tacticalPanel')!;
 const tacticalStatus=document.querySelector<HTMLElement>('#tacticalStatus')!;
-const tacticalFire=document.querySelector<HTMLButtonElement>('#tacticalFire')!;
 const tacticalReload=document.querySelector<HTMLButtonElement>('#tacticalReload')!;
-const tacticalTarget=document.querySelector<HTMLButtonElement>('#tacticalTarget')!;
 const tacticalOrder=document.querySelector<HTMLButtonElement>('#tacticalOrder')!;
 const tacticalReset=document.querySelector<HTMLButtonElement>('#tacticalReset')!;
 const tacticalAssist=document.querySelector<HTMLButtonElement>('#tacticalAssist')!;
@@ -60,6 +58,7 @@ const camera=new TacticalCamera(renderer.domElement);
 const audio=new FieldAudio();
 const contact=new ContactDirector(world.scene,nav,world.obstacles,rook,mica,onContactEvent);
 let firingHeld=false;
+let desktopAim:{x:number;z:number}|null=null;
 let previousDanger=false;
 let assistRequested=false;
 let assistSeconds=0;
@@ -71,13 +70,9 @@ const contactHud=()=>{
   tacticalToggle.setAttribute('aria-pressed',String(contact.tactical));
   if(!armed)return;
   const rookState=contact.simulation.fighters.rook;
-  const enemy=contact.simulation.fighters[contact.selected];
-  const label=contact.selected==='patrol-a'?'PATROL 01':'PATROL 02';
-  tacticalStatus.textContent='ROOK '+Math.ceil(rookState.hp)+' · '+
+  tacticalStatus.textContent='ROOK '+Math.ceil(rookState.hp)+' HP · '+
     String(rookState.ammo).padStart(2,'0')+'/'+rookState.reserve+
-    (rookState.reload>0?' · RELOADING':'')+
-    ' · '+label+' '+Math.ceil(enemy.hp)+'%';
-  tacticalFire.disabled=rookState.hp===0||!contact.simulation.patrolAlive;
+    (rookState.reload>0?' · RELOADING':'');
   tacticalReload.disabled=rookState.reserve===0||rookState.ammo===rookState.maxAmmo||rookState.reload>0;
   tacticalOrder.textContent='MICA · '+contact.simulation.order.toUpperCase();
   tacticalReset.hidden=!(contact.simulation.resolved||
@@ -90,15 +85,11 @@ tacticalToggle.addEventListener('click',()=>{
   if(contact.tactical)camera.focus(rook.position);
   contactHud();
 });
-tacticalFire.addEventListener('pointerdown',e=>{
-  e.preventDefault();audio.unlock();firingHeld=true;contact.fire();
-});
 const releaseFire=()=>{firingHeld=false;};
 window.addEventListener('pointerup',releaseFire);
 window.addEventListener('pointercancel',releaseFire);
 window.addEventListener('blur',releaseFire);
 tacticalReload.addEventListener('click',()=>{audio.unlock();if(contact.reload())audio.play('reload');});
-tacticalTarget.addEventListener('click',()=>{contact.cycleTarget();contactHud();});
 tacticalOrder.addEventListener('click',()=>{
   const idx=orders.indexOf(contact.simulation.order);
   contact.setOrder(orders[(idx+1)%orders.length]);contactHud();
@@ -199,10 +190,15 @@ notebookPanel.querySelector<HTMLButtonElement>('#closeNotebook')?.addEventListen
   notebookToggle.setAttribute('aria-expanded','false');
 });
 function onContactEvent(event:ContactEvent) {
-  if(event.type==='spotted') {
+  if(event.type==='warning'){
+    audio.play('radio');
+    notebook.note('Mica observed two figures approaching along the eastern service road.');
+    toast('MICA · MOVEMENT ON EAST ROAD · STAY ALERT',4.0);
+    updateNotebook();
+  } else if(event.type==='spotted') {
     audio.play('radio');
     notebook.note('Mica: armed patrol contact near the worksite.');
-    toast('CONTACT! · TWO ARMED OPERATORS',3.0);
+    toast('CONTACT! · MOVE LEFT / AIM RIGHT',3.4);
     contact.tactical=true;
     job.release();
     updateNotebook();
@@ -449,6 +445,11 @@ function handleContextDown() {
   } else inspectOrWork(job.target);
 }
 renderer.domElement.addEventListener('pointerdown',()=>audio.unlock(),{passive:true});
+renderer.domElement.addEventListener('pointermove',event=>{
+  if(event.pointerType!=='mouse')return;
+  const point=camera.groundPoint(event.clientX,event.clientY);
+  desktopAim=point?{x:point.x-rook.position.x,z:point.z-rook.position.z}:null;
+});
 contextAction.addEventListener('pointerdown',event=>{
   // Hold-to-work starts on touch down, but route/inspect chips need clicks.
   if(selectedStation===job.target && nearStation(job.target) &&
@@ -468,13 +469,6 @@ window.addEventListener('pointercancel',stopHold);
 window.addEventListener('blur',stopHold);
 
 const touch=new TouchControls(renderer.domElement,camera,(x,y)=>{
-  const fighter=contact.pick(x,y,camera.camera,renderer.domElement);
-  if(fighter){
-    contact.select(fighter);
-    toast('TARGET SELECTED · '+(fighter==='patrol-a'?'PATROL 01':'PATROL 02'),1.8);
-    contactHud();
-    return;
-  }
   const station=stationRay(x,y);
   if(station){inspectOrWork(station);return;}
   const point=camera.groundPoint(x,y);
@@ -493,13 +487,12 @@ window.addEventListener('keydown',event=>{
   else if(event.code==='Minus'||event.code==='NumpadSubtract')camera.zoom(1.13);
   else if(event.code==='KeyM'&&!event.repeat)audio.toggleMute();
   else if(event.code==='KeyC'&&!event.repeat){contact.tactical=!contact.tactical;contactHud();}
-  else if(event.code==='KeyX'&&!event.repeat){contact.cycleTarget();contactHud();}
   else if(event.code==='KeyG'&&!event.repeat){if(contact.reload())audio.play('reload');}
   else if(event.code==='KeyV'&&!event.repeat) {
     const i=orders.indexOf(contact.simulation.order);
     contact.setOrder(orders[(i+1)%orders.length]);contactHud();
   }
-  else if(event.code==='KeyJ'){firingHeld=true;contact.fire();}
+  else if(event.code==='KeyJ'){firingHeld=true;audio.unlock();}
   else if(event.code==='KeyT'&&!event.repeat)depotAction();
   else if(event.code==='KeyR'&&event.shiftKey&&!event.repeat)newJob();
   else if(event.code==='Space')handleContextDown();
@@ -628,6 +621,11 @@ renderer.setAnimationLoop(()=>{
   seconds+=dt;
   touch.update(dt);
   const keys=keyboardAxis();
+  const aimRight=touch.aiming;
+  const aimWorld=aimRight?camera.screenDirection(touch.aim):
+    (contact.tactical||contact.danger)?desktopAim:null;
+  contact.setAim(aimWorld);
+  if(aimRight)audio.unlock();
   const wantDrive=touch.driving||keys.x!==0||keys.y!==0;
   const driving=wantDrive&&!job.isHolding&&!inspecting&&
     contact.simulation.fighters.rook.hp>0;
@@ -645,7 +643,7 @@ renderer.setAnimationLoop(()=>{
     aiding?mica.position:workingAt?stations[workingAt].location:stations.relay.location);
   rook.setSocialPose(meeting?'receive':'none',meeting?mica.position:null);
   rook.update(dt,nav);
-  if(driving||(rook.moving&&(pendingStation!==null||autoReturn)))camera.follow(rook.position,dt);
+  if(driving||aimRight||(rook.moving&&(pendingStation!==null||autoReturn)))camera.follow(rook.position,dt);
   camera.update(dt);
 
   if(pendingStation && !nearStation(pendingStation)){
@@ -879,7 +877,7 @@ renderer.setAnimationLoop(()=>{
   if(toastDeadline && performance.now()>toastDeadline){
     message.classList.remove('visible');toastDeadline=0;
   }
-  if(firingHeld)contact.fire();
+  if(aimRight||firingHeld)contact.fire();
   contactHud();
   updatePrompt();
   renderer.render(world.scene,camera.camera);
