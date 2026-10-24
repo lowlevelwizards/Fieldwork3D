@@ -389,7 +389,9 @@ export class TerrainWater {
     const cell=this.watershed.cells[index];
     if(!cell)return null;
     const basin=this.watershed.cellBasin[index];
-    const pond=basin<0?null:this.surfaceLevel(basin);
+    const possiblePond=basin<0?null:this.surfaceLevel(basin);
+    const pond=possiblePond!==null&&possiblePond>cell.height
+      ?possiblePond:null;
     const moving=this.runoff[index]+this.flood[index]>EPS
       ?cell.height+this.channelStageAtCell(index):null;
     return pond===null?moving:moving===null?pond:Math.max(pond,moving);
@@ -400,6 +402,17 @@ export class TerrainWater {
     // teleportation or routing across dozens of cells in a single tick.
     const arrivals=new Float64Array(this.runoff.length);
     const floodArrivals=new Float64Array(this.flood.length);
+    // Evaluate receiving hydraulic heads once per step, including standing
+    // pond surfaces. Downstream impoundment therefore backs up tributaries
+    // rather than allowing water to jump uphill into a filled depression.
+    const pondLevels=this.watershed.basins.map(b=>
+      solveWaterLevel(this.watershed,b,this.water[b.id]));
+    const heads=this.watershed.cells.map(c=>{
+      const basin=this.watershed.cellBasin[c.index];
+      const pond=basin<0?null:pondLevels[basin];
+      return Math.max(c.height+this.channelStageAtCell(c.index),
+        pond===null?Number.NEGATIVE_INFINITY:pond);
+    });
     for(const cell of this.watershed.cells){
       const i=cell.index;
       const downstream=this.watershed.downhill[i];
@@ -409,10 +422,9 @@ export class TerrainWater {
         // Downstream impoundment reduces the head gradient and backs flow
         // into the upstream reach. Water can only leave the cell when its
         // current free surface is higher than the receiving surface.
-        const surface=cell.height+this.channelStageAtCell(i);
+        const surface=heads[i];
         const receiver=downstream<0?Number.NEGATIVE_INFINITY:
-          this.watershed.cells[downstream].height+
-          this.channelStageAtCell(downstream);
+          heads[downstream];
         const gradient=downstream<0?1:Math.max(0,Math.min(1,
           (surface-receiver)/.045));
         const sent=this.runoff[i]*(1-Math.exp(-dt/tau))*gradient;
@@ -428,17 +440,14 @@ export class TerrainWater {
         // Overbank water can occupy adjacent low-lying floodplain cells.
         // Hydraulic head (terrain + inundation depth) permits lateral
         // spreading while gravity preferentially drains downstream.
-        const head=cell.height+this.channelStageAtCell(i);
+        const head=heads[i];
         const sent=this.flood[i]*(1-Math.exp(-dt/.52));
         const neighbors=cell.neighbors.filter(n=>
-          n!==downstream &&
-          head>this.watershed.cells[n].height+
-            this.channelStageAtCell(n)+.003);
+          n!==downstream && head>heads[n]+.003);
         let lateral=0;
         if(neighbors.length){
           const weights=neighbors.map(n=>
-            Math.max(.001,head-this.watershed.cells[n].height-
-              this.channelStageAtCell(n)));
+            Math.max(.001,head-heads[n]));
           const weightSum=weights.reduce((a,b)=>a+b,0);
           lateral=sent*.43;
           for(let k=0;k<neighbors.length;k++){
@@ -448,8 +457,7 @@ export class TerrainWater {
         // A high receiving surface creates backwater; retain the forward
         // part in this cell rather than forcing it through the dammed reach.
         const receiver=downstream<0?Number.NEGATIVE_INFINITY:
-          this.watershed.cells[downstream].height+
-          this.channelStageAtCell(downstream);
+          heads[downstream];
         const forwardAllowed=downstream<0||head>receiver+.002;
         const forward=forwardAllowed?sent-lateral:0;
         this.flood[i]-=lateral+forward;
