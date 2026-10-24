@@ -71,10 +71,10 @@ export function terrainHeight(x:number,z:number):number {
   // Small isolated depressions persist at the base of some side slopes.
   // They retain stormwater locally before spilling toward tributary gullies;
   // the major drainage remains the connected southward river corridor.
-  const sidePond1=.092*Math.exp(
-    -Math.pow((x+2.85)/.70,2)-Math.pow((z+.93)/.70,2));
-  const sidePond2=.075*Math.exp(
-    -Math.pow((x-2.45)/.66,2)-Math.pow((z-1.15)/.72,2));
+  const sidePond1=.21*Math.exp(
+    -Math.pow((x+2.85)/.99,2)-Math.pow((z+.93)/.92,2));
+  const sidePond2=.19*Math.exp(
+    -Math.pow((x-2.45)/.94,2)-Math.pow((z-1.15)/.96,2));
   return floor+flank+undulation+floodplain
     -Math.max(mainIncision,tributaryIncision)-sidePond1-sidePond2;
 }

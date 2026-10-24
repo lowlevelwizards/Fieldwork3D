@@ -5,16 +5,19 @@ import {
   cellIndexAt, isEdgeCell, makeTerrainCells, terrainHeight,
 } from '../src/terrain-model.ts';
 
-test('heightfield is one fixed 10x10m surface with level edges',()=>{
-  for(let x=-5;x<=5;x+=.25){
-    assert.ok(Math.abs(terrainHeight(x,5)) < 1e-9);
-    assert.ok(Math.abs(terrainHeight(x,-5)) < 1e-9);
-    assert.ok(Math.abs(terrainHeight(5,x)) < 1e-9);
-    assert.ok(Math.abs(terrainHeight(-5,x)) < 1e-9);
+test('10x10 metre test section is a north-south falling valley with side ridges',()=>{
+  // -Z is North, +Z is South. No flat boundary is expected anymore.
+  for(const x of [-4,-2,0,2,4]){
+    assert.ok(terrainHeight(x,-4.7)>terrainHeight(x,4.7),
+      'north land must sit above south for fixed x='+x);
   }
-  assert.ok(terrainHeight(-2.75,-2.35) < -.07);
-  assert.ok(terrainHeight(.75,2.3) < -.08);
-  assert.ok(terrainHeight(1.25,-.45) > terrainHeight(.75,2.3));
+  for(let z=-4;z<=4;z+=1){
+    const center=terrainHeight(0,z);
+    assert.ok(terrainHeight(-4.75,z)>center+.08);
+    assert.ok(terrainHeight(4.75,z)>center+.08);
+  }
+  assert.ok(terrainHeight(-2.85,-.93)<terrainHeight(-2.85,-2));
+  assert.ok(terrainHeight(2.45,1.15)<terrainHeight(2.45,0));
 });
 test('hydrology and renderer use same terrain coordinates and cell heights',()=>{
   const cells=makeTerrainCells();

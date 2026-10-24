@@ -27,6 +27,7 @@ export type TrafficContext = {
   soilFraction(index:number):number;
   surfaceLevel(id:number):number|null;
   watershed:{cells:readonly {x:number;z:number;height:number}[];cellBasin:readonly number[]};
+  waterDepthAtCell?(index:number):number;
 };
 export type GroundConditionState = {rutDepths:number[];rutAngles:number[]};
 
@@ -64,6 +65,9 @@ export function slopeAt(x:number,z:number):number {
 
 /** Water depth at the selected cell, supplied by the actual catchment solver. */
 export function standingDepthAt(index:number,ctx:TrafficContext):number{
+  // Include temporary flood depth and running stream depth (017–020)
+  // rather than only the old pooled basin surfaces.
+  if(ctx.waterDepthAtCell)return ctx.waterDepthAtCell(index);
   const basin=ctx.watershed.cellBasin[index];
   if(basin<0)return 0;
   const level=ctx.surfaceLevel(basin);

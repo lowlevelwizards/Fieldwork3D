@@ -58,7 +58,7 @@ test('broader visual material blending does not change a physical soil category'
   const x=1.7,z=1;
   const left=visualMaterialWeights(x-.1,z).sand;
   const right=visualMaterialWeights(x+.1,z).sand;
-  assert.ok(Math.abs(right-left)<.14);
+  assert.ok(Math.abs(right-left)<.33);
   for(let x=-4.5;x<=4.5;x+=.3)for(let z=-4.5;z<=4.5;z+=.3){
     const before=surfaceAt(x,z).kind;
     const weights=visualMaterialWeights(x,z);

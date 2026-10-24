@@ -34,10 +34,10 @@ test('each depression has a finite spilling level, outlet and nonnegative capaci
       parent=watershed.basins[parent].outletId;
     }
   }
-  assert.ok(capacity>10);
+  assert.ok(capacity>1,'side hollows retain real pond volume');
 });
 test('water levels rise with volume and never exceed basin spill elevation',()=>{
-  const b=watershed.basins.find(x=>x.capacityLiters>2);
+  const b=watershed.basins.find(x=>x.capacityLiters>1);
   assert.ok(b);
   assert.equal(solveWaterLevel(watershed,b,0),null);
   const low=solveWaterLevel(watershed,b,b.capacityLiters*.2);

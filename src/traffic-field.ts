@@ -97,10 +97,8 @@ export class TrafficField {
     this.lastKind=kind;
     this.lastHour=hour;
     const attribute=this.overlay.geometry.getAttribute('color') as THREE.BufferAttribute;
-    const levels=water.watershed.basins.map(b=>water.surfaceLevel(b.id));
     for(const cell of water.watershed.cells){
-      const basin=water.watershed.cellBasin[cell.index];
-      const depth=basin<0||levels[basin]===null?0:Math.max(0,levels[basin]!-cell.height);
+      const depth=water.waterDepthAtCell(cell.index);
       const result=evaluateTraffic(
         surfaceAt(cell.x,cell.z).kind,
         water.soilFraction(cell.index),depth,

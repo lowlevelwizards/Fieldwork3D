@@ -352,7 +352,9 @@ export class TerrainWater {
   private routeOverflow():void{
     for(const b of [...this.watershed.basins].sort((a,c)=>c.routeDepth-a.routeDepth)){
       const excess=Math.max(0,this.water[b.id]-b.capacityLiters);
-      if(excess<=0)continue;
+      // Saved basins must round-trip bit-for-bit when only tiny floating
+      // residuals exceed the measured spill capacity.
+      if(excess<=EPS)continue;
       this.water[b.id]-=excess;
       if(b.outletId>=0)this.water[b.outletId]+=excess;
       else this.exported+=excess;
