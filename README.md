@@ -417,3 +417,48 @@ and occasional thin, raised triangular artifacts on mobile.
 This pass deliberately prioritizes eliminating water-grid geometry artifacts
 and rendering contradictions over ornamental water effects. Real iPhone
 review is still needed to assess the final shoreline and river appearance.
+
+## Build 025 — river geometry reconstruction (isolated verification track)
+
+The 024.x experiments repeatedly rendered channel heightfields as a set of
+transparent grid tiles, producing checkerboards and raised polygon shards
+despite valid water balances. Following Unreal Water splines, Red Blob drainage
+hierarchy, Catlike Coding river-strip geometry and Houdini terrain-carving
+workflows, Build 025 adds an **authoritative, durable main-river geography**
+without replacing the live water renderer before visual approval.
+
+1. `river-geography.ts` defines the north-to-south river axis, tangent,
+   channel incision and banks once. `terrain-model.ts` now imports the exact
+   same formulas: preexisting terrain and watershed cell heights are unchanged.
+2. `river-ribbon-model.ts` builds a **single joined channel mesh** sampled
+   along the actual centerline. Each cross-section intersects the terrain
+   to determine its left and right shoreline, not a painted blue cell mask.
+   Water stage determines width; the same bed and banks remain after recession.
+3. `river-pond-model.ts` extracts basin surfaces using the *actual*
+   mass-conserving pond levels, with shoreline clipping on terrain triangles.
+   Flood test levels widen the river using its cross-section, not a second
+   mesh of independent flooded grid squares.
+4. `river-lab.html` is a mobile, isolated water test scene. Use
+   `/river-lab.html?scenario=normal&view=oblique` or choose DRY, NORMAL,
+   HIGH, FLOOD, RECEDING, POND and LIVE LEDGER. The first six are
+   deterministic visualization fixtures; LIVE LEDGER samples genuine
+   `TerrainWater` runoff litres and channel stages. Toggle GEOMETRY
+   OVERLAY to inspect the shared bed, bank positions and water surface.
+5. `scripts/capture-river-lab.mjs` captures repeatable mobile screenshots
+   from overhead and oblique views with Playwright. The separate
+   `River Geometry Visual Audit` workflow uploads screenshots as artifacts
+   on PRs affecting the lab, for human review.
+
+**Release gate**: This track is NOT wired into the normal Verdigris region
+renderer. Before replacing Build 024.2, visually approve dry/normal/high/
+flood/pond/recession screenshots, confirm no gaps or z-fighting at banks,
+test real channel-stage profile in LIVE LEDGER, and compare gameplay water
+depth/ground-load readings. The main channel is reconstructed; secondary
+tributary meshes and unified compound river/pond confluences are deliberately
+deferred until that visual gate succeeds. This prevents another unverified
+rendering rewrite from reaching live.
+
+Run `npm test && npm run check && npm run build` first. For local screenshots:
+`npm install --no-save --package-lock=false playwright@1.56.1`,
+`npx playwright install chromium`, then
+`node scripts/capture-river-lab.mjs`. The audit workflow automates the same.
