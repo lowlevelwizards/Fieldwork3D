@@ -36,16 +36,20 @@ export function clearSight(a:{x:number;z:number},b:{x:number;z:number}):boolean{
   for(const r of STRUCTURES.filter(r=>r.blocksSight)){
     const dx=b.x-a.x,dz=b.z-a.z;
     let t0=0,t1=1;
+    let outside=false;
     for(const [origin,delta,min,max] of [
       [a.x,dx,r.x-r.w/2,r.x+r.w/2],
       [a.z,dz,r.z-r.d/2,r.z+r.d/2],
     ]){
-      if(Math.abs(delta)<1e-9){if(origin<min||origin>max)return false;continue;}
+      if(Math.abs(delta)<1e-9){
+        if(origin<min||origin>max){outside=true;break;}
+        continue;
+      }
       let lo=(min-origin)/delta,hi=(max-origin)/delta;
       if(lo>hi)[lo,hi]=[hi,lo];
       t0=Math.max(t0,lo);t1=Math.min(t1,hi);
     }
-    if(t0<=t1&&t0<.995&&t1>.005)return false;
+    if(!outside&&t0<=t1&&t0<.995&&t1>.005)return false;
   }
   return true;
 }
