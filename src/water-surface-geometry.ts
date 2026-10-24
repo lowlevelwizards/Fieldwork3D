@@ -20,7 +20,7 @@ export function waterCoverage(v:WaterVertex):number{
 export function wetSignal(v:WaterVertex):number{
   // Both depth AND nonzero supported footprint are necessary. A render
   // smoothing kernel by itself does not get to create wet terrain.
-  return Math.min(v.waterY-v.groundY, (v.coverage-0.0001)*0.04);
+  return Math.min(v.waterY-v.groundY, (v.coverage-0.08)*0.04);
 }
 function interpolate(a:WaterVertex,b:WaterVertex,t:number):WaterVertex{
   const mix=(x:number,y:number)=>x+(y-x)*t;
