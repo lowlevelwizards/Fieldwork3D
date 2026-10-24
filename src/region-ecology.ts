@@ -4,7 +4,7 @@ import {
 } from './region-model.ts';
 import { seeded01 } from './vegetation-model.ts';
 
-const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
+const clamp=(x:number,a=0,b=1)=>Math.max(a,Math.min(b,x));
 const smooth=(v:number)=>{const x=clamp(v,0,1);return x*x*(3-2*x);};
 export type MacroBiome='alpine'|'conifer'|'mixed-forest'|'farmland'|'wetland'|'estuary';
 export function macroBiome(southKm:number):MacroBiome{
