@@ -89,10 +89,11 @@ export function makeTerrainGeometry(): THREE.BufferGeometry {
     const relief=Math.max(.78,Math.min(1.04,1-(average-local)*2.9));
     for(let c=0;c<3;c++){
       let a=0,b=0;
+      const channel=c===0 ? 'r' : c===1 ? 'g' : 'b';
       for(let k=0;k<kinds.length;k++){
         const weight=mix[kinds[k]];
-        a+=dryColors[k].getComponent(c)*weight;
-        b+=wetColors[k].getComponent(c)*weight;
+        a+=dryColors[k][channel]*weight;
+        b+=wetColors[k][channel]*weight;
       }
       dry[i*3+c]=a*relief;
       wet[i*3+c]=b*relief;
