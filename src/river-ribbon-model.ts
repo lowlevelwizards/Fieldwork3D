@@ -99,8 +99,14 @@ export function buildRiverRibbon(
   for(const station of stations){
     const depth=waterDepthForScenario(scenario,station.z,water);
     const waterY=station.bedY+depth;
-    const left=wettedHalfWidth(station.z,waterY,-1,height);
-    const right=wettedHalfWidth(station.z,waterY,1,height);
+    // A tributary incision can open a long sideways trough directly
+    // through a main-river bank. That trough belongs to a separate branch;
+    // it must not form a sudden triangular main-river width spike.
+    // Keep ordinary levels in their carved river corridor, while allowing
+    // true overbank stages to reach progressively farther low ground.
+    const maximumHalfWidth=clamp(.54+Math.max(0,depth-.035)*8.1,.54,1.50);
+    const left=wettedHalfWidth(station.z,waterY,-1,height,maximumHalfWidth);
+    const right=wettedHalfWidth(station.z,waterY,1,height,maximumHalfWidth);
     widths.push({left,right});
     diagnostics.push({waterM:waterY,bedM:station.bedY,widthM:left+right});
     const ring:Vertex[]=[];
@@ -112,9 +118,12 @@ export function buildRiverRibbon(
       const submerged=Math.max(0,waterY-ground);
       // Fade at banks; interior opacity depends on actual submergence.
       const shore=Math.min(1,submerged/.022);
+      // If this is a stage-limited overbank edge rather than a literal
+      // dry-ground contour, fade it instead of drawing a hard blue wall.
+      const fringe=clamp(Math.min(i,across-i)/1.6,0,1);
       ring.push({x:p.x,z:p.z,y:waterY,
         depth:submerged,
-        alpha:Math.max(0,Math.min(.81,shore*.72))});
+        alpha:Math.max(0,Math.min(.81,shore*fringe*.72))});
     }
     rings.push(ring);
   }
