@@ -1,48 +1,64 @@
-# Fieldwork — Ground Zero / Build 007: Water Accumulates
+# Fieldwork — Ground Zero / Builds 008–010: Terrain and Hydrology
 
-The small diorama now stores **actual litres of standing water** from rain.
-The world still consists of the original 10 × 10 m ground block, moving
-clouds, atmosphere and one clock. No river, particles-based water fluid
-solver, groundwater, new terrain mesh or game characters were introduced.
+The diorama now has **real measured elevation** and terrain-directed water,
+adapted in principle from the original LLW browser hydrology implementation.
+The world remains one 10 × 10 metre ground block with the original sky,
+day/night cycle, clouds, fog and rainfall.
 
-## The new causal fact
+## 008 — Elevation exists
 
-1. Rainfall delivers water to the ground below moving cloud footprints.
-2. Nine small, fixed low spots retain the rain they receive. The local
-   rainfall depends on cloud positions, coverage and precipitation strength.
-3. The amount stored is **state**, not an effect of the current sky color.
-   Each catchment has its own water volume measured in litres.
-4. Shallow irregular puddle visuals expand with their accumulated volume,
-   respond to the current sky and lighting, and stay inside the original tile.
-5. Water is NOT removed just because the rain stops or it becomes sunny.
-   This build intentionally has **no evaporation, soil absorption, runoff,
-   drainage or flow.** Water also does not disappear when the clock loops.
-6. The water volumes persist in browser local storage across reloads
-   where the browser permits it.
+- A 32 × 32 metre-coordinate heightfield covers the original ten-metre
+  region at 0.3125m spacing.
+- The grass and side walls form ONE continuous earth mesh, including true
+  shallow hollows, low shoulders and gentle rises.
+- The shared `terrainHeight(x,z)` function supplies both rendered heights
+  and the hydrology cell elevations. Terrain triangles have actual centre
+  vertices so the physics and graphics agree even in a small hollow.
 
-This first model only assigns rain to nine small illustrative catchments.
-It does **not** yet conserve *all* rainfall outside those basins or model
-overflow routing, and its footprints remain fixed once full. The total
-standing-water value is the water retained by the modelled catchments,
-not a claim of complete rainfall accounting.
+## 009 — Water recognizes the land
 
-## How to verify
+- Every grid cell chooses its strictly downhill neighbour.
+- Walking these drainage links identifies interior sinks and catchments.
+- Adjacent catchments exchange spill information through their lowest
+  shared saddles; a minimax escape calculation finds routes toward the
+  open region boundary.
+- Rain landing on each cell moves downhill to its catchment; rainfall
+  draining through boundary outlets is counted as off-map runoff.
 
-- Set CLOUDS near 100%, then **resume time**. Watch the puddles grow as
-  water lands under drifting clouds.
-- Lower CLOUDS or pause time. The puddles remain.
-- Change the time slider: it previews other lighting and rain conditions,
-  but **does not retroactively deposit or remove water**.
-- The STANDING WATER readout reports the sum retained, in litres.
-- CLEAR empties puddles for another experiment.
-- Rain and clouds still respond to the old controls and 4-minute day.
+## 010 — Water finds its level
 
-Note: A later comparative investigation of the **LLW browser water system**
-is deliberately out of scope for this minimal accumulation atom. Before
-attempting full surface hydrology, study that implementation's methods
-and decide what applies to Fieldwork's terrain and performance envelope.
+- Each depression has capacity in REAL litres, derived from the elevation
+  difference between terrain cells and its escape-level spill saddle.
+- Retained rain fills the depression until its water surface reaches the
+  spill elevation. Surface height is solved by binary search from volume.
+- Surplus water overflows into the downstream catchment, or exits through
+  the edge; it cannot exceed a basin's geomorphic storage capacity.
+- Pond meshes are clipped against the actual heightfield, creating
+  expanding irregular coastlines with perfectly horizontal water levels.
+- Stored pond water, deposited water, and off-map runoff obey a water
+  accounting invariant. No water disappears through a visual effect.
+- Basin quantities are saved locally and survive page reloads. Existing
+  Build 007 puddle volumes are migrated to the new catchments once.
 
-Older full prototype is preserved at
-[`archive/pre-ground-zero-2026-10-23`](../../tree/archive/pre-ground-zero-2026-10-23).
+## Test it
 
-Validation: `npm install && npm test && npm run build`.
+1. Press **CLEAR** to start with empty catchments.
+2. Set CLOUDS to 100% and resume time to produce strong rainfall.
+3. Water appears in naturally lower places. Watch ponds grow, fill and
+   spill, then follow the runoff amount in the bottom panel.
+4. Set clouds to 0 and keep time running. Stored pond water remains.
+5. Pause/scrub time: color and weather previews change, but no real water
+   is created or subtracted unless simulated time is advanced.
+6. Reload: pond and runoff quantities persist in browser storage.
+
+**Not implemented yet:** soil infiltration, evaporation, erosion, flowing
+surface-wave physics, dynamic reshaping of terrain, terrain editing, or
+full water balance outside the 10m world. We use an explicit grid and
+instant downhill routing, not particles or a Navier–Stokes fluid solver.
+
+LLW reference: 
+[`llw-browser/hydrology.js`](https://github.com/lowlevelwizards/llw-browser/blob/main/hydrology.js).
+That implementation uses static normalized catchment/runoff, whereas
+Fieldwork3D accumulates litres incrementally across simulation time.
+
+Local verification: `npm install && npm test && npm run build`.

@@ -7,7 +7,7 @@
  * No absorption, evaporation, groundwater, or fluid momentum.
  */
 import {
-  CELL_AREA, GRID_CELLS, cellIndexAt, isEdgeCell,
+  CELL_AREA, cellIndexAt, isEdgeCell,
   makeTerrainCells, type TerrainCell,
 } from './terrain-model.ts';
 import { CLOUD_COUNT, cloudAt, cloudCoverAtHour, cloudPresence } from './cloud-model.ts';
@@ -17,8 +17,6 @@ import { wrapHour } from './environment-conditions.ts';
 export const PEAK_RAIN_MM_PER_HOUR = 28;
 const EPS = 1e-8;
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
-const heightDelta = (cell: TerrainCell, other: TerrainCell) =>
-  other.height - cell.height;
 
 export type DrainageBasin = {
   id: number;
@@ -37,7 +35,6 @@ export type Watershed = {
   basins: DrainageBasin[];
 };
 
-type Edge = { to: number; saddle: number };
 function addEdge(graph: Map<number, Map<number, number>>, a: number, b: number, saddle: number) {
   if (a === b) return;
   const edges = graph.get(a) ?? new Map<number, number>();

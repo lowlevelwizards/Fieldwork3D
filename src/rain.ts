@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { terrainHeight } from './terrain-model';
 import { CLOUD_COUNT, REGION_HALF_WIDTH, cloudAt, cloudPresence } from './cloud-model';
 import {
   RAIN_STREAK_LENGTH, rainEmissionCeiling, type RainState,
@@ -197,8 +198,11 @@ export class RainField {
         const i = index * IMPACTS_PER_CLOUD + j;
         const x = (hash(i * 4 + 36) - .5) * 3.2;
         const z = (hash(i * 4 + 37) - .5) * 2.6;
-        this.impactPositions[3 * i] = sampled.x + x * sampled.scale;
-        this.impactPositions[3 * i + 2] = sampled.z + z * sampled.scale;
+        const worldX = sampled.x + x * sampled.scale;
+        const worldZ = sampled.z + z * sampled.scale;
+        this.impactPositions[3 * i] = worldX;
+        this.impactPositions[3 * i + 1] = terrainHeight(worldX,worldZ) + .042;
+        this.impactPositions[3 * i + 2] = worldZ;
       }
     }
 

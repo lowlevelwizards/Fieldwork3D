@@ -3,7 +3,8 @@ import { cameraOffset, clampZoom, viewSize } from './camera-model';
 import { CloudField } from './clouds';
 import { cloudCoverAtHour } from './cloud-model';
 import { RainField } from './rain';
-import { StandingWater } from './standing-water';
+import { TerrainWater } from './hydrology';
+import { makeTerrainGeometry } from './terrain';
 import { PuddleField } from './puddles';
 import { rainAtHour } from './rain-model';
 import {
@@ -12,7 +13,7 @@ import {
 } from './environment-conditions';
 import './style.css';
 
-// Ground Zero: one slab. The clock drives light, clouds, rainfall, mist and damp ground.
+// Ground Zero: continuous sculpted terrain; rainfall follows downhill drainage.
 // No gameplay characters, navigation, economy or faction logic.
 const mount = document.querySelector<HTMLCanvasElement>('#app');
 if (!mount) throw new Error('Missing ground viewport');
@@ -42,18 +43,27 @@ let playing = true;
 let cloudCoverOverride: number | null = null;
 // Surface water is an accumulated world quantity, deliberately separate from
 // the reversible time-of-day preview (scrubbing time deposits nothing).
-const WATER_SAVE_KEY = 'fieldwork-ground-zero-water-007';
+const WATER_SAVE_KEY = 'fieldwork-ground-zero-water-008';
+const LEGACY_WATER_SAVE_KEY = 'fieldwork-ground-zero-water-007';
 let savedVolumes: unknown;
 try {
   const json = window.localStorage.getItem(WATER_SAVE_KEY);
   if (json) savedVolumes = JSON.parse(json);
 } catch { /* private browsing or disabled storage still supports water */ }
-const standingWater = new StandingWater(savedVolumes);
+const standingWater = new TerrainWater(undefined, savedVolumes);
+// First upgrade: translate previously saved decorative puddle quantities
+// into the new measurable terrain catchments, then let any surplus spill.
+if (!savedVolumes) {
+  try {
+    const legacy = window.localStorage.getItem(LEGACY_WATER_SAVE_KEY);
+    if (legacy) standingWater.migrateLegacy(JSON.parse(legacy));
+  } catch { /* storage remains optional */ }
+}
 let waterNeedsSave = false;
 function saveStandingWater(): void {
   try {
     window.localStorage.setItem(WATER_SAVE_KEY,
-      JSON.stringify(standingWater.snapshot().volumesLiters));
+      JSON.stringify(standingWater.snapshot()));
     waterNeedsSave = false;
   } catch { /* storage is optional; water still accumulates this session */ }
 }
@@ -109,10 +119,11 @@ const earth = new THREE.MeshStandardMaterial({
   color: 0x756959, roughness: 1, flatShading: true,
 });
 const ground = new THREE.Mesh(
-  new THREE.BoxGeometry(10, 0.8, 10),
-  [earth, earth, grass, earth, earth, earth],
+  makeTerrainGeometry(),
+  [grass, earth],
 );
-ground.position.y = -0.4;
+// The terrain top is now a continuous measured heightfield; the substrate
+// remains one physically continuous solid extending down to -0.8m.
 ground.castShadow = true;
 ground.receiveShadow = true;
 scene.add(ground);
@@ -211,7 +222,8 @@ function applyEnvironment(e: EnvironmentState) {
   rainField.update(e.hour, rain);
   puddles.update(standingWater, e, storm);
   controls.waterLabel.textContent =
-    'WATER ' + standingWater.totalLiters().toFixed(1) + ' L';
+    'PONDS ' + standingWater.totalLiters().toFixed(1) + ' L'
+    + ' · EXIT ' + standingWater.exportedLiters().toFixed(0) + ' L';
   controls.rainLabel.textContent =
     'RAIN ' + Math.round(storm * 100) + '% · ' + rain.phase.toUpperCase();
   controls.rainLabel.dataset.phase = rain.phase;
