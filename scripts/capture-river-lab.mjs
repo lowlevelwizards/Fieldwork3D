@@ -45,13 +45,14 @@ try{
     reducedMotion:'reduce',
   });
   const page=await context.newPage();
+  page.setDefaultTimeout(15000);
   const errors=[];
   page.on('pageerror',e=>errors.push(String(e)));
   const manifest=[];
   for(const scenario of ['dry','normal','high','flood','recession','pond','live']){
     for(const view of ['oblique','overhead']){
       const target=`${url}?scenario=${scenario}&view=${view}`;
-      await page.goto(target,{waitUntil:'networkidle'});
+      await page.goto(target,{waitUntil:'domcontentloaded',timeout:20000});
       await page.locator('html[data-river-lab-ready="true"]').waitFor();
       // Force a finished WebGL render before screenshot. The scene has no
       // animated waves/particle clocks, so repeated captures are comparable.
@@ -63,7 +64,7 @@ try{
     }
   }
   await page.goto(`${url}?scenario=flood&view=oblique&debug=1`,{
-    waitUntil:'networkidle',
+    waitUntil:'domcontentloaded',timeout:20000,
   });
   await page.locator('html[data-river-lab-ready="true"]').waitFor();
   await page.screenshot({path:resolve(directory,'river-flood-debug-mobile.png')});
