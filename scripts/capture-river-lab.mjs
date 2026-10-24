@@ -56,7 +56,7 @@ try{
   const manifest=[];
   for(const scenario of ['dry','normal','high','flood','recession','pond','live']){
     for(const view of ['oblique','overhead']){
-      const target=`${url}?scenario=${scenario}&view=${view}`;
+      const target=`${url}?scenario=${scenario}&view=${view}&capture=1`;
       await page.goto(target,{waitUntil:'domcontentloaded',timeout:20000});
       await page.locator('html[data-river-lab-ready="true"]').waitFor();
       // Force a finished WebGL render before screenshot. The scene has no
@@ -68,7 +68,7 @@ try{
       manifest.push({name,scenario,view,label});
     }
   }
-  await page.goto(`${url}?scenario=flood&view=oblique&debug=1`,{
+  await page.goto(`${url}?scenario=flood&view=oblique&debug=1&capture=1`,{
     waitUntil:'domcontentloaded',timeout:20000,
   });
   await page.locator('html[data-river-lab-ready="true"]').waitFor();
