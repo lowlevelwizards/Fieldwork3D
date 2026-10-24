@@ -59,6 +59,7 @@ const audio=new FieldAudio();
 const contact=new ContactDirector(world.scene,nav,world.obstacles,rook,mica,onContactEvent);
 let firingHeld=false;
 let desktopAim:{x:number;z:number}|null=null;
+let actionCameraEntered=false;
 let previousDanger=false;
 let assistRequested=false;
 let assistSeconds=0;
@@ -200,6 +201,8 @@ function onContactEvent(event:ContactEvent) {
     notebook.note('Mica: armed patrol contact near the worksite.');
     toast('CONTACT! · MOVE LEFT / AIM RIGHT',3.4);
     contact.tactical=true;
+    camera.focus(rook.position);
+    if(!actionCameraEntered){camera.zoom(.78);actionCameraEntered=true;}
     job.release();
     // Interrupt the reading so the operator can move under fire.
     inspecting=null;inspectionTimer=0;pendingStation=null;
@@ -628,7 +631,14 @@ renderer.setAnimationLoop(()=>{
   const aimWorld=aimRight?camera.screenDirection(touch.aim):
     (contact.tactical||contact.danger)?desktopAim:null;
   contact.setAim(aimWorld);
-  if(aimRight)audio.unlock();
+  if(aimRight){
+    audio.unlock();
+    if(!actionCameraEntered){
+      camera.focus(rook.position);
+      camera.zoom(.78);
+      actionCameraEntered=true;
+    }
+  }
   const wantDrive=touch.driving||keys.x!==0||keys.y!==0;
   const driving=wantDrive&&!job.isHolding&&!inspecting&&
     contact.simulation.fighters.rook.hp>0;
@@ -646,7 +656,8 @@ renderer.setAnimationLoop(()=>{
     aiding?mica.position:workingAt?stations[workingAt].location:stations.relay.location);
   rook.setSocialPose(meeting?'receive':'none',meeting?mica.position:null);
   rook.update(dt,nav);
-  if(driving||aimRight||(rook.moving&&(pendingStation!==null||autoReturn)))camera.follow(rook.position,dt);
+  if(driving||aimRight||contact.danger||
+     (rook.moving&&(pendingStation!==null||autoReturn)))camera.follow(rook.position,dt);
   camera.update(dt);
 
   if(pendingStation && !nearStation(pendingStation)){
