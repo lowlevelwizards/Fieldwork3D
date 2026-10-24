@@ -26,11 +26,15 @@ export function tributaryAt(z:number,side:'west'|'east'):ChannelProfile|null{
   if(side==='west'){
     const t=(z+3.7)/4.85;
     if(t<0||t>1)return null;
-    return {centerX:-4.6+4.6*smooth(t),widthM:.32,incisionM:.063};
+    return {centerX:-4.6+4.6*smooth(t)
+      +.13*Math.sin(t*Math.PI*3)*Math.sin(t*Math.PI),
+      widthM:.38,incisionM:.078};
   }
   const t=(z+1.85)/4.65;
   if(t<0||t>1)return null;
-  return {centerX:4.55-4.55*smooth(t),widthM:.34,incisionM:.055};
+  return {centerX:4.55-4.55*smooth(t)
+    -.11*Math.sin(t*Math.PI*4.2)*Math.sin(t*Math.PI),
+    widthM:.38,incisionM:.071};
 }
 export function localChannelProximity(x:number,z:number):number{
   const axis=Math.abs(x-valleyAxisX(z));
@@ -51,10 +55,16 @@ export function terrainHeight(x:number,z:number):number {
   const northToSouth=(z+WORLD_HALF)/WORLD_SIZE;
   // A clear longitudinal fall connects the headwater inlet to the outlet.
   const floor=.20-.40*northToSouth;
-  // Broad gently rounded bottom with pronounced flanks and ridges.
-  const flank=.30*Math.pow(distance/5.2,1.65);
+  // Distinct valley walls: the original .30m relief read as an almost
+  // featureless slab on an angled mobile camera. This is genuine measured
+  // elevation, not a shader displacement; drainage and traction resample it.
+  const flank=.51*Math.pow(distance/5.2,1.68);
   const highSlope=smooth((distance-1.25)/3.4);
-  const undulation=(.027*Math.sin(z*.95+x*.56)+.018*Math.cos(x*1.44-z*.73))
+  // Long low ridges/shoulders break up symmetric slopes without adding
+  // arbitrary detached humps. Both converge toward the flatter floodplain.
+  const ridge=.095*Math.pow(highSlope,1.6)*
+    (.50+.50*Math.sin(z*1.22+x*.59)*Math.cos(x*.82-z*.21));
+  const undulation=(.038*Math.sin(z*.95+x*.56)+.023*Math.cos(x*1.44-z*.73))
     *highSlope;
   // Floodplain deposition flattens the immediate valley floor.
   const floodplain=.018*smooth((distance-.72)/1.2);
@@ -75,7 +85,7 @@ export function terrainHeight(x:number,z:number):number {
     -Math.pow((x+2.85)/.99,2)-Math.pow((z+.93)/.92,2));
   const sidePond2=.19*Math.exp(
     -Math.pow((x-2.45)/.94,2)-Math.pow((z-1.15)/.96,2));
-  return floor+flank+undulation+floodplain
+  return floor+flank+ridge+undulation+floodplain
     -Math.max(mainIncision,tributaryIncision)-sidePond1-sidePond2;
 }
 
