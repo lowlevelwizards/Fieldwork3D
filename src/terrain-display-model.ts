@@ -73,7 +73,7 @@ export function smoothDisplayField(
     throw new Error('Invalid display smoothing pass count');
   if(source.length!==n*n||!Number.isInteger(n)||n<=0)
     throw new Error('Expected square display field');
-  let field=Float32Array.from(source);
+  let field:Float32Array=Float32Array.from(source);
   for(let p=0;p<passes;p++)field=smoothDisplayMoisture(field,n);
   return field;
 }
