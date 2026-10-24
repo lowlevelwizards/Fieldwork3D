@@ -18,6 +18,7 @@ let scenario:LabScenario=scenarios.includes(params.get('scenario') as LabScenari
   ?params.get('scenario') as LabScenario:'normal';
 let debug=params.get('debug')==='1';
 let overhead=params.get('view')==='overhead';
+if(params.get('capture')==='1')document.documentElement.classList.add('capture-mode');
 const canvas=document.querySelector<HTMLCanvasElement>('#riverCanvas');
 const status=document.querySelector<HTMLElement>('#status');
 const debugButton=document.querySelector<HTMLButtonElement>('#debug')!;
@@ -32,9 +33,9 @@ const renderer=new THREE.WebGLRenderer({
 renderer.setPixelRatio(Math.min(1.5,window.devicePixelRatio||1));
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.08;
-scene.add(new THREE.HemisphereLight(0xe1f0f2,0x7d7c64,2.1));
-const sun=new THREE.DirectionalLight(0xffe4b2,2.1);
+renderer.toneMappingExposure=.95;
+scene.add(new THREE.HemisphereLight(0xe1f0f2,0x7d7c64,1.05));
+const sun=new THREE.DirectionalLight(0xffe4b2,1.40);
 sun.position.set(-5,12,-7);
 scene.add(sun);
 const geometry=makeTerrainGeometry();
