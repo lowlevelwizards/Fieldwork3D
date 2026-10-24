@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
   <meta name="theme-color" content="#c5d2c9" />
-  <title>Fieldwork — Ground Zero · Living Soil</title>
+  <title>Fieldwork — Ground Zero · Mud & Trafficability</title>
 </head>
 <body>
   <canvas id="app" aria-label="Single isometric ground block with changing daylight and mist; drag to orbit and pinch to zoom"></canvas>
@@ -32,6 +32,18 @@
     <div class="environment-status">
       <span id="windLabel">WIND 0 m/h</span>
       <span id="evapLabel">EVAP 0 L</span>
+    </div>
+    <div class="traffic-header">
+      <span>LOAD / MOBILITY</span>
+      <button type="button" id="trafficToggle" aria-pressed="false" aria-controls="trafficPanel">GROUND TEST</button>
+    </div>
+    <div id="trafficPanel" class="traffic-panel" hidden>
+      <div class="traffic-actions">
+        <button type="button" id="trafficKind" title="Switch simulated ground load">FOOT</button>
+        <span class="traffic-legend">GOOD <span class="traffic-legend-gradient"></span> BLOCKED</span>
+        <button type="button" id="trafficReset" title="Clear tracks only; water is unaffected">CLEAR TRACKS</button>
+      </div>
+      <output id="trafficStatus">Touch or drag on the ground to test passage.</output>
     </div>
   </section>
   <script type="module" src="/src/main.ts"></script>

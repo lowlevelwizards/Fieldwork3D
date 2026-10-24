@@ -7,6 +7,9 @@ import { TerrainWater } from './hydrology';
 import { makeTerrainGeometry, updateTerrainMoisture } from './terrain';
 import { windAtHour, windDriftAtHour } from './wind-model';
 import { PuddleField } from './puddles';
+import { GroundLoad, type TrafficKind } from './traffic-model';
+import { TrafficField } from './traffic-field';
+import { cellIndexAt } from './terrain-model';
 import { rainAtHour } from './rain-model';
 import {
   DAY_LENGTH_SECONDS, INITIAL_HOUR, advanceHour, clockLabel, cssColor,
@@ -31,19 +34,31 @@ const waterLabel = document.querySelector<HTMLElement>('#waterLabel');
 const clearWaterButton = document.querySelector<HTMLButtonElement>('#waterClear');
 const windLabel = document.querySelector<HTMLElement>('#windLabel');
 const evapLabel = document.querySelector<HTMLElement>('#evapLabel');
+const trafficButton = document.querySelector<HTMLButtonElement>('#trafficToggle');
+const trafficKindButton = document.querySelector<HTMLButtonElement>('#trafficKind');
+const trafficResetButton = document.querySelector<HTMLButtonElement>('#trafficReset');
+const trafficPanel = document.querySelector<HTMLElement>('#trafficPanel');
+const trafficStatus = document.querySelector<HTMLElement>('#trafficStatus');
 if (!timeToggle || !timeScrub || !timeLabel || !phaseLabel ||
     !cloudCoverInput || !cloudCoverLabel || !cloudAuto || !rainLabel ||
-    !waterLabel || !clearWaterButton || !windLabel || !evapLabel) {
+    !waterLabel || !clearWaterButton || !windLabel || !evapLabel ||
+    !trafficButton || !trafficKindButton || !trafficResetButton ||
+    !trafficPanel || !trafficStatus) {
   throw new Error('Missing time-of-day inspector');
 }
 const controls = { toggle: timeToggle, scrub: timeScrub, clock: timeLabel, phase: phaseLabel,
   cloudCover: cloudCoverInput, cloudLabel: cloudCoverLabel, cloudAuto,
-  rainLabel, waterLabel, clearWater: clearWaterButton, windLabel, evapLabel };
+  rainLabel, waterLabel, clearWater: clearWaterButton, windLabel, evapLabel,
+  trafficButton, trafficKindButton, trafficResetButton, trafficPanel, trafficStatus };
 
 let hour = INITIAL_HOUR;
 let playing = true;
 // Null restores natural cover. An override is inspection only, not another clock.
 let cloudCoverOverride: number | null = null;
+let trafficInspection=false;
+let trafficKind:TrafficKind='foot';
+let trafficSelected:number|null=null;
+let lastPaintedCell:number|null=null;
 // Surface water is an accumulated world quantity, deliberately separate from
 // the reversible time-of-day preview (scrubbing time deposits nothing).
 const WATER_SAVE_KEY = 'fieldwork-ground-zero-water-011';
@@ -66,6 +81,21 @@ if (!savedVolumes) {
     const legacy = window.localStorage.getItem(LEGACY_WATER_SAVE_KEY);
     if (legacy) standingWater.migrateLegacy(JSON.parse(legacy));
   } catch { /* storage remains optional */ }
+}
+// Physical rut/deformation state persists independently of water history.
+const TRAFFIC_SAVE_KEY='fieldwork-ground-load-016';
+let groundSaved:unknown;
+try {
+  const json=window.localStorage.getItem(TRAFFIC_SAVE_KEY);
+  if(json)groundSaved=JSON.parse(json);
+} catch { /* development mode also works without storage */ }
+const groundLoad=new GroundLoad(groundSaved);
+let groundNeedsSave=false;
+function saveGroundLoad():void{
+  try {
+    window.localStorage.setItem(TRAFFIC_SAVE_KEY,JSON.stringify(groundLoad.snapshot()));
+    groundNeedsSave=false;
+  } catch { /* local save is optional */ }
 }
 let waterNeedsSave = false;
 function saveStandingWater(): void {
@@ -196,6 +226,7 @@ scene.add(veil);
 const clouds = new CloudField(scene);
 const rainField = new RainField(scene);
 const puddles = new PuddleField(scene);
+const trafficField = new TrafficField(scene,standingWater);
 const rainFogTone = new THREE.Color(0x91a0a6);
 
 function applyEnvironment(e: EnvironmentState) {
@@ -231,6 +262,8 @@ function applyEnvironment(e: EnvironmentState) {
   clouds.update(e.hour, e, cloudCoverOverride, storm);
   rainField.update(e.hour, rain);
   puddles.update(standingWater, e, storm);
+  trafficField.update(standingWater,groundLoad,e.hour,trafficKind);
+  updateTrafficStatus();
   controls.waterLabel.textContent =
     'PONDS ' + standingWater.totalLiters().toFixed(0) + ' L'
     + ' · SOIL ' + standingWater.totalSoilLiters().toFixed(0) + ' L'
@@ -295,6 +328,49 @@ controls.clearWater.addEventListener('click', () => {
   render();
 });
 
+// This inspector is intentionally not a soldier/vehicle controller.
+// It probes real terrain and applies one passage per grid cell touched.
+function updateTrafficStatus():void{
+  controls.trafficButton.textContent=trafficInspection?'GROUND ✓':'GROUND TEST';
+  controls.trafficButton.setAttribute('aria-pressed',String(trafficInspection));
+  controls.trafficPanel.hidden=!trafficInspection;
+  controls.trafficKindButton.textContent=trafficKind==='foot'?'FOOT':'VEHICLE';
+  if(trafficSelected===null){
+    controls.trafficStatus.textContent='Touch or drag on the ground to test passage. Green = good, red = blocked.';
+    return;
+  }
+  const foot=groundLoad.observe(trafficSelected,standingWater,'foot');
+  const vehicle=groundLoad.observe(trafficSelected,standingWater,'vehicle');
+  const chosen=trafficKind==='foot'?foot:vehicle;
+  controls.trafficStatus.textContent=
+    chosen.material.toUpperCase()+' · '+Math.round(chosen.saturation*100)+'% WET'
+    +' · '+chosen.bearingKPa.toFixed(0)+' kPa'
+    +' · TRACTION '+Math.round(chosen.traction*100)+'%'
+    +' · FOOT '+Math.round(foot.speedFactor*100)+'%'
+    +' / VEH '+Math.round(vehicle.speedFactor*100)+'%'
+    +' · RUT '+Math.round(chosen.rutDepthM*1000)+' mm';
+}
+controls.trafficButton.addEventListener('click',()=>{
+  trafficInspection=!trafficInspection;
+  trafficField.setInspection(trafficInspection);
+  trafficField.update(standingWater,groundLoad,hour,trafficKind,true);
+  updateTrafficStatus();
+  render();
+});
+controls.trafficKindButton.addEventListener('click',()=>{
+  trafficKind=trafficKind==='foot'?'vehicle':'foot';
+  trafficField.update(standingWater,groundLoad,hour,trafficKind,true);
+  updateTrafficStatus();
+  render();
+});
+controls.trafficResetButton.addEventListener('click',()=>{
+  groundLoad.clear();
+  saveGroundLoad();
+  trafficField.update(standingWater,groundLoad,hour,trafficKind,true);
+  updateTrafficStatus();
+  render();
+});
+
 const camera = new THREE.OrthographicCamera(-8, 8, 6, -6, 0.1, 120);
 const state = { yaw: Math.PI / 4, zoom: 1 };
 const orbitDistance = 28;
@@ -332,7 +408,38 @@ function zoom(factor: number) {
 
 type Pointer = { x: number; y: number };
 const pointers = new Map<number, Pointer>();
+const groundRaycaster=new THREE.Raycaster();
+const pointerNdc=new THREE.Vector2();
+let previousWorldPoint:THREE.Vector2|null=null;
+function worldPointAt(clientX:number,clientY:number):THREE.Vector2|null{
+  const rect=canvas.getBoundingClientRect();
+  pointerNdc.set((clientX-rect.left)/rect.width*2-1,
+    -((clientY-rect.top)/rect.height*2-1));
+  groundRaycaster.setFromCamera(pointerNdc,camera);
+  const hit=groundRaycaster.intersectObject(ground,false)[0];
+  if(!hit)return null;
+  return new THREE.Vector2(hit.point.x,hit.point.z);
+}
+function stampGroundAt(clientX:number,clientY:number):void{
+  const worldPoint=worldPointAt(clientX,clientY);
+  if(!worldPoint)return;
+  const index=cellIndexAt(worldPoint.x,worldPoint.y);
+  if(index!==lastPaintedCell){
+    const heading=previousWorldPoint
+      ?Math.atan2(worldPoint.y-previousWorldPoint.y,worldPoint.x-previousWorldPoint.x):0;
+    groundLoad.pass(index,standingWater,trafficKind,heading);
+    trafficSelected=index;
+    trafficField.select(index,standingWater);
+    trafficField.update(standingWater,groundLoad,hour,trafficKind,true);
+    groundNeedsSave=true;
+    lastPaintedCell=index;
+    updateTrafficStatus();
+    render();
+  }
+  previousWorldPoint=worldPoint;
+}
 let lastX = 0;
+let lastStrokeY = 0;
 let initialPinch = 0;
 let initialZoom = 1;
 
@@ -345,7 +452,13 @@ canvas.addEventListener('pointerdown', (event) => {
   event.preventDefault();
   canvas.setPointerCapture(event.pointerId);
   pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-  if (pointers.size === 1) lastX = event.clientX;
+  if (pointers.size === 1){
+    lastX = event.clientX;
+    lastStrokeY=event.clientY;
+    lastPaintedCell=null;
+    previousWorldPoint=null;
+    if(trafficInspection)stampGroundAt(event.clientX,event.clientY);
+  }
   if (pointers.size === 2) {
     initialPinch = pinchDistance();
     initialZoom = state.zoom;
@@ -357,8 +470,23 @@ canvas.addEventListener('pointermove', (event) => {
   event.preventDefault();
   pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
   if (pointers.size === 1) {
-    rotate(event.clientX - lastX); // Only horizontal orbit: pitch never changes.
+    if(trafficInspection){
+      // Fill in intermediate samples for fast finger drags; a route can
+      // pass through several 0.3125m cells in one pointer event.
+      const oldX=lastX;
+      const oldY=lastStrokeY;
+      const gap=Math.hypot(event.clientX-oldX,event.clientY-oldY);
+      const samples=Math.min(32,Math.max(1,Math.ceil(gap/10)));
+      for(let step=1;step<=samples;step++){
+        const t=step/samples;
+        stampGroundAt(oldX+(event.clientX-oldX)*t,
+          oldY+(event.clientY-oldY)*t);
+      }
+    }else{
+      rotate(event.clientX - lastX); // Otherwise orbit as before.
+    }
     lastX = event.clientX;
+    lastStrokeY=event.clientY;
   } else if (pointers.size === 2 && initialPinch > 0) {
     state.zoom = clampZoom(initialZoom * pinchDistance() / initialPinch);
     resize();
@@ -367,11 +495,15 @@ canvas.addEventListener('pointermove', (event) => {
 
 function release(event: PointerEvent) {
   pointers.delete(event.pointerId);
+  lastPaintedCell=null;
+  previousWorldPoint=null;
   if (canvas.hasPointerCapture(event.pointerId)) {
     canvas.releasePointerCapture(event.pointerId);
   }
   if (pointers.size === 1) {
-    lastX = [...pointers.values()][0].x;
+    const pointer=[...pointers.values()][0];
+    lastX=pointer.x;
+    lastStrokeY=pointer.y;
   }
   if (pointers.size < 2) initialPinch = 0;
 }
@@ -409,6 +541,7 @@ resize();
 
 let lastFrame = performance.now();
 let lastWaterSave = lastFrame;
+let lastGroundSave = lastFrame;
 let accumulated = 0;
 function tick(now: number) {
   const dt = Math.max(0, Math.min((now - lastFrame) / 1000, 0.2));
@@ -420,6 +553,9 @@ function tick(now: number) {
       // The cloud slider changes future rainfall, not past puddle history.
       const elapsedWorldHours = accumulated * 24 / DAY_LENGTH_SECONDS;
       const addedLitres = standingWater.advance(hour, elapsedWorldHours, cloudCoverOverride);
+      const beforeRuts=groundLoad.getRevision();
+      groundLoad.advance(elapsedWorldHours,standingWater);
+      if(groundLoad.getRevision()!==beforeRuts)groundNeedsSave=true;
       // Water can change even on a dry day due to evaporation/seepage.
       if (addedLitres > 0 || elapsedWorldHours > 0) waterNeedsSave = true;
       hour = advanceHour(hour, accumulated, DAY_LENGTH_SECONDS);
@@ -434,9 +570,14 @@ function tick(now: number) {
     saveStandingWater();
     lastWaterSave = now;
   }
+  if(groundNeedsSave && now-lastGroundSave>2200){
+    saveGroundLoad();
+    lastGroundSave=now;
+  }
   requestAnimationFrame(tick);
 }
 window.addEventListener('pagehide', () => {
   if (waterNeedsSave) saveStandingWater();
+  if (groundNeedsSave) saveGroundLoad();
 });
 requestAnimationFrame(tick);
