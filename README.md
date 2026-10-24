@@ -359,3 +359,33 @@ near a confluence and a depression. Inspect whether floodwater spreads
 into a wider shared surface rather than producing parallel river teeth.
 This remains a simplified shallow-water approximation, not a full
 momentum-conserving fluid solver; visual polish still needs device review.
+
+## Build 024.1 — Water-surface geometry regression repair
+
+The Build 024 renderer incorrectly stitched a 96×96 grid containing dry
+ground-height vertices directly into raised water samples. That created
+dark, steeply sloping geometry across the valley and spiky tributaries.
+The data underneath was not necessarily flooded to those drawn heights.
+
+- Streams, water stored overbank, and volume-solved ponds still use one
+  lit water material and one dynamic mesh, but **do not share arbitrary
+  triangles across dry/wet or unrelated surface-height boundaries**.
+- Each supported river, flood-cell and pond patch is clipped against the
+  actual continuously sampled ground height. Pond surfaces remain level;
+  river reaches follow their measured downhill hydraulic stage.
+- Filtered flood colors no longer invent a water surface on dry neighboring
+  land. The physically stored flood reservoir determines where water can be
+  displayed. Small water quantities can still affect soil moisture.
+- Water color is lighter muted blue-green with restrained transparency;
+  shallow water retains a readable bank, without a dark opaque trench.
+- The river, flood and pond reservoirs, mass-conserving transfers, saved
+  water state and traffic model are **unchanged**.
+- Regression tests assert no triangles emerge from dry ground, shoreline
+  clipping stays above terrain, pond surfaces remain horizontal and abrupt
+  water-level changes never generate a raised-to-dry hanging sheet.
+
+The conservative correction favors truthful local wet patches over blurred
+flood-contour polish. A later pass may blend neighboring, physically
+connected flood cells more deeply, but must not recreate the old global
+raised grid. Verify on iPhone after clear/dry weather and several simulated
+rainy hours; CI checks geometry properties but does not render screenshots.
