@@ -14,7 +14,8 @@ type Gesture = { x: number; y: number; distance: number; angle: number };
 
 export class TouchControls {
   readonly move: Axis = { x: 0, y: 0 };
-  private readonly right: Axis = { x: 0, y: 0 };
+  // Right thumb is an actual aiming axis, not a camera-orbit joystick.
+  readonly aim: Axis = { x: 0, y: 0 };
   private readonly canvas: HTMLCanvasElement;
   private readonly tacticalCamera: TacticalCamera;
   private readonly onTap: (x: number, y: number) => void;
@@ -69,7 +70,7 @@ export class TouchControls {
   private hide(zone: 'left' | 'right') {
     this.bases[zone].classList.remove('visible');
     if (zone === 'left') { this.move.x = 0; this.move.y = 0; }
-    else { this.right.x = 0; this.right.y = 0; }
+    else { this.aim.x = 0; this.aim.y = 0; }
   }
 
   private isTouch(event: PointerEvent) { return event.pointerType === 'touch' || event.pointerType === 'pen'; }
@@ -84,9 +85,12 @@ export class TouchControls {
     this.pointers.set(event.pointerId, {
       x: event.clientX, y: event.clientY,
       startX: event.clientX, startY: event.clientY,
-      role: event.button === 2 ? 'orbit' : 'pending',
+      // Immediate response, no drag threshold before a thumb becomes active.
+      role: event.button===2?'orbit':zone && this.isTouch(event)?zone:'pending',
       zone, kind: event.pointerType,
     });
+    if(zone&&this.isTouch(event)&&event.button!==2)
+      this.positionStick(zone,event.clientX,event.clientY);
     if (this.pointers.size === 1) {
       this.hadMultiple = false;
       this.gesture = null;
@@ -153,7 +157,7 @@ export class TouchControls {
     if (pointer.role === 'left' || pointer.role === 'right') {
       const zone = pointer.role;
       const axis = stickAxis(pointer.x - pointer.startX, pointer.y - pointer.startY, this.radius);
-      const target = zone === 'left' ? this.move : this.right;
+      const target = zone === 'left' ? this.move : this.aim;
       target.x = axis.x; target.y = axis.y;
       const base = this.bases[zone];
       const baseRect = this.canvas.getBoundingClientRect();
@@ -196,11 +200,15 @@ export class TouchControls {
     this.tacticalCamera.zoom(Math.exp(event.deltaY * 0.0011));
   };
 
-  update(dt: number) {
-    if (this.right.x !== 0 || this.right.y !== 0) {
-      const amount = Math.min(dt, 0.05);
-      this.tacticalCamera.orbit(-this.right.x * amount * 1.85, 0);
-    }
+  update(_dt: number) {
+    // Camera orbit stays on two-finger twist or keyboard Q/E.
+    // The right thumb is reserved for continuous aim and fire.
+  }
+
+  get aiming() {
+    return this.pointers.size>0 &&
+      [...this.pointers.values()].some(p=>p.role==='right') &&
+      Math.hypot(this.aim.x,this.aim.y)>.27;
   }
 
   get driving() {

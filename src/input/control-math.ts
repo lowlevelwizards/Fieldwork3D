@@ -46,3 +46,8 @@ export function canStartIndependentSticks(
   // Fingers close together at the center are a pinch/twist, not two controls.
   return Math.hypot(a.x - b.x, a.y - b.y) >= Math.min(180, width * 0.37);
 }
+
+/** Aiming does not arm at the deadzone; releasing the right thumb stops shots. */
+export function isFireIntent(axis: Axis, threshold=0.27) {
+  return Math.hypot(axis.x,axis.y)>threshold;
+}
