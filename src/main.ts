@@ -7,6 +7,8 @@ import { TerrainWater } from './hydrology';
 import { makeTerrainGeometry, updateTerrainMoisture } from './terrain';
 import { windAtHour, windDriftAtHour } from './wind-model';
 import { PuddleField } from './puddles';
+import { FlowField } from './flow-field';
+import { mountRegionInspector } from './region-inspector';
 import { GroundLoad, type TrafficKind } from './traffic-model';
 import { TrafficField } from './traffic-field';
 import { cellIndexAt } from './terrain-model';
@@ -34,6 +36,7 @@ const waterLabel = document.querySelector<HTMLElement>('#waterLabel');
 const clearWaterButton = document.querySelector<HTMLButtonElement>('#waterClear');
 const windLabel = document.querySelector<HTMLElement>('#windLabel');
 const evapLabel = document.querySelector<HTMLElement>('#evapLabel');
+const flowLabel = document.querySelector<HTMLElement>('#flowLabel');
 const trafficButton = document.querySelector<HTMLButtonElement>('#trafficToggle');
 const trafficKindButton = document.querySelector<HTMLButtonElement>('#trafficKind');
 const trafficResetButton = document.querySelector<HTMLButtonElement>('#trafficReset');
@@ -41,14 +44,14 @@ const trafficPanel = document.querySelector<HTMLElement>('#trafficPanel');
 const trafficStatus = document.querySelector<HTMLElement>('#trafficStatus');
 if (!timeToggle || !timeScrub || !timeLabel || !phaseLabel ||
     !cloudCoverInput || !cloudCoverLabel || !cloudAuto || !rainLabel ||
-    !waterLabel || !clearWaterButton || !windLabel || !evapLabel ||
+    !waterLabel || !clearWaterButton || !windLabel || !evapLabel || !flowLabel ||
     !trafficButton || !trafficKindButton || !trafficResetButton ||
     !trafficPanel || !trafficStatus) {
   throw new Error('Missing time-of-day inspector');
 }
 const controls = { toggle: timeToggle, scrub: timeScrub, clock: timeLabel, phase: phaseLabel,
   cloudCover: cloudCoverInput, cloudLabel: cloudCoverLabel, cloudAuto,
-  rainLabel, waterLabel, clearWater: clearWaterButton, windLabel, evapLabel,
+  rainLabel, waterLabel, clearWater: clearWaterButton, windLabel, evapLabel, flowLabel,
   trafficButton, trafficKindButton, trafficResetButton, trafficPanel, trafficStatus };
 
 let hour = INITIAL_HOUR;
@@ -61,15 +64,16 @@ let trafficSelected:number|null=null;
 let lastPaintedCell:number|null=null;
 // Surface water is an accumulated world quantity, deliberately separate from
 // the reversible time-of-day preview (scrubbing time deposits nothing).
-const WATER_SAVE_KEY = 'fieldwork-ground-zero-water-011';
-const PREVIOUS_WATER_SAVE_KEY = 'fieldwork-ground-zero-water-008';
+const WATER_SAVE_KEY = 'fieldwork-ground-zero-water-017';
+const PREVIOUS_WATER_SAVE_KEY = 'fieldwork-ground-zero-water-011';
 const LEGACY_WATER_SAVE_KEY = 'fieldwork-ground-zero-water-007';
 let savedVolumes: unknown;
 try {
   const json = window.localStorage.getItem(WATER_SAVE_KEY);
   if (json) savedVolumes = JSON.parse(json);
   else {
-    const previous=window.localStorage.getItem(PREVIOUS_WATER_SAVE_KEY);
+    const previous=window.localStorage.getItem(PREVIOUS_WATER_SAVE_KEY)
+      ?? window.localStorage.getItem('fieldwork-ground-zero-water-008');
     if(previous) savedVolumes=JSON.parse(previous);
   }
 } catch { /* private browsing or disabled storage still supports water */ }
@@ -226,6 +230,8 @@ scene.add(veil);
 const clouds = new CloudField(scene);
 const rainField = new RainField(scene);
 const puddles = new PuddleField(scene);
+const flowField = new FlowField(scene);
+mountRegionInspector();
 const trafficField = new TrafficField(scene,standingWater);
 const rainFogTone = new THREE.Color(0x91a0a6);
 
@@ -262,12 +268,17 @@ function applyEnvironment(e: EnvironmentState) {
   clouds.update(e.hour, e, cloudCoverOverride, storm);
   rainField.update(e.hour, rain);
   puddles.update(standingWater, e, storm);
+  flowField.update(standingWater);
   trafficField.update(standingWater,groundLoad,e.hour,trafficKind);
   updateTrafficStatus();
   controls.waterLabel.textContent =
-    'PONDS ' + standingWater.totalLiters().toFixed(0) + ' L'
+    'SURFACE ' + standingWater.totalLiters().toFixed(0) + ' L'
     + ' · SOIL ' + standingWater.totalSoilLiters().toFixed(0) + ' L'
     + ' · EXIT ' + standingWater.exportedLiters().toFixed(0) + ' L';
+  controls.flowLabel.textContent=
+    'UPSTREAM ' + standingWater.importedLiters().toFixed(0) + ' L'
+    + ' · CHANNEL ' + standingWater.totalChannelLiters().toFixed(0) + ' L'
+    + ' · FLOOD ' + standingWater.totalFloodLiters().toFixed(0) + ' L';
   controls.windLabel.textContent='WIND ' + wind.speed.toFixed(1) + ' m/h';
   controls.evapLabel.textContent='EVAP ' +
     standingWater.evaporatedLiters().toFixed(1) + ' L';
