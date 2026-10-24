@@ -309,10 +309,13 @@ export class Operator {
     position.y = terrainHeight(position.x, position.z);
     const speed = Math.hypot(movedX, movedZ) / Math.max(dt, 0.0001);
     const gazeTarget = this.combatAim ?? this.socialTarget ?? this.faceTarget;
-    if (speed > 0.03 || (gazeTarget && this.velocityMagnitude < 0.4)) {
-      const heading = gazeTarget && this.velocityMagnitude < 0.4
-        ? Math.atan2(gazeTarget.x - position.x, gazeTarget.z - position.z)
-        : Math.atan2(movedX, movedZ);
+    if (speed > 0.03 || gazeTarget) {
+      // Combat aim overrides travel heading, allowing strafing.
+      const heading = this.combatAim
+        ? Math.atan2(this.combatAim.x - position.x, this.combatAim.z - position.z)
+        : gazeTarget && this.velocityMagnitude < 0.4
+          ? Math.atan2(gazeTarget.x - position.x, gazeTarget.z - position.z)
+          : Math.atan2(movedX, movedZ);
       const angularDifference = Math.atan2(
         Math.sin(heading - this.group.rotation.y),
         Math.cos(heading - this.group.rotation.y),

@@ -201,6 +201,9 @@ function onContactEvent(event:ContactEvent) {
     toast('CONTACT! · MOVE LEFT / AIM RIGHT',3.4);
     contact.tactical=true;
     job.release();
+    // Interrupt the reading so the operator can move under fire.
+    inspecting=null;inspectionTimer=0;pendingStation=null;
+    rook.setWork('idle',rook.position);
     updateNotebook();
   } else if(event.type==='shot'){
     const shot=event.shot;
@@ -632,7 +635,7 @@ renderer.setAnimationLoop(()=>{
   if(driving){autoReturn=false;pendingStation=null;}
   const axis=touch.driving?touch.move:keys;
   rook.setDrive(driving?camera.screenDirection(axis):null);
-  const inWork=Boolean(inspecting)||job.phase==='working';
+  const inWork=Boolean(inspecting)||job.isHolding;
   const aiding=assistRequested&&contact.simulation.fighters.mica.hp===0&&
     dist(rook.position,mica.position)<2.05&&contact.simulation.fighters.rook.hp>0;
   const workingAt=inspecting??selectedStation;

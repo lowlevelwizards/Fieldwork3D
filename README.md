@@ -1,4 +1,4 @@
-# Fieldwork 3D — 0.0.9: First Contact
+# Fieldwork 3D — 0.0.9.1: Twin-Stick First Contact
 
 **Live game:** https://lowlevelwizards.github.io/Fieldwork3D/
 
@@ -6,21 +6,30 @@ Fieldwork is a mobile-first, isometric, handcrafted Three.js/TypeScript world wh
 
 ## Playing First Contact
 
-Two distinct armed patrol operators move near the eastern service road. They see along a real facing direction, remember last-known positions, and investigate shots they hear. They have finite ammunition, reload, take cover when wounded or suppressed, and may lose contact with the crew.
+0.0.9.1 replaces the original auto-target controls with direct-action input.
 
-- **Tap an armed patrol operator** to select them as a target (a small ring marks the selection).
-- **Tap ⌖** below the top-right scene information to raise/lower the tactical controls; this does not pause the world.
-- **Hold FIRE** to fire repeated deliberate shots at the selected target. Gunfire is blocked by the **same real shed, trees and machine obstacles** used for movement. Hits and misses create momentary tracers/impacts.
-- **↻** reloads a finite magazine (9 rounds, 36 spare). **◎** cycles between known opponents.
-- **MICA · FOLLOW** cycles through FOLLOW, HOLD, COVER, WITHDRAW. The same physical operator who carries tools and repairs circuits also uses those orders under threat.
-- **AID MICA** appears if Mica is incapacitated. Rook physically approaches and gives aid if there is no exposed enemy dangerously close. Once both hostiles are down, Mica can also assist an incapacitated Rook.
-- **REGROUP · RETRY** appears after a resolved contact or if Rook is down. It resets the training encounter without losing the electrical incident.
+- **Left thumb: MOVE.** Rook moves directly relative to the isometric camera.
+- **Right thumb: AIM + FIRE.** Drag the right floating stick to turn Rook in that direction and shoot. Aim and movement remain independent, so you can strafe and fire. Releasing the stick stops shooting immediately.
+- Bullets travel in the aimed direction, hit real obstacles, and never snap to a selected enemy. An in-world reticle shows the aiming direction.
+- Patrols begin farther down the eastern road, approach visibly, and are announced by Mica before they can fire. Their damage, accuracy and cadence are reduced.
+- The small ⌖ panel at top right shows ammo, reload ↻, Mica orders and casualty actions without covering either thumb.
+- Two-finger twist rotates the camera; pinch zooms; upper-area drag pans. The right thumb never rotates the camera while you are firing.
+- When contact interrupts inspection, Rook leaves the work pose and can immediately maneuver. Crew obligations resume afterward.
 
-The existing worksite remains functional during combat. Contact can interrupt diagnosis, a repair hold, or a supply run; the prior job obligation is not destroyed. Afterwards, return to the same investigation, isolate power and restore service. You can instead withdraw or leave unresolved work.
+### Touch controls
+
+| Input | Action |
+|---|---|
+| Left lower thumb | Move |
+| Right lower thumb | Aim and fire |
+| Lift right thumb | Stop shooting |
+| Two-finger twist or pinch | Orbit or zoom |
+| ↻ upper right | Reload |
+| Mica order | Follow, Hold, Cover or Withdraw |
 
 ### Desktop keys
 
-WASD / arrows move; F/Q/E focus/orbit; M sound; Space service action. New: **C** tactical mode, **J** fire while held, **G** reload, **X** next target, **V** cycle Mica tactical order.
+WASD / arrows move; F/Q/E focus/orbit; M sound; Space service action. New: **C** tactical panel, **mouse pointer + J** aim/fire while held, **G** reload, **V** cycle Mica tactical order.
 
 ### Implemented combat foundations
 
