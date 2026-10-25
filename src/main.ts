@@ -7,7 +7,6 @@ import { TerrainWater } from './hydrology';
 import { makeTerrainGeometry, updateTerrainMoisture } from './terrain';
 import { windAtHour, windDriftAtHour } from './wind-model';
 import { HydraulicSurfaceField } from './hydraulic-surface-field';
-import { VegetationField } from './vegetation-field';
 import { mountRegionInspector } from './region-inspector';
 import { GroundLoad, type TrafficKind } from './traffic-model';
 import { TrafficField } from './traffic-field';
@@ -230,7 +229,6 @@ scene.add(veil);
 const clouds = new CloudField(scene);
 const rainField = new RainField(scene);
 const waterSurface = new HydraulicSurfaceField(scene);
-const vegetation = new VegetationField(scene);
 mountRegionInspector();
 const trafficField = new TrafficField(scene,standingWater);
 const rainFogTone = new THREE.Color(0x91a0a6);
@@ -242,7 +240,6 @@ function applyEnvironment(e: EnvironmentState) {
 
   // Actual moisture controls local color, not recently authored rain.
   updateTerrainMoisture(ground.geometry,standingWater);
-  vegetation.update(standingWater);
   const wind=windAtHour(e.hour);
   const drift=windDriftAtHour(e.hour);
   // Visual output is entirely derived from the single authoritative clock.
