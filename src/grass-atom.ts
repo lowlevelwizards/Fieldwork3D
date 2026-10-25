@@ -8,7 +8,7 @@ import { surfaceAt } from './surface-materials.ts';
  * appearing or disappearing every time the rain changes. This is NOT an
  * ecological map, biome system, concealment simulation, or vegetation roster.
  */
-export const GRASS_PATCH={x:-1.65,z:.45,radius:.82} as const;
+export const GRASS_PATCH={x:-1.65,z:.45,radius:.92} as const;
 export type GrassBlade={id:number;x:number;z:number;y:number;height:number;
   width:number;angle:number;lean:number;tint:number};
 const hash=(n:number)=>{
@@ -37,8 +37,8 @@ export function establishGrassPatch(count=144):GrassBlade[]{
       terrainHeight(x+grad,z)-terrainHeight(x-grad,z),
       terrainHeight(x,z+grad)-terrainHeight(x,z-grad));
     if(slope>.125||y<-.065)continue;
-    const height=(.125+hash(i*47+23)*.125)*(substrate==='organic'?1.1:1);
-    blades.push({id:i,x,z,y,height,width:.020+hash(i*13+51)*.011,
+    const height=(.17+hash(i*47+23)*.14)*(substrate==='organic'?1.1:1);
+    blades.push({id:i,x,z,y,height,width:.029+hash(i*13+51)*.014,
       angle:theta+hash(i*37+3)*3.2,
       lean:(hash(i*43+118)-.5)*.075,
       tint:hash(i*17+76)});
