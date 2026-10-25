@@ -9,7 +9,7 @@ export class GrassPatchField {
   readonly blades:readonly GrassBlade[];
   readonly mesh:THREE.InstancedMesh;
   constructor(scene:THREE.Scene){
-    this.blades=establishGrassPatch(240);
+    this.blades=establishGrassPatch(400);
     // Root, broad base, narrowing midrib, softly leaning tip. The local
     // template is 0.25 m high; instance scales retain real-world heights.
     const vertices=[
@@ -40,8 +40,8 @@ export class GrassPatchField {
       obj.scale.set(blade.width/.05,scale,blade.width/.05);
       obj.updateMatrix();
       this.mesh.setMatrixAt(i,obj.matrix);
-      shaded.setHSL(.265+blade.tint*.045,.27+blade.tint*.13,
-        .28+blade.tint*.13);
+      shaded.setHSL(.255+blade.tint*.060,.32+blade.tint*.16,
+        .36+blade.tint*.10);
       this.mesh.setColorAt(i,shaded);
     });
     this.mesh.instanceMatrix.needsUpdate=true;
