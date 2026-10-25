@@ -129,7 +129,8 @@ test('heavy rain preserves water mass and lets flooded channel water re-enter',(
 test('the production scene uses one volume-driven water surface, not three overlapping layers',()=>{
   const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8');
   const src=readFileSync(new URL('../src/hydraulic-surface-field.ts',import.meta.url),'utf8');
-  assert.ok(main.includes('new HydraulicSurfaceField(scene)'));
+  assert.ok(main.includes('new ValleyRiverField(scene)'));
+  assert.ok(!main.includes('new HydraulicSurfaceField(scene)'));
   assert.ok(!main.includes('new PuddleField(scene)'));
   assert.ok(!main.includes('new FlowField(scene)'));
   const model=readFileSync(new URL('../src/hydraulic-water-mesh-model.ts',import.meta.url),'utf8');
