@@ -1,0 +1,68 @@
+/**
+ * Deterministic browser evidence of the ACTUAL Verdigris main scene.
+ * Water is seeded through the real TerrainWater solver and normal save
+ * loading. No fake stage fixtures or screenshot-only river geometry.
+ */
+import { spawn } from 'node:child_process';
+import { mkdir,writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+const {chromium}=await import('playwright');
+const directory=resolve('live-ground-captures');
+await mkdir(directory,{recursive:true});
+const port=4180;
+const url=`http://127.0.0.1:${port}/`;
+const server=spawn(process.execPath,[
+  'node_modules/vite/bin/vite.js',
+  '--host','127.0.0.1','--port',String(port),'--strictPort',
+],{stdio:'ignore',env:{...process.env,CI:'true'}});
+let browser;
+try{
+  let ready=false;
+  for(let i=0;i<100;i++){
+    try{if((await fetch(url)).ok){ready=true;break;}}catch{}
+    await new Promise(done=>setTimeout(done,140));
+  }
+  if(!ready)throw Error('Verdigris preview did not start');
+  browser=await chromium.launch({
+    headless:true,args:['--use-gl=angle','--use-angle=swiftshader'],
+  });
+  const page=await browser.newPage({
+    viewport:{width:390,height:844},deviceScaleFactor:1,
+  });
+  page.setDefaultTimeout(15000);
+  const errors=[];
+  page.on('pageerror',e=>errors.push(String(e)));
+  await page.goto(url,{waitUntil:'domcontentloaded'});
+  await page.locator('#waterLabel').waitFor();
+  await page.waitForTimeout(600);
+  await page.screenshot({path:resolve(directory,'grass-dry-ui-mobile.png')});
+  await page.addStyleTag({content:
+    '.time-inspector,.region-map-toggle,.region-map-panel{display:none!important}'});
+  await page.screenshot({path:resolve(directory,'grass-dry-clean-mobile.png')});
+
+  // Use the actual existing physics to generate a rainy wet condition.
+  const sample=await page.evaluate(async()=>{
+    const {TerrainWater}=await import('/src/hydrology.ts');
+    const w=new TerrainWater();
+    for(let i=0;i<45;i++)w.advance(4+i*.1,.1,1);
+    localStorage.setItem('fieldwork-ground-zero-water-017',
+      JSON.stringify(w.snapshot()));
+    return {litres:w.totalLiters(),channel:w.totalChannelLiters(),
+      flood:w.totalFloodLiters(),massError:w.massBalanceError()};
+  });
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.locator('#waterLabel').waitFor();
+  await page.waitForTimeout(600);
+  await page.screenshot({path:resolve(directory,'river-wet-ui-mobile.png')});
+  await page.addStyleTag({content:
+    '.time-inspector,.region-map-toggle,.region-map-panel{display:none!important}'});
+  await page.screenshot({path:resolve(directory,'river-wet-clean-mobile.png')});
+  if(errors.length)throw Error('Browser errors: '+errors.join('; '));
+  if(!Number.isFinite(sample.massError)||Math.abs(sample.massError)>.001)
+    throw Error('Water ledger not conserved');
+  await writeFile(resolve(directory,'manifest.json'),JSON.stringify(sample,null,2));
+  console.log('Captured dry grass and actual wet river in the production viewport:',sample);
+}finally{
+  await browser?.close();
+  server.kill('SIGTERM');
+}
