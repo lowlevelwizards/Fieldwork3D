@@ -17,7 +17,7 @@ test('only one deterministic rooted grass patch is generated',()=>{
     assert.ok(Math.hypot(blade.x-GRASS_PATCH.x,blade.z-GRASS_PATCH.z)
       <=GRASS_PATCH.radius+.0001);
     assert.equal(blade.y,terrainHeight(blade.x,blade.z));
-    assert.ok(blade.height>=.125 && blade.height<.26);
+    assert.ok(blade.height>=.17 && blade.height<.35);
     assert.ok(['loam','clay','organic'].includes(surfaceAt(blade.x,blade.z).kind));
   }
   assert.notDeepEqual(establishGrassPatch(100),a);
