@@ -34,7 +34,12 @@ try{
   page.on('pageerror',e=>errors.push(String(e)));
   await page.goto(url,{waitUntil:'domcontentloaded'});
   await page.locator('#waterLabel').waitFor();
-  await page.waitForTimeout(600);
+  // Evaluate the same useful daylight used in the user's inspection.
+  // Scrubbing previews time only; it cannot add water to the solver.
+  await page.locator('#timeScrub').evaluate(el=>{
+    el.value='780';el.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  await page.waitForTimeout(400);
   await page.screenshot({path:resolve(directory,'grass-dry-ui-mobile.png')});
   await page.addStyleTag({content:
     '.time-inspector,.region-map-toggle,.region-map-panel{display:none!important}'});
@@ -61,7 +66,10 @@ try{
   },{saved:fixture.saved});
   await wetPage.goto(url,{waitUntil:'domcontentloaded'});
   await wetPage.locator('#waterLabel').waitFor();
-  await wetPage.waitForTimeout(350);
+  await wetPage.locator('#timeScrub').evaluate(el=>{
+    el.value='780';el.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  await wetPage.waitForTimeout(400);
   const displayedWater=await wetPage.locator('#waterLabel').innerText();
   if(!displayedWater.includes('SURFACE ')||
     Number(displayedWater.match(/SURFACE ([0-9]+)/)?.[1]??0)<fixture.litres*.4){
