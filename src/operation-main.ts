@@ -71,11 +71,13 @@ scene.add(intelShape);
 const camera=new THREE.OrthographicCamera(-6,6,6,-6,.1,100);
 function resize():void{
   const aspect=Math.max(.3,innerWidth/Math.max(1,innerHeight));
-  const halfW=5.6;
+  const halfW=5.95;
   camera.left=-halfW;camera.right=halfW;
   camera.top=halfW/aspect;camera.bottom=-halfW/aspect;
   camera.updateProjectionMatrix();
-  camera.position.set(3.5,23,9.5);
+  // A near-top-down view keeps the entire 10m tactical footprint visible
+  // on narrow iPhones; angled side crop previously hid squad/extraction.
+  camera.position.set(0,26,7.2);
   camera.lookAt(0,0,0);
   camera.updateMatrixWorld();
   renderer.setSize(innerWidth,innerHeight,false);
