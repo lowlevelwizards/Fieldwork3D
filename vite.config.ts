@@ -9,6 +9,7 @@ export default defineConfig({
     rollupOptions: { input: {
       main: 'index.html',
       riverLab: 'river-lab.html',
+      operation: 'operation.html',
     } },
   },
 });
