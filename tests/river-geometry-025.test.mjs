@@ -119,6 +119,7 @@ test('isolated page publishes visible scenarios and geometry overlays without re
   assert.ok(html.includes('data-scenario="live"'));
   assert.ok(lab.includes('mainRiverStations('));
   assert.ok(lab.includes("document.documentElement.dataset.riverLabReady='true'"));
-  assert.ok(main.includes('new HydraulicSurfaceField(scene)'));
+  assert.ok(main.includes('new ValleyRiverField(scene)'));
+  assert.ok(main.includes('new GrassPatchField(scene)'));
   assert.ok(!main.includes('buildRiverRibbon('));
 });
