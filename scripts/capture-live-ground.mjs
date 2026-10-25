@@ -64,7 +64,7 @@ try{
   await wetPage.waitForTimeout(350);
   const displayedWater=await wetPage.locator('#waterLabel').innerText();
   if(!displayedWater.includes('SURFACE ')||
-    Number(displayedWater.match(/SURFACE (\\d+)/)?.[1]??0)<fixture.litres*.4){
+    Number(displayedWater.match(/SURFACE ([0-9]+)/)?.[1]??0)<fixture.litres*.4){
     throw Error('Hydrated river fixture not loaded: '+displayedWater+
       '; expected '+fixture.litres);
   }
