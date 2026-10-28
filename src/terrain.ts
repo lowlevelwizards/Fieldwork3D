@@ -1,16 +1,16 @@
 import * as THREE from 'three';
-import { SURFACE, visualMaterialWeights, type SurfaceKind } from './surface-materials';
+import { SURFACE, visualMaterialWeights, type SurfaceKind } from './surface-materials.ts';
 import {
   composeDisplayWetness, sampleDisplayMoisture, reliefBrightness,
   displayWetnessWeight,
-} from './terrain-display-model';
-import type { TerrainWater } from './hydrology';
+} from './terrain-display-model.ts';
+import type { TerrainWater } from './hydrology.ts';
 import { groundCoverAt } from './ground-cover-model';
-import { bankFringeWeight } from './drainage-visual-model';
+import { bankFringeWeight } from './drainage-visual-model.ts';
 import {
   GRID_CELLS, CELL_SIZE, WORLD_SIZE, WORLD_HALF, SUBSTRATE_BOTTOM,
   terrainHeight, localChannelProximity,
-} from './terrain-model';
+} from './terrain-model.ts';
 
 /** A single indexed mesh with a continuous heightfield top and solid earth walls. */
 export function makeTerrainGeometry(): THREE.BufferGeometry {
