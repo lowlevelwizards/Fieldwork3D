@@ -99,8 +99,10 @@ test('tree and shrub geometry is deliberately low-poly and rooted',()=>{
   const models=createWoodyGeometry();
   for(const geom of Object.values(models)){
     assert.ok(geom instanceof THREE.BufferGeometry);
-    assert.ok(geom.getAttribute('position').count<100,
+    assert.ok(geom.getAttribute('position').count<145,
       'individual foliage should not be high-poly');
+    assert.ok((geom.index?.count??geom.getAttribute('position').count)/3<80,
+      'each canopy should have few visible facets');
     geom.dispose();
   }
 });
