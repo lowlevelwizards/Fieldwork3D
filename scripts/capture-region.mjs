@@ -60,7 +60,7 @@ try{
       enabled+'/'+disabled);
   await page.screenshot({path:resolve(directory,'six-region-selector-mobile.png')});
   await page.locator('#closeRegions').click();
-  await page.locator('#regionMenu[hidden]').waitFor();
+  await page.locator('#regionMenu').waitFor({state:'hidden'});
 
   // Wheel zoom verifies the near patch, detail labels and geographic
   // dimensions. Use real input rather than swapping a fake mock scene.
