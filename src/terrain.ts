@@ -5,7 +5,7 @@ import {
   displayWetnessWeight,
 } from './terrain-display-model.ts';
 import type { TerrainWater } from './hydrology.ts';
-import { groundCoverAt } from './ground-cover-model';
+import { groundCoverAt } from './ground-cover-model.ts';
 import { bankFringeWeight } from './drainage-visual-model.ts';
 import {
   GRID_CELLS, CELL_SIZE, WORLD_SIZE, WORLD_HALF, SUBSTRATE_BOTTOM,
