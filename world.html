@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+  <meta name="theme-color" content="#9bb8bc"/>
+  <title>Fieldwork — Verdigris / Cutwoods</title>
+  <style>
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    :root{font-family:ui-monospace,"SFMono-Regular",Consolas,monospace;color:#e3e9d9;background:#a5c3c3}
+    html,body{width:100%;height:100%;overflow:hidden;margin:0;overscroll-behavior:none}
+    #worldCanvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
+    button,a{font:inherit;color:inherit;cursor:pointer}
+    button:focus-visible,a:focus-visible{outline:2px solid #edcf95;outline-offset:2px}
+    .world-header{position:fixed;z-index:5;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;display:flex;gap:9px;align-items:flex-start;pointer-events:none}
+    .name,.world-actions{border:1px solid #b7cbb77a;border-radius:9px;padding:10px 12px;background:#203938e5;backdrop-filter:blur(10px)}
+    .name{min-width:0;flex:1}
+    .eyebrow{font-size:10px;letter-spacing:.12em;color:#c5d2c5}
+    .name strong{display:block;font-size:16px;letter-spacing:.08em;margin:4px 0}
+    .name small{font-size:10px;color:#c0d2c9}
+    .world-actions{pointer-events:auto;padding:7px}
+    .world-actions button{font-size:11px;padding:8px 10px;white-space:nowrap;background:#405a50;border:1px solid #a5b6a266;border-radius:5px}
+    .world-info{position:fixed;z-index:5;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));border:1px solid #bbcbbb77;background:#203938e9;backdrop-filter:blur(10px);border-radius:10px;padding:10px 12px;display:grid;gap:6px}
+    .world-info .flex{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:11px}
+    #coords{font-size:10px;color:#d8dccb;line-height:1.4}
+    #regionStatus{font-size:10px;color:#b5cfc3}
+    .world-help{font-size:9px;color:#a6bfb5;line-height:1.5}
+    .world-info button{border-radius:6px;padding:6px 8px;border:1px solid #90a99d77;background:#50675b;font-size:10px;white-space:nowrap}
+    .world-info button[hidden]{display:none}
+    .scale{display:flex;align-items:center;gap:5px;font-size:10px;color:#e0e6d7}
+    .scale-line{display:block;width:50px;height:7px;border-bottom:2px solid #f1e8c9;border-left:2px solid #f1e8c9;border-right:2px solid #f1e8c9}
+    .region-menu{position:fixed;inset:0;z-index:10;display:flex;justify-content:center;align-items:center;background:#152d2acc;padding:20px}
+    .region-menu[hidden]{display:none}
+    .region-card{width:min(410px,100%);max-height:85dvh;overflow:auto;border:1px solid #a7bfb2aa;border-radius:14px;background:#253e3bea;padding:18px;box-shadow:0 15px 40px #15251f55}
+    .region-card h2{margin:0 0 6px;font-size:16px;letter-spacing:.1em}
+    .region-card p{font-size:11px;line-height:1.6;color:#b6ccc4;margin:0 0 12px}
+    .region-list{display:grid;gap:6px}
+    .region-choice{width:100%;text-align:left;border-radius:7px;border:1px solid #a0baac77;padding:10px;background:#405a4e;display:flex;justify-content:space-between;align-items:center;gap:7px}
+    .region-choice strong{font-size:11px}.region-choice small{font-size:9px;color:#c3d5cc;display:block;margin-top:3px}
+    .region-choice[disabled]{opacity:.45;cursor:not-allowed}
+    .region-choice.selected{border-color:#f2d4a0;background:#4d6e57}
+    .region-footer{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:13px}
+    .region-footer button,.region-footer a{border:1px solid #a0baac77;border-radius:6px;padding:9px 10px;background:#354d44;text-decoration:none;font-size:10px}
+    @media(max-width:370px){.world-header{gap:5px;left:8px;right:8px}.name{padding:8px}.world-actions{padding:5px}.world-actions button{padding:7px}.world-info{left:8px;right:8px}}
+  </style>
+</head>
+<body>
+  <canvas id="worldCanvas" aria-label="One kilometre playable Cutwoods terrain, touch to orbit and use two fingers to pan and pinch-zoom"></canvas>
+  <header class="world-header">
+    <div class="name">
+      <div class="eyebrow">FIELDWORK / VERDIGRIS</div>
+      <strong id="worldRegionName">CUTWOODS</strong>
+      <small>1,000 × 1,000 m · Regional terrain</small>
+    </div>
+    <div class="world-actions"><button id="regionMenuButton" type="button" aria-expanded="false" aria-controls="regionMenu">REGIONS</button></div>
+  </header>
+  <section class="world-info" aria-label="Geographic navigation and inspection">
+    <div class="flex"><span id="regionStatus">REGION 03 / 06</span><span id="scaleDisplay" class="scale"><span class="scale-line"></span><span>200 m</span></span></div>
+    <div id="coords">CENTER: 0 E · 2.5 km S · 300 m ASL</div>
+    <div class="flex"><span id="detailStatus">REGIONAL DETAIL</span><button id="resetView" type="button">RESET VIEW</button></div>
+    <div class="world-help">One finger: orbit · Two fingers: pan and pinch · Tap terrain: inspect elevation · This is geography only; the 10 m physics lab remains separate.</div>
+  </section>
+  <div id="regionMenu" class="region-menu" hidden>
+    <div class="region-card" role="dialog" aria-label="Choose a Verdigris region">
+      <h2>VERDIGRIS / REGIONS</h2>
+      <p>Six independently loaded 1 km² regions run north to south. Cutwoods is the first playable terrain; the others are planned.</p>
+      <div class="region-list" id="regionChoices"></div>
+      <div class="region-footer">
+        <a href="./index.html">ENVIRONMENT LAB / 10 M</a>
+        <button type="button" id="closeRegions">RETURN TO CUTWOODS</button>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="./src/world-main.ts"></script>
+</body>
+</html>
