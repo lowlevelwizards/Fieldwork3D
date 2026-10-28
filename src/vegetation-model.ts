@@ -99,8 +99,8 @@ export function shrubHabitatAt(x:number,z:number,trees:readonly WoodyPlant[],see
   // Genuinely open ground still supports some shrubs. Edges increase the
   // odds, but the woodland algorithm isn't allowed to ban isolated brush.
   const shrub=clamp(moisturePref*(.18+.82*clamp(h.fertility))*
-    h.drainage*slopePref*exposurePref*(.45+.55*edge)*
-    (.45+.55*h.woodland));
+    h.drainage*slopePref*exposurePref*(.60+.40*edge)*
+    (.52+.48*h.woodland));
   return {...h,canopy,shade:canopy,edge,shrub};
 }
 const inside=(x:number,z:number,radius:number)=>
