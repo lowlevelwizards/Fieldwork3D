@@ -239,3 +239,16 @@ html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
 .woody-controls button{height:27px;width:auto;min-width:77px;padding:0 8px;font-size:10px;}
 #woodyCounts{font-size:9px;letter-spacing:.035em;color:#b9cfbf;}
 #woodyStatus{display:block;min-height:25px;letter-spacing:.01em;}
+
+/* Environment Lab -> separately loaded regional Cutwoods world. */
+.region-lab-list{display:grid;gap:5px;}
+.region-lab-item{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 8px;border:1px solid #718a7b66;border-radius:5px;
+  color:#aebcb1;font-size:10px;}
+.region-lab-item.live{color:#e5ebd9;border-color:#adbf9e;
+  background:#425f4d55;}
+.region-lab-item small{font-size:9px;}
+.region-world-link{display:block;text-align:center;padding:10px 7px;
+  border:1px solid #bfcda0;border-radius:6px;margin-top:9px;
+  background:#425b4d;color:#f2e8ce;font-size:10px;
+  letter-spacing:.04em;text-decoration:none;}
