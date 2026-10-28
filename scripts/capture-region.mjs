@@ -101,6 +101,37 @@ try{
   await page.locator('#regionMenuButton').click();
   const lab=await page.locator('a[href="./index.html"]').count();
   if(lab!==1)throw Error('Original Environment Lab entry is missing');
+  await page.locator('#closeRegions').click();
+  await page.locator('#worldMode').click();
+  await page.locator('#exploreControls:not([hidden])').waitFor();
+  const operatorBefore=await page.locator('#actorReadout').innerText();
+  const exploreBefore=await page.locator('#coords').innerText();
+  if(!operatorBefore.includes('3/3 INTEGRITY'))
+    throw Error('Human-sized Operator did not spawn correctly: '+operatorBefore);
+  await page.screenshot({path:resolve(directory,'cutwoods-explore-operator-mobile.png')});
+  const rect=await page.locator('#moveStick').boundingBox();
+  if(!rect)throw Error('Explore thumbstick did not render');
+  const sx=rect.x+rect.width/2,sy=rect.y+rect.height/2;
+  const stickSession=await page.context().newCDPSession(page);
+  await stickSession.send('Input.dispatchTouchEvent',{type:'touchStart',
+    touchPoints:[{id:9,x:sx,y:sy}]});
+  await stickSession.send('Input.dispatchTouchEvent',{type:'touchMove',
+    touchPoints:[{id:9,x:sx+15,y:sy-34}]});
+  await page.waitForTimeout(1050);
+  const exploreAfter=await page.locator('#coords').innerText();
+  await stickSession.send('Input.dispatchTouchEvent',{type:'touchEnd',
+    touchPoints:[]});
+  if(exploreBefore===exploreAfter)
+    throw Error('Operator failed to move under real mobile thumbstick input');
+  await page.screenshot({path:resolve(directory,'cutwoods-operator-moving-mobile.png')});
+  await page.locator('#fireButton').click();
+  await page.locator('#squadOrder').click();
+  if(await page.locator('#squadOrder').getAttribute('aria-pressed')!=='true')
+    throw Error('Squad rally mode did not arm');
+  await page.locator('#holdOrder').click();
+  await page.locator('#worldMode').click();
+  if(await page.locator('#worldMode').getAttribute('aria-pressed')!=='false')
+    throw Error('Operator cannot return to survey mode');
 
   // The standalone 10m lab must still initialize without missing
   // controls, runtime WebGL errors or changing its entrypoint.
@@ -113,7 +144,7 @@ try{
     throw Error('Lab cannot open the new regional world');
   if(errors.length)throw Error('Browser runtime errors: '+errors.join('; '));
   const manifest={canvasInfo,enabled,disabled,closeStatus,coords,resetStatus,
-    beforeGesture,afterGesture,
+    beforeGesture,afterGesture,operatorBefore,exploreBefore,exploreAfter,
     errors,region:'cutwoods'};
   await writeFile(resolve(directory,'manifest.json'),JSON.stringify(manifest,null,2));
   console.log('Build 032 regional scene and preserved lab validated:',manifest);
