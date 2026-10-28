@@ -6,6 +6,9 @@ on:
     paths:
       - 'src/river-*.ts'
       - 'src/grass-*.ts'
+      - 'src/ground-cover-*.ts'
+      - 'src/terrain.ts'
+      - 'src/surface-materials.ts'
       - 'src/valley-river-field.ts'
       - 'src/main.ts'
       - 'scripts/capture-live-ground.mjs'
