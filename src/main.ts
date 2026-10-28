@@ -7,7 +7,8 @@ import { TerrainWater } from './hydrology';
 import { makeTerrainGeometry, updateTerrainMoisture } from './terrain';
 import { windAtHour, windDriftAtHour } from './wind-model';
 import { ValleyRiverField } from './valley-river-field';
-import { GrassPatchField } from './grass-patch-field';
+import { createGroundCoverMaterial } from './ground-cover-material';
+import { groundCoverAt } from './ground-cover-model';
 import { mountRegionInspector } from './region-inspector';
 import { GroundLoad, type TrafficKind } from './traffic-model';
 import { TrafficField } from './traffic-field';
@@ -37,6 +38,9 @@ const clearWaterButton = document.querySelector<HTMLButtonElement>('#waterClear'
 const windLabel = document.querySelector<HTMLElement>('#windLabel');
 const evapLabel = document.querySelector<HTMLElement>('#evapLabel');
 const flowLabel = document.querySelector<HTMLElement>('#flowLabel');
+const coverToggle = document.querySelector<HTMLButtonElement>('#coverToggle');
+const coverPanel = document.querySelector<HTMLElement>('#coverPanel');
+const coverStatus = document.querySelector<HTMLOutputElement>('#coverStatus');
 const trafficButton = document.querySelector<HTMLButtonElement>('#trafficToggle');
 const trafficKindButton = document.querySelector<HTMLButtonElement>('#trafficKind');
 const trafficResetButton = document.querySelector<HTMLButtonElement>('#trafficReset');
@@ -46,19 +50,22 @@ if (!timeToggle || !timeScrub || !timeLabel || !phaseLabel ||
     !cloudCoverInput || !cloudCoverLabel || !cloudAuto || !rainLabel ||
     !waterLabel || !clearWaterButton || !windLabel || !evapLabel || !flowLabel ||
     !trafficButton || !trafficKindButton || !trafficResetButton ||
-    !trafficPanel || !trafficStatus) {
+    !trafficPanel || !trafficStatus || !coverToggle || !coverPanel ||
+    !coverStatus) {
   throw new Error('Missing time-of-day inspector');
 }
 const controls = { toggle: timeToggle, scrub: timeScrub, clock: timeLabel, phase: phaseLabel,
   cloudCover: cloudCoverInput, cloudLabel: cloudCoverLabel, cloudAuto,
   rainLabel, waterLabel, clearWater: clearWaterButton, windLabel, evapLabel, flowLabel,
-  trafficButton, trafficKindButton, trafficResetButton, trafficPanel, trafficStatus };
+  trafficButton, trafficKindButton, trafficResetButton, trafficPanel, trafficStatus,
+  coverToggle, coverPanel, coverStatus };
 
 let hour = INITIAL_HOUR;
 let playing = true;
 // Null restores natural cover. An override is inspection only, not another clock.
 let cloudCoverOverride: number | null = null;
 let trafficInspection=false;
+let coverInspection=false;
 let trafficKind:TrafficKind='foot';
 let trafficSelected:number|null=null;
 let lastPaintedCell:number|null=null;
@@ -154,9 +161,7 @@ scene.add(sun);
 
 // A single physical mesh, 10 m by 10 m, with its top at y = 0.
 // Different top/side materials still represent ONE continuous block.
-const grass = new THREE.MeshStandardMaterial({
-  color: 0xffffff,vertexColors:true,roughness:1,flatShading:false,
-});
+const grass = createGroundCoverMaterial();
 const earth = new THREE.MeshStandardMaterial({
   color: 0x756959, roughness: 1, flatShading: true,
 });
@@ -230,7 +235,8 @@ scene.add(veil);
 const clouds = new CloudField(scene);
 const rainField = new RainField(scene);
 const waterSurface = new ValleyRiverField(scene);
-new GrassPatchField(scene);
+// Individual blades remain in their prototype for a future, much closer zoom.
+// At this landscape scale the ground-cover colors carry the vegetation.
 mountRegionInspector();
 const trafficField = new TrafficField(scene,standingWater);
 const rainFogTone = new THREE.Color(0x91a0a6);
@@ -241,7 +247,7 @@ function applyEnvironment(e: EnvironmentState) {
   const storm = rain.amount;
 
   // Actual moisture controls local color, not recently authored rain.
-  updateTerrainMoisture(ground.geometry,standingWater);
+  updateTerrainMoisture(ground.geometry,standingWater,coverInspection);
   const wind=windAtHour(e.hour);
   const drift=windDriftAtHour(e.hour);
   // Visual output is entirely derived from the single authoritative clock.
@@ -363,6 +369,12 @@ function updateTrafficStatus():void{
 }
 controls.trafficButton.addEventListener('click',()=>{
   trafficInspection=!trafficInspection;
+  if(trafficInspection&&coverInspection){
+    coverInspection=false;
+    controls.coverPanel.hidden=true;
+    controls.coverToggle.setAttribute('aria-pressed','false');
+    updateTerrainMoisture(ground.geometry,standingWater,false);
+  }
   trafficField.setInspection(trafficInspection);
   trafficField.update(standingWater,groundLoad,hour,trafficKind,true);
   updateTrafficStatus();
@@ -379,6 +391,33 @@ controls.trafficResetButton.addEventListener('click',()=>{
   saveGroundLoad();
   trafficField.update(standingWater,groundLoad,hour,trafficKind,true);
   updateTrafficStatus();
+  render();
+});
+
+function inspectCoverAt(x:number,z:number):void{
+  const sample=groundCoverAt(x,z);
+  const soilNow=standingWater.soilFraction(cellIndexAt(x,z));
+  controls.coverStatus.textContent=
+    Math.round(sample.coverage*100)+'% COVER · '+
+    Math.round(sample.longTermMoisture*100)+'% CLIMATE MOISTURE · '+
+    sample.slope.toFixed(0)+'° SLOPE · '+
+    Math.round(soilNow*100)+'% CURRENT SOIL WATER';
+}
+controls.coverToggle.addEventListener('click',()=>{
+  coverInspection=!coverInspection;
+  controls.coverPanel.hidden=!coverInspection;
+  controls.coverToggle.setAttribute('aria-pressed',String(coverInspection));
+  if(coverInspection){
+    controls.coverStatus.textContent=
+      'Tap or drag terrain to inspect ground cover. Tan = bare; green = vegetated.';
+    if(trafficInspection){
+      trafficInspection=false;
+      trafficField.setInspection(false);
+      trafficField.update(standingWater,groundLoad,hour,trafficKind,true);
+      updateTrafficStatus();
+    }
+  }
+  updateTerrainMoisture(ground.geometry,standingWater,coverInspection);
   render();
 });
 
@@ -469,6 +508,10 @@ canvas.addEventListener('pointerdown', (event) => {
     lastPaintedCell=null;
     previousWorldPoint=null;
     if(trafficInspection)stampGroundAt(event.clientX,event.clientY);
+    else if(coverInspection){
+      const p=worldPointAt(event.clientX,event.clientY);
+      if(p)inspectCoverAt(p.x,p.y);
+    }
   }
   if (pointers.size === 2) {
     initialPinch = pinchDistance();
@@ -481,7 +524,10 @@ canvas.addEventListener('pointermove', (event) => {
   event.preventDefault();
   pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
   if (pointers.size === 1) {
-    if(trafficInspection){
+    if(coverInspection){
+      const p=worldPointAt(event.clientX,event.clientY);
+      if(p)inspectCoverAt(p.x,p.y);
+    }else if(trafficInspection){
       // Fill in intermediate samples for fast finger drags; a route can
       // pass through several 0.3125m cells in one pointer event.
       const oldX=lastX;
