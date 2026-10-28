@@ -1,5 +1,5 @@
 import {queryTravel,terrainSightClear,standingHeightAt,
-  SITE_CENTER} from './regional-physical.ts';
+  SITE_CENTER,roadCenterX} from './regional-physical.ts';
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 export type Allegiance='player'|'northline'|'commune';
 export type ActorTask='idle'|'move'|'hold'|'guard'|'investigate'|'engage';
@@ -171,15 +171,9 @@ export function shootAt(actor:GroundedActor,target:GroundedActor,
 /** The initial tactical sandbox deliberately has very few entities. */
 export function spawnCutwoodsActors():GroundedActor[]{
   return [
-    spawnActor('player','Operator','player',roadX(195)+5,195),
+    spawnActor('player','Operator','player',roadCenterX(195)+5,195),
     spawnActor('north-lead','Northline Lead','northline',SITE_CENTER.x+14,SITE_CENTER.z+35),
     spawnActor('north-scout','Northline Scout','northline',SITE_CENTER.x+18,SITE_CENTER.z+24),
     spawnActor('commune-sentry','Commune Sentry','commune',SITE_CENTER.x-15,SITE_CENTER.z+5),
   ];
-}
-function roadX(z:number):number{
-  // Keep spawn tied to the same road topology, no duplicated constants.
-  const s=2500+z;
-  return 46*Math.sin(s/385+.31)+31*Math.sin(s/218+1.20)+
-    9*Math.sin(s/93+31*.023)+86*Math.tanh((z-42)/75)+6*Math.sin(z/130);
 }
