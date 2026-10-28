@@ -569,3 +569,51 @@ macro river hydraulics and water rendering, settlement placement,
 combat AI, persistent squad/faction state, and transitions between
 unimplemented regions. These six areas are **loaded one at a time**,
 not streamed as a contiguous active simulation.
+
+## Builds 033–042 — First human-scale Cutwoods vertical slice (prototype)
+
+Open [`world.html`](./world.html) and select **EXPLORE**. The original
+**SURVEY** camera and six-region selector remain intact; the separate
+10m Environment Lab (`index.html`) is unchanged.
+
+- **033–034 / Actor and player.** A 1.75 m operator uses the region's
+  physical high-resolution ground query, a shared actor motor, acceleration,
+  turning, slope/deep-water/wall constraints and a simple walking gait.
+  A left-screen thumbstick drives movement, swipe or pinch controls the
+  follow camera, tapping ground gives a walk order. Switch back to SURVEY
+  at any time. HOLD cancels the order; RESTART reconstructs the local
+  actors without reloading the world.
+- **035–038 / Local physical geography.** The Cutwoods main channel is
+  visible with a fixed-stage regional water surface (not the 10 m
+  hydraulics copied over 1 km), and measured water depth constrains
+  walking. A road has a modest travel bonus and one raised crossing.
+  The first farmhouse and shed are positioned on a flatter terrace
+  and have actual solid walls and open southward doors. Small sampled
+  woody plants appear only near the camera; tree trunks block movement
+  and can obstruct lines of sight.
+- **039 / Perception and first firearm.** Shared actor sightlines
+  sample terrain, walls and nearby trunks. FIRE shoots one nearby
+  visible hostile; actor health and shot cooldown are testable.
+  This is intentionally not a complete ballistic system or weapon
+  animation.
+- **040–042 / Small organizational demonstration.** One Northline
+  faction objective delegates a platoon crossing assignment to a
+  three-person squad (including the player) and two autonomous comrades.
+  One Commune sentry defends the nearby compound. NPCs travel toward
+  posts, detect contacts, report observations, and engage nearby
+  enemies; SQUAD RALLY issues a group objective. Successful local
+  clearance and occupation or the operator's death end the encounter.
+  Actors share one physical motor regardless of controller.
+
+This is a **bounded four-actor proof of causality**, not the full
+procedural faction war, complex AI-2.0 architecture, or finished
+tactical combat game. Navigation is locally bounded, world forest
+detail is intentionally camera-bounded, and all six regions are
+not simulated concurrently. In particular, platoon/faction
+assignments are a traceable intent chain, **not** full independent
+campaign commanders.
+
+All region art and behavior live in `regional-physical.ts`,
+`regional-actors.ts`, `regional-visuals.ts`,
+`regional-ecology.ts` and `regional-command.ts`.
+The 10m lab's water and vegetation source remain separate.
