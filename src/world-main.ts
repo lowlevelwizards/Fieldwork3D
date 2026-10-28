@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  PLAYABLE_REGIONS,playableRegion,globalSouthM,regionRiverX,
+  PLAYABLE_REGIONS,playableRegion,globalSouthM,
   regionLocalHeightM,regionSlopeDegrees,type PlayableRegionId,
 } from './playable-region-model';
 import { RegionalTerrainField } from './regional-terrain';
