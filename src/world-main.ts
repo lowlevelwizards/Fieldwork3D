@@ -99,7 +99,7 @@ function updateCamera():void{
   target.x=THREE.MathUtils.clamp(target.x,-480,480);
   target.z=THREE.MathUtils.clamp(target.z,-480,480);
   target.y=regionLocalHeightM(loadedId,target.x,target.z);
-  const radius=1950/zoom+310;
+  const radius=explore?(1100/zoom+22):(1950/zoom+310);
   camera.position.set(
     target.x+Math.sin(yaw)*Math.cos(elevation)*radius,
     target.y+Math.sin(elevation)*radius,
