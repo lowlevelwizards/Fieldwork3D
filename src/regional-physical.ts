@@ -1,5 +1,6 @@
 import {coarseHeightAt,tileHeightAt,type RegionTileCoord} from './regional-terrain.ts';
 import {globalSouthM,regionRiverX,valleyFloorM,type PlayableRegionId} from './playable-region-model.ts';
+import {treeTrunkAt} from './regional-ecology.ts';
 
 export const CUTWOODS_SEED=31;
 const clamp=(n:number,a=0,b=1)=>Math.max(a,Math.min(b,n));
@@ -103,23 +104,26 @@ export function queryTravel(x:number,z:number):TerrainMoveInfo{
   const water=bridge?0:riverDepthAt(x,z);
   const road=isOnRoad(x,z);
   const wall=buildingWallAt(x,z);
+  const trunk=treeTrunkAt(x,z,.28)!==null;
   const bounded=Math.abs(x)<495&&Math.abs(z)<495;
-  const passable=bounded&&!wall&&slope<39&&water<.95;
+  const passable=bounded&&!wall&&!trunk&&slope<39&&water<.95;
   const speedMultiplier=clamp((road?1.17:1)*
     (1-.010*Math.max(0,slope-7))*
     (water>.12?1-.5*Math.min(1,water/.95):1),.33,1.17);
   return {height:standingHeightAt(x,z),slopeDegrees:slope,
     waterDepth:water,onRoad:road,speedMultiplier,passable,
-    reason:!bounded?'region boundary':wall?'solid wall':
+    reason:!bounded?'region boundary':wall?'solid wall':trunk?'tree trunk':
       water>=.95?'deep water':slope>=39?'steep slope':'clear'};
 }
 export function terrainSightClear(a:{x:number;y:number;z:number},
  b:{x:number;y:number;z:number}):boolean{
   const dist=Math.hypot(a.x-b.x,a.z-b.z);
-  const samples=Math.max(2,Math.ceil(dist/2.0));
+  const samples=Math.max(2,Math.ceil(dist/.6));
   for(let i=1;i<samples;i++){
     const t=i/samples,x=a.x+(b.x-a.x)*t,z=a.z+(b.z-a.z)*t;
     const eye=a.y+(b.y-a.y)*t;
+    const tree=treeTrunkAt(x,z,.08);
+    if(tree&&eye<physicalGroundAt(tree.x,tree.z)+tree.height*.62)return false;
     if(physicalGroundAt(x,z)>.15+eye||buildingWallAt(x,z)&&
       BUILDINGS.some(site=>Math.abs(x-site.x)<site.width/2+.5&&
         Math.abs(z-site.z)<site.depth/2+.5&&
