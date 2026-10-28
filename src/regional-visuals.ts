@@ -22,7 +22,7 @@ function ribbon(points:{x:number;z:number;y:number;width:number}[],material:THRE
   const verts:number[]=[],faces:number[]=[];
   points.forEach((p,i)=>{
     verts.push(p.x-p.width/2,p.y,p.z,p.x+p.width/2,p.y,p.z);
-    if(i>0){const n=i*2;faces.push(n-2,n-1,n,n-1,n+1,n);}
+    if(i>0){const n=i*2;faces.push(n-2,n,n-1,n-1,n,n+1);}
   });
   const g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
