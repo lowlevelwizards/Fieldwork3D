@@ -490,3 +490,41 @@ future much-closer camera, but the live region no longer instantiates it.
 This is one causal atom: perennial ground-cover suitability. There are no
 new trees, shrubs, NPCs, growing seasons, ecological succession or movement
 rules. Existing ground-load behavior and save files are unchanged.
+
+## Build 031 — Trees, canopy and shrubs (LLW-informed)
+
+This is the first *woody vegetation* atom, not a new ecosystem simulator.
+Its source principles come from `lowlevelwizards/llw-browser`:
+`moisture.js` and `ecology.js` evaluate long-term moisture, woodland
+suitability, seed-stable tree establishment, canopy, woodland edges, then
+understory suitability. Those relationships are adapted to Fieldwork's
+actual 10 m terrain and metres-based elevations, not copied as 2D cells.
+
+- `vegetation-model.ts`: habitat based on existing ground-cover moisture,
+  soil fertility, local elevation above valley floor, slope, channel risk
+  and a broad deterministic woodland prior. Jittered physical candidates
+  establish a small number of spaced trees. Actual placed tree crown
+  footprints produce a canopy/open-sky field that alters subsequent shrub
+  suitability and woodland-edge preferences.
+- `vegetation-geometry.ts` and `vegetation-field.ts`: reusable low-poly
+  trunk, crown, stem, and shrub-clump primitives. Instanced draw groups
+  root plants at `terrainHeight(x,z)` and receive the existing daylight
+  and shadows. Plant dimensions include trunk radius and canopy radius
+  for future physical relationships, but no navigation/combat code yet.
+- In the default seed this 10 m section has six small trees and fourteen
+  shrubs; these are maximum-capped trial densities rather than mandatory
+  quotas for all geography. Changing a seed changes plant locations,
+  but time-of-day and rainfall never instantaneously regenerate them.
+- `vegetation-inspection.ts`: **TREES / SHRUBS → INSPECT** cycles through
+  tree suitability, shrub suitability, and actual canopy on the existing
+  ground mesh. Touching the terrain explains scores, long-term moisture
+  and local height above the valley. It does not edit the land or water.
+- The existing terrain-cover and load inspectors stay available and are
+  mutually exclusive with woody inspection. Rivers, water conservation,
+  soil storage, saves and terrain shape remain unchanged.
+
+Explicitly deferred: growth cycles, seasons, species, forest fires,
+resources, player collision, AI sightlines, and terrain/grass regeneration.
+Tests and a Chromium mobile screenshot audit verify stable seed placement,
+spacing, terrain anchoring, valid canopy, water conservation, and the
+visible dry/wet scene before promotion.

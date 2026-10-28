@@ -50,6 +50,22 @@ try{
   const coverDry=await page.locator('#coverStatus').innerText();
   if(!coverDry.includes('% COVER')||!coverDry.includes('CURRENT SOIL WATER'))
     throw Error('Ground-cover physical inspection did not report the touched terrain: '+coverDry);
+  await page.evaluate(()=>document.querySelector('#woodyToggle').click());
+  await page.screenshot({path:resolve(directory,'vegetation-tree-suitability-mobile.png')});
+  await page.mouse.click(194,417);
+  const woodyProbe=await page.locator('#woodyStatus').innerText();
+  if(!woodyProbe.includes('% TREE')||!woodyProbe.includes('% SHRUB'))
+    throw Error('Woody habitat touch probe did not work: '+woodyProbe);
+  await page.evaluate(()=>document.querySelector('#woodyLayer').click());
+  await page.screenshot({path:resolve(directory,'vegetation-shrub-suitability-mobile.png')});
+  await page.evaluate(()=>document.querySelector('#woodyLayer').click());
+  await page.screenshot({path:resolve(directory,'vegetation-canopy-mobile.png')});
+  const dryPlants=await page.evaluate(async()=>{
+    const {establishWoodyVegetation}=await import('/src/vegetation-model.ts');
+    return establishWoodyVegetation(31);
+  });
+  if(dryPlants.trees.length<2||dryPlants.shrubs.length<4)
+    throw Error('Vegetation must establish at least one small woodland and understory');
 
   // Use the actual existing physics to generate a rainy wet condition.
   const fixture=await page.evaluate(async()=>{
@@ -99,9 +115,18 @@ try{
   await wetPage.screenshot({path:resolve(directory,'river-wet-clean-mobile.png')});
   await wetPage.evaluate(()=>document.querySelector('#coverToggle').click());
   await wetPage.screenshot({path:resolve(directory,'ground-cover-inspection-wet.png')});
+  const wetPlants=await wetPage.evaluate(async()=>{
+    const {establishWoodyVegetation}=await import('/src/vegetation-model.ts');
+    return establishWoodyVegetation(31);
+  });
+  if(JSON.stringify(wetPlants)!==JSON.stringify(dryPlants))
+    throw Error('Rain changed persistent woody vegetation placement');
+  await wetPage.evaluate(()=>document.querySelector('#woodyToggle').click());
+  await wetPage.screenshot({path:resolve(directory,'vegetation-wet-mobile.png')});
   const sample={litres:fixture.litres,channel:fixture.channel,
     flood:fixture.flood,massError:fixture.massError,
-    displayedWater,profile};
+    displayedWater,profile,plants:{trees:dryPlants.trees.length,
+      shrubs:dryPlants.shrubs.length},woodyProbe};
   if(errors.length)throw Error('Browser errors: '+errors.join('; '));
   if(!Number.isFinite(sample.massError)||Math.abs(sample.massError)>.001)
     throw Error('Water ledger not conserved');

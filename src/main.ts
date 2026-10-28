@@ -9,6 +9,9 @@ import { windAtHour, windDriftAtHour } from './wind-model';
 import { ValleyRiverField } from './valley-river-field';
 import { createGroundCoverMaterial } from './ground-cover-material';
 import { groundCoverAt } from './ground-cover-model';
+import { VegetationField } from './vegetation-field';
+import { paintWoodyInspection, type WoodyInspectionMode } from './vegetation-inspection';
+import { woodyHabitatAt,shrubHabitatAt,canopyAt } from './vegetation-model';
 import { mountRegionInspector } from './region-inspector';
 import { GroundLoad, type TrafficKind } from './traffic-model';
 import { TrafficField } from './traffic-field';
@@ -41,6 +44,11 @@ const flowLabel = document.querySelector<HTMLElement>('#flowLabel');
 const coverToggle = document.querySelector<HTMLButtonElement>('#coverToggle');
 const coverPanel = document.querySelector<HTMLElement>('#coverPanel');
 const coverStatus = document.querySelector<HTMLOutputElement>('#coverStatus');
+const woodyToggle = document.querySelector<HTMLButtonElement>('#woodyToggle');
+const woodyLayer = document.querySelector<HTMLButtonElement>('#woodyLayer');
+const woodyPanel = document.querySelector<HTMLElement>('#woodyPanel');
+const woodyCounts = document.querySelector<HTMLElement>('#woodyCounts');
+const woodyStatus = document.querySelector<HTMLOutputElement>('#woodyStatus');
 const trafficButton = document.querySelector<HTMLButtonElement>('#trafficToggle');
 const trafficKindButton = document.querySelector<HTMLButtonElement>('#trafficKind');
 const trafficResetButton = document.querySelector<HTMLButtonElement>('#trafficReset');
@@ -51,14 +59,16 @@ if (!timeToggle || !timeScrub || !timeLabel || !phaseLabel ||
     !waterLabel || !clearWaterButton || !windLabel || !evapLabel || !flowLabel ||
     !trafficButton || !trafficKindButton || !trafficResetButton ||
     !trafficPanel || !trafficStatus || !coverToggle || !coverPanel ||
-    !coverStatus) {
+    !coverStatus || !woodyToggle || !woodyLayer ||
+    !woodyPanel || !woodyCounts || !woodyStatus) {
   throw new Error('Missing time-of-day inspector');
 }
 const controls = { toggle: timeToggle, scrub: timeScrub, clock: timeLabel, phase: phaseLabel,
   cloudCover: cloudCoverInput, cloudLabel: cloudCoverLabel, cloudAuto,
   rainLabel, waterLabel, clearWater: clearWaterButton, windLabel, evapLabel, flowLabel,
   trafficButton, trafficKindButton, trafficResetButton, trafficPanel, trafficStatus,
-  coverToggle, coverPanel, coverStatus };
+  coverToggle, coverPanel, coverStatus,
+  woodyToggle,woodyLayer,woodyPanel,woodyCounts,woodyStatus };
 
 let hour = INITIAL_HOUR;
 let playing = true;
@@ -66,6 +76,8 @@ let playing = true;
 let cloudCoverOverride: number | null = null;
 let trafficInspection=false;
 let coverInspection=false;
+let woodyInspection=false;
+let woodyMode:WoodyInspectionMode='tree';
 let trafficKind:TrafficKind='foot';
 let trafficSelected:number|null=null;
 let lastPaintedCell:number|null=null;
@@ -235,11 +247,21 @@ scene.add(veil);
 const clouds = new CloudField(scene);
 const rainField = new RainField(scene);
 const waterSurface = new ValleyRiverField(scene);
+const vegetation = new VegetationField(scene);
+controls.woodyCounts.textContent=vegetation.world.trees.length+' TREES · '+
+  vegetation.world.shrubs.length+' SHRUBS';
 // Individual blades remain in their prototype for a future, much closer zoom.
 // At this landscape scale the ground-cover colors carry the vegetation.
 mountRegionInspector();
 const trafficField = new TrafficField(scene,standingWater);
 const rainFogTone = new THREE.Color(0x91a0a6);
+
+/** All existing inspectors share the authoritative terrain color buffer. */
+function refreshGroundDisplay():void{
+  updateTerrainMoisture(ground.geometry,standingWater,coverInspection);
+  if(woodyInspection)
+    paintWoodyInspection(ground.geometry,vegetation.world,woodyMode);
+}
 
 function applyEnvironment(e: EnvironmentState) {
   const cover = cloudCoverOverride ?? cloudCoverAtHour(e.hour);
@@ -247,7 +269,7 @@ function applyEnvironment(e: EnvironmentState) {
   const storm = rain.amount;
 
   // Actual moisture controls local color, not recently authored rain.
-  updateTerrainMoisture(ground.geometry,standingWater,coverInspection);
+  refreshGroundDisplay();
   const wind=windAtHour(e.hour);
   const drift=windDriftAtHour(e.hour);
   // Visual output is entirely derived from the single authoritative clock.
@@ -369,11 +391,17 @@ function updateTrafficStatus():void{
 }
 controls.trafficButton.addEventListener('click',()=>{
   trafficInspection=!trafficInspection;
+  if(trafficInspection&&woodyInspection){
+    woodyInspection=false;
+    controls.woodyPanel.hidden=true;
+    controls.woodyToggle.setAttribute('aria-pressed','false');
+    refreshGroundDisplay();
+  }
   if(trafficInspection&&coverInspection){
     coverInspection=false;
     controls.coverPanel.hidden=true;
     controls.coverToggle.setAttribute('aria-pressed','false');
-    updateTerrainMoisture(ground.geometry,standingWater,false);
+    refreshGroundDisplay();
   }
   trafficField.setInspection(trafficInspection);
   trafficField.update(standingWater,groundLoad,hour,trafficKind,true);
@@ -408,6 +436,11 @@ controls.coverToggle.addEventListener('click',()=>{
   controls.coverPanel.hidden=!coverInspection;
   controls.coverToggle.setAttribute('aria-pressed',String(coverInspection));
   if(coverInspection){
+    if(woodyInspection){
+      woodyInspection=false;
+      controls.woodyPanel.hidden=true;
+      controls.woodyToggle.setAttribute('aria-pressed','false');
+    }
     controls.coverStatus.textContent=
       'Tap or drag terrain to inspect ground cover. Tan = bare; green = vegetated.';
     if(trafficInspection){
@@ -417,8 +450,54 @@ controls.coverToggle.addEventListener('click',()=>{
       updateTrafficStatus();
     }
   }
-  updateTerrainMoisture(ground.geometry,standingWater,coverInspection);
+  refreshGroundDisplay();
   render();
+});
+
+/** Three linked inspectable fields, including resulting canopy. */
+function inspectWoodyAt(x:number,z:number):void{
+  const habitat=woodyHabitatAt(x,z,vegetation.world.seed);
+  const understory=shrubHabitatAt(x,z,vegetation.world.trees,vegetation.world.seed);
+  const shade=canopyAt(x,z,vegetation.world.trees);
+  const plants=[...vegetation.world.trees,...vegetation.world.shrubs];
+  let nearest=plants[0],distance=Infinity;
+  for(const plant of plants){
+    const d=Math.hypot(x-plant.x,z-plant.z);
+    if(d<distance){distance=d;nearest=plant;}
+  }
+  const attached=nearest&&distance<Math.max(.33,nearest.canopyRadius*.8)
+    ?' · NEAR '+nearest.kind.toUpperCase()+' #'+nearest.id:'';
+  controls.woodyStatus.textContent=
+    Math.round(habitat.tree*100)+'% TREE · '+
+    Math.round(understory.shrub*100)+'% SHRUB · '+
+    Math.round(shade*100)+'% CANOPY · '+
+    Math.round(habitat.moisture*100)+'% LONG-TERM MOISTURE · '+
+    habitat.elevationM.toFixed(2)+'m ABOVE VALLEY'+attached;
+}
+controls.woodyToggle.addEventListener('click',()=>{
+  woodyInspection=!woodyInspection;
+  controls.woodyPanel.hidden=!woodyInspection;
+  controls.woodyToggle.setAttribute('aria-pressed',String(woodyInspection));
+  if(woodyInspection){
+    coverInspection=false;
+    controls.coverPanel.hidden=true;
+    controls.coverToggle.setAttribute('aria-pressed','false');
+    if(trafficInspection){
+      trafficInspection=false;
+      trafficField.setInspection(false);
+      trafficField.update(standingWater,groundLoad,hour,trafficKind,true);
+      updateTrafficStatus();
+    }
+    controls.woodyStatus.textContent=
+      'Touch terrain to inspect TREE / SHRUB / CANOPY and moisture.';
+  }
+  refreshGroundDisplay();render();
+});
+controls.woodyLayer.addEventListener('click',()=>{
+  woodyMode=woodyMode==='tree'?'shrub':woodyMode==='shrub'?'canopy':'tree';
+  controls.woodyLayer.textContent=
+    woodyMode==='tree'?'TREES':woodyMode==='shrub'?'SHRUBS':'CANOPY';
+  if(woodyInspection){refreshGroundDisplay();render();}
 });
 
 const camera = new THREE.OrthographicCamera(-8, 8, 6, -6, 0.1, 120);
@@ -508,9 +587,12 @@ canvas.addEventListener('pointerdown', (event) => {
     lastPaintedCell=null;
     previousWorldPoint=null;
     if(trafficInspection)stampGroundAt(event.clientX,event.clientY);
-    else if(coverInspection){
+    else if(coverInspection||woodyInspection){
       const p=worldPointAt(event.clientX,event.clientY);
-      if(p)inspectCoverAt(p.x,p.y);
+      if(p){
+        if(woodyInspection)inspectWoodyAt(p.x,p.y);
+        else inspectCoverAt(p.x,p.y);
+      }
     }
   }
   if (pointers.size === 2) {
@@ -524,9 +606,12 @@ canvas.addEventListener('pointermove', (event) => {
   event.preventDefault();
   pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
   if (pointers.size === 1) {
-    if(coverInspection){
+    if(coverInspection||woodyInspection){
       const p=worldPointAt(event.clientX,event.clientY);
-      if(p)inspectCoverAt(p.x,p.y);
+      if(p){
+        if(woodyInspection)inspectWoodyAt(p.x,p.y);
+        else inspectCoverAt(p.x,p.y);
+      }
     }else if(trafficInspection){
       // Fill in intermediate samples for fast finger drags; a route can
       // pass through several 0.3125m cells in one pointer event.
