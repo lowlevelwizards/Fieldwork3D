@@ -96,9 +96,9 @@ test('040-042: orders are delegated through faction, platoon and squad actors',(
   assert.ok(op.platoons.every(p=>op.squads.some(s=>s.squadId===p.squadId)));
   assert.ok(op.squads[0].memberIds.includes(op.playerId));
   assert.ok(op.squads[0].memberIds.every(id=>op.actors.some(a=>a.id===id)));
-  assert.ok(issueSquadOrder(op,'n1',{x:-160,z:160}));
+  assert.ok(issueSquadOrder(op,'n1',{x:131,z:155}));
   assert.ok(op.actors.some(a=>a.id==='north-lead'&&a.destination));
-  assert.ok(orderPlayer(op,{x:-130,z:175}));
+  assert.ok(orderPlayer(op,{x:roadCenterX(200),z:200}));
   for(let i=0;i<100;i++)stepOperation(op,1/30,{x:0,z:0});
   assert.ok(op.elapsed>3);
   assert.ok(op.actors.every(a=>Number.isFinite(a.y)));
@@ -122,14 +122,15 @@ test('042: victory and defeat retain complete causal operation outcomes',()=>{
 });
 test('034 and 041: movement orders can be issued/held and local navigation avoids walls',()=>{
   const player=spawnCutwoodsActors()[0];
-  const destination={x:player.x+9,z:player.z+9};
+  const destination={x:roadCenterX(210),z:210};
   assert.ok(queryTravel(destination.x,destination.z).passable);
   assert.ok(assignDestination(player,destination));
   assert.ok(player.path.length>0);
   holdActor(player);
   assert.equal(player.path.length,0);
   assert.equal(player.destination,null);
-  const route=findLocalRoute({x:-220,z:130},{x:-210,z:120});
+  const route=findLocalRoute({x:roadCenterX(200),z:200},
+    {x:roadCenterX(211),z:211});
   assert.ok(route.length>0);
   assert.ok(route.every(p=>queryTravel(p.x,p.z).passable));
 });
