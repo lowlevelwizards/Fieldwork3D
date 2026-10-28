@@ -47,7 +47,9 @@ test('the main scene uses the river lab geography and leaves old grid renderer i
   const river=readFileSync(new URL('../src/valley-river-field.ts',import.meta.url),'utf8');
   const grass=readFileSync(new URL('../src/grass-patch-field.ts',import.meta.url),'utf8');
   assert.ok(main.includes('new ValleyRiverField(scene)'));
-  assert.ok(main.includes('new GrassPatchField(scene)'));
+  assert.ok(!main.includes('new GrassPatchField(scene)'));
+  assert.ok(main.includes('createGroundCoverMaterial()'));
+  assert.ok(main.includes('coverInspection'));
   assert.ok(!main.includes('new HydraulicSurfaceField(scene)'));
   assert.ok(river.includes("buildRiverRibbon('live',water)"));
   assert.ok(river.includes('buildPondMeshes(water)'));

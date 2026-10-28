@@ -1,15 +1,16 @@
 import * as THREE from 'three';
-import { SURFACE, visualMaterialWeights, type SurfaceKind } from './surface-materials';
+import { SURFACE, visualMaterialWeights, type SurfaceKind } from './surface-materials.ts';
 import {
   composeDisplayWetness, sampleDisplayMoisture, reliefBrightness,
   displayWetnessWeight,
-} from './terrain-display-model';
-import type { TerrainWater } from './hydrology';
-import { bankFringeWeight } from './drainage-visual-model';
+} from './terrain-display-model.ts';
+import type { TerrainWater } from './hydrology.ts';
+import { groundCoverAt } from './ground-cover-model.ts';
+import { bankFringeWeight } from './drainage-visual-model.ts';
 import {
   GRID_CELLS, CELL_SIZE, WORLD_SIZE, WORLD_HALF, SUBSTRATE_BOTTOM,
   terrainHeight, localChannelProximity,
-} from './terrain-model';
+} from './terrain-model.ts';
 
 /** A single indexed mesh with a continuous heightfield top and solid earth walls. */
 export function makeTerrainGeometry(): THREE.BufferGeometry {
@@ -78,7 +79,15 @@ export function makeTerrainGeometry(): THREE.BufferGeometry {
   const topCount=(n+1)*(n+1)+n*n;
   const dry=new Float32Array(topCount*3);
   const wet=new Float32Array(topCount*3);
+  const groundCover=new Float32Array(position.length/3);
   const kinds:SurfaceKind[]=['loam','clay','sand','rock','organic'];
+  // Color denotes low vegetation cover, not individual blades of grass.
+  // Plant colors share the same natural sRGB->linear conversion as soil.
+  const grassDryHealthy=new THREE.Color(0x638e5d);
+  const grassDryStressed=new THREE.Color(0x99966b);
+  const grassWetHealthy=new THREE.Color(0x3b6751);
+  const grassWetStressed=new THREE.Color(0x777b60);
+  const grassDry=new THREE.Color(),grassWet=new THREE.Color();
   const dryColors=kinds.map(kind=>new THREE.Color(SURFACE[kind].dryColor));
   const wetColors=kinds.map(kind=>new THREE.Color(SURFACE[kind].wetColor));
   for(let i=0;i<topCount;i++){
@@ -96,6 +105,13 @@ export function makeTerrainGeometry(): THREE.BufferGeometry {
     // even after rain stops. They are earth colors, never decorative water.
     const bank=bankFringeWeight(localChannelProximity(x,z));
     const sediment=[1-.105*bank,1-.135*bank,1-.12*bank];
+    const cover=groundCoverAt(x,z);
+    groundCover[i]=cover.coverage;
+    const healthy=Math.max(0,Math.min(1,
+      (cover.longTermMoisture-.20)/.40));
+    grassDry.copy(grassDryStressed).lerp(grassDryHealthy,healthy);
+    grassWet.copy(grassWetStressed).lerp(grassWetHealthy,healthy);
+    const coverBlend=cover.coverage*.91;
     for(let c=0;c<3;c++){
       let a=0,b=0;
       const channel=c===0 ? 'r' : c===1 ? 'g' : 'b';
@@ -104,12 +120,16 @@ export function makeTerrainGeometry(): THREE.BufferGeometry {
         a+=dryColors[k][channel]*weight;
         b+=wetColors[k][channel]*weight;
       }
-      dry[i*3+c]=a*relief*sediment[c];
-      wet[i*3+c]=b*relief*sediment[c];
+      dry[i*3+c]=(a*(1-coverBlend)+grassDry[channel]*coverBlend)
+        *relief*sediment[c];
+      wet[i*3+c]=(b*(1-coverBlend)+grassWet[channel]*coverBlend)
+        *relief*sediment[c];
     }
   }
   geometry.userData.visualDry=dry;
   geometry.userData.visualWet=wet;
+  geometry.userData.visualCover=groundCover;
+  geometry.setAttribute('terrainCover',new THREE.BufferAttribute(groundCover,1));
   const colors=new Float32Array(position.length);
   colors.fill(1);
   geometry.setAttribute('color',new THREE.BufferAttribute(colors,3));
@@ -119,10 +139,13 @@ export function makeTerrainGeometry(): THREE.BufferGeometry {
 /** Local soil moisture modulates the already-feathered material colors.
  * Water mass and catchment geometry are never affected by visual blending.
  */
-export function updateTerrainMoisture(geometry:THREE.BufferGeometry,water:TerrainWater):void {
+export function updateTerrainMoisture(
+  geometry:THREE.BufferGeometry,water:TerrainWater,inspectCover=false,
+):void {
   const attribute=geometry.getAttribute('color') as THREE.BufferAttribute;
   const dry=geometry.userData.visualDry as Float32Array;
   const wet=geometry.userData.visualWet as Float32Array;
+  const cover=geometry.userData.visualCover as Float32Array;
   const n=GRID_CELLS;
   const topVertices=(n+1)*(n+1)+n*n;
   // Separate measured signals: do not treat one flooded cell as a dark
@@ -150,10 +173,20 @@ export function updateTerrainMoisture(geometry:THREE.BufferGeometry,water:Terrai
     );
     const t=displayWetnessWeight(fraction);
     const k=i*3;
-    attribute.setXYZ(i,
-      dry[k]+(wet[k]-dry[k])*t,
-      dry[k+1]+(wet[k+1]-dry[k+1])*t,
-      dry[k+2]+(wet[k+2]-dry[k+2])*t);
+    if(inspectCover){
+      // An explicit inspection palette: tan = exposed ground, green = cover.
+      // Draw the same precomputed quantity; do not recalculate growth.
+      const fraction=cover[i];
+      attribute.setXYZ(i,
+        .37+(.055-.37)*fraction,
+        .32+(.49-.32)*fraction,
+        .22+(.16-.22)*fraction);
+    }else{
+      attribute.setXYZ(i,
+        dry[k]+(wet[k]-dry[k])*t,
+        dry[k+1]+(wet[k+1]-dry[k+1])*t,
+        dry[k+2]+(wet[k+2]-dry[k+2])*t);
+    }
   }
   attribute.needsUpdate=true;
 }

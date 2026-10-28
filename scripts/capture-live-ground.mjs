@@ -44,6 +44,12 @@ try{
   await page.addStyleTag({content:
     '.time-inspector,.region-map-toggle,.region-map-panel{display:none!important}'});
   await page.screenshot({path:resolve(directory,'grass-dry-clean-mobile.png')});
+  await page.evaluate(()=>document.querySelector('#coverToggle').click());
+  await page.screenshot({path:resolve(directory,'ground-cover-inspection-dry.png')});
+  await page.mouse.click(194,417);
+  const coverDry=await page.locator('#coverStatus').innerText();
+  if(!coverDry.includes('% COVER')||!coverDry.includes('CURRENT SOIL WATER'))
+    throw Error('Ground-cover physical inspection did not report the touched terrain: '+coverDry);
 
   // Use the actual existing physics to generate a rainy wet condition.
   const fixture=await page.evaluate(async()=>{
@@ -91,6 +97,8 @@ try{
   await wetPage.addStyleTag({content:
     '.time-inspector,.region-map-toggle,.region-map-panel{display:none!important}'});
   await wetPage.screenshot({path:resolve(directory,'river-wet-clean-mobile.png')});
+  await wetPage.evaluate(()=>document.querySelector('#coverToggle').click());
+  await wetPage.screenshot({path:resolve(directory,'ground-cover-inspection-wet.png')});
   const sample={litres:fixture.litres,channel:fixture.channel,
     flood:fixture.flood,massError:fixture.massError,
     displayedWater,profile};
