@@ -97,6 +97,17 @@ test('all coarse regional terrain and near-detail sample heights share one latti
   }
   const low=makeRegionTile(id,left,false);
   const high=makeRegionTile(id,left,true);
+  const neighborMesh=makeRegionTile(id,right,false);
+  // Every fine-boundary vertex shares the same analytical world-space
+  // normal as the adjacent coarse tile, avoiding faint panel seams.
+  for(let j=0;j<=REGION_FINE_SEGMENTS;j+=4){
+    const i=j*(REGION_FINE_SEGMENTS+1)+REGION_FINE_SEGMENTS;
+    const k=(j/4)*(16+1);
+    const nA=high.getAttribute('normal'),nB=neighborMesh.getAttribute('normal');
+    for(const axis of ['getX','getY','getZ'])
+      assert.ok(Math.abs(nA[axis](i)-nB[axis](k))<.03,
+        'high and coarse tile shared normals should not visibly split');
+  }
   assert.equal(low.getAttribute('position').count,289);
   assert.equal(high.getAttribute('position').count,(REGION_FINE_SEGMENTS+1)**2);
   assert.equal(high.getAttribute('color').count,
@@ -110,7 +121,7 @@ test('all coarse regional terrain and near-detail sample heights share one latti
   const delta=Math.abs(tileHeightAt(id,left,sampleX,sampleZ,true,seed)-
     tileHeightAt(id,left,sampleX,sampleZ,false,seed));
   assert.ok(delta>.001,'local detail patch must add real meter-scale relief');
-  low.dispose();high.dispose();
+  low.dispose();high.dispose();neighborMesh.dispose();
 });
 test('region loader creates exactly 64 tiles, swaps one patch and can dispose',()=>{
   const scene=new THREE.Scene();
