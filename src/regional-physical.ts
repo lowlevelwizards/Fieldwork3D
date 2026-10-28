@@ -8,10 +8,10 @@ const smooth=(a:number,b:number,v:number)=>{
 };
 /** Regional scale geometry and constraints all share metres. */
 export const BUILDINGS=[
-  {id:'house',x:128,z:85,width:20,depth:15,height:6,doorSide:'south' as const},
-  {id:'shed',x:157,z:112,width:14,depth:10,height:4,doorSide:'south' as const},
+  {id:'house',x:76,z:90,width:20,depth:15,height:6,doorSide:'south' as const},
+  {id:'shed',x:94,z:118,width:14,depth:10,height:4,doorSide:'south' as const},
 ] as const;
-export const SITE_CENTER={x:130,z:92};
+export const SITE_CENTER={x:76,z:105};
 export function roadCenterX(z:number):number{
   // Align the road with stable east/west terraces, switching banks at
   // a single intentional crossing near the field station.
