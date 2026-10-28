@@ -171,7 +171,7 @@ export function shootAt(actor:GroundedActor,target:GroundedActor,
 /** The initial tactical sandbox deliberately has very few entities. */
 export function spawnCutwoodsActors():GroundedActor[]{
   return [
-    spawnActor('player','Operator','player',roadCenterX(195)+5,195),
+    spawnActor('player','Operator','player',roadCenterX(158)-60,158),
     spawnActor('north-lead','Northline Lead','northline',SITE_CENTER.x+14,SITE_CENTER.z+35),
     spawnActor('north-scout','Northline Scout','northline',SITE_CENTER.x+18,SITE_CENTER.z+24),
     spawnActor('commune-sentry','Commune Sentry','commune',SITE_CENTER.x-15,SITE_CENTER.z+5),
