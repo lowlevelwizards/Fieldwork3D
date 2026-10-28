@@ -44,6 +44,10 @@ try{
   await page.addStyleTag({content:
     '.time-inspector,.region-map-toggle,.region-map-panel{display:none!important}'});
   await page.screenshot({path:resolve(directory,'grass-dry-clean-mobile.png')});
+  await page.evaluate(()=>document.querySelector('#coverToggle').click());
+  await page.screenshot({path:resolve(directory,'ground-cover-inspection-dry.png')});
+  const coverDry=await page.locator('#coverStatus').innerText();
+  if(!coverDry.includes('Tap or drag'))throw Error('Ground cover inspection failed');
 
   // Use the actual existing physics to generate a rainy wet condition.
   const fixture=await page.evaluate(async()=>{
@@ -91,6 +95,8 @@ try{
   await wetPage.addStyleTag({content:
     '.time-inspector,.region-map-toggle,.region-map-panel{display:none!important}'});
   await wetPage.screenshot({path:resolve(directory,'river-wet-clean-mobile.png')});
+  await wetPage.evaluate(()=>document.querySelector('#coverToggle').click());
+  await wetPage.screenshot({path:resolve(directory,'ground-cover-inspection-wet.png')});
   const sample={litres:fixture.litres,channel:fixture.channel,
     flood:fixture.flood,massError:fixture.massError,
     displayedWater,profile};
