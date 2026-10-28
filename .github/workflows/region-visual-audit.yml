@@ -1,0 +1,37 @@
+name: Cutwoods Regional Visual Audit
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/playable-region-model.ts'
+      - 'src/regional-terrain.ts'
+      - 'src/world-main.ts'
+      - 'src/region-inspector.ts'
+      - 'world.html'
+      - 'vite.config.ts'
+      - 'tests/world-032.test.mjs'
+      - 'scripts/capture-region.mjs'
+      - '.github/workflows/region-visual-audit.yml'
+jobs:
+  mobile-world:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-package-lock
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: node scripts/capture-region.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cutwoods-region-mobile
+          path: region-032-captures/
+          if-no-files-found: ignore
+          retention-days: 14
