@@ -15,6 +15,11 @@ on:
       - 'src/surface-materials.ts'
       - 'src/valley-river-field.ts'
       - 'src/main.ts'
+      - 'src/world-main.ts'
+      - 'src/playable-region-model.ts'
+      - 'src/regional-terrain.ts'
+      - 'world.html'
+      - 'scripts/capture-region.mjs'
       - 'scripts/capture-live-ground.mjs'
       - 'src/terrain-model.ts'
       - 'river-lab.html'
@@ -38,6 +43,7 @@ jobs:
       - run: npm run build
       - run: node scripts/capture-river-lab.mjs
       - run: node scripts/capture-live-ground.mjs
+      - run: node scripts/capture-region.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -51,5 +57,13 @@ jobs:
         with:
           name: verdigris-live-ground-mobile
           path: live-ground-captures/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cutwoods-region-mobile
+          path: region-032-captures/
           if-no-files-found: ignore
           retention-days: 14
