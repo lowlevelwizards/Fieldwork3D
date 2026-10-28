@@ -462,3 +462,31 @@ Run `npm test && npm run check && npm run build` first. For local screenshots:
 `npm install --no-save --package-lock=false playwright@1.56.1`,
 `npx playwright install chromium`, then
 `node scripts/capture-river-lab.mjs`. The audit workflow automates the same.
+
+## Build 030 — Ground cover is a property of the land
+
+At Verdigris's current 10 m overview scale, separate 3D grass blades are
+inappropriate. The earlier grass-blade prototype remains in source for a
+future much-closer camera, but the live region no longer instantiates it.
+
+- `ground-cover-model.ts` computes stable continuous cover (0–100%) from
+  the already-authored geologic soil blend, terrain slope, valley elevation
+  and long-term drainage. Channel beds, rocky ground and saturated
+  depressions support less cover; drained fertile terraces support more.
+- The one physical terrain mesh incorporates green vegetation and drier
+  straw/earth color into its dry and wet material palettes. A subtle
+  fragment-level color grain uses world coordinates, so there are no
+  separately placed grass tiles, square borders or repetitive decals.
+- The hourly weather and conserved soil-water state **only alter the
+  moisture tint**, never the underlying established vegetation density.
+- The optional **GROUND COVER → INSPECT** control displays the existing
+  measured coverage with a tan-to-green overlay and reports percent cover,
+  terrain-derived long-term moisture, slope and current soil water when
+  touching the map. It cannot change terrain or create/destroy any water.
+  Ground cover and ground-load inspectors are mutually exclusive.
+- The Build 029 continuous live river remains unchanged and foreground
+  water still occludes submerged terrain.
+
+This is one causal atom: perennial ground-cover suitability. There are no
+new trees, shrubs, NPCs, growing seasons, ecological succession or movement
+rules. Existing ground-load behavior and save files are unchanged.
