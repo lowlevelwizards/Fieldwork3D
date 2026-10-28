@@ -27,18 +27,19 @@ const moveNub=document.querySelector<HTMLElement>('#moveNub');
 const fireButton=document.querySelector<HTMLButtonElement>('#fireButton');
 const squadOrder=document.querySelector<HTMLButtonElement>('#squadOrder');
 const holdOrder=document.querySelector<HTMLButtonElement>('#holdOrder');
+const restartOperation=document.querySelector<HTMLButtonElement>('#restartOperation');
 const actorReadout=document.querySelector<HTMLElement>('#actorReadout');
 const operationReadout=document.querySelector<HTMLElement>('#operationReadout');
 const worldHelp=document.querySelector<HTMLElement>('#worldHelp');
 if(!canvas||!nameLabel||!regionStatus||!coords||!scaleDisplay||!detailStatus||
    !menu||!menuButton||!choices||!closeMenu||!resetButton||
    !worldMode||!exploreControls||!moveStick||!moveNub||!fireButton||
-   !squadOrder||!holdOrder||!actorReadout||!operationReadout||!worldHelp)
+   !squadOrder||!holdOrder||!restartOperation||!actorReadout||!operationReadout||!worldHelp)
   throw new Error('World controls not mounted');
 const view:HTMLCanvasElement=canvas;
 const ui={nameLabel,regionStatus,coords,scaleDisplay,detailStatus,menu,
   menuButton,choices,closeMenu,resetButton,worldMode,exploreControls,
-  moveStick,moveNub,fireButton,squadOrder,holdOrder,actorReadout,
+  moveStick,moveNub,fireButton,squadOrder,holdOrder,restartOperation,actorReadout,
   operationReadout,worldHelp};
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0xa8c5c4);
@@ -254,6 +255,14 @@ ui.squadOrder.addEventListener('click',()=>{
   squadRally=!squadRally;
   ui.squadOrder.setAttribute('aria-pressed',String(squadRally));
   ui.squadOrder.textContent=squadRally?'TAP RALLY POINT':'SQUAD RALLY';
+});
+ui.restartOperation.addEventListener('click',()=>{
+  for(const figure of figures.values())figure.dispose(scene);
+  figures.clear();
+  operation=newOperation();
+  for(const actor of operation.actors)
+    figures.set(actor.id,new ActorFigure(scene,actor));
+  setExplore(true);
 });
 ui.holdOrder.addEventListener('click',()=>{
   const player=operation.actors.find(a=>a.id===operation.playerId)!;
