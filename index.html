@@ -44,6 +44,17 @@
       <div class="cover-legend"><span>BARE SOIL</span><span class="cover-legend-gradient" aria-hidden="true"></span><span>VEGETATED</span></div>
       <output id="coverStatus">Touch or drag to inspect permanent vegetation cover.</output>
     </div>
+    <div class="woody-header">
+      <span>TREES / SHRUBS</span>
+      <button type="button" id="woodyToggle" aria-pressed="false" aria-controls="woodyPanel">INSPECT</button>
+    </div>
+    <div id="woodyPanel" class="woody-panel" hidden>
+      <div class="woody-controls">
+        <button type="button" id="woodyLayer" title="Cycle tree suitability, shrub suitability and actual canopy">TREES</button>
+        <span id="woodyCounts">TREE / SHRUB COUNTS</span>
+      </div>
+      <output id="woodyStatus" aria-live="off">Touch the landscape to inspect woody plant habitat.</output>
+    </div>
     <div class="traffic-header">
       <span>LOAD / MOBILITY</span>
       <button type="button" id="trafficToggle" aria-pressed="false" aria-controls="trafficPanel">GROUND TEST</button>
