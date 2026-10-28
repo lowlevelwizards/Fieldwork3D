@@ -36,6 +36,14 @@
     <div class="flow-status" id="flowLabel">
       UPSTREAM 0 L · CHANNEL 0 L · FLOOD 0 L
     </div>
+    <div class="cover-header">
+      <span>GROUND COVER</span>
+      <button type="button" id="coverToggle" aria-pressed="false" aria-controls="coverPanel">INSPECT</button>
+    </div>
+    <div id="coverPanel" class="cover-panel" hidden>
+      <div class="cover-legend"><span>BARE SOIL</span><span class="cover-legend-gradient" aria-hidden="true"></span><span>VEGETATED</span></div>
+      <output id="coverStatus">Touch or drag to inspect permanent vegetation cover.</output>
+    </div>
     <div class="traffic-header">
       <span>LOAD / MOBILITY</span>
       <button type="button" id="trafficToggle" aria-pressed="false" aria-controls="trafficPanel">GROUND TEST</button>
