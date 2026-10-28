@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import {coarseHeightAt,tileHeightAt} from '../src/regional-terrain.ts';
 import {roadCenterX,riverSurfaceY,riverDepthAt,queryTravel,
   physicalGroundAt,standingHeightAt,terrainSightClear,BUILDINGS,
-  buildingWallAt,deckYAt} from '../src/regional-physical.ts';
+  buildingWallAt,deckYAt,SITE_CENTER} from '../src/regional-physical.ts';
 import {spawnActor,stepActor,assignDestination,holdActor,findLocalRoute,
   canSee,shootAt,spawnCutwoodsActors} from '../src/regional-actors.ts';
 import {regionalPlantSuitability,establishRegionalPlants,
@@ -96,7 +96,7 @@ test('040-042: orders are delegated through faction, platoon and squad actors',(
   assert.ok(op.platoons.every(p=>op.squads.some(s=>s.squadId===p.squadId)));
   assert.ok(op.squads[0].memberIds.includes(op.playerId));
   assert.ok(op.squads[0].memberIds.every(id=>op.actors.some(a=>a.id===id)));
-  assert.ok(issueSquadOrder(op,'n1',{x:131,z:155}));
+  assert.ok(issueSquadOrder(op,'n1',{x:93,z:148}));
   assert.ok(op.actors.some(a=>a.id==='north-lead'&&a.destination));
   assert.ok(orderPlayer(op,{x:roadCenterX(200),z:200}));
   for(let i=0;i<100;i++)stepOperation(op,1/30,{x:0,z:0});
@@ -110,8 +110,8 @@ test('042: victory and defeat retain complete causal operation outcomes',()=>{
   assert.equal(op.goals[0].status,'active');
   const commune=op.actors.find(a=>a.team==='commune');
   commune.health=0;
-  op.actors.find(a=>a.id==='north-lead').x=130;
-  op.actors.find(a=>a.id==='north-lead').z=92;
+  op.actors.find(a=>a.id==='north-lead').x=SITE_CENTER.x;
+  op.actors.find(a=>a.id==='north-lead').z=SITE_CENTER.z;
   stepOperation(op,.03);
   assert.equal(op.result,'won');
   assert.equal(op.goals[0].status,'complete');
