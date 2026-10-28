@@ -76,13 +76,23 @@ export function makeRegionTile(id:PlayableRegionId,tile:RegionTileCoord,
     throw new Error('Invalid Cutwoods tile');
   const segments=fine?REGION_FINE_SEGMENTS:REGION_COARSE_SEGMENTS;
   const o=tileOrigin(tile),step=REGION_TILE_SIZE_M/segments;
-  const vertices:number[]=[],colors:number[]=[],indices:number[]=[];
-  const c=new THREE.Color();
+  const vertices:number[]=[],colors:number[]=[],normals:number[]=[],indices:number[]=[];
+  const c=new THREE.Color(),normal=new THREE.Vector3();
   for(let j=0;j<=segments;j++){
     for(let i=0;i<=segments;i++){
       const x=o.x+i*step,z=o.z+j*step;
       const y=tileHeightAt(id,tile,x,z,fine,seed);
       vertices.push(x,y,z);
+      // Shared world-coordinate derivatives produce the same normals on
+      // both sides of a tile edge. Per-tile computeVertexNormals() created
+      // faint illuminated seams despite identical edge heights.
+      const d=.10;
+      const gx=(tileHeightAt(id,tile,x+d,z,fine,seed)-
+        tileHeightAt(id,tile,x-d,z,fine,seed))/(2*d);
+      const gz=(tileHeightAt(id,tile,x,z+d,fine,seed)-
+        tileHeightAt(id,tile,x,z-d,fine,seed))/(2*d);
+      normal.set(-gx,1,-gz).normalize();
+      normals.push(normal.x,normal.y,normal.z);
       c.copy(colorAt(id,x,z,seed));colors.push(c.r,c.g,c.b);
     }
   }
@@ -94,8 +104,8 @@ export function makeRegionTile(id:PlayableRegionId,tile:RegionTileCoord,
   const geometry=new THREE.BufferGeometry();
   geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
   geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+  geometry.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));
   geometry.setIndex(indices);
-  geometry.computeVertexNormals();
   return geometry;
 }
 export class RegionalTerrainField{
