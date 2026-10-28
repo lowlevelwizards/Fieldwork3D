@@ -9,7 +9,7 @@ import {roadCenterX,riverSurfaceY,riverDepthAt,queryTravel,
 import {spawnActor,stepActor,assignDestination,holdActor,findLocalRoute,
   canSee,shootAt,spawnCutwoodsActors} from '../src/regional-actors.ts';
 import {regionalPlantSuitability,establishRegionalPlants,
-  plantsNear} from '../src/regional-ecology.ts';
+  plantsNear,treeTrunkAt} from '../src/regional-ecology.ts';
 import {newOperation,stepOperation,orderPlayer,issueSquadOrder,
   playerFire} from '../src/regional-command.ts';
 
@@ -149,4 +149,25 @@ test('new player controls run on a separate world page; original 10m lab remains
   assert.ok(region.includes('new THREE.InstancedMesh('));
   assert.ok(old.includes('new VegetationField(scene)'));
   assert.ok(!old.includes('regional-command'));
+});
+
+test('037-039: the same seeded trunks block locomotion and provide cover',()=>{
+  const trees=establishRegionalPlants().filter(p=>p.kind==='tree');
+  assert.ok(trees.length>10);
+  const trunk=trees[0];
+  assert.equal(treeTrunkAt(trunk.x,trunk.z)?.id,trunk.id);
+  const travel=queryTravel(trunk.x,trunk.z);
+  assert.equal(travel.passable,false);
+  assert.equal(travel.reason,'tree trunk');
+  assert.equal(treeTrunkAt(999,999),null);
+  const start=spawnCutwoodsActors()[0];
+  assert.ok(queryTravel(start.x,start.z).passable,
+    'player must not spawn inside vegetation, water or an inaccessible hill');
+});
+test('038: the first settlement occupies a physically suitable terrace',()=>{
+  for(const site of BUILDINGS){
+    const p=queryTravel(site.x,site.z);
+    assert.ok(p.slopeDegrees<22,
+      'buildings must not be placed on a thirty-degree hillside');
+  }
 });
