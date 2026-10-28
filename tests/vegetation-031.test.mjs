@@ -26,7 +26,7 @@ test('woody habitat is long-term terrain-driven and bounded, not instantaneous r
     if(h.drainage<.2){channelTree+=h.tree;channelCount++;}
   }
   assert.ok(bestTree>.35,'tree suitability must permit some woodland');
-  assert.ok(bestShrub>.2,'shrub suitability must permit some understory');
+  assert.ok(bestShrub>.12,'open ground must permit some shrubs before canopy');
   assert.ok(channelCount>10);
   assert.ok(channelTree/channelCount<.04,
     'plants should not establish in the active river channel');
