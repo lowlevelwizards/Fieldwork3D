@@ -56,3 +56,32 @@ export function plantsNear(plants:readonly RegionalPlant[],x:number,z:number,
   const squared=radius*radius;
   return plants.filter(p=>(p.x-x)**2+(p.z-z)**2<squared);
 }
+
+/** Cheap fixed spatial index for woody trunks. It uses the identical
+ * seeded placement consumed by the nearby visual instances. */
+let treeCells:Map<string,RegionalPlant[]>|null=null;
+const cellKey=(x:number,z:number)=>Math.floor(x/8)+','+Math.floor(z/8);
+function indexedTrees():Map<string,RegionalPlant[]>{
+  if(treeCells)return treeCells;
+  const cells=new Map<string,RegionalPlant[]>();
+  for(const tree of establishRegionalPlants()){
+    if(tree.kind!=='tree')continue;
+    const key=cellKey(tree.x,tree.z);
+    const bucket=cells.get(key)??[];
+    bucket.push(tree);cells.set(key,bucket);
+  }
+  treeCells=cells;return cells;
+}
+export function treeTrunkAt(x:number,z:number,margin=0):RegionalPlant|null{
+  const cells=indexedTrees();
+  const col=Math.floor(x/8),row=Math.floor(z/8);
+  for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++){
+    const bucket=cells.get((col+dx)+','+(row+dz));
+    if(!bucket)continue;
+    for(const tree of bucket){
+      const trunk=.15+tree.height*.014+margin;
+      if(Math.hypot(tree.x-x,tree.z-z)<trunk)return tree;
+    }
+  }
+  return null;
+}
