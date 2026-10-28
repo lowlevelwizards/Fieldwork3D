@@ -129,6 +129,10 @@ try{
   if(await page.locator('#squadOrder').getAttribute('aria-pressed')!=='true')
     throw Error('Squad rally mode did not arm');
   await page.locator('#holdOrder').click();
+  await page.locator('#restartOperation').click();
+  const restarted=await page.locator('#actorReadout').innerText();
+  if(!restarted.includes('3/3 INTEGRITY'))
+    throw Error('Player restart did not restore the initial physical actor');
   await page.locator('#worldMode').click();
   if(await page.locator('#worldMode').getAttribute('aria-pressed')!=='false')
     throw Error('Operator cannot return to survey mode');
