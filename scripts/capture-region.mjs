@@ -82,6 +82,22 @@ try{
   const resetStatus=await page.locator('#detailStatus').innerText();
   if(!resetStatus.includes('REGIONAL DETAIL'))
     throw Error('Reset failed to return to whole-region view');
+  // Real two-touch Chromium gesture, not synthetic DOM events: ensures
+  // pan and pinch work on iPhone-class pointer inputs.
+  const cdp=await page.context().newCDPSession(page);
+  const beforeGesture=await page.locator('#coords').innerText();
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[
+    {id:1,x:143,y:362},{id:2,x:231,y:362},
+  ]});
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[
+    {id:1,x:119,y:404},{id:2,x:267,y:414},
+  ]});
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  await page.waitForTimeout(180);
+  const afterGesture=await page.locator('#coords').innerText();
+  if(beforeGesture===afterGesture)
+    throw Error('Two-finger gesture did not update the camera target');
+  await page.screenshot({path:resolve(directory,'cutwoods-two-finger-mobile.png')});
   await page.locator('#regionMenuButton').click();
   const lab=await page.locator('a[href="./index.html"]').count();
   if(lab!==1)throw Error('Original Environment Lab entry is missing');
@@ -97,6 +113,7 @@ try{
     throw Error('Lab cannot open the new regional world');
   if(errors.length)throw Error('Browser runtime errors: '+errors.join('; '));
   const manifest={canvasInfo,enabled,disabled,closeStatus,coords,resetStatus,
+    beforeGesture,afterGesture,
     errors,region:'cutwoods'};
   await writeFile(resolve(directory,'manifest.json'),JSON.stringify(manifest,null,2));
   console.log('Build 032 regional scene and preserved lab validated:',manifest);
