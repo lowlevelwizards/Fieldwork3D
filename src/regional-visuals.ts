@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import {BUILDINGS,deckYAt,physicalGroundAt,roadCenterX,
-  roadYAt,riverSurfaceY,SITE_CENTER} from './regional-physical';
+  roadYAt,riverSurfaceY,SITE_CENTER} from './regional-physical.ts';
 import {establishRegionalPlants,plantsNear,
-  type RegionalPlant} from './regional-ecology';
-import {regionRiverX,globalSouthM} from './playable-region-model';
-import type {GroundedActor} from './regional-actors';
+  type RegionalPlant} from './regional-ecology.ts';
+import {regionRiverX,globalSouthM} from './playable-region-model.ts';
+import type {GroundedActor} from './regional-actors.ts';
 const earth=new THREE.MeshStandardMaterial({color:0x988a72,roughness:1});
 const roof=new THREE.MeshStandardMaterial({color:0x787c70,roughness:1});
 const wall=new THREE.MeshStandardMaterial({color:0xc0bcaa,roughness:1});
