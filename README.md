@@ -528,3 +528,44 @@ resources, player collision, AI sightlines, and terrain/grass regeneration.
 Tests and a Chromium mobile screenshot audit verify stable seed placement,
 spacing, terrain anchoring, valid canopy, water conservation, and the
 visible dry/wet scene before promotion.
+
+## Build 032 — Six independently loaded 1 km² regions
+
+The **playable** Verdigris Valley now has six 1,000 × 1,000 m regions
+(6 km total north-to-south length). Only **Cutwoods** is implemented
+geographically. The fictional or earlier 180 km macro-study in
+`region-model.ts` remains for compatibility with older experiments and
+tests, but **is not the active playable world model**.
+
+- Open `world.html` directly or select **VERDIGRIS / REGION → OPEN
+  1 KM CUTWOODS REGION** in the existing Environment Lab.
+- `index.html` remains the **unchanged 10 × 10 m Environment Lab** with
+  its exact existing river, water conservation, cloud/weather, vegetation,
+  ground cover, and load/traffic save keys. Return to it from the region
+  map. We deliberately do not extrapolate the local 10m hydraulic
+  solver or metre-size trees across a kilometre.
+- `playable-region-model.ts`: authoritative 6 km playable geography.
+  Every region has fixed north/south neighbors and continuous global
+  north-to-south coordinates, elevation, and river centerline; future
+  regions can reuse the exact border heights and river entry/exit.
+- `regional-terrain.ts`: one deterministic 1,000 × 1,000 m Cutwoods
+  terrain with north/south relief, asymmetric wooded-capable hillsides,
+  tributary gullies and a physically incised dry riverbed. It uses an
+  8 × 8 grid of 125 m tiles with approximately 7.81 m coarse spacing.
+  At close zoom only one focus tile switches to 1.95 m samples with
+  micro-relief feathered to the same coarse edges. No enormous terrain
+  mesh, overlapping detail surfaces or continuous background simulation.
+- `world.html` and `world-main.ts`: map with all six regions (only
+  Cutwoods selectable until built); mobile single-finger orbit,
+  two-finger pan/pinch, wheel zoom, reset view, physical distance bar,
+  actual globally positioned map coordinates, local elevation, terrain
+  slope and optional world-space probe.
+- Browser capture and test coverage include map selection, lab return,
+  1 km overview, near-relief LOD, exact neighbor joins, deterministic
+  geography and 10 m lab isolation.
+
+Out of scope until subsequent atoms: regional forest placement,
+macro river hydraulics and water rendering, settlement placement,
+combat AI, persistent squad/faction state, and transitions between
+unimplemented regions. These six areas are **loaded one at a time**,
+not streamed as a contiguous active simulation.
