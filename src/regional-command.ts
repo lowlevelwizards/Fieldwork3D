@@ -1,5 +1,5 @@
 import {spawnCutwoodsActors,stepActor,assignDestination,canSee,
-  shootAt,type GroundedActor,type Vector2} from './regional-actors';
+  shootAt,type GroundedActor,type Vector2} from './regional-actors.ts';
 import {SITE_CENTER} from './regional-physical.ts';
 
 /**
