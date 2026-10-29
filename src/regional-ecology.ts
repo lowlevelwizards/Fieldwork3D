@@ -1,5 +1,6 @@
 import {coarseHeightAt} from './regional-terrain.ts';
 import {globalSouthM,regionRiverX} from './playable-region-model.ts';
+import {FIRST_PLACE} from './first-place-layout.ts';
 const clamp=(v:number,a=0,b=1)=>Math.max(a,Math.min(b,v));
 function random(seed:number):number{
   let v=Math.imul(seed^0x6d2b79f5,0x85ebca6b);
@@ -39,7 +40,10 @@ export function establishRegionalPlants():RegionalPlant[]{
     const road=river+86*Math.tanh((z-42)/75)+6*Math.sin(z/130);
     const fromRoad=Math.abs(x-road);
     if(fromRoad<9||Math.abs(x-river)<17)continue;
-    if(x>114&&x<171&&z>68&&z<134)continue;
+    // The compound is a deliberately cleared working site; no random
+    // woodland trees grow through roofs, gates or footpaths.
+    if(Math.abs(x-FIRST_PLACE.center.x)<52&&
+      Math.abs(z-FIRST_PLACE.center.z)<54)continue;
     const quality=regionalPlantSuitability(x,z);
     const broad=.60+.40*Math.sin(x/99+z/87)*Math.cos(z/73);
     if(random(n*331+7)>quality*broad*.87)continue;
