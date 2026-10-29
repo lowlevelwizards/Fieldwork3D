@@ -134,6 +134,14 @@ export class TacticalScene3D{
     });
     strips.instanceMatrix.needsUpdate=true;strips.receiveShadow=true;
     this.root.add(strips);
+    const crossGrout=new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1,.10,27),tile,grout.length);
+    grout.forEach((p,i)=>{
+      transform.position.set(p.x,-.04,p.y);transform.updateMatrix();
+      crossGrout.setMatrixAt(i,transform.matrix);
+    });
+    crossGrout.instanceMatrix.needsUpdate=true;
+    crossGrout.receiveShadow=true;this.root.add(crossGrout);
     // Each wall is one real mesh. Simulation geometry remains authoritative.
     for(let i=0;i<WALLS.length;i++){
       const segment=WALLS[i];
@@ -144,6 +152,10 @@ export class TacticalScene3D{
         len+3,31,9,this.solid(i===4?0x81877d:0xb4a991));
       mesh.rotation.y=-Math.atan2(dz,dx);
       this.walls.push({mesh,mid:{x:(p1.x+p2.x)/2,y:(p1.y+p2.y)/2}});
+      // Dark skirting separates the wall footprint from similar floor values.
+      const skirting=this.box(this.root,mesh.position.x,2,mesh.position.z,
+        len+4,4,12,this.solid(0x36453f),false);
+      skirting.rotation.y=mesh.rotation.y;
       // A dark, legible wall cap communicates height in either camera mode.
       const cap=this.box(this.root,mesh.position.x,32,mesh.position.z,
         len+4,2,11,this.solid(0x51483a),false);cap.rotation.y=mesh.rotation.y;
