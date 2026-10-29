@@ -4,12 +4,11 @@ import {
 import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
-  planMove,planMoveStroke,planLook,planDoor,planWait,planSync,movePlanNode,
-  planPieAt,editPie,doorAtNode,planStack,setStrafe,backOne,
-  deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
-  posture,toggleContactRule,toggling,stepSession,nearestDoor,knownAt,liveVisibility,
+  planMove,planMoveStroke,planAim,planWait,planSync,movePlanNode,
+  doorAtNode,planStack,backOne,
+  deletePlanNode,clearPlan,undoPlan,redoPlan,
+  posture,toggleContactRule,toggling,stepSession,knownAt,liveVisibility,
 } from './breach-game.ts';
-import {type PieSide} from './breach-plan.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import './breach-style.css';
 
@@ -26,7 +25,7 @@ const ui={
   rook:el<HTMLButtonElement>('rook'),
   moss:el<HTMLButtonElement>('moss'),
   rookHp:el<HTMLElement>('rookHp'),mossHp:el<HTMLElement>('mossHp'),
-  aim:el<HTMLButtonElement>('aim'),clear:el<HTMLButtonElement>('clear'),
+  clear:el<HTMLButtonElement>('clear'),
   play:el<HTMLButtonElement>('play'),restart:el<HTMLButtonElement>('restart'),
   phase:el<HTMLElement>('phase'),clock:el<HTMLOutputElement>('clock'),
   hint:el<HTMLElement>('hint'),feed:el<HTMLElement>('feed'),
@@ -40,11 +39,6 @@ const ui={
   cameraFit:el<HTMLButtonElement>('cameraFit'),
   back:el<HTMLButtonElement>('back'),
   undo:el<HTMLButtonElement>('undo'),redo:el<HTMLButtonElement>('redo'),
-  insert:el<HTMLButtonElement>('insert'),delete:el<HTMLButtonElement>('delete'),
-  door:el<HTMLButtonElement>('door'),method:el<HTMLButtonElement>('method'),
-  strafe:el<HTMLButtonElement>('strafe'),
-  pieLeft:el<HTMLButtonElement>('pieLeft'),
-  pieRight:el<HTMLButtonElement>('pieRight'),
   wait:el<HTMLButtonElement>('wait'),sync:el<HTMLButtonElement>('sync'),
   stance:el<HTMLButtonElement>('stance'),variant:el<HTMLButtonElement>('variant'),
   contact:el<HTMLButtonElement>('contact'),
@@ -61,10 +55,8 @@ catch(error){console.warn('3D unavailable; reverting to tactical plan',error);
   viewMode='plan2d';}
 let selected='rook';
 let looking=false;
-let doorMode=false,insertMode=false,strafeNext=false;
-let pieMode:PieSide|null=null;
+let lookMode:'look'|'pie'|'strafe'='look';
 let contextSignature='';
-let method:'open'|'kick'|'hold'='open';
 let selectedNode:number|null=null;
 let draggingNode:Pt|null=null;
 let fogData=new Uint8Array(16*19),fogStamp=-1;
@@ -97,7 +89,6 @@ const activePointers=new Map<number,{x:number;y:number;startX:number;startY:numb
   wasUnit:boolean;nodeId:number|null;
   mode:'undecided'|'route'|'pan'|'node'|'pivot'|'sweep'|'cameraOrbit'|'cameraPan'|'cameraMulti';moved:boolean}>();
 let pinchDistance=0,panMid:Pt|null=null;
-let pieRepositionNode:number|null=null;
 const colors={rook:'#a2d4ca',moss:'#b9c6a0'};
 const colorFor=(id:string)=>id==='rook'?colors.rook:colors.moss;
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
@@ -146,34 +137,32 @@ function turnCamera(shift:number){
 const uid=(id:string)=>team(state).find(o=>o.id===id);
 function selectUnit(id:string){
   const actor=uid(id);if(!actor||actor.health<=0)return;
-  selected=id;looking=false;doorMode=false;insertMode=false;
-  pieMode=null;strafeNext=false;pieRepositionNode=null;
+  selected=id;looking=false;
   selectedNode=null;updateHud();
 }
 function message(){
   if(state.phase==='planning'){
-    if(looking)return 'LOOK: choose a facing for the selected waypoint.';
-    if(doorMode)return 'DOOR: tap a door to append '+method.toUpperCase()+' order.';
-    if(pieMode)return 'PIE: tap a world-space pivot. The soldier will sweep around it, keeping the weapon aimed inward.';
-    if(pieRepositionNode!==null)return 'Tap a new world-space pivot for the selected pie order.';
-    if(strafeNext)return 'STRAFE armed: tap or draw travel, then select the node and LOOK to set weapon direction.';
-    if(insertMode)return 'INSERT: tap between route nodes to add a waypoint.';
-    if(selectedNode!==null)return 'Selected order: drag to adjust. Nearby door and cover actions appear beside it.';
-    return 'Tap to add a waypoint · drag a waypoint to edit · GO to execute.';
+    if(looking)return lookMode==='pie'?
+      'PIE: tap a point to watch continuously while moving.':
+      lookMode==='strafe'?
+        'STRAFE: tap a direction to hold while moving.':
+        'LOOK: tap a direction to face until the next aiming order.';
+    if(selectedNode!==null)return 'Order selected: LOOK, PIE and STRAFE change facing, not the movement path.';
+    return 'Tap to move · drag empty ground to orbit · choose LOOK / PIE / STRAFE for aiming.';
   }
-  if(state.phase==='running')
-    return 'Executing. Pause anytime to correct the plan.';
+  if(state.phase==='running')return 'Executing. Pause to change your plan.';
   return state.phase==='won'?'Station secured. Review your report.':
-    'Team lost. Review the debrief and try a new plan.';
+    'Team lost. Review the debrief and try another approach.';
 }
-function activeIsStrafe(){
-  return uid(selected)?.plan.find(n=>n.id===selectedNode)?.moveMode==='strafe';
+function armFacing(mode:'look'|'pie'|'strafe'){
+  looking=!looking||lookMode!==mode;
+  lookMode=mode;
+  updateHud();
 }
 function updateContext(){
   // Context chrome must disappear while the player is pointing at the map.
   // Otherwise its floating touch targets can swallow door/pivot/LOOK taps.
-  if(state.phase!=='planning'||looking||doorMode||insertMode||
-     pieMode!==null||pieRepositionNode!==null){
+  if(state.phase!=='planning'||looking){
     ui.context.hidden=true;return;
   }
   const a=uid(selected);
@@ -184,30 +173,15 @@ function updateContext(){
     !d.open&&distance(where,doorCenter(d))<43)
     .sort((x,y)=>distance(where,doorCenter(x))-
       distance(where,doorCenter(y)))[0];
-  const isMove=node?.kind==='move';
-  const isPie=node?.kind==='pie';
   const choices:{id:string;label:string;pressed?:boolean}[]=[];
-  if(node){
-    choices.push({id:'ctxLook',label:'FACE'});
-    if(isMove)choices.push({id:'ctxStrafe',label:'STRAFE',
-      pressed:node?.moveMode==='strafe'});
-    if(isPie)choices.push({id:'ctxPivot',label:'MOVE PIVOT'});
-    choices.push({id:'ctxDelete',label:'DELETE'});
-  }else{
-    choices.push({id:'ctxLook',label:'LOOK'});
-    choices.push({id:'ctxCrouch',label:a.posture==='crouch'?'STAND':'CROUCH'});
-    choices.push({id:'ctxWait',label:'WAIT'});
-    choices.push({id:'ctxSync',label:'SYNC'});
-  }
+  choices.push({id:'ctxLook',label:'LOOK'});
+  choices.push({id:'ctxPie',label:'PIE'});
+  choices.push({id:'ctxStrafe',label:'STRAFE'});
+  if(node)choices.push({id:'ctxDelete',label:'DELETE'});
   if(closest){
     choices.push({id:'ctxStack',label:'STACK'});
     choices.push({id:'ctxOpen',label:'OPEN'});
     choices.push({id:'ctxKick',label:'KICK'});
-    choices.push({id:'ctxHold',label:'HOLD'});
-  }
-  if(node||closest){
-    choices.push({id:'ctxPieLeft',label:'PIE ↶'});
-    choices.push({id:'ctxPieRight',label:'PIE ↷'});
   }
   const signature=choices.map(x=>x.id+String(x.pressed)).join('/')+
     '/'+(closest?.id??'')+'/'+(node?.id??'-');
@@ -253,14 +227,9 @@ ui.context.addEventListener('click',event=>{
   const door=state.doors.filter(d=>!d.open&&distance(where,doorCenter(d))<50)
     .sort((x,y)=>distance(where,doorCenter(x))-distance(where,doorCenter(y)))[0];
   switch(action){
-    case 'ctxLook':toggleAim();return;
-    case 'ctxStrafe':
-      if(node)setStrafe(state,selected,node.id);
-      else strafeNext=!strafeNext;
-      break;
-    case 'ctxCrouch':posture(state,selected);fogStamp=-1;break;
-    case 'ctxWait':planWait(state,selected);break;
-    case 'ctxSync':planSync(state);break;
+    case 'ctxLook':armFacing('look');return;
+    case 'ctxPie':armFacing('pie');return;
+    case 'ctxStrafe':armFacing('strafe');return;
     case 'ctxDelete':
       if(node)deletePlanNode(state,selected,node.id);
       selectedNode=null;break;
@@ -270,16 +239,10 @@ ui.context.addEventListener('click',event=>{
       selectedNode=null;break;
     case 'ctxOpen':
     case 'ctxKick':
-    case 'ctxHold':
       if(door&&!doorAtNode(state,selected,door.id,
-        action==='ctxOpen'?'open':action==='ctxKick'?'kick':'hold',
-        node?.id))state.events.push('DOOR NOT REACHABLE FROM THAT POINT');
+        action==='ctxOpen'?'open':'kick',node?.id))
+        state.events.push('DOOR NOT REACHABLE FROM THAT POINT');
       selectedNode=null;break;
-    case 'ctxPieLeft':armPie('ccw');return;
-    case 'ctxPieRight':armPie('cw');return;
-    case 'ctxPivot':if(node?.kind==='pie'){
-      pieRepositionNode=node.id;state.events.push('TAP NEW PIVOT OR DRAG MARKER');
-    }break;
   }
   contextSignature='';updateHud();
 });
@@ -295,22 +258,11 @@ function updateHud(){
   ui.play.innerHTML=state.phase==='running'?'PAUSE <span>Ⅱ</span>':
     state.phase==='planning'?'GO <span>▶</span>':'RESET <span>↺</span>';
   ui.play.classList.toggle('running',state.phase==='running');
-  ui.aim.setAttribute('aria-pressed',String(looking));
-  ui.door.setAttribute('aria-pressed',String(doorMode));
-  ui.insert.setAttribute('aria-pressed',String(insertMode));
-  ui.strafe.setAttribute('aria-pressed',String(strafeNext||
-    (activeIsStrafe())));
-  ui.pieLeft.setAttribute('aria-pressed',String(pieMode==='ccw'));
-  ui.pieRight.setAttribute('aria-pressed',String(pieMode==='cw'));
-  ui.method.textContent=method.toUpperCase();
-  const active=uid(selected);
   ui.stance.textContent=active?.posture==='crouch'?'STAND':'CROUCH';
   ui.stance.setAttribute('aria-pressed',String(active?.posture==='crouch'));
   ui.contact.setAttribute('aria-pressed',String(active?.haltOnContact));
   ui.variant.textContent='SITE '+(state.variant+1)+'/3';
-  ui.delete.disabled=selectedNode===null;
   ui.back.disabled=!active?.plan.length;
-  ui.strafe.disabled=!!(selectedNode!==null&&active?.plan.find(n=>n.id===selectedNode)?.kind!=='move');
   ui.undo.disabled=!(active?.history.undo.length);
   ui.redo.disabled=!(active?.history.redo.length);
   ui.debrief.hidden=state.phase!=='won'&&state.phase!=='lost';
@@ -745,102 +697,30 @@ function render(){
   draw.strokeRect(0,0,W,H);
   draw.restore();
 }
-function toggleAim(){
-  looking=!looking;doorMode=false;insertMode=false;pieMode=null;updateHud();
-}
-function armPie(side:PieSide){
-  pieMode=pieMode===side?null:side;
-  looking=false;doorMode=false;insertMode=false;strafeNext=false;
-  updateHud();
-}
 function useSelectedGround(pt:Pt){
   if(state.phase!=='planning')return;
   if(looking){
-    if(!planLook(state,selected,pt,selectedNode??undefined))
-      state.events.push('SELECT OR CREATE A NODE FIRST');
-    looking=false;updateHud();return;
+    const mode=lookMode==='pie'?'track':'fixed';
+    if(!planAim(state,selected,mode,pt,selectedNode??undefined,lookMode))
+      state.events.push('SELECT A DIFFERENT AIM POINT');
+    looking=false;selectedNode=null;updateHud();return;
   }
-  if(pieRepositionNode!==null){
-    if(!editPie(state,selected,pieRepositionNode,pt))
-      state.events.push('INVALID PIVOT LOCATION');
-    pieRepositionNode=null;updateHud();return;
-  }
-  if(pieMode){
-    if(!planPieAt(state,selected,pt,pieMode,65,selectedNode??undefined))
-      state.events.push('INVALID PIVOT OR SWEEP: MOVE TO AN OPEN ARC');
-    pieMode=null;selectedNode=null;updateHud();return;
-  }
-  if(doorMode){
-    const door=nearestDoor(state,pt);
-    if(!door||!planDoor(state,selected,door.id,method))
-      state.events.push('TAP A REACHABLE CLOSED DOOR');
-    doorMode=false;selectedNode=null;updateHud();return;
-  }
-  if(insertMode){
-    const a=uid(selected);
-    if(a){
-      let index=a.plan.length,best=Infinity,prev=a.p;
-      a.plan.forEach((n,i)=>{
-        const ab={x:n.p.x-prev.x,y:n.p.y-prev.y};
-        const t=clamp(((pt.x-prev.x)*ab.x+(pt.y-prev.y)*ab.y)/
-          Math.max(1,ab.x*ab.x+ab.y*ab.y),0,1);
-        const gap=Math.hypot(pt.x-prev.x-ab.x*t,pt.y-prev.y-ab.y*t);
-        if(gap<best){best=gap;index=i;}
-        prev=n.p;
-      });
-      if(!insertPlanNode(state,selected,index,pt))
-        state.events.push('CANNOT INSERT HERE');
-    }
-    insertMode=false;updateHud();return;
-  }
-  if(!planMove(state,selected,pt,strafeNext))
+  if(!planMove(state,selected,pt))
     state.events.push('NO WALKABLE ROUTE');
-  strafeNext=false;selectedNode=null;updateHud();
+  selectedNode=null;updateHud();
 }
 function reset(next=state.variant){
-  state=newSession(next);selected='rook';looking=false;doorMode=false;
-  insertMode=false;selectedNode=null;draggingNode=null;
-  strafeNext=false;pieMode=null;pieRepositionNode=null;
+  state=newSession(next);selected='rook';looking=false;
+  selectedNode=null;draggingNode=null;
   cursor=null;trace=null;zoom=1;panX=panY=0;
   fogStamp=-1;lastSoundShotCount=0;lastEventAudio='';
   layout();updateHud();
 }
 ui.rook.addEventListener('click',()=>selectUnit('rook'));
 ui.moss.addEventListener('click',()=>selectUnit('moss'));
-ui.aim.addEventListener('click',toggleAim);
-ui.back.addEventListener('click',()=>{
-  if(backOne(state,selected)){selectedNode=null;state.events.push('REMOVED LAST ORDER');}
-  updateHud();
-});
-ui.strafe.addEventListener('click',()=>{
-  if(selectedNode!==null){
-    setStrafe(state,selected,selectedNode);
-  }else{
-    strafeNext=!strafeNext;
-    pieMode=null;doorMode=false;insertMode=false;looking=false;
-  }
-  updateHud();
-});
-ui.pieLeft.addEventListener('click',()=>armPie('ccw'));
-ui.pieRight.addEventListener('click',()=>armPie('cw'));
 ui.clear.addEventListener('click',()=>{clearPlan(state,selected);selectedNode=null;updateHud();});
 ui.undo.addEventListener('click',()=>{undoPlan(state,selected);selectedNode=null;updateHud();});
 ui.redo.addEventListener('click',()=>{redoPlan(state,selected);selectedNode=null;updateHud();});
-ui.delete.addEventListener('click',()=>{
-  if(selectedNode!==null)deletePlanNode(state,selected,selectedNode);
-  selectedNode=null;updateHud();
-});
-ui.insert.addEventListener('click',()=>{
-  insertMode=!insertMode;doorMode=false;looking=false;pieMode=null;
-  strafeNext=false;updateHud();
-});
-ui.door.addEventListener('click',()=>{
-  doorMode=!doorMode;insertMode=false;looking=false;pieMode=null;
-  strafeNext=false;updateHud();
-});
-ui.method.addEventListener('click',()=>{
-  method=method==='open'?'kick':method==='kick'?'hold':'open';updateHud();
-});
 ui.wait.addEventListener('click',()=>{planWait(state,selected);updateHud();});
 ui.sync.addEventListener('click',()=>{planSync(state);updateHud();});
 ui.stance.addEventListener('click',()=>{
@@ -853,8 +733,7 @@ ui.next.addEventListener('click',()=>reset(state.variant+1));
 ui.play.addEventListener('click',()=>{
   unlockAudio();
   if(state.phase==='won'||state.phase==='lost')reset();
-  else{looking=false;doorMode=false;insertMode=false;pieMode=null;
-    toggling(state);updateHud();}
+  else{looking=false;toggling(state);updateHud();}
 });
 ui.restart.addEventListener('click',()=>reset());
 window.addEventListener('keydown',e=>{
@@ -866,13 +745,12 @@ window.addEventListener('keydown',e=>{
   if(e.code==='Digit1')selectUnit('rook');
   if(e.code==='Digit2')selectUnit('moss');
   if(e.code==='KeyX'){clearPlan(state,selected);updateHud();}
-  if(e.code==='KeyL')toggleAim();
+  if(e.code==='KeyL')armFacing('look');
   if(e.code==='Backspace'&&!e.repeat){
     e.preventDefault();backOne(state,selected);selectedNode=null;updateHud();
   }
-  if(e.code==='KeyF'&&!e.repeat){strafeNext=!strafeNext;updateHud();}
-  if(e.code==='BracketLeft'&&!e.repeat)armPie('ccw');
-  if(e.code==='BracketRight'&&!e.repeat)armPie('cw');
+  if(e.code==='KeyF'&&!e.repeat)armFacing('strafe');
+  if(e.code==='KeyB'&&!e.repeat)armFacing('pie');
   if(e.code==='KeyZ'&&(e.ctrlKey||e.metaKey)){
     e.preventDefault();
     if(e.shiftKey)redoPlan(state,selected);
@@ -913,28 +791,19 @@ canvas.addEventListener('pointerdown',e=>{
       startX:e.clientX,startY:e.clientY,wasUnit:false,nodeId:null,
       mode:orbit?'cameraOrbit':'cameraPan',moved:false});
   }else{
-    const contextual=looking||doorMode||insertMode||
-      pieMode!==null||pieRepositionNode!==null;
+    const contextual=looking;
     const hit=contextual?undefined:team(state).find(a=>
       a.health>0&&(viewMode==='plan2d'||!stage?
         distance(a.p,pt)<22:
         distance(worldToScreen(a.p,24),{x:e.clientX,y:e.clientY})<25));
     if(hit)selectUnit(hit.id);
-    const current=uid(selected)?.plan.find(n=>n.id===selectedNode);
-    let handle:'pivot'|'sweep'|null=null;
-    if(!contextual&&current?.kind==='pie'&&stage&&viewMode!=='plan2d'){
-      if(current.pivot&&distance(worldToScreen(current.pivot,12),
-        {x:e.clientX,y:e.clientY})<22)handle='pivot';
-      else if(distance(worldToScreen(current.p,8),
-        {x:e.clientX,y:e.clientY})<20)handle='sweep';
-    }
-    const node=state.phase==='planning'&&!hit&&!contextual&&!handle?
+    const node=state.phase==='planning'&&!hit&&!contextual?
       hitNode(pt):null;
     if(node)selectedNode=node.id;
     activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
       startX:e.clientX,startY:e.clientY,wasUnit:!!hit,
-      nodeId:handle?selectedNode:node?.id??null,
-      mode:handle??(node?'node':'undecided'),moved:false});
+      nodeId:node?.id??null,
+      mode:node?'node':'undecided',moved:false});
   }
   if(activePointers.size>=2){
     // Cancel any tentative route gesture when a second finger arrives.
@@ -993,8 +862,7 @@ canvas.addEventListener('pointermove',e=>{
     stage.orbit(dx,dy);
     return;
   }
-  if((p.mode==='node'||p.mode==='pivot'||p.mode==='sweep')&&
-    p.moved&&p.nodeId!==null){
+  if(p.mode==='node'&&p.moved&&p.nodeId!==null){
     draggingNode=cursor;return;
   }
   if(state.phase==='planning'&&p.wasUnit&&p.moved){
@@ -1010,34 +878,15 @@ function releasePointer(e:PointerEvent,cancelled=false){
   if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
   const pt=pointerWorld(e);
   if(!cancelled&&state.phase==='planning'&&activePointers.size===1){
-    if((p.mode==='pivot'||p.mode==='sweep')&&p.nodeId!==null){
-      const a=uid(selected),node=a?.plan.find(n=>n.id===p.nodeId);
-      if(node?.kind==='pie'&&node.pivot&&p.moved){
-        if(p.mode==='pivot'){
-          if(!editPie(state,selected,node.id,pt))
-            state.events.push('PIVOT SWEEP BLOCKED');
-        }else{
-          const index=a!.plan.indexOf(node);
-          const origin=index===0?a!.p:a!.plan[index-1].p;
-          const base=Math.atan2(origin.y-node.pivot.y,origin.x-node.pivot.x);
-          const endpoint=Math.atan2(pt.y-node.pivot.y,pt.x-node.pivot.x);
-          const diff=Math.atan2(Math.sin(endpoint-base),Math.cos(endpoint-base));
-          const side=diff>=0?'cw':'ccw';
-          const degrees=clamp(Math.abs(diff)*180/Math.PI,8,120);
-          if(!editPie(state,selected,node.id,node.pivot,degrees,side))
-            state.events.push('ARC INTERSECTS OBSTACLE');
-        }
-      }
-      selectedNode=p.nodeId;
-    }else if(p.mode==='node'&&p.nodeId!==null){
+    if(p.mode==='node'&&p.nodeId!==null){
       if(p.moved&&!movePlanNode(state,selected,p.nodeId,pt))
         state.events.push('INVALID NODE POSITION');
       selectedNode=p.nodeId;
     }else if(p.mode==='route'&&trace&&trace.length>1){
       const points=[...trace,pt];
-      if(!planMoveStroke(state,selected,points.slice(1),strafeNext))
+      if(!planMoveStroke(state,selected,points.slice(1)))
         state.events.push('NO WALKABLE STROKE');
-      strafeNext=false;selectedNode=null;
+      selectedNode=null;
     }else if(!p.moved&&!p.wasUnit&&pt.x>=0&&pt.y>=0&&
       pt.x<=W&&pt.y<=H)useSelectedGround(pt);
   }
