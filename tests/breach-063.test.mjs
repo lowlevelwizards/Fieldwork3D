@@ -111,3 +111,14 @@ test('063: editing preceding points revalidates pie geometry, no stale arc',()=>
     'deleting precursor is fine if arc can revalidate from current position');
   assert.equal(a.plan[0].kind,'pie');
 });
+
+test('063: undo after paired BACK cannot deadlock a lone synchronization',()=>{
+  const s=newSession();
+  assert.ok(planSync(s));
+  assert.ok(backOne(s,'rook'));
+  assert.ok(undoPlan(s,'rook'));
+  assert.equal(team(s)[0].plan[0].kind,'sync');
+  assert.equal(team(s)[1].plan.length,0);
+  toggling(s);run(s,.2);
+  assert.equal(team(s)[0].plan.length,0,'orphan code safely releases');
+});
