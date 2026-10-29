@@ -7,7 +7,7 @@ export type DoorMethod='open'|'kick'|'hold';
 export type PlanNode={
   id:number;kind:PlanKind;p:Pt;facing?:number;doorId?:string;
   method?:DoorMethod;duration?:number;syncCode?:string;holdOnContact?:boolean;
-  moveMode?:MoveMode;pivot?:Pt;pieSide?:PieSide;arc?:Pt[];
+  moveMode?:MoveMode;pivot?:Pt;pieSide?:PieSide;pieDegrees?:number;arc?:Pt[];
 };
 export type PlanHistory={undo:PlanNode[][];redo:PlanNode[][]};
 export const copyNodes=(nodes:PlanNode[]):PlanNode[]=>
