@@ -31,7 +31,6 @@ export class TacticalScene3D{
   private currentElev=55*Math.PI/180;
   private pickPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
   private ray=new THREE.Raycaster();
-  private pointer=new THREE.Vector2();
   private width=1;private height=1;private fogAt=-1;
   private sun:THREE.DirectionalLight;
   private mats:THREE.Material[]=[];
@@ -95,11 +94,10 @@ export class TacticalScene3D{
   private buildWorld(){
     const earth=this.solid(0x566750),road=this.solid(0x686452);
     const gravel=this.solid(0x797263),floorA=this.solid(0x6e6a5e);
-    const floorB=this.solid(0x606b64),wallMat=this.solid(0xa59b81);
-    const plaster=this.solid(0x7e8274),timber=this.solid(0x544d40);
+    const floorB=this.solid(0x606b64),timber=this.solid(0x544d40);
     const metal=this.solid(0x646a65,.62),rust=this.solid(0x806851);
     const roof=this.solid(0x515d58),glass=this.solid(0x748b83,.18);
-    const dark=this.solid(0x343e3b),brush=this.solid(0x586b51);
+    const dark=this.solid(0x343e3b);
     this.plane(this.root,W/2,H/2,W,H,-2,earth);
     this.box(this.root,303,-1,630,124,1,215,road,false);
     this.box(this.root,294,-.15,643,7,.2,178,gravel,false);
@@ -119,12 +117,12 @@ export class TacticalScene3D{
       const dx=p2.x-p1.x,dz=p2.y-p1.y;
       const len=Math.hypot(dx,dz);
       const mesh=this.box(this.root,(p1.x+p2.x)/2,15.5,(p1.y+p2.y)/2,
-        len+3,31,9,i===4?plaster:wallMat);
+        len+3,31,9,this.solid(i===4?0x7e8274:0xa59b81));
       mesh.rotation.y=-Math.atan2(dz,dx);
       this.walls.push({mesh,mid:{x:(p1.x+p2.x)/2,y:(p1.y+p2.y)/2}});
       // A dark, legible wall cap communicates height in either camera mode.
       const cap=this.box(this.root,mesh.position.x,32,mesh.position.z,
-        len+4,2,11,timber,false);cap.rotation.y=mesh.rotation.y;
+        len+4,2,11,this.solid(0x50493c),false);cap.rotation.y=mesh.rotation.y;
       this.walls.push({mesh:cap,mid:{x:mesh.position.x,y:mesh.position.z}});
     }
     for(const x of [209,502]){
@@ -341,6 +339,7 @@ export class TacticalScene3D{
       object.root.traverse(o=>{if(o instanceof THREE.Mesh)o.castShadow=true;});
     }
     // Fire traces are visual evidence of the simulation, not independent shots.
+    this.effects.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
     this.effects.clear();
     const friendly=this.solid(0xece0b6,.3),hostile=this.solid(0xe3a185,.3);
     for(const shot of s.shots){
