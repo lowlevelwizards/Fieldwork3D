@@ -169,7 +169,10 @@ try{
   await phone.locator('#pieLeft').click();
   if(await phone.locator('#pieLeft').getAttribute('aria-pressed')!=='true')
     throw Error('Counter-clockwise pie did not arm');
-  await phone.touchscreen.tap(frontDoor.x,frontDoor.y);
+  // Free-pivot sweeps intentionally reject invalid or intersecting arcs.
+  // Use a proven clear yard pivot instead of assuming the door itself works.
+  const freePivot=screen(325,599,390,844);
+  await phone.touchscreen.tap(freePivot.x,freePivot.y);
   if(await phone.locator('#pieLeft').getAttribute('aria-pressed')!=='false')
     throw Error('Pie selection did not return to planning');
   if(await phone.locator('#back').isDisabled())
