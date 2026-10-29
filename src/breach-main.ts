@@ -1,8 +1,8 @@
 import {
-  W,H,WALLS,COVER,GRID,doorCenter,route,type Pt,type Operator,
+  W,H,WALLS,COVER,GRID,doorCenter,route,type Pt,
 } from './breach-core.ts';
 import {
-  type Session,
+  type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   planMove,planLook,planDoor,planWait,planSync,movePlanNode,
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
@@ -330,7 +330,7 @@ function paths(){
 }
 function fog(){
   // Cached visibility tile raster, refreshed only as the world moves.
-  if(state.seconds!==fogStamp||state.phase==='planning'&&fogStamp<0){
+  if(fogStamp<0||state.seconds-fogStamp>.24){
     fogStamp=state.seconds;
     for(let row=0;row<19;row++)for(let col=0;col<16;col++){
       const p={x:col*40+20,y:row*40+20};
@@ -353,7 +353,7 @@ function missionMarkers(){
   draw.textAlign='center';
   draw.fillText(state.mission==='secure'?'SECURE':'EXTRACT',p.x,p.y-39);
 }
-function sprite(a:Operator){
+function sprite(a:TeamActor){
   if(a.side==='red'){
     const visible=a.health>0&&isSeen(state,a);
     if(!visible){
