@@ -6,10 +6,11 @@ import {
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   planMove,planMoveStroke,planAim,planWait,planSync,movePlanNode,
   finalPoint,doorAtNode,planStack,backOne,
-  deletePlanNode,clearPlan,undoPlan,redoPlan,
+  deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,stepSession,knownAt,liveVisibility,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
+import {routeLineHit} from './breach-route-edit.ts';
 import {shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
 import './breach-style.css';
 
@@ -149,8 +150,8 @@ function message(){
       lookMode==='strafe'?
         'STRAFE: tap a direction to hold while moving.':
         'LOOK: tap a direction to face at this node, then resume normal travel-facing.';
-    if(selectedNode!==null)return 'Order selected: LOOK, PIE and STRAFE change facing, not the movement path.';
-    return 'Tap to move · drag empty ground to orbit · choose LOOK / PIE / STRAFE for aiming.';
+    if(selectedNode!==null)return 'Waypoint selected: LOOK / PIE / STRAFE, drag to move, DELETE to remove.';
+    return 'Tap a route line to insert a waypoint · tap a node to edit or delete.';
   }
   if(state.phase==='running')return 'Executing. Pause to change your plan.';
   return state.phase==='won'?'Station secured. Review your report.':
@@ -1025,6 +1026,22 @@ canvas.addEventListener('pointermove',e=>{
     panX+=dx;panY+=dy;layout();
   }
 });
+/** Insert precisely where the player tapped the existing routed line.
+ * The original plan before and after the inserted node stays intact. */
+function insertAtRouteLine(screen:Pt):boolean{
+  const actor=uid(selected);
+  if(!actor||state.phase!=='planning')return false;
+  const hit=routeLineHit(actor.p,actor.plan,screen,
+    point=>worldToScreen(point,4),14);
+  if(!hit)return false;
+  const id=state.nextId;
+  if(!insertPlanNode(state,selected,hit.index,hit.point)){
+    state.events.push('CANNOT INSERT WAYPOINT HERE');
+    return true; // This was a route tap, not a new destination order.
+  }
+  selectedNode=id;doorFocusId=null;contextSignature='';
+  return true;
+}
 function releasePointer(e:PointerEvent,cancelled=false){
   const p=activePointers.get(e.pointerId);if(!p)return;
   if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
@@ -1048,6 +1065,9 @@ function releasePointer(e:PointerEvent,cancelled=false){
           {x:e.clientX,y:e.clientY})<25));
       if(door&&!looking){
         doorFocusId=door.id;selectedNode=null;
+      }else if(!looking&&insertAtRouteLine({x:e.clientX,y:e.clientY})){
+        // Insert-and-select: contextual LOOK/PIE/STRAFE/DELETE are immediately
+        // available on the newly authored waypoint.
       }else{
         doorFocusId=null;useSelectedGround(pt);
       }
