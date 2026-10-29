@@ -1,5 +1,6 @@
 import {queryTravel,terrainSightClear,standingHeightAt,
   SITE_CENTER,roadCenterX} from './regional-physical.ts';
+import {establishRegionalPlants} from './regional-ecology.ts';
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 export type Allegiance='player'|'northline'|'commune';
 export type ActorTask='idle'|'move'|'hold'|'guard'|'investigate'|'engage';
@@ -170,10 +171,32 @@ export function shootAt(actor:GroundedActor,target:GroundedActor,
 }
 /** The initial tactical sandbox deliberately has very few entities. */
 export function spawnCutwoodsActors():GroundedActor[]{
+  const spawn=operatorSpawn();
   return [
-    spawnActor('player','Operator','player',roadCenterX(158)-60,158),
+    spawnActor('player','Operator','player',spawn.x,spawn.z),
     spawnActor('north-lead','Northline Lead','northline',SITE_CENTER.x+14,SITE_CENTER.z+35),
     spawnActor('north-scout','Northline Scout','northline',SITE_CENTER.x+18,SITE_CENTER.z+24),
     spawnActor('commune-sentry','Commune Sentry','commune',SITE_CENTER.x-15,SITE_CENTER.z+5),
   ];
+}
+
+/** The solo trial begins at a viable woodland edge. Use already
+ * established world ecology, don't create decorative trees just for
+ * a screenshot. Leave room around the body and actual root collider. */
+export function operatorSpawn():Vector2{
+  const base={x:roadCenterX(158)-60,z:158};
+  const trees=establishRegionalPlants()
+    .filter(p=>p.kind==='tree'&&
+      Math.hypot(p.x-base.x,p.z-base.z)<150)
+    .sort((a,b)=>Math.hypot(a.x-base.x,a.z-base.z)-
+      Math.hypot(b.x-base.x,b.z-base.z));
+  for(const tree of trees){
+    for(const [dx,dz] of [[5,3],[-5,3],[3,-6],[-3,-6],[7,0],[-7,0]]){
+      const x=tree.x+dx,z=tree.z+dz;
+      const ground=queryTravel(x,z);
+      if(ground.passable&&ground.slopeDegrees<18&&ground.waterDepth<.12)
+        return {x,z};
+    }
+  }
+  return base;
 }
