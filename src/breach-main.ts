@@ -212,6 +212,10 @@ function updateContext(){
       if(option.id==='ctxStack'||option.id==='ctxOpen'||
         option.id==='ctxKick'||option.id==='ctxHold')
         button.classList.add('door-action');
+      if(option.id==='ctxStack')button.title=
+        'Move beside this door and face it. Does not open the door or synchronize entry.';
+      if(option.id==='ctxDelete')button.title=
+        'Delete this waypoint and reconnect the remaining route.';
       ui.context.append(button);
     }
   }
@@ -256,9 +260,10 @@ ui.context.addEventListener('click',event=>{
       if(node)deletePlanNode(state,selected,node.id);
       selectedNode=null;doorFocusId=null;break;
     case 'ctxStack':
-      if(door&&!planStack(state,selected,door.id,
+      if(!door||!planStack(state,selected,door.id,
         nodeNearDoor?node?.id:undefined))
         state.events.push('NO REACHABLE STACK POSITION');
+      else state.events.push('STACK POSITION SET · DOOR ACTION IS SEPARATE');
       selectedNode=null;doorFocusId=null;break;
     case 'ctxOpen':
     case 'ctxKick':
@@ -284,6 +289,9 @@ function updateHud(){
     state.phase==='planning'?'GO <span>▶</span>':'RESET <span>↺</span>';
   ui.play.classList.toggle('running',state.phase==='running');
   const active=uid(selected);
+  // Read-only plan status for phone gesture regression tests.
+  canvas.dataset.planNodes=String(active?.plan.length??0);
+  canvas.dataset.selectedNode=selectedNode===null?'':String(selectedNode);
   ui.stance.textContent=active?.posture==='crouch'?'STAND':'CROUCH';
   ui.stance.setAttribute('aria-pressed',String(active?.posture==='crouch'));
   ui.contact.setAttribute('aria-pressed',String(active?.haltOnContact));
