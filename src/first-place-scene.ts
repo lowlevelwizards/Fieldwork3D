@@ -16,15 +16,15 @@ export class FirstPlaceScene{
  private readonly geometries:THREE.BufferGeometry[]=[];
  constructor(scene:THREE.Scene){
   const soil=this.mat(0x897d62),packed=this.mat(0x9c9275);
-  const grass=this.mat(0x657e65),wood=this.mat(0x635b4d);
+  const wood=this.mat(0x635b4d);
   const dark=this.mat(0x35463c),iron=this.mat(0x6a786e);
-  const brick=this.mat(0xb9b5a1),accent=this.mat(0xccab72);
+  const accent=this.mat(0xccab72);
   const darkWater=this.mat(0x546c6c),foliage=this.mat(0x607d61);
   const leafLight=this.mat(0x80916c),bark=this.mat(0x625c48);
   // Ground-readable hierarchy: a worked enclosure, paths connecting
   // the front door and gate, and a narrow drainage route beside it.
   this.groundPatch(FIRST_PLACE.center.x,FIRST_PLACE.center.z,53,47,
-    0x879778,.20,12);
+    0x879778,.20);
   for(const s of FOOTPATH)this.ribbon(s,2.35,packed,.09);
   for(const s of DRAINAGE){
    this.ribbon(s,3.5,soil,.13);
@@ -165,7 +165,7 @@ export class FirstPlaceScene{
   const mesh=this.use(g,mat);mesh.renderOrder=2;
  }
  private groundPatch(x:number,z:number,w:number,d:number,
-  color:number,offset:number,step:number){
+  color:number,offset:number){
   // A subdued trampled clearing, integrated with the existing ground.
   // Never an artificial 100x100 rectangle of flat floating geometry.
   const mat=this.mat(color);
