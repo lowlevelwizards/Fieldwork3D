@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {route,type Pt} from '../src/breach-core.ts';
+import {route} from '../src/breach-core.ts';
 import {newSession,team,planMove,planAim,insertPlanNode,
   deletePlanNode,undoPlan,redoPlan} from '../src/breach-game.ts';
 import {routeLineHit} from '../src/breach-route-edit.ts';
