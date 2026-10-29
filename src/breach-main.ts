@@ -168,6 +168,101 @@ function message(){
 function activeIsStrafe(){
   return uid(selected)?.plan.find(n=>n.id===selectedNode)?.moveMode==='strafe';
 }
+function updateContext(){
+  if(state.phase!=='planning'){
+    ui.context.hidden=true;return;
+  }
+  const a=uid(selected);
+  if(!a||a.health<=0){ui.context.hidden=true;return;}
+  const node=a.plan.find(n=>n.id===selectedNode);
+  const where=node?.p??a.p;
+  const closest=state.doors.filter(d=>
+    !d.open&&distance(where,doorCenter(d))<50)
+    .sort((x,y)=>distance(where,doorCenter(x))-
+      distance(where,doorCenter(y)))[0];
+  const isMove=node?.kind==='move';
+  const isPie=node?.kind==='pie';
+  const choices:{id:string;label:string;pressed?:boolean}[]=[];
+  if(node){
+    choices.push({id:'ctxLook',label:'FACE'});
+    if(isMove)choices.push({id:'ctxStrafe',label:'STRAFE',
+      pressed:node?.moveMode==='strafe'});
+    if(isPie)choices.push({id:'ctxPivot',label:'MOVE PIVOT'});
+    choices.push({id:'ctxDelete',label:'DELETE'});
+  }else{
+    choices.push({id:'ctxLook',label:'LOOK'});
+    choices.push({id:'ctxCrouch',label:a.posture==='crouch'?'STAND':'CROUCH'});
+    choices.push({id:'ctxWait',label:'WAIT'});
+    choices.push({id:'ctxSync',label:'SYNC'});
+  }
+  if(closest){
+    choices.push({id:'ctxOpen',label:'OPEN'});
+    choices.push({id:'ctxKick',label:'KICK'});
+    choices.push({id:'ctxHold',label:'HOLD'});
+  }
+  if(node||closest){
+    choices.push({id:'ctxPieLeft',label:'PIE ↶'});
+    choices.push({id:'ctxPieRight',label:'PIE ↷'});
+  }
+  const signature=choices.map(x=>x.id+String(x.pressed)).join('/')+
+    '/'+(closest?.id??'')+'/'+(node?.id??'-');
+  if(contextSignature!==signature){
+    contextSignature=signature;
+    ui.context.replaceChildren();
+    for(const option of choices){
+      const button=document.createElement('button');
+      button.type='button';button.dataset.action=option.id;
+      button.textContent=option.label;
+      if(option.pressed)button.setAttribute('aria-pressed','true');
+      ui.context.append(button);
+    }
+  }
+  ui.context.hidden=false;
+  // Float above relevant object; keep touch targets within the phone.
+  const screen=worldToScreen(where,node?12:28);
+  const left=clamp(screen.x,ui.context.offsetWidth/2+6,
+    cssW-ui.context.offsetWidth/2-6);
+  const above=screen.y-22;
+  const top=above<175?screen.y+ui.context.offsetHeight+36:above;
+  ui.context.style.left=left+'px';
+  ui.context.style.top=clamp(top,170,cssH-123)+'px';
+  ui.context.style.transform=above<175?'translate(-50%,-0%)':'translate(-50%,-100%)';
+}
+ui.context.addEventListener('click',event=>{
+  const button=(event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]');
+  if(!button||state.phase!=='planning')return;
+  const action=button.dataset.action;
+  const a=uid(selected);
+  if(!a)return;
+  const node=a.plan.find(n=>n.id===selectedNode);
+  const where=node?.p??a.p;
+  const door=state.doors.filter(d=>!d.open&&distance(where,doorCenter(d))<50)
+    .sort((x,y)=>distance(where,doorCenter(x))-distance(where,doorCenter(y)))[0];
+  switch(action){
+    case 'ctxLook':toggleAim();return;
+    case 'ctxStrafe':
+      if(node)setStrafe(state,selected,node.id);
+      else strafeNext=!strafeNext;
+      break;
+    case 'ctxCrouch':posture(state,selected);fogStamp=-1;break;
+    case 'ctxWait':planWait(state,selected);break;
+    case 'ctxSync':planSync(state);break;
+    case 'ctxDelete':
+      if(node)deletePlanNode(state,selected,node.id);
+      selectedNode=null;break;
+    case 'ctxOpen':
+    case 'ctxKick':
+    case 'ctxHold':
+      if(door&&!doorAtNode(state,selected,door.id,
+        action==='ctxOpen'?'open':action==='ctxKick'?'kick':'hold',
+        node?.id))state.events.push('DOOR NOT REACHABLE FROM THAT POINT');
+      selectedNode=null;break;
+    case 'ctxPieLeft':armPie('ccw');return;
+    case 'ctxPieRight':armPie('cw');return;
+    case 'ctxPivot':pieHandle='pivot';state.events.push('DRAG THE PIVOT MARKER');break;
+  }
+  contextSignature='';updateHud();
+});
 function updateHud(){
   ui.phase.textContent=state.phase==='planning'?'PLANNING':
     state.phase==='running'?'EXECUTING':
