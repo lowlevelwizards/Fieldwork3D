@@ -361,9 +361,13 @@ function sprite(a:TeamActor){
     if(!visible){
       const memory=lastKnown(state,a.id);
       if(memory&&state.seconds-memory.at<25){
-        draw.fillStyle='#d19d837e';
+        draw.fillStyle=memory.status==='heard'?'#e6bb828e':'#d19d837e';
         draw.font='bold 16px monospace';draw.textAlign='center';
-        draw.fillText('?',memory.p.x,memory.p.y);
+        draw.fillText(memory.status==='heard'?'~':'?',memory.p.x,memory.p.y);
+        if(memory.status==='heard'){
+          draw.strokeStyle='#c9af7c4b';draw.lineWidth=1;
+          draw.beginPath();draw.arc(memory.p.x,memory.p.y,30,0,Math.PI*2);draw.stroke();
+        }
       }
       return;
     }
@@ -382,7 +386,11 @@ function sprite(a:TeamActor){
   }
   draw.save();draw.translate(a.p.x,a.p.y);draw.rotate(a.heading);
   circle(0,2,11,'#0d1b20af');circle(0,0,9.2,friendly?'#4b756f':'#794a43');
-  // Torso/head orientation and gun barrel.
+  // Body and alternating leg extension are driven by actual travel.
+  const gait=Math.sin(state.seconds*15+Math.floor(a.p.x*.15))*
+    Math.min(1,a.velocity/70)*3.5;
+  rect(-9,-7+gait,9,5,friendly?'#304842':'#4b3633');
+  rect(-9,2-gait,9,5,friendly?'#304842':'#4b3633');
   rect(-7,-5,14,10,c);
   rect(-10,-4,5,8,friendly?'#45625d':'#563e39');
   circle(4,0,3.8,friendly?'#d3dac1':'#d0a58a');
