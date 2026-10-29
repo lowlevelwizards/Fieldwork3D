@@ -304,11 +304,11 @@ export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number)
   const horizontal=Math.abs(door.a.y-door.b.y)<1;
   const half=d(door.a,door.b)/2;
   const candidates=horizontal?[
-    {x:center.x-half-16,y:center.y+(from.y>=center.y?27:-27)},
-    {x:center.x+half+16,y:center.y+(from.y>=center.y?27:-27)},
+    {x:center.x-half-10,y:center.y+(from.y>=center.y?18:-18)},
+    {x:center.x+half+10,y:center.y+(from.y>=center.y?18:-18)},
   ]:[
-    {x:center.x+(from.x>=center.x?27:-27),y:center.y-half-16},
-    {x:center.x+(from.x>=center.x?27:-27),y:center.y+half+16},
+    {x:center.x+(from.x>=center.x?18:-18),y:center.y-half-10},
+    {x:center.x+(from.x>=center.x?18:-18),y:center.y+half+10},
   ];
   const partner=team(s).find(b=>b!==a&&b.health>0);
   const other=partner?finalPoint(partner):null;
