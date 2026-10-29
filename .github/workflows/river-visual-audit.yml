@@ -10,7 +10,7 @@ on:
       - 'src/vegetation-*.ts'
       - 'src/vegetation-model.ts'
       - 'tests/vegetation-031.test.mjs'
-      - 'index.html'
+      - 'verdigris.html'
       - 'src/terrain.ts'
       - 'src/surface-materials.ts'
       - 'src/valley-river-field.ts'
