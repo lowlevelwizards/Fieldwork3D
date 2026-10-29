@@ -415,19 +415,10 @@ function contacts(){
   }
 }
 function endMessage(){
-  if(state.phase!=='won'&&state.phase!=='lost')return;
-  // The HTML debrief owns text and buttons. Map remains visible behind it.
-  draw.fillStyle='#101c1f99';draw.fillRect(0,0,W,H);
-  return;
-  rect(122,311,397,116,'#142225e9');
-  draw.strokeStyle=state.phase==='won'?'#a9cbb7':'#cd8d77';
-  draw.lineWidth=2;draw.strokeRect(122,311,397,116);
-  draw.textAlign='center';
-  draw.fillStyle=state.phase==='won'?'#c3ddc7':'#e8aa93';
-  draw.font='bold 24px monospace';
-  draw.fillText(state.phase==='won'?'STATION SECURED':'TEAM LOST',320,365);
-  draw.fillStyle='#c2cfc8';draw.font='12px monospace';
-  draw.fillText('RESET TO TRY A DIFFERENT PLAN',320,393);
+  if(state.phase==='won'||state.phase==='lost'){
+    // The HTML debrief owns the readable text and restart buttons.
+    draw.fillStyle='#101c1f88';draw.fillRect(0,0,W,H);
+  }
 }
 function render(){
   draw.setTransform(dpr,0,0,dpr,0,0);
@@ -507,7 +498,9 @@ ui.method.addEventListener('click',()=>{
 });
 ui.wait.addEventListener('click',()=>{planWait(state,selected);updateHud();});
 ui.sync.addEventListener('click',()=>{planSync(state);updateHud();});
-ui.stance.addEventListener('click',()=>{posture(state,selected);updateHud();});
+ui.stance.addEventListener('click',()=>{
+  posture(state,selected);fogStamp=-1;updateHud();
+});
 ui.contact.addEventListener('click',()=>{toggleContactRule(state,selected);updateHud();});
 ui.variant.addEventListener('click',()=>reset(state.variant+1));
 ui.retry.addEventListener('click',()=>reset());
