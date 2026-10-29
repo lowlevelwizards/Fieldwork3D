@@ -68,12 +68,14 @@ export function newSession(index=0):Session{
     a.health=2; // A single unaware guard can survive one glancing impact.
     a.magazine=10;a.reserve=30;
   });
-  return {...seed,operators,doors:initialDoors(),variant,nextId:1,
+  const state:Session={...seed,operators,doors:initialDoors(),variant,nextId:1,
     scenario:{index:variant,name:sample.name,objective:clone(OBJECTIVE),
       extract:clone(EXTRACTION)},
     mission:'clear',noise:[],shots:[],known:new Map(),
     seenGround:new Set(),timesPaused:0,deaths:0,started:false,
     syncCode:0,report:[],movementNoiseAt:0};
+  observe(state); // Know the space around soldiers even before pressing GO.
+  return state;
 }
 export const team=(s:Session)=>s.operators.filter(a=>a.side==='blue');
 export const enemies=(s:Session)=>s.operators.filter(a=>a.side==='red');
