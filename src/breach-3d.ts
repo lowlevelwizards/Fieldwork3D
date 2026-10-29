@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {W,H,WALLS,COVER,initialDoors,doorCenter,type Pt} from './breach-core.ts';
-import {type Session,type TeamActor,team,knownAt,liveVisibility} from './breach-game.ts';
+import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
 import {shotVisibility} from './breach-presentation.ts';
 
 /** One authoritative 2D world, physically represented in one 3D scene.
@@ -33,6 +33,8 @@ export class TacticalScene3D{
     impact:THREE.Mesh;material:THREE.MeshBasicMaterial;
     impactMaterial:THREE.MeshBasicMaterial}>();
   private tracerAxis=new THREE.Vector3(0,1,0);
+  private tracerGeometry=new THREE.CylinderGeometry(.65,.65,1,6);
+  private impactGeometry=new THREE.IcosahedronGeometry(1,1);
   private walls:{mesh:THREE.Mesh;mid:Pt}[]=[];
   private effects=new THREE.Group();
   private target=new THREE.Vector3(339,0,413);
@@ -45,8 +47,6 @@ export class TacticalScene3D{
   private width=1;private height=1;private fogAt=-1;
   private sun:THREE.DirectionalLight;
   private mats:THREE.Material[]=[];
-  private shotFriendly:THREE.MeshStandardMaterial;
-  private shotHostile:THREE.MeshStandardMaterial;
   private solid=(hex:number,roughness=.9)=>{
     const material=mat(hex,roughness);this.mats.push(material);return material;
   };
@@ -78,8 +78,6 @@ export class TacticalScene3D{
     this.scene.add(this.sun);
     this.scene.add(this.root,this.effects);
     this.buildWorld();
-    this.shotFriendly=this.solid(0xece0b6,.3);
-    this.shotHostile=this.solid(0xe3a185,.3);
     // Unknown tiles must obscure tall props. Explored tiles tint gently,
     // never putting a white/grey sheet across already-known furniture.
     const fgeom=new THREE.PlaneGeometry(40.4,40.4);
@@ -450,40 +448,78 @@ export class TacticalScene3D{
     for(const actor of s.operators){
       if(!this.actors.has(actor.id))this.soldier(actor);
       const object=this.actors.get(actor.id)!;
-      object.root.visible=actor.side==='blue'||isSeen(s,actor);
+      object.root.visible=actor.side==='blue'||
+        (actor.health>0?isSeen(s,actor):liveVisibility(s,actor.p));
       if(!object.root.visible)continue;
       object.root.position.set(actor.p.x,0,actor.p.y);
       object.root.rotation.y=-actor.heading;
+      const downProgress=actor.health<=0?
+        Math.min(1,Math.max(0,(s.seconds-actor.lastDownAt)/.40)):0;
+      const hitAge=s.seconds-actor.lastHitAt;
+      const hitFade=actor.health>0&&hitAge>=0&&hitAge<.32?
+        1-hitAge/.32:0;
+      // Real pose transition: rotate the full miniature down to the floor,
+      // never vertically squash it into a crouching-shaped casualty.
+      object.root.rotation.x=-1.42*downProgress;
+      object.root.rotation.z=hitFade*.13*Math.sin(hitAge*65);
       const speed=Math.min(1,actor.velocity/70);
       const gait=Math.sin(s.seconds*10.5+(actor.id==='moss'?1.1:0));
       object.legs[0].rotation.x=gait*speed*.44;
       object.legs[1].rotation.x=-gait*speed*.44;
       object.arms[0].rotation.x=-gait*speed*.12;
       object.arms[1].rotation.x=gait*speed*.12;
-      object.root.position.y=actor.posture==='crouch'?-5:0;
-      object.root.scale.y=actor.health<=0?.33:1;
-      object.flash.visible=s.sparks.some(e=>e.side===actor.side&&
-        Math.hypot(actor.p.x-e.p.x,actor.p.y-e.p.y)<7&&e.age<.09);
-      object.root.traverse(o=>{if(o instanceof THREE.Mesh)o.castShadow=true;});
+      object.root.position.y=downProgress*4+
+        (actor.health>0&&actor.posture==='crouch'?-5:0);
+      const firing=s.shots.find(shot=>shot.shooterId===actor.id&&
+        shot.age<.115&&shotVisibility(s,shot).flash);
+      object.flash.visible=!!firing&&actor.health>0;
+      if(firing){
+        object.flash.scale.setScalar(1.55*(1-firing.age/.115)+.3);
+        object.arms[0].rotation.x-=.16*(1-firing.age/.115);
+        object.arms[1].rotation.x-=.16*(1-firing.age/.115);
+      }
     }
-    // Fire traces are visual evidence of the simulation, not independent shots.
-    this.effects.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
-    this.effects.clear();
-    const friendly=this.shotFriendly,hostile=this.shotHostile;
+    // 079: One persistent, ID-keyed effect per actual simulation shot.
+    // Shared geometry and bounded per-shot materials avoid frame-by-frame GC.
+    const active=new Set<number>();
     for(const shot of s.shots){
-      const a=v(shot.start,14),b=v(shot.end,9);
-      const mid=a.clone().add(b).multiplyScalar(.5);
-      const cyl=new THREE.Mesh(new THREE.CylinderGeometry(.55,.55,
-        a.distanceTo(b),5),shot.side==='blue'?friendly:hostile);
-      cyl.position.copy(mid);
-      cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),
-        b.clone().sub(a).normalize());
-      cyl.material.transparent=true;
-      cyl.material.opacity=Math.max(0,1-shot.age/.24);
-      this.effects.add(cyl);
-      const impact=new THREE.Mesh(new THREE.SphereGeometry(shot.hit?4:2,6,4),
-        shot.hit?hostile:friendly);
-      impact.position.copy(b);this.effects.add(impact);
+      const visibility=shotVisibility(s,shot);
+      if(!visibility.flash&&!visibility.trace&&!visibility.impact)continue;
+      active.add(shot.id);
+      let effect=this.effectCache.get(shot.id);
+      if(!effect){
+        const root=new THREE.Group();
+        const material=new THREE.MeshBasicMaterial({
+          color:shot.side==='blue'?0xffde9d:0xff9b73,
+          transparent:true,depthWrite:false});
+        const impactMaterial=new THREE.MeshBasicMaterial({
+          color:shot.down?0xe66d5c:shot.hit?0xf3a58a:0xe2d3b1,
+          transparent:true,depthWrite:false});
+        const line=new THREE.Mesh(this.tracerGeometry,material);
+        const impact=new THREE.Mesh(this.impactGeometry,impactMaterial);
+        root.add(line,impact);this.effects.add(root);
+        effect={root,line,impact,material,impactMaterial};
+        this.effectCache.set(shot.id,effect);
+      }
+      const start=v(shot.start,15),end=v(shot.end,12);
+      const flight=end.clone().sub(start);
+      effect.line.position.copy(start).addScaledVector(flight,.5);
+      effect.line.scale.set(1,flight.length(),1);
+      effect.line.quaternion.setFromUnitVectors(
+        this.tracerAxis,flight.normalize());
+      effect.line.visible=visibility.trace&&shot.age<.19;
+      effect.material.opacity=Math.max(0,1-shot.age/.20);
+      effect.impact.position.copy(end);
+      const pulse=shot.hit?4.8:2.9;
+      effect.impact.scale.setScalar(pulse*(1+.5*shot.age/.40));
+      effect.impactMaterial.opacity=Math.max(0,1-shot.age/.40);
+      effect.impact.visible=visibility.impact&&shot.age<.40;
+    }
+    for(const [id,effect] of this.effectCache){
+      if(active.has(id))continue;
+      this.effects.remove(effect.root);
+      effect.material.dispose();effect.impactMaterial.dispose();
+      this.effectCache.delete(id);
     }
     // Reuse the same current sight and exploration state that drives 2D fog.
     if(this.fogAt>=.18||this.fogAt<0){
