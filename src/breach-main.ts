@@ -1096,7 +1096,7 @@ function tick(now:number){
   const fresh=state.shots.filter(shot=>shot.id>lastSoundShotId);
   if(audio)for(const shot of fresh.slice(-3)){
     playTone(shot.side==='blue'?135:105,.095,true);
-    if(shot.hit)playTone(shot.down?75:225,shot.down?.25:.10,
+    if(shot.hit)playTone(shot.down?75:225,shot.down ? .25 : .10,
       shot.down);
   }
   if(fresh.length)lastSoundShotId=fresh.at(-1)!.id;
