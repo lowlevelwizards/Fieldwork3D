@@ -752,7 +752,13 @@ function sprite(a:TeamActor){
     draw.beginPath();draw.arc(a.p.x,a.p.y,16,0,2*Math.PI);draw.stroke();
     conical(a);
   }
-  draw.save();draw.translate(a.p.x,a.p.y);draw.rotate(a.heading);
+  const impactAge=state.seconds-a.lastHitAt;
+  const flinch=impactAge>=0&&impactAge<.28?1-impactAge/.28:0;
+  const firing=state.shots.some(shot=>shot.shooterId===a.id&&
+    shot.age<.11&&shotVisibility(state,shot).flash);
+  draw.save();
+  draw.translate(a.p.x-flinch*2.3,a.p.y+flinch*1.7);
+  draw.rotate(a.heading+flinch*.14);
   circle(0,2,11,'#0d1b20af');circle(0,0,9.2,friendly?'#4b756f':'#794a43');
   // Body and alternating leg extension are driven by actual travel.
   const gait=Math.sin(state.seconds*15+Math.floor(a.p.x*.15))*
@@ -762,12 +768,16 @@ function sprite(a:TeamActor){
   rect(-7,-5,14,10,c);
   rect(-10,-4,5,8,friendly?'#45625d':'#563e39');
   circle(4,0,3.8,friendly?'#d3dac1':'#d0a58a');
-  rect(5,-2,18,4,'#1a2527');
-  rect(20,-1,6,2,'#a2a9a1');
+  rect(firing?2:5,-2,18,4,'#1a2527');
+  rect(firing?17:20,-1,6,2,'#a2a9a1');
   draw.restore();
   if(friendly){
     draw.textAlign='center';draw.font='bold 10px monospace';
     draw.fillStyle=c;draw.fillText(a.name,a.p.x,a.p.y-21);
+    if(a.suppression>.53){
+      draw.fillStyle='#eac69d';draw.font='bold 9px monospace';
+      draw.fillText('SUPP',a.p.x,a.p.y-32);
+    }
     if(a.health===1){draw.fillStyle='#e7a886';
       draw.fillRect(a.p.x-8,a.p.y+13,16,2);}
   }else{
