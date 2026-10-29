@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#c5d2c9" />
+  <title>Fieldwork — Verdigris Valley · Watershed</title>
+</head>
+<body>
+  <canvas id="app" aria-label="Single isometric ground block with changing daylight and mist; drag to orbit and pinch to zoom"></canvas>
+  <section class="time-inspector" aria-label="Time of day">
+    <div class="time-inspector__row">
+      <button type="button" id="timeToggle" aria-label="Pause time" aria-pressed="false">Ⅱ</button>
+      <output id="timeLabel" for="timeScrub">05:15</output>
+      <span class="time-inspector__phase" id="phaseLabel">PRE-DAWN</span>
+    </div>
+    <input type="range" id="timeScrub" aria-label="Set time of day" min="0" max="1440" step="1" value="315" />
+    <div class="cloud-inspector">
+      <label id="cloudCoverLabel" for="cloudCover">CLOUDS 70%</label>
+      <input type="range" id="cloudCover" aria-label="Cloud coverage percentage" min="0" max="100" step="1" value="70" />
+      <button type="button" id="cloudAuto" aria-label="Restore automatic cloud coverage" aria-pressed="true">AUTO</button>
+    </div>
+    <div class="rain-status">
+      <span>PRECIPITATION</span>
+      <span id="rainLabel" role="status" aria-live="off">RAIN 0% · DRY</span>
+    </div>
+    <div class="water-status">
+      <span>WATER / SOIL</span>
+      <span id="waterLabel" aria-live="off">WATER 0.0 L</span>
+      <button type="button" id="waterClear" aria-label="Clear accumulated puddles" title="Reset accumulated water">CLEAR</button>
+    </div>
+    <div class="environment-status">
+      <span id="windLabel">WIND 0 m/h</span>
+      <span id="evapLabel">EVAP 0 L</span>
+    </div>
+    <div class="flow-status" id="flowLabel">
+      UPSTREAM 0 L · CHANNEL 0 L · FLOOD 0 L
+    </div>
+    <div class="cover-header">
+      <span>GROUND COVER</span>
+      <button type="button" id="coverToggle" aria-pressed="false" aria-controls="coverPanel">INSPECT</button>
+    </div>
+    <div id="coverPanel" class="cover-panel" hidden>
+      <div class="cover-legend"><span>BARE SOIL</span><span class="cover-legend-gradient" aria-hidden="true"></span><span>VEGETATED</span></div>
+      <output id="coverStatus">Touch or drag to inspect permanent vegetation cover.</output>
+    </div>
+    <div class="woody-header">
+      <span>TREES / SHRUBS</span>
+      <button type="button" id="woodyToggle" aria-pressed="false" aria-controls="woodyPanel">INSPECT</button>
+    </div>
+    <div id="woodyPanel" class="woody-panel" hidden>
+      <div class="woody-controls">
+        <button type="button" id="woodyLayer" title="Cycle tree suitability, shrub suitability and actual canopy">TREES</button>
+        <span id="woodyCounts">TREE / SHRUB COUNTS</span>
+      </div>
+      <output id="woodyStatus" aria-live="off">Touch the landscape to inspect woody plant habitat.</output>
+    </div>
+    <div class="traffic-header">
+      <span>LOAD / MOBILITY</span>
+      <button type="button" id="trafficToggle" aria-pressed="false" aria-controls="trafficPanel">GROUND TEST</button>
+    </div>
+    <div id="trafficPanel" class="traffic-panel" hidden>
+      <div class="traffic-actions">
+        <button type="button" id="trafficKind" title="Switch simulated ground load">FOOT</button>
+        <span class="traffic-legend">GOOD <span class="traffic-legend-gradient"></span> BLOCKED</span>
+        <button type="button" id="trafficReset" title="Clear tracks only; water is unaffected">CLEAR TRACKS</button>
+      </div>
+      <output id="trafficStatus">Touch or drag on the ground to test passage.</output>
+    </div>
+  </section>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

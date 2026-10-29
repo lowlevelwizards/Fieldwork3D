@@ -10,7 +10,7 @@ const {chromium}=await import('playwright');
 const directory=resolve('live-ground-captures');
 await mkdir(directory,{recursive:true});
 const port=4180;
-const url=`http://127.0.0.1:${port}/`;
+const url=`http://127.0.0.1:${port}/verdigris.html`;
 const server=spawn(process.execPath,[
   'node_modules/vite/bin/vite.js',
   '--host','127.0.0.1','--port',String(port),'--strictPort',

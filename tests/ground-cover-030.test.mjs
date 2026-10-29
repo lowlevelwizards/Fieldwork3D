@@ -90,7 +90,7 @@ test('individual blades are reserved for a genuinely close camera scale',()=>{
 });
 test('main scene contains the cover inspector but does not instantiate 3D blades',()=>{
   const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8');
-  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+  const html=readFileSync(new URL('../verdigris.html',import.meta.url),'utf8');
   assert.ok(html.includes('id="coverToggle"'));
   assert.ok(html.includes('id="coverStatus"'));
   assert.ok(main.includes('updateTerrainMoisture(ground.geometry,standingWater,coverInspection)'));

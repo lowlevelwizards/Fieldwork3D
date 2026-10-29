@@ -1,73 +1,59 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
-  <meta name="theme-color" content="#c5d2c9" />
-  <title>Fieldwork — Verdigris Valley · Watershed</title>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="theme-color" content="#171f22"/>
+<title>FIELDWORK — Tactical Breach</title>
+<link rel="stylesheet" href="./src/breach-style.css"/>
 </head>
 <body>
-  <canvas id="app" aria-label="Single isometric ground block with changing daylight and mist; drag to orbit and pinch to zoom"></canvas>
-  <section class="time-inspector" aria-label="Time of day">
-    <div class="time-inspector__row">
-      <button type="button" id="timeToggle" aria-label="Pause time" aria-pressed="false">Ⅱ</button>
-      <output id="timeLabel" for="timeScrub">05:15</output>
-      <span class="time-inspector__phase" id="phaseLabel">PRE-DAWN</span>
-    </div>
-    <input type="range" id="timeScrub" aria-label="Set time of day" min="0" max="1440" step="1" value="315" />
-    <div class="cloud-inspector">
-      <label id="cloudCoverLabel" for="cloudCover">CLOUDS 70%</label>
-      <input type="range" id="cloudCover" aria-label="Cloud coverage percentage" min="0" max="100" step="1" value="70" />
-      <button type="button" id="cloudAuto" aria-label="Restore automatic cloud coverage" aria-pressed="true">AUTO</button>
-    </div>
-    <div class="rain-status">
-      <span>PRECIPITATION</span>
-      <span id="rainLabel" role="status" aria-live="off">RAIN 0% · DRY</span>
-    </div>
-    <div class="water-status">
-      <span>WATER / SOIL</span>
-      <span id="waterLabel" aria-live="off">WATER 0.0 L</span>
-      <button type="button" id="waterClear" aria-label="Clear accumulated puddles" title="Reset accumulated water">CLEAR</button>
-    </div>
-    <div class="environment-status">
-      <span id="windLabel">WIND 0 m/h</span>
-      <span id="evapLabel">EVAP 0 L</span>
-    </div>
-    <div class="flow-status" id="flowLabel">
-      UPSTREAM 0 L · CHANNEL 0 L · FLOOD 0 L
-    </div>
-    <div class="cover-header">
-      <span>GROUND COVER</span>
-      <button type="button" id="coverToggle" aria-pressed="false" aria-controls="coverPanel">INSPECT</button>
-    </div>
-    <div id="coverPanel" class="cover-panel" hidden>
-      <div class="cover-legend"><span>BARE SOIL</span><span class="cover-legend-gradient" aria-hidden="true"></span><span>VEGETATED</span></div>
-      <output id="coverStatus">Touch or drag to inspect permanent vegetation cover.</output>
-    </div>
-    <div class="woody-header">
-      <span>TREES / SHRUBS</span>
-      <button type="button" id="woodyToggle" aria-pressed="false" aria-controls="woodyPanel">INSPECT</button>
-    </div>
-    <div id="woodyPanel" class="woody-panel" hidden>
-      <div class="woody-controls">
-        <button type="button" id="woodyLayer" title="Cycle tree suitability, shrub suitability and actual canopy">TREES</button>
-        <span id="woodyCounts">TREE / SHRUB COUNTS</span>
-      </div>
-      <output id="woodyStatus" aria-live="off">Touch the landscape to inspect woody plant habitat.</output>
-    </div>
-    <div class="traffic-header">
-      <span>LOAD / MOBILITY</span>
-      <button type="button" id="trafficToggle" aria-pressed="false" aria-controls="trafficPanel">GROUND TEST</button>
-    </div>
-    <div id="trafficPanel" class="traffic-panel" hidden>
-      <div class="traffic-actions">
-        <button type="button" id="trafficKind" title="Switch simulated ground load">FOOT</button>
-        <span class="traffic-legend">GOOD <span class="traffic-legend-gradient"></span> BLOCKED</span>
-        <button type="button" id="trafficReset" title="Clear tracks only; water is unaffected">CLEAR TRACKS</button>
-      </div>
-      <output id="trafficStatus">Touch or drag on the ground to test passage.</output>
-    </div>
-  </section>
-  <script type="module" src="/src/main.ts"></script>
+<canvas id="breachCanvas" aria-label="Top-down tactical encounter. Choose an operator, plan waypoints and execute." role="img"></canvas>
+<header class="top">
+  <div class="ident"><span>FIELDWORK <i>/</i> TACTICAL STUDY</span>
+    <strong>CUTWOODS / STATION</strong><small>01 — TWO ROOMS, TWO OPERATORS</small></div>
+  <div class="mode"><strong id="phase">PLANNING</strong><output id="clock">00:00</output></div>
+</header>
+<div class="guidance" id="hint" role="status" aria-live="polite">Tap to move · Select an order for LOOK, PIE, or STRAFE</div>
+<section class="orders compact" id="advancedOrders" aria-label="Additional tactical options">
+  <button id="undo" type="button" title="Undo the last planning edit">UNDO</button>
+  <button id="redo" type="button" title="Redo the last planning edit">REDO</button>
+  <button id="wait" type="button">WAIT</button>
+  <button id="sync" type="button" title="Synchronize both operators">SYNC</button>
+  <button id="stance" type="button">CROUCH</button>
+  <button id="contact" type="button" aria-pressed="false">STOP ON CONTACT</button>
+  <button id="variant" type="button">SITE 1/3</button>
+  <button id="clear" type="button" title="Clear all remaining orders for selected operator">CLEAR PLAN</button>
+  <button id="restart" type="button">RESTART</button>
+  <button id="viewIso" type="button" aria-pressed="true">ISO</button>
+  <button id="viewTop" type="button" aria-pressed="false">TOP</button>
+  <button id="view2d" type="button" aria-pressed="false">2D</button>
+  <button id="cameraFit" type="button">FIT VIEW</button>
+</section>
+<div id="contextTools" class="context-tools" role="toolbar" aria-label="Contextual tactical actions" hidden></div>
+<div class="feed" id="feed" aria-live="polite">PLAN THE ENTRY</div>
+<nav class="bar" aria-label="Tactical controls">
+  <div class="units">
+    <button id="rook" class="unit selected" type="button" aria-pressed="true">
+      <span class="unit-code">01</span><strong>ROOK</strong><small id="rookHp">●●</small>
+    </button>
+    <button id="moss" class="unit" type="button" aria-pressed="false">
+      <span class="unit-code">02</span><strong>MOSS</strong><small id="mossHp">●●</small>
+    </button>
+  </div>
+  <div class="actions">
+    <button id="back" type="button" title="Remove just the final pending order">BACK −1</button>
+    <button id="moreOrders" type="button" aria-pressed="false" title="Additional commands and views">TOOLS</button>
+    <button id="play" type="button" class="play">GO <span>▶</span></button>
+  </div>
+</nav>
+<section id="debrief" class="debrief" hidden aria-label="Mission debrief">
+  <strong id="debriefTitle">MISSION COMPLETE</strong>
+  <p id="debriefStats"></p>
+  <button id="retry" type="button">RETRY MISSION</button>
+  <button id="next" type="button">NEXT ARRANGEMENT</button>
+</section>
+<div class="foot"><span id="mission">CONTACTS UNKNOWN • SECURE THE STATION</span><span class="shortcut">TAP TO ORDER · DRAG TO ORBIT · 2 FINGERS PAN/PINCH</span></div>
+<script type="module" src="./src/breach-main.ts"></script>
 </body>
 </html>
