@@ -7,7 +7,7 @@ import { RegionalTerrainField } from './regional-terrain';
 import { CutwoodsPhysicalScene,ActorFigure } from './regional-visuals';
 import { newOperation,stepOperation,orderPlayer,playerFire,issueSquadOrder,
   type OperationState } from './regional-command';
-import { stepActor,type Vector2 } from './regional-actors';
+import {stepActor} from './regional-actors';
 import {physicalGroundAt} from './regional-physical.ts';
 import {FloatingTouchControls,screenDirection} from './operator-touch.ts';
 import {FootstepAudio} from './operator-audio.ts';
@@ -72,7 +72,6 @@ const audio=new FootstepAudio();
 let operation:OperationState=newOperation();
 let explore=false;
 let squadRally=false;
-let joystick:Vector2={x:0,z:0};
 let lastHud=0;
 let cameraDt=1/60;
 let selectedInfo=false;
@@ -225,7 +224,7 @@ function resetView():void{
   resize();updateCamera();
 }
 function setExplore(active:boolean):void{
-  explore=active;joystick={x:0,z:0};squadRally=false;
+  explore=active;squadRally=false;
   touch?.reset();if(touch)touch.enabled=active;
   document.body.classList.toggle('exploring',active);
   ui.exploreControls.hidden=!active||soloMode;
@@ -297,7 +296,7 @@ function handleGroundTap(x:number,y:number){
 touch=new FloatingTouchControls(view,cameraActions,handleGroundTap);
 touch.enabled=explore;
 function resetInput(){
-  keys.clear();joystick={x:0,z:0};touch?.reset();
+  keys.clear();touch?.reset();
 }
 window.addEventListener('blur',resetInput);
 document.addEventListener('visibilitychange',()=>{
@@ -342,7 +341,7 @@ ui.restartOperation.addEventListener('click',()=>{
 ui.holdOrder.addEventListener('click',()=>{
   const player=operation.actors.find(a=>a.id===operation.playerId)!;
   player.destination=null;player.path=[];
-  joystick={x:0,z:0};renderStatus();
+  renderStatus();
 });
 ui.resetButton.addEventListener('click',resetView);
 window.addEventListener('resize',()=>{resize();updateCamera();});
