@@ -25,7 +25,7 @@ export class TacticalScene3D{
   private fogUnknown:THREE.InstancedMesh;
   private fogExplored:THREE.InstancedMesh;
   private actors=new Map<string,{root:THREE.Group;legs:THREE.Group[];
-    arms:THREE.Group[];flash:THREE.Mesh;pack:THREE.Mesh}>();
+    arms:THREE.Group[];flash:THREE.Mesh;pack:THREE.Mesh;status:THREE.Mesh}>();
   private doors=new Map<string,{root:THREE.Group;leaf:THREE.Group;
     frame:THREE.Group;halo:THREE.Mesh;threshold:THREE.Mesh}>();
   private observedDoorOpen=new Map<string,boolean>();
@@ -423,7 +423,12 @@ export class TacticalScene3D{
       new THREE.MeshBasicMaterial({color:0xffde97,transparent:true,opacity:.96,
         depthWrite:false}));
     flash.position.set(28,15,4);flash.visible=false;root.add(flash);
-    this.scene.add(root);this.actors.set(a.id,{root,legs,arms,flash,pack});
+    const status=new THREE.Mesh(new THREE.RingGeometry(12,16,30),
+      new THREE.MeshBasicMaterial({color:0xdb8d76,transparent:true,
+        opacity:.9,depthWrite:false,side:THREE.DoubleSide}));
+    status.rotation.x=-Math.PI/2;status.visible=false;
+    this.scene.add(root,status);
+    this.actors.set(a.id,{root,legs,arms,flash,pack,status});
     void weapon;
   }
   update(s:Session,selected:string,dt:number,focusedDoorId:string|null=null){
@@ -463,6 +468,18 @@ export class TacticalScene3D{
       const object=this.actors.get(actor.id)!;
       object.root.visible=actor.side==='blue'||
         (actor.health>0?isSeen(s,actor):liveVisibility(s,actor.p));
+      const hitTime=s.seconds-actor.lastHitAt;
+      const down=actor.health<=0;
+      object.status.visible=object.root.visible&&
+        (down||(hitTime>=0&&hitTime<.28));
+      if(object.status.visible){
+        object.status.position.set(actor.p.x,1.15,actor.p.y);
+        const pulse=down?1.15:1+.45*(1-hitTime/.28);
+        object.status.scale.setScalar(pulse);
+        const statusMat=object.status.material as THREE.MeshBasicMaterial;
+        statusMat.opacity=down?.85:Math.max(0,1-hitTime/.28);
+        statusMat.color.setHex(down?0xd99e83:0xf4c7aa);
+      }
       if(!object.root.visible)continue;
       object.root.position.set(actor.p.x,0,actor.p.y);
       object.root.rotation.y=-actor.heading;
