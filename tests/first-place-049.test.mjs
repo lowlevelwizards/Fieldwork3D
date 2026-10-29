@@ -76,7 +76,7 @@ test('049: four local detailed tiles share matching terrain geometry at the comp
  field.dispose(scene);
 });
 test('049: camera clears nearby elevated terrain instead of cutting across the view',()=>{
- const ground=(x,z)=>2+3*Math.exp(-(x-5)**2/10);
+ const ground=(x,z)=>2+3*Math.exp(-((x-5)**2)/10);
  const target={x:0,y:ground(0,0),z:0},eye={x:10,y:4,z:0};
  assert.ok(cameraGroundClearance(eye,target,ground)<1,
   'a too-close camera should actually intersect the terrain');
