@@ -617,3 +617,42 @@ All region art and behavior live in `regional-physical.ts`,
 `regional-actors.ts`, `regional-visuals.ts`,
 `regional-ecology.ts` and `regional-command.ts`.
 The 10m lab's water and vegetation source remain separate.
+
+## Builds 043–048 — The single-operator Fieldwork experience
+
+The playable regional entry, `world.html`, now opens in **solo Explore
+mode**, not the four-actor operation. This is intentionally an isolated
+feel test: the existing `regional-command.ts` faction/NPC prototype is
+preserved, and can still be accessed explicitly with
+`world.html?tactical=1`. No new combat or campaign systems are
+introduced by this pass.
+
+- Original 0.0.2 **floating dual-touch** scheme restored and adapted to
+  the 1 km terrain. Touch lower left and drag to move; touch lower
+  right and drag to orbit. Paired distinct thumb zones operate
+  independently; adjacent fingers pinch, pan, and twist. Tap terrain
+  to issue a waypoint. On desktop use WASD/arrow keys, drag to orbit,
+  shift-drag to pan, mouse wheel to zoom, and F to reset focus.
+- Analog speed and camera-relative direction: up on the movement
+  thumbstick always means forward on screen. Camera follows with
+  spring-like smoothing and a temporary look offset on panning.
+- Rook's character model is rebuilt from the original operator's
+  jacket, helmet, torso straps, equipment, backpack, gloves and boots,
+  with hip/knee/ankle articulation. It is physically **1.75 metres**
+  high. The walk cycle, foot lift and ground contact are driven by
+  actual distance travelled; blocked characters don't march in place.
+- The default HUD is only a small Cutwoods header and the operator's
+  current movement status. Other details open behind INFO; Survey
+  and the region selector remain available. Old combat/squad buttons
+  are hidden, not wired into this solo trial.
+- Optional synthesized short ground-contact sounds are **off by
+  default** until the player taps SOUND OFF to opt in. Footsteps are
+  triggered by actual movement and adapt subtly to road/wet ground.
+- Rook begins close to an existing suitable tree rather than in the
+  barren middle of the 1 km map. World terrain and ecology still own
+  the tree placement; there is no special authored scene dressing.
+
+No changes were made to the 10 m Environment Lab, persistent river
+simulation, global faction intent, pathfinding architecture, or
+region definitions. This is an experience restoration and review
+checkpoint, not a new simulation layer.
