@@ -168,3 +168,18 @@ button:focus-visible{outline:2px solid #e9c493;outline-offset:3px}
   .context-tools{max-width:calc(100vw - 14px);gap:3px}
   .context-tools button{padding:8px 9px;min-height:39px}
 }
+
+/* 077: context stays in the safe lane between the header and bottom bar.
+ * TOOLS and context are mutually exclusive, so no overlay can eat a tap. */
+.context-tools{max-width:min(350px,calc(100vw - 16px));
+  transform:translateX(-50%);row-gap:5px}
+.context-tools[data-door]:not([data-door=""]){border-color:#cbb588aa}
+.context-tools .door-action{background:#544635;color:#f1dcba;
+  border-color:#a99068;font-weight:700}
+.context-tools .door-action:active{background:#766143}
+.bar #back{min-width:68px;touch-action:manipulation}
+@media(max-width:450px){
+  .context-tools{max-width:calc(100vw - 16px)}
+  .context-tools button{min-height:40px}
+  .bar #back{min-width:62px}
+}
