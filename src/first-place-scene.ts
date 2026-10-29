@@ -214,7 +214,6 @@ export class FirstPlaceScene{
  }
  private radioMast(x:number,z:number,metal:THREE.Material,
   accent:THREE.Material,dark:THREE.Material){
-  const y=physicalGroundAt(x,z);
   for(let i=0;i<4;i++){
    const h=i*4+2;
    this.box(x,z,h,.30,4,.30,metal);
