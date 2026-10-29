@@ -12,7 +12,7 @@ export const FIRST_PLACE={
   name:'CUTWOODS FIELD STATION',
   center:{x:91,z:110},
   halfSize:50,
-  spawn:{x:127,z:129},
+  spawn:{x:108,z:129},
   house:{x:76,z:90},
   shed:{x:94,z:118},
   gate:{x:117,z:118},
