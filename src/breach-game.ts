@@ -435,8 +435,13 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   }
   if(n.kind==='sync'){
     a.syncReady=n.syncCode??'A';
-    const peers=team(s).filter(x=>x.health>0);
-    if(peers.every(x=>x.syncReady===a.syncReady)){
+    // Only actors still carrying this code participate. An undone
+    // companion order must not create a permanent one-sided deadlock.
+    const code=a.syncReady;
+    const peers=team(s).filter(x=>x.health>0&&
+      (x.syncReady===code||x.plan.some(order=>
+        order.kind==='sync'&&order.syncCode===code)));
+    if(peers.every(x=>x.syncReady===code)){
       // Clear all participants in the same fixed simulation tick.
       for(const teammate of peers)pop(teammate);
       notify(s,'GO CODE '+(n.syncCode??'A'));
