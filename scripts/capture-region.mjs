@@ -43,7 +43,11 @@ try{
     throw Error('Default regional world did not open as solo operator');
   if(await page.locator('body.solo.exploring').count()!==1)
     throw Error('Solo immersion layout not activated');
+  const placeName=await page.locator('#worldRegionName').innerText();
+  if(!placeName.includes('FIELD STATION'))
+    throw Error('The first authored place was not loaded: '+placeName);
   await page.screenshot({path:resolve(directory,'rook-solo-first-frame-mobile.png')});
+  await page.screenshot({path:resolve(directory,'field-station-opening-049.png')});
   await page.locator('#worldMode').click();
   await page.locator('#coords').waitFor();
   await page.locator('#regionStatus').getByText('REGION 03 / 06').waitFor();
