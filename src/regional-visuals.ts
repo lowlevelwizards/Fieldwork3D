@@ -4,7 +4,6 @@ import {BUILDINGS,deckYAt,physicalGroundAt,roadCenterX,
 import {establishRegionalPlants,plantsNear,
   type RegionalPlant} from './regional-ecology.ts';
 import {regionRiverX,globalSouthM} from './playable-region-model.ts';
-import type {GroundedActor} from './regional-actors.ts';
 const earth=new THREE.MeshStandardMaterial({color:0x988a72,roughness:1});
 const roof=new THREE.MeshStandardMaterial({color:0x787c70,roughness:1});
 const wall=new THREE.MeshStandardMaterial({color:0xc0bcaa,roughness:1});
@@ -134,56 +133,4 @@ export class CutwoodsPhysicalScene{
     for(const mesh of this.vegetationMeshes)mesh.geometry.dispose();
   }
 }
-const uniforms={
-  player:new THREE.MeshStandardMaterial({color:0x4b91a5,roughness:1}),
-  northline:new THREE.MeshStandardMaterial({color:0x6d8d84,roughness:1}),
-  commune:new THREE.MeshStandardMaterial({color:0xbc7365,roughness:1}),
-};
-const skin=new THREE.MeshStandardMaterial({color:0xbdb8a6,roughness:1});
-const pack=new THREE.MeshStandardMaterial({color:0x696d55,roughness:1});
-export class ActorFigure{
-  readonly group=new THREE.Group();
-  private readonly legs:THREE.Group[]=[];
-  private readonly arms:THREE.Group[]=[];
-  readonly actor:GroundedActor;
-  constructor(scene:THREE.Scene,actor:GroundedActor){
-    this.actor=actor;
-    const add=(parent:THREE.Object3D,w:number,h:number,d:number,
-      material:THREE.Material,x:number,y:number,z:number)=>{
-      const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
-      mesh.position.set(x,y,z);parent.add(mesh);
-    };
-    const mat=uniforms[actor.team];
-    add(this.group,.45,.70,.24,mat,0,1.12,0);
-    add(this.group,.30,.28,.30,skin,0,1.59,0);
-    add(this.group,.40,.47,.19,pack,0,1.10,-.22);
-    for(const sign of [-1,1]){
-      const leg=new THREE.Group();
-      leg.position.set(sign*.14,.85,0);
-      add(leg,.17,.78,.18,mat,0,-.38,0);
-      this.legs.push(leg);this.group.add(leg);
-      const arm=new THREE.Group();
-      arm.position.set(sign*.34,1.35,0);
-      add(arm,.16,.56,.17,mat,0,-.26,0);
-      this.arms.push(arm);this.group.add(arm);
-    }
-    // Small facing marker is part of the character silhouette.
-    add(this.group,.13,.07,.20,skin,0,1.58,.17);
-    scene.add(this.group);
-    this.update(0);
-  }
-  update(time:number):void{
-    const a=this.actor;
-    this.group.position.set(a.x,a.y,a.z);
-    this.group.rotation.y=a.heading;
-    this.group.visible=a.health>0;
-    const amount=Math.min(1,Math.hypot(a.vx,a.vz)/Math.max(.1,a.speed));
-    const cycle=time*7.5+Number(a.id.length);
-    this.legs.forEach((leg,i)=>{leg.rotation.x=Math.sin(cycle+i*Math.PI)*.38*amount;});
-    this.arms.forEach((arm,i)=>{arm.rotation.x=-Math.sin(cycle+i*Math.PI)*.24*amount;});
-  }
-  dispose(scene:THREE.Scene):void{
-    scene.remove(this.group);
-    this.group.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
-  }
-}
+export {ActorFigure} from './operator-figure.ts';
