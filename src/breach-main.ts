@@ -63,7 +63,7 @@ let doorFocusId:string|null=null;
 let draggingNode:Pt|null=null;
 let fogData=new Uint8Array(16*19),fogStamp=-1;
 let audio:AudioContext|null=null;
-let lastSoundShotCount=0,lastEventAudio='';
+let lastSoundShotId=0,lastEventAudio='';
 const playTone=(frequency:number,decay:number,noise=false)=>{
   try{
     if(!audio)return;
@@ -858,7 +858,7 @@ function reset(next=state.variant){
   state=newSession(next);selected='rook';looking=false;
   selectedNode=null;doorFocusId=null;draggingNode=null;
   cursor=null;trace=null;zoom=1;panX=panY=0;
-  fogStamp=-1;lastSoundShotCount=0;lastEventAudio='';
+  fogStamp=-1;lastSoundShotId=0;lastEventAudio='';
   layout();updateHud();
 }
 ui.rook.addEventListener('click',()=>selectUnit('rook'));
@@ -1091,10 +1091,15 @@ function tick(now:number){
       stepSession(state,1/60);accum-=1/60;
     }
   }else accum=0;
-  if(audio&&state.shots.length>lastSoundShotCount){
-    playTone(115,.095,true);
+  // 079: shot IDs are monotonic, unlike the short-lived shot array length.
+  // A new shot can arrive on exactly the tick an old shot expires.
+  const fresh=state.shots.filter(shot=>shot.id>lastSoundShotId);
+  if(audio)for(const shot of fresh.slice(-3)){
+    playTone(shot.side==='blue'?135:105,.095,true);
+    if(shot.hit)playTone(shot.down?75:225,shot.down?.25:.10,
+      shot.down);
   }
-  lastSoundShotCount=state.shots.length;
+  if(fresh.length)lastSoundShotId=fresh.at(-1)!.id;
   const event=state.events.at(-1)??'';
   if(event!==lastEventAudio&&event.includes('OPENED'))
     playTone(160,.16);
