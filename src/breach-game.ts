@@ -276,7 +276,8 @@ export function insertPlanNode(s:Session,id:string,index:number,p:Pt){
  * A selected waypoint applies its instruction on arrival, then all subsequent
  * walking inherits it until another aim instruction explicitly overrides it.
  */
-export function planAim(s:Session,id:string,mode:AimMode,target:Pt,nodeId?:number){
+export function planAim(s:Session,id:string,mode:AimMode,target:Pt,nodeId?:number,
+  label:'look'|'strafe'|'pie'=mode==='track'?'pie':'look'){
   const a=party(s,id);
   if(!a||!canEdit(s)||!Number.isFinite(target.x)||!Number.isFinite(target.y))return false;
   const node=nodeId===undefined?undefined:a.plan.find(n=>n.id===nodeId);
@@ -284,11 +285,11 @@ export function planAim(s:Session,id:string,mode:AimMode,target:Pt,nodeId?:numbe
   const pos=node?.p??finalPoint(a);
   if(d(pos,target)<2)return false;
   const patch:Partial<PlanNode>=mode==='fixed'?
-    {aimMode:'fixed',facing:angle(pos,target),aimPoint:undefined}:
-    {aimMode:'track',facing:undefined,aimPoint:clone(target)};
+    {aimMode:'fixed',facing:angle(pos,target),aimPoint:undefined,aimLabel:label}:
+    {aimMode:'track',facing:undefined,aimPoint:clone(target),aimLabel:label};
   if(node)return edit(s,a,()=>{
     node.aimMode=patch.aimMode;node.facing=patch.facing;
-    node.aimPoint=patch.aimPoint;
+    node.aimPoint=patch.aimPoint;node.aimLabel=patch.aimLabel;
   });
   return addNode(s,id,'look',pos,patch);
 }
