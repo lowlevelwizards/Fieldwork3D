@@ -85,10 +85,10 @@ export class TacticalScene3D{
     fgeom.rotateX(-Math.PI/2);
     const unknownMat=new THREE.MeshBasicMaterial({
       color:0x071416,side:THREE.DoubleSide,transparent:true,
-      opacity:.69,depthWrite:false});
+      opacity:.52,depthWrite:false});
     const exploredMat=new THREE.MeshBasicMaterial({
       color:0x071819,side:THREE.DoubleSide,transparent:true,
-      opacity:.21,depthWrite:false});
+      opacity:.18,depthWrite:false});
     this.mats.push(unknownMat,exploredMat);
     this.fogUnknown=new THREE.InstancedMesh(fgeom,unknownMat,16*19);
     this.fogExplored=new THREE.InstancedMesh(fgeom,exploredMat,16*19);
