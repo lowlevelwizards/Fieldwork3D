@@ -247,7 +247,7 @@ function resetView():void{
   target.set(x,explore?physicalGroundAt(x,z):regionLocalHeightM(loadedId,x,z),z);
   yaw=.75;
   elevation=THREE.MathUtils.degToRad(explore?43:57);
-  zoom=explore?125:1;
+  zoom=explore?54:1;
   probe.visible=false;
   resize();updateCamera();
 }
