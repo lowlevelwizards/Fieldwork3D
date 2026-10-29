@@ -45,6 +45,70 @@ try{
   if(!await phone.locator('#breach3dCanvas').isVisible())
     throw Error('Default opening is not the isometric Three.js battlefield');
   await phone.screenshot({path:resolve(folder,'09-phone-isometric-opening.png')});
+  // 074: inspect camera state through read-only canvas attributes.
+  const cameraState=async()=>phone.locator('#breach3dCanvas').evaluate(c=>({
+    yaw:Number(c.dataset.cameraYaw),
+    pitch:Number(c.dataset.cameraPitch),
+    zoom:Number(c.dataset.cameraZoom),
+    x:Number(c.dataset.cameraFocusX),
+    y:Number(c.dataset.cameraFocusY),
+  }));
+  const near=(a,b,tolerance=.025)=>Math.abs(a-b)<tolerance;
+  const touch=await phone.context().newCDPSession(phone);
+  const touchGesture=async (initial,changes)=>{
+    const asPoints=points=>points.map((p,i)=>({id:i+1,x:p[0],y:p[1]}));
+    await touch.send('Input.dispatchTouchEvent',
+      {type:'touchStart',touchPoints:asPoints(initial)});
+    for(const next of changes){
+      await touch.send('Input.dispatchTouchEvent',
+        {type:'touchMove',touchPoints:asPoints(next)});
+      await phone.waitForTimeout(45);
+    }
+    await touch.send('Input.dispatchTouchEvent',
+      {type:'touchEnd',touchPoints:[]});
+  };
+  const origin=await cameraState();
+  if(!near(origin.zoom,1.25)||!Number.isFinite(origin.yaw))
+    throw Error('Camera did not start with calibrated world framing');
+  await phone.locator('#cameraOrbit').click();
+  if(await phone.locator('#cameraOrbit').getAttribute('aria-pressed')!=='true')
+    throw Error('Orbit mode did not activate');
+  await touchGesture([[165,420]],[[[190,425]],[[220,438]],[[260,451]]]);
+  const turned=await cameraState();
+  if(near(turned.yaw,origin.yaw,.12)||near(turned.pitch,origin.pitch,.06))
+    throw Error('One-finger orbit failed to rotate and tilt independently');
+  if(!near(turned.x,origin.x,1)||!near(turned.y,origin.y,1))
+    throw Error('Orbit changed focus; it should circle the same map point');
+  await phone.locator('#cameraPan').click();
+  await touchGesture([[170,410]],[[[195,401]],[[225,380]],[[255,358]]]);
+  const shifted=await cameraState();
+  if(near(shifted.x,turned.x,3)&&near(shifted.y,turned.y,3))
+    throw Error('One-finger PAN did not move the world point');
+  if(!near(shifted.yaw,turned.yaw,.025))
+    throw Error('PAN unexpectedly rotated the camera');
+  const beforeZoom=await cameraState();
+  await phone.locator('#zoomIn').click();
+  const zoomed=await cameraState();
+  if(!(zoomed.zoom>beforeZoom.zoom))
+    throw Error('Zoom + did not move the orthographic camera');
+  await phone.locator('#zoomOut').click();
+  if(!near((await cameraState()).zoom,beforeZoom.zoom,.03))
+    throw Error('Zoom - is not inverse to zoom +');
+  await phone.locator('#cameraFit').click();
+  const fitted=await cameraState();
+  if(!near(fitted.x,320,.2)||!near(fitted.y,370,.2)||
+      !near(fitted.zoom,1.25,.025))
+    throw Error('FIT did not restore centered world-space view');
+  await phone.locator('#cameraPan').click(); // Return to normal planning.
+  await touchGesture([[172,475],[216,475]],
+    [[[160,475],[229,475]],[[149,475],[242,475]],[[139,475],[253,475]]]);
+  const pinch=await cameraState();
+  if(!(pinch.zoom>fitted.zoom*1.7))
+    throw Error('Two-finger pinch did not zoom proportionally');
+  if(!near(pinch.yaw,fitted.yaw,.045))
+    throw Error('Pinch accidentally rotated the map');
+  await phone.locator('#cameraFit').click();
+  await phone.screenshot({path:resolve(folder,'14-phone-camera-controls.png')});
   await phone.locator('#viewTop').click();
   if(await phone.locator('#viewTop').getAttribute('aria-pressed')!=='true')
     throw Error('Top-down camera switch failed');
@@ -197,6 +261,33 @@ try{
   await pc.goto(url,{waitUntil:'domcontentloaded'});
   await pc.locator('#phase').waitFor();
   await pc.screenshot({path:resolve(folder,'04-desktop-opening.png')});
+  const pcCam=async()=>pc.locator('#breach3dCanvas').evaluate(c=>({
+    yaw:Number(c.dataset.cameraYaw),zoom:Number(c.dataset.cameraZoom),
+    x:Number(c.dataset.cameraFocusX),y:Number(c.dataset.cameraFocusY),
+  }));
+  const startPc=await pcCam();
+  await pc.mouse.move(605,410);
+  await pc.mouse.down({button:'right'});
+  await pc.mouse.move(680,435,{steps:5});
+  await pc.mouse.up({button:'right'});
+  const pcOrbited=await pcCam();
+  if(near(pcOrbited.yaw,startPc.yaw,.15))
+    throw Error('Desktop right-button drag failed to orbit the battlefield');
+  if(!near(pcOrbited.x,startPc.x,1)||!near(pcOrbited.y,startPc.y,1))
+    throw Error('Desktop orbit drifted toward a selected unit');
+  await pc.mouse.move(620,407);
+  await pc.mouse.down({button:'middle'});
+  await pc.mouse.move(670,400,{steps:5});
+  await pc.mouse.up({button:'middle'});
+  const pcPanned=await pcCam();
+  if(near(pcPanned.x,pcOrbited.x,3)&&near(pcPanned.y,pcOrbited.y,3))
+    throw Error('Desktop middle-button PAN did not move the focus');
+  await pc.mouse.move(800,400);
+  await pc.mouse.wheel(0,-350);
+  const pcZoomed=await pcCam();
+  if(!(pcZoomed.zoom>startPc.zoom))
+    throw Error('Desktop wheel did not zoom toward pointer');
+  await pc.screenshot({path:resolve(folder,'15-desktop-orbit-pan-zoom.png')});
   await pc.keyboard.press('Space');
   await pc.waitForTimeout(280);
   if(await pc.locator('#phase').innerText()!=='EXECUTING')

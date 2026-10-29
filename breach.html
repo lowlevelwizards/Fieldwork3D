@@ -39,6 +39,11 @@
   <button id="view2d" type="button" aria-pressed="false" title="Legacy two-dimensional plan view">2D</button>
   <button id="rotLeft" type="button" title="Rotate camera counterclockwise">↶</button>
   <button id="rotRight" type="button" title="Rotate camera clockwise">↷</button>
+  <button id="cameraOrbit" type="button" aria-pressed="false" title="Drag one finger to orbit the map and tilt the camera">ORBIT</button>
+  <button id="cameraPan" type="button" aria-pressed="false" title="Drag one finger to move the camera without issuing orders">PAN</button>
+  <button id="zoomOut" type="button" title="Zoom out">−</button>
+  <button id="zoomIn" type="button" title="Zoom in">+</button>
+  <button id="cameraFit" type="button" title="Refit camera around the complete battlefield">FIT</button>
 </div>
 <div class="feed" id="feed" aria-live="polite">PLAN THE ENTRY</div>
 <nav class="bar" aria-label="Tactical controls">
@@ -64,7 +69,7 @@
   <button id="retry" type="button">RETRY MISSION</button>
   <button id="next" type="button">NEXT ARRANGEMENT</button>
 </section>
-<div class="foot"><span id="mission">CONTACTS UNKNOWN • SECURE THE STATION</span><span class="shortcut">TAP ORDER · TWO-FINGER PAN/ROTATE</span></div>
+<div class="foot"><span id="mission">CONTACTS UNKNOWN • SECURE THE STATION</span><span class="shortcut">TAP ORDER · 2 FINGERS PAN/PINCH · ORBIT TO ROTATE</span></div>
 <script type="module" src="./src/breach-main.ts"></script>
 </body>
 </html>
