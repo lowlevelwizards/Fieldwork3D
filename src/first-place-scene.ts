@@ -156,7 +156,7 @@ export class FirstPlaceScene{
     vertices.push(px,physicalGroundAt(px,pz)+offset,pz);
    }
    if(i){
-    const k=2*i;indices.push(k-2,k,k-1,k-1,k,k+1);
+    const k=2*i;indices.push(k-2,k-1,k,k-1,k+1,k);
    }
   }
   const g=new THREE.BufferGeometry();
