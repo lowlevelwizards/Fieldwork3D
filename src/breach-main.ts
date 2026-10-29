@@ -39,6 +39,11 @@ const ui={
   view2d:el<HTMLButtonElement>('view2d'),
   rotLeft:el<HTMLButtonElement>('rotLeft'),
   rotRight:el<HTMLButtonElement>('rotRight'),
+  cameraOrbit:el<HTMLButtonElement>('cameraOrbit'),
+  cameraPan:el<HTMLButtonElement>('cameraPan'),
+  zoomIn:el<HTMLButtonElement>('zoomIn'),
+  zoomOut:el<HTMLButtonElement>('zoomOut'),
+  cameraFit:el<HTMLButtonElement>('cameraFit'),
   back:el<HTMLButtonElement>('back'),
   undo:el<HTMLButtonElement>('undo'),redo:el<HTMLButtonElement>('redo'),
   insert:el<HTMLButtonElement>('insert'),delete:el<HTMLButtonElement>('delete'),
@@ -96,8 +101,10 @@ let cursor:Pt|null=null;
 let trace:Pt[]|null=null;
 const activePointers=new Map<number,{x:number;y:number;startX:number;startY:number;
   wasUnit:boolean;nodeId:number|null;
-  mode:'undecided'|'route'|'pan'|'node'|'pivot'|'sweep';moved:boolean}>();
+  mode:'undecided'|'route'|'pan'|'node'|'pivot'|'sweep'|'cameraOrbit'|'cameraPan'|'cameraMulti';moved:boolean}>();
 let pinchDistance=0,panMid:Pt|null=null,pinchAngle=0;
+let twistAmount=0,twistActive=false;
+let cameraTool:'orders'|'orbit'|'pan'='orders';
 let pieRepositionNode:number|null=null;
 const colors={rook:'#a2d4ca',moss:'#b9c6a0'};
 const colorFor=(id:string)=>id==='rook'?colors.rook:colors.moss;
@@ -122,15 +129,27 @@ const toWorld=(x:number,y:number):Pt=>{
 const worldToScreen=(p:Pt,height=4):Pt=>
   stage&&viewMode!=='plan2d'?stage.project(p,height):
     {x:ox+p.x*viewScale,y:oy+p.y*viewScale};
-function fitZoom(next:number){
-  zoom=clamp(next,1,2.8);
+function fitZoom(next:number,x=cssW/2,y=cssH/2){
   if(stage&&viewMode!=='plan2d'){
-    stage.view.zoom=zoom;stage.updateCamera(1);
-  }else layout();
+    stage.zoomAt(clamp(next,.65,6)/stage.view.zoom,x,y);
+  }else{
+    zoom=clamp(next,.65,4.8);layout();
+  }
+  updateContext();
+}
+function setCameraTool(tool:'orders'|'orbit'|'pan'){
+  cameraTool=cameraTool===tool?'orders':tool;
+  if(viewMode==='plan2d'&&cameraTool==='orbit')cameraTool='orders';
+  ui.cameraOrbit.setAttribute('aria-pressed',String(cameraTool==='orbit'));
+  ui.cameraPan.setAttribute('aria-pressed',String(cameraTool==='pan'));
+  canvas.style.cursor=cameraTool==='orbit'?'grab':
+    cameraTool==='pan'?'move':'crosshair';
+  updateContext();
 }
 function cameraMode(mode:ViewMode){
   viewMode=stage?mode:'plan2d';
   if(stage){stage.setMode(viewMode);stage.updateCamera(1);}
+  if(viewMode==='plan2d'&&cameraTool==='orbit')setCameraTool('orders');
   for(const [m,button] of [['iso',ui.viewIso],
     ['top',ui.viewTop],['plan2d',ui.view2d]] as const){
     button.setAttribute('aria-pressed',String(m===viewMode));
@@ -139,7 +158,7 @@ function cameraMode(mode:ViewMode){
 }
 function turnCamera(shift:number){
   if(stage&&viewMode!=='plan2d'){
-    stage.setYaw(stage.view.yaw+shift);updateContext();
+    stage.rotate(shift);updateContext();
   }
 }
 const uid=(id:string)=>team(state).find(o=>o.id===id);
@@ -881,6 +900,9 @@ window.addEventListener('keydown',e=>{
   if(e.code==='KeyV'&&!e.repeat)cameraMode(viewMode==='iso'?'top':'iso');
   if(e.code==='KeyQ'&&!e.repeat)turnCamera(-Math.PI/8);
   if(e.code==='KeyE'&&!e.repeat)turnCamera(Math.PI/8);
+  if(e.code==='KeyC'&&!e.repeat)setCameraTool('orbit');
+  if(e.code==='KeyP'&&!e.repeat)setCameraTool('pan');
+  if(e.code==='Digit0'&&!e.repeat)ui.cameraFit.click();
 });
 function pointerWorld(e:PointerEvent){return toWorld(e.clientX,e.clientY);}
 const hitNode=(p:Pt):{id:number;index:number}|null=>{
@@ -896,38 +918,55 @@ const hitNode=(p:Pt):{id:number;index:number}|null=>{
   }
   return null;
 };
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
 canvas.addEventListener('pointerdown',e=>{
   e.preventDefault();canvas.setPointerCapture(e.pointerId);
   const pt=pointerWorld(e);
-  // Active contextual orders have priority over picking an overlapping
-  // soldier or waypoint, especially near a crowded doorway on mobile.
-  const contextual=looking||doorMode||insertMode||pieMode!==null||pieRepositionNode!==null;
-  const hit=contextual?undefined:team(state).find(a=>
-    a.health>0&&(viewMode==='plan2d'||!stage?
-      distance(a.p,pt)<22:
-      distance(worldToScreen(a.p,24),{x:e.clientX,y:e.clientY})<25));
-  if(hit)selectUnit(hit.id);
-  const current=uid(selected)?.plan.find(n=>n.id===selectedNode);
-  let handle:'pivot'|'sweep'|null=null;
-  if(!contextual&&current?.kind==='pie'&&stage&&viewMode!=='plan2d'){
-    if(current.pivot&&distance(worldToScreen(current.pivot,12),
-      {x:e.clientX,y:e.clientY})<22)handle='pivot';
-    else if(distance(worldToScreen(current.p,8),
-      {x:e.clientX,y:e.clientY})<20)handle='sweep';
+  // Explicit camera interaction does NOT select units or place orders.
+  const cameraModeInput=viewMode!=='plan2d'&&
+    (e.button===2||cameraTool==='orbit'&&e.pointerType!=='mouse'||
+      cameraTool==='orbit'&&e.button===0||
+      cameraTool==='pan'||e.button===1||e.shiftKey);
+  if(cameraModeInput){
+    const orbit=e.button===2||cameraTool==='orbit'&&
+      e.button!==1&&!e.shiftKey;
+    activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
+      startX:e.clientX,startY:e.clientY,wasUnit:false,nodeId:null,
+      mode:orbit?'cameraOrbit':'cameraPan',moved:false});
+  }else{
+    const contextual=looking||doorMode||insertMode||
+      pieMode!==null||pieRepositionNode!==null;
+    const hit=contextual?undefined:team(state).find(a=>
+      a.health>0&&(viewMode==='plan2d'||!stage?
+        distance(a.p,pt)<22:
+        distance(worldToScreen(a.p,24),{x:e.clientX,y:e.clientY})<25));
+    if(hit)selectUnit(hit.id);
+    const current=uid(selected)?.plan.find(n=>n.id===selectedNode);
+    let handle:'pivot'|'sweep'|null=null;
+    if(!contextual&&current?.kind==='pie'&&stage&&viewMode!=='plan2d'){
+      if(current.pivot&&distance(worldToScreen(current.pivot,12),
+        {x:e.clientX,y:e.clientY})<22)handle='pivot';
+      else if(distance(worldToScreen(current.p,8),
+        {x:e.clientX,y:e.clientY})<20)handle='sweep';
+    }
+    const node=state.phase==='planning'&&!hit&&!contextual&&!handle?
+      hitNode(pt):null;
+    if(node)selectedNode=node.id;
+    activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
+      startX:e.clientX,startY:e.clientY,wasUnit:!!hit,
+      nodeId:handle?selectedNode:node?.id??null,
+      mode:handle??(node?'node':'undecided'),moved:false});
   }
-  const node=state.phase==='planning'&&!hit&&!contextual&&!handle?hitNode(pt):null;
-  if(node)selectedNode=node.id;
-  activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
-    startX:e.clientX,startY:e.clientY,wasUnit:!!hit,
-    nodeId:handle?selectedNode:node?.id??null,
-    mode:handle??(node?'node':'undecided'),moved:false});
   if(activePointers.size>=2){
-    for(const p of activePointers.values())p.mode='pan';
+    // Cancel any tentative route gesture when a second finger arrives.
+    // The remaining finger is never retroactively treated as a map tap.
+    for(const pointer of activePointers.values())pointer.mode='cameraMulti';
     const pts=[...activePointers.values()];
     pinchDistance=distance({x:pts[0].x,y:pts[0].y},
       {x:pts[1].x,y:pts[1].y});
     panMid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
     pinchAngle=Math.atan2(pts[1].y-pts[0].y,pts[1].x-pts[0].x);
+    twistAmount=0;twistActive=false;
     trace=null;draggingNode=null;
   }
 });
@@ -944,19 +983,33 @@ canvas.addEventListener('pointermove',e=>{
     const gap=distance({x:pts[0].x,y:pts[0].y},
       {x:pts[1].x,y:pts[1].y});
     const mid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
-    const twist=Math.atan2(pts[1].y-pts[0].y,pts[1].x-pts[0].x);
+    const angle=Math.atan2(pts[1].y-pts[0].y,pts[1].x-pts[0].x);
+    const turn=Math.atan2(Math.sin(angle-pinchAngle),
+      Math.cos(angle-pinchAngle));
     if(stage&&viewMode!=='plan2d'){
-      if(panMid)stage.pan(mid.x-panMid.x,mid.y-panMid.y);
-      if(pinchDistance>8)fitZoom(zoom*gap/pinchDistance);
-      const turn=Math.atan2(Math.sin(twist-pinchAngle),Math.cos(twist-pinchAngle));
-      if(Math.abs(turn)>.006)turnCamera(-turn);
+      if(panMid)stage.panBetween(panMid.x,panMid.y,mid.x,mid.y);
+      if(pinchDistance>8)stage.zoomAt(gap/pinchDistance,mid.x,mid.y);
+      twistAmount+=turn;
+      // A pinch does not become an accidental rotation until the user
+      // deliberately twists at least ~10 degrees.
+      if(!twistActive&&Math.abs(twistAmount)>.17)twistActive=true;
+      if(twistActive&&Math.abs(turn)>.004)stage.rotate(-turn);
     }else{
       if(panMid){panX+=mid.x-panMid.x;panY+=mid.y-panMid.y;}
-      if(pinchDistance>8)zoom=clamp(zoom*gap/pinchDistance,1,2.35);
+      if(pinchDistance>8)zoom=clamp(zoom*gap/pinchDistance,.65,4.8);
       layout();
     }
-    pinchAngle=twist;pinchDistance=gap;panMid=mid;return;
+    pinchAngle=angle;pinchDistance=gap;panMid=mid;return;
   }
+  if(p.mode==='cameraOrbit'&&stage&&viewMode!=='plan2d'){
+    stage.orbit(dx,dy);return;
+  }
+  if(p.mode==='cameraPan'){
+    if(stage&&viewMode!=='plan2d')stage.pan(dx,dy);
+    else{panX+=dx;panY+=dy;layout();}
+    return;
+  }
+  if(p.mode==='cameraMulti')return;
   if((p.mode==='node'||p.mode==='pivot'||p.mode==='sweep')&&
     p.moved&&p.nodeId!==null){
     draggingNode=cursor;return;
@@ -1006,26 +1059,45 @@ function releasePointer(e:PointerEvent,cancelled=false){
       pt.x<=W&&pt.y<=H)useSelectedGround(pt);
   }
   trace=null;draggingNode=null;activePointers.delete(e.pointerId);
-  if(activePointers.size<2){panMid=null;pinchDistance=0;pinchAngle=0;}
+  if(activePointers.size<2){panMid=null;pinchDistance=0;pinchAngle=0;
+    twistAmount=0;twistActive=false;}
   updateHud();
 }
 canvas.addEventListener('pointerup',e=>releasePointer(e));
 canvas.addEventListener('pointercancel',e=>releasePointer(e,true));
 canvas.addEventListener('lostpointercapture',e=>releasePointer(e,true));
-window.addEventListener('blur',()=>{activePointers.clear();trace=null;});
+window.addEventListener('blur',()=>{activePointers.clear();trace=null;
+  panMid=null;pinchDistance=0;twistActive=false;});
 window.addEventListener('resize',layout);
 ui.viewIso.addEventListener('click',()=>cameraMode('iso'));
 ui.viewTop.addEventListener('click',()=>cameraMode('top'));
 ui.view2d.addEventListener('click',()=>cameraMode('plan2d'));
 ui.rotLeft.addEventListener('click',()=>turnCamera(-Math.PI/8));
 ui.rotRight.addEventListener('click',()=>turnCamera(Math.PI/8));
+ui.cameraOrbit.addEventListener('click',()=>setCameraTool('orbit'));
+ui.cameraPan.addEventListener('click',()=>setCameraTool('pan'));
+ui.zoomIn.addEventListener('click',()=>{
+  const z=stage&&viewMode!=='plan2d'?stage.view.zoom:zoom;
+  fitZoom(z*1.3);
+});
+ui.zoomOut.addEventListener('click',()=>{
+  const z=stage&&viewMode!=='plan2d'?stage.view.zoom:zoom;
+  fitZoom(z/1.3);
+});
+ui.cameraFit.addEventListener('click',()=>{
+  if(stage&&viewMode!=='plan2d')stage.resetCamera();
+  else{zoom=1;panX=0;panY=0;layout();}
+  updateContext();
+});
 ui.moreOrders.addEventListener('click',()=>{
   const expanded=ui.orders.classList.toggle('compact')===false;
   ui.moreOrders.setAttribute('aria-pressed',String(expanded));
   ui.moreOrders.textContent=expanded?'HIDE':'TOOLS';
 });
 canvas.addEventListener('wheel',e=>{
-  e.preventDefault();fitZoom(zoom*Math.exp(-e.deltaY*.00065));
+  e.preventDefault();
+  const z=stage&&viewMode!=='plan2d'?stage.view.zoom:zoom;
+  fitZoom(z*Math.exp(-e.deltaY*.001),e.clientX,e.clientY);
 },{passive:false});
 function tick(now:number){
   const dt=Math.min(.08,Math.max(0,(now-last)/1000));last=now;
