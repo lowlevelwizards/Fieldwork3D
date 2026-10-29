@@ -30,6 +30,22 @@ try{
   });
   phone.setDefaultTimeout(12000);
   const errors=[];
+  // The Pages root must open this same game, not the archived watershed.
+  const home=await browser.newPage({viewport:{width:390,height:844}});
+  home.on('pageerror',e=>errors.push('homepage: '+e.message));
+  await home.goto(url.replace('breach.html',''),{
+    waitUntil:'domcontentloaded'});
+  await home.locator('#breachCanvas').waitFor();
+  if(await home.locator('#app').count())
+    throw Error('Pages root is still the old Verdigris game');
+  if(!await home.locator('#play').count())
+    throw Error('Pages root missing tactical GO control');
+  await home.screenshot({path:resolve(folder,'00-pages-home-breach.png')});
+  const original=await browser.newPage({viewport:{width:390,height:844}});
+  await original.goto(url.replace('breach.html','verdigris.html'),{
+    waitUntil:'domcontentloaded'});
+  await original.locator('#app').waitFor();
+  await original.close();await home.close();
   phone.on('pageerror',e=>errors.push(e.message));
   await phone.goto(url,{waitUntil:'domcontentloaded'});
   await phone.locator('#breachCanvas').waitFor();
