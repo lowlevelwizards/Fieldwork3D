@@ -7,6 +7,7 @@ import {StudyWorld,groundHeight,roadX,walkable}
 import {StudySoldier} from '../src/study-soldier.ts';
 
 test('051: authored world is a human-scale walkable road with real solid edges',()=>{
+  const scene=new THREE.Scene(),world=new StudyWorld(scene);
   assert.ok(Number.isFinite(groundHeight(1,10)));
   assert.ok(Math.abs(groundHeight(2,3)-groundHeight(2.1,3.1))<.3);
   for(const z of [-20,-12,2,10,24])
@@ -14,6 +15,7 @@ test('051: authored world is a human-scale walkable road with real solid edges',
   assert.equal(walkable(-14,-13),false,'the farmhouse shell obstructs');
   assert.equal(walkable(-7,5),false,'fence rail obstructs');
   assert.equal(walkable(44,2),false,'cannot leave the authored set');
+  world.dispose(scene);
 });
 test('051: renderer-independent study world composes ground and authored props',()=>{
   const scene=new THREE.Scene(),world=new StudyWorld(scene);
