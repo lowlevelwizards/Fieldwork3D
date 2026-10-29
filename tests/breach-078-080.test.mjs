@@ -74,7 +74,7 @@ test('078-080: 3D uses readable fog and per-shot effects, 2D shares cues',()=>{
   const stage=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
   const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
   assert.match(stage,/scene\.fog=null/);
-  assert.match(stage,/p\.x,past\?34:116,p\.y/);
+  assert.match(stage,/temp\.position\.set\(p\.x,36,p\.y\)/);
   assert.match(stage,/effectCache/);
   assert.match(stage,/shot\.shooterId===actor\.id/);
   assert.match(stage,/lastDownAt/);
