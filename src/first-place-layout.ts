@@ -51,6 +51,8 @@ export const YARD_EQUIPMENT=[
  {id:'pallets',x:66,z:125,type:'pallet'},
  {id:'field-logs',x:83,z:106,type:'logs'},
  {id:'sign',x:123,z:124,type:'sign'},
+ {id:'weather',x:101,z:132,type:'sensor'},
+ {id:'field-kit',x:98,z:124,type:'pallet'},
 ] as const;
 export const FIELD_TREES=[
  {x:37,z:145,scale:1.07},
@@ -61,6 +63,8 @@ export const FIELD_TREES=[
  {x:149,z:89,scale:.94},
  {x:157,z:147,scale:1.15},
  {x:91,z:159,scale:.98},
+ {x:105,z:150,scale:.82},
+ {x:135,z:124,scale:.92},
 ] as const;
 
 function distanceToSegment(x:number,z:number,s:SiteSegment):number{
@@ -77,7 +81,8 @@ export function fieldTreeAt(x:number,z:number,radius=.3):boolean{
 }
 export function fieldObjectAt(x:number,z:number,radius=.3):boolean{
  return YARD_EQUIPMENT.some(p=>
-  Math.hypot(x-p.x,z-p.z)<(p.type==='tank'?1.25:p.type==='generator'?1.3:.55)+radius);
+  Math.hypot(x-p.x,z-p.z)<(p.type==='tank'?1.25:p.type==='generator'?1.3:
+     p.type==='sensor'?.55:.55)+radius);
 }
 export function insideFirstPlace(x:number,z:number):boolean{
  return Math.abs(x-FIRST_PLACE.center.x)<=FIRST_PLACE.halfSize&&
