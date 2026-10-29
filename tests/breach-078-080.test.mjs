@@ -74,6 +74,11 @@ test('078-080: 3D uses readable fog and per-shot effects, 2D shares cues',()=>{
   const stage=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
   const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
   assert.match(stage,/scene\.fog=null/);
+  // A previous version used an opaque fog ceiling that made the station a
+  // featureless black diamond in ISO. Keep architecture readable by contract.
+  const unknown=stage.match(/const unknownMat=new THREE.MeshBasicMaterial\\(\\{[\\s\\S]*?opacity:(\\.\\d+)/);
+  assert.ok(unknown&&Number(unknown[1])<.65,
+    'unknown geometry mask cannot be a completely opaque roof');
   assert.match(stage,/temp\.position\.set\(p\.x,36,p\.y\)/);
   assert.match(stage,/effectCache/);
   assert.match(stage,/shot\.shooterId===actor\.id/);
@@ -82,4 +87,14 @@ test('078-080: 3D uses readable fog and per-shot effects, 2D shares cues',()=>{
   assert.match(main,/doorVisibility\(state,door\)/);
   assert.match(main,/shotVisibility\(state,shot\)/);
   assert.match(main,/shot\.down\?'DOWN':'HIT'/);
+});
+
+test('079: the presentation lab ships independently of tactical battle',()=>{
+  const html=readFileSync(new URL('../breach-visual-lab.html',import.meta.url),'utf8');
+  const config=readFileSync(new URL('../vite.config.ts',import.meta.url),'utf8');
+  assert.ok(html.includes('FIELDWORK / VISUAL LAB'));
+  assert.ok(html.includes('src/breach-visual-lab.ts'));
+  for(const id of ['miss','hit','down','reset','iso','top'])
+    assert.ok(html.includes('id="'+id+'"'));
+  assert.match(config,/breachVisualLab:/);
 });
