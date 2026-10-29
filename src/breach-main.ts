@@ -264,7 +264,7 @@ function architecture(){
     line({x,y:94},{x:x+52,y:94},'#d4d5bb',2);
   }
 }
-function conical(a:Operator,radius=110){
+function conical(a:TeamActor,radius=110){
   const a0=a.heading-.93,a1=a.heading+.93;
   draw.beginPath();draw.moveTo(a.p.x,a.p.y);
   draw.arc(a.p.x,a.p.y,radius,a0,a1);
