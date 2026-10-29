@@ -81,6 +81,7 @@ const keys=new Set<string>();
 const movementKeys=new Set(['KeyW','KeyA','KeyS','KeyD',
   'ArrowUp','ArrowDown','ArrowLeft','ArrowRight']);
 let target=new THREE.Vector3(0,280,0);
+const lookOffset=new THREE.Vector3();
 let yaw=.75;
 let elevation=THREE.MathUtils.degToRad(57);
 let zoom=1;
@@ -111,8 +112,9 @@ function updateCamera():void{
   if(explore){
     const player=operation.actors.find(a=>a.id===operation.playerId)!;
     const follow=1-Math.exp(-cameraDt*8.5);
-    target.x+=(player.x-target.x)*follow;
-    target.z+=(player.z-target.z)*follow;
+    target.x+=(player.x+lookOffset.x-target.x)*follow;
+    target.z+=(player.z+lookOffset.z-target.z)*follow;
+    lookOffset.multiplyScalar(Math.exp(-cameraDt*.32));
   }
   target.x=THREE.MathUtils.clamp(target.x,-480,480);
   target.z=THREE.MathUtils.clamp(target.z,-480,480);
@@ -213,16 +215,18 @@ function load(id:PlayableRegionId):void{
 }
 function resetView():void{
   const a=operation.actors.find(actor=>actor.id===operation.playerId)!;
-  target.set(explore?a.x:0,0,explore?a.z:0);
+  const x=explore?a.x:0,z=explore?a.z:0;
+  lookOffset.set(0,0,0);
+  target.set(x,explore?physicalGroundAt(x,z):regionLocalHeightM(loadedId,x,z),z);
   yaw=.75;
   elevation=THREE.MathUtils.degToRad(explore?65:57);
-  zoom=explore?45:1;
+  zoom=explore?78:1;
   probe.visible=false;
   resize();updateCamera();
 }
 function setExplore(active:boolean):void{
   explore=active;joystick={x:0,z:0};squadRally=false;
-  touch?.reset();
+  touch?.reset();if(touch)touch.enabled=active;
   document.body.classList.toggle('exploring',active);
   ui.exploreControls.hidden=!active||soloMode;
   ui.actorReadout.hidden=!active;
@@ -261,8 +265,12 @@ const cameraActions={
   pan:(dx:number,dy:number)=>{
     // Survey pan is spatial; the explore camera re-centers smoothly on Rook.
     const step=spanX/Math.max(1,innerWidth);
-    target.x+=(-Math.cos(yaw)*dx+Math.sin(yaw)*dy)*step;
-    target.z+=(Math.sin(yaw)*dx+Math.cos(yaw)*dy)*step;
+    const mx=(-Math.cos(yaw)*dx+Math.sin(yaw)*dy)*step;
+    const mz=(Math.sin(yaw)*dx+Math.cos(yaw)*dy)*step;
+    if(explore){
+      lookOffset.x=THREE.MathUtils.clamp(lookOffset.x+mx,-32,32);
+      lookOffset.z=THREE.MathUtils.clamp(lookOffset.z+mz,-32,32);
+    }else{target.x+=mx;target.z+=mz;}
     updateCamera();
   },
   zoom:(factor:number)=>{
@@ -287,6 +295,7 @@ function handleGroundTap(x:number,y:number){
   renderStatus();dirty=true;
 }
 touch=new FloatingTouchControls(view,cameraActions,handleGroundTap);
+touch.enabled=explore;
 function resetInput(){
   keys.clear();joystick={x:0,z:0};touch?.reset();
 }
