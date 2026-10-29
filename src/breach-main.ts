@@ -506,6 +506,109 @@ function paths(){
     }
   }
 }
+function renderProjectedPlans(){
+  if(!stage)return;
+  draw.setTransform(dpr,0,0,dpr,0,0);
+  draw.clearRect(0,0,cssW,cssH);
+  for(const a of team(state)){
+    if(a.health<=0)continue;
+    const color=colorFor(a.id);
+    let previous=a.p;
+    for(const n of a.plan){
+      const steps=n.kind==='pie'?n.arc??[]:
+        n.kind==='move'||n.kind==='door'?route(previous,n.p):[];
+      if(steps.length){
+        draw.beginPath();
+        const start=worldToScreen(previous,4);
+        draw.moveTo(start.x,start.y);
+        for(const point of steps){
+          const projected=worldToScreen(point,4);
+          draw.lineTo(projected.x,projected.y);
+        }
+        draw.strokeStyle=n.kind==='pie'?'#e8c090':color;
+        draw.globalAlpha=a.id===selected?.94:.50;
+        draw.lineWidth=n.kind==='pie'?3:2.4;
+        draw.setLineDash(n.kind==='pie'?[3,3]:[7,4]);
+        draw.stroke();draw.setLineDash([]);draw.globalAlpha=1;
+      }
+      const selectedNow=a.id===selected&&selectedNode===n.id;
+      const point=worldToScreen(selectedNow&&draggingNode?draggingNode:n.p,8);
+      circle(point.x,point.y,selectedNow?11:7,
+        selectedNow?'#ecd29f':n.kind==='pie'?'#daa972':color);
+      circle(point.x,point.y,3,'#233b39');
+      draw.fillStyle='#142829';draw.font='bold 11px monospace';
+      draw.textAlign='center';draw.fillText(String(a.plan.indexOf(n)+1),
+        point.x,point.y+3);
+      if(n.facing!==undefined){
+        const aim=worldToScreen({x:n.p.x+Math.cos(n.facing)*33,
+          y:n.p.y+Math.sin(n.facing)*33},8);
+        line(point,aim,'#efd5a4',2);
+        circle(aim.x,aim.y,3,'#efd5a4');
+      }
+      if(n.kind==='move'&&n.moveMode==='strafe'){
+        draw.fillStyle='#e0f7e9';draw.textAlign='left';
+        draw.font='bold 10px monospace';
+        draw.fillText('STRAFE',point.x+13,point.y-12);
+      }
+      if(n.kind==='door'){
+        draw.fillStyle='#e2ca9f';draw.textAlign='left';
+        draw.font='bold 10px monospace';
+        draw.fillText((n.method??'open').toUpperCase(),point.x+12,point.y-11);
+      }
+      if(n.kind==='pie'&&n.pivot){
+        const pivot=worldToScreen(n.pivot,12);
+        circle(pivot.x,pivot.y,7,'#e2b476');
+        circle(pivot.x,pivot.y,3,'#24322f');
+        line(point,pivot,'#e3b37c8a',1.5);
+        draw.textAlign='left';draw.font='bold 10px monospace';
+        draw.fillStyle='#e3bb87';
+        draw.fillText('PIVOT '+Math.round(n.pieDegrees??54)+'°',
+          pivot.x+10,pivot.y-12);
+      }
+      if(n.kind==='pie'&&n.arc?.length&&a.id===selected){
+        const finish=worldToScreen(n.arc.at(-1)!,8);
+        draw.strokeStyle='#f0d3a4';draw.lineWidth=1.8;
+        draw.strokeRect(finish.x-8,finish.y-8,16,16);
+      }
+      if(n.kind==='move'||n.kind==='door'||n.kind==='pie')previous=n.p;
+    }
+    const pawn=worldToScreen(a.p,32);
+    draw.textAlign='center';draw.font='bold 12px monospace';
+    draw.fillStyle=color;draw.fillText(a.name,pawn.x,pawn.y-9);
+    if(a.id===selected){
+      draw.strokeStyle='#e9d6b1';draw.lineWidth=1.5;
+      draw.beginPath();draw.arc(pawn.x,pawn.y+15,13,0,Math.PI*2);draw.stroke();
+    }
+  }
+  // Unknown enemies stay unrendered; only grounded last-known reports show.
+  for(const hostile of enemies(state)){
+    if(isSeen(state,hostile))continue;
+    const memory=lastKnown(state,hostile.id);
+    if(!memory||state.seconds-memory.at>25)continue;
+    const where=worldToScreen(memory.p,12);
+    draw.font='bold 17px monospace';draw.textAlign='center';
+    draw.fillStyle='#e6bb9d';
+    draw.fillText(memory.status==='heard'?'~':'?',where.x,where.y);
+  }
+  if(trace&&trace.length>1){
+    draw.beginPath();
+    const first=worldToScreen(trace[0],8);
+    draw.moveTo(first.x,first.y);
+    for(const point of trace.slice(1)){
+      const screen=worldToScreen(point,8);
+      draw.lineTo(screen.x,screen.y);
+    }
+    draw.strokeStyle='#f0cd96';draw.lineWidth=3;draw.stroke();
+  }
+  if(state.mission!=='clear'&&state.mission!=='done'){
+    const target=worldToScreen(state.mission==='secure'?
+      state.scenario.objective:state.scenario.extract,9);
+    draw.strokeStyle='#e8d5a6';draw.lineWidth=2;
+    draw.beginPath();draw.arc(target.x,target.y,17,0,2*Math.PI);draw.stroke();
+    draw.fillStyle='#e8d5a6';draw.font='bold 10px monospace';
+    draw.fillText(state.mission.toUpperCase(),target.x,target.y-23);
+  }
+}
 function fog(){
   // Cached visibility tile raster, refreshed only as the world moves.
   if(fogStamp<0||state.seconds-fogStamp>.24){
@@ -605,6 +708,9 @@ function endMessage(){
   }
 }
 function render(){
+  if(stage&&viewMode!=='plan2d'){
+    renderProjectedPlans();return;
+  }
   draw.setTransform(dpr,0,0,dpr,0,0);
   draw.fillStyle='#141e20';draw.fillRect(0,0,cssW,cssH);
   // Map-space drawing has a single reversible projection.
@@ -861,6 +967,7 @@ function tick(now:number){
     playTone(90,.25,true);
   lastEventAudio=event;
   if(now-hudAt>120){updateHud();hudAt=now;}
-  render();requestAnimationFrame(tick);
+  if(stage&&viewMode!=='plan2d')stage.update(state,selected,dt);
+  render();updateContext();requestAnimationFrame(tick);
 }
 layout();updateHud();requestAnimationFrame(tick);
