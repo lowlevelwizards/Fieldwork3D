@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {newSession,team,enemies,planMove,planAim,undoPlan,backOne,
   toggling,stepSession} from '../src/breach-game.ts';
 import {angleDifference,targetAngle} from '../src/breach-plan.ts';
@@ -75,9 +76,8 @@ test('076: aiming attached to a waypoint begins when reached and is undoable',()
   assert.equal(a.plan.length,0);
 });
 test('076: user-visible UI has only contextual aiming, no obsolete buttons',()=>{
-  const fs=await import('node:fs');
-  const html=fs.readFileSync(new URL('../breach.html',import.meta.url),'utf8');
-  const main=fs.readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
+  const html=readFileSync(new URL('../breach.html',import.meta.url),'utf8');
+  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
   for(const id of ['rook','moss','back','play','moreOrders','contextTools'])
     assert.ok(html.includes('id="'+id+'"'));
   for(const id of ['pieLeft','pieRight','strafe','insert','delete','door','aim'])
