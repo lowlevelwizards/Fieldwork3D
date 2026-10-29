@@ -207,10 +207,16 @@ function updateContext(){
       const button=document.createElement('button');
       button.type='button';button.dataset.action=option.id;
       button.textContent=option.label;
+      if(option.id==='ctxStack'||option.id==='ctxOpen'||
+        option.id==='ctxKick'||option.id==='ctxHold')
+        button.classList.add('door-action');
       ui.context.append(button);
     }
   }
   ui.context.hidden=false;
+  ui.context.dataset.door=door?.id??'';
+  ui.context.setAttribute('aria-label',door?
+    'Actions near '+door.id.toLowerCase()+' door':'Soldier and waypoint actions');
 
   // Use a real reserved viewport lane between header and bottom controls.
   // This is measured after the tray becomes visible so two-row door menus
