@@ -239,13 +239,14 @@ export class TacticalScene3D{
   }
   rotate(delta:number){this.setYaw(this.view.yaw+delta);}
   orbit(dx:number,dy:number){
-    // Drag right rotates the camera right; drag down pitches toward overhead.
-    // Match touch/OrbitControls direction rather than reversing both axes.
+    // The world follows the finger: dragging right moves the orbit left,
+    // and dragging downward lowers the camera angle (toward the horizon).
+    // Yaw and pitch must use the same hand-directed convention.
     if(this.view.mode==='plan2d')return;
     this.view.mode='iso';
     this.view.pitch=THREE.MathUtils.clamp(
-      this.view.pitch+dy*.004,35*Math.PI/180,Math.PI/2);
-    this.setYaw(this.view.yaw+dx*.007);
+      this.view.pitch-dy*.004,35*Math.PI/180,Math.PI/2);
+    this.setYaw(this.view.yaw-dx*.007);
   }
   /** A reset is a predictable full-board fit, independent of unit selection. */
   resetCamera(){
