@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {W,H,WALLS,COVER,doorCenter, type Pt} from './breach-core.ts';
+import {W,H,WALLS,COVER,type Pt} from './breach-core.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
 
 /** One authoritative 2D world, physically represented in one 3D scene.
