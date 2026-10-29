@@ -108,7 +108,7 @@ test('tree and shrub geometry is deliberately low-poly and rooted',()=>{
 });
 test('the main view has a contextual woody inspector and a stable vegetation field',()=>{
   const source=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8');
-  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+  const html=readFileSync(new URL('../verdigris.html',import.meta.url),'utf8');
   assert.ok(source.includes('new VegetationField(scene)'));
   assert.ok(source.includes('paintWoodyInspection('));
   assert.ok(source.includes('woodyHabitatAt(x,z'));
