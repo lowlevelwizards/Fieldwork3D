@@ -66,7 +66,7 @@ test('064,067: controls are contextual, accessible and camera-aware',()=>{
   const html=readFileSync(new URL('../breach.html',import.meta.url),'utf8');
   const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
   for(const id of ['contextTools','viewIso','viewTop','view2d',
-    'rotLeft','rotRight','moreOrders','advancedOrders'])
+    'cameraFit','moreOrders','advancedOrders'])
     assert.ok(html.includes('id="'+id+'"'),'missing '+id);
   assert.match(main,/doorAtNode\(state,selected/);
   assert.match(main,/stage\.screenToWorld/);
