@@ -55,6 +55,58 @@
     .explore-actions #fireButton{background:#795848}
     .explore-actions #squadOrder[aria-pressed="true"]{background:#d6c9a3;color:#203935}
     @media(max-width:380px){.thumbstick{width:100px;height:100px}#moveNub{top:29px;left:29px}.explore-ui{bottom:calc(max(10px,env(safe-area-inset-bottom)) + 205px)}}
+
+    /* 043–048: the original tactile field view returns. The actual
+       controls appear below the thumbs and never obscure the soldier
+       when the hands leave the screen. */
+    body.solo.exploring .world-info{display:none}
+    body.solo.exploring.show-info .world-info{display:grid}
+    body.solo.exploring .world-header .name{
+      background:#203938a3;box-shadow:none;border-color:#cedac452;
+      padding:7px 10px;max-width:185px}
+    body.solo.exploring .world-header .eyebrow{font-size:8px}
+    body.solo.exploring .world-header .name strong{font-size:12px;margin:2px 0}
+    body.solo.exploring .world-header .name small{display:none}
+    body.solo.exploring .world-header .world-actions{
+      display:flex;gap:4px;padding:4px;background:#203938b5}
+    body.solo.exploring .world-header .world-actions button{
+      font-size:9px;padding:7px 6px;min-height:34px}
+    body.solo.exploring #exploreControls{display:none}
+    #soloStatus{
+      position:fixed;z-index:6;bottom:max(19px,env(safe-area-inset-bottom));
+      left:12px;pointer-events:none;padding:8px 10px;
+      background:#213b35a3;border:1px solid #c5d4ba6b;
+      border-radius:6px;color:#e4dec9;letter-spacing:.08em;
+      font-size:10px;backdrop-filter:blur(5px)}
+    #soloStatus[hidden]{display:none}
+    .floating-stick{
+      position:fixed;z-index:8;width:124px;height:124px;
+      transform:translate(-50%,-50%) scale(.88);opacity:0;
+      pointer-events:none;transition:opacity .1s,transform .1s;
+      filter:drop-shadow(0 3px 9px #152c2955)}
+    .floating-stick.visible{transform:translate(-50%,-50%) scale(1);opacity:.93}
+    .stick-ring{
+      position:absolute;inset:8px;border-radius:50%;
+      border:1.5px solid #f2dcabda;background:#233d3770;
+      box-shadow:inset 0 0 0 6px #29443822}
+    .stick-ring:before,.stick-ring:after{content:"";position:absolute;
+      top:50%;left:50%;background:#f2dcab55;transform:translate(-50%,-50%)}
+    .stick-ring:before{width:1px;height:83px}
+    .stick-ring:after{width:83px;height:1px}
+    .stick-knob{position:absolute;top:50%;left:50%;width:44px;height:44px;
+      border:2px solid #f9e4b4eb;border-radius:50%;
+      background:#cfb87c9c;transform:translate(-50%,-50%)}
+    .stick-caption{position:absolute;left:0;right:0;bottom:-4px;
+      font-size:10px;font-weight:bold;letter-spacing:.12em;text-align:center;
+      color:#f7e4ba;text-shadow:0 2px 4px #203733}
+    @media(max-width:390px){
+      body.solo.exploring .world-header{left:7px;right:7px;gap:4px}
+      body.solo.exploring .world-header .name{max-width:141px}
+      body.solo.exploring .world-header .world-actions button{font-size:8px;padding:7px 5px}
+    }
+    @media(prefers-reduced-motion:reduce){
+      .floating-stick{transition:none}
+    }
   </style>
 </head>
 <body>
@@ -65,8 +117,9 @@
       <strong id="worldRegionName">CUTWOODS</strong>
       <small>1,000 × 1,000 m · Regional terrain</small>
     </div>
-    <div class="world-actions"><button id="worldMode" type="button" aria-pressed="false">EXPLORE</button><button id="regionMenuButton" type="button" aria-expanded="false" aria-controls="regionMenu">REGIONS</button></div>
+    <div class="world-actions"><button type="button" id="inspectToggle" aria-pressed="false">INFO</button><button type="button" id="soundToggle">SOUND OFF</button><button id="worldMode" type="button" aria-pressed="false">EXPLORE</button><button id="regionMenuButton" type="button" aria-expanded="false" aria-controls="regionMenu">REGIONS</button></div>
   </header>
+  <div id="soloStatus" hidden aria-live="off">ROOK / STANDING BY</div>
   <section class="world-info" aria-label="Geographic navigation and inspection">
     <div class="flex"><span id="regionStatus">REGION 03 / 06</span><span id="scaleDisplay" class="scale"><span class="scale-line"></span><span>200 m</span></span></div>
     <div id="actorReadout" hidden>OPERATOR · READY</div>
