@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="theme-color" content="#171f22"/>
+<title>FIELDWORK — Breach 01</title>
+<link rel="stylesheet" href="./src/breach-style.css"/>
+</head>
+<body>
+<canvas id="breachCanvas" aria-label="Top-down tactical encounter. Choose an operator, plan waypoints and execute." role="img"></canvas>
+<header class="top">
+  <div class="ident"><span>FIELDWORK <i>/</i> TACTICAL STUDY</span>
+    <strong>CUTWOODS / STATION</strong><small>01 — TWO ROOMS, TWO OPERATORS</small></div>
+  <div class="mode"><strong id="phase">PLANNING</strong><output id="clock">00:00</output></div>
+</header>
+<div class="guidance" id="hint" role="status" aria-live="polite">Choose Rook or Moss. Tap ground to add a route, or drag from an operator to draw one.</div>
+<div class="feed" id="feed" aria-live="polite">PLAN THE ENTRY</div>
+<nav class="bar" aria-label="Tactical controls">
+  <div class="units">
+    <button id="rook" class="unit selected" type="button" aria-pressed="true">
+      <span class="unit-code">01</span><strong>ROOK</strong><small id="rookHp">●●</small>
+    </button>
+    <button id="moss" class="unit" type="button" aria-pressed="false">
+      <span class="unit-code">02</span><strong>MOSS</strong><small id="mossHp">●●</small>
+    </button>
+  </div>
+  <div class="actions">
+    <button id="aim" type="button" title="Choose a point to face">LOOK</button>
+    <button id="clear" type="button">CLEAR</button>
+    <button id="play" type="button" class="play">GO <span>▶</span></button>
+    <button id="restart" type="button" title="Restart this encounter">↺</button>
+  </div>
+</nav>
+<div class="foot"><span id="mission">CONTACTS UNKNOWN • SECURE THE STATION</span><span class="shortcut">SPACE PAUSE · TAP TO PLAN</span></div>
+<script type="module" src="./src/breach-main.ts"></script>
+</body>
+</html>
