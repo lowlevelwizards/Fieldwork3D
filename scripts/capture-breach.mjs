@@ -107,6 +107,43 @@ try{
   if(await phone.locator('#variant').innerText()!=='SITE 2/3')
     throw Error('Scenario variation did not advance');
   await phone.screenshot({path:resolve(folder,'05-phone-alternate-site.png')});
+  // Build 063: verify one-step back without deleting the whole route.
+  await phone.locator('#rook').click();
+  const firstNode=screen(300,595,390,844);
+  const secondNode=screen(301,570,390,844);
+  await phone.touchscreen.tap(firstNode.x,firstNode.y);
+  await phone.touchscreen.tap(secondNode.x,secondNode.y);
+  if(await phone.locator('#back').isDisabled())throw Error('BACK did not arm for planned route');
+  await phone.locator('#back').click();
+  if(await phone.locator('#back').isDisabled())
+    throw Error('BACK incorrectly erased the entire route');
+  await phone.screenshot({path:resolve(folder,'06-phone-back-one.png')});
+  // STRAFE on the next segment; LOOK can set its independent facing.
+  await phone.locator('#strafe').click();
+  if(await phone.locator('#strafe').getAttribute('aria-pressed')!=='true')
+    throw Error('Strafe did not arm on touch');
+  const strafeTarget=screen(348,592,390,844);
+  await phone.touchscreen.tap(strafeTarget.x,strafeTarget.y);
+  await phone.touchscreen.tap(strafeTarget.x,strafeTarget.y);
+  if(await phone.locator('#strafe').getAttribute('aria-pressed')!=='true')
+    throw Error('Selected strafe node is not marked in the UI');
+  await phone.locator('#aim').click();
+  await phone.touchscreen.tap(...Object.values(screen(348,515,390,844)));
+  await phone.screenshot({path:resolve(folder,'07-phone-strafe-order.png')});
+  // Each sweep is one physical, undoable node, not a string of magic moves.
+  await phone.locator('#restart').click();
+  await phone.locator('#pieLeft').click();
+  if(await phone.locator('#pieLeft').getAttribute('aria-pressed')!=='true')
+    throw Error('Counter-clockwise pie did not arm');
+  await phone.touchscreen.tap(frontDoor.x,frontDoor.y);
+  if(await phone.locator('#pieLeft').getAttribute('aria-pressed')!=='false')
+    throw Error('Pie selection did not return to planning');
+  if(await phone.locator('#back').isDisabled())
+    throw Error('Door pie failed to generate its one authored order');
+  await phone.screenshot({path:resolve(folder,'08-phone-pie-arc.png')});
+  await phone.locator('#back').click();
+  if(!await phone.locator('#back').isDisabled())
+    throw Error('Single BACK did not remove entire pie maneuver');
   const pc=await browser.newPage({
     viewport:{width:1220,height:810},deviceScaleFactor:1,
   });
