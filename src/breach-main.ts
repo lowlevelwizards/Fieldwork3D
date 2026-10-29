@@ -1,7 +1,7 @@
 import {
   W,H,WALLS,COVER,GRID,doorCenter,own,hostiles,sees,
   newTacticalState,queueWaypoint,clearPath,setLook,toggleExecution,step,
-  type Pt,type Operator,type TacticalState,
+  type Pt,type Operator,
 } from './breach-core.ts';
 import './breach-style.css';
 
