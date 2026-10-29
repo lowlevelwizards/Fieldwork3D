@@ -3,7 +3,7 @@ export type Pt={x:number;y:number};
 export type PlanKind='move'|'door'|'wait'|'look'|'sync'|'pie';
 export type MoveMode='advance'|'strafe';
 /** Persistent world-facing instruction, independent of any movement route. */
-export type AimMode='fixed'|'track';
+export type AimMode='free'|'fixed'|'track';
 export type AimInstruction={mode:AimMode;angle?:number;point?:Pt};
 export type PieSide='cw'|'ccw';
 export type DoorMethod='open'|'kick'|'hold';
