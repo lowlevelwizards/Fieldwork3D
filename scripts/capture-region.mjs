@@ -38,6 +38,13 @@ try{
   const errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto(url,{waitUntil:'domcontentloaded',timeout:25000});
+  // Build 043 opens as a lone soldier. Survey remains a separate mode.
+  if(await page.locator('#worldMode').getAttribute('aria-pressed')!=='true')
+    throw Error('Default regional world did not open as solo operator');
+  if(await page.locator('body.solo.exploring').count()!==1)
+    throw Error('Solo immersion layout not activated');
+  await page.screenshot({path:resolve(directory,'rook-solo-first-frame-mobile.png')});
+  await page.locator('#worldMode').click();
   await page.locator('#coords').waitFor();
   await page.locator('#regionStatus').getByText('REGION 03 / 06').waitFor();
   const canvas=page.locator('#worldCanvas');
@@ -103,36 +110,38 @@ try{
   if(lab!==1)throw Error('Original Environment Lab entry is missing');
   await page.locator('#closeRegions').click();
   await page.locator('#worldMode').click();
-  await page.locator('#exploreControls:not([hidden])').waitFor();
-  const operatorBefore=await page.locator('#actorReadout').innerText();
-  const exploreBefore=await page.locator('#coords').innerText();
-  if(!operatorBefore.includes('3/3 INTEGRITY'))
-    throw Error('Human-sized Operator did not spawn correctly: '+operatorBefore);
+  await page.locator('#soloStatus').waitFor();
+  const operatorBefore=await page.locator('#actorReadout').textContent();
+  const exploreBefore=await page.locator('#soloStatus').innerText();
+  if(!operatorBefore?.includes('3/3 INTEGRITY'))
+    throw Error('Operator failed to spawn in single-soldier mode');
   await page.screenshot({path:resolve(directory,'cutwoods-explore-operator-mobile.png')});
-  const rect=await page.locator('#moveStick').boundingBox();
-  if(!rect)throw Error('Explore thumbstick did not render');
-  const sx=rect.x+rect.width/2,sy=rect.y+rect.height/2;
   const stickSession=await page.context().newCDPSession(page);
+  // Two fingers on independent halves of the bottom 60% of the screen:
+  // left = movement, right = orbit. Original 0.0.2 thumb grammar.
   await stickSession.send('Input.dispatchTouchEvent',{type:'touchStart',
-    touchPoints:[{id:9,x:sx,y:sy}]});
+    touchPoints:[{id:9,x:92,y:555},{id:10,x:294,y:555}]});
   await stickSession.send('Input.dispatchTouchEvent',{type:'touchMove',
-    touchPoints:[{id:9,x:sx+15,y:sy-34}]});
-  await page.waitForTimeout(1050);
-  const exploreAfter=await page.locator('#coords').innerText();
-  await stickSession.send('Input.dispatchTouchEvent',{type:'touchEnd',
-    touchPoints:[]});
-  if(exploreBefore===exploreAfter)
-    throw Error('Operator failed to move under real mobile thumbstick input');
+    touchPoints:[{id:9,x:106,y:504},{id:10,x:316,y:541}]});
+  await page.waitForTimeout(1100);
+  if(await page.locator('.floating-stick.visible').count()!==2)
+    throw Error('Independent mobile floating thumbsticks did not display');
+  const exploreAfter=await page.locator('#actorReadout').textContent();
   await page.screenshot({path:resolve(directory,'cutwoods-operator-moving-mobile.png')});
-  await page.locator('#fireButton').click();
-  await page.locator('#squadOrder').click();
-  if(await page.locator('#squadOrder').getAttribute('aria-pressed')!=='true')
-    throw Error('Squad rally mode did not arm');
-  await page.locator('#holdOrder').click();
-  await page.locator('#restartOperation').click();
-  const restarted=await page.locator('#actorReadout').innerText();
-  if(!restarted.includes('3/3 INTEGRITY'))
-    throw Error('Player restart did not restore the initial physical actor');
+  await stickSession.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  await page.waitForTimeout(160);
+  if(await page.locator('.floating-stick.visible').count()!==0)
+    throw Error('Touch controls stuck after fingers released');
+  if(exploreBefore===await page.locator('#soloStatus').innerText()&&
+    !exploreAfter?.includes('M/S'))
+    throw Error('Operator failed to accept mobile drive');
+  await page.locator('#inspectToggle').click();
+  if(await page.locator('#inspectToggle').getAttribute('aria-pressed')!=='true')
+    throw Error('Contextual inspection panel did not open');
+  await page.locator('#inspectToggle').click();
+  await page.locator('#soundToggle').click();
+  if(await page.locator('#soundToggle').innerText()!=='SOUND ON')
+    throw Error('Optional audio control did not enable after user click');
   await page.locator('#worldMode').click();
   if(await page.locator('#worldMode').getAttribute('aria-pressed')!=='false')
     throw Error('Operator cannot return to survey mode');
