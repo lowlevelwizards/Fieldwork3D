@@ -30,7 +30,7 @@ export type ShotEvent={start:Pt;end:Pt;age:number;hit:boolean;side:Side};
 export type KnownContact={p:Pt;at:number;status:'seen'|'heard'};
 export type MissionStage='clear'|'secure'|'extract'|'done';
 export type Scenario={index:number;name:string;objective:Pt;extract:Pt};
-export type Session=TacticalState & {
+export type Session=Omit<TacticalState,'operators'> & {
   operators:TeamActor[];variant:number;scenario:Scenario;
   mission:MissionStage;nextId:number;noise:NoiseEvent[];
   shots:ShotEvent[];known:Map<string,KnownContact>;
@@ -372,7 +372,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
   }
 }
-function softCoverPenalty(a:TeamActor,b:TeamActor){
+function softCoverPenalty(_a:TeamActor,b:TeamActor){
   if(b.posture!=='crouch')return 0;
   const closeCover=COVER.some(c=>c.low&&
     Math.hypot(b.p.x-c.x,b.p.y-c.y)<Math.max(c.w,c.h)*.8);
