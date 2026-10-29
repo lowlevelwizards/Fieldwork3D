@@ -656,3 +656,36 @@ No changes were made to the 10 m Environment Lab, persistent river
 simulation, global faction intent, pathfinding architecture, or
 region definitions. This is an experience restoration and review
 checkpoint, not a new simulation layer.
+
+## Build 049 — The First Place: Cutwoods field station
+
+**A single intentionally composed ~100 × 100 m place**, not another biome
+simulator, squad encounter or region. Solo Rook spawns near the actual
+field-station shed and its gate instead of a barren hillside. The existing
+kilometre-wide terrain, road, regional river, region selector and original
+10 m Environment Lab are preserved.
+
+- `first-place-layout.ts`: authored positions for station entrance,
+  maintenance shed, radio mast, yard, road access, real 14 m fence opening,
+  utility equipment, drainage line, narrow foot crossing and woodland edge.
+  The fence and landmarks share physical footprints with the movement and
+  sightline queries. No invisible gate collision.
+- `first-place-scene.ts`: intentionally low-poly station dressing and
+  ground-following paths, panel fencing, radio mast, instrument/storage
+  props, woodland framing and a recognizable working yard. No imported
+  assets, shader engine, randomized buildings or extra NPCs.
+- `regional-camera-clearance.ts`: the close camera samples the SAME
+  physical ground as the soldier along its eye-to-target segment, lifting
+  above steep foreground terrain instead of cutting large triangular
+  cliffs through the screen.
+- The existing four surrounding 125 m tiles are kept at detailed
+  resolution when exploring the station, keeping feet, fence posts and
+  path surfaces consistent with the physical terrain.
+- Existing tactical and faction demonstration remains available via
+  `world.html?tactical=1`, without new activities or changes to AI.
+
+**Intentionally deferred:** collecting logs, opening equipment, a
+player objective, sentry NPCs, firearms, procedural village placement or
+large regional simulation work. First verify that the *place* is readable,
+the gate is physically traversable, and a character can approach the
+building on iPhone without terrain slicing or detached props.
