@@ -97,7 +97,7 @@ let cursor:Pt|null=null;
 let trace:Pt[]|null=null;
 const activePointers=new Map<number,{x:number;y:number;startX:number;startY:number;
   wasUnit:boolean;nodeId:number|null;
-  mode:'undecided'|'route'|'pan'|'node';moved:boolean}>();
+  mode:'undecided'|'route'|'pan'|'node'|'pivot'|'sweep';moved:boolean}>();
 let pinchDistance=0,panMid:Pt|null=null,pinchAngle=0;
 let pieHandle:'pivot'|'sweep'|null=null;
 const colors={rook:'#a2d4ca',moss:'#b9c6a0'};
@@ -731,7 +731,7 @@ function toggleAim(){
 function armPie(side:PieSide){
   pieMode=pieMode===side?null:side;
   looking=false;doorMode=false;insertMode=false;strafeNext=false;
-  selectedNode=null;updateHud();
+  updateHud();
 }
 function useSelectedGround(pt:Pt){
   if(state.phase!=='planning')return;
@@ -741,10 +741,8 @@ function useSelectedGround(pt:Pt){
     looking=false;updateHud();return;
   }
   if(pieMode){
-    const door=bestPieDoor(pt,state.doors);
-    if(!door||distance(pt,doorCenter(door))>34||
-      !planPie(state,selected,door.id,pieMode))
-      state.events.push('PIE BLOCKED: POSITION NEAR DOOR, CHOOSE OTHER SWEEP');
+    if(!planPieAt(state,selected,pt,pieMode,65,selectedNode??undefined))
+      state.events.push('INVALID PIVOT OR SWEEP: MOVE TO AN OPEN ARC');
     pieMode=null;selectedNode=null;updateHud();return;
   }
   if(doorMode){
@@ -856,6 +854,9 @@ window.addEventListener('keydown',e=>{
     else undoPlan(state,selected);updateHud();
   }
   if(e.code==='KeyR'&&!e.repeat)reset();
+  if(e.code==='KeyV'&&!e.repeat)cameraMode(viewMode==='iso'?'top':'iso');
+  if(e.code==='KeyQ'&&!e.repeat)turnCamera(-Math.PI/8);
+  if(e.code==='KeyE'&&!e.repeat)turnCamera(Math.PI/8);
 });
 function pointerWorld(e:PointerEvent){return toWorld(e.clientX,e.clientY);}
 const hitNode=(p:Pt):{id:number;index:number}|null=>{
@@ -863,7 +864,10 @@ const hitNode=(p:Pt):{id:number;index:number}|null=>{
   if(!unit)return null;
   for(let i=unit.plan.length-1;i>=0;i--){
     const n=unit.plan[i];
-    if(distance(n.p,p)<Math.max(14,12/viewScale))
+    if(viewMode!=='plan2d'&&stage){
+      const screen=worldToScreen(n.p,8),cursor=worldToScreen(p,8);
+      if(distance(screen,cursor)<19)return {id:n.id,index:i};
+    }else if(distance(n.p,p)<Math.max(14,12/viewScale))
       return {id:n.id,index:i};
   }
   return null;
@@ -875,19 +879,31 @@ canvas.addEventListener('pointerdown',e=>{
   // soldier or waypoint, especially near a crowded doorway on mobile.
   const contextual=looking||doorMode||insertMode||pieMode!==null;
   const hit=contextual?undefined:team(state).find(a=>
-    a.health>0&&distance(a.p,pt)<22);
+    a.health>0&&(viewMode==='plan2d'||!stage?
+      distance(a.p,pt)<22:
+      distance(worldToScreen(a.p,24),{x:e.clientX,y:e.clientY})<25));
   if(hit)selectUnit(hit.id);
-  const node=state.phase==='planning'&&!hit&&!contextual?hitNode(pt):null;
+  const current=uid(selected)?.plan.find(n=>n.id===selectedNode);
+  let handle:'pivot'|'sweep'|null=null;
+  if(!contextual&&current?.kind==='pie'&&stage&&viewMode!=='plan2d'){
+    if(current.pivot&&distance(worldToScreen(current.pivot,12),
+      {x:e.clientX,y:e.clientY})<22)handle='pivot';
+    else if(distance(worldToScreen(current.p,8),
+      {x:e.clientX,y:e.clientY})<20)handle='sweep';
+  }
+  const node=state.phase==='planning'&&!hit&&!contextual&&!handle?hitNode(pt):null;
   if(node)selectedNode=node.id;
   activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
-    startX:e.clientX,startY:e.clientY,wasUnit:!!hit,nodeId:node?.id??null,
-    mode:node?'node':'undecided',moved:false});
+    startX:e.clientX,startY:e.clientY,wasUnit:!!hit,
+    nodeId:handle?selectedNode:node?.id??null,
+    mode:handle??(node?'node':'undecided'),moved:false});
   if(activePointers.size>=2){
     for(const p of activePointers.values())p.mode='pan';
     const pts=[...activePointers.values()];
     pinchDistance=distance({x:pts[0].x,y:pts[0].y},
       {x:pts[1].x,y:pts[1].y});
     panMid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
+    pinchAngle=Math.atan2(pts[1].y-pts[0].y,pts[1].x-pts[0].x);
     trace=null;draggingNode=null;
   }
 });
@@ -904,11 +920,21 @@ canvas.addEventListener('pointermove',e=>{
     const gap=distance({x:pts[0].x,y:pts[0].y},
       {x:pts[1].x,y:pts[1].y});
     const mid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
-    if(panMid){panX+=mid.x-panMid.x;panY+=mid.y-panMid.y;}
-    if(pinchDistance>8)zoom=clamp(zoom*gap/pinchDistance,1,2.35);
-    pinchDistance=gap;panMid=mid;layout();return;
+    const twist=Math.atan2(pts[1].y-pts[0].y,pts[1].x-pts[0].x);
+    if(stage&&viewMode!=='plan2d'){
+      if(panMid)stage.pan(mid.x-panMid.x,mid.y-panMid.y);
+      if(pinchDistance>8)fitZoom(zoom*gap/pinchDistance);
+      const turn=Math.atan2(Math.sin(twist-pinchAngle),Math.cos(twist-pinchAngle));
+      if(Math.abs(turn)>.006)turnCamera(-turn);
+    }else{
+      if(panMid){panX+=mid.x-panMid.x;panY+=mid.y-panMid.y;}
+      if(pinchDistance>8)zoom=clamp(zoom*gap/pinchDistance,1,2.35);
+      layout();
+    }
+    pinchAngle=twist;pinchDistance=gap;panMid=mid;return;
   }
-  if(p.mode==='node'&&p.moved&&p.nodeId!==null){
+  if((p.mode==='node'||p.mode==='pivot'||p.mode==='sweep')&&
+    p.moved&&p.nodeId!==null){
     draggingNode=cursor;return;
   }
   if(state.phase==='planning'&&p.wasUnit&&p.moved){
@@ -924,7 +950,26 @@ function releasePointer(e:PointerEvent,cancelled=false){
   if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
   const pt=pointerWorld(e);
   if(!cancelled&&state.phase==='planning'&&activePointers.size===1){
-    if(p.mode==='node'&&p.nodeId!==null){
+    if((p.mode==='pivot'||p.mode==='sweep')&&p.nodeId!==null){
+      const a=uid(selected),node=a?.plan.find(n=>n.id===p.nodeId);
+      if(node?.kind==='pie'&&node.pivot&&p.moved){
+        if(p.mode==='pivot'){
+          if(!editPie(state,selected,node.id,pt))
+            state.events.push('PIVOT SWEEP BLOCKED');
+        }else{
+          const index=a!.plan.indexOf(node);
+          const origin=index===0?a!.p:a!.plan[index-1].p;
+          const base=Math.atan2(origin.y-node.pivot.y,origin.x-node.pivot.x);
+          const endpoint=Math.atan2(pt.y-node.pivot.y,pt.x-node.pivot.x);
+          const diff=Math.atan2(Math.sin(endpoint-base),Math.cos(endpoint-base));
+          const side=diff>=0?'cw':'ccw';
+          const degrees=clamp(Math.abs(diff)*180/Math.PI,8,120);
+          if(!editPie(state,selected,node.id,node.pivot,degrees,side))
+            state.events.push('ARC INTERSECTS OBSTACLE');
+        }
+      }
+      selectedNode=p.nodeId;
+    }else if(p.mode==='node'&&p.nodeId!==null){
       if(p.moved&&!movePlanNode(state,selected,p.nodeId,pt))
         state.events.push('INVALID NODE POSITION');
       selectedNode=p.nodeId;
@@ -937,7 +982,7 @@ function releasePointer(e:PointerEvent,cancelled=false){
       pt.x<=W&&pt.y<=H)useSelectedGround(pt);
   }
   trace=null;draggingNode=null;activePointers.delete(e.pointerId);
-  if(activePointers.size<2){panMid=null;pinchDistance=0;}
+  if(activePointers.size<2){panMid=null;pinchDistance=0;pinchAngle=0;}
   updateHud();
 }
 canvas.addEventListener('pointerup',e=>releasePointer(e));
@@ -945,6 +990,16 @@ canvas.addEventListener('pointercancel',e=>releasePointer(e,true));
 canvas.addEventListener('lostpointercapture',e=>releasePointer(e,true));
 window.addEventListener('blur',()=>{activePointers.clear();trace=null;});
 window.addEventListener('resize',layout);
+ui.viewIso.addEventListener('click',()=>cameraMode('iso'));
+ui.viewTop.addEventListener('click',()=>cameraMode('top'));
+ui.view2d.addEventListener('click',()=>cameraMode('plan2d'));
+ui.rotLeft.addEventListener('click',()=>turnCamera(-Math.PI/8));
+ui.rotRight.addEventListener('click',()=>turnCamera(Math.PI/8));
+ui.moreOrders.addEventListener('click',()=>{
+  const expanded=ui.orders.classList.toggle('compact')===false;
+  ui.moreOrders.setAttribute('aria-pressed',String(expanded));
+  ui.moreOrders.textContent=expanded?'HIDE':'TOOLS';
+});
 canvas.addEventListener('wheel',e=>{
   e.preventDefault();fitZoom(zoom*Math.exp(-e.deltaY*.00065));
 },{passive:false});
@@ -970,4 +1025,4 @@ function tick(now:number){
   if(stage&&viewMode!=='plan2d')stage.update(state,selected,dt);
   render();updateContext();requestAnimationFrame(tick);
 }
-layout();updateHud();requestAnimationFrame(tick);
+layout();cameraMode(viewMode);updateHud();requestAnimationFrame(tick);
