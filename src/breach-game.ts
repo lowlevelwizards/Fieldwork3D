@@ -115,6 +115,11 @@ export function movePlanNode(s:Session,id:string,nodeId:number,p:Pt){
   const a=party(s,id);if(!a||!passable(p)||!canEdit(s))return false;
   const proposed=copyNodes(a.plan);
   if(!modifyNode(proposed,nodeId,{p}))return false;
+  const changed=proposed.find(n=>n.id===nodeId);
+  if(changed?.kind==='door'){
+    const doorway=s.doors.find(door=>door.id===changed.doorId);
+    if(!doorway||d(changed.p,doorCenter(doorway))>43)return false;
+  }
   let from=a.p;
   for(const n of proposed){
     if(n.kind==='move'||n.kind==='door'){
@@ -132,8 +137,17 @@ export function deletePlanNode(s:Session,id:string,nodeId:number){
 }
 export function insertPlanNode(s:Session,id:string,index:number,p:Pt){
   const a=party(s,id);if(!a||!canEdit(s)||!passable(p))return false;
-  return edit(s,a,()=>a.plan.splice(clamp(index,0,a.plan.length),0,
-    {id:s.nextId++,kind:'move',p:clone(p)}));
+  const position=clamp(index,0,a.plan.length);
+  const proposed=copyNodes(a.plan);
+  proposed.splice(position,0,{id:s.nextId,kind:'move',p:clone(p)});
+  let from=a.p;
+  for(const node of proposed){
+    if(node.kind==='move'||node.kind==='door'){
+      if(!route(from,node.p).length)return false;
+      from=node.p;
+    }
+  }
+  return edit(s,a,()=>{a.plan=proposed;s.nextId++;});
 }
 export function updatePlanFacing(s:Session,id:string,nodeId:number,p:Pt){
   const a=party(s,id);if(!a||!canEdit(s))return false;
