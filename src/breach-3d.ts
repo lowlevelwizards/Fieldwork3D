@@ -54,13 +54,15 @@ export class TacticalScene3D{
       alpha:false,powerPreference:'high-performance'});
     this.renderer.outputColorSpace=THREE.SRGBColorSpace;
     this.renderer.toneMapping=THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure=1.14;
+    this.renderer.toneMappingExposure=1.05;
     this.renderer.shadowMap.enabled=true;
     this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-    this.scene.background=color(0x5b6c65);
-    this.scene.fog=new THREE.Fog(0x82968c,620,1600);
-    this.scene.add(new THREE.HemisphereLight(0xc6d8cb,0x3b493f,2.2));
-    this.sun=new THREE.DirectionalLight(0xf2ddbb,2.4);
+    // Atmospheric distance fog was tinting every interior surface in ISO.
+    // Visibility is handled separately by authoritative exploration tiles.
+    this.scene.background=color(0x182a2a);
+    this.scene.fog=null;
+    this.scene.add(new THREE.HemisphereLight(0xe0e7d8,0x22332f,1.65));
+    this.sun=new THREE.DirectionalLight(0xf4dfbf,2.0);
     this.sun.position.set(-100,260,180);this.sun.castShadow=true;
     this.sun.shadow.mapSize.set(1024,1024);
     Object.assign(this.sun.shadow.camera,{
@@ -71,14 +73,16 @@ export class TacticalScene3D{
     this.buildWorld();
     this.shotFriendly=this.solid(0xece0b6,.3);
     this.shotHostile=this.solid(0xe3a185,.3);
+    // Unknown tiles must obscure tall props. Explored tiles tint gently,
+    // never putting a white/grey sheet across already-known furniture.
     const fgeom=new THREE.PlaneGeometry(40.4,40.4);
     fgeom.rotateX(-Math.PI/2);
     const unknownMat=new THREE.MeshBasicMaterial({
-      color:0x09191c,side:THREE.DoubleSide,transparent:true,
-      opacity:.82,depthWrite:false});
+      color:0x071416,side:THREE.DoubleSide,transparent:false,
+      depthWrite:true});
     const exploredMat=new THREE.MeshBasicMaterial({
-      color:0x13272b,side:THREE.DoubleSide,transparent:true,
-      opacity:.38,depthWrite:false});
+      color:0x071819,side:THREE.DoubleSide,transparent:true,
+      opacity:.21,depthWrite:false});
     this.mats.push(unknownMat,exploredMat);
     this.fogUnknown=new THREE.InstancedMesh(fgeom,unknownMat,16*19);
     this.fogExplored=new THREE.InstancedMesh(fgeom,exploredMat,16*19);
@@ -100,10 +104,10 @@ export class TacticalScene3D{
     mesh.receiveShadow=true;parent.add(mesh);return mesh;
   }
   private buildWorld(){
-    const earth=this.solid(0x566750),road=this.solid(0x686452);
-    const gravel=this.solid(0x797263),floorA=this.solid(0x6e6a5e);
-    const floorB=this.solid(0x606b64),timber=this.solid(0x544d40);
-    const metal=this.solid(0x646a65,.62),rust=this.solid(0x806851);
+    const earth=this.solid(0x34443e),road=this.solid(0x5d6358);
+    const gravel=this.solid(0x6c7061),floorA=this.solid(0x817d6b);
+    const floorB=this.solid(0x526b68),timber=this.solid(0x4b4437);
+    const metal=this.solid(0x525e5d,.62),rust=this.solid(0x715e4d);
     const roof=this.solid(0x515d58),glass=this.solid(0x748b83,.18);
     this.plane(this.root,W/2,H/2,W,H,-2,earth);
     this.box(this.root,303,-1,630,124,1,215,road,false);
@@ -112,7 +116,7 @@ export class TacticalScene3D{
     // Two genuinely distinct interior floor constructions.
     this.box(this.root,247,-.65,316,270,1.5,432,floorA,false);
     this.box(this.root,485,-.65,316,207,1.5,432,floorB,false);
-    const tile=this.solid(0xbdb3a1);
+    const tile=this.solid(0x9a9683);
     const grout:Pt[]=[];
     for(let x=122;x<580;x+=28)for(let z=114;z<523;z+=28)
       grout.push({x,y:z});
@@ -132,12 +136,12 @@ export class TacticalScene3D{
       const dx=p2.x-p1.x,dz=p2.y-p1.y;
       const len=Math.hypot(dx,dz);
       const mesh=this.box(this.root,(p1.x+p2.x)/2,15.5,(p1.y+p2.y)/2,
-        len+3,31,9,this.solid(i===4?0x7e8274:0xa59b81));
+        len+3,31,9,this.solid(i===4?0x81877d:0xb4a991));
       mesh.rotation.y=-Math.atan2(dz,dx);
       this.walls.push({mesh,mid:{x:(p1.x+p2.x)/2,y:(p1.y+p2.y)/2}});
       // A dark, legible wall cap communicates height in either camera mode.
       const cap=this.box(this.root,mesh.position.x,32,mesh.position.z,
-        len+4,2,11,this.solid(0x50493c),false);cap.rotation.y=mesh.rotation.y;
+        len+4,2,11,this.solid(0x51483a),false);cap.rotation.y=mesh.rotation.y;
       this.walls.push({mesh:cap,mid:{x:mesh.position.x,y:mesh.position.z}});
     }
     for(const x of [209,502]){
@@ -396,7 +400,7 @@ export class TacticalScene3D{
       const cut=this.view.mode==='iso'&&between>3500;
       const material=wall.mesh.material as THREE.MeshStandardMaterial;
       if(material.transparent!==cut){
-        material.transparent=cut;material.opacity=cut?.22:1;
+        material.transparent=cut;material.opacity=cut?.36:1;
         material.depthWrite=!cut;material.needsUpdate=true;
       }
     }
@@ -455,7 +459,7 @@ export class TacticalScene3D{
         const seen=liveVisibility(s,p);
         const past=knownAt(s,p.x,p.y);
         if(seen)continue;
-        temp.position.set(p.x,42,p.y);temp.updateMatrix();
+        temp.position.set(p.x,past?34:116,p.y);temp.updateMatrix();
         if(past)this.fogExplored.setMatrixAt(explored++,temp.matrix);
         else this.fogUnknown.setMatrixAt(unk++,temp.matrix);
       }
