@@ -293,6 +293,38 @@ export function planDoor(s:Session,id:string,doorId:string,method:DoorMethod){
   if(!reachable[0])return false;
   return addNode(s,id,'door',reachable[0],{doorId,method});
 }
+/** Contextual stack-up: approach one side of a door and cover the opening. */
+export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number){
+  const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
+  if(!a||!door||!canEdit(s))return false;
+  const index=afterNodeId===undefined?a.plan.length:
+    a.plan.findIndex(n=>n.id===afterNodeId)+1;
+  if(index<=0&&afterNodeId!==undefined)return false;
+  const from=index===0?a.p:a.plan[index-1].p,center=doorCenter(door);
+  const horizontal=Math.abs(door.a.y-door.b.y)<1;
+  const half=d(door.a,door.b)/2;
+  const candidates=horizontal?[
+    {x:center.x-half-16,y:center.y+(from.y>=center.y?27:-27)},
+    {x:center.x+half+16,y:center.y+(from.y>=center.y?27:-27)},
+  ]:[
+    {x:center.x+(from.x>=center.x?27:-27),y:center.y-half-16},
+    {x:center.x+(from.x>=center.x?27:-27),y:center.y+half+16},
+  ];
+  const partner=team(s).find(b=>b!==a&&b.health>0);
+  const other=partner?finalPoint(partner):null;
+  const legal=candidates.filter(p=>passable(p)&&route(from,p).length);
+  legal.sort((x,y)=>{
+    const score=(p:Pt)=>d(from,p)-(other?Math.min(50,d(p,other))*.42:0);
+    return score(x)-score(y);
+  });
+  if(!legal.length)return false;
+  const point=legal[0];
+  const proposed=copyNodes(a.plan);
+  proposed.splice(index,0,{id:s.nextId,kind:'move',p:clone(point),
+    moveMode:'strafe',facing:angle(point,center)});
+  if(!validEditedPlan(s,a.p,proposed))return false;
+  return edit(s,a,()=>{a.plan=proposed;s.nextId++;});
+}
 export function planWait(s:Session,id:string,seconds=1.2){
   const a=party(s,id);return a?addNode(s,id,'wait',finalPoint(a),
     {duration:clamp(seconds,.3,6)}):false;
