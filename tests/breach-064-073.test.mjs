@@ -71,7 +71,7 @@ test('064,067: controls are contextual, accessible and camera-aware',()=>{
   assert.match(main,/doorAtNode\(state,selected/);
   assert.match(main,/stage\.screenToWorld/);
   assert.match(main,/renderProjectedPlans\(\)/);
-  assert.match(main,/editPie\(state,selected/);
+  assert.match(main,/planAim\(state,selected/);
 });
 
 test('072: two soldiers can take distinct, door-interactable stack positions',()=>{
