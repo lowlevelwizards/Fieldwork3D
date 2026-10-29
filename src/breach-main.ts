@@ -258,6 +258,7 @@ function updateHud(){
   ui.play.innerHTML=state.phase==='running'?'PAUSE <span>Ⅱ</span>':
     state.phase==='planning'?'GO <span>▶</span>':'RESET <span>↺</span>';
   ui.play.classList.toggle('running',state.phase==='running');
+  const active=uid(selected);
   ui.stance.textContent=active?.posture==='crouch'?'STAND':'CROUCH';
   ui.stance.setAttribute('aria-pressed',String(active?.posture==='crouch'));
   ui.contact.setAttribute('aria-pressed',String(active?.haltOnContact));
