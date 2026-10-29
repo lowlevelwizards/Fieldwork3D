@@ -5,7 +5,7 @@ import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   planMove,planMoveStroke,planLook,planDoor,planWait,planSync,movePlanNode,
-  planPieAt,editPie,doorAtNode,setStrafe,backOne,
+  planPieAt,editPie,doorAtNode,planStack,setStrafe,backOne,
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,stepSession,nearestDoor,knownAt,liveVisibility,
 } from './breach-game.ts';
@@ -199,6 +199,7 @@ function updateContext(){
     choices.push({id:'ctxSync',label:'SYNC'});
   }
   if(closest){
+    choices.push({id:'ctxStack',label:'STACK'});
     choices.push({id:'ctxOpen',label:'OPEN'});
     choices.push({id:'ctxKick',label:'KICK'});
     choices.push({id:'ctxHold',label:'HOLD'});
@@ -252,6 +253,10 @@ ui.context.addEventListener('click',event=>{
     case 'ctxSync':planSync(state);break;
     case 'ctxDelete':
       if(node)deletePlanNode(state,selected,node.id);
+      selectedNode=null;break;
+    case 'ctxStack':
+      if(door&&!planStack(state,selected,door.id,node?.id))
+        state.events.push('NO REACHABLE STACK POSITION');
       selectedNode=null;break;
     case 'ctxOpen':
     case 'ctxKick':
