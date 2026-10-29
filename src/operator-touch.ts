@@ -26,6 +26,7 @@ type Point={id:number;x:number;y:number;startX:number;startY:number;role:Role;zo
 type CameraActions={orbit:(dx:number,dy:number)=>void;pan:(dx:number,dy:number)=>void;zoom:(factor:number)=>void};
 export class FloatingTouchControls{
  readonly move:Axis={x:0,y:0};
+ enabled=true;
  private readonly right:Axis={x:0,y:0};
  private readonly pointers=new Map<number,Point>();
  private readonly bases:Record<'left'|'right',HTMLElement>;
@@ -82,7 +83,7 @@ export class FloatingTouchControls{
    e.preventDefault();this.canvas.setPointerCapture(e.pointerId);
    const bounds=this.canvas.getBoundingClientRect();
    const touch=e.pointerType==='touch'||e.pointerType==='pen';
-   const zone=touch?stickZone(e.clientX-bounds.left,e.clientY-bounds.top,bounds.width,bounds.height):null;
+   const zone=this.enabled&&touch?stickZone(e.clientX-bounds.left,e.clientY-bounds.top,bounds.width,bounds.height):null;
    this.pointers.set(e.pointerId,{id:e.pointerId,x:e.clientX,y:e.clientY,
      startX:e.clientX,startY:e.clientY,role:e.button===2?'orbit':'pending',
      zone,type:e.pointerType});
