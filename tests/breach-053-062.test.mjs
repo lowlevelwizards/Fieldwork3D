@@ -142,3 +142,17 @@ test('060: halt-on-contact stops movement, not perception or aiming',()=>{
   assert.deepEqual(a.p,at,'stops when enemy is already visible');
   assert.ok(a.plan.length>0,'holding contact does not discard route');
 });
+
+test('054/056/062: an authored full-door route can secure and extract',()=>{
+  const s=newSession();
+  enemies(s).forEach(a=>a.health=0);
+  assert.ok(planDoor(s,'rook','FRONT','kick'));
+  assert.ok(planMove(s,'rook',{x:329,y:423}));
+  assert.ok(planDoor(s,'rook','INNER','open'));
+  assert.ok(planMove(s,'rook',{x:453,y:319}));
+  assert.ok(planMove(s,'rook',{x:307,y:669}));
+  toggling(s);run(s,38);
+  assert.equal(s.doors[0].open,true,'actual entry is opened');
+  assert.equal(s.doors[1].open,true,'inner door is opened');
+  assert.equal(s.phase,'won','path reaches objective and extraction');
+});
