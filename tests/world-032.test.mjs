@@ -140,7 +140,7 @@ test('region loader creates exactly 64 tiles, swaps one patch and can dispose',(
 });
 test('the existing 10m lab remains the primary intact old simulation entrypoint',()=>{
   const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8');
-  const lab=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+  const lab=readFileSync(new URL('../verdigris.html',import.meta.url),'utf8');
   const world=readFileSync(new URL('../world.html',import.meta.url),'utf8');
   const worldMain=readFileSync(new URL('../src/world-main.ts',import.meta.url),'utf8');
   const vite=readFileSync(new URL('../vite.config.ts',import.meta.url),'utf8');
