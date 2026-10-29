@@ -123,9 +123,14 @@ button:focus-visible{outline:2px solid #e9c493;outline-offset:3px}
 
 /* 064–073: world-first HUD. Advanced commands remain accessible, not dominant. */
 #breachCanvas{z-index:1;background:transparent}
-.orders.compact button:not(#back):not(#undo):not(#redo){
- display:none
-}
+.orders.compact{display:none}
+.orders:not(.compact){display:flex;flex-wrap:wrap;overflow-y:auto;
+  max-height:min(36vh,250px);padding:8px;gap:5px;
+  background:#112321eb;box-shadow:0 8px 24px #041113b8}
+.orders:not(.compact) button{min-height:37px}
+.bar .actions #back{background:#2b3836}
+.context-tools{max-width:min(310px,calc(100vw - 14px))}
+
 .context-tools{position:fixed;z-index:6;display:flex;flex-wrap:wrap;
  gap:5px;align-items:center;justify-content:center;padding:6px;
  max-width:min(360px,calc(100vw - 14px));background:#132426ef;
@@ -153,4 +158,13 @@ button:focus-visible{outline:2px solid #e9c493;outline-offset:3px}
 @media(max-width:450px){
 }
 @media(max-height:470px){
+}
+
+/* 076: only five always-visible controls (two operators, BACK, TOOLS, GO).
+ * Tactical facing commands appear contextually and not in the main HUD. */
+@media(max-width:450px){
+  .bar .actions #back{font-size:9px;min-width:60px}
+  .bar .actions #moreOrders{min-width:45px}
+  .context-tools{max-width:calc(100vw - 14px);gap:3px}
+  .context-tools button{padding:8px 9px;min-height:39px}
 }
