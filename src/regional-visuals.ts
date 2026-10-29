@@ -4,7 +4,6 @@ import {BUILDINGS,deckYAt,physicalGroundAt,roadCenterX,
 import {establishRegionalPlants,plantsNear,
   type RegionalPlant} from './regional-ecology.ts';
 import {regionRiverX,globalSouthM} from './playable-region-model.ts';
-import type {GroundedActor} from './regional-actors.ts';
 const earth=new THREE.MeshStandardMaterial({color:0x988a72,roughness:1});
 const roof=new THREE.MeshStandardMaterial({color:0x787c70,roughness:1});
 const wall=new THREE.MeshStandardMaterial({color:0xc0bcaa,roughness:1});
