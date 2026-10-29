@@ -597,27 +597,32 @@ function renderProjectedPlans(){
       }
       if(n.kind==='move'||n.kind==='door'||n.kind==='pie')previous=n.p;
     }
-    const pawn=worldToScreen(a.p,32);
+    const pawn=worldToScreen(a.p,32),ground=worldToScreen(a.p,1);
     draw.textAlign='center';draw.font='bold 12px monospace';
     draw.fillStyle=color;draw.fillText(a.name,pawn.x,pawn.y-9);
     if(a.id===selected){
-      draw.strokeStyle='#e9d6b1';draw.lineWidth=1.5;
-      draw.beginPath();draw.arc(pawn.x,pawn.y+15,13,0,Math.PI*2);draw.stroke();
+      draw.strokeStyle='#e9d6b1';draw.lineWidth=2.1;
+      draw.beginPath();draw.arc(ground.x,ground.y,14,0,Math.PI*2);draw.stroke();
+    }
+    if(a.suppression>.53){
+      draw.font='bold 9px monospace';draw.fillStyle='#e5bc92';
+      draw.fillText('SUPPRESSED',pawn.x,pawn.y-23);
     }
   }
   // Screen-space icons stay readable regardless of ortho pitch or zoom.
   for(const hostile of enemies(state)){
     if(!liveVisibility(state,hostile.p))continue;
     const pawn=worldToScreen(hostile.p,33);
+    const ground=worldToScreen(hostile.p,1);
     if(hostile.health<=0){
       draw.fillStyle='#f0b39a';draw.textAlign='center';
       draw.font='bold 11px monospace';
       draw.fillText('× DOWN',pawn.x,pawn.y-13);
       draw.strokeStyle='#d99980';draw.lineWidth=2;
-      draw.beginPath();draw.arc(pawn.x,pawn.y+14,13,0,Math.PI*2);draw.stroke();
+      draw.beginPath();draw.arc(ground.x,ground.y,14,0,Math.PI*2);draw.stroke();
     }else{
       draw.strokeStyle='#e2a18b';draw.lineWidth=1.6;
-      draw.beginPath();draw.arc(pawn.x,pawn.y+18,12,0,Math.PI*2);draw.stroke();
+      draw.beginPath();draw.arc(ground.x,ground.y,12,0,Math.PI*2);draw.stroke();
     }
   }
   for(const member of team(state)){
@@ -1016,8 +1021,10 @@ function releasePointer(e:PointerEvent,cancelled=false){
     }else if(!p.moved&&!p.wasUnit&&pt.x>=0&&pt.y>=0&&
       pt.x<=W&&pt.y<=H){
       const door=state.doors.find(d=>!d.open&&
-        distance(worldToScreen(doorCenter(d),10),
-          {x:e.clientX,y:e.clientY})<24);
+        (distance(worldToScreen(doorCenter(d),10),
+          {x:e.clientX,y:e.clientY})<24||
+         distance(worldToScreen(doorCenter(d),38),
+          {x:e.clientX,y:e.clientY})<25));
       if(door&&!looking){
         doorFocusId=door.id;selectedNode=null;
       }else{
