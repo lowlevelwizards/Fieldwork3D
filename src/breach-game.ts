@@ -11,8 +11,9 @@ import {
 import {
   type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,
   makeHistory,copyNodes,record,undo,redo,modifyNode,lastPoint,
-  length,targetAngle,angleDifference,
+  length,targetAngle,angleDifference,type PieSide,
 } from './breach-plan.ts';
+import {validPieArc} from './breach-maneuvers.ts';
 
 export type Posture='stand'|'crouch';
 export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retreat';
@@ -24,7 +25,7 @@ export type TeamActor=Operator & {
   stopped:boolean;haltOnContact:boolean;retreatPoint:Pt|null;
   contact:Pt|null;heard:Pt|null;
   alertUntil:number;waitRemaining:number;syncReady:string|null;
-  actionTimer:number;blockedTime:number;priorP:Pt;
+  actionTimer:number;blockedTime:number;priorP:Pt;pieIndex:number;
 };
 export type NoiseEvent={p:Pt;radius:number;time:number;kind:string};
 export type ShotEvent={start:Pt;end:Pt;age:number;hit:boolean;side:Side};
@@ -57,6 +58,7 @@ const withActions=(a:Operator):TeamActor=>({
   reload:0,hits:0,kills:0,stopped:false,contact:null,heard:null,
   alertUntil:0,waitRemaining:0,syncReady:null,actionTimer:0,
   blockedTime:0,priorP:clone(a.p),haltOnContact:false,retreatPoint:null,
+  pieIndex:0,
 });
 export function newSession(index=0):Session{
   const seed=newTacticalState();
@@ -90,11 +92,13 @@ function pathFor(a:TeamActor){
       const segment=route(from,n.p);
       if(!segment.length)continue;
       points.push(...segment);from=n.p;
+    }else if(n.kind==='pie'&&n.arc?.length){
+      points.push(...n.arc);from=n.arc[n.arc.length-1];
     }
   }
   a.path=points;
   a.activeNode=-1;a.nav=[];a.waitRemaining=0;a.actionTimer=0;
-  a.syncReady=null;
+  a.syncReady=null;a.pieIndex=0;
 }
 function edit(s:Session,a:TeamActor,fn:()=>void){
   if(!canEdit(s))return false;
@@ -113,7 +117,83 @@ export function addNode(s:Session,id:string,kind:PlanKind,p:Pt,
     a.plan.push({id:s.nextId++,kind,p:clone(p),...extra});
   });
 }
-export const planMove=(s:Session,id:string,p:Pt)=>addNode(s,id,'move',p);
+export function planMove(s:Session,id:string,p:Pt,strafe=false){
+  const a=party(s,id);
+  if(!a)return false;
+  const extra=strafe?{moveMode:'strafe' as const,
+    facing:[...a.plan].reverse().find(n=>n.facing!==undefined)?.facing??a.heading}:{};
+  return addNode(s,id,'move',p,extra);
+}
+/** A finger-drawn path is one undoable gesture, while BACK removes one node. */
+export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
+  const a=party(s,id);if(!a||!canEdit(s))return false;
+  const proposed:PlanNode[]=[];
+  let from=finalPoint(a);
+  const facing=[...a.plan].reverse().find(n=>n.facing!==undefined)?.facing??a.heading;
+  for(const point of points.slice(0,60)){
+    if(d(from,point)<20||!passable(point)||!route(from,point).length)continue;
+    proposed.push({id:s.nextId+proposed.length,kind:'move',p:clone(point),
+      ...(strafe?{moveMode:'strafe' as const,facing}:{})});
+    from=point;
+  }
+  if(!proposed.length)return false;
+  return edit(s,a,()=>{a.plan.push(...proposed);s.nextId+=proposed.length;});
+}
+export function setStrafe(s:Session,id:string,nodeId:number):boolean{
+  const a=party(s,id);if(!a||!canEdit(s))return false;
+  const node=a.plan.find(n=>n.id===nodeId);
+  if(!node||node.kind!=='move')return false;
+  return edit(s,a,()=>{
+    if(node.moveMode==='strafe'){
+      node.moveMode='advance';
+    }else{
+      node.moveMode='strafe';
+      node.facing??=[...a.plan.slice(0,a.plan.indexOf(node))]
+        .reverse().find(n=>n.facing!==undefined)?.facing??a.heading;
+    }
+  });
+}
+/** Remove exactly one final queued order (not the whole plan or its path). */
+export function backOne(s:Session,id:string){
+  const a=party(s,id);
+  if(!a||!canEdit(s)||!a.plan.length)return false;
+  const tail=a.plan.at(-1)!;
+  // A shared sync must not leave the partner waiting for an absent code.
+  if(tail.kind==='sync'&&tail.syncCode){
+    for(const partner of team(s)){
+      if(partner===a)continue;
+      const index=partner.plan.findIndex(n=>
+        n.kind==='sync'&&n.syncCode===tail.syncCode);
+      if(index>=0)edit(s,partner,()=>{partner.plan.splice(index,1);});
+    }
+  }
+  return edit(s,a,()=>{a.plan.pop();});
+}
+export function planPie(s:Session,id:string,doorId:string,side:PieSide){
+  const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
+  if(!a||!door||!canEdit(s))return false;
+  const origin=finalPoint(a),pivot=doorCenter(door);
+  const arc=validPieArc(origin,pivot,side,s.doors);
+  if(!arc.length)return false;
+  return addNode(s,id,'pie',arc[arc.length-1],{
+    pivot:clone(pivot),pieSide:side,arc:arc.map(clone)});
+}
+/** Recalculate dependent pie arcs when an earlier waypoint changes. */
+function validEditedPlan(s:Session,start:Pt,proposed:PlanNode[]){
+  let from=start;
+  for(const n of proposed){
+    if(n.kind==='pie'){
+      if(!n.pivot||!n.pieSide)return false;
+      const arc=validPieArc(from,n.pivot,n.pieSide,s.doors);
+      if(!arc.length)return false;
+      n.arc=arc;n.p=clone(arc[arc.length-1]);from=n.p;
+    }else if(n.kind==='move'||n.kind==='door'){
+      if(!passable(n.p)||!route(from,n.p).length)return false;
+      from=n.p;
+    }
+  }
+  return true;
+}
 export function movePlanNode(s:Session,id:string,nodeId:number,p:Pt){
   const a=party(s,id);if(!a||!passable(p)||!canEdit(s))return false;
   const proposed=copyNodes(a.plan);
@@ -123,33 +203,24 @@ export function movePlanNode(s:Session,id:string,nodeId:number,p:Pt){
     const doorway=s.doors.find(door=>door.id===changed.doorId);
     if(!doorway||d(changed.p,doorCenter(doorway))>43)return false;
   }
-  let from=a.p;
-  for(const n of proposed){
-    if(n.kind==='move'||n.kind==='door'){
-      if(!route(from,n.p).length)return false;
-      from=n.p;
-    }
-  }
+  if(changed?.kind==='pie')return false; // Pivot and side, not arc endpoint, define a pie.
+  if(!validEditedPlan(s,a.p,proposed))return false;
   return edit(s,a,()=>{a.plan=proposed;});
 }
 export function deletePlanNode(s:Session,id:string,nodeId:number){
   const a=party(s,id);if(!a||!canEdit(s))return false;
   const index=a.plan.findIndex(n=>n.id===nodeId);
   if(index<0)return false;
-  return edit(s,a,()=>a.plan.splice(index,1));
+  const proposed=copyNodes(a.plan);proposed.splice(index,1);
+  if(!validEditedPlan(s,a.p,proposed))return false;
+  return edit(s,a,()=>{a.plan=proposed;});
 }
 export function insertPlanNode(s:Session,id:string,index:number,p:Pt){
   const a=party(s,id);if(!a||!canEdit(s)||!passable(p))return false;
   const position=clamp(index,0,a.plan.length);
   const proposed=copyNodes(a.plan);
   proposed.splice(position,0,{id:s.nextId,kind:'move',p:clone(p)});
-  let from=a.p;
-  for(const node of proposed){
-    if(node.kind==='move'||node.kind==='door'){
-      if(!route(from,node.p).length)return false;
-      from=node.p;
-    }
-  }
+  if(!validEditedPlan(s,a.p,proposed))return false;
   return edit(s,a,()=>{a.plan=proposed;s.nextId++;});
 }
 export function updatePlanFacing(s:Session,id:string,nodeId:number,p:Pt){
@@ -268,7 +339,7 @@ function observe(s:Session){
     }
   }
 }
-function approach(a:TeamActor,p:Pt,dt:number,s:Session){
+function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   if(!a.nav.length){
     a.nav=route(a.p,p);
     if(!a.nav.length){notify(s,a.name+' CANNOT REACH');return false;}
@@ -278,7 +349,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session){
   const direction=angle(a.p,next);
   const movingSpeed=a.side==='blue'?75:62;
   const suppression=clamp(1-a.suppression*.4,.45,1);
-  const desired=movingSpeed*(a.posture==='crouch'?.58:1)*suppression;
+  const desired=movingSpeed*(a.posture==='crouch'?.58:1)*suppression*speedScale;
   a.velocity+=(desired-a.velocity)*Math.min(1,dt*6);
   const advance=Math.min(gap,a.velocity*dt);
   const move={x:a.p.x+Math.cos(direction)*advance,
@@ -311,7 +382,7 @@ function rotate(a:TeamActor,goal:number,dt:number){
 }
 function pop(a:TeamActor){
   a.plan.shift();a.activeNode=-1;a.nav=[];a.waitRemaining=0;
-  a.actionTimer=0;a.syncReady=null;pathFor(a);
+  a.actionTimer=0;a.syncReady=null;a.pieIndex=0;pathFor(a);
 }
 function runOrders(s:Session,a:TeamActor,dt:number){
   const n=a.plan[0];
@@ -324,12 +395,31 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   if(!n||a.health<=0){a.velocity=Math.max(0,a.velocity-dt*160);return;}
   if(a.activeNode!==n.id){
     a.activeNode=n.id;a.nav=[];a.waitRemaining=0;a.actionTimer=0;
+    a.pieIndex=0;
+  }
+  if(n.kind==='pie'){
+    const arc=n.arc??[];
+    const point=arc[a.pieIndex];
+    if(!point){pop(a);return;}
+    if(near(a.p,point,3.7)){
+      a.pieIndex++;a.nav=[];a.velocity=Math.min(a.velocity,32);
+      if(a.pieIndex>=arc.length){pop(a);return;}
+    }else{
+      // Pieing advances along the physical arc, gun always oriented
+      // toward the doorway pivot rather than tangential travel.
+      approach(a,point,dt,s,.44);
+    }
+    if(n.pivot)rotate(a,angle(a.p,n.pivot),dt);
+    return;
   }
   const at=near(a.p,n.p,5);
   if(!at&&(n.kind==='move'||n.kind==='door'||n.kind==='sync')){
-    approach(a,n.p,dt,s);
-    if(n.facing!==undefined)rotate(a,n.facing,dt);
-    else if(a.nav.length)rotate(a,angle(a.p,a.nav[0]),dt);
+    approach(a,n.p,dt,s,n.moveMode==='strafe'?.68:1);
+    if(n.kind==='move'&&n.moveMode==='strafe'){
+      rotate(a,n.facing??a.heading,dt);
+    }else if(a.nav.length){
+      rotate(a,angle(a.p,a.nav[0]),dt);
+    }
     return;
   }
   a.velocity=Math.max(0,a.velocity-dt*180);
