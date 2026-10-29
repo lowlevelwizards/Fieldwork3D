@@ -7,8 +7,9 @@ This is a surgical gameplay correction, not another large feature expansion.
 **Locomotion and aiming are independent.** A waypoint says where the soldier goes.
 An aiming order says where the soldier faces while following later waypoints.
 
-- **LOOK** — Choose one facing direction at the node; hold that direction until
-  the next aiming instruction.
+- **LOOK** — Choose one facing direction at the node. This **cancels any
+  existing PIE or STRAFE lock**, briefly turns the soldier toward that direction,
+  then restores normal movement-facing for subsequent waypoints.
 - **STRAFE** — Hold the selected *world-space direction* while moving. Translation
   can be forward, sideways or backwards and is not locked to aim direction.
   Unlike the old per-segment STRAFE toggle, this persists across any number of
@@ -16,14 +17,14 @@ An aiming order says where the soldier faces while following later waypoints.
 - **PIE** — Choose a *world-space point* to watch. At every motor tick, the soldier
   rotates toward that exact point as their position changes. PIE does **not**
   generate a circular path, change route topology, or require a door to work.
-  It persists across later movement waypoints until LOOK, STRAFE or another PIE
-  replaces it.
+  It persists across later movement waypoints until LOOK cancels it or STRAFE /
+  another PIE replaces it.
 
 Commands can be attached to a selected waypoint (begin on reaching that node),
 or placed as an independent stationary order at the end of the authored plan.
-Both are undoable. They don't teleport or skip obstacles. Turning is gradual
-while movement remains possible; soldiers don't freeze waiting to reach a
-particular heading.
+Both are undoable. They don't teleport or skip obstacles. Turning is gradual. PIE and STRAFE allow movement while
+turning to the assigned aim; the discrete LOOK command can pause briefly to
+establish the requested direction, then releases the lock.
 
 An emergency **STOP ON CONTACT** remains a deliberate priority override,
 if that existing option is enabled.
