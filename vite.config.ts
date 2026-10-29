@@ -10,6 +10,7 @@ export default defineConfig({
       main: 'index.html',
       riverLab: 'river-lab.html',
       world: 'world.html',
+      study: 'study.html',
     } },
   },
 });
