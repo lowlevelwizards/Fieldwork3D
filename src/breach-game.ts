@@ -21,7 +21,8 @@ export type TeamActor=Operator & {
   posture:Posture;alert:Alert;velocity:number;turning:number;
   aim: number;targetId:string|null;suppression:number;stamina:number;
   magazine:number;reserve:number;reload:number;hits:number;kills:number;
-  stopped:boolean;contact:Pt|null;heard:Pt|null;
+  stopped:boolean;haltOnContact:boolean;retreatPoint:Pt|null;
+  contact:Pt|null;heard:Pt|null;
   alertUntil:number;waitRemaining:number;syncReady:string|null;
   actionTimer:number;blockedTime:number;priorP:Pt;
 };
@@ -55,7 +56,7 @@ const withActions=(a:Operator):TeamActor=>({
   targetId:null,suppression:0,stamina:1,magazine:12,reserve:36,
   reload:0,hits:0,kills:0,stopped:false,contact:null,heard:null,
   alertUntil:0,waitRemaining:0,syncReady:null,actionTimer:0,
-  blockedTime:0,priorP:clone(a.p),
+  blockedTime:0,priorP:clone(a.p),haltOnContact:false,retreatPoint:null,
 });
 export function newSession(index=0):Session{
   const seed=newTacticalState();
@@ -198,6 +199,10 @@ export function redoPlan(s:Session,id:string){
   const next=redo(a.history,a.plan);if(!next)return false;
   a.plan=next;pathFor(a);return true;
 }
+export function toggleContactRule(s:Session,id:string){
+  const a=party(s,id);if(!a||!canEdit(s))return false;
+  a.haltOnContact=!a.haltOnContact;return true;
+}
 export function posture(s:Session,id:string){
   const a=party(s,id);if(!a||!canEdit(s))return false;
   a.posture=a.posture==='stand'?'crouch':'stand';return true;
@@ -308,6 +313,12 @@ function pop(a:TeamActor){
 }
 function runOrders(s:Session,a:TeamActor,dt:number){
   const n=a.plan[0];
+  if(a.haltOnContact){
+    const threat=enemies(s).find(e=>inSight(a,e,s));
+    if(threat){
+      a.velocity=0;rotate(a,angle(a.p,threat.p),dt);return;
+    }
+  }
   if(!n||a.health<=0){a.velocity=Math.max(0,a.velocity-dt*160);return;}
   if(a.activeNode!==n.id){
     a.activeNode=n.id;a.nav=[];a.waitRemaining=0;a.actionTimer=0;
@@ -346,38 +357,74 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     if(d(a.p,doorCenter(door))>43){
       notify(s,a.name+' TOO FAR FROM DOOR');return;
     }
-    const required=n.method==='kick'?.20:n.method==='hold'?.95:.49;
+    const required=n.method==='kick'?.20:n.method==='hold'?1.3:.49;
     a.actionTimer+=dt;
     if(a.actionTimer>=required){
+      if(n.method==='hold'){
+        notify(s,door.id+' HELD CLOSED');
+        pop(a);return;
+      }
       door.open=true;door.openedAt=s.seconds;
-      hear(s,doorCenter(door),n.method==='kick'?340:
-        n.method==='hold'?65:145,n.method==='kick'?'kick':'door');
+      hear(s,doorCenter(door),n.method==='kick'?340:145,
+        n.method==='kick'?'kick':'door');
       notify(s,door.id+' '+(n.method==='kick'?'KICKED':'OPENED'));
       pop(a);
     }
   }
+}
+function defensivePosition(a:TeamActor,from:Pt,s:Session):Pt|null{
+  const candidates:Pt[]=[];
+  for(const c of COVER){
+    const signX=Math.sign(c.x-from.x)||1;
+    const signY=Math.sign(c.y-from.y)||1;
+    for(const p of [
+      {x:c.x+signX*(c.w/2+20),y:c.y},
+      {x:c.x,y:c.y+signY*(c.h/2+20)},
+    ]){
+      if(passable(p)&&d(p,a.p)<180&&
+        !unobstructed(from,p,s,false)&&route(a.p,p).length)
+        candidates.push(p);
+    }
+  }
+  candidates.sort((x,y)=>d(x,a.p)-d(y,a.p));
+  return candidates[0]??null;
 }
 function enemyDecisions(s:Session,a:TeamActor,dt:number){
   if(a.health<=0)return;
   const visible=team(s).filter(b=>inSight(a,b,s));
   if(visible.length){
     const b=visible.sort((x,y)=>d(x.p,a.p)-d(y.p,a.p))[0];
-    a.contact=clone(b.p);a.alert='engaging';a.alertUntil=s.seconds+3;
-    a.contacted=true;a.nav=[];
-  }else if(s.seconds>a.alertUntil&&a.alert!=='idle'){
+    a.contact=clone(b.p);a.alertUntil=s.seconds+3;a.contacted=true;
+    if(a.suppression>.65&&a.alert!=='retreat'){
+      a.retreatPoint=defensivePosition(a,b.p,s);
+      if(a.retreatPoint){a.alert='retreat';a.nav=[];}
+    }
+    if(a.alert!=='retreat'){a.alert='engaging';a.nav=[];}
+  }else if(s.seconds>a.alertUntil&&a.alert!=='idle'&&
+    a.alert!=='retreat'&&a.alert!=='cover'){
     a.alert='investigating';a.contact=a.heard??a.contact;
   }
   const newest=[...s.noise].reverse().find(n=>
     s.seconds-n.time<1&&d(a.p,n.p)<n.radius);
-  if(newest&&!visible.length){
+  if(newest&&!visible.length&&a.alert!=='retreat'){
     a.heard=clone(newest.p);a.contact=clone(newest.p);
     a.alert='suspicious';a.alertUntil=s.seconds+1.15;
     a.contacted=true;
   }
+  if(a.alert==='retreat'&&a.retreatPoint){
+    if(d(a.p,a.retreatPoint)>9){
+      approach(a,a.retreatPoint,dt,s);
+      if(a.nav.length)rotate(a,angle(a.p,a.nav[0]),dt);
+    }else{
+      a.alert='cover';a.retreatPoint=null;a.nav=[];
+      notify(s,a.name+' TOOK COVER');
+    }
+    return;
+  }
   if(a.contact){
     rotate(a,angle(a.p,a.contact),dt);
     if(a.alert==='investigating'&&d(a.p,a.contact)>75){
-      // Limited curiosity, not omniscient pursuit or perfect aim.
+      // Noise gives a region to investigate, never a magic target.
       if(!a.nav.length)a.nav=route(a.p,a.contact);
       if(a.nav.length)approach(a,a.contact,dt,s);
     }
