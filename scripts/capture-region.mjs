@@ -110,7 +110,7 @@ try{
     throw Error('Two-finger gesture did not update the camera target');
   await page.screenshot({path:resolve(directory,'cutwoods-two-finger-mobile.png')});
   await page.locator('#regionMenuButton').click();
-  const lab=await page.locator('a[href="./index.html"]').count();
+  const lab=await page.locator('a[href="./verdigris.html"]').count();
   if(lab!==1)throw Error('Original Environment Lab entry is missing');
   await page.locator('#closeRegions').click();
   await page.locator('#worldMode').click();
@@ -152,7 +152,7 @@ try{
 
   // The standalone 10m lab must still initialize without missing
   // controls, runtime WebGL errors or changing its entrypoint.
-  await page.goto(`http://127.0.0.1:${PORT}/index.html`,{
+  await page.goto(`http://127.0.0.1:${PORT}/verdigris.html`,{
     waitUntil:'domcontentloaded',
   });
   await page.locator('#waterLabel').waitFor();
