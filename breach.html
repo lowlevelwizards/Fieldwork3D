@@ -15,6 +15,18 @@
   <div class="mode"><strong id="phase">PLANNING</strong><output id="clock">00:00</output></div>
 </header>
 <div class="guidance" id="hint" role="status" aria-live="polite">Choose Rook or Moss. Tap ground to add a route, or drag from an operator to draw one.</div>
+<section class="orders" aria-label="Planning tools">
+  <button id="undo" type="button" title="Undo latest planned order">↶ UNDO</button>
+  <button id="redo" type="button" title="Redo previously undone order">↷ REDO</button>
+  <button id="insert" type="button" aria-pressed="false" title="Tap between route nodes to insert">+ NODE</button>
+  <button id="delete" type="button" title="Delete selected route node">− NODE</button>
+  <button id="door" type="button" aria-pressed="false" title="Tap a door to add an entry order">DOOR</button>
+  <button id="method" type="button" title="Cycle door action">OPEN</button>
+  <button id="wait" type="button" title="Wait at the end of the plan">WAIT</button>
+  <button id="sync" type="button" title="Both soldiers wait for the same go code">SYNC</button>
+  <button id="stance" type="button" title="Toggle this soldier's movement stance">STAND</button>
+  <button id="variant" type="button" title="Try another authored opponent arrangement">SITE 1/3</button>
+</section>
 <div class="feed" id="feed" aria-live="polite">PLAN THE ENTRY</div>
 <nav class="bar" aria-label="Tactical controls">
   <div class="units">
@@ -32,6 +44,12 @@
     <button id="restart" type="button" title="Restart this encounter">↺</button>
   </div>
 </nav>
+<section id="debrief" class="debrief" hidden aria-label="Mission debrief">
+  <strong id="debriefTitle">MISSION COMPLETE</strong>
+  <p id="debriefStats"></p>
+  <button id="retry" type="button">RETRY MISSION</button>
+  <button id="next" type="button">NEXT ARRANGEMENT</button>
+</section>
 <div class="foot"><span id="mission">CONTACTS UNKNOWN • SECURE THE STATION</span><span class="shortcut">SPACE PAUSE · TAP TO PLAN</span></div>
 <script type="module" src="./src/breach-main.ts"></script>
 </body>
