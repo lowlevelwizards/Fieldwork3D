@@ -78,13 +78,14 @@ export class TacticalScene3D{
     this.scene.add(this.sun);
     this.scene.add(this.root,this.effects);
     this.buildWorld();
-    // Unknown tiles must obscure tall props. Explored tiles tint gently,
-    // never putting a white/grey sheet across already-known furniture.
+    // Architectural silhouettes remain visible (as in the 2D map), but
+    // unknown cells are strongly darkened. Unseen soldiers and door states
+    // are separately visibility-gated, so a huge opaque 'roof' is unnecessary.
     const fgeom=new THREE.PlaneGeometry(40.4,40.4);
     fgeom.rotateX(-Math.PI/2);
     const unknownMat=new THREE.MeshBasicMaterial({
-      color:0x071416,side:THREE.DoubleSide,transparent:false,
-      depthWrite:true});
+      color:0x071416,side:THREE.DoubleSide,transparent:true,
+      opacity:.69,depthWrite:false});
     const exploredMat=new THREE.MeshBasicMaterial({
       color:0x071819,side:THREE.DoubleSide,transparent:true,
       opacity:.21,depthWrite:false});
@@ -543,7 +544,7 @@ export class TacticalScene3D{
         const seen=liveVisibility(s,p);
         const past=knownAt(s,p.x,p.y);
         if(seen)continue;
-        temp.position.set(p.x,past?34:116,p.y);temp.updateMatrix();
+        temp.position.set(p.x,36,p.y);temp.updateMatrix();
         if(past)this.fogExplored.setMatrixAt(explored++,temp.matrix);
         else this.fogUnknown.setMatrixAt(unk++,temp.matrix);
       }
