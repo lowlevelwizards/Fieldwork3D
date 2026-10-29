@@ -5,7 +5,7 @@ import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   planMove,planMoveStroke,planAim,planWait,planSync,movePlanNode,
-  doorAtNode,planStack,backOne,
+  finalPoint,doorAtNode,planStack,backOne,
   deletePlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,stepSession,knownAt,liveVisibility,
 } from './breach-game.ts';
@@ -58,6 +58,7 @@ let looking=false;
 let lookMode:'look'|'pie'|'strafe'='look';
 let contextSignature='';
 let selectedNode:number|null=null;
+let doorFocusId:string|null=null;
 let draggingNode:Pt|null=null;
 let fogData=new Uint8Array(16*19),fogStamp=-1;
 let audio:AudioContext|null=null;
@@ -138,7 +139,7 @@ const uid=(id:string)=>team(state).find(o=>o.id===id);
 function selectUnit(id:string){
   const actor=uid(id);if(!actor||actor.health<=0)return;
   selected=id;looking=false;
-  selectedNode=null;updateHud();
+  selectedNode=null;doorFocusId=null;updateHud();
 }
 function message(){
   if(state.phase==='planning'){
@@ -159,32 +160,46 @@ function armFacing(mode:'look'|'pie'|'strafe'){
   lookMode=mode;
   updateHud();
 }
+/** The tray never competes with the expanded TOOLS panel or GO/BACK. */
+function focusedDoor(a:TeamActor,node:ReturnType<typeof selectedPlanNode>){
+  const explicit=state.doors.find(d=>d.id===doorFocusId&&!d.open);
+  if(explicit)return explicit;
+  const points=node?[node.p]:[finalPoint(a),a.p];
+  return state.doors.filter(d=>!d.open&&points.some(p=>
+    distance(p,doorCenter(d))<=43))
+    .sort((x,y)=>{
+      const dx=Math.min(...points.map(p=>distance(p,doorCenter(x))));
+      const dy=Math.min(...points.map(p=>distance(p,doorCenter(y))));
+      return dx-dy;
+    })[0];
+}
+function selectedPlanNode(){
+  return uid(selected)?.plan.find(n=>n.id===selectedNode);
+}
 function updateContext(){
-  // Context chrome must disappear while the player is pointing at the map.
-  // Otherwise its floating touch targets can swallow door/pivot/LOOK taps.
-  if(state.phase!=='planning'||looking){
+  if(state.phase!=='planning'||looking||
+     !ui.orders.classList.contains('compact')){
     ui.context.hidden=true;return;
   }
   const a=uid(selected);
   if(!a||a.health<=0){ui.context.hidden=true;return;}
-  const node=a.plan.find(n=>n.id===selectedNode);
-  const where=node?.p??a.p;
-  const closest=state.doors.filter(d=>
-    !d.open&&distance(where,doorCenter(d))<43)
-    .sort((x,y)=>distance(where,doorCenter(x))-
-      distance(where,doorCenter(y)))[0];
-  const choices:{id:string;label:string;pressed?:boolean}[]=[];
-  choices.push({id:'ctxLook',label:'LOOK'});
-  choices.push({id:'ctxPie',label:'PIE'});
-  choices.push({id:'ctxStrafe',label:'STRAFE'});
+  const node=selectedPlanNode();
+  const door=focusedDoor(a,node);
+  const where=doorFocusId&&door?doorCenter(door):node?.p??finalPoint(a);
+  const choices:{id:string;label:string}[]=[
+    {id:'ctxLook',label:'LOOK'},
+    {id:'ctxPie',label:'PIE'},
+    {id:'ctxStrafe',label:'STRAFE'},
+  ];
   if(node)choices.push({id:'ctxDelete',label:'DELETE'});
-  if(closest){
-    choices.push({id:'ctxStack',label:'STACK'});
-    choices.push({id:'ctxOpen',label:'OPEN'});
-    choices.push({id:'ctxKick',label:'KICK'});
-  }
-  const signature=choices.map(x=>x.id+String(x.pressed)).join('/')+
-    '/'+(closest?.id??'')+'/'+(node?.id??'-');
+  if(door)choices.push(
+    {id:'ctxStack',label:'STACK'},
+    {id:'ctxOpen',label:'OPEN'},
+    {id:'ctxKick',label:'KICK'},
+    {id:'ctxHold',label:'HOLD'},
+  );
+  const signature=choices.map(x=>x.id).join('/')+
+    '/'+(door?.id??'')+'/'+(node?.id??'-')+'/'+(doorFocusId??'');
   if(contextSignature!==signature){
     contextSignature=signature;
     ui.context.replaceChildren();
@@ -192,29 +207,28 @@ function updateContext(){
       const button=document.createElement('button');
       button.type='button';button.dataset.action=option.id;
       button.textContent=option.label;
-      if(option.pressed)button.setAttribute('aria-pressed','true');
       ui.context.append(button);
     }
   }
   ui.context.hidden=false;
-  // No node: dock the unit's small action tray above the control bar.
-  // A floating tray above the soldier can intercept the user's first
-  // destination tap, especially at the starting position on portrait.
-  if(!node){
-    ui.context.style.left=cssW/2+'px';
-    ui.context.style.top=Math.max(190,cssH-163)+'px';
-    ui.context.style.transform='translate(-50%,-100%)';
-    return;
-  }
-  // Selected node: float above it without covering the waypoint itself.
-  const screen=worldToScreen(where,12);
-  const left=clamp(screen.x,ui.context.offsetWidth/2+6,
-    cssW-ui.context.offsetWidth/2-6);
-  const above=screen.y-22;
-  const top=above<175?screen.y+ui.context.offsetHeight+36:above;
-  ui.context.style.left=left+'px';
-  ui.context.style.top=clamp(top,170,cssH-123)+'px';
-  ui.context.style.transform=above<175?'translate(-50%,-0%)':'translate(-50%,-100%)';
+
+  // Use a real reserved viewport lane between header and bottom controls.
+  // This is measured after the tray becomes visible so two-row door menus
+  // cannot cover BACK, TOOLS, or GO in portrait or landscape.
+  const bounds=ui.context.getBoundingClientRect();
+  const barTop=ui.back.getBoundingClientRect().top;
+  const trayHeight=bounds.height;
+  const minTop=cssH<500?57:112;
+  const maxTop=Math.max(minTop,barTop-trayHeight-12);
+  const target=worldToScreen(where,node?12:26);
+  const wantTop=node||doorFocusId?
+    target.y-trayHeight-22:maxTop;
+  const desired=wantTop<minTop?target.y+25:wantTop;
+  const top=clamp(desired,minTop,maxTop);
+  ui.context.style.left=clamp(target.x,bounds.width/2+7,
+    cssW-bounds.width/2-7)+'px';
+  ui.context.style.top=top+'px';
+  ui.context.style.transform='translateX(-50%)';
 }
 ui.context.addEventListener('click',event=>{
   const button=(event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]');
@@ -222,27 +236,30 @@ ui.context.addEventListener('click',event=>{
   const action=button.dataset.action;
   const a=uid(selected);
   if(!a)return;
-  const node=a.plan.find(n=>n.id===selectedNode);
-  const where=node?.p??a.p;
-  const door=state.doors.filter(d=>!d.open&&distance(where,doorCenter(d))<50)
-    .sort((x,y)=>distance(where,doorCenter(x))-distance(where,doorCenter(y)))[0];
+  const node=selectedPlanNode();
+  const door=focusedDoor(a,node);
+  const nodeNearDoor=!!(node&&door&&
+    distance(node.p,doorCenter(door))<=43);
   switch(action){
     case 'ctxLook':armFacing('look');return;
     case 'ctxPie':armFacing('pie');return;
     case 'ctxStrafe':armFacing('strafe');return;
     case 'ctxDelete':
       if(node)deletePlanNode(state,selected,node.id);
-      selectedNode=null;break;
+      selectedNode=null;doorFocusId=null;break;
     case 'ctxStack':
-      if(door&&!planStack(state,selected,door.id,node?.id))
+      if(door&&!planStack(state,selected,door.id,
+        nodeNearDoor?node?.id:undefined))
         state.events.push('NO REACHABLE STACK POSITION');
-      selectedNode=null;break;
+      selectedNode=null;doorFocusId=null;break;
     case 'ctxOpen':
     case 'ctxKick':
+    case 'ctxHold':
       if(door&&!doorAtNode(state,selected,door.id,
-        action==='ctxOpen'?'open':'kick',node?.id))
+        action==='ctxOpen'?'open':action==='ctxKick'?'kick':'hold',
+        nodeNearDoor?node?.id:undefined))
         state.events.push('DOOR NOT REACHABLE FROM THAT POINT');
-      selectedNode=null;break;
+      selectedNode=null;doorFocusId=null;break;
   }
   contextSignature='';updateHud();
 });
@@ -739,12 +756,19 @@ function useSelectedGround(pt:Pt){
 }
 function reset(next=state.variant){
   state=newSession(next);selected='rook';looking=false;
-  selectedNode=null;draggingNode=null;
+  selectedNode=null;doorFocusId=null;draggingNode=null;
   cursor=null;trace=null;zoom=1;panX=panY=0;
   fogStamp=-1;lastSoundShotCount=0;lastEventAudio='';
   layout();updateHud();
 }
 ui.rook.addEventListener('click',()=>selectUnit('rook'));
+ui.back.addEventListener('click',()=>{
+  // Build 076 accidentally removed this listener when slimming the HUD.
+  if(backOne(state,selected)){
+    selectedNode=null;doorFocusId=null;
+  }
+  updateHud();
+});
 ui.moss.addEventListener('click',()=>selectUnit('moss'));
 ui.clear.addEventListener('click',()=>{clearPlan(state,selected);selectedNode=null;updateHud();});
 ui.undo.addEventListener('click',()=>{undoPlan(state,selected);selectedNode=null;updateHud();});
@@ -775,7 +799,7 @@ window.addEventListener('keydown',e=>{
   if(e.code==='KeyX'){clearPlan(state,selected);updateHud();}
   if(e.code==='KeyL')armFacing('look');
   if(e.code==='Backspace'&&!e.repeat){
-    e.preventDefault();backOne(state,selected);selectedNode=null;updateHud();
+    e.preventDefault();ui.back.click();
   }
   if(e.code==='KeyF'&&!e.repeat)armFacing('strafe');
   if(e.code==='KeyB'&&!e.repeat)armFacing('pie');
@@ -827,7 +851,7 @@ canvas.addEventListener('pointerdown',e=>{
     if(hit)selectUnit(hit.id);
     const node=state.phase==='planning'&&!hit&&!contextual?
       hitNode(pt):null;
-    if(node)selectedNode=node.id;
+    if(node){selectedNode=node.id;doorFocusId=null;}
     activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
       startX:e.clientX,startY:e.clientY,wasUnit:!!hit,
       nodeId:node?.id??null,
@@ -909,14 +933,23 @@ function releasePointer(e:PointerEvent,cancelled=false){
     if(p.mode==='node'&&p.nodeId!==null){
       if(p.moved&&!movePlanNode(state,selected,p.nodeId,pt))
         state.events.push('INVALID NODE POSITION');
-      selectedNode=p.nodeId;
+      selectedNode=p.nodeId;doorFocusId=null;
     }else if(p.mode==='route'&&trace&&trace.length>1){
       const points=[...trace,pt];
       if(!planMoveStroke(state,selected,points.slice(1)))
         state.events.push('NO WALKABLE STROKE');
-      selectedNode=null;
+      selectedNode=null;doorFocusId=null;
     }else if(!p.moved&&!p.wasUnit&&pt.x>=0&&pt.y>=0&&
-      pt.x<=W&&pt.y<=H)useSelectedGround(pt);
+      pt.x<=W&&pt.y<=H){
+      const door=state.doors.find(d=>!d.open&&
+        distance(worldToScreen(doorCenter(d),10),
+          {x:e.clientX,y:e.clientY})<24);
+      if(door&&!looking){
+        doorFocusId=door.id;selectedNode=null;
+      }else{
+        doorFocusId=null;useSelectedGround(pt);
+      }
+    }
   }
   trace=null;draggingNode=null;activePointers.delete(e.pointerId);
   if(activePointers.size<2){panMid=null;pinchDistance=0;}
@@ -940,6 +973,8 @@ ui.moreOrders.addEventListener('click',()=>{
   const expanded=ui.orders.classList.toggle('compact')===false;
   ui.moreOrders.setAttribute('aria-pressed',String(expanded));
   ui.moreOrders.textContent=expanded?'HIDE':'TOOLS';
+  // Never render two command overlays on top of each other.
+  updateContext();
 });
 canvas.addEventListener('wheel',e=>{
   e.preventDefault();
