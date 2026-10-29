@@ -73,14 +73,14 @@ try{
   await phone.locator('#cameraOrbit').click();
   if(await phone.locator('#cameraOrbit').getAttribute('aria-pressed')!=='true')
     throw Error('Orbit mode did not activate');
-  await touchGesture([[165,420]],[[190,425]],[[220,438]],[[260,451]]);
+  await touchGesture([[165,420]],[[[190,425]],[[220,438]],[[260,451]]]);
   const turned=await cameraState();
   if(near(turned.yaw,origin.yaw,.12)||near(turned.pitch,origin.pitch,.06))
     throw Error('One-finger orbit failed to rotate and tilt independently');
   if(!near(turned.x,origin.x,1)||!near(turned.y,origin.y,1))
     throw Error('Orbit changed focus; it should circle the same map point');
   await phone.locator('#cameraPan').click();
-  await touchGesture([[170,410]],[[195,401]],[[225,380]],[[255,358]]);
+  await touchGesture([[170,410]],[[[195,401]],[[225,380]],[[255,358]]]);
   const shifted=await cameraState();
   if(near(shifted.x,turned.x,3)&&near(shifted.y,turned.y,3))
     throw Error('One-finger PAN did not move the world point');
