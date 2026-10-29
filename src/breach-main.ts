@@ -98,7 +98,7 @@ const activePointers=new Map<number,{x:number;y:number;startX:number;startY:numb
   wasUnit:boolean;nodeId:number|null;
   mode:'undecided'|'route'|'pan'|'node'|'pivot'|'sweep';moved:boolean}>();
 let pinchDistance=0,panMid:Pt|null=null,pinchAngle=0;
-let pieHandle:'pivot'|'sweep'|null=null;
+let pieRepositionNode:number|null=null;
 const colors={rook:'#a2d4ca',moss:'#b9c6a0'};
 const colorFor=(id:string)=>id==='rook'?colors.rook:colors.moss;
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
@@ -146,7 +146,7 @@ const uid=(id:string)=>team(state).find(o=>o.id===id);
 function selectUnit(id:string){
   const actor=uid(id);if(!actor||actor.health<=0)return;
   selected=id;looking=false;doorMode=false;insertMode=false;
-  pieMode=null;strafeNext=false;
+  pieMode=null;strafeNext=false;pieRepositionNode=null;
   selectedNode=null;updateHud();
 }
 function message(){
@@ -154,6 +154,7 @@ function message(){
     if(looking)return 'LOOK: choose a facing for the selected waypoint.';
     if(doorMode)return 'DOOR: tap a door to append '+method.toUpperCase()+' order.';
     if(pieMode)return 'PIE: tap a world-space pivot. The soldier will sweep around it, keeping the weapon aimed inward.';
+    if(pieRepositionNode!==null)return 'Tap a new world-space pivot for the selected pie order.';
     if(strafeNext)return 'STRAFE armed: tap or draw travel, then select the node and LOOK to set weapon direction.';
     if(insertMode)return 'INSERT: tap between route nodes to add a waypoint.';
     if(selectedNode!==null)return 'Selected order: drag to adjust. Nearby door and cover actions appear beside it.';
@@ -176,7 +177,7 @@ function updateContext(){
   const node=a.plan.find(n=>n.id===selectedNode);
   const where=node?.p??a.p;
   const closest=state.doors.filter(d=>
-    !d.open&&distance(where,doorCenter(d))<50)
+    !d.open&&distance(where,doorCenter(d))<43)
     .sort((x,y)=>distance(where,doorCenter(x))-
       distance(where,doorCenter(y)))[0];
   const isMove=node?.kind==='move';
@@ -258,7 +259,9 @@ ui.context.addEventListener('click',event=>{
       selectedNode=null;break;
     case 'ctxPieLeft':armPie('ccw');return;
     case 'ctxPieRight':armPie('cw');return;
-    case 'ctxPivot':pieHandle='pivot';state.events.push('DRAG THE PIVOT MARKER');break;
+    case 'ctxPivot':if(node?.kind==='pie'){
+      pieRepositionNode=node.id;state.events.push('TAP NEW PIVOT OR DRAG MARKER');
+    }break;
   }
   contextSignature='';updateHud();
 });
@@ -739,6 +742,11 @@ function useSelectedGround(pt:Pt){
       state.events.push('SELECT OR CREATE A NODE FIRST');
     looking=false;updateHud();return;
   }
+  if(pieRepositionNode!==null){
+    if(!editPie(state,selected,pieRepositionNode,pt))
+      state.events.push('INVALID PIVOT LOCATION');
+    pieRepositionNode=null;updateHud();return;
+  }
   if(pieMode){
     if(!planPieAt(state,selected,pt,pieMode,65,selectedNode??undefined))
       state.events.push('INVALID PIVOT OR SWEEP: MOVE TO AN OPEN ARC');
@@ -774,7 +782,7 @@ function useSelectedGround(pt:Pt){
 function reset(next=state.variant){
   state=newSession(next);selected='rook';looking=false;doorMode=false;
   insertMode=false;selectedNode=null;draggingNode=null;
-  strafeNext=false;pieMode=null;
+  strafeNext=false;pieMode=null;pieRepositionNode=null;
   cursor=null;trace=null;zoom=1;panX=panY=0;
   fogStamp=-1;lastSoundShotCount=0;lastEventAudio='';
   layout();updateHud();
@@ -876,7 +884,7 @@ canvas.addEventListener('pointerdown',e=>{
   const pt=pointerWorld(e);
   // Active contextual orders have priority over picking an overlapping
   // soldier or waypoint, especially near a crowded doorway on mobile.
-  const contextual=looking||doorMode||insertMode||pieMode!==null;
+  const contextual=looking||doorMode||insertMode||pieMode!==null||pieRepositionNode!==null;
   const hit=contextual?undefined:team(state).find(a=>
     a.health>0&&(viewMode==='plan2d'||!stage?
       distance(a.p,pt)<22:
