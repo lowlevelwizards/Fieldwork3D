@@ -10,6 +10,7 @@ import {
   posture,toggleContactRule,toggling,stepSession,knownAt,liveVisibility,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
+import {shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
 import './breach-style.css';
 
 const el=<T extends HTMLElement>(id:string)=>{
@@ -306,6 +307,7 @@ function updateHud(){
     (id==='rook'?ui.rookHp:ui.mossHp).textContent=a?.health===2?'●●':a?.health===1?'●○':'○○';
   }
   ui.hint.textContent=message();
+  ui.hint.hidden=state.started&&!looking;
   updateContext();
   ui.feed.textContent=state.events.at(-1)??'';
   const visible=enemies(state).filter(e=>e.health>0&&isSeen(state,e)).length;
@@ -603,6 +605,60 @@ function renderProjectedPlans(){
       draw.beginPath();draw.arc(pawn.x,pawn.y+15,13,0,Math.PI*2);draw.stroke();
     }
   }
+  // Screen-space icons stay readable regardless of ortho pitch or zoom.
+  for(const hostile of enemies(state)){
+    if(!liveVisibility(state,hostile.p))continue;
+    const pawn=worldToScreen(hostile.p,33);
+    if(hostile.health<=0){
+      draw.fillStyle='#f0b39a';draw.textAlign='center';
+      draw.font='bold 11px monospace';
+      draw.fillText('× DOWN',pawn.x,pawn.y-13);
+      draw.strokeStyle='#d99980';draw.lineWidth=2;
+      draw.beginPath();draw.arc(pawn.x,pawn.y+14,13,0,Math.PI*2);draw.stroke();
+    }else{
+      draw.strokeStyle='#e2a18b';draw.lineWidth=1.6;
+      draw.beginPath();draw.arc(pawn.x,pawn.y+18,12,0,Math.PI*2);draw.stroke();
+    }
+  }
+  for(const member of team(state)){
+    const pawn=worldToScreen(member.p,33);
+    if(member.health<=0){
+      draw.font='bold 11px monospace';draw.fillStyle='#f4baa7';
+      draw.textAlign='center';draw.fillText('× DOWN',pawn.x,pawn.y-14);
+    }else if(member.health===1){
+      draw.fillStyle='#e6a485';draw.fillRect(pawn.x-10,pawn.y+1,20,3);
+    }
+  }
+  for(const door of state.doors){
+    const visibility=doorVisibility(state,door);
+    if(!visibility.known)continue;
+    const p=worldToScreen(doorCenter(door),38);
+    const focused=doorFocusId===door.id;
+    const label=visibility.live?(door.open?'OPEN':'DOOR'):'DOOR';
+    draw.font='bold 10px monospace';draw.textAlign='center';
+    draw.strokeStyle=focused?'#ffe1a0':'#e1c18b';
+    draw.lineWidth=focused?2.8:1.7;
+    draw.beginPath();draw.arc(p.x,p.y+13,focused?12:9,0,2*Math.PI);
+    draw.stroke();
+    draw.fillStyle='#f0d9ab';draw.fillText(label,p.x,p.y-4);
+  }
+  // The 3D camera does not define combat outcomes: use the same shot event
+  // visibility and damage flags as the physical effects and 2D renderer.
+  for(const shot of state.shots){
+    const visibility=shotVisibility(state,shot);
+    if(!visibility.impact||!shot.hit)continue;
+    const point=worldToScreen(shot.end,27);
+    const fade=contactFade(shot.age,.40);
+    draw.globalAlpha=fade;
+    draw.strokeStyle=shot.down?'#f5c5b1':'#ed9e80';
+    draw.lineWidth=shot.down?3:2;
+    draw.beginPath();draw.arc(point.x,point.y,
+      (shot.down?17:10)+(1-fade)*8,0,2*Math.PI);draw.stroke();
+    draw.fillStyle='#f2b39b';draw.font='bold 11px monospace';
+    draw.textAlign='center';
+    draw.fillText(shot.down?'DOWN':'HIT',point.x,point.y-17);
+    draw.globalAlpha=1;
+  }
   // Unknown enemies stay unrendered; only grounded last-known reports show.
   for(const hostile of enemies(state)){
     if(isSeen(state,hostile))continue;
@@ -659,7 +715,7 @@ function missionMarkers(){
 }
 function sprite(a:TeamActor){
   if(a.side==='red'){
-    const visible=a.health>0&&isSeen(state,a);
+    const visible=a.health>0?isSeen(state,a):liveVisibility(state,a.p);
     if(!visible){
       const memory=lastKnown(state,a.id);
       if(memory&&state.seconds-memory.at<25){
@@ -678,8 +734,13 @@ function sprite(a:TeamActor){
   if(a.health<=0){
     draw.save();draw.translate(a.p.x,a.p.y);
     draw.rotate(a.heading);
-    rect(-8,-3,17,8,'#574d49');rect(-2,-7,4,17,'#a46556');
-    draw.restore();return;
+    rect(-13,-4,29,8,'#574d49');rect(-3,-9,5,18,'#a46556');
+    draw.restore();
+    draw.strokeStyle='#d39b84';draw.lineWidth=2;
+    draw.beginPath();draw.arc(a.p.x,a.p.y,19,0,Math.PI*2);draw.stroke();
+    draw.fillStyle='#edbea4';draw.font='bold 11px monospace';
+    draw.textAlign='center';draw.fillText('× DOWN',a.p.x,a.p.y-23);
+    return;
   }
   if(friendly&&(a.id===selected)){
     draw.strokeStyle='#e8d6b1';draw.lineWidth=1.6;
@@ -711,16 +772,23 @@ function sprite(a:TeamActor){
 }
 function contacts(){
   for(const shot of state.shots){
-    draw.globalAlpha=Math.max(0,(.24-shot.age)/.24)*.75;
-    line(shot.start,shot.end,shot.side==='blue'?'#eacb91':'#f5a187',1.6);
-    draw.globalAlpha=1;
-    if(shot.hit)circle(shot.end.x,shot.end.y,3,'#d79e79');
-  }
-  for(const spark of state.sparks){
-    const r=3+(1-spark.age/.2)*10;
-    draw.globalAlpha=Math.max(0,1-spark.age/.2);
-    circle(spark.p.x,spark.p.y,r,
-      spark.side==='blue'?'#e2cea1':'#e39e7a');
+    const visibility=shotVisibility(state,shot);
+    const fade=contactFade(shot.age,.40);
+    draw.globalAlpha=fade;
+    if(visibility.trace&&shot.age<.23)
+      line(shot.start,shot.end,
+        shot.side==='blue'?'#f6db9d':'#f2a087',2.3);
+    if(visibility.flash&&shot.age<.12)
+      circle(shot.start.x,shot.start.y,4+fade*4,'#f4dbb0');
+    if(visibility.impact){
+      circle(shot.end.x,shot.end.y,shot.hit?5:2.8,
+        shot.hit?'#de8b78':'#dfc8a4');
+      if(shot.hit){
+        draw.fillStyle='#efb19c';draw.font='bold 11px monospace';
+        draw.textAlign='center';
+        draw.fillText(shot.down?'DOWN':'HIT',shot.end.x,shot.end.y-16);
+      }
+    }
     draw.globalAlpha=1;
   }
 }
@@ -1006,7 +1074,7 @@ function tick(now:number){
     playTone(90,.25,true);
   lastEventAudio=event;
   if(now-hudAt>120){updateHud();hudAt=now;}
-  if(stage&&viewMode!=='plan2d')stage.update(state,selected,dt);
+  if(stage&&viewMode!=='plan2d')stage.update(state,selected,dt,doorFocusId);
   render();updateContext();requestAnimationFrame(tick);
 }
 layout();cameraMode(viewMode);updateHud();requestAnimationFrame(tick);
