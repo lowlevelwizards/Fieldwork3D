@@ -261,6 +261,33 @@ try{
   await pc.goto(url,{waitUntil:'domcontentloaded'});
   await pc.locator('#phase').waitFor();
   await pc.screenshot({path:resolve(folder,'04-desktop-opening.png')});
+  const pcCam=async()=>pc.locator('#breach3dCanvas').evaluate(c=>({
+    yaw:Number(c.dataset.cameraYaw),zoom:Number(c.dataset.cameraZoom),
+    x:Number(c.dataset.cameraFocusX),y:Number(c.dataset.cameraFocusY),
+  }));
+  const startPc=await pcCam();
+  await pc.mouse.move(605,410);
+  await pc.mouse.down({button:'right'});
+  await pc.mouse.move(680,435,{steps:5});
+  await pc.mouse.up({button:'right'});
+  const pcOrbited=await pcCam();
+  if(near(pcOrbited.yaw,startPc.yaw,.15))
+    throw Error('Desktop right-button drag failed to orbit the battlefield');
+  if(!near(pcOrbited.x,startPc.x,1)||!near(pcOrbited.y,startPc.y,1))
+    throw Error('Desktop orbit drifted toward a selected unit');
+  await pc.mouse.move(620,407);
+  await pc.mouse.down({button:'middle'});
+  await pc.mouse.move(670,400,{steps:5});
+  await pc.mouse.up({button:'middle'});
+  const pcPanned=await pcCam();
+  if(near(pcPanned.x,pcOrbited.x,3)&&near(pcPanned.y,pcOrbited.y,3))
+    throw Error('Desktop middle-button PAN did not move the focus');
+  await pc.mouse.move(800,400);
+  await pc.mouse.wheel(0,-350);
+  const pcZoomed=await pcCam();
+  if(!(pcZoomed.zoom>startPc.zoom))
+    throw Error('Desktop wheel did not zoom toward pointer');
+  await pc.screenshot({path:resolve(folder,'15-desktop-orbit-pan-zoom.png')});
   await pc.keyboard.press('Space');
   await pc.waitForTimeout(280);
   if(await pc.locator('#phase').innerText()!=='EXECUTING')
