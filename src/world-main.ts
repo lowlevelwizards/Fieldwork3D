@@ -8,6 +8,7 @@ import { CutwoodsPhysicalScene,ActorFigure } from './regional-visuals';
 import { newOperation,stepOperation,orderPlayer,playerFire,issueSquadOrder,
   type OperationState } from './regional-command';
 import {stepActor} from './regional-actors';
+import {createRecon,advanceRecon,reconView} from './solo-recon.ts';
 import {physicalGroundAt} from './regional-physical.ts';
 import {FloatingTouchControls,screenDirection} from './operator-touch.ts';
 import {FootstepAudio} from './operator-audio.ts';
@@ -40,28 +41,36 @@ const worldHelp=document.querySelector<HTMLElement>('#worldHelp');
 const inspectToggle=document.querySelector<HTMLButtonElement>('#inspectToggle');
 const soundToggle=document.querySelector<HTMLButtonElement>('#soundToggle');
 const soloStatus=document.querySelector<HTMLElement>('#soloStatus');
+const fieldObjective=document.querySelector<HTMLElement>('#fieldObjective');
+const fieldGoal=document.querySelector<HTMLElement>('#fieldGoal');
+const fieldHint=document.querySelector<HTMLElement>('#fieldHint');
+const fieldAction=document.querySelector<HTMLButtonElement>('#fieldAction');
+const fieldPosture=document.querySelector<HTMLElement>('#fieldPosture');
+const stanceButton=document.querySelector<HTMLButtonElement>('#stanceButton');
 if(!canvas||!nameLabel||!regionStatus||!coords||!scaleDisplay||!detailStatus||
    !menu||!menuButton||!choices||!closeMenu||!resetButton||
    !worldMode||!exploreControls||!moveStick||!moveNub||!fireButton||
-   !squadOrder||!holdOrder||!restartOperation||!actorReadout||!operationReadout||!worldHelp||!inspectToggle||!soundToggle||!soloStatus)
+   !squadOrder||!holdOrder||!restartOperation||!actorReadout||!operationReadout||!worldHelp||!inspectToggle||!soundToggle||!soloStatus||
+   !fieldObjective||!fieldGoal||!fieldHint||!fieldAction||!fieldPosture||!stanceButton)
   throw new Error('World controls not mounted');
 const view:HTMLCanvasElement=canvas;
 const ui={nameLabel,regionStatus,coords,scaleDisplay,detailStatus,menu,
   menuButton,choices,closeMenu,resetButton,worldMode,exploreControls,
   moveStick,moveNub,fireButton,squadOrder,holdOrder,restartOperation,actorReadout,
-  operationReadout,worldHelp,inspectToggle,soundToggle,soloStatus};
+  operationReadout,worldHelp,inspectToggle,soundToggle,soloStatus,
+  fieldObjective,fieldGoal,fieldHint,fieldAction,fieldPosture,stanceButton};
 const scene=new THREE.Scene();
-scene.background=new THREE.Color(0xa8c5c4);
-scene.fog=new THREE.FogExp2(0xb6c7b6,.000065);
+scene.background=new THREE.Color(0x96a69e);
+scene.fog=new THREE.FogExp2(0xa6b0a4,.00045);
 const renderer=new THREE.WebGLRenderer({
   canvas:view,antialias:true,powerPreference:'low-power',
 });
 renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.55));
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.10;
-scene.add(new THREE.HemisphereLight(0xe0ebdc,0x737d69,2.0));
-const sunlight=new THREE.DirectionalLight(0xffe4af,2.3);
+renderer.toneMappingExposure=.94;
+scene.add(new THREE.HemisphereLight(0xd6dfd1,0x636b5e,1.65));
+const sunlight=new THREE.DirectionalLight(0xffedce,1.55);
 sunlight.position.set(-400,800,220);
 scene.add(sunlight);
 const camera=new THREE.OrthographicCamera(-600,600,600,-600,.1,12000);
@@ -74,6 +83,7 @@ const soloMode=!new URLSearchParams(location.search).has('tactical');
 document.body.classList.toggle('solo',soloMode);
 const audio=new FootstepAudio();
 let operation:OperationState=newOperation();
+let recon=createRecon();
 let explore=false;
 let squadRally=false;
 let lastHud=0;
@@ -127,8 +137,8 @@ function updateCamera():void{
   if(explore){
     const player=operation.actors.find(a=>a.id===operation.playerId)!;
     const follow=1-Math.exp(-cameraDt*8.5);
-    target.x+=(player.x+lookOffset.x-target.x)*follow;
-    target.z+=(player.z+lookOffset.z-target.z)*follow;
+    target.x+=(player.x+player.vx*.37+lookOffset.x-target.x)*follow;
+    target.z+=(player.z+player.vz*.37+lookOffset.z-target.z)*follow;
     lookOffset.multiplyScalar(Math.exp(-cameraDt*.32));
   }
   target.x=THREE.MathUtils.clamp(target.x,-480,480);
@@ -217,9 +227,10 @@ function load(id:PlayableRegionId):void{
   figures.clear();
   loadedId=id;
   terrain=new RegionalTerrainField(scene,id);
-  props=new CutwoodsPhysicalScene(scene);
+  props=new CutwoodsPhysicalScene(scene,!soloMode);
   if(soloMode)firstPlace=new FirstPlaceScene(scene);
   operation=newOperation();
+  recon=createRecon();
   if(soloMode){
     const rook=operation.actors.find(a=>a.id===operation.playerId)!;
     rook.x=FIRST_PLACE.spawn.x;rook.z=FIRST_PLACE.spawn.z;
@@ -262,9 +273,11 @@ function setExplore(active:boolean):void{
   ui.worldMode.setAttribute('aria-pressed',String(active));
   ui.squadOrder.setAttribute('aria-pressed','false');
   ui.worldHelp.textContent=active?
-    'Lower left: move · Lower right: orbit · Two fingers: pan / pinch / twist · Tap: waypoint':
+    'Left thumb: move · Right: look · Tap: walk · C: crouch · F: read':
     'Survey: orbit, pan, pinch and inspect · EXPLORE controls the operator.';
   ui.soloStatus.hidden=!active||!soloMode;
+  ui.fieldObjective.hidden=!active||!soloMode;
+  ui.fieldPosture.hidden=!active||!soloMode;
   resetView();renderStatus();
 }
 ui.worldMode.addEventListener('click',()=>setExplore(!explore));
@@ -274,13 +287,37 @@ function renderStatus():void{
   ui.actorReadout.textContent='ROOK · '+a.health+'/'+a.maxHealth+
     ' INTEGRITY · '+speed.toFixed(1)+' M/S · '+
     (a.grounded?'GROUNDED':'AIRBORNE');
-  ui.soloStatus.textContent='ROOK  /  '+(speed>.15?'MOVING':'STANDING BY');
+  ui.soloStatus.textContent='ROOK  /  '+
+    (a.stance==='crouch'?'LOW':speed>.15?'MOVING':'STILL');
+  if(soloMode){
+    const note=reconView(recon,a);
+    ui.fieldGoal.textContent=note.title;
+    ui.fieldHint.textContent=note.detail;
+    ui.fieldAction.hidden=!note.action;
+    if(note.action)ui.fieldAction.textContent=note.action;
+    ui.stanceButton.textContent=a.stance==='crouch'?'STAND':'CROUCH';
+    ui.stanceButton.setAttribute('aria-pressed',String(a.stance==='crouch'));
+  }
   const recent=operation.log.at(-1)??'';
   ui.operationReadout.textContent=operation.result==='active'?
     'NORTHLINE / SECURE CROSSING · '+recent.toUpperCase():
     operation.result==='won'?'OPERATION COMPLETE · CROSSING SECURED':
       'OPERATOR DOWN · RESET WORLD TO RETRY';
 }
+function useFieldAction():void{
+  if(!soloMode||!explore)return;
+  const player=operation.actors.find(a=>a.id===operation.playerId)!;
+  recon=advanceRecon(recon,player,true);
+  renderStatus();
+}
+function toggleStance():void{
+  if(!soloMode||!explore)return;
+  const player=operation.actors.find(a=>a.id===operation.playerId)!;
+  player.stance=player.stance==='stand'?'crouch':'stand';
+  renderStatus();
+}
+ui.fieldAction.addEventListener('click',useFieldAction);
+ui.stanceButton.addEventListener('click',toggleStance);
 // The original 0.0.2 floating thumbsticks live on the canvas.
 const cameraActions={
   orbit:(dx:number,dy:number)=>{
@@ -338,7 +375,9 @@ document.addEventListener('visibilitychange',()=>{
 });
 window.addEventListener('keydown',e=>{
   if(movementKeys.has(e.code)){keys.add(e.code);e.preventDefault();}
-  if(e.code==='KeyF'&&!e.repeat){resetView();e.preventDefault();}
+  if(e.code==='KeyV'&&!e.repeat){resetView();e.preventDefault();}
+  if(e.code==='KeyF'&&!e.repeat){useFieldAction();e.preventDefault();}
+  if(e.code==='KeyC'&&!e.repeat){toggleStance();e.preventDefault();}
   if(e.code==='KeyQ'&&!e.repeat)cameraActions.orbit(-65,0);
   if(e.code==='KeyE'&&!e.repeat)cameraActions.orbit(65,0);
 });
@@ -364,6 +403,7 @@ ui.restartOperation.addEventListener('click',()=>{
   for(const figure of figures.values())figure.dispose(scene);
   figures.clear();
   operation=newOperation();
+  recon=createRecon();
   for(const actor of operation.actors){
     if(soloMode&&actor.id!==operation.playerId)continue;
     const figure=new ActorFigure(scene,actor);
@@ -412,6 +452,10 @@ function draw(now:number):void{
         stepActor(player,1/60,driving?input:null);
       }else stepOperation(operation,1/60,driving?input:null);
       accumulator-=1/60;
+    }
+    if(soloMode){
+      const player=operation.actors.find(a=>a.id===operation.playerId)!;
+      recon=advanceRecon(recon,player);
     }
     for(const figure of figures.values())figure.update(now/1000);
     updateCamera();

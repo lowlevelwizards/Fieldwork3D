@@ -15,6 +15,7 @@ export class ActorFigure{
   private readonly materials:THREE.Material[]=[];
   private stride=0;
   private weight=0;
+  private stanceBlend=0;
   private lastX:number;
   private lastZ:number;
   private lastTime:number|null=null;
@@ -71,6 +72,24 @@ export class ActorFigure{
       if(side===-1)part(arm,.345,.20,.36,0,-.37,.01,accent);
       this.arms.push(arm);
     }
+    // Visible physical kit and shoulder-to-muzzle rifle silhouette.
+    const gunmetal=mat(0x323b39),rail=mat(0x646b62);
+    this.materials.push(gunmetal,rail);
+    part(this.torso,.70,.16,.62,0,2.72,.01,shade);
+    part(this.torso,.43,.075,.36,0,2.64,.34,shade);
+    part(this.torso,.20,.23,.19,-.49,1.42,-.28,kit);
+    part(this.torso,.19,.38,.14,.47,1.50,-.37,kit);
+    part(this.torso,.065,.52,.065,.45,2.43,-.32,gunmetal);
+    const rifle=new THREE.Group();
+    rifle.position.set(.17,1.30,.51);rifle.rotation.y=-.14;
+    this.torso.add(rifle);
+    part(rifle,.23,.20,.66,0,0,.06,gunmetal);
+    part(rifle,.17,.13,.35,0,-.04,-.42,shade);
+    part(rifle,.11,.11,.79,0,.055,.68,gunmetal);
+    part(rifle,.14,.14,.15,0,.055,1.10,boots);
+    part(rifle,.14,.30,.19,0,-.25,.15,gunmetal);
+    part(rifle,.10,.08,.40,0,.16,.17,rail);
+    part(rifle,.10,.23,.12,0,-.19,.60,rail);
     this.rootShadow=new THREE.Mesh(new THREE.CircleGeometry(.44,16),
       new THREE.MeshBasicMaterial({
         color:0x152b2c,transparent:true,opacity:.22,depthWrite:false,
@@ -94,20 +113,22 @@ export class ActorFigure{
     const desired=Math.min(1,speed/2.5);
     this.weight+=(desired-this.weight)*(1-Math.exp(-dt*11));
     const w=this.weight;
+    this.stanceBlend+=(Number(a.stance==='crouch')-this.stanceBlend)*(1-Math.exp(-dt*9));
+    const crouch=this.stanceBlend;
     for(let i=0;i<this.legs.length;i++){
       const phase=this.stride+i*Math.PI;
       const swing=Math.sin(phase),leg=this.legs[i];
       const reach=swing*.40*w,bend=Math.max(0,-swing)*.48*w;
-      leg.hip.rotation.x=reach;
-      leg.knee.rotation.x=bend;
-      leg.ankle.rotation.x=-reach-bend*.65;
+      leg.hip.rotation.x=reach-.30*crouch;
+      leg.knee.rotation.x=bend+.65*crouch;
+      leg.ankle.rotation.x=-reach-bend*.65-.18*crouch;
       leg.ankle.position.y=-.53+Math.max(0,-swing)*.12*w;
     }
     this.arms[0].rotation.x=-Math.sin(this.stride)*.27*w;
     this.arms[1].rotation.x=Math.sin(this.stride)*.27*w;
-    this.torso.position.y=Math.abs(Math.sin(this.stride))*.045*w;
+    this.torso.position.y=Math.abs(Math.sin(this.stride))*.045*w-.34*crouch;
     this.torso.rotation.z=Math.sin(this.stride)*.025*w;
-    this.torso.rotation.x=-.04*w;
+    this.torso.rotation.x=-.04*w+.11*crouch;
     const angle=Math.atan2(Math.sin(a.heading-this.group.rotation.y),
       Math.cos(a.heading-this.group.rotation.y));
     this.group.rotation.y+=angle*(1-Math.exp(-dt*10));

@@ -36,7 +36,7 @@ export class CutwoodsPhysicalScene{
   private readonly nearGroup=new THREE.Group();
   private nearX=Infinity;private nearZ=Infinity;
   private readonly vegetationMeshes:THREE.Mesh[]=[];
-  constructor(scene:THREE.Scene){
+  constructor(scene:THREE.Scene,showLegacyMarker=true){
     const river:{x:number;z:number;y:number;width:number}[]=[];
     const road:{x:number;z:number;y:number;width:number}[]=[];
     for(let z=-500;z<=500;z+=4){
@@ -70,12 +70,14 @@ export class CutwoodsPhysicalScene{
       block(0,site.height+.22,0,site.width+.9,.45,site.depth+.9,roof);
       this.group.add(body);
     }
+    if(showLegacyMarker){
     const marker=new THREE.Mesh(new THREE.TorusGeometry(2.5,.15,5,32),
       new THREE.MeshBasicMaterial({color:0xe3bf80,depthTest:false}));
     marker.rotation.x=-Math.PI/2;
     marker.position.set(SITE_CENTER.x,
       physicalGroundAt(SITE_CENTER.x,SITE_CENTER.z)+.22,SITE_CENTER.z);
     marker.renderOrder=5;this.group.add(marker);
+    }
     this.group.add(this.nearGroup);
     scene.add(this.group);
   }

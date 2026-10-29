@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
-  <meta name="theme-color" content="#9bb8bc"/>
+  <meta name="theme-color" content="#89988a"/>
   <title>Fieldwork — Verdigris / Cutwoods</title>
   <style>
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -104,6 +104,40 @@
       body.solo.exploring .world-header .name{max-width:141px}
       body.solo.exploring .world-header .world-actions button{font-size:8px;padding:7px 5px}
     }
+    /* Build 050: field notes are quiet, human-scale and contextual. */
+    .field-objective{position:fixed;z-index:6;left:12px;
+      top:calc(max(12px,env(safe-area-inset-top)) + 70px);
+      max-width:min(285px,calc(100vw - 96px));padding:9px 11px;
+      color:#ede9d9;border-left:2px solid #a69a7b;
+      background:linear-gradient(90deg,#182724b8,#18272422);
+      pointer-events:none;text-shadow:0 1px 5px #15231b}
+    .field-objective[hidden],.field-posture[hidden]{display:none}
+    .field-objective__eyebrow{color:#c6bd9f;font-size:8px;letter-spacing:.16em}
+    .field-objective strong{display:block;margin-top:5px;font-size:12px;
+      font-weight:600;letter-spacing:.025em}
+    .field-objective p{margin:4px 0 0;line-height:1.5;font-size:10px;color:#d1d7c9}
+    .field-objective button{pointer-events:auto;display:block;margin-top:9px;
+      background:#ad986e;color:#14251e;border:0;border-radius:3px;
+      padding:9px 12px;min-height:38px;font-size:10px;letter-spacing:.09em}
+    .field-objective button[hidden]{display:none}
+    .field-posture{position:fixed;z-index:7;top:calc(max(12px,env(safe-area-inset-top)) + 75px);
+      right:12px}
+    .field-posture button{background:#25342fc9;border:1px solid #aab29a99;
+      color:#ece7d7;padding:8px 10px;border-radius:5px;min-height:38px;
+      font-size:10px;letter-spacing:.07em}
+    .field-posture button[aria-pressed="true"]{background:#8b8068;color:#f9f0de}
+    body.solo.exploring #regionMenuButton{display:none}
+    body.solo.exploring .world-header .name{
+      background:transparent;border-color:transparent;backdrop-filter:none;
+      text-shadow:0 1px 5px #20302b;padding:3px 0}
+    body.solo.exploring .world-header .world-actions{
+      background:transparent;backdrop-filter:none;border-color:transparent}
+    body.solo.exploring .world-header .world-actions button{
+      background:#2538319c;border-color:#b0b9a165}
+    body.solo.exploring #soloStatus{background:#192a2380;border:0;
+      padding:6px 8px;backdrop-filter:none;letter-spacing:.05em}
+    @media(max-height:490px){.field-objective{top:63px;max-width:220px}
+      .field-objective p{display:none}.field-posture{top:66px}}
     @media(prefers-reduced-motion:reduce){
       .floating-stick{transition:none}
     }
@@ -120,6 +154,15 @@
     <div class="world-actions"><button type="button" id="inspectToggle" aria-pressed="false">INFO</button><button type="button" id="soundToggle">SOUND OFF</button><button id="worldMode" type="button" aria-pressed="false">EXPLORE</button><button id="regionMenuButton" type="button" aria-expanded="false" aria-controls="regionMenu">REGIONS</button></div>
   </header>
   <div id="soloStatus" hidden aria-live="off">ROOK / STANDING BY</div>
+  <section id="fieldObjective" class="field-objective" hidden aria-label="Field notes">
+    <div class="field-objective__eyebrow">CUTWOODS / FIELD NOTE 01</div>
+    <strong id="fieldGoal">Find the weather station</strong>
+    <p id="fieldHint">A recording instrument stands beside the service track.</p>
+    <button id="fieldAction" type="button" hidden>READ FIELD LOG</button>
+  </section>
+  <div id="fieldPosture" class="field-posture" hidden>
+    <button id="stanceButton" type="button" aria-pressed="false">CROUCH</button>
+  </div>
   <section class="world-info" aria-label="Geographic navigation and inspection">
     <div class="flex"><span id="regionStatus">REGION 03 / 06</span><span id="scaleDisplay" class="scale"><span class="scale-line"></span><span>200 m</span></span></div>
     <div id="actorReadout" hidden>OPERATOR · READY</div>
