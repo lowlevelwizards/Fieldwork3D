@@ -434,9 +434,22 @@ function paths(){
       draw.font='bold 10px monospace';
       draw.fillText(String(i+1),point.x,point.y+3.1);
       if(n.facing!==undefined){
-        const end={x:point.x+Math.cos(n.facing)*30,
-          y:point.y+Math.sin(n.facing)*30};
+        const end={x:point.x+Math.cos(n.facing)*40,
+          y:point.y+Math.sin(n.facing)*40};
         line(point,end,'#ebcea1',2.1);circle(end.x,end.y,2.2,'#ebcea1');
+      }
+      if(n.aimMode==='track'&&n.aimPoint){
+        line(point,n.aimPoint,'#ddb37c',1.8);
+        circle(n.aimPoint.x,n.aimPoint.y,7,'#e6b77d');
+        circle(n.aimPoint.x,n.aimPoint.y,3,'#203732');
+        draw.textAlign='left';draw.font='bold 10px monospace';
+        draw.fillStyle='#e8cba2';
+        draw.fillText('PIE · TRACK',point.x+12,point.y-12);
+      }else if(n.aimMode==='fixed'){
+        draw.textAlign='left';draw.font='bold 10px monospace';
+        draw.fillStyle='#d5e8de';
+        draw.fillText(n.aimLabel==='strafe'?'STRAFE · HOLD':'LOOK',
+          point.x+12,point.y-12);
       }
       if(n.kind==='move'&&n.moveMode==='strafe'){
         draw.textAlign='left';draw.font='bold 10px monospace';
@@ -512,10 +525,24 @@ function renderProjectedPlans(){
       draw.textAlign='center';draw.fillText(String(a.plan.indexOf(n)+1),
         point.x,point.y+3);
       if(n.facing!==undefined){
-        const aim=worldToScreen({x:n.p.x+Math.cos(n.facing)*33,
-          y:n.p.y+Math.sin(n.facing)*33},8);
+        const aim=worldToScreen({x:n.p.x+Math.cos(n.facing)*38,
+          y:n.p.y+Math.sin(n.facing)*38},8);
         line(point,aim,'#efd5a4',2);
         circle(aim.x,aim.y,3,'#efd5a4');
+      }
+      if(n.aimMode==='track'&&n.aimPoint){
+        const target=worldToScreen(n.aimPoint,12);
+        line(point,target,'#dcb988',1.8);
+        circle(target.x,target.y,8,'#eac089');
+        circle(target.x,target.y,3,'#264039');
+        draw.fillStyle='#f1d7a4';draw.textAlign='left';
+        draw.font='bold 10px monospace';
+        draw.fillText('PIE · TRACK',point.x+12,point.y-13);
+      }else if(n.aimMode==='fixed'){
+        draw.fillStyle='#d2eee4';draw.textAlign='left';
+        draw.font='bold 10px monospace';
+        draw.fillText(n.aimLabel==='strafe'?'STRAFE · HOLD':'LOOK',
+          point.x+12,point.y-13);
       }
       if(n.kind==='move'&&n.moveMode==='strafe'){
         draw.fillStyle='#e0f7e9';draw.textAlign='left';
