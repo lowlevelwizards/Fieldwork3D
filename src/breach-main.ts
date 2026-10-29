@@ -631,9 +631,13 @@ const hitNode=(p:Pt):{id:number;index:number}|null=>{
 canvas.addEventListener('pointerdown',e=>{
   e.preventDefault();canvas.setPointerCapture(e.pointerId);
   const pt=pointerWorld(e);
-  const hit=team(state).find(a=>a.health>0&&distance(a.p,pt)<22);
+  // Active contextual orders have priority over picking an overlapping
+  // soldier or waypoint, especially near a crowded doorway on mobile.
+  const contextual=looking||doorMode||insertMode||pieMode!==null;
+  const hit=contextual?undefined:team(state).find(a=>
+    a.health>0&&distance(a.p,pt)<22);
   if(hit)selectUnit(hit.id);
-  const node=state.phase==='planning'&&!hit?hitNode(pt):null;
+  const node=state.phase==='planning'&&!hit&&!contextual?hitNode(pt):null;
   if(node)selectedNode=node.id;
   activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
     startX:e.clientX,startY:e.clientY,wasUnit:!!hit,nodeId:node?.id??null,
