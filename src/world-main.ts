@@ -96,6 +96,18 @@ probe.rotation.x=-Math.PI/2;
 probe.renderOrder=20;
 probe.visible=false;
 scene.add(probe);
+// The first prototype's physical amber waypoint reappears only for
+// an actual accepted walk order, then disappears when reached.
+const waypoint=new THREE.Group();
+const waypointRing=new THREE.Mesh(new THREE.RingGeometry(.48,.63,24),
+  new THREE.MeshBasicMaterial({color:0xe9cb88,transparent:true,
+    opacity:.86,side:THREE.DoubleSide,depthWrite:false}));
+waypointRing.rotation.x=-Math.PI/2;
+waypoint.add(waypointRing);
+const waypointDot=new THREE.Mesh(new THREE.SphereGeometry(.09,8,6),
+  new THREE.MeshBasicMaterial({color:0xf7e2ac}));
+waypointDot.position.y=.1;waypoint.add(waypointDot);
+waypoint.visible=false;scene.add(waypoint);
 function resize():void{
   const aspect=Math.max(.3,innerWidth/Math.max(1,innerHeight));
   spanX=1200/zoom;
@@ -190,7 +202,7 @@ ui.menu.addEventListener('click',e=>{
 function load(id:PlayableRegionId):void{
   const region=playableRegion(id);
   if(!region.implemented)throw new Error('Unimplemented regional terrain');
-  touch?.reset();
+  touch?.reset();waypoint.visible=false;
   if(terrain){terrain.dispose(scene);terrain=null;}
   if(props){props.dispose(scene);props=null;}
   for(const figure of figures.values())figure.dispose(scene);
@@ -284,7 +296,13 @@ function handleGroundTap(x:number,y:number){
       issueSquadOrder(operation,'n1',{x:point.x,z:point.z});
       squadRally=false;ui.squadOrder.textContent='SQUAD RALLY';
       ui.squadOrder.setAttribute('aria-pressed','false');
-    }else orderPlayer(operation,{x:point.x,z:point.z});
+    }else{
+      const accepted=orderPlayer(operation,{x:point.x,z:point.z});
+      if(accepted){
+        waypoint.position.set(point.x,physicalGroundAt(point.x,point.z)+.12,point.z);
+        waypoint.visible=true;
+      }
+    }
   }else{
     lastMeasured={x:point.x,z:point.z};
     probe.position.set(point.x,point.y+1.1,point.z);
@@ -356,6 +374,12 @@ function draw(now:number):void{
   cameraDt=Math.max(.001,elapsed);
   touch?.update(elapsed);
   if(explore){
+    const player=operation.actors.find(a=>a.id===operation.playerId)!;
+    waypoint.visible=!!player.destination;
+    if(waypoint.visible){
+      waypoint.scale.setScalar(1+Math.sin(now*.004)*.06);
+      dirty=true;
+    }
     accumulator+=elapsed;
     const axis=touch?.driving?touch.move:{
       x:Number(keys.has('KeyD')||keys.has('ArrowRight'))-
