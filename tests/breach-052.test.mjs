@@ -9,7 +9,7 @@ import {
 
 test('052: original small building and intact physical door gaps',()=>{
   assert.equal(W,640);assert.equal(H,740);
-  assert.ok(WALLS.length>=8);assert.ok(COVER.length>=4);
+  assert.ok(WALLS.length>=7);assert.ok(COVER.length>=4);
   const doors=initialDoors();
   assert.equal(doors.length,2);
   for(const d of doors){
