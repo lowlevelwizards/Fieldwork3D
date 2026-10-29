@@ -1,0 +1,74 @@
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{background:#515f51;color:#e5e7d8;
+ font-family:"Trebuchet MS",Arial,sans-serif;letter-spacing:.035em}
+html,body{height:100%;width:100%;margin:0;overflow:hidden;overscroll-behavior:none}
+body{touch-action:none}
+#studyCanvas{display:block;position:fixed;inset:0;width:100%;height:100%;
+ touch-action:none;user-select:none;-webkit-user-select:none}
+.vignette{position:fixed;inset:0;pointer-events:none;
+ background:radial-gradient(ellipse at 51% 49%,transparent 41%,rgba(18,23,19,.16) 110%);
+ z-index:1}
+.site-heading{position:fixed;top:calc(17px + env(safe-area-inset-top));
+ left:17px;z-index:3;display:flex;flex-direction:column;gap:4px;pointer-events:none;
+ text-shadow:0 1px 6px rgba(11,25,17,.78);max-width:230px}
+.brand{font-size:10px;letter-spacing:.16em;font-weight:500;color:#dedfd0}
+.brand .divider{color:#acb7a1;margin:0 4px}
+.site-heading strong{font-size:22px;letter-spacing:.12em;font-weight:750;
+ line-height:1.05}
+.subtitle{font-size:9px;letter-spacing:.14em;color:#d3d4bc}
+.site-tools{position:fixed;top:calc(15px + env(safe-area-inset-top));
+ right:15px;z-index:4;display:flex;gap:10px;align-items:center}
+.study-tag{font-size:9px;letter-spacing:.12em;color:#d3d3c0;
+ text-shadow:0 1px 4px #19271d}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid #eed29b;outline-offset:4px}
+.site-tools button{color:#e1e7d7;background:rgba(27,42,36,.49);
+ border:1px solid rgba(223,222,190,.39);
+ width:36px;height:36px;border-radius:5px;font-size:15px}
+.readout{position:fixed;bottom:calc(28px + env(safe-area-inset-bottom));left:18px;
+ z-index:3;display:flex;flex-direction:column;gap:6px;
+ border-left:2px solid rgba(237,226,192,.7);padding:3px 0 3px 12px;
+ text-shadow:0 2px 5px #1c291e;pointer-events:none}
+.readout strong{font-size:13px;letter-spacing:.17em}
+.readout span{font-size:9px;color:#e2dfc9;letter-spacing:.11em}
+.stance-button{position:fixed;z-index:4;bottom:calc(25px + env(safe-area-inset-bottom));
+ right:19px;min-width:93px;min-height:56px;display:flex;flex-direction:column;
+ justify-content:center;gap:3px;align-items:center;border-radius:8px;
+ background:rgba(34,47,38,.67);border:1px solid rgba(222,218,192,.45);
+ color:#e7e2cf;backdrop-filter:blur(5px)}
+.stance-button[aria-pressed="true"]{background:rgba(131,117,79,.75);
+ border-color:rgba(244,215,155,.75)}
+.stance-symbol{font-size:17px;line-height:1}
+.stance-button span:last-child{font-size:9px;letter-spacing:.12em}
+.stance-button:active{transform:scale(.97)}
+.study-footer{position:fixed;bottom:calc(7px + env(safe-area-inset-bottom));
+ left:17px;font-size:7px;color:rgba(234,231,211,.59);
+ letter-spacing:.14em;pointer-events:none;z-index:3}
+.help{position:fixed;z-index:7;top:50%;left:50%;
+ transform:translate(-50%,-50%);width:min(380px,calc(100vw - 36px));
+ padding:22px;background:rgba(26,40,32,.96);border:1px solid #b8bca090;
+ box-shadow:0 10px 50px #07100877;border-radius:9px;
+ font-size:12px;line-height:1.65;letter-spacing:.02em}
+.help[hidden]{display:none}
+.help strong{font-size:13px;letter-spacing:.15em;color:#dfd5ac}
+.help p{margin:12px 0;color:#cad2c1}
+.help b{color:#eedaa6}
+.help button{width:100%;padding:12px;margin-top:12px;
+ color:#182d22;background:#c7ba92;border:0;border-radius:4px;font-size:11px;
+ letter-spacing:.12em}
+.joystick{position:fixed;z-index:4;width:112px;height:112px;
+ border:1px solid rgba(238,224,190,.70);border-radius:100%;
+ background:rgba(18,34,26,.25);transform:translate(-50%,-50%);
+ pointer-events:none;display:none;box-shadow:inset 0 0 0 8px #87978122}
+.joystick.visible{display:block}
+.joystick__knob{position:absolute;left:50%;top:50%;height:43px;width:43px;
+ transform:translate(-50%,-50%);border-radius:100%;
+ background:rgba(199,185,144,.70);border:2px solid #e6d6b6}
+@media(max-width:420px){.site-heading strong{font-size:19px}
+ .study-tag{font-size:8px}.site-heading{max-width:205px}
+ .stance-button{min-width:79px;min-height:52px}}
+@media(max-height:430px){.site-heading{top:10px;left:11px}
+ .site-heading strong{font-size:16px}
+ .site-tools{top:8px;right:9px}.readout{bottom:12px}
+ .stance-button{bottom:9px}}
+@media(prefers-reduced-motion:reduce){.stance-button:active{transform:none}}
