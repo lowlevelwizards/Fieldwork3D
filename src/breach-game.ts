@@ -547,7 +547,9 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   if(n.kind==='move'||n.kind==='look'){
     applyAimNode(a,n);
     const held=aimHeading(a);
-    if(held!==null&&!rotate(a,held,dt))return;
+    if(held!==null)rotate(a,held,dt);
+    // A facing instruction is instantaneous intent, not a forced full stop:
+    // the motor can begin moving as the torso turns toward the requested aim.
     pop(a);return;
   }
   if(n.facing!==undefined&&!rotate(a,n.facing,dt))return;
