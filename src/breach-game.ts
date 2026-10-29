@@ -29,16 +29,22 @@ export type TeamActor=Operator & {
   actionTimer:number;blockedTime:number;priorP:Pt;pieIndex:number;
   /** Last executed facing command; survives across movement waypoints. */
   aimInstruction:AimInstruction|null;
+  /** Simulation-timed cues, not new combat rules. */
+  lastHitAt:number;lastDownAt:number;
 };
 export type NoiseEvent={p:Pt;radius:number;time:number;kind:string};
-export type ShotEvent={start:Pt;end:Pt;age:number;hit:boolean;side:Side};
+export type ShotEvent={
+  id:number;shooterId:string;targetId:string|null;
+  start:Pt;end:Pt;age:number;hit:boolean;side:Side;
+  healthBefore:number;healthAfter:number;down:boolean;
+};
 export type KnownContact={p:Pt;at:number;status:'seen'|'heard'};
 export type MissionStage='clear'|'secure'|'extract'|'done';
 export type Scenario={index:number;name:string;objective:Pt;extract:Pt};
 export type Session=Omit<TacticalState,'operators'> & {
   operators:TeamActor[];variant:number;scenario:Scenario;
   mission:MissionStage;nextId:number;noise:NoiseEvent[];
-  shots:ShotEvent[];known:Map<string,KnownContact>;
+  shots:ShotEvent[];nextShotId:number;known:Map<string,KnownContact>;
   seenGround:Set<string>;timesPaused:number;deaths:number;
   started:boolean;syncCode:number;report:string[];
   movementNoiseAt:number;};
@@ -61,7 +67,7 @@ const withActions=(a:Operator):TeamActor=>({
   reload:0,hits:0,kills:0,stopped:false,contact:null,heard:null,
   alertUntil:0,waitRemaining:0,syncReady:null,actionTimer:0,
   blockedTime:0,priorP:clone(a.p),haltOnContact:false,retreatPoint:null,
-  pieIndex:0,aimInstruction:null,
+  pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
 });
 export function newSession(index=0):Session{
   const seed=newTacticalState();
@@ -76,7 +82,7 @@ export function newSession(index=0):Session{
   const state:Session={...seed,operators,doors:initialDoors(),variant,nextId:1,
     scenario:{index:variant,name:sample.name,objective:clone(OBJECTIVE),
       extract:clone(EXTRACTION)},
-    mission:'clear',noise:[],shots:[],known:new Map(),
+    mission:'clear',noise:[],shots:[],nextShotId:1,known:new Map(),
     seenGround:new Set(),timesPaused:0,deaths:0,started:false,
     syncCode:0,report:[],movementNoiseAt:0};
   observe(state); // Know the space around soldiers even before pressing GO.
@@ -710,8 +716,16 @@ function fire(s:Session,a:TeamActor,dt:number){
     x:target.p.x+(random(s)-.5)*31,
     y:target.p.y+(random(s)-.5)*31,
   };
+  const healthBefore=target.health;
+  const healthAfter=hit?Math.max(0,healthBefore-1):healthBefore;
   s.sparks.push({p:clone(a.p),side:a.side,age:0});
-  s.shots.push({start:clone(a.p),end,age:0,hit,side:a.side});
+  // Immutable shot identity lets 2D/3D attach recoil and damage effects to
+  // the correct actors without guessing from proximity or team color.
+  s.shots.push({
+    id:s.nextShotId++,shooterId:a.id,targetId:target.id,
+    start:clone(a.p),end,age:0,hit,side:a.side,
+    healthBefore,healthAfter,down:hit&&healthAfter<=0,
+  });
   hear(s,a.p,400,'gunshot');
   // A shot heard behind the team suggests an imprecise location.
   // A sound NEVER exposes the exact shooter through a wall.
@@ -724,10 +738,12 @@ function fire(s:Session,a:TeamActor,dt:number){
   }
   target.suppression=Math.min(1,target.suppression+.31);
   if(hit){
-    target.health--;
+    target.health=healthAfter;
+    target.lastHitAt=s.seconds;
     a.hits++;
     if(target.health<=0){
-      a.kills++;s.deaths++;target.plan=[];target.path=[];
+      a.kills++;s.deaths++;target.lastDownAt=s.seconds;
+      target.plan=[];target.path=[];
       target.nav=[];target.velocity=0;
       notify(s,target.name+' DOWN');
     }else notify(s,target.name+' HIT');
@@ -756,7 +772,7 @@ export function stepSession(s:Session,dt:number){
   const h=clamp(dt,0,1/30);
   s.seconds+=h;
   s.sparks=s.sparks.filter(a=>(a.age+=h)<.20);
-  s.shots=s.shots.filter(a=>(a.age+=h)<.24);
+  s.shots=s.shots.filter(a=>(a.age+=h)<.40);
   s.noise=s.noise.filter(n=>s.seconds-n.time<4);
   for(const a of s.operators){
     a.fireCd=Math.max(0,a.fireCd-h);
