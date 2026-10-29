@@ -16,10 +16,14 @@
 </header>
 <div class="guidance" id="hint" role="status" aria-live="polite">Choose Rook or Moss. Tap ground to add a route, or drag from an operator to draw one.</div>
 <section class="orders" aria-label="Planning tools">
-  <button id="undo" type="button" title="Undo latest planned order">↶ UNDO</button>
+  <button id="back" type="button" title="Remove just the final queued order, preserving the rest of this route">↤ BACK −1</button>
+  <button id="undo" type="button" title="Undo the previous edit or drawn stroke">↶ UNDO</button>
   <button id="redo" type="button" title="Redo previously undone order">↷ REDO</button>
   <button id="insert" type="button" aria-pressed="false" title="Tap between route nodes to insert">+ NODE</button>
   <button id="delete" type="button" title="Delete selected route node">− NODE</button>
+  <button id="strafe" type="button" aria-pressed="false" title="Choose a move node to toggle strafe, or arm the next movement; LOOK sets weapon facing">STRAFE</button>
+  <button id="pieLeft" type="button" aria-pressed="false" title="Sweep counter-clockwise around a doorway (position first)">PIE ↶</button>
+  <button id="pieRight" type="button" aria-pressed="false" title="Sweep clockwise around a doorway (position first)">PIE ↷</button>
   <button id="door" type="button" aria-pressed="false" title="Tap a door to add an entry order">DOOR</button>
   <button id="method" type="button" title="Cycle door action">OPEN</button>
   <button id="wait" type="button" title="Wait at the end of the plan">WAIT</button>
@@ -40,7 +44,7 @@
   </div>
   <div class="actions">
     <button id="aim" type="button" title="Choose a point to face">LOOK</button>
-    <button id="clear" type="button">CLEAR</button>
+    <button id="clear" type="button" title="Erase this soldier's entire remaining plan">ALL CLEAR</button>
     <button id="play" type="button" class="play">GO <span>▶</span></button>
     <button id="restart" type="button" title="Restart this encounter">↺</button>
   </div>

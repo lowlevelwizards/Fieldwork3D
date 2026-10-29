@@ -4,10 +4,13 @@ import {
 import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
-  planMove,planLook,planDoor,planWait,planSync,movePlanNode,
+  planMove,planMoveStroke,planLook,planDoor,planWait,planSync,movePlanNode,
+  planPie,setStrafe,backOne,
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,stepSession,nearestDoor,knownAt,liveVisibility,
 } from './breach-game.ts';
+import {bestPieDoor} from './breach-maneuvers.ts';
+import {type PieSide} from './breach-plan.ts';
 import './breach-style.css';
 
 const el=<T extends HTMLElement>(id:string)=>{
@@ -28,9 +31,13 @@ const ui={
   phase:el<HTMLElement>('phase'),clock:el<HTMLOutputElement>('clock'),
   hint:el<HTMLElement>('hint'),feed:el<HTMLElement>('feed'),
   mission:el<HTMLElement>('mission'),
+  back:el<HTMLButtonElement>('back'),
   undo:el<HTMLButtonElement>('undo'),redo:el<HTMLButtonElement>('redo'),
   insert:el<HTMLButtonElement>('insert'),delete:el<HTMLButtonElement>('delete'),
   door:el<HTMLButtonElement>('door'),method:el<HTMLButtonElement>('method'),
+  strafe:el<HTMLButtonElement>('strafe'),
+  pieLeft:el<HTMLButtonElement>('pieLeft'),
+  pieRight:el<HTMLButtonElement>('pieRight'),
   wait:el<HTMLButtonElement>('wait'),sync:el<HTMLButtonElement>('sync'),
   stance:el<HTMLButtonElement>('stance'),variant:el<HTMLButtonElement>('variant'),
   contact:el<HTMLButtonElement>('contact'),
@@ -42,7 +49,8 @@ const ui={
 let state:Session=newSession();
 let selected='rook';
 let looking=false;
-let doorMode=false,insertMode=false;
+let doorMode=false,insertMode=false,strafeNext=false;
+let pieMode:PieSide|null=null;
 let method:'open'|'kick'|'hold'='open';
 let selectedNode:number|null=null;
 let draggingNode:Pt|null=null;
@@ -100,12 +108,16 @@ const uid=(id:string)=>team(state).find(o=>o.id===id);
 function selectUnit(id:string){
   const actor=uid(id);if(!actor||actor.health<=0)return;
   selected=id;looking=false;doorMode=false;insertMode=false;
+  pieMode=null;strafeNext=false;
   selectedNode=null;updateHud();
 }
 function message(){
   if(state.phase==='planning'){
     if(looking)return 'LOOK: choose a facing for the selected waypoint.';
     if(doorMode)return 'DOOR: tap a door to append '+method.toUpperCase()+' order.';
+    if(pieMode)return 'PIE: tap a doorway from 27–108 units away to sweep '+(pieMode==='cw'?'clockwise.':'counter-clockwise.')+
+      ' Plan a closer position first if needed.';
+    if(strafeNext)return 'STRAFE armed: tap or draw travel, then select the node and LOOK to set weapon direction.';
     if(insertMode)return 'INSERT: tap between route nodes to add a waypoint.';
     if(selectedNode!==null)return 'Waypoint selected: drag to move, LOOK to face, − NODE to delete.';
     return 'Tap to add a waypoint · drag a waypoint to edit · GO to execute.';
@@ -114,6 +126,9 @@ function message(){
     return 'Executing. Pause anytime to correct the plan.';
   return state.phase==='won'?'Station secured. Review your report.':
     'Team lost. Review the debrief and try a new plan.';
+}
+function activeIsStrafe(){
+  return uid(selected)?.plan.find(n=>n.id===selectedNode)?.moveMode==='strafe';
 }
 function updateHud(){
   ui.phase.textContent=state.phase==='planning'?'PLANNING':
@@ -130,6 +145,10 @@ function updateHud(){
   ui.aim.setAttribute('aria-pressed',String(looking));
   ui.door.setAttribute('aria-pressed',String(doorMode));
   ui.insert.setAttribute('aria-pressed',String(insertMode));
+  ui.strafe.setAttribute('aria-pressed',String(strafeNext||
+    (activeIsStrafe())));
+  ui.pieLeft.setAttribute('aria-pressed',String(pieMode==='ccw'));
+  ui.pieRight.setAttribute('aria-pressed',String(pieMode==='cw'));
   ui.method.textContent=method.toUpperCase();
   const active=uid(selected);
   ui.stance.textContent=active?.posture==='crouch'?'STAND':'CROUCH';
@@ -137,6 +156,8 @@ function updateHud(){
   ui.contact.setAttribute('aria-pressed',String(active?.haltOnContact));
   ui.variant.textContent='SITE '+(state.variant+1)+'/3';
   ui.delete.disabled=selectedNode===null;
+  ui.back.disabled=!active?.plan.length;
+  ui.strafe.disabled=!!(selectedNode!==null&&active?.plan.find(n=>n.id===selectedNode)?.kind!=='move');
   ui.undo.disabled=!(active?.history.undo.length);
   ui.redo.disabled=!(active?.history.redo.length);
   ui.debrief.hidden=state.phase!=='won'&&state.phase!=='lost';
@@ -287,6 +308,9 @@ function paths(){
           const course=route(from,node.p);
           for(const p of course)draw.lineTo(p.x,p.y);
           from=node.p;
+        }else if(node.kind==='pie'&&node.arc?.length){
+          for(const p of node.arc)draw.lineTo(p.x,p.y);
+          from=node.p;
         }
       }
       draw.strokeStyle=c;draw.globalAlpha=a.id===selected?.88:.40;
@@ -307,6 +331,24 @@ function paths(){
         const end={x:point.x+Math.cos(n.facing)*30,
           y:point.y+Math.sin(n.facing)*30};
         line(point,end,'#ebcea1',2.1);circle(end.x,end.y,2.2,'#ebcea1');
+      }
+      if(n.kind==='move'&&n.moveMode==='strafe'){
+        draw.textAlign='left';draw.font='bold 10px monospace';
+        draw.fillStyle='#b8e7dd';
+        draw.fillText('STRAFE',point.x+12,point.y-11);
+      }
+      if(n.kind==='pie'&&n.pivot&&n.arc?.length){
+        draw.save();
+        draw.strokeStyle='#e7b982';draw.lineWidth=3.2;
+        draw.setLineDash([4,3]);draw.beginPath();
+        const first=a.plan[i-1]?.p??a.p;
+        draw.moveTo(first.x,first.y);
+        for(const step of n.arc)draw.lineTo(step.x,step.y);
+        draw.stroke();draw.setLineDash([]);
+        line(point,n.pivot,'#d6b18b83',1.1);
+        draw.fillStyle='#eacda0';draw.font='bold 10px monospace';
+        draw.fillText(n.pieSide==='cw'?'PIE ↷':'PIE ↶',point.x+12,point.y-11);
+        draw.restore();
       }
       if(n.kind==='door'||n.kind==='wait'||n.kind==='sync'){
         draw.textAlign='left';draw.font='bold 10px monospace';
@@ -443,13 +485,27 @@ function render(){
   draw.strokeRect(0,0,W,H);
   draw.restore();
 }
-function toggleAim(){looking=!looking;doorMode=false;insertMode=false;updateHud();}
+function toggleAim(){
+  looking=!looking;doorMode=false;insertMode=false;pieMode=null;updateHud();
+}
+function armPie(side:PieSide){
+  pieMode=pieMode===side?null:side;
+  looking=false;doorMode=false;insertMode=false;strafeNext=false;
+  selectedNode=null;updateHud();
+}
 function useSelectedGround(pt:Pt){
   if(state.phase!=='planning')return;
   if(looking){
     if(!planLook(state,selected,pt,selectedNode??undefined))
       state.events.push('SELECT OR CREATE A NODE FIRST');
     looking=false;updateHud();return;
+  }
+  if(pieMode){
+    const door=bestPieDoor(pt,state.doors);
+    if(!door||distance(pt,doorCenter(door))>34||
+      !planPie(state,selected,door.id,pieMode))
+      state.events.push('PIE BLOCKED: POSITION NEAR DOOR, CHOOSE OTHER SWEEP');
+    pieMode=null;selectedNode=null;updateHud();return;
   }
   if(doorMode){
     const door=nearestDoor(state,pt);
@@ -474,13 +530,14 @@ function useSelectedGround(pt:Pt){
     }
     insertMode=false;updateHud();return;
   }
-  if(!planMove(state,selected,pt))
+  if(!planMove(state,selected,pt,strafeNext))
     state.events.push('NO WALKABLE ROUTE');
-  selectedNode=null;updateHud();
+  strafeNext=false;selectedNode=null;updateHud();
 }
 function reset(next=state.variant){
   state=newSession(next);selected='rook';looking=false;doorMode=false;
   insertMode=false;selectedNode=null;draggingNode=null;
+  strafeNext=false;pieMode=null;
   cursor=null;trace=null;zoom=1;panX=panY=0;
   fogStamp=-1;lastSoundShotCount=0;lastEventAudio='';
   layout();updateHud();
@@ -488,6 +545,21 @@ function reset(next=state.variant){
 ui.rook.addEventListener('click',()=>selectUnit('rook'));
 ui.moss.addEventListener('click',()=>selectUnit('moss'));
 ui.aim.addEventListener('click',toggleAim);
+ui.back.addEventListener('click',()=>{
+  if(backOne(state,selected)){selectedNode=null;state.events.push('REMOVED LAST ORDER');}
+  updateHud();
+});
+ui.strafe.addEventListener('click',()=>{
+  if(selectedNode!==null){
+    setStrafe(state,selected,selectedNode);
+  }else{
+    strafeNext=!strafeNext;
+    pieMode=null;doorMode=false;insertMode=false;looking=false;
+  }
+  updateHud();
+});
+ui.pieLeft.addEventListener('click',()=>armPie('ccw'));
+ui.pieRight.addEventListener('click',()=>armPie('cw'));
 ui.clear.addEventListener('click',()=>{clearPlan(state,selected);selectedNode=null;updateHud();});
 ui.undo.addEventListener('click',()=>{undoPlan(state,selected);selectedNode=null;updateHud();});
 ui.redo.addEventListener('click',()=>{redoPlan(state,selected);selectedNode=null;updateHud();});
@@ -496,10 +568,12 @@ ui.delete.addEventListener('click',()=>{
   selectedNode=null;updateHud();
 });
 ui.insert.addEventListener('click',()=>{
-  insertMode=!insertMode;doorMode=false;looking=false;updateHud();
+  insertMode=!insertMode;doorMode=false;looking=false;pieMode=null;
+  strafeNext=false;updateHud();
 });
 ui.door.addEventListener('click',()=>{
-  doorMode=!doorMode;insertMode=false;looking=false;updateHud();
+  doorMode=!doorMode;insertMode=false;looking=false;pieMode=null;
+  strafeNext=false;updateHud();
 });
 ui.method.addEventListener('click',()=>{
   method=method==='open'?'kick':method==='kick'?'hold':'open';updateHud();
@@ -516,7 +590,7 @@ ui.next.addEventListener('click',()=>reset(state.variant+1));
 ui.play.addEventListener('click',()=>{
   unlockAudio();
   if(state.phase==='won'||state.phase==='lost')reset();
-  else{looking=false;doorMode=false;insertMode=false;
+  else{looking=false;doorMode=false;insertMode=false;pieMode=null;
     toggling(state);updateHud();}
 });
 ui.restart.addEventListener('click',()=>reset());
@@ -530,6 +604,12 @@ window.addEventListener('keydown',e=>{
   if(e.code==='Digit2')selectUnit('moss');
   if(e.code==='KeyX'){clearPlan(state,selected);updateHud();}
   if(e.code==='KeyL')toggleAim();
+  if(e.code==='Backspace'&&!e.repeat){
+    e.preventDefault();backOne(state,selected);selectedNode=null;updateHud();
+  }
+  if(e.code==='KeyF'&&!e.repeat){strafeNext=!strafeNext;updateHud();}
+  if(e.code==='BracketLeft'&&!e.repeat)armPie('ccw');
+  if(e.code==='BracketRight'&&!e.repeat)armPie('cw');
   if(e.code==='KeyZ'&&(e.ctrlKey||e.metaKey)){
     e.preventDefault();
     if(e.shiftKey)redoPlan(state,selected);
@@ -551,9 +631,13 @@ const hitNode=(p:Pt):{id:number;index:number}|null=>{
 canvas.addEventListener('pointerdown',e=>{
   e.preventDefault();canvas.setPointerCapture(e.pointerId);
   const pt=pointerWorld(e);
-  const hit=team(state).find(a=>a.health>0&&distance(a.p,pt)<22);
+  // Active contextual orders have priority over picking an overlapping
+  // soldier or waypoint, especially near a crowded doorway on mobile.
+  const contextual=looking||doorMode||insertMode||pieMode!==null;
+  const hit=contextual?undefined:team(state).find(a=>
+    a.health>0&&distance(a.p,pt)<22);
   if(hit)selectUnit(hit.id);
-  const node=state.phase==='planning'&&!hit?hitNode(pt):null;
+  const node=state.phase==='planning'&&!hit&&!contextual?hitNode(pt):null;
   if(node)selectedNode=node.id;
   activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
     startX:e.clientX,startY:e.clientY,wasUnit:!!hit,nodeId:node?.id??null,
@@ -606,12 +690,9 @@ function releasePointer(e:PointerEvent,cancelled=false){
       selectedNode=p.nodeId;
     }else if(p.mode==='route'&&trace&&trace.length>1){
       const points=[...trace,pt];
-      let last=uid(selected)!.plan.at(-1)?.p??uid(selected)!.p;
-      for(const v of points.slice(1)){
-        if(distance(v,last)<24)continue;
-        if(planMove(state,selected,v))last=v;
-      }
-      selectedNode=null;
+      if(!planMoveStroke(state,selected,points.slice(1),strafeNext))
+        state.events.push('NO WALKABLE STROKE');
+      strafeNext=false;selectedNode=null;
     }else if(!p.moved&&!p.wasUnit&&pt.x>=0&&pt.y>=0&&
       pt.x<=W&&pt.y<=H)useSelectedGround(pt);
   }
