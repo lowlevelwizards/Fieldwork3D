@@ -141,6 +141,11 @@ try{
   if(await phone.locator('#back').isDisabled())
     throw Error('Camera-aware isometric map picking did not queue movement');
   await phone.screenshot({path:resolve(folder,'13-phone-isometric-planned-route.png')});
+  // Historical 063 touch coordinates are defined in legacy map pixels, so
+  // switch to the 2D reference view for those regression checks.
+  await phone.locator('#view2d').click();
+  if(await phone.locator('#view2d').getAttribute('aria-pressed')!=='true')
+    throw Error('Could not restore 2D view for legacy gesture audit');
   // Build 063: verify one-step back without deleting the whole route.
   await phone.locator('#rook').click();
   const firstNode=screen(300,595,390,844);
