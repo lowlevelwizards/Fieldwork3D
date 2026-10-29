@@ -169,22 +169,56 @@ export function backOne(s:Session,id:string){
   }
   return edit(s,a,()=>{a.plan.pop();});
 }
-export function planPie(s:Session,id:string,doorId:string,side:PieSide){
-  const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
-  if(!a||!door||!canEdit(s))return false;
-  const origin=finalPoint(a),pivot=doorCenter(door);
-  const arc=validPieArc(origin,pivot,side,s.doors);
+/** The player chooses a world-space pivot; doors are no longer special. */
+export function planPieAt(s:Session,id:string,pivot:Pt,side:PieSide,degrees=54){
+  const a=party(s,id);
+  if(!a||!canEdit(s))return false;
+  const arc=validPieArc(finalPoint(a),pivot,side,s.doors,degrees);
   if(!arc.length)return false;
   return addNode(s,id,'pie',arc[arc.length-1],{
-    pivot:clone(pivot),pieSide:side,arc:arc.map(clone)});
+    pivot:clone(pivot),pieSide:side,pieDegrees:degrees,arc:arc.map(clone)});
 }
+/** Retain compatibility with Build 063's doorway shortcut. */
+export function planPie(s:Session,id:string,doorId:string,side:PieSide){
+  const door=s.doors.find(d=>d.id===doorId);
+  return !!door&&planPieAt(s,id,doorCenter(door),side);
+}
+/** Move a pivot or adjust the arc sweep, retaining one undoable order. */
+export function editPie(s:Session,id:string,nodeId:number,
+  pivot:Pt,degrees?:number,side?:PieSide){
+  const a=party(s,id);if(!a||!canEdit(s))return false;
+  const proposed=copyNodes(a.plan),index=proposed.findIndex(n=>n.id===nodeId);
+  if(index<0||proposed[index].kind!=='pie')return false;
+  proposed[index].pivot=clone(pivot);
+  if(degrees!==undefined)proposed[index].pieDegrees=clamp(degrees,8,120);
+  if(side)proposed[index].pieSide=side;
+  if(!validEditedPlan(s,a.p,proposed))return false;
+  return edit(s,a,()=>{a.plan=proposed;});
+}
+/** Context-aware door action at a selected planned position. */
+export function doorAtNode(s:Session,id:string,doorId:string,method:DoorMethod,nodeId?:number){
+  const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
+  if(!a||!door||!canEdit(s))return false;
+  if(nodeId===undefined){
+    if(d(finalPoint(a),doorCenter(door))>43)return planDoor(s,id,doorId,method);
+    return addNode(s,id,'door',finalPoint(a),{doorId,method});
+  }
+  const index=a.plan.findIndex(n=>n.id===nodeId);
+  if(index<0||d(a.plan[index].p,doorCenter(door))>43)return false;
+  const position=clone(a.plan[index].p);
+  return edit(s,a,()=>{
+    a.plan.splice(index+1,0,{id:s.nextId++,kind:'door',
+      p:position,doorId,method});
+  });
+}
+
 /** Recalculate dependent pie arcs when an earlier waypoint changes. */
 function validEditedPlan(s:Session,start:Pt,proposed:PlanNode[]){
   let from=start;
   for(const n of proposed){
     if(n.kind==='pie'){
       if(!n.pivot||!n.pieSide)return false;
-      const arc=validPieArc(from,n.pivot,n.pieSide,s.doors);
+      const arc=validPieArc(from,n.pivot,n.pieSide,s.doors,n.pieDegrees??54);
       if(!arc.length)return false;
       n.arc=arc;n.p=clone(arc[arc.length-1]);from=n.p;
     }else if(n.kind==='move'||n.kind==='door'){
