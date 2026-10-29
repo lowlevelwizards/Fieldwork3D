@@ -21,6 +21,8 @@ export class FirstPlaceScene{
   const accent=this.mat(0xccab72);
   const darkWater=this.mat(0x546c6c),foliage=this.mat(0x607d61);
   const leafLight=this.mat(0x80916c),bark=this.mat(0x625c48);
+  const grassBits=this.mat(0x77876c);
+  const grassMat=()=>grassBits;
   // Ground-readable hierarchy: a worked enclosure, paths connecting
   // the front door and gate, and a narrow drainage route beside it.
   this.groundPatch(FIRST_PLACE.center.x,FIRST_PLACE.center.z,53,47,
@@ -75,6 +77,12 @@ export class FirstPlaceScene{
      this.post(p.x,p.z,2.6,.12,wood);
      this.box(p.x,p.z,2.26,2.3,.76,.18,accent);
      this.box(p.x,p.z+.1,2.29,1.7,.15,.06,dark);break;
+    case 'sensor':
+     this.post(p.x,p.z,2.4,.058,iron);
+     this.box(p.x,p.z,1.83,.58,.42,.36,accent);
+     this.box(p.x,p.z,2.42,.14,.20,.75,iron);
+     this.box(p.x+.32,p.z,1.25,.40,.55,.12,dark);
+     break;
    }
   }
   this.box(103,112,.40,2.5,.8,.35,wood); // work bench
@@ -94,10 +102,20 @@ export class FirstPlaceScene{
   const shrubs=[
    [44,118],[58,151],[73,154],[126,72],[143,102],[144,146],
    [62,55],[101,53],[47,81],[155,109],[87,60],
+   // Close to Rook: vegetation marks the worn yard's boundaries.
+   [99,138],[113,137],[112,109],[104,147],[92,132],
   ];
   for(let i=0;i<shrubs.length;i++){
    const [x,z]=shrubs[i],g=physicalGroundAt(x,z);
    this.crown(x,z,g+.43,.67+(i%3)*.17,.90,leafLight,i);
+  }
+  // Small, intentionally placed low ground cover where boots and road
+  // meet the yard: no millions of blades or new biome simulation.
+  for(const [x,z] of [
+    [95,136],[103,140],[107,116],[120,136],[90,133],
+    [116,108],[96,122],[84,142],[128,113],[113,146],
+  ]){
+   this.box(x,z,.09,.58,.18,.46,grassMat());
   }
   scene.add(this.group);
  }
@@ -168,8 +186,15 @@ export class FirstPlaceScene{
   color:number,offset:number){
   // A subdued trampled clearing, integrated with the existing ground.
   // Never an artificial 100x100 rectangle of flat floating geometry.
-  const mat=this.mat(color);
-  const vx:number[]=[],indices:number[]=[];
+  const mat=new THREE.MeshStandardMaterial({
+   color:0xffffff,vertexColors:true,roughness:1,
+   metalness:0,side:THREE.DoubleSide,
+  });
+  this.materials.push(mat);
+  const vx:number[]=[],colors:number[]=[],indices:number[]=[];
+  const base=new THREE.Color(color);
+  const tint=new THREE.Color(0x9f9876);
+  const shade=new THREE.Color();
   const n=12;
   for(let row=0;row<=n;row++)for(let col=0;col<=n;col++){
    const u=(col/n-.5)*2,v=(row/n-.5)*2;
@@ -177,6 +202,9 @@ export class FirstPlaceScene{
    const px=x+u*w/2,pz=z+v*d/2;
    const h=physicalGroundAt(px,pz)+offset*edge+.025;
    vx.push(px,h,pz);
+   const wear=.5+.5*Math.sin(px*.17+pz*.08)*Math.cos(pz*.29-px*.11);
+   shade.copy(base).lerp(tint,wear*.17);
+   colors.push(shade.r,shade.g,shade.b);
   }
   for(let r=0;r<n;r++)for(let c=0;c<n;c++){
    const a=r*(n+1)+c,b=a+1,k=a+n+1;
@@ -184,6 +212,7 @@ export class FirstPlaceScene{
   }
   const geom=new THREE.BufferGeometry();
   geom.setAttribute('position',new THREE.Float32BufferAttribute(vx,3));
+  geom.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
   geom.setIndex(indices);geom.computeVertexNormals();
   this.use(geom,mat);
  }
