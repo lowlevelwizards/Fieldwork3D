@@ -76,7 +76,7 @@ test('078-080: 3D uses readable fog and per-shot effects, 2D shares cues',()=>{
   assert.match(stage,/scene\.fog=null/);
   // A previous version used an opaque fog ceiling that made the station a
   // featureless black diamond in ISO. Keep architecture readable by contract.
-  const unknown=stage.match(/const unknownMat=new THREE.MeshBasicMaterial\\(\\{[\\s\\S]*?opacity:(\\.\\d+)/);
+  const unknown=stage.match(/const unknownMat=new THREE.MeshBasicMaterial\(\{[\s\S]*?opacity:(\.\d+)/);
   assert.ok(unknown&&Number(unknown[1])<.65,
     'unknown geometry mask cannot be a completely opaque roof');
   assert.match(stage,/temp\.position\.set\(p\.x,36,p\.y\)/);
