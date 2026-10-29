@@ -233,6 +233,31 @@ try{
   await pc.keyboard.press('Space');
   if(await pc.locator('#phase').innerText()!=='PLANNING')
     throw Error('Desktop pause shortcut failed');
+  // 079: independently inspect the presentation lab; the fixture must not
+  // be attached to a normal battle or alter any combat result.
+  const lab=await browser.newPage({viewport:{width:390,height:844},
+    deviceScaleFactor:2,hasTouch:true,isMobile:true});
+  lab.on('pageerror',e=>errors.push(e.message));
+  await lab.goto(url.replace('breach.html','breach-visual-lab.html'),
+    {waitUntil:'domcontentloaded'});
+  await lab.locator('#breach3dCanvas').waitFor({state:'visible'});
+  await lab.waitForTimeout(240);
+  await lab.screenshot({path:resolve(folder,'13-lab-idle.png')});
+  await lab.locator('#miss').click();
+  await lab.waitForTimeout(80);
+  await lab.screenshot({path:resolve(folder,'14-lab-miss.png')});
+  await lab.locator('#hit').click();
+  await lab.waitForTimeout(90);
+  await lab.screenshot({path:resolve(folder,'15-lab-hit.png')});
+  await lab.locator('#down').click();
+  await lab.waitForTimeout(220);
+  if(!((await lab.locator('footer').innerText()).includes('DOWN')))
+    throw Error('Presentation lab did not show downed state');
+  await lab.screenshot({path:resolve(folder,'16-lab-casualty.png')});
+  await lab.locator('#reset').click();
+  await lab.locator('#top').click();
+  await lab.waitForTimeout(300);
+  await lab.screenshot({path:resolve(folder,'17-lab-top.png')});
   if(errors.length)throw Error('Browser console exceptions: '+errors.join('; '));
   const manifest={initial,rotated,pan,pinch,visibleButtons,errors};
   await writeFile(resolve(folder,'manifest.json'),JSON.stringify(manifest,null,2));
