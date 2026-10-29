@@ -57,7 +57,7 @@ try{
   await phone.touchscreen.tap(mossPoint.x,mossPoint.y);
   await phone.screenshot({path:resolve(folder,'02-phone-two-routes.png')});
   await phone.locator('#play').click();
-  await phone.waitForTimeout(950);
+  await phone.waitForTimeout(1350);
   const elapsed=await phone.locator('#clock').innerText();
   if(elapsed==='00:00')throw Error('GO did not advance tactical time');
   await phone.locator('#play').click();
