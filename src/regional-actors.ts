@@ -9,6 +9,7 @@ export type GroundedActor={
   x:number;z:number;y:number;heading:number;
   vx:number;vz:number;height:number;radius:number;
   health:number;maxHealth:number;speed:number;grounded:boolean;
+  stance:'stand'|'crouch';
   task:ActorTask;destination:{x:number;z:number}|null;
   path:{x:number;z:number}[];
   contact:{x:number;z:number;seenAt:number}|null;
@@ -19,6 +20,7 @@ export function spawnActor(id:string,name:string,team:Allegiance,
   return {id,name,team,role:'rifleman',x,z,y:standingHeightAt(x,z),
     heading:0,vx:0,vz:0,height:1.75,radius:.27,
     health:3,maxHealth:3,speed:team==='player'?3.2:1.45,grounded:true,
+    stance:'stand',
     task:'idle',destination:null,path:[],contact:null,
     shotCooldown:0,shots:0,hits:0};
 }
@@ -123,7 +125,7 @@ export function stepActor(actor:GroundedActor,dt:number,
     }
   }
   const oldTravel=queryTravel(actor.x,actor.z);
-  const moveSpeed=actor.speed*oldTravel.speedMultiplier;
+  const moveSpeed=actor.speed*oldTravel.speedMultiplier*(actor.stance==='crouch'?.57:1);
   const damping=1-Math.exp(-8*h);
   actor.vx+=(desiredX*moveSpeed-actor.vx)*damping;
   actor.vz+=(desiredZ*moveSpeed-actor.vz)*damping;

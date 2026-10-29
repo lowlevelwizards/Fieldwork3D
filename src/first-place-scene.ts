@@ -15,12 +15,12 @@ export class FirstPlaceScene{
  private readonly materials:THREE.Material[]=[];
  private readonly geometries:THREE.BufferGeometry[]=[];
  constructor(scene:THREE.Scene){
-  const soil=this.mat(0x897d62),packed=this.mat(0x9c9275);
-  const wood=this.mat(0x635b4d);
-  const dark=this.mat(0x35463c),iron=this.mat(0x6a786e);
-  const accent=this.mat(0xccab72);
-  const darkWater=this.mat(0x546c6c),foliage=this.mat(0x607d61);
-  const leafLight=this.mat(0x80916c),bark=this.mat(0x625c48);
+  const soil=this.mat(0x746b58),packed=this.mat(0x88806a);
+  const wood=this.mat(0x625747);
+  const dark=this.mat(0x384640),iron=this.mat(0x71776f);
+  const accent=this.mat(0xb19565);
+  const darkWater=this.mat(0x4c605d),foliage=this.mat(0x566e55);
+  const leafLight=this.mat(0x748565),bark=this.mat(0x625c48);
   const grassBits=this.mat(0x77876c);
   const grassMat=()=>grassBits;
   // Ground-readable hierarchy: a worked enclosure, paths connecting
@@ -82,6 +82,12 @@ export class FirstPlaceScene{
      this.box(p.x,p.z,1.83,.58,.42,.36,accent);
      this.box(p.x,p.z,2.42,.14,.20,.75,iron);
      this.box(p.x+.32,p.z,1.25,.40,.55,.12,dark);
+      // Visually identifiable instrument instead of floating markers.
+      const panel=this.box(p.x-.42,p.z-.27,1.58,.73,.08,.49,dark);
+      panel.rotation.x=-.28;
+      this.post(p.x,p.z-.06,2.85,.032,iron);
+      for(const dx of [-.24,.24])
+        this.box(p.x+dx,p.z-.06,2.85,.24,.055,.05,iron);
      break;
    }
   }
