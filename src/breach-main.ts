@@ -222,8 +222,17 @@ function updateContext(){
     }
   }
   ui.context.hidden=false;
-  // Float above relevant object; keep touch targets within the phone.
-  const screen=worldToScreen(where,node?12:28);
+  // No node: dock the unit's small action tray above the control bar.
+  // A floating tray above the soldier can intercept the user's first
+  // destination tap, especially at the starting position on portrait.
+  if(!node){
+    ui.context.style.left=cssW/2+'px';
+    ui.context.style.top=Math.max(190,cssH-163)+'px';
+    ui.context.style.transform='translate(-50%,-100%)';
+    return;
+  }
+  // Selected node: float above it without covering the waypoint itself.
+  const screen=worldToScreen(where,12);
   const left=clamp(screen.x,ui.context.offsetWidth/2+6,
     cssW-ui.context.offsetWidth/2-6);
   const above=screen.y-22;
