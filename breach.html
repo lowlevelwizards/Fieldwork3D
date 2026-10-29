@@ -14,27 +14,21 @@
     <strong>CUTWOODS / STATION</strong><small>01 — TWO ROOMS, TWO OPERATORS</small></div>
   <div class="mode"><strong id="phase">PLANNING</strong><output id="clock">00:00</output></div>
 </header>
-<div class="guidance" id="hint" role="status" aria-live="polite">Choose Rook or Moss. Tap ground to add a route, or drag from an operator to draw one.</div>
-<section class="orders compact" id="advancedOrders" aria-label="Advanced planning tools">
-  <button id="back" type="button" title="Remove just the final queued order, preserving the rest of this route">↤ BACK −1</button>
-  <button id="undo" type="button" title="Undo the previous edit or drawn stroke">↶ UNDO</button>
-  <button id="redo" type="button" title="Redo previously undone order">↷ REDO</button>
-  <button id="insert" type="button" aria-pressed="false" title="Tap between route nodes to insert">+ NODE</button>
-  <button id="delete" type="button" title="Delete selected route node">− NODE</button>
-  <button id="strafe" type="button" aria-pressed="false" title="Choose a move node to toggle strafe, or arm the next movement; LOOK sets weapon facing">STRAFE</button>
-  <button id="pieLeft" type="button" aria-pressed="false" title="Sweep counter-clockwise around a doorway (position first)">PIE ↶</button>
-  <button id="pieRight" type="button" aria-pressed="false" title="Sweep clockwise around a doorway (position first)">PIE ↷</button>
-  <button id="door" type="button" aria-pressed="false" title="Tap a door to add an entry order">DOOR</button>
-  <button id="method" type="button" title="Cycle door action">OPEN</button>
-  <button id="wait" type="button" title="Wait at the end of the plan">WAIT</button>
-  <button id="sync" type="button" title="Both soldiers wait for the same go code">SYNC</button>
-  <button id="stance" type="button" title="Toggle this soldier's movement stance">CROUCH</button>
-  <button id="contact" type="button" aria-pressed="false" title="Halt when a threat is seen">STOP ON CONTACT</button>
-  <button id="variant" type="button" title="Try another authored opponent arrangement">SITE 1/3</button>
-  <button id="viewIso" type="button" aria-pressed="true" title="Isometric 3D camera">ISO</button>
-  <button id="viewTop" type="button" aria-pressed="false" title="Overhead 3D camera">TOP</button>
-  <button id="view2d" type="button" aria-pressed="false" title="Legacy 2D reference view">2D</button>
-  <button id="cameraFit" type="button" title="Reframe the full battlefield">FIT VIEW</button>
+<div class="guidance" id="hint" role="status" aria-live="polite">Tap to move · Select an order for LOOK, PIE, or STRAFE</div>
+<section class="orders compact" id="advancedOrders" aria-label="Additional tactical options">
+  <button id="undo" type="button" title="Undo the last planning edit">UNDO</button>
+  <button id="redo" type="button" title="Redo the last planning edit">REDO</button>
+  <button id="wait" type="button">WAIT</button>
+  <button id="sync" type="button" title="Synchronize both operators">SYNC</button>
+  <button id="stance" type="button">CROUCH</button>
+  <button id="contact" type="button" aria-pressed="false">STOP ON CONTACT</button>
+  <button id="variant" type="button">SITE 1/3</button>
+  <button id="clear" type="button" title="Clear all remaining orders for selected operator">CLEAR PLAN</button>
+  <button id="restart" type="button">RESTART</button>
+  <button id="viewIso" type="button" aria-pressed="true">ISO</button>
+  <button id="viewTop" type="button" aria-pressed="false">TOP</button>
+  <button id="view2d" type="button" aria-pressed="false">2D</button>
+  <button id="cameraFit" type="button">FIT VIEW</button>
 </section>
 <div id="contextTools" class="context-tools" role="toolbar" aria-label="Contextual tactical actions" hidden></div>
 <div class="feed" id="feed" aria-live="polite">PLAN THE ENTRY</div>
@@ -48,11 +42,9 @@
     </button>
   </div>
   <div class="actions">
-    <button id="aim" type="button" title="Choose a point to face">LOOK</button>
-    <button id="moreOrders" type="button" aria-pressed="false" title="Show advanced tactical orders">TOOLS</button>
-    <button id="clear" type="button" title="Erase this soldier's entire remaining plan">ALL CLEAR</button>
+    <button id="back" type="button" title="Remove just the final pending order">BACK −1</button>
+    <button id="moreOrders" type="button" aria-pressed="false" title="Additional commands and views">TOOLS</button>
     <button id="play" type="button" class="play">GO <span>▶</span></button>
-    <button id="restart" type="button" title="Restart this encounter">↺</button>
   </div>
 </nav>
 <section id="debrief" class="debrief" hidden aria-label="Mission debrief">
