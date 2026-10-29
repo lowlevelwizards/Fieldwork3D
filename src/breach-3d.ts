@@ -6,7 +6,7 @@ import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './
  * Coordinates: tactics (x,y) => scene (x, elevation, y).
  * This module may not mutate simulation state. */
 export type ViewMode='iso'|'top'|'plan2d';
-export type ViewState={mode:ViewMode;yaw:number;zoom:number;focus:Pt};
+export type ViewState={mode:ViewMode;yaw:number;zoom:number;pitch:number;focus:Pt};
 const color=(hex:number)=>new THREE.Color(hex);
 const v=(p:Pt,y=0)=>new THREE.Vector3(p.x,y,p.y);
 const mat=(hex:number,roughness=.9)=>new THREE.MeshStandardMaterial({
@@ -17,6 +17,7 @@ export class TacticalScene3D{
   readonly scene=new THREE.Scene();
   readonly camera=new THREE.OrthographicCamera(-320,320,370,-370,.1,2800);
   readonly view:ViewState={mode:'iso',yaw:Math.PI/4,zoom:1.25,
+    pitch:55*Math.PI/180,
     focus:{x:W/2,y:H/2}};
   readonly canvas:HTMLCanvasElement;
   private root=new THREE.Group();
@@ -224,6 +225,8 @@ export class TacticalScene3D{
   }
   setMode(mode:ViewMode){
     this.view.mode=mode;
+    if(mode==='top')this.view.pitch=Math.PI/2;
+    else if(mode==='iso')this.view.pitch=55*Math.PI/180;
     this.canvas.style.display=mode==='plan2d'?'none':'block';
     this.fogAt=-1;
     this.updateCamera(1);
@@ -234,10 +237,20 @@ export class TacticalScene3D{
     this.updateCamera(1);
   }
   rotate(delta:number){this.setYaw(this.view.yaw+delta);}
+  orbit(dx:number,dy:number){
+    // Horizontal drag circles the map; vertical drag tilts the lens.
+    if(this.view.mode==='plan2d')return;
+    this.view.mode='iso';
+    this.view.pitch=THREE.MathUtils.clamp(
+      this.view.pitch-dy*.004,35*Math.PI/180,Math.PI/2);
+    this.setYaw(this.view.yaw-dx*.007);
+  }
   /** A reset is a predictable full-board fit, independent of unit selection. */
   resetCamera(){
     this.view.focus={x:W/2,y:H/2};this.view.yaw=Math.PI/4;
-    this.view.zoom=1.25;this.updateCamera(1);
+    this.view.zoom=1.25;
+    this.view.pitch=this.view.mode==='top'?Math.PI/2:55*Math.PI/180;
+    this.updateCamera(1);
   }
   /**
    * Drag world beneath a finger rather than guessing using camera-right/up
@@ -279,7 +292,7 @@ export class TacticalScene3D{
     }
   }
   updateCamera(dt:number){
-    const targetElev=this.view.mode==='top'?Math.PI/2:55*Math.PI/180;
+    const targetElev=this.view.pitch;
     const blend=1-Math.exp(-Math.max(0,dt)*13);
     this.currentElev=THREE.MathUtils.lerp(this.currentElev,targetElev,blend);
     if(Math.abs(this.currentElev-targetElev)<.0001)
