@@ -32,6 +32,7 @@ export class TacticalScene3D{
   private currentElev=55*Math.PI/180;
   private readonly minZoom=.65;
   private readonly maxZoom=6.0;
+  private lastCameraStatus='';
   private pickPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
   private ray=new THREE.Raycaster();
   private width=1;private height=1;private fogAt=-1;
@@ -317,6 +318,21 @@ export class TacticalScene3D{
     this.camera.top=span/2;this.camera.bottom=-span/2;
     this.camera.updateProjectionMatrix();
     this.camera.updateMatrixWorld(true);
+    // Lightweight observability for touch regression tests and camera QA.
+    const signature=[
+      this.view.mode,this.view.zoom.toFixed(3),this.view.yaw.toFixed(3),
+      this.view.pitch.toFixed(3),this.view.focus.x.toFixed(2),
+      this.view.focus.y.toFixed(2),
+    ].join('|');
+    if(signature!==this.lastCameraStatus){
+      this.lastCameraStatus=signature;
+      this.canvas.dataset.cameraMode=this.view.mode;
+      this.canvas.dataset.cameraZoom=this.view.zoom.toFixed(3);
+      this.canvas.dataset.cameraYaw=this.view.yaw.toFixed(3);
+      this.canvas.dataset.cameraPitch=this.view.pitch.toFixed(3);
+      this.canvas.dataset.cameraFocusX=this.view.focus.x.toFixed(2);
+      this.canvas.dataset.cameraFocusY=this.view.focus.y.toFixed(2);
+    }
   }
   screenToWorld(sx:number,sy:number):Pt|null{
     if(this.view.mode==='plan2d')return null;
