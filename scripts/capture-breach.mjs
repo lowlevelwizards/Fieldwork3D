@@ -129,6 +129,13 @@ try{
   await phone.locator('#back').click();
   if(await phone.locator('#back').isDisabled())
     throw Error('BACK erased the entire plan instead of last movement');
+  await phone.locator('#back').click();
+  if(await phone.locator('#back').isDisabled())
+    throw Error('BACK cleared multiple nodes rather than exactly one');
+  await phone.locator('#back').click();
+  if(!await phone.locator('#back').isDisabled())
+    throw Error('BACK tap did not remove the final remaining order');
+  await phone.screenshot({path:resolve(folder,'08-phone-back-cleared-one-by-one.png')});
   await phone.locator('#moreOrders').click();
   await phone.locator('#undo').click();
   if(await phone.locator('#redo').isDisabled())
@@ -142,10 +149,33 @@ try{
   await phone.locator('#moreOrders').click();
   const doorPoint=screen(301,505);
   await phone.touchscreen.tap(doorPoint.x,doorPoint.y);
+  // The *final planned position* is enough to trigger door options;
+  // requiring the player to tap its node first was a 076 UX regression.
+  for(const action of ['ctxStack','ctxOpen','ctxKick','ctxHold']){
+    if(!await phone.locator('#contextTools button[data-action="'+action+'"]').isVisible())
+      throw Error('Missing contextual door option '+action+' at planned destination');
+  }
+  // The expanded TOOLS panel must never be obscured by a second tray.
+  await phone.locator('#moreOrders').click();
+  if(await phone.locator('#contextTools').isVisible())
+    throw Error('Contextual aiming/door buttons obscure the TOOLS drawer');
+  await phone.locator('#restart').click();
+  await phone.locator('#moreOrders').click();
   await phone.touchscreen.tap(doorPoint.x,doorPoint.y);
+  // Directly tapping the closed doorway must also expose entry actions,
+  // even when no movement waypoint has been authored yet.
+  const doorMarker=screen(302,532);
+  await phone.touchscreen.tap(doorMarker.x,doorMarker.y);
   if(!await phone.locator('#contextTools button[data-action="ctxOpen"]').isVisible())
-    throw Error('Contextual door action missing at planned position');
+    throw Error('Tapping a door did not open the contextual door controls');
+  const bounds=await phone.locator('#contextTools').boundingBox();
+  const nav=await phone.locator('#moreOrders').boundingBox();
+  if(!bounds||!nav||bounds.y+bounds.height>=nav.y)
+    throw Error('Contextual tray overlaps the bottom action bar');
+  await phone.screenshot({path:resolve(folder,'09-phone-door-context-no-overlap.png')});
   await phone.locator('#contextTools button[data-action="ctxOpen"]').click();
+  if(await phone.locator('#back').isDisabled())
+    throw Error('Contextual door click failed to queue a door approach/order');
   await phone.screenshot({path:resolve(folder,'06-phone-contextual-door.png')});
   await phone.locator('#play').click();
   await phone.waitForFunction(()=>document.querySelector('#clock')?.textContent!=='00:00');
