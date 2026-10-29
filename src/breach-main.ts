@@ -2,7 +2,7 @@ import {
   W,H,WALLS,COVER,GRID,doorCenter,route,type Pt,type Operator,
 } from './breach-core.ts';
 import {
-  type Session,type TeamActor,
+  type Session,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   planMove,planLook,planDoor,planWait,planSync,movePlanNode,
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
