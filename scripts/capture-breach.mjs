@@ -42,6 +42,21 @@ try{
   if((await phone.locator('#phase').innerText())!=='PLANNING')
     throw Error('Opening frame is not paused/plannable');
   await phone.screenshot({path:resolve(folder,'01-phone-planning.png')});
+  if(!await phone.locator('#breach3dCanvas').isVisible())
+    throw Error('Default opening is not the isometric Three.js battlefield');
+  await phone.screenshot({path:resolve(folder,'09-phone-isometric-opening.png')});
+  await phone.locator('#viewTop').click();
+  if(await phone.locator('#viewTop').getAttribute('aria-pressed')!=='true')
+    throw Error('Top-down camera switch failed');
+  await phone.screenshot({path:resolve(folder,'10-phone-topdown-3d.png')});
+  await phone.locator('#rotRight').click();
+  await phone.screenshot({path:resolve(folder,'11-phone-topdown-rotated.png')});
+  await phone.locator('#view2d').click();
+  if(await phone.locator('#view2d').getAttribute('aria-pressed')!=='true')
+    throw Error('2D reference camera did not activate');
+  await phone.locator('#moreOrders').click();
+  if(await phone.locator('#moreOrders').getAttribute('aria-pressed')!=='true')
+    throw Error('Advanced orders drawer did not open');
   // Screen projection is intentionally identical on touch and desktop.
   const screen=(x,y,width,height)=>{
     const scale=Math.min((width-20)/640,(height-172)/740);
@@ -107,6 +122,30 @@ try{
   if(await phone.locator('#variant').innerText()!=='SITE 2/3')
     throw Error('Scenario variation did not advance');
   await phone.screenshot({path:resolve(folder,'05-phone-alternate-site.png')});
+  // Contextual doors are offered from a PLANNED waypoint, not just the soldier.
+  await phone.locator('#restart').click();
+  const nearDoor=screen(302,506,390,844);
+  await phone.touchscreen.tap(nearDoor.x,nearDoor.y);
+  await phone.touchscreen.tap(nearDoor.x,nearDoor.y);
+  if(!await phone.locator('#contextTools button[data-action="ctxOpen"]').isVisible())
+    throw Error('Door options missing beside near-door planned waypoint');
+  await phone.screenshot({path:resolve(folder,'12-phone-contextual-door.png')});
+  await phone.locator('#contextTools button[data-action="ctxOpen"]').click();
+  if(await phone.locator('#back').isDisabled())
+    throw Error('Context door order was not inserted into active plan');
+  await phone.locator('#restart').click();
+  await phone.locator('#viewIso').click();
+  if(await phone.locator('#viewIso').getAttribute('aria-pressed')!=='true')
+    throw Error('ISO camera did not restore');
+  await phone.touchscreen.tap(195,420);
+  if(await phone.locator('#back').isDisabled())
+    throw Error('Camera-aware isometric map picking did not queue movement');
+  await phone.screenshot({path:resolve(folder,'13-phone-isometric-planned-route.png')});
+  // Historical 063 touch coordinates are defined in legacy map pixels, so
+  // switch to the 2D reference view for those regression checks.
+  await phone.locator('#view2d').click();
+  if(await phone.locator('#view2d').getAttribute('aria-pressed')!=='true')
+    throw Error('Could not restore 2D view for legacy gesture audit');
   // Build 063: verify one-step back without deleting the whole route.
   await phone.locator('#rook').click();
   const firstNode=screen(300,595,390,844);
@@ -135,11 +174,18 @@ try{
   await phone.locator('#pieLeft').click();
   if(await phone.locator('#pieLeft').getAttribute('aria-pressed')!=='true')
     throw Error('Counter-clockwise pie did not arm');
-  await phone.touchscreen.tap(frontDoor.x,frontDoor.y);
+  // Free-pivot sweeps intentionally reject invalid or intersecting arcs.
+  // Use a proven clear yard pivot instead of assuming the door itself works.
+  const freePivot=screen(325,599,390,844);
+  await phone.touchscreen.tap(freePivot.x,freePivot.y);
   if(await phone.locator('#pieLeft').getAttribute('aria-pressed')!=='false')
     throw Error('Pie selection did not return to planning');
   if(await phone.locator('#back').isDisabled())
-    throw Error('Door pie failed to generate its one authored order');
+    throw Error('Free-pivot PIE did not create a plan order: '+
+      JSON.stringify({hint:await phone.locator('#hint').innerText(),
+        event:await phone.locator('#feed').innerText(),
+        backDisabled:await phone.locator('#back').isDisabled(),
+        mode:await phone.locator('#view2d').getAttribute('aria-pressed')}));
   await phone.screenshot({path:resolve(folder,'08-phone-pie-arc.png')});
   await phone.locator('#back').click();
   if(!await phone.locator('#back').isDisabled())

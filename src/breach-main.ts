@@ -5,12 +5,12 @@ import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   planMove,planMoveStroke,planLook,planDoor,planWait,planSync,movePlanNode,
-  planPie,setStrafe,backOne,
+  planPieAt,editPie,doorAtNode,planStack,setStrafe,backOne,
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,stepSession,nearestDoor,knownAt,liveVisibility,
 } from './breach-game.ts';
-import {bestPieDoor} from './breach-maneuvers.ts';
 import {type PieSide} from './breach-plan.ts';
+import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import './breach-style.css';
 
 const el=<T extends HTMLElement>(id:string)=>{
@@ -31,6 +31,14 @@ const ui={
   phase:el<HTMLElement>('phase'),clock:el<HTMLOutputElement>('clock'),
   hint:el<HTMLElement>('hint'),feed:el<HTMLElement>('feed'),
   mission:el<HTMLElement>('mission'),
+  context:el<HTMLElement>('contextTools'),
+  orders:el<HTMLElement>('advancedOrders'),
+  moreOrders:el<HTMLButtonElement>('moreOrders'),
+  viewIso:el<HTMLButtonElement>('viewIso'),
+  viewTop:el<HTMLButtonElement>('viewTop'),
+  view2d:el<HTMLButtonElement>('view2d'),
+  rotLeft:el<HTMLButtonElement>('rotLeft'),
+  rotRight:el<HTMLButtonElement>('rotRight'),
   back:el<HTMLButtonElement>('back'),
   undo:el<HTMLButtonElement>('undo'),redo:el<HTMLButtonElement>('redo'),
   insert:el<HTMLButtonElement>('insert'),delete:el<HTMLButtonElement>('delete'),
@@ -47,10 +55,16 @@ const ui={
   retry:el<HTMLButtonElement>('retry'),next:el<HTMLButtonElement>('next'),
 };
 let state:Session=newSession();
+let stage:TacticalScene3D|null=null;
+let viewMode:ViewMode='iso';
+try{stage=new TacticalScene3D();}
+catch(error){console.warn('3D unavailable; reverting to tactical plan',error);
+  viewMode='plan2d';}
 let selected='rook';
 let looking=false;
 let doorMode=false,insertMode=false,strafeNext=false;
 let pieMode:PieSide|null=null;
+let contextSignature='';
 let method:'open'|'kick'|'hold'='open';
 let selectedNode:number|null=null;
 let draggingNode:Pt|null=null;
@@ -82,8 +96,9 @@ let cursor:Pt|null=null;
 let trace:Pt[]|null=null;
 const activePointers=new Map<number,{x:number;y:number;startX:number;startY:number;
   wasUnit:boolean;nodeId:number|null;
-  mode:'undecided'|'route'|'pan'|'node';moved:boolean}>();
-let pinchDistance=0,panMid:Pt|null=null;
+  mode:'undecided'|'route'|'pan'|'node'|'pivot'|'sweep';moved:boolean}>();
+let pinchDistance=0,panMid:Pt|null=null,pinchAngle=0;
+let pieRepositionNode:number|null=null;
 const colors={rook:'#a2d4ca',moss:'#b9c6a0'};
 const colorFor=(id:string)=>id==='rook'?colors.rook:colors.moss;
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
@@ -93,33 +108,56 @@ function layout(){
   dpr=Math.min(devicePixelRatio||1,2);
   canvas.width=Math.round(cssW*dpr);canvas.height=Math.round(cssH*dpr);
   canvas.style.width=cssW+'px';canvas.style.height=cssH+'px';
+  stage?.resize(cssW,cssH);
   const available=Math.max(240,cssH-(cssH<500?85:172));
   const fit=Math.min((cssW-20)/W,available/H);
   viewScale=fit*zoom;
   ox=cssW/2-W*viewScale/2+panX;
   oy=cssH/2-H*viewScale/2-11+panY;
 }
-const toWorld=(x:number,y:number):Pt=>({
-  x:(x-ox)/viewScale,y:(y-oy)/viewScale});
+const toWorld=(x:number,y:number):Pt=>{
+  if(stage&&viewMode!=='plan2d')return stage.screenToWorld(x,y)??{x:-500,y:-500};
+  return {x:(x-ox)/viewScale,y:(y-oy)/viewScale};
+};
+const worldToScreen=(p:Pt,height=4):Pt=>
+  stage&&viewMode!=='plan2d'?stage.project(p,height):
+    {x:ox+p.x*viewScale,y:oy+p.y*viewScale};
 function fitZoom(next:number){
-  zoom=clamp(next,1,2.35);layout();
+  zoom=clamp(next,1,2.8);
+  if(stage&&viewMode!=='plan2d'){
+    stage.view.zoom=zoom;stage.updateCamera(1);
+  }else layout();
+}
+function cameraMode(mode:ViewMode){
+  viewMode=stage?mode:'plan2d';
+  if(stage){stage.setMode(viewMode);stage.updateCamera(1);}
+  for(const [m,button] of [['iso',ui.viewIso],
+    ['top',ui.viewTop],['plan2d',ui.view2d]] as const){
+    button.setAttribute('aria-pressed',String(m===viewMode));
+  }
+  contextSignature='';updateHud();
+}
+function turnCamera(shift:number){
+  if(stage&&viewMode!=='plan2d'){
+    stage.setYaw(stage.view.yaw+shift);updateContext();
+  }
 }
 const uid=(id:string)=>team(state).find(o=>o.id===id);
 function selectUnit(id:string){
   const actor=uid(id);if(!actor||actor.health<=0)return;
   selected=id;looking=false;doorMode=false;insertMode=false;
-  pieMode=null;strafeNext=false;
+  pieMode=null;strafeNext=false;pieRepositionNode=null;
   selectedNode=null;updateHud();
 }
 function message(){
   if(state.phase==='planning'){
     if(looking)return 'LOOK: choose a facing for the selected waypoint.';
     if(doorMode)return 'DOOR: tap a door to append '+method.toUpperCase()+' order.';
-    if(pieMode)return 'PIE: tap a doorway from 27–108 units away to sweep '+(pieMode==='cw'?'clockwise.':'counter-clockwise.')+
-      ' Plan a closer position first if needed.';
+    if(pieMode)return 'PIE: tap a world-space pivot. The soldier will sweep around it, keeping the weapon aimed inward.';
+    if(pieRepositionNode!==null)return 'Tap a new world-space pivot for the selected pie order.';
     if(strafeNext)return 'STRAFE armed: tap or draw travel, then select the node and LOOK to set weapon direction.';
     if(insertMode)return 'INSERT: tap between route nodes to add a waypoint.';
-    if(selectedNode!==null)return 'Waypoint selected: drag to move, LOOK to face, − NODE to delete.';
+    if(selectedNode!==null)return 'Selected order: drag to adjust. Nearby door and cover actions appear beside it.';
     return 'Tap to add a waypoint · drag a waypoint to edit · GO to execute.';
   }
   if(state.phase==='running')
@@ -130,6 +168,120 @@ function message(){
 function activeIsStrafe(){
   return uid(selected)?.plan.find(n=>n.id===selectedNode)?.moveMode==='strafe';
 }
+function updateContext(){
+  // Context chrome must disappear while the player is pointing at the map.
+  // Otherwise its floating touch targets can swallow door/pivot/LOOK taps.
+  if(state.phase!=='planning'||looking||doorMode||insertMode||
+     pieMode!==null||pieRepositionNode!==null){
+    ui.context.hidden=true;return;
+  }
+  const a=uid(selected);
+  if(!a||a.health<=0){ui.context.hidden=true;return;}
+  const node=a.plan.find(n=>n.id===selectedNode);
+  const where=node?.p??a.p;
+  const closest=state.doors.filter(d=>
+    !d.open&&distance(where,doorCenter(d))<43)
+    .sort((x,y)=>distance(where,doorCenter(x))-
+      distance(where,doorCenter(y)))[0];
+  const isMove=node?.kind==='move';
+  const isPie=node?.kind==='pie';
+  const choices:{id:string;label:string;pressed?:boolean}[]=[];
+  if(node){
+    choices.push({id:'ctxLook',label:'FACE'});
+    if(isMove)choices.push({id:'ctxStrafe',label:'STRAFE',
+      pressed:node?.moveMode==='strafe'});
+    if(isPie)choices.push({id:'ctxPivot',label:'MOVE PIVOT'});
+    choices.push({id:'ctxDelete',label:'DELETE'});
+  }else{
+    choices.push({id:'ctxLook',label:'LOOK'});
+    choices.push({id:'ctxCrouch',label:a.posture==='crouch'?'STAND':'CROUCH'});
+    choices.push({id:'ctxWait',label:'WAIT'});
+    choices.push({id:'ctxSync',label:'SYNC'});
+  }
+  if(closest){
+    choices.push({id:'ctxStack',label:'STACK'});
+    choices.push({id:'ctxOpen',label:'OPEN'});
+    choices.push({id:'ctxKick',label:'KICK'});
+    choices.push({id:'ctxHold',label:'HOLD'});
+  }
+  if(node||closest){
+    choices.push({id:'ctxPieLeft',label:'PIE ↶'});
+    choices.push({id:'ctxPieRight',label:'PIE ↷'});
+  }
+  const signature=choices.map(x=>x.id+String(x.pressed)).join('/')+
+    '/'+(closest?.id??'')+'/'+(node?.id??'-');
+  if(contextSignature!==signature){
+    contextSignature=signature;
+    ui.context.replaceChildren();
+    for(const option of choices){
+      const button=document.createElement('button');
+      button.type='button';button.dataset.action=option.id;
+      button.textContent=option.label;
+      if(option.pressed)button.setAttribute('aria-pressed','true');
+      ui.context.append(button);
+    }
+  }
+  ui.context.hidden=false;
+  // No node: dock the unit's small action tray above the control bar.
+  // A floating tray above the soldier can intercept the user's first
+  // destination tap, especially at the starting position on portrait.
+  if(!node){
+    ui.context.style.left=cssW/2+'px';
+    ui.context.style.top=Math.max(190,cssH-163)+'px';
+    ui.context.style.transform='translate(-50%,-100%)';
+    return;
+  }
+  // Selected node: float above it without covering the waypoint itself.
+  const screen=worldToScreen(where,12);
+  const left=clamp(screen.x,ui.context.offsetWidth/2+6,
+    cssW-ui.context.offsetWidth/2-6);
+  const above=screen.y-22;
+  const top=above<175?screen.y+ui.context.offsetHeight+36:above;
+  ui.context.style.left=left+'px';
+  ui.context.style.top=clamp(top,170,cssH-123)+'px';
+  ui.context.style.transform=above<175?'translate(-50%,-0%)':'translate(-50%,-100%)';
+}
+ui.context.addEventListener('click',event=>{
+  const button=(event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]');
+  if(!button||state.phase!=='planning')return;
+  const action=button.dataset.action;
+  const a=uid(selected);
+  if(!a)return;
+  const node=a.plan.find(n=>n.id===selectedNode);
+  const where=node?.p??a.p;
+  const door=state.doors.filter(d=>!d.open&&distance(where,doorCenter(d))<50)
+    .sort((x,y)=>distance(where,doorCenter(x))-distance(where,doorCenter(y)))[0];
+  switch(action){
+    case 'ctxLook':toggleAim();return;
+    case 'ctxStrafe':
+      if(node)setStrafe(state,selected,node.id);
+      else strafeNext=!strafeNext;
+      break;
+    case 'ctxCrouch':posture(state,selected);fogStamp=-1;break;
+    case 'ctxWait':planWait(state,selected);break;
+    case 'ctxSync':planSync(state);break;
+    case 'ctxDelete':
+      if(node)deletePlanNode(state,selected,node.id);
+      selectedNode=null;break;
+    case 'ctxStack':
+      if(door&&!planStack(state,selected,door.id,node?.id))
+        state.events.push('NO REACHABLE STACK POSITION');
+      selectedNode=null;break;
+    case 'ctxOpen':
+    case 'ctxKick':
+    case 'ctxHold':
+      if(door&&!doorAtNode(state,selected,door.id,
+        action==='ctxOpen'?'open':action==='ctxKick'?'kick':'hold',
+        node?.id))state.events.push('DOOR NOT REACHABLE FROM THAT POINT');
+      selectedNode=null;break;
+    case 'ctxPieLeft':armPie('ccw');return;
+    case 'ctxPieRight':armPie('cw');return;
+    case 'ctxPivot':if(node?.kind==='pie'){
+      pieRepositionNode=node.id;state.events.push('TAP NEW PIVOT OR DRAG MARKER');
+    }break;
+  }
+  contextSignature='';updateHud();
+});
 function updateHud(){
   ui.phase.textContent=state.phase==='planning'?'PLANNING':
     state.phase==='running'?'EXECUTING':
@@ -177,6 +329,7 @@ function updateHud(){
     (id==='rook'?ui.rookHp:ui.mossHp).textContent=a?.health===2?'●●':a?.health===1?'●○':'○○';
   }
   ui.hint.textContent=message();
+  updateContext();
   ui.feed.textContent=state.events.at(-1)??'';
   const visible=enemies(state).filter(e=>e.health>0&&isSeen(state,e)).length;
   ui.mission.textContent=missionText(state)+
@@ -372,6 +525,109 @@ function paths(){
     }
   }
 }
+function renderProjectedPlans(){
+  if(!stage)return;
+  draw.setTransform(dpr,0,0,dpr,0,0);
+  draw.clearRect(0,0,cssW,cssH);
+  for(const a of team(state)){
+    if(a.health<=0)continue;
+    const color=colorFor(a.id);
+    let previous=a.p;
+    for(const n of a.plan){
+      const steps=n.kind==='pie'?n.arc??[]:
+        n.kind==='move'||n.kind==='door'?route(previous,n.p):[];
+      if(steps.length){
+        draw.beginPath();
+        const start=worldToScreen(previous,4);
+        draw.moveTo(start.x,start.y);
+        for(const point of steps){
+          const projected=worldToScreen(point,4);
+          draw.lineTo(projected.x,projected.y);
+        }
+        draw.strokeStyle=n.kind==='pie'?'#e8c090':color;
+        draw.globalAlpha=a.id===selected?.94:.50;
+        draw.lineWidth=n.kind==='pie'?3:2.4;
+        draw.setLineDash(n.kind==='pie'?[3,3]:[7,4]);
+        draw.stroke();draw.setLineDash([]);draw.globalAlpha=1;
+      }
+      const selectedNow=a.id===selected&&selectedNode===n.id;
+      const point=worldToScreen(selectedNow&&draggingNode?draggingNode:n.p,8);
+      circle(point.x,point.y,selectedNow?11:7,
+        selectedNow?'#ecd29f':n.kind==='pie'?'#daa972':color);
+      circle(point.x,point.y,3,'#233b39');
+      draw.fillStyle='#142829';draw.font='bold 11px monospace';
+      draw.textAlign='center';draw.fillText(String(a.plan.indexOf(n)+1),
+        point.x,point.y+3);
+      if(n.facing!==undefined){
+        const aim=worldToScreen({x:n.p.x+Math.cos(n.facing)*33,
+          y:n.p.y+Math.sin(n.facing)*33},8);
+        line(point,aim,'#efd5a4',2);
+        circle(aim.x,aim.y,3,'#efd5a4');
+      }
+      if(n.kind==='move'&&n.moveMode==='strafe'){
+        draw.fillStyle='#e0f7e9';draw.textAlign='left';
+        draw.font='bold 10px monospace';
+        draw.fillText('STRAFE',point.x+13,point.y-12);
+      }
+      if(n.kind==='door'){
+        draw.fillStyle='#e2ca9f';draw.textAlign='left';
+        draw.font='bold 10px monospace';
+        draw.fillText((n.method??'open').toUpperCase(),point.x+12,point.y-11);
+      }
+      if(n.kind==='pie'&&n.pivot){
+        const pivot=worldToScreen(n.pivot,12);
+        circle(pivot.x,pivot.y,7,'#e2b476');
+        circle(pivot.x,pivot.y,3,'#24322f');
+        line(point,pivot,'#e3b37c8a',1.5);
+        draw.textAlign='left';draw.font='bold 10px monospace';
+        draw.fillStyle='#e3bb87';
+        draw.fillText('PIVOT '+Math.round(n.pieDegrees??54)+'°',
+          pivot.x+10,pivot.y-12);
+      }
+      if(n.kind==='pie'&&n.arc?.length&&a.id===selected){
+        const finish=worldToScreen(n.arc.at(-1)!,8);
+        draw.strokeStyle='#f0d3a4';draw.lineWidth=1.8;
+        draw.strokeRect(finish.x-8,finish.y-8,16,16);
+      }
+      if(n.kind==='move'||n.kind==='door'||n.kind==='pie')previous=n.p;
+    }
+    const pawn=worldToScreen(a.p,32);
+    draw.textAlign='center';draw.font='bold 12px monospace';
+    draw.fillStyle=color;draw.fillText(a.name,pawn.x,pawn.y-9);
+    if(a.id===selected){
+      draw.strokeStyle='#e9d6b1';draw.lineWidth=1.5;
+      draw.beginPath();draw.arc(pawn.x,pawn.y+15,13,0,Math.PI*2);draw.stroke();
+    }
+  }
+  // Unknown enemies stay unrendered; only grounded last-known reports show.
+  for(const hostile of enemies(state)){
+    if(isSeen(state,hostile))continue;
+    const memory=lastKnown(state,hostile.id);
+    if(!memory||state.seconds-memory.at>25)continue;
+    const where=worldToScreen(memory.p,12);
+    draw.font='bold 17px monospace';draw.textAlign='center';
+    draw.fillStyle='#e6bb9d';
+    draw.fillText(memory.status==='heard'?'~':'?',where.x,where.y);
+  }
+  if(trace&&trace.length>1){
+    draw.beginPath();
+    const first=worldToScreen(trace[0],8);
+    draw.moveTo(first.x,first.y);
+    for(const point of trace.slice(1)){
+      const screen=worldToScreen(point,8);
+      draw.lineTo(screen.x,screen.y);
+    }
+    draw.strokeStyle='#f0cd96';draw.lineWidth=3;draw.stroke();
+  }
+  if(state.mission!=='clear'&&state.mission!=='done'){
+    const target=worldToScreen(state.mission==='secure'?
+      state.scenario.objective:state.scenario.extract,9);
+    draw.strokeStyle='#e8d5a6';draw.lineWidth=2;
+    draw.beginPath();draw.arc(target.x,target.y,17,0,2*Math.PI);draw.stroke();
+    draw.fillStyle='#e8d5a6';draw.font='bold 10px monospace';
+    draw.fillText(state.mission.toUpperCase(),target.x,target.y-23);
+  }
+}
 function fog(){
   // Cached visibility tile raster, refreshed only as the world moves.
   if(fogStamp<0||state.seconds-fogStamp>.24){
@@ -471,6 +727,9 @@ function endMessage(){
   }
 }
 function render(){
+  if(stage&&viewMode!=='plan2d'){
+    renderProjectedPlans();return;
+  }
   draw.setTransform(dpr,0,0,dpr,0,0);
   draw.fillStyle='#141e20';draw.fillRect(0,0,cssW,cssH);
   // Map-space drawing has a single reversible projection.
@@ -491,7 +750,7 @@ function toggleAim(){
 function armPie(side:PieSide){
   pieMode=pieMode===side?null:side;
   looking=false;doorMode=false;insertMode=false;strafeNext=false;
-  selectedNode=null;updateHud();
+  updateHud();
 }
 function useSelectedGround(pt:Pt){
   if(state.phase!=='planning')return;
@@ -500,11 +759,14 @@ function useSelectedGround(pt:Pt){
       state.events.push('SELECT OR CREATE A NODE FIRST');
     looking=false;updateHud();return;
   }
+  if(pieRepositionNode!==null){
+    if(!editPie(state,selected,pieRepositionNode,pt))
+      state.events.push('INVALID PIVOT LOCATION');
+    pieRepositionNode=null;updateHud();return;
+  }
   if(pieMode){
-    const door=bestPieDoor(pt,state.doors);
-    if(!door||distance(pt,doorCenter(door))>34||
-      !planPie(state,selected,door.id,pieMode))
-      state.events.push('PIE BLOCKED: POSITION NEAR DOOR, CHOOSE OTHER SWEEP');
+    if(!planPieAt(state,selected,pt,pieMode,65,selectedNode??undefined))
+      state.events.push('INVALID PIVOT OR SWEEP: MOVE TO AN OPEN ARC');
     pieMode=null;selectedNode=null;updateHud();return;
   }
   if(doorMode){
@@ -537,7 +799,7 @@ function useSelectedGround(pt:Pt){
 function reset(next=state.variant){
   state=newSession(next);selected='rook';looking=false;doorMode=false;
   insertMode=false;selectedNode=null;draggingNode=null;
-  strafeNext=false;pieMode=null;
+  strafeNext=false;pieMode=null;pieRepositionNode=null;
   cursor=null;trace=null;zoom=1;panX=panY=0;
   fogStamp=-1;lastSoundShotCount=0;lastEventAudio='';
   layout();updateHud();
@@ -616,6 +878,9 @@ window.addEventListener('keydown',e=>{
     else undoPlan(state,selected);updateHud();
   }
   if(e.code==='KeyR'&&!e.repeat)reset();
+  if(e.code==='KeyV'&&!e.repeat)cameraMode(viewMode==='iso'?'top':'iso');
+  if(e.code==='KeyQ'&&!e.repeat)turnCamera(-Math.PI/8);
+  if(e.code==='KeyE'&&!e.repeat)turnCamera(Math.PI/8);
 });
 function pointerWorld(e:PointerEvent){return toWorld(e.clientX,e.clientY);}
 const hitNode=(p:Pt):{id:number;index:number}|null=>{
@@ -623,7 +888,10 @@ const hitNode=(p:Pt):{id:number;index:number}|null=>{
   if(!unit)return null;
   for(let i=unit.plan.length-1;i>=0;i--){
     const n=unit.plan[i];
-    if(distance(n.p,p)<Math.max(14,12/viewScale))
+    if(viewMode!=='plan2d'&&stage){
+      const screen=worldToScreen(n.p,8),cursor=worldToScreen(p,8);
+      if(distance(screen,cursor)<19)return {id:n.id,index:i};
+    }else if(distance(n.p,p)<Math.max(14,12/viewScale))
       return {id:n.id,index:i};
   }
   return null;
@@ -633,21 +901,33 @@ canvas.addEventListener('pointerdown',e=>{
   const pt=pointerWorld(e);
   // Active contextual orders have priority over picking an overlapping
   // soldier or waypoint, especially near a crowded doorway on mobile.
-  const contextual=looking||doorMode||insertMode||pieMode!==null;
+  const contextual=looking||doorMode||insertMode||pieMode!==null||pieRepositionNode!==null;
   const hit=contextual?undefined:team(state).find(a=>
-    a.health>0&&distance(a.p,pt)<22);
+    a.health>0&&(viewMode==='plan2d'||!stage?
+      distance(a.p,pt)<22:
+      distance(worldToScreen(a.p,24),{x:e.clientX,y:e.clientY})<25));
   if(hit)selectUnit(hit.id);
-  const node=state.phase==='planning'&&!hit&&!contextual?hitNode(pt):null;
+  const current=uid(selected)?.plan.find(n=>n.id===selectedNode);
+  let handle:'pivot'|'sweep'|null=null;
+  if(!contextual&&current?.kind==='pie'&&stage&&viewMode!=='plan2d'){
+    if(current.pivot&&distance(worldToScreen(current.pivot,12),
+      {x:e.clientX,y:e.clientY})<22)handle='pivot';
+    else if(distance(worldToScreen(current.p,8),
+      {x:e.clientX,y:e.clientY})<20)handle='sweep';
+  }
+  const node=state.phase==='planning'&&!hit&&!contextual&&!handle?hitNode(pt):null;
   if(node)selectedNode=node.id;
   activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
-    startX:e.clientX,startY:e.clientY,wasUnit:!!hit,nodeId:node?.id??null,
-    mode:node?'node':'undecided',moved:false});
+    startX:e.clientX,startY:e.clientY,wasUnit:!!hit,
+    nodeId:handle?selectedNode:node?.id??null,
+    mode:handle??(node?'node':'undecided'),moved:false});
   if(activePointers.size>=2){
     for(const p of activePointers.values())p.mode='pan';
     const pts=[...activePointers.values()];
     pinchDistance=distance({x:pts[0].x,y:pts[0].y},
       {x:pts[1].x,y:pts[1].y});
     panMid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
+    pinchAngle=Math.atan2(pts[1].y-pts[0].y,pts[1].x-pts[0].x);
     trace=null;draggingNode=null;
   }
 });
@@ -664,11 +944,21 @@ canvas.addEventListener('pointermove',e=>{
     const gap=distance({x:pts[0].x,y:pts[0].y},
       {x:pts[1].x,y:pts[1].y});
     const mid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
-    if(panMid){panX+=mid.x-panMid.x;panY+=mid.y-panMid.y;}
-    if(pinchDistance>8)zoom=clamp(zoom*gap/pinchDistance,1,2.35);
-    pinchDistance=gap;panMid=mid;layout();return;
+    const twist=Math.atan2(pts[1].y-pts[0].y,pts[1].x-pts[0].x);
+    if(stage&&viewMode!=='plan2d'){
+      if(panMid)stage.pan(mid.x-panMid.x,mid.y-panMid.y);
+      if(pinchDistance>8)fitZoom(zoom*gap/pinchDistance);
+      const turn=Math.atan2(Math.sin(twist-pinchAngle),Math.cos(twist-pinchAngle));
+      if(Math.abs(turn)>.006)turnCamera(-turn);
+    }else{
+      if(panMid){panX+=mid.x-panMid.x;panY+=mid.y-panMid.y;}
+      if(pinchDistance>8)zoom=clamp(zoom*gap/pinchDistance,1,2.35);
+      layout();
+    }
+    pinchAngle=twist;pinchDistance=gap;panMid=mid;return;
   }
-  if(p.mode==='node'&&p.moved&&p.nodeId!==null){
+  if((p.mode==='node'||p.mode==='pivot'||p.mode==='sweep')&&
+    p.moved&&p.nodeId!==null){
     draggingNode=cursor;return;
   }
   if(state.phase==='planning'&&p.wasUnit&&p.moved){
@@ -684,7 +974,26 @@ function releasePointer(e:PointerEvent,cancelled=false){
   if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
   const pt=pointerWorld(e);
   if(!cancelled&&state.phase==='planning'&&activePointers.size===1){
-    if(p.mode==='node'&&p.nodeId!==null){
+    if((p.mode==='pivot'||p.mode==='sweep')&&p.nodeId!==null){
+      const a=uid(selected),node=a?.plan.find(n=>n.id===p.nodeId);
+      if(node?.kind==='pie'&&node.pivot&&p.moved){
+        if(p.mode==='pivot'){
+          if(!editPie(state,selected,node.id,pt))
+            state.events.push('PIVOT SWEEP BLOCKED');
+        }else{
+          const index=a!.plan.indexOf(node);
+          const origin=index===0?a!.p:a!.plan[index-1].p;
+          const base=Math.atan2(origin.y-node.pivot.y,origin.x-node.pivot.x);
+          const endpoint=Math.atan2(pt.y-node.pivot.y,pt.x-node.pivot.x);
+          const diff=Math.atan2(Math.sin(endpoint-base),Math.cos(endpoint-base));
+          const side=diff>=0?'cw':'ccw';
+          const degrees=clamp(Math.abs(diff)*180/Math.PI,8,120);
+          if(!editPie(state,selected,node.id,node.pivot,degrees,side))
+            state.events.push('ARC INTERSECTS OBSTACLE');
+        }
+      }
+      selectedNode=p.nodeId;
+    }else if(p.mode==='node'&&p.nodeId!==null){
       if(p.moved&&!movePlanNode(state,selected,p.nodeId,pt))
         state.events.push('INVALID NODE POSITION');
       selectedNode=p.nodeId;
@@ -697,7 +1006,7 @@ function releasePointer(e:PointerEvent,cancelled=false){
       pt.x<=W&&pt.y<=H)useSelectedGround(pt);
   }
   trace=null;draggingNode=null;activePointers.delete(e.pointerId);
-  if(activePointers.size<2){panMid=null;pinchDistance=0;}
+  if(activePointers.size<2){panMid=null;pinchDistance=0;pinchAngle=0;}
   updateHud();
 }
 canvas.addEventListener('pointerup',e=>releasePointer(e));
@@ -705,6 +1014,16 @@ canvas.addEventListener('pointercancel',e=>releasePointer(e,true));
 canvas.addEventListener('lostpointercapture',e=>releasePointer(e,true));
 window.addEventListener('blur',()=>{activePointers.clear();trace=null;});
 window.addEventListener('resize',layout);
+ui.viewIso.addEventListener('click',()=>cameraMode('iso'));
+ui.viewTop.addEventListener('click',()=>cameraMode('top'));
+ui.view2d.addEventListener('click',()=>cameraMode('plan2d'));
+ui.rotLeft.addEventListener('click',()=>turnCamera(-Math.PI/8));
+ui.rotRight.addEventListener('click',()=>turnCamera(Math.PI/8));
+ui.moreOrders.addEventListener('click',()=>{
+  const expanded=ui.orders.classList.toggle('compact')===false;
+  ui.moreOrders.setAttribute('aria-pressed',String(expanded));
+  ui.moreOrders.textContent=expanded?'HIDE':'TOOLS';
+});
 canvas.addEventListener('wheel',e=>{
   e.preventDefault();fitZoom(zoom*Math.exp(-e.deltaY*.00065));
 },{passive:false});
@@ -727,6 +1046,7 @@ function tick(now:number){
     playTone(90,.25,true);
   lastEventAudio=event;
   if(now-hudAt>120){updateHud();hudAt=now;}
-  render();requestAnimationFrame(tick);
+  if(stage&&viewMode!=='plan2d')stage.update(state,selected,dt);
+  render();updateContext();requestAnimationFrame(tick);
 }
-layout();updateHud();requestAnimationFrame(tick);
+layout();cameraMode(viewMode);updateHud();requestAnimationFrame(tick);

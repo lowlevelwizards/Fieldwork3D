@@ -169,22 +169,66 @@ export function backOne(s:Session,id:string){
   }
   return edit(s,a,()=>{a.plan.pop();});
 }
+/** The player chooses a world-space pivot; doors are no longer special. */
+export function planPieAt(s:Session,id:string,pivot:Pt,side:PieSide,degrees=54,
+  afterNodeId?:number){
+  const a=party(s,id);
+  if(!a||!canEdit(s))return false;
+  const index=afterNodeId===undefined?a.plan.length:
+    a.plan.findIndex(n=>n.id===afterNodeId)+1;
+  if(index<=0&&afterNodeId!==undefined)return false;
+  const start=index===0?a.p:a.plan[index-1].p;
+  const arc=validPieArc(start,pivot,side,s.doors,degrees);
+  if(!arc.length)return false;
+  if(afterNodeId===undefined)return addNode(s,id,'pie',arc[arc.length-1],{
+    pivot:clone(pivot),pieSide:side,pieDegrees:degrees,arc:arc.map(clone)});
+  const proposed=copyNodes(a.plan);
+  proposed.splice(index,0,{id:s.nextId,kind:'pie',p:clone(arc.at(-1)!),
+    pivot:clone(pivot),pieSide:side,pieDegrees:degrees,arc:arc.map(clone)});
+  if(!validEditedPlan(s,a.p,proposed))return false;
+  return edit(s,a,()=>{a.plan=proposed;s.nextId++;});
+}
+/** Retain compatibility with Build 063's doorway shortcut. */
 export function planPie(s:Session,id:string,doorId:string,side:PieSide){
+  const door=s.doors.find(d=>d.id===doorId);
+  return !!door&&planPieAt(s,id,doorCenter(door),side);
+}
+/** Move a pivot or adjust the arc sweep, retaining one undoable order. */
+export function editPie(s:Session,id:string,nodeId:number,
+  pivot:Pt,degrees?:number,side?:PieSide){
+  const a=party(s,id);if(!a||!canEdit(s))return false;
+  const proposed=copyNodes(a.plan),index=proposed.findIndex(n=>n.id===nodeId);
+  if(index<0||proposed[index].kind!=='pie')return false;
+  proposed[index].pivot=clone(pivot);
+  if(degrees!==undefined)proposed[index].pieDegrees=clamp(degrees,8,120);
+  if(side)proposed[index].pieSide=side;
+  if(!validEditedPlan(s,a.p,proposed))return false;
+  return edit(s,a,()=>{a.plan=proposed;});
+}
+/** Context-aware door action at a selected planned position. */
+export function doorAtNode(s:Session,id:string,doorId:string,method:DoorMethod,nodeId?:number){
   const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
   if(!a||!door||!canEdit(s))return false;
-  const origin=finalPoint(a),pivot=doorCenter(door);
-  const arc=validPieArc(origin,pivot,side,s.doors);
-  if(!arc.length)return false;
-  return addNode(s,id,'pie',arc[arc.length-1],{
-    pivot:clone(pivot),pieSide:side,arc:arc.map(clone)});
+  if(nodeId===undefined){
+    if(d(finalPoint(a),doorCenter(door))>43)return planDoor(s,id,doorId,method);
+    return addNode(s,id,'door',finalPoint(a),{doorId,method});
+  }
+  const index=a.plan.findIndex(n=>n.id===nodeId);
+  if(index<0||d(a.plan[index].p,doorCenter(door))>43)return false;
+  const position=clone(a.plan[index].p);
+  return edit(s,a,()=>{
+    a.plan.splice(index+1,0,{id:s.nextId++,kind:'door',
+      p:position,doorId,method});
+  });
 }
+
 /** Recalculate dependent pie arcs when an earlier waypoint changes. */
 function validEditedPlan(s:Session,start:Pt,proposed:PlanNode[]){
   let from=start;
   for(const n of proposed){
     if(n.kind==='pie'){
       if(!n.pivot||!n.pieSide)return false;
-      const arc=validPieArc(from,n.pivot,n.pieSide,s.doors);
+      const arc=validPieArc(from,n.pivot,n.pieSide,s.doors,n.pieDegrees??54);
       if(!arc.length)return false;
       n.arc=arc;n.p=clone(arc[arc.length-1]);from=n.p;
     }else if(n.kind==='move'||n.kind==='door'){
@@ -248,6 +292,38 @@ export function planDoor(s:Session,id:string,doorId:string,method:DoorMethod){
   reachable.sort((x,y)=>d(origin,x)-d(origin,y));
   if(!reachable[0])return false;
   return addNode(s,id,'door',reachable[0],{doorId,method});
+}
+/** Contextual stack-up: approach one side of a door and cover the opening. */
+export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number){
+  const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
+  if(!a||!door||!canEdit(s))return false;
+  const index=afterNodeId===undefined?a.plan.length:
+    a.plan.findIndex(n=>n.id===afterNodeId)+1;
+  if(index<=0&&afterNodeId!==undefined)return false;
+  const from=index===0?a.p:a.plan[index-1].p,center=doorCenter(door);
+  const horizontal=Math.abs(door.a.y-door.b.y)<1;
+  const half=d(door.a,door.b)/2;
+  const candidates=horizontal?[
+    {x:center.x-half-10,y:center.y+(from.y>=center.y?18:-18)},
+    {x:center.x+half+10,y:center.y+(from.y>=center.y?18:-18)},
+  ]:[
+    {x:center.x+(from.x>=center.x?18:-18),y:center.y-half-10},
+    {x:center.x+(from.x>=center.x?18:-18),y:center.y+half+10},
+  ];
+  const partner=team(s).find(b=>b!==a&&b.health>0);
+  const other=partner?finalPoint(partner):null;
+  const legal=candidates.filter(p=>passable(p)&&route(from,p).length);
+  legal.sort((x,y)=>{
+    const score=(p:Pt)=>d(from,p)-(other?Math.min(50,d(p,other))*.42:0);
+    return score(x)-score(y);
+  });
+  if(!legal.length)return false;
+  const point=legal[0];
+  const proposed=copyNodes(a.plan);
+  proposed.splice(index,0,{id:s.nextId,kind:'move',p:clone(point),
+    moveMode:'strafe',facing:angle(point,center)});
+  if(!validEditedPlan(s,a.p,proposed))return false;
+  return edit(s,a,()=>{a.plan=proposed;s.nextId++;});
 }
 export function planWait(s:Session,id:string,seconds=1.2){
   const a=party(s,id);return a?addNode(s,id,'wait',finalPoint(a),
