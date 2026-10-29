@@ -120,3 +120,45 @@ button:focus-visible{outline:2px solid #e9c493;outline-offset:3px}
   .feed{display:none}
   .debrief{top:48%;padding:13px}
 }
+
+/* 064–073: world-first HUD. Advanced commands remain accessible, not dominant. */
+#breachCanvas{z-index:1;background:transparent}
+.camera-tools{position:fixed;top:calc(88px + env(safe-area-inset-top));
+ right:11px;z-index:5;display:flex;align-items:center;gap:4px;
+ background:#142322c5;border:1px solid #566d63a6;border-radius:6px;
+ padding:4px;backdrop-filter:blur(5px)}
+.camera-tools button{font-size:10px;padding:6px 8px;border-radius:3px;
+ border:1px solid transparent;background:transparent;min-width:32px;
+ color:#c2d2ca;font-weight:700;letter-spacing:.03em}
+.camera-tools button[aria-pressed="true"]{color:#1b302d;background:#c8d4b6}
+.camera-tools button:active{background:#64786f}
+.orders.compact button:not(#back):not(#undo):not(#redo){
+ display:none
+}
+.context-tools{position:fixed;z-index:6;display:flex;flex-wrap:wrap;
+ gap:5px;align-items:center;justify-content:center;padding:6px;
+ max-width:min(360px,calc(100vw - 14px));background:#132426ef;
+ border:1px solid #93aa9377;border-radius:6px;
+ box-shadow:0 6px 30px #09161799;backdrop-filter:blur(6px);
+ transform:translate(-50%,-100%)}
+.context-tools[hidden]{display:none}
+.context-tools button{border:1px solid #718f83a8;border-radius:4px;
+ padding:7px 10px;min-height:35px;background:#29423d;color:#e1e7d4;
+ font-size:10px;letter-spacing:.05em;white-space:nowrap}
+.context-tools button[aria-pressed="true"]{background:#baae83;color:#1a3029}
+.context-tools button:active{background:#577b70}
+.context-tools .danger{background:#5a3e39;border-color:#a57b6b}
+.bar .actions #moreOrders{min-width:48px}
+@media(max-width:450px){
+ .camera-tools{top:calc(88px + env(safe-area-inset-top));
+ right:7px;gap:1px;padding:3px}
+ .camera-tools button{font-size:9px;padding:7px 6px;min-width:29px}
+ .context-tools{gap:3px;padding:4px;max-width:calc(100vw - 12px)}
+ .context-tools button{font-size:10px;padding:7px 8px}
+ .guidance{top:calc(77px + env(safe-area-inset-top));left:31%;
+   transform:translateX(-50%);max-width:47%;text-align:left}
+}
+@media(max-height:470px){
+ .camera-tools{top:calc(36px + env(safe-area-inset-top))}
+ .context-tools button{min-height:29px;padding:4px 6px}
+}
