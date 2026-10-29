@@ -191,7 +191,7 @@ function updateContext(){
   // Context chrome must disappear while the player is pointing at the map.
   // Otherwise its floating touch targets can swallow door/pivot/LOOK taps.
   if(state.phase!=='planning'||looking||doorMode||insertMode||
-     pieMode!==null||pieRepositionNode!==null){
+     pieMode!==null||pieRepositionNode!==null||cameraTool!=='orders'){
     ui.context.hidden=true;return;
   }
   const a=uid(selected);
