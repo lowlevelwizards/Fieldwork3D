@@ -10,6 +10,7 @@ import {
   posture,toggleContactRule,toggling,stepSession,knownAt,liveVisibility,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
+import {shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
 import './breach-style.css';
 
 const el=<T extends HTMLElement>(id:string)=>{
@@ -62,7 +63,7 @@ let doorFocusId:string|null=null;
 let draggingNode:Pt|null=null;
 let fogData=new Uint8Array(16*19),fogStamp=-1;
 let audio:AudioContext|null=null;
-let lastSoundShotCount=0,lastEventAudio='';
+let lastSoundShotId=0,lastEventAudio='';
 const playTone=(frequency:number,decay:number,noise=false)=>{
   try{
     if(!audio)return;
@@ -306,6 +307,7 @@ function updateHud(){
     (id==='rook'?ui.rookHp:ui.mossHp).textContent=a?.health===2?'●●':a?.health===1?'●○':'○○';
   }
   ui.hint.textContent=message();
+  ui.hint.hidden=state.started&&!looking;
   updateContext();
   ui.feed.textContent=state.events.at(-1)??'';
   const visible=enemies(state).filter(e=>e.health>0&&isSeen(state,e)).length;
@@ -595,13 +597,83 @@ function renderProjectedPlans(){
       }
       if(n.kind==='move'||n.kind==='door'||n.kind==='pie')previous=n.p;
     }
-    const pawn=worldToScreen(a.p,32);
+    const pawn=worldToScreen(a.p,32),ground=worldToScreen(a.p,1);
     draw.textAlign='center';draw.font='bold 12px monospace';
     draw.fillStyle=color;draw.fillText(a.name,pawn.x,pawn.y-9);
     if(a.id===selected){
-      draw.strokeStyle='#e9d6b1';draw.lineWidth=1.5;
-      draw.beginPath();draw.arc(pawn.x,pawn.y+15,13,0,Math.PI*2);draw.stroke();
+      draw.strokeStyle='#e9d6b1';draw.lineWidth=2.1;
+      draw.beginPath();draw.arc(ground.x,ground.y,14,0,Math.PI*2);draw.stroke();
     }
+    if(a.suppression>.53){
+      draw.font='bold 9px monospace';draw.fillStyle='#e5bc92';
+      draw.fillText('SUPPRESSED',pawn.x,pawn.y-23);
+    }
+  }
+  // Screen-space icons stay readable regardless of ortho pitch or zoom.
+  for(const hostile of enemies(state)){
+    if(!liveVisibility(state,hostile.p))continue;
+    const pawn=worldToScreen(hostile.p,33);
+    const ground=worldToScreen(hostile.p,1);
+    if(hostile.health<=0){
+      draw.fillStyle='#f0b39a';draw.textAlign='center';
+      draw.font='bold 11px monospace';
+      draw.fillText('× DOWN',pawn.x,pawn.y-13);
+      draw.strokeStyle='#d99980';draw.lineWidth=2;
+      draw.beginPath();draw.arc(ground.x,ground.y,14,0,Math.PI*2);draw.stroke();
+    }else{
+      draw.strokeStyle='#e2a18b';draw.lineWidth=1.6;
+      draw.beginPath();draw.arc(ground.x,ground.y,12,0,Math.PI*2);draw.stroke();
+    }
+  }
+  for(const member of team(state)){
+    const pawn=worldToScreen(member.p,33);
+    if(member.health<=0){
+      draw.font='bold 11px monospace';draw.fillStyle='#f4baa7';
+      draw.textAlign='center';draw.fillText('× DOWN',pawn.x,pawn.y-14);
+    }else if(member.health===1){
+      draw.fillStyle='#e6a485';draw.fillRect(pawn.x-10,pawn.y+1,20,3);
+    }
+  }
+  for(const door of state.doors){
+    const visibility=doorVisibility(state,door);
+    if(!visibility.known)continue;
+    const p=worldToScreen(doorCenter(door),38);
+    const focused=doorFocusId===door.id;
+    const label=visibility.live?(door.open?'OPEN':'DOOR'):'DOOR';
+    draw.font='bold 10px monospace';draw.textAlign='center';
+    draw.strokeStyle=focused?'#ffe1a0':'#e1c18b';
+    draw.lineWidth=focused?2.8:1.7;
+    draw.beginPath();draw.arc(p.x,p.y+13,focused?12:9,0,2*Math.PI);
+    draw.stroke();
+    draw.fillStyle='#f0d9ab';draw.fillText(label,p.x,p.y-4);
+  }
+  // The 3D camera does not define combat outcomes: use the same shot event
+  // visibility and damage flags as the physical effects and 2D renderer.
+  for(const shot of state.shots){
+    const visibility=shotVisibility(state,shot);
+    const start=worldToScreen(shot.start,15);
+    const point=worldToScreen(shot.end,27);
+    const fade=contactFade(shot.age,.40);
+    if(visibility.trace&&shot.age<.22){
+      draw.globalAlpha=contactFade(shot.age,.22);
+      line(start,point,shot.side==='blue'?'#f6dfa9':'#f0a28a',2.2);
+      draw.globalAlpha=1;
+    }
+    if(visibility.flash&&shot.age<.14){
+      draw.globalAlpha=contactFade(shot.age,.14);
+      circle(start.x,start.y,6+2*(1-shot.age/.14),'#ffdd9c');
+      draw.globalAlpha=1;
+    }
+    if(!visibility.impact||!shot.hit)continue;
+    draw.globalAlpha=fade;
+    draw.strokeStyle=shot.down?'#f5c5b1':'#ed9e80';
+    draw.lineWidth=shot.down?3:2;
+    draw.beginPath();draw.arc(point.x,point.y,
+      (shot.down?17:10)+(1-fade)*8,0,2*Math.PI);draw.stroke();
+    draw.fillStyle='#f2b39b';draw.font='bold 11px monospace';
+    draw.textAlign='center';
+    draw.fillText(shot.down?'DOWN':'HIT',point.x,point.y-17);
+    draw.globalAlpha=1;
   }
   // Unknown enemies stay unrendered; only grounded last-known reports show.
   for(const hostile of enemies(state)){
@@ -659,7 +731,7 @@ function missionMarkers(){
 }
 function sprite(a:TeamActor){
   if(a.side==='red'){
-    const visible=a.health>0&&isSeen(state,a);
+    const visible=a.health>0?isSeen(state,a):liveVisibility(state,a.p);
     if(!visible){
       const memory=lastKnown(state,a.id);
       if(memory&&state.seconds-memory.at<25){
@@ -678,15 +750,26 @@ function sprite(a:TeamActor){
   if(a.health<=0){
     draw.save();draw.translate(a.p.x,a.p.y);
     draw.rotate(a.heading);
-    rect(-8,-3,17,8,'#574d49');rect(-2,-7,4,17,'#a46556');
-    draw.restore();return;
+    rect(-13,-4,29,8,'#574d49');rect(-3,-9,5,18,'#a46556');
+    draw.restore();
+    draw.strokeStyle='#d39b84';draw.lineWidth=2;
+    draw.beginPath();draw.arc(a.p.x,a.p.y,19,0,Math.PI*2);draw.stroke();
+    draw.fillStyle='#edbea4';draw.font='bold 11px monospace';
+    draw.textAlign='center';draw.fillText('× DOWN',a.p.x,a.p.y-23);
+    return;
   }
   if(friendly&&(a.id===selected)){
     draw.strokeStyle='#e8d6b1';draw.lineWidth=1.6;
     draw.beginPath();draw.arc(a.p.x,a.p.y,16,0,2*Math.PI);draw.stroke();
     conical(a);
   }
-  draw.save();draw.translate(a.p.x,a.p.y);draw.rotate(a.heading);
+  const impactAge=state.seconds-a.lastHitAt;
+  const flinch=impactAge>=0&&impactAge<.28?1-impactAge/.28:0;
+  const firing=state.shots.some(shot=>shot.shooterId===a.id&&
+    shot.age<.11&&shotVisibility(state,shot).flash);
+  draw.save();
+  draw.translate(a.p.x-flinch*2.3,a.p.y+flinch*1.7);
+  draw.rotate(a.heading+flinch*.14);
   circle(0,2,11,'#0d1b20af');circle(0,0,9.2,friendly?'#4b756f':'#794a43');
   // Body and alternating leg extension are driven by actual travel.
   const gait=Math.sin(state.seconds*15+Math.floor(a.p.x*.15))*
@@ -696,12 +779,16 @@ function sprite(a:TeamActor){
   rect(-7,-5,14,10,c);
   rect(-10,-4,5,8,friendly?'#45625d':'#563e39');
   circle(4,0,3.8,friendly?'#d3dac1':'#d0a58a');
-  rect(5,-2,18,4,'#1a2527');
-  rect(20,-1,6,2,'#a2a9a1');
+  rect(firing?2:5,-2,18,4,'#1a2527');
+  rect(firing?17:20,-1,6,2,'#a2a9a1');
   draw.restore();
   if(friendly){
     draw.textAlign='center';draw.font='bold 10px monospace';
     draw.fillStyle=c;draw.fillText(a.name,a.p.x,a.p.y-21);
+    if(a.suppression>.53){
+      draw.fillStyle='#eac69d';draw.font='bold 9px monospace';
+      draw.fillText('SUPP',a.p.x,a.p.y-32);
+    }
     if(a.health===1){draw.fillStyle='#e7a886';
       draw.fillRect(a.p.x-8,a.p.y+13,16,2);}
   }else{
@@ -711,16 +798,23 @@ function sprite(a:TeamActor){
 }
 function contacts(){
   for(const shot of state.shots){
-    draw.globalAlpha=Math.max(0,(.24-shot.age)/.24)*.75;
-    line(shot.start,shot.end,shot.side==='blue'?'#eacb91':'#f5a187',1.6);
-    draw.globalAlpha=1;
-    if(shot.hit)circle(shot.end.x,shot.end.y,3,'#d79e79');
-  }
-  for(const spark of state.sparks){
-    const r=3+(1-spark.age/.2)*10;
-    draw.globalAlpha=Math.max(0,1-spark.age/.2);
-    circle(spark.p.x,spark.p.y,r,
-      spark.side==='blue'?'#e2cea1':'#e39e7a');
+    const visibility=shotVisibility(state,shot);
+    const fade=contactFade(shot.age,.40);
+    draw.globalAlpha=fade;
+    if(visibility.trace&&shot.age<.23)
+      line(shot.start,shot.end,
+        shot.side==='blue'?'#f6db9d':'#f2a087',2.3);
+    if(visibility.flash&&shot.age<.12)
+      circle(shot.start.x,shot.start.y,4+fade*4,'#f4dbb0');
+    if(visibility.impact){
+      circle(shot.end.x,shot.end.y,shot.hit?5:2.8,
+        shot.hit?'#de8b78':'#dfc8a4');
+      if(shot.hit){
+        draw.fillStyle='#efb19c';draw.font='bold 11px monospace';
+        draw.textAlign='center';
+        draw.fillText(shot.down?'DOWN':'HIT',shot.end.x,shot.end.y-16);
+      }
+    }
     draw.globalAlpha=1;
   }
 }
@@ -764,7 +858,7 @@ function reset(next=state.variant){
   state=newSession(next);selected='rook';looking=false;
   selectedNode=null;doorFocusId=null;draggingNode=null;
   cursor=null;trace=null;zoom=1;panX=panY=0;
-  fogStamp=-1;lastSoundShotCount=0;lastEventAudio='';
+  fogStamp=-1;lastSoundShotId=0;lastEventAudio='';
   layout();updateHud();
 }
 ui.rook.addEventListener('click',()=>selectUnit('rook'));
@@ -948,8 +1042,10 @@ function releasePointer(e:PointerEvent,cancelled=false){
     }else if(!p.moved&&!p.wasUnit&&pt.x>=0&&pt.y>=0&&
       pt.x<=W&&pt.y<=H){
       const door=state.doors.find(d=>!d.open&&
-        distance(worldToScreen(doorCenter(d),10),
-          {x:e.clientX,y:e.clientY})<24);
+        (distance(worldToScreen(doorCenter(d),10),
+          {x:e.clientX,y:e.clientY})<24||
+         distance(worldToScreen(doorCenter(d),38),
+          {x:e.clientX,y:e.clientY})<25));
       if(door&&!looking){
         doorFocusId=door.id;selectedNode=null;
       }else{
@@ -995,10 +1091,15 @@ function tick(now:number){
       stepSession(state,1/60);accum-=1/60;
     }
   }else accum=0;
-  if(audio&&state.shots.length>lastSoundShotCount){
-    playTone(115,.095,true);
+  // 079: shot IDs are monotonic, unlike the short-lived shot array length.
+  // A new shot can arrive on exactly the tick an old shot expires.
+  const fresh=state.shots.filter(shot=>shot.id>lastSoundShotId);
+  if(audio)for(const shot of fresh.slice(-3)){
+    playTone(shot.side==='blue'?135:105,.095,true);
+    if(shot.hit)playTone(shot.down?75:225,shot.down ? .25 : .10,
+      shot.down);
   }
-  lastSoundShotCount=state.shots.length;
+  if(fresh.length)lastSoundShotId=fresh.at(-1)!.id;
   const event=state.events.at(-1)??'';
   if(event!==lastEventAudio&&event.includes('OPENED'))
     playTone(160,.16);
@@ -1006,7 +1107,7 @@ function tick(now:number){
     playTone(90,.25,true);
   lastEventAudio=event;
   if(now-hudAt>120){updateHud();hudAt=now;}
-  if(stage&&viewMode!=='plan2d')stage.update(state,selected,dt);
+  if(stage&&viewMode!=='plan2d')stage.update(state,selected,dt,doorFocusId);
   render();updateContext();requestAnimationFrame(tick);
 }
 layout();cameraMode(viewMode);updateHud();requestAnimationFrame(tick);

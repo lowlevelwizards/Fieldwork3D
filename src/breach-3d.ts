@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import {W,H,WALLS,COVER,type Pt} from './breach-core.ts';
+import {W,H,WALLS,COVER,initialDoors,doorCenter,type Pt} from './breach-core.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
+import {shotVisibility} from './breach-presentation.ts';
 
 /** One authoritative 2D world, physically represented in one 3D scene.
  * Coordinates: tactics (x,y) => scene (x, elevation, y).
@@ -24,8 +25,16 @@ export class TacticalScene3D{
   private fogUnknown:THREE.InstancedMesh;
   private fogExplored:THREE.InstancedMesh;
   private actors=new Map<string,{root:THREE.Group;legs:THREE.Group[];
-    arms:THREE.Group[];flash:THREE.Mesh;pack:THREE.Mesh}>();
-  private doors=new Map<string,THREE.Group>();
+    arms:THREE.Group[];flash:THREE.Mesh;pack:THREE.Mesh;status:THREE.Mesh}>();
+  private doors=new Map<string,{root:THREE.Group;leaf:THREE.Group;
+    frame:THREE.Group;halo:THREE.Mesh;threshold:THREE.Mesh}>();
+  private observedDoorOpen=new Map<string,boolean>();
+  private effectCache=new Map<number,{root:THREE.Group;line:THREE.Mesh;
+    impact:THREE.Mesh;material:THREE.MeshBasicMaterial;
+    impactMaterial:THREE.MeshBasicMaterial}>();
+  private tracerAxis=new THREE.Vector3(0,1,0);
+  private tracerGeometry=new THREE.CylinderGeometry(.65,.65,1,6);
+  private impactGeometry=new THREE.IcosahedronGeometry(1,1);
   private walls:{mesh:THREE.Mesh;mid:Pt}[]=[];
   private effects=new THREE.Group();
   private target=new THREE.Vector3(339,0,413);
@@ -38,8 +47,6 @@ export class TacticalScene3D{
   private width=1;private height=1;private fogAt=-1;
   private sun:THREE.DirectionalLight;
   private mats:THREE.Material[]=[];
-  private shotFriendly:THREE.MeshStandardMaterial;
-  private shotHostile:THREE.MeshStandardMaterial;
   private solid=(hex:number,roughness=.9)=>{
     const material=mat(hex,roughness);this.mats.push(material);return material;
   };
@@ -54,13 +61,15 @@ export class TacticalScene3D{
       alpha:false,powerPreference:'high-performance'});
     this.renderer.outputColorSpace=THREE.SRGBColorSpace;
     this.renderer.toneMapping=THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure=1.14;
+    this.renderer.toneMappingExposure=1.05;
     this.renderer.shadowMap.enabled=true;
     this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-    this.scene.background=color(0x5b6c65);
-    this.scene.fog=new THREE.Fog(0x82968c,620,1600);
-    this.scene.add(new THREE.HemisphereLight(0xc6d8cb,0x3b493f,2.2));
-    this.sun=new THREE.DirectionalLight(0xf2ddbb,2.4);
+    // Atmospheric distance fog was tinting every interior surface in ISO.
+    // Visibility is handled separately by authoritative exploration tiles.
+    this.scene.background=color(0x182a2a);
+    this.scene.fog=null;
+    this.scene.add(new THREE.HemisphereLight(0xe0e7d8,0x22332f,1.65));
+    this.sun=new THREE.DirectionalLight(0xf4dfbf,2.0);
     this.sun.position.set(-100,260,180);this.sun.castShadow=true;
     this.sun.shadow.mapSize.set(1024,1024);
     Object.assign(this.sun.shadow.camera,{
@@ -69,16 +78,17 @@ export class TacticalScene3D{
     this.scene.add(this.sun);
     this.scene.add(this.root,this.effects);
     this.buildWorld();
-    this.shotFriendly=this.solid(0xece0b6,.3);
-    this.shotHostile=this.solid(0xe3a185,.3);
+    // Architectural silhouettes remain visible (as in the 2D map), but
+    // unknown cells are strongly darkened. Unseen soldiers and door states
+    // are separately visibility-gated, so a huge opaque 'roof' is unnecessary.
     const fgeom=new THREE.PlaneGeometry(40.4,40.4);
     fgeom.rotateX(-Math.PI/2);
     const unknownMat=new THREE.MeshBasicMaterial({
-      color:0x09191c,side:THREE.DoubleSide,transparent:true,
-      opacity:.82,depthWrite:false});
+      color:0x071416,side:THREE.DoubleSide,transparent:true,
+      opacity:.52,depthWrite:false});
     const exploredMat=new THREE.MeshBasicMaterial({
-      color:0x13272b,side:THREE.DoubleSide,transparent:true,
-      opacity:.38,depthWrite:false});
+      color:0x071819,side:THREE.DoubleSide,transparent:true,
+      opacity:.18,depthWrite:false});
     this.mats.push(unknownMat,exploredMat);
     this.fogUnknown=new THREE.InstancedMesh(fgeom,unknownMat,16*19);
     this.fogExplored=new THREE.InstancedMesh(fgeom,exploredMat,16*19);
@@ -100,10 +110,10 @@ export class TacticalScene3D{
     mesh.receiveShadow=true;parent.add(mesh);return mesh;
   }
   private buildWorld(){
-    const earth=this.solid(0x566750),road=this.solid(0x686452);
-    const gravel=this.solid(0x797263),floorA=this.solid(0x6e6a5e);
-    const floorB=this.solid(0x606b64),timber=this.solid(0x544d40);
-    const metal=this.solid(0x646a65,.62),rust=this.solid(0x806851);
+    const earth=this.solid(0x34443e),road=this.solid(0x5d6358);
+    const gravel=this.solid(0x6c7061),floorA=this.solid(0x817d6b);
+    const floorB=this.solid(0x526b68),timber=this.solid(0x4b4437);
+    const metal=this.solid(0x525e5d,.62),rust=this.solid(0x715e4d);
     const roof=this.solid(0x515d58),glass=this.solid(0x748b83,.18);
     this.plane(this.root,W/2,H/2,W,H,-2,earth);
     this.box(this.root,303,-1,630,124,1,215,road,false);
@@ -112,7 +122,7 @@ export class TacticalScene3D{
     // Two genuinely distinct interior floor constructions.
     this.box(this.root,247,-.65,316,270,1.5,432,floorA,false);
     this.box(this.root,485,-.65,316,207,1.5,432,floorB,false);
-    const tile=this.solid(0xbdb3a1);
+    const tile=this.solid(0x9a9683);
     const grout:Pt[]=[];
     for(let x=122;x<580;x+=28)for(let z=114;z<523;z+=28)
       grout.push({x,y:z});
@@ -125,6 +135,14 @@ export class TacticalScene3D{
     });
     strips.instanceMatrix.needsUpdate=true;strips.receiveShadow=true;
     this.root.add(strips);
+    const crossGrout=new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1,.10,27),tile,grout.length);
+    grout.forEach((p,i)=>{
+      transform.position.set(p.x,-.04,p.y);transform.updateMatrix();
+      crossGrout.setMatrixAt(i,transform.matrix);
+    });
+    crossGrout.instanceMatrix.needsUpdate=true;
+    crossGrout.receiveShadow=true;this.root.add(crossGrout);
     // Each wall is one real mesh. Simulation geometry remains authoritative.
     for(let i=0;i<WALLS.length;i++){
       const segment=WALLS[i];
@@ -132,12 +150,16 @@ export class TacticalScene3D{
       const dx=p2.x-p1.x,dz=p2.y-p1.y;
       const len=Math.hypot(dx,dz);
       const mesh=this.box(this.root,(p1.x+p2.x)/2,15.5,(p1.y+p2.y)/2,
-        len+3,31,9,this.solid(i===4?0x7e8274:0xa59b81));
+        len+3,31,9,this.solid(i===4?0x81877d:0xb4a991));
       mesh.rotation.y=-Math.atan2(dz,dx);
       this.walls.push({mesh,mid:{x:(p1.x+p2.x)/2,y:(p1.y+p2.y)/2}});
+      // Dark skirting separates the wall footprint from similar floor values.
+      const skirting=this.box(this.root,mesh.position.x,2,mesh.position.z,
+        len+4,4,12,this.solid(0x36453f),false);
+      skirting.rotation.y=mesh.rotation.y;
       // A dark, legible wall cap communicates height in either camera mode.
       const cap=this.box(this.root,mesh.position.x,32,mesh.position.z,
-        len+4,2,11,this.solid(0x50493c),false);cap.rotation.y=mesh.rotation.y;
+        len+4,2,11,this.solid(0x51483a),false);cap.rotation.y=mesh.rotation.y;
       this.walls.push({mesh:cap,mid:{x:mesh.position.x,y:mesh.position.z}});
     }
     for(const x of [209,502]){
@@ -146,14 +168,32 @@ export class TacticalScene3D{
       this.box(this.root,x+25,4,97,56,2,5,timber,false);
       pane.castShadow=false;
     }
-    // Trim and doorway thresholds: open door turns at a real hinge.
-    const doorMat=this.solid(0x977b57);
-    for(const [id,p] of [['FRONT',{x:303,y:532}],['INNER',{x:382,y:325}]] as const){
+    // 080: Doorways are real stateful meshes, not slabs that disappear.
+    const doorMat=this.solid(0xab8655),doorTrim=this.solid(0xe0c28c);
+    const thresholdMat=this.solid(0xc19b5c);
+    for(const door of initialDoors()){
+      const width=Math.hypot(door.a.x-door.b.x,door.a.y-door.b.y);
+      const p=doorCenter(door),vertical=Math.abs(door.a.x-door.b.x)<1;
       const group=new THREE.Group();group.position.set(p.x,0,p.y);
-      const vertical=id==='INNER';
-      this.box(group,0,13,0,vertical?7:52,26,vertical?42:7,doorMat);
-      this.box(group,0,24,0,vertical?10:56,2,vertical?46:10,timber,false);
-      this.root.add(group);this.doors.set(id,group);
+      group.rotation.y=vertical?-Math.PI/2:0;
+      const frame=new THREE.Group();group.add(frame);
+      this.box(frame,-width/2,15,0,5,30,10,doorTrim);
+      this.box(frame,width/2,15,0,5,30,10,doorTrim);
+      this.box(frame,0,30,0,width+7,4,12,doorTrim);
+      const threshold=this.box(frame,0,.32,0,width,1.2,13,thresholdMat,false);
+      const hinge=new THREE.Group();hinge.position.x=-width/2;
+      group.add(hinge);
+      this.box(hinge,width/2,13,0,width-3,26,4,doorMat);
+      this.box(hinge,width*.7,13,2.6,3,4,2,doorTrim,false);
+      const halo=new THREE.Mesh(
+        new THREE.RingGeometry(width*.56,width*.66,32),
+        new THREE.MeshBasicMaterial({color:0xe3bc7d,transparent:true,
+          opacity:.95,depthWrite:false,side:THREE.DoubleSide}));
+      halo.rotation.x=-Math.PI/2;halo.position.set(0,1.7,0);
+      halo.visible=false;group.add(halo);this.mats.push(halo.material);
+      this.root.add(group);
+      this.doors.set(door.id,{root:group,leaf:hinge,frame,halo,threshold});
+      this.observedDoorOpen.set(door.id,false);
     }
     // Furniture height matches cover classification: low crates vs high cabinets.
     for(let i=0;i<COVER.length;i++){
@@ -352,11 +392,14 @@ export class TacticalScene3D{
   }
   private soldier(a:TeamActor){
     const root=new THREE.Group();
-    const suit=this.solid(a.side==='blue'?(a.id==='rook'?0x5b8075:0x768675):0x8d6356);
+    const suit=this.solid(a.side==='blue'?(a.id==='rook'?0x80baad:0xa5b28d):0xba7b66);
     const dark=this.solid(0x2e3b3b),olive=this.solid(0x55614f),
-      straps=this.solid(0x343a31),helmet=this.solid(0x606d5f);
+      straps=this.solid(0x343a31),helmet=this.solid(0x727f6f);
     this.box(root,0,12,0,10,14,8,suit);
-    this.box(root,0,22,0,9,6,8,helmet);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(1,12,9),
+      new THREE.MeshStandardMaterial({color:0x859286,roughness:.86}));
+    head.scale.set(5.2,4.7,5.7);head.position.set(0,22,0);
+    head.castShadow=true;root.add(head);
     this.box(root,0,25,1,12,2,10,helmet,false);
     const pack=this.box(root,0,13,-7,9,12,6,olive);
     this.box(root,0,15,5,9,8,2,straps);
@@ -380,10 +423,15 @@ export class TacticalScene3D{
       new THREE.MeshBasicMaterial({color:0xffde97,transparent:true,opacity:.96,
         depthWrite:false}));
     flash.position.set(28,15,4);flash.visible=false;root.add(flash);
-    this.scene.add(root);this.actors.set(a.id,{root,legs,arms,flash,pack});
+    const status=new THREE.Mesh(new THREE.RingGeometry(12,16,30),
+      new THREE.MeshBasicMaterial({color:0xdb8d76,transparent:true,
+        opacity:.9,depthWrite:false,side:THREE.DoubleSide}));
+    status.rotation.x=-Math.PI/2;status.visible=false;
+    this.scene.add(root,status);
+    this.actors.set(a.id,{root,legs,arms,flash,pack,status});
     void weapon;
   }
-  update(s:Session,selected:string,dt:number){
+  update(s:Session,selected:string,dt:number,focusedDoorId:string|null=null){
     if(this.view.mode==='plan2d')return;
     this.updateCamera(dt);
     this.fogAt+=dt;
@@ -396,54 +444,112 @@ export class TacticalScene3D{
       const cut=this.view.mode==='iso'&&between>3500;
       const material=wall.mesh.material as THREE.MeshStandardMaterial;
       if(material.transparent!==cut){
-        material.transparent=cut;material.opacity=cut?.22:1;
+        material.transparent=cut;material.opacity=cut?.36:1;
         material.depthWrite=!cut;material.needsUpdate=true;
       }
     }
     for(const door of s.doors){
       const object=this.doors.get(door.id);
-      if(object){
-        object.visible=!door.open;
-        object.rotation.y=door.open?(door.id==='FRONT'?.8:-.8):0;
-      }
+      if(!object)continue;
+      // Freeze the last observed door state when it drops out of view:
+      // a guard opening an unseen door may not broadcast its exact state.
+      if(liveVisibility(s,doorCenter(door)))
+        this.observedDoorOpen.set(door.id,door.open);
+      const shownOpen=this.observedDoorOpen.get(door.id)??false;
+      object.leaf.rotation.y=THREE.MathUtils.lerp(object.leaf.rotation.y,
+        shownOpen?-1.32:0,Math.min(1,Math.max(0,dt)*14));
+      object.halo.visible=focusedDoorId===door.id&&
+        (liveVisibility(s,doorCenter(door))||
+         knownAt(s,doorCenter(door).x,doorCenter(door).y));
+      object.halo.rotation.z+=dt*.3;
     }
     for(const actor of s.operators){
       if(!this.actors.has(actor.id))this.soldier(actor);
       const object=this.actors.get(actor.id)!;
-      object.root.visible=actor.side==='blue'||isSeen(s,actor);
+      object.root.visible=actor.side==='blue'||
+        (actor.health>0?isSeen(s,actor):liveVisibility(s,actor.p));
+      const hitTime=s.seconds-actor.lastHitAt;
+      const down=actor.health<=0;
+      object.status.visible=object.root.visible&&
+        (down||(hitTime>=0&&hitTime<.28));
+      if(object.status.visible){
+        object.status.position.set(actor.p.x,1.15,actor.p.y);
+        const pulse=down?1.15:1+.45*(1-hitTime/.28);
+        object.status.scale.setScalar(pulse);
+        const statusMat=object.status.material as THREE.MeshBasicMaterial;
+        statusMat.opacity=down ? .85 :Math.max(0,1-hitTime/.28);
+        statusMat.color.setHex(down?0xd99e83:0xf4c7aa);
+      }
       if(!object.root.visible)continue;
       object.root.position.set(actor.p.x,0,actor.p.y);
       object.root.rotation.y=-actor.heading;
+      const downProgress=actor.health<=0?
+        Math.min(1,Math.max(0,(s.seconds-actor.lastDownAt)/.40)):0;
+      const hitAge=s.seconds-actor.lastHitAt;
+      const hitFade=actor.health>0&&hitAge>=0&&hitAge<.32?
+        1-hitAge/.32:0;
+      // Real pose transition: rotate the full miniature down to the floor,
+      // never vertically squash it into a crouching-shaped casualty.
+      object.root.rotation.x=-1.42*downProgress;
+      object.root.rotation.z=hitFade*.13*Math.sin(hitAge*65);
       const speed=Math.min(1,actor.velocity/70);
       const gait=Math.sin(s.seconds*10.5+(actor.id==='moss'?1.1:0));
       object.legs[0].rotation.x=gait*speed*.44;
       object.legs[1].rotation.x=-gait*speed*.44;
       object.arms[0].rotation.x=-gait*speed*.12;
       object.arms[1].rotation.x=gait*speed*.12;
-      object.root.position.y=actor.posture==='crouch'?-5:0;
-      object.root.scale.y=actor.health<=0?.33:1;
-      object.flash.visible=s.sparks.some(e=>e.side===actor.side&&
-        Math.hypot(actor.p.x-e.p.x,actor.p.y-e.p.y)<7&&e.age<.09);
-      object.root.traverse(o=>{if(o instanceof THREE.Mesh)o.castShadow=true;});
+      object.root.position.y=downProgress*4+
+        (actor.health>0&&actor.posture==='crouch'?-5:0);
+      const firing=s.shots.find(shot=>shot.shooterId===actor.id&&
+        shot.age<.115&&shotVisibility(s,shot).flash);
+      object.flash.visible=!!firing&&actor.health>0;
+      if(firing){
+        object.flash.scale.setScalar(1.55*(1-firing.age/.115)+.3);
+        object.arms[0].rotation.x-=.16*(1-firing.age/.115);
+        object.arms[1].rotation.x-=.16*(1-firing.age/.115);
+      }
     }
-    // Fire traces are visual evidence of the simulation, not independent shots.
-    this.effects.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
-    this.effects.clear();
-    const friendly=this.shotFriendly,hostile=this.shotHostile;
+    // 079: One persistent, ID-keyed effect per actual simulation shot.
+    // Shared geometry and bounded per-shot materials avoid frame-by-frame GC.
+    const active=new Set<number>();
     for(const shot of s.shots){
-      const a=v(shot.start,14),b=v(shot.end,9);
-      const mid=a.clone().add(b).multiplyScalar(.5);
-      const cyl=new THREE.Mesh(new THREE.CylinderGeometry(.55,.55,
-        a.distanceTo(b),5),shot.side==='blue'?friendly:hostile);
-      cyl.position.copy(mid);
-      cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),
-        b.clone().sub(a).normalize());
-      cyl.material.transparent=true;
-      cyl.material.opacity=Math.max(0,1-shot.age/.24);
-      this.effects.add(cyl);
-      const impact=new THREE.Mesh(new THREE.SphereGeometry(shot.hit?4:2,6,4),
-        shot.hit?hostile:friendly);
-      impact.position.copy(b);this.effects.add(impact);
+      const visibility=shotVisibility(s,shot);
+      if(!visibility.flash&&!visibility.trace&&!visibility.impact)continue;
+      active.add(shot.id);
+      let effect=this.effectCache.get(shot.id);
+      if(!effect){
+        const root=new THREE.Group();
+        const material=new THREE.MeshBasicMaterial({
+          color:shot.side==='blue'?0xffde9d:0xff9b73,
+          transparent:true,depthWrite:false});
+        const impactMaterial=new THREE.MeshBasicMaterial({
+          color:shot.down?0xe66d5c:shot.hit?0xf3a58a:0xe2d3b1,
+          transparent:true,depthWrite:false});
+        const line=new THREE.Mesh(this.tracerGeometry,material);
+        const impact=new THREE.Mesh(this.impactGeometry,impactMaterial);
+        root.add(line,impact);this.effects.add(root);
+        effect={root,line,impact,material,impactMaterial};
+        this.effectCache.set(shot.id,effect);
+      }
+      const start=v(shot.start,15),end=v(shot.end,12);
+      const flight=end.clone().sub(start);
+      effect.line.position.copy(start).addScaledVector(flight,.5);
+      effect.line.scale.set(1,flight.length(),1);
+      effect.line.quaternion.setFromUnitVectors(
+        this.tracerAxis,flight.normalize());
+      effect.line.visible=visibility.trace&&shot.age<.19;
+      effect.material.opacity=Math.max(0,1-shot.age/.20);
+      effect.impact.position.copy(end);
+      const pulse=shot.hit?4.8:2.9;
+      effect.impact.scale.setScalar(pulse*(1+.5*shot.age/.40));
+      effect.impactMaterial.opacity=Math.max(0,1-shot.age/.40);
+      effect.impact.visible=visibility.impact&&shot.age<.40;
+    }
+    for(const [id,effect] of this.effectCache){
+      if(active.has(id))continue;
+      this.effects.remove(effect.root);
+      effect.material.dispose();effect.impactMaterial.dispose();
+      this.effectCache.delete(id);
     }
     // Reuse the same current sight and exploration state that drives 2D fog.
     if(this.fogAt>=.18||this.fogAt<0){
@@ -455,7 +561,7 @@ export class TacticalScene3D{
         const seen=liveVisibility(s,p);
         const past=knownAt(s,p.x,p.y);
         if(seen)continue;
-        temp.position.set(p.x,42,p.y);temp.updateMatrix();
+        temp.position.set(p.x,36,p.y);temp.updateMatrix();
         if(past)this.fogExplored.setMatrixAt(explored++,temp.matrix);
         else this.fogUnknown.setMatrixAt(unk++,temp.matrix);
       }
