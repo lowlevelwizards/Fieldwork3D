@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,user-scalable=no"/>
+<meta name="theme-color" content="#515f51"/>
+<title>FIELDWORK — Cutwoods / Art Study</title>
+<link rel="stylesheet" href="./src/study-style.css"/>
+</head>
+<body>
+<canvas id="studyCanvas" aria-label="Fieldwork: isometric soldier and weathered woodland road"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+<header class="site-heading" aria-label="Location">
+  <span class="brand">FIELDWORK <span class="divider">/</span> VERDIGRIS</span>
+  <strong>CUTWOODS</strong>
+  <span class="subtitle">A ROAD THROUGH THE TREES</span>
+</header>
+<div class="site-tools">
+  <span class="study-tag">ART STUDY 051</span>
+  <button type="button" id="helpButton" aria-controls="helpPanel" aria-expanded="false" aria-label="Controls">?</button>
+</div>
+<section id="helpPanel" class="help" hidden aria-label="How to move">
+  <strong>ONE PERSON. ONE PLACE.</strong>
+  <p>Walk the road, approach the farmhouse, and find a quiet way through the trees. There is no mission or firefight yet: this is a test of presence.</p>
+  <p><b>Desktop</b> WASD / arrows move · click ground to walk · drag to orbit · C crouch · R reframe</p>
+  <p><b>Touch</b> Drag lower left to move · drag right to look · tap ground to walk · pinch to zoom</p>
+  <button type="button" id="closeHelp">RETURN TO FIELD</button>
+</section>
+<div id="joystick" class="joystick" aria-hidden="true"><div id="joystickKnob" class="joystick__knob"></div></div>
+<div class="readout"><strong>ROOK</strong><span id="stateLabel">STILL / STANDING</span></div>
+<button type="button" id="crouchButton" class="stance-button" aria-pressed="false">
+  <span class="stance-symbol" aria-hidden="true">◒</span><span id="stanceLabel">CROUCH</span>
+</button>
+<div class="study-footer">FIELDWORK / FIRST LOOK</div>
+<script type="module" src="./src/study-main.ts"></script>
+</body>
+</html>
