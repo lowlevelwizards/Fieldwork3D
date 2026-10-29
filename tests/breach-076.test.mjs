@@ -48,17 +48,17 @@ test('076: STRAFE holds a world heading while walking forward/sideways/back',()=
   assert.ok(headingError(a,saved)<.12,
     'facing persists after intermediate waypoint transitions');
 });
-test('076: a later LOOK overrides earlier PIE or STRAFE, including across waits',()=>{
+test('076: later LOOK cancels persistent PIE tracking and restores travel facing',()=>{
   const s=newSession(),a=team(s)[0];noThreats(s);
   assert.ok(planAim(s,'rook','track',{x:345,y:568},undefined,'pie'));
   assert.ok(planMove(s,'rook',{x:318,y:628}));
-  assert.ok(planAim(s,'rook','fixed',{x:318,y:690},undefined,'look'));
+  assert.ok(planAim(s,'rook','free',{x:318,y:690},undefined,'look'));
   assert.ok(planMove(s,'rook',{x:340,y:646}));
   assert.equal(a.plan.filter(n=>n.kind==='look').length,2);
   toggling(s);run(s,2.5);
-  assert.equal(a.aimInstruction.mode,'fixed','later LOOK replaced tracking');
-  assert.ok(headingError(a,Math.PI/2)<.2,
-    'LOOK stays active on subsequent movement');
+  assert.equal(a.aimInstruction,null,
+    'LOOK cancels PIE tracking so later movement faces travel');
+  assert.ok(a.p.x>318,'the soldier continued along the authored route');
 });
 test('076: aiming attached to a waypoint begins when reached and is undoable',()=>{
   const s=newSession(),a=team(s)[0];
@@ -84,4 +84,14 @@ test('076: user-visible UI has only contextual aiming, no obsolete buttons',()=>
     assert.ok(!html.includes('id="'+id+'"'),'old always-on control '+id);
   for(const word of ['ctxPie','ctxStrafe','ctxLook'])
     assert.ok(main.includes(word),'missing contextual '+word);
+});
+
+test('076: reverse movement is independent of the STRAFE heading',()=>{
+  const s=newSession(),a=team(s)[0];noThreats(s);
+  assert.ok(planAim(s,'rook','fixed',{x:282,y:695},undefined,'strafe'));
+  assert.ok(planMove(s,'rook',{x:282,y:584}));
+  toggling(s);run(s,1);
+  assert.ok(a.p.y<620,'soldier moved north while facing south');
+  assert.ok(headingError(a,Math.PI/2)<.15,
+    'reverse travel does not flip the chosen world-space facing');
 });
