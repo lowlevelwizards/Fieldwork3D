@@ -5,12 +5,13 @@ import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   planMove,planMoveStroke,planLook,planDoor,planWait,planSync,movePlanNode,
-  planPie,setStrafe,backOne,
+  planPie,planPieAt,editPie,doorAtNode,setStrafe,backOne,
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,stepSession,nearestDoor,knownAt,liveVisibility,
 } from './breach-game.ts';
 import {bestPieDoor} from './breach-maneuvers.ts';
 import {type PieSide} from './breach-plan.ts';
+import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import './breach-style.css';
 
 const el=<T extends HTMLElement>(id:string)=>{
@@ -31,6 +32,14 @@ const ui={
   phase:el<HTMLElement>('phase'),clock:el<HTMLOutputElement>('clock'),
   hint:el<HTMLElement>('hint'),feed:el<HTMLElement>('feed'),
   mission:el<HTMLElement>('mission'),
+  context:el<HTMLElement>('contextTools'),
+  orders:el<HTMLElement>('advancedOrders'),
+  moreOrders:el<HTMLButtonElement>('moreOrders'),
+  viewIso:el<HTMLButtonElement>('viewIso'),
+  viewTop:el<HTMLButtonElement>('viewTop'),
+  view2d:el<HTMLButtonElement>('view2d'),
+  rotLeft:el<HTMLButtonElement>('rotLeft'),
+  rotRight:el<HTMLButtonElement>('rotRight'),
   back:el<HTMLButtonElement>('back'),
   undo:el<HTMLButtonElement>('undo'),redo:el<HTMLButtonElement>('redo'),
   insert:el<HTMLButtonElement>('insert'),delete:el<HTMLButtonElement>('delete'),
@@ -47,10 +56,16 @@ const ui={
   retry:el<HTMLButtonElement>('retry'),next:el<HTMLButtonElement>('next'),
 };
 let state:Session=newSession();
+let stage:TacticalScene3D|null=null;
+let viewMode:ViewMode='iso';
+try{stage=new TacticalScene3D();}
+catch(error){console.warn('3D unavailable; reverting to tactical plan',error);
+  viewMode='plan2d';}
 let selected='rook';
 let looking=false;
 let doorMode=false,insertMode=false,strafeNext=false;
 let pieMode:PieSide|null=null;
+let contextSignature='';
 let method:'open'|'kick'|'hold'='open';
 let selectedNode:number|null=null;
 let draggingNode:Pt|null=null;
@@ -83,7 +98,8 @@ let trace:Pt[]|null=null;
 const activePointers=new Map<number,{x:number;y:number;startX:number;startY:number;
   wasUnit:boolean;nodeId:number|null;
   mode:'undecided'|'route'|'pan'|'node';moved:boolean}>();
-let pinchDistance=0,panMid:Pt|null=null;
+let pinchDistance=0,panMid:Pt|null=null,pinchAngle=0;
+let pieHandle:'pivot'|'sweep'|null=null;
 const colors={rook:'#a2d4ca',moss:'#b9c6a0'};
 const colorFor=(id:string)=>id==='rook'?colors.rook:colors.moss;
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
@@ -93,16 +109,39 @@ function layout(){
   dpr=Math.min(devicePixelRatio||1,2);
   canvas.width=Math.round(cssW*dpr);canvas.height=Math.round(cssH*dpr);
   canvas.style.width=cssW+'px';canvas.style.height=cssH+'px';
+  stage?.resize(cssW,cssH);
   const available=Math.max(240,cssH-(cssH<500?85:172));
   const fit=Math.min((cssW-20)/W,available/H);
   viewScale=fit*zoom;
   ox=cssW/2-W*viewScale/2+panX;
   oy=cssH/2-H*viewScale/2-11+panY;
 }
-const toWorld=(x:number,y:number):Pt=>({
-  x:(x-ox)/viewScale,y:(y-oy)/viewScale});
+const toWorld=(x:number,y:number):Pt=>{
+  if(stage&&viewMode!=='plan2d')return stage.screenToWorld(x,y)??{x:-500,y:-500};
+  return {x:(x-ox)/viewScale,y:(y-oy)/viewScale};
+};
+const worldToScreen=(p:Pt,height=4):Pt=>
+  stage&&viewMode!=='plan2d'?stage.project(p,height):
+    {x:ox+p.x*viewScale,y:oy+p.y*viewScale};
 function fitZoom(next:number){
-  zoom=clamp(next,1,2.35);layout();
+  zoom=clamp(next,1,2.8);
+  if(stage&&viewMode!=='plan2d'){
+    stage.view.zoom=zoom;stage.updateCamera(1);
+  }else layout();
+}
+function cameraMode(mode:ViewMode){
+  viewMode=stage?mode:'plan2d';
+  if(stage){stage.setMode(viewMode);stage.updateCamera(1);}
+  for(const [m,button] of [['iso',ui.viewIso],
+    ['top',ui.viewTop],['plan2d',ui.view2d]] as const){
+    button.setAttribute('aria-pressed',String(m===viewMode));
+  }
+  contextSignature='';updateHud();
+}
+function turnCamera(shift:number){
+  if(stage&&viewMode!=='plan2d'){
+    stage.setYaw(stage.view.yaw+shift);updateContext();
+  }
 }
 const uid=(id:string)=>team(state).find(o=>o.id===id);
 function selectUnit(id:string){
@@ -115,11 +154,10 @@ function message(){
   if(state.phase==='planning'){
     if(looking)return 'LOOK: choose a facing for the selected waypoint.';
     if(doorMode)return 'DOOR: tap a door to append '+method.toUpperCase()+' order.';
-    if(pieMode)return 'PIE: tap a doorway from 27–108 units away to sweep '+(pieMode==='cw'?'clockwise.':'counter-clockwise.')+
-      ' Plan a closer position first if needed.';
+    if(pieMode)return 'PIE: tap a world-space pivot. The soldier will sweep around it, keeping the weapon aimed inward.';
     if(strafeNext)return 'STRAFE armed: tap or draw travel, then select the node and LOOK to set weapon direction.';
     if(insertMode)return 'INSERT: tap between route nodes to add a waypoint.';
-    if(selectedNode!==null)return 'Waypoint selected: drag to move, LOOK to face, − NODE to delete.';
+    if(selectedNode!==null)return 'Selected order: drag to adjust. Nearby door and cover actions appear beside it.';
     return 'Tap to add a waypoint · drag a waypoint to edit · GO to execute.';
   }
   if(state.phase==='running')
@@ -177,6 +215,7 @@ function updateHud(){
     (id==='rook'?ui.rookHp:ui.mossHp).textContent=a?.health===2?'●●':a?.health===1?'●○':'○○';
   }
   ui.hint.textContent=message();
+  updateContext();
   ui.feed.textContent=state.events.at(-1)??'';
   const visible=enemies(state).filter(e=>e.health>0&&isSeen(state,e)).length;
   ui.mission.textContent=missionText(state)+
