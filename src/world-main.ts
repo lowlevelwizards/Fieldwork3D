@@ -11,6 +11,9 @@ import {stepActor} from './regional-actors';
 import {physicalGroundAt} from './regional-physical.ts';
 import {FloatingTouchControls,screenDirection} from './operator-touch.ts';
 import {FootstepAudio} from './operator-audio.ts';
+import {FIRST_PLACE} from './first-place-layout.ts';
+import {FirstPlaceScene} from './first-place-scene.ts';
+import {clearCameraFromGround} from './regional-camera-clearance.ts';
 
 const canvas=document.querySelector<HTMLCanvasElement>('#worldCanvas');
 const nameLabel=document.querySelector<HTMLElement>('#worldRegionName');
@@ -65,6 +68,7 @@ const camera=new THREE.OrthographicCamera(-600,600,600,-600,.1,12000);
 let loadedId:PlayableRegionId='cutwoods';
 let terrain:RegionalTerrainField|null=null;
 let props:CutwoodsPhysicalScene|null=null;
+let firstPlace:FirstPlaceScene|null=null;
 const figures=new Map<string,ActorFigure>();
 const soloMode=!new URLSearchParams(location.search).has('tactical');
 document.body.classList.toggle('solo',soloMode);
@@ -133,11 +137,14 @@ function updateCamera():void{
     regionLocalHeightM(loadedId,target.x,target.z);
   target.y+=(desiredHeight-target.y)*(1-Math.exp(-cameraDt*9));
   const radius=explore?(700/zoom+19):(1950/zoom+310);
-  camera.position.set(
-    target.x+Math.sin(yaw)*Math.cos(elevation)*radius,
-    target.y+Math.sin(elevation)*radius,
-    target.z+Math.cos(yaw)*Math.cos(elevation)*radius,
-  );
+  const candidate={
+    x:target.x+Math.sin(yaw)*Math.cos(elevation)*radius,
+    y:target.y+Math.sin(elevation)*radius,
+    z:target.z+Math.cos(yaw)*Math.cos(elevation)*radius,
+  };
+  const eye=explore?clearCameraFromGround(candidate,
+    target,physicalGroundAt,2.1):candidate;
+  camera.position.set(eye.x,eye.y,eye.z);
   camera.lookAt(target);
   camera.updateMatrixWorld();
   terrain?.setDetailFocus(target.x,target.z,zoom>=4.2);
@@ -205,20 +212,29 @@ function load(id:PlayableRegionId):void{
   touch?.reset();waypoint.visible=false;
   if(terrain){terrain.dispose(scene);terrain=null;}
   if(props){props.dispose(scene);props=null;}
+  if(firstPlace){firstPlace.dispose(scene);firstPlace=null;}
   for(const figure of figures.values())figure.dispose(scene);
   figures.clear();
   loadedId=id;
   terrain=new RegionalTerrainField(scene,id);
   props=new CutwoodsPhysicalScene(scene);
+  if(soloMode)firstPlace=new FirstPlaceScene(scene);
   operation=newOperation();
+  if(soloMode){
+    const rook=operation.actors.find(a=>a.id===operation.playerId)!;
+    rook.x=FIRST_PLACE.spawn.x;rook.z=FIRST_PLACE.spawn.z;
+    rook.y=physicalGroundAt(rook.x,rook.z);
+    rook.vx=0;rook.vz=0;rook.destination=null;rook.path=[];
+  }
   for(const a of operation.actors){
     if(soloMode&&a.id!==operation.playerId)continue;
     const figure=new ActorFigure(scene,a);
     figure.onFootfall=(_x,_z,wet,road)=>audio.step(wet,road);
     figures.set(a.id,figure);
   }
-  props.updateVegetation(0,0,true);
-  ui.nameLabel.textContent=region.name.toUpperCase();
+  props.updateVegetation(soloMode?FIRST_PLACE.center.x:0,
+    soloMode?FIRST_PLACE.center.z:0,true);
+  ui.nameLabel.textContent=soloMode?'CUTWOODS · FIELD STATION':region.name.toUpperCase();
   ui.regionStatus.textContent='REGION '+
     String(region.index+1).padStart(2,'0')+' / 06 · 1 KM²';
   explore=false;
