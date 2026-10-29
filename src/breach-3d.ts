@@ -34,6 +34,8 @@ export class TacticalScene3D{
   private width=1;private height=1;private fogAt=-1;
   private sun:THREE.DirectionalLight;
   private mats:THREE.Material[]=[];
+  private shotFriendly:THREE.MeshStandardMaterial;
+  private shotHostile:THREE.MeshStandardMaterial;
   private solid=(hex:number,roughness=.9)=>{
     const material=mat(hex,roughness);this.mats.push(material);return material;
   };
@@ -63,6 +65,8 @@ export class TacticalScene3D{
     this.scene.add(this.sun);
     this.scene.add(this.root,this.effects);
     this.buildWorld();
+    this.shotFriendly=this.solid(0xece0b6,.3);
+    this.shotHostile=this.solid(0xe3a185,.3);
     const fgeom=new THREE.PlaneGeometry(40.4,40.4);
     fgeom.rotateX(-Math.PI/2);
     const unknownMat=new THREE.MeshBasicMaterial({
@@ -204,7 +208,7 @@ export class TacticalScene3D{
   }
   resize(w:number,h:number){
     this.width=Math.max(1,w);this.height=Math.max(1,h);
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.65));
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.45));
     this.renderer.setSize(this.width,this.height,false);
     this.updateCamera(1);
   }
@@ -342,7 +346,7 @@ export class TacticalScene3D{
     // Fire traces are visual evidence of the simulation, not independent shots.
     this.effects.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
     this.effects.clear();
-    const friendly=this.solid(0xece0b6,.3),hostile=this.solid(0xe3a185,.3);
+    const friendly=this.shotFriendly,hostile=this.shotHostile;
     for(const shot of s.shots){
       const a=v(shot.start,14),b=v(shot.end,9);
       const mid=a.clone().add(b).multiplyScalar(.5);
@@ -377,10 +381,7 @@ export class TacticalScene3D{
       this.fogExplored.instanceMatrix.needsUpdate=true;
     }
     this.renderer.render(this.scene,this.camera);
-    // Release temporary shot geometry every frame, while keeping shared materials.
-    this.effects.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
-    friendly.dispose();hostile.dispose();
-    this.mats.splice(this.mats.indexOf(friendly),1);
-    this.mats.splice(this.mats.indexOf(hostile),1);
+    // Effects geometry is released before rebuilding the next frame; pooled
+    // material instances are reused for every shot to reduce phone GC work.
   }
 }
