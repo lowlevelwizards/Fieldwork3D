@@ -284,9 +284,9 @@ export function planAim(s:Session,id:string,mode:AimMode,target:Pt,nodeId?:numbe
   if(nodeId!==undefined&&!node)return false;
   const pos=node?.p??finalPoint(a);
   if(d(pos,target)<2)return false;
-  const patch:Partial<PlanNode>=mode==='fixed'?
-    {aimMode:'fixed',facing:angle(pos,target),aimPoint:undefined,aimLabel:label}:
-    {aimMode:'track',facing:undefined,aimPoint:clone(target),aimLabel:label};
+  const patch:Partial<PlanNode>=mode==='track'?
+    {aimMode:'track',facing:undefined,aimPoint:clone(target),aimLabel:label}:
+    {aimMode:mode,facing:angle(pos,target),aimPoint:undefined,aimLabel:label};
   if(node)return edit(s,a,()=>{
     node.aimMode=patch.aimMode;node.facing=patch.facing;
     node.aimPoint=patch.aimPoint;node.aimLabel=patch.aimLabel;
@@ -481,12 +481,14 @@ function rotate(a:TeamActor,goal:number,dt:number){
 function aimHeading(a:TeamActor):number|null{
   const instruction=a.aimInstruction;
   if(!instruction)return null;
+  if(instruction.mode==='free')return null;
   if(instruction.mode==='fixed')return instruction.angle??a.heading;
   if(!instruction.point||d(a.p,instruction.point)<2)return a.heading;
   return angle(a.p,instruction.point);
 }
 function applyAimNode(a:TeamActor,n:PlanNode){
-  if(n.aimMode==='track'&&n.aimPoint)
+  if(n.aimMode==='free')a.aimInstruction=null;
+  else if(n.aimMode==='track'&&n.aimPoint)
     a.aimInstruction={mode:'track',point:clone(n.aimPoint)};
   else if(n.aimMode==='fixed'&&n.facing!==undefined)
     a.aimInstruction={mode:'fixed',angle:n.facing};
@@ -546,10 +548,14 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   // at its waypoint, then keep it active through every later movement.
   if(n.kind==='move'||n.kind==='look'){
     applyAimNode(a,n);
-    const held=aimHeading(a);
-    if(held!==null)rotate(a,held,dt);
-    // A facing instruction is instantaneous intent, not a forced full stop:
-    // the motor can begin moving as the torso turns toward the requested aim.
+    if(n.aimMode==='free'&&n.facing!==undefined){
+      // LOOK deliberately orients at this node, then releases any tracking
+      // or fixed strafe constraint. The next move faces the travel direction.
+      if(!rotate(a,n.facing,dt))return;
+    }else{
+      const held=aimHeading(a);
+      if(held!==null)rotate(a,held,dt);
+    }
     pop(a);return;
   }
   if(n.facing!==undefined&&!rotate(a,n.facing,dt))return;
