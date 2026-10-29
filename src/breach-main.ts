@@ -923,13 +923,12 @@ canvas.addEventListener('pointerdown',e=>{
   e.preventDefault();canvas.setPointerCapture(e.pointerId);
   const pt=pointerWorld(e);
   // Explicit camera interaction does NOT select units or place orders.
-  const cameraModeInput=viewMode!=='plan2d'&&
-    (e.button===2||cameraTool==='orbit'&&e.pointerType!=='mouse'||
-      cameraTool==='orbit'&&e.button===0||
-      cameraTool==='pan'||e.button===1||e.shiftKey);
+  const cameraModeInput=cameraTool==='pan'||e.button===1||e.shiftKey||
+    viewMode!=='plan2d'&&
+      (e.button===2||cameraTool==='orbit');
   if(cameraModeInput){
-    const orbit=e.button===2||cameraTool==='orbit'&&
-      e.button!==1&&!e.shiftKey;
+    const orbit=viewMode!=='plan2d'&&
+      (e.button===2||cameraTool==='orbit'&&e.button!==1&&!e.shiftKey);
     activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
       startX:e.clientX,startY:e.clientY,wasUnit:false,nodeId:null,
       mode:orbit?'cameraOrbit':'cameraPan',moved:false});
@@ -1002,7 +1001,11 @@ canvas.addEventListener('pointermove',e=>{
     pinchAngle=angle;pinchDistance=gap;panMid=mid;return;
   }
   if(p.mode==='cameraOrbit'&&stage&&viewMode!=='plan2d'){
-    stage.orbit(dx,dy);return;
+    stage.orbit(dx,dy);
+    for(const [mode,button] of [['iso',ui.viewIso],
+      ['top',ui.viewTop],['plan2d',ui.view2d]] as const)
+      button.setAttribute('aria-pressed',String(mode===stage.view.mode));
+    return;
   }
   if(p.mode==='cameraPan'){
     if(stage&&viewMode!=='plan2d')stage.pan(dx,dy);
