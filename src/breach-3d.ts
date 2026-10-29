@@ -97,7 +97,6 @@ export class TacticalScene3D{
     const floorB=this.solid(0x606b64),timber=this.solid(0x544d40);
     const metal=this.solid(0x646a65,.62),rust=this.solid(0x806851);
     const roof=this.solid(0x515d58),glass=this.solid(0x748b83,.18);
-    const dark=this.solid(0x343e3b);
     this.plane(this.root,W/2,H/2,W,H,-2,earth);
     this.box(this.root,303,-1,630,124,1,215,road,false);
     this.box(this.root,294,-.15,643,7,.2,178,gravel,false);
@@ -309,8 +308,10 @@ export class TacticalScene3D{
         (wall.mid.y-pawn.y)*fromCamera.z;
       const cut=this.view.mode==='iso'&&between>3500;
       const material=wall.mesh.material as THREE.MeshStandardMaterial;
-      material.transparent=cut;material.opacity=cut?.22:1;
-      material.depthWrite=!cut;material.needsUpdate=true;
+      if(material.transparent!==cut){
+        material.transparent=cut;material.opacity=cut?.22:1;
+        material.depthWrite=!cut;material.needsUpdate=true;
+      }
     }
     for(const door of s.doors){
       const object=this.doors.get(door.id);
