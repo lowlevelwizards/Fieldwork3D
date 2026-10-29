@@ -37,12 +37,6 @@ const ui={
   viewIso:el<HTMLButtonElement>('viewIso'),
   viewTop:el<HTMLButtonElement>('viewTop'),
   view2d:el<HTMLButtonElement>('view2d'),
-  rotLeft:el<HTMLButtonElement>('rotLeft'),
-  rotRight:el<HTMLButtonElement>('rotRight'),
-  cameraOrbit:el<HTMLButtonElement>('cameraOrbit'),
-  cameraPan:el<HTMLButtonElement>('cameraPan'),
-  zoomIn:el<HTMLButtonElement>('zoomIn'),
-  zoomOut:el<HTMLButtonElement>('zoomOut'),
   cameraFit:el<HTMLButtonElement>('cameraFit'),
   back:el<HTMLButtonElement>('back'),
   undo:el<HTMLButtonElement>('undo'),redo:el<HTMLButtonElement>('redo'),
@@ -102,9 +96,7 @@ let trace:Pt[]|null=null;
 const activePointers=new Map<number,{x:number;y:number;startX:number;startY:number;
   wasUnit:boolean;nodeId:number|null;
   mode:'undecided'|'route'|'pan'|'node'|'pivot'|'sweep'|'cameraOrbit'|'cameraPan'|'cameraMulti';moved:boolean}>();
-let pinchDistance=0,panMid:Pt|null=null,pinchAngle=0;
-let twistAmount=0,twistActive=false;
-let cameraTool:'orders'|'orbit'|'pan'='orders';
+let pinchDistance=0,panMid:Pt|null=null;
 let pieRepositionNode:number|null=null;
 const colors={rook:'#a2d4ca',moss:'#b9c6a0'};
 const colorFor=(id:string)=>id==='rook'?colors.rook:colors.moss;
@@ -137,19 +129,9 @@ function fitZoom(next:number,x=cssW/2,y=cssH/2){
   }
   updateContext();
 }
-function setCameraTool(tool:'orders'|'orbit'|'pan'){
-  cameraTool=cameraTool===tool?'orders':tool;
-  if(viewMode==='plan2d'&&cameraTool==='orbit')cameraTool='orders';
-  ui.cameraOrbit.setAttribute('aria-pressed',String(cameraTool==='orbit'));
-  ui.cameraPan.setAttribute('aria-pressed',String(cameraTool==='pan'));
-  canvas.style.cursor=cameraTool==='orbit'?'grab':
-    cameraTool==='pan'?'move':'crosshair';
-  updateContext();
-}
 function cameraMode(mode:ViewMode){
   viewMode=stage?mode:'plan2d';
   if(stage){stage.setMode(viewMode);stage.updateCamera(1);}
-  if(viewMode==='plan2d'&&cameraTool==='orbit')setCameraTool('orders');
   for(const [m,button] of [['iso',ui.viewIso],
     ['top',ui.viewTop],['plan2d',ui.view2d]] as const){
     button.setAttribute('aria-pressed',String(m===viewMode));
@@ -191,7 +173,7 @@ function updateContext(){
   // Context chrome must disappear while the player is pointing at the map.
   // Otherwise its floating touch targets can swallow door/pivot/LOOK taps.
   if(state.phase!=='planning'||looking||doorMode||insertMode||
-     pieMode!==null||pieRepositionNode!==null||cameraTool!=='orders'){
+     pieMode!==null||pieRepositionNode!==null){
     ui.context.hidden=true;return;
   }
   const a=uid(selected);
@@ -900,8 +882,6 @@ window.addEventListener('keydown',e=>{
   if(e.code==='KeyV'&&!e.repeat)cameraMode(viewMode==='iso'?'top':'iso');
   if(e.code==='KeyQ'&&!e.repeat)turnCamera(-Math.PI/8);
   if(e.code==='KeyE'&&!e.repeat)turnCamera(Math.PI/8);
-  if(e.code==='KeyC'&&!e.repeat)setCameraTool('orbit');
-  if(e.code==='KeyP'&&!e.repeat)setCameraTool('pan');
   if(e.code==='Digit0'&&!e.repeat)ui.cameraFit.click();
 });
 function pointerWorld(e:PointerEvent){return toWorld(e.clientX,e.clientY);}
@@ -923,12 +903,12 @@ canvas.addEventListener('pointerdown',e=>{
   e.preventDefault();canvas.setPointerCapture(e.pointerId);
   const pt=pointerWorld(e);
   // Explicit camera interaction does NOT select units or place orders.
-  const cameraModeInput=cameraTool==='pan'||e.button===1||e.shiftKey||
-    viewMode!=='plan2d'&&
-      (e.button===2||cameraTool==='orbit');
+  // Touch defaults to direct orbit on empty ground after a drag threshold.
+  // Desktop retains RMB orbit, MMB/Shift pan; plain clicks still plan.
+  const cameraModeInput=e.button===1||e.shiftKey||
+    (viewMode!=='plan2d'&&e.button===2);
   if(cameraModeInput){
-    const orbit=viewMode!=='plan2d'&&
-      (e.button===2||cameraTool==='orbit'&&e.button!==1&&!e.shiftKey);
+    const orbit=viewMode!=='plan2d'&&e.button===2;
     activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
       startX:e.clientX,startY:e.clientY,wasUnit:false,nodeId:null,
       mode:orbit?'cameraOrbit':'cameraPan',moved:false});
@@ -964,8 +944,6 @@ canvas.addEventListener('pointerdown',e=>{
     pinchDistance=distance({x:pts[0].x,y:pts[0].y},
       {x:pts[1].x,y:pts[1].y});
     panMid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
-    pinchAngle=Math.atan2(pts[1].y-pts[0].y,pts[1].x-pts[0].x);
-    twistAmount=0;twistActive=false;
     trace=null;draggingNode=null;
   }
 });
@@ -982,23 +960,16 @@ canvas.addEventListener('pointermove',e=>{
     const gap=distance({x:pts[0].x,y:pts[0].y},
       {x:pts[1].x,y:pts[1].y});
     const mid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
-    const angle=Math.atan2(pts[1].y-pts[0].y,pts[1].x-pts[0].x);
-    const turn=Math.atan2(Math.sin(angle-pinchAngle),
-      Math.cos(angle-pinchAngle));
     if(stage&&viewMode!=='plan2d'){
       if(panMid)stage.panBetween(panMid.x,panMid.y,mid.x,mid.y);
       if(pinchDistance>8)stage.zoomAt(gap/pinchDistance,mid.x,mid.y);
-      twistAmount+=turn;
-      // A pinch does not become an accidental rotation until the user
-      // deliberately twists at least ~10 degrees.
-      if(!twistActive&&Math.abs(twistAmount)>.17)twistActive=true;
-      if(twistActive&&Math.abs(turn)>.004)stage.rotate(-turn);
+      // Two fingers have ONLY pan/pinch behavior: never rotate accidentally.
     }else{
       if(panMid){panX+=mid.x-panMid.x;panY+=mid.y-panMid.y;}
       if(pinchDistance>8)zoom=clamp(zoom*gap/pinchDistance,.65,4.8);
       layout();
     }
-    pinchAngle=angle;pinchDistance=gap;panMid=mid;return;
+    pinchDistance=gap;panMid=mid;return;
   }
   if(p.mode==='cameraOrbit'&&stage&&viewMode!=='plan2d'){
     stage.orbit(dx,dy);
@@ -1013,6 +984,15 @@ canvas.addEventListener('pointermove',e=>{
     return;
   }
   if(p.mode==='cameraMulti')return;
+  // On touch a drag starting in empty space or the map ground orbits.
+  // Tapping that same spot still creates a waypoint; dragging from a
+  // selected operator or node keeps its deliberate tactical editing semantics.
+  if(p.mode==='undecided'&&e.pointerType==='touch'&&p.moved&&
+     viewMode!=='plan2d'&&stage){
+    p.mode='cameraOrbit';
+    stage.orbit(dx,dy);
+    return;
+  }
   if((p.mode==='node'||p.mode==='pivot'||p.mode==='sweep')&&
     p.moved&&p.nodeId!==null){
     draggingNode=cursor;return;
@@ -1062,31 +1042,18 @@ function releasePointer(e:PointerEvent,cancelled=false){
       pt.x<=W&&pt.y<=H)useSelectedGround(pt);
   }
   trace=null;draggingNode=null;activePointers.delete(e.pointerId);
-  if(activePointers.size<2){panMid=null;pinchDistance=0;pinchAngle=0;
-    twistAmount=0;twistActive=false;}
+  if(activePointers.size<2){panMid=null;pinchDistance=0;}
   updateHud();
 }
 canvas.addEventListener('pointerup',e=>releasePointer(e));
 canvas.addEventListener('pointercancel',e=>releasePointer(e,true));
 canvas.addEventListener('lostpointercapture',e=>releasePointer(e,true));
 window.addEventListener('blur',()=>{activePointers.clear();trace=null;
-  panMid=null;pinchDistance=0;twistActive=false;});
+  panMid=null;pinchDistance=0;});
 window.addEventListener('resize',layout);
 ui.viewIso.addEventListener('click',()=>cameraMode('iso'));
 ui.viewTop.addEventListener('click',()=>cameraMode('top'));
 ui.view2d.addEventListener('click',()=>cameraMode('plan2d'));
-ui.rotLeft.addEventListener('click',()=>turnCamera(-Math.PI/8));
-ui.rotRight.addEventListener('click',()=>turnCamera(Math.PI/8));
-ui.cameraOrbit.addEventListener('click',()=>setCameraTool('orbit'));
-ui.cameraPan.addEventListener('click',()=>setCameraTool('pan'));
-ui.zoomIn.addEventListener('click',()=>{
-  const z=stage&&viewMode!=='plan2d'?stage.view.zoom:zoom;
-  fitZoom(z*1.3);
-});
-ui.zoomOut.addEventListener('click',()=>{
-  const z=stage&&viewMode!=='plan2d'?stage.view.zoom:zoom;
-  fitZoom(z/1.3);
-});
 ui.cameraFit.addEventListener('click',()=>{
   if(stage&&viewMode!=='plan2d')stage.resetCamera();
   else{zoom=1;panX=0;panY=0;layout();}
