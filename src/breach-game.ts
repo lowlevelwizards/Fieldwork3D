@@ -10,6 +10,7 @@ import {
 } from './breach-core.ts';
 import {
   type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,
+  type AimMode,type AimInstruction,
   makeHistory,copyNodes,record,undo,redo,modifyNode,lastPoint,
   length,targetAngle,angleDifference,type PieSide,
 } from './breach-plan.ts';
@@ -26,6 +27,8 @@ export type TeamActor=Operator & {
   contact:Pt|null;heard:Pt|null;
   alertUntil:number;waitRemaining:number;syncReady:string|null;
   actionTimer:number;blockedTime:number;priorP:Pt;pieIndex:number;
+  /** Last executed facing command; survives across movement waypoints. */
+  aimInstruction:AimInstruction|null;
 };
 export type NoiseEvent={p:Pt;radius:number;time:number;kind:string};
 export type ShotEvent={start:Pt;end:Pt;age:number;hit:boolean;side:Side};
@@ -58,7 +61,7 @@ const withActions=(a:Operator):TeamActor=>({
   reload:0,hits:0,kills:0,stopped:false,contact:null,heard:null,
   alertUntil:0,waitRemaining:0,syncReady:null,actionTimer:0,
   blockedTime:0,priorP:clone(a.p),haltOnContact:false,retreatPoint:null,
-  pieIndex:0,
+  pieIndex:0,aimInstruction:null,
 });
 export function newSession(index=0):Session{
   const seed=newTacticalState();
@@ -267,18 +270,37 @@ export function insertPlanNode(s:Session,id:string,index:number,p:Pt){
   if(!validEditedPlan(s,a.p,proposed))return false;
   return edit(s,a,()=>{a.plan=proposed;s.nextId++;});
 }
-export function updatePlanFacing(s:Session,id:string,nodeId:number,p:Pt){
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  const n=a.plan.find(n=>n.id===nodeId);if(!n)return false;
-  return edit(s,a,()=>{
-    n.facing=angle(n.p,p);
+/**
+ * An aim instruction is an order, not a movement geometry.
+ * Fixed holds one world heading; track continuously faces a fixed world point.
+ * A selected waypoint applies its instruction on arrival, then all subsequent
+ * walking inherits it until another aim instruction explicitly overrides it.
+ */
+export function planAim(s:Session,id:string,mode:AimMode,target:Pt,nodeId?:number){
+  const a=party(s,id);
+  if(!a||!canEdit(s)||!Number.isFinite(target.x)||!Number.isFinite(target.y))return false;
+  const node=nodeId===undefined?undefined:a.plan.find(n=>n.id===nodeId);
+  if(nodeId!==undefined&&!node)return false;
+  const pos=node?.p??finalPoint(a);
+  if(d(pos,target)<2)return false;
+  const patch:Partial<PlanNode>=mode==='fixed'?
+    {aimMode:'fixed',facing:angle(pos,target),aimPoint:undefined}:
+    {aimMode:'track',facing:undefined,aimPoint:clone(target)};
+  if(node)return edit(s,a,()=>{
+    node.aimMode=patch.aimMode;node.facing=patch.facing;
+    node.aimPoint=patch.aimPoint;
+    // Old segment-specific strafe intent is replaced by a persistent rule.
+    node.moveMode='advance';
   });
+  return addNode(s,id,'look',pos,patch);
+}
+export function updatePlanFacing(s:Session,id:string,nodeId:number,p:Pt){
+  return planAim(s,id,'fixed',p,nodeId);
 }
 export function planLook(s:Session,id:string,p:Pt,nodeId?:number){
-  const a=party(s,id);if(!a||!canEdit(s))return false;
+  const a=party(s,id);if(!a)return false;
   const node=nodeId!==undefined?a.plan.find(n=>n.id===nodeId):a.plan.at(-1);
-  if(node)return updatePlanFacing(s,id,node.id,p);
-  return addNode(s,id,'look',a.p,{facing:angle(a.p,p)});
+  return planAim(s,id,'fixed',p,node?.id);
 }
 export function planDoor(s:Session,id:string,doorId:string,method:DoorMethod){
   const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
@@ -456,6 +478,22 @@ function rotate(a:TeamActor,goal:number,dt:number){
   a.heading+=turn;a.turning=Math.abs(delta);
   return Math.abs(delta)<.075;
 }
+/** Aim targets are recomputed after EVERY movement tick, not on waypoint entry. */
+function aimHeading(a:TeamActor):number|null{
+  const instruction=a.aimInstruction;
+  if(!instruction)return null;
+  if(instruction.mode==='fixed')return instruction.angle??a.heading;
+  if(!instruction.point||d(a.p,instruction.point)<2)return a.heading;
+  return angle(a.p,instruction.point);
+}
+function applyAimNode(a:TeamActor,n:PlanNode){
+  if(n.aimMode==='track'&&n.aimPoint)
+    a.aimInstruction={mode:'track',point:clone(n.aimPoint)};
+  else if(n.aimMode==='fixed'&&n.facing!==undefined)
+    a.aimInstruction={mode:'fixed',angle:n.facing};
+  else if(n.facing!==undefined)
+    a.aimInstruction={mode:'fixed',angle:n.facing};
+}
 function pop(a:TeamActor){
   a.plan.shift();a.activeNode=-1;a.nav=[];a.waitRemaining=0;
   a.actionTimer=0;a.syncReady=null;a.pieIndex=0;pathFor(a);
@@ -468,7 +506,12 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       a.velocity=0;rotate(a,angle(a.p,threat.p),dt);return;
     }
   }
-  if(!n||a.health<=0){a.velocity=Math.max(0,a.velocity-dt*160);return;}
+  if(!n||a.health<=0){
+    a.velocity=Math.max(0,a.velocity-dt*160);
+    const held=aimHeading(a);
+    if(a.health>0&&held!==null)rotate(a,held,dt);
+    return;
+  }
   if(a.activeNode!==n.id){
     a.activeNode=n.id;a.nav=[];a.waitRemaining=0;a.actionTimer=0;
     a.pieIndex=0;
@@ -491,19 +534,27 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   const at=near(a.p,n.p,5);
   if(!at&&(n.kind==='move'||n.kind==='door'||n.kind==='sync')){
     approach(a,n.p,dt,s,n.moveMode==='strafe'?.68:1);
-    if(n.kind==='move'&&n.moveMode==='strafe'){
+    const held=aimHeading(a);
+    if(held!==null)rotate(a,held,dt);
+    else if(n.kind==='move'&&n.moveMode==='strafe')
       rotate(a,n.facing??a.heading,dt);
-    }else if(a.nav.length){
+    else if(a.nav.length)
       rotate(a,angle(a.p,a.nav[0]),dt);
-    }
     return;
   }
   a.velocity=Math.max(0,a.velocity-dt*180);
-  if(n.facing!==undefined&&!rotate(a,n.facing,dt))return;
+  // Apply an authored look/pie/strafe instruction once we actually arrive
+  // at its waypoint, then keep it active through every later movement.
   if(n.kind==='move'||n.kind==='look'){
-    if(n.facing!==undefined&&!rotate(a,n.facing,dt))return;
+    applyAimNode(a,n);
+    const held=aimHeading(a);
+    if(held!==null&&!rotate(a,held,dt))return;
     pop(a);return;
   }
+  if(n.facing!==undefined&&!rotate(a,n.facing,dt))return;
+  // Door/wait/sync orders should not cancel a persistent look/track intent.
+  const held=aimHeading(a);
+  if(held!==null)rotate(a,held,dt);
   if(n.kind==='wait'){
     a.waitRemaining+=dt;
     if(a.waitRemaining>=(n.duration??1))pop(a);
