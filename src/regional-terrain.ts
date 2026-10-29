@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {FIRST_PLACE} from './first-place-layout.ts';
 import {
   regionLocalHeightM,globalSouthM,regionRiverX,
   regionSlopeDegrees,type PlayableRegionId,
@@ -116,7 +117,7 @@ export class RegionalTerrainField{
     side:THREE.FrontSide,
   });
   private readonly tiles:THREE.Mesh[][]=[];
-  private selected:string|null=null;
+  private selected=new Set<string>();
   private readonly seed:number;
   constructor(scene:THREE.Scene,id:PlayableRegionId,seed=31){
     this.id=id;this.seed=seed;
@@ -132,18 +133,35 @@ export class RegionalTerrainField{
     }
     scene.add(this.group);
   }
-  /** One and only one 125m tile is enhanced near the camera target. */
+  /** One focus tile plus the four 125m tiles intersecting the authored
+   * field station, but only while it is in view. 4 * 4225 vertices on a
+   * modern phone is modest, and the same high-detail surface underlies
+   * fences, boots, doors and drainage marks. No runtime world streaming. */
   setDetailFocus(x:number,z:number,enabled:boolean):void{
-    const col=Math.max(0,Math.min(7,Math.floor((x+500)/125)));
-    const row=Math.max(0,Math.min(7,Math.floor((z+500)/125)));
-    const choice=enabled?row+':'+col:null;
-    if(choice===this.selected)return;
-    if(this.selected!==null){
-      const [r,c]=this.selected.split(':').map(Number);
-      this.replace({row:r,col:c},false);
+    const next=new Set<string>();
+    if(enabled){
+      const col=Math.max(0,Math.min(7,Math.floor((x+500)/125)));
+      const row=Math.max(0,Math.min(7,Math.floor((z+500)/125)));
+      next.add(row+':'+col);
+      if(this.id==='cutwoods'&&
+        Math.hypot(x-FIRST_PLACE.center.x,z-FIRST_PLACE.center.z)<185){
+        for(const r of [4,5])for(const c of [4,5])
+          next.add(r+':'+c);
+      }
     }
-    this.selected=choice;
-    if(choice!==null)this.replace({row,col},true);
+    for(const key of this.selected){
+      if(!next.has(key)){
+        const [row,col]=key.split(':').map(Number);
+        this.replace({row,col},false);
+      }
+    }
+    for(const key of next){
+      if(!this.selected.has(key)){
+        const [row,col]=key.split(':').map(Number);
+        this.replace({row,col},true);
+      }
+    }
+    this.selected=next;
   }
   private replace(tile:RegionTileCoord,fine:boolean):void{
     const mesh=this.tiles[tile.row][tile.col];
