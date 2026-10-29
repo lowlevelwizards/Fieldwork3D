@@ -1,0 +1,44 @@
+/** 053: Player-authored instructions are not generated navigation vertices. */
+export type Pt={x:number;y:number};
+export type PlanKind='move'|'door'|'wait'|'look'|'sync';
+export type DoorMethod='open'|'kick'|'hold';
+export type PlanNode={
+  id:number;kind:PlanKind;p:Pt;facing?:number;doorId?:string;
+  method?:DoorMethod;duration?:number;syncCode?:string;holdOnContact?:boolean;
+};
+export type PlanHistory={undo:PlanNode[][];redo:PlanNode[][]};
+export const copyNodes=(nodes:PlanNode[]):PlanNode[]=>
+  nodes.map(n=>({...n,p:{...n.p}}));
+export const makeHistory=():PlanHistory=>({undo:[],redo:[]});
+export function record(history:PlanHistory,prior:PlanNode[]){
+  history.undo.push(copyNodes(prior));
+  if(history.undo.length>40)history.undo.shift();
+  history.redo=[];
+}
+export function undo(history:PlanHistory,current:PlanNode[]):PlanNode[]|null{
+  const before=history.undo.pop();if(!before)return null;
+  history.redo.push(copyNodes(current));return before;
+}
+export function redo(history:PlanHistory,current:PlanNode[]):PlanNode[]|null{
+  const after=history.redo.pop();if(!after)return null;
+  history.undo.push(copyNodes(current));return after;
+}
+export const lastPoint=(origin:Pt,nodes:PlanNode[]):Pt=>
+  nodes.length?{...nodes[nodes.length-1].p}:{...origin};
+export function modifyNode(nodes:PlanNode[],id:number,patch:Partial<PlanNode>){
+  const node=nodes.find(n=>n.id===id);
+  if(!node)return false;
+  if(patch.p)node.p={...patch.p};
+  for(const prop of ['facing','kind','doorId','method','duration','syncCode','holdOnContact'] as const){
+    const val=patch[prop];
+    if(val!==undefined){
+      // Values have different property types; assign to the matching key.
+      Object.assign(node,{[prop]:val});
+    }
+  }
+  return true;
+}
+export const targetAngle=(a:Pt,b:Pt)=>Math.atan2(b.y-a.y,b.x-a.x);
+export const length=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
+export const angleDifference=(a:number,b:number)=>
+  Math.atan2(Math.sin(b-a),Math.cos(b-a));
