@@ -4,7 +4,7 @@ import {
   newSession,team,enemies,planMove,planLook,planDoor,planWait,planSync,
   movePlanNode,deletePlanNode,insertPlanNode,clearPlan,
   undoPlan,redoPlan,posture,toggling,stepSession,
-  isSeen,lastKnown,debrief,missionText,
+  isSeen,lastKnown,debrief,missionText,toggleContactRule,inSight,
 } from '../src/breach-game.ts';
 const run=(s,time)=>{const n=Math.floor(time*60);
   for(let i=0;i<n;i++)stepSession(s,1/60);};
@@ -111,4 +111,34 @@ test('059,062: authored enemy variants differ without leaking knowledge',()=>{
   assert.notDeepEqual(enemies(b).map(o=>o.p),enemies(c).map(o=>o.p));
   assert.equal(a.spotted.size,0);assert.equal(b.known.size,0);
   assert.equal(c.mission,'clear');
+});
+
+test('056: HOLD guards the threshold without silently opening the door',()=>{
+  const s=newSession();
+  assert.ok(planDoor(s,'rook','FRONT','hold'));
+  toggling(s);run(s,5);
+  assert.equal(s.doors[0].open,false,'hold should not transform into open');
+  assert.ok(team(s)[0].plan.every(n=>n.kind!=='door'));
+  assert.ok(s.events.some(e=>e.includes('HELD CLOSED')));
+});
+test('057: high cover occludes sight while exposed positions remain visible',()=>{
+  const s=newSession(),a=team(s)[0],b=enemies(s)[0];
+  a.p={x:404,y:169};a.heading=0;
+  b.p={x:543,y:169};b.heading=Math.PI;
+  assert.equal(inSight(a,b,s),false,'large cabinet blocks line');
+  a.p={x:392,y:269};a.heading=0;
+  b.p={x:448,y:269};
+  assert.equal(inSight(a,b,s),true,'open corridor is visible');
+});
+test('060: halt-on-contact stops movement, not perception or aiming',()=>{
+  const s=newSession(),a=team(s)[0],b=enemies(s)[0];
+  a.p={x:191,y:333};a.heading=0;
+  b.p={x:246,y:333};b.heading=Math.PI;
+  assert.ok(planMove(s,'rook',{x:303,y:333}));
+  assert.ok(toggleContactRule(s,'rook'));
+  assert.equal(a.haltOnContact,true);
+  const at={...a.p};
+  toggling(s);stepSession(s,1/60);
+  assert.deepEqual(a.p,at,'stops when enemy is already visible');
+  assert.ok(a.plan.length>0,'holding contact does not discard route');
 });
