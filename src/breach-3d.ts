@@ -477,7 +477,7 @@ export class TacticalScene3D{
         const pulse=down?1.15:1+.45*(1-hitTime/.28);
         object.status.scale.setScalar(pulse);
         const statusMat=object.status.material as THREE.MeshBasicMaterial;
-        statusMat.opacity=down?.85:Math.max(0,1-hitTime/.28);
+        statusMat.opacity=down ? .85 :Math.max(0,1-hitTime/.28);
         statusMat.color.setHex(down?0xd99e83:0xf4c7aa);
       }
       if(!object.root.visible)continue;
