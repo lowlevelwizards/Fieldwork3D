@@ -17,7 +17,7 @@ export function spawnActor(id:string,name:string,team:Allegiance,
   x:number,z:number):GroundedActor{
   return {id,name,team,role:'rifleman',x,z,y:standingHeightAt(x,z),
     heading:0,vx:0,vz:0,height:1.75,radius:.27,
-    health:3,maxHealth:3,speed:1.45,grounded:true,
+    health:3,maxHealth:3,speed:team==='player'?3.2:1.45,grounded:true,
     task:'idle',destination:null,path:[],contact:null,
     shotCooldown:0,shots:0,hits:0};
 }
