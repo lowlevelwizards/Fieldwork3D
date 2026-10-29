@@ -131,7 +131,7 @@ function updateHud(){
   ui.insert.setAttribute('aria-pressed',String(insertMode));
   ui.method.textContent=method.toUpperCase();
   const active=uid(selected);
-  ui.stance.textContent=active?.posture==='crouch'?'LOW':'STAND';
+  ui.stance.textContent=active?.posture==='crouch'?'STAND':'CROUCH';
   ui.stance.setAttribute('aria-pressed',String(active?.posture==='crouch'));
   ui.variant.textContent='SITE '+(state.variant+1)+'/3';
   ui.delete.disabled=selectedNode===null;
@@ -220,8 +220,8 @@ function furniture(){
   for(const c of COVER){
     draw.fillStyle='#0f1b1c66';
     draw.fillRect(c.x-c.w/2+6,c.y-c.h/2+7,c.w,c.h);
-    rect(c.x-c.w/2,c.y-c.h/2,c.w,c.h,'#81725b');
-    rect(c.x-c.w/2+4,c.y-c.h/2+4,c.w-8,c.h-8,'#60594b');
+    rect(c.x-c.w/2,c.y-c.h/2,c.w,c.h,c.low?'#81725b':'#485552');
+    rect(c.x-c.w/2+4,c.y-c.h/2+4,c.w-8,c.h-8,c.low?'#60594b':'#394440');
     draw.strokeStyle='#a995777e';draw.lineWidth=2;
     draw.strokeRect(c.x-c.w/2+4,c.y-c.h/2+4,c.w-8,c.h-8);
     line({x:c.x-c.w/2+8,y:c.y},{x:c.x+c.w/2-8,y:c.y},'#9d907348',2);
