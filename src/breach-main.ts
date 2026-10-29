@@ -6,7 +6,7 @@ import {
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   planMove,planLook,planDoor,planWait,planSync,movePlanNode,
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
-  posture,toggling,stepSession,nearestDoor,knownAt,liveVisibility,
+  posture,toggleContactRule,toggling,stepSession,nearestDoor,knownAt,liveVisibility,
 } from './breach-game.ts';
 import './breach-style.css';
 
@@ -33,6 +33,7 @@ const ui={
   door:el<HTMLButtonElement>('door'),method:el<HTMLButtonElement>('method'),
   wait:el<HTMLButtonElement>('wait'),sync:el<HTMLButtonElement>('sync'),
   stance:el<HTMLButtonElement>('stance'),variant:el<HTMLButtonElement>('variant'),
+  contact:el<HTMLButtonElement>('contact'),
   debrief:el<HTMLElement>('debrief'),
   debriefTitle:el<HTMLElement>('debriefTitle'),
   debriefStats:el<HTMLElement>('debriefStats'),
@@ -133,6 +134,7 @@ function updateHud(){
   const active=uid(selected);
   ui.stance.textContent=active?.posture==='crouch'?'STAND':'CROUCH';
   ui.stance.setAttribute('aria-pressed',String(active?.posture==='crouch'));
+  ui.contact.setAttribute('aria-pressed',String(active?.haltOnContact));
   ui.variant.textContent='SITE '+(state.variant+1)+'/3';
   ui.delete.disabled=selectedNode===null;
   ui.undo.disabled=!(active?.history.undo.length);
@@ -506,6 +508,7 @@ ui.method.addEventListener('click',()=>{
 ui.wait.addEventListener('click',()=>{planWait(state,selected);updateHud();});
 ui.sync.addEventListener('click',()=>{planSync(state);updateHud();});
 ui.stance.addEventListener('click',()=>{posture(state,selected);updateHud();});
+ui.contact.addEventListener('click',()=>{toggleContactRule(state,selected);updateHud();});
 ui.variant.addEventListener('click',()=>reset(state.variant+1));
 ui.retry.addEventListener('click',()=>reset());
 ui.next.addEventListener('click',()=>reset(state.variant+1));
