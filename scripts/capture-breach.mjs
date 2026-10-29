@@ -176,7 +176,11 @@ try{
   if(await phone.locator('#pieLeft').getAttribute('aria-pressed')!=='false')
     throw Error('Pie selection did not return to planning');
   if(await phone.locator('#back').isDisabled())
-    throw Error('Door pie failed to generate its one authored order');
+    throw Error('Free-pivot PIE did not create a plan order: '+
+      JSON.stringify({hint:await phone.locator('#hint').innerText(),
+        event:await phone.locator('#feed').innerText(),
+        backDisabled:await phone.locator('#back').isDisabled(),
+        mode:await phone.locator('#view2d').getAttribute('aria-pressed')}));
   await phone.screenshot({path:resolve(folder,'08-phone-pie-arc.png')});
   await phone.locator('#back').click();
   if(!await phone.locator('#back').isDisabled())
