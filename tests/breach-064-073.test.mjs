@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {
  newSession,team,planMove,planPieAt,editPie,doorAtNode,
- undoPlan,stepSession,toggling,
+ undoPlan,stepSession,toggling,planStack,
 } from '../src/breach-game.ts';
 import {validPieArc,pieArc} from '../src/breach-maneuvers.ts';
 
@@ -72,4 +72,19 @@ test('064,067: controls are contextual, accessible and camera-aware',()=>{
   assert.match(main,/stage\.screenToWorld/);
   assert.match(main,/renderProjectedPlans\(\)/);
   assert.match(main,/editPie\(state,selected/);
+});
+
+test('072: two soldiers can take distinct, door-interactable stack positions',()=>{
+  const s=newSession();
+  assert.ok(planStack(s,'rook','FRONT'));
+  assert.ok(planStack(s,'moss','FRONT'));
+  const [rook,moss]=team(s);
+  assert.equal(rook.plan[0].moveMode,'strafe');
+  assert.equal(moss.plan[0].moveMode,'strafe');
+  assert.ok(Math.hypot(rook.plan[0].p.x-moss.plan[0].p.x,
+    rook.plan[0].p.y-moss.plan[0].p.y)>30,
+    'the two planned stack points should not overlap');
+  assert.ok(doorAtNode(s,'rook','FRONT','open',rook.plan[0].id),
+    'a stack-up must end within physical interaction range');
+  assert.equal(rook.plan[1].kind,'door');
 });
