@@ -170,13 +170,23 @@ export function backOne(s:Session,id:string){
   return edit(s,a,()=>{a.plan.pop();});
 }
 /** The player chooses a world-space pivot; doors are no longer special. */
-export function planPieAt(s:Session,id:string,pivot:Pt,side:PieSide,degrees=54){
+export function planPieAt(s:Session,id:string,pivot:Pt,side:PieSide,degrees=54,
+  afterNodeId?:number){
   const a=party(s,id);
   if(!a||!canEdit(s))return false;
-  const arc=validPieArc(finalPoint(a),pivot,side,s.doors,degrees);
+  const index=afterNodeId===undefined?a.plan.length:
+    a.plan.findIndex(n=>n.id===afterNodeId)+1;
+  if(index<=0&&afterNodeId!==undefined)return false;
+  const start=index===0?a.p:a.plan[index-1].p;
+  const arc=validPieArc(start,pivot,side,s.doors,degrees);
   if(!arc.length)return false;
-  return addNode(s,id,'pie',arc[arc.length-1],{
+  if(afterNodeId===undefined)return addNode(s,id,'pie',arc[arc.length-1],{
     pivot:clone(pivot),pieSide:side,pieDegrees:degrees,arc:arc.map(clone)});
+  const proposed=copyNodes(a.plan);
+  proposed.splice(index,0,{id:s.nextId,kind:'pie',p:clone(arc.at(-1)!),
+    pivot:clone(pivot),pieSide:side,pieDegrees:degrees,arc:arc.map(clone)});
+  if(!validEditedPlan(s,a.p,proposed))return false;
+  return edit(s,a,()=>{a.plan=proposed;s.nextId++;});
 }
 /** Retain compatibility with Build 063's doorway shortcut. */
 export function planPie(s:Session,id:string,doorId:string,side:PieSide){
