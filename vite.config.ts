@@ -11,6 +11,7 @@ export default defineConfig({
       riverLab: 'river-lab.html',
       world: 'world.html',
       study: 'study.html',
+      breach: 'breach.html',
     } },
   },
 });

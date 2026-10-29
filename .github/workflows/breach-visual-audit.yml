@@ -1,0 +1,36 @@
+name: Breach 052 — Mobile Tactical Audit
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'breach.html'
+      - 'src/breach-core.ts'
+      - 'src/breach-main.ts'
+      - 'src/breach-style.css'
+      - 'tests/breach-052.test.mjs'
+      - 'scripts/capture-breach.mjs'
+      - '.github/workflows/breach-visual-audit.yml'
+      - 'vite.config.ts'
+jobs:
+  mobile-breach:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-package-lock
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: node scripts/capture-breach.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fieldwork-breach-052
+          path: breach-052-captures/
+          if-no-files-found: ignore
+          retention-days: 14
