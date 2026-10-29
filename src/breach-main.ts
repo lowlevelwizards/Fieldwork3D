@@ -146,7 +146,7 @@ function message(){
       'PIE: tap a point to watch continuously while moving.':
       lookMode==='strafe'?
         'STRAFE: tap a direction to hold while moving.':
-        'LOOK: tap a direction to face until the next aiming order.';
+        'LOOK: tap a direction to face at this node, then resume normal travel-facing.';
     if(selectedNode!==null)return 'Order selected: LOOK, PIE and STRAFE change facing, not the movement path.';
     return 'Tap to move · drag empty ground to orbit · choose LOOK / PIE / STRAFE for aiming.';
   }
@@ -728,7 +728,7 @@ function render(){
 function useSelectedGround(pt:Pt){
   if(state.phase!=='planning')return;
   if(looking){
-    const mode=lookMode==='pie'?'track':'fixed';
+    const mode=lookMode==='pie'?'track':lookMode==='strafe'?'fixed':'free';
     if(!planAim(state,selected,mode,pt,selectedNode??undefined,lookMode))
       state.events.push('SELECT A DIFFERENT AIM POINT');
     looking=false;selectedNode=null;updateHud();return;
