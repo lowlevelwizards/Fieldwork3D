@@ -82,3 +82,41 @@ button:focus-visible{outline:2px solid #e9c493;outline-offset:3px}
   .foot{display:none}
 }
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+
+/* 053–062: contextual command ribbon, visible without covering the map. */
+.orders{position:fixed;z-index:5;bottom:calc(96px + env(safe-area-inset-bottom));
+  left:12px;right:12px;display:flex;gap:5px;overflow-x:auto;
+  scrollbar-width:none;overscroll-behavior-x:contain;padding:4px 2px;
+  background:linear-gradient(90deg,#101d1bc9,#172522bf);
+  border:1px solid #5d75644d;border-radius:5px}
+.orders::-webkit-scrollbar{display:none}
+.orders button{flex:0 0 auto;min-height:33px;border-radius:3px;
+  border:1px solid #71898266;background:#2a3936d9;
+  color:#c6d9cf;padding:6px 9px;font-size:10px;letter-spacing:.035em}
+.orders button[aria-pressed="true"]{background:#8b6a48;border-color:#d8b67f;
+  color:#fff0d6}
+.orders button:active{background:#507369}
+.orders button:disabled{opacity:.4}
+.debrief{position:fixed;z-index:8;top:48%;left:50%;
+  transform:translate(-50%,-50%);width:min(360px,calc(100vw - 36px));
+  padding:23px 18px;background:#142426f5;border:2px solid #a4b5a0;
+  border-radius:6px;box-shadow:0 16px 60px #091110c9;
+  text-align:center;color:#eee9d9}
+.debrief[hidden]{display:none}
+.debrief strong{display:block;font-size:19px;letter-spacing:.11em}
+.debrief p{white-space:pre-line;font-size:12px;line-height:2;
+  color:#bfc7b9;margin:14px 0}
+.debrief button{background:#b6b391;border:1px solid #dfdbab;
+  padding:12px 11px;color:#20302e;font-weight:bold;border-radius:4px;
+  min-height:42px;margin:3px}
+@media(max-width:450px){
+  .orders{left:7px;right:7px;bottom:calc(89px + env(safe-area-inset-bottom))}
+  .orders button{font-size:9px;padding:6px 8px}
+  .feed{bottom:calc(150px + env(safe-area-inset-bottom));}
+}
+@media(max-height:470px){
+  .orders{bottom:calc(58px + env(safe-area-inset-bottom));left:5px;right:5px}
+  .orders button{min-height:29px;font-size:9px}
+  .feed{display:none}
+  .debrief{top:48%;padding:13px}
+}

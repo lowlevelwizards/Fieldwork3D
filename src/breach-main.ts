@@ -1,8 +1,13 @@
 import {
-  W,H,WALLS,COVER,GRID,doorCenter,own,hostiles,sees,
-  newTacticalState,queueWaypoint,clearPath,setLook,toggleExecution,step,
-  type Pt,type Operator,
+  W,H,WALLS,COVER,GRID,doorCenter,route,type Pt,
 } from './breach-core.ts';
+import {
+  type Session,type TeamActor,
+  newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
+  planMove,planLook,planDoor,planWait,planSync,movePlanNode,
+  deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
+  posture,toggleContactRule,toggling,stepSession,nearestDoor,knownAt,liveVisibility,
+} from './breach-game.ts';
 import './breach-style.css';
 
 const el=<T extends HTMLElement>(id:string)=>{
@@ -23,17 +28,53 @@ const ui={
   phase:el<HTMLElement>('phase'),clock:el<HTMLOutputElement>('clock'),
   hint:el<HTMLElement>('hint'),feed:el<HTMLElement>('feed'),
   mission:el<HTMLElement>('mission'),
+  undo:el<HTMLButtonElement>('undo'),redo:el<HTMLButtonElement>('redo'),
+  insert:el<HTMLButtonElement>('insert'),delete:el<HTMLButtonElement>('delete'),
+  door:el<HTMLButtonElement>('door'),method:el<HTMLButtonElement>('method'),
+  wait:el<HTMLButtonElement>('wait'),sync:el<HTMLButtonElement>('sync'),
+  stance:el<HTMLButtonElement>('stance'),variant:el<HTMLButtonElement>('variant'),
+  contact:el<HTMLButtonElement>('contact'),
+  debrief:el<HTMLElement>('debrief'),
+  debriefTitle:el<HTMLElement>('debriefTitle'),
+  debriefStats:el<HTMLElement>('debriefStats'),
+  retry:el<HTMLButtonElement>('retry'),next:el<HTMLButtonElement>('next'),
 };
-let state=newTacticalState();
+let state:Session=newSession();
 let selected='rook';
 let looking=false;
+let doorMode=false,insertMode=false;
+let method:'open'|'kick'|'hold'='open';
+let selectedNode:number|null=null;
+let draggingNode:Pt|null=null;
+let fogData=new Uint8Array(16*19),fogStamp=-1;
+let audio:AudioContext|null=null;
+let lastSoundShotCount=0,lastEventAudio='';
+const playTone=(frequency:number,decay:number,noise=false)=>{
+  try{
+    if(!audio)return;
+    const osc=audio.createOscillator(),gain=audio.createGain();
+    osc.type=noise?'sawtooth':'triangle';osc.frequency.value=frequency;
+    gain.gain.setValueAtTime(.065,audio.currentTime);
+    gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+decay);
+    osc.connect(gain);gain.connect(audio.destination);
+    osc.start();osc.stop(audio.currentTime+decay+.01);
+  }catch{/* Audio must never interrupt control. */}
+};
+function unlockAudio(){
+  try{
+    if(!audio&&typeof AudioContext!=='undefined')audio=new AudioContext();
+    if(audio?.state==='suspended')void audio.resume();
+  }catch{/* WebAudio may be unavailable in embedded browsers. */}
+}
+
 let last=performance.now(),accum=0,hudAt=0;
 let cssW=innerWidth,cssH=innerHeight,dpr=1;
 let viewScale=1,ox=0,oy=0,zoom=1,panX=0,panY=0;
 let cursor:Pt|null=null;
 let trace:Pt[]|null=null;
 const activePointers=new Map<number,{x:number;y:number;startX:number;startY:number;
-  wasUnit:boolean;mode:'undecided'|'route'|'pan';moved:boolean}>();
+  wasUnit:boolean;nodeId:number|null;
+  mode:'undecided'|'route'|'pan'|'node';moved:boolean}>();
 let pinchDistance=0,panMid:Pt|null=null;
 const colors={rook:'#a2d4ca',moss:'#b9c6a0'};
 const colorFor=(id:string)=>id==='rook'?colors.rook:colors.moss;
@@ -55,19 +96,24 @@ const toWorld=(x:number,y:number):Pt=>({
 function fitZoom(next:number){
   zoom=clamp(next,1,2.35);layout();
 }
-const uid=(id:string)=>own(state).find(o=>o.id===id);
+const uid=(id:string)=>team(state).find(o=>o.id===id);
 function selectUnit(id:string){
   const actor=uid(id);if(!actor||actor.health<=0)return;
-  selected=id;looking=false;updateHud();
+  selected=id;looking=false;doorMode=false;insertMode=false;
+  selectedNode=null;updateHud();
 }
 function message(){
-  if(state.phase==='planning')
-    return looking?'LOOK: tap where '+selected.toUpperCase()+' should face.':
-      'Tap ground for a waypoint, or drag from a soldier to sketch a route.';
+  if(state.phase==='planning'){
+    if(looking)return 'LOOK: choose a facing for the selected waypoint.';
+    if(doorMode)return 'DOOR: tap a door to append '+method.toUpperCase()+' order.';
+    if(insertMode)return 'INSERT: tap between route nodes to add a waypoint.';
+    if(selectedNode!==null)return 'Waypoint selected: drag to move, LOOK to face, − NODE to delete.';
+    return 'Tap to add a waypoint · drag a waypoint to edit · GO to execute.';
+  }
   if(state.phase==='running')
-    return 'Live operation. Pause at any time to rethink the plan.';
-  return state.phase==='won'?'Station secured. Reset to try another approach.':
-    'The team was lost. Reset and plan a safer entry.';
+    return 'Executing. Pause anytime to correct the plan.';
+  return state.phase==='won'?'Station secured. Review your report.':
+    'Team lost. Review the debrief and try a new plan.';
 }
 function updateHud(){
   ui.phase.textContent=state.phase==='planning'?'PLANNING':
@@ -82,6 +128,26 @@ function updateHud(){
     state.phase==='planning'?'GO <span>▶</span>':'RESET <span>↺</span>';
   ui.play.classList.toggle('running',state.phase==='running');
   ui.aim.setAttribute('aria-pressed',String(looking));
+  ui.door.setAttribute('aria-pressed',String(doorMode));
+  ui.insert.setAttribute('aria-pressed',String(insertMode));
+  ui.method.textContent=method.toUpperCase();
+  const active=uid(selected);
+  ui.stance.textContent=active?.posture==='crouch'?'STAND':'CROUCH';
+  ui.stance.setAttribute('aria-pressed',String(active?.posture==='crouch'));
+  ui.contact.setAttribute('aria-pressed',String(active?.haltOnContact));
+  ui.variant.textContent='SITE '+(state.variant+1)+'/3';
+  ui.delete.disabled=selectedNode===null;
+  ui.undo.disabled=!(active?.history.undo.length);
+  ui.redo.disabled=!(active?.history.redo.length);
+  ui.debrief.hidden=state.phase!=='won'&&state.phase!=='lost';
+  if(!ui.debrief.hidden){
+    const stats=debrief(state);
+    ui.debriefTitle.textContent=state.phase==='won'?'OPERATION COMPLETE':'MISSION FAILED';
+    ui.debriefStats.textContent='SITE: '+stats.variant+'\nTIME: '+stats.time+'s'+
+      '\nCASUALTIES: '+stats.casualties+'/2'+
+      '\nSHOTS: '+stats.shots+' | HITS: '+stats.hits+
+      '\nPAUSES: '+stats.pauses;
+  }
   for(const id of ['rook','moss'] as const){
     const a=uid(id);
     ui[id].classList.toggle('selected',id===selected);
@@ -91,12 +157,9 @@ function updateHud(){
   }
   ui.hint.textContent=message();
   ui.feed.textContent=state.events.at(-1)??'';
-  const visible=hostiles(state).filter(e=>e.health>0&&
-    own(state).some(a=>sees(a,e,state))).length;
-  ui.mission.textContent=state.phase==='won'?'ALL CONTACTS NEUTRALIZED':
-    state.phase==='lost'?'ALL OPERATORS DOWN':
-    visible?visible+' VISIBLE CONTACT'+(visible===1?'':'S')+' • CLEAR THE SITE':
-      'CONTACTS UNKNOWN • SECURE THE STATION';
+  const visible=enemies(state).filter(e=>e.health>0&&isSeen(state,e)).length;
+  ui.mission.textContent=missionText(state)+
+    (visible?' • '+visible+' CONTACT'+(visible===1?'':'S'):'');
 }
 function rect(x:number,y:number,w:number,h:number,color:string){
   draw.fillStyle=color;draw.fillRect(x,y,w,h);
@@ -159,8 +222,8 @@ function furniture(){
   for(const c of COVER){
     draw.fillStyle='#0f1b1c66';
     draw.fillRect(c.x-c.w/2+6,c.y-c.h/2+7,c.w,c.h);
-    rect(c.x-c.w/2,c.y-c.h/2,c.w,c.h,'#81725b');
-    rect(c.x-c.w/2+4,c.y-c.h/2+4,c.w-8,c.h-8,'#60594b');
+    rect(c.x-c.w/2,c.y-c.h/2,c.w,c.h,c.low?'#81725b':'#485552');
+    rect(c.x-c.w/2+4,c.y-c.h/2+4,c.w-8,c.h-8,c.low?'#60594b':'#394440');
     draw.strokeStyle='#a995777e';draw.lineWidth=2;
     draw.strokeRect(c.x-c.w/2+4,c.y-c.h/2+4,c.w-8,c.h-8);
     line({x:c.x-c.w/2+8,y:c.y},{x:c.x+c.w/2-8,y:c.y},'#9d907348',2);
@@ -203,7 +266,7 @@ function architecture(){
     line({x,y:94},{x:x+52,y:94},'#d4d5bb',2);
   }
 }
-function conical(a:Operator,radius=110){
+function conical(a:TeamActor,radius=110){
   const a0=a.heading-.93,a1=a.heading+.93;
   draw.beginPath();draw.moveTo(a.p.x,a.p.y);
   draw.arc(a.p.x,a.p.y,radius,a0,a1);
@@ -212,43 +275,99 @@ function conical(a:Operator,radius=110){
   draw.fill();
 }
 function paths(){
-  for(const a of own(state)){
-    if(a.health<=0||!a.path.length)continue;
+  for(const a of team(state)){
+    if(a.health<=0)continue;
     const c=colorFor(a.id);
-    draw.beginPath();draw.moveTo(a.p.x,a.p.y);
-    for(const p of a.path)draw.lineTo(p.x,p.y);
-    draw.strokeStyle=c;draw.globalAlpha=a.id===selected?.91:.50;
-    draw.lineWidth=a.id===selected?2.8:2.0;
-    draw.setLineDash([7,3]);draw.stroke();draw.setLineDash([]);
-    const last=a.path.at(-1)!;
-    circle(last.x,last.y,5,c);
-    draw.fillStyle='#182928';draw.beginPath();
-    draw.arc(last.x,last.y,2.4,0,Math.PI*2);draw.fill();
-    draw.globalAlpha=1;
+    const plan=a.plan;
+    if(plan.length){
+      draw.beginPath();draw.moveTo(a.p.x,a.p.y);
+      let from=a.p;
+      for(const node of plan){
+        if(node.kind==='move'||node.kind==='door'){
+          const course=route(from,node.p);
+          for(const p of course)draw.lineTo(p.x,p.y);
+          from=node.p;
+        }
+      }
+      draw.strokeStyle=c;draw.globalAlpha=a.id===selected?.88:.40;
+      draw.lineWidth=a.id===selected?2.6:1.6;
+      draw.setLineDash([8,4]);draw.stroke();draw.setLineDash([]);
+      draw.globalAlpha=1;
+    }
+    for(let i=0;i<plan.length;i++){
+      const n=plan[i],selectedNow=a.id===selected&&selectedNode===n.id;
+      const point=selectedNow&&draggingNode?draggingNode:n.p;
+      circle(point.x,point.y,selectedNow?10:7,
+        selectedNow?'#ecd29f':n.kind==='move'?c:'#c8ae7f');
+      circle(point.x,point.y,3,'#263836');
+      draw.textAlign='center';draw.fillStyle='#111e20';
+      draw.font='bold 10px monospace';
+      draw.fillText(String(i+1),point.x,point.y+3.1);
+      if(n.facing!==undefined){
+        const end={x:point.x+Math.cos(n.facing)*30,
+          y:point.y+Math.sin(n.facing)*30};
+        line(point,end,'#ebcea1',2.1);circle(end.x,end.y,2.2,'#ebcea1');
+      }
+      if(n.kind==='door'||n.kind==='wait'||n.kind==='sync'){
+        draw.textAlign='left';draw.font='bold 10px monospace';
+        draw.fillStyle='#e7c797';
+        draw.fillText(n.kind==='door'?(n.method??'open').toUpperCase():
+          n.kind.toUpperCase(),point.x+11,point.y-9);
+      }
+    }
   }
   if(trace&&trace.length>1){
     draw.beginPath();draw.moveTo(trace[0].x,trace[0].y);
     trace.slice(1).forEach(p=>draw.lineTo(p.x,p.y));
-    draw.strokeStyle='#e4c998';draw.lineWidth=3;
-    draw.stroke();
+    draw.strokeStyle='#e4c998';draw.lineWidth=3;draw.stroke();
   }else if(cursor&&state.phase==='planning'){
     const a=uid(selected);
     if(a&&a.health>0&&cursor.x>=0&&cursor.x<W&&cursor.y>=0&&cursor.y<H){
-      const start=a.path.at(-1)??a.p;
+      const start=a.plan.at(-1)?.p??a.p;
       draw.setLineDash([3,7]);line(start,cursor,
         looking?'#d8ad79':'rgba(193,219,213,.30)',1.4);
       draw.setLineDash([]);
     }
   }
 }
-function sprite(a:Operator){
-  if(a.side==='red'&&a.health>0){
-    const visible=own(state).some(blue=>sees(blue,a,state));
+function fog(){
+  // Cached visibility tile raster, refreshed only as the world moves.
+  if(fogStamp<0||state.seconds-fogStamp>.24){
+    fogStamp=state.seconds;
+    for(let row=0;row<19;row++)for(let col=0;col<16;col++){
+      const p={x:col*40+20,y:row*40+20};
+      fogData[row*16+col]=liveVisibility(state,p)?0:
+        knownAt(state,p.x,p.y)?1:2;
+    }
+  }
+  for(let row=0;row<19;row++)for(let col=0;col<16;col++){
+    const value=fogData[row*16+col];
+    if(value)rect(col*40,row*40,40,40,
+      value===1?'rgba(9,20,22,.28)':'rgba(9,20,22,.49)');
+  }
+}
+function missionMarkers(){
+  const p=state.mission==='extract'?state.scenario.extract:state.scenario.objective;
+  if(state.mission==='clear'||state.mission==='done')return;
+  draw.strokeStyle='#d8cc98';draw.lineWidth=2;
+  draw.beginPath();draw.arc(p.x,p.y,33,0,Math.PI*2);draw.stroke();
+  draw.fillStyle='#e1d1a2';draw.font='bold 12px monospace';
+  draw.textAlign='center';
+  draw.fillText(state.mission==='secure'?'SECURE':'EXTRACT',p.x,p.y-39);
+}
+function sprite(a:TeamActor){
+  if(a.side==='red'){
+    const visible=a.health>0&&isSeen(state,a);
     if(!visible){
-      if(state.spotted.has(a.id)&&a.lastSpotted){
-        draw.fillStyle='#d19d836e';
+      const memory=lastKnown(state,a.id);
+      if(memory&&state.seconds-memory.at<25){
+        draw.fillStyle=memory.status==='heard'?'#e6bb828e':'#d19d837e';
         draw.font='bold 16px monospace';draw.textAlign='center';
-        draw.fillText('?',a.lastSpotted.x,a.lastSpotted.y);
+        draw.fillText(memory.status==='heard'?'~':'?',memory.p.x,memory.p.y);
+        if(memory.status==='heard'){
+          draw.strokeStyle='#c9af7c4b';draw.lineWidth=1;
+          draw.beginPath();draw.arc(memory.p.x,memory.p.y,30,0,Math.PI*2);draw.stroke();
+        }
       }
       return;
     }
@@ -267,7 +386,11 @@ function sprite(a:Operator){
   }
   draw.save();draw.translate(a.p.x,a.p.y);draw.rotate(a.heading);
   circle(0,2,11,'#0d1b20af');circle(0,0,9.2,friendly?'#4b756f':'#794a43');
-  // Torso/head orientation and gun barrel.
+  // Body and alternating leg extension are driven by actual travel.
+  const gait=Math.sin(state.seconds*15+Math.floor(a.p.x*.15))*
+    Math.min(1,a.velocity/70)*3.5;
+  rect(-9,-7+gait,9,5,friendly?'#304842':'#4b3633');
+  rect(-9,2-gait,9,5,friendly?'#304842':'#4b3633');
   rect(-7,-5,14,10,c);
   rect(-10,-4,5,8,friendly?'#45625d':'#563e39');
   circle(4,0,3.8,friendly?'#d3dac1':'#d0a58a');
@@ -285,6 +408,12 @@ function sprite(a:Operator){
   }
 }
 function contacts(){
+  for(const shot of state.shots){
+    draw.globalAlpha=Math.max(0,(.24-shot.age)/.24)*.75;
+    line(shot.start,shot.end,shot.side==='blue'?'#eacb91':'#f5a187',1.6);
+    draw.globalAlpha=1;
+    if(shot.hit)circle(shot.end.x,shot.end.y,3,'#d79e79');
+  }
   for(const spark of state.sparks){
     const r=3+(1-spark.age/.2)*10;
     draw.globalAlpha=Math.max(0,1-spark.age/.2);
@@ -294,16 +423,10 @@ function contacts(){
   }
 }
 function endMessage(){
-  if(state.phase!=='won'&&state.phase!=='lost')return;
-  rect(122,311,397,116,'#142225e9');
-  draw.strokeStyle=state.phase==='won'?'#a9cbb7':'#cd8d77';
-  draw.lineWidth=2;draw.strokeRect(122,311,397,116);
-  draw.textAlign='center';
-  draw.fillStyle=state.phase==='won'?'#c3ddc7':'#e8aa93';
-  draw.font='bold 24px monospace';
-  draw.fillText(state.phase==='won'?'STATION SECURED':'TEAM LOST',320,365);
-  draw.fillStyle='#c2cfc8';draw.font='12px monospace';
-  draw.fillText('RESET TO TRY A DIFFERENT PLAN',320,393);
+  if(state.phase==='won'||state.phase==='lost'){
+    // The HTML debrief owns the readable text and restart buttons.
+    draw.fillStyle='#101c1f88';draw.fillRect(0,0,W,H);
+  }
 }
 function render(){
   draw.setTransform(dpr,0,0,dpr,0,0);
@@ -312,7 +435,7 @@ function render(){
   draw.save();
   draw.translate(ox,oy);draw.scale(viewScale,viewScale);
   draw.fillStyle='#52655b';draw.fillRect(-9,-9,W+18,H+18);
-  terrain();furniture();architecture();
+  terrain();furniture();architecture();fog();missionMarkers();
   paths();
   for(const a of state.operators)sprite(a);
   contacts();endMessage();
@@ -320,56 +443,128 @@ function render(){
   draw.strokeRect(0,0,W,H);
   draw.restore();
 }
-function toggleAim(){looking=!looking;updateHud();}
+function toggleAim(){looking=!looking;doorMode=false;insertMode=false;updateHud();}
 function useSelectedGround(pt:Pt){
   if(state.phase!=='planning')return;
   if(looking){
-    setLook(state,selected,pt);looking=false;updateHud();return;
+    if(!planLook(state,selected,pt,selectedNode??undefined))
+      state.events.push('SELECT OR CREATE A NODE FIRST');
+    looking=false;updateHud();return;
   }
-  if(!queueWaypoint(state,selected,pt)){
-    state.events.push('NO WALKABLE ROUTE');updateHud();
+  if(doorMode){
+    const door=nearestDoor(state,pt);
+    if(!door||!planDoor(state,selected,door.id,method))
+      state.events.push('TAP A REACHABLE CLOSED DOOR');
+    doorMode=false;selectedNode=null;updateHud();return;
   }
+  if(insertMode){
+    const a=uid(selected);
+    if(a){
+      let index=a.plan.length,best=Infinity,prev=a.p;
+      a.plan.forEach((n,i)=>{
+        const ab={x:n.p.x-prev.x,y:n.p.y-prev.y};
+        const t=clamp(((pt.x-prev.x)*ab.x+(pt.y-prev.y)*ab.y)/
+          Math.max(1,ab.x*ab.x+ab.y*ab.y),0,1);
+        const gap=Math.hypot(pt.x-prev.x-ab.x*t,pt.y-prev.y-ab.y*t);
+        if(gap<best){best=gap;index=i;}
+        prev=n.p;
+      });
+      if(!insertPlanNode(state,selected,index,pt))
+        state.events.push('CANNOT INSERT HERE');
+    }
+    insertMode=false;updateHud();return;
+  }
+  if(!planMove(state,selected,pt))
+    state.events.push('NO WALKABLE ROUTE');
+  selectedNode=null;updateHud();
 }
-function reset(){
-  state=newTacticalState();selected='rook';looking=false;cursor=null;
-  trace=null;zoom=1;panX=panY=0;layout();updateHud();
+function reset(next=state.variant){
+  state=newSession(next);selected='rook';looking=false;doorMode=false;
+  insertMode=false;selectedNode=null;draggingNode=null;
+  cursor=null;trace=null;zoom=1;panX=panY=0;
+  fogStamp=-1;lastSoundShotCount=0;lastEventAudio='';
+  layout();updateHud();
 }
 ui.rook.addEventListener('click',()=>selectUnit('rook'));
 ui.moss.addEventListener('click',()=>selectUnit('moss'));
 ui.aim.addEventListener('click',toggleAim);
-ui.clear.addEventListener('click',()=>{clearPath(state,selected);updateHud();});
-ui.play.addEventListener('click',()=>{
-  if(state.phase==='won'||state.phase==='lost')reset();
-  else{looking=false;toggleExecution(state);updateHud();}
+ui.clear.addEventListener('click',()=>{clearPlan(state,selected);selectedNode=null;updateHud();});
+ui.undo.addEventListener('click',()=>{undoPlan(state,selected);selectedNode=null;updateHud();});
+ui.redo.addEventListener('click',()=>{redoPlan(state,selected);selectedNode=null;updateHud();});
+ui.delete.addEventListener('click',()=>{
+  if(selectedNode!==null)deletePlanNode(state,selected,selectedNode);
+  selectedNode=null;updateHud();
 });
-ui.restart.addEventListener('click',reset);
+ui.insert.addEventListener('click',()=>{
+  insertMode=!insertMode;doorMode=false;looking=false;updateHud();
+});
+ui.door.addEventListener('click',()=>{
+  doorMode=!doorMode;insertMode=false;looking=false;updateHud();
+});
+ui.method.addEventListener('click',()=>{
+  method=method==='open'?'kick':method==='kick'?'hold':'open';updateHud();
+});
+ui.wait.addEventListener('click',()=>{planWait(state,selected);updateHud();});
+ui.sync.addEventListener('click',()=>{planSync(state);updateHud();});
+ui.stance.addEventListener('click',()=>{
+  posture(state,selected);fogStamp=-1;updateHud();
+});
+ui.contact.addEventListener('click',()=>{toggleContactRule(state,selected);updateHud();});
+ui.variant.addEventListener('click',()=>reset(state.variant+1));
+ui.retry.addEventListener('click',()=>reset());
+ui.next.addEventListener('click',()=>reset(state.variant+1));
+ui.play.addEventListener('click',()=>{
+  unlockAudio();
+  if(state.phase==='won'||state.phase==='lost')reset();
+  else{looking=false;doorMode=false;insertMode=false;
+    toggling(state);updateHud();}
+});
+ui.restart.addEventListener('click',()=>reset());
 window.addEventListener('keydown',e=>{
   if(e.code==='Space'&&!e.repeat){
-    e.preventDefault();if(state.phase==='won'||state.phase==='lost')reset();
-    else toggleExecution(state);updateHud();
+    e.preventDefault();unlockAudio();
+    if(state.phase==='won'||state.phase==='lost')reset();
+    else toggling(state);updateHud();
   }
   if(e.code==='Digit1')selectUnit('rook');
   if(e.code==='Digit2')selectUnit('moss');
-  if(e.code==='KeyX'){clearPath(state,selected);updateHud();}
-  if(e.code==='KeyL'){toggleAim();}
+  if(e.code==='KeyX'){clearPlan(state,selected);updateHud();}
+  if(e.code==='KeyL')toggleAim();
+  if(e.code==='KeyZ'&&(e.ctrlKey||e.metaKey)){
+    e.preventDefault();
+    if(e.shiftKey)redoPlan(state,selected);
+    else undoPlan(state,selected);updateHud();
+  }
   if(e.code==='KeyR'&&!e.repeat)reset();
 });
 function pointerWorld(e:PointerEvent){return toWorld(e.clientX,e.clientY);}
+const hitNode=(p:Pt):{id:number;index:number}|null=>{
+  const unit=uid(selected);
+  if(!unit)return null;
+  for(let i=unit.plan.length-1;i>=0;i--){
+    const n=unit.plan[i];
+    if(distance(n.p,p)<Math.max(14,12/viewScale))
+      return {id:n.id,index:i};
+  }
+  return null;
+};
 canvas.addEventListener('pointerdown',e=>{
   e.preventDefault();canvas.setPointerCapture(e.pointerId);
   const pt=pointerWorld(e);
-  const hit=own(state).find(a=>a.health>0&&distance(a.p,pt)<22);
+  const hit=team(state).find(a=>a.health>0&&distance(a.p,pt)<22);
   if(hit)selectUnit(hit.id);
+  const node=state.phase==='planning'&&!hit?hitNode(pt):null;
+  if(node)selectedNode=node.id;
   activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
-    startX:e.clientX,startY:e.clientY,wasUnit:!!hit,
-    mode:'undecided',moved:false});
+    startX:e.clientX,startY:e.clientY,wasUnit:!!hit,nodeId:node?.id??null,
+    mode:node?'node':'undecided',moved:false});
   if(activePointers.size>=2){
     for(const p of activePointers.values())p.mode='pan';
     const pts=[...activePointers.values()];
     pinchDistance=distance({x:pts[0].x,y:pts[0].y},
       {x:pts[1].x,y:pts[1].y});
     panMid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
-    trace=null;
+    trace=null;draggingNode=null;
   }
 });
 canvas.addEventListener('pointermove',e=>{
@@ -382,17 +577,21 @@ canvas.addEventListener('pointermove',e=>{
   if(Math.hypot(e.clientX-p.startX,e.clientY-p.startY)>9)p.moved=true;
   if(activePointers.size===2){
     const pts=[...activePointers.values()];
-    const d=distance({x:pts[0].x,y:pts[0].y},{x:pts[1].x,y:pts[1].y});
+    const gap=distance({x:pts[0].x,y:pts[0].y},
+      {x:pts[1].x,y:pts[1].y});
     const mid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
     if(panMid){panX+=mid.x-panMid.x;panY+=mid.y-panMid.y;}
-    if(pinchDistance>8){zoom=clamp(zoom*d/pinchDistance,1,2.35);}
-    pinchDistance=d;panMid=mid;layout();return;
+    if(pinchDistance>8)zoom=clamp(zoom*gap/pinchDistance,1,2.35);
+    pinchDistance=gap;panMid=mid;layout();return;
+  }
+  if(p.mode==='node'&&p.moved&&p.nodeId!==null){
+    draggingNode=cursor;return;
   }
   if(state.phase==='planning'&&p.wasUnit&&p.moved){
     p.mode='route';
     if(!trace)trace=[{...uid(selected)!.p}];
-    if(distance(trace.at(-1)!,cursor)>17)trace.push({...cursor});
-  }else if(p.moved&&e.pointerType==='mouse'&&e.button===1){
+    if(distance(trace.at(-1)!,cursor)>20)trace.push({...cursor});
+  }else if(p.moved&&e.pointerType==='mouse'&&(e.buttons&4)){
     panX+=dx;panY+=dy;layout();
   }
 });
@@ -401,17 +600,24 @@ function releasePointer(e:PointerEvent,cancelled=false){
   if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
   const pt=pointerWorld(e);
   if(!cancelled&&state.phase==='planning'&&activePointers.size===1){
-    if(p.mode==='route'&&trace&&trace.length>1){
-      const points=[...trace,pt];let last=uid(selected)!.p;
+    if(p.mode==='node'&&p.nodeId!==null){
+      if(p.moved&&!movePlanNode(state,selected,p.nodeId,pt))
+        state.events.push('INVALID NODE POSITION');
+      selectedNode=p.nodeId;
+    }else if(p.mode==='route'&&trace&&trace.length>1){
+      const points=[...trace,pt];
+      let last=uid(selected)!.plan.at(-1)?.p??uid(selected)!.p;
       for(const v of points.slice(1)){
-        if(distance(v,last)<22)continue;
-        if(queueWaypoint(state,selected,v))last=v;
+        if(distance(v,last)<24)continue;
+        if(planMove(state,selected,v))last=v;
       }
-    }else if(!p.moved&&!p.wasUnit&&
-      pt.x>=0&&pt.y>=0&&pt.x<=W&&pt.y<=H)useSelectedGround(pt);
+      selectedNode=null;
+    }else if(!p.moved&&!p.wasUnit&&pt.x>=0&&pt.y>=0&&
+      pt.x<=W&&pt.y<=H)useSelectedGround(pt);
   }
-  trace=null;activePointers.delete(e.pointerId);
+  trace=null;draggingNode=null;activePointers.delete(e.pointerId);
   if(activePointers.size<2){panMid=null;pinchDistance=0;}
+  updateHud();
 }
 canvas.addEventListener('pointerup',e=>releasePointer(e));
 canvas.addEventListener('pointercancel',e=>releasePointer(e,true));
@@ -426,9 +632,19 @@ function tick(now:number){
   if(state.phase==='running'){
     accum+=dt;
     while(accum>=1/60){
-      step(state,1/60);accum-=1/60;
+      stepSession(state,1/60);accum-=1/60;
     }
   }else accum=0;
+  if(audio&&state.shots.length>lastSoundShotCount){
+    playTone(115,.095,true);
+  }
+  lastSoundShotCount=state.shots.length;
+  const event=state.events.at(-1)??'';
+  if(event!==lastEventAudio&&event.includes('OPENED'))
+    playTone(160,.16);
+  if(event!==lastEventAudio&&event.includes('KICKED'))
+    playTone(90,.25,true);
+  lastEventAudio=event;
   if(now-hudAt>120){updateHud();hudAt=now;}
   render();requestAnimationFrame(tick);
 }

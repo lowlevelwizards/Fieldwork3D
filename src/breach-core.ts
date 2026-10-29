@@ -28,8 +28,8 @@ export const WALLS:Segment[]=[
 export const COVER:Obstacle[]=[
   {x:159,y:189,w:86,h:39,low:true},
   {x:260,y:392,w:78,h:28,low:true},
-  {x:448,y:164,w:94,h:40,low:true},
-  {x:493,y:390,w:55,h:71,low:true},
+  {x:448,y:164,w:94,h:40,low:false},
+  {x:493,y:390,w:55,h:71,low:false},
   {x:23,y:573,w:94,h:42,low:true},
   {x:505,y:594,w:82,h:46,low:true},
 ];
