@@ -5,11 +5,10 @@ import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   planMove,planMoveStroke,planLook,planDoor,planWait,planSync,movePlanNode,
-  planPie,planPieAt,editPie,doorAtNode,setStrafe,backOne,
+  planPieAt,editPie,doorAtNode,setStrafe,backOne,
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,stepSession,nearestDoor,knownAt,liveVisibility,
 } from './breach-game.ts';
-import {bestPieDoor} from './breach-maneuvers.ts';
 import {type PieSide} from './breach-plan.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import './breach-style.css';
