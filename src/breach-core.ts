@@ -1,0 +1,259 @@
+/**
+ * Fieldwork / Breach 052 — standalone tactical kernel.
+ * Original level, artwork and mechanics informed by freeform pause-and-plan tactics.
+ * No dependency on the abandoned regional terrain or 3D prototypes.
+ */
+export type Pt={x:number;y:number};
+export type Segment={a:Pt;b:Pt};
+export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number};
+export type Obstacle={x:number;y:number;w:number;h:number;low?:boolean};
+export type Side='blue'|'red';
+export type Operator={id:string;name:string;side:Side;p:Pt;heading:number;
+  path:Pt[];health:number;shots:number;fireCd:number;aimLock:boolean;
+  contacted:boolean;lastSpotted:Pt|null;};
+export type Spark={p:Pt;age:number;side:Side};
+export type Phase='planning'|'running'|'won'|'lost';
+export type TacticalState={phase:Phase;seconds:number;operators:Operator[];
+  doors:Door[];sparks:Spark[];spotted:Set<string>;events:string[];
+  rng:number;};
+export const W=640,H=740,GRID=16;
+const wall=(x:number,y:number,u:number,v:number):Segment=>
+  ({a:{x,y},b:{x:u,y:v}});
+export const WALLS:Segment[]=[
+  wall(112,100,590,100),wall(112,100,112,532),
+  wall(590,100,590,532),
+  wall(112,532,276,532),wall(329,532,590,532),
+  wall(382,100,382,305),wall(382,345,382,532),
+];
+export const COVER:Obstacle[]=[
+  {x:159,y:189,w:86,h:39,low:true},
+  {x:260,y:392,w:78,h:28,low:true},
+  {x:448,y:164,w:94,h:40,low:true},
+  {x:493,y:390,w:55,h:71,low:true},
+  {x:23,y:573,w:94,h:42,low:true},
+  {x:505,y:594,w:82,h:46,low:true},
+];
+const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
+export const doorCenter=(d:Door):Pt=>({
+  x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2});
+export const initialDoors=():Door[]=>[
+  {id:'FRONT',a:{x:276,y:532},b:{x:329,y:532},open:false,openedAt:-1},
+  {id:'INNER',a:{x:382,y:305},b:{x:382,y:345},open:false,openedAt:-1},
+];
+export const pointToSegment=(p:Pt,s:Segment):number=>{
+  const dx=s.b.x-s.a.x,dy=s.b.y-s.a.y;
+  const t=Math.max(0,Math.min(1,((p.x-s.a.x)*dx+(p.y-s.a.y)*dy)/
+    Math.max(.0001,dx*dx+dy*dy)));
+  return Math.hypot(p.x-s.a.x-dx*t,p.y-s.a.y-dy*t);
+};
+const orient=(a:Pt,b:Pt,c:Pt)=>
+  (b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
+export function segmentsCross(a:Segment,b:Segment):boolean{
+  const ab1=orient(a.a,a.b,b.a),ab2=orient(a.a,a.b,b.b);
+  const ba1=orient(b.a,b.b,a.a),ba2=orient(b.a,b.b,a.b);
+  return ab1*ab2<0&&ba1*ba2<0;
+}
+const pointInCover=(p:Pt,o:Obstacle,r=0)=>
+  Math.abs(p.x-o.x)<o.w/2+r&&Math.abs(p.y-o.y)<o.h/2+r;
+export function passable(p:Pt):boolean{
+  if(p.x<13||p.y<20||p.x>W-13||p.y>H-13)return false;
+  if(WALLS.some(s=>pointToSegment(p,s)<10))return false;
+  if(COVER.some(o=>pointInCover(p,o,10)))return false;
+  return true;
+}
+export function isClear(a:Pt,b:Pt,doors:Door[],ignoreDoors=false):boolean{
+  const shot={a,b};
+  if(WALLS.some(w=>segmentsCross(shot,w)))return false;
+  if(!ignoreDoors&&doors.some(d=>!d.open&&segmentsCross(shot,d)))
+    return false;
+  // Furniture blocks bullets/visibility but can be bypassed through doors.
+  const n=Math.max(1,Math.ceil(distance(a,b)/8));
+  for(let i=1;i<n;i++){
+    const t=i/n,p={x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t};
+    if(COVER.some(o=>pointInCover(p,o,0)))return false;
+  }
+  return true;
+}
+const cellAt=(p:Pt)=>({col:Math.round(p.x/GRID),row:Math.round(p.y/GRID)});
+const cellPoint=(col:number,row:number):Pt=>({x:col*GRID,y:row*GRID});
+const key=(col:number,row:number)=>col+','+row;
+/** A* only translates a deliberately chosen waypoint into a collision-safe
+ * local route; the user still chooses every tactical destination. */
+export function route(from:Pt,to:Pt):Pt[]{
+  if(!passable(to))return [];
+  const st=cellAt(from),goal=cellAt(to);
+  const startKey=key(st.col,st.row),goalKey=key(goal.col,goal.row);
+  if(startKey===goalKey)return [{...to}];
+  const open=[{col:st.col,row:st.row,g:0,f:0}];
+  const best=new Map<string,number>([[startKey,0]]);
+  const parents=new Map<string,string>();
+  const visited=new Set<string>();
+  let found=false;
+  const dirs=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
+  for(let iter=0;open.length&&iter<6000;iter++){
+    open.sort((a,b)=>a.f-b.f);
+    const at=open.shift()!,k=key(at.col,at.row);
+    if(visited.has(k))continue;visited.add(k);
+    if(k===goalKey){found=true;break;}
+    for(const [dx,dy] of dirs){
+      const col=at.col+dx,row=at.row+dy,p=cellPoint(col,row);
+      if(!passable(p))continue;
+      if(dx!==0&&dy!==0&&
+        (!passable(cellPoint(at.col+dx,at.row))||
+         !passable(cellPoint(at.col,at.row+dy))))continue;
+      const next=key(col,row),cost=at.g+Math.hypot(dx,dy);
+      if(cost>=(best.get(next)??Infinity))continue;
+      best.set(next,cost);parents.set(next,k);
+      open.push({col,row,g:cost,
+        f:cost+Math.hypot(col-goal.col,row-goal.row)});
+    }
+  }
+  if(!found)return [];
+  const path:Pt[]=[];
+  let cursor=goalKey;
+  while(cursor!==startKey){
+    const [col,row]=cursor.split(',').map(Number);
+    path.push(cellPoint(col,row));
+    const parent=parents.get(cursor);if(!parent)return [];
+    cursor=parent;
+  }
+  path.reverse();
+  // Remove collinear small grid legs; retain all corners.
+  const compact:Pt[]=[];
+  for(let i=0;i<path.length;i++){
+    const a=compact.at(-1)??from,b=path[i],c=path[i+1];
+    if(c){
+      const cross=(b.x-a.x)*(c.y-b.y)-(b.y-a.y)*(c.x-b.x);
+      if(Math.abs(cross)<1e-6)continue;
+    }
+    compact.push(b);
+  }
+  // If close enough use the exact requested endpoint.
+  if(distance(compact.at(-1)??from,to)>2)compact.push({...to});
+  else compact[compact.length-1]={...to};
+  return compact;
+}
+const actor=(id:string,name:string,side:Side,x:number,y:number,
+  heading=-Math.PI/2):Operator=>({
+  id,name,side,p:{x,y},heading,path:[],health:side==='blue'?2:1,
+  shots:0,fireCd:0,aimLock:false,contacted:false,lastSpotted:null,
+});
+export const newTacticalState=():TacticalState=>({
+  phase:'planning',seconds:0,doors:initialDoors(),sparks:[],
+  spotted:new Set(),events:['PLAN THE ENTRY'],
+  rng:10361,operators:[
+    actor('rook','ROOK','blue',282,628,-Math.PI/2),
+    actor('moss','MOSS','blue',346,642,-Math.PI/2),
+    actor('sentry','SENTRY','red',242,301,Math.PI/2),
+    actor('guard','GUARD','red',523,254,Math.PI*.79),
+  ],
+});
+export const own=(s:TacticalState)=>s.operators.filter(a=>a.side==='blue');
+export const hostiles=(s:TacticalState)=>s.operators.filter(a=>a.side==='red');
+export function queueWaypoint(s:TacticalState,id:string,to:Pt):boolean{
+  const a=own(s).find(o=>o.id===id);
+  if(!a||a.health<=0||s.phase==='won'||s.phase==='lost')return false;
+  const from=a.path.at(-1)??a.p;
+  const way=route(from,to);
+  if(!way.length)return false;
+  a.path.push(...way);a.aimLock=false;return true;
+}
+export function clearPath(s:TacticalState,id:string){
+  const a=own(s).find(o=>o.id===id);
+  if(a){a.path=[];a.aimLock=false;}
+}
+export function setLook(s:TacticalState,id:string,point:Pt):boolean{
+  const a=own(s).find(o=>o.id===id);if(!a)return false;
+  a.heading=Math.atan2(point.y-a.p.y,point.x-a.p.x);
+  a.aimLock=true;return true;
+}
+export function toggleExecution(s:TacticalState){
+  if(s.phase==='planning')s.phase='running';
+  else if(s.phase==='running')s.phase='planning';
+}
+const viewAngle=(a:number,b:number)=>{
+  const d=Math.atan2(Math.sin(a-b),Math.cos(a-b));
+  return Math.abs(d);
+};
+export function sees(a:Operator,b:Operator,s:TacticalState){
+  if(a.health<=0||b.health<=0||distance(a.p,b.p)>260)return false;
+  const angle=Math.atan2(b.p.y-a.p.y,b.p.x-a.p.x);
+  return viewAngle(angle,a.heading)<.93&&isClear(a.p,b.p,s.doors);
+}
+const pickTarget=(a:Operator,s:TacticalState)=>{
+  const enemies=s.operators.filter(o=>o.side!==a.side&&sees(a,o,s));
+  enemies.sort((b,c)=>distance(a.p,b.p)-distance(a.p,c.p));
+  return enemies[0];
+};
+const roll=(s:TacticalState)=>{
+  s.rng=(Math.imul(s.rng,1664525)+1013904223)>>>0;
+  return s.rng/4294967296;
+};
+function addEvent(s:TacticalState,t:string){
+  if(s.events.at(-1)!==t){s.events.push(t);if(s.events.length>5)s.events.shift();}
+}
+export function step(s:TacticalState,dt:number){
+  if(s.phase!=='running')return;
+  const h=Math.min(Math.max(0,dt),.08);
+  s.seconds+=h;
+  for(const spark of s.sparks)spark.age+=h;
+  s.sparks=s.sparks.filter(a=>a.age<.20);
+  for(const a of s.operators){
+    if(a.health<=0)continue;
+    a.fireCd=Math.max(0,a.fireCd-h);
+    if(a.side==='blue'&&a.path.length){
+      const next=a.path[0],dx=next.x-a.p.x,dy=next.y-a.p.y;
+      const len=Math.hypot(dx,dy);
+      if(len<3){a.path.shift();continue;}
+      const stepLen=Math.min(len,74*h);
+      const nextPos={x:a.p.x+dx/len*stepLen,y:a.p.y+dy/len*stepLen};
+      // Automatic door interaction: movement pauses to open a reachable
+      // hinged door. Still physically blocks sight until opened.
+      const nearby=s.doors.find(d=>!d.open&&
+        distance(doorCenter(d),a.p)<29&&
+        distance(doorCenter(d),nextPos)<31);
+      if(nearby){
+        nearby.open=true;nearby.openedAt=s.seconds;
+        addEvent(s,nearby.id+' DOOR OPENED');
+      }
+      if(passable(nextPos)){
+        a.p=nextPos;
+        if(!a.aimLock)a.heading=Math.atan2(dy,dx);
+      }else{a.path=[];addEvent(s,a.name+' BLOCKED');}
+    }
+  }
+  // An open door gives the enemy in the next room a reason to react:
+  // the closest sentry faces the doorway as the sound arrives.
+  for(const a of hostiles(s)){
+    if(a.health<=0)continue;
+    const recent=s.doors.filter(d=>d.open&&
+      s.seconds-d.openedAt<1.25&&
+      distance(a.p,doorCenter(d))<245);
+    if(recent.length&&!a.contacted){
+      const to=doorCenter(recent[0]);
+      a.heading=Math.atan2(to.y-a.p.y,to.x-a.p.x);
+      a.contacted=true;
+    }
+  }
+  for(const a of s.operators){
+    if(a.health<=0)continue;
+    const t=pickTarget(a,s);
+    if(!t)continue;
+    if(a.side==='blue'){s.spotted.add(t.id);t.lastSpotted={...t.p};}
+    if(a.fireCd>0)continue;
+    a.fireCd=a.side==='blue'?.52:.77;
+    a.shots++;
+    s.sparks.push({p:{...a.p},age:0,side:a.side});
+    const chance=a.side==='blue'?.70:.40;
+    if(roll(s)<chance){
+      t.health--;
+      addEvent(s,t.health<=0?t.name+' DOWN':t.name+' HIT');
+      if(t.health<=0)t.path=[];
+    }else addEvent(s,a.name+' FIRED');
+  }
+  if(hostiles(s).every(o=>o.health<=0)){
+    s.phase='won';addEvent(s,'STATION SECURED');
+  }else if(own(s).every(o=>o.health<=0)){
+    s.phase='lost';addEvent(s,'TEAM LOST');
+  }
+}
