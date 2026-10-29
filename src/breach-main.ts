@@ -651,9 +651,20 @@ function renderProjectedPlans(){
   // visibility and damage flags as the physical effects and 2D renderer.
   for(const shot of state.shots){
     const visibility=shotVisibility(state,shot);
-    if(!visibility.impact||!shot.hit)continue;
+    const start=worldToScreen(shot.start,15);
     const point=worldToScreen(shot.end,27);
     const fade=contactFade(shot.age,.40);
+    if(visibility.trace&&shot.age<.22){
+      draw.globalAlpha=contactFade(shot.age,.22);
+      line(start,point,shot.side==='blue'?'#f6dfa9':'#f0a28a',2.2);
+      draw.globalAlpha=1;
+    }
+    if(visibility.flash&&shot.age<.14){
+      draw.globalAlpha=contactFade(shot.age,.14);
+      circle(start.x,start.y,6+2*(1-shot.age/.14),'#ffdd9c');
+      draw.globalAlpha=1;
+    }
+    if(!visibility.impact||!shot.hit)continue;
     draw.globalAlpha=fade;
     draw.strokeStyle=shot.down?'#f5c5b1':'#ed9e80';
     draw.lineWidth=shot.down?3:2;
