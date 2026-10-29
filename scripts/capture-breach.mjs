@@ -50,6 +50,23 @@ try{
   const visibleButtons=await phone.locator('.bar button:visible').count();
   if(visibleButtons!==5)
     throw Error('Expected only five persistent tactical controls, got '+visibleButtons);
+  // 078: three views of one unchanged authoritative planning state.
+  await phone.screenshot({path:resolve(folder,'10-presentation-iso.png')});
+  await phone.locator('#moreOrders').click();
+  await phone.locator('#viewTop').click();
+  await phone.locator('#moreOrders').click();
+  await phone.waitForTimeout(380);
+  await phone.screenshot({path:resolve(folder,'11-presentation-top.png')});
+  await phone.locator('#moreOrders').click();
+  await phone.locator('#view2d').click();
+  await phone.locator('#moreOrders').click();
+  await phone.screenshot({path:resolve(folder,'12-presentation-2d.png')});
+  await phone.locator('#moreOrders').click();
+  await phone.locator('#viewIso').click();
+  await phone.locator('#moreOrders').click();
+  await phone.waitForTimeout(380);
+  if(await phone.locator('#moreOrders').getAttribute('aria-pressed')!=='false')
+    throw Error('Presentation view audit left TOOLS open');
   const initial=await cameraState();
   const cdp=await phone.context().newCDPSession(phone);
   const touch=async(start,frames)=>{
@@ -173,6 +190,8 @@ try{
   if(!bounds||!nav||bounds.y+bounds.height>=nav.y)
     throw Error('Contextual tray overlaps the bottom action bar');
   await phone.screenshot({path:resolve(folder,'09-phone-door-context-no-overlap.png')});
+  if(!await phone.locator('#breach3dCanvas').evaluate(c=>!!c.dataset.cameraMode))
+    throw Error('3D camera status became unavailable after mode switching');
   await phone.locator('#contextTools button[data-action="ctxOpen"]').click();
   if(await phone.locator('#back').isDisabled())
     throw Error('Contextual door click failed to queue a door approach/order');
