@@ -289,8 +289,6 @@ export function planAim(s:Session,id:string,mode:AimMode,target:Pt,nodeId?:numbe
   if(node)return edit(s,a,()=>{
     node.aimMode=patch.aimMode;node.facing=patch.facing;
     node.aimPoint=patch.aimPoint;
-    // Old segment-specific strafe intent is replaced by a persistent rule.
-    node.moveMode='advance';
   });
   return addNode(s,id,'look',pos,patch);
 }
