@@ -123,15 +123,6 @@ button:focus-visible{outline:2px solid #e9c493;outline-offset:3px}
 
 /* 064–073: world-first HUD. Advanced commands remain accessible, not dominant. */
 #breachCanvas{z-index:1;background:transparent}
-.camera-tools{position:fixed;top:calc(88px + env(safe-area-inset-top));
- right:11px;z-index:5;display:flex;align-items:center;gap:4px;
- background:#142322c5;border:1px solid #566d63a6;border-radius:6px;
- padding:4px;backdrop-filter:blur(5px)}
-.camera-tools button{font-size:10px;padding:6px 8px;border-radius:3px;
- border:1px solid transparent;background:transparent;min-width:32px;
- color:#c2d2ca;font-weight:700;letter-spacing:.03em}
-.camera-tools button[aria-pressed="true"]{color:#1b302d;background:#c8d4b6}
-.camera-tools button:active{background:#64786f}
 .orders.compact button:not(#back):not(#undo):not(#redo){
  display:none
 }
@@ -150,32 +141,16 @@ button:focus-visible{outline:2px solid #e9c493;outline-offset:3px}
 .context-tools .danger{background:#5a3e39;border-color:#a57b6b}
 .bar .actions #moreOrders{min-width:48px}
 @media(max-width:450px){
- .camera-tools{top:calc(88px + env(safe-area-inset-top));
- right:7px;gap:1px;padding:3px}
- .camera-tools button{font-size:9px;padding:7px 6px;min-width:29px}
  .context-tools{gap:3px;padding:4px;max-width:calc(100vw - 12px)}
  .context-tools button{font-size:10px;padding:7px 8px}
  .guidance{top:calc(77px + env(safe-area-inset-top));left:31%;
    transform:translateX(-50%);max-width:47%;text-align:left}
 }
 @media(max-height:470px){
- .camera-tools{top:calc(36px + env(safe-area-inset-top))}
  .context-tools button{min-height:29px;padding:4px 6px}
 }
 
-/* Build 074: compact two-row camera panel with real, usable touch targets. */
-.camera-tools{width:272px;max-width:calc(100vw - 14px);flex-wrap:wrap;
-  justify-content:flex-end;gap:4px;padding:5px}
-.camera-tools button{min-width:38px;min-height:37px;
-  padding:7px 8px;touch-action:manipulation;white-space:nowrap}
-.camera-tools #cameraOrbit,.camera-tools #cameraPan{min-width:53px}
-.camera-tools button[aria-pressed="true"]{background:#c8d4b6;color:#1b302d}
 @media(max-width:450px){
-  .camera-tools{width:248px;gap:3px;padding:4px;top:calc(83px + env(safe-area-inset-top))}
-  .camera-tools button{min-width:32px;min-height:34px;padding:6px 6px}
-  .camera-tools #cameraOrbit,.camera-tools #cameraPan{min-width:49px}
 }
 @media(max-height:470px){
-  .camera-tools{width:258px;max-height:78px;overflow:auto}
-  .camera-tools button{min-height:29px}
 }
