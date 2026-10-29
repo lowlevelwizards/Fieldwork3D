@@ -109,10 +109,18 @@ export class TacticalScene3D{
     this.box(this.root,247,-.65,316,270,1.5,432,floorA,false);
     this.box(this.root,485,-.65,316,207,1.5,432,floorB,false);
     const tile=this.solid(0xbdb3a1);
-    for(let x=122;x<580;x+=28)for(let z=114;z<523;z+=28){
-      this.box(this.root,x,-.05,z,27,.10,1,tile,false);
-      if(x===374||x===402)continue;
-    }
+    const grout:Pt[]=[];
+    for(let x=122;x<580;x+=28)for(let z=114;z<523;z+=28)
+      grout.push({x,y:z});
+    const strips=new THREE.InstancedMesh(
+      new THREE.BoxGeometry(27,.10,1),tile,grout.length);
+    const transform=new THREE.Object3D();
+    grout.forEach((p,i)=>{
+      transform.position.set(p.x,-.05,p.y);transform.updateMatrix();
+      strips.setMatrixAt(i,transform.matrix);
+    });
+    strips.instanceMatrix.needsUpdate=true;strips.receiveShadow=true;
+    this.root.add(strips);
     // Each wall is one real mesh. Simulation geometry remains authoritative.
     for(let i=0;i<WALLS.length;i++){
       const segment=WALLS[i];
