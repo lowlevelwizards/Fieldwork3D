@@ -34,8 +34,6 @@ try{
   await phone.goto(url,{waitUntil:'domcontentloaded'});
   await phone.locator('#breachCanvas').waitFor();
   await phone.waitForTimeout(350);
-  const errors=[];
-  phone.on('pageerror',e=>errors.push(e.message));
   const cameraState=async()=>phone.locator('#breach3dCanvas').evaluate(c=>({
     yaw:Number(c.dataset.cameraYaw),pitch:Number(c.dataset.cameraPitch),
     zoom:Number(c.dataset.cameraZoom),
