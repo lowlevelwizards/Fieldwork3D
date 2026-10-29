@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+  <title>Fieldwork / Presentation Lab</title>
+  <style>
+  :root{color-scheme:dark;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;color:#d9e0d5;background:#182a2a}
+  *{box-sizing:border-box}body{margin:0;overflow:hidden}
+  .lab{position:fixed;top:calc(12px + env(safe-area-inset-top));left:12px;right:12px;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:6px;pointer-events:none}
+  .lab>*{pointer-events:auto}header{margin-right:auto;background:#152623ed;padding:12px;border:1px solid #91a69a;border-radius:5px}
+  header strong{display:block;letter-spacing:.13em;font-size:13px}header span{display:block;color:#adbead;font-size:10px;margin-top:4px}
+  button{font:inherit;font-size:11px;min-height:40px;padding:9px 11px;color:#e6ead8;background:#28433d;border:1px solid #82978a;border-radius:5px;touch-action:manipulation}
+  button:active{background:#8f8663;color:#131f1c}
+  footer{position:fixed;bottom:calc(12px + env(safe-area-inset-bottom));left:12px;right:12px;z-index:4;text-align:center;background:#172825d9;padding:9px;font-size:10px;letter-spacing:.05em;pointer-events:none}
+  </style>
+</head>
+<body>
+  <div class="lab">
+    <header><strong>FIELDWORK / VISUAL LAB</strong><span>Developer-only · presentation examples, not combat rules</span></header>
+    <button id="miss">MISS</button>
+    <button id="hit">HIT</button>
+    <button id="down">DOWN</button>
+    <button id="reset">RESET</button>
+    <button id="iso">ISO</button>
+    <button id="top">TOP</button>
+  </div>
+  <footer>Drag to orbit · pinch to zoom · two fingers to pan · visual-only combat samples</footer>
+  <script type="module" src="/src/breach-visual-lab.ts"></script>
+</body>
+</html>
