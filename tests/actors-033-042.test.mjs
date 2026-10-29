@@ -142,7 +142,7 @@ test('new player controls run on a separate world page; original 10m lab remains
   for(const id of ['worldMode','moveStick','moveNub','fireButton',
     'squadOrder','operationReadout'])
     assert.ok(world.includes('id="'+id+'"'));
-  assert.ok(main.includes('new CutwoodsPhysicalScene(scene)'));
+  assert.ok(main.includes('new CutwoodsPhysicalScene(scene,!soloMode)'));
   assert.ok(main.includes('newOperation()'));
   assert.ok(main.includes('stepOperation('));
   assert.ok(main.includes('setExplore('));
