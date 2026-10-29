@@ -169,7 +169,10 @@ function activeIsStrafe(){
   return uid(selected)?.plan.find(n=>n.id===selectedNode)?.moveMode==='strafe';
 }
 function updateContext(){
-  if(state.phase!=='planning'){
+  // Context chrome must disappear while the player is pointing at the map.
+  // Otherwise its floating touch targets can swallow door/pivot/LOOK taps.
+  if(state.phase!=='planning'||looking||doorMode||insertMode||
+     pieMode!==null||pieRepositionNode!==null){
     ui.context.hidden=true;return;
   }
   const a=uid(selected);
