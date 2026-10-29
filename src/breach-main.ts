@@ -87,7 +87,7 @@ function updateHud(){
     ui[id].classList.toggle('selected',id===selected);
     ui[id].classList.toggle('down',!a||a.health<=0);
     ui[id].setAttribute('aria-pressed',String(id===selected));
-    ui[id+'Hp'].textContent=a?.health===2?'●●':a?.health===1?'●○':'○○';
+    (id==='rook'?ui.rookHp:ui.mossHp).textContent=a?.health===2?'●●':a?.health===1?'●○':'○○';
   }
   ui.hint.textContent=message();
   ui.feed.textContent=state.events.at(-1)??'';
