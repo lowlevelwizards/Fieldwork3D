@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import {W,H,WALLS,COVER,type Pt} from './breach-core.ts';
-import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
+import {W,H,WALLS,COVER,initialDoors,doorCenter,type Pt} from './breach-core.ts';
+import {type Session,type TeamActor,team,knownAt,liveVisibility} from './breach-game.ts';
+import {shotVisibility} from './breach-presentation.ts';
 
 /** One authoritative 2D world, physically represented in one 3D scene.
  * Coordinates: tactics (x,y) => scene (x, elevation, y).
@@ -25,7 +26,13 @@ export class TacticalScene3D{
   private fogExplored:THREE.InstancedMesh;
   private actors=new Map<string,{root:THREE.Group;legs:THREE.Group[];
     arms:THREE.Group[];flash:THREE.Mesh;pack:THREE.Mesh}>();
-  private doors=new Map<string,THREE.Group>();
+  private doors=new Map<string,{root:THREE.Group;leaf:THREE.Group;
+    frame:THREE.Group;halo:THREE.Mesh;threshold:THREE.Mesh}>();
+  private observedDoorOpen=new Map<string,boolean>();
+  private effectCache=new Map<number,{root:THREE.Group;line:THREE.Mesh;
+    impact:THREE.Mesh;material:THREE.MeshBasicMaterial;
+    impactMaterial:THREE.MeshBasicMaterial}>();
+  private tracerAxis=new THREE.Vector3(0,1,0);
   private walls:{mesh:THREE.Mesh;mid:Pt}[]=[];
   private effects=new THREE.Group();
   private target=new THREE.Vector3(339,0,413);
@@ -150,14 +157,32 @@ export class TacticalScene3D{
       this.box(this.root,x+25,4,97,56,2,5,timber,false);
       pane.castShadow=false;
     }
-    // Trim and doorway thresholds: open door turns at a real hinge.
-    const doorMat=this.solid(0x977b57);
-    for(const [id,p] of [['FRONT',{x:303,y:532}],['INNER',{x:382,y:325}]] as const){
+    // 080: Doorways are real stateful meshes, not slabs that disappear.
+    const doorMat=this.solid(0xab8655),doorTrim=this.solid(0xe0c28c);
+    const thresholdMat=this.solid(0xc19b5c);
+    for(const door of initialDoors()){
+      const width=Math.hypot(door.a.x-door.b.x,door.a.y-door.b.y);
+      const p=doorCenter(door),vertical=Math.abs(door.a.x-door.b.x)<1;
       const group=new THREE.Group();group.position.set(p.x,0,p.y);
-      const vertical=id==='INNER';
-      this.box(group,0,13,0,vertical?7:52,26,vertical?42:7,doorMat);
-      this.box(group,0,24,0,vertical?10:56,2,vertical?46:10,timber,false);
-      this.root.add(group);this.doors.set(id,group);
+      group.rotation.y=vertical?-Math.PI/2:0;
+      const frame=new THREE.Group();group.add(frame);
+      this.box(frame,-width/2,15,0,5,30,10,doorTrim);
+      this.box(frame,width/2,15,0,5,30,10,doorTrim);
+      this.box(frame,0,30,0,width+7,4,12,doorTrim);
+      const threshold=this.box(frame,0,.32,0,width,1.2,13,thresholdMat,false);
+      const hinge=new THREE.Group();hinge.position.x=-width/2;
+      group.add(hinge);
+      this.box(hinge,width/2,13,0,width-3,26,4,doorMat);
+      this.box(hinge,width*.7,13,2.6,3,4,2,doorTrim,false);
+      const halo=new THREE.Mesh(
+        new THREE.RingGeometry(width*.56,width*.66,32),
+        new THREE.MeshBasicMaterial({color:0xe3bc7d,transparent:true,
+          opacity:.95,depthWrite:false,side:THREE.DoubleSide}));
+      halo.rotation.x=-Math.PI/2;halo.position.set(0,1.7,0);
+      halo.visible=false;group.add(halo);this.mats.push(halo.material);
+      this.root.add(group);
+      this.doors.set(door.id,{root:group,leaf:hinge,frame,halo,threshold});
+      this.observedDoorOpen.set(door.id,false);
     }
     // Furniture height matches cover classification: low crates vs high cabinets.
     for(let i=0;i<COVER.length;i++){
@@ -356,11 +381,14 @@ export class TacticalScene3D{
   }
   private soldier(a:TeamActor){
     const root=new THREE.Group();
-    const suit=this.solid(a.side==='blue'?(a.id==='rook'?0x5b8075:0x768675):0x8d6356);
+    const suit=this.solid(a.side==='blue'?(a.id==='rook'?0x80baad:0xa5b28d):0xba7b66);
     const dark=this.solid(0x2e3b3b),olive=this.solid(0x55614f),
-      straps=this.solid(0x343a31),helmet=this.solid(0x606d5f);
+      straps=this.solid(0x343a31),helmet=this.solid(0x727f6f);
     this.box(root,0,12,0,10,14,8,suit);
-    this.box(root,0,22,0,9,6,8,helmet);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(1,12,9),
+      new THREE.MeshStandardMaterial({color:0x859286,roughness:.86}));
+    head.scale.set(5.2,4.7,5.7);head.position.set(0,22,0);
+    head.castShadow=true;root.add(head);
     this.box(root,0,25,1,12,2,10,helmet,false);
     const pack=this.box(root,0,13,-7,9,12,6,olive);
     this.box(root,0,15,5,9,8,2,straps);
@@ -387,7 +415,7 @@ export class TacticalScene3D{
     this.scene.add(root);this.actors.set(a.id,{root,legs,arms,flash,pack});
     void weapon;
   }
-  update(s:Session,selected:string,dt:number){
+  update(s:Session,selected:string,dt:number,focusedDoorId:string|null=null){
     if(this.view.mode==='plan2d')return;
     this.updateCamera(dt);
     this.fogAt+=dt;
@@ -406,10 +434,18 @@ export class TacticalScene3D{
     }
     for(const door of s.doors){
       const object=this.doors.get(door.id);
-      if(object){
-        object.visible=!door.open;
-        object.rotation.y=door.open?(door.id==='FRONT'?.8:-.8):0;
-      }
+      if(!object)continue;
+      // Freeze the last observed door state when it drops out of view:
+      // a guard opening an unseen door may not broadcast its exact state.
+      if(liveVisibility(s,doorCenter(door)))
+        this.observedDoorOpen.set(door.id,door.open);
+      const shownOpen=this.observedDoorOpen.get(door.id)??false;
+      object.leaf.rotation.y=THREE.MathUtils.lerp(object.leaf.rotation.y,
+        shownOpen?-1.32:0,Math.min(1,Math.max(0,dt)*14));
+      object.halo.visible=focusedDoorId===door.id&&
+        (liveVisibility(s,doorCenter(door))||
+         knownAt(s,doorCenter(door).x,doorCenter(door).y));
+      object.halo.rotation.z+=dt*.3;
     }
     for(const actor of s.operators){
       if(!this.actors.has(actor.id))this.soldier(actor);
