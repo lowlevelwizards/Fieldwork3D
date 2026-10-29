@@ -484,6 +484,15 @@ function fire(s:Session,a:TeamActor,dt:number){
   s.sparks.push({p:clone(a.p),side:a.side,age:0});
   s.shots.push({start:clone(a.p),end,age:0,hit,side:a.side});
   hear(s,a.p,400,'gunshot');
+  // A shot heard behind the team suggests an imprecise location.
+  // A sound NEVER exposes the exact shooter through a wall.
+  if(a.side==='red'&&!isSeen(s,a)&&
+     team(s).some(observer=>observer.health>0&&d(observer.p,a.p)<380)){
+    s.known.set(a.id,{p:{
+      x:a.p.x+(random(s)-.5)*58,y:a.p.y+(random(s)-.5)*58,
+    },at:s.seconds,status:'heard'});
+    notify(s,'UNSEEN GUNFIRE');
+  }
   target.suppression=Math.min(1,target.suppression+.31);
   if(hit){
     target.health--;
