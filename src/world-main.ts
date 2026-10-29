@@ -120,7 +120,7 @@ function updateCamera():void{
   const desiredHeight=explore?physicalGroundAt(target.x,target.z):
     regionLocalHeightM(loadedId,target.x,target.z);
   target.y+=(desiredHeight-target.y)*(1-Math.exp(-cameraDt*9));
-  const radius=explore?(1100/zoom+22):(1950/zoom+310);
+  const radius=explore?(700/zoom+19):(1950/zoom+310);
   camera.position.set(
     target.x+Math.sin(yaw)*Math.cos(elevation)*radius,
     target.y+Math.sin(elevation)*radius,
@@ -218,8 +218,8 @@ function resetView():void{
   lookOffset.set(0,0,0);
   target.set(x,explore?physicalGroundAt(x,z):regionLocalHeightM(loadedId,x,z),z);
   yaw=.75;
-  elevation=THREE.MathUtils.degToRad(explore?65:57);
-  zoom=explore?78:1;
+  elevation=THREE.MathUtils.degToRad(explore?43:57);
+  zoom=explore?125:1;
   probe.visible=false;
   resize();updateCamera();
 }
@@ -273,7 +273,7 @@ const cameraActions={
     updateCamera();
   },
   zoom:(factor:number)=>{
-    zoom=THREE.MathUtils.clamp(zoom*factor,1,explore?95:14);
+    zoom=THREE.MathUtils.clamp(zoom*factor,1,explore?165:14);
     resize();updateCamera();
   },
 };
