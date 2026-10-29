@@ -77,6 +77,36 @@ try{
   await phone.locator('#restart').click();
   if(await phone.locator('#clock').innerText()!=='00:00')
     throw Error('Mission reset did not reset the clock');
+  // Builds 053–062: verify authored order controls, not merely the old GO.
+  await phone.locator('#rook').click();
+  const stationApproach=screen(303,579,390,844);
+  await phone.touchscreen.tap(stationApproach.x,stationApproach.y);
+  if(await phone.locator('#undo').isDisabled())
+    throw Error('Authored waypoint did not enter editable history');
+  await phone.locator('#undo').click();
+  if(await phone.locator('#redo').isDisabled())
+    throw Error('Undo did not populate redo history');
+  await phone.locator('#redo').click();
+  await phone.locator('#stance').click();
+  if(await phone.locator('#stance').getAttribute('aria-pressed')!=='true')
+    throw Error('Low posture did not toggle');
+  await phone.locator('#method').click();
+  if(await phone.locator('#method').innerText()!=='KICK')
+    throw Error('Door action method did not cycle');
+  await phone.locator('#door').click();
+  if(await phone.locator('#door').getAttribute('aria-pressed')!=='true')
+    throw Error('Door selection did not activate');
+  const frontDoor=screen(303,532,390,844);
+  await phone.touchscreen.tap(frontDoor.x,frontDoor.y);
+  if(await phone.locator('#door').getAttribute('aria-pressed')!=='false')
+    throw Error('Door order was not committed by tapping entrance');
+  await phone.locator('#wait').click();
+  await phone.locator('#sync').click();
+  await phone.screenshot({path:resolve(folder,'04-phone-expanded-plan.png')});
+  await phone.locator('#variant').click();
+  if(await phone.locator('#variant').innerText()!=='SITE 2/3')
+    throw Error('Scenario variation did not advance');
+  await phone.screenshot({path:resolve(folder,'05-phone-alternate-site.png')});
   const pc=await browser.newPage({
     viewport:{width:1220,height:810},deviceScaleFactor:1,
   });
