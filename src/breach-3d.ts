@@ -16,8 +16,8 @@ export class TacticalScene3D{
   readonly renderer:THREE.WebGLRenderer;
   readonly scene=new THREE.Scene();
   readonly camera=new THREE.OrthographicCamera(-320,320,370,-370,.1,2800);
-  readonly view:ViewState={mode:'iso',yaw:Math.PI/4,zoom:1.02,
-    focus:{x:339,y:413}};
+  readonly view:ViewState={mode:'iso',yaw:Math.PI/4,zoom:1.25,
+    focus:{x:W/2,y:H/2}};
   readonly canvas:HTMLCanvasElement;
   private root=new THREE.Group();
   private fogUnknown:THREE.InstancedMesh;
@@ -29,6 +29,8 @@ export class TacticalScene3D{
   private effects=new THREE.Group();
   private target=new THREE.Vector3(339,0,413);
   private currentElev=55*Math.PI/180;
+  private readonly minZoom=.65;
+  private readonly maxZoom=6.0;
   private pickPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
   private ray=new THREE.Raycaster();
   private width=1;private height=1;private fogAt=-1;
@@ -224,38 +226,80 @@ export class TacticalScene3D{
     this.view.mode=mode;
     this.canvas.style.display=mode==='plan2d'?'none':'block';
     this.fogAt=-1;
-  }
-  setYaw(angle:number){this.view.yaw=angle;this.updateCamera(1);}
-  pan(dx:number,dy:number){
-    // Screen pan independent of camera yaw, in true world coordinates.
-    const z=this.view.zoom,rate=(740/this.height)/z;
-    const right=new THREE.Vector3();
-    const forward=new THREE.Vector3();
-    this.camera.updateMatrixWorld();
-    right.setFromMatrixColumn(this.camera.matrixWorld,0);
-    forward.setFromMatrixColumn(this.camera.matrixWorld,1);
-    this.view.focus.x-=dx*rate*right.x+dy*rate*forward.x;
-    this.view.focus.y-=dx*rate*right.z+dy*rate*forward.z;
-    this.view.focus.x=THREE.MathUtils.clamp(this.view.focus.x,0,W);
-    this.view.focus.y=THREE.MathUtils.clamp(this.view.focus.y,0,H);
     this.updateCamera(1);
   }
+  /** Yaw is always around the current map focus, never the selected unit. */
+  setYaw(angle:number){
+    this.view.yaw=((angle%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+    this.updateCamera(1);
+  }
+  rotate(delta:number){this.setYaw(this.view.yaw+delta);}
+  /** A reset is a predictable full-board fit, independent of unit selection. */
+  resetCamera(){
+    this.view.focus={x:W/2,y:H/2};this.view.yaw=Math.PI/4;
+    this.view.zoom=1.25;this.updateCamera(1);
+  }
+  /**
+   * Drag world beneath a finger rather than guessing using camera-right/up
+   * vectors. Works at any pitch/yaw including near-vertical overhead.
+   */
+  panBetween(prevX:number,prevY:number,nextX:number,nextY:number){
+    this.updateCamera(0);
+    const original=this.screenToWorld(prevX,prevY);
+    const destination=this.screenToWorld(nextX,nextY);
+    if(!original||!destination)return;
+    this.shiftFocus(original.x-destination.x,original.y-destination.y);
+  }
+  pan(dx:number,dy:number){
+    this.panBetween(this.width/2,this.height/2,
+      this.width/2+dx,this.height/2+dy);
+  }
+  private shiftFocus(dx:number,dy:number){
+    const marginX=140,marginY=150;
+    this.view.focus.x=THREE.MathUtils.clamp(
+      this.view.focus.x+dx,-marginX,W+marginX);
+    this.view.focus.y=THREE.MathUtils.clamp(
+      this.view.focus.y+dy,-marginY,H+marginY);
+    this.updateCamera(0);
+  }
+  /**
+   * Pinch/wheel zoom preserves the world point beneath the gesture centroid.
+   * Does not recenter to a soldier or jump to the center of the map.
+   */
+  zoomAt(factor:number,x:number,y:number){
+    if(!Number.isFinite(factor)||factor<=0)return;
+    this.updateCamera(0);
+    const before=this.screenToWorld(x,y);
+    this.view.zoom=THREE.MathUtils.clamp(this.view.zoom*factor,
+      this.minZoom,this.maxZoom);
+    this.updateCamera(0);
+    if(before){
+      const after=this.screenToWorld(x,y);
+      if(after)this.shiftFocus(before.x-after.x,before.y-after.y);
+    }
+  }
   updateCamera(dt:number){
-    const targetElev=this.view.mode==='top'?Math.PI/2-.004:55*Math.PI/180;
-    const blend=1-Math.exp(-Math.max(0,dt)*10);
+    const targetElev=this.view.mode==='top'?Math.PI/2:55*Math.PI/180;
+    const blend=1-Math.exp(-Math.max(0,dt)*13);
     this.currentElev=THREE.MathUtils.lerp(this.currentElev,targetElev,blend);
+    if(Math.abs(this.currentElev-targetElev)<.0001)
+      this.currentElev=targetElev;
     this.target.set(this.view.focus.x,0,this.view.focus.y);
     const angle=this.view.yaw;
-    const radius=1000;
+    const radius=1200;
     this.camera.position.set(
       this.target.x+radius*Math.cos(this.currentElev)*Math.sin(angle),
       this.target.y+radius*Math.sin(this.currentElev),
       this.target.z+radius*Math.cos(this.currentElev)*Math.cos(angle));
-    this.camera.up.set(0,1,0);
-    // Up orientation is world-stable in top-down so rotation remains intuitive.
+    // Fixed map-facing 'north' avoids the top-down up-vector singularity.
+    // Right = positive X at yaw 0; orbit never flips at 90-degree pitch.
+    this.camera.up.set(-Math.sin(angle),0,-Math.cos(angle));
     this.camera.lookAt(this.target);
-    const span=750/this.view.zoom;
     const aspect=this.width/this.height;
+    const diagonal=Math.hypot(W,H);
+    // A yaw-invariant fit avoids breathing/scale changes while orbiting.
+    const baseSpan=Math.max(820,(diagonal+66)/aspect);
+    const span=baseSpan/this.view.zoom;
     this.camera.left=-span*aspect/2;this.camera.right=span*aspect/2;
     this.camera.top=span/2;this.camera.bottom=-span/2;
     this.camera.updateProjectionMatrix();
