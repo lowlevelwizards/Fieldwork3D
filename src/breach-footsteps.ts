@@ -29,7 +29,7 @@ export type FootstepInput={
 };
 export type FootTarget={position:GroundPoint;height:number;
   worldYaw:number;phase:FootPhase;contact:boolean;
-  reason?:StepReason;}
+  reason?:StepReason;progress?:number;}
 const clamp=(x:number,min:number,max:number)=>Math.max(min,Math.min(max,x));
 const deltaAngle=(a:number,b:number)=>Math.atan2(Math.sin(b-a),Math.cos(b-a));
 const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
