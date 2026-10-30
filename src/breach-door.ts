@@ -1,6 +1,7 @@
 /** Physical hinges, handles, and deterministic door clearance. */
 import {doorCenter,passable,route,pointToSegment,
-  doorYaw,doorLeafSegment,WALLS,COVER,pointToSegment as distanceToWall,
+  doorYaw,doorLeafSegment,WALLS,COVER,activeSite,initialDoors,
+  pointToSegment as distanceToWall,
   type Door,type Pt} from './breach-core.ts';
 export {doorYaw,doorLeafSegment};
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -50,6 +51,10 @@ export function kickDoor(d:Door){
 /** Door leaf stops against architecture and furniture, not an arbitrary
  * renderer-only angle; sample away from the hinge itself. */
 export function doorSwingBlocked(d:Door,next:number){
+ // Standalone door fixtures have no registered architecture; do not
+ // collide them with an unrelated active level's walls or cover.
+ const registered=activeSite()?.doors??initialDoors();
+ if(!registered.some(real=>real.id===d.id))return false;
  const leaf=doorLeafSegment({...d,openFraction:next});
  for(const t of [.35,.55,.75,.94,.99]){
    const p={x:leaf.a.x+(leaf.b.x-leaf.a.x)*t,
