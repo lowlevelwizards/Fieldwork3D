@@ -91,7 +91,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.lastTime=p.seconds;dt=0;
   }
   dt=clamp(dt,0,.08);
-  const moving=Math.min(1,p.velocity/72),hurt=p.injury===2?.65:1;
+  const moving=Math.min(1,p.velocity/72);
   const direction=r.lastPose?
     Math.atan2(p.z-r.lastPose.z,p.x-r.lastPose.x):p.heading;
   const travel=moving>.14?direction:p.heading;
