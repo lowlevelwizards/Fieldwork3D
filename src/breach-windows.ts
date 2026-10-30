@@ -59,7 +59,9 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
     site.archetype==='garage'?'vehicle':
     site.archetype==='house'?'fence':
     site.archetype==='clinic'?'bench':'vehicle';
-  const x=seed%2===0?minX+82:maxX-82;
+  const west=minX+82,east=maxX-82;
+  const x=Math.abs(west-site.entrance.x)>Math.abs(east-site.entrance.x)?
+    west:east;
   const y=maxY+79;
   if(y+25<720&&dist({x,y},site.entrance)>80)
     cover.push({x,y,w:exteriorFixture==='fence'?58:46,
