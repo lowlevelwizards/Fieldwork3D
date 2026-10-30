@@ -1,5 +1,5 @@
 import {
-  W,H,WALLS,COVER,GRID,doorCenter,doorLeafSegment,route,type Pt,
+  W,H,WALLS,COVER,GRID,doorCenter,doorLeafSegment,type Pt,
 } from './breach-core.ts';
 import {
   type Session,type TeamActor,
