@@ -43,7 +43,7 @@ export type ShotEvent={
   id:number;shooterId:string;targetId:string|null;
   start:Pt;end:Pt;age:number;hit:boolean;side:Side;
   healthBefore:number;healthAfter:number;down:boolean;
-  surface:'blood'|'wood'|'stone'|'metal'|'dust';
+  surface?:'blood'|'wood'|'stone'|'metal'|'dust';
 };
 export type ImpactMark={id:number;p:Pt;surface:ShotEvent['surface'];age:number};
 export type DroppedMagazine={id:number;p:Pt;side:Side;age:number};
