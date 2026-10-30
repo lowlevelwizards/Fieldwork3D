@@ -447,11 +447,10 @@ try{
       const slider=element;slider.value=String(value);
       slider.dispatchEvent(new Event('input',{bubbles:true}));
     },ms);
-    await physical.waitForTimeout(100);
-    const actual=Number(await physical.locator('#preview')
-      .getAttribute('data-time'));
-    if(Math.abs(actual-ms/1000)>.002)
-      throw Error('Lab seek did not land at requested timestamp: '+actual);
+    await physical.waitForFunction(target=>{
+      const time=Number(document.querySelector('#preview')?.dataset.time);
+      return Math.abs(time-target/1000)<.002;
+    },ms,{timeout:20000});
   };
   await seekLab(960);
   await physical.locator('#diagnosticLayer').selectOption('anchors');
