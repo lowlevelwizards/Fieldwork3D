@@ -324,7 +324,7 @@ body.replaying .foot,body.replaying .guidance,body.replaying .feed{display:none!
 /* Phone: a narrow three-column side palette leaves most of the map clear.
    Six tap targets remain directly visible, with no scrolling or drawers. */
 @media(max-width:600px){
-  .context-tools{width:164px;max-width:calc(100vw - 16px);
+  .context-tools{width:144px;max-width:calc(100vw - 16px);
     padding:5px;gap:4px}
   .context-primary{gap:3px}
   .context-primary button{min-width:0;min-height:42px;
