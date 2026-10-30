@@ -1,7 +1,7 @@
 /** 053: Player-authored instructions are not generated navigation vertices. */
 export type Pt={x:number;y:number};
 export type PlanKind='move'|'door'|'wait'|'look'|'sync'|'pie'|'reload'|'flash';
-export type MoveMode='advance'|'strafe';
+export type MoveMode='advance'|'strafe'|'sprint';
 /** Persistent world-facing instruction, independent of any movement route. */
 export type AimMode='free'|'fixed'|'track';
 export type AimInstruction={mode:AimMode;angle?:number;point?:Pt};
