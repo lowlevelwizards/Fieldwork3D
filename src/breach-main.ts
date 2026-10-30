@@ -944,7 +944,8 @@ function renderProjectedPlans(){
 }
 function fog(){
   if(replaying&&replayOmniscient)return;
-  if(fogStamp<0||state.seconds-fogStamp>.16){
+  if(fogStamp<0||state.seconds<fogStamp||
+    state.seconds-fogStamp>.055){
     fogStamp=state.seconds;
     paintFogMask(fogContext!,state);
   }

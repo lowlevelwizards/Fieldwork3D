@@ -976,7 +976,7 @@ export class TacticalScene3D{
     // intelligence and must not leak through texture transparency.
     this.fogUnknown.count=0;this.fogExplored.count=0;
     this.smoothFog.visible=!omniscient;
-    if(!omniscient&&(this.fogAt>=.16||this.fogAt<0)){
+    if(!omniscient&&(this.fogAt>=.055||this.fogAt<0)){
       this.fogAt=0;
       paintFogMask(this.fogContext,s);
       this.fogTexture.needsUpdate=true;
