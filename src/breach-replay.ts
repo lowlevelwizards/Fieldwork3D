@@ -21,6 +21,7 @@ export type ReplayFrame={
   presentation?:ReplayPresentation;
   t:number;phase:Session['phase'];mission:Session['mission'];
   actors:ReplayActorFrame[];doors:Door[];shots:ShotEvent[];
+  casings:Session['casings'];
   dropped:DroppedMagazine[];impactMarks:ImpactMark[];grenades:FlashGrenade[];
   flashBursts:FlashBurst[];flashRemaining:number;
   missionType:Session['missionType'];holdTime:number;
@@ -52,6 +53,7 @@ export function snapshot(s:Session):ReplayFrame{
       watch:a.watch?position(a.watch):null})),
     doors:s.doors.map(d=>({...d,a:position(d.a),b:position(d.b)})),
     shots:s.shots.map(shotCopy),
+    casings:s.casings.map(x=>({...x})),
     dropped:s.dropped.map(m=>({...m,p:position(m.p)})),
     impactMarks:s.impactMarks.map(m=>({...m,p:position(m.p)})),
     grenades:s.grenades.map(g=>({...g,p:position(g.p),
@@ -162,6 +164,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   }
   s.doors=f.doors.map(d=>({...d,a:position(d.a),b:position(d.b)}));
   s.shots=f.shots.map(shotCopy);
+  s.casings=(f.casings??[]).map(x=>({...x}));
   s.dropped=f.dropped.map(m=>({...m,p:position(m.p)}));
   s.impactMarks=f.impactMarks.map(m=>({...m,p:position(m.p)}));
   s.grenades=f.grenades.map(g=>({...g,p:position(g.p),
