@@ -16,6 +16,11 @@ import {
 } from './breach-plan.ts';
 import {validPieArc} from './breach-maneuvers.ts';
 import {generateSite,type Site,seeded} from './breach-site.ts';
+import {WEAPONS,injuryOf,injuryAim,injurySpeed,injuryReload,
+  woundSeverity,exposure,nearCover,type WeaponId,type BattleEvent}
+  from './breach-combat.ts';
+import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
+import {chooseDefense,watchPoint} from './breach-defense.ts';
 
 export type Posture='stand'|'crouch';
 export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retreat';
@@ -36,7 +41,8 @@ export type TeamActor=Operator & {
   /** Temporary cooperative sidestep, independent of authored orders. */
   yieldTarget:Pt|null;yieldFor:string|null;yieldUntil:number;
   personality:Personality;morale:number;lastNoiseAt:number;
-  flashUntil:number;
+  flashUntil:number;weapon:WeaponId;injuryStage:number;
+  defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
 };
 export type NoiseEvent={p:Pt;radius:number;time:number;kind:string};
 export type ShotEvent={
@@ -47,7 +53,8 @@ export type ShotEvent={
 };
 export type ImpactMark={id:number;p:Pt;surface:ShotEvent['surface'];age:number};
 export type DroppedMagazine={id:number;p:Pt;side:Side;age:number};
-export type FlashGrenade={id:number;p:Pt;from:Pt;to:Pt;age:number;fuse:number};
+export type FlashGrenade={id:number;p:Pt;from:Pt;to:Pt;age:number;
+  fuse:number;path?:ThrowPath};
 export type FlashBurst={id:number;p:Pt;age:number};
 export type KnownContact={p:Pt;at:number;status:'seen'|'heard'};
 export type MissionStage='clear'|'secure'|'extract'|'done';
@@ -60,7 +67,9 @@ export type Session=Omit<TacticalState,'operators'> & {
   started:boolean;syncCode:number;report:string[];
   movementNoiseAt:number;site?:Site;dropped:DroppedMagazine[];
   grenades:FlashGrenade[];flashBursts:FlashBurst[];flashRemaining:number;
-  nextEffectId:number;impactMarks:ImpactMark[];};
+  nextEffectId:number;impactMarks:ImpactMark[];
+  battleEvents:BattleEvent[];nextBattleId:number;
+  missionType:'clear'|'intel'|'rescue'|'hold'|'capture';holdTime:number;};
 const d=(a:Pt,b:Pt)=>length(a,b);
 const clone=(p:Pt):Pt=>({...p});
 const near=(a:Pt,b:Pt,range:number)=>d(a,b)<=range;
@@ -83,6 +92,8 @@ const withActions=(a:Operator):TeamActor=>({
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
   yieldTarget:null,yieldFor:null,yieldUntil:0,
   personality:'guard',morale:1,lastNoiseAt:-1,flashUntil:-1,
+  weapon:'carbine',injuryStage:0,defense:null,watch:null,
+  defenseUntil:0,surrendered:false,
 });
 /** Omitted seed keeps 052's historic static study for regression tests.
  * The actual game passes a unique seed on each newly loaded site.
@@ -104,6 +115,10 @@ export function newSession(index=0,siteSeed?:number):Session{
     }
     const friendly=operators.filter(a=>a.side==='blue');
     friendly.forEach((a,i)=>{
+      a.weapon=(['carbine','smg','rifle','shotgun'] as const)[i];
+      a.magazine=WEAPONS[a.weapon].capacity;
+      a.reserve=WEAPONS[a.weapon].reserve;
+      a.health=4;a.injuryStage=0;
       a.p={...site.spawn[i]};a.heading=-Math.PI/2;
       a.priorP={...a.p};
     });
@@ -123,8 +138,11 @@ export function newSession(index=0,siteSeed?:number):Session{
       }
       a.p={...site.enemies[i]};a.priorP={...a.p};
       a.heading=enemyRng()*Math.PI*2;
-      a.health=site.roomCount>=5?2:(enemyRng()<.55?1:2);
-      a.magazine=10;a.reserve=30;
+      a.health=enemyRng()<.18?3:4;
+      a.weapon=enemyRng()<.30?'smg':'carbine';
+      a.magazine=WEAPONS[a.weapon].capacity;
+      a.reserve=WEAPONS[a.weapon].reserve;
+      a.injuryStage=0;
       a.personality=(['guard','aggressor','cautious'] as const)[Math.floor(enemyRng()*3)];
       a.morale=.48+enemyRng()*.52;
     }
@@ -139,7 +157,12 @@ export function newSession(index=0,siteSeed?:number):Session{
     mission:'clear',noise:[],shots:[],nextShotId:1,known:new Map(),
     seenGround:new Set(),timesPaused:0,deaths:0,started:false,
     syncCode:0,report:[],movementNoiseAt:0,site,
-    dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1,impactMarks:[]};
+    dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1,
+    impactMarks:[],battleEvents:[],nextBattleId:1,
+    missionType:site?(['clear','intel','rescue','hold','capture'] as const)[site.seed%5]:'clear',
+    holdTime:0};
+  if(state.missionType==='intel'||state.missionType==='rescue'||
+     state.missionType==='hold')state.mission='secure';
   observe(state);
   return state;
 }
@@ -489,11 +512,13 @@ export function redoPlan(s:Session,id:string){
 }
 /** Manual or automatic reload, with a physical discarded magazine. */
 export function beginReload(s:Session,a:TeamActor):boolean{
-  if(a.health<=0||a.reload>0||a.reserve<=0||a.magazine>=12)return false;
+  const w=WEAPONS[a.weapon];
+  if(a.health<=0||a.reload>0||a.reserve<=0||a.magazine>=w.capacity)return false;
   s.dropped.push({id:s.nextEffectId++,p:clone(a.p),side:a.side,age:0});
   if(s.dropped.length>48)s.dropped.shift();
-  a.magazine=0;a.reload=1.8;a.aim=0;
+  a.magazine=0;a.reload=w.reload*injuryReload(a.injuryStage);a.aim=0;
   notify(s,a.name+' RELOADING');
+  battleEvent(s,'reload',a,a.p,a.name+' RELOAD');
   return true;
 }
 /** Two team-wide flashbangs per mission. Throwing is an authored timed order. */
@@ -504,10 +529,33 @@ export function planFlash(s:Session,id:string,target:Pt):boolean{
     x.plan.filter(node=>node.kind==='flash').length,0);
   const start=finalPoint(a);
   if(queued>=s.flashRemaining||d(start,target)>160||d(start,target)<16)return false;
-  const ray={a:start,b:target};
-  if(WALLS.some(w=>segmentsCross(ray,w))||
-    s.doors.some(w=>!w.open&&segmentsCross(ray,w)))return false;
+  const plannedOpen=a.plan.filter(n=>n.kind==='door'&&n.method!=='hold')
+    .map(n=>n.doorId??'');
+  if(!validateThrow(start,target,s.doors,plannedOpen).valid)return false;
   return addNode(s,id,'flash',start,{aimPoint:clone(target)});
+}
+/** Dragging a flash marker changes its landing point, not the thrower's position. */
+export function moveFlashTarget(s:Session,id:string,nodeId:number,p:Pt){
+  const a=party(s,id);if(!a||!canEdit(s)||!passable(p))return false;
+  const candidate=a.plan.find(n=>n.id===nodeId&&n.kind==='flash');
+  if(!candidate)return false;
+  const index=a.plan.indexOf(candidate);
+  const opened=a.plan.slice(0,index).filter(n=>n.kind==='door'&&
+    n.method!=='hold').map(n=>n.doorId??'');
+  if(!validateThrow(candidate.p,p,s.doors,opened).valid)return false;
+  return edit(s,a,()=>{candidate.aimPoint=clone(p);});
+}
+export function flashTrajectory(s:Session,a:TeamActor,node:PlanNode):ThrowPath|null{
+  if(node.kind!=='flash'||!node.aimPoint)return null;
+  const index=a.plan.findIndex(n=>n.id===node.id);
+  const open=a.plan.slice(0,index).filter(n=>n.kind==='door'&&
+    n.method!=='hold').map(n=>n.doorId??'');
+  return validateThrow(node.p,node.aimPoint,s.doors,open);
+}
+function battleEvent(s:Session,kind:BattleEvent['kind'],a:TeamActor|null,p:Pt,text:string){
+  s.battleEvents.push({id:s.nextBattleId++,kind,t:s.seconds,
+    actor:a?.id,p:clone(p),text});
+  if(s.battleEvents.length>500)s.battleEvents.shift();
 }
 export function planReload(s:Session,id:string):boolean{
   const a=party(s,id);
@@ -554,8 +602,8 @@ export function inSight(a:TeamActor,b:TeamActor,s:Session){
   if(a.health<=0||b.health<=0||d(a.p,b.p)>240)return false;
   const delta=angleDifference(a.heading,angle(a.p,b.p));
   if(Math.abs(delta)>.94)return false;
-  return unobstructed(a.p,b.p,s,
-    a.posture==='crouch'||b.posture==='crouch');
+  return !exposure(a.p,b.p,s.doors,
+    a.posture==='crouch'||b.posture==='crouch').blocked;
 }
 export const isSeen=(s:Session,target:TeamActor)=>
   team(s).some(a=>inSight(a,target,s));
