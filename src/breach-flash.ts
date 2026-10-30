@@ -14,7 +14,10 @@ export function validateThrow(from:Pt,to:Pt,doors:Door[],
   if(range<16||range>210)return {points:[from,to],mode:'direct',
     valid:false,reason:'OUT OF THROW RANGE'};
   const available=doors.map(door=>({...door,
-    open:door.open||plannedOpen.includes(door.id)}));
+    open:door.open||plannedOpen.includes(door.id),
+    // Preview the leaf at its eventual authored angle rather than its
+    // current closed collision position.
+    openFraction:plannedOpen.includes(door.id)?1:door.openFraction}));
   if(!blocked(from,to,available))
     return {points:[from,to],mode:'direct',valid:true};
   // Deliberate doorway throw: a grenade can be banked through a nearby

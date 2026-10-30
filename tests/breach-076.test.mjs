@@ -82,7 +82,7 @@ test('076: user-visible UI has only contextual aiming, no obsolete buttons',()=>
     assert.ok(html.includes('id="'+id+'"'));
   for(const id of ['pieLeft','pieRight','strafe','insert','delete','door','aim'])
     assert.ok(!html.includes('id="'+id+'"'),'old always-on control '+id);
-  for(const word of ['ctxPie','ctxStrafe','ctxLook'])
+  for(const word of ['ctxPie','ctxWait','ctxLook'])
     assert.ok(main.includes(word),'missing contextual '+word);
 });
 
