@@ -26,6 +26,7 @@ import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skill
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
   rayHitsActor,muzzleEndpoint,recoverWeapon,type FiringMode} from './breach-ballistics.ts';
 import {chooseDefense,watchPoint} from './breach-defense.ts';
+import {muzzleAtShot} from './breach-muzzle.ts';
 
 export type Posture='stand'|'crouch';
 export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retreat';
@@ -58,6 +59,7 @@ export type ShotEvent={
   start:Pt;end:Pt;age:number;hit:boolean;side:Side;
   healthBefore:number;healthAfter:number;down:boolean;
   shotYaw?:number;mode?:FiringMode;spread?:number;
+  muzzleHeight?:number;firedAt?:number;
   surface?:'blood'|'wood'|'stone'|'metal'|'dust';
 };
 export type ImpactMark={id:number;p:Pt;surface:ShotEvent['surface'];age:number};
@@ -1201,6 +1203,15 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(Math.abs(Math.atan2(Math.sin(desiredYaw-a.weaponYaw),
     Math.cos(desiredYaw-a.weaponYaw)))>.38)return;
   a.fireMode=mode;
+  const muzzle=muzzleAtShot({x:a.p.x,z:a.p.y,heading:a.heading,
+    weaponYaw:a.weaponYaw,weapon:a.weapon,aim:a.aim,
+    velocity:a.velocity,recoil:a.recoil});
+  const muzzlePoint={x:muzzle.x,y:muzzle.z};
+  // The muzzle, not the operator's center, must be clear of cover.
+  const muzzleReach=strikeSurface(a.p,muzzlePoint,s);
+  if(d(a.p,muzzleReach.end)+.7<d(a.p,muzzlePoint)){
+    a.aim=Math.min(a.aim,.82);return;
+  }
   a.fireCd=weapon.interval*(a.side==='red'?1.30:1);
   a.magazine--;a.shots++;
   const priorBurst=s.seconds-a.lastShotAt<.48;
@@ -1215,12 +1226,13 @@ function fire(s:Session,a:TeamActor,dt:number){
   const hitRadius=Math.max(4.2,10.5-
     (target.posture==='crouch'?1.7:0)-
     (nearCover(target.p,a.p)?2:0));
-  const candidateHit=rayHitsActor(a.p,yaw,target.p,hitRadius);
-  const far=muzzleEndpoint(a.p,yaw,Math.max(range+38,170));
-  const strike=strikeSurface(a.p,far,s);
+  const candidateHit=rayHitsActor(muzzlePoint,yaw,target.p,hitRadius);
+  const muzzleRange=d(muzzlePoint,target.p);
+  const far=muzzleEndpoint(muzzlePoint,yaw,Math.max(muzzleRange+38,170));
+  const strike=strikeSurface(muzzlePoint,far,s);
   // Obstruction before the target defeats a perfectly aligned barrel.
-  const blockerDist=d(a.p,strike.end);
-  const hit=candidateHit&&blockerDist>=range-hitRadius;
+  const blockerDist=d(muzzlePoint,strike.end);
+  const hit=candidateHit&&blockerDist>=muzzleRange-hitRadius;
   const end=hit?clone(target.p):strike.end;
   const impact=hit?{end,surface:'blood' as const}:strike;
   a.recoil=Math.min(.9,a.recoil+profile.recoilKick*
@@ -1244,8 +1256,9 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(s.impactMarks.length>92)s.impactMarks.shift();
   s.shots.push({
     id:s.nextShotId++,shooterId:a.id,targetId:target.id,
-    start:clone(a.p),end,age:0,hit,side:a.side,
+    start:muzzlePoint,end,age:0,hit,side:a.side,
     shotYaw:yaw,mode,spread:cone,
+    muzzleHeight:muzzle.y,firedAt:s.seconds,
     healthBefore,healthAfter,down:hit&&healthAfter<=0,
     surface:impact.surface,
   });
