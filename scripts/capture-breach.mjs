@@ -478,6 +478,28 @@ try{
   await physical.setViewportSize({width:844,height:390});
   await physical.locator('[data-view="iso"]').click();
   await physical.screenshot({path:resolve(folder,'34-operator-lab-landscape.png')});
+  // Build 128: targeted integrated checks, not a second full battle audit.
+  await physical.setViewportSize({width:390,height:844});
+  await physical.locator('[data-pose="strafe-stop"]').click();
+  await physical.locator('#diagnosticLayer').selectOption('lanes');
+  for(const ms of [320,750,1280,1900,2750]){
+    await seekLab(ms);
+    const crossed=await physical.locator('#preview')
+      .getAttribute('data-crossed');
+    if(crossed!=='false')
+      throw Error('Crossed foot lane at strafe-stop '+ms+'ms');
+    const grip=Number(await physical.locator('#preview')
+      .getAttribute('data-grip-error'));
+    if(grip>.02)throw Error('Strafe grip detached at '+ms+'ms: '+grip);
+  }
+  await physical.screenshot({path:resolve(folder,'35-operator-lab-strafe-stop-lanes.png')});
+  await physical.locator('[data-pose="strafe-reverse"]').click();
+  await seekLab(2150);
+  await physical.screenshot({path:resolve(folder,'36-operator-lab-strafe-reversal.png')});
+  await physical.locator('[data-pose="pivot-reverse"]').click();
+  await physical.locator('#diagnosticLayer').selectOption('balance');
+  await seekLab(1730);
+  await physical.screenshot({path:resolve(folder,'37-operator-lab-pivot-balance.png')});
   await physical.close();
   if(errors.length)throw Error('Browser console exceptions: '+errors.join('; '));
   const manifest={initial,rotated,pan,pinch,visibleButtons,errors};
