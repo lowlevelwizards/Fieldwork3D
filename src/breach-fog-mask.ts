@@ -1,6 +1,6 @@
 /** One low-resolution, softly filtered fog mask shared by 2D and 3D.
  * The fog presentation never changes detection or player intelligence. */
-import {W,H,type Pt} from './breach-core.ts';
+import {W,H} from './breach-core.ts';
 import {team,knownAt,type Session} from './breach-game.ts';
 import {intelFogLevel} from './breach-intel.ts';
 import {visionPolygon} from './breach-vision-polygon.ts';
