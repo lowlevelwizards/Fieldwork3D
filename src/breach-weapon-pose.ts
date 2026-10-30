@@ -81,11 +81,11 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       const stock=rotate(data.stockX,0,0);
       const right=rotate(data.primaryX-data.stockX,data.primaryY,1.8);
       const left=rotate(data.supportX-data.stockX,data.supportY,-1.6);
-      for(const back of [-2,0,1.3,2.7,3.8,5.0]){
+      for(const back of [-4,-2,0,1.3,2.7,3.8,5,7,9]){
         const sx=2.5-back-recoilX;
         const px=sx+right[0],py=shoulderY+right[1];
         const lx=sx+left[0],ly=shoulderY+left[1];
-        for(const sideways of [0,-1,-2,1.5,-3.5]){
+        for(const sideways of [0,-1,-2,1.5,-3.5,-5.5,-8,-11,-14,4]){
           const sz=4.2+sideways;
           const pz=sz+right[2],lz=sz+left[2];
           const rd=Math.hypot(px-1,py-4,pz-7);
