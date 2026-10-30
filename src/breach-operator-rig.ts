@@ -239,7 +239,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const recoil=p.recoil??(p.firing?1.5:0);
   const fit=fitWeaponPose({weapon:p.weapon,handling,
     yaw:-(p.shotHeading??p.heading)-r.root.rotation.y-r.chest.rotation.y,
-    recoil});
+    recoil,aimBlend:p.aimBlend??(p.aiming?1:0)});
   r.gripError=fit.contactError;
   // Contact coordinates and visible weapon use one rigid transform.
   r.weapon.scale.set(data.lengthScale,1,1);

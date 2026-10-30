@@ -44,7 +44,7 @@ export type WeaponFit={
 };
 export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
   /** Fire direction in chest-local space. */
-  yaw:number;recoil:number};
+  yaw:number;recoil:number;aimBlend?:number};
 function pocketY(handling:Handling){
   return handling==='ads'?8:handling==='point'?5.3:
     handling==='high'?6:handling==='short'?4:2.5;
@@ -67,10 +67,18 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
     twoHanded:boolean;primaryReachable:boolean;
     contactError:number}|null=null;
   for(const mode of selection){
-    const roll=mode==='low'?-.16:mode==='high'?.13:
+    const aim=input.aimBlend;
+    // Continuous keyed shoulder posture instead of snapping between
+    // high, point and ADS at an arbitrary threshold.
+    const base=mode==='low'?-.16:mode==='high'?.13:
       mode==='short'?-.08:0;
+    const roll=aim===undefined||mode==='short'?base:
+      (-.12*(1-Math.min(1,aim/.30)));
     const sr=Math.sin(roll),cr=Math.cos(roll);
-    const shoulderY=pocketY(mode)+recoilY;
+    const shoulderY=(aim===undefined||mode==='short'?
+      pocketY(mode):
+      3.2+4.8*(Math.max(0,Math.min(1,aim))**
+        2*(3-2*Math.max(0,Math.min(1,aim)))))+recoilY;
     for(const offset of [0,-.10,.10]){
       const candidateYaw=clamp(yaw+offset,-1.12,1.12);
       const cy=Math.cos(candidateYaw),sy=Math.sin(candidateYaw);
