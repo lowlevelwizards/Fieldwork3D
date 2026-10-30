@@ -3,6 +3,7 @@
  * Original level, artwork and mechanics informed by freeform pause-and-plan tactics.
  * No dependency on the abandoned regional terrain or 3D prototypes.
  */
+import {type Site} from './breach-site.ts';
 export type Pt={x:number;y:number};
 export type Segment={a:Pt;b:Pt};
 export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number};
@@ -36,10 +37,21 @@ export const COVER:Obstacle[]=[
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export const doorCenter=(d:Door):Pt=>({
   x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2});
-export const initialDoors=():Door[]=>[
-  {id:'FRONT',a:{x:276,y:532},b:{x:329,y:532},open:false,openedAt:-1},
-  {id:'INNER',a:{x:382,y:305},b:{x:382,y:345},open:false,openedAt:-1},
-];
+const BASE_WALLS=WALLS.map(w=>({a:{...w.a},b:{...w.b}}));
+const BASE_COVER=COVER.map(o=>({...o}));
+let site:Site|null=null;
+/** A single geometry source drives collision, LOS, routefinding and renderers. */
+export function activateSite(next:Site|null){
+  site=next;
+  WALLS.splice(0,WALLS.length,...(next?.walls??BASE_WALLS));
+  COVER.splice(0,COVER.length,...(next?.cover??BASE_COVER));
+}
+export const activeSite=()=>site;
+export const initialDoors=():Door[]=>
+  (site?.doors??[
+    {id:'FRONT',a:{x:276,y:532},b:{x:329,y:532},open:false,openedAt:-1},
+    {id:'INNER',a:{x:382,y:305},b:{x:382,y:345},open:false,openedAt:-1},
+  ]).map(d=>({...d,a:{...d.a},b:{...d.b}}));
 export const pointToSegment=(p:Pt,s:Segment):number=>{
   const dx=s.b.x-s.a.x,dy=s.b.y-s.a.y;
   const t=Math.max(0,Math.min(1,((p.x-s.a.x)*dx+(p.y-s.a.y)*dy)/
