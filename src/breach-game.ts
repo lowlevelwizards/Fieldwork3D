@@ -27,7 +27,7 @@ import {sweptBodyClear} from './breach-navigation.ts';
 import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
   rayHitsActor,muzzleEndpoint,recoverWeapon,handlingInstability,type FiringMode} from './breach-ballistics.ts';
-import {chooseDefense,watchPoint} from './breach-defense.ts';
+import {chooseDefense,watchPoint,reachableInvestigation} from './breach-defense.ts';
 import {muzzleAtShot} from './breach-muzzle.ts';
 import {initialIntel,observeIntel,routeWithIntel,intelPassable,doorKnown,
   type IntelMode,type IntelState} from './breach-intel.ts';
@@ -1314,15 +1314,19 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.velocity=0;a.aim=0;a.alert='cover';return;
   }
   if(!a.contacted&&!a.contact&&a.alert==='idle'&&a.watch){
-    if(a.defense===null){
+    if(a.defense===null&&s.seconds>=a.defenseUntil){
       a.defense=defensivePosition(a,a.watch,s);
-      a.defenseUntil=s.seconds+8;
+      a.defenseUntil=s.seconds+2;
     }
     if(a.defense&&d(a.p,a.defense)>11){
       if(!a.nav.length)a.nav=route(a.p,a.defense);
-      if(a.nav.length)approach(a,a.defense,dt,s,.62);
-      if(a.nav.length)rotate(a,angle(a.p,a.nav[0]),dt);
-      return;
+      if(!a.nav.length){
+        a.defense=null;a.defenseUntil=s.seconds+.7;
+      }else{
+        approach(a,a.defense,dt,s,.62);
+        if(a.nav.length)rotate(a,angle(a.p,a.nav[0]),dt);
+        return;
+      }
     }
     rotate(a,angle(a.p,a.watch),dt);
   }
@@ -1340,11 +1344,15 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     rotate(a,angle(a.p,a.contact),dt);
     if(a.alert==='investigating'&&d(a.p,a.contact)>40){
       // Noise gives a region to investigate, never a magic target.
-      if(!a.nav.length)a.nav=route(a.p,a.contact);
-      if(a.nav.length)approach(a,a.contact,dt,s,
+      if(!a.nav.length){
+        const goal=reachableInvestigation(a.p,a.contact);
+        if(goal)a.nav=route(a.p,goal);
+        else{a.alert='cover';a.contact=null;a.defense=null;}
+      }
+      if(a.nav.length&&a.contact)approach(a,a.nav.at(-1)??a.contact,dt,s,
         a.personality==='aggressor'?1.1:.82);
     }
-    if(a.alert==='investigating'&&d(a.p,a.contact)<35){
+    if(a.alert==='investigating'&&a.contact&&d(a.p,a.contact)<35){
       a.alert='cover';a.contact=null;a.nav=[];
       a.defense=defensivePosition(a,a.heard??a.p,s);
       a.defenseUntil=s.seconds+6;
@@ -1353,6 +1361,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   if(a.alert==='cover'&&a.defense&&d(a.p,a.defense)>10){
     if(!a.nav.length)a.nav=route(a.p,a.defense);
     if(a.nav.length)approach(a,a.defense,dt,s,.7);
+    else{a.defense=null;a.defenseUntil=s.seconds+.8;}
   }
   if(!a.contact&&a.watch)rotate(a,angle(a.p,a.watch),dt);
 }
