@@ -6,10 +6,11 @@ import {
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   planMove,planMoveStroke,planAim,planWait,planSync,movePlanNode,
   finalPoint,doorAtNode,planStack,backOne,
-  deletePlanNode,clearPlan,undoPlan,redoPlan,
+  deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,stepSession,knownAt,liveVisibility,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
+import {routeLineHit} from './breach-route-edit.ts';
 import {shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
 import './breach-style.css';
 
@@ -149,8 +150,8 @@ function message(){
       lookMode==='strafe'?
         'STRAFE: tap a direction to hold while moving.':
         'LOOK: tap a direction to face at this node, then resume normal travel-facing.';
-    if(selectedNode!==null)return 'Order selected: LOOK, PIE and STRAFE change facing, not the movement path.';
-    return 'Tap to move · drag empty ground to orbit · choose LOOK / PIE / STRAFE for aiming.';
+    if(selectedNode!==null)return 'Waypoint selected: LOOK / PIE / STRAFE, drag to move, DELETE to remove.';
+    return 'Tap a route line to insert a waypoint · tap a node to edit or delete.';
   }
   if(state.phase==='running')return 'Executing. Pause to change your plan.';
   return state.phase==='won'?'Station secured. Review your report.':
@@ -211,6 +212,10 @@ function updateContext(){
       if(option.id==='ctxStack'||option.id==='ctxOpen'||
         option.id==='ctxKick'||option.id==='ctxHold')
         button.classList.add('door-action');
+      if(option.id==='ctxStack')button.title=
+        'Move beside this door and face it. Does not open the door or synchronize entry.';
+      if(option.id==='ctxDelete')button.title=
+        'Delete this waypoint and reconnect the remaining route.';
       ui.context.append(button);
     }
   }
@@ -255,9 +260,10 @@ ui.context.addEventListener('click',event=>{
       if(node)deletePlanNode(state,selected,node.id);
       selectedNode=null;doorFocusId=null;break;
     case 'ctxStack':
-      if(door&&!planStack(state,selected,door.id,
+      if(!door||!planStack(state,selected,door.id,
         nodeNearDoor?node?.id:undefined))
         state.events.push('NO REACHABLE STACK POSITION');
+      else state.events.push('STACK POSITION SET · DOOR ACTION IS SEPARATE');
       selectedNode=null;doorFocusId=null;break;
     case 'ctxOpen':
     case 'ctxKick':
@@ -283,6 +289,9 @@ function updateHud(){
     state.phase==='planning'?'GO <span>▶</span>':'RESET <span>↺</span>';
   ui.play.classList.toggle('running',state.phase==='running');
   const active=uid(selected);
+  // Read-only plan status for phone gesture regression tests.
+  canvas.dataset.planNodes=String(active?.plan.length??0);
+  canvas.dataset.selectedNode=selectedNode===null?'':String(selectedNode);
   ui.stance.textContent=active?.posture==='crouch'?'STAND':'CROUCH';
   ui.stance.setAttribute('aria-pressed',String(active?.posture==='crouch'));
   ui.contact.setAttribute('aria-pressed',String(active?.haltOnContact));
@@ -944,10 +953,21 @@ canvas.addEventListener('pointerdown',e=>{
       mode:orbit?'cameraOrbit':'cameraPan',moved:false});
   }else{
     const contextual=looking;
-    const hit=contextual?undefined:team(state).find(a=>
-      a.health>0&&(viewMode==='plan2d'||!stage?
-        distance(a.p,pt)<22:
-        distance(worldToScreen(a.p,24),{x:e.clientX,y:e.clientY})<25));
+    // A selected route can pass near a teammate. Its line remains tappable
+    // unless the finger is directly over the teammate's physical icon.
+    // Previously the oversized soldier hitbox stole mid-route insert taps.
+    const selectedActor=uid(selected);
+    const overSelectedLine=!contextual&&state.phase==='planning'&&
+      !!selectedActor&&!!routeLineHit(selectedActor.p,selectedActor.plan,
+        {x:e.clientX,y:e.clientY},p=>worldToScreen(p,4),14);
+    const hit=contextual?undefined:team(state).find(a=>{
+      if(a.health<=0)return false;
+      const direct=overSelectedLine&&a.id!==selected;
+      if(viewMode==='plan2d'||!stage)
+        return distance(a.p,pt)<(direct?12:22);
+      return distance(worldToScreen(a.p,24),
+        {x:e.clientX,y:e.clientY})<(direct?15:25);
+    });
     if(hit)selectUnit(hit.id);
     const node=state.phase==='planning'&&!hit&&!contextual?
       hitNode(pt):null;
@@ -1025,6 +1045,25 @@ canvas.addEventListener('pointermove',e=>{
     panX+=dx;panY+=dy;layout();
   }
 });
+/** Insert precisely where the player tapped the existing routed line.
+ * The original plan before and after the inserted node stays intact. */
+function insertAtRouteLine(screen:Pt):boolean{
+  const actor=uid(selected);
+  if(!actor||state.phase!=='planning')return false;
+  const hit=routeLineHit(actor.p,actor.plan,screen,
+    point=>worldToScreen(point,4),14);
+  if(!hit){canvas.dataset.lastRouteTap='miss:'+actor.plan.length+'/'+selected;return false;}
+  canvas.dataset.lastRouteTap='route:'+hit.index;
+  const id=state.nextId;
+  if(!insertPlanNode(state,selected,hit.index,hit.point)){
+    canvas.dataset.lastRouteTap='blocked:'+hit.index;
+    state.events.push('CANNOT INSERT WAYPOINT HERE');
+    return true; // This was a route tap, not a new destination order.
+  }
+  canvas.dataset.lastRouteTap='inserted:'+hit.index;
+  selectedNode=id;doorFocusId=null;contextSignature='';
+  return true;
+}
 function releasePointer(e:PointerEvent,cancelled=false){
   const p=activePointers.get(e.pointerId);if(!p)return;
   if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
@@ -1048,6 +1087,9 @@ function releasePointer(e:PointerEvent,cancelled=false){
           {x:e.clientX,y:e.clientY})<25));
       if(door&&!looking){
         doorFocusId=door.id;selectedNode=null;
+      }else if(!looking&&insertAtRouteLine({x:e.clientX,y:e.clientY})){
+        // Insert-and-select: contextual LOOK/PIE/STRAFE/DELETE are immediately
+        // available on the newly authored waypoint.
       }else{
         doorFocusId=null;useSelectedGround(pt);
       }

@@ -222,6 +222,80 @@ try{
   await phone.locator('#moreOrders').click();
   await phone.screenshot({path:resolve(folder,'07-phone-iso-battlefield.png')});
 
+  // 081: editing a *completed* route by tapping its drawn line.
+  // A line tap must insert between authored nodes rather than append to it.
+  const routePhone=await browser.newPage({
+    viewport:{width:390,height:844},deviceScaleFactor:2,
+    hasTouch:true,isMobile:true,
+  });
+  routePhone.on('pageerror',e=>errors.push('route editor: '+e.message));
+  await routePhone.goto(url,{waitUntil:'domcontentloaded'});
+  await routePhone.locator('#breachCanvas').waitFor();
+  await routePhone.locator('#moreOrders').click();
+  await routePhone.locator('#view2d').click();
+  await routePhone.locator('#moreOrders').click();
+  await routePhone.locator('#rook').click();
+  const count=()=>routePhone.locator('#breachCanvas')
+    .getAttribute('data-plan-nodes');
+  const end=screen(400,628);
+  await routePhone.touchscreen.tap(end.x,end.y);
+  if(await count()!=='1')throw Error('Route test failed to author first waypoint');
+  const middle=screen(350,624);
+  const beforeInsert=await routePhone.evaluate(pt=>{
+    const el=document.elementFromPoint(pt.x,pt.y);
+    const box=document.querySelector('#contextTools')?.getBoundingClientRect();
+    const selected=document.querySelector('#rook')?.getAttribute('aria-pressed');
+    const canvas=document.querySelector('#breachCanvas');
+    return {planNodes:canvas?.dataset.planNodes,
+      selectedNode:canvas?.dataset.selectedNode,
+      backDisabled:document.querySelector('#back')?.disabled,
+      atTap:el?.tagName+'#'+el?.id,
+      atTapClass:el?.getAttribute('class'),
+      atTapText:el?.textContent?.slice(0,70),
+      contextBox:box?{x:box.x,y:box.y,width:box.width,height:box.height}:null,
+      selected,
+      canvasMode:document.querySelector('#view2d')?.getAttribute('aria-pressed')};
+  },middle);
+  await routePhone.screenshot({path:resolve(folder,'17-route-before-insertion.png')});
+  await routePhone.touchscreen.tap(middle.x,middle.y);
+  if(await count()!=='2'){
+    const diagnostic=await routePhone.locator('#breachCanvas').evaluate(c=>({
+      planNodes:c.dataset.planNodes,
+      selectedNode:c.dataset.selectedNode,
+      routeTap:c.dataset.lastRouteTap,
+      feed:document.querySelector('#feed')?.textContent,
+    }));
+    throw Error('Tapping existing route line did not insert intermediate node: '+
+      JSON.stringify({diagnostic,beforeInsert}));
+  }
+  const selectedLineNode=await routePhone.locator('#breachCanvas')
+    .getAttribute('data-selected-node');
+  if(!selectedLineNode)
+    throw Error('Inserted node was not selected for contextual aiming');
+  if(!await routePhone.locator(
+    '#contextTools button[data-action="ctxLook"]').isVisible())
+    throw Error('Inserted node does not expose LOOK');
+  await routePhone.screenshot({path:resolve(folder,'18-phone-route-node-insert.png')});
+  await routePhone.locator(
+    '#contextTools button[data-action="ctxLook"]').click();
+  const direction=screen(340,684);
+  await routePhone.touchscreen.tap(direction.x,direction.y);
+  if(await count()!=='2')
+    throw Error('Assigning LOOK to inserted node changed the route count');
+  await routePhone.touchscreen.tap(middle.x,middle.y);
+  if(!await routePhone.locator(
+    '#contextTools button[data-action="ctxDelete"]').isVisible())
+    throw Error('Inserted route node cannot be removed contextually');
+  await routePhone.locator(
+    '#contextTools button[data-action="ctxDelete"]').click();
+  if(await count()!=='1')
+    throw Error('Deleting inserted waypoint failed to restore original route');
+  await routePhone.locator('#back').click();
+  if(await count()!=='0')
+    throw Error('Original destination was not preserved after deleting insertion');
+  await routePhone.screenshot({path:resolve(folder,'19-phone-route-node-deleted.png')});
+  await routePhone.close();
+
   const pc=await browser.newPage({
     viewport:{width:1220,height:810},deviceScaleFactor:1,
   });
