@@ -21,6 +21,7 @@ import {WEAPONS,injuryOf,injuryAim,injurySpeed,injuryReload,
   from './breach-combat.ts';
 import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,doorClear} from './breach-door.ts';
+import {localDetour} from './breach-cooperation.ts';
 import {chooseDefense,watchPoint} from './breach-defense.ts';
 
 export type Posture='stand'|'crouch';
@@ -784,21 +785,17 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   // same-team shoulder pass rather than deadlocking a door indefinitely.
   if(teammate&&a.blockedTime>.14)
     deferToTeammate(s,teammate,a);
-  // Temporary local detour around an occupied lane; never rewrite orders.
-  if(teammate&&a.blockedTime>.35&&!a.yieldTarget){
-    for(const sign of [1,-1]){
-      const side={x:-Math.sin(direction)*sign,y:Math.cos(direction)*sign};
-      const detour={x:a.p.x+side.x*23+Math.cos(direction)*11,
-        y:a.p.y+side.y*23+Math.sin(direction)*11};
-      if(passable(detour)&&!s.operators.some(o=>o!==a&&o.health>0&&
-          d(detour,o.p)<17)&&
-          !s.doors.some(door=>!doorClear(door)&&
-          segmentsCross({a:a.p,b:detour},door))){
-        a.nav.unshift(detour);a.blockedTime=0;return true;
-      }
+  // Try nearby route repair for both actor jams and furniture edges.
+  if((teammate||(!closed&&!passable(move)))&&a.blockedTime>.28&&
+    !a.yieldTarget){
+    const candidate=localDetour(a.p,next,s.doors,s.operators
+      .filter(o=>o!==a&&o.health>0).map(o=>o.p));
+    if(candidate&&(!a.nav.length||d(candidate,a.nav[0])>8)){
+      a.nav.unshift(candidate);a.blockedTime=0;return true;
     }
   }
-  const shoulderPass=!!teammate&&a.blockedTime>1.65;
+  const shoulderPass=!!teammate&&a.blockedTime>1.65&&
+    passable({x:(a.p.x+teammate.p.x)/2,y:(a.p.y+teammate.p.y)/2});
   if(!closed&&(!blocking||shoulderPass)&&passable(move)){
     a.priorP=clone(a.p);a.p=move;a.blockedTime=0;
     if(a.side==='blue'&&s.seconds-s.movementNoiseAt>.54){

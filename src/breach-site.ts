@@ -52,7 +52,7 @@ export function generateSite(seed:number):Site{
     id:string|null=null)=>{
     if(!doorPoint||!id){walls.push({a,b});return;}
     const vertical=Math.abs(a.x-b.x)<1;
-    const half=29; // ~58 world-unit opening: enough for stacked operators.
+    const half=24; // ~48 world-unit opening, physically passable for one operator.
     const pre=vertical?{x:a.x,y:doorPoint.y-half}:
       {x:doorPoint.x-half,y:a.y};
     const post=vertical?{x:a.x,y:doorPoint.y+half}:

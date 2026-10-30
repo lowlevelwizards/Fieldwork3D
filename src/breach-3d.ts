@@ -173,12 +173,12 @@ export class TacticalScene3D{
       if(len<5)continue;
       const x=(a.x+b.x)/2,z=(a.y+b.y)/2;
       const angle=-Math.atan2(b.y-a.y,b.x-a.x);
-      const body=this.box(this.root,x,16,z,len+1,32,9,wallMat);
+      const body=this.box(this.root,x,20,z,len+1,40,9,wallMat);
       body.rotation.y=angle;
       this.walls.push({mesh:body,mid:{x,y:z}});
       const foot=this.box(this.root,x,2,z,len+1,4,12,skirting,false);
       foot.rotation.y=angle;
-      const cap=this.box(this.root,x,32.3,z,len+2,2,11,capMat,false);
+      const cap=this.box(this.root,x,40.3,z,len+2,2,11,capMat,false);
       cap.rotation.y=angle;this.walls.push({mesh:cap,mid:{x,y:z}});
     }
     const doorMat=this.solid(0xb18b5f),doorTrim=this.solid(0xe0c390);
@@ -189,17 +189,17 @@ export class TacticalScene3D{
       const root=new THREE.Group();root.position.set(p.x,0,p.y);
       root.rotation.y=vertical?-Math.PI/2:0;
       const frame=new THREE.Group();root.add(frame);
-      this.box(frame,-length/2,15,0,5,30,10,doorTrim);
-      this.box(frame,length/2,15,0,5,30,10,doorTrim);
-      this.box(frame,0,30,0,length+7,4,12,doorTrim);
+      this.box(frame,-length/2,18.5,0,4,37,10,doorTrim);
+      this.box(frame,length/2,18.5,0,4,37,10,doorTrim);
+      this.box(frame,0,37,0,length+7,4,12,doorTrim);
       const threshold=this.box(frame,0,.32,0,length,1.2,13,
         doorTrim,false);
       const leaf=new THREE.Group();
        const invert=door.hinge==='b';leaf.position.x=invert?length/2:-length/2;
       root.add(leaf);
-      this.box(leaf,(door.hinge==='b'?-1:1)*length/2,13,0,length-4,26,4,doorMat);
-      this.box(leaf,(door.hinge==='b'?-1:1)*length*.7,13,3,3,3,2,metal,false);
-       this.box(leaf,(door.hinge==='b'?-1:1)*length*.7,13,-3,3,3,2,metal,false);
+      this.box(leaf,(door.hinge==='b'?-1:1)*length/2,17,0,length-4,34,4,doorMat);
+      this.box(leaf,(door.hinge==='b'?-1:1)*length*.7,18,3,3,3,2,metal,false);
+       this.box(leaf,(door.hinge==='b'?-1:1)*length*.7,18,-3,3,3,2,metal,false);
       const halo=new THREE.Mesh(new THREE.RingGeometry(
         length*.55,length*.66,32),new THREE.MeshBasicMaterial({
         color:0xe1c38b,transparent:true,opacity:.95,
@@ -264,8 +264,8 @@ export class TacticalScene3D{
       const p1=segment.a,p2=segment.b;
       const dx=p2.x-p1.x,dz=p2.y-p1.y;
       const len=Math.hypot(dx,dz);
-      const mesh=this.box(this.root,(p1.x+p2.x)/2,15.5,(p1.y+p2.y)/2,
-        len+3,31,9,this.solid(i===4?0x81877d:0xb4a991));
+      const mesh=this.box(this.root,(p1.x+p2.x)/2,20,(p1.y+p2.y)/2,
+        len+3,40,9,this.solid(i===4?0x81877d:0xb4a991));
       mesh.rotation.y=-Math.atan2(dz,dx);
       this.walls.push({mesh,mid:{x:(p1.x+p2.x)/2,y:(p1.y+p2.y)/2}});
       // Dark skirting separates the wall footprint from similar floor values.
@@ -273,7 +273,7 @@ export class TacticalScene3D{
         len+4,4,12,this.solid(0x36453f),false);
       skirting.rotation.y=mesh.rotation.y;
       // A dark, legible wall cap communicates height in either camera mode.
-      const cap=this.box(this.root,mesh.position.x,32,mesh.position.z,
+      const cap=this.box(this.root,mesh.position.x,40,mesh.position.z,
         len+4,2,11,this.solid(0x51483a),false);cap.rotation.y=mesh.rotation.y;
       this.walls.push({mesh:cap,mid:{x:mesh.position.x,y:mesh.position.z}});
     }
@@ -292,15 +292,15 @@ export class TacticalScene3D{
       const group=new THREE.Group();group.position.set(p.x,0,p.y);
       group.rotation.y=vertical?-Math.PI/2:0;
       const frame=new THREE.Group();group.add(frame);
-      this.box(frame,-width/2,15,0,5,30,10,doorTrim);
-      this.box(frame,width/2,15,0,5,30,10,doorTrim);
-      this.box(frame,0,30,0,width+7,4,12,doorTrim);
+      this.box(frame,-width/2,18.5,0,4,37,10,doorTrim);
+      this.box(frame,width/2,18.5,0,4,37,10,doorTrim);
+      this.box(frame,0,37,0,width+7,4,12,doorTrim);
       const threshold=this.box(frame,0,.32,0,width,1.2,13,thresholdMat,false);
       const hinge=new THREE.Group();hinge.position.x=door.hinge==='b'?width/2:-width/2;
       group.add(hinge);
-      this.box(hinge,(door.hinge==='b'?-1:1)*width/2,13,0,width-3,26,4,doorMat);
-      this.box(hinge,(door.hinge==='b'?-1:1)*width*.7,13,2.6,3,4,2,doorTrim,false);
-       this.box(hinge,(door.hinge==='b'?-1:1)*width*.7,13,-2.6,3,4,2,doorTrim,false);
+      this.box(hinge,(door.hinge==='b'?-1:1)*width/2,17,0,width-3,34,4,doorMat);
+      this.box(hinge,(door.hinge==='b'?-1:1)*width*.7,18,2.6,3,4,2,doorTrim,false);
+       this.box(hinge,(door.hinge==='b'?-1:1)*width*.7,18,-2.6,3,4,2,doorTrim,false);
       const halo=new THREE.Mesh(
         new THREE.RingGeometry(width*.56,width*.66,32),
         new THREE.MeshBasicMaterial({color:0xe3bc7d,transparent:true,
