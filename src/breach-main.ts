@@ -85,7 +85,7 @@ let state:Session=newSession(0,legacyStudy?undefined:randomSiteSeed());
 let recorder=new MissionRecorder();recorder.capture(state,true);
 let replaying=false,replayPlaying=false,replayTime=0,replayRate=1;
 let replayOmniscient=true,finishedSession:Session|null=null;
-let replayFollow=false,replayAnalysis=false;
+let replayFollow=false,replayAnalysis=false,replayFollowId='rook';
 let stage:TacticalScene3D|null=null;
 let viewMode:ViewMode='iso';
 try{stage=new TacticalScene3D();}
@@ -939,6 +939,23 @@ function sprite(a:TeamActor){
   }
 }
 function contacts(){
+  if(replaying&&replayAnalysis)for(const a of enemies(state)){
+    if(a.health<=0)continue;
+    const start=viewMode==='plan2d'?a.p:worldToScreen(a.p,22);
+    const focus=a.contact??a.watch;
+    if(focus){
+      const end=viewMode==='plan2d'?focus:worldToScreen(focus,22);
+      draw.save();draw.strokeStyle='#e4ae78';draw.lineWidth=1.7;
+      draw.setLineDash([5,4]);draw.beginPath();
+      draw.moveTo(start.x,start.y);draw.lineTo(end.x,end.y);
+      draw.stroke();draw.setLineDash([]);draw.restore();
+    }
+    if(a.defense){
+      const p=viewMode==='plan2d'?a.defense:worldToScreen(a.defense,5);
+      draw.strokeStyle='#d6b986';draw.lineWidth=2;
+      draw.strokeRect(p.x-8,p.y-8,16,16);
+    }
+  }
   for(const mark of state.impactMarks){
     if(!(replaying&&replayOmniscient)&&!liveVisibility(state,mark.p))continue;
     draw.globalAlpha=Math.max(.18,.78-mark.age*.023);
@@ -1053,11 +1070,17 @@ function updateReplayHud(){
   ui.replaySpeed.textContent=replayRate+'×';
   ui.replaySight.textContent=replayOmniscient?'FULL VIEW':'TEAM SIGHT';
   ui.replayView.textContent=viewMode.toUpperCase();
+  ui.replayFollow.textContent=replayFollow?'FOLLOW '+replayFollowId.toUpperCase():'FOLLOW';
+  ui.replayAnalysis.textContent=replayAnalysis?'ANALYSIS ON':'ANALYSIS';
+  const event=recorder.events.filter(e=>e.t<=replayTime+.14).at(-1);
+  ui.replayEventText.textContent=event?
+    clockText(event.t)+' · '+event.text:'NO EVENTS YET';
 }
 function enterReplay(){
   if(replaying||recorder.frames.length<2)return;
   finishedSession=state;replaying=true;replayPlaying=true;replayTime=0;
   replayRate=1;replayOmniscient=true;looking=false;flashMode=false;
+  replayFollow=false;replayAnalysis=false;replayFollowId='rook';
   state=newSession(finishedSession.variant,finishedSession.site?.seed);
   stage?.applySite(state.site??null);
   document.body.classList.add('replaying');
@@ -1096,6 +1119,25 @@ ui.replaySight.addEventListener('click',()=>{
 ui.replayView.addEventListener('click',()=>{
   cameraMode(viewMode==='iso'?'top':viewMode==='top'?'plan2d':'iso');
   updateReplayHud();
+});
+const jumpReplayEvent=(forward:boolean)=>{
+  const events=recorder.events.filter(e=>e.kind!=='shot');
+  const item=forward?events.find(e=>e.t>replayTime+.15):
+    events.slice().reverse().find(e=>e.t<replayTime-.15);
+  if(item){replayPlaying=false;seekReplay(item.t);}
+};
+ui.replayPrevEvent.addEventListener('click',()=>jumpReplayEvent(false));
+ui.replayNextEvent.addEventListener('click',()=>jumpReplayEvent(true));
+ui.replayFollow.addEventListener('click',()=>{
+  if(replayFollow){
+    const i=squadIds.indexOf(replayFollowId as typeof squadIds[number]);
+    if(i===squadIds.length-1)replayFollow=false;
+    else replayFollowId=squadIds[i+1];
+  }else replayFollow=true;
+  updateReplayHud();
+});
+ui.replayAnalysis.addEventListener('click',()=>{
+  replayAnalysis=!replayAnalysis;updateReplayHud();
 });
 ui.replayExit.addEventListener('click',exitReplay);
 function reset(next=state.variant){
@@ -1409,6 +1451,13 @@ function tick(now:number){
       accum-=1/60;
     }
   }else accum=0;
+  if(replaying&&replayFollow&&stage&&viewMode!=='plan2d'){
+    const a=team(state).find(x=>x.id===replayFollowId);
+    if(a){
+      stage.view.focus={...a.p};
+      stage.updateCamera(dt);
+    }
+  }
   if(replaying&&replayPlaying){
     replayTime=Math.min(recorder.duration,replayTime+dt*replayRate);
     applyReplayFrameAt(replayTime);
