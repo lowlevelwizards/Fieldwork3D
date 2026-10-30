@@ -953,10 +953,21 @@ canvas.addEventListener('pointerdown',e=>{
       mode:orbit?'cameraOrbit':'cameraPan',moved:false});
   }else{
     const contextual=looking;
-    const hit=contextual?undefined:team(state).find(a=>
-      a.health>0&&(viewMode==='plan2d'||!stage?
-        distance(a.p,pt)<22:
-        distance(worldToScreen(a.p,24),{x:e.clientX,y:e.clientY})<25));
+    // A selected route can pass near a teammate. Its line remains tappable
+    // unless the finger is directly over the teammate's physical icon.
+    // Previously the oversized soldier hitbox stole mid-route insert taps.
+    const selectedActor=uid(selected);
+    const overSelectedLine=!contextual&&state.phase==='planning'&&
+      !!selectedActor&&!!routeLineHit(selectedActor.p,selectedActor.plan,
+        {x:e.clientX,y:e.clientY},p=>worldToScreen(p,4),14);
+    const hit=contextual?undefined:team(state).find(a=>{
+      if(a.health<=0)return false;
+      const direct=overSelectedLine&&a.id!==selected;
+      if(viewMode==='plan2d'||!stage)
+        return distance(a.p,pt)<(direct?12:22);
+      return distance(worldToScreen(a.p,24),
+        {x:e.clientX,y:e.clientY})<(direct?15:25);
+    });
     if(hit)selectUnit(hit.id);
     const node=state.phase==='planning'&&!hit&&!contextual?
       hitNode(pt):null;
