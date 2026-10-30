@@ -41,7 +41,7 @@ export type TeamActor=Operator & {
   /** Temporary cooperative sidestep, independent of authored orders. */
   yieldTarget:Pt|null;yieldFor:string|null;yieldUntil:number;
   personality:Personality;morale:number;lastNoiseAt:number;
-  flashUntil:number;weapon:WeaponId;injuryStage:number;
+  flashUntil:number;lastThrowAt:number;weapon:WeaponId;injuryStage:number;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
 };
 export type NoiseEvent={p:Pt;radius:number;time:number;kind:string};
@@ -69,7 +69,8 @@ export type Session=Omit<TacticalState,'operators'> & {
   grenades:FlashGrenade[];flashBursts:FlashBurst[];flashRemaining:number;
   nextEffectId:number;impactMarks:ImpactMark[];
   battleEvents:BattleEvent[];nextBattleId:number;
-  missionType:'clear'|'intel'|'rescue'|'hold'|'capture';holdTime:number;};
+  missionType:'clear'|'intel'|'rescue'|'hold'|'capture';holdTime:number;
+  rescue:{p:Pt;following:string|null}|null;};
 const d=(a:Pt,b:Pt)=>length(a,b);
 const clone=(p:Pt):Pt=>({...p});
 const near=(a:Pt,b:Pt,range:number)=>d(a,b)<=range;
@@ -92,6 +93,7 @@ const withActions=(a:Operator):TeamActor=>({
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
   yieldTarget:null,yieldFor:null,yieldUntil:0,
   personality:'guard',morale:1,lastNoiseAt:-1,flashUntil:-1,
+  lastThrowAt:-100,
   weapon:'carbine',injuryStage:0,defense:null,watch:null,
   defenseUntil:0,surrendered:false,
 });
@@ -160,7 +162,9 @@ export function newSession(index=0,siteSeed?:number):Session{
     dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1,
     impactMarks:[],battleEvents:[],nextBattleId:1,
     missionType:site?(['clear','intel','rescue','hold','capture'] as const)[site.seed%5]:'clear',
-    holdTime:0};
+    holdTime:0,rescue:null};
+  if(state.missionType==='rescue')
+    state.rescue={p:clone(state.scenario.objective),following:null};
   if(state.missionType==='intel'||state.missionType==='rescue'||
      state.missionType==='hold')state.mission='secure';
   observe(state);
@@ -911,7 +915,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     a.velocity=0;rotate(a,angle(a.p,n.aimPoint),dt);
     a.actionTimer+=dt;
     if(a.actionTimer>=.3){
-      s.flashRemaining--;
+      s.flashRemaining--;a.lastThrowAt=s.seconds;
       s.grenades.push({id:s.nextEffectId++,p:clone(a.p),
         from:clone(a.p),to:clone(n.aimPoint),age:0,fuse:1.15,
         path:trajectory});
@@ -1172,6 +1176,22 @@ function fire(s:Session,a:TeamActor,dt:number){
   }
 }
 function mission(s:Session,dt:number){
+  if(s.rescue){
+    if(s.rescue.following){
+      const escort=team(s).find(a=>a.id===s.rescue!.following&&a.health>0);
+      if(escort){
+        s.rescue.p={x:escort.p.x+Math.cos(escort.heading+Math.PI)*15,
+          y:escort.p.y+Math.sin(escort.heading+Math.PI)*15};
+      }else s.rescue.following=null;
+    }
+    if(s.mission==='extract'&&!s.rescue.following){
+      const rescuer=team(s).find(a=>a.health>0&&near(a.p,s.rescue!.p,27));
+      if(rescuer){
+        s.rescue.following=rescuer.id;
+        notify(s,'PERSON JOINED '+rescuer.name);
+      }
+    }
+  }
   if(team(s).every(a=>a.health<=0)){
     s.phase='lost';s.report=['OPERATION FAILED','ALL OPERATORS LOST'];return;
   }
@@ -1189,6 +1209,11 @@ function mission(s:Session,dt:number){
       if(s.holdTime<7)return;
     }
     s.mission='extract';
+    if(s.rescue){
+      const escort=team(s).filter(a=>a.health>0).sort((a,b)=>
+        d(a.p,s.rescue!.p)-d(b.p,s.rescue!.p))[0];
+      s.rescue.following=escort?.id??null;
+    }
     const verb=s.missionType==='rescue'?'PERSON FOUND':
       s.missionType==='hold'?'POSITION HELD':'OBJECTIVE SECURED';
     notify(s,verb+' — EXTRACT');
@@ -1197,7 +1222,8 @@ function mission(s:Session,dt:number){
     s.holdTime=Math.max(0,s.holdTime-dt*.6);
   }
   if(s.mission==='extract'&&team(s).some(a=>a.health>0&&
-    near(a.p,s.scenario.extract,37))){
+    near(a.p,s.scenario.extract,37)&&
+    (!s.rescue||near(s.rescue.p,s.scenario.extract,45)))){
     s.mission='done';s.phase='won';
     s.report=['OPERATION COMPLETE',s.missionType.toUpperCase(),
       'EXTRACTION COMPLETE'];
