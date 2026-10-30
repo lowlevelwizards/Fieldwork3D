@@ -651,6 +651,7 @@ export class TacticalScene3D{
         x:actor.p.x,z:actor.p.y,heading:actor.heading,
         velocity:actor.velocity,seconds:s.seconds,stride:actor.stride,
         deterministic:!!replay,replayFeet:replay?.feet[actor.id],
+        pelvisYaw:replay?.pelvisYaw[actor.id],
         travelYaw:replay?.travelYaw[actor.id],
         posture:actor.posture,injury:actor.injuryStage,weapon:actor.weapon,
         reload:actor.reload,reloadDuration,
