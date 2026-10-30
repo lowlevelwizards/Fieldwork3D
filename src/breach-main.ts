@@ -8,12 +8,14 @@ import {
   finalPoint,doorAtNode,planSquadEntry,backOne,
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,stepSession,knownAt,liveVisibility,
-  planReload,reloadNow,planFlash,
+  planReload,reloadNow,planFlash,moveFlashTarget,flashTrajectory,
+  cycleWeapon,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import {routeLineHit} from './breach-route-edit.ts';
 import {shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
+import {injuryOf,WEAPONS} from './breach-combat.ts';
 import './breach-style.css';
 
 const el=<T extends HTMLElement>(id:string)=>{
@@ -47,6 +49,7 @@ const ui={
   undo:el<HTMLButtonElement>('undo'),redo:el<HTMLButtonElement>('redo'),
   wait:el<HTMLButtonElement>('wait'),sync:el<HTMLButtonElement>('sync'),
   reload:el<HTMLButtonElement>('reload'),flash:el<HTMLButtonElement>('flash'),
+  loadout:el<HTMLButtonElement>('loadout'),
   stance:el<HTMLButtonElement>('stance'),variant:el<HTMLButtonElement>('variant'),
   contact:el<HTMLButtonElement>('contact'),
   debrief:el<HTMLElement>('debrief'),
@@ -63,6 +66,11 @@ const ui={
   replaySight:el<HTMLButtonElement>('replaySight'),
   replayView:el<HTMLButtonElement>('replayView'),
   replayExit:el<HTMLButtonElement>('replayExit'),
+  replayPrevEvent:el<HTMLButtonElement>('replayPrevEvent'),
+  replayNextEvent:el<HTMLButtonElement>('replayNextEvent'),
+  replayFollow:el<HTMLButtonElement>('replayFollow'),
+  replayAnalysis:el<HTMLButtonElement>('replayAnalysis'),
+  replayEventText:el<HTMLOutputElement>('replayEventText'),
   replayClock:el<HTMLOutputElement>('replayClock'),
   rookAmmo:el<HTMLElement>('rookAmmo'),mossAmmo:el<HTMLElement>('mossAmmo'),
   ashAmmo:el<HTMLElement>('ashAmmo'),valeAmmo:el<HTMLElement>('valeAmmo'),
@@ -77,6 +85,7 @@ let state:Session=newSession(0,legacyStudy?undefined:randomSiteSeed());
 let recorder=new MissionRecorder();recorder.capture(state,true);
 let replaying=false,replayPlaying=false,replayTime=0,replayRate=1;
 let replayOmniscient=true,finishedSession:Session|null=null;
+let replayFollow=false,replayAnalysis=false,replayFollowId='rook';
 let stage:TacticalScene3D|null=null;
 let viewMode:ViewMode='iso';
 try{stage=new TacticalScene3D();}
@@ -327,6 +336,7 @@ function updateHud(){
   ui.contact.setAttribute('aria-pressed',String(active?.haltOnContact));
   ui.variant.textContent='NEW SITE';
   ui.flash.textContent='FLASH ×'+state.flashRemaining;
+  ui.loadout.textContent='WEAPON · '+(active?.weapon.toUpperCase()??'—');
   ui.flash.disabled=state.flashRemaining<=0||replaying;
   ui.back.disabled=!active?.plan.length;
   ui.undo.disabled=!(active?.history.undo.length);
@@ -345,15 +355,20 @@ function updateHud(){
     button.hidden=!a;
     button.classList.toggle('selected',id===selected);
     button.classList.toggle('down',!a||a.health<=0);
+    button.title=a?WEAPONS[a.weapon].label+' • '+
+      injuryOf(a.injuryStage).toUpperCase():'NO OPERATOR';
     button.classList.toggle('loading',!!a&&a.reload>0);
     button.style.setProperty('--reload-progress',
-      ((a?.reload??0)>0?Math.round(100*(1-a!.reload/1.8)):0)+'%');
+      ((a?.reload??0)>0?Math.round(100*(1-a!.reload/
+        (WEAPONS[a!.weapon].reload*(a!.injuryStage===2?1.5:
+          a!.injuryStage===1?1.1:1)))):0)+'%');
     ui[(id+'Ammo') as 'rookAmmo'|'mossAmmo'|'ashAmmo'|'valeAmmo'].textContent=
       a?String(a.magazine).padStart(2,'0')+' / '+a.reserve+
       (a.reload>0?' ↻':''):'--';
     button.setAttribute('aria-pressed',String(id===selected));
     ui[(id+'Hp') as 'rookHp'|'mossHp'|'ashHp'|'valeHp'].textContent=
-      a?.health===2?'●●':a?.health===1?'●○':'○○';
+      !a?'--':a.health<=0?'DOWN':
+      a.injuryStage===2?'HEAVY':a.injuryStage===1?'HURT':'OK';
   }
   document.querySelector('.ident strong')!.textContent=
     (state.site?.name??'CUTWOODS')+' / BREACH';
@@ -533,7 +548,8 @@ function paths(){
     }
     for(let i=0;i<plan.length;i++){
       const n=plan[i],selectedNow=a.id===selected&&selectedNode===n.id;
-      const point=selectedNow&&draggingNode?draggingNode:n.p;
+      const point=selectedNow&&draggingNode&&n.kind!=='flash'?
+        draggingNode:n.p;
       circle(point.x,point.y,selectedNow?10:7,
         selectedNow?'#ecd29f':n.kind==='move'?c:'#c8ae7f');
       circle(point.x,point.y,3,'#263836');
@@ -557,6 +573,21 @@ function paths(){
         draw.fillStyle='#d5e8de';
         draw.fillText(n.aimLabel==='strafe'?'STRAFE · HOLD':'LOOK',
           point.x+12,point.y-12);
+      }
+      if(n.kind==='flash'&&n.aimPoint){
+        const path=flashTrajectory(state,a,n);
+        const landing=selectedNow&&draggingNode?draggingNode:n.aimPoint;
+        const points=path?.points??[n.p,landing];
+        draw.strokeStyle='#f3c67e';draw.lineWidth=2.5;
+        draw.setLineDash([5,5]);draw.beginPath();
+        draw.moveTo(points[0].x,points[0].y);
+        for(const p of points.slice(1))draw.lineTo(p.x,p.y);
+        draw.stroke();draw.setLineDash([]);
+        draw.strokeStyle='#f0af55';draw.lineWidth=2;
+        draw.beginPath();draw.arc(landing.x,landing.y,26,0,Math.PI*2);draw.stroke();
+        circle(landing.x,landing.y,selectedNow?11:9,'#dca053');
+        draw.fillStyle='#1d2624';draw.font='bold 12px monospace';
+        draw.textAlign='center';draw.fillText('F',landing.x,landing.y+4);
       }
       if(n.kind==='move'&&n.moveMode==='strafe'){
         draw.textAlign='left';draw.font='bold 10px monospace';
@@ -624,7 +655,8 @@ function renderProjectedPlans(){
         draw.stroke();draw.setLineDash([]);draw.globalAlpha=1;
       }
       const selectedNow=a.id===selected&&selectedNode===n.id;
-      const point=worldToScreen(selectedNow&&draggingNode?draggingNode:n.p,8);
+      const point=worldToScreen(selectedNow&&draggingNode&&n.kind!=='flash'?
+        draggingNode:n.p,8);
       circle(point.x,point.y,selectedNow?11:7,
         selectedNow?'#ecd29f':n.kind==='pie'?'#daa972':color);
       circle(point.x,point.y,3,'#233b39');
@@ -655,6 +687,24 @@ function renderProjectedPlans(){
         draw.fillStyle='#e0f7e9';draw.textAlign='left';
         draw.font='bold 10px monospace';
         draw.fillText('STRAFE',point.x+13,point.y-12);
+      }
+      if(n.kind==='flash'&&n.aimPoint){
+        const path=flashTrajectory(state,a,n);
+        const landing=selectedNow&&draggingNode?draggingNode:n.aimPoint;
+        const points=path?.points??[n.p,landing];
+        draw.strokeStyle='#f0bd77';draw.lineWidth=2.2;
+        draw.setLineDash([4,5]);draw.beginPath();
+        const start=worldToScreen(points[0],7);draw.moveTo(start.x,start.y);
+        for(const q of points.slice(1)){
+          const project=worldToScreen(q,7);draw.lineTo(project.x,project.y);
+        }
+        draw.stroke();draw.setLineDash([]);
+        const screen=worldToScreen(landing,7);
+        draw.strokeStyle='#f1c17e';draw.beginPath();
+        draw.arc(screen.x,screen.y,16,0,Math.PI*2);draw.stroke();
+        circle(screen.x,screen.y,selectedNow?11:9,'#c88d4e');
+        draw.fillStyle='#182b2c';draw.textAlign='center';
+        draw.font='bold 11px monospace';draw.fillText('F',screen.x,screen.y+3);
       }
       if(n.kind==='door'){
         draw.fillStyle='#e2ca9f';draw.textAlign='left';
@@ -815,6 +865,13 @@ function fog(){
   }
 }
 function missionMarkers(){
+  if(state.rescue){
+    const p=state.rescue.p;
+    draw.strokeStyle='#eed9ad';draw.lineWidth=2.2;
+    draw.beginPath();draw.arc(p.x,p.y,13,0,Math.PI*2);draw.stroke();
+    draw.fillStyle='#ebdfc0';draw.textAlign='center';
+    draw.font='bold 10px monospace';draw.fillText('CIV',p.x,p.y-18);
+  }
   const p=state.mission==='extract'?state.scenario.extract:state.scenario.objective;
   if(state.mission==='clear'||state.mission==='done')return;
   draw.strokeStyle='#d8cc98';draw.lineWidth=2;
@@ -863,17 +920,20 @@ function sprite(a:TeamActor){
     shot.age<.11&&shotVisibility(state,shot).flash);
   draw.save();
   draw.translate(a.p.x-flinch*2.3,a.p.y+flinch*1.7);
-  draw.rotate(a.heading+flinch*.14);
+  draw.rotate(a.heading+flinch*.14+
+    (a.injuryStage===2?.14:a.injuryStage===1?.04:0));
   circle(0,2,11,'#0d1b20af');circle(0,0,9.2,friendly?'#4b756f':'#794a43');
   // Body and alternating leg extension are driven by actual travel.
   const gait=Math.sin(state.seconds*15+Math.floor(a.p.x*.15))*
-    Math.min(1,a.velocity/70)*3.5;
+    Math.min(1,a.velocity/70)*(a.injuryStage===2?2.1:3.5);
   rect(-9,-7+gait,9,5,friendly?'#304842':'#4b3633');
   rect(-9,2-gait,9,5,friendly?'#304842':'#4b3633');
   rect(-7,-5,14,10,c);
   rect(-10,-4,5,8,friendly?'#45625d':'#563e39');
   circle(4,0,3.8,friendly?'#d3dac1':'#d0a58a');
-  rect(firing?2:5,-2,18,4,'#1a2527');
+  rect(firing?2:5,-2,
+    a.weapon==='smg'?13:a.weapon==='rifle'?23:a.weapon==='shotgun'?20:18,
+    a.weapon==='shotgun'?5:4,'#1a2527');
   rect(firing?17:20,-1,6,2,'#a2a9a1');
   draw.restore();
   if(friendly){
@@ -891,6 +951,23 @@ function sprite(a:TeamActor){
   }
 }
 function contacts(){
+  if(replaying&&replayAnalysis)for(const a of enemies(state)){
+    if(a.health<=0)continue;
+    const start=viewMode==='plan2d'?a.p:worldToScreen(a.p,22);
+    const focus=a.contact??a.watch;
+    if(focus){
+      const end=viewMode==='plan2d'?focus:worldToScreen(focus,22);
+      draw.save();draw.strokeStyle='#e4ae78';draw.lineWidth=1.7;
+      draw.setLineDash([5,4]);draw.beginPath();
+      draw.moveTo(start.x,start.y);draw.lineTo(end.x,end.y);
+      draw.stroke();draw.setLineDash([]);draw.restore();
+    }
+    if(a.defense){
+      const p=viewMode==='plan2d'?a.defense:worldToScreen(a.defense,5);
+      draw.strokeStyle='#d6b986';draw.lineWidth=2;
+      draw.strokeRect(p.x-8,p.y-8,16,16);
+    }
+  }
   for(const mark of state.impactMarks){
     if(!(replaying&&replayOmniscient)&&!liveVisibility(state,mark.p))continue;
     draw.globalAlpha=Math.max(.18,.78-mark.age*.023);
@@ -963,8 +1040,10 @@ function render(){
 function useSelectedGround(pt:Pt){
   if(state.phase!=='planning'||replaying)return;
   if(flashMode){
+    const id=state.nextId;
     if(!planFlash(state,selected,pt))
       state.events.push('FLASH TARGET BLOCKED / OUT OF RANGE');
+    else selectedNode=id;
     flashMode=false;updateHud();return;
   }
   if(looking){
@@ -1003,11 +1082,17 @@ function updateReplayHud(){
   ui.replaySpeed.textContent=replayRate+'×';
   ui.replaySight.textContent=replayOmniscient?'FULL VIEW':'TEAM SIGHT';
   ui.replayView.textContent=viewMode.toUpperCase();
+  ui.replayFollow.textContent=replayFollow?'FOLLOW '+replayFollowId.toUpperCase():'FOLLOW';
+  ui.replayAnalysis.textContent=replayAnalysis?'ANALYSIS ON':'ANALYSIS';
+  const event=recorder.events.filter(e=>e.t<=replayTime+.14).at(-1);
+  ui.replayEventText.textContent=event?
+    clockText(event.t)+' · '+event.text:'NO EVENTS YET';
 }
 function enterReplay(){
   if(replaying||recorder.frames.length<2)return;
   finishedSession=state;replaying=true;replayPlaying=true;replayTime=0;
   replayRate=1;replayOmniscient=true;looking=false;flashMode=false;
+  replayFollow=false;replayAnalysis=false;replayFollowId='rook';
   state=newSession(finishedSession.variant,finishedSession.site?.seed);
   stage?.applySite(state.site??null);
   document.body.classList.add('replaying');
@@ -1047,6 +1132,25 @@ ui.replayView.addEventListener('click',()=>{
   cameraMode(viewMode==='iso'?'top':viewMode==='top'?'plan2d':'iso');
   updateReplayHud();
 });
+const jumpReplayEvent=(forward:boolean)=>{
+  const events=recorder.events.filter(e=>e.kind!=='shot');
+  const item=forward?events.find(e=>e.t>replayTime+.15):
+    events.slice().reverse().find(e=>e.t<replayTime-.15);
+  if(item){replayPlaying=false;seekReplay(item.t);}
+};
+ui.replayPrevEvent.addEventListener('click',()=>jumpReplayEvent(false));
+ui.replayNextEvent.addEventListener('click',()=>jumpReplayEvent(true));
+ui.replayFollow.addEventListener('click',()=>{
+  if(replayFollow){
+    const i=squadIds.indexOf(replayFollowId as typeof squadIds[number]);
+    if(i===squadIds.length-1)replayFollow=false;
+    else replayFollowId=squadIds[i+1];
+  }else replayFollow=true;
+  updateReplayHud();
+});
+ui.replayAnalysis.addEventListener('click',()=>{
+  replayAnalysis=!replayAnalysis;updateReplayHud();
+});
 ui.replayExit.addEventListener('click',exitReplay);
 function reset(next=state.variant){
   replaying=false;replayPlaying=false;finishedSession=null;
@@ -1075,6 +1179,9 @@ ui.clear.addEventListener('click',()=>{clearPlan(state,selected);selectedNode=nu
 ui.undo.addEventListener('click',()=>{undoPlan(state,selected);selectedNode=null;updateHud();});
 ui.redo.addEventListener('click',()=>{redoPlan(state,selected);selectedNode=null;updateHud();});
 ui.wait.addEventListener('click',()=>{planWait(state,selected);updateHud();});
+ui.loadout.addEventListener('click',()=>{
+  cycleWeapon(state,selected);updateHud();
+});
 ui.reload.addEventListener('click',()=>{
   if(state.phase==='planning')planReload(state,selected);
   else if(state.phase==='running')reloadNow(state,selected);
@@ -1140,6 +1247,11 @@ const hitNode=(p:Pt):{id:number;index:number}|null=>{
   if(!unit)return null;
   for(let i=unit.plan.length-1;i>=0;i--){
     const n=unit.plan[i];
+    if(n.kind==='flash'&&n.aimPoint){
+      const marker=worldToScreen(n.aimPoint,6);
+      const cursor=worldToScreen(p,6);
+      if(distance(marker,cursor)<25)return {id:n.id,index:i};
+    }
     if(viewMode!=='plan2d'&&stage){
       const screen=worldToScreen(n.p,8),cursor=worldToScreen(p,8);
       if(distance(screen,cursor)<19)return {id:n.id,index:i};
@@ -1281,8 +1393,13 @@ function releasePointer(e:PointerEvent,cancelled=false){
   const pt=pointerWorld(e);
   if(!cancelled&&state.phase==='planning'&&!replaying&&activePointers.size===1){
     if(p.mode==='node'&&p.nodeId!==null){
-      if(p.moved&&!movePlanNode(state,selected,p.nodeId,pt))
-        state.events.push('INVALID NODE POSITION');
+      if(p.moved){
+        const moving=uid(selected)?.plan.find(node=>node.id===p.nodeId);
+        const moved=moving?.kind==='flash'?
+          moveFlashTarget(state,selected,p.nodeId,pt):
+          movePlanNode(state,selected,p.nodeId,pt);
+        if(!moved)state.events.push('INVALID ORDER DESTINATION');
+      }
       selectedNode=p.nodeId;doorFocusId=null;
     }else if(p.mode==='route'&&trace&&trace.length>1){
       const points=[...trace,pt];
@@ -1346,6 +1463,13 @@ function tick(now:number){
       accum-=1/60;
     }
   }else accum=0;
+  if(replaying&&replayFollow&&stage&&viewMode!=='plan2d'){
+    const a=team(state).find(x=>x.id===replayFollowId);
+    if(a){
+      stage.view.focus={...a.p};
+      stage.updateCamera(dt);
+    }
+  }
   if(replaying&&replayPlaying){
     replayTime=Math.min(recorder.duration,replayTime+dt*replayRate);
     applyReplayFrameAt(replayTime);
@@ -1355,7 +1479,10 @@ function tick(now:number){
   // A new shot can arrive on exactly the tick an old shot expires.
   const fresh=state.shots.filter(shot=>shot.id>lastSoundShotId);
   if(audio&&!replaying)for(const shot of fresh.slice(-3)){
-    playTone(shot.side==='blue'?135:105,.095,true);
+    const firingActor=state.operators.find(a=>a.id===shot.shooterId);
+    const weapon=firingActor?.weapon??'carbine';
+    playTone(weapon==='shotgun'?82:weapon==='rifle'?112:
+      weapon==='smg'?177:135,weapon==='shotgun'?.19:.095,true);
     if(shot.hit)playTone(shot.down?75:225,shot.down ? .25 : .10,
       shot.down);
   }
@@ -1369,6 +1496,10 @@ function tick(now:number){
     playTone(1350,.65,true);
   if(event!==lastEventAudio&&event.includes('RELOADED'))
     playTone(280,.09);
+  if(event!==lastEventAudio&&event.includes('FLASH OUT'))
+    playTone(420,.07);
+  if(event!==lastEventAudio&&event.includes('SURRENDERED'))
+    playTone(210,.22);
   lastEventAudio=event;
   if(now-hudAt>120){updateHud();if(replaying)updateReplayHud();hudAt=now;}
   if(stage&&viewMode!=='plan2d')

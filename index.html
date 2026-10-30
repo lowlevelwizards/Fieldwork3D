@@ -20,6 +20,7 @@
   <button id="redo" type="button" title="Redo the last planning edit">REDO</button>
   <button id="wait" type="button">WAIT</button>
   <button id="reload" type="button">RELOAD</button>
+  <button id="loadout" type="button" title="Cycle selected operator weapon">WEAPON</button>
   <button id="flash" type="button">FLASH ×2</button>
   <button id="sync" type="button" title="Synchronize the squad's planned go-code">SYNC</button>
   <button id="stance" type="button">CROUCH</button>
@@ -66,14 +67,19 @@
   <div class="replay-head"><strong>MISSION REPLAY</strong><output id="replayClock">00:00 / 00:00</output></div>
   <input id="replaySeek" type="range" min="0" max="1000" value="0" aria-label="Seek through mission"/>
   <div class="replay-actions">
+    <button id="replayPrevEvent" type="button" title="Previous combat event">|◀</button>
     <button id="replayBack" type="button" aria-label="Rewind ten seconds">◀◀</button>
     <button id="replayPlay" type="button">PLAY ▶</button>
     <button id="replayForward" type="button" aria-label="Advance ten seconds">▶▶</button>
+    <button id="replayNextEvent" type="button" title="Next combat event">▶|</button>
     <button id="replaySpeed" type="button">1×</button>
     <button id="replaySight" type="button">FULL VIEW</button>
     <button id="replayView" type="button">ISO</button>
+    <button id="replayFollow" type="button">FOLLOW</button>
+    <button id="replayAnalysis" type="button">ANALYSIS</button>
     <button id="replayExit" type="button">EXIT</button>
   </div>
+  <output id="replayEventText" class="replay-event" aria-live="off">Mission events</output>
 </section>
 <div class="foot"><span id="mission">CONTACTS UNKNOWN • SECURE THE STATION</span><span class="shortcut">TAP TO ORDER · DRAG TO ORBIT · 2 FINGERS PAN/PINCH</span></div>
 <script type="module" src="./src/breach-main.ts"></script>

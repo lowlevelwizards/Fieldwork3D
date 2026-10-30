@@ -16,6 +16,11 @@ import {
 } from './breach-plan.ts';
 import {validPieArc} from './breach-maneuvers.ts';
 import {generateSite,type Site,seeded} from './breach-site.ts';
+import {WEAPONS,injuryOf,injuryAim,injurySpeed,injuryReload,
+  woundSeverity,exposure,nearCover,type WeaponId,type BattleEvent}
+  from './breach-combat.ts';
+import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
+import {chooseDefense,watchPoint} from './breach-defense.ts';
 
 export type Posture='stand'|'crouch';
 export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retreat';
@@ -36,7 +41,8 @@ export type TeamActor=Operator & {
   /** Temporary cooperative sidestep, independent of authored orders. */
   yieldTarget:Pt|null;yieldFor:string|null;yieldUntil:number;
   personality:Personality;morale:number;lastNoiseAt:number;
-  flashUntil:number;
+  flashUntil:number;lastThrowAt:number;weapon:WeaponId;injuryStage:number;
+  defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
 };
 export type NoiseEvent={p:Pt;radius:number;time:number;kind:string};
 export type ShotEvent={
@@ -47,7 +53,8 @@ export type ShotEvent={
 };
 export type ImpactMark={id:number;p:Pt;surface:ShotEvent['surface'];age:number};
 export type DroppedMagazine={id:number;p:Pt;side:Side;age:number};
-export type FlashGrenade={id:number;p:Pt;from:Pt;to:Pt;age:number;fuse:number};
+export type FlashGrenade={id:number;p:Pt;from:Pt;to:Pt;age:number;
+  fuse:number;path?:ThrowPath};
 export type FlashBurst={id:number;p:Pt;age:number};
 export type KnownContact={p:Pt;at:number;status:'seen'|'heard'};
 export type MissionStage='clear'|'secure'|'extract'|'done';
@@ -60,7 +67,11 @@ export type Session=Omit<TacticalState,'operators'> & {
   started:boolean;syncCode:number;report:string[];
   movementNoiseAt:number;site?:Site;dropped:DroppedMagazine[];
   grenades:FlashGrenade[];flashBursts:FlashBurst[];flashRemaining:number;
-  nextEffectId:number;impactMarks:ImpactMark[];};
+  nextEffectId:number;impactMarks:ImpactMark[];
+  battleEvents:BattleEvent[];nextBattleId:number;
+  missionType:'clear'|'intel'|'rescue'|'hold'|'capture';holdTime:number;
+  rescue:{p:Pt;following:string|null}|null;
+  captureTarget:string|null;};
 const d=(a:Pt,b:Pt)=>length(a,b);
 const clone=(p:Pt):Pt=>({...p});
 const near=(a:Pt,b:Pt,range:number)=>d(a,b)<=range;
@@ -83,6 +94,9 @@ const withActions=(a:Operator):TeamActor=>({
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
   yieldTarget:null,yieldFor:null,yieldUntil:0,
   personality:'guard',morale:1,lastNoiseAt:-1,flashUntil:-1,
+  lastThrowAt:-100,
+  weapon:'carbine',injuryStage:0,defense:null,watch:null,
+  defenseUntil:0,surrendered:false,
 });
 /** Omitted seed keeps 052's historic static study for regression tests.
  * The actual game passes a unique seed on each newly loaded site.
@@ -104,6 +118,10 @@ export function newSession(index=0,siteSeed?:number):Session{
     }
     const friendly=operators.filter(a=>a.side==='blue');
     friendly.forEach((a,i)=>{
+      a.weapon=(['carbine','smg','rifle','shotgun'] as const)[i];
+      a.magazine=WEAPONS[a.weapon].capacity;
+      a.reserve=WEAPONS[a.weapon].reserve;
+      a.health=4;a.injuryStage=0;
       a.p={...site.spawn[i]};a.heading=-Math.PI/2;
       a.priorP={...a.p};
     });
@@ -123,8 +141,11 @@ export function newSession(index=0,siteSeed?:number):Session{
       }
       a.p={...site.enemies[i]};a.priorP={...a.p};
       a.heading=enemyRng()*Math.PI*2;
-      a.health=site.roomCount>=5?2:(enemyRng()<.55?1:2);
-      a.magazine=10;a.reserve=30;
+      a.health=enemyRng()<.18?3:4;
+      a.weapon=enemyRng()<.30?'smg':'carbine';
+      a.magazine=WEAPONS[a.weapon].capacity;
+      a.reserve=WEAPONS[a.weapon].reserve;
+      a.injuryStage=0;
       a.personality=(['guard','aggressor','cautious'] as const)[Math.floor(enemyRng()*3)];
       a.morale=.48+enemyRng()*.52;
     }
@@ -139,7 +160,19 @@ export function newSession(index=0,siteSeed?:number):Session{
     mission:'clear',noise:[],shots:[],nextShotId:1,known:new Map(),
     seenGround:new Set(),timesPaused:0,deaths:0,started:false,
     syncCode:0,report:[],movementNoiseAt:0,site,
-    dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1,impactMarks:[]};
+    dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1,
+    impactMarks:[],battleEvents:[],nextBattleId:1,
+    missionType:site?(['clear','intel','rescue','hold','capture'] as const)[site.seed%5]:'clear',
+    holdTime:0,rescue:null,captureTarget:null};
+  if(state.missionType==='capture'){
+    const target=operators.find(a=>a.side==='red');
+    state.captureTarget=target?.id??null;
+    if(target)state.scenario.objective=clone(target.p);
+  }
+  if(state.missionType==='rescue')
+    state.rescue={p:clone(state.scenario.objective),following:null};
+  if(state.missionType==='intel'||state.missionType==='rescue'||
+     state.missionType==='hold')state.mission='secure';
   observe(state);
   return state;
 }
@@ -489,11 +522,13 @@ export function redoPlan(s:Session,id:string){
 }
 /** Manual or automatic reload, with a physical discarded magazine. */
 export function beginReload(s:Session,a:TeamActor):boolean{
-  if(a.health<=0||a.reload>0||a.reserve<=0||a.magazine>=12)return false;
+  const w=WEAPONS[a.weapon];
+  if(a.health<=0||a.reload>0||a.reserve<=0||a.magazine>=w.capacity)return false;
   s.dropped.push({id:s.nextEffectId++,p:clone(a.p),side:a.side,age:0});
   if(s.dropped.length>48)s.dropped.shift();
-  a.magazine=0;a.reload=1.8;a.aim=0;
+  a.magazine=0;a.reload=w.reload*injuryReload(a.injuryStage);a.aim=0;
   notify(s,a.name+' RELOADING');
+  battleEvent(s,'reload',a,a.p,a.name+' RELOAD');
   return true;
 }
 /** Two team-wide flashbangs per mission. Throwing is an authored timed order. */
@@ -504,10 +539,42 @@ export function planFlash(s:Session,id:string,target:Pt):boolean{
     x.plan.filter(node=>node.kind==='flash').length,0);
   const start=finalPoint(a);
   if(queued>=s.flashRemaining||d(start,target)>160||d(start,target)<16)return false;
-  const ray={a:start,b:target};
-  if(WALLS.some(w=>segmentsCross(ray,w))||
-    s.doors.some(w=>!w.open&&segmentsCross(ray,w)))return false;
+  const plannedOpen=a.plan.filter(n=>n.kind==='door'&&n.method!=='hold')
+    .map(n=>n.doorId??'');
+  if(!validateThrow(start,target,s.doors,plannedOpen).valid)return false;
   return addNode(s,id,'flash',start,{aimPoint:clone(target)});
+}
+/** Dragging a flash marker changes its landing point, not the thrower's position. */
+export function moveFlashTarget(s:Session,id:string,nodeId:number,p:Pt){
+  const a=party(s,id);if(!a||!canEdit(s)||!passable(p))return false;
+  const candidate=a.plan.find(n=>n.id===nodeId&&n.kind==='flash');
+  if(!candidate)return false;
+  const index=a.plan.indexOf(candidate);
+  const opened=a.plan.slice(0,index).filter(n=>n.kind==='door'&&
+    n.method!=='hold').map(n=>n.doorId??'');
+  if(!validateThrow(candidate.p,p,s.doors,opened).valid)return false;
+  return edit(s,a,()=>{candidate.aimPoint=clone(p);});
+}
+export function flashTrajectory(s:Session,a:TeamActor,node:PlanNode):ThrowPath|null{
+  if(node.kind!=='flash'||!node.aimPoint)return null;
+  const index=a.plan.findIndex(n=>n.id===node.id);
+  const open=a.plan.slice(0,index).filter(n=>n.kind==='door'&&
+    n.method!=='hold').map(n=>n.doorId??'');
+  return validateThrow(node.p,node.aimPoint,s.doors,open);
+}
+function battleEvent(s:Session,kind:BattleEvent['kind'],a:TeamActor|null,p:Pt,text:string){
+  s.battleEvents.push({id:s.nextBattleId++,kind,t:s.seconds,
+    actor:a?.id,p:clone(p),text});
+  if(s.battleEvents.length>500)s.battleEvents.shift();
+}
+export function cycleWeapon(s:Session,id:string):boolean{
+  const a=party(s,id);if(!a||!canEdit(s))return false;
+  const ids:WeaponId[]=['carbine','smg','rifle','shotgun'];
+  const next=ids[(ids.indexOf(a.weapon)+1)%ids.length];
+  a.weapon=next;a.magazine=WEAPONS[next].capacity;
+  a.reserve=WEAPONS[next].reserve;a.reload=0;a.aim=0;
+  notify(s,a.name+' EQUIPPED '+WEAPONS[next].label);
+  return true;
 }
 export function planReload(s:Session,id:string):boolean{
   const a=party(s,id);
@@ -554,8 +621,8 @@ export function inSight(a:TeamActor,b:TeamActor,s:Session){
   if(a.health<=0||b.health<=0||d(a.p,b.p)>240)return false;
   const delta=angleDifference(a.heading,angle(a.p,b.p));
   if(Math.abs(delta)>.94)return false;
-  return unobstructed(a.p,b.p,s,
-    a.posture==='crouch'||b.posture==='crouch');
+  return !exposure(a.p,b.p,s.doors,
+    a.posture==='crouch'||b.posture==='crouch').blocked;
 }
 export const isSeen=(s:Session,target:TeamActor)=>
   team(s).some(a=>inSight(a,target,s));
@@ -677,7 +744,8 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const direction=angle(a.p,next);
   const movingSpeed=a.side==='blue'?75:62;
   const suppression=clamp(1-a.suppression*.4,.45,1);
-  const desired=movingSpeed*(a.posture==='crouch'?.58:1)*suppression*speedScale;
+  const desired=movingSpeed*(a.posture==='crouch'?.58:1)*suppression*speedScale*
+    injurySpeed(a.injuryStage);
   a.velocity+=(desired-a.velocity)*Math.min(1,dt*6);
   const advance=Math.min(gap,a.velocity*dt);
   const move={x:a.p.x+Math.cos(direction)*advance,
@@ -839,18 +907,25 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     return;
   }
   if(n.kind==='reload'){
-    if(a.magazine>=12||a.reserve<=0){pop(a);return;}
+    if(a.magazine>=WEAPONS[a.weapon].capacity||a.reserve<=0){pop(a);return;}
     if(a.reload===0)beginReload(s,a);
     return;
   }
   if(n.kind==='flash'){
     if(!n.aimPoint||s.flashRemaining<=0){pop(a);return;}
+    const trajectory=validateThrow(a.p,n.aimPoint,s.doors);
+    if(!trajectory.valid){
+      notify(s,a.name+' FLASH BLOCKED — '+(trajectory.reason??'CHECK TRAJECTORY'));
+      a.velocity=0;return;
+    }
     a.velocity=0;rotate(a,angle(a.p,n.aimPoint),dt);
     a.actionTimer+=dt;
     if(a.actionTimer>=.3){
-      s.flashRemaining--;
+      s.flashRemaining--;a.lastThrowAt=s.seconds;
       s.grenades.push({id:s.nextEffectId++,p:clone(a.p),
-        from:clone(a.p),to:clone(n.aimPoint),age:0,fuse:1.15});
+        from:clone(a.p),to:clone(n.aimPoint),age:0,fuse:1.15,
+        path:trajectory});
+      battleEvent(s,'flash',a,a.p,a.name+' FLASH OUT');
       notify(s,a.name+' FLASH OUT');
       pop(a);
     }
@@ -873,33 +948,24 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       hear(s,doorCenter(door),n.method==='kick'?340:145,
         n.method==='kick'?'kick':'door');
       notify(s,door.id+' '+(n.method==='kick'?'KICKED':'OPENED'));
+      battleEvent(s,'door',a,doorCenter(door),door.id+' OPENED');
       pop(a);
     }
   }
 }
 function defensivePosition(a:TeamActor,from:Pt,s:Session):Pt|null{
-  const candidates:Pt[]=[];
-  for(const c of COVER){
-    const signX=Math.sign(c.x-from.x)||1;
-    const signY=Math.sign(c.y-from.y)||1;
-    for(const p of [
-      {x:c.x+signX*(c.w/2+20),y:c.y},
-      {x:c.x,y:c.y+signY*(c.h/2+20)},
-    ]){
-      if(passable(p)&&d(p,a.p)<180&&
-        !unobstructed(from,p,s,false)&&route(a.p,p).length)
-        candidates.push(p);
-    }
-  }
-  candidates.sort((x,y)=>d(x,a.p)-d(y,a.p));
-  return candidates[0]??null;
+  const others=enemies(s).map(other=>({id:other.id,p:other.p,
+    health:other.health,defense:other.defense}));
+  return chooseDefense(a.p,from,s.doors,others,a.id);
 }
 function enemyDecisions(s:Session,a:TeamActor,dt:number){
-  if(a.health<=0)return;
+  if(a.health<=0||a.surrendered)return;
+  if(!a.watch)a.watch=watchPoint(a.p,s.doors);
   const visible=team(s).filter(b=>inSight(a,b,s));
   if(visible.length){
     const b=visible.sort((x,y)=>d(x.p,a.p)-d(y.p,a.p))[0];
     a.contact=clone(b.p);a.alertUntil=s.seconds+3;a.contacted=true;
+    a.watch=clone(b.p);a.defenseUntil=s.seconds+4;
     if(a.suppression>.65&&a.alert!=='retreat'){
       a.retreatPoint=defensivePosition(a,b.p,s);
       if(a.retreatPoint){a.alert='retreat';a.nav=[];}
@@ -916,7 +982,8 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     const spread=newest.kind==='gunshot'?39:18;
     const heard={x:newest.p.x+(random(s)-.5)*spread,
       y:newest.p.y+(random(s)-.5)*spread};
-    a.heard=heard;a.contact=heard;
+    a.heard=heard;a.contact=heard;a.watch=clone(heard);
+    a.defense=null;
     a.alertUntil=s.seconds+(a.personality==='aggressor'?.5:1.4);
     a.contacted=true;
     const needsCover=a.personality==='cautious'||
@@ -929,6 +996,19 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   }
   if(a.flashUntil>s.seconds){
     a.velocity=0;a.aim=0;a.alert='cover';return;
+  }
+  if(!a.contacted&&!a.contact&&a.alert==='idle'&&a.watch){
+    if(a.defense===null){
+      a.defense=defensivePosition(a,a.watch,s);
+      a.defenseUntil=s.seconds+8;
+    }
+    if(a.defense&&d(a.p,a.defense)>11){
+      if(!a.nav.length)a.nav=route(a.p,a.defense);
+      if(a.nav.length)approach(a,a.defense,dt,s,.62);
+      if(a.nav.length)rotate(a,angle(a.p,a.nav[0]),dt);
+      return;
+    }
+    rotate(a,angle(a.p,a.watch),dt);
   }
   if(a.alert==='retreat'&&a.retreatPoint){
     if(d(a.p,a.retreatPoint)>9){
@@ -950,14 +1030,19 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
     if(a.alert==='investigating'&&d(a.p,a.contact)<35){
       a.alert='cover';a.contact=null;a.nav=[];
+      a.defense=defensivePosition(a,a.heard??a.p,s);
+      a.defenseUntil=s.seconds+6;
     }
   }
+  if(a.alert==='cover'&&a.defense&&d(a.p,a.defense)>10){
+    if(!a.nav.length)a.nav=route(a.p,a.defense);
+    if(a.nav.length)approach(a,a.defense,dt,s,.7);
+  }
+  if(!a.contact&&a.watch)rotate(a,angle(a.p,a.watch),dt);
 }
 function softCoverPenalty(_a:TeamActor,b:TeamActor){
   if(b.posture!=='crouch')return 0;
-  const closeCover=COVER.some(c=>c.low&&
-    Math.hypot(b.p.x-c.x,b.p.y-c.y)<Math.max(c.w,c.h)*.8);
-  return closeCover?.24:0;
+  return nearCover(b.p,_a.p)?.19:0;
 }
 function random(s:Session){
   s.rng=(Math.imul(s.rng,1664525)+1013904223)>>>0;
@@ -1006,7 +1091,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(a.reload>0){
     a.reload=Math.max(0,a.reload-dt);
     if(a.reload===0){
-      const rounds=Math.min(a.side==='red'?10:12,a.reserve);
+      const rounds=Math.min(WEAPONS[a.weapon].capacity,a.reserve);
       a.magazine=rounds;a.reserve-=rounds;notify(s,a.name+' RELOADED');
     }
     return;
@@ -1021,17 +1106,22 @@ function fire(s:Session,a:TeamActor,dt:number){
   }
   if(a.targetId!==target.id){a.targetId=target.id;a.aim=0;}
   const moving=a.velocity>10;
-  const acquisition=a.side==='blue'?(moving?.57:.30):.58+
+  const weapon=WEAPONS[a.weapon];
+  const acquisition=(moving?weapon.acquisition*1.8:weapon.acquisition)*
+    (a.side==='red'?1.65:1)+
     (a.personality==='cautious'?.12:0);
   a.aim=Math.min(1,a.aim+dt/acquisition);
   if(a.aim<1||a.fireCd>0)return;
-  a.fireCd=a.side==='blue'?.33:.51;
+  a.fireCd=weapon.interval*(a.side==='red'?1.30:1);
   a.magazine--;a.shots++;
   const dist=d(a.p,target.p);
-  const chance=clamp((a.side==='blue'?.78:.56)-dist*.0015-
-    (moving?.22:0)-a.suppression*.28-
-    softCoverPenalty(a,target)+(a.posture==='crouch'?.09:0)-
-    (a.flashUntil>s.seconds?.38:0),.08,.92);
+  const closePenalty=dist>weapon.optimalRange?
+    (dist-weapon.optimalRange)*.0027:0;
+  const chance=clamp(weapon.accuracy*(a.side==='red'?.74:1)-
+    dist*.0015-closePenalty-(moving?.22:0)-
+    a.suppression*.28-softCoverPenalty(a,target)+
+    (a.posture==='crouch'?.09:0)-(a.flashUntil>s.seconds?.38:0),
+    .06,.94)*injuryAim(a.injuryStage);
   const hit=random(s)<chance;
   const scatter=hit?clone(target.p):{
     x:target.p.x+(random(s)-.5)*64,
@@ -1041,7 +1131,12 @@ function fire(s:Session,a:TeamActor,dt:number){
     strikeSurface(a.p,scatter,s);
   const end=impact.end;
   const healthBefore=target.health;
-  const healthAfter=hit?Math.max(0,healthBefore-1):healthBefore;
+  const severity=hit&&s.site?woundSeverity(weapon,dist,
+    nearCover(target.p,a.p),random(s)):1;
+  const nextStage=Math.min(3,target.injuryStage+(hit?severity:0));
+  const healthAfter=hit?
+    (s.site?nextStage>=3?0:4-nextStage:Math.max(0,healthBefore-1)):
+    healthBefore;
   s.sparks.push({p:clone(a.p),side:a.side,age:0});
   // Immutable shot identity lets 2D/3D attach recoil and damage effects to
   // the correct actors without guessing from proximity or team color.
@@ -1054,7 +1149,8 @@ function fire(s:Session,a:TeamActor,dt:number){
     healthBefore,healthAfter,down:hit&&healthAfter<=0,
     surface:impact.surface,
   });
-  hear(s,a.p,400,'gunshot');
+  hear(s,a.p,weapon.noise,'gunshot');
+  battleEvent(s,'shot',a,a.p,a.name+' FIRED '+weapon.label);
   // A shot heard behind the team suggests an imprecise location.
   // A sound NEVER exposes the exact shooter through a wall.
   if(a.side==='red'&&!isSeen(s,a)&&
@@ -1065,34 +1161,87 @@ function fire(s:Session,a:TeamActor,dt:number){
     notify(s,'UNSEEN GUNFIRE');
   }
   target.suppression=Math.min(1,target.suppression+.31);
+  if(target.side==='red')target.morale=Math.max(0,target.morale-.035);
   if(hit){
     target.health=healthAfter;
+    target.injuryStage=s.site?nextStage:Math.min(3,target.injuryStage+1);
     target.lastHitAt=s.seconds;
+    if(target.side==='red')target.morale=Math.max(0,
+      target.morale-.18*severity);
+    battleEvent(s,healthAfter<=0?'down':'wound',target,target.p,
+      target.name+' '+injuryOf(target.injuryStage).toUpperCase());
     a.hits++;
     if(target.health<=0){
       a.kills++;s.deaths++;target.lastDownAt=s.seconds;
       target.plan=[];target.path=[];
       target.nav=[];target.velocity=0;
       notify(s,target.name+' DOWN');
-    }else notify(s,target.name+' HIT');
+      for(const ally of enemies(s))if(ally!==target&&ally.health>0&&
+        d(ally.p,target.p)<145)ally.morale=Math.max(0,ally.morale-.13);
+    }else notify(s,target.name+' '+injuryOf(target.injuryStage).toUpperCase());
   }
 }
-function mission(s:Session){
+function mission(s:Session,dt:number){
+  if(s.rescue){
+    if(s.rescue.following){
+      const escort=team(s).find(a=>a.id===s.rescue!.following&&a.health>0);
+      if(escort){
+        s.rescue.p={x:escort.p.x+Math.cos(escort.heading+Math.PI)*15,
+          y:escort.p.y+Math.sin(escort.heading+Math.PI)*15};
+      }else s.rescue.following=null;
+    }
+    if(s.mission==='extract'&&!s.rescue.following){
+      const rescuer=team(s).find(a=>a.health>0&&near(a.p,s.rescue!.p,27));
+      if(rescuer){
+        s.rescue.following=rescuer.id;
+        notify(s,'PERSON JOINED '+rescuer.name);
+      }
+    }
+  }
   if(team(s).every(a=>a.health<=0)){
     s.phase='lost';s.report=['OPERATION FAILED','ALL OPERATORS LOST'];return;
   }
-  if(s.mission==='clear'&&enemies(s).every(a=>a.health<=0)){
-    s.mission='secure';notify(s,'CLEAR — SECURE THE RECORDS');
+  const captured=s.missionType==='capture'&&s.captureTarget?
+    enemies(s).some(a=>a.id===s.captureTarget&&a.health<=0):false;
+  if(s.mission==='clear'&&
+    (captured||(s.missionType!=='capture'&&enemies(s).every(a=>a.health<=0)))){
+    s.mission='secure';
+    if(captured){
+      const target=enemies(s).find(a=>a.id===s.captureTarget);
+      if(target)s.scenario.objective=clone(target.p);
+    }
+    notify(s,s.missionType==='capture'?'TARGET NEUTRALIZED — SECURE':
+      'CLEAR — SECURE OBJECTIVE');
+    battleEvent(s,'objective',null,s.scenario.objective,'HOSTILES SECURED');
   }
-  if(s.mission==='secure'&&team(s).some(a=>a.health>0&&
-    near(a.p,s.scenario.objective,36))){
-    s.mission='extract';notify(s,'RECORDS SECURED — EXTRACT');
+  const objectiveReached=team(s).some(a=>a.health>0&&
+    near(a.p,s.scenario.objective,36));
+  if(s.mission==='secure'&&objectiveReached){
+    if(s.missionType==='hold'){
+      s.holdTime+=dt;
+      if(s.holdTime<7)return;
+    }
+    s.mission='extract';
+    if(s.rescue){
+      const escort=team(s).filter(a=>a.health>0).sort((a,b)=>
+        d(a.p,s.rescue!.p)-d(b.p,s.rescue!.p))[0];
+      s.rescue.following=escort?.id??null;
+    }
+    const verb=s.missionType==='rescue'?'PERSON FOUND':
+      s.missionType==='hold'?'POSITION HELD':'OBJECTIVE SECURED';
+    notify(s,verb+' — EXTRACT');
+    battleEvent(s,'objective',null,s.scenario.objective,verb);
+  }else if(s.missionType==='hold'&&s.mission==='secure'){
+    s.holdTime=Math.max(0,s.holdTime-dt*.6);
   }
   if(s.mission==='extract'&&team(s).some(a=>a.health>0&&
-    near(a.p,s.scenario.extract,37))){
+    near(a.p,s.scenario.extract,37)&&
+    (!s.rescue||near(s.rescue.p,s.scenario.extract,45)))){
     s.mission='done';s.phase='won';
-    s.report=['STATION SECURED','RECORDS RECOVERED','EXTRACTION COMPLETE'];
+    s.report=['OPERATION COMPLETE',s.missionType.toUpperCase(),
+      'EXTRACTION COMPLETE'];
     notify(s,'MISSION COMPLETE');
+    battleEvent(s,'objective',null,s.scenario.extract,'MISSION COMPLETE');
   }
 }
 function stepFlashbangs(s:Session,h:number){
@@ -1101,11 +1250,13 @@ function stepFlashbangs(s:Session,h:number){
     g.age+=h;
     const t=Math.min(1,g.age/.55);
     const arc=4*t*(1-t);
-    g.p={x:g.from.x+(g.to.x-g.from.x)*t,
+    g.p=g.path?sampleThrow(g.path,t).p:{
+      x:g.from.x+(g.to.x-g.from.x)*t,
       y:g.from.y+(g.to.y-g.from.y)*t};
     void arc; // The renderer supplies the vertical ballistic arc.
     if(g.age<g.fuse){active.push(g);continue;}
     s.flashBursts.push({id:g.id,p:clone(g.to),age:0});
+    battleEvent(s,'flash',null,g.to,'FLASH DETONATED');
     hear(s,g.to,420,'flashbang');
     for(const a of s.operators){
       if(a.health<=0)continue;
@@ -1137,6 +1288,16 @@ export function stepSession(s:Session,dt:number){
   stepFlashbangs(s,h);
   for(const a of s.operators){
     a.fireCd=Math.max(0,a.fireCd-h);
+    if(a.side==='red'&&a.health>0){
+      a.morale=Math.min(1,a.morale+h*.006-
+        (a.suppression>.65?h*.075:0));
+      if(a.morale<.12&&a.suppression>.55){
+        a.surrendered=true;a.health=0;a.injuryStage=3;
+        a.velocity=0;a.nav=[];a.plan=[];
+        notify(s,a.name+' SURRENDERED');
+        battleEvent(s,'surrender',a,a.p,a.name+' SURRENDERED');
+      }
+    }
     a.suppression=Math.max(0,a.suppression-h*.17);
     a.priorP=clone(a.p);
     if(a.health<=0)continue;
@@ -1145,13 +1306,19 @@ export function stepSession(s:Session,dt:number){
   }
   observe(s);
   for(const a of s.operators)fire(s,a,h);
-  mission(s);
+  mission(s,h);
 }
 export function missionText(s:Session){
   if(s.phase==='won')return 'COMPLETE — OPERATION SUCCESS';
   if(s.phase==='lost')return 'MISSION FAILED';
-  if(s.mission==='clear')return 'CLEAR HOSTILES • SECURE THE RECORDS';
-  if(s.mission==='secure')return 'MOVE TO RECORDS IN TARGET ROOM';
+  if(s.mission==='clear')return s.missionType==='capture'?
+    'INCAPACITATE OR FORCE SURRENDER OF TARGET':
+    'CLEAR HOSTILES • SECURE OBJECTIVE';
+  if(s.mission==='secure')return s.missionType==='hold'?
+    'HOLD OBJECTIVE • '+Math.floor(s.holdTime)+'/7 SECONDS':
+    s.missionType==='rescue'?'REACH PERSON IN TARGET ROOM':
+    s.missionType==='intel'?'RECOVER INTELLIGENCE':
+    'SECURE OBJECTIVE';
   return 'RETURN TO EXTRACTION OUTSIDE';
 }
 export function debrief(s:Session){
