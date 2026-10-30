@@ -224,11 +224,13 @@ function armFacing(mode:'look'|'pie'|'strafe'){
 function focusedDoor(a:TeamActor,node:ReturnType<typeof selectedPlanNode>){
   const points=node?[node.p]:[finalPoint(a),a.p];
   const explicit=state.doors.find(d=>d.id===doorFocusId&&
-    doorKnown(state.intel,d.id)&&!d.open&&
+    doorKnown(state.intel,d.id)&&
+    (state.intel.doorMemory.get(d.id)??0)<.72&&
     points.some(p=>doorReachable(p,d)));
   if(explicit)return explicit;
   return state.doors.filter(d=>doorKnown(state.intel,d.id)&&
-    !d.open&&d.id!==doorMenuDismissedId&&points.some(p=>
+    (state.intel.doorMemory.get(d.id)??0)<.72&&
+    d.id!==doorMenuDismissedId&&points.some(p=>
     doorReachable(p,d)))
     .sort((x,y)=>{
       const dx=Math.min(...points.map(p=>distance(p,doorCenter(x))));
