@@ -205,3 +205,6 @@ button:focus-visible{outline:2px solid #e9c493;outline-offset:3px}
   .bar .actions button{min-height:55px}
   .bar .unit{min-height:27px;grid-template-rows:12px 12px}
 }
+
+/* Hidden squad members in legacy fixed-site tests must not take HUD space. */
+.bar .unit[hidden]{display:none!important}
