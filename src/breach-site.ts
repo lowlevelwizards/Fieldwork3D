@@ -9,6 +9,7 @@ export type Site={
   seed:number;name:string;rooms:Room[];walls:Segment[];doors:Door[];
   cover:Obstacle[];entrance:Pt;spawn:Pt[];enemies:Pt[];
   objective:Pt;extract:Pt;roomCount:number;
+  layout:'office'|'workshop'|'corridor'|'courtyard';
 };
 const segment=(x:number,y:number,u:number,v:number):Segment=>
   ({a:{x,y},b:{x:u,y:v}});
@@ -22,6 +23,7 @@ const between=(r:()=>number,min:number,max:number)=>
 export function generateSite(seed:number):Site{
   const rng=seeded(seed);
   const target=between(rng,3,6);
+  const layout=(['office','workshop','corridor','courtyard'] as const)[seed%4];
   const rows=target>4?3:2,cols=2;
   const x0=between(rng,91,123),x1=between(rng,315,356),x2=between(rng,557,585);
   const y0=between(rng,95,120),y2=between(rng,522,553);
@@ -31,7 +33,10 @@ export function generateSite(seed:number):Site{
   const cell=(c:number,r:number)=>r*cols+c;
   const rooms:Room[]=[];
   for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
-    const hall=(target%2===1&&r===Math.floor(rows/2)&&c===0);
+    const hall=target%2===1&&
+      (layout==='corridor'?c===0&&r===Math.floor(rows/2):
+       layout==='courtyard'?c===1&&r===rows-1:
+       r===Math.floor(rows/2)&&c===0);
     rooms.push({id:'R'+(cell(c,r)+1),x:xs[c],y:ys[r],
       w:xs[c+1]-xs[c],h:ys[r+1]-ys[r],
       kind:hall?'hall':'room',tone:between(rng,0,3)});
@@ -52,8 +57,14 @@ export function generateSite(seed:number):Site{
     doors.push({id,a:pre,b:post,open:false,openedAt:-1});
   };
   // Perimeter with one actual exterior doorway on the lower wall.
-  walls.push(segment(x0,y0,x2,y0),segment(x0,y0,x0,y2),
-    segment(x2,y0,x2,y2));
+  // Some sites provide a genuine alternative rear or side entrance.
+  appendWall({x:x0,y:y0},{x:x2,y:y0},
+    layout==='courtyard'?{x:(x1+x2)/2,y:y0}:null,
+    layout==='courtyard'?'REAR':null);
+  walls.push(segment(x0,y0,x0,y2));
+  appendWall({x:x2,y:y0},{x:x2,y:y2},
+    layout==='workshop'?{x:x2,y:(y1+y2)/2}:null,
+    layout==='workshop'?'SERVICE':null);
   const entranceX=xs[between(rng,0,1)]+between(rng,65,92);
   const entry={x:entranceX,y:y2};
   appendWall({x:x0,y:y2},{x:x2,y:y2},entry,'FRONT');
@@ -82,6 +93,8 @@ export function generateSite(seed:number):Site{
   const cover:Obstacle[]=[];
   for(const room of rooms){
     const count=room.kind==='hall'?between(rng,0,1):
+      layout==='workshop'?between(rng,1,4):
+      layout==='corridor'?between(rng,0,2):
       between(rng,1,room.w*room.h>38000?3:2);
     for(let j=0;j<count;j++){
       const w=between(rng,28,57),h=between(rng,20,39);
@@ -141,5 +154,5 @@ export function generateSite(seed:number):Site{
   return {seed,name:['CUTWOODS','MILL ANNEX','TOLL HOUSE','RELAY SITE',
     'SERVICE DEPOT','FARMSTATION'][seed%6],rooms,walls,doors,cover,
     entrance,spawn,enemies,objective,extract:{x:entry.x,y:y2+115},
-    roomCount:habitable.length};
+    roomCount:habitable.length,layout};
 }
