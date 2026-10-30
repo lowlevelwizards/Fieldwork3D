@@ -1014,7 +1014,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(!a.magazine){beginReload(s,a);return;}
   if(a.flashUntil>s.seconds){a.aim=0;return;}
   const enemiesOf=a.side==='blue'?enemies(s):team(s);
-  const target=enemiesOf.filter(e=>e.flashUntil<=s.seconds&&inSight(a,e,s))
+  const target=enemiesOf.filter(e=>inSight(a,e,s))
     .sort((x,y)=>d(a.p,x.p)-d(a.p,y.p))[0];
   if(!target){
     a.targetId=null;a.aim=Math.max(0,a.aim-dt*.6);return;
