@@ -661,7 +661,13 @@ export class TacticalScene3D{
             (actor.weapon==='rifle'?46:actor.weapon==='shotgun'?42:31),
           y:actor.p.y+Math.sin(actor.heading)*
             (actor.weapon==='rifle'?46:actor.weapon==='shotgun'?42:31)
-        },s.doors)
+        },s.doors),
+        friendlyNear:s.operators.some(other=>{
+          if(other===actor||other.side!==actor.side||other.health<=0)return false;
+          const dx=other.p.x-actor.p.x,dy=other.p.y-actor.p.y;
+          return Math.hypot(dx,dy)<48&&
+            dx*Math.cos(actor.heading)+dy*Math.sin(actor.heading)>18;
+        })
       },dt);
     }
     // 079: One persistent, ID-keyed effect per actual simulation shot.
