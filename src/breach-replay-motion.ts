@@ -47,7 +47,7 @@ export function sampleFootEvents(events:readonly FootEvent[],time:number):FootTa
   if(elapsed<e.unload){
     const p=e.unload>0?elapsed/e.unload:1;
     const motion=footArticulation('unloading',p);
-    return {position:{...e.from},height:motion.rise,
+    return {position:{...e.from},height:0,
       worldYaw:e.fromYaw,phase:'unloading',contact:true,
       progress:p,pitch:motion.pitch};
   }
