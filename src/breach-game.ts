@@ -22,6 +22,7 @@ import {WEAPONS,injuryOf,injurySpeed,injuryReload,
   from './breach-combat.ts';
 import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
 import {segmentHitsBox} from './breach-ray.ts';
+import {coverImpactFraction,aimHeight} from './breach-cover-height.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from './breach-door.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
@@ -868,7 +869,7 @@ export function inSight(a:TeamActor,b:TeamActor,s:Session){
   const delta=angleDifference(a.heading,angle(a.p,b.p));
   if(Math.abs(delta)>.94)return false;
   return !exposure(a.p,b.p,s.doors,
-    a.posture==='crouch'||b.posture==='crouch').blocked;
+    b.posture==='crouch',a.posture==='crouch').blocked;
 }
 export const isSeen=(s:Session,target:TeamActor)=>
   team(s).some(a=>inSight(a,target,s));
@@ -1384,7 +1385,8 @@ function segmentImpact(from:Pt,to:Pt,segment:{a:Pt;b:Pt}):number|null{
   const u=(fx*dy-fy*dx)/determinant;
   return t>=0&&t<=1&&u>=0&&u<=1?t:null;
 }
-function strikeSurface(from:Pt,aimed:Pt,s:Session):{
+function strikeSurface(from:Pt,aimed:Pt,s:Session,
+  fromZ=22,toZ=22):{
   end:Pt;surface:ShotEvent['surface']}{
   let best=1,material:ShotEvent['surface']='dust';
   for(const wall of WALLS){
@@ -1396,18 +1398,8 @@ function strikeSurface(from:Pt,aimed:Pt,s:Session):{
     if(t!==null&&t<best){best=t;material='wood';}
   }
   for(const box of COVER){
-    const l=box.x-box.w/2,r=box.x+box.w/2;
-    const t=box.y-box.h/2,b=box.y+box.h/2;
-    const edges=[
-      {a:{x:l,y:t},b:{x:r,y:t}},
-      {a:{x:r,y:t},b:{x:r,y:b}},
-      {a:{x:r,y:b},b:{x:l,y:b}},
-      {a:{x:l,y:b},b:{x:l,y:t}},
-    ];
-    for(const side of edges){
-      const u=segmentImpact(from,aimed,side);
-      if(u!==null&&u<best){best=u;material=box.low?'wood':'metal';}
-    }
+    const u=coverImpactFraction(from,aimed,fromZ,toZ,box);
+    if(u!==null&&u<best){best=u;material=box.low?'wood':'metal';}
   }
   return {end:{x:from.x+(aimed.x-from.x)*best,
     y:from.y+(aimed.y-from.y)*best},surface:material};
@@ -1475,7 +1467,8 @@ function fire(s:Session,a:TeamActor,dt:number){
     weaponYaw:yaw,weapon:a.weapon,aim:a.aim,
     velocity:a.velocity,recoil:a.recoil});
   const muzzlePoint={x:muzzle.x,y:muzzle.z};
-  const muzzleReach=strikeSurface(a.p,muzzlePoint,s);
+  const muzzleReach=strikeSurface(a.p,muzzlePoint,s,
+    muzzle.y,muzzle.y);
   if(d(a.p,muzzleReach.end)+.7<d(a.p,muzzlePoint)){
     a.aim=Math.min(a.aim,.82);return;
   }
@@ -1489,7 +1482,11 @@ function fire(s:Session,a:TeamActor,dt:number){
   const candidateHit=rayHitsActor(muzzlePoint,yaw,target.p,hitRadius);
   const muzzleRange=d(muzzlePoint,target.p);
   const far=muzzleEndpoint(muzzlePoint,yaw,Math.max(muzzleRange+38,170));
-  const strike=strikeSurface(muzzlePoint,far,s);
+  // Aim for the target's visible upper body, not an imaginary ground-level
+  // hitpoint. At close range this clears waist-high cover naturally.
+  const strikeHeight=muzzle.y+(aimHeight(target.posture==='crouch')-
+    muzzle.y)*d(muzzlePoint,far)/Math.max(1,muzzleRange);
+  const strike=strikeSurface(muzzlePoint,far,s,muzzle.y,strikeHeight);
   // Obstruction before the target defeats a perfectly aligned barrel.
   const blockerDist=d(muzzlePoint,strike.end);
   const hit=candidateHit&&blockerDist>=muzzleRange-hitRadius;
@@ -1511,7 +1508,8 @@ function fire(s:Session,a:TeamActor,dt:number){
   s.sparks.push({p:clone(a.p),side:a.side,age:0});
   // Immutable shot identity lets 2D/3D attach recoil and damage effects to
   // the correct actors without guessing from proximity or team color.
-  const impactHeight=hit?18:impact.surface==='dust'?1:14;
+  const impactHeight=hit?aimHeight(target.posture==='crouch'):
+    impact.surface==='dust'?1:14;
   s.impactMarks.push({id:s.nextEffectId++,p:clone(end),
     surface:impact.surface,height:impactHeight,age:0});
   if(s.impactMarks.length>92)s.impactMarks.shift();

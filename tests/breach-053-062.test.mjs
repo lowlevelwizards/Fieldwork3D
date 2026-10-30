@@ -125,7 +125,10 @@ test('057: high cover occludes sight while exposed positions remain visible',()=
   const s=newSession(),a=team(s)[0],b=enemies(s)[0];
   a.p={x:404,y:169};a.heading=0;
   b.p={x:543,y:169};b.heading=Math.PI;
-  assert.equal(inSight(a,b,s),false,'large cabinet blocks line');
+  assert.equal(inSight(a,b,s),true,'standing target exposes head above cover');
+  b.posture='crouch';
+  assert.equal(inSight(a,b,s),false,'crouched target stays concealed');
+  b.posture='stand';
   a.p={x:392,y:269};a.heading=0;
   b.p={x:448,y:269};
   assert.equal(inSight(a,b,s),true,'open corridor is visible');
