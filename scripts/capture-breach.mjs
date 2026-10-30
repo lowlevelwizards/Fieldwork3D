@@ -241,6 +241,18 @@ try{
   await routePhone.touchscreen.tap(end.x,end.y);
   if(await count()!=='1')throw Error('Route test failed to author first waypoint');
   const middle=screen(350,624);
+  const beforeInsert=await routePhone.evaluate(pt=>{
+    const el=document.elementFromPoint(pt.x,pt.y);
+    const box=document.querySelector('#contextTools')?.getBoundingClientRect();
+    const selected=document.querySelector('#rook')?.getAttribute('aria-pressed');
+    return {atTap:el?.tagName+'#'+el?.id,
+      atTapClass:el?.getAttribute('class'),
+      atTapText:el?.textContent?.slice(0,70),
+      contextBox:box?{x:box.x,y:box.y,width:box.width,height:box.height}:null,
+      selected,
+      canvasMode:document.querySelector('#view2d')?.getAttribute('aria-pressed')};
+  },middle);
+  await routePhone.screenshot({path:resolve(folder,'17-route-before-insertion.png')});
   await routePhone.touchscreen.tap(middle.x,middle.y);
   if(await count()!=='2')
     throw Error('Tapping existing route line did not insert intermediate node: '+
@@ -249,6 +261,7 @@ try{
         selectedNode:c.dataset.selectedNode,
         routeTap:c.dataset.lastRouteTap,
         feed:document.querySelector('#feed')?.textContent,
+        beforeInsert,
       }))));
   const selectedLineNode=await routePhone.locator('#breachCanvas')
     .getAttribute('data-selected-node');
