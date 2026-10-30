@@ -22,6 +22,7 @@ import {WEAPONS,injuryOf,injurySpeed,injuryReload,
 import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,doorClear} from './breach-door.ts';
 import {localDetour} from './breach-cooperation.ts';
+import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
   rayHitsActor,muzzleEndpoint,recoverWeapon,type FiringMode} from './breach-ballistics.ts';
 import {chooseDefense,watchPoint} from './breach-defense.ts';
@@ -48,7 +49,7 @@ export type TeamActor=Operator & {
   flashUntil:number;lastThrowAt:number;lastDoorAt:number;
   lastDoorId:string|null;stride:number;weapon:WeaponId;injuryStage:number;
   weaponYaw:number;stability:number;recoil:number;lastShotAt:number;
-  fireMode:FiringMode;burstCount:number;
+  fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
 };
 export type NoiseEvent={p:Pt;radius:number;time:number;kind:string};
@@ -104,7 +105,7 @@ const withActions=(a:Operator):TeamActor=>({
   personality:'guard',morale:1,lastNoiseAt:-1,flashUntil:-1,
   lastThrowAt:-100,lastDoorAt:-100,lastDoorId:null,stride:0,
   weaponYaw:a.heading,stability:.55,recoil:0,lastShotAt:-100,
-  fireMode:'point',burstCount:0,
+  fireMode:'point',burstCount:0,skills:{...DEFAULT_SKILLS},
   weapon:'carbine',injuryStage:0,defense:null,watch:null,
   defenseUntil:0,surrendered:false,
 });
@@ -1145,6 +1146,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   const moving=a.velocity>10;
   const weapon=WEAPONS[a.weapon];
   const acquisition=(moving?weapon.acquisition*1.8:weapon.acquisition)*
+    (2-skillMultiplier(a.skills.handling,.4))*
     (a.side==='red'?1.65:1)+
     (a.personality==='cautious'?.12:0);
   a.aim=Math.min(1,a.aim+dt/acquisition);
@@ -1164,7 +1166,9 @@ function fire(s:Session,a:TeamActor,dt:number){
   a.burstCount=priorBurst?a.burstCount+1:1;
   a.lastShotAt=s.seconds;
   const cone=dispersion(a.weapon,mode,a.stability,moving,
-    a.suppression,a.injuryStage,a.recoil);
+    a.suppression,a.injuryStage,a.recoil)*
+    (2-skillMultiplier(mode==='point'?a.skills.pointShooting:
+      range>weapon.optimalRange?a.skills.longRange:a.skills.precision,.28));
   // A shot is a geometric ray, not an independent chance roll.
   const yaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
   const hitRadius=Math.max(4.2,10.5-
@@ -1179,9 +1183,11 @@ function fire(s:Session,a:TeamActor,dt:number){
   const end=hit?clone(target.p):strike.end;
   const impact=hit?{end,surface:'blood' as const}:strike;
   a.recoil=Math.min(.9,a.recoil+profile.recoilKick*
-    (a.burstCount>2?1.20:1));
+    (a.burstCount>2?1.20:1)*
+    (2-skillMultiplier(a.skills.recoilControl,.42)));
   a.stability=Math.max(0,a.stability-
-    (mode==='point'?.23:.16)-a.recoil*.10);
+    (mode==='point'?.23:.16)*
+    (2-skillMultiplier(a.skills.composure,.38))-a.recoil*.10);
   const healthBefore=target.health;
   const severity=hit&&s.site?woundSeverity(weapon,range,
     nearCover(target.p,a.p),random(s)):1;
