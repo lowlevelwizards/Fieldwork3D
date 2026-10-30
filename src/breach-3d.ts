@@ -287,7 +287,7 @@ export class TacticalScene3D{
         this.box(group,c.x-w*.1,21,c.y,w*.54,10,d*.73,steel);
         for(const sx of [-1,1])for(const sz of [-1,1])
           this.box(group,c.x+sx*w*.32,3,c.y+sz*d*.49,
-            w*.15,6,4,timber);
+            w*.15,6,4,wood);
       }else if(fixture==='chair'||fixture==='bench'){
         this.box(group,c.x,8,c.y,w,3,d,wood);
         this.box(group,c.x-w*.44,14,c.y,3,15,d,material);
