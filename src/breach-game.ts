@@ -955,8 +955,11 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       a.nav.unshift(candidate);a.blockedTime=0;return true;
     }
   }
-  // Never drag one friendly through another as a deadlock escape.
-  if(!closed&&!blocking&&passable(move)){
+  // A stable narrow-gap pass permits *limited* shoulder clearance
+  // when two allies cannot sidestep, without dragging either actor.
+  const squeeze=!!teammate&&a.blockedTime>1.05&&
+    d(move,teammate.p)>9.5&&!a.yieldTarget;
+  if(!closed&&(!blocking||squeeze)&&passable(move)){
     a.priorP=clone(a.p);a.p=move;a.blockedTime=0;
     if(a.side==='blue'&&s.seconds-s.movementNoiseAt>.54){
       hear(s,a.p,a.posture==='crouch'?30:68,'footstep');
