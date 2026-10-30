@@ -53,7 +53,12 @@ export class MissionRecorder{
     }
     // Bound mobile memory to ten minutes of sampled playback.
     if(this.frames.length>=12000)return;
-    this.frames.push(snapshot(s));
+    const frame=snapshot(s);
+    // Explored ground only grows. Reuse identical history instead of
+    // allocating thousands of duplicate tile arrays during long missions.
+    if(last&&last.seenGround.length===frame.seenGround.length)
+      frame.seenGround=last.seenGround;
+    this.frames.push(frame);
   }
   get duration(){return this.frames.at(-1)?.t??0;}
   at(time:number):ReplayFrame|null{
