@@ -99,3 +99,36 @@ test('122: four-operator plus enemies workload avoids unbounded foot events',()=
   }
   assert.ok(count>=240*8);
 });
+
+test('122: report eight-actor pose cost, frame variance and heap growth',t=>{
+  const rigs=Array.from({length:8},(_,i)=>createOperatorRig(
+    ['rook','moss','ash','vale'][i%4],i>=4?'red':'blue'));
+  const caches=rigs.map((_,i)=>new LabMotionCache(
+    ['walk','strafe','pie','wounded'][i%4]));
+  const before=process.memoryUsage().heapUsed;
+  const times=[];
+  for(let frame=0;frame<240;frame++){
+    const time=frame/60,begin=performance.now();
+    for(let i=0;i<rigs.length;i++){
+      const {motion:m,feet}=caches[i].sample(time),r=rigs[i];
+      r.root.position.set(m.x,0,m.z);
+      poseOperator(r,{x:m.x,z:m.z,heading:m.heading,
+        travelYaw:m.travelYaw,velocity:m.speed,seconds:time,
+        stride:time*50,posture:m.posture,injury:m.injury,
+        weapon:'carbine',reload:0,reloadDuration:1.8,
+        lastThrowAt:-100,lastDoorAt:-100,down:false,surrender:false,
+        aiming:m.aim>.2,firing:false,turning:m.turning,
+        replayFeet:feet,deterministic:true,aimBlend:m.aim},1/60);
+    }
+    times.push(performance.now()-begin);
+  }
+  times.sort((a,b)=>a-b);
+  const heapDelta=process.memoryUsage().heapUsed-before;
+  const p95=times[Math.floor(times.length*.95)];
+  const mean=times.reduce((a,b)=>a+b,0)/times.length;
+  t.diagnostic('8 actor IK+gait workload mean='+mean.toFixed(3)+
+    'ms p95='+p95.toFixed(3)+'ms heapDelta='+
+    Math.round(heapDelta/1024)+' KiB');
+  assert.ok(Number.isFinite(mean)&&Number.isFinite(p95));
+  rigs.forEach(r=>r.dispose());
+});
