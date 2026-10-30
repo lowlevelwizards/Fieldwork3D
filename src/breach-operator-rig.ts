@@ -6,6 +6,7 @@ import {alignSegment,solveTwoBone,ARM_LIMITS,LEG_LIMITS,
 import type {WeaponId} from './breach-combat.ts';
 import {advanceFootsteps,createFootstepScheduler, type FootstepScheduler} from './breach-footsteps.ts';
 import type {ReplayFeet} from './breach-replay-motion.ts';
+import {bodyFromContacts} from './breach-body-motion.ts';
 import {weaponGrips,handlingPose,clampReach,
   fitWeaponPose} from './breach-weapon-pose.ts';
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
@@ -144,7 +145,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.chest.rotation.z=clamp(-moving*.025+braking*.018,-.06,.06);
   r.chest.rotation.x=clamp(p.injury===2?.07:p.injury===1?.025:0,0,.09);
   const crouch=p.posture==='crouch'?8:0;
-  r.hip.position.y=19-crouch+(p.down?0:Math.sin(p.stride*.18)*moving*.23);
+  r.hip.position.y=19-crouch;
   r.chest.position.y=26-crouch;
   // Build 119: the footstep scheduler owns world contacts. The IK renderer
   // consumes its targets but must never relocate a planted anchor.
@@ -169,9 +170,21 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.chest.rotation.y=p.deterministic?lookTwist:
       approach(r.chest.rotation.y,lookTwist,6,dt);
   }
+  const motion=bodyFromContacts({velocity:p.down?0:p.velocity,
+    heading:p.heading,travelYaw,turning:p.turning,
+    injury:p.injury,posture:p.posture,feet:targets});
+  r.hip.position.y=19-crouch+motion.pelvisY;
+  r.hip.position.z=motion.pelvisSide;
+  r.chest.position.y=26-crouch+motion.pelvisY*.65;
+  r.chest.position.z=motion.pelvisSide*.75;
+  r.chest.rotation.z=motion.torsoForward+braking*.018;
+  r.chest.rotation.x=clamp(p.injury===2?.07:p.injury===1?.025:0,0,.09)+
+    motion.torsoSide;
+  r.chest.rotation.y+=motion.torsoYaw;
+  r.head.rotation.x=motion.headCounter;
   for(let i=0;i<2;i++){
     const foot=r.feet[i],sign=i===0?-1:1,target=targets[i];
-    const hipLocal=P(0,r.hip.position.y,sign*4.8);
+    const hipLocal=P(0,r.hip.position.y,r.hip.position.z+sign*4.8);
     const anchor=p.replayFeet?target.position:
       r.footsteps.feet[i].plantedAt;
     foot.anchor.set(anchor.x,1.45,anchor.y);
