@@ -242,8 +242,6 @@ function updateContext(){
   if(!a||a.health<=0){ui.context.hidden=true;return;}
   const node=selectedPlanNode();
   const door=focusedDoor(a,node);
-  const where=doorFocusId&&door?doorCenter(door):
-    node?.p??(orderOrigin==='here'?a.p:finalPoint(a));
   const choices:{id:string;label:string}[]=[
     {id:'ctxLook',label:'LOOK'},
     {id:'ctxPie',label:'◉ PIE'},
