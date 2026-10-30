@@ -8,6 +8,7 @@ import {doorYaw,handlePoint,doorReachable} from './breach-door.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {sampleThrow} from './breach-flash.ts';
+import type {ReplayPresentation} from './breach-replay-motion.ts';
 
 /** One authoritative 2D world, physically represented in one 3D scene.
  * Coordinates: tactics (x,y) => scene (x, elevation, y).
@@ -540,7 +541,8 @@ export class TacticalScene3D{
       physical,contactShadows});
   }
   update(s:Session,selected:string,dt:number,
-    focusedDoorId:string|null=null,omniscient=false){
+    focusedDoorId:string|null=null,omniscient=false,
+    replay?:ReplayPresentation|null){
     if(this.view.mode==='plan2d')return;
     this.updateCamera(dt);
     this.fogAt+=dt;
@@ -570,8 +572,11 @@ export class TacticalScene3D{
       if(omniscient||liveVisibility(s,doorCenter(door)))
         this.observedDoorOpen.set(door.id,door.open);
       const shownOpen=this.observedDoorOpen.get(door.id)??false;
-      object.leaf.rotation.y=THREE.MathUtils.lerp(object.leaf.rotation.y,
-        shownOpen?doorYaw(door):0,Math.min(1,Math.max(0,dt)*14));
+      const replayProgress=replay?.doors[door.id];
+      object.leaf.rotation.y=replayProgress===undefined?
+        THREE.MathUtils.lerp(object.leaf.rotation.y,
+          shownOpen?doorYaw(door):0,Math.min(1,Math.max(0,dt)*14)):
+        replayProgress*doorYaw(door);
       const selectedActor=team(s).find(a=>a.id===selected);
       const reachable=selectedActor&&selectedActor.health>0&&
         [selectedActor.p,...selectedActor.plan.map(n=>n.p)].some(p=>
@@ -645,6 +650,8 @@ export class TacticalScene3D{
       poseOperator(object.physical,{
         x:actor.p.x,z:actor.p.y,heading:actor.heading,
         velocity:actor.velocity,seconds:s.seconds,stride:actor.stride,
+        deterministic:!!replay,replayFeet:replay?.feet[actor.id],
+        travelYaw:replay?.travelYaw[actor.id],
         posture:actor.posture,injury:actor.injuryStage,weapon:actor.weapon,
         reload:actor.reload,reloadDuration,
         lastThrowAt:actor.lastThrowAt,lastDoorAt:actor.lastDoorAt,
