@@ -6,7 +6,7 @@ import {
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   planMove,planMoveStroke,planAim,planWait,planWaitAt,planHoldClear,setWaitDuration,
   setMoveSprint,planSync,movePlanNode,
-  finalPoint,doorAtNode,planSquadEntry,backOne,
+  finalPoint,doorAtNode,backOne,
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,stepSession,knownAt,liveVisibility,
   planReload,reloadNow,planFlash,moveFlashTarget,flashTrajectory,
@@ -251,8 +251,8 @@ function updateContext(){
     {id:'ctxWait',label:'WAIT .5s'},
     {id:'ctxCrouch',label:a.posture==='crouch'?'STAND':'CROUCH'},
     {id:'ctxStrafe',label:'STRAFE'},
-    {id:'ctxHere',label:'HERE'},
-    {id:'ctxEnd',label:'END'},
+    {id:'ctxHere',label:orderOrigin==='here'?'● HERE':'HERE'},
+    {id:'ctxEnd',label:orderOrigin==='end'?'● END':'END'},
   ];
   if(node?.kind==='wait')choices.push(
     {id:'ctxWait1',label:'1s'},{id:'ctxWait3',label:'3s'});
