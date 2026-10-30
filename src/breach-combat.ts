@@ -1,5 +1,6 @@
 /** Builds 099–102: data-driven weapon, injury and exposure authority. */
 import {COVER,WALLS,segmentsCross,doorBlocksRay,type Pt,type Door,type Obstacle} from './breach-core.ts';
+import {segmentHitsBox} from './breach-ray.ts';
 export type Injury='healthy'|'injured'|'heavy'|'incapacitated';
 export type WeaponId='carbine'|'smg'|'rifle'|'shotgun';
 export type Weapon={id:WeaponId;label:string;capacity:number;reserve:number;
@@ -25,14 +26,7 @@ export function woundSeverity(weapon:Weapon,range:number,protectedByCover:boolea
   const severe=weapon.damage===2&&range<weapon.optimalRange*.85&&!protectedByCover;
   return severe&&roll<.55?2:1;
 }
-const segmentBox=(a:Pt,b:Pt,box:Obstacle)=>{
-  const l=box.x-box.w/2,r=box.x+box.w/2;
-  const t=box.y-box.h/2,d=box.y+box.h/2;
-  return [
-    {a:{x:l,y:t},b:{x:r,y:t}},{a:{x:r,y:t},b:{x:r,y:d}},
-    {a:{x:r,y:d},b:{x:l,y:d}},{a:{x:l,y:d},b:{x:l,y:t}},
-  ].some(edge=>segmentsCross({a,b},edge));
-};
+const segmentBox=(a:Pt,b:Pt,box:Obstacle)=>segmentHitsBox(a,b,box);
 export type Exposure={blocked:boolean;soft:boolean;hard:boolean;penalty:number;
   material:'stone'|'wood'|'metal'|'dust'};
 export function exposure(from:Pt,to:Pt,doors:Door[],crouched=false):Exposure{

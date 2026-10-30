@@ -20,6 +20,7 @@ import {WEAPONS,injuryOf,injurySpeed,injuryReload,
   woundSeverity,exposure,nearCover,type WeaponId,type BattleEvent}
   from './breach-combat.ts';
 import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
+import {segmentHitsBox} from './breach-ray.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from './breach-door.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
@@ -856,14 +857,9 @@ function unobstructed(a:Pt,b:Pt,s:Session,lowBlocks:boolean){
   const ray={a,b};
   if(WALLS.some(w=>segmentsCross(ray,w)))return false;
   if(s.doors.some(w=>doorBlocksSegment(w,ray)))return false;
-  const n=Math.ceil(d(a,b)/6);
-  for(let i=1;i<n;i++){
-    const t=i/n,x=a.x+(b.x-a.x)*t,y=a.y+(b.y-a.y)*t;
-    if(COVER.some(o=>(!o.low||lowBlocks)&&
-      Math.abs(x-o.x)<o.w/2&&Math.abs(y-o.y)<o.h/2))
-      return false;
-  }
-  return true;
+  // Exact slab intersection replaces dozens of short ray samples per
+  // visibility query. Geometry remains authoritative at any framerate.
+  return !COVER.some(o=>(!o.low||lowBlocks)&&segmentHitsBox(a,b,o));
 }
 export function inSight(a:TeamActor,b:TeamActor,s:Session){
   if(a.health<=0||b.health<=0||d(a.p,b.p)>240)return false;
