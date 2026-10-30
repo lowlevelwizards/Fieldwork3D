@@ -27,6 +27,8 @@ import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
   rayHitsActor,muzzleEndpoint,recoverWeapon,type FiringMode} from './breach-ballistics.ts';
 import {chooseDefense,watchPoint} from './breach-defense.ts';
 import {muzzleAtShot} from './breach-muzzle.ts';
+import {chooseFall,hitRegion,type WoundRegion,type FallPose}
+  from './breach-wounds.ts';
 
 export type Posture='stand'|'crouch';
 export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retreat';
@@ -44,6 +46,8 @@ export type TeamActor=Operator & {
   aimInstruction:AimInstruction|null;
   /** Simulation-timed cues, not new combat rules. */
   lastHitAt:number;lastDownAt:number;
+  lastHitRegion:WoundRegion;lastHitYaw:number;
+  lastHitSeverity:number;downPose:FallPose;
   /** Temporary cooperative sidestep, independent of authored orders. */
   yieldTarget:Pt|null;yieldFor:string|null;yieldUntil:number;
   personality:Personality;morale:number;lastNoiseAt:number;
@@ -60,6 +64,7 @@ export type ShotEvent={
   healthBefore:number;healthAfter:number;down:boolean;
   shotYaw?:number;mode?:FiringMode;spread?:number;
   muzzleHeight?:number;firedAt?:number;
+  hitRegion?:WoundRegion;downPose?:FallPose;
   surface?:'blood'|'wood'|'stone'|'metal'|'dust';
 };
 export type ImpactMark={id:number;p:Pt;surface:ShotEvent['surface'];age:number};
@@ -103,6 +108,8 @@ const withActions=(a:Operator):TeamActor=>({
   alertUntil:0,waitRemaining:0,syncReady:null,actionTimer:0,
   blockedTime:0,priorP:clone(a.p),haltOnContact:false,retreatPoint:null,
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
+  lastHitRegion:'torso',lastHitYaw:0,lastHitSeverity:0,
+  downPose:'forward',
   yieldTarget:null,yieldFor:null,yieldUntil:0,
   personality:'guard',morale:1,lastNoiseAt:-1,flashUntil:-1,
   lastThrowAt:-100,lastDoorAt:-100,lastDoorId:null,stride:0,
@@ -1254,11 +1261,26 @@ function fire(s:Session,a:TeamActor,dt:number){
   s.impactMarks.push({id:s.nextEffectId++,p:clone(end),
     surface:impact.surface,age:0});
   if(s.impactMarks.length>92)s.impactMarks.shift();
+  const shotId=s.nextShotId++;
+  const region=hitRegion(shotId);
+  const nearSolid=COVER.some(c=>!c.low&&
+    Math.abs(target.p.x-c.x)<=c.w/2+12&&
+    Math.abs(target.p.y-c.y)<=c.h/2+12);
+  const nearWall=WALLS.some(w=>{
+    const vx=w.b.x-w.a.x,vy=w.b.y-w.a.y;
+    const denominator=Math.max(1e-6,vx*vx+vy*vy);
+    const t=clamp(((target.p.x-w.a.x)*vx+
+      (target.p.y-w.a.y)*vy)/denominator,0,1);
+    return d(target.p,{x:w.a.x+vx*t,y:w.a.y+vy*t})<12;
+  });
+  const fall=chooseFall(target.heading,yaw,nearSolid||nearWall);
   s.shots.push({
-    id:s.nextShotId++,shooterId:a.id,targetId:target.id,
+    id:shotId,shooterId:a.id,targetId:target.id,
     start:muzzlePoint,end,age:0,hit,side:a.side,
     shotYaw:yaw,mode,spread:cone,
     muzzleHeight:muzzle.y,firedAt:s.seconds,
+    hitRegion:hit?region:undefined,downPose:hit&&healthAfter<=0?
+      fall:undefined,
     healthBefore,healthAfter,down:hit&&healthAfter<=0,
     surface:impact.surface,
   });
@@ -1279,6 +1301,8 @@ function fire(s:Session,a:TeamActor,dt:number){
     target.health=healthAfter;
     target.injuryStage=s.site?nextStage:Math.min(3,target.injuryStage+1);
     target.lastHitAt=s.seconds;
+    target.lastHitRegion=region;target.lastHitYaw=yaw;
+    target.lastHitSeverity=severity;
     if(target.side==='red')target.morale=Math.max(0,
       target.morale-.18*severity);
     battleEvent(s,healthAfter<=0?'down':'wound',target,target.p,
@@ -1286,6 +1310,7 @@ function fire(s:Session,a:TeamActor,dt:number){
     a.hits++;
     if(target.health<=0){
       a.kills++;s.deaths++;target.lastDownAt=s.seconds;
+      target.downPose=fall;
       target.plan=[];target.path=[];
       target.nav=[];target.velocity=0;
       notify(s,target.name+' DOWN');
