@@ -5,7 +5,7 @@
  */
 import {
   type Pt,type Operator,type TacticalState,type Door,type Side,
-  WALLS,COVER,initialDoors,newTacticalState,route,passable,
+  WALLS,COVER,initialDoors,newTacticalState,route,passable,activateSite,
   segmentsCross,doorCenter,
 } from './breach-core.ts';
 import {
@@ -15,6 +15,7 @@ import {
   length,targetAngle,angleDifference,type PieSide,
 } from './breach-plan.ts';
 import {validPieArc} from './breach-maneuvers.ts';
+import {generateSite,type Site,seeded} from './breach-site.ts';
 
 export type Posture='stand'|'crouch';
 export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retreat';
@@ -49,7 +50,7 @@ export type Session=Omit<TacticalState,'operators'> & {
   shots:ShotEvent[];nextShotId:number;known:Map<string,KnownContact>;
   seenGround:Set<string>;timesPaused:number;deaths:number;
   started:boolean;syncCode:number;report:string[];
-  movementNoiseAt:number;};
+  movementNoiseAt:number;site?:Site;};
 const d=(a:Pt,b:Pt)=>length(a,b);
 const clone=(p:Pt):Pt=>({...p});
 const near=(a:Pt,b:Pt,range:number)=>d(a,b)<=range;
@@ -72,23 +73,60 @@ const withActions=(a:Operator):TeamActor=>({
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
   yieldTarget:null,yieldFor:null,yieldUntil:0,
 });
-export function newSession(index=0):Session{
+/** Omitted seed keeps 052's historic static study for regression tests.
+ * The actual game passes a unique seed on each newly loaded site.
+ */
+export function newSession(index=0,siteSeed?:number):Session{
+  const site=siteSeed===undefined?undefined:generateSite(siteSeed>>>0);
+  activateSite(site??null);
   const seed=newTacticalState();
   const variant=((index%SCENARIOS.length)+SCENARIOS.length)%SCENARIOS.length;
   const sample=SCENARIOS[variant];
   const operators=seed.operators.map(withActions);
-  operators.filter(a=>a.side==='red').forEach((a,i)=>{
+  if(site){
+    // Two more independently commanded operators, not cloned simulations.
+    const rook=operators.find(a=>a.id==='rook')!;
+    for(const [id,name] of [['ash','ASH'],['vale','VALE']]){
+      const base={...rook,id,name,p:{...rook.p},path:[],
+        lastSpotted:null,shots:0,fireCd:0,health:2};
+      operators.push(withActions(base));
+    }
+    const friendly=operators.filter(a=>a.side==='blue');
+    friendly.forEach((a,i)=>{
+      a.p={...site.spawn[i]};a.heading=-Math.PI/2;
+      a.priorP={...a.p};
+    });
+    // Site danger scales gently with room count; guards never spawn outside
+    // their generated rooms, and every corpse uses the actual site geometry.
+    const old=operators.filter(a=>a.side==='red');
+    const enemyRng=seeded(site.seed^0x8bd7812f);
+    for(let i=0;i<site.enemies.length;i++){
+      let a:TeamActor;
+      if(i<old.length)a=old[i];
+      else{
+        const source=old[i%old.length];
+        a=withActions({...source,id:'guard'+i,
+          name:'GUARD '+(i+1),p:{...source.p},path:[],
+          lastSpotted:null,shots:0,fireCd:0,health:2});
+        operators.push(a);
+      }
+      a.p={...site.enemies[i]};a.priorP={...a.p};
+      a.heading=enemyRng()*Math.PI*2;
+      a.health=site.roomCount>=5?2:(enemyRng()<.55?1:2);
+      a.magazine=10;a.reserve=30;
+    }
+  }else operators.filter(a=>a.side==='red').forEach((a,i)=>{
     const pos=sample.spots[i];a.p={x:pos.x,y:pos.y};a.heading=pos.h;
-    a.health=2; // A single unaware guard can survive one glancing impact.
-    a.magazine=10;a.reserve=30;
+    a.health=2;a.magazine=10;a.reserve=30;
   });
   const state:Session={...seed,operators,doors:initialDoors(),variant,nextId:1,
-    scenario:{index:variant,name:sample.name,objective:clone(OBJECTIVE),
-      extract:clone(EXTRACTION)},
+    scenario:{index:variant,name:site?.name??sample.name,
+      objective:clone(site?.objective??OBJECTIVE),
+      extract:clone(site?.extract??EXTRACTION)},
     mission:'clear',noise:[],shots:[],nextShotId:1,known:new Map(),
     seenGround:new Set(),timesPaused:0,deaths:0,started:false,
-    syncCode:0,report:[],movementNoiseAt:0};
-  observe(state); // Know the space around soldiers even before pressing GO.
+    syncCode:0,report:[],movementNoiseAt:0,site};
+  observe(state);
   return state;
 }
 export const team=(s:Session)=>s.operators.filter(a=>a.side==='blue');
