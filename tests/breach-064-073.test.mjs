@@ -55,7 +55,7 @@ test('066-068: camera and presentation cannot mutate tactical time',()=>{
   assert.match(content,/class TacticalScene3D/);
   assert.match(content,/OrthographicCamera/);
   assert.match(content,/mode:'iso'/);
-  assert.match(content,/liveVisibility\(s,p\)/);
+  assert.match(content,/paintFogMask\(this\.fogContext,s\)/);
   assert.match(content,/isSeen\(s,actor\)/);
   assert.deepEqual(team(s)[0].p,first);
   stepSession(s,1/60);assert.equal(s.seconds,0);
