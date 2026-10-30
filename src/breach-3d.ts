@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import {W,H,WALLS,COVER,initialDoors,doorCenter,type Pt} from './breach-core.ts';
+import {W,H,WALLS,COVER,initialDoors,doorCenter,activeSite,type Pt} from './breach-core.ts';
+import {type Site} from './breach-site.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
 import {shotVisibility} from './breach-presentation.ts';
 
@@ -109,7 +110,99 @@ export class TacticalScene3D{
     mesh.rotation.x=-Math.PI/2;mesh.position.set(x,y,z);
     mesh.receiveShadow=true;parent.add(mesh);return mesh;
   }
-  private buildWorld(){
+  /** New mission replaces *only* architectural meshes. Soldiers and
+   * camera remain alive, avoiding a WebGL context restart on each site.
+   */
+  applySite(site:Site){
+    this.root.children.filter(c=>c!==this.fogUnknown&&
+      c!==this.fogExplored).forEach(child=>{
+      child.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
+      this.root.remove(child);
+    });
+    this.walls.length=0;this.doors.clear();
+    this.observedDoorOpen.clear();
+    this.buildWorld(site);
+    this.root.add(this.fogUnknown,this.fogExplored);
+    this.fogAt=-1;
+    this.resetCamera();
+  }
+  private buildGenerated(site:Site){
+    const palettes=[0x817b69,0x5b746d,0x79705f,0x616e65];
+    const earth=this.solid(0x34443e);
+    if(site){this.buildGenerated(site);return;}
+    this.plane(this.root,W/2,H/2,W,H,-2,earth);
+    const road=this.solid(0x59584a);
+    this.box(this.root,site.entrance.x,-1,
+      (site.entrance.y+H)/2,85,1,H-site.entrance.y+10,road,false);
+    for(const room of site.rooms){
+      const base=this.solid(room.kind==='hall'?0x495b55:
+        palettes[room.tone%palettes.length]);
+      this.box(this.root,room.x+room.w/2,-.8,room.y+room.h/2,
+        room.w-2,1.6,room.h-2,base,false);
+      const grout=this.solid(0x8d9282);
+      for(let x=room.x+22;x<room.x+room.w-8;x+=29)
+        this.box(this.root,x,-.01,room.y+room.h/2,
+          .65,.1,room.h-7,grout,false);
+      for(let y=room.y+22;y<room.y+room.h-8;y+=29)
+        this.box(this.root,room.x+room.w/2,-.01,y,
+          room.w-7,.1,.65,grout,false);
+    }
+    const wallMat=this.solid(0xa89c81),capMat=this.solid(0x474439);
+    const skirting=this.solid(0x39463f);
+    for(const wall of site.walls){
+      const {a,b}=wall,len=Math.hypot(b.x-a.x,b.y-a.y);
+      if(len<5)continue;
+      const x=(a.x+b.x)/2,z=(a.y+b.y)/2;
+      const angle=-Math.atan2(b.y-a.y,b.x-a.x);
+      const body=this.box(this.root,x,16,z,len+1,32,9,wallMat);
+      body.rotation.y=angle;
+      this.walls.push({mesh:body,mid:{x,y:z}});
+      const foot=this.box(this.root,x,2,z,len+1,4,12,skirting,false);
+      foot.rotation.y=angle;
+      const cap=this.box(this.root,x,32.3,z,len+2,2,11,capMat,false);
+      cap.rotation.y=angle;this.walls.push({mesh:cap,mid:{x,y:z}});
+    }
+    const doorMat=this.solid(0xb18b5f),doorTrim=this.solid(0xe0c390);
+    const metal=this.solid(0x586665);
+    for(const door of site.doors){
+      const length=Math.hypot(door.a.x-door.b.x,door.a.y-door.b.y);
+      const p=doorCenter(door),vertical=Math.abs(door.a.x-door.b.x)<1;
+      const root=new THREE.Group();root.position.set(p.x,0,p.y);
+      root.rotation.y=vertical?-Math.PI/2:0;
+      const frame=new THREE.Group();root.add(frame);
+      this.box(frame,-length/2,15,0,5,30,10,doorTrim);
+      this.box(frame,length/2,15,0,5,30,10,doorTrim);
+      this.box(frame,0,30,0,length+7,4,12,doorTrim);
+      const threshold=this.box(frame,0,.32,0,length,1.2,13,
+        doorTrim,false);
+      const leaf=new THREE.Group();leaf.position.x=-length/2;
+      root.add(leaf);
+      this.box(leaf,length/2,13,0,length-4,26,4,doorMat);
+      this.box(leaf,length*.7,13,3,3,3,2,metal,false);
+      const halo=new THREE.Mesh(new THREE.RingGeometry(
+        length*.55,length*.66,32),new THREE.MeshBasicMaterial({
+        color:0xe1c38b,transparent:true,opacity:.95,
+        side:THREE.DoubleSide,depthWrite:false}));
+      halo.rotation.x=-Math.PI/2;halo.position.y=1.8;
+      halo.visible=false;root.add(halo);this.mats.push(halo.material);
+      this.root.add(root);
+      this.doors.set(door.id,{root,leaf,frame,halo,threshold});
+      this.observedDoorOpen.set(door.id,false);
+    }
+    const wood=this.solid(0x655748),steel=this.solid(0x465958);
+    const olive=this.solid(0x70715e);
+    site.cover.forEach((c,i)=>{
+      const tall=c.low?12:27,material=i%3===0?wood:i%3===1?steel:olive;
+      this.box(this.root,c.x,tall/2,c.y,c.w,tall,c.h,material);
+      this.box(this.root,c.x,tall+.5,c.y,c.w+1,1,c.h+1,
+        steel,false);
+      if(c.low)for(let j=0;j<3;j++)
+        this.box(this.root,c.x-c.w/3+j*c.w/3,tall+1,c.y,
+          1.5,2,c.h-4,wood,false);
+    });
+    // Important: avoid visual-only furniture outside authoritative cover.
+  }
+  private buildWorld(site=activeSite()){
     const earth=this.solid(0x34443e),road=this.solid(0x5d6358);
     const gravel=this.solid(0x6c7061),floorA=this.solid(0x817d6b);
     const floorB=this.solid(0x526b68),timber=this.solid(0x4b4437);
