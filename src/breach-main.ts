@@ -1054,16 +1054,6 @@ function contacts(){
       draw.strokeRect(p.x-8,p.y-8,16,16);
     }
   }
-  for(const mark of state.impactMarks){
-    if(!(replaying&&replayOmniscient)&&!liveVisibility(state,mark.p))continue;
-    draw.globalAlpha=Math.max(.18,.78-mark.age*.023);
-    circle(mark.p.x,mark.p.y,mark.surface==='blood'?4:2.5,
-      mark.surface==='blood'?'#914a44':
-      mark.surface==='wood'?'#42332a':
-      mark.surface==='stone'?'#363936':
-      mark.surface==='metal'?'#262e30':'#4e4b40');
-    draw.globalAlpha=1;
-  }
   for(const m of state.dropped){
     rect(m.p.x-3,m.p.y-1,6,2,'#202e2d');
   }
@@ -1105,6 +1095,21 @@ function endMessage(){
     draw.fillStyle='#101c1f88';draw.fillRect(0,0,W,H);
   }
 }
+// Blood and bullet decals are part of the floor, not HUD sprites.
+// Render beneath architecture AND fog so marks cannot float over walls
+// or leak into an unrevealed room.
+function renderGroundMarks(){
+  for(const mark of state.impactMarks){
+    if(!(replaying&&replayOmniscient)&&!liveVisibility(state,mark.p))continue;
+    draw.globalAlpha=Math.max(.18,.78-mark.age*.023);
+    circle(mark.p.x,mark.p.y,mark.surface==='blood'?4:2.5,
+      mark.surface==='blood'?'#914a44':
+      mark.surface==='wood'?'#42332a':
+      mark.surface==='stone'?'#363936':
+      mark.surface==='metal'?'#262e30':'#4e4b40');
+    draw.globalAlpha=1;
+  }
+ }
 function render(){
   if(stage&&viewMode!=='plan2d'){
     renderProjectedPlans();return;
@@ -1115,7 +1120,7 @@ function render(){
   draw.save();
   draw.translate(ox,oy);draw.scale(viewScale,viewScale);
   draw.fillStyle='#52655b';draw.fillRect(-9,-9,W+18,H+18);
-  terrain();furniture();architecture();fog();missionMarkers();
+  terrain();furniture();renderGroundMarks();architecture();fog();missionMarkers();
   paths();
   for(const a of state.operators)sprite(a);
   contacts();endMessage();
