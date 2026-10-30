@@ -21,8 +21,8 @@ export function generateJunctionSite(seed:number):Site{
   const integer=(min:number,max:number)=>
     min+Math.floor(rand()*(max-min+1));
   const variant=patterns[Math.abs(Math.floor(seed/5))%patterns.length];
-  const xs=[integer(90,112),integer(278,295),integer(338,358),integer(560,582)];
-  const ys=[integer(96,113),integer(267,285),integer(337,355),integer(525,550)];
+  const xs=[integer(90,112),integer(266,279),integer(342,355),integer(560,582)];
+  const ys=[integer(96,113),integer(262,275),integer(342,355),integer(525,550)];
   const rooms:Room[]=[];
   for(let row=0;row<3;row++)for(let col=0;col<3;col++){
     const index=row*3+col;
@@ -35,7 +35,7 @@ export function generateJunctionSite(seed:number):Site{
   const append=(boundary:Segment,id:string|null)=>{
     if(!id){walls.push(boundary);return;}
     const {a,b}=boundary,vertical=Math.abs(b.x-a.x)<.01;
-    const span=length(a,b),half=Math.min(22,span*.44);
+    const span=length(a,b),half=24;
     const offset=(rand()-.5)*Math.min(16,Math.max(0,span-2*half-14));
     const middle=vertical?{x:a.x,y:(a.y+b.y)/2+offset}:
       {x:(a.x+b.x)/2+offset,y:a.y};
@@ -151,5 +151,6 @@ export function generateJunctionSite(seed:number):Site{
   }
   return {seed,name:variant.name,rooms,walls,doors,cover,
     entrance,spawn,enemies,objective,extract:{x:frontX,y:y2+115},
-    roomCount:habitable.length,layout:'corridor'};
+    roomCount:habitable.length,layout:'corridor',
+    openHallLinks:edges.filter(edge=>edge.kind==='hall').length};
 }

@@ -9,6 +9,8 @@ export type Room={id:string;x:number;y:number;w:number;h:number;
   kind:'room'|'hall';tone:number};
 export type Site={
   seed:number;name:string;rooms:Room[];walls:Segment[];doors:Door[];
+  /** Open hall-to-hall transitions need no obstructing door leaf. */
+  openHallLinks?:number;
   cover:Obstacle[];entrance:Pt;spawn:Pt[];enemies:Pt[];
   objective:Pt;extract:Pt;roomCount:number;
   layout:'office'|'workshop'|'corridor'|'courtyard';
