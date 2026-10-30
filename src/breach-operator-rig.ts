@@ -157,7 +157,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.weapon.scale.x=gunLength;
   r.weapon.position.x=6-retract*5.5;
   r.weapon.position.y=-3+(p.aiming?1:0);
-  r.weapon.rotation.y=-diff(hipTarget,p.heading)-r.chest.rotation.y;
+  // The visible muzzle must always match the authoritative simulated shot
+  // heading even while hips and shoulders are still catching up.
+  r.weapon.rotation.y=-p.heading-r.root.rotation.y-r.chest.rotation.y;
   const reloadProgress=p.reload>0?1-p.reload/p.reloadDuration:0;
   const reloadActive=p.reload>0;
   const throwAge=p.seconds-p.lastThrowAt;
