@@ -208,3 +208,44 @@ button:focus-visible{outline:2px solid #e9c493;outline-offset:3px}
 
 /* Hidden squad members in legacy fixed-site tests must not take HUD space. */
 .bar .unit[hidden]{display:none!important}
+
+/* 091–096: replay playback lives over the full battlefield, not the mission HUD. */
+body.replaying .bar,body.replaying .orders,body.replaying .context-tools,
+body.replaying .foot,body.replaying .guidance,body.replaying .feed{display:none!important}
+.replay-panel{position:fixed;z-index:10;bottom:calc(15px + env(safe-area-inset-bottom));
+ left:50%;transform:translateX(-50%);width:min(680px,calc(100vw - 18px));
+ border:1px solid #a5b29a99;border-radius:8px;background:#142425ed;
+ padding:11px 12px;box-shadow:0 8px 32px #061215aa}
+.replay-panel[hidden]{display:none}
+.replay-head{display:flex;justify-content:space-between;color:#e6dbc2;
+ font-size:11px;letter-spacing:.08em}
+.replay-head output{font-variant-numeric:tabular-nums}
+.replay-panel input[type=range]{width:100%;margin:12px 0;accent-color:#ccae77;
+ height:20px;touch-action:pan-x}
+.replay-actions{display:flex;gap:5px;align-items:stretch}
+.replay-actions button{background:#2b403c;color:#e3e5d9;border:1px solid #617c71;
+ border-radius:4px;min-height:38px;padding:6px;flex:1;white-space:nowrap;font-size:10px}
+.replay-actions #replayPlay{background:#c7b18b;color:#172526;font-weight:bold;flex:1.4}
+.replay-actions #replayExit{background:#59443e;border-color:#b59082}
+.bar .unit{position:relative}
+.bar .unit em{font-style:normal;font-size:8px;font-variant-numeric:tabular-nums;
+ color:#e6cfa0;grid-column:2;line-height:1.05}
+.bar .unit .unit-code{grid-row:1/4}
+.bar .unit{grid-template-rows:13px 13px 10px}
+.bar .unit small{line-height:1}
+.bar .unit.loading{border-color:#e8c98b;box-shadow:inset 0 0 0 2px #d7b37955}
+.bar .unit.loading:after{content:"";position:absolute;right:2px;top:2px;
+ width:12px;height:12px;border-radius:50%;border:2px solid #8a8f83;
+ border-top-color:#f8dca7;transform:rotate(var(--reload-rotation,0deg))}
+@media(max-width:650px){
+ .bar .unit{grid-template-rows:12px 12px 10px;min-height:40px}
+ .bar .unit strong{font-size:9px}
+ .bar .unit em{font-size:8px}
+ .replay-panel{padding:9px 8px;bottom:calc(6px + env(safe-area-inset-bottom))}
+ .replay-actions{gap:3px}
+ .replay-actions button{padding:6px 3px;min-height:42px;font-size:9px}
+}
+@media(max-height:470px){.replay-panel{bottom:4px;padding:4px 8px}
+ .replay-panel input[type=range]{margin:3px 0}
+ .replay-actions button{min-height:29px}
+}
