@@ -128,6 +128,9 @@ choose<HTMLButtonElement>('stepFrame').addEventListener('click',()=>{
 timeline.addEventListener('input',()=>{
   playing=false;playPause.textContent='PLAY';
   clock=Number(timeline.value)/1000;
+  // Render on the input event: seeking must not display an older frame while
+  // a busy mobile GPU waits for the next requestAnimationFrame callback.
+  draw();
 });
 function resize(){
   const w=window.innerWidth,h=window.innerHeight;
