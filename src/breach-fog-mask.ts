@@ -10,20 +10,24 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
   ctx.setTransform(FOG_WIDTH/W,0,0,FOG_HEIGHT/H,0,0);
   ctx.globalCompositeOperation='source-over';
   ctx.clearRect(0,0,W,H);
-  ctx.fillStyle='rgba(7,18,20,.97)';
+  // Neutral-black blind space: no blue tint or translucent cyan wash.
+  ctx.fillStyle='rgba(0,0,0,.985)';
   ctx.fillRect(0,0,W,H);
-  // Legacy explored-ground persistence remains authoritative. The low-res
-  // texture and filtering remove hard screen-pixel tiles while directional
-  // current visibility is polygonal and occlusion-aware.
+  ctx.globalCompositeOperation='destination-out';
+  // Exploration gets a short feather rather than 40-unit hard rectangles.
+  // This is presentation only: intel and hidden actor visibility are
+  // still checked in the authoritative simulation every tick.
+  ctx.filter='blur(5px)';
   for(let row=0;row<19;row++)for(let col=0;col<16;col++){
     const p={x:col*40+20,y:row*40+20};
     const level=intelFogLevel(s.intel,s.site,p,false,knownAt(s,p.x,p.y));
     if(level===2)continue;
-    ctx.clearRect(col*40,row*40,40,40);
-    ctx.fillStyle=level===1?'rgba(7,18,20,.23)':'rgba(7,18,20,.97)';
+    ctx.fillStyle=level===1?'rgba(255,255,255,.76)':'#fff';
     ctx.fillRect(col*40,row*40,40,40);
   }
-  ctx.globalCompositeOperation='destination-out';
+  // Continuous sight polygons are eased along their outline without
+  // changing target detection, opacity or LOS blockers.
+  ctx.filter='blur(2.5px)';
   ctx.fillStyle='#fff';
   for(const a of team(s)){
     if(a.health<=0)continue;
