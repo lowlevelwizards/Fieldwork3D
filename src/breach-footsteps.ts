@@ -197,8 +197,10 @@ export function advanceFootsteps(s:FootstepScheduler,input:FootstepInput):
   if(discontinuity)resetFootsteps(s,input);
   for(const foot of s.feet)progress(foot,input);
   const facing=input.facingYaw??-input.rootYaw;
-  const pendingPivot=input.speed<6&&
-    Math.abs(deltaAngle(s.pelvisYaw,input.rootYaw))>.12;
+  const pivotSwing=s.feet.some(foot=>foot.reason==='turn'&&
+    (foot.phase==='unloading'||foot.phase==='swinging'));
+  const pendingPivot=input.speed<6&&(pivotSwing||
+    Math.abs(deltaAngle(s.pelvisYaw,input.rootYaw))>.12);
   const requested=pendingPivot?'pivot':
     classifyLocomotion(input.speed,facing,input.travelYaw,
       input.turning,s.mode);
@@ -216,7 +218,10 @@ export function advanceFootsteps(s:FootstepScheduler,input:FootstepInput):
     s.pelvisYaw=s.pivotFromYaw+
       deltaAngle(s.pivotFromYaw,s.pivotToYaw)*smooth;
   }else if(s.mode!=='pivot'){
-    s.pelvisYaw=input.rootYaw;
+    // Even a final small correction must not snap the pelvis on a
+    // paused frame. When moving, the usual locomotion turn takes over.
+    s.pelvisYaw+=clamp(deltaAngle(s.pelvisYaw,input.rootYaw),
+      input.speed<6?-.055:-.22,input.speed<6?.055:.22);
   }
   const busy=s.feet.some(f=>f.phase==='unloading'||f.phase==='swinging');
   if(!busy&&!input.down){
