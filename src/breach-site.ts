@@ -2,7 +2,8 @@
  * Build 085–088: one seeded architectural description for rules and renderers.
  * Every wall is explicitly cut around a real Door; no visual-only shortcuts.
  */
-import {type Pt,type Segment,type Door,type Obstacle} from './breach-core.ts';
+import {type Pt,type Segment,type Door,type Obstacle,
+  pointToSegment} from './breach-core.ts';
 export type Room={id:string;x:number;y:number;w:number;h:number;
   kind:'room'|'hall';tone:number};
 export type Site={
@@ -140,6 +141,21 @@ export function generateSite(seed:number):Site{
       Math.abs(p.x-o.x)>o.w/2+20||
       Math.abs(p.y-o.y)>o.h/2+20));
     if(available)objective=available;
+  }
+  // Objectives are validated against every actual wall and furnishing;
+  // a room-center candidate can be near a partition in a three-column site.
+  const isFree=(p:Pt)=>walls.every(w=>pointToSegment(p,w)>=15)&&
+    cover.every(o=>Math.abs(p.x-o.x)>=o.w/2+12||
+      Math.abs(p.y-o.y)>=o.h/2+12);
+  if(!isFree(objective)){
+    const candidates:Pt[]=[];
+    for(let y=objectiveRoom.y+27;y<objectiveRoom.y+objectiveRoom.h-27;y+=18)
+      for(let x=objectiveRoom.x+27;x<objectiveRoom.x+objectiveRoom.w-27;x+=18)
+        candidates.push({x,y});
+    candidates.sort((a,b)=>
+      Math.hypot(a.x-objective.x,a.y-objective.y)-
+      Math.hypot(b.x-objective.x,b.y-objective.y));
+    objective=candidates.find(isFree)??objective;
   }
   const enemies:Pt[]=[];
   const count=between(rng,Math.max(2,target-1),Math.min(7,target+1));
