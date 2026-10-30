@@ -522,7 +522,8 @@ export class TacticalScene3D{
     const flash=new THREE.Mesh(new THREE.OctahedronGeometry(3.5),
       new THREE.MeshBasicMaterial({color:0xffd59e,transparent:true,
         opacity:.94,depthWrite:false}));
-    flash.position.set(35,19,0);flash.visible=false;root.add(flash);
+    // Flash belongs to the firearm, not an independent actor-root guess.
+    flash.position.set(19.5,0,0);flash.visible=false;weapon.add(flash);
     const status=new THREE.Mesh(new THREE.RingGeometry(12,16,30),
       new THREE.MeshBasicMaterial({color:0xdb8d76,transparent:true,
         opacity:.9,depthWrite:false,side:THREE.DoubleSide}));
@@ -724,7 +725,7 @@ export class TacticalScene3D{
         effect={root,line,impact,chips,material,impactMaterial};
         this.effectCache.set(shot.id,effect);
       }
-      const start=v(shot.start,15),end=v(shot.end,12);
+      const start=v(shot.start,shot.muzzleHeight??15),end=v(shot.end,12);
       const flight=end.clone().sub(start);
       effect.line.position.copy(start).addScaledVector(flight,.5);
       effect.line.scale.set(1,flight.length(),1);
