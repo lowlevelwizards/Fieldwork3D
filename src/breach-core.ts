@@ -81,7 +81,7 @@ export function passable(p:Pt,clearance=OPERATOR_RADIUS):boolean{
  * endpoint B reverses the closed direction. Tactical (x,y) rotates opposite
  * THREE's Y-axis door yaw so the 2D and 3D leaves overlap. */
 export const doorYaw=(d:Door)=>(d.swing??-1)*
-  (d.openFraction??(d.open?1:0))*1.36;
+  (d.openFraction??(d.open?1:0))*1.54;
 export function doorLeafSegment(d:Door):Segment{
  const hinge=d.hinge==='b'?d.b:d.a;
  const end=d.hinge==='b'?d.a:d.b;
