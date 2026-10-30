@@ -1041,7 +1041,7 @@ function insertAtRouteLine(screen:Pt):boolean{
   if(!actor||state.phase!=='planning')return false;
   const hit=routeLineHit(actor.p,actor.plan,screen,
     point=>worldToScreen(point,4),14);
-  if(!hit){canvas.dataset.lastRouteTap='miss';return false;}
+  if(!hit){canvas.dataset.lastRouteTap='miss:'+actor.plan.length+'/'+selected;return false;}
   canvas.dataset.lastRouteTap='route:'+hit.index;
   const id=state.nextId;
   if(!insertPlanNode(state,selected,hit.index,hit.point)){
