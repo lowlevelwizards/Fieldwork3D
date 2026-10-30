@@ -35,6 +35,15 @@ export function dispersion(id:WeaponId,mode:FiringMode,
   return base*(1+(.9-clamp01(stability))*.9+
     (moving?.48:0)+suppression*.85+injury*.27)+recoil*.45;
 }
+/** Temporary physical angular instability caused by violent turning,
+ * translation and shot recoil. The chosen shot angle becomes the visible
+ * firearm yaw at the firing tick; no invisible post-barrel hit roll. */
+export function handlingInstability(turning:number,speed:number,
+  recoil:number,stability:number){
+  return Math.min(.24,Math.max(0,turning)*.035+
+    Math.min(1,Math.abs(speed)/75)*.027+
+    recoil*.080+(1-clamp01(stability))*.012);
+}
 export function shotYaw(alignment:number,spread:number,
   sampleA:number,sampleB:number):number{
   return alignment+(sampleA-sampleB)*spread;
