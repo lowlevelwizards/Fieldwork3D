@@ -55,7 +55,8 @@ export function createFootstepScheduler():FootstepScheduler{
 }
 export function resetFootsteps(s:FootstepScheduler,input:FootstepInput):void{
   for(let i=0;i<2;i++){
-    const foot=s.feet[i],point=lateral(input.position,input.rootYaw,i===0?-1:1);
+    const foot=s.feet[i],point=lateral(input.position,
+      input.facingYaw??input.rootYaw,i===0?-1:1);
     foot.phase='planted';foot.plantedAt=copy(point);
     foot.swingFrom=copy(point);foot.swingTo=copy(point);
     foot.worldYaw=input.rootYaw;foot.fromYaw=input.rootYaw;
@@ -114,7 +115,7 @@ function startStep(s:FootstepScheduler,index:number,input:FootstepInput){
   const advance=clamp(input.speed*duration,0,13);
   const predicted={x:input.position.x+Math.cos(travel)*advance,
     y:input.position.y+Math.sin(travel)*advance};
-  let land=lateral(predicted,input.rootYaw,index===0?-1:1);
+  let land=lateral(predicted,facing,index===0?-1:1);
   if(strafe){
     // Shuffle outward with the leading foot, then draw in the trailing
     // foot. The follow-step cannot overtake the leading foot.
@@ -129,13 +130,13 @@ function startStep(s:FootstepScheduler,index:number,input:FootstepInput){
     // A single planted-foot pivot may turn the pelvis only by a modest
     // angle. Longer rotations require multiple alternating replant steps.
     const turnYaw=s.pelvisYaw+clamp(delta,-.42,.42);
-    land=lateral(input.position,turnYaw,index===0?-1:1);
+    land=lateral(input.position,-turnYaw,index===0?-1:1);
     land=safeLanding(s,index,land,
       {...input,facingYaw:-s.pelvisYaw});
     s.pivotFromYaw=s.pelvisYaw;s.pivotToYaw=turnYaw;
     s.pivotAt=input.time;s.pivotDuration=duration;
   }else if(settle){
-    land=lateral(input.position,input.rootYaw,index===0?-1:1);
+    land=lateral(input.position,facing,index===0?-1:1);
   }else if(input.speed>5){
     land.x+=Math.cos(travel)*bounds.preferredLead;
     land.y+=Math.sin(travel)*bounds.preferredLead;
@@ -227,7 +228,7 @@ export function advanceFootsteps(s:FootstepScheduler,input:FootstepInput):
       if(foot.phase!=='planted'&&foot.phase!=='recovering'&&
         foot.phase!=='landing')continue;
       if(input.time-foot.lastTouchdown<.06)continue;
-      const neutral=lateral(input.position,input.rootYaw,i===0?-1:1);
+      const neutral=lateral(input.position,facing,i===0?-1:1);
       const dx=neutral.x-foot.plantedAt.x,dy=neutral.y-foot.plantedAt.y;
       const forward=dx*Math.cos(input.travelYaw)+dy*Math.sin(input.travelYaw);
       const error=Math.hypot(dx,dy);
