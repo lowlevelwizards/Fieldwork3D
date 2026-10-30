@@ -40,15 +40,19 @@ export function pushDoor(d:Door,force:number):boolean{
  return true;
 }
 export function advanceDoor(d:Door,dt:number){
- const target=d.open?1:0;
- const current=d.openFraction??target;
- const v=d.angularVelocity??0;
- // Spring-damper converges on the authored target; kicks/pushes momentarily
- // accelerate the leaf, but it never exceeds the frame's hinge limits.
- const acceleration=(target-current)*28-v*9;
- const velocity=Math.max(-4.5,Math.min(4.5,v+acceleration*dt));
- const next=Math.max(0,Math.min(1,current+velocity*dt));
- d.openFraction=next;
- d.angularVelocity=next===0||next===1?0:velocity;
+  // Fixed internal substeps prevent a paused or coarse test tick from
+  // overshooting a hinge and keep old half-second door timings intact.
+  let remaining=Math.max(0,Math.min(dt,.5));
+  while(remaining>1e-8){
+    const h=Math.min(1/60,remaining);
+    const target=d.open?1:0,current=d.openFraction??target;
+    const v=d.angularVelocity??0;
+    const acceleration=(target-current)*64-v*12;
+    const velocity=Math.max(-5,Math.min(5,v+acceleration*h));
+    const next=Math.max(0,Math.min(1,current+velocity*h));
+    d.openFraction=next;
+    d.angularVelocity=next===0||next===1?0:velocity;
+    remaining-=h;
+  }
 }
 export const doorClear=(d:Door)=>!!d.open&&(d.openFraction??1)>=.72;
