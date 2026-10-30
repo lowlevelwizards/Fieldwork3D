@@ -942,19 +942,6 @@ function defensivePosition(a:TeamActor,from:Pt,s:Session):Pt|null{
 function enemyDecisions(s:Session,a:TeamActor,dt:number){
   if(a.health<=0||a.surrendered)return;
   if(!a.watch)a.watch=watchPoint(a.p,s.doors);
-  if(!a.contacted&&a.watch){
-    if(a.defense===null){
-      a.defense=defensivePosition(a,a.watch,s);
-      a.defenseUntil=s.seconds+8;
-    }
-    if(a.defense&&d(a.p,a.defense)>11){
-      if(!a.nav.length)a.nav=route(a.p,a.defense);
-      if(a.nav.length)approach(a,a.defense,dt,s,.62);
-      if(a.nav.length)rotate(a,angle(a.p,a.nav[0]),dt);
-      return;
-    }
-    rotate(a,angle(a.p,a.watch),dt);
-  }
   const visible=team(s).filter(b=>inSight(a,b,s));
   if(visible.length){
     const b=visible.sort((x,y)=>d(x.p,a.p)-d(y.p,a.p))[0];
@@ -990,6 +977,19 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   }
   if(a.flashUntil>s.seconds){
     a.velocity=0;a.aim=0;a.alert='cover';return;
+  }
+  if(!a.contacted&&a.watch){
+    if(a.defense===null){
+      a.defense=defensivePosition(a,a.watch,s);
+      a.defenseUntil=s.seconds+8;
+    }
+    if(a.defense&&d(a.p,a.defense)>11){
+      if(!a.nav.length)a.nav=route(a.p,a.defense);
+      if(a.nav.length)approach(a,a.defense,dt,s,.62);
+      if(a.nav.length)rotate(a,angle(a.p,a.nav[0]),dt);
+      return;
+    }
+    rotate(a,angle(a.p,a.watch),dt);
   }
   if(a.alert==='retreat'&&a.retreatPoint){
     if(d(a.p,a.retreatPoint)>9){
