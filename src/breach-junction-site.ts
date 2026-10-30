@@ -57,7 +57,7 @@ export function generateJunctionSite(seed:number):Site{
   if(Math.abs(frontMid-frontX)>4){
     walls.splice(walls.length-2,2);
     doors.pop();
-    const half=22;
+    const half=24;
     walls.push(seg(x0,y2,frontX-half,y2),
       seg(frontX+half,y2,x3,y2));
     doors.push({id:'FRONT',a:{x:frontX-half,y:y2},
