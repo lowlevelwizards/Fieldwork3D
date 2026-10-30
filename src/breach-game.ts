@@ -42,7 +42,7 @@ export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retrea
 export type Personality='guard'|'aggressor'|'cautious';
 export type TeamActor=Operator & {
   plan:PlanNode[];history:PlanHistory;nav:Pt[];activeNode:number;
-  posture:Posture;alert:Alert;velocity:number;turning:number;
+  posture:Posture;pace:'walk'|'run';alert:Alert;velocity:number;turning:number;
   aim: number;targetId:string|null;suppression:number;stamina:number;
   magazine:number;reserve:number;reload:number;hits:number;kills:number;
   insertedMagazineId:string;spareMagazines:MagazineItem[];
@@ -119,7 +119,7 @@ export const SCENARIOS=[
 ] as const;
 const withActions=(a:Operator):TeamActor=>({
   ...a,plan:[],history:makeHistory(),nav:[],activeNode:-1,
-  posture:'stand',alert:'idle',velocity:0,turning:0,aim:0,
+  posture:'stand',pace:'walk',alert:'idle',velocity:0,turning:0,aim:0,
   targetId:null,suppression:0,stamina:1,magazine:12,reserve:36,
   reload:0,hits:0,kills:0,stopped:false,contact:null,heard:null,
   insertedMagazineId:a.id+'/carbine/loaded',
@@ -573,6 +573,9 @@ export function planSquadEntry(s:Session,doorId:string){
   notify(s,'SQUAD ENTRY READY · GO TO EXECUTE');
   return true;
 }
+/** Tactical WAIT: hold for the minimum interval, and continue only after
+ * any visible living contact has been absent for that entire interval.
+ * Legacy holdClear nodes execute identically for old plans/replays. */
 export function planWaitAt(s:Session,id:string,seconds=.5,
   origin:'here'|'end'='here',afterNodeId?:number){
   const a=party(s,id);if(!a||!canEdit(s))return false;
@@ -591,6 +594,30 @@ export function setWaitDuration(s:Session,id:string,nodeId:number,seconds:number
   const a=party(s,id),node=a?.plan.find(n=>n.id===nodeId);
   if(!a||!node||node.kind!=='wait'||!canEdit(s))return false;
   return edit(s,a,()=>{node.duration=clamp(seconds,.3,6);});
+}
+/** Posture and pace authored at an existing waypoint take effect on arrival
+ * and remain until a later transition. An operator tap edits base/HERE state. */
+export function setNodeControl(s:Session,id:string,nodeId:number,
+  field:'postureState'|'paceState',value:'stand'|'crouch'|'walk'|'run'){
+  const a=party(s,id),node=a?.plan.find(n=>n.id===nodeId);
+  if(!a||!node||!canEdit(s))return false;
+  return edit(s,a,()=>{Object.assign(node,{[field]:value});});
+}
+export function setStartPace(s:Session,id:string,pace:'walk'|'run'){
+  const a=party(s,id);if(!a||!canEdit(s))return false;
+  a.pace=pace;return true;
+}
+export function plannedControl(s:Session,id:string,nodeId?:number){
+  const a=party(s,id);if(!a)return {posture:'stand' as Posture,
+    pace:'walk' as const};
+  let posture=a.posture,pace=a.pace;
+  if(nodeId===undefined)return {posture,pace};
+  for(const node of a.plan){
+    if(node.postureState)posture=node.postureState;
+    if(node.paceState)pace=node.paceState;
+    if(node.id===nodeId)break;
+  }
+  return {posture,pace};
 }
 export function setMoveSprint(s:Session,id:string,nodeId:number){
   const a=party(s,id),node=a?.plan.find(n=>n.id===nodeId);
@@ -716,6 +743,41 @@ export function planFlash(s:Session,id:string,target:Pt):boolean{
     .map(n=>n.doorId??'');
   if(!validateThrow(start,target,s.doors,plannedOpen).valid)return false;
   return addNode(s,id,'flash',start,{aimPoint:clone(target)});
+}
+/** Door-context FLASH: one undoable sequence. OPEN is inserted ahead of
+ * the throw; never auto-enters. Target validation treats only this door
+ * and previously planned opened doors as passable. */
+export function planDoorFlash(s:Session,id:string,doorId:string,target:Pt,
+  afterNodeId?:number):boolean{
+  const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
+  if(!a||!door||!canEdit(s)||!passable(target)||
+    !doorKnown(s.intel,doorId))return false;
+  const queued=team(s).reduce((sum,x)=>sum+
+    x.plan.filter(n=>n.kind==='flash').length,0);
+  if(queued>=s.flashRemaining)return false;
+  const index=afterNodeId===undefined?a.plan.length:
+    a.plan.findIndex(n=>n.id===afterNodeId)+1;
+  if(index<0)return false;
+  const start=index>0?a.plan[index-1].p:a.p;
+  const approached=doorReachable(start,door)?clone(start):doorApproach(start,door);
+  if(!approached||!passable(approached)||
+     !route(start,approached).length||
+     d(approached,target)>160||d(approached,target)<16)return false;
+  const before=a.plan.slice(0,index);
+  const opened=before.filter(n=>n.kind==='door'&&n.method!=='hold')
+    .map(n=>n.doorId??'');
+  const needsOpen=!opened.includes(doorId)&&
+    (s.intel.doorMemory.get(doorId)??0)<.72;
+  if(!validateThrow(approached,target,s.doors,
+    needsOpen?[...opened,doorId]:opened).valid)return false;
+  return edit(s,a,()=>{
+    const added:PlanNode[]=[];
+    if(needsOpen)added.push({id:s.nextId++,kind:'door',
+      p:clone(approached),doorId,method:'open'});
+    added.push({id:s.nextId++,kind:'flash',p:clone(approached),
+      aimPoint:clone(target)});
+    a.plan.splice(index,0,...added);
+  });
 }
 /** Dragging a flash marker changes its landing point, not the thrower's position. */
 export function moveFlashTarget(s:Session,id:string,nodeId:number,p:Pt){
@@ -1063,7 +1125,8 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     const tracking=a.aimInstruction?.mode==='track'||
       n.aimMode==='track';
     const cautious=n.moveMode==='strafe'||tracking;
-    approach(a,n.p,dt,s,n.moveMode==='sprint'?1.40:cautious?.70:1);
+    approach(a,n.p,dt,s,n.moveMode==='sprint'||a.pace==='run'?1.40:
+      cautious?.70:1);
     // Unmodified movement follows its route, while an explicit fixed STRAFE
     // or PIE/TRACK instruction persists until LOOK releases it.
     const held=aimHeading(a);
@@ -1075,6 +1138,10 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     return;
   }
   a.velocity=Math.max(0,a.velocity-dt*180);
+  if(at){
+    if(n.postureState)a.posture=n.postureState;
+    if(n.paceState)a.pace=n.paceState;
+  }
   // Apply an authored look/pie/strafe instruction once we actually arrive
   // at its waypoint, then keep it active through every later movement.
   if(n.kind==='move'||n.kind==='look'){
@@ -1093,16 +1160,13 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   // Door/wait/sync orders should not cancel a persistent look/track intent.
   const held=aimHeading(a);
   if(held!==null)rotate(a,held,dt);
-  if(n.kind==='holdClear'){
-    // Visibility, not omniscient enemy knowledge, determines clearance.
+  if(n.kind==='holdClear'||n.kind==='wait'){
+    // One WAIT: stay at least .5s and keep waiting while a live,
+    // physically seen contact is present. Clear timer resets on sight.
     const contact=enemies(s).some(e=>e.health>0&&inSight(a,e,s));
     a.waitRemaining=contact?0:a.waitRemaining+dt;
+    a.velocity=0;
     if(a.waitRemaining>=(n.duration??.5))pop(a);
-    return;
-  }
-  if(n.kind==='wait'){
-    a.waitRemaining+=dt;
-    if(a.waitRemaining>=(n.duration??1))pop(a);
     return;
   }
   if(n.kind==='sync'){
@@ -1322,7 +1386,7 @@ function fire(s:Session,a:TeamActor,dt:number){
     a.reload=0;a.reloadMode=null;return;
   }
   // Sprinting is a traversal decision, not free accurate fire on the move.
-  if(a.plan[0]?.moveMode==='sprint'&&a.velocity>12){
+  if((a.pace==='run'||a.plan[0]?.moveMode==='sprint')&&a.velocity>12){
     a.aim=Math.max(0,a.aim-dt*2.2);
     a.weaponYaw=approachAngle(a.weaponYaw,a.heading,dt*4);
     return;
