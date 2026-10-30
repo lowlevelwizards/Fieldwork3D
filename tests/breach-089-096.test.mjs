@@ -47,16 +47,16 @@ test('090–091: seekable replay is deterministic and does not resimulate',()=>{
   activateSite(null);
 });
 
-test('092: manual reload discards magazine and refills exactly twelve rounds',()=>{
+test('092: deliberate partial reload retains unused ammunition',()=>{
   const s=newSession();quiet(s);
   const a=team(s)[0];a.magazine=5;
   assert.ok(planReload(s,a.id));
   toggling(s);advance(s,2.3);
   assert.equal(a.magazine,12);
-  assert.equal(a.reserve,24);
+  assert.equal(a.reserve,29);
   assert.equal(a.reload,0);
-  assert.equal(s.dropped.length,1);
-  assert.deepEqual(s.dropped[0].p,a.p);
+  assert.equal(s.dropped.length,0);
+  assert.ok(a.spareMagazines.some(m=>m.rounds===5));
   activateSite(null);
 });
 
