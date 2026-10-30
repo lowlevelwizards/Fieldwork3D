@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {coverImpactFraction,coverHeight,eyeHeight,aimHeight}
   from '../src/breach-cover-height.ts';
 const from={x:0,y:50},to={x:100,y:50};
-const low={x:50,y:50,w:14,h:28,low:true};
+const low={x:88,y:50,w:14,h:28,low:true};
 const high={...low,low:false};
 test('143B: standing shot clears low cover while crouched target stays concealed',()=>{
   assert.equal(coverImpactFraction(from,to,22,aimHeight(false),low),null);
