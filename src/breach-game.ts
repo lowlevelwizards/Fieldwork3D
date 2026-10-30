@@ -24,7 +24,7 @@ import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from 
 import {localDetour} from './breach-cooperation.ts';
 import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
-  rayHitsActor,muzzleEndpoint,recoverWeapon,type FiringMode} from './breach-ballistics.ts';
+  rayHitsActor,muzzleEndpoint,recoverWeapon,handlingInstability,type FiringMode} from './breach-ballistics.ts';
 import {chooseDefense,watchPoint} from './breach-defense.ts';
 import {muzzleAtShot} from './breach-muzzle.ts';
 import {magazineKit,fullestMagazineIndex,
@@ -1316,6 +1316,10 @@ function fire(s:Session,a:TeamActor,dt:number){
   const profile=BALLISTICS[a.weapon];
   const recovering=recoverWeapon(a.recoil,a.stability,dt,profile,a.velocity>10);
   a.recoil=recovering.recoil;a.stability=recovering.stability;
+  // An abrupt turn disturbs the actual weapon state, even if movement
+  // speed is zero. It takes time to settle the sights again.
+  if(a.turning>.12)a.stability=Math.max(0,a.stability-
+    dt*Math.min(1.6,a.turning*.30));
   if(a.reload>0){
     advanceReload(s,a,dt);return;
   }
@@ -1348,26 +1352,28 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(Math.abs(Math.atan2(Math.sin(desiredYaw-a.weaponYaw),
     Math.cos(desiredYaw-a.weaponYaw)))>.38)return;
   a.fireMode=mode;
+  const priorBurst=s.seconds-a.lastShotAt<.48;
+  const proposedBurst=priorBurst?a.burstCount+1:1;
+  const cone=(dispersion(a.weapon,mode,a.stability,moving,
+    a.suppression,a.injuryStage,a.recoil)+
+    handlingInstability(a.turning,a.velocity,a.recoil,a.stability))*
+    (2-skillMultiplier(mode==='point'?a.skills.pointShooting:
+      range>weapon.optimalRange?a.skills.longRange:a.skills.precision,.28));
+  // Shot direction is the firearm's physical yaw at ignition. Sampling
+  // happens *before* muzzle construction, not as an invisible post-shot roll.
+  const yaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
   const muzzle=muzzleAtShot({x:a.p.x,z:a.p.y,heading:a.heading,
-    weaponYaw:a.weaponYaw,weapon:a.weapon,aim:a.aim,
+    weaponYaw:yaw,weapon:a.weapon,aim:a.aim,
     velocity:a.velocity,recoil:a.recoil});
   const muzzlePoint={x:muzzle.x,y:muzzle.z};
-  // The muzzle, not the operator's center, must be clear of cover.
   const muzzleReach=strikeSurface(a.p,muzzlePoint,s);
   if(d(a.p,muzzleReach.end)+.7<d(a.p,muzzlePoint)){
     a.aim=Math.min(a.aim,.82);return;
   }
+  a.weaponYaw=yaw; // renderer sees exactly the outgoing shot orientation
   a.fireCd=weapon.interval*(a.side==='red'?1.30:1);
-  a.magazine--;a.shots++;
-  const priorBurst=s.seconds-a.lastShotAt<.48;
-  a.burstCount=priorBurst?a.burstCount+1:1;
+  a.magazine--;a.shots++;a.burstCount=proposedBurst;
   a.lastShotAt=s.seconds;
-  const cone=dispersion(a.weapon,mode,a.stability,moving,
-    a.suppression,a.injuryStage,a.recoil)*
-    (2-skillMultiplier(mode==='point'?a.skills.pointShooting:
-      range>weapon.optimalRange?a.skills.longRange:a.skills.precision,.28));
-  // A shot is a geometric ray, not an independent chance roll.
-  const yaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
   const hitRadius=Math.max(4.2,10.5-
     (target.posture==='crouch'?1.7:0)-
     (nearCover(target.p,a.p)?2:0));
@@ -1444,6 +1450,10 @@ function fire(s:Session,a:TeamActor,dt:number){
     target.health=healthAfter;
     target.injuryStage=s.site?nextStage:Math.min(3,target.injuryStage+1);
     target.lastHitAt=s.seconds;
+    // Incoming fire physically interrupts aim and the current weapon.
+    target.stability=Math.max(0,target.stability-.22*severity);
+    target.recoil=Math.min(.9,target.recoil+.07*severity);
+    target.weaponYaw+=Math.sin(yaw-target.heading)*.045*severity;
     target.lastHitRegion=region;target.lastHitYaw=yaw;
     target.lastHitSeverity=severity;
     if(target.side==='red')target.morale=Math.max(0,

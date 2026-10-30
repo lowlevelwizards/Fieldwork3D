@@ -839,34 +839,8 @@ function renderProjectedPlans(){
     draw.beginPath();draw.arc(p.x,p.y,doorFocusId===door.id?10:7,
       0,Math.PI*2);draw.stroke();
   }
-  // The 3D camera does not define combat outcomes: use the same shot event
-  // visibility and damage flags as the physical effects and 2D renderer.
-  for(const shot of state.shots){
-    const visibility=shotVisibility(state,shot);
-    const start=worldToScreen(shot.start,15);
-    const point=worldToScreen(shot.end,27);
-    const fade=contactFade(shot.age,.40);
-    if(visibility.trace&&shot.age<.22){
-      draw.globalAlpha=contactFade(shot.age,.22);
-      line(start,point,shot.side==='blue'?'#f6dfa9':'#f0a28a',2.2);
-      draw.globalAlpha=1;
-    }
-    if(visibility.flash&&shot.age<.14){
-      draw.globalAlpha=contactFade(shot.age,.14);
-      circle(start.x,start.y,6+2*(1-shot.age/.14),'#ffdd9c');
-      draw.globalAlpha=1;
-    }
-    if(!visibility.impact||!shot.hit)continue;
-    draw.globalAlpha=fade;
-    draw.strokeStyle=shot.down?'#f5c5b1':'#ed9e80';
-    draw.lineWidth=shot.down?3:2;
-    draw.beginPath();draw.arc(point.x,point.y,
-      (shot.down?17:10)+(1-fade)*8,0,2*Math.PI);draw.stroke();
-    draw.fillStyle='#f2b39b';draw.font='bold 11px monospace';
-    draw.textAlign='center';
-    // Impact pulse is enough without another persistent text label.
-    draw.globalAlpha=1;
-  }
+  // Physical muzzle flashes, tracers and impacts are rendered exclusively
+  // by Three.js in 3D modes so depth testing never draws them over actors.
   // Unknown enemies stay unrendered; only grounded last-known reports show.
   for(const hostile of enemies(state)){
     if(isSeen(state,hostile)||hostile.health<=0)continue;

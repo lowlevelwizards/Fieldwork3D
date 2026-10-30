@@ -740,13 +740,13 @@ export class TacticalScene3D{
         const root=new THREE.Group();
         const material=new THREE.MeshBasicMaterial({
           color:shot.side==='blue'?0xffde9d:0xff9b73,
-          transparent:true,depthWrite:false});
+          transparent:true,depthTest:true,depthWrite:false});
         const impactMaterial=new THREE.MeshBasicMaterial({
           color:shot.surface==='blood'?0xa65a4e:
             shot.surface==='metal'?0xffd697:
             shot.surface==='wood'?0xdfb27a:
             shot.surface==='stone'?0xbeb9a2:0xe2d3b1,
-          transparent:true,depthWrite:false});
+          transparent:true,depthTest:true,depthWrite:false});
         const line=new THREE.Mesh(this.tracerGeometry,material);
         const impact=new THREE.Mesh(this.impactGeometry,impactMaterial);
         root.add(line,impact);
