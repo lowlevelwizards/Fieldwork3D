@@ -6,7 +6,7 @@ import {
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   planMove,planMoveStroke,planAim,planWait,planWaitAt,setWaitDuration,
   plannedControl,setNodeControl,setStartPace,planReloadAt,planDoorFlash,
-  setMoveSprint,planSync,movePlanNode,
+  planSync,movePlanNode,
   finalPoint,doorAtNode,backOne,
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,stepSession,knownAt,liveVisibility,
@@ -109,7 +109,6 @@ let looking=false,flashMode=false;
 let lookMode:'look'|'pie'|'strafe'='look';
 let contextSignature='';
 let selectedNode:number|null=null;
-let orderOrigin:'here'|'node'|'end'='end';
 let doorMenuDismissedId:string|null=null;
 let flashDoorId:string|null=null;
 let armedOrigin:'here'|'end'='end';
@@ -197,7 +196,7 @@ const uid=(id:string)=>team(state).find(o=>o.id===id);
 function selectUnit(id:string){
   const actor=uid(id);if(!actor||actor.health<=0)return;
   selected=id;looking=false;
-  selectedNode=null;doorFocusId=null;orderOrigin='here';
+  selectedNode=null;doorFocusId=null;
   doorMenuDismissedId=null;updateHud();
 }
 function message(){
@@ -364,7 +363,7 @@ ui.context.addEventListener('click',event=>{
       doorFocusId=null;doorMenuDismissedId=door.id;break;
     case 'ctxDelete':
       if(node)deletePlanNode(state,selected,node.id);
-      selectedNode=null;doorFocusId=null;orderOrigin='here';break;
+      selectedNode=null;doorFocusId=null;break;
     case 'ctxOpen':
     case 'ctxKick':
     case 'ctxHold':
@@ -1129,7 +1128,7 @@ function useSelectedGround(pt:Pt){
     state.events.push('NO WALKABLE ROUTE');
   else{
     selectedNode=uid(selected)?.plan.at(-1)?.id??null;
-    orderOrigin='node';
+    
   }
   updateHud();
 }
@@ -1389,7 +1388,7 @@ canvas.addEventListener('pointerdown',e=>{
     const node=state.phase==='planning'&&!contextual&&!hit?hitNode(pt):null;
     if(node){
       if(node.owner!==selected)selectUnit(node.owner);
-      selectedNode=node.id;orderOrigin='node';doorFocusId=null;
+      selectedNode=node.id;doorFocusId=null;
     }else if(hit)selectUnit(hit.id);
     activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
       startX:e.clientX,startY:e.clientY,wasUnit:!!hit&&!node,
@@ -1480,7 +1479,7 @@ function insertAtRouteLine(screen:Pt):boolean{
     return true; // This was a route tap, not a new destination order.
   }
   canvas.dataset.lastRouteTap='inserted:'+hit.index;
-  selectedNode=id;orderOrigin='node';doorFocusId=null;contextSignature='';
+  selectedNode=id;doorFocusId=null;contextSignature='';
   return true;
 }
 function releasePointer(e:PointerEvent,cancelled=false){
@@ -1496,13 +1495,13 @@ function releasePointer(e:PointerEvent,cancelled=false){
           movePlanNode(state,selected,p.nodeId,pt);
         if(!moved)state.events.push('INVALID ORDER DESTINATION');
       }
-      selectedNode=p.nodeId;orderOrigin='node';doorFocusId=null;
+      selectedNode=p.nodeId;doorFocusId=null;
     }else if(p.mode==='route'&&trace&&trace.length>1){
       const points=[...trace,pt];
       if(!planMoveStroke(state,selected,points.slice(1)))
         state.events.push('NO WALKABLE STROKE');
       else selectedNode=uid(selected)?.plan.filter(n=>n.kind==='move').at(-1)?.id??null;
-      doorFocusId=null;orderOrigin='node';
+      doorFocusId=null;
     }else if(!p.moved&&!p.wasUnit&&pt.x>=0&&pt.y>=0&&
       pt.x<=W&&pt.y<=H){
       const selectedActor=uid(selected);
@@ -1519,7 +1518,7 @@ function releasePointer(e:PointerEvent,cancelled=false){
           {x:e.clientX,y:e.clientY})<25));
       if(door&&!looking&&!flashMode){
         doorFocusId=door.id;selectedNode=null;
-        doorMenuDismissedId=null;orderOrigin='end';
+        doorMenuDismissedId=null;
       }else if(!looking&&!flashMode&&insertAtRouteLine({x:e.clientX,y:e.clientY})){
         // Insert-and-select: contextual LOOK/PIE/STRAFE/DELETE are immediately
         // available on the newly authored waypoint.
