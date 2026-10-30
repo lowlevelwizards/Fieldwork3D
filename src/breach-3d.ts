@@ -3,6 +3,7 @@ import {W,H,WALLS,COVER,initialDoors,doorCenter,activeSite,type Pt} from './brea
 import {type Site} from './breach-site.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
 import {shotVisibility} from './breach-presentation.ts';
+import {doorYaw} from './breach-door.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {sampleThrow} from './breach-flash.ts';
 
@@ -195,6 +196,7 @@ export class TacticalScene3D{
       root.add(leaf);
       this.box(leaf,length/2,13,0,length-4,26,4,doorMat);
       this.box(leaf,length*.7,13,3,3,3,2,metal,false);
+       this.box(leaf,length*.7,13,-3,3,3,2,metal,false);
       const halo=new THREE.Mesh(new THREE.RingGeometry(
         length*.55,length*.66,32),new THREE.MeshBasicMaterial({
         color:0xe1c38b,transparent:true,opacity:.95,
@@ -295,6 +297,7 @@ export class TacticalScene3D{
       group.add(hinge);
       this.box(hinge,width/2,13,0,width-3,26,4,doorMat);
       this.box(hinge,width*.7,13,2.6,3,4,2,doorTrim,false);
+       this.box(hinge,width*.7,13,-2.6,3,4,2,doorTrim,false);
       const halo=new THREE.Mesh(
         new THREE.RingGeometry(width*.56,width*.66,32),
         new THREE.MeshBasicMaterial({color:0xe3bc7d,transparent:true,
@@ -615,7 +618,7 @@ export class TacticalScene3D{
         this.observedDoorOpen.set(door.id,door.open);
       const shownOpen=this.observedDoorOpen.get(door.id)??false;
       object.leaf.rotation.y=THREE.MathUtils.lerp(object.leaf.rotation.y,
-        shownOpen?-1.32:0,Math.min(1,Math.max(0,dt)*14));
+        shownOpen?doorYaw(door):0,Math.min(1,Math.max(0,dt)*14));
       object.halo.visible=focusedDoorId===door.id&&
         (liveVisibility(s,doorCenter(door))||
          knownAt(s,doorCenter(door).x,doorCenter(door).y));

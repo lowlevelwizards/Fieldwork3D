@@ -11,7 +11,7 @@ const blocked=(from:Pt,to:Pt,doors:Door[])=>{
 export function validateThrow(from:Pt,to:Pt,doors:Door[],
   plannedOpen:string[]=[]):ThrowPath{
   const range=dist(from,to);
-  if(range<16||range>170)return {points:[from,to],mode:'direct',
+  if(range<16||range>210)return {points:[from,to],mode:'direct',
     valid:false,reason:'OUT OF THROW RANGE'};
   const available=doors.map(door=>({...door,
     open:door.open||plannedOpen.includes(door.id)}));
@@ -21,10 +21,10 @@ export function validateThrow(from:Pt,to:Pt,doors:Door[],
   // opening while the soldier stays on the safe side of its doorframe.
   for(const door of available)if(door.open){
     const via=doorCenter(door);
-    if(dist(from,via)>80||dist(to,via)>125)continue;
+    if(dist(from,via)>115||dist(to,via)>145)continue;
     if(blocked(from,via,available)||blocked(via,to,available))continue;
     const pathLength=dist(from,via)+dist(via,to);
-    if(pathLength>185)continue;
+    if(pathLength>235)continue;
     return {points:[from,via,to],via,mode:'doorway',valid:true};
   }
   return {points:[from,to],mode:'direct',valid:false,
