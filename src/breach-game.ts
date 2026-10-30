@@ -819,6 +819,15 @@ export function planReload(s:Session,id:string):boolean{
   const a=party(s,id);
   return !!a&&canEdit(s)&&addNode(s,id,'reload',finalPoint(a));
 }
+/** Insert reload at the selected HERE/waypoint, without moving the route. */
+export function planReloadAt(s:Session,id:string,afterNodeId?:number){
+ const a=party(s,id);if(!a||!canEdit(s))return false;
+ const index=afterNodeId===undefined?0:a.plan.findIndex(n=>n.id===afterNodeId)+1;
+ if(index<0)return false;
+ const p=index===0?a.p:a.plan[index-1].p;
+ return edit(s,a,()=>a.plan.splice(index,0,{id:s.nextId++,
+   kind:'reload',p:clone(p)}));
+}
 export function reloadNow(s:Session,id:string):boolean{
   const a=party(s,id);
   return !!a&&s.phase==='running'&&beginReload(s,a);
