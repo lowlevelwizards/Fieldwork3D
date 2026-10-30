@@ -81,7 +81,7 @@ export type ShotEvent={
 export type ImpactMark={id:number;p:Pt;surface:ShotEvent['surface'];age:number;
   height?:number;normal?:Pt};
 export type DroppedMagazine={id:number;p:Pt;side:Side;age:number;
-  weapon?:WeaponId;rounds?:number};
+  weapon?:WeaponId;rounds?:number;magazineId?:string};
 export type FlashGrenade={id:number;p:Pt;from:Pt;to:Pt;age:number;
   fuse:number;path?:ThrowPath};
 export type FlashBurst={id:number;p:Pt;age:number};
@@ -190,6 +190,9 @@ export function newSession(index=0,siteSeed?:number):Session{
       a.weapon=enemyRng()<.30?'smg':'carbine';
       a.magazine=WEAPONS[a.weapon].capacity;
       a.reserve=WEAPONS[a.weapon].reserve;
+      a.insertedMagazineId=a.id+'/'+a.weapon+'/loaded';
+      a.spareMagazines=magazineKit(a.id,a.weapon,a.reserve,
+        WEAPONS[a.weapon].capacity);
       a.injuryStage=0;
       a.personality=(['guard','aggressor','cautious'] as const)[Math.floor(enemyRng()*3)];
       a.morale=.48+enemyRng()*.52;
@@ -197,6 +200,8 @@ export function newSession(index=0,siteSeed?:number):Session{
   }else operators.filter(a=>a.side==='red').forEach((a,i)=>{
     const pos=sample.spots[i];a.p={x:pos.x,y:pos.y};a.heading=pos.h;
     a.health=2;a.magazine=10;a.reserve=30;a.weaponYaw=a.heading;
+    a.spareMagazines=magazineKit(a.id,a.weapon,a.reserve,
+      WEAPONS[a.weapon].capacity);
   });
   const state:Session={...seed,operators,doors:initialDoors().map(initDoor),variant,nextId:1,
     scenario:{index:variant,name:site?.name??sample.name,
@@ -653,7 +658,8 @@ export function advanceReload(s:Session,a:TeamActor,dt:number){
        a.reserve+=oldRounds;
      }else{
        s.dropped.push({id:s.nextEffectId++,p:clone(a.p),
-         side:a.side,age:0,weapon:a.weapon,rounds:oldRounds});
+         side:a.side,age:0,weapon:a.weapon,rounds:oldRounds,
+         magazineId:oldId});
        if(s.dropped.length>48)s.dropped.shift();
      }
    }
@@ -723,7 +729,7 @@ export function cycleWeapon(s:Session,id:string):boolean{
   a.insertedMagazineId=a.id+'/'+next+'/loaded';
   a.spareMagazines=next==='shotgun'?[]:magazineKit(
     a.id,next,a.reserve,WEAPONS[next].capacity);
-  a.reloadMode=null;
+  a.reloadMode=null;a.reloadRemoved=false;a.reloadInserted=false;
   notify(s,a.name+' EQUIPPED '+WEAPONS[next].label);
   return true;
 }
@@ -1534,6 +1540,7 @@ export function stepSession(s:Session,dt:number){
   s.flashBursts=s.flashBursts.filter(b=>(b.age+=h)<.70);
   stepFlashbangs(s,h);
   for(const a of s.operators){
+    if(a.health<=0&&a.reload>0){a.reload=0;a.reloadMode=null;}
     a.fireCd=Math.max(0,a.fireCd-h);
     if(a.side==='red'&&a.health>0){
       a.morale=Math.min(1,a.morale+h*.006-
