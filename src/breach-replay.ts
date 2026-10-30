@@ -13,7 +13,7 @@ export type ActorFrame=Pick<TeamActor,
   'lastHitAt'|'lastDownAt'|'lastHitRegion'|'lastHitYaw'|
   'lastHitSeverity'|'downPose'|'flashUntil'|'suppression'|
   'weapon'|'injuryStage'|'morale'|'surrendered'|'defense'|'watch'|
-  'lastThrowAt'|'lastDoorAt'|'lastDoorId'|'stride'|
+  'lastThrowAt'|'lastDoorAt'|'lastDoorId'|'lastDoorMethod'|'stride'|
   'weaponYaw'|'stability'|'recoil'|'lastShotAt'|'fireMode'|'burstCount'|'skills'>;
 export type ReplayActorFrame=ActorFrame & {travelYaw?:number};
 export type ReplayFrame={
@@ -45,7 +45,8 @@ export function snapshot(s:Session):ReplayFrame{
       flashUntil:a.flashUntil,suppression:a.suppression,
       weapon:a.weapon,injuryStage:a.injuryStage,morale:a.morale,
       lastThrowAt:a.lastThrowAt,lastDoorAt:a.lastDoorAt,
-      lastDoorId:a.lastDoorId,stride:a.stride,
+      lastDoorId:a.lastDoorId,lastDoorMethod:a.lastDoorMethod,
+      stride:a.stride,
       weaponYaw:a.weaponYaw,stability:a.stability,recoil:a.recoil,
       lastShotAt:a.lastShotAt,fireMode:a.fireMode,burstCount:a.burstCount,
       skills:{...a.skills},
