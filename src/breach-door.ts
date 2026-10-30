@@ -5,8 +5,11 @@ export {doorYaw,doorLeafSegment};
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export const DOOR_REACH=39;
 export function handlePoint(d:Door):Pt{
-  const a=d.hinge==='b'?d.b:d.a,b=d.hinge==='b'?d.a:d.b;
-  return {x:a.x+(b.x-a.x)*.82,y:a.y+(b.y-a.y)*.82};
+  // Handle follows the actual rotated leaf, letting the support hand track
+  // the contact point instead of reaching for an empty closed-door position.
+  const leaf=doorLeafSegment(d);
+  return {x:leaf.a.x+(leaf.b.x-leaf.a.x)*.82,
+    y:leaf.a.y+(leaf.b.y-leaf.a.y)*.82};
 }
 export function doorReachable(p:Pt,d:Door):boolean{
   return (dist(p,handlePoint(d))<DOOR_REACH||pointToSegment(p,d)<31)&&
