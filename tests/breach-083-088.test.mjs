@@ -78,7 +78,7 @@ test('083–088: main page and dedicated Breach both offer four-person controls'
   }
   assert.match(main,/newSession\(0,legacyStudy\?undefined:randomSiteSeed\(\)\)/);
   assert.match(main,/stage\?\.applySite\(state\.site\?\?null\)/);
-  assert.match(main,/ctxStackAll/);
+  assert.doesNotMatch(main,/ctxStackAll/);
   assert.match(main,/ctxEntry/);
   assert.match(three,/private buildGenerated\(site:Site\)/);
 });
