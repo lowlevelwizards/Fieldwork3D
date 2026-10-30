@@ -563,7 +563,7 @@ export function planSquadEntry(s:Session,doorId:string){
   notify(s,'SQUAD ENTRY READY · GO TO EXECUTE');
   return true;
 }
-export function planWaitAt(s:Session,id:string,seconds=2,
+export function planWaitAt(s:Session,id:string,seconds=.5,
   origin:'here'|'end'='here',afterNodeId?:number){
   const a=party(s,id);if(!a||!canEdit(s))return false;
   const after=afterNodeId===undefined?-1:
@@ -589,7 +589,17 @@ export function setMoveSprint(s:Session,id:string,nodeId:number){
     node.moveMode=node.moveMode==='sprint'?'advance':'sprint';
   });
 }
-export function planWait(s:Session,id:string,seconds=1.2){
+export function planHoldClear(s:Session,id:string,origin:'here'|'end'='end',afterNodeId?:number){
+  const a=party(s,id);if(!a||!canEdit(s))return false;
+  const idx=afterNodeId===undefined?-1:a.plan.findIndex(n=>n.id===afterNodeId);
+  if(afterNodeId!==undefined&&idx<0)return false;
+  const p=idx>=0?a.plan[idx].p:origin==='here'?a.p:finalPoint(a);
+  if(idx>=0||origin==='here')return edit(s,a,()=>{
+    a.plan.splice(idx+1,0,{id:s.nextId++,kind:'holdClear',p:clone(p),duration:.5});
+  });
+  return addNode(s,id,'holdClear',p,{duration:.5});
+}
+export function planWait(s:Session,id:string,seconds=.5){
   const a=party(s,id);return a?addNode(s,id,'wait',finalPoint(a),
     {duration:clamp(seconds,.3,6)}):false;
 }
@@ -1057,6 +1067,13 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   // Door/wait/sync orders should not cancel a persistent look/track intent.
   const held=aimHeading(a);
   if(held!==null)rotate(a,held,dt);
+  if(n.kind==='holdClear'){
+    // Visibility, not omniscient enemy knowledge, determines clearance.
+    const contact=enemies(s).some(e=>e.health>0&&inSight(a,e,s));
+    a.waitRemaining=contact?0:a.waitRemaining+dt;
+    if(a.waitRemaining>=(n.duration??.5))pop(a);
+    return;
+  }
   if(n.kind==='wait'){
     a.waitRemaining+=dt;
     if(a.waitRemaining>=(n.duration??1))pop(a);

@@ -295,3 +295,16 @@ body.replaying .foot,body.replaying .guidance,body.replaying .feed{display:none!
  .site-settings{bottom:calc(170px + env(safe-area-inset-bottom))}
  .replay-extra button{flex:1 0 18%}
 }
+
+/* 137: bottom-docked context strip never obscures a doorway or actor. */
+.context-tools{position:fixed;left:8px;right:8px;top:auto!important;
+ bottom:calc(153px + env(safe-area-inset-bottom));max-width:none;width:auto;
+ transform:none!important;flex-wrap:nowrap;justify-content:flex-start;
+ overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;
+ max-height:55px;z-index:6;padding:5px 6px}
+.context-tools button{flex:0 0 auto;min-height:44px;padding:7px 11px}
+.context-tools button[data-action=ctxHere],
+.context-tools button[data-action=ctxEnd]{border-style:dashed}
+@media(max-width:450px){.context-tools{bottom:calc(143px + env(safe-area-inset-bottom));}}
+@media(max-height:470px){.context-tools{bottom:calc(105px + env(safe-area-inset-bottom));max-height:45px}
+.context-tools button{min-height:34px}}
