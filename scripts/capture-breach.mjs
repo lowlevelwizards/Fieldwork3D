@@ -8,7 +8,8 @@ import {resolve} from 'node:path';
 const {chromium}=await import('playwright');
 const folder=resolve('breach-052-captures');
 await mkdir(folder,{recursive:true});
-const port=4189,url=`http://127.0.0.1:${port}/breach.html`;
+const port=4189,base=`http://127.0.0.1:${port}/breach.html`,
+  url=base+'?fixedSite=1';
 const server=spawn(process.execPath,[
   'node_modules/vite/bin/vite.js','--host','127.0.0.1',
   '--port',String(port),'--strictPort',
@@ -41,6 +42,37 @@ try{
   if(!await home.locator('#play').count())
     throw Error('Pages root missing tactical GO control');
   await home.screenshot({path:resolve(folder,'00-pages-home-breach.png')});
+  // 083–088: default public entry is the four-person generated game.
+  const live=await browser.newPage({
+    viewport:{width:390,height:844},deviceScaleFactor:2,
+    hasTouch:true,isMobile:true,
+  });
+  live.on('pageerror',e=>errors.push('procedural homepage: '+e.message));
+  await live.goto(base.replace('breach.html',''),{
+    waitUntil:'domcontentloaded'});
+  await live.locator('#breachCanvas').waitFor();
+  for(const id of ['rook','moss','ash','vale']){
+    if(!await live.locator('#'+id).isVisible())
+      throw Error('Four-player live homepage missing '+id);
+  }
+  const siteTitle=await live.locator('.ident small').textContent();
+  if(!siteTitle?.includes('4 OPERATORS')||!siteTitle.includes('SEED'))
+    throw Error('Public homepage does not show a generated site');
+  const beforeSeed=siteTitle;
+  await live.screenshot({path:resolve(folder,'20-procedural-four-operator-site.png')});
+  await live.locator('#ash').click();
+  if(await live.locator('#ash').getAttribute('aria-pressed')!=='true')
+    throw Error('Ash cannot be selected');
+  await live.locator('#vale').click();
+  if(await live.locator('#vale').getAttribute('aria-pressed')!=='true')
+    throw Error('Vale cannot be selected');
+  await live.locator('#moreOrders').click();
+  await live.locator('#variant').click();
+  const secondSeed=await live.locator('.ident small').textContent();
+  if(secondSeed===beforeSeed)
+    throw Error('NEW SITE failed to change procedural seed');
+  await live.screenshot({path:resolve(folder,'21-procedural-new-layout.png')});
+  await live.close();
   const original=await browser.newPage({viewport:{width:390,height:844}});
   await original.goto(url.replace('breach.html','verdigris.html'),{
     waitUntil:'domcontentloaded'});

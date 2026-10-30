@@ -5,7 +5,7 @@
  */
 import {
   type Pt,type Operator,type TacticalState,type Door,type Side,
-  WALLS,COVER,initialDoors,newTacticalState,route,passable,
+  WALLS,COVER,initialDoors,newTacticalState,route,passable,activateSite,
   segmentsCross,doorCenter,
 } from './breach-core.ts';
 import {
@@ -15,6 +15,7 @@ import {
   length,targetAngle,angleDifference,type PieSide,
 } from './breach-plan.ts';
 import {validPieArc} from './breach-maneuvers.ts';
+import {generateSite,type Site,seeded} from './breach-site.ts';
 
 export type Posture='stand'|'crouch';
 export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retreat';
@@ -49,7 +50,7 @@ export type Session=Omit<TacticalState,'operators'> & {
   shots:ShotEvent[];nextShotId:number;known:Map<string,KnownContact>;
   seenGround:Set<string>;timesPaused:number;deaths:number;
   started:boolean;syncCode:number;report:string[];
-  movementNoiseAt:number;};
+  movementNoiseAt:number;site?:Site;};
 const d=(a:Pt,b:Pt)=>length(a,b);
 const clone=(p:Pt):Pt=>({...p});
 const near=(a:Pt,b:Pt,range:number)=>d(a,b)<=range;
@@ -72,23 +73,60 @@ const withActions=(a:Operator):TeamActor=>({
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
   yieldTarget:null,yieldFor:null,yieldUntil:0,
 });
-export function newSession(index=0):Session{
+/** Omitted seed keeps 052's historic static study for regression tests.
+ * The actual game passes a unique seed on each newly loaded site.
+ */
+export function newSession(index=0,siteSeed?:number):Session{
+  const site=siteSeed===undefined?undefined:generateSite(siteSeed>>>0);
+  activateSite(site??null);
   const seed=newTacticalState();
   const variant=((index%SCENARIOS.length)+SCENARIOS.length)%SCENARIOS.length;
   const sample=SCENARIOS[variant];
   const operators=seed.operators.map(withActions);
-  operators.filter(a=>a.side==='red').forEach((a,i)=>{
+  if(site){
+    // Two more independently commanded operators, not cloned simulations.
+    const rook=operators.find(a=>a.id==='rook')!;
+    for(const [id,name] of [['ash','ASH'],['vale','VALE']]){
+      const base={...rook,id,name,p:{...rook.p},path:[],
+        lastSpotted:null,shots:0,fireCd:0,health:2};
+      operators.push(withActions(base));
+    }
+    const friendly=operators.filter(a=>a.side==='blue');
+    friendly.forEach((a,i)=>{
+      a.p={...site.spawn[i]};a.heading=-Math.PI/2;
+      a.priorP={...a.p};
+    });
+    // Site danger scales gently with room count; guards never spawn outside
+    // their generated rooms, and every corpse uses the actual site geometry.
+    const old=operators.filter(a=>a.side==='red');
+    const enemyRng=seeded(site.seed^0x8bd7812f);
+    for(let i=0;i<site.enemies.length;i++){
+      let a:TeamActor;
+      if(i<old.length)a=old[i];
+      else{
+        const source=old[i%old.length];
+        a=withActions({...source,id:'guard'+i,
+          name:'GUARD '+(i+1),p:{...source.p},path:[],
+          lastSpotted:null,shots:0,fireCd:0,health:2});
+        operators.push(a);
+      }
+      a.p={...site.enemies[i]};a.priorP={...a.p};
+      a.heading=enemyRng()*Math.PI*2;
+      a.health=site.roomCount>=5?2:(enemyRng()<.55?1:2);
+      a.magazine=10;a.reserve=30;
+    }
+  }else operators.filter(a=>a.side==='red').forEach((a,i)=>{
     const pos=sample.spots[i];a.p={x:pos.x,y:pos.y};a.heading=pos.h;
-    a.health=2; // A single unaware guard can survive one glancing impact.
-    a.magazine=10;a.reserve=30;
+    a.health=2;a.magazine=10;a.reserve=30;
   });
   const state:Session={...seed,operators,doors:initialDoors(),variant,nextId:1,
-    scenario:{index:variant,name:sample.name,objective:clone(OBJECTIVE),
-      extract:clone(EXTRACTION)},
+    scenario:{index:variant,name:site?.name??sample.name,
+      objective:clone(site?.objective??OBJECTIVE),
+      extract:clone(site?.extract??EXTRACTION)},
     mission:'clear',noise:[],shots:[],nextShotId:1,known:new Map(),
     seenGround:new Set(),timesPaused:0,deaths:0,started:false,
-    syncCode:0,report:[],movementNoiseAt:0};
-  observe(state); // Know the space around soldiers even before pressing GO.
+    syncCode:0,report:[],movementNoiseAt:0,site};
+  observe(state);
   return state;
 }
 export const team=(s:Session)=>s.operators.filter(a=>a.side==='blue');
@@ -323,7 +361,9 @@ export function planDoor(s:Session,id:string,doorId:string,method:DoorMethod){
   if(!reachable[0])return false;
   return addNode(s,id,'door',reachable[0],{doorId,method});
 }
-/** Contextual stack-up: approach one side of a door and cover the opening. */
+/** Plan an actual reserved stack position on the same approach side.
+ * Four positions are spaced along the door frame, with a second rank.
+ */
 export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number){
   const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
   if(!a||!door||!canEdit(s))return false;
@@ -332,28 +372,83 @@ export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number)
   if(index<=0&&afterNodeId!==undefined)return false;
   const from=index===0?a.p:a.plan[index-1].p,center=doorCenter(door);
   const horizontal=Math.abs(door.a.y-door.b.y)<1;
-  const half=d(door.a,door.b)/2;
-  const candidates=horizontal?[
-    {x:center.x-half-10,y:center.y+(from.y>=center.y?18:-18)},
-    {x:center.x+half+10,y:center.y+(from.y>=center.y?18:-18)},
-  ]:[
-    {x:center.x+(from.x>=center.x?18:-18),y:center.y-half-10},
-    {x:center.x+(from.x>=center.x?18:-18),y:center.y+half+10},
-  ];
-  const partner=team(s).find(b=>b!==a&&b.health>0);
-  const other=partner?finalPoint(partner):null;
-  const legal=candidates.filter(p=>passable(p)&&route(from,p).length);
-  legal.sort((x,y)=>{
-    const score=(p:Pt)=>d(from,p)-(other?Math.min(50,d(p,other))*.42:0);
-    return score(x)-score(y);
+  const approachSide=horizontal?
+    Math.sign(from.y-center.y)||1:Math.sign(from.x-center.x)||1;
+  const assigned=team(s).filter(b=>b!==a&&b.health>0)
+    .map(b=>b.plan.find(n=>n.stackDoorId===doorId))
+    .filter((n):n is PlanNode=>!!n);
+  const occupied=assigned.map(n=>n.p);
+  // All four slots must remain within the 43-unit door-use radius.
+  // The first two take opposite sides of the frame; the next two fill in
+  // behind the opening. This prevents two-person legacy stack regressions.
+  const positions=[-38,38,-12,12];
+  const preferred=team(s).findIndex(b=>b.id===id);
+  const candidates:Pt[]=positions.map(tangent=>horizontal?
+    {x:center.x+tangent,y:center.y+approachSide*19}:
+    {x:center.x+approachSide*19,y:center.y+tangent});
+  // Smaller entrance frames retain valid nearby choices; never pick a
+  // physical stack slot too far away to use the door.
+  const legal=candidates.filter(p=>
+    d(p,center)<43&&passable(p)&&!!route(from,p).length&&
+    occupied.every(other=>d(p,other)>23));
+  legal.sort((u,v)=>{
+    const rank=(p:Pt)=>{
+      const i=candidates.findIndex(candidate=>d(candidate,p)<1);
+      return (i-preferred+4)%4;
+    };
+    return rank(u)-rank(v)||d(from,u)-d(from,v);
   });
   if(!legal.length)return false;
-  const point=legal[0];
-  const proposed=copyNodes(a.plan);
+  const point=legal[0],proposed=copyNodes(a.plan);
   proposed.splice(index,0,{id:s.nextId,kind:'move',p:clone(point),
-    moveMode:'strafe',facing:angle(point,center)});
+    moveMode:'strafe',facing:angle(point,center),
+    aimMode:'track',aimPoint:clone(center),aimLabel:'pie',
+    stackDoorId:doorId});
   if(!validEditedPlan(s,a.p,proposed))return false;
   return edit(s,a,()=>{a.plan=proposed;s.nextId++;});
+}
+/** One tap queues four distinct doorway positions. Existing orders are
+ * retained; a failed actor allocation leaves the completed positions intact
+ * so players can adjust a tight site individually.
+ */
+export function planStackTeam(s:Session,doorId:string){
+  if(!canEdit(s))return false;
+  let count=0;
+  for(const a of team(s))if(a.health>0&&planStack(s,a.id,doorId))count++;
+  if(count)notify(s,'STACK '+count+' / '+team(s).filter(a=>a.health>0).length);
+  return count>0;
+}
+/** Coordinated entry: reserve distinct stack positions, synchronize at
+ * a shared go-code, open the door with the lead, then feed others through
+ * at staggered intervals. Tactical pathfinding remains authoritative.
+ */
+export function planSquadEntry(s:Session,doorId:string){
+  const door=s.doors.find(d=>d.id===doorId);
+  if(!door||!canEdit(s))return false;
+  const alive=team(s).filter(a=>a.health>0);
+  if(!alive.length)return false;
+  // The user can first position a squad manually; honor existing stack
+  // positions instead of duplicating them.
+  for(const a of alive){
+    if(!a.plan.some(n=>n.stackDoorId===doorId)&&
+      !planStack(s,a.id,doorId))return false;
+  }
+  if(!planSync(s))return false;
+  const center=doorCenter(door),horizontal=Math.abs(door.a.y-door.b.y)<1;
+  const lead=alive[0],p=finalPoint(lead);
+  const side=horizontal?Math.sign(p.y-center.y)||1:
+    Math.sign(p.x-center.x)||1;
+  if(!planDoor(s,lead.id,doorId,'open'))return false;
+  for(let i=0;i<alive.length;i++){
+    const a=alive[i];
+    if(i>0)planWait(s,a.id,.3+i*.24);
+    const inside=horizontal?{x:center.x+(i%2?9:-9),
+      y:center.y-side*62}:{x:center.x-side*62,
+      y:center.y+(i%2?9:-9)};
+    if(passable(inside))planMove(s,a.id,inside);
+  }
+  notify(s,'SQUAD ENTRY READY · GO TO EXECUTE');
+  return true;
 }
 export function planWait(s:Session,id:string,seconds=1.2){
   const a=party(s,id);return a?addNode(s,id,'wait',finalPoint(a),
@@ -889,7 +984,7 @@ export function missionText(s:Session){
   if(s.phase==='won')return 'COMPLETE — OPERATION SUCCESS';
   if(s.phase==='lost')return 'MISSION FAILED';
   if(s.mission==='clear')return 'CLEAR HOSTILES • SECURE THE RECORDS';
-  if(s.mission==='secure')return 'MOVE TO RECORDS IN EAST ROOM';
+  if(s.mission==='secure')return 'MOVE TO RECORDS IN TARGET ROOM';
   return 'RETURN TO EXTRACTION OUTSIDE';
 }
 export function debrief(s:Session){
