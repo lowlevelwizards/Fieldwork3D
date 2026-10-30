@@ -51,7 +51,7 @@ export function kickDoor(d:Door){
  * renderer-only angle; sample away from the hinge itself. */
 export function doorSwingBlocked(d:Door,next:number){
  const leaf=doorLeafSegment({...d,openFraction:next});
- for(const t of [.94,.99]){
+ for(const t of [.35,.55,.75,.94,.99]){
    const p={x:leaf.a.x+(leaf.b.x-leaf.a.x)*t,
      y:leaf.a.y+(leaf.b.y-leaf.a.y)*t};
    if(WALLS.some(w=>distanceToWall(p,w)<1.25))return true;
@@ -74,7 +74,7 @@ export function advanceDoor(d:Door,dt:number){
     const velocity=Math.max(-4.5,Math.min(kicked?15:5.5,
       v+acceleration*h));
     const next=Math.max(0,Math.min(1,current+velocity*h));
-    const blocked=kicked&&next>.87&&next>current+.0001&&
+    const blocked=next>.12&&next>current+.0001&&
       doorSwingBlocked(d,next);
     d.openFraction=blocked?current:next;
     d.angularVelocity=blocked||next===0||next===1?0:velocity;

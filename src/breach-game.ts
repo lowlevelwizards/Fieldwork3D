@@ -740,7 +740,7 @@ export function planFlash(s:Session,id:string,target:Pt):boolean{
   const queued=team(s).reduce((n,x)=>n+
     x.plan.filter(node=>node.kind==='flash').length,0);
   const start=finalPoint(a);
-  if(queued>=s.flashRemaining||d(start,target)>160||d(start,target)<16)return false;
+  if(queued>=s.flashRemaining||d(start,target)>210||d(start,target)<16)return false;
   const plannedOpen=a.plan.filter(n=>n.kind==='door'&&n.method!=='hold')
     .map(n=>n.doorId??'');
   if(!validateThrow(start,target,s.doors,plannedOpen).valid)return false;
@@ -764,7 +764,7 @@ export function planDoorFlash(s:Session,id:string,doorId:string,target:Pt,
   const approached=doorReachable(start,door)?clone(start):doorApproach(start,door);
   if(!approached||!passable(approached)||
      !route(start,approached).length||
-     d(approached,target)>160||d(approached,target)<16)return false;
+     d(approached,target)>210||d(approached,target)<16)return false;
   const before=a.plan.slice(0,index);
   const opened=before.filter(n=>n.kind==='door'&&n.method!=='hold')
     .map(n=>n.doorId??'');
