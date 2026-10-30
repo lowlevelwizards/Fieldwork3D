@@ -2,7 +2,7 @@
  * We capture authoritative simulation outcomes at 20 Hz and never re-simulate
  * past actions. Rewind, scrubbing and speed changes cannot alter an outcome.
  */
-import type {Session,TeamActor,ShotEvent,DroppedMagazine,FlashGrenade,FlashBurst} from './breach-game.ts';
+import type {Session,TeamActor,ShotEvent,DroppedMagazine,FlashGrenade,FlashBurst,ImpactMark} from './breach-game.ts';
 import type {Door,Pt} from './breach-core.ts';
 
 export type ActorFrame=Pick<TeamActor,
@@ -12,7 +12,7 @@ export type ActorFrame=Pick<TeamActor,
 export type ReplayFrame={
   t:number;phase:Session['phase'];mission:Session['mission'];
   actors:ActorFrame[];doors:Door[];shots:ShotEvent[];
-  dropped:DroppedMagazine[];grenades:FlashGrenade[];
+  dropped:DroppedMagazine[];impactMarks:ImpactMark[];grenades:FlashGrenade[];
   flashBursts:FlashBurst[];flashRemaining:number;
   seenGround:string[];known:[string,{p:Pt;at:number;status:'seen'|'heard'}][];
 };
@@ -32,6 +32,7 @@ export function snapshot(s:Session):ReplayFrame{
     doors:s.doors.map(d=>({...d,a:position(d.a),b:position(d.b)})),
     shots:s.shots.map(shotCopy),
     dropped:s.dropped.map(m=>({...m,p:position(m.p)})),
+    impactMarks:s.impactMarks.map(m=>({...m,p:position(m.p)})),
     grenades:s.grenades.map(g=>({...g,p:position(g.p),
       from:position(g.from),to:position(g.to)})),
     flashBursts:s.flashBursts.map(b=>({...b,p:position(b.p)})),
@@ -78,6 +79,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   s.doors=f.doors.map(d=>({...d,a:position(d.a),b:position(d.b)}));
   s.shots=f.shots.map(shotCopy);
   s.dropped=f.dropped.map(m=>({...m,p:position(m.p)}));
+  s.impactMarks=f.impactMarks.map(m=>({...m,p:position(m.p)}));
   s.grenades=f.grenades.map(g=>({...g,p:position(g.p),
     from:position(g.from),to:position(g.to)}));
   s.flashBursts=f.flashBursts.map(b=>({...b,p:position(b.p)}));
