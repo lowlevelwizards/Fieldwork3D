@@ -32,7 +32,7 @@ export class TacticalScene3D{
     frame:THREE.Group;halo:THREE.Mesh;threshold:THREE.Mesh}>();
   private observedDoorOpen=new Map<string,boolean>();
   private effectCache=new Map<number,{root:THREE.Group;line:THREE.Mesh;
-    impact:THREE.Mesh;material:THREE.MeshBasicMaterial;
+    impact:THREE.Mesh;chips:THREE.Mesh[];material:THREE.MeshBasicMaterial;
     impactMaterial:THREE.MeshBasicMaterial}>();
   private impactDecals=new Map<number,THREE.Mesh>();
   private discarded=new Map<number,THREE.Mesh>();
@@ -671,7 +671,7 @@ export class TacticalScene3D{
       object.root.position.y=downProgress*4+
         (actor.health>0&&actor.posture==='crouch'?-5:0);
       const firing=s.shots.find(shot=>shot.shooterId===actor.id&&
-        shot.age<.115&&shotVisibility(s,shot).flash);
+        shot.age<.115&&(omniscient||shotVisibility(s,shot).flash));
       object.flash.visible=!!firing&&actor.health>0;
       if(firing){
         object.flash.scale.setScalar(1.55*(1-firing.age/.115)+.3);
@@ -701,8 +701,20 @@ export class TacticalScene3D{
           transparent:true,depthWrite:false});
         const line=new THREE.Mesh(this.tracerGeometry,material);
         const impact=new THREE.Mesh(this.impactGeometry,impactMaterial);
-        root.add(line,impact);this.effects.add(root);
-        effect={root,line,impact,material,impactMaterial};
+        root.add(line,impact);
+        const chips:THREE.Mesh[]=[];
+        if(shot.surface==='wood'||shot.surface==='stone'||
+          shot.surface==='metal'||shot.surface==='blood'){
+          for(let i=0;i<(shot.surface==='blood'?4:3);i++){
+            const chip=new THREE.Mesh(this.tracerGeometry,impactMaterial);
+            chip.scale.set(shot.surface==='blood'?.9:.42,
+              shot.surface==='blood'?1.9:shot.surface==='wood'?4.2:2.4,
+              shot.surface==='blood'?.9:.42);
+            root.add(chip);chips.push(chip);
+          }
+        }
+        this.effects.add(root);
+        effect={root,line,impact,chips,material,impactMaterial};
         this.effectCache.set(shot.id,effect);
       }
       const start=v(shot.start,15),end=v(shot.end,12);
@@ -719,6 +731,17 @@ export class TacticalScene3D{
       effect.impact.scale.setScalar(pulse*(1+.5*shot.age/.40));
       effect.impactMaterial.opacity=Math.max(0,1-shot.age/.40);
       effect.impact.visible=visibility.impact&&shot.age<.40;
+      for(let i=0;i<effect.chips.length;i++){
+        const chip=effect.chips[i];
+        const theta=(shot.id*2.41+i*2.094);
+        const progress=shot.age/.40;
+        const radius=(2+15*progress)*(shot.surface==='blood'?.7:1);
+        chip.position.set(end.x+Math.cos(theta)*radius,
+          Math.max(2,end.y+6*Math.sin(Math.PI*progress)+i*1.5-4*progress),
+          end.z+Math.sin(theta)*radius);
+        chip.rotation.set(i*.73,theta,Math.PI*.5+progress*1.8);
+        chip.visible=visibility.impact&&shot.age<.40;
+      }
     }
     // Surface-hit marks remain for 24 simulation seconds and are always
     // derived from authoritative collision outcomes. Bounded to 92.
