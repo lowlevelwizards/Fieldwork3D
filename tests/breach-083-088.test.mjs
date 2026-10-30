@@ -76,8 +76,8 @@ test('083–088: main page and dedicated Breach both offer four-person controls'
     assert.ok(html.includes('id="'+id+'"'));
     assert.ok(html.includes('id="'+id+'Hp"'));
   }
-  assert.match(main,/newSession\(0,randomSiteSeed\(\)\)/);
-  assert.match(main,/stage\?\.applySite\(state\.site!\)/);
+  assert.match(main,/newSession\(0,legacyStudy\?undefined:randomSiteSeed\(\)\)/);
+  assert.match(main,/stage\?\.applySite\(state\.site\?\?null\)/);
   assert.match(main,/ctxStackAll/);
   assert.match(main,/ctxEntry/);
   assert.match(three,/private buildGenerated\(site:Site\)/);
