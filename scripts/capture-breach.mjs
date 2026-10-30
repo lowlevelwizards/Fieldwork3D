@@ -423,6 +423,22 @@ try{
   await physical.locator('[data-view="side"]').click();
   await physical.locator('[data-pose="reload"]').click();
   await physical.screenshot({path:resolve(folder,'24-operator-lab-side-reload.png')});
+  // Build 120: preserve comparable views for anatomical wrist, elbow and
+  // knee behavior. The same production rig powers the lab and live game.
+  await physical.locator('#injury').selectOption('0');
+  await physical.locator('[data-view="iso"]').click();
+  await physical.locator('[data-pose="aim"]').click();
+  await physical.waitForTimeout(130);
+  await physical.screenshot({path:resolve(folder,'25-operator-lab-ads-contacts.png')});
+  await physical.locator('[data-pose="turn"]').click();
+  await physical.waitForTimeout(410);
+  await physical.screenshot({path:resolve(folder,'26-operator-lab-turn-knees.png')});
+  await physical.locator('[data-pose="door"]').click();
+  await physical.waitForTimeout(110);
+  await physical.screenshot({path:resolve(folder,'27-operator-lab-door-elbow.png')});
+  await physical.locator('#injury').selectOption('3');
+  await physical.waitForTimeout(210);
+  await physical.screenshot({path:resolve(folder,'28-operator-lab-incapacitated.png')});
   await physical.close();
   if(errors.length)throw Error('Browser console exceptions: '+errors.join('; '));
   const manifest={initial,rotated,pan,pinch,visibleButtons,errors};
