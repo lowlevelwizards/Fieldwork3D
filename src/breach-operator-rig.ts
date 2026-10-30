@@ -1,13 +1,17 @@
 /** 109–113. Deliberately simple box anatomy and independently articulated limbs.
  * The battle motor remains authoritative. IK is presentation-only. */
 import * as THREE from 'three';
-import {alignSegment,twoBoneJoint} from './breach-ik.ts';
+import {alignSegment,solveTwoBone,ARM_LIMITS,LEG_LIMITS,
+  intersectsTorso} from './breach-ik.ts';
 import type {WeaponId} from './breach-combat.ts';
 import {advanceFootsteps,createFootstepScheduler, type FootstepScheduler} from './breach-footsteps.ts';
-import {weaponGrips,handlingPose,clampReach} from './breach-weapon-pose.ts';
+import {weaponGrips,handlingPose,clampReach,
+  fitWeaponPose,supportGuardTarget} from './breach-weapon-pose.ts';
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
-  anchor:THREE.Vector3;swinging:boolean};
-type Arm={upper:THREE.Mesh;lower:THREE.Mesh;hand:THREE.Mesh};
+  anchor:THREE.Vector3;swinging:boolean;
+  bend:THREE.Vector3;outOfReach:boolean};
+type Arm={upper:THREE.Mesh;lower:THREE.Mesh;hand:THREE.Mesh;
+  bend:THREE.Vector3;outOfReach:boolean};
 export type OperatorPose={
   x:number;z:number;heading:number;velocity:number;seconds:number;
   stride:number;posture:'stand'|'crouch';injury:number;weapon:WeaponId;
@@ -18,6 +22,7 @@ export type OperatorPose={
   surrender:boolean;aiming:boolean;firing:boolean;turning:number;
   obstruction?:boolean;friendlyNear?:boolean;
   aimBlend?:number;recoil?:number;shotHeading?:number;
+  hitFade?:number;hitAge?:number;downProgress?:number;flashActive?:boolean;
 };
 export type OperatorRig={
   root:THREE.Group;hip:THREE.Group;chest:THREE.Group;head:THREE.Group;
@@ -25,6 +30,8 @@ export type OperatorRig={
   legacyLegs:THREE.Group[];legacyArms:THREE.Group[];
   pack:THREE.Mesh;lastTime:number;lastPose:OperatorPose|null;
   footsteps:FootstepScheduler;
+  /** Non-authoritative request for the motor/controller to reposition. */
+  reachRequest:null|{kind:'door';distance:number};
   stridePhase:number;colors:Map<THREE.MeshStandardMaterial,THREE.Color>;
   dispose:()=>void;
 };
@@ -66,11 +73,12 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     const upper=bone(root,4.7,5.3,cloth),lower=bone(root,4,4.3,cloth);
     const shoe=block(root,0,0,0,8,2.9,5.8,boot);
     feet.push({upper,lower,shoe,anchor:new THREE.Vector3(),
-      swinging:false});
+      swinging:false,bend:new THREE.Vector3(1,0,0),outOfReach:false});
     const armUpper=bone(chest,3.9,4.0,cloth);
     const armLower=bone(chest,3.4,3.5,cloth);
     const hand=block(chest,0,0,0,3.6,3.2,3.9,skin);
-    arms.push({upper:armUpper,lower:armLower,hand});
+    arms.push({upper:armUpper,lower:armLower,hand,
+      bend:new THREE.Vector3(5,-2,sideSign*7),outOfReach:false});
     void sideSign;
   }
   weapon.position.set(8,-5,0);
@@ -87,7 +95,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     legacyLegs:[new THREE.Group(),new THREE.Group()],
     legacyArms:[new THREE.Group(),new THREE.Group()],
     lastTime:-1,lastPose:null,stridePhase:0,
-    footsteps:createFootstepScheduler(),
+    footsteps:createFootstepScheduler(),reachRequest:null,
     dispose:()=>{root.traverse(obj=>{if(obj instanceof THREE.Mesh){
       obj.geometry.dispose();
       const m=obj.material as THREE.Material;m.dispose();
@@ -145,37 +153,33 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       target.position.y);
     const relative=targetWorld.sub(P(p.x,0,p.z))
       .applyAxisAngle(P(0,1,0),-headingYaw);
-    const knee=twoBoneJoint(hipLocal,relative,9.7,9.7,
-      P(3.5,0,sign*1.2));
-    alignSegment(foot.upper,hipLocal,knee);
-    alignSegment(foot.lower,knee,relative);
+    const leg=solveTwoBone(hipLocal,relative,9.7,9.7,
+      P(4.5,0,sign*1.1),LEG_LIMITS,foot.bend);
+    foot.bend.copy(leg.bendPlane);
+    foot.outOfReach=!leg.reached;
+    // Contact remains in world space. Unreachable limbs report a constraint
+    // violation instead of spinning the knee or teleporting their boot.
+    alignSegment(foot.upper,hipLocal,leg.joint,P(0,0,sign));
+    alignSegment(foot.lower,leg.joint,leg.effector,P(0,0,sign));
     foot.shoe.position.copy(relative);
     // A boot rotates only during its scheduled swing, not with the pelvis.
     foot.shoe.rotation.y=target.worldYaw-headingYaw;
   }
-  // 116: weapon is solved from stock-to-shoulder contact FIRST, then two
-  // arm chains conform to their physical grips. It is always one rigid body.
+  // Build 120: stock, both grips and forearm targets share a single rigid
+  // firearm transform. The fit searches reachable posture before limb IK.
   const data=weaponGrips(p.weapon);
   const handling=handlingPose({
     aim:p.aimBlend??(p.aiming?1:0),moving,
     obstruction:!!p.obstruction,friendlyNear:!!p.friendlyNear
   });
-  r.weapon.scale.x=data.lengthScale;
-  const stock=P(data.stockX*data.lengthScale,0,0);
-  const shoulderPocket=P(2.5,
-    handling==='ads'?8:handling==='point'?5.3:
-    handling==='high'?6:handling==='short'?4:2.5,4.2);
   const recoil=p.recoil??(p.firing?1.5:0);
-  // This yaw is determined by the authoritative firing direction.
-  r.weapon.rotation.y=-(p.shotHeading??p.heading)-
-    r.root.rotation.y-r.chest.rotation.y;
-  r.weapon.rotation.z=handling==='low'?-.16:handling==='high'?.13:0;
-  if(handling==='short')r.weapon.rotation.z=-.08;
-  const aimedStock=stock.clone().applyAxisAngle(P(0,1,0),
-    r.weapon.rotation.y);
-  r.weapon.position.copy(shoulderPocket).sub(aimedStock);
-  r.weapon.position.x-=recoil;
-  r.weapon.position.y+=Math.min(1.1,recoil*.20);
+  const fit=fitWeaponPose({weapon:p.weapon,handling,
+    yaw:-(p.shotHeading??p.heading)-r.root.rotation.y-r.chest.rotation.y,
+    recoil});
+  r.weapon.scale.set(data.lengthScale,1,p.weapon==='shotgun'?1.28:1);
+  r.weapon.rotation.copy(fit.rotation);
+  r.weapon.position.copy(fit.origin);
+  // Weapon kick and muzzle flash may not break solved hand contacts.
   // A physical door reach may shift the chest a little over the support
   // foot, but the whole character is never allowed to tip like a rigid pole.
   const reloadProgress=p.reload>0?1-p.reload/p.reloadDuration:0;
@@ -185,19 +189,23 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const doorAge=p.seconds-p.lastDoorAt;
   const doorActive=doorAge>=0&&doorAge<.9&&!!p.doorPoint;
   r.chest.position.x=0;
+  r.reachRequest=null;
   r.weapon.visible=!p.surrender;
   const leftGrip=P(data.supportX,data.supportY,-1.6);
   const rightGrip=P(data.primaryX,data.primaryY,1.8);
-  let reaching=false;
+  let reaching=false,releaseLeft=false;
   if(reloadActive){
+    releaseLeft=true;
     leftGrip.set(data.primaryX-1,-7,-5*Math.sin(Math.PI*reloadProgress)-2);
   }else if(throwActive){
+    releaseLeft=true;
     const t=Math.sin(Math.PI*clamp(throwAge/.7,0,1));
     leftGrip.set(data.supportX+8*t,4+7*t,-7);
   }else if(p.surrender){
+    releaseLeft=true;
     leftGrip.set(-1,11,-6);rightGrip.set(-1,11,6);
   }else if(doorActive&&p.doorPoint){
-    reaching=true;
+    releaseLeft=true;reaching=true;
     const local=P(p.doorPoint.x-p.x,19-r.chest.position.y,
       p.doorPoint.y-p.z);
     local.applyAxisAngle(P(0,1,0),-r.root.rotation.y);
@@ -210,22 +218,50 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const sign=i===0?-1:1,arm=r.arms[i];
     const shoulder=P(1,4,sign*7);
     const grip=i===0?leftGrip:rightGrip;
-    const desired=p.surrender?grip.clone():i===0&&reaching?grip.clone():
-      grip.clone().multiply(P(data.lengthScale,1,1))
-        .applyAxisAngle(P(0,1,0),r.weapon.rotation.y)
-        .add(r.weapon.position);
-    // Hard reach limit applies to door handles, weapon handling and reloads.
-    // Never let a long IK target stretch the physical arm to meet it.
-    const wrist=clampReach(shoulder,desired,19.2);
-    const elbow=twoBoneJoint(shoulder,wrist,10,10,P(-.2,-.4,sign*2));
-    alignSegment(arm.upper,shoulder,elbow);
-    alignSegment(arm.lower,elbow,wrist);
-    arm.hand.position.copy(wrist);
+    let desired:THREE.Vector3;
+    if(p.surrender||i===0&&reaching){
+      desired=grip.clone();
+    }else if(i===0&&!releaseLeft){
+      desired=fit.twoHanded?fit.support.clone():
+        supportGuardTarget(fit.support);
+    }else if(i===1){
+      desired=fit.primary.clone();
+    }else{
+      desired=grip.clone().multiply(P(data.lengthScale,1,1))
+        .applyEuler(fit.rotation).add(fit.origin);
+    }
+    const reachable=desired.distanceTo(shoulder)<=19.92;
+    if(i===0&&reaching&&!reachable)
+      r.reachRequest={kind:'door',distance:desired.distanceTo(shoulder)};
+    // Impossible interactions must report the need for repositioning, not
+    // stretch a joint or rotate an arm through the upper torso.
+    const wrist=clampReach(shoulder,desired,19.92);
+    const preferred=P(6,-2,sign*10);
+    let solved=solveTwoBone(shoulder,wrist,10,10,
+      preferred,ARM_LIMITS,arm.bend);
+    if(intersectsTorso(solved.joint,.35)){
+      solved=solveTwoBone(shoulder,wrist,10,10,
+        P(10,-3,sign*17),ARM_LIMITS,arm.bend);
+    }
+    arm.bend.copy(solved.bendPlane);
+    arm.outOfReach=!reachable||!solved.reached;
+    alignSegment(arm.upper,shoulder,solved.joint,P(0,0,sign));
+    alignSegment(arm.lower,solved.joint,solved.effector,P(0,0,sign));
+    arm.hand.position.copy(solved.effector);
+    arm.hand.rotation.set(0,p.surrender?0:clamp(fit.rotation.y,-1,1),0);
   }
-  if(p.surrender){
-    r.root.rotation.z=.09;r.chest.rotation.x=.15;
-  }else if(p.down){
-    r.root.rotation.z=0;r.chest.rotation.x=-.4;
-  }else r.root.rotation.z=clamp(p.injury===2?.065:p.injury===1?.018:0,0,.08);
+  // The pose system is the final writer for actor tilts and reactions.
+  // The scene controls XY world placement only, not anatomy or weapon pose.
+  const downProgress=clamp(p.downProgress??(p.down?1:0),0,1);
+  const injuryTilt=p.injury===2?.16:p.injury===1?.05:0;
+  r.root.rotation.x=p.surrender?-.22:
+    -1.42*downProgress-(p.down?0:injuryTilt);
+  r.root.position.y=p.surrender?-4:downProgress*4;
+  r.root.rotation.z=p.surrender?.09:p.down?0:
+    clamp(p.injury===2?.065:p.injury===1?.018:0,0,.08)+
+    (p.hitFade??0)*.13*Math.sin((p.hitAge??0)*65);
+  if(p.flashActive)r.root.rotation.z+=.10*Math.sin(p.seconds*24);
+  if(p.surrender)r.chest.rotation.x=.15;
+  else if(p.down)r.chest.rotation.x=-.4;
   r.lastPose={...p};r.lastTime=p.seconds;
 }

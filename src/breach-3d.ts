@@ -610,7 +610,6 @@ export class TacticalScene3D{
         (actor.health>0?isSeen(s,actor):liveVisibility(s,actor.p));
       const hitTime=s.seconds-actor.lastHitAt;
       const down=actor.health<=0;
-      const surrendered=actor.surrendered;
       object.status.visible=object.root.visible&&
         !down&&(hitTime>=0&&hitTime<.28);
       if(object.status.visible){
@@ -623,46 +622,15 @@ export class TacticalScene3D{
       }
       if(!object.root.visible)continue;
       object.root.position.set(actor.p.x,0,actor.p.y);
-      // Physical rig resolves hip, torso, gaze and weapon yaw.
+      // Build 120: the pose solver is the only writer of actor anatomical,
+      // firearm and hit-reaction transforms; the scene owns world placement.
       const downProgress=actor.health<=0?
         Math.min(1,Math.max(0,(s.seconds-actor.lastDownAt)/.40)):0;
       const hitAge=s.seconds-actor.lastHitAt;
       const hitFade=actor.health>0&&hitAge>=0&&hitAge<.32?
         1-hitAge/.32:0;
-      // Real pose transition: rotate the full miniature down to the floor,
-      // never vertically squash it into a crouching-shaped casualty.
-      object.root.rotation.x=surrendered?-.22:-1.42*downProgress;
-      object.root.rotation.z=hitFade*.13*Math.sin(hitAge*65);
-      const speed=Math.min(1,actor.velocity/70);
-      // Injured and heavily wounded poses change silhouette as well as speed.
-      if(actor.health>0&&actor.injuryStage>0){
-        object.root.rotation.z-=actor.injuryStage===2?.15:.055;
-        object.root.rotation.x-=actor.injuryStage===2?.16:.05;
-      }
-      object.weapon.scale.x=actor.weapon==='smg'?.73:
-        actor.weapon==='rifle'?1.29:actor.weapon==='shotgun'?1.12:1;
-      object.weapon.scale.z=actor.weapon==='shotgun'?1.28:1;
-      const gait=Math.sin(s.seconds*10.5+(actor.id==='moss'?1.1:0));
-      object.legs[0].rotation.x=surrendered?-.78:gait*speed*.44;
-      object.legs[1].rotation.x=surrendered?-.78:-gait*speed*.44;
-      object.arms[0].rotation.x=-gait*speed*.12;
-      const throwAge=s.seconds-actor.lastThrowAt;
-      if(throwAge>=0&&throwAge<.65){
-        object.arms[0].rotation.x=-1.5*Math.sin(Math.PI*throwAge/.65);
-      }
-      object.arms[1].rotation.x=gait*speed*.12;
       const reloadDuration=WEAPONS[actor.weapon].reload*
         (actor.injuryStage===2?1.5:actor.injuryStage===1?1.1:1);
-      const reloadProgress=actor.reload>0?1-actor.reload/reloadDuration:0;
-      object.weapon.rotation.z=actor.reload>0?
-        -.40*Math.sin(Math.PI*reloadProgress):0;
-      object.weapon.position.y=actor.reload>0?
-        -3*Math.sin(Math.PI*reloadProgress):0;
-      if(actor.flashUntil>s.seconds&&actor.health>0){
-        object.root.rotation.z+=.10*Math.sin(s.seconds*24);
-        object.weapon.rotation.z-=.25;
-      }
-      object.root.position.y=surrendered?-4:downProgress*4;
       const firing=s.shots.find(shot=>shot.shooterId===actor.id&&
         shot.age<.115&&(omniscient||shotVisibility(s,shot).flash));
       object.flash.visible=!!firing&&actor.health>0;
@@ -684,7 +652,8 @@ export class TacticalScene3D{
         down:actor.health<=0,surrender:actor.surrendered,
         aiming:actor.aim>.20,turning:actor.turning,firing:!!firing,
         aimBlend:actor.aim,recoil:actor.recoil*6,
-        shotHeading:actor.weaponYaw,
+        shotHeading:actor.weaponYaw,hitAge,hitFade,downProgress,
+        flashActive:actor.flashUntil>s.seconds&&actor.health>0,
         obstruction:!isClear(actor.p,{
           x:actor.p.x+Math.cos(actor.heading)*
             (actor.weapon==='rifle'?46:actor.weapon==='shotgun'?42:31),
