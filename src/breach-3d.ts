@@ -32,7 +32,8 @@ export class TacticalScene3D{
   private fogExplored:THREE.InstancedMesh;
   private actors=new Map<string,{root:THREE.Group;legs:THREE.Group[];
     arms:THREE.Group[];flash:THREE.Mesh;pack:THREE.Mesh;
-    weapon:THREE.Group;status:THREE.Mesh;physical:OperatorRig}>();
+    weapon:THREE.Group;status:THREE.Mesh;physical:OperatorRig;
+    contactShadows:THREE.Mesh[]}>();
   private doors=new Map<string,{root:THREE.Group;leaf:THREE.Group;
     frame:THREE.Group;halo:THREE.Mesh;threshold:THREE.Mesh}>();
   private observedDoorOpen=new Map<string,boolean>();
@@ -519,7 +520,17 @@ export class TacticalScene3D{
         opacity:.9,depthWrite:false,side:THREE.DoubleSide}));
     status.rotation.x=-Math.PI/2;status.visible=false;
     this.scene.add(root,status);
-    this.actors.set(a.id,{root,legs,arms,flash,pack,weapon,status,physical});
+    // Subtle cheap foot-contact shadows complement the real shadow map on
+    // small mobile screens, where the filtered shadow can otherwise vanish.
+    const contactShadows=[0,1].map(()=>{
+      const shadow=new THREE.Mesh(new THREE.CircleGeometry(7,14),
+        new THREE.MeshBasicMaterial({color:0x0b1515,transparent:true,
+          opacity:.20,depthWrite:false}));
+      shadow.rotation.x=-Math.PI/2;shadow.position.y=.15;
+      this.scene.add(shadow);return shadow;
+    });
+    this.actors.set(a.id,{root,legs,arms,flash,pack,weapon,status,
+      physical,contactShadows});
   }
   update(s:Session,selected:string,dt:number,
     focusedDoorId:string|null=null,omniscient=false){
@@ -564,6 +575,7 @@ export class TacticalScene3D{
     const current=new Set(s.operators.map(a=>a.id));
     for(const [id,object] of this.actors)if(!current.has(id)){
       object.root.visible=false;object.status.visible=false;
+      for(const shadow of object.contactShadows)shadow.visible=false;
     }
     if(s.rescue){
       if(!this.rescueFigure){
@@ -675,6 +687,16 @@ export class TacticalScene3D{
             dx*Math.cos(actor.heading)+dy*Math.sin(actor.heading)>18;
         })
       },dt);
+      object.root.updateMatrixWorld(true);
+      for(let i=0;i<2;i++){
+        const shadow=object.contactShadows[i];
+        shadow.visible=actor.health>0&&object.root.visible;
+        if(!shadow.visible)continue;
+        const shoe=new THREE.Vector3();
+        object.physical.feet[i].shoe.getWorldPosition(shoe);
+        shadow.position.set(shoe.x,.16,shoe.z);
+        shadow.scale.setScalar(object.physical.feet[i].swinging?.74:1);
+      }
     }
     // 079: One persistent, ID-keyed effect per actual simulation shot.
     // Shared geometry and bounded per-shot materials avoid frame-by-frame GC.
