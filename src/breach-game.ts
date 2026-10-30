@@ -1187,7 +1187,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   a.stability=Math.max(0,a.stability-
     (mode==='point'?.23:.16)-a.recoil*.10);
   const healthBefore=target.health;
-  const severity=hit&&s.site?woundSeverity(weapon,dist,
+  const severity=hit&&s.site?woundSeverity(weapon,range,
     nearCover(target.p,a.p),random(s)):1;
   const nextStage=Math.min(3,target.injuryStage+(hit?severity:0));
   const healthAfter=hit?
