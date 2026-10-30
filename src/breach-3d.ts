@@ -610,7 +610,6 @@ export class TacticalScene3D{
         (actor.health>0?isSeen(s,actor):liveVisibility(s,actor.p));
       const hitTime=s.seconds-actor.lastHitAt;
       const down=actor.health<=0;
-      const surrendered=actor.surrendered;
       object.status.visible=object.root.visible&&
         !down&&(hitTime>=0&&hitTime<.28);
       if(object.status.visible){
