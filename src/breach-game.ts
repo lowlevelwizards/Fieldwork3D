@@ -7,6 +7,7 @@ import {
   type Pt,type Operator,type TacticalState,type Door,type Side,
   WALLS,COVER,initialDoors,newTacticalState,route,passable,activateSite,
   segmentsCross,doorCenter,doorBlocksSegment,doorLeafSegment,doorBlocksRay,
+  pointToSegment,
 } from './breach-core.ts';
 import {
   type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,
@@ -990,8 +991,13 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const advance=Math.min(gap,a.velocity*dt);
   const move={x:a.p.x+Math.cos(direction)*advance,
     y:a.p.y+Math.sin(direction)*advance};
+  // Push an open leaf as soon as the body touches it, not only when
+  // the centre line crosses it (which was too late to escape collision).
   const closedDoor=s.doors.find(door=>
+    pointToSegment(move,doorLeafSegment(door))<15||
     doorBlocksSegment(door,{a:a.p,b:move}));
+  if(closedDoor?.open&&(closedDoor.openFraction??0)<.99)
+    pushDoor(closedDoor,1.1);
   // Look ahead to the route's next node, stopping to open a door before
   // the actor's capsule contacts the physical leaf.
   const doorAhead=a.side==='red'?s.doors.find(door=>{
@@ -1011,41 +1017,40 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     if((doorAhead.openFraction??0)<.72)return true;
     a.actionTimer=0;
   }else if(a.side==='red')a.actionTimer=0;
-  if(closedDoor&&closedDoor.open)pushDoor(closedDoor,.55);
-  const closed=!!closedDoor;
+  const closed=!!closedDoor&&
+    pointToSegment(move,doorLeafSegment(closedDoor))<9.5;
+  // Allies may brush and pass one another: their bodies never hard-block
+  // authored routes. Only an opposing actor is a physical traffic barrier.
   const blocking=s.operators.find(b=>b!==a&&b.health>0&&
-    d(b.p,move)<(b.side===a.side?15:11));
-  const teammate=blocking?.side===a.side?blocking:null;
-  // A reciprocal jam needs a deterministic resolution. Prefer yielding
-  // in nearby free space; after prolonged blockage, permit a brief
-  // same-team shoulder pass rather than deadlocking a door indefinitely.
-  if(teammate&&a.blockedTime>.10)
-    deferToTeammate(s,teammate,a);
-  // Detect an impending friendly jam before contact. Micro-detours
-  // are transient, never rewritten into the player's authored plan.
-  const lookDist=Math.min(28,gap);
-  const ahead={x:a.p.x+Math.cos(direction)*lookDist,
-    y:a.p.y+Math.sin(direction)*lookDist};
+    b.side!==a.side&&d(b.p,move)<11);
   const nearPeer=s.operators.find(b=>b!==a&&b.health>0&&
-    b.side===a.side&&d(b.p,ahead)<18);
-  if(nearPeer&&d(a.p,nearPeer.p)<25&&a.blockedTime>.08)
-    deferToTeammate(s,nearPeer,a);
+    b.side===a.side&&d(b.p,move)<20);
+  if(nearPeer&&a.side==='blue'&&!nearPeer.plan.length&&
+    d(a.p,nearPeer.p)<27)deferToTeammate(s,nearPeer,a);
+  let desiredMove=move;
+  if(nearPeer){
+    const tangent={x:-Math.sin(direction),y:Math.cos(direction)};
+    const choices=[.4,-.4,.7,-.7].map(factor=>({
+      x:move.x+tangent.x*advance*factor,
+      y:move.y+tangent.y*advance*factor,
+    })).filter(pos=>d(pos,nearPeer.p)>d(move,nearPeer.p)+2&&
+      sweptBodyClear(a.p,pos,s.doors));
+    if(choices.length)desiredMove=choices.sort((u,v)=>
+      d(u,next)-d(v,next))[0];
+  }
   // Try nearby route repair for actor jams, furniture, and door leaves.
-  if((teammate||nearPeer||(!closed&&!passable(move))||
-    (closed&&closedDoor?.open&&a.blockedTime>.24))&&
-    a.blockedTime>.20&&!a.yieldTarget){
+  if((!sweptBodyClear(a.p,desiredMove,s.doors)||blocking)&&
+    a.blockedTime>.30&&s.seconds-a.lastNavRepairAt>.6){
     const candidate=localDetour(a.p,next,s.doors,s.operators
       .filter(o=>o!==a&&o.health>0).map(o=>o.p));
-    if(candidate&&(!a.nav.length||d(candidate,a.nav[0])>8)){
-      a.nav.unshift(candidate);a.blockedTime=0;return true;
+    if(candidate&&d(candidate,p)<d(a.p,p)+12&&
+      (!a.nav.length||d(candidate,a.nav[0])>12)){
+      a.nav.unshift(candidate);a.lastNavRepairAt=s.seconds;
+      return true;
     }
   }
-  // A stable narrow-gap pass permits *limited* shoulder clearance
-  // when two allies cannot sidestep, without dragging either actor.
-  const squeeze=!!teammate&&a.blockedTime>1.05&&
-    d(move,teammate.p)>9.5&&!a.yieldTarget;
-  if(!closed&&(!blocking||squeeze)&&sweptBodyClear(a.p,move,s.doors)){
-    a.priorP=clone(a.p);a.p=move;a.blockedTime=0;
+  if(!closed&&!blocking&&sweptBodyClear(a.p,desiredMove,s.doors)){
+    a.priorP=clone(a.p);a.p=desiredMove;a.blockedTime=0;
     if(a.side==='blue'&&s.seconds-s.movementNoiseAt>.54){
       hear(s,a.p,a.posture==='crouch'?30:68,'footstep');
       s.movementNoiseAt=s.seconds;
@@ -1096,13 +1101,13 @@ function pop(a:TeamActor){
   a.actionTimer=0;a.syncReady=null;a.pieIndex=0;pathFor(a);
 }
 function runOrders(s:Session,a:TeamActor,dt:number){
-  // A stationary or opposing teammate may briefly step aside, then resume
-  // its original queue. This overrides motor movement, not tactical aiming.
-  if(stepYield(s,a,dt)){
+  if(a.yieldTarget&&stepYield(s,a,dt)){
     const held=aimHeading(a);
     if(held!==null)rotate(a,held,dt);
     return;
   }
+  // A stationary or opposing teammate may briefly step aside, then resume
+  // its original queue. This overrides motor movement, not tactical aiming.
   const n=a.plan[0];
   if(a.haltOnContact){
     const threat=enemies(s).find(e=>inSight(a,e,s));
