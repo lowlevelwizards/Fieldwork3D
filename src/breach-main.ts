@@ -39,6 +39,8 @@ const ui={
   viewTop:el<HTMLButtonElement>('viewTop'),
   view2d:el<HTMLButtonElement>('view2d'),
   cameraFit:el<HTMLButtonElement>('cameraFit'),
+  ash:el<HTMLButtonElement>('ash'),vale:el<HTMLButtonElement>('vale'),
+  ashHp:el<HTMLElement>('ashHp'),valeHp:el<HTMLElement>('valeHp'),
   back:el<HTMLButtonElement>('back'),
   undo:el<HTMLButtonElement>('undo'),redo:el<HTMLButtonElement>('redo'),
   wait:el<HTMLButtonElement>('wait'),sync:el<HTMLButtonElement>('sync'),
@@ -49,7 +51,12 @@ const ui={
   debriefStats:el<HTMLElement>('debriefStats'),
   retry:el<HTMLButtonElement>('retry'),next:el<HTMLButtonElement>('next'),
 };
-let state:Session=newSession();
+const randomSiteSeed=()=>{
+  const bytes=new Uint32Array(1);
+  if(typeof crypto!=='undefined'&&crypto.getRandomValues)crypto.getRandomValues(bytes);
+  return bytes[0]||((Date.now()^Math.floor(Math.random()*1e9))>>>0);
+};
+let state:Session=newSession(0,randomSiteSeed());
 let stage:TacticalScene3D|null=null;
 let viewMode:ViewMode='iso';
 try{stage=new TacticalScene3D();}
@@ -92,8 +99,11 @@ const activePointers=new Map<number,{x:number;y:number;startX:number;startY:numb
   wasUnit:boolean;nodeId:number|null;
   mode:'undecided'|'route'|'pan'|'node'|'pivot'|'sweep'|'cameraOrbit'|'cameraPan'|'cameraMulti';moved:boolean}>();
 let pinchDistance=0,panMid:Pt|null=null;
-const colors={rook:'#a2d4ca',moss:'#b9c6a0'};
-const colorFor=(id:string)=>id==='rook'?colors.rook:colors.moss;
+const colors:Record<string,string>={
+  rook:'#a2d4ca',moss:'#b9c6a0',ash:'#dfb992',vale:'#b7b1d9',
+};
+const colorFor=(id:string)=>colors[id]??'#d9c5a3';
+const squadIds=['rook','moss','ash','vale'] as const;
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 function layout(){
@@ -295,7 +305,7 @@ function updateHud(){
   ui.stance.textContent=active?.posture==='crouch'?'STAND':'CROUCH';
   ui.stance.setAttribute('aria-pressed',String(active?.posture==='crouch'));
   ui.contact.setAttribute('aria-pressed',String(active?.haltOnContact));
-  ui.variant.textContent='SITE '+(state.variant+1)+'/3';
+  ui.variant.textContent='NEW SITE';
   ui.back.disabled=!active?.plan.length;
   ui.undo.disabled=!(active?.history.undo.length);
   ui.redo.disabled=!(active?.history.redo.length);
@@ -304,17 +314,25 @@ function updateHud(){
     const stats=debrief(state);
     ui.debriefTitle.textContent=state.phase==='won'?'OPERATION COMPLETE':'MISSION FAILED';
     ui.debriefStats.textContent='SITE: '+stats.variant+'\nTIME: '+stats.time+'s'+
-      '\nCASUALTIES: '+stats.casualties+'/2'+
+      '\nCASUALTIES: '+stats.casualties+'/'+team(state).length+
       '\nSHOTS: '+stats.shots+' | HITS: '+stats.hits+
       '\nPAUSES: '+stats.pauses;
   }
-  for(const id of ['rook','moss'] as const){
-    const a=uid(id);
-    ui[id].classList.toggle('selected',id===selected);
-    ui[id].classList.toggle('down',!a||a.health<=0);
-    ui[id].setAttribute('aria-pressed',String(id===selected));
-    (id==='rook'?ui.rookHp:ui.mossHp).textContent=a?.health===2?'●●':a?.health===1?'●○':'○○';
+  for(const id of squadIds){
+    const a=uid(id),button=ui[id];
+    button.hidden=!a;
+    button.classList.toggle('selected',id===selected);
+    button.classList.toggle('down',!a||a.health<=0);
+    button.setAttribute('aria-pressed',String(id===selected));
+    ui[(id+'Hp') as 'rookHp'|'mossHp'|'ashHp'|'valeHp'].textContent=
+      a?.health===2?'●●':a?.health===1?'●○':'○○';
   }
+  document.querySelector('.ident strong')!.textContent=
+    (state.site?.name??'CUTWOODS')+' / BREACH';
+  document.querySelector('.ident small')!.textContent=state.site?
+    state.site.roomCount+' ROOMS · '+team(state).length+' OPERATORS · SEED '+
+      state.site.seed.toString(16).toUpperCase().padStart(8,'0'):
+    'TWO ROOMS · TWO OPERATORS';
   ui.hint.textContent=message();
   ui.hint.hidden=state.started&&!looking;
   updateContext();
@@ -356,6 +374,22 @@ function terrain(){
   draw.strokeStyle='rgba(159,182,165,.08)';draw.lineWidth=1;
   for(let x=0;x<=W;x+=GRID*2)line({x,y:0},{x,y:H},'rgba(161,192,175,.055)',.6);
   for(let y=0;y<=H;y+=GRID*2)line({x:0,y},{x:W,y},'rgba(161,192,175,.055)',.6);
+  if(state.site){
+    for(const room of state.site.rooms){
+      const palette=['#666558','#526b66','#77705c','#58605a'];
+      rect(room.x+2,room.y+2,room.w-4,room.h-4,
+        room.kind==='hall'?'#4a5c55':palette[room.tone]);
+      draw.strokeStyle='#b9b09b16';draw.lineWidth=.8;
+      for(let x=room.x+16;x<room.x+room.w-10;x+=24)
+        for(let y=room.y+16;y<room.y+room.h-10;y+=24)
+          draw.strokeRect(x,y,24,24);
+    }
+    for(const door of state.doors){
+      const mid=doorCenter(door);
+      rect(mid.x-9,mid.y-9,18,18,'#a18a6265');
+    }
+    return;
+  }
   rect(113,101,268,430,'#555247');
   rect(383,101,206,430,'#4d5753');
   // Floor wear, tiles and loose clutter — only enough for level recognition.
@@ -390,6 +424,7 @@ function furniture(){
     draw.strokeRect(c.x-c.w/2+4,c.y-c.h/2+4,c.w-8,c.h-8);
     line({x:c.x-c.w/2+8,y:c.y},{x:c.x+c.w/2-8,y:c.y},'#9d907348',2);
   }
+  if(state.site)return;
   // Furniture silhouettes reinforce sightline decisions.
   rect(170,140,35,22,'#51564c');rect(224,460,51,22,'#424b47');
   rect(438,303,32,38,'#505a52');rect(516,337,50,14,'#343f3e');
@@ -414,15 +449,15 @@ function architecture(){
       draw.textAlign='center';draw.fillText('Ⅱ',0,3);draw.restore();
     }else{
       // Hinge rotates out of the walkable gap, with no second collider.
-      if(door.id==='FRONT'){
+      if(Math.abs(a.y-b.y)<2)
         line(a,{x:a.x,y:a.y-40},'#c2b08a',7);
-      }else{
+      else
         line(a,{x:a.x+34,y:a.y},'#c2b08a',7);
-      }
       circle(a.x,a.y,3,'#f0d8a9');
     }
   }
   // Narrow window markers (not navigable openings).
+  if(state.site)return;
   for(const x of [211,501]){
     line({x,y:97},{x:x+52,y:97},'#8bb6af',4);
     line({x,y:94},{x:x+52,y:94},'#d4d5bb',2);
@@ -864,7 +899,8 @@ function useSelectedGround(pt:Pt){
   selectedNode=null;updateHud();
 }
 function reset(next=state.variant){
-  state=newSession(next);selected='rook';looking=false;
+  state=newSession(next,randomSiteSeed());
+  stage?.applySite(state.site!);selected='rook';looking=false;
   selectedNode=null;doorFocusId=null;draggingNode=null;
   cursor=null;trace=null;zoom=1;panX=panY=0;
   fogStamp=-1;lastSoundShotId=0;lastEventAudio='';
@@ -879,6 +915,8 @@ ui.back.addEventListener('click',()=>{
   updateHud();
 });
 ui.moss.addEventListener('click',()=>selectUnit('moss'));
+ui.ash.addEventListener('click',()=>selectUnit('ash'));
+ui.vale.addEventListener('click',()=>selectUnit('vale'));
 ui.clear.addEventListener('click',()=>{clearPlan(state,selected);selectedNode=null;updateHud();});
 ui.undo.addEventListener('click',()=>{undoPlan(state,selected);selectedNode=null;updateHud();});
 ui.redo.addEventListener('click',()=>{redoPlan(state,selected);selectedNode=null;updateHud();});
@@ -905,6 +943,8 @@ window.addEventListener('keydown',e=>{
   }
   if(e.code==='Digit1')selectUnit('rook');
   if(e.code==='Digit2')selectUnit('moss');
+  if(e.code==='Digit3')selectUnit('ash');
+  if(e.code==='Digit4')selectUnit('vale');
   if(e.code==='KeyX'){clearPlan(state,selected);updateHud();}
   if(e.code==='KeyL')armFacing('look');
   if(e.code==='Backspace'&&!e.repeat){
