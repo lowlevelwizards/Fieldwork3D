@@ -45,6 +45,7 @@ export type ShotEvent={
   healthBefore:number;healthAfter:number;down:boolean;
   surface:'blood'|'wood'|'stone'|'metal'|'dust';
 };
+export type ImpactMark={id:number;p:Pt;surface:ShotEvent['surface'];age:number};
 export type DroppedMagazine={id:number;p:Pt;side:Side;age:number};
 export type FlashGrenade={id:number;p:Pt;from:Pt;to:Pt;age:number;fuse:number};
 export type FlashBurst={id:number;p:Pt;age:number};
@@ -59,7 +60,7 @@ export type Session=Omit<TacticalState,'operators'> & {
   started:boolean;syncCode:number;report:string[];
   movementNoiseAt:number;site?:Site;dropped:DroppedMagazine[];
   grenades:FlashGrenade[];flashBursts:FlashBurst[];flashRemaining:number;
-  nextEffectId:number;};
+  nextEffectId:number;impactMarks:ImpactMark[];};
 const d=(a:Pt,b:Pt)=>length(a,b);
 const clone=(p:Pt):Pt=>({...p});
 const near=(a:Pt,b:Pt,range:number)=>d(a,b)<=range;
@@ -138,7 +139,7 @@ export function newSession(index=0,siteSeed?:number):Session{
     mission:'clear',noise:[],shots:[],nextShotId:1,known:new Map(),
     seenGround:new Set(),timesPaused:0,deaths:0,started:false,
     syncCode:0,report:[],movementNoiseAt:0,site,
-    dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1};
+    dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1,impactMarks:[]};
   observe(state);
   return state;
 }
@@ -1044,6 +1045,9 @@ function fire(s:Session,a:TeamActor,dt:number){
   s.sparks.push({p:clone(a.p),side:a.side,age:0});
   // Immutable shot identity lets 2D/3D attach recoil and damage effects to
   // the correct actors without guessing from proximity or team color.
+  s.impactMarks.push({id:s.nextEffectId++,p:clone(end),
+    surface:impact.surface,age:0});
+  if(s.impactMarks.length>92)s.impactMarks.shift();
   s.shots.push({
     id:s.nextShotId++,shooterId:a.id,targetId:target.id,
     start:clone(a.p),end,age:0,hit,side:a.side,
@@ -1128,6 +1132,7 @@ export function stepSession(s:Session,dt:number){
   s.shots=s.shots.filter(a=>(a.age+=h)<.40);
   s.noise=s.noise.filter(n=>s.seconds-n.time<4);
   for(const magazine of s.dropped)magazine.age+=h;
+  s.impactMarks=s.impactMarks.filter(mark=>(mark.age+=h)<24);
   s.flashBursts=s.flashBursts.filter(b=>(b.age+=h)<.70);
   stepFlashbangs(s,h);
   for(const a of s.operators){
