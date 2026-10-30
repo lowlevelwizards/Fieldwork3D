@@ -245,7 +245,11 @@ try{
     const el=document.elementFromPoint(pt.x,pt.y);
     const box=document.querySelector('#contextTools')?.getBoundingClientRect();
     const selected=document.querySelector('#rook')?.getAttribute('aria-pressed');
-    return {atTap:el?.tagName+'#'+el?.id,
+    const canvas=document.querySelector('#breachCanvas');
+    return {planNodes:canvas?.dataset.planNodes,
+      selectedNode:canvas?.dataset.selectedNode,
+      backDisabled:document.querySelector('#back')?.disabled,
+      atTap:el?.tagName+'#'+el?.id,
       atTapClass:el?.getAttribute('class'),
       atTapText:el?.textContent?.slice(0,70),
       contextBox:box?{x:box.x,y:box.y,width:box.width,height:box.height}:null,
