@@ -17,6 +17,8 @@ export type FootstepScheduler={
   lastTime:number;lastPosition:GroundPoint;lastYaw:number;
   lastStepFoot:number;lastStepAt:number;resets:number;
   mode:LocomotionMode;shuffleLead:number;shuffleNext:'lead'|'follow';
+  pelvisYaw:number;pivotFromYaw:number;pivotToYaw:number;
+  pivotAt:number;pivotDuration:number;
 };
 export type FootstepInput={
   time:number;position:GroundPoint;rootYaw:number;
@@ -48,7 +50,8 @@ export function createFootstepScheduler():FootstepScheduler{
   return {feet:[createFoot(),createFoot()],initialized:false,
     lastTime:-1,lastPosition:{x:0,y:0},lastYaw:0,
     lastStepFoot:1,lastStepAt:-100,resets:0,
-    mode:'idle',shuffleLead:1,shuffleNext:'lead'};
+    mode:'idle',shuffleLead:1,shuffleNext:'lead',
+    pelvisYaw:0,pivotFromYaw:0,pivotToYaw:0,pivotAt:0,pivotDuration:0};
 }
 export function resetFootsteps(s:FootstepScheduler,input:FootstepInput):void{
   for(let i=0;i<2;i++){
@@ -62,7 +65,9 @@ export function resetFootsteps(s:FootstepScheduler,input:FootstepInput):void{
   }
   s.initialized=true;s.lastTime=input.time;s.lastPosition=copy(input.position);
   s.lastYaw=input.rootYaw;s.lastStepAt=-100;s.lastStepFoot=1;s.resets++;
-  s.mode='idle';s.shuffleNext='lead';
+  s.mode='idle';s.shuffleNext='lead';s.pelvisYaw=input.rootYaw;
+  s.pivotFromYaw=input.rootYaw;s.pivotToYaw=input.rootYaw;
+  s.pivotAt=input.time;s.pivotDuration=0;
 }
 export function gaitBounds(input:FootstepInput){
   const slow=input.cautious||input.posture==='crouch';
@@ -119,15 +124,27 @@ function startStep(s:FootstepScheduler,index:number,input:FootstepInput){
     const wanted=base+(lead?outward*4.3:outward*.4);
     land={x:land.x+axis.x*(wanted-base),
       y:land.y+axis.y*(wanted-base)};
-  }else if(pivot||settle){
+  }else if(pivot){
+    const delta=deltaAngle(s.pelvisYaw,input.rootYaw);
+    // A single planted-foot pivot may turn the pelvis only by a modest
+    // angle. Longer rotations require multiple alternating replant steps.
+    const turnYaw=s.pelvisYaw+clamp(delta,-.42,.42);
+    land=lateral(input.position,turnYaw,index===0?-1:1);
+    land=safeLanding(s,index,land,
+      {...input,facingYaw:-s.pelvisYaw});
+    s.pivotFromYaw=s.pelvisYaw;s.pivotToYaw=turnYaw;
+    s.pivotAt=input.time;s.pivotDuration=duration;
+  }else if(settle){
     land=lateral(input.position,input.rootYaw,index===0?-1:1);
   }else if(input.speed>5){
     land.x+=Math.cos(travel)*bounds.preferredLead;
     land.y+=Math.sin(travel)*bounds.preferredLead;
   }
-  land=safeLanding(s,index,land,input);
+  land=safeLanding(s,index,land,pivot?
+    {...input,facingYaw:-s.pelvisYaw}:input);
   foot.swingFrom=copy(foot.plantedAt);foot.swingTo=land;
-  foot.fromYaw=foot.worldYaw;foot.targetYaw=input.rootYaw;
+  foot.fromYaw=foot.worldYaw;
+  foot.targetYaw=pivot?s.pivotToYaw:input.rootYaw;
   foot.phase='unloading';foot.contact=true;
   foot.reason=pivot?'turn':settle?'settle':'locomotion';
   foot.phaseStart=input.time;foot.phaseDuration=bounds.unloadDuration;
@@ -179,8 +196,11 @@ export function advanceFootsteps(s:FootstepScheduler,input:FootstepInput):
   if(discontinuity)resetFootsteps(s,input);
   for(const foot of s.feet)progress(foot,input);
   const facing=input.facingYaw??-input.rootYaw;
-  const requested=classifyLocomotion(input.speed,facing,input.travelYaw,
-    input.turning,s.mode);
+  const pendingPivot=input.speed<6&&
+    Math.abs(deltaAngle(s.pelvisYaw,input.rootYaw))>.12;
+  const requested=pendingPivot?'pivot':
+    classifyLocomotion(input.speed,facing,input.travelYaw,
+      input.turning,s.mode);
   if(requested!==s.mode){
     // A reversing shuffle starts with the new leading foot; the active
     // step is never cancelled or teleported mid-swing.
@@ -189,6 +209,14 @@ export function advanceFootsteps(s:FootstepScheduler,input:FootstepInput):
     s.shuffleNext='lead';
   }
   const bounds=gaitBounds(input);
+  if(s.mode==='pivot'&&s.pivotDuration>0){
+    const progress=clamp((input.time-s.pivotAt)/s.pivotDuration,0,1);
+    const smooth=progress*progress*(3-2*progress);
+    s.pelvisYaw=s.pivotFromYaw+
+      deltaAngle(s.pivotFromYaw,s.pivotToYaw)*smooth;
+  }else if(s.mode!=='pivot'){
+    s.pelvisYaw=input.rootYaw;
+  }
   const busy=s.feet.some(f=>f.phase==='unloading'||f.phase==='swinging');
   if(!busy&&!input.down){
     let best=-1,bestScore=0;
@@ -221,8 +249,13 @@ export function advanceFootsteps(s:FootstepScheduler,input:FootstepInput):
       const settle=s.mode==='settle'&&error>5.5;
       const mustMove=active&&(forward>bounds.comfortableForward*.64||
         error>bounds.comfortableLateral||s.lastStepAt<0);
-      const pivot=s.mode==='pivot'&&(turningError>.2||error>5.5);
+      const pivot=s.mode==='pivot'&&(
+        Math.abs(deltaAngle(s.pelvisYaw,input.rootYaw))>.1||
+        turningError>.2||error>5.5);
       if(!mustMove&&!pivot&&!settle)continue;
+      // Pivot foot sequence alternates. Prefer the opposite foot after
+      // landing rather than continuously rotating the same leg.
+      if(pivot&&i===s.lastStepFoot)continue;
       const score=active?forward+error*.3:turningError*8+error;
       if(score>bestScore+.001||best<0){best=i;bestScore=score;}
     }
