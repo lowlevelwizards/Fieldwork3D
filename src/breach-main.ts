@@ -1368,7 +1368,7 @@ canvas.addEventListener('pointerdown',e=>{
       startX:e.clientX,startY:e.clientY,wasUnit:false,nodeId:null,
       mode:orbit?'cameraOrbit':'cameraPan',moved:false});
   }else{
-    const contextual=looking;
+    const contextual=looking||flashMode;
     // A selected route can pass near a teammate. Its line remains tappable
     // unless the finger is directly over the teammate's physical icon.
     // Previously the oversized soldier hitbox stole mid-route insert taps.
