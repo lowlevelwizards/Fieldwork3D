@@ -76,7 +76,7 @@ test('083–088: main page and dedicated Breach both offer four-person controls'
     assert.ok(html.includes('id="'+id+'"'));
     assert.ok(html.includes('id="'+id+'Hp"'));
   }
-  assert.match(main,/newSession\(0,legacyStudy\?undefined:randomSiteSeed\(\)\)/);
+  assert.match(main,/selectedIntelMode/);
   assert.match(main,/stage\?\.applySite\(state\.site\?\?null\)/);
   assert.doesNotMatch(main,/ctxStackAll/);
   assert.doesNotMatch(main,/ctxEntry/); // Manual stacking is intentional.
