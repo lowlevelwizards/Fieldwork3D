@@ -60,8 +60,10 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
     site.archetype==='house'?'fence':
     site.archetype==='clinic'?'bench':'vehicle';
   const west=minX+82,east=maxX-82;
-  const x=Math.abs(west-site.entrance.x)>Math.abs(east-site.entrance.x)?
-    west:east;
+  const preference=Math.abs(west-site.entrance.x)-
+    Math.abs(east-site.entrance.x);
+  const x=preference===0?(seed%2===0?west:east):
+    preference>0?west:east;
   const y=maxY+79;
   if(y+25<720&&dist({x,y},site.entrance)>80)
     cover.push({x,y,w:exteriorFixture==='fence'?58:46,
