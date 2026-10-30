@@ -20,6 +20,7 @@ import {WEAPONS,injuryOf,injuryAim,injurySpeed,injuryReload,
   woundSeverity,exposure,nearCover,type WeaponId,type BattleEvent}
   from './breach-combat.ts';
 import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
+import {initDoor,advanceDoor,doorReachable,doorApproach,doorClear} from './breach-door.ts';
 import {chooseDefense,watchPoint} from './breach-defense.ts';
 
 export type Posture='stand'|'crouch';
@@ -41,7 +42,8 @@ export type TeamActor=Operator & {
   /** Temporary cooperative sidestep, independent of authored orders. */
   yieldTarget:Pt|null;yieldFor:string|null;yieldUntil:number;
   personality:Personality;morale:number;lastNoiseAt:number;
-  flashUntil:number;lastThrowAt:number;weapon:WeaponId;injuryStage:number;
+  flashUntil:number;lastThrowAt:number;lastDoorAt:number;
+  lastDoorId:string|null;stride:number;weapon:WeaponId;injuryStage:number;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
 };
 export type NoiseEvent={p:Pt;radius:number;time:number;kind:string};
@@ -94,7 +96,7 @@ const withActions=(a:Operator):TeamActor=>({
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
   yieldTarget:null,yieldFor:null,yieldUntil:0,
   personality:'guard',morale:1,lastNoiseAt:-1,flashUntil:-1,
-  lastThrowAt:-100,
+  lastThrowAt:-100,lastDoorAt:-100,lastDoorId:null,stride:0,
   weapon:'carbine',injuryStage:0,defense:null,watch:null,
   defenseUntil:0,surrendered:false,
 });
@@ -153,7 +155,7 @@ export function newSession(index=0,siteSeed?:number):Session{
     const pos=sample.spots[i];a.p={x:pos.x,y:pos.y};a.heading=pos.h;
     a.health=2;a.magazine=10;a.reserve=30;
   });
-  const state:Session={...seed,operators,doors:initialDoors(),variant,nextId:1,
+  const state:Session={...seed,operators,doors:initialDoors().map(initDoor),variant,nextId:1,
     scenario:{index:variant,name:site?.name??sample.name,
       objective:clone(site?.objective??OBJECTIVE),
       extract:clone(site?.extract??EXTRACTION)},
@@ -234,7 +236,26 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
     from=point;
   }
   if(!proposed.length)return false;
-  return edit(s,a,()=>{a.plan.push(...proposed);s.nextId+=proposed.length;});
+  // Door actions inserted during one stroke remain one undoable edit.
+  const expanded:PlanNode[]=[];let prior=finalPoint(a);
+  const opened=new Set(a.plan.filter(n=>n.kind==='door'&&n.method!=='hold')
+    .map(n=>n.doorId??''));
+  for(const node of proposed){
+    const points=[prior,...route(prior,node.p)];
+    for(let i=1;i<points.length;i++)
+      for(const door of s.doors){
+        if(door.open||opened.has(door.id)||
+           !segmentsCross({a:points[i-1],b:points[i]},door))continue;
+        const staging=doorApproach(prior,door);
+        if(!staging)continue;
+        expanded.push({id:s.nextId+expanded.length,kind:'door',
+          p:clone(staging),doorId:door.id,method:'open'});
+        opened.add(door.id);
+      }
+    expanded.push({...node,id:s.nextId+expanded.length});
+    prior=node.p;
+  }
+  return edit(s,a,()=>{a.plan.push(...expanded);s.nextId+=expanded.length;});
 }
 export function setStrafe(s:Session,id:string,nodeId:number):boolean{
   const a=party(s,id);if(!a||!canEdit(s))return false;
@@ -307,11 +328,11 @@ export function doorAtNode(s:Session,id:string,doorId:string,method:DoorMethod,n
   const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
   if(!a||!door||!canEdit(s))return false;
   if(nodeId===undefined){
-    if(d(finalPoint(a),doorCenter(door))>43)return planDoor(s,id,doorId,method);
+    if(!doorReachable(finalPoint(a),door))return planDoor(s,id,doorId,method);
     return addNode(s,id,'door',finalPoint(a),{doorId,method});
   }
   const index=a.plan.findIndex(n=>n.id===nodeId);
-  if(index<0||d(a.plan[index].p,doorCenter(door))>43)return false;
+  if(index<0||!doorReachable(a.plan[index].p,door))return false;
   const position=clone(a.plan[index].p);
   return edit(s,a,()=>{
     a.plan.splice(index+1,0,{id:s.nextId++,kind:'door',
@@ -398,15 +419,8 @@ export function planLook(s:Session,id:string,p:Pt,nodeId?:number){
 export function planDoor(s:Session,id:string,doorId:string,method:DoorMethod){
   const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
   if(!a||!door||!canEdit(s))return false;
-  const c=doorCenter(door),origin=finalPoint(a);
-  const vertical=Math.abs(door.a.x-door.b.x)<1;
-  const candidates=vertical?
-    [{x:c.x-27,y:c.y},{x:c.x+27,y:c.y}]:
-    [{x:c.x,y:c.y-27},{x:c.x,y:c.y+27}];
-  const reachable=candidates.filter(p=>passable(p)&&route(origin,p).length);
-  reachable.sort((x,y)=>d(origin,x)-d(origin,y));
-  if(!reachable[0])return false;
-  return addNode(s,id,'door',reachable[0],{doorId,method});
+  const position=doorApproach(finalPoint(a),door);
+  return !!position&&addNode(s,id,'door',position,{doorId,method});
 }
 /** Plan an actual reserved stack position on the same approach side.
  * Four positions are spaced along the door frame, with a second rank.
@@ -696,9 +710,9 @@ function deferToTeammate(s:Session,blocker:TeamActor,requester:TeamActor){
   const blockerActive=blocker.plan.some(n=>n.kind==='move'||n.kind==='door');
   // A teammate actually making progress owns the lane. If both are stuck,
   // a stable actor order breaks ties rather than yielding to each other.
-  if(blockerActive&&blocker.blockedTime<.24&&blocker.velocity>12)
+  if(blockerActive&&blocker.blockedTime<.14&&blocker.velocity>12)
     return false;
-  if(blockerActive&&blocker.blockedTime>.24&&requesterRank>blockerRank)
+  if(blockerActive&&blocker.blockedTime>.14&&requesterRank>blockerRank)
     return false;
   const target=yieldPocket(blocker,requester,s);
   if(!target)return false;
@@ -750,7 +764,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const advance=Math.min(gap,a.velocity*dt);
   const move={x:a.p.x+Math.cos(direction)*advance,
     y:a.p.y+Math.sin(direction)*advance};
-  const closedDoor=s.doors.find(door=>!door.open&&
+  const closedDoor=s.doors.find(door=>!doorClear(door)&&
     segmentsCross({a:a.p,b:move},door));
   const closed=!!closedDoor;
   if(closedDoor&&a.side==='red'&&d(a.p,doorCenter(closedDoor))<49){
@@ -768,8 +782,22 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   // A reciprocal jam needs a deterministic resolution. Prefer yielding
   // in nearby free space; after prolonged blockage, permit a brief
   // same-team shoulder pass rather than deadlocking a door indefinitely.
-  if(teammate&&a.blockedTime>.32)
+  if(teammate&&a.blockedTime>.14)
     deferToTeammate(s,teammate,a);
+  // Temporary local detour around an occupied lane; never rewrite orders.
+  if(teammate&&a.blockedTime>.35&&!a.yieldTarget){
+    for(const sign of [1,-1]){
+      const side={x:-Math.sin(direction)*sign,y:Math.cos(direction)*sign};
+      const detour={x:a.p.x+side.x*23+Math.cos(direction)*11,
+        y:a.p.y+side.y*23+Math.sin(direction)*11};
+      if(passable(detour)&&!s.operators.some(o=>o!==a&&o.health>0&&
+          d(detour,o.p)<17)&&
+          !s.doors.some(door=>!doorClear(door)&&
+          segmentsCross({a:a.p,b:detour},door))){
+        a.nav.unshift(detour);a.blockedTime=0;return true;
+      }
+    }
+  }
   const shoulderPass=!!teammate&&a.blockedTime>1.65;
   if(!closed&&(!blocking||shoulderPass)&&passable(move)){
     a.priorP=clone(a.p);a.p=move;a.blockedTime=0;
@@ -934,10 +962,11 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   if(n.kind==='door'){
     const door=s.doors.find(d=>d.id===n.doorId);
     if(!door||door.open){pop(a);return;}
-    if(d(a.p,doorCenter(door))>43){
+    if(!doorReachable(a.p,door)){
       notify(s,a.name+' TOO FAR FROM DOOR');return;
     }
     const required=n.method==='kick'?.20:n.method==='hold'?1.3:.49;
+    if(a.actionTimer===0){a.lastDoorAt=s.seconds;a.lastDoorId=door.id;}
     a.actionTimer+=dt;
     if(a.actionTimer>=required){
       if(n.method==='hold'){
@@ -1279,6 +1308,7 @@ export function stepSession(s:Session,dt:number){
   if(s.phase!=='running')return;
   const h=clamp(dt,0,1/30);
   s.seconds+=h;
+  for(const door of s.doors)advanceDoor(door,h);
   s.sparks=s.sparks.filter(a=>(a.age+=h)<.20);
   s.shots=s.shots.filter(a=>(a.age+=h)<.40);
   s.noise=s.noise.filter(n=>s.seconds-n.time<4);
@@ -1304,6 +1334,7 @@ export function stepSession(s:Session,dt:number){
     if(a.side==='blue')runOrders(s,a,h);
     else enemyDecisions(s,a,h);
   }
+  for(const a of s.operators)a.stride+=d(a.p,a.priorP);
   observe(s);
   for(const a of s.operators)fire(s,a,h);
   mission(s,h);

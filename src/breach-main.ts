@@ -1242,23 +1242,22 @@ window.addEventListener('keydown',e=>{
   if(e.code==='Digit0'&&!e.repeat)ui.cameraFit.click();
 });
 function pointerWorld(e:PointerEvent){return toWorld(e.clientX,e.clientY);}
-const hitNode=(p:Pt):{id:number;index:number}|null=>{
-  const unit=uid(selected);
-  if(!unit)return null;
-  for(let i=unit.plan.length-1;i>=0;i--){
-    const n=unit.plan[i];
-    if(n.kind==='flash'&&n.aimPoint){
-      const marker=worldToScreen(n.aimPoint,6);
-      const cursor=worldToScreen(p,6);
-      if(distance(marker,cursor)<25)return {id:n.id,index:i};
+const hitNode=(p:Pt):{id:number;index:number;owner:string}|null=>{
+  const cursor=worldToScreen(p,7);
+  const candidates:{id:number;index:number;owner:string;gap:number}[]=[];
+  for(const unit of team(state))if(unit.health>0){
+    for(let i=unit.plan.length-1;i>=0;i--){
+      const n=unit.plan[i];
+      for(const point of [n.p,...(n.kind==='flash'&&n.aimPoint?[n.aimPoint]:[])]){
+        const marker=worldToScreen(point,point===n.p?8:6);
+        const gap=distance(marker,cursor);
+        if(gap<27)candidates.push({id:n.id,index:i,owner:unit.id,gap});
+      }
     }
-    if(viewMode!=='plan2d'&&stage){
-      const screen=worldToScreen(n.p,8),cursor=worldToScreen(p,8);
-      if(distance(screen,cursor)<19)return {id:n.id,index:i};
-    }else if(distance(n.p,p)<Math.max(14,12/viewScale))
-      return {id:n.id,index:i};
   }
-  return null;
+  candidates.sort((a,b)=>a.gap-b.gap||
+    Number(b.owner===selected)-Number(a.owner===selected));
+  return candidates[0]??null;
 };
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 canvas.addEventListener('pointerdown',e=>{
@@ -1291,12 +1290,13 @@ canvas.addEventListener('pointerdown',e=>{
       return distance(worldToScreen(a.p,24),
         {x:e.clientX,y:e.clientY})<(direct?15:25);
     });
-    if(hit)selectUnit(hit.id);
-    const node=state.phase==='planning'&&!hit&&!contextual?
-      hitNode(pt):null;
-    if(node){selectedNode=node.id;doorFocusId=null;}
+    const node=state.phase==='planning'&&!contextual?hitNode(pt):null;
+    if(node){
+      if(node.owner!==selected)selectUnit(node.owner);
+      selectedNode=node.id;doorFocusId=null;
+    }else if(hit)selectUnit(hit.id);
     activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
-      startX:e.clientX,startY:e.clientY,wasUnit:!!hit,
+      startX:e.clientX,startY:e.clientY,wasUnit:!!hit&&!node,
       nodeId:node?.id??null,
       mode:node?'node':'undecided',moved:false});
   }

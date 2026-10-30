@@ -11,7 +11,7 @@ export type ActorFrame=Pick<TeamActor,
   'magazine'|'reserve'|'reload'|'shots'|'fireCd'|'aim'|
   'lastHitAt'|'lastDownAt'|'flashUntil'|'suppression'|
   'weapon'|'injuryStage'|'morale'|'surrendered'|'defense'|'watch'|
-  'lastThrowAt'>;
+  'lastThrowAt'|'lastDoorAt'|'lastDoorId'|'stride'>;
 export type ReplayFrame={
   t:number;phase:Session['phase'];mission:Session['mission'];
   actors:ActorFrame[];doors:Door[];shots:ShotEvent[];
@@ -35,7 +35,8 @@ export function snapshot(s:Session):ReplayFrame{
       lastHitAt:a.lastHitAt,lastDownAt:a.lastDownAt,
       flashUntil:a.flashUntil,suppression:a.suppression,
       weapon:a.weapon,injuryStage:a.injuryStage,morale:a.morale,
-      lastThrowAt:a.lastThrowAt,
+      lastThrowAt:a.lastThrowAt,lastDoorAt:a.lastDoorAt,
+      lastDoorId:a.lastDoorId,stride:a.stride,
       surrendered:a.surrendered,defense:a.defense?position(a.defense):null,
       watch:a.watch?position(a.watch):null})),
     doors:s.doors.map(d=>({...d,a:position(d.a),b:position(d.b)})),

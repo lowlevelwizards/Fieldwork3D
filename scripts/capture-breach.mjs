@@ -326,6 +326,19 @@ try{
   if(await count()!=='0')
     throw Error('Original destination was not preserved after deleting insertion');
   await routePhone.screenshot({path:resolve(folder,'19-phone-route-node-deleted.png')});
+  // 107: tapping another operator's waypoint should select its owner
+  // instead of appending an unintended route to the current operator.
+  await routePhone.locator('#rook').click();
+  await routePhone.touchscreen.tap(end.x,end.y);
+  if(await count()!=='1')throw Error('Cross-operator test waypoint not created');
+  await routePhone.locator('#moss').click();
+  if(await count()!=='0')throw Error('Moss unexpectedly inherited Rook orders');
+  await routePhone.touchscreen.tap(end.x,end.y);
+  if(await routePhone.locator('#rook').getAttribute('aria-pressed')!=='true')
+    throw Error('Selecting Rook waypoint failed to switch operator');
+  if(await count()!=='1')
+    throw Error('Selecting another operator waypoint changed its route');
+  await routePhone.screenshot({path:resolve(folder,'22-cross-operator-waypoint.png')});
   await routePhone.close();
 
   const pc=await browser.newPage({
@@ -380,6 +393,21 @@ try{
   await lab.locator('#top').click();
   await lab.waitForTimeout(300);
   await lab.screenshot({path:resolve(folder,'17-lab-top.png')});
+  // 109–113: production standalone articulated operator laboratory.
+  const physical=await browser.newPage({viewport:{width:390,height:844},
+    deviceScaleFactor:2,hasTouch:true,isMobile:true});
+  physical.on('pageerror',e=>errors.push('operator lab: '+e.message));
+  await physical.goto(url.replace('breach.html','operator-lab.html'),
+    {waitUntil:'domcontentloaded'});
+  await physical.locator('canvas#preview').waitFor({state:'visible'});
+  await physical.locator('[data-pose="walk"]').click();
+  await physical.locator('#injury').selectOption('2');
+  await physical.waitForTimeout(220);
+  await physical.screenshot({path:resolve(folder,'23-operator-lab-wounded-walk.png')});
+  await physical.locator('[data-view="side"]').click();
+  await physical.locator('[data-pose="reload"]').click();
+  await physical.screenshot({path:resolve(folder,'24-operator-lab-side-reload.png')});
+  await physical.close();
   if(errors.length)throw Error('Browser console exceptions: '+errors.join('; '));
   const manifest={initial,rotated,pan,pinch,visibleButtons,errors};
   await writeFile(resolve(folder,'manifest.json'),JSON.stringify(manifest,null,2));
