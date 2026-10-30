@@ -4,7 +4,7 @@ import {W,H,WALLS,COVER,initialDoors,doorCenter,activeSite,
 import {type Site} from './breach-site.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
 import {shotVisibility} from './breach-presentation.ts';
-import {doorYaw,handlePoint,doorReachable} from './breach-door.ts';
+import {handlePoint,doorReachable} from './breach-door.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {casingAt,CASING_LIMIT,impactProfile} from './breach-effects.ts';
@@ -321,7 +321,7 @@ export class TacticalScene3D{
       halo.visible=false;group.add(halo);this.mats.push(halo.material);
       this.root.add(group);
       this.doors.set(door.id,{root:group,leaf:hinge,frame,halo,threshold});
-      this.observedDoorOpen.set(door.id,false);
+      this.observedDoorOpen.set(door.id,0);
     }
     // Furniture height matches cover classification: low crates vs high cabinets.
     for(let i=0;i<COVER.length;i++){
