@@ -17,7 +17,7 @@ test('131: authoritative muzzle and visible barrel agree across weapons',()=>{
    poseOperator(rig,pose,0);
    rig.root.updateMatrixWorld(true);
    const tip=rig.weapon.localToWorld(new THREE.Vector3(
-     MUZZLE_TIP*weaponGrips(weapon).lengthScale,0,0));
+     MUZZLE_TIP,0,0));
    const shot=muzzleAtShot({x:100,z:200,heading:0,weaponYaw:0,
      aim,velocity:0,weapon,recoil:0});
    assert.ok(tip.distanceTo(new THREE.Vector3(
