@@ -3,6 +3,7 @@
  */
 import {classifyLocomotion,lateralAxis,sideOffset,uncrossed,
   type LocomotionMode} from './breach-locomotion.ts';
+import {footArticulation} from './breach-foot-articulation.ts';
 export type GroundPoint={x:number;y:number};
 export type FootPhase='planted'|'unloading'|'swinging'|'landing'|'recovering';
 export type StepReason='locomotion'|'turn'|'settle';
@@ -11,6 +12,7 @@ export type FootstepState={
   swingTo:GroundPoint;phaseStart:number;phaseDuration:number;
   contact:boolean;worldYaw:number;fromYaw:number;targetYaw:number;
   reason:StepReason;lastTouchdown:number;
+  swingDuration:number;landingDuration:number;recoveryDuration:number;
 };
 export type FootstepScheduler={
   feet:[FootstepState,FootstepState];initialized:boolean;
@@ -29,7 +31,7 @@ export type FootstepInput={
 };
 export type FootTarget={position:GroundPoint;height:number;
   worldYaw:number;phase:FootPhase;contact:boolean;
-  reason?:StepReason;progress?:number;}
+  reason?:StepReason;progress?:number;pitch?:number;}
 const clamp=(x:number,min:number,max:number)=>Math.max(min,Math.min(max,x));
 const deltaAngle=(a:number,b:number)=>Math.atan2(Math.sin(b-a),Math.cos(b-a));
 const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
@@ -44,7 +46,8 @@ function createFoot():FootstepState{
   return {phase:'planted',plantedAt:{x:0,y:0},
     swingFrom:{x:0,y:0},swingTo:{x:0,y:0},phaseStart:0,
     phaseDuration:0,contact:true,worldYaw:0,fromYaw:0,
-    targetYaw:0,reason:'locomotion',lastTouchdown:-100};
+    targetYaw:0,reason:'locomotion',lastTouchdown:-100,
+    swingDuration:.16,landingDuration:.035,recoveryDuration:.055};
 }
 export function createFootstepScheduler():FootstepScheduler{
   return {feet:[createFoot(),createFoot()],initialized:false,
@@ -63,6 +66,8 @@ export function resetFootsteps(s:FootstepScheduler,input:FootstepInput):void{
     foot.targetYaw=input.rootYaw;foot.contact=true;
     foot.phaseStart=input.time;foot.phaseDuration=0;
     foot.lastTouchdown=input.time;
+    foot.swingDuration=.16;foot.landingDuration=.035;
+    foot.recoveryDuration=.055;
   }
   s.initialized=true;s.lastTime=input.time;s.lastPosition=copy(input.position);
   s.lastYaw=input.rootYaw;s.lastStepAt=-100;s.lastStepFoot=1;s.resets++;
@@ -73,14 +78,20 @@ export function resetFootsteps(s:FootstepScheduler,input:FootstepInput):void{
 export function gaitBounds(input:FootstepInput){
   const slow=input.cautious||input.posture==='crouch';
   const wound=input.injury>=2;
+  const mode=classifyLocomotion(input.speed,
+    input.facingYaw??-input.rootYaw,input.travelYaw,input.turning);
+  const side=mode==='strafe-left'||mode==='strafe-right';
+  const backward=mode==='backward';
   const strideScale=slow?.70:wound?.78:1;
   return {comfortableForward:5.5*strideScale,
     comfortableLateral:4.5,maximumReach:9.0,
     emergencyReach:11.0,preferredLead:(slow?3.0:wound?3.7:5.5),
-    swingDuration:clamp((slow?.23:wound?.22:.16)-
-      Math.min(input.speed,75)*.00055,.12,.28),
-    unloadDuration:slow?.055:.025,
-    landingDuration:.035,recoveryDuration:slow?.09:.055};
+    swingDuration:clamp((slow?.235:wound?.225:
+      side?.185:backward?.215:.20)-Math.min(input.speed,75)*.00038,
+      .14,.29),
+    unloadDuration:slow?.065:.045,
+    landingDuration:slow?.06:.048,
+    recoveryDuration:slow?.10:.075};
 }
 /** Clamp planned *paths*, not rendered boots. In the local facing frame
  * the left foot must remain left of the right foot throughout a swing. */
@@ -149,11 +160,13 @@ function startStep(s:FootstepScheduler,index:number,input:FootstepInput){
   foot.phase='unloading';foot.contact=true;
   foot.reason=pivot?'turn':settle?'settle':'locomotion';
   foot.phaseStart=input.time;foot.phaseDuration=bounds.unloadDuration;
+  foot.swingDuration=bounds.swingDuration;
+  foot.landingDuration=bounds.landingDuration;
+  foot.recoveryDuration=bounds.recoveryDuration;
   s.lastStepFoot=index;s.lastStepAt=input.time;
   if(strafe)s.shuffleNext=s.shuffleNext==='lead'?'follow':'lead';
 }
 function progress(foot:FootstepState,input:FootstepInput){
-  const bounds=gaitBounds(input);
   // Advance by timestamps, never by render dt. Avoid stale anchors on a
   // skipped frame and preserve the touchdown world position exactly.
   for(let count=0;count<5;count++){
@@ -161,14 +174,14 @@ function progress(foot:FootstepState,input:FootstepInput){
     if(foot.phase==='planted'||input.time<end-1e-8)break;
     foot.phaseStart=end;
     if(foot.phase==='unloading'){
-      foot.phase='swinging';foot.phaseDuration=bounds.swingDuration;
+      foot.phase='swinging';foot.phaseDuration=foot.swingDuration;
       foot.contact=false;
     }else if(foot.phase==='swinging'){
-      foot.phase='landing';foot.phaseDuration=bounds.landingDuration;
+      foot.phase='landing';foot.phaseDuration=foot.landingDuration;
       foot.plantedAt=copy(foot.swingTo);foot.worldYaw=foot.targetYaw;
       foot.lastTouchdown=end;foot.contact=true;
     }else if(foot.phase==='landing'){
-      foot.phase='recovering';foot.phaseDuration=bounds.recoveryDuration;
+      foot.phase='recovering';foot.phaseDuration=foot.recoveryDuration;
     }else if(foot.phase==='recovering'){
       foot.phase='planted';foot.phaseDuration=0;
     }
@@ -176,18 +189,21 @@ function progress(foot:FootstepState,input:FootstepInput){
 }
 function target(foot:FootstepState,input:FootstepInput):FootTarget{
   if(foot.phase!=='swinging'){
-    return {position:copy(foot.plantedAt),height:0,
+    const progress=foot.phaseDuration>0?
+      clamp((input.time-foot.phaseStart)/foot.phaseDuration,0,1):0;
+    const movement=footArticulation(foot.phase,progress);
+    return {position:copy(foot.plantedAt),height:movement.rise,
       worldYaw:foot.worldYaw,phase:foot.phase,contact:foot.contact,
-      reason:foot.reason,
-      progress:foot.phaseDuration>0?clamp((input.time-foot.phaseStart)/foot.phaseDuration,0,1):0};
+      reason:foot.reason,progress,pitch:movement.pitch};
   }
   const t=clamp((input.time-foot.phaseStart)/foot.phaseDuration,0,1);
-  const e=ease(t);
+  const e=ease(t),movement=footArticulation('swinging',t);
   return {position:{x:mix(foot.swingFrom.x,foot.swingTo.x,e),
     y:mix(foot.swingFrom.y,foot.swingTo.y,e)},
-    height:Math.sin(Math.PI*t)*(input.cautious?2.1:3.4),
+    height:movement.rise*(input.cautious?2.1:3.4),
     worldYaw:foot.fromYaw+deltaAngle(foot.fromYaw,foot.targetYaw)*e,
-    phase:foot.phase,contact:false,reason:foot.reason,progress:t};
+    phase:foot.phase,contact:false,reason:foot.reason,progress:t,
+    pitch:movement.pitch};
 }
 export function advanceFootsteps(s:FootstepScheduler,input:FootstepInput):
   [FootTarget,FootTarget]{
