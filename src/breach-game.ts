@@ -235,7 +235,26 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
     from=point;
   }
   if(!proposed.length)return false;
-  return edit(s,a,()=>{a.plan.push(...proposed);s.nextId+=proposed.length;});
+  // Door actions inserted during one stroke remain one undoable edit.
+  const expanded:PlanNode[]=[];let prior=finalPoint(a);
+  const opened=new Set(a.plan.filter(n=>n.kind==='door'&&n.method!=='hold')
+    .map(n=>n.doorId??''));
+  for(const node of proposed){
+    const points=[prior,...route(prior,node.p)];
+    for(let i=1;i<points.length;i++)
+      for(const door of s.doors){
+        if(door.open||opened.has(door.id)||
+           !segmentsCross({a:points[i-1],b:points[i]},door))continue;
+        const staging=doorApproach(prior,door);
+        if(!staging)continue;
+        expanded.push({id:s.nextId+expanded.length,kind:'door',
+          p:clone(staging),doorId:door.id,method:'open'});
+        opened.add(door.id);
+      }
+    expanded.push({...node,id:s.nextId+expanded.length});
+    prior=node.p;
+  }
+  return edit(s,a,()=>{a.plan.push(...expanded);s.nextId+=expanded.length;});
 }
 export function setStrafe(s:Session,id:string,nodeId:number):boolean{
   const a=party(s,id);if(!a||!canEdit(s))return false;
