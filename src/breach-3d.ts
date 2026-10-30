@@ -660,6 +660,7 @@ export class TacticalScene3D{
         posture:actor.posture,injury:actor.injuryStage,weapon:actor.weapon,
         reload:actor.reload,reloadDuration,
         lastThrowAt:actor.lastThrowAt,lastDoorAt:actor.lastDoorAt,
+        doorMethod:actor.lastDoorMethod,
         doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
         down:actor.health<=0,surrender:actor.surrendered,
         aiming:actor.aim>.20,turning:actor.turning,firing:!!firing,
