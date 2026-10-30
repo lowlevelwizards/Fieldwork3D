@@ -34,6 +34,7 @@ export class TacticalScene3D{
   private effectCache=new Map<number,{root:THREE.Group;line:THREE.Mesh;
     impact:THREE.Mesh;material:THREE.MeshBasicMaterial;
     impactMaterial:THREE.MeshBasicMaterial}>();
+  private impactDecals=new Map<number,THREE.Mesh>();
   private discarded=new Map<number,THREE.Mesh>();
   private thrown=new Map<number,THREE.Mesh>();
   private detonations=new Map<number,THREE.Mesh>();
@@ -126,7 +127,8 @@ export class TacticalScene3D{
     });
     this.walls.length=0;this.doors.clear();
     this.observedDoorOpen.clear();
-    for(const cache of [this.discarded,this.thrown,this.detonations]){
+    for(const cache of [this.impactDecals,this.discarded,
+      this.thrown,this.detonations]){
       for(const mesh of cache.values()){
         this.effects.remove(mesh);mesh.geometry.dispose();
         (mesh.material as THREE.Material).dispose();
@@ -718,6 +720,29 @@ export class TacticalScene3D{
       effect.impactMaterial.opacity=Math.max(0,1-shot.age/.40);
       effect.impact.visible=visibility.impact&&shot.age<.40;
     }
+    // Surface-hit marks remain for 24 simulation seconds and are always
+    // derived from authoritative collision outcomes. Bounded to 92.
+    const currentMarks=new Set<number>();
+    for(const mark of s.impactMarks){
+      if(!omniscient&&!liveVisibility(s,mark.p))continue;
+      currentMarks.add(mark.id);
+      let mesh=this.impactDecals.get(mark.id);
+      if(!mesh){
+        const dark=mark.surface==='blood'?0x763c38:
+          mark.surface==='wood'?0x3a2920:
+          mark.surface==='stone'?0x38332c:
+          mark.surface==='metal'?0x202b2e:0x514e42;
+        mesh=new THREE.Mesh(new THREE.CircleGeometry(1,9),
+          new THREE.MeshBasicMaterial({color:dark,transparent:true,
+            opacity:.85,depthWrite:false,side:THREE.DoubleSide}));
+        mesh.rotation.x=-Math.PI/2;
+        this.impactDecals.set(mark.id,mesh);this.effects.add(mesh);
+      }
+      mesh.position.set(mark.p.x,mark.surface==='blood'?1:9.5,mark.p.y);
+      mesh.scale.setScalar(mark.surface==='blood'?4:2.3);
+      (mesh.material as THREE.MeshBasicMaterial).opacity=
+        Math.max(.19,.82-mark.age*.025);
+    }
     // Retained physical magazines, grenades in flight and expanding flashes.
     const activeMag=new Set<number>();
     for(const mag of s.dropped){
@@ -759,6 +784,7 @@ export class TacticalScene3D{
         Math.max(0,.78*(1-burst.age/.7));
     }
     for(const [cache,activeIds] of [
+      [this.impactDecals,currentMarks],
       [this.discarded,activeMag],[this.thrown,liveGrenades],
       [this.detonations,liveBursts],
     ] as [Map<number,THREE.Mesh>,Set<number>][])
