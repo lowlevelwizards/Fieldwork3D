@@ -738,7 +738,8 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const direction=angle(a.p,next);
   const movingSpeed=a.side==='blue'?75:62;
   const suppression=clamp(1-a.suppression*.4,.45,1);
-  const desired=movingSpeed*(a.posture==='crouch'?.58:1)*suppression*speedScale;
+  const desired=movingSpeed*(a.posture==='crouch'?.58:1)*suppression*speedScale*
+    injurySpeed(a.injuryStage);
   a.velocity+=(desired-a.velocity)*Math.min(1,dt*6);
   const advance=Math.min(gap,a.velocity*dt);
   const move={x:a.p.x+Math.cos(direction)*advance,
@@ -849,8 +850,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   }
   const at=near(a.p,n.p,5);
   if(!at&&(n.kind==='move'||n.kind==='door'||n.kind==='sync')){
-    approach(a,n.p,dt,s,(n.moveMode==='strafe'?.68:1)*
-      injurySpeed(a.injuryStage));
+    approach(a,n.p,dt,s,n.moveMode==='strafe'?.68:1);
     // Unmodified movement follows its route, while an explicit fixed STRAFE
     // or PIE/TRACK instruction persists until LOOK releases it.
     const held=aimHeading(a);
