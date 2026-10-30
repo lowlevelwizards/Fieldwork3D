@@ -5,6 +5,7 @@ import {alignSegment,solveTwoBone,ARM_LIMITS,LEG_LIMITS,
   intersectsTorso} from './breach-ik.ts';
 import type {WeaponId} from './breach-combat.ts';
 import {advanceFootsteps,createFootstepScheduler, type FootstepScheduler} from './breach-footsteps.ts';
+import type {ReplayFeet} from './breach-replay-motion.ts';
 import {weaponGrips,handlingPose,clampReach,
   fitWeaponPose,supportGuardTarget} from './breach-weapon-pose.ts';
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
@@ -17,6 +18,8 @@ export type OperatorPose={
   stride:number;posture:'stand'|'crouch';injury:number;weapon:WeaponId;
   /** Authoritative travel direction; optional until motion sampling is wired. */
   travelYaw?:number;
+  /** Render-only reconstructed feet and pose: no accumulated render state. */
+  replayFeet?:ReplayFeet;deterministic?:boolean;
   reload:number;reloadDuration:number;lastThrowAt:number;
   lastDoorAt:number;doorPoint?:{x:number;y:number};down:boolean;
   surrender:boolean;aiming:boolean;firing:boolean;turning:number;
@@ -119,16 +122,19 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     if(p.down&&!p.surrender)material.color.lerp(new THREE.Color(0x555c57),.46);
   }
   const moving=Math.min(1,p.velocity/72);
-  const direction=r.lastPose?
-    Math.atan2(p.z-r.lastPose.z,p.x-r.lastPose.x):p.heading;
+  const direction=p.travelYaw??(r.lastPose?
+    Math.atan2(p.z-r.lastPose.z,p.x-r.lastPose.x):p.heading);
   const travel=moving>.14?direction:p.heading;
   const hipTarget=moving>.22?travel:p.heading;
-  r.root.rotation.y=approach(r.root.rotation.y,-hipTarget,3.8,dt);
+  r.root.rotation.y=p.deterministic?-hipTarget:
+    approach(r.root.rotation.y,-hipTarget,3.8,dt);
   // Upper body follows aim, with a limited anatomical twist.
   const torsoDelta=clamp(diff(hipTarget,p.heading),-.68,.68);
-  r.chest.rotation.y=approach(r.chest.rotation.y,-torsoDelta,6,dt);
+  r.chest.rotation.y=p.deterministic?-torsoDelta:
+    approach(r.chest.rotation.y,-torsoDelta,6,dt);
   r.head.rotation.y=clamp(-diff(hipTarget,p.heading)*.38,-.28,.28);
-  const braking=r.lastPose?clamp((r.lastPose.velocity-p.velocity)/60,-1,1):0;
+  const braking=!p.deterministic&&r.lastPose?
+    clamp((r.lastPose.velocity-p.velocity)/60,-1,1):0;
   r.chest.rotation.z=clamp(-moving*.025+braking*.018,-.06,.06);
   r.chest.rotation.x=clamp(p.injury===2?.07:p.injury===1?.025:0,0,.09);
   const crouch=p.posture==='crouch'?8:0;
@@ -138,7 +144,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // consumes its targets but must never relocate a planted anchor.
   const headingYaw=r.root.rotation.y;
   const travelYaw=p.travelYaw??direction;
-  const targets=advanceFootsteps(r.footsteps,{
+  const targets=p.replayFeet??advanceFootsteps(r.footsteps,{
     time:p.seconds,position:{x:p.x,y:p.z},rootYaw:headingYaw,
     travelYaw,speed:p.velocity,turning:p.turning,posture:p.posture,
     injury:p.injury,down:p.down,cautious:p.aiming&&moving<.35
@@ -146,8 +152,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   for(let i=0;i<2;i++){
     const foot=r.feet[i],sign=i===0?-1:1,target=targets[i];
     const hipLocal=P(0,r.hip.position.y,sign*4.8);
-    foot.anchor.set(r.footsteps.feet[i].plantedAt.x,1.45,
-      r.footsteps.feet[i].plantedAt.y);
+    const anchor=p.replayFeet?target.position:
+      r.footsteps.feet[i].plantedAt;
+    foot.anchor.set(anchor.x,1.45,anchor.y);
+    // Replay seeks must never inherit a pole fallback from another time.
+    if(p.deterministic)foot.bend.set(1,0,0);
     foot.swinging=!target.contact;
     const targetWorld=P(target.position.x,1.45+target.height,
       target.position.y);
@@ -236,6 +245,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // Impossible interactions must report the need for repositioning, not
     // stretch a joint or rotate an arm through the upper torso.
     const wrist=clampReach(shoulder,desired,19.92);
+    if(p.deterministic)arm.bend.set(5,-2,sign*7);
     const preferred=P(6,-2,sign*10);
     let solved=solveTwoBone(shoulder,wrist,10,10,
       preferred,ARM_LIMITS,arm.bend);
