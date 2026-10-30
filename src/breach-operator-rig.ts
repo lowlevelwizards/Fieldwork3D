@@ -179,7 +179,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.weapon.scale.set(data.lengthScale,1,p.weapon==='shotgun'?1.28:1);
   r.weapon.rotation.copy(fit.rotation);
   r.weapon.position.copy(fit.origin);
-  if(p.flashActive)r.weapon.rotation.z-=.25;
+  // Weapon kick and muzzle flash may not break solved hand contacts.
   // A physical door reach may shift the chest a little over the support
   // foot, but the whole character is never allowed to tip like a rigid pole.
   const reloadProgress=p.reload>0?1-p.reload/p.reloadDuration:0;
