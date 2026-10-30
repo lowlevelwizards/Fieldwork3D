@@ -9,7 +9,7 @@ import {
   planSync,movePlanNode,
   finalPoint,doorAtNode,backOne,
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
-  posture,toggleContactRule,toggling,stepSession,knownAt,liveVisibility,
+  posture,toggleContactRule,toggling,stepSession,liveVisibility,
   planReload,reloadNow,planFlash,moveFlashTarget,flashTrajectory,
   cycleWeapon,
 } from './breach-game.ts';

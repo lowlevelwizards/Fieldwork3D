@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {W,H,WALLS,COVER,initialDoors,doorCenter,activeSite,
   isClear,type Pt} from './breach-core.ts';
 import {type Site} from './breach-site.ts';
-import {type Session,type TeamActor,team,isSeen,liveVisibility} from './breach-game.ts';
+import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
 import {shotVisibility} from './breach-presentation.ts';
 import {doorKnown,wallKnown,coverKnown,roomKnown}
   from './breach-intel.ts';
