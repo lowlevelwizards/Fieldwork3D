@@ -36,7 +36,7 @@ export type OperatorRig={
   footsteps:FootstepScheduler;
   /** Non-authoritative request for the motor/controller to reposition. */
   reachRequest:null|{kind:'door';distance:number};
-  gripError:number;
+  gripError:number;legGap:[number,number];
   stridePhase:number;colors:Map<THREE.MeshStandardMaterial,THREE.Color>;
   dispose:()=>void;
 };
@@ -101,7 +101,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     legacyArms:[new THREE.Group(),new THREE.Group()],
     lastTime:-1,lastPose:null,stridePhase:0,
     footsteps:createFootstepScheduler(),reachRequest:null,
-    gripError:0,
+    gripError:0,legGap:[0,0],
     dispose:()=>{root.traverse(obj=>{if(obj instanceof THREE.Mesh){
       obj.geometry.dispose();
       const m=obj.material as THREE.Material;m.dispose();
@@ -195,10 +195,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       target.position.y);
     const relative=targetWorld.sub(P(p.x,0,p.z))
       .applyAxisAngle(P(0,1,0),-headingYaw);
-    const leg=solveTwoBone(hipLocal,relative,9.7,9.7,
+    const leg=solveTwoBone(hipLocal,relative,10.3,10.3,
       P(4.5,0,sign*1.1),LEG_LIMITS,foot.bend);
     foot.bend.copy(leg.bendPlane);
     foot.outOfReach=!leg.reached;
+    // The boot follows the scheduled contact, so report the anatomical
+    // ankle separation for tuning rather than silently hiding it.
+    r.legGap[i]=leg.effector.distanceTo(relative);
     // Contact remains in world space. Unreachable limbs report a constraint
     // violation instead of spinning the knee or teleporting their boot.
     alignSegment(foot.upper,hipLocal,leg.joint,P(0,0,sign));
