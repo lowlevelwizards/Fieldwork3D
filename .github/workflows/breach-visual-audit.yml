@@ -30,6 +30,7 @@ on:
       - 'src/breach-style.css'
       - 'tests/breach-052.test.mjs'
       - 'scripts/capture-breach.mjs'
+      - 'scripts/smoke-operator-lab.mjs'
       - '.github/workflows/breach-visual-audit.yml'
       - 'vite.config.ts'
 jobs:
@@ -45,8 +46,10 @@ jobs:
           node-version: '24'
       - run: npm install --no-package-lock
       - run: npm install --no-save --package-lock=false playwright@1.56.1
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
       - run: npm run build
+      - name: Operator Lab first-frame startup (Chromium and WebKit)
+        run: node scripts/smoke-operator-lab.mjs
       - run: node scripts/capture-breach.mjs
       - uses: actions/upload-artifact@v4
         if: always()
