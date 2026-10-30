@@ -106,8 +106,23 @@ export function generateSite(seed:number):Site{
   // The objective belongs to a distant interior room, not to a crate.
   const far=habitable.filter(room=>room.y<ys[Math.min(1,rows-1)]);
   const objectiveRoom=far[between(rng,0,far.length-1)]??habitable[0];
-  const objective={x:objectiveRoom.x+objectiveRoom.w*.52,
+  let objective={x:objectiveRoom.x+objectiveRoom.w*.52,
     y:objectiveRoom.y+objectiveRoom.h*.50};
+  // A mission objective must never spawn inside blocking furniture.
+  if(cover.some(o=>Math.abs(objective.x-o.x)<o.w/2+23&&
+      Math.abs(objective.y-o.y)<o.h/2+23)){
+    const slots=[
+      {x:objectiveRoom.x+43,y:objectiveRoom.y+43},
+      {x:objectiveRoom.x+objectiveRoom.w-43,y:objectiveRoom.y+43},
+      {x:objectiveRoom.x+43,y:objectiveRoom.y+objectiveRoom.h-43},
+      {x:objectiveRoom.x+objectiveRoom.w-43,
+        y:objectiveRoom.y+objectiveRoom.h-43},
+    ];
+    const available=slots.find(p=>cover.every(o=>
+      Math.abs(p.x-o.x)>o.w/2+20||
+      Math.abs(p.y-o.y)>o.h/2+20));
+    if(available)objective=available;
+  }
   const enemies:Pt[]=[];
   const count=between(rng,Math.max(2,target-1),Math.min(7,target+1));
   for(let i=0;i<count;i++){
