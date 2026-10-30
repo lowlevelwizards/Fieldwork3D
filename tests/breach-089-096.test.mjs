@@ -5,7 +5,7 @@ import {newSession,team,enemies,planMove,planReload,planFlash,
   stepSession,toggling} from '../src/breach-game.ts';
 import {MissionRecorder,applyReplayFrame} from '../src/breach-replay.ts';
 import {angleDifference} from '../src/breach-plan.ts';
-import {activateSite} from '../src/breach-core.ts';
+import {activateSite,doorCenter} from '../src/breach-core.ts';
 
 const advance=(s,seconds)=>{
   for(let i=0;i<seconds*60;i++)stepSession(s,1/60);
@@ -82,6 +82,26 @@ test('093: investigation is grounded in audible location, not magic visibility',
   assert.ok(e.heard);
   assert.ok(Math.hypot(e.heard.x-sight.x,e.heard.y-sight.y)>15);
   assert.ok(['investigating','retreat','cover','engaging'].includes(e.alert));
+  activateSite(null);
+});
+
+
+test('093: pursuing guards can operate a closed door',()=>{
+  const s=newSession(0,33717);
+  const door=s.doors.find(x=>x.id==='FRONT');
+  assert.ok(door&&!door.open);
+  const pos=doorCenter(door),guard=enemies(s)[0];
+  guard.p={x:pos.x,y:pos.y-36};
+  guard.priorP={...guard.p};
+  guard.alert='investigating';
+  guard.contact={x:pos.x,y:pos.y+90};
+  guard.heard={...guard.contact};
+  guard.alertUntil=30;
+  // Other guards cannot interfere with this deterministic doorway exercise.
+  enemies(s).filter(a=>a!==guard).forEach(a=>a.health=0);
+  s.phase='running';
+  advance(s,5);
+  assert.ok(door.open,'guard should open a door blocking the pursuit route');
   activateSite(null);
 });
 
