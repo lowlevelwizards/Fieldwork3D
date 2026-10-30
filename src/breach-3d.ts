@@ -485,44 +485,69 @@ export class TacticalScene3D{
   }
   private soldier(a:TeamActor){
     const root=new THREE.Group();
-    const suit=this.solid(a.side==='blue'?(a.id==='rook'?0x80baad:0xa5b28d):0xba7b66);
-    const dark=this.solid(0x2e3b3b),olive=this.solid(0x55614f),
-      straps=this.solid(0x343a31),helmet=this.solid(0x727f6f);
-    this.box(root,0,12,0,10,14,8,suit);
-    const head=new THREE.Mesh(new THREE.SphereGeometry(1,12,9),
-      new THREE.MeshStandardMaterial({color:0x859286,roughness:.86}));
-    head.scale.set(5.2,4.7,5.7);head.position.set(0,22,0);
+    const palette:Record<string,number>={
+      rook:0x76a69e,moss:0x8f9f78,ash:0xb79b77,vale:0x9595b1,
+    };
+    const suit=this.solid(a.side==='blue'?
+      palette[a.id]??0x819a91:0xa77669);
+    const dark=this.solid(0x2b3433),vest=this.solid(0x45554c),
+      olive=this.solid(0x60694e),helmet=this.solid(0x727d6b),
+      skin=this.solid(0xa78a74),metal=this.solid(0x414847,.48);
+    // Readable torso with broad vest, narrow waist and useful shoulder mass.
+    this.box(root,0,13,0,12,13,9,suit);
+    this.box(root,0,16,4.5,12,9,3,vest,false);
+    this.box(root,0,9,0,10,3,8,vest);
+    for(const x of [-7,7]){
+      this.box(root,x,19,.5,4,5,8,suit);
+    }
+    const head=new THREE.Mesh(new THREE.SphereGeometry(1,12,10),skin);
+    head.scale.set(5.7,5.2,5.8);head.position.set(0,24,0);
     head.castShadow=true;root.add(head);
-    this.box(root,0,25,1,12,2,10,helmet,false);
-    const pack=this.box(root,0,13,-7,9,12,6,olive);
-    this.box(root,0,15,5,9,8,2,straps);
-    for(const x of [-5,5]){
-      this.box(root,x,14,1,2,11,3,olive);
+    const shell=new THREE.Mesh(new THREE.SphereGeometry(1,12,8),helmet);
+    shell.scale.set(6.5,3.2,6.2);shell.position.set(0,27,0.3);
+    shell.rotation.z=-.09;root.add(shell);
+    this.box(root,0,25.9,5.7,12.5,1.3,3,helmet,false);
+    for(const x of [-5.8,5.8]){
+      this.box(root,x,22,0,1.2,4.5,4,skin,false);
+    }
+    // Load-bearing webbing is visible at play distance, with large forms
+    // instead of several overlapping micro-details.
+    const pack=this.box(root,0,14,-7.7,11,14,7,olive);
+    this.box(root,0,17,-11.5,8,5,2,vest,false);
+    this.box(root,-4.2,17,4,2,10,2,olive,false);
+    this.box(root,4.2,17,4,2,10,2,olive,false);
+    for(const x of [-4.5,4.5]){
+      this.box(root,x,11,6.5,3.4,4,2,olive,false);
     }
     const legs:THREE.Group[]=[],arms:THREE.Group[]=[];
     for(const side of [-1,1]){
       const hip=new THREE.Group();hip.position.set(side*3,7,0);
-      this.box(hip,0,-2,0,4,8,5,dark);
-      this.box(hip,0,-7,2,5,3,7,straps);
+      this.box(hip,0,-2,0,4.4,8,5,suit);
+      this.box(hip,0,-6.6,1.7,4,5,4,dark);
+      this.box(hip,.1,-9,3,4.6,2.8,6,dark);
+      hip.rotation.x=side*.06;
       root.add(hip);legs.push(hip);
-      const arm=new THREE.Group();arm.position.set(side*7,18,2);
-      this.box(arm,0,-3,2,3,9,3,suit);
-      root.add(arm);arms.push(arm);
+      const arm=new THREE.Group();arm.position.set(side*7.3,19,2);
+      this.box(arm,0,-3.2,2,3.4,8.5,4,suit);
+      this.box(arm,0,-7,3.5,3.5,3,4.3,skin);
+      arm.rotation.x=-.16;root.add(arm);arms.push(arm);
     }
-    // Rifle points in +X (world tactics heading=0).
-    const weapon=this.box(root,15,15,4,25,3,4,dark);
-    this.box(root,23,15,4,7,1.6,2.5,straps);
+    // Grounded rifle silhouette: receiver, stock, barrel and sight.
+    this.box(root,13,15,4,18,3.4,4,metal);
+    this.box(root,24,15,4,14,1.9,2,metal,false);
+    this.box(root,2,15,5,11,3,3,dark,false);
+    this.box(root,14,11.8,4,4,5,2.4,dark,false);
+    this.box(root,12,18,4,4,2.4,1.9,metal,false);
     const flash=new THREE.Mesh(new THREE.OctahedronGeometry(4),
-      new THREE.MeshBasicMaterial({color:0xffde97,transparent:true,opacity:.96,
-        depthWrite:false}));
-    flash.position.set(28,15,4);flash.visible=false;root.add(flash);
+      new THREE.MeshBasicMaterial({color:0xffde97,transparent:true,
+        opacity:.96,depthWrite:false}));
+    flash.position.set(31,15,4);flash.visible=false;root.add(flash);
     const status=new THREE.Mesh(new THREE.RingGeometry(12,16,30),
       new THREE.MeshBasicMaterial({color:0xdb8d76,transparent:true,
         opacity:.9,depthWrite:false,side:THREE.DoubleSide}));
     status.rotation.x=-Math.PI/2;status.visible=false;
     this.scene.add(root,status);
     this.actors.set(a.id,{root,legs,arms,flash,pack,status});
-    void weapon;
   }
   update(s:Session,selected:string,dt:number,focusedDoorId:string|null=null){
     if(this.view.mode==='plan2d')return;
@@ -555,6 +580,12 @@ export class TacticalScene3D{
         (liveVisibility(s,doorCenter(door))||
          knownAt(s,doorCenter(door).x,doorCenter(door).y));
       object.halo.rotation.z+=dt*.3;
+    }
+    // Switching procedurally generated sites may change hostile counts.
+    // Hide cached actors absent from the new encounter.
+    const current=new Set(s.operators.map(a=>a.id));
+    for(const [id,object] of this.actors)if(!current.has(id)){
+      object.root.visible=false;object.status.visible=false;
     }
     for(const actor of s.operators){
       if(!this.actors.has(actor.id))this.soldier(actor);
