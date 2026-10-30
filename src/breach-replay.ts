@@ -18,7 +18,7 @@ export type ReplayFrame={
   dropped:DroppedMagazine[];impactMarks:ImpactMark[];grenades:FlashGrenade[];
   flashBursts:FlashBurst[];flashRemaining:number;
   missionType:Session['missionType'];holdTime:number;
-  rescue:{p:Pt;following:string|null}|null;
+  rescue:{p:Pt;following:string|null}|null;objective:Pt;
   seenGround:string[];known:[string,{p:Pt;at:number;status:'seen'|'heard'}][];
 };
 const position=(p:Pt):Pt=>({x:p.x,y:p.y});
@@ -48,6 +48,7 @@ export function snapshot(s:Session):ReplayFrame{
     flashRemaining:s.flashRemaining,
     missionType:s.missionType,holdTime:s.holdTime,
     rescue:s.rescue?{p:position(s.rescue.p),following:s.rescue.following}:null,
+    objective:position(s.scenario.objective),
     seenGround:[...s.seenGround],
     known:[...s.known].map(([id,c])=>[id,
       {p:position(c.p),at:c.at,status:c.status}]),
@@ -109,6 +110,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   s.missionType=f.missionType;s.holdTime=f.holdTime;
   s.rescue=f.rescue?{p:position(f.rescue.p),
     following:f.rescue.following}:null;
+  s.scenario.objective=position(f.objective);
   s.seenGround=new Set(f.seenGround);
   s.known=new Map(f.known.map(([id,c])=>[id,
     {p:position(c.p),at:c.at,status:c.status}]));
