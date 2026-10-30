@@ -403,12 +403,13 @@ export function insertPlanNode(s:Session,id:string,index:number,p:Pt){
  * walking inherits it until another aim instruction explicitly overrides it.
  */
 export function planAim(s:Session,id:string,mode:AimMode,target:Pt,nodeId?:number,
-  label:'look'|'strafe'|'pie'=mode==='track'?'pie':'look'){
+  label:'look'|'strafe'|'pie'=mode==='track'?'pie':'look',
+  origin:'end'|'here'='end'){
   const a=party(s,id);
   if(!a||!canEdit(s)||!Number.isFinite(target.x)||!Number.isFinite(target.y))return false;
   const node=nodeId===undefined?undefined:a.plan.find(n=>n.id===nodeId);
   if(nodeId!==undefined&&!node)return false;
-  const pos=node?.p??finalPoint(a);
+  const pos=node?.p??(origin==='here'?a.p:finalPoint(a));
   if(d(pos,target)<2)return false;
   const patch:Partial<PlanNode>=mode==='track'?
     {aimMode:'track',facing:undefined,aimPoint:clone(target),aimLabel:label}:
@@ -416,6 +417,9 @@ export function planAim(s:Session,id:string,mode:AimMode,target:Pt,nodeId?:numbe
   if(node)return edit(s,a,()=>{
     node.aimMode=patch.aimMode;node.facing=patch.facing;
     node.aimPoint=patch.aimPoint;node.aimLabel=patch.aimLabel;
+  });
+  if(origin==='here')return edit(s,a,()=>{
+    a.plan.unshift({id:s.nextId++,kind:'look',p:clone(a.p),...patch});
   });
   return addNode(s,id,'look',pos,patch);
 }
@@ -521,6 +525,27 @@ export function planSquadEntry(s:Session,doorId:string){
   }
   notify(s,'SQUAD ENTRY READY · GO TO EXECUTE');
   return true;
+}
+export function planWaitAt(s:Session,id:string,seconds=2,
+  origin:'here'|'end'='here',afterNodeId?:number){
+  const a=party(s,id);if(!a||!canEdit(s))return false;
+  const after=afterNodeId===undefined?-1:
+    a.plan.findIndex(n=>n.id===afterNodeId);
+  if(afterNodeId!==undefined&&after<0)return false;
+  if(afterNodeId!==undefined||origin==='here'){
+    const point=afterNodeId!==undefined?a.plan[after].p:a.p;
+    return edit(s,a,()=>a.plan.splice(after+1,0,{
+      id:s.nextId++,kind:'wait',p:clone(point),
+      duration:clamp(seconds,.3,6)}));
+  }
+  return planWait(s,id,seconds);
+}
+export function setMoveSprint(s:Session,id:string,nodeId:number){
+  const a=party(s,id),node=a?.plan.find(n=>n.id===nodeId);
+  if(!a||!node||node.kind!=='move'||!canEdit(s))return false;
+  return edit(s,a,()=>{
+    node.moveMode=node.moveMode==='sprint'?'advance':'sprint';
+  });
 }
 export function planWait(s:Session,id:string,seconds=1.2){
   const a=party(s,id);return a?addNode(s,id,'wait',finalPoint(a),
@@ -896,7 +921,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     const tracking=a.aimInstruction?.mode==='track'||
       n.aimMode==='track';
     const cautious=n.moveMode==='strafe'||tracking;
-    approach(a,n.p,dt,s,cautious?.70:1);
+    approach(a,n.p,dt,s,n.moveMode==='sprint'?1.40:cautious?.70:1);
     // Unmodified movement follows its route, while an explicit fixed STRAFE
     // or PIE/TRACK instruction persists until LOOK releases it.
     const held=aimHeading(a);
@@ -1125,6 +1150,12 @@ function strikeSurface(from:Pt,aimed:Pt,s:Session):{
 }
 function fire(s:Session,a:TeamActor,dt:number){
   if(a.health<=0)return;
+  // Sprinting is a traversal decision, not free accurate fire on the move.
+  if(a.plan[0]?.moveMode==='sprint'&&a.velocity>12){
+    a.aim=Math.max(0,a.aim-dt*2.2);
+    a.weaponYaw=approachAngle(a.weaponYaw,a.heading,dt*4);
+    return;
+  }
   const profile=BALLISTICS[a.weapon];
   const recovering=recoverWeapon(a.recoil,a.stability,dt,profile,a.velocity>10);
   a.recoil=recovering.recoil;a.stability=recovering.stability;
