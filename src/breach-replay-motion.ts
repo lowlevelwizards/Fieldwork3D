@@ -77,8 +77,13 @@ export class ReplayMotionRecorder{
       // Track the true motor direction, not the displacement between
       // unrelated rendered frames (often identical in the 20Hz film).
       const moving=actor.velocity/72;
-      const rootYaw=-(moving>.22?track.travelYaw:actor.heading);
+      const offset=track.travelYaw-actor.heading;
+      const side=Math.abs(Math.sin(offset))>.52;
+      const reverse=Math.cos(offset)<-.4;
+      const rootYaw=-(moving>.22&&!side&&!reverse?
+        track.travelYaw:actor.heading);
       const input:FootstepInput={time,position,rootYaw,
+        facingYaw:actor.heading,
         travelYaw:track.travelYaw,speed:actor.velocity,
         turning:actor.turning,posture:actor.posture,
         injury:actor.injuryStage,down:actor.health<=0,

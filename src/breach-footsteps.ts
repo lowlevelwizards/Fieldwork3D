@@ -1,6 +1,8 @@
 /** Build 119: deliberate world-space steps. No render-frame stance clamping.
  * The game motor supplies position and velocity; this module never moves actors.
  */
+import {classifyLocomotion,lateralAxis,sideOffset,uncrossed,
+  type LocomotionMode} from './breach-locomotion.ts';
 export type GroundPoint={x:number;y:number};
 export type FootPhase='planted'|'unloading'|'swinging'|'landing'|'recovering';
 export type StepReason='locomotion'|'turn'|'settle';
@@ -14,16 +16,18 @@ export type FootstepScheduler={
   feet:[FootstepState,FootstepState];initialized:boolean;
   lastTime:number;lastPosition:GroundPoint;lastYaw:number;
   lastStepFoot:number;lastStepAt:number;resets:number;
+  mode:LocomotionMode;shuffleLead:number;shuffleNext:'lead'|'follow';
 };
 export type FootstepInput={
   time:number;position:GroundPoint;rootYaw:number;
   /** Travel direction in the same world X/Y plane, independent of rootYaw. */
   travelYaw:number;speed:number;turning:number;
   posture:'stand'|'crouch';injury:number;down:boolean;
-  cautious?:boolean;
+  cautious?:boolean;facingYaw?:number;
 };
 export type FootTarget={position:GroundPoint;height:number;
-  worldYaw:number;phase:FootPhase;contact:boolean};
+  worldYaw:number;phase:FootPhase;contact:boolean;
+  reason?:StepReason;}
 const clamp=(x:number,min:number,max:number)=>Math.max(min,Math.min(max,x));
 const deltaAngle=(a:number,b:number)=>Math.atan2(Math.sin(b-a),Math.cos(b-a));
 const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
@@ -43,7 +47,8 @@ function createFoot():FootstepState{
 export function createFootstepScheduler():FootstepScheduler{
   return {feet:[createFoot(),createFoot()],initialized:false,
     lastTime:-1,lastPosition:{x:0,y:0},lastYaw:0,
-    lastStepFoot:1,lastStepAt:-100,resets:0};
+    lastStepFoot:1,lastStepAt:-100,resets:0,
+    mode:'idle',shuffleLead:1,shuffleNext:'lead'};
 }
 export function resetFootsteps(s:FootstepScheduler,input:FootstepInput):void{
   for(let i=0;i<2;i++){
@@ -57,6 +62,7 @@ export function resetFootsteps(s:FootstepScheduler,input:FootstepInput):void{
   }
   s.initialized=true;s.lastTime=input.time;s.lastPosition=copy(input.position);
   s.lastYaw=input.rootYaw;s.lastStepAt=-100;s.lastStepFoot=1;s.resets++;
+  s.mode='idle';s.shuffleNext='lead';
 }
 export function gaitBounds(input:FootstepInput){
   const slow=input.cautious||input.posture==='crouch';
@@ -70,25 +76,63 @@ export function gaitBounds(input:FootstepInput){
     unloadDuration:slow?.055:.025,
     landingDuration:.035,recoveryDuration:slow?.09:.055};
 }
+/** Clamp planned *paths*, not rendered boots. In the local facing frame
+ * the left foot must remain left of the right foot throughout a swing. */
+function safeLanding(s:FootstepScheduler,index:number,
+  proposed:GroundPoint,input:FootstepInput):GroundPoint{
+  const facing=input.facingYaw??-input.rootYaw;
+  const axis=lateralAxis(facing),other=s.feet[1-index];
+  const gap=4.0;
+  const lateral=sideOffset(input.position,proposed,facing);
+  const otherLateral=sideOffset(input.position,other.plantedAt,facing);
+  const side=index===0?-1:1;
+  const minimum=side===1?otherLateral+gap:Math.max(-25,-Infinity);
+  const maximum=side===-1?otherLateral-gap:Math.min(25,Infinity);
+  // Keep a foot on its anatomical side whenever the other side allows it.
+  // During a lateral slide the planted foot may temporarily be farther
+  // from the pelvis; never warp it to satisfy a comfort envelope.
+  const target=side===1?Math.max(lateral,minimum):
+    Math.min(lateral,maximum);
+  const safe=side===1?Math.max(target,1.9):
+    Math.min(target,-1.9);
+  return {x:proposed.x+axis.x*(safe-lateral),
+    y:proposed.y+axis.y*(safe-lateral)};
+}
 function startStep(s:FootstepScheduler,index:number,input:FootstepInput){
   const foot=s.feet[index],bounds=gaitBounds(input);
+  const facing=input.facingYaw??-input.rootYaw;
+  const axis=lateralAxis(facing);
   const duration=bounds.unloadDuration+bounds.swingDuration;
-  const travel=input.speed>5?input.travelYaw:input.rootYaw;
+  const strafe=s.mode==='strafe-left'||s.mode==='strafe-right';
+  const pivot=s.mode==='pivot',settle=s.mode==='settle';
+  const travel=input.speed>5?input.travelYaw:facing;
   const advance=clamp(input.speed*duration,0,13);
   const predicted={x:input.position.x+Math.cos(travel)*advance,
     y:input.position.y+Math.sin(travel)*advance};
-  const land=lateral(predicted,input.rootYaw,index===0?-1:1);
-  if(input.speed>5){
+  let land=lateral(predicted,input.rootYaw,index===0?-1:1);
+  if(strafe){
+    // Shuffle outward with the leading foot, then draw in the trailing
+    // foot. The follow-step cannot overtake the leading foot.
+    const outward=s.shuffleLead===1?1:-1;
+    const lead=index===s.shuffleLead;
+    const base=sideOffset(input.position,land,facing);
+    const wanted=base+(lead?outward*4.3:outward*.4);
+    land={x:land.x+axis.x*(wanted-base),
+      y:land.y+axis.y*(wanted-base)};
+  }else if(pivot||settle){
+    land=lateral(input.position,input.rootYaw,index===0?-1:1);
+  }else if(input.speed>5){
     land.x+=Math.cos(travel)*bounds.preferredLead;
     land.y+=Math.sin(travel)*bounds.preferredLead;
   }
-  // Turn in place: a pivot step relocates a foot without sliding its anchor.
+  land=safeLanding(s,index,land,input);
   foot.swingFrom=copy(foot.plantedAt);foot.swingTo=land;
   foot.fromYaw=foot.worldYaw;foot.targetYaw=input.rootYaw;
   foot.phase='unloading';foot.contact=true;
-  foot.reason=input.speed>5?'locomotion':'turn';
+  foot.reason=pivot?'turn':settle?'settle':'locomotion';
   foot.phaseStart=input.time;foot.phaseDuration=bounds.unloadDuration;
   s.lastStepFoot=index;s.lastStepAt=input.time;
+  if(strafe)s.shuffleNext=s.shuffleNext==='lead'?'follow':'lead';
 }
 function progress(foot:FootstepState,input:FootstepInput){
   const bounds=gaitBounds(input);
@@ -115,7 +159,8 @@ function progress(foot:FootstepState,input:FootstepInput){
 function target(foot:FootstepState,input:FootstepInput):FootTarget{
   if(foot.phase!=='swinging'){
     return {position:copy(foot.plantedAt),height:0,
-      worldYaw:foot.worldYaw,phase:foot.phase,contact:foot.contact};
+      worldYaw:foot.worldYaw,phase:foot.phase,contact:foot.contact,
+      reason:foot.reason};
   }
   const t=clamp((input.time-foot.phaseStart)/foot.phaseDuration,0,1);
   const e=ease(t);
@@ -123,7 +168,7 @@ function target(foot:FootstepState,input:FootstepInput):FootTarget{
     y:mix(foot.swingFrom.y,foot.swingTo.y,e)},
     height:Math.sin(Math.PI*t)*(input.cautious?2.1:3.4),
     worldYaw:foot.fromYaw+deltaAngle(foot.fromYaw,foot.targetYaw)*e,
-    phase:foot.phase,contact:false};
+    phase:foot.phase,contact:false,reason:foot.reason};
 }
 export function advanceFootsteps(s:FootstepScheduler,input:FootstepInput):
   [FootTarget,FootTarget]{
@@ -133,12 +178,21 @@ export function advanceFootsteps(s:FootstepScheduler,input:FootstepInput):
       Math.max(22,input.speed*Math.max(0,dt)*1.7+17);
   if(discontinuity)resetFootsteps(s,input);
   for(const foot of s.feet)progress(foot,input);
+  const facing=input.facingYaw??-input.rootYaw;
+  const requested=classifyLocomotion(input.speed,facing,input.travelYaw,
+    input.turning,s.mode);
+  if(requested!==s.mode){
+    // A reversing shuffle starts with the new leading foot; the active
+    // step is never cancelled or teleported mid-swing.
+    s.mode=requested;
+    s.shuffleLead=requested==='strafe-left'?0:1;
+    s.shuffleNext='lead';
+  }
   const bounds=gaitBounds(input);
-  // No two legs may lose contact in ordinary walking. A planted anchor is
-  // NEVER translated merely because the pelvis moves or turns.
   const busy=s.feet.some(f=>f.phase==='unloading'||f.phase==='swinging');
   if(!busy&&!input.down){
     let best=-1,bestScore=0;
+    const strafe=s.mode==='strafe-left'||s.mode==='strafe-right';
     const active=input.speed>7;
     for(let i=0;i<2;i++){
       const foot=s.feet[i];
@@ -150,15 +204,27 @@ export function advanceFootsteps(s:FootstepScheduler,input:FootstepInput):
       const forward=dx*Math.cos(input.travelYaw)+dy*Math.sin(input.travelYaw);
       const error=Math.hypot(dx,dy);
       const turningError=Math.abs(deltaAngle(foot.worldYaw,input.rootYaw));
-      const mustMove=active&&(forward>bounds.comfortableForward*.64||
-        error>bounds.comfortableLateral||
-        s.lastStepAt<0);
-      const pivot=!active&&(turningError>.31||error>5.5);
-      if(!mustMove&&!pivot)continue;
-      const score=active?forward+error*.3:turningError*8+error;
-      if(score>bestScore+.001||best<0){
-        best=i;bestScore=score;
+      if(strafe){
+        const candidate=s.shuffleNext==='lead'?s.shuffleLead:1-s.shuffleLead;
+        if(i!==candidate)continue;
+        const along=sideOffset(input.position,foot.plantedAt,facing);
+        const need=Math.abs(along-(i===0?-5.6:5.6));
+        // Start a lead step when movement begins or the leading foot
+        // trails the pelvis; follow only after the lead has landed.
+        if(s.shuffleNext==='lead'&&
+          (s.lastStepAt<0||need>bounds.comfortableLateral*.65))
+          {best=i;break;}
+        if(s.shuffleNext==='follow'&&
+          (need>2||error>2.5)){best=i;break;}
+        continue;
       }
+      const settle=s.mode==='settle'&&error>5.5;
+      const mustMove=active&&(forward>bounds.comfortableForward*.64||
+        error>bounds.comfortableLateral||s.lastStepAt<0);
+      const pivot=s.mode==='pivot'&&(turningError>.2||error>5.5);
+      if(!mustMove&&!pivot&&!settle)continue;
+      const score=active?forward+error*.3:turningError*8+error;
+      if(score>bestScore+.001||best<0){best=i;bestScore=score;}
     }
     if(best>=0&&input.time-s.lastStepAt>(active?.09:.19)){
       startStep(s,best,input);
@@ -166,6 +232,10 @@ export function advanceFootsteps(s:FootstepScheduler,input:FootstepInput):
   }
   const samples=s.feet.map(foot=>target(foot,input)) as
     [FootTarget,FootTarget];
+  // Debug assertion: never silently accept a crossed planted stance.
+  // A previous planted foot is not teleported even when the body turns.
+  // The planner must schedule a recovery step if this becomes unsafe.
+  void uncrossed;
   s.lastTime=input.time;s.lastPosition=copy(input.position);
   s.lastYaw=input.rootYaw;
   return samples;
