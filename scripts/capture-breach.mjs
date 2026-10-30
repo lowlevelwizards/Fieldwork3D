@@ -216,7 +216,7 @@ try{
   await phone.touchscreen.tap(doorPoint.x,doorPoint.y);
   // The *final planned position* is enough to trigger door options;
   // requiring the player to tap its node first was a 076 UX regression.
-  for(const action of ['ctxStack','ctxOpen','ctxKick','ctxHold']){
+  for(const action of ['ctxEntry','ctxOpen','ctxKick','ctxHold']){
     if(!await phone.locator('#contextTools button[data-action="'+action+'"]').isVisible())
       throw Error('Missing contextual door option '+action+' at planned destination');
   }
