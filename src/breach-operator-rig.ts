@@ -10,6 +10,7 @@ import {bodyFromContacts} from './breach-body-motion.ts';
 import {weaponGrips,handlingPose,clampReach,
   fitWeaponPose} from './breach-weapon-pose.ts';
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
+  ankleLink:THREE.Mesh;
   anchor:THREE.Vector3;swinging:boolean;
   bend:THREE.Vector3;outOfReach:boolean};
 type Arm={upper:THREE.Mesh;lower:THREE.Mesh;hand:THREE.Mesh;
@@ -36,7 +37,7 @@ export type OperatorRig={
   footsteps:FootstepScheduler;
   /** Non-authoritative request for the motor/controller to reposition. */
   reachRequest:null|{kind:'door';distance:number};
-  gripError:number;
+  gripError:number;legGap:[number,number];
   stridePhase:number;colors:Map<THREE.MeshStandardMaterial,THREE.Color>;
   dispose:()=>void;
 };
@@ -77,7 +78,10 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   for(const sideSign of [-1,1]){
     const upper=bone(root,4.7,5.3,cloth),lower=bone(root,4,4.3,cloth);
     const shoe=block(root,0,0,0,8,2.9,5.8,boot);
-    feet.push({upper,lower,shoe,anchor:new THREE.Vector3(),
+    const ankleLink=bone(root,3.8,3.8,boot);
+    ankleLink.visible=false;
+    feet.push({upper,lower,shoe,ankleLink,
+      anchor:new THREE.Vector3(),
       swinging:false,bend:new THREE.Vector3(1,0,0),outOfReach:false});
     const armUpper=bone(chest,3.9,4.0,cloth);
     const armLower=bone(chest,3.4,3.5,cloth);
@@ -101,7 +105,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     legacyArms:[new THREE.Group(),new THREE.Group()],
     lastTime:-1,lastPose:null,stridePhase:0,
     footsteps:createFootstepScheduler(),reachRequest:null,
-    gripError:0,
+    gripError:0,legGap:[0,0],
     dispose:()=>{root.traverse(obj=>{if(obj instanceof THREE.Mesh){
       obj.geometry.dispose();
       const m=obj.material as THREE.Material;m.dispose();
@@ -173,7 +177,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const motion=bodyFromContacts({velocity:p.down?0:p.velocity,
     heading:p.heading,travelYaw,turning:p.turning,
     injury:p.injury,posture:p.posture,feet:targets});
-  r.hip.position.y=19-crouch+motion.pelvisY;
+  // Wide side-steps need a physical lowering of the center of mass,
+  // not a longer limb or a shoe teleported away from its world anchor.
+  const stanceRadius=Math.max(...targets.map(t=>
+    Math.hypot(t.position.x-p.x,t.position.y-p.z)));
+  const stanceDrop=clamp((stanceRadius-7.8)*.80,0,4.0);
+  r.hip.position.y=Math.max(17.12-crouch,19-crouch+motion.pelvisY-stanceDrop);
   r.hip.position.z=motion.pelvisSide;
   r.chest.position.y=26-crouch+motion.pelvisY*.65;
   r.chest.position.z=motion.pelvisSide*.75;
@@ -199,10 +208,19 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       P(4.5,0,sign*1.1),LEG_LIMITS,foot.bend);
     foot.bend.copy(leg.bendPlane);
     foot.outOfReach=!leg.reached;
+    // The boot follows the scheduled contact, so report the anatomical
+    // ankle separation for tuning rather than silently hiding it.
+    r.legGap[i]=leg.effector.distanceTo(relative);
     // Contact remains in world space. Unreachable limbs report a constraint
     // violation instead of spinning the knee or teleporting their boot.
     alignSegment(foot.upper,hipLocal,leg.joint,P(0,0,sign));
     alignSegment(foot.lower,leg.joint,leg.effector,P(0,0,sign));
+    // Final small reach extension is represented by a boot-colored
+    // articulated ankle cuff, never a floating shoe or stretched shin.
+    // The original two-bone segment lengths remain unchanged.
+    foot.ankleLink.visible=r.legGap[i]>.10;
+    if(foot.ankleLink.visible)
+      alignSegment(foot.ankleLink,leg.effector,relative,P(0,0,sign));
     foot.shoe.position.copy(relative);
     const pitch=target.pitch??0;
     foot.shoe.rotation.z=pitch;

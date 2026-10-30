@@ -255,6 +255,12 @@ export function advanceFootsteps(s:FootstepScheduler,input:FootstepInput):
       const forward=dx*Math.cos(input.travelYaw)+dy*Math.sin(input.travelYaw);
       const error=Math.hypot(dx,dy);
       const turningError=Math.abs(deltaAngle(foot.worldYaw,input.rootYaw));
+      // Move the next foot before the current planted leg becomes a
+      // straight, detached-looking tether. This threshold is derived
+      // from the two-bone leg's horizontal reach at standing hip height.
+      const reach=Math.hypot(input.position.x-foot.plantedAt.x,
+        input.position.y-foot.plantedAt.y);
+      const urgent=reach>7.1;
       if(strafe){
         const candidate=s.shuffleNext==='lead'?s.shuffleLead:1-s.shuffleLead;
         if(i!==candidate)continue;
@@ -263,15 +269,15 @@ export function advanceFootsteps(s:FootstepScheduler,input:FootstepInput):
         // Start a lead step when movement begins or the leading foot
         // trails the pelvis; follow only after the lead has landed.
         if(s.shuffleNext==='lead'&&
-          (s.lastStepAt<0||need>bounds.comfortableLateral*.65))
+          (s.lastStepAt<0||need>bounds.comfortableLateral*.47||urgent))
           {best=i;break;}
         if(s.shuffleNext==='follow'&&
-          (need>2||error>2.5)){best=i;break;}
+          (need>1.6||error>2.1||urgent)){best=i;break;}
         continue;
       }
       const settle=s.mode==='settle'&&error>5.5;
       const mustMove=active&&(forward>bounds.comfortableForward*.64||
-        error>bounds.comfortableLateral||s.lastStepAt<0);
+        error>bounds.comfortableLateral||s.lastStepAt<0||urgent);
       const pivot=s.mode==='pivot'&&(
         Math.abs(deltaAngle(s.pelvisYaw,input.rootYaw))>.1||
         turningError>.2||error>5.5);

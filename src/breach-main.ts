@@ -567,11 +567,11 @@ function paths(){
       if(n.facing!==undefined){
         const end={x:point.x+Math.cos(n.facing)*40,
           y:point.y+Math.sin(n.facing)*40};
-        line(point,end,'#ebcea1',2.1);circle(end.x,end.y,2.2,'#ebcea1');
+        line(point,end,c,2.1);circle(end.x,end.y,2.2,c);
       }
       if(n.aimMode==='track'&&n.aimPoint){
-        line(point,n.aimPoint,'#ddb37c',1.8);
-        circle(n.aimPoint.x,n.aimPoint.y,7,'#e6b77d');
+        line(point,n.aimPoint,c,1.8);
+        circle(n.aimPoint.x,n.aimPoint.y,7,c);
         circle(n.aimPoint.x,n.aimPoint.y,3,'#203732');
         draw.textAlign='left';draw.font='bold 10px monospace';
         draw.fillStyle='#e8cba2';
@@ -604,7 +604,7 @@ function paths(){
       }
       if(n.kind==='pie'&&n.pivot&&n.arc?.length){
         draw.save();
-        draw.strokeStyle='#e7b982';draw.lineWidth=3.2;
+        draw.strokeStyle=c;draw.lineWidth=3.2;
         draw.setLineDash([4,3]);draw.beginPath();
         const first=a.plan[i-1]?.p??a.p;
         draw.moveTo(first.x,first.y);
@@ -656,7 +656,7 @@ function renderProjectedPlans(){
           const projected=worldToScreen(point,4);
           draw.lineTo(projected.x,projected.y);
         }
-        draw.strokeStyle=n.kind==='pie'?'#e8c090':color;
+        draw.strokeStyle=color;
         draw.globalAlpha=a.id===selected?.94:.50;
         draw.lineWidth=n.kind==='pie'?3:2.4;
         draw.setLineDash(n.kind==='pie'?[3,3]:[7,4]);
@@ -666,7 +666,7 @@ function renderProjectedPlans(){
       const point=worldToScreen(selectedNow&&draggingNode&&n.kind!=='flash'?
         draggingNode:n.p,8);
       circle(point.x,point.y,selectedNow?11:7,
-        selectedNow?'#ecd29f':n.kind==='pie'?'#daa972':color);
+        selectedNow?'#ecd29f':color);
       circle(point.x,point.y,3,'#233b39');
       draw.fillStyle='#142829';draw.font='bold 11px monospace';
       draw.textAlign='center';draw.fillText(String(a.plan.indexOf(n)+1),
@@ -674,13 +674,13 @@ function renderProjectedPlans(){
       if(n.facing!==undefined){
         const aim=worldToScreen({x:n.p.x+Math.cos(n.facing)*38,
           y:n.p.y+Math.sin(n.facing)*38},8);
-        line(point,aim,'#efd5a4',2);
-        circle(aim.x,aim.y,3,'#efd5a4');
+        line(point,aim,color,2);
+        circle(aim.x,aim.y,3,color);
       }
       if(n.aimMode==='track'&&n.aimPoint){
         const target=worldToScreen(n.aimPoint,12);
-        line(point,target,'#dcb988',1.8);
-        circle(target.x,target.y,8,'#eac089');
+        line(point,target,color,1.8);
+        circle(target.x,target.y,8,color);
         circle(target.x,target.y,3,'#264039');
         draw.fillStyle='#f1d7a4';draw.textAlign='left';
         draw.font='bold 10px monospace';
@@ -824,7 +824,7 @@ function renderProjectedPlans(){
   }
   // Unknown enemies stay unrendered; only grounded last-known reports show.
   for(const hostile of enemies(state)){
-    if(isSeen(state,hostile))continue;
+    if(isSeen(state,hostile)||hostile.health<=0)continue;
     const memory=lastKnown(state,hostile.id);
     if(!memory||state.seconds-memory.at>25)continue;
     const where=worldToScreen(memory.p,12);
@@ -889,7 +889,7 @@ function sprite(a:TeamActor){
     const visible=a.health>0?isSeen(state,a):liveVisibility(state,a.p);
     if(!visible){
       const memory=lastKnown(state,a.id);
-      if(memory&&state.seconds-memory.at<25){
+      if(memory&&a.health>0&&state.seconds-memory.at<25){
         draw.fillStyle=memory.status==='heard'?'#e6bb828e':'#d19d837e';
         draw.font='bold 16px monospace';draw.textAlign='center';
         draw.fillText(memory.status==='heard'?'~':'?',memory.p.x,memory.p.y);

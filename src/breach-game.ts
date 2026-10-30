@@ -891,7 +891,12 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   }
   const at=near(a.p,n.p,5);
   if(!at&&(n.kind==='move'||n.kind==='door'||n.kind==='sync')){
-    approach(a,n.p,dt,s,n.moveMode==='strafe'?.68:1);
+    // A persistent tracking/PIE stance stays cautious on every segment,
+    // not only on explicitly marked strafe nodes.
+    const tracking=a.aimInstruction?.mode==='track'||
+      n.aimMode==='track';
+    const cautious=n.moveMode==='strafe'||tracking;
+    approach(a,n.p,dt,s,cautious?.70:1);
     // Unmodified movement follows its route, while an explicit fixed STRAFE
     // or PIE/TRACK instruction persists until LOOK releases it.
     const held=aimHeading(a);
