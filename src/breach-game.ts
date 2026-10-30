@@ -1352,7 +1352,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       if(a.nav.length&&a.contact)approach(a,a.nav.at(-1)??a.contact,dt,s,
         a.personality==='aggressor'?1.1:.82);
     }
-    if(a.alert==='investigating'&&d(a.p,a.contact)<35){
+    if(a.alert==='investigating'&&a.contact&&d(a.p,a.contact)<35){
       a.alert='cover';a.contact=null;a.nav=[];
       a.defense=defensivePosition(a,a.heard??a.p,s);
       a.defenseUntil=s.seconds+6;
