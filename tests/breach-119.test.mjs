@@ -84,3 +84,31 @@ test('119: timestamp discontinuities reset contacts, routine ticks do not',()=>{
   assert.deepEqual(state.feet[0].plantedAt,{
     x:900-Math.sin(1)*-5.6,y:900+Math.cos(1)*-5.6});
 });
+
+test('119: the live rig renders contact at its recorded world-space anchor',async()=>{
+  const THREE=await import('three');
+  const {createOperatorRig,poseOperator}=await import('../src/breach-operator-rig.ts');
+  const rig=createOperatorRig('rook','blue');
+  const frame=(time,x,speed)=>({x,z:0,heading:0,velocity:speed,
+    seconds:time,stride:time*40,posture:'stand',injury:0,weapon:'carbine',
+    reload:0,reloadDuration:1.8,lastThrowAt:-100,lastDoorAt:-100,
+    down:false,surrender:false,aiming:false,firing:false,turning:0,
+    travelYaw:0});
+  let contacts=0;
+  for(let i=0;i<180;i++){
+    const t=i/60,x=t*37;
+    rig.root.position.set(x,0,0);
+    poseOperator(rig,frame(t,x,37),1/60);
+    rig.root.updateMatrixWorld(true);
+    rig.feet.forEach((foot,index)=>{
+      const phase=rig.footsteps.feet[index].phase;
+      if(phase==='swinging')return;
+      const actual=foot.shoe.getWorldPosition(new THREE.Vector3());
+      assert.ok(actual.distanceTo(foot.anchor)<1e-4,
+        'shoe contact must equal the scheduled world anchor');
+      contacts++;
+    });
+  }
+  assert.ok(contacts>100);
+  rig.dispose();
+});
