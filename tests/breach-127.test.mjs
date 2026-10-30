@@ -22,11 +22,12 @@ test('127: heel-toe roll is bounded and grounded in phase',()=>{
 test('127: a committed step keeps phase durations through a stop',()=>{
  const s=createFootstepScheduler();
  advanceFootsteps(s,input(0,0,36));
+ advanceFootsteps(s,input(.10,3.6,36));
  let foot=s.feet.find(x=>x.phase==='unloading');
  assert.ok(foot,'first step should unload');
  const original=foot.swingDuration,landing=foot.landingDuration;
- for(let i=1;i<=70;i++)
-  advanceFootsteps(s,input(i/60,0,0));
+ for(let i=7;i<=70;i++)
+  advanceFootsteps(s,input(i/60,3.6,0));
  assert.equal(foot.swingDuration,original);
  assert.equal(foot.landingDuration,landing);
 });
