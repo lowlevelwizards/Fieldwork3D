@@ -27,6 +27,7 @@ import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
   rayHitsActor,muzzleEndpoint,recoverWeapon,type FiringMode} from './breach-ballistics.ts';
 import {chooseDefense,watchPoint} from './breach-defense.ts';
 import {muzzleAtShot} from './breach-muzzle.ts';
+import {KICK_DURATION} from './breach-door-actions.ts';
 import {CASING_LIMIT,type EjectedCasing} from './breach-effects.ts';
 import {chooseFall,hitRegion,type WoundRegion,type FallPose}
   from './breach-wounds.ts';
@@ -53,7 +54,8 @@ export type TeamActor=Operator & {
   yieldTarget:Pt|null;yieldFor:string|null;yieldUntil:number;
   personality:Personality;morale:number;lastNoiseAt:number;
   flashUntil:number;lastThrowAt:number;lastDoorAt:number;
-  lastDoorId:string|null;stride:number;weapon:WeaponId;injuryStage:number;
+  lastDoorId:string|null;lastDoorMethod:DoorMethod;
+  stride:number;weapon:WeaponId;injuryStage:number;
   weaponYaw:number;stability:number;recoil:number;lastShotAt:number;
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
@@ -116,7 +118,8 @@ const withActions=(a:Operator):TeamActor=>({
   downPose:'forward',
   yieldTarget:null,yieldFor:null,yieldUntil:0,
   personality:'guard',morale:1,lastNoiseAt:-1,flashUntil:-1,
-  lastThrowAt:-100,lastDoorAt:-100,lastDoorId:null,stride:0,
+  lastThrowAt:-100,lastDoorAt:-100,lastDoorId:null,
+  lastDoorMethod:'open',stride:0,
   weaponYaw:a.heading,stability:.55,recoil:0,lastShotAt:-100,
   fireMode:'point',burstCount:0,skills:{...DEFAULT_SKILLS},
   weapon:'carbine',injuryStage:0,defense:null,watch:null,
@@ -1015,23 +1018,38 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   }
   if(n.kind==='door'){
     const door=s.doors.find(d=>d.id===n.doorId);
-    if(!door||door.open){pop(a);return;}
-    if(!doorReachable(a.p,door)){
+    if(!door||(door.open&&n.method!=='kick')){pop(a);return;}
+    if(!doorReachable(a.p,door)&&a.actionTimer===0){
       notify(s,a.name+' TOO FAR FROM DOOR');return;
     }
-    const required=n.method==='kick'?.20:n.method==='hold'?1.3:.49;
-    if(a.actionTimer===0){a.lastDoorAt=s.seconds;a.lastDoorId=door.id;}
+    const required=n.method==='kick'?KICK_DURATION:
+      n.method==='hold'?1.3:.49;
+    if(a.actionTimer===0){
+      a.lastDoorAt=s.seconds;a.lastDoorId=door.id;
+      a.lastDoorMethod=n.method??'open';
+    }
     a.actionTimer+=dt;
+    if(n.method==='kick'&&a.actionTimer>=required*.53){
+      if(!door.open){
+        door.open=true;door.openedAt=s.seconds;
+        pushDoor(door,2.2);
+        hear(s,doorCenter(door),340,'kick');
+        notify(s,door.id+' KICKED');
+        battleEvent(s,'door',a,doorCenter(door),door.id+' KICKED');
+      }
+    }
     if(a.actionTimer>=required){
       if(n.method==='hold'){
         notify(s,door.id+' HELD CLOSED');
         pop(a);return;
       }
-      door.open=true;door.openedAt=s.seconds;
-      hear(s,doorCenter(door),n.method==='kick'?340:145,
-        n.method==='kick'?'kick':'door');
-      notify(s,door.id+' '+(n.method==='kick'?'KICKED':'OPENED'));
-      battleEvent(s,'door',a,doorCenter(door),door.id+' OPENED');
+      if(n.method!=='kick'){
+        door.open=true;door.openedAt=s.seconds;
+        pushDoor(door,.45);
+        hear(s,doorCenter(door),145,'door');
+        notify(s,door.id+' OPENED');
+        battleEvent(s,'door',a,doorCenter(door),door.id+' OPENED');
+      }
       pop(a);
     }
   }

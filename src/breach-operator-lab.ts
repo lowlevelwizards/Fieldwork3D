@@ -298,7 +298,7 @@ function showDiagnostics(){
 function draw(){
   if(!rig)return;
   const {motion,feet,state}=cache.sample(clock);
-  doorProp.visible=track==='door';
+  doorProp.visible=track==='door'||track==='kick';
   rig.root.position.set(motion.x,0,motion.z);
   poseOperator(rig,{x:motion.x,z:motion.z,heading:motion.heading,
     travelYaw:motion.travelYaw,seconds:clock,stride:clock*40,
@@ -307,6 +307,7 @@ function draw(){
     weapon:weapon.value as WeaponId,
     reload:motion.reload,reloadDuration:1.8,
     lastDoorAt:motion.doorAt,
+    doorMethod:track==='kick'?'kick':'open',
     doorPoint:track==='door'?{x:25.5,y:8}:undefined,
     lastThrowAt:motion.throwAt,
     down:motion.down||Number(injury.value)===3,

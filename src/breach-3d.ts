@@ -208,6 +208,11 @@ export class TacticalScene3D{
         doorTrim,false);
       const leaf=new THREE.Group();
        const invert=door.hinge==='b';leaf.position.x=invert?length/2:-length/2;
+      // Actual hinge barrels identify the swing side without requiring
+      // a user to inspect a top-down arrow on every doorway.
+      for(const y of [7,18,29])
+        this.box(frame,invert?length/2:-length/2,y,0,
+          4.2,5.2,6,metal,false);
       root.add(leaf);
       this.box(leaf,(door.hinge==='b'?-1:1)*length/2,17,0,length-4,34,4,doorMat);
       this.box(leaf,(door.hinge==='b'?-1:1)*length*.7,18,3,3,3,2,metal,false);
@@ -660,6 +665,7 @@ export class TacticalScene3D{
         posture:actor.posture,injury:actor.injuryStage,weapon:actor.weapon,
         reload:actor.reload,reloadDuration,
         lastThrowAt:actor.lastThrowAt,lastDoorAt:actor.lastDoorAt,
+        doorMethod:actor.lastDoorMethod,
         doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
         down:actor.health<=0,surrender:actor.surrendered,
         aiming:actor.aim>.20,turning:actor.turning,firing:!!firing,

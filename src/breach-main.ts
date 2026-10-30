@@ -748,7 +748,10 @@ function renderProjectedPlans(){
       if(n.kind==='door'){
         draw.fillStyle='#e2ca9f';draw.textAlign='left';
         draw.font='bold 10px monospace';
-        draw.fillText((n.method??'open').toUpperCase(),point.x+12,point.y-11);
+        const door=state.doors.find(d=>d.id===n.doorId);
+        draw.fillText((n.method??'open').toUpperCase()+
+          ((n.method??'open')==='open'?(door?.swing===1?' ↷':' ↶'):''),
+          point.x+12,point.y-11);
       }
       if(n.kind==='pie'&&n.pivot){
         const pivot=worldToScreen(n.pivot,12);
