@@ -56,7 +56,8 @@ const randomSiteSeed=()=>{
   if(typeof crypto!=='undefined'&&crypto.getRandomValues)crypto.getRandomValues(bytes);
   return bytes[0]||((Date.now()^Math.floor(Math.random()*1e9))>>>0);
 };
-let state:Session=newSession(0,randomSiteSeed());
+const legacyStudy=new URLSearchParams(location.search).has('fixedSite');
+let state:Session=newSession(0,legacyStudy?undefined:randomSiteSeed());
 let stage:TacticalScene3D|null=null;
 let viewMode:ViewMode='iso';
 try{stage=new TacticalScene3D();}
@@ -911,8 +912,8 @@ function useSelectedGround(pt:Pt){
   selectedNode=null;updateHud();
 }
 function reset(next=state.variant){
-  state=newSession(next,randomSiteSeed());
-  stage?.applySite(state.site!);selected='rook';looking=false;
+  state=newSession(next,legacyStudy?undefined:randomSiteSeed());
+  stage?.applySite(state.site??null);selected='rook';looking=false;
   selectedNode=null;doorFocusId=null;draggingNode=null;
   cursor=null;trace=null;zoom=1;panX=panY=0;
   fogStamp=-1;lastSoundShotId=0;lastEventAudio='';
