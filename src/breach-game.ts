@@ -361,7 +361,9 @@ export function planDoor(s:Session,id:string,doorId:string,method:DoorMethod){
   if(!reachable[0])return false;
   return addNode(s,id,'door',reachable[0],{doorId,method});
 }
-/** Contextual stack-up: approach one side of a door and cover the opening. */
+/** Plan an actual reserved stack position on the same approach side.
+ * Four positions are spaced along the door frame, with a second rank.
+ */
 export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number){
   const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
   if(!a||!door||!canEdit(s))return false;
@@ -370,28 +372,82 @@ export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number)
   if(index<=0&&afterNodeId!==undefined)return false;
   const from=index===0?a.p:a.plan[index-1].p,center=doorCenter(door);
   const horizontal=Math.abs(door.a.y-door.b.y)<1;
-  const half=d(door.a,door.b)/2;
-  const candidates=horizontal?[
-    {x:center.x-half-10,y:center.y+(from.y>=center.y?18:-18)},
-    {x:center.x+half+10,y:center.y+(from.y>=center.y?18:-18)},
-  ]:[
-    {x:center.x+(from.x>=center.x?18:-18),y:center.y-half-10},
-    {x:center.x+(from.x>=center.x?18:-18),y:center.y+half+10},
-  ];
-  const partner=team(s).find(b=>b!==a&&b.health>0);
-  const other=partner?finalPoint(partner):null;
-  const legal=candidates.filter(p=>passable(p)&&route(from,p).length);
-  legal.sort((x,y)=>{
-    const score=(p:Pt)=>d(from,p)-(other?Math.min(50,d(p,other))*.42:0);
-    return score(x)-score(y);
-  });
+  const half=d(door.a,door.b)/2,approachSide=horizontal?
+    Math.sign(from.y-center.y)||1:Math.sign(from.x-center.x)||1;
+  const assigned=team(s).filter(b=>b!==a&&b.health>0)
+    .map(b=>b.plan.find(n=>n.stackDoorId===doorId))
+    .filter((n):n is PlanNode=>!!n);
+  const occupied=assigned.map(n=>n.p);
+  const candidates:Pt[]=[];
+  // First rank on either side of the opening; second rank behind it.
+  for(const rank of [0,1])for(const direction of [-1,1]){
+    const tangent=direction*(half+20);
+    const normal=approachSide*(23+rank*26);
+    candidates.push(horizontal?
+      {x:center.x+tangent,y:center.y+normal}:
+      {x:center.x+normal,y:center.y+tangent});
+  }
+  // Allow a deeper second stagger if obstacles occupy the doorway frame.
+  for(const direction of [-1,1]){
+    const tangent=direction*(half+39),normal=approachSide*48;
+    candidates.push(horizontal?
+      {x:center.x+tangent,y:center.y+normal}:
+      {x:center.x+normal,y:center.y+tangent});
+  }
+  const legal=candidates.filter(p=>
+    passable(p)&&!!route(from,p).length&&
+    occupied.every(other=>d(p,other)>23));
+  legal.sort((u,v)=>d(from,u)-d(from,v));
   if(!legal.length)return false;
-  const point=legal[0];
-  const proposed=copyNodes(a.plan);
+  const point=legal[0],proposed=copyNodes(a.plan);
   proposed.splice(index,0,{id:s.nextId,kind:'move',p:clone(point),
-    moveMode:'strafe',facing:angle(point,center)});
+    aimMode:'track',aimPoint:clone(center),aimLabel:'pie',
+    stackDoorId:doorId});
   if(!validEditedPlan(s,a.p,proposed))return false;
   return edit(s,a,()=>{a.plan=proposed;s.nextId++;});
+}
+/** One tap queues four distinct doorway positions. Existing orders are
+ * retained; a failed actor allocation leaves the completed positions intact
+ * so players can adjust a tight site individually.
+ */
+export function planStackTeam(s:Session,doorId:string){
+  if(!canEdit(s))return false;
+  let count=0;
+  for(const a of team(s))if(a.health>0&&planStack(s,a.id,doorId))count++;
+  if(count)notify(s,'STACK '+count+' / '+team(s).filter(a=>a.health>0).length);
+  return count>0;
+}
+/** Coordinated entry: reserve distinct stack positions, synchronize at
+ * a shared go-code, open the door with the lead, then feed others through
+ * at staggered intervals. Tactical pathfinding remains authoritative.
+ */
+export function planSquadEntry(s:Session,doorId:string){
+  const door=s.doors.find(d=>d.id===doorId);
+  if(!door||!canEdit(s))return false;
+  const alive=team(s).filter(a=>a.health>0);
+  if(!alive.length)return false;
+  // The user can first position a squad manually; honor existing stack
+  // positions instead of duplicating them.
+  for(const a of alive){
+    if(!a.plan.some(n=>n.stackDoorId===doorId)&&
+      !planStack(s,a.id,doorId))return false;
+  }
+  if(!planSync(s))return false;
+  const center=doorCenter(door),horizontal=Math.abs(door.a.y-door.b.y)<1;
+  const lead=alive[0],p=finalPoint(lead);
+  const side=horizontal?Math.sign(p.y-center.y)||1:
+    Math.sign(p.x-center.x)||1;
+  if(!planDoor(s,lead.id,doorId,'open'))return false;
+  for(let i=0;i<alive.length;i++){
+    const a=alive[i];
+    if(i>0)planWait(s,a.id,.3+i*.24);
+    const inside=horizontal?{x:center.x+(i%2?9:-9),
+      y:center.y-side*62}:{x:center.x-side*62,
+      y:center.y+(i%2?9:-9)};
+    if(passable(inside))planMove(s,a.id,inside);
+  }
+  notify(s,'SQUAD ENTRY READY · GO TO EXECUTE');
+  return true;
 }
 export function planWait(s:Session,id:string,seconds=1.2){
   const a=party(s,id);return a?addNode(s,id,'wait',finalPoint(a),
