@@ -10,7 +10,7 @@ export const LAB_TRACKS=[
   'strafe-left','strafe-right','strafe','strafe-stop',
   'strafe-reverse','mixed','turn-90','turn-180','turn','pivot-reverse',
   'pie','look','crouch-walk','crouch','wounded','aim','reload',
-  'flash','door','down','down-forward','down-back',
+  'flash','door','kick','down','down-forward','down-back',
   'down-left','down-right','down-slump'
 ] as const;
 export type LabTrack=typeof LAB_TRACKS[number];
@@ -85,7 +85,8 @@ export function sampleLabTrack(kind:LabTrack,time:number):LabMotion{
   const reload=kind==='reload'?
     Math.max(0,1.8-(t%2.4)):0;
   const throwAt=kind==='flash'?Math.floor(t/1.5)*1.5:-100;
-  const doorAt=kind==='door'?Math.floor(t/1.3)*1.3:-100;
+  const doorAt=kind==='kick'?.4:
+    kind==='door'?Math.floor(t/1.3)*1.3:-100;
   return {...p,travelYaw,speed,turning,injury,posture,aim,
     reload,throwAt,doorAt,down:kind.startsWith('down')&&t>=.45};
 }
