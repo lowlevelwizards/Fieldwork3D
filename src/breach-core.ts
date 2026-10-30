@@ -135,6 +135,13 @@ export function route(from:Pt,to:Pt,
     for(const [dx,dy] of dirs){
       const col=at.col+dx,row=at.row+dy,p=cellPoint(col,row);
       if(!canStand(p))continue;
+      // Grid centres alone can lie clear while the straight diagonal
+      // between them clips a door-frame corner. Sample the actual travel
+      // segment before accepting a nav edge; motor collision uses the
+      // same solid-world clearance policy.
+      const atPoint=cellPoint(at.col,at.row);
+      if(!canStand({x:(atPoint.x+p.x)/2,y:(atPoint.y+p.y)/2}))
+        continue;
       if(dx!==0&&dy!==0&&
         (!canStand(cellPoint(at.col+dx,at.row))||
          !canStand(cellPoint(at.col,at.row+dy))))continue;
