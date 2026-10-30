@@ -8,6 +8,7 @@ import {advanceFootsteps,createFootstepScheduler, type FootstepScheduler} from '
 import type {ReplayFeet} from './breach-replay-motion.ts';
 import {bodyFromContacts} from './breach-body-motion.ts';
 import {kickMotion} from './breach-door-actions.ts';
+import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
 import {fallAngles,hitStagger,type FallPose,type WoundRegion}
   from './breach-wounds.ts';
 import {weaponGrips,handlingPose,clampReach,
@@ -25,7 +26,8 @@ export type OperatorPose={
   travelYaw?:number;
   /** Render-only reconstructed feet and pose: no accumulated render state. */
   replayFeet?:ReplayFeet;deterministic?:boolean;pelvisYaw?:number;
-  reload:number;reloadDuration:number;lastThrowAt:number;
+  reload:number;reloadDuration:number;reloadMode?:ReloadMode|null;
+  reloadRemoved?:boolean;reloadInserted?:boolean;lastThrowAt:number;
   lastDoorAt:number;doorPoint?:{x:number;y:number};
   doorMethod?:'open'|'kick'|'hold';down:boolean;
   surrender:boolean;aiming:boolean;firing:boolean;turning:number;
@@ -38,6 +40,7 @@ export type OperatorPose={
 export type OperatorRig={
   root:THREE.Group;hip:THREE.Group;chest:THREE.Group;head:THREE.Group;
   weapon:THREE.Group;feet:Foot[];arms:Arm[];
+  magazineInserted:THREE.Mesh;magazineHand:THREE.Mesh;
   legacyLegs:THREE.Group[];legacyArms:THREE.Group[];
   pack:THREE.Mesh;lastTime:number;lastPose:OperatorPose|null;
   footsteps:FootstepScheduler;
@@ -103,10 +106,13 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   // Stock, comb and narrow sight rail share the weapon's rigid transform.
   block(weapon,-10,0,0,9,3,3.5,boot);
   block(weapon,-1,2.6,0,11,1.2,1.5,steel);
-  block(weapon,3,-4,0,2.7,6,2.5,boot);
+  const magazineInserted=block(weapon,3,-4,0,2.7,6,2.5,boot);
+  const magazineHand=block(chest,0,0,0,2.7,6,2.5,boot);
+  magazineHand.visible=false;
   const colors=new Map([cloth,boot,vest,skin,steel].map(material=>
     [material,material.color.clone()] as const));
   return {root,hip,chest,head,weapon,feet,arms,pack,colors,
+    magazineInserted,magazineHand,
     legacyLegs:[new THREE.Group(),new THREE.Group()],
     legacyArms:[new THREE.Group(),new THREE.Group()],
     lastTime:-1,lastPose:null,stridePhase:0,
@@ -264,8 +270,18 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Weapon kick and muzzle flash may not break solved hand contacts.
   // A physical door reach may shift the chest a little over the support
   // foot, but the whole character is never allowed to tip like a rigid pole.
-  const reloadProgress=p.reload>0?1-p.reload/p.reloadDuration:0;
-  const reloadActive=p.reload>0;
+  const reloadActive=p.reload>0&&p.reloadDuration>0;
+  const reloadProgress=reloadActive?
+    clamp(1-p.reload/p.reloadDuration,0,1):0;
+  const reloadMode=p.reloadMode??(p.weapon==='shotgun'?'shells':'emergency');
+  const magazinePhase=reloadPhase(reloadProgress,reloadMode);
+  r.magazineInserted.visible=p.weapon!=='shotgun'&&
+    !(p.reloadRemoved&&!p.reloadInserted)&&
+    (!reloadActive||reloadProgress<.29||reloadProgress>=.82);
+  r.magazineHand.visible=reloadActive&&
+    magazinePhase!=='reach'&&magazinePhase!=='settle';
+  r.magazineHand.scale.set(
+    p.weapon==='shotgun'?.48:1,p.weapon==='shotgun'?.55:1,1);
   const throwAge=p.seconds-p.lastThrowAt;
   const throwActive=throwAge>=0&&throwAge<.70;
   const doorAge=p.seconds-p.lastDoorAt;
@@ -279,7 +295,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   let reaching=false,releaseLeft=false;
   if(reloadActive){
     releaseLeft=true;
-    leftGrip.set(data.primaryX-1,-7,-5*Math.sin(Math.PI*reloadProgress)-2);
+    if(reloadMode==='shells'){
+      const t=reloadProgress*8;
+      leftGrip.set(data.primaryX+3,-5-4*Math.abs(Math.sin(Math.PI*t)),
+        -4-2*Math.sin(Math.PI*t));
+    }else{
+      const lower=magazinePhase==='retrieve'?9:
+        magazinePhase==='remove'?5:magazinePhase==='insert'?2:0;
+      leftGrip.set(data.primaryX+2,-4-lower,
+        -3.5-2*Math.sin(Math.PI*reloadProgress));
+    }
   }else if(throwActive){
     releaseLeft=true;
     const t=Math.sin(Math.PI*clamp(throwAge/.7,0,1));
@@ -348,6 +373,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     alignSegment(arm.lower,solved.joint,solved.effector,P(0,0,sign));
     arm.hand.position.copy(solved.effector);
     arm.hand.rotation.set(0,p.surrender?0:clamp(fit.rotation.y,-1,1),0);
+  }
+  if(r.magazineHand.visible){
+    // Magazine visual follows the *solved* support wrist. The original
+    // magazine is hidden from the gun while it is in hand.
+    r.magazineHand.position.copy(r.arms[0].hand.position);
+    r.magazineHand.rotation.copy(r.arms[0].hand.rotation);
   }
   // The pose system is the final writer for actor tilts and reactions.
   // The scene controls XY world placement only, not anatomy or weapon pose.

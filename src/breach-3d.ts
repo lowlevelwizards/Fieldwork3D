@@ -643,7 +643,8 @@ export class TacticalScene3D{
       const hitAge=s.seconds-actor.lastHitAt;
       const hitFade=actor.health>0&&hitAge>=0&&hitAge<.32?
         1-hitAge/.32:0;
-      const reloadDuration=WEAPONS[actor.weapon].reload*
+      const reloadDuration=actor.reloadDuration||
+        WEAPONS[actor.weapon].reload*
         (actor.injuryStage===2?1.5:actor.injuryStage===1?1.1:1);
       const firing=s.shots.find(shot=>shot.shooterId===actor.id&&
         shot.age<.115&&(omniscient||shotVisibility(s,shot).flash));
@@ -664,6 +665,9 @@ export class TacticalScene3D{
         travelYaw:replay?.travelYaw[actor.id],
         posture:actor.posture,injury:actor.injuryStage,weapon:actor.weapon,
         reload:actor.reload,reloadDuration,
+        reloadMode:actor.reloadMode,
+        reloadRemoved:actor.reloadRemoved,
+        reloadInserted:actor.reloadInserted,
         lastThrowAt:actor.lastThrowAt,lastDoorAt:actor.lastDoorAt,
         doorMethod:actor.lastDoorMethod,
         doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
@@ -822,8 +826,12 @@ export class TacticalScene3D{
           new THREE.MeshStandardMaterial({color:0x313b37,roughness:.75}));
         this.discarded.set(mag.id,mesh);this.effects.add(mesh);
       }
-      mesh.position.set(mag.p.x,1.1,mag.p.y);
-      mesh.rotation.y=mag.id*2.13;
+      const t=Math.min(1.5,mag.age);
+      mesh.position.set(mag.p.x+Math.sin(mag.id)*t*3.5,
+        Math.max(1.1,7+10*t-27*t*t),mag.p.y+
+          Math.cos(mag.id)*t*2.7);
+      mesh.rotation.set(.2*Math.min(1,t*8),mag.id*2.13,
+        Math.min(1,t*4)*Math.PI*.40);
     }
     const liveGrenades=new Set<number>();
     for(const grenade of s.grenades){

@@ -10,6 +10,9 @@ import {ReplayMotionRecorder,type ReplayPresentation} from './breach-replay-moti
 export type ActorFrame=Pick<TeamActor,
   'id'|'p'|'heading'|'health'|'velocity'|'turning'|'posture'|'alert'|
   'magazine'|'reserve'|'reload'|'shots'|'fireCd'|'aim'|
+  'insertedMagazineId'|'spareMagazines'|'reloadMode'|'reloadStartedAt'|
+  'reloadDuration'|'reloadRemoved'|'reloadInserted'|
+  'reloadFromRounds'|'reloadTargetRounds'|
   'lastHitAt'|'lastDownAt'|'lastHitRegion'|'lastHitYaw'|
   'lastHitSeverity'|'downPose'|'flashUntil'|'suppression'|
   'weapon'|'injuryStage'|'morale'|'surrendered'|'defense'|'watch'|
@@ -38,6 +41,13 @@ export function snapshot(s:Session):ReplayFrame{
       heading:a.heading,health:a.health,velocity:a.velocity,
       turning:a.turning,posture:a.posture,alert:a.alert,
       magazine:a.magazine,reserve:a.reserve,reload:a.reload,
+      insertedMagazineId:a.insertedMagazineId,
+      spareMagazines:a.spareMagazines.map(m=>({...m})),
+      reloadMode:a.reloadMode,reloadStartedAt:a.reloadStartedAt,
+      reloadDuration:a.reloadDuration,
+      reloadRemoved:a.reloadRemoved,reloadInserted:a.reloadInserted,
+      reloadFromRounds:a.reloadFromRounds,
+      reloadTargetRounds:a.reloadTargetRounds,
       shots:a.shots,fireCd:a.fireCd,aim:a.aim,
       lastHitAt:a.lastHitAt,lastDownAt:a.lastDownAt,
       lastHitRegion:a.lastHitRegion,lastHitYaw:a.lastHitYaw,
@@ -161,7 +171,8 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   s.phase='running';s.mission=f.mission;
   for(const copy of f.actors){
     const a=s.operators.find(actor=>actor.id===copy.id);
-    if(a)Object.assign(a,copy,{p:position(copy.p),plan:[],nav:[]});
+    if(a)Object.assign(a,copy,{p:position(copy.p),
+      spareMagazines:copy.spareMagazines.map(m=>({...m})),plan:[],nav:[]});
   }
   s.doors=f.doors.map(d=>({...d,a:position(d.a),b:position(d.b)}));
   s.shots=f.shots.map(shotCopy);
