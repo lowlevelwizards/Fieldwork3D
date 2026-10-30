@@ -110,6 +110,7 @@ export class ReplayMotionRecorder{
         events.push({at:time,open:door.open});
     }
   }
+  direction(id:string):number|undefined{return this.actors.get(id)?.travelYaw;}
   presentation(time:number,ids:readonly string[]):ReplayPresentation{
     const feet:Record<string,ReplayFeet>={};
     const travelYaw:Record<string,number>={};
