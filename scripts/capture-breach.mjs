@@ -227,14 +227,6 @@ try{
   await phone.locator('#moreOrders').click();
   const doorPoint=screen(301,505);
   await phone.touchscreen.tap(doorPoint.x,doorPoint.y);
-  console.log('DOOR-PLANNER-DIAGNOSTIC',
-    JSON.stringify({
-      nodes:await phone.locator('#breachCanvas').getAttribute('data-plan-nodes'),
-      event:await phone.locator('#feed').textContent(),
-      contextVisible:await phone.locator('#contextTools').isVisible(),
-      contextText:await phone.locator('#contextTools').textContent(),
-      selectedNode:await phone.locator('#breachCanvas').getAttribute('data-selected-node')
-    }));
   // The *final planned position* is enough to trigger door options;
   // requiring the player to tap its node first was a 076 UX regression.
   for(const action of ['ctxEntry','ctxOpen','ctxKick','ctxHold']){
