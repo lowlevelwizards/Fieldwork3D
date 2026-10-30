@@ -254,15 +254,16 @@ try{
   },middle);
   await routePhone.screenshot({path:resolve(folder,'17-route-before-insertion.png')});
   await routePhone.touchscreen.tap(middle.x,middle.y);
-  if(await count()!=='2')
+  if(await count()!=='2'){
+    const diagnostic=await routePhone.locator('#breachCanvas').evaluate(c=>({
+      planNodes:c.dataset.planNodes,
+      selectedNode:c.dataset.selectedNode,
+      routeTap:c.dataset.lastRouteTap,
+      feed:document.querySelector('#feed')?.textContent,
+    }));
     throw Error('Tapping existing route line did not insert intermediate node: '+
-      JSON.stringify(await routePhone.locator('#breachCanvas').evaluate(c=>({
-        planNodes:c.dataset.planNodes,
-        selectedNode:c.dataset.selectedNode,
-        routeTap:c.dataset.lastRouteTap,
-        feed:document.querySelector('#feed')?.textContent,
-        beforeInsert,
-      }))));
+      JSON.stringify({diagnostic,beforeInsert}));
+  }
   const selectedLineNode=await routePhone.locator('#breachCanvas')
     .getAttribute('data-selected-node');
   if(!selectedLineNode)
