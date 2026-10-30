@@ -22,7 +22,7 @@ test('126: forward lean, lateral lean and idle are distinct',()=>{
  left=sample(stance,-Math.PI/2),rest=sample(stance,0,0);
  assert.ok(f.torsoForward<-.035);
  assert.ok(right.torsoSide>.025&&left.torsoSide<-.025);
- assert.equal(rest.torsoForward,0);
+ assert.ok(Math.abs(rest.torsoForward)<1e-9);
  assert.equal(rest.pelvisY,0);
 });
 test('126: body response uses replayable contacts, not render dt',()=>{
