@@ -70,6 +70,7 @@ export type TeamActor=Operator & {
   lastDoorId:string|null;lastDoorMethod:DoorMethod;
   stride:number;weapon:WeaponId;injuryStage:number;
   weaponYaw:number;stability:number;recoil:number;lastShotAt:number;
+  lastBashAt:number;
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
 };
@@ -141,6 +142,7 @@ const withActions=(a:Operator):TeamActor=>({
   lastThrowAt:-100,lastDoorAt:-100,lastDoorId:null,
   lastDoorMethod:'open',stride:0,
   weaponYaw:a.heading,stability:.55,recoil:0,lastShotAt:-100,
+  lastBashAt:-100,
   fireMode:'point',burstCount:0,skills:{...DEFAULT_SKILLS},
   weapon:'carbine',injuryStage:0,defense:null,watch:null,
   defenseUntil:0,surrendered:false,
@@ -1297,6 +1299,15 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.alert!=='retreat'&&a.alert!=='cover'){
     a.alert='investigating';a.contact=a.heard??a.contact;
   }
+  // AI posture is a defensive choice rather than a permanent character
+  // property. Cautious or suppressed defenders duck behind real cover;
+  // advancing or unsuppressed engaging enemies stand back up to fire.
+  const threat=visible[0]?.p??a.heard??a.contact??a.watch;
+  if(threat&&a.velocity<15&&nearCover(a.p,threat)&&
+    (a.suppression>.26||a.personality==='cautious'||a.alert==='cover'))
+    a.posture='crouch';
+  else if(a.velocity>20||a.suppression<.12||a.alert==='engaging')
+    a.posture='stand';
   const newest=[...s.noise].reverse().find(n=>
     n.time>a.lastNoiseAt&&s.seconds-n.time<1&&d(a.p,n.p)<n.radius);
   if(newest&&!visible.length&&a.alert!=='retreat'){
@@ -1673,6 +1684,41 @@ function stepFlashbangs(s:Session,h:number){
   }
   s.grenades=active;
 }
+/** Automatic close-contact separation when two opposing actors reach
+ * point-blank range. This does not author a new order or grant a free kill.
+ * A short bash interrupts the opponent's firearm and tries legal knockback. */
+function resolveCloseContact(s:Session){
+  for(let i=0;i<s.operators.length;i++){
+    const a=s.operators[i];
+    if(a.health<=0||a.surrendered||s.seconds-a.lastBashAt<2.2)continue;
+    for(let j=0;j<s.operators.length;j++){
+      const b=s.operators[j];
+      if(b===a||b.side===a.side||b.health<=0||b.surrendered||
+        s.seconds-b.lastBashAt<.9)continue;
+      const gap=d(a.p,b.p);
+      if(gap>=17||gap<.01)continue;
+      const toward=angle(a.p,b.p);
+      if(gap>10&&Math.abs(angleDifference(a.heading,toward))>1.45)
+        continue;
+      const ux=(b.p.x-a.p.x)/gap,uy=(b.p.y-a.p.y)/gap;
+      for(const shift of [16,10,5]){
+        const pushed={x:b.p.x+ux*shift,y:b.p.y+uy*shift};
+        if(!sweptBodyClear(b.p,pushed,s.doors))continue;
+        if(s.operators.some(o=>o!==a&&o!==b&&o.health>0&&
+          d(o.p,pushed)<11))continue;
+        b.priorP=clone(b.p);b.p=pushed;break;
+      }
+      a.lastBashAt=s.seconds;b.lastBashAt=s.seconds;
+      b.fireCd=Math.max(b.fireCd,.62);b.aim=Math.max(0,b.aim-.65);
+      b.stability=Math.max(0,b.stability-.3);
+      b.suppression=Math.min(1,b.suppression+.6);
+      b.velocity=0;b.nav=[];
+      a.velocity=0;a.recoil=Math.min(.9,a.recoil+.12);
+      notify(s,a.name+' PUSHED '+b.name);
+      break;
+    }
+  }
+}
 export function stepSession(s:Session,dt:number){
   if(s.phase!=='running')return;
   const h=clamp(dt,0,1/30);
@@ -1705,6 +1751,7 @@ export function stepSession(s:Session,dt:number){
     else enemyDecisions(s,a,h);
   }
   for(const a of s.operators)a.stride+=d(a.p,a.priorP);
+  resolveCloseContact(s);
   observe(s);
   for(const a of s.operators)fire(s,a,h);
   mission(s,h);
