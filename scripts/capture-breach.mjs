@@ -243,7 +243,13 @@ try{
   const middle=screen(350,624);
   await routePhone.touchscreen.tap(middle.x,middle.y);
   if(await count()!=='2')
-    throw Error('Tapping existing route line did not insert intermediate node');
+    throw Error('Tapping existing route line did not insert intermediate node: '+
+      JSON.stringify(await routePhone.locator('#breachCanvas').evaluate(c=>({
+        planNodes:c.dataset.planNodes,
+        selectedNode:c.dataset.selectedNode,
+        routeTap:c.dataset.lastRouteTap,
+        feed:document.querySelector('#feed')?.textContent,
+      }))));
   const selectedLineNode=await routePhone.locator('#breachCanvas')
     .getAttribute('data-selected-node');
   if(!selectedLineNode)
