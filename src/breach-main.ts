@@ -891,8 +891,20 @@ function sprite(a:TeamActor){
   }
 }
 function contacts(){
+  for(const m of state.dropped){
+    rect(m.p.x-3,m.p.y-1,6,2,'#202e2d');
+  }
+  for(const g of state.grenades){
+    circle(g.p.x,g.p.y,3,'#a7b4a0');
+  }
+  for(const b of state.flashBursts){
+    draw.globalAlpha=Math.max(0,1-b.age/.7)*.85;
+    circle(b.p.x,b.p.y,13+48*b.age,'#f6edcc');
+    draw.globalAlpha=1;
+  }
   for(const shot of state.shots){
-    const visibility=shotVisibility(state,shot);
+    const visibility=replaying&&replayOmniscient?
+      {trace:true,flash:true,impact:true}:shotVisibility(state,shot);
     const fade=contactFade(shot.age,.40);
     draw.globalAlpha=fade;
     if(visibility.trace&&shot.age<.23)
@@ -901,8 +913,10 @@ function contacts(){
     if(visibility.flash&&shot.age<.12)
       circle(shot.start.x,shot.start.y,4+fade*4,'#f4dbb0');
     if(visibility.impact){
-      circle(shot.end.x,shot.end.y,shot.hit?5:2.8,
-        shot.hit?'#de8b78':'#dfc8a4');
+      const color=shot.surface==='blood'?'#b46859':
+        shot.surface==='metal'?'#f1cf91':
+        shot.surface==='wood'?'#e9ba7e':'#dfc8a4';
+      circle(shot.end.x,shot.end.y,shot.hit?5:3.7,color);
       if(shot.hit){
         draw.fillStyle='#efb19c';draw.font='bold 11px monospace';
         draw.textAlign='center';
@@ -953,6 +967,76 @@ function useSelectedGround(pt:Pt){
     state.events.push('NO WALKABLE ROUTE');
   selectedNode=null;updateHud();
 }
+function clockText(t:number){
+  const seconds=Math.floor(Math.max(0,t));
+  return String(Math.floor(seconds/60)).padStart(2,'0')+':'+
+    String(seconds%60).padStart(2,'0');
+}
+function applyReplayFrameAt(t:number){
+  const frame=recorder.at(t);
+  if(!frame)return;
+  applyReplayFrame(state,frame);
+  // Scrubbed time can move backwards: invalidate cached fog/effect time.
+  fogStamp=-1;
+}
+function seekReplay(t:number){
+  replayTime=Math.max(0,Math.min(recorder.duration,t));
+  applyReplayFrameAt(replayTime);updateReplayHud();
+}
+function updateReplayHud(){
+  ui.replaySeek.value=String(recorder.duration?
+    Math.round(1000*replayTime/recorder.duration):0);
+  ui.replayClock.textContent=clockText(replayTime)+' / '+
+    clockText(recorder.duration);
+  ui.replayPlay.textContent=replayPlaying?'PAUSE Ⅱ':'PLAY ▶';
+  ui.replaySpeed.textContent=replayRate+'×';
+  ui.replaySight.textContent=replayOmniscient?'FULL VIEW':'TEAM SIGHT';
+  ui.replayView.textContent=viewMode.toUpperCase();
+}
+function enterReplay(){
+  if(replaying||recorder.frames.length<2)return;
+  finishedSession=state;replaying=true;replayPlaying=true;replayTime=0;
+  replayRate=1;replayOmniscient=true;looking=false;flashMode=false;
+  state=newSession(finishedSession.variant,finishedSession.site?.seed);
+  stage?.applySite(state.site??null);
+  document.body.classList.add('replaying');
+  ui.replayPanel.hidden=false;
+  seekReplay(0);updateHud();
+}
+function exitReplay(){
+  if(!replaying)return;
+  replaying=false;replayPlaying=false;
+  document.body.classList.remove('replaying');
+  ui.replayPanel.hidden=true;
+  if(finishedSession)state=finishedSession;
+  finishedSession=null;fogStamp=-1;
+  stage?.applySite(state.site??null);
+  updateHud();
+}
+ui.watchReplay.addEventListener('click',enterReplay);
+ui.replayPlay.addEventListener('click',()=>{
+  if(replayTime>=recorder.duration)seekReplay(0);
+  replayPlaying=!replayPlaying;updateReplayHud();
+});
+ui.replayBack.addEventListener('click',()=>seekReplay(replayTime-10));
+ui.replayForward.addEventListener('click',()=>seekReplay(replayTime+10));
+ui.replaySpeed.addEventListener('click',()=>{
+  replayRate=({0.5:1,1:2,2:4,4:0.5} as Record<number,number>)[replayRate]??1;
+  updateReplayHud();
+});
+ui.replaySeek.addEventListener('input',()=>{
+  replayPlaying=false;
+  seekReplay(Number(ui.replaySeek.value)/1000*recorder.duration);
+});
+ui.replaySight.addEventListener('click',()=>{
+  replayOmniscient=!replayOmniscient;fogStamp=-1;
+  updateReplayHud();
+});
+ui.replayView.addEventListener('click',()=>{
+  cameraMode(viewMode==='iso'?'top':viewMode==='top'?'plan2d':'iso');
+  updateReplayHud();
+});
+ui.replayExit.addEventListener('click',exitReplay);
 function reset(next=state.variant){
   replaying=false;replayPlaying=false;finishedSession=null;
   flashMode=false;document.body.classList.remove('replaying');
