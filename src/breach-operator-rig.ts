@@ -276,6 +276,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const reloadMode=p.reloadMode??(p.weapon==='shotgun'?'shells':'emergency');
   const magazinePhase=reloadPhase(reloadProgress,reloadMode);
   r.magazineInserted.visible=p.weapon!=='shotgun'&&
+    !(p.reloadRemoved&&!p.reloadInserted)&&
     (!reloadActive||reloadProgress<.29||reloadProgress>=.82);
   r.magazineHand.visible=reloadActive&&
     magazinePhase!=='reach'&&magazinePhase!=='settle';
