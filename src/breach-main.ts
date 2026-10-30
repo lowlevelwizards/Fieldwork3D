@@ -15,6 +15,7 @@ import {
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import {routeLineHit} from './breach-route-edit.ts';
+import {placeContextMenu,type AvoidRect,type ScreenPath,type MenuSide} from './breach-context-placement.ts';
 import {shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
@@ -109,6 +110,7 @@ let selected='rook';
 let looking=false,flashMode=false;
 let lookMode:'look'|'pie'|'strafe'='look';
 let contextSignature='';
+let lastContextSide:MenuSide|null=null;
 let selectedNode:number|null=null;
 let doorMenuDismissedId:string|null=null;
 let flashDoorId:string|null=null;
@@ -278,6 +280,7 @@ function updateContext(){
     '/'+(door?.id??'')+'/'+(node?.id??'-')+'/'+selected;
   if(contextSignature!==signature){
     contextSignature=signature;
+    lastContextSide=null;
     ui.context.replaceChildren();
     const primary=document.createElement('div');
     primary.className='context-primary';
@@ -300,31 +303,48 @@ function updateContext(){
   ui.context.dataset.door=door?.id??'';
   ui.context.setAttribute('aria-label',door?
     'Door actions':'Selected position actions and operator settings');
-  // Re-evaluate every camera movement. Place alongside the target, not
-  // across the operator stack or doorway. Stay out of the bottom HUD.
+  // Keep the full operator bodies, selected route, and tap targets visible.
+  // Don't inspect concealed enemies: context placement must not leak intel.
   const target=door?doorCenter(door):node?.p??a.p;
   const anchor=worldToScreen(target,door?15:node?8:24);
   const w=ui.context.offsetWidth,h=ui.context.offsetHeight;
-  const minY=Math.max(62,ui.phase.getBoundingClientRect().bottom+8);
-  const maxY=Math.max(minY+h+2,ui.play.getBoundingClientRect().top-10);
-  const proposals=[
-    {x:anchor.x+36,y:anchor.y-h/2},
-    {x:anchor.x-w-36,y:anchor.y-h/2},
-    {x:anchor.x-w/2,y:anchor.y-h-35},
-    {x:anchor.x-w/2,y:anchor.y+35},
-  ];
-  const viable=proposals.map((p,i)=>{
-    const x=clamp(p.x,8,Math.max(8,cssW-w-8));
-    const y=clamp(p.y,minY,Math.max(minY,maxY-h));
-    const displacement=Math.hypot(x-p.x,y-p.y);
-    const overlap=Math.max(0,Math.min(x+w,anchor.x+27)-
-      Math.max(x,anchor.x-27))*
-      Math.max(0,Math.min(y+h,anchor.y+27)-
-      Math.max(y,anchor.y-27));
-    return {x,y,score:displacement*3+overlap/7+i*3};
-  }).sort((a,b)=>a.score-b.score)[0];
-  ui.context.style.left=viable.x+'px';
-  ui.context.style.top=viable.y+'px';
+  const header=document.querySelector<HTMLElement>('.top');
+  const nav=document.querySelector<HTMLElement>('.bar');
+  const minY=Math.max(8,(header?.getBoundingClientRect().bottom??62)+8);
+  const maxY=Math.max(minY+h, (nav?.getBoundingClientRect().top??
+    ui.play.getBoundingClientRect().top)-10);
+  const avoid:AvoidRect[]=[{x:anchor.x-38,y:anchor.y-38,
+    w:76,h:76,weight:3}];
+  for(const unit of team(state)){
+    const feet=worldToScreen(unit.p,0),head=worldToScreen(unit.p,30);
+    avoid.push({x:Math.min(feet.x,head.x)-29,
+      y:Math.min(feet.y,head.y)-17,
+      w:Math.abs(head.x-feet.x)+58,
+      h:Math.abs(head.y-feet.y)+34,weight:3});
+  }
+  const paths:ScreenPath[]=[];
+  // Respect the authored route lines and their editable nodes.
+  let previous=a.p;
+  for(const waypoint of a.plan){
+    if(waypoint.kind==='move'){
+      paths.push({a:worldToScreen(previous,8),b:worldToScreen(waypoint.p,8)});
+      previous=waypoint.p;
+    }
+    const p=worldToScreen(waypoint.p,8);
+    avoid.push({x:p.x-16,y:p.y-16,w:32,h:32});
+  }
+  for(const overlay of [ui.hint,ui.feed]){
+    if(overlay.hidden||!overlay.getClientRects().length)continue;
+    const r=overlay.getBoundingClientRect();
+    avoid.push({x:r.left-7,y:r.top-7,w:r.width+14,h:r.height+14});
+  }
+  const placement=placeContextMenu({
+    anchor,width:w,height:h,viewportWidth:cssW,
+    top:minY,bottom:maxY,avoid,paths,preferredSide:lastContextSide,
+  });
+  lastContextSide=placement.side;
+  ui.context.style.left=placement.x+'px';
+  ui.context.style.top=placement.y+'px';
   ui.context.style.right='auto';
   ui.context.style.bottom='auto';
   ui.context.style.transform='none';
