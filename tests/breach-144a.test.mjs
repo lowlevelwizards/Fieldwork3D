@@ -43,6 +43,8 @@ test('144A: hinge opens away from nearby obstructing furniture',()=>{
   });
   const d=initDoor({id:'HINGE',a:{x:100,y:100},
     b:{x:148,y:100},open:true,openedAt:0,hinge:'a',swing:1},0);
+  // Test a newly opening leaf, not one spawned fully open.
+  d.openFraction=0;
   for(let i=0;i<90;i++)advanceDoor(d,1/60);
   assert.equal(d.swing,-1,'hinge must choose free swing side');
   assert.ok((d.openFraction??0)>.78,'leaf actually opens');
