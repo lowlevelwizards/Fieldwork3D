@@ -757,7 +757,6 @@ function renderProjectedPlans(){
   // Screen-space icons stay readable regardless of ortho pitch or zoom.
   for(const hostile of enemies(state)){
     if(!liveVisibility(state,hostile.p))continue;
-    const pawn=worldToScreen(hostile.p,33);
     const ground=worldToScreen(hostile.p,1);
     if(hostile.health<=0){
       // The actual grounded body and restrained blood mark communicate DOWN.
