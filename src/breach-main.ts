@@ -1566,7 +1566,19 @@ canvas.addEventListener('wheel',e=>{
   const z=stage&&viewMode!=='plan2d'?stage.view.zoom:zoom;
   fitZoom(z*Math.exp(-e.deltaY*.001),e.clientX,e.clientY);
 },{passive:false});
+// Opt-in developer overlay: add ?perf=1 to measure render and simulation
+// without polling DOM/layout or allocating objects in the normal game loop.
+const perfOverlay=new URLSearchParams(location.search).has('perf')?
+  document.createElement('div'):null;
+if(perfOverlay){
+  perfOverlay.style.cssText='position:fixed;top:4px;right:4px;z-index:9999;'+
+    'background:#102021e8;color:#d5ebd8;font:11px monospace;padding:6px;'+
+    'pointer-events:none;white-space:pre;max-width:50vw';
+  document.body.append(perfOverlay);
+}
+let perfFrames=0,perfFrameSum=0,perfSimSum=0,perfRenderSum=0,perfMax=0;
 function tick(now:number){
+  const perfStart=perfOverlay?performance.now():0;
   const dt=Math.min(.08,Math.max(0,(now-last)/1000));last=now;
   if(!replaying&&state.phase==='running'){
     accum+=dt;
@@ -1615,9 +1627,23 @@ function tick(now:number){
     playTone(210,.22);
   lastEventAudio=event;
   if(now-hudAt>120){updateHud();if(replaying)updateReplayHud();hudAt=now;}
+  const perfRenderStart=perfOverlay?performance.now():0;
   if(stage&&viewMode!=='plan2d')
     stage.update(state,selected,dt,doorFocusId,
       replaying&&replayOmniscient,replaying?replayPresentation:null);
-  render();updateContext();requestAnimationFrame(tick);
+  render();updateContext();
+  if(perfOverlay){
+    const end=performance.now(),frame=end-perfStart;
+    perfFrames++;perfFrameSum+=frame;perfSimSum+=perfRenderStart-perfStart;
+    perfRenderSum+=end-perfRenderStart;perfMax=Math.max(perfMax,frame);
+    if(perfFrames>=45){
+      perfOverlay.textContent='FRAME '+(perfFrameSum/perfFrames).toFixed(1)+
+        'ms / spike '+perfMax.toFixed(1)+'ms\\nSIM '+
+        (perfSimSum/perfFrames).toFixed(1)+'ms / RENDER '+
+        (perfRenderSum/perfFrames).toFixed(1)+'ms';
+      perfFrames=0;perfFrameSum=0;perfSimSum=0;perfRenderSum=0;perfMax=0;
+    }
+  }
+  requestAnimationFrame(tick);
 }
 layout();cameraMode(viewMode);updateHud();requestAnimationFrame(tick);
