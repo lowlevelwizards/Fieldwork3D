@@ -863,6 +863,13 @@ function fog(){
   }
 }
 function missionMarkers(){
+  if(state.rescue){
+    const p=state.rescue.p;
+    draw.strokeStyle='#eed9ad';draw.lineWidth=2.2;
+    draw.beginPath();draw.arc(p.x,p.y,13,0,Math.PI*2);draw.stroke();
+    draw.fillStyle='#ebdfc0';draw.textAlign='center';
+    draw.font='bold 10px monospace';draw.fillText('CIV',p.x,p.y-18);
+  }
   const p=state.mission==='extract'?state.scenario.extract:state.scenario.objective;
   if(state.mission==='clear'||state.mission==='done')return;
   draw.strokeStyle='#d8cc98';draw.lineWidth=2;
@@ -1467,7 +1474,10 @@ function tick(now:number){
   // A new shot can arrive on exactly the tick an old shot expires.
   const fresh=state.shots.filter(shot=>shot.id>lastSoundShotId);
   if(audio&&!replaying)for(const shot of fresh.slice(-3)){
-    playTone(shot.side==='blue'?135:105,.095,true);
+    const firingActor=state.operators.find(a=>a.id===shot.shooterId);
+    const weapon=firingActor?.weapon??'carbine';
+    playTone(weapon==='shotgun'?82:weapon==='rifle'?112:
+      weapon==='smg'?177:135,weapon==='shotgun'?.19:.095,true);
     if(shot.hit)playTone(shot.down?75:225,shot.down ? .25 : .10,
       shot.down);
   }
@@ -1481,6 +1491,10 @@ function tick(now:number){
     playTone(1350,.65,true);
   if(event!==lastEventAudio&&event.includes('RELOADED'))
     playTone(280,.09);
+  if(event!==lastEventAudio&&event.includes('FLASH OUT'))
+    playTone(420,.07);
+  if(event!==lastEventAudio&&event.includes('SURRENDERED'))
+    playTone(210,.22);
   lastEventAudio=event;
   if(now-hudAt>120){updateHud();if(replaying)updateReplayHud();hudAt=now;}
   if(stage&&viewMode!=='plan2d')
