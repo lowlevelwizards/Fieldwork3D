@@ -694,11 +694,12 @@ function paths(){
         draw.fillText(n.pieSide==='cw'?'PIE ↷':'PIE ↶',point.x+12,point.y-11);
         draw.restore();
       }
-      if(n.kind==='door'||n.kind==='wait'||n.kind==='sync'){
+      if(n.kind==='door'||n.kind==='wait'||n.kind==='holdClear'||n.kind==='sync'){
         draw.textAlign='left';draw.font='bold 10px monospace';
         draw.fillStyle='#e7c797';
         draw.fillText(n.kind==='door'?(n.method??'open').toUpperCase():
-          n.kind.toUpperCase(),point.x+11,point.y-9);
+          n.kind==='wait'||n.kind==='holdClear'?'◷ WAIT':n.kind.toUpperCase(),
+          point.x+11,point.y-9);
       }
     }
   }
@@ -817,9 +818,14 @@ function renderProjectedPlans(){
         draw.strokeRect(finish.x-8,finish.y-8,16,16);
       }
       if(n.kind==='wait'||n.kind==='holdClear'){
-        draw.fillStyle=n.kind==='holdClear'?'#a8d6cd':'#e5c58e';
-        draw.font='bold 12px monospace';
-        draw.fillText(n.kind==='holdClear'?'◎ CLEAR':'◷ '+(n.duration??.5)+'s',point.x+12,point.y-14);
+        draw.fillStyle='#e5c58e';draw.font='bold 12px monospace';
+        draw.fillText('◷ WAIT',point.x+12,point.y-14);
+      }
+      if(n.postureState||n.paceState){
+        draw.font='bold 10px monospace';draw.fillStyle='#a2d7c9';
+        draw.fillText([n.postureState?.toUpperCase(),
+          n.paceState?.toUpperCase()].filter(Boolean).join(' · '),
+          point.x+12,point.y+18);
       }
       if(n.kind==='move'||n.kind==='door'||n.kind==='pie')previous=n.p;
     }
@@ -1109,7 +1115,7 @@ function useSelectedGround(pt:Pt){
       planDoorFlash(state,selected,flashDoorId,pt):
       planFlash(state,selected,pt)))
       state.events.push('FLASH TARGET BLOCKED / OUT OF RANGE');
-    else selectedNode=id;
+    else selectedNode=flashDoorId?state.nextId-1:id;
     flashMode=false;flashDoorId=null;updateHud();return;
   }
   if(looking){
@@ -1378,7 +1384,9 @@ canvas.addEventListener('pointerdown',e=>{
       return distance(worldToScreen(a.p,24),
         {x:e.clientX,y:e.clientY})<(direct?15:25);
     });
-    const node=state.phase==='planning'&&!contextual?hitNode(pt):null;
+    // Tapping the operator always selects HERE, even if a waypoint
+    // happens to overlap its icon.
+    const node=state.phase==='planning'&&!contextual&&!hit?hitNode(pt):null;
     if(node){
       if(node.owner!==selected)selectUnit(node.owner);
       selectedNode=node.id;orderOrigin='node';doorFocusId=null;
