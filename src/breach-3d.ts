@@ -49,6 +49,7 @@ export class TacticalScene3D{
   private tracerGeometry=new THREE.CylinderGeometry(.65,.65,1,6);
   private impactGeometry=new THREE.IcosahedronGeometry(1,1);
   private walls:{mesh:THREE.Mesh;mid:Pt}[]=[];
+  private wallMaterials=new Set<THREE.Material>();
   private effects=new THREE.Group();
   private target=new THREE.Vector3(339,0,413);
   private currentElev=55*Math.PI/180;
@@ -132,6 +133,8 @@ export class TacticalScene3D{
       child.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
       this.root.remove(child);
     });
+    for(const material of this.wallMaterials)material.dispose();
+    this.wallMaterials.clear();
     this.walls.length=0;this.doors.clear();
     this.observedDoorOpen.clear();
     for(const cache of [this.impactDecals,this.discarded,
@@ -174,12 +177,16 @@ export class TacticalScene3D{
       if(len<5)continue;
       const x=(a.x+b.x)/2,z=(a.y+b.y)/2;
       const angle=-Math.atan2(b.y-a.y,b.x-a.x);
-      const body=this.box(this.root,x,20,z,len+1,40,9,wallMat);
+      const individualWall=wallMat.clone();
+      this.wallMaterials.add(individualWall);
+      const body=this.box(this.root,x,20,z,len+1,40,9,individualWall);
       body.rotation.y=angle;
       this.walls.push({mesh:body,mid:{x,y:z}});
       const foot=this.box(this.root,x,2,z,len+1,4,12,skirting,false);
       foot.rotation.y=angle;
-      const cap=this.box(this.root,x,40.3,z,len+2,2,11,capMat,false);
+      const individualCap=capMat.clone();
+      this.wallMaterials.add(individualCap);
+      const cap=this.box(this.root,x,40.3,z,len+2,2,11,individualCap,false);
       cap.rotation.y=angle;this.walls.push({mesh:cap,mid:{x,y:z}});
     }
     const doorMat=this.solid(0xb18b5f),doorTrim=this.solid(0xe0c390);
