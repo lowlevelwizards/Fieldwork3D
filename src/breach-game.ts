@@ -987,7 +987,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   if(a.flashUntil>s.seconds){
     a.velocity=0;a.aim=0;a.alert='cover';return;
   }
-  if(!a.contacted&&a.watch){
+  if(!a.contacted&&!a.contact&&a.alert==='idle'&&a.watch){
     if(a.defense===null){
       a.defense=defensivePosition(a,a.watch,s);
       a.defenseUntil=s.seconds+8;
