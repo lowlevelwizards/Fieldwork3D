@@ -178,7 +178,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const stanceRadius=Math.max(...targets.map(t=>
     Math.hypot(t.position.x-p.x,t.position.y-p.z)));
   const stanceDrop=clamp((stanceRadius-7.8)*.80,0,4.0);
-  r.hip.position.y=19-crouch+motion.pelvisY-stanceDrop;
+  r.hip.position.y=Math.max(17.12-crouch,19-crouch+motion.pelvisY-stanceDrop);
   r.hip.position.z=motion.pelvisSide;
   r.chest.position.y=26-crouch+motion.pelvisY*.65;
   r.chest.position.z=motion.pelvisSide*.75;
