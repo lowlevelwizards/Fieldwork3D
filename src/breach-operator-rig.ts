@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import {alignSegment,twoBoneJoint} from './breach-ik.ts';
 import type {WeaponId} from './breach-combat.ts';
 import {constrainFoot,needsRecoveryStep} from './breach-gait.ts';
+import {weaponGrips,handlingPose,clampReach} from './breach-weapon-pose.ts';
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
   anchor:THREE.Vector3;planted:boolean;lastCycle:number;
   swingStart:THREE.Vector3;swingGoal:THREE.Vector3;swinging:boolean;
@@ -16,6 +17,7 @@ export type OperatorPose={
   lastDoorAt:number;doorPoint?:{x:number;y:number};down:boolean;
   surrender:boolean;aiming:boolean;firing:boolean;turning:number;
   obstruction?:boolean;friendlyNear?:boolean;
+  aimBlend?:number;recoil?:number;
 };
 export type OperatorRig={
   root:THREE.Group;hip:THREE.Group;chest:THREE.Group;head:THREE.Group;
@@ -75,6 +77,9 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   block(weapon,1,0,0,14,3,3.5,steel);
   block(weapon,13,0,0,13,2.4,2.7,steel);
   block(weapon,-6,-1,0,6,4,3,boot);
+  // Stock, comb and narrow sight rail share the weapon's rigid transform.
+  block(weapon,-10,0,0,9,3,3.5,boot);
+  block(weapon,-1,2.6,0,11,1.2,1.5,steel);
   block(weapon,3,-4,0,2.7,6,2.5,boot);
   return {root,hip,chest,head,weapon,feet,arms,pack,
     legacyLegs:[new THREE.Group(),new THREE.Group()],
@@ -176,50 +181,67 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     alignSegment(foot.lower,knee,relative);
     foot.shoe.position.copy(relative);
   }
-  // Shoulder direction, both-hand grips, and support-hand action reach.
-  const gunLength=p.weapon==='smg'?.70:p.weapon==='rifle'?1.26:
-    p.weapon==='shotgun'?1.12:1;
-  const retract=p.obstruction?1:p.aiming?0:.28;
-  r.weapon.scale.x=gunLength;
-  r.weapon.position.x=6-retract*5.5;
-  r.weapon.position.y=-3+(p.aiming?1:0);
-  // The visible muzzle must always match the authoritative simulated shot
-  // heading even while hips and shoulders are still catching up.
+  // 116: weapon is solved from stock-to-shoulder contact FIRST, then two
+  // arm chains conform to their physical grips. It is always one rigid body.
+  const data=weaponGrips(p.weapon);
+  const handling=handlingPose({
+    aim:p.aimBlend??(p.aiming?1:0),moving,
+    obstruction:!!p.obstruction,friendlyNear:!!p.friendlyNear
+  });
+  r.weapon.scale.x=data.lengthScale;
+  const stock=P(data.stockX*data.lengthScale,0,0);
+  const shoulderPocket=P(2.5,
+    handling==='ads'?8:handling==='point'?5.3:
+    handling==='high'?6:handling==='short'?4:2.5,4.2);
+  const recoil=p.recoil??(p.firing?1.5:0);
+  // This yaw is determined by the authoritative firing direction.
   r.weapon.rotation.y=-p.heading-r.root.rotation.y-r.chest.rotation.y;
+  r.weapon.rotation.z=handling==='low'?-.16:handling==='high'?.13:0;
+  if(handling==='short')r.weapon.rotation.z=-.08;
+  const aimedStock=stock.clone().applyAxisAngle(P(0,1,0),
+    r.weapon.rotation.y);
+  r.weapon.position.copy(shoulderPocket).sub(aimedStock);
+  r.weapon.position.x-=recoil;
+  r.weapon.position.y+=Math.min(1.1,recoil*.20);
+  // A physical door reach may shift the chest a little over the support
+  // foot, but the whole character is never allowed to tip like a rigid pole.
   const reloadProgress=p.reload>0?1-p.reload/p.reloadDuration:0;
   const reloadActive=p.reload>0;
   const throwAge=p.seconds-p.lastThrowAt;
   const throwActive=throwAge>=0&&throwAge<.70;
   const doorAge=p.seconds-p.lastDoorAt;
-  const doorActive=doorAge>=0&&doorAge<.9;
-  const recoil=p.firing?1.9:0;
-  r.weapon.position.x-=recoil;
-  r.weapon.rotation.z=reloadActive?.18*Math.sin(Math.PI*reloadProgress):
-    (p.friendlyNear&&!p.firing?-.27:0);
-  const leftGrip=P(4,-2,-2),rightGrip=P(-1,-2,2);
+  const doorActive=doorAge>=0&&doorAge<.9&&!!p.doorPoint;
+  r.chest.position.x=0;
+  const leftGrip=P(data.supportX,data.supportY,-1.6);
+  const rightGrip=P(data.primaryX,data.primaryY,1.8);
+  let reaching=false;
   if(reloadActive){
-    const t=Math.sin(Math.PI*reloadProgress);
-    leftGrip.set(1,-7,-4*t-2);
+    leftGrip.set(data.primaryX-1,-7,-5*Math.sin(Math.PI*reloadProgress)-2);
   }else if(throwActive){
     const t=Math.sin(Math.PI*clamp(throwAge/.7,0,1));
-    leftGrip.set(10+12*t,3+7*t,-7);
+    leftGrip.set(data.supportX+8*t,4+7*t,-7);
   }else if(doorActive&&p.doorPoint){
-    const local=P(p.doorPoint.x-p.x,14-r.chest.position.y,
+    reaching=true;
+    const local=P(p.doorPoint.x-p.x,19-r.chest.position.y,
       p.doorPoint.y-p.z);
     local.applyAxisAngle(P(0,1,0),-r.root.rotation.y);
     local.applyAxisAngle(P(0,1,0),-r.chest.rotation.y);
-    leftGrip.copy(local);
+    // Small shoulder/chest reach rather than arm stretching.
+    r.chest.position.x=clamp(local.x-13,0,2.4);
+    leftGrip.copy(local).sub(P(r.chest.position.x,0,0));
   }
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
-    const shoulder=P(0,3,sign*7);
+    const shoulder=P(1,4,sign*7);
     const grip=i===0?leftGrip:rightGrip;
-    const wrist=(i===0&&doorActive&&p.doorPoint)?
-      leftGrip.clone():grip.clone().multiply(P(r.weapon.scale.x,1,1))
+    const desired=i===0&&reaching?grip.clone():
+      grip.clone().multiply(P(data.lengthScale,1,1))
         .applyAxisAngle(P(0,1,0),r.weapon.rotation.y)
         .add(r.weapon.position);
-    const elbow=twoBoneJoint(shoulder,wrist,9.3,9.3,
-      P(-.4,-.25,sign));
+    // Hard reach limit applies to door handles, weapon handling and reloads.
+    // Never let a long IK target stretch the physical arm to meet it.
+    const wrist=clampReach(shoulder,desired,19.2);
+    const elbow=twoBoneJoint(shoulder,wrist,10,10,P(-.2,-.4,sign*2));
     alignSegment(arm.upper,shoulder,elbow);
     alignSegment(arm.lower,elbow,wrist);
     arm.hand.position.copy(wrist);
