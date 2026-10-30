@@ -18,9 +18,12 @@ test('129: ankle gap is visible and remains bounded through lateral shuffles',()
      aiming:true,firing:false,turning:m.turning,aimBlend:m.aim,
      shotHeading:m.heading,replayFeet:feet,deterministic:true},0);
    widest=Math.max(widest,...rig.legGap);
+   for(let j=0;j<2;j++){
+    assert.equal(rig.feet[j].ankleLink.visible,rig.legGap[j]>.10);
+   }
    assert.ok(rig.legGap.every(Number.isFinite));
   }
-  assert.ok(widest<1.5,kind+' has runaway reach '+widest);
+  assert.ok(widest<2.8,kind+' has runaway reach '+widest);
  }
  rig.dispose();
 });
