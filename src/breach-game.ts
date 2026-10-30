@@ -19,6 +19,7 @@ import {generateSite,type Site,seeded} from './breach-site.ts';
 
 export type Posture='stand'|'crouch';
 export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retreat';
+export type Personality='guard'|'aggressor'|'cautious';
 export type TeamActor=Operator & {
   plan:PlanNode[];history:PlanHistory;nav:Pt[];activeNode:number;
   posture:Posture;alert:Alert;velocity:number;turning:number;
@@ -34,6 +35,8 @@ export type TeamActor=Operator & {
   lastHitAt:number;lastDownAt:number;
   /** Temporary cooperative sidestep, independent of authored orders. */
   yieldTarget:Pt|null;yieldFor:string|null;yieldUntil:number;
+  personality:Personality;morale:number;lastNoiseAt:number;
+  flashUntil:number;
 };
 export type NoiseEvent={p:Pt;radius:number;time:number;kind:string};
 export type ShotEvent={
@@ -41,6 +44,9 @@ export type ShotEvent={
   start:Pt;end:Pt;age:number;hit:boolean;side:Side;
   healthBefore:number;healthAfter:number;down:boolean;
 };
+export type DroppedMagazine={id:number;p:Pt;side:Side;age:number};
+export type FlashGrenade={id:number;p:Pt;from:Pt;to:Pt;age:number;fuse:number};
+export type FlashBurst={id:number;p:Pt;age:number};
 export type KnownContact={p:Pt;at:number;status:'seen'|'heard'};
 export type MissionStage='clear'|'secure'|'extract'|'done';
 export type Scenario={index:number;name:string;objective:Pt;extract:Pt};
@@ -50,7 +56,9 @@ export type Session=Omit<TacticalState,'operators'> & {
   shots:ShotEvent[];nextShotId:number;known:Map<string,KnownContact>;
   seenGround:Set<string>;timesPaused:number;deaths:number;
   started:boolean;syncCode:number;report:string[];
-  movementNoiseAt:number;site?:Site;};
+  movementNoiseAt:number;site?:Site;dropped:DroppedMagazine[];
+  grenades:FlashGrenade[];flashBursts:FlashBurst[];flashRemaining:number;
+  nextEffectId:number;};
 const d=(a:Pt,b:Pt)=>length(a,b);
 const clone=(p:Pt):Pt=>({...p});
 const near=(a:Pt,b:Pt,range:number)=>d(a,b)<=range;
@@ -72,6 +80,7 @@ const withActions=(a:Operator):TeamActor=>({
   blockedTime:0,priorP:clone(a.p),haltOnContact:false,retreatPoint:null,
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
   yieldTarget:null,yieldFor:null,yieldUntil:0,
+  personality:'guard',morale:1,lastNoiseAt:-1,flashUntil:-1,
 });
 /** Omitted seed keeps 052's historic static study for regression tests.
  * The actual game passes a unique seed on each newly loaded site.
@@ -114,6 +123,8 @@ export function newSession(index=0,siteSeed?:number):Session{
       a.heading=enemyRng()*Math.PI*2;
       a.health=site.roomCount>=5?2:(enemyRng()<.55?1:2);
       a.magazine=10;a.reserve=30;
+      a.personality=(['guard','aggressor','cautious'] as const)[Math.floor(enemyRng()*3)];
+      a.morale=.48+enemyRng()*.52;
     }
   }else operators.filter(a=>a.side==='red').forEach((a,i)=>{
     const pos=sample.spots[i];a.p={x:pos.x,y:pos.y};a.heading=pos.h;
@@ -125,7 +136,8 @@ export function newSession(index=0,siteSeed?:number):Session{
       extract:clone(site?.extract??EXTRACTION)},
     mission:'clear',noise:[],shots:[],nextShotId:1,known:new Map(),
     seenGround:new Set(),timesPaused:0,deaths:0,started:false,
-    syncCode:0,report:[],movementNoiseAt:0,site};
+    syncCode:0,report:[],movementNoiseAt:0,site,
+    dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1};
   observe(state);
   return state;
 }
@@ -473,6 +485,23 @@ export function redoPlan(s:Session,id:string){
   const next=redo(a.history,a.plan);if(!next)return false;
   a.plan=next;pathFor(a);return true;
 }
+/** Manual or automatic reload, with a physical discarded magazine. */
+export function beginReload(s:Session,a:TeamActor):boolean{
+  if(a.health<=0||a.reload>0||a.reserve<=0||a.magazine>=12)return false;
+  s.dropped.push({id:s.nextEffectId++,p:clone(a.p),side:a.side,age:0});
+  if(s.dropped.length>48)s.dropped.shift();
+  a.magazine=0;a.reload=1.8;a.aim=0;
+  notify(s,a.name+' RELOADING');
+  return true;
+}
+export function planReload(s:Session,id:string):boolean{
+  const a=party(s,id);
+  return !!a&&canEdit(s)&&addNode(s,id,'reload',finalPoint(a));
+}
+export function reloadNow(s:Session,id:string):boolean{
+  const a=party(s,id);
+  return !!a&&s.phase==='running'&&beginReload(s,a);
+}
 export function toggleContactRule(s:Session,id:string){
   const a=party(s,id);if(!a||!canEdit(s))return false;
   a.haltOnContact=!a.haltOnContact;return true;
@@ -638,8 +667,18 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const advance=Math.min(gap,a.velocity*dt);
   const move={x:a.p.x+Math.cos(direction)*advance,
     y:a.p.y+Math.sin(direction)*advance};
-  const closed=s.doors.some(door=>!door.open&&
+  const closedDoor=s.doors.find(door=>!door.open&&
     segmentsCross({a:a.p,b:move},door));
+  const closed=!!closedDoor;
+  if(closedDoor&&a.side==='red'&&d(a.p,doorCenter(closedDoor))<49){
+    a.actionTimer+=dt;
+    if(a.actionTimer>=.55){
+      closedDoor.open=true;closedDoor.openedAt=s.seconds;
+      hear(s,doorCenter(closedDoor),125,'door');
+      notify(s,a.name+' OPENED '+closedDoor.id);
+      a.actionTimer=0;
+    }
+  }else if(a.side==='red')a.actionTimer=0;
   const blocking=s.operators.find(b=>b!==a&&b.health>0&&
     d(b.p,move)<(b.side===a.side?15:11));
   const teammate=blocking?.side===a.side?blocking:null;
@@ -735,7 +774,10 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   const at=near(a.p,n.p,5);
   if(!at&&(n.kind==='move'||n.kind==='door'||n.kind==='sync')){
     approach(a,n.p,dt,s,n.moveMode==='strafe'?.68:1);
-    const held=aimHeading(a);
+    // Ordinary movement faces its actual navigation segment.
+    // Explicit STRAFE and PIE/TRACK orders are the exceptions.
+    const held=n.moveMode==='strafe'||a.aimInstruction?.mode==='track'?
+      aimHeading(a):null;
     if(held!==null)rotate(a,held,dt);
     else if(n.kind==='move'&&n.moveMode==='strafe')
       rotate(a,n.facing??a.heading,dt);
@@ -780,6 +822,11 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       for(const teammate of peers)pop(teammate);
       notify(s,'GO CODE '+(n.syncCode??'A'));
     }
+    return;
+  }
+  if(n.kind==='reload'){
+    if(a.magazine>=12||a.reserve<=0){pop(a);return;}
+    if(a.reload===0)beginReload(s,a);
     return;
   }
   if(n.kind==='door'){
@@ -836,11 +883,25 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.alert='investigating';a.contact=a.heard??a.contact;
   }
   const newest=[...s.noise].reverse().find(n=>
-    s.seconds-n.time<1&&d(a.p,n.p)<n.radius);
+    n.time>a.lastNoiseAt&&s.seconds-n.time<1&&d(a.p,n.p)<n.radius);
   if(newest&&!visible.length&&a.alert!=='retreat'){
-    a.heard=clone(newest.p);a.contact=clone(newest.p);
-    a.alert='suspicious';a.alertUntil=s.seconds+1.15;
+    a.lastNoiseAt=newest.time;
+    const spread=newest.kind==='gunshot'?39:18;
+    const heard={x:newest.p.x+(random(s)-.5)*spread,
+      y:newest.p.y+(random(s)-.5)*spread};
+    a.heard=heard;a.contact=heard;
+    a.alertUntil=s.seconds+(a.personality==='aggressor'?.5:1.4);
     a.contacted=true;
+    const needsCover=a.personality==='cautious'||
+      (a.personality==='guard'&&a.morale<.65);
+    if(needsCover){
+      a.retreatPoint=defensivePosition(a,heard,s);
+      a.alert=a.retreatPoint?'retreat':'cover';a.nav=[];
+    }else a.alert='investigating';
+    rotate(a,angle(a.p,heard),dt);
+  }
+  if(a.flashUntil>s.seconds){
+    a.velocity=0;a.aim=0;a.alert='cover';return;
   }
   if(a.alert==='retreat'&&a.retreatPoint){
     if(d(a.p,a.retreatPoint)>9){
@@ -854,10 +915,11 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   }
   if(a.contact){
     rotate(a,angle(a.p,a.contact),dt);
-    if(a.alert==='investigating'&&d(a.p,a.contact)>75){
+    if(a.alert==='investigating'&&d(a.p,a.contact)>40){
       // Noise gives a region to investigate, never a magic target.
       if(!a.nav.length)a.nav=route(a.p,a.contact);
-      if(a.nav.length)approach(a,a.contact,dt,s);
+      if(a.nav.length)approach(a,a.contact,dt,s,
+        a.personality==='aggressor'?1.1:.82);
     }
     if(a.alert==='investigating'&&d(a.p,a.contact)<35){
       a.alert='cover';a.contact=null;a.nav=[];
@@ -879,15 +941,13 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(a.reload>0){
     a.reload=Math.max(0,a.reload-dt);
     if(a.reload===0){
-      const rounds=Math.min(12,a.reserve);
+      const rounds=Math.min(a.side==='red'?10:12,a.reserve);
       a.magazine=rounds;a.reserve-=rounds;notify(s,a.name+' RELOADED');
     }
     return;
   }
-  if(!a.magazine){
-    if(a.reserve>0){a.reload=1.8;notify(s,a.name+' RELOADING');}
-    return;
-  }
+  if(!a.magazine){beginReload(s,a);return;}
+  if(a.flashUntil>s.seconds){a.aim=0;return;}
   const enemiesOf=a.side==='blue'?enemies(s):team(s);
   const target=enemiesOf.filter(e=>inSight(a,e,s))
     .sort((x,y)=>d(a.p,x.p)-d(a.p,y.p))[0];
@@ -896,7 +956,8 @@ function fire(s:Session,a:TeamActor,dt:number){
   }
   if(a.targetId!==target.id){a.targetId=target.id;a.aim=0;}
   const moving=a.velocity>10;
-  const acquisition=a.side==='blue'?(moving?.57:.30):.58;
+  const acquisition=a.side==='blue'?(moving?.57:.30):.58+
+    (a.personality==='cautious'?.12:0);
   a.aim=Math.min(1,a.aim+dt/acquisition);
   if(a.aim<1||a.fireCd>0)return;
   a.fireCd=a.side==='blue'?.33:.51;
@@ -904,7 +965,8 @@ function fire(s:Session,a:TeamActor,dt:number){
   const dist=d(a.p,target.p);
   const chance=clamp((a.side==='blue'?.78:.56)-dist*.0015-
     (moving?.22:0)-a.suppression*.28-
-    softCoverPenalty(a,target)+(a.posture==='crouch'?.09:0),.08,.92);
+    softCoverPenalty(a,target)+(a.posture==='crouch'?.09:0)-
+    (a.flashUntil>s.seconds?.38:0),.08,.92);
   const hit=random(s)<chance;
   const end=hit?clone(target.p):{
     x:target.p.x+(random(s)-.5)*31,
@@ -968,6 +1030,8 @@ export function stepSession(s:Session,dt:number){
   s.sparks=s.sparks.filter(a=>(a.age+=h)<.20);
   s.shots=s.shots.filter(a=>(a.age+=h)<.40);
   s.noise=s.noise.filter(n=>s.seconds-n.time<4);
+  for(const magazine of s.dropped)magazine.age+=h;
+  s.flashBursts=s.flashBursts.filter(b=>(b.age+=h)<.70);
   for(const a of s.operators){
     a.fireCd=Math.max(0,a.fireCd-h);
     a.suppression=Math.max(0,a.suppression-h*.17);
