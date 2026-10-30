@@ -27,6 +27,8 @@ import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
   rayHitsActor,muzzleEndpoint,recoverWeapon,handlingInstability,type FiringMode} from './breach-ballistics.ts';
 import {chooseDefense,watchPoint} from './breach-defense.ts';
 import {muzzleAtShot} from './breach-muzzle.ts';
+import {initialIntel,observeIntel,routeWithIntel,intelPassable,doorKnown,
+  type IntelMode,type IntelState} from './breach-intel.ts';
 import {magazineKit,fullestMagazineIndex,
   reloadDuration as reloadTiming,type MagazineItem,type ReloadMode}
   from './breach-magazines.ts';
@@ -93,7 +95,8 @@ export type Session=Omit<TacticalState,'operators'> & {
   mission:MissionStage;nextId:number;noise:NoiseEvent[];
   shots:ShotEvent[];casings:EjectedCasing[];nextShotId:number;
   known:Map<string,KnownContact>;
-  seenGround:Set<string>;timesPaused:number;deaths:number;
+  seenGround:Set<string>;intel:IntelState;intelObservedAt:number;
+  timesPaused:number;deaths:number;
   started:boolean;syncCode:number;report:string[];
   movementNoiseAt:number;site?:Site;dropped:DroppedMagazine[];
   grenades:FlashGrenade[];flashBursts:FlashBurst[];flashRemaining:number;
@@ -141,7 +144,8 @@ const withActions=(a:Operator):TeamActor=>({
 /** Omitted seed keeps 052's historic static study for regression tests.
  * The actual game passes a unique seed on each newly loaded site.
  */
-export function newSession(index=0,siteSeed?:number):Session{
+export function newSession(index=0,siteSeed?:number,
+  intelMode:IntelMode='floor-plan'):Session{
   const site=siteSeed===undefined?undefined:generateSite(siteSeed>>>0);
   activateSite(site??null);
   const seed=newTacticalState();
@@ -208,7 +212,8 @@ export function newSession(index=0,siteSeed?:number):Session{
       objective:clone(site?.objective??OBJECTIVE),
       extract:clone(site?.extract??EXTRACTION)},
     mission:'clear',noise:[],shots:[],casings:[],nextShotId:1,known:new Map(),
-    seenGround:new Set(),timesPaused:0,deaths:0,started:false,
+    seenGround:new Set(),intel:initialIntel(intelMode,site,initialDoors()),
+    intelObservedAt:-1,timesPaused:0,deaths:0,started:false,
     syncCode:0,report:[],movementNoiseAt:0,site,
     dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1,
     impactMarks:[],battleEvents:[],nextBattleId:1,
@@ -257,9 +262,9 @@ function edit(s:Session,a:TeamActor,fn:()=>void){
 export function addNode(s:Session,id:string,kind:PlanKind,p:Pt,
   extra:Partial<PlanNode>={}):boolean{
   const a=party(s,id);if(!a||!canEdit(s))return false;
-  if((kind==='move'||kind==='door')&&!passable(p))return false;
-  if((kind==='move'||kind==='door')&&
-     !route(finalPoint(a),p).length)return false;
+  if(kind==='move'&&!intelPassable(p,s.intel))return false;
+  if(kind==='move'&&!routeWithIntel(s.intel,finalPoint(a),p).length)return false;
+  if(kind==='door'&&(!passable(p)||!route(finalPoint(a),p).length))return false;
   return edit(s,a,()=>{
     a.plan.push({id:s.nextId++,kind,p:clone(p),...extra});
   });
@@ -278,7 +283,8 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
   let from=finalPoint(a);
   const facing=[...a.plan].reverse().find(n=>n.facing!==undefined)?.facing??a.heading;
   for(const point of points.slice(0,60)){
-    if(d(from,point)<20||!passable(point)||!route(from,point).length)continue;
+    if(d(from,point)<20||!intelPassable(point,s.intel)||
+      !routeWithIntel(s.intel,from,point).length)continue;
     proposed.push({id:s.nextId+proposed.length,kind:'move',p:clone(point),
       ...(strafe?{moveMode:'strafe' as const,facing}:{})});
     from=point;
@@ -289,10 +295,12 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
   const opened=new Set(a.plan.filter(n=>n.kind==='door'&&n.method!=='hold')
     .map(n=>n.doorId??''));
   for(const node of proposed){
-    const points=[prior,...route(prior,node.p)];
+    const points=[prior,...routeWithIntel(s.intel,prior,node.p)];
     for(let i=1;i<points.length;i++)
       for(const door of s.doors){
-        if(door.open||opened.has(door.id)||
+        if(!doorKnown(s.intel,door.id)||
+           (s.intel.doorMemory.get(door.id)??0)>=.72||
+           opened.has(door.id)||
            !segmentsCross({a:points[i-1],b:points[i]},door))continue;
         const staging=doorApproach(prior,door);
         if(!staging)continue;
@@ -398,14 +406,16 @@ function validEditedPlan(s:Session,start:Pt,proposed:PlanNode[]){
       if(!arc.length)return false;
       n.arc=arc;n.p=clone(arc[arc.length-1]);from=n.p;
     }else if(n.kind==='move'||n.kind==='door'){
-      if(!passable(n.p)||!route(from,n.p).length)return false;
+      if(n.kind==='move'?!intelPassable(n.p,s.intel)||
+        !routeWithIntel(s.intel,from,n.p).length:
+        !passable(n.p)||!route(from,n.p).length)return false;
       from=n.p;
     }
   }
   return true;
 }
 export function movePlanNode(s:Session,id:string,nodeId:number,p:Pt){
-  const a=party(s,id);if(!a||!passable(p)||!canEdit(s))return false;
+  const a=party(s,id);if(!a||!intelPassable(p,s.intel)||!canEdit(s))return false;
   const proposed=copyNodes(a.plan);
   if(!modifyNode(proposed,nodeId,{p}))return false;
   const changed=proposed.find(n=>n.id===nodeId);
@@ -426,7 +436,7 @@ export function deletePlanNode(s:Session,id:string,nodeId:number){
   return edit(s,a,()=>{a.plan=proposed;});
 }
 export function insertPlanNode(s:Session,id:string,index:number,p:Pt){
-  const a=party(s,id);if(!a||!canEdit(s)||!passable(p))return false;
+  const a=party(s,id);if(!a||!canEdit(s)||!intelPassable(p,s.intel))return false;
   const position=clamp(index,0,a.plan.length);
   const proposed=copyNodes(a.plan);
   proposed.splice(position,0,{id:s.nextId,kind:'move',p:clone(p)});
@@ -797,6 +807,10 @@ export function lastKnown(s:Session,id:string){
   return s.known.get(id)??null;
 }
 function observe(s:Session){
+  if(s.intelObservedAt<0||s.seconds-s.intelObservedAt>=.16){
+    observeIntel(s.intel,s.site,s.doors,p=>liveVisibility(s,p));
+    s.intelObservedAt=s.seconds;
+  }
   // Site knowledge persists, current knowledge does not. Sight has geometry,
   // distance and facing: invisible opponents never leak through the UI.
   for(const blue of team(s)){
@@ -901,7 +915,7 @@ function stepYield(s:Session,a:TeamActor,dt:number):boolean{
 }
 function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   if(!a.nav.length){
-    a.nav=route(a.p,p);
+    a.nav=a.side==='blue'?routeWithIntel(s.intel,a.p,p):route(a.p,p);
     if(!a.nav.length){notify(s,a.name+' CANNOT REACH');return false;}
   }
   const next=a.nav[0],gap=d(a.p,next);

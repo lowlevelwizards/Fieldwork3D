@@ -1,5 +1,5 @@
 import {
-  W,H,WALLS,COVER,GRID,doorCenter,doorLeafSegment,route,type Pt,
+  W,H,WALLS,COVER,GRID,doorCenter,doorLeafSegment,type Pt,
 } from './breach-core.ts';
 import {
   type Session,type TeamActor,
@@ -19,6 +19,8 @@ import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
 import {doorReachable} from './breach-door.ts';
+import {INTEL_MODES,doorKnown,wallKnown,coverKnown,roomKnown,
+  routeWithIntel,intelFogLevel,type IntelMode} from './breach-intel.ts';
 import './breach-style.css';
 
 const el=<T extends HTMLElement>(id:string)=>{
@@ -50,6 +52,7 @@ const ui={
   viewTop:el<HTMLButtonElement>('viewTop'),
   view2d:el<HTMLButtonElement>('view2d'),
   cameraFit:el<HTMLButtonElement>('cameraFit'),
+  intelMode:el<HTMLButtonElement>('intelMode'),
   ash:el<HTMLButtonElement>('ash'),vale:el<HTMLButtonElement>('vale'),
   ashHp:el<HTMLElement>('ashHp'),valeHp:el<HTMLElement>('valeHp'),
   back:el<HTMLButtonElement>('back'),
@@ -88,7 +91,8 @@ const randomSiteSeed=()=>{
   return bytes[0]||((Date.now()^Math.floor(Math.random()*1e9))>>>0);
 };
 const legacyStudy=new URLSearchParams(location.search).has('fixedSite');
-let state:Session=newSession(0,legacyStudy?undefined:randomSiteSeed());
+let selectedIntelMode:IntelMode='floor-plan';
+let state:Session=newSession(0,legacyStudy?undefined:randomSiteSeed(),selectedIntelMode);
 let recorder=new MissionRecorder();recorder.capture(state,true);
 let replaying=false,replayPlaying=false,replayTime=0,replayRate=1;
 let replayPresentation:ReplayPresentation|null=null;
@@ -219,10 +223,14 @@ function armFacing(mode:'look'|'pie'|'strafe'){
 /** The tray never competes with the expanded TOOLS panel or GO/BACK. */
 function focusedDoor(a:TeamActor,node:ReturnType<typeof selectedPlanNode>){
   const points=node?[node.p]:[finalPoint(a),a.p];
-  const explicit=state.doors.find(d=>d.id===doorFocusId&&!d.open&&
+  const explicit=state.doors.find(d=>d.id===doorFocusId&&
+    doorKnown(state.intel,d.id)&&
+    (state.intel.doorMemory.get(d.id)??0)<.72&&
     points.some(p=>doorReachable(p,d)));
   if(explicit)return explicit;
-  return state.doors.filter(d=>!d.open&&d.id!==doorMenuDismissedId&&points.some(p=>
+  return state.doors.filter(d=>doorKnown(state.intel,d.id)&&
+    (state.intel.doorMemory.get(d.id)??0)<.72&&
+    d.id!==doorMenuDismissedId&&points.some(p=>
     doorReachable(p,d)))
     .sort((x,y)=>{
       const dx=Math.min(...points.map(p=>distance(p,doorCenter(x))));
@@ -363,6 +371,7 @@ function updateHud(){
   ui.stance.setAttribute('aria-pressed',String(active?.posture==='crouch'));
   ui.contact.setAttribute('aria-pressed',String(active?.haltOnContact));
   ui.variant.textContent='NEW SITE';
+  ui.intelMode.textContent='INTEL · '+selectedIntelMode.replace('-', ' ').toUpperCase();
   ui.flash.textContent='FLASH ×'+state.flashRemaining;
   ui.loadout.textContent='WEAPON · '+(active?.weapon.toUpperCase()??'—');
   ui.flash.disabled=state.flashRemaining<=0||replaying;
@@ -401,7 +410,8 @@ function updateHud(){
   document.querySelector('.ident strong')!.textContent=
     (state.site?.name??'CUTWOODS')+' / BREACH';
   document.querySelector('.ident small')!.textContent=state.site?
-    state.site.roomCount+' ROOMS · '+team(state).length+' OPERATORS · SEED '+
+    (state.intel.mode==='floor-plan'?state.site.roomCount:'??')+
+      ' ROOMS · '+team(state).length+' OPERATORS · SEED '+
       state.site.seed.toString(16).toUpperCase().padStart(8,'0'):
     'TWO ROOMS · TWO OPERATORS';
   ui.hint.textContent=message();
@@ -440,6 +450,7 @@ function terrain(){
     draw.lineTo(x+34,y-21);draw.lineTo(x-34,y-21);
     draw.closePath();draw.fill();
     for(const room of site.rooms){
+      if(!roomKnown(state.intel,room.id))continue;
       const palette=['#666558','#526b66','#77705c','#58605a'];
       rect(room.x+2,room.y+2,room.w-4,room.h-4,
         room.kind==='hall'?'#4a5c55':palette[room.tone]);
@@ -495,7 +506,8 @@ function terrain(){
   }
 }
 function furniture(){
-  for(const c of COVER){
+  for(const [i,c] of COVER.entries()){
+    if(!coverKnown(state.intel,i))continue;
     draw.fillStyle='#0f1b1c66';
     draw.fillRect(c.x-c.w/2+6,c.y-c.h/2+7,c.w,c.h);
     rect(c.x-c.w/2,c.y-c.h/2,c.w,c.h,c.low?'#81725b':'#485552');
@@ -516,11 +528,16 @@ function wallShape(a:Pt,b:Pt){
   line({x:a.x,y:a.y-2},{x:b.x,y:b.y-2},'#d5c9a962',1.4);
 }
 function architecture(){
-  for(const wall of WALLS)wallShape(wall.a,wall.b);
+  for(const [i,wall] of WALLS.entries())if(wallKnown(state.intel,i))
+    wallShape(wall.a,wall.b);
   // Closed doors obscure sight and movement; opened doors have an arc.
   for(const door of state.doors){
+    if(!doorKnown(state.intel,door.id))continue;
     const a=door.a,b=door.b,center=doorCenter(door);
-    if(!door.open){
+    const visuallyOpen=liveVisibility(state,center)?
+      (door.openFraction??(door.open?1:0)):
+      (state.intel.doorMemory.get(door.id)??0);
+    if(visuallyOpen<.14){
       line(a,b,'#1c2727',15);
       line(a,b,'#b5a17a',8);
       circle(a.x,a.y,3,'#ead0a0');circle(b.x,b.y,3,'#ead0a0');
@@ -528,15 +545,14 @@ function architecture(){
       draw.fillStyle='#e4d1a2';draw.font='bold 9px monospace';
       draw.textAlign='center';draw.fillText('Ⅱ',0,3);draw.restore();
     }else{
-      // Hinge rotates out of the walkable gap, with no second collider.
-      if(Math.abs(a.y-b.y)<2)
-        line(a,{x:a.x,y:a.y-40},'#c2b08a',7);
-      else
-        line(a,{x:a.x+34,y:a.y},'#c2b08a',7);
-      circle(a.x,a.y,3,'#f0d8a9');
+      // Remember only the last witnessed angle, never offscreen changes.
+      const leaf=doorLeafSegment({...door,openFraction:visuallyOpen});
+      line(leaf.a,leaf.b,'#c2b08a',7);
+      circle(leaf.a.x,leaf.a.y,3,'#f0d8a9');
     }
   }
-  const selectedDoor=state.doors.find(d=>d.id===doorFocusId);
+  const selectedDoor=state.doors.find(d=>
+    d.id===doorFocusId&&doorKnown(state.intel,d.id));
   if(selectedDoor&&state.phase==='planning'){
     const hinge=selectedDoor.hinge==='b'?selectedDoor.b:selectedDoor.a;
     const swept=doorLeafSegment({...selectedDoor,openFraction:1});
@@ -578,7 +594,7 @@ function paths(){
       let from=a.p;
       for(const node of plan){
         if(node.kind==='move'||node.kind==='door'){
-          const course=route(from,node.p);
+          const course=routeWithIntel(state.intel,from,node.p);
           for(const p of course)draw.lineTo(p.x,p.y);
           from=node.p;
         }else if(node.kind==='pie'&&node.arc?.length){
@@ -684,7 +700,7 @@ function renderProjectedPlans(){
     let previous=a.p;
     for(const n of a.plan){
       const steps=n.kind==='pie'?n.arc??[]:
-        n.kind==='move'||n.kind==='door'?route(previous,n.p):[];
+        n.kind==='move'||n.kind==='door'?routeWithIntel(state.intel,previous,n.p):[];
       if(steps.length){
         draw.beginPath();
         const start=worldToScreen(previous,4);
@@ -877,18 +893,18 @@ function fog(){
     fogStamp=state.seconds;
     for(let row=0;row<19;row++)for(let col=0;col<16;col++){
       const p={x:col*40+20,y:row*40+20};
-      fogData[row*16+col]=liveVisibility(state,p)?0:
-        knownAt(state,p.x,p.y)?1:2;
+      fogData[row*16+col]=intelFogLevel(state.intel,state.site,p,
+        liveVisibility(state,p),knownAt(state,p.x,p.y));
     }
   }
   for(let row=0;row<19;row++)for(let col=0;col<16;col++){
     const value=fogData[row*16+col];
     if(value)rect(col*40,row*40,40,40,
-      value===1?'rgba(9,20,22,.28)':'rgba(9,20,22,.49)');
+      value===1?'rgba(9,20,22,.20)':'rgba(6,12,14,.97)');
   }
 }
 function missionMarkers(){
-  if(state.rescue){
+  if(state.rescue&&liveVisibility(state,state.rescue.p)){
     const p=state.rescue.p;
     draw.strokeStyle='#eed9ad';draw.lineWidth=2.2;
     draw.beginPath();draw.arc(p.x,p.y,13,0,Math.PI*2);draw.stroke();
@@ -896,7 +912,8 @@ function missionMarkers(){
     draw.font='bold 10px monospace';draw.fillText('CIV',p.x,p.y-18);
   }
   const p=state.mission==='extract'?state.scenario.extract:state.scenario.objective;
-  if(state.mission==='clear'||state.mission==='done')return;
+  if(state.mission==='clear'||state.mission==='done'||
+    !liveVisibility(state,p))return;
   draw.strokeStyle='#d8cc98';draw.lineWidth=2;
   draw.beginPath();draw.arc(p.x,p.y,33,0,Math.PI*2);draw.stroke();
   draw.fillStyle='#e1d1a2';draw.font='bold 12px monospace';
@@ -1115,10 +1132,11 @@ function updateReplayHud(){
 function enterReplay(){
   if(replaying||recorder.frames.length<2)return;
   finishedSession=state;replaying=true;replayPlaying=true;replayTime=0;
-  replayRate=1;replayOmniscient=true;looking=false;flashMode=false;
+  replayRate=1;replayOmniscient=false;looking=false;flashMode=false;
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
   ui.replayExtra.hidden=true;ui.replayMore.setAttribute('aria-expanded','false');
-  state=newSession(finishedSession.variant,finishedSession.site?.seed);
+  state=newSession(finishedSession.variant,finishedSession.site?.seed,
+    finishedSession.intel.mode);
   stage?.applySite(state.site??null);
   document.body.classList.add('replaying');
   ui.replayPanel.hidden=false;
@@ -1181,11 +1199,12 @@ ui.replayAnalysis.addEventListener('click',()=>{
   replayAnalysis=!replayAnalysis;updateReplayHud();
 });
 ui.replayExit.addEventListener('click',exitReplay);
-function reset(next=state.variant){
+function reset(next=state.variant,siteSeed?:number){
   replaying=false;replayPlaying=false;finishedSession=null;
   flashMode=false;document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
-  state=newSession(next,legacyStudy?undefined:randomSiteSeed());
+  state=newSession(next,legacyStudy?undefined:
+    siteSeed??randomSiteSeed(),selectedIntelMode);
   stage?.applySite(state.site??null);selected='rook';looking=false;
   selectedNode=null;doorFocusId=null;draggingNode=null;
   cursor=null;trace=null;zoom=1;panX=panY=0;
@@ -1227,6 +1246,13 @@ ui.stance.addEventListener('click',()=>{
 });
 ui.contact.addEventListener('click',()=>{toggleContactRule(state,selected);updateHud();});
 ui.variant.addEventListener('click',()=>reset(state.variant+1));
+ui.intelMode.addEventListener('click',()=>{
+  if(replaying)return;
+  const index=INTEL_MODES.indexOf(selectedIntelMode);
+  selectedIntelMode=INTEL_MODES[(index+1)%INTEL_MODES.length];
+  // Restart this exact building without preserving discoveries.
+  reset(state.variant,state.site?.seed);
+});
 ui.retry.addEventListener('click',()=>reset());
 ui.next.addEventListener('click',()=>reset(state.variant+1));
 ui.play.addEventListener('click',()=>{

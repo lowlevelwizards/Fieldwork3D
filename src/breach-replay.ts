@@ -4,6 +4,7 @@
  */
 import type {Session,TeamActor,ShotEvent,DroppedMagazine,FlashGrenade,FlashBurst,ImpactMark} from './breach-game.ts';
 import type {Door,Pt} from './breach-core.ts';
+import {intelSnapshot,intelRestore} from './breach-intel.ts';
 import type {BattleEvent} from './breach-combat.ts';
 import {ReplayMotionRecorder,type ReplayPresentation} from './breach-replay-motion.ts';
 
@@ -29,7 +30,8 @@ export type ReplayFrame={
   flashBursts:FlashBurst[];flashRemaining:number;
   missionType:Session['missionType'];holdTime:number;
   rescue:{p:Pt;following:string|null}|null;objective:Pt;
-  seenGround:string[];known:[string,{p:Pt;at:number;status:'seen'|'heard'}][];
+  seenGround:string[];intel:ReturnType<typeof intelSnapshot>;
+  known:[string,{p:Pt;at:number;status:'seen'|'heard'}][];
 };
 const position=(p:Pt):Pt=>({x:p.x,y:p.y});
 const shotCopy=(shot:ShotEvent):ShotEvent=>({...shot,
@@ -74,7 +76,7 @@ export function snapshot(s:Session):ReplayFrame{
     missionType:s.missionType,holdTime:s.holdTime,
     rescue:s.rescue?{p:position(s.rescue.p),following:s.rescue.following}:null,
     objective:position(s.scenario.objective),
-    seenGround:[...s.seenGround],
+    seenGround:[...s.seenGround],intel:intelSnapshot(s.intel),
     known:[...s.known].map(([id,c])=>[id,
       {p:position(c.p),at:c.at,status:c.status}]),
   };
@@ -188,6 +190,8 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
     following:f.rescue.following}:null;
   s.scenario.objective=position(f.objective);
   s.seenGround=new Set(f.seenGround);
+  s.intel=f.intel?intelRestore(f.intel):s.intel;
+  s.intelObservedAt=f.t;
   s.known=new Map(f.known.map(([id,c])=>[id,
     {p:position(c.p),at:c.at,status:c.status}]));
 }
