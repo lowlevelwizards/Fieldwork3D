@@ -879,7 +879,9 @@ export function lastKnown(s:Session,id:string){
   return s.known.get(id)??null;
 }
 function observe(s:Session){
-  if(s.intelObservedAt<0||s.seconds-s.intelObservedAt>=.16){
+  const updateGround=s.intelObservedAt<0||
+    s.seconds-s.intelObservedAt>=.14;
+  if(updateGround){
     observeIntel(s.intel,s.site,s.doors,p=>liveVisibility(s,p));
     s.intelObservedAt=s.seconds;
   }
@@ -887,12 +889,26 @@ function observe(s:Session){
   // distance and facing: invisible opponents never leak through the UI.
   for(const blue of team(s)){
     if(blue.health<=0)continue;
-    for(let y=16;y<740;y+=40)for(let x=16;x<640;x+=40){
-      const p={x,y},theta=angle(blue.p,p);
-      if(d(blue.p,p)<245&&
-         Math.abs(angleDifference(blue.heading,theta))<1.15&&
-         unobstructed(blue.p,p,s,blue.posture==='crouch'))
-        s.seenGround.add(Math.floor(x/40)+','+Math.floor(y/40));
+    // Remember every small patch actually seen, including areas that
+    // fall between the old 40-unit sample points when pieing a room.
+    // Do this at an intel cadence, not on every 60 Hz sim tick.
+    if(updateGround){
+      const minX=Math.max(0,Math.floor((blue.p.x-240)/20));
+      const maxX=Math.min(31,Math.floor((blue.p.x+240)/20));
+      const minY=Math.max(0,Math.floor((blue.p.y-240)/20));
+      const maxY=Math.min(36,Math.floor((blue.p.y+240)/20));
+      for(let row=minY;row<=maxY;row++)
+        for(let col=minX;col<=maxX;col++){
+          const p={x:col*20+10,y:row*20+10};
+          const theta=angle(blue.p,p);
+          if(d(blue.p,p)>=240||
+            Math.abs(angleDifference(blue.heading,theta))>=1.15||
+            !unobstructed(blue.p,p,s,blue.posture==='crouch'))continue;
+          s.seenGround.add('fine:'+col+','+row);
+          // Keep legacy coarse memories for knownAt and existing intel UI.
+          s.seenGround.add(Math.floor(p.x/40)+','+
+            Math.floor(p.y/40));
+        }
     }
     for(const e of enemies(s)){
       if(inSight(blue,e,s)){
