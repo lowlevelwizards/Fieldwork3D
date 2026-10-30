@@ -15,6 +15,7 @@ import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import {routeLineHit} from './breach-route-edit.ts';
 import {shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
+import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
 import {doorReachable} from './breach-door.ts';
 import './breach-style.css';
@@ -89,6 +90,7 @@ const legacyStudy=new URLSearchParams(location.search).has('fixedSite');
 let state:Session=newSession(0,legacyStudy?undefined:randomSiteSeed());
 let recorder=new MissionRecorder();recorder.capture(state,true);
 let replaying=false,replayPlaying=false,replayTime=0,replayRate=1;
+let replayPresentation:ReplayPresentation|null=null;
 let replayOmniscient=true,finishedSession:Session|null=null;
 let replayFollow=false,replayAnalysis=false,replayFollowId='rook';
 let stage:TacticalScene3D|null=null;
@@ -1063,8 +1065,9 @@ function clockText(t:number){
     String(seconds%60).padStart(2,'0');
 }
 function applyReplayFrameAt(t:number){
-  const frame=recorder.at(t);
+  const frame=recorder.sample(t);
   if(!frame)return;
+  replayPresentation=frame.presentation??null;
   applyReplayFrame(state,frame);
   // Scrubbed time can move backwards: invalidate cached fog/effect time.
   fogStamp=-1;
@@ -1102,7 +1105,7 @@ function enterReplay(){
 }
 function exitReplay(){
   if(!replaying)return;
-  replaying=false;replayPlaying=false;
+  replaying=false;replayPlaying=false;replayPresentation=null;
   document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
   if(finishedSession)state=finishedSession;
@@ -1523,7 +1526,8 @@ function tick(now:number){
   lastEventAudio=event;
   if(now-hudAt>120){updateHud();if(replaying)updateReplayHud();hudAt=now;}
   if(stage&&viewMode!=='plan2d')
-    stage.update(state,selected,dt,doorFocusId,replaying&&replayOmniscient);
+    stage.update(state,selected,dt,doorFocusId,
+      replaying&&replayOmniscient,replaying?replayPresentation:null);
   render();updateContext();requestAnimationFrame(tick);
 }
 layout();cameraMode(viewMode);updateHud();requestAnimationFrame(tick);
