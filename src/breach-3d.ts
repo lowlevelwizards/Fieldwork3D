@@ -283,7 +283,7 @@ export class TacticalScene3D{
         for(const level of [7,15,22])
           this.box(group,c.x,level,c.y+d/2+1,w-4,1.2,2,steel,false);
       }else if(fixture==='vehicle'){
-        this.box(group,c.x,9,c.y,w,17,d,metal);
+        this.box(group,c.x,9,c.y,w,17,d,steel);
         this.box(group,c.x-w*.1,21,c.y,w*.54,10,d*.73,steel);
         for(const sx of [-1,1])for(const sz of [-1,1])
           this.box(group,c.x+sx*w*.32,3,c.y+sz*d*.49,
@@ -311,7 +311,6 @@ export class TacticalScene3D{
       const group=new THREE.Group();
       group.position.set(opening.x,0,opening.y);
       group.rotation.y=opening.vertical?-Math.PI/2:0;
-      this.box(group,7,0,0,1,1,1,doorTrim,false).visible=false;
       this.box(group,0,7,0,opening.width,14,9,wallMat);
       this.box(group,0,35,0,opening.width,10,9,wallMat);
       const glass=this.box(group,0,23,0,opening.width-3,18,1,paneMat,false);
