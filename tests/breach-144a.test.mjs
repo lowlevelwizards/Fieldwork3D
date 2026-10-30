@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {activateSite,doorLeafSegment,pointToSegment} from '../src/breach-core.ts';
+import {activateSite,doorLeafSegment,pointToSegment,route} from '../src/breach-core.ts';
 import {initDoor,advanceDoor} from '../src/breach-door.ts';
 import {bodyClear,sweptBodyClear} from '../src/breach-navigation.ts';
 import {newSession,team,enemies,planMove,toggling,stepSession}
@@ -47,4 +47,17 @@ test('144A: hinge opens away from nearby obstructing furniture',()=>{
   assert.equal(d.swing,-1,'hinge must choose free swing side');
   assert.ok((d.openFraction??0)>.78,'leaf actually opens');
   activateSite(null);
+});
+
+test('144A: doorway path edges are swept-clear between grid centres',()=>{
+  activateSite(null);
+  const start={x:284,y:555},end={x:295,y:500};
+  const points=route(start,end);
+  assert.ok(points.length>0);
+  let from=start;
+  for(const to of points){
+    assert.ok(sweptBodyClear(from,to,[]),
+      'navigation may not cut through door-frame wall corners');
+    from=to;
+  }
 });
