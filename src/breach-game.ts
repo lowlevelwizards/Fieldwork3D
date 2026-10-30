@@ -27,6 +27,9 @@ import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
   rayHitsActor,muzzleEndpoint,recoverWeapon,type FiringMode} from './breach-ballistics.ts';
 import {chooseDefense,watchPoint} from './breach-defense.ts';
 import {muzzleAtShot} from './breach-muzzle.ts';
+import {magazineKit,reserveRounds,fullestMagazineIndex,
+  reloadDuration as reloadTiming,type MagazineItem,type ReloadMode}
+  from './breach-magazines.ts';
 import {KICK_DURATION} from './breach-door-actions.ts';
 import {CASING_LIMIT,type EjectedCasing} from './breach-effects.ts';
 import {chooseFall,hitRegion,type WoundRegion,type FallPose}
@@ -40,6 +43,10 @@ export type TeamActor=Operator & {
   posture:Posture;alert:Alert;velocity:number;turning:number;
   aim: number;targetId:string|null;suppression:number;stamina:number;
   magazine:number;reserve:number;reload:number;hits:number;kills:number;
+  insertedMagazineId:string;spareMagazines:MagazineItem[];
+  reloadMode:ReloadMode|null;reloadStartedAt:number;
+  reloadDuration:number;reloadRemoved:boolean;reloadInserted:boolean;
+  reloadFromRounds:number;reloadTargetRounds:number;
   stopped:boolean;haltOnContact:boolean;retreatPoint:Pt|null;
   contact:Pt|null;heard:Pt|null;
   alertUntil:number;waitRemaining:number;syncReady:string|null;
@@ -73,7 +80,8 @@ export type ShotEvent={
 };
 export type ImpactMark={id:number;p:Pt;surface:ShotEvent['surface'];age:number;
   height?:number;normal?:Pt};
-export type DroppedMagazine={id:number;p:Pt;side:Side;age:number};
+export type DroppedMagazine={id:number;p:Pt;side:Side;age:number;
+  weapon?:WeaponId;rounds?:number};
 export type FlashGrenade={id:number;p:Pt;from:Pt;to:Pt;age:number;
   fuse:number;path?:ThrowPath};
 export type FlashBurst={id:number;p:Pt;age:number};
@@ -111,6 +119,11 @@ const withActions=(a:Operator):TeamActor=>({
   posture:'stand',alert:'idle',velocity:0,turning:0,aim:0,
   targetId:null,suppression:0,stamina:1,magazine:12,reserve:36,
   reload:0,hits:0,kills:0,stopped:false,contact:null,heard:null,
+  insertedMagazineId:a.id+'/carbine/loaded',
+  spareMagazines:magazineKit(a.id,'carbine',36,12),
+  reloadMode:null,reloadStartedAt:-100,reloadDuration:0,
+  reloadRemoved:false,reloadInserted:false,reloadFromRounds:0,
+  reloadTargetRounds:0,
   alertUntil:0,waitRemaining:0,syncReady:null,actionTimer:0,
   blockedTime:0,priorP:clone(a.p),haltOnContact:false,retreatPoint:null,
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
@@ -148,6 +161,9 @@ export function newSession(index=0,siteSeed?:number):Session{
       a.weapon=(['carbine','smg','rifle','shotgun'] as const)[i];
       a.magazine=WEAPONS[a.weapon].capacity;
       a.reserve=WEAPONS[a.weapon].reserve;
+      a.insertedMagazineId=a.id+'/'+a.weapon+'/loaded';
+      a.spareMagazines=a.weapon==='shotgun'?[]:magazineKit(
+        a.id,a.weapon,a.reserve,WEAPONS[a.weapon].capacity);
       a.health=4;a.injuryStage=0;
       a.p={...site.spawn[i]};a.heading=-Math.PI/2;
       a.weaponYaw=a.heading;
@@ -591,16 +607,76 @@ export function redoPlan(s:Session,id:string){
   const next=redo(a.history,a.plan);if(!next)return false;
   a.plan=next;pathFor(a);return true;
 }
-/** Manual or automatic reload, with a physical discarded magazine. */
+/** The weapon, hand and world share one magazine identity.
+ * Ammo moves only at timed detach/insert events, never on animation startup. */
 export function beginReload(s:Session,a:TeamActor):boolean{
   const w=WEAPONS[a.weapon];
   if(a.health<=0||a.reload>0||a.reserve<=0||a.magazine>=w.capacity)return false;
-  s.dropped.push({id:s.nextEffectId++,p:clone(a.p),side:a.side,age:0});
-  if(s.dropped.length>48)s.dropped.shift();
-  a.magazine=0;a.reload=w.reload*injuryReload(a.injuryStage);a.aim=0;
-  notify(s,a.name+' RELOADING');
+  if(a.weapon!=='shotgun'&&!a.spareMagazines.length)
+    a.spareMagazines=magazineKit(a.id,a.weapon,a.reserve,w.capacity);
+  const mode:ReloadMode=a.weapon==='shotgun'?'shells':
+    a.magazine===0?'emergency':'retention';
+  a.reloadMode=mode;a.reloadStartedAt=s.seconds;
+  a.reloadDuration=reloadTiming(w.reload,injuryReload(a.injuryStage),
+    mode,w.capacity-a.magazine);
+  a.reload=a.reloadDuration;a.reloadRemoved=false;
+  a.reloadInserted=false;a.reloadFromRounds=a.magazine;
+  a.reloadTargetRounds=Math.min(w.capacity-a.magazine,a.reserve);
+  a.aim=0;
+  notify(s,a.name+' '+(mode==='retention'?'RETENTION RELOAD':
+    mode==='shells'?'LOADING SHELLS':'EMERGENCY RELOAD'));
   battleEvent(s,'reload',a,a.p,a.name+' RELOAD');
   return true;
+}
+export function advanceReload(s:Session,a:TeamActor,dt:number){
+ if(a.reload<=0||!a.reloadMode)return;
+ const mode=a.reloadMode,old=a.reload;
+ a.reload=Math.max(0,a.reload-dt);
+ const t=a.reloadDuration>0?1-a.reload/a.reloadDuration:1;
+ if(mode==='shells'){
+   const staged=Math.min(a.reloadTargetRounds,Math.max(0,
+     Math.floor(Math.max(0,t-.20)/.68*a.reloadTargetRounds)));
+   const inserted= a.magazine-a.reloadFromRounds;
+   const add=Math.max(0,staged-inserted);
+   if(add){
+     a.magazine+=add;a.reserve-=add;
+   }
+ }else{
+   if(!a.reloadRemoved&&t>=.29){
+     a.reloadRemoved=true;
+     const oldRounds=a.magazine;
+     a.magazine=0;
+     const oldId=a.insertedMagazineId;
+     a.insertedMagazineId='';
+     if(mode==='retention'&&oldRounds>0){
+       a.spareMagazines.push({id:oldId,weapon:a.weapon,rounds:oldRounds});
+       a.reserve+=oldRounds;
+     }else{
+       s.dropped.push({id:s.nextEffectId++,p:clone(a.p),
+         side:a.side,age:0,weapon:a.weapon,rounds:oldRounds});
+       if(s.dropped.length>48)s.dropped.shift();
+     }
+   }
+   if(!a.reloadInserted&&t>=.82){
+     const index=fullestMagazineIndex(a.spareMagazines,a.weapon);
+     if(index>=0){
+       const mag=a.spareMagazines.splice(index,1)[0];
+       a.magazine=mag.rounds;a.reserve-=mag.rounds;
+       a.insertedMagazineId=mag.id;
+     }
+     a.reloadInserted=true;
+   }
+ }
+ if(old>0&&a.reload===0){
+   if(mode==='shells'){
+     const missing=Math.min(a.reloadTargetRounds,
+       a.reloadFromRounds+a.reloadTargetRounds-a.magazine);
+     if(missing>0){a.magazine+=missing;a.reserve-=missing;}
+   }
+   a.reloadMode=null;
+   a.reloadInserted=true;
+   notify(s,a.name+' RELOADED');
+ }
 }
 /** Two team-wide flashbangs per mission. Throwing is an authored timed order. */
 export function planFlash(s:Session,id:string,target:Pt):boolean{
@@ -644,6 +720,10 @@ export function cycleWeapon(s:Session,id:string):boolean{
   const next=ids[(ids.indexOf(a.weapon)+1)%ids.length];
   a.weapon=next;a.magazine=WEAPONS[next].capacity;
   a.reserve=WEAPONS[next].reserve;a.reload=0;a.aim=0;
+  a.insertedMagazineId=a.id+'/'+next+'/loaded';
+  a.spareMagazines=next==='shotgun'?[]:magazineKit(
+    a.id,next,a.reserve,WEAPONS[next].capacity);
+  a.reloadMode=null;
   notify(s,a.name+' EQUIPPED '+WEAPONS[next].label);
   return true;
 }
@@ -992,8 +1072,13 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     return;
   }
   if(n.kind==='reload'){
-    if(a.magazine>=WEAPONS[a.weapon].capacity||a.reserve<=0){pop(a);return;}
-    if(a.reload===0)beginReload(s,a);
+    // The authored order owns one reload, not an endless sequence of
+    // refills when the final available magazine isn't completely full.
+    if(a.actionTimer>0&&a.reload===0){pop(a);return;}
+    if(a.actionTimer===0){
+      if(!beginReload(s,a)){pop(a);return;}
+      a.actionTimer=dt;
+    }
     return;
   }
   if(n.kind==='flash'){
@@ -1184,7 +1269,9 @@ function strikeSurface(from:Pt,aimed:Pt,s:Session):{
     y:from.y+(aimed.y-from.y)*best},surface:material};
 }
 function fire(s:Session,a:TeamActor,dt:number){
-  if(a.health<=0)return;
+  if(a.health<=0){
+    a.reload=0;a.reloadMode=null;return;
+  }
   // Sprinting is a traversal decision, not free accurate fire on the move.
   if(a.plan[0]?.moveMode==='sprint'&&a.velocity>12){
     a.aim=Math.max(0,a.aim-dt*2.2);
@@ -1195,12 +1282,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   const recovering=recoverWeapon(a.recoil,a.stability,dt,profile,a.velocity>10);
   a.recoil=recovering.recoil;a.stability=recovering.stability;
   if(a.reload>0){
-    a.reload=Math.max(0,a.reload-dt);
-    if(a.reload===0){
-      const rounds=Math.min(WEAPONS[a.weapon].capacity,a.reserve);
-      a.magazine=rounds;a.reserve-=rounds;notify(s,a.name+' RELOADED');
-    }
-    return;
+    advanceReload(s,a,dt);return;
   }
   if(!a.magazine){beginReload(s,a);return;}
   if(a.flashUntil>s.seconds){a.aim=0;return;}
