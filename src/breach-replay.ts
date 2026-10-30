@@ -10,13 +10,15 @@ export type ActorFrame=Pick<TeamActor,
   'id'|'p'|'heading'|'health'|'velocity'|'turning'|'posture'|'alert'|
   'magazine'|'reserve'|'reload'|'shots'|'fireCd'|'aim'|
   'lastHitAt'|'lastDownAt'|'flashUntil'|'suppression'|
-  'weapon'|'injuryStage'|'morale'|'surrendered'|'defense'|'watch'>;
+  'weapon'|'injuryStage'|'morale'|'surrendered'|'defense'|'watch'|
+  'lastThrowAt'>;
 export type ReplayFrame={
   t:number;phase:Session['phase'];mission:Session['mission'];
   actors:ActorFrame[];doors:Door[];shots:ShotEvent[];
   dropped:DroppedMagazine[];impactMarks:ImpactMark[];grenades:FlashGrenade[];
   flashBursts:FlashBurst[];flashRemaining:number;
   missionType:Session['missionType'];holdTime:number;
+  rescue:{p:Pt;following:string|null}|null;
   seenGround:string[];known:[string,{p:Pt;at:number;status:'seen'|'heard'}][];
 };
 const position=(p:Pt):Pt=>({x:p.x,y:p.y});
@@ -33,6 +35,7 @@ export function snapshot(s:Session):ReplayFrame{
       lastHitAt:a.lastHitAt,lastDownAt:a.lastDownAt,
       flashUntil:a.flashUntil,suppression:a.suppression,
       weapon:a.weapon,injuryStage:a.injuryStage,morale:a.morale,
+      lastThrowAt:a.lastThrowAt,
       surrendered:a.surrendered,defense:a.defense?position(a.defense):null,
       watch:a.watch?position(a.watch):null})),
     doors:s.doors.map(d=>({...d,a:position(d.a),b:position(d.b)})),
@@ -44,6 +47,7 @@ export function snapshot(s:Session):ReplayFrame{
     flashBursts:s.flashBursts.map(b=>({...b,p:position(b.p)})),
     flashRemaining:s.flashRemaining,
     missionType:s.missionType,holdTime:s.holdTime,
+    rescue:s.rescue?{p:position(s.rescue.p),following:s.rescue.following}:null,
     seenGround:[...s.seenGround],
     known:[...s.known].map(([id,c])=>[id,
       {p:position(c.p),at:c.at,status:c.status}]),
@@ -103,6 +107,8 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   s.flashBursts=f.flashBursts.map(b=>({...b,p:position(b.p)}));
   s.flashRemaining=f.flashRemaining;
   s.missionType=f.missionType;s.holdTime=f.holdTime;
+  s.rescue=f.rescue?{p:position(f.rescue.p),
+    following:f.rescue.following}:null;
   s.seenGround=new Set(f.seenGround);
   s.known=new Map(f.known.map(([id,c])=>[id,
     {p:position(c.p),at:c.at,status:c.status}]));
