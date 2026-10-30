@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {newSession,team,cycleWeapon,planFlash,moveFlashTarget,
-  flashTrajectory,undoPlan} from '../src/breach-game.ts';
+import {newSession,team,enemies,cycleWeapon,planFlash,moveFlashTarget,
+  flashTrajectory,undoPlan,toggling,stepSession} from '../src/breach-game.ts';
 import {WEAPONS,injuryOf,injurySpeed,injuryReload,
   woundSeverity,exposure} from '../src/breach-combat.ts';
 import {validateThrow,sampleThrow} from '../src/breach-flash.ts';
@@ -80,6 +80,33 @@ test('104: deterministic mission archetypes include intel, rescue, hold, capture
     assert.equal(s.missionType,kind);
     assert.equal(s.mission,kind==='capture'?'clear':'secure');
   }
+  activateSite(null);
+});
+test('104: capture objective completes without clearing unrelated guards',()=>{
+  const s=newSession(0,4);
+  assert.equal(s.missionType,'capture');
+  const target=enemies(s).find(e=>e.id===s.captureTarget);
+  assert.ok(target);
+  target.health=0;target.injuryStage=3;
+  const other=enemies(s).filter(e=>e!==target);
+  assert.ok(other.some(e=>e.health>0));
+  toggling(s);stepSession(s,1/60);
+  assert.equal(s.mission,'secure');
+  assert.deepEqual(s.scenario.objective,target.p);
+  activateSite(null);
+});
+test('104: rescued person must travel with the escort to extraction',()=>{
+  const s=newSession(0,2);
+  assert.equal(s.missionType,'rescue');
+  assert.ok(s.rescue);
+  const escort=team(s)[0];
+  escort.p={...s.scenario.objective};
+  toggling(s);stepSession(s,1/60);
+  assert.equal(s.mission,'extract');
+  assert.equal(s.rescue.following,escort.id);
+  escort.p={...s.scenario.extract};
+  stepSession(s,1/60);
+  assert.equal(s.phase,'won');
   activateSite(null);
 });
 test('106: replay captures weapon, wounds and durable combat events',()=>{
