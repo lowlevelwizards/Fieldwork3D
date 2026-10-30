@@ -1000,7 +1000,9 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     pointToSegment(move,doorLeafSegment(door))<15||
     doorBlocksSegment(door,{a:a.p,b:move}));
   if(closedDoor?.open&&(closedDoor.openFraction??0)<.99)
-    pushDoor(closedDoor,1.1);
+    // Repeated shoulder pressure drives the leaf toward its free stop.
+    // Moving into a leaf may not lock the player into it.
+    pushDoor(closedDoor,3.5);
   // Look ahead to the route's next node, stopping to open a door before
   // the actor's capsule contacts the physical leaf.
   const doorAhead=a.side==='red'?s.doors.find(door=>{
@@ -1020,8 +1022,10 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     if((doorAhead.openFraction??0)<.72)return true;
     a.actionTimer=0;
   }else if(a.side==='red')a.actionTimer=0;
-  const closed=!!closedDoor&&
-    pointToSegment(move,doorLeafSegment(closedDoor))<9.5;
+  const closed=!!closedDoor&&!closedDoor.open&&
+    pointToSegment(move,doorLeafSegment(closedDoor))<9.5&&
+    pointToSegment(move,doorLeafSegment(closedDoor))<
+      pointToSegment(a.p,doorLeafSegment(closedDoor))+0.001;
   // Allies may brush and pass one another: their bodies never hard-block
   // authored routes. Only an opposing actor is a physical traffic barrier.
   const blocking=s.operators.find(b=>b!==a&&b.health>0&&
@@ -1065,11 +1069,12 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       notify(s,a.name+(closed?' WAITING AT DOOR':' PATH BLOCKED'));
     if(a.blockedTime>1.25&&s.seconds-a.lastNavRepairAt>1.2){
       a.lastNavRepairAt=s.seconds;
-      const repaired=a.side==='blue'?routeWithIntel(s.intel,a.p,p):
-        route(a.p,p);
-      if(repaired.length&&
-         (!a.nav.length||d(repaired[0],a.nav[0])>4))
-        a.nav=repaired;
+      // Once actual collision is observed, repair against real geometry,
+      // not only the incomplete player-intel route that may run through
+      // an undiscovered door frame. The authored final goal is unchanged.
+      const repaired=route(a.p,p);
+      if(repaired.length)a.nav=repaired;
+      else if(a.side==='blue')a.nav=routeWithIntel(s.intel,a.p,p);
     }
     // Do not discard an authored plan just because someone is in the way.
   }
