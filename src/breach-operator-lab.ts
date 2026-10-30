@@ -15,8 +15,24 @@ import type {WeaponId} from './breach-combat.ts';
 const choose=<T extends HTMLElement>(id:string)=>
   document.getElementById(id)! as T;
 const canvas=choose<HTMLCanvasElement>('preview');
-const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
-renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+const showLabFailure=(error:unknown)=>{
+  const title=choose<HTMLElement>('labStatusTitle');
+  const message=choose<HTMLElement>('labStatusMessage');
+  title.textContent='OPERATOR LAB COULD NOT START';
+  message.textContent=error instanceof Error?error.message:String(error);
+  choose<HTMLElement>('labStatus').hidden=false;
+  canvas.dataset.ready='error';
+};
+// Mobile Safari is especially sensitive to large antialiased WebGL
+// backbuffers when navigating here from the 3D battle. Keep the operator
+// shaded, but avoid allocating an oversized first frame.
+const compact=window.matchMedia('(pointer:coarse)').matches||
+  window.innerWidth<600;
+const renderer=new THREE.WebGLRenderer({
+  canvas,antialias:!compact,powerPreference:'low-power',
+  alpha:false
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,compact?1.5:2));
 renderer.shadowMap.enabled=true;renderer.setClearColor(0xc4c5bd);
 const scene=new THREE.Scene();
 const camera=new THREE.OrthographicCamera(-28,28,34,-34,.1,600);
@@ -27,7 +43,7 @@ control.target.set(0,16,0);control.minZoom=.35;control.maxZoom=7;
 scene.add(new THREE.HemisphereLight(0xffffff,0x8f9188,2.2));
 const lamp=new THREE.DirectionalLight(0xffffff,2.3);
 lamp.position.set(-40,90,45);lamp.castShadow=true;
-lamp.shadow.mapSize.set(1024,1024);lamp.shadow.camera.left=-90;
+lamp.shadow.mapSize.set(compact?512:1024,compact?512:1024);lamp.shadow.camera.left=-90;
 lamp.shadow.camera.right=90;lamp.shadow.camera.top=90;
 lamp.shadow.camera.bottom=-90;scene.add(lamp);
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500),
@@ -312,6 +328,13 @@ function draw(){
   canvas.dataset.crossed=String(!uncrossed(feet[0].position,
     feet[1].position,-state.pelvisYaw,3.5));
   control.update();renderer.render(scene,camera);
+  if(renderer.info.render.calls<1)
+    throw Error('3D renderer returned without drawing an operator');
+  canvas.dataset.drawCalls=String(renderer.info.render.calls);
+  if(canvas.dataset.ready!=='true'){
+    canvas.dataset.ready='true';
+    choose<HTMLElement>('labStatus').hidden=true;
+  }
 }
 function tick(now:number){
   const elapsed=Math.min(.05,Math.max(0,(now-last)/1000));
@@ -323,6 +346,13 @@ function tick(now:number){
       else{clock=TRACK_DURATION;playing=false;playPause.textContent='PLAY';}
     }
   }
-  draw();requestAnimationFrame(tick);
+  try{
+    draw();requestAnimationFrame(tick);
+  }catch(error){showLabFailure(error);}
 }
-build();fit();resize();chooseTrack('idle');requestAnimationFrame(tick);
+try{
+  build();fit();resize();chooseTrack('idle');
+  // Render immediately rather than depending on a delayed first
+  // requestAnimationFrame callback on a newly navigated mobile tab.
+  draw();requestAnimationFrame(tick);
+}catch(error){showLabFailure(error);}
