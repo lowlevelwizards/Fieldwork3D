@@ -272,3 +272,5 @@ body.replaying .foot,body.replaying .guidance,body.replaying .feed{display:none!
  .replay-event{font-size:8px;padding:0}
  .replay-actions button{min-height:27px}
 }
+
+.operator-lab-link{display:inline-flex;align-items:center;justify-content:center;background:#46574e;color:#e4d9bd;border:1px solid #77877b;text-decoration:none;font:11px monospace;min-height:33px;padding:6px 9px;border-radius:3px}
