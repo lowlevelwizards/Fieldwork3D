@@ -3,9 +3,11 @@
 import * as THREE from 'three';
 import {alignSegment,twoBoneJoint} from './breach-ik.ts';
 import type {WeaponId} from './breach-combat.ts';
+import {constrainFoot,needsRecoveryStep} from './breach-gait.ts';
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
   anchor:THREE.Vector3;planted:boolean;lastCycle:number;
-  swingStart:THREE.Vector3;swingGoal:THREE.Vector3;swinging:boolean};
+  swingStart:THREE.Vector3;swingGoal:THREE.Vector3;swinging:boolean;
+  swingTime:number;lastPlacement:number};
 type Arm={upper:THREE.Mesh;lower:THREE.Mesh;hand:THREE.Mesh};
 export type OperatorPose={
   x:number;z:number;heading:number;velocity:number;seconds:number;
@@ -43,9 +45,9 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     id==='vale'?0x687c8d:0x6f9185);
   const boot=mat(0x313935),vest=mat(0x43504b),
     skin=mat(0xb29b83),steel=mat(0x414846);
-  hip.position.y=13.5;
+  hip.position.y=19;
   block(hip,0,0,0,8,5,12,cloth);
-  chest.position.y=23;
+  chest.position.y=26;
   block(chest,0,0,0,10,12,14,cloth);
   block(chest,3,0,0,2.8,9,13,vest);
   block(chest,-3,1,0,2,8,11,vest);
@@ -61,7 +63,8 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     const shoe=block(root,0,0,0,8,2.9,5.8,boot);
     feet.push({upper,lower,shoe,anchor:new THREE.Vector3(),
       planted:false,lastCycle:-1,swingStart:new THREE.Vector3(),
-      swingGoal:new THREE.Vector3(),swinging:false});
+      swingGoal:new THREE.Vector3(),swinging:false,
+      swingTime:0,lastPlacement:-10});
     const armUpper=bone(chest,3.9,4.0,cloth);
     const armLower=bone(chest,3.4,3.5,cloth);
     const hand=block(chest,0,0,0,3.6,3.2,3.9,skin);
@@ -91,7 +94,7 @@ const P=(x:number,y:number,z:number)=>new THREE.Vector3(x,y,z);
 export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   if(dt<0||r.lastTime>p.seconds+.03||p.seconds-r.lastTime>1.2){
     for(const foot of r.feet){foot.planted=false;foot.lastCycle=-1;
-      foot.swinging=false;}
+      foot.swinging=false;foot.swingTime=0;}
     r.lastTime=p.seconds;dt=0;
   }
   dt=clamp(dt,0,.08);
@@ -106,49 +109,72 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.chest.rotation.y=approach(r.chest.rotation.y,-torsoDelta,6,dt);
   r.head.rotation.y=clamp(-diff(hipTarget,p.heading)*.38,-.28,.28);
   const braking=r.lastPose?clamp((r.lastPose.velocity-p.velocity)/60,-1,1):0;
-  r.chest.rotation.z=clamp(-moving*.075+braking*.055,-.16,.16);
-  r.chest.rotation.x=clamp(p.injury===2?.12:p.injury===1?.04:0,0,.2);
-  const crouch=p.posture==='crouch'?4:0;
-  r.hip.position.y=13.5-crouch+(p.down?0:Math.sin(p.stride*.25)*moving*.42);
-  r.chest.position.y=23-crouch;
-  const cycle=p.stride/17;
-  // Stable world-space stance feet, with a discrete swing from the previous
-  // support contact to the next one. Stance anchors do not follow the pelvis.
-  const rotateRoot=(v:THREE.Vector3)=>v.applyAxisAngle(P(0,1,0),
-    r.root.rotation.y);
+  r.chest.rotation.z=clamp(-moving*.025+braking*.018,-.06,.06);
+  r.chest.rotation.x=clamp(p.injury===2?.07:p.injury===1?.025:0,0,.09);
+  const crouch=p.posture==='crouch'?8:0;
+  r.hip.position.y=19-crouch+(p.down?0:Math.sin(p.stride*.18)*moving*.23);
+  r.chest.position.y=26-crouch;
+  // The planted foot has a limited support envelope around its hip.
+  // Reach and crossing constraints are evaluated every render step, not
+  // just when the distance-driven swing phase happens to change.
+  const headingYaw=r.root.rotation.y;
+  const rotateRoot=(v:THREE.Vector3)=>v.applyAxisAngle(P(0,1,0),headingYaw);
+  const travelLocal=rotateRoot(P(1,0,0));
   for(let i=0;i<2;i++){
     const foot=r.feet[i],sign=i===0?-1:1;
-    const phase=((cycle+i*.5)%1+1)%1;
-    const stance=phase<.59||moving<.08;
-    const side=sign*4.8;
-    const hipLocal=P(0,r.hip.position.y,side);
+    const hipLocal=P(0,r.hip.position.y,sign*4.8);
+    const neutral=rotateRoot(P(0,1.45,sign*5.6))
+      .add(P(p.x,0,p.z));
     if(!foot.planted){
-      const at=rotateRoot(P(-2,1.45,side));
-      foot.anchor.set(p.x+at.x,1.45,p.z+at.z);
-      foot.planted=true;
+      foot.anchor.copy(neutral);foot.planted=true;
+      foot.swinging=false;foot.lastPlacement=p.seconds;
     }
-    if(!stance&&!foot.swinging){
-      foot.swinging=true;foot.swingStart.copy(foot.anchor);
-      const ahead=rotateRoot(P(8.5*moving,1.45,side));
-      foot.swingGoal.set(p.x+ahead.x,1.45,p.z+ahead.z);
-    }
-    if(stance&&foot.swinging){
-      foot.anchor.copy(foot.swingGoal);
-      foot.swinging=false;foot.lastCycle=Math.floor(cycle+i*.5);
+    const isMoving=moving>.12&&!p.down;
+    const anchored=constrainFoot({x:foot.anchor.x,y:foot.anchor.z},
+      {x:p.x,y:p.z},headingYaw,sign);
+    const mustStep=isMoving&&needsRecoveryStep(anchored,p.velocity>8)||
+      (isMoving&&Math.hypot(p.x-foot.anchor.x,p.z-foot.anchor.z)>13.5);
+    const urgency=anchored.outOfBounds||Math.hypot(
+      p.x-foot.anchor.x,p.z-foot.anchor.z)>16;
+    if(!foot.swinging&&mustStep&&
+      (p.seconds-foot.lastPlacement>.10||urgency)){
+      // A supporting leg normally stays planted while the other swings.
+      // Emergency recovery overrides that rule before the hip outruns it.
+      const other=r.feet[1-i];
+      if(!other.swinging||urgency){
+        foot.swinging=true;foot.swingTime=0;
+        foot.swingStart.copy(foot.anchor);
+        foot.swingGoal.copy(neutral).addScaledVector(travelLocal,
+          Math.min(4,3*moving));
+        foot.lastPlacement=p.seconds;
+      }
     }
     const targetWorld=foot.anchor.clone();
     if(foot.swinging){
-      const alpha=clamp((phase-.59)/.41,0,1);
-      const eased=alpha*alpha*(3-2*alpha);
-      targetWorld.lerpVectors(foot.swingStart,foot.swingGoal,eased);
-      targetWorld.y+=Math.sin(Math.PI*alpha)*5.4*moving;
+      foot.swingTime=Math.min(1,foot.swingTime+dt/(p.injury===2?.30:.18));
+      const t=foot.swingTime,ease=t*t*(3-2*t);
+      targetWorld.lerpVectors(foot.swingStart,foot.swingGoal,ease);
+      targetWorld.y+=Math.sin(Math.PI*t)*Math.min(4.2,2.8+moving);
+      if(t>=1){
+        foot.anchor.copy(foot.swingGoal);
+        foot.swinging=false;
+      }
+    }else if(anchored.outOfBounds){
+      // Keep the body supported even on replay seeks or sharp rotations.
+      foot.anchor.x=anchored.position.x;
+      foot.anchor.z=anchored.position.y;
+      targetWorld.copy(foot.anchor);
     }
-    const target=targetWorld.sub(P(p.x,0,p.z))
-      .applyAxisAngle(P(0,1,0),-r.root.rotation.y);
-    const knee=twoBoneJoint(hipLocal,target,8.5,8.5,P(1,0,sign*.25));
+    const relative=targetWorld.sub(P(p.x,0,p.z))
+      .applyAxisAngle(P(0,1,0),-headingYaw);
+    // The solver must never swap knees or fold the foot across the pelvis.
+    relative.z=sign*Math.max(3.5,Math.abs(relative.z));
+    relative.x=clamp(relative.x,-8.8,8.8);
+    const knee=twoBoneJoint(hipLocal,relative,9.7,9.7,
+      P(3.5,0,sign*1.2));
     alignSegment(foot.upper,hipLocal,knee);
-    alignSegment(foot.lower,knee,target);
-    foot.shoe.position.copy(target);
+    alignSegment(foot.lower,knee,relative);
+    foot.shoe.position.copy(relative);
   }
   // Shoulder direction, both-hand grips, and support-hand action reach.
   const gunLength=p.weapon==='smg'?.70:p.weapon==='rifle'?1.26:
@@ -202,6 +228,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.root.rotation.z=0;r.chest.rotation.x=-.4;
   }else if(p.surrender){
     r.root.rotation.z=.13;r.chest.rotation.x=.25;
-  }else r.root.rotation.z=clamp(p.injury===2?.14:p.injury===1?.04:0,0,.18);
+  }else r.root.rotation.z=clamp(p.injury===2?.065:p.injury===1?.018:0,0,.08);
   r.lastPose={...p};r.lastTime=p.seconds;
 }
