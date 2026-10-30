@@ -113,7 +113,7 @@ export class TacticalScene3D{
   /** New mission replaces *only* architectural meshes. Soldiers and
    * camera remain alive, avoiding a WebGL context restart on each site.
    */
-  applySite(site:Site){
+  applySite(site:Site|null){
     this.root.children.filter(c=>c!==this.fogUnknown&&
       c!==this.fogExplored).forEach(child=>{
       child.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
