@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import {readFileSync} from 'node:fs';
 import {solveTwoBone,alignSegment,bendDirection,ARM_LIMITS,LEG_LIMITS,
   intersectsTorso} from '../src/breach-ik.ts';
-import {fitWeaponPose} from '../src/breach-weapon-pose.ts';
+import {fitWeaponPose,weaponGrips} from '../src/breach-weapon-pose.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
 
 const near=(a,b,t=.0001)=>Math.abs(a-b)<t;
@@ -80,6 +80,23 @@ test('120: a gun is rigid; stock, firing hand and support grip derive from it',(
     }
   }
 });
+
+test('120: fitted contacts exactly equal points on a rigid transformed gun',()=>{
+  for(const weapon of ['carbine','smg','rifle','shotgun'])
+    for(const handling of ['low','high','point','ads','short'])
+      for(const yaw of [-1.1,-.45,0,.55,1.1]){
+        const fit=fitWeaponPose({weapon,handling,yaw,recoil:1.2});
+        const data=weaponGrips(weapon);
+        const project=(x,y,z)=>v(x*data.lengthScale,y,z)
+          .applyEuler(fit.rotation).add(fit.origin);
+        assert.ok(fit.stock.distanceTo(project(data.stockX,0,0))<1e-6);
+        assert.ok(fit.primary.distanceTo(project(
+          data.primaryX,data.primaryY,1.8))<1e-6);
+        assert.ok(fit.support.distanceTo(project(
+          data.supportX,data.supportY,-1.6))<1e-6);
+      }
+});
+
 const makePose=(seconds,x,z,heading,extra={})=>({
   x,z,heading,seconds,velocity:38,stride:seconds*40,
   posture:'stand',injury:0,weapon:'carbine',
