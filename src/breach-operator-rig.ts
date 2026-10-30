@@ -7,6 +7,8 @@ import type {WeaponId} from './breach-combat.ts';
 import {advanceFootsteps,createFootstepScheduler, type FootstepScheduler} from './breach-footsteps.ts';
 import type {ReplayFeet} from './breach-replay-motion.ts';
 import {bodyFromContacts} from './breach-body-motion.ts';
+import {fallAngles,hitStagger,type FallPose,type WoundRegion}
+  from './breach-wounds.ts';
 import {weaponGrips,handlingPose,clampReach,
   fitWeaponPose} from './breach-weapon-pose.ts';
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
@@ -28,6 +30,8 @@ export type OperatorPose={
   obstruction?:boolean;friendlyNear?:boolean;
   aimBlend?:number;recoil?:number;shotHeading?:number;
   hitFade?:number;hitAge?:number;downProgress?:number;flashActive?:boolean;
+  hitRegion?:WoundRegion;hitYaw?:number;hitSeverity?:number;
+  downPose?:FallPose;
 };
 export type OperatorRig={
   root:THREE.Group;hip:THREE.Group;chest:THREE.Group;head:THREE.Group;
@@ -128,7 +132,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     material.color.copy(original);
     if(p.down&&!p.surrender)material.color.lerp(new THREE.Color(0x555c57),.46);
   }
-  const moving=Math.min(1,p.velocity/72);
+  const moving=p.down?0:Math.min(1,p.velocity/72);
   const direction=p.travelYaw??(r.lastPose?
     Math.atan2(p.z-r.lastPose.z,p.x-r.lastPose.x):p.heading);
   const travel=moving>.14?direction:p.heading;
@@ -270,6 +274,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }else if(p.surrender){
     releaseLeft=true;
     leftGrip.set(-1,11,-6);rightGrip.set(-1,11,6);
+  }else if(!p.down&&p.injury>0&&
+    p.hitRegion!=='leg'&&!p.aiming&&!p.firing&&
+    p.hitAge!==undefined&&p.hitAge>=0&&p.hitAge<1.1){
+    // Only release the support grip to guard a fresh injury when the
+    // operator is not actively aiming or already using that hand.
+    releaseLeft=true;
+    const progress=Math.sin(Math.PI*clamp(p.hitAge/1.1,0,1));
+    leftGrip.set(3+progress*2,-5,-5);
   }else if(doorActive&&p.doorPoint){
     releaseLeft=true;reaching=true;
     const local=P(p.doorPoint.x-p.x,19-r.chest.position.y,
@@ -327,15 +339,26 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // The pose system is the final writer for actor tilts and reactions.
   // The scene controls XY world placement only, not anatomy or weapon pose.
   const downProgress=clamp(p.downProgress??(p.down?1:0),0,1);
+  const reaction=hitStagger(p.hitRegion??'torso',
+    p.hitYaw??p.heading,p.heading,
+    p.hitAge===undefined?100:p.hitAge,p.hitSeverity??1);
   const injuryTilt=p.injury===2?.16:p.injury===1?.05:0;
+  const collapse=fallAngles(p.downPose??'forward',downProgress);
   r.root.rotation.x=p.surrender?-.22:
-    -1.42*downProgress-(p.down?0:injuryTilt);
-  r.root.position.y=p.surrender?-4:downProgress*4;
-  r.root.rotation.z=p.surrender?.09:p.down?0:
+    p.down?collapse.x:-(injuryTilt+reaction.forward);
+  r.root.rotation.z=p.surrender?.09:
+    p.down?collapse.z:
     clamp(p.injury===2?.065:p.injury===1?.018:0,0,.08)+
-    (p.hitFade??0)*.13*Math.sin((p.hitAge??0)*65);
-  if(p.flashActive)r.root.rotation.z+=.10*Math.sin(p.seconds*24);
+      reaction.side;
+  r.root.position.y=p.surrender?-4:p.down?collapse.y:0;
+  if(p.flashActive&&!p.down)r.root.rotation.z+=.10*Math.sin(p.seconds*24);
   if(p.surrender)r.chest.rotation.x=.15;
-  else if(p.down)r.chest.rotation.x=-.4;
+  else if(p.down)r.chest.rotation.x=-.05;
+  // Wounds do not leave an incapacitated actor standing in the old
+  // locomotion/ready pose. Final angles are deterministic from the hit.
+  if(p.down){
+    r.chest.rotation.y=0;
+    r.head.rotation.x=0;
+  }
   r.lastPose={...p};r.lastTime=p.seconds;
 }
