@@ -557,6 +557,15 @@ function battleEvent(s:Session,kind:BattleEvent['kind'],a:TeamActor|null,p:Pt,te
     actor:a?.id,p:clone(p),text});
   if(s.battleEvents.length>500)s.battleEvents.shift();
 }
+export function cycleWeapon(s:Session,id:string):boolean{
+  const a=party(s,id);if(!a||!canEdit(s))return false;
+  const ids:WeaponId[]=['carbine','smg','rifle','shotgun'];
+  const next=ids[(ids.indexOf(a.weapon)+1)%ids.length];
+  a.weapon=next;a.magazine=WEAPONS[next].capacity;
+  a.reserve=WEAPONS[next].reserve;a.reload=0;a.aim=0;
+  notify(s,a.name+' EQUIPPED '+WEAPONS[next].label);
+  return true;
+}
 export function planReload(s:Session,id:string):boolean{
   const a=party(s,id);
   return !!a&&canEdit(s)&&addNode(s,id,'reload',finalPoint(a));
