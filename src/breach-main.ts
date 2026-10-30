@@ -4,7 +4,8 @@ import {
 import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
-  planMove,planMoveStroke,planAim,planWait,planSync,movePlanNode,
+  planMove,planMoveStroke,planAim,planWait,planWaitAt,setWaitDuration,
+  setMoveSprint,planSync,movePlanNode,
   finalPoint,doorAtNode,planSquadEntry,backOne,
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,stepSession,knownAt,liveVisibility,
@@ -103,6 +104,8 @@ let looking=false,flashMode=false;
 let lookMode:'look'|'pie'|'strafe'='look';
 let contextSignature='';
 let selectedNode:number|null=null;
+let orderOrigin:'here'|'node'|'end'='end';
+let doorMenuDismissedId:string|null=null;
 let doorFocusId:string|null=null;
 let draggingNode:Pt|null=null;
 let fogData=new Uint8Array(16*19),fogStamp=-1;
@@ -187,7 +190,8 @@ const uid=(id:string)=>team(state).find(o=>o.id===id);
 function selectUnit(id:string){
   const actor=uid(id);if(!actor||actor.health<=0)return;
   selected=id;looking=false;
-  selectedNode=null;doorFocusId=null;updateHud();
+  selectedNode=null;doorFocusId=null;orderOrigin='here';
+  doorMenuDismissedId=null;updateHud();
 }
 function message(){
   if(replaying)return 'MISSION FILM · ORBIT, PAN, ZOOM AND SCRUB FREELY';
@@ -216,7 +220,7 @@ function focusedDoor(a:TeamActor,node:ReturnType<typeof selectedPlanNode>){
   const explicit=state.doors.find(d=>d.id===doorFocusId&&!d.open&&
     points.some(p=>doorReachable(p,d)));
   if(explicit)return explicit;
-  return state.doors.filter(d=>!d.open&&points.some(p=>
+  return state.doors.filter(d=>!d.open&&d.id!==doorMenuDismissedId&&points.some(p=>
     doorReachable(p,d)))
     .sort((x,y)=>{
       const dx=Math.min(...points.map(p=>distance(p,doorCenter(x))));
@@ -236,21 +240,31 @@ function updateContext(){
   if(!a||a.health<=0){ui.context.hidden=true;return;}
   const node=selectedPlanNode();
   const door=focusedDoor(a,node);
-  const where=doorFocusId&&door?doorCenter(door):node?.p??finalPoint(a);
+  const where=doorFocusId&&door?doorCenter(door):
+    node?.p??(orderOrigin==='here'?a.p:finalPoint(a));
   const choices:{id:string;label:string}[]=[
+    {id:'ctxPie',label:'◉ PIE'},
     {id:'ctxLook',label:'LOOK'},
-    {id:'ctxPie',label:'PIE'},
+    {id:'ctxWait',label:'WAIT 2s'},
+    {id:'ctxCrouch',label:a.posture==='crouch'?'STAND':'CROUCH'},
     {id:'ctxStrafe',label:'STRAFE'},
   ];
+  if(node?.kind==='wait')choices.push(
+    {id:'ctxWait1',label:'1s'},{id:'ctxWait3',label:'3s'});
+  if(node?.kind==='move')choices.push(
+    {id:'ctxSprint',label:node.moveMode==='sprint'?'WALK':'SPRINT'});
   if(node)choices.push({id:'ctxDelete',label:'DELETE'});
   if(door)choices.push(
     {id:'ctxEntry',label:'ENTRY 4'},
     {id:'ctxOpen',label:'OPEN'},
     {id:'ctxKick',label:'KICK'},
     {id:'ctxHold',label:'HOLD'},
+    {id:'ctxDoorFlash',label:'FLASH'},
   );
   const signature=choices.map(x=>x.id).join('/')+
-    '/'+(door?.id??'')+'/'+(node?.id??'-')+'/'+(doorFocusId??'');
+    '/'+(door?.id??'')+'/'+(node?.id??'-')+'/'+(doorFocusId??'')+
+    '/'+orderOrigin+'/'+a.posture+'/'+(node?.duration??0)+
+    '/'+(node?.moveMode??'');
   if(contextSignature!==signature){
     contextSignature=signature;
     ui.context.replaceChildren();
@@ -304,6 +318,22 @@ ui.context.addEventListener('click',event=>{
     case 'ctxLook':armFacing('look');return;
     case 'ctxPie':armFacing('pie');return;
     case 'ctxStrafe':armFacing('strafe');return;
+    case 'ctxWait':
+    case 'ctxWait1':
+    case 'ctxWait3':{
+      const duration=action==='ctxWait1'?1:action==='ctxWait3'?3:2;
+      if(node?.kind==='wait')setWaitDuration(state,selected,node.id,duration);
+      else planWaitAt(state,selected,duration,
+        orderOrigin==='here'?'here':'end',node?.id);
+      selectedNode=null;orderOrigin='end';break;
+    }
+    case 'ctxCrouch':posture(state,selected);break;
+    case 'ctxSprint':
+      if(node?.kind==='move')setMoveSprint(state,selected,node.id);
+      break;
+    case 'ctxDoorFlash':
+      flashMode=true;looking=false;doorFocusId=null;
+      doorMenuDismissedId=door?.id??null;break;
     case 'ctxDelete':
       if(node)deletePlanNode(state,selected,node.id);
       selectedNode=null;doorFocusId=null;break;
@@ -318,7 +348,8 @@ ui.context.addEventListener('click',event=>{
         action==='ctxOpen'?'open':action==='ctxKick'?'kick':'hold',
         nodeNearDoor?node?.id:undefined))
         state.events.push('DOOR NOT REACHABLE FROM THAT POINT');
-      selectedNode=null;doorFocusId=null;break;
+      selectedNode=null;doorFocusId=null;
+      doorMenuDismissedId=door?.id??null;break;
   }
   contextSignature='';updateHud();
 });
@@ -1046,13 +1077,14 @@ function useSelectedGround(pt:Pt){
     if(!planFlash(state,selected,pt))
       state.events.push('FLASH TARGET BLOCKED / OUT OF RANGE');
     else selectedNode=id;
-    flashMode=false;updateHud();return;
+    flashMode=false;orderOrigin='end';updateHud();return;
   }
   if(looking){
     const mode=lookMode==='pie'?'track':lookMode==='strafe'?'fixed':'free';
-    if(!planAim(state,selected,mode,pt,selectedNode??undefined,lookMode))
+    if(!planAim(state,selected,mode,pt,selectedNode??undefined,
+      lookMode,orderOrigin==='here'?'here':'end'))
       state.events.push('SELECT A DIFFERENT AIM POINT');
-    looking=false;selectedNode=null;updateHud();return;
+    looking=false;selectedNode=null;orderOrigin='end';updateHud();return;
   }
   if(!planMove(state,selected,pt))
     state.events.push('NO WALKABLE ROUTE');
@@ -1301,7 +1333,7 @@ canvas.addEventListener('pointerdown',e=>{
     const node=state.phase==='planning'&&!contextual?hitNode(pt):null;
     if(node){
       if(node.owner!==selected)selectUnit(node.owner);
-      selectedNode=node.id;doorFocusId=null;
+      selectedNode=node.id;orderOrigin='node';doorFocusId=null;
     }else if(hit)selectUnit(hit.id);
     activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
       startX:e.clientX,startY:e.clientY,wasUnit:!!hit&&!node,
@@ -1392,7 +1424,7 @@ function insertAtRouteLine(screen:Pt):boolean{
     return true; // This was a route tap, not a new destination order.
   }
   canvas.dataset.lastRouteTap='inserted:'+hit.index;
-  selectedNode=id;doorFocusId=null;contextSignature='';
+  selectedNode=id;orderOrigin='node';doorFocusId=null;contextSignature='';
   return true;
 }
 function releasePointer(e:PointerEvent,cancelled=false){
@@ -1408,12 +1440,12 @@ function releasePointer(e:PointerEvent,cancelled=false){
           movePlanNode(state,selected,p.nodeId,pt);
         if(!moved)state.events.push('INVALID ORDER DESTINATION');
       }
-      selectedNode=p.nodeId;doorFocusId=null;
+      selectedNode=p.nodeId;orderOrigin='node';doorFocusId=null;
     }else if(p.mode==='route'&&trace&&trace.length>1){
       const points=[...trace,pt];
       if(!planMoveStroke(state,selected,points.slice(1)))
         state.events.push('NO WALKABLE STROKE');
-      selectedNode=null;doorFocusId=null;
+      selectedNode=null;doorFocusId=null;orderOrigin='end';
     }else if(!p.moved&&!p.wasUnit&&pt.x>=0&&pt.y>=0&&
       pt.x<=W&&pt.y<=H){
       const selectedActor=uid(selected);
@@ -1429,6 +1461,7 @@ function releasePointer(e:PointerEvent,cancelled=false){
           {x:e.clientX,y:e.clientY})<25));
       if(door&&!looking&&!flashMode){
         doorFocusId=door.id;selectedNode=null;
+        doorMenuDismissedId=null;orderOrigin='end';
       }else if(!looking&&!flashMode&&insertAtRouteLine({x:e.clientX,y:e.clientY})){
         // Insert-and-select: contextual LOOK/PIE/STRAFE/DELETE are immediately
         // available on the newly authored waypoint.
