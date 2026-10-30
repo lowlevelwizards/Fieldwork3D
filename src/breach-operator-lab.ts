@@ -313,7 +313,16 @@ function draw(){
     surrender:false,aiming:motion.aim>.2,
     firing:false,turning:motion.turning,aimBlend:motion.aim,
     replayFeet:feet,pelvisYaw:state.pelvisYaw,
-    deterministic:true,shotHeading:motion.heading},0);
+    deterministic:true,shotHeading:motion.heading,
+    downPose:track==='down-back'?'back':
+      track==='down-left'?'left':
+      track==='down-right'?'right':
+      track==='down-slump'?'slump':'forward',
+    downProgress:motion.down?Math.max(0,Math.min(1,(clock-.45)/.58)):0,
+    hitRegion:track==='wounded'?'torso':undefined,
+    hitYaw:motion.heading+Math.PI/2,
+    hitAge:track==='wounded'?Math.max(0,clock-.7):undefined,
+    hitSeverity:2},0);
   const dx=motion.x-cameraFollow.x,dz=motion.z-cameraFollow.z;
   camera.position.x+=dx;camera.position.z+=dz;
   control.target.x+=dx;control.target.z+=dz;

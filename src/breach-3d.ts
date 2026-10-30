@@ -631,7 +631,7 @@ export class TacticalScene3D{
       // Build 120: the pose solver is the only writer of actor anatomical,
       // firearm and hit-reaction transforms; the scene owns world placement.
       const downProgress=actor.health<=0?
-        Math.min(1,Math.max(0,(s.seconds-actor.lastDownAt)/.40)):0;
+        Math.min(1,Math.max(0,(s.seconds-actor.lastDownAt)/.58)):0;
       const hitAge=s.seconds-actor.lastHitAt;
       const hitFade=actor.health>0&&hitAge>=0&&hitAge<.32?
         1-hitAge/.32:0;
@@ -662,6 +662,8 @@ export class TacticalScene3D{
         aiming:actor.aim>.20,turning:actor.turning,firing:!!firing,
         aimBlend:actor.aim,recoil:actor.recoil*6,
         shotHeading:actor.weaponYaw,hitAge,hitFade,downProgress,
+        hitRegion:actor.lastHitRegion,hitYaw:actor.lastHitYaw,
+        hitSeverity:actor.lastHitSeverity,downPose:actor.downPose,
         flashActive:actor.flashUntil>s.seconds&&actor.health>0,
         obstruction:!isClear(actor.p,{
           x:actor.p.x+Math.cos(actor.heading)*
