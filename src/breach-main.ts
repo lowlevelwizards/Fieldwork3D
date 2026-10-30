@@ -16,6 +16,7 @@ import {routeLineHit} from './breach-route-edit.ts';
 import {shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
+import {doorReachable} from './breach-door.ts';
 import './breach-style.css';
 
 const el=<T extends HTMLElement>(id:string)=>{
@@ -39,6 +40,10 @@ const ui={
   context:el<HTMLElement>('contextTools'),
   orders:el<HTMLElement>('advancedOrders'),
   moreOrders:el<HTMLButtonElement>('moreOrders'),
+  siteSettingsToggle:el<HTMLButtonElement>('siteSettingsToggle'),
+  siteSettings:el<HTMLElement>('siteSettings'),
+  replayMore:el<HTMLButtonElement>('replayMore'),
+  replayExtra:el<HTMLElement>('replayExtra'),
   viewIso:el<HTMLButtonElement>('viewIso'),
   viewTop:el<HTMLButtonElement>('viewTop'),
   view2d:el<HTMLButtonElement>('view2d'),
@@ -205,11 +210,12 @@ function armFacing(mode:'look'|'pie'|'strafe'){
 }
 /** The tray never competes with the expanded TOOLS panel or GO/BACK. */
 function focusedDoor(a:TeamActor,node:ReturnType<typeof selectedPlanNode>){
-  const explicit=state.doors.find(d=>d.id===doorFocusId&&!d.open);
-  if(explicit)return explicit;
   const points=node?[node.p]:[finalPoint(a),a.p];
+  const explicit=state.doors.find(d=>d.id===doorFocusId&&!d.open&&
+    points.some(p=>doorReachable(p,d)));
+  if(explicit)return explicit;
   return state.doors.filter(d=>!d.open&&points.some(p=>
-    distance(p,doorCenter(d))<=43))
+    doorReachable(p,d)))
     .sort((x,y)=>{
       const dx=Math.min(...points.map(p=>distance(p,doorCenter(x))));
       const dy=Math.min(...points.map(p=>distance(p,doorCenter(y))));
@@ -221,7 +227,7 @@ function selectedPlanNode(){
 }
 function updateContext(){
   if(state.phase!=='planning'||looking||
-     !ui.orders.classList.contains('compact')){
+     !ui.orders.classList.contains('compact')||!ui.siteSettings.hidden){
     ui.context.hidden=true;return;
   }
   const a=uid(selected);
@@ -736,7 +742,9 @@ function renderProjectedPlans(){
     ][squadIndex]??{x:0,y:-9}:{x:0,y:-9};
     draw.textAlign='center';draw.font='bold 11px monospace';
     draw.fillStyle=color;
-    draw.fillText(a.name,pawn.x+labelSpread.x,pawn.y+labelSpread.y);
+    if(a.id===selected||a.injuryStage>0||replayFollow&&
+      replayFollowId===a.id)
+      draw.fillText(a.name,pawn.x+labelSpread.x,pawn.y+labelSpread.y);
     if(a.id===selected){
       draw.strokeStyle='#e9d6b1';draw.lineWidth=2.1;
       draw.beginPath();draw.arc(ground.x,ground.y,14,0,Math.PI*2);draw.stroke();
@@ -749,14 +757,11 @@ function renderProjectedPlans(){
   // Screen-space icons stay readable regardless of ortho pitch or zoom.
   for(const hostile of enemies(state)){
     if(!liveVisibility(state,hostile.p))continue;
-    const pawn=worldToScreen(hostile.p,33);
     const ground=worldToScreen(hostile.p,1);
     if(hostile.health<=0){
-      draw.fillStyle='#f0b39a';draw.textAlign='center';
-      draw.font='bold 11px monospace';
-      draw.fillText('× DOWN',pawn.x,pawn.y-13);
-      draw.strokeStyle='#d99980';draw.lineWidth=2;
-      draw.beginPath();draw.arc(ground.x,ground.y,14,0,Math.PI*2);draw.stroke();
+      // The actual grounded body and restrained blood mark communicate DOWN.
+      draw.fillStyle='rgba(125,48,43,.52)';draw.beginPath();
+      draw.ellipse(ground.x,ground.y,11,6,0,0,Math.PI*2);draw.fill();
     }else{
       draw.strokeStyle='#e2a18b';draw.lineWidth=1.6;
       draw.beginPath();draw.arc(ground.x,ground.y,12,0,Math.PI*2);draw.stroke();
@@ -765,30 +770,27 @@ function renderProjectedPlans(){
   for(const member of team(state)){
     const pawn=worldToScreen(member.p,33);
     if(member.health<=0){
-      draw.font='bold 11px monospace';draw.fillStyle='#f4baa7';
-      draw.textAlign='center';draw.fillText('× DOWN',pawn.x,pawn.y-14);
+      draw.fillStyle='rgba(129,54,48,.35)';draw.beginPath();
+      draw.ellipse(pawn.x,pawn.y+11,9,4,0,0,2*Math.PI);draw.fill();
     }else if(member.health===1){
       draw.fillStyle='#e6a485';draw.fillRect(pawn.x-10,pawn.y+1,20,3);
     }
   }
+  // Door shapes communicate door identity. Only show a selector when the
+  // selected operator or its planned endpoint can actually interact.
+  const active=uid(selected);
   for(const door of state.doors){
     const visibility=doorVisibility(state,door);
-    if(!visibility.known)continue;
-    const p=worldToScreen(doorCenter(door),38);
-    const focused=doorFocusId===door.id;
-    const label=visibility.live?(door.open?'OPEN':'DOOR'):'DOOR';
-    draw.font='bold 10px monospace';draw.textAlign='center';
-    draw.strokeStyle=focused?'#ffe1a0':'#e1c18b';
-    draw.lineWidth=focused?2.8:1.7;
-    draw.beginPath();draw.arc(p.x,p.y+13,focused?12:9,0,2*Math.PI);
-    draw.stroke();
-    // A stack of four name labels already identifies the entry area.
-    // Retain the door ring but suppress its text when allies crowd it.
-    const crowded=team(state).some(a=>a.health>0&&
-      distance(a.p,doorCenter(door))<51);
-    if(!crowded||focused){
-      draw.fillStyle='#f0d9ab';draw.fillText(label,p.x,p.y-4);
-    }
+    if(!visibility.known||!active||active.health<=0)continue;
+    const node=selectedPlanNode();
+    const actionable=[active.p,finalPoint(active),...(node?[node.p]:[])]
+      .some(pos=>doorReachable(pos,door));
+    if(!actionable)continue;
+    const p=worldToScreen(doorCenter(door),12);
+    draw.strokeStyle=doorFocusId===door.id?'#ffe1a0':'#cfbd92a8';
+    draw.lineWidth=doorFocusId===door.id?2.2:1.2;
+    draw.beginPath();draw.arc(p.x,p.y,doorFocusId===door.id?10:7,
+      0,Math.PI*2);draw.stroke();
   }
   // The 3D camera does not define combat outcomes: use the same shot event
   // visibility and damage flags as the physical effects and 2D renderer.
@@ -815,7 +817,7 @@ function renderProjectedPlans(){
       (shot.down?17:10)+(1-fade)*8,0,2*Math.PI);draw.stroke();
     draw.fillStyle='#f2b39b';draw.font='bold 11px monospace';
     draw.textAlign='center';
-    draw.fillText(shot.down?'DOWN':'HIT',point.x,point.y-17);
+    // Impact pulse is enough without another persistent text label.
     draw.globalAlpha=1;
   }
   // Unknown enemies stay unrendered; only grounded last-known reports show.
@@ -903,10 +905,8 @@ function sprite(a:TeamActor){
     draw.rotate(a.heading);
     rect(-13,-4,29,8,'#574d49');rect(-3,-9,5,18,'#a46556');
     draw.restore();
-    draw.strokeStyle='#d39b84';draw.lineWidth=2;
-    draw.beginPath();draw.arc(a.p.x,a.p.y,19,0,Math.PI*2);draw.stroke();
-    draw.fillStyle='#edbea4';draw.font='bold 11px monospace';
-    draw.textAlign='center';draw.fillText('× DOWN',a.p.x,a.p.y-23);
+    draw.fillStyle='#7e363092';draw.beginPath();
+    draw.ellipse(a.p.x,a.p.y,13,6,a.heading,0,2*Math.PI);draw.fill();
     return;
   }
   if(friendly&&(a.id===selected)){
@@ -1007,7 +1007,7 @@ function contacts(){
       if(shot.hit){
         draw.fillStyle='#efb19c';draw.font='bold 11px monospace';
         draw.textAlign='center';
-        draw.fillText(shot.down?'DOWN':'HIT',shot.end.x,shot.end.y-16);
+        // Physical impacts carry the outcome without a floating DOWN label.
       }
     }
     draw.globalAlpha=1;
@@ -1085,14 +1085,15 @@ function updateReplayHud(){
   ui.replayFollow.textContent=replayFollow?'FOLLOW '+replayFollowId.toUpperCase():'FOLLOW';
   ui.replayAnalysis.textContent=replayAnalysis?'ANALYSIS ON':'ANALYSIS';
   const event=recorder.events.filter(e=>e.t<=replayTime+.14).at(-1);
-  ui.replayEventText.textContent=event?
-    clockText(event.t)+' · '+event.text:'NO EVENTS YET';
+  ui.replayEventText.textContent=event&&replayTime-event.t<4.5?
+    clockText(event.t)+' · '+event.text:'';
 }
 function enterReplay(){
   if(replaying||recorder.frames.length<2)return;
   finishedSession=state;replaying=true;replayPlaying=true;replayTime=0;
   replayRate=1;replayOmniscient=true;looking=false;flashMode=false;
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
+  ui.replayExtra.hidden=true;ui.replayMore.setAttribute('aria-expanded','false');
   state=newSession(finishedSession.variant,finishedSession.site?.seed);
   stage?.applySite(state.site??null);
   document.body.classList.add('replaying');
@@ -1116,6 +1117,10 @@ ui.replayPlay.addEventListener('click',()=>{
 });
 ui.replayBack.addEventListener('click',()=>seekReplay(replayTime-10));
 ui.replayForward.addEventListener('click',()=>seekReplay(replayTime+10));
+ui.replayMore.addEventListener('click',()=>{
+  ui.replayExtra.hidden=!ui.replayExtra.hidden;
+  ui.replayMore.setAttribute('aria-expanded',String(!ui.replayExtra.hidden));
+});
 ui.replaySpeed.addEventListener('click',()=>{
   replayRate=({0.5:1,1:2,2:4,4:0.5} as Record<number,number>)[replayRate]??1;
   updateReplayHud();
@@ -1408,7 +1413,13 @@ function releasePointer(e:PointerEvent,cancelled=false){
       selectedNode=null;doorFocusId=null;
     }else if(!p.moved&&!p.wasUnit&&pt.x>=0&&pt.y>=0&&
       pt.x<=W&&pt.y<=H){
-      const door=state.doors.find(d=>!d.open&&
+      const selectedActor=uid(selected);
+      // Out-of-reach door geometry must NOT steal a ground tap intended
+      // to author a waypoint beside the door. Once the planned endpoint
+      // is within reach, the physical door becomes selectable.
+      const door=state.doors.find(d=>!d.open&&!!selectedActor&&
+        [selectedActor.p,finalPoint(selectedActor)].some(p=>
+          doorReachable(p,d))&&
         (distance(worldToScreen(doorCenter(d),10),
           {x:e.clientX,y:e.clientY})<24||
          distance(worldToScreen(doorCenter(d),38),
@@ -1441,10 +1452,19 @@ ui.cameraFit.addEventListener('click',()=>{
   else{zoom=1;panX=0;panY=0;layout();}
   updateContext();
 });
+ui.siteSettingsToggle.addEventListener('click',()=>{
+  ui.siteSettings.hidden=!ui.siteSettings.hidden;
+  ui.siteSettingsToggle.setAttribute('aria-expanded',String(!ui.siteSettings.hidden));
+  updateContext();
+});
 ui.moreOrders.addEventListener('click',()=>{
   const expanded=ui.orders.classList.toggle('compact')===false;
+  if(!expanded){
+    ui.siteSettings.hidden=true;
+    ui.siteSettingsToggle.setAttribute('aria-expanded','false');
+  }
   ui.moreOrders.setAttribute('aria-pressed',String(expanded));
-  ui.moreOrders.textContent=expanded?'HIDE':'TOOLS';
+  ui.moreOrders.textContent=expanded?'CLOSE':'ACTIONS';
   // Never render two command overlays on top of each other.
   updateContext();
 });

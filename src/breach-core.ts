@@ -68,10 +68,11 @@ export function segmentsCross(a:Segment,b:Segment):boolean{
 }
 const pointInCover=(p:Pt,o:Obstacle,r=0)=>
   Math.abs(p.x-o.x)<o.w/2+r&&Math.abs(p.y-o.y)<o.h/2+r;
-export function passable(p:Pt):boolean{
+export const OPERATOR_RADIUS=8;
+export function passable(p:Pt,clearance=OPERATOR_RADIUS):boolean{
   if(p.x<13||p.y<20||p.x>W-13||p.y>H-13)return false;
-  if(WALLS.some(s=>pointToSegment(p,s)<10))return false;
-  if(COVER.some(o=>pointInCover(p,o,10)))return false;
+  if(WALLS.some(s=>pointToSegment(p,s)<clearance+1))return false;
+  if(COVER.some(o=>pointInCover(p,o,clearance)))return false;
   return true;
 }
 export function isClear(a:Pt,b:Pt,doors:Door[],ignoreDoors=false):boolean{

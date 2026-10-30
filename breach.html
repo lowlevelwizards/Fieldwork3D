@@ -25,8 +25,11 @@
   <button id="sync" type="button" title="Synchronize the squad's planned go-code">SYNC</button>
   <button id="stance" type="button">CROUCH</button>
   <button id="contact" type="button" aria-pressed="false">STOP ON CONTACT</button>
-  <button id="variant" type="button">NEW SITE</button>
+  <button id="siteSettingsToggle" type="button" aria-expanded="false">⚙ SETTINGS</button>
   <button id="clear" type="button" title="Clear all remaining orders for selected operator">CLEAR PLAN</button>
+</section>
+<section id="siteSettings" class="site-settings" hidden aria-label="Camera and mission settings">
+  <button id="variant" type="button">NEW SITE</button>
   <button id="restart" type="button">RESTART</button>
   <button id="viewIso" type="button" aria-pressed="true">ISO</button>
   <button id="viewTop" type="button" aria-pressed="false">TOP</button>
@@ -53,7 +56,7 @@
   </div>
   <div class="actions">
     <button id="back" type="button" title="Remove just the final pending order">BACK −1</button>
-    <button id="moreOrders" type="button" aria-pressed="false" title="Additional commands and views">TOOLS</button>
+    <button id="moreOrders" type="button" aria-pressed="false" title="Operator tactical actions">ACTIONS</button>
     <button id="play" type="button" class="play">GO <span>▶</span></button>
   </div>
 </nav>
@@ -73,13 +76,15 @@
     <button id="replayPlay" type="button">PLAY ▶</button>
     <button id="replayForward" type="button" aria-label="Advance ten seconds">▶▶</button>
     <button id="replayNextEvent" type="button" title="Next combat event">▶|</button>
+  </div><div id="replayExtra" class="replay-extra" hidden>
     <button id="replaySpeed" type="button">1×</button>
     <button id="replaySight" type="button">FULL VIEW</button>
     <button id="replayView" type="button">ISO</button>
     <button id="replayFollow" type="button">FOLLOW</button>
     <button id="replayAnalysis" type="button">ANALYSIS</button>
-    <button id="replayExit" type="button">EXIT</button>
   </div>
+  <button id="replayMore" type="button" aria-expanded="false">CAMERA / ANALYSIS</button>
+  <button id="replayExit" type="button">EXIT</button>
   <output id="replayEventText" class="replay-event" aria-live="off">Mission events</output>
 </section>
 <div class="foot"><span id="mission">CONTACTS UNKNOWN • SECURE THE STATION</span><span class="shortcut">TAP TO ORDER · DRAG TO ORBIT · 2 FINGERS PAN/PINCH</span></div>

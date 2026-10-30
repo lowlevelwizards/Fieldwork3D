@@ -25,6 +25,20 @@ ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
 scene.add(new THREE.GridHelper(120,12,0x8b9791,0xb4bbb5));
 let rig:OperatorRig|null=null,pose='idle',clock=0,stride=0;
 let last=performance.now();
+let showJointDebug=false,slowMotion=false;
+const jointMarkers=[0,1].map(i=>{
+  const mesh=new THREE.Mesh(new THREE.SphereGeometry(1.65,8,6),
+    new THREE.MeshBasicMaterial({color:i===0?0xe8a26e:0x80bbac,depthTest:false}));
+  mesh.visible=false;scene.add(mesh);return mesh;
+});
+const doorProp=new THREE.Group();
+const panel=new THREE.Mesh(new THREE.BoxGeometry(3,37,23),
+  new THREE.MeshStandardMaterial({color:0x998262,roughness:.85}));
+panel.position.set(28,18.5,0);doorProp.add(panel);
+const knob=new THREE.Mesh(new THREE.BoxGeometry(3.4,2.4,2.4),
+  new THREE.MeshStandardMaterial({color:0xd6c28e}));
+knob.position.set(25.5,20,8);doorProp.add(knob);
+scene.add(doorProp);
 const choose=<T extends HTMLElement>(id:string)=>document.getElementById(id)! as T;
 const operator=choose<HTMLSelectElement>('operator'),
   weapon=choose<HTMLSelectElement>('weapon'),
@@ -52,6 +66,14 @@ document.querySelectorAll<HTMLButtonElement>('[data-pose]').forEach(button=>{
 document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(button=>
   button.addEventListener('click',()=>fit(button.dataset.view)));
 choose<HTMLButtonElement>('resetCamera').addEventListener('click',()=>fit());
+choose<HTMLButtonElement>('diagnostics').addEventListener('click',e=>{
+  showJointDebug=!showJointDebug;
+  (e.currentTarget as HTMLButtonElement).setAttribute('aria-pressed',String(showJointDebug));
+});
+choose<HTMLButtonElement>('slowMotion').addEventListener('click',e=>{
+  slowMotion=!slowMotion;
+  (e.currentTarget as HTMLButtonElement).setAttribute('aria-pressed',String(slowMotion));
+});
 function resize(){
   const w=window.innerWidth,h=window.innerHeight;
   renderer.setSize(w,h,false);
@@ -61,13 +83,16 @@ function resize(){
 }
 window.addEventListener('resize',resize);
 function tick(now:number){
-  const dt=Math.min(.05,Math.max(0,(now-last)/1000));last=now;clock+=dt;
+  const elapsed=Math.min(.05,Math.max(0,(now-last)/1000));
+  last=now;const dt=elapsed*(slowMotion?.28:1);clock+=dt;
   const moving=pose==='walk'||pose==='strafe'||pose==='turn';
   if(moving)stride+=dt*(pose==='turn'?25:50);
   const speed=moving?pose==='turn'?18:52:0;
-  const x=moving?(pose==='strafe'?Math.sin(clock*.5)*3:Math.sin(clock*.7)*4):0;
-  const z=pose==='strafe'?Math.sin(clock*.6)*4:0;
+  const x=moving?(pose==='strafe'?0:Math.sin(clock*.92)*12):0;
+  const z=pose==='strafe'?Math.sin(clock*.95)*11:0;
   const heading=pose==='turn'?Math.sin(clock*.8)*Math.PI:.3;
+  doorProp.visible=pose==='door';
+  for(const marker of jointMarkers)marker.visible=showJointDebug;
   if(rig){
     rig.root.position.set(x,0,z);
     poseOperator(rig,{x,z,heading,seconds:clock,stride,
@@ -75,9 +100,18 @@ function tick(now:number){
       injury:Number(injury.value),weapon:weapon.value as WeaponId,
       reload:pose==='reload'?1.8*(1-(clock%1.8)/1.8):0,
       reloadDuration:1.8,lastDoorAt:pose==='door'?clock-(clock%1.2):-100,
+      doorPoint:pose==='door'?{x:25.5,y:8}:undefined,
       lastThrowAt:pose==='flash'?clock-(clock%1.4):-100,
       down:Number(injury.value)===3,surrender:false,
-      aiming:pose==='aim'||pose==='strafe',firing:false,turning:0},dt);
+      aiming:pose==='aim'||pose==='strafe',firing:false,turning:0,
+      aimBlend:pose==='aim'?1:pose==='strafe'?.5:0,
+      obstruction:false,friendlyNear:false},dt);
+    if(showJointDebug){
+      jointMarkers.forEach((marker,i)=>{
+        marker.position.copy(rig!.feet[i].anchor);
+        marker.position.y=2.0;
+      });
+    }
   }
   control.update();renderer.render(scene,camera);
   requestAnimationFrame(tick);

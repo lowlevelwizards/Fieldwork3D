@@ -16,11 +16,15 @@ import {
 } from './breach-plan.ts';
 import {validPieArc} from './breach-maneuvers.ts';
 import {generateSite,type Site,seeded} from './breach-site.ts';
-import {WEAPONS,injuryOf,injuryAim,injurySpeed,injuryReload,
+import {WEAPONS,injuryOf,injurySpeed,injuryReload,
   woundSeverity,exposure,nearCover,type WeaponId,type BattleEvent}
   from './breach-combat.ts';
 import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,doorClear} from './breach-door.ts';
+import {localDetour} from './breach-cooperation.ts';
+import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
+import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
+  rayHitsActor,muzzleEndpoint,recoverWeapon,type FiringMode} from './breach-ballistics.ts';
 import {chooseDefense,watchPoint} from './breach-defense.ts';
 
 export type Posture='stand'|'crouch';
@@ -44,6 +48,8 @@ export type TeamActor=Operator & {
   personality:Personality;morale:number;lastNoiseAt:number;
   flashUntil:number;lastThrowAt:number;lastDoorAt:number;
   lastDoorId:string|null;stride:number;weapon:WeaponId;injuryStage:number;
+  weaponYaw:number;stability:number;recoil:number;lastShotAt:number;
+  fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
 };
 export type NoiseEvent={p:Pt;radius:number;time:number;kind:string};
@@ -51,6 +57,7 @@ export type ShotEvent={
   id:number;shooterId:string;targetId:string|null;
   start:Pt;end:Pt;age:number;hit:boolean;side:Side;
   healthBefore:number;healthAfter:number;down:boolean;
+  shotYaw?:number;mode?:FiringMode;spread?:number;
   surface?:'blood'|'wood'|'stone'|'metal'|'dust';
 };
 export type ImpactMark={id:number;p:Pt;surface:ShotEvent['surface'];age:number};
@@ -97,6 +104,8 @@ const withActions=(a:Operator):TeamActor=>({
   yieldTarget:null,yieldFor:null,yieldUntil:0,
   personality:'guard',morale:1,lastNoiseAt:-1,flashUntil:-1,
   lastThrowAt:-100,lastDoorAt:-100,lastDoorId:null,stride:0,
+  weaponYaw:a.heading,stability:.55,recoil:0,lastShotAt:-100,
+  fireMode:'point',burstCount:0,skills:{...DEFAULT_SKILLS},
   weapon:'carbine',injuryStage:0,defense:null,watch:null,
   defenseUntil:0,surrendered:false,
 });
@@ -125,6 +134,7 @@ export function newSession(index=0,siteSeed?:number):Session{
       a.reserve=WEAPONS[a.weapon].reserve;
       a.health=4;a.injuryStage=0;
       a.p={...site.spawn[i]};a.heading=-Math.PI/2;
+      a.weaponYaw=a.heading;
       a.priorP={...a.p};
     });
     // Site danger scales gently with room count; guards never spawn outside
@@ -143,6 +153,7 @@ export function newSession(index=0,siteSeed?:number):Session{
       }
       a.p={...site.enemies[i]};a.priorP={...a.p};
       a.heading=enemyRng()*Math.PI*2;
+      a.weaponYaw=a.heading;
       a.health=enemyRng()<.18?3:4;
       a.weapon=enemyRng()<.30?'smg':'carbine';
       a.magazine=WEAPONS[a.weapon].capacity;
@@ -153,7 +164,7 @@ export function newSession(index=0,siteSeed?:number):Session{
     }
   }else operators.filter(a=>a.side==='red').forEach((a,i)=>{
     const pos=sample.spots[i];a.p={x:pos.x,y:pos.y};a.heading=pos.h;
-    a.health=2;a.magazine=10;a.reserve=30;
+    a.health=2;a.magazine=10;a.reserve=30;a.weaponYaw=a.heading;
   });
   const state:Session={...seed,operators,doors:initialDoors().map(initDoor),variant,nextId:1,
     scenario:{index:variant,name:site?.name??sample.name,
@@ -784,21 +795,17 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   // same-team shoulder pass rather than deadlocking a door indefinitely.
   if(teammate&&a.blockedTime>.14)
     deferToTeammate(s,teammate,a);
-  // Temporary local detour around an occupied lane; never rewrite orders.
-  if(teammate&&a.blockedTime>.35&&!a.yieldTarget){
-    for(const sign of [1,-1]){
-      const side={x:-Math.sin(direction)*sign,y:Math.cos(direction)*sign};
-      const detour={x:a.p.x+side.x*23+Math.cos(direction)*11,
-        y:a.p.y+side.y*23+Math.sin(direction)*11};
-      if(passable(detour)&&!s.operators.some(o=>o!==a&&o.health>0&&
-          d(detour,o.p)<17)&&
-          !s.doors.some(door=>!doorClear(door)&&
-          segmentsCross({a:a.p,b:detour},door))){
-        a.nav.unshift(detour);a.blockedTime=0;return true;
-      }
+  // Try nearby route repair for both actor jams and furniture edges.
+  if((teammate||(!closed&&!passable(move)))&&a.blockedTime>.28&&
+    !a.yieldTarget){
+    const candidate=localDetour(a.p,next,s.doors,s.operators
+      .filter(o=>o!==a&&o.health>0).map(o=>o.p));
+    if(candidate&&(!a.nav.length||d(candidate,a.nav[0])>8)){
+      a.nav.unshift(candidate);a.blockedTime=0;return true;
     }
   }
-  const shoulderPass=!!teammate&&a.blockedTime>1.65;
+  const shoulderPass=!!teammate&&a.blockedTime>1.65&&
+    passable({x:(a.p.x+teammate.p.x)/2,y:(a.p.y+teammate.p.y)/2});
   if(!closed&&(!blocking||shoulderPass)&&passable(move)){
     a.priorP=clone(a.p);a.p=move;a.blockedTime=0;
     if(a.side==='blue'&&s.seconds-s.movementNoiseAt>.54){
@@ -1069,10 +1076,6 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   }
   if(!a.contact&&a.watch)rotate(a,angle(a.p,a.watch),dt);
 }
-function softCoverPenalty(_a:TeamActor,b:TeamActor){
-  if(b.posture!=='crouch')return 0;
-  return nearCover(b.p,_a.p)?.19:0;
-}
 function random(s:Session){
   s.rng=(Math.imul(s.rng,1664525)+1013904223)>>>0;
   return s.rng/4294967296;
@@ -1117,6 +1120,9 @@ function strikeSurface(from:Pt,aimed:Pt,s:Session):{
 }
 function fire(s:Session,a:TeamActor,dt:number){
   if(a.health<=0)return;
+  const profile=BALLISTICS[a.weapon];
+  const recovering=recoverWeapon(a.recoil,a.stability,dt,profile,a.velocity>10);
+  a.recoil=recovering.recoil;a.stability=recovering.stability;
   if(a.reload>0){
     a.reload=Math.max(0,a.reload-dt);
     if(a.reload===0){
@@ -1131,36 +1137,59 @@ function fire(s:Session,a:TeamActor,dt:number){
   const target=enemiesOf.filter(e=>inSight(a,e,s))
     .sort((x,y)=>d(a.p,x.p)-d(a.p,y.p))[0];
   if(!target){
-    a.targetId=null;a.aim=Math.max(0,a.aim-dt*.6);return;
+    a.targetId=null;a.aim=Math.max(0,a.aim-dt*.6);
+    a.weaponYaw=approachAngle(a.weaponYaw,a.heading,dt*profile.turnSpeed);
+    return;
   }
-  if(a.targetId!==target.id){a.targetId=target.id;a.aim=0;}
+  if(a.targetId!==target.id){a.targetId=target.id;a.aim=0;
+    a.stability=Math.min(a.stability,.65);}
   const moving=a.velocity>10;
   const weapon=WEAPONS[a.weapon];
   const acquisition=(moving?weapon.acquisition*1.8:weapon.acquisition)*
+    (2-skillMultiplier(a.skills.handling,.4))*
     (a.side==='red'?1.65:1)+
     (a.personality==='cautious'?.12:0);
   a.aim=Math.min(1,a.aim+dt/acquisition);
-  if(a.aim<1||a.fireCd>0)return;
+  const range=d(a.p,target.p);
+  const desiredYaw=angle(a.p,target.p);
+  a.weaponYaw=approachAngle(a.weaponYaw,desiredYaw,dt*profile.turnSpeed*
+    (a.suppression>.6?.75:1));
+  const mode=readyMode(range,a.aim,a.weapon);
+  if(!mode||a.fireCd>0)return;
+  // Do not claim a sighted hit while the barrel is still turning past target.
+  if(Math.abs(Math.atan2(Math.sin(desiredYaw-a.weaponYaw),
+    Math.cos(desiredYaw-a.weaponYaw)))>.38)return;
+  a.fireMode=mode;
   a.fireCd=weapon.interval*(a.side==='red'?1.30:1);
   a.magazine--;a.shots++;
-  const dist=d(a.p,target.p);
-  const closePenalty=dist>weapon.optimalRange?
-    (dist-weapon.optimalRange)*.0027:0;
-  const chance=clamp(weapon.accuracy*(a.side==='red'?.74:1)-
-    dist*.0015-closePenalty-(moving?.22:0)-
-    a.suppression*.28-softCoverPenalty(a,target)+
-    (a.posture==='crouch'?.09:0)-(a.flashUntil>s.seconds?.38:0),
-    .06,.94)*injuryAim(a.injuryStage);
-  const hit=random(s)<chance;
-  const scatter=hit?clone(target.p):{
-    x:target.p.x+(random(s)-.5)*64,
-    y:target.p.y+(random(s)-.5)*64,
-  };
-  const impact=hit?{end:scatter,surface:'blood' as const}:
-    strikeSurface(a.p,scatter,s);
-  const end=impact.end;
+  const priorBurst=s.seconds-a.lastShotAt<.48;
+  a.burstCount=priorBurst?a.burstCount+1:1;
+  a.lastShotAt=s.seconds;
+  const cone=dispersion(a.weapon,mode,a.stability,moving,
+    a.suppression,a.injuryStage,a.recoil)*
+    (2-skillMultiplier(mode==='point'?a.skills.pointShooting:
+      range>weapon.optimalRange?a.skills.longRange:a.skills.precision,.28));
+  // A shot is a geometric ray, not an independent chance roll.
+  const yaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
+  const hitRadius=Math.max(4.2,10.5-
+    (target.posture==='crouch'?1.7:0)-
+    (nearCover(target.p,a.p)?2:0));
+  const candidateHit=rayHitsActor(a.p,yaw,target.p,hitRadius);
+  const far=muzzleEndpoint(a.p,yaw,Math.max(range+38,170));
+  const strike=strikeSurface(a.p,far,s);
+  // Obstruction before the target defeats a perfectly aligned barrel.
+  const blockerDist=d(a.p,strike.end);
+  const hit=candidateHit&&blockerDist>=range-hitRadius;
+  const end=hit?clone(target.p):strike.end;
+  const impact=hit?{end,surface:'blood' as const}:strike;
+  a.recoil=Math.min(.9,a.recoil+profile.recoilKick*
+    (a.burstCount>2?1.20:1)*
+    (2-skillMultiplier(a.skills.recoilControl,.42)));
+  a.stability=Math.max(0,a.stability-
+    (mode==='point'?.23:.16)*
+    (2-skillMultiplier(a.skills.composure,.38))-a.recoil*.10);
   const healthBefore=target.health;
-  const severity=hit&&s.site?woundSeverity(weapon,dist,
+  const severity=hit&&s.site?woundSeverity(weapon,range,
     nearCover(target.p,a.p),random(s)):1;
   const nextStage=Math.min(3,target.injuryStage+(hit?severity:0));
   const healthAfter=hit?
@@ -1175,6 +1204,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   s.shots.push({
     id:s.nextShotId++,shooterId:a.id,targetId:target.id,
     start:clone(a.p),end,age:0,hit,side:a.side,
+    shotYaw:yaw,mode,spread:cone,
     healthBefore,healthAfter,down:hit&&healthAfter<=0,
     surface:impact.surface,
   });

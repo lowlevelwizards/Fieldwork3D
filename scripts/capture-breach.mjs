@@ -66,7 +66,14 @@ try{
   await live.locator('#vale').click();
   if(await live.locator('#vale').getAttribute('aria-pressed')!=='true')
     throw Error('Vale cannot be selected');
+  // Build 117: camera and mission options now live in a separate, compact
+  // settings tray. Open it only when needed; never toggle it closed by mistake.
+  async function openSettings(page){
+    if(!await page.locator('#siteSettings').isVisible())
+      await page.locator('#siteSettingsToggle').click();
+  }
   await live.locator('#moreOrders').click();
+  await openSettings(live);
   await live.locator('#variant').click();
   const secondSeed=await live.locator('.ident small').textContent();
   if(secondSeed===beforeSeed)
@@ -101,15 +108,18 @@ try{
   // 078: three views of one unchanged authoritative planning state.
   await phone.screenshot({path:resolve(folder,'10-presentation-iso.png')});
   await phone.locator('#moreOrders').click();
+  await openSettings(phone);
   await phone.locator('#viewTop').click();
   await phone.locator('#moreOrders').click();
   await phone.waitForTimeout(380);
   await phone.screenshot({path:resolve(folder,'11-presentation-top.png')});
   await phone.locator('#moreOrders').click();
+  await openSettings(phone);
   await phone.locator('#view2d').click();
   await phone.locator('#moreOrders').click();
   await phone.screenshot({path:resolve(folder,'12-presentation-2d.png')});
   await phone.locator('#moreOrders').click();
+  await openSettings(phone);
   await phone.locator('#viewIso').click();
   await phone.locator('#moreOrders').click();
   await phone.waitForTimeout(380);
@@ -164,7 +174,9 @@ try{
   await phone.locator('#moreOrders').click();
   if(!await phone.locator('#advancedOrders').isVisible())
     throw Error('TOOLS drawer did not open');
+  await openSettings(phone);
   await phone.locator('#cameraFit').click();
+  await openSettings(phone);
   await phone.locator('#view2d').click();
   await phone.locator('#moreOrders').click();
   if(await phone.locator('#advancedOrders').isVisible())
@@ -210,6 +222,7 @@ try{
 
   // Selecting a waypoint near a door exposes door actions only there.
   await phone.locator('#moreOrders').click();
+  await openSettings(phone);
   await phone.locator('#restart').click();
   await phone.locator('#moreOrders').click();
   const doorPoint=screen(301,505);
@@ -224,6 +237,7 @@ try{
   await phone.locator('#moreOrders').click();
   if(await phone.locator('#contextTools').isVisible())
     throw Error('Contextual aiming/door buttons obscure the TOOLS drawer');
+  await openSettings(phone);
   await phone.locator('#restart').click();
   await phone.locator('#moreOrders').click();
   await phone.touchscreen.tap(doorPoint.x,doorPoint.y);
@@ -250,6 +264,7 @@ try{
   if(await phone.locator('#phase').innerText()!=='PLANNING')
     throw Error('GO / PAUSE regression');
   await phone.locator('#moreOrders').click();
+  await openSettings(phone);
   await phone.locator('#viewIso').click();
   await phone.locator('#moreOrders').click();
   await phone.screenshot({path:resolve(folder,'07-phone-iso-battlefield.png')});
@@ -264,6 +279,7 @@ try{
   await routePhone.goto(url,{waitUntil:'domcontentloaded'});
   await routePhone.locator('#breachCanvas').waitFor();
   await routePhone.locator('#moreOrders').click();
+  await openSettings(routePhone);
   await routePhone.locator('#view2d').click();
   await routePhone.locator('#moreOrders').click();
   await routePhone.locator('#rook').click();
