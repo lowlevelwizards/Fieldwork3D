@@ -360,8 +360,8 @@ function updateHud(){
     button.classList.toggle('loading',!!a&&a.reload>0);
     button.style.setProperty('--reload-progress',
       ((a?.reload??0)>0?Math.round(100*(1-a!.reload/
-        (WEAPONS[a.weapon].reload*(a.injuryStage===2?1.5:
-          a.injuryStage===1?1.1:1)))):0)+'%');
+        (WEAPONS[a!.weapon].reload*(a!.injuryStage===2?1.5:
+          a!.injuryStage===1?1.1:1)))):0)+'%');
     ui[(id+'Ammo') as 'rookAmmo'|'mossAmmo'|'ashAmmo'|'valeAmmo'].textContent=
       a?String(a.magazine).padStart(2,'0')+' / '+a.reserve+
       (a.reload>0?' ↻':''):'--';
