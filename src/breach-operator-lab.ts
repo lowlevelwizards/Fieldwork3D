@@ -230,7 +230,7 @@ function showDiagnostics(){
 }
 function draw(){
   if(!rig)return;
-  const {motion,feet}=cache.sample(clock);
+  const {motion,feet,state}=cache.sample(clock);
   doorProp.visible=track==='door';
   rig.root.position.set(motion.x,0,motion.z);
   poseOperator(rig,{x:motion.x,z:motion.z,heading:motion.heading,
@@ -245,7 +245,8 @@ function draw(){
     down:motion.down||Number(injury.value)===3,
     surrender:false,aiming:motion.aim>.2,
     firing:false,turning:motion.turning,aimBlend:motion.aim,
-    replayFeet:feet,deterministic:true,shotHeading:motion.heading},0);
+    replayFeet:feet,pelvisYaw:state.pelvisYaw,
+    deterministic:true,shotHeading:motion.heading},0);
   const dx=motion.x-cameraFollow.x,dz=motion.z-cameraFollow.z;
   camera.position.x+=dx;camera.position.z+=dz;
   control.target.x+=dx;control.target.z+=dz;
