@@ -24,12 +24,15 @@ export function generateSite(seed:number):Site{
   const rng=seeded(seed);
   const target=between(rng,3,6);
   const layout=(['office','workshop','corridor','courtyard'] as const)[seed%4];
-  const rows=target>4?3:2,cols=2;
-  const x0=between(rng,91,123),x1=between(rng,315,356),x2=between(rng,557,585);
+  const cols=target>=5&&layout==='office'?3:2;
+  const rows=cols===3?2:target>4?3:2;
+  const x0=between(rng,91,123),x1=cols===3?between(rng,242,268):
+    between(rng,315,356),x2=cols===3?between(rng,401,429):
+    between(rng,557,585),x3=between(rng,557,585);
+  const xs=cols===3?[x0,x1,x2,x3]:[x0,x1,x2];
   const y0=between(rng,95,120),y2=between(rng,522,553);
   const y1=rows===2?between(rng,285,357):between(rng,240,270);
   const ys=rows===2?[y0,y1,y2]:[y0,y1,between(rng,380,421),y2];
-  const xs=[x0,x1,x2];
   const cell=(c:number,r:number)=>r*cols+c;
   const rooms:Room[]=[];
   for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
@@ -58,16 +61,19 @@ export function generateSite(seed:number):Site{
   };
   // Perimeter with one actual exterior doorway on the lower wall.
   // Some sites provide a genuine alternative rear or side entrance.
-  appendWall({x:x0,y:y0},{x:x2,y:y0},
-    layout==='courtyard'?{x:(x1+x2)/2,y:y0}:null,
+  const farX=xs[cols];
+  appendWall({x:x0,y:y0},{x:farX,y:y0},
+    layout==='courtyard'?{x:(x1+farX)/2,y:y0}:null,
     layout==='courtyard'?'REAR':null);
   walls.push(segment(x0,y0,x0,y2));
-  appendWall({x:x2,y:y0},{x:x2,y:y2},
-    layout==='workshop'?{x:x2,y:(y1+y2)/2}:null,
+  appendWall({x:farX,y:y0},{x:farX,y:y2},
+    layout==='workshop'?{x:farX,y:(y1+y2)/2}:null,
     layout==='workshop'?'SERVICE':null);
-  const entranceX=xs[between(rng,0,1)]+between(rng,65,92);
+  const entranceX=xs[between(rng,0,cols-1)]+
+    between(rng,Math.floor((xs[1]-xs[0])*.38),
+      Math.floor((xs[1]-xs[0])*.58));
   const entry={x:entranceX,y:y2};
-  appendWall({x:x0,y:y2},{x:x2,y:y2},entry,'FRONT');
+  appendWall({x:x0,y:y2},{x:farX,y:y2},entry,'FRONT');
   // A connected spanning tree of rooms: vertical chain in every column,
   // and one or more lateral cross-connectors. A random second lateral
   // crossing creates alternative routes through some compounds.
@@ -75,13 +81,12 @@ export function generateSite(seed:number):Site{
   const offset=(lo:number,hi:number)=>
     rng()<.34?lo+between(rng,42,64):
       rng()<.5?hi-between(rng,42,64):(lo+hi)/2+between(rng,-21,21);
-  for(let r=0;r<rows;r++){
+  for(let c=1;c<cols;c++)for(let r=0;r<rows;r++){
     const y=offset(ys[r],ys[r+1]);
-    // Always join the columns on at least one level; other levels
-    // may be walls or secondary doors, but never disconnected islands.
+    // The final row always connects every column horizontally.
     const openings=r===rows-1||rng()<.68;
-    appendWall({x:x1,y:ys[r]},{x:x1,y:ys[r+1]},
-      openings?{x:x1,y}:null,openings?'D'+doorId++:null);
+    appendWall({x:xs[c],y:ys[r]},{x:xs[c],y:ys[r+1]},
+      openings?{x:xs[c],y}:null,openings?'D'+doorId++:null);
   }
   for(let r=1;r<rows;r++){
     for(let c=0;c<cols;c++){
