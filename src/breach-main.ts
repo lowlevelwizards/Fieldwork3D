@@ -5,7 +5,7 @@ import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   planMove,planMoveStroke,planAim,planWait,planSync,movePlanNode,
-  finalPoint,doorAtNode,planStack,backOne,
+  finalPoint,doorAtNode,planStack,planStackTeam,planSquadEntry,backOne,
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,stepSession,knownAt,liveVisibility,
 } from './breach-game.ts';
@@ -206,6 +206,8 @@ function updateContext(){
   if(node)choices.push({id:'ctxDelete',label:'DELETE'});
   if(door)choices.push(
     {id:'ctxStack',label:'STACK'},
+    {id:'ctxStackAll',label:'STACK 4'},
+    {id:'ctxEntry',label:'ENTRY 4'},
     {id:'ctxOpen',label:'OPEN'},
     {id:'ctxKick',label:'KICK'},
     {id:'ctxHold',label:'HOLD'},
@@ -222,6 +224,8 @@ function updateContext(){
       if(option.id==='ctxStack'||option.id==='ctxOpen'||
         option.id==='ctxKick'||option.id==='ctxHold')
         button.classList.add('door-action');
+      if(option.id==='ctxStackAll')button.title='Reserve distinct positions for each living squad member.';
+      if(option.id==='ctxEntry')button.title='Stack, synchronize, open the door and queue staggered team entry.';
       if(option.id==='ctxStack')button.title=
         'Move beside this door and face it. Does not open the door or synchronize entry.';
       if(option.id==='ctxDelete')button.title=
@@ -268,6 +272,14 @@ ui.context.addEventListener('click',event=>{
     case 'ctxStrafe':armFacing('strafe');return;
     case 'ctxDelete':
       if(node)deletePlanNode(state,selected,node.id);
+      selectedNode=null;doorFocusId=null;break;
+    case 'ctxStackAll':
+      if(!door||!planStackTeam(state,door.id))
+        state.events.push('NO FREE SQUAD STACK POSITIONS');
+      selectedNode=null;doorFocusId=null;break;
+    case 'ctxEntry':
+      if(!door||!planSquadEntry(state,door.id))
+        state.events.push('CANNOT PLAN SQUAD ENTRY');
       selectedNode=null;doorFocusId=null;break;
     case 'ctxStack':
       if(!door||!planStack(state,selected,door.id,
