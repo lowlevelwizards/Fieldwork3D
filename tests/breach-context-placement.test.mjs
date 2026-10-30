@@ -12,17 +12,17 @@ test('phone context palette avoids the selected operator and teammates',()=>{
     {x:218,y:470,w:70,h:115,weight:3},
   ];
   const pos=placeContextMenu({
-    anchor:{x:192,y:515},width:164,height:128,
+    anchor:{x:192,y:515},width:144,height:128,
     viewportWidth:430,top:100,bottom:710,
     avoid:[...actors,{x:162,y:485,w:76,h:76,weight:3}],
   });
-  const menu={...pos,w:164,h:128};
+  const menu={...pos,w:144,h:128};
   for(const actor of actors)
     assert.equal(overlap(menu,actor),0,'palette should not cover an operator');
-  assert.ok(pos.x>=8&&pos.x+164<=422);
+  assert.ok(pos.x>=8&&pos.x+144<=422);
   assert.ok(pos.y>=100&&pos.y+128<=710);
-  assert.ok(pos.x+164<=192||pos.x>=192,
-    'palette must take a side rather than obscure the selection');
+  assert.ok(pos.x===8||pos.x===278,
+    'phone palettes must stay on the outer-edge rails');
 });
 
 test('route segments crossing the panel are detected even with endpoints outside',()=>{
@@ -35,10 +35,10 @@ test('route segments crossing the panel are detected even with endpoints outside
 test('menu stays between header and bottom controls at narrow and edge anchors',()=>{
   for(const x of [0,8,210,410,430]){
     const pos=placeContextMenu({
-      anchor:{x,y:690},width:164,height:144,viewportWidth:430,
+      anchor:{x,y:690},width:144,height:144,viewportWidth:430,
       top:115,bottom:700,avoid:[],
     });
-    assert.ok(pos.x>=8&&pos.x+164<=422);
+    assert.ok(pos.x>=8&&pos.x+144<=422);
     assert.ok(pos.y>=115&&pos.y+144<=700);
   }
 });
@@ -46,10 +46,10 @@ test('menu stays between header and bottom controls at narrow and edge anchors',
 test('a blocked route lane pushes the palette away from the route',()=>{
   const path={a:{x:0,y:390},b:{x:430,y:390}};
   const pos=placeContextMenu({
-    anchor:{x:220,y:390},width:164,height:120,
+    anchor:{x:220,y:390},width:144,height:120,
     viewportWidth:430,top:100,bottom:700,
     paths:[path],
     avoid:[{x:185,y:350,w:70,h:80,weight:3}],
   });
-  assert.equal(pathOverlapsRect(path,{...pos,w:164,h:120}),false);
+  assert.equal(pathOverlapsRect(path,{...pos,w:144,h:120}),false);
 });
