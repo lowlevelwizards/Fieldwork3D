@@ -32,8 +32,6 @@ export function clampReach(from:THREE.Vector3,target:THREE.Vector3,
   return target.clone();
 }
 const clamp=(x:number,a:number,b:number)=>Math.min(b,Math.max(a,x));
-const SHOULDER_LEFT=new THREE.Vector3(1,4,-7);
-const SHOULDER_RIGHT=new THREE.Vector3(1,4,7);
 const LIMIT=19.92;
 export type WeaponFit={
   origin:THREE.Vector3;rotation:THREE.Euler;
