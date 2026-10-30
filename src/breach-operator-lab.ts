@@ -6,6 +6,8 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createOperatorRig,poseOperator,type OperatorRig}
   from './breach-operator-rig.ts';
 import {weaponGrips} from './breach-weapon-pose.ts';
+import {lateralAxis,sideOffset,uncrossed} from './breach-locomotion.ts';
+import {bodyFromContacts} from './breach-body-motion.ts';
 import {LabMotionCache,TRACK_DURATION,type LabTrack}
   from './breach-lab-tracks.ts';
 import type {WeaponId} from './breach-combat.ts';
@@ -66,6 +68,12 @@ const guideGeometry=new THREE.BufferGeometry().setFromPoints([
 const guide=new THREE.Line(guideGeometry,
   new THREE.LineBasicMaterial({color:0xe2a96e,depthTest:false}));
 debug.add(guide);
+const lanesGeometry=new THREE.BufferGeometry();
+lanesGeometry.setAttribute('position',
+  new THREE.BufferAttribute(new Float32Array(4*2*3),3));
+const lanes=new THREE.LineSegments(lanesGeometry,
+  new THREE.LineBasicMaterial({color:0x79a6aa,depthTest:false}));
+debug.add(lanes);lanes.visible=false;
 const supportBoxes=[0,1].map(()=>{
   const mesh=new THREE.Mesh(new THREE.BoxGeometry(12,1,13),
     new THREE.MeshBasicMaterial({color:0x5eaa9f,wireframe:true,
@@ -150,16 +158,38 @@ function showDiagnostics(){
   const feet=sampled.feet;
   for(const marker of markers)marker.visible=false;
   for(const box of supportBoxes)box.visible=false;
-  guide.visible=false;
+  guide.visible=false;lanes.visible=false;
   const put=(i:number,x:number,y:number,z:number)=>{
     markers[i].visible=true;markers[i].position.set(x,y,z);
   };
   if(layer==='anchors'||layer==='targets'||layer==='support'||
+    layer==='lanes'||layer==='balance'||
     layer==='polygon'){
     for(let i=0;i<2;i++){
       const point=layer==='targets'?f[i].swingTo:f[i].plantedAt;
       put(i,point.x,2,point.y);
     }
+  }
+  if(layer==='lanes'){
+    lanes.visible=true;
+    const yaw=-sampled.state.pelvisYaw;
+    const lateral=lateralAxis(yaw),forward={x:Math.cos(yaw),y:Math.sin(yaw)};
+    const coords=lanesGeometry.getAttribute('position') as
+      THREE.BufferAttribute;
+    const origin=sampled.motion;
+    for(let i=0;i<4;i++){
+      const distance=[-11,-2.2,2.2,11][i];
+      const x=origin.x+lateral.x*distance;
+      const z=origin.z+lateral.y*distance;
+      coords.setXYZ(i*2,x-forward.x*18,1.2,z-forward.y*18);
+      coords.setXYZ(i*2+1,x+forward.x*18,1.2,z+forward.y*18);
+    }
+    coords.needsUpdate=true;
+  }
+  if(layer==='balance'){
+    rig.root.updateMatrixWorld(true);
+    const p=rig.hip.getWorldPosition(new THREE.Vector3());
+    put(2,p.x,p.y,p.z);
   }
   if(layer==='support'){
     supportBoxes.forEach((box,i)=>{
@@ -213,14 +243,34 @@ function showDiagnostics(){
     ...rig.arms.map(x=>flex(x.upper,x.lower))];
   const lowerFrame=Math.floor(clock*60+1e-8);
   const alpha=clock*60-lowerFrame;
+  const balance=bodyFromContacts({feet,velocity:sampled.motion.speed,
+    heading:sampled.motion.heading,travelYaw:sampled.motion.travelYaw,
+    turning:sampled.motion.turning,injury:sampled.motion.injury,
+    posture:sampled.motion.posture});
+  const separated=sideOffset(feet[0].position,feet[1].position,
+    -sampled.state.pelvisYaw);
+  const crossing=!uncrossed(feet[0].position,feet[1].position,
+    -sampled.state.pelvisYaw,3.5);
   diagnosticText.textContent=[
     'TIME '+clock.toFixed(3)+' / '+TRACK_DURATION.toFixed(2),
+    'GAIT '+sampled.state.mode.toUpperCase()+
+      ' · NEXT '+sampled.state.shuffleNext.toUpperCase()+
+      ' '+(sampled.state.shuffleLead===0?'LEFT':'RIGHT'),
     'LEFT '+feet[0].phase.toUpperCase()+'  RIGHT '+
       feet[1].phase.toUpperCase(),
     'SPEED '+sampled.motion.speed.toFixed(1)+
       ' · REACH FLAGS '+trouble,
     'CONTACTS '+feet.filter(x=>x.contact).length+
-      ' · LAST STEP '+sampled.state.lastStepAt.toFixed(2),
+      ' · SEPARATION '+separated.toFixed(1)+
+      (crossing?' · CROSSING!':''),
+    'GRIP ERROR '+rig.gripError.toFixed(3)+
+      ' · SUPPORT '+balance.support.toFixed(2),
+    'PELVIS '+sampled.state.pelvisYaw.toFixed(2)+
+      ' · LIFT '+balance.pelvisY.toFixed(2),
+    'LEFT '+(feet[0].progress??0).toFixed(2)+
+      ' PITCH '+(feet[0].pitch??0).toFixed(2)+
+      ' · RIGHT '+(feet[1].progress??0).toFixed(2)+
+      ' PITCH '+(feet[1].pitch??0).toFixed(2),
     layer==='limits'||layer==='planes'?
       'KNEES '+angles.slice(0,2).map(x=>x.toFixed(0)+'°').join(' / ')+
       ' · ELBOWS '+angles.slice(2).map(x=>x.toFixed(0)+'°').join(' / '):'',
@@ -257,6 +307,10 @@ function draw(){
   canvas.dataset.track=track;
   canvas.dataset.time=clock.toFixed(3);
   canvas.dataset.contactCount=String(feet.filter(x=>x.contact).length);
+  canvas.dataset.gait=state.mode;
+  canvas.dataset.gripError=rig.gripError.toFixed(4);
+  canvas.dataset.crossed=String(!uncrossed(feet[0].position,
+    feet[1].position,-state.pelvisYaw,3.5));
   control.update();renderer.render(scene,camera);
 }
 function tick(now:number){
