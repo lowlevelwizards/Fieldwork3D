@@ -23,12 +23,18 @@ export function validateThrow(from:Pt,to:Pt,doors:Door[],
   // Deliberate doorway throw: a grenade can be banked through a nearby
   // opening while the soldier stays on the safe side of its doorframe.
   for(const door of available)if(door.open){
-    const via=doorCenter(door);
-    if(dist(from,via)>115||dist(to,via)>145)continue;
-    if(blocked(from,via,available)||blocked(via,to,available))continue;
-    const pathLength=dist(from,via)+dist(via,to);
-    if(pathLength>235)continue;
-    return {points:[from,via,to],via,mode:'doorway',valid:true};
+    const center=doorCenter(door);
+    const dx=door.b.x-door.a.x,dy=door.b.y-door.a.y;
+    const length=Math.max(1,Math.hypot(dx,dy));
+    for(const offset of [0,-8,8,-14,14]){
+      const via={x:center.x+dx/length*offset,
+        y:center.y+dy/length*offset};
+      if(dist(from,via)>125||dist(to,via)>155)continue;
+      if(blocked(from,via,available)||blocked(via,to,available))continue;
+      const pathLength=dist(from,via)+dist(via,to);
+      if(pathLength>250)continue;
+      return {points:[from,via,to],via,mode:'doorway',valid:true};
+    }
   }
   return {points:[from,to],mode:'direct',valid:false,
     reason:'WALL OR CLOSED DOOR BLOCKS THROW'};

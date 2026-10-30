@@ -10,14 +10,18 @@ export function casingAt(c:EjectedCasing,time:number){
  const t=Math.max(0,time-c.at);
  const a=c.heading+Math.PI/2+(hash(c.id)*.5-.25);
  const speed=10+hash(c.id+12)*9;
- const flight=Math.min(t,.85);
- const along=speed*flight;
- const height=Math.max(.8,c.y+15*flight-36*flight*flight);
- const bounce=Math.max(0,Math.sin(Math.max(0,t-.85)*19))*
-   Math.max(0,2.4-(t-.85)*3);
- return {x:c.x+Math.cos(a)*along,
-   z:c.z+Math.sin(a)*along,y:height+bounce,
-   settled:t>=1.7,rotation:c.id*1.37+Math.min(t,1.7)*10};
+ const floor=.82,gravity=110,up=16;
+ const landing=(up+Math.sqrt(up*up+2*gravity*Math.max(0,c.y-floor)))/gravity;
+ const travel=Math.min(t,landing+.26);
+ const along=speed*(1-Math.exp(-travel*2))*.72;
+ const air=Math.max(floor,c.y+up*travel-gravity*.5*travel*travel);
+ const after=Math.max(0,t-landing);
+ const bounce=after<.5?Math.abs(Math.sin(after*22))*2.1*
+   Math.pow(Math.max(0,1-after/.5),2):0;
+ const settled=after>=.5;
+ return {x:c.x+Math.cos(a)*along,z:c.z+Math.sin(a)*along,
+   y:t<landing?air:floor+bounce,
+   settled,rotation:c.id*1.37+Math.min(t,landing+.5)*10};
 }
 export const impactProfile=(surface:'blood'|'wood'|'metal'|'stone'|'dust')=>
  surface==='metal'?{count:5,spread:13,lifetime:.24,color:0xffd298}:
