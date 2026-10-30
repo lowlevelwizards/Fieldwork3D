@@ -660,6 +660,8 @@ export class TacticalScene3D{
         doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
         down:actor.health<=0,surrender:actor.surrendered,
         aiming:actor.aim>.20,turning:actor.turning,firing:!!firing,
+        aimBlend:actor.aim,recoil:actor.recoil*6,
+        shotHeading:actor.weaponYaw,
         obstruction:!isClear(actor.p,{
           x:actor.p.x+Math.cos(actor.heading)*
             (actor.weapon==='rifle'?46:actor.weapon==='shotgun'?42:31),

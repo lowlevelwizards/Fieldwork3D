@@ -17,7 +17,7 @@ export type OperatorPose={
   lastDoorAt:number;doorPoint?:{x:number;y:number};down:boolean;
   surrender:boolean;aiming:boolean;firing:boolean;turning:number;
   obstruction?:boolean;friendlyNear?:boolean;
-  aimBlend?:number;recoil?:number;
+  aimBlend?:number;recoil?:number;shotHeading?:number;
 };
 export type OperatorRig={
   root:THREE.Group;hip:THREE.Group;chest:THREE.Group;head:THREE.Group;
@@ -195,7 +195,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     handling==='high'?6:handling==='short'?4:2.5,4.2);
   const recoil=p.recoil??(p.firing?1.5:0);
   // This yaw is determined by the authoritative firing direction.
-  r.weapon.rotation.y=-p.heading-r.root.rotation.y-r.chest.rotation.y;
+  r.weapon.rotation.y=-(p.shotHeading??p.heading)-
+    r.root.rotation.y-r.chest.rotation.y;
   r.weapon.rotation.z=handling==='low'?-.16:handling==='high'?.13:0;
   if(handling==='short')r.weapon.rotation.z=-.08;
   const aimedStock=stock.clone().applyAxisAngle(P(0,1,0),
