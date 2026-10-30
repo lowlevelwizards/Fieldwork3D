@@ -7,6 +7,7 @@ import type {WeaponId} from './breach-combat.ts';
 import {advanceFootsteps,createFootstepScheduler, type FootstepScheduler} from './breach-footsteps.ts';
 import type {ReplayFeet} from './breach-replay-motion.ts';
 import {bodyFromContacts} from './breach-body-motion.ts';
+import {kickMotion} from './breach-door-actions.ts';
 import {fallAngles,hitStagger,type FallPose,type WoundRegion}
   from './breach-wounds.ts';
 import {weaponGrips,handlingPose,clampReach,
@@ -25,7 +26,8 @@ export type OperatorPose={
   /** Render-only reconstructed feet and pose: no accumulated render state. */
   replayFeet?:ReplayFeet;deterministic?:boolean;pelvisYaw?:number;
   reload:number;reloadDuration:number;lastThrowAt:number;
-  lastDoorAt:number;doorPoint?:{x:number;y:number};down:boolean;
+  lastDoorAt:number;doorPoint?:{x:number;y:number};
+  doorMethod?:'open'|'kick'|'hold';down:boolean;
   surrender:boolean;aiming:boolean;firing:boolean;turning:number;
   obstruction?:boolean;friendlyNear?:boolean;
   aimBlend?:number;recoil?:number;shotHeading?:number;
@@ -165,6 +167,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     posture:p.posture,injury:p.injury,down:p.down,
     cautious:p.aiming&&moving<.35
   });
+  const kickAge=p.seconds-p.lastDoorAt;
+  const kick=p.doorMethod==='kick'&&kickAge>=0&&kickAge<.76?
+    kickMotion(kickAge):null;
   // A pivot requires the stance to catch up with requested facing.
   // In replay/lab this orientation is reconstructed by time, never dt.
   if(p.pelvisYaw!==undefined){
@@ -190,7 +195,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.hip.position.z=motion.pelvisSide;
   r.chest.position.y=26-crouch+motion.pelvisY*.65;
   r.chest.position.z=motion.pelvisSide*.75;
-  r.chest.rotation.z=motion.torsoForward+braking*.018;
+  r.chest.rotation.z=motion.torsoForward+braking*.018+
+    (kick?.torsoLean??0);
   r.chest.rotation.x=clamp(p.injury===2?.07:p.injury===1?.025:0,0,.09)+
     motion.torsoSide;
   r.chest.rotation.y+=motion.torsoYaw;
@@ -206,6 +212,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     foot.swinging=!target.contact;
     const targetWorld=P(target.position.x,1.45+target.height,
       target.position.y);
+    if(i===1&&kick){
+      targetWorld.x+=Math.cos(p.heading)*kick.reach;
+      targetWorld.z+=Math.sin(p.heading)*kick.reach;
+      targetWorld.y+=kick.lift;
+      foot.swinging=true;
+    }
     const relative=targetWorld.sub(P(p.x,0,p.z))
       .applyAxisAngle(P(0,1,0),-headingYaw);
     const leg=solveTwoBone(hipLocal,relative,9.7,9.7,
@@ -257,7 +269,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const throwAge=p.seconds-p.lastThrowAt;
   const throwActive=throwAge>=0&&throwAge<.70;
   const doorAge=p.seconds-p.lastDoorAt;
-  const doorActive=doorAge>=0&&doorAge<.9&&!!p.doorPoint;
+  const doorActive=doorAge>=0&&doorAge<.9&&!!p.doorPoint&&
+    p.doorMethod!=='kick';
   r.chest.position.x=0;
   r.reachRequest=null;
   r.weapon.visible=!p.surrender;
