@@ -29,7 +29,7 @@ export function generateSite(seed:number):Site{
   const rows=cols===3?2:target>4?3:2;
   const x0=between(rng,91,123),x1=cols===3?between(rng,242,268):
     between(rng,315,356),x2=cols===3?between(rng,401,429):
-    between(rng,557,585),x3=between(rng,557,585);
+    between(rng,557,585),x3=cols===3?between(rng,557,585):x2;
   const xs=cols===3?[x0,x1,x2,x3]:[x0,x1,x2];
   const y0=between(rng,95,120),y2=between(rng,522,553);
   const y1=rows===2?between(rng,285,357):between(rng,240,270);
@@ -70,9 +70,11 @@ export function generateSite(seed:number):Site{
   appendWall({x:farX,y:y0},{x:farX,y:y2},
     layout==='workshop'?{x:farX,y:(y1+y2)/2}:null,
     layout==='workshop'?'SERVICE':null);
-  const entranceX=xs[between(rng,0,cols-1)]+
-    between(rng,Math.floor((xs[1]-xs[0])*.38),
-      Math.floor((xs[1]-xs[0])*.58));
+  const entranceX=cols===2?
+    xs[between(rng,0,1)]+between(rng,65,92):
+    xs[between(rng,0,cols-1)]+
+      between(rng,Math.floor((xs[1]-xs[0])*.38),
+        Math.floor((xs[1]-xs[0])*.58));
   const entry={x:entranceX,y:y2};
   appendWall({x:x0,y:y2},{x:farX,y:y2},entry,'FRONT');
   // A connected spanning tree of rooms: vertical chain in every column,
