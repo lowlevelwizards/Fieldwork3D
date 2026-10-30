@@ -664,8 +664,14 @@ function renderProjectedPlans(){
       if(n.kind==='move'||n.kind==='door'||n.kind==='pie')previous=n.p;
     }
     const pawn=worldToScreen(a.p,32),ground=worldToScreen(a.p,1);
-    draw.textAlign='center';draw.font='bold 12px monospace';
-    draw.fillStyle=color;draw.fillText(a.name,pawn.x,pawn.y-9);
+    const squadIndex=team(state).findIndex(member=>member.id===a.id);
+    const labelSpread=state.site?[
+      {x:-27,y:-17},{x:27,y:-17},
+      {x:-27,y:-36},{x:27,y:-36},
+    ][squadIndex]??{x:0,y:-9}:{x:0,y:-9};
+    draw.textAlign='center';draw.font='bold 11px monospace';
+    draw.fillStyle=color;
+    draw.fillText(a.name,pawn.x+labelSpread.x,pawn.y+labelSpread.y);
     if(a.id===selected){
       draw.strokeStyle='#e9d6b1';draw.lineWidth=2.1;
       draw.beginPath();draw.arc(ground.x,ground.y,14,0,Math.PI*2);draw.stroke();
@@ -711,7 +717,13 @@ function renderProjectedPlans(){
     draw.lineWidth=focused?2.8:1.7;
     draw.beginPath();draw.arc(p.x,p.y+13,focused?12:9,0,2*Math.PI);
     draw.stroke();
-    draw.fillStyle='#f0d9ab';draw.fillText(label,p.x,p.y-4);
+    // A stack of four name labels already identifies the entry area.
+    // Retain the door ring but suppress its text when allies crowd it.
+    const crowded=team(state).some(a=>a.health>0&&
+      distance(a.p,doorCenter(door))<51);
+    if(!crowded||focused){
+      draw.fillStyle='#f0d9ab';draw.fillText(label,p.x,p.y-4);
+    }
   }
   // The 3D camera does not define combat outcomes: use the same shot event
   // visibility and damage flags as the physical effects and 2D renderer.
