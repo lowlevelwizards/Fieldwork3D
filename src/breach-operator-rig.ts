@@ -19,7 +19,7 @@ export type OperatorPose={
   /** Authoritative travel direction; optional until motion sampling is wired. */
   travelYaw?:number;
   /** Render-only reconstructed feet and pose: no accumulated render state. */
-  replayFeet?:ReplayFeet;deterministic?:boolean;
+  replayFeet?:ReplayFeet;deterministic?:boolean;pelvisYaw?:number;
   reload:number;reloadDuration:number;lastThrowAt:number;
   lastDoorAt:number;doorPoint?:{x:number;y:number};down:boolean;
   surrender:boolean;aiming:boolean;firing:boolean;turning:number;
@@ -148,13 +148,27 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.chest.position.y=26-crouch;
   // Build 119: the footstep scheduler owns world contacts. The IK renderer
   // consumes its targets but must never relocate a planted anchor.
-  const headingYaw=r.root.rotation.y;
+  let headingYaw=r.root.rotation.y;
   const travelYaw=p.travelYaw??direction;
   const targets=p.replayFeet??advanceFootsteps(r.footsteps,{
-    time:p.seconds,position:{x:p.x,y:p.z},rootYaw:headingYaw,
-    travelYaw,facingYaw:p.heading,speed:p.velocity,turning:p.turning,posture:p.posture,
-    injury:p.injury,down:p.down,cautious:p.aiming&&moving<.35
+    time:p.seconds,position:{x:p.x,y:p.z},rootYaw:-p.heading,
+    travelYaw,facingYaw:p.heading,speed:p.velocity,turning:p.turning,
+    posture:p.posture,injury:p.injury,down:p.down,
+    cautious:p.aiming&&moving<.35
   });
+  // A pivot requires the stance to catch up with requested facing.
+  // In replay/lab this orientation is reconstructed by time, never dt.
+  if(p.pelvisYaw!==undefined){
+    r.root.rotation.y=p.pelvisYaw;
+  }else if(r.footsteps.mode==='pivot'){
+    r.root.rotation.y=r.footsteps.pelvisYaw;
+  }
+  headingYaw=r.root.rotation.y;
+  const lookTwist=clamp(-p.heading-headingYaw,-.68,.68);
+  if(r.footsteps.mode==='pivot'||p.pelvisYaw!==undefined){
+    r.chest.rotation.y=p.deterministic?lookTwist:
+      approach(r.chest.rotation.y,lookTwist,6,dt);
+  }
   for(let i=0;i<2;i++){
     const foot=r.feet[i],sign=i===0?-1:1,target=targets[i];
     const hipLocal=P(0,r.hip.position.y,sign*4.8);
