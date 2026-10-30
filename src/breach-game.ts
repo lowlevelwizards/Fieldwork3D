@@ -904,6 +904,77 @@ function observe(s:Session){
 /** Let a temporarily idle teammate step into a safe passing pocket.
  * Keep every authored waypoint: this is transient traffic, not plan editing.
  */
+function yieldPocket(blocker:TeamActor,requester:TeamActor,s:Session):Pt|null{
+  const dx=blocker.p.x-requester.p.x;
+  const dy=blocker.p.y-requester.p.y;
+  const len=Math.hypot(dx,dy)||1;
+  const side={x:-dy/len,y:dx/len};
+  const backwards={x:dx/len,y:dy/len};
+  const options:Pt[]=[];
+  for(const offset of [18,23,28,14]){
+    for(const sign of [1,-1]){
+      options.push({x:blocker.p.x+side.x*offset*sign,
+        y:blocker.p.y+side.y*offset*sign});
+    }
+  }
+  // A doorway can have only one free side; retreating into a nearby
+  // pocket is preferable to overlapping actors whenever space exists.
+  for(const offset of [18,25]){
+    options.push({x:blocker.p.x+backwards.x*offset,
+      y:blocker.p.y+backwards.y*offset});
+  }
+  return options.filter(pos=>{
+    if(s.operators.some(b=>b!==blocker&&b!==requester&&b.health>0&&
+      d(pos,b.p)<18))return false;
+    return sweptBodyClear(blocker.p,pos,s.doors);
+  }).sort((u,v)=>
+    d(v,requester.p)-d(u,requester.p)||
+    d(u,blocker.p)-d(v,blocker.p))[0]??null;
+}
+function deferToTeammate(s:Session,blocker:TeamActor,requester:TeamActor){
+  if(blocker.yieldTarget||blocker.health<=0)return false;
+  const requesterRank=s.operators.indexOf(requester);
+  const blockerRank=s.operators.indexOf(blocker);
+  const blockerActive=blocker.plan.some(n=>n.kind==='move'||n.kind==='door');
+  // A teammate actually making progress owns the lane. If both are stuck,
+  // a stable actor order breaks ties rather than yielding to each other.
+  if(blockerActive&&blocker.blockedTime<.14&&blocker.velocity>12)
+    return false;
+  if(blockerActive&&blocker.blockedTime>.14&&requesterRank>blockerRank)
+    return false;
+  const target=yieldPocket(blocker,requester,s);
+  if(!target)return false;
+  blocker.yieldTarget=target;blocker.yieldFor=requester.id;
+  blocker.yieldUntil=s.seconds+2.1;blocker.nav=[];
+  notify(s,blocker.name+' YIELDING TO '+requester.name);
+  return true;
+}
+function stepYield(s:Session,a:TeamActor,dt:number):boolean{
+  if(!a.yieldTarget)return false;
+  const requester=s.operators.find(other=>other.id===a.yieldFor);
+  const clear= !requester||requester.health<=0||
+    d(a.p,requester.p)>31;
+  const arrived=d(a.p,a.yieldTarget)<2;
+  if(s.seconds>a.yieldUntil||(clear&&arrived)){
+    a.yieldTarget=null;a.yieldFor=null;a.yieldUntil=0;
+    a.nav=[];a.velocity=0;
+    return false;
+  }
+  if(!arrived){
+    const distance=d(a.p,a.yieldTarget);
+    const advance=Math.min(distance,50*dt);
+    const candidate={x:a.p.x+
+      (a.yieldTarget.x-a.p.x)/distance*advance,
+      y:a.p.y+(a.yieldTarget.y-a.p.y)/distance*advance};
+    if(sweptBodyClear(a.p,candidate,s.doors)){
+      a.priorP=clone(a.p);a.p=candidate;a.velocity=50;
+    }else{
+      a.yieldTarget=null;a.yieldFor=null;a.yieldUntil=0;a.nav=[];
+      return false;
+    }
+  }else a.velocity=0;
+  return true;
+}
 function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   if(!a.nav.length){
     a.nav=a.side==='blue'?routeWithIntel(s.intel,a.p,p):route(a.p,p);
@@ -946,18 +1017,22 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     if((doorAhead.openFraction??0)<.72)return true;
     a.actionTimer=0;
   }else if(a.side==='red')a.actionTimer=0;
-  const closed=!!closedDoor;
+  const closed=!!closedDoor&&
+    pointToSegment(move,doorLeafSegment(closedDoor))<9.5;
   // Allies may brush and pass one another: their bodies never hard-block
   // authored routes. Only an opposing actor is a physical traffic barrier.
   const blocking=s.operators.find(b=>b!==a&&b.health>0&&
     b.side!==a.side&&d(b.p,move)<11);
   const nearPeer=s.operators.find(b=>b!==a&&b.health>0&&
     b.side===a.side&&d(b.p,move)<20);
+  if(nearPeer&&a.side==='blue'&&!nearPeer.plan.length&&
+    d(a.p,nearPeer.p)<27)deferToTeammate(s,nearPeer,a);
   let desiredMove=move;
   if(nearPeer){
     const tangent={x:-Math.sin(direction),y:Math.cos(direction)};
-    const choices=[6,-6,11,-11].map(offset=>({
-      x:move.x+tangent.x*offset,y:move.y+tangent.y*offset,
+    const choices=[.4,-.4,.7,-.7].map(factor=>({
+      x:move.x+tangent.x*advance*factor,
+      y:move.y+tangent.y*advance*factor,
     })).filter(pos=>d(pos,nearPeer.p)>d(move,nearPeer.p)+2&&
       sweptBodyClear(a.p,pos,s.doors));
     if(choices.length)desiredMove=choices.sort((u,v)=>
@@ -1026,6 +1101,11 @@ function pop(a:TeamActor){
   a.actionTimer=0;a.syncReady=null;a.pieIndex=0;pathFor(a);
 }
 function runOrders(s:Session,a:TeamActor,dt:number){
+  if(a.yieldTarget&&stepYield(s,a,dt)){
+    const held=aimHeading(a);
+    if(held!==null)rotate(a,held,dt);
+    return;
+  }
   // A stationary or opposing teammate may briefly step aside, then resume
   // its original queue. This overrides motor movement, not tactical aiming.
   const n=a.plan[0];
