@@ -38,6 +38,8 @@ export type WeaponFit={
   stock:THREE.Vector3;primary:THREE.Vector3;support:THREE.Vector3;
   /** A two-handed fit exists; otherwise the support arm switches to guard. */
   twoHanded:boolean;primaryReachable:boolean;handling:Handling;
+  /** Positive when a non-reload interaction explicitly releases the support grip. */
+  contactError:number;
   stockError:number;
 };
 export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
@@ -62,7 +64,8 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
   let best:{sx:number;sy:number;sz:number;mode:Handling;
     yaw:number;roll:number;stock:[number,number,number];
     primary:[number,number,number];support:[number,number,number];
-    twoHanded:boolean;primaryReachable:boolean}|null=null;
+    twoHanded:boolean;primaryReachable:boolean;
+    contactError:number}|null=null;
   for(const mode of selection){
     const roll=mode==='low'?-.16:mode==='high'?.13:
       mode==='short'?-.08:0;
@@ -78,26 +81,27 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       const stock=rotate(data.stockX,0,0);
       const right=rotate(data.primaryX-data.stockX,data.primaryY,1.8);
       const left=rotate(data.supportX-data.stockX,data.supportY,-1.6);
-      for(const back of [0,1.3,2.7,3.8]){
+      for(const back of [-4,-2,0,1.3,2.7,3.8,5,7,9]){
         const sx=2.5-back-recoilX;
         const px=sx+right[0],py=shoulderY+right[1];
         const lx=sx+left[0],ly=shoulderY+left[1];
-        for(const sideways of [0,-1,-2]){
+        for(const sideways of [0,-1,-2,1.5,-3.5,-5.5,-8,-11,-14,4]){
           const sz=4.2+sideways;
           const pz=sz+right[2],lz=sz+left[2];
           const rd=Math.hypot(px-1,py-4,pz-7);
           const ld=Math.hypot(lx-1,ly-4,lz+7);
-          const violation=Math.max(0,rd-LIMIT)*20+
-            Math.max(0,ld-LIMIT)*20;
-          const cost=violation+(mode===input.handling?0:1.3)+
-            back*.28+Math.abs(sideways)*.19+
+          const violation=Math.max(0,rd-LIMIT)+
+            Math.max(0,ld-LIMIT);
+          const cost=violation*1000+(mode===input.handling?0:1.3)+
+            Math.abs(back)*.28+Math.abs(sideways)*.19+
             Math.abs(offset)*3+Math.max(0,
               Math.hypot(sx-1,shoulderY-4,sz-7)-8)*.1;
           if(cost>=bestScore)continue;
           bestScore=cost;
           best={sx,sy:shoulderY,sz,mode,yaw:candidateYaw,roll,
             stock,primary:right,support:left,twoHanded:
-              rd<=LIMIT&&ld<=LIMIT,primaryReachable:rd<=LIMIT};
+              rd<=LIMIT&&ld<=LIMIT,primaryReachable:rd<=LIMIT,
+              contactError:violation};
         }
       }
     }
@@ -117,7 +121,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
   return {origin,rotation:new THREE.Euler(0,b.yaw,b.roll,'XYZ'),
     stock,primary,support,twoHanded:b.twoHanded,
     primaryReachable:b.primaryReachable,handling:b.mode,
-    stockError:stock.distanceTo(pocket)};
+    contactError:b.contactError,stockError:stock.distanceTo(pocket)};
 }
 /** The support-hand rest/guard target for an impossible two-handed fit. */
 export function supportGuardTarget(weapon:THREE.Vector3):THREE.Vector3{

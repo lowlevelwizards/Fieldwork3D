@@ -7,7 +7,7 @@ import type {WeaponId} from './breach-combat.ts';
 import {advanceFootsteps,createFootstepScheduler, type FootstepScheduler} from './breach-footsteps.ts';
 import type {ReplayFeet} from './breach-replay-motion.ts';
 import {weaponGrips,handlingPose,clampReach,
-  fitWeaponPose,supportGuardTarget} from './breach-weapon-pose.ts';
+  fitWeaponPose} from './breach-weapon-pose.ts';
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
   anchor:THREE.Vector3;swinging:boolean;
   bend:THREE.Vector3;outOfReach:boolean};
@@ -35,6 +35,7 @@ export type OperatorRig={
   footsteps:FootstepScheduler;
   /** Non-authoritative request for the motor/controller to reposition. */
   reachRequest:null|{kind:'door';distance:number};
+  gripError:number;
   stridePhase:number;colors:Map<THREE.MeshStandardMaterial,THREE.Color>;
   dispose:()=>void;
 };
@@ -99,6 +100,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     legacyArms:[new THREE.Group(),new THREE.Group()],
     lastTime:-1,lastPose:null,stridePhase:0,
     footsteps:createFootstepScheduler(),reachRequest:null,
+    gripError:0,
     dispose:()=>{root.traverse(obj=>{if(obj instanceof THREE.Mesh){
       obj.geometry.dispose();
       const m=obj.material as THREE.Material;m.dispose();
@@ -189,7 +191,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const fit=fitWeaponPose({weapon:p.weapon,handling,
     yaw:-(p.shotHeading??p.heading)-r.root.rotation.y-r.chest.rotation.y,
     recoil});
-  r.weapon.scale.set(data.lengthScale,1,p.weapon==='shotgun'?1.28:1);
+  r.gripError=fit.contactError;
+  // Contact coordinates and visible weapon use one rigid transform.
+  r.weapon.scale.set(data.lengthScale,1,1);
   r.weapon.rotation.copy(fit.rotation);
   r.weapon.position.copy(fit.origin);
   // Weapon kick and muzzle flash may not break solved hand contacts.
@@ -235,8 +239,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     if(p.surrender||i===0&&reaching){
       desired=grip.clone();
     }else if(i===0&&!releaseLeft){
-      desired=fit.twoHanded?fit.support.clone():
-        supportGuardTarget(fit.support);
+      // Ordinary walking, side shuffles, turning and ADS never release
+      // the support hand. Only a deliberate action may move it.
+      desired=fit.support.clone();
     }else if(i===1){
       desired=fit.primary.clone();
     }else{
@@ -250,15 +255,21 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // stretch a joint or rotate an arm through the upper torso.
     const wrist=clampReach(shoulder,desired,19.92);
     if(p.deterministic)arm.bend.set(5,-2,sign*7);
-    const preferred=P(6,-2,sign*10);
+    // Tucked elbow corridor: down/forward and near the rib line.
+    // The arm should not seek a skyward pole during lateral motion.
+    const preferred=P(5,-4,sign*7);
     let solved=solveTwoBone(shoulder,wrist,10,10,
       preferred,ARM_LIMITS,arm.bend);
     if(intersectsTorso(solved.joint,.35)){
       solved=solveTwoBone(shoulder,wrist,10,10,
-        P(10,-3,sign*17),ARM_LIMITS,arm.bend);
+        P(8,-5,sign*11),ARM_LIMITS,arm.bend);
     }
     arm.bend.copy(solved.bendPlane);
     arm.outOfReach=!reachable||!solved.reached;
+    if(!releaseLeft&&i===0)r.gripError=Math.max(r.gripError,
+      desired.distanceTo(solved.effector));
+    if(i===1&&!p.surrender)r.gripError=Math.max(r.gripError,
+      desired.distanceTo(solved.effector));
     alignSegment(arm.upper,shoulder,solved.joint,P(0,0,sign));
     alignSegment(arm.lower,solved.joint,solved.effector,P(0,0,sign));
     arm.hand.position.copy(solved.effector);
