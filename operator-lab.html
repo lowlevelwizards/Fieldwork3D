@@ -6,16 +6,50 @@
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#c4c5bd;color:#e8e6da;font:12px monospace;overflow:hidden;touch-action:none}
 #preview{position:fixed;inset:0;width:100%;height:100%;touch-action:none}
 header{position:fixed;top:env(safe-area-inset-top);left:0;right:0;z-index:2;background:#202c2be8;padding:12px 15px;display:flex;justify-content:space-between;align-items:center}
-header a{color:#c8b992}main{position:fixed;bottom:env(safe-area-inset-bottom);left:0;right:0;z-index:3;padding:8px;background:#202c2be9;display:grid;gap:8px}
-.row{display:flex;gap:5px;flex-wrap:wrap;align-items:center}label{min-width:55px;color:#b9c5bd}button,select{background:#4a5b52;color:#fff1d8;border:1px solid #728177;padding:8px 11px;font:11px monospace;border-radius:3px;min-height:35px}button[aria-pressed=true]{background:#c8ac72;color:#1a2522}select{min-width:120px}small{opacity:.85}
-@media(max-height:540px){main{grid-template-columns:1fr 1fr}.row{gap:3px}button{min-height:28px;padding:4px}}
+header a{color:#c8b992}main{position:fixed;bottom:env(safe-area-inset-bottom);left:0;right:0;z-index:3;padding:8px;background:#202c2bf0;display:grid;gap:8px;max-height:48dvh;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
+.row{display:flex;gap:5px;flex-wrap:wrap;align-items:center}label{min-width:55px;color:#b9c5bd}button,select{background:#4a5b52;color:#fff1d8;border:1px solid #728177;padding:8px 11px;font:11px monospace;border-radius:3px;min-height:35px;touch-action:manipulation}button[aria-pressed=true]{background:#c8ac72;color:#1a2522}select{min-width:120px}small{opacity:.85}
+#timeline{flex:1;min-width:120px;accent-color:#c8ac72;touch-action:pan-x}
+#diagnosticText{position:fixed;top:50px;left:8px;z-index:2;
+  padding:8px;white-space:pre-line;pointer-events:none;
+  background:#16231fdd;color:#e8e6da;max-width:260px;font:11px monospace}
+#diagnosticText:empty{display:none}
+@media(max-height:540px){main{grid-template-columns:1fr 1fr;max-height:54dvh}
+.row{gap:3px}button{min-height:28px;padding:4px}
+#diagnosticText{top:38px;font-size:9px;max-width:180px}}
+@media(max-width:440px){main{gap:5px}.row{gap:4px}
+button,select{padding:6px 8px;font-size:10px;min-height:31px}}
 </style></head>
 <body><canvas id="preview"></canvas>
-<header><strong>FIELDWORK / OPERATOR LAB <small>109–113</small></strong><a href="./index.html">← BATTLE</a></header>
+<header><strong>FIELDWORK / OPERATOR LAB <small>Build 122</small></strong><a href="./index.html">← BATTLE</a></header>
+<output id="diagnosticText" aria-live="off"></output>
 <main>
 <div class="row"><label>MODEL</label><select id="operator"><option value="rook">ROOK</option><option value="moss">MOSS</option><option value="ash">ASH</option><option value="vale">VALE</option><option value="hostile">HOSTILE</option></select>
 <select id="weapon"><option value="carbine">CARBINE</option><option value="smg">SMG</option><option value="rifle">RIFLE</option><option value="shotgun">SHOTGUN</option></select>
 <select id="injury"><option value="0">HEALTHY</option><option value="1">INJURED</option><option value="2">HEAVY</option><option value="3">DOWN</option></select></div>
-<div class="row"><label>POSE</label><button data-pose="idle">IDLE</button><button data-pose="walk">WALK</button><button data-pose="strafe">STRAFE</button><button data-pose="turn">TURN</button><button data-pose="crouch">CROUCH</button><button data-pose="aim">AIM</button><button data-pose="reload">RELOAD</button><button data-pose="flash">FLASH</button><button data-pose="door">DOOR</button></div>
-<div class="row"><label>VIEW</label><button data-view="iso">ISO</button><button data-view="front">FRONT</button><button data-view="side">SIDE</button><button data-view="top">TOP</button><button id="resetCamera">FIT</button><button id="diagnostics" aria-pressed="false">JOINTS</button><button id="slowMotion" aria-pressed="false">SLOW</button><small>Drag orbit · Pinch zoom · Two fingers pan</small></div>
+<div class="row"><label>MOTION</label>
+<button data-pose="idle">IDLE</button><button data-pose="walk">WALK</button>
+<button data-pose="accelerate">ACCEL</button><button data-pose="stop">STOP</button>
+<button data-pose="restart">RESTART</button><button data-pose="back">BACK</button>
+<button data-pose="strafe-left">STRAFE L</button><button data-pose="strafe-right">STRAFE R</button>
+<button data-pose="strafe">STRAFE</button><button data-pose="turn-90">90° TURN</button>
+<button data-pose="turn-180">180° TURN</button><button data-pose="turn">TURN</button>
+<button data-pose="pie">PIE</button><button data-pose="look">MOVE + LOOK</button>
+<button data-pose="crouch-walk">CROUCH WALK</button><button data-pose="crouch">CROUCH</button>
+<button data-pose="wounded">WOUNDED</button><button data-pose="aim">ADS</button>
+<button data-pose="reload">RELOAD</button><button data-pose="flash">FLASH</button>
+<button data-pose="door">DOOR</button><button data-pose="down">DOWN</button></div>
+<div class="row"><label>PLAYBACK</label>
+<button id="playPause">PAUSE</button><button id="stepFrame">+1 FRAME</button>
+<button id="restartTrack">RESTART</button>
+<button id="loopTrack" aria-pressed="true">LOOP</button>
+<input type="range" id="timeline" min="0" max="4000" step="1" value="0"
+ aria-label="Motion timestamp"/><output id="timestamp">0.00s</output></div>
+<div class="row"><label>VIEW</label><button data-view="iso">ISO</button><button data-view="front">FRONT</button><button data-view="side">SIDE</button><button data-view="top">TOP</button><button id="resetCamera">FIT</button><button id="diagnostics" aria-pressed="false">JOINTS</button><button id="slowMotion" aria-pressed="false">SLOW</button>
+<select id="diagnosticLayer" aria-label="Diagnostic layer">
+<option value="off">DIAG: OFF</option>
+<option value="anchors">FOOT ANCHORS</option><option value="targets">STEP TARGETS</option>
+<option value="support">SUPPORT REGION</option><option value="polygon">SUPPORT POLYGON</option>
+<option value="planes">KNEE/ELBOW PLANES</option><option value="limits">JOINT LIMITS</option>
+<option value="weapon">WEAPON CONTACTS</option><option value="replay">REPLAY SAMPLES</option>
+</select><small>Drag orbit · Pinch zoom · Two fingers pan</small></div>
 </main><script type="module" src="./src/breach-operator-lab.ts"></script></body></html>
