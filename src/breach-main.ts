@@ -573,6 +573,21 @@ function paths(){
         draw.fillText(n.aimLabel==='strafe'?'STRAFE · HOLD':'LOOK',
           point.x+12,point.y-12);
       }
+      if(n.kind==='flash'&&n.aimPoint){
+        const path=flashTrajectory(state,a,n);
+        const landing=selectedNow&&draggingNode?draggingNode:n.aimPoint;
+        const points=path?.points??[n.p,landing];
+        draw.strokeStyle='#f3c67e';draw.lineWidth=2.5;
+        draw.setLineDash([5,5]);draw.beginPath();
+        draw.moveTo(points[0].x,points[0].y);
+        for(const p of points.slice(1))draw.lineTo(p.x,p.y);
+        draw.stroke();draw.setLineDash([]);
+        draw.strokeStyle='#f0af55';draw.lineWidth=2;
+        draw.beginPath();draw.arc(landing.x,landing.y,26,0,Math.PI*2);draw.stroke();
+        circle(landing.x,landing.y,selectedNow?11:9,'#dca053');
+        draw.fillStyle='#1d2624';draw.font='bold 12px monospace';
+        draw.textAlign='center';draw.fillText('F',landing.x,landing.y+4);
+      }
       if(n.kind==='move'&&n.moveMode==='strafe'){
         draw.textAlign='left';draw.font='bold 10px monospace';
         draw.fillStyle='#b8e7dd';
@@ -670,6 +685,24 @@ function renderProjectedPlans(){
         draw.fillStyle='#e0f7e9';draw.textAlign='left';
         draw.font='bold 10px monospace';
         draw.fillText('STRAFE',point.x+13,point.y-12);
+      }
+      if(n.kind==='flash'&&n.aimPoint){
+        const path=flashTrajectory(state,a,n);
+        const landing=selectedNow&&draggingNode?draggingNode:n.aimPoint;
+        const points=path?.points??[n.p,landing];
+        draw.strokeStyle='#f0bd77';draw.lineWidth=2.2;
+        draw.setLineDash([4,5]);draw.beginPath();
+        const start=worldToScreen(points[0],7);draw.moveTo(start.x,start.y);
+        for(const q of points.slice(1)){
+          const project=worldToScreen(q,7);draw.lineTo(project.x,project.y);
+        }
+        draw.stroke();draw.setLineDash([]);
+        const screen=worldToScreen(landing,7);
+        draw.strokeStyle='#f1c17e';draw.beginPath();
+        draw.arc(screen.x,screen.y,16,0,Math.PI*2);draw.stroke();
+        circle(screen.x,screen.y,selectedNow?11:9,'#c88d4e');
+        draw.fillStyle='#182b2c';draw.textAlign='center';
+        draw.font='bold 11px monospace';draw.fillText('F',screen.x,screen.y+3);
       }
       if(n.kind==='door'){
         draw.fillStyle='#e2ca9f';draw.textAlign='left';
@@ -1306,11 +1339,13 @@ function releasePointer(e:PointerEvent,cancelled=false){
   const pt=pointerWorld(e);
   if(!cancelled&&state.phase==='planning'&&!replaying&&activePointers.size===1){
     if(p.mode==='node'&&p.nodeId!==null){
-      const moving=uid(selected)?.plan.find(node=>node.id===p.nodeId);
-      const moved=moving?.kind==='flash'?
-        moveFlashTarget(state,selected,p.nodeId,pt):
-        movePlanNode(state,selected,p.nodeId,pt);
-      if(p.moved&&!moved)state.events.push('INVALID ORDER DESTINATION');
+      if(p.moved){
+        const moving=uid(selected)?.plan.find(node=>node.id===p.nodeId);
+        const moved=moving?.kind==='flash'?
+          moveFlashTarget(state,selected,p.nodeId,pt):
+          movePlanNode(state,selected,p.nodeId,pt);
+        if(!moved)state.events.push('INVALID ORDER DESTINATION');
+      }
       selectedNode=p.nodeId;doorFocusId=null;
     }else if(p.mode==='route'&&trace&&trace.length>1){
       const points=[...trace,pt];
