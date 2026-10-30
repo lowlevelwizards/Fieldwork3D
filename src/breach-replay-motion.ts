@@ -16,10 +16,12 @@ type ActorTrack={
   gait:FootstepScheduler;
   events:[FootEvent[],FootEvent[]];last:{x:number;y:number;t:number};
   travelYaw:number;lastStepAt:number;
+  pelvisYawEvents:{at:number;yaw:number}[];
 };
 export type ReplayPresentation={
   feet:Record<string,ReplayFeet>;
   travelYaw:Record<string,number>;
+  pelvisYaw:Record<string,number>;
   doors:Record<string,number>;
 };
 const clamp=(v:number,a:number,b:number)=>Math.max(a,Math.min(b,v));
@@ -65,7 +67,7 @@ export class ReplayMotionRecorder{
       if(!track){
         track={gait:createFootstepScheduler(),events:[[],[]],
           last:{...position,t:time},travelYaw:actor.heading,
-          lastStepAt:-100};
+          lastStepAt:-100,pelvisYawEvents:[]};
         this.actors.set(actor.id,track);
       }
       const distance=Math.hypot(position.x-track.last.x,
@@ -91,6 +93,12 @@ export class ReplayMotionRecorder{
       const previousResets=track.gait.resets;
       const previousStep=track.gait.lastStepAt;
       advanceFootsteps(track.gait,input);
+      const yawEvents=track.pelvisYawEvents;
+      const lastYaw=yawEvents.at(-1);
+      if(!lastYaw||Math.abs(angular(lastYaw.yaw,
+        track.gait.pelvisYaw))>.002){
+        yawEvents.push({at:time,yaw:track.gait.pelvisYaw});
+      }
       if(track.gait.resets!==previousResets){
         for(let i=0;i<2;i++){
           const foot=track.gait.feet[i];
@@ -119,6 +127,7 @@ export class ReplayMotionRecorder{
   presentation(time:number,ids:readonly string[]):ReplayPresentation{
     const feet:Record<string,ReplayFeet>={};
     const travelYaw:Record<string,number>={};
+    const pelvisYaw:Record<string,number>={};
     for(const id of ids){
       const track=this.actors.get(id);
       if(!track||!track.events[0].length)continue;
@@ -127,6 +136,15 @@ export class ReplayMotionRecorder{
       // Travel is reconstructed from the recorded frame motion for a
       // particular timestamp in replay.ts; this is a fallback only.
       travelYaw[id]=track.travelYaw;
+      const samples=track.pelvisYawEvents;
+      let lo=0,hi=samples.length-1;
+      while(lo<hi){
+        const mid=Math.ceil((lo+hi)/2);
+        if(samples[mid].at<=time)lo=mid;else hi=mid-1;
+      }
+      const a=samples[lo],b=samples[Math.min(lo+1,samples.length-1)];
+      const blend=b.at>a.at?clamp((time-a.at)/(b.at-a.at),0,1):0;
+      pelvisYaw[id]=a.yaw+angular(a.yaw,b.yaw)*blend;
     }
     const doors:Record<string,number>={};
     for(const [id,events] of this.doors){
@@ -140,7 +158,7 @@ export class ReplayMotionRecorder{
       doors[id]=previous+(Number(e.open)-previous)*
         smooth(clamp((time-e.at)/.18,0,1));
     }
-    return {feet,travelYaw,doors};
+    return {feet,travelYaw,pelvisYaw,doors};
   }
   /** Approximate memory accounting for perf diagnostics, not a byte profiler. */
   get stepEventCount(){
