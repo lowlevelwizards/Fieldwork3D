@@ -52,7 +52,7 @@ const operator=choose<HTMLSelectElement>('operator'),
 let rig:OperatorRig|null=null,track:LabTrack='idle';
 let cache=new LabMotionCache(track);
 let clock=0,last=performance.now(),rate=1,playing=true,loop=true;
-let view='iso',cameraFollow={x:0,z:0};
+let cameraFollow={x:0,z:0};
 const debug=new THREE.Group();scene.add(debug);
 const markerColors=[0xf1b77d,0x7cbbae,0xf2d88b,0xa0a8df];
 const markers=Array.from({length:8},(_,i)=>{
@@ -79,7 +79,6 @@ const build=()=>{
 };
 operator.addEventListener('change',build);
 function fit(next='iso'){
-  view=next;
   const center=rig?.root.position??new THREE.Vector3();
   const dx=next==='front'?75:next==='top'?.01:next==='side'?0:65;
   const dz=next==='side'?75:next==='top'?.01:next==='front'?0:68;
@@ -194,7 +193,7 @@ function showDiagnostics(){
     ];
     for(let i=0;i<coords.length;i++){
       const p=rig.weapon.localToWorld(
-        new THREE.Vector3(...coords[i]));
+        new THREE.Vector3(coords[i][0],coords[i][1],coords[i][2]));
       put(i,p.x,p.y,p.z);
     }
   }
