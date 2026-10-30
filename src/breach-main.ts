@@ -548,7 +548,8 @@ function paths(){
     }
     for(let i=0;i<plan.length;i++){
       const n=plan[i],selectedNow=a.id===selected&&selectedNode===n.id;
-      const point=selectedNow&&draggingNode?draggingNode:n.p;
+      const point=selectedNow&&draggingNode&&n.kind!=='flash'?
+        draggingNode:n.p;
       circle(point.x,point.y,selectedNow?10:7,
         selectedNow?'#ecd29f':n.kind==='move'?c:'#c8ae7f');
       circle(point.x,point.y,3,'#263836');
@@ -654,7 +655,8 @@ function renderProjectedPlans(){
         draw.stroke();draw.setLineDash([]);draw.globalAlpha=1;
       }
       const selectedNow=a.id===selected&&selectedNode===n.id;
-      const point=worldToScreen(selectedNow&&draggingNode?draggingNode:n.p,8);
+      const point=worldToScreen(selectedNow&&draggingNode&&n.kind!=='flash'?
+        draggingNode:n.p,8);
       circle(point.x,point.y,selectedNow?11:7,
         selectedNow?'#ecd29f':n.kind==='pie'?'#daa972':color);
       circle(point.x,point.y,3,'#233b39');
@@ -918,17 +920,20 @@ function sprite(a:TeamActor){
     shot.age<.11&&shotVisibility(state,shot).flash);
   draw.save();
   draw.translate(a.p.x-flinch*2.3,a.p.y+flinch*1.7);
-  draw.rotate(a.heading+flinch*.14);
+  draw.rotate(a.heading+flinch*.14+
+    (a.injuryStage===2?.14:a.injuryStage===1?.04:0));
   circle(0,2,11,'#0d1b20af');circle(0,0,9.2,friendly?'#4b756f':'#794a43');
   // Body and alternating leg extension are driven by actual travel.
   const gait=Math.sin(state.seconds*15+Math.floor(a.p.x*.15))*
-    Math.min(1,a.velocity/70)*3.5;
+    Math.min(1,a.velocity/70)*(a.injuryStage===2?2.1:3.5);
   rect(-9,-7+gait,9,5,friendly?'#304842':'#4b3633');
   rect(-9,2-gait,9,5,friendly?'#304842':'#4b3633');
   rect(-7,-5,14,10,c);
   rect(-10,-4,5,8,friendly?'#45625d':'#563e39');
   circle(4,0,3.8,friendly?'#d3dac1':'#d0a58a');
-  rect(firing?2:5,-2,18,4,'#1a2527');
+  rect(firing?2:5,-2,
+    a.weapon==='smg'?13:a.weapon==='rifle'?23:a.weapon==='shotgun'?20:18,
+    a.weapon==='shotgun'?5:4,'#1a2527');
   rect(firing?17:20,-1,6,2,'#a2a9a1');
   draw.restore();
   if(friendly){
