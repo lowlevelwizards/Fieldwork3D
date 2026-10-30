@@ -17,7 +17,6 @@ export const ARM_LIMITS:JointLimits={minBend:.14,maxBend:2.55};
 const EPS=1e-8;
 const clamp=(x:number,low:number,high:number)=>
   Math.max(low,Math.min(high,x));
-const axisY=new THREE.Vector3(0,1,0);
 const localX=new THREE.Vector3(1,0,0);
 const localZ=new THREE.Vector3(0,0,1);
 const frame=new THREE.Matrix4();
