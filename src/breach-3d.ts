@@ -11,6 +11,7 @@ import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator
 import {WEAPONS} from './breach-combat.ts';
 import {casingAt,CASING_LIMIT,impactProfile} from './breach-effects.ts';
 import {sampleThrow} from './breach-flash.ts';
+import {paintFogMask,FOG_WIDTH,FOG_HEIGHT} from './breach-fog-mask.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 
 /** One authoritative 2D world, physically represented in one 3D scene.
@@ -34,6 +35,10 @@ export class TacticalScene3D{
   private root=new THREE.Group();
   private fogUnknown:THREE.InstancedMesh;
   private fogExplored:THREE.InstancedMesh;
+  private fogCanvas!:HTMLCanvasElement;
+  private fogContext!:CanvasRenderingContext2D;
+  private fogTexture!:THREE.CanvasTexture;
+  private smoothFog!:THREE.Mesh;
   private actors=new Map<string,{root:THREE.Group;legs:THREE.Group[];
     arms:THREE.Group[];flash:THREE.Mesh;pack:THREE.Mesh;
     weapon:THREE.Group;status:THREE.Mesh;physical:OperatorRig;
@@ -118,6 +123,24 @@ export class TacticalScene3D{
     this.fogUnknown.frustumCulled=this.fogExplored.frustumCulled=false;
     this.fogUnknown.renderOrder=16;this.fogExplored.renderOrder=16;
     this.root.add(this.fogUnknown,this.fogExplored);
+    this.fogUnknown.count=0;this.fogExplored.count=0;
+    this.fogCanvas=document.createElement('canvas');
+    this.fogCanvas.width=FOG_WIDTH;this.fogCanvas.height=FOG_HEIGHT;
+    const context=this.fogCanvas.getContext('2d');
+    if(!context)throw Error('Fog canvas unavailable');
+    this.fogContext=context;
+    this.fogTexture=new THREE.CanvasTexture(this.fogCanvas);
+    this.fogTexture.minFilter=THREE.LinearFilter;
+    this.fogTexture.magFilter=THREE.LinearFilter;
+    const fogMat=new THREE.MeshBasicMaterial({
+      map:this.fogTexture,transparent:true,depthWrite:false,
+      side:THREE.DoubleSide});
+    this.mats.push(fogMat);
+    this.smoothFog=new THREE.Mesh(new THREE.PlaneGeometry(W,H),fogMat);
+    this.smoothFog.rotation.x=-Math.PI/2;
+    this.smoothFog.position.set(W/2,36.2,H/2);
+    this.smoothFog.renderOrder=16;
+    this.scene.add(this.smoothFog);
     this.resize(innerWidth,innerHeight);
   }
   private box(parent:THREE.Object3D,x:number,y:number,z:number,
@@ -898,32 +921,15 @@ export class TacticalScene3D{
       effect.material.dispose();effect.impactMaterial.dispose();
       this.effectCache.delete(id);
     }
-    // Reuse the same current sight and exploration state that drives 2D fog.
-    if(omniscient){
-      this.fogUnknown.count=0;this.fogExplored.count=0;
-      this.fogAt=-1;
-    }else if(this.fogAt>=.18||this.fogAt<0){
+    // Shared continuous occlusion mask. Hidden geometry remains gated by
+    // intelligence and must not leak through texture transparency.
+    this.fogUnknown.count=0;this.fogExplored.count=0;
+    this.smoothFog.visible=!omniscient;
+    if(!omniscient&&(this.fogAt>=.16||this.fogAt<0)){
       this.fogAt=0;
-      const temp=new THREE.Object3D();
-      let unk=0,explored=0;
-      for(let row=0;row<19;row++)for(let col=0;col<16;col++){
-        const p={x:col*40+20,y:row*40+20};
-        const seen=liveVisibility(s,p);
-        const past=knownAt(s,p.x,p.y);
-        const level=intelFogLevel(s.intel,s.site,p,seen,past);
-        if(level===0)continue;
-        temp.position.set(p.x,36,p.y);temp.updateMatrix();
-        if(level===1)this.fogExplored.setMatrixAt(explored++,temp.matrix);
-        else this.fogUnknown.setMatrixAt(unk++,temp.matrix);
-      }
-      this.fogUnknown.count=unk;this.fogExplored.count=explored;
-      (this.fogUnknown.material as THREE.MeshBasicMaterial).opacity=
-        s.intel.mode==='true-blind'?.97:.86;
-      (this.fogExplored.material as THREE.MeshBasicMaterial).opacity=
-        s.intel.mode==='floor-plan'?.14:.24;
-      this.fogUnknown.instanceMatrix.needsUpdate=true;
-      this.fogExplored.instanceMatrix.needsUpdate=true;
-    }
+      paintFogMask(this.fogContext,s);
+      this.fogTexture.needsUpdate=true;
+    }else if(omniscient)this.fogAt=-1;
     this.renderer.render(this.scene,this.camera);
     // Effects geometry is released before rebuilding the next frame; pooled
     // material instances are reused for every shot to reduce phone GC work.

@@ -23,6 +23,7 @@ import {doorReachable} from './breach-door.ts';
 import {INTEL_MODES,doorKnown,wallKnown,coverKnown,roomKnown,
   routeWithIntel,intelFogLevel,type IntelMode} from './breach-intel.ts';
 import './breach-style.css';
+import {paintFogMask,FOG_WIDTH,FOG_HEIGHT} from './breach-fog-mask.ts';
 
 const el=<T extends HTMLElement>(id:string)=>{
   const node=document.getElementById(id);
@@ -114,7 +115,11 @@ let flashDoorId:string|null=null;
 let armedOrigin:'here'|'end'='end';
 let doorFocusId:string|null=null;
 let draggingNode:Pt|null=null;
-let fogData=new Uint8Array(16*19),fogStamp=-1;
+const fogCanvas=document.createElement('canvas');
+fogCanvas.width=FOG_WIDTH;fogCanvas.height=FOG_HEIGHT;
+const fogContext=fogCanvas.getContext('2d');
+if(!fogContext)throw Error('Fog canvas unavailable');
+let fogStamp=-1;
 let audio:AudioContext|null=null;
 let lastSoundShotId=0,lastEventAudio='';
 const playTone=(frequency:number,decay:number,noise=false)=>{
@@ -919,20 +924,11 @@ function renderProjectedPlans(){
 }
 function fog(){
   if(replaying&&replayOmniscient)return;
-  // Cached visibility tile raster, refreshed only as the world moves.
-  if(fogStamp<0||state.seconds-fogStamp>.24){
+  if(fogStamp<0||state.seconds-fogStamp>.16){
     fogStamp=state.seconds;
-    for(let row=0;row<19;row++)for(let col=0;col<16;col++){
-      const p={x:col*40+20,y:row*40+20};
-      fogData[row*16+col]=intelFogLevel(state.intel,state.site,p,
-        liveVisibility(state,p),knownAt(state,p.x,p.y));
-    }
+    paintFogMask(fogContext!,state);
   }
-  for(let row=0;row<19;row++)for(let col=0;col<16;col++){
-    const value=fogData[row*16+col];
-    if(value)rect(col*40,row*40,40,40,
-      value===1?'rgba(9,20,22,.20)':'rgba(6,12,14,.97)');
-  }
+  draw.drawImage(fogCanvas,0,0,W,H);
 }
 function missionMarkers(){
   if(state.rescue&&liveVisibility(state,state.rescue.p)){
