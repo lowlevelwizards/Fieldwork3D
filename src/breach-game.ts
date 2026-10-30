@@ -20,8 +20,7 @@ import {WEAPONS,injuryOf,injurySpeed,injuryReload,
   woundSeverity,exposure,nearCover,type WeaponId,type BattleEvent}
   from './breach-combat.ts';
 import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
-import {initDoor,advanceDoor,doorReachable,doorApproach,doorClear,
-  pushDoor} from './breach-door.ts';
+import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor} from './breach-door.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
