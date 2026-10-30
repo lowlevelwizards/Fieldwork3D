@@ -6,7 +6,7 @@ import {constrainFoot,needsRecoveryStep} from '../src/breach-gait.ts';
 import {GRIPS,clampReach,handlingPose} from '../src/breach-weapon-pose.ts';
 import {BALLISTICS,readyMode,dispersion,rayHitsActor,shotYaw,
   recoverWeapon,approachAngle} from '../src/breach-ballistics.ts';
-import {newSession,team} from '../src/breach-game.ts';
+import {newSession,team,planMove,finalPoint} from '../src/breach-game.ts';
 import {MissionRecorder,applyReplayFrame} from '../src/breach-replay.ts';
 import {generateSite} from '../src/breach-site.ts';
 import {activateSite,passable} from '../src/breach-core.ts';
@@ -45,6 +45,17 @@ test('115: procedural doors have narrower physical apertures and valid walkable 
       assert.ok(passable(site.spawn[0]));
     }
   }
+  activateSite(null);
+});
+test('117: fixed-site door can be approached without preselecting distant leaf',()=>{
+  const s=newSession();
+  const rook=team(s)[0];
+  const front=s.doors.find(d=>d.id==='FRONT');
+  assert.ok(front);
+  assert.equal(doorReachable(rook.p,front),false);
+  assert.ok(planMove(s,'rook',{x:301,y:505}),
+    'ground tap near the door must remain a reachable movement plan');
+  assert.equal(doorReachable(finalPoint(rook),front),true);
   activateSite(null);
 });
 test('115: physical arm reach is capped even for a distant door target',()=>{
