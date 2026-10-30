@@ -39,7 +39,7 @@ export type OperatorPose={
 };
 export type OperatorRig={
   root:THREE.Group;hip:THREE.Group;chest:THREE.Group;head:THREE.Group;
-  weapon:THREE.Group;feet:Foot[];arms:Arm[];
+  weapon:THREE.Group;droppedGun:THREE.Group;feet:Foot[];arms:Arm[];
   magazineInserted:THREE.Mesh;magazineHand:THREE.Mesh;
   legacyLegs:THREE.Group[];legacyArms:THREE.Group[];
   pack:THREE.Mesh;lastTime:number;lastPose:OperatorPose|null;
@@ -64,8 +64,8 @@ function bone(parent:THREE.Group,w:number,depth:number,m:THREE.Material){
 }
 export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   const root=new THREE.Group(),hip=new THREE.Group(),chest=new THREE.Group(),
-    head=new THREE.Group(),weapon=new THREE.Group();
-  root.add(hip,chest);chest.add(head,weapon);
+    head=new THREE.Group(),weapon=new THREE.Group(),droppedGun=new THREE.Group();
+  root.add(hip,chest,droppedGun);droppedGun.visible=false;chest.add(head,weapon);
   const cloth=mat(side==='red'?0x936e5b:
     id==='moss'?0x80826b:id==='ash'?0x8e846e:
     id==='vale'?0x687c8d:0x6f9185);
@@ -106,12 +106,16 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   // Stock, comb and narrow sight rail share the weapon's rigid transform.
   block(weapon,-10,0,0,9,3,3.5,boot);
   block(weapon,-1,2.6,0,11,1.2,1.5,steel);
+  // Weapon that can finish on the floor independently of a falling torso.
+  block(droppedGun,0,0,0,23,3.0,3.2,steel);
+  block(droppedGun,-9,0,0,8,4,4,boot);
+  block(droppedGun,12,0,0,8,1.5,2.1,steel);
   const magazineInserted=block(weapon,3,-4,0,2.7,6,2.5,boot);
   const magazineHand=block(chest,0,0,0,2.7,6,2.5,boot);
   magazineHand.visible=false;
   const colors=new Map([cloth,boot,vest,skin,steel].map(material=>
     [material,material.color.clone()] as const));
-  return {root,hip,chest,head,weapon,feet,arms,pack,colors,
+  return {root,hip,chest,head,weapon,droppedGun,feet,arms,pack,colors,
     magazineInserted,magazineHand,
     legacyLegs:[new THREE.Group(),new THREE.Group()],
     legacyArms:[new THREE.Group(),new THREE.Group()],
@@ -140,6 +144,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     material.color.copy(original);
     if(p.down&&!p.surrender)material.color.lerp(new THREE.Color(0x555c57),.46);
   }
+  const downProgress=clamp(p.downProgress??(p.down?1:0),0,1);
   const moving=p.down?0:Math.min(1,p.velocity/72);
   const direction=p.travelYaw??(r.lastPose?
     Math.atan2(p.z-r.lastPose.z,p.x-r.lastPose.x):p.heading);
@@ -289,11 +294,17 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     p.doorMethod!=='kick';
   r.chest.position.x=0;
   r.reachRequest=null;
-  r.weapon.visible=!p.surrender;
+  r.weapon.visible=!p.surrender&&(!p.down||downProgress<.68);
+  r.droppedGun.visible=p.down&&!p.surrender&&downProgress>=.68;
   const leftGrip=P(data.supportX,data.supportY,-1.6);
   const rightGrip=P(data.primaryX,data.primaryY,1.8);
-  let reaching=false,releaseLeft=false;
-  if(reloadActive){
+  let reaching=false,releaseLeft=false,releaseRight=false;
+  if(p.down){
+    // The support hand loses the foregrip first; the primary hand then
+    // releases as the body makes contact with the floor.
+    releaseLeft=downProgress>.16;releaseRight=downProgress>.53;
+    leftGrip.set(-3,-7,-8);rightGrip.set(-2,-8,8);
+  }else if(reloadActive){
     releaseLeft=true;
     if(reloadMode==='shells'){
       const t=reloadProgress*8;
@@ -335,7 +346,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const shoulder=P(1,4,sign*7);
     const grip=i===0?leftGrip:rightGrip;
     let desired:THREE.Vector3;
-    if(p.surrender||i===0&&reaching){
+    if(p.down&&(i===0&&releaseLeft||i===1&&releaseRight)){
+      desired=grip.clone();
+    }else if(p.surrender||i===0&&reaching){
       desired=grip.clone();
     }else if(i===0&&!releaseLeft){
       // Ordinary walking, side shuffles, turning and ADS never release
@@ -382,7 +395,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }
   // The pose system is the final writer for actor tilts and reactions.
   // The scene controls XY world placement only, not anatomy or weapon pose.
-  const downProgress=clamp(p.downProgress??(p.down?1:0),0,1);
   const reaction=hitStagger(p.hitRegion??'torso',
     p.hitYaw??p.heading,p.heading,
     p.hitAge===undefined?100:p.hitAge,p.hitSeverity??1);
@@ -397,12 +409,27 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.root.position.y=p.surrender?-4:p.down?collapse.y:0;
   if(p.flashActive&&!p.down)r.root.rotation.z+=.10*Math.sin(p.seconds*24);
   if(p.surrender)r.chest.rotation.x=.15;
-  else if(p.down)r.chest.rotation.x=-.05;
+  else if(p.down){
+    // Spine and neck settle independently; the fall isn't a single
+    // rigid mannequin tipping around the operator origin.
+    r.chest.rotation.x=-.18*Math.sin(Math.PI*downProgress)-.05;
+    r.head.rotation.z=.13*Math.sin(Math.PI*downProgress);
+  }
   // Wounds do not leave an incapacitated actor standing in the old
   // locomotion/ready pose. Final angles are deterministic from the hit.
   if(p.down){
     r.chest.rotation.y=0;
     r.head.rotation.x=0;
+  }
+  if(r.droppedGun.visible){
+    // Offset away from the torso and preserve floor contact despite the
+    // root's fall rotation. This is deterministic on replay seeking.
+    const side=p.downPose==='left'?-1:1;
+    const inv=r.root.quaternion.clone().invert();
+    const desired=P(9,1.8,side*11).sub(r.root.position).applyQuaternion(inv);
+    r.droppedGun.position.copy(desired);
+    r.droppedGun.quaternion.setFromAxisAngle(P(0,0,1),Math.PI*.48)
+      .premultiply(inv);
   }
   r.lastPose={...p};r.lastTime=p.seconds;
 }
