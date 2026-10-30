@@ -86,7 +86,10 @@ test('078-080: 3D uses readable fog and per-shot effects, 2D shares cues',()=>{
   assert.match(stage,/observedDoorOpen/);
   assert.match(main,/doorVisibility\(state,door\)/);
   assert.match(main,/shotVisibility\(state,shot\)/);
-  assert.match(main,/shot\.down\?'DOWN':'HIT'/);
+  // Build 117 deliberately replaces floating DOWN/HIT text with grounded
+  // impact and casualty visuals; preserve actual shot visibility coverage.
+  assert.match(main,/shotVisibility\(state,shot\)/);
+  assert.doesNotMatch(main,/draw\.fillText\(shot\.down\?'DOWN':'HIT'/);
 });
 
 test('079: the presentation lab ships independently of tactical battle',()=>{
