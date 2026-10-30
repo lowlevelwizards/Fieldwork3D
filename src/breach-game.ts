@@ -788,10 +788,9 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   const at=near(a.p,n.p,5);
   if(!at&&(n.kind==='move'||n.kind==='door'||n.kind==='sync')){
     approach(a,n.p,dt,s,n.moveMode==='strafe'?.68:1);
-    // Ordinary movement faces its actual navigation segment.
-    // Explicit STRAFE and PIE/TRACK orders are the exceptions.
-    const held=n.moveMode==='strafe'||a.aimInstruction?.mode==='track'?
-      aimHeading(a):null;
+    // Unmodified movement follows its route, while an explicit fixed STRAFE
+    // or PIE/TRACK instruction persists until LOOK releases it.
+    const held=aimHeading(a);
     if(held!==null)rotate(a,held,dt);
     else if(n.kind==='move'&&n.moveMode==='strafe')
       rotate(a,n.facing??a.heading,dt);
