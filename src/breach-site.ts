@@ -4,6 +4,7 @@
  */
 import {type Pt,type Segment,type Door,type Obstacle,
   pointToSegment} from './breach-core.ts';
+import {generateJunctionSite} from './breach-junction-site.ts';
 export type Room={id:string;x:number;y:number;w:number;h:number;
   kind:'room'|'hall';tone:number};
 export type Site={
@@ -22,6 +23,7 @@ export const seeded=(seed:number)=>{
 const between=(r:()=>number,min:number,max:number)=>
   min+Math.floor(r()*(max-min+1));
 export function generateSite(seed:number):Site{
+  if(seed%5===0)return generateJunctionSite(seed);
   const rng=seeded(seed);
   const target=between(rng,3,6);
   const layout=(['office','workshop','corridor','courtyard'] as const)[seed%4];
