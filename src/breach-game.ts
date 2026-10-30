@@ -20,7 +20,7 @@ import {WEAPONS,injuryOf,injurySpeed,injuryReload,
   woundSeverity,exposure,nearCover,type WeaponId,type BattleEvent}
   from './breach-combat.ts';
 import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
-import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor} from './breach-door.ts';
+import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from './breach-door.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
@@ -917,7 +917,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     y:a.p.y+Math.sin(direction)*advance};
   const closedDoor=s.doors.find(door=>
     doorBlocksSegment(door,{a:a.p,b:move}));
-  if(closedDoor&&closedDoor.open)pushDoor(closedDoor,.30);
+  if(closedDoor&&closedDoor.open)pushDoor(closedDoor,.48);
   const closed=!!closedDoor;
   if(closedDoor&&a.side==='red'&&d(a.p,doorCenter(closedDoor))<49){
     a.actionTimer+=dt;
@@ -934,20 +934,29 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   // A reciprocal jam needs a deterministic resolution. Prefer yielding
   // in nearby free space; after prolonged blockage, permit a brief
   // same-team shoulder pass rather than deadlocking a door indefinitely.
-  if(teammate&&a.blockedTime>.14)
+  if(teammate&&a.blockedTime>.10)
     deferToTeammate(s,teammate,a);
-  // Try nearby route repair for both actor jams and furniture edges.
-  if((teammate||(!closed&&!passable(move)))&&a.blockedTime>.28&&
-    !a.yieldTarget){
+  // Detect an impending friendly jam before contact. Micro-detours
+  // are transient, never rewritten into the player's authored plan.
+  const lookDist=Math.min(28,gap);
+  const ahead={x:a.p.x+Math.cos(direction)*lookDist,
+    y:a.p.y+Math.sin(direction)*lookDist};
+  const nearPeer=s.operators.find(b=>b!==a&&b.health>0&&
+    b.side===a.side&&d(b.p,ahead)<18);
+  if(nearPeer&&d(a.p,nearPeer.p)<25&&a.blockedTime>.08)
+    deferToTeammate(s,nearPeer,a);
+  // Try nearby route repair for actor jams, furniture, and door leaves.
+  if((teammate||nearPeer||(!closed&&!passable(move))||
+    (closed&&closedDoor?.open&&a.blockedTime>.24))&&
+    a.blockedTime>.20&&!a.yieldTarget){
     const candidate=localDetour(a.p,next,s.doors,s.operators
       .filter(o=>o!==a&&o.health>0).map(o=>o.p));
     if(candidate&&(!a.nav.length||d(candidate,a.nav[0])>8)){
       a.nav.unshift(candidate);a.blockedTime=0;return true;
     }
   }
-  const shoulderPass=!!teammate&&a.blockedTime>1.65&&
-    passable({x:(a.p.x+teammate.p.x)/2,y:(a.p.y+teammate.p.y)/2});
-  if(!closed&&(!blocking||shoulderPass)&&passable(move)){
+  // Never drag one friendly through another as a deadlock escape.
+  if(!closed&&!blocking&&passable(move)){
     a.priorP=clone(a.p);a.p=move;a.blockedTime=0;
     if(a.side==='blue'&&s.seconds-s.movementNoiseAt>.54){
       hear(s,a.p,a.posture==='crouch'?30:68,'footstep');
@@ -1140,7 +1149,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     if(n.method==='kick'&&a.actionTimer>=required*.53){
       if(!door.open){
         door.open=true;door.openedAt=s.seconds;
-        pushDoor(door,2.2);
+        kickDoor(door);
         hear(s,doorCenter(door),340,'kick');
         notify(s,door.id+' KICKED');
         battleEvent(s,'door',a,doorCenter(door),door.id+' KICKED');
