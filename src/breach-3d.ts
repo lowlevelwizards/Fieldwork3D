@@ -7,6 +7,7 @@ import {shotVisibility} from './breach-presentation.ts';
 import {doorYaw,handlePoint,doorReachable} from './breach-door.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {WEAPONS} from './breach-combat.ts';
+import {casingAt,CASING_LIMIT,impactProfile} from './breach-effects.ts';
 import {sampleThrow} from './breach-flash.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 
@@ -42,6 +43,8 @@ export class TacticalScene3D{
     impact:THREE.Mesh;chips:THREE.Mesh[];material:THREE.MeshBasicMaterial;
     impactMaterial:THREE.MeshBasicMaterial}>();
   private impactDecals=new Map<number,THREE.Mesh>();
+  private casingMesh:THREE.InstancedMesh|null=null;
+  private casingMatrix=new THREE.Object3D();
   private rescueFigure:THREE.Group|null=null;
   private discarded=new Map<number,THREE.Mesh>();
   private thrown=new Map<number,THREE.Mesh>();
@@ -689,6 +692,31 @@ export class TacticalScene3D{
         shadow.scale.setScalar(object.physical.feet[i].swinging?.74:1);
       }
     }
+    if(!this.casingMesh){
+      // One draw call for the entire retained casing pool.
+      this.casingMesh=new THREE.InstancedMesh(
+        new THREE.CylinderGeometry(.75,.75,3.1,6),
+        new THREE.MeshStandardMaterial({color:0xc7a361,
+          metalness:.46,roughness:.48}),CASING_LIMIT);
+      this.casingMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      this.casingMesh.frustumCulled=false;
+      this.effects.add(this.casingMesh);
+    }
+    const casingDraw=this.casingMesh;
+    let count=0;
+    for(const brass of s.casings){
+      if(!omniscient&&!liveVisibility(s,{x:brass.x,y:brass.z}))continue;
+      const p=casingAt(brass,s.seconds);
+      this.casingMatrix.position.set(p.x,p.y,p.z);
+      this.casingMatrix.rotation.set(.9,p.rotation,1.2);
+      const factor=brass.weapon==='shotgun'?1.45:
+        brass.weapon==='smg'?.73:brass.weapon==='rifle'?1.2:1;
+      this.casingMatrix.scale.set(factor,factor,factor);
+      this.casingMatrix.updateMatrix();
+      casingDraw.setMatrixAt(count++,this.casingMatrix.matrix);
+    }
+    casingDraw.count=count;
+    if(count)casingDraw.instanceMatrix.needsUpdate=true;
     // 079: One persistent, ID-keyed effect per actual simulation shot.
     // Shared geometry and bounded per-shot materials avoid frame-by-frame GC.
     const active=new Set<number>();
@@ -727,7 +755,8 @@ export class TacticalScene3D{
         effect={root,line,impact,chips,material,impactMaterial};
         this.effectCache.set(shot.id,effect);
       }
-      const start=v(shot.start,shot.muzzleHeight??15),end=v(shot.end,12);
+      const start=v(shot.start,shot.muzzleHeight??15),
+        end=v(shot.end,shot.impactHeight??12);
       const flight=end.clone().sub(start);
       effect.line.position.copy(start).addScaledVector(flight,.5);
       effect.line.scale.set(1,flight.length(),1);
@@ -736,10 +765,11 @@ export class TacticalScene3D{
       effect.line.visible=visibility.trace&&shot.age<.19;
       effect.material.opacity=Math.max(0,1-shot.age/.20);
       effect.impact.position.copy(end);
+      const profile=impactProfile(shot.surface??'dust');
       const pulse=shot.surface==='blood'?5.2:
         shot.surface==='wood'?3.6:shot.surface==='metal'?3.1:2.5;
       effect.impact.scale.setScalar(pulse*(1+.5*shot.age/.40));
-      effect.impactMaterial.opacity=Math.max(0,1-shot.age/.40);
+      effect.impactMaterial.opacity=Math.max(0,1-shot.age/profile.lifetime);
       effect.impact.visible=visibility.impact&&shot.age<.40;
       for(let i=0;i<effect.chips.length;i++){
         const chip=effect.chips[i];
@@ -750,7 +780,7 @@ export class TacticalScene3D{
           Math.max(2,end.y+6*Math.sin(Math.PI*progress)+i*1.5-4*progress),
           end.z+Math.sin(theta)*radius);
         chip.rotation.set(i*.73,theta,Math.PI*.5+progress*1.8);
-        chip.visible=visibility.impact&&shot.age<.40;
+        chip.visible=visibility.impact&&shot.age<profile.lifetime;
       }
     }
     // Surface-hit marks remain for 24 simulation seconds and are always
@@ -771,7 +801,7 @@ export class TacticalScene3D{
         mesh.rotation.x=-Math.PI/2;
         this.impactDecals.set(mark.id,mesh);this.effects.add(mesh);
       }
-      mesh.position.set(mark.p.x,mark.surface==='blood'?1:9.5,mark.p.y);
+      mesh.position.set(mark.p.x,mark.height??1,mark.p.y);
       mesh.scale.setScalar(mark.surface==='blood'?4:2.3);
       (mesh.material as THREE.MeshBasicMaterial).opacity=
         Math.max(.19,.82-mark.age*.025);
