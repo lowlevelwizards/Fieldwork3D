@@ -26,13 +26,17 @@ export class TacticalScene3D{
   private fogUnknown:THREE.InstancedMesh;
   private fogExplored:THREE.InstancedMesh;
   private actors=new Map<string,{root:THREE.Group;legs:THREE.Group[];
-    arms:THREE.Group[];flash:THREE.Mesh;pack:THREE.Mesh;status:THREE.Mesh}>();
+    arms:THREE.Group[];flash:THREE.Mesh;pack:THREE.Mesh;
+    weapon:THREE.Group;status:THREE.Mesh}>();
   private doors=new Map<string,{root:THREE.Group;leaf:THREE.Group;
     frame:THREE.Group;halo:THREE.Mesh;threshold:THREE.Mesh}>();
   private observedDoorOpen=new Map<string,boolean>();
   private effectCache=new Map<number,{root:THREE.Group;line:THREE.Mesh;
     impact:THREE.Mesh;material:THREE.MeshBasicMaterial;
     impactMaterial:THREE.MeshBasicMaterial}>();
+  private discarded=new Map<number,THREE.Mesh>();
+  private thrown=new Map<number,THREE.Mesh>();
+  private detonations=new Map<number,THREE.Mesh>();
   private tracerAxis=new THREE.Vector3(0,1,0);
   private tracerGeometry=new THREE.CylinderGeometry(.65,.65,1,6);
   private impactGeometry=new THREE.IcosahedronGeometry(1,1);
@@ -122,6 +126,13 @@ export class TacticalScene3D{
     });
     this.walls.length=0;this.doors.clear();
     this.observedDoorOpen.clear();
+    for(const cache of [this.discarded,this.thrown,this.detonations]){
+      for(const mesh of cache.values()){
+        this.effects.remove(mesh);mesh.geometry.dispose();
+        (mesh.material as THREE.Material).dispose();
+      }
+      cache.clear();
+    }
     this.buildWorld(site);
     this.root.add(this.fogUnknown,this.fogExplored);
     this.fogAt=-1;
@@ -533,12 +544,34 @@ export class TacticalScene3D{
       this.box(arm,0,-7,3.5,3.5,3,4.3,skin);
       arm.rotation.x=-.16;root.add(arm);arms.push(arm);
     }
-    // Grounded rifle silhouette: receiver, stock, barrel and sight.
-    this.box(root,13,15,4,18,3.4,4,metal);
-    this.box(root,24,15,4,14,1.9,2,metal,false);
-    this.box(root,2,15,5,11,3,3,dark,false);
-    this.box(root,14,11.8,4,4,5,2.4,dark,false);
-    this.box(root,12,18,4,4,2.4,1.9,metal,false);
+    // One articulated weapon group for recoil and physical reload poses.
+    const weapon=new THREE.Group();root.add(weapon);
+    this.box(weapon,13,15,4,18,3.4,4,metal);
+    this.box(weapon,24,15,4,14,2.5,2.7,metal,false);
+    this.box(weapon,2,15,5,11,4,3.5,dark,false);
+    this.box(weapon,14,11.8,4,4,5,2.4,dark,false);
+    this.box(weapon,12,18,4,4,2.4,1.9,metal,false);
+    // Different packs, helmet outlines and load carriage identify operators.
+    const accent=a.id==='moss'?0xb0a77e:a.id==='ash'?0x8e7358:
+      a.id==='vale'?0xa7a7ac:0x788e79;
+    const detail=this.solid(accent);
+    if(a.id==='moss'){
+      this.box(root,0,15,-12,12,10,4,detail,false);
+      this.box(root,0,30,0,13,2,12,detail,false);
+    }else if(a.id==='ash'){
+      this.box(root,0,10,-12,12,9,5,detail,false);
+      for(const x of [-4,4])this.box(root,x,14,7,3,6,3,detail,false);
+    }else if(a.id==='vale'){
+      this.box(root,0,19,-12,10,15,4,detail,false);
+      this.box(root,0,28.8,3,14,2,6,detail,false);
+    }else if(a.side==='blue'){
+      this.box(root,-5,12,-11,4,8,5,detail,false);
+      this.box(root,5,12,-11,4,8,5,detail,false);
+    }
+    if(a.side==='red'){
+      this.box(root,0,14,7,11,6,3,detail,false);
+      this.box(root,0,28.8,0,13,2,11,detail,false);
+    }
     const flash=new THREE.Mesh(new THREE.OctahedronGeometry(4),
       new THREE.MeshBasicMaterial({color:0xffde97,transparent:true,
         opacity:.96,depthWrite:false}));
@@ -548,9 +581,10 @@ export class TacticalScene3D{
         opacity:.9,depthWrite:false,side:THREE.DoubleSide}));
     status.rotation.x=-Math.PI/2;status.visible=false;
     this.scene.add(root,status);
-    this.actors.set(a.id,{root,legs,arms,flash,pack,status});
+    this.actors.set(a.id,{root,legs,arms,flash,pack,weapon,status});
   }
-  update(s:Session,selected:string,dt:number,focusedDoorId:string|null=null){
+  update(s:Session,selected:string,dt:number,
+    focusedDoorId:string|null=null,omniscient=false){
     if(this.view.mode==='plan2d')return;
     this.updateCamera(dt);
     this.fogAt+=dt;
@@ -572,7 +606,7 @@ export class TacticalScene3D{
       if(!object)continue;
       // Freeze the last observed door state when it drops out of view:
       // a guard opening an unseen door may not broadcast its exact state.
-      if(liveVisibility(s,doorCenter(door)))
+      if(omniscient||liveVisibility(s,doorCenter(door)))
         this.observedDoorOpen.set(door.id,door.open);
       const shownOpen=this.observedDoorOpen.get(door.id)??false;
       object.leaf.rotation.y=THREE.MathUtils.lerp(object.leaf.rotation.y,
@@ -591,7 +625,7 @@ export class TacticalScene3D{
     for(const actor of s.operators){
       if(!this.actors.has(actor.id))this.soldier(actor);
       const object=this.actors.get(actor.id)!;
-      object.root.visible=actor.side==='blue'||
+      object.root.visible=omniscient||actor.side==='blue'||
         (actor.health>0?isSeen(s,actor):liveVisibility(s,actor.p));
       const hitTime=s.seconds-actor.lastHitAt;
       const down=actor.health<=0;
@@ -623,6 +657,15 @@ export class TacticalScene3D{
       object.legs[1].rotation.x=-gait*speed*.44;
       object.arms[0].rotation.x=-gait*speed*.12;
       object.arms[1].rotation.x=gait*speed*.12;
+      const reloadProgress=actor.reload>0?1-actor.reload/1.8:0;
+      object.weapon.rotation.z=actor.reload>0?
+        -.40*Math.sin(Math.PI*reloadProgress):0;
+      object.weapon.position.y=actor.reload>0?
+        -3*Math.sin(Math.PI*reloadProgress):0;
+      if(actor.flashUntil>s.seconds&&actor.health>0){
+        object.root.rotation.z+=.10*Math.sin(s.seconds*24);
+        object.weapon.rotation.z-=.25;
+      }
       object.root.position.y=downProgress*4+
         (actor.health>0&&actor.posture==='crouch'?-5:0);
       const firing=s.shots.find(shot=>shot.shooterId===actor.id&&
@@ -638,7 +681,8 @@ export class TacticalScene3D{
     // Shared geometry and bounded per-shot materials avoid frame-by-frame GC.
     const active=new Set<number>();
     for(const shot of s.shots){
-      const visibility=shotVisibility(s,shot);
+      const visibility=omniscient?
+        {flash:true,trace:true,impact:true}:shotVisibility(s,shot);
       if(!visibility.flash&&!visibility.trace&&!visibility.impact)continue;
       active.add(shot.id);
       let effect=this.effectCache.get(shot.id);
@@ -648,7 +692,10 @@ export class TacticalScene3D{
           color:shot.side==='blue'?0xffde9d:0xff9b73,
           transparent:true,depthWrite:false});
         const impactMaterial=new THREE.MeshBasicMaterial({
-          color:shot.down?0xe66d5c:shot.hit?0xf3a58a:0xe2d3b1,
+          color:shot.surface==='blood'?0xa65a4e:
+            shot.surface==='metal'?0xffd697:
+            shot.surface==='wood'?0xdfb27a:
+            shot.surface==='stone'?0xbeb9a2:0xe2d3b1,
           transparent:true,depthWrite:false});
         const line=new THREE.Mesh(this.tracerGeometry,material);
         const impact=new THREE.Mesh(this.impactGeometry,impactMaterial);
@@ -665,11 +712,60 @@ export class TacticalScene3D{
       effect.line.visible=visibility.trace&&shot.age<.19;
       effect.material.opacity=Math.max(0,1-shot.age/.20);
       effect.impact.position.copy(end);
-      const pulse=shot.hit?4.8:2.9;
+      const pulse=shot.surface==='blood'?5.2:
+        shot.surface==='wood'?3.6:shot.surface==='metal'?3.1:2.5;
       effect.impact.scale.setScalar(pulse*(1+.5*shot.age/.40));
       effect.impactMaterial.opacity=Math.max(0,1-shot.age/.40);
       effect.impact.visible=visibility.impact&&shot.age<.40;
     }
+    // Retained physical magazines, grenades in flight and expanding flashes.
+    const activeMag=new Set<number>();
+    for(const mag of s.dropped){
+      activeMag.add(mag.id);
+      let mesh=this.discarded.get(mag.id);
+      if(!mesh){
+        mesh=new THREE.Mesh(new THREE.BoxGeometry(6,1.5,3),
+          new THREE.MeshStandardMaterial({color:0x313b37,roughness:.75}));
+        this.discarded.set(mag.id,mesh);this.effects.add(mesh);
+      }
+      mesh.position.set(mag.p.x,1.1,mag.p.y);
+      mesh.rotation.y=mag.id*2.13;
+    }
+    const liveGrenades=new Set<number>();
+    for(const grenade of s.grenades){
+      liveGrenades.add(grenade.id);
+      let mesh=this.thrown.get(grenade.id);
+      if(!mesh){
+        mesh=new THREE.Mesh(new THREE.IcosahedronGeometry(2.7,0),
+          new THREE.MeshStandardMaterial({color:0x879184,roughness:.75}));
+        this.thrown.set(grenade.id,mesh);this.effects.add(mesh);
+      }
+      const t=Math.min(1,grenade.age/.55);
+      mesh.position.set(grenade.p.x,1+20*4*t*(1-t),grenade.p.y);
+    }
+    const liveBursts=new Set<number>();
+    for(const burst of s.flashBursts){
+      liveBursts.add(burst.id);
+      let mesh=this.detonations.get(burst.id);
+      if(!mesh){
+        mesh=new THREE.Mesh(new THREE.SphereGeometry(1,12,8),
+          new THREE.MeshBasicMaterial({color:0xfff1c7,transparent:true,
+            opacity:.8,depthWrite:false}));
+        this.detonations.set(burst.id,mesh);this.effects.add(mesh);
+      }
+      mesh.position.set(burst.p.x,13,burst.p.y);
+      mesh.scale.setScalar(5+70*burst.age);
+      (mesh.material as THREE.MeshBasicMaterial).opacity=
+        Math.max(0,.78*(1-burst.age/.7));
+    }
+    for(const [cache,activeIds] of [
+      [this.discarded,activeMag],[this.thrown,liveGrenades],
+      [this.detonations,liveBursts],
+    ] as [Map<number,THREE.Mesh>,Set<number>][])
+      for(const [id,mesh] of cache)if(!activeIds.has(id)){
+        this.effects.remove(mesh);mesh.geometry.dispose();
+        (mesh.material as THREE.Material).dispose();cache.delete(id);
+      }
     for(const [id,effect] of this.effectCache){
       if(active.has(id))continue;
       this.effects.remove(effect.root);
@@ -677,7 +773,10 @@ export class TacticalScene3D{
       this.effectCache.delete(id);
     }
     // Reuse the same current sight and exploration state that drives 2D fog.
-    if(this.fogAt>=.18||this.fogAt<0){
+    if(omniscient){
+      this.fogUnknown.count=0;this.fogExplored.count=0;
+      this.fogAt=-1;
+    }else if(this.fogAt>=.18||this.fogAt<0){
       this.fogAt=0;
       const temp=new THREE.Object3D();
       let unk=0,explored=0;
