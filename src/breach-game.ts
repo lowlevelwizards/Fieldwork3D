@@ -1072,7 +1072,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(a.reload>0){
     a.reload=Math.max(0,a.reload-dt);
     if(a.reload===0){
-      const rounds=Math.min(a.side==='red'?10:12,a.reserve);
+      const rounds=Math.min(WEAPONS[a.weapon].capacity,a.reserve);
       a.magazine=rounds;a.reserve-=rounds;notify(s,a.name+' RELOADED');
     }
     return;
@@ -1087,17 +1087,22 @@ function fire(s:Session,a:TeamActor,dt:number){
   }
   if(a.targetId!==target.id){a.targetId=target.id;a.aim=0;}
   const moving=a.velocity>10;
-  const acquisition=a.side==='blue'?(moving?.57:.30):.58+
+  const weapon=WEAPONS[a.weapon];
+  const acquisition=(moving?weapon.acquisition*1.8:weapon.acquisition)*
+    (a.side==='red'?1.65:1)+
     (a.personality==='cautious'?.12:0);
   a.aim=Math.min(1,a.aim+dt/acquisition);
   if(a.aim<1||a.fireCd>0)return;
-  a.fireCd=a.side==='blue'?.33:.51;
+  a.fireCd=weapon.interval*(a.side==='red'?1.30:1);
   a.magazine--;a.shots++;
   const dist=d(a.p,target.p);
-  const chance=clamp((a.side==='blue'?.78:.56)-dist*.0015-
-    (moving?.22:0)-a.suppression*.28-
-    softCoverPenalty(a,target)+(a.posture==='crouch'?.09:0)-
-    (a.flashUntil>s.seconds?.38:0),.08,.92);
+  const closePenalty=dist>weapon.optimalRange?
+    (dist-weapon.optimalRange)*.0027:0;
+  const chance=clamp(weapon.accuracy*(a.side==='red'?.74:1)-
+    dist*.0015-closePenalty-(moving?.22:0)-
+    a.suppression*.28-softCoverPenalty(a,target)+
+    (a.posture==='crouch'?.09:0)-(a.flashUntil>s.seconds?.38:0),
+    .06,.94)*injuryAim(a.injuryStage);
   const hit=random(s)<chance;
   const scatter=hit?clone(target.p):{
     x:target.p.x+(random(s)-.5)*64,
@@ -1107,7 +1112,12 @@ function fire(s:Session,a:TeamActor,dt:number){
     strikeSurface(a.p,scatter,s);
   const end=impact.end;
   const healthBefore=target.health;
-  const healthAfter=hit?Math.max(0,healthBefore-1):healthBefore;
+  const severity=hit&&s.site?woundSeverity(weapon,dist,
+    nearCover(target.p,a.p),random(s)):1;
+  const nextStage=Math.min(3,target.injuryStage+(hit?severity:0));
+  const healthAfter=hit?
+    (s.site?nextStage>=3?0:4-nextStage:Math.max(0,healthBefore-1)):
+    healthBefore;
   s.sparks.push({p:clone(a.p),side:a.side,age:0});
   // Immutable shot identity lets 2D/3D attach recoil and damage effects to
   // the correct actors without guessing from proximity or team color.
@@ -1120,7 +1130,8 @@ function fire(s:Session,a:TeamActor,dt:number){
     healthBefore,healthAfter,down:hit&&healthAfter<=0,
     surface:impact.surface,
   });
-  hear(s,a.p,400,'gunshot');
+  hear(s,a.p,weapon.noise,'gunshot');
+  battleEvent(s,'shot',a,a.p,a.name+' FIRED '+weapon.label);
   // A shot heard behind the team suggests an imprecise location.
   // A sound NEVER exposes the exact shooter through a wall.
   if(a.side==='red'&&!isSeen(s,a)&&
@@ -1131,34 +1142,58 @@ function fire(s:Session,a:TeamActor,dt:number){
     notify(s,'UNSEEN GUNFIRE');
   }
   target.suppression=Math.min(1,target.suppression+.31);
+  if(target.side==='red')target.morale=Math.max(0,target.morale-.035);
   if(hit){
     target.health=healthAfter;
+    target.injuryStage=s.site?nextStage:Math.min(3,target.injuryStage+1);
     target.lastHitAt=s.seconds;
+    if(target.side==='red')target.morale=Math.max(0,
+      target.morale-.18*severity);
+    battleEvent(s,healthAfter<=0?'down':'wound',target,target.p,
+      target.name+' '+injuryOf(target.injuryStage).toUpperCase());
     a.hits++;
     if(target.health<=0){
       a.kills++;s.deaths++;target.lastDownAt=s.seconds;
       target.plan=[];target.path=[];
       target.nav=[];target.velocity=0;
       notify(s,target.name+' DOWN');
-    }else notify(s,target.name+' HIT');
+      for(const ally of enemies(s))if(ally!==target&&ally.health>0&&
+        d(ally.p,target.p)<145)ally.morale=Math.max(0,ally.morale-.13);
+    }else notify(s,target.name+' '+injuryOf(target.injuryStage).toUpperCase());
   }
 }
-function mission(s:Session){
+function mission(s:Session,dt:number){
   if(team(s).every(a=>a.health<=0)){
     s.phase='lost';s.report=['OPERATION FAILED','ALL OPERATORS LOST'];return;
   }
   if(s.mission==='clear'&&enemies(s).every(a=>a.health<=0)){
-    s.mission='secure';notify(s,'CLEAR — SECURE THE RECORDS');
+    s.mission='secure';
+    notify(s,s.missionType==='capture'?'TARGET NEUTRALIZED — SECURE':
+      'CLEAR — SECURE OBJECTIVE');
+    battleEvent(s,'objective',null,s.scenario.objective,'HOSTILES SECURED');
   }
-  if(s.mission==='secure'&&team(s).some(a=>a.health>0&&
-    near(a.p,s.scenario.objective,36))){
-    s.mission='extract';notify(s,'RECORDS SECURED — EXTRACT');
+  const objectiveReached=team(s).some(a=>a.health>0&&
+    near(a.p,s.scenario.objective,36));
+  if(s.mission==='secure'&&objectiveReached){
+    if(s.missionType==='hold'){
+      s.holdTime+=dt;
+      if(s.holdTime<7)return;
+    }
+    s.mission='extract';
+    const verb=s.missionType==='rescue'?'PERSON FOUND':
+      s.missionType==='hold'?'POSITION HELD':'OBJECTIVE SECURED';
+    notify(s,verb+' — EXTRACT');
+    battleEvent(s,'objective',null,s.scenario.objective,verb);
+  }else if(s.missionType==='hold'&&s.mission==='secure'){
+    s.holdTime=Math.max(0,s.holdTime-dt*.6);
   }
   if(s.mission==='extract'&&team(s).some(a=>a.health>0&&
     near(a.p,s.scenario.extract,37))){
     s.mission='done';s.phase='won';
-    s.report=['STATION SECURED','RECORDS RECOVERED','EXTRACTION COMPLETE'];
+    s.report=['OPERATION COMPLETE',s.missionType.toUpperCase(),
+      'EXTRACTION COMPLETE'];
     notify(s,'MISSION COMPLETE');
+    battleEvent(s,'objective',null,s.scenario.extract,'MISSION COMPLETE');
   }
 }
 function stepFlashbangs(s:Session,h:number){
@@ -1205,6 +1240,16 @@ export function stepSession(s:Session,dt:number){
   stepFlashbangs(s,h);
   for(const a of s.operators){
     a.fireCd=Math.max(0,a.fireCd-h);
+    if(a.side==='red'&&a.health>0){
+      a.morale=Math.min(1,a.morale+h*.006-
+        (a.suppression>.65?h*.075:0));
+      if(a.morale<.12&&a.suppression>.55){
+        a.surrendered=true;a.health=0;a.injuryStage=3;
+        a.velocity=0;a.nav=[];a.plan=[];
+        notify(s,a.name+' SURRENDERED');
+        battleEvent(s,'surrender',a,a.p,a.name+' SURRENDERED');
+      }
+    }
     a.suppression=Math.max(0,a.suppression-h*.17);
     a.priorP=clone(a.p);
     if(a.health<=0)continue;
@@ -1213,13 +1258,18 @@ export function stepSession(s:Session,dt:number){
   }
   observe(s);
   for(const a of s.operators)fire(s,a,h);
-  mission(s);
+  mission(s,h);
 }
 export function missionText(s:Session){
   if(s.phase==='won')return 'COMPLETE — OPERATION SUCCESS';
   if(s.phase==='lost')return 'MISSION FAILED';
-  if(s.mission==='clear')return 'CLEAR HOSTILES • SECURE THE RECORDS';
-  if(s.mission==='secure')return 'MOVE TO RECORDS IN TARGET ROOM';
+  if(s.mission==='clear')return s.missionType==='capture'?
+    'NEUTRALIZE TARGET • SECURE AREA':'CLEAR HOSTILES • SECURE OBJECTIVE';
+  if(s.mission==='secure')return s.missionType==='hold'?
+    'HOLD OBJECTIVE • '+Math.floor(s.holdTime)+'/7 SECONDS':
+    s.missionType==='rescue'?'REACH PERSON IN TARGET ROOM':
+    s.missionType==='intel'?'RECOVER INTELLIGENCE':
+    'SECURE OBJECTIVE';
   return 'RETURN TO EXTRACTION OUTSIDE';
 }
 export function debrief(s:Session){
