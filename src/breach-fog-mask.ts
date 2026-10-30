@@ -1,7 +1,7 @@
 /** One low-resolution, softly filtered fog mask shared by 2D and 3D.
  * The fog presentation never changes detection or player intelligence. */
 import {W,H} from './breach-core.ts';
-import {team,knownAt,type Session} from './breach-game.ts';
+import {team,type Session} from './breach-game.ts';
 import {intelFogLevel} from './breach-intel.ts';
 import {visionPolygon} from './breach-vision-polygon.ts';
 export const FOG_WIDTH=320,FOG_HEIGHT=370;
@@ -18,12 +18,13 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
   // This is presentation only: intel and hidden actor visibility are
   // still checked in the authoritative simulation every tick.
   ctx.filter='blur(5px)';
-  for(let row=0;row<19;row++)for(let col=0;col<16;col++){
-    const p={x:col*40+20,y:row*40+20};
-    const level=intelFogLevel(s.intel,s.site,p,false,knownAt(s,p.x,p.y));
+  for(let row=0;row<37;row++)for(let col=0;col<32;col++){
+    const p={x:col*20+10,y:row*20+10};
+    const fineSeen=s.seenGround.has('fine:'+col+','+row);
+    const level=intelFogLevel(s.intel,s.site,p,false,fineSeen);
     if(level===2)continue;
     ctx.fillStyle=level===1?'rgba(255,255,255,.76)':'#fff';
-    ctx.fillRect(col*40,row*40,40,40);
+    ctx.fillRect(col*20,row*20,20,20);
   }
   // Continuous sight polygons are eased along their outline without
   // changing target detection, opacity or LOS blockers.
