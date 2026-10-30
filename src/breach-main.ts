@@ -1453,7 +1453,10 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
 });
 ui.moreOrders.addEventListener('click',()=>{
   const expanded=ui.orders.classList.toggle('compact')===false;
-  if(!expanded)ui.siteSettings.hidden=true;
+  if(!expanded){
+    ui.siteSettings.hidden=true;
+    ui.siteSettingsToggle.setAttribute('aria-expanded','false');
+  }
   ui.moreOrders.setAttribute('aria-pressed',String(expanded));
   ui.moreOrders.textContent=expanded?'CLOSE':'ACTIONS';
   // Never render two command overlays on top of each other.

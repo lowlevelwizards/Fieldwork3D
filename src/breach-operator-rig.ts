@@ -24,7 +24,8 @@ export type OperatorRig={
   weapon:THREE.Group;feet:Foot[];arms:Arm[];
   legacyLegs:THREE.Group[];legacyArms:THREE.Group[];
   pack:THREE.Mesh;lastTime:number;lastPose:OperatorPose|null;
-  stridePhase:number;dispose:()=>void;
+  stridePhase:number;colors:Map<THREE.MeshStandardMaterial,THREE.Color>;
+  dispose:()=>void;
 };
 const mat=(hex:number)=>new THREE.MeshStandardMaterial({color:hex,
   flatShading:true,roughness:.86});
@@ -81,7 +82,9 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   block(weapon,-10,0,0,9,3,3.5,boot);
   block(weapon,-1,2.6,0,11,1.2,1.5,steel);
   block(weapon,3,-4,0,2.7,6,2.5,boot);
-  return {root,hip,chest,head,weapon,feet,arms,pack,
+  const colors=new Map([cloth,boot,vest,skin,steel].map(material=>
+    [material,material.color.clone()] as const));
+  return {root,hip,chest,head,weapon,feet,arms,pack,colors,
     legacyLegs:[new THREE.Group(),new THREE.Group()],
     legacyArms:[new THREE.Group(),new THREE.Group()],
     lastTime:-1,lastPose:null,stridePhase:0,
@@ -103,6 +106,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.lastTime=p.seconds;dt=0;
   }
   dt=clamp(dt,0,.08);
+  // Retain costume identity, but subdued incapacitated bodies blend with
+  // grounded blood and don't need floating status text. Reversible on seek.
+  for(const [material,original] of r.colors){
+    material.color.copy(original);
+    if(p.down&&!p.surrender)material.color.lerp(new THREE.Color(0x555c57),.46);
+  }
   const moving=Math.min(1,p.velocity/72);
   const direction=r.lastPose?
     Math.atan2(p.z-r.lastPose.z,p.x-r.lastPose.x):p.heading;
@@ -213,6 +222,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const doorAge=p.seconds-p.lastDoorAt;
   const doorActive=doorAge>=0&&doorAge<.9&&!!p.doorPoint;
   r.chest.position.x=0;
+  r.weapon.visible=!p.surrender;
   const leftGrip=P(data.supportX,data.supportY,-1.6);
   const rightGrip=P(data.primaryX,data.primaryY,1.8);
   let reaching=false;
@@ -221,6 +231,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }else if(throwActive){
     const t=Math.sin(Math.PI*clamp(throwAge/.7,0,1));
     leftGrip.set(data.supportX+8*t,4+7*t,-7);
+  }else if(p.surrender){
+    leftGrip.set(-1,11,-6);rightGrip.set(-1,11,6);
   }else if(doorActive&&p.doorPoint){
     reaching=true;
     const local=P(p.doorPoint.x-p.x,19-r.chest.position.y,
@@ -235,7 +247,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const sign=i===0?-1:1,arm=r.arms[i];
     const shoulder=P(1,4,sign*7);
     const grip=i===0?leftGrip:rightGrip;
-    const desired=i===0&&reaching?grip.clone():
+    const desired=p.surrender?grip.clone():i===0&&reaching?grip.clone():
       grip.clone().multiply(P(data.lengthScale,1,1))
         .applyAxisAngle(P(0,1,0),r.weapon.rotation.y)
         .add(r.weapon.position);
@@ -247,10 +259,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     alignSegment(arm.lower,elbow,wrist);
     arm.hand.position.copy(wrist);
   }
-  if(p.down){
+  if(p.surrender){
+    r.root.rotation.z=.09;r.chest.rotation.x=.15;
+  }else if(p.down){
     r.root.rotation.z=0;r.chest.rotation.x=-.4;
-  }else if(p.surrender){
-    r.root.rotation.z=.13;r.chest.rotation.x=.25;
   }else r.root.rotation.z=clamp(p.injury===2?.065:p.injury===1?.018:0,0,.08);
   r.lastPose={...p};r.lastTime=p.seconds;
 }
