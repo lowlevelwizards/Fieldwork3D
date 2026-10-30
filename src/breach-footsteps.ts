@@ -192,7 +192,7 @@ function target(foot:FootstepState,input:FootstepInput):FootTarget{
     const progress=foot.phaseDuration>0?
       clamp((input.time-foot.phaseStart)/foot.phaseDuration,0,1):0;
     const movement=footArticulation(foot.phase,progress);
-    return {position:copy(foot.plantedAt),height:movement.rise,
+    return {position:copy(foot.plantedAt),height:0,
       worldYaw:foot.worldYaw,phase:foot.phase,contact:foot.contact,
       reason:foot.reason,progress,pitch:movement.pitch};
   }
