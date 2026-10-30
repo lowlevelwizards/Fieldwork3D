@@ -4,6 +4,8 @@ import {W,H,WALLS,COVER,initialDoors,doorCenter,activeSite,
 import {type Site} from './breach-site.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
 import {shotVisibility} from './breach-presentation.ts';
+import {doorKnown,wallKnown,coverKnown,roomKnown,intelFogLevel}
+  from './breach-intel.ts';
 import {handlePoint,doorReachable} from './breach-door.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {WEAPONS} from './breach-combat.ts';
@@ -53,6 +55,8 @@ export class TacticalScene3D{
   private tracerGeometry=new THREE.CylinderGeometry(.65,.65,1,6);
   private impactGeometry=new THREE.IcosahedronGeometry(1,1);
   private walls:{mesh:THREE.Mesh;mid:Pt}[]=[];
+  private intelSurfaces:{obj:THREE.Object3D;kind:'wall'|'cover'|'room';
+    index?:number;id?:string}[]=[];
   private wallMaterials=new Set<THREE.Material>();
   private effects=new THREE.Group();
   private target=new THREE.Vector3(339,0,413);
@@ -140,6 +144,7 @@ export class TacticalScene3D{
     for(const material of this.wallMaterials)material.dispose();
     this.wallMaterials.clear();
     this.walls.length=0;this.doors.clear();
+    this.intelSurfaces.length=0;
     this.observedDoorOpen.clear();
     for(const cache of [this.impactDecals,this.discarded,
       this.thrown,this.detonations]){
@@ -162,35 +167,39 @@ export class TacticalScene3D{
     this.box(this.root,site.entrance.x,-1,
       (site.entrance.y+H)/2,85,1,H-site.entrance.y+10,road,false);
     for(const room of site.rooms){
+      const group=new THREE.Group();this.root.add(group);
+      this.intelSurfaces.push({obj:group,kind:'room',id:room.id});
       const base=this.solid(room.kind==='hall'?0x495b55:
         palettes[room.tone%palettes.length]);
-      this.box(this.root,room.x+room.w/2,-.8,room.y+room.h/2,
+      this.box(group,room.x+room.w/2,-.8,room.y+room.h/2,
         room.w-2,1.6,room.h-2,base,false);
       const grout=this.solid(0x8d9282);
       for(let x=room.x+22;x<room.x+room.w-8;x+=29)
-        this.box(this.root,x,-.01,room.y+room.h/2,
+        this.box(group,x,-.01,room.y+room.h/2,
           .65,.1,room.h-7,grout,false);
       for(let y=room.y+22;y<room.y+room.h-8;y+=29)
-        this.box(this.root,room.x+room.w/2,-.01,y,
+        this.box(group,room.x+room.w/2,-.01,y,
           room.w-7,.1,.65,grout,false);
     }
     const wallMat=this.solid(0xa89c81),capMat=this.solid(0x474439);
     const skirting=this.solid(0x39463f);
-    for(const wall of site.walls){
+    for(const [index,wall] of site.walls.entries()){
+      const group=new THREE.Group();this.root.add(group);
+      this.intelSurfaces.push({obj:group,kind:'wall',index});
       const {a,b}=wall,len=Math.hypot(b.x-a.x,b.y-a.y);
       if(len<5)continue;
       const x=(a.x+b.x)/2,z=(a.y+b.y)/2;
       const angle=-Math.atan2(b.y-a.y,b.x-a.x);
       const individualWall=wallMat.clone();
       this.wallMaterials.add(individualWall);
-      const body=this.box(this.root,x,20,z,len+1,40,9,individualWall);
+      const body=this.box(group,x,20,z,len+1,40,9,individualWall);
       body.rotation.y=angle;
       this.walls.push({mesh:body,mid:{x,y:z}});
-      const foot=this.box(this.root,x,2,z,len+1,4,12,skirting,false);
+      const foot=this.box(group,x,2,z,len+1,4,12,skirting,false);
       foot.rotation.y=angle;
       const individualCap=capMat.clone();
       this.wallMaterials.add(individualCap);
-      const cap=this.box(this.root,x,40.3,z,len+2,2,11,individualCap,false);
+      const cap=this.box(group,x,40.3,z,len+2,2,11,individualCap,false);
       cap.rotation.y=angle;this.walls.push({mesh:cap,mid:{x,y:z}});
     }
     const doorMat=this.solid(0xb18b5f),doorTrim=this.solid(0xe0c390);
@@ -230,12 +239,14 @@ export class TacticalScene3D{
     const wood=this.solid(0x655748),steel=this.solid(0x465958);
     const olive=this.solid(0x70715e);
     site.cover.forEach((c,i)=>{
+      const group=new THREE.Group();this.root.add(group);
+      this.intelSurfaces.push({obj:group,kind:'cover',index:i});
       const tall=c.low?12:27,material=i%3===0?wood:i%3===1?steel:olive;
-      this.box(this.root,c.x,tall/2,c.y,c.w,tall,c.h,material);
-      this.box(this.root,c.x,tall+.5,c.y,c.w+1,1,c.h+1,
+      this.box(group,c.x,tall/2,c.y,c.w,tall,c.h,material);
+      this.box(group,c.x,tall+.5,c.y,c.w+1,1,c.h+1,
         steel,false);
       if(c.low)for(let j=0;j<3;j++)
-        this.box(this.root,c.x-c.w/3+j*c.w/3,tall+1,c.y,
+        this.box(group,c.x-c.w/3+j*c.w/3,tall+1,c.y,
           1.5,2,c.h-4,wood,false);
     });
     // Important: avoid visual-only furniture outside authoritative cover.
@@ -560,6 +571,14 @@ export class TacticalScene3D{
     this.sun.position.set(shadowPoint.x-145,250,shadowPoint.y+175);
     this.sun.target.position.set(shadowPoint.x,0,shadowPoint.y);
     this.sun.target.updateMatrixWorld();
+    // Hide undiscovered geometry at object level, including its shadows.
+    // Fog shading alone is insufficient: it leaks shapes and cover positions.
+    for(const item of this.intelSurfaces){
+      item.obj.visible=omniscient||(
+        item.kind==='wall'?wallKnown(s.intel,item.index!):
+        item.kind==='cover'?coverKnown(s.intel,item.index!):
+        roomKnown(s.intel,item.id!));
+    }
     // For camera-facing walls use translucent near-side cutaways.
     const fromCamera=this.camera.position.clone().sub(this.target);
     for(const wall of this.walls){
@@ -576,11 +595,13 @@ export class TacticalScene3D{
     for(const door of s.doors){
       const object=this.doors.get(door.id);
       if(!object)continue;
+      object.root.visible=omniscient||doorKnown(s.intel,door.id);
       // Freeze the last observed door state when it drops out of view:
       // a guard opening an unseen door may not broadcast its exact state.
       if(omniscient||liveVisibility(s,doorCenter(door)))
         this.observedDoorOpen.set(door.id,door.openFraction??(door.open?1:0));
-      const fraction=this.observedDoorOpen.get(door.id)??0;
+      const fraction=omniscient?(door.openFraction??(door.open?1:0)):
+        (s.intel.doorMemory.get(door.id)??0);
       const replayProgress=replay?.doors[door.id];
       // The rendered leaf follows the authoritative hinge rather than
       // a render-rate easing curve that disagrees with collision.
@@ -590,7 +611,7 @@ export class TacticalScene3D{
       const reachable=selectedActor&&selectedActor.health>0&&
         [selectedActor.p,...selectedActor.plan.map(n=>n.p)].some(p=>
           doorReachable(p,door));
-      object.halo.visible=focusedDoorId===door.id&&!!reachable&&
+      object.halo.visible=object.root.visible&&focusedDoorId===door.id&&!!reachable&&
         (liveVisibility(s,doorCenter(door))||
          knownAt(s,doorCenter(door).x,doorCenter(door).y));
       object.halo.rotation.z+=dt*.3;
@@ -614,7 +635,7 @@ export class TacticalScene3D{
         this.rescueFigure.add(civilian,head);
         this.scene.add(this.rescueFigure);
       }
-      this.rescueFigure.visible=true;
+      this.rescueFigure.visible=omniscient||liveVisibility(s,s.rescue.p);
       this.rescueFigure.position.set(s.rescue.p.x,0,s.rescue.p.y);
     }else if(this.rescueFigure)this.rescueFigure.visible=false;
     for(const actor of s.operators){
@@ -889,12 +910,17 @@ export class TacticalScene3D{
         const p={x:col*40+20,y:row*40+20};
         const seen=liveVisibility(s,p);
         const past=knownAt(s,p.x,p.y);
-        if(seen)continue;
+        const level=intelFogLevel(s.intel,s.site,p,seen,past);
+        if(level===0)continue;
         temp.position.set(p.x,36,p.y);temp.updateMatrix();
-        if(past)this.fogExplored.setMatrixAt(explored++,temp.matrix);
+        if(level===1)this.fogExplored.setMatrixAt(explored++,temp.matrix);
         else this.fogUnknown.setMatrixAt(unk++,temp.matrix);
       }
       this.fogUnknown.count=unk;this.fogExplored.count=explored;
+      (this.fogUnknown.material as THREE.MeshBasicMaterial).opacity=
+        s.intel.mode==='true-blind'?.97:.86;
+      (this.fogExplored.material as THREE.MeshBasicMaterial).opacity=
+        s.intel.mode==='floor-plan'?.14:.24;
       this.fogUnknown.instanceMatrix.needsUpdate=true;
       this.fogExplored.instanceMatrix.needsUpdate=true;
     }
