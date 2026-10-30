@@ -12,6 +12,7 @@ export type PlanNode={
   method?:DoorMethod;duration?:number;syncCode?:string;holdOnContact?:boolean;
   moveMode?:MoveMode;pivot?:Pt;pieSide?:PieSide;pieDegrees?:number;arc?:Pt[];
   aimMode?:AimMode;aimPoint?:Pt;aimLabel?:'look'|'strafe'|'pie';
+  stackDoorId?:string;
 };
 export type PlanHistory={undo:PlanNode[][];redo:PlanNode[][]};
 export const copyNodes=(nodes:PlanNode[]):PlanNode[]=>
