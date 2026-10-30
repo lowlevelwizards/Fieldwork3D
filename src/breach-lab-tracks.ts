@@ -10,7 +10,8 @@ export const LAB_TRACKS=[
   'strafe-left','strafe-right','strafe','strafe-stop',
   'strafe-reverse','mixed','turn-90','turn-180','turn','pivot-reverse',
   'pie','look','crouch-walk','crouch','wounded','aim','reload',
-  'flash','door','down'
+  'flash','door','down','down-forward','down-back',
+  'down-left','down-right','down-slump'
 ] as const;
 export type LabTrack=typeof LAB_TRACKS[number];
 export const TRACK_DURATION=4;
@@ -86,7 +87,7 @@ export function sampleLabTrack(kind:LabTrack,time:number):LabMotion{
   const throwAt=kind==='flash'?Math.floor(t/1.5)*1.5:-100;
   const doorAt=kind==='door'?Math.floor(t/1.3)*1.3:-100;
   return {...p,travelYaw,speed,turning,injury,posture,aim,
-    reload,throwAt,doorAt,down:kind==='down'};
+    reload,throwAt,doorAt,down:kind.startsWith('down')&&t>=.45};
 }
 function copy(s:FootstepScheduler):FootstepScheduler{
   return {...s,lastPosition:{...s.lastPosition},
