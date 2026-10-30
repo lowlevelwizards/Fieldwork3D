@@ -204,6 +204,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     alignSegment(foot.upper,hipLocal,leg.joint,P(0,0,sign));
     alignSegment(foot.lower,leg.joint,leg.effector,P(0,0,sign));
     foot.shoe.position.copy(relative);
+    const pitch=target.pitch??0;
+    foot.shoe.rotation.z=pitch;
+    // The shoe's world-space anchor remains authoritative even while its
+    // visual box rocks around the local center.
     // A boot rotates only during its scheduled swing, not with the pelvis.
     foot.shoe.rotation.y=target.worldYaw-headingYaw;
   }

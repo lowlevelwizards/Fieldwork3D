@@ -4,13 +4,15 @@
  */
 import type {TeamActor} from './breach-game.ts';
 import type {Door} from './breach-core.ts';
-import {advanceFootsteps,createFootstepScheduler,gaitBounds,
+import {footArticulation} from './breach-foot-articulation.ts';
+import {advanceFootsteps,createFootstepScheduler,
   type FootTarget,type FootstepScheduler,type FootstepInput} from './breach-footsteps.ts';
 
 export type ReplayFeet=[FootTarget,FootTarget];
 type FootEvent={
   at:number;from:{x:number;y:number};to:{x:number;y:number};
   fromYaw:number;toYaw:number;unload:number;swing:number;lift:number;
+  landing:number;recovery:number;
 };
 type ActorTrack={
   gait:FootstepScheduler;
@@ -29,7 +31,7 @@ const angular=(a:number,b:number)=>Math.atan2(Math.sin(b-a),Math.cos(b-a));
 const smooth=(x:number)=>x*x*(3-2*x);
 const footMark=(t:number,point:{x:number;y:number},yaw:number):FootEvent=>({
   at:t,from:{...point},to:{...point},fromYaw:yaw,toYaw:yaw,
-  unload:0,swing:0,lift:0
+  unload:0,swing:0,lift:0,landing:0,recovery:0
 });
 export function sampleFootEvents(events:readonly FootEvent[],time:number):FootTarget{
   if(!events.length)throw Error('Replay foot has no initial contact');
@@ -40,24 +42,34 @@ export function sampleFootEvents(events:readonly FootEvent[],time:number):FootTa
   }
   const e=events[lo];
   if(e.swing===0)return {position:{...e.to},height:0,
-    worldYaw:e.toYaw,phase:'planted',contact:true,progress:0};
+    worldYaw:e.toYaw,phase:'planted',contact:true,progress:0,pitch:0};
   const elapsed=Math.max(0,time-e.at);
-  if(elapsed<e.unload)return {position:{...e.from},height:0,
-    worldYaw:e.fromYaw,phase:'unloading',contact:true,
-    progress:e.unload>0?elapsed/e.unload:1};
+  if(elapsed<e.unload){
+    const p=e.unload>0?elapsed/e.unload:1;
+    const motion=footArticulation('unloading',p);
+    return {position:{...e.from},height:0,
+      worldYaw:e.fromYaw,phase:'unloading',contact:true,
+      progress:p,pitch:motion.pitch};
+  }
   const progress=(elapsed-e.unload)/e.swing;
   if(progress<1){
     const t=clamp(progress,0,1),k=smooth(t);
+    const motion=footArticulation('swinging',t);
     return {position:{x:e.from.x+(e.to.x-e.from.x)*k,
       y:e.from.y+(e.to.y-e.from.y)*k},
-      height:Math.sin(Math.PI*t)*e.lift,
+      height:motion.rise*e.lift,
       worldYaw:e.fromYaw+angular(e.fromYaw,e.toYaw)*k,
-      phase:'swinging',contact:false,progress:t};
+      phase:'swinging',contact:false,progress:t,pitch:motion.pitch};
   }
-  return {position:{...e.to},height:0,worldYaw:e.toYaw,
-    phase:elapsed<e.unload+e.swing+.035?'landing':'planted',
-    contact:true,progress:elapsed<e.unload+e.swing+.035?
-      (elapsed-e.unload-e.swing)/.035:1};
+  const after=elapsed-e.unload-e.swing;
+  const phase=after<e.landing?'landing':
+    after<e.landing+e.recovery?'recovering':'planted';
+  const p=phase==='landing'?clamp(after/e.landing,0,1):
+    phase==='recovering'?clamp((after-e.landing)/e.recovery,0,1):1;
+  const motion=footArticulation(phase,p);
+  return {position:{...e.to},height:motion.rise,
+    worldYaw:e.toYaw,phase,contact:true,
+    progress:p,pitch:motion.pitch};
 }
 export class ReplayMotionRecorder{
   private actors=new Map<string,ActorTrack>();
@@ -109,12 +121,13 @@ export class ReplayMotionRecorder{
       }
       if(track.gait.lastStepAt!==previousStep&&
         track.gait.lastStepAt===time){
-        const bounds=gaitBounds(input),i=track.gait.lastStepFoot;
+        const i=track.gait.lastStepFoot;
         const foot=track.gait.feet[i];
         track.events[i].push({at:time,from:{...foot.swingFrom},
           to:{...foot.swingTo},fromYaw:foot.fromYaw,
-          toYaw:foot.targetYaw,unload:bounds.unloadDuration,
-          swing:bounds.swingDuration,lift:input.cautious?2.1:3.4});
+          toYaw:foot.targetYaw,unload:foot.phaseDuration,
+          swing:foot.swingDuration,landing:foot.landingDuration,
+          recovery:foot.recoveryDuration,lift:input.cautious?2.1:3.4});
       }
       track.last={...position,t:time};
     }
