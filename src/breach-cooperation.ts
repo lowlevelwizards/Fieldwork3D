@@ -1,6 +1,6 @@
 /** Local micro-detours are temporary navigation hints, not plan edits.
  * Check the entire step against clearance and occupied actor footprints. */
-import {passable,segmentsCross,type Door,type Pt} from './breach-core.ts';
+import {doorBlocksRay,passable,segmentsCross,type Door,type Pt} from './breach-core.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function localDetour(from:Pt,toward:Pt,doors:Door[],
   occupied:Pt[],radius=8):Pt|null{
@@ -16,7 +16,7 @@ export function localDetour(from:Pt,toward:Pt,doors:Door[],
   const safe=(p:Pt)=>{
     if(!passable(p,radius)||occupied.some(o=>distance(p,o)<radius*2+1))
       return false;
-    if(doors.some(d=>!d.open&&segmentsCross({a:from,b:p},d)))return false;
+    if(doorBlocksRay(doors,{a:from,b:p}))return false;
     const steps=Math.max(2,Math.ceil(distance(from,p)/5));
     for(let i=1;i<=steps;i++){
       const t=i/steps;
