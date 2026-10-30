@@ -69,6 +69,7 @@ export class MissionRecorder{
   private lastEventId=0;
   readonly motion=new ReplayMotionRecorder();
   capture(s:Session,force=false):void{
+    if(this.frames.length>=12000)return;
     // This runs at 60Hz even though the outcome film is only 20Hz.
     // Recording step starts here avoids tying animation to render FPS.
     this.motion.record(s.seconds,s.operators,s.doors);
