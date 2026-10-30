@@ -298,7 +298,9 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
     const points=[prior,...routeWithIntel(s.intel,prior,node.p)];
     for(let i=1;i<points.length;i++)
       for(const door of s.doors){
-        if(!doorKnown(s.intel,door.id)||door.open||opened.has(door.id)||
+        if(!doorKnown(s.intel,door.id)||
+           (s.intel.doorMemory.get(door.id)??0)>=.72||
+           opened.has(door.id)||
            !segmentsCross({a:points[i-1],b:points[i]},door))continue;
         const staging=doorApproach(prior,door);
         if(!staging)continue;
