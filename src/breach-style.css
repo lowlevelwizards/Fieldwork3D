@@ -321,10 +321,20 @@ body.replaying .foot,body.replaying .guidance,body.replaying .feed{display:none!
 .context-state button[aria-pressed=true]{background:#355047;color:#f4e4bd}
 .context-state button.danger{background:#513630;color:#f4c3b0}
 .context-tools button:focus-visible{outline:2px solid #f5d39b;outline-offset:1px}
-@media(max-width:450px){
-  .context-tools{max-width:min(268px,calc(100vw - 14px));padding:5px;gap:4px}
-  .context-primary button{min-width:66px;min-height:40px}
-  .context-state button{min-height:33px}
+/* Phone: a narrow three-column side palette leaves most of the map clear.
+   Six tap targets remain directly visible, with no scrolling or drawers. */
+@media(max-width:600px){
+  .context-tools{width:164px;max-width:calc(100vw - 16px);
+    padding:5px;gap:4px}
+  .context-primary{gap:3px}
+  .context-primary button{min-width:0;min-height:42px;
+    padding:6px 2px;font-size:9px;letter-spacing:0}
+  .context-state{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:3px;padding-top:4px}
+  .context-state button{min-width:0;min-height:40px;
+    padding:5px 1px;font-size:9px;letter-spacing:0}
+  .context-tools.door-menu .context-primary{
+    grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-height:470px){
   .context-tools{max-width:230px;padding:4px}
