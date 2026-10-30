@@ -5,6 +5,7 @@
 import type {Session,TeamActor,ShotEvent,DroppedMagazine,FlashGrenade,FlashBurst,ImpactMark} from './breach-game.ts';
 import type {Door,Pt} from './breach-core.ts';
 import type {BattleEvent} from './breach-combat.ts';
+import {ReplayMotionRecorder,type ReplayPresentation} from './breach-replay-motion.ts';
 
 export type ActorFrame=Pick<TeamActor,
   'id'|'p'|'heading'|'health'|'velocity'|'turning'|'posture'|'alert'|
@@ -13,9 +14,12 @@ export type ActorFrame=Pick<TeamActor,
   'weapon'|'injuryStage'|'morale'|'surrendered'|'defense'|'watch'|
   'lastThrowAt'|'lastDoorAt'|'lastDoorId'|'stride'|
   'weaponYaw'|'stability'|'recoil'|'lastShotAt'|'fireMode'|'burstCount'|'skills'>;
+export type ReplayActorFrame=ActorFrame & {travelYaw?:number};
 export type ReplayFrame={
+  /** Presentation data is sampled on demand, never written to snapshots. */
+  presentation?:ReplayPresentation;
   t:number;phase:Session['phase'];mission:Session['mission'];
-  actors:ActorFrame[];doors:Door[];shots:ShotEvent[];
+  actors:ReplayActorFrame[];doors:Door[];shots:ShotEvent[];
   dropped:DroppedMagazine[];impactMarks:ImpactMark[];grenades:FlashGrenade[];
   flashBursts:FlashBurst[];flashRemaining:number;
   missionType:Session['missionType'];holdTime:number;
@@ -63,7 +67,11 @@ export class MissionRecorder{
   readonly frames:ReplayFrame[]=[];
   readonly events:BattleEvent[]=[];
   private lastEventId=0;
+  readonly motion=new ReplayMotionRecorder();
   capture(s:Session,force=false):void{
+    // This runs at 60Hz even though the outcome film is only 20Hz.
+    // Recording step starts here avoids tying animation to render FPS.
+    this.motion.record(s.seconds,s.operators,s.doors);
     for(const e of s.battleEvents)if(e.id>this.lastEventId){
       this.events.push({...e,p:e.p?position(e.p):undefined});
       this.lastEventId=e.id;
@@ -77,6 +85,8 @@ export class MissionRecorder{
     // Bound mobile memory to ten minutes of sampled playback.
     if(this.frames.length>=12000)return;
     const frame=snapshot(s);
+    for(const actor of frame.actors)
+      actor.travelYaw=this.motion.direction(actor.id);
     // Explored ground only grows. Reuse identical history instead of
     // allocating thousands of duplicate tile arrays during long missions.
     if(last&&last.seenGround.length===frame.seenGround.length)
@@ -84,7 +94,7 @@ export class MissionRecorder{
     this.frames.push(frame);
   }
   get duration(){return this.frames.at(-1)?.t??0;}
-  at(time:number):ReplayFrame|null{
+  surrounding(time:number):{previous:ReplayFrame;next:ReplayFrame;alpha:number}|null{
     if(!this.frames.length)return null;
     const t=Math.max(0,Math.min(time,this.duration));
     let lo=0,hi=this.frames.length-1;
@@ -93,9 +103,51 @@ export class MissionRecorder{
       if(this.frames[mid].t<=t)lo=mid;
       else hi=mid-1;
     }
-    return this.frames[lo];
+    const previous=this.frames[lo];
+    const next=this.frames[Math.min(lo+1,this.frames.length-1)];
+    const alpha=next.t>previous.t?
+      Math.max(0,Math.min(1,(t-previous.t)/(next.t-previous.t))):0;
+    return {previous,next,alpha};
+  }
+  at(time:number):ReplayFrame|null{return this.surrounding(time)?.previous??null;}
+  /** A render-only snapshot. Outcomes/discrete changes remain on the left
+   * authoritative sample. No mutation of stored frames or motor state. */
+  sample(time:number):ReplayFrame|null{
+    const span=this.surrounding(time);
+    if(!span)return null;
+    const {previous,next,alpha}=span;
+    const t=previous.t+(next.t-previous.t)*alpha;
+    const byId=new Map(next.actors.map(a=>[a.id,a]));
+    const actors=previous.actors.map(a=>{
+      const b=byId.get(a.id);
+      if(!b||!alpha)return {...a,p:position(a.p)};
+      return {...a,p:{x:mix(a.p.x,b.p.x,alpha),
+        y:mix(a.p.y,b.p.y,alpha)},
+        heading:mixAngle(a.heading,b.heading,alpha),
+        weaponYaw:mixAngle(a.weaponYaw,b.weaponYaw,alpha),
+        travelYaw:mixAngle(a.travelYaw??a.heading,
+          b.travelYaw??b.heading,alpha),
+        velocity:mix(a.velocity,b.velocity,alpha),
+        turning:mix(a.turning,b.turning,alpha),
+        aim:mix(a.aim,b.aim,alpha),
+        reload:mix(a.reload,b.reload,alpha),
+        recoil:mix(a.recoil,b.recoil,alpha),
+        stability:mix(a.stability,b.stability,alpha),
+        stride:mix(a.stride,b.stride,alpha)};
+    });
+    const presentation=this.motion.presentation(t,actors.map(a=>a.id));
+    for(const actor of actors)
+      presentation.travelYaw[actor.id]=actor.travelYaw??actor.heading;
+    const delta=t-previous.t;
+    return {...previous,t,actors,presentation,
+      shots:previous.shots.map(s=>({...shotCopy(s),age:s.age+delta})),
+      grenades:previous.grenades.map(g=>({...g,p:position(g.p),
+        from:position(g.from),to:position(g.to)}))};
   }
 }
+const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
+export const mixAngle=(a:number,b:number,t:number)=>
+  a+Math.atan2(Math.sin(b-a),Math.cos(b-a))*t;
 export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   s.seconds=f.t;
   // Playback is not a live game phase. It can neither edit plans nor simulate.
