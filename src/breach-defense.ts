@@ -4,6 +4,7 @@ import {nearCover} from './breach-combat.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type Defender={id:string;p:Pt;health:number;defense:Pt|null};
 export function defenseCandidates(origin:Pt,threat:Pt,doors:Door[]):Pt[]{
+  void threat;
   const options:Pt[]=[];
   for(const c of COVER){
     for(const q of [{x:c.x-c.w/2-19,y:c.y},{x:c.x+c.w/2+19,y:c.y},
