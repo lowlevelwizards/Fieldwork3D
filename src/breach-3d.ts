@@ -3,7 +3,8 @@ import {W,H,WALLS,COVER,initialDoors,doorCenter,activeSite,type Pt} from './brea
 import {type Site} from './breach-site.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
 import {shotVisibility} from './breach-presentation.ts';
-import {doorYaw} from './breach-door.ts';
+import {doorYaw,handlePoint} from './breach-door.ts';
+import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {sampleThrow} from './breach-flash.ts';
 
@@ -30,7 +31,7 @@ export class TacticalScene3D{
   private fogExplored:THREE.InstancedMesh;
   private actors=new Map<string,{root:THREE.Group;legs:THREE.Group[];
     arms:THREE.Group[];flash:THREE.Mesh;pack:THREE.Mesh;
-    weapon:THREE.Group;status:THREE.Mesh}>();
+    weapon:THREE.Group;status:THREE.Mesh;physical:OperatorRig}>();
   private doors=new Map<string,{root:THREE.Group;leaf:THREE.Group;
     frame:THREE.Group;halo:THREE.Mesh;threshold:THREE.Mesh}>();
   private observedDoorOpen=new Map<string,boolean>();
@@ -504,92 +505,19 @@ export class TacticalScene3D{
       y:(1-world.y)*this.height/2};
   }
   private soldier(a:TeamActor){
-    const root=new THREE.Group();
-    const palette:Record<string,number>={
-      rook:0x76a69e,moss:0x8f9f78,ash:0xb79b77,vale:0x9595b1,
-    };
-    const suit=this.solid(a.side==='blue'?
-      palette[a.id]??0x819a91:0xa77669);
-    const dark=this.solid(0x2b3433),vest=this.solid(0x45554c),
-      olive=this.solid(0x60694e),helmet=this.solid(0x727d6b),
-      skin=this.solid(0xa78a74),metal=this.solid(0x414847,.48);
-    // Readable torso with broad vest, narrow waist and useful shoulder mass.
-    this.box(root,0,13,0,12,13,9,suit);
-    this.box(root,0,16,4.5,12,9,3,vest,false);
-    this.box(root,0,9,0,10,3,8,vest);
-    for(const x of [-7,7]){
-      this.box(root,x,19,.5,4,5,8,suit);
-    }
-    const head=new THREE.Mesh(new THREE.SphereGeometry(1,12,10),skin);
-    head.scale.set(5.7,5.2,5.8);head.position.set(0,24,0);
-    head.castShadow=true;root.add(head);
-    const shell=new THREE.Mesh(new THREE.SphereGeometry(1,12,8),helmet);
-    shell.scale.set(6.5,3.2,6.2);shell.position.set(0,27,0.3);
-    shell.rotation.z=-.09;root.add(shell);
-    this.box(root,0,25.9,5.7,12.5,1.3,3,helmet,false);
-    for(const x of [-5.8,5.8]){
-      this.box(root,x,22,0,1.2,4.5,4,skin,false);
-    }
-    // Load-bearing webbing is visible at play distance, with large forms
-    // instead of several overlapping micro-details.
-    const pack=this.box(root,0,14,-7.7,11,14,7,olive);
-    this.box(root,0,17,-11.5,8,5,2,vest,false);
-    this.box(root,-4.2,17,4,2,10,2,olive,false);
-    this.box(root,4.2,17,4,2,10,2,olive,false);
-    for(const x of [-4.5,4.5]){
-      this.box(root,x,11,6.5,3.4,4,2,olive,false);
-    }
-    const legs:THREE.Group[]=[],arms:THREE.Group[]=[];
-    for(const side of [-1,1]){
-      const hip=new THREE.Group();hip.position.set(side*3,7,0);
-      this.box(hip,0,-2,0,4.4,8,5,suit);
-      this.box(hip,0,-6.6,1.7,4,5,4,dark);
-      this.box(hip,.1,-9,3,4.6,2.8,6,dark);
-      hip.rotation.x=side*.06;
-      root.add(hip);legs.push(hip);
-      const arm=new THREE.Group();arm.position.set(side*7.3,19,2);
-      this.box(arm,0,-3.2,2,3.4,8.5,4,suit);
-      this.box(arm,0,-7,3.5,3.5,3,4.3,skin);
-      arm.rotation.x=-.16;root.add(arm);arms.push(arm);
-    }
-    // One articulated weapon group for recoil and physical reload poses.
-    const weapon=new THREE.Group();root.add(weapon);
-    this.box(weapon,13,15,4,18,3.4,4,metal);
-    this.box(weapon,24,15,4,14,2.5,2.7,metal,false);
-    this.box(weapon,2,15,5,11,4,3.5,dark,false);
-    this.box(weapon,14,11.8,4,4,5,2.4,dark,false);
-    this.box(weapon,12,18,4,4,2.4,1.9,metal,false);
-    // Different packs, helmet outlines and load carriage identify operators.
-    const accent=a.id==='moss'?0xb0a77e:a.id==='ash'?0x8e7358:
-      a.id==='vale'?0xa7a7ac:0x788e79;
-    const detail=this.solid(accent);
-    if(a.id==='moss'){
-      this.box(root,0,15,-12,12,10,4,detail,false);
-      this.box(root,0,30,0,13,2,12,detail,false);
-    }else if(a.id==='ash'){
-      this.box(root,0,10,-12,12,9,5,detail,false);
-      for(const x of [-4,4])this.box(root,x,14,7,3,6,3,detail,false);
-    }else if(a.id==='vale'){
-      this.box(root,0,19,-12,10,15,4,detail,false);
-      this.box(root,0,28.8,3,14,2,6,detail,false);
-    }else if(a.side==='blue'){
-      this.box(root,-5,12,-11,4,8,5,detail,false);
-      this.box(root,5,12,-11,4,8,5,detail,false);
-    }
-    if(a.side==='red'){
-      this.box(root,0,14,7,11,6,3,detail,false);
-      this.box(root,0,28.8,0,13,2,11,detail,false);
-    }
-    const flash=new THREE.Mesh(new THREE.OctahedronGeometry(4),
-      new THREE.MeshBasicMaterial({color:0xffde97,transparent:true,
-        opacity:.96,depthWrite:false}));
-    flash.position.set(31,15,4);flash.visible=false;root.add(flash);
+    const physical=createOperatorRig(a.id,a.side);
+    const {root,weapon,pack}=physical;
+    const legs=physical.legacyLegs,arms=physical.legacyArms;
+    const flash=new THREE.Mesh(new THREE.OctahedronGeometry(3.5),
+      new THREE.MeshBasicMaterial({color:0xffd59e,transparent:true,
+        opacity:.94,depthWrite:false}));
+    flash.position.set(35,19,0);flash.visible=false;root.add(flash);
     const status=new THREE.Mesh(new THREE.RingGeometry(12,16,30),
       new THREE.MeshBasicMaterial({color:0xdb8d76,transparent:true,
         opacity:.9,depthWrite:false,side:THREE.DoubleSide}));
     status.rotation.x=-Math.PI/2;status.visible=false;
     this.scene.add(root,status);
-    this.actors.set(a.id,{root,legs,arms,flash,pack,weapon,status});
+    this.actors.set(a.id,{root,legs,arms,flash,pack,weapon,status,physical});
   }
   update(s:Session,selected:string,dt:number,
     focusedDoorId:string|null=null,omniscient=false){
@@ -665,7 +593,7 @@ export class TacticalScene3D{
       }
       if(!object.root.visible)continue;
       object.root.position.set(actor.p.x,0,actor.p.y);
-      object.root.rotation.y=-actor.heading;
+      // Physical rig resolves hip, torso, gaze and weapon yaw.
       const downProgress=actor.health<=0?
         Math.min(1,Math.max(0,(s.seconds-actor.lastDownAt)/.40)):0;
       const hitAge=s.seconds-actor.lastHitAt;
@@ -711,9 +639,20 @@ export class TacticalScene3D{
       object.flash.visible=!!firing&&actor.health>0;
       if(firing){
         object.flash.scale.setScalar(1.55*(1-firing.age/.115)+.3);
-        object.arms[0].rotation.x-=.16*(1-firing.age/.115);
-        object.arms[1].rotation.x-=.16*(1-firing.age/.115);
       }
+      const activeDoor=actor.lastDoorId?
+        s.doors.find(d=>d.id===actor.lastDoorId):undefined;
+      const handle=activeDoor?handlePoint(activeDoor):undefined;
+      poseOperator(object.physical,{
+        x:actor.p.x,z:actor.p.y,heading:actor.heading,
+        velocity:actor.velocity,seconds:s.seconds,stride:actor.stride,
+        posture:actor.posture,injury:actor.injuryStage,weapon:actor.weapon,
+        reload:actor.reload,reloadDuration,
+        lastThrowAt:actor.lastThrowAt,lastDoorAt:actor.lastDoorAt,
+        doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
+        down:actor.health<=0,surrender:actor.surrendered,
+        aiming:actor.aim>.20,turning:actor.turning,firing:!!firing
+      },dt);
     }
     // 079: One persistent, ID-keyed effect per actual simulation shot.
     // Shared geometry and bounded per-shot materials avoid frame-by-frame GC.

@@ -42,7 +42,8 @@ export type TeamActor=Operator & {
   /** Temporary cooperative sidestep, independent of authored orders. */
   yieldTarget:Pt|null;yieldFor:string|null;yieldUntil:number;
   personality:Personality;morale:number;lastNoiseAt:number;
-  flashUntil:number;lastThrowAt:number;weapon:WeaponId;injuryStage:number;
+  flashUntil:number;lastThrowAt:number;lastDoorAt:number;
+  lastDoorId:string|null;stride:number;weapon:WeaponId;injuryStage:number;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
 };
 export type NoiseEvent={p:Pt;radius:number;time:number;kind:string};
@@ -95,7 +96,7 @@ const withActions=(a:Operator):TeamActor=>({
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
   yieldTarget:null,yieldFor:null,yieldUntil:0,
   personality:'guard',morale:1,lastNoiseAt:-1,flashUntil:-1,
-  lastThrowAt:-100,
+  lastThrowAt:-100,lastDoorAt:-100,lastDoorId:null,stride:0,
   weapon:'carbine',injuryStage:0,defense:null,watch:null,
   defenseUntil:0,surrendered:false,
 });
@@ -972,6 +973,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
         pop(a);return;
       }
       door.open=true;door.openedAt=s.seconds;
+      a.lastDoorAt=s.seconds;a.lastDoorId=door.id;
       hear(s,doorCenter(door),n.method==='kick'?340:145,
         n.method==='kick'?'kick':'door');
       notify(s,door.id+' '+(n.method==='kick'?'KICKED':'OPENED'));
@@ -1332,6 +1334,7 @@ export function stepSession(s:Session,dt:number){
     if(a.side==='blue')runOrders(s,a,h);
     else enemyDecisions(s,a,h);
   }
+  for(const a of s.operators)a.stride+=d(a.p,a.priorP);
   observe(s);
   for(const a of s.operators)fire(s,a,h);
   mission(s,h);
