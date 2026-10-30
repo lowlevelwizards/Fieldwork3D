@@ -634,8 +634,7 @@ export class TacticalScene3D{
         object.root.rotation.z+=.10*Math.sin(s.seconds*24);
         object.weapon.rotation.z-=.25;
       }
-      object.root.position.y=(surrendered?-4:downProgress*4)+
-        (actor.health>0&&actor.posture==='crouch'?-5:0);
+      object.root.position.y=surrendered?-4:downProgress*4;
       const firing=s.shots.find(shot=>shot.shooterId===actor.id&&
         shot.age<.115&&(omniscient||shotVisibility(s,shot).flash));
       object.flash.visible=!!firing&&actor.health>0;

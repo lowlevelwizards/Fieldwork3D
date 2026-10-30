@@ -197,7 +197,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     arm.hand.position.copy(wrist);
   }
   if(p.down){
-    r.root.rotation.z=-1.24;r.chest.rotation.x=-.4;
+    r.root.rotation.z=0;r.chest.rotation.x=-.4;
   }else if(p.surrender){
     r.root.rotation.z=.13;r.chest.rotation.x=.25;
   }else r.root.rotation.z=clamp(p.injury===2?.14:p.injury===1?.04:0,0,.18);
