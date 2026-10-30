@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {activateSite,doorLeafSegment,pointToSegment} from '../src/breach-core.ts';
-import {initDoor} from '../src/breach-door.ts';
+import {initDoor,advanceDoor} from '../src/breach-door.ts';
 import {bodyClear,sweptBodyClear} from '../src/breach-navigation.ts';
 import {newSession,team,enemies,planMove,toggling,stepSession}
   from '../src/breach-game.ts';
@@ -32,5 +32,19 @@ test('144A: operator crossing an open leaf continues along authored route',()=>{
   toggling(s);
   for(let i=0;i<280;i++)stepSession(s,1/60);
   assert.ok(a.p.y<520,'operator should cross without a door deadlock');
+  activateSite(null);
+});
+test('144A: hinge opens away from nearby obstructing furniture',()=>{
+  activateSite({
+    walls:[],doors:[{id:'HINGE',a:{x:100,y:100},b:{x:148,y:100},
+      open:true,openedAt:0}],cover:[
+      {x:130,y:84,w:32,h:20,low:true},
+    ],rooms:[],
+  });
+  const d=initDoor({id:'HINGE',a:{x:100,y:100},
+    b:{x:148,y:100},open:true,openedAt:0,hinge:'a',swing:1},0);
+  for(let i=0;i<90;i++)advanceDoor(d,1/60);
+  assert.equal(d.swing,-1,'hinge must choose free swing side');
+  assert.ok((d.openFraction??0)>.78,'leaf actually opens');
   activateSite(null);
 });
