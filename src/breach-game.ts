@@ -966,6 +966,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       notify(s,a.name+' TOO FAR FROM DOOR');return;
     }
     const required=n.method==='kick'?.20:n.method==='hold'?1.3:.49;
+    if(a.actionTimer===0){a.lastDoorAt=s.seconds;a.lastDoorId=door.id;}
     a.actionTimer+=dt;
     if(a.actionTimer>=required){
       if(n.method==='hold'){
@@ -973,7 +974,6 @@ function runOrders(s:Session,a:TeamActor,dt:number){
         pop(a);return;
       }
       door.open=true;door.openedAt=s.seconds;
-      a.lastDoorAt=s.seconds;a.lastDoorId=door.id;
       hear(s,doorCenter(door),n.method==='kick'?340:145,
         n.method==='kick'?'kick':'door');
       notify(s,door.id+' '+(n.method==='kick'?'KICKED':'OPENED'));

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import {W,H,WALLS,COVER,initialDoors,doorCenter,activeSite,type Pt} from './breach-core.ts';
+import {W,H,WALLS,COVER,initialDoors,doorCenter,activeSite,
+  isClear,type Pt} from './breach-core.ts';
 import {type Site} from './breach-site.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
 import {shotVisibility} from './breach-presentation.ts';
@@ -193,11 +194,12 @@ export class TacticalScene3D{
       this.box(frame,0,30,0,length+7,4,12,doorTrim);
       const threshold=this.box(frame,0,.32,0,length,1.2,13,
         doorTrim,false);
-      const leaf=new THREE.Group();leaf.position.x=-length/2;
+      const leaf=new THREE.Group();
+       const invert=door.hinge==='b';leaf.position.x=invert?length/2:-length/2;
       root.add(leaf);
-      this.box(leaf,length/2,13,0,length-4,26,4,doorMat);
-      this.box(leaf,length*.7,13,3,3,3,2,metal,false);
-       this.box(leaf,length*.7,13,-3,3,3,2,metal,false);
+      this.box(leaf,(door.hinge==='b'?-1:1)*length/2,13,0,length-4,26,4,doorMat);
+      this.box(leaf,(door.hinge==='b'?-1:1)*length*.7,13,3,3,3,2,metal,false);
+       this.box(leaf,(door.hinge==='b'?-1:1)*length*.7,13,-3,3,3,2,metal,false);
       const halo=new THREE.Mesh(new THREE.RingGeometry(
         length*.55,length*.66,32),new THREE.MeshBasicMaterial({
         color:0xe1c38b,transparent:true,opacity:.95,
@@ -294,11 +296,11 @@ export class TacticalScene3D{
       this.box(frame,width/2,15,0,5,30,10,doorTrim);
       this.box(frame,0,30,0,width+7,4,12,doorTrim);
       const threshold=this.box(frame,0,.32,0,width,1.2,13,thresholdMat,false);
-      const hinge=new THREE.Group();hinge.position.x=-width/2;
+      const hinge=new THREE.Group();hinge.position.x=door.hinge==='b'?width/2:-width/2;
       group.add(hinge);
-      this.box(hinge,width/2,13,0,width-3,26,4,doorMat);
-      this.box(hinge,width*.7,13,2.6,3,4,2,doorTrim,false);
-       this.box(hinge,width*.7,13,-2.6,3,4,2,doorTrim,false);
+      this.box(hinge,(door.hinge==='b'?-1:1)*width/2,13,0,width-3,26,4,doorMat);
+      this.box(hinge,(door.hinge==='b'?-1:1)*width*.7,13,2.6,3,4,2,doorTrim,false);
+       this.box(hinge,(door.hinge==='b'?-1:1)*width*.7,13,-2.6,3,4,2,doorTrim,false);
       const halo=new THREE.Mesh(
         new THREE.RingGeometry(width*.56,width*.66,32),
         new THREE.MeshBasicMaterial({color:0xe3bc7d,transparent:true,
@@ -640,8 +642,10 @@ export class TacticalScene3D{
       if(firing){
         object.flash.scale.setScalar(1.55*(1-firing.age/.115)+.3);
       }
-      const activeDoor=actor.lastDoorId?
-        s.doors.find(d=>d.id===actor.lastDoorId):undefined;
+      const plannedDoor=actor.plan[0]?.kind==='door'?
+        s.doors.find(d=>d.id===actor.plan[0].doorId):undefined;
+      const activeDoor=plannedDoor??(actor.lastDoorId?
+        s.doors.find(d=>d.id===actor.lastDoorId):undefined);
       const handle=activeDoor?handlePoint(activeDoor):undefined;
       poseOperator(object.physical,{
         x:actor.p.x,z:actor.p.y,heading:actor.heading,
@@ -651,7 +655,13 @@ export class TacticalScene3D{
         lastThrowAt:actor.lastThrowAt,lastDoorAt:actor.lastDoorAt,
         doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
         down:actor.health<=0,surrender:actor.surrendered,
-        aiming:actor.aim>.20,turning:actor.turning,firing:!!firing
+        aiming:actor.aim>.20,turning:actor.turning,firing:!!firing,
+        obstruction:!isClear(actor.p,{
+          x:actor.p.x+Math.cos(actor.heading)*
+            (actor.weapon==='rifle'?46:actor.weapon==='shotgun'?42:31),
+          y:actor.p.y+Math.sin(actor.heading)*
+            (actor.weapon==='rifle'?46:actor.weapon==='shotgun'?42:31)
+        },s.doors)
       },dt);
     }
     // 079: One persistent, ID-keyed effect per actual simulation shot.
