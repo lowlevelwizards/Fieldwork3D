@@ -10,7 +10,8 @@ import {ReplayMotionRecorder,type ReplayPresentation} from './breach-replay-moti
 export type ActorFrame=Pick<TeamActor,
   'id'|'p'|'heading'|'health'|'velocity'|'turning'|'posture'|'alert'|
   'magazine'|'reserve'|'reload'|'shots'|'fireCd'|'aim'|
-  'lastHitAt'|'lastDownAt'|'flashUntil'|'suppression'|
+  'lastHitAt'|'lastDownAt'|'lastHitRegion'|'lastHitYaw'|
+  'lastHitSeverity'|'downPose'|'flashUntil'|'suppression'|
   'weapon'|'injuryStage'|'morale'|'surrendered'|'defense'|'watch'|
   'lastThrowAt'|'lastDoorAt'|'lastDoorId'|'stride'|
   'weaponYaw'|'stability'|'recoil'|'lastShotAt'|'fireMode'|'burstCount'|'skills'>;
@@ -38,6 +39,8 @@ export function snapshot(s:Session):ReplayFrame{
       magazine:a.magazine,reserve:a.reserve,reload:a.reload,
       shots:a.shots,fireCd:a.fireCd,aim:a.aim,
       lastHitAt:a.lastHitAt,lastDownAt:a.lastDownAt,
+      lastHitRegion:a.lastHitRegion,lastHitYaw:a.lastHitYaw,
+      lastHitSeverity:a.lastHitSeverity,downPose:a.downPose,
       flashUntil:a.flashUntil,suppression:a.suppression,
       weapon:a.weapon,injuryStage:a.injuryStage,morale:a.morale,
       lastThrowAt:a.lastThrowAt,lastDoorAt:a.lastDoorAt,
