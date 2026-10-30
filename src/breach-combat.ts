@@ -1,5 +1,5 @@
 /** Builds 099–102: data-driven weapon, injury and exposure authority. */
-import {COVER,WALLS,segmentsCross,type Pt,type Door,type Obstacle} from './breach-core.ts';
+import {COVER,WALLS,segmentsCross,doorBlocksRay,type Pt,type Door,type Obstacle} from './breach-core.ts';
 export type Injury='healthy'|'injured'|'heavy'|'incapacitated';
 export type WeaponId='carbine'|'smg'|'rifle'|'shotgun';
 export type Weapon={id:WeaponId;label:string;capacity:number;reserve:number;
@@ -38,7 +38,7 @@ export type Exposure={blocked:boolean;soft:boolean;hard:boolean;penalty:number;
 export function exposure(from:Pt,to:Pt,doors:Door[],crouched=false):Exposure{
   const line={a:from,b:to};
   if(WALLS.some(w=>segmentsCross(line,w))||
-    doors.some(door=>!door.open&&segmentsCross(line,door)))
+    doorBlocksRay(doors,line))
     return {blocked:true,soft:false,hard:true,penalty:1,material:'stone'};
   let hard=false,soft=false,material:Exposure['material']='dust';
   for(const cover of COVER)if(segmentBox(from,to,cover)){

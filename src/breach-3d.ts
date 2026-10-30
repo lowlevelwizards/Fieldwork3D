@@ -4,7 +4,7 @@ import {W,H,WALLS,COVER,initialDoors,doorCenter,activeSite,
 import {type Site} from './breach-site.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
 import {shotVisibility} from './breach-presentation.ts';
-import {doorYaw,handlePoint,doorReachable} from './breach-door.ts';
+import {handlePoint,doorReachable} from './breach-door.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {casingAt,CASING_LIMIT,impactProfile} from './breach-effects.ts';
@@ -38,7 +38,7 @@ export class TacticalScene3D{
     contactShadows:THREE.Mesh[]}>();
   private doors=new Map<string,{root:THREE.Group;leaf:THREE.Group;
     frame:THREE.Group;halo:THREE.Mesh;threshold:THREE.Mesh}>();
-  private observedDoorOpen=new Map<string,boolean>();
+  private observedDoorOpen=new Map<string,number>();
   private effectCache=new Map<number,{root:THREE.Group;line:THREE.Mesh;
     impact:THREE.Mesh;chips:THREE.Mesh[];material:THREE.MeshBasicMaterial;
     impactMaterial:THREE.MeshBasicMaterial}>();
@@ -220,7 +220,7 @@ export class TacticalScene3D{
       halo.visible=false;root.add(halo);this.mats.push(halo.material);
       this.root.add(root);
       this.doors.set(door.id,{root,leaf,frame,halo,threshold});
-      this.observedDoorOpen.set(door.id,false);
+      this.observedDoorOpen.set(door.id,door.openFraction??0);
     }
     const wood=this.solid(0x655748),steel=this.solid(0x465958);
     const olive=this.solid(0x70715e);
@@ -321,7 +321,7 @@ export class TacticalScene3D{
       halo.visible=false;group.add(halo);this.mats.push(halo.material);
       this.root.add(group);
       this.doors.set(door.id,{root:group,leaf:hinge,frame,halo,threshold});
-      this.observedDoorOpen.set(door.id,false);
+      this.observedDoorOpen.set(door.id,0);
     }
     // Furniture height matches cover classification: low crates vs high cabinets.
     for(let i=0;i<COVER.length;i++){
@@ -574,13 +574,13 @@ export class TacticalScene3D{
       // Freeze the last observed door state when it drops out of view:
       // a guard opening an unseen door may not broadcast its exact state.
       if(omniscient||liveVisibility(s,doorCenter(door)))
-        this.observedDoorOpen.set(door.id,door.open);
-      const shownOpen=this.observedDoorOpen.get(door.id)??false;
+        this.observedDoorOpen.set(door.id,door.openFraction??(door.open?1:0));
+      const fraction=this.observedDoorOpen.get(door.id)??0;
       const replayProgress=replay?.doors[door.id];
-      object.leaf.rotation.y=replayProgress===undefined?
-        THREE.MathUtils.lerp(object.leaf.rotation.y,
-          shownOpen?doorYaw(door):0,Math.min(1,Math.max(0,dt)*14)):
-        replayProgress*doorYaw(door);
+      // The rendered leaf follows the authoritative hinge rather than
+      // a render-rate easing curve that disagrees with collision.
+      object.leaf.rotation.y=(door.swing??-1)*
+        (replayProgress??fraction)*1.36;
       const selectedActor=team(s).find(a=>a.id===selected);
       const reachable=selectedActor&&selectedActor.health>0&&
         [selectedActor.p,...selectedActor.plan.map(n=>n.p)].some(p=>

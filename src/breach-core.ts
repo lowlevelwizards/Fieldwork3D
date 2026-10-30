@@ -7,7 +7,8 @@ import {type Site} from './breach-site.ts';
 export type Pt={x:number;y:number};
 export type Segment={a:Pt;b:Pt};
 export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number;
-  hinge?:'a'|'b';swing?:-1|1;openFraction?:number};
+  hinge?:'a'|'b';swing?:-1|1;openFraction?:number;
+  angularVelocity?:number;resistance?:number;}
 export type Obstacle={x:number;y:number;w:number;h:number;low?:boolean};
 export type Side='blue'|'red';
 export type Operator={id:string;name:string;side:Side;p:Pt;heading:number;
@@ -75,10 +76,30 @@ export function passable(p:Pt,clearance=OPERATOR_RADIUS):boolean{
   if(COVER.some(o=>pointInCover(p,o,clearance)))return false;
   return true;
 }
+/** The rotated leaf is the single collision/sightline surface. A hinge on
+ * endpoint B reverses the closed direction. Tactical (x,y) rotates opposite
+ * THREE's Y-axis door yaw so the 2D and 3D leaves overlap. */
+export const doorYaw=(d:Door)=>(d.swing??-1)*
+  (d.openFraction??(d.open?1:0))*1.36;
+export function doorLeafSegment(d:Door):Segment{
+ const hinge=d.hinge==='b'?d.b:d.a;
+ const end=d.hinge==='b'?d.a:d.b;
+ const x=end.x-hinge.x,y=end.y-hinge.y;
+ const angle=-doorYaw(d),cos=Math.cos(angle),sin=Math.sin(angle);
+ return {a:{...hinge},b:{x:hinge.x+x*cos-y*sin,
+   y:hinge.y+x*sin+y*cos}};
+}
+export function doorBlocksSegment(door:Door,line:Segment):boolean{
+ const leaf=doorLeafSegment(door);
+ return segmentsCross(line,leaf);
+}
+export function doorBlocksRay(doors:Door[],line:Segment):boolean{
+ return doors.some(door=>doorBlocksSegment(door,line));
+}
 export function isClear(a:Pt,b:Pt,doors:Door[],ignoreDoors=false):boolean{
   const shot={a,b};
   if(WALLS.some(w=>segmentsCross(shot,w)))return false;
-  if(!ignoreDoors&&doors.some(d=>!d.open&&segmentsCross(shot,d)))
+  if(!ignoreDoors&&doorBlocksRay(doors,shot))
     return false;
   // Furniture blocks bullets/visibility but can be bypassed through doors.
   const n=Math.max(1,Math.ceil(distance(a,b)/8));

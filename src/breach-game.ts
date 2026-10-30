@@ -6,7 +6,7 @@
 import {
   type Pt,type Operator,type TacticalState,type Door,type Side,
   WALLS,COVER,initialDoors,newTacticalState,route,passable,activateSite,
-  segmentsCross,doorCenter,
+  segmentsCross,doorCenter,doorBlocksSegment,doorLeafSegment,doorBlocksRay,
 } from './breach-core.ts';
 import {
   type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,
@@ -20,7 +20,7 @@ import {WEAPONS,injuryOf,injurySpeed,injuryReload,
   woundSeverity,exposure,nearCover,type WeaponId,type BattleEvent}
   from './breach-combat.ts';
 import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
-import {initDoor,advanceDoor,doorReachable,doorApproach,doorClear} from './breach-door.ts';
+import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor} from './breach-door.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
@@ -675,7 +675,7 @@ function hear(s:Session,p:Pt,radius:number,kind:string){
 function unobstructed(a:Pt,b:Pt,s:Session,lowBlocks:boolean){
   const ray={a,b};
   if(WALLS.some(w=>segmentsCross(ray,w)))return false;
-  if(s.doors.some(w=>!w.open&&segmentsCross(ray,w)))return false;
+  if(s.doors.some(w=>doorBlocksSegment(w,ray)))return false;
   const n=Math.ceil(d(a,b)/6);
   for(let i=1;i<n;i++){
     const t=i/n,x=a.x+(b.x-a.x)*t,y=a.y+(b.y-a.y)*t;
@@ -749,8 +749,7 @@ function yieldPocket(blocker:TeamActor,requester:TeamActor,s:Session):Pt|null{
     for(let i=1;i<=5;i++){
       const t=i/5,step={x:blocker.p.x+(pos.x-blocker.p.x)*t,
         y:blocker.p.y+(pos.y-blocker.p.y)*t};
-      if(!passable(step)||s.doors.some(door=>!door.open&&
-        segmentsCross({a:blocker.p,b:step},door)))return false;
+      if(!passable(step)||s.doors.some(door=>doorBlocksSegment(door,{a:blocker.p,b:step})))return false;
     }
     return true;
   }).sort((u,v)=>
@@ -792,8 +791,7 @@ function stepYield(s:Session,a:TeamActor,dt:number):boolean{
     const candidate={x:a.p.x+
       (a.yieldTarget.x-a.p.x)/distance*advance,
       y:a.p.y+(a.yieldTarget.y-a.p.y)/distance*advance};
-    if(passable(candidate)&&!s.doors.some(door=>!door.open&&
-      segmentsCross({a:a.p,b:candidate},door))){
+    if(passable(candidate)&&!s.doors.some(door=>doorBlocksSegment(door,{a:a.p,b:candidate}))){
       a.priorP=clone(a.p);a.p=candidate;a.velocity=50;
     }else{
       a.yieldTarget=null;a.yieldFor=null;a.yieldUntil=0;a.nav=[];
@@ -818,8 +816,9 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const advance=Math.min(gap,a.velocity*dt);
   const move={x:a.p.x+Math.cos(direction)*advance,
     y:a.p.y+Math.sin(direction)*advance};
-  const closedDoor=s.doors.find(door=>!doorClear(door)&&
-    segmentsCross({a:a.p,b:move},door));
+  const closedDoor=s.doors.find(door=>
+    doorBlocksSegment(door,{a:a.p,b:move}));
+  if(closedDoor&&closedDoor.open)pushDoor(closedDoor,.30);
   const closed=!!closedDoor;
   if(closedDoor&&a.side==='red'&&d(a.p,doorCenter(closedDoor))<49){
     a.actionTimer+=dt;
@@ -1145,8 +1144,8 @@ function strikeSurface(from:Pt,aimed:Pt,s:Session):{
     const t=segmentImpact(from,aimed,wall);
     if(t!==null&&t<best){best=t;material='stone';}
   }
-  for(const door of s.doors)if(!door.open){
-    const t=segmentImpact(from,aimed,door);
+  for(const door of s.doors){
+    const t=segmentImpact(from,aimed,doorLeafSegment(door));
     if(t!==null&&t<best){best=t;material='wood';}
   }
   for(const box of COVER){
@@ -1411,7 +1410,7 @@ function stepFlashbangs(s:Session,h:number){
       if(dist>105)continue;
       const ray={a:g.to,b:a.p};
       const blocked=WALLS.some(w=>segmentsCross(ray,w))||
-        s.doors.some(door=>!door.open&&segmentsCross(ray,door));
+        doorBlocksRay(s.doors,ray);
       if(blocked)continue;
       const duration=2.8*(1-dist/140);
       a.flashUntil=Math.max(a.flashUntil,s.seconds+duration);

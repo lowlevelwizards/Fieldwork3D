@@ -1,12 +1,12 @@
 /** Build 097: authored grenade trajectory and open-door corner routes. */
-import {WALLS,segmentsCross,doorCenter,type Pt,type Door} from './breach-core.ts';
+import {doorBlocksRay,WALLS,segmentsCross,doorCenter,type Pt,type Door} from './breach-core.ts';
 export type ThrowPath={points:Pt[];mode:'direct'|'doorway'|'bank';valid:boolean;
   reason?:string;via?:Pt};
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const blocked=(from:Pt,to:Pt,doors:Door[])=>{
   const seg={a:from,b:to};
   return WALLS.some(w=>segmentsCross(seg,w))||
-    doors.some(d=>!d.open&&segmentsCross(seg,d));
+    doorBlocksRay(doors,seg);
 };
 export function validateThrow(from:Pt,to:Pt,doors:Door[],
   plannedOpen:string[]=[]):ThrowPath{

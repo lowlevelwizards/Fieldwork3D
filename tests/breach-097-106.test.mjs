@@ -59,7 +59,7 @@ test('100: obstruction is directional and does not confuse an open door with a w
   const s=newSession();
   const from={x:300,y:566},other={x:300,y:498};
   assert.equal(exposure(from,other,s.doors).blocked,true);
-  const open=s.doors.map(d=>({...d,open:true}));
+  const open=s.doors.map(d=>({...d,open:true,openFraction:1}));
   assert.equal(exposure(from,other,open).blocked,false);
   activateSite(null);
 });
