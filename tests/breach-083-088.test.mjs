@@ -72,6 +72,9 @@ test('083–088: main page and dedicated Breach both offer four-person controls'
   const breach=readFileSync(new URL('../breach.html',import.meta.url),'utf8');
   const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
   const three=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
+  for(const html of [index,breach]){
+    assert.match(html,/id="intelMode"/,'both public entrypoints need fog selector');
+  }
   for(const html of [index,breach])for(const id of ['rook','moss','ash','vale']){
     assert.ok(html.includes('id="'+id+'"'));
     assert.ok(html.includes('id="'+id+'Hp"'));
