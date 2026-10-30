@@ -173,7 +173,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const motion=bodyFromContacts({velocity:p.down?0:p.velocity,
     heading:p.heading,travelYaw,turning:p.turning,
     injury:p.injury,posture:p.posture,feet:targets});
-  r.hip.position.y=19-crouch+motion.pelvisY;
+  // Wide side-steps need a physical lowering of the center of mass,
+  // not a longer limb or a shoe teleported away from its world anchor.
+  const stanceRadius=Math.max(...targets.map(t=>
+    Math.hypot(t.position.x-p.x,t.position.y-p.z)));
+  const stanceDrop=clamp((stanceRadius-7.8)*.80,0,4.0);
+  r.hip.position.y=19-crouch+motion.pelvisY-stanceDrop;
   r.hip.position.z=motion.pelvisSide;
   r.chest.position.y=26-crouch+motion.pelvisY*.65;
   r.chest.position.z=motion.pelvisSide*.75;
@@ -195,7 +200,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       target.position.y);
     const relative=targetWorld.sub(P(p.x,0,p.z))
       .applyAxisAngle(P(0,1,0),-headingYaw);
-    const leg=solveTwoBone(hipLocal,relative,10.3,10.3,
+    const leg=solveTwoBone(hipLocal,relative,9.7,9.7,
       P(4.5,0,sign*1.1),LEG_LIMITS,foot.bend);
     foot.bend.copy(leg.bendPlane);
     foot.outOfReach=!leg.reached;
