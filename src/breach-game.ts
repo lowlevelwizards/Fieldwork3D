@@ -16,7 +16,7 @@ import {
 } from './breach-plan.ts';
 import {validPieArc} from './breach-maneuvers.ts';
 import {generateSite,type Site,seeded} from './breach-site.ts';
-import {WEAPONS,injuryOf,injuryAim,injurySpeed,injuryReload,
+import {WEAPONS,injuryOf,injurySpeed,injuryReload,
   woundSeverity,exposure,nearCover,type WeaponId,type BattleEvent}
   from './breach-combat.ts';
 import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
@@ -1074,10 +1074,6 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     if(a.nav.length)approach(a,a.defense,dt,s,.7);
   }
   if(!a.contact&&a.watch)rotate(a,angle(a.p,a.watch),dt);
-}
-function softCoverPenalty(_a:TeamActor,b:TeamActor){
-  if(b.posture!=='crouch')return 0;
-  return nearCover(b.p,_a.p)?.19:0;
 }
 function random(s:Session){
   s.rng=(Math.imul(s.rng,1664525)+1013904223)>>>0;
