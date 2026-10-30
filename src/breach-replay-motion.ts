@@ -5,7 +5,7 @@
 import type {TeamActor} from './breach-game.ts';
 import type {Door} from './breach-core.ts';
 import {footArticulation} from './breach-foot-articulation.ts';
-import {advanceFootsteps,createFootstepScheduler,gaitBounds,
+import {advanceFootsteps,createFootstepScheduler,
   type FootTarget,type FootstepScheduler,type FootstepInput} from './breach-footsteps.ts';
 
 export type ReplayFeet=[FootTarget,FootTarget];
@@ -121,7 +121,7 @@ export class ReplayMotionRecorder{
       }
       if(track.gait.lastStepAt!==previousStep&&
         track.gait.lastStepAt===time){
-        const bounds=gaitBounds(input),i=track.gait.lastStepFoot;
+        const i=track.gait.lastStepFoot;
         const foot=track.gait.feet[i];
         track.events[i].push({at:time,from:{...foot.swingFrom},
           to:{...foot.swingTo},fromYaw:foot.fromYaw,
