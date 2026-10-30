@@ -1,6 +1,7 @@
 /** Local micro-detours are temporary navigation hints, not plan edits.
  * Check the entire step against clearance and occupied actor footprints. */
-import {doorBlocksRay,passable,type Door,type Pt} from './breach-core.ts';
+import {type Door,type Pt} from './breach-core.ts';
+import {sweptBodyClear} from './breach-navigation.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function localDetour(from:Pt,toward:Pt,doors:Door[],
   occupied:Pt[],radius=8):Pt|null{
@@ -14,16 +15,8 @@ export function localDetour(from:Pt,toward:Pt,doors:Door[],
         candidates.push({x:from.x+f.x*ahead+side.x*offset*sign,
           y:from.y+f.y*ahead+side.y*offset*sign});
   const safe=(p:Pt)=>{
-    if(!passable(p,radius)||occupied.some(o=>distance(p,o)<radius*2+1))
-      return false;
-    if(doorBlocksRay(doors,{a:from,b:p}))return false;
-    const steps=Math.max(2,Math.ceil(distance(from,p)/5));
-    for(let i=1;i<=steps;i++){
-      const t=i/steps;
-      if(!passable({x:from.x+(p.x-from.x)*t,
-        y:from.y+(p.y-from.y)*t},radius))return false;
-    }
-    return true;
+    return !occupied.some(o=>distance(p,o)<radius*2+1)&&
+      sweptBodyClear(from,p,doors,radius);
   };
   return candidates.filter(safe).sort((a,b)=>
     distance(a,toward)-distance(b,toward))[0]??null;

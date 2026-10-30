@@ -23,6 +23,7 @@ import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
 import {segmentHitsBox} from './breach-ray.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from './breach-door.ts';
 import {localDetour} from './breach-cooperation.ts';
+import {sweptBodyClear} from './breach-navigation.ts';
 import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
   rayHitsActor,muzzleEndpoint,recoverWeapon,handlingInstability,type FiringMode} from './breach-ballistics.ts';
@@ -53,7 +54,7 @@ export type TeamActor=Operator & {
   stopped:boolean;haltOnContact:boolean;retreatPoint:Pt|null;
   contact:Pt|null;heard:Pt|null;
   alertUntil:number;waitRemaining:number;syncReady:string|null;
-  actionTimer:number;blockedTime:number;priorP:Pt;pieIndex:number;
+  actionTimer:number;blockedTime:number;lastNavRepairAt:number;priorP:Pt;pieIndex:number;
   /** Last executed facing command; survives across movement waypoints. */
   aimInstruction:AimInstruction|null;
   /** Simulation-timed cues, not new combat rules. */
@@ -129,7 +130,7 @@ const withActions=(a:Operator):TeamActor=>({
   reloadRemoved:false,reloadInserted:false,reloadFromRounds:0,
   reloadTargetRounds:0,
   alertUntil:0,waitRemaining:0,syncReady:null,actionTimer:0,
-  blockedTime:0,priorP:clone(a.p),haltOnContact:false,retreatPoint:null,
+  blockedTime:0,lastNavRepairAt:-10,priorP:clone(a.p),haltOnContact:false,retreatPoint:null,
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
   lastHitRegion:'torso',lastHitYaw:0,lastHitSeverity:0,
   downPose:'forward',
@@ -922,16 +923,9 @@ function yieldPocket(blocker:TeamActor,requester:TeamActor,s:Session):Pt|null{
       y:blocker.p.y+backwards.y*offset});
   }
   return options.filter(pos=>{
-    if(!passable(pos))return false;
     if(s.operators.some(b=>b!==blocker&&b!==requester&&b.health>0&&
       d(pos,b.p)<18))return false;
-    // Do not sidestep through walls, closed doors, or cover.
-    for(let i=1;i<=5;i++){
-      const t=i/5,step={x:blocker.p.x+(pos.x-blocker.p.x)*t,
-        y:blocker.p.y+(pos.y-blocker.p.y)*t};
-      if(!passable(step)||s.doors.some(door=>doorBlocksSegment(door,{a:blocker.p,b:step})))return false;
-    }
-    return true;
+    return sweptBodyClear(blocker.p,pos,s.doors);
   }).sort((u,v)=>
     d(v,requester.p)-d(u,requester.p)||
     d(u,blocker.p)-d(v,blocker.p))[0]??null;
@@ -971,7 +965,7 @@ function stepYield(s:Session,a:TeamActor,dt:number):boolean{
     const candidate={x:a.p.x+
       (a.yieldTarget.x-a.p.x)/distance*advance,
       y:a.p.y+(a.yieldTarget.y-a.p.y)/distance*advance};
-    if(passable(candidate)&&!s.doors.some(door=>doorBlocksSegment(door,{a:a.p,b:candidate}))){
+    if(sweptBodyClear(a.p,candidate,s.doors)){
       a.priorP=clone(a.p);a.p=candidate;a.velocity=50;
     }else{
       a.yieldTarget=null;a.yieldFor=null;a.yieldUntil=0;a.nav=[];
@@ -998,17 +992,27 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     y:a.p.y+Math.sin(direction)*advance};
   const closedDoor=s.doors.find(door=>
     doorBlocksSegment(door,{a:a.p,b:move}));
-  if(closedDoor&&closedDoor.open)pushDoor(closedDoor,.48);
-  const closed=!!closedDoor;
-  if(closedDoor&&a.side==='red'&&d(a.p,doorCenter(closedDoor))<49){
-    a.actionTimer+=dt;
-    if(a.actionTimer>=.55){
-      closedDoor.open=true;closedDoor.openedAt=s.seconds;
-      hear(s,doorCenter(closedDoor),125,'door');
-      notify(s,a.name+' OPENED '+closedDoor.id);
-      a.actionTimer=0;
+  // Look ahead to the route's next node, stopping to open a door before
+  // the actor's capsule contacts the physical leaf.
+  const doorAhead=a.side==='red'?s.doors.find(door=>{
+    if(door.open&&(door.openFraction??0)>=.72)return false;
+    const center=doorCenter(door);
+    return d(a.p,center)<52&&
+      (doorBlocksSegment(door,{a:a.p,b:next})||
+       d(next,center)<22);
+  }):undefined;
+  if(doorAhead){
+    a.velocity=0;a.actionTimer+=dt;
+    if(a.actionTimer>=.36&&!doorAhead.open){
+      doorAhead.open=true;doorAhead.openedAt=s.seconds;
+      hear(s,doorCenter(doorAhead),125,'door');
+      notify(s,a.name+' OPENED '+doorAhead.id);
     }
+    if((doorAhead.openFraction??0)<.72)return true;
+    a.actionTimer=0;
   }else if(a.side==='red')a.actionTimer=0;
+  if(closedDoor&&closedDoor.open)pushDoor(closedDoor,.55);
+  const closed=!!closedDoor;
   const blocking=s.operators.find(b=>b!==a&&b.health>0&&
     d(b.p,move)<(b.side===a.side?15:11));
   const teammate=blocking?.side===a.side?blocking:null;
@@ -1040,7 +1044,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   // when two allies cannot sidestep, without dragging either actor.
   const squeeze=!!teammate&&a.blockedTime>1.05&&
     d(move,teammate.p)>9.5&&!a.yieldTarget;
-  if(!closed&&(!blocking||squeeze)&&passable(move)){
+  if(!closed&&(!blocking||squeeze)&&sweptBodyClear(a.p,move,s.doors)){
     a.priorP=clone(a.p);a.p=move;a.blockedTime=0;
     if(a.side==='blue'&&s.seconds-s.movementNoiseAt>.54){
       hear(s,a.p,a.posture==='crouch'?30:68,'footstep');
@@ -1051,6 +1055,14 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     a.blockedTime+=dt;
     if(a.blockedTime>1&&a.blockedTime<1.1)
       notify(s,a.name+(closed?' WAITING AT DOOR':' PATH BLOCKED'));
+    if(a.blockedTime>1.25&&s.seconds-a.lastNavRepairAt>1.2){
+      a.lastNavRepairAt=s.seconds;
+      const repaired=a.side==='blue'?routeWithIntel(s.intel,a.p,p):
+        route(a.p,p);
+      if(repaired.length&&
+         (!a.nav.length||d(repaired[0],a.nav[0])>4))
+        a.nav=repaired;
+    }
     // Do not discard an authored plan just because someone is in the way.
   }
   return true;
