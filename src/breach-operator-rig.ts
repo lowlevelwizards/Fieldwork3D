@@ -125,7 +125,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const direction=p.travelYaw??(r.lastPose?
     Math.atan2(p.z-r.lastPose.z,p.x-r.lastPose.x):p.heading);
   const travel=moving>.14?direction:p.heading;
-  const hipTarget=moving>.22?travel:p.heading;
+  // Tactical strafing and reverse movement keep the pelvis oriented toward
+  // the threat; translation is not the same thing as facing.
+  const lateral=Math.abs(Math.sin(travel-p.heading))>.52;
+  const reverse=Math.cos(travel-p.heading)<-.4;
+  const hipTarget=moving>.22&&!lateral&&!reverse?travel:p.heading;
   r.root.rotation.y=p.deterministic?-hipTarget:
     approach(r.root.rotation.y,-hipTarget,3.8,dt);
   // Upper body follows aim, with a limited anatomical twist.
@@ -146,7 +150,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const travelYaw=p.travelYaw??direction;
   const targets=p.replayFeet??advanceFootsteps(r.footsteps,{
     time:p.seconds,position:{x:p.x,y:p.z},rootYaw:headingYaw,
-    travelYaw,speed:p.velocity,turning:p.turning,posture:p.posture,
+    travelYaw,facingYaw:p.heading,speed:p.velocity,turning:p.turning,posture:p.posture,
     injury:p.injury,down:p.down,cautious:p.aiming&&moving<.35
   });
   for(let i=0;i<2;i++){
