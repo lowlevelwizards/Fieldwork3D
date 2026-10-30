@@ -114,8 +114,9 @@ const cellPoint=(col:number,row:number):Pt=>({x:col*GRID,y:row*GRID});
 const key=(col:number,row:number)=>col+','+row;
 /** A* only translates a deliberately chosen waypoint into a collision-safe
  * local route; the user still chooses every tactical destination. */
-export function route(from:Pt,to:Pt):Pt[]{
-  if(!passable(to))return [];
+export function route(from:Pt,to:Pt,
+  canStand:(p:Pt)=>boolean=passable):Pt[]{
+  if(!canStand(to))return [];
   const st=cellAt(from),goal=cellAt(to);
   const startKey=key(st.col,st.row),goalKey=key(goal.col,goal.row);
   if(startKey===goalKey)return [{...to}];
@@ -132,10 +133,10 @@ export function route(from:Pt,to:Pt):Pt[]{
     if(k===goalKey){found=true;break;}
     for(const [dx,dy] of dirs){
       const col=at.col+dx,row=at.row+dy,p=cellPoint(col,row);
-      if(!passable(p))continue;
+      if(!canStand(p))continue;
       if(dx!==0&&dy!==0&&
-        (!passable(cellPoint(at.col+dx,at.row))||
-         !passable(cellPoint(at.col,at.row+dy))))continue;
+        (!canStand(cellPoint(at.col+dx,at.row))||
+         !canStand(cellPoint(at.col,at.row+dy))))continue;
       const next=key(col,row),cost=at.g+Math.hypot(dx,dy);
       if(cost>=(best.get(next)??Infinity))continue;
       best.set(next,cost);parents.set(next,k);
