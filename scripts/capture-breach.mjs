@@ -439,6 +439,45 @@ try{
   await physical.locator('#injury').selectOption('3');
   await physical.waitForTimeout(210);
   await physical.screenshot({path:resolve(folder,'28-operator-lab-incapacitated.png')});
+  // Build 122: a controlled movement track at an EXACT named timestamp.
+  await physical.locator('#injury').selectOption('0');
+  await physical.locator('[data-pose="walk"]').click();
+  const seekLab=async(ms)=>{
+    await physical.locator('#timeline').evaluate((element,value)=>{
+      const slider=element;slider.value=String(value);
+      slider.dispatchEvent(new Event('input',{bubbles:true}));
+    },ms);
+    await physical.waitForFunction(target=>{
+      const time=Number(document.querySelector('#preview')?.dataset.time);
+      return Math.abs(time-target/1000)<.002;
+    },ms,{timeout:20000});
+  };
+  await seekLab(960);
+  await physical.locator('#diagnosticLayer').selectOption('anchors');
+  const support=Number(await physical.locator('#preview')
+    .getAttribute('data-contact-count'));
+  if(support<1)throw Error('Lab pose lost both foot contacts');
+  await physical.screenshot({path:resolve(folder,'29-operator-lab-walk-0960-contact.png')});
+  await physical.locator('[data-view="front"]').click();
+  await physical.screenshot({path:resolve(folder,'30-operator-lab-walk-0960-front.png')});
+  await seekLab(2400);await seekLab(960);
+  if(Number(await physical.locator('#preview').getAttribute(
+    'data-contact-count'))!==support)
+    throw Error('Backward lab seek changed contact count');
+  await physical.locator('[data-view="side"]').click();
+  await physical.locator('#diagnosticLayer').selectOption('planes');
+  await physical.screenshot({path:resolve(folder,'31-operator-lab-walk-0960-side-joints.png')});
+  await physical.locator('[data-pose="turn-180"]').click();
+  await seekLab(1600);
+  await physical.locator('#diagnosticLayer').selectOption('support');
+  await physical.screenshot({path:resolve(folder,'32-operator-lab-turn-1600-support.png')});
+  await physical.locator('[data-pose="aim"]').click();
+  await seekLab(900);
+  await physical.locator('#diagnosticLayer').selectOption('weapon');
+  await physical.screenshot({path:resolve(folder,'33-operator-lab-ads-0900-contacts.png')});
+  await physical.setViewportSize({width:844,height:390});
+  await physical.locator('[data-view="iso"]').click();
+  await physical.screenshot({path:resolve(folder,'34-operator-lab-landscape.png')});
   await physical.close();
   if(errors.length)throw Error('Browser console exceptions: '+errors.join('; '));
   const manifest={initial,rotated,pan,pinch,visibleButtons,errors};
