@@ -79,6 +79,7 @@ export class TacticalScene3D{
     this.scene.add(this.sun);
     this.scene.add(this.root,this.effects);
     this.buildWorld();
+    if(activeSite())this.view.zoom=1.48;
     // Architectural silhouettes remain visible (as in the 2D map), but
     // unknown cells are strongly darkened. Unseen soldiers and door states
     // are separately visibility-gated, so a huge opaque 'roof' is unnecessary.
@@ -384,7 +385,7 @@ export class TacticalScene3D{
   /** A reset is a predictable full-board fit, independent of unit selection. */
   resetCamera(){
     this.view.focus={x:W/2,y:H/2};this.view.yaw=Math.PI/4;
-    this.view.zoom=1.25;
+    this.view.zoom=activeSite()?1.48:1.25;
     this.view.pitch=this.view.mode==='top'?Math.PI/2:55*Math.PI/180;
     this.updateCamera(1);
   }
