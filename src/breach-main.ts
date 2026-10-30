@@ -1041,12 +1041,15 @@ function insertAtRouteLine(screen:Pt):boolean{
   if(!actor||state.phase!=='planning')return false;
   const hit=routeLineHit(actor.p,actor.plan,screen,
     point=>worldToScreen(point,4),14);
-  if(!hit)return false;
+  if(!hit){canvas.dataset.lastRouteTap='miss';return false;}
+  canvas.dataset.lastRouteTap='route:'+hit.index;
   const id=state.nextId;
   if(!insertPlanNode(state,selected,hit.index,hit.point)){
+    canvas.dataset.lastRouteTap='blocked:'+hit.index;
     state.events.push('CANNOT INSERT WAYPOINT HERE');
     return true; // This was a route tap, not a new destination order.
   }
+  canvas.dataset.lastRouteTap='inserted:'+hit.index;
   selectedNode=id;doorFocusId=null;contextSignature='';
   return true;
 }
