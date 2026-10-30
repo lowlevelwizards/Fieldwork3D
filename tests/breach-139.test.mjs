@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import * as THREE from 'three';
 import {handlingInstability} from '../src/breach-ballistics.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
 test('139: turn/recoil and travel increase physically visible dispersion',()=>{
@@ -19,10 +20,10 @@ test('139: falling operator releases grip and a separate gun settles to ground',
  assert.equal(r.weapon.visible,false);
  assert.equal(r.droppedGun.visible,true);
  r.root.updateMatrixWorld(true);
- const first=r.droppedGun.getWorldPosition(new (await import('three')).Vector3());
+ const first=r.droppedGun.getWorldPosition(new THREE.Vector3());
  assert.ok(first.y>0&&first.y<5);
  poseOperator(r,p,0);r.root.updateMatrixWorld(true);
- const next=r.droppedGun.getWorldPosition(new (await import('three')).Vector3());
+ const next=r.droppedGun.getWorldPosition(new THREE.Vector3());
  assert.ok(first.distanceTo(next)<.001);
  r.dispose();
 });
