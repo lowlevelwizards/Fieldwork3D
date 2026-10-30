@@ -131,7 +131,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }
     const isMoving=moving>.12&&!p.down;
     const anchored=constrainFoot({x:foot.anchor.x,y:foot.anchor.z},
-      {x:p.x,y:p.z},headingYaw,sign);
+      {x:p.x,y:p.z},-headingYaw,sign);
     const mustStep=isMoving&&needsRecoveryStep(anchored,p.velocity>8)||
       (isMoving&&Math.hypot(p.x-foot.anchor.x,p.z-foot.anchor.z)>13.5);
     const urgency=anchored.outOfBounds||Math.hypot(
