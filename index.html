@@ -19,6 +19,8 @@
   <button id="undo" type="button" title="Undo the last planning edit">UNDO</button>
   <button id="redo" type="button" title="Redo the last planning edit">REDO</button>
   <button id="wait" type="button">WAIT</button>
+  <button id="reload" type="button">RELOAD</button>
+  <button id="flash" type="button">FLASH ×2</button>
   <button id="sync" type="button" title="Synchronize the squad's planned go-code">SYNC</button>
   <button id="stance" type="button">CROUCH</button>
   <button id="contact" type="button" aria-pressed="false">STOP ON CONTACT</button>
@@ -35,16 +37,16 @@
 <nav class="bar" aria-label="Tactical controls">
   <div class="units">
     <button id="rook" class="unit selected" type="button" aria-pressed="true">
-      <span class="unit-code">01</span><strong>ROOK</strong><small id="rookHp">●●</small>
+      <span class="unit-code">01</span><strong>ROOK</strong><small id="rookHp">●●</small><em id="rookAmmo">12/36</em>
     </button>
     <button id="moss" class="unit" type="button" aria-pressed="false">
-      <span class="unit-code">02</span><strong>MOSS</strong><small id="mossHp">●●</small>
+      <span class="unit-code">02</span><strong>MOSS</strong><small id="mossHp">●●</small><em id="mossAmmo">12/36</em>
     </button>
     <button id="ash" class="unit" type="button" aria-pressed="false">
-      <span class="unit-code">03</span><strong>ASH</strong><small id="ashHp">●●</small>
+      <span class="unit-code">03</span><strong>ASH</strong><small id="ashHp">●●</small><em id="ashAmmo">12/36</em>
     </button>
     <button id="vale" class="unit" type="button" aria-pressed="false">
-      <span class="unit-code">04</span><strong>VALE</strong><small id="valeHp">●●</small>
+      <span class="unit-code">04</span><strong>VALE</strong><small id="valeHp">●●</small><em id="valeAmmo">12/36</em>
     </button>
   </div>
   <div class="actions">
@@ -56,8 +58,22 @@
 <section id="debrief" class="debrief" hidden aria-label="Mission debrief">
   <strong id="debriefTitle">MISSION COMPLETE</strong>
   <p id="debriefStats"></p>
+  <button id="watchReplay" type="button">WATCH REPLAY ▶</button>
   <button id="retry" type="button">RETRY MISSION</button>
   <button id="next" type="button">NEXT ARRANGEMENT</button>
+</section>
+<section id="replayPanel" class="replay-panel" hidden aria-label="Mission replay controls">
+  <div class="replay-head"><strong>MISSION REPLAY</strong><output id="replayClock">00:00 / 00:00</output></div>
+  <input id="replaySeek" type="range" min="0" max="1000" value="0" aria-label="Seek through mission"/>
+  <div class="replay-actions">
+    <button id="replayBack" type="button" aria-label="Rewind ten seconds">◀◀</button>
+    <button id="replayPlay" type="button">PLAY ▶</button>
+    <button id="replayForward" type="button" aria-label="Advance ten seconds">▶▶</button>
+    <button id="replaySpeed" type="button">1×</button>
+    <button id="replaySight" type="button">FULL VIEW</button>
+    <button id="replayView" type="button">ISO</button>
+    <button id="replayExit" type="button">EXIT</button>
+  </div>
 </section>
 <div class="foot"><span id="mission">CONTACTS UNKNOWN • SECURE THE STATION</span><span class="shortcut">TAP TO ORDER · DRAG TO ORBIT · 2 FINGERS PAN/PINCH</span></div>
 <script type="module" src="./src/breach-main.ts"></script>
