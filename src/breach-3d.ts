@@ -129,7 +129,6 @@ export class TacticalScene3D{
   private buildGenerated(site:Site){
     const palettes=[0x817b69,0x5b746d,0x79705f,0x616e65];
     const earth=this.solid(0x34443e);
-    if(site){this.buildGenerated(site);return;}
     this.plane(this.root,W/2,H/2,W,H,-2,earth);
     const road=this.solid(0x59584a);
     this.box(this.root,site.entrance.x,-1,
@@ -208,6 +207,7 @@ export class TacticalScene3D{
     const floorB=this.solid(0x526b68),timber=this.solid(0x4b4437);
     const metal=this.solid(0x525e5d,.62),rust=this.solid(0x715e4d);
     const roof=this.solid(0x515d58),glass=this.solid(0x748b83,.18);
+    if(site){this.buildGenerated(site);return;}
     this.plane(this.root,W/2,H/2,W,H,-2,earth);
     this.box(this.root,303,-1,630,124,1,215,road,false);
     this.box(this.root,294,-.15,643,7,.2,178,gravel,false);
