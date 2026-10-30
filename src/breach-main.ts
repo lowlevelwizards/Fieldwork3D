@@ -5,7 +5,7 @@ import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   planMove,planMoveStroke,planAim,planWait,planSync,movePlanNode,
-  finalPoint,doorAtNode,planStack,planStackTeam,planSquadEntry,backOne,
+  finalPoint,doorAtNode,planSquadEntry,backOne,
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,stepSession,knownAt,liveVisibility,
   planReload,reloadNow,planFlash,
@@ -977,6 +977,7 @@ function useSelectedGround(pt:Pt){
     state.events.push('NO WALKABLE ROUTE');
   selectedNode=null;updateHud();
 }
+function isMissionTerminal(s:Session){return s.phase==='won'||s.phase==='lost';}
 function clockText(t:number){
   const seconds=Math.floor(Math.max(0,t));
   return String(Math.floor(seconds/60)).padStart(2,'0')+':'+
@@ -1341,7 +1342,7 @@ function tick(now:number){
     accum+=dt;
     while(accum>=1/60){
       stepSession(state,1/60);
-      recorder.capture(state,state.phase==='won'||state.phase==='lost');
+      recorder.capture(state,isMissionTerminal(state));
       accum-=1/60;
     }
   }else accum=0;
