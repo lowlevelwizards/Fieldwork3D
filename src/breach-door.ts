@@ -72,6 +72,15 @@ export function advanceDoor(d:Door,dt:number){
   while(remaining>1e-8){
     const h=Math.min(1/60,remaining);
     const target=d.open?1:0,current=d.openFraction??target;
+    // Hinges may be procedural: if a new opening would immediately swing
+    // into furniture or the wall, use the free side of the doorway.
+    // Only switch while virtually closed to avoid teleporting an open leaf.
+    if(d.open&&current<.065&&
+      doorSwingBlocked(d,.32)){
+      const reverse=(d.swing??-1)===1?-1:1;
+      if(!doorSwingBlocked({...d,swing:reverse},.32))
+        d.swing=reverse;
+    }
     const v=d.angularVelocity??0;
     const kicked=(d.kickImpulse??0)>0;
     const acceleration=kicked?(target-current)*10-v*3:
