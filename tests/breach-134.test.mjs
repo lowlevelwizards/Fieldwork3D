@@ -13,7 +13,7 @@ test('134: the same leaf blocks ray intersections in closed and swung positions'
  const leaf=doorLeafSegment(door);
  assert.ok(Math.hypot(leaf.b.x-leaf.a.x,leaf.b.y-leaf.a.y)>29);
  assert.equal(doorBlocksSegment(door,across),false);
- const side={a:{x:220,y:225},b:{x:265,y:225}};
+ const side={a:{x:245,y:255},b:{x:285,y:255}};
  assert.equal(doorBlocksSegment(door,side),true);
  assert.equal(isClear(side.a,side.b,[door]),false);
 });
