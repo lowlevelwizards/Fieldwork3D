@@ -3,6 +3,8 @@ import {W,H,WALLS,COVER,initialDoors,doorCenter,activeSite,type Pt} from './brea
 import {type Site} from './breach-site.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
 import {shotVisibility} from './breach-presentation.ts';
+import {WEAPONS} from './breach-combat.ts';
+import {sampleThrow} from './breach-flash.ts';
 
 /** One authoritative 2D world, physically represented in one 3D scene.
  * Coordinates: tactics (x,y) => scene (x, elevation, y).
@@ -142,7 +144,7 @@ export class TacticalScene3D{
   }
   private buildGenerated(site:Site){
     const palettes=[0x817b69,0x5b746d,0x79705f,0x616e65];
-    const earth=this.solid(0x34443e);
+    const earth=this.solid(site.layout==='courtyard'?0x465348:0x34443e);
     this.plane(this.root,W/2,H/2,W,H,-2,earth);
     const road=this.solid(0x59584a);
     this.box(this.root,site.entrance.x,-1,
@@ -654,12 +656,22 @@ export class TacticalScene3D{
       object.root.rotation.x=-1.42*downProgress;
       object.root.rotation.z=hitFade*.13*Math.sin(hitAge*65);
       const speed=Math.min(1,actor.velocity/70);
+      // Injured and heavily wounded poses change silhouette as well as speed.
+      if(actor.health>0&&actor.injuryStage>0){
+        object.root.rotation.z-=actor.injuryStage===2?.15:.055;
+        object.root.rotation.x-=actor.injuryStage===2?.16:.05;
+      }
+      object.weapon.scale.x=actor.weapon==='smg'?.73:
+        actor.weapon==='rifle'?1.29:actor.weapon==='shotgun'?1.12:1;
+      object.weapon.scale.z=actor.weapon==='shotgun'?1.28:1;
       const gait=Math.sin(s.seconds*10.5+(actor.id==='moss'?1.1:0));
       object.legs[0].rotation.x=gait*speed*.44;
       object.legs[1].rotation.x=-gait*speed*.44;
       object.arms[0].rotation.x=-gait*speed*.12;
       object.arms[1].rotation.x=gait*speed*.12;
-      const reloadProgress=actor.reload>0?1-actor.reload/1.8:0;
+      const reloadDuration=WEAPONS[actor.weapon].reload*
+        (actor.injuryStage===2?1.5:actor.injuryStage===1?1.1:1);
+      const reloadProgress=actor.reload>0?1-actor.reload/reloadDuration:0;
       object.weapon.rotation.z=actor.reload>0?
         -.40*Math.sin(Math.PI*reloadProgress):0;
       object.weapon.position.y=actor.reload>0?
@@ -789,7 +801,9 @@ export class TacticalScene3D{
         this.thrown.set(grenade.id,mesh);this.effects.add(mesh);
       }
       const t=Math.min(1,grenade.age/.55);
-      mesh.position.set(grenade.p.x,1+20*4*t*(1-t),grenade.p.y);
+      const path=grenade.path?sampleThrow(grenade.path,t):null;
+      mesh.position.set(grenade.p.x,path?.height??(1+20*4*t*(1-t)),
+        grenade.p.y);
     }
     const liveBursts=new Set<number>();
     for(const burst of s.flashBursts){
