@@ -836,7 +836,8 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   }
   const at=near(a.p,n.p,5);
   if(!at&&(n.kind==='move'||n.kind==='door'||n.kind==='sync')){
-    approach(a,n.p,dt,s,n.moveMode==='strafe'?.68:1);
+    approach(a,n.p,dt,s,(n.moveMode==='strafe'?.68:1)*
+      injurySpeed(a.injuryStage));
     // Unmodified movement follows its route, while an explicit fixed STRAFE
     // or PIE/TRACK instruction persists until LOOK releases it.
     const held=aimHeading(a);
@@ -887,18 +888,25 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     return;
   }
   if(n.kind==='reload'){
-    if(a.magazine>=12||a.reserve<=0){pop(a);return;}
+    if(a.magazine>=WEAPONS[a.weapon].capacity||a.reserve<=0){pop(a);return;}
     if(a.reload===0)beginReload(s,a);
     return;
   }
   if(n.kind==='flash'){
     if(!n.aimPoint||s.flashRemaining<=0){pop(a);return;}
+    const trajectory=validateThrow(a.p,n.aimPoint,s.doors);
+    if(!trajectory.valid){
+      notify(s,a.name+' FLASH BLOCKED — '+(trajectory.reason??'CHECK TRAJECTORY'));
+      a.velocity=0;return;
+    }
     a.velocity=0;rotate(a,angle(a.p,n.aimPoint),dt);
     a.actionTimer+=dt;
     if(a.actionTimer>=.3){
       s.flashRemaining--;
       s.grenades.push({id:s.nextEffectId++,p:clone(a.p),
-        from:clone(a.p),to:clone(n.aimPoint),age:0,fuse:1.15});
+        from:clone(a.p),to:clone(n.aimPoint),age:0,fuse:1.15,
+        path:trajectory});
+      battleEvent(s,'flash',a,a.p,a.name+' FLASH OUT');
       notify(s,a.name+' FLASH OUT');
       pop(a);
     }
@@ -921,33 +929,37 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       hear(s,doorCenter(door),n.method==='kick'?340:145,
         n.method==='kick'?'kick':'door');
       notify(s,door.id+' '+(n.method==='kick'?'KICKED':'OPENED'));
+      battleEvent(s,'door',a,doorCenter(door),door.id+' OPENED');
       pop(a);
     }
   }
 }
 function defensivePosition(a:TeamActor,from:Pt,s:Session):Pt|null{
-  const candidates:Pt[]=[];
-  for(const c of COVER){
-    const signX=Math.sign(c.x-from.x)||1;
-    const signY=Math.sign(c.y-from.y)||1;
-    for(const p of [
-      {x:c.x+signX*(c.w/2+20),y:c.y},
-      {x:c.x,y:c.y+signY*(c.h/2+20)},
-    ]){
-      if(passable(p)&&d(p,a.p)<180&&
-        !unobstructed(from,p,s,false)&&route(a.p,p).length)
-        candidates.push(p);
-    }
-  }
-  candidates.sort((x,y)=>d(x,a.p)-d(y,a.p));
-  return candidates[0]??null;
+  const others=enemies(s).map(other=>({id:other.id,p:other.p,
+    health:other.health,defense:other.defense}));
+  return chooseDefense(a.p,from,s.doors,others,a.id);
 }
 function enemyDecisions(s:Session,a:TeamActor,dt:number){
-  if(a.health<=0)return;
+  if(a.health<=0||a.surrendered)return;
+  if(!a.watch)a.watch=watchPoint(a.p,s.doors);
+  if(!a.contacted&&a.watch){
+    if(a.defense===null){
+      a.defense=defensivePosition(a,a.watch,s);
+      a.defenseUntil=s.seconds+8;
+    }
+    if(a.defense&&d(a.p,a.defense)>11){
+      if(!a.nav.length)a.nav=route(a.p,a.defense);
+      if(a.nav.length)approach(a,a.defense,dt,s,.62);
+      if(a.nav.length)rotate(a,angle(a.p,a.nav[0]),dt);
+      return;
+    }
+    rotate(a,angle(a.p,a.watch),dt);
+  }
   const visible=team(s).filter(b=>inSight(a,b,s));
   if(visible.length){
     const b=visible.sort((x,y)=>d(x.p,a.p)-d(y.p,a.p))[0];
     a.contact=clone(b.p);a.alertUntil=s.seconds+3;a.contacted=true;
+    a.watch=clone(b.p);a.defenseUntil=s.seconds+4;
     if(a.suppression>.65&&a.alert!=='retreat'){
       a.retreatPoint=defensivePosition(a,b.p,s);
       if(a.retreatPoint){a.alert='retreat';a.nav=[];}
@@ -964,7 +976,8 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     const spread=newest.kind==='gunshot'?39:18;
     const heard={x:newest.p.x+(random(s)-.5)*spread,
       y:newest.p.y+(random(s)-.5)*spread};
-    a.heard=heard;a.contact=heard;
+    a.heard=heard;a.contact=heard;a.watch=clone(heard);
+    a.defense=null;
     a.alertUntil=s.seconds+(a.personality==='aggressor'?.5:1.4);
     a.contacted=true;
     const needsCover=a.personality==='cautious'||
@@ -998,14 +1011,19 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
     if(a.alert==='investigating'&&d(a.p,a.contact)<35){
       a.alert='cover';a.contact=null;a.nav=[];
+      a.defense=defensivePosition(a,a.heard??a.p,s);
+      a.defenseUntil=s.seconds+6;
     }
   }
+  if(a.alert==='cover'&&a.defense&&d(a.p,a.defense)>10){
+    if(!a.nav.length)a.nav=route(a.p,a.defense);
+    if(a.nav.length)approach(a,a.defense,dt,s,.7);
+  }
+  if(!a.contact&&a.watch)rotate(a,angle(a.p,a.watch),dt);
 }
 function softCoverPenalty(_a:TeamActor,b:TeamActor){
   if(b.posture!=='crouch')return 0;
-  const closeCover=COVER.some(c=>c.low&&
-    Math.hypot(b.p.x-c.x,b.p.y-c.y)<Math.max(c.w,c.h)*.8);
-  return closeCover?.24:0;
+  return nearCover(b.p,_a.p)?.19:0;
 }
 function random(s:Session){
   s.rng=(Math.imul(s.rng,1664525)+1013904223)>>>0;
@@ -1149,11 +1167,13 @@ function stepFlashbangs(s:Session,h:number){
     g.age+=h;
     const t=Math.min(1,g.age/.55);
     const arc=4*t*(1-t);
-    g.p={x:g.from.x+(g.to.x-g.from.x)*t,
+    g.p=g.path?sampleThrow(g.path,t).p:{
+      x:g.from.x+(g.to.x-g.from.x)*t,
       y:g.from.y+(g.to.y-g.from.y)*t};
     void arc; // The renderer supplies the vertical ballistic arc.
     if(g.age<g.fuse){active.push(g);continue;}
     s.flashBursts.push({id:g.id,p:clone(g.to),age:0});
+    battleEvent(s,'flash',null,g.to,'FLASH DETONATED');
     hear(s,g.to,420,'flashbang');
     for(const a of s.operators){
       if(a.health<=0)continue;
