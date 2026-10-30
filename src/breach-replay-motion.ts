@@ -5,7 +5,7 @@
 import type {TeamActor} from './breach-game.ts';
 import type {Door} from './breach-core.ts';
 import {footArticulation} from './breach-foot-articulation.ts';
-import {advanceFootsteps,createFootstepScheduler,
+import {advanceFootsteps,createFootstepScheduler,gaitBounds,
   type FootTarget,type FootstepScheduler,type FootstepInput} from './breach-footsteps.ts';
 
 export type ReplayFeet=[FootTarget,FootTarget];
