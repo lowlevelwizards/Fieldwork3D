@@ -29,7 +29,7 @@ export type FootstepInput={
 };
 export type FootTarget={position:GroundPoint;height:number;
   worldYaw:number;phase:FootPhase;contact:boolean;
-  reason?:StepReason;}
+  reason?:StepReason;progress?:number;}
 const clamp=(x:number,min:number,max:number)=>Math.max(min,Math.min(max,x));
 const deltaAngle=(a:number,b:number)=>Math.atan2(Math.sin(b-a),Math.cos(b-a));
 const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
@@ -178,7 +178,8 @@ function target(foot:FootstepState,input:FootstepInput):FootTarget{
   if(foot.phase!=='swinging'){
     return {position:copy(foot.plantedAt),height:0,
       worldYaw:foot.worldYaw,phase:foot.phase,contact:foot.contact,
-      reason:foot.reason};
+      reason:foot.reason,
+      progress:foot.phaseDuration>0?clamp((input.time-foot.phaseStart)/foot.phaseDuration,0,1):0};
   }
   const t=clamp((input.time-foot.phaseStart)/foot.phaseDuration,0,1);
   const e=ease(t);
@@ -186,7 +187,7 @@ function target(foot:FootstepState,input:FootstepInput):FootTarget{
     y:mix(foot.swingFrom.y,foot.swingTo.y,e)},
     height:Math.sin(Math.PI*t)*(input.cautious?2.1:3.4),
     worldYaw:foot.fromYaw+deltaAngle(foot.fromYaw,foot.targetYaw)*e,
-    phase:foot.phase,contact:false,reason:foot.reason};
+    phase:foot.phase,contact:false,reason:foot.reason,progress:t};
 }
 export function advanceFootsteps(s:FootstepScheduler,input:FootstepInput):
   [FootTarget,FootTarget]{
