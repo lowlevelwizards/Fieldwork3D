@@ -1413,7 +1413,13 @@ function releasePointer(e:PointerEvent,cancelled=false){
       selectedNode=null;doorFocusId=null;
     }else if(!p.moved&&!p.wasUnit&&pt.x>=0&&pt.y>=0&&
       pt.x<=W&&pt.y<=H){
-      const door=state.doors.find(d=>!d.open&&
+      const selectedActor=uid(selected);
+      // Out-of-reach door geometry must NOT steal a ground tap intended
+      // to author a waypoint beside the door. Once the planned endpoint
+      // is within reach, the physical door becomes selectable.
+      const door=state.doors.find(d=>!d.open&&!!selectedActor&&
+        [selectedActor.p,finalPoint(selectedActor)].some(p=>
+          doorReachable(p,d))&&
         (distance(worldToScreen(doorCenter(d),10),
           {x:e.clientX,y:e.clientY})<24||
          distance(worldToScreen(doorCenter(d),38),
