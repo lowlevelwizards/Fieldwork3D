@@ -378,29 +378,30 @@ export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number)
     .map(b=>b.plan.find(n=>n.stackDoorId===doorId))
     .filter((n):n is PlanNode=>!!n);
   const occupied=assigned.map(n=>n.p);
-  const candidates:Pt[]=[];
-  // First rank on either side of the opening; second rank behind it.
-  for(const rank of [0,1])for(const direction of [-1,1]){
-    const tangent=direction*(half+20);
-    const normal=approachSide*(23+rank*26);
-    candidates.push(horizontal?
-      {x:center.x+tangent,y:center.y+normal}:
-      {x:center.x+normal,y:center.y+tangent});
-  }
-  // Allow a deeper second stagger if obstacles occupy the doorway frame.
-  for(const direction of [-1,1]){
-    const tangent=direction*(half+39),normal=approachSide*48;
-    candidates.push(horizontal?
-      {x:center.x+tangent,y:center.y+normal}:
-      {x:center.x+normal,y:center.y+tangent});
-  }
+  // All four slots must remain within the 43-unit door-use radius.
+  // The first two take opposite sides of the frame; the next two fill in
+  // behind the opening. This prevents two-person legacy stack regressions.
+  const positions=[-38,38,-12,12];
+  const preferred=team(s).findIndex(b=>b.id===id);
+  const candidates:Pt[]=positions.map(tangent=>horizontal?
+    {x:center.x+tangent,y:center.y+approachSide*19}:
+    {x:center.x+approachSide*19,y:center.y+tangent});
+  // Smaller entrance frames retain valid nearby choices; never pick a
+  // physical stack slot too far away to use the door.
   const legal=candidates.filter(p=>
-    passable(p)&&!!route(from,p).length&&
+    d(p,center)<43&&passable(p)&&!!route(from,p).length&&
     occupied.every(other=>d(p,other)>23));
-  legal.sort((u,v)=>d(from,u)-d(from,v));
+  legal.sort((u,v)=>{
+    const rank=(p:Pt)=>{
+      const i=candidates.findIndex(candidate=>d(candidate,p)<1);
+      return (i-preferred+4)%4;
+    };
+    return rank(u)-rank(v)||d(from,u)-d(from,v);
+  });
   if(!legal.length)return false;
   const point=legal[0],proposed=copyNodes(a.plan);
   proposed.splice(index,0,{id:s.nextId,kind:'move',p:clone(point),
+    moveMode:'strafe',facing:angle(point,center),
     aimMode:'track',aimPoint:clone(center),aimLabel:'pie',
     stackDoorId:doorId});
   if(!validEditedPlan(s,a.p,proposed))return false;
