@@ -14,6 +14,7 @@ export default defineConfig({
       study: 'study.html',
       breach: 'breach.html',
       breachVisualLab: 'breach-visual-lab.html',
+      operatorLab: 'operator-lab.html',
     } },
   },
 });
