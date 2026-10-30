@@ -8,12 +8,14 @@ import {
   finalPoint,doorAtNode,planSquadEntry,backOne,
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,stepSession,knownAt,liveVisibility,
-  planReload,reloadNow,planFlash,
+  planReload,reloadNow,planFlash,moveFlashTarget,flashTrajectory,
+  cycleWeapon,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import {routeLineHit} from './breach-route-edit.ts';
 import {shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
+import {injuryOf,WEAPONS} from './breach-combat.ts';
 import './breach-style.css';
 
 const el=<T extends HTMLElement>(id:string)=>{
@@ -47,6 +49,7 @@ const ui={
   undo:el<HTMLButtonElement>('undo'),redo:el<HTMLButtonElement>('redo'),
   wait:el<HTMLButtonElement>('wait'),sync:el<HTMLButtonElement>('sync'),
   reload:el<HTMLButtonElement>('reload'),flash:el<HTMLButtonElement>('flash'),
+  loadout:el<HTMLButtonElement>('loadout'),
   stance:el<HTMLButtonElement>('stance'),variant:el<HTMLButtonElement>('variant'),
   contact:el<HTMLButtonElement>('contact'),
   debrief:el<HTMLElement>('debrief'),
@@ -63,6 +66,11 @@ const ui={
   replaySight:el<HTMLButtonElement>('replaySight'),
   replayView:el<HTMLButtonElement>('replayView'),
   replayExit:el<HTMLButtonElement>('replayExit'),
+  replayPrevEvent:el<HTMLButtonElement>('replayPrevEvent'),
+  replayNextEvent:el<HTMLButtonElement>('replayNextEvent'),
+  replayFollow:el<HTMLButtonElement>('replayFollow'),
+  replayAnalysis:el<HTMLButtonElement>('replayAnalysis'),
+  replayEventText:el<HTMLOutputElement>('replayEventText'),
   replayClock:el<HTMLOutputElement>('replayClock'),
   rookAmmo:el<HTMLElement>('rookAmmo'),mossAmmo:el<HTMLElement>('mossAmmo'),
   ashAmmo:el<HTMLElement>('ashAmmo'),valeAmmo:el<HTMLElement>('valeAmmo'),
@@ -77,6 +85,7 @@ let state:Session=newSession(0,legacyStudy?undefined:randomSiteSeed());
 let recorder=new MissionRecorder();recorder.capture(state,true);
 let replaying=false,replayPlaying=false,replayTime=0,replayRate=1;
 let replayOmniscient=true,finishedSession:Session|null=null;
+let replayFollow=false,replayAnalysis=false;
 let stage:TacticalScene3D|null=null;
 let viewMode:ViewMode='iso';
 try{stage=new TacticalScene3D();}
@@ -327,6 +336,7 @@ function updateHud(){
   ui.contact.setAttribute('aria-pressed',String(active?.haltOnContact));
   ui.variant.textContent='NEW SITE';
   ui.flash.textContent='FLASH ×'+state.flashRemaining;
+  ui.loadout.textContent='WEAPON · '+(active?.weapon.toUpperCase()??'—');
   ui.flash.disabled=state.flashRemaining<=0||replaying;
   ui.back.disabled=!active?.plan.length;
   ui.undo.disabled=!(active?.history.undo.length);
@@ -345,15 +355,20 @@ function updateHud(){
     button.hidden=!a;
     button.classList.toggle('selected',id===selected);
     button.classList.toggle('down',!a||a.health<=0);
+    button.title=a?WEAPONS[a.weapon].label+' • '+
+      injuryOf(a.injuryStage).toUpperCase():'NO OPERATOR';
     button.classList.toggle('loading',!!a&&a.reload>0);
     button.style.setProperty('--reload-progress',
-      ((a?.reload??0)>0?Math.round(100*(1-a!.reload/1.8)):0)+'%');
+      ((a?.reload??0)>0?Math.round(100*(1-a!.reload/
+        (WEAPONS[a.weapon].reload*(a.injuryStage===2?1.5:
+          a.injuryStage===1?1.1:1)))):0)+'%');
     ui[(id+'Ammo') as 'rookAmmo'|'mossAmmo'|'ashAmmo'|'valeAmmo'].textContent=
       a?String(a.magazine).padStart(2,'0')+' / '+a.reserve+
       (a.reload>0?' ↻':''):'--';
     button.setAttribute('aria-pressed',String(id===selected));
     ui[(id+'Hp') as 'rookHp'|'mossHp'|'ashHp'|'valeHp'].textContent=
-      a?.health===2?'●●':a?.health===1?'●○':'○○';
+      !a?'--':a.health<=0?'DOWN':
+      a.injuryStage===2?'HEAVY':a.injuryStage===1?'HURT':'OK';
   }
   document.querySelector('.ident strong')!.textContent=
     (state.site?.name??'CUTWOODS')+' / BREACH';
@@ -963,8 +978,10 @@ function render(){
 function useSelectedGround(pt:Pt){
   if(state.phase!=='planning'||replaying)return;
   if(flashMode){
+    const id=state.nextId;
     if(!planFlash(state,selected,pt))
       state.events.push('FLASH TARGET BLOCKED / OUT OF RANGE');
+    else selectedNode=id;
     flashMode=false;updateHud();return;
   }
   if(looking){
@@ -1075,6 +1092,9 @@ ui.clear.addEventListener('click',()=>{clearPlan(state,selected);selectedNode=nu
 ui.undo.addEventListener('click',()=>{undoPlan(state,selected);selectedNode=null;updateHud();});
 ui.redo.addEventListener('click',()=>{redoPlan(state,selected);selectedNode=null;updateHud();});
 ui.wait.addEventListener('click',()=>{planWait(state,selected);updateHud();});
+ui.loadout.addEventListener('click',()=>{
+  cycleWeapon(state,selected);updateHud();
+});
 ui.reload.addEventListener('click',()=>{
   if(state.phase==='planning')planReload(state,selected);
   else if(state.phase==='running')reloadNow(state,selected);
@@ -1140,6 +1160,11 @@ const hitNode=(p:Pt):{id:number;index:number}|null=>{
   if(!unit)return null;
   for(let i=unit.plan.length-1;i>=0;i--){
     const n=unit.plan[i];
+    if(n.kind==='flash'&&n.aimPoint){
+      const marker=worldToScreen(n.aimPoint,6);
+      const cursor=worldToScreen(p,6);
+      if(distance(marker,cursor)<25)return {id:n.id,index:i};
+    }
     if(viewMode!=='plan2d'&&stage){
       const screen=worldToScreen(n.p,8),cursor=worldToScreen(p,8);
       if(distance(screen,cursor)<19)return {id:n.id,index:i};
@@ -1281,8 +1306,11 @@ function releasePointer(e:PointerEvent,cancelled=false){
   const pt=pointerWorld(e);
   if(!cancelled&&state.phase==='planning'&&!replaying&&activePointers.size===1){
     if(p.mode==='node'&&p.nodeId!==null){
-      if(p.moved&&!movePlanNode(state,selected,p.nodeId,pt))
-        state.events.push('INVALID NODE POSITION');
+      const moving=uid(selected)?.plan.find(node=>node.id===p.nodeId);
+      const moved=moving?.kind==='flash'?
+        moveFlashTarget(state,selected,p.nodeId,pt):
+        movePlanNode(state,selected,p.nodeId,pt);
+      if(p.moved&&!moved)state.events.push('INVALID ORDER DESTINATION');
       selectedNode=p.nodeId;doorFocusId=null;
     }else if(p.mode==='route'&&trace&&trace.length>1){
       const points=[...trace,pt];
