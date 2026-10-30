@@ -80,14 +80,14 @@ export class TacticalScene3D{
     // Visibility is handled separately by authoritative exploration tiles.
     this.scene.background=color(0x182a2a);
     this.scene.fog=null;
-    this.scene.add(new THREE.HemisphereLight(0xe0e7d8,0x22332f,1.65));
-    this.sun=new THREE.DirectionalLight(0xf4dfbf,2.0);
+    this.scene.add(new THREE.HemisphereLight(0xdde8df,0x24302e,1.18));
+    this.sun=new THREE.DirectionalLight(0xf4dab4,2.35);
     this.sun.position.set(-100,260,180);this.sun.castShadow=true;
     this.sun.shadow.mapSize.set(1024,1024);
     Object.assign(this.sun.shadow.camera,{
-      left:-450,right:450,top:450,bottom:-450,near:.5,far:800,
+      left:-320,right:320,top:320,bottom:-320,near:.5,far:800,
     });this.sun.shadow.bias=-.0004;this.sun.shadow.normalBias=.08;
-    this.scene.add(this.sun);
+    this.scene.add(this.sun,this.sun.target);
     this.scene.add(this.root,this.effects);
     this.buildWorld();
     if(activeSite())this.view.zoom=1.48;
@@ -526,16 +526,21 @@ export class TacticalScene3D{
     if(this.view.mode==='plan2d')return;
     this.updateCamera(dt);
     this.fogAt+=dt;
+    // The shadow map follows the active encounter to retain contact detail.
+    const shadowPoint=team(s).find(a=>a.id===selected)?.p??this.view.focus;
+    this.sun.position.set(shadowPoint.x-145,250,shadowPoint.y+175);
+    this.sun.target.position.set(shadowPoint.x,0,shadowPoint.y);
+    this.sun.target.updateMatrixWorld();
     // For camera-facing walls use translucent near-side cutaways.
     const fromCamera=this.camera.position.clone().sub(this.target);
     for(const wall of this.walls){
       const pawn=team(s).find(a=>a.id===selected)?.p??this.view.focus;
       const between=(wall.mid.x-pawn.x)*fromCamera.x+
         (wall.mid.y-pawn.y)*fromCamera.z;
-      const cut=this.view.mode==='iso'&&between>3500;
+      const cut=this.view.mode==='iso'&&between>1800;
       const material=wall.mesh.material as THREE.MeshStandardMaterial;
       if(material.transparent!==cut){
-        material.transparent=cut;material.opacity=cut?.36:1;
+        material.transparent=cut;material.opacity=cut?.10:1;
         material.depthWrite=!cut;material.needsUpdate=true;
       }
     }
@@ -584,7 +589,7 @@ export class TacticalScene3D{
       const down=actor.health<=0;
       const surrendered=actor.surrendered;
       object.status.visible=object.root.visible&&
-        (down||(hitTime>=0&&hitTime<.28));
+        !down&&(hitTime>=0&&hitTime<.28);
       if(object.status.visible){
         object.status.position.set(actor.p.x,1.15,actor.p.y);
         const pulse=down?1.15:1+.45*(1-hitTime/.28);

@@ -274,3 +274,24 @@ body.replaying .foot,body.replaying .guidance,body.replaying .feed{display:none!
 }
 
 .operator-lab-link{display:inline-flex;align-items:center;justify-content:center;background:#46574e;color:#e4d9bd;border:1px solid #77877b;text-decoration:none;font:11px monospace;min-height:33px;padding:6px 9px;border-radius:3px}
+
+/* 117: world-first action grouping and replay transport. */
+.orders:not(.compact){max-height:min(25vh,165px);justify-content:center}
+.site-settings{position:fixed;z-index:7;bottom:calc(197px + env(safe-area-inset-bottom));
+ right:12px;left:12px;display:flex;gap:5px;flex-wrap:wrap;justify-content:center;
+ background:#122521f3;border:1px solid #758b7b99;border-radius:5px;padding:9px;
+ box-shadow:0 8px 28px #061310aa}
+.site-settings[hidden]{display:none}
+.site-settings button,.site-settings a{padding:8px 9px;min-height:35px;
+ border:1px solid #6b8777;background:#2c433c;color:#e2e8db;border-radius:3px;
+ font:10px monospace;text-decoration:none}
+#siteSettingsToggle{background:#4d5347}
+.replay-extra{display:flex;gap:5px;flex-wrap:wrap}
+.replay-extra[hidden]{display:none}
+#replayMore{width:100%;min-height:30px;background:#334640;font-size:10px}
+.replay-event:empty{display:none}
+@media(max-width:450px){
+ .orders:not(.compact){max-height:22vh}
+ .site-settings{bottom:calc(170px + env(safe-area-inset-bottom))}
+ .replay-extra button{flex:1 0 18%}
+}
