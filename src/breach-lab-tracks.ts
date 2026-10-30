@@ -7,7 +7,8 @@ import {advanceFootsteps,createFootstepScheduler,
   from './breach-footsteps.ts';
 export const LAB_TRACKS=[
   'idle','walk','accelerate','stop','restart','back',
-  'strafe-left','strafe-right','strafe','turn-90','turn-180','turn',
+  'strafe-left','strafe-right','strafe','strafe-stop',
+  'strafe-reverse','mixed','turn-90','turn-180','turn','pivot-reverse',
   'pie','look','crouch-walk','crouch','wounded','aim','reload',
   'flash','door','down'
 ] as const;
@@ -37,12 +38,22 @@ function position(kind:LabTrack,t:number){
     case 'strafe-left':z=-34*Math.min(t,3.65);break;
     case 'strafe-right':case 'strafe':
       z=34*Math.min(t,3.65);break;
+    case 'strafe-stop':
+      z=32*Math.min(t,1.25);break;
+    case 'strafe-reverse':
+      z=28*Math.min(t,1.25)-27*clamp(t-1.55,0,1.6);break;
+    case 'mixed':
+      x=40*Math.min(t,.85)-24*clamp(t-2.8,0,1);
+      z=26*clamp(t-1,0,1.4);break;
     case 'turn-90':
       x=20*Math.min(t,.8);heading=Math.PI/2*ease((t-.8)/1.1);
       z=20*clamp(t-2.1,0,1.6);break;
     case 'turn-180':case 'turn':
       x=20*Math.min(t,.7)-22*clamp(t-2.4,0,1.4);
       heading=Math.PI*ease((t-.7)/1.6);break;
+    case 'pivot-reverse':
+      heading=Math.PI*.72*ease(t/1.35)-
+        Math.PI*.90*ease((t-1.65)/1.55);break;
     case 'pie':
       x=14*ease(t/3.6);z=-9*Math.sin(Math.PI*clamp(t/3.6,0,1));
       heading=-.3+1.0*ease(t/3.6);break;
