@@ -10,6 +10,7 @@ export type DoorMethod='open'|'kick'|'hold';
 export type PlanNode={
   id:number;kind:PlanKind;p:Pt;facing?:number;doorId?:string;
   method?:DoorMethod;duration?:number;syncCode?:string;holdOnContact?:boolean;
+  postureState?:'stand'|'crouch';paceState?:'walk'|'run';
   moveMode?:MoveMode;pivot?:Pt;pieSide?:PieSide;pieDegrees?:number;arc?:Pt[];
   aimMode?:AimMode;aimPoint?:Pt;aimLabel?:'look'|'strafe'|'pie';
   stackDoorId?:string;
@@ -40,7 +41,7 @@ export function modifyNode(nodes:PlanNode[],id:number,patch:Partial<PlanNode>){
   const node=nodes.find(n=>n.id===id);
   if(!node)return false;
   if(patch.p)node.p={...patch.p};
-  for(const prop of ['facing','kind','doorId','method','duration','syncCode','holdOnContact','moveMode','pieSide','aimMode','aimLabel'] as const){
+  for(const prop of ['facing','kind','doorId','method','duration','syncCode','holdOnContact','moveMode','postureState','paceState','pieSide','aimMode','aimLabel'] as const){
     const val=patch[prop];
     if(val!==undefined){
       // Values have different property types; assign to the matching key.
