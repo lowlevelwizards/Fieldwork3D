@@ -372,6 +372,31 @@ function terrain(){
     const n=noise(x,y);
     if(n>.56)rect(x+3*n,y+2*n,2+n*3,2,n>.85?'#435348':'#35453d');
   }
+  if(state.site){
+    const site=state.site;
+    // Exterior access follows this actual generated entrance, not a
+    // decorative road still pointing at the obsolete fixed station.
+    const x=site.entrance.x,y=site.entrance.y;
+    draw.fillStyle='#514e43';draw.beginPath();
+    draw.moveTo(x-52,H);draw.lineTo(x+52,H);
+    draw.lineTo(x+34,y-21);draw.lineTo(x-34,y-21);
+    draw.closePath();draw.fill();
+    for(const room of site.rooms){
+      const palette=['#666558','#526b66','#77705c','#58605a'];
+      rect(room.x+2,room.y+2,room.w-4,room.h-4,
+        room.kind==='hall'?'#4a5c55':palette[room.tone]);
+      draw.strokeStyle='#b9b09b18';draw.lineWidth=.8;
+      for(let a=room.x+15;a<room.x+room.w-10;a+=25)
+        for(let b=room.y+15;b<room.y+room.h-10;b+=25)
+          draw.strokeRect(a,b,25,25);
+    }
+    draw.strokeStyle='rgba(161,192,175,.06)';
+    for(let a=0;a<=W;a+=GRID*2)
+      line({x:a,y:0},{x:a,y:H},'rgba(161,192,175,.045)',.6);
+    for(let b=0;b<=H;b+=GRID*2)
+      line({x:0,y:b},{x:W,y:b},'rgba(161,192,175,.045)',.6);
+    return;
+  }
   // Dirt service road leading to the lower door.
   draw.fillStyle='#4a4840';draw.beginPath();
   draw.moveTo(230,H);draw.lineTo(400,H);
@@ -387,22 +412,6 @@ function terrain(){
   draw.strokeStyle='rgba(159,182,165,.08)';draw.lineWidth=1;
   for(let x=0;x<=W;x+=GRID*2)line({x,y:0},{x,y:H},'rgba(161,192,175,.055)',.6);
   for(let y=0;y<=H;y+=GRID*2)line({x:0,y},{x:W,y},'rgba(161,192,175,.055)',.6);
-  if(state.site){
-    for(const room of state.site.rooms){
-      const palette=['#666558','#526b66','#77705c','#58605a'];
-      rect(room.x+2,room.y+2,room.w-4,room.h-4,
-        room.kind==='hall'?'#4a5c55':palette[room.tone]);
-      draw.strokeStyle='#b9b09b16';draw.lineWidth=.8;
-      for(let x=room.x+16;x<room.x+room.w-10;x+=24)
-        for(let y=room.y+16;y<room.y+room.h-10;y+=24)
-          draw.strokeRect(x,y,24,24);
-    }
-    for(const door of state.doors){
-      const mid=doorCenter(door);
-      rect(mid.x-9,mid.y-9,18,18,'#a18a6265');
-    }
-    return;
-  }
   rect(113,101,268,430,'#555247');
   rect(383,101,206,430,'#4d5753');
   // Floor wear, tiles and loose clutter — only enough for level recognition.
