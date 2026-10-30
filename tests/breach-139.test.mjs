@@ -31,5 +31,5 @@ test('139: 3D shot effects are not redrawn through foreground UI overlay',()=>{
  const c=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
  const start=c.indexOf('function renderProjectedPlans()'),end=c.indexOf('function fog()',start);
  assert.ok(start>0&&end>start);
- assert.doesNotMatch(c.slice(start,end),/for\\(const shot of state\\.shots\\)/);
+ assert.ok(!c.slice(start,end).includes('for(const shot of state.shots)'));
 });
