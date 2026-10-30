@@ -79,7 +79,7 @@ test('078-080: 3D uses readable fog and per-shot effects, 2D shares cues',()=>{
   const unknown=stage.match(/const unknownMat=new THREE.MeshBasicMaterial\(\{[\s\S]*?opacity:(\.\d+)/);
   assert.ok(unknown&&Number(unknown[1])<.65,
     'unknown geometry mask cannot be a completely opaque roof');
-  assert.match(stage,/temp\.position\.set\(p\.x,36,p\.y\)/);
+  assert.match(stage,/this\.smoothFog\.position\.set\(W\/2,36\.2,H\/2\)/);
   assert.match(stage,/effectCache/);
   assert.match(stage,/shot\.shooterId===actor\.id/);
   assert.match(stage,/lastDownAt/);
