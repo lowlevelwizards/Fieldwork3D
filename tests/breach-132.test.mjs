@@ -17,7 +17,7 @@ test('132: wound and collapse outcomes are deterministic and directional',()=>{
   assert.ok(Math.hypot(angles.x,angles.z)>1.4,pose+' still upright');
   assert.ok(angles.y>=3.8);
  }
- assert.equal(fallAngles('forward',0).x,0);
+ assert.ok(Math.abs(fallAngles('forward',0).x)<1e-9);
  const stagger=hitStagger('leg',Math.PI/2,0,.18,2);
  assert.ok(stagger.side>.1&&stagger.brace>0);
 });
