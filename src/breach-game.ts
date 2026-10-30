@@ -540,6 +540,11 @@ export function planWaitAt(s:Session,id:string,seconds=2,
   }
   return planWait(s,id,seconds);
 }
+export function setWaitDuration(s:Session,id:string,nodeId:number,seconds:number){
+  const a=party(s,id),node=a?.plan.find(n=>n.id===nodeId);
+  if(!a||!node||node.kind!=='wait'||!canEdit(s))return false;
+  return edit(s,a,()=>{node.duration=clamp(seconds,.3,6);});
+}
 export function setMoveSprint(s:Session,id:string,nodeId:number){
   const a=party(s,id),node=a?.plan.find(n=>n.id===nodeId);
   if(!a||!node||node.kind!=='move'||!canEdit(s))return false;
