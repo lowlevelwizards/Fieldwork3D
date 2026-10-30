@@ -346,8 +346,8 @@ function updateHud(){
     button.classList.toggle('selected',id===selected);
     button.classList.toggle('down',!a||a.health<=0);
     button.classList.toggle('loading',!!a&&a.reload>0);
-    button.style.setProperty('--reload-rotation',
-      ((a?.reload??0)>0?360*(1-a!.reload/1.8):0)+'deg');
+    button.style.setProperty('--reload-progress',
+      ((a?.reload??0)>0?Math.round(100*(1-a!.reload/1.8)):0)+'%');
     ui[(id+'Ammo') as 'rookAmmo'|'mossAmmo'|'ashAmmo'|'valeAmmo'].textContent=
       a?String(a.magazine).padStart(2,'0')+' / '+a.reserve+
       (a.reload>0?' ↻':''):'--';
@@ -1365,6 +1365,10 @@ function tick(now:number){
     playTone(160,.16);
   if(event!==lastEventAudio&&event.includes('KICKED'))
     playTone(90,.25,true);
+  if(event!==lastEventAudio&&event.includes('FLASH DETONATED'))
+    playTone(1350,.65,true);
+  if(event!==lastEventAudio&&event.includes('RELOADED'))
+    playTone(280,.09);
   lastEventAudio=event;
   if(now-hudAt>120){updateHud();if(replaying)updateReplayHud();hudAt=now;}
   if(stage&&viewMode!=='plan2d')
