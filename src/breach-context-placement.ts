@@ -47,7 +47,11 @@ export function placeContextMenu({
   const yMin=top,yMax=Math.max(top,bottom-height);
   // Prefer beside the interaction rather than hovering above/below it.
   // Edge rails help on small phones where a full floating panel doesn't fit.
-  const xs=[
+  const xs=viewportWidth<=600?[
+    // Edge rails leave the middle of a phone free for camera gestures.
+    {x:xMin,side:'left' as const},
+    {x:xMax,side:'right' as const},
+  ]:[
     {x:anchor.x-width-gap,side:'left' as const},
     {x:anchor.x+gap,side:'right' as const},
     {x:xMin,side:'left' as const},
