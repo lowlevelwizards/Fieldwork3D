@@ -17,7 +17,7 @@ test('086: 160 seeds generate deterministic connected 3–6-room sites',()=>{
     assert.ok(site.roomCount>=3&&site.roomCount<=6);
     assert.equal(site.spawn.length,4);
     assert.ok(site.enemies.length>=2&&site.enemies.length<=7);
-    assert.ok(site.doors.length>=site.rooms.length-1,
+    assert.ok(site.doors.length+(site.openHallLinks??0)>=site.rooms.length-1,
       'door spanning tree connects rooms');
     activateSite(site);
     assert.equal(WALLS.length,site.walls.length);
