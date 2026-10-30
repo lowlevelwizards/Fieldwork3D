@@ -70,7 +70,8 @@ export type Session=Omit<TacticalState,'operators'> & {
   nextEffectId:number;impactMarks:ImpactMark[];
   battleEvents:BattleEvent[];nextBattleId:number;
   missionType:'clear'|'intel'|'rescue'|'hold'|'capture';holdTime:number;
-  rescue:{p:Pt;following:string|null}|null;};
+  rescue:{p:Pt;following:string|null}|null;
+  captureTarget:string|null;};
 const d=(a:Pt,b:Pt)=>length(a,b);
 const clone=(p:Pt):Pt=>({...p});
 const near=(a:Pt,b:Pt,range:number)=>d(a,b)<=range;
@@ -162,7 +163,12 @@ export function newSession(index=0,siteSeed?:number):Session{
     dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1,
     impactMarks:[],battleEvents:[],nextBattleId:1,
     missionType:site?(['clear','intel','rescue','hold','capture'] as const)[site.seed%5]:'clear',
-    holdTime:0,rescue:null};
+    holdTime:0,rescue:null,captureTarget:null};
+  if(state.missionType==='capture'){
+    const target=operators.find(a=>a.side==='red');
+    state.captureTarget=target?.id??null;
+    if(target)state.scenario.objective=clone(target.p);
+  }
   if(state.missionType==='rescue')
     state.rescue={p:clone(state.scenario.objective),following:null};
   if(state.missionType==='intel'||state.missionType==='rescue'||
@@ -1195,8 +1201,15 @@ function mission(s:Session,dt:number){
   if(team(s).every(a=>a.health<=0)){
     s.phase='lost';s.report=['OPERATION FAILED','ALL OPERATORS LOST'];return;
   }
-  if(s.mission==='clear'&&enemies(s).every(a=>a.health<=0)){
+  const captured=s.missionType==='capture'&&s.captureTarget?
+    enemies(s).some(a=>a.id===s.captureTarget&&a.health<=0):false;
+  if(s.mission==='clear'&&
+    (captured||(s.missionType!=='capture'&&enemies(s).every(a=>a.health<=0)))){
     s.mission='secure';
+    if(captured){
+      const target=enemies(s).find(a=>a.id===s.captureTarget);
+      if(target)s.scenario.objective=clone(target.p);
+    }
     notify(s,s.missionType==='capture'?'TARGET NEUTRALIZED — SECURE':
       'CLEAR — SECURE OBJECTIVE');
     battleEvent(s,'objective',null,s.scenario.objective,'HOSTILES SECURED');
@@ -1299,7 +1312,8 @@ export function missionText(s:Session){
   if(s.phase==='won')return 'COMPLETE — OPERATION SUCCESS';
   if(s.phase==='lost')return 'MISSION FAILED';
   if(s.mission==='clear')return s.missionType==='capture'?
-    'NEUTRALIZE TARGET • SECURE AREA':'CLEAR HOSTILES • SECURE OBJECTIVE';
+    'INCAPACITATE OR FORCE SURRENDER OF TARGET':
+    'CLEAR HOSTILES • SECURE OBJECTIVE';
   if(s.mission==='secure')return s.missionType==='hold'?
     'HOLD OBJECTIVE • '+Math.floor(s.holdTime)+'/7 SECONDS':
     s.missionType==='rescue'?'REACH PERSON IN TARGET ROOM':
