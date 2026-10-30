@@ -264,14 +264,66 @@ export class TacticalScene3D{
     site.cover.forEach((c,i)=>{
       const group=new THREE.Group();this.root.add(group);
       this.intelSurfaces.push({obj:group,kind:'cover',index:i});
-      const tall=c.low?12:27,material=i%3===0?wood:i%3===1?steel:olive;
-      this.box(group,c.x,tall/2,c.y,c.w,tall,c.h,material);
-      this.box(group,c.x,tall+.5,c.y,c.w+1,1,c.h+1,
-        steel,false);
-      if(c.low)for(let j=0;j<3;j++)
-        this.box(group,c.x-c.w/3+j*c.w/3,tall+1,c.y,
-          1.5,2,c.h-4,wood,false);
+      const fixture=c.fixture??'crate';
+      const material=i%3===0?wood:i%3===1?steel:olive;
+      const w=c.w,d=c.h;
+      if(['bed','exam-bed','guest'].includes(fixture)){
+        this.box(group,c.x,5,c.y,w,8,d,material);
+        this.box(group,c.x,9.6,c.y,w-3,2.8,d-3,olive,false);
+        this.box(group,c.x-w*.32,11.2,c.y,w*.22,2,d*.7,steel,false);
+      }else if(['table','desk','counter','workbench','cart'].includes(fixture)){
+        const top=fixture==='counter'?14:fixture==='workbench'?13:11;
+        this.box(group,c.x,top,c.y,w,3,d,material);
+        for(const sx of [-1,1])for(const sz of [-1,1])
+          this.box(group,c.x+sx*(w/2-3),top/2,c.y+sz*(d/2-3),
+            3,top,3,steel);
+        if(fixture==='counter')this.box(group,c.x,6,c.y,w-5,9,d-5,wood);
+      }else if(['shelf','cabinet','locker','machine'].includes(fixture)){
+        this.box(group,c.x,13.5,c.y,w,27,d,material);
+        for(const level of [7,15,22])
+          this.box(group,c.x,level,c.y+d/2+1,w-4,1.2,2,steel,false);
+      }else if(fixture==='vehicle'){
+        this.box(group,c.x,9,c.y,w,17,d,metal);
+        this.box(group,c.x-w*.1,21,c.y,w*.54,10,d*.73,steel);
+        for(const sx of [-1,1])for(const sz of [-1,1])
+          this.box(group,c.x+sx*w*.32,3,c.y+sz*d*.49,
+            w*.15,6,4,timber);
+      }else if(fixture==='chair'||fixture==='bench'){
+        this.box(group,c.x,8,c.y,w,3,d,wood);
+        this.box(group,c.x-w*.44,14,c.y,3,15,d,material);
+      }else if(fixture==='fence'){
+        for(const sx of [-1,1])this.box(group,c.x+sx*w*.47,11,c.y,
+          3,22,3,wood);
+        for(const h of [7,17])this.box(group,c.x,h,c.y,w,2,3,steel,false);
+      }else{
+        const tall=c.low?12:27;
+        this.box(group,c.x,tall/2,c.y,w,tall,d,material);
+        if(fixture==='pallet')
+          for(const h of [2,7,12])this.box(group,c.x,h,c.y,w+2,2,d+2,wood,false);
+      }
     });
+    // Glass does not impede sight; the low sill does impede traversal.
+    const paneMat=new THREE.MeshStandardMaterial({
+      color:0xa7bdb9,roughness:.25,transparent:true,opacity:.35,
+      side:THREE.DoubleSide,depthWrite:false});
+    this.mats.push(paneMat);
+    for(const opening of site.windows??[]){
+      const group=new THREE.Group();
+      group.position.set(opening.x,0,opening.y);
+      group.rotation.y=opening.vertical?-Math.PI/2:0;
+      this.box(group,7,0,0,1,1,1,doorTrim,false).visible=false;
+      this.box(group,0,7,0,opening.width,14,9,wallMat);
+      this.box(group,0,35,0,opening.width,10,9,wallMat);
+      const glass=this.box(group,0,23,0,opening.width-3,18,1,paneMat,false);
+      glass.castShadow=false;
+      for(const x of [-opening.width/2,opening.width/2])
+        this.box(group,x,23,0,3,20,9,doorTrim,false);
+      const nearest=site.walls.findIndex(w=>
+        Math.hypot(w.a.x-opening.x,w.a.y-opening.y)<38||
+        Math.hypot(w.b.x-opening.x,w.b.y-opening.y)<38);
+      if(nearest>=0)this.intelSurfaces.push({obj:group,kind:'wall',index:nearest});
+      this.root.add(group);
+    }
     // Important: avoid visual-only furniture outside authoritative cover.
   }
   private buildWorld(site=activeSite()){

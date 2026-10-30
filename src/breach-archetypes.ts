@@ -1,5 +1,6 @@
 /** Semantic building types; furnishing data preserves authored collision. */
 import type {Site,BuildingArchetype,Room} from './breach-site.ts';
+import {buildArchetypeEnvironment} from './breach-windows.ts';
 export const BUILDING_ARCHETYPES:readonly BuildingArchetype[]=
  ['house','office','motel','garage','warehouse','clinic'];
 const ROOMS:Record<BuildingArchetype,readonly string[]>={
@@ -40,5 +41,5 @@ export function applyArchetype(site:Site,seed:number):Site{
     const collection=FIXTURES[room?.purpose??'storage']??['crate'];
     return {...o,fixture:collection[(i+seed)%collection.length]};
   });
-  return {...site,archetype,rooms,cover};
+  return buildArchetypeEnvironment({...site,archetype,rooms,cover},seed);
 }

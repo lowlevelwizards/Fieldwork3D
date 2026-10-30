@@ -9,11 +9,13 @@ import {applyArchetype} from './breach-archetypes.ts';
 export type Room={id:string;x:number;y:number;w:number;h:number;
   kind:'room'|'hall';tone:number;purpose?:string};
 export type BuildingArchetype='house'|'office'|'motel'|'garage'|'warehouse'|'clinic';
+export type WindowOpening={id:string;x:number;y:number;width:number;vertical:boolean};
 export type Site={
   seed:number;name:string;rooms:Room[];walls:Segment[];doors:Door[];
   /** Open hall-to-hall transitions need no obstructing door leaf. */
   openHallLinks?:number;
   archetype?:BuildingArchetype;
+  windows?:WindowOpening[];
   cover:Obstacle[];entrance:Pt;spawn:Pt[];enemies:Pt[];
   objective:Pt;extract:Pt;roomCount:number;
   layout:'office'|'workshop'|'corridor'|'courtyard';
