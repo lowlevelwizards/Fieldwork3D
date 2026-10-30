@@ -891,6 +891,16 @@ function sprite(a:TeamActor){
   }
 }
 function contacts(){
+  for(const mark of state.impactMarks){
+    if(!(replaying&&replayOmniscient)&&!liveVisibility(state,mark.p))continue;
+    draw.globalAlpha=Math.max(.18,.78-mark.age*.023);
+    circle(mark.p.x,mark.p.y,mark.surface==='blood'?4:2.5,
+      mark.surface==='blood'?'#914a44':
+      mark.surface==='wood'?'#42332a':
+      mark.surface==='stone'?'#363936':
+      mark.surface==='metal'?'#262e30':'#4e4b40');
+    draw.globalAlpha=1;
+  }
   for(const m of state.dropped){
     rect(m.p.x-3,m.p.y-1,6,2,'#202e2d');
   }
