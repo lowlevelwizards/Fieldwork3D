@@ -7,6 +7,7 @@ import {
   type Pt,type Operator,type TacticalState,type Door,type Side,
   WALLS,COVER,initialDoors,newTacticalState,route,passable,activateSite,
   segmentsCross,doorCenter,doorBlocksSegment,doorLeafSegment,doorBlocksRay,
+  pointToSegment,
 } from './breach-core.ts';
 import {
   type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,
@@ -903,77 +904,6 @@ function observe(s:Session){
 /** Let a temporarily idle teammate step into a safe passing pocket.
  * Keep every authored waypoint: this is transient traffic, not plan editing.
  */
-function yieldPocket(blocker:TeamActor,requester:TeamActor,s:Session):Pt|null{
-  const dx=blocker.p.x-requester.p.x;
-  const dy=blocker.p.y-requester.p.y;
-  const len=Math.hypot(dx,dy)||1;
-  const side={x:-dy/len,y:dx/len};
-  const backwards={x:dx/len,y:dy/len};
-  const options:Pt[]=[];
-  for(const offset of [18,23,28,14]){
-    for(const sign of [1,-1]){
-      options.push({x:blocker.p.x+side.x*offset*sign,
-        y:blocker.p.y+side.y*offset*sign});
-    }
-  }
-  // A doorway can have only one free side; retreating into a nearby
-  // pocket is preferable to overlapping actors whenever space exists.
-  for(const offset of [18,25]){
-    options.push({x:blocker.p.x+backwards.x*offset,
-      y:blocker.p.y+backwards.y*offset});
-  }
-  return options.filter(pos=>{
-    if(s.operators.some(b=>b!==blocker&&b!==requester&&b.health>0&&
-      d(pos,b.p)<18))return false;
-    return sweptBodyClear(blocker.p,pos,s.doors);
-  }).sort((u,v)=>
-    d(v,requester.p)-d(u,requester.p)||
-    d(u,blocker.p)-d(v,blocker.p))[0]??null;
-}
-function deferToTeammate(s:Session,blocker:TeamActor,requester:TeamActor){
-  if(blocker.yieldTarget||blocker.health<=0)return false;
-  const requesterRank=s.operators.indexOf(requester);
-  const blockerRank=s.operators.indexOf(blocker);
-  const blockerActive=blocker.plan.some(n=>n.kind==='move'||n.kind==='door');
-  // A teammate actually making progress owns the lane. If both are stuck,
-  // a stable actor order breaks ties rather than yielding to each other.
-  if(blockerActive&&blocker.blockedTime<.14&&blocker.velocity>12)
-    return false;
-  if(blockerActive&&blocker.blockedTime>.14&&requesterRank>blockerRank)
-    return false;
-  const target=yieldPocket(blocker,requester,s);
-  if(!target)return false;
-  blocker.yieldTarget=target;blocker.yieldFor=requester.id;
-  blocker.yieldUntil=s.seconds+2.1;blocker.nav=[];
-  notify(s,blocker.name+' YIELDING TO '+requester.name);
-  return true;
-}
-function stepYield(s:Session,a:TeamActor,dt:number):boolean{
-  if(!a.yieldTarget)return false;
-  const requester=s.operators.find(other=>other.id===a.yieldFor);
-  const clear= !requester||requester.health<=0||
-    d(a.p,requester.p)>31;
-  const arrived=d(a.p,a.yieldTarget)<2;
-  if(s.seconds>a.yieldUntil||(clear&&arrived)){
-    a.yieldTarget=null;a.yieldFor=null;a.yieldUntil=0;
-    a.nav=[];a.velocity=0;
-    return false;
-  }
-  if(!arrived){
-    const distance=d(a.p,a.yieldTarget);
-    const advance=Math.min(distance,50*dt);
-    const candidate={x:a.p.x+
-      (a.yieldTarget.x-a.p.x)/distance*advance,
-      y:a.p.y+(a.yieldTarget.y-a.p.y)/distance*advance};
-    if(sweptBodyClear(a.p,candidate,s.doors)){
-      a.priorP=clone(a.p);a.p=candidate;a.velocity=50;
-    }else{
-      a.yieldTarget=null;a.yieldFor=null;a.yieldUntil=0;a.nav=[];
-      return false;
-    }
-  }else a.velocity=0;
-  return true;
-}
 function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   if(!a.nav.length){
     a.nav=a.side==='blue'?routeWithIntel(s.intel,a.p,p):route(a.p,p);
@@ -990,8 +920,13 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const advance=Math.min(gap,a.velocity*dt);
   const move={x:a.p.x+Math.cos(direction)*advance,
     y:a.p.y+Math.sin(direction)*advance};
+  // Push an open leaf as soon as the body touches it, not only when
+  // the centre line crosses it (which was too late to escape collision).
   const closedDoor=s.doors.find(door=>
+    pointToSegment(move,doorLeafSegment(door))<15||
     doorBlocksSegment(door,{a:a.p,b:move}));
+  if(closedDoor?.open&&(closedDoor.openFraction??0)<.99)
+    pushDoor(closedDoor,1.1);
   // Look ahead to the route's next node, stopping to open a door before
   // the actor's capsule contacts the physical leaf.
   const doorAhead=a.side==='red'?s.doors.find(door=>{
@@ -1011,41 +946,36 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     if((doorAhead.openFraction??0)<.72)return true;
     a.actionTimer=0;
   }else if(a.side==='red')a.actionTimer=0;
-  if(closedDoor&&closedDoor.open)pushDoor(closedDoor,.55);
   const closed=!!closedDoor;
+  // Allies may brush and pass one another: their bodies never hard-block
+  // authored routes. Only an opposing actor is a physical traffic barrier.
   const blocking=s.operators.find(b=>b!==a&&b.health>0&&
-    d(b.p,move)<(b.side===a.side?15:11));
-  const teammate=blocking?.side===a.side?blocking:null;
-  // A reciprocal jam needs a deterministic resolution. Prefer yielding
-  // in nearby free space; after prolonged blockage, permit a brief
-  // same-team shoulder pass rather than deadlocking a door indefinitely.
-  if(teammate&&a.blockedTime>.10)
-    deferToTeammate(s,teammate,a);
-  // Detect an impending friendly jam before contact. Micro-detours
-  // are transient, never rewritten into the player's authored plan.
-  const lookDist=Math.min(28,gap);
-  const ahead={x:a.p.x+Math.cos(direction)*lookDist,
-    y:a.p.y+Math.sin(direction)*lookDist};
+    b.side!==a.side&&d(b.p,move)<11);
   const nearPeer=s.operators.find(b=>b!==a&&b.health>0&&
-    b.side===a.side&&d(b.p,ahead)<18);
-  if(nearPeer&&d(a.p,nearPeer.p)<25&&a.blockedTime>.08)
-    deferToTeammate(s,nearPeer,a);
+    b.side===a.side&&d(b.p,move)<20);
+  let desiredMove=move;
+  if(nearPeer){
+    const tangent={x:-Math.sin(direction),y:Math.cos(direction)};
+    const choices=[6,-6,11,-11].map(offset=>({
+      x:move.x+tangent.x*offset,y:move.y+tangent.y*offset,
+    })).filter(pos=>d(pos,nearPeer.p)>d(move,nearPeer.p)+2&&
+      sweptBodyClear(a.p,pos,s.doors));
+    if(choices.length)desiredMove=choices.sort((u,v)=>
+      d(u,next)-d(v,next))[0];
+  }
   // Try nearby route repair for actor jams, furniture, and door leaves.
-  if((teammate||nearPeer||(!closed&&!passable(move))||
-    (closed&&closedDoor?.open&&a.blockedTime>.24))&&
-    a.blockedTime>.20&&!a.yieldTarget){
+  if((!sweptBodyClear(a.p,desiredMove,s.doors)||blocking)&&
+    a.blockedTime>.30&&s.seconds-a.lastNavRepairAt>.6){
     const candidate=localDetour(a.p,next,s.doors,s.operators
       .filter(o=>o!==a&&o.health>0).map(o=>o.p));
-    if(candidate&&(!a.nav.length||d(candidate,a.nav[0])>8)){
-      a.nav.unshift(candidate);a.blockedTime=0;return true;
+    if(candidate&&d(candidate,p)<d(a.p,p)+12&&
+      (!a.nav.length||d(candidate,a.nav[0])>12)){
+      a.nav.unshift(candidate);a.lastNavRepairAt=s.seconds;
+      return true;
     }
   }
-  // A stable narrow-gap pass permits *limited* shoulder clearance
-  // when two allies cannot sidestep, without dragging either actor.
-  const squeeze=!!teammate&&a.blockedTime>1.05&&
-    d(move,teammate.p)>9.5&&!a.yieldTarget;
-  if(!closed&&(!blocking||squeeze)&&sweptBodyClear(a.p,move,s.doors)){
-    a.priorP=clone(a.p);a.p=move;a.blockedTime=0;
+  if(!closed&&!blocking&&sweptBodyClear(a.p,desiredMove,s.doors)){
+    a.priorP=clone(a.p);a.p=desiredMove;a.blockedTime=0;
     if(a.side==='blue'&&s.seconds-s.movementNoiseAt>.54){
       hear(s,a.p,a.posture==='crouch'?30:68,'footstep');
       s.movementNoiseAt=s.seconds;
@@ -1098,11 +1028,6 @@ function pop(a:TeamActor){
 function runOrders(s:Session,a:TeamActor,dt:number){
   // A stationary or opposing teammate may briefly step aside, then resume
   // its original queue. This overrides motor movement, not tactical aiming.
-  if(stepYield(s,a,dt)){
-    const held=aimHeading(a);
-    if(held!==null)rotate(a,held,dt);
-    return;
-  }
   const n=a.plan[0];
   if(a.haltOnContact){
     const threat=enemies(s).find(e=>inSight(a,e,s));
