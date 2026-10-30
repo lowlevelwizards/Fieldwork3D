@@ -279,7 +279,8 @@ function showDiagnostics(){
     'CONTACTS '+feet.filter(x=>x.contact).length+
       ' · SEPARATION '+separated.toFixed(1)+
       (crossing?' · CROSSING!':''),
-    'GRIP ERROR '+rig.gripError.toFixed(3)+
+    'ANKLE GAP '+rig.legGap.map(v=>v.toFixed(2)).join(' / ')+
+      ' · GRIP ERROR '+rig.gripError.toFixed(3)+
       ' · SUPPORT '+balance.support.toFixed(2),
     'PELVIS '+sampled.state.pelvisYaw.toFixed(2)+
       ' · LIFT '+balance.pelvisY.toFixed(2),
@@ -325,6 +326,7 @@ function draw(){
   canvas.dataset.contactCount=String(feet.filter(x=>x.contact).length);
   canvas.dataset.gait=state.mode;
   canvas.dataset.gripError=rig.gripError.toFixed(4);
+  canvas.dataset.ankleGap=Math.max(...rig.legGap).toFixed(3);
   canvas.dataset.crossed=String(!uncrossed(feet[0].position,
     feet[1].position,-state.pelvisYaw,3.5));
   control.update();renderer.render(scene,camera);
