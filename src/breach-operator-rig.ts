@@ -10,6 +10,7 @@ import {bodyFromContacts} from './breach-body-motion.ts';
 import {weaponGrips,handlingPose,clampReach,
   fitWeaponPose} from './breach-weapon-pose.ts';
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
+  ankleLink:THREE.Mesh;
   anchor:THREE.Vector3;swinging:boolean;
   bend:THREE.Vector3;outOfReach:boolean};
 type Arm={upper:THREE.Mesh;lower:THREE.Mesh;hand:THREE.Mesh;
@@ -77,7 +78,10 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   for(const sideSign of [-1,1]){
     const upper=bone(root,4.7,5.3,cloth),lower=bone(root,4,4.3,cloth);
     const shoe=block(root,0,0,0,8,2.9,5.8,boot);
-    feet.push({upper,lower,shoe,anchor:new THREE.Vector3(),
+    const ankleLink=bone(root,3.8,3.8,boot);
+    ankleLink.visible=false;
+    feet.push({upper,lower,shoe,ankleLink,
+      anchor:new THREE.Vector3(),
       swinging:false,bend:new THREE.Vector3(1,0,0),outOfReach:false});
     const armUpper=bone(chest,3.9,4.0,cloth);
     const armLower=bone(chest,3.4,3.5,cloth);
@@ -211,6 +215,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // violation instead of spinning the knee or teleporting their boot.
     alignSegment(foot.upper,hipLocal,leg.joint,P(0,0,sign));
     alignSegment(foot.lower,leg.joint,leg.effector,P(0,0,sign));
+    // Final small reach extension is represented by a boot-colored
+    // articulated ankle cuff, never a floating shoe or stretched shin.
+    // The original two-bone segment lengths remain unchanged.
+    foot.ankleLink.visible=r.legGap[i]>.10;
+    if(foot.ankleLink.visible)
+      alignSegment(foot.ankleLink,leg.effector,relative,P(0,0,sign));
     foot.shoe.position.copy(relative);
     const pitch=target.pitch??0;
     foot.shoe.rotation.z=pitch;
