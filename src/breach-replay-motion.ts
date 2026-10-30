@@ -40,10 +40,11 @@ export function sampleFootEvents(events:readonly FootEvent[],time:number):FootTa
   }
   const e=events[lo];
   if(e.swing===0)return {position:{...e.to},height:0,
-    worldYaw:e.toYaw,phase:'planted',contact:true};
+    worldYaw:e.toYaw,phase:'planted',contact:true,progress:0};
   const elapsed=Math.max(0,time-e.at);
   if(elapsed<e.unload)return {position:{...e.from},height:0,
-    worldYaw:e.fromYaw,phase:'unloading',contact:true};
+    worldYaw:e.fromYaw,phase:'unloading',contact:true,
+    progress:e.unload>0?elapsed/e.unload:1};
   const progress=(elapsed-e.unload)/e.swing;
   if(progress<1){
     const t=clamp(progress,0,1),k=smooth(t);
@@ -51,11 +52,12 @@ export function sampleFootEvents(events:readonly FootEvent[],time:number):FootTa
       y:e.from.y+(e.to.y-e.from.y)*k},
       height:Math.sin(Math.PI*t)*e.lift,
       worldYaw:e.fromYaw+angular(e.fromYaw,e.toYaw)*k,
-      phase:'swinging',contact:false};
+      phase:'swinging',contact:false,progress:t};
   }
   return {position:{...e.to},height:0,worldYaw:e.toYaw,
     phase:elapsed<e.unload+e.swing+.035?'landing':'planted',
-    contact:true};
+    contact:true,progress:elapsed<e.unload+e.swing+.035?
+      (elapsed-e.unload-e.swing)/.035:1};
 }
 export class ReplayMotionRecorder{
   private actors=new Map<string,ActorTrack>();
