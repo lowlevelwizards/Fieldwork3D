@@ -906,7 +906,10 @@ export class TacticalScene3D{
         mesh.rotation.x=-Math.PI/2;
         this.impactDecals.set(mark.id,mesh);this.effects.add(mesh);
       }
-      mesh.position.set(mark.p.x,mark.height??1,mark.p.y);
+      // Blood is a ground stain, not a floating disc at torso height.
+      // World depth tests and the overhead black fog then occlude it.
+      mesh.position.set(mark.p.x,
+        mark.surface==='blood'?.85:(mark.height??1),mark.p.y);
       mesh.scale.setScalar(mark.surface==='blood'?4:2.3);
       (mesh.material as THREE.MeshBasicMaterial).opacity=
         Math.max(.19,.82-mark.age*.025);
