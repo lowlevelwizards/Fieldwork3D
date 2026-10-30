@@ -26,7 +26,7 @@ test('127: a committed step keeps phase durations through a stop',()=>{
  let foot=s.feet.find(x=>x.phase==='unloading');
  assert.ok(foot,'first step should unload');
  const original=foot.swingDuration,landing=foot.landingDuration;
- for(let i=7;i<=18;i++
+ for(let i=7;i<=18;i++)
   advanceFootsteps(s,input(i/60,3.6,0));
  assert.equal(foot.swingDuration,original);
  assert.equal(foot.landingDuration,landing);
