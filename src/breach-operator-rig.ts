@@ -192,7 +192,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     yaw:-(p.shotHeading??p.heading)-r.root.rotation.y-r.chest.rotation.y,
     recoil});
   r.gripError=fit.contactError;
-  r.weapon.scale.set(data.lengthScale,1,p.weapon==='shotgun'?1.28:1);
+  // Contact coordinates and visible weapon use one rigid transform.
+  r.weapon.scale.set(data.lengthScale,1,1);
   r.weapon.rotation.copy(fit.rotation);
   r.weapon.position.copy(fit.origin);
   // Weapon kick and muzzle flash may not break solved hand contacts.
