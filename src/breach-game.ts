@@ -984,7 +984,7 @@ export function missionText(s:Session){
   if(s.phase==='won')return 'COMPLETE — OPERATION SUCCESS';
   if(s.phase==='lost')return 'MISSION FAILED';
   if(s.mission==='clear')return 'CLEAR HOSTILES • SECURE THE RECORDS';
-  if(s.mission==='secure')return 'MOVE TO RECORDS IN EAST ROOM';
+  if(s.mission==='secure')return 'MOVE TO RECORDS IN TARGET ROOM';
   return 'RETURN TO EXTRACTION OUTSIDE';
 }
 export function debrief(s:Session){
