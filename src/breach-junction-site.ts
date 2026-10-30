@@ -35,7 +35,7 @@ export function generateJunctionSite(seed:number):Site{
   const append=(boundary:Segment,id:string|null)=>{
     if(!id){walls.push(boundary);return;}
     const {a,b}=boundary,vertical=Math.abs(b.x-a.x)<.01;
-    const span=length(a,b),half=Math.min(22,span*.32);
+    const span=length(a,b),half=Math.min(22,span*.44);
     const offset=(rand()-.5)*Math.min(16,Math.max(0,span-2*half-14));
     const middle=vertical?{x:a.x,y:(a.y+b.y)/2+offset}:
       {x:(a.x+b.x)/2+offset,y:a.y};
@@ -106,7 +106,7 @@ export function generateJunctionSite(seed:number):Site{
     cover.some(o=>Math.abs(p.x-o.x)<o.w/2+clearance&&
       Math.abs(p.y-o.y)<o.h/2+clearance);
   for(const room of rooms){
-    const count=room.kind==='hall'?(rand()<.25?1:0):
+    const count=room.kind==='hall'||room.w<100||room.h<95?0:
       integer(1,room.w*room.h>33000?3:2);
     for(let j=0;j<count;j++)for(let attempt=0;attempt<20;attempt++){
       const w=integer(22,Math.min(54,room.w-50));
