@@ -202,6 +202,17 @@ function showDiagnostics(){
   }
   const trouble=rig.feet.filter(x=>x.outOfReach).length+
     rig.arms.filter(x=>x.outOfReach).length;
+  const flex=(a:THREE.Mesh,b:THREE.Mesh)=>{
+    const u=new THREE.Vector3(0,1,0).applyQuaternion(
+      a.getWorldQuaternion(new THREE.Quaternion()));
+    const v=new THREE.Vector3(0,1,0).applyQuaternion(
+      b.getWorldQuaternion(new THREE.Quaternion()));
+    return Math.acos(Math.min(1,Math.max(-1,u.dot(v))))*180/Math.PI;
+  };
+  const angles=[...rig.feet.map(x=>flex(x.upper,x.lower)),
+    ...rig.arms.map(x=>flex(x.upper,x.lower))];
+  const lowerFrame=Math.floor(clock*60+1e-8);
+  const alpha=clock*60-lowerFrame;
   diagnosticText.textContent=[
     'TIME '+clock.toFixed(3)+' / '+TRACK_DURATION.toFixed(2),
     'LEFT '+feet[0].phase.toUpperCase()+'  RIGHT '+
@@ -209,8 +220,12 @@ function showDiagnostics(){
     'SPEED '+sampled.motion.speed.toFixed(1)+
       ' · REACH FLAGS '+trouble,
     'CONTACTS '+feet.filter(x=>x.contact).length+
-      ' · STEP EVENTS '+sampled.state.lastStepAt.toFixed(2),
-    layer==='replay'?'DETERMINISTIC 60 Hz SOURCE · SEEK-SAFE':''
+      ' · LAST STEP '+sampled.state.lastStepAt.toFixed(2),
+    layer==='limits'||layer==='planes'?
+      'KNEES '+angles.slice(0,2).map(x=>x.toFixed(0)+'°').join(' / ')+
+      ' · ELBOWS '+angles.slice(2).map(x=>x.toFixed(0)+'°').join(' / '):'',
+    layer==='replay'?'60Hz FRAME '+lowerFrame+' → '+(lowerFrame+1)+
+      ' · α '+alpha.toFixed(3)+' · SEEK-SAFE':''
   ].filter(Boolean).join('\n');
 }
 function draw(){
