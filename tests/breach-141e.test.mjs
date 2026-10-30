@@ -9,7 +9,7 @@ test('141E: dynamic room defenders find real reachable ground',()=>{
   const origin=site.enemies[0],threat=site.entrance;
   const candidates=defenseCandidates(origin,threat,site.doors);
   assert.ok(candidates.length);
-  assert.ok(candidates.every(passable));
+  assert.ok(candidates.every(point=>passable(point)));
   const picked=chooseDefense(origin,threat,site.doors,[], 'guard');
   assert.ok(picked&&passable(picked));
   const watch=watchPoint(origin,site.doors);
