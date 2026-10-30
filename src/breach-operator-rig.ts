@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import {alignSegment,twoBoneJoint} from './breach-ik.ts';
 import type {WeaponId} from './breach-combat.ts';
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
-  anchor:THREE.Vector3;planted:boolean;lastCycle:number};
+  anchor:THREE.Vector3;planted:boolean;lastCycle:number;
+  swingStart:THREE.Vector3;swingGoal:THREE.Vector3;swinging:boolean};
 type Arm={upper:THREE.Mesh;lower:THREE.Mesh;hand:THREE.Mesh};
 export type OperatorPose={
   x:number;z:number;heading:number;velocity:number;seconds:number;
@@ -12,6 +13,7 @@ export type OperatorPose={
   reload:number;reloadDuration:number;lastThrowAt:number;
   lastDoorAt:number;doorPoint?:{x:number;y:number};down:boolean;
   surrender:boolean;aiming:boolean;firing:boolean;turning:number;
+  obstruction?:boolean;
 };
 export type OperatorRig={
   root:THREE.Group;hip:THREE.Group;chest:THREE.Group;head:THREE.Group;
@@ -58,7 +60,8 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     const upper=bone(root,4.7,5.3,cloth),lower=bone(root,4,4.3,cloth);
     const shoe=block(root,0,0,0,8,2.9,5.8,boot);
     feet.push({upper,lower,shoe,anchor:new THREE.Vector3(),
-      planted:false,lastCycle:-1});
+      planted:false,lastCycle:-1,swingStart:new THREE.Vector3(),
+      swingGoal:new THREE.Vector3(),swinging:false});
     const armUpper=bone(chest,3.9,4.0,cloth);
     const armLower=bone(chest,3.4,3.5,cloth);
     const hand=block(chest,0,0,0,3.6,3.2,3.9,skin);
@@ -87,7 +90,8 @@ function approach(v:number,target:number,rate:number,dt:number){
 const P=(x:number,y:number,z:number)=>new THREE.Vector3(x,y,z);
 export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   if(dt<0||r.lastTime>p.seconds+.03||p.seconds-r.lastTime>1.2){
-    for(const foot of r.feet){foot.planted=false;foot.lastCycle=-1;}
+    for(const foot of r.feet){foot.planted=false;foot.lastCycle=-1;
+      foot.swinging=false;}
     r.lastTime=p.seconds;dt=0;
   }
   dt=clamp(dt,0,.08);
@@ -108,38 +112,52 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.hip.position.y=13.5-crouch+(p.down?0:Math.sin(p.stride*.25)*moving*.42);
   r.chest.position.y=23-crouch;
   const cycle=p.stride/19;
-  // World anchors: planted feet stay put as the body passes above them.
+  // Stable world-space stance feet, with a discrete swing from the previous
+  // support contact to the next one. Stance anchors do not follow the pelvis.
+  const rotateRoot=(v:THREE.Vector3)=>v.applyAxisAngle(P(0,1,0),
+    r.root.rotation.y);
   for(let i=0;i<2;i++){
-    const foot=r.feet[i],sign=i===0?-1:1,phase=((cycle+i*.5)%1+1)%1;
-    const stance=phase<.57||moving<.09;
-    const side=sign*4.5;
+    const foot=r.feet[i],sign=i===0?-1:1;
+    const phase=((cycle+i*.5)%1+1)%1;
+    const stance=phase<.59||moving<.08;
+    const side=sign*4.8;
     const hipLocal=P(0,r.hip.position.y,side);
-    const goal=P((phase-.48)*22*moving,1.45,side);
-    const rotateRoot=(local:THREE.Vector3)=>local.applyAxisAngle(P(0,1,0),
-      r.root.rotation.y);
-    if(!foot.planted||(!stance&&foot.lastCycle!==Math.floor(cycle+i*.5))){
-      const relative=rotateRoot(goal);
-      foot.anchor.set(p.x+relative.x,1.45,p.z+relative.z);
-      foot.planted=true;foot.lastCycle=Math.floor(cycle+i*.5);
+    if(!foot.planted){
+      const at=rotateRoot(P(-2,1.45,side));
+      foot.anchor.set(p.x+at.x,1.45,p.z+at.z);
+      foot.planted=true;
     }
-    const target=foot.anchor.clone().sub(P(p.x,0,p.z))
+    if(!stance&&!foot.swinging){
+      foot.swinging=true;foot.swingStart.copy(foot.anchor);
+      const ahead=rotateRoot(P(8*moving,1.45,side));
+      foot.swingGoal.set(p.x+ahead.x,1.45,p.z+ahead.z);
+    }
+    if(stance&&foot.swinging){
+      foot.anchor.copy(foot.swingGoal);
+      foot.swinging=false;foot.lastCycle=Math.floor(cycle+i*.5);
+    }
+    const targetWorld=foot.anchor.clone();
+    if(foot.swinging){
+      const alpha=clamp((phase-.59)/.41,0,1);
+      const eased=alpha*alpha*(3-2*alpha);
+      targetWorld.lerpVectors(foot.swingStart,foot.swingGoal,eased);
+      targetWorld.y+=Math.sin(Math.PI*alpha)*5.4*moving;
+    }
+    const target=targetWorld.sub(P(p.x,0,p.z))
       .applyAxisAngle(P(0,1,0),-r.root.rotation.y);
-    if(!stance){
-      target.x+=Math.sin(phase*Math.PI)*3.2*moving;
-      target.y+=Math.max(0,Math.sin((phase-.57)/.43*Math.PI))*4.8*moving;
-    }
     const knee=twoBoneJoint(hipLocal,target,7.5,7.4,P(1,0,sign*.25));
     alignSegment(foot.upper,hipLocal,knee);
     alignSegment(foot.lower,knee,target);
-    foot.shoe.position.copy(target);foot.shoe.rotation.y=0;
+    foot.shoe.position.copy(target);
   }
   // Shoulder direction, both-hand grips, and support-hand action reach.
   const gunLength=p.weapon==='smg'?.70:p.weapon==='rifle'?1.26:
     p.weapon==='shotgun'?1.12:1;
-  const retract=p.aiming?0:.24;
+  const retract=p.obstruction?1:p.aiming?0:.28;
   r.weapon.scale.x=gunLength;
   r.weapon.position.x=8-retract*7;
   r.weapon.position.y=-5+(p.aiming?1:0);
+  r.weapon.rotation.y=-diff(hipTarget,p.heading)-r.chest.rotation.y;
   const reloadProgress=p.reload>0?1-p.reload/p.reloadDuration:0;
   const reloadActive=p.reload>0;
   const throwAge=p.seconds-p.lastThrowAt;
@@ -157,13 +175,20 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const t=Math.sin(Math.PI*clamp(throwAge/.7,0,1));
     leftGrip.set(10+12*t,3+7*t,-7);
   }else if(doorActive&&p.doorPoint){
-    leftGrip.set(7,2,-9);
+    const local=P(p.doorPoint.x-p.x,14-r.chest.position.y,
+      p.doorPoint.y-p.z);
+    local.applyAxisAngle(P(0,1,0),-r.root.rotation.y);
+    local.applyAxisAngle(P(0,1,0),-r.chest.rotation.y);
+    leftGrip.copy(local);
   }
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
     const shoulder=P(0,3,sign*7);
     const grip=i===0?leftGrip:rightGrip;
-    const wrist=grip.clone().add(r.weapon.position);
+    const wrist=(i===0&&doorActive&&p.doorPoint)?
+      leftGrip.clone():grip.clone().multiply(P(r.weapon.scale.x,1,1))
+        .applyAxisAngle(P(0,1,0),r.weapon.rotation.y)
+        .add(r.weapon.position);
     const elbow=twoBoneJoint(shoulder,wrist,8.8,8.8,
       P(-.4,-.25,sign));
     alignSegment(arm.upper,shoulder,elbow);
