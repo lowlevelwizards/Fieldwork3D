@@ -5,12 +5,15 @@
 import {type Pt,type Segment,type Door,type Obstacle,
   pointToSegment} from './breach-core.ts';
 import {generateJunctionSite} from './breach-junction-site.ts';
+import {applyArchetype} from './breach-archetypes.ts';
 export type Room={id:string;x:number;y:number;w:number;h:number;
-  kind:'room'|'hall';tone:number};
+  kind:'room'|'hall';tone:number;purpose?:string};
+export type BuildingArchetype='house'|'office'|'motel'|'garage'|'warehouse'|'clinic';
 export type Site={
   seed:number;name:string;rooms:Room[];walls:Segment[];doors:Door[];
   /** Open hall-to-hall transitions need no obstructing door leaf. */
   openHallLinks?:number;
+  archetype?:BuildingArchetype;
   cover:Obstacle[];entrance:Pt;spawn:Pt[];enemies:Pt[];
   objective:Pt;extract:Pt;roomCount:number;
   layout:'office'|'workshop'|'corridor'|'courtyard';
@@ -25,7 +28,7 @@ export const seeded=(seed:number)=>{
 const between=(r:()=>number,min:number,max:number)=>
   min+Math.floor(r()*(max-min+1));
 export function generateSite(seed:number):Site{
-  if(seed%5===0)return generateJunctionSite(seed);
+  if(seed%5===0)return applyArchetype(generateJunctionSite(seed),seed);
   const rng=seeded(seed);
   const target=between(rng,3,6);
   const layout=(['office','workshop','corridor','courtyard'] as const)[seed%4];
@@ -178,8 +181,8 @@ export function generateSite(seed:number):Site{
       enemies.push(p);break;
     }
   }
-  return {seed,name:['CUTWOODS','MILL ANNEX','TOLL HOUSE','RELAY SITE',
+  return applyArchetype({seed,name:['CUTWOODS','MILL ANNEX','TOLL HOUSE','RELAY SITE',
     'SERVICE DEPOT','FARMSTATION'][seed%6],rooms,walls,doors,cover,
     entrance,spawn,enemies,objective,extract:{x:entry.x,y:y2+115},
-    roomCount:habitable.length,layout};
+    roomCount:habitable.length,layout},seed);
 }

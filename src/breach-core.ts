@@ -9,7 +9,8 @@ export type Segment={a:Pt;b:Pt};
 export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number;
   hinge?:'a'|'b';swing?:-1|1;openFraction?:number;
   angularVelocity?:number;resistance?:number;kickImpulse?:number;}
-export type Obstacle={x:number;y:number;w:number;h:number;low?:boolean};
+export type Obstacle={x:number;y:number;w:number;h:number;low?:boolean;
+  fixture?:string};
 export type Side='blue'|'red';
 export type Operator={id:string;name:string;side:Side;p:Pt;heading:number;
   path:Pt[];health:number;shots:number;fireCd:number;aimLock:boolean;
