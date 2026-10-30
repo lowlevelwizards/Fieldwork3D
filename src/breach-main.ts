@@ -1,5 +1,5 @@
 import {
-  W,H,WALLS,COVER,GRID,doorCenter,route,type Pt,
+  W,H,WALLS,COVER,GRID,doorCenter,doorLeafSegment,route,type Pt,
 } from './breach-core.ts';
 import {
   type Session,type TeamActor,
@@ -535,6 +535,23 @@ function architecture(){
         line(a,{x:a.x+34,y:a.y},'#c2b08a',7);
       circle(a.x,a.y,3,'#f0d8a9');
     }
+  }
+  const selectedDoor=state.doors.find(d=>d.id===doorFocusId);
+  if(selectedDoor&&state.phase==='planning'){
+    const hinge=selectedDoor.hinge==='b'?selectedDoor.b:selectedDoor.a;
+    const swept=doorLeafSegment({...selectedDoor,openFraction:1});
+    const current=doorLeafSegment(selectedDoor);
+    draw.save();draw.globalAlpha=.36;draw.strokeStyle='#e7c995';
+    draw.fillStyle='#d9b57b17';draw.setLineDash([5,5]);
+    draw.beginPath();draw.moveTo(hinge.x,hinge.y);
+    for(let i=0;i<=16;i++){
+      const leaf=doorLeafSegment({...selectedDoor,openFraction:i/16});
+      draw.lineTo(leaf.b.x,leaf.b.y);
+    }
+    draw.closePath();draw.fill();draw.stroke();draw.setLineDash([]);
+    line(current.a,current.b,'#f4dba9',6);
+    line(swept.a,swept.b,'#f4dba9',5);
+    draw.restore();
   }
   // Narrow window markers (not navigable openings).
   if(state.site)return;

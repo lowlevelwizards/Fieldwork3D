@@ -1,6 +1,7 @@
 /** Physical hinges, handles, and deterministic door clearance. */
 import {doorCenter,passable,route,pointToSegment,
-  doorYaw,doorLeafSegment,type Door,type Pt} from './breach-core.ts';
+  doorYaw,doorLeafSegment,WALLS,COVER,pointToSegment as distanceToWall,
+  type Door,type Pt} from './breach-core.ts';
 export {doorYaw,doorLeafSegment};
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export const DOOR_REACH=39;
@@ -37,10 +38,27 @@ export function initDoor(d:Door,i:number):Door{
 /** A small fixed-step hinge motor with damped impulses; no renderer physics. */
 export function pushDoor(d:Door,force:number):boolean{
  if(!d.open&&(d.openFraction??0)<.08)return false;
- d.angularVelocity=Math.max(-3.5,Math.min(3.5,
+ d.angularVelocity=Math.max(-5.5,Math.min(5.5,
    (d.angularVelocity??0)+force/Math.max(.35,d.resistance??1)));
  d.open=true;
  return true;
+}
+export function kickDoor(d:Door){
+ d.open=true;d.kickImpulse=1;
+ d.angularVelocity=Math.max(13,d.angularVelocity??0);
+}
+/** Door leaf stops against architecture and furniture, not an arbitrary
+ * renderer-only angle; sample away from the hinge itself. */
+export function doorSwingBlocked(d:Door,next:number){
+ const leaf=doorLeafSegment({...d,openFraction:next});
+ for(const t of [.94,.99]){
+   const p={x:leaf.a.x+(leaf.b.x-leaf.a.x)*t,
+     y:leaf.a.y+(leaf.b.y-leaf.a.y)*t};
+   if(WALLS.some(w=>distanceToWall(p,w)<1.25))return true;
+   if(COVER.some(o=>Math.abs(o.x-p.x)<o.w/2+1.25&&
+     Math.abs(o.y-p.y)<o.h/2+1.25))return true;
+ }
+ return false;
 }
 export function advanceDoor(d:Door,dt:number){
   // Fixed internal substeps prevent a paused or coarse test tick from
@@ -50,11 +68,17 @@ export function advanceDoor(d:Door,dt:number){
     const h=Math.min(1/60,remaining);
     const target=d.open?1:0,current=d.openFraction??target;
     const v=d.angularVelocity??0;
-    const acceleration=(target-current)*64-v*12;
-    const velocity=Math.max(-5,Math.min(5,v+acceleration*h));
+    const kicked=(d.kickImpulse??0)>0;
+    const acceleration=kicked?(target-current)*10-v*3:
+      (target-current)*64-v*12;
+    const velocity=Math.max(-4.5,Math.min(kicked?15:5.5,
+      v+acceleration*h));
     const next=Math.max(0,Math.min(1,current+velocity*h));
-    d.openFraction=next;
-    d.angularVelocity=next===0||next===1?0:velocity;
+    const blocked=kicked&&next>.87&&next>current+.0001&&
+      doorSwingBlocked(d,next);
+    d.openFraction=blocked?current:next;
+    d.angularVelocity=blocked||next===0||next===1?0:velocity;
+    if(blocked||next>=.98)d.kickImpulse=0;
     remaining-=h;
   }
 }
