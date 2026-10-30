@@ -372,7 +372,7 @@ export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number)
   if(index<=0&&afterNodeId!==undefined)return false;
   const from=index===0?a.p:a.plan[index-1].p,center=doorCenter(door);
   const horizontal=Math.abs(door.a.y-door.b.y)<1;
-  const half=d(door.a,door.b)/2,approachSide=horizontal?
+  const approachSide=horizontal?
     Math.sign(from.y-center.y)||1:Math.sign(from.x-center.x)||1;
   const assigned=team(s).filter(b=>b!==a&&b.health>0)
     .map(b=>b.plan.find(n=>n.stackDoorId===doorId))
