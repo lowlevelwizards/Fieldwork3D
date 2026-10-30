@@ -27,6 +27,7 @@ import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
   rayHitsActor,muzzleEndpoint,recoverWeapon,type FiringMode} from './breach-ballistics.ts';
 import {chooseDefense,watchPoint} from './breach-defense.ts';
 import {muzzleAtShot} from './breach-muzzle.ts';
+import {CASING_LIMIT,type EjectedCasing} from './breach-effects.ts';
 import {chooseFall,hitRegion,type WoundRegion,type FallPose}
   from './breach-wounds.ts';
 
@@ -64,10 +65,12 @@ export type ShotEvent={
   healthBefore:number;healthAfter:number;down:boolean;
   shotYaw?:number;mode?:FiringMode;spread?:number;
   muzzleHeight?:number;firedAt?:number;
+  impactHeight?:number;
   hitRegion?:WoundRegion;downPose?:FallPose;
   surface?:'blood'|'wood'|'stone'|'metal'|'dust';
 };
-export type ImpactMark={id:number;p:Pt;surface:ShotEvent['surface'];age:number};
+export type ImpactMark={id:number;p:Pt;surface:ShotEvent['surface'];age:number;
+  height?:number;normal?:Pt};
 export type DroppedMagazine={id:number;p:Pt;side:Side;age:number};
 export type FlashGrenade={id:number;p:Pt;from:Pt;to:Pt;age:number;
   fuse:number;path?:ThrowPath};
@@ -78,7 +81,8 @@ export type Scenario={index:number;name:string;objective:Pt;extract:Pt};
 export type Session=Omit<TacticalState,'operators'> & {
   operators:TeamActor[];variant:number;scenario:Scenario;
   mission:MissionStage;nextId:number;noise:NoiseEvent[];
-  shots:ShotEvent[];nextShotId:number;known:Map<string,KnownContact>;
+  shots:ShotEvent[];casings:EjectedCasing[];nextShotId:number;
+  known:Map<string,KnownContact>;
   seenGround:Set<string>;timesPaused:number;deaths:number;
   started:boolean;syncCode:number;report:string[];
   movementNoiseAt:number;site?:Site;dropped:DroppedMagazine[];
@@ -179,7 +183,7 @@ export function newSession(index=0,siteSeed?:number):Session{
     scenario:{index:variant,name:site?.name??sample.name,
       objective:clone(site?.objective??OBJECTIVE),
       extract:clone(site?.extract??EXTRACTION)},
-    mission:'clear',noise:[],shots:[],nextShotId:1,known:new Map(),
+    mission:'clear',noise:[],shots:[],casings:[],nextShotId:1,known:new Map(),
     seenGround:new Set(),timesPaused:0,deaths:0,started:false,
     syncCode:0,report:[],movementNoiseAt:0,site,
     dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1,
@@ -1258,8 +1262,9 @@ function fire(s:Session,a:TeamActor,dt:number){
   s.sparks.push({p:clone(a.p),side:a.side,age:0});
   // Immutable shot identity lets 2D/3D attach recoil and damage effects to
   // the correct actors without guessing from proximity or team color.
+  const impactHeight=hit?18:impact.surface==='dust'?1:14;
   s.impactMarks.push({id:s.nextEffectId++,p:clone(end),
-    surface:impact.surface,age:0});
+    surface:impact.surface,height:impactHeight,age:0});
   if(s.impactMarks.length>92)s.impactMarks.shift();
   const shotId=s.nextShotId++;
   const region=hitRegion(shotId);
@@ -1278,12 +1283,16 @@ function fire(s:Session,a:TeamActor,dt:number){
     id:shotId,shooterId:a.id,targetId:target.id,
     start:muzzlePoint,end,age:0,hit,side:a.side,
     shotYaw:yaw,mode,spread:cone,
-    muzzleHeight:muzzle.y,firedAt:s.seconds,
+    muzzleHeight:muzzle.y,firedAt:s.seconds,impactHeight,
     hitRegion:hit?region:undefined,downPose:hit&&healthAfter<=0?
       fall:undefined,
     healthBefore,healthAfter,down:hit&&healthAfter<=0,
     surface:impact.surface,
   });
+  s.casings.push({id:shotId,at:s.seconds,weapon:a.weapon,side:a.side,
+    x:muzzle.x-4*Math.cos(a.weaponYaw),z:muzzle.z-4*Math.sin(a.weaponYaw),
+    y:muzzle.y-3,heading:a.weaponYaw});
+  if(s.casings.length>CASING_LIMIT)s.casings.shift();
   hear(s,a.p,weapon.noise,'gunshot');
   battleEvent(s,'shot',a,a.p,a.name+' FIRED '+weapon.label);
   // A shot heard behind the team suggests an imprecise location.
