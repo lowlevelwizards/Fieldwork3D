@@ -31,8 +31,13 @@ button,select{padding:6px 8px;font-size:10px;min-height:31px}}
 <button data-pose="accelerate">ACCEL</button><button data-pose="stop">STOP</button>
 <button data-pose="restart">RESTART</button><button data-pose="back">BACK</button>
 <button data-pose="strafe-left">STRAFE L</button><button data-pose="strafe-right">STRAFE R</button>
-<button data-pose="strafe">STRAFE</button><button data-pose="turn-90">90° TURN</button>
+<button data-pose="strafe">STRAFE</button>
+<button data-pose="strafe-stop">STRAFE → STOP</button>
+<button data-pose="strafe-reverse">STRAFE ↔ REVERSE</button>
+<button data-pose="mixed">MIXED MOVEMENT</button>
+<button data-pose="turn-90">90° TURN</button>
 <button data-pose="turn-180">180° TURN</button><button data-pose="turn">TURN</button>
+<button data-pose="pivot-reverse">PIVOT ↔ REVERSE</button>
 <button data-pose="pie">PIE</button><button data-pose="look">MOVE + LOOK</button>
 <button data-pose="crouch-walk">CROUCH WALK</button><button data-pose="crouch">CROUCH</button>
 <button data-pose="wounded">WOUNDED</button><button data-pose="aim">ADS</button>
@@ -47,7 +52,8 @@ button,select{padding:6px 8px;font-size:10px;min-height:31px}}
 <div class="row"><label>VIEW</label><button data-view="iso">ISO</button><button data-view="front">FRONT</button><button data-view="side">SIDE</button><button data-view="top">TOP</button><button id="resetCamera">FIT</button><button id="diagnostics" aria-pressed="false">JOINTS</button><button id="slowMotion" aria-pressed="false">SLOW</button>
 <select id="diagnosticLayer" aria-label="Diagnostic layer">
 <option value="off">DIAG: OFF</option>
-<option value="anchors">FOOT ANCHORS</option><option value="targets">STEP TARGETS</option>
+<option value="anchors">FOOT ANCHORS</option>
+<option value="lanes">FOOT LANES</option><option value="balance">BODY BALANCE</option><option value="targets">STEP TARGETS</option>
 <option value="support">SUPPORT REGION</option><option value="polygon">SUPPORT POLYGON</option>
 <option value="planes">KNEE/ELBOW PLANES</option><option value="limits">JOINT LIMITS</option>
 <option value="weapon">WEAPON CONTACTS</option><option value="replay">REPLAY SAMPLES</option>
