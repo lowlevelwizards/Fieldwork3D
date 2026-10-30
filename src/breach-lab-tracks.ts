@@ -85,7 +85,10 @@ function copy(s:FootstepScheduler):FootstepScheduler{
 }
 function gaitInput(time:number,m:LabMotion):FootstepInput{
   return {time,position:{x:m.x,y:m.z},
-    rootYaw:-(m.speed>16?m.travelYaw:m.heading),
+    rootYaw:-(m.speed>16&&
+      Math.abs(Math.sin(m.travelYaw-m.heading))<=.52&&
+      Math.cos(m.travelYaw-m.heading)>=-.4?m.travelYaw:m.heading),
+    facingYaw:m.heading,
     travelYaw:m.travelYaw,speed:m.speed,turning:m.turning,
     posture:m.posture,injury:m.injury,down:m.down,
     cautious:m.aim>.2&&m.speed/72<.35};
