@@ -2183,7 +2183,11 @@ function tick(now:number){
     stage.update(state,selected,dt,doorFocusId,
       replaying&&replayOmniscient,replaying?replayPresentation:null,
       !replaying&&state.phase==='running'&&previousRenderActors?
-        {previous:previousRenderActors,alpha:Math.min(1,accum*60)}:null);
+        {previous:previousRenderActors,alpha:Math.min(1,accum*60)}:null,
+      !replaying&&state.phase==='running'?
+        recorder.motion.presentation(Math.max(0,
+          state.seconds-(1-Math.min(1,accum*60))/60),
+          state.operators.map(a=>a.id)):null);
   render();
   // One local, intelligible pulse per distinct blocked episode.
   for(const actor of team(state)){
