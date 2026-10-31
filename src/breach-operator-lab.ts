@@ -80,7 +80,6 @@ const COMPARE_POSES:{label:string;mode:Handling;track:LabTrack}[]=[
 let comparing=false,silhouettes=false;
 let comparisonRigs:OperatorRig[]=[];
 let comparisonKey='',comparisonPoseUpdates=0;
-let mainSilhouetteState:boolean|null=null;
 const silhouetteColor=new THREE.Color(0x172322);
 function applySilhouette(body:OperatorRig,enabled:boolean){
   for(const [material,originalColor] of body.colors)
@@ -142,7 +141,6 @@ const supportBoxes=[0,1].map(()=>{
 });
 const build=()=>{
   clearComparison();
-  mainSilhouetteState=null;
   if(rig){scene.remove(rig.root);rig.dispose();}
   rig=createOperatorRig(operator.value,operator.value==='hostile'?'red':'blue');
   scene.add(rig.root);
@@ -435,10 +433,9 @@ function draw(){
     hitAge:track==='wounded'?Math.max(0,clock-.7):undefined,
     hitSeverity:2},0);
   rig.root.visible=!comparing;
-  if(!comparing&&mainSilhouetteState!==silhouettes){
-    applySilhouette(rig,silhouettes);
-    mainSilhouetteState=silhouettes;
-  }
+  // The rig restores its palette inside poseOperator on every tick.
+  // Reapply the silhouette *after* that pose instead of only on toggle.
+  if(!comparing&&silhouettes)applySilhouette(rig,true);
   if(comparing){
     ensureComparison();
     const signature=operator.value+'|'+weapon.value+'|'+silhouettes;
