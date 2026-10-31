@@ -8,6 +8,7 @@ import {createOperatorRig,poseOperator,type OperatorRig}
 import {weaponGrips,type Handling} from './breach-weapon-pose.ts';
 import {stockPocket,elbowCorridor} from './breach-anatomy.ts';
 import {HANDLING_PROFILES} from './breach-handling-profiles.ts';
+import {weaponTruth,footTruth} from './breach-animation-diagnostics.ts';
 import {timedHandling,smoothHandling,type HandlingTransition}
   from './breach-handling-transition.ts';
 import {lateralAxis,sideOffset,uncrossed} from './breach-locomotion.ts';
@@ -400,8 +401,25 @@ function showDiagnostics(){
     -sampled.state.pelvisYaw);
   const crossing=!uncrossed(feet[0].position,feet[1].position,
     -sampled.state.pelvisYaw,3.5);
+  rig.root.updateMatrixWorld(true);
+  const barrelAxis=new THREE.Vector3(1,0,0).applyQuaternion(
+    rig.weapon.getWorldQuaternion(new THREE.Quaternion()));
+  const barrelYaw=Math.atan2(barrelAxis.z,barrelAxis.x);
+  const aimTruth=weaponTruth(barrelYaw,sampled.motion.heading);
+  const feetTruth=footTruth(...([0,1].map(i=>({
+    requested:feet[i].position,
+    rendered:{x:rig.feet[i].shoe.getWorldPosition(
+      new THREE.Vector3()).x+motion.x,
+      y:rig.feet[i].shoe.getWorldPosition(new THREE.Vector3()).z+motion.z},
+    phase:feet[i].phase,contact:feet[i].contact,
+    reachError:rig.legGap[i]
+  })) as [Parameters<typeof footTruth>[0],Parameters<typeof footTruth>[1]]));
   diagnosticText.textContent=[
     'TIME '+clock.toFixed(3)+' / '+TRACK_DURATION.toFixed(2),
+    'BARREL '+barrelYaw.toFixed(3)+' / BODY '+sampled.motion.heading.toFixed(3)+
+      ' · OFFSET '+aimTruth.aimErrorDeg.toFixed(1)+'°',
+    'FOOT TRUTH '+feetTruth.map(f=>f.offset.toFixed(2)).join('/')+
+      ' · REACH '+feetTruth.map(f=>f.reach.toFixed(2)).join('/'),
     'GAIT '+sampled.state.mode.toUpperCase()+
       ' · NEXT '+sampled.state.shuffleNext.toUpperCase()+
       ' '+(sampled.state.shuffleLead===0?'LEFT':'RIGHT'),
