@@ -21,7 +21,8 @@ import {blendedHandlingProfile,type HandlingTransition}
 import {fallAngles,hitStagger,type FallPose,type WoundRegion}
   from './breach-wounds.ts';
 import {weaponGrips,handlingPose,clampReach,
-  fitWeaponPose,type Handling} from './breach-weapon-pose.ts';
+  fitWeaponPose,type Handling,type HandlingIntent}
+  from './breach-weapon-pose.ts';
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
   ankleLink:THREE.Mesh;
   anchor:THREE.Vector3;swinging:boolean;
@@ -43,6 +44,7 @@ export type OperatorPose={
   surrender:boolean;aiming:boolean;firing:boolean;turning:number;
   /** Lab preview only: choose an exact stock/weapon readiness posture. */
   handlingOverride?:Handling;
+  handlingIntent?:HandlingIntent;threatRange?:number|null;
   handlingTransition?:HandlingTransition;
   obstruction?:boolean;friendlyNear?:boolean;
   blocked?:boolean;footAllowed?:(point:{x:number;y:number})=>boolean;
@@ -63,6 +65,7 @@ export type OperatorRig={
   reachRequest:null|{kind:'door';distance:number};
   gripError:number;stockError:number;eyeError:number;
   handlingProfile:HandlingProfile|null;
+  lastHandling:Handling|null;lastHandlingAt:number;
   elbowSpread:[number,number];legGap:[number,number];
   stridePhase:number;colors:Map<THREE.MeshStandardMaterial,THREE.Color>;
   dispose:()=>void;
@@ -143,6 +146,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     lastTime:-1,lastPose:null,stridePhase:0,
     footsteps:createFootstepScheduler(),reachRequest:null,
     gripError:0,stockError:0,eyeError:0,handlingProfile:null,
+    lastHandling:null,lastHandlingAt:-100,
     elbowSpread:[0,0],legGap:[0,0],
     dispose:()=>{root.traverse(obj=>{if(obj instanceof THREE.Mesh){
       obj.geometry.dispose();
@@ -218,8 +222,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     aim:p.aimBlend??(p.aiming?1:0),moving,
     obstruction:!!p.obstruction||
       (bash.active&&p.bashRole==='receive'),
-    friendlyNear:!!p.friendlyNear
+    friendlyNear:!!p.friendlyNear,
+    intent:p.handlingIntent,threatRange:p.threatRange,weapon:p.weapon,
+    previous:p.deterministic?undefined:r.lastHandling??undefined,
+    heldFor:p.seconds-r.lastHandlingAt
   });
+  if(!p.handlingOverride&&handling!==r.lastHandling){
+    r.lastHandling=handling;r.lastHandlingAt=p.seconds;
+  }
   const profile=p.handlingTransition?
     blendedHandlingProfile(p.handlingTransition.from,
       p.handlingTransition.to,p.handlingTransition.alpha,p.weapon,
