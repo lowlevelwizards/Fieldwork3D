@@ -68,8 +68,7 @@ export class TacticalScene3D{
   private fogContext!:CanvasRenderingContext2D;
   private fogTexture!:THREE.CanvasTexture;
   private smoothFog!:THREE.Mesh;
-  private actors=new Map<string,{root:THREE.Group;legs:THREE.Group[];
-    arms:THREE.Group[];flash:THREE.Mesh;pack:THREE.Mesh;
+  private actors=new Map<string,{root:THREE.Group;flash:THREE.Mesh;pack:THREE.Mesh;
     weapon:THREE.Group;status:THREE.Mesh;physical:OperatorRig;
     contactShadows:THREE.Mesh[]}>();
   private doors=new Map<string,{root:THREE.Group;leaf:THREE.Group;
@@ -669,7 +668,6 @@ export class TacticalScene3D{
   private soldier(a:TeamActor){
     const physical=createOperatorRig(a.id,a.side);
     const {root,weapon,pack}=physical;
-    const legs=physical.legacyLegs,arms=physical.legacyArms;
     const flash=new THREE.Mesh(new THREE.OctahedronGeometry(3.5),
       new THREE.MeshBasicMaterial({color:0xffd59e,transparent:true,
         opacity:.94,depthWrite:false}));
@@ -689,7 +687,7 @@ export class TacticalScene3D{
       shadow.rotation.x=-Math.PI/2;shadow.position.y=.15;
       this.scene.add(shadow);return shadow;
     });
-    this.actors.set(a.id,{root,legs,arms,flash,pack,weapon,status,
+    this.actors.set(a.id,{root,flash,pack,weapon,status,
       physical,contactShadows});
   }
   update(s:Session,selected:string,dt:number,
