@@ -18,6 +18,7 @@ export type Site={
   /** Authored semantic programs bypass index-based purpose assignment. */
   programLocked?:boolean;
   planFamily?:string;
+  circulationStyle?:import('./worldgen/circulation-grammar.ts').CirculationStyle;
   scale?:SiteScale;
   /** Explicit playable world envelope; legacy maps default to 640 × 740. */
   bounds?:WorldBounds;
