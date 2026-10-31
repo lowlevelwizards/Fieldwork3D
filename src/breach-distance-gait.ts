@@ -58,8 +58,14 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
     Math.sin(facing-s.lastFacing),Math.cos(facing-s.lastFacing)));
   const running=input.gait==='run',deliberate=input.gait==='pie',
     squeeze=input.gait==='squeeze';
-  const interval=squeeze?2.8:deliberate?3.6:running?8.4:
+  const injuryScale=input.injury>=2?.64:input.injury>=1?.85:1;
+  const strideBase=squeeze?2.8:deliberate?3.6:running?8.4:
     input.posture==='crouch'?4.4:6.6;
+  // Forward, reverse, and lateral travel share one cycle; the stride
+  // continuously shortens as direction moves away from forward.
+  const directional=Math.cos(travel-facing);
+  const strideScale=clamp(.60+.40*Math.max(0,directional),.58,1);
+  const interval=strideBase*injuryScale*strideScale;
   s.lastStanceWidth=width;
   s.mode=classifyLocomotion(travelled/Math.max(dt,1/60),
     facing,travel,input.turning,s.mode);
@@ -77,7 +83,8 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
     s.accumulated-=interval;
     const index=(s.lastStepFoot+1)%2;
     const foot=s.feet[index],side=index===0?-1:1;
-    const lead=running?7:deliberate?1.6:squeeze?1.4:4.5;
+    const lead=running?7:deliberate?1.6:squeeze?1.4:
+      input.injury>=2?2.2:4.5;
     const predicted={
       x:input.position.x+forward.x*lead,
       y:input.position.y+forward.y*lead
