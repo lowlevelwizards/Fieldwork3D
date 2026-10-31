@@ -1,7 +1,7 @@
 /** One low-resolution, softly filtered fog mask shared by 2D and 3D.
  * The fog presentation never changes detection or player intelligence. */
 import {W,H} from './breach-core.ts';
-import {team,type Session} from './breach-game.ts';
+import {team,liveVisibility,type Session} from './breach-game.ts';
 import {intelFogLevel} from './breach-intel.ts';
 import {visionPolygon} from './breach-vision-polygon.ts';
 export const FOG_WIDTH=320,FOG_HEIGHT=370;
@@ -21,7 +21,8 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
   for(let row=0;row<37;row++)for(let col=0;col<32;col++){
     const p={x:col*20+10,y:row*20+10};
     const fineSeen=s.seenGround.has('fine:'+col+','+row);
-    const level=intelFogLevel(s.intel,s.site,p,false,fineSeen);
+    const level=intelFogLevel(s.intel,s.site,p,
+      liveVisibility(s,p),fineSeen);
     if(level===2)continue;
     ctx.fillStyle=level===1?'rgba(255,255,255,.76)':'#fff';
     ctx.fillRect(col*20,row*20,20,20);
