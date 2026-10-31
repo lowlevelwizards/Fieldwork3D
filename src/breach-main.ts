@@ -537,7 +537,6 @@ ui.context.addEventListener('click',event=>{
   if(!button||state.phase!=='planning')return;
   const action=button.dataset.action;
   if(action)discoverAction(action,button.title);
-  uiClickTone('command');
   const a=uid(selected);
   if(!a)return;
   const beforeErrors=state.events.length;
@@ -554,16 +553,22 @@ ui.context.addEventListener('click',event=>{
     }
     case 'ctxFocus':
       firePlacement='focus';looking=false;flashMode=false;
-      updateHud();return;
+      tacticalFeedback.emit('command',node?.p??a.p,'FOCUS');
+      uiClickTone('command');updateHud();return;
     case 'ctxSuppress':
       firePlacement='suppress';looking=false;flashMode=false;
-      updateHud();return;
+      tacticalFeedback.emit('command',node?.p??a.p,'SUPPRESS');
+      uiClickTone('command');updateHud();return;
     case 'ctxFlash':
       if(state.flashRemaining>0){flashMode=true;flashDoorId=null;
         looking=false;firePlacement=null;}
       break;
-    case 'ctxLook':armFacing('look');return;
-    case 'ctxPie':armFacing('pie');return;
+    case 'ctxLook':
+      tacticalFeedback.emit('command',node?.p??a.p,'LOOK');
+      uiClickTone('command');armFacing('look');return;
+    case 'ctxPie':
+      tacticalFeedback.emit('command',node?.p??a.p,'PIE');
+      uiClickTone('command');armFacing('pie');return;
     case 'ctxWait':{
       if(node?.kind==='wait')setWaitDuration(state,selected,node.id,.5);
       else planWaitAt(state,selected,.5,node?'end':'here',node?.id);
@@ -602,6 +607,7 @@ ui.context.addEventListener('click',event=>{
       doorFocusId=null;doorMenuDismissedId=door?.id??null;break;
   }
   const failed=state.events.length>beforeErrors;
+  uiClickTone(failed?'warning':'command');
   tacticalFeedback.emit(failed?'error':'command',
     door?doorCenter(door):node?.p??a.p,
     failed?'Blocked':button.querySelector('.command-label')?.textContent??'');
@@ -637,8 +643,18 @@ function updateHud(){
   const seconds=Math.floor(state.seconds);
   ui.clock.textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+
     String(seconds%60).padStart(2,'0');
-  ui.play.innerHTML=state.phase==='running'?'PAUSE <span>Ⅱ</span>':
-    state.phase==='planning'?'GO <span>▶</span>':'RESET <span>↺</span>';
+  const primaryMode=state.phase==='running'?'pause':
+    state.phase==='planning'?'go':'reset';
+  if(ui.play.dataset.mode!==primaryMode){
+    ui.play.dataset.mode=primaryMode;
+    const label=document.createElement('span');
+    label.textContent=primaryMode==='go'?'GO':
+      primaryMode==='pause'?'PAUSE':'RESET';
+    label.className='go-label';
+    ui.play.replaceChildren(tacticalIcon(primaryMode),label);
+    ui.play.setAttribute('aria-label',primaryMode==='go'?'Execute plan':
+      primaryMode==='pause'?'Pause execution':'Reset encounter');
+  }
   ui.play.classList.toggle('running',state.phase==='running');
   const active=uid(selected);
   if(navPanel){
@@ -1893,8 +1909,9 @@ ui.moreOrders.addEventListener('click',()=>{
     ui.siteSettingsToggle.setAttribute('aria-expanded','false');
   }
   ui.moreOrders.setAttribute('aria-pressed',String(expanded));
-  ui.moreOrders.textContent=expanded?'CLOSE':'ACTIONS';
-  decorateIconButton(ui.moreOrders,'moreOrders');
+  ui.moreOrders.replaceChildren(tacticalIcon('moreOrders'));
+  ui.moreOrders.setAttribute('aria-label',expanded?'Close tools':'More tactical tools');
+  ui.moreOrders.title=expanded?'Close tactical tools':'More tactical tools';
   // Never render two command overlays on top of each other.
   updateContext();
 });

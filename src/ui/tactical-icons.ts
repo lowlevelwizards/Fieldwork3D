@@ -20,7 +20,10 @@ const glyphs:Record<string,string>={
   redo:'<path d="m15 8 5 4-5 4M20 12H11a6 6 0 0 0-6 6"/>',
   moreOrders:'<path d="M4 7h16M4 12h16M4 17h16"/>',
   siteSettingsToggle:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2m0-14-2 2M7 17l-2 2"/>',
-  cancelTarget:'<path d="M5 5l14 14M19 5 5 19"/>'
+  cancelTarget:'<path d="M5 5l14 14M19 5 5 19"/>',
+  go:'<path d="M8 5 19 12 8 19Z"/>',
+  pause:'<path d="M8 5v14m8-14v14"/>',
+  reset:'<path d="M5 7a8 8 0 1 1-1 10"/><path d="M5 2v5H1"/>'
 };
 export function tacticalIcon(key:string):SVGSVGElement{
   const s=document.createElementNS('http://www.w3.org/2000/svg','svg');
