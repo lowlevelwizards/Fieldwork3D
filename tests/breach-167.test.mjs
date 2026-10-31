@@ -16,7 +16,7 @@ const pose=(mode)=>({x:0,z:0,seconds:1,heading:0,velocity:0,
 test('167: stock contact uses the actual rear face of the visible stock',()=>{
  for(const weapon of ['carbine','smg','rifle','shotgun']){
   const g=weaponGrips(weapon);
-  assert.equal(g.stockX,-14.5);
+  assert.equal(g.stockX,-12.5);
   assert.ok(g.supportX>g.primaryX+1.2,
    weapon+' must preserve support-hand grip ahead of firing hand');
   for(const mode of ['high','low','ready','short','point','ads']){
