@@ -74,3 +74,15 @@ export function routeSegmentsClear(from:Pt,points:readonly Pt[],doors:Door[]=[])
   }
   return true;
 }
+
+/** Never reveal unknown furniture or wall geometry when editing a plan. */
+export function orderFailureText(from:Pt,to:Pt,options:{
+  canStand:(p:Pt)=>boolean;routeTo:(from:Pt,to:Pt)=>Pt[];
+  remainingPlanValid?:boolean;
+}):string{
+  if(!options.canStand(to))return 'DESTINATION HAS INSUFFICIENT CLEARANCE';
+  if(!options.routeTo(from,to).length)return 'NO WALKABLE ROUTE TO DESTINATION';
+  if(options.remainingPlanValid===false)
+    return 'MOVE WOULD INVALIDATE A LATER WAYPOINT';
+  return 'INVALID ORDER DESTINATION';
+}
