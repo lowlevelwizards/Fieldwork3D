@@ -116,7 +116,10 @@ test('059,062: authored enemy variants differ without leaking knowledge',()=>{
 test('056: HOLD guards the threshold without silently opening the door',()=>{
   const s=newSession();
   assert.ok(planDoor(s,'rook','FRONT','hold'));
-  toggling(s);run(s,5);
+  // Allow completion through a physically routed approach and 1.3 s
+  // hold action; the old five-second fixed horizon was too short after
+  // movement/doorway collision became more deliberate.
+  toggling(s);run(s,9);
   assert.equal(s.doors[0].open,false,'hold should not transform into open');
   assert.ok(team(s)[0].plan.every(n=>n.kind!=='door'));
   assert.ok(s.events.some(e=>e.includes('HELD CLOSED')));
