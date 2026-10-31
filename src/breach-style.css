@@ -602,3 +602,44 @@ button:disabled{opacity:.48;cursor:default}
  .bar .unit strong{font-size:12px}
  .actions .play{font-size:15px}
 }
+
+/* UI 2.0 / 02: compact tool cluster + separate quiet state strip */
+.context-tools{
+ width:max-content;max-width:min(216px,calc(100vw - 18px));
+ padding:5px;gap:5px;border-radius:11px;
+ background:#162925ed;border-color:#688779ad;
+ box-shadow:0 7px 22px #07120fc0;
+}
+.context-primary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.context-primary button{min-width:0;width:100%;min-height:47px;
+ padding:5px 3px;gap:3px;border-radius:7px;
+ font:500 11px var(--ui-font);white-space:nowrap}
+.context-primary .ui-icon{width:18px;height:18px}
+.context-tools.door-menu .context-primary{
+ grid-template-columns:repeat(2,minmax(0,1fr))}
+.context-tools.door-menu{max-width:min(162px,calc(100vw - 18px))}
+.context-tools.door-menu .context-primary button{min-height:48px}
+.context-state{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:3px;padding-top:5px;border-top:1px solid #52685d80}
+.context-state button{min-width:0;min-height:39px;padding:4px 1px;
+ display:flex;flex-direction:column;gap:2px;
+ font:500 9px/1.05 var(--ui-font);white-space:nowrap}
+.context-state .ui-icon{width:16px;height:16px}
+.context-danger{display:flex;justify-content:flex-end}
+.context-danger[hidden],.context-state[hidden]{display:none}
+.context-danger button{min-height:30px;padding:4px 9px;
+ flex-direction:row;font:500 11px var(--ui-font)}
+.context-tools button .command-label{pointer-events:none}
+@media(max-width:600px){
+ .context-tools{width:204px;max-width:calc(100vw - 18px);padding:5px;gap:4px}
+ .context-primary button{min-height:46px;font-size:11px;padding:4px 2px}
+ .context-state{grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}
+ .context-state button{min-height:39px;font-size:9px;flex-direction:column}
+ .context-tools.door-menu{width:160px}
+}
+@media(max-height:470px){
+ .context-tools{width:208px;max-height:calc(100dvh - 85px)}
+ .context-primary button{min-height:39px;flex-direction:row;font-size:10px}
+ .context-state button{min-height:32px;flex-direction:column}
+ .context-tools.door-menu .context-primary button{min-height:40px}
+}
