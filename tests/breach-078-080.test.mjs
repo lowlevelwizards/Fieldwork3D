@@ -74,12 +74,12 @@ test('078-080: 3D uses readable fog and per-shot effects, 2D shares cues',()=>{
   const stage=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
   const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
   assert.match(stage,/scene\.fog=null/);
-  // A previous version used an opaque fog ceiling that made the station a
-  // featureless black diamond in ISO. Keep architecture readable by contract.
+  // Unseen space must be covered at the actual ground plane, not a tall
+  // translucent ceiling displaced from its blood/terrain at ISO pitch.
   const unknown=stage.match(/const unknownMat=new THREE.MeshBasicMaterial\(\{[\s\S]*?opacity:(\.\d+)/);
   assert.ok(unknown&&Number(unknown[1])<.65,
     'unknown geometry mask cannot be a completely opaque roof');
-  assert.match(stage,/this\.smoothFog\.position\.set\(W\/2,36\.2,H\/2\)/);
+  assert.match(stage,/this\.smoothFog\.position\.set\(W\/2,1\.05,H\/2\)/);
   assert.match(stage,/effectCache/);
   assert.match(stage,/shot\.shooterId===actor\.id/);
   assert.match(stage,/lastDownAt/);
