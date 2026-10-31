@@ -15,18 +15,18 @@ export function appendArchitecturalWing(site:Site,seed:number):Site{
   near(wall.a.y,minY)&&near(wall.b.y,minY)&&
   Math.abs(wall.b.x-wall.a.x)>=125).sort((a,b)=>
    Math.abs(b.wall.b.x-b.wall.a.x)-Math.abs(a.wall.b.x-a.wall.a.x));
- const selected=top.find(({wall})=>{
-  const x=midpoint(wall).x;
-  return site.rooms.some(room=>room.kind==='room'&&near(room.y,minY)&&
-   x>room.x+54&&x<room.x+room.w-54&&
-   site.doors.every(d=>Math.hypot(x-(d.a.x+d.b.x)/2,
-     minY-(d.a.y+d.b.y)/2)>75));
- });
+ const selected=top.flatMap(({wall,index})=>site.rooms.filter(room=>
+   room.kind==='room'&&near(room.y,minY)&&room.w>=125).map(room=>({
+    wall,index,room,center:room.x+room.w/2
+   })).filter(candidate=>{
+    const {center}=candidate,wall=candidate.wall;
+    const lo=Math.min(wall.a.x,wall.b.x),hi=Math.max(wall.a.x,wall.b.x);
+    return center>lo+38&&center<hi-38&&
+      site.doors.every(d=>Math.hypot(center-(d.a.x+d.b.x)/2,
+        minY-(d.a.y+d.b.y)/2)>75);
+   })).sort((a,b)=>b.room.w-a.room.w)[0];
  if(!selected)return site;
- const wall=selected.wall,center=midpoint(wall).x;
- const room=site.rooms.find(r=>r.kind==='room'&&near(r.y,minY)&&
-  center>r.x+54&&center<r.x+r.w-54);
- if(!room)return site;
+ const {wall,room,center}=selected;
  const width=Math.min(112,room.w-20,Math.abs(wall.b.x-wall.a.x)-24);
  const height=Math.min(61,minY-32);
  if(width<90||height<42)return site;
