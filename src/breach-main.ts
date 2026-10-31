@@ -30,7 +30,7 @@ import {doorReachable} from './breach-door.ts';
 import {INTEL_MODES,doorKnown,wallKnown,roomKnown,
   routeWithIntel,intelPassable,type IntelMode} from './breach-intel.ts';
 import {orderFailureText} from './breach-nav-diagnostics.ts';
-import {routeWithSqueezeIntel} from './breach-squeeze-route.ts';
+import {DisplayRouteCache} from './breach-route-cache.ts';
 import {FrameMeter} from './breach-perf.ts';
 import './breach-style.css';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
@@ -133,9 +133,7 @@ const requestedSeed=Number(startupParams.get('seed'));
 const initialSiteSeed=startupParams.has('seed')&&Number.isSafeInteger(requestedSeed)&&
  requestedSeed>0&&requestedSeed<=0xffffffff?requestedSeed:randomSiteSeed();
 let selectedIntelMode:IntelMode='floor-plan';
-const requestedSiteScale=startupParams.get('scale')==='expanded'?'expanded':'standard';
-let state:Session=newSession(0,legacyStudy?undefined:initialSiteSeed,
-  selectedIntelMode,requestedSiteScale);
+let state:Session=newSession(0,legacyStudy?undefined:initialSiteSeed,selectedIntelMode);
 let recorder=new MissionRecorder();recorder.capture(state,true);
 const OPERATION_HISTORY_KEY='fieldwork3d.operation-history.v1';
 let recordedOperation:Session|null=null;
@@ -305,6 +303,7 @@ function unlockAudio(){
 
 let last=performance.now(),accum=0,hudAt=0;
 let previousRenderActors:Record<string,RenderActor>|null=null;
+const displayRouteCache=new DisplayRouteCache();
 let cssW=innerWidth,cssH=innerHeight,dpr=1;
 let viewScale=1,ox=0,oy=0,zoom=1,panX=0,panY=0;
 let cursor:Pt|null=null;
@@ -1069,7 +1068,7 @@ function paths(){
       let from=a.p;
       for(const node of plan){
         if(node.kind==='move'||node.kind==='door'){
-          const course=routeWithSqueezeIntel(state.intel,from,node.p);
+          const course=displayRouteCache.get(from,node.p,state.intel).points;
           for(const p of course)draw.lineTo(p.x,p.y);
           from=node.p;
         }else if(node.kind==='pie'&&node.arc?.length){
@@ -1175,8 +1174,9 @@ function renderProjectedPlans(){
     const color=colorFor(a.id);
     let previous=a.p;
     for(const n of a.plan){
-      const steps=n.kind==='pie'?n.arc??[]:
-        n.kind==='move'||n.kind==='door'?routeWithSqueezeIntel(state.intel,previous,n.p):[];
+      const cachedRoute=n.kind==='move'||n.kind==='door'?
+        displayRouteCache.get(previous,n.p,state.intel):null;
+      const steps=n.kind==='pie'?n.arc??[]:cachedRoute?.points??[];
       if(steps.length){
         draw.beginPath();
         const start=worldToScreen(previous,4);
@@ -1188,8 +1188,7 @@ function renderProjectedPlans(){
         draw.strokeStyle=color;
         draw.globalAlpha=a.id===selected?.94:.50;
         draw.lineWidth=n.kind==='pie'?3:2.4;
-        const narrowOnly=n.kind==='move'&&
-          !routeWithIntel(state.intel,previous,n.p).length;
+        const narrowOnly=n.kind==='move'&&!!cachedRoute?.narrowOnly;
         // Narrow routes use a finer dash without another overlay.
         draw.setLineDash(n.kind==='pie'?[3,3]:
           narrowOnly?[2,4]:[7,4]);
@@ -1385,9 +1384,7 @@ function fog(){
     fogStamp=state.seconds;
     paintFogMask(fogContext!,state);
   }
-  const bounds=activeWorldBounds();
-  draw.drawImage(fogCanvas,bounds.minX,bounds.minY,
-    bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
+  draw.drawImage(fogCanvas,0,0,W,H);
 }
 function missionMarkers(){
   if(state.rescue&&liveVisibility(state,state.rescue.p)){
@@ -1688,7 +1685,7 @@ function enterReplay(){
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
   ui.replayExtra.hidden=true;ui.replayMore.setAttribute('aria-expanded','false');
   state=newSession(finishedSession.variant,finishedSession.site?.seed,
-    finishedSession.intel.mode,finishedSession.site?.scale??'standard');
+    finishedSession.intel.mode);
   stage?.applySite(state.site??null);
   document.body.classList.add('replaying');
   ui.replayPanel.hidden=false;
@@ -1756,7 +1753,7 @@ function reset(next=state.variant,siteSeed?:number){
   flashMode=false;document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
   state=newSession(next,legacyStudy?undefined:
-    siteSeed??randomSiteSeed(),selectedIntelMode,requestedSiteScale);
+    siteSeed??randomSiteSeed(),selectedIntelMode);
   flashDoorId=null;
   stage?.applySite(state.site??null);selected='rook';looking=false;
   selectedNode=null;doorFocusId=null;draggingNode=null;
