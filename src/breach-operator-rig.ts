@@ -279,6 +279,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     heading:p.heading,travelYaw,turning:p.turning,
     injury:p.injury,posture:p.posture,feet:targets,gait:p.gait,
     hybridSupport:p.hybridSupport,acceleration:p.acceleration,
+    weaponWeight:p.weapon==='shotgun'?1.30:
+      p.weapon==='rifle'?1.19:p.weapon==='smg'?.83:1,
     position:{x:p.x,y:p.z}});
   // Wide side-steps need a physical lowering of the center of mass,
   // not a longer limb or a shoe teleported away from its world anchor.
