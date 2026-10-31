@@ -256,7 +256,7 @@ export function advanceFootsteps(s:FootstepScheduler,source:FootstepInput):
   // swing before another recovery can begin.
   const recoveringBusy=s.feet.some(f=>f.phase==='unloading'||
     f.phase==='swinging');
-  if(!input.down&&!recoveringBusy&&
+  if(!!input.footAllowed&&!input.down&&!recoveringBusy&&
       input.time-s.lastStepAt>.11){
     let selected=-1,urgency=0;
     for(let i=0;i<2;i++){
