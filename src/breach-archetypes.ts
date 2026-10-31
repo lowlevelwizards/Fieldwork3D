@@ -4,6 +4,8 @@ import {buildArchetypeEnvironment} from './breach-windows.ts';
 import {propDefinition} from './worldgen/asset-catalog.ts';
 import {furnishRooms} from './worldgen/room-furnishing.ts';
 import {assignRoomProgram} from './worldgen/room-assignment.ts';
+import {programRooms} from './worldgen/building-programs.ts';
+import {activeSite,activateSite,passable,route} from './breach-core.ts';
 import {addOpenPlanTransitions} from './worldgen/open-plan.ts';
 import {dressSite} from './worldgen/environment-dresser.ts';
 import {populateFunctionalRooms} from './worldgen/scenario-population.ts';
@@ -28,23 +30,46 @@ const FIXTURES:Record<string,readonly string[]>={
  treatment:['exam-bed','cart'],supply:['cabinet','cart'],
  staff:['desk','locker']
 };
+/** Preserve simulation-authoritative circulation when a room program changes.
+ * A failed candidate falls back to the previous, known-playable room ordering.
+ * This check happens only during generation, never per frame.
+ */
+function reachable(site:Site):boolean{
+  const previous=activeSite();
+  activateSite(site);
+  try{
+    if(!site.spawn.every(p=>passable(p)))return false;
+    const start=site.spawn[0];
+    return [site.objective,...site.enemies].every(p=>
+      passable(p)&&route(start,p).length>0);
+  }finally{activateSite(previous);}
+}
 export function applyArchetype(site:Site,seed:number):Site{
   const archetype=BUILDING_ARCHETYPES[(seed>>>0)%BUILDING_ARCHETYPES.length];
-  const assignments=assignRoomProgram(site,archetype);
-  const rooms=site.rooms.map(r=>({...r,purpose:r.kind==='hall'?
-    'hallway':assignments.get(r.id)??'storage'}));
-  const cover=site.cover.map((o,i)=>{
-    const room=rooms.find(r=>o.x>=r.x&&o.x<=r.x+r.w&&
-      o.y>=r.y&&o.y<=r.y+r.h);
-    const collection=FIXTURES[room?.purpose??'storage']??['crate'];
-    const fixture=collection[(i+seed)%collection.length];
-    const asset=propDefinition(fixture)??propDefinition('crate');
-    return {...o,fixture:asset?.id??'crate',low:asset?.cover==='low'};
-  });
-  const architecture=addOpenPlanTransitions({...site,archetype,rooms,cover},seed);
-  const result=populateFunctionalRooms(dressSite(
-    buildArchetypeEnvironment(furnishRooms(architecture,seed),seed),seed),seed);
-  // Transitional generation remains within the legacy playable envelope.
-  return {...result,bounds:site.bounds??
-    {minX:0,minY:0,maxX:640,maxY:740}};
+  const build=(assignments:Map<string,string>):Site=>{
+    const rooms=site.rooms.map(r=>({...r,purpose:r.kind==='hall'?
+      'hallway':assignments.get(r.id)??'storage'}));
+    const cover=site.cover.map((o,i)=>{
+      const room=rooms.find(r=>o.x>=r.x&&o.x<=r.x+r.w&&
+        o.y>=r.y&&o.y<=r.y+r.h);
+      const collection=FIXTURES[room?.purpose??'storage']??['crate'];
+      const fixture=collection[(i+seed)%collection.length];
+      const asset=propDefinition(fixture)??propDefinition('crate');
+      return {...o,fixture:asset?.id??'crate',low:asset?.cover==='low'};
+    });
+    const architecture=addOpenPlanTransitions({...site,archetype,rooms,cover},seed);
+    const result=populateFunctionalRooms(dressSite(
+      buildArchetypeEnvironment(furnishRooms(architecture,seed),seed),seed),seed);
+    return {...result,bounds:site.bounds??
+      {minX:0,minY:0,maxX:640,maxY:740}};
+  };
+  const proposal=build(assignRoomProgram(site,archetype));
+  if(reachable(proposal))return proposal;
+  // Legacy selection makes the prior safe room-program layout reproducible.
+  const sorted=site.rooms.filter(r=>r.kind==='room').slice().sort(
+    (a,b)=>(b.y+b.h/2)-(a.y+a.h/2)||
+      (a.x+a.w/2)-(b.x+b.w/2));
+  const fallbackRoles=programRooms(archetype,sorted.length);
+  const fallback=new Map(sorted.map((r,i)=>[r.id,fallbackRoles[i]]));
+  return build(fallback);
 }
