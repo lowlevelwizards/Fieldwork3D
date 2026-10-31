@@ -13,7 +13,7 @@ import {timedHandling,smoothHandling,type HandlingTransition}
   from './breach-handling-transition.ts';
 import {lateralAxis,sideOffset,uncrossed} from './breach-locomotion.ts';
 import {bodyFromContacts} from './breach-body-motion.ts';
-import {LabMotionCache,TRACK_DURATION,type LabTrack}
+import {LabMotionCache,LabHistoricalMotionCache,TRACK_DURATION,type LabTrack}
   from './breach-lab-tracks.ts';
 import type {WeaponId} from './breach-combat.ts';
 
@@ -123,7 +123,13 @@ let labSwitch:null|{from:Handling;to:Handling;
   fromWeapon:{origin:THREE.Vector3;rotation:THREE.Euler};
   fromProfile:NonNullable<OperatorRig['handlingProfile']>}=null;
 let rig:OperatorRig|null=null,track:LabTrack='idle';
-let cache=new LabMotionCache(track);
+const gaitReference=choose<HTMLSelectElement>('gaitReference');
+let cache:LabMotionCache|LabHistoricalMotionCache=new LabMotionCache(track);
+const newTrackCache=(kind:LabTrack)=>gaitReference.value==='historical'?
+  new LabHistoricalMotionCache(kind):new LabMotionCache(kind);
+gaitReference.addEventListener('change',()=>{
+  cache=newTrackCache(track);draw();
+});
 let clock=0,last=performance.now(),rate=1,playing=true,loop=true;
 let cameraFollow={x:0,z:0};
 const debug=new THREE.Group();scene.add(debug);
@@ -194,7 +200,7 @@ function chooseTrack(next:LabTrack){
     renderer.shadowMap.enabled=true;
     fit();
   }
-  track=next;cache=new LabMotionCache(next);clock=0;playing=true;
+  track=next;cache=newTrackCache(next);clock=0;playing=true;
   for(const b of document.querySelectorAll<HTMLButtonElement>('[data-pose]'))
     b.setAttribute('aria-pressed',String(b.dataset.pose===next));
   playPause.textContent='PAUSE';
@@ -564,6 +570,7 @@ function draw(){
   canvas.dataset.time=clock.toFixed(3);
   canvas.dataset.contactCount=String(feet.filter(x=>x.contact).length);
   canvas.dataset.gait=state.mode;
+  canvas.dataset.gaitReference=gaitReference.value;
   canvas.dataset.gripError=rig.gripError.toFixed(4);
   canvas.dataset.eyeError=rig.eyeError.toFixed(3);
   canvas.dataset.ankleGap=Math.max(...rig.legGap).toFixed(3);

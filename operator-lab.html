@@ -124,6 +124,11 @@ button:focus-visible,select:focus-visible{outline:2px solid #c9a778;outline-offs
 <button data-pose="down-left">FALL LEFT</button>
 <button data-pose="down-right">FALL RIGHT</button>
 <button data-pose="down-slump">SUPPORTED SLUMP</button></div>
+<div class="row"><label>GAIT REFERENCE</label>
+<select id="gaitReference" aria-label="Gait implementation">
+<option value="current">CURRENT</option>
+<option value="historical">PRE-180 REFERENCE</option>
+</select><small>Same track and model; historical contact scheduler is lab-only.</small></div>
 <div class="row"><label>PLAYBACK</label>
 <button id="playPause">PAUSE</button><button id="stepFrame">+1 FRAME</button>
 <button id="restartTrack">RESTART</button>
