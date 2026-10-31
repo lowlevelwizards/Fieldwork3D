@@ -8,7 +8,7 @@ export type BalanceInput={velocity:number;heading:number;travelYaw:number;
   turning:number;injury:number;posture:'stand'|'crouch';
   feet:readonly [FootTarget,FootTarget];
   position?:{x:number;y:number};
-  gait?:'run'|'walk'|'pie';};
+  gait?:'run'|'walk'|'pie'|'squeeze';};
 export type BodyMotion={pelvisY:number;pelvisSide:number;
   torsoForward:number;torsoSide:number;torsoYaw:number;headCounter:number;
   support:number;chestLift:number;weaponYaw:number;weaponPitch:number;};
@@ -35,9 +35,9 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
   const crouch=input.posture==='crouch'?.55:1;
   const wound=input.injury>=2?.68:1;
   const gaitAmp=input.gait==='run'?1.45:
-    input.gait==='pie'?.53:1;
+    input.gait==='squeeze'?.45:input.gait==='pie'?.53:1;
   const weaponAmp=input.gait==='run'?1.65:
-    input.gait==='pie'?.38:1;
+    input.gait==='squeeze'?.25:input.gait==='pie'?.38:1;
   const envelope=(foot:FootTarget,phase:FootTarget['phase'])=>
     foot.phase===phase?Math.sin(Math.PI*clamp(foot.progress??0,0,1)):0;
   const swinging=Math.max(envelope(left,'swinging'),

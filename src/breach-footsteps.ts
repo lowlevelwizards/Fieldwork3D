@@ -33,7 +33,7 @@ export type FootstepInput={
   travelYaw:number;speed:number;turning:number;
   posture:'stand'|'crouch';injury:number;down:boolean;
   cautious?:boolean;facingYaw?:number;
-  gait?:'walk'|'run'|'pie';
+  gait?:'walk'|'run'|'pie'|'squeeze';
 };
 export type FootTarget={position:GroundPoint;height:number;
   worldYaw:number;phase:FootPhase;contact:boolean;
@@ -123,13 +123,14 @@ export function resetFootsteps(s:FootstepScheduler,input:FootstepInput):void{
 export function gaitBounds(input:FootstepInput){
   const running=input.gait==='run'&&input.speed>25;
   const deliberate=input.gait==='pie';
-  const slow=input.cautious||input.posture==='crouch'||deliberate;
+  const squeeze=input.gait==='squeeze';
+  const slow=input.cautious||input.posture==='crouch'||deliberate||squeeze;
   const wound=input.injury>=2;
   const mode=classifyLocomotion(input.speed,
     input.facingYaw??-input.rootYaw,input.travelYaw,input.turning);
   const side=mode==='strafe-left'||mode==='strafe-right';
   const backward=mode==='backward';
-  const strideScale=deliberate?.58:slow?.70:wound?.78:running?1.20:1;
+  const strideScale=squeeze?.42:deliberate?.58:slow?.70:wound?.78:running?1.20:1;
   // Directional gaits differ in actual stride length and transfer timing,
   // not merely in animation frequency. Lateral lead/follow shuffles have
   // intentionally longer swing than the old 135 ms scurry.
@@ -138,19 +139,19 @@ export function gaitBounds(input:FootstepInput){
   // Pieing gets a different, slower cadence at much lower motor speed.
   // Each touchdown must occur before the supporting leg is pulled beyond
   // its reachable arc. A long swing at motor speed causes visible tethering.
-  const baseSwing=deliberate?.235:running?.125:
+  const baseSwing=squeeze?.22:deliberate?.235:running?.125:
     slow?.175:wound?.16:side?.135:backward?.16:.145;
   const speedAdjustment=deliberate?0:
     running?Math.min(input.speed,90)*.00012:
     Math.min(input.speed,75)*(side?.00045:.00038);
   return {comfortableForward:5.5*strideScale,
-    comfortableLateral:deliberate?3.7:4.5,
+    comfortableLateral:squeeze?2.3:deliberate?3.7:4.5,
     maximumReach:horizontalLegReach()-.65,
     emergencyReach:horizontalLegReach(),
-    preferredLead:deliberate?2.25:running?8.0:
+    preferredLead:squeeze?1.7:deliberate?2.25:running?8.0:
       slow?4.5:wound?4.6:7.0,
     swingDuration:clamp(baseSwing-speedAdjustment,
-      deliberate?.17:running?.11:side?.135:.115,.30),
+      squeeze?.18:deliberate?.17:running?.11:side?.135:.115,.30),
     unloadDuration:deliberate?.065:running?.028:side?.025:
       slow?.040:.030,
     landingDuration:deliberate?.065:running?.036:side?.038:
