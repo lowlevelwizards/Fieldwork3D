@@ -797,6 +797,9 @@ export class TacticalScene3D{
         pelvisYaw:replay?.pelvisYaw[actor.id],
         travelYaw:replay?.travelYaw[actor.id],
         posture:actor.posture,injury:actor.injuryStage,weapon:actor.weapon,
+        gait:actor.plan[0]?.kind==='pie'?'pie':
+          actor.pace==='run'||actor.plan[0]?.moveMode==='sprint'?
+            'run':'walk',
         reload:actor.reload,reloadDuration,
         reloadMode:actor.reloadMode,
         reloadRemoved:actor.reloadRemoved,

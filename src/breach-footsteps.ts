@@ -32,6 +32,7 @@ export type FootstepInput={
   travelYaw:number;speed:number;turning:number;
   posture:'stand'|'crouch';injury:number;down:boolean;
   cautious?:boolean;facingYaw?:number;
+  gait?:'walk'|'run'|'pie';
 };
 export type FootTarget={position:GroundPoint;height:number;
   worldYaw:number;phase:FootPhase;contact:boolean;
@@ -114,22 +115,38 @@ export function resetFootsteps(s:FootstepScheduler,input:FootstepInput):void{
   s.lastBlocked=!!input.blocked;
 }
 export function gaitBounds(input:FootstepInput){
-  const slow=input.cautious||input.posture==='crouch';
+  const running=input.gait==='run'&&input.speed>25;
+  const deliberate=input.gait==='pie';
+  const slow=input.cautious||input.posture==='crouch'||deliberate;
   const wound=input.injury>=2;
   const mode=classifyLocomotion(input.speed,
     input.facingYaw??-input.rootYaw,input.travelYaw,input.turning);
   const side=mode==='strafe-left'||mode==='strafe-right';
   const backward=mode==='backward';
-  const strideScale=slow?.70:wound?.78:1;
+  const strideScale=deliberate?.58:slow?.70:wound?.78:running?1.20:1;
+  // Directional gaits differ in actual stride length and transfer timing,
+  // not merely in animation frequency. Lateral lead/follow shuffles have
+  // intentionally longer swing than the old 135 ms scurry.
+  // Preserve the proven fast lead/follow transfer for a 38-unit strafe:
+  // simply making its swing slower produces unreachable trailing legs.
+  // Pieing gets a different, slower cadence at much lower motor speed.
+  const baseSwing=deliberate?.255:running?.17:
+    slow?.235:wound?.225:side?.167:backward?.215:.20;
+  const speedAdjustment=deliberate?0:
+    running?Math.min(input.speed,90)*.00012:
+    Math.min(input.speed,75)*(side?.00045:.00038);
   return {comfortableForward:5.5*strideScale,
-    comfortableLateral:4.5,maximumReach:9.0,
-    emergencyReach:11.0,preferredLead:(slow?3.0:wound?3.7:5.5),
-    swingDuration:clamp((slow?.235:wound?.225:
-      side?.167:backward?.215:.20)-Math.min(input.speed,75)*
-      (side?.00045:.00038),side?.135:.14,.29),
-    unloadDuration:side?.030:slow?.065:.045,
-    landingDuration:side?.042:slow?.06:.048,
-    recoveryDuration:side?.058:slow?.10:.075};
+    comfortableLateral:deliberate?3.7:4.5,
+    maximumReach:9.0,emergencyReach:11.0,
+    preferredLead:deliberate?2.25:running?6.8:
+      slow?3.0:wound?3.7:5.5,
+    swingDuration:clamp(baseSwing-speedAdjustment,side?.135:.14,.30),
+    unloadDuration:deliberate?.075:running?.038:side?.030:
+      slow?.065:.045,
+    landingDuration:deliberate?.075:running?.038:side?.042:
+      slow?.06:.048,
+    recoveryDuration:deliberate?.105:running?.065:side?.058:
+      slow?.10:.075};
 }
 /** Clamp planned *paths*, not rendered boots. In the local facing frame
  * the left foot must remain left of the right foot throughout a swing. */

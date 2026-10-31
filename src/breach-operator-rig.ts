@@ -45,6 +45,7 @@ export type OperatorPose={
   handlingTransition?:HandlingTransition;
   obstruction?:boolean;friendlyNear?:boolean;
   blocked?:boolean;footAllowed?:(point:{x:number;y:number})=>boolean;
+  gait?:'walk'|'run'|'pie';
   aimBlend?:number;recoil?:number;shotHeading?:number;
   hitFade?:number;hitAge?:number;downProgress?:number;flashActive?:boolean;
   hitRegion?:WoundRegion;hitYaw?:number;hitSeverity?:number;
@@ -197,6 +198,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     travelYaw,facingYaw:p.heading,speed:physicalSpeed,turning:p.turning,
     posture:p.posture,injury:p.injury,down:p.down,
     cautious:p.aiming&&moving<.35,blocked:p.blocked,
+    gait:p.gait,
     footAllowed:p.footAllowed,
   };
   // The step scheduler is the SOLE writer of foot contacts, including

@@ -475,6 +475,7 @@ function draw(){
   if(!comparing)poseOperator(rig,{x:motion.x,z:motion.z,heading:motion.heading,
     travelYaw:motion.travelYaw,seconds:clock,stride:clock*40,
     velocity:motion.speed,posture:motion.posture,
+    gait:track==='run'?'run':track==='pie'?'pie':'walk',
     injury:Math.max(motion.injury,Number(injury.value),
       track==='reload-wounded'?2:0),
     weapon:(track==='reload-shotgun'?'shotgun':weapon.value) as WeaponId,
