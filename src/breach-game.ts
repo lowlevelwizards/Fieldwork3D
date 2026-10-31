@@ -324,7 +324,7 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
   if(!proposed.length)return false;
   // Door actions inserted during one stroke remain one undoable edit.
   const expanded:PlanNode[]=[];let prior=finalPoint(a);
-  const opened=new Set(a.plan.filter(n=>n.kind==='door'&&n.method!=='hold')
+  const opened=new Set(a.plan.filter(n=>n.kind==='door'&&(n.method==='open'||n.method==='kick'))
     .map(n=>n.doorId??''));
   for(const node of proposed){
     const points=[prior,...routeWithIntel(s.intel,prior,node.p)];
@@ -841,7 +841,7 @@ export function planFlash(s:Session,id:string,target:Pt):boolean{
     x.plan.filter(node=>node.kind==='flash').length,0);
   const start=finalPoint(a);
   if(queued>=s.flashRemaining)return false;
-  const plannedOpen=a.plan.filter(n=>n.kind==='door'&&n.method!=='hold')
+  const plannedOpen=a.plan.filter(n=>n.kind==='door'&&(n.method==='open'||n.method==='kick'))
     .map(n=>n.doorId??'');
   const landing=snapFlashTarget(start,target,s.doors,plannedOpen);
   if(!landing)return false;
@@ -866,7 +866,7 @@ export function planDoorFlash(s:Session,id:string,doorId:string,target:Pt,
   if(!approached||!passable(approached)||
      !route(start,approached).length)return false;
   const before=a.plan.slice(0,index);
-  const opened=before.filter(n=>n.kind==='door'&&n.method!=='hold')
+  const opened=before.filter(n=>n.kind==='door'&&(n.method==='open'||n.method==='kick'))
     .map(n=>n.doorId??'');
   const needsOpen=!opened.includes(doorId)&&
     (s.intel.doorMemory.get(doorId)??0)<.72;
@@ -889,7 +889,7 @@ export function moveFlashTarget(s:Session,id:string,nodeId:number,p:Pt){
   if(!candidate)return false;
   const index=a.plan.indexOf(candidate);
   const opened=a.plan.slice(0,index).filter(n=>n.kind==='door'&&
-    n.method!=='hold').map(n=>n.doorId??'');
+    (n.method==='open'||n.method==='kick')).map(n=>n.doorId??'');
   const landing=snapFlashTarget(candidate.p,p,s.doors,opened);
   if(!landing)return false;
   return edit(s,a,()=>{candidate.aimPoint=clone(landing);});
@@ -898,7 +898,7 @@ export function flashTrajectory(s:Session,a:TeamActor,node:PlanNode):ThrowPath|n
   if(node.kind!=='flash'||!node.aimPoint)return null;
   const index=a.plan.findIndex(n=>n.id===node.id);
   const open=a.plan.slice(0,index).filter(n=>n.kind==='door'&&
-    n.method!=='hold').map(n=>n.doorId??'');
+    (n.method==='open'||n.method==='kick')).map(n=>n.doorId??'');
   return validateThrow(node.p,node.aimPoint,s.doors,open);
 }
 function battleEvent(s:Session,kind:BattleEvent['kind'],a:TeamActor|null,p:Pt,text:string){
@@ -1158,6 +1158,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
        d(next,center)<22);
   }):undefined;
   if(doorAhead){
+    if(doorAhead.heldBy){a.velocity=0;return true;}
     a.velocity=0;a.actionTimer+=dt;
     if(a.actionTimer>=.36&&!doorAhead.open){
       doorAhead.open=true;doorAhead.openedAt=s.seconds;
@@ -1420,12 +1421,15 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   }
   if(n.kind==='door'){
     const door=s.doors.find(d=>d.id===n.doorId);
-    if(!door||(door.open&&n.method!=='kick')){pop(a);return;}
+    if(!door||(n.method==='close'&&!door.open)||
+       (n.method!=='close'&&n.method!=='kick'&&n.method!=='hold'&&door.open)){
+      pop(a);return;
+    }
     if(!doorReachable(a.p,door)&&a.actionTimer===0){
       notify(s,a.name+' TOO FAR FROM DOOR');return;
     }
     const required=n.method==='kick'?KICK_DURATION:
-      n.method==='hold'?1.3:.49;
+      n.method==='hold'?1.3:n.method==='close'?.65:.49;
     if(a.actionTimer===0){
       a.lastDoorAt=s.seconds;a.lastDoorId=door.id;
       a.lastDoorMethod=n.method??'open';
@@ -1442,10 +1446,21 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     }
     if(a.actionTimer>=required){
       if(n.method==='hold'){
-        notify(s,door.id+' HELD CLOSED');
+        if(door.open)notify(s,door.id+' MUST BE CLOSED TO HOLD');
+        else{
+          door.heldBy=a.id;
+          notify(s,door.id+' BRACED');
+          battleEvent(s,'door',a,doorCenter(door),door.id+' BRACED');
+        }
         pop(a);return;
       }
-      if(n.method!=='kick'){
+      if(n.method==='close'){
+        door.heldBy=null;door.open=false;door.openedAt=s.seconds;
+        hear(s,doorCenter(door),90,'door');
+        notify(s,door.id+' CLOSING');
+        battleEvent(s,'door',a,doorCenter(door),door.id+' CLOSING');
+      }else if(n.method!=='kick'){
+        if(door.heldBy){notify(s,door.id+' BRACED SHUT');pop(a);return;}
         door.open=true;door.openedAt=s.seconds;
         pushDoor(door,.45);
         hear(s,doorCenter(door),145,'door');
@@ -2058,7 +2073,15 @@ export function stepSession(s:Session,dt:number){
   if(s.phase!=='running')return;
   const h=clamp(dt,0,1/30);
   s.seconds+=h;
-  for(const door of s.doors)advanceDoor(door,h);
+  for(const door of s.doors){
+    if(door.heldBy){
+      const holder=s.operators.find(a=>a.id===door.heldBy);
+      if(!holder||holder.health<=0||holder.plan.length>0||
+         holder.nav.length>0||!doorReachable(holder.p,door))
+        door.heldBy=null;
+    }
+    advanceDoor(door,h,s.operators.filter(a=>a.health>0).map(a=>a.p));
+  }
   s.sparks=s.sparks.filter(a=>(a.age+=h)<.20);
   s.shots=s.shots.filter(a=>(a.age+=h)<.40);
   s.noise=s.noise.filter(n=>s.seconds-n.time<4);
