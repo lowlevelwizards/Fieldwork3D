@@ -2,6 +2,7 @@
 import type {WeaponId} from './breach-combat.ts';
 import * as THREE from 'three';
 import {stockPocket,anchorGap} from './breach-anatomy.ts';
+import {handlingProfile} from './breach-handling-profiles.ts';
 export type Handling='low'|'high'|'ready'|'point'|'ads'|'short';
 export type WeaponGrip={lengthScale:number;stockX:number;
   primaryX:number;primaryY:number;supportX:number;supportY:number};
@@ -60,8 +61,9 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
   const yaw=clamp(input.yaw,-1.1,1.1);
   const recoilX=clamp(input.recoil,0,5);
   const recoilY=Math.min(1.1,Math.max(0,input.recoil)*.2);
-  const selection:Handling[]=input.handling==='short'?
-    ['short']:[input.handling,'short'];
+  // Never replace a named silhouette with an unrelated fallback.
+  // IK infeasibility is exposed through contactError for the Lab.
+  const selection:Handling[]=[input.handling];
   let bestScore=Infinity;
   let best:{sx:number;sy:number;sz:number;mode:Handling;
     yaw:number;roll:number;stock:[number,number,number];
@@ -69,16 +71,16 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
     twoHanded:boolean;primaryReachable:boolean;
     contactError:number}|null=null;
   for(const mode of selection){
+    const profile=handlingProfile(mode,input.weapon);
     const aim=input.aimBlend;
     // Continuous keyed shoulder posture instead of snapping between
     // high, point and ADS at an arbitrary threshold.
-    const base=mode==='low'?-.18:mode==='high'?.22:
-      mode==='ready'?-.025:mode==='short'?-.075:0;
+    const base=profile.pitch;
     const roll=aim===undefined||mode==='short'?base:
       (-.12*(1-Math.min(1,aim/.30)));
     const sr=Math.sin(roll),cr=Math.cos(roll);
     const shoulderY=(aim===undefined||mode==='short'?
-      pocketY(mode):
+      profile.stockY:
       3.2+4.8*(Math.max(0,Math.min(1,aim))**
         2*(3-2*Math.max(0,Math.min(1,aim)))))+recoilY;
     for(const offset of [0,-.10,.10]){
@@ -105,8 +107,12 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
           const ld=Math.hypot(lx-1,ly-4,lz+7);
           const violation=Math.max(0,rd-LIMIT)+
             Math.max(0,ld-LIMIT);
-          const cost=violation*1000+(mode===input.handling?0:1.3)+
-            Math.abs(back)*.28+Math.abs(sideways)*.19+
+          const pocket=stockPocket(mode);
+          const shoulderError=Math.hypot(sx-pocket.x,
+            shoulderY-pocket.y,sz-pocket.z);
+          const cost=violation*1000+
+            Math.abs(back-profile.preferredBack)*.8+
+            shoulderError*.16+Math.abs(sideways)*.19+
             Math.abs(offset)*3+Math.max(0,
               Math.hypot(sx-1,shoulderY-4,sz-7)-8)*.1;
           if(cost>=bestScore)continue;
