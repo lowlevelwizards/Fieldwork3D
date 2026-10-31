@@ -193,6 +193,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const crouch=p.posture==='crouch'?8:0;
   r.hip.position.y=20.2-crouch;
   r.chest.position.y=26-crouch;
+  // Low traversal carries a rearward pelvis and counterbalanced thorax.
+  r.hip.position.x=p.posture==='crouch'?-0.85:0;
+  r.chest.position.x=p.posture==='crouch'?1.15:0;
   // Build 119: the footstep scheduler owns world contacts. The IK renderer
   // consumes its targets but must never relocate a planted anchor.
   const travelYaw=p.travelYaw??direction;
@@ -300,7 +303,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     poseWeight*profile.pelvisShift*.45;
   r.chest.rotation.z=motion.torsoForward+braking*.018+
     (kick?.torsoLean??0)+bash.lean-
-    poseWeight*profile.torsoLean;
+    poseWeight*profile.torsoLean-
+    (p.posture==='crouch'?.075:0);
   r.chest.rotation.x=clamp(p.injury===2?.07:p.injury===1?.025:0,0,.09)+
     motion.torsoSide;
   r.chest.rotation.y+=motion.torsoYaw+
