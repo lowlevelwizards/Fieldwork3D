@@ -3,7 +3,8 @@ import {TacticalScene3D} from './breach-3d.ts';
 import {newSession,type Session} from './breach-game.ts';
 import {generateSite,type Site,type BuildingArchetype} from './breach-site.ts';
 import {BUILDING_ARCHETYPES} from './breach-archetypes.ts';
-import type {Pt} from './breach-core.ts';
+import {activateSite,type Pt} from './breach-core.ts';
+import {auditGeneratedSite} from './breach-site-audit.ts';
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const typeInput=el<HTMLSelectElement>('building');
 const scaleInput=el<HTMLSelectElement>('scale');
@@ -35,6 +36,15 @@ function updateLabels(){
   });
   labelLayer.append(button);markers.push({node:button,p:{x:room.x+room.w/2,y:room.y+room.h/2}});
  }
+ if(el<HTMLInputElement>('doors').checked)for(const door of site.doors){
+  const button=document.createElement('button');button.className='door-label';
+  button.textContent=door.id;
+  button.title=door.id+' · '+Math.round(Math.hypot(door.a.x-door.b.x,
+    door.a.y-door.b.y))+' units';
+  labelLayer.append(button);
+  markers.push({node:button,p:{x:(door.a.x+door.b.x)/2,
+    y:(door.a.y+door.b.y)/2}});
+ }
  if(el<HTMLInputElement>('cover').checked)for(const item of site.cover){
   const dot=document.createElement('span');dot.className='cover-dot';
   dot.title=item.fixture??'obstacle';labelLayer.append(dot);
@@ -47,6 +57,17 @@ function describe(site:Site){
   '\n'+count+' rooms / '+site.doors.length+' doors / '+(site.openings?.length??0)+
   ' open passages / '+site.cover.length+' physical props / '+
   (site.exteriorZones?.length??0)+' exterior zones';
+}
+function report(site:Site):string{
+ const result=auditGeneratedSite(site.seed);
+ // The legacy audit temporarily activates its own site for route checks.
+ // Restore the live lab's spatial authority before resuming rendering.
+ activateSite(site);
+ return describe(site)+'\n'+
+  (site.condition??'ordinary').toUpperCase()+' · '+result.dressing+
+  ' details · '+result.typedProps+' typed props · '+result.archOpenings+
+  ' wide openings\n'+(result.errors.length?
+   'CHECKS: '+result.errors.join('; '):'CHECKS: PASS');
 }
 const sizeMatches=(site:Site,scale:string)=>{
  const count=site.rooms.filter(room=>room.kind==='room').length;
@@ -69,7 +90,7 @@ function generate(advance=false){
  session=newSession(0,chosen.seed);
  stage.applySite(session.site??null);stage.resetCamera();
  history.replaceState(null,'','?seed='+chosen.seed);
- status.textContent=describe(session.site!);
+ status.textContent=report(session.site!);
  updateLabels();
 }
 el<HTMLButtonElement>('generate').addEventListener('click',()=>generate());
@@ -79,6 +100,7 @@ el<HTMLButtonElement>('top').addEventListener('click',()=>stage.setMode('top'));
 el<HTMLButtonElement>('fit').addEventListener('click',()=>stage.resetCamera());
 el<HTMLInputElement>('rooms').addEventListener('change',updateLabels);
 el<HTMLInputElement>('cover').addEventListener('change',updateLabels);
+el<HTMLInputElement>('doors').addEventListener('change',updateLabels);
 let pointers=new Map<number,Pt>(),lastMid:Pt|null=null,lastGap=0;
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 document.body.addEventListener('pointerdown',event=>{
