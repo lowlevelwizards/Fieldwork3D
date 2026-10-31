@@ -44,19 +44,24 @@ const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
 const ease=(t:number)=>t*t*(3-2*t);
 const distance=(a:GroundPoint,b:GroundPoint)=>Math.hypot(a.x-b.x,a.y-b.y);
 const copy=(p:GroundPoint):GroundPoint=>({x:p.x,y:p.y});
-const lateral=(position:GroundPoint,yaw:number,side:number):GroundPoint=>({
-  x:position.x-Math.sin(yaw)*side*5.6,
-  y:position.y+Math.cos(yaw)*side*5.6
+const lateral=(position:GroundPoint,yaw:number,side:number,
+  stance=5.6):GroundPoint=>({
+  x:position.x-Math.sin(yaw)*side*stance,
+  y:position.y+Math.cos(yaw)*side*stance
 });
+/** The boots, unlike the torso, must also narrow during sideways travel. */
+const stanceWidth=(input:FootstepInput)=>
+  input.gait==='squeeze'?2.6:5.6;
 /** Nearest neutral foothold. Ordinary planted contacts are never shifted. */
 export function safePlantPoint(input:FootstepInput,index:number):GroundPoint{
   const facing=input.facingYaw??-input.rootYaw;
   const side=index===0?-1:1;
-  const normal=lateral(input.position,facing,side);
+  const normal=lateral(input.position,facing,side,stanceWidth(input));
   if(!input.footAllowed||input.footAllowed(normal))return normal;
   const forward={x:Math.cos(facing),y:Math.sin(facing)};
   const across={x:-forward.y,y:forward.x};
-  for(const distanceAcross of [4.3,3.1,1.6,0])
+  for(const distanceAcross of (input.gait==='squeeze'?
+    [2.6,2.25,1.9]:[4.3,3.1,1.6,0]))
     for(const ahead of [0,-3,3,-5,5]){
       const point={x:input.position.x+across.x*side*distanceAcross+
         forward.x*ahead,y:input.position.y+across.y*side*distanceAcross+
@@ -103,7 +108,8 @@ export function resetFootsteps(s:FootstepScheduler,input:FootstepInput):void{
   for(let i=0;i<2;i++){
     const foot=s.feet[i],point=input.footAllowed?
       safePlantPoint(input,i):lateral(input.position,
-        input.facingYaw??input.rootYaw,i===0?-1:1);
+        input.facingYaw??-input.rootYaw,i===0?-1:1,
+        stanceWidth(input));
     foot.phase='planted';foot.plantedAt=copy(point);
     foot.swingFrom=copy(point);foot.swingTo=copy(point);
     foot.worldYaw=input.rootYaw;foot.fromYaw=input.rootYaw;
@@ -186,14 +192,16 @@ function startStep(s:FootstepScheduler,index:number,input:FootstepInput){
   const facing=input.facingYaw??-input.rootYaw;
   const axis=lateralAxis(facing);
   const duration=bounds.unloadDuration+bounds.swingDuration;
-  const strafe=s.mode==='strafe-left'||s.mode==='strafe-right';
+  const strafe=input.gait!=='squeeze'&&
+    (s.mode==='strafe-left'||s.mode==='strafe-right');
   const pivot=s.mode==='pivot',settle=s.mode==='settle';
   const travel=input.speed>5?input.travelYaw:facing;
   const advance=clamp(input.speed*duration,0,
     horizontalLegReach()*.82);
   const predicted={x:input.position.x+Math.cos(travel)*advance,
     y:input.position.y+Math.sin(travel)*advance};
-  let land=lateral(predicted,facing,index===0?-1:1);
+  let land=lateral(predicted,facing,index===0?-1:1,
+    stanceWidth(input));
   if(strafe){
     // Shuffle outward with the leading foot, then draw in the trailing
     // foot. The follow-step cannot overtake the leading foot.
@@ -211,13 +219,15 @@ function startStep(s:FootstepScheduler,index:number,input:FootstepInput){
     // A single planted-foot pivot may turn the pelvis only by a modest
     // angle. Longer rotations require multiple alternating replant steps.
     const turnYaw=s.pelvisYaw+clamp(delta,-.42,.42);
-    land=lateral(input.position,-turnYaw,index===0?-1:1);
+    land=lateral(input.position,-turnYaw,index===0?-1:1,
+      stanceWidth(input));
     land=safeLanding(s,index,land,
       {...input,facingYaw:-s.pelvisYaw});
     s.pivotFromYaw=s.pelvisYaw;s.pivotToYaw=turnYaw;
     s.pivotAt=input.time;s.pivotDuration=duration;
   }else if(settle){
-    land=lateral(input.position,facing,index===0?-1:1);
+    land=lateral(input.position,facing,index===0?-1:1,
+      stanceWidth(input));
   }else if(input.speed>5){
     land.x+=Math.cos(travel)*bounds.preferredLead;
     land.y+=Math.sin(travel)*bounds.preferredLead;
@@ -380,7 +390,8 @@ export function advanceFootsteps(s:FootstepScheduler,source:FootstepInput):
       // trail too far behind before it can ever become the follow step.
       if(input.time-foot.lastTouchdown<.06&&
         !(strafe&&s.lastStepAt<0))continue;
-      const neutral=lateral(input.position,facing,i===0?-1:1);
+      const neutral=lateral(input.position,facing,i===0?-1:1,
+        stanceWidth(input));
       const dx=neutral.x-foot.plantedAt.x,dy=neutral.y-foot.plantedAt.y;
       const forward=dx*Math.cos(input.travelYaw)+dy*Math.sin(input.travelYaw);
       const error=Math.hypot(dx,dy);
@@ -395,7 +406,8 @@ export function advanceFootsteps(s:FootstepScheduler,source:FootstepInput):
         const candidate=s.shuffleNext==='lead'?s.shuffleLead:1-s.shuffleLead;
         if(i!==candidate)continue;
         const along=sideOffset(input.position,foot.plantedAt,facing);
-        const need=Math.abs(along-(i===0?-5.6:5.6));
+        const width=stanceWidth(input);
+        const need=Math.abs(along-(i===0?-width:width));
         // Start a lead step when movement begins or the leading foot
         // trails the pelvis; follow only after the lead has landed.
         if(s.shuffleNext==='lead'&&
