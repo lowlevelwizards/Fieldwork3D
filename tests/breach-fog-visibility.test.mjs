@@ -37,6 +37,6 @@ test('3D fog: translucent cutaway walls draw after fog while blood stays gated',
   assert.match(code,/wall\.mesh\.renderOrder=cut\?1001:0;/);
   assert.match(code,/material\.opacity=cut\?\.38:1;/);
   assert.match(code,/paintOccupiedRoomContext\(this\.fogContext,s\);/);
-  assert.match(code,/opacity:\.82,depthTest:true/);
+  assert.match(code,/depthTest:true,opacity:\.82/);
   assert.match(code,/if\(!omniscient&&!liveVisibility\(s,mark\.p\)\)continue;/);
 });
