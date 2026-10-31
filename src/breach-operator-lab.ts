@@ -41,7 +41,7 @@ const camera=new THREE.OrthographicCamera(-28,28,34,-34,.1,600);
 camera.position.set(65,48,68);
 const control=new OrbitControls(camera,canvas);
 control.enableDamping=true;control.dampingFactor=.11;
-control.target.set(0,16,0);control.minZoom=.35;control.maxZoom=7;
+control.target.set(0,16,0);control.minZoom=.25;control.maxZoom=7;
 scene.add(new THREE.HemisphereLight(0xffffff,0x8f9188,2.2));
 const lamp=new THREE.DirectionalLight(0xffffff,2.3);
 lamp.position.set(-40,90,45);lamp.castShadow=true;
@@ -155,6 +155,7 @@ function chooseTrack(next:LabTrack){
     comparing=false;
     poseCompareButton.setAttribute('aria-pressed','false');
     labelLayer.hidden=true;
+    renderer.shadowMap.enabled=true;
     fit();
   }
   track=next;cache=new LabMotionCache(next);clock=0;playing=true;
@@ -400,6 +401,8 @@ function draw(){
     hitAge:track==='wounded'?Math.max(0,clock-.7):undefined,
     hitSeverity:2},0);
   rig.root.visible=!comparing;
+  if(!comparing&&silhouettes)
+    for(const material of rig.colors.keys())material.color.setHex(0x172322);
   if(comparing){
     ensureComparison();
     comparisonRigs.forEach((body,i)=>{
