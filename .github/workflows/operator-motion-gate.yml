@@ -1,0 +1,23 @@
+name: Operator motion critical gate
+on:
+  pull_request:
+    paths:
+      - 'src/breach-*'
+      - 'tests/breach-motion-*.test.mjs'
+      - '.github/workflows/operator-motion-gate.yml'
+  workflow_dispatch:
+jobs:
+  motion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run check
+      - name: Recorded gait, biomechanics and replay smoke
+        run: node --experimental-strip-types --test tests/breach-motion-*.test.mjs tests/breach-distance-*.test.mjs tests/breach-hybrid-*.test.mjs tests/breach-121.test.mjs tests/breach-126.test.mjs
