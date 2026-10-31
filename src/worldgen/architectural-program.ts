@@ -111,6 +111,12 @@ const alternate:Partial<Record<BuildingArchetype,Spec>>={
    ['kitchen','kitchen','service','pantry'],
    ['dining','dining','service','restroom'],
    ['dining','dining',null,null]]},
+ retail:{family:'corner shop / offset stock and sales',
+  widths:[185,78,165,134],depths:[131,142,111],
+  front:{col:0,row:2},cells:[
+   ['stockroom','service','office','storage'],
+   ['sales','sales','sales','storage'],
+   ['sales','sales','checkout',null]]},
  office:{family:'notched office / reception and private wing',
   widths:[170,66,165,143],depths:[123,144,107],
   front:{col:2,row:2},cells:[
