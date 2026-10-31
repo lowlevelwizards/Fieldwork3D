@@ -286,8 +286,11 @@ export class TacticalScene3D{
       this.intelSurfaces.push({obj:group,kind:'room',id:room.id});
       const base=this.solid(room.kind==='hall'?0x495b55:
         palettes[room.tone%palettes.length]);
+      // Connected blueprint cells make one continuous physical floor surface.
+      // Legacy floor inset stays unchanged for historical visual parity.
+      const floorInset=site.programLocked?0:2;
       this.box(group,room.x+room.w/2,-.8,room.y+room.h/2,
-        room.w-2,1.6,room.h-2,base,false);
+        room.w-floorInset,1.6,room.h-floorInset,base,false);
       const grout=this.solid(0x8d9282);
       // One instanced draw per room instead of many tiny floor meshes.
       addRoomGroutInstances(group,room,grout);

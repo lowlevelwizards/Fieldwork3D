@@ -54,7 +54,8 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number):Sit
   const id='R'+(cells.length+1);
   const room:Room={id,zoneId:openRoles.has(role)?'ZONE-'+role:id,
    x:xs[col],y:ys[row],w:b.widths[col],h:b.depths[row],
-   purpose:role,kind:role==='hallway'?'hall':'room',tone:(role.length+col)%4};
+   purpose:role,kind:role==='hallway'?'hall':'room',
+   tone:(role.length+(role.charCodeAt(0)||0))%4};
   lookup.set(key(row,col),cells.length);
   cells.push({row,col,role,room});
  }
