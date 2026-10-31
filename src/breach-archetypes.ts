@@ -5,6 +5,7 @@ import {propDefinition} from './worldgen/asset-catalog.ts';
 import {furnishRooms} from './worldgen/room-furnishing.ts';
 import {programRooms} from './worldgen/building-programs.ts';
 import {addOpenPlanTransitions} from './worldgen/open-plan.ts';
+import {dressSite} from './worldgen/environment-dresser.ts';
 export const BUILDING_ARCHETYPES:readonly BuildingArchetype[]=
  ['house','townhouse','apartment','retail','office','garage','warehouse','restaurant','motel','utility','clinic'] as const;
 const FIXTURES:Record<string,readonly string[]>={
@@ -45,5 +46,5 @@ export function applyArchetype(site:Site,seed:number):Site{
     return {...o,fixture:asset?.id??'crate',low:asset?.cover==='low'};
   });
   const architecture=addOpenPlanTransitions({...site,archetype,rooms,cover},seed);
-  return buildArchetypeEnvironment(furnishRooms(architecture,seed),seed);
+  return dressSite(buildArchetypeEnvironment(furnishRooms(architecture,seed),seed),seed);
 }

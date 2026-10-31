@@ -11,6 +11,7 @@ export type Room={id:string;x:number;y:number;w:number;h:number;
 export type BuildingArchetype='house'|'townhouse'|'apartment'|'retail'|'office'|'garage'|'warehouse'|'restaurant'|'motel'|'utility'|'clinic';
 export type ExteriorZone={id:string;kind:'yard'|'patio'|'driveway'|'service'|'garden'|'parking';x:number;y:number;w:number;h:number};
 export type WideOpening={id:string;a:Pt;b:Pt;kind:'arch'|'wide'};
+export type EnvironmentCondition='occupied'|'busy'|'neglected'|'vacant'|'renovation'|'disturbed';
 export type WindowOpening={id:string;x:number;y:number;width:number;vertical:boolean};
 export type Site={
   seed:number;name:string;rooms:Room[];walls:Segment[];doors:Door[];
@@ -18,6 +19,8 @@ export type Site={
   openHallLinks?:number;
   archetype?:BuildingArchetype;
   windows?:WindowOpening[];
+  condition?:EnvironmentCondition;
+  dressing?:import('./worldgen/environment-dresser.ts').DecorativeDetail[];
   openings?:WideOpening[];
   exteriorZones?:ExteriorZone[];
   cover:Obstacle[];entrance:Pt;spawn:Pt[];enemies:Pt[];

@@ -230,8 +230,10 @@ export class TacticalScene3D{
     const road=this.solid(0x59584a);
     this.box(this.root,site.entrance.x,-1,
       (site.entrance.y+H)/2,85,1,H-site.entrance.y+10,road,false);
+    const decorativeRoomGroups=new Map<string,THREE.Group>();
     for(const room of site.rooms){
-      const group=new THREE.Group();this.root.add(group);
+      const group=new THREE.Group();
+      decorativeRoomGroups.set(room.id,group);this.root.add(group);
       this.intelSurfaces.push({obj:group,kind:'room',id:room.id});
       const base=this.solid(room.kind==='hall'?0x495b55:
         palettes[room.tone%palettes.length]);
@@ -400,6 +402,38 @@ export class TacticalScene3D{
         Math.hypot(w.b.x-opening.x,w.b.y-opening.y)<38);
       if(nearest>=0)this.intelSurfaces.push({obj:group,kind:'wall',index:nearest});
       this.root.add(group);
+    }
+    // Small storytelling details inherit room visibility, with no independent
+    // collider, cover or occlusion. They can never block a tactical passage.
+    const smallWood=this.solid(0x9a8669),smallPaper=this.solid(0xb8b4a0);
+    const smallGreen=this.solid(0x5f7b51),smallClay=this.solid(0x947b60);
+    for(const detail of site.dressing??[]){
+      const roomGroup=decorativeRoomGroups.get(detail.roomId);
+      if(!roomGroup)continue;
+      const prop=new THREE.Group();
+      prop.position.set(detail.x,detail.elevation,detail.y);
+      prop.rotation.y=detail.angle;
+      switch(detail.kind){
+      case 'mug':
+        this.box(prop,0,2,0,5,4,5,smallClay,false);break;
+      case 'books':
+        for(let i=0;i<3;i++)this.box(prop,i*4-4,1.5,0,3,3,10,smallWood,false);
+        break;
+      case 'papers':
+        this.box(prop,0,.35,0,12,.7,9,smallPaper,false);break;
+      case 'tools':
+        this.box(prop,0,1.5,0,13,2,3,smallWood,false);
+        this.box(prop,3,1.5,3,3,3,7,smallPaper,false);break;
+      case 'packages':
+        this.box(prop,0,5,0,11,10,9,smallWood,false);break;
+      case 'plant':
+        this.box(prop,0,4,0,8,8,8,smallClay,false);
+        this.box(prop,0,12,0,11,9,11,smallGreen,false);break;
+      case 'lamp':
+        this.box(prop,0,8,0,2,16,2,smallWood,false);
+        this.box(prop,0,17,0,12,7,12,smallPaper,false);break;
+      }
+      roomGroup.add(prop);
     }
     // Important: avoid visual-only furniture outside authoritative cover.
   }
