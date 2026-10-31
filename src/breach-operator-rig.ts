@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import {alignSegment,solveTwoBone,ARM_LIMITS,LEG_LIMITS,
   intersectsTorso} from './breach-ik.ts';
 import type {WeaponId} from './breach-combat.ts';
-import {advanceFootsteps,createFootstepScheduler,safePlantPoint,
+import {advanceFootsteps,createFootstepScheduler,
   type FootstepScheduler,type FootTarget,type FootstepInput}
   from './breach-footsteps.ts';
 import type {ReplayFeet} from './breach-replay-motion.ts';
@@ -24,8 +24,7 @@ import {weaponGrips,handlingPose,clampReach,
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
   ankleLink:THREE.Mesh;
   anchor:THREE.Vector3;swinging:boolean;
-  bend:THREE.Vector3;outOfReach:boolean;
-  recovery:{from:{x:number;y:number};to:{x:number;y:number};at:number}|null};
+  bend:THREE.Vector3;outOfReach:boolean;};
 type Arm={upper:THREE.Mesh;lower:THREE.Mesh;hand:THREE.Mesh;
   bend:THREE.Vector3;outOfReach:boolean};
 export type OperatorPose={
@@ -107,7 +106,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     ankleLink.visible=false;
     feet.push({upper,lower,shoe,ankleLink,
       anchor:new THREE.Vector3(),
-      swinging:false,bend:new THREE.Vector3(1,0,0),outOfReach:false,recovery:null});
+      swinging:false,bend:new THREE.Vector3(1,0,0),outOfReach:false});
     const armUpper=bone(chest,3.9,4.0,cloth);
     const armLower=bone(chest,3.4,3.5,cloth);
     const hand=block(chest,0,0,0,3.6,3.2,3.9,skin);
@@ -200,38 +199,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     cautious:p.aiming&&moving<.35,blocked:p.blocked,
     footAllowed:p.footAllowed,
   };
-  const rawTargets=p.replayFeet??advanceFootsteps(r.footsteps,gaitInput);
-  // Stale contacts from a collision, replay or displaced pelvis cannot
-  // stretch a limb to an impossible world-space foot target.
-  const targets=rawTargets.map((foot,i):FootTarget=>{
-    const distance=Math.hypot(foot.position.x-p.x,foot.position.y-p.z);
-    const invalid=!Number.isFinite(distance)||
-      distance>(p.blocked||p.velocity<5?10.5:14.0)||
-      (!!p.footAllowed&&!p.footAllowed(foot.position)&&foot.contact);
-    const shoe=r.feet[i];
-    if(!invalid){shoe.recovery=null;return foot;}
-    const point=safePlantPoint({...gaitInput,speed:0},i);
-    if(p.deterministic||!r.lastPose){
-      shoe.recovery=null;
-      return {position:point,height:0,worldYaw:-p.heading,
-        phase:'recovering',contact:true,reason:'settle',
-        progress:1,pitch:0};
-    }
-    if(!shoe.recovery||
-       Math.hypot(shoe.recovery.to.x-point.x,
-         shoe.recovery.to.y-point.y)>2.5){
-      shoe.recovery={from:{x:shoe.anchor.x,y:shoe.anchor.z},
-        to:point,at:p.seconds};
-    }
-    const recovery=shoe.recovery;
-    const t=clamp((p.seconds-recovery.at)/.22,0,1),blend=smooth(t);
-    return {position:{x:recovery.from.x+
-        (recovery.to.x-recovery.from.x)*blend,
-      y:recovery.from.y+(recovery.to.y-recovery.from.y)*blend},
-      height:2.4*Math.sin(Math.PI*t),worldYaw:-p.heading,
-      phase:t<1?'swinging':'recovering',contact:t>=1,
-      reason:'settle',progress:t,pitch:0};
-  }) as [FootTarget,FootTarget];
+  // The step scheduler is the SOLE writer of foot contacts, including
+  // clearance recovery. IK below solves toward these positions; it does
+  // not silently substitute its own position or restart a step.
+  const targets:[FootTarget,FootTarget]=p.replayFeet??
+    advanceFootsteps(r.footsteps,gaitInput);
   const kickAge=p.seconds-p.lastDoorAt;
   const kick=p.doorMethod==='kick'&&kickAge>=0&&kickAge<.76?
     kickMotion(kickAge):null;
@@ -340,18 +312,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       .applyQuaternion(bodyInverse);
     let leg=solveTwoBone(hipLocal,relative,9.7,9.7,
       P(4.5,0,sign*1.1),LEG_LIMITS,foot.bend);
-    // Emergency fallback protects against even legacy replay anchors
-    // which exceed the anatomical reach of the physical two-bone leg.
-    if(!p.down&&!kick&&leg.effector.distanceTo(relative)>1.5){
-      const safe=safePlantPoint({...gaitInput,speed:0},i);
-      foot.anchor.set(safe.x,1.45,safe.y);
-      relative=P(safe.x,1.45,safe.y)
-        .sub(P(p.x,r.root.position.y,p.z))
-        .applyQuaternion(bodyInverse);
-      leg=solveTwoBone(hipLocal,relative,9.7,9.7,
-        P(4.5,0,sign*1.1),LEG_LIMITS,P(1,0,sign*.4));
-      foot.swinging=false;
-    }
+    // An unreachable leg reports a gap. Never move the boot independently
+    // of its contact schedule: recoveries are requested by the scheduler.
     foot.bend.copy(leg.bendPlane);
     foot.outOfReach=!leg.reached;
     // The boot follows the scheduled contact, so report the anatomical
