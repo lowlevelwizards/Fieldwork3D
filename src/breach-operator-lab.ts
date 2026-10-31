@@ -6,6 +6,8 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createOperatorRig,poseOperator,type OperatorRig}
   from './breach-operator-rig.ts';
 import {weaponGrips,type Handling} from './breach-weapon-pose.ts';
+import {timedHandling,type HandlingTransition}
+  from './breach-handling-transition.ts';
 import {lateralAxis,sideOffset,uncrossed} from './breach-locomotion.ts';
 import {bodyFromContacts} from './breach-body-motion.ts';
 import {LabMotionCache,TRACK_DURATION,type LabTrack}
@@ -303,6 +305,11 @@ function draw(){
     'high-ready':'high','low-ready':'low','ready':'ready',
     'short-stock':'short','active-aim':'ads','point-shoot':'point'
   };
+  const transition:HandlingTransition|undefined=
+    track==='ready-to-ads'?timedHandling('ready','ads',clock,.55,1.15):
+    track==='ads-to-low'?timedHandling('ads','low',clock,.55,1.15):
+    undefined;
+  const selectedHandling=transition?.to??previewHandling[track];
   doorProp.visible=track==='door'||track==='kick';
   rig.root.position.set(motion.x,0,motion.z);
   poseOperator(rig,{x:motion.x,z:motion.z,heading:motion.heading,
@@ -325,7 +332,8 @@ function draw(){
     down:motion.down||Number(injury.value)===3,
     surrender:false,aiming:motion.aim>.2,
     firing:false,turning:motion.turning,aimBlend:motion.aim,
-    handlingOverride:previewHandling[track],
+    handlingOverride:selectedHandling,
+    handlingTransition:transition,
     replayFeet:feet,pelvisYaw:state.pelvisYaw,
     deterministic:true,shotHeading:motion.heading,
     downPose:track==='down-back'?'back':
@@ -345,7 +353,7 @@ function draw(){
   timeOutput.textContent=clock.toFixed(2)+'s';
   showDiagnostics();
   canvas.dataset.track=track;
-  canvas.dataset.weaponHandling=previewHandling[track]??'automatic';
+  canvas.dataset.weaponHandling=selectedHandling??'automatic';
   canvas.dataset.time=clock.toFixed(3);
   canvas.dataset.contactCount=String(feet.filter(x=>x.contact).length);
   canvas.dataset.gait=state.mode;
