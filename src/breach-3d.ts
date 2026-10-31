@@ -276,9 +276,16 @@ export class TacticalScene3D{
         this.solid(zoneColor[zone.kind]));
     }
     const road=this.solid(0x59584a);
-    this.box(this.root,site.entrance.x,-1,
-      (site.entrance.y+bounds.maxY)/2,85,1,
-      bounds.maxY-site.entrance.y+10,road,false);
+    const side=site.entrySide??'south';
+    if(side==='east'||side==='west'){
+      const edge=side==='east'?bounds.maxX:bounds.minX;
+      this.box(this.root,(site.entrance.x+edge)/2,-1,site.entrance.y,
+        Math.abs(site.entrance.x-edge)+10,1,85,road,false);
+    }else{
+      const edge=side==='south'?bounds.maxY:bounds.minY;
+      this.box(this.root,site.entrance.x,-1,(site.entrance.y+edge)/2,
+        85,1,Math.abs(site.entrance.y-edge)+10,road,false);
+    }
     const decorativeRoomGroups=new Map<string,THREE.Group>();
     for(const room of site.rooms){
       const group=new THREE.Group();

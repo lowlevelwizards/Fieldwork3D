@@ -5,6 +5,7 @@
 import {type Pt,type Segment,type Door,type Obstacle} from './breach-core.ts';
 import {applyArchetype} from './breach-archetypes.ts';
 import {compileArchitecturalSite} from './worldgen/architectural-compiler.ts';
+import {orientArchitecturalSite,type EntrySide} from './worldgen/site-orientation.ts';
 export type Room={id:string;zoneId?:string;x:number;y:number;w:number;h:number;
   kind:'room'|'hall';tone:number;purpose?:string};
 export type BuildingArchetype='house'|'townhouse'|'apartment'|'retail'|'office'|'garage'|'warehouse'|'restaurant'|'motel'|'utility'|'clinic';
@@ -18,6 +19,7 @@ export type Site={
   /** Authored semantic programs bypass index-based purpose assignment. */
   programLocked?:boolean;
   planFamily?:string;
+  entrySide?:EntrySide;
   circulationStyle?:import('./worldgen/circulation-grammar.ts').CirculationStyle;
   scale?:SiteScale;
   /** Explicit playable world envelope; legacy maps default to 640 × 740. */
@@ -54,7 +56,7 @@ export function generateSite(seed:number,scale:SiteScale='standard'):Site{
  for(let attempt=0;attempt<6;attempt++){
   const geometry=compileArchitecturalSite(kind,seed+attempt*9973,scale);
   geometry.seed=seed;
-  try{return applyArchetype(geometry,seed);}
+  try{return applyArchetype(orientArchitecturalSite(geometry,seed),seed);}
   catch{/* Retry a different architectural grammar, not the old grid. */}
  }
  throw new Error('Cannot generate connected '+kind+' site for seed '+seed);
