@@ -135,15 +135,17 @@ export class TacticalScene3D{
     this.fogTexture.minFilter=THREE.LinearFilter;
     this.fogTexture.magFilter=THREE.LinearFilter;
     const fogMat=new THREE.MeshBasicMaterial({
-      map:this.fogTexture,transparent:true,depthTest:false,
+      map:this.fogTexture,transparent:true,depthTest:true,
       depthWrite:false,toneMapped:false,side:THREE.DoubleSide});
     this.mats.push(fogMat);
     this.smoothFog=new THREE.Mesh(new THREE.PlaneGeometry(W,H),fogMat);
     this.smoothFog.rotation.x=-Math.PI/2;
     // Fog is a ground-surface mask. Elevating it by 36 units shifted
     // its cutouts away from the underlying blood/floor at ISO camera pitch.
-    // Drawing last without depth testing prevents walls/props from punching
-    // visibility holes in the mask; its alpha owns final visibility.
+    // Keep depth testing enabled: known walls/door frames in front of the
+    // ground plane must remain visible instead of being painted over by fog.
+    // Depth-writing stays off, so the mask cannot occlude world geometry;
+    // hidden units and unobserved props remain separately intel-gated.
     this.smoothFog.position.set(W/2,1.05,H/2);
     this.smoothFog.renderOrder=1000;
     this.smoothFog.frustumCulled=false;
