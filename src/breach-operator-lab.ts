@@ -281,6 +281,7 @@ function showDiagnostics(){
       (crossing?' · CROSSING!':''),
     'ANKLE GAP '+rig.legGap.map(v=>v.toFixed(2)).join(' / ')+
       ' · GRIP ERROR '+rig.gripError.toFixed(3)+
+       ' · STOCK '+rig.stockError.toFixed(2)+
       ' · SUPPORT '+balance.support.toFixed(2),
     'PELVIS '+sampled.state.pelvisYaw.toFixed(2)+
       ' · LIFT '+balance.pelvisY.toFixed(2),
