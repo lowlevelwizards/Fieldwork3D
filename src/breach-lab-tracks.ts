@@ -6,7 +6,7 @@ import {advanceFootsteps,createFootstepScheduler,
   type FootstepInput,type FootstepScheduler,type FootTarget}
   from './breach-footsteps.ts';
 export const LAB_TRACKS=[
-  'idle','walk','accelerate','stop','restart','back',
+  'idle','walk','run','accelerate','stop','restart','back',
   'strafe-left','strafe-right','strafe','strafe-stop',
   'strafe-reverse','mixed','turn-90','turn-180','turn','pivot-reverse',
   'pie','look','crouch-walk','crouch','wounded','aim',
@@ -30,6 +30,7 @@ function position(kind:LabTrack,t:number){
   let x=0,z=0,heading=0;
   switch(kind){
     case 'walk':x=Math.min(t,3.65)*44;break;
+    case 'run':x=Math.min(t,3.65)*78;break;
     case 'accelerate':
       if(t<1)x=20*t*t;
       else if(t<2.5)x=20+40*(t-1);
@@ -109,7 +110,9 @@ function gaitInput(time:number,m:LabMotion):FootstepInput{
     facingYaw:m.heading,
     travelYaw:m.travelYaw,speed:m.speed,turning:m.turning,
     posture:m.posture,injury:m.injury,down:m.down,
-    cautious:m.aim>.2&&m.speed/72<.35};
+    cautious:m.aim>.2&&m.speed/72<.35,
+    gait:m.speed>70?'run':
+      m.speed<12&&Math.abs(m.turning)>.03?'pie':'walk'};
 }
 export class LabMotionCache{
   readonly frames:FootstepScheduler[]=[];
