@@ -158,7 +158,14 @@ export class MissionRecorder{
     for(const actor of actors)
       presentation.travelYaw[actor.id]=actor.travelYaw??actor.heading;
     const delta=t-previous.t;
-    return {...previous,t,actors,presentation,
+    const nextDoors=new Map(next.doors.map(d=>[d.id,d]));
+    const doors=previous.doors.map(d=>{
+      const later=nextDoors.get(d.id);
+      return {...d,openFraction:later?mix(
+        d.openFraction??(d.open?1:0),
+        later.openFraction??(later.open?1:0),alpha):d.openFraction};
+    });
+    return {...previous,t,actors,doors,presentation,
       shots:previous.shots.map(s=>({...shotCopy(s),age:s.age+delta})),
       grenades:previous.grenades.map(g=>({...g,p:position(g.p),
         from:position(g.from),to:position(g.to)}))};
