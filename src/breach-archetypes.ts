@@ -3,17 +3,15 @@ import type {Site,BuildingArchetype,Room} from './breach-site.ts';
 import {buildArchetypeEnvironment} from './breach-windows.ts';
 import {propDefinition} from './worldgen/asset-catalog.ts';
 import {furnishRooms} from './worldgen/room-furnishing.ts';
+import {programRooms} from './worldgen/building-programs.ts';
 export const BUILDING_ARCHETYPES:readonly BuildingArchetype[]=
- ['house','office','motel','garage','warehouse','clinic'];
-const ROOMS:Record<BuildingArchetype,readonly string[]>={
- house:['living','kitchen','bedroom','bedroom','bathroom','utility'],
- office:['reception','cubicles','office','meeting','break','storage'],
- motel:['reception','guest','guest','guest','laundry','maintenance'],
- garage:['bay','workshop','office','parts','utility','storage'],
- warehouse:['loading','storage','aisle','packing','office','utility'],
- clinic:['reception','waiting','exam','treatment','supply','staff']
-};
+ ['house','townhouse','apartment','retail','office','garage','warehouse','restaurant','motel','utility','clinic'] as const;
 const FIXTURES:Record<string,readonly string[]>={
+  studio:['bed','sofa'],dining:['dining-table','chair'],study:['desk','bookcase'],
+  'garage-storage':['shelf','tire-stack'],sales:['gondola-shelf','wall-shelf'],
+  checkout:['checkout','display-rack'],stockroom:['rack','box'],pantry:['shelf','box'],
+  restroom:['cabinet'],service:['rack','cart'],equipment:['generator','tank'],
+  control:['control-panel'],lobby:['desk','armchair'],
  living:['sofa','tv-stand','bookcase','coffee-table','armchair'],kitchen:['counter','dining-table','fridge'],
  bedroom:['bed','wardrobe','dresser','nightstand'],bathroom:['cabinet'],utility:['shelf'],
  reception:['desk','counter'],cubicles:['desk','filing-cabinet'],
@@ -33,8 +31,8 @@ export function applyArchetype(site:Site,seed:number):Site{
   const sorted=site.rooms.filter(r=>r.kind==='room').slice().sort(
     (a,b)=>midpoint(b).y-midpoint(a).y||midpoint(a).x-midpoint(b).x);
   const assignments=new Map<string,string>();
-  sorted.forEach((r,i)=>assignments.set(r.id,
-    ROOMS[archetype][i%ROOMS[archetype].length]));
+  const program=programRooms(archetype,sorted.length);
+  sorted.forEach((r,i)=>assignments.set(r.id,program[i]));
   const rooms=site.rooms.map(r=>({...r,purpose:r.kind==='hall'?
     'hallway':assignments.get(r.id)??'storage'}));
   const cover=site.cover.map((o,i)=>{

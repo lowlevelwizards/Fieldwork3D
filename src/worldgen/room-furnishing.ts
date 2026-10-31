@@ -7,6 +7,19 @@ import {propDefinition} from './asset-catalog.ts';
 type Anchor='nw'|'ne'|'sw'|'se'|'west'|'east';
 type Item={id:string;anchor:Anchor};
 const compositions:Record<string,readonly Item[]>={
+ studio:[{id:'bed',anchor:'nw'},{id:'sofa',anchor:'se'}],
+ dining:[{id:'dining-table',anchor:'west'},{id:'chair',anchor:'se'}],
+ study:[{id:'desk',anchor:'nw'},{id:'bookcase',anchor:'se'}],
+ 'garage-storage':[{id:'shelf',anchor:'nw'},{id:'tire-stack',anchor:'se'}],
+ sales:[{id:'gondola-shelf',anchor:'nw'},{id:'gondola-shelf',anchor:'se'}],
+ checkout:[{id:'checkout',anchor:'nw'},{id:'display-rack',anchor:'se'}],
+ stockroom:[{id:'rack',anchor:'nw'},{id:'box',anchor:'se'}],
+ pantry:[{id:'shelf',anchor:'nw'},{id:'box',anchor:'se'}],
+ restroom:[{id:'cabinet',anchor:'nw'}],
+ service:[{id:'rack',anchor:'nw'},{id:'cart',anchor:'se'}],
+ equipment:[{id:'generator',anchor:'nw'},{id:'tank',anchor:'se'}],
+ control:[{id:'control-panel',anchor:'nw'},{id:'desk',anchor:'se'}],
+ lobby:[{id:'desk',anchor:'nw'},{id:'armchair',anchor:'se'}],
  living:[{id:'sofa',anchor:'nw'},{id:'tv-stand',anchor:'se'},{id:'coffee-table',anchor:'west'}],
  kitchen:[{id:'counter',anchor:'nw'},{id:'fridge',anchor:'se'},{id:'dining-table',anchor:'west'}],
  bedroom:[{id:'bed',anchor:'nw'},{id:'nightstand',anchor:'ne'},{id:'dresser',anchor:'se'}],
