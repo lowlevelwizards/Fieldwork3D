@@ -19,7 +19,7 @@ import {renderSnapshot,type RenderActor}
   from './breach-frame-interpolation.ts';
 import {routeLineHit} from './breach-route-edit.ts';
 import {placeContextMenu,type AvoidRect,type ScreenPath,type MenuSide} from './breach-context-placement.ts';
-import {shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
+import {coverPresentation,shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
 import {heardIntensity} from './breach-acoustics.ts';
 import {parseOperationHistory,addOperationRecord,
   type OperationRecord} from './breach-operations.ts';
@@ -954,7 +954,7 @@ function terrain(){
 }
 function furniture(){
   for(const [i,c] of COVER.entries()){
-    if(!coverKnown(state.intel,i))continue;
+    if(coverPresentation(state,i,replaying&&replayOmniscient)==='unknown')continue;
     draw.fillStyle='#0f1b1c66';
     draw.fillRect(c.x-c.w/2+6,c.y-c.h/2+7,c.w,c.h);
     rect(c.x-c.w/2,c.y-c.h/2,c.w,c.h,c.low?'#81725b':'#485552');

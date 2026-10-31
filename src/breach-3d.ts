@@ -3,7 +3,7 @@ import {W,H,WALLS,COVER,initialDoors,doorCenter,activeSite,
   isClear,type Pt} from './breach-core.ts';
 import {type Site} from './breach-site.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
-import {shotVisibility} from './breach-presentation.ts';
+import {coverPresentation,shotVisibility} from './breach-presentation.ts';
 import {doorKnown,wallKnown,coverKnown,roomKnown}
   from './breach-intel.ts';
 import {handlePoint,doorReachable} from './breach-door.ts';
@@ -671,7 +671,7 @@ export class TacticalScene3D{
     for(const item of this.intelSurfaces){
       item.obj.visible=omniscient||(
         item.kind==='wall'?wallKnown(s.intel,item.index!):
-        item.kind==='cover'?coverKnown(s.intel,item.index!):
+        item.kind==='cover'?coverPresentation(s,item.index!,omniscient)!=='unknown':
         roomKnown(s.intel,item.id!)||occupiedRoomIds.has(item.id!));
     }
     // For camera-facing walls use translucent near-side cutaways.
