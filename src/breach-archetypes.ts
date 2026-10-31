@@ -34,16 +34,24 @@ const FIXTURES:Record<string,readonly string[]>={
  * A failed candidate falls back to the previous, known-playable room ordering.
  * This check happens only during generation, never per frame.
  */
+const routeCheckCache=new Map<string,boolean>();
 function reachable(site:Site):boolean{
+  const key=site.seed+':'+(site.scale??'standard')+':'+
+    site.rooms.map(r=>r.id+'='+r.purpose).join(',')+':'+site.cover.length;
+  const known=routeCheckCache.get(key);
+  if(known!==undefined)return known;
   const previous=activeSite();
+  let valid=false;
   activateSite(site);
   try{
-    // One authoritative route check catches blocked circulation without
-    // running full A* for every enemy during procedural generation.
-    if(![...site.spawn,...site.enemies,site.objective].every(p=>passable(p)))
-      return false;
-    return route(site.spawn[0],site.objective).length>0;
+    // Critical route is authoritative, but expensive A* should only execute
+    // once for a reproducible seed/room-program candidate.
+    valid=[...site.spawn,...site.enemies,site.objective].every(p=>passable(p))&&
+      route(site.spawn[0],site.objective).length>0;
   }finally{activateSite(previous);}
+  if(routeCheckCache.size>=512)routeCheckCache.clear();
+  routeCheckCache.set(key,valid);
+  return valid;
 }
 export function applyArchetype(site:Site,seed:number):Site{
   const archetype=BUILDING_ARCHETYPES[(seed>>>0)%BUILDING_ARCHETYPES.length];
