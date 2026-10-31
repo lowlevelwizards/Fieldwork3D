@@ -1,6 +1,7 @@
 /** Semantic building types; furnishing data preserves authored collision. */
 import type {Site,BuildingArchetype,Room} from './breach-site.ts';
 import {buildArchetypeEnvironment} from './breach-windows.ts';
+import {propDefinition} from './worldgen/asset-catalog.ts';
 export const BUILDING_ARCHETYPES:readonly BuildingArchetype[]=
  ['house','office','motel','garage','warehouse','clinic'];
 const ROOMS:Record<BuildingArchetype,readonly string[]>={
@@ -12,15 +13,15 @@ const ROOMS:Record<BuildingArchetype,readonly string[]>={
  clinic:['reception','waiting','exam','treatment','supply','staff']
 };
 const FIXTURES:Record<string,readonly string[]>={
- living:['table','cabinet'],kitchen:['counter','table'],
- bedroom:['bed','cabinet'],bathroom:['cabinet'],utility:['shelf'],
- reception:['desk','counter'],cubicles:['desk','cabinet'],
- office:['desk','cabinet'],meeting:['table'],break:['table','counter'],
- storage:['shelf','crate'],guest:['bed','cabinet'],
+ living:['sofa','tv-stand','bookcase','coffee-table','armchair'],kitchen:['counter','dining-table','fridge'],
+ bedroom:['bed','wardrobe','dresser','nightstand'],bathroom:['cabinet'],utility:['shelf'],
+ reception:['desk','counter'],cubicles:['desk','filing-cabinet'],
+ office:['desk','filing-cabinet'],meeting:['meeting-table'],break:['dining-table','counter'],
+ storage:['shelf','crate','box','barrel'],guest:['bed','dresser'],
  laundry:['machine','shelf'],maintenance:['shelf','workbench'],
- bay:['machine','workbench'],workshop:['workbench','shelf'],
- parts:['shelf','crate'],loading:['crate','pallet'],
- aisle:['shelf','pallet'],packing:['table','crate'],
+ bay:['vehicle-lift','workbench','tire-stack'],workshop:['workbench','tool-chest','compressor'],
+ parts:['shelf','crate','tire-stack'],loading:['crate','pallet','barrel'],
+ aisle:['rack','pallet'],packing:['table','box'],
  waiting:['chair','table'],exam:['exam-bed','cart'],
  treatment:['exam-bed','cart'],supply:['cabinet','cart'],
  staff:['desk','locker']
@@ -39,7 +40,8 @@ export function applyArchetype(site:Site,seed:number):Site{
     const room=rooms.find(r=>o.x>=r.x&&o.x<=r.x+r.w&&
       o.y>=r.y&&o.y<=r.y+r.h);
     const collection=FIXTURES[room?.purpose??'storage']??['crate'];
-    return {...o,fixture:collection[(i+seed)%collection.length]};
+    const fixture=collection[(i+seed)%collection.length];
+    return {...o,fixture:propDefinition(fixture)?fixture:'crate'};
   });
   return buildArchetypeEnvironment({...site,archetype,rooms,cover},seed);
 }
