@@ -1040,6 +1040,8 @@ export class TacticalScene3D{
         deterministic:!!replay,
         replayFeet:replay?.feet[actor.id]??liveMotion?.feet[actor.id],
         hybridSupport:true,
+        acceleration:replay?.acceleration[actor.id]??
+          liveMotion?.acceleration[actor.id]??0,
         pelvisYaw:replay?.pelvisYaw[actor.id]??liveMotion?.pelvisYaw[actor.id],
         travelYaw:replay?.travelYaw[actor.id]??
           liveMotion?.travelYaw[actor.id],
