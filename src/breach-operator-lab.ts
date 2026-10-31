@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createOperatorRig,poseOperator,type OperatorRig}
   from './breach-operator-rig.ts';
-import {weaponGrips} from './breach-weapon-pose.ts';
+import {weaponGrips,type Handling} from './breach-weapon-pose.ts';
 import {lateralAxis,sideOffset,uncrossed} from './breach-locomotion.ts';
 import {bodyFromContacts} from './breach-body-motion.ts';
 import {LabMotionCache,TRACK_DURATION,type LabTrack}
@@ -298,6 +298,10 @@ function showDiagnostics(){
 function draw(){
   if(!rig)return;
   const {motion,feet,state}=cache.sample(clock);
+  const previewHandling:Partial<Record<LabTrack,Handling>>={
+    'high-ready':'high','low-ready':'low','ready':'ready',
+    'short-stock':'short','active-aim':'ads','point-shoot':'point'
+  };
   doorProp.visible=track==='door'||track==='kick';
   rig.root.position.set(motion.x,0,motion.z);
   poseOperator(rig,{x:motion.x,z:motion.z,heading:motion.heading,
@@ -320,6 +324,7 @@ function draw(){
     down:motion.down||Number(injury.value)===3,
     surrender:false,aiming:motion.aim>.2,
     firing:false,turning:motion.turning,aimBlend:motion.aim,
+    handlingOverride:previewHandling[track],
     replayFeet:feet,pelvisYaw:state.pelvisYaw,
     deterministic:true,shotHeading:motion.heading,
     downPose:track==='down-back'?'back':
@@ -339,6 +344,7 @@ function draw(){
   timeOutput.textContent=clock.toFixed(2)+'s';
   showDiagnostics();
   canvas.dataset.track=track;
+  canvas.dataset.weaponHandling=previewHandling[track]??'automatic';
   canvas.dataset.time=clock.toFixed(3);
   canvas.dataset.contactCount=String(feet.filter(x=>x.contact).length);
   canvas.dataset.gait=state.mode;
