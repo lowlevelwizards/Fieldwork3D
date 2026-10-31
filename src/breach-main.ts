@@ -172,6 +172,7 @@ let lookMode:'look'|'pie'|'strafe'='look';
 let contextSignature='';
 let contextActionsSignature='';
 let lastContextSide:MenuSide|null=null;
+let lastAuthoringAt=0;
 const paletteMotion=new PaletteMotion();
 const reducedMotionMedia=matchMedia('(prefers-reduced-motion: reduce)');
 let paletteWidth=0,paletteHeight=0;
@@ -500,8 +501,10 @@ function updateContext(){
   const header=document.querySelector<HTMLElement>('.top');
   const nav=document.querySelector<HTMLElement>('.bar');
   const minY=Math.max(8,(header?.getBoundingClientRect().bottom??62)+8);
-  const maxY=Math.max(minY+h, (nav?.getBoundingClientRect().top??
-    ui.play.getBoundingClientRect().top)-10);
+  const hudTop=!ui.quickStates.hidden?
+    ui.quickStates.getBoundingClientRect().top:
+    (nav?.getBoundingClientRect().top??ui.play.getBoundingClientRect().top);
+  const maxY=Math.max(minY+h,hudTop-10);
   const avoid:AvoidRect[]=[{x:anchor.x-38,y:anchor.y-38,
     w:76,h:76,weight:3}];
   for(const unit of team(state)){
@@ -539,9 +542,30 @@ function updateContext(){
     const r=overlay.getBoundingClientRect();
     avoid.push({x:r.left-7,y:r.top-7,w:r.width+14,h:r.height+14});
   }
+  // Protect the next-tap region, not just the selected node itself.
+  // The palette should choose unused screen space away from the editing lane.
+  const activeEditing=performance.now()-lastAuthoringAt<1150;
+  const radius=cssW<=600?(activeEditing?148:118):100;
+  const actorPoint=worldToScreen(a.p,8);
+  const lastPoint=worldToScreen(finalPoint(a),8);
+  const editingZones=[
+    {x:anchor.x-radius,y:anchor.y-radius,w:radius*2,h:radius*2},
+    {x:lastPoint.x-90,y:lastPoint.y-90,w:180,h:180},
+    {x:actorPoint.x-75,y:actorPoint.y-75,w:150,h:150},
+  ];
+  const vx=lastPoint.x-actorPoint.x,vy=lastPoint.y-actorPoint.y;
+  const length=Math.hypot(vx,vy);
+  const dir=length>35?{x:vx/length,y:vy/length}:{x:0,y:-1};
+  const corridor={a:anchor,b:{
+    x:anchor.x+dir.x*(activeEditing?245:190),
+    y:anchor.y+dir.y*(activeEditing?245:190)}};
   const placement=placeContextMenu({
     anchor,width:w,height:h,viewportWidth:cssW,
     top:minY,bottom:maxY,avoid,paths,preferredSide:lastContextSide,
+    authoring:editingZones,corridor,
+    minClearance:cssW<=600?(activeEditing?142:112):100,
+    preferredPosition:paletteMotion.active?
+      {x:paletteMotion.targetX,y:paletteMotion.targetY}:null,
   });
   lastContextSide=placement.side;
   paletteMotion.set(placement.x,placement.y,anchor.x,anchor.y);
@@ -1511,6 +1535,7 @@ function useSelectedGround(pt:Pt){
     looking=false;updateHud();return;
   }
   const beforeRoute=uid(selected)?finalPoint(uid(selected)!):pt;
+  lastAuthoringAt=performance.now();
   if(!planMove(state,selected,pt))
     state.events.push(!intelPassable(pt,state.intel)?
       'DESTINATION BLOCKED · CHOOSE NEARBY FLOOR':
@@ -1779,6 +1804,7 @@ canvas.addEventListener('pointerdown',e=>{
     // happens to overlap its icon.
     const node=state.phase==='planning'&&!contextual&&!hit?hitNode(pt):null;
     if(node){
+      lastAuthoringAt=performance.now();
       if(node.owner!==selected)selectUnit(node.owner);
       selectedNode=node.id;doorFocusId=null;
     }else if(hit)selectUnit(hit.id);
@@ -1871,6 +1897,7 @@ function insertAtRouteLine(screen:Pt):boolean{
     return true; // This was a route tap, not a new destination order.
   }
   canvas.dataset.lastRouteTap='inserted:'+hit.index;
+  lastAuthoringAt=performance.now();
   tacticalFeedback.emit('node',hit.point);
   selectedNode=id;doorFocusId=null;contextSignature='';
   return true;
