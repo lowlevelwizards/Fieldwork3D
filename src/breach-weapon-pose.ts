@@ -49,17 +49,19 @@ export type WeaponFit={
 export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
   /** Fire direction in chest-local space. */
   yaw:number;recoil:number;aimBlend?:number;
-  blendFrom?:Handling;blendAlpha?:number};
+  blendFrom?:Handling;blendAlpha?:number;
+  blendSnapshot?:{origin:THREE.Vector3;rotation:THREE.Euler}};
 /** Rigid contact fit in chest-local space. The candidate search uses scalar
  * maths: allocating dozens of vectors per actor per render caused mobile GC
  * spikes. Only the winning solution becomes Three.js geometry.
  */
 export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
-  if(input.blendFrom&&input.blendAlpha!==undefined){
-    const from=fitWeaponPose({...input,handling:input.blendFrom,
-      blendFrom:undefined,blendAlpha:undefined});
+  if((input.blendFrom||input.blendSnapshot)&&input.blendAlpha!==undefined){
+    const from=input.blendSnapshot??fitWeaponPose({...input,
+      handling:input.blendFrom!,blendFrom:undefined,
+      blendSnapshot:undefined,blendAlpha:undefined});
     const to=fitWeaponPose({...input,blendFrom:undefined,
-      blendAlpha:undefined});
+      blendSnapshot:undefined,blendAlpha:undefined});
     const t=clamp(input.blendAlpha,0,1);
     const origin=from.origin.clone().lerp(to.origin,t);
     const q=new THREE.Quaternion().setFromEuler(from.rotation);
@@ -77,11 +79,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       twoHanded:right<=LIMIT&&left<=LIMIT,
       primaryReachable:right<=LIMIT,
       contactError:Math.max(0,right-LIMIT)+Math.max(0,left-LIMIT),
-      stockError:(()=>{
-        const a=stockPocket(input.blendFrom!),b=stockPocket(input.handling);
-        return anchorGap(stock,{x:a.x+(b.x-a.x)*t,
-          y:a.y+(b.y-a.y)*t,z:a.z+(b.z-a.z)*t});
-      })()};
+      stockError:anchorGap(stock,stockPocket(input.handling))};
   }
   const data=weaponGrips(input.weapon),scale=data.lengthScale;
   const yaw=clamp(input.yaw,-1.1,1.1);
