@@ -1,3 +1,4 @@
+import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH} from '../src/breach-leg-geometry.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -76,8 +77,8 @@ test('145: even a corrupt replay foot target cannot stretch the leg',()=>{
     assert.ok(foot.shoe.position.length()<19);
     assert.ok(!foot.ankleLink.visible||
       foot.ankleLink.scale.y<1.5);
-    assert.ok(foot.upper.scale.y<=9.70001);
-    assert.ok(foot.lower.scale.y<=9.70001);
+    assert.ok(foot.upper.scale.y<=LEG_UPPER_LENGTH+.00001);
+    assert.ok(foot.lower.scale.y<=LEG_LOWER_LENGTH+.00001);
     assert.ok(foot.shoe.getWorldPosition(new THREE.Vector3())
       .distanceTo(foot.anchor)<1e-4);
   }
