@@ -10,13 +10,13 @@ export const GRIPS:Record<WeaponId,WeaponGrip>={
   // Buttstock block is centered at -10 with width 9: its rear face
   // is -14.5, not -10. Hand placement remains on the actual gun mesh.
   carbine:{lengthScale:1,stockX:-14.5,primaryX:-1,primaryY:-2,
-    supportX:-1.8,supportY:-1.5},
+    supportX:1.7,supportY:-1.5},
   smg:{lengthScale:.72,stockX:-14.5,primaryX:-1,primaryY:-2,
-    supportX:-.5,supportY:-1},
+    supportX:2.4,supportY:-1},
   rifle:{lengthScale:1.19,stockX:-14.5,primaryX:-1,primaryY:-2,
-    supportX:-3,supportY:-1.5},
+    supportX:.35,supportY:-1.5},
   shotgun:{lengthScale:1.08,stockX:-14.5,primaryX:-1,primaryY:-2,
-    supportX:-2.6,supportY:-2},
+    supportX:1,supportY:-2},
 };
 export const weaponGrips=(id:WeaponId):WeaponGrip=>GRIPS[id];
 export function handlingPose(input:{aim:number;moving:number;
