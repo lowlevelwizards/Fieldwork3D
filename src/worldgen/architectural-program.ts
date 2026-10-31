@@ -73,8 +73,53 @@ export const ARCHITECTURAL_FAMILIES:readonly BuildingArchetype[]=
   'warehouse','restaurant','motel','utility','clinic'];
 const publicEntry=new Set(['living','lobby','reception','waiting','sales',
  'dining','hallway','aisle','loading']);
+/** Some facilities have multiple genuinely different massing grammars.
+ * Voids represent courtyards, service courts or setbacks, not phantom rooms.
+ */
+const alternate:Partial<Record<BuildingArchetype,Spec>>={
+ motel:{family:'courtyard motel / covered guest gallery',
+  widths:[141,141,141,141],depths:[143,62,128,103],
+  front:{col:0,row:3},cells:[
+   ['guest','guest','guest','guest'],
+   ['hallway','hallway','hallway','hallway'],
+   ['reception',null,null,'laundry'],
+   ['reception','hallway','maintenance','maintenance']]},
+ clinic:{family:'offset clinic / public wing and clinical hall',
+  widths:[173,70,166,130],depths:[143,112,79,104],
+  front:{col:1,row:3},cells:[
+   ['exam','hallway','exam','supply'],
+   ['treatment','hallway','exam','staff'],
+   ['waiting','hallway',null,'service'],
+   ['waiting','waiting','reception',null]]},
+ warehouse:{family:'shipping-court warehouse / U footprint',
+  widths:[182,70,182,154],depths:[157,112,136,111],
+  front:{col:1,row:3},cells:[
+   ['storage','aisle','storage','loading'],
+   ['storage','aisle',null,'loading'],
+   ['storage','aisle',null,'loading'],
+   ['office','aisle','packing','service']]},
+ house:{family:'setback house / L-shaped living room',
+  widths:[174,68,150,124],depths:[127,94,112,95],
+  front:{col:1,row:3},cells:[
+   ['bedroom','hallway','bedroom','bathroom'],
+   ['living','hallway','kitchen','kitchen'],
+   ['living','hallway','dining',null],
+   ['living','living',null,null]]},
+ restaurant:{family:'back-of-house bar / stepped dining wing',
+  widths:[188,75,167,133],depths:[151,139,106],
+  front:{col:1,row:2},cells:[
+   ['kitchen','kitchen','service','pantry'],
+   ['dining','dining','service','restroom'],
+   ['dining','dining',null,null]]},
+ office:{family:'notched office / reception and private wing',
+  widths:[170,66,165,143],depths:[123,144,107],
+  front:{col:2,row:2},cells:[
+   ['office','hallway','meeting',null],
+   ['office','hallway','cubicles','cubicles'],
+   ['reception','hallway','lobby','storage']]}
+};
 export function architecturalBlueprint(kind:BuildingArchetype,seed=0):Blueprint{
- const original=layouts[kind];
+ const original=seed%7<3&&alternate[kind]?alternate[kind]!:layouts[kind];
  // Independent architectural stream: variation never changes the intended
  // frontage, program or circulation, only bay sizes and left/right orientation.
  let n=(seed^0x45d9f3b)>>>0;
