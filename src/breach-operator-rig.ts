@@ -251,7 +251,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // The center-of-mass should not plunge to rescue stale contact data;
   // an actual corrective step remains the scheduler's responsibility.
   const stanceDrop=clamp((stanceRadius-8.4)*.37,0,
-    p.replayFeet?1.0:2.1);
+    p.replayFeet?1.4:2.1);
   const neutralHip=20.2-crouch;
   const stanceHip=neutralHip+motion.pelvisY-stanceDrop-bash.brace;
   r.hip.position.y=Math.max(
