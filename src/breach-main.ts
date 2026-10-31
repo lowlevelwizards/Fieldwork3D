@@ -254,21 +254,24 @@ const playTone=(frequency:number,decay:number,noise=false,
 let uiSoundEnabled=true,lastUiCue=0;
 try{uiSoundEnabled=localStorage.getItem('fieldwork3d.ui.sound')!=='off';}
 catch{/* Storage is optional. */}
-function uiClickTone(kind:'select'|'command'|'go'|'warning'){
+function uiClickTone(kind:'select'|'command'|'go'|'pause'|'warning'){
   if(!uiSoundEnabled)return;
   const now=performance.now();if(now-lastUiCue<75)return;
   lastUiCue=now;
   unlockAudio();
   try{
     if(!audio||audio.state!=='running')return;
-    const frequencies={select:480,command:610,go:290,warning:170};
+    const frequencies={select:480,command:610,go:330,pause:255,warning:170};
     const oscillator=audio.createOscillator(),gain=audio.createGain();
     oscillator.type=kind==='go'?'triangle':'sine';
     oscillator.frequency.setValueAtTime(frequencies[kind],audio.currentTime);
-    gain.gain.setValueAtTime(.011,audio.currentTime);
-    gain.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+.055);
+    if(kind==='go')oscillator.frequency.exponentialRampToValueAtTime(
+      240,audio.currentTime+.14);
+    const duration=kind==='go'?.15:kind==='pause'?.085:.055;
+    gain.gain.setValueAtTime(kind==='go'?.018:.010,audio.currentTime);
+    gain.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+duration);
     oscillator.connect(gain);gain.connect(audio.destination);
-    oscillator.start();oscillator.stop(audio.currentTime+.065);
+    oscillator.start();oscillator.stop(audio.currentTime+duration+.015);
   }catch{/* UI feedback never blocks interaction. */}
 }
 function unlockAudio(){
@@ -743,6 +746,7 @@ function updateHud(){
   const primaryMode=state.phase==='running'?'pause':
     state.phase==='planning'?'go':'reset';
   if(ui.play.dataset.mode!==primaryMode){
+    const previousMode=ui.play.dataset.mode;
     ui.play.dataset.mode=primaryMode;
     const label=document.createElement('span');
     label.textContent=primaryMode==='go'?'GO':
@@ -751,6 +755,18 @@ function updateHud(){
     ui.play.replaceChildren(tacticalIcon(primaryMode),label);
     ui.play.setAttribute('aria-label',primaryMode==='go'?'Execute plan':
       primaryMode==='pause'?'Pause execution':'Reset encounter');
+    if(previousMode&&!reducedMotionMedia.matches){
+      ui.play.animate([
+        {transform:'scale(.93)',filter:'brightness(1.14)'},
+        {transform:'scale(1.055)',filter:'brightness(1.25)',offset:.43},
+        {transform:'scale(1)',filter:'brightness(1)'}
+      ],{duration:295,easing:'cubic-bezier(.16,.85,.25,1)'});
+      ui.phase.animate([
+        {opacity:.65,transform:'translateY(3px)'},
+        {opacity:1,transform:'translateY(-2px)',offset:.55},
+        {opacity:1,transform:'translateY(0)'}
+      ],{duration:300,easing:'ease-out'});
+    }
   }
   ui.play.classList.toggle('running',state.phase==='running');
   const active=uid(selected);
@@ -1710,7 +1726,7 @@ ui.intelMode.addEventListener('click',()=>{
 ui.retry.addEventListener('click',()=>reset());
 ui.next.addEventListener('click',()=>reset(state.variant+1));
 ui.play.addEventListener('click',()=>{
-  unlockAudio();uiClickTone('go');
+  unlockAudio();uiClickTone(state.phase==='running'?'pause':'go');
   if(state.phase==='won'||state.phase==='lost')reset();
   else{looking=false;toggling(state);updateHud();}
 });
