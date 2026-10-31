@@ -513,6 +513,7 @@ function draw(){
     handlingOverride:selectedHandling,
     handlingTransition:transition,
     replayFeet:feet,pelvisYaw:state.pelvisYaw,
+    hybridSupport:gaitReference.value==='candidate',
     deterministic:true,shotHeading:motion.heading,
     downPose:track==='down-back'?'back':
       track==='down-left'?'left':

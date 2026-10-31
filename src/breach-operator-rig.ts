@@ -51,6 +51,8 @@ export type OperatorPose={
   clearanceRetraction?:number;clearanceBlocked?:boolean;
   blocked?:boolean;footAllowed?:(point:{x:number;y:number})=>boolean;
   gait?:'walk'|'run'|'pie'|'squeeze';
+  /** Opt-in to contact-position weight transfer for lab candidate only. */
+  hybridSupport?:boolean;
   aimBlend?:number;recoil?:number;shotHeading?:number;
   hitFade?:number;hitAge?:number;downProgress?:number;flashActive?:boolean;
   hitRegion?:WoundRegion;hitYaw?:number;hitSeverity?:number;
@@ -272,6 +274,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const motion=bodyFromContacts({velocity:p.down?0:physicalSpeed,
     heading:p.heading,travelYaw,turning:p.turning,
     injury:p.injury,posture:p.posture,feet:targets,gait:p.gait,
+    hybridSupport:p.hybridSupport,
     position:{x:p.x,y:p.z}});
   // Wide side-steps need a physical lowering of the center of mass,
   // not a longer limb or a shoe teleported away from its world anchor.
