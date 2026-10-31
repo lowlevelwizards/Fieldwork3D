@@ -77,40 +77,6 @@ const publicEntry=new Set(['living','lobby','reception','waiting','sales',
  * Voids represent courtyards, service courts or setbacks, not phantom rooms.
  */
 const alternate:Partial<Record<BuildingArchetype,Spec>>={
- townhouse:{family:'courtyard rowhouse / lateral kitchen extension',
-  widths:[158,65,142,114],depths:[116,112,113,107],
-  front:{col:0,row:3},cells:[
-   ['bedroom','hallway','bedroom','bathroom'],
-   ['bedroom','hallway','study',null],
-   ['living','hallway','kitchen','dining'],
-   ['living','living','dining',null]]},
- apartment:{family:'double-loaded apartments / entry gallery',
-  widths:[145,65,150,135],depths:[125,115,122,93],
-  front:{col:1,row:3},cells:[
-   ['bedroom','hallway','bedroom','bathroom'],
-   ['bedroom','hallway','bedroom','kitchen'],
-   ['living','hallway','living',null],
-   ['lobby','lobby','lobby','service']]},
- retail:{family:'corner storefront / stepped stockrooms',
-  widths:[168,120,68,147],depths:[129,106,119,94],
-  front:{col:0,row:3},cells:[
-   ['stockroom','stockroom','service','office'],
-   ['stockroom','sales','checkout','storage'],
-   ['sales','sales','sales',null],
-   ['sales','sales',null,null]]},
- garage:{family:'vehicle yard / elongated parallel service bays',
-  widths:[190,68,188,135],depths:[168,112,109,98],
-  front:{col:0,row:3},cells:[
-   ['bay','aisle','bay','workshop'],
-   ['bay','aisle','bay','parts'],
-   ['bay','aisle','reception',null],
-   ['waiting','reception','reception',null]]},
- utility:{family:'switchyard / stepped generator plant',
-  widths:[170,66,171,133],depths:[146,116,106],
-  front:{col:1,row:2},cells:[
-   ['equipment','hallway','equipment','control'],
-   ['equipment','hallway',null,'maintenance'],
-   ['storage','hallway','service','service']]},
  motel:{family:'courtyard motel / covered guest gallery',
   widths:[141,141,141,141],depths:[143,62,128,103],
   front:{col:0,row:3},cells:[
@@ -152,8 +118,48 @@ const alternate:Partial<Record<BuildingArchetype,Spec>>={
    ['office','hallway','cubicles','cubicles'],
    ['reception','hallway','lobby','storage']]}
 };
+/** Independent third families: distinct room counts and circulation footprints,
+ * not cosmetic reflections or one-room annexes pasted onto rectangular shells.
+ */
+const tertiary:Partial<Record<BuildingArchetype,Spec>>={
+ house:{family:'deep setback house / offset living wing',
+  widths:[170,65,156,124],depths:[104,115,126,111],
+  front:{col:0,row:3},cells:[
+   ['bedroom','hallway','bedroom','bathroom'],
+   ['bedroom','hallway','kitchen','kitchen'],
+   ['living','hallway','dining',null],
+   ['living','living','dining',null]]},
+ clinic:{family:'split public and clinical wings / dogleg corridor',
+  widths:[167,67,164,132],depths:[133,109,112,105],
+  front:{col:1,row:3},cells:[
+   ['exam','hallway','exam','supply'],
+   ['treatment','hallway','exam','staff'],
+   [null,'hallway','waiting','waiting'],
+   ['waiting','waiting','reception',null]]},
+ motel:{family:'five-room guest wing / open service court',
+  widths:[136,136,136,136,136],depths:[136,63,113,108],
+  front:{col:0,row:3},cells:[
+   ['guest','guest','guest','guest','guest'],
+   ['hallway','hallway','hallway','hallway','hallway'],
+   ['reception',null,null,null,'laundry'],
+   ['reception','lobby',null,'maintenance','maintenance']]},
+ warehouse:{family:'two storage wings / recessed shipping court',
+  widths:[183,69,170,157,128],depths:[155,129,117,107],
+  front:{col:1,row:3},cells:[
+   ['storage','aisle','storage','loading','loading'],
+   ['storage','aisle',null,'loading','storage'],
+   ['storage','aisle',null,'loading','storage'],
+   ['office','aisle','packing','service','service']]},
+ retail:{family:'deep retail / notched employee service court',
+  widths:[190,151,72,134],depths:[131,139,114],
+  front:{col:0,row:2},cells:[
+   ['stockroom','stockroom','office','storage'],
+   ['sales','sales','service','storage'],
+   ['sales','sales','checkout',null]]}
+};
 export function architecturalBlueprint(kind:BuildingArchetype,seed=0):Blueprint{
- const original=seed%7<3&&alternate[kind]?alternate[kind]!:layouts[kind];
+ const original=seed%13<3&&tertiary[kind]?tertiary[kind]!:
+  seed%7<3&&alternate[kind]?alternate[kind]!:layouts[kind];
  // Independent architectural stream: variation never changes the intended
  // frontage, program or circulation, only bay sizes and left/right orientation.
  let n=(seed^0x45d9f3b)>>>0;
