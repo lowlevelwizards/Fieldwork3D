@@ -482,6 +482,18 @@ ui.context.addEventListener('click',event=>{
   }
   contextSignature='';updateHud();
 });
+// World-first status: repetitive instructions are hidden; critical events persist.
+let lastNoticeKey='',noticeBorn=0;
+function updateUiNotice(node:HTMLElement,events:string[],phase:string){
+  const latest=events.at(-1)??'';
+  const key=events.length+'|'+latest+'|'+phase;
+  if(key!==lastNoticeKey){lastNoticeKey=key;noticeBorn=performance.now();}
+  const critical=/DOWN|BLOCKED|INVALID|FAILED|OUT OF RANGE|NO WALKABLE|CANNOT|LOST/i.test(latest);
+  const show=!!latest&&(critical||performance.now()-noticeBorn<2600);
+  node.hidden=!show;
+  if(show)node.textContent=latest;
+  node.classList.toggle('critical',critical&&show);
+}
 function updateHud(){
   recordCompletedOperation();
   const brief=operationBriefing(state);
@@ -572,9 +584,9 @@ function updateHud(){
       state.site.seed.toString(16).toUpperCase().padStart(8,'0'):
     'TWO ROOMS · TWO OPERATORS';
   ui.hint.textContent=message();
-  ui.hint.hidden=state.started&&!looking;
+  ui.hint.hidden=!(looking||flashMode||!!firePlacement);
   updateContext();
-  ui.feed.textContent=state.events.at(-1)??'';
+  updateUiNotice(ui.feed,state.events,state.phase);
   const visible=enemies(state).filter(e=>e.health>0&&isSeen(state,e)).length;
   ui.mission.textContent=(state.phase==='planning'?
       brief.code+' • ':'')+missionText(state)+
