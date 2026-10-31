@@ -169,6 +169,26 @@ export class ReplayMotionRecorder{
         events.push({at:time,fraction});
     }
   }
+  /** Contact events are authored once by the fixed-step foot planner.
+   * Pure interval query: paused frames and replay seeks cannot emit duplicates.
+   */
+  touchdownsBetween(from:number,to:number,ids:readonly string[]){
+    const out:{id:string;foot:0|1;at:number;position:{x:number;y:number}}[]=[];
+    if(to<=from)return out;
+    for(const id of ids){
+      const track=this.actors.get(id);if(!track)continue;
+      for(let foot=0;foot<2;foot++){
+        const entries=track.events[foot];
+        for(let n=entries.length-1;n>=0;n--){
+          const event=entries[n],at=event.at+event.unload+event.swing;
+          if(at<=from)break;
+          if(event.swing>0&&at<=to)out.push({
+            id,foot:foot as 0|1,at,position:{...event.to}});
+        }
+      }
+    }
+    return out.sort((a,b)=>a.at-b.at);
+  }
   direction(id:string):number|undefined{return this.actors.get(id)?.travelYaw;}
   presentation(time:number,ids:readonly string[]):ReplayPresentation{
     const feet:Record<string,ReplayFeet>={};
