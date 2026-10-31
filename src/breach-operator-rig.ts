@@ -14,7 +14,7 @@ import {kickMotion} from './breach-door-actions.ts';
 import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
 import {reloadHandKey} from './breach-reload-motion.ts';
 import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
-import {handlingProfile} from './breach-handling-profiles.ts';
+import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
 import {blendedHandlingProfile,type HandlingTransition}
   from './breach-handling-transition.ts';
 import {fallAngles,hitStagger,type FallPose,type WoundRegion}
@@ -61,6 +61,7 @@ export type OperatorRig={
   /** Non-authoritative request for the motor/controller to reposition. */
   reachRequest:null|{kind:'door';distance:number};
   gripError:number;stockError:number;eyeError:number;
+  handlingProfile:HandlingProfile|null;
   elbowSpread:[number,number];legGap:[number,number];
   stridePhase:number;colors:Map<THREE.MeshStandardMaterial,THREE.Color>;
   dispose:()=>void;
@@ -136,7 +137,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     legacyArms:[new THREE.Group(),new THREE.Group()],
     lastTime:-1,lastPose:null,stridePhase:0,
     footsteps:createFootstepScheduler(),reachRequest:null,
-    gripError:0,stockError:0,eyeError:0,
+    gripError:0,stockError:0,eyeError:0,handlingProfile:null,
     elbowSpread:[0,0],legGap:[0,0],
     dispose:()=>{root.traverse(obj=>{if(obj instanceof THREE.Mesh){
       obj.geometry.dispose();
@@ -244,11 +245,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   });
   const profile=p.handlingTransition?
     blendedHandlingProfile(p.handlingTransition.from,
-      p.handlingTransition.to,p.handlingTransition.alpha,p.weapon):
+      p.handlingTransition.to,p.handlingTransition.alpha,p.weapon,
+      p.handlingTransition.fromProfile):
     handlingProfile(handling,p.weapon);
   // Explicit laboratory stances can shift the chest/weight. Live combat
   // retains the authoritative shot-time muzzle/chest transform until the
   // equivalent shot-time balance transform is integrated.
+  r.handlingProfile=profile;
   const poseWeight=p.handlingOverride&&!p.down&&!p.surrender?1:0;
   // A pivot requires the stance to catch up with requested facing.
   // In replay/lab this orientation is reconstructed by time, never dt.
@@ -381,7 +384,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     recoil,aimBlend:p.handlingOverride?undefined:
       p.aimBlend??(p.aiming?1:0),
     blendFrom:p.handlingTransition?.from,
-    blendAlpha:p.handlingTransition?.alpha});
+    blendAlpha:p.handlingTransition?.alpha,
+    blendSnapshot:p.handlingTransition?.fromWeapon});
   r.gripError=fit.contactError;
   r.stockError=fit.stockError;
   // Contact coordinates and visible weapon use one rigid transform.
