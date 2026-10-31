@@ -9,10 +9,11 @@ const lerp=(a:number,b:number,t:number)=>a+(b-a)*t;
 const ease=(x:number)=>{const t=clamp(x);return t*t*(3-2*t)};
 export function hybridPhaseDurations(input:FootstepInput){
  const run=input.gait==='run',pie=input.gait==='pie',
-   squeeze=input.gait==='squeeze',side=Math.abs(
+   squeeze=input.gait==='squeeze',crouch=input.posture==='crouch',
+   side=Math.abs(
      Math.sin(input.travelYaw-(input.facingYaw??-input.rootYaw)))>.6;
  return {unload:run?.028:pie?.07:.044,
-   swing:run?.118:pie?.235:squeeze?.21:side?.17:.18,
+   swing:run?.118:pie?.235:squeeze?.21:crouch?.215:side?.17:.18,
    landing:run?.04:pie?.07:.055,
    recovery:run?.04:pie?.09:.07};
 }
@@ -52,7 +53,8 @@ export function hybridFootTarget(f:FootstepState,input:FootstepInput):FootTarget
    x:lerp(f.swingFrom.x,f.swingTo.x,x),
    y:lerp(f.swingFrom.y,f.swingTo.y,x)},
    height:shape.rise*(input.gait==='run'?3.6:
-     input.gait==='pie'||input.gait==='squeeze'?1.8:3),
+     input.gait==='pie'||input.gait==='squeeze'?1.8:3)*
+     (input.posture==='crouch'?.64:1),
    worldYaw:f.fromYaw+Math.atan2(
      Math.sin(f.targetYaw-f.fromYaw),
      Math.cos(f.targetYaw-f.fromYaw))*x,
