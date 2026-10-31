@@ -187,20 +187,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const lateral=Math.abs(Math.sin(travel-p.heading))>.52;
   const reverse=Math.cos(travel-p.heading)<-.4;
   const hipTarget=moving>.22&&!lateral&&!reverse?travel:p.heading;
-  r.root.rotation.y=p.deterministic?-hipTarget:
-    approach(r.root.rotation.y,-hipTarget,3.8,dt);
-  // Targeted upper-body turning is solved only once after foot/pelvis
-  // orientation is known, rather than first here and again on pivots.
+  // Do not rotate the pelvis yet: the fixed-step foot contacts are needed
+  // before the one authoritative root heading can be selected.
   const braking=!p.deterministic&&r.lastPose?
     clamp((r.lastPose.velocity-p.velocity)/60,-1,1):0;
-  r.chest.rotation.z=clamp(-moving*.025+braking*.018,-.06,.06);
-  r.chest.rotation.x=clamp(p.injury===2?.07:p.injury===1?.025:0,0,.09);
   const crouch=p.posture==='crouch'?8:0;
   r.hip.position.y=20.2-crouch;
   r.chest.position.y=26-crouch;
   // Build 119: the footstep scheduler owns world contacts. The IK renderer
   // consumes its targets but must never relocate a planted anchor.
-  let headingYaw=r.root.rotation.y;
   const travelYaw=p.travelYaw??direction;
   const gaitInput:FootstepInput={
     time:p.seconds,position:{x:p.x,y:p.z},rootYaw:-p.heading,
@@ -260,12 +255,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const poseWeight=p.handlingOverride&&!p.down&&!p.surrender?1:0;
   // A pivot requires the stance to catch up with requested facing.
   // In replay/lab this orientation is reconstructed by time, never dt.
-  if(p.pelvisYaw!==undefined){
-    r.root.rotation.y=p.pelvisYaw;
-  }else if(r.footsteps.mode==='pivot'){
-    r.root.rotation.y=r.footsteps.pelvisYaw;
-  }
-  headingYaw=r.root.rotation.y;
+  // The pelvis yaw has exactly ONE final writer, after contact scheduling.
+  // Live/replay use the recorded pelvis state; the isolated lab uses its
+  // scheduler on pivots and a bounded turn toward motor facing otherwise.
+  const motorYaw=-hipTarget;
+  const scheduledYaw=p.pelvisYaw??(r.footsteps.mode==='pivot'?
+    r.footsteps.pelvisYaw:undefined);
+  r.root.rotation.y=scheduledYaw??(p.deterministic?motorYaw:
+    approach(r.root.rotation.y,motorYaw,3.8,dt));
+  const headingYaw=r.root.rotation.y;
   const turn=turnHierarchy({pelvisYaw:headingYaw,
     bodyHeading:p.heading,targetHeading:p.shotHeading??p.heading,
     speed:physicalSpeed,aiming:p.aiming});
