@@ -34,3 +34,11 @@ export function sweptBodyClear(from:Pt,to:Pt,doors:Door[],
   }
   return true;
 }
+
+/** Foot contacts have independent geometry from actor capsule traffic.
+ * Even a pushable open door cannot accept a planted foot inside its leaf.
+ * This is presentation only; it never changes the authoritative route. */
+export function footAnchorClear(p:Pt,doors:Door[]):boolean{
+  return passable(p,2.25)&&!doors.some(door=>
+    pointToSegment(p,doorLeafSegment(door))<3.3);
+}
