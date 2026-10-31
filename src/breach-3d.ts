@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {W,H,WALLS,COVER,initialDoors,doorCenter,activeSite,
-  isClear,type Pt,type Door} from './breach-core.ts';
+  type Pt,type Door} from './breach-core.ts';
+import {weaponClearance} from './breach-weapon-clearance.ts';
 import {type Site} from './breach-site.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
 import {coverPresentation,shotVisibility} from './breach-presentation.ts';
@@ -797,6 +798,18 @@ export class TacticalScene3D{
       const activeDoor=plannedDoor??(actor.lastDoorId?
         s.doors.find(d=>d.id===actor.lastDoorId):undefined);
       const handle=activeDoor?handlePoint(activeDoor):undefined;
+      const threat=actor.targetId?
+        s.operators.find(o=>o.id===actor.targetId):null;
+      const threatRange=threat?Math.hypot(threat.p.x-actor.p.x,
+        threat.p.y-actor.p.y):null;
+      // Physical contact is queried from the actual interpolated barrel,
+      // never from a long ray projected along the feet/body heading.
+      const clearance=weaponClearance({
+        x:drawActor.x,z:drawActor.z,heading:drawActor.heading,
+        weaponYaw:drawActor.weaponYaw,weapon:actor.weapon,
+        aim:actor.aim,velocity:actor.velocity,recoil:actor.recoil,
+        posture:actor.posture,threatRange
+      },s.doors);
       poseOperator(object.physical,{
         x:drawActor.x,z:drawActor.z,heading:drawActor.heading,
         velocity:actor.velocity,seconds:poseSeconds,stride:actor.stride,
@@ -833,21 +846,13 @@ export class TacticalScene3D{
           actor.plan[0]?.kind==='door'?'door':
           actor.aimInstruction?'look':
           actor.targetId?'engage':actor.velocity>10?'move':'hold',
-        threatRange:(()=>{
-          const threat=actor.targetId?
-            s.operators.find(o=>o.id===actor.targetId):null;
-          return threat?Math.hypot(threat.p.x-actor.p.x,
-            threat.p.y-actor.p.y):null;
-        })(),
+        threatRange,
+        obstruction:clearance.obstruction,
+        clearanceRetraction:clearance.retraction,
+        clearanceBlocked:clearance.blocked,
         hitRegion:actor.lastHitRegion,hitYaw:actor.lastHitYaw,
         hitSeverity:actor.lastHitSeverity,downPose:actor.downPose,
         flashActive:actor.flashUntil>s.seconds&&actor.health>0,
-        obstruction:!isClear(actor.p,{
-          x:actor.p.x+Math.cos(actor.heading)*
-            (actor.weapon==='rifle'?46:actor.weapon==='shotgun'?42:31),
-          y:actor.p.y+Math.sin(actor.heading)*
-            (actor.weapon==='rifle'?46:actor.weapon==='shotgun'?42:31)
-        },s.doors),
         friendlyNear:s.operators.some(other=>{
           if(other===actor||other.side!==actor.side||other.health<=0)return false;
           const dx=other.p.x-actor.p.x,dy=other.p.y-actor.p.y;

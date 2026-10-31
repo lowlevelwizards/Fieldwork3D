@@ -47,6 +47,7 @@ export type OperatorPose={
   handlingIntent?:HandlingIntent;threatRange?:number|null;
   handlingTransition?:HandlingTransition;
   obstruction?:boolean;friendlyNear?:boolean;
+  clearanceRetraction?:number;clearanceBlocked?:boolean;
   blocked?:boolean;footAllowed?:(point:{x:number;y:number})=>boolean;
   gait?:'walk'|'run'|'pie';
   aimBlend?:number;recoil?:number;shotHeading?:number;
@@ -386,7 +387,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const recoil=p.recoil??(p.firing?1.5:0);
   const fit=fitWeaponPose({weapon:p.weapon,handling,
     yaw:-(p.shotHeading??p.heading)-r.root.rotation.y-r.chest.rotation.y,
-    recoil,
+    recoil,clearanceRetraction:p.clearanceRetraction,
     swayYaw:motion.weaponYaw*freeMotion,
     swayPitch:motion.weaponPitch*freeMotion,
     aimBlend:p.handlingOverride?undefined:

@@ -41,7 +41,7 @@ import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
 import {chooseDefense,watchPoint,reachableInvestigation} from './breach-defense.ts';
 import {operationBrief,assessOperation,
   type OperationKind} from './breach-operations.ts';
-import {muzzleAtShot} from './breach-muzzle.ts';
+import {weaponClearance} from './breach-weapon-clearance.ts';
 import {initialIntel,observeIntel,discoverContactCover,routeWithIntel,intelPassable,doorKnown,
   type IntelMode,type IntelState} from './breach-intel.ts';
 import {magazineKit,fullestMagazineIndex,
@@ -1662,9 +1662,11 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   const spread=dispersion(a.weapon,'ads',a.stability,a.velocity>10,
     a.suppression,a.injuryStage,a.recoil)*.9;
   const proposedYaw=shotYaw(a.weaponYaw,spread,random(s),random(s));
-  const muzzle=muzzleAtShot({x:a.p.x,z:a.p.y,
+  const clearance=weaponClearance({x:a.p.x,z:a.p.y,
     heading:a.heading,weaponYaw:proposedYaw,weapon:a.weapon,aim:a.aim,posture:a.posture,
-    velocity:a.velocity,recoil:a.recoil});
+    velocity:a.velocity,recoil:a.recoil},s.doors);
+  if(clearance.blocked)return;
+  const muzzle=clearance.muzzle;
   const yaw=muzzle.yaw;
   const from={x:muzzle.x,y:muzzle.z};
   const far=muzzleEndpoint(from,yaw,Math.max(40,d(from,point)));
@@ -1769,9 +1771,14 @@ function fire(s:Session,a:TeamActor,dt:number){
   // The eyes may have a contact even when the muzzle cannot safely fire.
   // Hold the shot rather than dumping ammunition into adjacent cover or
   // risking a friendly operator standing in the near firing corridor.
-  const sightMuzzle=muzzleAtShot({x:a.p.x,z:a.p.y,heading:a.heading,
+  const sightClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
     weaponYaw:a.weaponYaw,weapon:a.weapon,aim:a.aim,posture:a.posture,
-    velocity:a.velocity,recoil:a.recoil,threatRange:range});
+    velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors);
+  if(sightClearance.blocked){
+    a.lastFireBlock=sightClearance.blocker;
+    return;
+  }
+  const sightMuzzle=sightClearance.muzzle;
   const friends=s.operators.filter(o=>o!==a&&o.health>0&&
     o.side===a.side).map(o=>o.p);
   const lane=assessFireLane({x:sightMuzzle.x,y:sightMuzzle.z},
@@ -1795,10 +1802,12 @@ function fire(s:Session,a:TeamActor,dt:number){
   // Shot direction is the firearm's physical yaw at ignition. Sampling
   // happens *before* muzzle construction, not as an invisible post-shot roll.
   const proposedYaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
-  const muzzle=muzzleAtShot({x:a.p.x,z:a.p.y,heading:a.heading,
+  const shotClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
     weaponYaw:proposedYaw,weapon:a.weapon,aim:a.aim,posture:a.posture,
-    velocity:a.velocity,recoil:a.recoil,threatRange:range});
-  const yaw=muzzle.yaw; // never fire a separate invisible direction
+    velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors);
+  if(shotClearance.blocked)return;
+  const muzzle=shotClearance.muzzle;
+  const yaw=muzzle.yaw; // fire exactly along the physically cleared barrel
   const muzzlePoint={x:muzzle.x,y:muzzle.z};
   // Spread may put another teammate in the actual bullet corridor.
   const shotTarget=muzzleEndpoint(muzzlePoint,yaw,
