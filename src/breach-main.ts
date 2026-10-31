@@ -67,6 +67,7 @@ const ui={
   briefingClose:el<HTMLButtonElement>('briefingClose'),
   context:el<HTMLElement>('contextTools'),
   quickStates:el<HTMLElement>('quickStates'),
+  tacticalHud:el<HTMLElement>('tacticalHud'),
   orders:el<HTMLElement>('advancedOrders'),
   moreOrders:el<HTMLButtonElement>('moreOrders'),
   cancelTarget:el<HTMLButtonElement>('cancelTarget'),
@@ -695,6 +696,11 @@ function updateQuickStates(){
   const actor=uid(selected);
   const shown=state.phase==='planning'&&!replaying&&!!actor&&actor.health>0;
   ui.quickStates.hidden=!shown;
+  // Keep secondary sheets above the *whole* HUD, not just its bottom row.
+  const height=Math.ceil(ui.tacticalHud.getBoundingClientRect().height);
+  const value=height+'px';
+  if(document.documentElement.style.getPropertyValue('--tactical-hud-height')!==value)
+    document.documentElement.style.setProperty('--tactical-hud-height',value);
   if(!shown||!actor)return;
   const node=selectedPlanNode();
   const current=plannedControl(state,selected,node?.id);
