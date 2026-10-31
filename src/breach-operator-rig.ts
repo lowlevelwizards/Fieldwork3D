@@ -9,6 +9,7 @@ import {advanceFootsteps,createFootstepScheduler,validatedReplayFeet,
   from './breach-footsteps.ts';
 import type {ReplayFeet} from './breach-replay-motion.ts';
 import {bodyFromContacts} from './breach-body-motion.ts';
+import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH,LEG_HIP_SIDE} from './breach-leg-geometry.ts';
 import {turnHierarchy} from './breach-turn-hierarchy.ts';
 import {contactReaction,type BashRole} from './breach-contact-reactions.ts';
 import {kickMotion} from './breach-door-actions.ts';
@@ -338,7 +339,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const bodyInverse=r.root.quaternion.clone().invert();
   for(let i=0;i<2;i++){
     const foot=r.feet[i],sign=i===0?-1:1,target=targets[i];
-    const hipLocal=P(0,r.hip.position.y,r.hip.position.z+sign*4.8);
+    const hipLocal=P(0,r.hip.position.y,r.hip.position.z+sign*LEG_HIP_SIDE);
     const anchor=target.position;
     foot.anchor.set(anchor.x,1.45,anchor.y);
     // Replay seeks must never inherit a pole fallback from another time.
@@ -354,7 +355,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }
     let relative=targetWorld.sub(P(p.x,r.root.position.y,p.z))
       .applyQuaternion(bodyInverse);
-    let leg=solveTwoBone(hipLocal,relative,9.7,9.7,
+    let leg=solveTwoBone(hipLocal,relative,LEG_UPPER_LENGTH,LEG_LOWER_LENGTH,
       P(4.5,0,sign*1.1),LEG_LIMITS,foot.bend);
     // An unreachable leg reports a gap. Never move the boot independently
     // of its contact schedule: recoveries are requested by the scheduler.

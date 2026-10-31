@@ -4,6 +4,7 @@
 import {classifyLocomotion,lateralAxis,sideOffset,uncrossed,
   type LocomotionMode} from './breach-locomotion.ts';
 import {footArticulation} from './breach-foot-articulation.ts';
+import {horizontalLegReach,fitLandingToHip,LEG_HIP_SIDE} from './breach-leg-geometry.ts';
 export type GroundPoint={x:number;y:number};
 export type FootPhase='planted'|'unloading'|'swinging'|'landing'|'recovering';
 export type StepReason='locomotion'|'turn'|'settle';
@@ -62,7 +63,9 @@ export function safePlantPoint(input:FootstepInput,index:number):GroundPoint{
         forward.y*ahead};
       if(input.footAllowed(point))return point;
     }
-  return copy(input.position);
+  // Never put both shoes at the actor origin to hide an obstruction.
+  // The scheduler must report the blocked foot instead.
+  return normal;
 }
 /** Explicit input-boundary validation for corrupt/legacy replay tracks.
  * This is a deterministic seek reset, not a live renderer correction.
@@ -137,7 +140,8 @@ export function gaitBounds(input:FootstepInput){
     Math.min(input.speed,75)*(side?.00045:.00038);
   return {comfortableForward:5.5*strideScale,
     comfortableLateral:deliberate?3.7:4.5,
-    maximumReach:9.0,emergencyReach:11.0,
+    maximumReach:horizontalLegReach()-.65,
+    emergencyReach:horizontalLegReach(),
     preferredLead:deliberate?2.25:running?6.8:
       slow?3.0:wound?3.7:5.5,
     swingDuration:clamp(baseSwing-speedAdjustment,side?.135:.14,.30),
@@ -216,8 +220,20 @@ function startStep(s:FootstepScheduler,index:number,input:FootstepInput){
   land=safeLanding(s,index,land,pivot?
     {...input,facingYaw:-s.pelvisYaw}:strafe?
     {...input,position:predicted}:input);
-  if(input.footAllowed&&!input.footAllowed(land))
-    land=safePlantPoint(input,index);
+  // Evaluate reach around the PREDICTED touchdown hip, not today's
+  // actor center. The hip is offset laterally from the root.
+  const hipSide=index===0?-1:1;
+  const touchdownHip={x:predicted.x+axis.x*hipSide*LEG_HIP_SIDE,
+    y:predicted.y+axis.y*hipSide*LEG_HIP_SIDE};
+  land=fitLandingToHip(land,touchdownHip);
+  if(input.footAllowed&&!input.footAllowed(land)){
+    // Search toward the neutral foothold before declaring a blocked
+    // step; never snap the existing planted foot inside a prop.
+    const neutral=safePlantPoint({...input,position:predicted},index);
+    const fitted=fitLandingToHip(neutral,touchdownHip);
+    if(!input.footAllowed(fitted))return;
+    land=fitted;
+  }
   foot.swingFrom=copy(foot.plantedAt);foot.swingTo=land;
   foot.fromYaw=foot.worldYaw;
   foot.targetYaw=pivot?s.pivotToYaw:input.rootYaw;
@@ -296,7 +312,7 @@ export function advanceFootsteps(s:FootstepScheduler,source:FootstepInput):
       const gap=distance(anchor,input.position);
       const blockedContact=!!input.footAllowed&&
         !input.footAllowed(anchor);
-      const excessive=gap>(input.blocked?10.5:input.speed<6?11.0:12.5);
+      const excessive=gap>horizontalLegReach()*.80;
       if(!blockedContact&&!excessive)continue;
       const score=(blockedContact?20:0)+gap;
       if(score>urgency){urgency=score;selected=i;}
@@ -366,7 +382,7 @@ export function advanceFootsteps(s:FootstepScheduler,source:FootstepInput):
       // from the two-bone leg's horizontal reach at standing hip height.
       const reach=Math.hypot(input.position.x-foot.plantedAt.x,
         input.position.y-foot.plantedAt.y);
-      const urgent=reach>7.1;
+      const urgent=reach>horizontalLegReach()*.62;
       if(strafe){
         const candidate=s.shuffleNext==='lead'?s.shuffleLead:1-s.shuffleLead;
         if(i!==candidate)continue;
