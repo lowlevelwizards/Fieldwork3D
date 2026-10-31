@@ -83,7 +83,7 @@ export class ReplayMotionRecorder{
       if(!track){
         track={gait:createFootstepScheduler(),events:[[],[]],
           last:{...position,t:time},travelYaw:actor.heading,
-          lastStepAt:-100,pelvisYawEvents:[]};
+          lastStepAt:-100,pelvisYawEvents:[],travelYawEvents:[]};
         this.actors.set(actor.id,track);
       }
       const distance=Math.hypot(position.x-track.last.x,
