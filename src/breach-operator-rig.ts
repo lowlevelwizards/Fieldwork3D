@@ -60,7 +60,8 @@ export type OperatorRig={
   footsteps:FootstepScheduler;
   /** Non-authoritative request for the motor/controller to reposition. */
   reachRequest:null|{kind:'door';distance:number};
-  gripError:number;stockError:number;eyeError:number;legGap:[number,number];
+  gripError:number;stockError:number;eyeError:number;
+  elbowSpread:[number,number];legGap:[number,number];
   stridePhase:number;colors:Map<THREE.MeshStandardMaterial,THREE.Color>;
   dispose:()=>void;
 };
@@ -135,7 +136,8 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     legacyArms:[new THREE.Group(),new THREE.Group()],
     lastTime:-1,lastPose:null,stridePhase:0,
     footsteps:createFootstepScheduler(),reachRequest:null,
-    gripError:0,stockError:0,eyeError:0,legGap:[0,0],
+    gripError:0,stockError:0,eyeError:0,
+    elbowSpread:[0,0],legGap:[0,0],
     dispose:()=>{root.traverse(obj=>{if(obj instanceof THREE.Mesh){
       obj.geometry.dispose();
       const m=obj.material as THREE.Material;m.dispose();
@@ -510,17 +512,25 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // Impossible interactions must report the need for repositioning, not
     // stretch a joint or rotate an arm through the upper torso.
     const wrist=clampReach(shoulder,desired,19.92);
-    if(p.deterministic)arm.bend.set(5,-2,sign*7);
-    // Tucked elbow corridor: down/forward and near the rib line.
-    // The arm should not seek a skyward pole during lateral motion.
+    if(p.deterministic)arm.bend.set(3,-9,sign*.5);
+    // The IK 'pole' is a bend DIRECTION, not a position. Using absolute
+    // z=9 as a direction was abducting both elbows into chicken wings.
+    // Convert the desired elbow destination to a shoulder-relative vector.
     const corridor=elbowCorridor(handling,sign as -1|1);
-    const preferred=P(corridor.x,corridor.y,corridor.z);
+    const wanted=P(corridor.x,corridor.y,corridor.z).sub(shoulder);
     let solved=solveTwoBone(shoulder,wrist,10,10,
-      preferred,ARM_LIMITS,arm.bend);
-    if(intersectsTorso(solved.joint,.35)){
-      solved=solveTwoBone(shoulder,wrist,10,10,
-        P(8,-5,sign*11),ARM_LIMITS,arm.bend);
+      wanted,ARM_LIMITS,arm.bend);
+    if(intersectsTorso(solved.joint,.3)){
+      // Try a low forward/down elbow before the wide elbow escape route.
+      const compact=P(7.2,-9.5,sign*8.5).sub(shoulder);
+      const retry=solveTwoBone(shoulder,wrist,10,10,
+        compact,ARM_LIMITS,arm.bend);
+      if(!intersectsTorso(retry.joint,.25))solved=retry;
+      else solved=solveTwoBone(shoulder,wrist,10,10,
+        P(8,-7,sign*9.5).sub(shoulder),ARM_LIMITS,arm.bend);
     }
+    r.elbowSpread[i]=Math.max(0,
+      sign*(solved.joint.z-shoulder.z));
     arm.bend.copy(solved.bendPlane);
     arm.outOfReach=!reachable||!solved.reached;
     if(!releaseLeft&&i===0)r.gripError=Math.max(r.gripError,
