@@ -110,11 +110,11 @@ export function gaitBounds(input:FootstepInput){
     comfortableLateral:4.5,maximumReach:9.0,
     emergencyReach:11.0,preferredLead:(slow?3.0:wound?3.7:5.5),
     swingDuration:clamp((slow?.235:wound?.225:
-      side?.185:backward?.215:.20)-Math.min(input.speed,75)*.00038,
-      .14,.29),
-    unloadDuration:slow?.065:.045,
-    landingDuration:slow?.06:.048,
-    recoveryDuration:slow?.10:.075};
+      side?.167:backward?.215:.20)-Math.min(input.speed,75)*
+      (side?.00045:.00038),side?.135:.14,.29),
+    unloadDuration:side?.030:slow?.065:.045,
+    landingDuration:side?.042:slow?.06:.048,
+    recoveryDuration:side?.058:slow?.10:.075};
 }
 /** Clamp planned *paths*, not rendered boots. In the local facing frame
  * the left foot must remain left of the right foot throughout a swing. */
@@ -156,7 +156,10 @@ function startStep(s:FootstepScheduler,index:number,input:FootstepInput){
     const outward=s.shuffleLead===1?1:-1;
     const lead=index===s.shuffleLead;
     const base=sideOffset(input.position,land,facing);
-    const wanted=base+(lead?outward*4.3:outward*.4);
+    // The normal stance already includes 5.6 units of outward reach.
+    // Adding another 4.3 sends the lead boot outside the reachable IK
+    // envelope when the supporting leg is already trailing.
+    const wanted=base+(lead?outward*1.5:outward*.25);
     land={x:land.x+axis.x*(wanted-base),
       y:land.y+axis.y*(wanted-base)};
   }else if(pivot){
@@ -175,8 +178,12 @@ function startStep(s:FootstepScheduler,index:number,input:FootstepInput){
     land.x+=Math.cos(travel)*bounds.preferredLead;
     land.y+=Math.sin(travel)*bounds.preferredLead;
   }
+  // A lateral landing belongs to the predicted touchdown pelvis, not the
+  // current pelvis. Clamping the trailing boot to today's hip forces it
+  // behind the body again by the time the swing ends (repeated IK snaps).
   land=safeLanding(s,index,land,pivot?
-    {...input,facingYaw:-s.pelvisYaw}:input);
+    {...input,facingYaw:-s.pelvisYaw}:strafe?
+    {...input,position:predicted}:input);
   if(input.footAllowed&&!input.footAllowed(land))
     land=safePlantPoint(input,index);
   foot.swingFrom=copy(foot.plantedAt);foot.swingTo=land;
@@ -297,7 +304,11 @@ export function advanceFootsteps(s:FootstepScheduler,source:FootstepInput):
       const foot=s.feet[i];
       if(foot.phase!=='planted'&&foot.phase!=='recovering'&&
         foot.phase!=='landing')continue;
-      if(input.time-foot.lastTouchdown<.06)continue;
+      // Starting an active sidestep should launch the lead foot on the
+      // first moving tick. Waiting 60 ms makes the *opposite* planted leg
+      // trail too far behind before it can ever become the follow step.
+      if(input.time-foot.lastTouchdown<.06&&
+        !(strafe&&s.lastStepAt<0))continue;
       const neutral=lateral(input.position,facing,i===0?-1:1);
       const dx=neutral.x-foot.plantedAt.x,dy=neutral.y-foot.plantedAt.y;
       const forward=dx*Math.cos(input.travelYaw)+dy*Math.sin(input.travelYaw);

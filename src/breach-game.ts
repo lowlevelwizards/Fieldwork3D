@@ -1109,8 +1109,15 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const direction=angle(a.p,next);
   const movingSpeed=a.side==='blue'?75:62;
   const suppression=clamp(1-a.suppression*.4,.45,1);
-  const desired=movingSpeed*(a.posture==='crouch'?.58:1)*suppression*speedScale*
-    injurySpeed(a.injuryStage);
+  const requested=movingSpeed*(a.posture==='crouch'?.58:1)*suppression*
+    speedScale*injurySpeed(a.injuryStage);
+  // A lateral shuffle cannot use the same stride speed as forward running.
+  // Scale the limit continuously for diagonal travel, preserving ordinary
+  // forward movement and crouch/injury speed reductions.
+  const lateral=Math.abs(Math.sin(direction-a.heading));
+  const sideLimit=(38+37*(1-lateral*lateral))*
+    (a.posture==='crouch'?.58:1)*injurySpeed(a.injuryStage);
+  const desired=Math.min(requested,sideLimit);
   a.velocity+=(desired-a.velocity)*Math.min(1,dt*6);
   const advance=Math.min(gap,a.velocity*dt);
   const move={x:a.p.x+Math.cos(direction)*advance,
