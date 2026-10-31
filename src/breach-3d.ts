@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {W,H,WALLS,COVER,initialDoors,doorCenter,activeSite,
-  isClear,type Pt} from './breach-core.ts';
+  isClear,type Pt,type Door} from './breach-core.ts';
 import {type Site} from './breach-site.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
 import {coverPresentation,shotVisibility} from './breach-presentation.ts';
@@ -27,6 +27,30 @@ const v=(p:Pt,y=0)=>new THREE.Vector3(p.x,y,p.y);
 const mat=(hex:number,roughness=.9)=>new THREE.MeshStandardMaterial({
   color:hex,roughness,flatShading:true,
 });
+/** Blueprint-style ground sweep, fixed to the actual hinge and opening side. */
+function doorSweepArc(door:Door,length:number):THREE.Group{
+  const group=new THREE.Group(),points:THREE.Vector3[]=[];
+  const hinge=door.hinge==='b'?length/2:-length/2;
+  const sign=door.hinge==='b'?-1:1;
+  for(let i=0;i<=24;i++){
+    const angle=(door.swing??-1)*1.54*i/24;
+    points.push(new THREE.Vector3(
+      hinge+sign*length*Math.cos(angle),1.7,
+      -sign*length*Math.sin(angle)));
+  }
+  const material=new THREE.LineDashedMaterial({
+    color:0xf5d68e,transparent:true,opacity:.9,
+    dashSize:5,gapSize:4,depthTest:true,depthWrite:false});
+  const stroke=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),material);
+  stroke.computeLineDistances();group.add(stroke);
+  const hingeDot=new THREE.Mesh(
+    new THREE.CircleGeometry(3,12),
+    new THREE.MeshBasicMaterial({color:0xffdb8b,side:THREE.DoubleSide,depthWrite:false}));
+  hingeDot.rotation.x=-Math.PI/2;
+  hingeDot.position.set(hinge,1.75,0);group.add(hingeDot);
+  group.visible=false;
+  return group;
+}
 export class TacticalScene3D{
   readonly renderer:THREE.WebGLRenderer;
   readonly scene=new THREE.Scene();
@@ -47,7 +71,7 @@ export class TacticalScene3D{
     weapon:THREE.Group;status:THREE.Mesh;physical:OperatorRig;
     contactShadows:THREE.Mesh[]}>();
   private doors=new Map<string,{root:THREE.Group;leaf:THREE.Group;
-    frame:THREE.Group;halo:THREE.Mesh;threshold:THREE.Mesh}>();
+    frame:THREE.Group;halo:THREE.Group;threshold:THREE.Mesh}>();
   private observedDoorOpen=new Map<string,number>();
   private effectCache=new Map<number,{root:THREE.Group;line:THREE.Mesh;
     impact:THREE.Mesh;chips:THREE.Mesh[];material:THREE.MeshBasicMaterial;
@@ -258,12 +282,8 @@ export class TacticalScene3D{
       this.box(leaf,(door.hinge==='b'?-1:1)*length/2,17,0,length-4,34,4,doorMat);
       this.box(leaf,(door.hinge==='b'?-1:1)*length*.7,18,3,3,3,2,metal,false);
        this.box(leaf,(door.hinge==='b'?-1:1)*length*.7,18,-3,3,3,2,metal,false);
-      const halo=new THREE.Mesh(new THREE.RingGeometry(
-        length*.55,length*.66,32),new THREE.MeshBasicMaterial({
-        color:0xe1c38b,transparent:true,opacity:.95,
-        side:THREE.DoubleSide,depthWrite:false}));
-      halo.rotation.x=-Math.PI/2;halo.position.y=1.8;
-      halo.visible=false;root.add(halo);this.mats.push(halo.material);
+      const halo=doorSweepArc(door,length);
+      root.add(halo);
       this.root.add(root);
       this.doors.set(door.id,{root,leaf,frame,halo,threshold});
       this.observedDoorOpen.set(door.id,door.openFraction??0);
@@ -412,12 +432,8 @@ export class TacticalScene3D{
       this.box(hinge,(door.hinge==='b'?-1:1)*width/2,17,0,width-3,34,4,doorMat);
       this.box(hinge,(door.hinge==='b'?-1:1)*width*.7,18,2.6,3,4,2,doorTrim,false);
        this.box(hinge,(door.hinge==='b'?-1:1)*width*.7,18,-2.6,3,4,2,doorTrim,false);
-      const halo=new THREE.Mesh(
-        new THREE.RingGeometry(width*.56,width*.66,32),
-        new THREE.MeshBasicMaterial({color:0xe3bc7d,transparent:true,
-          opacity:.95,depthWrite:false,side:THREE.DoubleSide}));
-      halo.rotation.x=-Math.PI/2;halo.position.set(0,1.7,0);
-      halo.visible=false;group.add(halo);this.mats.push(halo.material);
+      const halo=doorSweepArc(door,width);
+      group.add(halo);
       this.root.add(group);
       this.doors.set(door.id,{root:group,leaf:hinge,frame,halo,threshold});
       this.observedDoorOpen.set(door.id,0);
@@ -707,15 +723,15 @@ export class TacticalScene3D{
       // The rendered leaf follows the authoritative hinge rather than
       // a render-rate easing curve that disagrees with collision.
       object.leaf.rotation.y=(door.swing??-1)*
-        ((omniscient||directlyObserved)?(replayProgress??fraction):fraction)*1.36;
+        ((omniscient||directlyObserved)?(replayProgress??fraction):fraction)*1.54;
       const selectedActor=team(s).find(a=>a.id===selected);
       const reachable=selectedActor&&selectedActor.health>0&&
-        [selectedActor.p,...selectedActor.plan.map(n=>n.p)].some(p=>
+        [selectedActor.p,...selectedActor.plan.filter(n=>n.id===selectedActor.plan.at(-1)?.id).map(n=>n.p)].some(p=>
           doorReachable(p,door));
       object.halo.visible=object.root.visible&&focusedDoorId===door.id&&!!reachable&&
         (liveVisibility(s,doorCenter(door))||
          knownAt(s,doorCenter(door).x,doorCenter(door).y));
-      object.halo.rotation.z+=dt*.3;
+      // Ground sweep stays attached to the fixed hinge; no rotating target ring.
     }
     // Switching procedurally generated sites may change hostile counts.
     // Hide cached actors absent from the new encounter.
