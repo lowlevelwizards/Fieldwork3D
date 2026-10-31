@@ -58,8 +58,13 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
     Math.sin(facing-s.lastFacing),Math.cos(facing-s.lastFacing)));
   const interval=hybridStepThreshold(input);
   s.lastStanceWidth=width;
+  const previousMode=s.mode;
   s.mode=classifyLocomotion(travelled/Math.max(dt,1/60),
     facing,input.travelYaw,input.turning,s.mode);
+  if(s.mode!==previousMode){
+    s.shuffleLead=s.mode==='strafe-left'?0:1;
+    s.shuffleNext='lead';
+  }
   const distanceStep=travelled+(travelled<.04?turning*8.5:0);
   s.accumulated=Math.min(interval*1.35,s.accumulated+distanceStep);
   // Advance each physical contact phase exactly once on the fixed timeline.
@@ -84,6 +89,8 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
     foot.lastTouchdown=-100;
     foot.reason=request.reason;
     s.lastStepFoot=index;s.lastStepAt=input.time;s.stepsTaken++;
+    if(s.mode==='strafe-left'||s.mode==='strafe-right')
+      s.shuffleNext=s.shuffleNext==='lead'?'follow':'lead';
     }
   }
   const result=s.feet.map((f,i)=>{
