@@ -416,7 +416,7 @@ function showDiagnostics(){
     reachError:measuredRig.legGap[i]
   })) as [Parameters<typeof footTruth>[0],Parameters<typeof footTruth>[1]]));
   const reachTruth=feet.map((foot,i)=>{
-    const hip=rig.hip.localToWorld(new THREE.Vector3(
+    const hip=measuredRig.hip.localToWorld(new THREE.Vector3(
       0,0,i===0?-4.8:4.8));
     const ankle=new THREE.Vector3(foot.position.x,
       1.45+foot.height,foot.position.y);
