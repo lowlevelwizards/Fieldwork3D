@@ -243,7 +243,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }
   const motion=bodyFromContacts({velocity:p.down?0:physicalSpeed,
     heading:p.heading,travelYaw,turning:p.turning,
-    injury:p.injury,posture:p.posture,feet:targets});
+    injury:p.injury,posture:p.posture,feet:targets,gait:p.gait});
   // Wide side-steps need a physical lowering of the center of mass,
   // not a longer limb or a shoe teleported away from its world anchor.
   const stanceRadius=Math.max(...targets.map(t=>
@@ -262,7 +262,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.hip.position.y-=poseWeight*profile.stanceCompression;
   r.hip.position.z=motion.pelvisSide+
     poseWeight*profile.pelvisShift;
-  r.chest.position.y=26-crouch+motion.pelvisY*.5-
+  const aimLevel=clamp(p.aimBlend??(p.aiming?1:0),0,1);
+  // Physical bob fades out before firing: live muzzle geometry remains the
+  // same fixed-step weapon solution used by ballistics.
+  const freeMotion=p.down||p.surrender||p.firing?0:
+    clamp((.32-aimLevel)/.32,0,1);
+  r.chest.position.y=26-crouch+motion.pelvisY*.5+
+    motion.chestLift*freeMotion*1.4-
     bash.brace*.4-buckle*7-kneel*12;
   r.chest.position.z=motion.pelvisSide*.75+
     poseWeight*profile.pelvisShift*.45;
@@ -349,7 +355,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const recoil=p.recoil??(p.firing?1.5:0);
   const fit=fitWeaponPose({weapon:p.weapon,handling,
     yaw:-(p.shotHeading??p.heading)-r.root.rotation.y-r.chest.rotation.y,
-    recoil,aimBlend:p.handlingOverride?undefined:
+    recoil,
+    swayYaw:motion.weaponYaw*freeMotion,
+    swayPitch:motion.weaponPitch*freeMotion,
+    aimBlend:p.handlingOverride?undefined:
       p.aimBlend??(p.aiming?1:0),
     blendFrom:p.handlingTransition?.from,
     blendAlpha:p.handlingTransition?.alpha,
