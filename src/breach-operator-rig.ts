@@ -290,7 +290,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     motion.torsoSide;
   r.chest.rotation.y+=motion.torsoYaw+
     poseWeight*profile.torsoTurn;
-  r.head.position.y=10-poseWeight*profile.headDrop;
+  // A smaller head-only response can run in combat without shifting the
+  // weapon/stock muzzle from the authoritative shot-time geometry.
+  const sightEngagement=p.handlingOverride?1:
+    p.down||p.surrender?0:clamp(p.aimBlend??(p.aiming?1:0),0,1);
+  r.head.position.y=10-sightEngagement*profile.headDrop;
   r.head.rotation.x=motion.headCounter+bash.head+
     poseWeight*profile.headPitch;
   // Apply the collapsing root transform before solving the legs.
