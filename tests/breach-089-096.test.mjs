@@ -6,6 +6,7 @@ import {newSession,team,enemies,planMove,planReload,planFlash,
 import {MissionRecorder,applyReplayFrame} from '../src/breach-replay.ts';
 import {angleDifference} from '../src/breach-plan.ts';
 import {activateSite,doorCenter} from '../src/breach-core.ts';
+import {entryInteriorPoint} from '../src/worldgen/site-orientation.ts';
 
 const advance=(s,seconds)=>{
   for(let i=0;i<seconds*60;i++)stepSession(s,1/60);
@@ -91,10 +92,15 @@ test('093: pursuing guards can operate a closed door',()=>{
   const door=s.doors.find(x=>x.id==='FRONT');
   assert.ok(door&&!door.open);
   const pos=doorCenter(door),guard=enemies(s)[0];
-  guard.p={x:pos.x,y:pos.y-36};
+  const interior=entryInteriorPoint(s.site,36);
+  assert.ok(interior,'physical front must have an interior');
+  guard.p=interior;
   guard.priorP={...guard.p};
   guard.alert='investigating';
-  guard.contact={x:pos.x,y:pos.y+90};
+  const outward={x:pos.x-guard.p.x,y:pos.y-guard.p.y};
+  const mag=Math.hypot(outward.x,outward.y);
+  guard.contact={x:pos.x+outward.x/mag*90,
+    y:pos.y+outward.y/mag*90};
   guard.heard={...guard.contact};
   guard.alertUntil=30;
   // Other guards cannot interfere with this deterministic doorway exercise.
