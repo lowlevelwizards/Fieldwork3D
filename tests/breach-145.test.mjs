@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import {createFootstepScheduler,advanceFootsteps}
   from '../src/breach-footsteps.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
-import {footAnchorClear} from '../src/breach-navigation.ts';
+import {footAnchorClear,footAnchorReachable} from '../src/breach-navigation.ts';
 import {activateSite,initialDoors} from '../src/breach-core.ts';
 
 const input=(time,x=100,y=100,extra={})=>({
@@ -48,6 +48,11 @@ test('145: door leaves and walls invalidate unsafe foot contact',()=>{
   const doors=initialDoors();
   assert.equal(footAnchorClear({x:300,y:532},doors),false);
   assert.equal(footAnchorClear({x:330,y:560},doors),true);
+  // The endpoint is valid floor, but the hip-to-foot segment goes through
+  // an actual wall: this is not a legal planted stance.
+  const hip={x:366,y:200},foot={x:396,y:200};
+  assert.equal(footAnchorClear(foot,doors),true);
+  assert.equal(footAnchorReachable(hip,foot,doors),false);
   activateSite(null);
 });
 test('145: even a corrupt replay foot target cannot stretch the leg',()=>{
