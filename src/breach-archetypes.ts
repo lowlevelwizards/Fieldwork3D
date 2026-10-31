@@ -3,7 +3,7 @@ import type {Site,BuildingArchetype,Room} from './breach-site.ts';
 import {buildArchetypeEnvironment} from './breach-windows.ts';
 import {propDefinition} from './worldgen/asset-catalog.ts';
 import {furnishRooms} from './worldgen/room-furnishing.ts';
-import {programRooms} from './worldgen/building-programs.ts';
+import {assignRoomProgram} from './worldgen/room-assignment.ts';
 import {addOpenPlanTransitions} from './worldgen/open-plan.ts';
 import {dressSite} from './worldgen/environment-dresser.ts';
 import {populateFunctionalRooms} from './worldgen/scenario-population.ts';
@@ -28,14 +28,9 @@ const FIXTURES:Record<string,readonly string[]>={
  treatment:['exam-bed','cart'],supply:['cabinet','cart'],
  staff:['desk','locker']
 };
-const midpoint=(r:Room)=>({x:r.x+r.w/2,y:r.y+r.h/2});
 export function applyArchetype(site:Site,seed:number):Site{
   const archetype=BUILDING_ARCHETYPES[(seed>>>0)%BUILDING_ARCHETYPES.length];
-  const sorted=site.rooms.filter(r=>r.kind==='room').slice().sort(
-    (a,b)=>midpoint(b).y-midpoint(a).y||midpoint(a).x-midpoint(b).x);
-  const assignments=new Map<string,string>();
-  const program=programRooms(archetype,sorted.length);
-  sorted.forEach((r,i)=>assignments.set(r.id,program[i]));
+  const assignments=assignRoomProgram(site,archetype);
   const rooms=site.rooms.map(r=>({...r,purpose:r.kind==='hall'?
     'hallway':assignments.get(r.id)??'storage'}));
   const cover=site.cover.map((o,i)=>{
