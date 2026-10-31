@@ -221,6 +221,12 @@ export class TacticalScene3D{
     const palettes=[0x817b69,0x5b746d,0x79705f,0x616e65];
     const earth=this.solid(site.layout==='courtyard'?0x465348:0x34443e);
     this.plane(this.root,W/2,H/2,W,H,-2,earth);
+    const zoneColor={yard:0x53604c,patio:0x7b7668,driveway:0x656b65,
+      service:0x6b6c60,garden:0x536b4b,parking:0x565d5c} as const;
+    for(const zone of site.exteriorZones??[]){
+      this.plane(this.root,zone.x,zone.y,zone.w,zone.h,-1.45,
+        this.solid(zoneColor[zone.kind]));
+    }
     const road=this.solid(0x59584a);
     this.box(this.root,site.entrance.x,-1,
       (site.entrance.y+H)/2,85,1,H-site.entrance.y+10,road,false);

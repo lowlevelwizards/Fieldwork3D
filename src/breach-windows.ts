@@ -3,6 +3,7 @@
  * wall/cover geometry as rendering, never a visual-only false opening. */
 import {type Segment,type Obstacle,type Pt} from './breach-core.ts';
 import type {Site,WindowOpening} from './breach-site.ts';
+import {addExteriorProperty} from './worldgen/exterior-sites.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function buildArchetypeEnvironment(site:Site,seed:number):Site{
   const minX=Math.min(...site.rooms.map(r=>r.x));
@@ -69,5 +70,5 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
     cover.push({x,y,w:exteriorFixture==='fence'?58:46,
       h:exteriorFixture==='fence'?10:24,
       low:exteriorFixture!=='vehicle',fixture:exteriorFixture});
-  return {...site,walls,cover,windows};
+  return addExteriorProperty({...site,walls,cover,windows},seed);
 }
