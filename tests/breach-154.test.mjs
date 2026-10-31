@@ -1,3 +1,4 @@
+import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH} from '../src/breach-leg-geometry.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {contactReaction} from '../src/breach-contact-reactions.ts';
@@ -29,8 +30,8 @@ test('154: physical shove does not stretch or destabilize operator limbs',()=>{
  poseOperator(r,pose(1.8,'push'),0);
  assert.ok(r.chest.rotation.z<idle-.03);
  for(const foot of r.feet){
-   assert.ok(foot.upper.scale.y<=9.70001);
-   assert.ok(foot.lower.scale.y<=9.70001);
+   assert.ok(foot.upper.scale.y<=LEG_UPPER_LENGTH+.00001);
+   assert.ok(foot.lower.scale.y<=LEG_LOWER_LENGTH+.00001);
    assert.ok(foot.shoe.position.toArray().every(Number.isFinite));
  }
  assert.ok(r.arms.every(a=>a.hand.position.toArray().every(Number.isFinite)));

@@ -1,3 +1,4 @@
+import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH} from '../src/breach-leg-geometry.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -125,7 +126,7 @@ test('120: continuous movement and turn keep anatomical joints finite',()=>{
       }
       const shin=foot.lower.scale.y,thigh=foot.upper.scale.y;
       const upperArm=arm.upper.scale.y,forearm=arm.lower.scale.y;
-      assert.ok(near(shin,9.7,.0001)&&near(thigh,9.7,.0001));
+      assert.ok(near(shin,LEG_LOWER_LENGTH,.0001)&&near(thigh,LEG_UPPER_LENGTH,.0001));
       assert.ok(near(upperArm,10,.0001)&&near(forearm,10,.0001));
     }
   }
