@@ -4,6 +4,7 @@ import {
 import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
+  operationBriefing,
   planMove,planMoveStroke,planAim,setFirePolicy,planWait,planWaitAt,setWaitDuration,
   plannedControl,setNodeControl,setStartPace,planReloadAt,planDoorFlash,
   planSync,movePlanNode,
@@ -18,6 +19,8 @@ import {routeLineHit} from './breach-route-edit.ts';
 import {placeContextMenu,type AvoidRect,type ScreenPath,type MenuSide} from './breach-context-placement.ts';
 import {shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
 import {heardIntensity} from './breach-acoustics.ts';
+import {parseOperationHistory,addOperationRecord,
+  type OperationRecord} from './breach-operations.ts';
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
@@ -45,6 +48,11 @@ const ui={
   phase:el<HTMLElement>('phase'),clock:el<HTMLOutputElement>('clock'),
   hint:el<HTMLElement>('hint'),feed:el<HTMLElement>('feed'),
   mission:el<HTMLElement>('mission'),
+  briefingToggle:el<HTMLButtonElement>('briefingToggle'),
+  briefingPanel:el<HTMLElement>('briefingPanel'),
+  briefingTitle:el<HTMLElement>('briefingTitle'),
+  briefingBody:el<HTMLElement>('briefingBody'),
+  briefingClose:el<HTMLButtonElement>('briefingClose'),
   context:el<HTMLElement>('contextTools'),
   orders:el<HTMLElement>('advancedOrders'),
   moreOrders:el<HTMLButtonElement>('moreOrders'),
@@ -98,6 +106,27 @@ const legacyStudy=new URLSearchParams(location.search).has('fixedSite');
 let selectedIntelMode:IntelMode='floor-plan';
 let state:Session=newSession(0,legacyStudy?undefined:randomSiteSeed(),selectedIntelMode);
 let recorder=new MissionRecorder();recorder.capture(state,true);
+const OPERATION_HISTORY_KEY='fieldwork3d.operation-history.v1';
+let recordedOperation:Session|null=null;
+function operationHistory():OperationRecord[]{
+  try{return parseOperationHistory(localStorage.getItem(OPERATION_HISTORY_KEY));}
+  catch{return [];}
+}
+function recordCompletedOperation(){
+  if(replaying||recordedOperation===state||!state.started||
+    (state.phase!=='won'&&state.phase!=='lost'))return;
+  recordedOperation=state;
+  const stats=debrief(state);
+  const record:OperationRecord={
+    seed:state.site?.seed??state.variant,
+    kind:state.missionType,
+    outcome:state.phase==='won'?'success':'failure',
+    grade:stats.grade,elapsed:stats.time,casualties:stats.casualties
+  };
+  try{localStorage.setItem(OPERATION_HISTORY_KEY,
+    JSON.stringify(addOperationRecord(operationHistory(),record)));}
+  catch{/* Private mode may reject local storage. Game still works. */}
+}
 let replaying=false,replayPlaying=false,replayTime=0,replayRate=1;
 let replayPresentation:ReplayPresentation|null=null;
 let replayOmniscient=true,finishedSession:Session|null=null;
@@ -273,6 +302,7 @@ function selectedPlanNode(){
  * a door tap brings up ONLY door actions. No redundant HERE/END buttons. */
 function updateContext(){
   if(state.phase!=='planning'||replaying||looking||flashMode||firePlacement||
+     !ui.briefingPanel.hidden||
      draggingNode||trace||
      !ui.orders.classList.contains('compact')||!ui.siteSettings.hidden){
     ui.context.hidden=true;return;
@@ -443,6 +473,14 @@ ui.context.addEventListener('click',event=>{
   contextSignature='';updateHud();
 });
 function updateHud(){
+  recordCompletedOperation();
+  const brief=operationBriefing(state);
+  ui.briefingTitle.textContent=brief.code+' / '+brief.name;
+  ui.briefingBody.textContent=brief.objective+'\n\nSUCCESS: '+
+    brief.condition+'\nEXTRACT: '+brief.extraction+'\n\nSITE: '+
+    brief.building+' · '+brief.layout+'\nSQUAD: '+brief.squad+
+    ' OPERATORS\n\nINTELLIGENCE: '+brief.notes;
+  if(state.phase!== 'planning')ui.briefingPanel.hidden=true;
   ui.phase.textContent=replaying?'REPLAY':
     state.phase==='planning'?'PLANNING':
     state.phase==='running'?'EXECUTING':
@@ -482,10 +520,17 @@ function updateHud(){
   if(!ui.debrief.hidden){
     const stats=debrief(state);
     ui.debriefTitle.textContent=state.phase==='won'?'OPERATION COMPLETE':'MISSION FAILED';
-    ui.debriefStats.textContent='SITE: '+stats.variant+'\nTIME: '+stats.time+'s'+
-      '\nCASUALTIES: '+stats.casualties+'/'+team(state).length+
+    ui.debriefStats.textContent=
+      'OPERATION: '+brief.name.toUpperCase()+'\nGRADE: '+stats.grade+
+      ' · SCORE '+stats.score+'\nTIME: '+stats.time+'s'+
+      '\nOBJECTIVE: '+(stats.objective?'SECURED':'NOT COMPLETED')+
+      '\nSURVIVORS: '+stats.survived+'/'+team(state).length+
       '\nSHOTS: '+stats.shots+' | HITS: '+stats.hits+
-      '\nPAUSES: '+stats.pauses;
+      ' | ACCURACY: '+stats.accuracy+'%'+
+      '\nCASUALTIES: '+stats.casualties+' · PAUSES: '+stats.pauses+
+      '\n'+stats.squad.map(o=>o.name+' '+(o.survived?
+        o.injury?'WOUNDED':'ACTIVE':'DOWN')+' · '+o.fired+' RDS').join('\n')+
+      '\nOPERATIONS LOGGED: '+operationHistory().length;
   }
   for(const id of squadIds){
     const a=uid(id),button=ui[id];
@@ -519,7 +564,8 @@ function updateHud(){
   updateContext();
   ui.feed.textContent=state.events.at(-1)??'';
   const visible=enemies(state).filter(e=>e.health>0&&isSeen(state,e)).length;
-  ui.mission.textContent=missionText(state)+
+  ui.mission.textContent=(state.phase==='planning'?
+      brief.code+' • ':'')+missionText(state)+
     (visible?' • '+visible+' CONTACT'+(visible===1?'':'S'):'');
 }
 function rect(x:number,y:number,w:number,h:number,color:string){
@@ -1633,6 +1679,19 @@ ui.view2d.addEventListener('click',()=>cameraMode('plan2d'));
 ui.cameraFit.addEventListener('click',()=>{
   if(stage&&viewMode!=='plan2d')stage.resetCamera();
   else{zoom=1;panX=0;panY=0;layout();}
+  updateContext();
+});
+ui.briefingToggle.addEventListener('click',()=>{
+  if(state.phase!=='planning'||replaying)return;
+  ui.siteSettings.hidden=true;
+  ui.siteSettingsToggle.setAttribute('aria-expanded','false');
+  ui.briefingPanel.hidden=false;
+  ui.briefingToggle.setAttribute('aria-expanded','true');
+  updateContext();
+});
+ui.briefingClose.addEventListener('click',()=>{
+  ui.briefingPanel.hidden=true;
+  ui.briefingToggle.setAttribute('aria-expanded','false');
   updateContext();
 });
 ui.siteSettingsToggle.addEventListener('click',()=>{
