@@ -19,4 +19,4 @@ jobs:
       - name: Typecheck
         run: npm run check
       - name: Recorded gait, biomechanics and replay smoke
-        run: node --experimental-strip-types --test tests/breach-motion-*.test.mjs tests/breach-distance-*.test.mjs tests/breach-hybrid-*.test.mjs tests/breach-121.test.mjs tests/breach-126.test.mjs
+        run: node --experimental-strip-types --test tests/breach-motion-*.test.mjs tests/breach-distance-*.test.mjs tests/breach-hybrid-*.test.mjs tests/breach-121.test.mjs tests/breach-126.test.mjs tests/breach-127.test.mjs
