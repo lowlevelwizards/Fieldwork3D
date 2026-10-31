@@ -90,6 +90,18 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number):Sit
  for(const edge of internal.slice().sort((a,b)=>a.score-b.score||
    a.a-b.a||a.b-b.b))if(!edge.selected&&edge.length>=68&&
    union(edge.a,edge.b))edge.selected=true;
+ // A functional zone is a *connected* cluster of matching room rectangles.
+ // Two garage bays divided by a service aisle are not one giant shared bay.
+ const zoneParent=cells.map((_,i)=>i);
+ const zoneRoot=(i:number):number=>{
+  while(zoneParent[i]!==i)i=zoneParent[i];
+  return i;
+ };
+ for(const edge of internal)if(edge.free&&cells[edge.a].role===cells[edge.b].role)
+  zoneParent[zoneRoot(edge.b)]=zoneRoot(edge.a);
+ for(let i=0;i<cells.length;i++)cells[i].room.zoneId=
+  openRoles.has(cells[i].role)?
+   'ZONE-'+cells[i].role+'-'+zoneRoot(i):cells[i].room.id;
  // In rare fragmented grammars, retain the legacy fallback instead of
  // manufacturing a disconnected room with no physical traversal.
  if(new Set(cells.map((_,i)=>root(i))).size!==1)
