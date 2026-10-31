@@ -69,7 +69,7 @@ export function kickDoor(d:Door,from?:Pt):{opened:boolean;pushSide:boolean}{
  d.kicks=(d.kicks??0)+1;
  d.latchIntegrity=Math.max(-1,(d.latchIntegrity??1.05)-force+brace);
  if(!pushSide)d.frameIntegrity=Math.max(0,(d.frameIntegrity??2.5)-.42);
- const opened=d.latchIntegrity<=0||d.frameIntegrity<=0;
+ const opened=(d.latchIntegrity??1)>0?((d.frameIntegrity??1)<=0):true;
  if(opened){
    d.heldBy=null;d.forced=true;d.open=true;d.kickImpulse=1;
    d.angularVelocity=Math.max(9,d.angularVelocity??0);
