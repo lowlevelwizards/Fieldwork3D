@@ -1,0 +1,116 @@
+/** Standalone omniscient generation inspector, not a tactical encounter. */
+import {TacticalScene3D} from './breach-3d.ts';
+import {newSession,type Session} from './breach-game.ts';
+import {generateSite,type Site,type BuildingArchetype} from './breach-site.ts';
+import {BUILDING_ARCHETYPES} from './breach-archetypes.ts';
+import type {Pt} from './breach-core.ts';
+const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
+const typeInput=el<HTMLSelectElement>('building');
+const scaleInput=el<HTMLSelectElement>('scale');
+const seedInput=el<HTMLInputElement>('seed');
+const status=el<HTMLOutputElement>('info');
+const labelLayer=el<HTMLDivElement>('labels');
+for(const kind of BUILDING_ARCHETYPES){
+ const option=document.createElement('option');option.value=kind;option.textContent=kind.toUpperCase();
+ typeInput.append(option);
+}
+const initial=Number.parseInt(new URLSearchParams(location.search).get('seed')??'101',10)||101;
+seedInput.value=String(initial);
+let session:Session=newSession(0,initial);
+typeInput.value=session.site?.archetype??'house';
+const stage=new TacticalScene3D();
+stage.setMode('iso');stage.view.zoom=1.25;
+let markers:{node:HTMLElement;p:Pt}[]=[];
+function updateLabels(){
+ labelLayer.replaceChildren();markers=[];
+ const site=session.site;if(!site)return;
+ if(el<HTMLInputElement>('rooms').checked)for(const room of site.rooms){
+  const button=document.createElement('button');
+  button.textContent=(room.purpose??room.kind).toUpperCase();
+  button.title=room.id+' · '+Math.round(room.w)+' × '+Math.round(room.h);
+  button.addEventListener('click',()=>{
+   status.textContent=room.id+' / '+(room.purpose??room.kind)+' · '+
+    Math.round(room.w)+' × '+Math.round(room.h)+' units';
+  });
+  labelLayer.append(button);markers.push({node:button,p:{x:room.x+room.w/2,y:room.y+room.h/2}});
+ }
+ if(el<HTMLInputElement>('cover').checked)for(const item of site.cover){
+  const dot=document.createElement('span');dot.className='cover-dot';
+  dot.title=item.fixture??'obstacle';labelLayer.append(dot);
+  markers.push({node:dot,p:{x:item.x,y:item.y}});
+ }
+}
+function describe(site:Site){
+ const count=site.rooms.filter(room=>room.kind==='room').length;
+ return site.archetype?.toUpperCase()+' · '+site.name+' · seed '+site.seed+
+  '\n'+count+' rooms / '+site.doors.length+' doors / '+(site.openings?.length??0)+
+  ' open passages / '+site.cover.length+' physical props / '+
+  (site.exteriorZones?.length??0)+' exterior zones';
+}
+const sizeMatches=(site:Site,scale:string)=>{
+ const count=site.rooms.filter(room=>room.kind==='room').length;
+ return scale==='any'||scale==='small'&&count<=4||
+  scale==='medium'&&count===5||scale==='large'&&count>=6;
+};
+function generate(advance=false){
+ const starting=Math.max(1,Number.parseInt(seedInput.value,10)||1)+(advance?1:0);
+ const wanted=typeInput.value as BuildingArchetype;
+ let chosen:Site|null=null;
+ for(let step=0;step<600;step++){
+  const candidate=generateSite((starting+step)>>>0);
+  if(candidate.archetype===wanted&&sizeMatches(candidate,scaleInput.value)){
+   chosen=candidate;break;
+  }
+ }
+ if(!chosen){status.textContent='No matching configuration in the current generator range.';return;}
+ seedInput.value=String(chosen.seed);
+ session=newSession(0,chosen.seed);
+ stage.applySite(session.site??null);stage.resetCamera();
+ history.replaceState(null,'','?seed='+chosen.seed);
+ status.textContent=describe(session.site!);
+ updateLabels();
+}
+el<HTMLButtonElement>('generate').addEventListener('click',()=>generate());
+el<HTMLButtonElement>('next').addEventListener('click',()=>generate(true));
+el<HTMLButtonElement>('iso').addEventListener('click',()=>stage.setMode('iso'));
+el<HTMLButtonElement>('top').addEventListener('click',()=>stage.setMode('top'));
+el<HTMLButtonElement>('fit').addEventListener('click',()=>stage.resetCamera());
+el<HTMLInputElement>('rooms').addEventListener('change',updateLabels);
+el<HTMLInputElement>('cover').addEventListener('change',updateLabels);
+let pointers=new Map<number,Pt>(),lastMid:Pt|null=null,lastGap=0;
+const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
+document.body.addEventListener('pointerdown',event=>{
+ if((event.target as Element).closest('header,#controls,#labels'))return;
+ event.preventDefault();document.body.setPointerCapture(event.pointerId);
+ pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
+});
+document.body.addEventListener('pointermove',event=>{
+ const prior=pointers.get(event.pointerId);if(!prior)return;
+ const next={x:event.clientX,y:event.clientY};
+ const dx=next.x-prior.x,dy=next.y-prior.y;
+ pointers.set(event.pointerId,next);
+ if(pointers.size===2){
+  const [a,b]=[...pointers.values()],mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+  const gap=dist(a,b);
+  if(lastMid)stage.panBetween(lastMid.x,lastMid.y,mid.x,mid.y);
+  if(lastGap>8)stage.zoomAt(gap/lastGap,mid.x,mid.y);
+  lastMid=mid;lastGap=gap;
+ }else stage.orbit(dx,dy);
+});
+const stop=(e:PointerEvent)=>{pointers.delete(e.pointerId);if(pointers.size<2){lastMid=null;lastGap=0;}};
+document.body.addEventListener('pointerup',stop);
+document.body.addEventListener('pointercancel',stop);
+window.addEventListener('wheel',e=>{e.preventDefault();stage.zoomAt(Math.exp(-e.deltaY*.001),e.clientX,e.clientY);},{passive:false});
+window.addEventListener('resize',()=>stage.resize(innerWidth,innerHeight));
+status.textContent=describe(session.site!);updateLabels();
+let last=performance.now();
+function frame(now:number){
+ const dt=Math.min(.05,Math.max(0,(now-last)/1000));last=now;
+ stage.update(session,'rook',dt,null,true);
+ for(const marker of markers){
+  const p=stage.project(marker.p,5);
+  marker.node.style.left=p.x+'px';marker.node.style.top=p.y+'px';
+ }
+ requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
