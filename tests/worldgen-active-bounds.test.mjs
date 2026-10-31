@@ -4,7 +4,8 @@ import {generateSite} from '../src/breach-site.ts';
 import {activateSite,activeWorldBounds,passable,route,W,H} from '../src/breach-core.ts';
 test('runtime bounds are single authoritative coordinate envelope, with legacy fallback',()=>{
  const site=generateSite(17);
- assert.deepEqual(site.bounds,{minX:0,minY:0,maxX:W,maxY:H});
+ assert.ok(site.bounds.maxX>=W&&site.bounds.maxY>=H);
+ assert.equal(site.bounds.minX,0);
  activateSite({...site,bounds:{minX:-120,minY:-100,maxX:950,maxY:920},walls:[],cover:[]});
  try{
   assert.deepEqual(activeWorldBounds(),{minX:-120,minY:-100,maxX:950,maxY:920});

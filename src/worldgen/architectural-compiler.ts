@@ -51,7 +51,7 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   ...authored,
   family:authored.family+' / compact',
   widths:authored.widths.map((w,col)=>Math.round(Math.max(
-   authored.cells.every(row=>row[col]==='hallway')?62:96,w*.79))),
+   authored.cells.some(row=>row[col]==='hallway')?62:96,w*.79))),
   depths:authored.depths.map((h,row)=>Math.round(Math.max(
    authored.cells[row].every(role=>role==='hallway'||role===null)?63:86,h*.81)))
  };

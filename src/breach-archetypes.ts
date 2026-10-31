@@ -37,8 +37,12 @@ const FIXTURES:Record<string,readonly string[]>={
  */
 const routeCheckCache=new Map<string,boolean>();
 function reachable(site:Site):boolean{
-  const key=site.seed+':'+(site.scale??'standard')+':'+
-    site.rooms.map(r=>r.id+'='+r.purpose).join(',')+':'+site.cover.length;
+  // A fallback massing variant can share seed/roles yet have different walls.
+  // Cache keys MUST include the actual geometry and enemy placement.
+  const key=site.seed+':'+site.planFamily+':'+
+    site.rooms.map(r=>[r.id,r.x,r.y,r.w,r.h,r.purpose].join(',')).join('|')+':'+
+    site.cover.map(o=>[o.x,o.y,o.w,o.h].join(',')).join('|')+':'+
+    site.enemies.map(p=>p.x+','+p.y).join(';');
   const known=routeCheckCache.get(key);
   if(known!==undefined)return known;
   const previous=activeSite();
@@ -48,7 +52,8 @@ function reachable(site:Site):boolean{
     // Critical route is authoritative, but expensive A* should only execute
     // once for a reproducible seed/room-program candidate.
     valid=[...site.spawn,...site.enemies,site.objective].every(p=>passable(p))&&
-      route(site.spawn[0],site.objective).length>0;
+      [site.objective,...site.enemies].every(p=>passable(p)&&
+        route(site.spawn[0],p).length>0);
   }finally{activateSite(previous);}
   if(routeCheckCache.size>=512)routeCheckCache.clear();
   routeCheckCache.set(key,valid);

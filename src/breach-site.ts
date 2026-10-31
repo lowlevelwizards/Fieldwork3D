@@ -50,7 +50,7 @@ export function generateSite(seed:number,scale:SiteScale='standard'):Site{
   [(seed>>>0)%11];
  // Keep one semantic building identity and a reproducible sequence of
  // massing variants when a furniture arrangement blocks the critical route.
- for(let attempt=0;attempt<3;attempt++){
+ for(let attempt=0;attempt<6;attempt++){
   const geometry=compileArchitecturalSite(kind,seed+attempt*9973,scale);
   geometry.seed=seed;
   try{return applyArchetype(geometry,seed);}
