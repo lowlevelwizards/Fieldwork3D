@@ -39,7 +39,7 @@ const overlap=(a:Obstacle,b:Obstacle,clearance=13)=>
 function position(room:Room,w:number,h:number,side:Anchor):Pt{
  const left=room.x+w/2+13,right=room.x+room.w-w/2-13;
  const top=room.y+h/2+13,bottom=room.y+room.h-h/2-13;
- const midX=(left+right)/2,midY=(top+bottom)/2;
+ const midY=(top+bottom)/2;
  switch(side){
  case 'nw':return {x:left,y:top};
  case 'ne':return {x:right,y:top};
