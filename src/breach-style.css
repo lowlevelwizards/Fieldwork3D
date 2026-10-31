@@ -427,3 +427,45 @@ body.replaying .foot,body.replaying .guidance,body.replaying .feed{display:none!
  .bar .unit{min-height:28px;padding:3px 6px}
  .bar .actions button{min-height:61px}
 }
+
+/* UI Overhaul 03 — Fieldwork design primitives. Network fonts have system fallbacks. */
+:root{
+ --ui-bg:#111b1d;--ui-panel:#263a37;--ui-surface:#425b52;
+ --ui-text:#e3e0d1;--ui-muted:#a8b8ac;--ui-active:#a8bfae;
+ --ui-action:#c9a778;--ui-danger:#c48570;
+ --ui-line:#62786c;--ui-radius:7px;
+ --ui-font:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+ --ui-display:"Barlow Condensed","Arial Narrow",sans-serif;
+ --ui-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
+ color:var(--ui-text);font:13px/1.35 var(--ui-font);
+}
+button{font:500 13px/1.15 var(--ui-font);border-radius:var(--ui-radius);
+ -webkit-touch-callout:none;transition:background-color 120ms ease,border-color 120ms ease,color 120ms ease}
+button:focus-visible{outline:2px solid var(--ui-action);outline-offset:2px}
+.top .ident strong,.mode strong,.bar .unit strong,.actions .play,
+.debrief strong,.briefing-panel strong{
+ font-family:var(--ui-display);font-weight:700;letter-spacing:.055em}
+.top .ident strong{font-size:19px}
+.mode strong{font-size:14px}
+.mode output,.bar .unit em,.replay-head output,
+#replayClock{font-family:var(--ui-mono);font-variant-numeric:tabular-nums}
+.bar .unit strong{font-size:15px}
+.bar .unit em{font-size:10px}
+.actions .play{font-size:18px;letter-spacing:.04em}
+.context-tools button,.orders button,.site-settings button,
+.briefing-panel button,.replay-actions button{
+ font-family:var(--ui-font);font-size:12px;letter-spacing:.015em}
+.context-primary button{font-weight:600}
+.context-state button{font-weight:500}
+.site-settings a,.operator-lab-link{font-family:var(--ui-font)}
+.briefing-panel p,.debrief p{font:13px/1.55 var(--ui-font)}
+.briefing-panel strong{font-size:20px}
+.debrief strong{font-size:24px}
+button:disabled{opacity:.48;cursor:default}
+@media(max-width:650px){
+ .top .ident strong{font-size:17px}
+ .bar .unit strong{font-size:13px}
+ .actions .play{font-size:16px}
+ .context-primary button,.context-state button{font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){button{transition:none}}
