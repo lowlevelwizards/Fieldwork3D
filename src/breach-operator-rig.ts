@@ -120,7 +120,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   block(weapon,13,0,0,13,2.4,2.7,steel);
   block(weapon,-6,-1,0,6,4,3,boot);
   // Stock, comb and narrow sight rail share the weapon's rigid transform.
-  block(weapon,-10,0,0,9,3,3.5,boot);
+  block(weapon,-10,0,0,5,3,3.5,boot);
   block(weapon,-1,2.6,0,11,1.2,1.5,steel);
   // Weapon that can finish on the floor independently of a falling torso.
   block(droppedGun,0,0,0,23,3.0,3.2,steel);
