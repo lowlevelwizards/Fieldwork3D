@@ -365,33 +365,52 @@ function updateContext(){
     firePolicy:node?.firePolicyState??a.firePolicy,
     reserve:a.reserve,magazine:a.magazine
   });
-  const signature=choices.map(x=>x.id+':'+x.label+':'+!!x.disabled+':'+!!x.pressed).join('/')+
-    '/'+(door?.id??'')+'/'+(node?.id??'-')+'/'+selected;
-  if(contextSignature!==signature){
-    contextSignature=signature;
-    // Preserve the preferred rail through stance/ammo/action updates.
+  // Reconcile buttons in-place: avoid tearing down the menu when a toggle changes.
+  const identity=(door?'door:'+door.id:node?'node:'+node.id:'here')+'/'+selected;
+  if(contextSignature!==identity){
+    contextSignature=identity;
     ui.context.replaceChildren();
-    const primary=document.createElement('div');
-    primary.className='context-primary';
-    const secondary=document.createElement('div');
-    secondary.className='context-state';
-    for(const choice of choices){
-      const button=document.createElement('button');
-      button.type='button';button.dataset.action=choice.id;
-      button.textContent=choice.label;
-      button.prepend(tacticalIcon(choice.id));
-      button.setAttribute('aria-label',choice.label);
-      if(choice.title)button.title=choice.title;
-      button.disabled=!!choice.disabled;
-      if(choice.pressed!==undefined)
-        button.setAttribute('aria-pressed',String(choice.pressed));
-      if(choice.id==='ctxDelete')button.classList.add('danger');
-      (choice.group==='primary'?primary:secondary).append(button);
-    }
-    ui.context.append(primary);
-    if(secondary.childElementCount)ui.context.append(secondary);
-    ui.context.classList.toggle('door-menu',!!door);
+    const primary=document.createElement('div');primary.className='context-primary';
+    const secondary=document.createElement('div');secondary.className='context-state';
+    const destructive=document.createElement('div');destructive.className='context-danger';
+    ui.context.append(primary,secondary,destructive);
   }
+  const buckets:Record<string,HTMLElement>={
+    primary:ui.context.querySelector<HTMLElement>('.context-primary')!,
+    state:ui.context.querySelector<HTMLElement>('.context-state')!,
+    destructive:ui.context.querySelector<HTMLElement>('.context-danger')!
+  };
+  const wanted=new Set<string>();
+  for(const choice of choices){
+    wanted.add(choice.id);
+    let button=ui.context.querySelector<HTMLButtonElement>(
+      'button[data-action="'+choice.id+'"]');
+    if(!button){
+      button=document.createElement('button');
+      button.type='button';button.dataset.action=choice.id;
+      button.prepend(tacticalIcon(choice.id));
+    }
+    let label=button.querySelector<HTMLElement>('.command-label');
+    if(!label){
+      label=document.createElement('span');label.className='command-label';
+      button.append(label);
+    }
+    if(label.textContent!==choice.label)label.textContent=choice.label;
+    button.setAttribute('aria-label',choice.label);
+    button.title=choice.title??choice.label;
+    button.disabled=!!choice.disabled;
+    if(choice.pressed===undefined)button.removeAttribute('aria-pressed');
+    else button.setAttribute('aria-pressed',String(choice.pressed));
+    button.classList.toggle('danger',choice.group==='destructive');
+    if(button.parentElement!==buckets[choice.group])
+      buckets[choice.group].append(button);
+  }
+  for(const btn of ui.context.querySelectorAll<HTMLButtonElement>('button[data-action]')){
+    if(!wanted.has(btn.dataset.action??''))btn.remove();
+  }
+  buckets.state.hidden=!buckets.state.childElementCount;
+  buckets.destructive.hidden=!buckets.destructive.childElementCount;
+  ui.context.classList.toggle('door-menu',!!door);
   ui.context.hidden=false;
   ui.context.dataset.door=door?.id??'';
   ui.context.setAttribute('aria-label',door?
