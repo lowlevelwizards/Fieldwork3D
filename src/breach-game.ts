@@ -34,7 +34,10 @@ import {doorContactImpulse,passageWait,type PassageActor}
   from './breach-passage.ts';
 import {diagnoseMovement,projectReachableGoal,type Blocker}
   from './breach-nav-diagnostics.ts';
-import {sweptBodyClear} from './breach-navigation.ts';
+import {bodyClear,sweptBodyClear,squeezeFacing,
+  sweptProfileClear} from './breach-navigation.ts';
+import {routeWithSqueezeIntel,routeWithSqueezeWorld}
+  from './breach-squeeze-route.ts';
 import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
   rayHitsActor,muzzleEndpoint,recoverWeapon,handlingInstability,type FiringMode} from './breach-ballistics.ts';
@@ -68,6 +71,8 @@ export type TeamActor=Operator & {
   contact:Pt|null;heard:Pt|null;
   alertUntil:number;waitRemaining:number;syncReady:string|null;
   actionTimer:number;blockedTime:number;lastNavRepairAt:number;priorP:Pt;pieIndex:number;
+  /** Motor-authoritative traversal state. The normal body never shrinks. */
+  squeeze:boolean;squeezeYaw:number;squeezeTime:number;
   lastBlocker:Blocker;
   /** Last executed facing command; survives across movement waypoints. */
   aimInstruction:AimInstruction|null;
@@ -150,6 +155,7 @@ const withActions=(a:Operator):TeamActor=>({
   reloadTargetRounds:0,
   alertUntil:0,waitRemaining:0,syncReady:null,actionTimer:0,
   blockedTime:0,lastNavRepairAt:-10,priorP:clone(a.p),haltOnContact:false,retreatPoint:null,
+  squeeze:false,squeezeYaw:a.heading,squeezeTime:0,
   lastBlocker:'clear',
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
   lastHitRegion:'torso',lastHitYaw:0,lastHitSeverity:0,
@@ -267,7 +273,7 @@ function pathFor(a:TeamActor){
   const points:Pt[]=[];let from=a.p;
   for(const n of a.plan){
     if(n.kind==='move'||n.kind==='door'){
-      const segment=route(from,n.p);
+      const segment=routeWithSqueezeWorld(from,n.p,[]);
       if(!segment.length)continue;
       points.push(...segment);from=n.p;
     }else if(n.kind==='pie'&&n.arc?.length){
@@ -288,8 +294,8 @@ function edit(s:Session,a:TeamActor,fn:()=>void){
 export function addNode(s:Session,id:string,kind:PlanKind,p:Pt,
   extra:Partial<PlanNode>={}):boolean{
   const a=party(s,id);if(!a||!canEdit(s))return false;
-  if(kind==='move'&&!intelPassable(p,s.intel))return false;
-  if(kind==='move'&&!routeWithIntel(s.intel,finalPoint(a),p).length)return false;
+  if(kind==='move'&&!intelPassable(p,s.intel,5.4))return false;
+  if(kind==='move'&&!routeWithSqueezeIntel(s.intel,finalPoint(a),p).length)return false;
   if(kind==='door'&&(!passable(p)||!route(finalPoint(a),p).length))return false;
   return edit(s,a,()=>{
     a.plan.push({id:s.nextId++,kind,p:clone(p),...extra});
@@ -301,8 +307,8 @@ export function planMove(s:Session,id:string,p:Pt,strafe=false){
   const extra=strafe?{moveMode:'strafe' as const,
     facing:[...a.plan].reverse().find(n=>n.facing!==undefined)?.facing??a.heading}:{};
   const target=projectReachableGoal(finalPoint(a),p,{
-    canStand:at=>intelPassable(at,s.intel),
-    routeTo:(from,to)=>routeWithIntel(s.intel,from,to),
+    canStand:at=>intelPassable(at,s.intel,5.4),
+    routeTo:(from,to)=>routeWithSqueezeIntel(s.intel,from,to),
   });
   if(!target)return false;
   if(target.adjusted)notify(s,'POSITION ADJUSTED TO WALKABLE GROUND');
@@ -315,8 +321,8 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
   let from=finalPoint(a);
   const facing=[...a.plan].reverse().find(n=>n.facing!==undefined)?.facing??a.heading;
   for(const point of points.slice(0,60)){
-    if(d(from,point)<20||!intelPassable(point,s.intel)||
-      !routeWithIntel(s.intel,from,point).length)continue;
+    if(d(from,point)<20||!intelPassable(point,s.intel,5.4)||
+      !routeWithSqueezeIntel(s.intel,from,point).length)continue;
     proposed.push({id:s.nextId+proposed.length,kind:'move',p:clone(point),
       ...(strafe?{moveMode:'strafe' as const,facing}:{})});
     from=point;
@@ -438,8 +444,8 @@ function validEditedPlan(s:Session,start:Pt,proposed:PlanNode[]){
       if(!arc.length)return false;
       n.arc=arc;n.p=clone(arc[arc.length-1]);from=n.p;
     }else if(n.kind==='move'||n.kind==='door'){
-      if(n.kind==='move'?!intelPassable(n.p,s.intel)||
-        !routeWithIntel(s.intel,from,n.p).length:
+      if(n.kind==='move'?!intelPassable(n.p,s.intel,5.4)||
+        !routeWithSqueezeIntel(s.intel,from,n.p).length:
         !passable(n.p)||!route(from,n.p).length)return false;
       from=n.p;
     }
@@ -457,8 +463,8 @@ export function movePlanNode(s:Session,id:string,nodeId:number,p:Pt){
   if(changed.kind==='move'){
     const from=index>0?proposed[index-1].p:a.p;
     const target=projectReachableGoal(from,p,{
-      canStand:at=>intelPassable(at,s.intel),
-      routeTo:(origin,goal)=>routeWithIntel(s.intel,origin,goal),
+      canStand:at=>intelPassable(at,s.intel,5.4),
+      routeTo:(origin,goal)=>routeWithSqueezeIntel(s.intel,origin,goal),
     });
     if(!target)return false;
     point=target.point;
@@ -1108,7 +1114,8 @@ function stepYield(s:Session,a:TeamActor,dt:number):boolean{
 }
 function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   if(!a.nav.length){
-    a.nav=a.side==='blue'?routeWithIntel(s.intel,a.p,p):route(a.p,p);
+    a.nav=a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
+      routeWithSqueezeWorld(a.p,p,s.doors);
     if(!a.nav.length){
       // A failed route is a stationary brace, not phantom walking speed.
       a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
@@ -1134,7 +1141,9 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const lateral=Math.abs(Math.sin(direction-a.heading));
   const sideLimit=(38+37*(1-lateral*lateral))*
     (a.posture==='crouch'?.58:1)*injurySpeed(a.injuryStage);
-  const desired=Math.min(requested,sideLimit);
+  // Narrow travel is genuine slow sideways movement, not a global
+  // reduction to actor collision radius or a high-speed clipping shortcut.
+  const desired=Math.min(requested,sideLimit,a.squeeze?16:Infinity);
   a.velocity+=(desired-a.velocity)*Math.min(1,dt*6);
   const advance=Math.min(gap,a.velocity*dt);
   const move={x:a.p.x+Math.cos(direction)*advance,
@@ -1202,12 +1211,37 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       x:move.x+tangent.x*advance*factor,
       y:move.y+tangent.y*advance*factor,
     })).filter(pos=>d(pos,nearPeer.p)>d(move,nearPeer.p)+2&&
-      sweptBodyClear(a.p,pos,s.doors));
+      (a.squeeze?sweptProfileClear(a.p,pos,s.doors,
+        a.squeezeYaw,'squeeze'):sweptBodyClear(a.p,pos,s.doors)));
     if(choices.length)desiredMove=choices.sort((u,v)=>
       d(u,next)-d(v,next))[0];
   }
+  // The physical transition requires a valid oriented three-point torso
+  // sweep; normal clearance remains the preference whenever it fits.
+  const normalClear=sweptBodyClear(a.p,desiredMove,s.doors);
+  const travelHeading=angle(a.p,desiredMove);
+  const sidewaysYaw=squeezeFacing(travelHeading);
+  const narrowClear=sweptProfileClear(a.p,desiredMove,s.doors,
+    sidewaysYaw,'squeeze');
+  if(!normalClear&&narrowClear&&!a.squeeze){
+    a.squeeze=true;a.squeezeYaw=sidewaysYaw;a.squeezeTime=0;
+    a.velocity=0;
+    // Alignment is a real, short stationary transition, not a teleport.
+    return true;
+  }
+  if(a.squeeze){
+    a.squeezeYaw=sidewaysYaw;
+    if(normalClear&&bodyClear(a.p,s.doors)&&
+      bodyClear(desiredMove,s.doors)){
+      a.squeeze=false;a.squeezeTime=0;
+    }else{
+      a.squeezeTime+=dt;
+      if(a.squeezeTime<.18){a.velocity=0;return true;}
+    }
+  }
+  const traversable=a.squeeze?narrowClear:normalClear;
   // Try nearby route repair for actor jams, furniture, and door leaves.
-  if((!sweptBodyClear(a.p,desiredMove,s.doors)||blocking)&&
+  if((!traversable||blocking)&&
     a.blockedTime>.30&&s.seconds-a.lastNavRepairAt>.6){
     const candidate=localDetour(a.p,next,s.doors,s.operators
       .filter(o=>o!==a&&o.health>0).map(o=>o.p));
@@ -1217,7 +1251,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       return true;
     }
   }
-  if(!closed&&!blocking&&sweptBodyClear(a.p,desiredMove,s.doors)){
+  if(!closed&&!blocking&&traversable){
     a.priorP=clone(a.p);a.p=desiredMove;a.blockedTime=0;
     a.lastBlocker='clear';
     if(a.side==='blue'&&s.seconds-s.movementNoiseAt>.54){
@@ -1244,9 +1278,9 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       // Once actual collision is observed, repair against real geometry,
       // not only the incomplete player-intel route that may run through
       // an undiscovered door frame. The authored final goal is unchanged.
-      const repaired=route(a.p,p);
+      const repaired=routeWithSqueezeWorld(a.p,p,s.doors);
       if(repaired.length)a.nav=repaired;
-      else if(a.side==='blue')a.nav=routeWithIntel(s.intel,a.p,p);
+      else if(a.side==='blue')a.nav=routeWithSqueezeIntel(s.intel,a.p,p);
     }
     // Do not discard an authored plan just because someone is in the way.
   }
@@ -1303,6 +1337,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   }
   if(a.activeNode!==n.id){
     a.activeNode=n.id;a.nav=[];a.waitRemaining=0;a.actionTimer=0;
+    a.squeeze=false;a.squeezeTime=0;
     a.pieIndex=0;
   }
   if(n.kind==='pie'){
@@ -1708,6 +1743,8 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(a.health<=0){
     a.reload=0;a.reloadMode=null;return;
   }
+  // Shoulder-first passage keeps the long weapon tucked until clear.
+  if(a.squeeze){a.aim=Math.max(0,a.aim-dt*2);return;}
   // Sprinting is a traversal decision, not free accurate fire on the move.
   if((a.pace==='run'||a.plan[0]?.moveMode==='sprint')&&a.velocity>12){
     a.aim=Math.max(0,a.aim-dt*2.2);

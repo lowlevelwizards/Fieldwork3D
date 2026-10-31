@@ -30,6 +30,7 @@ import {doorReachable} from './breach-door.ts';
 import {INTEL_MODES,doorKnown,wallKnown,roomKnown,
   routeWithIntel,intelPassable,type IntelMode} from './breach-intel.ts';
 import {orderFailureText} from './breach-nav-diagnostics.ts';
+import {routeWithSqueezeIntel} from './breach-squeeze-route.ts';
 import './breach-style.css';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {contextActionChoices} from './ui/context-actions.ts';
@@ -1059,7 +1060,7 @@ function paths(){
       let from=a.p;
       for(const node of plan){
         if(node.kind==='move'||node.kind==='door'){
-          const course=routeWithIntel(state.intel,from,node.p);
+          const course=routeWithSqueezeIntel(state.intel,from,node.p);
           for(const p of course)draw.lineTo(p.x,p.y);
           from=node.p;
         }else if(node.kind==='pie'&&node.arc?.length){
@@ -1166,7 +1167,7 @@ function renderProjectedPlans(){
     let previous=a.p;
     for(const n of a.plan){
       const steps=n.kind==='pie'?n.arc??[]:
-        n.kind==='move'||n.kind==='door'?routeWithIntel(state.intel,previous,n.p):[];
+        n.kind==='move'||n.kind==='door'?routeWithSqueezeIntel(state.intel,previous,n.p):[];
       if(steps.length){
         draw.beginPath();
         const start=worldToScreen(previous,4);
@@ -1185,7 +1186,7 @@ function renderProjectedPlans(){
       const point=worldToScreen(selectedNow&&draggingNode&&n.kind!=='flash'?
         draggingNode:n.p,8);
       const invalidDrag=selectedNow&&draggingNode&&
-        !intelPassable(draggingNode,state.intel);
+        !intelPassable(draggingNode,state.intel,5.4);
       circle(point.x,point.y,selectedNow?11:7,
         invalidDrag?'#df8070':selectedNow?'#ecd29f':color);
       circle(point.x,point.y,3,'#233b39');
