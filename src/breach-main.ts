@@ -1382,7 +1382,9 @@ function fog(){
     fogStamp=state.seconds;
     paintFogMask(fogContext!,state);
   }
-  draw.drawImage(fogCanvas,0,0,W,H);
+  const bounds=activeWorldBounds();
+  draw.drawImage(fogCanvas,bounds.minX,bounds.minY,
+    bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
 }
 function missionMarkers(){
   if(state.rescue&&liveVisibility(state,state.rescue.p)){

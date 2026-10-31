@@ -997,10 +997,11 @@ function observe(s:Session){
     // fall between the old 40-unit sample points when pieing a room.
     // Do this at an intel cadence, not on every 60 Hz sim tick.
     if(updateGround){
-      const minX=Math.max(0,Math.floor((blue.p.x-240)/20));
-      const maxX=Math.min(31,Math.floor((blue.p.x+240)/20));
-      const minY=Math.max(0,Math.floor((blue.p.y-240)/20));
-      const maxY=Math.min(36,Math.floor((blue.p.y+240)/20));
+      const bounds=s.site?.bounds??{minX:0,minY:0,maxX:W,maxY:H};
+      const minX=Math.max(Math.floor(bounds.minX/20),Math.floor((blue.p.x-240)/20));
+      const maxX=Math.min(Math.ceil(bounds.maxX/20)-1,Math.floor((blue.p.x+240)/20));
+      const minY=Math.max(Math.floor(bounds.minY/20),Math.floor((blue.p.y-240)/20));
+      const maxY=Math.min(Math.ceil(bounds.maxY/20)-1,Math.floor((blue.p.y+240)/20));
       for(let row=minY;row<=maxY;row++)
         for(let col=minX;col<=maxX;col++){
           const p={x:col*20+10,y:row*20+10};
@@ -1016,16 +1017,17 @@ function observe(s:Session){
       // Fine independent explored footprints: 10-unit samples capture the
       // visible margins of corners that 20-unit center samples missed.
       // Stored in replay snapshots alongside the legacy coarse keys.
-      const x0=Math.max(0,Math.floor((blue.p.x-240)/10));
-      const x1=Math.min(63,Math.floor((blue.p.x+240)/10));
-      const y0=Math.max(0,Math.floor((blue.p.y-240)/10));
-      const y1=Math.min(73,Math.floor((blue.p.y+240)/10));
+      const x0=Math.max(Math.floor(bounds.minX/10),Math.floor((blue.p.x-240)/10));
+      const x1=Math.min(Math.ceil(bounds.maxX/10)-1,Math.floor((blue.p.x+240)/10));
+      const y0=Math.max(Math.floor(bounds.minY/10),Math.floor((blue.p.y-240)/10));
+      const y1=Math.min(Math.ceil(bounds.maxY/10)-1,Math.floor((blue.p.y+240)/10));
       for(let row=y0;row<=y1;row++)for(let col=x0;col<=x1;col++){
         const p={x:col*10+5,y:row*10+5};
         if(d(blue.p,p)>=240||
           Math.abs(angleDifference(blue.heading,angle(blue.p,p)))>=1.15||
           !unobstructed(blue.p,p,s,blue.posture==='crouch'))continue;
-        s.seenGround.add(MICRO_KEYS[row*MICRO_COLS+col]);
+        s.seenGround.add(MICRO_KEYS[row*MICRO_COLS+col]??
+          'micro:'+col+','+row);
       }
     }
     for(const e of enemies(s)){
