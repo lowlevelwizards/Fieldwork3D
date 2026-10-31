@@ -17,7 +17,7 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
   // Exploration gets a short feather rather than 40-unit hard rectangles.
   // This is presentation only: intel and hidden actor visibility are
   // still checked in the authoritative simulation every tick.
-  ctx.filter='blur(5px)';
+  ctx.filter='blur(1.5px)';
   for(let row=0;row<37;row++)for(let col=0;col<32;col++){
     const p={x:col*20+10,y:row*20+10};
     const fineSeen=s.seenGround.has('fine:'+col+','+row);
