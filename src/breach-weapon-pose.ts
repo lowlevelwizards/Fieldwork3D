@@ -20,7 +20,7 @@ export const GRIPS:Record<WeaponId,WeaponGrip>={
     supportX:1,supportY:-2},
 };
 export const weaponGrips=(id:WeaponId):WeaponGrip=>GRIPS[id];
-export type HandlingIntent='move'|'run'|'look'|'pie'|'door'|'hold'|'engage';
+export type HandlingIntent='move'|'run'|'look'|'pie'|'door'|'hold'|'engage'|'squeeze';
 /** Pure context-based handling selection shared with shot-time geometry.
  * Optional hysteresis only affects passive ready states, never combat.
  * A physically blocked muzzle has absolute priority.
@@ -29,7 +29,7 @@ export function handlingPose(input:{aim:number;moving:number;
   obstruction:boolean;friendlyNear:boolean;intent?:HandlingIntent;
   threatRange?:number|null;weapon?:WeaponId;
   previous?:Handling;heldFor?:number}):Handling{
-  if(input.obstruction)return 'short';
+  if(input.obstruction||input.intent==='squeeze')return 'short';
   const near=input.weapon==='shotgun'?86:
     input.weapon==='smg'?100:74;
   const closeThreat=input.threatRange!==undefined&&
