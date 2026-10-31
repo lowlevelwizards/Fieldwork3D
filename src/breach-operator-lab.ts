@@ -41,7 +41,7 @@ const camera=new THREE.OrthographicCamera(-28,28,34,-34,.1,600);
 camera.position.set(65,48,68);
 const control=new OrbitControls(camera,canvas);
 control.enableDamping=true;control.dampingFactor=.11;
-control.target.set(0,16,0);control.minZoom=.25;control.maxZoom=7;
+control.target.set(0,16,0);control.minZoom=.18;control.maxZoom=7;
 scene.add(new THREE.HemisphereLight(0xffffff,0x8f9188,2.2));
 const lamp=new THREE.DirectionalLight(0xffffff,2.3);
 lamp.position.set(-40,90,45);lamp.castShadow=true;
@@ -80,6 +80,13 @@ const COMPARE_POSES:{label:string;mode:Handling;track:LabTrack}[]=[
 let comparing=false,silhouettes=false;
 let comparisonRigs:OperatorRig[]=[];
 let comparisonKey='',comparisonPoseUpdates=0;
+let mainSilhouetteState:boolean|null=null;
+const silhouetteColor=new THREE.Color(0x172322);
+/** Preserve material identity; restoring original colors must be reversible. */
+function applySilhouette(body:OperatorRig,enabled:boolean){
+  for(const [material,originalColor] of body.colors)
+    material.color.copy(enabled?silhouetteColor:originalColor);
+}
 const labelLayer=choose<HTMLElement>('compareLabels');
 const poseCompareButton=choose<HTMLButtonElement>('comparePose');
 const silhouetteButton=choose<HTMLButtonElement>('silhouetteMode');
@@ -136,6 +143,7 @@ const supportBoxes=[0,1].map(()=>{
 });
 const build=()=>{
   clearComparison();
+  mainSilhouetteState=null;
   if(rig){scene.remove(rig.root);rig.dispose();}
   rig=createOperatorRig(operator.value,operator.value==='hostile'?'red':'blue');
   scene.add(rig.root);
@@ -148,7 +156,9 @@ function fit(next='iso'){
   const dz=next==='side'?75:next==='top'?.01:next==='front'?0:68;
   camera.position.set(center.x+dx,next==='top'?115:next==='front'||next==='side'?16:48,
     center.z+dz);
-  camera.zoom=comparing?.32:1.4;camera.updateProjectionMatrix();
+  camera.zoom=comparing?
+    Math.min(.34,Math.max(.21,.58*window.innerWidth/window.innerHeight)):
+    1.4;camera.updateProjectionMatrix();
   control.target.set(center.x,16,center.z);control.update();
   cameraFollow={x:center.x,z:center.z};
 }
@@ -183,10 +193,23 @@ poseCompareButton.addEventListener('click',()=>{
 choose<HTMLButtonElement>('savePoseView').addEventListener('click',()=>{
   // Keep an exact visual reference across versions without retaining images
   // or GPU render targets in memory; works for the current matched view.
-  const link=document.createElement('a');
-  link.download='fieldwork-poses-reference.png';
-  link.href=canvas.toDataURL('image/png');
-  link.click();
+  const button=choose<HTMLButtonElement>('savePoseView');
+  try{
+    // Render synchronously during the user gesture: mobile WebGL backbuffers
+    // may be discarded after normal presentation.
+    renderer.render(scene,camera);
+    const image=canvas.toDataURL('image/png');
+    if(!image.startsWith('data:image/png'))
+      throw Error('PNG capture unavailable');
+    const link=document.createElement('a');
+    link.download='fieldwork-poses-reference.png';
+    link.href=image;
+    link.click();
+    button.textContent='SAVED PNG';
+  }catch(error){
+    button.textContent='SAVE FAILED';
+    button.title=error instanceof Error?error.message:String(error);
+  }
 });
 silhouetteButton.addEventListener('click',()=>{
   silhouettes=!silhouettes;
@@ -231,6 +254,7 @@ function resize(){
   const half=36,aspect=w/h;
   camera.left=-half*aspect;camera.right=half*aspect;
   camera.top=half;camera.bottom=-half;camera.updateProjectionMatrix();
+  if(comparing)fit();
 }
 window.addEventListener('resize',resize);
 const world=new THREE.Vector3(),world2=new THREE.Vector3();
@@ -413,8 +437,10 @@ function draw(){
     hitAge:track==='wounded'?Math.max(0,clock-.7):undefined,
     hitSeverity:2},0);
   rig.root.visible=!comparing;
-  if(!comparing&&silhouettes)
-    for(const material of rig.colors.keys())material.color.setHex(0x172322);
+  if(!comparing&&mainSilhouetteState!==silhouettes){
+    applySilhouette(rig,silhouettes);
+    mainSilhouetteState=silhouettes;
+  }
   if(comparing){
     ensureComparison();
     const signature=operator.value+'|'+weapon.value+'|'+silhouettes;
@@ -432,8 +458,7 @@ function draw(){
         down:false,surrender:false,aiming:info.mode==='ads',
         firing:false,turning:0,handlingOverride:info.mode,
         deterministic:true},0);
-      if(silhouettes)
-        for(const material of body.colors.keys())material.color.setHex(0x172322);
+      applySilhouette(body,silhouettes);
       const label=labelLayer.children[i] as HTMLButtonElement;
       label.title=info.label+' · stock '+body.stockError.toFixed(2)+
         ' · grip '+body.gripError.toFixed(2);
