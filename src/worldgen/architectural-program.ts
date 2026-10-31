@@ -77,6 +77,40 @@ const publicEntry=new Set(['living','lobby','reception','waiting','sales',
  * Voids represent courtyards, service courts or setbacks, not phantom rooms.
  */
 const alternate:Partial<Record<BuildingArchetype,Spec>>={
+ townhouse:{family:'courtyard rowhouse / lateral kitchen extension',
+  widths:[158,65,142,114],depths:[116,112,113,107],
+  front:{col:0,row:3},cells:[
+   ['bedroom','hallway','bedroom','bathroom'],
+   ['bedroom','hallway','study',null],
+   ['living','hallway','kitchen','dining'],
+   ['living','living','dining',null]]},
+ apartment:{family:'double-loaded apartments / entry gallery',
+  widths:[145,65,150,135],depths:[125,115,122,93],
+  front:{col:1,row:3},cells:[
+   ['bedroom','hallway','bedroom','bathroom'],
+   ['bedroom','hallway','bedroom','kitchen'],
+   ['living','hallway','living',null],
+   ['lobby','lobby','lobby','service']]},
+ retail:{family:'corner storefront / stepped stockrooms',
+  widths:[168,120,68,147],depths:[129,106,119,94],
+  front:{col:0,row:3},cells:[
+   ['stockroom','stockroom','service','office'],
+   ['stockroom','sales','checkout','storage'],
+   ['sales','sales','sales',null],
+   ['sales','sales',null,null]]},
+ garage:{family:'vehicle yard / elongated parallel service bays',
+  widths:[190,68,188,135],depths:[168,112,109,98],
+  front:{col:0,row:3},cells:[
+   ['bay','aisle','bay','workshop'],
+   ['bay','aisle','bay','parts'],
+   ['bay','aisle','reception',null],
+   ['waiting','reception','reception',null]]},
+ utility:{family:'switchyard / stepped generator plant',
+  widths:[170,66,171,133],depths:[146,116,106],
+  front:{col:1,row:2},cells:[
+   ['equipment','hallway','equipment','control'],
+   ['equipment','hallway',null,'maintenance'],
+   ['storage','hallway','service','service']]},
  motel:{family:'courtyard motel / covered guest gallery',
   widths:[141,141,141,141],depths:[143,62,128,103],
   front:{col:0,row:3},cells:[
@@ -111,12 +145,6 @@ const alternate:Partial<Record<BuildingArchetype,Spec>>={
    ['kitchen','kitchen','service','pantry'],
    ['dining','dining','service','restroom'],
    ['dining','dining',null,null]]},
- retail:{family:'corner shop / offset stock and sales',
-  widths:[185,78,165,134],depths:[131,142,111],
-  front:{col:0,row:2},cells:[
-   ['stockroom','service','office','storage'],
-   ['sales','sales','sales','storage'],
-   ['sales','sales','checkout',null]]},
  office:{family:'notched office / reception and private wing',
   widths:[170,66,165,143],depths:[123,144,107],
   front:{col:2,row:2},cells:[
