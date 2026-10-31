@@ -341,8 +341,10 @@ export class TacticalScene3D{
       const root=new THREE.Group();root.position.set(p.x,0,p.y);
       root.rotation.y=vertical?-Math.PI/2:0;
       const frame=new THREE.Group();root.add(frame);
-      this.box(frame,-length/2,18.5,0,4,37,10,doorTrim);
-      this.box(frame,length/2,18.5,0,4,37,10,doorTrim);
+      if(!door.pairedWith||door.hinge!=='b')
+        this.box(frame,-length/2,18.5,0,4,37,10,doorTrim);
+      if(!door.pairedWith||door.hinge!=='a')
+        this.box(frame,length/2,18.5,0,4,37,10,doorTrim);
       this.box(frame,0,37,0,length+7,4,12,doorTrim);
       const threshold=this.box(frame,0,.32,0,length,1.2,13,
         doorTrim,false);

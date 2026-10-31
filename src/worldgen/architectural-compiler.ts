@@ -228,7 +228,18 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   if(['garage','warehouse','utility'].includes(kind))
     doors.push({id:'SHUTTER',a,b,kind:'shutter',open:false,openedAt:-1,
       resistance:2.4,latchIntegrity:5,frameIntegrity:8});
-  else openings.push({id:'OPEN-SERVICE',a,b,kind:'wide'});
+  else if(['retail','restaurant'].includes(kind)&&seed%2===0){
+    // A single 96-unit threshold with two independently hinged 48-unit
+    // leaves. The center is never occupied by a structural wall segment.
+    const middle={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+    const lhs={x:middle.x-ux*48,y:middle.y-uy*48};
+    const rhs={x:middle.x+ux*48,y:middle.y+uy*48};
+    walls.splice(index,2,{a:wall.a,b:lhs},{a:rhs,b:wall.b});
+    doors.push({id:'DOUBLE-L',a:lhs,b:middle,kind:'hinged',
+      hinge:'a',swing:-1,pairedWith:'DOUBLE-R',open:false,openedAt:-1});
+    doors.push({id:'DOUBLE-R',a:middle,b:rhs,kind:'hinged',
+      hinge:'b',swing:1,pairedWith:'DOUBLE-L',open:false,openedAt:-1});
+  }else openings.push({id:'OPEN-SERVICE',a,b,kind:'wide'});
  }
  // Doors into enclosed or partly enclosed courts create an actual
  // circulation alternative. A courtyard is not merely a painted floor void.
