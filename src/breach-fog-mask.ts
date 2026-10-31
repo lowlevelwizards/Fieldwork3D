@@ -53,3 +53,28 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
   }
   ctx.restore();
 }
+
+/** Only the room actually occupied by an operator gains structural context.
+ * Tactical sight, enemy detection and unseen cover remain authoritative. */
+export function occupiedFogRooms(s:Session){
+  if(!s.site)return [];
+  const friendly=team(s).filter(a=>a.health>0);
+  return s.site.rooms.filter(room=>friendly.some(a=>
+    a.p.x>room.x+4&&a.p.x<room.x+room.w-4&&
+    a.p.y>room.y+4&&a.p.y<room.y+room.h-4));
+}
+/** 3D-only presentation pass. The shared 2D LOS mask is unchanged.
+ * Current-room floor/wall context must never vanish behind a directional
+ * black wedge just because an operator turns their head. */
+export function paintOccupiedRoomContext(ctx:CanvasRenderingContext2D,s:Session){
+  const rooms=occupiedFogRooms(s);
+  if(!rooms.length)return;
+  ctx.save();
+  ctx.setTransform(FOG_WIDTH/W,0,0,FOG_HEIGHT/H,0,0);
+  ctx.filter='none';
+  ctx.globalCompositeOperation='destination-out';
+  ctx.fillStyle='rgba(255,255,255,.86)';
+  for(const room of rooms)
+    ctx.fillRect(room.x+4,room.y+4,room.w-8,room.h-8);
+  ctx.restore();
+}
