@@ -9,6 +9,7 @@ import {advanceFootsteps,createFootstepScheduler,validatedReplayFeet,
   from './breach-footsteps.ts';
 import type {ReplayFeet} from './breach-replay-motion.ts';
 import {bodyFromContacts} from './breach-body-motion.ts';
+import {idlePresence} from './breach-idle-presence.ts';
 import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH,LEG_HIP_SIDE} from './breach-leg-geometry.ts';
 import {turnHierarchy} from './breach-turn-hierarchy.ts';
 import {contactReaction,type BashRole} from './breach-contact-reactions.ts';
@@ -173,6 +174,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     material.color.copy(original);
     if(p.down&&!p.surrender)material.color.lerp(new THREE.Color(0x555c57),.46);
   }
+  const idle=idlePresence({time:p.seconds,speed:p.velocity,
+    aiming:p.aiming,firing:p.firing,down:p.down,surrender:p.surrender,
+    reload:p.reload>0,posture:p.posture});
   const downProgress=clamp(p.downProgress??(p.down?1:0),0,1);
   const smooth=(t:number)=>{const v=clamp(t,0,1);return v*v*(3-2*v)};
   const buckle=p.down&&!p.surrender?smooth(downProgress/.48):0;
@@ -273,8 +277,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.chest.rotation.y=p.deterministic?turn.chestYaw:
     approach(r.chest.rotation.y,turn.chestYaw,
       p.aiming?7.5:5.8,dt);
-  r.head.rotation.y=p.deterministic?turn.headYaw:
-    approach(r.head.rotation.y,turn.headYaw,10.0,dt);
+  r.head.rotation.y=(p.deterministic?turn.headYaw:
+    approach(r.head.rotation.y,turn.headYaw,10.0,dt))+idle.headYaw;
   const motion=bodyFromContacts({velocity:p.down?0:physicalSpeed,
     heading:p.heading,travelYaw,turning:p.turning,
     injury:p.injury,posture:p.posture,feet:targets,gait:p.gait,
@@ -298,7 +302,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // The pelvic shell accepts support rotation but is not a second
   // independent writer of the world/root heading or foot anchors.
   r.hip.rotation.x=clamp(-motion.support*physicalSpeed/72*.022,-.03,.03);
-  r.hip.position.z=motion.pelvisSide+
+  r.hip.position.z=motion.pelvisSide+idle.weightShift+
     poseWeight*profile.pelvisShift;
   const aimLevel=clamp(p.aimBlend??(p.aiming?1:0),0,1);
   // Physical bob fades out before firing: live muzzle geometry remains the
@@ -306,7 +310,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const freeMotion=p.down||p.surrender||p.firing?0:
     clamp((.32-aimLevel)/.32,0,1);
   r.chest.position.y=26-crouch+motion.pelvisY*.5+
-    motion.chestLift*freeMotion*1.4-
+    motion.chestLift*freeMotion*1.4+idle.breath-
     bash.brace*.4-buckle*7-kneel*12;
   r.chest.position.z=motion.pelvisSide*.75+
     poseWeight*profile.pelvisShift*.45;
@@ -323,7 +327,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const sightEngagement=p.handlingOverride?1:
     p.down||p.surrender?0:clamp(p.aimBlend??(p.aiming?1:0),0,1);
   r.head.position.y=10-sightEngagement*profile.headDrop;
-  r.head.rotation.x=motion.headCounter+bash.head+
+  r.head.rotation.x=motion.headCounter+idle.headPitch+bash.head+
     poseWeight*profile.headPitch;
   // Apply the collapsing root transform before solving the legs.
   // Inverse full-body rotation holds each shoe in world-space contact
