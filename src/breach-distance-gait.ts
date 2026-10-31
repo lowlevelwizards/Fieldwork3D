@@ -7,6 +7,7 @@ import {createFootstepScheduler,type FootstepScheduler,
 import {horizontalLegReach,fitLandingToHip,LEG_HIP_SIDE}
   from './breach-leg-geometry.ts';
 import {classifyLocomotion} from './breach-locomotion.ts';
+import {decideHybridStep,hybridStepThreshold} from './breach-hybrid-step-planner.ts';
 
 type Pt={x:number;y:number};
 const clone=(p:Pt)=>({x:p.x,y:p.y});
@@ -58,19 +59,12 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
     Math.sin(facing-s.lastFacing),Math.cos(facing-s.lastFacing)));
   const running=input.gait==='run',deliberate=input.gait==='pie',
     squeeze=input.gait==='squeeze';
-  const injuryScale=input.injury>=2?.64:input.injury>=1?.85:1;
-  const strideBase=squeeze?2.8:deliberate?3.6:running?8.4:
-    input.posture==='crouch'?4.4:6.6;
-  // Forward, reverse, and lateral travel share one cycle; the stride
-  // continuously shortens as direction moves away from forward.
-  const directional=Math.cos(travel-facing);
-  const strideScale=clamp(.60+.40*Math.max(0,directional),.58,1);
-  const interval=strideBase*injuryScale*strideScale;
+  const interval=hybridStepThreshold(input);
   s.lastStanceWidth=width;
   s.mode=classifyLocomotion(travelled/Math.max(dt,1/60),
     facing,travel,input.turning,s.mode);
   const distanceStep=travelled+(travelled<.04?turning*8.5:0);
-  s.accumulated+=Math.min(distanceStep,interval*3);
+  s.accumulated=Math.min(interval*1.35,s.accumulated+distanceStep);
   // Distance, not a disconnected wall-clock oscillator, advances active swings.
   // A stationary airborne foot only finishes its existing landing movement.
   for(const foot of s.feet)if(foot.phase==='swinging')
@@ -78,10 +72,10 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
   const forward={x:Math.cos(travel),y:Math.sin(travel)};
   const centerHip=(footIndex:number,at:Pt)=>lateral(at,facing,
     footIndex===0?-1:1,LEG_HIP_SIDE);
-  let attempted=0;
-  while(s.accumulated>=interval&&attempted++<3&&!input.down){
-    s.accumulated-=interval;
-    const index=(s.lastStepFoot+1)%2;
+  const request=decideHybridStep(s,input,travelled,turning);
+  if(request){
+    s.accumulated=Math.max(0,s.accumulated-request.threshold);
+    const index=request.index;
     const foot=s.feet[index],side=index===0?-1:1;
     const lead=running?7:deliberate?1.6:squeeze?1.4:
       input.injury>=2?2.2:4.5;
@@ -92,6 +86,7 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
     const hip=centerHip(index,predicted);
     const requested=lateral(predicted,facing,side,width);
     let target=fitLandingToHip(requested,hip,horizontalLegReach()-1);
+    let valid=true;
     if(input.footAllowed&&!input.footAllowed(target)){
       const candidates=[.75,.5,.25,0].map(t=>({
         x:mix(foot.plantedAt.x,target.x,t),
@@ -99,17 +94,19 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
       }));
       const allowed=candidates.find(p=>input.footAllowed!(p)&&
         distance(p,hip)<=horizontalLegReach()-1);
-      if(!allowed){s.starvations++;s.accumulated=interval;break;}
-      target=allowed;
+      if(!allowed){s.starvations++;s.accumulated=interval;valid=false;}
+      else target=allowed;
     }
+    if(valid){
     foot.swingFrom=clone(foot.plantedAt);foot.swingTo=clone(target);
     foot.fromYaw=foot.worldYaw;foot.targetYaw=input.rootYaw;
     foot.phase='swinging';foot.contact=false;
     foot.phaseStart=input.time;foot.phaseDuration=0;
     foot.swingDuration=interval/Math.max(7,input.speed);
     foot.lastTouchdown=-100;
-    foot.reason='locomotion';
+    foot.reason=request.reason;
     s.lastStepFoot=index;s.lastStepAt=input.time;s.stepsTaken++;
+    }
   }
   const result=s.feet.map((f,i)=>{
     if(f.phase==='swinging'){
