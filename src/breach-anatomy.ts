@@ -10,16 +10,27 @@ export const ANATOMY={
   headRest:{x:0,y:10,z:0},
   neutralHip:20.2,
 } as const;
+/** These are externally reachable buttplate contacts, NOT the receiver or
+ * stock midpoint. The chest is 14 wide (+/-7 Z), with a 3.5-deep stock.
+ * The buttplate remains lateral to the torso rather than inside it. */
 export function stockPocket(mode:Handling):Anchor3{
-  const y=mode==='ads'?7.5:mode==='high'?6.3:
-    mode==='point'?5.4:mode==='ready'?4.5:
-    mode==='short'?4.0:2.9;
-  return {x:mode==='short'?-3.9:.7,y,z:4.3};
+  switch(mode){
+    case 'high':return {x:1.4,y:5.9,z:8.6};
+    case 'low':return {x:1.6,y:2.8,z:8.6};
+    case 'ready':return {x:1.8,y:4.6,z:8.6};
+    case 'short':return {x:-2.9,y:-2.6,z:10.0};
+    case 'point':return {x:3.7,y:5.5,z:8.6};
+    case 'ads':return {x:3.1,y:7.7,z:8.6};
+  }
 }
 export function elbowCorridor(mode:Handling,side:-1|1):Anchor3{
-  const tucked=mode==='short',raised=mode==='high'||mode==='ads';
-  return {x:tucked?4:raised?6:5,y:tucked?-6:raised?-2.5:-4.7,
-    z:side*(tucked?6.8:raised?9:8.4)};
+  // A bent arm's preferred elbow stays below the shoulder and inside its
+  // outer contour. High-ready / short-stock strongly tuck towards the ribs.
+  const tuck=mode==='short'?1:mode==='high'?.88:
+    mode==='low'?.68:mode==='ready'?.68:
+    mode==='point'?.48:.38;
+  return {x:mode==='short'?2.8:4.8-tuck,
+    y:-8.1-1.7*tuck,z:side*(7.9-1.25*tuck)};
 }
 export function anchorGap(a:Anchor3,b:Anchor3){
   return Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z);
