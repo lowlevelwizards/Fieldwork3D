@@ -3,6 +3,7 @@
  */
 import type {FootstepInput,FootstepState} from './breach-footsteps.ts';
 import {horizontalLegReach} from './breach-leg-geometry.ts';
+import {supportZone} from './breach-support-zone.ts';
 import {angleDifference,BOOT_REPLANT_ERROR}
   from './breach-foot-yaw.ts';
 type Pt={x:number;y:number};
@@ -44,7 +45,9 @@ export function decideHybridStep(
     s.feet[next].phase!=='landing')return null;
  const reaches=s.feet.map(f=>dist(f.plantedAt,input.position));
  const urgent=Math.max(...reaches)>horizontalLegReach()-2.1;
- const needsSettle=!moving&&reaches[next]>6.8;
+ const offset=supportZone(s.feet,input.position).offset;
+ const needsSettle=!moving&&(reaches[next]>6.8||
+   (offset>3.8&&input.time-s.lastStepAt>.55));
  const residualYaw=!moving&&Math.abs(angleDifference(
    s.feet[next].worldYaw,input.rootYaw))>BOOT_REPLANT_ERROR;
  if(!moving&&!pivot&&!needsSettle&&!residualYaw)return null;
