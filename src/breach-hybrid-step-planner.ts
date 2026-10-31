@@ -10,6 +10,7 @@ export type HybridStepRequest={index:0|1;reason:'locomotion'|'turn'|'settle';thr
 export type HybridPlanningState={
  feet:readonly [FootstepState,FootstepState];lastStepFoot:number;
  lastStepAt:number;accumulated:number;lastFacing:number;
+ mode:string;shuffleLead:number;shuffleNext:'lead'|'follow';
 };
 export function hybridStepThreshold(input:FootstepInput){
  const run=input.gait==='run',pie=input.gait==='pie',
@@ -34,7 +35,9 @@ export function decideHybridStep(
  const ready=input.time-s.lastStepAt>=
     (input.gait==='run'?.125:input.gait==='pie'?.22:.18);
  if(!ready)return null;
- const next=(1-s.lastStepFoot) as 0|1;
+ const side=s.mode==='strafe-left'||s.mode==='strafe-right';
+ const next=(side?(s.shuffleNext==='lead'?
+   s.shuffleLead:1-s.shuffleLead):1-s.lastStepFoot) as 0|1;
  if(s.feet[next].phase!=='planted'&&s.feet[next].phase!=='recovering'&&
     s.feet[next].phase!=='landing')return null;
  const reaches=s.feet.map(f=>dist(f.plantedAt,input.position));
