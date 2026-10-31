@@ -24,7 +24,7 @@ export function handlingPose(input:{aim:number;moving:number;
   if(input.aim>=.82)return 'ads';
   if(input.aim>=.20)return 'point';
   if(input.moving>.32)return 'low';
-  return 'high';
+  return 'ready';
 }
 export function clampReach(from:THREE.Vector3,target:THREE.Vector3,
   length:number):THREE.Vector3{
@@ -96,8 +96,14 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
     // Continuous keyed shoulder posture instead of snapping between
     // high, point and ADS at an arbitrary threshold.
     const base=profile.pitch;
+    // Actual gameplay aim is a continuous presentation parameter. Short
+    // stocking is an explicit collision response and remains compressed.
+    // Shared by authoritative muzzle construction and visible firearm.
+    const blendAim=Math.max(0,Math.min(1,aim??0));
     const roll=aim===undefined||mode==='short'?base:
-      (-.12*(1-Math.min(1,aim/.30)));
+      base*(1-blendAim)+
+      (blendAim<.82?handlingProfile('point',input.weapon).pitch:
+        handlingProfile('ads',input.weapon).pitch)*blendAim;
     const sr=Math.sin(roll),cr=Math.cos(roll);
     const shoulderY=(aim===undefined||mode==='short'?
       profile.stockY:
