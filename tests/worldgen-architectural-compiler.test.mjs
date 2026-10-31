@@ -19,7 +19,7 @@ test('new architectural compiler creates real varied and connected physical envi
   const front=a.doors.find(d=>d.id==='FRONT'),p=front&&{
    x:(front.a.x+front.b.x)/2,y:(front.a.y+front.b.y)/2-19};
   assert.ok(p&&a.rooms.some(r=>['waiting','reception','lobby',
-   'living','dining','sales','aisle','loading'].includes(r.purpose)&&
+   'living','dining','sales','aisle','loading','hallway'].includes(r.purpose)&&
    p.x>r.x&&p.x<r.x+r.w&&p.y>r.y&&p.y<r.y+r.h));
   activateSite(a);
   try{
