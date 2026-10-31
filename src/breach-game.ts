@@ -2021,7 +2021,9 @@ export function stepSession(s:Session,dt:number){
         (a.suppression>.65?h*.075:0));
       if(a.morale<.12&&a.suppression>.55){
         a.surrendered=true;a.health=0;a.injuryStage=3;
+        a.lastDownAt=s.seconds;a.downPose='slump';
         a.velocity=0;a.nav=[];a.plan=[];
+        a.reload=0;a.reloadMode=null;
         notify(s,a.name+' SURRENDERED');
         battleEvent(s,'surrender',a,a.p,a.name+' SURRENDERED');
       }
