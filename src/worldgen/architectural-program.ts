@@ -1,0 +1,118 @@
+/** Architectural blueprints: area and circulation come before geometry.
+ * Each slot is a rectangle; adjacent matching roles become one continuous
+ * functional zone (including L-shaped rooms). Void cells cut the footprint.
+ */
+import type {BuildingArchetype} from '../breach-site.ts';
+export type Blueprint={kind:BuildingArchetype;family:string;
+  widths:readonly number[];depths:readonly number[];
+  cells:readonly (readonly (string|null)[])[];
+  /** Frontage must always open into a public / circulation space. */
+  front:{col:number;row:number};
+};
+type Spec=Omit<Blueprint,'kind'>;
+const layouts:Record<BuildingArchetype,Spec>={
+ house:{family:'offset-L / domestic hall',widths:[172,68,152,125],
+  depths:[135,133,113],front:{col:1,row:2},cells:[
+   ['bedroom','hallway','bedroom','bathroom'],
+   ['living','hallway','kitchen','kitchen'],
+   ['living','living','dining',null]]},
+ townhouse:{family:'deep-narrow / side passage',widths:[160,62,152],
+  depths:[105,127,128,115],front:{col:0,row:3},cells:[
+   ['bedroom','hallway','bathroom'],
+   ['bedroom','hallway','study'],
+   ['living','hallway','kitchen'],
+   ['living','living','dining']]},
+ apartment:{family:'paired units / shared corridor',widths:[160,59,162,132],
+  depths:[132,128,105],front:{col:1,row:2},cells:[
+   ['bedroom','hallway','bedroom','bathroom'],
+   ['living','hallway','living','kitchen'],
+   ['living','lobby','lobby',null]]},
+ retail:{family:'open sales / service backline',widths:[185,155,83,140],
+  depths:[138,148,112],front:{col:0,row:2},cells:[
+   ['stockroom','stockroom','service','office'],
+   ['sales','sales','checkout','storage'],
+   ['sales','sales','checkout',null]]},
+ office:{family:'reception / office spine',widths:[166,65,162,142],
+  depths:[125,142,109],front:{col:2,row:2},cells:[
+   ['office','hallway','meeting','break'],
+   ['office','hallway','cubicles','cubicles'],
+   ['reception','hallway','lobby','storage']]},
+ garage:{family:'paired service bays / reception',widths:[190,66,190,144],
+  depths:[158,146,107],front:{col:0,row:2},cells:[
+   ['bay','aisle','bay','workshop'],
+   ['bay','aisle','bay','parts'],
+   ['waiting','reception','office',null]]},
+ warehouse:{family:'large storage / loading spine',widths:[192,68,190,154],
+  depths:[166,161,115],front:{col:3,row:2},cells:[
+   ['storage','aisle','storage','loading'],
+   ['storage','aisle','packing','loading'],
+   ['office','aisle','service','loading']]},
+ restaurant:{family:'front dining / rear working kitchen',widths:[181,159,79,144],
+  depths:[149,143,110],front:{col:1,row:2},cells:[
+   ['kitchen','kitchen','pantry','service'],
+   ['dining','dining','service','restroom'],
+   ['dining','dining','reception',null]]},
+ motel:{family:'guest-room bar / access gallery',widths:[139,139,139,139],
+  depths:[158,64,116],front:{col:0,row:2},cells:[
+   ['guest','guest','guest','guest'],
+   ['hallway','hallway','hallway','hallway'],
+   ['reception','reception','laundry',null]]},
+ utility:{family:'equipment plant / service corridor',widths:[188,68,172,116],
+  depths:[149,145,104],front:{col:1,row:2},cells:[
+   ['equipment','hallway','equipment','control'],
+   ['equipment','hallway','maintenance','service'],
+   ['storage','hallway','service',null]]},
+ clinic:{family:'public waiting / clinical spine',widths:[178,69,166,139],
+  depths:[145,144,110],front:{col:1,row:2},cells:[
+   ['exam','hallway','exam','supply'],
+   ['treatment','hallway','exam','staff'],
+   ['waiting','waiting','reception','reception']]}
+};
+export const ARCHITECTURAL_FAMILIES:readonly BuildingArchetype[]=
+ ['house','townhouse','apartment','retail','office','garage',
+  'warehouse','restaurant','motel','utility','clinic'];
+const publicEntry=new Set(['living','lobby','reception','waiting','sales',
+ 'dining','hallway','aisle','loading']);
+export function architecturalBlueprint(kind:BuildingArchetype,seed=0):Blueprint{
+ const original=layouts[kind];
+ // Independent architectural stream: variation never changes the intended
+ // frontage, program or circulation, only bay sizes and left/right orientation.
+ let n=(seed^0x45d9f3b)>>>0;
+ const rng=()=>{n=(Math.imul(n,1664525)+1013904223)>>>0;
+   return n/4294967296;};
+ const mirror=rng()<.5;
+ const widths=original.widths.map(w=>Math.round(w*(.94+rng()*.12)));
+ const depths=original.depths.map(h=>Math.round(h*(.95+rng()*.10)));
+ const cells=original.cells.map(row=>mirror?[...row].reverse():[...row]);
+ return {kind,family:original.family+(mirror?' / mirrored':''),
+  widths:mirror?widths.reverse():widths,depths,cells,
+  front:{col:mirror?widths.length-1-original.front.col:original.front.col,
+    row:original.front.row}};
+}
+export function blueprintIssues(b:Blueprint):string[]{
+ const issues:string[]=[];
+ if(b.cells.length!==b.depths.length||
+   b.cells.some(row=>row.length!==b.widths.length))
+   issues.push('invalid blueprint grid');
+ const entry=b.cells[b.front.row]?.[b.front.col];
+ if(!entry||!publicEntry.has(entry))issues.push('front entry not public');
+ const roles=b.cells.flat().filter((x):x is string=>!!x);
+ if(b.kind==='motel'&&roles.filter(x=>x==='guest').length<4)
+   issues.push('motel missing guest room bank');
+ if(b.kind==='clinic'&&entry==='exam')issues.push('clinic entry in exam');
+ if(b.widths.some(w=>w<49)||b.depths.some(h=>h<56))
+   issues.push('unusable room dimension');
+ // Hallways are narrow strips, not arbitrary full-square rooms.
+ for(let y=0;y<b.cells.length;y++)for(let x=0;x<b.widths.length;x++)
+   if(b.cells[y][x]==='hallway'&&
+      Math.min(b.widths[x],b.depths[y])>79)
+     issues.push('oversized corridor');
+ const total=(purpose:string)=>b.cells.reduce((area,row,y)=>
+   area+row.reduce((sum,role,x)=>sum+(role===purpose?
+     b.widths[x]*b.depths[y]:0),0),0);
+ if(b.kind==='house'&&total('kitchen')>total('living')*1.1)
+   issues.push('kitchen dominates living');
+ if(b.kind==='restaurant'&&total('dining')<total('kitchen'))
+   issues.push('undersized dining area');
+ return issues;
+}
