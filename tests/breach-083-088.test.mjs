@@ -60,7 +60,7 @@ test('084: four-person stacks reserve distinct positions at the same door',()=>{
     const a=nodes[i].p,b=nodes[j].p;
     assert.ok(Math.hypot(a.x-b.x,a.y-b.y)>22,'slots are separated');
   }
-  assert.ok(planSquadEntry(s,'FRONT'));
+  assert.ok(planSquadEntry(s,'FRONT'),s.events.at(-1));
   assert.ok(team(s).every(a=>a.plan.some(n=>n.kind==='sync')),
     'all four receive shared synchronized GO code');
   assert.ok(team(s)[0].plan.some(n=>n.kind==='door'),

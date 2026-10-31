@@ -42,7 +42,11 @@ export function entryLanes(door:Door,from:Pt,count:number,
     y:chosen.y+inward.y*84+tangent.y*sign*70};
    slots.push({point:chosen,look,side:sign<0?'left':'right',depth});
   }
-  if(slots.length===count)return slots;
+  // A row of positions on a two-unit line is not a four-person entry.
+  const laterals=slots.map(s=>(s.point.x-center.x)*tangent.x+
+    (s.point.y-center.y)*tangent.y);
+  const span=Math.max(...laterals)-Math.min(...laterals);
+  if(slots.length===count&&(count<=2||span>=18))return slots;
  }
  return [];
 }

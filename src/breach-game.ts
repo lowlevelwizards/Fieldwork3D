@@ -608,7 +608,10 @@ export function planSquadEntry(s:Session,doorId:string){
   const alive=team(s).filter(a=>a.health>0);
   if(!alive.length)return false;
   const start=finalPoint(alive[0]);
-  const slots=entryLanes(door,start,alive.length,passable);
+  // Only offer physically routable sectors; a narrow hall may have a
+  // wall-crossing candidate that is clear at its endpoint but unreachable.
+  const slots=entryLanes(door,start,alive.length,p=>
+    passable(p)&&!!routeWithIntel(s.intel,start,p).length);
   if(slots.length!==alive.length){
     notify(s,'SQUAD ENTRY BLOCKED · NO DISTINCT INTERIOR LANES');
     return false;
