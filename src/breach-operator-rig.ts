@@ -13,6 +13,7 @@ import {contactReaction,type BashRole} from './breach-contact-reactions.ts';
 import {kickMotion} from './breach-door-actions.ts';
 import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
 import {reloadHandKey} from './breach-reload-motion.ts';
+import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
 import {fallAngles,hitStagger,type FallPose,type WoundRegion}
   from './breach-wounds.ts';
 import {weaponGrips,handlingPose,clampReach,
@@ -55,7 +56,7 @@ export type OperatorRig={
   footsteps:FootstepScheduler;
   /** Non-authoritative request for the motor/controller to reposition. */
   reachRequest:null|{kind:'door';distance:number};
-  gripError:number;legGap:[number,number];
+  gripError:number;stockError:number;legGap:[number,number];
   stridePhase:number;colors:Map<THREE.MeshStandardMaterial,THREE.Color>;
   dispose:()=>void;
 };
@@ -130,7 +131,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     legacyArms:[new THREE.Group(),new THREE.Group()],
     lastTime:-1,lastPose:null,stridePhase:0,
     footsteps:createFootstepScheduler(),reachRequest:null,
-    gripError:0,legGap:[0,0],
+    gripError:0,stockError:0,legGap:[0,0],
     dispose:()=>{root.traverse(obj=>{if(obj instanceof THREE.Mesh){
       obj.geometry.dispose();
       const m=obj.material as THREE.Material;m.dispose();
@@ -355,6 +356,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     recoil,aimBlend:p.handlingOverride?undefined:
       p.aimBlend??(p.aiming?1:0)});
   r.gripError=fit.contactError;
+  r.stockError=fit.stockError;
   // Contact coordinates and visible weapon use one rigid transform.
   r.weapon.scale.set(data.lengthScale,1,1);
   r.weapon.rotation.copy(fit.rotation);
@@ -436,7 +438,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
-    const shoulder=P(1,4,sign*7);
+    const shoulderPosition=i===0?ANATOMY.shoulderLeft:ANATOMY.shoulderRight;
+    const shoulder=P(shoulderPosition.x,shoulderPosition.y,shoulderPosition.z);
     const grip=i===0?leftGrip:rightGrip;
     let desired:THREE.Vector3;
     if(p.down&&(i===0&&releaseLeft||i===1&&releaseRight)){
@@ -462,7 +465,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     if(p.deterministic)arm.bend.set(5,-2,sign*7);
     // Tucked elbow corridor: down/forward and near the rib line.
     // The arm should not seek a skyward pole during lateral motion.
-    const preferred=P(5,-4,sign*7);
+    const corridor=elbowCorridor(handling,sign as -1|1);
+    const preferred=P(corridor.x,corridor.y,corridor.z);
     let solved=solveTwoBone(shoulder,wrist,10,10,
       preferred,ARM_LIMITS,arm.bend);
     if(intersectsTorso(solved.joint,.35)){
