@@ -783,9 +783,10 @@ export class TacticalScene3D{
         blocked:actor.blockedTime>.14&&
           (actor.nav.length>0||actor.plan.some(n=>
             n.kind==='move'||n.kind==='door'||n.kind==='pie')),
-        footAllowed:pt=>footAnchorReachable(actor.p,pt,s.doors)&&
-          !s.operators.some(other=>other!==actor&&
-            Math.hypot(other.p.x-pt.x,other.p.y-pt.y)<5.5),
+        // Moving teammates are not static terrain. They may influence
+        // future foot placement but must not invalidate a planted boot
+        // every frame while the two operators pass each other.
+        footAllowed:pt=>footAnchorReachable(actor.p,pt,s.doors),
         deterministic:!!replay,replayFeet:replay?.feet[actor.id],
         pelvisYaw:replay?.pelvisYaw[actor.id],
         travelYaw:replay?.travelYaw[actor.id],

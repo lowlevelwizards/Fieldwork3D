@@ -63,6 +63,21 @@ export function safePlantPoint(input:FootstepInput,index:number):GroundPoint{
     }
   return copy(input.position);
 }
+/** Explicit input-boundary validation for corrupt/legacy replay tracks.
+ * This is a deterministic seek reset, not a live renderer correction.
+ * Normal recorded contacts remain untouched; only impossible samples reset.
+ */
+export function validatedReplayFeet(input:FootstepInput,
+  feet:[FootTarget,FootTarget]):[FootTarget,FootTarget]{
+  return feet.map((foot,i):FootTarget=>{
+    const gap=distance(input.position,foot.position);
+    if(Number.isFinite(gap)&&gap<22)return foot;
+    const safe=safePlantPoint(input,i);
+    return {position:safe,height:0,worldYaw:input.rootYaw,
+      phase:'recovering',contact:true,reason:'settle',
+      progress:1,pitch:0};
+  }) as [FootTarget,FootTarget];
+}
 function createFoot():FootstepState{
   return {phase:'planted',plantedAt:{x:0,y:0},
     swingFrom:{x:0,y:0},swingTo:{x:0,y:0},phaseStart:0,
@@ -250,22 +265,37 @@ export function advanceFootsteps(s:FootstepScheduler,source:FootstepInput):
   // never teleport the boots merely because clearance changed.
   if(discontinuity)resetFootsteps(s,input);
   for(const foot of s.feet)progress(foot,input);
-  if(input.footAllowed&&!input.down){
+  // One scheduled recovery at a time. The old path could start *both*
+  // planted feet recovering on the same frame, then the renderer changed
+  // their targets again. An obstructed contact must finish an intentional
+  // swing before another recovery can begin.
+  const recoveringBusy=s.feet.some(f=>f.phase==='unloading'||
+    f.phase==='swinging');
+  if(!!input.footAllowed&&!input.down&&!recoveringBusy&&
+      input.time-s.lastStepAt>.11){
+    let selected=-1,urgency=0;
     for(let i=0;i<2;i++){
       const foot=s.feet[i],anchor=foot.plantedAt;
-      const unsafe=!input.footAllowed(anchor)||
-        (!!input.blocked&&distance(anchor,input.position)>10.5)||
-        (input.speed<6&&distance(anchor,input.position)>13.5);
-      if(!unsafe||foot.phase==='swinging'||foot.phase==='unloading')continue;
-      const next=safePlantPoint(input,i);
-      if(distance(next,anchor)<.02)continue;
-      foot.swingFrom=copy(anchor);foot.swingTo=next;
-      foot.fromYaw=foot.worldYaw;foot.targetYaw=input.rootYaw;
-      foot.phase='unloading';foot.contact=true;foot.reason='settle';
-      foot.phaseStart=input.time;foot.phaseDuration=.035;
-      foot.swingDuration=.20;foot.landingDuration=.065;
-      foot.recoveryDuration=.075;s.lastStepFoot=i;
-      s.lastStepAt=input.time;
+      const gap=distance(anchor,input.position);
+      const blockedContact=!!input.footAllowed&&
+        !input.footAllowed(anchor);
+      const excessive=gap>(input.blocked?10.5:input.speed<6?11.0:12.5);
+      if(!blockedContact&&!excessive)continue;
+      const score=(blockedContact?20:0)+gap;
+      if(score>urgency){urgency=score;selected=i;}
+    }
+    if(selected>=0){
+      const foot=s.feet[selected];
+      const next=safePlantPoint({...input,speed:0},selected);
+      if(distance(next,foot.plantedAt)>.1){
+        foot.swingFrom=copy(foot.plantedAt);foot.swingTo=next;
+        foot.fromYaw=foot.worldYaw;foot.targetYaw=input.rootYaw;
+        foot.phase='unloading';foot.contact=true;foot.reason='settle';
+        foot.phaseStart=input.time;foot.phaseDuration=.055;
+        foot.swingDuration=.22;foot.landingDuration=.065;
+        foot.recoveryDuration=.085;s.lastStepFoot=selected;
+        s.lastStepAt=input.time;
+      }
     }
   }
   const facing=input.facingYaw??-input.rootYaw;
