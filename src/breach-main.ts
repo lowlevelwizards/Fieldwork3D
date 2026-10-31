@@ -31,6 +31,7 @@ import './breach-style.css';
 import {tacticalIcon,decorateIconButton} from './ui/tactical-icons.ts';
 import {contextActionChoices} from './ui/context-actions.ts';
 import {PaletteMotion} from './ui/palette-motion.ts';
+import {TacticalFeedback} from './ui/tactical-feedback.ts';
 import {paintFogMask,FOG_WIDTH,FOG_HEIGHT} from './breach-fog-mask.ts';
 
 const el=<T extends HTMLElement>(id:string)=>{
@@ -39,6 +40,12 @@ const el=<T extends HTMLElement>(id:string)=>{
   return node as T;
 };
 const canvas=el<HTMLCanvasElement>('breachCanvas');
+const feedbackLayer=document.createElement('canvas');
+feedbackLayer.id='tacticalFeedback';
+feedbackLayer.setAttribute('aria-hidden','true');
+document.body.append(feedbackLayer);
+const feedbackDraw=feedbackLayer.getContext('2d');
+const tacticalFeedback=new TacticalFeedback();
 const ctx=canvas.getContext('2d');
 if(!ctx)throw Error('Canvas 2D unavailable');
 const draw:CanvasRenderingContext2D=ctx;
@@ -272,6 +279,10 @@ const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 function layout(){
   cssW=Math.max(1,innerWidth);cssH=Math.max(1,innerHeight);
   dpr=Math.min(devicePixelRatio||1,2);
+  feedbackLayer.width=Math.round(cssW*dpr);
+  feedbackLayer.height=Math.round(cssH*dpr);
+  feedbackLayer.style.width=cssW+'px';
+  feedbackLayer.style.height=cssH+'px';
   canvas.width=Math.round(cssW*dpr);canvas.height=Math.round(cssH*dpr);
   canvas.style.width=cssW+'px';canvas.style.height=cssH+'px';
   stage?.resize(cssW,cssH);
@@ -313,7 +324,7 @@ function turnCamera(shift:number){
 const uid=(id:string)=>team(state).find(o=>o.id===id);
 function selectUnit(id:string){
   const actor=uid(id);if(!actor||actor.health<=0)return;
-  uiClickTone('select');selected=id;looking=false;
+  uiClickTone('select');tacticalFeedback.emit('select',actor.p);selected=id;looking=false;
   selectedNode=null;doorFocusId=null;
   doorMenuDismissedId=null;updateHud();
 }
@@ -529,6 +540,7 @@ ui.context.addEventListener('click',event=>{
   uiClickTone('command');
   const a=uid(selected);
   if(!a)return;
+  const beforeErrors=state.events.length;
   const node=selectedPlanNode();
   const door=doorFocusId?focusedDoor(a,node):undefined;
   const current=plannedControl(state,selected,node?.id);
@@ -589,6 +601,10 @@ ui.context.addEventListener('click',event=>{
         state.events.push('DOOR NOT REACHABLE FROM THAT POINT');
       doorFocusId=null;doorMenuDismissedId=door?.id??null;break;
   }
+  const failed=state.events.length>beforeErrors;
+  tacticalFeedback.emit(failed?'error':'command',
+    door?doorCenter(door):node?.p??a.p,
+    failed?'Blocked':button.querySelector('.command-label')?.textContent??'');
   contextSignature='';updateHud();
 });
 // World-first status: repetitive instructions are hidden; critical events persist.
@@ -1405,13 +1421,14 @@ function useSelectedGround(pt:Pt){
       state.events.push('SELECT A DIFFERENT AIM POINT');
     looking=false;updateHud();return;
   }
+  const beforeRoute=uid(selected)?finalPoint(uid(selected)!):pt;
   if(!planMove(state,selected,pt))
     state.events.push(!intelPassable(pt,state.intel)?
       'DESTINATION BLOCKED · CHOOSE NEARBY FLOOR':
       'NO WALKABLE ROUTE · CHECK DOOR OR PATH');
   else{
     selectedNode=uid(selected)?.plan.at(-1)?.id??null;
-    
+    tacticalFeedback.emit('route',pt,undefined,beforeRoute);
   }
   updateHud();
 }
@@ -1530,7 +1547,7 @@ function reset(next=state.variant,siteSeed?:number){
   cursor=null;trace=null;zoom=1;panX=panY=0;
   fogStamp=-1;lastSoundShotId=0;lastEventAudio='';
   recorder=new MissionRecorder();recorder.capture(state,true);
-  layout();updateHud();
+  tacticalFeedback.clear();layout();updateHud();
 }
 ui.rook.addEventListener('click',()=>selectUnit('rook'));
 ui.back.addEventListener('click',()=>{
@@ -1765,6 +1782,7 @@ function insertAtRouteLine(screen:Pt):boolean{
     return true; // This was a route tap, not a new destination order.
   }
   canvas.dataset.lastRouteTap='inserted:'+hit.index;
+  tacticalFeedback.emit('node',hit.point);
   selectedNode=id;doorFocusId=null;contextSignature='';
   return true;
 }
@@ -1782,6 +1800,8 @@ function releasePointer(e:PointerEvent,cancelled=false){
         if(!moved)state.events.push('INVALID ORDER DESTINATION');
       }
       selectedNode=p.nodeId;doorFocusId=null;
+      const chosen=uid(selected)?.plan.find(n=>n.id===p.nodeId);
+      if(chosen)tacticalFeedback.emit('node',chosen.p);
     }else if(p.mode==='route'&&trace&&
       distance(trace[0],pt)>16){
       const points=[...trace,pt];
@@ -1954,7 +1974,17 @@ function tick(now:number){
   if(stage&&viewMode!=='plan2d')
     stage.update(state,selected,dt,doorFocusId,
       replaying&&replayOmniscient,replaying?replayPresentation:null);
-  render();updateContext();advanceContextPalette(dt);
+  render();
+  if(feedbackDraw){
+    feedbackDraw.setTransform(dpr,0,0,dpr,0,0);
+    feedbackDraw.clearRect(0,0,cssW,cssH);
+    const origin=selectedPlanNode()?.p??uid(selected)?.p;
+    const preview=state.phase==='planning'&&looking&&cursor&&origin?
+      {origin,direction:cursor,pie:lookMode==='pie'}:undefined;
+    tacticalFeedback.draw(feedbackDraw,p=>worldToScreen(p,7),
+      performance.now(),preview);
+  }
+  updateContext();advanceContextPalette(dt);
   if(perfOverlay){
     const end=performance.now(),frame=end-perfStart;
     perfFrames++;perfFrameSum+=frame;perfSimSum+=perfRenderStart-perfStart;
