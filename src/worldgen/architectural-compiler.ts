@@ -4,6 +4,7 @@
  * One purpose can occupy an L-shaped union of several rectangular cells.
  */
 import {architecturalBlueprint,type Blueprint} from './architectural-program.ts';
+import {circulationFor,circulationScore,loopChance,type CirculationStyle} from './circulation-grammar.ts';
 import {type Site,type Room,type BuildingArchetype,type SiteScale,seeded} from '../breach-site.ts';
 import {type Pt,type Door,type Segment} from '../breach-core.ts';
 type Cell={col:number;row:number;role:string;room:Room};
@@ -24,12 +25,13 @@ const straight=(a:Cell,b:Cell)=>{
  if(a.role===b.role&&openRoles.has(a.role))return true;
  return a.room.kind==='hall'&&b.room.kind==='hall';
 };
-const weight=(a:Cell,b:Cell,rng:()=>number)=>{
- if(straight(a,b))return -100;
- if(a.room.kind==='hall'||b.room.kind==='hall')return 0+rng()*4;
- if(publicRoles.has(a.role)&&publicRoles.has(b.role))return 5+rng()*5;
- if(protectedRoles.has(a.role)&&protectedRoles.has(b.role))return 45+rng()*4;
- return 15+rng()*9;
+const weight=(a:Cell,b:Cell,rng:()=>number,style:CirculationStyle)=>{
+ if(straight(a,b))return -120;
+ const semantic=circulationScore(style,
+  {role:a.role,hall:a.room.kind==='hall'},
+  {role:b.role,hall:b.room.kind==='hall'});
+ const sensitive=protectedRoles.has(a.role)&&protectedRoles.has(b.role)?38:0;
+ return semantic+sensitive+rng()*6;
 };
 function cut(wall:Segment,id:string,walls:Segment[],doors:Door[]){
  const length=span(wall);
@@ -56,6 +58,7 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
    authored.cells[row].every(role=>role==='hallway'||role===null)?63:86,h*.81)))
  };
  const rng=seeded(seed^0x2a33bedd);
+ const circulationStyle=circulationFor(kind,seed);
  const xs=[80],ys=[92];
  for(const w of b.widths)xs.push(xs[xs.length-1]+w);
  for(const h of b.depths)ys.push(ys[ys.length-1]+h);
@@ -76,7 +79,8 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   const i=lookup.get(key(row,col));if(i===undefined)return false;
   const a=lookup.get(key(c.row,c.col))!,neighbor=cells[i];
   internal.push({a,b:i,wall,length:span(wall),orientation,
-   score:weight(c,neighbor,rng),free:straight(c,neighbor),selected:false});
+   score:weight(c,neighbor,rng,circulationStyle),
+   free:straight(c,neighbor),selected:false});
   return true;
  };
  let frontFound=false;
@@ -123,7 +127,7 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   if(edge.free)continue;
   const a=cells[edge.a],b=cells[edge.b];
   const optionalLoop=!edge.selected&&edge.length>=86&&
-    !protectedRoles.has(a.role)&&!protectedRoles.has(b.role)&&rng()<.10;
+    rng()<loopChance(circulationStyle,a,b);
   if(edge.selected||optionalLoop)cut(edge.wall,'D'+id++,walls,doors);
   else walls.push(edge.wall);
  }
@@ -190,7 +194,7 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  }
  const west=xs[0],east=xs[xs.length-1],north=ys[0],south=ys[ys.length-1];
  return {seed,name:b.family.toUpperCase(),archetype:kind,scale,
-   planFamily:b.family,programLocked:true,
+   planFamily:b.family,programLocked:true,circulationStyle,
    rooms:cells.map(c=>c.room),walls,doors,cover:[],
    entrance,spawn,enemies,objective,extract:point(frontX,frontY+117),
    roomCount:habitable.length,layout:'corridor',
