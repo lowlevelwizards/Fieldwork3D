@@ -137,9 +137,10 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
           const sx=shoulderPocket.x+dx-recoilX;
           const sy=shoulderPocket.y+recoilY;
           const sz=shoulderPocket.z+dz;
-          // The padded upper-pec pocket permits limited contact with the
-          // outer chest, but never a stock socket near the torso center.
-          if(sz<(mode==='short'?7.75:7.25))continue;
+          // Buttplate now nests into the outer padded chest contour. Hard
+          // lower limits still prevent tunnelling into the torso center;
+          // short-stock gets additional underarm clearance.
+          if(sz<(mode==='short'?7.10:6.78))continue;
           const px=sx+right[0],py=sy+right[1],pz=sz+right[2];
           const lx=sx+left[0],ly=sy+left[1],lz=sz+left[2];
           const rd=Math.hypot(px-1,py-4,pz-7);
