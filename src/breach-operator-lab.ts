@@ -13,6 +13,7 @@ import {timedHandling,smoothHandling,type HandlingTransition}
   from './breach-handling-transition.ts';
 import {lateralAxis,sideOffset,uncrossed} from './breach-locomotion.ts';
 import {bodyFromContacts} from './breach-body-motion.ts';
+import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH,LEG_HIP_SIDE} from './breach-leg-geometry.ts';
 import {LabMotionCache,LabHistoricalMotionCache,LabDistanceMotionCache,TRACK_DURATION,type LabTrack}
   from './breach-lab-tracks.ts';
 import type {WeaponId} from './breach-combat.ts';
@@ -424,10 +425,10 @@ function showDiagnostics(){
   })) as [Parameters<typeof footTruth>[0],Parameters<typeof footTruth>[1]]));
   const reachTruth=feet.map((foot,i)=>{
     const hip=measuredRig.hip.localToWorld(new THREE.Vector3(
-      0,0,i===0?-4.8:4.8));
+      0,0,i===0?-LEG_HIP_SIDE:LEG_HIP_SIDE));
     const ankle=new THREE.Vector3(foot.position.x,
       1.45+foot.height,foot.position.y);
-    return legReachTruth({hip,ankle,upper:9.7,lower:9.7});
+    return legReachTruth({hip,ankle,upper:LEG_UPPER_LENGTH,lower:LEG_LOWER_LENGTH});
   });
   diagnosticText.textContent=[
     'TIME '+clock.toFixed(3)+' / '+TRACK_DURATION.toFixed(2),

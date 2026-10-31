@@ -1073,7 +1073,7 @@ function paths(){
       let from=a.p;
       for(const node of plan){
         if(node.kind==='move'||node.kind==='door'){
-          const course=displayRouteCache.get(from,node.p,state.intel).points;
+          const course=displayRouteCache.get(from,node.p,state.intel,state.phase==='planning').points;
           for(const p of course)draw.lineTo(p.x,p.y);
           from=node.p;
         }else if(node.kind==='pie'&&node.arc?.length){
@@ -1180,7 +1180,7 @@ function renderProjectedPlans(){
     let previous=a.p;
     for(const n of a.plan){
       const cachedRoute=n.kind==='move'||n.kind==='door'?
-        displayRouteCache.get(previous,n.p,state.intel):null;
+        displayRouteCache.get(previous,n.p,state.intel,state.phase==='planning'):null;
       const steps=n.kind==='pie'?n.arc??[]:cachedRoute?.points??[];
       if(steps.length){
         draw.beginPath();

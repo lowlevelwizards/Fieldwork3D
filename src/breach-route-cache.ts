@@ -10,6 +10,8 @@ export function intelRouteFingerprint(intel:IntelState){
     .map(([id,angle])=>id+':'+angle.toFixed(2)).join(',');
   return [intel.mode,sorted(intel.walls),sorted(intel.cover),
     sorted(intel.doors),doors,activeSite()?.seed??'standard',
+    activeSite()?.scale??'standard',
+    JSON.stringify(activeSite()?.bounds??null),
     WALLS.length,COVER.length].join('|');
 }
 export class DisplayRouteCache{
@@ -17,7 +19,7 @@ export class DisplayRouteCache{
   private cache=new Map<string,DisplayRoute>();
   readonly sizeLimit=180;
   invalidations=0;computations=0;
-  get(from:Pt,to:Pt,intel:IntelState):DisplayRoute{
+  get(from:Pt,to:Pt,intel:IntelState,exactOrigin=false):DisplayRoute{
     const known=intelRouteFingerprint(intel);
     if(this.knownKey!==known){
       this.cache.clear();this.knownKey=known;this.invalidations++;
@@ -25,7 +27,8 @@ export class DisplayRouteCache{
     // Use a broad origin bin only for visual routes; physical motor paths
     // remain exact. A moving actor must not trigger A* every frame.
     const grid=12;
-    const ox=Math.round(from.x/grid)*grid,oy=Math.round(from.y/grid)*grid;
+    const ox=exactOrigin?from.x:Math.round(from.x/grid)*grid;
+    const oy=exactOrigin?from.y:Math.round(from.y/grid)*grid;
     const key=ox+','+oy+'>'+to.x.toFixed(2)+','+to.y.toFixed(2);
     const cached=this.cache.get(key);
     if(cached)return cached;
