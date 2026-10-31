@@ -10,6 +10,7 @@ import {classifyLocomotion} from './breach-locomotion.ts';
 import {decideHybridStep,hybridStepThreshold} from './breach-hybrid-step-planner.ts';
 import {advanceHybridContact,beginHybridContact,hybridFootTarget} from './breach-hybrid-contact.ts';
 import {hybridLanding} from './breach-hybrid-landing.ts';
+import {plannedBootYaw} from './breach-foot-yaw.ts';
 
 type Pt={x:number;y:number};
 const clone=(p:Pt)=>({x:p.x,y:p.y});
@@ -88,7 +89,8 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
     }else{
     const target=landing.position;
     foot.swingFrom=clone(foot.plantedAt);foot.swingTo=clone(target);
-    foot.fromYaw=foot.worldYaw;foot.targetYaw=input.rootYaw;
+    foot.fromYaw=foot.worldYaw;
+    foot.targetYaw=plannedBootYaw(foot.worldYaw,input.rootYaw);
     beginHybridContact(foot,input);
     foot.lastTouchdown=-100;
     foot.reason=request.reason;
