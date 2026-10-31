@@ -332,7 +332,7 @@ function updateContext(){
     '/'+(door?.id??'')+'/'+(node?.id??'-')+'/'+selected;
   if(contextSignature!==signature){
     contextSignature=signature;
-    lastContextSide=null;
+    // Preserve the preferred rail through stance/ammo/action updates.
     ui.context.replaceChildren();
     const primary=document.createElement('div');
     primary.className='context-primary';
@@ -377,6 +377,13 @@ function updateContext(){
       y:Math.min(feet.y,head.y)-17,
       w:Math.abs(head.x-feet.x)+58,
       h:Math.abs(head.y-feet.y)+34,weight:3});
+  }
+  // Known visible contacts also deserve clear sightlines. Hidden enemies must
+  // never enter the placement heuristic (that would leak fog-of-war intel).
+  for(const hostile of enemies(state)){
+    if(hostile.health<=0||!isSeen(state,hostile))continue;
+    const p=worldToScreen(hostile.p,20);
+    avoid.push({x:p.x-31,y:p.y-38,w:62,h:76,weight:4});
   }
   const paths:ScreenPath[]=[];
   // Avoid all friendly-authored routes, not only the selected unit's plan.
