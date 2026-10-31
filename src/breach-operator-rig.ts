@@ -94,6 +94,10 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   block(chest,0,0,0,10,12,14,cloth);
   block(chest,3,0,0,2.8,9,13,vest);
   block(chest,-3,1,0,2,8,11,vest);
+  // Low-poly padded upper-pec/shoulder contour is the visible buttplate
+  // contact. The stock seats into this pad rather than the arm geometry.
+  for(const sign of [-1,1])
+    block(chest,1.35,4.6,sign*6.05,3.8,3.1,2.0,vest);
   const pack=block(chest,-7,0,0,6,11,11,vest);
   head.position.y=10;
   block(head,0,-3,0,3.6,4,3.8,skin);

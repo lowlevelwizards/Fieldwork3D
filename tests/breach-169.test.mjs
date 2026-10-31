@@ -21,8 +21,8 @@ const rigPose=(mode)=>({
 test('169: stock seats medially without changing the visible buttplate or stock length',()=>{
  for(const mode of modes){
   const p=stockPocket(mode);
-  assert.ok(p.z>=6.78&&p.z<=7.4,'bad shoulder pocket '+mode);
-  if(mode!=='short')assert.ok(p.z<7.15,'stock still outboard '+mode);
+  assert.ok(p.z>=6.50&&p.z<=7.2,'bad shoulder pocket '+mode);
+  if(mode!=='short')assert.ok(p.z<6.8,'stock still outboard '+mode);
   for(const weapon of weapons){
    const fit=fitWeaponPose({weapon,handling:mode,yaw:0,recoil:0});
    const g=weaponGrips(weapon);
@@ -30,12 +30,12 @@ test('169: stock seats medially without changing the visible buttplate or stock 
    const rear=new THREE.Vector3(g.stockX*g.lengthScale,0,0)
      .applyEuler(fit.rotation).add(fit.origin);
    assert.ok(fit.stock.distanceTo(rear)<1e-6);
-   assert.ok(fit.stock.z>=(mode==='short'?7.10:6.78));
+   assert.ok(fit.stock.z>=(mode==='short'?6.60:6.35));
    assert.ok(fit.stockError<3);
    assert.ok(Number.isFinite(fit.contactError));
   }
  }
- assert.ok(stockPocket('short').z>stockPocket('ready').z+.3);
+ assert.ok(stockPocket('short').z>stockPocket('ready').z+.25);
  assert.ok(stockPocket('short').y<stockPocket('ready').y-5);
 });
 

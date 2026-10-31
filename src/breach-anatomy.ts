@@ -16,12 +16,12 @@ export const ANATOMY={
  * Short-stock remains lower under the arm with a little extra clearance. */
 export function stockPocket(mode:Handling):Anchor3{
   switch(mode){
-    case 'high':return {x:1.15,y:5.6,z:6.98};
-    case 'low':return {x:1.48,y:3.0,z:7.01};
-    case 'ready':return {x:1.62,y:4.5,z:6.98};
-    case 'short':return {x:-2.15,y:-2.0,z:7.36};
-    case 'point':return {x:2.44,y:5.3,z:6.97};
-    case 'ads':return {x:2.07,y:7.5,z:6.96};
+    case 'high':return {x:1.15,y:5.6,z:6.61};
+    case 'low':return {x:1.48,y:3.0,z:6.64};
+    case 'ready':return {x:1.62,y:4.5,z:6.61};
+    case 'short':return {x:-2.15,y:-2.0,z:6.93};
+    case 'point':return {x:2.44,y:5.3,z:6.61};
+    case 'ads':return {x:2.07,y:7.5,z:6.60};
   }
 }
 /** Target for a two-bone elbow. The rig converts this anatomical point to a
