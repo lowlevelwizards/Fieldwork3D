@@ -15,16 +15,16 @@ const compositions:Record<string,readonly Item[]>={
  checkout:[{id:'checkout',anchor:'nw'},{id:'display-rack',anchor:'se'}],
  stockroom:[{id:'rack',anchor:'nw'},{id:'box',anchor:'se'}],
  pantry:[{id:'shelf',anchor:'nw'},{id:'box',anchor:'se'}],
- restroom:[{id:'cabinet',anchor:'nw'}],
+ restroom:[{id:'toilet',anchor:'nw'},{id:'sink',anchor:'se'}],
  service:[{id:'rack',anchor:'nw'},{id:'cart',anchor:'se'}],
  equipment:[{id:'generator',anchor:'nw'},{id:'tank',anchor:'se'}],
  control:[{id:'control-panel',anchor:'nw'},{id:'desk',anchor:'se'}],
  lobby:[{id:'desk',anchor:'nw'},{id:'armchair',anchor:'se'}],
  living:[{id:'sofa',anchor:'nw'},{id:'tv-stand',anchor:'se'},{id:'coffee-table',anchor:'west'}],
- kitchen:[{id:'counter',anchor:'nw'},{id:'fridge',anchor:'se'},{id:'dining-table',anchor:'west'}],
+ kitchen:[{id:'counter',anchor:'nw'},{id:'fridge',anchor:'se'},{id:'stove',anchor:'west'}],
  bedroom:[{id:'bed',anchor:'nw'},{id:'nightstand',anchor:'ne'},{id:'dresser',anchor:'se'}],
- guest:[{id:'bed',anchor:'nw'},{id:'dresser',anchor:'se'}],
- bathroom:[{id:'cabinet',anchor:'nw'}],
+ guest:[{id:'bed',anchor:'nw'},{id:'nightstand',anchor:'se'}],
+ bathroom:[{id:'toilet',anchor:'nw'},{id:'sink',anchor:'se'}],
  reception:[{id:'desk',anchor:'nw'},{id:'chair',anchor:'se'}],
  office:[{id:'desk',anchor:'nw'},{id:'filing-cabinet',anchor:'se'}],
  cubicles:[{id:'desk',anchor:'nw'},{id:'desk',anchor:'se'}],
@@ -41,8 +41,8 @@ const compositions:Record<string,readonly Item[]>={
  aisle:[{id:'rack',anchor:'nw'},{id:'rack',anchor:'se'}],
  packing:[{id:'workbench',anchor:'nw'},{id:'box',anchor:'se'}],
  waiting:[{id:'chair',anchor:'nw'},{id:'chair',anchor:'se'}],
- exam:[{id:'bed',anchor:'nw'},{id:'cart',anchor:'se'}],
- treatment:[{id:'bed',anchor:'nw'},{id:'cart',anchor:'se'}],
+ exam:[{id:'exam-bed',anchor:'nw'},{id:'cabinet',anchor:'se'}],
+ treatment:[{id:'exam-bed',anchor:'nw'},{id:'cart',anchor:'se'}],
  staff:[{id:'desk',anchor:'nw'},{id:'locker',anchor:'se'}],
  supply:[{id:'shelf',anchor:'nw'},{id:'cart',anchor:'se'}]
 };
@@ -105,11 +105,14 @@ export function furnishRooms(site:Site,seed:number):Site{
   const available=(zoneCounts.get(zone)??0)>1&&alternate?
    alternate[Math.min(index,alternate.length-1)]:ordinary;
   const placed:Obstacle[]=[];
-  // Rooms with poor wall clearance keep their tested legacy footprints.
-  if(room.w<100||room.h<95){
+  // Compact rooms still need defining fixtures (a toilet in a restroom,
+  // an exam bed in a clinic), but never force large furniture inside them.
+  if(room.w<72||room.h<72){
    output.push(...site.cover.filter(o=>inside(o,room)));continue;
   }
-  for(const [i,item] of available.entries()){
+  const compact=room.w<108||room.h<104;
+  const equipment=compact?available.slice(0,1):available;
+  for(const [i,item] of equipment.entries()){
    const asset=propDefinition(item.id);if(!asset||!asset.solid)continue;
    const w=Math.min(asset.width,room.w*.40);
    const h=Math.min(asset.depth,room.h*.38);
@@ -121,7 +124,7 @@ export function furnishRooms(site:Site,seed:number):Site{
    for(const anchor of order){
     const p=position(room,w,h,anchor);
     const candidate:Obstacle={...p,w,h,fixture:item.id,low:asset.cover==='low'};
-    if(site.doors.some(d=>Math.hypot(p.x-(d.a.x+d.b.x)/2,p.y-(d.a.y+d.b.y)/2)<Math.max(54,Math.max(w,h)/2+30)))continue;
+    if(site.doors.some(d=>Math.hypot(p.x-(d.a.x+d.b.x)/2,p.y-(d.a.y+d.b.y)/2)<Math.max(compact?39:54,Math.max(w,h)/2+(compact?19:30))))continue;
     if((site.openings??[]).some(o=>Math.hypot(p.x-(o.a.x+o.b.x)/2,
       p.y-(o.a.y+o.b.y)/2)<Math.max(65,Math.max(w,h)/2+32)))continue;
     if(reserved.some(q=>Math.abs(q.x-p.x)<w/2+24&&Math.abs(q.y-p.y)<h/2+24))continue;
