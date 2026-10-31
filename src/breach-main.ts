@@ -32,6 +32,7 @@ import {INTEL_MODES,doorKnown,wallKnown,roomKnown,
 import {orderFailureText} from './breach-nav-diagnostics.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {FrameMeter} from './breach-perf.ts';
+import {fixedStepBudget} from './breach-fixed-clock.ts';
 import './breach-style.css';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {contextActionChoices} from './ui/context-actions.ts';
@@ -2144,13 +2145,13 @@ function tick(now:number){
   const dt=Math.min(.08,Math.max(0,(now-last)/1000));last=now;
   let simSteps=0;
   if(!replaying&&state.phase==='running'){
-    accum+=dt;
-    while(accum>=1/60){
+    const budget=fixedStepBudget(accum,dt);
+    accum=budget.remaining;
+    for(let i=0;i<budget.steps;i++){
       previousRenderActors=renderSnapshot(state.operators);
       stepSession(state,1/60);
       simSteps++;
       recorder.capture(state,isMissionTerminal(state));
-      accum-=1/60;
     }
   }else{accum=0;previousRenderActors=null;}
   if(replaying&&replayFollow&&stage&&viewMode!=='plan2d'){
