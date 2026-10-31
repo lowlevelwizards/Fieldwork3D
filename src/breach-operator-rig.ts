@@ -248,7 +248,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const stanceRadius=Math.max(...targets.map(t=>
     Math.hypot(t.position.x-p.x,t.position.y-p.z)));
   const stanceDrop=clamp((stanceRadius-7.8)*.80,0,4.0);
-  r.hip.position.y=Math.max(17.12-crouch,
+  r.hip.position.y=Math.max(17.12-crouch-buckle*8-kneel*9,
     19-crouch+motion.pelvisY-stanceDrop-bash.brace-
       buckle*8-kneel*9);
   r.hip.position.z=motion.pelvisSide;
@@ -360,9 +360,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const leftGrip=P(data.supportX,data.supportY,-1.6);
   const rightGrip=P(data.primaryX,data.primaryY,1.8);
   let reaching=false,releaseLeft=false,releaseRight=false;
-  if(p.down){
-    // The support hand loses the foregrip first; the primary hand then
-    // releases as the body makes contact with the floor.
+  if(p.surrender){
+    // Deliberate visible surrender: discard the gun, kneel and raise both
+    // hands overhead. Unlike an incapacitated actor this is not a fall.
+    releaseLeft=true;releaseRight=true;
+    const raised=smooth(downProgress/.60);
+    leftGrip.set(-1,3+15*raised,-7);
+    rightGrip.set(-1,3+15*raised,7);
+  }else if(p.down){
+    // Support hand gives way first, then the firing hand releases.
     releaseLeft=downProgress>.16;releaseRight=downProgress>.53;
     leftGrip.set(-3,-7,-8);rightGrip.set(-2,-8,8);
   }else if(reloadActive){
