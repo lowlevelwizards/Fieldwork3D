@@ -108,7 +108,7 @@ export function resetFootsteps(s:FootstepScheduler,input:FootstepInput):void{
   for(let i=0;i<2;i++){
     const foot=s.feet[i],point=input.footAllowed?
       safePlantPoint(input,i):lateral(input.position,
-        input.facingYaw??-input.rootYaw,i===0?-1:1,
+        input.facingYaw??input.rootYaw,i===0?-1:1,
         stanceWidth(input));
     foot.phase='planted';foot.plantedAt=copy(point);
     foot.swingFrom=copy(point);foot.swingTo=copy(point);
