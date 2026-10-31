@@ -433,15 +433,28 @@ function validEditedPlan(s:Session,start:Pt,proposed:PlanNode[]){
   return true;
 }
 export function movePlanNode(s:Session,id:string,nodeId:number,p:Pt){
-  const a=party(s,id);if(!a||!intelPassable(p,s.intel)||!canEdit(s))return false;
+  const a=party(s,id);if(!a||!canEdit(s))return false;
   const proposed=copyNodes(a.plan);
-  if(!modifyNode(proposed,nodeId,{p}))return false;
-  const changed=proposed.find(n=>n.id===nodeId);
-  if(changed?.kind==='door'){
-    const doorway=s.doors.find(door=>door.id===changed.doorId);
-    if(!doorway||d(changed.p,doorCenter(doorway))>43)return false;
+  const index=proposed.findIndex(n=>n.id===nodeId);
+  if(index<0)return false;
+  const changed=proposed[index];
+  if(changed.kind==='pie')return false;
+  let point=p;
+  if(changed.kind==='move'){
+    const from=index>0?proposed[index-1].p:a.p;
+    const target=projectReachableGoal(from,p,{
+      canStand:at=>intelPassable(at,s.intel),
+      routeTo:(origin,goal)=>routeWithIntel(s.intel,origin,goal),
+    });
+    if(!target)return false;
+    point=target.point;
   }
-  if(changed?.kind==='pie')return false; // Pivot and side, not arc endpoint, define a pie.
+  if(!modifyNode(proposed,nodeId,{p:point}))return false;
+  if(changed.kind==='door'){
+    const doorway=s.doors.find(door=>door.id===changed.doorId);
+    if(!doorway||!intelPassable(point,s.intel)||
+      d(point,doorCenter(doorway))>43)return false;
+  }
   if(!validEditedPlan(s,a.p,proposed))return false;
   return edit(s,a,()=>{a.plan=proposed;});
 }
@@ -454,10 +467,16 @@ export function deletePlanNode(s:Session,id:string,nodeId:number){
   return edit(s,a,()=>{a.plan=proposed;});
 }
 export function insertPlanNode(s:Session,id:string,index:number,p:Pt){
-  const a=party(s,id);if(!a||!canEdit(s)||!intelPassable(p,s.intel))return false;
+  const a=party(s,id);if(!a||!canEdit(s))return false;
   const position=clamp(index,0,a.plan.length);
+  const from=position>0?a.plan[position-1].p:a.p;
+  const target=projectReachableGoal(from,p,{
+    canStand:at=>intelPassable(at,s.intel),
+    routeTo:(origin,goal)=>routeWithIntel(s.intel,origin,goal),
+  });
+  if(!target)return false;
   const proposed=copyNodes(a.plan);
-  proposed.splice(position,0,{id:s.nextId,kind:'move',p:clone(p)});
+  proposed.splice(position,0,{id:s.nextId,kind:'move',p:clone(target.point)});
   if(!validEditedPlan(s,a.p,proposed))return false;
   return edit(s,a,()=>{a.plan=proposed;s.nextId++;});
 }
