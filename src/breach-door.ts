@@ -32,9 +32,17 @@ export function doorApproach(from:Pt,d:Door):Pt|null{
     route(from,p).length).sort((a,b)=>dist(a,from)-dist(b,from))[0]??null;
 }
 export function initDoor(d:Door,i:number):Door{
-  return {...d,hinge:d.hinge??(i%3===0?'b':'a'),
-    swing:d.swing??(i%2===0?1:-1),
-    openFraction:d.open?1:0,angularVelocity:0,resistance:1};
+ const prepared:Door={...d,hinge:d.hinge??(i%3===0?'b':'a'),
+   swing:d.swing??(i%2===0?1:-1),openFraction:d.open?1:0,
+   angularVelocity:0,resistance:d.resistance??1,
+   latchIntegrity:d.latchIntegrity??1.05,frameIntegrity:d.frameIntegrity??2.5,
+   kicks:d.kicks??0,forced:d.forced??false,heldBy:d.heldBy??null};
+ if(doorSwingBlocked(prepared,.32)){
+   const opposite=prepared.swing===1?-1:1;
+   if(!doorSwingBlocked({...prepared,swing:opposite},.32))
+     prepared.swing=opposite;
+ }
+ return prepared;
 }
 /** A small fixed-step hinge motor with damped impulses; no renderer physics. */
 export function pushDoor(d:Door,force:number):boolean{
@@ -44,9 +52,22 @@ export function pushDoor(d:Door,force:number):boolean{
  d.open=true;
  return true;
 }
-export function kickDoor(d:Door){
- d.open=true;d.kickImpulse=1;
- d.angularVelocity=Math.max(13,d.angularVelocity??0);
+export function kickDoor(d:Door,from:Pt):{opened:boolean;pushSide:boolean}{
+ const center=doorCenter(d);
+ const leaf=doorLeafSegment({...d,openFraction:.62});
+ const cross=(p:Pt)=>(d.b.x-d.a.x)*(p.y-center.y)-
+   (d.b.y-d.a.y)*(p.x-center.x);
+ const pushSide=cross(from)*cross(leaf.b)<0;
+ const force=pushSide?1.2:.48,brace=d.heldBy?.75:0;
+ d.kicks=(d.kicks??0)+1;
+ d.latchIntegrity=Math.max(-1,(d.latchIntegrity??1.05)-force+brace);
+ if(!pushSide)d.frameIntegrity=Math.max(0,(d.frameIntegrity??2.5)-.42);
+ const opened=d.latchIntegrity<=0||d.frameIntegrity<=0;
+ if(opened){
+   d.heldBy=null;d.forced=true;d.open=true;d.kickImpulse=1;
+   d.angularVelocity=Math.max(9,d.angularVelocity??0);
+ }
+ return {opened,pushSide};
 }
 /** Door leaf stops against architecture and furniture, not an arbitrary
  * renderer-only angle; sample away from the hinge itself. */
@@ -76,15 +97,7 @@ export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[]){
   while(remaining>1e-8){
     const h=Math.min(1/60,remaining);
     const target=d.open?1:0,current=d.openFraction??target;
-    // Hinges may be procedural: if a new opening would immediately swing
-    // into furniture or the wall, use the free side of the doorway.
-    // Only switch while virtually closed to avoid teleporting an open leaf.
-    if(d.open&&current<.065&&
-      doorSwingBlocked(d,.32)){
-      const reverse=(d.swing??-1)===1?-1:1;
-      if(!doorSwingBlocked({...d,swing:reverse},.32))
-        d.swing=reverse;
-    }
+    // Hinge orientation stays fixed throughout the mission.
     const v=d.angularVelocity??0;
     const kicked=(d.kickImpulse??0)>0;
     const acceleration=kicked?(target-current)*10-v*3:
