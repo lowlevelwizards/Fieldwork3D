@@ -276,19 +276,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     approach(r.head.rotation.y,turn.headYaw,10.0,dt);
   const motion=bodyFromContacts({velocity:p.down?0:physicalSpeed,
     heading:p.heading,travelYaw,turning:p.turning,
-    injury:p.injury,posture:p.posture,feet:targets,gait:p.gait});
+    injury:p.injury,posture:p.posture,feet:targets,gait:p.gait,
+    position:{x:p.x,y:p.z}});
   // Wide side-steps need a physical lowering of the center of mass,
   // not a longer limb or a shoe teleported away from its world anchor.
-  const stanceRadius=Math.max(...targets.map(t=>
-    Math.hypot(t.position.x-p.x,t.position.y-p.z)));
-  // Neutral knees are slightly unlocked; lateral loading can still lower
-  // the pelvis without permanently holding an idle operator in a squat.
-  // The center-of-mass should not plunge to rescue stale contact data;
-  // an actual corrective step remains the scheduler's responsibility.
-  const stanceDrop=clamp((stanceRadius-8.4)*.37,0,
-    p.replayFeet?1.4:2.1);
+  // Build 184: the balance solver already accounts for reachable hip
+  // height. Do not apply another independent stance-radius correction.
   const neutralHip=20.2-crouch;
-  const stanceHip=neutralHip+motion.pelvisY-stanceDrop-bash.brace;
+  const stanceHip=neutralHip+motion.pelvisY-bash.brace;
   r.hip.position.y=Math.max(
     17.35-crouch-buckle*8-kneel*9,
     stanceHip-buckle*8-kneel*9);
