@@ -9,6 +9,7 @@ import {advanceFootsteps,createFootstepScheduler,validatedReplayFeet,
   from './breach-footsteps.ts';
 import type {ReplayFeet} from './breach-replay-motion.ts';
 import {bodyFromContacts} from './breach-body-motion.ts';
+import {packInertia} from './breach-gear-inertia.ts';
 import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH,LEG_HIP_SIDE} from './breach-leg-geometry.ts';
 import {turnHierarchy} from './breach-turn-hierarchy.ts';
 import {contactReaction,type BashRole} from './breach-contact-reactions.ts';
@@ -286,6 +287,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     weaponWeight:p.weapon==='shotgun'?1.30:
       p.weapon==='rifle'?1.19:p.weapon==='smg'?.83:1,
     position:{x:p.x,y:p.z}});
+  // Pack follows the torso with restrained inertia, not separate timing.
+  const packMotion=packInertia(p.acceleration??0,motion.torsoSide);
+  r.pack.position.set(-7,0,packMotion.side);
+  r.pack.rotation.z=packMotion.lean;
   // Wide side-steps need a physical lowering of the center of mass,
   // not a longer limb or a shoe teleported away from its world anchor.
   // Build 184: the balance solver already accounts for reachable hip
