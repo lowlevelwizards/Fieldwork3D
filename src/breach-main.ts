@@ -1301,14 +1301,19 @@ function renderProjectedPlans(){
     const visibility=doorVisibility(state,door);
     if(!visibility.known||!active||active.health<=0)continue;
     const node=selectedPlanNode();
-    const actionable=[active.p,finalPoint(active),...(node?[node.p]:[])]
-      .some(pos=>doorReachable(pos,door));
-    if(!actionable)continue;
+    const physicallyReachable=team(state).some(actor=>
+      actor.health>0&&doorReachable(actor.p,door));
+    const plannedReachable=!!node&&doorReachable(node.p,door);
+    if(!physicallyReachable&&!plannedReachable)continue;
     const p=worldToScreen(doorCenter(door),12);
-    draw.strokeStyle=doorFocusId===door.id?'#ffe1a0':'#cfbd92a8';
-    draw.lineWidth=doorFocusId===door.id?2.2:1.2;
-    draw.beginPath();draw.arc(p.x,p.y,doorFocusId===door.id?10:7,
-      0,Math.PI*2);draw.stroke();
+    const chosen=doorFocusId===door.id;
+    draw.save();
+    draw.strokeStyle=chosen?'#ffe08b':
+      physicallyReachable?'#f5e8cd96':'#c3d5c06c';
+    draw.lineWidth=chosen?2.4:1.2;
+    if(!physicallyReachable)draw.setLineDash([2,3]);
+    draw.beginPath();draw.arc(p.x,p.y,chosen?10:6,0,Math.PI*2);draw.stroke();
+    draw.restore();
   }
   // Physical muzzle flashes, tracers and impacts are rendered exclusively
   // by Three.js in 3D modes so depth testing never draws them over actors.
@@ -1967,6 +1972,7 @@ function releasePointer(e:PointerEvent,cancelled=false){
       if(door&&!looking&&!flashMode&&!firePlacement){
         doorFocusId=door.id;selectedNode=null;
         doorMenuDismissedId=null;
+        tacticalFeedback.emit('select',doorCenter(door));
       }else if(!looking&&!flashMode&&!firePlacement&&insertAtRouteLine({x:e.clientX,y:e.clientY})){
         // Insert-and-select: contextual LOOK/PIE/STRAFE/DELETE are immediately
         // available on the newly authored waypoint.
