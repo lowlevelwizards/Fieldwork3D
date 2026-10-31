@@ -104,8 +104,20 @@ export class TacticalScene3D{
   private terminalPoseSeconds=0;private terminalSessionStamp=-1;
   private sun:THREE.DirectionalLight;
   private mats:THREE.Material[]=[];
+  // Shared render resources persist between sites; repeated site rebuilds
+  // must not leak another material and geometry per identical fixture.
+  private solidCache=new Map<string,THREE.MeshStandardMaterial>();
+  private boxGeometryCache=new Map<string,THREE.BoxGeometry>();
+  private sharedBoxGeometries=new Set<THREE.BufferGeometry>();
+  private windowPaneMaterial:THREE.MeshStandardMaterial|null=null;
   private solid=(hex:number,roughness=.9)=>{
-    const material=mat(hex,roughness);this.mats.push(material);return material;
+    const key=hex+':'+roughness;
+    let material=this.solidCache.get(key);
+    if(!material){
+      material=mat(hex,roughness);
+      this.solidCache.set(key,material);this.mats.push(material);
+    }
+    return material;
   };
   constructor(){
     const canvas=document.createElement('canvas');
@@ -180,7 +192,17 @@ export class TacticalScene3D{
   }
   private box(parent:THREE.Object3D,x:number,y:number,z:number,
     w:number,h:number,d:number,material:THREE.Material,cast=true){
-    const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
+    const key=w+':'+h+':'+d;
+    let geometry=this.boxGeometryCache.get(key);
+    if(!geometry){
+      geometry=new THREE.BoxGeometry(w,h,d);
+      // Bound cache memory; uncommon one-off sizes remain independently owned.
+      if(this.boxGeometryCache.size<384){
+        this.boxGeometryCache.set(key,geometry);
+        this.sharedBoxGeometries.add(geometry);
+      }
+    }
+    const o=new THREE.Mesh(geometry,material);
     o.position.set(x,y,z);o.castShadow=cast;o.receiveShadow=true;
     parent.add(o);return o;
   }
@@ -196,7 +218,8 @@ export class TacticalScene3D{
   applySite(site:Site|null){
     this.root.children.filter(c=>c!==this.fogUnknown&&
       c!==this.fogExplored).forEach(child=>{
-      child.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
+      child.traverse(o=>{if(o instanceof THREE.Mesh&&
+        !this.sharedBoxGeometries.has(o.geometry))o.geometry.dispose();});
       this.root.remove(child);
     });
     for(const material of this.wallMaterials)material.dispose();
@@ -383,10 +406,13 @@ export class TacticalScene3D{
       }
     });
     // Glass does not impede sight; the low sill does impede traversal.
-    const paneMat=new THREE.MeshStandardMaterial({
-      color:0xa7bdb9,roughness:.25,transparent:true,opacity:.35,
-      side:THREE.DoubleSide,depthWrite:false});
-    this.mats.push(paneMat);
+    if(!this.windowPaneMaterial){
+      this.windowPaneMaterial=new THREE.MeshStandardMaterial({
+        color:0xa7bdb9,roughness:.25,transparent:true,opacity:.35,
+        side:THREE.DoubleSide,depthWrite:false});
+      this.mats.push(this.windowPaneMaterial);
+    }
+    const paneMat=this.windowPaneMaterial;
     for(const opening of site.windows??[]){
       const group=new THREE.Group();
       group.position.set(opening.x,0,opening.y);
