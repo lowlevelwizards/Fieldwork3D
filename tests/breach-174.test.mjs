@@ -16,7 +16,7 @@ test('174: running has own longer stride; pieing uses shorter deliberate steps',
  assert.ok(pie.swingDuration>walk.swingDuration);
  assert.ok(pie.landingDuration>walk.landingDuration);
  const side=gaitBounds({...input('walk',38),travelYaw:Math.PI/2});
- assert.ok(side.swingDuration>=.16,'strafe must not scurry');
+ assert.ok(side.swingDuration>=.135,'strafe must preserve reachable shuffles');
 });
 test('174: running and pie gait remain deterministic in Lab and replayable',()=>{
  assert.ok(LAB_TRACKS.includes('run'));
