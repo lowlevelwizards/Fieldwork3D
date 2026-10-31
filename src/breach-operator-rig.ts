@@ -14,6 +14,7 @@ import {kickMotion} from './breach-door-actions.ts';
 import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
 import {reloadHandKey} from './breach-reload-motion.ts';
 import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
+import {handlingProfile} from './breach-handling-profiles.ts';
 import {fallAngles,hitStagger,type FallPose,type WoundRegion}
   from './breach-wounds.ts';
 import {weaponGrips,handlingPose,clampReach,
@@ -230,6 +231,17 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     kickMotion(kickAge):null;
   const bash=contactReaction(p.seconds-(p.lastBashAt??-100),
     p.bashRole??null,!!p.blocked);
+  const handling=p.handlingOverride??handlingPose({
+    aim:p.aimBlend??(p.aiming?1:0),moving,
+    obstruction:!!p.obstruction||
+      (bash.active&&p.bashRole==='receive'),
+    friendlyNear:!!p.friendlyNear
+  });
+  const profile=handlingProfile(handling,p.weapon);
+  // Explicit laboratory stances can shift the chest/weight. Live combat
+  // retains the authoritative shot-time muzzle/chest transform until the
+  // equivalent shot-time balance transform is integrated.
+  const poseWeight=p.handlingOverride&&!p.down&&!p.surrender?1:0;
   // A pivot requires the stance to catch up with requested facing.
   // In replay/lab this orientation is reconstructed by time, never dt.
   if(p.pelvisYaw!==undefined){
@@ -258,16 +270,23 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.hip.position.y=Math.max(
     17.35-crouch-buckle*8-kneel*9,
     stanceHip-buckle*8-kneel*9);
-  r.hip.position.z=motion.pelvisSide;
+  r.hip.position.y-=poseWeight*profile.stanceCompression;
+  r.hip.position.z=motion.pelvisSide+
+    poseWeight*profile.pelvisShift;
   r.chest.position.y=26-crouch+motion.pelvisY*.5-
     bash.brace*.4-buckle*7-kneel*12;
-  r.chest.position.z=motion.pelvisSide*.75;
+  r.chest.position.z=motion.pelvisSide*.75+
+    poseWeight*profile.pelvisShift*.45;
   r.chest.rotation.z=motion.torsoForward+braking*.018+
-    (kick?.torsoLean??0)+bash.lean;
+    (kick?.torsoLean??0)+bash.lean-
+    poseWeight*profile.torsoLean;
   r.chest.rotation.x=clamp(p.injury===2?.07:p.injury===1?.025:0,0,.09)+
     motion.torsoSide;
-  r.chest.rotation.y+=motion.torsoYaw;
-  r.head.rotation.x=motion.headCounter+bash.head;
+  r.chest.rotation.y+=motion.torsoYaw+
+    poseWeight*profile.torsoTurn;
+  r.head.position.y=10-poseWeight*profile.headDrop;
+  r.head.rotation.x=motion.headCounter+bash.head+
+    poseWeight*profile.headPitch;
   // Apply the collapsing root transform before solving the legs.
   // Inverse full-body rotation holds each shoe in world-space contact
   // instead of sweeping planted boots through the floor during a fall.
@@ -344,12 +363,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Build 120: stock, both grips and forearm targets share a single rigid
   // firearm transform. The fit searches reachable posture before limb IK.
   const data=weaponGrips(p.weapon);
-  const handling=p.handlingOverride??handlingPose({
-    aim:p.aimBlend??(p.aiming?1:0),moving,
-    obstruction:!!p.obstruction||
-      (bash.active&&p.bashRole==='receive'),
-    friendlyNear:!!p.friendlyNear
-  });
   const recoil=p.recoil??(p.firing?1.5:0);
   const fit=fitWeaponPose({weapon:p.weapon,handling,
     yaw:-(p.shotHeading??p.heading)-r.root.rotation.y-r.chest.rotation.y,
@@ -439,7 +452,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
     const shoulderPosition=i===0?ANATOMY.shoulderLeft:ANATOMY.shoulderRight;
-    const shoulder=P(shoulderPosition.x,shoulderPosition.y,shoulderPosition.z);
+    const shoulder=P(shoulderPosition.x,
+      shoulderPosition.y+poseWeight*profile.shoulderLift,
+      shoulderPosition.z);
     const grip=i===0?leftGrip:rightGrip;
     let desired:THREE.Vector3;
     if(p.down&&(i===0&&releaseLeft||i===1&&releaseRight)){
