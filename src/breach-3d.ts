@@ -347,16 +347,23 @@ export class TacticalScene3D{
       const threshold=this.box(frame,0,.32,0,length,1.2,13,
         doorTrim,false);
       const leaf=new THREE.Group();
-       const invert=door.hinge==='b';leaf.position.x=invert?length/2:-length/2;
+       const invert=door.hinge==='b';
+      leaf.position.x=door.kind==='shutter'?0:invert?length/2:-length/2;
       // Actual hinge barrels identify the swing side without requiring
       // a user to inspect a top-down arrow on every doorway.
-      for(const y of [7,18,29])
+      if(door.kind!=='shutter')for(const y of [7,18,29])
         this.box(frame,invert?length/2:-length/2,y,0,
           4.2,5.2,6,metal,false);
       root.add(leaf);
-      this.box(leaf,(door.hinge==='b'?-1:1)*length/2,17,0,length-4,34,4,doorMat);
-      this.box(leaf,(door.hinge==='b'?-1:1)*length*.7,18,3,3,3,2,metal,false);
-       this.box(leaf,(door.hinge==='b'?-1:1)*length*.7,18,-3,3,3,2,metal,false);
+      if(door.kind==='shutter'){
+        for(let y=2;y<35;y+=5)
+          this.box(leaf,0,y,0,length-3,4.7,4,metal,false);
+        this.box(frame,0,42,0,length+10,9,13,metal,false);
+      }else{
+        this.box(leaf,(invert?-1:1)*length/2,17,0,length-4,34,4,doorMat);
+        for(const z of [-3,3])this.box(leaf,(invert?-1:1)*length*.7,
+          18,z,3,3,2,metal,false);
+      }
       const halo=doorSweepArc(door,length);
       root.add(halo);
       this.root.add(root);
@@ -923,13 +930,17 @@ export class TacticalScene3D{
       const replayProgress=replay?.doors[door.id];
       // The rendered leaf follows the authoritative hinge rather than
       // a render-rate easing curve that disagrees with collision.
-      object.leaf.rotation.y=(door.swing??-1)*
-        ((omniscient||directlyObserved)?(replayProgress??fraction):fraction)*1.54;
+      const shownFraction=(omniscient||directlyObserved)?
+        (replayProgress??fraction):fraction;
+      if(door.kind==='shutter'){
+        object.leaf.rotation.y=0;
+        object.leaf.position.y=shownFraction*37;
+      }else object.leaf.rotation.y=(door.swing??-1)*shownFraction*1.54;
       const selectedActor=team(s).find(a=>a.id===selected);
       const reachable=selectedActor&&selectedActor.health>0&&
         [selectedActor.p,...selectedActor.plan.filter(n=>n.id===selectedActor.plan.at(-1)?.id).map(n=>n.p)].some(p=>
           doorReachable(p,door));
-      object.halo.visible=object.root.visible&&focusedDoorId===door.id&&!!reachable&&
+      object.halo.visible=door.kind!=='shutter'&&object.root.visible&&focusedDoorId===door.id&&!!reachable&&
         (liveVisibility(s,doorCenter(door))||
          knownAt(s,doorCenter(door).x,doorCenter(door).y));
       // Ground sweep stays attached to the fixed hinge; no rotating target ring.

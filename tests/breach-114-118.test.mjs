@@ -39,7 +39,8 @@ test('115: procedural doors have narrower physical apertures and valid walkable 
     assert.ok(site.doors.length>0);
     for(const door of site.doors){
       const length=Math.hypot(door.b.x-door.a.x,door.b.y-door.a.y);
-      assert.equal(length,48);
+      if(door.kind==='shutter')assert.ok(length>=80&&length<=114);
+      else assert.equal(length,48);
       const h=handlePoint(door);
       assert.ok(doorReachable({x:h.x+2,y:h.y+20},door));
       assert.ok(passable(site.spawn[0]));

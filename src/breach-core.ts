@@ -7,6 +7,8 @@ import {type Site} from './breach-site.ts';
 export type Pt={x:number;y:number};
 export type Segment={a:Pt;b:Pt};
 export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number;
+  /** Mechanical closure with vertical lift; routes and shots respect shutter state. */
+  kind?:'hinged'|'shutter';
   hinge?:'a'|'b';swing?:-1|1;openFraction?:number;
   angularVelocity?:number;resistance?:number;kickImpulse?:number;heldBy?:string|null;latchIntegrity?:number;frameIntegrity?:number;
   kicks?:number;forced?:boolean;}
@@ -89,6 +91,10 @@ export function passable(p:Pt,clearance=OPERATOR_RADIUS):boolean{
 export const doorYaw=(d:Door)=>(d.swing??-1)*
   (d.openFraction??(d.open?1:0))*1.54;
 export function doorLeafSegment(d:Door):Segment{
+ // Vertical shutters obstruct their full width until the panel is
+ // sufficiently high for an operator to pass underneath.
+ if(d.kind==='shutter')return (d.openFraction??(d.open?1:0))>=.72?
+   {a:{...d.a},b:{...d.a}}:{a:{...d.a},b:{...d.b}};
  const hinge=d.hinge==='b'?d.b:d.a;
  const end=d.hinge==='b'?d.a:d.b;
  const x=end.x-hinge.x,y=end.y-hinge.y;
