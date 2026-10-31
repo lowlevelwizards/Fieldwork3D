@@ -10,6 +10,7 @@ import {advanceFootsteps,createFootstepScheduler,validatedReplayFeet,
 import type {ReplayFeet} from './breach-replay-motion.ts';
 import {bodyFromContacts} from './breach-body-motion.ts';
 import {packInertia} from './breach-gear-inertia.ts';
+import {BOOT_FOREFOOT_OFFSET} from './breach-gait-geometry.ts';
 import {operatorMotionTraits} from './breach-operator-personality.ts';
 import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH,LEG_HIP_SIDE} from './breach-leg-geometry.ts';
 import {turnHierarchy} from './breach-turn-hierarchy.ts';
@@ -119,6 +120,11 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   for(const sideSign of [-1,1]){
     const upper=bone(root,4.7,5.3,cloth),lower=bone(root,4,4.3,cloth);
     const shoe=block(root,0,0,0,8,2.9,5.8,boot);
+    // The mesh transform must remain at the scheduled ankle anchor.
+    // Translate *vertices in local toe-forward +X* instead: the toe box
+    // now extends 5.6 units forward, the heel only 2.4 units behind.
+    // This avoids changing foot IK, grounded contact, yaw or replay.
+    shoe.geometry.translate(BOOT_FOREFOOT_OFFSET,0,0);
     const ankleLink=bone(root,3.8,3.8,boot);
     ankleLink.visible=false;
     feet.push({upper,lower,shoe,ankleLink,
