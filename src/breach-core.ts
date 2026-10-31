@@ -9,6 +9,7 @@ export type Segment={a:Pt;b:Pt};
 export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number;
   /** Mechanical closure with vertical lift; routes and shots respect shutter state. */
   kind?:'hinged'|'shutter';
+  pairedWith?:string;
   hinge?:'a'|'b';swing?:-1|1;openFraction?:number;
   angularVelocity?:number;resistance?:number;kickImpulse?:number;heldBy?:string|null;latchIntegrity?:number;frameIntegrity?:number;
   kicks?:number;forced?:boolean;}
