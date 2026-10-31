@@ -10,7 +10,7 @@ export type BalanceInput={velocity:number;heading:number;travelYaw:number;
   position?:{x:number;y:number};
   gait?:'run'|'walk'|'pie'|'squeeze';
   /** Lab candidate: use actual weighted shoe positions for load transfer. */
-  hybridSupport?:boolean;};
+  hybridSupport?:boolean;acceleration?:number;};
 export type BodyMotion={pelvisY:number;pelvisSide:number;
   torsoForward:number;torsoSide:number;torsoYaw:number;headCounter:number;
   support:number;chestLift:number;weaponYaw:number;weaponPitch:number;};
@@ -87,12 +87,14 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
   }
   // Heel propulsion and accepting support transmit through the torso,
   // without an independent time-based bob oscillator.
-  const torsoForward=clamp(-forward*speed*.09+
+  const accel=clamp((input.acceleration??0)/180,-1,1);
+  const torsoForward=clamp(-forward*speed*.09-accel*.04+
     (.028*unloading-.014*receiving)*moving,-.13,.09)*crouch;
   const torsoSide=clamp(side*speed*.065+support*speed*.014,
     -.095,.095)*crouch;
   // Follow the same contact/weight envelopes, rather than layering
   // unrelated sine-wave bob and sway over the animation.
+  pelvisY-=Math.max(0,-accel)*.17*moving*crouch;
   const chestLift=(-.35*receiving+.18*swinging+.16*unloading)*
     moving*gaitAmp*crouch*wound;
   const weaponYaw=clamp(support*speed*.018*weaponAmp,-.038,.038);
