@@ -14,5 +14,7 @@ test('144B: 2D blood is painted beneath architecture and visibility fog',()=>{
 test('144B: 3D blood lies on floor, below fog and opaque wall geometry',()=>{
   const scene=readFileSync(new URL('breach-3d.ts',root),'utf8');
   assert.match(scene,/mark\.surface==='blood'\?\.85/);
-  assert.match(scene,/this\.smoothFog\.position\.set\(W\/2,36\.2,H\/2\)/);
+  assert.match(scene,/this\.smoothFog\.position\.set\(W\/2,1\.05,H\/2\)/);
+  assert.match(scene,/this\.smoothFog\.renderOrder=1000/);
+  assert.match(scene,/depthTest:false/);
 });
