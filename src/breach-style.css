@@ -643,3 +643,19 @@ button:disabled{opacity:.48;cursor:default}
  .context-state button{min-height:32px;flex-direction:column}
  .context-tools.door-menu .context-primary button{min-height:40px}
 }
+
+/* UI 2.0 / 03: spring positions the outer palette, compositor owns translate3d. */
+.context-tools{left:0;top:0;right:auto;bottom:auto;will-change:transform;
+ transition:opacity 120ms ease,background-color 120ms ease;
+ transform-origin:center top}
+.context-tools:not([hidden]){transition:opacity 120ms ease,background-color 120ms ease}
+@starting-style{.context-tools:not([hidden]){opacity:0}}
+#contextTether{position:fixed;z-index:5;pointer-events:none;
+ height:1px;transform-origin:0 50%;
+ background:linear-gradient(90deg,#c2bb9188,#8aaa9b55);
+ box-shadow:0 0 5px #b5c3a33b}
+#contextTether[hidden]{display:none}
+@media(prefers-reduced-motion:reduce){
+ .context-tools{transition:none!important}
+ #contextTether{display:none!important}
+}

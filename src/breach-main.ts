@@ -30,6 +30,7 @@ import {INTEL_MODES,doorKnown,wallKnown,coverKnown,roomKnown,
 import './breach-style.css';
 import {tacticalIcon,decorateIconButton} from './ui/tactical-icons.ts';
 import {contextActionChoices} from './ui/context-actions.ts';
+import {PaletteMotion} from './ui/palette-motion.ts';
 import {paintFogMask,FOG_WIDTH,FOG_HEIGHT} from './breach-fog-mask.ts';
 
 const el=<T extends HTMLElement>(id:string)=>{
@@ -162,6 +163,34 @@ let firePlacement:'focus'|'suppress'|null=null;
 let lookMode:'look'|'pie'|'strafe'='look';
 let contextSignature='';
 let lastContextSide:MenuSide|null=null;
+const paletteMotion=new PaletteMotion();
+const contextTether=document.createElement('div');
+contextTether.id='contextTether';
+contextTether.setAttribute('aria-hidden','true');
+document.body.append(contextTether);
+function hideContextPalette(){
+  ui.context.hidden=true;paletteMotion.hide();contextTether.hidden=true;
+}
+function advanceContextPalette(dt:number){
+  if(ui.context.hidden||!paletteMotion.active){contextTether.hidden=true;return;}
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  paletteMotion.step(dt,reduced);
+  const x=paletteMotion.x.position,y=paletteMotion.y.position;
+  ui.context.style.transform='translate3d('+x.toFixed(2)+'px,'+
+    y.toFixed(2)+'px,0)';
+  const w=ui.context.offsetWidth,h=ui.context.offsetHeight;
+  const ax=paletteMotion.anchorX,ay=paletteMotion.anchorY;
+  const bx=Math.max(x,Math.min(ax,x+w));
+  const by=Math.max(y,Math.min(ay,y+h));
+  const dx=bx-ax,dy=by-ay,length=Math.hypot(dx,dy);
+  const visible=length>24&&length<175&&!reduced;
+  contextTether.hidden=!visible;
+  if(visible){
+    contextTether.style.left=ax+'px';contextTether.style.top=ay+'px';
+    contextTether.style.width=length+'px';
+    contextTether.style.transform='rotate('+Math.atan2(dy,dx)+'rad)';
+  }
+}
 let selectedNode:number|null=null;
 let doorMenuDismissedId:string|null=null;
 let flashDoorId:string|null=null;
@@ -352,10 +381,10 @@ function updateContext(){
      !ui.briefingPanel.hidden||
      draggingNode||trace||
      !ui.orders.classList.contains('compact')||!ui.siteSettings.hidden){
-    ui.context.hidden=true;return;
+    hideContextPalette();return;
   }
   const a=uid(selected);
-  if(!a||a.health<=0){ui.context.hidden=true;return;}
+  if(!a||a.health<=0){hideContextPalette();return;}
   const node=selectedPlanNode();
   const door=doorFocusId?focusedDoor(a,node):undefined;
   const current=plannedControl(state,selected,node?.id);
@@ -467,11 +496,9 @@ function updateContext(){
     top:minY,bottom:maxY,avoid,paths,preferredSide:lastContextSide,
   });
   lastContextSide=placement.side;
-  ui.context.style.left=placement.x+'px';
-  ui.context.style.top=placement.y+'px';
-  ui.context.style.right='auto';
-  ui.context.style.bottom='auto';
-  // Motion is CSS-owned; no per-frame transform writes.
+  paletteMotion.set(placement.x,placement.y,anchor.x,anchor.y);
+  // Keep the actual menu hit target in its visually interpolated position.
+  // Geometry measurement uses offsetWidth/Height (unaffected by transforms).
 }
 // Pointer-held explanations do not also dispatch the underlying tactical order.
 let contextHoldTimer:ReturnType<typeof setTimeout>|null=null;
@@ -1927,7 +1954,7 @@ function tick(now:number){
   if(stage&&viewMode!=='plan2d')
     stage.update(state,selected,dt,doorFocusId,
       replaying&&replayOmniscient,replaying?replayPresentation:null);
-  render();updateContext();
+  render();updateContext();advanceContextPalette(dt);
   if(perfOverlay){
     const end=performance.now(),frame=end-perfStart;
     perfFrames++;perfFrameSum+=frame;perfSimSum+=perfRenderStart-perfStart;
