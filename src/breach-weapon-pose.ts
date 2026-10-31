@@ -7,16 +7,16 @@ export type Handling='low'|'high'|'ready'|'point'|'ads'|'short';
 export type WeaponGrip={lengthScale:number;stockX:number;
   primaryX:number;primaryY:number;supportX:number;supportY:number};
 export const GRIPS:Record<WeaponId,WeaponGrip>={
-  // Buttstock block is centered at -10 with width 5: its real rear face
-  // is -12.5. Modest weapon-length normalization keeps both hands inside
-  // operator IK reach while retaining the chunky low-poly silhouette.
-  carbine:{lengthScale:.82,stockX:-12.5,primaryX:-1,primaryY:-2,
+  // Stock block at -10 is now 7 units wide; its actual rear face is
+  // -13.5. Between the original 9-unit stock and Build 167's 5-unit stock.
+  // Length scales are the same ones applied to the visible weapon mesh.
+  carbine:{lengthScale:.86,stockX:-13.5,primaryX:-1,primaryY:-2,
     supportX:1.7,supportY:-1.5},
-  smg:{lengthScale:.70,stockX:-12.5,primaryX:-1,primaryY:-2,
+  smg:{lengthScale:.73,stockX:-13.5,primaryX:-1,primaryY:-2,
     supportX:2.4,supportY:-1},
-  rifle:{lengthScale:.90,stockX:-12.5,primaryX:-1,primaryY:-2,
+  rifle:{lengthScale:.94,stockX:-13.5,primaryX:-1,primaryY:-2,
     supportX:.35,supportY:-1.5},
-  shotgun:{lengthScale:.88,stockX:-12.5,primaryX:-1,primaryY:-2,
+  shotgun:{lengthScale:.92,stockX:-13.5,primaryX:-1,primaryY:-2,
     supportX:1,supportY:-2},
 };
 export const weaponGrips=(id:WeaponId):WeaponGrip=>GRIPS[id];
@@ -137,8 +137,9 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
           const sx=shoulderPocket.x+dx-recoilX;
           const sy=shoulderPocket.y+recoilY;
           const sz=shoulderPocket.z+dz;
-          // The stock is 3.5 deep; remain outside the torso's +/-7 Z.
-          if(sz<8.15)continue;
+          // The padded upper-pec pocket permits limited contact with the
+          // outer chest, but never a stock socket near the torso center.
+          if(sz<(mode==='short'?7.75:7.25))continue;
           const px=sx+right[0],py=sy+right[1],pz=sz+right[2];
           const lx=sx+left[0],ly=sy+left[1],lz=sz+left[2];
           const rd=Math.hypot(px-1,py-4,pz-7);

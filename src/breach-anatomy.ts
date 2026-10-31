@@ -10,27 +10,29 @@ export const ANATOMY={
   headRest:{x:0,y:10,z:0},
   neutralHip:20.2,
 } as const;
-/** These are externally reachable buttplate contacts, NOT the receiver or
- * stock midpoint. The chest is 14 wide (+/-7 Z), with a 3.5-deep stock.
- * The buttplate remains lateral to the torso rather than inside it. */
+/** Buttplate contact is on the surface of the upper pectoral/shoulder,
+ * not parked beside the arm. The visible stock is 3.5 units wide;
+ * a modest overlap with the padded upper torso is intentional.
+ * Short stock is a lower under-arm index, not an outboard shelf. */
 export function stockPocket(mode:Handling):Anchor3{
   switch(mode){
-    case 'high':return {x:1.4,y:5.9,z:8.6};
-    case 'low':return {x:1.6,y:2.8,z:8.6};
-    case 'ready':return {x:1.8,y:4.6,z:8.6};
-    case 'short':return {x:-2.9,y:-2.6,z:10.0};
-    case 'point':return {x:2.7,y:5.5,z:8.6};
-    case 'ads':return {x:2.3,y:7.7,z:8.6};
+    case 'high':return {x:1.3,y:5.6,z:7.55};
+    case 'low':return {x:1.6,y:3.0,z:7.55};
+    case 'ready':return {x:1.8,y:4.5,z:7.55};
+    case 'short':return {x:-2.0,y:-2.0,z:8.05};
+    case 'point':return {x:2.6,y:5.3,z:7.55};
+    case 'ads':return {x:2.2,y:7.5,z:7.55};
   }
 }
 export function elbowCorridor(mode:Handling,side:-1|1):Anchor3{
-  // A bent arm's preferred elbow stays below the shoulder and inside its
-  // outer contour. High-ready / short-stock strongly tuck towards the ribs.
-  const tuck=mode==='short'?1:mode==='high'?.88:
-    mode==='low'?.68:mode==='ready'?.68:
-    mode==='point'?.48:.38;
-  return {x:mode==='short'?2.8:4.8-tuck,
-    y:-8.1-1.7*tuck,z:side*(7.9-1.25*tuck)};
+  // Midway between the original flared arms and the over-tucked Build 167
+  // elbows. Ribs are a preference, not a hard constraint: both wrists still
+  // reach their grips through the same two-bone IK.
+  const tuck=mode==='short'?.76:mode==='high'?.64:
+    mode==='low'?.46:mode==='ready'?.48:
+    mode==='point'?.35:.29;
+  return {x:mode==='short'?3.1:5-tuck*.65,
+    y:-7.7-1.35*tuck,z:side*(8.2-.7*tuck)};
 }
 export function anchorGap(a:Anchor3,b:Anchor3){
   return Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z);
