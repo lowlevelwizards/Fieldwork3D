@@ -5,6 +5,7 @@ import {propDefinition} from './worldgen/asset-catalog.ts';
 import {furnishRooms} from './worldgen/room-furnishing.ts';
 import {assignRoomProgram} from './worldgen/room-assignment.ts';
 import {programRooms} from './worldgen/building-programs.ts';
+import {correctPublicEntrance} from './worldgen/public-entrance.ts';
 import {activeSite,activateSite,passable,route} from './breach-core.ts';
 import {addOpenPlanTransitions} from './worldgen/open-plan.ts';
 import {dressSite} from './worldgen/environment-dresser.ts';
@@ -87,8 +88,20 @@ export function applyArchetype(site:Site,seed:number):Site{
       (a.x+a.w/2)-(b.x+b.w/2));
   const fallbackRoles=programRooms(archetype,sorted.length);
   const fallback=new Map(sorted.map((r,i)=>[r.id,fallbackRoles[i]]));
-  if(!useZoning)return build(fallback);
-  const proposal=build(assignRoomProgram(site,archetype));
+  const fallbackPublic=correctPublicEntrance(site,archetype,fallback);
+  if(!useZoning){
+    if(fallbackPublic!==fallback){
+      const publicSite=build(fallbackPublic);
+      if(reachable(publicSite))return publicSite;
+    }
+    return build(fallback);
+  }
+  const zoned=assignRoomProgram(site,archetype);
+  const proposal=build(correctPublicEntrance(site,archetype,zoned));
   if(reachable(proposal))return proposal;
+  if(fallbackPublic!==fallback){
+    const safe=build(fallbackPublic);
+    if(reachable(safe))return safe;
+  }
   return build(fallback);
 }
