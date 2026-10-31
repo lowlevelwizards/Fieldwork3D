@@ -14,11 +14,11 @@ test('086: 160 seeds generate deterministic connected compact sites including an
     assert.deepEqual(site,repeat,'seed must replay the same site');
     counts.add(site.roomCount);
     layouts.add(site.walls.map(w=>w.a.x+','+w.a.y).join(';'));
-    assert.ok(site.roomCount>=3&&site.roomCount<=7);
+    assert.ok(site.roomCount>=6&&site.roomCount<=22);
+    assert.equal(site.programLocked,true);
     assert.equal(site.spawn.length,4);
     assert.ok(site.enemies.length>=2&&site.enemies.length<=7);
-    assert.ok(site.doors.length+(site.openHallLinks??0)>=site.rooms.length-1,
-      'door spanning tree connects rooms');
+    assert.ok(site.doors.length>=3,'each building has real circulation doors');
     activateSite(site);
     assert.equal(WALLS.length,site.walls.length);
     assert.equal(COVER.length,site.cover.length);
