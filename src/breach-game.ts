@@ -42,7 +42,7 @@ import {chooseDefense,watchPoint,reachableInvestigation} from './breach-defense.
 import {operationBrief,assessOperation,
   type OperationKind} from './breach-operations.ts';
 import {muzzleAtShot} from './breach-muzzle.ts';
-import {initialIntel,observeIntel,routeWithIntel,intelPassable,doorKnown,
+import {initialIntel,observeIntel,discoverContactCover,routeWithIntel,intelPassable,doorKnown,
   type IntelMode,type IntelState} from './breach-intel.ts';
 import {magazineKit,fullestMagazineIndex,
   reloadDuration as reloadTiming,type MagazineItem,type ReloadMode}
@@ -1227,6 +1227,13 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     a.lastBlocker=diagnoseMovement(a.p,desiredMove,s.doors,
       s.operators.filter(b=>b!==a&&b.side!==a.side&&b.health>0)
       .map(b=>b.p)).blocker;
+    if(a.side==='blue'&&a.lastBlocker==='furniture'){
+      const newlyKnown=discoverContactCover(s.intel,a.p,13);
+      if(newlyKnown.length){
+        a.lastNavRepairAt=-10;
+        notify(s,a.name+' DISCOVERED OBSTRUCTION');
+      }
+    }
     if(a.blockedTime>1&&a.blockedTime<1.1)
       notify(s,a.name+' BLOCKED · '+a.lastBlocker.toUpperCase());
     if(a.blockedTime>1.25&&s.seconds-a.lastNavRepairAt>1.2){
