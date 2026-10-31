@@ -223,6 +223,49 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   walls.splice(index,1,{a:wall.a,b:a},{a:b,b:wall.b});
   openings.push({id:'OPEN-SERVICE',a,b,kind:'wide'});
  }
+ // Doors into enclosed or partly enclosed courts create an actual
+ // circulation alternative. A courtyard is not merely a painted floor void.
+ const courtAccess:string[]=['hallway','lobby','reception','aisle','guest',
+   'living','dining','sales','service','maintenance','loading'];
+ const courtWalls:{index:number;wall:Segment;rank:number}[]=[];
+ for(let row=0;row<b.cells.length;row++)for(let col=0;col<b.widths.length;col++){
+  if(b.cells[row][col]!==null)continue;
+  const x=xs[col],xx=xs[col+1],y=ys[row],yy=ys[row+1];
+  const sides=[
+   {r:row-1,c:col,axis:'y',coord:y,lo:x,hi:xx},
+   {r:row+1,c:col,axis:'y',coord:yy,lo:x,hi:xx},
+   {r:row,c:col-1,axis:'x',coord:x,lo:y,hi:yy},
+   {r:row,c:col+1,axis:'x',coord:xx,lo:y,hi:yy}
+  ];
+  for(const side of sides){
+   const cell=lookup.get(key(side.r,side.c));
+   if(cell===undefined)continue;
+   const rank=courtAccess.indexOf(cells[cell].role);
+   if(rank<0)continue;
+   for(let index=0;index<walls.length;index++){
+    const wall=walls[index],mid={x:(wall.a.x+wall.b.x)/2,
+      y:(wall.a.y+wall.b.y)/2};
+    const onEdge=side.axis==='x'?
+      Math.abs(wall.a.x-side.coord)<.01&&
+      Math.abs(wall.b.x-side.coord)<.01&&
+      mid.y>side.lo+28&&mid.y<side.hi-28:
+      Math.abs(wall.a.y-side.coord)<.01&&
+      Math.abs(wall.b.y-side.coord)<.01&&
+      mid.x>side.lo+28&&mid.x<side.hi-28;
+    if(onEdge&&span(wall)>=94&&!courtWalls.some(c=>c.index===index))
+      courtWalls.push({index,wall,rank});
+   }
+  }
+ }
+ courtWalls.sort((a,b)=>a.rank-b.rank||b.index-a.index);
+ let courtDoors=0;
+ for(const candidate of courtWalls){
+  if(courtDoors>=2)break;
+  const index=walls.indexOf(candidate.wall);
+  if(index<0)continue;
+  walls.splice(index,1);
+  cut(candidate.wall,'COURT-'+(++courtDoors),walls,doors);
+ }
  const west=xs[0],east=xs[xs.length-1],north=ys[0],south=ys[ys.length-1];
  return {seed,name:b.family.toUpperCase(),archetype:kind,scale,
    planFamily:b.family,programLocked:true,circulationStyle,
