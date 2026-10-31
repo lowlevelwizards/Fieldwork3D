@@ -7,6 +7,7 @@ import {createOperatorRig,poseOperator,type OperatorRig}
   from './breach-operator-rig.ts';
 import {weaponGrips,type Handling} from './breach-weapon-pose.ts';
 import {stockPocket,elbowCorridor} from './breach-anatomy.ts';
+import {HANDLING_PROFILES} from './breach-handling-profiles.ts';
 import {timedHandling,smoothHandling,type HandlingTransition}
   from './breach-handling-transition.ts';
 import {lateralAxis,sideOffset,uncrossed} from './breach-locomotion.ts';
@@ -182,10 +183,7 @@ function chooseTrack(next:LabTrack){
       duration:delta,fromWeapon:{
         origin:rig.weapon.position.clone(),
         rotation:rig.weapon.rotation.clone()},
-      fromProfile:{...(rig.handlingProfile??{
-        pitch:0,stockY:4.6,preferredBack:1.8,torsoLean:0,
-        torsoTurn:0,headPitch:0,headDrop:0,shoulderLift:0,
-        pelvisShift:0,elbowTuck:.65,stanceCompression:0})}};
+      fromProfile:{...(rig.handlingProfile??HANDLING_PROFILES[previous])}};
   }else labSwitch=null;
   if(comparing){
     comparing=false;
@@ -374,7 +372,8 @@ function showDiagnostics(){
     coords3.setXYZ(2,shoulder.x,shoulder.y,shoulder.z);
     coords3.needsUpdate=true;guide.visible=true;
     for(let i=0;i<2;i++){
-      const sign=i===0?-1:1,hint=elbowCorridor(mode,sign as -1|1);
+      const sign=i===0?-1:1,hint=elbowCorridor(
+        mode,sign as -1|1,rig.handlingProfile??undefined);
       const point=rig.chest.localToWorld(
         new THREE.Vector3(hint.x,hint.y,hint.z));
       put(i+4,point.x,point.y,point.z);
