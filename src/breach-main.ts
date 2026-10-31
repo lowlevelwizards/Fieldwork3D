@@ -2208,10 +2208,11 @@ function tick(now:number){
       replaying&&replayOmniscient,replaying?replayPresentation:null,
       !replaying&&state.phase==='running'&&previousRenderActors?
         {previous:previousRenderActors,alpha:Math.min(1,accum*60)}:null,
-      !replaying&&state.phase==='running'?
-        recorder.motion.presentation(Math.max(0,
-          state.seconds-(1-Math.min(1,accum*60))/60),
-          state.operators.map(a=>a.id)):null);
+      // Pausing the encounter must NOT switch to render-local footsteps.
+      !replaying?recorder.motion.presentation(Math.max(0,
+        state.phase==='running'?
+          state.seconds-(1-Math.min(1,accum*60))/60:
+          state.seconds),state.operators.map(a=>a.id)):null);
   const overlayBegin=perfOverlay?performance.now():0;
   render();
   // One local, intelligible pulse per distinct blocked episode.
