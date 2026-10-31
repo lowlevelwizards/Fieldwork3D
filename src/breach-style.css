@@ -732,3 +732,30 @@ body.replaying #tacticalFeedback{display:none}
 @media(max-height:470px){.quick-states button{min-height:36px;
  flex-direction:row;font-size:10px}.tactical-hud{bottom:calc(4px + env(safe-area-inset-bottom))}}
 @media(prefers-reduced-motion:reduce){.quick-states button{transition:none}}
+
+/* UI 3 / 03 — distinctive instrument lettering and decisive phase response */
+:root{--ui-display:"Chakra Petch","IBM Plex Sans",system-ui,sans-serif}
+.ident strong{font:600 16px/1.15 var(--ui-display);letter-spacing:.018em}
+.mode strong{font:600 12px/1.15 var(--ui-display);letter-spacing:.09em}
+.bar .unit strong{font:600 13px/1.1 var(--ui-display);letter-spacing:.045em}
+.quick-states .command-label,.context-tools .command-label{
+ font:600 11px/1.1 var(--ui-display);letter-spacing:.025em}
+.context-primary .command-label{font-size:12px}
+.quick-states .command-label{font-size:11px}
+.bar .actions #play{position:relative;overflow:visible;
+ font-family:var(--ui-display);isolation:isolate;
+ box-shadow:inset 0 1px #f4ddb3,0 3px 14px #090f0a45}
+.bar .actions #play::after{content:"";position:absolute;inset:-4px;
+ border:2px solid #f0d6a500;border-radius:10px;pointer-events:none;
+ transition:border-color 180ms,box-shadow 180ms}
+.bar .actions #play:active::after{border-color:#f0d6a5a6;
+ box-shadow:0 0 0 5px #efd5a51c}
+.bar .actions #play .go-label{font:700 15px var(--ui-display);
+ letter-spacing:.045em}
+.bar .actions #play.running{background:#dbcaac;
+ box-shadow:inset 0 1px #ffecd0,0 0 14px #d3b98c32}
+@media(max-width:650px){.ident strong{font-size:15px}
+ .quick-states .command-label{font-size:10px}}
+@media(prefers-reduced-motion:reduce){
+ .bar .actions #play::after{transition:none}
+}
