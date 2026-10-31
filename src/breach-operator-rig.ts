@@ -39,7 +39,7 @@ export type OperatorPose={
   reload:number;reloadDuration:number;reloadMode?:ReloadMode|null;
   reloadRemoved?:boolean;reloadInserted?:boolean;lastThrowAt:number;
   lastDoorAt:number;doorPoint?:{x:number;y:number};
-  doorMethod?:'open'|'kick'|'hold';down:boolean;
+  doorMethod?:'open'|'close'|'kick'|'hold';down:boolean;
   lastBashAt?:number;bashRole?:BashRole;
   surrender:boolean;aiming:boolean;firing:boolean;turning:number;
   /** Lab preview only: choose an exact stock/weapon readiness posture. */
