@@ -11,7 +11,7 @@ test('165: operator lab offers six aligned rigs, silhouette and focus controls',
  assert.match(lab,/function ensureComparison/);
  assert.match(lab,/poseOperator\(body/);
  assert.match(lab,/material\.color\.setHex\(0x172322\)/);
- assert.match(lab,/label\.addEventListener\('click'/);
+ assert.match(lab,/button\.addEventListener\('click'/);
  assert.match(lab,/clearComparison\(\)/);
 });
 test('165: all six simultaneous previews have stable foot contacts and rigid grips',()=>{
