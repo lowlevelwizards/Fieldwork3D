@@ -79,10 +79,12 @@ const COMPARE_POSES:{label:string;mode:Handling;track:LabTrack}[]=[
 ];
 let comparing=false,silhouettes=false;
 let comparisonRigs:OperatorRig[]=[];
+let comparisonKey='',comparisonPoseUpdates=0;
 const labelLayer=choose<HTMLElement>('compareLabels');
 const poseCompareButton=choose<HTMLButtonElement>('comparePose');
 const silhouetteButton=choose<HTMLButtonElement>('silhouetteMode');
 function clearComparison(){
+  comparisonKey='';
   for(const operatorRig of comparisonRigs){
     scene.remove(operatorRig.root);operatorRig.dispose();
   }
@@ -154,6 +156,7 @@ function chooseTrack(next:LabTrack){
   if(comparing){
     comparing=false;
     poseCompareButton.setAttribute('aria-pressed','false');
+    document.body.classList.remove('compare-open');
     labelLayer.hidden=true;
     renderer.shadowMap.enabled=true;
     fit();
@@ -170,11 +173,20 @@ document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(button=>
 choose<HTMLButtonElement>('resetCamera').addEventListener('click',()=>fit());
 poseCompareButton.addEventListener('click',()=>{
   comparing=!comparing;
-  if(comparing)ensureComparison();
+  if(comparing){comparisonKey='';ensureComparison();}
   labelLayer.hidden=!comparing;
   poseCompareButton.setAttribute('aria-pressed',String(comparing));
+  document.body.classList.toggle('compare-open',comparing);
   renderer.shadowMap.enabled=!comparing;
   fit();
+});
+choose<HTMLButtonElement>('savePoseView').addEventListener('click',()=>{
+  // Keep an exact visual reference across versions without retaining images
+  // or GPU render targets in memory; works for the current matched view.
+  const link=document.createElement('a');
+  link.download='fieldwork-poses-reference.png';
+  link.href=canvas.toDataURL('image/png');
+  link.click();
 });
 silhouetteButton.addEventListener('click',()=>{
   silhouettes=!silhouettes;
@@ -367,7 +379,7 @@ function draw(){
   const selectedHandling=transition?.to??previewHandling[track];
   doorProp.visible=track==='door'||track==='kick';
   rig.root.position.set(motion.x,0,motion.z);
-  poseOperator(rig,{x:motion.x,z:motion.z,heading:motion.heading,
+  if(!comparing)poseOperator(rig,{x:motion.x,z:motion.z,heading:motion.heading,
     travelYaw:motion.travelYaw,seconds:clock,stride:clock*40,
     velocity:motion.speed,posture:motion.posture,
     injury:Math.max(motion.injury,Number(injury.value),
@@ -405,7 +417,11 @@ function draw(){
     for(const material of rig.colors.keys())material.color.setHex(0x172322);
   if(comparing){
     ensureComparison();
-    comparisonRigs.forEach((body,i)=>{
+    const signature=operator.value+'|'+weapon.value+'|'+silhouettes;
+    if(comparisonKey!==signature){
+      comparisonKey=signature;
+      canvas.dataset.comparePoseUpdates=String(++comparisonPoseUpdates);
+      comparisonRigs.forEach((body,i)=>{
       const info=COMPARE_POSES[i],column=i%2,row=Math.floor(i/2);
       const x=(column-.5)*77,z=(row-1)*70;
       body.root.visible=true;body.root.position.set(x,0,z);
@@ -421,7 +437,8 @@ function draw(){
       const label=labelLayer.children[i] as HTMLButtonElement;
       label.title=info.label+' · stock '+body.stockError.toFixed(2)+
         ' · grip '+body.gripError.toFixed(2);
-    });
+      });
+    }
   }else for(const body of comparisonRigs)body.root.visible=false;
   const dx=comparing?0:motion.x-cameraFollow.x,
     dz=comparing?0:motion.z-cameraFollow.z;
@@ -442,6 +459,7 @@ function draw(){
   canvas.dataset.contactCount=String(feet.filter(x=>x.contact).length);
   canvas.dataset.gait=state.mode;
   canvas.dataset.gripError=rig.gripError.toFixed(4);
+  canvas.dataset.eyeError=rig.eyeError.toFixed(3);
   canvas.dataset.ankleGap=Math.max(...rig.legGap).toFixed(3);
   canvas.dataset.crossed=String(!uncrossed(feet[0].position,
     feet[1].position,-state.pelvisYaw,3.5));
