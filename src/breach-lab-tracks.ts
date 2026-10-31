@@ -126,7 +126,9 @@ function copyHistorical(s:HistoricalFootstepScheduler):HistoricalFootstepSchedul
 }
 export class LabHistoricalMotionCache{
   readonly frames:HistoricalFootstepScheduler[]=[];
-  constructor(readonly kind:LabTrack){
+  readonly kind:LabTrack;
+  constructor(kind:LabTrack){
+    this.kind=kind;
     const gait=historicalCreate();
     for(let frame=0;frame<=TRACK_DURATION*60;frame++){
       const time=frame/60,m=sampleLabTrack(kind,time);
