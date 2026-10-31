@@ -25,6 +25,8 @@ import {segmentHitsBox} from './breach-ray.ts';
 import {coverImpactFraction,aimHeight} from './breach-cover-height.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from './breach-door.ts';
 import {localDetour} from './breach-cooperation.ts';
+import {doorContactImpulse,passageWait,type PassageActor}
+  from './breach-passage.ts';
 import {diagnoseMovement,projectReachableGoal,type Blocker}
   from './breach-nav-diagnostics.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
@@ -1033,10 +1035,12 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const closedDoor=s.doors.find(door=>
     pointToSegment(move,doorLeafSegment(door))<15||
     doorBlocksSegment(door,{a:a.p,b:move}));
-  if(closedDoor?.open&&(closedDoor.openFraction??0)<.99)
-    // Repeated shoulder pressure drives the leaf toward its free stop.
-    // Moving into a leaf may not lock the player into it.
-    pushDoor(closedDoor,3.5);
+  if(closedDoor?.open&&(closedDoor.openFraction??0)<.99){
+    // Sustained contact at the latch generates more torque than at the
+    // hinge; an already open door can always be pushed toward its stop.
+    const impulse=doorContactImpulse(closedDoor,move);
+    if(impulse>0)pushDoor(closedDoor,2.5*impulse);
+  }
   // Look ahead to the route's next node, stopping to open a door before
   // the actor's capsule contacts the physical leaf.
   const doorAhead=a.side==='red'?s.doors.find(door=>{
@@ -1056,6 +1060,19 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     if((doorAhead.openFraction??0)<.72)return true;
     a.actionTimer=0;
   }else if(a.side==='red')a.actionTimer=0;
+  // Only one operator owns a narrow threshold at a time. This is a
+  // transient execution pause, not a new waypoint or permanent yield.
+  const traffic:PassageActor[]=s.operators.map(unit=>({
+    id:unit.id,p:unit.p,goal:unit===a?p:
+      unit.nav.at(-1)??unit.plan[0]?.p??null,
+    health:unit.health,blockedTime:unit.blockedTime,
+    active:unit===a||unit.nav.length>0||
+      unit.plan.some(n=>n.kind==='move'||n.kind==='door'||n.kind==='pie'),
+  }));
+  if(passageWait(traffic.find(unit=>unit.id===a.id)!,s.doors,traffic)){
+    a.velocity=0;a.blockedTime=0;
+    return true;
+  }
   const closed=!!closedDoor&&!closedDoor.open&&
     pointToSegment(move,doorLeafSegment(closedDoor))<9.5&&
     pointToSegment(move,doorLeafSegment(closedDoor))<
