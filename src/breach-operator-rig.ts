@@ -148,7 +148,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     if(p.down&&!p.surrender)material.color.lerp(new THREE.Color(0x555c57),.46);
   }
   const downProgress=clamp(p.downProgress??(p.down?1:0),0,1);
-  const moving=p.down?0:Math.min(1,p.velocity/72);
+  const physicalSpeed=p.blocked?0:p.velocity;
+  const moving=p.down?0:Math.min(1,physicalSpeed/72);
   const direction=p.travelYaw??(r.lastPose?
     Math.atan2(p.z-r.lastPose.z,p.x-r.lastPose.x):p.heading);
   const travel=moving>.14?direction:p.heading;
@@ -177,7 +178,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const travelYaw=p.travelYaw??direction;
   const gaitInput:FootstepInput={
     time:p.seconds,position:{x:p.x,y:p.z},rootYaw:-p.heading,
-    travelYaw,facingYaw:p.heading,speed:p.velocity,turning:p.turning,
+    travelYaw,facingYaw:p.heading,speed:physicalSpeed,turning:p.turning,
     posture:p.posture,injury:p.injury,down:p.down,
     cautious:p.aiming&&moving<.35,blocked:p.blocked,
     footAllowed:p.footAllowed,
@@ -212,7 +213,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.chest.rotation.y=p.deterministic?lookTwist:
       approach(r.chest.rotation.y,lookTwist,6,dt);
   }
-  const motion=bodyFromContacts({velocity:p.down?0:p.velocity,
+  const motion=bodyFromContacts({velocity:p.down?0:physicalSpeed,
     heading:p.heading,travelYaw,turning:p.turning,
     injury:p.injury,posture:p.posture,feet:targets});
   // Wide side-steps need a physical lowering of the center of mass,
