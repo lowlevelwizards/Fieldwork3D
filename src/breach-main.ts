@@ -2209,10 +2209,12 @@ function tick(now:number){
       replaying&&replayOmniscient,replaying?replayPresentation:null,
       !replaying&&state.phase==='running'&&previousRenderActors?
         {previous:previousRenderActors,alpha:Math.min(1,accum*60)}:null,
-      !replaying&&state.phase==='running'?
-        recorder.motion.presentation(Math.max(0,
-          state.seconds-(1-Math.min(1,accum*60))/60),
-          state.operators.map(a=>a.id)):null);
+      // The last recorded contacts remain the sole pose authority while
+      // planning or paused. Do NOT fall back to the rig-local scheduler.
+      !replaying?recorder.motion.presentation(Math.max(0,
+        state.phase==='running'?
+          state.seconds-(1-Math.min(1,accum*60))/60:
+          state.seconds),state.operators.map(a=>a.id)):null);
   const overlayBegin=perfOverlay?performance.now():0;
   render();
   // One local, intelligible pulse per distinct blocked episode.
