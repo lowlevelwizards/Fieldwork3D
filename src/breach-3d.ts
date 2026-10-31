@@ -675,13 +675,15 @@ export class TacticalScene3D{
       // a guard opening an unseen door may not broadcast its exact state.
       if(omniscient||liveVisibility(s,doorCenter(door)))
         this.observedDoorOpen.set(door.id,door.openFraction??(door.open?1:0));
-      const fraction=omniscient?(door.openFraction??(door.open?1:0)):
+      const directlyObserved=liveVisibility(s,doorCenter(door));
+      const fraction=omniscient||directlyObserved?
+        (door.openFraction??(door.open?1:0)):
         (s.intel.doorMemory.get(door.id)??0);
       const replayProgress=replay?.doors[door.id];
       // The rendered leaf follows the authoritative hinge rather than
       // a render-rate easing curve that disagrees with collision.
       object.leaf.rotation.y=(door.swing??-1)*
-        (replayProgress??fraction)*1.36;
+        ((omniscient||directlyObserved)?(replayProgress??fraction):fraction)*1.36;
       const selectedActor=team(s).find(a=>a.id===selected);
       const reachable=selectedActor&&selectedActor.health>0&&
         [selectedActor.p,...selectedActor.plan.map(n=>n.p)].some(p=>
@@ -895,7 +897,8 @@ export class TacticalScene3D{
           Math.max(2,end.y+6*Math.sin(Math.PI*progress)+i*1.5-4*progress),
           end.z+Math.sin(theta)*radius);
         chip.rotation.set(i*.73,theta,Math.PI*.5+progress*1.8);
-        chip.visible=visibility.impact&&shot.age<profile.lifetime;
+        chip.visible=visibility.impact&&shot.age<profile.lifetime&&
+          (omniscient||liveVisibility(s,{x:chip.position.x,y:chip.position.z}));
       }
     }
     // Surface-hit marks remain for 24 simulation seconds and are always
