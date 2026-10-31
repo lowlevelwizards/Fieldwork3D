@@ -6,7 +6,8 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createOperatorRig,poseOperator,type OperatorRig}
   from './breach-operator-rig.ts';
 import {weaponGrips,type Handling} from './breach-weapon-pose.ts';
-import {timedHandling,type HandlingTransition}
+import {stockPocket,elbowCorridor} from './breach-anatomy.ts';
+import {timedHandling,smoothHandling,type HandlingTransition}
   from './breach-handling-transition.ts';
 import {lateralAxis,sideOffset,uncrossed} from './breach-locomotion.ts';
 import {bodyFromContacts} from './breach-body-motion.ts';
@@ -111,6 +112,14 @@ function ensureComparison(){
     labelLayer.append(button);
   }
 }
+const LAB_HANDLING:Partial<Record<LabTrack,Handling>>={
+  'high-ready':'high','low-ready':'low','ready':'ready',
+  'short-stock':'short','active-aim':'ads','point-shoot':'point'
+};
+let labSwitch:null|{from:Handling;to:Handling;
+  since:number;duration:number;
+  fromWeapon:{origin:THREE.Vector3;rotation:THREE.Euler};
+  fromProfile:NonNullable<OperatorRig['handlingProfile']>}=null;
 let rig:OperatorRig|null=null,track:LabTrack='idle';
 let cache=new LabMotionCache(track);
 let clock=0,last=performance.now(),rate=1,playing=true,loop=true;
@@ -141,6 +150,7 @@ const supportBoxes=[0,1].map(()=>{
   debug.add(mesh);return mesh;
 });
 const build=()=>{
+  labSwitch=null;
   clearComparison();
   if(rig){scene.remove(rig.root);rig.dispose();}
   rig=createOperatorRig(operator.value,operator.value==='hostile'?'red':'blue');
@@ -161,6 +171,22 @@ function fit(next='iso'){
   cameraFollow={x:center.x,z:center.z};
 }
 function chooseTrack(next:LabTrack){
+  // Snapshot the actual current presentation, not merely the last named
+  // pose. Rapid tap-to-tap retargeting remains continuous mid-transition.
+  const target=LAB_HANDLING[next];
+  if(target&&rig&&!comparing&&next!==track){
+    const previous=LAB_HANDLING[track]??labSwitch?.to??'ready';
+    const delta=target==='ads'||previous==='ads'?.32:
+      target==='short'||previous==='short'?.30:.24;
+    labSwitch={from:previous,to:target,since:performance.now()/1000,
+      duration:delta,fromWeapon:{
+        origin:rig.weapon.position.clone(),
+        rotation:rig.weapon.rotation.clone()},
+      fromProfile:{...(rig.handlingProfile??{
+        pitch:0,stockY:4.6,preferredBack:1.8,torsoLean:0,
+        torsoTurn:0,headPitch:0,headDrop:0,shoulderLift:0,
+        pelvisShift:0,elbowTuck:.65,stanceCompression:0})}};
+  }else labSwitch=null;
   if(comparing){
     comparing=false;
     poseCompareButton.setAttribute('aria-pressed','false');
@@ -390,14 +416,19 @@ function showDiagnostics(){
 function draw(){
   if(!rig)return;
   const {motion,feet,state}=cache.sample(clock);
-  const previewHandling:Partial<Record<LabTrack,Handling>>={
-    'high-ready':'high','low-ready':'low','ready':'ready',
-    'short-stock':'short','active-aim':'ads','point-shoot':'point'
-  };
-  const transition:HandlingTransition|undefined=
+  const previewHandling=LAB_HANDLING;
+  const scripted:HandlingTransition|undefined=
     track==='ready-to-ads'?timedHandling('ready','ads',clock,.55,1.15):
     track==='ads-to-low'?timedHandling('ads','low',clock,.55,1.15):
     undefined;
+  const alpha=labSwitch?smoothHandling(
+    (performance.now()/1000-labSwitch.since)/labSwitch.duration):1;
+  const direct:HandlingTransition|undefined=labSwitch?
+    {from:labSwitch.from,to:labSwitch.to,alpha,
+      fromProfile:labSwitch.fromProfile,
+      fromWeapon:labSwitch.fromWeapon}:undefined;
+  const transition=direct??scripted;
+  if(labSwitch&&alpha>=1)labSwitch=null;
   const selectedHandling=transition?.to??previewHandling[track];
   doorProp.visible=track==='door'||track==='kick';
   rig.root.position.set(motion.x,0,motion.z);
@@ -477,6 +508,9 @@ function draw(){
   canvas.dataset.silhouette=String(silhouettes);
   canvas.dataset.track=track;
   canvas.dataset.weaponHandling=selectedHandling??'automatic';
+  canvas.dataset.handlingFrom=transition?.from??'';
+  canvas.dataset.handlingTo=transition?.to??'';
+  canvas.dataset.handlingBlend=(transition?.alpha??1).toFixed(3);
   canvas.dataset.time=clock.toFixed(3);
   canvas.dataset.contactCount=String(feet.filter(x=>x.contact).length);
   canvas.dataset.gait=state.mode;
