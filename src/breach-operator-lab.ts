@@ -572,6 +572,7 @@ function draw(){
   canvas.dataset.contactCount=String(feet.filter(x=>x.contact).length);
   canvas.dataset.gait=state.mode;
   canvas.dataset.gaitReference=gaitReference.value;
+  if(gaitReference.value==='candidate')canvas.dataset.promotion='lab-only';
   canvas.dataset.gripError=rig.gripError.toFixed(4);
   canvas.dataset.eyeError=rig.eyeError.toFixed(3);
   canvas.dataset.ankleGap=Math.max(...rig.legGap).toFixed(3);
