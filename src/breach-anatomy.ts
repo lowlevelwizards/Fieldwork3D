@@ -19,8 +19,8 @@ export function stockPocket(mode:Handling):Anchor3{
     case 'low':return {x:1.6,y:2.8,z:8.6};
     case 'ready':return {x:1.8,y:4.6,z:8.6};
     case 'short':return {x:-2.9,y:-2.6,z:10.0};
-    case 'point':return {x:3.7,y:5.5,z:8.6};
-    case 'ads':return {x:3.1,y:7.7,z:8.6};
+    case 'point':return {x:2.7,y:5.5,z:8.6};
+    case 'ads':return {x:2.3,y:7.7,z:8.6};
   }
 }
 export function elbowCorridor(mode:Handling,side:-1|1):Anchor3{
