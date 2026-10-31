@@ -41,7 +41,7 @@ test('155: enemy pressure prevents securing the hold objective',()=>{
  const s=newSession(0,3),a=team(s)[0],e=enemies(s)[0];
  a.p={...s.scenario.objective};
  e.p={x:a.p.x+22,y:a.p.y};
- toggling(s);steps(s,80);
+ toggling(s);stepSession(s,1/60);
  assert.equal(s.mission,'secure');
  assert.ok(s.holdTime<.1);
  e.health=0;enemies(s).forEach(x=>x.health=0);
