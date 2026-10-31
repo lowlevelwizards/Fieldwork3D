@@ -77,7 +77,9 @@ export function applyArchetype(site:Site,seed:number):Site{
   if(site.programLocked){
     const authored=new Map(site.rooms.filter(r=>r.kind==='room').map(r=>
       [r.id,r.purpose??'storage']));
-    return build(authored);
+    const candidate=build(authored);
+    if(!reachable(candidate))throw Error('architectural grammar failed circulation audit');
+    return candidate;
   }
   const useZoning=site.scale==='expanded'||seed%3===2;
   const sorted=site.rooms.filter(r=>r.kind==='room').slice().sort(
