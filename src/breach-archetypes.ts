@@ -50,5 +50,6 @@ export function applyArchetype(site:Site,seed:number):Site{
   const result=populateFunctionalRooms(dressSite(
     buildArchetypeEnvironment(furnishRooms(architecture,seed),seed),seed),seed);
   // Transitional generation remains within the legacy playable envelope.
-  return {...result,bounds:{minX:0,minY:0,maxX:640,maxY:740}};
+  return {...result,bounds:site.bounds??
+    {minX:0,minY:0,maxX:640,maxY:740}};
 }

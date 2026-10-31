@@ -41,7 +41,9 @@ export function addExteriorProperty(site:Site,seed:number):Site{
     const x=zone.x+(rng()-.5)*Math.max(0,zone.w-w-20);
     const y=zone.y+(rng()-.5)*Math.max(0,zone.h-h-18);
     const candidate:Obstacle={x,y,w,h,fixture:item,low:asset.cover==='low'};
-    if(x-w/2<17||x+w/2>623||y-h/2<23||y+h/2>718)continue;
+    const bounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
+    if(x-w/2<bounds.minX+17||x+w/2>bounds.maxX-17||
+      y-h/2<bounds.minY+23||y+h/2>bounds.maxY-22)continue;
     if(site.rooms.some(r=>x+w/2>r.x&&x-w/2<r.x+r.w&&
       y+h/2>r.y&&y-h/2<r.y+r.h))continue;
     if(protectedPoints.some(p=>Math.abs(p.x-x)<w/2+32&&Math.abs(p.y-y)<h/2+32))continue;

@@ -132,7 +132,9 @@ const requestedSeed=Number(startupParams.get('seed'));
 const initialSiteSeed=startupParams.has('seed')&&Number.isSafeInteger(requestedSeed)&&
  requestedSeed>0&&requestedSeed<=0xffffffff?requestedSeed:randomSiteSeed();
 let selectedIntelMode:IntelMode='floor-plan';
-let state:Session=newSession(0,legacyStudy?undefined:initialSiteSeed,selectedIntelMode);
+const requestedSiteScale=startupParams.get('scale')==='expanded'?'expanded':'standard';
+let state:Session=newSession(0,legacyStudy?undefined:initialSiteSeed,
+  selectedIntelMode,requestedSiteScale);
 let recorder=new MissionRecorder();recorder.capture(state,true);
 const OPERATION_HISTORY_KEY='fieldwork3d.operation-history.v1';
 let recordedOperation:Session|null=null;
@@ -1685,7 +1687,7 @@ function enterReplay(){
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
   ui.replayExtra.hidden=true;ui.replayMore.setAttribute('aria-expanded','false');
   state=newSession(finishedSession.variant,finishedSession.site?.seed,
-    finishedSession.intel.mode);
+    finishedSession.intel.mode,finishedSession.site?.scale??'standard');
   stage?.applySite(state.site??null);
   document.body.classList.add('replaying');
   ui.replayPanel.hidden=false;
@@ -1753,7 +1755,7 @@ function reset(next=state.variant,siteSeed?:number){
   flashMode=false;document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
   state=newSession(next,legacyStudy?undefined:
-    siteSeed??randomSiteSeed(),selectedIntelMode);
+    siteSeed??randomSiteSeed(),selectedIntelMode,requestedSiteScale);
   flashDoorId=null;
   stage?.applySite(state.site??null);selected='rook';looking=false;
   selectedNode=null;doorFocusId=null;draggingNode=null;

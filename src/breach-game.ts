@@ -18,7 +18,7 @@ import {
 } from './breach-plan.ts';
 import {validPieArc} from './breach-maneuvers.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
-import {generateSite,type Site,seeded} from './breach-site.ts';
+import {generateSite,type Site,type SiteScale,seeded} from './breach-site.ts';
 import {WEAPONS,injuryOf,injurySpeed,injuryReload,
   woundSeverity,exposure,nearCover,type WeaponId,type BattleEvent}
   from './breach-combat.ts';
@@ -177,8 +177,8 @@ const withActions=(a:Operator):TeamActor=>({
  * The actual game passes a unique seed on each newly loaded site.
  */
 export function newSession(index=0,siteSeed?:number,
-  intelMode:IntelMode='floor-plan'):Session{
-  const site=siteSeed===undefined?undefined:generateSite(siteSeed>>>0);
+  intelMode:IntelMode='floor-plan',scale:SiteScale='standard'):Session{
+  const site=siteSeed===undefined?undefined:generateSite(siteSeed>>>0,scale);
   activateSite(site??null);
   const seed=newTacticalState();
   const variant=((index%SCENARIOS.length)+SCENARIOS.length)%SCENARIOS.length;

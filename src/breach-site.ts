@@ -7,6 +7,7 @@ import {type Pt,type Segment,type Door,type Obstacle,
 import {generateJunctionSite} from './breach-junction-site.ts';
 import {applyArchetype} from './breach-archetypes.ts';
 import {appendArchitecturalWing} from './worldgen/architectural-wings.ts';
+import {expandProperty} from './worldgen/expanded-property.ts';
 export type Room={id:string;x:number;y:number;w:number;h:number;
   kind:'room'|'hall';tone:number;purpose?:string};
 export type BuildingArchetype='house'|'townhouse'|'apartment'|'retail'|'office'|'garage'|'warehouse'|'restaurant'|'motel'|'utility'|'clinic';
@@ -15,7 +16,9 @@ export type WideOpening={id:string;a:Pt;b:Pt;kind:'arch'|'wide'};
 export type EnvironmentCondition='occupied'|'busy'|'neglected'|'vacant'|'renovation'|'disturbed';
 export type WindowOpening={id:string;x:number;y:number;width:number;vertical:boolean};
 export type WorldBounds={minX:number;minY:number;maxX:number;maxY:number};
+export type SiteScale='standard'|'expanded';
 export type Site={
+  scale?:SiteScale;
   /** Explicit playable world envelope; legacy maps default to 640 × 740. */
   bounds?:WorldBounds;
   seed:number;name:string;rooms:Room[];walls:Segment[];doors:Door[];
@@ -42,8 +45,11 @@ export const seeded=(seed:number)=>{
 };
 const between=(r:()=>number,min:number,max:number)=>
   min+Math.floor(r()*(max-min+1));
-export function generateSite(seed:number):Site{
-  if(seed%5===0)return applyArchetype(appendArchitecturalWing(generateJunctionSite(seed),seed),seed);
+export function generateSite(seed:number,scale:SiteScale='standard'):Site{
+  if(seed%5===0){
+    const property=appendArchitecturalWing(generateJunctionSite(seed),seed);
+    return applyArchetype(scale==='expanded'?expandProperty(property,seed):property,seed);
+  }
   const rng=seeded(seed);
   const target=between(rng,3,6);
   const layout=(['office','workshop','corridor','courtyard'] as const)[seed%4];
@@ -196,8 +202,9 @@ export function generateSite(seed:number):Site{
       enemies.push(p);break;
     }
   }
-  return applyArchetype(appendArchitecturalWing({seed,name:['CUTWOODS','MILL ANNEX','TOLL HOUSE','RELAY SITE',
+  const property=appendArchitecturalWing({seed,name:['CUTWOODS','MILL ANNEX','TOLL HOUSE','RELAY SITE',
     'SERVICE DEPOT','FARMSTATION'][seed%6],rooms,walls,doors,cover,
     entrance,spawn,enemies,objective,extract:{x:entry.x,y:y2+115},
-    roomCount:habitable.length,layout},seed),seed);
+    roomCount:habitable.length,layout},seed);
+  return applyArchetype(scale==='expanded'?expandProperty(property,seed):property,seed);
 }
