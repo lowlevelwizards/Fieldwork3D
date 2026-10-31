@@ -7,14 +7,17 @@ export type Handling='low'|'high'|'ready'|'point'|'ads'|'short';
 export type WeaponGrip={lengthScale:number;stockX:number;
   primaryX:number;primaryY:number;supportX:number;supportY:number};
 export const GRIPS:Record<WeaponId,WeaponGrip>={
-  carbine:{lengthScale:1,stockX:-10,primaryX:-1,primaryY:-2,
-    supportX:4,supportY:-1.5},
-  smg:{lengthScale:.72,stockX:-10,primaryX:-1,primaryY:-2,
-    supportX:3.1,supportY:-1},
-  rifle:{lengthScale:1.19,stockX:-10,primaryX:-1,primaryY:-2,
-    supportX:3.9,supportY:-1.5},
-  shotgun:{lengthScale:1.08,stockX:-10,primaryX:-1,primaryY:-2,
-    supportX:4.5,supportY:-2},
+  // Buttstock block is centered at -10 with width 5: its real rear face
+  // is -12.5. Modest weapon-length normalization keeps both hands inside
+  // operator IK reach while retaining the chunky low-poly silhouette.
+  carbine:{lengthScale:.82,stockX:-12.5,primaryX:-1,primaryY:-2,
+    supportX:1.7,supportY:-1.5},
+  smg:{lengthScale:.70,stockX:-12.5,primaryX:-1,primaryY:-2,
+    supportX:2.4,supportY:-1},
+  rifle:{lengthScale:.90,stockX:-12.5,primaryX:-1,primaryY:-2,
+    supportX:.35,supportY:-1.5},
+  shotgun:{lengthScale:.88,stockX:-12.5,primaryX:-1,primaryY:-2,
+    supportX:1,supportY:-2},
 };
 export const weaponGrips=(id:WeaponId):WeaponGrip=>GRIPS[id];
 export function handlingPose(input:{aim:number;moving:number;
@@ -47,17 +50,19 @@ export type WeaponFit={
 export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
   /** Fire direction in chest-local space. */
   yaw:number;recoil:number;aimBlend?:number;
-  blendFrom?:Handling;blendAlpha?:number};
+  blendFrom?:Handling;blendAlpha?:number;
+  blendSnapshot?:{origin:THREE.Vector3;rotation:THREE.Euler}};
 /** Rigid contact fit in chest-local space. The candidate search uses scalar
  * maths: allocating dozens of vectors per actor per render caused mobile GC
  * spikes. Only the winning solution becomes Three.js geometry.
  */
 export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
-  if(input.blendFrom&&input.blendAlpha!==undefined){
-    const from=fitWeaponPose({...input,handling:input.blendFrom,
-      blendFrom:undefined,blendAlpha:undefined});
+  if((input.blendFrom||input.blendSnapshot)&&input.blendAlpha!==undefined){
+    const from=input.blendSnapshot??fitWeaponPose({...input,
+      handling:input.blendFrom!,blendFrom:undefined,
+      blendSnapshot:undefined,blendAlpha:undefined});
     const to=fitWeaponPose({...input,blendFrom:undefined,
-      blendAlpha:undefined});
+      blendSnapshot:undefined,blendAlpha:undefined});
     const t=clamp(input.blendAlpha,0,1);
     const origin=from.origin.clone().lerp(to.origin,t);
     const q=new THREE.Quaternion().setFromEuler(from.rotation);
@@ -75,11 +80,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       twoHanded:right<=LIMIT&&left<=LIMIT,
       primaryReachable:right<=LIMIT,
       contactError:Math.max(0,right-LIMIT)+Math.max(0,left-LIMIT),
-      stockError:(()=>{
-        const a=stockPocket(input.blendFrom!),b=stockPocket(input.handling);
-        return anchorGap(stock,{x:a.x+(b.x-a.x)*t,
-          y:a.y+(b.y-a.y)*t,z:a.z+(b.z-a.z)*t});
-      })()};
+      stockError:anchorGap(stock,stockPocket(input.handling))};
   }
   const data=weaponGrips(input.weapon),scale=data.lengthScale;
   const yaw=clamp(input.yaw,-1.1,1.1);
@@ -109,11 +110,19 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       (blendAim<.82?handlingProfile('point',input.weapon).pitch:
         handlingProfile('ads',input.weapon).pitch)*blendAim;
     const sr=Math.sin(roll),cr=Math.cos(roll);
-    const shoulderY=(aim===undefined||mode==='short'?
-      profile.stockY:
-      3.2+4.8*(Math.max(0,Math.min(1,aim))**
-        2*(3-2*Math.max(0,Math.min(1,aim)))))+recoilY;
-    for(const offset of [0,-.10,.10]){
+    // Buttplate is the authority. Search only around an EXTERNAL shoulder
+    // contact, never around the old in-chest receiver midpoint. Keep tiny
+    // yaw variations to preserve the authoritative shot heading.
+    const normalPocket=stockPocket(mode);
+    const shoulderPocket=input.aimBlend===undefined||mode==='short'?
+      normalPocket:{
+        x:stockPocket('ready').x+
+          (stockPocket('ads').x-stockPocket('ready').x)*blendAim,
+        y:stockPocket('ready').y+
+          (stockPocket('ads').y-stockPocket('ready').y)*blendAim,
+        z:normalPocket.z
+      };
+    for(const offset of [0,-.035,.035]){
       const candidateYaw=clamp(yaw+offset,-1.12,1.12);
       const cy=Math.cos(candidateYaw),sy=Math.sin(candidateYaw);
       const rotate=(x:number,y:number,z:number):[number,number,number]=>{
@@ -123,36 +132,30 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       const stock=rotate(data.stockX,0,0);
       const right=rotate(data.primaryX-data.stockX,data.primaryY,1.8);
       const left=rotate(data.supportX-data.stockX,data.supportY,-1.6);
-      for(const back of [-4,-2,0,1.3,2.7,3.8,5,7,9]){
-        // Short stocking truly retracts the gun rather than merely
-        // tipping an otherwise full-length shoulder-ready posture.
-        if(mode==='short'&&back<3.8)continue;
-        const sx=2.5-back-recoilX;
-        const px=sx+right[0],py=shoulderY+right[1];
-        const lx=sx+left[0],ly=shoulderY+left[1];
-        for(const sideways of [0,-1,-2,1.5,-3.5,-5.5,-8,-11,-14,4]){
-          const sz=4.2+sideways;
-          const pz=sz+right[2],lz=sz+left[2];
+      for(const dx of [0,.7,-.7,1.4,-1.4])
+        for(const dz of [0,.4,-.4,.8,-.8]){
+          const sx=shoulderPocket.x+dx-recoilX;
+          const sy=shoulderPocket.y+recoilY;
+          const sz=shoulderPocket.z+dz;
+          // The stock is 3.5 deep; remain outside the torso's +/-7 Z.
+          if(sz<8.15)continue;
+          const px=sx+right[0],py=sy+right[1],pz=sz+right[2];
+          const lx=sx+left[0],ly=sy+left[1],lz=sz+left[2];
           const rd=Math.hypot(px-1,py-4,pz-7);
           const ld=Math.hypot(lx-1,ly-4,lz+7);
-          const violation=Math.max(0,rd-LIMIT)+
-            Math.max(0,ld-LIMIT);
-          const pocket=stockPocket(mode);
-          const shoulderError=Math.hypot(sx-pocket.x,
-            shoulderY-pocket.y,sz-pocket.z);
-          const cost=violation*1000+
-            Math.abs(back-profile.preferredBack)*.8+
-            shoulderError*.16+Math.abs(sideways)*.19+
-            Math.abs(offset)*3+Math.max(0,
-              Math.hypot(sx-1,shoulderY-4,sz-7)-8)*.1;
+          const violation=Math.max(0,rd-LIMIT)+Math.max(0,ld-LIMIT);
+          const contact=Math.hypot(dx,dz);
+          // Do not bury the buttstock to improve IK reach. A small reported
+          // hand reach error is preferable to crossing the torso mesh.
+          const cost=violation*13+contact*3+
+            Math.abs(offset)*2+Math.abs(dx)*.25;
           if(cost>=bestScore)continue;
           bestScore=cost;
-          best={sx,sy:shoulderY,sz,mode,yaw:candidateYaw,roll,
+          best={sx,sy,sz,mode,yaw:candidateYaw,roll,
             stock,primary:right,support:left,twoHanded:
               rd<=LIMIT&&ld<=LIMIT,primaryReachable:rd<=LIMIT,
-              contactError:violation};
+            contactError:violation};
         }
-      }
     }
   }
   const b=best!;
@@ -167,7 +170,16 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
   // independent hand or stock teleportation occurs.
   // Compare the physical buttstock against a stable operator anatomy point,
   // not a reference synthesized from the stock itself (always zero).
-  const pocket=stockPocket(input.handling);
+  const pocket=input.aimBlend===undefined||input.handling==='short'?
+    stockPocket(input.handling):{
+      x:stockPocket('ready').x+
+        (stockPocket('ads').x-stockPocket('ready').x)*
+        clamp(input.aimBlend,0,1),
+      y:stockPocket('ready').y+
+        (stockPocket('ads').y-stockPocket('ready').y)*
+        clamp(input.aimBlend,0,1),
+      z:stockPocket(input.handling).z
+    };
   return {origin,rotation:new THREE.Euler(0,b.yaw,b.roll,'XYZ'),
     stock,primary,support,twoHanded:b.twoHanded,
     primaryReachable:b.primaryReachable,handling:b.mode,
