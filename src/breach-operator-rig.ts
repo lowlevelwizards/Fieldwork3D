@@ -10,6 +10,7 @@ import {advanceFootsteps,createFootstepScheduler,validatedReplayFeet,
 import type {ReplayFeet} from './breach-replay-motion.ts';
 import {bodyFromContacts} from './breach-body-motion.ts';
 import {packInertia} from './breach-gear-inertia.ts';
+import {operatorMotionTraits} from './breach-operator-personality.ts';
 import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH,LEG_HIP_SIDE} from './breach-leg-geometry.ts';
 import {turnHierarchy} from './breach-turn-hierarchy.ts';
 import {contactReaction,type BashRole} from './breach-contact-reactions.ts';
@@ -65,6 +66,7 @@ export type OperatorRig={
   weapon:THREE.Group;droppedGun:THREE.Group;feet:Foot[];arms:Arm[];
   magazineInserted:THREE.Mesh;magazineHand:THREE.Mesh;
   pack:THREE.Mesh;lastTime:number;lastPose:OperatorPose|null;
+  personality:ReturnType<typeof operatorMotionTraits>;
   footsteps:FootstepScheduler;
   /** Non-authoritative request for the motor/controller to reposition. */
   reachRequest:null|{kind:'door';distance:number};
@@ -146,6 +148,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   const colors=new Map([cloth,boot,vest,skin,steel].map(material=>
     [material,material.color.clone()] as const));
   return {root,hip,chest,head,weapon,droppedGun,feet,arms,pack,colors,
+    personality:operatorMotionTraits(id),
     magazineInserted,magazineHand,
     lastTime:-1,lastPose:null,
     footsteps:createFootstepScheduler(),reachRequest:null,
@@ -280,7 +283,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     heading:p.heading,travelYaw,turning:p.turning,
     injury:p.injury,posture:p.posture,feet:targets,gait:p.gait,
     hybridSupport:p.hybridSupport,acceleration:p.acceleration,
-    seconds:p.seconds,
+    seconds:p.seconds,personalPhase:r.personality.phase,
+    personalLooseness:r.personality.looseness,
     tacticalTension:p.aiming||p.handlingIntent==='engage'||
       p.handlingIntent==='pie'||p.handlingIntent==='look'?1:
       p.handlingIntent==='door'||p.posture==='crouch'?.55:0,
@@ -289,8 +293,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     position:{x:p.x,y:p.z}});
   // Pack follows the torso with restrained inertia, not separate timing.
   const packMotion=packInertia(p.acceleration??0,motion.torsoSide);
-  r.pack.position.set(-7,0,packMotion.side);
-  r.pack.rotation.z=packMotion.lean;
+  r.pack.position.set(-7,0,
+    packMotion.side*r.personality.packScale);
+  r.pack.rotation.z=packMotion.lean*r.personality.packScale;
   // Wide side-steps need a physical lowering of the center of mass,
   // not a longer limb or a shoe teleported away from its world anchor.
   // Build 184: the balance solver already accounts for reachable hip
