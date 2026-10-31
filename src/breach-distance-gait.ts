@@ -63,8 +63,12 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
   s.lastStanceWidth=width;
   s.mode=classifyLocomotion(travelled/Math.max(dt,1/60),
     facing,travel,input.turning,s.mode);
-  const distanceStep=travelled+(travelled<.04?turning*2.6:0);
+  const distanceStep=travelled+(travelled<.04?turning*8.5:0);
   s.accumulated+=Math.min(distanceStep,interval*3);
+  // Distance, not a disconnected wall-clock oscillator, advances active swings.
+  // A stationary airborne foot only finishes its existing landing movement.
+  for(const foot of s.feet)if(foot.phase==='swinging')
+    foot.phaseDuration+=distanceStep||Math.min(interval*.10,dt*interval*3.5);
   const forward={x:Math.cos(travel),y:Math.sin(travel)};
   const centerHip=(footIndex:number,at:Pt)=>lateral(at,facing,
     footIndex===0?-1:1,LEG_HIP_SIDE);
@@ -105,12 +109,16 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
       // Motion distance, not a second time-driven gait, advances travel.
       // Short settling time only finishes an already airborne foot at rest.
       const maxDuration=Math.max(.08,f.swingDuration);
-      const fraction=clamp((input.time-f.phaseStart)/maxDuration,0,1);
+      const fraction=clamp(Math.max(
+        f.phaseDuration/(interval*(running?.9:1.1)),
+        input.speed<.5?(input.time-f.phaseStart)/Math.max(.22,maxDuration):0),
+        0,1);
       const progress=eased(fraction);
       const point={x:mix(f.swingFrom.x,f.swingTo.x,progress),
         y:mix(f.swingFrom.y,f.swingTo.y,progress)};
       if(fraction>=1){
-        f.plantedAt=clone(f.swingTo);f.phase='planted';
+        f.plantedAt=clone(f.swingTo);f.worldYaw=f.targetYaw;
+        f.phase='planted';
         f.contact=true;f.lastTouchdown=input.time;
       }else return {position:point,height:Math.sin(Math.PI*progress)*
         (running?3.6:squeeze?1.1:2.5),
