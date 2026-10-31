@@ -1,5 +1,5 @@
 import {
-  W,H,WALLS,COVER,GRID,doorCenter,doorLeafSegment,type Pt,
+  W,H,activeWorldBounds,WALLS,COVER,GRID,doorCenter,doorLeafSegment,type Pt,
 } from './breach-core.ts';
 import {
   type Session,type TeamActor,
@@ -328,10 +328,12 @@ function layout(){
   canvas.style.width=cssW+'px';canvas.style.height=cssH+'px';
   stage?.resize(cssW,cssH);
   const available=Math.max(240,cssH-(cssH<500?85:172));
-  const fit=Math.min((cssW-20)/W,available/H);
+  const bounds=activeWorldBounds();
+  const width=bounds.maxX-bounds.minX,height=bounds.maxY-bounds.minY;
+  const fit=Math.min((cssW-20)/width,available/height);
   viewScale=fit*zoom;
-  ox=cssW/2-W*viewScale/2+panX;
-  oy=cssH/2-H*viewScale/2-11+panY;
+  ox=cssW/2-(bounds.minX+bounds.maxX)*viewScale/2+panX;
+  oy=cssH/2-(bounds.minY+bounds.maxY)*viewScale/2-11+panY;
 }
 const toWorld=(x:number,y:number):Pt=>{
   if(stage&&viewMode!=='plan2d')return stage.screenToWorld(x,y)??{x:-500,y:-500};

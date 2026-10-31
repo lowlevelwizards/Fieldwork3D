@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {propDefinition} from './worldgen/asset-catalog.ts';
-import {W,H,WALLS,COVER,initialDoors,doorCenter,activeSite,
+import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,activeSite,
   type Pt,type Door} from './breach-core.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {type Site} from './breach-site.ts';
@@ -243,7 +243,10 @@ export class TacticalScene3D{
   private buildGenerated(site:Site){
     const palettes=[0x817b69,0x5b746d,0x79705f,0x616e65];
     const earth=this.solid(site.layout==='courtyard'?0x465348:0x34443e);
-    this.plane(this.root,W/2,H/2,W,H,-2,earth);
+    const bounds=site.bounds??{minX:0,minY:0,maxX:W,maxY:H};
+    const bw=bounds.maxX-bounds.minX,bh=bounds.maxY-bounds.minY;
+    this.plane(this.root,(bounds.minX+bounds.maxX)/2,
+      (bounds.minY+bounds.maxY)/2,bw,bh,-2,earth);
     const zoneColor={yard:0x53604c,patio:0x7b7668,driveway:0x656b65,
       service:0x6b6c60,garden:0x536b4b,parking:0x565d5c} as const;
     for(const zone of site.exteriorZones??[]){
@@ -252,7 +255,8 @@ export class TacticalScene3D{
     }
     const road=this.solid(0x59584a);
     this.box(this.root,site.entrance.x,-1,
-      (site.entrance.y+H)/2,85,1,H-site.entrance.y+10,road,false);
+      (site.entrance.y+bounds.maxY)/2,85,1,
+      bounds.maxY-site.entrance.y+10,road,false);
     const decorativeRoomGroups=new Map<string,THREE.Group>();
     for(const room of site.rooms){
       const group=new THREE.Group();
@@ -642,7 +646,9 @@ export class TacticalScene3D{
   }
   /** A reset is a predictable full-board fit, independent of unit selection. */
   resetCamera(){
-    this.view.focus={x:W/2,y:H/2};this.view.yaw=Math.PI/4;
+    const bounds=activeWorldBounds();
+    this.view.focus={x:(bounds.minX+bounds.maxX)/2,
+      y:(bounds.minY+bounds.maxY)/2};this.view.yaw=Math.PI/4;
     this.view.zoom=activeSite()?1.48:1.25;
     this.view.pitch=this.view.mode==='top'?Math.PI/2:55*Math.PI/180;
     this.updateCamera(1);
@@ -665,9 +671,11 @@ export class TacticalScene3D{
   private shiftFocus(dx:number,dy:number){
     const marginX=140,marginY=150;
     this.view.focus.x=THREE.MathUtils.clamp(
-      this.view.focus.x+dx,-marginX,W+marginX);
+      this.view.focus.x+dx,activeWorldBounds().minX-marginX,
+      activeWorldBounds().maxX+marginX);
     this.view.focus.y=THREE.MathUtils.clamp(
-      this.view.focus.y+dy,-marginY,H+marginY);
+      this.view.focus.y+dy,activeWorldBounds().minY-marginY,
+      activeWorldBounds().maxY+marginY);
     this.updateCamera(0);
   }
   /**
@@ -704,7 +712,9 @@ export class TacticalScene3D{
     this.camera.up.set(-Math.sin(angle),0,-Math.cos(angle));
     this.camera.lookAt(this.target);
     const aspect=this.width/this.height;
-    const diagonal=Math.hypot(W,H);
+    const bounds=activeWorldBounds();
+    const diagonal=Math.hypot(bounds.maxX-bounds.minX,
+      bounds.maxY-bounds.minY);
     // A yaw-invariant fit avoids breathing/scale changes while orbiting.
     const baseSpan=Math.max(820,(diagonal+66)/aspect);
     const span=baseSpan/this.view.zoom;
