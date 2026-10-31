@@ -8,6 +8,8 @@ import {doorKnown,wallKnown,coverKnown,roomKnown}
   from './breach-intel.ts';
 import {handlePoint,doorReachable} from './breach-door.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
+import {muzzleAtShot} from './breach-muzzle.ts';
+import {probeWeaponClearance} from './breach-weapon-clearance.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {casingAt,CASING_LIMIT,impactProfile} from './breach-effects.ts';
@@ -781,6 +783,19 @@ export class TacticalScene3D{
       const activeDoor=plannedDoor??(actor.lastDoorId?
         s.doors.find(d=>d.id===actor.lastDoorId):undefined);
       const handle=activeDoor?handlePoint(activeDoor):undefined;
+      // Sample the actual projected barrel axis, not the actor's feet
+      // facing. Compact handling is a visual clearance response only and
+      // must never directly overwrite motor orders or trigger path deadlocks.
+      const barrel=muzzleAtShot({x:actor.p.x,z:actor.p.y,
+        heading:actor.heading,weaponYaw:actor.weaponYaw,
+        weapon:actor.weapon,aim:actor.aim,velocity:actor.velocity,
+        recoil:actor.recoil,posture:actor.posture});
+      const reach=actor.weapon==='rifle'?46:
+        actor.weapon==='shotgun'?42:actor.weapon==='smg'?27:31;
+      const clearance=probeWeaponClearance({
+        origin:actor.p,yaw:barrel.yaw,length:reach,
+        isClear:(from,to)=>isClear(from,to,s.doors)
+      });
       poseOperator(object.physical,{
         x:drawActor.x,z:drawActor.z,heading:drawActor.heading,
         velocity:actor.velocity,seconds:poseSeconds,stride:actor.stride,
@@ -826,12 +841,8 @@ export class TacticalScene3D{
         hitRegion:actor.lastHitRegion,hitYaw:actor.lastHitYaw,
         hitSeverity:actor.lastHitSeverity,downPose:actor.downPose,
         flashActive:actor.flashUntil>s.seconds&&actor.health>0,
-        obstruction:!isClear(actor.p,{
-          x:actor.p.x+Math.cos(actor.heading)*
-            (actor.weapon==='rifle'?46:actor.weapon==='shotgun'?42:31),
-          y:actor.p.y+Math.sin(actor.heading)*
-            (actor.weapon==='rifle'?46:actor.weapon==='shotgun'?42:31)
-        },s.doors),
+        obstruction:clearance.obstruction,
+        clearanceAmount:clearance.retract,
         friendlyNear:s.operators.some(other=>{
           if(other===actor||other.side!==actor.side||other.health<=0)return false;
           const dx=other.p.x-actor.p.x,dy=other.p.y-actor.p.y;
