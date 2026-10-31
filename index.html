@@ -30,6 +30,7 @@
 </section>
 <section id="siteSettings" class="site-settings" hidden aria-label="Camera and mission settings">
   <button id="variant" type="button">NEW SITE</button>
+  <button id="briefingToggle" type="button" aria-expanded="false">BRIEFING</button>
   <button id="restart" type="button">RESTART</button>
   <button id="viewIso" type="button" aria-pressed="true">ISO</button>
   <button id="viewTop" type="button" aria-pressed="false">TOP</button>
@@ -37,6 +38,11 @@
   <button id="cameraFit" type="button">FIT VIEW</button>
   <button id="intelMode" type="button" title="Cycle mission intelligence rules; restarts this seed">INTEL · FLOOR PLAN</button>
    <a class="operator-lab-link" href="./operator-lab.html">OPERATOR LAB</a>
+</section>
+<section id="briefingPanel" class="briefing-panel" hidden aria-label="Operation briefing">
+  <strong id="briefingTitle">OPERATION BRIEFING</strong>
+  <p id="briefingBody"></p>
+  <button id="briefingClose" type="button">RETURN TO PLANNING</button>
 </section>
 <div id="contextTools" class="context-tools" role="toolbar" aria-label="Contextual tactical actions" hidden></div>
 <div class="feed" id="feed" aria-live="polite">PLAN THE ENTRY</div>
