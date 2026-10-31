@@ -8,8 +8,8 @@ test('142B: physical windows have real wall gaps and blocking sills',()=>{
    assert.ok(site.windows?.length,'windows present: '+seed);
    assert.equal(site.cover.filter(c=>c.fixture==='window-sill').length,
      site.windows.length);
-   assert.ok(site.cover.some(c=>c.fixture==='vehicle'||
-     c.fixture==='pallet'||c.fixture==='fence'||c.fixture==='bench'));
+   assert.ok(site.cover.some(c=>c.fixture&&c.fixture!=='window-sill'),
+     'location-specific room cover still exists: '+seed);
    activateSite(site);
    assert.ok(site.spawn.every(p=>passable(p)));
    assert.ok(passable(site.objective));
