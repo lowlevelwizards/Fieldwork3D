@@ -148,6 +148,28 @@ export class LabHistoricalMotionCache{
     return {motion,feet,state};
   }
 }
+import {createDistanceGait,advanceDistanceGait,cloneDistanceGait,
+  type DistanceGaitState} from './breach-distance-gait.ts';
+export class LabDistanceMotionCache{
+  readonly frames:DistanceGaitState[]=[];
+  readonly kind:LabTrack;
+  constructor(kind:LabTrack){
+    this.kind=kind;
+    const gait=createDistanceGait();
+    for(let frame=0;frame<=TRACK_DURATION*60;frame++){
+      const t=frame/60;
+      advanceDistanceGait(gait,gaitInput(t,sampleLabTrack(kind,t)));
+      this.frames.push(cloneDistanceGait(gait));
+    }
+  }
+  sample(time:number){
+    const t=clamp(time,0,TRACK_DURATION),motion=sampleLabTrack(this.kind,t);
+    const index=Math.floor(t*60+1e-8);
+    const state=cloneDistanceGait(this.frames[Math.min(index,this.frames.length-1)]);
+    const feet=advanceDistanceGait(state,gaitInput(t,motion));
+    return {motion,feet,state};
+  }
+}
 export class LabMotionCache{
   readonly frames:FootstepScheduler[]=[];
   readonly kind:LabTrack;

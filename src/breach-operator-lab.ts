@@ -13,7 +13,7 @@ import {timedHandling,smoothHandling,type HandlingTransition}
   from './breach-handling-transition.ts';
 import {lateralAxis,sideOffset,uncrossed} from './breach-locomotion.ts';
 import {bodyFromContacts} from './breach-body-motion.ts';
-import {LabMotionCache,LabHistoricalMotionCache,TRACK_DURATION,type LabTrack}
+import {LabMotionCache,LabHistoricalMotionCache,LabDistanceMotionCache,TRACK_DURATION,type LabTrack}
   from './breach-lab-tracks.ts';
 import type {WeaponId} from './breach-combat.ts';
 
@@ -124,9 +124,10 @@ let labSwitch:null|{from:Handling;to:Handling;
   fromProfile:NonNullable<OperatorRig['handlingProfile']>}=null;
 let rig:OperatorRig|null=null,track:LabTrack='idle';
 const gaitReference=choose<HTMLSelectElement>('gaitReference');
-let cache:LabMotionCache|LabHistoricalMotionCache=new LabMotionCache(track);
+let cache:LabMotionCache|LabHistoricalMotionCache|LabDistanceMotionCache=new LabMotionCache(track);
 const newTrackCache=(kind:LabTrack)=>gaitReference.value==='historical'?
-  new LabHistoricalMotionCache(kind):new LabMotionCache(kind);
+  new LabHistoricalMotionCache(kind):gaitReference.value==='candidate'?
+  new LabDistanceMotionCache(kind):new LabMotionCache(kind);
 gaitReference.addEventListener('change',()=>{
   cache=newTrackCache(track);draw();
 });
