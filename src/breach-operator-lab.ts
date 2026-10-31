@@ -374,7 +374,8 @@ function showDiagnostics(){
     coords3.setXYZ(2,shoulder.x,shoulder.y,shoulder.z);
     coords3.needsUpdate=true;guide.visible=true;
     for(let i=0;i<2;i++){
-      const sign=i===0?-1:1,hint=elbowCorridor(mode,sign as -1|1);
+      const sign=i===0?-1:1,hint=elbowCorridor(
+        mode,sign as -1|1,rig.handlingProfile??undefined);
       const point=rig.chest.localToWorld(
         new THREE.Vector3(hint.x,hint.y,hint.z));
       put(i+4,point.x,point.y,point.z);
