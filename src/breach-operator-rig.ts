@@ -53,6 +53,7 @@ export type OperatorPose={
   gait?:'walk'|'run'|'pie'|'squeeze';
   /** Opt-in to contact-position weight transfer for lab candidate only. */
   hybridSupport?:boolean;
+  acceleration?:number;
   aimBlend?:number;recoil?:number;shotHeading?:number;
   hitFade?:number;hitAge?:number;downProgress?:number;flashActive?:boolean;
   hitRegion?:WoundRegion;hitYaw?:number;hitSeverity?:number;
@@ -188,8 +189,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const hipTarget=moving>.22&&!lateral&&!reverse?travel:p.heading;
   // Do not rotate the pelvis yet: the fixed-step foot contacts are needed
   // before the one authoritative root heading can be selected.
-  const braking=!p.deterministic&&r.lastPose?
-    clamp((r.lastPose.velocity-p.velocity)/60,-1,1):0;
+  // Fixed-step recorded acceleration replaces render-rate velocity deltas.
+  const braking=clamp(-(p.acceleration??0)/180,-1,1);
   const crouch=p.posture==='crouch'?8:0;
   r.hip.position.y=20.2-crouch;
   r.chest.position.y=26-crouch;
@@ -277,7 +278,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const motion=bodyFromContacts({velocity:p.down?0:physicalSpeed,
     heading:p.heading,travelYaw,turning:p.turning,
     injury:p.injury,posture:p.posture,feet:targets,gait:p.gait,
-    hybridSupport:p.hybridSupport,
+    hybridSupport:p.hybridSupport,acceleration:p.acceleration,
     position:{x:p.x,y:p.z}});
   // Wide side-steps need a physical lowering of the center of mass,
   // not a longer limb or a shoe teleported away from its world anchor.
