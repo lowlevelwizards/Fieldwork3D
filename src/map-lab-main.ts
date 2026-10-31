@@ -8,6 +8,7 @@ const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const typeInput=el<HTMLSelectElement>('building');
 const scaleInput=el<HTMLSelectElement>('scale');
 const seedInput=el<HTMLInputElement>('seed');
+const playSite=el<HTMLAnchorElement>('playSite');
 const status=el<HTMLOutputElement>('info');
 const labelLayer=el<HTMLDivElement>('labels');
 for(const kind of BUILDING_ARCHETYPES){
@@ -64,6 +65,7 @@ function generate(advance=false){
  }
  if(!chosen){status.textContent='No matching configuration in the current generator range.';return;}
  seedInput.value=String(chosen.seed);
+ playSite.href='./breach.html?seed='+chosen.seed;
  session=newSession(0,chosen.seed);
  stage.applySite(session.site??null);stage.resetCamera();
  history.replaceState(null,'','?seed='+chosen.seed);
@@ -102,7 +104,9 @@ document.body.addEventListener('pointerup',stop);
 document.body.addEventListener('pointercancel',stop);
 window.addEventListener('wheel',e=>{e.preventDefault();stage.zoomAt(Math.exp(-e.deltaY*.001),e.clientX,e.clientY);},{passive:false});
 window.addEventListener('resize',()=>stage.resize(innerWidth,innerHeight));
-status.textContent=describe(session.site!);updateLabels();
+status.textContent=describe(session.site!);
+playSite.href='./breach.html?seed='+session.site!.seed;
+updateLabels();
 let last=performance.now();
 function frame(now:number){
  const dt=Math.min(.05,Math.max(0,(now-last)/1000));last=now;

@@ -126,9 +126,13 @@ const randomSiteSeed=()=>{
   if(typeof crypto!=='undefined'&&crypto.getRandomValues)crypto.getRandomValues(bytes);
   return bytes[0]||((Date.now()^Math.floor(Math.random()*1e9))>>>0);
 };
-const legacyStudy=new URLSearchParams(location.search).has('fixedSite');
+const startupParams=new URLSearchParams(location.search);
+const legacyStudy=startupParams.has('fixedSite');
+const requestedSeed=Number(startupParams.get('seed'));
+const initialSiteSeed=startupParams.has('seed')&&Number.isSafeInteger(requestedSeed)&&
+ requestedSeed>0&&requestedSeed<=0xffffffff?requestedSeed:randomSiteSeed();
 let selectedIntelMode:IntelMode='floor-plan';
-let state:Session=newSession(0,legacyStudy?undefined:randomSiteSeed(),selectedIntelMode);
+let state:Session=newSession(0,legacyStudy?undefined:initialSiteSeed,selectedIntelMode);
 let recorder=new MissionRecorder();recorder.capture(state,true);
 const OPERATION_HISTORY_KEY='fieldwork3d.operation-history.v1';
 let recordedOperation:Session|null=null;
