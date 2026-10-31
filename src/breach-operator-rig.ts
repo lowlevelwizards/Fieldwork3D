@@ -12,6 +12,7 @@ import {bodyFromContacts} from './breach-body-motion.ts';
 import {contactReaction,type BashRole} from './breach-contact-reactions.ts';
 import {kickMotion} from './breach-door-actions.ts';
 import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
+import {reloadHandKey} from './breach-reload-motion.ts';
 import {fallAngles,hitStagger,type FallPose,type WoundRegion}
   from './breach-wounds.ts';
 import {weaponGrips,handlingPose,clampReach,
@@ -19,7 +20,8 @@ import {weaponGrips,handlingPose,clampReach,
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
   ankleLink:THREE.Mesh;
   anchor:THREE.Vector3;swinging:boolean;
-  bend:THREE.Vector3;outOfReach:boolean};
+  bend:THREE.Vector3;outOfReach:boolean;
+  recovery:{from:{x:number;y:number};to:{x:number;y:number};at:number}|null};
 type Arm={upper:THREE.Mesh;lower:THREE.Mesh;hand:THREE.Mesh;
   bend:THREE.Vector3;outOfReach:boolean};
 export type OperatorPose={
@@ -96,7 +98,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     ankleLink.visible=false;
     feet.push({upper,lower,shoe,ankleLink,
       anchor:new THREE.Vector3(),
-      swinging:false,bend:new THREE.Vector3(1,0,0),outOfReach:false});
+      swinging:false,bend:new THREE.Vector3(1,0,0),outOfReach:false,recovery:null});
     const armUpper=bone(chest,3.9,4.0,cloth);
     const armLower=bone(chest,3.4,3.5,cloth);
     const hand=block(chest,0,0,0,3.6,3.2,3.9,skin);
@@ -150,6 +152,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     if(p.down&&!p.surrender)material.color.lerp(new THREE.Color(0x555c57),.46);
   }
   const downProgress=clamp(p.downProgress??(p.down?1:0),0,1);
+  const smooth=(t:number)=>{const v=clamp(t,0,1);return v*v*(3-2*v)};
+  const buckle=p.down&&!p.surrender?smooth(downProgress/.48):0;
+  const kneel=p.surrender?smooth(downProgress/.65):0;
   const physicalSpeed=p.blocked?0:p.velocity;
   const moving=p.down?0:Math.min(1,physicalSpeed/72);
   const direction=p.travelYaw??(r.lastPose?
@@ -192,12 +197,30 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const distance=Math.hypot(foot.position.x-p.x,foot.position.y-p.z);
     const invalid=!Number.isFinite(distance)||
       distance>(p.blocked||p.velocity<5?10.5:14.0)||
-      !!p.footAllowed&&!p.footAllowed(foot.position);
-    if(!invalid)return foot;
+      (!!p.footAllowed&&!p.footAllowed(foot.position)&&foot.contact);
+    const shoe=r.feet[i];
+    if(!invalid){shoe.recovery=null;return foot;}
     const point=safePlantPoint({...gaitInput,speed:0},i);
-    return {position:point,height:0,worldYaw:-p.heading,
-      phase:'recovering',contact:true,reason:'settle',
-      progress:1,pitch:0};
+    if(p.deterministic||!r.lastPose){
+      shoe.recovery=null;
+      return {position:point,height:0,worldYaw:-p.heading,
+        phase:'recovering',contact:true,reason:'settle',
+        progress:1,pitch:0};
+    }
+    if(!shoe.recovery||
+       Math.hypot(shoe.recovery.to.x-point.x,
+         shoe.recovery.to.y-point.y)>2.5){
+      shoe.recovery={from:{x:shoe.anchor.x,y:shoe.anchor.z},
+        to:point,at:p.seconds};
+    }
+    const recovery=shoe.recovery;
+    const t=clamp((p.seconds-recovery.at)/.22,0,1),blend=smooth(t);
+    return {position:{x:recovery.from.x+
+        (recovery.to.x-recovery.from.x)*blend,
+      y:recovery.from.y+(recovery.to.y-recovery.from.y)*blend},
+      height:2.4*Math.sin(Math.PI*t),worldYaw:-p.heading,
+      phase:t<1?'swinging':'recovering',contact:t>=1,
+      reason:'settle',progress:t,pitch:0};
   }) as [FootTarget,FootTarget];
   const kickAge=p.seconds-p.lastDoorAt;
   const kick=p.doorMethod==='kick'&&kickAge>=0&&kickAge<.76?
@@ -226,10 +249,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     Math.hypot(t.position.x-p.x,t.position.y-p.z)));
   const stanceDrop=clamp((stanceRadius-7.8)*.80,0,4.0);
   r.hip.position.y=Math.max(17.12-crouch,
-    19-crouch+motion.pelvisY-stanceDrop-bash.brace);
+    19-crouch+motion.pelvisY-stanceDrop-bash.brace-
+      buckle*8-kneel*9);
   r.hip.position.z=motion.pelvisSide;
   r.chest.position.y=26-crouch+motion.pelvisY*.65-
-    bash.brace*.4;
+    bash.brace*.4-buckle*7-kneel*12;
   r.chest.position.z=motion.pelvisSide*.75;
   r.chest.rotation.z=motion.torsoForward+braking*.018+
     (kick?.torsoLean??0)+bash.lean;
@@ -331,8 +355,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     p.doorMethod!=='kick';
   r.chest.position.x=bash.reach*.18;
   r.reachRequest=null;
-  r.weapon.visible=!p.surrender&&(!p.down||downProgress<.68);
-  r.droppedGun.visible=p.down&&!p.surrender&&downProgress>=.68;
+  r.weapon.visible=(!p.down&&!p.surrender)||downProgress<.30;
+  r.droppedGun.visible=(p.down||p.surrender)&&downProgress>=.30;
   const leftGrip=P(data.supportX,data.supportY,-1.6);
   const rightGrip=P(data.primaryX,data.primaryY,1.8);
   let reaching=false,releaseLeft=false,releaseRight=false;
@@ -343,23 +367,18 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     leftGrip.set(-3,-7,-8);rightGrip.set(-2,-8,8);
   }else if(reloadActive){
     releaseLeft=true;
-    if(reloadMode==='shells'){
-      const t=reloadProgress*8;
-      leftGrip.set(data.primaryX+3,-5-4*Math.abs(Math.sin(Math.PI*t)),
-        -4-2*Math.sin(Math.PI*t));
-    }else{
-      const lower=magazinePhase==='retrieve'?9:
-        magazinePhase==='remove'?5:magazinePhase==='insert'?2:0;
-      leftGrip.set(data.primaryX+2,-4-lower,
-        -3.5-2*Math.sin(Math.PI*reloadProgress));
-    }
+    const hand=reloadHandKey(reloadProgress,reloadMode,
+      data.supportX,data.supportY,data.primaryX);
+    leftGrip.set(hand.x,hand.y,hand.z);
   }else if(throwActive){
     releaseLeft=true;
     const t=Math.sin(Math.PI*clamp(throwAge/.7,0,1));
     leftGrip.set(data.supportX+8*t,4+7*t,-7);
   }else if(p.surrender){
     releaseLeft=true;
-    leftGrip.set(-1,11,-6);rightGrip.set(-1,11,6);
+    const raised=smooth(downProgress/.60);
+    leftGrip.set(-1,3+15*raised,-6);
+    rightGrip.set(-1,3+15*raised,6);
   }else if(bash.active&&p.bashRole==='push'){
     // A short forearm/shoulder extension separates the opponent, while
     // the primary hand keeps the gun from flailing through the torso.
@@ -448,7 +467,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     p.down?collapse.z:
     clamp(p.injury===2?.065:p.injury===1?.018:0,0,.08)+
       reaction.side;
-  r.root.position.y=p.surrender?-4:p.down?collapse.y:0;
+  r.root.position.y=p.surrender?-3-3*kneel:p.down?collapse.y:0;
   if(p.flashActive&&!p.down)r.root.rotation.z+=.10*Math.sin(p.seconds*24);
   if(p.surrender)r.chest.rotation.x=.15;
   else if(p.down){
@@ -464,14 +483,22 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.head.rotation.x=0;
   }
   if(r.droppedGun.visible){
-    // Offset away from the torso and preserve floor contact despite the
-    // root's fall rotation. This is deterministic on replay seeking.
+    // The world-space gun begins exactly in the last held grip and travels
+    // continuously to the ground, horizontal beside the operator.
+    r.root.updateMatrixWorld(true);
+    const held=r.weapon.getWorldPosition(new THREE.Vector3());
+    const orientation=r.weapon.getWorldQuaternion(new THREE.Quaternion());
+    const origin=r.root.getWorldPosition(new THREE.Vector3());
     const side=p.downPose==='left'?-1:1;
-    const inv=r.root.quaternion.clone().invert();
-    const desired=P(9,1.8,side*11).sub(r.root.position).applyQuaternion(inv);
-    r.droppedGun.position.copy(desired);
-    r.droppedGun.quaternion.setFromAxisAngle(P(0,0,1),Math.PI*.48)
-      .premultiply(inv);
+    const rest=P(origin.x+9,1.8,origin.z+side*11);
+    const t=smooth((downProgress-.30)/.70);
+    const location=held.lerp(rest,t);
+    r.droppedGun.position.copy(r.root.worldToLocal(location));
+    const flat=new THREE.Quaternion().setFromAxisAngle(P(0,1,0),
+      -p.heading+side*.18);
+    orientation.slerp(flat,t);
+    const inverse=r.root.getWorldQuaternion(new THREE.Quaternion()).invert();
+    r.droppedGun.quaternion.copy(inverse.multiply(orientation));
   }
   r.lastPose={...p};r.lastTime=p.seconds;
 }
