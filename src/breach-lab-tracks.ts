@@ -114,6 +114,38 @@ function gaitInput(time:number,m:LabMotion):FootstepInput{
     gait:m.speed>70?'run':
       m.speed<12&&Math.abs(m.turning)>.03?'pie':'walk'};
 }
+import {advanceFootsteps as historicalAdvance,
+  createFootstepScheduler as historicalCreate,
+  type FootstepScheduler as HistoricalFootstepScheduler}
+  from './breach-historical-footsteps.ts';
+function copyHistorical(s:HistoricalFootstepScheduler):HistoricalFootstepScheduler{
+  return {...s,lastPosition:{...s.lastPosition},
+    feet:s.feet.map(f=>({...f,plantedAt:{...f.plantedAt},
+      swingFrom:{...f.swingFrom},swingTo:{...f.swingTo}})) as
+      HistoricalFootstepScheduler['feet']};
+}
+export class LabHistoricalMotionCache{
+  readonly frames:HistoricalFootstepScheduler[]=[];
+  constructor(readonly kind:LabTrack){
+    const gait=historicalCreate();
+    for(let frame=0;frame<=TRACK_DURATION*60;frame++){
+      const time=frame/60,m=sampleLabTrack(kind,time);
+      const input=gaitInput(time,m);
+      historicalAdvance(gait,{...input,gait:input.gait==='squeeze'?
+        'walk':input.gait});
+      this.frames.push(copyHistorical(gait));
+    }
+  }
+  sample(time:number){
+    const t=clamp(time,0,TRACK_DURATION),motion=sampleLabTrack(this.kind,t);
+    const frame=Math.floor(t*60+1e-8);
+    const state=copyHistorical(this.frames[Math.min(frame,this.frames.length-1)]);
+    const input=gaitInput(t,motion);
+    const feet=historicalAdvance(state,{...input,gait:input.gait==='squeeze'?
+      'walk':input.gait});
+    return {motion,feet,state};
+  }
+}
 export class LabMotionCache{
   readonly frames:FootstepScheduler[]=[];
   readonly kind:LabTrack;
