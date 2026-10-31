@@ -2,9 +2,12 @@
  * Pure deterministic presentation; phase/velocity/facing are authoritative.
  */
 import type {FootTarget} from './breach-footsteps.ts';
+import {legMaximumLength,LEG_HIP_SIDE,LEG_ANKLE_HEIGHT,
+  LEG_HIP_HEIGHT} from './breach-leg-geometry.ts';
 export type BalanceInput={velocity:number;heading:number;travelYaw:number;
   turning:number;injury:number;posture:'stand'|'crouch';
   feet:readonly [FootTarget,FootTarget];
+  position?:{x:number;y:number};
   gait?:'run'|'walk'|'pie';};
 export type BodyMotion={pelvisY:number;pelvisSide:number;
   torsoForward:number;torsoSide:number;torsoYaw:number;headCounter:number;
@@ -45,9 +48,29 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
     envelope(right,'unloading'));
   // All envelopes reach zero at their phase boundaries. Lateral shuffles
   // change support legs often, so binary phase offsets visibly pop the hip.
-  const pelvisY=(-.65*receiving+.20*unloading+.42*swinging)*
+  let pelvisY=(-.65*receiving+.20*unloading+.42*swinging)*
     moving*crouch*wound*gaitAmp;
-  const pelvisSide=support*.95*speed*crouch*gaitAmp;
+  const pelvisSide=support*clamp(1.15*speed*gaitAmp,0,1.65)*crouch;
+  // Physical pelvis compression comes from the support-foot reach budget,
+  // not from a separate stance-radius correction in the renderer.
+  if(input.position){
+    const lateral={x:-Math.sin(input.heading),y:Math.cos(input.heading)};
+    let hipCeiling=LEG_HIP_HEIGHT;
+    for(let i=0;i<2;i++){
+      const foot=input.feet[i];
+      if(!foot.contact)continue;
+      const side=i===0?-1:1;
+      const hipX=input.position.x+
+        lateral.x*(side*LEG_HIP_SIDE+pelvisSide);
+      const hipZ=input.position.y+
+        lateral.y*(side*LEG_HIP_SIDE+pelvisSide);
+      const hx=foot.position.x-hipX,hz=foot.position.y-hipZ;
+      const maxVertical=Math.sqrt(Math.max(0,
+        legMaximumLength()**2-hx*hx-hz*hz));
+      hipCeiling=Math.min(hipCeiling,LEG_ANKLE_HEIGHT+maxVertical);
+    }
+    pelvisY-=clamp(LEG_HIP_HEIGHT-hipCeiling,0,2.4);
+  }
   const torsoForward=clamp(-forward*speed*.09,-.11,.08)*crouch;
   const torsoSide=clamp(side*speed*.065+support*speed*.014,
     -.095,.095)*crouch;
