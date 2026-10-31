@@ -17,11 +17,18 @@ test('new architectural compiler creates real varied and connected physical envi
   assert.equal(a.doors.find(d=>d.id==='FRONT')!==undefined,true);
   assert.ok(a.doors.every(d=>d.kind==='shutter'?Math.hypot(d.b.x-d.a.x,d.b.y-d.a.y)>=80:
     Math.abs(Math.hypot(d.b.x-d.a.x,d.b.y-d.a.y)-48)<.001));
-  const front=a.doors.find(d=>d.id==='FRONT'),p=front&&{
-   x:(front.a.x+front.b.x)/2,y:(front.a.y+front.b.y)/2-19};
-  assert.ok(p&&a.rooms.some(r=>['waiting','reception','lobby',
-   'living','dining','sales','aisle','loading','hallway'].includes(r.purpose)&&
-   p.x>r.x&&p.x<r.x+r.w&&p.y>r.y&&p.y<r.y+r.h));
+  const front=a.doors.find(d=>d.id==='FRONT');
+  assert.ok(front);
+  const mid={x:(front.a.x+front.b.x)/2,y:(front.a.y+front.b.y)/2};
+  const dx=front.b.x-front.a.x,dy=front.b.y-front.a.y;
+  const length=Math.hypot(dx,dy)||1;
+  const inwardSamples=[1,-1].map(sign=>({
+   x:mid.x-sign*dy/length*19,y:mid.y+sign*dx/length*19}));
+  assert.ok(inwardSamples.some(p=>a.rooms.some(r=>
+   ['waiting','reception','lobby','living','dining','sales',
+    'aisle','loading','hallway'].includes(r.purpose)&&
+    p.x>r.x&&p.x<r.x+r.w&&p.y>r.y&&p.y<r.y+r.h)),
+   'front door must lead into a public room on its true side');
   activateSite(a);
   try{
    for(const p of [...a.spawn,a.objective,...a.enemies,a.extract])
