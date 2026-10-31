@@ -1122,7 +1122,9 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const next=a.nav[0],gap=d(a.p,next);
   if(gap<3){a.nav.shift();return false;}
   const direction=angle(a.p,next);
-  const movingSpeed=a.side==='blue'?75:62;
+  // Ordinary cautious travel must fit within achievable step cadence.
+  // Running retains the faster existing speed via the pace multiplier.
+  const movingSpeed=a.side==='blue'?53:48;
   const suppression=clamp(1-a.suppression*.4,.45,1);
   const requested=movingSpeed*(a.posture==='crouch'?.58:1)*suppression*
     speedScale*injurySpeed(a.injuryStage);
