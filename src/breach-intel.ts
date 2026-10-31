@@ -65,15 +65,32 @@ export function observeIntel(intel:IntelState,site:Site|undefined,
    }
  });
  COVER.forEach((o,i)=>{
-   if(visible({x:o.x,y:o.y})||
-      visible({x:o.x-o.w/2,y:o.y-o.h/2})||
-      visible({x:o.x+o.w/2,y:o.y+o.h/2}))
-     intel.cover.add(i);
+   // Exposed sample points are outside the collidable/occluding box.
+   const x=o.w/2+2.5,y=o.h/2+2.5;
+   const samples=[
+     {x:o.x-x,y:o.y},{x:o.x+x,y:o.y},
+     {x:o.x,y:o.y-y},{x:o.x,y:o.y+y},
+     {x:o.x-x,y:o.y-y},{x:o.x+x,y:o.y-y},
+     {x:o.x-x,y:o.y+y},{x:o.x+x,y:o.y+y},
+   ];
+   if(samples.some(visible))intel.cover.add(i);
  });
  site?.rooms.forEach(r=>{
    if(visible({x:r.x+r.w/2,y:r.y+r.h/2})||
       visible({x:r.x+12,y:r.y+12}))intel.rooms.add(r.id);
  });
+}
+/** Direct physical contact reveals only the touched furniture, never remote cover. */
+export function discoverContactCover(intel:IntelState,at:Pt,reach=12){
+ const found:number[]=[];
+ COVER.forEach((o,i)=>{
+   const dx=Math.max(0,Math.abs(at.x-o.x)-o.w/2);
+   const dy=Math.max(0,Math.abs(at.y-o.y)-o.h/2);
+   if(Math.hypot(dx,dy)<=reach&&!intel.cover.has(i)){
+     intel.cover.add(i);found.push(i);
+   }
+ });
+ return found;
 }
 export const wallKnown=(intel:IntelState,i:number)=>intel.walls.has(i);
 export const doorKnown=(intel:IntelState,id:string)=>intel.doors.has(id);
