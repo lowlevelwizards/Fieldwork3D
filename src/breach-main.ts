@@ -1179,7 +1179,12 @@ function renderProjectedPlans(){
         draw.strokeStyle=color;
         draw.globalAlpha=a.id===selected?.94:.50;
         draw.lineWidth=n.kind==='pie'?3:2.4;
-        draw.setLineDash(n.kind==='pie'?[3,3]:[7,4]);
+        const squeezeRoute=n.kind==='move'&&
+          !routeWithIntel(state.intel,previous,n.p).length;
+        // A tighter dash unobtrusively marks a segment that needs the
+        // narrow sideways profile. It isn't another floating action button.
+        draw.setLineDash(n.kind==='pie'?[3,3]:
+          squeezeRoute?[2,4]:[7,4]);
         draw.stroke();draw.setLineDash([]);draw.globalAlpha=1;
       }
       const selectedNow=a.id===selected&&selectedNode===n.id;
