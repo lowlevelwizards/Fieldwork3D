@@ -18,6 +18,7 @@ for(const kind of BUILDING_ARCHETYPES){
  typeInput.append(option);
 }
 const initial=Number.parseInt(new URLSearchParams(location.search).get('seed')??'101',10)||101;
+scaleInput.value=new URLSearchParams(location.search).get('scale')==='expanded'?'expanded':'standard';
 seedInput.value=String(initial);
 let session:Session=newSession(0,initial);
 typeInput.value=session.site?.archetype??'house';
@@ -74,30 +75,28 @@ function report(site:Site):string{
   ' wide openings\n'+(result.errors.length?
    'CHECKS: '+result.errors.join('; '):'CHECKS: PASS');
 }
-const sizeMatches=(site:Site,scale:string)=>{
- const count=site.rooms.filter(room=>room.kind==='room').length;
- return scale==='any'||scale==='small'&&count<=4||
-  scale==='medium'&&count>=5||scale==='large'&&site.scale==='expanded';
-};
+// Site scale changes dimensions, not architectural fidelity or room count.
+const siteScale=()=>scaleInput.value==='expanded'?'expanded':'standard';
 function generate(advance=false){
  const starting=Math.max(1,Number.parseInt(seedInput.value,10)||1)+(advance?1:0);
  const wanted=typeInput.value as BuildingArchetype;
  let chosen:Site|null=null;
  for(let step=0;step<600;step++){
   const candidate=generateSite((starting+step)>>>0,
-    scaleInput.value==='large'?'expanded':'standard');
-  if(candidate.archetype===wanted&&sizeMatches(candidate,scaleInput.value)){
+    siteScale());
+  if(candidate.archetype===wanted){
    chosen=candidate;break;
   }
  }
  if(!chosen){status.textContent='No matching configuration in the current generator range.';return;}
  seedInput.value=String(chosen.seed);
  playSite.href='./breach.html?seed='+chosen.seed+
-   (scaleInput.value==='large'?'&scale=expanded':'');
+   (siteScale()==='expanded'?'&scale=expanded':'');
  session=newSession(0,chosen.seed,'floor-plan',
    scaleInput.value==='large'?'expanded':'standard');
  stage.applySite(session.site??null);stage.resetCamera();
- history.replaceState(null,'','?seed='+chosen.seed);
+ history.replaceState(null,'','?seed='+chosen.seed+
+  (siteScale()==='expanded'?'&scale=expanded':''));
  status.textContent=report(session.site!);
  updateLabels();
 }
