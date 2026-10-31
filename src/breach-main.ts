@@ -106,6 +106,18 @@ let viewMode:ViewMode='iso';
 try{stage=new TacticalScene3D();}
 catch(error){console.warn('3D unavailable; reverting to tactical plan',error);
   viewMode='plan2d';}
+const navDiagnostics=new URLSearchParams(location.search).has('nav');
+const navPanel=navDiagnostics?document.createElement('output'):null;
+if(navPanel){
+  navPanel.id='navDiagnostics';
+  Object.assign(navPanel.style,{
+    position:'fixed',left:'8px',top:'68px',zIndex:'70',
+    pointerEvents:'none',background:'rgba(6,12,11,.83)',
+    color:'#dce3c9',padding:'8px',font:'11px monospace',
+    maxWidth:'210px',whiteSpace:'pre-wrap'
+  });
+  document.body.append(navPanel);
+}
 let selected='rook';
 let looking=false,flashMode=false;
 let lookMode:'look'|'pie'|'strafe'='look';
@@ -414,6 +426,14 @@ function updateHud(){
     state.phase==='planning'?'GO <span>▶</span>':'RESET <span>↺</span>';
   ui.play.classList.toggle('running',state.phase==='running');
   const active=uid(selected);
+  if(navPanel){
+    navPanel.textContent=team(state).map(a=>a.name+'  '+
+      a.lastBlocker.toUpperCase()+
+      '  blocked '+a.blockedTime.toFixed(2)+'s\n'+
+      'nav '+a.nav.length+'  orders '+a.plan.length+
+      '  ('+a.p.x.toFixed(0)+','+a.p.y.toFixed(0)+')').join('\n');
+  }
+  canvas.dataset.navBlock=active?.lastBlocker??'clear';
   // Read-only plan status for phone gesture regression tests.
   canvas.dataset.planNodes=String(active?.plan.length??0);
   canvas.dataset.selectedNode=selectedNode===null?'':String(selectedNode);
