@@ -454,7 +454,28 @@ function updateContext(){
   ui.context.style.bottom='auto';
   // Motion is CSS-owned; no per-frame transform writes.
 }
+// Pointer-held explanations do not also dispatch the underlying tactical order.
+let contextHoldTimer:ReturnType<typeof setTimeout>|null=null;
+let contextHeldAt=-Infinity;
+const cancelContextHold=()=>{
+  if(contextHoldTimer!==null){clearTimeout(contextHoldTimer);contextHoldTimer=null;}
+};
+ui.context.addEventListener('pointerdown',event=>{
+  cancelContextHold();
+  if(event.pointerType==='mouse'&&event.button!==0)return;
+  const button=(event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]');
+  if(!button||button.disabled)return;
+  contextHoldTimer=setTimeout(()=>{
+    contextHoldTimer=null;contextHeldAt=performance.now();
+    showUiHelp(button.title||button.getAttribute('aria-label')||'',5500);
+    updateHud();
+  },450);
+});
+ui.context.addEventListener('pointerup',cancelContextHold);
+ui.context.addEventListener('pointercancel',cancelContextHold);
+ui.context.addEventListener('pointerleave',cancelContextHold);
 ui.context.addEventListener('click',event=>{
+  if(performance.now()-contextHeldAt<400){event.preventDefault();return;}
   const button=(event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]');
   if(!button||state.phase!=='planning')return;
   const action=button.dataset.action;
