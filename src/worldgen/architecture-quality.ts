@@ -2,6 +2,7 @@
  * Functional zones can consist of several adjoining room rectangles.
  */
 import type {Site,Room} from '../breach-site.ts';
+import {entryInteriorPoint} from './site-orientation.ts';
 const area=(r:Room)=>r.w*r.h;
 export type ArchitectureQuality={
  zones:number;nonrectangularZones:number;hallCells:number;
@@ -30,8 +31,7 @@ export function assessArchitecture(site:Site):ArchitectureQuality{
  const livingKitchenRatio=living&&kitchen?living/kitchen:null;
  const guests=functional.filter(r=>r.purpose==='guest').length;
  const front=site.doors.find(d=>d.id==='FRONT');
- const entry=front&&{x:(front.a.x+front.b.x)/2,
-   y:(front.a.y+front.b.y)/2-20};
+ const entry=entryInteriorPoint(site);
  const frontRoom=entry&&site.rooms.find(r=>entry.x>r.x&&entry.x<r.x+r.w&&
    entry.y>r.y&&entry.y<r.y+r.h);
  const entryPurpose=frontRoom?.purpose??'unknown';

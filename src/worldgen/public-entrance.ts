@@ -3,6 +3,7 @@
  * inventing/removing departments. Interior circulation remains authoritative.
  */
 import type {BuildingArchetype,Site} from '../breach-site.ts';
+import {entryInteriorPoint} from './site-orientation.ts';
 const allowed:Record<BuildingArchetype,readonly string[]>={
  clinic:['waiting','reception'],motel:['reception'],retail:['sales','checkout'],
  office:['reception','lobby'],restaurant:['dining'],
@@ -13,7 +14,7 @@ const allowed:Record<BuildingArchetype,readonly string[]>={
 export function entrancePurpose(site:Site,assigned:Map<string,string>):string{
  const door=site.doors.find(d=>d.id==='FRONT');
  if(!door)return 'unknown';
- const p={x:(door.a.x+door.b.x)/2,y:(door.a.y+door.b.y)/2-19};
+ const p=entryInteriorPoint(site);if(!p)return 'unknown';
  const room=site.rooms.find(r=>p.x>r.x&&p.x<r.x+r.w&&
    p.y>r.y&&p.y<r.y+r.h);
  return room?.kind==='hall'?'hallway':assigned.get(room?.id??'')??'unknown';
@@ -22,7 +23,7 @@ export function correctPublicEntrance(site:Site,kind:BuildingArchetype,
   assignments:Map<string,string>):Map<string,string>{
  const door=site.doors.find(d=>d.id==='FRONT');
  if(!door)return assignments;
- const p={x:(door.a.x+door.b.x)/2,y:(door.a.y+door.b.y)/2-19};
+ const p=entryInteriorPoint(site);if(!p)return assignments;
  const room=site.rooms.find(r=>r.kind==='room'&&p.x>r.x&&p.x<r.x+r.w&&
    p.y>r.y&&p.y<r.y+r.h);
  if(!room)return assignments;
