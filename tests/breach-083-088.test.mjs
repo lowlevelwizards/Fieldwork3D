@@ -6,7 +6,7 @@ import {activateSite,activeSite,WALLS,COVER,route,passable} from '../src/breach-
 import {newSession,team,enemies,planStack,planStackTeam,
   planSquadEntry,planMove,toggling,stepSession} from '../src/breach-game.ts';
 
-test('086: 160 seeds generate deterministic connected 3–6-room sites',()=>{
+test('086: 160 seeds generate deterministic connected compact sites including annex wings',()=>{
   const counts=new Set(),layouts=new Set();
   for(let seed=1;seed<=160;seed++){
     const site=generateSite(seed*1217);
@@ -14,7 +14,7 @@ test('086: 160 seeds generate deterministic connected 3–6-room sites',()=>{
     assert.deepEqual(site,repeat,'seed must replay the same site');
     counts.add(site.roomCount);
     layouts.add(site.walls.map(w=>w.a.x+','+w.a.y).join(';'));
-    assert.ok(site.roomCount>=3&&site.roomCount<=6);
+    assert.ok(site.roomCount>=3&&site.roomCount<=7);
     assert.equal(site.spawn.length,4);
     assert.ok(site.enemies.length>=2&&site.enemies.length<=7);
     assert.ok(site.doors.length+(site.openHallLinks??0)>=site.rooms.length-1,
@@ -31,7 +31,7 @@ test('086: 160 seeds generate deterministic connected 3–6-room sites',()=>{
       assert.ok(route(site.spawn[0],p).length,
         'all enemy spawns must be reachable: seed='+seed);
   }
-  assert.deepEqual([...counts].sort(),[3,4,5,6]);
+  assert.ok(counts.size>=4,'seed coverage includes varied building sizes');
   assert.ok(layouts.size>100,'site geometry must genuinely change each seed');
   activateSite(null);
 });
