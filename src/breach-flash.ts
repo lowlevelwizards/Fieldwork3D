@@ -8,35 +8,74 @@ const blocked=(from:Pt,to:Pt,doors:Door[])=>{
   return WALLS.some(w=>segmentsCross(seg,w))||
     doorBlocksRay(doors,seg);
 };
+/** Compact shoulder-side release offsets let a rear operator lob around
+ * their teammate without demanding pixel-perfect doorframe placement. Every
+ * release and doorway segment is still validated against solid geometry. */
 export function validateThrow(from:Pt,to:Pt,doors:Door[],
   plannedOpen:string[]=[]):ThrowPath{
   const range=dist(from,to);
-  if(range<16||range>210)return {points:[from,to],mode:'direct',
+  if(range<12||range>215)return {points:[from,to],mode:'direct',
     valid:false,reason:'OUT OF THROW RANGE'};
   const available=doors.map(door=>({...door,
     open:door.open||plannedOpen.includes(door.id),
-    // Preview the leaf at its eventual authored angle rather than its
-    // current closed collision position.
     openFraction:plannedOpen.includes(door.id)?1:door.openFraction}));
-  if(!blocked(from,to,available))
-    return {points:[from,to],mode:'direct',valid:true};
-  // Deliberate doorway throw: a grenade can be banked through a nearby
-  // opening while the soldier stays on the safe side of its doorframe.
+  const side={x:-(to.y-from.y)/Math.max(1,range),
+    y:(to.x-from.x)/Math.max(1,range)};
+  const forward={x:(to.x-from.x)/Math.max(1,range),
+    y:(to.y-from.y)/Math.max(1,range)};
+  const releases:Pt[]=[from];
+  for(const lateral of [-5,5,-10,10,-15,15])
+    for(const along of [0,5,-5]){
+      const candidate={x:from.x+side.x*lateral+forward.x*along,
+        y:from.y+side.y*lateral+forward.y*along};
+      if(!blocked(from,candidate,available))releases.push(candidate);
+    }
+  for(const release of releases)
+    if(!blocked(release,to,available))
+      return {points:dist(from,release)<.01?[from,to]:
+        [from,release,to],mode:'direct',valid:true};
+  // Route through the free center of the actual opening, then try a
+  // short inside-the-room hook to clear the near-side jamb or corner.
+  let best:ThrowPath|null=null,score=Infinity;
   for(const door of available)if(door.open){
     const center=doorCenter(door);
     const dx=door.b.x-door.a.x,dy=door.b.y-door.a.y;
     const length=Math.max(1,Math.hypot(dx,dy));
-    for(const offset of [0,-8,8,-14,14]){
-      const via={x:center.x+dx/length*offset,
-        y:center.y+dy/length*offset};
-      if(dist(from,via)>125||dist(to,via)>155)continue;
-      if(blocked(from,via,available)||blocked(via,to,available))continue;
-      const pathLength=dist(from,via)+dist(via,to);
-      if(pathLength>250)continue;
-      return {points:[from,via,to],via,mode:'doorway',valid:true};
+    const tangent={x:dx/length,y:dy/length};
+    const normal={x:-tangent.y,y:tangent.x};
+    const maxOffset=Math.max(0,length/2-7);
+    for(const offset of [0,-5,5,-10,10,-15,15]){
+      if(Math.abs(offset)>maxOffset)continue;
+      const via={x:center.x+tangent.x*offset,
+        y:center.y+tangent.y*offset};
+      for(const release of releases){
+        if(dist(release,via)>152||dist(to,via)>178||
+          blocked(release,via,available))continue;
+        const towards=(to.x-via.x)*normal.x+(to.y-via.y)*normal.y>=0?1:-1;
+        const hooks:Pt[]=[via];
+        for(const depth of [15,27,37])
+          for(const sideways of [0,-9,9]){
+            hooks.push({x:via.x+normal.x*depth*towards+
+              tangent.x*sideways,
+              y:via.y+normal.y*depth*towards+tangent.y*sideways});
+          }
+        for(const hook of hooks){
+          if(blocked(via,hook,available)||blocked(hook,to,available))continue;
+          const total=dist(from,release)+dist(release,via)+
+            dist(via,hook)+dist(hook,to);
+          if(total>282||total>=score)continue;
+          score=total;
+          const points=[from];
+          if(dist(from,release)>.01)points.push(release);
+          points.push(via);
+          if(dist(via,hook)>.01)points.push(hook);
+          points.push(to);
+          best={points,via,mode:'doorway',valid:true};
+        }
+      }
     }
   }
-  return {points:[from,to],mode:'direct',valid:false,
+  return best??{points:[from,to],mode:'direct',valid:false,
     reason:'WALL OR CLOSED DOOR BLOCKS THROW'};
 }
 export function sampleThrow(path:ThrowPath,t:number):{p:Pt;height:number}{

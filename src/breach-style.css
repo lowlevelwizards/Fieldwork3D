@@ -360,3 +360,11 @@ body.replaying .foot,body.replaying .guidance,body.replaying .feed{display:none!
  font:700 11px monospace;border-radius:5px}
 .debrief{max-height:min(82vh,650px);overflow-y:auto}
 .debrief p{line-height:1.55}
+
+/* 156: keep a second-tap cancel visible, away from contextual map actions. */
+.cancel-target{position:fixed;z-index:11;right:12px;
+ top:calc(env(safe-area-inset-top,0px) + 111px);
+ border:1px solid #c6b58b;border-radius:6px;background:#3a3029ed;
+ color:#f4deba;padding:10px 14px;font:700 12px monospace;
+ letter-spacing:.09em;touch-action:manipulation}
+.cancel-target[hidden]{display:none}

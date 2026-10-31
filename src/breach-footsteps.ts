@@ -238,18 +238,29 @@ export function advanceFootsteps(s:FootstepScheduler,source:FootstepInput):
   const discontinuity=!s.initialized||dt<-.015||dt>1.2||
     distance(s.lastPosition,input.position)>
       Math.max(22,input.speed*Math.max(0,dt)*1.7+17);
-  const badPlant=s.initialized&&s.feet.some(foot=>{
-    const anchor=foot.plantedAt;
-    return (input.footAllowed&&!input.footAllowed(anchor))||
-      (input.blocked&&distance(anchor,input.position)>10.5)||
-      (input.speed<6&&distance(anchor,input.position)>13.5);
-  });
-  const newlyBlocked=!!input.blocked&&!s.lastBlocked;
-  const abruptTurn=s.initialized&&input.speed<6&&
-    Math.abs(deltaAngle(s.lastYaw,input.rootYaw))>1.05;
-  if(discontinuity||badPlant||newlyBlocked||abruptTurn)
-    resetFootsteps(s,input);
+  // Only actual timeline/position discontinuities may reset contacts.
+  // Transient door/actor obstruction requests a visible recovery step;
+  // never teleport the boots merely because clearance changed.
+  if(discontinuity)resetFootsteps(s,input);
   for(const foot of s.feet)progress(foot,input);
+  if(input.footAllowed&&!input.down){
+    for(let i=0;i<2;i++){
+      const foot=s.feet[i],anchor=foot.plantedAt;
+      const unsafe=!input.footAllowed(anchor)||
+        (!!input.blocked&&distance(anchor,input.position)>10.5)||
+        (input.speed<6&&distance(anchor,input.position)>13.5);
+      if(!unsafe||foot.phase==='swinging'||foot.phase==='unloading')continue;
+      const next=safePlantPoint(input,i);
+      if(distance(next,anchor)<.02)continue;
+      foot.swingFrom=copy(anchor);foot.swingTo=next;
+      foot.fromYaw=foot.worldYaw;foot.targetYaw=input.rootYaw;
+      foot.phase='unloading';foot.contact=true;foot.reason='settle';
+      foot.phaseStart=input.time;foot.phaseDuration=.035;
+      foot.swingDuration=.20;foot.landingDuration=.065;
+      foot.recoveryDuration=.075;s.lastStepFoot=i;
+      s.lastStepAt=input.time;
+    }
+  }
   const facing=input.facingYaw??-input.rootYaw;
   const pivotSwing=s.feet.some(foot=>foot.reason==='turn'&&
     (foot.phase==='unloading'||foot.phase==='swinging'));

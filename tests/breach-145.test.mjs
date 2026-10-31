@@ -18,21 +18,26 @@ const pose=(x,z,seconds,extra={})=>({
   aiming:false,firing:false,turning:0,...extra
 });
 
-test('145: a blocked collision immediately replants and stops phantom walking',()=>{
+test('156: a blocked collision recovers through an animated step, never a teleport',()=>{
   const s=createFootstepScheduler();
   advanceFootsteps(s,input(0,100,100,{speed:48}));
   advanceFootsteps(s,input(.12,105,100,{speed:48}));
   const previous=s.resets;
+  let last=null,largest=0,sawSwing=false;
   for(let i=0;i<45;i++){
     const p=input(.14+i/60,116,100,{speed:48,blocked:true});
     const feet=advanceFootsteps(s,p);
-    assert.ok(feet.every(f=>f.contact));
-    assert.ok(feet.every(f=>Math.hypot(
-      f.position.x-116,f.position.y-100)<10.6));
-    assert.equal(s.mode,'idle');
+    if(last)for(let k=0;k<2;k++)
+      largest=Math.max(largest,Math.hypot(
+        feet[k].position.x-last[k].position.x,
+        feet[k].position.y-last[k].position.y));
+    sawSwing ||= feet.some(f=>!f.contact);
+    last=feet;
   }
-  assert.equal(s.resets,previous+1,
-    'collision recovery happens once, never resets on every frame');
+  assert.ok(sawSwing,'a contact recovery should have a visible swing');
+  assert.ok(largest<6,'one 60 Hz frame must not jump a whole boot width');
+  assert.equal(s.resets,previous,
+    'only real teleports or timeline discontinuities reset the scheduler');
 });
 test('145: planted anchors and planned landings obey physical clearance',()=>{
   const safe=point=>point.y<=100;

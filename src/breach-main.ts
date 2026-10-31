@@ -56,6 +56,7 @@ const ui={
   context:el<HTMLElement>('contextTools'),
   orders:el<HTMLElement>('advancedOrders'),
   moreOrders:el<HTMLButtonElement>('moreOrders'),
+  cancelTarget:el<HTMLButtonElement>('cancelTarget'),
   siteSettingsToggle:el<HTMLButtonElement>('siteSettingsToggle'),
   siteSettings:el<HTMLElement>('siteSettings'),
   replayMore:el<HTMLButtonElement>('replayMore'),
@@ -160,6 +161,10 @@ let flashDoorId:string|null=null;
 let armedOrigin:'here'|'end'='end';
 let doorFocusId:string|null=null;
 let draggingNode:Pt|null=null;
+function cancelTargeting(){
+  looking=false;flashMode=false;firePlacement=null;flashDoorId=null;
+  contextSignature='';updateHud();
+}
 const fogCanvas=document.createElement('canvas');
 fogCanvas.width=FOG_WIDTH;fogCanvas.height=FOG_HEIGHT;
 const fogContext=fogCanvas.getContext('2d');
@@ -257,7 +262,7 @@ function selectUnit(id:string){
 }
 function message(){
   if(replaying)return 'MISSION FILM · ORBIT, PAN, ZOOM AND SCRUB FREELY';
-  if(flashMode)return 'FLASH: tap a clear target within throwing range.';
+  if(flashMode)return 'FLASH: tap a target, or CANCEL to back out.';
   if(state.phase==='planning'){
     if(looking)return lookMode==='pie'?
       'PIE: tap a point to watch continuously while moving.':
@@ -320,6 +325,7 @@ function updateContext(){
   ]:[
     {id:'ctxLook',label:'LOOK',group:'primary'},
     {id:'ctxPie',label:'PIE',group:'primary'},
+    {id:'ctxFlash',label:'FLASH ×'+state.flashRemaining,group:'primary'},
     {id:'ctxWait',label:'WAIT',group:'primary'},
     {id:'ctxFocus',label:'FOCUS',group:'primary'},
     {id:'ctxSuppress',label:'SUPPRESS',group:'primary'},
@@ -431,6 +437,10 @@ ui.context.addEventListener('click',event=>{
     case 'ctxSuppress':
       firePlacement='suppress';looking=false;flashMode=false;
       updateHud();return;
+    case 'ctxFlash':
+      if(state.flashRemaining>0){flashMode=true;flashDoorId=null;
+        looking=false;firePlacement=null;}
+      break;
     case 'ctxLook':armFacing('look');return;
     case 'ctxPie':armFacing('pie');return;
     case 'ctxWait':{
@@ -511,6 +521,8 @@ function updateHud(){
   ui.variant.textContent='NEW SITE';
   ui.intelMode.textContent='INTEL · '+selectedIntelMode.replace('-', ' ').toUpperCase();
   ui.flash.textContent='FLASH ×'+state.flashRemaining;
+  ui.cancelTarget.hidden=!(state.phase==='planning'&&
+    (looking||flashMode||!!firePlacement));
   ui.loadout.textContent='WEAPON · '+(active?.weapon.toUpperCase()??'—');
   ui.flash.disabled=state.flashRemaining<=0||replaying;
   ui.back.disabled=!active?.plan.length;
@@ -823,9 +835,9 @@ function paths(){
       }
     }
   }
-  if(trace&&trace.length>1){
+  if(trace&&trace.length>=1&&cursor){
     draw.beginPath();draw.moveTo(trace[0].x,trace[0].y);
-    trace.slice(1).forEach(p=>draw.lineTo(p.x,p.y));
+    [...trace.slice(1),cursor].forEach(p=>draw.lineTo(p.x,p.y));
     draw.strokeStyle='#e4c998';draw.lineWidth=3;draw.stroke();
   }else if(cursor&&state.phase==='planning'){
     const a=uid(selected);
@@ -1408,6 +1420,7 @@ ui.reload.addEventListener('click',()=>{
   else if(state.phase==='running')reloadNow(state,selected);
   updateHud();
 });
+ui.cancelTarget.addEventListener('click',cancelTargeting);
 ui.flash.addEventListener('click',()=>{
   if(state.phase!=='planning')return;
   flashMode=!flashMode;flashDoorId=null;
@@ -1457,6 +1470,7 @@ window.addEventListener('keydown',e=>{
   if(e.code==='Backspace'&&!e.repeat){
     e.preventDefault();ui.back.click();
   }
+  if(e.code==='Escape'){cancelTargeting();return;}
   if(e.code==='KeyF'&&!e.repeat)armFacing('strafe');
   if(e.code==='KeyB'&&!e.repeat)armFacing('pie');
   if(e.code==='KeyZ'&&(e.ctrlKey||e.metaKey)){
@@ -1594,7 +1608,7 @@ canvas.addEventListener('pointermove',e=>{
   if(state.phase==='planning'&&p.wasUnit&&p.moved){
     p.mode='route';
     if(!trace)trace=[{...uid(selected)!.p}];
-    if(distance(trace.at(-1)!,cursor)>20)trace.push({...cursor});
+    if(distance(trace.at(-1)!,cursor)>8)trace.push({...cursor});
   }else if(p.moved&&e.pointerType==='mouse'&&(e.buttons&4)){
     panX+=dx;panY+=dy;layout();
   }
@@ -1632,7 +1646,8 @@ function releasePointer(e:PointerEvent,cancelled=false){
         if(!moved)state.events.push('INVALID ORDER DESTINATION');
       }
       selectedNode=p.nodeId;doorFocusId=null;
-    }else if(p.mode==='route'&&trace&&trace.length>1){
+    }else if(p.mode==='route'&&trace&&
+      distance(trace[0],pt)>16){
       const points=[...trace,pt];
       if(!planMoveStroke(state,selected,points.slice(1)))
         state.events.push('NO WALKABLE STROKE');

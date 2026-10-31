@@ -74,7 +74,7 @@ export function sampleFootEvents(events:readonly FootEvent[],time:number):FootTa
 }
 export class ReplayMotionRecorder{
   private actors=new Map<string,ActorTrack>();
-  private doors=new Map<string,{at:number;open:boolean}[]>();
+  private doors=new Map<string,{at:number;fraction:number}[]>();
   record(time:number,actors:readonly TeamActor[],doors:readonly Door[]):void{
     for(const actor of actors){
       const position={x:actor.p.x,y:actor.p.y};
@@ -143,8 +143,9 @@ export class ReplayMotionRecorder{
     for(const door of doors){
       let events=this.doors.get(door.id);
       if(!events){events=[];this.doors.set(door.id,events);}
-      if(!events.length||events[events.length-1].open!==door.open)
-        events.push({at:time,open:door.open});
+      const fraction=door.openFraction??(door.open?1:0);
+      if(!events.length||Math.abs(events[events.length-1].fraction-fraction)>1e-5)
+        events.push({at:time,fraction});
     }
   }
   direction(id:string):number|undefined{return this.actors.get(id)?.travelYaw;}
@@ -177,10 +178,10 @@ export class ReplayMotionRecorder{
         const mid=Math.ceil((lo+hi)/2);
         if(events[mid].at<=time)lo=mid;else hi=mid-1;
       }
-      const e=events[lo];if(!e)continue;
-      const previous=lo>0?Number(events[lo-1].open):Number(e.open);
-      doors[id]=previous+(Number(e.open)-previous)*
-        smooth(clamp((time-e.at)/.18,0,1));
+      const a=events[lo],b=events[Math.min(lo+1,events.length-1)];
+      if(!a)continue;
+      const alpha=b.at>a.at?clamp((time-a.at)/(b.at-a.at),0,1):0;
+      doors[id]=a.fraction+(b.fraction-a.fraction)*alpha;
     }
     return {feet,travelYaw,pelvisYaw,doors};
   }
