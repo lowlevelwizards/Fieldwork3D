@@ -81,7 +81,30 @@ const COMPARE_POSES:{label:string;mode:Handling;track:LabTrack}[]=[
   {label:'POINT SHOOT',mode:'point',track:'point-shoot'},
   {label:'ACTIVE AIM',mode:'ads',track:'active-aim'},
 ];
-let comparing=false,silhouettes=false;
+let comparing=false,silhouettes=false,gaitComparing=false;
+let gaitCompareRig:OperatorRig|null=null;
+let historicalGait:LabHistoricalMotionCache|null=null;
+let hybridGait:LabDistanceMotionCache|null=null;
+const gaitCompareButton=choose<HTMLButtonElement>('compareGaits');
+const gaitCompareStatus=choose<HTMLElement>('gaitCompareStatus');
+function clearGaitCompare(){
+  if(gaitCompareRig){
+    scene.remove(gaitCompareRig.root);gaitCompareRig.dispose();
+    gaitCompareRig=null;
+  }
+  historicalGait=null;hybridGait=null;
+}
+function ensureGaitCompare(){
+  if(!historicalGait||historicalGait.kind!==track)
+    historicalGait=new LabHistoricalMotionCache(track);
+  if(!hybridGait||hybridGait.kind!==track)
+    hybridGait=new LabDistanceMotionCache(track);
+  if(!gaitCompareRig){
+    gaitCompareRig=createOperatorRig(operator.value,
+      operator.value==='hostile'?'red':'blue');
+    scene.add(gaitCompareRig.root);
+  }
+}
 let comparisonRigs:OperatorRig[]=[];
 let comparisonKey='',comparisonPoseUpdates=0;
 const silhouetteColor=new THREE.Color(0x172322);
@@ -161,7 +184,7 @@ const supportBoxes=[0,1].map(()=>{
 });
 const build=()=>{
   labSwitch=null;
-  clearComparison();
+  clearComparison();clearGaitCompare();
   if(rig){scene.remove(rig.root);rig.dispose();}
   rig=createOperatorRig(operator.value,operator.value==='hostile'?'red':'blue');
   scene.add(rig.root);
@@ -176,7 +199,7 @@ function fit(next='iso'){
     center.z+dz);
   camera.zoom=comparing?
     Math.min(.34,Math.max(.21,.58*window.innerWidth/window.innerHeight)):
-    1.4;camera.updateProjectionMatrix();
+    gaitComparing?(compact?.60:.77):1.4;camera.updateProjectionMatrix();
   control.target.set(center.x,16,center.z);control.update();
   cameraFollow={x:center.x,z:center.z};
 }
@@ -203,6 +226,7 @@ function chooseTrack(next:LabTrack){
     fit();
   }
   track=next;cache=newTrackCache(next);clock=0;playing=true;
+  if(gaitComparing){historicalGait=null;hybridGait=null;ensureGaitCompare();}
   for(const b of document.querySelectorAll<HTMLButtonElement>('[data-pose]'))
     b.setAttribute('aria-pressed',String(b.dataset.pose===next));
   playPause.textContent='PAUSE';
@@ -212,8 +236,25 @@ document.querySelectorAll<HTMLButtonElement>('[data-pose]').forEach(button=>
 document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(button=>
   button.addEventListener('click',()=>fit(button.dataset.view)));
 choose<HTMLButtonElement>('resetCamera').addEventListener('click',()=>fit());
+gaitCompareButton.addEventListener('click',()=>{
+  gaitComparing=!gaitComparing;
+  if(gaitComparing){
+    comparing=false;labelLayer.hidden=true;
+    poseCompareButton.setAttribute('aria-pressed','false');
+    document.body.classList.remove('compare-open');
+    ensureGaitCompare();
+  }else clearGaitCompare();
+  gaitCompareButton.setAttribute('aria-pressed',String(gaitComparing));
+  gaitCompareStatus.hidden=!gaitComparing;
+  fit();
+});
 poseCompareButton.addEventListener('click',()=>{
   comparing=!comparing;
+  if(comparing&&gaitComparing){
+    gaitComparing=false;clearGaitCompare();
+    gaitCompareButton.setAttribute('aria-pressed','false');
+    gaitCompareStatus.hidden=true;
+  }
   if(comparing){comparisonKey='';ensureComparison();}
   labelLayer.hidden=!comparing;
   poseCompareButton.setAttribute('aria-pressed',String(comparing));
@@ -525,6 +566,30 @@ function draw(){
     hitYaw:motion.heading+Math.PI/2,
     hitAge:track==='wounded'?Math.max(0,clock-.7):undefined,
     hitSeverity:2},0);
+  if(gaitComparing&&rig.lastPose){
+    ensureGaitCompare();
+    const historical=historicalGait!.sample(clock);
+    const hybrid=hybridGait!.sample(clock);
+    // Shift recorded world contacts and body by the SAME offset.
+    // Never modify the cached reference timelines.
+    const footOffset=(targets:typeof historical.feet,dx:number)=>
+      targets.map(f=>({...f,position:{x:f.position.x+dx,
+        y:f.position.y}})) as typeof historical.feet;
+    const pose={...rig.lastPose};
+    rig.root.position.set(motion.x-19,0,motion.z);
+    poseOperator(rig,{...pose,x:motion.x-19,z:motion.z,
+      replayFeet:footOffset(historical.feet,-19),
+      pelvisYaw:historical.state.pelvisYaw,
+      hybridSupport:false,deterministic:true},0);
+    const other=gaitCompareRig!;
+    other.root.visible=true;other.root.position.set(motion.x+19,0,motion.z);
+    poseOperator(other,{...pose,x:motion.x+19,z:motion.z,
+      replayFeet:footOffset(hybrid.feet,19),
+      pelvisYaw:hybrid.state.pelvisYaw,
+      hybridSupport:true,deterministic:true},0);
+    gaitCompareStatus.textContent='LEFT: PRE-180 · RIGHT: HYBRID · '+
+      'SYNC '+clock.toFixed(2)+'s';
+  }else if(gaitCompareRig)gaitCompareRig.root.visible=false;
   rig.root.visible=!comparing;
   // poseOperator restores all original material colors every tick.
   // Keep the silhouette applied *after* each pose, not only on toggle.
@@ -565,6 +630,7 @@ function draw(){
     diagnosticText.textContent='SIX STANCES · ORBIT / ZOOM TO COMPARE';
   }else showDiagnostics();
   canvas.dataset.compare=String(comparing);
+  canvas.dataset.compareGaits=String(gaitComparing);
   canvas.dataset.silhouette=String(silhouettes);
   canvas.dataset.track=track;
   canvas.dataset.weaponHandling=selectedHandling??'automatic';
