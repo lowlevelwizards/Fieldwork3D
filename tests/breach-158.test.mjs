@@ -31,7 +31,7 @@ test('158: fog is a final ground-registered transparency overlay',()=>{
   const mask=readFileSync(new URL('../src/breach-fog-mask.ts',import.meta.url),'utf8');
   assert.match(mask,/fillStyle='#000'/);
   assert.match(mask,/globalCompositeOperation='destination-out'/);
-  assert.match(mask,/micro:/);
+  assert.match(mask,/MICRO_KEYS/);
   assert.doesNotMatch(mask,/liveVisibility\(s,p\)/,
     'coarse live center samples must not punch holes through walls');
   assert.match(mask,/visionPolygon\(/);
