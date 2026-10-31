@@ -7,6 +7,7 @@ import {shotVisibility} from './breach-presentation.ts';
 import {doorKnown,wallKnown,coverKnown,roomKnown}
   from './breach-intel.ts';
 import {handlePoint,doorReachable} from './breach-door.ts';
+import {footAnchorClear} from './breach-navigation.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {casingAt,CASING_LIMIT,impactProfile} from './breach-effects.ts';
@@ -755,6 +756,14 @@ export class TacticalScene3D{
       poseOperator(object.physical,{
         x:actor.p.x,z:actor.p.y,heading:actor.heading,
         velocity:actor.velocity,seconds:s.seconds,stride:actor.stride,
+        // A path collision may leave residual motor velocity while position
+        // is stationary: feet should brace, not march in place.
+        blocked:actor.blockedTime>.14&&
+          (actor.nav.length>0||actor.plan.some(n=>
+            n.kind==='move'||n.kind==='door'||n.kind==='pie')),
+        footAllowed:pt=>footAnchorClear(pt,s.doors)&&
+          !s.operators.some(other=>other!==actor&&
+            Math.hypot(other.p.x-pt.x,other.p.y-pt.y)<5.5),
         deterministic:!!replay,replayFeet:replay?.feet[actor.id],
         pelvisYaw:replay?.pelvisYaw[actor.id],
         travelYaw:replay?.travelYaw[actor.id],
