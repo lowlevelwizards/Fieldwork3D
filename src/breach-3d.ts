@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {graphicsBudget} from './breach-graphics-budget.ts';
 import {addRoomGroutInstances} from './breach-room-instancing.ts';
 import {propDefinition} from './worldgen/asset-catalog.ts';
 import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,activeSite,
@@ -55,6 +56,10 @@ function doorSweepArc(door:Door,length:number):THREE.Group{
   return group;
 }
 export class TacticalScene3D{
+  private readonly quality=graphicsBudget(
+    new URLSearchParams(location.search).get('quality'),
+    navigator.maxTouchPoints>0);
+  private lastFogSignature='';
   /** Counts submitted WebGL work; GPU timings require a separate timer. */
   performanceStats(){
     const info=this.renderer.info.render;
@@ -146,7 +151,7 @@ export class TacticalScene3D{
     this.scene.add(new THREE.HemisphereLight(0xdde8df,0x24302e,1.18));
     this.sun=new THREE.DirectionalLight(0xf4dab4,2.35);
     this.sun.position.set(-100,260,180);this.sun.castShadow=true;
-    this.sun.shadow.mapSize.set(1024,1024);
+    this.sun.shadow.mapSize.set(this.quality.shadowSize,this.quality.shadowSize);
     Object.assign(this.sun.shadow.camera,{
       left:-320,right:320,top:320,bottom:-320,near:.5,far:800,
     });this.sun.shadow.bias=-.0004;this.sun.shadow.normalBias=.08;
@@ -254,7 +259,7 @@ export class TacticalScene3D{
     this.fogTexture.needsUpdate=true;
     this.buildWorld(site);
     this.root.add(this.fogUnknown,this.fogExplored);
-    this.fogAt=-1;
+    this.fogAt=-1;this.lastFogSignature='';
     this.resetCamera();
   }
   private buildGenerated(site:Site){
@@ -629,7 +634,7 @@ export class TacticalScene3D{
   }
   resize(w:number,h:number){
     this.width=Math.max(1,w);this.height=Math.max(1,h);
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.45));
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio||1,this.quality.pixelRatio));
     this.renderer.setSize(this.width,this.height,false);
     this.updateCamera(1);
   }
@@ -1191,8 +1196,21 @@ export class TacticalScene3D{
     // intelligence and must not leak through texture transparency.
     this.fogUnknown.count=0;this.fogExplored.count=0;
     this.smoothFog.visible=!omniscient;
-    if(!omniscient&&(this.fogAt>=.055||this.fogAt<0)){
-      this.fogAt=0;
+    // Do not repaint/re-upload an identical visibility texture every 55ms
+    // while operators are stationary in planning. Quantized pose and intel
+    // changes make the key; real LOS is still computed by the fog renderer.
+    const fogSignature=omniscient?'omniscient':[
+      s.seenGround.size,s.intel.cover.size,s.intel.rooms.size,
+      s.intel.walls.size,
+      ...team(s).filter(a=>a.health>0).map(a=>[
+        a.id,Math.round(a.p.x*10),Math.round(a.p.y*10),
+        Math.round(a.heading*100),a.posture,a.health
+      ].join(':')),
+      ...s.doors.map(d=>d.id+':'+Math.round((d.openFraction??0)*100))
+    ].join('|');
+    if(!omniscient&&(this.fogAt>=.055||this.fogAt<0)&&
+        fogSignature!==this.lastFogSignature){
+      this.fogAt=0;this.lastFogSignature=fogSignature;
       paintFogMask(this.fogContext,s);
       paintOccupiedRoomContext(this.fogContext,s);
       this.fogTexture.needsUpdate=true;
