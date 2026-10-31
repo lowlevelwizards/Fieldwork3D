@@ -60,7 +60,6 @@ export type OperatorRig={
   root:THREE.Group;hip:THREE.Group;chest:THREE.Group;head:THREE.Group;
   weapon:THREE.Group;droppedGun:THREE.Group;feet:Foot[];arms:Arm[];
   magazineInserted:THREE.Mesh;magazineHand:THREE.Mesh;
-  legacyLegs:THREE.Group[];legacyArms:THREE.Group[];
   pack:THREE.Mesh;lastTime:number;lastPose:OperatorPose|null;
   footsteps:FootstepScheduler;
   /** Non-authoritative request for the motor/controller to reposition. */
@@ -70,7 +69,7 @@ export type OperatorRig={
   lastHandling:Handling|null;lastHandlingAt:number;
   autoHandling:(HandlingTransition&{at:number})|null;
   elbowSpread:[number,number];legGap:[number,number];
-  stridePhase:number;colors:Map<THREE.MeshStandardMaterial,THREE.Color>;
+  colors:Map<THREE.MeshStandardMaterial,THREE.Color>;
   dispose:()=>void;
 };
 const mat=(hex:number)=>new THREE.MeshStandardMaterial({color:hex,
@@ -144,9 +143,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     [material,material.color.clone()] as const));
   return {root,hip,chest,head,weapon,droppedGun,feet,arms,pack,colors,
     magazineInserted,magazineHand,
-    legacyLegs:[new THREE.Group(),new THREE.Group()],
-    legacyArms:[new THREE.Group(),new THREE.Group()],
-    lastTime:-1,lastPose:null,stridePhase:0,
+    lastTime:-1,lastPose:null,
     footsteps:createFootstepScheduler(),reachRequest:null,
     gripError:0,stockError:0,eyeError:0,handlingProfile:null,
     lastHandling:null,lastHandlingAt:-100,autoHandling:null,
