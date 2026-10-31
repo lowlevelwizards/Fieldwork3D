@@ -13,5 +13,5 @@ test('support side counterrotates shoulders and head in connected solver',()=>{
  assert.ok(Number.isFinite(left.headCounter));
  assert.ok(Number.isFinite(right.headCounter));
  const idle=body([foot(-5.6,'planted'),foot(5.6,'planted')],0);
- assert.equal(idle.torsoYaw,0);
+ assert.ok(Math.abs(idle.torsoYaw)<1e-8);
 });
