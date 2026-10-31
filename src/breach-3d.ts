@@ -4,7 +4,7 @@ import {W,H,WALLS,COVER,initialDoors,doorCenter,activeSite,
 import {type Site} from './breach-site.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
 import {shotVisibility} from './breach-presentation.ts';
-import {doorKnown,wallKnown,coverKnown,roomKnown}
+import {doorKnown,wallKnown,roomKnown}
   from './breach-intel.ts';
 import {handlePoint,doorReachable} from './breach-door.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
