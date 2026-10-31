@@ -2,6 +2,7 @@
  * Custom tactical glyphs (pie, suppress, door flash) share the same canvas. */
 const glyphs:Record<string,string>={
   ctxOpen:'<path d="M5 21V4l12-2v19H5Z"/><path d="M11 12h2"/>',
+  ctxClose:'<path d="M19 21V4L7 2v19h12Z"/><path d="M13 12h2M3 12l4 0m-2-2 2 2-2 2"/>',
   ctxKick:'<path d="M4 19h14M7 15l4-8 5 5-3 4-6-1Z"/><path d="m16 12 4-2"/>',
   ctxDoorFlash:'<circle cx="12" cy="12" r="3"/><path d="M12 2v5m0 10v5M2 12h5m10 0h5M5 5l3 3m8 8 3 3m0-14-3 3M8 16l-3 3"/>',
   ctxHold:'<rect x="5" y="4" width="14" height="17" rx="1"/><path d="M10 12h5m-3-3v6"/>',
