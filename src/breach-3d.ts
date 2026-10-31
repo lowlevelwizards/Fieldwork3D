@@ -12,7 +12,7 @@ import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator
 import {WEAPONS} from './breach-combat.ts';
 import {casingAt,CASING_LIMIT,impactProfile} from './breach-effects.ts';
 import {sampleThrow} from './breach-flash.ts';
-import {paintFogMask,FOG_WIDTH,FOG_HEIGHT} from './breach-fog-mask.ts';
+import {paintFogMask,paintOccupiedRoomContext,occupiedFogRooms,FOG_WIDTH,FOG_HEIGHT} from './breach-fog-mask.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 
 /** One authoritative 2D world, physically represented in one 3D scene.
@@ -135,17 +135,15 @@ export class TacticalScene3D{
     this.fogTexture.minFilter=THREE.LinearFilter;
     this.fogTexture.magFilter=THREE.LinearFilter;
     const fogMat=new THREE.MeshBasicMaterial({
-      map:this.fogTexture,transparent:true,depthTest:true,
+      map:this.fogTexture,transparent:true,opacity:.82,depthTest:true,
       depthWrite:false,toneMapped:false,side:THREE.DoubleSide});
     this.mats.push(fogMat);
     this.smoothFog=new THREE.Mesh(new THREE.PlaneGeometry(W,H),fogMat);
     this.smoothFog.rotation.x=-Math.PI/2;
-    // Fog is a ground-surface mask. Elevating it by 36 units shifted
-    // its cutouts away from the underlying blood/floor at ISO camera pitch.
-    // Keep depth testing enabled: known walls/door frames in front of the
-    // ground plane must remain visible instead of being painted over by fog.
-    // Depth-writing stays off, so the mask cannot occlude world geometry;
-    // hidden units and unobserved props remain separately intel-gated.
+    // Ground-space LOS mask, not a roof. The 3D unknown tint leaves a faint
+    // known-plan silhouette, never live actors or undiscovered cover.
+    // Opaque walls depth-test against it; translucent near-wall cutaways
+    // draw after it so their outlines cannot disappear into solid black.
     this.smoothFog.position.set(W/2,1.05,H/2);
     this.smoothFog.renderOrder=1000;
     this.smoothFog.frustumCulled=false;
@@ -663,12 +661,14 @@ export class TacticalScene3D{
     this.sun.target.position.set(shadowPoint.x,0,shadowPoint.y);
     this.sun.target.updateMatrixWorld();
     // Hide undiscovered geometry at object level, including its shadows.
-    // Fog shading alone is insufficient: it leaks shapes and cover positions.
+    // An operator physically standing in a room can still read that room's
+    // structure even when their viewing cone is pointed at one corner.
+    const occupiedRoomIds=new Set(occupiedFogRooms(s).map(room=>room.id));
     for(const item of this.intelSurfaces){
       item.obj.visible=omniscient||(
         item.kind==='wall'?wallKnown(s.intel,item.index!):
         item.kind==='cover'?coverKnown(s.intel,item.index!):
-        roomKnown(s.intel,item.id!));
+        roomKnown(s.intel,item.id!)||occupiedRoomIds.has(item.id!));
     }
     // For camera-facing walls use translucent near-side cutaways.
     const fromCamera=this.camera.position.clone().sub(this.target);
@@ -679,9 +679,13 @@ export class TacticalScene3D{
       const cut=this.view.mode==='iso'&&between>1800;
       const material=wall.mesh.material as THREE.MeshStandardMaterial;
       if(material.transparent!==cut){
-        material.transparent=cut;material.opacity=cut?.10:1;
+        material.transparent=cut;
         material.depthWrite=!cut;material.needsUpdate=true;
       }
+      // A 10%-opaque wall vanishes against black fog; keep an identifiable
+      // translucent surface and draw it after the fog compositing pass.
+      material.opacity=cut?.38:1;
+      wall.mesh.renderOrder=cut?1001:0;
     }
     for(const door of s.doors){
       const object=this.doors.get(door.id);
@@ -1011,6 +1015,7 @@ export class TacticalScene3D{
     if(!omniscient&&(this.fogAt>=.055||this.fogAt<0)){
       this.fogAt=0;
       paintFogMask(this.fogContext,s);
+      paintOccupiedRoomContext(this.fogContext,s);
       this.fogTexture.needsUpdate=true;
     }else if(omniscient)this.fogAt=-1;
     this.renderer.render(this.scene,this.camera);
