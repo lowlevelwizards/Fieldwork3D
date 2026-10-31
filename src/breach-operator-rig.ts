@@ -279,6 +279,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     heading:p.heading,travelYaw,turning:p.turning,
     injury:p.injury,posture:p.posture,feet:targets,gait:p.gait,
     hybridSupport:p.hybridSupport,acceleration:p.acceleration,
+    tacticalTension:p.aiming||p.handlingIntent==='engage'||
+      p.handlingIntent==='pie'||p.handlingIntent==='look'?1:
+      p.handlingIntent==='door'||p.posture==='crouch'?.55:0,
     weaponWeight:p.weapon==='shotgun'?1.30:
       p.weapon==='rifle'?1.19:p.weapon==='smg'?.83:1,
     position:{x:p.x,y:p.z}});
