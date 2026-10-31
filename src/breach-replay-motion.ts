@@ -103,17 +103,21 @@ export class ReplayMotionRecorder{
       const offset=track.travelYaw-actor.heading;
       const side=Math.abs(Math.sin(offset))>.52;
       const reverse=Math.cos(offset)<-.4;
-      const rootYaw=-(moving>.22&&!side&&!reverse?
-        track.travelYaw:actor.heading);
+      // Motor-authored shoulder orientation is the sole facing authority
+      // during the squeeze, for both live contacts and replay samples.
+      const rootYaw=actor.squeeze?-actor.squeezeYaw:
+        -(moving>.22&&!side&&!reverse?
+          track.travelYaw:actor.heading);
       const actuallyMoving=track.last.t<time?
         distance/Math.max(1e-3,time-track.last.t):0;
       const input:FootstepInput={time,position,rootYaw,
-        facingYaw:actor.heading,
+        facingYaw:actor.squeeze?actor.squeezeYaw:actor.heading,
         travelYaw:track.travelYaw,speed:Math.min(actor.velocity,actuallyMoving),
         turning:actor.turning,posture:actor.posture,
         injury:actor.injuryStage,down:actor.health<=0,
-        cautious:actor.aim>.20&&moving<.35,
-        gait:actor.plan[0]?.kind==='pie'?'pie':
+        cautious:actor.squeeze||actor.aim>.20&&moving<.35,
+        gait:actor.squeeze?'squeeze':
+          actor.plan[0]?.kind==='pie'?'pie':
           actor.pace==='run'||actor.plan[0]?.moveMode==='sprint'?
           'run':'walk',
         blocked:actor.blockedTime>.14&&
