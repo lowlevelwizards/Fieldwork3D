@@ -1,0 +1,25 @@
+name: Fieldwork Animation Targeted Checks
+on:
+  pull_request:
+    paths:
+      - 'src/breach-weapon-clearance.ts'
+      - 'src/breach-weapon-pose.ts'
+      - 'src/breach-operator-rig.ts'
+      - 'src/breach-footsteps.ts'
+      - 'src/breach-3d.ts'
+      - 'tests/breach-179.test.mjs'
+      - '.github/workflows/animation-targeted.yml'
+jobs:
+  physical-operator:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Focused animation and weapon regression tests
+        run: node --experimental-strip-types --test tests/breach-170.test.mjs tests/breach-171.test.mjs tests/breach-172.test.mjs tests/breach-173.test.mjs tests/breach-174.test.mjs tests/breach-175.test.mjs tests/breach-176.test.mjs tests/breach-177.test.mjs tests/breach-178.test.mjs tests/breach-179.test.mjs
+      - name: TypeScript and production build
+        run: npm run build
