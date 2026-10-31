@@ -73,6 +73,7 @@ export class TacticalScene3D{
   private pickPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
   private ray=new THREE.Raycaster();
   private width=1;private height=1;private fogAt=-1;
+  private terminalPoseSeconds=0;private terminalSessionStamp=-1;
   private sun:THREE.DirectionalLight;
   private mats:THREE.Material[]=[];
   private solid=(hex:number,roughness=.9)=>{
@@ -641,6 +642,14 @@ export class TacticalScene3D{
     if(this.view.mode==='plan2d')return;
     this.updateCamera(dt);
     this.fogAt+=dt;
+    // Gameplay may stop on the exact downing tick. Finish visual collapse
+    // independently, without advancing combat or modifying the replay film.
+    const terminal=s.phase==='won'||s.phase==='lost';
+    if(!terminal||this.terminalSessionStamp!==s.seconds){
+      this.terminalPoseSeconds=0;this.terminalSessionStamp=s.seconds;
+    }else this.terminalPoseSeconds=Math.min(1.0,
+      this.terminalPoseSeconds+Math.max(0,dt));
+    const poseSeconds=s.seconds+(terminal?this.terminalPoseSeconds:0);
     // The shadow map follows the active encounter to retain contact detail.
     const shadowPoint=team(s).find(a=>a.id===selected)?.p??this.view.focus;
     this.sun.position.set(shadowPoint.x-145,250,shadowPoint.y+175);
@@ -737,8 +746,8 @@ export class TacticalScene3D{
       // Build 120: the pose solver is the only writer of actor anatomical,
       // firearm and hit-reaction transforms; the scene owns world placement.
       const downProgress=actor.health<=0?
-        Math.min(1,Math.max(0,(s.seconds-actor.lastDownAt)/.58)):0;
-      const hitAge=s.seconds-actor.lastHitAt;
+        Math.min(1,Math.max(0,(poseSeconds-actor.lastDownAt)/.78)):0;
+      const hitAge=poseSeconds-actor.lastHitAt;
       const hitFade=actor.health>0&&hitAge>=0&&hitAge<.32?
         1-hitAge/.32:0;
       const reloadDuration=actor.reloadDuration||
@@ -757,7 +766,7 @@ export class TacticalScene3D{
       const handle=activeDoor?handlePoint(activeDoor):undefined;
       poseOperator(object.physical,{
         x:actor.p.x,z:actor.p.y,heading:actor.heading,
-        velocity:actor.velocity,seconds:s.seconds,stride:actor.stride,
+        velocity:actor.velocity,seconds:poseSeconds,stride:actor.stride,
         // A path collision may leave residual motor velocity while position
         // is stationary: feet should brace, not march in place.
         blocked:actor.blockedTime>.14&&
