@@ -3,14 +3,18 @@ export type ContextAction={id:string;label:string;group:'primary'|'state'|'destr
   pressed?:boolean;disabled?:boolean;title?:string};
 export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   posture:'stand'|'crouch';pace:'walk'|'run';firePolicy:string;
-  reserve:number;magazine:number};
+  reserve:number;magazine:number;doorOpen?:boolean};
 export function contextActionChoices(o:ContextOptions):ContextAction[]{
-  if(o.door)return [
+  if(o.door)return o.doorOpen?[
+    {id:'ctxClose',label:'CLOSE',group:'primary',title:'Pull the open door shut'},
+    {id:'ctxDoorFlash',label:'FLASH ×'+o.flashRemaining,group:'primary',
+      disabled:o.flashRemaining<=0,title:'Flash through the doorway'},
+  ]:[
     {id:'ctxOpen',label:'OPEN',group:'primary',title:'Queue door opening'},
     {id:'ctxKick',label:'KICK',group:'primary',title:'Force this door'},
     {id:'ctxDoorFlash',label:'FLASH ×'+o.flashRemaining,group:'primary',
-      disabled:o.flashRemaining<=0,title:o.flashRemaining>0?'Flash through this door':'No flash grenades remaining'},
-    {id:'ctxHold',label:'HOLD',group:'primary',title:'Hold door shut'},
+      disabled:o.flashRemaining<=0,title:'Flash through this door'},
+    {id:'ctxHold',label:'HOLD',group:'primary',title:'Brace this closed door'},
   ];
   return [
     {id:'ctxLook',label:'LOOK',group:'primary',title:'Face a direction at this point'},
