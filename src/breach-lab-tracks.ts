@@ -12,7 +12,7 @@ export const LAB_TRACKS=[
   'pie','look','crouch-walk','crouch','wounded','aim','reload',
   'reload-emergency','reload-retention','reload-shotgun',
   'reload-interrupt','reload-wounded',
-  'flash','door','kick','down','down-forward','down-back',
+  'flash','door','kick','bash','down','down-forward','down-back',
   'down-left','down-right','down-slump'
 ] as const;
 export type LabTrack=typeof LAB_TRACKS[number];
