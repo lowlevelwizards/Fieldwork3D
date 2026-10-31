@@ -13,6 +13,7 @@ import {
   type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,
   type AimMode,type AimInstruction,
   makeHistory,copyNodes,record,undo,redo,modifyNode,lastPoint,
+  type FirePolicy,
   length,targetAngle,angleDifference,type PieSide,
 } from './breach-plan.ts';
 import {validPieArc} from './breach-maneuvers.ts';
@@ -79,6 +80,7 @@ export type TeamActor=Operator & {
   weaponYaw:number;stability:number;recoil:number;lastShotAt:number;
   lastBashAt:number;lastLaneWarnAt:number;lastFireBlock:FireBlock;
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
+  firePolicy:FirePolicy;suppressPoint:Pt|null;focusTargetId:string|null;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
 };
 export type NoiseEvent={p:Pt;radius:number;time:number;kind:string};
@@ -152,6 +154,7 @@ const withActions=(a:Operator):TeamActor=>({
   weaponYaw:a.heading,stability:.55,recoil:0,lastShotAt:-100,
   lastBashAt:-100,lastLaneWarnAt:-100,lastFireBlock:'clear',
   fireMode:'point',burstCount:0,skills:{...DEFAULT_SKILLS},
+  firePolicy:'engage',suppressPoint:null,focusTargetId:null,
   weapon:'carbine',injuryStage:0,defense:null,watch:null,
   defenseUntil:0,surrendered:false,
 });
@@ -647,6 +650,32 @@ export function setWaitDuration(s:Session,id:string,nodeId:number,seconds:number
 }
 /** Posture and pace authored at an existing waypoint take effect on arrival
  * and remain until a later transition. An operator tap edits base/HERE state. */
+/** Fire policy is persistent until changed. A waypoint can override it
+ * without touching navigation or the rest of the authored plan. */
+export function setFirePolicy(s:Session,id:string,policy:FirePolicy,
+  nodeId?:number,point?:Pt,targetId?:string):boolean{
+  const a=party(s,id);if(!a||!canEdit(s))return false;
+  const node=nodeId===undefined?undefined:a.plan.find(n=>n.id===nodeId);
+  if(nodeId!==undefined&&!node)return false;
+  if(policy==='suppress'&&(!point||
+    !Number.isFinite(point.x)||!Number.isFinite(point.y)))return false;
+  if(policy==='focus'){
+    const target=enemies(s).find(e=>e.id===targetId&&
+      e.health>0&&isSeen(s,e));
+    if(!target)return false;
+  }
+  const change=()=>{
+    if(node){
+      node.firePolicyState=policy;
+      node.firePoint=point?clone(point):undefined;
+      node.fireTargetId=targetId;
+    }else{
+      a.firePolicy=policy;a.suppressPoint=point?clone(point):null;
+      a.focusTargetId=targetId??null;
+    }
+  };
+  return edit(s,a,change);
+}
 export function setNodeControl(s:Session,id:string,nodeId:number,
   field:'postureState'|'paceState',value:'stand'|'crouch'|'walk'|'run'){
   const a=party(s,id),node=a?.plan.find(n=>n.id===nodeId);
@@ -1258,6 +1287,11 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   if(at){
     if(n.postureState)a.posture=n.postureState;
     if(n.paceState)a.pace=n.paceState;
+    if(n.firePolicyState){
+      a.firePolicy=n.firePolicyState;
+      a.suppressPoint=n.firePoint?clone(n.firePoint):null;
+      a.focusTargetId=n.fireTargetId??null;
+    }
   }
   // Apply an authored look/pie/strafe instruction once we actually arrive
   // at its waypoint, then keep it active through every later movement.
@@ -1507,6 +1541,56 @@ function strikeSurface(from:Pt,aimed:Pt,s:Session,
   return {end:{x:from.x+(aimed.x-from.x)*best,
     y:from.y+(aimed.y-from.y)*best},surface:material};
 }
+/** Suppression is an authored area instruction: deliberate misses consume
+ * real ammunition and can unsettle defenders, but never inflict an
+ * omniscient hit on an unseen actor. */
+function fireSuppression(s:Session,a:TeamActor,dt:number){
+  const point=a.suppressPoint;
+  if(!point||a.fireCd>0)return;
+  a.weaponYaw=approachAngle(a.weaponYaw,angle(a.p,point),dt*4.5);
+  a.aim=Math.min(1,a.aim+dt*1.3);
+  if(a.aim<.65||Math.abs(angleDifference(a.weaponYaw,
+    angle(a.p,point)))>.18)return;
+  const spread=dispersion(a.weapon,'ads',a.stability,a.velocity>10,
+    a.suppression,a.injuryStage,a.recoil)*.9;
+  const yaw=shotYaw(a.weaponYaw,spread,random(s),random(s));
+  const muzzle=muzzleAtShot({x:a.p.x,z:a.p.y,
+    heading:a.heading,weaponYaw:yaw,weapon:a.weapon,aim:a.aim,
+    velocity:a.velocity,recoil:a.recoil});
+  const from={x:muzzle.x,y:muzzle.z};
+  const far=muzzleEndpoint(from,yaw,Math.max(40,d(from,point)));
+  const friends=team(s).filter(o=>o!==a&&o.health>0).map(o=>o.p);
+  if(assessFireLane(from,muzzle.y,far,14,COVER,WALLS,s.doors,
+    friends).blocker==='friendly')return;
+  const impact=strikeSurface(from,far,s,muzzle.y,14);
+  a.fireCd=WEAPONS[a.weapon].interval*1.6;
+  a.magazine--;a.shots++;a.lastShotAt=s.seconds;
+  a.recoil=Math.min(.9,a.recoil+BALLISTICS[a.weapon].recoilKick);
+  a.stability=Math.max(0,a.stability-.13);
+  const shotId=s.nextShotId++;
+  const height=impact.surface==='dust'?1:14;
+  s.shots.push({id:shotId,shooterId:a.id,targetId:null,
+    start:from,end:impact.end,age:0,hit:false,side:a.side,
+    shotYaw:yaw,mode:'ads',spread,muzzleHeight:muzzle.y,
+    impactHeight:height,firedAt:s.seconds,
+    healthBefore:0,healthAfter:0,down:false,surface:impact.surface});
+  s.impactMarks.push({id:s.nextEffectId++,p:clone(impact.end),
+    surface:impact.surface,height,age:0});
+  if(s.impactMarks.length>92)s.impactMarks.shift();
+  s.casings.push({id:shotId,at:s.seconds,weapon:a.weapon,side:a.side,
+    x:muzzle.x-4*Math.cos(yaw),z:muzzle.z-4*Math.sin(yaw),
+    y:muzzle.y-3,heading:yaw});
+  if(s.casings.length>CASING_LIMIT)s.casings.shift();
+  s.sparks.push({p:clone(a.p),side:a.side,age:0});
+  hear(s,a.p,WEAPONS[a.weapon].noise,'gunshot');
+  battleEvent(s,'shot',a,a.p,a.name+' SUPPRESSING AREA');
+  for(const e of enemies(s)){
+    if(e.health<=0||d(e.p,impact.end)>50)continue;
+    if(WALLS.some(w=>segmentsCross({a:impact.end,b:e.p},w)))continue;
+    e.suppression=Math.min(1,e.suppression+.16);
+    e.morale=Math.max(0,e.morale-.025);
+  }
+}
 function fire(s:Session,a:TeamActor,dt:number){
   if(a.health<=0){
     a.reload=0;a.reloadMode=null;return;
@@ -1529,9 +1613,23 @@ function fire(s:Session,a:TeamActor,dt:number){
   }
   if(!a.magazine){beginReload(s,a);return;}
   if(a.flashUntil>s.seconds){a.aim=0;return;}
+  if(a.side==='blue'){
+    if(a.firePolicy==='hold'){
+      a.aim=Math.max(0,a.aim-dt*.35);return;
+    }
+    if(a.firePolicy==='return'&&a.suppression<.10&&
+      s.seconds-a.lastHitAt>3){
+      a.aim=Math.max(0,a.aim-dt*.35);return;
+    }
+    if(a.firePolicy==='suppress'){
+      fireSuppression(s,a,dt);return;
+    }
+  }
   const enemiesOf=a.side==='blue'?enemies(s):team(s);
-  const target=enemiesOf.filter(e=>inSight(a,e,s))
-    .sort((x,y)=>d(a.p,x.p)-d(a.p,y.p))[0];
+  const visible=enemiesOf.filter(e=>inSight(a,e,s));
+  const target=a.side==='blue'&&a.firePolicy==='focus'?
+    visible.find(e=>e.id===a.focusTargetId):
+    visible.sort((x,y)=>d(a.p,x.p)-d(a.p,y.p))[0];
   if(!target){
     a.targetId=null;a.aim=Math.max(0,a.aim-dt*.6);
     a.weaponYaw=approachAngle(a.weaponYaw,a.heading,dt*profile.turnSpeed);

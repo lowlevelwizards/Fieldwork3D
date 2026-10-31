@@ -4,7 +4,7 @@ import {
 import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
-  planMove,planMoveStroke,planAim,planWait,planWaitAt,setWaitDuration,
+  planMove,planMoveStroke,planAim,setFirePolicy,planWait,planWaitAt,setWaitDuration,
   plannedControl,setNodeControl,setStartPace,planReloadAt,planDoorFlash,
   planSync,movePlanNode,
   finalPoint,doorAtNode,backOne,
@@ -120,6 +120,7 @@ if(navPanel){
 }
 let selected='rook';
 let looking=false,flashMode=false;
+let firePlacement:'focus'|'suppress'|null=null;
 let lookMode:'look'|'pie'|'strafe'='look';
 let contextSignature='';
 let lastContextSide:MenuSide|null=null;
@@ -264,7 +265,7 @@ function selectedPlanNode(){
 /** The actor itself is HERE. Selected plan nodes own subsequent orders;
  * a door tap brings up ONLY door actions. No redundant HERE/END buttons. */
 function updateContext(){
-  if(state.phase!=='planning'||replaying||looking||flashMode||
+  if(state.phase!=='planning'||replaying||looking||flashMode||firePlacement||
      draggingNode||trace||
      !ui.orders.classList.contains('compact')||!ui.siteSettings.hidden){
     ui.context.hidden=true;return;
@@ -283,6 +284,10 @@ function updateContext(){
     {id:'ctxLook',label:'LOOK',group:'primary'},
     {id:'ctxPie',label:'PIE',group:'primary'},
     {id:'ctxWait',label:'WAIT',group:'primary'},
+    {id:'ctxFocus',label:'FOCUS',group:'primary'},
+    {id:'ctxSuppress',label:'SUPPRESS',group:'primary'},
+    {id:'ctxFire',label:(node?.firePolicyState??a.firePolicy).toUpperCase(),
+      group:'state'},
     {id:'ctxStance',label:current.posture==='crouch'?'CROUCH':'STAND',group:'state'},
     {id:'ctxPace',label:current.pace==='run'?'RUN':'WALK',group:'state'},
     {id:'ctxReload',label:'RELOAD',group:'state'},
@@ -376,6 +381,19 @@ ui.context.addEventListener('click',event=>{
   const door=doorFocusId?focusedDoor(a,node):undefined;
   const current=plannedControl(state,selected,node?.id);
   switch(action){
+    case 'ctxFire':{
+      const active=node?.firePolicyState??a.firePolicy;
+      const policy=active==='engage'?'hold':
+        active==='hold'?'return':'engage';
+      setFirePolicy(state,selected,policy,node?.id);
+      break;
+    }
+    case 'ctxFocus':
+      firePlacement='focus';looking=false;flashMode=false;
+      updateHud();return;
+    case 'ctxSuppress':
+      firePlacement='suppress';looking=false;flashMode=false;
+      updateHud();return;
     case 'ctxLook':armFacing('look');return;
     case 'ctxPie':armFacing('pie');return;
     case 'ctxWait':{
@@ -1157,6 +1175,20 @@ function render(){
 }
 function useSelectedGround(pt:Pt){
   if(state.phase!=='planning'||replaying)return;
+  if(firePlacement){
+    const mode=firePlacement;
+    const nodeId=selectedNode??undefined;
+    if(mode==='focus'){
+      const target=enemies(state).find(e=>e.health>0&&isSeen(state,e)&&
+        distance(e.p,pt)<25);
+      if(!target||!setFirePolicy(state,selected,'focus',
+        nodeId,undefined,target.id)){
+        state.events.push('FOCUS REQUIRES A VISIBLE ENEMY');
+      }
+    }else if(!setFirePolicy(state,selected,'suppress',nodeId,pt))
+      state.events.push('INVALID SUPPRESSION POINT');
+    firePlacement=null;updateHud();return;
+  }
   if(flashMode){
     const id=state.nextId;
     if(!(flashDoorId?
@@ -1418,7 +1450,7 @@ canvas.addEventListener('pointerdown',e=>{
       startX:e.clientX,startY:e.clientY,wasUnit:false,nodeId:null,
       mode:orbit?'cameraOrbit':'cameraPan',moved:false});
   }else{
-    const contextual=looking||flashMode;
+    const contextual=looking||flashMode||!!firePlacement;
     // A selected route can pass near a teammate. Its line remains tappable
     // unless the finger is directly over the teammate's physical icon.
     // Previously the oversized soldier hitbox stole mid-route insert taps.
@@ -1567,10 +1599,10 @@ function releasePointer(e:PointerEvent,cancelled=false){
           {x:e.clientX,y:e.clientY})<24||
          distance(worldToScreen(doorCenter(d),38),
           {x:e.clientX,y:e.clientY})<25));
-      if(door&&!looking&&!flashMode){
+      if(door&&!looking&&!flashMode&&!firePlacement){
         doorFocusId=door.id;selectedNode=null;
         doorMenuDismissedId=null;
-      }else if(!looking&&!flashMode&&insertAtRouteLine({x:e.clientX,y:e.clientY})){
+      }else if(!looking&&!flashMode&&!firePlacement&&insertAtRouteLine({x:e.clientX,y:e.clientY})){
         // Insert-and-select: contextual LOOK/PIE/STRAFE/DELETE are immediately
         // available on the newly authored waypoint.
       }else{
