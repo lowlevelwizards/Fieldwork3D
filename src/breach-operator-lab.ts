@@ -406,13 +406,14 @@ function showDiagnostics(){
     rig.weapon.getWorldQuaternion(new THREE.Quaternion()));
   const barrelYaw=Math.atan2(barrelAxis.z,barrelAxis.x);
   const aimTruth=weaponTruth(barrelYaw,sampled.motion.heading);
+  const measuredRig=rig;
   const feetTruth=footTruth(...([0,1].map(i=>({
     requested:feet[i].position,
-    rendered:{x:rig.feet[i].shoe.getWorldPosition(
+    rendered:{x:measuredRig.feet[i].shoe.getWorldPosition(
       new THREE.Vector3()).x,
-      y:rig.feet[i].shoe.getWorldPosition(new THREE.Vector3()).z},
+      y:measuredRig.feet[i].shoe.getWorldPosition(new THREE.Vector3()).z},
     phase:feet[i].phase,contact:feet[i].contact,
-    reachError:rig.legGap[i]
+    reachError:measuredRig.legGap[i]
   })) as [Parameters<typeof footTruth>[0],Parameters<typeof footTruth>[1]]));
   diagnosticText.textContent=[
     'TIME '+clock.toFixed(3)+' / '+TRACK_DURATION.toFixed(2),
