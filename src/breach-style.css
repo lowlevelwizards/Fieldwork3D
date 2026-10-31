@@ -770,3 +770,12 @@ body.replaying #tacticalFeedback{display:none}
  .orders:not(.compact),.site-settings{
    max-height:min(42dvh,190px)}
 }
+
+/* FW 07 — explicit scope, quiet selected commands */
+.quick-states{position:relative}
+.quick-scope{position:absolute;right:9px;top:-16px;
+ font:600 10px/1 var(--ui-mono);letter-spacing:.07em;
+ color:#e6cc95;background:#172925de;border-radius:4px;
+ padding:3px 6px;pointer-events:none}
+.context-primary button[aria-pressed=true]{background:#4a6758;
+ border-color:#dbc695;color:#fff2d2;box-shadow:inset 0 0 0 1px #a7b58d66}
