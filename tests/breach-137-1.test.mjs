@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {contextActionChoices} from '../src/ui/context-actions.ts';
 import {newSession,team,planMove,planWaitAt,plannedControl,
   setNodeControl,setStartPace,planDoorFlash,planReloadAt,
   toggling,stepSession,planAim} from '../src/breach-game.ts';
@@ -47,7 +48,11 @@ test('137.1: floating controls are scoped to selection, no horizontal tray',()=>
  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
  const css=readFileSync(new URL('../src/breach-style.css',import.meta.url),'utf8');
  assert.ok(main.includes("door?doorCenter(door):node?.p??a.p"));
- assert.ok(main.includes("id:'ctxDoorFlash'"));
+ const doorActions=contextActionChoices({
+   door:true,node:false,flashRemaining:2,posture:'stand',pace:'walk',
+   firePolicy:'engage',reserve:24,magazine:12
+ });
+ assert.ok(doorActions.some(action=>action.id==='ctxDoorFlash' && !action.disabled));
  assert.ok(!main.includes("id:'ctxHere'"));
  assert.ok(!main.includes("id:'ctxEnd'"));
  assert.ok(!main.includes("id:'ctxHoldClear'"));
