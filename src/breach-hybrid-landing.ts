@@ -4,7 +4,8 @@ import type {FootstepInput,FootstepState} from './breach-footsteps.ts';
 import {horizontalLegReach,fitLandingToHip,LEG_HIP_SIDE}
   from './breach-leg-geometry.ts';
 import {hybridPhaseDurations} from './breach-hybrid-contact.ts';
-import {bootOutlineClearance,BOOT_WIDTH,BOOT_CLEARANCE}
+import {plannedBootYaw} from './breach-foot-yaw.ts';
+import {bootOutlineClearance,BOOT_CLEARANCE}
   from './breach-gait-geometry.ts';
 type Pt={x:number;y:number};
 const lateral=(p:Pt,facing:number,amount:number):Pt=>({
@@ -37,7 +38,7 @@ export function hybridLanding(input:FootstepInput,index:number,
  const wanted=dotSide(future,preferred,facing);
  // Keep an ordinary lateral shuffle wider than the boot itself.
  // Squeeze travel may use longitudinal staggering, but never overlap.
- const separation=input.gait==='squeeze'?2.0:BOOT_WIDTH+BOOT_CLEARANCE;
+ const separation=input.gait==='squeeze'?2.0:3.5;
  const fittedSide=sign<0?Math.min(wanted,otherSide-separation):
    Math.max(wanted,otherSide+separation);
  const lateralCorrection=fittedSide-wanted;
@@ -51,6 +52,10 @@ export function hybridLanding(input:FootstepInput,index:number,
      x:fitted.x-Math.sin(facing)*sign*offset,
      y:fitted.y+Math.cos(facing)*sign*offset
    })),
+   ...[3.5,5,6.5,8.5,10].flatMap(distance=>[-1,1].map(direction=>({
+     x:fitted.x+Math.cos(facing)*distance*direction,
+     y:fitted.y+Math.sin(facing)*distance*direction
+   }))),
    ...[.85,.7,.55,.4].map(t=>({
      x:stepFoot.plantedAt.x+(fitted.x-stepFoot.plantedAt.x)*t,
      y:stepFoot.plantedAt.y+(fitted.y-stepFoot.plantedAt.y)*t
@@ -60,9 +65,10 @@ export function hybridLanding(input:FootstepInput,index:number,
      const k=t*t*(3-2*t);
      const pos={x:stepFoot.plantedAt.x+(p.x-stepFoot.plantedAt.x)*k,
        y:stepFoot.plantedAt.y+(p.y-stepFoot.plantedAt.y)*k};
+     const targetYaw=plannedBootYaw(stepFoot.worldYaw,input.rootYaw);
      const swingYaw=stepFoot.worldYaw+Math.atan2(
-       Math.sin(input.rootYaw-stepFoot.worldYaw),
-       Math.cos(input.rootYaw-stepFoot.worldYaw))*k;
+       Math.sin(targetYaw-stepFoot.worldYaw),
+       Math.cos(targetYaw-stepFoot.worldYaw))*k;
      const boots=index===0?
        [{position:pos,worldYaw:swingYaw},
         {position:other.plantedAt,worldYaw:other.worldYaw}]:
@@ -73,13 +79,21 @@ export function hybridLanding(input:FootstepInput,index:number,
    }
    return true;
  };
- const found=candidates.find(p=>
+ const validLanding=(p:Pt)=>
    (!input.footAllowed||input.footAllowed(p))&&
    Math.hypot(p.x-futureHip.x,p.y-futureHip.y)<
      horizontalLegReach()-.25&&
    (sign<0?dotSide(future,p,facing)<=otherSide-separation+.25:
      dotSide(future,p,facing)>=otherSide+separation-.25)&&
-   clearSwing(p));
+   bootOutlineClearance(
+     {position:p,worldYaw:plannedBootYaw(
+       stepFoot.worldYaw,input.rootYaw)},
+     {position:other.plantedAt,worldYaw:other.worldYaw})>=BOOT_CLEARANCE;
+ // If the only possible step rises over the supporting boot, preserve
+ // grounded landing clearance and keep locomotion moving. The swing height
+ // is accounted for by the later IK/visual collision metric.
+ const found=candidates.find(p=>validLanding(p)&&clearSwing(p))??
+   candidates.find(validLanding);
  return {position:found??fitted,valid:!!found,
    futurePelvis:future,futureHip,reason:found?'clear':'blocked'};
 }

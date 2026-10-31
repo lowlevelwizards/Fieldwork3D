@@ -52,7 +52,7 @@ export function decideHybridStep(
  // bounded distance debt when a high-speed motor outruns the feet.
  if(moving&&(s.accumulated>=threshold||urgent||
     s.lastStepAt<0&&s.accumulated>=threshold*.36))
-   return {index:urgent&&reaches[1-next]>reaches[next]+2?
+   return {index:!side&&urgent&&reaches[1-next]>reaches[next]+2?
      (1-next) as 0|1:next,reason:'locomotion',threshold};
  if((pivot||residualYaw)&&(residualYaw||turnDelta>.17||
     s.accumulated>threshold))
