@@ -11,10 +11,11 @@ export type BalanceInput={velocity:number;heading:number;travelYaw:number;
   gait?:'run'|'walk'|'pie'|'squeeze';
   /** Lab candidate: use actual weighted shoe positions for load transfer. */
   hybridSupport?:boolean;acceleration?:number;weaponWeight?:number;
-  tacticalTension?:number;};
+  tacticalTension?:number;seconds?:number;};
 export type BodyMotion={pelvisY:number;pelvisSide:number;
   torsoForward:number;torsoSide:number;torsoYaw:number;headCounter:number;
-  support:number;chestLift:number;weaponYaw:number;weaponPitch:number;};
+  support:number;chestLift:number;weaponYaw:number;weaponPitch:number;
+  breath:number;};
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 const smooth=(t:number)=>{const a=clamp(t,0,1);return a*a*(3-2*a);};
 const phaseWeight=(foot:FootTarget)=>{
@@ -106,11 +107,13 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
   const weaponYaw=clamp((support*speed*.018-
     accel*.012+Math.sign(side)*clamp(input.turning/6,0,1)*.008)*
     weaponAmp*weaponMass,-.047,.047);
+  const idleBlend=clamp(1-input.velocity/12,0,1)*(1-tension);
+  const breath=Math.sin((input.seconds??0)*1.9)*.11*idleBlend;
   const weaponPitch=clamp((-.012*receiving+.018*unloading+
     .010*swinging)*moving*weaponAmp-accel*.009*weaponMass,
     -.046,.046);
   return {pelvisY,pelvisSide,torsoForward,torsoSide,
     torsoYaw:clamp(-support*speed*.032,-.038,.038),
     headCounter:-torsoSide*.52,support,chestLift,
-    weaponYaw,weaponPitch};
+    weaponYaw,weaponPitch,breath};
 }
