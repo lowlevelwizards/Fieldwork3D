@@ -6,8 +6,9 @@ import type {TeamActor} from './breach-game.ts';
 import type {Door} from './breach-core.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
 import {footArticulation} from './breach-foot-articulation.ts';
-import {advanceFootsteps,createFootstepScheduler,
-  type FootTarget,type FootstepScheduler,type FootstepInput} from './breach-footsteps.ts';
+import type {FootTarget,FootstepInput} from './breach-footsteps.ts';
+import {createLiveGait,advanceLiveGait,type LiveGaitState}
+  from './breach-live-gait.ts';
 
 export type ReplayFeet=[FootTarget,FootTarget];
 type FootEvent={
@@ -16,7 +17,7 @@ type FootEvent={
   landing:number;recovery:number;
 };
 type ActorTrack={
-  gait:FootstepScheduler;
+  gait:LiveGaitState;
   events:[FootEvent[],FootEvent[]];last:{x:number;y:number;t:number};
   travelYaw:number;lastStepAt:number;
   travelYawEvents:{at:number;yaw:number}[];
@@ -81,7 +82,7 @@ export class ReplayMotionRecorder{
       const position={x:actor.p.x,y:actor.p.y};
       let track=this.actors.get(actor.id);
       if(!track){
-        track={gait:createFootstepScheduler(),events:[[],[]],
+        track={gait:createLiveGait(),events:[[],[]],
           last:{...position,t:time},travelYaw:actor.heading,
           lastStepAt:-100,pelvisYawEvents:[],travelYawEvents:[]};
         this.actors.set(actor.id,track);
@@ -125,7 +126,7 @@ export class ReplayMotionRecorder{
         footAllowed:pt=>footAnchorReachable(actor.p,pt,doors)};
       const previousResets=track.gait.resets;
       const previousStep=track.gait.lastStepAt;
-      advanceFootsteps(track.gait,input);
+      advanceLiveGait(track.gait,input);
       const yawEvents=track.pelvisYawEvents;
       const lastYaw=yawEvents.at(-1);
       if(!lastYaw||Math.abs(angular(lastYaw.yaw,

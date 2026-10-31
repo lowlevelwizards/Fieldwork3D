@@ -1039,6 +1039,7 @@ export class TacticalScene3D{
         // rendering cannot advance a second independent live gait.
         deterministic:!!replay,
         replayFeet:replay?.feet[actor.id]??liveMotion?.feet[actor.id],
+        hybridSupport:true,
         pelvisYaw:replay?.pelvisYaw[actor.id]??liveMotion?.pelvisYaw[actor.id],
         travelYaw:replay?.travelYaw[actor.id]??
           liveMotion?.travelYaw[actor.id],

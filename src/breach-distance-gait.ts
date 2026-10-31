@@ -52,6 +52,8 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
       f.plantedAt=clone(p);f.swingFrom=clone(p);f.swingTo=clone(p);
       f.phase='planted';f.contact=true;f.phaseStart=input.time;
       f.phaseDuration=0;f.lastTouchdown=input.time;
+      f.worldYaw=input.rootYaw;f.fromYaw=input.rootYaw;
+      f.targetYaw=input.rootYaw;
     });
   }
   const dt=clamp(input.time-s.lastTime,0,.08);
