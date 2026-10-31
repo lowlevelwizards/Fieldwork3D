@@ -128,6 +128,42 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number):Sit
   if(Math.hypot(p.x-objective.x,p.y-objective.y)>40&&
     !enemies.some(q=>Math.hypot(q.x-p.x,q.y-p.y)<40))enemies.push(p);
  }
+ // A secondary legitimate way in changes tactical circulation and reflects
+ // real rear kitchens, service bays, clinic staff doors and loading operations.
+ // Only split a truly exterior wall, never a partition between occupied rooms.
+ const accessRoles:Partial<Record<BuildingArchetype,readonly string[]>>={
+  house:['kitchen','dining'],townhouse:['kitchen','dining'],
+  apartment:['utility'],retail:['stockroom','service'],
+  office:['storage','break'],garage:['bay','workshop'],
+  warehouse:['loading','service'],restaurant:['kitchen','service'],
+  motel:['laundry','maintenance'],utility:['equipment','service'],
+  clinic:['staff','supply']
+ };
+ const preferred=accessRoles[kind]??[];
+ const front=doors.find(d=>d.id==='FRONT')!;
+ const frontMid={x:(front.a.x+front.b.x)/2,y:(front.a.y+front.b.y)/2};
+ const interior=(p:Pt)=>cells.find(c=>p.x>c.room.x+1&&
+   p.x<c.room.x+c.room.w-1&&p.y>c.room.y+1&&
+   p.y<c.room.y+c.room.h-1);
+ const choices=walls.map((wall,index)=>{
+  const length=span(wall);
+  const mid={x:(wall.a.x+wall.b.x)/2,y:(wall.a.y+wall.b.y)/2};
+  const dx=(wall.b.x-wall.a.x)/length,dy=(wall.b.y-wall.a.y)/length;
+  const left=interior({x:mid.x-dy*16,y:mid.y+dx*16});
+  const right=interior({x:mid.x+dy*16,y:mid.y-dx*16});
+  const room=left&&!right?left:right&&!left?right:null;
+  const weight=preferred.indexOf(room?.role??'');
+  return {index,wall,length,mid,weight};
+ }).filter(c=>c.weight>=0&&c.length>=105&&
+  Math.hypot(c.mid.x-frontMid.x,c.mid.y-frontMid.y)>104)
+  .sort((a,b)=>a.weight-b.weight||
+    Math.hypot(b.mid.x-frontMid.x,b.mid.y-frontMid.y)-
+    Math.hypot(a.mid.x-frontMid.x,a.mid.y-frontMid.y));
+ if(choices.length){
+  const candidate=choices[0];
+  walls.splice(candidate.index,1);
+  cut(candidate.wall,'SERVICE',walls,doors);
+ }
  const west=xs[0],east=xs[xs.length-1],north=ys[0],south=ys[ys.length-1];
  return {seed,name:b.family.toUpperCase(),archetype:kind,scale:'expanded',
    planFamily:b.family,programLocked:true,
