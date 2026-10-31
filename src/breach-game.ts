@@ -1451,7 +1451,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
         if(door.open)notify(s,door.id+' MUST BE CLOSED TO HOLD');
         else{
           door.heldBy=a.id;
-          notify(s,door.id+' BRACED');
+          notify(s,door.id+' HELD CLOSED · BRACED');
           battleEvent(s,'door',a,doorCenter(door),door.id+' BRACED');
         }
         pop(a);return;
