@@ -135,7 +135,7 @@ export class TacticalScene3D{
     this.fogTexture.minFilter=THREE.LinearFilter;
     this.fogTexture.magFilter=THREE.LinearFilter;
     const fogMat=new THREE.MeshBasicMaterial({
-      map:this.fogTexture,transparent:true,opacity:.82,depthTest:true,
+      map:this.fogTexture,transparent:true,depthTest:true,opacity:.82,
       depthWrite:false,toneMapped:false,side:THREE.DoubleSide});
     this.mats.push(fogMat);
     this.smoothFog=new THREE.Mesh(new THREE.PlaneGeometry(W,H),fogMat);
