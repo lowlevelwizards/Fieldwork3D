@@ -17,7 +17,8 @@ type FootEvent={
   landing:number;recovery:number;
 };
 type ActorTrack={
-  gait:LiveGaitState;
+  gait:LiveGaitState;lastVelocity:number;
+  accelEvents:{at:number;acceleration:number}[];
   events:[FootEvent[],FootEvent[]];last:{x:number;y:number;t:number};
   travelYaw:number;lastStepAt:number;
   travelYawEvents:{at:number;yaw:number}[];
@@ -27,6 +28,7 @@ export type ReplayPresentation={
   feet:Record<string,ReplayFeet>;
   travelYaw:Record<string,number>;
   pelvisYaw:Record<string,number>;
+  acceleration:Record<string,number>;
   doors:Record<string,number>;
 };
 const clamp=(v:number,a:number,b:number)=>Math.max(a,Math.min(b,v));
@@ -84,7 +86,8 @@ export class ReplayMotionRecorder{
       if(!track){
         track={gait:createLiveGait(),events:[[],[]],
           last:{...position,t:time},travelYaw:actor.heading,
-          lastStepAt:-100,pelvisYawEvents:[],travelYawEvents:[]};
+          lastStepAt:-100,pelvisYawEvents:[],travelYawEvents:[],
+          lastVelocity:actor.velocity,accelEvents:[]};
         this.actors.set(actor.id,track);
       }
       const distance=Math.hypot(position.x-track.last.x,
@@ -124,6 +127,13 @@ export class ReplayMotionRecorder{
         // Teammates are transient traffic, not static blocked ground.
         // One source of foothold validity serves live and replay.
         footAllowed:pt=>footAnchorReachable(actor.p,pt,doors)};
+      const velocityDt=time-track.last.t;
+      const acceleration=velocityDt>1e-5?clamp(
+        (actor.velocity-track.lastVelocity)/velocityDt,-230,230):0;
+      const acc=track.accelEvents;
+      if(!acc.length||Math.abs(acc[acc.length-1].acceleration-
+        acceleration)>2)acc.push({at:time,acceleration});
+      track.lastVelocity=actor.velocity;
       const previousResets=track.gait.resets;
       const previousStep=track.gait.lastStepAt;
       advanceLiveGait(track.gait,input);
@@ -164,6 +174,7 @@ export class ReplayMotionRecorder{
     const feet:Record<string,ReplayFeet>={};
     const travelYaw:Record<string,number>={};
     const pelvisYaw:Record<string,number>={};
+    const acceleration:Record<string,number>={};
     for(const id of ids){
       const track=this.actors.get(id);
       if(!track||!track.events[0].length)continue;
@@ -179,6 +190,13 @@ export class ReplayMotionRecorder{
         if(travel[mid].at<=time)ti=mid;else tj=mid-1;
       }
       travelYaw[id]=travel[ti]?.yaw??track.travelYaw;
+      const acc=track.accelEvents;
+      let ai=0,aj=acc.length-1;
+      while(ai<aj){
+        const mid=Math.ceil((ai+aj)/2);
+        if(acc[mid].at<=time)ai=mid;else aj=mid-1;
+      }
+      acceleration[id]=acc[ai]?.acceleration??0;
       const samples=track.pelvisYawEvents;
       let lo=0,hi=samples.length-1;
       while(lo<hi){
@@ -201,7 +219,7 @@ export class ReplayMotionRecorder{
       const alpha=b.at>a.at?clamp((time-a.at)/(b.at-a.at),0,1):0;
       doors[id]=a.fraction+(b.fraction-a.fraction)*alpha;
     }
-    return {feet,travelYaw,pelvisYaw,doors};
+    return {feet,travelYaw,pelvisYaw,acceleration,doors};
   }
   /** Approximate memory accounting for perf diagnostics, not a byte profiler. */
   get stepEventCount(){
