@@ -402,11 +402,9 @@ function focusedDoor(a:TeamActor,node:ReturnType<typeof selectedPlanNode>){
   const points=node?[node.p]:[finalPoint(a),a.p];
   const explicit=state.doors.find(d=>d.id===doorFocusId&&
     doorKnown(state.intel,d.id)&&
-    (state.intel.doorMemory.get(d.id)??0)<.72&&
     points.some(p=>doorReachable(p,d)));
   if(explicit)return explicit;
   return state.doors.filter(d=>doorKnown(state.intel,d.id)&&
-    (state.intel.doorMemory.get(d.id)??0)<.72&&
     d.id!==doorMenuDismissedId&&points.some(p=>
     doorReachable(p,d)))
     .sort((x,y)=>{
@@ -436,7 +434,8 @@ function updateContext(){
     door:!!door,node:!!node,flashRemaining:state.flashRemaining,
     posture:current.posture,pace:current.pace,
     firePolicy:node?.firePolicyState??a.firePolicy,
-    reserve:a.reserve,magazine:a.magazine
+    reserve:a.reserve,magazine:a.magazine,
+    doorOpen:!!door&&(door.openFraction??(door.open?1:0))>=.35
   });
   const paletteChoices=choices.filter(choice=>choice.group!=='state');
   // The four persistent toggles have their own stationary bar above the HUD.
@@ -675,10 +674,12 @@ const handleContextAction=(event:MouseEvent)=>{
       if(node)deletePlanNode(state,selected,node.id);
       selectedNode=null;doorFocusId=null;break;
     case 'ctxOpen':
+    case 'ctxClose':
     case 'ctxKick':
     case 'ctxHold':
       if(door&&!doorAtNode(state,selected,door.id,
-        action==='ctxOpen'?'open':action==='ctxKick'?'kick':'hold',
+        action==='ctxOpen'?'open':action==='ctxClose'?'close':
+        action==='ctxKick'?'kick':'hold',
         node&&distance(node.p,doorCenter(door))<=43?node.id:undefined))
         state.events.push('DOOR NOT REACHABLE FROM THAT POINT');
       doorFocusId=null;doorMenuDismissedId=door?.id??null;break;

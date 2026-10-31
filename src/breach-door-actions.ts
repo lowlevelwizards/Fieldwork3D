@@ -11,6 +11,6 @@ export function kickMotion(age:number){
   lift:8.8*extension,reach:11.7*extension,
   torsoLean:extension*.13,complete:t>=1};
 }
-export const doorActionLabel=(method:'open'|'kick'|'hold',swing:-1|1)=>
- method==='kick'?'KICK':method==='hold'?'HOLD':
+export const doorActionLabel=(method:'open'|'close'|'kick'|'hold',swing:-1|1)=>
+ method==='kick'?'KICK':method==='hold'?'HOLD':method==='close'?'CLOSE':
  'OPEN '+(swing>0?'↷':'↶');

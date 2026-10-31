@@ -38,7 +38,7 @@ export function initDoor(d:Door,i:number):Door{
 }
 /** A small fixed-step hinge motor with damped impulses; no renderer physics. */
 export function pushDoor(d:Door,force:number):boolean{
- if(!d.open&&(d.openFraction??0)<.08)return false;
+ if(d.heldBy||(!d.open&&(d.openFraction??0)<.08))return false;
  d.angularVelocity=Math.max(-5.5,Math.min(5.5,
    (d.angularVelocity??0)+force/Math.max(.35,d.resistance??1)));
  d.open=true;
@@ -50,7 +50,7 @@ export function kickDoor(d:Door){
 }
 /** Door leaf stops against architecture and furniture, not an arbitrary
  * renderer-only angle; sample away from the hinge itself. */
-export function doorSwingBlocked(d:Door,next:number){
+export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[]){
  // Standalone door fixtures have no registered architecture; do not
  // collide them with an unrelated active level's walls or cover.
  const registered=activeSite()?.doors??initialDoors();
@@ -63,9 +63,13 @@ export function doorSwingBlocked(d:Door,next:number){
    if(COVER.some(o=>Math.abs(o.x-p.x)<o.w/2+1.25&&
      Math.abs(o.y-p.y)<o.h/2+1.25))return true;
  }
+ if(!d.open){
+   const segment=doorLeafSegment({...d,openFraction:next});
+   if(actors.some(p=>pointToSegment(p,segment)<8.5))return true;
+ }
  return false;
 }
-export function advanceDoor(d:Door,dt:number){
+export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[]){
   // Fixed internal substeps prevent a paused or coarse test tick from
   // overshooting a hinge and keep old half-second door timings intact.
   let remaining=Math.max(0,Math.min(dt,.5));
@@ -88,8 +92,8 @@ export function advanceDoor(d:Door,dt:number){
     const velocity=Math.max(-4.5,Math.min(kicked?15:5.5,
       v+acceleration*h));
     const next=Math.max(0,Math.min(1,current+velocity*h));
-    const blocked=next>.12&&next>current+.0001&&
-      doorSwingBlocked(d,next);
+    const blocked=Math.abs(next-current)>.0001&&
+      (d.open?next>.12:next<current)&&doorSwingBlocked(d,next,actors);
     d.openFraction=blocked?current:next;
     d.angularVelocity=blocked||next===0||next===1?0:velocity;
     if(blocked||next>=.98)d.kickImpulse=0;
