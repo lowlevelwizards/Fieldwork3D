@@ -29,6 +29,7 @@ import {INTEL_MODES,doorKnown,wallKnown,coverKnown,roomKnown,
   routeWithIntel,intelPassable,type IntelMode} from './breach-intel.ts';
 import './breach-style.css';
 import {tacticalIcon,decorateIconButton} from './ui/tactical-icons.ts';
+import {contextActionChoices} from './ui/context-actions.ts';
 import {paintFogMask,FOG_WIDTH,FOG_HEIGHT} from './breach-fog-mask.ts';
 
 const el=<T extends HTMLElement>(id:string)=>{
@@ -321,26 +322,13 @@ function updateContext(){
   const node=selectedPlanNode();
   const door=doorFocusId?focusedDoor(a,node):undefined;
   const current=plannedControl(state,selected,node?.id);
-  const choices=door?[
-    {id:'ctxOpen',label:'OPEN',group:'primary'},
-    {id:'ctxKick',label:'KICK',group:'primary'},
-    {id:'ctxDoorFlash',label:'FLASH',group:'primary'},
-    {id:'ctxHold',label:'HOLD SHUT',group:'primary'},
-  ]:[
-    {id:'ctxLook',label:'LOOK',group:'primary'},
-    {id:'ctxPie',label:'PIE',group:'primary'},
-    {id:'ctxFlash',label:'FLASH ×'+state.flashRemaining,group:'primary'},
-    {id:'ctxWait',label:'WAIT',group:'primary'},
-    {id:'ctxFocus',label:'FOCUS',group:'primary'},
-    {id:'ctxSuppress',label:'SUPPRESS',group:'primary'},
-    {id:'ctxFire',label:(node?.firePolicyState??a.firePolicy).toUpperCase(),
-      group:'state'},
-    {id:'ctxStance',label:current.posture==='crouch'?'CROUCH':'STAND',group:'state'},
-    {id:'ctxPace',label:current.pace==='run'?'RUN':'WALK',group:'state'},
-    {id:'ctxReload',label:'RELOAD',group:'state'},
-    ...(node?[{id:'ctxDelete',label:'DELETE',group:'state'}]:[]),
-  ];
-  const signature=choices.map(x=>x.id+':'+x.label).join('/')+
+  const choices=contextActionChoices({
+    door:!!door,node:!!node,flashRemaining:state.flashRemaining,
+    posture:current.posture,pace:current.pace,
+    firePolicy:node?.firePolicyState??a.firePolicy,
+    reserve:a.reserve,magazine:a.magazine
+  });
+  const signature=choices.map(x=>x.id+':'+x.label+':'+!!x.disabled+':'+!!x.pressed).join('/')+
     '/'+(door?.id??'')+'/'+(node?.id??'-')+'/'+selected;
   if(contextSignature!==signature){
     contextSignature=signature;
@@ -356,9 +344,11 @@ function updateContext(){
       button.textContent=choice.label;
       button.prepend(tacticalIcon(choice.id));
       button.setAttribute('aria-label',choice.label);
+      if(choice.title)button.title=choice.title;
+      button.disabled=!!choice.disabled;
+      if(choice.pressed!==undefined)
+        button.setAttribute('aria-pressed',String(choice.pressed));
       if(choice.id==='ctxDelete')button.classList.add('danger');
-      if(choice.id==='ctxStance'||choice.id==='ctxPace')
-        button.setAttribute('aria-pressed','true');
       (choice.group==='primary'?primary:secondary).append(button);
     }
     ui.context.append(primary);
