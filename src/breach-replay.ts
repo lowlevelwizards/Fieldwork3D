@@ -9,7 +9,7 @@ import type {BattleEvent} from './breach-combat.ts';
 import {ReplayMotionRecorder,type ReplayPresentation} from './breach-replay-motion.ts';
 
 export type ActorFrame=Pick<TeamActor,
-  'id'|'p'|'heading'|'health'|'velocity'|'turning'|'posture'|'pace'|'alert'|
+  'id'|'p'|'heading'|'health'|'velocity'|'turning'|'posture'|'pace'|'alert'|'squeeze'|'squeezeYaw'|
   'magazine'|'reserve'|'reload'|'shots'|'fireCd'|'aim'|
   'insertedMagazineId'|'spareMagazines'|'reloadMode'|'reloadStartedAt'|
   'reloadDuration'|'reloadRemoved'|'reloadInserted'|
@@ -41,6 +41,7 @@ export function snapshot(s:Session,seenGround?:string[]):ReplayFrame{
     t:s.seconds,phase:s.phase,mission:s.mission,
     actors:s.operators.map(a=>({id:a.id,p:position(a.p),
       heading:a.heading,health:a.health,velocity:a.velocity,
+      squeeze:a.squeeze,squeezeYaw:a.squeezeYaw,
       turning:a.turning,posture:a.posture,pace:a.pace,alert:a.alert,
       magazine:a.magazine,reserve:a.reserve,reload:a.reload,
       insertedMagazineId:a.insertedMagazineId,
