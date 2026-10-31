@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import {alignSegment,solveTwoBone,ARM_LIMITS,LEG_LIMITS,
   intersectsTorso} from './breach-ik.ts';
 import type {WeaponId} from './breach-combat.ts';
-import {advanceFootsteps,createFootstepScheduler,
+import {advanceFootsteps,createFootstepScheduler,validatedReplayFeet,
   type FootstepScheduler,type FootTarget,type FootstepInput}
   from './breach-footsteps.ts';
 import type {ReplayFeet} from './breach-replay-motion.ts';
@@ -202,7 +202,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // The step scheduler is the SOLE writer of foot contacts, including
   // clearance recovery. IK below solves toward these positions; it does
   // not silently substitute its own position or restart a step.
-  const targets:[FootTarget,FootTarget]=p.replayFeet??
+  const targets:[FootTarget,FootTarget]=p.replayFeet?
+    validatedReplayFeet(gaitInput,p.replayFeet):
     advanceFootsteps(r.footsteps,gaitInput);
   const kickAge=p.seconds-p.lastDoorAt;
   const kick=p.doorMethod==='kick'&&kickAge>=0&&kickAge<.76?
@@ -247,7 +248,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     Math.hypot(t.position.x-p.x,t.position.y-p.z)));
   // Neutral knees are slightly unlocked; lateral loading can still lower
   // the pelvis without permanently holding an idle operator in a squat.
-  const stanceDrop=clamp((stanceRadius-8.4)*.54,0,3.2);
+  // The center-of-mass should not plunge to rescue stale contact data;
+  // an actual corrective step remains the scheduler's responsibility.
+  const stanceDrop=clamp((stanceRadius-8.4)*.37,0,
+    p.replayFeet?1.0:2.1);
   const neutralHip=20.2-crouch;
   const stanceHip=neutralHip+motion.pelvisY-stanceDrop-bash.brace;
   r.hip.position.y=Math.max(
@@ -326,7 +330,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // Final small reach extension is represented by a boot-colored
     // articulated ankle cuff, never a floating shoe or stretched shin.
     // The original two-bone segment lengths remain unchanged.
-    foot.ankleLink.visible=r.legGap[i]>.10&&r.legGap[i]<1.5;
+    foot.ankleLink.visible=r.legGap[i]>.10;
     if(foot.ankleLink.visible)
       alignSegment(foot.ankleLink,leg.effector,relative,P(0,0,sign));
     foot.shoe.position.copy(relative);
