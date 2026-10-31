@@ -132,7 +132,9 @@ const requestedSeed=Number(startupParams.get('seed'));
 const initialSiteSeed=startupParams.has('seed')&&Number.isSafeInteger(requestedSeed)&&
  requestedSeed>0&&requestedSeed<=0xffffffff?requestedSeed:randomSiteSeed();
 let selectedIntelMode:IntelMode='floor-plan';
-let state:Session=newSession(0,legacyStudy?undefined:initialSiteSeed,selectedIntelMode);
+const requestedSiteScale=startupParams.get('scale')==='expanded'?'expanded':'standard';
+let state:Session=newSession(0,legacyStudy?undefined:initialSiteSeed,
+  selectedIntelMode,requestedSiteScale);
 let recorder=new MissionRecorder();recorder.capture(state,true);
 const OPERATION_HISTORY_KEY='fieldwork3d.operation-history.v1';
 let recordedOperation:Session|null=null;
