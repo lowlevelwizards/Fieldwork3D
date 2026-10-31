@@ -83,7 +83,7 @@ const alternate:Partial<Record<BuildingArchetype,Spec>>={
    ['guest','guest','guest','guest'],
    ['hallway','hallway','hallway','hallway'],
    ['reception',null,null,'laundry'],
-   ['reception','hallway','maintenance','maintenance']]},
+   ['reception','lobby','maintenance','maintenance']]},
  clinic:{family:'offset clinic / public wing and clinical hall',
   widths:[173,70,166,130],depths:[143,112,79,104],
   front:{col:1,row:3},cells:[
