@@ -36,7 +36,7 @@ try{
   home.on('pageerror',e=>errors.push('homepage: '+e.message));
   await home.goto(url.replace('breach.html',''),{
     waitUntil:'domcontentloaded'});
-  await home.locator('#breachCanvas').waitFor();
+  await home.locator('#breach3dCanvas').waitFor({state:'visible'});
   if(await home.locator('#app').count())
     throw Error('Pages root is still the old Verdigris game');
   if(!await home.locator('#play').count())
@@ -50,7 +50,7 @@ try{
   live.on('pageerror',e=>errors.push('procedural homepage: '+e.message));
   await live.goto(base.replace('breach.html',''),{
     waitUntil:'domcontentloaded'});
-  await live.locator('#breachCanvas').waitFor();
+  await live.locator('#breach3dCanvas').waitFor({state:'visible'});
   for(const id of ['rook','moss','ash','vale']){
     if(!await live.locator('#'+id).isVisible())
       throw Error('Four-player live homepage missing '+id);
@@ -87,7 +87,7 @@ try{
   await original.close();await home.close();
   phone.on('pageerror',e=>errors.push(e.message));
   await phone.goto(url,{waitUntil:'domcontentloaded'});
-  await phone.locator('#breachCanvas').waitFor();
+  await phone.locator('#breach3dCanvas').waitFor({state:'visible'});
   await phone.waitForTimeout(350);
   const cameraState=async()=>phone.locator('#breach3dCanvas').evaluate(c=>({
     yaw:Number(c.dataset.cameraYaw),pitch:Number(c.dataset.cameraPitch),
