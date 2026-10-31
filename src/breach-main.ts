@@ -28,6 +28,7 @@ import {doorReachable} from './breach-door.ts';
 import {INTEL_MODES,doorKnown,wallKnown,coverKnown,roomKnown,
   routeWithIntel,intelPassable,type IntelMode} from './breach-intel.ts';
 import './breach-style.css';
+import {tacticalIcon,decorateIconButton} from './ui/tactical-icons.ts';
 import {paintFogMask,FOG_WIDTH,FOG_HEIGHT} from './breach-fog-mask.ts';
 
 const el=<T extends HTMLElement>(id:string)=>{
@@ -98,6 +99,9 @@ const ui={
   rookAmmo:el<HTMLElement>('rookAmmo'),mossAmmo:el<HTMLElement>('mossAmmo'),
   ashAmmo:el<HTMLElement>('ashAmmo'),valeAmmo:el<HTMLElement>('valeAmmo'),
 };
+for(const key of ['back','undo','redo','moreOrders','siteSettingsToggle','cancelTarget'] as const){
+  decorateIconButton(ui[key],key);
+}
 const randomSiteSeed=()=>{
   const bytes=new Uint32Array(1);
   if(typeof crypto!=='undefined'&&crypto.getRandomValues)crypto.getRandomValues(bytes);
@@ -350,6 +354,8 @@ function updateContext(){
       const button=document.createElement('button');
       button.type='button';button.dataset.action=choice.id;
       button.textContent=choice.label;
+      button.prepend(tacticalIcon(choice.id));
+      button.setAttribute('aria-label',choice.label);
       if(choice.id==='ctxDelete')button.classList.add('danger');
       if(choice.id==='ctxStance'||choice.id==='ctxPace')
         button.setAttribute('aria-pressed','true');
@@ -1747,6 +1753,7 @@ ui.moreOrders.addEventListener('click',()=>{
   }
   ui.moreOrders.setAttribute('aria-pressed',String(expanded));
   ui.moreOrders.textContent=expanded?'CLOSE':'ACTIONS';
+  decorateIconButton(ui.moreOrders,'moreOrders');
   // Never render two command overlays on top of each other.
   updateContext();
 });

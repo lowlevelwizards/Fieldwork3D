@@ -469,3 +469,22 @@ button:disabled{opacity:.48;cursor:default}
  .context-primary button,.context-state button{font-size:11px}
 }
 @media(prefers-reduced-motion:reduce){button{transition:none}}
+
+/* UI Overhaul 04 — coherent SVG icon family with crisp 24-unit glyphs. */
+.ui-icon{display:inline-block;vertical-align:middle;flex-shrink:0;
+ width:18px;height:18px;pointer-events:none}
+.context-tools button{display:flex;align-items:center;justify-content:center;
+ gap:3px;flex-direction:column}
+.context-primary button{min-height:52px}
+.context-tools .context-state button{flex-direction:row;min-height:40px}
+.context-primary .ui-icon{width:19px;height:19px}
+.context-state .ui-icon{width:16px;height:16px}
+.bar #back,.bar #moreOrders,.orders #undo,.orders #redo,
+.orders #siteSettingsToggle,.cancel-target{
+ display:inline-flex;align-items:center;justify-content:center;gap:5px}
+@media(max-width:600px){
+ .context-primary button{min-height:48px}
+ .context-primary .ui-icon{width:17px;height:17px}
+ .context-tools .context-state button{flex-direction:column;gap:2px}
+ .context-state .ui-icon{height:15px;width:15px}
+}
