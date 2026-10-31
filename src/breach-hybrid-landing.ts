@@ -24,7 +24,8 @@ export function hybridLanding(input:FootstepInput,index:number,
  const expected=Math.min(input.speed*horizon,horizontalLegReach()*.89);
  const future={x:input.position.x+Math.cos(input.travelYaw)*expected,
    y:input.position.y+Math.sin(input.travelYaw)*expected};
- const sign=index===0?-1:1,width=input.gait==='squeeze'?2.6:5.6;
+ const sign=index===0?-1:1,width=input.gait==='squeeze'?2.6:
+  input.posture==='crouch'?6.2:5.6;
  const futureHip=lateral(future,facing,sign*LEG_HIP_SIDE);
  const travelLead=input.gait==='run'?1.8:
    input.gait==='pie'||input.gait==='squeeze'?.1:.8;
