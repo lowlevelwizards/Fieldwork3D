@@ -109,10 +109,6 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       (blendAim<.82?handlingProfile('point',input.weapon).pitch:
         handlingProfile('ads',input.weapon).pitch)*blendAim;
     const sr=Math.sin(roll),cr=Math.cos(roll);
-    const shoulderY=(aim===undefined||mode==='short'?
-      profile.stockY:
-      3.2+4.8*(Math.max(0,Math.min(1,aim))**
-        2*(3-2*Math.max(0,Math.min(1,aim)))))+recoilY;
     // Buttplate is the authority. Search only around an EXTERNAL shoulder
     // contact, never around the old in-chest receiver midpoint. Keep tiny
     // yaw variations to preserve the authoritative shot heading.
