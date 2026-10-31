@@ -1,5 +1,5 @@
 /** Single source of truth for the tactical palette's visible actions and their states. */
-export type ContextAction={id:string;label:string;group:'primary'|'state';
+export type ContextAction={id:string;label:string;group:'primary'|'state'|'destructive';
   pressed?:boolean;disabled?:boolean;title?:string};
 export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   posture:'stand'|'crouch';pace:'walk'|'run';firePolicy:string;
@@ -28,6 +28,6 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
       pressed:o.pace==='run',title:'Toggle walk and run'},
     {id:'ctxReload',label:'RELOAD',group:'state',
       disabled:o.reserve<=0,title:o.reserve<=0?'No reserve ammunition':'Queue a reload'},
-    ...(o.node?[{id:'ctxDelete',label:'DELETE',group:'state' as const,title:'Remove selected waypoint'}]:[]),
+    ...(o.node?[{id:'ctxDelete',label:'Delete',group:'destructive' as const,title:'Remove selected waypoint'}]:[]),
   ];
 }
