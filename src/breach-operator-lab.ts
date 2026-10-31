@@ -156,6 +156,7 @@ function chooseTrack(next:LabTrack){
   if(comparing){
     comparing=false;
     poseCompareButton.setAttribute('aria-pressed','false');
+    document.body.classList.remove('compare-open');
     labelLayer.hidden=true;
     renderer.shadowMap.enabled=true;
     fit();
@@ -175,8 +176,17 @@ poseCompareButton.addEventListener('click',()=>{
   if(comparing)ensureComparison();
   labelLayer.hidden=!comparing;
   poseCompareButton.setAttribute('aria-pressed',String(comparing));
+  document.body.classList.toggle('compare-open',comparing);
   renderer.shadowMap.enabled=!comparing;
   fit();
+});
+choose<HTMLButtonElement>('savePoseView').addEventListener('click',()=>{
+  // Keep an exact visual reference across versions without retaining images
+  // or GPU render targets in memory; works for the current matched view.
+  const link=document.createElement('a');
+  link.download='fieldwork-poses-reference.png';
+  link.href=canvas.toDataURL('image/png');
+  link.click();
 });
 silhouetteButton.addEventListener('click',()=>{
   silhouettes=!silhouettes;
