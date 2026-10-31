@@ -16,6 +16,7 @@ import {
   length,targetAngle,angleDifference,type PieSide,
 } from './breach-plan.ts';
 import {validPieArc} from './breach-maneuvers.ts';
+import {entryLanes} from './breach-entry-lanes.ts';
 import {generateSite,type Site,seeded} from './breach-site.ts';
 import {WEAPONS,injuryOf,injurySpeed,injuryReload,
   woundSeverity,exposure,nearCover,type WeaponId,type BattleEvent}
@@ -587,27 +588,38 @@ export function planSquadEntry(s:Session,doorId:string){
   if(!door||!canEdit(s))return false;
   const alive=team(s).filter(a=>a.health>0);
   if(!alive.length)return false;
-  // The user can first position a squad manually; honor existing stack
-  // positions instead of duplicating them.
+  const start=finalPoint(alive[0]);
+  const slots=entryLanes(door,start,alive.length,passable);
+  if(slots.length!==alive.length){
+    notify(s,'SQUAD ENTRY BLOCKED · NO DISTINCT INTERIOR LANES');
+    return false;
+  }
+  // Preflight all interior destinations before editing anyone's plan.
+  for(let i=0;i<alive.length;i++){
+    if(!routeWithIntel(s.intel,finalPoint(alive[i]),slots[i].point).length){
+      notify(s,'SQUAD ENTRY BLOCKED · CHECK ROUTE');
+      return false;
+    }
+  }
   for(const a of alive){
     if(!a.plan.some(n=>n.stackDoorId===doorId)&&
       !planStack(s,a.id,doorId))return false;
   }
   if(!planSync(s))return false;
-  const center=doorCenter(door),horizontal=Math.abs(door.a.y-door.b.y)<1;
-  const lead=alive[0],p=finalPoint(lead);
-  const side=horizontal?Math.sign(p.y-center.y)||1:
-    Math.sign(p.x-center.x)||1;
+  const lead=alive[0];
   if(!planDoor(s,lead.id,doorId,'open'))return false;
   for(let i=0;i<alive.length;i++){
-    const a=alive[i];
+    const a=alive[i],slot=slots[i];
     if(i>0)planWait(s,a.id,.3+i*.24);
-    const inside=horizontal?{x:center.x+(i%2?9:-9),
-      y:center.y-side*62}:{x:center.x-side*62,
-      y:center.y+(i%2?9:-9)};
-    if(passable(inside))planMove(s,a.id,inside);
+    if(!planMove(s,a.id,slot.point)){
+      notify(s,a.name+' ENTRY ROUTE UNAVAILABLE');
+      return false;
+    }
+    const arrival=a.plan.at(-1);
+    if(arrival?.kind==='move')
+      planAim(s,a.id,'fixed',slot.look,arrival.id,'look');
   }
-  notify(s,'SQUAD ENTRY READY · GO TO EXECUTE');
+  notify(s,'SQUAD ENTRY READY · DISTINCT LANES · GO TO EXECUTE');
   return true;
 }
 /** Tactical WAIT: hold for the minimum interval, and continue only after
