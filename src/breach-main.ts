@@ -1687,7 +1687,7 @@ function enterReplay(){
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
   ui.replayExtra.hidden=true;ui.replayMore.setAttribute('aria-expanded','false');
   state=newSession(finishedSession.variant,finishedSession.site?.seed,
-    finishedSession.intel.mode);
+    finishedSession.intel.mode,finishedSession.site?.scale??'standard');
   stage?.applySite(state.site??null);
   document.body.classList.add('replaying');
   ui.replayPanel.hidden=false;
