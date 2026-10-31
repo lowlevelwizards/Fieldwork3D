@@ -47,11 +47,6 @@ export type WeaponFit={
 export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
   /** Fire direction in chest-local space. */
   yaw:number;recoil:number;aimBlend?:number};
-function pocketY(handling:Handling){
-  return handling==='ads'?8:handling==='point'?5.3:
-    handling==='high'?6.8:handling==='ready'?4.4:
-    handling==='short'?4:2.5;
-}
 /** Rigid contact fit in chest-local space. The candidate search uses scalar
  * maths: allocating dozens of vectors per actor per render caused mobile GC
  * spikes. Only the winning solution becomes Three.js geometry.
