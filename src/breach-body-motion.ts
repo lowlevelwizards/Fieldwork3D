@@ -10,7 +10,7 @@ export type BalanceInput={velocity:number;heading:number;travelYaw:number;
   position?:{x:number;y:number};
   gait?:'run'|'walk'|'pie'|'squeeze';
   /** Lab candidate: use actual weighted shoe positions for load transfer. */
-  hybridSupport?:boolean;acceleration?:number;};
+  hybridSupport?:boolean;acceleration?:number;weaponWeight?:number;};
 export type BodyMotion={pelvisY:number;pelvisSide:number;
   torsoForward:number;torsoSide:number;torsoYaw:number;headCounter:number;
   support:number;chestLift:number;weaponYaw:number;weaponPitch:number;};
@@ -97,9 +97,15 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
   pelvisY-=Math.max(0,-accel)*.17*moving*crouch;
   const chestLift=(-.35*receiving+.18*swinging+.16*unloading)*
     moving*gaitAmp*crouch*wound;
-  const weaponYaw=clamp(support*speed*.018*weaponAmp,-.038,.038);
-  const weaponPitch=(-.012*receiving+.018*unloading+.010*swinging)*
-    moving*weaponAmp;
+  // Small contact/acceleration response is a *requested* weapon fit sway;
+  // actual stock, hands and barrel remain one authoritative rigid transform.
+  const weaponMass=clamp(input.weaponWeight??1,.7,1.4);
+  const weaponYaw=clamp((support*speed*.018-
+    accel*.012+Math.sign(side)*clamp(input.turning/6,0,1)*.008)*
+    weaponAmp*weaponMass,-.047,.047);
+  const weaponPitch=clamp((-.012*receiving+.018*unloading+
+    .010*swinging)*moving*weaponAmp-accel*.009*weaponMass,
+    -.046,.046);
   return {pelvisY,pelvisSide,torsoForward,torsoSide,
     torsoYaw:clamp(-support*speed*.032,-.038,.038),
     headCounter:-torsoSide*.52,support,chestLift,
