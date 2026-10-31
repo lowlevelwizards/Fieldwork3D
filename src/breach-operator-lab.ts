@@ -79,10 +79,12 @@ const COMPARE_POSES:{label:string;mode:Handling;track:LabTrack}[]=[
 ];
 let comparing=false,silhouettes=false;
 let comparisonRigs:OperatorRig[]=[];
+let comparisonKey='',comparisonPoseUpdates=0;
 const labelLayer=choose<HTMLElement>('compareLabels');
 const poseCompareButton=choose<HTMLButtonElement>('comparePose');
 const silhouetteButton=choose<HTMLButtonElement>('silhouetteMode');
 function clearComparison(){
+  comparisonKey='';
   for(const operatorRig of comparisonRigs){
     scene.remove(operatorRig.root);operatorRig.dispose();
   }
@@ -367,7 +369,7 @@ function draw(){
   const selectedHandling=transition?.to??previewHandling[track];
   doorProp.visible=track==='door'||track==='kick';
   rig.root.position.set(motion.x,0,motion.z);
-  poseOperator(rig,{x:motion.x,z:motion.z,heading:motion.heading,
+  if(!comparing)poseOperator(rig,{x:motion.x,z:motion.z,heading:motion.heading,
     travelYaw:motion.travelYaw,seconds:clock,stride:clock*40,
     velocity:motion.speed,posture:motion.posture,
     injury:Math.max(motion.injury,Number(injury.value),
@@ -405,7 +407,11 @@ function draw(){
     for(const material of rig.colors.keys())material.color.setHex(0x172322);
   if(comparing){
     ensureComparison();
-    comparisonRigs.forEach((body,i)=>{
+    const signature=operator.value+'|'+weapon.value+'|'+silhouettes;
+    if(comparisonKey!==signature){
+      comparisonKey=signature;
+      canvas.dataset.comparePoseUpdates=String(++comparisonPoseUpdates);
+      comparisonRigs.forEach((body,i)=>{
       const info=COMPARE_POSES[i],column=i%2,row=Math.floor(i/2);
       const x=(column-.5)*77,z=(row-1)*70;
       body.root.visible=true;body.root.position.set(x,0,z);
@@ -421,7 +427,8 @@ function draw(){
       const label=labelLayer.children[i] as HTMLButtonElement;
       label.title=info.label+' · stock '+body.stockError.toFixed(2)+
         ' · grip '+body.gripError.toFixed(2);
-    });
+      });
+    }
   }else for(const body of comparisonRigs)body.root.visible=false;
   const dx=comparing?0:motion.x-cameraFollow.x,
     dz=comparing?0:motion.z-cameraFollow.z;
