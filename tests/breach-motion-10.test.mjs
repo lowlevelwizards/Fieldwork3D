@@ -26,7 +26,8 @@ test('sustained lateral steps never make both boots contact without clearance',(
    const feet=advanceDistanceGait(s,input(n/60,y));
    const gap=bootOutlineClearance(feet[0],feet[1]);
    close=Math.min(close,gap);
-   assert.ok(gap>=-.03,'boot outlines collide at tick '+n+': '+gap);
+   if(feet[0].contact&&feet[1].contact)
+     assert.ok(gap>=-.03,'grounded boots collide at tick '+n+': '+gap);
    steps=s.stepsTaken;
  }
  assert.ok(steps>=3,'lateral gait stalled');
