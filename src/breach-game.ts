@@ -535,6 +535,11 @@ export function planLook(s:Session,id:string,p:Pt,nodeId?:number){
   const node=nodeId!==undefined?a.plan.find(n=>n.id===nodeId):a.plan.at(-1);
   return planAim(s,id,'fixed',p,node?.id);
 }
+/** A paired entrance is one user interaction but two collision leaves. */
+function pairedLeaves(s:Session,door:Door):Door[]{
+ const pair=door.pairedWith?s.doors.find(d=>d.id===door.pairedWith):undefined;
+ return pair?[door,pair]:[door];
+}
 export function planDoor(s:Session,id:string,doorId:string,method:DoorMethod){
   const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
   if(!a||!door||!canEdit(s))return false;
@@ -1507,21 +1512,27 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       if(n.method==='hold'){
         if(door.open)notify(s,door.id+' MUST BE CLOSED TO HOLD');
         else{
-          door.heldBy=a.id;
+          for(const leaf of pairedLeaves(s,door))leaf.heldBy=a.id;
           notify(s,door.id+' HELD CLOSED · BRACED');
           battleEvent(s,'door',a,doorCenter(door),door.id+' BRACED');
         }
         pop(a);return;
       }
       if(n.method==='close'){
-        door.heldBy=null;door.open=false;door.openedAt=s.seconds;
+        for(const leaf of pairedLeaves(s,door)){
+          leaf.heldBy=null;leaf.open=false;leaf.openedAt=s.seconds;
+        }
         hear(s,doorCenter(door),90,'door');
         notify(s,door.id+' CLOSING');
         battleEvent(s,'door',a,doorCenter(door),door.id+' CLOSING');
       }else if(n.method!=='kick'){
-        if(door.heldBy){notify(s,door.id+' BRACED SHUT');pop(a);return;}
-        door.open=true;door.openedAt=s.seconds;
-        pushDoor(door,.45);
+        if(pairedLeaves(s,door).some(leaf=>leaf.heldBy)){
+          notify(s,door.id+' BRACED SHUT');pop(a);return;
+        }
+        for(const leaf of pairedLeaves(s,door)){
+          leaf.open=true;leaf.openedAt=s.seconds;
+          pushDoor(leaf,.45);
+        }
         hear(s,doorCenter(door),145,'door');
         notify(s,door.id+' OPENED');
         battleEvent(s,'door',a,doorCenter(door),door.id+' OPENED');
