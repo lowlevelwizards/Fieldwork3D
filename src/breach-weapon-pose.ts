@@ -20,14 +20,36 @@ export const GRIPS:Record<WeaponId,WeaponGrip>={
     supportX:1,supportY:-2},
 };
 export const weaponGrips=(id:WeaponId):WeaponGrip=>GRIPS[id];
+export type HandlingIntent='move'|'run'|'look'|'pie'|'door'|'hold'|'engage';
+/** Pure context-based handling selection shared with shot-time geometry.
+ * Optional hysteresis only affects passive ready states, never combat.
+ * A physically blocked muzzle has absolute priority.
+ */
 export function handlingPose(input:{aim:number;moving:number;
-  obstruction:boolean;friendlyNear:boolean}):Handling{
+  obstruction:boolean;friendlyNear:boolean;intent?:HandlingIntent;
+  threatRange?:number|null;weapon?:WeaponId;
+  previous?:Handling;heldFor?:number}):Handling{
   if(input.obstruction)return 'short';
-  if(input.friendlyNear&&input.aim<.85)return 'low';
+  const near=input.weapon==='shotgun'?86:
+    input.weapon==='smg'?100:74;
+  const closeThreat=input.threatRange!==undefined&&
+    input.threatRange!==null&&input.threatRange<=near;
+  if(closeThreat&&input.aim>=.34)return 'point';
   if(input.aim>=.82)return 'ads';
   if(input.aim>=.20)return 'point';
-  if(input.moving>.32)return 'low';
-  return 'ready';
+  let next:Handling='ready';
+  if(input.intent==='run')next='low';
+  else if(input.intent==='door'&&input.friendlyNear)next='high';
+  else if(input.intent==='pie')next='ready';
+  else if(input.intent==='look'||input.intent==='hold')next='ready';
+  else if(input.friendlyNear)next='low';
+  else if(input.moving>.32)next='low';
+  // Ignore brief passive-pose threshold flicker; never delay urgent combat
+  // or physical short-stock clearance. Replay omits previous for purity.
+  if(input.previous&&input.previous!==next&&
+     (input.heldFor??Infinity)<.16&&input.aim<.20)
+    return input.previous;
+  return next;
 }
 export function clampReach(from:THREE.Vector3,target:THREE.Vector3,
   length:number):THREE.Vector3{
