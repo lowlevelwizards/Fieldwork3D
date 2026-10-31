@@ -7,7 +7,7 @@ export type FirePolicy='engage'|'hold'|'return'|'focus'|'suppress';
 export type AimMode='free'|'fixed'|'track';
 export type AimInstruction={mode:AimMode;angle?:number;point?:Pt};
 export type PieSide='cw'|'ccw';
-export type DoorMethod='open'|'kick'|'hold';
+export type DoorMethod='open'|'close'|'kick'|'hold';
 export type PlanNode={
   id:number;kind:PlanKind;p:Pt;facing?:number;doorId?:string;
   method?:DoorMethod;duration?:number;syncCode?:string;holdOnContact?:boolean;
