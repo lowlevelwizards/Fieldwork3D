@@ -8,7 +8,9 @@ export type BalanceInput={velocity:number;heading:number;travelYaw:number;
   turning:number;injury:number;posture:'stand'|'crouch';
   feet:readonly [FootTarget,FootTarget];
   position?:{x:number;y:number};
-  gait?:'run'|'walk'|'pie'|'squeeze';};
+  gait?:'run'|'walk'|'pie'|'squeeze';
+  /** Lab candidate: use actual weighted shoe positions for load transfer. */
+  hybridSupport?:boolean;};
 export type BodyMotion={pelvisY:number;pelvisSide:number;
   torsoForward:number;torsoSide:number;torsoYaw:number;headCounter:number;
   support:number;chestLift:number;weaponYaw:number;weaponPitch:number;};
@@ -50,7 +52,18 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
   // change support legs often, so binary phase offsets visibly pop the hip.
   let pelvisY=(-.65*receiving+.20*unloading+.42*swinging)*
     moving*crouch*wound*gaitAmp;
-  const pelvisSide=support*clamp(1.15*speed*gaitAmp,0,1.65)*crouch;
+  // Experimental contact support follows the actual bearing shoe, not a
+  // disconnected lateral oscillator. Retain legacy output by default.
+  let pelvisSide=support*clamp(1.15*speed*gaitAmp,0,1.65)*crouch;
+  if(input.hybridSupport&&input.position){
+    const axis={x:-Math.sin(input.heading),y:Math.cos(input.heading)};
+    const leftSide=(left.position.x-input.position.x)*axis.x+
+      (left.position.y-input.position.y)*axis.y;
+    const rightSide=(right.position.x-input.position.x)*axis.x+
+      (right.position.y-input.position.y)*axis.y;
+    const weight=a+b>1e-6?(leftSide*a+rightSide*b)/(a+b):0;
+    pelvisSide=clamp(weight*.24,-1.65,1.65)*moving*crouch;
+  }
   // Physical pelvis compression comes from the support-foot reach budget,
   // not from a separate stance-radius correction in the renderer.
   if(input.position){
