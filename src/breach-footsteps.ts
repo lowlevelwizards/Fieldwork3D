@@ -133,8 +133,10 @@ export function gaitBounds(input:FootstepInput){
   // Preserve the proven fast lead/follow transfer for a 38-unit strafe:
   // simply making its swing slower produces unreachable trailing legs.
   // Pieing gets a different, slower cadence at much lower motor speed.
-  const baseSwing=deliberate?.255:running?.17:
-    slow?.235:wound?.225:side?.167:backward?.215:.20;
+  // Each touchdown must occur before the supporting leg is pulled beyond
+  // its reachable arc. A long swing at motor speed causes visible tethering.
+  const baseSwing=deliberate?.235:running?.125:
+    slow?.175:wound?.16:side?.135:backward?.16:.145;
   const speedAdjustment=deliberate?0:
     running?Math.min(input.speed,90)*.00012:
     Math.min(input.speed,75)*(side?.00045:.00038);
@@ -142,15 +144,16 @@ export function gaitBounds(input:FootstepInput){
     comfortableLateral:deliberate?3.7:4.5,
     maximumReach:horizontalLegReach()-.65,
     emergencyReach:horizontalLegReach(),
-    preferredLead:deliberate?2.25:running?6.8:
-      slow?3.0:wound?3.7:5.5,
-    swingDuration:clamp(baseSwing-speedAdjustment,side?.135:.14,.30),
-    unloadDuration:deliberate?.075:running?.038:side?.030:
-      slow?.065:.045,
-    landingDuration:deliberate?.075:running?.038:side?.042:
-      slow?.06:.048,
-    recoveryDuration:deliberate?.105:running?.065:side?.058:
-      slow?.10:.075};
+    preferredLead:deliberate?2.25:running?8.0:
+      slow?4.5:wound?4.6:7.0,
+    swingDuration:clamp(baseSwing-speedAdjustment,
+      deliberate?.17:running?.11:side?.135:.115,.30),
+    unloadDuration:deliberate?.065:running?.028:side?.025:
+      slow?.040:.030,
+    landingDuration:deliberate?.065:running?.036:side?.038:
+      slow?.048:.040,
+    recoveryDuration:deliberate?.08:running?.048:side?.050:
+      slow?.075:.055};
 }
 /** Clamp planned *paths*, not rendered boots. In the local facing frame
  * the left foot must remain left of the right foot throughout a swing. */
@@ -182,7 +185,8 @@ function startStep(s:FootstepScheduler,index:number,input:FootstepInput){
   const strafe=s.mode==='strafe-left'||s.mode==='strafe-right';
   const pivot=s.mode==='pivot',settle=s.mode==='settle';
   const travel=input.speed>5?input.travelYaw:facing;
-  const advance=clamp(input.speed*duration,0,13);
+  const advance=clamp(input.speed*duration,0,
+    horizontalLegReach()*.82);
   const predicted={x:input.position.x+Math.cos(travel)*advance,
     y:input.position.y+Math.sin(travel)*advance};
   let land=lateral(predicted,facing,index===0?-1:1);
@@ -410,7 +414,7 @@ export function advanceFootsteps(s:FootstepScheduler,source:FootstepInput):
       const score=active?forward+error*.3:turningError*8+error;
       if(score>bestScore+.001||best<0){best=i;bestScore=score;}
     }
-    if(best>=0&&input.time-s.lastStepAt>(active?.09:.19)){
+    if(best>=0&&input.time-s.lastStepAt>(active?.055:.17)){
       startStep(s,best,input);
     }
   }
