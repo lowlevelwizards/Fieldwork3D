@@ -169,8 +169,11 @@ let looking=false,flashMode=false;
 let firePlacement:'focus'|'suppress'|null=null;
 let lookMode:'look'|'pie'|'strafe'='look';
 let contextSignature='';
+let contextActionsSignature='';
 let lastContextSide:MenuSide|null=null;
 const paletteMotion=new PaletteMotion();
+const reducedMotionMedia=matchMedia('(prefers-reduced-motion: reduce)');
+let paletteWidth=0,paletteHeight=0;
 const contextTether=document.createElement('div');
 contextTether.id='contextTether';
 contextTether.setAttribute('aria-hidden','true');
@@ -180,12 +183,12 @@ function hideContextPalette(){
 }
 function advanceContextPalette(dt:number){
   if(ui.context.hidden||!paletteMotion.active){contextTether.hidden=true;return;}
-  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduced=reducedMotionMedia.matches;
   paletteMotion.step(dt,reduced);
   const x=paletteMotion.x.position,y=paletteMotion.y.position;
   ui.context.style.transform='translate3d('+x.toFixed(2)+'px,'+
     y.toFixed(2)+'px,0)';
-  const w=ui.context.offsetWidth,h=ui.context.offsetHeight;
+  const w=paletteWidth,h=paletteHeight;
   const ax=paletteMotion.anchorX,ay=paletteMotion.anchorY;
   const bx=Math.max(x,Math.min(ax,x+w));
   const by=Math.max(y,Math.min(ay,y+h));
@@ -408,6 +411,7 @@ function updateContext(){
   // Reconcile buttons in-place: avoid tearing down the menu when a toggle changes.
   const identity=(door?'door:'+door.id:node?'node:'+node.id:'here')+'/'+selected;
   if(contextSignature!==identity){
+    contextActionsSignature='';
     contextSignature=identity;
     ui.context.replaceChildren();
     const primary=document.createElement('div');primary.className='context-primary';
@@ -415,6 +419,10 @@ function updateContext(){
     const destructive=document.createElement('div');destructive.className='context-danger';
     ui.context.append(primary,secondary,destructive);
   }
+  const actionSignature=identity+'/'+choices.map(c=>
+    c.id+':'+c.label+':'+c.group+':'+!!c.disabled+':'+!!c.pressed).join('|');
+  if(contextActionsSignature!==actionSignature){
+  contextActionsSignature=actionSignature;
   const buckets:Record<string,HTMLElement>={
     primary:ui.context.querySelector<HTMLElement>('.context-primary')!,
     state:ui.context.querySelector<HTMLElement>('.context-state')!,
@@ -451,6 +459,7 @@ function updateContext(){
   buckets.state.hidden=!buckets.state.childElementCount;
   buckets.destructive.hidden=!buckets.destructive.childElementCount;
   ui.context.classList.toggle('door-menu',!!door);
+  }
   ui.context.hidden=false;
   ui.context.dataset.door=door?.id??'';
   ui.context.setAttribute('aria-label',door?
@@ -460,6 +469,7 @@ function updateContext(){
   const target=door?doorCenter(door):node?.p??a.p;
   const anchor=worldToScreen(target,door?15:node?8:24);
   const w=ui.context.offsetWidth,h=ui.context.offsetHeight;
+  paletteWidth=w;paletteHeight=h;
   const header=document.querySelector<HTMLElement>('.top');
   const nav=document.querySelector<HTMLElement>('.bar');
   const minY=Math.max(8,(header?.getBoundingClientRect().bottom??62)+8);
@@ -611,7 +621,7 @@ ui.context.addEventListener('click',event=>{
   tacticalFeedback.emit(failed?'error':'command',
     door?doorCenter(door):node?.p??a.p,
     failed?'Blocked':button.querySelector('.command-label')?.textContent??'');
-  contextSignature='';updateHud();
+  updateHud();
 });
 // World-first status: repetitive instructions are hidden; critical events persist.
 let lastNoticeKey='',noticeBorn=0;
