@@ -27,6 +27,12 @@ header a{color:#c8b992}main{position:fixed;bottom:env(safe-area-inset-bottom);le
  padding:4px 7px;min-height:23px;background:#24322cdb;color:#fff0d0;
  border:1px solid #829388;pointer-events:auto;white-space:nowrap;
  font:10px monospace;touch-action:manipulation}
+body.compare-open main{max-height:56px;display:block;overflow:visible}
+body.compare-open main>.row{display:none}
+body.compare-open main>.row:has(#comparePose){display:flex;flex-wrap:nowrap}
+body.compare-open main>.row:has(#comparePose)>*{display:none}
+body.compare-open #comparePose,body.compare-open #silhouetteMode,
+body.compare-open #savePoseView{display:inline-flex;font-size:10px}
 @media(max-height:540px){main{grid-template-columns:1fr 1fr;max-height:54dvh}
 .row{gap:3px}button{min-height:28px;padding:4px}
 #diagnosticText{top:38px;font-size:9px;max-width:180px}}
@@ -40,7 +46,7 @@ button,select{padding:6px 8px;font-size:10px;min-height:31px}}
   <a href="./operator-lab.html?retry=1">RETRY LAB</a>
   <a href="./index.html">BACK TO BATTLE</a>
 </aside>
-<header><strong>FIELDWORK / OPERATOR LAB <small>Build 122</small></strong><a href="./index.html">← BATTLE</a></header>
+<header><strong>FIELDWORK / OPERATOR LAB <small>Build 166</small></strong><a href="./index.html">← BATTLE</a></header>
 <output id="diagnosticText" aria-live="off"></output>
 <main>
 <div class="row"><label>MODEL</label><select id="operator"><option value="rook">ROOK</option><option value="moss">MOSS</option><option value="ash">ASH</option><option value="vale">VALE</option><option value="hostile">HOSTILE</option></select>
@@ -94,6 +100,7 @@ button,select{padding:6px 8px;font-size:10px;min-height:31px}}
 <div class="row"><label>VIEW</label><button data-view="iso">ISO</button><button data-view="front">FRONT</button><button data-view="side">SIDE</button><button data-view="top">TOP</button><button id="resetCamera">FIT</button>
 <button id="comparePose" aria-pressed="false">COMPARE SIX</button>
 <button id="silhouetteMode" aria-pressed="false">SILHOUETTE</button>
+<button id="savePoseView">SAVE REFERENCE</button>
 <button id="diagnostics" aria-pressed="false">JOINTS</button><button id="slowMotion" aria-pressed="false">SLOW</button>
 <select id="diagnosticLayer" aria-label="Diagnostic layer">
 <option value="off">DIAG: OFF</option>
