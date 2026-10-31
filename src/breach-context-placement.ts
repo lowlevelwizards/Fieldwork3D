@@ -48,7 +48,9 @@ export function placeContextMenu({
   // Prefer beside the interaction rather than hovering above/below it.
   // Edge rails help on small phones where a full floating panel doesn't fit.
   const xs=viewportWidth<=600?[
-    // Edge rails leave the middle of a phone free for camera gestures.
+    // First try beside the selected object; edge rails are fallbacks.
+    {x:anchor.x-width-gap,side:'left' as const},
+    {x:anchor.x+gap,side:'right' as const},
     {x:xMin,side:'left' as const},
     {x:xMax,side:'right' as const},
   ]:[
@@ -73,8 +75,8 @@ export function placeContextMenu({
     // edge rails to panels that drift across the selected operator.
     score+=Math.abs(x-choice.x)*4+Math.abs(y-originalY)*.65;
     score+=Math.abs(y+height/2-anchor.y)*.32;
-    score+=Math.abs(x+width/2-anchor.x)*.07;
-    if(preferredSide===choice.side)score-=280;
+    score+=Math.abs(x+width/2-anchor.x)*.23;
+    if(preferredSide===choice.side)score-=950; // stable until obstruction materially improves
     // Adjacent side positions before rails when both are equally clear.
     score+=ix*2+iy*.1;
     if(score<bestScore){
