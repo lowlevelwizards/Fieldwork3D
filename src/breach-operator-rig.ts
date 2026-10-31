@@ -60,7 +60,7 @@ export type OperatorRig={
   footsteps:FootstepScheduler;
   /** Non-authoritative request for the motor/controller to reposition. */
   reachRequest:null|{kind:'door';distance:number};
-  gripError:number;stockError:number;legGap:[number,number];
+  gripError:number;stockError:number;eyeError:number;legGap:[number,number];
   stridePhase:number;colors:Map<THREE.MeshStandardMaterial,THREE.Color>;
   dispose:()=>void;
 };
@@ -135,7 +135,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     legacyArms:[new THREE.Group(),new THREE.Group()],
     lastTime:-1,lastPose:null,stridePhase:0,
     footsteps:createFootstepScheduler(),reachRequest:null,
-    gripError:0,stockError:0,legGap:[0,0],
+    gripError:0,stockError:0,eyeError:0,legGap:[0,0],
     dispose:()=>{root.traverse(obj=>{if(obj instanceof THREE.Mesh){
       obj.geometry.dispose();
       const m=obj.material as THREE.Material;m.dispose();
@@ -386,6 +386,27 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.weapon.scale.set(data.lengthScale,1,1);
   r.weapon.rotation.copy(fit.rotation);
   r.weapon.position.copy(fit.origin);
+  // On ADS, bring the eyes toward the actual sight line, keeping the
+  // firearm fixed. Head-only accommodation cannot change shot ballistics.
+  r.head.position.z=0;
+  if(handling==='ads'&&!p.down&&!p.surrender){
+    const strength=p.handlingOverride?1:
+      clamp(p.aimBlend??(p.aiming?1:0),0,1);
+    const eye=P(4.5,r.head.position.y+3,3.0);
+    const sight=P(-1*data.lengthScale,2.6,0)
+      .applyEuler(fit.rotation).add(fit.origin);
+    const ray=P(1,0,0).applyEuler(fit.rotation).normalize();
+    const nearest=sight.addScaledVector(ray,
+      eye.clone().sub(sight).dot(ray));
+    r.head.position.y+=clamp(nearest.y-eye.y,-2.2,2.2)*strength;
+    r.head.position.z+=clamp(nearest.z-eye.z,-1.6,1.6)*strength;
+  }
+  const eye=P(4.5,r.head.position.y+3,3+r.head.position.z);
+  const sight=P(-1*data.lengthScale,2.6,0)
+    .applyEuler(fit.rotation).add(fit.origin);
+  const axis=P(1,0,0).applyEuler(fit.rotation).normalize();
+  const delta=eye.sub(sight);
+  r.eyeError=delta.addScaledVector(axis,-delta.dot(axis)).length();
   // Weapon kick and muzzle flash may not break solved hand contacts.
   // A physical door reach may shift the chest a little over the support
   // foot, but the whole character is never allowed to tip like a rigid pole.
