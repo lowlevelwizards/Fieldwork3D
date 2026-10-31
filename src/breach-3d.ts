@@ -5,7 +5,7 @@ import {weaponClearance} from './breach-weapon-clearance.ts';
 import {type Site} from './breach-site.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
 import {coverPresentation,shotVisibility} from './breach-presentation.ts';
-import {doorKnown,wallKnown,coverKnown,roomKnown}
+import {doorKnown,wallKnown,roomKnown}
   from './breach-intel.ts';
 import {handlePoint,doorReachable} from './breach-door.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
