@@ -179,6 +179,7 @@ let lastAuthoringAt=0;
 const paletteMotion=new PaletteMotion();
 const reducedMotionMedia=matchMedia('(prefers-reduced-motion: reduce)');
 let paletteWidth=0,paletteHeight=0;
+let tetherBrightUntil=0;
 let paletteExit:Animation|null=null;
 const contextTether=document.createElement('div');
 contextTether.id='contextTether';
@@ -211,11 +212,18 @@ function advanceContextPalette(dt:number){
   const bx=Math.max(x,Math.min(ax,x+w));
   const by=Math.max(y,Math.min(ay,y+h));
   const dx=bx-ax,dy=by-ay,length=Math.hypot(dx,dy);
-  const visible=length>24&&length<175&&!reduced;
+  const visible=length>24&&!reduced;
   contextTether.hidden=!visible;
   if(visible){
-    contextTether.style.left=ax+'px';contextTether.style.top=ay+'px';
-    contextTether.style.width=length+'px';
+    // At long distance use only a nearby pointer instead of cutting
+    // straight across the entire tactical board.
+    const short=length>390,segment=short?45:length;
+    const vx=dx/length,vy=dy/length;
+    const sx=short?bx-vx*segment:ax,sy=short?by-vy*segment:ay;
+    contextTether.style.left=sx+'px';contextTether.style.top=sy+'px';
+    contextTether.style.width=segment+'px';
+    contextTether.style.opacity=performance.now()<tetherBrightUntil?'.75':
+      length>390?'.32':length>210?'.22':'.43';
     contextTether.style.transform='rotate('+Math.atan2(dy,dx)+'rad)';
   }
 }
@@ -436,6 +444,7 @@ function updateContext(){
   const identity=(door?'door:'+door.id:node?'node:'+node.id:'here')+'/'+selected;
   const contextChanged=contextSignature!==identity;
   if(contextChanged){
+    tetherBrightUntil=performance.now()+420;
     contextActionsSignature='';
     contextSignature=identity;
     ui.context.replaceChildren();
