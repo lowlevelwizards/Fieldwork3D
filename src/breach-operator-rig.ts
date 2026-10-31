@@ -47,6 +47,7 @@ export type OperatorPose={
   handlingIntent?:HandlingIntent;threatRange?:number|null;
   handlingTransition?:HandlingTransition;
   obstruction?:boolean;friendlyNear?:boolean;
+  clearanceAmount?:number;
   blocked?:boolean;footAllowed?:(point:{x:number;y:number})=>boolean;
   gait?:'walk'|'run'|'pie';
   aimBlend?:number;recoil?:number;shotHeading?:number;
@@ -206,6 +207,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     posture:p.posture,injury:p.injury,down:p.down,
     cautious:p.aiming&&moving<.35,blocked:p.blocked,
     gait:p.gait,
+    clearance:!!p.obstruction&&(p.clearanceAmount??0)>.5,
     footAllowed:p.footAllowed,
   };
   // The step scheduler is the SOLE writer of foot contacts, including
@@ -387,6 +389,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const fit=fitWeaponPose({weapon:p.weapon,handling,
     yaw:-(p.shotHeading??p.heading)-r.root.rotation.y-r.chest.rotation.y,
     recoil,
+    retract:handling==='short'&&p.obstruction?
+      Math.max(0,Math.min(1,p.clearanceAmount??0)):0,
     swayYaw:motion.weaponYaw*freeMotion,
     swayPitch:motion.weaponPitch*freeMotion,
     aimBlend:p.handlingOverride?undefined:
