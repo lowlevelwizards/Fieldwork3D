@@ -25,6 +25,8 @@ import {segmentHitsBox} from './breach-ray.ts';
 import {coverImpactFraction,aimHeight} from './breach-cover-height.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from './breach-door.ts';
 import {localDetour} from './breach-cooperation.ts';
+import {diagnoseMovement,projectReachableGoal,type Blocker}
+  from './breach-nav-diagnostics.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
@@ -57,6 +59,7 @@ export type TeamActor=Operator & {
   contact:Pt|null;heard:Pt|null;
   alertUntil:number;waitRemaining:number;syncReady:string|null;
   actionTimer:number;blockedTime:number;lastNavRepairAt:number;priorP:Pt;pieIndex:number;
+  lastBlocker:Blocker;
   /** Last executed facing command; survives across movement waypoints. */
   aimInstruction:AimInstruction|null;
   /** Simulation-timed cues, not new combat rules. */
@@ -134,6 +137,7 @@ const withActions=(a:Operator):TeamActor=>({
   reloadTargetRounds:0,
   alertUntil:0,waitRemaining:0,syncReady:null,actionTimer:0,
   blockedTime:0,lastNavRepairAt:-10,priorP:clone(a.p),haltOnContact:false,retreatPoint:null,
+  lastBlocker:'clear',
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
   lastHitRegion:'torso',lastHitYaw:0,lastHitSeverity:0,
   downPose:'forward',
@@ -280,7 +284,13 @@ export function planMove(s:Session,id:string,p:Pt,strafe=false){
   if(!a)return false;
   const extra=strafe?{moveMode:'strafe' as const,
     facing:[...a.plan].reverse().find(n=>n.facing!==undefined)?.facing??a.heading}:{};
-  return addNode(s,id,'move',p,extra);
+  const target=projectReachableGoal(finalPoint(a),p,{
+    canStand:at=>intelPassable(at,s.intel),
+    routeTo:(from,to)=>routeWithIntel(s.intel,from,to),
+  });
+  if(!target)return false;
+  if(target.adjusted)notify(s,'POSITION ADJUSTED TO WALKABLE GROUND');
+  return addNode(s,id,'move',target.point,extra);
 }
 /** A finger-drawn path is one undoable gesture, while BACK removes one node. */
 export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
@@ -999,7 +1009,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     a.nav=a.side==='blue'?routeWithIntel(s.intel,a.p,p):route(a.p,p);
     if(!a.nav.length){
       // A failed route is a stationary brace, not phantom walking speed.
-      a.velocity=0;a.blockedTime+=dt;
+      a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
       if(s.seconds-a.lastNavRepairAt>1.2){
         notify(s,a.name+' CANNOT REACH');
         a.lastNavRepairAt=s.seconds;
@@ -1082,6 +1092,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   }
   if(!closed&&!blocking&&sweptBodyClear(a.p,desiredMove,s.doors)){
     a.priorP=clone(a.p);a.p=desiredMove;a.blockedTime=0;
+    a.lastBlocker='clear';
     if(a.side==='blue'&&s.seconds-s.movementNoiseAt>.54){
       hear(s,a.p,a.posture==='crouch'?30:68,'footstep');
       s.movementNoiseAt=s.seconds;
@@ -1089,8 +1100,11 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   }else{
     a.velocity=Math.max(0,a.velocity-dt*130);
     a.blockedTime+=dt;
+    a.lastBlocker=diagnoseMovement(a.p,desiredMove,s.doors,
+      s.operators.filter(b=>b!==a&&b.side!==a.side&&b.health>0)
+      .map(b=>b.p)).blocker;
     if(a.blockedTime>1&&a.blockedTime<1.1)
-      notify(s,a.name+(closed?' WAITING AT DOOR':' PATH BLOCKED'));
+      notify(s,a.name+' BLOCKED · '+a.lastBlocker.toUpperCase());
     if(a.blockedTime>1.25&&s.seconds-a.lastNavRepairAt>1.2){
       a.lastNavRepairAt=s.seconds;
       // Once actual collision is observed, repair against real geometry,
