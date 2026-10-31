@@ -110,11 +110,11 @@ export function gaitBounds(input:FootstepInput){
     comfortableLateral:4.5,maximumReach:9.0,
     emergencyReach:11.0,preferredLead:(slow?3.0:wound?3.7:5.5),
     swingDuration:clamp((slow?.235:wound?.225:
-      side?.185:backward?.215:.20)-Math.min(input.speed,75)*.00038,
-      .14,.29),
-    unloadDuration:slow?.065:.045,
-    landingDuration:slow?.06:.048,
-    recoveryDuration:slow?.10:.075};
+      side?.167:backward?.215:.20)-Math.min(input.speed,75)*
+      (side?.00045:.00038),side?.135:.14,.29),
+    unloadDuration:side?.030:slow?.065:.045,
+    landingDuration:side?.042:slow?.06:.048,
+    recoveryDuration:side?.058:slow?.10:.075};
 }
 /** Clamp planned *paths*, not rendered boots. In the local facing frame
  * the left foot must remain left of the right foot throughout a swing. */
@@ -156,7 +156,10 @@ function startStep(s:FootstepScheduler,index:number,input:FootstepInput){
     const outward=s.shuffleLead===1?1:-1;
     const lead=index===s.shuffleLead;
     const base=sideOffset(input.position,land,facing);
-    const wanted=base+(lead?outward*4.3:outward*.4);
+    // The normal stance already includes 5.6 units of outward reach.
+    // Adding another 4.3 sends the lead boot outside the reachable IK
+    // envelope when the supporting leg is already trailing.
+    const wanted=base+(lead?outward*1.5:outward*.25);
     land={x:land.x+axis.x*(wanted-base),
       y:land.y+axis.y*(wanted-base)};
   }else if(pivot){
