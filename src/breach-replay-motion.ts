@@ -113,7 +113,8 @@ export class ReplayMotionRecorder{
         turning:actor.turning,posture:actor.posture,
         injury:actor.injuryStage,down:actor.health<=0,
         cautious:actor.aim>.20&&moving<.35,
-        gait:actor.plan[0]?.kind==='pie'?'pie':
+        gait:actor.squeeze?'squeeze':
+          actor.plan[0]?.kind==='pie'?'pie':
           actor.pace==='run'||actor.plan[0]?.moveMode==='sprint'?
           'run':'walk',
         blocked:actor.blockedTime>.14&&

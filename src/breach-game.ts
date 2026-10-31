@@ -1235,6 +1235,12 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       bodyClear(desiredMove,s.doors)){
       a.squeeze=false;a.squeezeTime=0;
     }else{
+      // The body visibly turns to the SAME angle used by oriented collision
+      // before we permit movement. Otherwise traversal is visually false.
+      const remaining=angleDifference(a.heading,a.squeezeYaw);
+      a.heading+=clamp(remaining,-dt*5,dt*5);
+      a.turning=Math.abs(remaining);
+      if(Math.abs(remaining)>.12){a.velocity=0;return true;}
       a.squeezeTime+=dt;
       if(a.squeezeTime<.18){a.velocity=0;return true;}
     }
@@ -1352,7 +1358,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       // toward the doorway pivot rather than tangential travel.
       approach(a,point,dt,s,.44);
     }
-    if(n.pivot)rotate(a,angle(a.p,n.pivot),dt);
+    if(n.pivot&&!a.squeeze)rotate(a,angle(a.p,n.pivot),dt);
     return;
   }
   const at=near(a.p,n.p,5);
@@ -1366,6 +1372,9 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       cautious?.70:1);
     // Unmodified movement follows its route, while an explicit fixed STRAFE
     // or PIE/TRACK instruction persists until LOOK releases it.
+    // While wedged sideways, the physical shoulder axis has priority
+    // over target tracking. The authored look resumes on exit.
+    if(a.squeeze)return;
     const held=aimHeading(a);
     if(held!==null)rotate(a,held,dt);
     else if(n.kind==='move'&&n.moveMode==='strafe')
@@ -1609,7 +1618,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         a.defense=null;a.defenseUntil=s.seconds+.7;
       }else{
         approach(a,a.defense,dt,s,.62);
-        if(a.nav.length)rotate(a,angle(a.p,a.nav[0]),dt);
+        if(a.nav.length&&!a.squeeze)rotate(a,angle(a.p,a.nav[0]),dt);
         return;
       }
     }
@@ -1618,7 +1627,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   if(a.alert==='retreat'&&a.retreatPoint){
     if(d(a.p,a.retreatPoint)>9){
       approach(a,a.retreatPoint,dt,s);
-      if(a.nav.length)rotate(a,angle(a.p,a.nav[0]),dt);
+      if(a.nav.length&&!a.squeeze)rotate(a,angle(a.p,a.nav[0]),dt);
     }else{
       a.alert='cover';a.retreatPoint=null;a.nav=[];
       notify(s,a.name+' TOOK COVER');

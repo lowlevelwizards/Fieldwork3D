@@ -18,7 +18,8 @@ export type ActorFrame=Pick<TeamActor,
   'lastHitSeverity'|'downPose'|'flashUntil'|'suppression'|
   'weapon'|'injuryStage'|'morale'|'surrendered'|'defense'|'watch'|
   'lastThrowAt'|'lastDoorAt'|'lastDoorId'|'lastDoorMethod'|'stride'|
-  'weaponYaw'|'stability'|'recoil'|'lastShotAt'|'fireMode'|'burstCount'|'skills'>;
+  'weaponYaw'|'stability'|'recoil'|'lastShotAt'|'fireMode'|'burstCount'|'skills'|
+  'squeeze'|'squeezeYaw'|'squeezeTime'>;
 export type ReplayActorFrame=ActorFrame & {travelYaw?:number};
 export type ReplayFrame={
   /** Presentation data is sampled on demand, never written to snapshots. */
@@ -41,6 +42,7 @@ export function snapshot(s:Session,seenGround?:string[]):ReplayFrame{
     t:s.seconds,phase:s.phase,mission:s.mission,
     actors:s.operators.map(a=>({id:a.id,p:position(a.p),
       heading:a.heading,health:a.health,velocity:a.velocity,
+      squeeze:a.squeeze,squeezeYaw:a.squeezeYaw,squeezeTime:a.squeezeTime,
       turning:a.turning,posture:a.posture,pace:a.pace,alert:a.alert,
       magazine:a.magazine,reserve:a.reserve,reload:a.reload,
       insertedMagazineId:a.insertedMagazineId,
