@@ -13,6 +13,7 @@ import {
   type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,
   type AimMode,type AimInstruction,
   makeHistory,copyNodes,record,undo,redo,modifyNode,lastPoint,
+  type FirePolicy,
   length,targetAngle,angleDifference,type PieSide,
 } from './breach-plan.ts';
 import {validPieArc} from './breach-maneuvers.ts';
@@ -79,6 +80,7 @@ export type TeamActor=Operator & {
   weaponYaw:number;stability:number;recoil:number;lastShotAt:number;
   lastBashAt:number;lastLaneWarnAt:number;lastFireBlock:FireBlock;
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
+  firePolicy:FirePolicy;suppressPoint:Pt|null;focusTargetId:string|null;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
 };
 export type NoiseEvent={p:Pt;radius:number;time:number;kind:string};
@@ -152,6 +154,7 @@ const withActions=(a:Operator):TeamActor=>({
   weaponYaw:a.heading,stability:.55,recoil:0,lastShotAt:-100,
   lastBashAt:-100,lastLaneWarnAt:-100,lastFireBlock:'clear',
   fireMode:'point',burstCount:0,skills:{...DEFAULT_SKILLS},
+  firePolicy:'engage',suppressPoint:null,focusTargetId:null,
   weapon:'carbine',injuryStage:0,defense:null,watch:null,
   defenseUntil:0,surrendered:false,
 });
@@ -647,6 +650,32 @@ export function setWaitDuration(s:Session,id:string,nodeId:number,seconds:number
 }
 /** Posture and pace authored at an existing waypoint take effect on arrival
  * and remain until a later transition. An operator tap edits base/HERE state. */
+/** Fire policy is persistent until changed. A waypoint can override it
+ * without touching navigation or the rest of the authored plan. */
+export function setFirePolicy(s:Session,id:string,policy:FirePolicy,
+  nodeId?:number,point?:Pt,targetId?:string):boolean{
+  const a=party(s,id);if(!a||!canEdit(s))return false;
+  const node=nodeId===undefined?undefined:a.plan.find(n=>n.id===nodeId);
+  if(nodeId!==undefined&&!node)return false;
+  if(policy==='suppress'&&(!point||
+    !Number.isFinite(point.x)||!Number.isFinite(point.y)))return false;
+  if(policy==='focus'){
+    const target=enemies(s).find(e=>e.id===targetId&&
+      e.health>0&&isSeen(s,e));
+    if(!target)return false;
+  }
+  const change=()=>{
+    if(node){
+      node.firePolicyState=policy;
+      node.firePoint=point?clone(point):undefined;
+      node.fireTargetId=targetId;
+    }else{
+      a.firePolicy=policy;a.suppressPoint=point?clone(point):null;
+      a.focusTargetId=targetId??null;
+    }
+  };
+  return edit(s,a,change);
+}
 export function setNodeControl(s:Session,id:string,nodeId:number,
   field:'postureState'|'paceState',value:'stand'|'crouch'|'walk'|'run'){
   const a=party(s,id),node=a?.plan.find(n=>n.id===nodeId);
@@ -1258,6 +1287,11 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   if(at){
     if(n.postureState)a.posture=n.postureState;
     if(n.paceState)a.pace=n.paceState;
+    if(n.firePolicyState){
+      a.firePolicy=n.firePolicyState;
+      a.suppressPoint=n.firePoint?clone(n.firePoint):null;
+      a.focusTargetId=n.fireTargetId??null;
+    }
   }
   // Apply an authored look/pie/strafe instruction once we actually arrive
   // at its waypoint, then keep it active through every later movement.
