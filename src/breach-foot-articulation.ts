@@ -7,8 +7,8 @@ const smooth=(v:number)=>{const t=clamp(v);return t*t*(3-2*t);};
 export function footArticulation(phase:FootPhase,progress:number){
  const t=clamp(progress);
  switch(phase){
-  case 'unloading':return {pitch:-.19*smooth(t),rise:.12*smooth(t)};
-  case 'swinging':return {pitch:-.19*(1-smooth(t))+
+  case 'unloading':return {pitch:-.24*smooth(t),rise:.18*smooth(t)};
+  case 'swinging':return {pitch:-.24*(1-smooth(t))+
     .16*smooth(t),rise:Math.sin(Math.PI*t)};
   case 'landing':return {pitch:.16*(1-smooth(t)),rise:0};
   case 'recovering':return {pitch:0,rise:0};

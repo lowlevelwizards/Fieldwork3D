@@ -50,7 +50,7 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
     envelope(right,'unloading'));
   // All envelopes reach zero at their phase boundaries. Lateral shuffles
   // change support legs often, so binary phase offsets visibly pop the hip.
-  let pelvisY=(-.65*receiving+.20*unloading+.42*swinging)*
+  let pelvisY=(-.76*receiving+.28*unloading+.42*swinging)*
     moving*crouch*wound*gaitAmp;
   // Experimental contact support follows the actual bearing shoe, not a
   // disconnected lateral oscillator. Retain legacy output by default.
@@ -85,12 +85,15 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
     }
     pelvisY-=clamp(restHip-hipCeiling,0,2.4);
   }
-  const torsoForward=clamp(-forward*speed*.09,-.11,.08)*crouch;
+  // Heel propulsion and accepting support transmit through the torso,
+  // without an independent time-based bob oscillator.
+  const torsoForward=clamp(-forward*speed*.09+
+    (.028*unloading-.014*receiving)*moving,-.13,.09)*crouch;
   const torsoSide=clamp(side*speed*.065+support*speed*.014,
     -.095,.095)*crouch;
   // Follow the same contact/weight envelopes, rather than layering
   // unrelated sine-wave bob and sway over the animation.
-  const chestLift=(-.30*receiving+.18*swinging+.10*unloading)*
+  const chestLift=(-.35*receiving+.18*swinging+.16*unloading)*
     moving*gaitAmp*crouch*wound;
   const weaponYaw=clamp(support*speed*.018*weaponAmp,-.038,.038);
   const weaponPitch=(-.012*receiving+.018*unloading+.010*swinging)*
