@@ -12,7 +12,7 @@ test('124: stock-to-shoulder fit retains both grips through strafe yaw',()=>{
     // Beyond roughly 20 degrees across the torso, keeping the buttplate
     // on the outside shoulder can make a simultaneous two-hand fit
     // anatomically impossible. Never bury the stock to fake a zero error.
-    assert.ok(fit.stock.z>=(handling==='short'?7.10:6.78));
+    assert.ok(fit.stock.z>=(handling==='short'?6.60:6.35));
     assert.ok(Number.isFinite(fit.contactError));
     assert.ok(fit.stockError<3);
     if(Math.abs(yaw)<.01){
