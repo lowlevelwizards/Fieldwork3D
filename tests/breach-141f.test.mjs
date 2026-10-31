@@ -9,13 +9,14 @@ test('141F: hall topologies are repeatable and keep targets reachable',()=>{
     assert.deepEqual(generateSite(seed),s);
     names.add(s.name);
     activateSite(s);
-    assert.ok(s.rooms.some(r=>r.kind==='hall'));
-    assert.ok(s.roomCount>=4&&s.roomCount<=7);
+    assert.ok(s.rooms.some(r=>r.kind==='hall'||r.zoneId?.startsWith('ZONE-')),
+      'connected public space or corridor must support circulation');
+    assert.ok(s.roomCount>=6&&s.roomCount<=22);
     assert.ok(passable(s.objective), 'objective in clear space seed '+seed);
     assert.ok(route(s.entrance,s.objective).length,
       'all mandatory circulation accessible seed '+seed);
     assert.ok(s.enemies.every(p=>passable(p)));
   }
-  assert.equal(names.size,5);
+  assert.ok(names.size>=5,'architectural families create varied seed geometry');
   activateSite(null);
 });

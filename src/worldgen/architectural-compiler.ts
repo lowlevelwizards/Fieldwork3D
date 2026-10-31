@@ -4,7 +4,7 @@
  * One purpose can occupy an L-shaped union of several rectangular cells.
  */
 import {architecturalBlueprint,type Blueprint} from './architectural-program.ts';
-import {type Site,type Room,type BuildingArchetype,seeded} from '../breach-site.ts';
+import {type Site,type Room,type BuildingArchetype,type SiteScale,seeded} from '../breach-site.ts';
 import {type Pt,type Door,type Segment} from '../breach-core.ts';
 type Cell={col:number;row:number;role:string;room:Room};
 type Edge={a:number;b:number;wall:Segment;length:number;
@@ -42,8 +42,19 @@ function cut(wall:Segment,id:string,walls:Segment[],doors:Door[]){
  if(span({a:b,b:wall.b})>.05)walls.push({a:b,b:wall.b});
  doors.push({id,a,b,open:false,openedAt:-1});
 }
-export function compileArchitecturalSite(kind:BuildingArchetype,seed:number):Site{
- const b:Blueprint=architecturalBlueprint(kind,seed);
+export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
+ scale:SiteScale='expanded'):Site{
+ const authored:Blueprint=architecturalBlueprint(kind,seed);
+ // Compact buildings use the identical architectural grammar, with smaller
+ // habitable rooms but never shrink the 48-unit door or operator clearance.
+ const b:Blueprint=scale==='expanded'?authored:{
+  ...authored,
+  family:authored.family+' / compact',
+  widths:authored.widths.map((w,col)=>Math.round(Math.max(
+   authored.cells.some(row=>row[col]==='hallway')?62:96,w*.79))),
+  depths:authored.depths.map((h,row)=>Math.round(Math.max(
+   authored.cells[row].every(role=>role==='hallway'||role===null)?63:86,h*.81)))
+ };
  const rng=seeded(seed^0x2a33bedd);
  const xs=[80],ys=[92];
  for(const w of b.widths)xs.push(xs[xs.length-1]+w);
@@ -178,11 +189,12 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number):Sit
   cut(candidate.wall,'SERVICE',walls,doors);
  }
  const west=xs[0],east=xs[xs.length-1],north=ys[0],south=ys[ys.length-1];
- return {seed,name:b.family.toUpperCase(),archetype:kind,scale:'expanded',
+ return {seed,name:b.family.toUpperCase(),archetype:kind,scale,
    planFamily:b.family,programLocked:true,
    rooms:cells.map(c=>c.room),walls,doors,cover:[],
    entrance,spawn,enemies,objective,extract:point(frontX,frontY+117),
    roomCount:habitable.length,layout:'corridor',
    bounds:{minX:Math.min(0,west-80),minY:Math.min(0,north-80),
-    maxX:Math.max(720,east+84),maxY:Math.max(740,south+156)}};
+    maxX:Math.max(scale==='expanded'?720:640,east+84),
+    maxY:Math.max(740,south+156)}};
 }

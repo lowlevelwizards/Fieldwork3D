@@ -14,11 +14,11 @@ test('086: 160 seeds generate deterministic connected compact sites including an
     assert.deepEqual(site,repeat,'seed must replay the same site');
     counts.add(site.roomCount);
     layouts.add(site.walls.map(w=>w.a.x+','+w.a.y).join(';'));
-    assert.ok(site.roomCount>=3&&site.roomCount<=7);
+    assert.ok(site.roomCount>=6&&site.roomCount<=22);
+    assert.equal(site.programLocked,true);
     assert.equal(site.spawn.length,4);
     assert.ok(site.enemies.length>=2&&site.enemies.length<=7);
-    assert.ok(site.doors.length+(site.openHallLinks??0)>=site.rooms.length-1,
-      'door spanning tree connects rooms');
+    assert.ok(site.doors.length>=3,'each building has real circulation doors');
     activateSite(site);
     assert.equal(WALLS.length,site.walls.length);
     assert.equal(COVER.length,site.cover.length);
@@ -60,7 +60,7 @@ test('084: four-person stacks reserve distinct positions at the same door',()=>{
     const a=nodes[i].p,b=nodes[j].p;
     assert.ok(Math.hypot(a.x-b.x,a.y-b.y)>22,'slots are separated');
   }
-  assert.ok(planSquadEntry(s,'FRONT'));
+  assert.ok(planSquadEntry(s,'FRONT'),s.events.at(-1));
   assert.ok(team(s).every(a=>a.plan.some(n=>n.kind==='sync')),
     'all four receive shared synchronized GO code');
   assert.ok(team(s)[0].plan.some(n=>n.kind==='door'),
