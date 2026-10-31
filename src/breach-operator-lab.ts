@@ -173,7 +173,7 @@ document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(button=>
 choose<HTMLButtonElement>('resetCamera').addEventListener('click',()=>fit());
 poseCompareButton.addEventListener('click',()=>{
   comparing=!comparing;
-  if(comparing)ensureComparison();
+  if(comparing){comparisonKey='';ensureComparison();}
   labelLayer.hidden=!comparing;
   poseCompareButton.setAttribute('aria-pressed',String(comparing));
   document.body.classList.toggle('compare-open',comparing);
