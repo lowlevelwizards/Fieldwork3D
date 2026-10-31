@@ -72,13 +72,16 @@ export function applyArchetype(site:Site,seed:number):Site{
     return {...result,bounds:site.bounds??
       {minX:0,minY:0,maxX:640,maxY:740}};
   };
-  const proposal=build(assignRoomProgram(site,archetype));
-  if(reachable(proposal))return proposal;
-  // Legacy selection makes the prior safe room-program layout reproducible.
+  // Controlled rollout: keep standard maps fast and proven while sampling
+  // the new spatial grammar. Expanded sites always exercise semantic zoning.
+  const useZoning=site.scale==='expanded'||seed%3===2;
   const sorted=site.rooms.filter(r=>r.kind==='room').slice().sort(
     (a,b)=>(b.y+b.h/2)-(a.y+a.h/2)||
       (a.x+a.w/2)-(b.x+b.w/2));
   const fallbackRoles=programRooms(archetype,sorted.length);
   const fallback=new Map(sorted.map((r,i)=>[r.id,fallbackRoles[i]]));
+  if(!useZoning)return build(fallback);
+  const proposal=build(assignRoomProgram(site,archetype));
+  if(reachable(proposal))return proposal;
   return build(fallback);
 }
