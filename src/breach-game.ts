@@ -1330,6 +1330,11 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     }
   }
   if(!n||a.health<=0){
+    // Never broaden the collision body while still physically inside
+    // furniture. Exit squeeze only from a normal-clear position.
+    if(a.squeeze&&bodyClear(a.p,s.doors)){
+      a.squeeze=false;a.squeezeTime=0;
+    }
     a.velocity=Math.max(0,a.velocity-dt*160);
     const held=aimHeading(a);
     if(a.health>0&&held!==null)rotate(a,held,dt);
@@ -1337,7 +1342,9 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   }
   if(a.activeNode!==n.id){
     a.activeNode=n.id;a.nav=[];a.waitRemaining=0;a.actionTimer=0;
-    a.squeeze=false;a.squeezeTime=0;
+    if(bodyClear(a.p,s.doors)){
+      a.squeeze=false;a.squeezeTime=0;
+    }
     a.pieIndex=0;
   }
   if(n.kind==='pie'){
