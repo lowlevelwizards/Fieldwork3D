@@ -6,6 +6,8 @@ import {generateSite} from './breach-site.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type SiteAudit={seed:number;archetype:string;layout:string;
   rooms:number;doors:number;enemies:number;windows:number;
+  archOpenings:number;exteriorZones:number;dressing:number;
+  condition:string;typedProps:number;
   errors:string[]};
 export function auditGeneratedSite(seed:number):SiteAudit{
   const site=generateSite(seed);
@@ -44,9 +46,34 @@ export function auditGeneratedSite(seed:number):SiteAudit{
     }
     if(site.archetype===undefined)errors.push('archetype not assigned');
     if(site.rooms.some(r=>!r.purpose))errors.push('untyped room');
+    const roomIds=new Set<string>();
+    for(const room of site.rooms){
+      if(roomIds.has(room.id))errors.push('duplicate room '+room.id);
+      roomIds.add(room.id);
+      if(!Number.isFinite(room.x)||!Number.isFinite(room.y)||
+         !Number.isFinite(room.w)||!Number.isFinite(room.h)||
+         room.w<=0||room.h<=0)errors.push('invalid room '+room.id);
+    }
+    for(const opening of site.openings??[]){
+      if(!Number.isFinite(dist(opening.a,opening.b))||
+        dist(opening.a,opening.b)<=48)errors.push('invalid open passage '+opening.id);
+    }
+    for(const detail of site.dressing??[]){
+      if(!roomIds.has(detail.roomId))errors.push('orphan detail '+detail.id);
+      if(!Number.isFinite(detail.x)||!Number.isFinite(detail.y)||
+        !Number.isFinite(detail.elevation))errors.push('invalid detail '+detail.id);
+    }
+    if(site.enemyHeadings && (site.enemyHeadings.length!==site.enemies.length||
+      site.enemyHeadings.some(h=>!Number.isFinite(h))))
+      errors.push('invalid enemy orientations');
   }finally{activateSite(null);}
   return {seed,archetype:site.archetype??'untyped',
     layout:site.layout,rooms:site.rooms.length,
     doors:site.doors.length,enemies:site.enemies.length,
-    windows:site.windows?.length??0,errors};
+    windows:site.windows?.length??0,
+    archOpenings:site.openings?.length??0,
+    exteriorZones:site.exteriorZones?.length??0,
+    dressing:site.dressing?.length??0,
+    condition:site.condition??'unknown',
+    typedProps:site.cover.filter(c=>!!c.fixture).length,errors};
 }
