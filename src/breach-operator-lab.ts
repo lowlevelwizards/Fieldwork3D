@@ -8,7 +8,7 @@ import {createOperatorRig,poseOperator,type OperatorRig}
 import {weaponGrips,type Handling} from './breach-weapon-pose.ts';
 import {stockPocket,elbowCorridor} from './breach-anatomy.ts';
 import {HANDLING_PROFILES} from './breach-handling-profiles.ts';
-import {weaponTruth,footTruth} from './breach-animation-diagnostics.ts';
+import {weaponTruth,footTruth,legReachTruth} from './breach-animation-diagnostics.ts';
 import {timedHandling,smoothHandling,type HandlingTransition}
   from './breach-handling-transition.ts';
 import {lateralAxis,sideOffset,uncrossed} from './breach-locomotion.ts';
@@ -415,6 +415,13 @@ function showDiagnostics(){
     phase:feet[i].phase,contact:feet[i].contact,
     reachError:measuredRig.legGap[i]
   })) as [Parameters<typeof footTruth>[0],Parameters<typeof footTruth>[1]]));
+  const reachTruth=feet.map((foot,i)=>{
+    const hip=rig.hip.localToWorld(new THREE.Vector3(
+      0,0,i===0?-4.8:4.8));
+    const ankle=new THREE.Vector3(foot.position.x,
+      1.45+foot.height,foot.position.y);
+    return legReachTruth({hip,ankle,upper:9.7,lower:9.7});
+  });
   diagnosticText.textContent=[
     'TIME '+clock.toFixed(3)+' / '+TRACK_DURATION.toFixed(2),
     'BARREL '+barrelYaw.toFixed(3)+' / BODY '+sampled.motion.heading.toFixed(3)+
@@ -431,6 +438,8 @@ function showDiagnostics(){
     'CONTACTS '+feet.filter(x=>x.contact).length+
       ' · SEPARATION '+separated.toFixed(1)+
       (crossing?' · CROSSING!':''),
+    'PHYSICAL REACH '+reachTruth.map(v=>v.requested.toFixed(1)+'/'+v.maximum.toFixed(1)).join(' / ')+
+      ' · EXCESS '+reachTruth.map(v=>v.reachError.toFixed(2)).join(' / '),
     'ANKLE GAP '+rig.legGap.map(v=>v.toFixed(2)).join(' / ')+
       ' · GRIP ERROR '+rig.gripError.toFixed(3)+
        ' · BUTTPLATE GAP '+rig.stockError.toFixed(2)+
