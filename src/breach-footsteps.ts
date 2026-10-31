@@ -20,10 +20,14 @@ export type FootstepScheduler={
   lastStepFoot:number;lastStepAt:number;resets:number;
   mode:LocomotionMode;shuffleLead:number;shuffleNext:'lead'|'follow';
   pelvisYaw:number;pivotFromYaw:number;pivotToYaw:number;
-  pivotAt:number;pivotDuration:number;
+  pivotAt:number;pivotDuration:number;lastBlocked:boolean;
 };
 export type FootstepInput={
   time:number;position:GroundPoint;rootYaw:number;
+  /** Motor stopped making progress despite a pending movement order. */
+  blocked?:boolean;
+  /** Physical scene clearance; optional for isolated gait labs. */
+  footAllowed?:(p:GroundPoint)=>boolean;
   /** Travel direction in the same world X/Y plane, independent of rootYaw. */
   travelYaw:number;speed:number;turning:number;
   posture:'stand'|'crouch';injury:number;down:boolean;
@@ -42,6 +46,23 @@ const lateral=(position:GroundPoint,yaw:number,side:number):GroundPoint=>({
   x:position.x-Math.sin(yaw)*side*5.6,
   y:position.y+Math.cos(yaw)*side*5.6
 });
+/** Nearest neutral foothold. Ordinary planted contacts are never shifted. */
+export function safePlantPoint(input:FootstepInput,index:number):GroundPoint{
+  const facing=input.facingYaw??-input.rootYaw;
+  const side=index===0?-1:1;
+  const normal=lateral(input.position,facing,side);
+  if(!input.footAllowed||input.footAllowed(normal))return normal;
+  const forward={x:Math.cos(facing),y:Math.sin(facing)};
+  const across={x:-forward.y,y:forward.x};
+  for(const distanceAcross of [4.3,3.1,1.6,0])
+    for(const ahead of [0,-3,3,-5,5]){
+      const point={x:input.position.x+across.x*side*distanceAcross+
+        forward.x*ahead,y:input.position.y+across.y*side*distanceAcross+
+        forward.y*ahead};
+      if(input.footAllowed(point))return point;
+    }
+  return copy(input.position);
+}
 function createFoot():FootstepState{
   return {phase:'planted',plantedAt:{x:0,y:0},
     swingFrom:{x:0,y:0},swingTo:{x:0,y:0},phaseStart:0,
@@ -54,12 +75,13 @@ export function createFootstepScheduler():FootstepScheduler{
     lastTime:-1,lastPosition:{x:0,y:0},lastYaw:0,
     lastStepFoot:1,lastStepAt:-100,resets:0,
     mode:'idle',shuffleLead:1,shuffleNext:'lead',
-    pelvisYaw:0,pivotFromYaw:0,pivotToYaw:0,pivotAt:0,pivotDuration:0};
+    pelvisYaw:0,pivotFromYaw:0,pivotToYaw:0,pivotAt:0,pivotDuration:0,lastBlocked:false};
 }
 export function resetFootsteps(s:FootstepScheduler,input:FootstepInput):void{
   for(let i=0;i<2;i++){
-    const foot=s.feet[i],point=lateral(input.position,
-      input.facingYaw??input.rootYaw,i===0?-1:1);
+    const foot=s.feet[i],point=input.footAllowed?
+      safePlantPoint(input,i):lateral(input.position,
+        input.facingYaw??input.rootYaw,i===0?-1:1);
     foot.phase='planted';foot.plantedAt=copy(point);
     foot.swingFrom=copy(point);foot.swingTo=copy(point);
     foot.worldYaw=input.rootYaw;foot.fromYaw=input.rootYaw;
@@ -74,6 +96,7 @@ export function resetFootsteps(s:FootstepScheduler,input:FootstepInput):void{
   s.mode='idle';s.shuffleNext='lead';s.pelvisYaw=input.rootYaw;
   s.pivotFromYaw=input.rootYaw;s.pivotToYaw=input.rootYaw;
   s.pivotAt=input.time;s.pivotDuration=0;
+  s.lastBlocked=!!input.blocked;
 }
 export function gaitBounds(input:FootstepInput){
   const slow=input.cautious||input.posture==='crouch';
@@ -154,6 +177,8 @@ function startStep(s:FootstepScheduler,index:number,input:FootstepInput){
   }
   land=safeLanding(s,index,land,pivot?
     {...input,facingYaw:-s.pelvisYaw}:input);
+  if(input.footAllowed&&!input.footAllowed(land))
+    land=safePlantPoint(input,index);
   foot.swingFrom=copy(foot.plantedAt);foot.swingTo=land;
   foot.fromYaw=foot.worldYaw;
   foot.targetYaw=pivot?s.pivotToYaw:input.rootYaw;
@@ -205,13 +230,25 @@ function target(foot:FootstepState,input:FootstepInput):FootTarget{
     phase:foot.phase,contact:false,reason:foot.reason,progress:t,
     pitch:movement.pitch};
 }
-export function advanceFootsteps(s:FootstepScheduler,input:FootstepInput):
+export function advanceFootsteps(s:FootstepScheduler,source:FootstepInput):
   [FootTarget,FootTarget]{
+  // A blocked route must not animate walking using stale motor velocity.
+  const input=source.blocked?{...source,speed:0,turning:0}:source;
   const dt=input.time-s.lastTime;
   const discontinuity=!s.initialized||dt<-.015||dt>1.2||
     distance(s.lastPosition,input.position)>
       Math.max(22,input.speed*Math.max(0,dt)*1.7+17);
-  if(discontinuity)resetFootsteps(s,input);
+  const badPlant=s.initialized&&s.feet.some(foot=>{
+    const anchor=foot.plantedAt;
+    return (input.footAllowed&&!input.footAllowed(anchor))||
+      (input.blocked&&distance(anchor,input.position)>10.5)||
+      (input.speed<6&&distance(anchor,input.position)>13.5);
+  });
+  const newlyBlocked=!!input.blocked&&!s.lastBlocked;
+  const abruptTurn=s.initialized&&input.speed<6&&
+    Math.abs(deltaAngle(s.lastYaw,input.rootYaw))>1.05;
+  if(discontinuity||badPlant||newlyBlocked||abruptTurn)
+    resetFootsteps(s,input);
   for(const foot of s.feet)progress(foot,input);
   const facing=input.facingYaw??-input.rootYaw;
   const pivotSwing=s.feet.some(foot=>foot.reason==='turn'&&
@@ -299,6 +336,6 @@ export function advanceFootsteps(s:FootstepScheduler,input:FootstepInput):
   // The planner must schedule a recovery step if this becomes unsafe.
   void uncrossed;
   s.lastTime=input.time;s.lastPosition=copy(input.position);
-  s.lastYaw=input.rootYaw;
+  s.lastYaw=input.rootYaw;s.lastBlocked=!!input.blocked;
   return samples;
 }
