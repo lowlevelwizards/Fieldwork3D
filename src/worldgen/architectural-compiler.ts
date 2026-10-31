@@ -192,10 +192,41 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   walls.splice(candidate.index,1);
   cut(candidate.wall,'SERVICE',walls,doors);
  }
+ // Service bay, shipping frontage and shopfronts can have a truly wide
+ // clear opening. Cut authoritative perimeter walls; this is a *permanently
+ // open portal*, not a cosmetic or pretend-operable garage shutter.
+ const openingRoles:Partial<Record<BuildingArchetype,readonly string[]>>={
+  garage:['bay','workshop'],warehouse:['loading','storage'],
+  retail:['sales'],restaurant:['dining'],utility:['service']
+ };
+ const openPreferred=openingRoles[kind]??[];
+ const portalCandidates=walls.map((wall,index)=>{
+  const length=span(wall);
+  if(length<158)return null;
+  const p={x:(wall.a.x+wall.b.x)/2,y:(wall.a.y+wall.b.y)/2};
+  const vx=(wall.b.x-wall.a.x)/length,vy=(wall.b.y-wall.a.y)/length;
+  const inward=interior({x:p.x-vy*17,y:p.y+vx*17})??
+    interior({x:p.x+vy*17,y:p.y-vx*17});
+  const roleIndex=openPreferred.indexOf(inward?.role??'');
+  if(roleIndex<0||Math.hypot(p.x-frontMid.x,p.y-frontMid.y)<120)return null;
+  return {wall,index,length,roleIndex,p};
+ }).filter((v):v is NonNullable<typeof v>=>v!==null)
+   .sort((a,b)=>a.roleIndex-b.roleIndex||b.length-a.length);
+ const openings:NonNullable<Site['openings']>=[];
+ if(portalCandidates.length){
+  const {index,wall,length}=portalCandidates[0];
+  const extent=Math.min(112,length-46);
+  const ux=(wall.b.x-wall.a.x)/length,uy=(wall.b.y-wall.a.y)/length;
+  const mid={x:(wall.a.x+wall.b.x)/2,y:(wall.a.y+wall.b.y)/2};
+  const a={x:mid.x-ux*extent/2,y:mid.y-uy*extent/2};
+  const b={x:mid.x+ux*extent/2,y:mid.y+uy*extent/2};
+  walls.splice(index,1,{a:wall.a,b:a},{a:b,b:wall.b});
+  openings.push({id:'OPEN-SERVICE',a,b,kind:'wide'});
+ }
  const west=xs[0],east=xs[xs.length-1],north=ys[0],south=ys[ys.length-1];
  return {seed,name:b.family.toUpperCase(),archetype:kind,scale,
    planFamily:b.family,programLocked:true,circulationStyle,
-   rooms:cells.map(c=>c.room),walls,doors,cover:[],
+   rooms:cells.map(c=>c.room),walls,doors,openings,cover:[],
    entrance,spawn,enemies,objective,extract:point(frontX,frontY+117),
    roomCount:habitable.length,layout:'corridor',
    bounds:{minX:Math.min(0,west-80),minY:Math.min(0,north-80),
