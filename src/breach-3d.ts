@@ -7,7 +7,7 @@ import {shotVisibility} from './breach-presentation.ts';
 import {doorKnown,wallKnown,coverKnown,roomKnown}
   from './breach-intel.ts';
 import {handlePoint,doorReachable} from './breach-door.ts';
-import {footAnchorClear} from './breach-navigation.ts';
+import {footAnchorReachable} from './breach-navigation.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {casingAt,CASING_LIMIT,impactProfile} from './breach-effects.ts';
@@ -761,7 +761,7 @@ export class TacticalScene3D{
         blocked:actor.blockedTime>.14&&
           (actor.nav.length>0||actor.plan.some(n=>
             n.kind==='move'||n.kind==='door'||n.kind==='pie')),
-        footAllowed:pt=>footAnchorClear(pt,s.doors)&&
+        footAllowed:pt=>footAnchorReachable(actor.p,pt,s.doors)&&
           !s.operators.some(other=>other!==actor&&
             Math.hypot(other.p.x-pt.x,other.p.y-pt.y)<5.5),
         deterministic:!!replay,replayFeet:replay?.feet[actor.id],
