@@ -46,12 +46,37 @@ export type WeaponFit={
 };
 export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
   /** Fire direction in chest-local space. */
-  yaw:number;recoil:number;aimBlend?:number};
+  yaw:number;recoil:number;aimBlend?:number;
+  blendFrom?:Handling;blendAlpha?:number};
 /** Rigid contact fit in chest-local space. The candidate search uses scalar
  * maths: allocating dozens of vectors per actor per render caused mobile GC
  * spikes. Only the winning solution becomes Three.js geometry.
  */
 export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
+  if(input.blendFrom&&input.blendAlpha!==undefined){
+    const from=fitWeaponPose({...input,handling:input.blendFrom,
+      blendFrom:undefined,blendAlpha:undefined});
+    const to=fitWeaponPose({...input,blendFrom:undefined,
+      blendAlpha:undefined});
+    const t=clamp(input.blendAlpha,0,1);
+    const origin=from.origin.clone().lerp(to.origin,t);
+    const q=new THREE.Quaternion().setFromEuler(from.rotation);
+    q.slerp(new THREE.Quaternion().setFromEuler(to.rotation),t);
+    const rotation=new THREE.Euler().setFromQuaternion(q,'XYZ');
+    const data=weaponGrips(input.weapon);
+    const point=(x:number,y:number,z:number)=>new THREE.Vector3(
+      x*data.lengthScale,y,z).applyEuler(rotation).add(origin);
+    const stock=point(data.stockX,0,0);
+    const primary=point(data.primaryX,data.primaryY,1.8);
+    const support=point(data.supportX,data.supportY,-1.6);
+    const right=primary.distanceTo(new THREE.Vector3(1,4,7)),
+      left=support.distanceTo(new THREE.Vector3(1,4,-7));
+    return {...to,origin,rotation,stock,primary,support,
+      twoHanded:right<=LIMIT&&left<=LIMIT,
+      primaryReachable:right<=LIMIT,
+      contactError:Math.max(0,right-LIMIT)+Math.max(0,left-LIMIT),
+      stockError:from.stockError+(to.stockError-from.stockError)*t};
+  }
   const data=weaponGrips(input.weapon),scale=data.lengthScale;
   const yaw=clamp(input.yaw,-1.1,1.1);
   const recoilX=clamp(input.recoil,0,5);
