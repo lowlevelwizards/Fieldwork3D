@@ -459,6 +459,7 @@ function draw(){
   canvas.dataset.contactCount=String(feet.filter(x=>x.contact).length);
   canvas.dataset.gait=state.mode;
   canvas.dataset.gripError=rig.gripError.toFixed(4);
+  canvas.dataset.eyeError=rig.eyeError.toFixed(3);
   canvas.dataset.ankleGap=Math.max(...rig.legGap).toFixed(3);
   canvas.dataset.crossed=String(!uncrossed(feet[0].position,
     feet[1].position,-state.pelvisYaw,3.5));
