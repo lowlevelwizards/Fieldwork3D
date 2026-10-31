@@ -585,3 +585,20 @@ button:disabled{opacity:.48;cursor:default}
  .replay-actions button{min-height:29px}
  .replay-panel{padding:5px 8px}
 }
+
+/* UI 2.0 / 01: quieter field-instrument typography */
+:root{--ui-display:"Archivo","IBM Plex Sans",system-ui,sans-serif;
+ --ui-font:"IBM Plex Sans",system-ui,sans-serif}
+.top .ident strong{font:600 15px/1.2 var(--ui-display);letter-spacing:.025em}
+.mode strong{font:600 11px/1.2 var(--ui-display);letter-spacing:.075em}
+.bar .unit strong{font:600 12px/1.1 var(--ui-display);letter-spacing:.025em}
+.actions .play{font:700 16px/1.2 var(--ui-display)}
+.context-tools button{font:500 12px/1.15 var(--ui-font);letter-spacing:0}
+.context-primary button{font-weight:500}
+.context-state button{font-weight:500}
+.briefing-panel strong,.debrief strong{font-family:var(--ui-display);font-weight:600}
+@media(max-width:650px){
+ .top .ident strong{font-size:14px}
+ .bar .unit strong{font-size:12px}
+ .actions .play{font-size:15px}
+}
