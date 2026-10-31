@@ -9,6 +9,6 @@ test('room grout uses one instance draw with correct stripe locations',()=>{
  const out=new THREE.Matrix4();mesh.getMatrixAt(0,out);
  const pos=new THREE.Vector3(),scale=new THREE.Vector3(),q=new THREE.Quaternion();
  out.decompose(pos,q,scale);
- assert.equal(pos.y,-.01);assert.ok(scale.z>50);
+ assert.ok(Math.abs(pos.y+.01)<1e-5);assert.ok(scale.z>50);
  mesh.geometry.dispose();mat.dispose();
 });
