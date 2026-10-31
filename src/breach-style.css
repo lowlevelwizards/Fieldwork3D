@@ -659,3 +659,8 @@ button:disabled{opacity:.48;cursor:default}
  .context-tools{transition:none!important}
  #contextTether{display:none!important}
 }
+
+/* UI 2.0 / 04: world-projected feedback, never steals input. */
+#tacticalFeedback{position:fixed;inset:0;display:block;
+ z-index:3;pointer-events:none;touch-action:none}
+body.replaying #tacticalFeedback{display:none}
