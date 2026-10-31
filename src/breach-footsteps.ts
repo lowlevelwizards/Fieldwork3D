@@ -63,6 +63,21 @@ export function safePlantPoint(input:FootstepInput,index:number):GroundPoint{
     }
   return copy(input.position);
 }
+/** Explicit input-boundary validation for corrupt/legacy replay tracks.
+ * This is a deterministic seek reset, not a live renderer correction.
+ * Normal recorded contacts remain untouched; only impossible samples reset.
+ */
+export function validatedReplayFeet(input:FootstepInput,
+  feet:[FootTarget,FootTarget]):[FootTarget,FootTarget]{
+  return feet.map((foot,i):FootTarget=>{
+    const gap=distance(input.position,foot.position);
+    if(Number.isFinite(gap)&&gap<22)return foot;
+    const safe=safePlantPoint(input,i);
+    return {position:safe,height:0,worldYaw:input.rootYaw,
+      phase:'recovering',contact:true,reason:'settle',
+      progress:1,pitch:0};
+  }) as [FootTarget,FootTarget];
+}
 function createFoot():FootstepState{
   return {phase:'planted',plantedAt:{x:0,y:0},
     swingFrom:{x:0,y:0},swingTo:{x:0,y:0},phaseStart:0,
