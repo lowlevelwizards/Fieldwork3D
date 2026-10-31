@@ -10,7 +10,8 @@ export type BalanceInput={velocity:number;heading:number;travelYaw:number;
   position?:{x:number;y:number};
   gait?:'run'|'walk'|'pie'|'squeeze';
   /** Lab candidate: use actual weighted shoe positions for load transfer. */
-  hybridSupport?:boolean;acceleration?:number;weaponWeight?:number;};
+  hybridSupport?:boolean;acceleration?:number;weaponWeight?:number;
+  tacticalTension?:number;};
 export type BodyMotion={pelvisY:number;pelvisSide:number;
   torsoForward:number;torsoSide:number;torsoYaw:number;headCounter:number;
   support:number;chestLift:number;weaponYaw:number;weaponPitch:number;};
@@ -38,8 +39,10 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
   const wound=input.injury>=2?.68:1;
   const gaitAmp=input.gait==='run'?1.45:
     input.gait==='squeeze'?.45:input.gait==='pie'?.53:1;
-  const weaponAmp=input.gait==='run'?1.65:
-    input.gait==='squeeze'?.25:input.gait==='pie'?.38:1;
+  const tension=clamp(input.tacticalTension??0,0,1);
+  const weaponAmp=(input.gait==='run'?1.65:
+    input.gait==='squeeze'?.25:input.gait==='pie'?.38:1)*
+    (1-.48*tension);
   const envelope=(foot:FootTarget,phase:FootTarget['phase'])=>
     foot.phase===phase?Math.sin(Math.PI*clamp(foot.progress??0,0,1)):0;
   const swinging=Math.max(envelope(left,'swinging'),
@@ -91,7 +94,7 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
   const torsoForward=clamp(-forward*speed*.09-accel*.04+
     (.028*unloading-.014*receiving)*moving,-.13,.09)*crouch;
   const torsoSide=clamp(side*speed*.078+support*speed*.021,
-    -.11,.11)*crouch;
+    -.11,.11)*crouch*(1-.20*tension);
   // Follow the same contact/weight envelopes, rather than layering
   // unrelated sine-wave bob and sway over the animation.
   pelvisY-=Math.max(0,-accel)*.17*moving*crouch;
