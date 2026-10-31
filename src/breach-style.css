@@ -759,3 +759,14 @@ body.replaying #tacticalFeedback{display:none}
 @media(prefers-reduced-motion:reduce){
  .bar .actions #play::after{transition:none}
 }
+
+/* UI 3 / 04: advanced sheets and notifications clear the new docked bar. */
+.orders:not(.compact),.site-settings{
+ bottom:calc(var(--tactical-hud-height,138px) + 20px + env(safe-area-inset-bottom))!important;
+ max-height:min(35dvh,245px);overflow-y:auto;overscroll-behavior:contain}
+.feed:not([hidden]){
+ bottom:calc(var(--tactical-hud-height,138px) + 20px + env(safe-area-inset-bottom))}
+@media(max-height:470px){
+ .orders:not(.compact),.site-settings{
+   max-height:min(42dvh,190px)}
+}
