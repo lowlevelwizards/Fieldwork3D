@@ -6,6 +6,7 @@ import {type Pt,type Segment,type Door,type Obstacle,
   pointToSegment} from './breach-core.ts';
 import {generateJunctionSite} from './breach-junction-site.ts';
 import {applyArchetype} from './breach-archetypes.ts';
+import {appendArchitecturalWing} from './worldgen/architectural-wings.ts';
 export type Room={id:string;x:number;y:number;w:number;h:number;
   kind:'room'|'hall';tone:number;purpose?:string};
 export type BuildingArchetype='house'|'townhouse'|'apartment'|'retail'|'office'|'garage'|'warehouse'|'restaurant'|'motel'|'utility'|'clinic';
@@ -37,7 +38,7 @@ export const seeded=(seed:number)=>{
 const between=(r:()=>number,min:number,max:number)=>
   min+Math.floor(r()*(max-min+1));
 export function generateSite(seed:number):Site{
-  if(seed%5===0)return applyArchetype(generateJunctionSite(seed),seed);
+  if(seed%5===0)return applyArchetype(appendArchitecturalWing(generateJunctionSite(seed),seed),seed);
   const rng=seeded(seed);
   const target=between(rng,3,6);
   const layout=(['office','workshop','corridor','courtyard'] as const)[seed%4];
@@ -190,8 +191,8 @@ export function generateSite(seed:number):Site{
       enemies.push(p);break;
     }
   }
-  return applyArchetype({seed,name:['CUTWOODS','MILL ANNEX','TOLL HOUSE','RELAY SITE',
+  return applyArchetype(appendArchitecturalWing({seed,name:['CUTWOODS','MILL ANNEX','TOLL HOUSE','RELAY SITE',
     'SERVICE DEPOT','FARMSTATION'][seed%6],rooms,walls,doors,cover,
     entrance,spawn,enemies,objective,extract:{x:entry.x,y:y2+115},
-    roomCount:habitable.length,layout},seed);
+    roomCount:habitable.length,layout},seed),seed);
 }
