@@ -103,6 +103,7 @@ const ui={
   replayForward:el<HTMLButtonElement>('replayForward'),
   replaySpeed:el<HTMLButtonElement>('replaySpeed'),
   replaySeek:el<HTMLInputElement>('replaySeek'),
+  replayMarks:el<HTMLElement>('replayMarks'),
   replaySight:el<HTMLButtonElement>('replaySight'),
   replayView:el<HTMLButtonElement>('replayView'),
   replayExit:el<HTMLButtonElement>('replayExit'),
@@ -1615,7 +1616,13 @@ function updateReplayHud(){
     Math.round(1000*replayTime/recorder.duration):0);
   ui.replayClock.textContent=clockText(replayTime)+' / '+
     clockText(recorder.duration);
-  ui.replayPlay.textContent=replayPlaying?'PAUSE Ⅱ':'PLAY ▶';
+  const playbackIcon=replayPlaying?'pause':'go';
+  if(ui.replayPlay.dataset.mode!==playbackIcon){
+    ui.replayPlay.dataset.mode=playbackIcon;
+    ui.replayPlay.replaceChildren(tacticalIcon(playbackIcon));
+    ui.replayPlay.setAttribute('aria-label',replayPlaying?'Pause replay':'Play replay');
+    ui.replayPlay.title=replayPlaying?'Pause replay':'Play replay';
+  }
   ui.replaySpeed.textContent=replayRate+'×';
   ui.replaySight.textContent=replayOmniscient?'FULL VIEW':'TEAM SIGHT';
   ui.replayView.textContent=viewMode.toUpperCase();
@@ -1624,6 +1631,38 @@ function updateReplayHud(){
   const event=recorder.events.filter(e=>e.t<=replayTime+.14).at(-1);
   ui.replayEventText.textContent=event&&replayTime-event.t<4.5?
     clockText(event.t)+' · '+event.text:'';
+}
+function renderReplayEventMarkers(){
+  ui.replayMarks.replaceChildren();
+  const duration=recorder.duration;
+  if(duration<=0)return;
+  const friendlyIds=new Set(team(state).map(a=>a.id));
+  let lastShot=-Infinity,count=0;
+  for(const event of recorder.events){
+    if(count>=85)break;
+    if(event.kind==='shot'){
+      if(event.t-lastShot<3)continue;
+      lastShot=event.t;
+    }
+    const frame=recorder.at(event.t);
+    const knownPoint=!!event.p&&!!frame&&(
+      frame.seenGround.includes(Math.floor(event.p.x/40)+','+
+        Math.floor(event.p.y/40))||
+      frame.seenGround.includes('fine:'+Math.floor(event.p.x/20)+','+
+        Math.floor(event.p.y/20)));
+    if(!replayOmniscient&&!friendlyIds.has(event.actor??'')&&!knownPoint)
+      continue;
+    const marker=document.createElement('button');
+    marker.type='button';
+    marker.className='replay-mark replay-mark-'+event.kind;
+    marker.style.left=(event.t/duration*100).toFixed(3)+'%';
+    marker.title=clockText(event.t)+' · '+event.text;
+    marker.setAttribute('aria-label',marker.title);
+    marker.addEventListener('click',()=>{
+      replayPlaying=false;seekReplay(event.t);
+    });
+    ui.replayMarks.append(marker);count++;
+  }
 }
 function enterReplay(){
   if(replaying||recorder.frames.length<2)return;
@@ -1636,7 +1675,7 @@ function enterReplay(){
   stage?.applySite(state.site??null);
   document.body.classList.add('replaying');
   ui.replayPanel.hidden=false;
-  seekReplay(0);updateHud();
+  renderReplayEventMarkers();seekReplay(0);updateHud();
 }
 function exitReplay(){
   if(!replaying)return;
@@ -1669,7 +1708,7 @@ ui.replaySeek.addEventListener('input',()=>{
 });
 ui.replaySight.addEventListener('click',()=>{
   replayOmniscient=!replayOmniscient;fogStamp=-1;
-  updateReplayHud();
+  renderReplayEventMarkers();updateReplayHud();
 });
 ui.replayView.addEventListener('click',()=>{
   cameraMode(viewMode==='iso'?'top':viewMode==='top'?'plan2d':'iso');
