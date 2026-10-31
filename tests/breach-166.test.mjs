@@ -39,7 +39,7 @@ test('166 final: silhouette mode is reversible and comparison views stay accessi
  const lab=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
  const html=readFileSync(new URL('../operator-lab.html',import.meta.url),'utf8');
  assert.match(lab,/material\.color\.copy\(enabled\?silhouetteColor:originalColor\)/);
- assert.match(lab,/applySilhouette\(rig,silhouettes\)/);
+ assert.match(lab,/if\(!comparing&&silhouettes\)applySilhouette\(rig,true\)/);
  assert.match(lab,/applySilhouette\(body,silhouettes\)/);
  assert.match(html,/body\.compare-open main>\.row:has\(#comparePose\)>\[data-view\]/);
  assert.match(html,/overflow-x:auto/);
