@@ -2,15 +2,16 @@
  * Runs in deterministic world space; a CLI can exercise thousands of maps
  * without incurring browser startup on every CI run. */
 import {activateSite,passable,route,type Pt} from './breach-core.ts';
-import {generateSite} from './breach-site.ts';
+import {generateSite,type SiteScale} from './breach-site.ts';
+import {assessArchitecture} from './worldgen/architecture-quality.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type SiteAudit={seed:number;archetype:string;layout:string;
   rooms:number;doors:number;enemies:number;windows:number;
   archOpenings:number;exteriorZones:number;dressing:number;
   condition:string;typedProps:number;
   errors:string[]};
-export function auditGeneratedSite(seed:number):SiteAudit{
-  const site=generateSite(seed);
+export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteAudit{
+  const site=generateSite(seed,scale);
   activateSite(site);
   const errors:string[]=[];
   try{
@@ -45,6 +46,7 @@ export function auditGeneratedSite(seed:number):SiteAudit{
       if(!sill)errors.push('window lacks sill '+w.id);
     }
     if(site.archetype===undefined)errors.push('archetype not assigned');
+    errors.push(...assessArchitecture(site).errors);
     if(site.rooms.some(r=>!r.purpose))errors.push('untyped room');
     const roomIds=new Set<string>();
     for(const room of site.rooms){
