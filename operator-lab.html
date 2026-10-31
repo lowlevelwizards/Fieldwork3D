@@ -27,12 +27,20 @@ header a{color:#c8b992}main{position:fixed;bottom:env(safe-area-inset-bottom);le
  padding:4px 7px;min-height:23px;background:#24322cdb;color:#fff0d0;
  border:1px solid #829388;pointer-events:auto;white-space:nowrap;
  font:10px monospace;touch-action:manipulation}
-body.compare-open main{max-height:56px;display:block;overflow:visible}
+body.compare-open main{max-height:calc(66px + env(safe-area-inset-bottom));
+  display:block;overflow:hidden}
 body.compare-open main>.row{display:none}
-body.compare-open main>.row:has(#comparePose){display:flex;flex-wrap:nowrap}
+body.compare-open main>.row:has(#comparePose){display:flex;flex-wrap:nowrap;
+  overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;
+  touch-action:pan-x;scrollbar-width:none;padding-bottom:3px}
 body.compare-open main>.row:has(#comparePose)>*{display:none}
-body.compare-open #comparePose,body.compare-open #silhouetteMode,
-body.compare-open #savePoseView{display:inline-flex;font-size:10px}
+body.compare-open main>.row:has(#comparePose)>label,
+body.compare-open main>.row:has(#comparePose)>[data-view],
+body.compare-open main>.row:has(#comparePose)>#resetCamera,
+body.compare-open main>.row:has(#comparePose)>#comparePose,
+body.compare-open main>.row:has(#comparePose)>#silhouetteMode,
+body.compare-open main>.row:has(#comparePose)>#savePoseView{
+  display:inline-flex;flex-shrink:0;font-size:10px}
 @media(max-height:540px){main{grid-template-columns:1fr 1fr;max-height:54dvh}
 .row{gap:3px}button{min-height:28px;padding:4px}
 #diagnosticText{top:38px;font-size:9px;max-width:180px}}
@@ -97,9 +105,12 @@ button,select{padding:6px 8px;font-size:10px;min-height:31px}}
 <button id="loopTrack" aria-pressed="true">LOOP</button>
 <input type="range" id="timeline" min="0" max="4000" step="1" value="0"
  aria-label="Motion timestamp"/><output id="timestamp">0.00s</output></div>
-<div class="row"><label>VIEW</label><button data-view="iso">ISO</button><button data-view="front">FRONT</button><button data-view="side">SIDE</button><button data-view="top">TOP</button><button id="resetCamera">FIT</button>
+<div class="row"><label>VIEW</label>
 <button id="comparePose" aria-pressed="false">COMPARE SIX</button>
 <button id="silhouetteMode" aria-pressed="false">SILHOUETTE</button>
+<button data-view="iso">ISO</button><button data-view="front">FRONT</button>
+<button data-view="side">SIDE</button><button data-view="top">TOP</button>
+<button id="resetCamera">FIT</button>
 <button id="savePoseView">SAVE REFERENCE</button>
 <button id="diagnostics" aria-pressed="false">JOINTS</button><button id="slowMotion" aria-pressed="false">SLOW</button>
 <select id="diagnosticLayer" aria-label="Diagnostic layer">
