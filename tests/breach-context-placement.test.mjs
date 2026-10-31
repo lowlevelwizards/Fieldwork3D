@@ -21,8 +21,12 @@ test('phone context palette avoids the selected operator and teammates',()=>{
     assert.equal(overlap(menu,actor),0,'palette should not cover an operator');
   assert.ok(pos.x>=8&&pos.x+144<=422);
   assert.ok(pos.y>=100&&pos.y+128<=710);
-  assert.ok(pos.x===8||pos.x===278,
-    'phone palettes must stay on the outer-edge rails');
+  // A clear, beside-the-selection position is valid too: the placement
+  // algorithm now tests adjacent side positions before stable edge rails.
+  // The menu must not cover the tapped target, even when not on a rail.
+  assert.ok(!(pos.x<=192&&192<=pos.x+144&&
+    pos.y<=515&&515<=pos.y+128),
+    'phone palette must remain outside the selected point');
 });
 
 test('route segments crossing the panel are detected even with endpoints outside',()=>{
