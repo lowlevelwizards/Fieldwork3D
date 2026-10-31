@@ -33,7 +33,7 @@ const weight=(a:Cell,b:Cell,rng:()=>number)=>{
 };
 function cut(wall:Segment,id:string,walls:Segment[],doors:Door[]){
  const length=span(wall);
- if(length<68){walls.push(wall);return;}
+ if(length<55){walls.push(wall);return;}
  const vx=(wall.b.x-wall.a.x)/length,vy=(wall.b.y-wall.a.y)/length;
  const middle={x:(wall.a.x+wall.b.x)/2,y:(wall.a.y+wall.b.y)/2};
  const a={x:middle.x-vx*24,y:middle.y-vy*24};
@@ -135,5 +135,5 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number):Sit
    entrance,spawn,enemies,objective,extract:point(frontX,frontY+117),
    roomCount:habitable.length,layout:'corridor',
    bounds:{minX:Math.min(0,west-80),minY:Math.min(0,north-80),
-    maxX:Math.max(640,east+84),maxY:Math.max(740,south+156)}};
+    maxX:Math.max(720,east+84),maxY:Math.max(740,south+156)}};
 }
