@@ -19,7 +19,7 @@ export function hybridStepThreshold(input:FootstepInput){
  // A full stride is deliberate; minor correction steps use a separate
  // need based on support reach, not a constant 3-unit scurry.
  const base=run?13.2:pie?6:squeeze?4.6:
-   input.posture==='crouch'?7.7:wound?8.2:lateral?9.7:11.6;
+   input.posture==='crouch'?7.7:wound?8.2:lateral?9.7:10.5;
  return base;
 }
 export function decideHybridStep(
