@@ -51,3 +51,35 @@ export function footAnchorReachable(from:Pt,p:Pt,
   return !WALLS.some(w=>segmentsCross(link,w))&&
     !doors.some(door=>segmentsCross(link,doorLeafSegment(door)));
 }
+
+/** Build 189: physically rotated shallow torso/shoulder capsule.
+ * In narrow mode the operator's shoulders extend along the passage while
+ * the torso presents its shorter depth across the passage. */
+export type BodyProfile='normal'|'squeeze';
+export const squeezeFacing=(travelYaw:number)=>travelYaw-Math.PI/2;
+export function profileSamples(p:Pt,heading:number,
+  profile:BodyProfile){
+  if(profile==='normal')return [{position:{...p},radius:OPERATOR_RADIUS}];
+  const sx=-Math.sin(heading)*3.6,sy=Math.cos(heading)*3.6;
+  return [
+    {position:{x:p.x-sx,y:p.y-sy},radius:5.4},
+    {position:{...p},radius:5.4},
+    {position:{x:p.x+sx,y:p.y+sy},radius:5.4}
+  ];
+}
+export function profileClear(p:Pt,doors:Door[],heading:number,
+  profile:BodyProfile='normal'){
+  return profileSamples(p,heading,profile).every(sample=>
+    bodyClear(sample.position,doors,sample.radius));
+}
+export function sweptProfileClear(from:Pt,to:Pt,doors:Door[],
+  heading:number,profile:BodyProfile='normal'){
+  if(profile==='normal')return sweptBodyClear(from,to,doors);
+  const steps=Math.max(1,Math.ceil(distance(from,to)/2.5));
+  for(let i=1;i<=steps;i++){
+    const t=i/steps,at={x:from.x+(to.x-from.x)*t,
+      y:from.y+(to.y-from.y)*t};
+    if(!profileClear(at,doors,heading,'squeeze'))return false;
+  }
+  return true;
+}

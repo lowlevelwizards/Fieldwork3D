@@ -50,7 +50,7 @@ export type OperatorPose={
   obstruction?:boolean;friendlyNear?:boolean;
   clearanceRetraction?:number;clearanceBlocked?:boolean;
   blocked?:boolean;footAllowed?:(point:{x:number;y:number})=>boolean;
-  gait?:'walk'|'run'|'pie';
+  gait?:'walk'|'run'|'pie'|'squeeze';
   aimBlend?:number;recoil?:number;shotHeading?:number;
   hitFade?:number;hitAge?:number;downProgress?:number;flashActive?:boolean;
   hitRegion?:WoundRegion;hitYaw?:number;hitSeverity?:number;
