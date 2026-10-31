@@ -1090,7 +1090,12 @@ export class TacticalScene3D{
         const shoe=new THREE.Vector3();
         object.physical.feet[i].shoe.getWorldPosition(shoe);
         shadow.position.set(shoe.x,.16,shoe.z);
-        shadow.scale.setScalar(object.physical.feet[i].swinging?.74:1);
+        const contact=replay?.feet[actor.id]?.[i]??
+          liveMotion?.feet[actor.id]?.[i];
+        const pulse=contact?.phase==='landing'?
+          1+.12*Math.sin(Math.PI*(contact.progress??0)):1;
+        shadow.scale.setScalar(
+          (object.physical.feet[i].swinging?.74:1)*pulse);
       }
     }
     if(!this.casingMesh){

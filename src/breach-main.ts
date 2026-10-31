@@ -258,6 +258,7 @@ if(!fogContext)throw Error('Fog canvas unavailable');
 let fogStamp=-1;
 let audio:AudioContext|null=null;
 let lastSoundShotId=0,lastEventAudio='';
+let lastFootstepSoundTime=0;
 const playTone=(frequency:number,decay:number,noise=false,
   level=1,pan=0)=>{
   try{
@@ -1764,6 +1765,7 @@ function reset(next=state.variant,siteSeed?:number){
   selectedNode=null;doorFocusId=null;draggingNode=null;
   cursor=null;trace=null;zoom=1;panX=panY=0;
   fogStamp=-1;lastSoundShotId=0;lastEventAudio='';
+  lastFootstepSoundTime=0;
   recorder=new MissionRecorder();recorder.capture(state,true);
   tacticalFeedback.clear();layout();updateHud();
 }
@@ -2199,6 +2201,24 @@ function tick(now:number){
       shot.down,level,pan);
   }
   if(fresh.length)lastSoundShotId=fresh.at(-1)!.id;
+  // One restrained boot thud per recorded physical touchdown; never an
+  // independent timed walking loop, and never an audio burst on resume.
+  if(!replaying&&state.phase==='running'){
+    const from=Math.max(lastFootstepSoundTime,state.seconds-.16);
+    if(audio?.state==='running'){
+      const ids=team(state).map(a=>a.id);
+      for(const touch of recorder.motion.touchdownsBetween(
+        from,state.seconds,ids).slice(-5)){
+        const listener=uid(selected)?.p;
+        const level=listener?heardIntensity(touch.position,listener,
+          36,state.doors,WALLS):.24;
+        if(level<.025)continue;
+        const pan=listener?(touch.position.x-listener.x)/210:0;
+        playTone(touch.foot===0?62:67,.055,true,level*.12,pan);
+      }
+    }
+  }
+  lastFootstepSoundTime=state.seconds;
   const event=state.events.at(-1)??'';
   if(event!==lastEventAudio&&(event.includes('OPENED')||event.includes('CLOSING')))
     playTone(160,.16);
