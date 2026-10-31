@@ -52,7 +52,7 @@ export function hybridLanding(input:FootstepInput,index:number,
      x:fitted.x-Math.sin(facing)*sign*offset,
      y:fitted.y+Math.cos(facing)*sign*offset
    })),
-   ...[3.5,5,6.5].flatMap(distance=>[-1,1].map(direction=>({
+   ...[3.5,5,6.5,8.5,10].flatMap(distance=>[-1,1].map(direction=>({
      x:fitted.x+Math.cos(facing)*distance*direction,
      y:fitted.y+Math.sin(facing)*distance*direction
    }))),
