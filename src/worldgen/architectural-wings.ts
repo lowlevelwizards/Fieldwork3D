@@ -3,11 +3,8 @@
  * Geometry remains within the existing tactical world boundary.
  */
 import type {Site,Room} from '../breach-site.ts';
-import type {Segment,Pt,Door} from '../breach-core.ts';
+import type {Segment,Door} from '../breach-core.ts';
 const near=(a:number,b:number)=>Math.abs(a-b)<.01;
-const midpoint=(wall:Segment):Pt=>({
- x:(wall.a.x+wall.b.x)/2,y:(wall.a.y+wall.b.y)/2
-});
 export function appendArchitecturalWing(site:Site,seed:number):Site{
  if(seed%3!==1)return site;
  const minY=Math.min(...site.rooms.map(r=>r.y));
