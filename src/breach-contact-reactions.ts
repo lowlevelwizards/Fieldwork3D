@@ -12,7 +12,7 @@ export function contactReaction(age:number,role:BashRole,
   const active=role!==null&&age>=0&&age<.53;
   const weight=active?Math.sin(Math.PI*progress):0;
   return {active,weight,
-    lean:weight*(role==='push'?-.14:.19),
+    lean:active?weight*(role==='push'?-.14:.19):0,
     reach:role==='push'?weight*4.8:0,
     head:weight*(role==='push'?.05:-.10),
     brace:blocked?.35:0};
