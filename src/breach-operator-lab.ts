@@ -176,8 +176,8 @@ function chooseTrack(next:LabTrack){
   const target=LAB_HANDLING[next];
   if(target&&rig&&!comparing&&next!==track){
     const previous=LAB_HANDLING[track]??labSwitch?.to??'ready';
-    const delta=target==='ads'||previous==='ads'?.32:
-      target==='short'||previous==='short'?.30:.24;
+    const delta=(target==='ads'||previous==='ads')?.32:
+      (target==='short'||previous==='short')?.30:.24;
     labSwitch={from:previous,to:target,since:performance.now()/1000,
       duration:delta,fromWeapon:{
         origin:rig.weapon.position.clone(),
@@ -362,6 +362,23 @@ function showDiagnostics(){
         new THREE.Vector3(coords[i][0],coords[i][1],coords[i][2]));
       put(i,p.x,p.y,p.z);
     }
+    const mode=LAB_HANDLING[track]??labSwitch?.to??'ready';
+    const pocket=stockPocket(mode);
+    const shoulder=rig.chest.localToWorld(
+      new THREE.Vector3(pocket.x,pocket.y,pocket.z));
+    put(3,shoulder.x,shoulder.y,shoulder.z);
+    const butt=markers[0].position,coords3=
+      guideGeometry.getAttribute('position') as THREE.BufferAttribute;
+    coords3.setXYZ(0,butt.x,butt.y,butt.z);
+    coords3.setXYZ(1,shoulder.x,shoulder.y,shoulder.z);
+    coords3.setXYZ(2,shoulder.x,shoulder.y,shoulder.z);
+    coords3.needsUpdate=true;guide.visible=true;
+    for(let i=0;i<2;i++){
+      const sign=i===0?-1:1,hint=elbowCorridor(mode,sign as -1|1);
+      const point=rig.chest.localToWorld(
+        new THREE.Vector3(hint.x,hint.y,hint.z));
+      put(i+4,point.x,point.y,point.z);
+    }
   }
   const trouble=rig.feet.filter(x=>x.outOfReach).length+
     rig.arms.filter(x=>x.outOfReach).length;
@@ -398,7 +415,8 @@ function showDiagnostics(){
       (crossing?' · CROSSING!':''),
     'ANKLE GAP '+rig.legGap.map(v=>v.toFixed(2)).join(' / ')+
       ' · GRIP ERROR '+rig.gripError.toFixed(3)+
-       ' · STOCK '+rig.stockError.toFixed(2)+
+       ' · BUTTPLATE GAP '+rig.stockError.toFixed(2)+
+       ' · ELBOW SPREAD '+rig.elbowSpread.map(v=>v.toFixed(1)).join('/')+
       ' · SUPPORT '+balance.support.toFixed(2),
     'PELVIS '+sampled.state.pelvisYaw.toFixed(2)+
       ' · LIFT '+balance.pelvisY.toFixed(2),
@@ -410,7 +428,11 @@ function showDiagnostics(){
       'KNEES '+angles.slice(0,2).map(x=>x.toFixed(0)+'°').join(' / ')+
       ' · ELBOWS '+angles.slice(2).map(x=>x.toFixed(0)+'°').join(' / '):'',
     layer==='replay'?'60Hz FRAME '+lowerFrame+' → '+(lowerFrame+1)+
-      ' · α '+alpha.toFixed(3)+' · SEEK-SAFE':''
+      ' · α '+alpha.toFixed(3)+' · SEEK-SAFE':'',
+    labSwitch?'BLEND '+labSwitch.from+' → '+labSwitch.to+
+      ' α '+smoothHandling((performance.now()/1000-labSwitch.since)/
+        labSwitch.duration).toFixed(2):'',
+    layer==='weapon'?'BUTTPLATE / GRIPS / POCKET / ELBOW HINTS':''
   ].filter(Boolean).join('\n');
 }
 function draw(){
