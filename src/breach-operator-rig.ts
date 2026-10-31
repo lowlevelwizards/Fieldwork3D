@@ -9,6 +9,7 @@ import {advanceFootsteps,createFootstepScheduler,safePlantPoint,
   from './breach-footsteps.ts';
 import type {ReplayFeet} from './breach-replay-motion.ts';
 import {bodyFromContacts} from './breach-body-motion.ts';
+import {contactReaction,type BashRole} from './breach-contact-reactions.ts';
 import {kickMotion} from './breach-door-actions.ts';
 import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
 import {fallAngles,hitStagger,type FallPose,type WoundRegion}
@@ -32,6 +33,7 @@ export type OperatorPose={
   reloadRemoved?:boolean;reloadInserted?:boolean;lastThrowAt:number;
   lastDoorAt:number;doorPoint?:{x:number;y:number};
   doorMethod?:'open'|'kick'|'hold';down:boolean;
+  lastBashAt?:number;bashRole?:BashRole;
   surrender:boolean;aiming:boolean;firing:boolean;turning:number;
   obstruction?:boolean;friendlyNear?:boolean;
   blocked?:boolean;footAllowed?:(point:{x:number;y:number})=>boolean;
@@ -200,6 +202,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const kickAge=p.seconds-p.lastDoorAt;
   const kick=p.doorMethod==='kick'&&kickAge>=0&&kickAge<.76?
     kickMotion(kickAge):null;
+  const bash=contactReaction(p.seconds-(p.lastBashAt??-100),
+    p.bashRole??null,!!p.blocked);
   // A pivot requires the stance to catch up with requested facing.
   // In replay/lab this orientation is reconstructed by time, never dt.
   if(p.pelvisYaw!==undefined){
@@ -221,16 +225,18 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const stanceRadius=Math.max(...targets.map(t=>
     Math.hypot(t.position.x-p.x,t.position.y-p.z)));
   const stanceDrop=clamp((stanceRadius-7.8)*.80,0,4.0);
-  r.hip.position.y=Math.max(17.12-crouch,19-crouch+motion.pelvisY-stanceDrop);
+  r.hip.position.y=Math.max(17.12-crouch,
+    19-crouch+motion.pelvisY-stanceDrop-bash.brace);
   r.hip.position.z=motion.pelvisSide;
-  r.chest.position.y=26-crouch+motion.pelvisY*.65;
+  r.chest.position.y=26-crouch+motion.pelvisY*.65-
+    bash.brace*.4;
   r.chest.position.z=motion.pelvisSide*.75;
   r.chest.rotation.z=motion.torsoForward+braking*.018+
-    (kick?.torsoLean??0);
+    (kick?.torsoLean??0)+bash.lean;
   r.chest.rotation.x=clamp(p.injury===2?.07:p.injury===1?.025:0,0,.09)+
     motion.torsoSide;
   r.chest.rotation.y+=motion.torsoYaw;
-  r.head.rotation.x=motion.headCounter;
+  r.head.rotation.x=motion.headCounter+bash.head;
   for(let i=0;i<2;i++){
     const foot=r.feet[i],sign=i===0?-1:1,target=targets[i];
     const hipLocal=P(0,r.hip.position.y,r.hip.position.z+sign*4.8);
@@ -290,7 +296,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const data=weaponGrips(p.weapon);
   const handling=handlingPose({
     aim:p.aimBlend??(p.aiming?1:0),moving,
-    obstruction:!!p.obstruction,friendlyNear:!!p.friendlyNear
+    obstruction:!!p.obstruction||
+      (bash.active&&p.bashRole==='receive'),
+    friendlyNear:!!p.friendlyNear
   });
   const recoil=p.recoil??(p.firing?1.5:0);
   const fit=fitWeaponPose({weapon:p.weapon,handling,
@@ -321,7 +329,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const doorAge=p.seconds-p.lastDoorAt;
   const doorActive=doorAge>=0&&doorAge<.9&&!!p.doorPoint&&
     p.doorMethod!=='kick';
-  r.chest.position.x=0;
+  r.chest.position.x=bash.reach*.18;
   r.reachRequest=null;
   r.weapon.visible=!p.surrender&&(!p.down||downProgress<.68);
   r.droppedGun.visible=p.down&&!p.surrender&&downProgress>=.68;
@@ -352,6 +360,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }else if(p.surrender){
     releaseLeft=true;
     leftGrip.set(-1,11,-6);rightGrip.set(-1,11,6);
+  }else if(bash.active&&p.bashRole==='push'){
+    // A short forearm/shoulder extension separates the opponent, while
+    // the primary hand keeps the gun from flailing through the torso.
+    releaseLeft=true;
+    leftGrip.set(data.supportX+bash.reach*2,-4,-6);
   }else if(!p.down&&p.injury>0&&
     p.hitRegion!=='leg'&&!p.aiming&&!p.firing&&
     p.hitAge!==undefined&&p.hitAge>=0&&p.hitAge<1.1){

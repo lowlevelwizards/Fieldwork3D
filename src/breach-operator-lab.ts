@@ -312,6 +312,8 @@ function draw(){
     reloadRemoved:track==='reload-interrupt'&&clock>.53,
     reloadInserted:false,
     lastDoorAt:motion.doorAt,
+    lastBashAt:track==='bash'?.75:-100,
+    bashRole:track==='bash'?'push':null,
     doorMethod:track==='kick'?'kick':'open',
     doorPoint:track==='door'?{x:25.5,y:8}:undefined,
     lastThrowAt:motion.throwAt,
