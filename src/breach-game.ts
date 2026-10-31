@@ -38,6 +38,8 @@ import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skill
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
   rayHitsActor,muzzleEndpoint,recoverWeapon,handlingInstability,type FiringMode} from './breach-ballistics.ts';
 import {chooseDefense,watchPoint,reachableInvestigation} from './breach-defense.ts';
+import {operationBrief,assessOperation,
+  type OperationKind} from './breach-operations.ts';
 import {muzzleAtShot} from './breach-muzzle.ts';
 import {initialIntel,observeIntel,routeWithIntel,intelPassable,doorKnown,
   type IntelMode,type IntelState} from './breach-intel.ts';
@@ -122,7 +124,7 @@ export type Session=Omit<TacticalState,'operators'> & {
   battleEvents:BattleEvent[];nextBattleId:number;
   missionType:'clear'|'intel'|'rescue'|'hold'|'capture';holdTime:number;
   rescue:{p:Pt;following:string|null}|null;
-  captureTarget:string|null;};
+  captureTarget:string|null;captureSecured:boolean;};
 const d=(a:Pt,b:Pt)=>length(a,b);
 const clone=(p:Pt):Pt=>({...p});
 const near=(a:Pt,b:Pt,range:number)=>d(a,b)<=range;
@@ -241,7 +243,7 @@ export function newSession(index=0,siteSeed?:number,
     dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1,
     impactMarks:[],battleEvents:[],nextBattleId:1,
     missionType:site?(['clear','intel','rescue','hold','capture'] as const)[site.seed%5]:'clear',
-    holdTime:0,rescue:null,captureTarget:null};
+    holdTime:0,rescue:null,captureTarget:null,captureSecured:false};
   if(state.missionType==='capture'){
     const target=operators.find(a=>a.side==='red');
     state.captureTarget=target?.id??null;
@@ -1884,8 +1886,27 @@ function mission(s:Session,dt:number){
     near(a.p,s.scenario.objective,36));
   if(s.mission==='secure'&&objectiveReached){
     if(s.missionType==='hold'){
+      // A contested position is not secured merely by standing on its
+      // marker. Nearby active defenders arrest the actual hold clock.
+      const contested=enemies(s).some(e=>e.health>0&&
+        near(e.p,s.scenario.objective,74));
+      if(contested){
+        s.holdTime=Math.max(0,s.holdTime-dt*.6);
+        return;
+      }
       s.holdTime+=dt;
       if(s.holdTime<7)return;
+    }
+    if(s.missionType==='intel'){
+      // Retrieving physical documents is a deliberate interaction,
+      // interruptible by leaving the cache, not an instantaneous tap.
+      s.holdTime+=dt;
+      if(s.holdTime<1.2)return;
+    }
+    if(s.missionType==='capture'){
+      const target=enemies(s).find(e=>e.id===s.captureTarget);
+      if(!target||target.health>0)return;
+      s.captureSecured=true;
     }
     s.mission='extract';
     if(s.rescue){
@@ -1894,10 +1915,13 @@ function mission(s:Session,dt:number){
       s.rescue.following=escort?.id??null;
     }
     const verb=s.missionType==='rescue'?'PERSON FOUND':
-      s.missionType==='hold'?'POSITION HELD':'OBJECTIVE SECURED';
+      s.missionType==='hold'?'POSITION HELD':
+      s.missionType==='intel'?'DOCUMENTS RECOVERED':
+      s.missionType==='capture'?'TARGET SECURED':'OBJECTIVE SECURED';
     notify(s,verb+' — EXTRACT');
     battleEvent(s,'objective',null,s.scenario.objective,verb);
-  }else if(s.missionType==='hold'&&s.mission==='secure'){
+  }else if((s.missionType==='hold'||s.missionType==='intel')&&
+    s.mission==='secure'){
     s.holdTime=Math.max(0,s.holdTime-dt*.6);
   }
   if(s.mission==='extract'&&team(s).some(a=>a.health>0&&
@@ -2014,6 +2038,15 @@ export function stepSession(s:Session,dt:number){
   for(const a of s.operators)fire(s,a,h);
   mission(s,h);
 }
+export function operationBriefing(s:Session){
+  const brief=operationBrief(s.missionType);
+  return { ...brief,
+    building:s.site?.archetype?.toUpperCase()??'UNSPECIFIED SITE',
+    layout:s.intel.mode==='floor-plan'&&s.site?
+      s.site.roomCount+' DOCUMENTED ROOMS':'INTERIOR NOT FULLY CHARTED',
+    squad:team(s).length,
+  };
+}
 export function missionText(s:Session){
   if(s.phase==='won')return 'COMPLETE — OPERATION SUCCESS';
   if(s.phase==='lost')return 'MISSION FAILED';
@@ -2023,19 +2056,40 @@ export function missionText(s:Session){
   if(s.mission==='secure')return s.missionType==='hold'?
     'HOLD OBJECTIVE • '+Math.floor(s.holdTime)+'/7 SECONDS':
     s.missionType==='rescue'?'REACH PERSON IN TARGET ROOM':
-    s.missionType==='intel'?'RECOVER INTELLIGENCE':
+    s.missionType==='intel'?'RECOVER INTELLIGENCE • '+
+      s.holdTime.toFixed(1)+'/1.2s':
+    s.missionType==='capture'?'SECURE NEUTRALIZED TARGET':
     'SECURE OBJECTIVE';
   return 'RETURN TO EXTRACTION OUTSIDE';
 }
 export function debrief(s:Session){
   const own=team(s);
-  return {result:s.phase,time:Math.floor(s.seconds),
-    casualties:own.filter(a=>a.health<=0).length,
-    shots:own.reduce((t,a)=>t+a.shots,0),
-    hits:own.reduce((t,a)=>t+a.hits,0),
+  const casualties=own.filter(a=>a.health<=0).length;
+  const shots=own.reduce((t,a)=>t+a.shots,0);
+  const hits=own.reduce((t,a)=>t+a.hits,0);
+  const target=enemies(s).find(e=>e.id===s.captureTarget);
+  const assessment=assessOperation({
+    outcome:s.phase==='won'?'success':'failure',
+    kind:s.missionType as OperationKind,
+    elapsed:Math.floor(s.seconds),casualties,teamSize:own.length,
+    shots,hits,objective:s.mission==='done',
+    targetSurrendered:target?.surrendered??false,
+    extracted:own.filter(a=>a.health>0&&
+      near(a.p,s.scenario.extract,47)).length,
+  });
+  return {result:s.phase,time:Math.floor(s.seconds),casualties,
+    shots,hits,
     kills:own.reduce((t,a)=>t+a.kills,0),
     pauses:s.timesPaused,variant:s.scenario.name,
-    objective:s.mission==='done'};
+    objective:s.mission==='done',
+    type:s.missionType,
+    grade:assessment.grade,score:assessment.score,
+    accuracy:assessment.accuracy,survived:assessment.survived,
+    squad:own.map(a=>({id:a.id,name:a.name,
+      survived:a.health>0,injury:a.injuryStage,
+      fired:a.shots,hits:a.hits})),
+    captureSecured:s.captureSecured,
+    rescueExtracted:!!s.rescue&&s.phase==='won'};
 }
 export function knownAt(s:Session,x:number,y:number){
   return s.seenGround.has(Math.floor(x/40)+','+Math.floor(y/40));
