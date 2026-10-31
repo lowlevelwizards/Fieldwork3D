@@ -78,6 +78,7 @@ const ui={
   moreOrders:el<HTMLButtonElement>('moreOrders'),
   cancelTarget:el<HTMLButtonElement>('cancelTarget'),
   siteSettingsToggle:el<HTMLButtonElement>('siteSettingsToggle'),
+  siteSize:el<HTMLButtonElement>('siteSize'),
   siteSettings:el<HTMLElement>('siteSettings'),
   replayMore:el<HTMLButtonElement>('replayMore'),
   replayExtra:el<HTMLElement>('replayExtra'),
@@ -133,7 +134,10 @@ const requestedSeed=Number(startupParams.get('seed'));
 const initialSiteSeed=startupParams.has('seed')&&Number.isSafeInteger(requestedSeed)&&
  requestedSeed>0&&requestedSeed<=0xffffffff?requestedSeed:randomSiteSeed();
 let selectedIntelMode:IntelMode='floor-plan';
-let state:Session=newSession(0,legacyStudy?undefined:initialSiteSeed,selectedIntelMode);
+let requestedSiteScale:'standard'|'expanded'=
+  startupParams.get('scale')==='expanded'?'expanded':'standard';
+let state:Session=newSession(0,legacyStudy?undefined:initialSiteSeed,
+  selectedIntelMode,requestedSiteScale);
 let recorder=new MissionRecorder();recorder.capture(state,true);
 const OPERATION_HISTORY_KEY='fieldwork3d.operation-history.v1';
 let recordedOperation:Session|null=null;
@@ -1685,7 +1689,7 @@ function enterReplay(){
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
   ui.replayExtra.hidden=true;ui.replayMore.setAttribute('aria-expanded','false');
   state=newSession(finishedSession.variant,finishedSession.site?.seed,
-    finishedSession.intel.mode);
+    finishedSession.intel.mode,finishedSession.site?.scale??'standard');
   stage?.applySite(state.site??null);
   document.body.classList.add('replaying');
   ui.replayPanel.hidden=false;
@@ -1753,7 +1757,7 @@ function reset(next=state.variant,siteSeed?:number){
   flashMode=false;document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
   state=newSession(next,legacyStudy?undefined:
-    siteSeed??randomSiteSeed(),selectedIntelMode);
+    siteSeed??randomSiteSeed(),selectedIntelMode,requestedSiteScale);
   flashDoorId=null;
   stage?.applySite(state.site??null);selected='rook';looking=false;
   selectedNode=null;doorFocusId=null;draggingNode=null;
@@ -1798,6 +1802,17 @@ ui.stance.addEventListener('click',()=>{
   posture(state,selected);fogStamp=-1;updateHud();
 });
 ui.contact.addEventListener('click',()=>{toggleContactRule(state,selected);updateHud();});
+ui.siteSize.textContent='MAP SIZE · '+requestedSiteScale.toUpperCase();
+ui.siteSize.addEventListener('click',()=>{
+  if(replaying)return;
+  requestedSiteScale=requestedSiteScale==='standard'?'expanded':'standard';
+  ui.siteSize.textContent='MAP SIZE · '+requestedSiteScale.toUpperCase();
+  const url=new URL(location.href);
+  if(requestedSiteScale==='standard')url.searchParams.delete('scale');
+  else url.searchParams.set('scale',requestedSiteScale);
+  history.replaceState(null,'',url.href);
+  reset(state.variant,state.site?.seed);
+});
 ui.variant.addEventListener('click',()=>reset(state.variant+1));
 ui.intelMode.addEventListener('click',()=>{
   if(replaying)return;
