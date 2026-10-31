@@ -368,10 +368,64 @@ export class TacticalScene3D{
           this.box(group,c.x+sx*(w/2-3),top/2,c.y+sz*(d/2-3),
             3,top,3,steel);
         if(fixture==='counter')this.box(group,c.x,6,c.y,w-5,9,d-5,wood);
-      }else if(['shelf','cabinet','locker','machine','wardrobe','dresser','bookcase','rack','filing-cabinet'].includes(fixture)){
-        this.box(group,c.x,13.5,c.y,w,27,d,material);
-        for(const level of [7,15,22])
-          this.box(group,c.x,level,c.y+d/2+1,w-4,1.2,2,steel,false);
+      }else if(['fridge','cooler','wardrobe','locker','filing-cabinet'].includes(fixture)){
+        const height=Math.max(24,Math.min(40,asset?.height??32));
+        const body=this.solid(fixture==='cooler'?0x748985:0x8a8c83);
+        this.box(group,c.x,height/2,c.y,w,height,d,body);
+        this.box(group,c.x+w*.42,height*.55,c.y+d/2+.7,2,height*.35,2,steel,false);
+        if(fixture==='fridge'||fixture==='cooler')
+          this.box(group,c.x,Math.min(20,height*.55),c.y+d/2+1,w-4,1.4,2,steel,false);
+      }else if(['stove','microwave','kitchen-island','sink','checkout'].includes(fixture)){
+        const height=fixture==='microwave'?16:23;
+        this.box(group,c.x,height/2,c.y,w,height,d,material);
+        if(fixture==='stove'){
+          const burner=this.solid(0x222b2c);
+          for(const dx of [-1,1])for(const dz of [-1,1]){
+            const ring=new THREE.Mesh(new THREE.TorusGeometry(
+              Math.max(2,Math.min(w,d)*.13),1.2,5,12),burner);
+            ring.rotation.x=Math.PI/2;
+            ring.position.set(c.x+dx*w*.23,height+.6,c.y+dz*d*.2);
+            group.add(ring);
+          }
+        }else if(fixture==='sink'){
+          this.box(group,c.x,height+.6,c.y,w*.66,1.2,d*.65,steel,false);
+          this.box(group,c.x+w*.27,height+6,c.y,2,10,2,steel,false);
+        }else if(fixture==='checkout'){
+          this.box(group,c.x,height+4,c.y+d*.28,w*.4,8,d*.27,steel,false);
+        }
+      }else if(fixture==='toilet'||fixture==='bathtub'){
+        const porcelain=this.solid(0xb9b9a9);
+        if(fixture==='toilet'){
+          this.box(group,c.x,8,c.y+d*.17,w*.63,16,d*.6,porcelain);
+          this.box(group,c.x,15,c.y-d*.34,w*.75,29,d*.25,porcelain);
+          this.box(group,c.x,17,c.y+d*.15,w*.7,2,d*.58,steel,false);
+        }else{
+          this.box(group,c.x,11,c.y,w,21,d,porcelain);
+          this.box(group,c.x,15,c.y,w*.75,3,d*.68,steel,false);
+        }
+      }else if(['shelf','gondola-shelf','wall-shelf','bookcase','rack'].includes(fixture)){
+        // Stock and shelving fill the silhouette, matching the authoritative
+        // obstacle/visibility envelope instead of suggesting a passable void.
+        const tall=Math.max(27,asset?.height??27);
+        const shelfWood=this.solid(fixture==='bookcase'?0x715d4a:0x6b6b60);
+        this.box(group,c.x,tall/2,c.y,w,tall,d*.88,shelfWood);
+        for(const level of [tall*.22,tall*.49,tall*.77]){
+          this.box(group,c.x,level,c.y+d*.46,w,2,d*.2,steel,false);
+          if(fixture==='gondola-shelf'||fixture==='rack'){
+            for(const sx of [-1,1])
+              this.box(group,c.x+sx*w*.26,level+4,c.y+d*.48,
+                Math.max(5,w*.2),7,Math.max(4,d*.14),material,false);
+          }
+        }
+      }else if(['cabinet','dresser','machine','laundry-machine','generator','control-panel','tool-chest'].includes(fixture)){
+        const tall=Math.max(22,Math.min(37,asset?.height??27));
+        this.box(group,c.x,tall/2,c.y,w,tall,d,material);
+        for(const level of [tall*.32,tall*.65])
+          this.box(group,c.x,level,c.y+d/2+1,w-4,1.5,2,steel,false);
+        if(fixture==='generator'||fixture==='control-panel')
+          for(const sx of [-1,0,1])
+            this.box(group,c.x+sx*w*.27,tall*.8,c.y+d/2+1,
+              3,3,2,this.solid(0xc6b182),false);
       }else if(fixture==='vehicle'){
         this.box(group,c.x,9,c.y,w,17,d,steel);
         this.box(group,c.x-w*.1,21,c.y,w*.54,10,d*.73,steel);
