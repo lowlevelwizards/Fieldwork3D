@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {propDefinition} from './worldgen/asset-catalog.ts';
 import {W,H,WALLS,COVER,initialDoors,doorCenter,activeSite,
   type Pt,type Door} from './breach-core.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
@@ -295,20 +296,21 @@ export class TacticalScene3D{
       const group=new THREE.Group();this.root.add(group);
       this.intelSurfaces.push({obj:group,kind:'cover',index:i});
       const fixture=c.fixture??'crate';
+      const asset=propDefinition(fixture);
       const material=i%3===0?wood:i%3===1?steel:olive;
       const w=c.w,d=c.h;
       if(['bed','exam-bed','guest'].includes(fixture)){
         this.box(group,c.x,5,c.y,w,8,d,material);
         this.box(group,c.x,9.6,c.y,w-3,2.8,d-3,olive,false);
         this.box(group,c.x-w*.32,11.2,c.y,w*.22,2,d*.7,steel,false);
-      }else if(['table','desk','counter','workbench','cart'].includes(fixture)){
+      }else if(['table','desk','counter','workbench','cart','dining-table','coffee-table','meeting-table'].includes(fixture)){
         const top=fixture==='counter'?14:fixture==='workbench'?13:11;
         this.box(group,c.x,top,c.y,w,3,d,material);
         for(const sx of [-1,1])for(const sz of [-1,1])
           this.box(group,c.x+sx*(w/2-3),top/2,c.y+sz*(d/2-3),
             3,top,3,steel);
         if(fixture==='counter')this.box(group,c.x,6,c.y,w-5,9,d-5,wood);
-      }else if(['shelf','cabinet','locker','machine'].includes(fixture)){
+      }else if(['shelf','cabinet','locker','machine','wardrobe','dresser','bookcase','rack','filing-cabinet'].includes(fixture)){
         this.box(group,c.x,13.5,c.y,w,27,d,material);
         for(const level of [7,15,22])
           this.box(group,c.x,level,c.y+d/2+1,w-4,1.2,2,steel,false);
@@ -321,12 +323,42 @@ export class TacticalScene3D{
       }else if(fixture==='chair'||fixture==='bench'){
         this.box(group,c.x,8,c.y,w,3,d,wood);
         this.box(group,c.x-w*.44,14,c.y,3,15,d,material);
+      }else if(fixture==='sofa'||fixture==='armchair'){
+        const back=Math.min(20,asset?.height??20);
+        this.box(group,c.x,6,c.y,w,9,d,material);
+        this.box(group,c.x,back/2+4,c.y-d*.38,w,back,d*.24,material);
+        for(const sx of [-1,1])this.box(group,c.x+sx*(w/2-3),8,c.y,5,13,d,steel);
+        const count=fixture==='armchair'?1:2;
+        for(let n=0;n<count;n++)this.box(group,c.x+(n-(count-1)/2)*w/count,
+          11,c.y+2,Math.max(4,w/count-3),3,d*.63,olive,false);
+      }else if(fixture==='tv-stand'){
+        this.box(group,c.x,6,c.y,w,12,d,wood);
+        this.box(group,c.x,17,c.y,w*.78,19,2,steel,false);
+      }else if(fixture==='barrel'||fixture==='tank'||fixture==='tire-stack'){
+        const top=Math.min(36,asset?.height??22),radius=Math.min(w,d)*.43;
+        const cylinder=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,top,12),steel);
+        cylinder.position.set(c.x,top/2,c.y);cylinder.castShadow=true;group.add(cylinder);
+        if(fixture==='tire-stack')for(const level of [4,11,18]){
+          const ring=new THREE.Mesh(new THREE.TorusGeometry(Math.max(2,radius-2),3,5,12),wood);
+          ring.rotation.x=Math.PI/2;ring.position.set(c.x,level,c.y);
+          ring.castShadow=true;group.add(ring);
+        }
+      }else if(fixture==='vehicle-lift'){
+        this.box(group,c.x,2,c.y,w,4,d,steel);
+        for(const sx of [-1,1])this.box(group,c.x+sx*(w*.43),18,c.y,5,36,6,metal);
+        this.box(group,c.x,9,c.y,w*.8,4,d*.55,wood);
+      }else if(fixture==='hedge'||fixture==='bush'||fixture==='tree'||fixture==='plant'){
+        const foliage=this.solid(0x506f4d);
+        if(fixture==='tree')this.box(group,c.x,20,c.y,7,40,7,wood);
+        const canopy=new THREE.Mesh(new THREE.IcosahedronGeometry(Math.max(6,Math.min(w,d)*.42),1),foliage);
+        canopy.position.set(c.x,fixture==='tree'?48:15,c.y);
+        canopy.castShadow=true;group.add(canopy);
       }else if(fixture==='fence'){
         for(const sx of [-1,1])this.box(group,c.x+sx*w*.47,11,c.y,
           3,22,3,wood);
         for(const h of [7,17])this.box(group,c.x,h,c.y,w,2,3,steel,false);
       }else{
-        const tall=c.low?12:27;
+        const tall=asset?.height??(c.low?12:27);
         this.box(group,c.x,tall/2,c.y,w,tall,d,material);
         if(fixture==='pallet')
           for(const h of [2,7,12])this.box(group,c.x,h,c.y,w+2,2,d+2,wood,false);

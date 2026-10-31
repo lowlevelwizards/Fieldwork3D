@@ -2,7 +2,9 @@
  * but low and high furniture only stop the shot when it intersects their
  * actual physical height. The target posture changes the aim height. */
 import type {Pt,Obstacle} from './breach-core.ts';
-export const coverHeight=(c:Obstacle)=>c.low?12:27;
+import {propDefinition} from './worldgen/asset-catalog.ts';
+export const coverHeight=(c:Obstacle)=>
+  (c.fixture&&propDefinition(c.fixture)?.height)||(c.low?12:27);
 export const eyeHeight=(crouched:boolean)=>crouched?15:32;
 export const aimHeight=(crouched:boolean)=>crouched?11:32;
 export function coverImpactFraction(from:Pt,to:Pt,fromZ:number,toZ:number,
