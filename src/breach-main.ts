@@ -29,6 +29,7 @@ import {injuryOf,WEAPONS} from './breach-combat.ts';
 import {doorReachable} from './breach-door.ts';
 import {INTEL_MODES,doorKnown,wallKnown,roomKnown,
   routeWithIntel,intelPassable,type IntelMode} from './breach-intel.ts';
+import {orderFailureText} from './breach-nav-diagnostics.ts';
 import './breach-style.css';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {contextActionChoices} from './ui/context-actions.ts';
@@ -1998,7 +1999,15 @@ function releasePointer(e:PointerEvent,cancelled=false){
         const moved=moving?.kind==='flash'?
           moveFlashTarget(state,selected,p.nodeId,pt):
           movePlanNode(state,selected,p.nodeId,pt);
-        if(!moved)state.events.push('INVALID ORDER DESTINATION');
+        if(!moved){
+          const chosen=uid(selected)?.plan.find(n=>n.id===p.nodeId);
+          const origin=uid(selected)?.p??pt;
+          state.events.push(orderFailureText(origin,pt,{
+            canStand:at=>intelPassable(at,state.intel),
+            routeTo:(a,b)=>routeWithIntel(state.intel,a,b),
+            remainingPlanValid:chosen?.kind==='move'?false:undefined
+          }));
+        }
       }
       selectedNode=p.nodeId;doorFocusId=null;
       const chosen=uid(selected)?.plan.find(n=>n.id===p.nodeId);
