@@ -50,6 +50,7 @@ export type WeaponFit={
 export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
   /** Fire direction in chest-local space. */
   yaw:number;recoil:number;aimBlend?:number;
+  swayYaw?:number;swayPitch?:number;
   blendFrom?:Handling;blendAlpha?:number;
   blendSnapshot?:{origin:THREE.Vector3;rotation:THREE.Euler}};
 /** Rigid contact fit in chest-local space. The candidate search uses scalar
@@ -83,7 +84,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       stockError:anchorGap(stock,stockPocket(input.handling))};
   }
   const data=weaponGrips(input.weapon),scale=data.lengthScale;
-  const yaw=clamp(input.yaw,-1.1,1.1);
+  const yaw=clamp(input.yaw+(input.swayYaw??0),-1.1,1.1);
   const recoilX=clamp(input.recoil,0,5);
   const recoilY=Math.min(1.1,Math.max(0,input.recoil)*.2);
   // Never replace a named silhouette with an unrelated fallback.
@@ -109,7 +110,8 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       base*(1-blendAim)+
       (blendAim<.82?handlingProfile('point',input.weapon).pitch:
         handlingProfile('ads',input.weapon).pitch)*blendAim;
-    const sr=Math.sin(roll),cr=Math.cos(roll);
+    const physicalRoll=roll+(input.swayPitch??0);
+    const sr=Math.sin(physicalRoll),cr=Math.cos(physicalRoll);
     // Buttplate is the authority. Search only around an EXTERNAL shoulder
     // contact, never around the old in-chest receiver midpoint. Keep tiny
     // yaw variations to preserve the authoritative shot heading.
@@ -153,7 +155,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
             Math.abs(offset)*2+Math.abs(dx)*.25;
           if(cost>=bestScore)continue;
           bestScore=cost;
-          best={sx,sy,sz,mode,yaw:candidateYaw,roll,
+          best={sx,sy,sz,mode,yaw:candidateYaw,roll:physicalRoll,
             stock,primary:right,support:left,twoHanded:
               rd<=LIMIT&&ld<=LIMIT,primaryReachable:rd<=LIMIT,
             contactError:violation};
