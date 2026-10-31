@@ -1435,13 +1435,15 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       a.lastDoorMethod=n.method??'open';
     }
     a.actionTimer+=dt;
-    if(n.method==='kick'&&a.actionTimer>=required*.53){
+    if(n.method==='kick'&&a.actionTimer>=required*.53&&
+       a.actionTimer-dt<required*.53){
       if(!door.open){
-        door.open=true;door.openedAt=s.seconds;
-        kickDoor(door);
+        const outcome=kickDoor(door,a.p);
+        if(outcome.opened)door.openedAt=s.seconds;
         hear(s,doorCenter(door),340,'kick');
-        notify(s,door.id+' KICKED');
-        battleEvent(s,'door',a,doorCenter(door),door.id+' KICKED');
+        const result=outcome.opened?'FORCED OPEN':'KICK RESISTED';
+        notify(s,door.id+' '+result);
+        battleEvent(s,'door',a,doorCenter(door),door.id+' '+result);
       }
     }
     if(a.actionTimer>=required){
