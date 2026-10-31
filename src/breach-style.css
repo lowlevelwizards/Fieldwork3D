@@ -664,3 +664,41 @@ button:disabled{opacity:.48;cursor:default}
 #tacticalFeedback{position:fixed;inset:0;display:block;
  z-index:3;pointer-events:none;touch-action:none}
 body.replaying #tacticalFeedback{display:none}
+
+/* UI 2.0 / 05: strong primary execution, quieter navigation, compact thumb strip. */
+.top{padding:10px 12px 12px;background:linear-gradient(to bottom,#102020e8,#10202056,transparent)}
+.mode strong{font-size:11px}
+.mode output{font-size:15px}
+.bar{gap:5px;align-items:stretch;bottom:calc(9px + env(safe-area-inset-bottom))}
+.bar .actions{display:grid;grid-template-columns:44px 74px;
+ grid-template-rows:repeat(2,minmax(0,1fr));gap:4px;flex:0 0 auto}
+.bar .actions #back{grid-column:1;grid-row:1}
+.bar .actions #moreOrders{grid-column:1;grid-row:2}
+.bar .actions #play{grid-column:2;grid-row:1/3}
+.bar .actions button{min-width:0;min-height:0;padding:6px;border-radius:7px}
+.bar .actions #back,.bar .actions #moreOrders{min-width:0;min-height:0;
+ display:flex;align-items:center;justify-content:center;background:#263d37;
+ border-color:#496459}
+.bar .actions #back .ui-icon,.bar .actions #moreOrders .ui-icon{
+ width:21px;height:21px}
+.bar .actions #back:disabled{opacity:.3}
+.bar .actions #play{min-width:0;min-height:0;
+ background:#c5b186;border-color:#e0cb9c;color:#172722;
+ display:flex;flex-direction:column;align-items:center;
+ justify-content:center;gap:4px;font:700 14px var(--ui-display)}
+.bar .actions #play .ui-icon{width:23px;height:23px}
+.bar .actions #play.running{background:#d1c3a1}
+.bar .actions #play .go-label{font:700 13px var(--ui-display);line-height:1}
+.bar .unit{background:#20342ff0;border-color:#496459b0}
+@media(max-width:650px){
+ .bar{left:7px;right:7px;gap:4px}
+ .bar .actions{grid-template-columns:40px 64px;grid-template-rows:repeat(2,minmax(0,1fr))}
+ .bar .actions button{min-height:0!important;min-width:0!important;flex:none}
+ .bar .actions #play{min-width:0!important}
+ .bar .unit{min-height:34px}
+}
+@media(max-height:470px) and (max-width:650px){
+ .bar .actions{grid-template-columns:39px 60px}
+ .bar .actions #play .ui-icon{width:18px;height:18px}
+ .bar .unit{min-height:28px}
+}
