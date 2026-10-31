@@ -17,6 +17,7 @@ import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import {routeLineHit} from './breach-route-edit.ts';
 import {placeContextMenu,type AvoidRect,type ScreenPath,type MenuSide} from './breach-context-placement.ts';
 import {shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
+import {heardIntensity} from './breach-acoustics.ts';
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
@@ -137,14 +138,20 @@ if(!fogContext)throw Error('Fog canvas unavailable');
 let fogStamp=-1;
 let audio:AudioContext|null=null;
 let lastSoundShotId=0,lastEventAudio='';
-const playTone=(frequency:number,decay:number,noise=false)=>{
+const playTone=(frequency:number,decay:number,noise=false,
+  level=1,pan=0)=>{
   try{
     if(!audio)return;
     const osc=audio.createOscillator(),gain=audio.createGain();
     osc.type=noise?'sawtooth':'triangle';osc.frequency.value=frequency;
-    gain.gain.setValueAtTime(.065,audio.currentTime);
+    gain.gain.setValueAtTime(.065*Math.max(.02,level),audio.currentTime);
     gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+decay);
-    osc.connect(gain);gain.connect(audio.destination);
+    osc.connect(gain);
+    if(typeof audio.createStereoPanner==='function'){
+      const stereo=audio.createStereoPanner();
+      stereo.pan.value=Math.max(-1,Math.min(1,pan));
+      gain.connect(stereo);stereo.connect(audio.destination);
+    }else gain.connect(audio.destination);
     osc.start();osc.stop(audio.currentTime+decay+.01);
   }catch{/* Audio must never interrupt control. */}
 };
@@ -1689,10 +1696,16 @@ function tick(now:number){
   if(audio&&!replaying)for(const shot of fresh.slice(-3)){
     const firingActor=state.operators.find(a=>a.id===shot.shooterId);
     const weapon=firingActor?.weapon??'carbine';
+    const listener=uid(selected)?.p;
+    const level=listener?heardIntensity(shot.start,listener,
+      WEAPONS[weapon].noise,state.doors,WALLS):1;
+    if(level<.01)continue; // Outside acoustic range is genuinely quiet.
+    const pan=listener?(shot.start.x-listener.x)/210:0;
     playTone(weapon==='shotgun'?82:weapon==='rifle'?112:
-      weapon==='smg'?177:135,weapon==='shotgun'?.19:.095,true);
+      weapon==='smg'?177:135,weapon==='shotgun'?.19:.095,
+      true,level,pan);
     if(shot.hit)playTone(shot.down?75:225,shot.down ? .25 : .10,
-      shot.down);
+      shot.down,level,pan);
   }
   if(fresh.length)lastSoundShotId=fresh.at(-1)!.id;
   const event=state.events.at(-1)??'';
