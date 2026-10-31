@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {addRoomGroutInstances} from './breach-room-instancing.ts';
 import {propDefinition} from './worldgen/asset-catalog.ts';
 import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,activeSite,
   type Pt,type Door} from './breach-core.ts';
@@ -283,12 +284,8 @@ export class TacticalScene3D{
       this.box(group,room.x+room.w/2,-.8,room.y+room.h/2,
         room.w-2,1.6,room.h-2,base,false);
       const grout=this.solid(0x8d9282);
-      for(let x=room.x+22;x<room.x+room.w-8;x+=29)
-        this.box(group,x,-.01,room.y+room.h/2,
-          .65,.1,room.h-7,grout,false);
-      for(let y=room.y+22;y<room.y+room.h-8;y+=29)
-        this.box(group,room.x+room.w/2,-.01,y,
-          room.w-7,.1,.65,grout,false);
+      // One instanced draw per room instead of many tiny floor meshes.
+      addRoomGroutInstances(group,room,grout);
     }
     const wallMat=this.solid(0xa89c81),capMat=this.solid(0x474439);
     const skirting=this.solid(0x39463f);
