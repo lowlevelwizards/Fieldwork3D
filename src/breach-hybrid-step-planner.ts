@@ -3,6 +3,8 @@
  */
 import type {FootstepInput,FootstepState} from './breach-footsteps.ts';
 import {horizontalLegReach} from './breach-leg-geometry.ts';
+import {angleDifference,BOOT_REPLANT_ERROR}
+  from './breach-foot-yaw.ts';
 type Pt={x:number;y:number};
 const clamp=(v:number,a:number,b:number)=>Math.max(a,Math.min(b,v));
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -43,14 +45,17 @@ export function decideHybridStep(
  const reaches=s.feet.map(f=>dist(f.plantedAt,input.position));
  const urgent=Math.max(...reaches)>horizontalLegReach()-2.1;
  const needsSettle=!moving&&reaches[next]>6.8;
- if(!moving&&!pivot&&!needsSettle)return null;
+ const residualYaw=!moving&&Math.abs(angleDifference(
+   s.feet[next].worldYaw,input.rootYaw))>BOOT_REPLANT_ERROR;
+ if(!moving&&!pivot&&!needsSettle&&!residualYaw)return null;
  // Only one step can launch per fixed tick. The accumulator retains a
  // bounded distance debt when a high-speed motor outruns the feet.
  if(moving&&(s.accumulated>=threshold||urgent||
     s.lastStepAt<0&&s.accumulated>=threshold*.36))
    return {index:urgent&&reaches[1-next]>reaches[next]+2?
      (1-next) as 0|1:next,reason:'locomotion',threshold};
- if(pivot&&(turnDelta>.17||s.accumulated>threshold))
+ if((pivot||residualYaw)&&(residualYaw||turnDelta>.17||
+    s.accumulated>threshold))
    return {index:next,reason:'turn',threshold};
  if(needsSettle)return {index:next,reason:'settle',threshold};
  return null;
