@@ -38,10 +38,11 @@ function reachable(site:Site):boolean{
   const previous=activeSite();
   activateSite(site);
   try{
-    if(!site.spawn.every(p=>passable(p)))return false;
-    const start=site.spawn[0];
-    return [site.objective,...site.enemies].every(p=>
-      passable(p)&&route(start,p).length>0);
+    // One authoritative route check catches blocked circulation without
+    // running full A* for every enemy during procedural generation.
+    if(![...site.spawn,...site.enemies,site.objective].every(p=>passable(p)))
+      return false;
+    return route(site.spawn[0],site.objective).length>0;
   }finally{activateSite(previous);}
 }
 export function applyArchetype(site:Site,seed:number):Site{
