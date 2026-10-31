@@ -82,6 +82,7 @@ export type TeamActor=Operator & {
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
   firePolicy:FirePolicy;suppressPoint:Pt|null;focusTargetId:string|null;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
+  lastFireRepositionAt:number;
 };
 export type NoiseEvent={p:Pt;radius:number;time:number;kind:string};
 export type ShotEvent={
@@ -156,7 +157,7 @@ const withActions=(a:Operator):TeamActor=>({
   fireMode:'point',burstCount:0,skills:{...DEFAULT_SKILLS},
   firePolicy:'engage',suppressPoint:null,focusTargetId:null,
   weapon:'carbine',injuryStage:0,defense:null,watch:null,
-  defenseUntil:0,surrendered:false,
+  defenseUntil:0,surrendered:false,lastFireRepositionAt:-100,
 });
 /** Omitted seed keeps 052's historic static study for regression tests.
  * The actual game passes a unique seed on each newly loaded site.
@@ -1415,12 +1416,31 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   if(visible.length){
     const b=visible.sort((x,y)=>d(x.p,a.p)-d(y.p,a.p))[0];
     a.contact=clone(b.p);a.alertUntil=s.seconds+3;a.contacted=true;
-    a.watch=clone(b.p);a.defenseUntil=s.seconds+4;
+    a.watch=clone(b.p);
     if(a.suppression>.65&&a.alert!=='retreat'){
       a.retreatPoint=defensivePosition(a,b.p,s);
       if(a.retreatPoint){a.alert='retreat';a.nav=[];}
     }
-    if(a.alert!=='retreat'){a.alert='engaging';a.nav=[];}
+    // An eye-level contact may be behind solid cover at muzzle height.
+    // Reposition to an actual firing lane instead of staring at it while
+    // repeatedly attempting blocked shots. Reposition has a cooldown.
+    const friends=enemies(s).filter(o=>o!==a&&o.health>0).map(o=>o.p);
+    const lane=assessFireLane(a.p,a.posture==='crouch'?18:26,
+      b.p,aimHeight(b.posture==='crouch'),COVER,WALLS,s.doors,friends);
+    if(lane.blocker!=='clear'&&a.alert!=='retreat'&&
+      s.seconds-a.lastFireRepositionAt>2.6){
+      const candidate=defensivePosition(a,b.p,s);
+      a.lastFireRepositionAt=s.seconds;
+      if(candidate&&d(candidate,a.p)>15){
+        a.defense=candidate;a.alert='cover';a.nav=[];
+        a.defenseUntil=s.seconds+3.2;
+      }
+    }
+    const maneuvering=a.alert==='cover'&&a.defense&&
+      d(a.p,a.defense)>10&&s.seconds<a.defenseUntil;
+    if(a.alert!=='retreat'&&!maneuvering){
+      a.alert='engaging';a.nav=[];
+    }
   }else if(s.seconds>a.alertUntil&&a.alert!=='idle'&&
     a.alert!=='retreat'&&a.alert!=='cover'){
     a.alert='investigating';a.contact=a.heard??a.contact;
@@ -1434,6 +1454,14 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.posture='crouch';
   else if(a.velocity>20||a.suppression<.12||a.alert==='engaging')
     a.posture='stand';
+  // Crouching behind chest-high furniture can make a visible contact
+  // impossible to shoot. Stand up when that alone restores the muzzle lane.
+  if(a.posture==='crouch'&&visible.length){
+    const b=visible[0],height=aimHeight(b.posture==='crouch');
+    const low=assessFireLane(a.p,18,b.p,height,COVER,WALLS,s.doors);
+    const high=assessFireLane(a.p,26,b.p,height,COVER,WALLS,s.doors);
+    if(low.blocker==='cover'&&high.blocker==='clear')a.posture='stand';
+  }
   const newest=[...s.noise].reverse().find(n=>
     n.time>a.lastNoiseAt&&s.seconds-n.time<1&&d(a.p,n.p)<n.radius);
   if(newest&&!visible.length&&a.alert!=='retreat'){
@@ -1555,7 +1583,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     a.suppression,a.injuryStage,a.recoil)*.9;
   const yaw=shotYaw(a.weaponYaw,spread,random(s),random(s));
   const muzzle=muzzleAtShot({x:a.p.x,z:a.p.y,
-    heading:a.heading,weaponYaw:yaw,weapon:a.weapon,aim:a.aim,
+    heading:a.heading,weaponYaw:yaw,weapon:a.weapon,aim:a.aim,posture:a.posture,
     velocity:a.velocity,recoil:a.recoil});
   const from={x:muzzle.x,y:muzzle.z};
   const far=muzzleEndpoint(from,yaw,Math.max(40,d(from,point)));
@@ -1658,7 +1686,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   // Hold the shot rather than dumping ammunition into adjacent cover or
   // risking a friendly operator standing in the near firing corridor.
   const sightMuzzle=muzzleAtShot({x:a.p.x,z:a.p.y,heading:a.heading,
-    weaponYaw:a.weaponYaw,weapon:a.weapon,aim:a.aim,
+    weaponYaw:a.weaponYaw,weapon:a.weapon,aim:a.aim,posture:a.posture,
     velocity:a.velocity,recoil:a.recoil});
   const friends=s.operators.filter(o=>o!==a&&o.health>0&&
     o.side===a.side).map(o=>o.p);
@@ -1684,7 +1712,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   // happens *before* muzzle construction, not as an invisible post-shot roll.
   const yaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
   const muzzle=muzzleAtShot({x:a.p.x,z:a.p.y,heading:a.heading,
-    weaponYaw:yaw,weapon:a.weapon,aim:a.aim,
+    weaponYaw:yaw,weapon:a.weapon,aim:a.aim,posture:a.posture,
     velocity:a.velocity,recoil:a.recoil});
   const muzzlePoint={x:muzzle.x,y:muzzle.z};
   // Spread may put another teammate in the actual bullet corridor.
