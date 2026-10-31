@@ -80,7 +80,8 @@ export type TeamActor=Operator & {
   lastDoorId:string|null;lastDoorMethod:DoorMethod;
   stride:number;weapon:WeaponId;injuryStage:number;
   weaponYaw:number;stability:number;recoil:number;lastShotAt:number;
-  lastBashAt:number;lastLaneWarnAt:number;lastFireBlock:FireBlock;
+  lastBashAt:number;lastBashRole:'push'|'receive'|null;
+  lastLaneWarnAt:number;lastFireBlock:FireBlock;
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
   firePolicy:FirePolicy;suppressPoint:Pt|null;focusTargetId:string|null;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
@@ -156,7 +157,8 @@ const withActions=(a:Operator):TeamActor=>({
   lastThrowAt:-100,lastDoorAt:-100,lastDoorId:null,
   lastDoorMethod:'open',stride:0,
   weaponYaw:a.heading,stability:.55,recoil:0,lastShotAt:-100,
-  lastBashAt:-100,lastLaneWarnAt:-100,lastFireBlock:'clear',
+  lastBashAt:-100,lastBashRole:null,
+  lastLaneWarnAt:-100,lastFireBlock:'clear',
   fireMode:'point',burstCount:0,skills:{...DEFAULT_SKILLS},
   firePolicy:'engage',suppressPoint:null,focusTargetId:null,
   weapon:'carbine',injuryStage:0,defense:null,watch:null,
@@ -1963,7 +1965,8 @@ function resolveCloseContact(s:Session){
           d(o.p,pushed)<11))continue;
         b.priorP=clone(b.p);b.p=pushed;break;
       }
-      a.lastBashAt=s.seconds;b.lastBashAt=s.seconds;
+      a.lastBashAt=s.seconds;a.lastBashRole='push';
+      b.lastBashAt=s.seconds;b.lastBashRole='receive';
       b.fireCd=Math.max(b.fireCd,.62);b.aim=Math.max(0,b.aim-.65);
       b.stability=Math.max(0,b.stability-.3);
       b.suppression=Math.min(1,b.suppression+.6);
