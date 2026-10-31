@@ -430,7 +430,7 @@ function updateContext(){
   ui.context.style.top=placement.y+'px';
   ui.context.style.right='auto';
   ui.context.style.bottom='auto';
-  ui.context.style.transform='none';
+  // Motion is CSS-owned; no per-frame transform writes.
 }
 ui.context.addEventListener('click',event=>{
   const button=(event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]');
