@@ -57,7 +57,7 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
   const interval=hybridStepThreshold(input);
   s.lastStanceWidth=width;
   s.mode=classifyLocomotion(travelled/Math.max(dt,1/60),
-    facing,travel,input.turning,s.mode);
+    facing,input.travelYaw,input.turning,s.mode);
   const distanceStep=travelled+(travelled<.04?turning*8.5:0);
   s.accumulated=Math.min(interval*1.35,s.accumulated+distanceStep);
   // Advance each physical contact phase exactly once on the fixed timeline.
