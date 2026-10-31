@@ -818,18 +818,33 @@ export function advanceReload(s:Session,a:TeamActor,dt:number){
    notify(s,a.name+' RELOADED');
  }
 }
+/** A tap near a jamb is aiming intent, not a demand for subpixel precision.
+ * Snap only to a small, genuinely walkable/throw-reachable nearby patch. */
+function snapFlashTarget(from:Pt,target:Pt,doors:Door[],
+  opened:string[]):Pt|null{
+  const choices:Pt[]=[target];
+  for(const r of [5,9,13,17])
+    for(let i=0;i<12;i++){
+      const angle=i*Math.PI/6;
+      choices.push({x:target.x+Math.cos(angle)*r,
+        y:target.y+Math.sin(angle)*r});
+    }
+  return choices.find(p=>passable(p,3.5)&&
+    validateThrow(from,p,doors,opened).valid)??null;
+}
 /** Two team-wide flashbangs per mission. Throwing is an authored timed order. */
 export function planFlash(s:Session,id:string,target:Pt):boolean{
   const a=party(s,id);
-  if(!a||!canEdit(s)||!passable(target))return false;
+  if(!a||!canEdit(s))return false;
   const queued=team(s).reduce((n,x)=>n+
     x.plan.filter(node=>node.kind==='flash').length,0);
   const start=finalPoint(a);
-  if(queued>=s.flashRemaining||d(start,target)>210||d(start,target)<16)return false;
+  if(queued>=s.flashRemaining)return false;
   const plannedOpen=a.plan.filter(n=>n.kind==='door'&&n.method!=='hold')
     .map(n=>n.doorId??'');
-  if(!validateThrow(start,target,s.doors,plannedOpen).valid)return false;
-  return addNode(s,id,'flash',start,{aimPoint:clone(target)});
+  const landing=snapFlashTarget(start,target,s.doors,plannedOpen);
+  if(!landing)return false;
+  return addNode(s,id,'flash',start,{aimPoint:clone(landing)});
 }
 /** Door-context FLASH: one undoable sequence. OPEN is inserted ahead of
  * the throw; never auto-enters. Target validation treats only this door
@@ -837,7 +852,7 @@ export function planFlash(s:Session,id:string,target:Pt):boolean{
 export function planDoorFlash(s:Session,id:string,doorId:string,target:Pt,
   afterNodeId?:number):boolean{
   const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
-  if(!a||!door||!canEdit(s)||!passable(target)||
+  if(!a||!door||!canEdit(s)||
     !doorKnown(s.intel,doorId))return false;
   const queued=team(s).reduce((sum,x)=>sum+
     x.plan.filter(n=>n.kind==='flash').length,0);
@@ -848,34 +863,35 @@ export function planDoorFlash(s:Session,id:string,doorId:string,target:Pt,
   const start=index>0?a.plan[index-1].p:a.p;
   const approached=doorReachable(start,door)?clone(start):doorApproach(start,door);
   if(!approached||!passable(approached)||
-     !route(start,approached).length||
-     d(approached,target)>210||d(approached,target)<16)return false;
+     !route(start,approached).length)return false;
   const before=a.plan.slice(0,index);
   const opened=before.filter(n=>n.kind==='door'&&n.method!=='hold')
     .map(n=>n.doorId??'');
   const needsOpen=!opened.includes(doorId)&&
     (s.intel.doorMemory.get(doorId)??0)<.72;
-  if(!validateThrow(approached,target,s.doors,
-    needsOpen?[...opened,doorId]:opened).valid)return false;
+  const landing=snapFlashTarget(approached,target,s.doors,
+    needsOpen?[...opened,doorId]:opened);
+  if(!landing)return false;
   return edit(s,a,()=>{
     const added:PlanNode[]=[];
     if(needsOpen)added.push({id:s.nextId++,kind:'door',
       p:clone(approached),doorId,method:'open'});
     added.push({id:s.nextId++,kind:'flash',p:clone(approached),
-      aimPoint:clone(target)});
+      aimPoint:clone(landing)});
     a.plan.splice(index,0,...added);
   });
 }
 /** Dragging a flash marker changes its landing point, not the thrower's position. */
 export function moveFlashTarget(s:Session,id:string,nodeId:number,p:Pt){
-  const a=party(s,id);if(!a||!canEdit(s)||!passable(p))return false;
+  const a=party(s,id);if(!a||!canEdit(s))return false;
   const candidate=a.plan.find(n=>n.id===nodeId&&n.kind==='flash');
   if(!candidate)return false;
   const index=a.plan.indexOf(candidate);
   const opened=a.plan.slice(0,index).filter(n=>n.kind==='door'&&
     n.method!=='hold').map(n=>n.doorId??'');
-  if(!validateThrow(candidate.p,p,s.doors,opened).valid)return false;
-  return edit(s,a,()=>{candidate.aimPoint=clone(p);});
+  const landing=snapFlashTarget(candidate.p,p,s.doors,opened);
+  if(!landing)return false;
+  return edit(s,a,()=>{candidate.aimPoint=clone(landing);});
 }
 export function flashTrajectory(s:Session,a:TeamActor,node:PlanNode):ThrowPath|null{
   if(node.kind!=='flash'||!node.aimPoint)return null;
