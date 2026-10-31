@@ -54,6 +54,11 @@ function doorSweepArc(door:Door,length:number):THREE.Group{
   return group;
 }
 export class TacticalScene3D{
+  /** Counts submitted WebGL work; GPU timings require a separate timer. */
+  performanceStats(){
+    const info=this.renderer.info.render;
+    return {calls:info.calls,triangles:info.triangles};
+  }
   readonly renderer:THREE.WebGLRenderer;
   readonly scene=new THREE.Scene();
   readonly camera=new THREE.OrthographicCamera(-320,320,370,-370,.1,2800);

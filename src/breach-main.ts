@@ -31,6 +31,7 @@ import {INTEL_MODES,doorKnown,wallKnown,roomKnown,
   routeWithIntel,intelPassable,type IntelMode} from './breach-intel.ts';
 import {orderFailureText} from './breach-nav-diagnostics.ts';
 import {routeWithSqueezeIntel} from './breach-squeeze-route.ts';
+import {FrameMeter} from './breach-perf.ts';
 import './breach-style.css';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {contextActionChoices} from './ui/context-actions.ts';
@@ -2140,15 +2141,17 @@ if(perfOverlay){
     'pointer-events:none;white-space:pre;max-width:50vw';
   document.body.append(perfOverlay);
 }
-let perfFrames=0,perfFrameSum=0,perfSimSum=0,perfRenderSum=0,perfMax=0;
+const frameMeter=perfOverlay?new FrameMeter():null;
 function tick(now:number){
   const perfStart=perfOverlay?performance.now():0;
   const dt=Math.min(.08,Math.max(0,(now-last)/1000));last=now;
+  let simSteps=0;
   if(!replaying&&state.phase==='running'){
     accum+=dt;
     while(accum>=1/60){
       previousRenderActors=renderSnapshot(state.operators);
       stepSession(state,1/60);
+      simSteps++;
       recorder.capture(state,isMissionTerminal(state));
       accum-=1/60;
     }
@@ -2212,6 +2215,7 @@ function tick(now:number){
         recorder.motion.presentation(Math.max(0,
           state.seconds-(1-Math.min(1,accum*60))/60),
           state.operators.map(a=>a.id)):null);
+  const overlayBegin=perfOverlay?performance.now():0;
   render();
   // One local, intelligible pulse per distinct blocked episode.
   for(const actor of team(state)){
@@ -2235,17 +2239,19 @@ function tick(now:number){
       performance.now(),preview);
   }
   updateContext();advanceContextPalette(dt);
-  if(perfOverlay){
-    const end=performance.now(),frame=end-perfStart;
-    perfFrames++;perfFrameSum+=frame;perfSimSum+=perfRenderStart-perfStart;
-    perfRenderSum+=end-perfRenderStart;perfMax=Math.max(perfMax,frame);
-    if(perfFrames>=45){
-      perfOverlay.textContent='FRAME '+(perfFrameSum/perfFrames).toFixed(1)+
-        'ms / spike '+perfMax.toFixed(1)+'ms\\nSIM '+
-        (perfSimSum/perfFrames).toFixed(1)+'ms / RENDER '+
-        (perfRenderSum/perfFrames).toFixed(1)+'ms';
-      perfFrames=0;perfFrameSum=0;perfSimSum=0;perfRenderSum=0;perfMax=0;
-    }
+  if(frameMeter&&perfOverlay){
+    const end=performance.now(),stats=stage?.performanceStats();
+    frameMeter.add({frame:end-perfStart,sim:perfRenderStart-perfStart,
+      scene:overlayBegin-perfRenderStart,overlay:end-overlayBegin,
+      steps:simSteps,draws:stats?.calls??0,triangles:stats?.triangles??0});
+    const m=frameMeter.summary();
+    if(Math.floor(now/750)!==Math.floor((now-dt*1000)/750))
+      perfOverlay.textContent='FRAME '+m.p50.toFixed(1)+'ms · P95 '+
+        m.p95.toFixed(1)+' · MAX '+m.worst.toFixed(1)+
+        '\\nSIM '+m.simulation.toFixed(1)+'ms / '+m.steps.toFixed(1)+
+        ' ticks · SCENE '+m.scene.toFixed(1)+'ms'+
+        '\\nOVERLAY '+m.overlay.toFixed(1)+'ms · DRAWS '+
+        m.draws.toFixed(0)+' · TRI '+m.triangles.toFixed(0);
   }
   requestAnimationFrame(tick);
 }
