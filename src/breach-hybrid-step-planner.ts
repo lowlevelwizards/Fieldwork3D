@@ -53,7 +53,7 @@ export function decideHybridStep(
  return null;
 }
 export function balancedLanding(
- requested:Pt,hip:Pt,other:Pt,
+ requested:Pt,hip:Pt,
  maxReach=horizontalLegReach()-.7):Pt{
  const dx=requested.x-hip.x,dy=requested.y-hip.y;
  const len=Math.max(1e-6,Math.hypot(dx,dy));
