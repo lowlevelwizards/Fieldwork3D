@@ -7,15 +7,16 @@ export type Handling='low'|'high'|'ready'|'point'|'ads'|'short';
 export type WeaponGrip={lengthScale:number;stockX:number;
   primaryX:number;primaryY:number;supportX:number;supportY:number};
 export const GRIPS:Record<WeaponId,WeaponGrip>={
-  // Buttstock block is centered at -10 with width 9: its rear face
-  // is -14.5, not -10. Hand placement remains on the actual gun mesh.
-  carbine:{lengthScale:1,stockX:-14.5,primaryX:-1,primaryY:-2,
+  // Buttstock block is centered at -10 with width 5: its real rear face
+  // is -12.5. Modest weapon-length normalization keeps both hands inside
+  // operator IK reach while retaining the chunky low-poly silhouette.
+  carbine:{lengthScale:.82,stockX:-12.5,primaryX:-1,primaryY:-2,
     supportX:1.7,supportY:-1.5},
-  smg:{lengthScale:.72,stockX:-14.5,primaryX:-1,primaryY:-2,
+  smg:{lengthScale:.70,stockX:-12.5,primaryX:-1,primaryY:-2,
     supportX:2.4,supportY:-1},
-  rifle:{lengthScale:1.19,stockX:-14.5,primaryX:-1,primaryY:-2,
+  rifle:{lengthScale:.90,stockX:-12.5,primaryX:-1,primaryY:-2,
     supportX:.35,supportY:-1.5},
-  shotgun:{lengthScale:1.08,stockX:-14.5,primaryX:-1,primaryY:-2,
+  shotgun:{lengthScale:.88,stockX:-12.5,primaryX:-1,primaryY:-2,
     supportX:1,supportY:-2},
 };
 export const weaponGrips=(id:WeaponId):WeaponGrip=>GRIPS[id];
