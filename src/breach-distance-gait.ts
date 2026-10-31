@@ -15,6 +15,10 @@ type Pt={x:number;y:number};
 const clone=(p:Pt)=>({x:p.x,y:p.y});
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
+const lateral=(p:Pt,yaw:number,side:number,width:number):Pt=>({
+  x:p.x-Math.sin(yaw)*side*width,
+  y:p.y+Math.cos(yaw)*side*width
+});
 export type DistanceGaitState=FootstepScheduler&{
   accumulated:number;lastFacing:number;starvations:number;
   reachViolations:number;stepsTaken:number;lastStanceWidth:number;
@@ -52,8 +56,6 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
   const travelled=input.blocked?0:distance(input.position,s.lastPosition);
   const turning=Math.abs(Math.atan2(
     Math.sin(facing-s.lastFacing),Math.cos(facing-s.lastFacing)));
-  const running=input.gait==='run',deliberate=input.gait==='pie',
-    squeeze=input.gait==='squeeze';
   const interval=hybridStepThreshold(input);
   s.lastStanceWidth=width;
   s.mode=classifyLocomotion(travelled/Math.max(dt,1/60),
