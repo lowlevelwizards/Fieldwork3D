@@ -1541,6 +1541,56 @@ function strikeSurface(from:Pt,aimed:Pt,s:Session,
   return {end:{x:from.x+(aimed.x-from.x)*best,
     y:from.y+(aimed.y-from.y)*best},surface:material};
 }
+/** Suppression is an authored area instruction: deliberate misses consume
+ * real ammunition and can unsettle defenders, but never inflict an
+ * omniscient hit on an unseen actor. */
+function fireSuppression(s:Session,a:TeamActor,dt:number){
+  const point=a.suppressPoint;
+  if(!point||a.fireCd>0)return;
+  a.weaponYaw=approachAngle(a.weaponYaw,angle(a.p,point),dt*4.5);
+  a.aim=Math.min(1,a.aim+dt*1.3);
+  if(a.aim<.65||Math.abs(angleDifference(a.weaponYaw,
+    angle(a.p,point)))>.18)return;
+  const spread=dispersion(a.weapon,'ads',a.stability,a.velocity>10,
+    a.suppression,a.injuryStage,a.recoil)*.9;
+  const yaw=shotYaw(a.weaponYaw,spread,random(s),random(s));
+  const muzzle=muzzleAtShot({x:a.p.x,z:a.p.y,
+    heading:a.heading,weaponYaw:yaw,weapon:a.weapon,aim:a.aim,
+    velocity:a.velocity,recoil:a.recoil});
+  const from={x:muzzle.x,y:muzzle.z};
+  const far=muzzleEndpoint(from,yaw,Math.max(40,d(from,point)));
+  const friends=team(s).filter(o=>o!==a&&o.health>0).map(o=>o.p);
+  if(assessFireLane(from,muzzle.y,far,14,COVER,WALLS,s.doors,
+    friends).blocker==='friendly')return;
+  const impact=strikeSurface(from,far,s,muzzle.y,14);
+  a.fireCd=WEAPONS[a.weapon].interval*1.6;
+  a.magazine--;a.shots++;a.lastShotAt=s.seconds;
+  a.recoil=Math.min(.9,a.recoil+BALLISTICS[a.weapon].recoilKick);
+  a.stability=Math.max(0,a.stability-.13);
+  const shotId=s.nextShotId++;
+  const height=impact.surface==='dust'?1:14;
+  s.shots.push({id:shotId,shooterId:a.id,targetId:null,
+    start:from,end:impact.end,age:0,hit:false,side:a.side,
+    shotYaw:yaw,mode:'ads',spread,muzzleHeight:muzzle.y,
+    impactHeight:height,firedAt:s.seconds,
+    healthBefore:0,healthAfter:0,down:false,surface:impact.surface});
+  s.impactMarks.push({id:s.nextEffectId++,p:clone(impact.end),
+    surface:impact.surface,height,age:0});
+  if(s.impactMarks.length>92)s.impactMarks.shift();
+  s.casings.push({id:shotId,at:s.seconds,weapon:a.weapon,side:a.side,
+    x:muzzle.x-4*Math.cos(yaw),z:muzzle.z-4*Math.sin(yaw),
+    y:muzzle.y-3,heading:yaw});
+  if(s.casings.length>CASING_LIMIT)s.casings.shift();
+  s.sparks.push({p:clone(a.p),side:a.side,age:0});
+  hear(s,a.p,WEAPONS[a.weapon].noise,'gunshot');
+  battleEvent(s,'shot',a,a.p,a.name+' SUPPRESSING AREA');
+  for(const e of enemies(s)){
+    if(e.health<=0||d(e.p,impact.end)>50)continue;
+    if(WALLS.some(w=>segmentsCross({a:impact.end,b:e.p},w)))continue;
+    e.suppression=Math.min(1,e.suppression+.16);
+    e.morale=Math.max(0,e.morale-.025);
+  }
+}
 function fire(s:Session,a:TeamActor,dt:number){
   if(a.health<=0){
     a.reload=0;a.reloadMode=null;return;
@@ -1563,9 +1613,23 @@ function fire(s:Session,a:TeamActor,dt:number){
   }
   if(!a.magazine){beginReload(s,a);return;}
   if(a.flashUntil>s.seconds){a.aim=0;return;}
+  if(a.side==='blue'){
+    if(a.firePolicy==='hold'){
+      a.aim=Math.max(0,a.aim-dt*.35);return;
+    }
+    if(a.firePolicy==='return'&&a.suppression<.10&&
+      s.seconds-a.lastHitAt>3){
+      a.aim=Math.max(0,a.aim-dt*.35);return;
+    }
+    if(a.firePolicy==='suppress'){
+      fireSuppression(s,a,dt);return;
+    }
+  }
   const enemiesOf=a.side==='blue'?enemies(s):team(s);
-  const target=enemiesOf.filter(e=>inSight(a,e,s))
-    .sort((x,y)=>d(a.p,x.p)-d(a.p,y.p))[0];
+  const visible=enemiesOf.filter(e=>inSight(a,e,s));
+  const target=a.side==='blue'&&a.firePolicy==='focus'?
+    visible.find(e=>e.id===a.focusTargetId):
+    visible.sort((x,y)=>d(a.p,x.p)-d(a.p,y.p))[0];
   if(!target){
     a.targetId=null;a.aim=Math.max(0,a.aim-dt*.6);
     a.weaponYaw=approachAngle(a.weaponYaw,a.heading,dt*profile.turnSpeed);
