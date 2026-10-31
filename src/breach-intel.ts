@@ -105,8 +105,10 @@ export function intelPassable(p:Pt,intel:IntelState,clearance=8):boolean{
    Math.abs(p.y-o.y)<o.h/2+clearance))return false;
  return true;
 }
-export const routeWithIntel=(intel:IntelState,from:Pt,to:Pt)=>
- route(from,to,p=>intelPassable(p,intel));
+export const routeWithIntel=(intel:IntelState,from:Pt,to:Pt):Pt[]=>{
+ const normal=route(from,to,p=>intelPassable(p,intel));
+ return normal.length?normal:route(from,to,p=>intelPassable(p,intel,5.4));
+};
 export function intelFogLevel(intel:IntelState,site:Site|undefined,
   p:Pt,currentlyVisible:boolean,everSeen:boolean){
  if(currentlyVisible)return 0;

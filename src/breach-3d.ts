@@ -830,7 +830,8 @@ export class TacticalScene3D{
         pelvisYaw:replay?.pelvisYaw[actor.id]??liveMotion?.pelvisYaw[actor.id],
         travelYaw:replay?.travelYaw[actor.id],
         posture:actor.posture,injury:actor.injuryStage,weapon:actor.weapon,
-        gait:actor.plan[0]?.kind==='pie'?'pie':
+        gait:actor.squeezing?'squeeze':
+          actor.plan[0]?.kind==='pie'?'pie':
           actor.pace==='run'||actor.plan[0]?.moveMode==='sprint'?
             'run':'walk',
         reload:actor.reload,reloadDuration,
@@ -845,7 +846,8 @@ export class TacticalScene3D{
         aiming:actor.aim>.20,turning:actor.turning,firing:!!firing,
         aimBlend:actor.aim,recoil:actor.recoil*6,
         shotHeading:drawActor.weaponYaw,hitAge,hitFade,downProgress,
-        handlingIntent:actor.pace==='run'?'run':
+        handlingIntent:actor.squeezing?'squeeze':
+          actor.pace==='run'?'run':
           actor.plan[0]?.kind==='pie'?'pie':
           actor.plan[0]?.kind==='door'?'door':
           actor.aimInstruction?'look':

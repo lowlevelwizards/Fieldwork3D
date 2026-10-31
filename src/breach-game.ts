@@ -34,7 +34,7 @@ import {doorContactImpulse,passageWait,type PassageActor}
   from './breach-passage.ts';
 import {diagnoseMovement,projectReachableGoal,type Blocker}
   from './breach-nav-diagnostics.ts';
-import {sweptBodyClear} from './breach-navigation.ts';
+import {sweptBodyClear,sweptProfileClear,squeezeFacing,bodyClear} from './breach-navigation.ts';
 import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
   rayHitsActor,muzzleEndpoint,recoverWeapon,handlingInstability,type FiringMode} from './breach-ballistics.ts';
@@ -88,6 +88,7 @@ export type TeamActor=Operator & {
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
   firePolicy:FirePolicy;suppressPoint:Pt|null;focusTargetId:string|null;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
+  squeezing?:boolean;squeezeHeading?:number;
   lastFireRepositionAt:number;
 };
 export type NoiseEvent={p:Pt;radius:number;time:number;kind:string};
@@ -166,6 +167,7 @@ const withActions=(a:Operator):TeamActor=>({
   firePolicy:'engage',suppressPoint:null,focusTargetId:null,
   weapon:'carbine',injuryStage:0,defense:null,watch:null,
   defenseUntil:0,surrendered:false,lastFireRepositionAt:-100,
+  squeezing:false,squeezeHeading:a.heading,
 });
 /** Omitted seed keeps 052's historic static study for regression tests.
  * The actual game passes a unique seed on each newly loaded site.
@@ -267,7 +269,8 @@ function pathFor(a:TeamActor){
   const points:Pt[]=[];let from=a.p;
   for(const n of a.plan){
     if(n.kind==='move'||n.kind==='door'){
-      const segment=route(from,n.p);
+      const segment=route(from,n.p).length?route(from,n.p):
+        route(from,n.p,p=>passable(p,5.4));
       if(!segment.length)continue;
       points.push(...segment);from=n.p;
     }else if(n.kind==='pie'&&n.arc?.length){
@@ -288,7 +291,7 @@ function edit(s:Session,a:TeamActor,fn:()=>void){
 export function addNode(s:Session,id:string,kind:PlanKind,p:Pt,
   extra:Partial<PlanNode>={}):boolean{
   const a=party(s,id);if(!a||!canEdit(s))return false;
-  if(kind==='move'&&!intelPassable(p,s.intel))return false;
+  if(kind==='move'&&!intelPassable(p,s.intel,5.4))return false;
   if(kind==='move'&&!routeWithIntel(s.intel,finalPoint(a),p).length)return false;
   if(kind==='door'&&(!passable(p)||!route(finalPoint(a),p).length))return false;
   return edit(s,a,()=>{
@@ -301,7 +304,7 @@ export function planMove(s:Session,id:string,p:Pt,strafe=false){
   const extra=strafe?{moveMode:'strafe' as const,
     facing:[...a.plan].reverse().find(n=>n.facing!==undefined)?.facing??a.heading}:{};
   const target=projectReachableGoal(finalPoint(a),p,{
-    canStand:at=>intelPassable(at,s.intel),
+    canStand:at=>intelPassable(at,s.intel,5.4),
     routeTo:(from,to)=>routeWithIntel(s.intel,from,to),
   });
   if(!target)return false;
@@ -315,7 +318,7 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
   let from=finalPoint(a);
   const facing=[...a.plan].reverse().find(n=>n.facing!==undefined)?.facing??a.heading;
   for(const point of points.slice(0,60)){
-    if(d(from,point)<20||!intelPassable(point,s.intel)||
+    if(d(from,point)<20||!intelPassable(point,s.intel,5.4)||
       !routeWithIntel(s.intel,from,point).length)continue;
     proposed.push({id:s.nextId+proposed.length,kind:'move',p:clone(point),
       ...(strafe?{moveMode:'strafe' as const,facing}:{})});
@@ -438,7 +441,7 @@ function validEditedPlan(s:Session,start:Pt,proposed:PlanNode[]){
       if(!arc.length)return false;
       n.arc=arc;n.p=clone(arc[arc.length-1]);from=n.p;
     }else if(n.kind==='move'||n.kind==='door'){
-      if(n.kind==='move'?!intelPassable(n.p,s.intel)||
+      if(n.kind==='move'?!intelPassable(n.p,s.intel,5.4)||
         !routeWithIntel(s.intel,from,n.p).length:
         !passable(n.p)||!route(from,n.p).length)return false;
       from=n.p;
@@ -457,7 +460,7 @@ export function movePlanNode(s:Session,id:string,nodeId:number,p:Pt){
   if(changed.kind==='move'){
     const from=index>0?proposed[index-1].p:a.p;
     const target=projectReachableGoal(from,p,{
-      canStand:at=>intelPassable(at,s.intel),
+      canStand:at=>intelPassable(at,s.intel,5.4),
       routeTo:(origin,goal)=>routeWithIntel(s.intel,origin,goal),
     });
     if(!target)return false;
@@ -485,7 +488,7 @@ export function insertPlanNode(s:Session,id:string,index:number,p:Pt){
   const position=clamp(index,0,a.plan.length);
   const from=position>0?a.plan[position-1].p:a.p;
   const target=projectReachableGoal(from,p,{
-    canStand:at=>intelPassable(at,s.intel),
+    canStand:at=>intelPassable(at,s.intel,5.4),
     routeTo:(origin,goal)=>routeWithIntel(s.intel,origin,goal),
   });
   if(!target)return false;
@@ -1108,7 +1111,9 @@ function stepYield(s:Session,a:TeamActor,dt:number):boolean{
 }
 function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   if(!a.nav.length){
-    a.nav=a.side==='blue'?routeWithIntel(s.intel,a.p,p):route(a.p,p);
+    a.nav=a.side==='blue'?routeWithIntel(s.intel,a.p,p):
+      (route(a.p,p).length?route(a.p,p):
+        route(a.p,p,at=>passable(at,5.4)));
     if(!a.nav.length){
       // A failed route is a stationary brace, not phantom walking speed.
       a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
@@ -1122,6 +1127,29 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const next=a.nav[0],gap=d(a.p,next);
   if(gap<3){a.nav.shift();return false;}
   const direction=angle(a.p,next);
+  // A real sideways torso orientation is required before narrow travel.
+  const narrowYaw=squeezeFacing(direction);
+  const probe={x:a.p.x+Math.cos(direction)*15,
+    y:a.p.y+Math.sin(direction)*15};
+  const normalAhead=sweptBodyClear(a.p,probe,s.doors);
+  const narrowAhead=sweptProfileClear(a.p,probe,s.doors,
+    narrowYaw,'squeeze');
+  if(!a.squeezing&&!normalAhead&&narrowAhead){
+    a.squeezing=true;a.squeezeHeading=narrowYaw;
+    a.velocity=0;return true;
+  }
+  if(a.squeezing){
+    if(normalAhead&&bodyClear(a.p,s.doors)){
+      a.squeezing=false;
+    }else{
+      a.squeezeHeading=narrowYaw;
+      const remaining=angleDifference(a.heading,narrowYaw);
+      a.heading+=clamp(remaining,-dt*5,dt*5);
+      a.turning=Math.abs(remaining);
+      if(Math.abs(remaining)>.14){a.velocity=0;return true;}
+    }
+  }
+
   // Ordinary cautious travel must fit within achievable step cadence.
   // Running retains the faster existing speed via the pace multiplier.
   const movingSpeed=a.side==='blue'?53:48;
@@ -1134,7 +1162,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const lateral=Math.abs(Math.sin(direction-a.heading));
   const sideLimit=(38+37*(1-lateral*lateral))*
     (a.posture==='crouch'?.58:1)*injurySpeed(a.injuryStage);
-  const desired=Math.min(requested,sideLimit);
+  const desired=Math.min(requested,sideLimit,a.squeezing?19:Infinity);
   a.velocity+=(desired-a.velocity)*Math.min(1,dt*6);
   const advance=Math.min(gap,a.velocity*dt);
   const move={x:a.p.x+Math.cos(direction)*advance,
@@ -1202,12 +1230,12 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       x:move.x+tangent.x*advance*factor,
       y:move.y+tangent.y*advance*factor,
     })).filter(pos=>d(pos,nearPeer.p)>d(move,nearPeer.p)+2&&
-      sweptBodyClear(a.p,pos,s.doors));
+      sweptProfileClear(a.p,pos,s.doors,a.squeezeHeading??direction,a.squeezing?'squeeze':'normal'));
     if(choices.length)desiredMove=choices.sort((u,v)=>
       d(u,next)-d(v,next))[0];
   }
   // Try nearby route repair for actor jams, furniture, and door leaves.
-  if((!sweptBodyClear(a.p,desiredMove,s.doors)||blocking)&&
+  if((!sweptProfileClear(a.p,desiredMove,s.doors,a.squeezeHeading??direction,a.squeezing?'squeeze':'normal')||blocking)&&
     a.blockedTime>.30&&s.seconds-a.lastNavRepairAt>.6){
     const candidate=localDetour(a.p,next,s.doors,s.operators
       .filter(o=>o!==a&&o.health>0).map(o=>o.p));
@@ -1217,7 +1245,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       return true;
     }
   }
-  if(!closed&&!blocking&&sweptBodyClear(a.p,desiredMove,s.doors)){
+  if(!closed&&!blocking&&sweptProfileClear(a.p,desiredMove,s.doors,a.squeezeHeading??direction,a.squeezing?'squeeze':'normal')){
     a.priorP=clone(a.p);a.p=desiredMove;a.blockedTime=0;
     a.lastBlocker='clear';
     if(a.side==='blue'&&s.seconds-s.movementNoiseAt>.54){
@@ -1331,6 +1359,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       cautious?.70:1);
     // Unmodified movement follows its route, while an explicit fixed STRAFE
     // or PIE/TRACK instruction persists until LOOK releases it.
+    if(a.squeezing)return;
     const held=aimHeading(a);
     if(held!==null)rotate(a,held,dt);
     else if(n.kind==='move'&&n.moveMode==='strafe')
@@ -1705,6 +1734,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   }
 }
 function fire(s:Session,a:TeamActor,dt:number){
+  if(a.squeezing){a.aim=Math.max(0,a.aim-dt);return;}
   if(a.health<=0){
     a.reload=0;a.reloadMode=null;return;
   }
