@@ -14,7 +14,7 @@ import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator
 import {WEAPONS} from './breach-combat.ts';
 import {casingAt,CASING_LIMIT,impactProfile} from './breach-effects.ts';
 import {sampleThrow} from './breach-flash.ts';
-import {paintFogMask,paintOccupiedRoomContext,occupiedFogRooms,FOG_WIDTH,FOG_HEIGHT} from './breach-fog-mask.ts';
+import {paintFogMask,paintOccupiedRoomContext,occupiedFogRooms,FOG_WIDTH,FOG_HEIGHT,maskSize} from './breach-fog-mask.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {interpolatedActor,type RenderFrame}
   from './breach-frame-interpolation.ts';
@@ -235,6 +235,17 @@ export class TacticalScene3D{
       }
       cache.clear();
     }
+    // Resize fog in the same authoritative coordinates used by nav/camera.
+    const bounds=site?.bounds??{minX:0,minY:0,maxX:W,maxY:H};
+    const fogSize=maskSize(site);
+    if(this.fogCanvas.width!==fogSize.width)this.fogCanvas.width=fogSize.width;
+    if(this.fogCanvas.height!==fogSize.height)this.fogCanvas.height=fogSize.height;
+    this.smoothFog.geometry.dispose();
+    this.smoothFog.geometry=new THREE.PlaneGeometry(
+      bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
+    this.smoothFog.position.set((bounds.minX+bounds.maxX)/2,
+      1.05,(bounds.minY+bounds.maxY)/2);
+    this.fogTexture.needsUpdate=true;
     this.buildWorld(site);
     this.root.add(this.fogUnknown,this.fogExplored);
     this.fogAt=-1;

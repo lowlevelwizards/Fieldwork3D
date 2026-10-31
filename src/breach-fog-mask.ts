@@ -1,25 +1,45 @@
 /** One low-resolution, softly filtered fog mask shared by 2D and 3D.
  * The fog presentation never changes detection or player intelligence. */
 import {W,H} from './breach-core.ts';
+import type {Site,WorldBounds} from './breach-site.ts';
 import {team,type Session} from './breach-game.ts';
 import {intelFogLevel} from './breach-intel.ts';
 import {visionPolygon} from './breach-vision-polygon.ts';
 import {MICRO_KEYS,MICRO_COLS} from './breach-fog-memory.ts';
 export const FOG_WIDTH=320,FOG_HEIGHT=370;
+export const maskBounds=(site?:Site|null):WorldBounds=>
+  site?.bounds??{minX:0,minY:0,maxX:W,maxY:H};
+export const maskSize=(site?:Site|null)=>{
+  const b=maskBounds(site);return {width:Math.ceil((b.maxX-b.minX)/2),
+    height:Math.ceil((b.maxY-b.minY)/2)};
+};
+const prepare=(ctx:CanvasRenderingContext2D,site?:Site|null)=>{
+  const bounds=maskBounds(site),size=maskSize(site);
+  if(ctx.canvas&&(ctx.canvas.width!==size.width||ctx.canvas.height!==size.height)){
+    ctx.canvas.width=size.width;ctx.canvas.height=size.height;
+  }
+  const w=ctx.canvas?.width??size.width,h=ctx.canvas?.height??size.height;
+  return {bounds,w,h};
+};
 export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
+  const {bounds,w,h}=prepare(ctx,s.site);
+  const sx=w/(bounds.maxX-bounds.minX),sy=h/(bounds.maxY-bounds.minY);
   ctx.save();
-  ctx.setTransform(FOG_WIDTH/W,0,0,FOG_HEIGHT/H,0,0);
+  ctx.setTransform(sx,0,0,sy,-bounds.minX*sx,-bounds.minY*sy);
   ctx.globalCompositeOperation='source-over';
-  ctx.clearRect(0,0,W,H);
+  ctx.clearRect(bounds.minX,bounds.minY,
+    bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
   // Neutral-black blind space: no blue tint or translucent cyan wash.
   ctx.fillStyle='#000';
-  ctx.fillRect(0,0,W,H);
+  ctx.fillRect(bounds.minX,bounds.minY,
+    bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
   ctx.globalCompositeOperation='destination-out';
   // Exploration gets a short feather rather than 40-unit hard rectangles.
   // This is presentation only: intel and hidden actor visibility are
   // still checked in the authoritative simulation every tick.
   ctx.filter='blur(1.5px)';
-  for(let row=0;row<37;row++)for(let col=0;col<32;col++){
+  for(let row=Math.floor(bounds.minY/20);row<Math.ceil(bounds.maxY/20);row++)
+    for(let col=Math.floor(bounds.minX/20);col<Math.ceil(bounds.maxX/20);col++){
     const p={x:col*20+10,y:row*20+10};
     const fineSeen=s.seenGround.has('fine:'+col+','+row);
     // Sight is cleared only by the continuous occluded polygons below.
@@ -34,8 +54,10 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
   // while preserving the existing 20-unit replay memory and intelligence.
   ctx.filter='blur(1.5px)';
   ctx.fillStyle='rgba(255,255,255,.76)';
-  for(let row=0;row<74;row++)for(let col=0;col<64;col++)
-    if(s.seenGround.has(MICRO_KEYS[row*MICRO_COLS+col]))
+  for(let row=Math.floor(bounds.minY/10);row<Math.ceil(bounds.maxY/10);row++)
+    for(let col=Math.floor(bounds.minX/10);col<Math.ceil(bounds.maxX/10);col++)
+    if(s.seenGround.has(MICRO_KEYS[row*MICRO_COLS+col]??
+      'micro:'+col+','+row))
       ctx.fillRect(col*10,row*10,10,10);
   // Continuous sight polygons are eased along their outline without
   // changing target detection, opacity or LOS blockers.
@@ -69,8 +91,10 @@ export function occupiedFogRooms(s:Session){
 export function paintOccupiedRoomContext(ctx:CanvasRenderingContext2D,s:Session){
   const rooms=occupiedFogRooms(s);
   if(!rooms.length)return;
+  const {bounds,w,h}=prepare(ctx,s.site);
+  const sx=w/(bounds.maxX-bounds.minX),sy=h/(bounds.maxY-bounds.minY);
   ctx.save();
-  ctx.setTransform(FOG_WIDTH/W,0,0,FOG_HEIGHT/H,0,0);
+  ctx.setTransform(sx,0,0,sy,-bounds.minX*sx,-bounds.minY*sy);
   ctx.filter='none';
   ctx.globalCompositeOperation='destination-out';
   ctx.fillStyle='rgba(255,255,255,.86)';
