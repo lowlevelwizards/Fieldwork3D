@@ -22,11 +22,13 @@ const lateral=(p:Pt,yaw:number,side:number,width:number):Pt=>({
 export type DistanceGaitState=FootstepScheduler&{
   accumulated:number;lastFacing:number;starvations:number;
   reachViolations:number;stepsTaken:number;lastStanceWidth:number;
+  shuffleLead:number;shuffleNext:'lead'|'follow';
 };
 export function createDistanceGait():DistanceGaitState{
   return Object.assign(createFootstepScheduler(),{
     accumulated:0,lastFacing:0,starvations:0,reachViolations:0,
-    stepsTaken:0,lastStanceWidth:5.6});
+    stepsTaken:0,lastStanceWidth:5.6,shuffleLead:1,
+    shuffleNext:'lead' as const});
 }
 export function cloneDistanceGait(s:DistanceGaitState):DistanceGaitState{
   return {...s,lastPosition:clone(s.lastPosition),
@@ -44,7 +46,7 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
     s.lastPosition=clone(input.position);s.lastFacing=facing;
     s.pelvisYaw=input.rootYaw;s.mode='idle';
     s.lastStepAt=-100;s.lastStepFoot=1;s.resets++;
-    s.lastStanceWidth=width;
+    s.lastStanceWidth=width;s.shuffleLead=1;s.shuffleNext='lead';
     s.feet.forEach((f,i)=>{
       const p=lateral(input.position,facing,i===0?-1:1,width);
       f.plantedAt=clone(p);f.swingFrom=clone(p);f.swingTo=clone(p);
@@ -58,8 +60,13 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
     Math.sin(facing-s.lastFacing),Math.cos(facing-s.lastFacing)));
   const interval=hybridStepThreshold(input);
   s.lastStanceWidth=width;
+  const previousMode=s.mode;
   s.mode=classifyLocomotion(travelled/Math.max(dt,1/60),
     facing,input.travelYaw,input.turning,s.mode);
+  if(s.mode!==previousMode){
+    s.shuffleLead=s.mode==='strafe-left'?0:1;
+    s.shuffleNext='lead';
+  }
   const distanceStep=travelled+(travelled<.04?turning*8.5:0);
   s.accumulated=Math.min(interval*1.35,s.accumulated+distanceStep);
   // Advance each physical contact phase exactly once on the fixed timeline.
@@ -84,6 +91,8 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
     foot.lastTouchdown=-100;
     foot.reason=request.reason;
     s.lastStepFoot=index;s.lastStepAt=input.time;s.stepsTaken++;
+    if(s.mode==='strafe-left'||s.mode==='strafe-right')
+      s.shuffleNext=s.shuffleNext==='lead'?'follow':'lead';
     }
   }
   const result=s.feet.map((f,i)=>{

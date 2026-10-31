@@ -9,7 +9,7 @@ export const LAB_TRACKS=[
   'idle','walk','run','accelerate','stop','restart','back',
   'strafe-left','strafe-right','strafe','strafe-stop',
   'strafe-reverse','mixed','turn-90','turn-180','turn','pivot-reverse',
-  'pie','look','crouch-walk','crouch','wounded','aim',
+  'pie','squeeze','look','crouch-walk','crouch','wounded','aim',
   'high-ready','low-ready','ready','short-stock','active-aim',
   'point-shoot','ready-to-ads','ads-to-low','reload',
   'reload-emergency','reload-retention','reload-shotgun',
@@ -60,6 +60,7 @@ function position(kind:LabTrack,t:number){
     case 'pivot-reverse':
       heading=Math.PI*.72*ease(t/1.35)-
         Math.PI*.90*ease((t-1.65)/1.55);break;
+    case 'squeeze':z=15*Math.min(t,3.65);break;
     case 'pie':
       x=14*ease(t/3.6);z=-9*Math.sin(Math.PI*clamp(t/3.6,0,1));
       heading=-.3+1.0*ease(t/3.6);break;
@@ -132,7 +133,7 @@ function copy(s:FootstepScheduler):FootstepScheduler{
       swingFrom:{...f.swingFrom},swingTo:{...f.swingTo}})) as
         FootstepScheduler['feet']};
 }
-function gaitInput(time:number,m:LabMotion):FootstepInput{
+function gaitInput(time:number,m:LabMotion,kind?:LabTrack):FootstepInput{
   return {time,position:{x:m.x,y:m.z},
     rootYaw:-(m.speed>16&&
       Math.abs(Math.sin(m.travelYaw-m.heading))<=.52&&
@@ -141,7 +142,8 @@ function gaitInput(time:number,m:LabMotion):FootstepInput{
     travelYaw:m.travelYaw,speed:m.speed,turning:m.turning,
     posture:m.posture,injury:m.injury,down:m.down,
     cautious:m.aim>.2&&m.speed/72<.35,
-    gait:m.speed>70?'run':
+    gait:kind==='squeeze'?'squeeze':kind==='pie'?'pie':
+      m.speed>70?'run':
       m.speed<12&&Math.abs(m.turning)>.03?'pie':'walk'};
 }
 import {advanceFootsteps as historicalAdvance,
@@ -163,7 +165,7 @@ export class LabHistoricalMotionCache{
     const gait=historicalCreate();
     for(let frame=0;frame<=TRACK_DURATION*60;frame++){
       const time=frame/60,m=sampleLabTrack(kind,time);
-      const input=gaitInput(time,m);
+      const input=gaitInput(time,m,kind);
       const target=historicalAdvance(gait,{...input,gait:input.gait==='squeeze'?
         'walk':input.gait});
       this.targets.push(target.map(f=>({...f,
@@ -190,7 +192,7 @@ export class LabDistanceMotionCache{
     const gait=createDistanceGait();
     for(let frame=0;frame<=TRACK_DURATION*60;frame++){
       const t=frame/60;
-      const target=advanceDistanceGait(gait,gaitInput(t,sampleLabTrack(kind,t)));
+      const target=advanceDistanceGait(gait,gaitInput(t,sampleLabTrack(kind,t),kind));
       this.targets.push(target.map(f=>({...f,
         position:{...f.position}})) as [FootTarget,FootTarget]);
       this.frames.push(cloneDistanceGait(gait));
@@ -213,7 +215,7 @@ export class LabMotionCache{
     const state=createFootstepScheduler();
     for(let frame=0;frame<=TRACK_DURATION*60;frame++){
       const t=frame/60;
-      const target=advanceFootsteps(state,gaitInput(t,sampleLabTrack(kind,t)));
+      const target=advanceFootsteps(state,gaitInput(t,sampleLabTrack(kind,t),kind));
       this.targets.push(target.map(f=>({...f,
         position:{...f.position}})) as [FootTarget,FootTarget]);
       this.frames.push(copy(state));
