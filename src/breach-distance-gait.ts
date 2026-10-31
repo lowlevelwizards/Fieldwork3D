@@ -39,7 +39,8 @@ export function cloneDistanceGait(s:DistanceGaitState):DistanceGaitState{
 export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
   [FootTarget,FootTarget]{
   const facing=input.facingYaw??-input.rootYaw;
-  const width=input.gait==='squeeze'?2.6:5.6;
+  const width=input.gait==='squeeze'?2.6:
+    input.posture==='crouch'?6.2:5.6;
   if(!s.initialized||input.time<s.lastTime-1e-4||
       input.time-s.lastTime>1.2){
     s.initialized=true;s.accumulated=0;s.lastTime=input.time;
