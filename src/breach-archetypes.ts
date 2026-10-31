@@ -1,5 +1,5 @@
 /** Semantic building types; furnishing data preserves authored collision. */
-import type {Site,BuildingArchetype,Room} from './breach-site.ts';
+import type {Site,BuildingArchetype} from './breach-site.ts';
 import {buildArchetypeEnvironment} from './breach-windows.ts';
 import {propDefinition} from './worldgen/asset-catalog.ts';
 import {furnishRooms} from './worldgen/room-furnishing.ts';
