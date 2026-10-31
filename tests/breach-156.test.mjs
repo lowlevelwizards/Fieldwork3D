@@ -44,6 +44,21 @@ test('156: firearm leaves hands and settles horizontally in world space',()=>{
   assert.ok(Math.abs(r.droppedGun.getWorldPosition(new THREE.Vector3()).y-1.8)<.01);
   r.dispose();
 });
+test('156: planted boots remain world grounded throughout the fall',()=>{
+  const r=createOperatorRig('rook','blue');
+  r.root.position.set(0,0,0);
+  for(const t of [.10,.28,.51,.75,1]){
+    poseOperator(r,pose(t,{downPose:'forward',seconds:2+t}),1/60);
+    r.root.updateMatrixWorld(true);
+    for(const foot of r.feet){
+      const sole=foot.shoe.getWorldPosition(new THREE.Vector3());
+      assert.ok(Math.abs(sole.y-1.45)<.08,
+        'world-space boot height shifted during body rotation at '+t+
+        ': '+sole.y);
+    }
+  }
+  r.dispose();
+});
 test('156: surrender kneels and raises both hands while dropping weapon',()=>{
   const r=createOperatorRig('rook','red');
   poseOperator(r,pose(1,{surrender:true,downPose:'slump'}),0);
