@@ -19,6 +19,7 @@ type ActorTrack={
   gait:FootstepScheduler;
   events:[FootEvent[],FootEvent[]];last:{x:number;y:number;t:number};
   travelYaw:number;lastStepAt:number;
+  travelYawEvents:{at:number;yaw:number}[];
   pelvisYawEvents:{at:number;yaw:number}[];
 };
 export type ReplayPresentation={
@@ -91,6 +92,11 @@ export class ReplayMotionRecorder{
         track.travelYaw=Math.atan2(position.y-track.last.y,
           position.x-track.last.x);
       }
+      const travelEvents=track.travelYawEvents;
+      const lastTravel=travelEvents.at(-1);
+      if(!lastTravel||Math.abs(angular(lastTravel.yaw,
+        track.travelYaw))>.002)
+        travelEvents.push({at:time,yaw:track.travelYaw});
       // Track the true motor direction, not the displacement between
       // unrelated rendered frames (often identical in the 20Hz film).
       const moving=actor.velocity/72;
@@ -113,9 +119,9 @@ export class ReplayMotionRecorder{
         blocked:actor.blockedTime>.14&&
           (actor.nav.length>0||actor.plan.some(n=>
             n.kind==='move'||n.kind==='door'||n.kind==='pie')),
-        footAllowed:pt=>footAnchorReachable(actor.p,pt,doors)&&
-          !actors.some(other=>other!==actor&&
-            Math.hypot(other.p.x-pt.x,other.p.y-pt.y)<5.5)};
+        // Teammates are transient traffic, not static blocked ground.
+        // One source of foothold validity serves live and replay.
+        footAllowed:pt=>footAnchorReachable(actor.p,pt,doors)};
       const previousResets=track.gait.resets;
       const previousStep=track.gait.lastStepAt;
       advanceFootsteps(track.gait,input);
@@ -161,9 +167,16 @@ export class ReplayMotionRecorder{
       if(!track||!track.events[0].length)continue;
       feet[id]=[sampleFootEvents(track.events[0],time),
         sampleFootEvents(track.events[1],time)];
-      // Travel is reconstructed from the recorded frame motion for a
-      // particular timestamp in replay.ts; this is a fallback only.
-      travelYaw[id]=track.travelYaw;
+      // Sample historical travel direction at the requested replay time.
+      // The previous implementation leaked the final recorded yaw into
+      // earlier replay frames after turns and strafing reversals.
+      const travel=track.travelYawEvents;
+      let ti=0,tj=travel.length-1;
+      while(ti<tj){
+        const mid=Math.ceil((ti+tj)/2);
+        if(travel[mid].at<=time)ti=mid;else tj=mid-1;
+      }
+      travelYaw[id]=travel[ti]?.yaw??track.travelYaw;
       const samples=track.pelvisYawEvents;
       let lo=0,hi=samples.length-1;
       while(lo<hi){

@@ -75,7 +75,10 @@ export function validatedReplayFeet(input:FootstepInput,
   feet:[FootTarget,FootTarget]):[FootTarget,FootTarget]{
   return feet.map((foot,i):FootTarget=>{
     const gap=distance(input.position,foot.position);
-    if(Number.isFinite(gap)&&gap<22)return foot;
+    // Validate against the longest center-to-ankle reach, including hip
+    // lateral offset; a stale 22-unit contact is not physically plausible.
+    if(Number.isFinite(gap)&&gap<horizontalLegReach()+LEG_HIP_SIDE+1.5)
+      return foot;
     const safe=safePlantPoint(input,i);
     return {position:safe,height:0,worldYaw:input.rootYaw,
       phase:'recovering',contact:true,reason:'settle',
