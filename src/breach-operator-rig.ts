@@ -4,7 +4,9 @@ import * as THREE from 'three';
 import {alignSegment,solveTwoBone,ARM_LIMITS,LEG_LIMITS,
   intersectsTorso} from './breach-ik.ts';
 import type {WeaponId} from './breach-combat.ts';
-import {advanceFootsteps,createFootstepScheduler, type FootstepScheduler} from './breach-footsteps.ts';
+import {advanceFootsteps,createFootstepScheduler,safePlantPoint,
+  type FootstepScheduler,type FootTarget,type FootstepInput}
+  from './breach-footsteps.ts';
 import type {ReplayFeet} from './breach-replay-motion.ts';
 import {bodyFromContacts} from './breach-body-motion.ts';
 import {kickMotion} from './breach-door-actions.ts';
@@ -32,6 +34,7 @@ export type OperatorPose={
   doorMethod?:'open'|'kick'|'hold';down:boolean;
   surrender:boolean;aiming:boolean;firing:boolean;turning:number;
   obstruction?:boolean;friendlyNear?:boolean;
+  blocked?:boolean;footAllowed?:(point:{x:number;y:number})=>boolean;
   aimBlend?:number;recoil?:number;shotHeading?:number;
   hitFade?:number;hitAge?:number;downProgress?:number;flashActive?:boolean;
   hitRegion?:WoundRegion;hitYaw?:number;hitSeverity?:number;
@@ -172,12 +175,27 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // consumes its targets but must never relocate a planted anchor.
   let headingYaw=r.root.rotation.y;
   const travelYaw=p.travelYaw??direction;
-  const targets=p.replayFeet??advanceFootsteps(r.footsteps,{
+  const gaitInput:FootstepInput={
     time:p.seconds,position:{x:p.x,y:p.z},rootYaw:-p.heading,
     travelYaw,facingYaw:p.heading,speed:p.velocity,turning:p.turning,
     posture:p.posture,injury:p.injury,down:p.down,
-    cautious:p.aiming&&moving<.35
-  });
+    cautious:p.aiming&&moving<.35,blocked:p.blocked,
+    footAllowed:p.footAllowed,
+  };
+  const rawTargets=p.replayFeet??advanceFootsteps(r.footsteps,gaitInput);
+  // Stale contacts from a collision, replay or displaced pelvis cannot
+  // stretch a limb to an impossible world-space foot target.
+  const targets=rawTargets.map((foot,i):FootTarget=>{
+    const distance=Math.hypot(foot.position.x-p.x,foot.position.y-p.z);
+    const invalid=!Number.isFinite(distance)||
+      distance>(p.blocked||p.velocity<5?10.5:14.0)||
+      !!p.footAllowed&&!p.footAllowed(foot.position);
+    if(!invalid)return foot;
+    const point=safePlantPoint({...gaitInput,speed:0},i);
+    return {position:point,height:0,worldYaw:-p.heading,
+      phase:'recovering',contact:true,reason:'settle',
+      progress:1,pitch:0};
+  }) as [FootTarget,FootTarget];
   const kickAge=p.seconds-p.lastDoorAt;
   const kick=p.doorMethod==='kick'&&kickAge>=0&&kickAge<.76?
     kickMotion(kickAge):null;
@@ -215,8 +233,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   for(let i=0;i<2;i++){
     const foot=r.feet[i],sign=i===0?-1:1,target=targets[i];
     const hipLocal=P(0,r.hip.position.y,r.hip.position.z+sign*4.8);
-    const anchor=p.replayFeet?target.position:
-      r.footsteps.feet[i].plantedAt;
+    const anchor=target.position;
     foot.anchor.set(anchor.x,1.45,anchor.y);
     // Replay seeks must never inherit a pole fallback from another time.
     if(p.deterministic)foot.bend.set(1,0,0);
@@ -229,10 +246,21 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       targetWorld.y+=kick.lift;
       foot.swinging=true;
     }
-    const relative=targetWorld.sub(P(p.x,0,p.z))
+    let relative=targetWorld.sub(P(p.x,0,p.z))
       .applyAxisAngle(P(0,1,0),-headingYaw);
-    const leg=solveTwoBone(hipLocal,relative,9.7,9.7,
+    let leg=solveTwoBone(hipLocal,relative,9.7,9.7,
       P(4.5,0,sign*1.1),LEG_LIMITS,foot.bend);
+    // Emergency fallback protects against even legacy replay anchors
+    // which exceed the anatomical reach of the physical two-bone leg.
+    if(!p.down&&!kick&&leg.effector.distanceTo(relative)>1.5){
+      const safe=safePlantPoint({...gaitInput,speed:0},i);
+      foot.anchor.set(safe.x,1.45,safe.y);
+      relative=P(safe.x,1.45,safe.y).sub(P(p.x,0,p.z))
+        .applyAxisAngle(P(0,1,0),-headingYaw);
+      leg=solveTwoBone(hipLocal,relative,9.7,9.7,
+        P(4.5,0,sign*1.1),LEG_LIMITS,P(1,0,sign*.4));
+      foot.swinging=false;
+    }
     foot.bend.copy(leg.bendPlane);
     foot.outOfReach=!leg.reached;
     // The boot follows the scheduled contact, so report the anatomical
@@ -245,7 +273,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // Final small reach extension is represented by a boot-colored
     // articulated ankle cuff, never a floating shoe or stretched shin.
     // The original two-bone segment lengths remain unchanged.
-    foot.ankleLink.visible=r.legGap[i]>.10;
+    foot.ankleLink.visible=r.legGap[i]>.10&&r.legGap[i]<1.5;
     if(foot.ankleLink.visible)
       alignSegment(foot.ankleLink,leg.effector,relative,P(0,0,sign));
     foot.shoe.position.copy(relative);
