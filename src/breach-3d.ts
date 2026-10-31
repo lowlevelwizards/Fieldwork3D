@@ -266,6 +266,16 @@ export class TacticalScene3D{
       const cap=this.box(group,x,40.3,z,len+2,2,11,individualCap,false);
       cap.rotation.y=angle;this.walls.push({mesh:cap,mid:{x,y:z}});
     }
+    const archMaterial=this.solid(0xb4a68e);
+    for(const opening of site.openings??[]){
+      const width=Math.hypot(opening.a.x-opening.b.x,opening.a.y-opening.b.y);
+      const p={x:(opening.a.x+opening.b.x)/2,y:(opening.a.y+opening.b.y)/2};
+      const group=new THREE.Group();group.position.set(p.x,0,p.y);
+      group.rotation.y=Math.abs(opening.a.x-opening.b.x)<1?-Math.PI/2:0;
+      for(const side of [-1,1])this.box(group,side*width/2,19,0,4,38,10,archMaterial);
+      this.box(group,0,38,0,width+4,4,11,archMaterial);
+      this.root.add(group);
+    }
     const doorMat=this.solid(0xb18b5f),doorTrim=this.solid(0xe0c390);
     const metal=this.solid(0x586665);
     for(const door of site.doors){
