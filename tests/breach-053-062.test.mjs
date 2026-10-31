@@ -116,18 +116,10 @@ test('059,062: authored enemy variants differ without leaking knowledge',()=>{
 test('056: HOLD guards the threshold without silently opening the door',()=>{
   const s=newSession();
   assert.ok(planDoor(s,'rook','FRONT','hold'));
-  toggling(s);
-  // Notifications intentionally keep only the latest 12 entries. Observe
-  // the required HOLD acknowledgement as it happens; later enemy events
-  // must not erase the evidence of a successful door interaction.
-  let held=false;
-  for(let i=0;i<300;i++){
-    stepSession(s,1/60);
-    held ||= s.events.some(e=>e.includes('HELD CLOSED'));
-  }
+  toggling(s);run(s,5);
   assert.equal(s.doors[0].open,false,'hold should not transform into open');
   assert.ok(team(s)[0].plan.every(n=>n.kind!=='door'));
-  assert.ok(held,'hold action must issue the HELD CLOSED acknowledgement');
+  assert.ok(s.events.some(e=>e.includes('HELD CLOSED')));
 });
 test('057: high cover occludes sight while exposed positions remain visible',()=>{
   const s=newSession(),a=team(s)[0],b=enemies(s)[0];
