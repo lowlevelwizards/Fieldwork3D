@@ -72,6 +72,8 @@ export type WeaponFit={
 export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
   /** Fire direction in chest-local space. */
   yaw:number;recoil:number;aimBlend?:number;
+  /** Rendered retraction inside a blocked underarm clearance state only. */
+  retract?:number;
   swayYaw?:number;swayPitch?:number;
   blendFrom?:Handling;blendAlpha?:number;
   blendSnapshot?:{origin:THREE.Vector3;rotation:THREE.Euler}};
@@ -158,7 +160,8 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       const left=rotate(data.supportX-data.stockX,data.supportY,-1.6);
       for(const dx of [0,.7,-.7,1.4,-1.4])
         for(const dz of [0,.4,-.4,.8,-.8]){
-          const sx=shoulderPocket.x+dx-recoilX;
+          const sx=shoulderPocket.x+dx-recoilX-
+            (mode==='short'?Math.max(0,Math.min(1,input.retract??0))*2.2:0);
           const sy=shoulderPocket.y+recoilY;
           const sz=shoulderPocket.z+dz;
           // Buttplate now nests into the outer padded chest contour. Hard
