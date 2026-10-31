@@ -1583,7 +1583,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     a.suppression,a.injuryStage,a.recoil)*.9;
   const yaw=shotYaw(a.weaponYaw,spread,random(s),random(s));
   const muzzle=muzzleAtShot({x:a.p.x,z:a.p.y,
-    heading:a.heading,weaponYaw:yaw,weapon:a.weapon,aim:a.aim,
+    heading:a.heading,weaponYaw:yaw,weapon:a.weapon,aim:a.aim,posture:a.posture,
     velocity:a.velocity,recoil:a.recoil});
   const from={x:muzzle.x,y:muzzle.z};
   const far=muzzleEndpoint(from,yaw,Math.max(40,d(from,point)));
@@ -1686,7 +1686,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   // Hold the shot rather than dumping ammunition into adjacent cover or
   // risking a friendly operator standing in the near firing corridor.
   const sightMuzzle=muzzleAtShot({x:a.p.x,z:a.p.y,heading:a.heading,
-    weaponYaw:a.weaponYaw,weapon:a.weapon,aim:a.aim,
+    weaponYaw:a.weaponYaw,weapon:a.weapon,aim:a.aim,posture:a.posture,
     velocity:a.velocity,recoil:a.recoil});
   const friends=s.operators.filter(o=>o!==a&&o.health>0&&
     o.side===a.side).map(o=>o.p);
@@ -1712,7 +1712,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   // happens *before* muzzle construction, not as an invisible post-shot roll.
   const yaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
   const muzzle=muzzleAtShot({x:a.p.x,z:a.p.y,heading:a.heading,
-    weaponYaw:yaw,weapon:a.weapon,aim:a.aim,
+    weaponYaw:yaw,weapon:a.weapon,aim:a.aim,posture:a.posture,
     velocity:a.velocity,recoil:a.recoil});
   const muzzlePoint={x:muzzle.x,y:muzzle.z};
   // Spread may put another teammate in the actual bullet corridor.
