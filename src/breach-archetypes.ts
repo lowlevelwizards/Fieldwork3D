@@ -2,6 +2,7 @@
 import type {Site,BuildingArchetype,Room} from './breach-site.ts';
 import {buildArchetypeEnvironment} from './breach-windows.ts';
 import {propDefinition} from './worldgen/asset-catalog.ts';
+import {furnishRooms} from './worldgen/room-furnishing.ts';
 export const BUILDING_ARCHETYPES:readonly BuildingArchetype[]=
  ['house','office','motel','garage','warehouse','clinic'];
 const ROOMS:Record<BuildingArchetype,readonly string[]>={
@@ -44,5 +45,5 @@ export function applyArchetype(site:Site,seed:number):Site{
     const asset=propDefinition(fixture)??propDefinition('crate');
     return {...o,fixture:asset?.id??'crate',low:asset?.cover==='low'};
   });
-  return buildArchetypeEnvironment({...site,archetype,rooms,cover},seed);
+  return buildArchetypeEnvironment(furnishRooms({...site,archetype,rooms,cover},seed),seed);
 }
