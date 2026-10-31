@@ -513,3 +513,8 @@ button:disabled{opacity:.48;cursor:default}
  .context-state button{min-height:31px;flex-direction:row;font-size:9px}
  .context-tools.door-menu .context-primary button{min-height:35px}
 }
+
+/* UI Overhaul 07 — on-demand discovery, never a permanent tutorial. */
+.guidance{font-family:var(--ui-font);font-size:12px;line-height:1.4;
+ text-align:left;box-shadow:0 4px 20px #06141399;max-width:min(365px,calc(100vw - 24px))}
+#uiHelp{border-color:#9eaf95;background:#33493e}
