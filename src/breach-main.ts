@@ -52,6 +52,7 @@ const ui={
   mission:el<HTMLElement>('mission'),
   briefingToggle:el<HTMLButtonElement>('briefingToggle'),
   uiHelp:el<HTMLButtonElement>('uiHelp'),
+  uiSoundToggle:el<HTMLButtonElement>('uiSoundToggle'),
   briefingPanel:el<HTMLElement>('briefingPanel'),
   briefingTitle:el<HTMLElement>('briefingTitle'),
   briefingBody:el<HTMLElement>('briefingBody'),
@@ -195,6 +196,27 @@ const playTone=(frequency:number,decay:number,noise=false,
     osc.start();osc.stop(audio.currentTime+decay+.01);
   }catch{/* Audio must never interrupt control. */}
 };
+// Separate, low-volume UI cues reuse the existing unlocked WebAudio context.
+let uiSoundEnabled=true,lastUiCue=0;
+try{uiSoundEnabled=localStorage.getItem('fieldwork3d.ui.sound')!=='off';}
+catch{/* Storage is optional. */}
+function uiClickTone(kind:'select'|'command'|'go'|'warning'){
+  if(!uiSoundEnabled)return;
+  const now=performance.now();if(now-lastUiCue<75)return;
+  lastUiCue=now;
+  unlockAudio();
+  try{
+    if(!audio||audio.state!=='running')return;
+    const frequencies={select:480,command:610,go:290,warning:170};
+    const oscillator=audio.createOscillator(),gain=audio.createGain();
+    oscillator.type=kind==='go'?'triangle':'sine';
+    oscillator.frequency.setValueAtTime(frequencies[kind],audio.currentTime);
+    gain.gain.setValueAtTime(.011,audio.currentTime);
+    gain.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+.055);
+    oscillator.connect(gain);gain.connect(audio.destination);
+    oscillator.start();oscillator.stop(audio.currentTime+.065);
+  }catch{/* UI feedback never blocks interaction. */}
+}
 function unlockAudio(){
   try{
     if(!audio&&typeof AudioContext!=='undefined')audio=new AudioContext();
@@ -262,7 +284,7 @@ function turnCamera(shift:number){
 const uid=(id:string)=>team(state).find(o=>o.id===id);
 function selectUnit(id:string){
   const actor=uid(id);if(!actor||actor.health<=0)return;
-  selected=id;looking=false;
+  uiClickTone('select');selected=id;looking=false;
   selectedNode=null;doorFocusId=null;
   doorMenuDismissedId=null;updateHud();
 }
@@ -437,6 +459,7 @@ ui.context.addEventListener('click',event=>{
   if(!button||state.phase!=='planning')return;
   const action=button.dataset.action;
   if(action)discoverAction(action,button.title);
+  uiClickTone('command');
   const a=uid(selected);
   if(!a)return;
   const node=selectedPlanNode();
@@ -1444,6 +1467,7 @@ function reset(next=state.variant,siteSeed?:number){
 }
 ui.rook.addEventListener('click',()=>selectUnit('rook'));
 ui.back.addEventListener('click',()=>{
+  uiClickTone('select');
   // Build 076 accidentally removed this listener when slimming the HUD.
   if(backOne(state,selected)){
     selectedNode=null;doorFocusId=null;
@@ -1488,7 +1512,7 @@ ui.intelMode.addEventListener('click',()=>{
 ui.retry.addEventListener('click',()=>reset());
 ui.next.addEventListener('click',()=>reset(state.variant+1));
 ui.play.addEventListener('click',()=>{
-  unlockAudio();
+  unlockAudio();uiClickTone('go');
   if(state.phase==='won'||state.phase==='lost')reset();
   else{looking=false;toggling(state);updateHud();}
 });
@@ -1753,6 +1777,16 @@ ui.briefingClose.addEventListener('click',()=>{
   ui.briefingPanel.hidden=true;
   ui.briefingToggle.setAttribute('aria-expanded','false');
   updateContext();
+});
+ui.uiSoundToggle.textContent=uiSoundEnabled?'UI SOUND ON':'UI SOUND OFF';
+ui.uiSoundToggle.setAttribute('aria-pressed',String(uiSoundEnabled));
+ui.uiSoundToggle.addEventListener('click',()=>{
+  uiSoundEnabled=!uiSoundEnabled;
+  ui.uiSoundToggle.textContent=uiSoundEnabled?'UI SOUND ON':'UI SOUND OFF';
+  ui.uiSoundToggle.setAttribute('aria-pressed',String(uiSoundEnabled));
+  try{localStorage.setItem('fieldwork3d.ui.sound',uiSoundEnabled?'on':'off');}
+  catch{/* Optional setting persistence. */}
+  if(uiSoundEnabled)uiClickTone('select');
 });
 ui.uiHelp.addEventListener('click',()=>{
   ui.siteSettings.hidden=true;
