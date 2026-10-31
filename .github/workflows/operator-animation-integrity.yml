@@ -20,9 +20,9 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - name: Typecheck physical animation integration
-        run: npm run check
       - name: Focused animation and barrel regressions
         run: node --experimental-strip-types --test tests/breach-17*.test.mjs
-      - name: Verify production bundle
-        run: npm run build
+      - name: Verify Vite runtime bundle
+        run: npx vite build
+      - name: Typecheck full repository (may expose unrelated main-branch regressions)
+        run: npm run check
