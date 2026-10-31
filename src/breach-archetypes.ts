@@ -4,6 +4,7 @@ import {buildArchetypeEnvironment} from './breach-windows.ts';
 import {propDefinition} from './worldgen/asset-catalog.ts';
 import {furnishRooms} from './worldgen/room-furnishing.ts';
 import {programRooms} from './worldgen/building-programs.ts';
+import {addOpenPlanTransitions} from './worldgen/open-plan.ts';
 export const BUILDING_ARCHETYPES:readonly BuildingArchetype[]=
  ['house','townhouse','apartment','retail','office','garage','warehouse','restaurant','motel','utility','clinic'] as const;
 const FIXTURES:Record<string,readonly string[]>={
@@ -43,5 +44,6 @@ export function applyArchetype(site:Site,seed:number):Site{
     const asset=propDefinition(fixture)??propDefinition('crate');
     return {...o,fixture:asset?.id??'crate',low:asset?.cover==='low'};
   });
-  return buildArchetypeEnvironment(furnishRooms({...site,archetype,rooms,cover},seed),seed);
+  const architecture=addOpenPlanTransitions({...site,archetype,rooms,cover},seed);
+  return buildArchetypeEnvironment(furnishRooms(architecture,seed),seed);
 }

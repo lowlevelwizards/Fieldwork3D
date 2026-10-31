@@ -89,6 +89,8 @@ export function furnishRooms(site:Site,seed:number):Site{
     const p=position(room,w,h,anchor);
     const candidate:Obstacle={...p,w,h,fixture:item.id,low:asset.cover==='low'};
     if(site.doors.some(d=>Math.hypot(p.x-(d.a.x+d.b.x)/2,p.y-(d.a.y+d.b.y)/2)<Math.max(54,Math.max(w,h)/2+30)))continue;
+    if((site.openings??[]).some(o=>Math.hypot(p.x-(o.a.x+o.b.x)/2,
+      p.y-(o.a.y+o.b.y)/2)<Math.max(65,Math.max(w,h)/2+32)))continue;
     if(reserved.some(q=>Math.abs(q.x-p.x)<w/2+24&&Math.abs(q.y-p.y)<h/2+24))continue;
     if([...output,...placed].some(o=>overlap(o,candidate)))continue;
     chosen=candidate;break;
