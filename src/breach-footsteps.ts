@@ -178,8 +178,12 @@ function startStep(s:FootstepScheduler,index:number,input:FootstepInput){
     land.x+=Math.cos(travel)*bounds.preferredLead;
     land.y+=Math.sin(travel)*bounds.preferredLead;
   }
+  // A lateral landing belongs to the predicted touchdown pelvis, not the
+  // current pelvis. Clamping the trailing boot to today's hip forces it
+  // behind the body again by the time the swing ends (repeated IK snaps).
   land=safeLanding(s,index,land,pivot?
-    {...input,facingYaw:-s.pelvisYaw}:input);
+    {...input,facingYaw:-s.pelvisYaw}:strafe?
+    {...input,position:predicted}:input);
   if(input.footAllowed&&!input.footAllowed(land))
     land=safePlantPoint(input,index);
   foot.swingFrom=copy(foot.plantedAt);foot.swingTo=land;
