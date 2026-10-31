@@ -57,11 +57,11 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
   let pelvisSide=support*clamp(1.15*speed*gaitAmp,0,1.65)*crouch;
   if(input.hybridSupport&&input.position){
     const axis={x:-Math.sin(input.heading),y:Math.cos(input.heading)};
-    const left=(left.position.x-input.position.x)*axis.x+
+    const leftSide=(left.position.x-input.position.x)*axis.x+
       (left.position.y-input.position.y)*axis.y;
-    const right=(right.position.x-input.position.x)*axis.x+
+    const rightSide=(right.position.x-input.position.x)*axis.x+
       (right.position.y-input.position.y)*axis.y;
-    const weight=a+b>1e-6?(left*a+right*b)/(a+b):0;
+    const weight=a+b>1e-6?(leftSide*a+rightSide*b)/(a+b):0;
     pelvisSide=clamp(weight*.24,-1.65,1.65)*moving*crouch;
   }
   // Physical pelvis compression comes from the support-foot reach budget,
