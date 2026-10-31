@@ -196,19 +196,23 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  // clear opening. Cut authoritative perimeter walls; this is a *permanently
  // open portal*, not a cosmetic or pretend-operable garage shutter.
  const openingRoles:Partial<Record<BuildingArchetype,readonly string[]>>={
-  garage:['bay','workshop'],warehouse:['loading','storage'],
-  retail:['sales'],restaurant:['dining'],utility:['service']
+  garage:['bay','workshop','waiting'],
+  warehouse:['loading','storage','packing'],
+  retail:['sales'],restaurant:['dining'],
+  utility:['service','equipment','control']
  };
  const openPreferred=openingRoles[kind]??[];
  const portalCandidates=walls.map((wall,index)=>{
   const length=span(wall);
-  if(length<158)return null;
+  const industrial=['garage','warehouse','utility'].includes(kind);
+  if(length<(industrial?135:158))return null;
   const p={x:(wall.a.x+wall.b.x)/2,y:(wall.a.y+wall.b.y)/2};
   const vx=(wall.b.x-wall.a.x)/length,vy=(wall.b.y-wall.a.y)/length;
   const inward=interior({x:p.x-vy*17,y:p.y+vx*17})??
     interior({x:p.x+vy*17,y:p.y-vx*17});
   const roleIndex=openPreferred.indexOf(inward?.role??'');
-  if(roleIndex<0||Math.hypot(p.x-frontMid.x,p.y-frontMid.y)<120)return null;
+  if(roleIndex<0||Math.hypot(p.x-frontMid.x,p.y-frontMid.y)<
+    (['garage','warehouse','utility'].includes(kind)?76:120))return null;
   return {wall,index,length,roleIndex,p};
  }).filter((v):v is NonNullable<typeof v>=>v!==null)
    .sort((a,b)=>a.roleIndex-b.roleIndex||b.length-a.length);
@@ -221,7 +225,10 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   const a={x:mid.x-ux*extent/2,y:mid.y-uy*extent/2};
   const b={x:mid.x+ux*extent/2,y:mid.y+uy*extent/2};
   walls.splice(index,1,{a:wall.a,b:a},{a:b,b:wall.b});
-  openings.push({id:'OPEN-SERVICE',a,b,kind:'wide'});
+  if(['garage','warehouse','utility'].includes(kind))
+    doors.push({id:'SHUTTER',a,b,kind:'shutter',open:false,openedAt:-1,
+      resistance:2.4,latchIntegrity:5,frameIntegrity:8});
+  else openings.push({id:'OPEN-SERVICE',a,b,kind:'wide'});
  }
  // Doors into enclosed or partly enclosed courts create an actual
  // circulation alternative. A courtyard is not merely a painted floor void.

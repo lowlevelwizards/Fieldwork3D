@@ -37,7 +37,9 @@ export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteA
     for(const door of site.doors){
       if(ids.has(door.id))errors.push('duplicate door '+door.id);
       ids.add(door.id);
-      if(Math.abs(dist(door.a,door.b)-48)>1e-5)
+      const width=dist(door.a,door.b);
+      if(door.kind==='shutter'?
+         width<80||width>114:Math.abs(width-48)>1e-5)
         errors.push('door width '+door.id);
     }
     for(const w of site.windows??[]){

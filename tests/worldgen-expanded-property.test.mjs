@@ -15,7 +15,8 @@ test('expanded maps preserve door widths, mission geometry and larger playable b
   assert.ok(large.rooms.length>=8&&base.rooms.length>=8);
   expandedArea+=large.rooms.reduce((n,r)=>n+r.w*r.h,0);
   compactArea+=base.rooms.reduce((n,r)=>n+r.w*r.h,0);
-  assert.ok(large.doors.every(d=>Math.abs(Math.hypot(d.a.x-d.b.x,d.a.y-d.b.y)-48)<.001));
+  assert.ok(large.doors.every(d=>d.kind==='shutter'?Math.hypot(d.a.x-d.b.x,d.a.y-d.b.y)>=80:
+    Math.abs(Math.hypot(d.a.x-d.b.x,d.a.y-d.b.y)-48)<.001));
   activateSite(large);
   try{
    for(const p of [...large.spawn,...large.enemies,large.objective,large.extract])

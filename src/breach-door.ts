@@ -53,6 +53,9 @@ export function pushDoor(d:Door,force:number):boolean{
  return true;
 }
 export function kickDoor(d:Door,from?:Pt):{opened:boolean;pushSide:boolean}{
+ // Industrial shutters are lifted via their controls. A kick cannot
+ // unrealistically throw a heavy, vertically guided steel panel open.
+ if(d.kind==='shutter')return {opened:false,pushSide:false};
  // Retain the legacy direct impulse API for already-open hinged leaves.
  // Authored game kicks always pass the operator position and use integrity.
  if(!from){
@@ -79,6 +82,7 @@ export function kickDoor(d:Door,from?:Pt):{opened:boolean;pushSide:boolean}{
 /** Door leaf stops against architecture and furniture, not an arbitrary
  * renderer-only angle; sample away from the hinge itself. */
 export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[]){
+ if(d.kind==='shutter')return false;
  // Standalone door fixtures have no registered architecture; do not
  // collide them with an unrelated active level's walls or cover.
  const registered=activeSite()?.doors??initialDoors();
