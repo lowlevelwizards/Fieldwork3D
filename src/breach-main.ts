@@ -69,6 +69,7 @@ const ui={
   briefingClose:el<HTMLButtonElement>('briefingClose'),
   context:el<HTMLElement>('contextTools'),
   quickStates:el<HTMLElement>('quickStates'),
+  quickScope:el<HTMLElement>('quickScope'),
   tacticalHud:el<HTMLElement>('tacticalHud'),
   orders:el<HTMLElement>('advancedOrders'),
   moreOrders:el<HTMLButtonElement>('moreOrders'),
@@ -435,7 +436,9 @@ function updateContext(){
     posture:current.posture,pace:current.pace,
     firePolicy:node?.firePolicyState??a.firePolicy,
     reserve:a.reserve,magazine:a.magazine,
-    doorOpen:!!door&&(door.openFraction??(door.open?1:0))>=.35
+    doorOpen:!!door&&(door.openFraction??(door.open?1:0))>=.35,
+    nodeKind:node?.kind,aimLabel:node?.aimLabel,
+    nodeFirePolicy:node?.firePolicyState,
   });
   const paletteChoices=choices.filter(choice=>choice.group!=='state');
   // The four persistent toggles have their own stationary bar above the HUD.
@@ -716,6 +719,8 @@ function updateQuickStates(){
     document.documentElement.style.setProperty('--tactical-hud-height',value);
   if(!shown||!actor)return;
   const node=selectedPlanNode();
+  const index=node?actor.plan.findIndex(n=>n.id===node.id)+1:0;
+  ui.quickScope.textContent=node?'NODE '+index:'HERE';
   const current=plannedControl(state,selected,node?.id);
   const choices=contextActionChoices({
     door:false,node:!!node,flashRemaining:state.flashRemaining,
@@ -743,6 +748,7 @@ function updateQuickStates(){
     else button.setAttribute('aria-pressed',String(choice.pressed));
   }
 }
+const blockedEpisode=new Map<string,string>();
 function updateHud(){
   updateQuickStates();
   recordCompletedOperation();
@@ -2115,8 +2121,12 @@ function tick(now:number){
   }
   if(fresh.length)lastSoundShotId=fresh.at(-1)!.id;
   const event=state.events.at(-1)??'';
-  if(event!==lastEventAudio&&event.includes('OPENED'))
+  if(event!==lastEventAudio&&(event.includes('OPENED')||event.includes('CLOSING')))
     playTone(160,.16);
+  if(event!==lastEventAudio&&event.includes('KICK RESISTED'))
+    playTone(115,.15,true);
+  if(event!==lastEventAudio&&event.includes('FORCED OPEN'))
+    playTone(80,.24,true);
   if(event!==lastEventAudio&&event.includes('KICKED'))
     playTone(90,.25,true);
   if(event!==lastEventAudio&&event.includes('FLASH DETONATED'))
@@ -2136,6 +2146,18 @@ function tick(now:number){
       !replaying&&state.phase==='running'&&previousRenderActors?
         {previous:previousRenderActors,alpha:Math.min(1,accum*60)}:null);
   render();
+  // One local, intelligible pulse per distinct blocked episode.
+  for(const actor of team(state)){
+    const old=blockedEpisode.get(actor.id);
+    if(actor.blockedTime<.3||actor.lastBlocker==='clear'){
+      blockedEpisode.delete(actor.id);continue;
+    }
+    if(actor.blockedTime>=.95&&(old!==actor.lastBlocker)){
+      blockedEpisode.set(actor.id,actor.lastBlocker);
+      if(!replaying)tacticalFeedback.emit('error',actor.p,
+        actor.lastBlocker==='furniture'?'OBSTRUCTED':actor.lastBlocker);
+    }
+  }
   if(feedbackDraw){
     feedbackDraw.setTransform(dpr,0,0,dpr,0,0);
     feedbackDraw.clearRect(0,0,cssW,cssH);
