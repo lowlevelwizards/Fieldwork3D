@@ -5,6 +5,7 @@ import {generateSite,type Site,type BuildingArchetype} from './breach-site.ts';
 import {BUILDING_ARCHETYPES} from './breach-archetypes.ts';
 import {activateSite,type Pt} from './breach-core.ts';
 import {auditGeneratedSite} from './breach-site-audit.ts';
+import {assessArchitecture} from './worldgen/architecture-quality.ts';
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const typeInput=el<HTMLSelectElement>('building');
 const scaleInput=el<HTMLSelectElement>('scale');
@@ -53,17 +54,21 @@ function updateLabels(){
 }
 function describe(site:Site){
  const count=site.rooms.filter(room=>room.kind==='room').length;
+ const structure=assessArchitecture(site);
  return site.archetype?.toUpperCase()+' · '+site.name+' · seed '+site.seed+
-  '\n'+count+' rooms / '+site.doors.length+' doors / '+(site.openings?.length??0)+
+  '\n'+(site.planFamily??site.layout)+' · '+structure.zones+' functional zones / '+
+  structure.nonrectangularZones+' irregular rooms\n'+
+  count+' floor sections / '+site.doors.length+' doors / '+(site.openings?.length??0)+
   ' open passages / '+site.cover.length+' physical props / '+
   (site.exteriorZones?.length??0)+' exterior zones';
 }
 function report(site:Site):string{
- const result=auditGeneratedSite(site.seed);
+ const result=auditGeneratedSite(site.seed,site.scale??'standard');
  // The legacy audit temporarily activates its own site for route checks.
  // Restore the live lab's spatial authority before resuming rendering.
  activateSite(site);
  return describe(site)+'\n'+
+  'ENTRANCE: '+assessArchitecture(site).entryPurpose.toUpperCase()+' · '+
   (site.condition??'ordinary').toUpperCase()+' · '+result.dressing+
   ' details · '+result.typedProps+' typed props · '+result.archOpenings+
   ' wide openings\n'+(result.errors.length?
