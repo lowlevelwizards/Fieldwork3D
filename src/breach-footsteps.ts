@@ -32,6 +32,8 @@ export type FootstepInput={
   travelYaw:number;speed:number;turning:number;
   posture:'stand'|'crouch';injury:number;down:boolean;
   cautious?:boolean;facingYaw?:number;
+  /** Explicit compact-weapon adjustment only, never motor movement. */
+  clearance?:boolean;
   gait?:'walk'|'run'|'pie';
 };
 export type FootTarget={position:GroundPoint;height:number;
@@ -331,6 +333,18 @@ export function advanceFootsteps(s:FootstepScheduler,source:FootstepInput):
     s.shuffleNext='lead';
   }
   const bounds=gaitBounds(input);
+  // When close clearance leaves the operator planted asymmetrically,
+  // request one deliberate corrective contact from the SAME scheduler.
+  // This is a cosmetic foot adjustment, not a translation or navigation
+  // command and cannot cause door-frame movement deadlocks.
+  if(input.clearance&&input.speed<8&&
+     input.time-s.lastStepAt>.65&&!s.feet.some(f=>
+       f.phase==='unloading'||f.phase==='swinging')){
+    const index=1-s.lastStepFoot;
+    const neutral=lateral(input.position,facing,index===0?-1:1);
+    if(distance(neutral,s.feet[index].plantedAt)>2.2)
+      startStep(s,index,{...input,speed:0});
+  }
   if(s.mode==='pivot'&&s.pivotDuration>0){
     const progress=clamp((input.time-s.pivotAt)/s.pivotDuration,0,1);
     const smooth=progress*progress*(3-2*progress);
