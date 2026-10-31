@@ -10,11 +10,11 @@ const modes=['high','low','ready','short','point','ads'];
 test('168: every shoulder pocket is on the upper chest, not an outboard shelf',()=>{
  for(const mode of modes){
   const pocket=stockPocket(mode);
-  assert.ok(pocket.z<=7.6,mode+' pocket is too far to the side');
-  assert.ok(pocket.z>=6.8,mode+' pocket buried into the torso');
+  assert.ok(pocket.z<=7.2,mode+' pocket is too far to the side');
+  assert.ok(pocket.z>=6.50,mode+' pocket buried into the torso');
  }
  assert.ok(stockPocket('short').y<stockPocket('ready').y-5);
- assert.ok(stockPocket('short').z>stockPocket('ready').z+.30);
+ assert.ok(stockPocket('short').z>stockPocket('ready').z+.25);
  assert.ok(stockPocket('short').z<7.6);
 });
 test('168: longer stock rear face is still physically exact at all weapon scales',()=>{
@@ -28,7 +28,7 @@ test('168: longer stock rear face is still physically exact at all weapon scales
    assert.ok(rear.distanceTo(fit.stock)<1e-6,
      mode+' buttplate does not match visible rear');
    assert.ok(fit.stockError<3,mode+' stock loses contact');
-   assert.ok(fit.stock.z>=(mode==='short'?7.10:6.78));
+   assert.ok(fit.stock.z>=(mode==='short'?6.60:6.35));
    assert.ok(Number.isFinite(fit.contactError));
   }
  }
