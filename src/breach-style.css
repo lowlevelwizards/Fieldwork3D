@@ -518,3 +518,33 @@ button:disabled{opacity:.48;cursor:default}
 .guidance{font-family:var(--ui-font);font-size:12px;line-height:1.4;
  text-align:left;box-shadow:0 4px 20px #06141399;max-width:min(365px,calc(100vw - 24px))}
 #uiHelp{border-color:#9eaf95;background:#33493e}
+
+/* UI Overhaul 08 — restrained, compositor-friendly interface motion. */
+:root{--ui-fast:100ms;--ui-medium:160ms;--ui-ease:cubic-bezier(.2,.8,.2,1)}
+.bar button,.orders button,.context-tools button,.site-settings button,
+.replay-actions button,.debrief button{
+ transition:background-color var(--ui-fast) ease,border-color var(--ui-fast) ease,
+ color var(--ui-fast) ease,transform var(--ui-fast) var(--ui-ease)}
+.bar button:active,.orders button:active,.context-tools button:active,
+.site-settings button:active,.replay-actions button:active{transform:scale(.95)}
+.context-tools:not([hidden]){opacity:1;transform:translateY(0) scale(1);
+ transform-origin:center top;
+ transition:opacity var(--ui-medium) ease,transform var(--ui-medium) var(--ui-ease)}
+@starting-style{
+ .context-tools:not([hidden]){opacity:0;transform:translateY(7px) scale(.97)}
+}
+@keyframes ui-squad-select{
+ from{box-shadow:inset 0 0 0 1px #b2ddc288,0 0 0 4px #89b7a72f}
+ to{box-shadow:inset 0 0 0 1px #759d8d,0 0 0 0 #89b7a700}
+}
+.bar .unit.selected{animation:ui-squad-select 200ms ease-out}
+@keyframes ui-notice-appear{
+ from{opacity:0;transform:translate(-50%,5px)}
+ to{opacity:1;transform:translate(-50%,0)}
+}
+.feed:not([hidden]),.guidance:not([hidden]){animation:ui-notice-appear 170ms ease-out both}
+@media(prefers-reduced-motion:reduce){
+ .context-tools,.bar .unit.selected,.feed,.guidance{animation:none!important;
+ transition:none!important;transform:none}
+ .feed,.guidance{transform:translateX(-50%)}
+}
