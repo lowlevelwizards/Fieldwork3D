@@ -111,13 +111,30 @@ export function isClear(a:Pt,b:Pt,doors:Door[],ignoreDoors=false):boolean{
   }
   return true;
 }
-const cellAt=(p:Pt)=>({col:Math.round(p.x/GRID),row:Math.round(p.y/GRID)});
-const cellPoint=(col:number,row:number):Pt=>({x:col*GRID,y:row*GRID});
 const key=(col:number,row:number)=>col+','+row;
-/** A* only translates a deliberately chosen waypoint into a collision-safe
- * local route; the user still chooses every tactical destination. */
+const sweepPassable=(from:Pt,to:Pt,canStand:(p:Pt)=>boolean)=>{
+  const count=Math.max(1,Math.ceil(distance(from,to)/4));
+  for(let i=1;i<=count;i++){
+    const t=i/count;
+    if(!canStand({x:from.x+(to.x-from.x)*t,
+      y:from.y+(to.y-from.y)*t}))return false;
+  }
+  return true;
+};
+/** Broad pathfinding remains 16-unit A*, with bounded local 8-unit rescue
+ * for a physically valid narrow route missed by the coarse grid. */
 export function route(from:Pt,to:Pt,
   canStand:(p:Pt)=>boolean=passable):Pt[]{
+  const broad=routeGrid(from,to,canStand,GRID,6000);
+  if(broad.length||distance(from,to)>245)return broad;
+  return routeGrid(from,to,canStand,GRID/2,3800,76);
+}
+function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
+  grid:number,budget:number,padding=Infinity):Pt[]{
+  const cellAt=(p:Pt)=>({col:Math.round(p.x/grid),
+    row:Math.round(p.y/grid)});
+  const cellPoint=(col:number,row:number):Pt=>({x:col*grid,
+    y:row*grid});
   if(!canStand(to))return [];
   const st=cellAt(from),goal=cellAt(to);
   const startKey=key(st.col,st.row),goalKey=key(goal.col,goal.row);
@@ -128,21 +145,25 @@ export function route(from:Pt,to:Pt,
   const visited=new Set<string>();
   let found=false;
   const dirs=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
-  for(let iter=0;open.length&&iter<6000;iter++){
+  for(let iter=0;open.length&&iter<budget;iter++){
     open.sort((a,b)=>a.f-b.f);
     const at=open.shift()!,k=key(at.col,at.row);
     if(visited.has(k))continue;visited.add(k);
     if(k===goalKey){found=true;break;}
     for(const [dx,dy] of dirs){
       const col=at.col+dx,row=at.row+dy,p=cellPoint(col,row);
+      if(padding!==Infinity&&
+        (p.x<Math.min(from.x,to.x)-padding||
+         p.x>Math.max(from.x,to.x)+padding||
+         p.y<Math.min(from.y,to.y)-padding||
+         p.y>Math.max(from.y,to.y)+padding))continue;
       if(!canStand(p))continue;
       // Grid centres alone can lie clear while the straight diagonal
       // between them clips a door-frame corner. Sample the actual travel
       // segment before accepting a nav edge; motor collision uses the
       // same solid-world clearance policy.
       const atPoint=cellPoint(at.col,at.row);
-      if(!canStand({x:(atPoint.x+p.x)/2,y:(atPoint.y+p.y)/2}))
-        continue;
+      if(!sweepPassable(atPoint,p,canStand))continue;
       if(dx!==0&&dy!==0&&
         (!canStand(cellPoint(at.col+dx,at.row))||
          !canStand(cellPoint(at.col,at.row+dy))))continue;
@@ -163,6 +184,7 @@ export function route(from:Pt,to:Pt,
     cursor=parent;
   }
   path.reverse();
+  if(path.length&&!sweepPassable(from,path[0],canStand))return [];
   // Remove collinear small grid legs; retain all corners.
   const compact:Pt[]=[];
   for(let i=0;i<path.length;i++){
@@ -173,6 +195,8 @@ export function route(from:Pt,to:Pt,
     }
     compact.push(b);
   }
+  // The final connector is also collision-tested, not just the grid.
+  if(!sweepPassable(compact.at(-1)??from,to,canStand))return [];
   // If close enough use the exact requested endpoint.
   if(distance(compact.at(-1)??from,to)>2)compact.push({...to});
   else compact[compact.length-1]={...to};
