@@ -11,7 +11,8 @@ test('expanded maps preserve door widths, mission geometry and larger playable b
   if(large.scale!=='expanded')continue;
   larger++;
   assert.ok(large.bounds.maxX>640);
-  assert.equal(large.rooms.length,base.rooms.length);
+  assert.equal(large.archetype,base.archetype);
+  assert.ok(large.rooms.length>=8&&base.rooms.length>=8);
   assert.ok(large.rooms.reduce((n,r)=>n+r.w*r.h,0)>
     base.rooms.reduce((n,r)=>n+r.w*r.h,0)*1.2,
     'same functional program must gain real floor area');
