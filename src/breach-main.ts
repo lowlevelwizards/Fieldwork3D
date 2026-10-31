@@ -51,6 +51,7 @@ const ui={
   hint:el<HTMLElement>('hint'),feed:el<HTMLElement>('feed'),
   mission:el<HTMLElement>('mission'),
   briefingToggle:el<HTMLButtonElement>('briefingToggle'),
+  uiHelp:el<HTMLButtonElement>('uiHelp'),
   briefingPanel:el<HTMLElement>('briefingPanel'),
   briefingTitle:el<HTMLElement>('briefingTitle'),
   briefingBody:el<HTMLElement>('briefingBody'),
@@ -265,6 +266,20 @@ function selectUnit(id:string){
   selectedNode=null;doorFocusId=null;
   doorMenuDismissedId=null;updateHud();
 }
+// First-use explanations never obstruct play permanently; settings can reopen help.
+let helpText='',helpUntil=0;
+function showUiHelp(text:string,duration=4200){
+  if(!text)return;
+  helpText=text;helpUntil=performance.now()+duration;
+}
+function discoverAction(action:string,description:string){
+  try{
+    const key='fieldwork3d.ui.discovered.'+action;
+    if(localStorage.getItem(key))return;
+    localStorage.setItem(key,'1');
+  }catch{/* in-memory hints still work when private storage is disabled */}
+  showUiHelp(description);
+}
 function message(){
   if(replaying)return 'MISSION FILM · ORBIT, PAN, ZOOM AND SCRUB FREELY';
   if(flashMode)return 'FLASH: tap a target, or CANCEL to back out.';
@@ -421,6 +436,7 @@ ui.context.addEventListener('click',event=>{
   const button=(event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]');
   if(!button||state.phase!=='planning')return;
   const action=button.dataset.action;
+  if(action)discoverAction(action,button.title);
   const a=uid(selected);
   if(!a)return;
   const node=selectedPlanNode();
@@ -599,8 +615,9 @@ function updateHud(){
       ' ROOMS · '+team(state).length+' OPERATORS · SEED '+
       state.site.seed.toString(16).toUpperCase().padStart(8,'0'):
     'TWO ROOMS · TWO OPERATORS';
-  ui.hint.textContent=message();
-  ui.hint.hidden=!(looking||flashMode||!!firePlacement);
+  const hasHelp=performance.now()<helpUntil;
+  ui.hint.textContent=hasHelp?helpText:message();
+  ui.hint.hidden=!(hasHelp||looking||flashMode||!!firePlacement);
   updateContext();
   updateUiNotice(ui.feed,state.events,state.phase);
   const visible=enemies(state).filter(e=>e.health>0&&isSeen(state,e)).length;
@@ -1736,6 +1753,12 @@ ui.briefingClose.addEventListener('click',()=>{
   ui.briefingPanel.hidden=true;
   ui.briefingToggle.setAttribute('aria-expanded','false');
   updateContext();
+});
+ui.uiHelp.addEventListener('click',()=>{
+  ui.siteSettings.hidden=true;
+  ui.siteSettingsToggle.setAttribute('aria-expanded','false');
+  showUiHelp('Tap operator = HERE · Tap a route line = add waypoint · Tap node or door = context actions · Hold an action for a description.',8500);
+  updateHud();
 });
 ui.siteSettingsToggle.addEventListener('click',()=>{
   ui.siteSettings.hidden=!ui.siteSettings.hidden;
