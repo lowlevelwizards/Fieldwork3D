@@ -258,6 +258,7 @@ if(!fogContext)throw Error('Fog canvas unavailable');
 let fogStamp=-1;
 let audio:AudioContext|null=null;
 let lastSoundShotId=0,lastEventAudio='';
+let lastFootstepAudioTime=0;
 const playTone=(frequency:number,decay:number,noise=false,
   level=1,pan=0)=>{
   try{
@@ -1764,6 +1765,7 @@ function reset(next=state.variant,siteSeed?:number){
   selectedNode=null;doorFocusId=null;draggingNode=null;
   cursor=null;trace=null;zoom=1;panX=panY=0;
   fogStamp=-1;lastSoundShotId=0;lastEventAudio='';
+  lastFootstepAudioTime=0;
   recorder=new MissionRecorder();recorder.capture(state,true);
   tacticalFeedback.clear();layout();updateHud();
 }
@@ -2180,6 +2182,29 @@ function tick(now:number){
     replayTime=Math.min(recorder.duration,replayTime+dt*replayRate);
     applyReplayFrameAt(replayTime);
     if(replayTime>=recorder.duration)replayPlaying=false;
+  }
+  // Physical footfalls share the same fixed simulation/contact recorder as
+  // replay. Audio never runs from a render-frame cadence or replay seeking.
+  if(!replaying){
+    if(state.seconds<lastFootstepAudioTime)
+      lastFootstepAudioTime=Math.max(0,state.seconds-1/60);
+    if(simSteps>0){
+      const contacts=recorder.motion.footfallsBetween(
+        lastFootstepAudioTime,state.seconds,team(state).map(a=>a.id));
+      if(audio?.state==='running'){
+        const listener=uid(selected)?.p;
+        for(const contact of contacts.slice(-8)){
+          const level=listener?heardIntensity(contact.position,listener,
+            95,state.doors,WALLS):1;
+          if(level<.08)continue;
+          const pan=listener?(contact.position.x-listener.x)/200:0;
+          const pitch=contact.foot===0?112:124;
+          // Short muted boot thump. Soft crouch gait is inherently quieter.
+          playTone(pitch,.042,false,level*(.12+.16*contact.intensity),pan);
+        }
+      }
+      lastFootstepAudioTime=state.seconds;
+    }
   }
   // 079: shot IDs are monotonic, unlike the short-lived shot array length.
   // A new shot can arrive on exactly the tick an old shot expires.
