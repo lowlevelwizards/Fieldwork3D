@@ -261,6 +261,24 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     motion.torsoSide;
   r.chest.rotation.y+=motion.torsoYaw;
   r.head.rotation.x=motion.headCounter+bash.head;
+  // Apply the collapsing root transform before solving the legs.
+  // Inverse full-body rotation holds each shoe in world-space contact
+  // instead of sweeping planted boots through the floor during a fall.
+  const reaction=hitStagger(p.hitRegion??'torso',
+    p.hitYaw??p.heading,p.heading,
+    p.hitAge===undefined?100:p.hitAge,p.hitSeverity??1);
+  const injuryTilt=p.injury===2?.16:p.injury===1?.05:0;
+  const collapse=fallAngles(p.downPose??'forward',downProgress);
+  const impactPulse=Math.sin(Math.PI*downProgress);
+  r.root.rotation.x=p.surrender?-.22:
+    p.down?collapse.x+reaction.forward*.12*impactPulse:
+      -(injuryTilt+reaction.forward);
+  r.root.rotation.z=p.surrender?.09:
+    p.down?collapse.z+reaction.side*.10*impactPulse:
+      clamp(p.injury===2?.065:p.injury===1?.018:0,0,.08)+
+      reaction.side;
+  r.root.position.y=p.surrender?-3-3*kneel:p.down?collapse.y:0;
+  const bodyInverse=r.root.quaternion.clone().invert();
   for(let i=0;i<2;i++){
     const foot=r.feet[i],sign=i===0?-1:1,target=targets[i];
     const hipLocal=P(0,r.hip.position.y,r.hip.position.z+sign*4.8);
@@ -277,8 +295,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       targetWorld.y+=kick.lift;
       foot.swinging=true;
     }
-    let relative=targetWorld.sub(P(p.x,0,p.z))
-      .applyAxisAngle(P(0,1,0),-headingYaw);
+    let relative=targetWorld.sub(P(p.x,r.root.position.y,p.z))
+      .applyQuaternion(bodyInverse);
     let leg=solveTwoBone(hipLocal,relative,9.7,9.7,
       P(4.5,0,sign*1.1),LEG_LIMITS,foot.bend);
     // Emergency fallback protects against even legacy replay anchors
@@ -286,8 +304,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     if(!p.down&&!kick&&leg.effector.distanceTo(relative)>1.5){
       const safe=safePlantPoint({...gaitInput,speed:0},i);
       foot.anchor.set(safe.x,1.45,safe.y);
-      relative=P(safe.x,1.45,safe.y).sub(P(p.x,0,p.z))
-        .applyAxisAngle(P(0,1,0),-headingYaw);
+      relative=P(safe.x,1.45,safe.y)
+        .sub(P(p.x,r.root.position.y,p.z))
+        .applyQuaternion(bodyInverse);
       leg=solveTwoBone(hipLocal,relative,9.7,9.7,
         P(4.5,0,sign*1.1),LEG_LIMITS,P(1,0,sign*.4));
       foot.swinging=false;
@@ -462,18 +481,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }
   // The pose system is the final writer for actor tilts and reactions.
   // The scene controls XY world placement only, not anatomy or weapon pose.
-  const reaction=hitStagger(p.hitRegion??'torso',
-    p.hitYaw??p.heading,p.heading,
-    p.hitAge===undefined?100:p.hitAge,p.hitSeverity??1);
-  const injuryTilt=p.injury===2?.16:p.injury===1?.05:0;
-  const collapse=fallAngles(p.downPose??'forward',downProgress);
-  r.root.rotation.x=p.surrender?-.22:
-    p.down?collapse.x:-(injuryTilt+reaction.forward);
-  r.root.rotation.z=p.surrender?.09:
-    p.down?collapse.z:
-    clamp(p.injury===2?.065:p.injury===1?.018:0,0,.08)+
-      reaction.side;
-  r.root.position.y=p.surrender?-3-3*kneel:p.down?collapse.y:0;
   if(p.flashActive&&!p.down)r.root.rotation.z+=.10*Math.sin(p.seconds*24);
   if(p.surrender)r.chest.rotation.x=.15;
   else if(p.down){
