@@ -11,7 +11,7 @@ export const LAB_TRACKS=[
   'strafe-reverse','mixed','turn-90','turn-180','turn','pivot-reverse',
   'pie','look','crouch-walk','crouch','wounded','aim',
   'high-ready','low-ready','ready','short-stock','active-aim',
-  'point-shoot','reload',
+  'point-shoot','ready-to-ads','ads-to-low','reload',
   'reload-emergency','reload-retention','reload-shotgun',
   'reload-interrupt','reload-wounded',
   'flash','door','kick','bash','down','down-forward','down-back',
