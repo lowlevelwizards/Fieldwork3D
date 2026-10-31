@@ -14,6 +14,8 @@ import {casingAt,CASING_LIMIT,impactProfile} from './breach-effects.ts';
 import {sampleThrow} from './breach-flash.ts';
 import {paintFogMask,paintOccupiedRoomContext,occupiedFogRooms,FOG_WIDTH,FOG_HEIGHT} from './breach-fog-mask.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
+import {interpolatedActor,type RenderFrame}
+  from './breach-frame-interpolation.ts';
 
 /** One authoritative 2D world, physically represented in one 3D scene.
  * Coordinates: tactics (x,y) => scene (x, elevation, y).
@@ -643,7 +645,8 @@ export class TacticalScene3D{
   }
   update(s:Session,selected:string,dt:number,
     focusedDoorId:string|null=null,omniscient=false,
-    replay?:ReplayPresentation|null){
+    replay?:ReplayPresentation|null,
+    renderFrame?:RenderFrame|null){
     if(this.view.mode==='plan2d')return;
     this.updateCamera(dt);
     this.fogAt+=dt;
@@ -654,7 +657,8 @@ export class TacticalScene3D{
       this.terminalPoseSeconds=0;this.terminalSessionStamp=s.seconds;
     }else this.terminalPoseSeconds=Math.min(1.0,
       this.terminalPoseSeconds+Math.max(0,dt));
-    const poseSeconds=s.seconds+(terminal?this.terminalPoseSeconds:0);
+    const poseSeconds=s.seconds+(terminal?this.terminalPoseSeconds:0)-
+      (renderFrame&&!terminal?(1-renderFrame.alpha)/60:0);
     // The shadow map follows the active encounter to retain contact detail.
     const shadowPoint=team(s).find(a=>a.id===selected)?.p??this.view.focus;
     this.sun.position.set(shadowPoint.x-145,250,shadowPoint.y+175);
@@ -753,7 +757,9 @@ export class TacticalScene3D{
         statusMat.color.setHex(down?0xd99e83:0xf4c7aa);
       }
       if(!object.root.visible)continue;
-      object.root.position.set(actor.p.x,0,actor.p.y);
+      // Presentation samples do not alter authoritative collision or shot state.
+      const drawActor=interpolatedActor(actor,renderFrame);
+      object.root.position.set(drawActor.x,0,drawActor.z);
       // Build 120: the pose solver is the only writer of actor anatomical,
       // firearm and hit-reaction transforms; the scene owns world placement.
       const downProgress=actor.health<=0?
@@ -776,7 +782,7 @@ export class TacticalScene3D{
         s.doors.find(d=>d.id===actor.lastDoorId):undefined);
       const handle=activeDoor?handlePoint(activeDoor):undefined;
       poseOperator(object.physical,{
-        x:actor.p.x,z:actor.p.y,heading:actor.heading,
+        x:drawActor.x,z:drawActor.z,heading:drawActor.heading,
         velocity:actor.velocity,seconds:poseSeconds,stride:actor.stride,
         // A path collision may leave residual motor velocity while position
         // is stationary: feet should brace, not march in place.
@@ -802,7 +808,7 @@ export class TacticalScene3D{
         down:actor.health<=0,surrender:actor.surrendered,
         aiming:actor.aim>.20,turning:actor.turning,firing:!!firing,
         aimBlend:actor.aim,recoil:actor.recoil*6,
-        shotHeading:actor.weaponYaw,hitAge,hitFade,downProgress,
+        shotHeading:drawActor.weaponYaw,hitAge,hitFade,downProgress,
         hitRegion:actor.lastHitRegion,hitYaw:actor.lastHitYaw,
         hitSeverity:actor.lastHitSeverity,downPose:actor.downPose,
         flashActive:actor.flashUntil>s.seconds&&actor.health>0,

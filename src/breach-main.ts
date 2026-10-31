@@ -15,6 +15,8 @@ import {
   cycleWeapon,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
+import {renderSnapshot,type RenderActor}
+  from './breach-frame-interpolation.ts';
 import {routeLineHit} from './breach-route-edit.ts';
 import {placeContextMenu,type AvoidRect,type ScreenPath,type MenuSide} from './breach-context-placement.ts';
 import {shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
@@ -283,6 +285,7 @@ function unlockAudio(){
 }
 
 let last=performance.now(),accum=0,hudAt=0;
+let previousRenderActors:Record<string,RenderActor>|null=null;
 let cssW=innerWidth,cssH=innerHeight,dpr=1;
 let viewScale=1,ox=0,oy=0,zoom=1,panX=0,panY=0;
 let cursor:Pt|null=null;
@@ -2059,11 +2062,12 @@ function tick(now:number){
   if(!replaying&&state.phase==='running'){
     accum+=dt;
     while(accum>=1/60){
+      previousRenderActors=renderSnapshot(state.operators);
       stepSession(state,1/60);
       recorder.capture(state,isMissionTerminal(state));
       accum-=1/60;
     }
-  }else accum=0;
+  }else{accum=0;previousRenderActors=null;}
   if(replaying&&replayFollow&&stage&&viewMode!=='plan2d'){
     const a=team(state).find(x=>x.id===replayFollowId);
     if(a){
@@ -2112,7 +2116,9 @@ function tick(now:number){
   const perfRenderStart=perfOverlay?performance.now():0;
   if(stage&&viewMode!=='plan2d')
     stage.update(state,selected,dt,doorFocusId,
-      replaying&&replayOmniscient,replaying?replayPresentation:null);
+      replaying&&replayOmniscient,replaying?replayPresentation:null,
+      !replaying&&state.phase==='running'&&previousRenderActors?
+        {previous:previousRenderActors,alpha:Math.min(1,accum*60)}:null);
   render();
   if(feedbackDraw){
     feedbackDraw.setTransform(dpr,0,0,dpr,0,0);
