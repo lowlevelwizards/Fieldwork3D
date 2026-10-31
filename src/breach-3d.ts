@@ -663,7 +663,8 @@ export class TacticalScene3D{
   update(s:Session,selected:string,dt:number,
     focusedDoorId:string|null=null,omniscient=false,
     replay?:ReplayPresentation|null,
-    renderFrame?:RenderFrame|null){
+    renderFrame?:RenderFrame|null,
+    liveMotion?:ReplayPresentation|null){
     if(this.view.mode==='plan2d')return;
     this.updateCamera(dt);
     this.fogAt+=dt;
@@ -822,8 +823,11 @@ export class TacticalScene3D{
         // future foot placement but must not invalidate a planted boot
         // every frame while the two operators pass each other.
         footAllowed:pt=>footAnchorReachable(actor.p,pt,s.doors),
-        deterministic:!!replay,replayFeet:replay?.feet[actor.id],
-        pelvisYaw:replay?.pelvisYaw[actor.id],
+        // Build 181: both live and replay sample fixed-step recorded contacts;
+        // rendering cannot advance a second independent live gait.
+        deterministic:!!replay,
+        replayFeet:replay?.feet[actor.id]??liveMotion?.feet[actor.id],
+        pelvisYaw:replay?.pelvisYaw[actor.id]??liveMotion?.pelvisYaw[actor.id],
         travelYaw:replay?.travelYaw[actor.id],
         posture:actor.posture,injury:actor.injuryStage,weapon:actor.weapon,
         gait:actor.plan[0]?.kind==='pie'?'pie':
