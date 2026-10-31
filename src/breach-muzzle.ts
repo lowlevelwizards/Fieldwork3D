@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import type {WeaponId} from './breach-combat.ts';
 import {fitWeaponPose,handlingPose,weaponGrips} from './breach-weapon-pose.ts';
-export type MuzzleSample={x:number;y:number;z:number};
+export type MuzzleSample={x:number;y:number;z:number;yaw:number;pitch:number};
 export type MuzzleInput={x:number;z:number;heading:number;
   weaponYaw:number;weapon:WeaponId;aim:number;velocity:number;
   recoil:number;obstruction?:boolean;friendlyNear?:boolean;
@@ -20,7 +20,12 @@ export function muzzleAtShot(p:MuzzleInput):MuzzleSample{
   const grip=weaponGrips(p.weapon);
   const local=new THREE.Vector3(MUZZLE_TIP*grip.lengthScale,0,0)
     .applyEuler(fit.rotation).add(fit.origin);
-  local.applyAxisAngle(new THREE.Vector3(0,1,0),-p.heading);
+  const worldUp=new THREE.Vector3(0,1,0);
+  const axis=new THREE.Vector3(1,0,0).applyEuler(fit.rotation)
+    .applyAxisAngle(worldUp,-p.heading).normalize();
+  local.applyAxisAngle(worldUp,-p.heading);
   return {x:p.x+local.x,y:26+local.y-
-    (p.posture==='crouch'?8:0),z:p.z+local.z};
+    (p.posture==='crouch'?8:0),z:p.z+local.z,
+    yaw:Math.atan2(axis.z,axis.x),
+    pitch:Math.atan2(axis.y,Math.hypot(axis.x,axis.z))};
 }
