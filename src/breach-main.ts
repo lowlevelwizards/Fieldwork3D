@@ -28,7 +28,7 @@ import {doorReachable} from './breach-door.ts';
 import {INTEL_MODES,doorKnown,wallKnown,coverKnown,roomKnown,
   routeWithIntel,intelPassable,type IntelMode} from './breach-intel.ts';
 import './breach-style.css';
-import {tacticalIcon,decorateIconButton} from './ui/tactical-icons.ts';
+import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {contextActionChoices} from './ui/context-actions.ts';
 import {PaletteMotion} from './ui/palette-motion.ts';
 import {TacticalFeedback} from './ui/tactical-feedback.ts';
@@ -436,7 +436,12 @@ function updateContext(){
     if(!button){
       button=document.createElement('button');
       button.type='button';button.dataset.action=choice.id;
-      button.prepend(tacticalIcon(choice.id));
+    }
+    const iconKey=tacticalIconForState(choice.id,choice.label);
+    if(button.dataset.icon!==iconKey){
+      button.querySelector('.ui-icon')?.remove();
+      button.prepend(tacticalIcon(iconKey));
+      button.dataset.icon=iconKey;
     }
     let label=button.querySelector<HTMLElement>('.command-label');
     if(!label){

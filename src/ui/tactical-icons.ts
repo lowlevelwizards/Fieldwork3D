@@ -15,6 +15,10 @@ const glyphs:Record<string,string>={
   ctxStance:'<circle cx="12" cy="4.5" r="2"/><path d="M12 7v8m0-5-5 3m5-3 5 2m-5 3-5 6m5-6 6 6"/>',
   ctxPace:'<circle cx="15" cy="4" r="2"/><path d="m14 7-5 4 4 3 7 1m-7-1-4 7m0-10-5 3m12 0 5-5"/>',
   ctxReload:'<path d="M6 5h12v5H6zM8 10v9l4 3 4-3v-9"/><path d="M12 12v6M4 13H2m20 0h-2"/>',
+  ctxStanceCrouch:'<circle cx="13" cy="5" r="2"/><path d="m13 7-4 5 4 3m-4-3-5 3m9 0 5 1 3 4m-8-5-4 6"/>',
+  ctxPaceWalk:'<circle cx="13" cy="4.5" r="2"/><path d="m13 7-2 7-4 6m4-6 7 6m-7-10-5 4m7-5 4 4"/>',
+  ctxFireHold:'<path d="M3 9h10l3-2h5v5h-7l-3 3H6l-3 4"/><path d="M5 4l15 16" stroke-width="2.3"/>',
+  ctxFireReturn:'<path d="M3 10h10l3-3h5v5h-7l-3 3H6l-3 4"/><path d="M14 19h7m-3-3 3 3-3 3"/>',
   ctxDelete:'<path d="M4 7h16M9 7v12m6-12v12M6 7l1 14h10l1-14M9 4h6"/>',
   back:'<path d="m15 5-7 7 7 7"/>',undo:'<path d="M9 8 4 12l5 4M4 12h9a6 6 0 0 1 0 12"/>',
   redo:'<path d="m15 8 5 4-5 4M20 12H11a6 6 0 0 0-6 6"/>',
@@ -25,6 +29,14 @@ const glyphs:Record<string,string>={
   pause:'<path d="M8 5v14m8-14v14"/>',
   reset:'<path d="M5 7a8 8 0 1 1-1 10"/><path d="M5 2v5H1"/>'
 };
+/** Resolve real state variants without changing action identifiers or handlers. */
+export function tacticalIconForState(id:string,label:string){
+  if(id==='ctxStance'&&label==='CROUCH')return 'ctxStanceCrouch';
+  if(id==='ctxPace'&&label==='WALK')return 'ctxPaceWalk';
+  if(id==='ctxFire'&&label==='HOLD')return 'ctxFireHold';
+  if(id==='ctxFire'&&label==='RETURN')return 'ctxFireReturn';
+  return id;
+}
 export function tacticalIcon(key:string):SVGSVGElement{
   const s=document.createElementNS('http://www.w3.org/2000/svg','svg');
   s.setAttribute('viewBox','0 0 24 24');
