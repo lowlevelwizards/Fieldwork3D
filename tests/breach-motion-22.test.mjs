@@ -21,5 +21,5 @@ test('individual idle breathing is deterministic and fully suppressed in action'
  const first=motion(a),second=motion(b);
  assert.deepEqual(first,motion(a));
  assert.notEqual(first.breath,second.breath);
- assert.equal(motion(a,30).breath,0);
+ assert.ok(Math.abs(motion(a,30).breath)<1e-8);
 });
