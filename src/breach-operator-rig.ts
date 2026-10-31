@@ -9,6 +9,7 @@ import {advanceFootsteps,createFootstepScheduler,validatedReplayFeet,
   from './breach-footsteps.ts';
 import type {ReplayFeet} from './breach-replay-motion.ts';
 import {bodyFromContacts} from './breach-body-motion.ts';
+import {turnHierarchy} from './breach-turn-hierarchy.ts';
 import {contactReaction,type BashRole} from './breach-contact-reactions.ts';
 import {kickMotion} from './breach-door-actions.ts';
 import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
@@ -177,11 +178,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const hipTarget=moving>.22&&!lateral&&!reverse?travel:p.heading;
   r.root.rotation.y=p.deterministic?-hipTarget:
     approach(r.root.rotation.y,-hipTarget,3.8,dt);
-  // Upper body follows aim, with a limited anatomical twist.
-  const torsoDelta=clamp(diff(hipTarget,p.heading),-.68,.68);
-  r.chest.rotation.y=p.deterministic?-torsoDelta:
-    approach(r.chest.rotation.y,-torsoDelta,6,dt);
-  r.head.rotation.y=clamp(-diff(hipTarget,p.heading)*.38,-.28,.28);
+  // Targeted upper-body turning is solved only once after foot/pelvis
+  // orientation is known, rather than first here and again on pivots.
   const braking=!p.deterministic&&r.lastPose?
     clamp((r.lastPose.velocity-p.velocity)/60,-1,1):0;
   r.chest.rotation.z=clamp(-moving*.025+braking*.018,-.06,.06);
@@ -236,11 +234,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.root.rotation.y=r.footsteps.pelvisYaw;
   }
   headingYaw=r.root.rotation.y;
-  const lookTwist=clamp(-p.heading-headingYaw,-.68,.68);
-  if(r.footsteps.mode==='pivot'||p.pelvisYaw!==undefined){
-    r.chest.rotation.y=p.deterministic?lookTwist:
-      approach(r.chest.rotation.y,lookTwist,6,dt);
-  }
+  const turn=turnHierarchy({pelvisYaw:headingYaw,
+    bodyHeading:p.heading,targetHeading:p.shotHeading??p.heading,
+    speed:physicalSpeed,aiming:p.aiming});
+  r.chest.rotation.y=p.deterministic?turn.chestYaw:
+    approach(r.chest.rotation.y,turn.chestYaw,
+      p.aiming?7.5:5.8,dt);
+  r.head.rotation.y=p.deterministic?turn.headYaw:
+    approach(r.head.rotation.y,turn.headYaw,10.0,dt);
   const motion=bodyFromContacts({velocity:p.down?0:physicalSpeed,
     heading:p.heading,travelYaw,turning:p.turning,
     injury:p.injury,posture:p.posture,feet:targets,gait:p.gait});
