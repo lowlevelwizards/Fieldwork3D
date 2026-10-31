@@ -4,6 +4,7 @@ import type {FootstepInput,FootstepState} from './breach-footsteps.ts';
 import {horizontalLegReach,fitLandingToHip,LEG_HIP_SIDE}
   from './breach-leg-geometry.ts';
 import {hybridPhaseDurations} from './breach-hybrid-contact.ts';
+import {plannedBootYaw} from './breach-foot-yaw.ts';
 import {bootOutlineClearance,BOOT_CLEARANCE}
   from './breach-gait-geometry.ts';
 type Pt={x:number;y:number};
@@ -64,9 +65,10 @@ export function hybridLanding(input:FootstepInput,index:number,
      const k=t*t*(3-2*t);
      const pos={x:stepFoot.plantedAt.x+(p.x-stepFoot.plantedAt.x)*k,
        y:stepFoot.plantedAt.y+(p.y-stepFoot.plantedAt.y)*k};
+     const targetYaw=plannedBootYaw(stepFoot.worldYaw,input.rootYaw);
      const swingYaw=stepFoot.worldYaw+Math.atan2(
-       Math.sin(input.rootYaw-stepFoot.worldYaw),
-       Math.cos(input.rootYaw-stepFoot.worldYaw))*k;
+       Math.sin(targetYaw-stepFoot.worldYaw),
+       Math.cos(targetYaw-stepFoot.worldYaw))*k;
      const boots=index===0?
        [{position:pos,worldYaw:swingYaw},
         {position:other.plantedAt,worldYaw:other.worldYaw}]:
@@ -84,7 +86,8 @@ export function hybridLanding(input:FootstepInput,index:number,
    (sign<0?dotSide(future,p,facing)<=otherSide-separation+.25:
      dotSide(future,p,facing)>=otherSide+separation-.25)&&
    bootOutlineClearance(
-     {position:p,worldYaw:input.rootYaw},
+     {position:p,worldYaw:plannedBootYaw(
+       stepFoot.worldYaw,input.rootYaw)},
      {position:other.plantedAt,worldYaw:other.worldYaw})>=BOOT_CLEARANCE;
  // If the only possible step rises over the supporting boot, preserve
  // grounded landing clearance and keep locomotion moving. The swing height
