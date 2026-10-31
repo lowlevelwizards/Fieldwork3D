@@ -16,5 +16,5 @@ test('144B: 3D blood lies on floor, below fog and opaque wall geometry',()=>{
   assert.match(scene,/mark\.surface==='blood'\?\.85/);
   assert.match(scene,/this\.smoothFog\.position\.set\(W\/2,1\.05,H\/2\)/);
   assert.match(scene,/this\.smoothFog\.renderOrder=1000/);
-  assert.match(scene,/map:this\.fogTexture,transparent:true,depthTest:true/);
+  assert.ok(scene.includes('map:this.fogTexture,transparent:true,depthTest:true'));
 });
