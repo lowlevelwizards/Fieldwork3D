@@ -34,7 +34,8 @@ export function orientArchitecturalSite(site:Site,seed:number):Site{
  const nx=quarterTurns%2?h:w,ny=quarterTurns%2?w:h;
  return {...site,entrySide:sides[quarterTurns],
   rooms:site.rooms.map(room),walls:site.walls.map(perimeter),
-  doors:site.doors.map(perimeter),openings:site.openings?.map(perimeter),
+  doors:site.doors.map(d=>({...d,a:point(d.a),b:point(d.b)})),
+  openings:site.openings?.map(o=>({...o,a:point(o.a),b:point(o.b)})),
   cover:site.cover.map(obstacle),entrance:point(site.entrance),
   extract:point(site.extract),objective:point(site.objective),
   spawn:site.spawn.map(point),enemies:site.enemies.map(point),
