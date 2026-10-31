@@ -174,12 +174,25 @@ let lastContextSide:MenuSide|null=null;
 const paletteMotion=new PaletteMotion();
 const reducedMotionMedia=matchMedia('(prefers-reduced-motion: reduce)');
 let paletteWidth=0,paletteHeight=0;
+let paletteExit:Animation|null=null;
 const contextTether=document.createElement('div');
 contextTether.id='contextTether';
 contextTether.setAttribute('aria-hidden','true');
 document.body.append(contextTether);
 function hideContextPalette(){
-  ui.context.hidden=true;paletteMotion.hide();contextTether.hidden=true;
+  if(!paletteMotion.active)return;
+  paletteMotion.hide();contextTether.hidden=true;
+  ui.context.style.pointerEvents='none';
+  if(reducedMotionMedia.matches){ui.context.hidden=true;return;}
+  paletteExit?.cancel();
+  paletteExit=ui.context.animate([
+    {opacity:1,scale:1},{opacity:0,scale:.96}
+  ],{duration:115,easing:'ease-in',fill:'forwards'});
+  const exit=paletteExit;
+  exit.onfinish=()=>{
+    if(!paletteMotion.active){ui.context.hidden=true;exit.cancel();}
+    if(paletteExit===exit)paletteExit=null;
+  };
 }
 function advanceContextPalette(dt:number){
   if(ui.context.hidden||!paletteMotion.active){contextTether.hidden=true;return;}
@@ -410,7 +423,8 @@ function updateContext(){
   });
   // Reconcile buttons in-place: avoid tearing down the menu when a toggle changes.
   const identity=(door?'door:'+door.id:node?'node:'+node.id:'here')+'/'+selected;
-  if(contextSignature!==identity){
+  const contextChanged=contextSignature!==identity;
+  if(contextChanged){
     contextActionsSignature='';
     contextSignature=identity;
     ui.context.replaceChildren();
@@ -465,7 +479,12 @@ function updateContext(){
   buckets.destructive.hidden=!buckets.destructive.childElementCount;
   ui.context.classList.toggle('door-menu',!!door);
   }
+  if(paletteExit){paletteExit.cancel();paletteExit=null;}
   ui.context.hidden=false;
+  ui.context.style.pointerEvents='auto';
+  if(contextChanged&&!reducedMotionMedia.matches)
+    ui.context.animate([{opacity:.78,scale:.96},{opacity:1,scale:1}],
+      {duration:160,easing:'cubic-bezier(.2,.8,.2,1)'});
   ui.context.dataset.door=door?.id??'';
   ui.context.setAttribute('aria-label',door?
     'Door actions':'Selected position actions and operator settings');
