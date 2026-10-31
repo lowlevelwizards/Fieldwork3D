@@ -388,3 +388,42 @@ body.replaying .foot,body.replaying .guidance,body.replaying .feed{display:none!
   font-size:11px;letter-spacing:.015em;pointer-events:none}
 .feed.critical{border-color:#ba8465;color:#f4cfad}
 @media(max-height:470px){.feed{bottom:calc(74px + env(safe-area-inset-bottom));font-size:10px}}
+
+/* UI Overhaul 02 — squad-strip controls, readable at phone scale. */
+.bar{gap:6px;align-items:stretch;bottom:calc(9px + env(safe-area-inset-bottom))}
+.units{flex:1;min-width:0;gap:5px}
+.actions{flex:0 0 auto;gap:5px}
+.bar .unit{position:relative;min-width:0;border-radius:7px;
+  grid-template-columns:minmax(0,1fr);grid-template-rows:auto 4px auto;
+  gap:5px;padding:8px 7px;text-align:center;min-height:58px;
+  transition:border-color 120ms ease,background 120ms ease,transform 90ms ease}
+.bar .unit:active,.bar .actions button:active{transform:scale(.97)}
+.bar .unit .unit-code{display:none}
+.bar .unit strong{grid-column:1;font-size:12px;letter-spacing:.045em;line-height:1}
+.bar .unit small{grid-column:1;grid-row:2;display:block;width:100%;height:4px;
+  border-radius:4px;font-size:0;overflow:hidden;
+  background:linear-gradient(to right,var(--health-color,#91b5a5) var(--health-fill,100%),
+  #52615a var(--health-fill,100%));}
+.bar .unit em{grid-column:1;grid-row:3;font-size:10px;color:#d9d6c6;line-height:1}
+.bar .unit[data-condition=heavy],.bar .unit[data-condition=down]{border-color:#c38f79}
+.bar .unit.down{opacity:.73}
+.bar .unit.selected{background:#2f514a;border-color:#b9d8bf;box-shadow:inset 0 0 0 1px #759d8d}
+.bar .actions button{min-height:58px;border-radius:7px}
+.bar .actions .play{min-width:68px;font-size:14px}
+@media(max-width:650px){
+ .bar{left:7px;right:7px;gap:4px}
+ .units{width:auto;flex:1;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+ .actions{flex:0 0 auto}
+ .bar .unit{grid-template-columns:1fr;grid-template-rows:12px 4px 10px;gap:3px;
+   min-height:34px;padding:5px 6px}
+ .bar .unit strong{font-size:11px}
+ .bar .unit em{font-size:9px}
+ .bar .actions button{flex:none;min-height:73px;padding:7px}
+ .bar .actions #back{min-width:43px}
+ .bar .actions #moreOrders{min-width:45px}
+ .bar .actions .play{min-width:62px;flex:none}
+}
+@media(max-height:470px) and (max-width:650px){
+ .bar .unit{min-height:28px;padding:3px 6px}
+ .bar .actions button{min-height:61px}
+}
