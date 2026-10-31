@@ -22,7 +22,7 @@ import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
 import {doorReachable} from './breach-door.ts';
 import {INTEL_MODES,doorKnown,wallKnown,coverKnown,roomKnown,
-  routeWithIntel,type IntelMode} from './breach-intel.ts';
+  routeWithIntel,intelPassable,type IntelMode} from './breach-intel.ts';
 import './breach-style.css';
 import {paintFogMask,FOG_WIDTH,FOG_HEIGHT} from './breach-fog-mask.ts';
 
@@ -335,15 +335,20 @@ function updateContext(){
       h:Math.abs(head.y-feet.y)+34,weight:3});
   }
   const paths:ScreenPath[]=[];
-  // Respect the authored route lines and their editable nodes.
-  let previous=a.p;
-  for(const waypoint of a.plan){
-    if(waypoint.kind==='move'){
-      paths.push({a:worldToScreen(previous,8),b:worldToScreen(waypoint.p,8)});
-      previous=waypoint.p;
+  // Avoid all friendly-authored routes, not only the selected unit's plan.
+  // Teammates and their paths remain known even behind current fog.
+  for(const friendly of team(state)){
+    let previous=friendly.p;
+    for(const waypoint of friendly.plan){
+      if(waypoint.kind==='move'||waypoint.kind==='door'){
+        paths.push({a:worldToScreen(previous,8),
+          b:worldToScreen(waypoint.p,8)});
+        previous=waypoint.p;
+      }
+      const p=worldToScreen(waypoint.p,8);
+      avoid.push({x:p.x-19,y:p.y-19,w:38,h:38,
+        weight:friendly.id===selected?2:1.3});
     }
-    const p=worldToScreen(waypoint.p,8);
-    avoid.push({x:p.x-16,y:p.y-16,w:32,h:32});
   }
   for(const overlay of [ui.hint,ui.feed]){
     if(overlay.hidden||!overlay.getClientRects().length)continue;
@@ -789,8 +794,10 @@ function renderProjectedPlans(){
       const selectedNow=a.id===selected&&selectedNode===n.id;
       const point=worldToScreen(selectedNow&&draggingNode&&n.kind!=='flash'?
         draggingNode:n.p,8);
+      const invalidDrag=selectedNow&&draggingNode&&
+        !intelPassable(draggingNode,state.intel);
       circle(point.x,point.y,selectedNow?11:7,
-        selectedNow?'#ecd29f':color);
+        invalidDrag?'#df8070':selectedNow?'#ecd29f':color);
       circle(point.x,point.y,3,'#233b39');
       draw.fillStyle='#142829';draw.font='bold 11px monospace';
       draw.textAlign='center';draw.fillText(String(a.plan.indexOf(n)+1),
@@ -1167,7 +1174,9 @@ function useSelectedGround(pt:Pt){
     looking=false;updateHud();return;
   }
   if(!planMove(state,selected,pt))
-    state.events.push('NO WALKABLE ROUTE');
+    state.events.push(!intelPassable(pt,state.intel)?
+      'DESTINATION BLOCKED · CHOOSE NEARBY FLOOR':
+      'NO WALKABLE ROUTE · CHECK DOOR OR PATH');
   else{
     selectedNode=uid(selected)?.plan.at(-1)?.id??null;
     
