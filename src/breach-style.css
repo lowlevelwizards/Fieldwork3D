@@ -702,3 +702,33 @@ body.replaying #tacticalFeedback{display:none}
  .bar .actions #play .ui-icon{width:18px;height:18px}
  .bar .unit{min-height:28px}
 }
+
+/* UI 3 / 01 — stable, separate operator/node state strip */
+.tactical-hud{position:fixed;z-index:6;bottom:calc(9px + env(safe-area-inset-bottom));
+  left:7px;right:7px;display:flex;flex-direction:column;gap:5px}
+.tactical-hud .bar{position:relative!important;inset:auto!important;
+  left:auto!important;right:auto!important;bottom:auto!important;
+  width:100%;margin:0}
+.quick-states{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:4px;max-width:460px;width:100%;margin-left:auto;pointer-events:auto;
+  padding:4px;border-radius:9px;background:#172925e8;
+  border:1px solid #5d776aa6;box-shadow:0 4px 14px #06131070}
+.quick-states[hidden]{display:none!important}
+.quick-states button{min-width:0;min-height:42px;display:flex;
+  justify-content:center;align-items:center;gap:5px;border-radius:6px;
+  background:#294239;border:1px solid #567264;color:#d9dfcf;
+  padding:5px 4px;font:500 11px/1.1 var(--ui-font);
+  transition:background-color 120ms,border-color 120ms,transform 110ms}
+.quick-states button .ui-icon{width:19px;height:19px;flex-shrink:0}
+.quick-states button[aria-pressed=true]{background:#45685a;
+  border-color:#afd1a9;color:#f5e9c9}
+.quick-states button:disabled{opacity:.4}
+.quick-states button:active:not(:disabled){transform:scale(.95)}
+@media(max-width:600px){
+ .quick-states button{flex-direction:column;gap:2px;min-height:42px;
+    font-size:10px;padding:3px 2px}
+ .quick-states button .ui-icon{width:17px;height:17px}
+}
+@media(max-height:470px){.quick-states button{min-height:36px;
+ flex-direction:row;font-size:10px}.tactical-hud{bottom:calc(4px + env(safe-area-inset-bottom))}}
+@media(prefers-reduced-motion:reduce){.quick-states button{transition:none}}

@@ -66,6 +66,7 @@ const ui={
   briefingBody:el<HTMLElement>('briefingBody'),
   briefingClose:el<HTMLButtonElement>('briefingClose'),
   context:el<HTMLElement>('contextTools'),
+  quickStates:el<HTMLElement>('quickStates'),
   orders:el<HTMLElement>('advancedOrders'),
   moreOrders:el<HTMLButtonElement>('moreOrders'),
   cancelTarget:el<HTMLButtonElement>('cancelTarget'),
@@ -340,7 +341,7 @@ function turnCamera(shift:number){
 const uid=(id:string)=>team(state).find(o=>o.id===id);
 function selectUnit(id:string){
   const actor=uid(id);if(!actor||actor.health<=0)return;
-  uiClickTone('select');tacticalFeedback.emit('select',actor.p);selected=id;looking=false;
+  uiClickTone('select');selected=id;looking=false;
   selectedNode=null;doorFocusId=null;
   doorMenuDismissedId=null;updateHud();
 }
@@ -421,6 +422,8 @@ function updateContext(){
     firePolicy:node?.firePolicyState??a.firePolicy,
     reserve:a.reserve,magazine:a.magazine
   });
+  const paletteChoices=choices.filter(choice=>choice.group!=='state');
+  // The four persistent toggles have their own stationary bar above the HUD.
   // Reconcile buttons in-place: avoid tearing down the menu when a toggle changes.
   const identity=(door?'door:'+door.id:node?'node:'+node.id:'here')+'/'+selected;
   const contextChanged=contextSignature!==identity;
@@ -433,7 +436,7 @@ function updateContext(){
     const destructive=document.createElement('div');destructive.className='context-danger';
     ui.context.append(primary,secondary,destructive);
   }
-  const actionSignature=identity+'/'+choices.map(c=>
+  const actionSignature=identity+'/'+paletteChoices.map(c=>
     c.id+':'+c.label+':'+c.group+':'+!!c.disabled+':'+!!c.pressed).join('|');
   if(contextActionsSignature!==actionSignature){
   contextActionsSignature=actionSignature;
@@ -443,7 +446,7 @@ function updateContext(){
     destructive:ui.context.querySelector<HTMLElement>('.context-danger')!
   };
   const wanted=new Set<string>();
-  for(const choice of choices){
+  for(const choice of paletteChoices){
     wanted.add(choice.id);
     let button=ui.context.querySelector<HTMLButtonElement>(
       'button[data-action="'+choice.id+'"]');
@@ -565,7 +568,7 @@ ui.context.addEventListener('pointerdown',event=>{
 ui.context.addEventListener('pointerup',cancelContextHold);
 ui.context.addEventListener('pointercancel',cancelContextHold);
 ui.context.addEventListener('pointerleave',cancelContextHold);
-ui.context.addEventListener('click',event=>{
+const handleContextAction=(event:MouseEvent)=>{
   if(performance.now()-contextHeldAt<400){event.preventDefault();return;}
   const button=(event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]');
   if(!button||state.phase!=='planning')return;
@@ -646,7 +649,9 @@ ui.context.addEventListener('click',event=>{
     door?doorCenter(door):node?.p??a.p,
     failed?'Blocked':button.querySelector('.command-label')?.textContent??'');
   updateHud();
-});
+};
+ui.context.addEventListener('click',handleContextAction);
+ui.quickStates.addEventListener('click',handleContextAction);
 // World-first status: repetitive instructions are hidden; critical events persist.
 let lastNoticeKey='',noticeBorn=0;
 function updateUiNotice(node:HTMLElement,events:string[],phase:string){
@@ -659,7 +664,41 @@ function updateUiNotice(node:HTMLElement,events:string[],phase:string){
   if(show)node.textContent=latest;
   node.classList.toggle('critical',critical&&show);
 }
+function updateQuickStates(){
+  const actor=uid(selected);
+  const shown=state.phase==='planning'&&!replaying&&!!actor&&actor.health>0;
+  ui.quickStates.hidden=!shown;
+  if(!shown||!actor)return;
+  const node=selectedPlanNode();
+  const current=plannedControl(state,selected,node?.id);
+  const choices=contextActionChoices({
+    door:false,node:!!node,flashRemaining:state.flashRemaining,
+    posture:current.posture,pace:current.pace,
+    firePolicy:node?.firePolicyState??actor.firePolicy,
+    reserve:actor.reserve,magazine:actor.magazine
+  }).filter(c=>c.group==='state');
+  for(const choice of choices){
+    const button=ui.quickStates.querySelector<HTMLButtonElement>(
+      'button[data-action="'+choice.id+'"]');
+    if(!button)continue;
+    const iconKey=tacticalIconForState(choice.id,choice.label);
+    if(button.dataset.icon!==iconKey){
+      button.querySelector('.ui-icon')?.remove();
+      button.prepend(tacticalIcon(iconKey));
+      button.dataset.icon=iconKey;
+    }
+    const label=button.querySelector<HTMLElement>('.command-label');
+    if(label&&label.textContent!==choice.label)label.textContent=choice.label;
+    button.title=choice.title??choice.label;
+    button.setAttribute('aria-label',(node?'Waypoint: ':'Operator: ')+
+      choice.label+'. '+(choice.title??''));
+    button.disabled=!!choice.disabled;
+    if(choice.pressed===undefined)button.removeAttribute('aria-pressed');
+    else button.setAttribute('aria-pressed',String(choice.pressed));
+  }
+}
 function updateHud(){
+  updateQuickStates();
   recordCompletedOperation();
   const brief=operationBriefing(state);
   ui.briefingTitle.textContent=brief.code+' / '+brief.name;
