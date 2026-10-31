@@ -13,10 +13,10 @@ const smooth=(t:number)=>{const a=clamp(t,0,1);return a*a*(3-2*a);};
 const phaseWeight=(foot:FootTarget)=>{
   const p=foot.progress??0;
   switch(foot.phase){
-    case 'unloading':return 1-.6*smooth(p);
+    case 'unloading':return 1-smooth(p);
     case 'swinging':return 0;
-    case 'landing':return .25+.65*smooth(p);
-    case 'recovering':return .9+.1*smooth(p);
+    case 'landing':return smooth(p);
+    case 'recovering':return 1;
     default:return 1;
   }
 };
@@ -30,12 +30,17 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
   const speed=clamp(input.velocity/72,0,1);
   const crouch=input.posture==='crouch'?.55:1;
   const wound=input.injury>=2?.68:1;
-  const swing=left.phase==='swinging'||right.phase==='swinging';
-  const receiving=left.phase==='landing'||right.phase==='landing';
-  const unloading=left.phase==='unloading'||right.phase==='unloading';
-  // Compression at weight acceptance, subtle rise as the trailing leg
-  // unloads, and lateral mass transfer toward the supporting foot.
-  const pelvisY=(receiving?-.65:unloading?.22:swing?.42:0)*
+  const envelope=(foot:FootTarget,phase:FootTarget['phase'])=>
+    foot.phase===phase?Math.sin(Math.PI*clamp(foot.progress??0,0,1)):0;
+  const swinging=Math.max(envelope(left,'swinging'),
+    envelope(right,'swinging'));
+  const receiving=Math.max(envelope(left,'landing'),
+    envelope(right,'landing'));
+  const unloading=Math.max(envelope(left,'unloading'),
+    envelope(right,'unloading'));
+  // All envelopes reach zero at their phase boundaries. Lateral shuffles
+  // change support legs often, so binary phase offsets visibly pop the hip.
+  const pelvisY=(-.65*receiving+.20*unloading+.42*swinging)*
     moving*crouch*wound;
   const pelvisSide=support*.95*speed*crouch;
   const torsoForward=clamp(-forward*speed*.09,-.11,.08)*crouch;
