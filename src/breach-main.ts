@@ -27,7 +27,7 @@ import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
 import {doorReachable} from './breach-door.ts';
-import {INTEL_MODES,doorKnown,wallKnown,coverKnown,roomKnown,
+import {INTEL_MODES,doorKnown,wallKnown,roomKnown,
   routeWithIntel,intelPassable,type IntelMode} from './breach-intel.ts';
 import './breach-style.css';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
