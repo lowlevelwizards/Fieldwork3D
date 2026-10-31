@@ -28,6 +28,7 @@ import {coverImpactFraction,aimHeight} from './breach-cover-height.ts';
 import {assessFireLane,type FireBlock} from './breach-fire-safety.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from './breach-door.ts';
 import {localDetour} from './breach-cooperation.ts';
+import {heardIntensity,acousticDistance} from './breach-acoustics.ts';
 import {doorContactImpulse,passageWait,type PassageActor}
   from './breach-passage.ts';
 import {diagnoseMovement,projectReachableGoal,type Blocker}
@@ -74,6 +75,7 @@ export type TeamActor=Operator & {
   /** Temporary cooperative sidestep, independent of authored orders. */
   yieldTarget:Pt|null;yieldFor:string|null;yieldUntil:number;
   personality:Personality;morale:number;lastNoiseAt:number;
+  lastNoiseExaminedAt:number;
   flashUntil:number;lastThrowAt:number;lastDoorAt:number;
   lastDoorId:string|null;lastDoorMethod:DoorMethod;
   stride:number;weapon:WeaponId;injuryStage:number;
@@ -149,7 +151,8 @@ const withActions=(a:Operator):TeamActor=>({
   lastHitRegion:'torso',lastHitYaw:0,lastHitSeverity:0,
   downPose:'forward',
   yieldTarget:null,yieldFor:null,yieldUntil:0,
-  personality:'guard',morale:1,lastNoiseAt:-1,flashUntil:-1,
+  personality:'guard',morale:1,lastNoiseAt:-1,
+  lastNoiseExaminedAt:-1,flashUntil:-1,
   lastThrowAt:-100,lastDoorAt:-100,lastDoorId:null,
   lastDoorMethod:'open',stride:0,
   weaponYaw:a.heading,stability:.55,recoil:0,lastShotAt:-100,
@@ -1462,11 +1465,19 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     const high=assessFireLane(a.p,26,b.p,height,COVER,WALLS,s.doors);
     if(low.blocker==='cover'&&high.blocker==='clear')a.posture='stand';
   }
-  const newest=[...s.noise].reverse().find(n=>
-    n.time>a.lastNoiseAt&&s.seconds-n.time<1&&d(a.p,n.p)<n.radius);
+  // Evaluate each event once rather than running expensive portal rays
+  // sixty times a second for an unheard sound.
+  const sound=[...s.noise].reverse().find(n=>
+    n.time>a.lastNoiseExaminedAt&&s.seconds-n.time<1);
+  if(sound)a.lastNoiseExaminedAt=sound.time;
+  const intensity=sound?heardIntensity(sound.p,a.p,sound.radius,
+    s.doors,WALLS):0;
+  const newest=intensity>0?sound:null;
   if(newest&&!visible.length&&a.alert!=='retreat'){
     a.lastNoiseAt=newest.time;
-    const spread=newest.kind==='gunshot'?39:18;
+    const travel=acousticDistance(newest.p,a.p,s.doors,WALLS);
+    const spread=newest.kind==='gunshot'?
+      Math.max(25,travel*.16):Math.max(13,travel*.13);
     const heard={x:newest.p.x+(random(s)-.5)*spread,
       y:newest.p.y+(random(s)-.5)*spread};
     a.heard=heard;a.contact=heard;a.watch=clone(heard);
