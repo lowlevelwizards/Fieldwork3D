@@ -30,7 +30,6 @@ import {doorReachable} from './breach-door.ts';
 import {INTEL_MODES,doorKnown,wallKnown,roomKnown,
   routeWithIntel,intelPassable,type IntelMode} from './breach-intel.ts';
 import {orderFailureText} from './breach-nav-diagnostics.ts';
-import {routeWithSqueezeIntel} from './breach-squeeze-route.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {FrameMeter} from './breach-perf.ts';
 import './breach-style.css';
