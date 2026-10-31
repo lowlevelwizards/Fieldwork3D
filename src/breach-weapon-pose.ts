@@ -75,7 +75,11 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       twoHanded:right<=LIMIT&&left<=LIMIT,
       primaryReachable:right<=LIMIT,
       contactError:Math.max(0,right-LIMIT)+Math.max(0,left-LIMIT),
-      stockError:from.stockError+(to.stockError-from.stockError)*t};
+      stockError:(()=>{
+        const a=stockPocket(input.blendFrom!),b=stockPocket(input.handling);
+        return anchorGap(stock,{x:a.x+(b.x-a.x)*t,
+          y:a.y+(b.y-a.y)*t,z:a.z+(b.z-a.z)*t});
+      })()};
   }
   const data=weaponGrips(input.weapon),scale=data.lengthScale;
   const yaw=clamp(input.yaw,-1.1,1.1);
