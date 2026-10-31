@@ -279,6 +279,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     heading:p.heading,travelYaw,turning:p.turning,
     injury:p.injury,posture:p.posture,feet:targets,gait:p.gait,
     hybridSupport:p.hybridSupport,acceleration:p.acceleration,
+    seconds:p.seconds,
     tacticalTension:p.aiming||p.handlingIntent==='engage'||
       p.handlingIntent==='pie'||p.handlingIntent==='look'?1:
       p.handlingIntent==='door'||p.posture==='crouch'?.55:0,
@@ -305,7 +306,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // same fixed-step weapon solution used by ballistics.
   const freeMotion=p.down||p.surrender||p.firing?0:
     clamp((.32-aimLevel)/.32,0,1);
-  r.chest.position.y=26-crouch+motion.pelvisY*.5+
+  r.chest.position.y=26-crouch+motion.breath+motion.pelvisY*.5+
     motion.chestLift*freeMotion*1.4-
     bash.brace*.4-buckle*7-kneel*12;
   r.chest.position.z=motion.pelvisSide*.75+
