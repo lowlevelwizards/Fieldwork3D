@@ -14,7 +14,10 @@ export type ExteriorZone={id:string;kind:'yard'|'patio'|'driveway'|'service'|'ga
 export type WideOpening={id:string;a:Pt;b:Pt;kind:'arch'|'wide'};
 export type EnvironmentCondition='occupied'|'busy'|'neglected'|'vacant'|'renovation'|'disturbed';
 export type WindowOpening={id:string;x:number;y:number;width:number;vertical:boolean};
+export type WorldBounds={minX:number;minY:number;maxX:number;maxY:number};
 export type Site={
+  /** Explicit playable world envelope; legacy maps default to 640 × 740. */
+  bounds?:WorldBounds;
   seed:number;name:string;rooms:Room[];walls:Segment[];doors:Door[];
   /** Open hall-to-hall transitions need no obstructing door leaf. */
   openHallLinks?:number;

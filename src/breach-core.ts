@@ -22,6 +22,9 @@ export type TacticalState={phase:Phase;seconds:number;operators:Operator[];
   doors:Door[];sparks:Spark[];spotted:Set<string>;events:string[];
   rng:number;};
 export const W=640,H=740,GRID=16;
+/** Single authoritative playable envelope for all movement and cameras. */
+export const activeWorldBounds=()=>site?.bounds??
+  {minX:0,minY:0,maxX:W,maxY:H};
 const wall=(x:number,y:number,u:number,v:number):Segment=>
   ({a:{x,y},b:{x:u,y:v}});
 export const WALLS:Segment[]=[
@@ -73,7 +76,9 @@ const pointInCover=(p:Pt,o:Obstacle,r=0)=>
   Math.abs(p.x-o.x)<o.w/2+r&&Math.abs(p.y-o.y)<o.h/2+r;
 export const OPERATOR_RADIUS=8;
 export function passable(p:Pt,clearance=OPERATOR_RADIUS):boolean{
-  if(p.x<13||p.y<20||p.x>W-13||p.y>H-13)return false;
+  const bounds=activeWorldBounds();
+  if(p.x<bounds.minX+13||p.y<bounds.minY+20||
+    p.x>bounds.maxX-13||p.y>bounds.maxY-13)return false;
   if(WALLS.some(s=>pointToSegment(p,s)<clearance+1))return false;
   if(COVER.some(o=>pointInCover(p,o,clearance)))return false;
   return true;

@@ -47,6 +47,8 @@ export function applyArchetype(site:Site,seed:number):Site{
     return {...o,fixture:asset?.id??'crate',low:asset?.cover==='low'};
   });
   const architecture=addOpenPlanTransitions({...site,archetype,rooms,cover},seed);
-  return populateFunctionalRooms(dressSite(
+  const result=populateFunctionalRooms(dressSite(
     buildArchetypeEnvironment(furnishRooms(architecture,seed),seed),seed),seed);
+  // Transitional generation remains within the legacy playable envelope.
+  return {...result,bounds:{minX:0,minY:0,maxX:640,maxY:740}};
 }
