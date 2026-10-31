@@ -4,6 +4,7 @@ import {W,H} from './breach-core.ts';
 import {team,type Session} from './breach-game.ts';
 import {intelFogLevel} from './breach-intel.ts';
 import {visionPolygon} from './breach-vision-polygon.ts';
+import {MICRO_KEYS,MICRO_COLS} from './breach-fog-memory.ts';
 export const FOG_WIDTH=320,FOG_HEIGHT=370;
 export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
   ctx.save();
@@ -34,7 +35,7 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
   ctx.filter='blur(1.5px)';
   ctx.fillStyle='rgba(255,255,255,.76)';
   for(let row=0;row<74;row++)for(let col=0;col<64;col++)
-    if(s.seenGround.has('micro:'+col+','+row))
+    if(s.seenGround.has(MICRO_KEYS[row*MICRO_COLS+col]))
       ctx.fillRect(col*10,row*10,10,10);
   // Continuous sight polygons are eased along their outline without
   // changing target detection, opacity or LOS blockers.
