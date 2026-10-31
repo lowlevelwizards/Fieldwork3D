@@ -46,6 +46,29 @@ const compositions:Record<string,readonly Item[]>={
  staff:[{id:'desk',anchor:'nw'},{id:'locker',anchor:'se'}],
  supply:[{id:'shelf',anchor:'nw'},{id:'cart',anchor:'se'}]
 };
+/** Large connected spaces get compositions rather than a duplicated
+ * sofa/fridge/lift in every underlying floor rectangle. */
+const zoneCompositions:Record<string,readonly (readonly Item[])[]>={
+ living:[
+  [{id:'sofa',anchor:'nw'},{id:'tv-stand',anchor:'se'}],
+  [{id:'coffee-table',anchor:'west'},{id:'armchair',anchor:'se'}],
+  [{id:'bookcase',anchor:'nw'},{id:'armchair',anchor:'se'}]],
+ kitchen:[
+  [{id:'counter',anchor:'nw'},{id:'fridge',anchor:'se'}],
+  [{id:'stove',anchor:'nw'},{id:'sink',anchor:'se'},{id:'kitchen-island',anchor:'west'}]],
+ bay:[
+  [{id:'vehicle-lift',anchor:'west'},{id:'tool-chest',anchor:'se'}],
+  [{id:'workbench',anchor:'nw'},{id:'tire-stack',anchor:'se'}]],
+ sales:[
+  [{id:'gondola-shelf',anchor:'nw'}],
+  [{id:'gondola-shelf',anchor:'se'},{id:'display-rack',anchor:'nw'}]],
+ reception:[
+  [{id:'desk',anchor:'nw'},{id:'office-chair',anchor:'se'}],
+  [{id:'chair',anchor:'nw'},{id:'plant',anchor:'se'}]],
+ waiting:[
+  [{id:'chair',anchor:'nw'},{id:'chair',anchor:'se'}],
+  [{id:'bench',anchor:'west'},{id:'chair',anchor:'se'}]]
+};
 const inside=(p:Pt,r:Room)=>p.x>=r.x&&p.x<=r.x+r.w&&p.y>=r.y&&p.y<=r.y+r.h;
 const overlap=(a:Obstacle,b:Obstacle,clearance=13)=>
  Math.abs(a.x-b.x)<(a.w+b.w)/2+clearance&&Math.abs(a.y-b.y)<(a.h+b.h)/2+clearance;
@@ -68,9 +91,19 @@ export function furnishRooms(site:Site,seed:number):Site{
  const reserved:Pt[]=[...site.spawn,...site.enemies,site.objective,site.extract];
  const exterior=site.cover.filter(o=>!site.rooms.some(r=>inside(o,r)));
  output.push(...exterior);
+ const zoneCounts=new Map<string,number>(),zoneSeen=new Map<string,number>();
+ for(const room of site.rooms){
+  const key=room.zoneId??room.id;
+  zoneCounts.set(key,(zoneCounts.get(key)??0)+1);
+ }
  for(const room of site.rooms){
   if(room.kind==='hall')continue;
-  const available=compositions[room.purpose??'']??[{id:'crate',anchor:'nw'}];
+  const zone=room.zoneId??room.id,index=zoneSeen.get(zone)??0;
+  zoneSeen.set(zone,index+1);
+  const ordinary=compositions[room.purpose??'']??[{id:'crate',anchor:'nw'}];
+  const alternate=zoneCompositions[room.purpose??''];
+  const available=(zoneCounts.get(zone)??0)>1&&alternate?
+   alternate[Math.min(index,alternate.length-1)]:ordinary;
   const placed:Obstacle[]=[];
   // Rooms with poor wall clearance keep their tested legacy footprints.
   if(room.w<100||room.h<95){
