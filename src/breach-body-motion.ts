@@ -68,7 +68,8 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
   // not from a separate stance-radius correction in the renderer.
   if(input.position){
     const lateral={x:-Math.sin(input.heading),y:Math.cos(input.heading)};
-    let hipCeiling=LEG_HIP_HEIGHT;
+    const restHip=LEG_HIP_HEIGHT-(input.posture==='crouch'?8:0);
+    let hipCeiling=restHip;
     for(let i=0;i<2;i++){
       const foot=input.feet[i];
       if(!foot.contact)continue;
@@ -82,7 +83,7 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
         legMaximumLength()**2-hx*hx-hz*hz));
       hipCeiling=Math.min(hipCeiling,LEG_ANKLE_HEIGHT+maxVertical);
     }
-    pelvisY-=clamp(LEG_HIP_HEIGHT-hipCeiling,0,2.4);
+    pelvisY-=clamp(restHip-hipCeiling,0,2.4);
   }
   const torsoForward=clamp(-forward*speed*.09,-.11,.08)*crouch;
   const torsoSide=clamp(side*speed*.065+support*speed*.014,
