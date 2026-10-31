@@ -368,3 +368,23 @@ body.replaying .foot,body.replaying .guidance,body.replaying .feed{display:none!
  color:#f4deba;padding:10px 14px;font:700 12px monospace;
  letter-spacing:.09em;touch-action:manipulation}
 .cancel-target[hidden]{display:none}
+
+/* UI Overhaul 01 — quiet, world-first tactical viewport. */
+.ident span,.ident small,.foot{display:none!important}
+.top{padding:9px 13px 16px;align-items:center}
+.ident strong{font-size:13px;letter-spacing:.095em}
+.mode{gap:1px}
+.mode strong{font-size:10px}
+.mode output{font-size:16px}
+.guidance{top:calc(env(safe-area-inset-top) + 58px);
+  left:50%;max-width:min(330px,calc(100vw - 28px));
+  transform:translateX(-50%);background:#162622ef;
+  border-color:#9aac8a80;font-size:11px;padding:8px 11px}
+.guidance[hidden],.feed[hidden]{display:none!important}
+.feed{bottom:calc(112px + env(safe-area-inset-bottom));left:50%;
+  transform:translateX(-50%);max-width:min(350px,calc(100vw - 24px));
+  width:max-content;text-align:center;background:#152421ec;
+  padding:8px 12px;border:1px solid #58726699;border-radius:5px;
+  font-size:11px;letter-spacing:.015em;pointer-events:none}
+.feed.critical{border-color:#ba8465;color:#f4cfad}
+@media(max-height:470px){.feed{bottom:calc(74px + env(safe-area-inset-bottom));font-size:10px}}
