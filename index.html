@@ -90,12 +90,18 @@
   <button id="next" type="button">NEXT ARRANGEMENT</button>
 </section>
 <section id="replayPanel" class="replay-panel" hidden aria-label="Mission replay controls">
-  <div class="replay-head"><strong>REPLAY</strong><output id="replayClock">00:00 / 00:00</output></div>
-  <input id="replaySeek" type="range" min="0" max="1000" value="0" aria-label="Seek through mission"/>
+  <div class="replay-head"><strong>REPLAY</strong>
+    <div class="replay-head-right"><output id="replayClock">00:00 / 00:00</output>
+      <button id="replayExit" type="button" aria-label="Exit replay" title="Exit replay">×</button></div>
+  </div>
+  <div class="replay-timeline">
+    <div id="replayMarks" class="replay-marks" aria-label="Mission event markers"></div>
+    <input id="replaySeek" type="range" min="0" max="1000" value="0" aria-label="Seek through mission"/>
+  </div>
   <div class="replay-actions">
     <button id="replayPrevEvent" type="button" title="Previous combat event">|◀</button>
     <button id="replayBack" type="button" aria-label="Rewind ten seconds">◀◀</button>
-    <button id="replayPlay" type="button">PLAY ▶</button>
+    <button id="replayPlay" type="button" aria-label="Play replay" title="Play replay">▶</button>
     <button id="replayForward" type="button" aria-label="Advance ten seconds">▶▶</button>
     <button id="replayNextEvent" type="button" title="Next combat event">▶|</button>
   </div><div id="replayExtra" class="replay-extra" hidden>
@@ -105,8 +111,7 @@
     <button id="replayFollow" type="button">FOLLOW</button>
     <button id="replayAnalysis" type="button">ANALYSIS</button>
   </div>
-  <button id="replayMore" type="button" aria-expanded="false">MORE OPTIONS</button>
-  <button id="replayExit" type="button">EXIT</button>
+  <button id="replayMore" type="button" aria-label="Replay options" aria-expanded="false" title="Replay options">⚙ OPTIONS</button>
   <output id="replayEventText" class="replay-event" aria-live="off">Mission events</output>
 </section>
 <div class="foot"><span id="mission">CONTACTS UNKNOWN • SECURE THE STATION</span><span class="shortcut">TAP TO ORDER · DRAG TO ORBIT · 2 FINGERS PAN/PINCH</span></div>
