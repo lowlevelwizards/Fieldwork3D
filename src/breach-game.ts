@@ -1632,12 +1632,16 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   a.aim=Math.min(1,a.aim+dt*1.3);
   if(a.aim<.65||Math.abs(angleDifference(a.weaponYaw,
     angle(a.p,point)))>.18)return;
+  if(Math.abs(angleDifference(a.heading,a.weaponYaw))>.87){
+    rotate(a,a.weaponYaw,dt);return;
+  }
   const spread=dispersion(a.weapon,'ads',a.stability,a.velocity>10,
     a.suppression,a.injuryStage,a.recoil)*.9;
-  const yaw=shotYaw(a.weaponYaw,spread,random(s),random(s));
+  const proposedYaw=shotYaw(a.weaponYaw,spread,random(s),random(s));
   const muzzle=muzzleAtShot({x:a.p.x,z:a.p.y,
-    heading:a.heading,weaponYaw:yaw,weapon:a.weapon,aim:a.aim,posture:a.posture,
+    heading:a.heading,weaponYaw:proposedYaw,weapon:a.weapon,aim:a.aim,posture:a.posture,
     velocity:a.velocity,recoil:a.recoil});
+  const yaw=muzzle.yaw;
   const from={x:muzzle.x,y:muzzle.z};
   const far=muzzleEndpoint(from,yaw,Math.max(40,d(from,point)));
   const friends=team(s).filter(o=>o!==a&&o.health>0).map(o=>o.p);
@@ -1731,6 +1735,9 @@ function fire(s:Session,a:TeamActor,dt:number){
     (a.suppression>.6?.75:1));
   const mode=readyMode(range,a.aim,a.weapon);
   if(!mode||a.fireCd>0)return;
+  if(Math.abs(angleDifference(a.heading,a.weaponYaw))>.87){
+    rotate(a,a.weaponYaw,dt);return;
+  }
   // Do not claim a sighted hit while the barrel is still turning past target.
   if(Math.abs(Math.atan2(Math.sin(desiredYaw-a.weaponYaw),
     Math.cos(desiredYaw-a.weaponYaw)))>.38)return;
@@ -1763,10 +1770,11 @@ function fire(s:Session,a:TeamActor,dt:number){
       range>weapon.optimalRange?a.skills.longRange:a.skills.precision,.28));
   // Shot direction is the firearm's physical yaw at ignition. Sampling
   // happens *before* muzzle construction, not as an invisible post-shot roll.
-  const yaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
+  const proposedYaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
   const muzzle=muzzleAtShot({x:a.p.x,z:a.p.y,heading:a.heading,
-    weaponYaw:yaw,weapon:a.weapon,aim:a.aim,posture:a.posture,
+    weaponYaw:proposedYaw,weapon:a.weapon,aim:a.aim,posture:a.posture,
     velocity:a.velocity,recoil:a.recoil});
+  const yaw=muzzle.yaw; // never fire a separate invisible direction
   const muzzlePoint={x:muzzle.x,y:muzzle.z};
   // Spread may put another teammate in the actual bullet corridor.
   const shotTarget=muzzleEndpoint(muzzlePoint,yaw,
