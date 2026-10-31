@@ -80,9 +80,9 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     id==='vale'?0x687c8d:0x6f9185);
   const boot=mat(0x313935),vest=mat(0x43504b),
     skin=mat(0xb29b83),steel=mat(0x414846);
-  hip.position.y=19;
+  hip.position.y=20.2;
   block(hip,0,0,0,8,5,12,cloth);
-  chest.position.y=26;
+  chest.position.y=27.1;
   block(chest,0,0,0,10,12,14,cloth);
   block(chest,3,0,0,2.8,9,13,vest);
   block(chest,-3,1,0,2,8,11,vest);
@@ -179,8 +179,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.chest.rotation.z=clamp(-moving*.025+braking*.018,-.06,.06);
   r.chest.rotation.x=clamp(p.injury===2?.07:p.injury===1?.025:0,0,.09);
   const crouch=p.posture==='crouch'?8:0;
-  r.hip.position.y=19-crouch;
-  r.chest.position.y=26-crouch;
+  r.hip.position.y=20.2-crouch;
+  r.chest.position.y=27.1-crouch;
   // Build 119: the footstep scheduler owns world contacts. The IK renderer
   // consumes its targets but must never relocate a planted anchor.
   let headingYaw=r.root.rotation.y;
@@ -249,12 +249,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // not a longer limb or a shoe teleported away from its world anchor.
   const stanceRadius=Math.max(...targets.map(t=>
     Math.hypot(t.position.x-p.x,t.position.y-p.z)));
-  const stanceDrop=clamp((stanceRadius-7.8)*.80,0,4.0);
-  r.hip.position.y=Math.max(17.12-crouch-buckle*8-kneel*9,
-    19-crouch+motion.pelvisY-stanceDrop-bash.brace-
-      buckle*8-kneel*9);
+  // Neutral knees are slightly unlocked; lateral loading can still lower
+  // the pelvis without permanently holding an idle operator in a squat.
+  const stanceDrop=clamp((stanceRadius-8.4)*.54,0,3.2);
+  const neutralHip=20.2-crouch;
+  const stanceHip=neutralHip+motion.pelvisY-stanceDrop-bash.brace;
+  r.hip.position.y=Math.max(
+    17.35-crouch-buckle*8-kneel*9,
+    stanceHip-buckle*8-kneel*9);
   r.hip.position.z=motion.pelvisSide;
-  r.chest.position.y=26-crouch+motion.pelvisY*.65-
+  r.chest.position.y=27.1-crouch+motion.pelvisY*.5-
     bash.brace*.4-buckle*7-kneel*12;
   r.chest.position.z=motion.pelvisSide*.75;
   r.chest.rotation.z=motion.torsoForward+braking*.018+
