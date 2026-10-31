@@ -16,7 +16,7 @@ import {reloadHandKey} from './breach-reload-motion.ts';
 import {fallAngles,hitStagger,type FallPose,type WoundRegion}
   from './breach-wounds.ts';
 import {weaponGrips,handlingPose,clampReach,
-  fitWeaponPose} from './breach-weapon-pose.ts';
+  fitWeaponPose,type Handling} from './breach-weapon-pose.ts';
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
   ankleLink:THREE.Mesh;
   anchor:THREE.Vector3;swinging:boolean;
@@ -37,6 +37,8 @@ export type OperatorPose={
   doorMethod?:'open'|'kick'|'hold';down:boolean;
   lastBashAt?:number;bashRole?:BashRole;
   surrender:boolean;aiming:boolean;firing:boolean;turning:number;
+  /** Lab preview only: choose an exact stock/weapon readiness posture. */
+  handlingOverride?:Handling;
   obstruction?:boolean;friendlyNear?:boolean;
   blocked?:boolean;footAllowed?:(point:{x:number;y:number})=>boolean;
   aimBlend?:number;recoil?:number;shotHeading?:number;
@@ -337,7 +339,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Build 120: stock, both grips and forearm targets share a single rigid
   // firearm transform. The fit searches reachable posture before limb IK.
   const data=weaponGrips(p.weapon);
-  const handling=handlingPose({
+  const handling=p.handlingOverride??handlingPose({
     aim:p.aimBlend??(p.aiming?1:0),moving,
     obstruction:!!p.obstruction||
       (bash.active&&p.bashRole==='receive'),
@@ -346,7 +348,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const recoil=p.recoil??(p.firing?1.5:0);
   const fit=fitWeaponPose({weapon:p.weapon,handling,
     yaw:-(p.shotHeading??p.heading)-r.root.rotation.y-r.chest.rotation.y,
-    recoil,aimBlend:p.aimBlend??(p.aiming?1:0)});
+    recoil,aimBlend:p.handlingOverride?undefined:
+      p.aimBlend??(p.aiming?1:0)});
   r.gripError=fit.contactError;
   // Contact coordinates and visible weapon use one rigid transform.
   r.weapon.scale.set(data.lengthScale,1,1);
