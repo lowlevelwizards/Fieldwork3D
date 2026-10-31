@@ -33,8 +33,15 @@ export function hybridLanding(input:FootstepInput,index:number,
  const otherSide=dotSide(future,other.plantedAt,facing);
  const wanted=dotSide(future,preferred,facing);
  const separation=input.gait==='squeeze'?2.0:3.5;
- const fittedSide=sign<0?Math.min(wanted,otherSide-separation):
-   Math.max(wanted,otherSide+separation);
+ // When the opposite shoe is already far behind a lateral moving
+ // pelvis, do not let its stale world anchor prohibit all new footholds.
+ // Own-side anatomy is still mandatory and the moving shoe never snaps.
+ const paired=Math.abs(otherSide)<10;
+ const ownSide=sign*1.9;
+ const boundary=paired?(sign<0?otherSide-separation:
+   otherSide+separation):ownSide;
+ const fittedSide=sign<0?Math.min(wanted,boundary):
+   Math.max(wanted,boundary);
  const lateralCorrection=fittedSide-wanted;
  const spaced={x:preferred.x-Math.sin(facing)*lateralCorrection,
    y:preferred.y+Math.cos(facing)*lateralCorrection};
@@ -48,8 +55,8 @@ export function hybridLanding(input:FootstepInput,index:number,
    (!input.footAllowed||input.footAllowed(p))&&
    Math.hypot(p.x-futureHip.x,p.y-futureHip.y)<
      horizontalLegReach()-.25&&
-   (sign<0?dotSide(future,p,facing)<=otherSide-separation+.25:
-     dotSide(future,p,facing)>=otherSide+separation-.25));
+   (sign<0?dotSide(future,p,facing)<=boundary+.25:
+     dotSide(future,p,facing)>=boundary-.25));
  return {position:found??fitted,valid:!!found,
    futurePelvis:future,futureHip,reason:found?'clear':'blocked'};
 }
