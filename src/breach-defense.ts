@@ -1,5 +1,6 @@
 /** Build 098: room defense positions, spacing and threat-oriented watches. */
-import {COVER,activeSite,passable,route,doorCenter,type Door,type Pt} from './breach-core.ts';
+import {COVER,WALLS,activeSite,passable,route,doorCenter,type Door,type Pt} from './breach-core.ts';
+import {assessFireLane} from './breach-fire-safety.ts';
 import {nearCover} from './breach-combat.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type Defender={id:string;p:Pt;health:number;defense:Pt|null};
@@ -52,6 +53,11 @@ export function chooseDefense(origin:Pt,threat:Pt,doors:Door[],
     const occupancy=others.filter(a=>a.id!==selfId&&a.health>0)
       .reduce((n,a)=>n+(dist(p,a.defense??a.p)<35?190:0),0);
     const protectedSpot=nearCover(p,threat)?125:0;
+    // Cover is only useful if the defender can still bring the muzzle
+    // above or around it. Eye-level sight does not guarantee a firing lane.
+    const lane=assessFireLane(p,26,threat,32,COVER,WALLS,doors,
+      others.filter(o=>o.id!==selfId&&o.health>0).map(o=>o.p));
+    const firingValue=lane.blocker==='clear'?70:-175;
     const span=others.filter(a=>a.id!==selfId&&a.health>0)
       .reduce((n,a)=>n+(dist(p,a.p)>55&&dist(p,a.p)<160?15:0),0);
     const doorHazard=doors.reduce((penalty,door)=>{
@@ -60,7 +66,7 @@ export function chooseDefense(origin:Pt,threat:Pt,doors:Door[],
     },0);
     // Choose watchable positions while favoring actual directional cover.
     const facing=dist(p,threat)>15?8:0;
-    const value=protectedSpot+span+facing-dist(origin,p)*.30-
+    const value=protectedSpot+firingValue+span+facing-dist(origin,p)*.30-
       dist(p,threat)*.035-occupancy-doorHazard;
     if(value>score){score=value;best=p;}
   }
