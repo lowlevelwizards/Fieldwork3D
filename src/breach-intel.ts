@@ -1,7 +1,7 @@
 /** 140: Player intelligence is not the same as physical world truth.
  * Architecture may be prebriefed; cover and moving objects are only known
  * after observation. All modes share the same discovered state. */
-import {W,H,WALLS,COVER,pointToSegment,route,type Door,type Pt,
+import {WALLS,COVER,activeWorldBounds,pointToSegment,route,type Door,type Pt,
   type Segment} from './breach-core.ts';
 import type {Site} from './breach-site.ts';
 export type IntelMode='true-blind'|'exterior-known'|'floor-plan';
@@ -97,7 +97,9 @@ export const doorKnown=(intel:IntelState,id:string)=>intel.doors.has(id);
 export const coverKnown=(intel:IntelState,i:number)=>intel.cover.has(i);
 export const roomKnown=(intel:IntelState,id:string)=>intel.rooms.has(id);
 export function intelPassable(p:Pt,intel:IntelState,clearance=8):boolean{
- if(p.x<13||p.y<20||p.x>W-13||p.y>H-13)return false;
+ const bounds=activeWorldBounds();
+ if(p.x<bounds.minX+13||p.y<bounds.minY+20||
+   p.x>bounds.maxX-13||p.y>bounds.maxY-13)return false;
  if(WALLS.some((w,i)=>intel.walls.has(i)&&
    pointToSegment(p,w)<clearance+1))return false;
  if(COVER.some((o,i)=>intel.cover.has(i)&&

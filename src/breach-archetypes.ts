@@ -74,6 +74,13 @@ export function applyArchetype(site:Site,seed:number):Site{
   };
   // Controlled rollout: keep standard maps fast and proven while sampling
   // the new spatial grammar. Expanded sites always exercise semantic zoning.
+  if(site.programLocked){
+    const authored=new Map(site.rooms.filter(r=>r.kind==='room').map(r=>
+      [r.id,r.purpose??'storage']));
+    const candidate=build(authored);
+    if(!reachable(candidate))throw Error('architectural grammar failed circulation audit');
+    return candidate;
+  }
   const useZoning=site.scale==='expanded'||seed%3===2;
   const sorted=site.rooms.filter(r=>r.kind==='room').slice().sort(
     (a,b)=>(b.y+b.h/2)-(a.y+a.h/2)||

@@ -8,7 +8,8 @@ import {generateJunctionSite} from './breach-junction-site.ts';
 import {applyArchetype} from './breach-archetypes.ts';
 import {appendArchitecturalWing} from './worldgen/architectural-wings.ts';
 import {expandProperty} from './worldgen/expanded-property.ts';
-export type Room={id:string;x:number;y:number;w:number;h:number;
+import {compileArchitecturalSite} from './worldgen/architectural-compiler.ts';
+export type Room={id:string;zoneId?:string;x:number;y:number;w:number;h:number;
   kind:'room'|'hall';tone:number;purpose?:string};
 export type BuildingArchetype='house'|'townhouse'|'apartment'|'retail'|'office'|'garage'|'warehouse'|'restaurant'|'motel'|'utility'|'clinic';
 export type ExteriorZone={id:string;kind:'yard'|'patio'|'driveway'|'service'|'garden'|'parking';x:number;y:number;w:number;h:number};
@@ -18,6 +19,9 @@ export type WindowOpening={id:string;x:number;y:number;width:number;vertical:boo
 export type WorldBounds={minX:number;minY:number;maxX:number;maxY:number};
 export type SiteScale='standard'|'expanded';
 export type Site={
+  /** Authored semantic programs bypass index-based purpose assignment. */
+  programLocked?:boolean;
+  planFamily?:string;
   scale?:SiteScale;
   /** Explicit playable world envelope; legacy maps default to 640 × 740. */
   bounds?:WorldBounds;
@@ -46,6 +50,14 @@ export const seeded=(seed:number)=>{
 const between=(r:()=>number,min:number,max:number)=>
   min+Math.floor(r()*(max-min+1));
 export function generateSite(seed:number,scale:SiteScale='standard'):Site{
+  if(scale==='expanded'&&seed%4!==0){
+    // Architectural compiler is opt-in with deterministic legacy fallback.
+    try{return applyArchetype(compileArchitecturalSite(
+      (['house','townhouse','apartment','retail','office','garage',
+        'warehouse','restaurant','motel','utility','clinic'] as const)
+         [(seed>>>0)%11],seed),seed);}
+    catch{/* Older generator remains available when a grammar cannot compile. */}
+  }
   if(seed%5===0){
     const property=appendArchitecturalWing(generateJunctionSite(seed),seed);
     return applyArchetype(scale==='expanded'?expandProperty(property,seed):property,seed);
