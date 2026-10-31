@@ -8,7 +8,8 @@ test('essential bathroom and clinic furniture use functional equipment rather th
  const src=readFileSync(new URL('../src/worldgen/room-furnishing.ts',import.meta.url),'utf8');
  for(const [purpose,item] of [['bathroom','toilet'],['restroom','toilet'],
    ['exam','exam-bed'],['treatment','exam-bed'],['kitchen','stove']]){
-  assert.ok(src.includes(purpose+':[{id:\''+item+'\''),purpose);
+  const composition=src.split('\n').find(line=>line.trimStart().startsWith(purpose+':['));
+  assert.ok(composition?.includes("id:'"+item+"'"),purpose);
   assert.ok(propDefinition(item)?.solid,item);
  }
  assert.match(src,/const compact=room.w<108\|\|room.h<104/);
