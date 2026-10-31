@@ -11,10 +11,12 @@ import {createLiveGait,advanceLiveGait,type LiveGaitState}
   from './breach-live-gait.ts';
 
 export type ReplayFeet=[FootTarget,FootTarget];
+export type FootfallEvent={time:number;actorId:string;foot:0|1;
+  position:{x:number;y:number};intensity:number};
 type FootEvent={
   at:number;from:{x:number;y:number};to:{x:number;y:number};
   fromYaw:number;toYaw:number;unload:number;swing:number;lift:number;
-  landing:number;recovery:number;
+  landing:number;recovery:number;intensity?:number;
 };
 type ActorTrack={
   gait:LiveGaitState;lastVelocity:number;
@@ -157,7 +159,9 @@ export class ReplayMotionRecorder{
           to:{...foot.swingTo},fromYaw:foot.fromYaw,
           toYaw:foot.targetYaw,unload:foot.phaseDuration,
           swing:foot.swingDuration,landing:foot.landingDuration,
-          recovery:foot.recoveryDuration,lift:input.cautious?2.1:3.4});
+          recovery:foot.recoveryDuration,lift:input.cautious?2.1:3.4,
+          intensity:clamp((input.speed/72)*
+            (actor.posture==='crouch'?.48:1),.15,1)});
       }
       track.last={...position,t:time};
     }
@@ -168,6 +172,34 @@ export class ReplayMotionRecorder{
       if(!events.length||Math.abs(events[events.length-1].fraction-fraction)>1e-5)
         events.push({at:time,fraction});
     }
+  }
+  /** Read fixed-step landing events exactly once for (from,to].
+   * Never derive audio timing from the number of rendered frames.
+   * Call only while live simulation is advancing, not when replay seeking. */
+  footfallsBetween(from:number,to:number,ids:readonly string[]):FootfallEvent[]{
+    if(to<=from)return [];
+    const result:FootfallEvent[]=[];
+    for(const actorId of ids){
+      const track=this.actors.get(actorId);
+      if(!track)continue;
+      for(let foot=0;foot<2;foot++){
+        const events=track.events[foot];
+        let lo=0,hi=events.length;
+        while(lo<hi){
+          const mid=(lo+hi)>>1,e=events[mid];
+          const at=e.at+e.unload+e.swing;
+          if(at<=from)lo=mid+1;else hi=mid;
+        }
+        for(let i=lo;i<events.length;i++){
+          const e=events[i],at=e.at+e.unload+e.swing;
+          if(at>to)break;
+          if(!e.swing)continue; // reset markers are not impacts
+          result.push({time:at,actorId,foot:foot as 0|1,
+            position:{...e.to},intensity:e.intensity??.4});
+        }
+      }
+    }
+    return result.sort((a,b)=>a.time-b.time);
   }
   direction(id:string):number|undefined{return this.actors.get(id)?.travelYaw;}
   presentation(time:number,ids:readonly string[]):ReplayPresentation{
