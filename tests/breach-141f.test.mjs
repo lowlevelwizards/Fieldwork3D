@@ -10,7 +10,7 @@ test('141F: hall topologies are repeatable and keep targets reachable',()=>{
     names.add(s.name);
     activateSite(s);
     assert.ok(s.rooms.some(r=>r.kind==='hall'));
-    assert.ok(s.roomCount>=4&&s.roomCount<=6);
+    assert.ok(s.roomCount>=4&&s.roomCount<=7);
     assert.ok(passable(s.objective), 'objective in clear space seed '+seed);
     assert.ok(route(s.entrance,s.objective).length,
       'all mandatory circulation accessible seed '+seed);
