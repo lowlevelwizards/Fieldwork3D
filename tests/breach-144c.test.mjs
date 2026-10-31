@@ -17,8 +17,8 @@ test('144C: a slow pie builds dense fine-grain explored memory',()=>{
 });
 test('144C: renderer consumes fine footprints, not coarse square tiles',()=>{
   const mask=readFileSync(new URL('../src/breach-fog-mask.ts',import.meta.url),'utf8');
-  assert.match(mask,/row<37/);
-  assert.match(mask,/col<32/);
+  assert.match(mask,/row<Math\.ceil\(bounds\.maxY\/20\)/);
+  assert.match(mask,/col<Math\.ceil\(bounds\.maxX\/20\)/);
   assert.match(mask,/s\.seenGround\.has\('fine:'/);
   assert.match(mask,/fillRect\(col\*20,row\*20,20,20\)/);
 });
