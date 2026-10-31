@@ -90,8 +90,8 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
   const accel=clamp((input.acceleration??0)/180,-1,1);
   const torsoForward=clamp(-forward*speed*.09-accel*.04+
     (.028*unloading-.014*receiving)*moving,-.13,.09)*crouch;
-  const torsoSide=clamp(side*speed*.065+support*speed*.014,
-    -.095,.095)*crouch;
+  const torsoSide=clamp(side*speed*.078+support*speed*.021,
+    -.11,.11)*crouch;
   // Follow the same contact/weight envelopes, rather than layering
   // unrelated sine-wave bob and sway over the animation.
   pelvisY-=Math.max(0,-accel)*.17*moving*crouch;
@@ -101,7 +101,7 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
   const weaponPitch=(-.012*receiving+.018*unloading+.010*swinging)*
     moving*weaponAmp;
   return {pelvisY,pelvisSide,torsoForward,torsoSide,
-    torsoYaw:clamp(-support*speed*.024,-.03,.03),
-    headCounter:-torsoSide*.38,support,chestLift,
+    torsoYaw:clamp(-support*speed*.032,-.038,.038),
+    headCounter:-torsoSide*.52,support,chestLift,
     weaponYaw,weaponPitch};
 }
