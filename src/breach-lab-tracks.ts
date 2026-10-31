@@ -9,7 +9,9 @@ export const LAB_TRACKS=[
   'idle','walk','accelerate','stop','restart','back',
   'strafe-left','strafe-right','strafe','strafe-stop',
   'strafe-reverse','mixed','turn-90','turn-180','turn','pivot-reverse',
-  'pie','look','crouch-walk','crouch','wounded','aim','reload',
+  'pie','look','crouch-walk','crouch','wounded','aim',
+  'high-ready','low-ready','ready','short-stock','active-aim',
+  'point-shoot','reload',
   'reload-emergency','reload-retention','reload-shotgun',
   'reload-interrupt','reload-wounded',
   'flash','door','kick','bash','down','down-forward','down-back',
@@ -83,7 +85,7 @@ export function sampleLabTrack(kind:LabTrack,time:number):LabMotion{
   const posture=kind==='crouch'||kind==='crouch-walk'?
     'crouch' as const:'stand' as const;
   const aim=['aim','pie','look','strafe','strafe-left',
-    'strafe-right'].includes(kind)?1:0;
+    'strafe-right','active-aim','point-shoot'].includes(kind)?1:0;
   const reload=kind.startsWith('reload')?
     kind==='reload-interrupt'?Math.max(0,t<.9?1.8-t:0):
     Math.max(0,1.8-(t%2.4)):0;
