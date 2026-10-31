@@ -24,6 +24,7 @@ import {WEAPONS,injuryOf,injurySpeed,injuryReload,
 import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
 import {segmentHitsBox} from './breach-ray.ts';
 import {coverImpactFraction,aimHeight} from './breach-cover-height.ts';
+import {assessFireLane,type FireBlock} from './breach-fire-safety.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from './breach-door.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {doorContactImpulse,passageWait,type PassageActor}
@@ -76,7 +77,7 @@ export type TeamActor=Operator & {
   lastDoorId:string|null;lastDoorMethod:DoorMethod;
   stride:number;weapon:WeaponId;injuryStage:number;
   weaponYaw:number;stability:number;recoil:number;lastShotAt:number;
-  lastBashAt:number;
+  lastBashAt:number;lastLaneWarnAt:number;lastFireBlock:FireBlock;
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
 };
@@ -149,7 +150,7 @@ const withActions=(a:Operator):TeamActor=>({
   lastThrowAt:-100,lastDoorAt:-100,lastDoorId:null,
   lastDoorMethod:'open',stride:0,
   weaponYaw:a.heading,stability:.55,recoil:0,lastShotAt:-100,
-  lastBashAt:-100,
+  lastBashAt:-100,lastLaneWarnAt:-100,lastFireBlock:'clear',
   fireMode:'point',burstCount:0,skills:{...DEFAULT_SKILLS},
   weapon:'carbine',injuryStage:0,defense:null,watch:null,
   defenseUntil:0,surrendered:false,
@@ -1555,6 +1556,25 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(Math.abs(Math.atan2(Math.sin(desiredYaw-a.weaponYaw),
     Math.cos(desiredYaw-a.weaponYaw)))>.38)return;
   a.fireMode=mode;
+  // The eyes may have a contact even when the muzzle cannot safely fire.
+  // Hold the shot rather than dumping ammunition into adjacent cover or
+  // risking a friendly operator standing in the near firing corridor.
+  const sightMuzzle=muzzleAtShot({x:a.p.x,z:a.p.y,heading:a.heading,
+    weaponYaw:a.weaponYaw,weapon:a.weapon,aim:a.aim,
+    velocity:a.velocity,recoil:a.recoil});
+  const friends=s.operators.filter(o=>o!==a&&o.health>0&&
+    o.side===a.side).map(o=>o.p);
+  const lane=assessFireLane({x:sightMuzzle.x,y:sightMuzzle.z},
+    sightMuzzle.y,target.p,aimHeight(target.posture==='crouch'),
+    COVER,WALLS,s.doors,friends);
+  a.lastFireBlock=lane.blocker;
+  if(lane.blocker!=='clear'){
+    if(a.side==='blue'&&s.seconds-a.lastLaneWarnAt>2){
+      notify(s,a.name+' FIRE BLOCKED · '+lane.blocker.toUpperCase());
+      a.lastLaneWarnAt=s.seconds;
+    }
+    return;
+  }
   const priorBurst=s.seconds-a.lastShotAt<.48;
   const proposedBurst=priorBurst?a.burstCount+1:1;
   const cone=(dispersion(a.weapon,mode,a.stability,moving,
@@ -1569,6 +1589,13 @@ function fire(s:Session,a:TeamActor,dt:number){
     weaponYaw:yaw,weapon:a.weapon,aim:a.aim,
     velocity:a.velocity,recoil:a.recoil});
   const muzzlePoint={x:muzzle.x,y:muzzle.z};
+  // Spread may put another teammate in the actual bullet corridor.
+  const shotTarget=muzzleEndpoint(muzzlePoint,yaw,
+    Math.max(1,d(muzzlePoint,target.p)));
+  const shotLane=assessFireLane(muzzlePoint,muzzle.y,
+    shotTarget,aimHeight(target.posture==='crouch'),
+    COVER,WALLS,s.doors,friends);
+  if(shotLane.blocker==='friendly')return;
   const muzzleReach=strikeSurface(a.p,muzzlePoint,s,
     muzzle.y,muzzle.y);
   if(d(a.p,muzzleReach.end)+.7<d(a.p,muzzlePoint)){
