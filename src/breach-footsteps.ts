@@ -147,7 +147,7 @@ export function gaitBounds(input:FootstepInput){
     preferredLead:deliberate?2.25:running?8.0:
       slow?4.5:wound?4.6:7.0,
     swingDuration:clamp(baseSwing-speedAdjustment,
-      deliberate?.17:running?.11:side?.11:.115,.30),
+      deliberate?.17:running?.11:side?.135:.115,.30),
     unloadDuration:deliberate?.065:running?.028:side?.025:
       slow?.040:.030,
     landingDuration:deliberate?.065:running?.036:side?.038:
