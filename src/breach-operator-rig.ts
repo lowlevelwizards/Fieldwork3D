@@ -259,7 +259,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     17.35-crouch-buckle*8-kneel*9,
     stanceHip-buckle*8-kneel*9);
   r.hip.position.z=motion.pelvisSide;
-  r.chest.position.y=27.1-crouch+motion.pelvisY*.5-
+  r.chest.position.y=26-crouch+motion.pelvisY*.5-
     bash.brace*.4-buckle*7-kneel*12;
   r.chest.position.z=motion.pelvisSide*.75;
   r.chest.rotation.z=motion.torsoForward+braking*.018+
