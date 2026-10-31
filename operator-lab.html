@@ -2,6 +2,8 @@
 <html lang="en"><head><meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
 <meta name="theme-color" content="#242c2b"/><title>FIELDWORK — OPERATOR LAB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#c4c5bd;color:#e8e6da;font:12px monospace;overflow:hidden;touch-action:none}
 #preview{position:fixed;inset:0;width:100%;height:100%;touch-action:none}
@@ -46,6 +48,29 @@ body.compare-open main>.row:has(#comparePose)>#savePoseView{
 #diagnosticText{top:38px;font-size:9px;max-width:180px}}
 @media(max-width:440px){main{gap:5px}.row{gap:4px}
 button,select{padding:6px 8px;font-size:10px;min-height:31px}}
+
+/* Shared Fieldwork instrument identity; lab viewport stays intentionally neutral. */
+html,body{font:13px/1.4 "IBM Plex Sans",system-ui,sans-serif}
+header{background:#192b29f0;border-bottom:1px solid #728b7c;padding:10px 13px}
+header strong{font:700 19px "Barlow Condensed","Arial Narrow",sans-serif;letter-spacing:.045em}
+header small{font:500 11px "IBM Plex Mono",monospace;opacity:.55}
+header a{font:600 12px "IBM Plex Sans",sans-serif}
+main{background:#192b29f2;border-top:1px solid #6e8a79;gap:8px}
+.row{gap:6px}
+label{font:600 11px "IBM Plex Sans",sans-serif;letter-spacing:.06em}
+button,select{font:500 12px "IBM Plex Sans",sans-serif;border-radius:6px;
+ border-color:#718b7e;background:#344d44;color:#e7e7d9;
+ transition:background 110ms ease,border-color 110ms ease}
+button:active{background:#536e5f}
+button[aria-pressed=true]{background:#c9a778;color:#162721}
+button:focus-visible,select:focus-visible{outline:2px solid #c9a778;outline-offset:2px}
+#timestamp{font:12px "IBM Plex Mono",monospace}
+#diagnosticText{font:11px/1.4 "IBM Plex Mono",monospace}
+#labStatus{background:#182c27f3;border-radius:9px}
+#labStatus strong{font:700 19px "Barlow Condensed",sans-serif}
+#labStatus p{font:12px/1.5 "IBM Plex Sans",sans-serif}
+@media(max-width:440px){button,select{font-size:11px;min-height:36px}}
+@media(prefers-reduced-motion:reduce){button,select{transition:none}}
 </style></head>
 <body><canvas id="preview"></canvas><div id="compareLabels" hidden></div>
 <aside id="labStatus" role="status" aria-live="polite">
