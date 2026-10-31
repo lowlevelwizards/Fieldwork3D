@@ -290,6 +290,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     17.35-crouch-buckle*8-kneel*9,
     stanceHip-buckle*8-kneel*9);
   r.hip.position.y-=poseWeight*profile.stanceCompression;
+  // The pelvic shell accepts support rotation but is not a second
+  // independent writer of the world/root heading or foot anchors.
+  r.hip.rotation.x=clamp(-motion.support*physicalSpeed/72*.022,-.03,.03);
   r.hip.position.z=motion.pelvisSide+
     poseWeight*profile.pelvisShift;
   const aimLevel=clamp(p.aimBlend??(p.aiming?1:0),0,1);
