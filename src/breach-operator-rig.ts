@@ -404,8 +404,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const ray=P(1,0,0).applyEuler(fit.rotation).normalize();
     const nearest=sight.addScaledVector(ray,
       eye.clone().sub(sight).dot(ray));
-    r.head.position.y+=clamp(nearest.y-eye.y,-2.2,2.2)*strength;
-    r.head.position.z+=clamp(nearest.z-eye.z,-1.6,1.6)*strength;
+    // In the Lab the shoulder girdle and chest now help align the sight,
+    // so the head should not have to crane dramatically toward the rifle.
+    const maxHeadVertical=p.handlingOverride?1.45:2.2;
+    const maxHeadLateral=p.handlingOverride?1.2:1.6;
+    r.head.position.y+=clamp(nearest.y-eye.y,
+      -maxHeadVertical,maxHeadVertical)*strength;
+    r.head.position.z+=clamp(nearest.z-eye.z,
+      -maxHeadLateral,maxHeadLateral)*strength;
   }
   const eye=P(4.5,r.head.position.y+3,3+r.head.position.z);
   const sight=P(-1*data.lengthScale,2.6,0)
@@ -491,9 +497,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
     const shoulderPosition=i===0?ANATOMY.shoulderLeft:ANATOMY.shoulderRight;
-    const shoulder=P(shoulderPosition.x,
+    const shoulderAdvance=i===0?profile.supportShoulderForward:
+      profile.firingShoulderForward;
+    const shoulder=P(shoulderPosition.x+poseWeight*shoulderAdvance,
       shoulderPosition.y+poseWeight*profile.shoulderLift,
-      shoulderPosition.z);
+      shoulderPosition.z-sign*poseWeight*profile.shoulderInward);
     const grip=i===0?leftGrip:rightGrip;
     let desired:THREE.Vector3;
     if(p.down&&(i===0&&releaseLeft||i===1&&releaseRight)){
@@ -520,18 +528,22 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // The IK 'pole' is a bend DIRECTION, not a position. Using absolute
     // z=9 as a direction was abducting both elbows into chicken wings.
     // Convert the desired elbow destination to a shoulder-relative vector.
-    const corridor=elbowCorridor(handling,sign as -1|1);
+    // The same pose parameters that drive weapon-ready silhouettes now
+    // drive each arm independently, including during interrupted blends.
+    const corridor=elbowCorridor(handling,sign as -1|1,profile);
     const wanted=P(corridor.x,corridor.y,corridor.z).sub(shoulder);
     let solved=solveTwoBone(shoulder,wrist,10,10,
       wanted,ARM_LIMITS,arm.bend);
     if(intersectsTorso(solved.joint,.3)){
       // Try a low forward/down elbow before the wide elbow escape route.
-      const compact=P(7.2,-9.5,sign*8.5).sub(shoulder);
+      const compact=P(corridor.x+1.0,corridor.y-1.2,
+        corridor.z+sign*.22).sub(shoulder);
       const retry=solveTwoBone(shoulder,wrist,10,10,
         compact,ARM_LIMITS,arm.bend);
       if(!intersectsTorso(retry.joint,.25))solved=retry;
       else solved=solveTwoBone(shoulder,wrist,10,10,
-        P(8,-7,sign*9.5).sub(shoulder),ARM_LIMITS,arm.bend);
+        P(corridor.x+1.5,corridor.y-.5,
+          corridor.z+sign*.7).sub(shoulder),ARM_LIMITS,arm.bend);
     }
     r.elbowSpread[i]=Math.max(0,
       sign*(solved.joint.z-shoulder.z));
