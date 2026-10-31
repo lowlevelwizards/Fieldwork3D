@@ -4,21 +4,17 @@
  * diagnostic request instead of silently stalling a planted shoe. */
 import {createFootstepScheduler,type FootstepScheduler,
   type FootstepInput,type FootTarget} from './breach-footsteps.ts';
-import {horizontalLegReach,fitLandingToHip,LEG_HIP_SIDE}
+import {horizontalLegReach,LEG_HIP_SIDE}
   from './breach-leg-geometry.ts';
 import {classifyLocomotion} from './breach-locomotion.ts';
 import {decideHybridStep,hybridStepThreshold} from './breach-hybrid-step-planner.ts';
 import {advanceHybridContact,beginHybridContact,hybridFootTarget} from './breach-hybrid-contact.ts';
+import {hybridLanding} from './breach-hybrid-landing.ts';
 
 type Pt={x:number;y:number};
 const clone=(p:Pt)=>({x:p.x,y:p.y});
-const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
-const lateral=(p:Pt,yaw:number,side:number,width:number):Pt=>({
-  x:p.x-Math.sin(yaw)*side*width,
-  y:p.y+Math.cos(yaw)*side*width
-});
 export type DistanceGaitState=FootstepScheduler&{
   accumulated:number;lastFacing:number;starvations:number;
   reachViolations:number;stepsTaken:number;lastStanceWidth:number;
@@ -38,7 +34,6 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
   [FootTarget,FootTarget]{
   const facing=input.facingYaw??-input.rootYaw;
   const width=input.gait==='squeeze'?2.6:5.6;
-  const travel=input.travelYaw;
   if(!s.initialized||input.time<s.lastTime-1e-4||
       input.time-s.lastTime>1.2){
     s.initialized=true;s.accumulated=0;s.lastTime=input.time;
@@ -62,40 +57,25 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
   const interval=hybridStepThreshold(input);
   s.lastStanceWidth=width;
   s.mode=classifyLocomotion(travelled/Math.max(dt,1/60),
-    facing,travel,input.turning,s.mode);
+    facing,input.travelYaw,input.turning,s.mode);
   const distanceStep=travelled+(travelled<.04?turning*8.5:0);
   s.accumulated=Math.min(interval*1.35,s.accumulated+distanceStep);
   // Advance each physical contact phase exactly once on the fixed timeline.
   for(const foot of s.feet)advanceHybridContact(foot,input.time);
-  const forward={x:Math.cos(travel),y:Math.sin(travel)};
   const centerHip=(footIndex:number,at:Pt)=>lateral(at,facing,
     footIndex===0?-1:1,LEG_HIP_SIDE);
   const request=decideHybridStep(s,input,travelled,turning);
   if(request){
     s.accumulated=Math.max(0,s.accumulated-request.threshold);
     const index=request.index;
-    const foot=s.feet[index],side=index===0?-1:1;
-    const lead=running?7:deliberate?1.6:squeeze?1.4:
-      input.injury>=2?2.2:4.5;
-    const predicted={
-      x:input.position.x+forward.x*lead,
-      y:input.position.y+forward.y*lead
-    };
-    const hip=centerHip(index,predicted);
-    const requested=lateral(predicted,facing,side,width);
-    let target=fitLandingToHip(requested,hip,horizontalLegReach()-1);
-    let valid=true;
-    if(input.footAllowed&&!input.footAllowed(target)){
-      const candidates=[.75,.5,.25,0].map(t=>({
-        x:mix(foot.plantedAt.x,target.x,t),
-        y:mix(foot.plantedAt.y,target.y,t)
-      }));
-      const allowed=candidates.find(p=>input.footAllowed!(p)&&
-        distance(p,hip)<=horizontalLegReach()-1);
-      if(!allowed){s.starvations++;s.accumulated=interval;valid=false;}
-      else target=allowed;
-    }
-    if(valid){
+    const foot=s.feet[index];
+    const landing=hybridLanding(input,index,s.feet[1-index],foot);
+    if(!landing.valid){
+      // Keep the supporting foot; request motor slowdown on future
+      // integration instead of inventing a foothold through furniture.
+      s.starvations++;s.accumulated=Math.min(interval,s.accumulated+interval);
+    }else{
+    const target=landing.position;
     foot.swingFrom=clone(foot.plantedAt);foot.swingTo=clone(target);
     foot.fromYaw=foot.worldYaw;foot.targetYaw=input.rootYaw;
     beginHybridContact(foot,input);
