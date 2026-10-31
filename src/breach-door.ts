@@ -7,6 +7,7 @@ export {doorYaw,doorLeafSegment};
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export const DOOR_REACH=39;
 export function handlePoint(d:Door):Pt{
+  if(d.kind==='shutter')return doorCenter(d);
   // Handle follows the actual rotated leaf, letting the support hand track
   // the contact point instead of reaching for an empty closed-door position.
   const leaf=doorLeafSegment(d);
