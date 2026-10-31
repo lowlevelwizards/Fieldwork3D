@@ -2,7 +2,7 @@
  * An OPENING door is a pushable obstacle, not a rigid wall. A closed leaf
  * still blocks entry, but an actor already inside its capsule may escape.
  * Static walls and cover remain unconditionally solid. */
-import {passable,pointToSegment,doorLeafSegment,
+import {passable,pointToSegment,doorLeafSegment,WALLS,segmentsCross,
   OPERATOR_RADIUS,type Door,type Pt} from './breach-core.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const leafGap=(p:Pt,d:Door)=>pointToSegment(p,doorLeafSegment(d));
@@ -33,4 +33,21 @@ export function sweptBodyClear(from:Pt,to:Pt,doors:Door[],
     }
   }
   return true;
+}
+
+/** Foot contacts have independent geometry from actor capsule traffic.
+ * Even a pushable open door cannot accept a planted foot inside its leaf.
+ * This is presentation only; it never changes the authoritative route. */
+export function footAnchorClear(p:Pt,doors:readonly Door[]):boolean{
+  return passable(p,2.25)&&!doors.some(door=>
+    pointToSegment(p,doorLeafSegment(door))<3.3);
+}
+/** A foot cannot stay planted across a wall or swing through a door
+ * just because its endpoint is on valid floor. */
+export function footAnchorReachable(from:Pt,p:Pt,
+  doors:readonly Door[]):boolean{
+  if(!footAnchorClear(p,doors))return false;
+  const link={a:from,b:p};
+  return !WALLS.some(w=>segmentsCross(link,w))&&
+    !doors.some(door=>segmentsCross(link,doorLeafSegment(door)));
 }

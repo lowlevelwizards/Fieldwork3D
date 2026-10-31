@@ -4,6 +4,7 @@
  */
 import type {TeamActor} from './breach-game.ts';
 import type {Door} from './breach-core.ts';
+import {footAnchorReachable} from './breach-navigation.ts';
 import {footArticulation} from './breach-foot-articulation.ts';
 import {advanceFootsteps,createFootstepScheduler,
   type FootTarget,type FootstepScheduler,type FootstepInput} from './breach-footsteps.ts';
@@ -98,12 +99,20 @@ export class ReplayMotionRecorder{
       const reverse=Math.cos(offset)<-.4;
       const rootYaw=-(moving>.22&&!side&&!reverse?
         track.travelYaw:actor.heading);
+      const actuallyMoving=track.last.t<time?
+        distance/Math.max(1e-3,time-track.last.t):0;
       const input:FootstepInput={time,position,rootYaw,
         facingYaw:actor.heading,
-        travelYaw:track.travelYaw,speed:actor.velocity,
+        travelYaw:track.travelYaw,speed:Math.min(actor.velocity,actuallyMoving),
         turning:actor.turning,posture:actor.posture,
         injury:actor.injuryStage,down:actor.health<=0,
-        cautious:actor.aim>.20&&moving<.35};
+        cautious:actor.aim>.20&&moving<.35,
+        blocked:actor.blockedTime>.14&&
+          (actor.nav.length>0||actor.plan.some(n=>
+            n.kind==='move'||n.kind==='door'||n.kind==='pie')),
+        footAllowed:pt=>footAnchorReachable(actor.p,pt,doors)&&
+          !actors.some(other=>other!==actor&&
+            Math.hypot(other.p.x-pt.x,other.p.y-pt.y)<5.5)};
       const previousResets=track.gait.resets;
       const previousStep=track.gait.lastStepAt;
       advanceFootsteps(track.gait,input);

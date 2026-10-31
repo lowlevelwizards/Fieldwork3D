@@ -997,7 +997,15 @@ function stepYield(s:Session,a:TeamActor,dt:number):boolean{
 function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   if(!a.nav.length){
     a.nav=a.side==='blue'?routeWithIntel(s.intel,a.p,p):route(a.p,p);
-    if(!a.nav.length){notify(s,a.name+' CANNOT REACH');return false;}
+    if(!a.nav.length){
+      // A failed route is a stationary brace, not phantom walking speed.
+      a.velocity=0;a.blockedTime+=dt;
+      if(s.seconds-a.lastNavRepairAt>1.2){
+        notify(s,a.name+' CANNOT REACH');
+        a.lastNavRepairAt=s.seconds;
+      }
+      return false;
+    }
   }
   const next=a.nav[0],gap=d(a.p,next);
   if(gap<3){a.nav.shift();return false;}
