@@ -1,7 +1,7 @@
 /** One low-resolution, softly filtered fog mask shared by 2D and 3D.
  * The fog presentation never changes detection or player intelligence. */
 import {W,H} from './breach-core.ts';
-import {team,liveVisibility,type Session} from './breach-game.ts';
+import {team,type Session} from './breach-game.ts';
 import {intelFogLevel} from './breach-intel.ts';
 import {visionPolygon} from './breach-vision-polygon.ts';
 export const FOG_WIDTH=320,FOG_HEIGHT=370;
@@ -11,7 +11,7 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
   ctx.globalCompositeOperation='source-over';
   ctx.clearRect(0,0,W,H);
   // Neutral-black blind space: no blue tint or translucent cyan wash.
-  ctx.fillStyle='rgba(0,0,0,.985)';
+  ctx.fillStyle='#000';
   ctx.fillRect(0,0,W,H);
   ctx.globalCompositeOperation='destination-out';
   // Exploration gets a short feather rather than 40-unit hard rectangles.
@@ -21,15 +21,24 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
   for(let row=0;row<37;row++)for(let col=0;col<32;col++){
     const p={x:col*20+10,y:row*20+10};
     const fineSeen=s.seenGround.has('fine:'+col+','+row);
-    const level=intelFogLevel(s.intel,s.site,p,
-      liveVisibility(s,p),fineSeen);
+    // Sight is cleared only by the continuous occluded polygons below.
+    // A center-pixel sample clearing a whole 20-unit cell was the source
+    // of square holes through walls, and inconsistent live/fog states.
+    const level=intelFogLevel(s.intel,s.site,p,false,fineSeen);
     if(level===2)continue;
     ctx.fillStyle=level===1?'rgba(255,255,255,.76)':'#fff';
     ctx.fillRect(col*20,row*20,20,20);
   }
+  // Small explored footprints fill the gaps left by coarse center samples,
+  // while preserving the existing 20-unit replay memory and intelligence.
+  ctx.filter='blur(1.5px)';
+  ctx.fillStyle='rgba(255,255,255,.76)';
+  for(let row=0;row<74;row++)for(let col=0;col<64;col++)
+    if(s.seenGround.has('micro:'+col+','+row))
+      ctx.fillRect(col*10,row*10,10,10);
   // Continuous sight polygons are eased along their outline without
   // changing target detection, opacity or LOS blockers.
-  ctx.filter='blur(2.5px)';
+  ctx.filter='blur(1.2px)';
   ctx.fillStyle='#fff';
   for(const a of team(s)){
     if(a.health<=0)continue;
