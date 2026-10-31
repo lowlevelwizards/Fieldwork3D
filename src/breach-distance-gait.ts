@@ -84,6 +84,7 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
     const hip=centerHip(index,predicted);
     const requested=lateral(predicted,facing,side,width);
     let target=fitLandingToHip(requested,hip,horizontalLegReach()-1);
+    let valid=true;
     if(input.footAllowed&&!input.footAllowed(target)){
       const candidates=[.75,.5,.25,0].map(t=>({
         x:mix(foot.plantedAt.x,target.x,t),
@@ -91,15 +92,17 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
       }));
       const allowed=candidates.find(p=>input.footAllowed!(p)&&
         distance(p,hip)<=horizontalLegReach()-1);
-      if(!allowed){s.starvations++;s.accumulated=interval;break;}
-      target=allowed;
+      if(!allowed){s.starvations++;s.accumulated=interval;valid=false;}
+      else target=allowed;
     }
+    if(valid){
     foot.swingFrom=clone(foot.plantedAt);foot.swingTo=clone(target);
     foot.fromYaw=foot.worldYaw;foot.targetYaw=input.rootYaw;
     beginHybridContact(foot,input);
     foot.lastTouchdown=-100;
     foot.reason=request.reason;
     s.lastStepFoot=index;s.lastStepAt=input.time;s.stepsTaken++;
+    }
   }
   const result=s.feet.map((f,i)=>{
     const hip=centerHip(i,input.position);
