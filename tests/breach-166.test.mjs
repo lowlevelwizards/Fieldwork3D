@@ -35,3 +35,24 @@ test('166: mobile comparison poses cache stable rigs and support reference expor
  assert.match(html,/id="savePoseView"/);
  assert.match(html,/body\.compare-open main/);
 });
+test('166 final: silhouette mode is reversible and comparison views stay accessible',()=>{
+ const lab=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../operator-lab.html',import.meta.url),'utf8');
+ assert.match(lab,/material\.color\.copy\(enabled\?silhouetteColor:originalColor\)/);
+ assert.match(lab,/applySilhouette\(rig,silhouettes\)/);
+ assert.match(lab,/applySilhouette\(body,silhouettes\)/);
+ assert.match(html,/body\.compare-open main>\.row:has\(#comparePose\)>\[data-view\]/);
+ assert.match(html,/overflow-x:auto/);
+ assert.match(lab,/if\(comparing\)fit\(\)/);
+});
+test('166 final: screenshot captures fresh WebGL frame inside user gesture',()=>{
+ const lab=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
+ const start=lab.indexOf("choose<HTMLButtonElement>('savePoseView').addEventListener");
+ const end=lab.indexOf('silhouetteButton.addEventListener',start);
+ assert.ok(start>0&&end>start);
+ const block=lab.slice(start,end);
+ assert.ok(block.indexOf('renderer.render(scene,camera)')<
+   block.indexOf("canvas.toDataURL('image/png')"));
+ assert.match(block,/link\.download='fieldwork-poses-reference\.png'/);
+ assert.match(block,/catch\(error\)/);
+});

@@ -10,7 +10,8 @@ test('165: operator lab offers six aligned rigs, silhouette and focus controls',
   assert.ok(lab.includes("mode:'"+handling+"'"),handling+' missing from comparison');
  assert.match(lab,/function ensureComparison/);
  assert.match(lab,/poseOperator\(body/);
- assert.match(lab,/material\.color\.setHex\(0x172322\)/);
+ assert.match(lab,/applySilhouette\(body,silhouettes\)/);
+ assert.match(lab,/material\.color\.copy\(enabled\?silhouetteColor:originalColor\)/);
  assert.match(lab,/button\.addEventListener\('click'/);
  assert.match(lab,/clearComparison\(\)/);
 });
