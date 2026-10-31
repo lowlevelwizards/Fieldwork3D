@@ -69,6 +69,40 @@ const operator=choose<HTMLSelectElement>('operator'),
   diagnosticText=choose<HTMLOutputElement>('diagnosticText'),
   playPause=choose<HTMLButtonElement>('playPause'),
   loopButton=choose<HTMLButtonElement>('loopTrack');
+const COMPARE_POSES:{label:string;mode:Handling;track:LabTrack}[]=[
+  {label:'HIGH READY',mode:'high',track:'high-ready'},
+  {label:'LOW READY',mode:'low',track:'low-ready'},
+  {label:'READY',mode:'ready',track:'ready'},
+  {label:'SHORT STOCK',mode:'short',track:'short-stock'},
+  {label:'POINT SHOOT',mode:'point',track:'point-shoot'},
+  {label:'ACTIVE AIM',mode:'ads',track:'active-aim'},
+];
+let comparing=false,silhouettes=false;
+let comparisonRigs:OperatorRig[]=[];
+const labelLayer=choose<HTMLElement>('compareLabels');
+const poseCompareButton=choose<HTMLButtonElement>('comparePose');
+const silhouetteButton=choose<HTMLButtonElement>('silhouetteMode');
+function clearComparison(){
+  for(const operatorRig of comparisonRigs){
+    scene.remove(operatorRig.root);operatorRig.dispose();
+  }
+  comparisonRigs=[];labelLayer.replaceChildren();
+}
+function ensureComparison(){
+  if(comparisonRigs.length)return;
+  for(const [index,info] of COMPARE_POSES.entries()){
+    const body=createOperatorRig(operator.value,
+      operator.value==='hostile'?'red':'blue');
+    const column=index%2,row=Math.floor(index/2);
+    body.root.position.set((column-.5)*77,0,(row-1)*70);
+    scene.add(body.root);comparisonRigs.push(body);
+    const button=document.createElement('button');
+    button.textContent=info.label;
+    button.title='Inspect '+info.label+' · stock and grip diagnostics';
+    button.addEventListener('click',()=>chooseTrack(info.track));
+    labelLayer.append(button);
+  }
+}
 let rig:OperatorRig|null=null,track:LabTrack='idle';
 let cache=new LabMotionCache(track);
 let clock=0,last=performance.now(),rate=1,playing=true,loop=true;
@@ -99,22 +133,30 @@ const supportBoxes=[0,1].map(()=>{
   debug.add(mesh);return mesh;
 });
 const build=()=>{
+  clearComparison();
   if(rig){scene.remove(rig.root);rig.dispose();}
   rig=createOperatorRig(operator.value,operator.value==='hostile'?'red':'blue');
   scene.add(rig.root);
 };
 operator.addEventListener('change',build);
 function fit(next='iso'){
-  const center=rig?.root.position??new THREE.Vector3();
+  const center=comparing?new THREE.Vector3():rig?.root.position??
+    new THREE.Vector3();
   const dx=next==='front'?75:next==='top'?.01:next==='side'?0:65;
   const dz=next==='side'?75:next==='top'?.01:next==='front'?0:68;
   camera.position.set(center.x+dx,next==='top'?115:next==='front'||next==='side'?16:48,
     center.z+dz);
-  camera.zoom=1.4;camera.updateProjectionMatrix();
+  camera.zoom=comparing?.32:1.4;camera.updateProjectionMatrix();
   control.target.set(center.x,16,center.z);control.update();
   cameraFollow={x:center.x,z:center.z};
 }
 function chooseTrack(next:LabTrack){
+  if(comparing){
+    comparing=false;
+    poseCompareButton.setAttribute('aria-pressed','false');
+    labelLayer.hidden=true;
+    fit();
+  }
   track=next;cache=new LabMotionCache(next);clock=0;playing=true;
   for(const b of document.querySelectorAll<HTMLButtonElement>('[data-pose]'))
     b.setAttribute('aria-pressed',String(b.dataset.pose===next));
@@ -125,6 +167,18 @@ document.querySelectorAll<HTMLButtonElement>('[data-pose]').forEach(button=>
 document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(button=>
   button.addEventListener('click',()=>fit(button.dataset.view)));
 choose<HTMLButtonElement>('resetCamera').addEventListener('click',()=>fit());
+poseCompareButton.addEventListener('click',()=>{
+  comparing=!comparing;
+  if(comparing)ensureComparison();
+  labelLayer.hidden=!comparing;
+  poseCompareButton.setAttribute('aria-pressed',String(comparing));
+  renderer.shadowMap.enabled=!comparing;
+  fit();
+});
+silhouetteButton.addEventListener('click',()=>{
+  silhouettes=!silhouettes;
+  silhouetteButton.setAttribute('aria-pressed',String(silhouettes));
+});
 choose<HTMLButtonElement>('diagnostics').addEventListener('click',()=>{
   diagnostic.value=diagnostic.value==='off'?'anchors':'off';
   choose<HTMLButtonElement>('diagnostics').setAttribute(
@@ -345,13 +399,40 @@ function draw(){
     hitYaw:motion.heading+Math.PI/2,
     hitAge:track==='wounded'?Math.max(0,clock-.7):undefined,
     hitSeverity:2},0);
-  const dx=motion.x-cameraFollow.x,dz=motion.z-cameraFollow.z;
+  rig.root.visible=!comparing;
+  if(comparing){
+    ensureComparison();
+    comparisonRigs.forEach((body,i)=>{
+      const info=COMPARE_POSES[i],column=i%2,row=Math.floor(i/2);
+      const x=(column-.5)*77,z=(row-1)*70;
+      body.root.visible=true;body.root.position.set(x,0,z);
+      poseOperator(body,{x,z,heading:0,travelYaw:0,seconds:clock,
+        stride:0,velocity:0,posture:'stand',injury:0,
+        weapon:weapon.value as WeaponId,
+        reload:0,reloadDuration:1.8,lastDoorAt:-100,lastThrowAt:-100,
+        down:false,surrender:false,aiming:info.mode==='ads',
+        firing:false,turning:0,handlingOverride:info.mode,
+        deterministic:true},0);
+      if(silhouettes)
+        for(const material of body.colors.keys())material.color.setHex(0x172322);
+      const label=labelLayer.children[i] as HTMLButtonElement;
+      label.title=info.label+' · stock '+body.stockError.toFixed(2)+
+        ' · grip '+body.gripError.toFixed(2);
+    });
+  }else for(const body of comparisonRigs)body.root.visible=false;
+  const dx=comparing?0:motion.x-cameraFollow.x,
+    dz=comparing?0:motion.z-cameraFollow.z;
   camera.position.x+=dx;camera.position.z+=dz;
   control.target.x+=dx;control.target.z+=dz;
   cameraFollow={x:motion.x,z:motion.z};
   timeline.value=String(Math.round(clock*1000));
   timeOutput.textContent=clock.toFixed(2)+'s';
-  showDiagnostics();
+  if(comparing){
+    debug.visible=false;
+    diagnosticText.textContent='SIX STANCES · ORBIT / ZOOM TO COMPARE';
+  }else showDiagnostics();
+  canvas.dataset.compare=String(comparing);
+  canvas.dataset.silhouette=String(silhouettes);
   canvas.dataset.track=track;
   canvas.dataset.weaponHandling=selectedHandling??'automatic';
   canvas.dataset.time=clock.toFixed(3);
@@ -361,7 +442,19 @@ function draw(){
   canvas.dataset.ankleGap=Math.max(...rig.legGap).toFixed(3);
   canvas.dataset.crossed=String(!uncrossed(feet[0].position,
     feet[1].position,-state.pelvisYaw,3.5));
-  control.update();renderer.render(scene,camera);
+  control.update();
+  if(comparing){
+    comparisonRigs.forEach((body,i)=>{
+      body.root.updateMatrixWorld(true);
+      const p=new THREE.Vector3(0,51,0);
+      body.root.localToWorld(p);p.project(camera);
+      const label=labelLayer.children[i] as HTMLButtonElement;
+      label.style.left=((p.x+1)*window.innerWidth/2)+'px';
+      label.style.top=((1-p.y)*window.innerHeight/2)+'px';
+      label.hidden=p.z>1||p.z< -1;
+    });
+  }
+  renderer.render(scene,camera);
   if(renderer.info.render.calls<1)
     throw Error('3D renderer returned without drawing an operator');
   canvas.dataset.drawCalls=String(renderer.info.render.calls);
