@@ -575,6 +575,19 @@ function updateHud(){
     ui[(id+'Hp') as 'rookHp'|'mossHp'|'ashHp'|'valeHp'].textContent=
       !a?'--':a.health<=0?'DOWN':
       a.injuryStage===2?'HEAVY':a.injuryStage===1?'HURT':'OK';
+    // Compact visual condition, with full text retained for accessibility.
+    const condition=!a?'missing':a.health<=0?'down':
+      a.injuryStage===2?'heavy':a.injuryStage===1?'hurt':'healthy';
+    const fill=condition==='down'?0:condition==='heavy'?34:
+      condition==='hurt'?67:100;
+    button.style.setProperty('--health-fill',fill+'%');
+    button.style.setProperty('--health-color',
+      condition==='heavy'?'#c77f68':condition==='hurt'?'#d0ad76':'#91b5a5');
+    button.dataset.condition=condition;
+    button.setAttribute('aria-label',a?
+      a.name+', '+condition+', '+a.magazine+
+      ' rounds loaded, '+a.reserve+' reserve'+(a.reload>0?', reloading':''):
+      id+', unavailable');
   }
   document.querySelector('.ident strong')!.textContent=
     (state.site?.name??'CUTWOODS')+' / BREACH';
