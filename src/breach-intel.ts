@@ -1,7 +1,7 @@
 /** 140: Player intelligence is not the same as physical world truth.
  * Architecture may be prebriefed; cover and moving objects are only known
  * after observation. All modes share the same discovered state. */
-import {W,H,WALLS,COVER,activeWorldBounds,pointToSegment,route,type Door,type Pt,
+import {WALLS,COVER,activeWorldBounds,pointToSegment,route,type Door,type Pt,
   type Segment} from './breach-core.ts';
 import type {Site} from './breach-site.ts';
 export type IntelMode='true-blind'|'exterior-known'|'floor-plan';
