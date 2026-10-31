@@ -1755,7 +1755,7 @@ function reset(next=state.variant,siteSeed?:number){
   flashMode=false;document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
   state=newSession(next,legacyStudy?undefined:
-    siteSeed??randomSiteSeed(),selectedIntelMode);
+    siteSeed??randomSiteSeed(),selectedIntelMode,requestedSiteScale);
   flashDoorId=null;
   stage?.applySite(state.site??null);selected='rook';looking=false;
   selectedNode=null;doorFocusId=null;draggingNode=null;
