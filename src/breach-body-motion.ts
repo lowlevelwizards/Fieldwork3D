@@ -11,7 +11,7 @@ export type BalanceInput={velocity:number;heading:number;travelYaw:number;
   gait?:'run'|'walk'|'pie'|'squeeze';
   /** Lab candidate: use actual weighted shoe positions for load transfer. */
   hybridSupport?:boolean;acceleration?:number;weaponWeight?:number;
-  tacticalTension?:number;seconds?:number;};
+  tacticalTension?:number;seconds?:number;breathingRate?:number;};
 export type BodyMotion={pelvisY:number;pelvisSide:number;
   torsoForward:number;torsoSide:number;torsoYaw:number;headCounter:number;
   support:number;chestLift:number;weaponYaw:number;weaponPitch:number;
@@ -108,7 +108,8 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
     accel*.012+Math.sign(side)*clamp(input.turning/6,0,1)*.008)*
     weaponAmp*weaponMass,-.047,.047);
   const idleBlend=clamp(1-input.velocity/12,0,1)*(1-tension);
-  const breath=Math.sin((input.seconds??0)*1.9)*.11*idleBlend;
+  const breath=Math.sin((input.seconds??0)*1.9*
+    (input.breathingRate??1))*.11*idleBlend;
   const weaponPitch=clamp((-.012*receiving+.018*unloading+
     .010*swinging)*moving*weaponAmp-accel*.009*weaponMass,
     -.046,.046);
