@@ -409,8 +409,8 @@ function showDiagnostics(){
   const feetTruth=footTruth(...([0,1].map(i=>({
     requested:feet[i].position,
     rendered:{x:rig.feet[i].shoe.getWorldPosition(
-      new THREE.Vector3()).x+motion.x,
-      y:rig.feet[i].shoe.getWorldPosition(new THREE.Vector3()).z+motion.z},
+      new THREE.Vector3()).x,
+      y:rig.feet[i].shoe.getWorldPosition(new THREE.Vector3()).z},
     phase:feet[i].phase,contact:feet[i].contact,
     reachError:rig.legGap[i]
   })) as [Parameters<typeof footTruth>[0],Parameters<typeof footTruth>[1]]));
