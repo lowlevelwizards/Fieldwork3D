@@ -4,7 +4,7 @@
  */
 import type {TeamActor} from './breach-game.ts';
 import type {Door} from './breach-core.ts';
-import {footAnchorClear} from './breach-navigation.ts';
+import {footAnchorReachable} from './breach-navigation.ts';
 import {footArticulation} from './breach-foot-articulation.ts';
 import {advanceFootsteps,createFootstepScheduler,
   type FootTarget,type FootstepScheduler,type FootstepInput} from './breach-footsteps.ts';
@@ -110,7 +110,7 @@ export class ReplayMotionRecorder{
         blocked:actor.blockedTime>.14&&
           (actor.nav.length>0||actor.plan.some(n=>
             n.kind==='move'||n.kind==='door'||n.kind==='pie')),
-        footAllowed:pt=>footAnchorClear(pt,doors)&&
+        footAllowed:pt=>footAnchorReachable(actor.p,pt,doors)&&
           !actors.some(other=>other!==actor&&
             Math.hypot(other.p.x-pt.x,other.p.y-pt.y)<5.5)};
       const previousResets=track.gait.resets;
