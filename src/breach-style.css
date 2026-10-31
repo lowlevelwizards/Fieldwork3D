@@ -495,3 +495,21 @@ button:disabled{opacity:.48;cursor:default}
 .context-tools button:disabled{opacity:.37;filter:saturate(.55);
  cursor:default;box-shadow:none}
 .context-tools button:disabled:active{background:#29423d}
+
+/* UI Overhaul 06 — legible side rail, bounded in portrait and landscape. */
+@media(max-width:600px){
+ .context-tools{width:182px;max-width:calc(100vw - 16px);
+   padding:6px;gap:5px}
+ .context-primary{gap:4px}
+ .context-primary button{min-height:51px;font-size:11px;gap:2px}
+ .context-state{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+ .context-state button{min-height:40px;font-size:10px}
+ .context-tools.door-menu .context-primary button{min-height:57px}
+}
+.context-tools{max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 114px)}
+@media(max-height:470px){
+ .context-tools{width:min(212px,calc(100vw - 16px));padding:4px;gap:3px}
+ .context-primary button{min-height:35px;flex-direction:row;font-size:10px}
+ .context-state button{min-height:31px;flex-direction:row;font-size:9px}
+ .context-tools.door-menu .context-primary button{min-height:35px}
+}
