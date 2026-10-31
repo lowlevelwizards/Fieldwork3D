@@ -33,7 +33,7 @@ export function doorApproach(from:Pt,d:Door):Pt|null{
 }
 export function initDoor(d:Door,i:number):Door{
  const prepared:Door={...d,hinge:d.hinge??(i%3===0?'b':'a'),
-   swing:d.swing??(i%2===0?1:-1),openFraction:d.open?1:0,
+   swing:d.swing??(d.id==='FRONT'?-1:i%2===0?1:-1),openFraction:d.open?1:0,
    angularVelocity:0,resistance:d.resistance??1,
    latchIntegrity:d.latchIntegrity??1.05,frameIntegrity:d.frameIntegrity??2.5,
    kicks:d.kicks??0,forced:d.forced??false,heldBy:d.heldBy??null};
@@ -52,7 +52,14 @@ export function pushDoor(d:Door,force:number):boolean{
  d.open=true;
  return true;
 }
-export function kickDoor(d:Door,from:Pt):{opened:boolean;pushSide:boolean}{
+export function kickDoor(d:Door,from?:Pt):{opened:boolean;pushSide:boolean}{
+ // Retain the legacy direct impulse API for already-open hinged leaves.
+ // Authored game kicks always pass the operator position and use integrity.
+ if(!from){
+   d.open=true;d.kickImpulse=1;
+   d.angularVelocity=Math.max(13,d.angularVelocity??0);
+   return {opened:true,pushSide:true};
+ }
  const center=doorCenter(d);
  const leaf=doorLeafSegment({...d,openFraction:.62});
  const cross=(p:Pt)=>(d.b.x-d.a.x)*(p.y-center.y)-
