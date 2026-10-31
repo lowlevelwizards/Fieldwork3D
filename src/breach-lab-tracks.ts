@@ -96,6 +96,36 @@ export function sampleLabTrack(kind:LabTrack,time:number):LabMotion{
   return {...p,travelYaw,speed,turning,injury,posture,aim,
     reload,throwAt,doorAt,down:kind.startsWith('down')&&t>=.45};
 }
+
+/** Sample a recorded 60Hz timeline without advancing any gait scheduler.
+ * Contacts change only on recorded ticks; airborne feet interpolate. */
+export function interpolateGaitFeet(a:readonly [FootTarget,FootTarget],
+ b:readonly [FootTarget,FootTarget],alpha:number):[FootTarget,FootTarget]{
+ const w=clamp(alpha,0,1);
+ return a.map((f,i):FootTarget=>{
+   const next=b[i];
+   if(f.phase!==next.phase||f.contact!==next.contact){
+     return {...f,position:{...f.position}};
+   }
+   const lerp=(x:number,y:number)=>x+(y-x)*w;
+   return {...f,position:{x:lerp(f.position.x,next.position.x),
+     y:lerp(f.position.y,next.position.y)},
+     height:lerp(f.height,next.height),
+     pitch:lerp(f.pitch??0,next.pitch??0),
+     progress:lerp(f.progress??0,next.progress??0),
+     worldYaw:f.worldYaw+Math.atan2(
+       Math.sin(next.worldYaw-f.worldYaw),
+       Math.cos(next.worldYaw-f.worldYaw))*w};
+ }) as [FootTarget,FootTarget];
+}
+export function recordedFeet(targets:readonly [FootTarget,FootTarget][],
+ time:number):[FootTarget,FootTarget]{
+ const tick=clamp(time,0,TRACK_DURATION)*60;
+ const floor=Math.min(targets.length-1,Math.floor(tick+1e-8));
+ return interpolateGaitFeet(targets[floor],
+   targets[Math.min(floor+1,targets.length-1)],tick-floor);
+}
+
 function copy(s:FootstepScheduler):FootstepScheduler{
   return {...s,lastPosition:{...s.lastPosition},
     feet:s.feet.map(f=>({...f,plantedAt:{...f.plantedAt},
@@ -126,6 +156,7 @@ function copyHistorical(s:HistoricalFootstepScheduler):HistoricalFootstepSchedul
 }
 export class LabHistoricalMotionCache{
   readonly frames:HistoricalFootstepScheduler[]=[];
+  readonly targets:[FootTarget,FootTarget][]=[];
   readonly kind:LabTrack;
   constructor(kind:LabTrack){
     this.kind=kind;
@@ -133,8 +164,10 @@ export class LabHistoricalMotionCache{
     for(let frame=0;frame<=TRACK_DURATION*60;frame++){
       const time=frame/60,m=sampleLabTrack(kind,time);
       const input=gaitInput(time,m);
-      historicalAdvance(gait,{...input,gait:input.gait==='squeeze'?
+      const target=historicalAdvance(gait,{...input,gait:input.gait==='squeeze'?
         'walk':input.gait});
+      this.targets.push(target.map(f=>({...f,
+        position:{...f.position}})) as [FootTarget,FootTarget]);
       this.frames.push(copyHistorical(gait));
     }
   }
@@ -142,9 +175,7 @@ export class LabHistoricalMotionCache{
     const t=clamp(time,0,TRACK_DURATION),motion=sampleLabTrack(this.kind,t);
     const frame=Math.floor(t*60+1e-8);
     const state=copyHistorical(this.frames[Math.min(frame,this.frames.length-1)]);
-    const input=gaitInput(t,motion);
-    const feet=historicalAdvance(state,{...input,gait:input.gait==='squeeze'?
-      'walk':input.gait});
+    const feet=recordedFeet(this.targets,t);
     return {motion,feet,state};
   }
 }
@@ -152,13 +183,16 @@ import {createDistanceGait,advanceDistanceGait,cloneDistanceGait,
   type DistanceGaitState} from './breach-distance-gait.ts';
 export class LabDistanceMotionCache{
   readonly frames:DistanceGaitState[]=[];
+  readonly targets:[FootTarget,FootTarget][]=[];
   readonly kind:LabTrack;
   constructor(kind:LabTrack){
     this.kind=kind;
     const gait=createDistanceGait();
     for(let frame=0;frame<=TRACK_DURATION*60;frame++){
       const t=frame/60;
-      advanceDistanceGait(gait,gaitInput(t,sampleLabTrack(kind,t)));
+      const target=advanceDistanceGait(gait,gaitInput(t,sampleLabTrack(kind,t)));
+      this.targets.push(target.map(f=>({...f,
+        position:{...f.position}})) as [FootTarget,FootTarget]);
       this.frames.push(cloneDistanceGait(gait));
     }
   }
@@ -166,19 +200,22 @@ export class LabDistanceMotionCache{
     const t=clamp(time,0,TRACK_DURATION),motion=sampleLabTrack(this.kind,t);
     const index=Math.floor(t*60+1e-8);
     const state=cloneDistanceGait(this.frames[Math.min(index,this.frames.length-1)]);
-    const feet=advanceDistanceGait(state,gaitInput(t,motion));
+    const feet=recordedFeet(this.targets,t);
     return {motion,feet,state};
   }
 }
 export class LabMotionCache{
   readonly frames:FootstepScheduler[]=[];
+  readonly targets:[FootTarget,FootTarget][]=[];
   readonly kind:LabTrack;
   constructor(kind:LabTrack){
     this.kind=kind;
     const state=createFootstepScheduler();
     for(let frame=0;frame<=TRACK_DURATION*60;frame++){
       const t=frame/60;
-      advanceFootsteps(state,gaitInput(t,sampleLabTrack(kind,t)));
+      const target=advanceFootsteps(state,gaitInput(t,sampleLabTrack(kind,t)));
+      this.targets.push(target.map(f=>({...f,
+        position:{...f.position}})) as [FootTarget,FootTarget]);
       this.frames.push(copy(state));
     }
   }
@@ -188,7 +225,7 @@ export class LabMotionCache{
     const motion=sampleLabTrack(this.kind,t);
     const index=Math.floor(t*60+1e-8);
     const state=copy(this.frames[Math.min(index,this.frames.length-1)]);
-    const feet=advanceFootsteps(state,gaitInput(t,motion));
+    const feet=recordedFeet(this.targets,t);
     return {motion,feet,state};
   }
 }
