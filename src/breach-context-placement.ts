@@ -31,58 +31,58 @@ export function pathOverlapsRect(path:ScreenPath,rect:ScreenRect,pad=6){
   return true;
 }
 
+/** Empty-space-first placement: protect reachable editing space before proximity. */
+function pointRectDistance(p:ScreenPoint,r:ScreenRect){
+  const dx=Math.max(r.x-p.x,0,p.x-r.x-r.w);
+  const dy=Math.max(r.y-p.y,0,p.y-r.y-r.h);
+  return Math.hypot(dx,dy);
+}
 export function placeContextMenu({
-  anchor,width,height,viewportWidth,top,bottom,avoid=[],paths=[],preferredSide,
+  anchor,width,height,viewportWidth,top,bottom,avoid=[],paths=[],
+  preferredSide,authoring=[],corridor,minClearance=102,preferredPosition,
 }:{
-  anchor:ScreenPoint;
-  width:number;height:number;
-  viewportWidth:number;top:number;bottom:number;
-  avoid?:AvoidRect[];
-  paths?:ScreenPath[];
+  anchor:ScreenPoint;width:number;height:number;viewportWidth:number;
+  top:number;bottom:number;avoid?:AvoidRect[];paths?:ScreenPath[];
   preferredSide?:MenuSide|null;
+  authoring?:ScreenRect[];corridor?:ScreenPath|null;
+  minClearance?:number;preferredPosition?:ScreenPoint|null;
 }):ContextMenuPlacement{
-  const margin=8,gap=48;
-  const safeWidth=Math.max(0,viewportWidth-width-2*margin);
-  const xMin=margin,xMax=margin+safeWidth;
-  const yMin=top,yMax=Math.max(top,bottom-height);
-  // Prefer beside the interaction rather than hovering above/below it.
-  // Edge rails help on small phones where a full floating panel doesn't fit.
-  const xs=viewportWidth<=600?[
-    // First try beside the selected object; edge rails are fallbacks.
-    {x:anchor.x-width-gap,side:'left' as const},
-    {x:anchor.x+gap,side:'right' as const},
-    {x:xMin,side:'left' as const},
-    {x:xMax,side:'right' as const},
-  ]:[
-    {x:anchor.x-width-gap,side:'left' as const},
-    {x:anchor.x+gap,side:'right' as const},
-    {x:xMin,side:'left' as const},
-    {x:xMax,side:'right' as const},
-  ];
-  const ys=[anchor.y-height/2,anchor.y-height-58,anchor.y+58,
-    yMin,yMax];
+  const margin=8,xMin=margin,xMax=Math.max(margin,viewportWidth-width-margin);
+  const yMin=top,yMax=Math.max(yMin,bottom-height);
+  // Candidate screen pockets, not merely the nearest side/edge.
+  const xs=[xMin,xMax,anchor.x-width-120,anchor.x+120,
+    viewportWidth*.25-width/2,viewportWidth*.5-width/2,
+    viewportWidth*.75-width/2];
+  const ys=[yMin,yMax,anchor.y-height*.5,anchor.y-height-140,
+    anchor.y+140];
+  for(let k=0;k<=12;k++)ys.push(yMin+(yMax-yMin)*k/12);
   let best:ContextMenuPlacement={x:xMin,y:yMin,side:'left'};
   let bestScore=Infinity;
-  for(const [ix,choice] of xs.entries())for(const [iy,originalY] of ys.entries()){
-    const x=clamp(choice.x,xMin,xMax),y=clamp(originalY,yMin,yMax);
+  const seen=new Set<string>();
+  for(const proposedX of xs)for(const proposedY of ys){
+    const x=clamp(proposedX,xMin,xMax),y=clamp(proposedY,yMin,yMax);
+    const key=Math.round(x)+':'+Math.round(y);
+    if(seen.has(key))continue;
+    seen.add(key);
     const rect={x,y,w:width,h:height};
+    const side:MenuSide=x+width*.5<anchor.x?'left':'right';
     let score=0;
-    for(const obstacle of avoid)
-      score+=area(rect,obstacle)*14*(obstacle.weight??1);
-    for(const path of paths)
-      if(pathOverlapsRect(path,rect))score+=1400;
-    // Clamped side proposals are allowed only as fallbacks. Prefer stable
-    // edge rails to panels that drift across the selected operator.
-    score+=Math.abs(x-choice.x)*4+Math.abs(y-originalY)*.65;
-    score+=Math.abs(y+height/2-anchor.y)*.32;
-    score+=Math.abs(x+width/2-anchor.x)*.23;
-    if(preferredSide===choice.side)score-=950; // stable until obstruction materially improves
-    // Adjacent side positions before rails when both are equally clear.
-    score+=ix*2+iy*.1;
-    if(score<bestScore){
-      bestScore=score;
-      best={x,y,side:choice.side};
+    // Hard exclusion around the selected point and valuable future tap locations.
+    const clearance=pointRectDistance(anchor,rect);
+    if(clearance<minClearance)score+=(minClearance-clearance)**2*26;
+    for(const zone of authoring)score+=area(rect,zone)*32;
+    if(corridor&&pathOverlapsRect(corridor,rect,70))score+=21000;
+    for(const zone of avoid)score+=area(rect,zone)*15*(zone.weight??1);
+    for(const path of paths)if(pathOverlapsRect(path,rect,10))score+=1700;
+    // Once clear, prefer a reasonably near pocket with persistent side choice.
+    score+=Math.hypot(x+width*.5-anchor.x,y+height*.5-anchor.y)*.09;
+    if(preferredSide===side)score-=320;
+    if(preferredPosition){
+      const delta=Math.hypot(x-preferredPosition.x,y-preferredPosition.y);
+      if(delta<28)score-=850;
+      else if(delta<65)score-=400;
     }
+    if(score<bestScore){bestScore=score;best={x,y,side};}
   }
   return best;
 }
