@@ -1,6 +1,7 @@
 /** Rigid, shoulder-supported firearm geometry and feasible grip targets. */
 import type {WeaponId} from './breach-combat.ts';
 import * as THREE from 'three';
+import {stockPocket,anchorGap} from './breach-anatomy.ts';
 export type Handling='low'|'high'|'ready'|'point'|'ads'|'short';
 export type WeaponGrip={lengthScale:number;stockX:number;
   primaryX:number;primaryY:number;supportX:number;supportY:number};
@@ -128,12 +129,13 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
     new THREE.Vector3(...b.stock));
   // Absolute stock shoulder error includes recoil impulse, but no
   // independent hand or stock teleportation occurs.
-  const pocket=new THREE.Vector3(
-    b.sx+recoilX,b.sy-recoilY,b.sz);
+  // Compare the physical buttstock against a stable operator anatomy point,
+  // not a reference synthesized from the stock itself (always zero).
+  const pocket=stockPocket(input.handling);
   return {origin,rotation:new THREE.Euler(0,b.yaw,b.roll,'XYZ'),
     stock,primary,support,twoHanded:b.twoHanded,
     primaryReachable:b.primaryReachable,handling:b.mode,
-    contactError:b.contactError,stockError:stock.distanceTo(pocket)};
+    contactError:b.contactError,stockError:anchorGap(stock,pocket)};
 }
 /** The support-hand rest/guard target for an impossible two-handed fit. */
 export function supportGuardTarget(weapon:THREE.Vector3):THREE.Vector3{
