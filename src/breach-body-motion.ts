@@ -4,10 +4,11 @@
 import type {FootTarget} from './breach-footsteps.ts';
 export type BalanceInput={velocity:number;heading:number;travelYaw:number;
   turning:number;injury:number;posture:'stand'|'crouch';
-  feet:readonly [FootTarget,FootTarget];};
+  feet:readonly [FootTarget,FootTarget];
+  gait?:'run'|'walk'|'pie';};
 export type BodyMotion={pelvisY:number;pelvisSide:number;
   torsoForward:number;torsoSide:number;torsoYaw:number;headCounter:number;
-  support:number;};
+  support:number;chestLift:number;weaponYaw:number;weaponPitch:number;};
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 const smooth=(t:number)=>{const a=clamp(t,0,1);return a*a*(3-2*a);};
 const phaseWeight=(foot:FootTarget)=>{
@@ -30,6 +31,10 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
   const speed=clamp(input.velocity/72,0,1);
   const crouch=input.posture==='crouch'?.55:1;
   const wound=input.injury>=2?.68:1;
+  const gaitAmp=input.gait==='run'?1.45:
+    input.gait==='pie'?.53:1;
+  const weaponAmp=input.gait==='run'?1.65:
+    input.gait==='pie'?.38:1;
   const envelope=(foot:FootTarget,phase:FootTarget['phase'])=>
     foot.phase===phase?Math.sin(Math.PI*clamp(foot.progress??0,0,1)):0;
   const swinging=Math.max(envelope(left,'swinging'),
@@ -41,12 +46,20 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
   // All envelopes reach zero at their phase boundaries. Lateral shuffles
   // change support legs often, so binary phase offsets visibly pop the hip.
   const pelvisY=(-.65*receiving+.20*unloading+.42*swinging)*
-    moving*crouch*wound;
-  const pelvisSide=support*.95*speed*crouch;
+    moving*crouch*wound*gaitAmp;
+  const pelvisSide=support*.95*speed*crouch*gaitAmp;
   const torsoForward=clamp(-forward*speed*.09,-.11,.08)*crouch;
   const torsoSide=clamp(side*speed*.065+support*speed*.014,
     -.095,.095)*crouch;
+  // Follow the same contact/weight envelopes, rather than layering
+  // unrelated sine-wave bob and sway over the animation.
+  const chestLift=(-.30*receiving+.18*swinging+.10*unloading)*
+    moving*gaitAmp*crouch*wound;
+  const weaponYaw=clamp(support*speed*.018*weaponAmp,-.038,.038);
+  const weaponPitch=(-.012*receiving+.018*unloading+.010*swinging)*
+    moving*weaponAmp;
   return {pelvisY,pelvisSide,torsoForward,torsoSide,
     torsoYaw:clamp(-support*speed*.024,-.03,.03),
-    headCounter:-torsoSide*.38,support};
+    headCounter:-torsoSide*.38,support,chestLift,
+    weaponYaw,weaponPitch};
 }
