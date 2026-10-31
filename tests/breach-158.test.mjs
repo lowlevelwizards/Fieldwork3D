@@ -27,7 +27,7 @@ test('158: fog is a final ground-registered transparency overlay',()=>{
   const scene=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
   assert.match(scene,/smoothFog\.position\.set\(W\/2,1\.05,H\/2\)/);
   assert.match(scene,/smoothFog\.renderOrder=1000/);
-  assert.match(scene,/map:this\.fogTexture,transparent:true,depthTest:false/);
+  assert.match(scene,/map:this\.fogTexture,transparent:true,depthTest:true/);
   const mask=readFileSync(new URL('../src/breach-fog-mask.ts',import.meta.url),'utf8');
   assert.match(mask,/fillStyle='#000'/);
   assert.match(mask,/globalCompositeOperation='destination-out'/);
