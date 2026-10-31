@@ -300,7 +300,11 @@ export function advanceFootsteps(s:FootstepScheduler,source:FootstepInput):
       const foot=s.feet[i];
       if(foot.phase!=='planted'&&foot.phase!=='recovering'&&
         foot.phase!=='landing')continue;
-      if(input.time-foot.lastTouchdown<.06)continue;
+      // Starting an active sidestep should launch the lead foot on the
+      // first moving tick. Waiting 60 ms makes the *opposite* planted leg
+      // trail too far behind before it can ever become the follow step.
+      if(input.time-foot.lastTouchdown<.06&&
+        !(strafe&&s.lastStepAt<0))continue;
       const neutral=lateral(input.position,facing,i===0?-1:1);
       const dx=neutral.x-foot.plantedAt.x,dy=neutral.y-foot.plantedAt.y;
       const forward=dx*Math.cos(input.travelYaw)+dy*Math.sin(input.travelYaw);
