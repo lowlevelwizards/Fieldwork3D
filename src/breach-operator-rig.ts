@@ -82,7 +82,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     skin=mat(0xb29b83),steel=mat(0x414846);
   hip.position.y=20.2;
   block(hip,0,0,0,8,5,12,cloth);
-  chest.position.y=27.1;
+  chest.position.y=26;
   block(chest,0,0,0,10,12,14,cloth);
   block(chest,3,0,0,2.8,9,13,vest);
   block(chest,-3,1,0,2,8,11,vest);
@@ -180,7 +180,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.chest.rotation.x=clamp(p.injury===2?.07:p.injury===1?.025:0,0,.09);
   const crouch=p.posture==='crouch'?8:0;
   r.hip.position.y=20.2-crouch;
-  r.chest.position.y=27.1-crouch;
+  r.chest.position.y=26-crouch;
   // Build 119: the footstep scheduler owns world contacts. The IK renderer
   // consumes its targets but must never relocate a planted anchor.
   let headingYaw=r.root.rotation.y;
