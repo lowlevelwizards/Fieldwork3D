@@ -41,7 +41,8 @@ export function applyArchetype(site:Site,seed:number):Site{
       o.y>=r.y&&o.y<=r.y+r.h);
     const collection=FIXTURES[room?.purpose??'storage']??['crate'];
     const fixture=collection[(i+seed)%collection.length];
-    return {...o,fixture:propDefinition(fixture)?fixture:'crate'};
+    const asset=propDefinition(fixture)??propDefinition('crate');
+    return {...o,fixture:asset?.id??'crate',low:asset?.cover==='low'};
   });
   return buildArchetypeEnvironment({...site,archetype,rooms,cover},seed);
 }
