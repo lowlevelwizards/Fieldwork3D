@@ -779,3 +779,39 @@ body.replaying #tacticalFeedback{display:none}
  padding:3px 6px;pointer-events:none}
 .context-primary button[aria-pressed=true]{background:#4a6758;
  border-color:#dbc695;color:#fff2d2;box-shadow:inset 0 0 0 1px #a7b58d66}
+
+/* FW 08 — replay controls that fit a phone; event timeline navigation. */
+.replay-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.replay-head-right{display:flex;align-items:center;gap:10px}
+#replayExit{min-height:32px;min-width:36px;padding:3px 8px;border-radius:5px;
+ background:#43352f;border:1px solid #a88871;color:#e9d6c3;
+ font-size:22px;line-height:1}
+.replay-timeline{position:relative;margin-top:8px}
+.replay-timeline input[type=range]{position:relative;z-index:1;margin:15px 0 5px}
+.replay-marks{position:absolute;top:0;left:8px;right:8px;height:16px;
+ z-index:2;pointer-events:none}
+.replay-mark{position:absolute;top:0;transform:translateX(-50%);
+ pointer-events:auto;display:block;width:10px;height:13px;min-height:0;
+ padding:0;border:1px solid #26362e;border-radius:3px;background:#c5ab7c;
+ touch-action:manipulation;box-shadow:0 0 0 1px #ddbf8255}
+.replay-mark-door{background:#a1b5a6}
+.replay-mark-hit,.replay-mark-down{background:#c77f68}
+.replay-mark-flash{background:#e2c78f}
+.replay-mark:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.replay-actions{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+.replay-actions button{min-width:0!important;width:100%;flex:none!important;
+ border-radius:6px;min-height:43px;padding:6px 2px;font-size:15px}
+.replay-actions #replayPlay{display:flex;align-items:center;justify-content:center}
+.replay-actions #replayPlay .ui-icon{width:23px;height:23px}
+#replayMore{width:fit-content;margin-left:auto;display:block;
+ padding:5px 10px;min-height:33px;border-radius:5px;
+ background:#293d37;color:#c5d1c2;border:1px solid #557469;font-size:11px}
+.replay-panel{max-height:min(49dvh,400px);overflow-y:auto}
+@media(max-width:650px){
+ .replay-actions button{min-height:41px;font-size:13px}
+ .replay-panel{max-height:49dvh}
+}
+@media(max-height:470px){
+ .replay-actions button{min-height:32px}
+ .replay-timeline input[type=range]{margin:12px 0 2px}
+}
