@@ -20,6 +20,8 @@ export type Site={
   openHallLinks?:number;
   archetype?:BuildingArchetype;
   windows?:WindowOpening[];
+  enemyHeadings?:number[];
+  scenarioStyle?:'routine'|'guarded'|'disrupted';
   condition?:EnvironmentCondition;
   dressing?:import('./worldgen/environment-dresser.ts').DecorativeDetail[];
   openings?:WideOpening[];

@@ -220,7 +220,7 @@ export function newSession(index=0,siteSeed?:number,
         operators.push(a);
       }
       a.p={...site.enemies[i]};a.priorP={...a.p};
-      a.heading=enemyRng()*Math.PI*2;
+      a.heading=site.enemyHeadings?.[i]??enemyRng()*Math.PI*2;
       a.weaponYaw=a.heading;
       a.health=enemyRng()<.18?3:4;
       a.weapon=enemyRng()<.30?'smg':'carbine';
