@@ -14,8 +14,8 @@ test('143D: fog uses black masking and temporal updates in both views',()=>{
   const mask=readFileSync(new URL('breach-fog-mask.ts',root),'utf8');
   const plan=readFileSync(new URL('breach-main.ts',root),'utf8');
   const scene=readFileSync(new URL('breach-3d.ts',root),'utf8');
-  assert.match(mask,/rgba\(0,0,0,\.985\)/);
-  assert.match(mask,/filter='blur\(5px\)'/);
+  assert.match(mask,/fillStyle='#000'/);
+  assert.match(mask,/filter='blur\(1.5px\)'/);
   assert.match(plan,/fogStamp>\.055/);
   assert.match(scene,/fogAt>=\.055/);
 });
