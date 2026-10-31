@@ -16,26 +16,31 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
     const horizontal=Math.abs(wall.a.y-wall.b.y)<.01;
     const vertical=Math.abs(wall.a.x-wall.b.x)<.01;
     const length=dist(wall.a,wall.b);
-    const outside=horizontal&&Math.abs(wall.a.y-minY)<.01||
-      vertical&&(Math.abs(wall.a.x-minX)<.01||
-        Math.abs(wall.a.x-maxX)<.01);
     const p={x:(wall.a.x+wall.b.x)/2,y:(wall.a.y+wall.b.y)/2};
+    const occupied=(q:Pt)=>site.rooms.some(r=>
+      q.x>r.x+1&&q.x<r.x+r.w-1&&q.y>r.y+1&&q.y<r.y+r.h-1);
+    // A true exterior wall separates a room from outdoors, regardless of
+    // compass direction, setback or courtyard shape.
+    const outside=(horizontal||vertical)&&
+      occupied({x:p.x+(vertical?13:0),y:p.y+(horizontal?13:0)})!==
+      occupied({x:p.x-(vertical?13:0),y:p.y-(horizontal?13:0)});
     const clear=site.doors.every(d=>dist(p,{x:(d.a.x+d.b.x)/2,
-      y:(d.a.y+d.b.y)/2})>76);
+      y:(d.a.y+d.b.y)/2})>68);
     return {wall,index,horizontal,vertical,length,outside,clear,p};
-  }).filter(x=>x.outside&&x.length>116&&x.clear)
+  }).filter(x=>x.outside&&x.length>89&&x.clear)
     .sort((a,b)=>b.length-a.length||a.index-b.index);
   const chosen=new Set<number>(),windows:WindowOpening[]=[];
   for(const item of eligible){
     if(windows.length>=desired)break;
-    const half=26,wall=item.wall,dx=(wall.b.x-wall.a.x)/item.length,
+    const half=Math.min(26,(item.length-42)/2),
+      wall=item.wall,dx=(wall.b.x-wall.a.x)/item.length,
       dy=(wall.b.y-wall.a.y)/item.length;
     const a={x:item.p.x-dx*half,y:item.p.y-dy*half};
     const b={x:item.p.x+dx*half,y:item.p.y+dy*half};
-    if(dist(a,wall.a)<26||dist(b,wall.b)<26)continue;
+    if(dist(a,wall.a)<20||dist(b,wall.b)<20)continue;
     chosen.add(item.index);
     windows.push({id:'W'+windows.length,x:item.p.x,y:item.p.y,
-      width:52,vertical:item.vertical});
+      width:half*2,vertical:item.vertical});
   }
   const walls:Segment[]=[];
   site.walls.forEach((wall,index)=>{
@@ -60,13 +65,18 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
     site.archetype==='garage'?'vehicle':
     site.archetype==='house'?'fence':
     site.archetype==='clinic'?'bench':'vehicle';
-  const west=minX+82,east=maxX-82;
-  const preference=Math.abs(west-site.entrance.x)-
-    Math.abs(east-site.entrance.x);
-  const x=preference===0?(seed%2===0?west:east):
-    preference>0?west:east;
-  const y=maxY+79;
-  if(y+25<720&&dist({x,y},site.entrance)>80)
+  const entrySide=site.entrySide??'south',bounds=site.bounds??
+    {minX:0,minY:0,maxX:640,maxY:740};
+  const horizontal=entrySide==='south'||entrySide==='north';
+  const min=horizontal?minX:minY,max=horizontal?maxX:maxY;
+  const near=min+82,far=max-82;
+  const lateral=Math.abs(near-(horizontal?site.entrance.x:site.entrance.y))>
+    Math.abs(far-(horizontal?site.entrance.x:site.entrance.y))?near:far;
+  const x=horizontal?lateral:entrySide==='east'?maxX+79:minX-79;
+  const y=horizontal?(entrySide==='south'?maxY+79:minY-79):lateral;
+  if(x>bounds.minX+25&&x<bounds.maxX-25&&
+    y>bounds.minY+25&&y<bounds.maxY-25&&
+    dist({x,y},site.entrance)>80)
     cover.push({x,y,w:exteriorFixture==='fence'?58:46,
       h:exteriorFixture==='fence'?10:24,
       low:exteriorFixture!=='vehicle',fixture:exteriorFixture});
