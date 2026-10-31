@@ -15,6 +15,8 @@ import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
 import {reloadHandKey} from './breach-reload-motion.ts';
 import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
 import {handlingProfile} from './breach-handling-profiles.ts';
+import {blendedHandlingProfile,type HandlingTransition}
+  from './breach-handling-transition.ts';
 import {fallAngles,hitStagger,type FallPose,type WoundRegion}
   from './breach-wounds.ts';
 import {weaponGrips,handlingPose,clampReach,
@@ -41,6 +43,7 @@ export type OperatorPose={
   surrender:boolean;aiming:boolean;firing:boolean;turning:number;
   /** Lab preview only: choose an exact stock/weapon readiness posture. */
   handlingOverride?:Handling;
+  handlingTransition?:HandlingTransition;
   obstruction?:boolean;friendlyNear?:boolean;
   blocked?:boolean;footAllowed?:(point:{x:number;y:number})=>boolean;
   aimBlend?:number;recoil?:number;shotHeading?:number;
@@ -237,7 +240,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       (bash.active&&p.bashRole==='receive'),
     friendlyNear:!!p.friendlyNear
   });
-  const profile=handlingProfile(handling,p.weapon);
+  const profile=p.handlingTransition?
+    blendedHandlingProfile(p.handlingTransition.from,
+      p.handlingTransition.to,p.handlingTransition.alpha,p.weapon):
+    handlingProfile(handling,p.weapon);
   // Explicit laboratory stances can shift the chest/weight. Live combat
   // retains the authoritative shot-time muzzle/chest transform until the
   // equivalent shot-time balance transform is integrated.
@@ -367,7 +373,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const fit=fitWeaponPose({weapon:p.weapon,handling,
     yaw:-(p.shotHeading??p.heading)-r.root.rotation.y-r.chest.rotation.y,
     recoil,aimBlend:p.handlingOverride?undefined:
-      p.aimBlend??(p.aiming?1:0)});
+      p.aimBlend??(p.aiming?1:0),
+    blendFrom:p.handlingTransition?.from,
+    blendAlpha:p.handlingTransition?.alpha});
   r.gripError=fit.contactError;
   r.stockError=fit.stockError;
   // Contact coordinates and visible weapon use one rigid transform.
