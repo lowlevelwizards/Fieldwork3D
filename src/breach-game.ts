@@ -25,6 +25,7 @@ import {WEAPONS,injuryOf,injurySpeed,injuryReload,
 import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
 import {segmentHitsBox} from './breach-ray.ts';
 import {coverImpactFraction,aimHeight} from './breach-cover-height.ts';
+import {MICRO_KEYS,MICRO_COLS} from './breach-fog-memory.ts';
 import {assessFireLane,type FireBlock} from './breach-fire-safety.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from './breach-door.ts';
 import {localDetour} from './breach-cooperation.ts';
@@ -1006,6 +1007,20 @@ function observe(s:Session){
           s.seenGround.add(Math.floor(p.x/40)+','+
             Math.floor(p.y/40));
         }
+      // Fine independent explored footprints: 10-unit samples capture the
+      // visible margins of corners that 20-unit center samples missed.
+      // Stored in replay snapshots alongside the legacy coarse keys.
+      const x0=Math.max(0,Math.floor((blue.p.x-240)/10));
+      const x1=Math.min(63,Math.floor((blue.p.x+240)/10));
+      const y0=Math.max(0,Math.floor((blue.p.y-240)/10));
+      const y1=Math.min(73,Math.floor((blue.p.y+240)/10));
+      for(let row=y0;row<=y1;row++)for(let col=x0;col<=x1;col++){
+        const p={x:col*10+5,y:row*10+5};
+        if(d(blue.p,p)>=240||
+          Math.abs(angleDifference(blue.heading,angle(blue.p,p)))>=1.15||
+          !unobstructed(blue.p,p,s,blue.posture==='crouch'))continue;
+        s.seenGround.add(MICRO_KEYS[row*MICRO_COLS+col]);
+      }
     }
     for(const e of enemies(s)){
       if(inSight(blue,e,s)){

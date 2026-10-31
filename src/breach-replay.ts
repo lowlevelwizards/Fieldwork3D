@@ -36,7 +36,7 @@ export type ReplayFrame={
 const position=(p:Pt):Pt=>({x:p.x,y:p.y});
 const shotCopy=(shot:ShotEvent):ShotEvent=>({...shot,
   start:position(shot.start),end:position(shot.end)});
-export function snapshot(s:Session):ReplayFrame{
+export function snapshot(s:Session,seenGround?:string[]):ReplayFrame{
   return {
     t:s.seconds,phase:s.phase,mission:s.mission,
     actors:s.operators.map(a=>({id:a.id,p:position(a.p),
@@ -76,7 +76,7 @@ export function snapshot(s:Session):ReplayFrame{
     missionType:s.missionType,holdTime:s.holdTime,
     rescue:s.rescue?{p:position(s.rescue.p),following:s.rescue.following}:null,
     objective:position(s.scenario.objective),
-    seenGround:[...s.seenGround],intel:intelSnapshot(s.intel),
+    seenGround:seenGround??[...s.seenGround],intel:intelSnapshot(s.intel),
     known:[...s.known].map(([id,c])=>[id,
       {p:position(c.p),at:c.at,status:c.status}]),
   };
@@ -103,7 +103,9 @@ export class MissionRecorder{
     }
     // Bound mobile memory to ten minutes of sampled playback.
     if(this.frames.length>=12000)return;
-    const frame=snapshot(s);
+    const remembered=last&&last.seenGround.length===s.seenGround.size?
+      last.seenGround:undefined;
+    const frame=snapshot(s,remembered);
     for(const actor of frame.actors)
       actor.travelYaw=this.motion.direction(actor.id);
     // Explored ground only grows. Reuse identical history instead of

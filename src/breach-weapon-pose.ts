@@ -1,7 +1,7 @@
 /** Rigid, shoulder-supported firearm geometry and feasible grip targets. */
 import type {WeaponId} from './breach-combat.ts';
 import * as THREE from 'three';
-export type Handling='low'|'high'|'point'|'ads'|'short';
+export type Handling='low'|'high'|'ready'|'point'|'ads'|'short';
 export type WeaponGrip={lengthScale:number;stockX:number;
   primaryX:number;primaryY:number;supportX:number;supportY:number};
 export const GRIPS:Record<WeaponId,WeaponGrip>={
@@ -47,7 +47,8 @@ export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
   yaw:number;recoil:number;aimBlend?:number};
 function pocketY(handling:Handling){
   return handling==='ads'?8:handling==='point'?5.3:
-    handling==='high'?6:handling==='short'?4:2.5;
+    handling==='high'?6.8:handling==='ready'?4.4:
+    handling==='short'?4:2.5;
 }
 /** Rigid contact fit in chest-local space. The candidate search uses scalar
  * maths: allocating dozens of vectors per actor per render caused mobile GC
@@ -70,8 +71,8 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
     const aim=input.aimBlend;
     // Continuous keyed shoulder posture instead of snapping between
     // high, point and ADS at an arbitrary threshold.
-    const base=mode==='low'?-.16:mode==='high'?.13:
-      mode==='short'?-.08:0;
+    const base=mode==='low'?-.18:mode==='high'?.22:
+      mode==='ready'?-.025:mode==='short'?-.075:0;
     const roll=aim===undefined||mode==='short'?base:
       (-.12*(1-Math.min(1,aim/.30)));
     const sr=Math.sin(roll),cr=Math.cos(roll);
@@ -90,6 +91,9 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       const right=rotate(data.primaryX-data.stockX,data.primaryY,1.8);
       const left=rotate(data.supportX-data.stockX,data.supportY,-1.6);
       for(const back of [-4,-2,0,1.3,2.7,3.8,5,7,9]){
+        // Short stocking truly retracts the gun rather than merely
+        // tipping an otherwise full-length shoulder-ready posture.
+        if(mode==='short'&&back<3.8)continue;
         const sx=2.5-back-recoilX;
         const px=sx+right[0],py=shoulderY+right[1];
         const lx=sx+left[0],ly=shoulderY+left[1];
