@@ -9,11 +9,13 @@ export type MuzzleSample={x:number;y:number;z:number;yaw:number;pitch:number};
 export type MuzzleInput={x:number;z:number;heading:number;
   weaponYaw:number;weapon:WeaponId;aim:number;velocity:number;
   recoil:number;obstruction?:boolean;friendlyNear?:boolean;
+  threatRange?:number|null;
   posture?:'stand'|'crouch'};
 export const MUZZLE_TIP=19.5;
 export function muzzleAtShot(p:MuzzleInput):MuzzleSample{
   const handling=handlingPose({aim:p.aim,moving:Math.min(1,p.velocity/72),
-    obstruction:!!p.obstruction,friendlyNear:!!p.friendlyNear});
+    obstruction:!!p.obstruction,friendlyNear:!!p.friendlyNear,
+    threatRange:p.threatRange,weapon:p.weapon});
   const fit=fitWeaponPose({weapon:p.weapon,handling,
     yaw:-p.weaponYaw+p.heading,recoil:p.recoil*6,
     aimBlend:p.aim});

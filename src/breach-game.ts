@@ -1754,7 +1754,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   // risking a friendly operator standing in the near firing corridor.
   const sightMuzzle=muzzleAtShot({x:a.p.x,z:a.p.y,heading:a.heading,
     weaponYaw:a.weaponYaw,weapon:a.weapon,aim:a.aim,posture:a.posture,
-    velocity:a.velocity,recoil:a.recoil});
+    velocity:a.velocity,recoil:a.recoil,threatRange:range});
   const friends=s.operators.filter(o=>o!==a&&o.health>0&&
     o.side===a.side).map(o=>o.p);
   const lane=assessFireLane({x:sightMuzzle.x,y:sightMuzzle.z},
@@ -1780,7 +1780,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   const proposedYaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
   const muzzle=muzzleAtShot({x:a.p.x,z:a.p.y,heading:a.heading,
     weaponYaw:proposedYaw,weapon:a.weapon,aim:a.aim,posture:a.posture,
-    velocity:a.velocity,recoil:a.recoil});
+    velocity:a.velocity,recoil:a.recoil,threatRange:range});
   const yaw=muzzle.yaw; // never fire a separate invisible direction
   const muzzlePoint={x:muzzle.x,y:muzzle.z};
   // Spread may put another teammate in the actual bullet corridor.

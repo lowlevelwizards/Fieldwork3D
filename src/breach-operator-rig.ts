@@ -16,12 +16,13 @@ import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
 import {reloadHandKey} from './breach-reload-motion.ts';
 import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
 import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
-import {blendedHandlingProfile,type HandlingTransition}
+import {blendedHandlingProfile,smoothHandling,type HandlingTransition}
   from './breach-handling-transition.ts';
 import {fallAngles,hitStagger,type FallPose,type WoundRegion}
   from './breach-wounds.ts';
 import {weaponGrips,handlingPose,clampReach,
-  fitWeaponPose,type Handling} from './breach-weapon-pose.ts';
+  fitWeaponPose,type Handling,type HandlingIntent}
+  from './breach-weapon-pose.ts';
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
   ankleLink:THREE.Mesh;
   anchor:THREE.Vector3;swinging:boolean;
@@ -43,6 +44,7 @@ export type OperatorPose={
   surrender:boolean;aiming:boolean;firing:boolean;turning:number;
   /** Lab preview only: choose an exact stock/weapon readiness posture. */
   handlingOverride?:Handling;
+  handlingIntent?:HandlingIntent;threatRange?:number|null;
   handlingTransition?:HandlingTransition;
   obstruction?:boolean;friendlyNear?:boolean;
   blocked?:boolean;footAllowed?:(point:{x:number;y:number})=>boolean;
@@ -63,6 +65,8 @@ export type OperatorRig={
   reachRequest:null|{kind:'door';distance:number};
   gripError:number;stockError:number;eyeError:number;
   handlingProfile:HandlingProfile|null;
+  lastHandling:Handling|null;lastHandlingAt:number;
+  autoHandling:(HandlingTransition&{at:number})|null;
   elbowSpread:[number,number];legGap:[number,number];
   stridePhase:number;colors:Map<THREE.MeshStandardMaterial,THREE.Color>;
   dispose:()=>void;
@@ -143,6 +147,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     lastTime:-1,lastPose:null,stridePhase:0,
     footsteps:createFootstepScheduler(),reachRequest:null,
     gripError:0,stockError:0,eyeError:0,handlingProfile:null,
+    lastHandling:null,lastHandlingAt:-100,autoHandling:null,
     elbowSpread:[0,0],legGap:[0,0],
     dispose:()=>{root.traverse(obj=>{if(obj instanceof THREE.Mesh){
       obj.geometry.dispose();
@@ -218,12 +223,33 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     aim:p.aimBlend??(p.aiming?1:0),moving,
     obstruction:!!p.obstruction||
       (bash.active&&p.bashRole==='receive'),
-    friendlyNear:!!p.friendlyNear
+    friendlyNear:!!p.friendlyNear,
+    intent:p.handlingIntent,threatRange:p.threatRange,weapon:p.weapon,
+    previous:p.deterministic?undefined:r.lastHandling??undefined,
+    heldFor:p.seconds-r.lastHandlingAt
   });
-  const profile=p.handlingTransition?
-    blendedHandlingProfile(p.handlingTransition.from,
-      p.handlingTransition.to,p.handlingTransition.alpha,p.weapon,
-      p.handlingTransition.fromProfile):
+  const passiveBlend=!p.deterministic&&!p.handlingOverride&&
+    !p.aiming&&!p.firing&&!p.down&&!p.surrender;
+  if(!p.handlingOverride&&handling!==r.lastHandling){
+    if(passiveBlend&&r.lastHandling){
+      r.autoHandling={from:r.lastHandling,to:handling,alpha:0,
+        at:p.seconds,
+        fromProfile:r.handlingProfile??handlingProfile(r.lastHandling,p.weapon),
+        fromWeapon:{origin:r.weapon.position.clone(),
+          rotation:r.weapon.rotation.clone()}};
+    }else r.autoHandling=null;
+    r.lastHandling=handling;r.lastHandlingAt=p.seconds;
+  }
+  const auto=r.autoHandling&&passiveBlend?{
+    ...r.autoHandling,alpha:smoothHandling(
+      (p.seconds-r.autoHandling.at)/.24)}:undefined;
+  if(!passiveBlend)r.autoHandling=null;
+  if(auto&&auto.alpha>=1)r.autoHandling=null;
+  const activeTransition=p.handlingTransition??auto;
+  const profile=activeTransition?
+    blendedHandlingProfile(activeTransition.from,
+      activeTransition.to,activeTransition.alpha,p.weapon,
+      activeTransition.fromProfile):
     handlingProfile(handling,p.weapon);
   // Explicit laboratory stances can shift the chest/weight. Live combat
   // retains the authoritative shot-time muzzle/chest transform until the
@@ -365,9 +391,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     swayPitch:motion.weaponPitch*freeMotion,
     aimBlend:p.handlingOverride?undefined:
       p.aimBlend??(p.aiming?1:0),
-    blendFrom:p.handlingTransition?.from,
-    blendAlpha:p.handlingTransition?.alpha,
-    blendSnapshot:p.handlingTransition?.fromWeapon});
+    blendFrom:activeTransition?.from,
+    blendAlpha:activeTransition?.alpha,
+    blendSnapshot:activeTransition?.fromWeapon});
   r.gripError=fit.contactError;
   r.stockError=fit.stockError;
   // Contact coordinates and visible weapon use one rigid transform.

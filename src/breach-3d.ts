@@ -812,6 +812,17 @@ export class TacticalScene3D{
         aiming:actor.aim>.20,turning:actor.turning,firing:!!firing,
         aimBlend:actor.aim,recoil:actor.recoil*6,
         shotHeading:drawActor.weaponYaw,hitAge,hitFade,downProgress,
+        handlingIntent:actor.pace==='run'?'run':
+          actor.plan[0]?.kind==='pie'?'pie':
+          actor.plan[0]?.kind==='door'?'door':
+          actor.aimInstruction?'look':
+          actor.targetId?'engage':actor.velocity>10?'move':'hold',
+        threatRange:(()=>{
+          const threat=actor.targetId?
+            s.operators.find(o=>o.id===actor.targetId):null;
+          return threat?Math.hypot(threat.p.x-actor.p.x,
+            threat.p.y-actor.p.y):null;
+        })(),
         hitRegion:actor.lastHitRegion,hitYaw:actor.lastHitYaw,
         hitSeverity:actor.lastHitSeverity,downPose:actor.downPose,
         flashActive:actor.flashUntil>s.seconds&&actor.health>0,
