@@ -34,7 +34,7 @@ import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './
 import {coverPresentation,shotVisibility} from './breach-presentation.ts';
 import {doorKnown,wallKnown,roomKnown}
   from './breach-intel.ts';
-import {handlePoint,doorReachable} from './breach-door.ts';
+import {handlePoint,doorReachable,initDoor} from './breach-door.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {WEAPONS} from './breach-combat.ts';
@@ -668,7 +668,8 @@ export class TacticalScene3D{
     const doorGlass=new THREE.MeshStandardMaterial({color:0xa8c2bf,roughness:.24,
       transparent:true,opacity:.29,depthWrite:false,side:THREE.DoubleSide});
     this.mats.push(doorGlass);
-    for(const door of site.doors){
+    for(const [doorIndex,sourceDoor] of site.doors.entries()){
+      const door=initDoor(sourceDoor,doorIndex);
       const length=Math.hypot(door.a.x-door.b.x,door.a.y-door.b.y);
       const p=doorCenter(door),vertical=Math.abs(door.a.x-door.b.x)<1;
       const root=new THREE.Group();root.position.set(p.x,0,p.y);
@@ -778,7 +779,7 @@ export class TacticalScene3D{
             this.box(leaf,middle+x,16.5,4,2,4,3.1,metal,false);
         }
       }
-      for(const mark of marksOn('door',site.doors.indexOf(door))){
+      for(const mark of marksOn('door',doorIndex)){
         const middle=(door.hinge==='b'?-1:1)*length/2;
         this.addSurfaceWear(leaf,mark,middle+(mark.u-.5)*(length-8),
           7+mark.v*24,3.6,door.style==='wood'?'door-wood':'painted-metal');
@@ -1077,7 +1078,8 @@ export class TacticalScene3D{
     // 080: Doorways are real stateful meshes, not slabs that disappear.
     const doorMat=this.solid(0xab8655),doorTrim=this.solid(0xe0c28c);
     const thresholdMat=this.solid(0xc19b5c);
-    for(const door of initialDoors()){
+    for(const [doorIndex,sourceDoor] of initialDoors().entries()){
+      const door=initDoor(sourceDoor,doorIndex);
       const width=Math.hypot(door.a.x-door.b.x,door.a.y-door.b.y);
       const p=doorCenter(door),vertical=Math.abs(door.a.x-door.b.x)<1;
       const group=new THREE.Group();group.position.set(p.x,0,p.y);
