@@ -1,5 +1,6 @@
 /** Deterministic semantic dressing. Decorations never invent collision. */
 import {type Site,seeded} from '../breach-site.ts';
+import {surfaceDetailBudget} from './environment-composition.ts';
 import {compatibleDecoration,visibleSurfaceHeight,surfaceOffset,
   type SurfaceDetail} from './decoration-anchors.ts';
 export type SiteCondition='occupied'|'busy'|'neglected'|'vacant'|'renovation'|'disturbed';
@@ -70,14 +71,21 @@ export function dressSite(site:Site,seed:number):Site{
   }
 
   const vocab=choices[room.purpose??'']??['papers'];
+  const detailBudget=surfaceDetailBudget(room,condition);
+  let detailsAdded=0;
+  const usedKinds=new Set<SurfaceDetail>();
   const supports=site.cover.filter(c=>c.fixture&&
    c.x>=room.x&&c.x<=room.x+room.w&&c.y>=room.y&&c.y<=room.y+room.h&&
    c.w>=18&&c.h>=16);
   for(const [i,item] of supports.entries()){
+   if(detailsAdded>=detailBudget)break;
    if(random()>density[condition])continue;
    const compatible=vocab.filter(kind=>compatibleDecoration(kind,item.fixture!));
    if(!compatible.length)continue; // A sofa is not a side table.
-   const kind=compatible[Math.floor(random()*compatible.length)];
+   const novel=compatible.filter(kind=>!usedKinds.has(kind));
+   const pool=novel.length?novel:compatible;
+   const kind=pool[Math.floor(random()*pool.length)];
+   usedKinds.add(kind);detailsAdded++;
    const offset=surfaceOffset(item.fixture!,item.w,item.h,random);
    dressing.push({
     id:room.id+':detail:'+i,roomId:room.id,kind,
