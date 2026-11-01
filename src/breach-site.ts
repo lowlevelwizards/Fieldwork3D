@@ -70,9 +70,10 @@ export function generateSite(seed:number,scale:SiteScale='standard'):Site{
   [(seed>>>0)%11];
  // Keep one semantic building identity and a reproducible sequence of
  // massing variants when a furniture arrangement blocks the critical route.
+ const subtype=buildingIdentity(kind,seed,scale,0).subtype;
  for(let attempt=0;attempt<6;attempt++){
   const geometry=partitionMotelGuestUnits(
-    compileArchitecturalSite(kind,seed+attempt*9973,scale));
+    compileArchitecturalSite(kind,seed+attempt*9973,scale,subtype));
   geometry.seed=seed;
   geometry.identity=buildingIdentity(kind,seed,scale,geometry.roomCount);
   try{return applyArchetype(orientArchitecturalSite(geometry,seed),seed);}
