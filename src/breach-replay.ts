@@ -6,6 +6,7 @@ import type {Session,TeamActor,ShotEvent,DroppedMagazine,FlashGrenade,FlashBurst
 import {COVER,type Door,type Pt} from './breach-core.ts';
 import {intelSnapshot,intelRestore} from './breach-intel.ts';
 import type {BattleEvent} from './breach-combat.ts';
+import {copyMedicalCondition,newMedicalCondition} from './breach-medical-wounds.ts';
 import {ReplayMotionRecorder,type ReplayPresentation} from './breach-replay-motion.ts';
 
 export type ActorFrame=Pick<TeamActor,
@@ -16,7 +17,7 @@ export type ActorFrame=Pick<TeamActor,
   'reloadFromRounds'|'reloadTargetRounds'|'reloadSelectedMagazineId'|
   'lastHitAt'|'lastDownAt'|'lastHitRegion'|'lastHitYaw'|
   'lastHitSeverity'|'downPose'|'flashUntil'|'suppression'|
-  'weapon'|'weaponConfiguration'|'weaponLightOn'|'injuryStage'|'armorIntegrity'|'helmetIntegrity'|'flashCharges'|'morale'|'surrendered'|'defense'|'watch'|
+  'medical'|'weapon'|'weaponConfiguration'|'weaponLightOn'|'injuryStage'|'armorIntegrity'|'helmetIntegrity'|'flashCharges'|'morale'|'surrendered'|'defense'|'watch'|
   'lastThrowAt'|'lastDoorAt'|'lastDoorId'|'lastDoorMethod'|'stride'|
   'weaponYaw'|'stability'|'recoil'|'lastShotAt'|'fireMode'|'burstCount'|'skills'|
   'squeeze'|'squeezeYaw'|'squeezeTime'>;
@@ -64,7 +65,8 @@ export function snapshot(s:Session,seenGround?:string[]):ReplayFrame{
       weapon:a.weapon,weaponConfiguration:a.weaponConfiguration?
         {version:1,weapon:a.weaponConfiguration.weapon,
           slots:{...a.weaponConfiguration.slots}}:undefined,
-       injuryStage:a.injuryStage,weaponLightOn:a.weaponLightOn,
+       injuryStage:a.injuryStage,medical:copyMedicalCondition(a.medical),
+       weaponLightOn:a.weaponLightOn,
       armorIntegrity:a.armorIntegrity,helmetIntegrity:a.helmetIntegrity,
       flashCharges:a.flashCharges,
       morale:a.morale,
@@ -203,7 +205,9 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   for(const copy of f.actors){
     const a=s.operators.find(actor=>actor.id===copy.id);
     if(a)Object.assign(a,copy,{p:position(copy.p),
-      spareMagazines:copy.spareMagazines.map(m=>({...m})),plan:[],nav:[]});
+      spareMagazines:copy.spareMagazines.map(m=>({...m})),
+      medical:copy.medical?copyMedicalCondition(copy.medical):newMedicalCondition(),
+      plan:[],nav:[]});
   }
   s.doors=f.doors.map(d=>({...d,a:position(d.a),b:position(d.b)}));
   s.objectRevision=f.objectRevision??0;

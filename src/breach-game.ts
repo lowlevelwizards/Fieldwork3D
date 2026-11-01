@@ -79,11 +79,14 @@ import {CASING_LIMIT,IMPACT_MARK_LIMIT,BLOOD_MARK_LIMIT,
   type EjectedCasing} from './breach-effects.ts';
 import {chooseFall,hitRegion,type WoundRegion,type FallPose}
   from './breach-wounds.ts';
+import {newMedicalCondition,registerWound,advanceMedicalCondition,
+ type MedicalCondition} from './breach-medical-wounds.ts';
 
 export type Posture='stand'|'crouch';
 export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retreat';
 export type Personality='guard'|'aggressor'|'cautious';
 export type TeamActor=Operator & {
+  medical:MedicalCondition;
   awareness:ActorAwareness;
   intent:AIIntent|null;combatChoice:CombatAction|null;lastReportAt:number;
   coordinationRole:GroupRole|null;coordinationUntil:number;
@@ -186,7 +189,7 @@ export const SCENARIOS=[
   {index:2,name:'REAR GUARD',spots:[{x:262,y:213,h:1.1},{x:476,y:444,h:2.8}]},
 ] as const;
 const withActions=(a:Operator):TeamActor=>({
-  ...a,awareness:newAwareness(),intent:null,combatChoice:null,lastReportAt:-100,
+  ...a,medical:newMedicalCondition(),awareness:newAwareness(),intent:null,combatChoice:null,lastReportAt:-100,
   coordinationRole:null,coordinationUntil:0,lastMoraleEventAt:-100,searchOrigin:null,searchQueue:[],plan:[],history:makeHistory(),nav:[],activeNode:-1,
   posture:'stand',pace:'walk',alert:'idle',velocity:0,turning:0,aim:0,
   targetId:null,suppression:0,stamina:1,magazine:12,reserve:36,
@@ -2462,6 +2465,7 @@ function fire(s:Session,a:TeamActor,dt:number){
     target.helmetIntegrity=protection.head;
     target.health=healthAfter;
     target.injuryStage=s.site?nextStage:Math.min(3,target.injuryStage+1);
+    if(severity>0)registerWound(target.medical,shotId,region,severity,s.seconds);
     target.lastHitAt=s.seconds;
     // Incoming fire physically interrupts aim and the current weapon.
     target.stability=Math.max(0,target.stability-.22*severity);
@@ -2664,6 +2668,21 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   };
   const h=clamp(dt,0,1/30);
   s.seconds+=h;
+  // Medical state advances on the authoritative fixed tick only.
+  for(const casualty of s.operators){
+    if(casualty.health<=0)continue;
+    const loss=advanceMedicalCondition(casualty.medical,h);
+    if(loss<=0)continue;
+    casualty.injuryStage=Math.min(3,casualty.injuryStage+loss);
+    casualty.health=Math.max(0,4-casualty.injuryStage);
+    if(casualty.health<=0){
+      casualty.lastDownAt=s.seconds;casualty.downPose='slump';
+      casualty.plan=[];casualty.nav=[];casualty.path=[];casualty.velocity=0;
+      notify(s,casualty.name+' DOWN — UNCONTROLLED BLEEDING');
+      battleEvent(s,'down',casualty,casualty.p,casualty.name+' DOWN');
+    }else battleEvent(s,'wound',casualty,casualty.p,
+      casualty.name+' WOUND DETERIORATING');
+  }
   for(const door of s.doors){
     if(door.heldBy){
       const holder=s.operators.find(a=>a.id===door.heldBy);
