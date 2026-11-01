@@ -375,8 +375,8 @@ export class TacticalScene3D{
         Math.max(12,room.w+2),2,Math.max(12,room.h+2),
         this.roofMaterial,false).receiveShadow=false;
     }
-    const wallMat=this.solid(theme.wall),capMat=this.solid(theme.cap);
-    const skirting=this.solid(theme.trim);
+    const wallMat=this.solid(theme.wall,.94,'plaster'),capMat=this.solid(theme.cap,.94,'concrete');
+    const skirting=this.solid(theme.trim,.91,'wood');
     for(const [index,wall] of site.walls.entries()){
       const group=new THREE.Group();this.root.add(group);
       this.intelSurfaces.push({obj:group,kind:'wall',index});
@@ -406,8 +406,8 @@ export class TacticalScene3D{
       this.box(group,0,38,0,width+4,4,11,archMaterial);
       this.root.add(group);
     }
-    const doorMat=this.solid(theme.door),doorTrim=this.solid(theme.trim);
-    const metal=this.solid(0x586665);
+    const doorMat=this.solid(theme.door,.88,'wood'),doorTrim=this.solid(theme.trim,.9,'wood');
+    const metal=this.solid(0x586665,.78,'metal');
     for(const door of site.doors){
       const length=Math.hypot(door.a.x-door.b.x,door.a.y-door.b.y);
       const p=doorCenter(door),vertical=Math.abs(door.a.x-door.b.x)<1;
@@ -437,8 +437,8 @@ export class TacticalScene3D{
       }else{
         const style=door.style??'wood';
         const panel=style==='wood'?doorMat:style==='exit'?
-          this.solid(0x996c53):style==='reinforced'?
-          this.solid(0x53615e):this.solid(0x72817d);
+          this.solid(0x996c53,.78,'metal'):style==='reinforced'?
+          this.solid(0x53615e,.78,'metal'):this.solid(0x72817d,.78,'metal');
         const middle=(invert?-1:1)*length/2;
         this.box(leaf,middle,17,0,length-4,34,4,panel);
         for(const z of [-3,3])this.box(leaf,(invert?-1:1)*length*.7,
@@ -463,12 +463,12 @@ export class TacticalScene3D{
       this.doors.set(door.id,{root,leaf,frame,halo,threshold});
       this.observedDoorOpen.set(door.id,door.openFraction??0);
     }
-    const wood=this.solid(theme.wood),steel=this.solid(0x465958);
-    const olive=this.solid(0x70715e);
+    const wood=this.solid(theme.wood,.9,'wood'),steel=this.solid(0x465958,.8,'metal');
+    const olive=this.solid(0x70715e,.9,'fabric');
     const fixtureCtx:FixtureVisualContext={
       box:(parent,x,y,z,w,h,d,material,cast)=>
         this.box(parent,x,y,z,w,h,d,material,cast),
-      solid:(hex,roughness)=>this.solid(hex,roughness),
+      solid:(hex,roughness,surface)=>this.solid(hex,roughness,surface),
     };
     site.cover.forEach((c,i)=>{
       const group=new THREE.Group();this.root.add(group);
@@ -505,7 +505,7 @@ export class TacticalScene3D{
       glass.castShadow=false;
       this.windowGlass.set(opening.id,glass);
       if(opening.treatment==='bars'){
-        const bars=this.solid(0x586866,.64);
+        const bars=this.solid(0x586866,.64,'metal');
         for(const frac of [-.32,-.1,.12,.34])
           this.box(group,frac*opening.width,
             baseTop+glassHeight/2,2,1.8,glassHeight+1,2.2,bars,false);
@@ -513,7 +513,7 @@ export class TacticalScene3D{
           this.box(group,0,y,2,opening.width-3,1.7,2.2,bars,false);
       }
       if(opening.treatment==='open-curtains'){
-        const fabric=this.solid(0x8f8779);
+        const fabric=this.solid(0x8f8779,.95,'fabric');
         for(const side of [-1,1]){
           this.box(group,side*(opening.width/2-4),
             baseTop+glassHeight/2,3,
@@ -554,9 +554,9 @@ export class TacticalScene3D{
     }
     // Wall-mounted art and electrical hardware inherit room visibility.
     // They do not add collision, cover or new sightline blockers.
-    const wallPaper=this.solid(0xb8ad8e),wallFrame=this.solid(0x615246);
-    const wallMetal=this.solid(0x697b79),wallDark=this.solid(0x343e3c);
-    const wallRed=this.solid(0xa66f57);
+    const wallPaper=this.solid(0xb8ad8e,.97,'paper'),wallFrame=this.solid(0x615246,.9,'wood');
+    const wallMetal=this.solid(0x697b79,.81,'metal'),wallDark=this.solid(0x343e3c,.82,'metal');
+    const wallRed=this.solid(0xa66f57,.92,'paper');
     for(const detail of site.wallDetails??[]){
       const roomGroup=decorativeRoomGroups.get(detail.roomId);
       if(!roomGroup)continue;
@@ -593,8 +593,8 @@ export class TacticalScene3D{
     }
     // Small storytelling details inherit room visibility, with no independent
     // collider, cover or occlusion. They can never block a tactical passage.
-    const smallWood=this.solid(0x9a8669),smallPaper=this.solid(0xb8b4a0);
-    const smallGreen=this.solid(0x5f7b51),smallClay=this.solid(0x947b60);
+    const smallWood=this.solid(0x9a8669,.91,'wood'),smallPaper=this.solid(0xb8b4a0,.97,'paper');
+    const smallGreen=this.solid(0x5f7b51,.94,'foliage'),smallClay=this.solid(0x947b60,.92,'concrete');
     for(const detail of site.dressing??[]){
       const roomGroup=decorativeRoomGroups.get(detail.roomId);
       if(!roomGroup)continue;
@@ -630,8 +630,8 @@ export class TacticalScene3D{
           detail.kind==='runner'?0x8a7c63:
           detail.kind==='welcome-mat'?0x635646:
           detail.kind==='bedside-rug'?0x8a7865:0x93765e;
-        const textile=this.solid(palette);
-        const border=this.solid(0xc1b295);
+        const textile=this.solid(palette,.95,'fabric');
+        const border=this.solid(0xc1b295,.95,'fabric');
         const w=detail.width??42,d=detail.depth??24;
         this.box(prop,0,.11,0,w,.22,d,textile,false);
         if(w>16&&d>12)this.box(prop,0,.23,0,w-4,.08,d-4,border,false);
