@@ -3,6 +3,7 @@ import {graphicsBudget} from './breach-graphics-budget.ts';
 import {addRoomGroutInstances} from './breach-room-instancing.ts';
 import {propDefinition} from './worldgen/asset-catalog.ts';
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
+import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surfaces.ts';
 import {planEnvironmentalWear,type WearKind} from './worldgen/environment-wear.ts';
 import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,activeSite,
   type Pt,type Door} from './breach-core.ts';
@@ -281,6 +282,15 @@ export class TacticalScene3D{
       this.plane(this.root,zone.x,zone.y,zone.w,zone.h,-1.45,
         this.solid(zoneColor[zone.kind]));
     }
+    const surfaceColor:Record<SurfaceKind,number>={
+      path:0x919182,'driveway-stripe':0x858575,
+      'parking-divider':0xd6caa9,'garden-border':0x4c5843,
+      'service-pad':0x6c7069,'patio-paver':0x8b8578,
+    };
+    // Exterior ground markings are legible construction details, not cover.
+    for(const mark of planPropertySurfaces(site))
+      this.box(this.root,mark.x,-1.32,mark.y,mark.width,.2,
+        mark.depth,this.solid(surfaceColor[mark.kind]),false);
     const road=this.solid(0x59584a);
     const side=site.entrySide??'south';
     if(side==='east'||side==='west'){
