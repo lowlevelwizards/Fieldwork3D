@@ -30,6 +30,7 @@ import {roofShouldShow} from './worldgen/roof-cutaways.ts';
 import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,doorLeafSegment,activeSite,
   type Pt,type Door} from './breach-core.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
+import {resolveWeaponAssembly} from './equipment-weapon-assemblies.ts';
 import {type Site,type Room} from './breach-site.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
 import {coverPresentation,shotVisibility} from './breach-presentation.ts';
@@ -1547,8 +1548,13 @@ export class TacticalScene3D{
       const firing=s.shots.find(shot=>shot.shooterId===actor.id&&
         shot.age<.115&&(omniscient||shotVisibility(s,shot).flash));
       object.flash.visible=!!firing&&actor.health>0;
+      object.flash.position.x=actor.weaponConfiguration?
+       resolveWeaponAssembly(actor.weaponConfiguration).muzzleX:19.5;
       if(firing){
-        object.flash.scale.setScalar(1.55*(1-firing.age/.115)+.3);
+        const muzzle=actor.weaponConfiguration?.slots.muzzle;
+        const signature=muzzle==='muzzle-suppressor'?.25:
+         muzzle==='muzzle-hider'?.65:1;
+        object.flash.scale.setScalar((1.55*(1-firing.age/.115)+.3)*signature);
       }
       const plannedDoor=actor.plan[0]?.kind==='door'?
         s.doors.find(d=>d.id===actor.plan[0].doorId):undefined;
@@ -1579,6 +1585,7 @@ export class TacticalScene3D{
         appearanceSeed:actor.appearanceSeed,
         equipment:actor.equipment,
          weaponConfiguration:actor.weaponConfiguration,
+         weaponLightOn:actor.weaponLightOn,
         flashCharges:actor.flashCharges,
         // A path collision may leave residual motor velocity while position
         // is stationary: feet should brace, not march in place.
