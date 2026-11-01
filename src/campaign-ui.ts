@@ -6,6 +6,7 @@ import './campaign-style.css';
 export type CampaignHandlers={
  newCampaign:()=>void;continueCampaign:()=>void;quickPlay:()=>void;
  chooseContract:(id:string)=>void;resumeContract:()=>void;
+ buyAmmo:()=>void;buyMedical:()=>void;resupply:(id:string)=>void;treat:(id:string)=>void;
 };
 const node=<K extends keyof HTMLElementTagNameMap>(tag:K,cls='',label='')=>{
  const el=document.createElement(tag);if(cls)el.className=cls;
@@ -48,6 +49,8 @@ export class CampaignScreen{
   const grid=node('div','campaign-grid');
   const personnel=node('section','campaign-section');
   personnel.append(node('h2','','PERSONNEL'));
+  personnel.append(node('p','campaign-note',
+   'STOCK: '+c.supplies.ammo+' ROUNDS · '+c.supplies.medical+' MEDICAL KITS'));
   const roster=node('div','campaign-roster');
   for(const p of c.operators){
    const card=node('article','campaign-person');
@@ -70,9 +73,17 @@ export class CampaignScreen{
    for(const e of history)details.append(node('p','campaign-note',
     'DAY '+e.day+' · '+e.detail));
    card.append(details);
+   const actions=node('div','campaign-person-actions');
+   actions.append(button('RESUPPLY',()=>this.handlers.resupply(p.id)));
+   if(p.recoveryDays>0)actions.append(button('TREAT',()=>this.handlers.treat(p.id)));
+   card.append(actions);
    roster.append(card);
   }
   personnel.append(roster);
+  const purchases=node('div','campaign-purchases');
+  purchases.append(button('BUY 60 ROUNDS · 120 CR',this.handlers.buyAmmo),
+   button('BUY MEDICAL KIT · 170 CR',this.handlers.buyMedical));
+  personnel.append(purchases);
   const notice=node('p','campaign-note',c.history.length?
    'LAST OPERATION: '+c.history[c.history.length-1].grade+' · '+c.history[c.history.length-1].outcome.toUpperCase():
    'No operations completed. Select your first contract.');
