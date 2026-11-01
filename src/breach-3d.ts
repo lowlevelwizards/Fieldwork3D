@@ -6,6 +6,7 @@ import {wearFinish} from './rendering/wear-finish.ts';
 import {doubleSidedWallWear} from './rendering/wear-wall-geometry.ts';
 import {ageMaterialColor} from './rendering/condition-materials.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from './worldgen/fixture-visuals.ts';
+import {planFacadeAwnings} from './worldgen/facade-awnings.ts';
 import {fixtureFrameTransform} from './rendering/fixture-frame-transform.ts';
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surfaces.ts';
@@ -490,6 +491,27 @@ export class TacticalScene3D{
       for(const f of [-.26,.26])
         this.box(this.root,structure.x+structure.w*f,40,structure.y,
           2,1.8,structure.h,frame,false);
+    }
+    // Fixed architectural window overhangs are tied to physical glass spans.
+    // Keep the canopy translucent for the tactical cutaway and never imply
+    // an elevated traversable surface or a new line-of-fire barrier.
+    const awningRoof=new THREE.MeshStandardMaterial({color:0x85867a,
+      roughness:.87,metalness:.08,transparent:true,opacity:.33,
+      depthWrite:false,side:THREE.DoubleSide});
+    const awningEdge=this.solid(0x5f6e6a,.83,'painted-metal');
+    for(const awning of planFacadeAwnings(site)){
+      const roof=this.box(this.root,awning.x,35.5,awning.y,
+        awning.w,1.5,awning.h,awningRoof,false);
+      roof.castShadow=false;roof.receiveShadow=false;
+      const vertical=awning.w<awning.h;
+      const edgeOffset=vertical?awning.w/2:awning.h/2;
+      if(vertical){
+        for(const x of [awning.x-edgeOffset,awning.x+edgeOffset])
+          this.box(this.root,x,34.8,awning.y,2,2.2,awning.h,awningEdge,false);
+      }else{
+        for(const y of [awning.y-edgeOffset,awning.y+edgeOffset])
+          this.box(this.root,awning.x,34.8,y,awning.w,2.2,2,awningEdge,false);
+      }
     }
     const surfaceColor:Record<SurfaceKind,number>={
       path:0x919182,'driveway-stripe':0x858575,
