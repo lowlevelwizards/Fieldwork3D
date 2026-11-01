@@ -54,4 +54,5 @@ export function nearCover(p:Pt,threat:Pt){
   });
 }
 export type BattleEvent={id:number;t:number;kind:'shot'|'wound'|'down'|'flash'|
-  'door'|'objective'|'surrender'|'reload';actor?:string;p?:Pt;text:string};
+  'door'|'objective'|'surrender'|'reload'|'intel'|'impact'|
+  'interaction';actor?:string;p?:Pt;text:string};

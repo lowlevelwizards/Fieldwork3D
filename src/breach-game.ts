@@ -1128,7 +1128,10 @@ function observe(s:Session){
     for(const e of enemies(s)){
       if(inSight(blue,e,s)){
         const old=s.known.get(e.id);
-        if(!old||s.seconds-old.at>.20)notify(s,'CONTACT '+e.name);
+        if(!old||s.seconds-old.at>.20){
+          notify(s,'CONTACT '+e.name);
+          battleEvent(s,'intel',blue,blue.p,blue.name+' SPOTTED '+e.name);
+        }
         s.known.set(e.id,{p:clone(e.p),at:s.seconds,status:'seen'});
         s.spotted.add(e.id);e.lastSpotted=clone(e.p);
       }
@@ -1483,6 +1486,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
         s.objectRevision++;
         hear(s,{x:window.x,y:window.y},85,'window');
         notify(s,a.name+' MOVED WINDOW');
+        battleEvent(s,'interaction',a,a.p,a.name+' MOVED WINDOW');
       }else notify(s,a.name+' WINDOW UNAVAILABLE');
     }
     pop(a);return;
@@ -1714,6 +1718,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       if(s.reports.length>16)s.reports.shift();
       a.lastReportAt=s.seconds;
       hear(s,a.p,220,'warning');
+      battleEvent(s,'intel',a,a.p,a.name+' WARNED NEARBY DEFENDERS');
     }
     a.watch=clone(b.p);
     if(a.suppression>.65&&a.alert!=='retreat'){
@@ -2019,6 +2024,8 @@ function damageStruckCover(s:Session,hits:readonly {index:number;fraction:number
   if(result==='immune')continue;
   s.objectRevision++;
   if(result==='collapsed'){
+    battleEvent(s,'impact',null,{x:piece.x,y:piece.y},
+      (piece.fixture??'FURNITURE').toUpperCase()+' COLLAPSED');
     // Nearby defenders perceive their own cover crumbling. Uninformed
     // distant guards are not globally told the new geometry.
     for(const defender of enemies(s)){
@@ -2042,6 +2049,8 @@ function shatterStruckWindows(s:Session,paneHits:readonly number[],force:number)
   if(!window||!damageWindow(window,force))continue;
   s.objectRevision++;
   hear(s,{x:window.x,y:window.y},170,'glass');
+  if(window.shattered)battleEvent(s,'impact',null,
+    {x:window.x,y:window.y},'GLASS SHATTERED');
  }
 }
 /** Suppression is an authored area instruction: deliberate misses consume
@@ -2517,6 +2526,7 @@ export function movePhysicalProp(s:Session,index:number,to:Pt):boolean{
  s.objectRevision++;
  COVER.splice(0,COVER.length,...s.coverState);
  hear(s,to,65,'furniture');
+ battleEvent(s,'interaction',null,to,'FURNITURE MOVED');
  return true;
 }
 export function stepSession(s:Session,dt:number){
