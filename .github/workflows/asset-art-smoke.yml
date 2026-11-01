@@ -4,6 +4,8 @@ on:
     paths:
       - 'src/worldgen/asset-character-visuals.ts'
       - 'src/worldgen/fixture-visuals.ts'
+      - 'src/breach-3d.ts'
+      - 'tests/map-29-architecture-hardware.test.mjs'
       - 'src/worldgen/detailed-fixture-visuals.ts'
       - 'src/worldgen/asset-review.ts'
       - 'tests/map-22-asset-audit.test.mjs'
