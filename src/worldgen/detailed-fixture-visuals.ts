@@ -56,26 +56,51 @@ export function renderDetailedFixture(group:THREE.Group,c:Obstacle,
    return true;
  }
  case 'shower':{
-   b(0,.85,0,w,1.7,d,light);
-   b(0,2.5,0,w*.84,1.4,d*.83,steel,false);
-   for(const sx of [-1,1]){
-    b(sx*w*.45,H*.48,-d*.45,1.5,H*.95,1.5,steel);
-    b(sx*w*.45,H*.50,d*.45,1.5,H*.95,1.5,steel);
+   // Rear plumbing wall, two structural returns, and an open-front entry.
+   // Fixture does not rely on unattached floating pipes.
+   b(0,1.25,0,w,2.5,d,light);
+   b(0,2.65,0,w*.84,.65,d*.82,steel,false); // low tray recess
+   b(0,2.9,d*.12,2,.75,d*.12,ink,false); // drain
+   b(0,H*.50,-d*.46,w*.94,H*.90,2.0,light);
+   for(const sign of [-1,1]){
+     b(sign*w*.45,H*.49,0,1.8,H*.94,1.8,steel);
+     b(sign*w*.44,H*.50,-d*.10,1.2,H*.83,d*.68,glass,false);
+     b(sign*w*.44,H*.96,0,2.1,1.5,d*.91,steel,false);
    }
-   b(0,H*.5,-d*.47,w*.85,H*.85,1,glass,false);
-   b(w*.44,H*.5,0,1,H*.85,d*.82,glass,false);
-   b(-w*.20,H*.68,-d*.32,2,H*.44,2,metal);
-   b(-w*.20,H*.84,-d*.18,w*.27,1.2,3.5,metal);
+   // Properly mounted mixer, vertical riser and connected overhead head.
+   b(-w*.18,H*.43,-d*.413,w*.23,3,1.4,steel,false);
+   b(-w*.18,H*.43,-d*.32,2.7,1.5,1.7,metal,false);
+   b(-w*.18,H*.69,-d*.42,1.9,H*.44,2.0,metal,false);
+   b(-w*.18,H*.89,-d*.34,2,1.9,d*.18,metal,false);
+   b(-w*.18,H*.88,-d*.20,5.2,1.5,d*.15,steel,false);
+   // No across-the-front glass panel: the shower remains usable.
    return true;
  }
  case 'office-chair':{
-   b(0,10,0,w*.83,3,d*.78,olive);
-   b(0,H*.69,-d*.37,w*.87,H*.52,3.4,olive);
-   b(0,6,0,2.5,9,2.5,steel);
+   // Upholstery is carried by a connected height-adjustable column.
+   const upholstery=ctx.solid(0x677f77,.94,'fabric');
+   const underside=ctx.solid(0x38433f,.85,'plastic');
+   b(0,H*.47,0,w*.84,3.3,d*.77,upholstery);
+   b(0,H*.40,0,w*.65,1.7,d*.62,underside);
+   const back=b(0,H*.73,-d*.36,w*.79,H*.47,3.4,upholstery);
+   back.rotation.x=-.10;
+   b(0,H*.89,-d*.39,w*.70,1.5,3.8,steel,false);
+   b(0,H*.27,0,2.5,H*.30,2.5,metal); // central lift
+   b(0,3.4,0,3.8,4.4,3.8,steel);
+   // Five-spoke star, one caster at the tip of each spoke.
+   for(let n=0;n<5;n++){
+     const angle=n*Math.PI*2/5;
+     const x=Math.cos(angle)*w*.29,z=Math.sin(angle)*d*.29;
+     const foot=b(x,2.7,z,w*.44,1.8,2.7,underside);
+     foot.rotation.y=-angle;
+     b(x*1.55,1.45,z*1.55,2.7,2.7,2.7,ink);
+   }
    for(const sign of [-1,1]){
-    b(sign*w*.25,3,0,w*.45,2,3,ink);
-    b(0,3,sign*d*.23,3,2,d*.46,ink);
-    b(sign*w*.25,12,0,2.2,5,2.2,steel);
+     // A full L-shaped arm: rear anchor, upright, and horizontal arm pad.
+     const x=sign*w*.37;
+     b(x,H*.58,-d*.20,2.2,H*.25,2.2,steel);
+     b(x,H*.66,d*.04,3.0,2.3,d*.57,underside);
+     b(x,H*.69,d*.05,3.8,1.1,d*.51,upholstery,false);
    }
    return true;
  }
