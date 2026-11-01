@@ -234,7 +234,7 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   const base={...o,missions:o.missions+1,
    successful:o.successful+(r.outcome==='success'?1:0),
    recoveryDays:Math.max(0,o.recoveryDays-1,
-    casualties.has(o.id)?stabilized.has(o.id)?2:4:0)};
+    casualties.has(o.id)?(r.stabilizedIds===undefined||stabilized.has(o.id)?2:4):0)};
   if(!performance)return base;
   const progress=progressOperator(base,performance,r.outcome==='success');
   gainedSkills.push(progress.gains);
