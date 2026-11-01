@@ -285,6 +285,8 @@ function recordCompletedOperation(){
     grade:stats.grade,elapsed:stats.time,
     participatingIds:members.map(a=>careerId(a.id)),
     casualties:members.filter(a=>a.health<=0).map(a=>careerId(a.id)),
+    stabilizedIds:stats.stabilizedCasualties.map(careerId),
+    criticalIds:stats.criticalCasualties.map(careerId),
     objective:stats.objective,
     flashUsed:state.battleEvents.filter(e=>e.kind==='flash'&&
      e.actor!==undefined&&e.text.endsWith('FLASH OUT')).length,
