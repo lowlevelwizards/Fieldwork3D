@@ -2,6 +2,7 @@
  * Tactical rules continue to own collision; the library is metadata only.
  */
 import {propCatalog, type PropDefinition} from './asset-catalog.ts';
+import {CANONICAL_ASSET_DIMENSIONS} from './world-scale.ts';
 
 export type AssetLibraryEntry = {
   id:string; label:string; category:string; origin:'fixture'|'dressing'|'structure';
@@ -87,6 +88,8 @@ export function assetLibraryProblems():string[]{
     seen.add(item.id);
     if([item.width,item.depth,item.height].some(n=>!Number.isFinite(n)||n<=0))
       issues.push('Invalid dimensions: '+item.id);
+    if(item.origin==='fixture'&&!CANONICAL_ASSET_DIMENSIONS[item.id])
+      issues.push('Unscaled fixture: '+item.id);
     if(item.origin==='fixture'&&item.rooms.length===0)
       issues.push('No allowed rooms: '+item.id);
   }

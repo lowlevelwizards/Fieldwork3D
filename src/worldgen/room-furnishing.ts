@@ -115,9 +115,9 @@ export function furnishRooms(site:Site,seed:number):Site{
   const equipment=compact?available.slice(0,1):available;
   for(const [i,item] of equipment.entries()){
    const asset=propDefinition(item.id);if(!asset||!asset.solid)continue;
-   const w=Math.min(asset.width,room.w*.40);
-   const h=Math.min(asset.depth,room.h*.38);
-   if(w<12||h<10)continue;
+   // Reject an oversized furnishing instead of shrinking it into a toy.
+   const w=asset.width,h=asset.depth;
+   if(w>room.w-24||h>room.h-24)continue;
    const positions:Anchor[]=[item.anchor,'ne','sw','se','nw','west','east'];
    const rotation=Math.floor(rng()*4);
    const order=i===0?positions:[positions[0],...positions.slice(1+rotation),...positions.slice(1,1+rotation)];
