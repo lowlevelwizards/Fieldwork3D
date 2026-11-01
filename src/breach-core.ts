@@ -16,7 +16,7 @@ export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number;
   hinge?:'a'|'b';swing?:-1|1;openFraction?:number;
   angularVelocity?:number;resistance?:number;kickImpulse?:number;heldBy?:string|null;latchIntegrity?:number;frameIntegrity?:number;
   kicks?:number;lastKickAt?:number;forced?:boolean;locked?:boolean;jammed?:boolean;
-  wedged?:boolean;}
+  wedged?:boolean;wedgeOwnerId?:string;}
 export type Obstacle={x:number;y:number;w:number;h:number;low?:boolean;
   fixture?:string;material?:import('./breach-materials.ts').MaterialId;
   /** Render-only deterministic trim selection; ignored by collision and AI. */
