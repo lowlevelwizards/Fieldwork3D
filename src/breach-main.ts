@@ -1032,6 +1032,8 @@ function updateHud(){
   ui.siteSize.disabled=campaignMode==='mission';
   ui.intelMode.disabled=campaignMode==='mission';
   ui.restart.disabled=campaignMode==='mission';
+  const homeButton=document.getElementById('campaignReturnButton') as HTMLButtonElement|null;
+  if(homeButton)homeButton.disabled=campaignMode==='mission'&&state.phase==='running';
   ui.loadout.disabled=campaignMode==='mission';
   ui.intelMode.textContent='INTEL · '+selectedIntelMode.replace('-', ' ').toUpperCase();
   ui.flash.textContent='FLASH ×'+state.flashRemaining;
@@ -1995,6 +1997,11 @@ function reset(next=state.variant,siteSeed?:number,missionOverride?:Session['mis
   recorder=new MissionRecorder();recorder.capture(state,true);
   tacticalFeedback.clear();layout();updateHud();
 }
+const campaignBackButton=document.createElement('button');
+campaignBackButton.type='button';campaignBackButton.id='campaignReturnButton';
+campaignBackButton.textContent='OPERATIONS ROOM';
+campaignBackButton.setAttribute('aria-label','Return to campaign operations room');
+ui.siteSettings.append(campaignBackButton);
 const campaignScreen=new CampaignScreen({
  newCampaign:()=>{
   if(campaign&&!window.confirm('Replace the current campaign with a new one?'))return;
@@ -2061,6 +2068,11 @@ function returnAfterCampaignMission(){
  }
  return false;
 }
+campaignBackButton.addEventListener('click',()=>{
+ if(campaignMode==='mission'&&state.phase==='running')return;
+ if(campaign)showCampaignHome();
+ else{campaignMode='menu';campaignScreen.entry(false);}
+});
 ui.rook.addEventListener('click',()=>selectUnit('rook'));
 ui.back.addEventListener('click',()=>{
   uiClickTone('select');
@@ -2456,6 +2468,10 @@ function tick(now:number){
   const perfStart=perfOverlay?performance.now():0;
   const frameGap=Math.max(0,now-last);
   const dt=Math.min(.08,frameGap/1000);last=now;
+  if((campaignMode==='menu'||campaignMode==='home')&&!replaying){
+   accum=0;previousRenderActors=null;
+   requestAnimationFrame(tick);return;
+  }
   let simSteps=0;
   const simPhaseCosts=perfOverlay?new Map<string,number>():null;
   if(!replaying&&state.phase==='running'){
