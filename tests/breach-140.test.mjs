@@ -14,12 +14,17 @@ test('140: three modes grant distinct briefing knowledge on identical site',()=>
  const b=initialIntel('true-blind',site,doors);
  const e=initialIntel('exterior-known',site,doors);
  const f=initialIntel('floor-plan',site,doors);
- assert.deepEqual([...INTEL_MODES],['true-blind','exterior-known','floor-plan']);
+ assert.deepEqual([...INTEL_MODES],
+  ['true-blind','exterior-known','floor-plan','full-view']);
  assert.equal(b.walls.size,0);assert.equal(b.cover.size,0);
  assert.ok(e.walls.size>0&&e.walls.size<=WALLS.length);
  assert.equal(f.walls.size,WALLS.length);
  assert.equal(f.doors.size,doors.length);
  assert.equal(f.cover.size,0,'floor plan must not reveal interior furniture');
+ const v=initialIntel('full-view',site,doors);
+ assert.equal(v.cover.size,COVER.length,'full view reveals every prop');
+ assert.equal(v.walls.size,WALLS.length);
+ assert.equal(intelFogLevel(v,site,site.objective,false,false),0);
  assert.equal(intelFogLevel(b,site,site.objective,false,false),2);
  assert.equal(intelFogLevel(f,site,site.objective,false,false),1);
  assert.equal(intelFogLevel(e,site,{x:10,y:20},false,false),1);

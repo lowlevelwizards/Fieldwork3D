@@ -453,9 +453,21 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const targetWorld=P(target.position.x,1.45+target.height,
       target.position.y);
     if(i===1&&kick){
-      targetWorld.x+=Math.cos(p.heading)*kick.reach;
-      targetWorld.z+=Math.sin(p.heading)*kick.reach;
-      targetWorld.y+=kick.lift;
+      const motion=smooth((kick.progress-.30)/.23)*
+        (1-smooth((kick.progress-.67)/.25));
+      if(p.doorPoint){
+        const dx=p.x-p.doorPoint.x,dz=p.z-p.doorPoint.y;
+        const gap=Math.hypot(dx,dz)||1;
+        // The boot IK solves toward the door's REAL leaf, not a generic
+        // forward kick animation that can miss the panel entirely.
+        const contact=P(p.doorPoint.x+dx/gap*1.5,9,
+          p.doorPoint.y+dz/gap*1.5);
+        targetWorld.lerp(contact,motion);
+      }else{
+        targetWorld.x+=Math.cos(p.heading)*kick.reach;
+        targetWorld.z+=Math.sin(p.heading)*kick.reach;
+        targetWorld.y+=kick.lift;
+      }
       foot.swinging=true;
     }
     let relative=targetWorld.sub(P(p.x,r.root.position.y,p.z))
@@ -552,7 +564,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const throwAge=p.seconds-p.lastThrowAt;
   const throwActive=throwAge>=0&&throwAge<.70;
   const doorAge=p.seconds-p.lastDoorAt;
-  const doorActive=doorAge>=0&&doorAge<.9&&!!p.doorPoint&&
+  const doorActive=doorAge>=0&&doorAge<1.12&&!!p.doorPoint&&
     p.doorMethod!=='kick';
   r.chest.position.x=bash.reach*.18;
   r.reachRequest=null;
@@ -561,6 +573,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const leftGrip=P(data.supportX,data.supportY,-1.6);
   const rightGrip=P(data.primaryX,data.primaryY,1.8);
   let reaching=false,releaseLeft=false,releaseRight=false;
+  let fullDoorContact:THREE.Vector3|null=null;
   if(p.surrender){
     // Deliberate visible surrender: discard the gun, kneel and raise both
     // hands overhead. Unlike an incapacitated actor this is not a fall.
@@ -605,9 +618,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       p.doorPoint.y-p.z);
     local.applyAxisAngle(P(0,1,0),-r.root.rotation.y);
     local.applyAxisAngle(P(0,1,0),-r.chest.rotation.y);
-    // Small shoulder/chest reach rather than arm stretching.
-    r.chest.position.x=clamp(local.x-13,0,2.4);
-    leftGrip.copy(local).sub(P(r.chest.position.x,0,0));
+    // Deliberate hand-off: release weapon, reach physical handle, and
+    // return the support hand to its real gun grip after the latch moves.
+    const reach=smooth(doorAge/.32)*
+      (1-smooth((doorAge-.62)/.48));
+    r.chest.position.x=clamp(local.x-13,0,2.4)*reach;
+    fullDoorContact=local.sub(P(r.chest.position.x,0,0)).clone();
+    leftGrip.copy(fit.support).lerp(fullDoorContact,reach);
   }
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
@@ -634,8 +651,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         .applyEuler(fit.rotation).add(fit.origin);
     }
     const reachable=desired.distanceTo(shoulder)<=19.92;
-    if(i===0&&reaching&&!reachable)
-      r.reachRequest={kind:'door',distance:desired.distanceTo(shoulder)};
+    // Evaluate the true handle target even during the wind-up: easing the
+    // arm from the weapon must not hide an unreachable world interaction.
+    const contactDistance=i===0&&fullDoorContact?
+      fullDoorContact.distanceTo(shoulder):0;
+    if(i===0&&reaching&&(!reachable||contactDistance>19.92))
+      r.reachRequest={kind:'door',distance:Math.max(
+        desired.distanceTo(shoulder),contactDistance)};
     // Impossible interactions must report the need for repositioning, not
     // stretch a joint or rotate an arm through the upper torso.
     const wrist=clampReach(shoulder,desired,19.92);
@@ -663,7 +685,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.elbowSpread[i]=Math.max(0,
       sign*(solved.joint.z-shoulder.z));
     arm.bend.copy(solved.bendPlane);
-    arm.outOfReach=!reachable||!solved.reached;
+    arm.outOfReach=!reachable||!solved.reached||
+      (i===0&&reaching&&contactDistance>19.92);
     if(!releaseLeft&&i===0)r.gripError=Math.max(r.gripError,
       desired.distanceTo(solved.effector));
     if(i===1&&!p.surrender)r.gripError=Math.max(r.gripError,

@@ -242,7 +242,14 @@ export function newSession(index=0,siteSeed?:number,
       a.spareMagazines=a.weapon==='shotgun'?[]:magazineKit(
         a.id,a.weapon,a.reserve,WEAPONS[a.weapon].capacity);
       a.health=4;a.injuryStage=0;
-      a.p={...site.spawn[i]};a.heading=-Math.PI/2;
+      a.p={...site.spawn[i]};
+      // Entry teams face the nearest actual interior, not a hard-coded
+      // compass direction that is wrong for rotated/generated buildings.
+      const room=[...site.rooms].sort((u,v)=>
+        d(a.p,{x:u.x+u.w/2,y:u.y+u.h/2})-
+        d(a.p,{x:v.x+v.w/2,y:v.y+v.h/2}))[0];
+      a.heading=room?angle(a.p,{x:room.x+room.w/2,y:room.y+room.h/2}):
+        angle(a.p,site.entrance);
       a.weaponYaw=a.heading;
       a.priorP={...a.p};
     });
@@ -410,7 +417,11 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
         if(!doorKnown(s.intel,door.id)||
            (s.intel.doorMemory.get(door.id)??0)>=.72||
            opened.has(door.id)||
-           !segmentsCross({a:points[i-1],b:points[i]},door))continue;
+           !segmentsCross({a:points[i-1],b:points[i]},door)&&
+           pointToSegment(doorCenter(door),
+             {a:points[i-1],b:points[i]})>9&&
+           pointToSegment(doorCenter(door),
+             {a:prior,b:node.p})>9)continue;
         const staging=doorApproach(prior,door);
         if(!staging)continue;
         expanded.push({id:s.nextId+expanded.length,kind:'door',
@@ -1086,7 +1097,7 @@ function advanceVisualAwareness(s:Session,dt:number){
  }
 }
 export const isSeen=(s:Session,target:TeamActor)=>
-  team(s).some(a=>inSight(a,target,s));
+  s.intel.mode==='full-view'||team(s).some(a=>inSight(a,target,s));
 export function lastKnown(s:Session,id:string){
   return s.known.get(id)??null;
 }
@@ -1192,7 +1203,13 @@ function yieldPocket(blocker:TeamActor,requester:TeamActor,s:Session):Pt|null{
     d(u,blocker.p)-d(v,blocker.p))[0]??null;
 }
 function deferToTeammate(s:Session,blocker:TeamActor,requester:TeamActor){
-  if(blocker.yieldTarget||blocker.health<=0)return false;
+  if(blocker.yieldTarget||requester.yieldTarget||blocker.health<=0||
+     requester.blockedTime<1.1)return false;
+  // Deliberately held stacks and threshold guards are never involuntarily
+  // shoved by an arriving teammate, even if they have no active route.
+  if(blocker.plan.some(n=>n.stackDoorId||n.kind==='holdClear'||
+     n.kind==='wait'||n.kind==='door')||
+     s.doors.some(door=>d(blocker.p,doorCenter(door))<52))return false;
   const requesterRank=s.operators.indexOf(requester);
   const blockerRank=s.operators.indexOf(blocker);
   const blockerActive=blocker.plan.some(n=>n.kind==='move'||n.kind==='door');
@@ -1285,12 +1302,17 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   }
   // Look ahead to the route's next node, stopping to open a door before
   // the actor's capsule contacts the physical leaf.
-  const doorAhead=a.side==='red'?s.doors.find(door=>{
+  // Crossing a physical closed door during a move implicitly attempts to
+  // open it, even if a briefed doorway missed the drawn-path insertion.
+  // Deliberate DOOR actions (including KICK) retain priority and must not
+  // be preempted by this convenience interaction.
+  const autoDoor=a.side==='red'||a.plan[0]?.kind==='move'||
+    a.plan[0]?.kind==='pie';
+  const doorAhead=autoDoor?s.doors.find(door=>{
     if(door.open&&(door.openFraction??0)>=.72)return false;
-    const center=doorCenter(door);
-    return d(a.p,center)<52&&
-      (doorBlocksSegment(door,{a:a.p,b:next})||
-       d(next,center)<22);
+    if(!doorReachable(a.p,door))return false;
+    return doorBlocksSegment(door,{a:a.p,b:next})||
+      doorBlocksSegment(door,{a:a.p,b:p});
   }):undefined;
   if(doorAhead){
     const opening=doorInteraction({target:doorAhead,actorId:a.id,
@@ -1338,7 +1360,8 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const nearPeer=s.operators.find(b=>b!==a&&b.health>0&&
     b.side===a.side&&d(b.p,move)<20);
   if(nearPeer&&a.side==='blue'&&!nearPeer.plan.length&&
-    d(a.p,nearPeer.p)<27)deferToTeammate(s,nearPeer,a);
+    d(a.p,nearPeer.p)<27&&a.blockedTime>1.1)
+    deferToTeammate(s,nearPeer,a);
   let desiredMove=move;
   if(nearPeer){
     const tangent={x:-Math.sin(direction),y:Math.cos(direction)};
@@ -1516,6 +1539,15 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     pop(a);return;
   }
   if(n.kind==='pie'){
+    // Running abandons the cautious corner sweep for ordinary fast travel.
+    // The same run override also releases a previously persistent PIE look.
+    if(a.pace==='run'){
+      a.aimInstruction=null;
+      if(near(a.p,n.p,5)){pop(a);return;}
+      approach(a,n.p,dt,s,1.40);
+      if(a.nav.length)rotate(a,angle(a.p,a.nav[0]),dt);
+      return;
+    }
     const arc=n.arc??[];
     const point=arc[a.pieIndex];
     if(!point){pop(a);return;}
@@ -1534,11 +1566,12 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   if(!at&&(n.kind==='move'||n.kind==='door'||n.kind==='sync')){
     // A persistent tracking/PIE stance stays cautious on every segment,
     // not only on explicitly marked strafe nodes.
-    const tracking=a.aimInstruction?.mode==='track'||
-      n.aimMode==='track';
-    const cautious=n.moveMode==='strafe'||tracking;
-    approach(a,n.p,dt,s,n.moveMode==='sprint'||a.pace==='run'?1.40:
-      cautious?.70:1);
+    const running=n.moveMode==='sprint'||a.pace==='run';
+    const tracking=!running&&(a.aimInstruction?.mode==='track'||
+      n.aimMode==='track');
+    const cautious=!running&&(n.moveMode==='strafe'||tracking);
+    if(running&&a.aimInstruction?.mode==='track')a.aimInstruction=null;
+    approach(a,n.p,dt,s,running?1.40:cautious?.70:1);
     // Unmodified movement follows its route, while an explicit fixed STRAFE
     // or PIE/TRACK instruction persists until LOOK releases it.
     // While wedged sideways, the physical shoulder axis has priority
@@ -1656,7 +1689,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       pop(a);return;
     }
     const required=n.method==='kick'?KICK_DURATION:
-      n.method==='hold'?1.3:n.method==='close'?.65:.49;
+      n.method==='hold'?1.3:n.method==='close'?.75:.78;
     if(a.actionTimer===0){
       a.lastDoorAt=s.seconds;a.lastDoorId=door.id;
       a.lastDoorMethod=n.method??'open';
@@ -1666,14 +1699,26 @@ function runOrders(s:Session,a:TeamActor,dt:number){
        a.actionTimer-dt<required*.53){
       if(!door.open){
         const outcome=kickDoor(door,a.p);
+        door.lastKickAt=s.seconds;
         if(outcome.opened)door.openedAt=s.seconds;
         hear(s,doorCenter(door),340,'kick');
-        const result=outcome.opened?'FORCED OPEN':'KICK RESISTED';
+        const result=!outcome.pushSide?'WRONG SIDE · CANNOT KICK INWARD':
+          outcome.opened?'FORCED OPEN':'KICK RESISTED';
         notify(s,door.id+' '+result);
         battleEvent(s,'door',a,doorCenter(door),door.id+' '+result);
+        if(!outcome.pushSide){pop(a);return;}
       }
     }
     if(a.actionTimer>=required){
+      if(n.method==='kick'){
+        // Keep kicking automatically until the latch yields, but avoid
+        // an endless loop for a held or physically impossible opening.
+        if(!door.open&&(door.kicks??0)<8){
+          a.actionTimer=0;return;
+        }
+        if(!door.open)notify(s,door.id+' RESISTED · CHECK ENTRY SIDE');
+        pop(a);return;
+      }
       if(n.method==='hold'){
         if(door.open)notify(s,door.id+' MUST BE CLOSED TO HOLD');
         else{
@@ -1690,7 +1735,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
         hear(s,doorCenter(door),90,'door');
         notify(s,door.id+' CLOSING');
         battleEvent(s,'door',a,doorCenter(door),door.id+' CLOSING');
-      }else if(n.method!=='kick'){
+      }else{
         if(pairedLeaves(s,door).some(leaf=>leaf.heldBy)){
           notify(s,door.id+' BRACED SHUT');pop(a);return;
         }
@@ -2163,7 +2208,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   // Shoulder-first passage keeps the long weapon tucked until clear.
   if(a.squeeze){a.aim=Math.max(0,a.aim-dt*2);return;}
   // Sprinting is a traversal decision, not free accurate fire on the move.
-  if((a.pace==='run'||a.plan[0]?.moveMode==='sprint')&&a.velocity>12){
+  if(a.pace==='run'||a.plan[0]?.moveMode==='sprint'){
     a.aim=Math.max(0,a.aim-dt*2.2);
     a.weaponYaw=approachAngle(a.weaponYaw,a.heading,dt*4);
     return;
@@ -2741,9 +2786,11 @@ export function debrief(s:Session){
     rescueExtracted:!!s.rescue&&s.phase==='won'};
 }
 export function knownAt(s:Session,x:number,y:number){
+  if(s.intel.mode==='full-view')return true;
   return s.seenGround.has(Math.floor(x/40)+','+Math.floor(y/40));
 }
 export function liveVisibility(s:Session,p:Pt){
+  if(s.intel.mode==='full-view')return true;
   return team(s).some(a=>a.health>0&&d(a.p,p)<240&&
     Math.abs(angleDifference(a.heading,angle(a.p,p)))<1.15&&
     unobstructed(a.p,p,s,a.posture==='crouch'));

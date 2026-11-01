@@ -26,7 +26,7 @@ import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './rendering/wear-opacity.ts';
 import {pixelSign,type PixelSignKind} from './rendering/pixel-signage.ts';
 import {pixelOverlay,overlayForZone,type PixelOverlay} from './rendering/pixel-overlays.ts';
 import {roofShouldShow} from './worldgen/roof-cutaways.ts';
-import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,activeSite,
+import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,doorLeafSegment,activeSite,
   type Pt,type Door} from './breach-core.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {type Site,type Room} from './breach-site.ts';
@@ -34,7 +34,7 @@ import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './
 import {coverPresentation,shotVisibility} from './breach-presentation.ts';
 import {doorKnown,wallKnown,roomKnown}
   from './breach-intel.ts';
-import {handlePoint,doorReachable} from './breach-door.ts';
+import {handlePoint,doorReachable,initDoor} from './breach-door.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {WEAPONS} from './breach-combat.ts';
@@ -668,11 +668,12 @@ export class TacticalScene3D{
     const doorGlass=new THREE.MeshStandardMaterial({color:0xa8c2bf,roughness:.24,
       transparent:true,opacity:.29,depthWrite:false,side:THREE.DoubleSide});
     this.mats.push(doorGlass);
-    for(const door of site.doors){
+    for(const [doorIndex,sourceDoor] of site.doors.entries()){
+      const door=initDoor(sourceDoor,doorIndex);
       const length=Math.hypot(door.a.x-door.b.x,door.a.y-door.b.y);
-      const p=doorCenter(door),vertical=Math.abs(door.a.x-door.b.x)<1;
+      const p=doorCenter(door);
       const root=new THREE.Group();root.position.set(p.x,0,p.y);
-      root.rotation.y=vertical?-Math.PI/2:0;
+      root.rotation.y=-Math.atan2(door.b.y-door.a.y,door.b.x-door.a.x);
       const frame=new THREE.Group();root.add(frame);
       if(!door.pairedWith||door.hinge!=='b')
         this.box(frame,-length/2,18.5,0,4,37,10,doorTrim);
@@ -778,7 +779,7 @@ export class TacticalScene3D{
             this.box(leaf,middle+x,16.5,4,2,4,3.1,metal,false);
         }
       }
-      for(const mark of marksOn('door',site.doors.indexOf(door))){
+      for(const mark of marksOn('door',doorIndex)){
         const middle=(door.hinge==='b'?-1:1)*length/2;
         this.addSurfaceWear(leaf,mark,middle+(mark.u-.5)*(length-8),
           7+mark.v*24,3.6,door.style==='wood'?'door-wood':'painted-metal');
@@ -1077,11 +1078,12 @@ export class TacticalScene3D{
     // 080: Doorways are real stateful meshes, not slabs that disappear.
     const doorMat=this.solid(0xab8655),doorTrim=this.solid(0xe0c28c);
     const thresholdMat=this.solid(0xc19b5c);
-    for(const door of initialDoors()){
+    for(const [doorIndex,sourceDoor] of initialDoors().entries()){
+      const door=initDoor(sourceDoor,doorIndex);
       const width=Math.hypot(door.a.x-door.b.x,door.a.y-door.b.y);
-      const p=doorCenter(door),vertical=Math.abs(door.a.x-door.b.x)<1;
+      const p=doorCenter(door);
       const group=new THREE.Group();group.position.set(p.x,0,p.y);
-      group.rotation.y=vertical?-Math.PI/2:0;
+      group.rotation.y=-Math.atan2(door.b.y-door.a.y,door.b.x-door.a.x);
       const frame=new THREE.Group();group.add(frame);
       this.box(frame,-width/2,18.5,0,4,37,10,doorTrim);
       this.box(frame,width/2,18.5,0,4,37,10,doorTrim);
@@ -1414,15 +1416,34 @@ export class TacticalScene3D{
         object.leaf.rotation.y=0;
         object.leaf.position.x=shownFraction*
           Math.hypot(door.b.x-door.a.x,door.b.y-door.a.y)*(door.slideDirection??1);
-      }else object.leaf.rotation.y=(door.swing??-1)*shownFraction*1.54;
+      }else{
+        const age=s.seconds-(door.lastKickAt??-100);
+        const wobble=age>=0&&age<.34?
+          Math.sin(age*76)*.045*(1-age/.34):0;
+        // A failed kick visibly rattles the leaf in its frame; the hinge
+        // yaw remains authoritative for collision, LOS and navigation.
+        object.leaf.rotation.y=(door.swing??-1)*shownFraction*1.54+wobble;
+      }
       const selectedActor=team(s).find(a=>a.id===selected);
       const reachable=selectedActor&&selectedActor.health>0&&
         [selectedActor.p,...selectedActor.plan.filter(n=>n.id===selectedActor.plan.at(-1)?.id).map(n=>n.p)].some(p=>
           doorReachable(p,door));
-      object.halo.visible=door.kind!=='shutter'&&door.kind!=='sliding'&&object.root.visible&&focusedDoorId===door.id&&!!reachable&&
+      const focused=focusedDoorId===door.id;
+      object.halo.visible=door.kind!=='shutter'&&door.kind!=='sliding'&&
+        object.root.visible&&s.phase==='planning'&&
+        (!focused||!!reachable)&&
         (liveVisibility(s,doorCenter(door))||
-         knownAt(s,doorCenter(door).x,doorCenter(door).y));
-      // Ground sweep stays attached to the fixed hinge; no rotating target ring.
+         knownAt(s,doorCenter(door).x,doorCenter(door).y)||
+         doorKnown(s.intel,door.id));
+      for(const part of object.halo.children){
+        const material=(part as THREE.Mesh).material as
+          THREE.LineDashedMaterial|THREE.MeshBasicMaterial;
+        if('opacity' in material){
+          material.transparent=true;
+          material.opacity=focused ? .95 : .27;
+        }
+      }
+      // Ground sweep is visible from the briefing, not only after stacking.
     }
     // Switching procedurally generated sites may change hostile counts.
     // Hide cached actors absent from the new encounter.
@@ -1487,7 +1508,12 @@ export class TacticalScene3D{
         s.doors.find(d=>d.id===actor.plan[0].doorId):undefined;
       const activeDoor=plannedDoor??(actor.lastDoorId?
         s.doors.find(d=>d.id===actor.lastDoorId):undefined);
-      const handle=activeDoor?handlePoint(activeDoor):undefined;
+      const handle=activeDoor?
+        actor.lastDoorMethod==='kick'?
+          (()=>{const leaf=doorLeafSegment(activeDoor);
+            return {x:leaf.a.x+(leaf.b.x-leaf.a.x)*.78,
+              y:leaf.a.y+(leaf.b.y-leaf.a.y)*.78};})():
+          handlePoint(activeDoor):undefined;
       const threat=actor.targetId?
         s.operators.find(o=>o.id===actor.targetId):null;
       const threatRange=threat?Math.hypot(threat.p.x-actor.p.x,

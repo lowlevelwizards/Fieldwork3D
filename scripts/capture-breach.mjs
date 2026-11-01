@@ -53,7 +53,8 @@ try{
   await home.screenshot({path:resolve(folder,'00-pages-home-breach.png')});
   // Do not keep two software-WebGL battlefields alive concurrently in CI.
   await home.close();
-  // 083–088: default public entry is the four-person generated game.
+  // Verify four-person tactical quickplay explicitly; the current root
+  // opens the campaign hub, whose overlay intentionally intercepts clicks.
   const live=await browser.newPage({
     viewport:{width:390,height:844},deviceScaleFactor:2,
     hasTouch:true,isMobile:true,
@@ -63,7 +64,7 @@ try{
     if(message.type()==='warning'||message.type()==='error')
       errors.push('procedural console: '+message.text().slice(0,350));
   });
-  await live.goto(base.replace('breach.html',''),{
+  await live.goto(base.replace('breach.html','')+'?quick=1',{
     waitUntil:'domcontentloaded'});
   await live.locator('#breach3dCanvas').waitFor({state:'visible'})
     .catch(async error=>{

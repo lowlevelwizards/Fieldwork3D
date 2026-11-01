@@ -6,26 +6,22 @@ import {passable,pointToSegment,doorLeafSegment,WALLS,segmentsCross,
   OPERATOR_RADIUS,type Door,type Pt} from './breach-core.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const leafGap=(p:Pt,d:Door)=>pointToSegment(p,doorLeafSegment(d));
-/** Open leaves are handled by the door contact motor. Collision on an open
- * leaf may never make an existing overlap permanently inescapable. */
+/** Open leaves are still solid. The door motor can swing them out of the
+ * way, but a body cannot ghost through a panel at an intermediate angle. */
 export function bodyClear(p:Pt,doors:Door[],radius=OPERATOR_RADIUS){
   if(!passable(p,radius))return false;
-  // Open leaves are pushable, not a hard pathfinding obstacle.
-  // Their hinge collision is solved by the contact motor; closed doors block.
-  return !doors.some(door=>!door.open&&leafGap(p,door)<radius+1);
+  return !doors.some(door=>leafGap(p,door)<radius+1);
 }
 export function sweptBodyClear(from:Pt,to:Pt,doors:Door[],
   radius=OPERATOR_RADIUS){
   const steps=Math.max(1,Math.ceil(distance(from,to)/4));
-  const trapped=doors.filter(door=>!door.open&&
-    leafGap(from,door)<radius+1);
+  const trapped=doors.filter(door=>leafGap(from,door)<radius+1);
   for(let i=1;i<=steps;i++){
     const f=i/steps;
     const at={x:from.x+(to.x-from.x)*f,
       y:from.y+(to.y-from.y)*f};
     if(!passable(at,radius))return false;
     for(const door of doors){
-      if(door.open)continue;
       const gap=leafGap(at,door);
       if(gap>=radius+1)continue;
       // A leaf can close into an actor. Permit movement away from it;

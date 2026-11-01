@@ -19,10 +19,6 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     {id:'ctxHold',label:'HOLD',group:'primary',title:'Brace this closed door'},
   ];
   return [
-    ...(o.nearMovable?[{id:'ctxPush',label:'PUSH',group:'primary' as const,
-      title:'Queue a physical push of nearby light furniture'}]:[]),
-    ...(o.nearWindow?[{id:'ctxWindow',label:'WINDOW',group:'primary' as const,
-      title:'Queue opening or closing the nearby window'}]:[]),
     {id:'ctxLook',label:'LOOK',group:'primary',pressed:o.nodeKind==='look'||o.aimLabel==='look',title:'Face a direction at this point'},
     {id:'ctxPie',label:'PIE',group:'primary',pressed:o.nodeKind==='pie',title:'Sweep a corner while moving'},
     {id:'ctxFlash',label:'FLASH ×'+o.flashRemaining,group:'primary',
@@ -38,6 +34,11 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
       pressed:o.pace==='run',title:'Toggle walk and run'},
     {id:'ctxReload',label:'RELOAD',group:'state',
       disabled:o.reserve<=0,title:o.reserve<=0?'No reserve ammunition':'Queue a reload'},
+    // Contextual fixtures append AFTER the stable primary order.
+    ...(o.nearMovable?[{id:'ctxPush',label:'PUSH',group:'primary' as const,
+      title:'Queue a physical push of nearby light furniture'}]:[]),
+    ...(o.nearWindow?[{id:'ctxWindow',label:'WINDOW',group:'primary' as const,
+      title:'Queue opening or closing the nearby window'}]:[]),
     ...(o.node?[{id:'ctxDelete',label:'Delete',group:'destructive' as const,title:'Remove selected waypoint'}]:[]),
   ];
 }

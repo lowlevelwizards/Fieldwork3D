@@ -9,7 +9,7 @@ test('locked door rejects normal opening and supports cumulative forced entry',(
  const request={target:d,action:'open',actorId:'rook',
   actorPosition:{x:224,y:238}};
  assert.equal(doorInteraction(request).reason,'locked');
- for(let i=0;i<12&&!d.open;i++)kickDoor(d,{x:224,y:238});
+ for(let i=0;i<12&&!d.open;i++)kickDoor(d,{x:224,y:202});
  assert.equal(d.open,true);
  assert.equal(d.locked,false);
  assert.equal(doorInteraction(request).reason,'already-open');
