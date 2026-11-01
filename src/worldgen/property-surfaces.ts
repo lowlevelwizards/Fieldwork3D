@@ -4,10 +4,12 @@
 import {type Site,type ExteriorZone} from '../breach-site.ts';
 import {arrivalAccessLane} from './property-access-lane.ts';
 import {parkingStallCount} from './parking-stalls.ts';
+import {planRearServiceMarks} from './rear-service-program.ts';
 export type SurfaceKind='path'|'driveway-stripe'|'parking-divider'|
  'garden-border'|'service-pad'|'patio-paver'|'drainage-grate'|
  'sidewalk'|'curb-edge'|'curb-ramp'|'crosswalk-stripe'|
- 'reserved-parking'|'access-hatch'|'stall-end-line';
+ 'reserved-parking'|'access-hatch'|'stall-end-line'|
+ 'loading-zone'|'maintenance-bay'|'waste-collection'|'clear-route';
 export type PropertySurface={
  id:string;zoneId:string;kind:SurfaceKind;
  x:number;y:number;width:number;depth:number;
@@ -173,5 +175,8 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
      }
    }
  }
+ for(const m of planRearServiceMarks(site.exteriorZones??[]))
+  marks.push({id:m.id,zoneId:m.zoneId,kind:m.kind,
+   x:m.x,y:m.y,width:m.width,depth:m.depth});
  return marks;
 }

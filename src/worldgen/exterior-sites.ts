@@ -95,8 +95,9 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    parking:['sedan','pickup','van','suv','parking-block','parking-sign','bollard','bike-rack'],
    driveway:residential?['sedan','pickup','suv','mailbox','trash-bin']:
      ['van','pickup','bollard','utility-cabinet'],
-   service:industrial?['utility-cabinet','dumpster','bollard','crate',
-      'shipping-container','trash-bin']:['dumpster','trash-bin','bike-rack','planter'],
+   service:industrial?['utility-cabinet','dumpster','recycling-bin','storage-tote',
+      'bollard','crate','shipping-container','trash-bin','supply-cart']:
+     ['dumpster','recycling-bin','trash-bin','supply-cart','bike-rack','planter'],
    patio:kind==='restaurant'?
       ['patio-chair','picnic-table','planter','trash-bin']:
       ['planter','patio-chair','bike-rack','trash-bin','grill'],

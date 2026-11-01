@@ -5,7 +5,8 @@
 import type {ExteriorZone} from '../breach-site.ts';
 import type {Pt} from '../breach-core.ts';
 export const SERVICE_EDGE_FIXTURES=new Set([
- 'utility-cabinet','dumpster','shipping-container','crate','pallet','rack'
+ 'utility-cabinet','dumpster','shipping-container','crate','pallet','rack',
+ 'recycling-bin','supply-cart','storage-tote','trash-bag','step-ladder'
 ]);
 export function serviceYardEdgeCandidates(
  zone:ExteriorZone,w:number,h:number):Pt[]{
