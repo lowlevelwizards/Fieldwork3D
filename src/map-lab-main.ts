@@ -214,10 +214,11 @@ async function useGeneratedSite(id:number,site:Site,audit:SiteAudit,choice:LabSc
  await allowPaint();
  if(id!==generationId)return;
  try{
-  session=newSession(0,site.seed,'floor-plan',site.scale,undefined,site);
   showProgress(91,'Building 3D preview','Uploading fixtures, surfaces and wear');
   await allowPaint();
   if(id!==generationId)return;
+  // Commit simulation and scene together; cancellation never leaves a mismatched site.
+  session=newSession(0,site.seed,'floor-plan',site.scale,undefined,site);
   stage.applySite({...site,conditionLevel:selectedCondition});stage.resetCamera();
   reportBaseline=report(site,audit);
   seedInput.value=String(site.seed);
@@ -273,7 +274,7 @@ el<HTMLInputElement>('doors').addEventListener('change',updateLabels);
 let pointers=new Map<number,Pt>(),lastMid:Pt|null=null,lastGap=0;
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 document.body.addEventListener('pointerdown',event=>{
- if((event.target as Element).closest('header,#controls,#labels'))return;
+ if((event.target as Element).closest('header,#controls,#labels,#generationProgress'))return;
  event.preventDefault();document.body.setPointerCapture(event.pointerId);
  pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
 });
