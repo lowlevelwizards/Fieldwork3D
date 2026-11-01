@@ -77,6 +77,29 @@ function swatchMaterial(kind:PixelSurface){
    ' texels/operator · '+PIXEL_WORLD_SIZE.toFixed(2)+' world units/texel'+
    ' · '+materialProfile(kind).structure+' · '+swatchCondition+' · seed '+swatchSeed;
 }
+function drawWearPreview(){
+ const canvas=el<HTMLCanvasElement>('wear-swatch'),ctx=canvas.getContext('2d');
+ if(!ctx)return;
+ const pixels=wearPixels(selectedWearKind,swatchSeed);
+ const dst=new Uint8ClampedArray(pixels);
+ for(let i=0;i<dst.length;i+=4){
+   // Pixel-perfect RGB compositing on neutral backing for a readable gallery.
+   const alpha=dst[i+3]/255*Math.min(1,.45*wearMultiplier);
+   const base=208,ink=selectedWearKind==='rust'?123:
+     selectedWearKind==='oil'?54:93;
+   dst[i]=Math.round(base*(1-alpha)+ink*alpha);
+   dst[i+1]=Math.round(base*(1-alpha)+(selectedWearKind==='rust'?79:ink)*alpha);
+   dst[i+2]=Math.round(base*(1-alpha)+(selectedWearKind==='rust'?49:ink)*alpha);
+   dst[i+3]=255;
+ }
+ ctx.putImageData(new ImageData(dst,32,32),0,0);
+ const asset=all.find(x=>x.id===selectedId);
+ const surface=asset?assetPrimarySurface(asset):currentSurface;
+ el<HTMLElement>('wear-diagnostics').textContent=
+  selectedWearKind.toUpperCase()+' · '+(canWear(surface,selectedWearKind)?
+   'COMPATIBLE':'INCOMPATIBLE')+' with '+surface+
+   ' · preview ×'+wearMultiplier;
+}
 let outline:THREE.LineSegments|null=null;
 let showBounds=false;
 for(const kind of assetLibraryCategories()){
@@ -101,16 +124,18 @@ function clearLiveWear(){
 function showLiveWear(item:AssetLibraryEntry){
  clearLiveWear();
  if(swatchCondition==='clean'||item.origin==='dressing')return;
- const kind=swatchCondition==='vacant'?'dust':'scuff';
+ const kind=selectedWearKind;
+ if(!canWear(assetPrimarySurface(item),kind))return;
  let mat=wearPreviewMaterials.get(kind);
  if(!mat){
    const texture=new THREE.DataTexture(wearPixels(kind),32,32,THREE.RGBAFormat);
    texture.needsUpdate=true;texture.magFilter=THREE.NearestFilter;
    texture.minFilter=THREE.LinearMipmapLinearFilter;texture.generateMipmaps=true;
-   mat=new THREE.MeshBasicMaterial({map:texture,transparent:true,opacity:.18,
+   mat=new THREE.MeshBasicMaterial({map:texture,transparent:true,opacity:.22,
      depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,side:THREE.DoubleSide});
    wearPreviewMaterials.set(kind,mat);
  }
+ mat.opacity=Math.min(1,.22*wearMultiplier);
  const ix=shownEntries.findIndex(x=>x.id===item.id);if(ix<0)return;
  const at=showroomSlot(ix,layout);
  const decal=new THREE.Mesh(new THREE.PlaneGeometry(
