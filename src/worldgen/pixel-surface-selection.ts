@@ -61,6 +61,15 @@ export function fixturePixelSurface(fixture:string|undefined):PixelSurface{
  if(['cabinet','wardrobe','dresser','tv-stand','desk','nightstand',
   'side-table','dining-table','coffee-table','meeting-table','bookcase',
   'picnic-table','pallet','window-boards','crate'].includes(id))return 'furniture-wood';
+ // Complete common fixture families instead of silently painting them as steel.
+ if(['counter','kitchen-island','wall-shelf','picture-frame'].includes(id))
+  return 'furniture-wood';
+ if(id==='cable-reel')return 'rough-wood';
+ if(['books','papers','packages'].includes(id))return 'paper';
+ if(['mug','planter'].includes(id))return 'porcelain';
+ if(id==='trash')return 'plastic';
+ if(['lamp','gondola-shelf','checkout','display-rack','shelf','rack',
+    'workbench','cart','grill','tools'].includes(id))return 'painted-metal';
  if(['rug','patio-chair'].includes(id))return 'fabric';
  if(['sofa','armchair','chair','office-chair','bed','exam-bed','mattress',
  'rug'].includes(id))return 'fabric';
