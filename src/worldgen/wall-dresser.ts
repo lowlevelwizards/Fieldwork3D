@@ -86,7 +86,7 @@ export function decorateWalls(site:Site,seed:number):Site{
    dist(a.x+a.w/2,a.y+a.h/2,mx,my)-
    dist(b.x+b.w/2,b.y+b.h/2,mx,my))[0];
   if(!room)continue;
-  const spans=site.walls.filter(wall=>{
+  let spans=site.walls.filter(wall=>{
    const length=dist(wall.a.x,wall.a.y,wall.b.x,wall.b.y);
    if(length<29)return false;
    const wcx=(wall.a.x+wall.b.x)/2,wcy=(wall.a.y+wall.b.y)/2;
@@ -101,10 +101,31 @@ export function decorateWalls(site:Site,seed:number):Site{
    const x=mid(a),y=mid(b);
    return dist(x.x,x.y,mx,my)-dist(y.x,y.y,mx,my);
   });
+  // An entrance can occupy nearly all of a narrow vestibule facade.
+  // In that case a legible panel goes on its adjacent wall, not in the
+  // door opening or an unrelated hallway across the building.
+  if(!spans.length)spans=site.walls.filter(wall=>{
+   const length=dist(wall.a.x,wall.a.y,wall.b.x,wall.b.y);
+   if(length<29)return false;
+   const cx=(wall.a.x+wall.b.x)/2,cy=(wall.a.y+wall.b.y)/2;
+   const v=Math.abs(wall.a.x-wall.b.x)<1;
+   const onBoundary=v?
+    (Math.abs(cx-room.x)<1||Math.abs(cx-room.x-room.w)<1)&&
+      cy>room.y+8&&cy<room.y+room.h-8:
+    (Math.abs(cy-room.y)<1||Math.abs(cy-room.y-room.h)<1)&&
+      cx>room.x+8&&cx<room.x+room.w-8;
+   return onBoundary&&dist(cx,cy,mx,my)<180;
+  }).sort((a,b)=>{
+   const center=(w:typeof a)=>({
+    x:(w.a.x+w.b.x)/2,y:(w.a.y+w.b.y)/2});
+   const x=center(a),y=center(b);
+   return dist(x.x,x.y,mx,my)-dist(y.x,y.y,mx,my);
+  });
   const add=(wall:typeof spans[number],kind:WallDetailKind,index:number)=>{
    const cx=(wall.a.x+wall.b.x)/2,cy=(wall.a.y+wall.b.y)/2;
-   const nx=vertical?Math.sign(room.x+room.w/2-cx):0;
-   const ny=vertical?0:Math.sign(room.y+room.h/2-cy);
+   const wallVertical=Math.abs(wall.a.x-wall.b.x)<1;
+   const nx=wallVertical?Math.sign(room.x+room.w/2-cx):0;
+   const ny=wallVertical?0:Math.sign(room.y+room.h/2-cy);
    const width=kind==='exit-sign'?17:Math.min(36,
     dist(wall.a.x,wall.a.y,wall.b.x,wall.b.y)-10);
    details.push({id:room.id+':egress:'+door.id+':'+index,roomId:room.id,kind,
