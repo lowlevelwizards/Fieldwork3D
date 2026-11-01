@@ -2547,8 +2547,17 @@ export function movePhysicalProp(s:Session,index:number,to:Pt):boolean{
  battleEvent(s,'interaction',null,to,'FURNITURE MOVED');
  return true;
 }
-export function stepSession(s:Session,dt:number){
+/** Optional phase timings used by the offline benchmark, never required by play. */
+export type StepPhaseProbe=(phase:string,elapsedMs:number)=>void;
+export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   if(s.phase!=='running')return;
+  let perfStart=probe?performance.now():0;
+  const mark=(phase:string)=>{
+    if(!probe)return;
+    const now=performance.now();
+    probe(phase,now-perfStart);
+    perfStart=now;
+  };
   const h=clamp(dt,0,1/30);
   s.seconds+=h;
   for(const door of s.doors){
@@ -2560,6 +2569,7 @@ export function stepSession(s:Session,dt:number){
     }
     advanceDoor(door,h,s.operators.filter(a=>a.health>0).map(a=>a.p));
   }
+  mark('doors');
   s.sparks=s.sparks.filter(a=>(a.age+=h)<.20);
   s.shots=s.shots.filter(a=>(a.age+=h)<.40);
   s.noise=s.noise.filter(n=>s.seconds-n.time<4);
@@ -2567,7 +2577,9 @@ export function stepSession(s:Session,dt:number){
   s.impactMarks=s.impactMarks.filter(mark=>(mark.age+=h)<24);
   s.flashBursts=s.flashBursts.filter(b=>(b.age+=h)<.70);
   stepFlashbangs(s,h);
+  mark('aging-effects');
   advanceVisualAwareness(s,h);
+  mark('visual-awareness');
   for(const actor of s.operators){
     if(actor.health<=0)continue;
     ageAwareness(actor.awareness,h,s.seconds);
@@ -2580,6 +2592,7 @@ export function stepSession(s:Session,dt:number){
         clearObservedPosition(actor.awareness,belief.id);
     }
   }
+  mark('belief-aging');
   for(const a of s.operators){
     if(a.health<=0&&a.reload>0){a.reload=0;a.reloadMode=null;}
     a.fireCd=Math.max(0,a.fireCd-h);
@@ -2623,13 +2636,20 @@ export function stepSession(s:Session,dt:number){
     if(a.health<=0)continue;
     if(a.side==='blue')runOrders(s,a,h);
     else enemyDecisions(s,a,h);
+    if(probe)mark('operator-'+a.id);
   }
+  mark('actor-loop');
   for(const a of s.operators)a.stride+=d(a.p,a.priorP);
   resolveCloseContact(s);
+  mark('contacts');
   distributeReports(s);
+  mark('reports');
   observe(s);
+  mark('observe-intel');
   for(const a of s.operators)fire(s,a,h);
+  mark('fire');
   mission(s,h);
+  mark('mission');
 }
 export function operationBriefing(s:Session){
   const brief=operationBrief(s.missionType);
