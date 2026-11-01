@@ -16,7 +16,7 @@ import {
   cycleWeapon,toggleWeaponLight,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
-import {muzzleAtShot} from './breach-muzzle.ts';
+import {weaponClearance} from './breach-weapon-clearance.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter}
  from './equipment-weapon-light-beam.ts';
 import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
@@ -48,7 +48,7 @@ import {initialRoster,readRoster,applyRosterIdentity,recordRosterMission,
  renameRosterMember,cycleRosterAppearance} from './breach-roster.ts';
 import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
- type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
+ sameWeaponConfiguration,type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
 import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOperation,
  purchaseAmmo,purchaseMedical,resupplyOperator,treatOperator,
  hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
@@ -2033,13 +2033,14 @@ function renderWeaponLights2D(){
   if(actor.side==='red'&&!replayOmniscient&&!isSeen(state,actor))continue;
   const previous=beam2DHistory.get(actor.id);
   const yaw=actor.weaponYaw;
-  if(!previous||previous.tick!==tick||previous.config!==actor.weaponConfiguration||
+  if(!previous||previous.tick!==tick||!sameWeaponConfiguration(previous.config,actor.weaponConfiguration)||
    Math.hypot(previous.x-actor.p.x,previous.y-actor.p.y)>.7||
    Math.abs(Math.atan2(Math.sin(previous.yaw-yaw),Math.cos(previous.yaw-yaw)))>.025){
-   const muzzle=muzzleAtShot({x:actor.p.x,z:actor.p.y,
+   const muzzle=weaponClearance({x:actor.p.x,z:actor.p.y,
     heading:actor.heading,weaponYaw:yaw,weapon:actor.weapon,
     weaponConfiguration:actor.weaponConfiguration,aim:actor.aim,
-    velocity:actor.velocity,recoil:actor.recoil,posture:actor.posture});
+    velocity:actor.velocity,recoil:actor.recoil,posture:actor.posture},
+    state.doors).muzzle;
    const from=weaponLightEmitter(muzzle,actor.weaponConfiguration!);
    beam2DHistory.set(actor.id,{x:actor.p.x,y:actor.p.y,yaw,tick,
     config:actor.weaponConfiguration,
