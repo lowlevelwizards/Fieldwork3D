@@ -20,7 +20,8 @@ test('sliding doors animate to navigable opening fractions and appear in seeded 
  for(let seed=1;seed<=77;seed++){
   const site=generateSite(seed);
   for(const d of site.doors.filter(d=>d.kind==='sliding')){
-   sliders++;assert.ok(d.style==='glazed'||d.style==='steel');
+   sliders++;assert.ok(['glazed','steel','barn','pocket','screen'].includes(d.style),
+     `seed ${seed}: unexpected sliding finish ${d.style}`);
    const active=initDoor(d,0);active.open=true;
    for(let i=0;i<120;i++)advanceDoor(active,1/60);
    assert.equal(doorClear(active),true);

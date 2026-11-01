@@ -717,6 +717,19 @@ export class TacticalScene3D{
           for(let x=-length/2+7;x<length/2-3;x+=9)
             this.box(leaf,middle+x,18,0,1,28,1,frameMaterial,false);
           for(const y of [11,21,31])this.box(leaf,middle,y,0,length-6,1,1,frameMaterial,false);
+        }else if(style==='french'||style==='screen'){
+          for(const sign of [-1,1])
+            this.box(leaf,middle+sign*(length/2-3),18,0,3.5,34,4,metal,false);
+          for(const y of [3,34])this.box(leaf,middle,y,0,length-4,4,4,metal,false);
+          if(style==='french'){
+            const pane=this.box(leaf,middle,18,0,length-8,29,1,doorGlass,false);
+            pane.castShadow=false;
+            for(const y of [12,24])this.box(leaf,middle,y,0,length-5,2,3,metal,false);
+            this.box(leaf,middle,18,0,2,30,3,metal,false);
+          }else{
+            for(let x=-length/2+5;x<length/2-2;x+=7)
+              this.box(leaf,middle+x,18,0,.9,29,1,metal,false);
+          }
         }else if(style==='glazed'){
           const pane=this.box(leaf,middle,18,0,length-8,29,1,doorGlass,false);
           pane.castShadow=false;
@@ -745,6 +758,15 @@ export class TacticalScene3D{
           for(const y of style==='reinforced'?[6,17,28]:[8,28])
             this.box(leaf,middle,y,2.5,length*.78,2.2,1.2,metal,false);
         }
+        if(style==='louvered'){
+          for(let y=7;y<31;y+=4)this.box(leaf,middle,y,3,length*.77,1.2,1.4,metal,false);
+        }
+        if(style==='barn'){
+          for(const x of [-length*.31,length*.31])
+            this.box(leaf,middle+x,18,3,2.5,29,3,metal,false);
+          this.box(leaf,middle,18,3,length*.84,3,2,metal,false);
+        }
+        if(style==='fire')this.box(leaf,middle,17,4,length*.66,2.5,3.5,metal,false);
         if(style==='reinforced')
           for(const x of [-length*.30,length*.30])
             this.box(leaf,middle+x,17,2.5,2,30,1.4,metal,false);
