@@ -1,6 +1,7 @@
 /** Rigid, shoulder-supported firearm geometry and feasible grip targets. */
 import type {WeaponId} from './breach-combat.ts';
-import {WEAPON_PLATFORMS} from './equipment-weapon-assemblies.ts';
+import {WEAPON_PLATFORMS,resolveWeaponAssembly,
+ type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import * as THREE from 'three';
 import {stockPocket,anchorGap} from './breach-anatomy.ts';
 import {handlingProfile} from './breach-handling-profiles.ts';
@@ -15,7 +16,13 @@ export const GRIPS:Record<WeaponId,WeaponGrip>=Object.fromEntries(
    primaryX:p.primaryX,primaryY:p.primaryY,
    supportX:p.supportX,supportY:p.supportY}];
  })) as Record<WeaponId,WeaponGrip>;
-export const weaponGrips=(id:WeaponId):WeaponGrip=>GRIPS[id];
+export const weaponGrips=(id:WeaponId,configuration?:WeaponConfiguration):WeaponGrip=>{
+ if(!configuration||configuration.weapon!==id)return GRIPS[id];
+ const a=resolveWeaponAssembly(configuration);
+ return {lengthScale:a.lengthScale,stockX:a.stockX,
+  primaryX:a.primaryX,primaryY:a.primaryY,
+  supportX:a.supportX,supportY:a.supportY};
+};
 export type HandlingIntent='move'|'run'|'look'|'pie'|'door'|'hold'|'engage'|'squeeze';
 /** Pure context-based handling selection shared with shot-time geometry.
  * Optional hysteresis only affects passive ready states, never combat.
@@ -66,6 +73,7 @@ export type WeaponFit={
   stockError:number;
 };
 export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
+ configuration?:WeaponConfiguration;
   /** Fire direction in chest-local space. */
   yaw:number;recoil:number;aimBlend?:number;
   swayYaw?:number;swayPitch?:number;
@@ -89,7 +97,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
     const q=new THREE.Quaternion().setFromEuler(from.rotation);
     q.slerp(new THREE.Quaternion().setFromEuler(to.rotation),t);
     const rotation=new THREE.Euler().setFromQuaternion(q,'XYZ');
-    const data=weaponGrips(input.weapon);
+    const data=weaponGrips(input.weapon,input.configuration);
     const point=(x:number,y:number,z:number)=>new THREE.Vector3(
       x*data.lengthScale,y,z).applyEuler(rotation).add(origin);
     const stock=point(data.stockX,0,0);
@@ -103,7 +111,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       contactError:Math.max(0,right-LIMIT)+Math.max(0,left-LIMIT),
       stockError:anchorGap(stock,stockPocket(input.handling))};
   }
-  const data=weaponGrips(input.weapon),scale=data.lengthScale;
+  const data=weaponGrips(input.weapon,input.configuration),scale=data.lengthScale;
   // Preserve the physical barrel's requested yaw even if the pelvis/chest
   // lag behind during a pivot. Clamping here made visible guns aim sideways
   // while simulation ballistics continued toward the actual target.
