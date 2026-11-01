@@ -3,6 +3,8 @@
 import {DEFAULT_EQUIPMENT,LOADOUT_SLOTS,EQUIPMENT_CATALOG,
  validEquipmentChoice,equipmentMass,type EquipmentSlot} from './equipment-catalog.ts';
 import type {WeaponId} from './breach-combat.ts';
+import {resolveWeaponAssembly,WEAPON_PLATFORMS,
+ type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 
 export type LoadoutSlot=Exclude<EquipmentSlot,'secondary'>;
 export type EquipmentLoadout={version:1;slots:Record<LoadoutSlot,string>};
@@ -40,20 +42,29 @@ export function syncPrimaryWeapon(loadout:EquipmentLoadout,
  if(!EQUIPMENT_CATALOG[weaponItem(weapon)])return loadout;
  return setEquipmentChoice(loadout,'primary',weaponItem(weapon));
 }
-export const totalEquipmentMass=(loadout:EquipmentLoadout)=>
- equipmentMass(LOADOUT_SLOTS.map(slot=>loadout.slots[slot]));
+/** Total includes the mass delta of real attachments, while the base primary
+ * is already counted in the authoritative equipment catalog. */
+export const totalEquipmentMass=(loadout:EquipmentLoadout,
+ config?:WeaponConfiguration)=>{
+ const baseline=equipmentMass(LOADOUT_SLOTS.map(slot=>loadout.slots[slot]));
+ if(!config||loadout.slots.primary!=='primary-'+config.weapon)return baseline;
+ const assembled=resolveWeaponAssembly(config);
+ return baseline+assembled.massKg-WEAPON_PLATFORMS[config.weapon].baseMassKg;
+};
 export const loadoutItems=(loadout:EquipmentLoadout)=>
  LOADOUT_SLOTS.map(slot=>EQUIPMENT_CATALOG[loadout.slots[slot]])
   .filter((item):item is NonNullable<typeof item>=>!!item);
 
 /** Equipment 07: movement load is computed at deployment and when a kit
  * changes, never per simulation frame. No penalty to light configurations. */
-export function loadMovementScale(loadout:EquipmentLoadout):number{
- const kg=totalEquipmentMass(loadout);
+export function loadMovementScale(loadout:EquipmentLoadout,
+ config?:WeaponConfiguration):number{
+ const kg=totalEquipmentMass(loadout,config);
  return Math.max(.72,Math.min(1,1-Math.max(0,kg-10)*.012));
 }
-export function loadMobilityDescription(loadout:EquipmentLoadout):string{
- const factor=loadMovementScale(loadout);
+export function loadMobilityDescription(loadout:EquipmentLoadout,
+ config?:WeaponConfiguration):string{
+ const factor=loadMovementScale(loadout,config);
  return factor>=.96?'LIGHT':factor>=.87?'STANDARD':factor>=.78?'HEAVY':'OVERLOADED';
 }
 

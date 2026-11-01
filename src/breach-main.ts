@@ -216,7 +216,7 @@ function applyCampaignSkills(){
    const protection=initialArmorIntegrity(m.loadout);
    a.armorIntegrity=Math.min(protection.torso,m.armorCondition.torso);
    a.helmetIntegrity=Math.min(protection.head,m.armorCondition.head);
-   a.loadMovementScale=loadMovementScale(m.loadout);
+   a.loadMovementScale=loadMovementScale(m.loadout,m.weaponConfiguration);
    a.magazine=m.magazine;a.reserve=m.reserve;
    a.insertedMagazineId=m.loadedMagazineId;
    a.spareMagazines=a.weapon==='shotgun'?[]:

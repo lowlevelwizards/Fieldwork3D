@@ -93,7 +93,7 @@ export function applyRosterIdentity(s:Session,roster:RosterState){
    a.flashCharges=equippedFlashCharges(member.loadout);
    const protection=initialArmorIntegrity(member.loadout);
    a.armorIntegrity=protection.torso;a.helmetIntegrity=protection.head;
-   a.loadMovementScale=loadMovementScale(member.loadout);
+   a.loadMovementScale=loadMovementScale(member.loadout,member.weaponConfiguration);
    a.weapon=member.weapon;
    a.magazine=Math.min(WEAPONS[a.weapon].capacity,member.magazine);
    a.reserve=member.reserve;

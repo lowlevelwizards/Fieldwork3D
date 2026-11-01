@@ -249,7 +249,7 @@ export class CampaignScreen{
   identity.append(node('div','campaign-eyebrow','PERSONNEL / FIELD ARMORY'),
    node('h1','',person.callsign+' / EQUIPMENT'));
   top.append(identity,node('div','campaign-funds',
-   totalEquipmentMass(person.loadout).toFixed(2)+' KG · ASSIGNED KIT'));
+   totalEquipmentMass(person.loadout,person.weaponConfiguration).toFixed(2)+' KG · ASSIGNED KIT'));
   main.append(top);
   main.append(button('← BACK TO OPERATIONS',()=>{
    this.armoryOperatorId=null;this.home(c);
@@ -280,8 +280,8 @@ export class CampaignScreen{
   summary.append(node('p','campaign-note',
    person.background+' · '+person.trait+' · '+person.missions+' OPERATIONS'));
   summary.append(node('p','campaign-kit-metrics','MOBILITY · '+
-   loadMobilityDescription(person.loadout)+' · '+
-   Math.round(loadMovementScale(person.loadout)*100)+'% MOVEMENT SPEED'));
+   loadMobilityDescription(person.loadout,person.weaponConfiguration)+' · '+
+   Math.round(loadMovementScale(person.loadout,person.weaponConfiguration)*100)+'% MOVEMENT SPEED'));
   summary.append(node('div','campaign-kit-metrics',
    'PRIMARY · '+person.weapon.toUpperCase()+
    '    /    MAGAZINE · '+person.magazine+
