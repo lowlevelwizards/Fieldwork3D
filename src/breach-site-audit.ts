@@ -51,7 +51,7 @@ export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteA
         errors.push('door width '+door.id);
     }
     for(const w of site.windows??[]){
-      const sill=site.cover.find(c=>c.fixture==='window-sill'&&
+      const sill=site.cover.find(c=>c.fixture===(w.sillHeight===0?'glass-barrier':'window-sill')&&
         dist({x:c.x,y:c.y},{x:w.x,y:w.y})<1);
       if(!sill)errors.push('window lacks sill '+w.id);
     }
@@ -82,7 +82,7 @@ export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteA
   const roomFill=site.rooms.filter(r=>r.kind==='room').map(room=>({
     id:room.id,role:room.purpose??'untyped',
     areaM2:Math.round(room.w*room.h/400*10)/10,
-    fixtures:site.cover.filter(o=>o.fixture&&o.fixture!=='window-sill'&&
+    fixtures:site.cover.filter(o=>o.fixture&&o.fixture!=='window-sill'&&o.fixture!=='glass-barrier'&&
       o.x>room.x&&o.x<room.x+room.w&&o.y>room.y&&o.y<room.y+room.h).length
   }));
   const roomContracts=assessRoomContracts(site);
