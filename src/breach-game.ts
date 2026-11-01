@@ -34,6 +34,7 @@ import {chooseAiIntent,type AIIntent} from './breach-ai-policy.ts';
 import {searchCandidates} from './breach-ai-search.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
 import {reportToListener,type TacticalReport} from './breach-communication.ts';
+import {groupResponse,type GroupRole} from './breach-ai-coordination.ts';
 import {newAwareness,addObservation,visibleObservation,
  ageAwareness,clearObservedPosition,bestBelief,
  type ActorAwareness} from './breach-awareness.ts';
@@ -69,6 +70,7 @@ export type Personality='guard'|'aggressor'|'cautious';
 export type TeamActor=Operator & {
   awareness:ActorAwareness;
   intent:AIIntent|null;combatChoice:CombatAction|null;lastReportAt:number;
+  coordinationRole:GroupRole|null;coordinationUntil:number;
   searchOrigin:Pt|null;searchQueue:Pt[];
   plan:PlanNode[];history:PlanHistory;nav:Pt[];activeNode:number;
   posture:Posture;pace:'walk'|'run';alert:Alert;velocity:number;turning:number;
@@ -156,7 +158,8 @@ export const SCENARIOS=[
   {index:2,name:'REAR GUARD',spots:[{x:262,y:213,h:1.1},{x:476,y:444,h:2.8}]},
 ] as const;
 const withActions=(a:Operator):TeamActor=>({
-  ...a,awareness:newAwareness(),intent:null,combatChoice:null,lastReportAt:-100,searchOrigin:null,searchQueue:[],plan:[],history:makeHistory(),nav:[],activeNode:-1,
+  ...a,awareness:newAwareness(),intent:null,combatChoice:null,lastReportAt:-100,
+  coordinationRole:null,coordinationUntil:0,searchOrigin:null,searchQueue:[],plan:[],history:makeHistory(),nav:[],activeNode:-1,
   posture:'stand',pace:'walk',alert:'idle',velocity:0,turning:0,aim:0,
   targetId:null,suppression:0,stamina:1,magazine:12,reserve:36,
   reload:0,hits:0,kills:0,stopped:false,contact:null,heard:null,
@@ -1734,6 +1737,14 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
     return;
   }
+  if(a.coordinationRole==='watch'&&s.seconds<a.coordinationUntil&&
+     !visible.length&&a.suppression<.65){
+    a.alert='cover';
+    if(a.defense&&d(a.p,a.defense)>10)
+      approach(a,a.defense,dt,s,.65);
+    else if(a.watch)rotate(a,angle(a.p,a.watch),dt);
+    return;
+  }
   if(a.contact){
     rotate(a,angle(a.p,a.contact),dt);
     if(a.alert==='investigating'&&d(a.p,a.contact)>40){
@@ -1794,6 +1805,25 @@ function distributeReports(s:Session){
     recipient.alert='investigating';
     recipient.nav=[];
    }
+  }
+  // Only genuinely informed listeners are eligible for group roles.
+  if(!report.coordinated&&report.deliveredTo.length){
+    report.coordinated=true;
+    const listeners=enemies(s).filter(a=>a.health>0&&
+      report.deliveredTo.includes(a.id));
+    const roles=groupResponse(listeners.map(a=>({id:a.id,p:a.p})),
+      report.estimate);
+    for(const a of listeners){
+      a.coordinationRole=roles[a.id];
+      a.coordinationUntil=s.seconds+5;
+      if(roles[a.id]==='watch'&&a.intent?.kind!=='engage'){
+        a.watch=clone(report.estimate);
+        a.defense=defensivePosition(a,report.estimate,s);
+        a.defenseUntil=s.seconds+5;
+        a.alert='cover';
+        a.nav=[];
+      }
+    }
   }
  }
 }
