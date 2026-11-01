@@ -399,6 +399,7 @@ function renderOperationsBoard(){
   if(state.phase!=='planning'||replaying)return;
   campaignMode='quick';
   reset(state.variant,undefined,undefined,equipmentTrainingSite());
+  showUiHelp('TEST RANGE · USE SUPPRESS TO FIRE AT THE TARGET PLATES · RESTART OR LEAVE RANGE TO EXIT',9000);
  });
  heading.append(range);operationsBoard.append(heading);
  const history=operationHistory();
