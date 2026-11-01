@@ -44,6 +44,7 @@ import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOpera
  hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
  retireOperator,equipCampaignGear,saveCampaignKitPreset,applyCampaignKitPreset,
  deleteCampaignKitPreset,renameCampaignOperator,cycleCampaignAppearance,
+ repairCampaignArmor,
  type CampaignState,type CampaignReport} from './campaign-state.ts';
 import {loadMovementScale,equippedFlashCharges} from './equipment-loadouts.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
@@ -197,7 +198,8 @@ function applyCampaignSkills(){
    a.equipment=m.loadout;
    a.flashCharges=equippedFlashCharges(m.loadout);
    const protection=initialArmorIntegrity(m.loadout);
-   a.armorIntegrity=protection.torso;a.helmetIntegrity=protection.head;
+   a.armorIntegrity=Math.min(protection.torso,m.armorCondition.torso);
+   a.helmetIntegrity=Math.min(protection.head,m.armorCondition.head);
    a.loadMovementScale=loadMovementScale(m.loadout);
    a.magazine=m.magazine;a.reserve=m.reserve;
    a.insertedMagazineId=a.id+'/'+a.weapon+'/loaded';
@@ -244,7 +246,8 @@ function recordCompletedOperation(){
     performance:members.map(a=>({
      id:careerId(a.id),shots:a.shots,hits:a.hits,pointShots:a.pointShots,
      aimedShots:a.aimedShots,longHits:a.longHits,injuryStage:a.injuryStage,
-     survived:a.health>0,magazine:a.magazine,reserve:a.reserve
+     survived:a.health>0,magazine:a.magazine,reserve:a.reserve,
+     armorIntegrity:a.armorIntegrity,helmetIntegrity:a.helmetIntegrity
     }))
    };
    campaign=resolveOperation(campaign,result);saveCampaign();return;
@@ -2105,6 +2108,8 @@ const campaignScreen=new CampaignScreen({
   saveCampaign();showCampaignHome();}},
  buyWeapon:(weapon)=>{if(campaign){campaign=buyWeapon(campaign,weapon);saveCampaign();showCampaignHome();}},
  equipWeapon:(id,weapon)=>{if(campaign){campaign=equipCampaignWeapon(campaign,id,weapon);
+  saveCampaign();showCampaignHome();}},
+ repairArmor:(id)=>{if(campaign){campaign=repairCampaignArmor(campaign,id);
   saveCampaign();showCampaignHome();}},
  equipGear:(id,slot,itemId)=>{if(campaign){
   campaign=equipCampaignGear(campaign,id,slot,itemId);
