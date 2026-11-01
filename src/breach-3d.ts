@@ -10,6 +10,7 @@ import {summarizeWear} from './worldgen/wear-diagnostics.ts';
 import {planObjectWear,type ObjectWear} from './worldgen/object-wear.ts';
 import {planExposureWear} from './worldgen/wear-exposure.ts';
 import {planActivityWear} from './worldgen/wear-sources.ts';
+import {planMicroDebris,type DebrisKind} from './worldgen/micro-debris.ts';
 import {visibleSurfaceHeight} from './worldgen/decoration-anchors.ts';
 import {wearPixels} from './rendering/pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './rendering/wear-opacity.ts';
@@ -384,6 +385,31 @@ export class TacticalScene3D{
     this.fogAt=-1;this.lastFogSignature='';
     this.resetCamera();
   }
+  private buildMicroDebris(site:Site){
+    const debris=planMicroDebris(site);
+    const kinds:readonly DebrisKind[]=['stone','leaf','weed','flake'];
+    const colors={stone:0x908f80,leaf:0x8f825d,weed:0x60774d,flake:0xc4b9a3};
+    const obj=new THREE.Object3D();
+    for(const kind of kinds){
+      const picks=debris.filter(d=>d.kind===kind);
+      if(!picks.length)continue;
+      const geometry=new THREE.BoxGeometry(1,1,1);
+      const material=this.solid(colors[kind],1,kind==='weed'?'foliage':
+        kind==='stone'?'gravel':'paper');
+      const mesh=new THREE.InstancedMesh(geometry,material,picks.length);
+      mesh.castShadow=false;mesh.receiveShadow=false;
+      picks.forEach((d,i)=>{
+        obj.position.set(d.x,kind==='weed'?.5:-1.02,d.y);
+        obj.rotation.set(0,d.angle,0);
+        obj.scale.set(kind==='weed'?.6:d.size,kind==='weed'?d.size*1.2:.32,
+          kind==='weed'?.6:d.size*.55);
+        obj.updateMatrix();mesh.setMatrixAt(i,obj.matrix);
+      });
+      mesh.instanceMatrix.needsUpdate=true;
+      mesh.frustumCulled=false;
+      this.root.add(mesh);
+    }
+  }
   private buildGenerated(site:Site){
     const theme=buildingTheme(site.archetype,site.seed);
     const earth=this.solid(site.layout==='courtyard'?0x69825e:0x607a58,.9,'grass');
@@ -427,6 +453,7 @@ export class TacticalScene3D{
     this.objectWear=[...planObjectWear(site),...planExposureWear(site)];
     const marksOn=(owner:ObjectWear['owner'],index:number)=>
       this.objectWear.filter(m=>m.owner===owner&&m.index===index);
+    this.buildMicroDebris(site);
     const decorativeRoomGroups=new Map<string,THREE.Group>();
     for(const room of site.rooms){
       const group=new THREE.Group();
