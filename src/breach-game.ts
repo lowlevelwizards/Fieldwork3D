@@ -118,6 +118,7 @@ export type TeamActor=Operator & {
   lastLaneWarnAt:number;lastFireBlock:FireBlock;
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
   appearanceSeed:number;equipment?:EquipmentLoadout;
+  loadMovementScale?:number;
   firePolicy:FirePolicy;suppressPoint:Pt|null;focusTargetId:string|null;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
   lastFireRepositionAt:number;
@@ -1242,13 +1243,14 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const movingSpeed=a.side==='blue'?53:48;
   const suppression=clamp(1-a.suppression*.4,.45,1);
   const requested=movingSpeed*(a.posture==='crouch'?.58:1)*suppression*
-    speedScale*injurySpeed(a.injuryStage);
+    speedScale*injurySpeed(a.injuryStage)*(a.loadMovementScale??1);
   // A lateral shuffle cannot use the same stride speed as forward running.
   // Scale the limit continuously for diagonal travel, preserving ordinary
   // forward movement and crouch/injury speed reductions.
   const lateral=Math.abs(Math.sin(direction-a.heading));
   const sideLimit=(38+37*(1-lateral*lateral))*
-    (a.posture==='crouch'?.58:1)*injurySpeed(a.injuryStage);
+    (a.posture==='crouch'?.58:1)*injurySpeed(a.injuryStage)*
+    (a.loadMovementScale??1);
   // Narrow travel is genuine slow sideways movement, not a global
   // reduction to actor collision radius or a high-speed clipping shortcut.
   const desired=Math.min(requested,sideLimit,a.squeeze?16:Infinity);
