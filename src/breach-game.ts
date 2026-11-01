@@ -1040,6 +1040,7 @@ function unobstructed(a:Pt,b:Pt,s:Session,lowBlocks:boolean){
   // Exact slab intersection replaces dozens of short ray samples per
   // visibility query. Geometry remains authoritative at any framerate.
   return !COVER.some(o=>o.fixture!=='chain-link-fence'&&
+    o.fixture!=='glass-barrier'&&
     (!o.low||lowBlocks)&&segmentHitsBox(a,b,o));
 }
 /** Physical geometry visibility, independently of acquisition time. */
@@ -1048,7 +1049,7 @@ export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){
   const delta=angleDifference(a.heading,angle(a.p,b.p));
   if(Math.abs(delta)>.94)return false;
   return !exposure(a.p,b.p,s.doors,
-    b.posture==='crouch',a.posture==='crouch').blocked;
+    b.posture==='crouch',a.posture==='crouch',true).blocked;
 }
 /** Confirmed vision is acquired over simulated time; rendering never grants sight. */
 export function inSight(a:TeamActor,b:TeamActor,s:Session){
