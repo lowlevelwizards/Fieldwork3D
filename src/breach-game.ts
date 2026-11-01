@@ -31,6 +31,7 @@ import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from 
 import {doorInteraction} from './breach-interactions.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
+import {relocateCover} from './breach-movable-cover.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {chooseAiIntent,type AIIntent} from './breach-ai-policy.ts';
 import {searchCandidates} from './breach-ai-search.ts';
@@ -135,6 +136,7 @@ export type MissionStage='clear'|'secure'|'extract'|'done';
 export type Scenario={index:number;name:string;objective:Pt;extract:Pt};
 export type Session=Omit<TacticalState,'operators'> & {
   operators:TeamActor[];windows:WindowState[];
+  coverState:typeof COVER;
   passageLeases:Record<string,PassageLease>;
   variant:number;scenario:Scenario;
   mission:MissionStage;nextId:number;noise:NoiseEvent[];nextNoiseId:number;
@@ -260,7 +262,8 @@ export function newSession(index=0,siteSeed?:number,
     a.spareMagazines=magazineKit(a.id,a.weapon,a.reserve,
       WEAPONS[a.weapon].capacity);
   });
-  const state:Session={...seed,operators,windows:initializeWindows(site?.windows??[]),
+  const state:Session={...seed,operators,
+    coverState:COVER.map(o=>({...o})),windows:initializeWindows(site?.windows??[]),
     passageLeases:{},
     doors:initialDoors().map((d,i)=>initDoor({
       ...d,locked:d.locked??!!(site&&i>2&&i%7===0&&
@@ -285,6 +288,7 @@ export function newSession(index=0,siteSeed?:number,
     state.rescue={p:clone(state.scenario.objective),following:null};
   if(state.missionType==='intel'||state.missionType==='rescue'||
      state.missionType==='hold')state.mission='secure';
+  COVER.splice(0,COVER.length,...state.coverState);
   observe(state);
   return state;
 }
@@ -2329,6 +2333,16 @@ function resolveCloseContact(s:Session){
       break;
     }
   }
+}
+/** Shared gameplay action; physical object selection is based on its ID. */
+export function movePhysicalProp(s:Session,index:number,to:Pt):boolean{
+ if(s.phase==='won'||s.phase==='lost')return false;
+ const moved=relocateCover(s.coverState,index,to,WALLS,s.doors,
+   s.operators.filter(a=>a.health>0).map(a=>a.p));
+ if(!moved)return false;
+ COVER.splice(0,COVER.length,...s.coverState);
+ hear(s,to,65,'furniture');
+ return true;
 }
 export function stepSession(s:Session,dt:number){
   if(s.phase!=='running')return;

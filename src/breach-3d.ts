@@ -123,6 +123,7 @@ export class TacticalScene3D{
   private sharedBoxGeometries=new Set<THREE.BufferGeometry>();
   private windowPaneMaterial:THREE.MeshStandardMaterial|null=null;
   private windowGlass=new Map<string,THREE.Mesh>();
+  private coverGroups=new Map<number,THREE.Group>();
   private solid=(hex:number,roughness=.9)=>{
     const key=hex+':'+roughness;
     let material=this.solidCache.get(key);
@@ -238,6 +239,7 @@ export class TacticalScene3D{
     for(const material of this.wallMaterials)material.dispose();
     this.wallMaterials.clear();
     this.walls.length=0;this.doors.clear();this.windowGlass.clear();
+    this.coverGroups.clear();
     this.intelSurfaces.length=0;
     this.observedDoorOpen.clear();
     for(const cache of [this.impactDecals,this.discarded,
@@ -378,6 +380,7 @@ export class TacticalScene3D{
     const olive=this.solid(0x70715e);
     site.cover.forEach((c,i)=>{
       const group=new THREE.Group();this.root.add(group);
+      this.coverGroups.set(i,group);
       this.intelSurfaces.push({obj:group,kind:'cover',index:i});
       const fixture=c.fixture??'crate';
       const asset=propDefinition(fixture);
@@ -895,6 +898,11 @@ export class TacticalScene3D{
     renderFrame?:RenderFrame|null,
     liveMotion?:ReplayPresentation|null){
     if(this.view.mode==='plan2d')return;
+    for(const [index,group] of this.coverGroups){
+      const before=s.site?.cover[index],current=s.coverState[index];
+      if(before&&current)group.position.set(
+        current.x-before.x,0,current.y-before.y);
+    }
     for(const [id,glass] of this.windowGlass){
       const state=s.windows.find(w=>w.id===id);
       glass.visible=!state||(!state.shattered&&!state.open);
