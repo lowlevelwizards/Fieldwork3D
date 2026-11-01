@@ -632,6 +632,13 @@ const colors:Record<string,string>={
   rook:'#a2d4ca',moss:'#b9c6a0',ash:'#dfb992',vale:'#b7b1d9',
 };
 const colorFor=(id:string)=>colors[id]??'#d9c5a3';
+// One palette shared by world routes and the operator's on-screen controls.
+// Skip redundant style writes in the frequently refreshed tactical HUD.
+function paintOperatorAccent(element:HTMLElement,id:string){
+  const accent=colorFor(id);
+  if(element.style.getPropertyValue('--operator-accent')!==accent)
+    element.style.setProperty('--operator-accent',accent);
+}
 const squadIds=['rook','moss','ash','vale'] as const;
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -1100,6 +1107,9 @@ function updateQuickStates(){
 }
 const blockedEpisode=new Map<string,string>();
 function updateHud(){
+  paintOperatorAccent(ui.quickStates,selected);
+  paintOperatorAccent(ui.context,selected);
+  paintOperatorAccent(contextTether,selected);
   updateQuickStates();
   recordCompletedOperation();
   const brief=operationBriefing(state);
@@ -1213,6 +1223,7 @@ function updateHud(){
   }
   for(const id of squadIds){
     const a=uid(id),button=ui[id];
+    paintOperatorAccent(button,id);
     button.hidden=!a;
     const title=button.querySelector('strong');
     if(title&&a)title.textContent=a.name;
