@@ -23,7 +23,8 @@ export function casingAt(c:EjectedCasing,time:number){
    y:t<landing?air:floor+bounce,
    settled,rotation:c.id*1.37+Math.min(t,landing+.5)*10};
 }
-export const impactProfile=(surface:'blood'|'wood'|'metal'|'stone'|'dust')=>
+export const impactProfile=(surface:'blood'|'wood'|'metal'|'stone'|'glass'|'dust')=>
+ surface==='glass'?{count:7,spread:9,lifetime:.32,color:0xc8e4df}:
  surface==='metal'?{count:5,spread:13,lifetime:.24,color:0xffd298}:
  surface==='wood'?{count:4,spread:11,lifetime:.42,color:0xbf9d77}:
  surface==='stone'?{count:6,spread:12,lifetime:.36,color:0xaaa8a1}:
