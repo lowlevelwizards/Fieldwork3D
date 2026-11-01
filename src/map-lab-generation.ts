@@ -15,7 +15,8 @@ export function resolveLabScale(choice:LabScale,seed:number):SiteScale{
 export type GeneratorRequest={
   id:number;seed:number;archetype:BuildingArchetype;scale:LabScale;
 };
+export type GeneratorTiming={generationMs:number;auditMs:number;workerMs:number};
 export type GeneratorResponse=
   |{id:number;kind:'progress';percent:number;stage:string;detail:string}
-  |{id:number;kind:'done';site:Site;audit:SiteAudit}
+  |{id:number;kind:'done';site:Site;audit:SiteAudit;timing:GeneratorTiming}
   |{id:number;kind:'error';message:string};
