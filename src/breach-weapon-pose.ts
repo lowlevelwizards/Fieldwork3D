@@ -1,24 +1,20 @@
 /** Rigid, shoulder-supported firearm geometry and feasible grip targets. */
 import type {WeaponId} from './breach-combat.ts';
+import {WEAPON_PLATFORMS} from './equipment-weapon-assemblies.ts';
 import * as THREE from 'three';
 import {stockPocket,anchorGap} from './breach-anatomy.ts';
 import {handlingProfile} from './breach-handling-profiles.ts';
 export type Handling='low'|'high'|'ready'|'point'|'ads'|'short';
 export type WeaponGrip={lengthScale:number;stockX:number;
   primaryX:number;primaryY:number;supportX:number;supportY:number};
-export const GRIPS:Record<WeaponId,WeaponGrip>={
-  // Stock block at -10 is now 7 units wide; its actual rear face is
-  // -13.5. Between the original 9-unit stock and Build 167's 5-unit stock.
-  // Length scales are the same ones applied to the visible weapon mesh.
-  carbine:{lengthScale:.86,stockX:-13.5,primaryX:-1,primaryY:-2,
-    supportX:1.7,supportY:-1.5},
-  smg:{lengthScale:.73,stockX:-13.5,primaryX:-1,primaryY:-2,
-    supportX:2.4,supportY:-1},
-  rifle:{lengthScale:.94,stockX:-13.5,primaryX:-1,primaryY:-2,
-    supportX:.35,supportY:-1.5},
-  shotgun:{lengthScale:.92,stockX:-13.5,primaryX:-1,primaryY:-2,
-    supportX:1,supportY:-2},
-};
+/** Shared authored weapon metadata; no duplicate geometry offsets. */
+export const GRIPS:Record<WeaponId,WeaponGrip>=Object.fromEntries(
+ (Object.keys(WEAPON_PLATFORMS) as WeaponId[]).map(id=>{
+  const p=WEAPON_PLATFORMS[id];
+  return [id,{lengthScale:p.lengthScale,stockX:p.stockX,
+   primaryX:p.primaryX,primaryY:p.primaryY,
+   supportX:p.supportX,supportY:p.supportY}];
+ })) as Record<WeaponId,WeaponGrip>;
 export const weaponGrips=(id:WeaponId):WeaponGrip=>GRIPS[id];
 export type HandlingIntent='move'|'run'|'look'|'pie'|'door'|'hold'|'engage'|'squeeze';
 /** Pure context-based handling selection shared with shot-time geometry.
