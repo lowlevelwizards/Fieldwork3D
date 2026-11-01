@@ -275,7 +275,7 @@ export class CampaignScreen{
    '    /    MAGAZINE · '+person.magazine+
    '    /    RESERVE · '+person.reserve));
   summary.append(node('p','campaign-note',
-   'Equipment is issued as a saved preparation kit. Carried weight now influences movement speed. Armor coverage, retrieval times, tools and weapon handling effects are not yet active in combat.'));
+   'Equipment is issued as a saved preparation kit. Carried weight now influences movement speed. Coarse armor coverage and durability are now simulated; detailed ballistic hitboxes, retrieval times, tools and attachment handling are still in development.'));
   summary.append(node('p','campaign-note',
    'The preview uses the same 3D operator rig as the mission. Some equipment slots are metadata-only until their gameplay systems are implemented.'));
   grid.append(summary);
