@@ -64,3 +64,9 @@
  background:#2c4039;border:1px solid #748f7d;color:#f0f1e4;border-radius:7px;
  font:600 12px Oxanium,system-ui,sans-serif;padding:6px}
 .campaign-select:focus-visible{outline:3px solid #e9cf8b}
+
+.campaign-armory{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px}
+.campaign-armory h2{grid-column:1/-1;font-size:12px;margin:0}
+.campaign-armory button{font-size:10px;min-height:39px;margin:0}
+.campaign-person-actions .campaign-select{width:100%;max-width:100%}
+@media(max-width:420px){.campaign-armory{grid-template-columns:1fr}}
