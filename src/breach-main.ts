@@ -5,7 +5,7 @@ import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   operationBriefing,
-  planMove,planMoveStroke,planAim,setFirePolicy,planWait,planWaitAt,setWaitDuration,
+  planMove,planMoveStroke,planNearbyInteraction,planAim,setFirePolicy,planWait,planWaitAt,setWaitDuration,
   plannedControl,setNodeControl,setStartPace,planReloadAt,planDoorFlash,
   planSync,movePlanNode,
   finalPoint,doorAtNode,backOne,
@@ -27,6 +27,7 @@ import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
 import {doorReachable} from './breach-door.ts';
+import {canRelocateCover} from './breach-movable-cover.ts';
 import {INTEL_MODES,doorKnown,wallKnown,roomKnown,
   routeWithIntel,intelPassable,type IntelMode} from './breach-intel.ts';
 import {orderFailureText} from './breach-nav-diagnostics.ts';
@@ -463,8 +464,14 @@ function updateContext(){
   const node=selectedPlanNode();
   const door=doorFocusId?focusedDoor(a,node):undefined;
   const current=plannedControl(state,selected,node?.id);
+  const at=finalPoint(a);
+  const nearMovable=state.coverState.some(o=>canRelocateCover(o)&&
+    distance(at,{x:o.x,y:o.y})<Math.max(o.w,o.h)/2+43);
+  const nearWindow=state.windows.some(w=>w.operable&&!w.shattered&&
+    distance(at,{x:w.x,y:w.y})<54);
   const choices=contextActionChoices({
     door:!!door,node:!!node,flashRemaining:state.flashRemaining,
+    nearMovable,nearWindow,
     posture:current.posture,pace:current.pace,
     firePolicy:node?.firePolicyState??a.firePolicy,
     reserve:a.reserve,magazine:a.magazine,
@@ -701,6 +708,21 @@ const handleContextAction=(event:MouseEvent)=>{
       if(!planReloadAt(state,selected,node?.id))
         state.events.push('CANNOT PLAN RELOAD');
       break;
+    case 'ctxPush':
+      if(!planNearbyInteraction(state,selected,'push'))
+        state.events.push('NO PUSHABLE OBJECT IN REACH');
+      break;
+    case 'ctxWindow':{
+      const at=finalPoint(a);
+      const nearby=state.windows.filter(w=>w.operable&&!w.shattered&&
+        distance(at,{x:w.x,y:w.y})<54)
+        .sort((x,y)=>distance(at,{x:x.x,y:x.y})-
+          distance(at,{x:y.x,y:y.y}))[0];
+      if(!nearby||!planNearbyInteraction(state,selected,
+        nearby.open?'close-window':'open-window'))
+        state.events.push('NO OPERABLE WINDOW IN REACH');
+      break;
+    }
     case 'ctxDoorFlash':
       if(!door){state.events.push('SELECT A DOOR FIRST');break;}
       flashDoorId=door.id;flashMode=true;looking=false;

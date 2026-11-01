@@ -31,7 +31,8 @@ import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from 
 import {doorInteraction} from './breach-interactions.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
-import {relocateCover} from './breach-movable-cover.ts';
+import {relocateCover,canRelocateCover} from './breach-movable-cover.ts';
+import {manipulateWindow} from './breach-windows.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {chooseAiIntent,type AIIntent} from './breach-ai-policy.ts';
 import {searchCandidates} from './breach-ai-search.ts';
@@ -330,6 +331,28 @@ export function addNode(s:Session,id:string,kind:PlanKind,p:Pt,
     a.plan.push({id:s.nextId++,kind,p:clone(p),...extra});
   });
 }
+/** Queue an actual physical action at the end of the authored route. */
+export function planNearbyInteraction(s:Session,id:string,
+ action:'push'|'open-window'|'close-window'):boolean{
+ const a=party(s,id);if(!a||!canEdit(s))return false;
+ const at=finalPoint(a);
+ if(action==='push'){
+   const candidates=s.coverState.map((o,index)=>({o,index,
+     distance:d(at,{x:o.x,y:o.y})})).filter(c=>
+       canRelocateCover(c.o)&&c.distance<Math.max(c.o.w,c.o.h)/2+43)
+     .sort((x,y)=>x.distance-y.distance||x.index-y.index);
+   const item=candidates[0];if(!item)return false;
+   return addNode(s,id,'interact',at,{
+     objectId:'prop:'+item.index,interaction:action});
+ }
+ const target=s.windows.filter(w=>w.operable&&!w.shattered&&
+   d(at,{x:w.x,y:w.y})<54&&w.open===(action==='close-window'))
+   .sort((x,y)=>d(at,{x:x.x,y:x.y})-
+     d(at,{x:y.x,y:y.y}))[0];
+ if(!target)return false;
+ return addNode(s,id,'interact',at,{
+   objectId:'window:'+target.id,interaction:action});
+}
 export function planMove(s:Session,id:string,p:Pt,strafe=false){
   const a=party(s,id);
   if(!a)return false;
@@ -467,7 +490,30 @@ export function doorAtNode(s:Session,id:string,doorId:string,method:DoorMethod,n
 function validEditedPlan(s:Session,start:Pt,proposed:PlanNode[]){
   let from=start;
   for(const n of proposed){
-    if(n.kind==='pie'){
+    if(n.kind==='interact'){
+    if(!n.objectId||!n.interaction){pop(a);return;}
+    const [kind,id]=n.objectId.split(':');
+    if(kind==='prop'&&n.interaction==='push'){
+      const index=Number(id),o=s.coverState[index];
+      if(!o||!canRelocateCover(o)||d(a.p,{x:o.x,y:o.y})>
+        Math.max(o.w,o.h)/2+43){pop(a);return;}
+      const dx=o.x-a.p.x,dy=o.y-a.p.y,
+        length=Math.hypot(dx,dy)||1;
+      const pushed={x:o.x+dx/length*15,y:o.y+dy/length*15};
+      notify(s,movePhysicalProp(s,index,pushed)?
+        a.name+' PUSHED '+(o.fixture??'OBJECT'):
+        a.name+' OBJECT OBSTRUCTED');
+    }else if(kind==='window'){
+      const window=s.windows.find(w=>w.id===id);
+      if(window&&d(a.p,{x:window.x,y:window.y})<54&&
+         manipulateWindow(window,n.interaction==='open-window'?'open':'close')){
+        hear(s,{x:window.x,y:window.y},85,'window');
+        notify(s,a.name+' MOVED WINDOW');
+      }else notify(s,a.name+' WINDOW UNAVAILABLE');
+    }
+    pop(a);return;
+  }
+  if(n.kind==='pie'){
       if(!n.pivot||!n.pieSide)return false;
       const arc=validPieArc(from,n.pivot,n.pieSide,s.doors,n.pieDegrees??54);
       if(!arc.length)return false;
