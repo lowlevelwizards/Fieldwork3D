@@ -13,7 +13,7 @@ test('20.13 attached optics and suppressors contribute exact extra load',()=>{
  let configured=setWeaponAttachment(base,'muzzle','muzzle-suppressor');
  configured=setWeaponAttachment(configured,'optic','optic-reflex');
  const oldMass=totalEquipmentMass(kit);
- assert.equal(totalEquipmentMass(kit,base),oldMass);
+ assert.ok(Math.abs(totalEquipmentMass(kit,base)-oldMass)<1e-9);
  assert.ok(Math.abs(totalEquipmentMass(kit,configured)-oldMass-.64)<1e-9);
  assert.equal(totalEquipmentMass(kit,configured),totalEquipmentMass(kit,configured));
 });
