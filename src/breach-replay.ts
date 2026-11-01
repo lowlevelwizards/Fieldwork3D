@@ -18,6 +18,7 @@ export type ActorFrame=Pick<TeamActor,
   'reloadFromRounds'|'reloadTargetRounds'|'reloadSelectedMagazineId'|
   'lastHitAt'|'lastDownAt'|'lastHitRegion'|'lastHitYaw'|
   'lastHitSeverity'|'downPose'|'flashUntil'|'suppression'|
+  'lastTreatmentAt'|'lastTreatmentTargetId'|'treatmentActive'|'treatmentProgress'|
   'medical'|'medicalSupplies'|'weapon'|'weaponConfiguration'|'weaponLightOn'|'injuryStage'|'armorIntegrity'|'helmetIntegrity'|'flashCharges'|'morale'|'surrendered'|'defense'|'watch'|
   'lastThrowAt'|'lastDoorAt'|'lastDoorId'|'lastDoorMethod'|'stride'|
   'weaponYaw'|'stability'|'recoil'|'lastShotAt'|'fireMode'|'burstCount'|'skills'|
@@ -68,6 +69,9 @@ export function snapshot(s:Session,seenGround?:string[]):ReplayFrame{
           slots:{...a.weaponConfiguration.slots}}:undefined,
        injuryStage:a.injuryStage,medical:copyMedicalCondition(a.medical),
        medicalSupplies:{...a.medicalSupplies},
+       lastTreatmentAt:a.lastTreatmentAt,
+       lastTreatmentTargetId:a.lastTreatmentTargetId,
+       treatmentActive:a.treatmentActive,treatmentProgress:a.treatmentProgress,
        weaponLightOn:a.weaponLightOn,
       armorIntegrity:a.armorIntegrity,helmetIntegrity:a.helmetIntegrity,
       flashCharges:a.flashCharges,

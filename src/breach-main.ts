@@ -13,7 +13,7 @@ import {
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,stepSession,liveVisibility,
   planReload,reloadNow,planFlash,moveFlashTarget,flashTrajectory,
-  cycleWeapon,toggleWeaponLight,
+  cycleWeapon,toggleWeaponLight,planMedicalTreatment,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
@@ -21,6 +21,8 @@ import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter}
  from './equipment-weapon-light-beam.ts';
 import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
 import {kitMedicalSupplies} from './equipment-medical-supplies.ts';
+import {mostUrgentWound} from './breach-medical-wounds.ts';
+import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
 import {lightControlState} from './equipment-weapon-light-ui.ts';
 import type {SiteScale} from './breach-site.ts';
 import {renderSnapshot,type RenderActor}
@@ -1201,11 +1203,28 @@ function updateQuickStates(){
 }
 const blockedEpisode=new Map<string,string>();
 let fieldLightButton:HTMLButtonElement|null=null;
+let medicalButton:HTMLButtonElement|null=null;
+function medicalCandidate(id:string){
+ const a=team(state).find(o=>o.id===id&&o.health>0);
+ if(!a)return null;
+ return team(state).filter(o=>{
+  const wound=mostUrgentWound(o.medical);
+  return wound&&treatmentSupplyForWound(wound,a.medicalSupplies);
+ }).sort((x,y)=>distance(a.p,x.p)-distance(a.p,y.p))[0]??null;
+}
 function updateHud(){
   paintOperatorAccent(ui.quickStates,selected);
   paintOperatorAccent(ui.context,selected);
   paintOperatorAccent(contextTether,selected);
   updateQuickStates();
+  if(medicalButton){
+   const patient=medicalCandidate(selected);
+   medicalButton.disabled=!patient||state.phase!=='planning'||replaying;
+   medicalButton.textContent=patient?'TREAT · '+patient.name.toUpperCase():
+    'TREAT · NO SUITABLE SUPPLIES';
+   medicalButton.setAttribute('aria-label',patient?
+    'Plan medical stabilization for '+patient.name:'No treatable wound with available supplies');
+  }
   if(fieldLightButton){
    const selectedActor=team(state).find(a=>a.id===selected);
    const light=lightControlState(selectedActor,state.phase,replaying);
@@ -2437,6 +2456,18 @@ fieldLightButton.addEventListener('click',()=>{
  toggleWeaponLight(state,selected);updateHud();
 });
 ui.siteSettings.append(fieldLightButton);
+medicalButton=document.createElement('button');
+medicalButton.type='button';
+medicalButton.className=ui.loadout.className;
+medicalButton.textContent='TREAT';
+medicalButton.setAttribute('aria-label','Plan medical stabilization');
+medicalButton.addEventListener('click',()=>{
+ if(replaying||state.phase!=='planning')return;
+ const patient=medicalCandidate(selected);
+ if(patient)planMedicalTreatment(state,selected,patient.id);
+ updateHud();
+});
+ui.loadout.insertAdjacentElement('afterend',medicalButton);
 ui.loadout.addEventListener('click',()=>{
   if(campaignMode!=='mission')cycleWeapon(state,selected);
   updateHud();

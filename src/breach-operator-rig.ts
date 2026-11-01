@@ -63,6 +63,8 @@ export type OperatorPose={
   equipment?:EquipmentLoadout;flashCharges?:number;
   weaponConfiguration?:WeaponConfiguration;
   weaponLightOn?:boolean;
+  treatmentActive?:boolean;treatmentProgress?:number;
+  treatmentPoint?:{x:number;y:number};
   /** Opt-in to contact-position weight transfer for lab candidate only. */
   hybridSupport?:boolean;
   acceleration?:number;
@@ -76,6 +78,7 @@ export type OperatorRig={
   root:THREE.Group;hip:THREE.Group;chest:THREE.Group;head:THREE.Group;
   weapon:THREE.Group;droppedGun:THREE.Group;feet:Foot[];arms:Arm[];
   magazineInserted:THREE.Mesh;magazineHand:THREE.Mesh;
+  medicalItem:THREE.Mesh;
   weaponBody:THREE.Group;droppedWeaponBody:THREE.Group;
   weaponAccessories:THREE.Group;droppedAccessories:THREE.Group;
   weaponLightLens:THREE.Object3D|null;droppedLightLens:THREE.Object3D|null;
@@ -203,6 +206,8 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   const magazineInserted=block(weapon,3,-4,0,2.7,6,2.5,boot);
   const magazineHand=block(chest,0,0,0,2.7,6,2.5,boot);
   magazineHand.visible=false;
+  const medicalItem=block(chest,0,0,0,2.3,1.45,2.1,steel);
+  medicalItem.visible=false;
   const colors=new Map([cloth,boot,vest,skin,steel].map(material=>
     [material,material.color.clone()] as const));
   return {root,hip,chest,head,weapon,droppedGun,feet,arms,pack,
@@ -211,7 +216,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     clothMaterial:cloth,vestMaterial:vest,baseCloth:cloth.color.clone(),
     baseVest:vest.color.clone(),helmetBadge,appearanceSeed:0,
     personality:operatorMotionTraits(id),
-    magazineInserted,magazineHand,weaponBody,droppedWeaponBody,
+    magazineInserted,magazineHand,medicalItem,weaponBody,droppedWeaponBody,
     weaponAccessories,droppedAccessories,weaponLensMaterial,slingStraps,
     weaponLightLens:null,droppedLightLens:null,
     visualWeapon:'carbine',visualWeaponConfiguration:undefined,
@@ -337,7 +342,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     kickMotion(kickAge):null;
   const bash=contactReaction(p.seconds-(p.lastBashAt??-100),
     p.bashRole??null,!!p.blocked);
-  const handling=p.handlingOverride??handlingPose({
+  const handling=p.treatmentActive?'low':p.handlingOverride??handlingPose({
     aim:p.aimBlend??(p.aiming?1:0),moving,
     obstruction:!!p.obstruction||
       (bash.active&&p.bashRole==='receive'),
@@ -607,6 +612,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Weapon kick and muzzle flash may not break solved hand contacts.
   // A physical door reach may shift the chest a little over the support
   // foot, but the whole character is never allowed to tip like a rigid pole.
+  const treatmentActive=!!p.treatmentActive&&!p.down&&!p.surrender;
   const reloadActive=p.reload>0&&p.reloadDuration>0;
   const reloadProgress=reloadActive?
     clamp(1-p.reload/p.reloadDuration,0,1):0;
@@ -631,6 +637,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const leftGrip=P(data.supportX,data.supportY,-1.6);
   const rightGrip=P(data.primaryX,data.primaryY,1.8);
   let reaching=false,releaseLeft=false,releaseRight=false;
+  r.medicalItem.visible=treatmentActive;
   let fullDoorContact:THREE.Vector3|null=null;
   if(p.surrender){
     // Deliberate visible surrender: discard the gun, kneel and raise both
@@ -643,6 +650,18 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // Support hand gives way first, then the firing hand releases.
     releaseLeft=downProgress>.16;releaseRight=downProgress>.53;
     leftGrip.set(-3,-7,-8);rightGrip.set(-2,-8,8);
+  }else if(treatmentActive){
+    releaseLeft=true;releaseRight=true;reaching=true;
+    const target=p.treatmentPoint??{x:p.x+Math.cos(p.heading)*12,
+      y:p.z+Math.sin(p.heading)*12};
+    const local=P(target.x-p.x,12-r.chest.position.y,target.y-p.z);
+    local.applyAxisAngle(P(0,1,0),-r.root.rotation.y);
+    local.applyAxisAngle(P(0,1,0),-r.chest.rotation.y);
+    const reach=smooth((p.treatmentProgress??0)/.26);
+    const left=fit.support.clone().lerp(local.clone().add(P(-1,3,-2)),reach);
+    const right=fit.primary.clone().lerp(local.clone().add(P(1,3,2)),reach);
+    leftGrip.copy(left);rightGrip.copy(right);
+    r.medicalItem.position.copy(left);
   }else if(reloadActive){
     releaseLeft=true;
     const hand=reloadHandKey(reloadProgress,reloadMode,
@@ -703,7 +722,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       // the support hand. Only a deliberate action may move it.
       desired=fit.support.clone();
     }else if(i===1){
-      desired=fit.primary.clone();
+      desired=treatmentActive&&releaseRight?rightGrip.clone():fit.primary.clone();
     }else{
       desired=grip.clone().multiply(P(data.lengthScale,1,1))
         .applyEuler(fit.rotation).add(fit.origin);
