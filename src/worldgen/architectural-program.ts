@@ -157,6 +157,48 @@ const alternate:Partial<Record<BuildingArchetype,Spec>>={
  * not cosmetic reflections or one-room annexes pasted onto rectangular shells.
  */
 const tertiary:Partial<Record<BuildingArchetype,Spec>>={
+ townhouse:{family:'deep service-core rowhouse / rear mudroom',
+  widths:[155,65,145,115],depths:[112,110,115,105],
+  front:{col:1,row:3},cells:[
+   ['bedroom','hallway','bedroom','bathroom'],
+   ['bedroom','hallway','study',null],
+   ['living','hallway','kitchen','mudroom'],
+   ['living','foyer','dining',null]]},
+ apartment:{family:'split living apartments / lateral shared gallery',
+  widths:[154,67,156,131],depths:[124,116,107,98],front:{col:1,row:3},
+  cells:[
+   ['bedroom','hallway','bedroom','bathroom'],
+   ['living','hallway','kitchen','bedroom'],
+   ['living','hallway','living',null],
+   ['lobby','lobby','lobby','service']]},
+ office:{family:'conference spine / two-office working wings',
+  widths:[166,65,161,138],depths:[129,116,112,98],
+  front:{col:2,row:3},cells:[
+   ['office','hallway','meeting','storage'],
+   ['office','hallway','cubicles','cubicles'],
+   ['meeting','hallway','office','break'],
+   ['reception','hallway','lobby',null]]},
+ garage:{family:'staggered fleet bay / separate parts spine',
+  widths:[185,65,177,135],depths:[158,119,132,101],
+  front:{col:0,row:3},cells:[
+   ['bay','aisle','bay','workshop'],
+   ['bay','aisle','parts','workshop'],
+   ['bay','aisle','bay','parts'],
+   ['waiting','reception','office',null]]},
+ restaurant:{family:'deep dining hall / rear kitchen service wing',
+  widths:[179,147,78,140],depths:[151,132,106,99],
+  front:{col:1,row:3},cells:[
+   ['kitchen','kitchen','pantry','service'],
+   ['dining','dining','service','restroom'],
+   ['dining','dining','service',null],
+   ['dining','dining','reception',null]]},
+ utility:{family:'two plant halls / deep maintenance spine',
+  widths:[182,65,167,125],depths:[142,121,108,95],
+  front:{col:1,row:3},cells:[
+   ['equipment','hallway','equipment','control'],
+   ['equipment','hallway','maintenance','equipment'],
+   ['storage','hallway','service','control'],
+   ['storage','hallway','service',null]]},
  house:{family:'deep setback house / offset living wing',
   widths:[170,65,156,124],depths:[104,115,126,111],
   front:{col:1,row:3},cells:[
