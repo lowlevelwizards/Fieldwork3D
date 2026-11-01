@@ -30,6 +30,8 @@ export type SiteScale='standard'|'expanded'|'small'|'medium'|'large';
 export type Site={
   /** Nonpersistent authored practice map; ordinary missions never set this. */
   training?:boolean;
+  /** Per-mission lighting scenario. Default remains daylight. */
+  lightingMode?:import('./equipment-site-lighting.ts').LightingMode;
   /** Authored semantic programs bypass index-based purpose assignment. */
   programLocked?:boolean;
   identity?:import('./worldgen/building-identity.ts').BuildingIdentity;
