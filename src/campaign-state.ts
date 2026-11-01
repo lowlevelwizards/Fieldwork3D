@@ -15,7 +15,10 @@ import {readKitPresets,nextPresetId,MAX_KIT_PRESETS,type EquipmentPreset} from '
 import {initialArmorIntegrity,type ArmorIntegrity} from './equipment-armor.ts';
 import {clampFlashUse} from './equipment-supply.ts';
 import {initialWeaponConfiguration,readWeaponConfiguration,changeWeaponPlatform,
- type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
+ setWeaponAttachment,type WeaponConfiguration,type WeaponAttachmentSlot}
+ from './equipment-weapon-assemblies.ts';
+import {attachmentPrice,readAttachmentStock,returnAttachments}
+ from './equipment-weapon-inventory.ts';
 
 export type SkillName=keyof ShootingSkills;
 export const SKILL_NAMES:SkillName[]=['pointShooting','longRange','precision','recoilControl','composure','handling'];
@@ -49,7 +52,8 @@ export type CampaignState={
  operators:CampaignOperator[];squadIds:string[];contracts:Contract[];activeContractId:string|null;
  history:CampaignReport[];journal:CareerEvent[];appliedResults:string[];
  supplies:{medical:number;ammo:number;flash:number};regionalPressure:Record<string,number>;
- inventory:{weapons:Record<CampaignOperator['weapon'],number>};
+ inventory:{weapons:Record<CampaignOperator['weapon'],number>;
+  attachments:Record<string,number>};
  kitPresets:EquipmentPreset[];
 };
 const WEAPONS=['carbine','smg','rifle','shotgun'] as const;
@@ -117,7 +121,8 @@ export function newCampaign(seed:number):CampaignState{
   contracts:createContracts(normalized,1),activeContractId:null,
   history:[],journal:[],appliedResults:[],supplies:{medical:3,ammo:240,flash:4},
   regionalPressure:Object.fromEntries(REGIONS.map(r=>[r,0])),
-  inventory:{weapons:{carbine:0,smg:0,rifle:0,shotgun:0}},kitPresets:[]};
+  inventory:{weapons:{carbine:0,smg:0,rifle:0,shotgun:0},
+    attachments:readAttachmentStock(null)},kitPresets:[]};
 }
 export function migrateLegacyRoster(campaign:CampaignState,legacy:RosterState):CampaignState{
  if(!legacy||legacy.version!==1||!Array.isArray(legacy.members))return campaign;
@@ -183,7 +188,8 @@ export function readCampaign(raw:string|null):CampaignState|null{
    distinctions:Array.isArray(o.distinctions)?
     o.distinctions.filter((x):x is string=>typeof x==='string').slice(0,32):[]
   }));
-  return {...c,squadIds:chosen,operators,inventory:{weapons},
+  return {...c,squadIds:chosen,operators,inventory:{weapons,
+     attachments:readAttachmentStock((c.inventory as {attachments?:unknown})?.attachments)},
     supplies:{...c.supplies,flash:Number.isFinite(c.supplies.flash)?
      Math.max(0,Math.min(1000,Math.floor(c.supplies.flash))):4},
     kitPresets:readKitPresets((c as {kitPresets?:unknown}).kitPresets),
@@ -350,14 +356,41 @@ export function buyWeapon(c:CampaignState,weapon:CampaignOperator['weapon']):Cam
  const price=WEAPON_PRICES[weapon];
  if(!price||c.activeContractId||c.funds<price)return c;
  return {...c,funds:c.funds-price,
-  inventory:{weapons:{...c.inventory.weapons,[weapon]:c.inventory.weapons[weapon]+1}}};
+  inventory:{...c.inventory,weapons:{...c.inventory.weapons,[weapon]:c.inventory.weapons[weapon]+1}}};
+}
+/** Buying an attachment adds one stock item without silently equipping it. */
+export function buyWeaponAttachment(c:CampaignState,partId:string):CampaignState{
+ const price=attachmentPrice(partId);
+ if(c.activeContractId||price<=0||c.funds<price||
+  (c.inventory.attachments[partId]??0)>=999)return c;
+ return {...c,funds:c.funds-price,inventory:{...c.inventory,
+  attachments:{...c.inventory.attachments,
+   [partId]:(c.inventory.attachments[partId]??0)+1}}};
+}
+/** Single-slot atomic stock transfer; no duplicate equipped copies. */
+export function equipCampaignWeaponAttachment(c:CampaignState,id:string,
+ slot:WeaponAttachmentSlot,partId:string):CampaignState{
+ if(c.activeContractId)return c;
+ const o=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
+ if(!o)return c;
+ const next=setWeaponAttachment(o.weaponConfiguration,slot,partId);
+ if(next===o.weaponConfiguration)return c;
+ const paid=attachmentPrice(partId)>0;
+ if(paid&&(c.inventory.attachments[partId]??0)<1)return c;
+ const attachments=returnAttachments(c.inventory.attachments,o.weaponConfiguration,next);
+ if(paid)attachments[partId]--;
+ return {...c,inventory:{...c.inventory,attachments},operators:c.operators.map(m=>
+  m.id===id?{...m,weaponConfiguration:next}:m)};
 }
 export function equipCampaignWeapon(c:CampaignState,id:string,
  weapon:CampaignOperator['weapon']):CampaignState{
  if(c.activeContractId||!WEAPONS.includes(weapon))return c;
  const m=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!m||m.weapon===weapon||c.inventory.weapons[weapon]<1)return c;
- return {...c,inventory:{weapons:{
+ const targetConfig=changeWeaponPlatform(m.weaponConfiguration,weapon);
+ const attachments=returnAttachments(c.inventory.attachments,
+  m.weaponConfiguration,targetConfig);
+ return {...c,inventory:{...c.inventory,attachments,weapons:{
    ...c.inventory.weapons,
    [weapon]:c.inventory.weapons[weapon]-1,
    [m.weapon]:c.inventory.weapons[m.weapon]+1
@@ -378,7 +411,9 @@ export function retireOperator(c:CampaignState,id:string):CampaignState{
  const weapons={...c.inventory.weapons,[o.weapon]:c.inventory.weapons[o.weapon]+1};
  const event:CareerEvent={id:'retired-'+id+'-'+c.day,day:c.day,operatorId:id,
   kind:'retirement',detail:'Retired from active field service'};
- return {...c,inventory:{weapons},operators:c.operators.map(m=>
+ return {...c,inventory:{...c.inventory,weapons,
+  attachments:returnAttachments(c.inventory.attachments,o.weaponConfiguration)},
+  operators:c.operators.map(m=>
   m.id===id?{...m,status:'retired' as const}:m),
   journal:[...c.journal,event].slice(-1000)};
 }
