@@ -272,9 +272,9 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
       }else if(fixture==='window-boards'){
         const timber=ctx.solid(0x7d6b54),nails=ctx.solid(0x4d514e);
         const across=w>=d;
-        for(const height of [6,13,20,27,34]){
+        for(const height of [3.5,10.5,17.5,24.5,31.5]){
           ctx.box(group,c.x,height,c.y,
-            across?w:8,3,across?8:d,timber);
+            across?w:8,6.9,across?8:d,timber);
           for(const end of [-.38,.38])
             ctx.box(group,c.x+(across?end*w:0),height,c.y+(across?0:end*d),
               2.3,2.3,across?8.5:8.5,nails,false);
