@@ -17,7 +17,7 @@ export function missingPhysicalWorkflowLinks(
  site:Pick<Site,'archetype'|'rooms'|'doors'|'openings'>):MissingWorkflowLink[]{
  if(!site.archetype)return [];
  const present=new Set(site.rooms.map(r=>r.purpose));
- const transitions=[...site.doors,...site.openings??[]];
+ const transitions=[...site.doors,...(site.openings??[])];
  const links=new Set<string>();
  const pair=(a:string,b:string)=>[a,b].sort().join('|');
  for(const passage of transitions){
