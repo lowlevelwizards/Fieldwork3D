@@ -22,7 +22,7 @@ const choices:Record<string,readonly SurfaceDetail[]>={
 };
 export function dressSite(site:Site,seed:number):Site{
  const random=seeded(seed^0x1d7e5a5a);
- const condition=styles[(seed>>>0)%styles.length];
+ const condition=site.identity?.condition??styles[(seed>>>0)%styles.length];
  const density:Record<SiteCondition,number>={
   occupied:.64,busy:.89,neglected:.42,vacant:.15,renovation:.49,disturbed:.70
  };

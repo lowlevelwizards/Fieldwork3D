@@ -90,7 +90,7 @@ function position(room:Room,w:number,h:number,side:Anchor):Pt{
 /** Occupancy and activity determine furniture quantities, not only room labels.
  * Repeated chairs and storage banks are intentional separate objects.
  */
-function activityFurniture(purpose:string,room:Room,items:readonly Item[]):Item[]{
+function activityFurniture(purpose:string,room:Room,items:readonly Item[],subtype=''):Item[]{
  const spacious=room.w*room.h>=22000;
  const large=room.w*room.h>=34000;
  const extras:Item[]=[];
@@ -131,6 +131,11 @@ function activityFurniture(purpose:string,room:Room,items:readonly Item[]):Item[
    if(spacious)add('cart','sw');
    break;
  }
+ if(purpose==='sales'&&subtype==='convenience-store')add('cooler','se');
+ if(purpose==='sales'&&subtype==='hardware-store')add('wall-shelf','ne');
+ if(purpose==='bay'&&subtype==='tire-service')add('tire-stack','sw');
+ if(purpose==='workshop'&&subtype==='fabrication-shop')add('compressor','ne');
+ if(purpose==='treatment'&&subtype==='urgent-care')add('cart','sw');
  return [...items,...extras];
 }
 /** Deterministic wall-parallel candidates fill the space left by coarse corner anchors.
@@ -192,7 +197,7 @@ export function furnishRooms(site:Site,seed:number):Site{
   const essentialIds=new Set(essential.map(item=>item.id));
   // Preserve repeated seating and shelving; only de-duplicate an item's
   // first authored instance when the required contract already added it.
-  const remaining=activityFurniture(room.purpose??'',room,roomItems);
+  const remaining=activityFurniture(room.purpose??'',room,roomItems,site.identity?.subtype);
   const seenRequired=new Set<string>();
   const equipment:Item[]=[...essential];
   for(const item of remaining){

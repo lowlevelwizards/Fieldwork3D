@@ -6,6 +6,7 @@ import {type Pt,type Segment,type Door,type Obstacle} from './breach-core.ts';
 import {applyArchetype} from './breach-archetypes.ts';
 import {compileArchitecturalSite} from './worldgen/architectural-compiler.ts';
 import {orientArchitecturalSite,type EntrySide} from './worldgen/site-orientation.ts';
+import {buildingIdentity} from './worldgen/building-identity.ts';
 export type Room={id:string;zoneId?:string;x:number;y:number;w:number;h:number;
   kind:'room'|'hall';tone:number;purpose?:string};
 export type BuildingArchetype='house'|'townhouse'|'apartment'|'retail'|'office'|'garage'|'warehouse'|'restaurant'|'motel'|'utility'|'clinic';
@@ -25,6 +26,7 @@ export type SiteScale='standard'|'expanded'|'small'|'medium'|'large';
 export type Site={
   /** Authored semantic programs bypass index-based purpose assignment. */
   programLocked?:boolean;
+  identity?:import('./worldgen/building-identity.ts').BuildingIdentity;
   planFamily?:string;
   entrySide?:EntrySide;
   circulationStyle?:import('./worldgen/circulation-grammar.ts').CirculationStyle;
@@ -65,6 +67,7 @@ export function generateSite(seed:number,scale:SiteScale='standard'):Site{
  for(let attempt=0;attempt<6;attempt++){
   const geometry=compileArchitecturalSite(kind,seed+attempt*9973,scale);
   geometry.seed=seed;
+  geometry.identity=buildingIdentity(kind,seed,scale,geometry.roomCount);
   try{return applyArchetype(orientArchitecturalSite(geometry,seed),seed);}
   catch{/* Retry a different architectural grammar, not the old grid. */}
  }
