@@ -356,7 +356,8 @@ function renderOperationsBoard(){
   card.append(name);
   const details=document.createElement('p');
   details.textContent=member.missions+' OPS · '+member.successful+
-   ' SUCCESSES · '+member.magazine+' / '+member.reserve+' RDS'+
+   ' SUCCESSES · '+member.magazine+' / '+member.reserve+' RDS · '+
+   member.magazines.length+' SPARE MAGS'+
    (member.recovery>0?' · RECOVERING '+member.recovery+' OPS':' · READY');
   card.append(details);
   const actions=document.createElement('div');
