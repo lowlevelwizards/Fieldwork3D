@@ -58,3 +58,6 @@ export function mapPlanePixelUV(geometry:THREE.PlaneGeometry,w:number,d:number,
  uv.needsUpdate=true;
  return geometry;
 }
+
+/** Shared through independently created operator rigs; never disposed per actor. */
+export const operatorPixelTextures=new PixelTextureLibrary();

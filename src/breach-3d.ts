@@ -6,6 +6,7 @@ import {renderFixtureVisual,type FixtureVisualContext} from './worldgen/fixture-
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surfaces.ts';
 import {planEnvironmentalWear,type WearKind} from './worldgen/environment-wear.ts';
+import {wearPixels} from './rendering/pixel-decals.ts';
 import {roofShouldShow} from './worldgen/roof-cutaways.ts';
 import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,activeSite,
   type Pt,type Door} from './breach-core.ts';
@@ -135,6 +136,7 @@ export class TacticalScene3D{
   private sharedBoxGeometries=new Set<THREE.BufferGeometry>();
   private windowPaneMaterial:THREE.MeshStandardMaterial|null=null;
   private readonly wearMaterials=new Map<WearKind,THREE.MeshBasicMaterial>();
+  private readonly wearTextures=new Map<WearKind,THREE.DataTexture>();
   private windowGlass=new Map<string,THREE.Mesh>();
   private coverGroups=new Map<number,THREE.Group>();
   private solid=(hex:number,roughness=.9,surface?:PixelSurface)=>{
@@ -347,8 +349,18 @@ export class TacticalScene3D{
       if(!roomGroup)continue;
       let material=this.wearMaterials.get(detail.kind);
       if(!material){
+        let texture=this.wearTextures.get(detail.kind);
+        if(!texture){
+          texture=new THREE.DataTexture(wearPixels(detail.kind),32,32,THREE.RGBAFormat);
+          texture.colorSpace=THREE.SRGBColorSpace;
+          texture.magFilter=THREE.NearestFilter;
+          texture.minFilter=THREE.LinearMipmapLinearFilter;
+          texture.generateMipmaps=true;
+          texture.needsUpdate=true;
+          this.wearTextures.set(detail.kind,texture);
+        }
         material=new THREE.MeshBasicMaterial({
-          color:wearColor[detail.kind],transparent:true,opacity:.19,
+          color:wearColor[detail.kind],map:texture,transparent:true,opacity:.32,
           depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,
           side:THREE.DoubleSide});
         this.wearMaterials.set(detail.kind,material);
