@@ -61,6 +61,7 @@ import {kitMedicalSupplies,spendMedicalSupply,type FieldMedicalSupplies}
  from './equipment-medical-supplies.ts';
 import {treatmentSupplyForWound,treatmentDuration}
  from './breach-medical-treatment.ts';
+import {stabilizationSummary} from './breach-casualty-status.ts';
 import {changeWeaponPlatform,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {weaponHandlingModifiers,sightAcquisitionScale,sightSpreadScale}
  from './equipment-weapon-handling.ts';
@@ -2868,6 +2869,7 @@ export function missionText(s:Session){
 export function debrief(s:Session){
   const own=team(s);
   const casualties=own.filter(a=>a.health<=0).length;
+  const casualtyCare=stabilizationSummary(own);
   const shots=own.reduce((t,a)=>t+a.shots,0);
   const hits=own.reduce((t,a)=>t+a.hits,0);
   const target=enemies(s).find(e=>e.id===s.captureTarget);
@@ -2881,6 +2883,8 @@ export function debrief(s:Session){
       near(a.p,s.scenario.extract,47)).length,
   });
   return {result:s.phase,time:Math.floor(s.seconds),casualties,
+    stabilizedCasualties:casualtyCare.stabilized,
+    criticalCasualties:casualtyCare.critical,
     shots,hits,
     kills:own.reduce((t,a)=>t+a.kills,0),
     pauses:s.timesPaused,variant:s.scenario.name,
