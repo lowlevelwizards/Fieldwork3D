@@ -17,6 +17,7 @@ export function doorInteraction(request:InteractionRequest):InteractionVerdict{
  if(action==='inspect')return allowed;
  if(action==='kick'&&d.kind==='shutter')return deny('unsupported');
  if(action==='open'&&d.open)return deny('already-open');
+ if((action==='open'||action==='kick')&&d.wedged)return deny('obstructed');
  if(action==='open'&&d.jammed)return deny('obstructed');
  if(action==='open'&&d.locked)return deny('locked');
  if(action==='close'&&!d.open)return deny('already-closed');

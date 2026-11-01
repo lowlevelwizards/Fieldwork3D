@@ -29,6 +29,8 @@ import {MICRO_KEYS,MICRO_COLS} from './breach-fog-memory.ts';
 import {assessFireLane,type FireBlock} from './breach-fire-safety.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
+import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
+import {canUseEntryTool} from './equipment-entry-tools.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
 import {relocateCover,canRelocateCover} from './breach-movable-cover.ts';
@@ -646,6 +648,23 @@ export function planLook(s:Session,id:string,p:Pt,nodeId?:number){
 function pairedLeaves(s:Session,door:Door):Door[]{
  const pair=door.pairedWith?s.doors.find(d=>d.id===door.pairedWith):undefined;
  return pair?[door,pair]:[door];
+}
+/** Specialized entry equipment uses the existing door reach/plan system. */
+export function planEntryTool(s:Session,id:string,doorId:string,
+ method:EntryTool,nodeId?:number):boolean{
+ const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
+ if(!a||!door||!canEdit(s)||!canUseEntryTool(a.equipment,method)||
+  !entryToolVerdict(door,method).allowed)return false;
+ if(nodeId!==undefined){
+  const index=a.plan.findIndex(n=>n.id===nodeId);
+  if(index<0||!doorReachable(a.plan[index].p,door))return false;
+  return edit(s,a,()=>{a.plan.splice(index+1,0,{
+   id:s.nextId++,kind:'tool',doorId,toolMethod:method,
+   p:clone(a.plan[index].p)});});
+ }
+ const position=doorApproach(finalPoint(a),door);
+ if(!position)return false;
+ return addNode(s,id,'tool',position,{doorId,toolMethod:method});
 }
 export function planDoor(s:Session,id:string,doorId:string,method:DoorMethod){
   const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
@@ -1595,6 +1614,40 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       a.squeeze=false;a.squeezeTime=0;
     }
     a.pieIndex=0;
+  }
+  if(n.kind==='tool'){
+    const door=s.doors.find(door=>door.id===n.doorId);
+    const method=n.toolMethod;
+    if(!door||!method||!canUseEntryTool(a.equipment,method)){pop(a);return;}
+    if(!doorReachable(a.p,door)){
+      const approachPoint=doorApproach(a.p,door);
+      if(approachPoint)approach(a,approachPoint,dt,s,.66);
+      else{notify(s,a.name+' ENTRY TOOL CANNOT REACH');pop(a);}
+      return;
+    }
+    const verdict=entryToolVerdict(door,method);
+    if(!verdict.allowed){notify(s,door.id+' '+verdict.reason);pop(a);return;}
+    a.velocity=0;rotate(a,angle(a.p,doorCenter(door)),dt);
+    if(a.actionTimer===0){a.lastDoorAt=s.seconds;a.lastDoorId=door.id;
+      a.lastDoorMethod='open';}
+    a.actionTimer+=dt;
+    if(a.actionTimer<verdict.seconds)return;
+    if(method==='wedge')door.wedged=true;
+    else if(method==='unwedge')door.wedged=false;
+    else{
+      door.latchIntegrity=Math.max(-1,(door.latchIntegrity??1)-verdict.damage);
+      if((door.latchIntegrity??0)<=0){
+        door.locked=false;door.jammed=false;door.heldBy=null;
+        door.forced=true;door.open=true;door.openedAt=s.seconds;
+      }
+    }
+    s.objectRevision++;
+    hear(s,doorCenter(door),verdict.noise,method);
+    const label=method.toUpperCase()+(door.open?' · FORCED OPEN':
+      method==='wedge'?' · SECURED':method==='unwedge'?' · REMOVED':
+      ' · FRAME DAMAGED');
+    notify(s,door.id+' '+label);battleEvent(s,'door',a,doorCenter(door),door.id+' '+label);
+    pop(a);return;
   }
   if(n.kind==='recover-medical'){
     const patient=s.operators.find(o=>o.id===n.patientId&&o.side===a.side);

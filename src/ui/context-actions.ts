@@ -5,7 +5,8 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   posture:'stand'|'crouch';pace:'walk'|'run';firePolicy:string;
   reserve:number;magazine:number;doorOpen?:boolean;
   nodeKind?:string;aimLabel?:string;nodeFirePolicy?:string;
-  nearMovable?:boolean;nearWindow?:boolean};
+  nearMovable?:boolean;nearWindow?:boolean;
+  availableTools?:readonly string[];doorWedged?:boolean;};
 export function contextActionChoices(o:ContextOptions):ContextAction[]{
   if(o.door)return o.doorOpen?[
     {id:'ctxClose',label:'CLOSE',group:'primary',title:'Pull the open door shut'},
@@ -17,6 +18,9 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     {id:'ctxDoorFlash',label:'FLASH ×'+o.flashRemaining,group:'primary',
       disabled:o.flashRemaining<=0,title:'Flash through this door'},
     {id:'ctxHold',label:'HOLD',group:'primary',title:'Brace this closed door'},
+    ...(o.availableTools??[]).map(method=>({id:'ctxTool-'+method,
+     label:method.toUpperCase(),group:'primary' as const,
+     title:'Use equipped '+method+' tool at door'})), 
   ];
   return [
     {id:'ctxLook',label:'LOOK',group:'primary',pressed:o.nodeKind==='look'||o.aimLabel==='look',title:'Face a direction at this point'},
