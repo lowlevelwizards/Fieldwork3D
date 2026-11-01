@@ -8,6 +8,7 @@ const scope=self as unknown as {
   postMessage:(data:GeneratorResponse)=>void;
 };
 scope.onmessage=({data:req})=>{
+  const startedAt=performance.now();
   const post=(message:Omit<GeneratorResponse,'id'>)=>scope.postMessage(
     {...message,id:req.id} as GeneratorResponse);
   const progress=(percent:number,stage:string,detail:string)=>{
@@ -27,6 +28,7 @@ scope.onmessage=({data:req})=>{
     try{
       progress(9,'Generating architectural plan',
         req.archetype+' / '+scale+' · seed '+seed);
+      const generationStart=performance.now();
       const site=generateSite(seed,scale,(phase,attempt)=>{
         const p=12+Math.min(6,attempt)*7+
           (phase==='layout'?0:phase==='furnishing'?3:5);
@@ -35,11 +37,17 @@ scope.onmessage=({data:req})=>{
           'Checking navigability and completeness',
           'Layout candidate '+(attempt+1)+' / 6 · '+scale);
       });
+      const generationMs=Math.round(performance.now()-generationStart);
       progress(69,'Validating generated site',
         site.rooms.length+' rooms · '+site.doors.length+' doors');
+      const auditStart=performance.now();
       const audit=auditSite(site);
+      const auditMs=Math.round(performance.now()-auditStart);
       progress(82,'Preparing site for 3D preview','Transferring architecture and diagnostics');
-      post({kind:'done',site,audit} as Omit<GeneratorResponse,'id'>);
+      post({kind:'done',site,audit,
+        timing:{generationMs,auditMs,
+         workerMs:Math.round(performance.now()-startedAt)}
+      } as Omit<GeneratorResponse,'id'>);
       return;
     }catch(error){
       lastError=error instanceof Error?error.message:String(error);

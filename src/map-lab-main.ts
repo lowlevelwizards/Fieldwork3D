@@ -2,7 +2,7 @@
 import {TacticalScene3D} from './breach-3d.ts';
 import {newSession,type Session} from './breach-game.ts';
 import {type Site,type BuildingArchetype} from './breach-site.ts';
-import {labScaleChoice,type LabScale,type GeneratorRequest,type GeneratorResponse} from './map-lab-generation.ts';
+import {labScaleChoice,type LabScale,type GeneratorRequest,type GeneratorResponse,type GeneratorTiming} from './map-lab-generation.ts';
 import {BUILDING_ARCHETYPES} from './breach-archetypes.ts';
 import {type Pt} from './breach-core.ts';
 import type {SiteAudit} from './breach-site-audit.ts';
@@ -219,7 +219,7 @@ function generationError(message:string){
 }
 const allowPaint=()=>new Promise<void>(resolve=>
  requestAnimationFrame(()=>setTimeout(resolve,0)));
-async function useGeneratedSite(id:number,site:Site,audit:SiteAudit,choice:LabScale){
+async function useGeneratedSite(id:number,site:Site,audit:SiteAudit,choice:LabScale,timing:GeneratorTiming){
  worker?.terminate();worker=null;
  showProgress(85,'Creating tactical session','Loading actors and navigation');
  await allowPaint();
@@ -229,9 +229,13 @@ async function useGeneratedSite(id:number,site:Site,audit:SiteAudit,choice:LabSc
   await allowPaint();
   if(id!==generationId)return;
   // Commit simulation and scene together; cancellation never leaves a mismatched site.
+  const previewStart=performance.now();
   session=newSession(0,site.seed,'floor-plan',site.scale,undefined,site);
   stage.applySite({...site,conditionLevel:selectedCondition});stage.resetCamera();
-  reportBaseline=report(site,audit);
+  const previewMs=Math.round(performance.now()-previewStart);
+  reportBaseline=report(site,audit)+'\nTIMING: worldgen '+
+    timing.generationMs+'ms · audit '+timing.auditMs+
+    'ms · worker total '+timing.workerMs+'ms · preview '+previewMs+'ms';
   seedInput.value=String(site.seed);
   playSite.href='./breach.html?seed='+site.seed+
     '&scale='+(site.scale??'medium')+'&condition='+selectedCondition;
@@ -262,7 +266,7 @@ function generate(advance=false){
    if(response.kind==='progress')
     showProgress(response.percent,response.stage,response.detail);
    else if(response.kind==='error')generationError(response.message);
-   else void useGeneratedSite(id,response.site,response.audit,choice);
+   else void useGeneratedSite(id,response.site,response.audit,choice,response.timing);
   };
   worker.onerror=event=>{
    event.preventDefault();

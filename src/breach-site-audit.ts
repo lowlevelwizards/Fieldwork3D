@@ -9,7 +9,7 @@ import {missingPhysicalWorkflowLinks,type MissingWorkflowLink} from './worldgen/
 import {assessRoomContracts,type RoomContractResult} from './worldgen/room-contracts.ts';
 import {assessUnitContracts,type UnitContractResult} from './worldgen/unit-contracts.ts';
 import {auditFixtureService,type ServiceIssue} from './worldgen/fixture-service-clearance.ts';
-import {inspectOperationalRoutes,type OperationalRouteIssue} from './worldgen/operational-route-audit.ts';
+import {inspectOperationalRoutes,straightWorkApproach,type OperationalRouteIssue} from './worldgen/operational-route-audit.ts';
 import {measureSiteCompleteness,type CompletenessScore} from './worldgen/site-completeness.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type SiteAudit={seed:number;archetype:string;layout:string;
@@ -55,7 +55,8 @@ export function auditSite(site:Site):SiteAudit{
     // The existing mission A* is authoritative for reachability. Workstation
     // warnings are diagnostics, never a reason to discard a playable map.
     if(site.spawn.length)operationalRouteIssues.push(...inspectOperationalRoutes(
-      site,p=>passable(p)&&route(site.spawn[0],p).length>0));
+      site,p=>passable(p)&&(straightWorkApproach(site.spawn[0],p,passable)||
+       route(site.spawn[0],p).length>0)));
     const ids=new Set<string>();
     for(const door of site.doors){
       if(ids.has(door.id))errors.push('duplicate door '+door.id);
