@@ -1730,7 +1730,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
         hear(s,doorCenter(door),90,'door');
         notify(s,door.id+' CLOSING');
         battleEvent(s,'door',a,doorCenter(door),door.id+' CLOSING');
-      }else if(n.method!=='kick'){
+      }else{
         if(pairedLeaves(s,door).some(leaf=>leaf.heldBy)){
           notify(s,door.id+' BRACED SHUT');pop(a);return;
         }
