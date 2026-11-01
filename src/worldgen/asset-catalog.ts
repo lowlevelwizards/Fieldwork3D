@@ -78,6 +78,8 @@ definitions.push(
  {id:'parts-counter',category:'industrial',width:58,depth:24,height:27,
   solid:true,cover:'high',rooms:['parts','service','workshop']}
 );
+definitions.push({id:'queue-stanchion',category:'commercial',width:7,depth:7,height:25,
+ solid:true,cover:'low',rooms:['checkout','reception','lobby','parts']});
 // Functional workstations for real commercial, clinical, retail and industrial routines.
 definitions.push(
  {id:'prep-table',category:'commercial',width:44,depth:26,height:21,

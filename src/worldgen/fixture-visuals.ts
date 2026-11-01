@@ -67,6 +67,11 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
             ctx.box(group,c.x+x,top*.45,c.y+d*.51,2,top*.6,1.4,metal,false);
           ctx.box(group,c.x,top*.35,c.y+d*.52,w*.67,2,2,metal,false);
         }
+      }else if(fixture==='queue-stanchion'){
+        const post=visualCtx.solid(0x697470,.76,'industrial-steel');
+        ctx.box(group,c.x,1.5,c.y,w,3,d,metal);
+        ctx.box(group,c.x,12,c.y,2,23,2,post);
+        ctx.box(group,c.x,24,c.y,4,2.5,4,post,false);
       }else if(fixture==='bar-stool'){
         const seat=visualCtx.solid(0x695b48,.87,'wood');
         ctx.box(group,c.x,22,c.y,w*.82,3,d*.82,seat);
