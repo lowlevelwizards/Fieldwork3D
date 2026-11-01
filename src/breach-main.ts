@@ -39,8 +39,11 @@ import {FrameMeter} from './breach-perf.ts';
 import {formatAfterAction} from './breach-after-action.ts';
 import {initialRoster,readRoster,applyRosterIdentity,recordRosterMission,
   resupplyRoster,equipRoster,equipRosterGear,moveRosterMagazine,
+ configureRosterWeapon,
  renameRosterMember,cycleRosterAppearance} from './breach-roster.ts';
 import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
+import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly}
+ from './equipment-weapon-assemblies.ts';
 import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOperation,
  purchaseAmmo,purchaseMedical,resupplyOperator,treatOperator,
  hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
@@ -341,6 +344,7 @@ Object.assign(operationsBoard.style,{
 });
 document.body.append(operationsBoard);
 let expandedQuickKit:string|null=null;
+let expandedQuickWeapon:string|null=null;
 function renderOperationsBoard(){
  operationsBoard.replaceChildren();
  const heading=document.createElement('div');
@@ -443,6 +447,47 @@ function renderOperationsBoard(){
    });
    row.append(label,select);kit.append(row);
   }
+  const weaponEditor=document.createElement('details');
+  weaponEditor.open=expandedQuickWeapon===member.id;
+  weaponEditor.addEventListener('toggle',()=>{
+   if(weaponEditor.open)expandedQuickWeapon=member.id;
+   else if(expandedQuickWeapon===member.id)expandedQuickWeapon=null;
+  });
+  const weaponTitle=document.createElement('summary');
+  weaponTitle.textContent='PRIMARY WEAPON / ATTACHMENTS';
+  weaponTitle.style.cssText='min-height:40px;cursor:pointer;padding:12px 0;font-weight:700;font-size:11px';
+  weaponEditor.append(weaponTitle);
+  for(const slot of WEAPON_ATTACHMENT_SLOTS){
+   const row=document.createElement('label');
+   row.style.cssText='display:flex;justify-content:space-between;gap:8px;align-items:center;margin:8px 0';
+   const label=document.createElement('span');label.textContent=slot.toUpperCase();
+   label.style.fontSize='10px';
+   const select=document.createElement('select');
+   select.setAttribute('aria-label',slot+' attachment for '+member.callsign);
+   select.style.cssText='max-width:65%;min-height:44px;touch-action:manipulation;background:#243530;color:#e5e9d8;border-radius:7px;padding:6px';
+   for(const item of Object.values(WEAPON_ATTACHMENTS)){
+    if(item.slot!==slot||!item.compatible.includes(member.weapon))continue;
+    const option=document.createElement('option');
+    option.value=item.id;option.textContent=item.name;select.append(option);
+   }
+   select.value=member.weaponConfiguration.slots[slot];
+   select.disabled=state.phase!=='planning'||replaying;
+   select.addEventListener('change',()=>{
+    if(state.phase!=='planning'||replaying)return;
+    persistentRoster=configureRosterWeapon(persistentRoster,member.id,slot,select.value);
+    saveRoster();applyRosterIdentity(state,persistentRoster);
+    expandedQuickKit=member.id;expandedQuickWeapon=member.id;
+    renderOperationsBoard();updateHud();
+   });
+   row.append(label,select);weaponEditor.append(row);
+  }
+  const measured=resolveWeaponAssembly(member.weaponConfiguration);
+  const properties=document.createElement('p');
+  properties.style.cssText='font-size:10px;opacity:.75;line-height:1.55';
+  properties.textContent='ASSEMBLED MASS '+measured.massKg.toFixed(2)+' KG · BALANCE '+
+   measured.balanceX.toFixed(1)+' · MUZZLE EXTENSION '+
+   (measured.muzzleX-19.5).toFixed(1)+' UNITS';
+  weaponEditor.append(properties);kit.append(weaponEditor);
   const carried=member.weapon==='shotgun'?[]:
    stageMagazines(member.magazines,member.loadout);
   if(carried.length){
