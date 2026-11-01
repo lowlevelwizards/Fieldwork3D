@@ -87,6 +87,7 @@ export type TeamActor=Operator & {
   posture:Posture;pace:'walk'|'run';alert:Alert;velocity:number;turning:number;
   aim: number;targetId:string|null;suppression:number;stamina:number;
   magazine:number;reserve:number;reload:number;hits:number;kills:number;
+  pointShots:number;aimedShots:number;longHits:number;
   insertedMagazineId:string;spareMagazines:MagazineItem[];
   reloadMode:ReloadMode|null;reloadStartedAt:number;
   reloadDuration:number;reloadRemoved:boolean;reloadInserted:boolean;
@@ -176,7 +177,8 @@ const withActions=(a:Operator):TeamActor=>({
   coordinationRole:null,coordinationUntil:0,lastMoraleEventAt:-100,searchOrigin:null,searchQueue:[],plan:[],history:makeHistory(),nav:[],activeNode:-1,
   posture:'stand',pace:'walk',alert:'idle',velocity:0,turning:0,aim:0,
   targetId:null,suppression:0,stamina:1,magazine:12,reserve:36,
-  reload:0,hits:0,kills:0,stopped:false,contact:null,heard:null,
+  reload:0,hits:0,kills:0,pointShots:0,aimedShots:0,longHits:0,
+  stopped:false,contact:null,heard:null,
   insertedMagazineId:a.id+'/carbine/loaded',
   spareMagazines:magazineKit(a.id,'carbine',36,12),
   reloadMode:null,reloadStartedAt:-100,reloadDuration:0,
@@ -2263,6 +2265,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   a.weaponYaw=yaw; // renderer sees exactly the outgoing shot orientation
   a.fireCd=weapon.interval*(a.side==='red'?1.30:1);
   a.magazine--;a.shots++;a.burstCount=proposedBurst;
+   if(mode==='point')a.pointShots++;else a.aimedShots++;
   a.lastShotAt=s.seconds;
   const hitRadius=Math.max(4.2,10.5-
     (target.posture==='crouch'?1.7:0)-
@@ -2373,6 +2376,7 @@ function fire(s:Session,a:TeamActor,dt:number){
     battleEvent(s,healthAfter<=0?'down':'wound',target,target.p,
       target.name+' '+injuryOf(target.injuryStage).toUpperCase());
     a.hits++;
+    if(range>weapon.optimalRange)a.longHits++;
     if(target.health<=0){
       a.kills++;s.deaths++;target.lastDownAt=s.seconds;
       target.downPose=fall;
