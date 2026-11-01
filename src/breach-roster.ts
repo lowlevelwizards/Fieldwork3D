@@ -80,6 +80,22 @@ export function readRoster(raw:string|null):RosterState{
   })};
  }catch{return fresh;}
 }
+/** Quick Play never carries combat state between rounds. Keep only player-
+ * chosen names and appearance; weapons, kit, wounds, ammo, and magazines
+ * always begin from an untouched standard roster. */
+export function freshQuickPlayRoster(previous:RosterState=initialRoster()):RosterState{
+  const fresh=initialRoster();
+  return {version:1,members:fresh.members.map(base=>{
+    const prior=previous.members.find(m=>m.id===base.id);
+    return prior?{...base,callsign:prior.callsign,appearanceSeed:prior.appearanceSeed}:base;
+  })};
+}
+/** Cosmetic preferences are the only Quick Play operator data stored on disk. */
+export function serializeQuickPlayCosmetics(roster:RosterState):string{
+  return JSON.stringify({version:1,members:roster.members.map(m=>({
+    id:m.id,callsign:m.callsign,appearanceSeed:m.appearanceSeed
+  }))});
+}
 export function applyRosterIdentity(s:Session,roster:RosterState){
  for(const a of s.operators){
   if(a.side!=='blue')continue;
