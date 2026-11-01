@@ -21,11 +21,24 @@ export function passageOwner(d:Door,actors:readonly PassageActor[]){
   // scores here: the order remains deterministic through pause/replay.
   return eligible[0]?.id??null;
 }
+/** A real threshold is occupied until its owner clears, not until the
+ * opposite actor happens to become one step closer. Author orders are intact.
+ */
+export type PassageLease={actorId:string;until:number};
 export function passageWait(actor:PassageActor,doors:readonly Door[],
-  actors:readonly PassageActor[]):boolean{
+  actors:readonly PassageActor[],
+  leases?:Record<string,PassageLease>,now=0):boolean{
   for(const d of doors){
+    // Wide industrial shutters have space for two independent lanes.
+    if(distance(d.a,d.b)>60)continue;
     if(!crossingDoor(actor,d))continue;
-    const owner=passageOwner(d,actors);
+    const current=leases?.[d.id];
+    const stillCrossing=current&&actors.some(a=>
+      a.id===current.actorId&&crossingDoor(a,d));
+    const owner=stillCrossing&&now<current!.until?
+      current!.actorId:passageOwner(d,actors);
+    if(leases&&owner)
+      leases[d.id]={actorId:owner,until:now+.38};
     if(owner&&owner!==actor.id)return true;
   }
   return false;
