@@ -123,6 +123,7 @@ export class TacticalScene3D{
   private boxGeometryCache=new Map<string,THREE.BoxGeometry>();
   private sharedBoxGeometries=new Set<THREE.BufferGeometry>();
   private windowPaneMaterial:THREE.MeshStandardMaterial|null=null;
+  private readonly wearMaterials=new Map<WearKind,THREE.MeshBasicMaterial>();
   private windowGlass=new Map<string,THREE.Mesh>();
   private coverGroups=new Map<number,THREE.Group>();
   private solid=(hex:number,roughness=.9)=>{
@@ -312,17 +313,16 @@ export class TacticalScene3D{
     const wearColor:Record<WearKind,number>={
       dust:0x92816c,stain:0x655e4b,scrape:0xb2ae9e,scuff:0x444d47,
     };
-    const wearMaterials=new Map<WearKind,THREE.MeshBasicMaterial>();
     for(const detail of planEnvironmentalWear(site)){
       const roomGroup=decorativeRoomGroups.get(detail.roomId);
       if(!roomGroup)continue;
-      let material=wearMaterials.get(detail.kind);
+      let material=this.wearMaterials.get(detail.kind);
       if(!material){
         material=new THREE.MeshBasicMaterial({
           color:wearColor[detail.kind],transparent:true,opacity:.19,
           depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,
           side:THREE.DoubleSide});
-        wearMaterials.set(detail.kind,material);
+        this.wearMaterials.set(detail.kind,material);
         this.mats.push(material);
       }
       const patch=this.plane(roomGroup,detail.x,detail.y,
