@@ -56,3 +56,8 @@ export function loadMobilityDescription(loadout:EquipmentLoadout):string{
  const factor=loadMovementScale(loadout);
  return factor>=.96?'LIGHT':factor>=.87?'STANDARD':factor>=.78?'HEAVY':'OVERLOADED';
 }
+
+/** An equipped flash is a single carried, usable charge. This does not
+ * increase the existing two-device team-wide mission allotment. */
+export const equippedFlashCharges=(loadout:EquipmentLoadout):number=>
+ loadout.slots.tactical==='tactical-flash'?1:0;
