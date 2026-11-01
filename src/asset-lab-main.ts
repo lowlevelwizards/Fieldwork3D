@@ -12,6 +12,7 @@ import {showroomGrid,showroomSlot} from './asset-lab-layout.ts';
 import {type Site,type WindowOpening} from './breach-site.ts';
 import {assetLibrary,assetLibraryCategories,type AssetLibraryEntry} from './worldgen/asset-library.ts';
 import {OPERATOR_REFERENCE_HEIGHT,WORLD_UNITS_PER_METRE,metres} from './worldgen/world-scale.ts';
+import {CHARACTER_FIXTURE_IDS} from './worldgen/asset-character-visuals.ts';
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const category=el<HTMLSelectElement>('category'),search=el<HTMLInputElement>('search');
 const summary=el<HTMLElement>('summary'),detail=el<HTMLOutputElement>('detail');
@@ -38,6 +39,8 @@ for(const kind of assetLibraryCategories()){
  category.append(opt);
 }
 let page=0,selectedId:string|null=null;
+// Preview-only variants: all tactical footprints remain catalog authoritative.
+const showroomVariants=new Map<string,number>();
 const session=newSession(0,101);
 session.operators=[]; // There are no actors in the asset showroom.
 const stage=new TacticalScene3D();
@@ -109,7 +112,8 @@ function sampleSite(items:readonly AssetLibraryEntry[]):Site{
  for(const [index,item] of items.entries()){
    const {x,y}=showroomSlot(index,layout);
    if(item.origin==='fixture'){
-     cover.push({x,y,w:item.width,h:item.depth,low:item.cover==='low',fixture:item.id});
+     cover.push({x,y,w:item.width,h:item.depth,low:item.cover==='low',
+       fixture:item.id,artVariant:index+(showroomVariants.get(item.id)??0)});
    }else if(item.origin==='dressing'){
      dressing.push({id:item.id,roomId:'showroom',kind:item.id.slice(7) as
        NonNullable<Site['dressing']>[number]['kind'],
@@ -190,10 +194,13 @@ function select(item:AssetLibraryEntry){
     ' m) · cover: '+item.cover+
    ' · '+(item.solid?'physical':'visual-only')+
    '\n'+item.origin+' / '+item.presentation+
+   (CHARACTER_FIXTURE_IDS.has(item.id)?
+     ' · silhouette trim '+((showroomVariants.get(item.id)??0)+1)+' / 3':'')+
    (item.presentation==='shared-shape'?' (generic model — review recommended)':'')+
    (item.rooms.length?'\nRooms: '+item.rooms.join(', '):'');
  for(const marker of labels)marker.node.setAttribute('aria-pressed',
    String(marker.node.dataset.assetId===selectedId));
+ el<HTMLButtonElement>('variant').disabled=!CHARACTER_FIXTURE_IDS.has(item.id);
  showSelectionOutline();
 }
 /** Keep the preview canvas above the bottom inspector. The 3D projection
@@ -277,6 +284,11 @@ el<HTMLButtonElement>('bounds').addEventListener('click',()=>{
  showBounds=!showBounds;
  el<HTMLButtonElement>('bounds').setAttribute('aria-pressed',String(showBounds));
  showSelectionOutline();
+});
+el<HTMLButtonElement>('variant').addEventListener('click',()=>{
+ if(!selectedId||!CHARACTER_FIXTURE_IDS.has(selectedId))return;
+ showroomVariants.set(selectedId,((showroomVariants.get(selectedId)??0)+1)%3);
+ refresh();focusSelected();
 });
 el<HTMLButtonElement>('review').addEventListener('click',()=>{
  const weak=all.filter(a=>a.origin==='fixture');

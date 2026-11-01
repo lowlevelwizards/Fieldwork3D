@@ -17,6 +17,8 @@ export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number;
   kicks?:number;forced?:boolean;locked?:boolean;jammed?:boolean;}
 export type Obstacle={x:number;y:number;w:number;h:number;low?:boolean;
   fixture?:string;material?:import('./breach-materials.ts').MaterialId;
+  /** Render-only deterministic trim selection; ignored by collision and AI. */
+  artVariant?:number;
   integrity?:number;destroyed?:boolean};
 export type Side='blue'|'red';
 export type Operator={id:string;name:string;side:Side;p:Pt;heading:number;
