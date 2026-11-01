@@ -32,3 +32,11 @@ test('generated physical buildings retain a connected entrance and rooms',()=>{
   assert.deepEqual(site,compileArchitecturalSite(type,seed,'medium'));
  }
 });
+
+
+test('an attractive but forbidden cross-unit passage is never selected',()=>{
+ const roles=['lobby','hallway','guest'];
+ const options=[
+  edge(0,1,-50,true),edge(0,2,-100,false,false),edge(1,2,12)];
+ assert.deepEqual([...chooseCirculationTree(roles,options)],[0,2]);
+});
