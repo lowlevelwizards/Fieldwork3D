@@ -66,7 +66,7 @@ jobs:
         run: node --experimental-strip-types --test tests/worldgen-38-*.test.mjs tests/worldgen-29a-quality-matrix.test.mjs
       - name: Focused world generation production checks
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'worldgen2/39-') }}
-        run: node --experimental-strip-types --test tests/worldgen-39-*.test.mjs
+        run: node --experimental-strip-types --test tests/worldgen-39-*.test.mjs tests/breach-142c.test.mjs
       - name: Focused archetype specialization and critical generated-site access
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'worldgen2/37-') }}
         run: node --experimental-strip-types --test tests/worldgen-37-*.test.mjs tests/worldgen-functional-furnishing.test.mjs
