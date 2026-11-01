@@ -8,10 +8,12 @@ import {assessRoomContracts} from './room-contracts.ts';
 import {assessUnitContracts} from './unit-contracts.ts';
 import {auditFixtureService} from './fixture-service-clearance.ts';
 import {ROOM_CONTRACTS} from './room-contracts.ts';
+import {inspectCounterAccess} from './service-counter-access.ts';
 const important=new Set(['kitchen','bathroom','restroom','guest','exam',
  'treatment','bay','workshop','waiting','bedroom','living']);
 export type CompletenessScore={missingEssentials:number;
- criticalMissing:number;incompleteUnits:number;blockedWorkingFaces:number;score:number};
+ criticalMissing:number;incompleteUnits:number;blockedWorkingFaces:number;
+ counterAccessProblems:number;score:number};
 export function measureSiteCompleteness(site:Site):CompletenessScore{
  const contracts=assessRoomContracts(site);
  let missingEssentials=0,criticalMissing=0;
@@ -27,9 +29,14 @@ export function measureSiteCompleteness(site:Site):CompletenessScore{
   return (ROOM_CONTRACTS[room?.purpose??'']?.required??[])
    .some(group=>group.includes(issue.fixture));
  }).length;
+ // Counters are unlike wall-side fixtures: a clear customer face does not
+ // compensate for a worker trapped against a wall or blocked by stock.
+ const counterAccessProblems=inspectCounterAccess(site).reduce((count,counter)=>
+  count+Number(!counter.customerClear)+Number(!counter.staffClear),0);
  return {missingEssentials,criticalMissing,incompleteUnits,blockedWorkingFaces,
+  counterAccessProblems,
   score:criticalMissing*3+missingEssentials+incompleteUnits*8+
-   blockedWorkingFaces*2};
+   blockedWorkingFaces*2+counterAccessProblems*3};
 }
 export function shouldTryAnotherLayout(score:CompletenessScore,scale:SiteScale){
  // Only serious deficiencies merit one more expensive architecture build.
