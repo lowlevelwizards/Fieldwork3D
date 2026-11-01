@@ -8,6 +8,7 @@ import {sizedBlueprint} from './size-blueprints.ts';
 import {apartmentUnitBlueprint} from './apartment-units.ts';
 import {ensureFacilityProgram} from './facility-programs.ts';
 import {specializeBlueprint} from './subtype-blueprints.ts';
+import {fitSpatialProgram} from './spatial-program-fit.ts';
 import {relationshipScore,allowSecondaryConnection} from './room-relationships.ts';
 import {circulationFor,circulationScore,loopChance,type CirculationStyle} from './circulation-grammar.ts';
 import {type Site,type Room,type BuildingArchetype,type SiteScale,seeded} from '../breach-site.ts';
@@ -62,7 +63,8 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  const baseline=architecturalBlueprint(kind,seed);
  const selected:Blueprint=kind==='apartment'?apartmentUnitBlueprint(seed,scale):
    scale==='small'||scale==='large'?sizedBlueprint(kind,seed,scale,baseline):baseline;
- const authored=ensureFacilityProgram(specializeBlueprint(selected,subtype),scale);
+ const authored=fitSpatialProgram(ensureFacilityProgram(
+   specializeBlueprint(selected,subtype),scale));
  // Compact buildings use the identical architectural grammar, with smaller
  // habitable rooms but never shrink the 48-unit door or operator clearance.
  const basePlan:Blueprint=scale!=='standard'?authored:{
