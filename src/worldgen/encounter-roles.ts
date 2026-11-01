@@ -8,6 +8,7 @@ import {encounterRng} from './encounter-rng.ts';
 export function assignEncounterRoles(site:Site,source:EncounterActorSpec[],
  groups:EncounterGroup[],premise:EncounterPremise,
  mission:OperationKind,seed:number):EncounterActorSpec[]{
+ void site;
  const rng=encounterRng(seed,8);
  const groupMap=new Map(groups.map(g=>[g.id,g]));
  return source.map((a,index)=>{
