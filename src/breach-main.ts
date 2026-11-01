@@ -20,6 +20,7 @@ import {weaponClearance} from './breach-weapon-clearance.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter}
  from './equipment-weapon-light-beam.ts';
 import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
+import {kitMedicalSupplies} from './equipment-medical-supplies.ts';
 import {lightControlState} from './equipment-weapon-light-ui.ts';
 import type {SiteScale} from './breach-site.ts';
 import {renderSnapshot,type RenderActor}
@@ -231,6 +232,7 @@ function applyCampaignSkills(){
    a.appearanceSeed=m.appearanceSeed;
    a.equipment=m.loadout;
     a.weaponConfiguration=m.weaponConfiguration;
+    a.medicalSupplies=kitMedicalSupplies(m.loadout);
     a.weaponLightOn=m.weaponConfiguration.slots.light==='light-compact';
    a.flashCharges=equippedFlashCharges(m.loadout);
    const protection=initialArmorIntegrity(m.loadout);
