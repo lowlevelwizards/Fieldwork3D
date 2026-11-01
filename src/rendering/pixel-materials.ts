@@ -5,13 +5,15 @@ import {pixelPattern,pixelRepeats,TILE_PIXELS,TILE_WORLD_SIZE,
 export {PIXEL_SURFACES,TEXELS_PER_OPERATOR,PIXEL_WORLD_SIZE,TILE_WORLD_SIZE}
  from './pixel-recipes.ts';
 export type {PixelSurface} from './pixel-recipes.ts';
+export const PIXEL_VARIANTS=4;
 export class PixelTextureLibrary {
  private textures=new Map<string,THREE.DataTexture>();
  get(kind:PixelSurface,variant=0):THREE.DataTexture{
-  const key=kind+':'+(variant|0);
+  const safeVariant=((variant|0)%PIXEL_VARIANTS+PIXEL_VARIANTS)%PIXEL_VARIANTS;
+  const key=kind+':'+safeVariant;
   let texture=this.textures.get(key);
   if(texture)return texture;
-  texture=new THREE.DataTexture(pixelPattern(kind,variant,TILE_PIXELS),
+  texture=new THREE.DataTexture(pixelPattern(kind,safeVariant,TILE_PIXELS),
     TILE_PIXELS,TILE_PIXELS,THREE.RGBAFormat,THREE.UnsignedByteType);
   texture.colorSpace=THREE.SRGBColorSpace;
   texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
