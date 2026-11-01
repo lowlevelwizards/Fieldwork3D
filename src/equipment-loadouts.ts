@@ -45,3 +45,14 @@ export const totalEquipmentMass=(loadout:EquipmentLoadout)=>
 export const loadoutItems=(loadout:EquipmentLoadout)=>
  LOADOUT_SLOTS.map(slot=>EQUIPMENT_CATALOG[loadout.slots[slot]])
   .filter((item):item is NonNullable<typeof item>=>!!item);
+
+/** Equipment 07: movement load is computed at deployment and when a kit
+ * changes, never per simulation frame. No penalty to light configurations. */
+export function loadMovementScale(loadout:EquipmentLoadout):number{
+ const kg=totalEquipmentMass(loadout);
+ return Math.max(.72,Math.min(1,1-Math.max(0,kg-10)*.012));
+}
+export function loadMobilityDescription(loadout:EquipmentLoadout):string{
+ const factor=loadMovementScale(loadout);
+ return factor>=.96?'LIGHT':factor>=.87?'STANDARD':factor>=.78?'HEAVY':'OVERLOADED';
+}
