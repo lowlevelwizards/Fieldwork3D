@@ -6,21 +6,24 @@ import {MATERIALS,surfaceResistance,type MaterialId} from './breach-materials.ts
 export type BarrierHit={fraction:number;material:MaterialId;thickness:number;
  coverIndex?:number};
 export type PenetrationOutcome={stoppedAt:number|null;remaining:number;
- penetrated:number[];stoppedMaterial:MaterialId|null};
+ penetrated:number[];stoppedMaterial:MaterialId|null;
+ stoppedCoverIndex:number|null};
 export function resolvePenetration(hits:readonly BarrierHit[],energy:number):
  PenetrationOutcome{
  let remaining=Math.max(0,energy),stoppedAt:number|null=null;
  let stoppedMaterial:MaterialId|null=null;
+ let stoppedCoverIndex:number|null=null;
  const penetrated:number[]=[];
  for(const hit of [...hits].sort((a,b)=>a.fraction-b.fraction)){
   if(hit.fraction<0||hit.fraction>1)continue;
   const profile=MATERIALS[hit.material];
   const cost=surfaceResistance(hit.material,hit.thickness);
   if(!profile.penetrable||remaining<=cost+1e-6){
-   stoppedAt=hit.fraction;stoppedMaterial=hit.material;break;
+   stoppedAt=hit.fraction;stoppedMaterial=hit.material;
+   stoppedCoverIndex=hit.coverIndex??null;break;
   }
   remaining=Math.max(0,remaining-cost);
   if(hit.coverIndex!==undefined)penetrated.push(hit.coverIndex);
  }
- return {stoppedAt,remaining,penetrated,stoppedMaterial};
+ return {stoppedAt,remaining,penetrated,stoppedMaterial,stoppedCoverIndex};
 }
