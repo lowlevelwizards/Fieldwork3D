@@ -1212,6 +1212,7 @@ export class TacticalScene3D{
       poseOperator(object.physical,{
         x:drawActor.x,z:drawActor.z,heading:drawActor.heading,
         velocity:actor.velocity,seconds:poseSeconds,stride:actor.stride,
+        appearanceSeed:actor.appearanceSeed,
         // A path collision may leave residual motor velocity while position
         // is stationary: feet should brace, not march in place.
         blocked:actor.blockedTime>.14&&
