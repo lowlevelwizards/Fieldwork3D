@@ -28,6 +28,8 @@ export type WindowOpening={
 export type WorldBounds={minX:number;minY:number;maxX:number;maxY:number};
 export type SiteScale='standard'|'expanded'|'small'|'medium'|'large';
 export type Site={
+  /** Nonpersistent authored practice map; ordinary missions never set this. */
+  training?:boolean;
   /** Authored semantic programs bypass index-based purpose assignment. */
   programLocked?:boolean;
   identity?:import('./worldgen/building-identity.ts').BuildingIdentity;
