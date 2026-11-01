@@ -64,7 +64,10 @@ try{
     if(message.type()==='warning'||message.type()==='error')
       errors.push('procedural console: '+message.text().slice(0,350));
   });
-  await live.goto(base.replace('breach.html','')+'?quick=1',{
+  // A reproducible procedural seed keeps startup/camera QA meaningful.
+  // Random seeds belong in the bounded 96-seed structural stress gate;
+  // screenshot capture must not choose an unpredictable worst-case map.
+  await live.goto(base.replace('breach.html','')+'?quick=1&seed=23',{
     waitUntil:'domcontentloaded'});
   await live.locator('#breach3dCanvas').waitFor({state:'visible'})
     .catch(async error=>{
