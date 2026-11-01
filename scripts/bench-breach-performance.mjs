@@ -58,6 +58,40 @@ function probes(seed,scale){
 }
 console.log('ENVIRONMENT',JSON.stringify({node:process.version,platform:process.platform,
  arch:process.arch}));
+
+function combatStress(){
+ const s=newSession(0);
+ // Repeatable unobstructed exterior shootout; keep actors alive so that
+ // frame costs measure sustained combat rather than only initial acquisition.
+ const blues=team(s),reds=enemies(s);
+ for(let i=0;i<blues.length;i++){
+  const a=blues[i];a.p={x:185,y:612+i*24};a.priorP={...a.p};
+  a.heading=0;a.weaponYaw=0;a.health=99;a.firePolicy='engage';
+  a.stability=1;a.weapon='smg';a.magazine=60;a.reserve=180;
+ }
+ for(let i=0;i<reds.length;i++){
+  const a=reds[i];a.p={x:315,y:612+i*24};a.priorP={...a.p};
+  a.heading=Math.PI;a.weaponYaw=Math.PI;a.health=99;
+  a.stability=1;a.weapon='smg';a.magazine=60;a.reserve=180;
+  a.contacted=true;a.alert='engaging';a.contact={...blues[0].p};
+ }
+ for(const a of s.operators)for(const b of s.operators)
+  if(a.side!==b.side)a.awareness.visualProgress[b.id]=1;
+ toggling(s);
+ const times=[],phases={};
+ const shotsBefore=s.nextShotId;
+ for(let i=0;i<180;i++){
+  const elapsed=time(()=>stepSession(s,1/60,(name,cost)=>{
+   phases[name]=(phases[name]??0)+cost;
+  }));
+  times.push(elapsed);
+ }
+ console.log('COMBAT',JSON.stringify({ticks:180,shots:s.nextShotId-shotsBefore,
+  actors:s.operators.length,sim:stats(times),
+  hot:Object.entries(phases).sort((a,b)=>b[1]-a[1]).slice(0,8)
+    .map(([name,cost])=>[name,+cost.toFixed(2)])}));
+}
+combatStress();
 for(const seed of [3,17,61]){
  probes(seed,'standard');
  profile({seed,scale:'standard',ticks:90});
