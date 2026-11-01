@@ -12,7 +12,7 @@ const profiles:Record<PixelSurface,MaterialProfile>={
  'painted-wood':{family:'manufactured',structure:'none',maxDarkening:3},
  'furniture-wood':{family:'manufactured',structure:'directional',maxDarkening:8},
  'rough-wood':{family:'manufactured',structure:'boards',maxDarkening:29},
- plaster:{family:'manufactured',structure:'none',maxDarkening:0},
+ plaster:{family:'manufactured',structure:'none',maxDarkening:3},
  brick:{family:'manufactured',structure:'joints',maxDarkening:38},
  cinderblock:{family:'manufactured',structure:'joints',maxDarkening:22},
  siding:{family:'manufactured',structure:'joints',maxDarkening:14},
