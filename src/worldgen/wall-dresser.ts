@@ -109,16 +109,16 @@ export function decorateWalls(site:Site,seed:number):Site{
     dist(wall.a.x,wall.a.y,wall.b.x,wall.b.y)-10);
    details.push({id:room.id+':egress:'+door.id+':'+index,roomId:room.id,kind,
     x:cx+nx*5.3,y:cy+ny*5.3,
-    height:kind==='exit-sign'?31:36,angle:Math.atan2(nx,ny),
-    width,depth:kind==='exit-sign'?7:13});
+    height:kind==='exit-sign'?31:43,angle:Math.atan2(nx,ny),
+    width,depth:kind==='exit-sign'?7:11});
   };
   if(spans.length)add(spans[0],'exit-sign',0);
   // A commercial entrance also gets a specific branded building panel,
   // never an irrelevant generic sign on a residential front door.
   if(door.id==='FRONT'&&
     ['retail','restaurant','office','garage','motel','clinic','utility',
-     'warehouse'].includes(site.archetype??'')&&spans.length>1)
-    add(spans[1],'business-sign',1);
+     'warehouse'].includes(site.archetype??'')&&spans.length)
+    add(spans[1]??spans[0],'business-sign',1);
  }
  return {...site,wallDetails:details};
 }
