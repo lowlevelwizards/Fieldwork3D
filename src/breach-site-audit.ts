@@ -14,6 +14,7 @@ import {measureSiteCompleteness,type CompletenessScore} from './worldgen/site-co
 import {assessSpaceQuality,type SpaceQuality} from './worldgen/space-quality.ts';
 import {assessAccessibilityClearance,type AccessibilityQuality} from './worldgen/accessibility-clearance.ts';
 import {inspectHumanJourneys,type JourneyAudit} from './worldgen/human-journeys.ts';
+import {measureRouteFriction,type RouteFriction} from './worldgen/route-friction.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type SiteAudit={seed:number;archetype:string;layout:string;
   rooms:number;doors:number;enemies:number;windows:number;
@@ -27,7 +28,8 @@ export type SiteAudit={seed:number;archetype:string;layout:string;
   unitContracts:UnitContractResult[];serviceIssues:ServiceIssue[];
   operationalRouteIssues:OperationalRouteIssue[];
   designQuality:CompletenessScore;spaceQuality:SpaceQuality;
-  accessibilityQuality:AccessibilityQuality;humanJourneys:JourneyAudit;errors:string[]};
+  accessibilityQuality:AccessibilityQuality;humanJourneys:JourneyAudit;
+  routeFriction:RouteFriction;errors:string[]};
 export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteAudit{
   return auditSite(generateSite(seed,scale));
 }
@@ -38,6 +40,8 @@ export function auditSite(site:Site):SiteAudit{
   const errors:string[]=[];
   const operationalRouteIssues:OperationalRouteIssue[]=[];
   let humanJourneys:JourneyAudit={checkedLegs:0,issues:[],inspected:[]};
+  let routeFriction:RouteFriction=measureRouteFriction(site.spawn[0]??{x:0,y:0},
+    site.objective,[],()=>false);
   try{
     if(site.spawn.length!==4)errors.push('expected four operator spawns');
     if(site.enemies.length<2)errors.push('insufficient enemies');
@@ -51,12 +55,18 @@ export function auditSite(site:Site):SiteAudit{
         !passable(p))errors.push(label+' is invalid');
     }
     const from=site.spawn[0];
+    let objectivePath:Pt[]=[];
     for(const [label,p] of [
       ['objective',site.objective] as const,
       ...site.enemies.map((p,i)=>['enemy '+i,p] as const)]){
-      if(passable(p)&&!route(from,p).length)
-        errors.push(label+' unreachable');
+      if(passable(p)){
+        const path=route(from,p);
+        if(label==='objective')objectivePath=path;
+        if(!path.length)errors.push(label+' unreachable');
+      }
     }
+    routeFriction=measureRouteFriction(from,site.objective,objectivePath,
+      p=>passable(p,13));
     // The existing mission A* is authoritative for reachability. Workstation
     // warnings are diagnostics, never a reason to discard a playable map.
     if(site.spawn.length)operationalRouteIssues.push(...inspectOperationalRoutes(
@@ -131,5 +141,6 @@ export function auditSite(site:Site):SiteAudit{
     serviceIssues:auditFixtureService(site),operationalRouteIssues,
     designQuality:measureSiteCompleteness(site),
     spaceQuality:assessSpaceQuality(site),
-    accessibilityQuality:assessAccessibilityClearance(site),humanJourneys,errors};
+    accessibilityQuality:assessAccessibilityClearance(site),humanJourneys,
+    routeFriction,errors};
 }

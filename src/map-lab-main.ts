@@ -58,7 +58,8 @@ function showFunctionalQuality(site:Site,audit:SiteAudit){
   audit.incompleteZones.length+' incomplete zones · '+
   audit.operationalRouteIssues.length+' work-route issues · '+
   audit.accessibilityQuality.issues.length+' accessibility-reference warnings · '+
-  audit.humanJourneys.issues.length+' journey warnings';
+  audit.humanJourneys.issues.length+' journey warnings · '+
+  audit.routeFriction.warnings.length+' movement-friction warnings';
  functionalWarnings.replaceChildren();
  const issues=[
   ...space.rooms.filter(r=>r.crowded).map(r=>({
@@ -81,6 +82,11 @@ function showFunctionalQuality(site:Site,audit:SiteAudit){
   ...audit.humanJourneys.issues.map(issue=>({
     label:issue.name+' / '+issue.to+' · '+issue.reason,
     roomId:site.rooms.find(r=>r.purpose===issue.to)?.id??''
+  })),
+  ...audit.routeFriction.warnings.map(reason=>({
+    label:'MAIN OBJECTIVE / '+reason+' · '+audit.routeFriction.detourRatio+
+      '× direct / '+Math.round(audit.routeFriction.narrowFraction*100)+'% tight',
+    roomId:''
   }))
  ];
  if(!issues.length){
