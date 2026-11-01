@@ -5,6 +5,7 @@ import {type Site,type Room,seeded} from '../breach-site.ts';
 import {type Obstacle,type Pt} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 import {relatedFurniturePositions} from './room-composition.ts';
+import {ROOM_CONTRACTS} from './room-contracts.ts';
 type Anchor='nw'|'ne'|'sw'|'se'|'west'|'east';
 type Item={id:string;anchor:Anchor};
 const compositions:Record<string,readonly Item[]>={
@@ -71,7 +72,7 @@ const zoneCompositions:Record<string,readonly (readonly Item[])[]>={
   [{id:'bench',anchor:'west'},{id:'chair',anchor:'se'}]]
 };
 const inside=(p:Pt,r:Room)=>p.x>=r.x&&p.x<=r.x+r.w&&p.y>=r.y&&p.y<=r.y+r.h;
-const overlap=(a:Obstacle,b:Obstacle,clearance=13)=>
+const overlap=(a:Obstacle,b:Obstacle,clearance=10)=>
  Math.abs(a.x-b.x)<(a.w+b.w)/2+clearance&&Math.abs(a.y-b.y)<(a.h+b.h)/2+clearance;
 function position(room:Room,w:number,h:number,side:Anchor):Pt{
  const left=room.x+w/2+13,right=room.x+room.w-w/2-13;
@@ -86,9 +87,30 @@ function position(room:Room,w:number,h:number,side:Anchor):Pt{
  case 'east':return {x:right,y:midY};
  }
 }
+/** Deterministic wall-parallel candidates fill the space left by coarse corner anchors.
+ * Only near-wall positions are offered; the navigable centre is protected.
+ */
+function perimeterPositions(room:Room,w:number,h:number):Pt[]{
+ const left=room.x+w/2+12,right=room.x+room.w-w/2-12;
+ const top=room.y+h/2+12,bottom=room.y+room.h-h/2-12;
+ if(left>right||top>bottom)return [];
+ const candidates:Pt[]=[];
+ const divisionsX=Math.min(5,Math.max(1,Math.floor((right-left)/28)));
+ const divisionsY=Math.min(5,Math.max(1,Math.floor((bottom-top)/28)));
+ for(let i=0;i<=divisionsX;i++){
+  const x=left+(right-left)*i/divisionsX;
+  candidates.push({x,y:top},{x,y:bottom});
+ }
+ for(let i=0;i<=divisionsY;i++){
+  const y=top+(bottom-top)*i/divisionsY;
+  candidates.push({x:left,y},{x:right,y});
+ }
+ return candidates;
+}
 export function furnishRooms(site:Site,seed:number):Site{
  const rng=seeded(seed^0x4f012f32);
  const output:Obstacle[]=[];
+ const furnishingIssues:NonNullable<Site['furnishingIssues']>=[];
  const reserved:Pt[]=[...site.spawn,...site.enemies,site.objective,site.extract];
  const exterior=site.cover.filter(o=>!site.rooms.some(r=>inside(o,r)));
  output.push(...exterior);
@@ -106,27 +128,52 @@ export function furnishRooms(site:Site,seed:number):Site{
   const available=(zoneCounts.get(zone)??0)>1&&alternate?
    alternate[Math.min(index,alternate.length-1)]:ordinary;
   const placed:Obstacle[]=[];
+  const compact=room.w<108||room.h<104;
+  const roomItems=compact?available.slice(0,1):available;
+  // Complete required functional groups in single-cell zones. Multi-cell
+  // zones already receive complementary authored compositions.
+  const required=(zoneCounts.get(zone)??0)===1?
+    (ROOM_CONTRACTS[room.purpose??'']?.required??[]):[];
+  const essential:Item[]=required.map(group=>{
+    const existing=roomItems.find(item=>group.includes(item.id));
+    if(existing)return existing;
+    const assetId=group.find(id=>{
+      const prop=propDefinition(id);
+      return prop?.solid&&prop.width<=room.w-24&&prop.depth<=room.h-24;
+    })??group[0];
+    return {id:assetId,anchor:'nw' as Anchor};
+  });
+  const selectedIds=new Set<string>();
+  const equipment:Item[]=[];
+  for(const item of [...essential,...roomItems]){
+    if(selectedIds.has(item.id))continue;
+    selectedIds.add(item.id);equipment.push(item);
+  }
   // Compact rooms still need defining fixtures (a toilet in a restroom,
   // an exam bed in a clinic), but never force large furniture inside them.
   if(room.w<72||room.h<72){
    output.push(...site.cover.filter(o=>inside(o,room)));continue;
   }
-  const compact=room.w<108||room.h<104;
-  const equipment=compact?available.slice(0,1):available;
   for(const [i,item] of equipment.entries()){
-   const asset=propDefinition(item.id);if(!asset||!asset.solid)continue;
+   const asset=propDefinition(item.id);
+   if(!asset||!asset.solid){furnishingIssues.push({roomId:room.id,fixture:item.id,reason:'missing-solid-asset'});continue;}
    // Reject an oversized furnishing instead of shrinking it into a toy.
    const w=asset.width,h=asset.depth;
-   if(w>room.w-24||h>room.h-24)continue;
+   if(w>room.w-24||h>room.h-24){
+    furnishingIssues.push({roomId:room.id,fixture:item.id,reason:'insufficient-room-size'});continue;
+   }
    const positions:Anchor[]=[item.anchor,'ne','sw','se','nw','west','east'];
    const rotation=Math.floor(rng()*4);
    const order=i===0?positions:[positions[0],...positions.slice(1+rotation),...positions.slice(1,1+rotation)];
    const candidates=[
      ...relatedFurniturePositions(room,item.id,w,h,placed),
      ...order.map(anchor=>position(room,w,h,anchor)),
+     ...perimeterPositions(room,w,h),
    ];
    let chosen:Obstacle|undefined;
    for(const p of candidates){
+    if(p.x-w/2<room.x+9||p.x+w/2>room.x+room.w-9||
+       p.y-h/2<room.y+9||p.y+h/2>room.y+room.h-9)continue;
     const candidate:Obstacle={...p,w,h,fixture:item.id,low:asset.cover==='low'};
     if(site.doors.some(d=>Math.hypot(p.x-(d.a.x+d.b.x)/2,p.y-(d.a.y+d.b.y)/2)<Math.max(compact?39:54,Math.max(w,h)/2+(compact?19:30))))continue;
     if((site.openings??[]).some(o=>Math.hypot(p.x-(o.a.x+o.b.x)/2,
@@ -136,9 +183,10 @@ export function furnishRooms(site:Site,seed:number):Site{
     chosen=candidate;break;
    }
    if(chosen)placed.push(chosen);
+   else furnishingIssues.push({roomId:room.id,fixture:item.id,reason:'all-placements-blocked'});
   }
   if(placed.length)output.push(...placed);
   else output.push(...site.cover.filter(o=>inside(o,room)));
  }
- return {...site,cover:output};
+ return {...site,cover:output,furnishingIssues};
 }
