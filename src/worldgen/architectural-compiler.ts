@@ -5,6 +5,7 @@
  */
 import {architecturalBlueprint,type Blueprint} from './architectural-program.ts';
 import {sizedBlueprint} from './size-blueprints.ts';
+import {relationshipScore,allowSecondaryConnection} from './room-relationships.ts';
 import {circulationFor,circulationScore,loopChance,type CirculationStyle} from './circulation-grammar.ts';
 import {type Site,type Room,type BuildingArchetype,type SiteScale,seeded} from '../breach-site.ts';
 import {type Pt,type Door,type Segment} from '../breach-core.ts';
@@ -26,13 +27,13 @@ const straight=(a:Cell,b:Cell)=>{
  if(a.role===b.role&&openRoles.has(a.role))return true;
  return a.room.kind==='hall'&&b.room.kind==='hall';
 };
-const weight=(a:Cell,b:Cell,rng:()=>number,style:CirculationStyle)=>{
+const weight=(a:Cell,b:Cell,rng:()=>number,style:CirculationStyle,kind:BuildingArchetype)=>{
  if(straight(a,b))return -120;
  const semantic=circulationScore(style,
   {role:a.role,hall:a.room.kind==='hall'},
   {role:b.role,hall:b.room.kind==='hall'});
  const sensitive=protectedRoles.has(a.role)&&protectedRoles.has(b.role)?38:0;
- return semantic+sensitive+rng()*6;
+ return semantic+sensitive+relationshipScore(kind,a.role,b.role)+rng()*6;
 };
 function cut(wall:Segment,id:string,walls:Segment[],doors:Door[]){
  const length=span(wall);
@@ -82,7 +83,7 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   const i=lookup.get(key(row,col));if(i===undefined)return false;
   const a=lookup.get(key(c.row,c.col))!,neighbor=cells[i];
   internal.push({a,b:i,wall,length:span(wall),orientation,
-   score:weight(c,neighbor,rng,circulationStyle),
+   score:weight(c,neighbor,rng,circulationStyle,kind),
    free:straight(c,neighbor),selected:false});
   return true;
  };
@@ -130,6 +131,7 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   if(edge.free)continue;
   const a=cells[edge.a],b=cells[edge.b];
   const optionalLoop=!edge.selected&&edge.length>=86&&
+    allowSecondaryConnection(kind,a.role,b.role)&&
     rng()<loopChance(circulationStyle,a,b);
   if(edge.selected||optionalLoop)cut(edge.wall,'D'+id++,walls,doors);
   else walls.push(edge.wall);

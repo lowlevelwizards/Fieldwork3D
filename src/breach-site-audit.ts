@@ -4,6 +4,7 @@
 import {activateSite,passable,route,type Pt} from './breach-core.ts';
 import {generateSite,type SiteScale} from './breach-site.ts';
 import {assessArchitecture} from './worldgen/architecture-quality.ts';
+import {auditRoomRelationships,type SpatialRelationshipDiagnostic} from './worldgen/room-relationships.ts';
 import {assessRoomContracts,type RoomContractResult} from './worldgen/room-contracts.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type SiteAudit={seed:number;archetype:string;layout:string;
@@ -13,6 +14,7 @@ export type SiteAudit={seed:number;archetype:string;layout:string;
   roomFill:{id:string;role:string;fixtures:number;areaM2:number}[];emptyRooms:string[];
   roomContracts:RoomContractResult[];incompleteZones:string[];
   furnishingIssues:{roomId:string;fixture:string;reason:string}[];
+  undesirableDoorways:SpatialRelationshipDiagnostic[];
   errors:string[]};
 export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteAudit{
   const site=generateSite(seed,scale);
@@ -94,5 +96,6 @@ export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteA
     functionalRooms:roomFill.length,roomFill,
     emptyRooms:roomFill.filter(r=>r.fixtures===0).map(r=>r.id),
     roomContracts,incompleteZones:roomContracts.filter(r=>!r.complete).map(r=>r.zoneId),
-    furnishingIssues:site.furnishingIssues??[],errors};
+    furnishingIssues:site.furnishingIssues??[],
+    undesirableDoorways:auditRoomRelationships(site),errors};
 }
