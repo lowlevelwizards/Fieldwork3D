@@ -12,7 +12,7 @@ import {
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,stepSession,liveVisibility,
   planReload,reloadNow,planFlash,moveFlashTarget,flashTrajectory,
-  cycleWeapon,
+  cycleWeapon,toggleWeaponLight,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import type {SiteScale} from './breach-site.ts';
@@ -211,6 +211,7 @@ function applyCampaignSkills(){
    a.appearanceSeed=m.appearanceSeed;
    a.equipment=m.loadout;
     a.weaponConfiguration=m.weaponConfiguration;
+    a.weaponLightOn=m.weaponConfiguration.slots.light==='light-compact';
    a.flashCharges=equippedFlashCharges(m.loadout);
    const protection=initialArmorIntegrity(m.loadout);
    a.armorIntegrity=Math.min(protection.torso,m.armorCondition.torso);
@@ -2330,6 +2331,16 @@ ui.clear.addEventListener('click',()=>{clearPlan(state,selected);selectedNode=nu
 ui.undo.addEventListener('click',()=>{undoPlan(state,selected);selectedNode=null;updateHud();});
 ui.redo.addEventListener('click',()=>{redoPlan(state,selected);selectedNode=null;updateHud();});
 ui.wait.addEventListener('click',()=>{planWait(state,selected,.5);updateHud();});
+const fieldLightButton=document.createElement('button');
+fieldLightButton.type='button';fieldLightButton.textContent='WEAPON LIGHT';
+fieldLightButton.setAttribute('aria-label','Toggle selected operator weapon light');
+fieldLightButton.addEventListener('click',()=>{
+ if(replaying)return;
+ toggleWeaponLight(state,selected);updateHud();
+ fieldLightButton.setAttribute('aria-pressed',String(!!team(state)
+  .find(a=>a.id===selected)?.weaponLightOn));
+});
+ui.siteSettings.append(fieldLightButton);
 ui.loadout.addEventListener('click',()=>{
   if(campaignMode!=='mission')cycleWeapon(state,selected);
   updateHud();
