@@ -69,7 +69,8 @@ import {magazineKit,fullestMagazineIndex,
   reloadDuration as reloadTiming,type MagazineItem,type ReloadMode}
   from './breach-magazines.ts';
 import {KICK_DURATION} from './breach-door-actions.ts';
-import {CASING_LIMIT,type EjectedCasing} from './breach-effects.ts';
+import {CASING_LIMIT,IMPACT_MARK_LIMIT,BLOOD_MARK_LIMIT,
+  type EjectedCasing} from './breach-effects.ts';
 import {chooseFall,hitRegion,type WoundRegion,type FallPose}
   from './breach-wounds.ts';
 
@@ -2004,13 +2005,12 @@ function emitMaterialEvents(s:Session,from:Pt,to:Pt,
   const key=Math.round(p.x/3)+','+Math.round(p.y/3);
   if(unique.has(key))continue;unique.add(key);
   const response=materialResponse(hit.material);
-  s.impactMarks.push({id:s.nextEffectId++,p,
+  retainImpactMark(s,{id:s.nextEffectId++,p,
     surface:response.visual,age:0,height:20});
   if(response.sound!=='glass')
     hear(s,p,response.radius,'impact-'+response.sound);
  }
- if(s.impactMarks.length>92)
-  s.impactMarks.splice(0,s.impactMarks.length-92);
+
 }
 /** Mutate only struck cover, never the planning ray or visual renderer. */
 function damageStruckCover(s:Session,hits:readonly {index:number;fraction:number}[],
@@ -2041,6 +2041,24 @@ function damageStruckCover(s:Session,hits:readonly {index:number;fraction:number
   }
  }
  if(touched.size)COVER.splice(0,COVER.length,...s.coverState);
+}
+/** Keep decorative evidence bounded separately from authoritative hits.
+ * Nearby blood spatters merge rather than creating dozens of overlapping
+ * translucent meshes during sustained automatic fire. */
+function retainImpactMark(s:Session,mark:ImpactMark){
+ if(mark.surface==='blood'){
+  const existing=s.impactMarks.find(other=>other.surface==='blood'&&
+    d(other.p,mark.p)<6);
+  if(existing){existing.age=0;return;}
+  const blood=s.impactMarks.filter(other=>other.surface==='blood');
+  if(blood.length>=BLOOD_MARK_LIMIT){
+   const oldest=s.impactMarks.findIndex(other=>other.surface==='blood');
+   if(oldest>=0)s.impactMarks.splice(oldest,1);
+  }
+ }
+ s.impactMarks.push(mark);
+ if(s.impactMarks.length>IMPACT_MARK_LIMIT)
+  s.impactMarks.splice(0,s.impactMarks.length-IMPACT_MARK_LIMIT);
 }
 /** Commit impacts only for the actual shot path, never aim/LOS queries. */
 function shatterStruckWindows(s:Session,paneHits:readonly number[],force:number){
@@ -2096,9 +2114,9 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     shotYaw:yaw,mode:'ads',spread,muzzleHeight:muzzle.y,
     impactHeight:height,firedAt:s.seconds,
     healthBefore:0,healthAfter:0,down:false,surface:impact.surface});
-  s.impactMarks.push({id:s.nextEffectId++,p:clone(impact.end),
+  retainImpactMark(s,{id:s.nextEffectId++,p:clone(impact.end),
     surface:impact.surface,height,age:0});
-  if(s.impactMarks.length>92)s.impactMarks.shift();
+
   s.casings.push({id:shotId,at:s.seconds,weapon:a.weapon,side:a.side,
     x:muzzle.x-4*Math.cos(yaw),z:muzzle.z-4*Math.sin(yaw),
     y:muzzle.y-3,heading:yaw});
@@ -2296,9 +2314,9 @@ function fire(s:Session,a:TeamActor,dt:number){
   // the correct actors without guessing from proximity or team color.
   const impactHeight=hit?aimHeight(target.posture==='crouch'):
     impact.surface==='dust'?1:14;
-  s.impactMarks.push({id:s.nextEffectId++,p:clone(end),
+  retainImpactMark(s,{id:s.nextEffectId++,p:clone(end),
     surface:impact.surface,height:impactHeight,age:0});
-  if(s.impactMarks.length>92)s.impactMarks.shift();
+
   const shotId=s.nextShotId++;
   const region=hitRegion(shotId);
   const nearSolid=COVER.some(c=>!c.low&&
