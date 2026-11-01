@@ -17,7 +17,7 @@ import {
   planCasualtyTransport,planRecoverMedical,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
-import {equippedEntryMethods} from './equipment-entry-tools.ts';
+import {equippedEntryMethods,issuedWedges} from './equipment-entry-tools.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter}
@@ -237,6 +237,7 @@ function applyCampaignSkills(){
    a.equipment=m.loadout;
     a.weaponConfiguration=m.weaponConfiguration;
     a.medicalSupplies={...m.medicalSupplies};
+    a.wedgeRemaining=issuedWedges(m.loadout);
     a.weaponLightOn=m.weaponConfiguration.slots.light==='light-compact';
    a.flashCharges=equippedFlashCharges(m.loadout);
    const protection=initialArmorIntegrity(m.loadout);
@@ -1563,6 +1564,10 @@ function architecture(){
         if(i===0)draw.moveTo(tip.x,tip.y);else draw.lineTo(tip.x,tip.y);
       }
       draw.stroke();draw.setLineDash([]);draw.restore();
+    }
+    if(door.wedged){
+      circle(center.x,center.y,4.5,'#e8b36d');
+      line({x:center.x-5,y:center.y+6},{x:center.x+5,y:center.y+6},'#33271b',2);
     }
     if(visuallyOpen<.14){
       line(a,b,'#1c2727',15);
