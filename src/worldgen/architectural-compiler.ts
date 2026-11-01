@@ -5,6 +5,7 @@
  */
 import {architecturalBlueprint,type Blueprint} from './architectural-program.ts';
 import {sizedBlueprint} from './size-blueprints.ts';
+import {apartmentUnitBlueprint} from './apartment-units.ts';
 import {relationshipScore,allowSecondaryConnection} from './room-relationships.ts';
 import {circulationFor,circulationScore,loopChance,type CirculationStyle} from './circulation-grammar.ts';
 import {type Site,type Room,type BuildingArchetype,type SiteScale,seeded} from '../breach-site.ts';
@@ -24,8 +25,16 @@ const side=(x:number,y:number,xx:number,yy:number):Segment=>
  ({a:{x,y},b:{x:xx,y:yy}});
 const key=(row:number,col:number)=>row+':'+col;
 const straight=(a:Cell,b:Cell)=>{
+ if(a.room.unitId!==b.room.unitId)return false;
  if(a.role===b.role&&openRoles.has(a.role))return true;
  return a.room.kind==='hall'&&b.room.kind==='hall';
+};
+const forbiddenUnitConnection=(a:Cell,b:Cell)=>{
+ const u=a.room.unitId,v=b.room.unitId;
+ if(u&&v&&u!==v)return true;
+ if(u===v)return false;
+ const privateRoom=u?a:b;
+ return privateRoom.role!=='living';
 };
 const weight=(a:Cell,b:Cell,rng:()=>number,style:CirculationStyle,kind:BuildingArchetype)=>{
  if(straight(a,b))return -120;
@@ -49,8 +58,8 @@ function cut(wall:Segment,id:string,walls:Segment[],doors:Door[]){
 export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  scale:SiteScale='expanded'):Site{
  const baseline=architecturalBlueprint(kind,seed);
- const authored:Blueprint=scale==='small'||scale==='large'?
-   sizedBlueprint(kind,seed,scale,baseline):baseline;
+ const authored:Blueprint=kind==='apartment'?apartmentUnitBlueprint(seed,scale):
+   scale==='small'||scale==='large'?sizedBlueprint(kind,seed,scale,baseline):baseline;
  // Compact buildings use the identical architectural grammar, with smaller
  // habitable rooms but never shrink the 48-unit door or operator clearance.
  const basePlan:Blueprint=scale!=='standard'?authored:{
@@ -79,7 +88,8 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  for(let row=0;row<b.cells.length;row++)for(let col=0;col<b.widths.length;col++){
   const role=b.cells[row][col];if(!role)continue;
   const id='R'+(cells.length+1);
-  const room:Room={id,zoneId:openRoles.has(role)?'ZONE-'+role:id,
+  const room:Room={id,unitId:b.unitIds?.[row]?.[col]??undefined,
+   zoneId:openRoles.has(role)?'ZONE-'+role:id,
    x:xs[col],y:ys[row],w:b.widths[col],h:b.depths[row],
    purpose:role,kind:role==='hallway'?'hall':'room',
    tone:(role.length+(role.charCodeAt(0)||0))%4};
@@ -118,6 +128,7 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  for(const edge of internal)if(edge.free){edge.selected=true;union(edge.a,edge.b);}
  for(const edge of internal.slice().sort((a,b)=>a.score-b.score||
    a.a-b.a||a.b-b.b))if(!edge.selected&&edge.length>=68&&
+   !forbiddenUnitConnection(cells[edge.a],cells[edge.b])&&
    union(edge.a,edge.b))edge.selected=true;
  // A functional zone is a *connected* cluster of matching room rectangles.
  // Two garage bays divided by a service aisle are not one giant shared bay.
@@ -140,6 +151,7 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   if(edge.free)continue;
   const a=cells[edge.a],b=cells[edge.b];
   const optionalLoop=!edge.selected&&edge.length>=86&&
+    !forbiddenUnitConnection(a,b)&&
     allowSecondaryConnection(kind,a.role,b.role)&&
     rng()<loopChance(circulationStyle,a,b);
   if(edge.selected||optionalLoop)cut(edge.wall,'D'+id++,walls,doors);
@@ -298,10 +310,17 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   walls.splice(index,1);
   cut(candidate.wall,'COURT-'+(++courtDoors),walls,doors);
  }
+ const apartmentUnits=new Map<string,string[]>();
+ if(kind==='apartment')for(const c of cells){
+  const unitId=c.room.unitId;if(!unitId)continue;
+  apartmentUnits.set(unitId,[...(apartmentUnits.get(unitId)??[]),c.room.id]);
+ }
+ const units:NonNullable<Site['units']>=[...apartmentUnits].map(([id,roomIds])=>
+  ({id,kind:'apartment',roomIds}));
  const west=xs[0],east=xs[xs.length-1],north=ys[0],south=ys[ys.length-1];
  return {seed,name:b.family.toUpperCase(),archetype:kind,scale,
    planFamily:b.family,programLocked:true,circulationStyle,
-   rooms:cells.map(c=>c.room),walls,doors,openings,cover:[],
+   rooms:cells.map(c=>c.room),walls,doors,openings,cover:[],units,
    entrance,spawn,enemies,objective,extract:point(frontX,frontY+117),
    roomCount:habitable.length,layout:'corridor',
    bounds:{minX:Math.min(0,west-80),minY:Math.min(0,north-80),

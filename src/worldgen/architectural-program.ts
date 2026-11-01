@@ -6,6 +6,8 @@ import type {BuildingArchetype} from '../breach-site.ts';
 export type Blueprint={kind:BuildingArchetype;family:string;
   widths:readonly number[];depths:readonly number[];
   cells:readonly (readonly (string|null)[])[];
+  /** Optional ownership; null indicates public shared circulation. */
+  unitIds?:readonly (readonly (string|null)[])[];
   /** Frontage must always open into a public / circulation space. */
   front:{col:number;row:number};
 };

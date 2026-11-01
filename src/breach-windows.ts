@@ -28,6 +28,7 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
   const minY=Math.min(...site.rooms.map(r=>r.y));
   const maxY=Math.max(...site.rooms.map(r=>r.y+r.h));
   const desired=site.archetype==='garage'?1:
+    site.archetype==='apartment'?Math.min(12,Math.max(3,(site.units?.length??1)*2)):
     site.archetype==='house'?2:site.archetype==='warehouse'?2:3;
   const eligible=site.walls.map((wall,index)=>{
     const horizontal=Math.abs(wall.a.y-wall.b.y)<.01;
