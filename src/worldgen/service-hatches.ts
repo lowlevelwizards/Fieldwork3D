@@ -49,11 +49,20 @@ export function addServiceHatches(site:Site,seed:number):Site{
  * walk-through if a layout recovery pass replaces its obstacle list.
  */
 export function enforceServiceHatchBarriers(site:Site):Site{
- const cover=site.cover.slice();
+ // Rebuild exactly one collider for every authoritative glass aperture and
+ // every serving cutout. The facade pass necessarily removes original sills
+ // while replacing its window geometry, so a missing hatch parapet must not
+ // depend on a previous dressing pass retaining its obstacle object.
+ const cover=site.cover.filter(c=>
+   c.fixture!=='window-sill'&&c.fixture!=='glass-barrier');
+ for(const w of site.windows??[]){
+  cover.push({x:w.x,y:w.y,
+    w:w.vertical?10:w.width,h:w.vertical?w.width:10,
+    low:true,fixture:w.sillHeight===0?'glass-barrier':'window-sill'});
+ }
  for(const opening of site.openings??[]){
   if(opening.kind!=='serving')continue;
   const center={x:(opening.a.x+opening.b.x)/2,y:(opening.a.y+opening.b.y)/2};
-  if(cover.some(c=>c.low&&dist(center,{x:c.x,y:c.y})<1))continue;
   const vertical=Math.abs(opening.a.x-opening.b.x)<1;
   const width=dist(opening.a,opening.b);
   cover.push({x:center.x,y:center.y,w:vertical?10:width,
