@@ -28,7 +28,7 @@ export function materialForFixture(id?:string):MaterialId{
  if(softFixtures.has(id))return 'upholstery';
  if(metalFixtures.has(id))return 'sheet-metal';
  if(strongWood.has(id))return 'hardwood';
- if(id==='window-pane')return 'glass';
+ if(id==='window-pane'||id==='glass-barrier')return 'glass';
  if(id==='window-sill'||id==='masonry')return 'brick';
  return 'softwood';
 }
