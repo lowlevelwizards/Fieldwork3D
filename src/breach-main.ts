@@ -26,6 +26,7 @@ import {parseOperationHistory,addOperationRecord,
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
+import {magazineKit} from './breach-magazines.ts';
 import {doorReachable} from './breach-door.ts';
 import {canRelocateCover} from './breach-movable-cover.ts';
 import {INTEL_MODES,doorKnown,wallKnown,roomKnown,
@@ -169,7 +170,17 @@ function applyCampaignSkills(){
  if(campaignMode!=='mission'||!campaign)return;
  for(const a of team(state)){
   const m=campaign.operators.find(x=>x.id===a.id);
-  if(m){a.name=m.callsign;a.skills={...m.skills};}
+  if(m){
+   a.name=m.callsign;a.skills={...m.skills};a.weapon=m.weapon;
+   a.magazine=m.magazine;a.reserve=m.reserve;
+   a.insertedMagazineId=a.id+'/'+a.weapon+'/loaded';
+   a.spareMagazines=a.weapon==='shotgun'?[]:
+    magazineKit(a.id,a.weapon,a.reserve,WEAPONS[a.weapon].capacity);
+   if(m.recoveryDays>0&&m.injuries>0){
+    a.injuryStage=Math.max(a.injuryStage,Math.min(2,m.injuries));
+    a.health=Math.min(a.health,4-a.injuryStage);
+   }
+  }
  }
 }
 let state:Session=newSession(0,legacyStudy?undefined:initialSiteSeed,
@@ -196,7 +207,12 @@ function recordCompletedOperation(){
     grade:stats.grade,elapsed:stats.time,
     participatingIds:members.map(a=>a.id),
     casualties:members.filter(a=>a.health<=0).map(a=>a.id),
-    objective:stats.objective,events:[]
+    objective:stats.objective,events:[],
+    performance:members.map(a=>({
+     id:a.id,shots:a.shots,hits:a.hits,pointShots:a.pointShots,
+     aimedShots:a.aimedShots,longHits:a.longHits,injuryStage:a.injuryStage,
+     survived:a.health>0,magazine:a.magazine,reserve:a.reserve
+    }))
    };
    campaign=resolveOperation(campaign,result);saveCampaign();return;
   }
