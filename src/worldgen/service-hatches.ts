@@ -43,3 +43,21 @@ export function addServiceHatches(site:Site,seed:number):Site{
  void seed;
  return {...site,walls,openings,cover};
 }
+
+/** Restore the physical parapet after downstream furnishing and window dressing.
+ * This is idempotent and prevents any servicing aperture from becoming a full-height
+ * walk-through if a layout recovery pass replaces its obstacle list.
+ */
+export function enforceServiceHatchBarriers(site:Site):Site{
+ const cover=site.cover.slice();
+ for(const opening of site.openings??[]){
+  if(opening.kind!=='serving')continue;
+  const center={x:(opening.a.x+opening.b.x)/2,y:(opening.a.y+opening.b.y)/2};
+  if(cover.some(c=>c.low&&dist(center,{x:c.x,y:c.y})<1))continue;
+  const vertical=Math.abs(opening.a.x-opening.b.x)<1;
+  const width=dist(opening.a,opening.b);
+  cover.push({x:center.x,y:center.y,w:vertical?10:width,
+   h:vertical?width:10,low:true,fixture:'window-sill'});
+ }
+ return {...site,cover};
+}
