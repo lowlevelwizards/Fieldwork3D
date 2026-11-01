@@ -10,6 +10,7 @@ import {assignEncounterActivities} from './encounter-activities.ts';
 import {assignEncounterRoutines} from './encounter-routines.ts';
 import {assignEncounterRoles} from './encounter-roles.ts';
 import {assignExteriorOccupants} from './encounter-exteriors.ts';
+import {stabilizeEncounterReachability} from './encounter-reachability.ts';
 export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
  if(site.training)return site;
  const seed=context.seed??site.seed;
@@ -32,10 +33,11 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
  }));
  const composition=composeEncounterGroups(site,provisional,premise,seed);
  const placement=placeEncounterActors(site,composition.actors,composition.groups,seed);
+ const spatial=stabilizeEncounterReachability(site,
+   assignExteriorOccupants(site,assignEncounterRoles(site,
+     placement.actors,placement.groups,premise,mission,seed),premise,seed));
  const actors=assignEncounterRoutines(site,
-  assignEncounterActivities(site,assignExteriorOccupants(site,
-    assignEncounterRoles(site,placement.actors,placement.groups,premise,
-      mission,seed),premise,seed),premise,seed),seed);
+   assignEncounterActivities(site,spatial.actors,premise,seed),seed);
  const rooms=site.rooms.filter(r=>r.kind==='room');
  const occupiedZones=new Set(actors.map(a=>a.zoneId).filter(Boolean)).size;
  const zones=new Set(rooms.map(r=>r.zoneId??r.id));
@@ -44,11 +46,14 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
   scale:site.scale??'standard',premise,mission,
   risk:context.risk??1,
   expectedOccupancy:site.identity?.capacity??actors.length,hostileBudget:target,
-  groups:placement.groups,actors,
+  groups:placement.groups.map(g=>({...g,
+    members:g.members.filter(id=>actors.some(a=>a.id===id))}))
+    .filter(g=>g.members.length>0),actors,
   diagnostics:{targetHostiles:target,placedHostiles:actors.length,
-   rejected:placement.rejected,fallbacks:placement.fallbacks,
+   rejected:placement.rejected,fallbacks:placement.fallbacks+spatial.rehomed,
    occupiedZones,emptyZones:Math.max(0,zones.size-occupiedZones),
-   notes:actors.length<target?['physical capacity reduced hostile count']:[]}
+   notes:[...(actors.length<target?['physical capacity reduced hostile count']:[]),
+     ...(spatial.rehomed?['repositioned unreachable hostile positions']:[])]}
  };
  return {...site,enemies:actors.map(a=>({...a.position})),
   enemyHeadings:actors.map(a=>a.heading),encounter:plan};
