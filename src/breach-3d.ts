@@ -1547,6 +1547,7 @@ export class TacticalScene3D{
       const clearance=weaponClearance({
         x:drawActor.x,z:drawActor.z,heading:drawActor.heading,
         weaponYaw:drawActor.weaponYaw,weapon:actor.weapon,
+         weaponConfiguration:actor.weaponConfiguration,
         aim:actor.aim,velocity:actor.velocity,recoil:actor.recoil,
         posture:actor.posture,threatRange
       },s.doors);
@@ -1555,6 +1556,7 @@ export class TacticalScene3D{
         velocity:actor.velocity,seconds:poseSeconds,stride:actor.stride,
         appearanceSeed:actor.appearanceSeed,
         equipment:actor.equipment,
+         weaponConfiguration:actor.weaponConfiguration,
         flashCharges:actor.flashCharges,
         // A path collision may leave residual motor velocity while position
         // is stationary: feet should brace, not march in place.
