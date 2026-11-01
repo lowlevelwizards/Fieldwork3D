@@ -34,8 +34,13 @@ function updateLabels(){
  const assessments=assessRoomContracts(site);
  if(el<HTMLInputElement>('rooms').checked)for(const room of site.rooms){
   const button=document.createElement('button');
-  button.textContent=(room.purpose??room.kind).toUpperCase();
-  button.title=room.id+' · '+Math.round(room.w)+' × '+Math.round(room.h);
+  const verdict=assessments.find(a=>a.roomIds.includes(room.id));
+  const showIssues=el<HTMLInputElement>('needs').checked;
+  button.className=showIssues&&verdict&&!verdict.complete?'room-incomplete':'room-complete';
+  button.textContent=(room.purpose??room.kind).toUpperCase()+
+    (showIssues&&verdict&&!verdict.complete?' !':'');
+  button.title=room.id+' · '+Math.round(room.w)+' × '+Math.round(room.h)+
+    (verdict&&!verdict.complete?' · missing '+verdict.missing.length+' required groups':'');
   button.addEventListener('click',()=>{
    const contract=assessments.find(a=>a.roomIds.includes(room.id));
    status.textContent=room.id+' / '+(room.purpose??room.kind)+' · '+
@@ -115,6 +120,7 @@ el<HTMLButtonElement>('iso').addEventListener('click',()=>stage.setMode('iso'));
 el<HTMLButtonElement>('top').addEventListener('click',()=>stage.setMode('top'));
 el<HTMLButtonElement>('fit').addEventListener('click',()=>stage.resetCamera());
 el<HTMLInputElement>('rooms').addEventListener('change',updateLabels);
+el<HTMLInputElement>('needs').addEventListener('change',updateLabels);
 el<HTMLInputElement>('cover').addEventListener('change',updateLabels);
 el<HTMLInputElement>('doors').addEventListener('change',updateLabels);
 let pointers=new Map<number,Pt>(),lastMid:Pt|null=null,lastGap=0;

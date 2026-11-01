@@ -7,7 +7,7 @@
 header{position:fixed;top:env(safe-area-inset-top);left:0;right:0;z-index:12;background:#1c302ded;border-bottom:1px solid #678278;padding:10px 13px;display:flex;align-items:center;justify-content:space-between}
 header strong{font-size:16px;letter-spacing:.09em}a{color:#e0c38e}#controls{position:fixed;bottom:env(safe-area-inset-bottom);left:0;right:0;z-index:12;background:#20332ff0;border-top:1px solid #7b8e7c;padding:12px;display:grid;gap:9px;max-height:40dvh;overflow:auto;touch-action:pan-y}
 .row{display:flex;align-items:center;flex-wrap:wrap;gap:8px}label{font-weight:600;font-size:11px}button,input,select,#playSite{background:#3b544a;color:#f5efdf;border:1px solid #718f80;border-radius:5px;padding:8px;min-height:35px;font:12px system-ui;touch-action:manipulation}button:active{background:#ac9167}input[type=number]{width:110px}select{flex:1;min-width:110px}
-#info{font:11px/1.5 ui-monospace,monospace;color:#dbdfd4;white-space:pre-wrap}#labels{position:fixed;inset:0;pointer-events:none;z-index:8}#labels button{position:absolute;transform:translate(-50%,-50%);padding:3px 5px;min-height:21px;font:10px ui-monospace,monospace;white-space:nowrap;background:#20382cd9;border:1px solid #9b956e;pointer-events:auto}#labels .door-label{background:#654a34d9;border-color:#d1a66d}#labels .cover-dot{position:absolute;width:7px;height:7px;background:#d6ae75;border:1px solid #1d2e29;border-radius:50%;pointer-events:none}
+#info{font:11px/1.5 ui-monospace,monospace;color:#dbdfd4;white-space:pre-wrap}#labels{position:fixed;inset:0;pointer-events:none;z-index:8}#labels button{position:absolute;transform:translate(-50%,-50%);padding:3px 5px;min-height:21px;font:10px ui-monospace,monospace;white-space:nowrap;background:#20382cd9;border:1px solid #9b956e;pointer-events:auto}#labels .room-incomplete{background:#714b38e6;border-color:#e3a27a;color:#fff0dc}#labels .room-complete{background:#20382cd9}#labels .door-label{background:#654a34d9;border-color:#d1a66d}#labels .cover-dot{position:absolute;width:7px;height:7px;background:#d6ae75;border:1px solid #1d2e29;border-radius:50%;pointer-events:none}
 @media(max-width:450px){#controls{max-height:37dvh;padding:9px}.row{gap:5px}button,select,input{min-height:33px;font-size:11px}}
 </style></head>
 <body><header><strong>FIELDWORK / MAP LAB</strong><a href="./breach.html">BACK TO GAME</a></header>
@@ -18,6 +18,7 @@ header strong{font-size:16px;letter-spacing:.09em}a{color:#e0c38e}#controls{posi
  <div class="row"><label for="seed">SEED</label><input id="seed" type="number" min="1" max="4294967295" value="101"><button id="generate">GENERATE</button><button id="next">NEXT SEED</button><a id="playSite" href="./breach.html">PLAY THIS SITE</a></div>
  <div class="row"><button id="iso">ISO</button><button id="top">TOP</button><button id="fit">FIT</button>
   <label><input id="rooms" type="checkbox" checked> Rooms</label>
+  <label><input id="needs" type="checkbox" checked> Missing essentials</label>
   <label><input id="cover" type="checkbox"> Cover</label>
   <label><input id="doors" type="checkbox"> Doors</label></div>
  <output id="info" role="status" aria-live="polite"></output>
