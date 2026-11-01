@@ -66,7 +66,7 @@ import {operationBrief,assessOperation,
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {initialIntel,observeIntel,discoverContactCover,routeWithIntel,intelPassable,doorKnown,
   type IntelMode,type IntelState} from './breach-intel.ts';
-import {initialArmorIntegrity,resolveArmorImpact} from './equipment-armor.ts';
+import {resolveArmorImpact} from './equipment-armor.ts';
 import {magazineKit,fullestMagazineIndex,
   reloadDuration as reloadTiming,type MagazineItem,type ReloadMode}
   from './breach-magazines.ts';
