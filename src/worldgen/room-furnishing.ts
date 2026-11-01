@@ -72,7 +72,6 @@ const zoneCompositions:Record<string,readonly (readonly Item[])[]>={
   [{id:'chair',anchor:'nw'},{id:'chair',anchor:'se'}],
   [{id:'bench',anchor:'west'},{id:'chair',anchor:'se'}]]
 };
-const inside=(p:Pt,r:Room)=>p.x>=r.x&&p.x<=r.x+r.w&&p.y>=r.y&&p.y<=r.y+r.h;
 const overlap=(a:Obstacle,b:Obstacle,clearance=10)=>
  Math.abs(a.x-b.x)<(a.w+b.w)/2+clearance&&Math.abs(a.y-b.y)<(a.h+b.h)/2+clearance;
 function position(room:Room,w:number,h:number,side:Anchor):Pt{
@@ -161,11 +160,11 @@ function perimeterPositions(room:Room,w:number,h:number):Pt[]{
 }
 export function furnishRooms(site:Site,seed:number):Site{
  const rng=seeded(seed^0x4f012f32);
- const output:Obstacle[]=[];
+ // Preserve architectural sills and outdoor fixtures while furnishing interiors.
+ const output:Obstacle[]=[...site.cover];
  const furnishingIssues:NonNullable<Site['furnishingIssues']>=[];
  const reserved:Pt[]=[...site.spawn,...site.enemies,site.objective,site.extract];
- const exterior=site.cover.filter(o=>!site.rooms.some(r=>inside(o,r)));
- output.push(...exterior);
+
  const zoneCounts=new Map<string,number>(),zoneSeen=new Map<string,number>();
  for(const room of site.rooms){
   const key=room.zoneId??room.id;
@@ -209,9 +208,7 @@ export function furnishRooms(site:Site,seed:number):Site{
   }
   // Compact rooms still need defining fixtures (a toilet in a restroom,
   // an exam bed in a clinic), but never force large furniture inside them.
-  if(room.w<72||room.h<72){
-   output.push(...site.cover.filter(o=>inside(o,room)));continue;
-  }
+  if(room.w<72||room.h<72)continue;
   for(const [i,item] of equipment.entries()){
    const asset=propDefinition(item.id);
    if(!asset||!asset.solid){furnishingIssues.push({roomId:room.id,fixture:item.id,reason:'missing-solid-asset'});continue;}
@@ -244,7 +241,6 @@ export function furnishRooms(site:Site,seed:number):Site{
    else furnishingIssues.push({roomId:room.id,fixture:item.id,reason:'all-placements-blocked'});
   }
   if(placed.length)output.push(...placed);
-  else output.push(...site.cover.filter(o=>inside(o,room)));
  }
  const completed=recoverRoomEssentials(site,output);
  return {...site,cover:completed.cover,
