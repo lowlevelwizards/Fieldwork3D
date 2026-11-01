@@ -21,7 +21,7 @@ export function addArchitecturalInteriors(site:Site,seed:number):Site{
   const y=room.y+room.h*(isLow?.29:.36);
   const obj:Obstacle={x,y,w,h,low:isLow,
    fixture:isLow?'half-wall':'support-column',
-   material:isLow?'masonry':'concrete'};
+   material:isLow?'brick':'concrete'};
   if(x-w/2<=room.x+11||x+w/2>=room.x+room.w-11||
      y-h/2<=room.y+11||y+h/2>=room.y+room.h-11)continue;
   if(site.doors.some(d=>Math.hypot(x-(d.a.x+d.b.x)/2,y-(d.a.y+d.b.y)/2)<54))continue;
