@@ -7,7 +7,16 @@ test('142B: physical windows have real wall gaps and blocking sills',()=>{
    const site=generateSite(seed);
    assert.ok(site.windows?.length,'windows present: '+seed);
    const windowColliders=site.cover.filter(c=>c.fixture==='window-sill'||c.fixture==='glass-barrier');
-   assert.equal(windowColliders.length,site.windows.length,'physical glazing: '+seed);
+   // Serving/order cutouts have their own real parapet, not a WindowOpening.
+   // Count these separately rather than falsely classifying them as orphans.
+   const serving=(site.openings??[]).filter(o=>o.kind==='serving');
+   assert.equal(windowColliders.length,site.windows.length+serving.length,
+     'physical glazing and service hatch parapets: '+seed);
+   for(const opening of serving){
+     const x=(opening.a.x+opening.b.x)/2,y=(opening.a.y+opening.b.y)/2;
+     assert.equal(windowColliders.filter(c=>c.fixture==='window-sill'&&
+       Math.hypot(c.x-x,c.y-y)<.001).length,1,'one service parapet: '+seed);
+   }
    for(const w of site.windows){
      const kind=w.sillHeight===0?'glass-barrier':'window-sill';
      assert.equal(windowColliders.filter(c=>c.fixture===kind&&
