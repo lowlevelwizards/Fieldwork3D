@@ -52,9 +52,10 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
   block(g,light.mountX-2,light.mountY+.9,light.mountZ,2,.8,2.5,steel);
  }
  if(parts.sling.id==='sling-two-point'){
-  // Two restrained rigid fabric segments. No per-frame rope simulation.
-  block(g,-5,-3.5,3.6,12,.55,.55,dark);
-  block(g,5,-3.1,3.6,8,.55,.55,dark);
+  // Rigid sling mounting hardware stays on the gun. The actual fabric
+  // loop is positioned by the shared operator rig, not baked to receiver.
+  block(g,-9,-.5,3,1.4,1,1.2,steel);
+  block(g,10,-.5,3,1.4,1,1.2,steel);
  }
  return g;
 }
