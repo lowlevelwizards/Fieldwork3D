@@ -318,6 +318,12 @@ export function newSession(index=0,siteSeed?:number,
     a.spareMagazines=magazineKit(a.id,a.weapon,a.reserve,
       WEAPONS[a.weapon].capacity);
   });
+  // The base tactical study carries two legacy defenders. An explicit
+  // training site must remove them rather than spawning hostile AI off-map.
+  if(site?.training){
+    for(let i=operators.length-1;i>=0;i--)
+      if(operators[i].side==='red')operators.splice(i,1);
+  }
   const state:Session={...seed,operators,objectRevision:0,
     coverState:COVER.map(o=>({...o,material:materialForFixture(o.fixture),
       integrity:MATERIALS[materialForFixture(o.fixture)].integrity})),
