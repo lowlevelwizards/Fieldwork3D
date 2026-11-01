@@ -30,3 +30,22 @@ test('a new independent notched building compiles actual walls and entrance',()=
   assert.ok(s.rooms.length>=8,kind);
  }
 });
+
+test('new fourth-family footprints contain no isolated islands of occupied cells',()=>{
+ for(const kind of ARCHITECTURAL_FAMILIES){
+  const p=architecturalBlueprint(kind,3),cells=p.cells;
+  const cellsCount=cells.flat().filter(Boolean).length;
+  const start=cells.flatMap((row,y)=>row.map((role,x)=>role?[y,x]:null))
+   .find(x=>x!==null);
+  const seen=new Set(),pending=[start];
+  while(pending.length){
+   const [y,x]=pending.pop(),key=y+':'+x;
+   if(seen.has(key)||!cells[y]?.[x])continue;
+   seen.add(key);
+   for(const [dy,dx] of [[1,0],[-1,0],[0,1],[0,-1]])
+    if(cells[y+dy]?.[x+dx]&&!seen.has((y+dy)+':'+(x+dx)))
+     pending.push([y+dy,x+dx]);
+  }
+  assert.equal(seen.size,cellsCount,kind+' has an isolated wing');
+ }
+});
