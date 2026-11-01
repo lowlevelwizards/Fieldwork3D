@@ -303,6 +303,28 @@ export class TacticalScene3D{
     o.position.set(x,y,z);o.castShadow=cast;o.receiveShadow=true;
     parent.add(o);return o;
   }
+  /** Lightweight surface-local visual layer; parents rotate/hide with architecture. */
+  private addSurfaceWear(parent:THREE.Object3D,mark:ObjectWear,x:number,y:number,z:number){
+    const bucket=wearOpacityBucket(mark.opacity);
+    const key=mark.kind+':'+bucket;
+    let material=this.wearMaterials.get(key);
+    if(!material){
+      let texture=this.wearTextures.get(mark.kind);
+      if(!texture){
+        texture=new THREE.DataTexture(wearPixels(mark.kind),32,32,THREE.RGBAFormat);
+        texture.colorSpace=THREE.SRGBColorSpace;texture.magFilter=THREE.NearestFilter;
+        texture.minFilter=THREE.LinearMipmapLinearFilter;texture.generateMipmaps=true;
+        texture.needsUpdate=true;this.wearTextures.set(mark.kind,texture);
+      }
+      material=new THREE.MeshBasicMaterial({map:texture,color:0x777168,transparent:true,
+        opacity:Math.min(1,WEAR_ALPHA_BANDS[bucket]*this.wearBoost),depthWrite:false,
+        polygonOffset:true,polygonOffsetFactor:-1,side:THREE.DoubleSide});
+      this.wearMaterials.set(key,material);this.mats.push(material);
+    }
+    const decal=new THREE.Mesh(new THREE.PlaneGeometry(mark.size,mark.size*.7),material);
+    decal.position.set(x,y,z);decal.castShadow=false;decal.receiveShadow=false;
+    parent.add(decal);
+  }
   private plane(parent:THREE.Object3D,x:number,z:number,w:number,d:number,
     y:number,material:THREE.Material){
     const mesh=new THREE.Mesh(mapPlanePixelUV(new THREE.PlaneGeometry(w,d),w,d,x,z),material);
