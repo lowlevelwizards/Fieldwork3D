@@ -1,6 +1,8 @@
 /** Deterministic sound evidence, derived from real acoustic propagation. */
 import type {Pt,Door,Segment} from './breach-core.ts';
 import {heardIntensity,acousticDistance} from './breach-acoustics.ts';
+import {windowAcousticFactor} from './breach-window-acoustics.ts';
+import type {WindowState} from './breach-windows.ts';
 export type AcousticEvent={id?:number;p:Pt;radius:number;time:number;kind:string};
 export type HeardEvidence={
  id:number;kind:string;estimate:Pt;uncertainty:number;intensity:number;at:number;
@@ -13,8 +15,10 @@ const pseudo=(event:number,observer:string,salt:number)=>{
  return (n>>>0)/4294967296;
 };
 export function interpretSound(event:AcousticEvent,observerId:string,at:Pt,
- doors:readonly Door[],walls:readonly Segment[]):HeardEvidence|null{
- const intensity=heardIntensity(event.p,at,event.radius,doors,walls);
+ doors:readonly Door[],walls:readonly Segment[],
+ windows:readonly WindowState[]=[]):HeardEvidence|null{
+ const intensity=heardIntensity(event.p,at,event.radius,doors,walls)*
+   windowAcousticFactor(event.p,at,windows);
  if(intensity<=0)return null;
  const travel=acousticDistance(event.p,at,doors,walls);
  const uncertainty=Math.max(event.kind==='gunshot'?24:12,
