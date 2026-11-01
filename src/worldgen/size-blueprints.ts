@@ -111,6 +111,48 @@ const LARGE_EXTRA:Record<BuildingArchetype,readonly string[]>={
  utility:['equipment','hallway','equipment','control'],
  clinic:['exam','hallway','exam','supply']
 };
+/** Side wings produce a genuinely wider, departmental floorplate, rather
+ * than making every large map a copy-paste of one extra row. A vacant outer
+ * corner remains an exterior notch rather than a phantom enclosed room.
+ */
+const LARGE_SIDE_WING:Record<BuildingArchetype,readonly string[]>={
+ house:['bedroom','closet','mudroom'],
+ townhouse:['bedroom','study','closet','mudroom'],
+ apartment:['bedroom','living','living','service'],
+ retail:['stockroom','sales','storage'],
+ office:['storage','office','break'],
+ garage:['workshop','parts','bay','parts'],
+ warehouse:['stockroom','loading','loading','service'],
+ restaurant:['service','restroom','dining'],
+ motel:['guest','hallway','laundry','maintenance'],
+ utility:['equipment','maintenance','service'],
+ clinic:['supply','staff','restroom']
+};
+function extendedSideWing(kind:BuildingArchetype,medium:Blueprint):Blueprint{
+ const extra=LARGE_SIDE_WING[kind];
+ const width=['garage','warehouse','utility'].includes(kind)?160:kind==='motel'?138:126;
+ const cells=medium.cells.map((row,index)=>{
+  const edge=row[row.length-1];
+  return [...row,edge?extra[index%extra.length]:null];
+ });
+ return {...medium,family:medium.family+' / lateral working wing',
+  widths:[...medium.widths,width],cells};
+}
+function extendedOffsetWing(kind:BuildingArchetype,medium:Blueprint):Blueprint{
+ const extras=LARGE_EXTRA[kind],row=medium.cells[0].map((role,col)=>{
+  if(role===null)return null;
+  if(role==='hallway'||role==='aisle')return role;
+  // Alternating service courts and offsets create a broken rear facade,
+  // with additional rooms connected to actual rooms in the next row.
+  if(col%3===1)return null;
+  const target=extras[col%extras.length];
+  return target==='hallway'||target==='aisle'?'storage':target;
+ });
+ return {...medium,family:medium.family+' / notched rear service wing',
+  depths:[kind==='garage'||kind==='warehouse'?146:119,...medium.depths],
+  cells:[row,...medium.cells.map(r=>[...r])],
+  front:{col:medium.front.col,row:medium.front.row+1}};
+}
 export function sizedBlueprint(kind:BuildingArchetype,seed:number,
  tier:'small'|'large',medium:Blueprint):Blueprint{
  if(tier==='small'){
@@ -126,6 +168,10 @@ export function sizedBlueprint(kind:BuildingArchetype,seed:number,
     cells,front:{col:mirror?source.widths.length-1-source.front.col:source.front.col,
       row:source.front.row}};
  }
+ // Two alternative massing grammars make large sites more than a row extension.
+ const variant=(seed>>>0)%3;
+ if(variant===1)return extendedSideWing(kind,medium);
+ if(variant===2)return extendedOffsetWing(kind,medium);
  const extras=LARGE_EXTRA[kind];
  const row=medium.widths.map((_,col)=>{
   const previous=medium.cells[0][col];
