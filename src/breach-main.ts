@@ -39,6 +39,7 @@ import {initialRoster,readRoster,applyRosterIdentity,recordRosterMission,
   resupplyRoster,equipRoster} from './breach-roster.ts';
 import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOperation,
  purchaseAmmo,purchaseMedical,resupplyOperator,treatOperator,
+ hireRecruit,assignOperatorToSlot,tacticalSlotOperator,
  type CampaignState,type CampaignReport} from './campaign-state.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {careerEventsForOperation} from './campaign-history.ts';
@@ -171,7 +172,7 @@ function saveCampaign(){
 function applyCampaignSkills(){
  if(campaignMode!=='mission'||!campaign)return;
  for(const a of team(state)){
-  const m=campaign.operators.find(x=>x.id===a.id);
+  const m=tacticalSlotOperator(campaign,a.id);
   if(m){
    a.name=m.callsign;a.skills={...m.skills};a.weapon=m.weapon;
    a.magazine=m.magazine;a.reserve=m.reserve;
@@ -202,17 +203,19 @@ function recordCompletedOperation(){
   recordedOperation=state;
   if(campaignMode==='mission'&&campaign?.activeContractId){
    const members=team(state);
+   const careerId=(slotId:string)=>tacticalSlotOperator(campaign!,slotId)?.id??slotId;
+   const mapping=Object.fromEntries(members.map(a=>[a.id,careerId(a.id)]));
    const stats=debrief(state);
    const result:CampaignReport={
     id:'operation-'+campaign.activeContractId,contractId:campaign.activeContractId,
     day:campaign.day,outcome:state.phase==='won'?'success':'failure',
     grade:stats.grade,elapsed:stats.time,
-    participatingIds:members.map(a=>a.id),
-    casualties:members.filter(a=>a.health<=0).map(a=>a.id),
+    participatingIds:members.map(a=>careerId(a.id)),
+    casualties:members.filter(a=>a.health<=0).map(a=>careerId(a.id)),
     objective:stats.objective,
-    events:careerEventsForOperation(campaign,'operation-'+campaign.activeContractId,state.battleEvents),
+    events:careerEventsForOperation(campaign,'operation-'+campaign.activeContractId,state.battleEvents,mapping),
     performance:members.map(a=>({
-     id:a.id,shots:a.shots,hits:a.hits,pointShots:a.pointShots,
+     id:careerId(a.id),shots:a.shots,hits:a.hits,pointShots:a.pointShots,
      aimedShots:a.aimedShots,longHits:a.longHits,injuryStage:a.injuryStage,
      survived:a.health>0,magazine:a.magazine,reserve:a.reserve
     }))
@@ -1026,6 +1029,8 @@ function updateHud(){
   ui.variant.disabled=campaignMode==='mission';
   ui.siteSize.disabled=campaignMode==='mission';
   ui.intelMode.disabled=campaignMode==='mission';
+  ui.restart.disabled=campaignMode==='mission';
+  ui.loadout.disabled=campaignMode==='mission';
   ui.intelMode.textContent='INTEL · '+selectedIntelMode.replace('-', ' ').toUpperCase();
   ui.flash.textContent='FLASH ×'+state.flashRemaining;
   ui.cancelTarget.hidden=!(state.phase==='planning'&&
@@ -1068,6 +1073,8 @@ function updateHud(){
   for(const id of squadIds){
     const a=uid(id),button=ui[id];
     button.hidden=!a;
+    const title=button.querySelector('strong');
+    if(title&&a)title.textContent=a.name;
     button.classList.toggle('selected',id===selected);
     button.classList.toggle('down',!a||a.health<=0);
     button.title=a?WEAPONS[a.weapon].label+' • '+
@@ -2004,7 +2011,10 @@ const campaignScreen=new CampaignScreen({
  buyAmmo:()=>{if(campaign){campaign=purchaseAmmo(campaign);saveCampaign();showCampaignHome();}},
  buyMedical:()=>{if(campaign){campaign=purchaseMedical(campaign);saveCampaign();showCampaignHome();}},
  resupply:(id)=>{if(campaign){campaign=resupplyOperator(campaign,id);saveCampaign();showCampaignHome();}},
- treat:(id)=>{if(campaign){campaign=treatOperator(campaign,id);saveCampaign();showCampaignHome();}}
+ treat:(id)=>{if(campaign){campaign=treatOperator(campaign,id);saveCampaign();showCampaignHome();}},
+ recruit:()=>{if(campaign){campaign=hireRecruit(campaign);saveCampaign();showCampaignHome();}},
+ assignSlot:(slot,id)=>{if(campaign){campaign=assignOperatorToSlot(campaign,slot,id);
+  saveCampaign();showCampaignHome();}}
 });
 function showCampaignHome(){
  if(!campaign)return;
@@ -2045,7 +2055,8 @@ ui.undo.addEventListener('click',()=>{undoPlan(state,selected);selectedNode=null
 ui.redo.addEventListener('click',()=>{redoPlan(state,selected);selectedNode=null;updateHud();});
 ui.wait.addEventListener('click',()=>{planWait(state,selected,.5);updateHud();});
 ui.loadout.addEventListener('click',()=>{
-  cycleWeapon(state,selected);updateHud();
+  if(campaignMode!=='mission')cycleWeapon(state,selected);
+  updateHud();
 });
 ui.reload.addEventListener('click',()=>{
   if(state.phase==='planning')planReload(state,selected);
@@ -2091,7 +2102,7 @@ ui.play.addEventListener('click',()=>{
    if(!returnAfterCampaignMission())reset();
   }else{looking=false;toggling(state);updateHud();}
 });
-ui.restart.addEventListener('click',()=>reset());
+ui.restart.addEventListener('click',()=>{if(campaignMode!=='mission')reset();});
 window.addEventListener('keydown',e=>{
   if(replaying){
     if(e.code==='Space'&&!e.repeat){e.preventDefault();replayPlaying=!replayPlaying;}
@@ -2102,8 +2113,9 @@ window.addEventListener('keydown',e=>{
   }
   if(e.code==='Space'&&!e.repeat){
     e.preventDefault();unlockAudio();
-    if(state.phase==='won'||state.phase==='lost')reset();
-    else toggling(state);updateHud();
+    if(state.phase==='won'||state.phase==='lost'){
+      if(!returnAfterCampaignMission())reset();
+    }else toggling(state);updateHud();
   }
   if(e.code==='Digit1')selectUnit('rook');
   if(e.code==='Digit2')selectUnit('moss');
@@ -2122,7 +2134,7 @@ window.addEventListener('keydown',e=>{
     if(e.shiftKey)redoPlan(state,selected);
     else undoPlan(state,selected);updateHud();
   }
-  if(e.code==='KeyR'&&!e.repeat)reset();
+  if(e.code==='KeyR'&&!e.repeat&&campaignMode!=='mission')reset();
   if(e.code==='KeyV'&&!e.repeat)cameraMode(viewMode==='iso'?'top':'iso');
   if(e.code==='KeyQ'&&!e.repeat)turnCamera(-Math.PI/8);
   if(e.code==='KeyE'&&!e.repeat)turnCamera(Math.PI/8);

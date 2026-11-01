@@ -55,3 +55,12 @@
 
 .campaign-chronicle{margin-top:16px}
 .campaign-report{padding:9px 0;border-bottom:1px solid #40534d;font-size:12px;line-height:1.5}
+
+.campaign-assignment{margin:10px 0 14px;padding:10px;border-radius:9px;background:#192a27}
+.campaign-assignment h2{font-size:12px;margin:0 0 8px}
+.campaign-assignment-row{display:flex;align-items:center;justify-content:space-between;
+ gap:9px;margin:6px 0;font-size:11px}
+.campaign-select{touch-action:manipulation;min-height:36px;max-width:65%;
+ background:#2c4039;border:1px solid #748f7d;color:#f0f1e4;border-radius:7px;
+ font:600 12px Oxanium,system-ui,sans-serif;padding:6px}
+.campaign-select:focus-visible{outline:3px solid #e9cf8b}
