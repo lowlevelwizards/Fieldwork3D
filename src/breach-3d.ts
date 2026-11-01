@@ -31,7 +31,7 @@ import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,doorLeafSegmen
   type Pt,type Door,type Segment} from './breach-core.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {resolveWeaponAssembly} from './equipment-weapon-assemblies.ts';
-import {lightBeamBlockers,lightBeamFootprint,LIGHT_BEAM_SAMPLES}
+import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter,LIGHT_BEAM_SAMPLES}
  from './equipment-weapon-light-beam.ts';
 import {type Site,type Room} from './breach-site.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
@@ -1605,12 +1605,9 @@ export class TacticalScene3D{
         this.beamBlockerTick=tick;this.beamBlockerSite=siteSeed;
         this.beamBlockerRevision=s.objectRevision;
        }
-       const physical=resolveWeaponAssembly(actor.weaponConfiguration!);
        const angle=clearance.muzzle.yaw;
-       const offset=(physical.muzzleX-physical.mounted.light.mountX)*
-        physical.lengthScale;
-       const bx=clearance.muzzle.x-Math.cos(angle)*offset;
-       const by=clearance.muzzle.z-Math.sin(angle)*offset;
+       const emitter=weaponLightEmitter(clearance.muzzle,actor.weaponConfiguration!);
+       const bx=emitter.x,by=emitter.y;
        const prev=object.beamLast;
        if(!prev||Math.hypot(prev.x-bx,prev.y-by)>.7||
           Math.abs(Math.atan2(Math.sin(prev.yaw-angle),Math.cos(prev.yaw-angle)))>.025||
