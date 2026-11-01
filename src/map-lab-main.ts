@@ -46,6 +46,7 @@ function previewCondition(){
  conditionValue.textContent=selectedCondition+' / 100 · '+conditionLabel(selectedCondition);
 }
 let conditionTimer:ReturnType<typeof setTimeout>|null=null;
+let maskPreviewFrame:number|null=null;
 function selectCondition(level:number){
  selectedCondition=level;conditionInput.value=String(level);
  if(conditionTimer!==null)clearTimeout(conditionTimer);
@@ -56,8 +57,19 @@ el<HTMLButtonElement>('conditionDecay').addEventListener('click',()=>selectCondi
 conditionInput.addEventListener('input',()=>{
  selectedCondition=Number(conditionInput.value);
  conditionValue.textContent=selectedCondition+' / 100 · '+conditionLabel(selectedCondition);
+ const site=session.site;
+ if(site){
+  playSite.href='./breach.html?seed='+site.seed+
+   (siteScale()==='standard'?'':'&scale='+siteScale())+'&condition='+selectedCondition;
+  // A single queued frame updates existing patina maps. Full scene/fixture
+  // regeneration is deferred until the slider settles.
+  if(maskPreviewFrame===null)maskPreviewFrame=requestAnimationFrame(()=>{
+    maskPreviewFrame=null;
+    if(session.site)stage.previewConditionMasks(session.site,selectedCondition);
+  });
+ }
  if(conditionTimer!==null)clearTimeout(conditionTimer);
- conditionTimer=setTimeout(()=>{conditionTimer=null;previewCondition();},90);
+ conditionTimer=setTimeout(()=>{conditionTimer=null;previewCondition();},260);
 });
 function updateLabels(){
  labelLayer.replaceChildren();markers=[];
