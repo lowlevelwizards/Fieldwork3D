@@ -47,7 +47,11 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
     // of square holes through walls, and inconsistent live/fog states.
     const level=intelFogLevel(s.intel,s.site,p,false,fineSeen);
     if(level===2)continue;
-    ctx.fillStyle=level===1?'rgba(255,255,255,.76)':'#fff';
+    // Blueprint outlines are briefed, but unseen interiors must read as
+    // distinctly unobserved rather than nearly as bright as explored rooms.
+    const blueprintUnknown=s.intel.mode==='floor-plan'&&!fineSeen;
+    ctx.fillStyle=level===1?
+      (blueprintUnknown?'rgba(255,255,255,.34)':'rgba(255,255,255,.76)'):'#fff';
     ctx.fillRect(col*20,row*20,20,20);
   }
   // Small explored footprints fill the gaps left by coarse center samples,
