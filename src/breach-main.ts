@@ -28,7 +28,7 @@ import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
 
-import {stageMagazines} from './equipment-magazine-placement.ts';
+import {stageMagazines,magazineSpace,type MagazineLocation} from './equipment-magazine-placement.ts';
 import {doorReachable} from './breach-door.ts';
 import {canRelocateCover} from './breach-movable-cover.ts';
 import {INTEL_MODES,doorKnown,wallKnown,roomKnown,
@@ -38,7 +38,8 @@ import {DisplayRouteCache} from './breach-route-cache.ts';
 import {FrameMeter} from './breach-perf.ts';
 import {formatAfterAction} from './breach-after-action.ts';
 import {initialRoster,readRoster,applyRosterIdentity,recordRosterMission,
-  resupplyRoster,equipRoster,equipRosterGear,renameRosterMember,cycleRosterAppearance} from './breach-roster.ts';
+  resupplyRoster,equipRoster,equipRosterGear,moveRosterMagazine,
+ renameRosterMember,cycleRosterAppearance} from './breach-roster.ts';
 import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
 import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOperation,
  purchaseAmmo,purchaseMedical,resupplyOperator,treatOperator,
@@ -392,7 +393,7 @@ function renderOperationsBoard(){
    saveRoster();applyRosterIdentity(state,persistentRoster);
    expandedQuickKit=member.id;renderOperationsBoard();updateHud();
   });
-  actions.append(look);
+  actions.append(equip,look);
   const rename=document.createElement('button');
   rename.type='button';rename.textContent='CALLSIGN';
   rename.addEventListener('click',()=>{
@@ -434,6 +435,42 @@ function renderOperationsBoard(){
     expandedQuickKit=member.id;renderOperationsBoard();updateHud();
    });
    row.append(label,select);kit.append(row);
+  }
+  const carried=member.weapon==='shotgun'?[]:
+   stageMagazines(member.magazines,member.loadout);
+  if(carried.length){
+   const heading=document.createElement('strong');
+   heading.textContent='MAGAZINE LOCATIONS';
+   heading.style.cssText='display:block;font-size:11px;margin:14px 0 6px';
+   kit.append(heading);
+   const capacity=magazineSpace(member.loadout);
+   const where:MagazineLocation[]=['rig','belt','pocket','backpack','overflow'];
+   for(const [index,mag] of carried.entries()){
+    const row=document.createElement('label');
+    row.style.cssText='display:flex;justify-content:space-between;gap:8px;align-items:center;margin:8px 0';
+    const label=document.createElement('span');
+    label.textContent='MAG '+(index+1)+' · '+mag.rounds+' RDS';
+    label.style.fontSize='10px';row.append(label);
+    const select=document.createElement('select');
+    select.setAttribute('aria-label','Magazine '+(index+1)+' location for '+member.callsign);
+    select.style.cssText='max-width:65%;min-height:40px;touch-action:manipulation;background:#243530;color:#e5e9d8;border-radius:7px;padding:6px';
+    for(const loc of where){
+     const option=document.createElement('option');option.value=loc;
+     option.textContent=loc.toUpperCase();
+     option.disabled=loc!=='overflow'&&loc!==mag.location&&
+      carried.filter(m=>m.location===loc).length>=capacity[loc];
+     select.append(option);
+    }
+    select.value=mag.location;
+    select.addEventListener('change',()=>{
+     if(state.phase!=='planning'||replaying)return;
+     persistentRoster=moveRosterMagazine(persistentRoster,member.id,
+      mag.id,select.value as MagazineLocation);
+     saveRoster();applyRosterIdentity(state,persistentRoster);
+     expandedQuickKit=member.id;renderOperationsBoard();updateHud();
+    });
+    row.append(select);kit.append(row);
+   }
   }
   card.append(kit);operationsBoard.append(card);
  }
