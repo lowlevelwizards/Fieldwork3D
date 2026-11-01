@@ -31,6 +31,7 @@ import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from 
 import {localDetour} from './breach-cooperation.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
 import {chooseAiIntent,type AIIntent} from './breach-ai-policy.ts';
+import {searchCandidates} from './breach-ai-search.ts';
 import {newAwareness,addObservation,visibleObservation,
  ageAwareness,clearObservedPosition,bestBelief,
  type ActorAwareness} from './breach-awareness.ts';
@@ -65,7 +66,7 @@ export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retrea
 export type Personality='guard'|'aggressor'|'cautious';
 export type TeamActor=Operator & {
   awareness:ActorAwareness;
-  intent:AIIntent|null;
+  intent:AIIntent|null;searchOrigin:Pt|null;searchQueue:Pt[];
   plan:PlanNode[];history:PlanHistory;nav:Pt[];activeNode:number;
   posture:Posture;pace:'walk'|'run';alert:Alert;velocity:number;turning:number;
   aim: number;targetId:string|null;suppression:number;stamina:number;
@@ -151,7 +152,7 @@ export const SCENARIOS=[
   {index:2,name:'REAR GUARD',spots:[{x:262,y:213,h:1.1},{x:476,y:444,h:2.8}]},
 ] as const;
 const withActions=(a:Operator):TeamActor=>({
-  ...a,awareness:newAwareness(),intent:null,plan:[],history:makeHistory(),nav:[],activeNode:-1,
+  ...a,awareness:newAwareness(),intent:null,searchOrigin:null,searchQueue:[],plan:[],history:makeHistory(),nav:[],activeNode:-1,
   posture:'stand',pace:'walk',alert:'idle',velocity:0,turning:0,aim:0,
   targetId:null,suppression:0,stamina:1,magazine:12,reserve:36,
   reload:0,hits:0,kills:0,stopped:false,contact:null,heard:null,
@@ -1600,6 +1601,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
   }
   if(visible.length){
+    a.searchOrigin=null;a.searchQueue=[];
     const b=visible.sort((x,y)=>d(x.p,a.p)-d(y.p,a.p))[0];
     a.contact=clone(b.p);a.alertUntil=s.seconds+3;a.contacted=true;
     a.watch=clone(b.p);
@@ -1673,6 +1675,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.lastNoiseAt=strongest.at;
     const heard=strongest.estimate;
     a.heard=heard;a.contact=heard;a.watch=clone(heard);
+    a.searchOrigin=null;a.searchQueue=[];
     a.defense=null;
     a.alertUntil=s.seconds+(a.personality==='aggressor'?.5:1.4);
     a.contacted=true;
@@ -1727,9 +1730,25 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         a.personality==='aggressor'?1.1:.82);
     }
     if(a.alert==='investigating'&&a.contact&&d(a.p,a.contact)<35){
-      a.alert='cover';a.contact=null;a.nav=[];
-      a.defense=defensivePosition(a,a.heard??a.p,s);
-      a.defenseUntil=s.seconds+6;
+      if(!a.searchOrigin){
+        a.searchOrigin=clone(a.contact);
+        const belief=bestBelief(a.awareness);
+        a.searchQueue=searchCandidates(a.searchOrigin,
+          belief?.uncertainty??65,s.site?.rooms??[]);
+      }
+      let next:Pt|null=null;
+      while(a.searchQueue.length&&!next){
+        const candidate=a.searchQueue.shift()!;
+        if(d(candidate,a.p)<24)continue;
+        next=reachableInvestigation(a.p,candidate);
+      }
+      a.nav=[];
+      if(next)a.contact=clone(next);
+      else{
+        a.alert='cover';a.contact=null;a.searchOrigin=null;
+        a.defense=defensivePosition(a,a.heard??a.p,s);
+        a.defenseUntil=s.seconds+6;
+      }
     }
   }
   if(a.alert==='cover'&&a.defense&&d(a.p,a.defense)>10){
