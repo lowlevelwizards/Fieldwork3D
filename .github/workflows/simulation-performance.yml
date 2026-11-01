@@ -21,3 +21,7 @@ jobs:
       - run: npm install --no-audit --no-fund
       - name: Simulation workload profiles (host CPU, not device FPS)
         run: node --experimental-strip-types scripts/bench-breach-performance.mjs
+      - name: Critical AI, muzzle and effects regressions
+        run: node --experimental-strip-types --test tests/breach-120.test.mjs tests/breach-133.test.mjs tests/breach-defense-performance.test.mjs tests/breach-perf.test.mjs tests/perf-window-effects.test.mjs tests/breach-142c.test.mjs
+      - name: Typecheck and production bundle
+        run: npm run check && npx vite build
