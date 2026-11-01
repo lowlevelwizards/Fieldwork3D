@@ -7,7 +7,6 @@ import {activateSite,type Pt} from './breach-core.ts';
 import {auditGeneratedSite} from './breach-site-audit.ts';
 import {assessArchitecture} from './worldgen/architecture-quality.ts';
 import {assessRoomContracts} from './worldgen/room-contracts.ts';
-import {auditArchitecturalFeatures} from './worldgen/architecture-feature-audit.ts';
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const typeInput=el<HTMLSelectElement>('building');
 const scaleInput=el<HTMLSelectElement>('scale');
@@ -34,17 +33,26 @@ let session:Session=newSession(0,initial);
 typeInput.value=session.site?.archetype??'house';
 const stage=new TacticalScene3D();
 stage.setMode('iso');stage.view.zoom=1.25;
-let markers:{node:HTMLElement;p:Pt}[]=[];
+let markers:{node:HTMLElement;p:Pt;orientation?:number}[]=[];
 const conditionLabel=(n:number)=>n<20?'PRISTINE':n<40?'LIVED-IN':
   n<60?'WORN':n<80?'NEGLECTED':'DECREPIT';
 function previewCondition(){
  const site=session.site;if(!site)return;
+ playSite.href='./breach.html?seed='+site.seed+
+   (siteScale()==='standard'?'':'&scale='+siteScale())+'&condition='+selectedCondition;
  const view={...stage.view,focus:{...stage.view.focus}};
  stage.applySite({...site,conditionLevel:selectedCondition});
  Object.assign(stage.view,view);
  conditionValue.textContent=selectedCondition+' / 100 · '+conditionLabel(selectedCondition);
 }
 let conditionTimer:ReturnType<typeof setTimeout>|null=null;
+function selectCondition(level:number){
+ selectedCondition=level;conditionInput.value=String(level);
+ if(conditionTimer!==null)clearTimeout(conditionTimer);
+ conditionTimer=null;previewCondition();
+}
+el<HTMLButtonElement>('conditionClean').addEventListener('click',()=>selectCondition(0));
+el<HTMLButtonElement>('conditionDecay').addEventListener('click',()=>selectCondition(100));
 conditionInput.addEventListener('input',()=>{
  selectedCondition=Number(conditionInput.value);
  conditionValue.textContent=selectedCondition+' / 100 · '+conditionLabel(selectedCondition);
@@ -82,6 +90,14 @@ function updateLabels(){
   markers.push({node:button,p:{x:(door.a.x+door.b.x)/2,
     y:(door.a.y+door.b.y)/2}});
  }
+ if(el<HTMLInputElement>('facing').checked)for(const item of site.cover){
+  if(item.orientation===undefined)continue;
+  const node=document.createElement('span');
+  node.className='facing-arrow';node.textContent='➜';
+  node.title=(item.fixture??'fixture')+' · facing '+item.orientation*90+'°';
+  labelLayer.append(node);
+  markers.push({node,p:{x:item.x,y:item.y},orientation:item.orientation});
+ }
  if(el<HTMLInputElement>('cover').checked)for(const item of site.cover){
   const dot=document.createElement('span');dot.className='cover-dot';
   dot.title=item.fixture??'obstacle';labelLayer.append(dot);
@@ -91,16 +107,12 @@ function updateLabels(){
 function describe(site:Site){
  const count=site.rooms.filter(room=>room.kind==='room').length;
  const structure=assessArchitecture(site);
- const features=auditArchitecturalFeatures(site);
  return site.archetype?.toUpperCase()+' · '+site.name+' · seed '+site.seed+
   '\n'+(site.planFamily??site.layout)+' · '+structure.zones+' functional zones / '+
   structure.nonrectangularZones+' irregular rooms\n'+
   count+' floor sections / '+site.doors.length+' doors / '+(site.openings?.length??0)+
   ' open passages / '+site.cover.length+' physical props / '+
-  (site.exteriorZones?.length??0)+' exterior zones\n'+
-  features.pairs+' double doorways / '+features.shutters+' shutters / '+
-  features.interiorGlass+' interior glass / '+features.fullHeightGlass+' full-height panes / '+
-  features.structures+' outbuildings'+(features.issues.length?'\nARCH: '+features.issues.join('; '):'');
+  (site.exteriorZones?.length??0)+' exterior zones';
 }
 function report(site:Site):string{
  const result=auditGeneratedSite(site.seed,site.scale??'standard');
@@ -153,6 +165,7 @@ el<HTMLButtonElement>('fit').addEventListener('click',()=>stage.resetCamera());
 el<HTMLInputElement>('rooms').addEventListener('change',updateLabels);
 el<HTMLInputElement>('needs').addEventListener('change',updateLabels);
 el<HTMLInputElement>('cover').addEventListener('change',updateLabels);
+el<HTMLInputElement>('facing').addEventListener('change',updateLabels);
 el<HTMLInputElement>('doors').addEventListener('change',updateLabels);
 let pointers=new Map<number,Pt>(),lastMid:Pt|null=null,lastGap=0;
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -190,6 +203,12 @@ function frame(now:number){
  for(const marker of markers){
   const p=stage.project(marker.p,5);
   marker.node.style.left=p.x+'px';marker.node.style.top=p.y+'px';
+  if(marker.orientation!==undefined){
+   const v=[{x:0,y:1},{x:1,y:0},{x:0,y:-1},{x:-1,y:0}][marker.orientation];
+   const point=stage.project({x:marker.p.x+v.x*25,y:marker.p.y+v.y*25},5);
+   marker.node.style.transform='translate(-50%,-50%) rotate('+
+     Math.atan2(point.y-p.y,point.x-p.x)+'rad)';
+  }
  }
  requestAnimationFrame(frame);
 }
