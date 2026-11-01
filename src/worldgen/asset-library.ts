@@ -89,6 +89,11 @@ const architecture:readonly AssetLibraryEntry[] = [
   {id:'wall-detail:electrical-box',label:'Electrical Box',width:16,depth:3,height:16,category:'Wall Details'},
   {id:'wall-detail:breaker-panel',label:'Breaker Panel',width:16,depth:3,height:19,category:'Wall Details'},
   {id:'wall-detail:exit-sign',label:'Exit Sign',width:17,depth:1.3,height:7,category:'Wall Details'},
+  {id:'wall-detail:menu-board',label:'Restaurant Menu Board',width:36,depth:1.3,height:17,category:'Wall Details'},
+  {id:'wall-detail:promotion-sign',label:'Retail Promotion Sign',width:28,depth:1.3,height:16,category:'Wall Details'},
+  {id:'wall-detail:business-sign',label:'Entrance Business Sign',width:36,depth:1.3,height:13,category:'Wall Details'},
+  {id:'wall-detail:wayfinding-sign',label:'Public Wayfinding Sign',width:25,depth:1.3,height:16,category:'Wall Details'},
+  {id:'wall-detail:safety-sign',label:'Workshop Safety Sign',width:25,depth:1.3,height:16,category:'Wall Details'},
 ].map(item=>({...item,origin:'structure' as const,cover:'none' as const,
   solid:false,rooms:[] as readonly string[],presentation:'architectural' as const}));
 const fromProp=(item:PropDefinition):AssetLibraryEntry=>({

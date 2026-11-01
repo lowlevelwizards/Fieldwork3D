@@ -1,7 +1,8 @@
 /** MAP 09: deterministic, nonblocking attachments to actual wall segments. */
 import {type Site,seeded} from '../breach-site.ts';
 export type WallDetailKind='poster'|'picture'|'noticeboard'|'light-switch'|
- 'electrical-box'|'breaker-panel'|'exit-sign';
+ 'electrical-box'|'breaker-panel'|'exit-sign'|
+ 'menu-board'|'promotion-sign'|'business-sign'|'wayfinding-sign'|'safety-sign';
 export type WallDetail={
  id:string;roomId:string;kind:WallDetailKind;
  x:number;y:number;height:number;angle:number;width:number;depth:number;
@@ -9,16 +10,16 @@ export type WallDetail={
 const decor:Record<string,readonly WallDetailKind[]>={
  living:['picture','light-switch'],bedroom:['picture','light-switch'],
  guest:['picture','light-switch'],studio:['poster','light-switch'],
- kitchen:['picture','light-switch'],dining:['picture','light-switch'],
+ kitchen:['picture','light-switch'],dining:['menu-board','poster','picture'],
  bathroom:['light-switch'],office:['noticeboard','light-switch'],
- meeting:['noticeboard','light-switch'],reception:['noticeboard','light-switch'],
- waiting:['poster','light-switch'],exam:['poster','light-switch'],
- treatment:['poster','light-switch'],sales:['poster','exit-sign'],
- checkout:['poster','light-switch'],storage:['electrical-box'],
- loading:['exit-sign','electrical-box'],bay:['electrical-box','light-switch'],
- workshop:['electrical-box','breaker-panel'],equipment:['breaker-panel','electrical-box'],
- control:['breaker-panel','electrical-box'],aisle:['exit-sign'],
- hallway:['exit-sign','light-switch'],lobby:['noticeboard','exit-sign'],
+ meeting:['noticeboard','light-switch'],reception:['wayfinding-sign','noticeboard'],
+ waiting:['wayfinding-sign','poster'],exam:['poster','light-switch'],
+ treatment:['poster','light-switch'],sales:['promotion-sign','poster'],
+ checkout:['promotion-sign','light-switch'],storage:['electrical-box'],
+ loading:['safety-sign','electrical-box'],bay:['safety-sign','light-switch'],
+ workshop:['safety-sign','breaker-panel'],equipment:['safety-sign','electrical-box'],
+ control:['breaker-panel','electrical-box'],aisle:['wayfinding-sign'],
+ hallway:['wayfinding-sign','light-switch'],lobby:['wayfinding-sign','noticeboard'],
 };
 const dist=(ax:number,ay:number,bx:number,by:number)=>Math.hypot(ax-bx,ay-by);
 export function decorateWalls(site:Site,seed:number):Site{
@@ -55,15 +56,69 @@ export function decorateWalls(site:Site,seed:number):Site{
    const kind=vocabulary[Math.floor(rng()*vocabulary.length)];
    const width=['light-switch'].includes(kind)?5:
     ['electrical-box','breaker-panel'].includes(kind)?16:
-    kind==='exit-sign'?17:Math.min(26,wall.length-14);
+    kind==='exit-sign'?17:
+    ['menu-board','business-sign'].includes(kind)?Math.min(37,wall.length-8):
+    Math.min(26,wall.length-14);
    const height=kind==='light-switch'?17:kind==='exit-sign'?31:
+    ['menu-board','business-sign'].includes(kind)?32:
      kind==='electrical-box'||kind==='breaker-panel'?21:25;
    const shift=5.3;
    details.push({id:room.id+':wall:'+i,roomId:room.id,kind,
      x:wall.mx+wall.nx*shift,y:wall.my+wall.ny*shift,
      height,angle:Math.atan2(wall.nx,wall.ny),
-     width,depth:kind==='light-switch'?3:kind==='exit-sign'?7:kind==='breaker-panel'?19:16});
+     width,depth:kind==='light-switch'?3:kind==='exit-sign'?7:
+      ['menu-board','business-sign'].includes(kind)?17:
+      kind==='breaker-panel'?19:16});
   }
+ }
+ // Exit signs belong beside actual usable exterior thresholds, not on
+ // arbitrary hallway segments. A nearby portion of the same solid wall
+ // carries the panel; the door leaf remains unobstructed.
+ for(const door of site.doors.filter(d=>d.id==='FRONT'||d.id==='SERVICE')){
+  const mx=(door.a.x+door.b.x)/2,my=(door.a.y+door.b.y)/2;
+  const vertical=Math.abs(door.a.x-door.b.x)<.01;
+  const nearby=site.rooms.filter(room=>
+   mx>room.x-1&&mx<room.x+room.w+1&&
+   my>room.y-1&&my<room.y+room.h+1&&
+   (Math.abs(mx-room.x)<1||Math.abs(mx-room.x-room.w)<1||
+    Math.abs(my-room.y)<1||Math.abs(my-room.y-room.h)<1));
+  const room=nearby.sort((a,b)=>
+   dist(a.x+a.w/2,a.y+a.h/2,mx,my)-
+   dist(b.x+b.w/2,b.y+b.h/2,mx,my))[0];
+  if(!room)continue;
+  const spans=site.walls.filter(wall=>{
+   const length=dist(wall.a.x,wall.a.y,wall.b.x,wall.b.y);
+   if(length<29)return false;
+   const wcx=(wall.a.x+wall.b.x)/2,wcy=(wall.a.y+wall.b.y)/2;
+   return vertical?
+    Math.abs(wall.a.x-mx)<1&&Math.abs(wall.b.x-mx)<1&&
+     wcy>room.y&&wcy<room.y+room.h&&Math.abs(wcy-my)<110:
+    Math.abs(wall.a.y-my)<1&&Math.abs(wall.b.y-my)<1&&
+     wcx>room.x&&wcx<room.x+room.w&&Math.abs(wcx-mx)<110;
+  }).sort((a,b)=>{
+   const mid=(wall:typeof a)=>({x:(wall.a.x+wall.b.x)/2,
+    y:(wall.a.y+wall.b.y)/2});
+   const x=mid(a),y=mid(b);
+   return dist(x.x,x.y,mx,my)-dist(y.x,y.y,mx,my);
+  });
+  const add=(wall:typeof spans[number],kind:WallDetailKind,index:number)=>{
+   const cx=(wall.a.x+wall.b.x)/2,cy=(wall.a.y+wall.b.y)/2;
+   const nx=vertical?Math.sign(room.x+room.w/2-cx):0;
+   const ny=vertical?0:Math.sign(room.y+room.h/2-cy);
+   const width=kind==='exit-sign'?17:Math.min(36,
+    dist(wall.a.x,wall.a.y,wall.b.x,wall.b.y)-10);
+   details.push({id:room.id+':egress:'+door.id+':'+index,roomId:room.id,kind,
+    x:cx+nx*5.3,y:cy+ny*5.3,
+    height:kind==='exit-sign'?31:36,angle:Math.atan2(nx,ny),
+    width,depth:kind==='exit-sign'?7:13});
+  };
+  if(spans.length)add(spans[0],'exit-sign',0);
+  // A commercial entrance also gets a specific branded building panel,
+  // never an irrelevant generic sign on a residential front door.
+  if(door.id==='FRONT'&&
+    ['retail','restaurant','office','garage','motel','clinic','utility',
+     'warehouse'].includes(site.archetype??'')&&spans.length>1)
+    add(spans[1],'business-sign',1);
  }
  return {...site,wallDetails:details};
 }

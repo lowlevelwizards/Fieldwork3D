@@ -998,6 +998,21 @@ export class TacticalScene3D{
           this.signMaterial(detail.kind,site.seed));
         printed.position.z=1.18;prop.add(printed);
         break;
+      case 'menu-board':case 'promotion-sign':case 'business-sign':
+      case 'wayfinding-sign':case 'safety-sign':{
+        const pixelKind=detail.kind==='menu-board'?'menu':
+          detail.kind==='promotion-sign'?'sale':
+          detail.kind==='business-sign'?'business':
+          detail.kind==='safety-sign'?'safety':'wayfinding';
+        const base=detail.kind==='safety-sign'?wallRed:
+          detail.kind==='menu-board'?wallDark:wallMetal;
+        this.box(prop,0,0,0,w,h,1.6,base,false);
+        this.box(prop,0,0,1,w-2,h-2,.4,wallPaper,false);
+        const front=new THREE.Mesh(new THREE.PlaneGeometry(w-3,h-3),
+          this.signMaterial(pixelKind,site.seed+detail.roomId.length));
+        front.position.z=1.25;prop.add(front);
+        break;
+      }
       case 'exit-sign':
         this.box(prop,0,0,0,w,h,1.3,wallRed,false);
         this.box(prop,0,0,.8,w*.67,2,.3,wallPaper,false);
