@@ -7,6 +7,9 @@ import {LOADOUT_SLOTS,itemsForSlot,itemDefinition} from './equipment-catalog.ts'
 import {totalEquipmentMass,loadMobilityDescription,loadMovementScale,
  type LoadoutSlot} from './equipment-loadouts.ts';
 import {CampaignKitPreview} from './equipment-preview.ts';
+import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
+ type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
+import {attachmentPrice} from './equipment-weapon-inventory.ts';
 import {stageMagazines,magazinePlacementSummary,magazineSpace,
  type MagazineLocation} from './equipment-magazine-placement.ts';
 import './campaign-style.css';
@@ -20,6 +23,7 @@ export type CampaignHandlers={
  buyWeapon:(weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipWeapon:(id:string,weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipGear:(id:string,slot:LoadoutSlot,itemId:string)=>void;
+ equipAttachment:(id:string,slot:WeaponAttachmentSlot,partId:string,acquire:boolean)=>void;
  moveMagazine:(id:string,magazineId:string,location:MagazineLocation)=>void;
  repairArmor:(id:string)=>void;
  saveKitPreset:(id:string,name:string)=>void;
@@ -384,6 +388,45 @@ export class CampaignScreen{
    wrap.append(row,info);
    editor.append(wrap);
   }
+  editor.append(node('h2','','WEAPON ATTACHMENTS'));
+  editor.append(node('p','campaign-note',
+   'Factory parts are included. Additional modules are finite workshop stock; purchase and install before deployment. The preview uses your assembled firearm.'));
+  for(const slot of WEAPON_ATTACHMENT_SLOTS){
+   const row=node('label','campaign-kit-row');
+   const title=node('span','',slot.toUpperCase());
+   const select=node('select','campaign-select');
+   select.setAttribute('aria-label','Select '+slot+' for '+person.callsign);
+   const current=person.weaponConfiguration.slots[slot];
+   for(const part of Object.values(WEAPON_ATTACHMENTS)){
+    if(part.slot!==slot||!part.compatible.includes(person.weapon))continue;
+    const price=attachmentPrice(part.id),stock=c.inventory.attachments[part.id]??0;
+    const suffix=price===0?' · INCLUDED':
+     part.id===current?' · EQUIPPED':
+     stock>0?' · STOCK '+stock:' · BUY '+price+' CR';
+    const option=node('option','',part.name+suffix);
+    option.value=part.id;select.append(option);
+   }
+   select.value=current;select.disabled=locked;
+   select.addEventListener('change',()=>{
+    const partId=select.value,price=attachmentPrice(partId);
+    const stock=c.inventory.attachments[partId]??0;
+    const acquire=price>0&&stock<1;
+    if(acquire&&c.funds<price){
+     window.alert('Not enough credits for this attachment.');
+     select.value=current;return;
+    }
+    if(acquire&&!window.confirm('Buy and install '+
+     (WEAPON_ATTACHMENTS[partId]?.name??partId)+' for '+price+' credits?')){
+     select.value=current;return;
+    }
+    this.handlers.equipAttachment(id,slot,partId,acquire);
+   });
+   row.append(title,select);editor.append(row);
+  }
+  const gun=resolveWeaponAssembly(person.weaponConfiguration);
+  editor.append(node('p','campaign-kit-metrics',
+   'WEAPON MASS · '+gun.massKg.toFixed(2)+' KG · BALANCE '+gun.balanceX.toFixed(1)+
+   ' · MUZZLE EXTENSION '+(gun.muzzleX-19.5).toFixed(1)));
   if(placed.length){
    editor.append(node('h2','','PHYSICAL MAGAZINE PLACEMENT'));
    editor.append(node('p','campaign-note',
