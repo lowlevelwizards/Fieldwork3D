@@ -102,3 +102,8 @@
  display:flex;align-items:center;justify-content:center}
 .campaign-kit-preview canvas{display:block;width:100%;height:100%}
 .campaign-kit-preview .campaign-note{padding:16px;text-align:center}
+
+.campaign-kit-actions{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.campaign-kit-actions button{width:auto;min-height:40px;font-size:10px;margin:0;flex:1 1 100px}
+.campaign-kit-actions select{width:100%;max-width:none;flex:1 0 100%;min-height:42px}
+.campaign-kit-actions button:disabled{opacity:.46;cursor:default}
