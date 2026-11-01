@@ -1494,6 +1494,7 @@ export class TacticalScene3D{
         velocity:actor.velocity,seconds:poseSeconds,stride:actor.stride,
         appearanceSeed:actor.appearanceSeed,
         equipment:actor.equipment,
+        flashCharges:actor.flashCharges,
         // A path collision may leave residual motor velocity while position
         // is stationary: feet should brace, not march in place.
         blocked:actor.blockedTime>.14&&
