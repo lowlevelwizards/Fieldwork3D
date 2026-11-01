@@ -122,6 +122,7 @@ export class TacticalScene3D{
   private boxGeometryCache=new Map<string,THREE.BoxGeometry>();
   private sharedBoxGeometries=new Set<THREE.BufferGeometry>();
   private windowPaneMaterial:THREE.MeshStandardMaterial|null=null;
+  private windowGlass=new Map<string,THREE.Mesh>();
   private solid=(hex:number,roughness=.9)=>{
     const key=hex+':'+roughness;
     let material=this.solidCache.get(key);
@@ -236,7 +237,7 @@ export class TacticalScene3D{
     });
     for(const material of this.wallMaterials)material.dispose();
     this.wallMaterials.clear();
-    this.walls.length=0;this.doors.clear();
+    this.walls.length=0;this.doors.clear();this.windowGlass.clear();
     this.intelSurfaces.length=0;
     this.observedDoorOpen.clear();
     for(const cache of [this.impactDecals,this.discarded,
@@ -517,6 +518,7 @@ export class TacticalScene3D{
       this.box(group,0,35,0,opening.width,10,9,wallMat);
       const glass=this.box(group,0,23,0,opening.width-3,18,1,paneMat,false);
       glass.castShadow=false;
+      this.windowGlass.set(opening.id,glass);
       for(const x of [-opening.width/2,opening.width/2])
         this.box(group,x,23,0,3,20,9,doorTrim,false);
       const nearest=site.walls.findIndex(w=>
@@ -879,6 +881,10 @@ export class TacticalScene3D{
     renderFrame?:RenderFrame|null,
     liveMotion?:ReplayPresentation|null){
     if(this.view.mode==='plan2d')return;
+    for(const [id,glass] of this.windowGlass){
+      const state=s.windows.find(w=>w.id===id);
+      glass.visible=!state||(!state.shattered&&!state.open);
+    }
     this.updateCamera(dt);
     this.fogAt+=dt;
     // Gameplay may stop on the exact downing tick. Finish visual collapse
