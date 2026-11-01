@@ -7,6 +7,7 @@ import {wearFinish} from './rendering/wear-finish.ts';
 import {doubleSidedWallWear} from './rendering/wear-wall-geometry.ts';
 import {ageMaterialColor} from './rendering/condition-materials.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from './worldgen/fixture-visuals.ts';
+import {isArchitecturalSillCover} from './worldgen/architectural-cover-visuals.ts';
 import {planFacadeAwnings} from './worldgen/facade-awnings.ts';
 import {fixtureFrameTransform} from './rendering/fixture-frame-transform.ts';
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
@@ -578,7 +579,7 @@ export class TacticalScene3D{
         texture.minFilter=THREE.LinearMipmapLinearFilter;
         texture.generateMipmaps=true;texture.needsUpdate=true;
         const material=new THREE.MeshBasicMaterial({map:texture,transparent:true,
-          depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,
+          depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1,
           side:THREE.DoubleSide});
         this.sitePatinaTextures.push(texture);this.sitePatinaMaterials.push(material);
         this.patinaRoomSurfaces.push({room,texture});
@@ -656,7 +657,7 @@ export class TacticalScene3D{
         material=new THREE.MeshBasicMaterial({
           color:wearColor[detail.kind],map:texture,transparent:true,
           opacity:Math.min(1,WEAR_ALPHA_BANDS[bucket]*this.wearBoost),
-          depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,
+          depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1,
           side:THREE.DoubleSide});
         this.wearMaterials.set(wearKey,material);
         this.mats.push(material);
@@ -694,7 +695,7 @@ export class TacticalScene3D{
       const angle=-Math.atan2(b.y-a.y,b.x-a.x);
       const individualWall=wallMat.clone();
       this.wallMaterials.add(individualWall);
-      const body=this.box(group,x,20,z,len+1,40,9,individualWall);
+      const body=this.box(group,x,20,z,len,40,9,individualWall);
       body.rotation.y=angle;
       // Whole-wall weathering follows the actual structural wall mesh.
       // Both faces share one deterministic texture, while a single instance
@@ -706,7 +707,7 @@ export class TacticalScene3D{
         texture.minFilter=THREE.LinearMipmapLinearFilter;
         texture.generateMipmaps=true;texture.needsUpdate=true;
         const material=new THREE.MeshBasicMaterial({map:texture,transparent:true,
-          depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,
+          depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1,
           side:THREE.DoubleSide});
         this.sitePatinaTextures.push(texture);this.sitePatinaMaterials.push(material);
         this.patinaWallSurfaces.push({index,texture});
@@ -721,11 +722,11 @@ export class TacticalScene3D{
       for(const mark of marksOn('wall',index))
         this.addSurfaceWear(body,mark,(mark.u-.5)*len,(mark.v-.5)*32,
           mark.face==='back'?-4.6:4.6,wallPixelSurface(site.archetype));
-      const foot=this.box(group,x,2,z,len+1,4,12,skirting,false);
+      const foot=this.box(group,x,2,z,len,4,12,skirting,false);
       foot.rotation.y=angle;
       const individualCap=capMat.clone();
       this.wallMaterials.add(individualCap);
-      const cap=this.box(group,x,40.3,z,len+2,2,11,individualCap,false);
+      const cap=this.box(group,x,40.3,z,len,2,11,individualCap,false);
       cap.rotation.y=angle;this.walls.push({mesh:cap,mid:{x,y:z}});
     }
     const archMaterial=this.solid(theme.trim);
@@ -881,6 +882,9 @@ export class TacticalScene3D{
       const group=new THREE.Group();this.root.add(group);
       this.coverGroups.set(i,group);
       this.intelSurfaces.push({obj:group,kind:'cover',index:i});
+      // The aperture renderer already creates the sill/parapet. Its cover
+      // footprint still blocks passage; do not place a second box on it.
+      if(isArchitecturalSillCover(site,c))return;
       // Build models in local coordinates, so rotating a chair also rotates
       // its back, legs and surface wear around its actual center.
       group.position.set(c.x,0,c.y);
