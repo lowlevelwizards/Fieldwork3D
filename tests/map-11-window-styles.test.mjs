@@ -11,8 +11,10 @@ test('MAP 11 window kinds are deterministic and keep physical sills',()=>{
   for(const w of a.windows??[]){
     found++;
     assert.ok(accepted.has(w.style));
-    assert.ok(a.cover.some(c=>c.fixture==='window-sill'&&
-      Math.hypot(c.x-w.x,c.y-w.y)<1));
+    const kind=w.sillHeight===0?'glass-barrier':'window-sill';
+    assert.equal(a.cover.filter(c=>c.fixture===kind&&
+      Math.hypot(c.x-w.x,c.y-w.y)<1).length,1,
+      'exactly one matching physical window collider');
   }
   const states=initializeWindows(a.windows??[]);
   for(const w of states)

@@ -3,11 +3,15 @@
  */
 import type {Session} from './breach-game.ts';
 import {WEAPONS,type WeaponId} from './breach-combat.ts';
+import {initialArmorIntegrity} from './equipment-armor.ts';
 import {magazineKit} from './breach-magazines.ts';
+import {equippedFlashCharges,
+ initialEquipmentLoadout,readEquipmentLoadout,syncPrimaryWeapon,setEquipmentChoice,
+ loadMovementScale,type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
 export type RosterMember={
  id:string;callsign:string;missions:number;successful:number;
  injuries:number;recovery:number;weapon:WeaponId;magazine:number;reserve:number;
- fired:number;
+ fired:number;appearanceSeed:number;loadout:EquipmentLoadout;
 };
 export type RosterState={version:1;members:RosterMember[]};
 const names=['rook','moss','ash','vale'] as const;
@@ -16,7 +20,8 @@ const defaultMember=(id:string,i:number):RosterMember=>({
  id,callsign:id.toUpperCase(),missions:0,successful:0,
  injuries:0,recovery:0,weapon:weapons[i],
  magazine:WEAPONS[weapons[i]].capacity,reserve:WEAPONS[weapons[i]].reserve,
- fired:0
+ fired:0,appearanceSeed:i+1,
+ loadout:initialEquipmentLoadout(weapons[i])
 });
 export function initialRoster():RosterState{
  return {version:1,members:names.map((id,i)=>defaultMember(id,i))};
@@ -38,8 +43,12 @@ export function readRoster(raw:string|null):RosterState{
      !!v&&typeof v==='object'&&'id' in v&&v.id===base.id);
    if(!found||typeof found!=='object')return base;
    const f=found as Partial<RosterMember>;
-   return {...base,callsign:typeof f.callsign==='string'?
-     f.callsign.slice(0,24):base.callsign,
+   const weapon=weapons.includes(f.weapon as WeaponId)?
+     f.weapon as WeaponId:base.weapon;
+   return {...base,callsign:typeof f.callsign==='string'&&f.callsign.trim()?
+     f.callsign.trim().slice(0,24):base.callsign,
+    appearanceSeed:finite(f.appearanceSeed,0,0xffffffff,base.appearanceSeed),
+    loadout:readEquipmentLoadout(f.loadout,weapon),
     missions:finite(f.missions,0,100000,0),
     successful:finite(f.successful,0,100000,0),
     injuries:finite(f.injuries,0,3,0),
@@ -59,6 +68,12 @@ export function applyRosterIdentity(s:Session,roster:RosterState){
   const member=roster.members.find(m=>m.id===a.id);
   if(member){
    a.name=member.callsign;
+   a.appearanceSeed=member.appearanceSeed;
+   a.equipment=member.loadout;
+   a.flashCharges=equippedFlashCharges(member.loadout);
+   const protection=initialArmorIntegrity(member.loadout);
+   a.armorIntegrity=protection.torso;a.helmetIntegrity=protection.head;
+   a.loadMovementScale=loadMovementScale(member.loadout);
    a.weapon=member.weapon;
    a.magazine=Math.min(WEAPONS[a.weapon].capacity,member.magazine);
    a.reserve=member.reserve;
@@ -74,6 +89,14 @@ export function applyRosterIdentity(s:Session,roster:RosterState){
    }
   }
  }
+ reconcileSquadFlashes(s);
+}
+/** Keep the existing mission-wide device budget, but never display usable
+ * devices when nobody actually carries one. */
+export function reconcileSquadFlashes(s:Session){
+ if(s.started)return;
+ s.flashRemaining=Math.min(2,s.operators.filter(a=>a.side==='blue')
+  .reduce((n,a)=>n+a.flashCharges,0));
 }
 export function recordRosterMission(s:Session,roster:RosterState):RosterState{
  return {version:1,members:roster.members.map(m=>{
@@ -89,7 +112,8 @@ export function recordRosterMission(s:Session,roster:RosterState):RosterState{
   return {...m,missions:m.missions+1,
     successful:m.successful+(s.phase==='won'?1:0),
     injuries,recovery,fired:m.fired+actor.shots,
-    weapon:actor.weapon,magazine:actor.magazine,reserve:actor.reserve};
+    weapon:actor.weapon,loadout:syncPrimaryWeapon(m.loadout,actor.weapon),
+    magazine:actor.magazine,reserve:actor.reserve};
  })};
 }
 
@@ -103,6 +127,30 @@ export function resupplyRoster(roster:RosterState,id?:string):RosterState{
 /** Pre-mission equipment swap with coherent ammunition, not just HUD text. */
 export function equipRoster(roster:RosterState,id:string,weapon:WeaponId):RosterState{
  return {version:1,members:roster.members.map(m=>m.id===id?{
-   ...m,weapon,magazine:WEAPONS[weapon].capacity,reserve:WEAPONS[weapon].reserve
+   ...m,weapon,loadout:syncPrimaryWeapon(m.loadout,weapon),
+   magazine:WEAPONS[weapon].capacity,reserve:WEAPONS[weapon].reserve
   }:{...m})};
+}
+
+/** Quick play has unlimited equipment availability, but each individual
+ * soldier still has an independent, persistent and compatible configuration. */
+export function equipRosterGear(roster:RosterState,id:string,slot:LoadoutSlot,
+ itemId:string):RosterState{
+ if(slot==='primary')return roster;
+ const member=roster.members.find(m=>m.id===id);
+ if(!member)return roster;
+ const next=setEquipmentChoice(member.loadout,slot,itemId);
+ if(next===member.loadout)return roster;
+ return {...roster,members:roster.members.map(m=>m.id===id?
+  {...m,loadout:next}:m)};
+}
+export function renameRosterMember(roster:RosterState,id:string,name:string):RosterState{
+ const next=name.trim().slice(0,24);
+ if(!next||roster.members.some(m=>m.id!==id&&m.callsign.toLowerCase()===next.toLowerCase()))
+  return roster;
+ return {...roster,members:roster.members.map(m=>m.id===id?{...m,callsign:next}:m)};
+}
+export function cycleRosterAppearance(roster:RosterState,id:string):RosterState{
+ return {...roster,members:roster.members.map(m=>m.id===id?
+  {...m,appearanceSeed:(m.appearanceSeed+1)>>>0}:m)};
 }

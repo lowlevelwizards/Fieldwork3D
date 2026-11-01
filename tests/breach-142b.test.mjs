@@ -6,18 +6,21 @@ test('142B: physical windows have real wall gaps and blocking sills',()=>{
  for(let seed=1;seed<=35;seed++){
    const site=generateSite(seed);
    assert.ok(site.windows?.length,'windows present: '+seed);
-   for(const pane of site.windows){
-     const expected=pane.sillHeight===0?'glass-barrier':'window-sill';
-     assert.ok(site.cover.some(c=>c.fixture===expected&&
-       Math.hypot(c.x-pane.x,c.y-pane.y)<1),
-       'missing physical window obstacle: '+pane.id+' seed '+seed);
+   const windowColliders=site.cover.filter(c=>c.fixture==='window-sill'||c.fixture==='glass-barrier');
+   // Serving/order cutouts have their own real parapet, not a WindowOpening.
+   // Count these separately rather than falsely classifying them as orphans.
+   const serving=(site.openings??[]).filter(o=>o.kind==='serving');
+   assert.equal(windowColliders.length,site.windows.length+serving.length,
+     'physical glazing and service hatch parapets: '+seed);
+   for(const opening of serving){
+     const x=(opening.a.x+opening.b.x)/2,y=(opening.a.y+opening.b.y)/2;
+     assert.equal(windowColliders.filter(c=>c.fixture==='window-sill'&&
+       Math.hypot(c.x-x,c.y-y)<.001).length,1,'one service parapet: '+seed);
    }
-   for(const hatch of site.openings??[]){
-     if(hatch.kind!=='serving')continue;
-     const center={x:(hatch.a.x+hatch.b.x)/2,y:(hatch.a.y+hatch.b.y)/2};
-     assert.ok(site.cover.some(c=>c.fixture==='window-sill'&&c.low&&
-       Math.hypot(c.x-center.x,c.y-center.y)<1),
-       'missing service parapet: '+hatch.id+' seed '+seed);
+   for(const w of site.windows){
+     const kind=w.sillHeight===0?'glass-barrier':'window-sill';
+     assert.equal(windowColliders.filter(c=>c.fixture===kind&&
+       Math.hypot(c.x-w.x,c.y-w.y)<.001).length,1,'one matching barrier per window: '+seed);
    }
    assert.ok(site.cover.some(c=>c.fixture&&c.fixture!=='window-sill'),
      'location-specific room cover still exists: '+seed);

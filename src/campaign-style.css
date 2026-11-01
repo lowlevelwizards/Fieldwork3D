@@ -78,3 +78,32 @@
  font:12px Oxanium,system-ui,sans-serif;touch-action:manipulation}
 .campaign-import::file-selector-button{background:#a8b99a;color:#182523;border:0;
  border-radius:6px;padding:8px 10px;margin-right:8px;font:600 11px Oxanium,system-ui,sans-serif}
+
+/* Equipment 03: touch-first armory. All selectors remain usable on narrow phones. */
+.campaign-kit-nav{display:flex;gap:7px;overflow-x:auto;margin:0 0 14px;scrollbar-width:thin}
+.campaign-kit-nav button{flex:0 0 auto;min-width:92px;width:auto;font-size:11px}
+.campaign-kit-grid{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:12px}
+.campaign-kit-summary{display:flex;flex-direction:column;gap:8px}
+.campaign-kit-name{font-size:21px;letter-spacing:.08em}
+.campaign-kit-metrics{font-size:11px;color:#e0d3a8;line-height:1.7;white-space:pre-wrap}
+.campaign-kit-editor{min-width:0}
+.campaign-kit-choice{padding:8px 0;border-bottom:1px solid #3e534d}
+.campaign-kit-choice:last-child{border-bottom:0}
+.campaign-kit-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.campaign-kit-row span{min-width:76px;font-size:11px;font-weight:700;color:#d2dfd0}
+.campaign-kit-row select{width:100%;max-width:66%;min-height:42px}
+.campaign-kit-description{display:block;color:#a8b7a8;font-size:10px;line-height:1.4;margin-top:4px}
+@media(max-width:620px){.campaign-kit-grid{grid-template-columns:1fr}
+ .campaign-kit-row select{max-width:67%}}
+
+/* Equipment 05: render on demand, drag to orbit; prevent scrolling only inside preview. */
+.campaign-kit-preview{height:300px;min-height:260px;width:100%;border-radius:10px;
+ border:1px solid #566b61;background:#1b2d2a;overflow:hidden;touch-action:none;
+ display:flex;align-items:center;justify-content:center}
+.campaign-kit-preview canvas{display:block;width:100%;height:100%}
+.campaign-kit-preview .campaign-note{padding:16px;text-align:center}
+
+.campaign-kit-actions{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.campaign-kit-actions button{width:auto;min-height:40px;font-size:10px;margin:0;flex:1 1 100px}
+.campaign-kit-actions select{width:100%;max-width:none;flex:1 0 100%;min-height:42px}
+.campaign-kit-actions button:disabled{opacity:.46;cursor:default}

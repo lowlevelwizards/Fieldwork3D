@@ -190,7 +190,8 @@ export function furnishRooms(site:Site,seed:number):Site{
        for(const shift of [0,-.18,.18]){
          const x=room.x+room.w*(.5+shift);
          const y=room.y+room.h/2+side*(room.h/2-29);
-         const counter:Obstacle={x,y,w:66,h:22,fixture:'bar-counter',low:false};
+         const counter:Obstacle={x,y,w:66,h:22,fixture:'bar-counter',
+            low:propDefinition('bar-counter')?.cover==='low'};
          const stools:Obstacle[]=[-.27,.27].map(ratio=>({
            x:x+ratio*66,y:y-side*27,w:15,h:15,
            fixture:'bar-stool',low:true

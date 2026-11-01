@@ -1,16 +1,29 @@
 /** Campaign screens. Render only on navigation and state changes, never per frame. */
 import type {CampaignState,Contract} from './campaign-state.ts';
-import {SKILL_NAMES,WEAPON_PRICES} from './campaign-state.ts';
+import {SKILL_NAMES,WEAPON_PRICES,armorRepairCost} from './campaign-state.ts';
+import {initialArmorIntegrity} from './equipment-armor.ts';
 import {sharedService} from './campaign-history.ts';
+import {LOADOUT_SLOTS,itemsForSlot,itemDefinition} from './equipment-catalog.ts';
+import {totalEquipmentMass,loadMobilityDescription,loadMovementScale,
+ type LoadoutSlot} from './equipment-loadouts.ts';
+import {CampaignKitPreview} from './equipment-preview.ts';
 import './campaign-style.css';
 
 export type CampaignHandlers={
  newCampaign:()=>void;continueCampaign:()=>void;quickPlay:()=>void;
  chooseContract:(id:string)=>void;resumeContract:()=>void;
- buyAmmo:()=>void;buyMedical:()=>void;resupply:(id:string)=>void;treat:(id:string)=>void;
+ buyAmmo:()=>void;buyMedical:()=>void;buyFlash:()=>void;
+ resupply:(id:string)=>void;treat:(id:string)=>void;
  recruit:()=>void;assignSlot:(slot:number,id:string)=>void;
  buyWeapon:(weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipWeapon:(id:string,weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
+ equipGear:(id:string,slot:LoadoutSlot,itemId:string)=>void;
+ repairArmor:(id:string)=>void;
+ saveKitPreset:(id:string,name:string)=>void;
+ applyKitPreset:(id:string,presetId:string)=>void;
+ deleteKitPreset:(presetId:string)=>void;
+ renameOperator:(id:string,callsign:string)=>void;
+ cycleAppearance:(id:string)=>void;
  exportSave:()=>void;importSave:(raw:string)=>void;retire:(id:string)=>void;
 };
 const node=<K extends keyof HTMLElementTagNameMap>(tag:K,cls='',label='')=>{
@@ -23,14 +36,19 @@ const button=(label:string,action:()=>void,cls='')=>{
 export class CampaignScreen{
  readonly root=node('section','campaign-screen');
  private readonly handlers:CampaignHandlers;
+ private armoryOperatorId:string|null=null;
+ private preview:CampaignKitPreview|null=null;
+ private disposePreview(){this.preview?.dispose();this.preview=null;}
  constructor(handlers:CampaignHandlers){
   this.handlers=handlers;
   this.root.setAttribute('aria-label','Fieldwork campaign');
   this.root.hidden=true;
   document.body.append(this.root);
  }
- hide(){this.root.hidden=true;}
+ hide(){this.disposePreview();this.root.hidden=true;this.armoryOperatorId=null;}
  entry(hasSave:boolean){
+  this.armoryOperatorId=null;
+  this.disposePreview();
   this.root.hidden=false;this.root.replaceChildren();
   const main=node('main','campaign-shell');
   main.append(node('div','campaign-eyebrow','FIELDWORK / VERDIGRIS'));
@@ -45,6 +63,12 @@ export class CampaignScreen{
   this.root.append(main);
  }
  home(c:CampaignState){
+  if(this.armoryOperatorId){
+   const target=c.operators.find(x=>x.id===this.armoryOperatorId&&x.status!=='lost'&&x.status!=='retired');
+   if(target){this.armory(c,target.id);return;}
+   this.armoryOperatorId=null;
+  }
+  this.disposePreview();
   this.root.hidden=false;this.root.replaceChildren();
   const main=node('main','campaign-shell campaign-wide');
   const top=node('div','campaign-head');
@@ -57,7 +81,8 @@ export class CampaignScreen{
   const personnel=node('section','campaign-section');
   personnel.append(node('h2','','PERSONNEL'));
   personnel.append(node('p','campaign-note',
-   'STOCK: '+c.supplies.ammo+' ROUNDS · '+c.supplies.medical+' MEDICAL KITS'));
+   'STOCK: '+c.supplies.ammo+' ROUNDS · '+c.supplies.medical+
+   ' MEDICAL KITS · '+c.supplies.flash+' FLASHBANGS'));
   const deployment=node('div','campaign-assignment');
   deployment.append(node('h2','','DEPLOYMENT TEAM'));
   for(let slot=0;slot<4;slot++){
@@ -122,6 +147,9 @@ export class CampaignScreen{
    weaponPick.value=p.weapon;weaponPick.disabled=!!c.activeContractId;
    weaponPick.addEventListener('change',()=>this.handlers.equipWeapon(p.id,
     weaponPick.value as 'carbine'|'smg'|'rifle'|'shotgun'));
+   actions.append(button('CUSTOMIZE KIT',()=>{
+    this.armoryOperatorId=p.id;this.home(c);
+   },'campaign-primary'));
    actions.append(weaponPick);
    actions.append(button('RESUPPLY',()=>this.handlers.resupply(p.id)));
    if(p.recoveryDays>0)actions.append(button('TREAT',()=>this.handlers.treat(p.id)));
@@ -134,7 +162,8 @@ export class CampaignScreen{
   personnel.append(roster);
   const purchases=node('div','campaign-purchases');
   purchases.append(button('BUY 60 ROUNDS · 120 CR',this.handlers.buyAmmo),
-   button('BUY MEDICAL KIT · 170 CR',this.handlers.buyMedical));
+   button('BUY MEDICAL KIT · 170 CR',this.handlers.buyMedical),
+   button('BUY 2 FLASHBANGS · 150 CR',this.handlers.buyFlash));
   personnel.append(purchases);
   const inventory=node('div','campaign-armory');
   inventory.append(node('h2','','FIELD ARMORY'));
@@ -201,6 +230,148 @@ export class CampaignScreen{
   footer.append(this.importPicker());
   footer.append(button('QUICK PLAY (NO CAMPAIGN PROGRESS)',this.handlers.quickPlay));
   main.append(footer);this.root.append(main);
+ }
+ private armory(c:CampaignState,id:string){
+  this.disposePreview();
+  const person=c.operators.find(o=>o.id===id);
+  if(!person){this.armoryOperatorId=null;this.home(c);return;}
+  this.root.hidden=false;this.root.replaceChildren();
+  const main=node('main','campaign-shell campaign-wide');
+  const top=node('div','campaign-head');
+  const identity=node('div');
+  identity.append(node('div','campaign-eyebrow','PERSONNEL / FIELD ARMORY'),
+   node('h1','',person.callsign+' / EQUIPMENT'));
+  top.append(identity,node('div','campaign-funds',
+   totalEquipmentMass(person.loadout).toFixed(2)+' KG · ASSIGNED KIT'));
+  main.append(top);
+  main.append(button('← BACK TO OPERATIONS',()=>{
+   this.armoryOperatorId=null;this.home(c);
+  }));
+  const nav=node('div','campaign-kit-nav');
+  for(const member of c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired')){
+   const choose=button(member.callsign,()=>{
+    this.armoryOperatorId=member.id;this.home(c);
+   },member.id===id?'campaign-primary':'');
+   choose.setAttribute('aria-pressed',String(member.id===id));
+   nav.append(choose);
+  }
+  main.append(nav);
+  const grid=node('div','campaign-kit-grid');
+  const summary=node('section','campaign-section campaign-kit-summary');
+  summary.append(node('h2','','OPERATOR'));
+  const preview=node('div','campaign-kit-preview');
+  summary.append(preview,node('p','campaign-note','DRAG THE SOLDIER TO ROTATE'));
+  summary.append(node('strong','campaign-kit-name',person.callsign));
+  const identityActions=node('div','campaign-kit-actions');
+  const rename=button('EDIT CALLSIGN',()=>{
+   const name=window.prompt('Operator callsign (up to 24 characters)',person.callsign);
+   if(name!==null)this.handlers.renameOperator(id,name);
+  });
+  const appearance=button('NEXT LOOK',()=>this.handlers.cycleAppearance(id));
+  rename.disabled=!!c.activeContractId;appearance.disabled=!!c.activeContractId;
+  identityActions.append(rename,appearance);summary.append(identityActions);
+  summary.append(node('p','campaign-note',
+   person.background+' · '+person.trait+' · '+person.missions+' OPERATIONS'));
+  summary.append(node('p','campaign-kit-metrics','MOBILITY · '+
+   loadMobilityDescription(person.loadout)+' · '+
+   Math.round(loadMovementScale(person.loadout)*100)+'% MOVEMENT SPEED'));
+  summary.append(node('div','campaign-kit-metrics',
+   'PRIMARY · '+person.weapon.toUpperCase()+
+   '    /    MAGAZINE · '+person.magazine+
+   '    /    RESERVE · '+person.reserve));
+  const maximum=initialArmorIntegrity(person.loadout);
+  const repairCost=armorRepairCost(person);
+  summary.append(node('p','campaign-kit-metrics',
+   'ARMOR · '+person.armorCondition.torso+'/'+maximum.torso+
+   '     HELMET · '+person.armorCondition.head+'/'+maximum.head));
+  const repair=button('REPAIR PROTECTION · '+repairCost+' CR',
+   ()=>this.handlers.repairArmor(person.id));
+  repair.disabled=!!c.activeContractId||repairCost===0||c.funds<repairCost;
+  summary.append(repair);
+  summary.append(node('p','campaign-note',
+   'Equipment is issued as a saved preparation kit. Carried weight now influences movement speed. Coarse armor coverage and durability are now simulated; detailed ballistic hitboxes, retrieval times, tools and attachment handling are still in development.'));
+  summary.append(node('p','campaign-note',
+   'The preview uses the same 3D operator rig as the mission. Some equipment slots are metadata-only until their gameplay systems are implemented.'));
+  grid.append(summary);
+  const editor=node('section','campaign-section campaign-kit-editor');
+  const locked=!!c.activeContractId;
+  const presetTitle=node('h2','','SAVED KIT PRESETS');
+  editor.append(presetTitle);
+  const presetActions=node('div','campaign-kit-actions');
+  const save=button('SAVE CURRENT KIT',()=>{
+   const name=window.prompt('Preset name (up to 32 characters)',person.callsign+' / FIELD');
+   if(name!==null)this.handlers.saveKitPreset(id,name);
+  });
+  save.disabled=locked||c.kitPresets.length>=24;
+  presetActions.append(save);
+  const picker=node('select','campaign-select');
+  picker.setAttribute('aria-label','Choose saved equipment preset');
+  const blank=node('option','','SELECT PRESET');blank.value='';picker.append(blank);
+  for(const preset of c.kitPresets){
+   const option=node('option','',preset.name+' · '+preset.weapon.toUpperCase());
+   option.value=preset.id;picker.append(option);
+  }
+  const load=button('APPLY PRESET',()=>{
+   if(picker.value){
+    const preset=c.kitPresets.find(p=>p.id===picker.value);
+    if(preset&&preset.weapon!==person.weapon&&c.inventory.weapons[preset.weapon]<1){
+     window.alert('This preset requires a primary weapon not currently available in the Armory.');return;
+    }
+    this.handlers.applyKitPreset(id,picker.value);
+   }
+  });
+  const remove=button('DELETE PRESET',()=>{
+   if(picker.value&&window.confirm('Delete selected kit preset?'))
+    this.handlers.deleteKitPreset(picker.value);
+  });
+  load.disabled=locked||c.kitPresets.length===0;
+  remove.disabled=locked||c.kitPresets.length===0;
+  presetActions.append(picker,load,remove);
+  editor.append(presetActions,node('p','campaign-note',
+   'Presets save a configuration, not copies of purchased equipment. Applying one requires an available primary weapon.'));
+  editor.append(node('h2','','EQUIPMENT SLOTS'));
+  if(locked)editor.append(node('p','campaign-note','ACTIVE DEPLOYMENT · KIT CHANGES LOCKED'));
+  for(const slot of LOADOUT_SLOTS){
+   const row=node('label','campaign-kit-row');
+   const title=node('span','',slot.replace(/-/g,' ').toUpperCase());
+   const select=node('select','campaign-select');
+   select.setAttribute('aria-label','Select '+slot+' for '+person.callsign);
+   if(slot==='primary'){
+    for(const weapon of ['carbine','smg','rifle','shotgun'] as const){
+     const item=itemDefinition('primary-'+weapon);
+     const option=node('option','',(item?.name??weapon.toUpperCase())+
+      (weapon===person.weapon?' · EQUIPPED':
+      ' · '+c.inventory.weapons[weapon]+' AVAILABLE'));
+     option.value='primary-'+weapon;
+     option.disabled=weapon!==person.weapon&&c.inventory.weapons[weapon]<1;
+     select.append(option);
+    }
+    select.value='primary-'+person.weapon;
+    select.addEventListener('change',()=>{
+     this.handlers.equipWeapon(id,select.value.slice('primary-'.length) as
+      'carbine'|'smg'|'rifle'|'shotgun');
+    });
+   }else{
+    for(const item of itemsForSlot(slot)){
+     const option=node('option','',item.name+' · '+item.massKg.toFixed(2)+' KG');
+     option.value=item.id;select.append(option);
+    }
+    select.value=person.loadout.slots[slot];
+    select.addEventListener('change',()=>this.handlers.equipGear(
+     id,slot,select.value));
+   }
+   select.disabled=locked;
+   row.append(title,select);
+   const selected=itemDefinition(person.loadout.slots[slot]);
+   const info=node('small','campaign-kit-description',selected?.description??'');
+   const wrap=node('div','campaign-kit-choice');
+   wrap.append(row,info);
+   editor.append(wrap);
+  }
+  grid.append(editor);main.append(grid);
+  this.root.append(main);
+  this.preview=new CampaignKitPreview(preview,person.id,person.weapon,
+   person.appearanceSeed,person.loadout);
  }
  private importPicker(){
   const input=node('input','campaign-import');

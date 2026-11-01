@@ -31,13 +31,15 @@ const segmentBox=(a:Pt,b:Pt,box:Obstacle)=>segmentHitsBox(a,b,box);
 export type Exposure={blocked:boolean;soft:boolean;hard:boolean;penalty:number;
   material:'stone'|'wood'|'metal'|'dust'};
 export function exposure(from:Pt,to:Pt,doors:Door[],
-  targetCrouched=false,shooterCrouched=false):Exposure{
+  targetCrouched=false,shooterCrouched=false,visionOnly=false):Exposure{
   const ray={a:from,b:to};
   if(WALLS.some(w=>segmentsCross(ray,w))||doorBlocksSightRay(doors,ray))
     return {blocked:true,soft:false,hard:true,penalty:1,material:'stone'};
   let hard=false,soft=false,material:Exposure['material']='dust';
   for(const cover of COVER){
-    if(cover.fixture==='chain-link-fence')continue;
+    // Physical glass intercepts bullets but is transparent to human vision.
+    if(cover.fixture==='chain-link-fence'||
+      (visionOnly&&cover.fixture==='glass-barrier'))continue;
     if(!segmentBox(from,to,cover))continue;
     if(coverImpactFraction(from,to,eyeHeight(shooterCrouched),
       aimHeight(targetCrouched),cover)!==null){

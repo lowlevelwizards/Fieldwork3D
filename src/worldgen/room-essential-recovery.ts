@@ -1,6 +1,7 @@
 /** Bounded second pass that actually attempts missing essential fixtures.
  * Searches all rectangles of a connected zone; does not invent furniture,
  * shrink assets, ignore door clearances or claim unsatisfied rooms are complete.
+ * Optional decor may be displaced to guarantee previously missing essentials.
  */
 import type {Site,Room} from '../breach-site.ts';
 import type {Obstacle,Pt} from '../breach-core.ts';
@@ -44,30 +45,53 @@ export function recoverRoomEssentials(site:Input,initial:readonly Obstacle[]):{
   const contract=ROOM_CONTRACTS[role];if(!contract)continue;
   for(const alternatives of contract.required){
    if(cover.some(o=>alternatives.includes(o.fixture??'')&&rooms.some(r=>inside(o,r))))continue;
-   let chosen:Obstacle|undefined;
-   for(const fixture of alternatives){
-    const asset=propDefinition(fixture);
-    if(!asset?.solid)continue;
-    for(const room of rooms){
-     if(asset.width>room.w-18||asset.depth>room.h-18)continue;
-     const spots=candidates(room,asset.width,asset.depth);
-     for(const pos of spots){
-      const candidate:Obstacle={...pos,w:asset.width,h:asset.depth,fixture,low:asset.cover==='low'};
-      if(cover.some(o=>collides(o,candidate)))continue;
-      if(reserved.some(p=>Math.abs(p.x-pos.x)<asset.width/2+23&&
-        Math.abs(p.y-pos.y)<asset.depth/2+23))continue;
-      if(site.doors.some(d=>distance(pos,{x:(d.a.x+d.b.x)/2,
-        y:(d.a.y+d.b.y)/2})<Math.max(37,Math.max(asset.width,asset.depth)/2+20)))continue;
-      if((site.openings??[]).some(o=>distance(pos,{x:(o.a.x+o.b.x)/2,
-        y:(o.a.y+o.b.y)/2})<Math.max(44,Math.max(asset.width,asset.depth)/2+22)))continue;
-      chosen=candidate;break;
+   let chosen:Obstacle|undefined,displaced:Obstacle[]=[];
+   // First seek genuinely empty positions. Reclaim one or two optional
+   // pieces only when no collision-free position exists anywhere in the zone.
+   // This prevents a decorative dresser from making a kitchen sink impossible.
+   const optional=new Set([...contract.expected,...contract.optional]);
+   for(const evictionBudget of [0,1,2]){
+    for(const fixture of alternatives){
+     const asset=propDefinition(fixture);
+     if(!asset?.solid)continue;
+     for(const room of rooms){
+      if(asset.width>room.w-18||asset.depth>room.h-18)continue;
+      const spots=candidates(room,asset.width,asset.depth);
+      for(const pos of spots){
+       const candidate:Obstacle={...pos,w:asset.width,h:asset.depth,
+        fixture,low:asset.cover==='low'};
+       if(reserved.some(p=>Math.abs(p.x-pos.x)<asset.width/2+23&&
+         Math.abs(p.y-pos.y)<asset.depth/2+23))continue;
+       if(site.doors.some(d=>distance(pos,{x:(d.a.x+d.b.x)/2,
+         y:(d.a.y+d.b.y)/2})<Math.max(37,Math.max(asset.width,asset.depth)/2+20)))continue;
+       if((site.openings??[]).some(o=>distance(pos,{x:(o.a.x+o.b.x)/2,
+         y:(o.a.y+o.b.y)/2})<Math.max(44,Math.max(asset.width,asset.depth)/2+22)))continue;
+       const colliding=cover.filter(o=>collides(o,candidate));
+       if(colliding.length>evictionBudget)continue;
+       if(colliding.some(o=>!optional.has(o.fixture??'')||
+         !rooms.some(r=>inside(o,r))))continue;
+       // No already-satisfied required group may become unsatisfied.
+       if(contract.required.some(group=>{
+        const before=cover.some(o=>group.includes(o.fixture??'')&&
+          rooms.some(r=>inside(o,r)));
+        const after=cover.some(o=>!colliding.includes(o)&&
+          group.includes(o.fixture??'')&&rooms.some(r=>inside(o,r)))||
+          group.includes(fixture);
+        return before&&!after;
+       }))continue;
+       chosen=candidate;displaced=colliding;break;
+      }
+      if(chosen)break;
      }
      if(chosen)break;
     }
     if(chosen)break;
    }
-   if(chosen){cover.push(chosen);recovered++;}
-   else issues.push({roomId:zone,fixture:alternatives.join('|'),reason:'essential-unresolved'});
+   if(chosen){
+    for(const item of displaced)cover.splice(cover.indexOf(item),1);
+    cover.push(chosen);recovered++;
+   }else issues.push({roomId:zone,fixture:alternatives.join('|'),
+     reason:'essential-unresolved'});
   }
  }
  return {cover,issues,recovered};

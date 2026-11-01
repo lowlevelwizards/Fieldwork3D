@@ -6,6 +6,7 @@ import {wearFinish} from './rendering/wear-finish.ts';
 import {doubleSidedWallWear} from './rendering/wear-wall-geometry.ts';
 import {ageMaterialColor} from './rendering/condition-materials.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from './worldgen/fixture-visuals.ts';
+import {fixtureFrameTransform} from './rendering/fixture-frame-transform.ts';
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surfaces.ts';
 import {planEnvironmentalWear,type WearKind,type WearMark} from './worldgen/environment-wear.ts';
@@ -1321,12 +1322,9 @@ export class TacticalScene3D{
     for(const [index,group] of this.coverGroups){
       const before=s.site?.cover[index],current=s.coverState[index];
       if(before&&current){
-        const sx=current.w/Math.max(1,before.w),
-          sz=current.h/Math.max(1,before.h);
-        const sy=current.destroyed?.32:1;
-        group.scale.set(sx,sy,sz);
-        group.position.set(current.x-before.x+before.x*(1-sx),
-          0,current.y-before.y+before.y*(1-sz));
+        const transform=fixtureFrameTransform(before,current);
+        group.scale.set(transform.scaleX,transform.scaleY,transform.scaleZ);
+        group.position.set(transform.x,0,transform.y);
       }
     }
     for(const [id,glass] of this.windowGlass){
@@ -1495,6 +1493,8 @@ export class TacticalScene3D{
         x:drawActor.x,z:drawActor.z,heading:drawActor.heading,
         velocity:actor.velocity,seconds:poseSeconds,stride:actor.stride,
         appearanceSeed:actor.appearanceSeed,
+        equipment:actor.equipment,
+        flashCharges:actor.flashCharges,
         // A path collision may leave residual motor velocity while position
         // is stationary: feet should brace, not march in place.
         blocked:actor.blockedTime>.14&&
