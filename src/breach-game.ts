@@ -57,6 +57,8 @@ import {bodyClear,sweptBodyClear,squeezeFacing,
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
   from './breach-squeeze-route.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {kitMedicalSupplies,type FieldMedicalSupplies}
+ from './equipment-medical-supplies.ts';
 import {changeWeaponPlatform,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {weaponHandlingModifiers,sightAcquisitionScale,sightSpreadScale}
  from './equipment-weapon-handling.ts';
@@ -86,7 +88,7 @@ export type Posture='stand'|'crouch';
 export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retreat';
 export type Personality='guard'|'aggressor'|'cautious';
 export type TeamActor=Operator & {
-  medical:MedicalCondition;
+  medical:MedicalCondition;medicalSupplies:FieldMedicalSupplies;
   awareness:ActorAwareness;
   intent:AIIntent|null;combatChoice:CombatAction|null;lastReportAt:number;
   coordinationRole:GroupRole|null;coordinationUntil:number;
@@ -189,7 +191,8 @@ export const SCENARIOS=[
   {index:2,name:'REAR GUARD',spots:[{x:262,y:213,h:1.1},{x:476,y:444,h:2.8}]},
 ] as const;
 const withActions=(a:Operator):TeamActor=>({
-  ...a,medical:newMedicalCondition(),awareness:newAwareness(),intent:null,combatChoice:null,lastReportAt:-100,
+  ...a,medical:newMedicalCondition(),medicalSupplies:kitMedicalSupplies(),
+  awareness:newAwareness(),intent:null,combatChoice:null,lastReportAt:-100,
   coordinationRole:null,coordinationUntil:0,lastMoraleEventAt:-100,searchOrigin:null,searchQueue:[],plan:[],history:makeHistory(),nav:[],activeNode:-1,
   posture:'stand',pace:'walk',alert:'idle',velocity:0,turning:0,aim:0,
   targetId:null,suppression:0,stamina:1,magazine:12,reserve:36,
