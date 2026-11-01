@@ -1,43 +1,42 @@
-/** Migration bridge. Builds 04–07 replace the legacy count and placement
- * while this stable plan remains the one source of session metadata. */
+/** Scenario director: context determines population, functional anchors establish
+ * a believable grouping, and the physical solver commits safe spawn points. */
 import type {Site} from '../breach-site.ts';
-import type {EncounterContext,EncounterPlan,EncounterPremise} from './encounter-types.ts';
+import type {EncounterContext,EncounterPlan,EncounterPremise,EncounterActorSpec} from './encounter-types.ts';
 import {chooseEncounterPremise} from './encounter-premises.ts';
 import {chooseHostileBudget} from './encounter-population.ts';
-import {encounterRng} from './encounter-rng.ts';
 import {composeEncounterGroups} from './encounter-groups.ts';
+import {placeEncounterActors} from './encounter-placement.ts';
 export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
  if(site.training)return site;
+ const seed=context.seed??site.seed;
  const premise:EncounterPremise=chooseEncounterPremise(site,context);
  const target=chooseHostileBudget(site,context,premise);
- // Migration safety: until the final spatial solver arrives in Build 07,
- // trim only validated legacy placements. Never invent an unvalidated point.
- const slots=site.enemies.map((position,i)=>({position,
-   heading:site.enemyHeadings?.[i]??0,i}));
- const rng=encounterRng(context.seed??site.seed,3);
- const selected=slots.map(slot=>({...slot,sort:rng()}))
-   .sort((a,b)=>a.sort-b.sort||a.i-b.i)
-   .slice(0,Math.min(slots.length,Math.max(2,target)))
-   .sort((a,b)=>a.i-b.i);
- const actors=selected.map(({position,heading},i)=>({
-   id:'hostile-'+i,groupId:'hostile-'+i,role:'sentry' as const,
-   activity:'watching' as const,readiness:'attentive' as const,
-   position:{...position},heading,
-   weaponProfile:'ordinary' as const
+ const anchors=site.enemies;
+ // All anchors were checked by the architectural circulation audit.
+ // Repeated provisional positions are expanded around them by the solver.
+ const provisional:EncounterActorSpec[]=Array.from({length:target},(_,i)=>({
+  id:'hostile-'+i,groupId:'hostile-'+i,role:'sentry',
+  activity:'watching',readiness:'attentive',
+  position:{...anchors[i%anchors.length]},
+  heading:site.enemyHeadings?.[i%anchors.length]??0,
+  weaponProfile:'ordinary'
  }));
- const rooms=site.rooms.filter(r=>r.kind==='room');
- const composition=composeEncounterGroups(site,actors,premise,context.seed??site.seed);
+ const composition=composeEncounterGroups(site,provisional,premise,seed);
+ const placement=placeEncounterActors(site,composition.actors,composition.groups,seed);
+ const actors=placement.actors,rooms=site.rooms.filter(r=>r.kind==='room');
+ const occupiedZones=new Set(actors.map(a=>a.zoneId).filter(Boolean)).size;
+ const zones=new Set(rooms.map(r=>r.zoneId??r.id));
  const plan:EncounterPlan={
-   version:1,seed:context.seed??site.seed,building:site.archetype??'house',
-   scale:site.scale??'standard',
-   premise,mission:context.mission??'clear',risk:context.risk??1,
-   expectedOccupancy:site.identity?.capacity??actors.length,
-   hostileBudget:target,
-   groups:composition.groups,actors:composition.actors,
-   diagnostics:{targetHostiles:target,placedHostiles:actors.length,
-     rejected:0,fallbacks:0,occupiedZones:0,emptyZones:rooms.length,
-     notes:target>actors.length?['placement budget capped by legacy safe locations until Build 07']:[]}
+  version:1,seed,building:site.archetype??'house',
+  scale:site.scale??'standard',premise,mission:context.mission??'clear',
+  risk:context.risk??1,
+  expectedOccupancy:site.identity?.capacity??actors.length,hostileBudget:target,
+  groups:placement.groups,actors,
+  diagnostics:{targetHostiles:target,placedHostiles:actors.length,
+   rejected:placement.rejected,fallbacks:placement.fallbacks,
+   occupiedZones,emptyZones:Math.max(0,zones.size-occupiedZones),
+   notes:actors.length<target?['physical capacity reduced hostile count']:[]}
  };
- return {...site,enemies:selected.map(s=>({...s.position})),
-   enemyHeadings:selected.map(s=>s.heading),encounter:plan};
+ return {...site,enemies:actors.map(a=>({...a.position})),
+  enemyHeadings:actors.map(a=>a.heading),encounter:plan};
 }
