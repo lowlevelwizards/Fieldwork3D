@@ -23,6 +23,7 @@ import {weaponClearance} from './breach-weapon-clearance.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter}
  from './equipment-weapon-light-beam.ts';
 import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
+import {carryCapacityReport} from './equipment-carry-placement.ts';
 import {mostUrgentWound} from './breach-medical-wounds.ts';
 import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
 import {lightControlState} from './equipment-weapon-light-ui.ts';
@@ -546,6 +547,16 @@ function renderOperationsBoard(){
    measured.balanceX.toFixed(1)+' · MUZZLE EXTENSION '+
    (measured.muzzleX-19.5).toFixed(1)+' UNITS';
   weaponEditor.append(properties);kit.append(weaponEditor);
+  const carrying=carryCapacityReport(member.loadout,member.magazines);
+  const carryItems=carrying.placements.filter(p=>p.kind!=='magazine');
+  if(carryItems.length){
+   const note=document.createElement('p');
+   note.style.cssText='font-size:10px;opacity:.78;margin:10px 0';
+   note.textContent='PHYSICAL CARRY · '+carryItems.map(p=>
+    p.kind.toUpperCase()+' '+p.location.toUpperCase()+' / '+
+    p.accessSeconds.toFixed(2)+'s').join(' · ');
+   kit.append(note);
+  }
   const carried=member.weapon==='shotgun'?[]:
    stageMagazines(member.magazines,member.loadout);
   if(carried.length){
