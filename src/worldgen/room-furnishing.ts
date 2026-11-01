@@ -9,6 +9,7 @@ import {orientFurnishings} from './prop-orientation.ts';
 import {ROOM_CONTRACTS} from './room-contracts.ts';
 import {recoverRoomEssentials} from './room-essential-recovery.ts';
 import {placeServiceQueues} from './service-queue-layout.ts';
+import {planKitchenWorklines} from './kitchen-workline.ts';
 type Anchor='nw'|'ne'|'sw'|'se'|'west'|'east'|'center';
 type Item={id:string;anchor:Anchor};
 const compositions:Record<string,readonly Item[]>={
@@ -180,6 +181,8 @@ export function furnishRooms(site:Site,seed:number):Site{
  const output:Obstacle[]=[...site.cover];
  const furnishingIssues:NonNullable<Site['furnishingIssues']>=[];
  const reserved:Pt[]=[...site.spawn,...site.enemies,site.objective,site.extract];
+ // Integrated kitchen equipment is reserved as a practical continuous work line.
+ output.push(...planKitchenWorklines(site,output));
  // Reserve a complete bar installation BEFORE generic furnishing occupies the
  // useful circulation-adjacent space. Only compatible dining plans receive one.
  if(site.archetype==='restaurant'&&
@@ -236,7 +239,11 @@ export function furnishRooms(site:Site,seed:number):Site{
   // Assign complete working stations to *functional* rooms. The home kitchen,
   // medical exam, shipping and service shop do not share one random furniture
   // pool simply because all contain counters and shelving.
+  const kitchenWorkline=restaurant&&room.purpose==='kitchen'&&
+    output.some(c=>c.fixture==='prep-table'&&c.x>room.x&&c.x<room.x+room.w&&
+      c.y>room.y&&c.y<room.y+room.h);
   const specialized:readonly Item[]|undefined=
+    kitchenWorkline?[{id:'fridge',anchor:'se'}]:
     restaurant&&room.purpose==='kitchen'?
       (multi?(index%2===0?
         [{id:'prep-table',anchor:'nw'},{id:'commercial-range',anchor:'se'}]:
@@ -263,8 +270,10 @@ export function furnishRooms(site:Site,seed:number):Site{
   const roomItems=compact?available.slice(0,1):available;
   // Complete required functional groups in single-cell zones. Multi-cell
   // zones already receive complementary authored compositions.
-  const required=(zoneCounts.get(zone)??0)===1?
-    (ROOM_CONTRACTS[room.purpose??'']?.required??[]):[];
+  const required=((zoneCounts.get(zone)??0)===1?
+    (ROOM_CONTRACTS[room.purpose??'']?.required??[]):[]).filter(group=>
+      !group.some(id=>output.some(c=>c.fixture===id&&
+        c.x>room.x&&c.x<room.x+room.w&&c.y>room.y&&c.y<room.y+room.h)));
   const essential:Item[]=required.map(group=>{
     const commercialKitchen=room.purpose==='kitchen'&&
       ['cafe','diner','sit-down-restaurant'].includes(site.identity?.subtype??'');
