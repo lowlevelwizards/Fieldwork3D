@@ -96,7 +96,8 @@ export function doorWouldStrikeActors(d:Door,next:number,actors:readonly Pt[],
 /** Door leaf stops against architecture and furniture, not an arbitrary
  * renderer-only angle; sample away from the hinge itself. */
 export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[]){
- if(d.kind==='shutter'||d.kind==='sliding')return false;
+ if(d.kind==='shutter')return false;
+ if(d.kind==='sliding')return doorWouldStrikeActors(d,next,actors);
  // Standalone door fixtures have no registered architecture; do not
  // collide them with an unrelated active level's walls or cover.
  const registered=activeSite()?.doors??initialDoors();
