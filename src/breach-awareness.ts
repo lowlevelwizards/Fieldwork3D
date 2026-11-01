@@ -13,9 +13,10 @@ export type ActorAwareness={
  observations:AwarenessObservation[];
  contacts:Record<string,ContactBelief>;
  lastAssessmentAt:number;
+ visualProgress:Record<string,number>;
 };
 export function newAwareness():ActorAwareness{
- return {observations:[],contacts:{},lastAssessmentAt:-1};
+ return {observations:[],contacts:{},visualProgress:{},lastAssessmentAt:-1};
 }
 export function addObservation(memory:ActorAwareness,event:AwarenessObservation):boolean{
  if(!Number.isFinite(event.at)||!Number.isFinite(event.estimate.x)||
