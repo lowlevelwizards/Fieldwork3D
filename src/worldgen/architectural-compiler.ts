@@ -207,7 +207,6 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
    else cut(edge.wall,'D'+id++,walls,doors);
   }else walls.push(edge.wall);
  }
- const entry=cells[lookup.get(key(frontage.row,frontage.col))!];
  const actualFront=doors.find(d=>d.id==='FRONT')!;
  const frontX=(actualFront.a.x+actualFront.b.x)/2;
  const frontY=(actualFront.a.y+actualFront.b.y)/2;
