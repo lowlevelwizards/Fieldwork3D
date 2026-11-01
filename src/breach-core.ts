@@ -6,7 +6,7 @@
 import {type Site} from './breach-site.ts';
 export type Pt={x:number;y:number};
 export type Segment={a:Pt;b:Pt};
-export type DoorStyle='wood'|'steel'|'reinforced'|'exit';
+export type DoorStyle='wood'|'steel'|'reinforced'|'exit'|'glazed';
 export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number;
   style?:DoorStyle;
   /** Mechanical closure with vertical lift; routes and shots respect shutter state. */
@@ -120,6 +120,10 @@ export function doorBlocksSegment(door:Door,line:Segment):boolean{
 }
 export function doorBlocksRay(doors:Door[],line:Segment):boolean{
  return doors.some(door=>doorBlocksSegment(door,line));
+}
+/** Transparent hinged glass transmits sight but retains its physical collision leaf. */
+export function doorBlocksSightRay(doors:Door[],ray:Segment):boolean{
+ return doors.some(d=>d.style!=='glazed'&&doorBlocksSegment(d,ray));
 }
 export function isClear(a:Pt,b:Pt,doors:Door[],ignoreDoors=false):boolean{
   const shot={a,b};

@@ -6,7 +6,7 @@
 import {
   type Pt,type Operator,type TacticalState,type Door,type Side,
   W,H,WALLS,COVER,initialDoors,newTacticalState,route,passable,activateSite,
-  segmentsCross,doorCenter,doorBlocksSegment,doorLeafSegment,doorBlocksRay,
+  segmentsCross,doorCenter,doorBlocksSegment,doorLeafSegment,doorBlocksRay,doorBlocksSightRay,
   pointToSegment,
 } from './breach-core.ts';
 import {
@@ -1036,7 +1036,7 @@ function hear(s:Session,p:Pt,radius:number,kind:string){
 function unobstructed(a:Pt,b:Pt,s:Session,lowBlocks:boolean){
   const ray={a,b};
   if(WALLS.some(w=>segmentsCross(ray,w)))return false;
-  if(s.doors.some(w=>doorBlocksSegment(w,ray)))return false;
+  if(doorBlocksSightRay(s.doors,ray))return false;
   // Exact slab intersection replaces dozens of short ray samples per
   // visibility query. Geometry remains authoritative at any framerate.
   return !COVER.some(o=>(!o.low||lowBlocks)&&segmentHitsBox(a,b,o));
@@ -1979,7 +1979,7 @@ function strikeSurface(from:Pt,aimed:Pt,s:Session,
     const t=segmentImpact(from,aimed,windowPaneSegment(window));
     if(t===null)continue;
     const height=fromZ+(toZ-fromZ)*t;
-    if(height<14||height>32)continue;
+    if(height<(window.sillHeight??14)||height>(window.headHeight??32))continue;
     hits.push({fraction:t,material:'glass',thickness:1});
     paneHits.push({index,fraction:t});
   }

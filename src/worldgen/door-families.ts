@@ -13,6 +13,8 @@ export function styleArchitecturalDoors(site:Site,seed:number):Site{
  const doors=site.doors.map((door,index):Door=>{
   const kind=site.archetype??'house';
   const style:DoorStyle=door.kind==='shutter'?'steel':
+    door.pairedWith&&['retail','restaurant'].includes(kind)?'glazed':
+    door.id==='FRONT'&&['retail','restaurant','office','clinic'].includes(kind)?'glazed':
     door.id==='FRONT'?exterior[kind]:
     ['warehouse','utility','garage'].includes(kind)&&index%3===0?'reinforced':
     ['warehouse','office','clinic','retail','motel'].includes(kind)&&index%4===0?'exit':

@@ -664,6 +664,9 @@ export class TacticalScene3D{
     const doorMat=this.solid(age(theme.door,'door-wood'),.88,'door-wood'),
       doorTrim=this.solid(age(theme.trim,'painted-wood'),.9,'painted-wood');
     const metal=this.solid(0x586665,.78,'industrial-steel');
+    const doorGlass=new THREE.MeshStandardMaterial({color:0xa8c2bf,roughness:.24,
+      transparent:true,opacity:.29,depthWrite:false,side:THREE.DoubleSide});
+    this.mats.push(doorGlass);
     for(const door of site.doors){
       const length=Math.hypot(door.a.x-door.b.x,door.a.y-door.b.y);
       const p=doorCenter(door),vertical=Math.abs(door.a.x-door.b.x)<1;
@@ -703,7 +706,14 @@ export class TacticalScene3D{
           this.solid(0x996c53,.78,'painted-metal'):style==='reinforced'?
           this.solid(0x53615e,.78,'industrial-steel'):this.solid(0x72817d,.78,'painted-metal');
         const middle=(invert?-1:1)*length/2;
-        this.box(leaf,middle,17,0,length-4,34,4,panel);
+        if(style==='glazed'){
+          const pane=this.box(leaf,middle,18,0,length-8,29,1,doorGlass,false);
+          pane.castShadow=false;
+          for(const sign of [-1,1])
+            this.box(leaf,middle+sign*(length/2-3),18,0,3.5,34,4,metal,false);
+          for(const y of [3,34])this.box(leaf,middle,y,0,length-4,4.5,4,metal,false);
+          this.box(leaf,middle,18,0,length-5,2.3,3,metal,false);
+        }else this.box(leaf,middle,17,0,length-4,34,4,panel);
         if(style==='wood'){
           // Quiet manufactured two-panel door joinery; no floorboard motif.
           const inset=this.solid(theme.door,.9,'painted-wood');
