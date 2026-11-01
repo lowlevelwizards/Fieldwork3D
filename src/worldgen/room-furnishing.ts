@@ -134,12 +134,24 @@ function activityFurniture(purpose:string,room:Room,items:readonly Item[],subtyp
    break;
   case 'stockroom':case 'storage':
    if(spacious)add('rack','sw');
+   if(large)add('storage-tote','ne');
    break;
   case 'guest':
    if(spacious)add('dresser','sw');
    break;
   case 'workshop':
    if(spacious)add('compressor','sw');
+   if(large)add('fire-extinguisher','ne');
+   break;
+  case 'maintenance':
+   if(large)add('step-ladder','ne');
+   break;
+  case 'service':
+   if(spacious)add('mop-bucket','sw');
+   if(large)add('recycling-bin','ne');
+   break;
+  case 'supply':
+   if(spacious)add('supply-cart','sw');
    break;
   case 'exam':case 'treatment':
    if(spacious)add('handwash-station','ne');
@@ -147,6 +159,7 @@ function activityFurniture(purpose:string,room:Room,items:readonly Item[],subtyp
    break;
   case 'packing':
    if(spacious)add('cart','sw');
+   if(large)add('storage-tote','ne');
    break;
   case 'parts':
    if(spacious)add('tire-stack','sw');

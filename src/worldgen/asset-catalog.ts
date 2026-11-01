@@ -112,6 +112,26 @@ definitions.push(
  {id:'parts-bin',category:'industrial',width:34,depth:23,height:37,
   solid:true,cover:'high',rooms:["parts","workshop"]}
 );
+// Operational supplies and loose objects share one physical model and
+// canonical size across tactical missions and the asset showroom.
+definitions.push(
+ {id:'trash-bag',category:'utility',width:17,depth:17,height:16,
+  solid:true,cover:'low',rooms:['service','storage','kitchen','stockroom','yard']},
+ {id:'recycling-bin',category:'utility',width:20,depth:20,height:27,
+  solid:true,cover:'low',rooms:['service','loading','packing','kitchen','yard']},
+ {id:'tipped-trash-bin',category:'utility',width:26,depth:30,height:17,
+  solid:true,cover:'low',rooms:['service','loading','yard','parking']},
+ {id:'mop-bucket',category:'utility',width:21,depth:20,height:18,
+  solid:true,cover:'low',rooms:['service','maintenance','utility-closet','kitchen']},
+ {id:'step-ladder',category:'utility',width:23,depth:24,height:36,
+  solid:true,cover:'high',rooms:['maintenance','workshop','storage','utility-closet']},
+ {id:'fire-extinguisher',category:'safety',width:9,depth:9,height:23,
+  solid:true,cover:'low',rooms:['workshop','kitchen','maintenance','hallway','service']},
+ {id:'supply-cart',category:'utility',width:31,depth:22,height:31,
+  solid:true,cover:'high',rooms:['supply','service','clinic','maintenance','laundry']},
+ {id:'storage-tote',category:'storage',width:26,depth:19,height:17,
+  solid:true,cover:'low',rooms:['closet','stockroom','packing','storage','supply']}
+);
 // One physical envelope for collision, placement and live model geometry.
 for(const item of definitions){
  const dimensions=CANONICAL_ASSET_DIMENSIONS[item.id];
