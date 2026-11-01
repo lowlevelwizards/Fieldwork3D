@@ -206,7 +206,8 @@ const withActions=(a:Operator):TeamActor=>({
  * The actual game passes a unique seed on each newly loaded site.
  */
 export function newSession(index=0,siteSeed?:number,
-  intelMode:IntelMode='floor-plan',scale:SiteScale='standard'):Session{
+  intelMode:IntelMode='floor-plan',scale:SiteScale='standard',
+  missionOverride?:OperationKind):Session{
   const site=siteSeed===undefined?undefined:generateSite(siteSeed>>>0,scale);
   activateSite(site??null);
   const seed=newTacticalState();
@@ -285,7 +286,7 @@ export function newSession(index=0,siteSeed?:number,
     syncCode:0,report:[],movementNoiseAt:0,site,
     dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1,
     impactMarks:[],battleEvents:[],nextBattleId:1,
-    missionType:site?(['clear','intel','rescue','hold','capture'] as const)[site.seed%5]:'clear',
+    missionType:missionOverride??(site?(['clear','intel','rescue','hold','capture'] as const)[site.seed%5]:'clear'),
     holdTime:0,rescue:null,captureTarget:null,captureSecured:false};
   if(state.missionType==='capture'){
     const target=operators.find(a=>a.side==='red');
