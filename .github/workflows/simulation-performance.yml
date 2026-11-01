@@ -5,6 +5,7 @@ on:
       - 'scripts/bench-breach-performance.mjs'
       - '.github/workflows/simulation-performance.yml'
       - 'src/breach-game.ts'
+      - 'src/breach-defense.ts'
       - 'src/breach-intel.ts'
       - 'src/breach-core.ts'
   workflow_dispatch:
