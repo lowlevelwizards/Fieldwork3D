@@ -98,6 +98,10 @@ export class CampaignScreen{
   grid.append(personnel);
   const jobs=node('section','campaign-section');
   jobs.append(node('h2','','AVAILABLE CONTRACTS'));
+  const pressure=Object.entries(c.regionalPressure).filter(([,value])=>value!==0);
+  if(pressure.length)jobs.append(node('p','campaign-note',
+   'REGIONAL PRESSURE: '+pressure.map(([region,n])=>
+    region+' '+(n>0?'+'+n:n)).join(' · ')));
   const accepted=c.contracts.find(k=>k.id===c.activeContractId);
   if(accepted){
    jobs.append(node('p','campaign-note','Deployment committed: '+accepted.title+' / '+accepted.region));
@@ -134,6 +138,7 @@ export class CampaignScreen{
   const card=node('article','campaign-contract');
   card.append(node('strong','',c.title));
   card.append(node('div','campaign-muted',c.region+' · '+['','LOW','MODERATE','HIGH'][c.risk]+' RISK'));
+  if(c.followUpOf)card.append(node('div','campaign-note','FOLLOW-UP OPERATION'));
   card.append(node('p','',c.description));
   const row=node('div','campaign-contract-row');
   row.append(node('span','',c.reward+' CR · DEADLINE DAY '+c.deadline));

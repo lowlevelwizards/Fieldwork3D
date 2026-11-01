@@ -19,7 +19,7 @@ export type Contract={
  id:string;seed:number;kind:OperationKind;scale:'standard'|'expanded';
  region:string;title:string;description:string;risk:1|2|3;
  intel:'floor-plan'|'unknown'|'scouted';reward:number;deadline:number;
- status:'available'|'accepted'|'completed'|'failed'|'expired';
+ status:'available'|'accepted'|'completed'|'failed'|'expired';followUpOf?:string;
 };
 export type CampaignReport={
  id:string;contractId:string;day:number;outcome:'success'|'failure';
@@ -31,7 +31,7 @@ export type CampaignState={
  version:1;id:string;seed:number;day:number;funds:number;
  operators:CampaignOperator[];contracts:Contract[];activeContractId:string|null;
  history:CampaignReport[];journal:CareerEvent[];appliedResults:string[];
- supplies:{medical:number;ammo:number};
+ supplies:{medical:number;ammo:number};regionalPressure:Record<string,number>;
 };
 const WEAPONS=['carbine','smg','rifle','shotgun'] as const;
 const REGIONS=['Cutwoods','Breadlands','Flooded Belt','Verdigris City','Timberline'] as const;
@@ -59,7 +59,8 @@ export function startingOperator(id:string,i:number,seed:number):CampaignOperato
   missions:0,successful:0,injuries:0,recoveryDays:0,status:'available',
   weapon,magazine:capacity,reserve,shotsFired:0,joinedDay:1};
 }
-export function createContracts(seed:number,day:number,existing:readonly Contract[]=[]):Contract[]{
+export function createContracts(seed:number,day:number,existing:readonly Contract[]=[],pressure:Record<string,number>={}):Contract[]{
+ const archive=existing.filter(c=>c.status!=='available'&&c.status!=='accepted').slice(-80);
  const active=existing.filter(c=>c.status==='available'||c.status==='accepted');
  const offers:Contract[]=[...active];
  for(let i=0;offers.filter(c=>c.status==='available').length<3&&i<20;i++){
@@ -67,20 +68,23 @@ export function createContracts(seed:number,day:number,existing:readonly Contrac
   const id='ct-'+day+'-'+i+'-'+s.toString(16);
   if(offers.some(c=>c.id===id))continue;
   const kind=CONTRACTS[(i+day+seed%5)%CONTRACTS.length];
-  const risk=((1+(s%3)) as 1|2|3);
+  const region=REGIONS[(s>>>5)%REGIONS.length];
+  const intensity=(pressure[region]??0)>1?1:0;
+  const risk=Math.max(1,Math.min(3,1+(s%3)+intensity)) as 1|2|3;
   offers.push({id,seed:s,kind:kind.kind,scale:s%4===0?'expanded':'standard',
-   region:REGIONS[(s>>>5)%REGIONS.length],title:kind.title,
+   region,title:kind.title,
    description:kind.description,risk,intel:s%3===0?'unknown':'floor-plan',
    reward:240+risk*230,deadline:day+2+(s%3),status:'available'});
  }
- return offers;
+ return [...archive,...offers];
 }
 export function newCampaign(seed:number):CampaignState{
  const normalized=(seed>>>0)||1;
  return {version:1,id:'campaign-'+normalized.toString(16),seed:normalized,day:1,funds:1200,
   operators:['rook','moss','ash','vale'].map((id,i)=>startingOperator(id,i,normalized)),
   contracts:createContracts(normalized,1),activeContractId:null,
-  history:[],journal:[],appliedResults:[],supplies:{medical:3,ammo:240}};
+  history:[],journal:[],appliedResults:[],supplies:{medical:3,ammo:240},
+  regionalPressure:Object.fromEntries(REGIONS.map(r=>[r,0]))};
 }
 export function migrateLegacyRoster(campaign:CampaignState,legacy:RosterState):CampaignState{
  if(!legacy||legacy.version!==1||!Array.isArray(legacy.members))return campaign;
@@ -113,7 +117,9 @@ export function readCampaign(raw:string|null):CampaignState|null{
    if(!contract||typeof contract.id!=='string'||!Number.isInteger(contract.seed)||
      !CONTRACTS.some(k=>k.kind===contract.kind))return null;
   }
-  return c;
+  return {...c,regionalPressure:Object.fromEntries(REGIONS.map(region=>
+   [region,Math.max(-3,Math.min(3,Number.isFinite(c.regionalPressure?.[region])?
+    c.regionalPressure[region]:0))]))};
  }catch{return null;}
 }
 export function acceptContract(c:CampaignState,id:string):CampaignState{
@@ -158,11 +164,26 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
  const contracts=c.contracts.map(k=>k.id===r.contractId?
   {...k,status:r.outcome==='success'?'completed' as const:'failed' as const}:
   k.status==='available'&&k.deadline<day?{...k,status:'expired' as const}:k);
- return {...c,day,funds:c.funds+gained,operators,
+ const pressure={...c.regionalPressure};
+ pressure[contract.region]=Math.max(-3,Math.min(3,
+  (pressure[contract.region]??0)+(r.outcome==='success'?-1:1)));
+ const followupKind:Partial<Record<OperationKind,OperationKind>>={
+  intel:'capture',capture:'hold',clear:'rescue',rescue:'hold'};
+ const nextKind=r.outcome==='success'?followupKind[contract.kind]:undefined;
+ if(nextKind){
+  const template=CONTRACTS.find(k=>k.kind===nextKind)!;
+  contracts.push({id:contract.id+'-followup-'+nextKind,
+   followUpOf:contract.id,seed:hash(contract.seed^day^0x69e433a1)||1,
+   kind:nextKind,scale:contract.scale,region:contract.region,
+   title:template.title,description:template.description,
+   risk:Math.min(3,contract.risk+1) as 1|2|3,
+   intel:'scouted',reward:contract.reward+180,deadline:day+3,status:'available'});
+ }
+ return {...c,day,funds:c.funds+gained,operators,regionalPressure:pressure,
   activeContractId:null,history:[...c.history,{...r,gains:gainedSkills}].slice(-200),
   journal:[...c.journal,...r.events,...careerEvents].slice(-1000),
   appliedResults:[...c.appliedResults,r.id].slice(-500),
-  contracts:createContracts(c.seed,day,contracts)};
+  contracts:createContracts(c.seed,day,contracts,pressure)};
 }
 
 /** Supplies are counted in actual rounds; no infinite free resupply. */
