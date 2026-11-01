@@ -5,6 +5,7 @@ import {type Site,type Room,seeded} from '../breach-site.ts';
 import {type Obstacle,type Pt} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 import {relatedFurniturePositions} from './room-composition.ts';
+import {activityClusterCandidates} from './activity-clusters.ts';
 import {orientFurnishings} from './prop-orientation.ts';
 import {ROOM_CONTRACTS} from './room-contracts.ts';
 import {recoverRoomEssentials} from './room-essential-recovery.ts';
@@ -347,6 +348,8 @@ export function furnishRooms(site:Site,seed:number):Site{
    const rotation=Math.floor(rng()*4);
    const order=i===0?positions:[positions[0],...positions.slice(1+rotation),...positions.slice(1,1+rotation)];
    const candidates=[
+     ...activityClusterCandidates(room,item.id,w,h,
+       [...output,...placed].filter(o=>o.fixture)),
      ...relatedFurniturePositions(room,item.id,w,h,
        [...output,...placed].filter(o=>o.fixture&&site.rooms.some(r=>
          r.kind==='room'&&(r.zoneId??r.id)===zone&&
