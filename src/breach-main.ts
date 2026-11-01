@@ -177,6 +177,7 @@ function applyCampaignSkills(){
   const m=tacticalSlotOperator(campaign,a.id);
   if(m){
    a.name=m.callsign;a.skills={...m.skills};a.weapon=m.weapon;
+   a.appearanceSeed=m.appearanceSeed;
    a.magazine=m.magazine;a.reserve=m.reserve;
    a.insertedMagazineId=a.id+'/'+a.weapon+'/loaded';
    a.spareMagazines=a.weapon==='shotgun'?[]:
