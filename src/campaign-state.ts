@@ -119,7 +119,7 @@ export function readCampaign(raw:string|null):CampaignState|null{
   }
   return {...c,regionalPressure:Object.fromEntries(REGIONS.map(region=>
    [region,Math.max(-3,Math.min(3,Number.isFinite(c.regionalPressure?.[region])?
-    c.regionalPressure[region]:0)))]))};
+    c.regionalPressure[region]:0))]))};
  }catch{return null;}
 }
 export function acceptContract(c:CampaignState,id:string):CampaignState{
