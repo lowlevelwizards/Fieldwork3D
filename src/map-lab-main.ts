@@ -51,7 +51,9 @@ const functionalSummary=el<HTMLDivElement>('functionalSummary');
 const functionalWarnings=el<HTMLDivElement>('functionalWarnings');
 function showFunctionalQuality(site:Site,audit:SiteAudit){
  const space=audit.spaceQuality;
- functionalSummary.textContent='Average solid footprint: '+
+ functionalSummary.textContent='Physical quality '+audit.compositeQuality.score+
+   '/100 ('+audit.compositeQuality.grade+') · '+
+   'Average solid footprint: '+
   Math.round(space.averageSolidFraction*100)+'% · '+
   space.crowdedRoomIds.length+' crowded rooms · '+
   space.doorApproachIssues.length+' doorway conflicts · '+
