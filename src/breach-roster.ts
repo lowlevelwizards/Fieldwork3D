@@ -31,8 +31,9 @@ export function readRoster(raw:string|null):RosterState{
   if(!value||typeof value!=='object')return fresh;
   const data=value as {version?:unknown;members?:unknown};
   if(data.version!==1||!Array.isArray(data.members))return fresh;
+  const savedMembers=data.members;
   return {version:1,members:fresh.members.map(base=>{
-   const found=data.members!.find((v:unknown)=>
+   const found=savedMembers.find((v:unknown)=>
      !!v&&typeof v==='object'&&'id' in v&&v.id===base.id);
    if(!found||typeof found!=='object')return base;
    const f=found as Partial<RosterMember>;
