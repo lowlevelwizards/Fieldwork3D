@@ -6,22 +6,34 @@ import type {BuildingArchetype} from '../breach-site.ts';
 import type {Blueprint} from './architectural-program.ts';
 type Change={from:string;to:string;minimumRemaining:number};
 const changes:Partial<Record<BuildingArchetype,Record<string,Change>>>={
+ house:{
+  'bungalow':{from:'dining',to:'living',minimumRemaining:0},
+  'ranch-house':{from:'mudroom',to:'utility',minimumRemaining:0}
+ },
+ townhouse:{
+  'historic-rowhouse':{from:'study',to:'storage',minimumRemaining:0},
+  'rental-townhouse':{from:'dining',to:'bedroom',minimumRemaining:0}
+ },
  retail:{
   'convenience-store':{from:'stockroom',to:'sales',minimumRemaining:1},
   'hardware-store':{from:'storage',to:'stockroom',minimumRemaining:0},
-  'clothing-shop':{from:'stockroom',to:'sales',minimumRemaining:1}
+  'clothing-shop':{from:'stockroom',to:'sales',minimumRemaining:1},
+  'general-store':{from:'service',to:'storage',minimumRemaining:0}
  },
  office:{
   'administrative-office':{from:'meeting',to:'cubicles',minimumRemaining:0},
-  'open-workplace':{from:'office',to:'cubicles',minimumRemaining:1}
+  'open-workplace':{from:'office',to:'cubicles',minimumRemaining:1},
+  'professional-office':{from:'meeting',to:'office',minimumRemaining:0}
  },
  garage:{
   'tire-service':{from:'bay',to:'parts',minimumRemaining:1},
-  'fleet-maintenance':{from:'bay',to:'workshop',minimumRemaining:2}
+  'fleet-maintenance':{from:'bay',to:'workshop',minimumRemaining:2},
+  'fabrication-shop':{from:'bay',to:'workshop',minimumRemaining:2}
  },
  warehouse:{
   'distribution':{from:'storage',to:'packing',minimumRemaining:1},
-  'shipping-depot':{from:'storage',to:'loading',minimumRemaining:1}
+  'shipping-depot':{from:'storage',to:'loading',minimumRemaining:1},
+  'bulk-storage':{from:'packing',to:'storage',minimumRemaining:0}
  },
  restaurant:{
   'cafe':{from:'service',to:'checkout',minimumRemaining:1},
@@ -30,10 +42,17 @@ const changes:Partial<Record<BuildingArchetype,Record<string,Change>>>={
  },
  motel:{
   'roadside-motel':{from:'maintenance',to:'laundry',minimumRemaining:1},
-  'motor-lodge':{from:'maintenance',to:'office',minimumRemaining:1}
+  'motor-lodge':{from:'maintenance',to:'office',minimumRemaining:1},
+  'courtyard-motel':{from:'maintenance',to:'storage',minimumRemaining:0}
  },
  clinic:{
-  'urgent-care':{from:'exam',to:'treatment',minimumRemaining:1}
+  'urgent-care':{from:'exam',to:'treatment',minimumRemaining:1},
+  'specialist-clinic':{from:'exam',to:'treatment',minimumRemaining:1}
+ },
+ utility:{
+  'pump-station':{from:'equipment',to:'maintenance',minimumRemaining:1},
+  'generator-plant':{from:'equipment',to:'control',minimumRemaining:1},
+  'electrical-service':{from:'maintenance',to:'control',minimumRemaining:0}
  }
 };
 export function specializeBlueprint(
