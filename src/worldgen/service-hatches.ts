@@ -2,8 +2,8 @@
 import type {Site,Room} from '../breach-site.ts';
 import type {Pt} from '../breach-core.ts';
 import {cutWallAperture} from './architectural-assembly.ts';
-const compatible=new Set(['kitchen|dining','kitchen|service','checkout|sales',
- 'reception|waiting','reception|lobby','office|sales','stockroom|sales']);
+const compatible=new Set(['dining|kitchen','kitchen|service','checkout|sales',
+ 'reception|waiting','lobby|reception','office|sales','sales|stockroom']);
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function addServiceHatches(site:Site,seed:number):Site{
  const at=(p:Pt):Room|undefined=>site.rooms.find(r=>p.x>r.x+1&&
