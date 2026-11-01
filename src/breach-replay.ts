@@ -7,6 +7,7 @@ import {COVER,type Door,type Pt} from './breach-core.ts';
 import {intelSnapshot,intelRestore} from './breach-intel.ts';
 import type {BattleEvent} from './breach-combat.ts';
 import {copyMedicalCondition,newMedicalCondition} from './breach-medical-wounds.ts';
+import {normalizedMedicalSupplies,kitMedicalSupplies} from './equipment-medical-supplies.ts';
 import {ReplayMotionRecorder,type ReplayPresentation} from './breach-replay-motion.ts';
 
 export type ActorFrame=Pick<TeamActor,
@@ -17,7 +18,7 @@ export type ActorFrame=Pick<TeamActor,
   'reloadFromRounds'|'reloadTargetRounds'|'reloadSelectedMagazineId'|
   'lastHitAt'|'lastDownAt'|'lastHitRegion'|'lastHitYaw'|
   'lastHitSeverity'|'downPose'|'flashUntil'|'suppression'|
-  'medical'|'weapon'|'weaponConfiguration'|'weaponLightOn'|'injuryStage'|'armorIntegrity'|'helmetIntegrity'|'flashCharges'|'morale'|'surrendered'|'defense'|'watch'|
+  'medical'|'medicalSupplies'|'weapon'|'weaponConfiguration'|'weaponLightOn'|'injuryStage'|'armorIntegrity'|'helmetIntegrity'|'flashCharges'|'morale'|'surrendered'|'defense'|'watch'|
   'lastThrowAt'|'lastDoorAt'|'lastDoorId'|'lastDoorMethod'|'stride'|
   'weaponYaw'|'stability'|'recoil'|'lastShotAt'|'fireMode'|'burstCount'|'skills'|
   'squeeze'|'squeezeYaw'|'squeezeTime'>;
@@ -66,6 +67,7 @@ export function snapshot(s:Session,seenGround?:string[]):ReplayFrame{
         {version:1,weapon:a.weaponConfiguration.weapon,
           slots:{...a.weaponConfiguration.slots}}:undefined,
        injuryStage:a.injuryStage,medical:copyMedicalCondition(a.medical),
+       medicalSupplies:{...a.medicalSupplies},
        weaponLightOn:a.weaponLightOn,
       armorIntegrity:a.armorIntegrity,helmetIntegrity:a.helmetIntegrity,
       flashCharges:a.flashCharges,
@@ -207,6 +209,8 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
     if(a)Object.assign(a,copy,{p:position(copy.p),
       spareMagazines:copy.spareMagazines.map(m=>({...m})),
       medical:copy.medical?copyMedicalCondition(copy.medical):newMedicalCondition(),
+      medicalSupplies:normalizedMedicalSupplies(copy.medicalSupplies,
+       kitMedicalSupplies(a.equipment)),
       plan:[],nav:[]});
   }
   s.doors=f.doors.map(d=>({...d,a:position(d.a),b:position(d.b)}));
