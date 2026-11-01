@@ -131,6 +131,8 @@ function activityFurniture(purpose:string,room:Room,items:readonly Item[],subtyp
    break;
   case 'sales':
    if(large)add('gondola-shelf','sw');
+   if(large&&subtype==='convenience-store')
+    add('refrigerated-display','ne');
    break;
   case 'stockroom':case 'storage':
    if(spacious)add('rack','sw');
@@ -142,6 +144,7 @@ function activityFurniture(purpose:string,room:Room,items:readonly Item[],subtyp
   case 'workshop':
    if(spacious)add('compressor','sw');
    if(large)add('fire-extinguisher','ne');
+   if(large)add('tool-rack','sw');
    break;
   case 'maintenance':
    if(large)add('step-ladder','ne');
@@ -149,9 +152,19 @@ function activityFurniture(purpose:string,room:Room,items:readonly Item[],subtyp
   case 'service':
    if(spacious)add('mop-bucket','sw');
    if(large)add('recycling-bin','ne');
+   if(large)add('utility-sink','west');
    break;
   case 'supply':
    if(spacious)add('supply-cart','sw');
+   if(large)add('linen-cart','ne');
+   break;
+  case 'laundry':
+   if(spacious)add('linen-cart','sw');
+   if(large)add('ice-machine','ne');
+   break;
+  case 'kitchen':
+   if(large&&['cafe','diner','sit-down-restaurant'].includes(subtype))
+    add('upright-freezer','ne');
    break;
   case 'exam':case 'treatment':
    if(spacious)add('handwash-station','ne');

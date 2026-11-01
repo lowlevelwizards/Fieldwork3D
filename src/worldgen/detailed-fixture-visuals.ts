@@ -11,6 +11,7 @@ export const DETAILED_FIXTURE_IDS=new Set([
  'nightstand','side-table','rug','lamp','shower','office-chair',
  'trash-bag','recycling-bin','tipped-trash-bin','mop-bucket',
  'step-ladder','fire-extinguisher','supply-cart','storage-tote',
+ 'ice-machine','chest-freezer','upright-freezer','refrigerated-display','dish-rack','utility-sink','tool-rack','linen-cart',
  'computer','printer','cash-register','display-rack','product-box',
  'crate','box','pallet','compressor','cable-reel','planter','picnic-table',
  'patio-chair','grill','shed','dumpster','shipping-container','books',
@@ -409,6 +410,76 @@ export function renderDetailedFixture(group:THREE.Group,c:Obstacle,
    for(const sx of [-1,1])
     b(sx*w*.49,H*.60,0,1.6,H*.18,d*.32,ink,false);
    return true;
+ }
+ case 'ice-machine':{
+  b(0,H*.47,0,w*.96,H*.91,d*.94,light);
+  b(0,H*.73,d*.49,w*.74,H*.3,1.4,steel,false);
+  b(0,H*.78,d*.56,w*.6,H*.14,.8,ink,false);
+  b(0,H*.48,d*.57,w*.5,3,1.2,metal,false);
+  b(0,H*.98,0,w,2.5,d,metal,false);
+  return true;
+ }
+ case 'chest-freezer':{
+  b(0,H*.44,0,w,H*.84,d,light);
+  b(0,H*.9,0,w+1,3,d+1,steel,false);
+  b(0,H*.96,-d*.13,w*.96,2,d*.66,light,false);
+  b(0,H*.74,d*.51,w*.45,2,1.4,ink,false);
+  for(const sx of [-.38,.38])b(sx*w,2,-d*.35,3.5,4,3.5,ink);
+  return true;
+ }
+ case 'upright-freezer':{
+  b(0,H*.5,0,w,H,d,steel);
+  b(0,H*.48,d*.505,w*.9,H*.91,1.1,light,false);
+  b(w*.38,H*.5,d*.56,2,H*.36,1.3,ink,false);
+  b(0,H*.84,d*.56,w*.63,2,1.3,olive,false);
+  b(0,1.5,0,w,3,d,ink,false);
+  return true;
+ }
+ case 'refrigerated-display':{
+  const pane=ctx.solid(0x82a0aa,.38);
+  b(0,H*.5,0,w,H,d,steel);
+  b(0,H*.49,d*.51,w*.86,H*.83,1.2,pane,false);
+  for(const level of [.28,.53,.77]){
+   b(0,H*level,d*.4,w*.77,2,d*.75,light,false);
+   for(const sx of [-.32,0,.32])b(sx*w,H*level+3,d*.29,w*.15,5,d*.22,red,false);
+  }
+  b(w*.45,H*.5,d*.57,2,H*.61,1.4,ink,false);
+  return true;
+ }
+ case 'dish-rack':{
+  b(0,H*.21,0,w*.9,3,d*.86,steel);
+  for(const sx of [-1,1])for(const sz of [-1,1])
+   b(sx*w*.43,H*.47,sz*d*.42,2,H*.9,2,steel);
+  for(let n=-3;n<=3;n++)b(n*w*.11,H*.58,0,1.3,H*.44,d*.72,light,false);
+  b(0,H*.89,0,w*.93,2,d*.88,metal,false);
+  return true;
+ }
+ case 'utility-sink':{
+  b(0,H*.72,0,w*.93,H*.4,d*.88,light);
+  b(0,H*.92,0,w*.83,1.3,d*.74,steel,false);
+  b(0,H*.94,0,w*.59,.9,d*.54,ink,false);
+  for(const sx of [-1,1])b(sx*w*.36,H*.27,0,2.7,H*.52,2.7,steel);
+  b(0,H+5,-d*.34,2.2,10,2.4,metal,false);
+  b(0,H+10,-d*.28,10,1.5,2.4,metal,false);
+  return true;
+ }
+ case 'tool-rack':{
+  b(0,H*.5,-d*.4,w,H,3.2,steel);
+  for(const level of [.18,.47,.8])b(0,H*level,0,w*.96,2.7,d*.93,metal,false);
+  for(let n=-3;n<=3;n++)b(n*w*.12,H*.65,d*.47,1.4,H*.28,1.7,ink,false);
+  for(const sx of [-.3,.25])b(sx*w,H*.25,d*.19,w*.2,H*.18,d*.46,red,false);
+  return true;
+ }
+ case 'linen-cart':{
+  b(0,H*.28,0,w*.9,H*.49,d*.86,steel);
+  b(0,H*.55,0,w*.94,2.2,d*.9,metal,false);
+  for(const sx of [-1,1])for(const sz of [-1,1]){
+   b(sx*w*.43,H*.39,sz*d*.39,2.2,H*.75,2.2,steel);
+   b(sx*w*.43,2,sz*d*.39,4.5,4,4.5,ink,false);
+  }
+  for(const sx of [-.25,.25])b(sx*w,H*.65,-d*.06,w*.35,7,d*.57,light,false);
+  b(w*.45,H*.74,0,3.5,3.5,d*.84,metal,false);
+  return true;
  }
  case 'books':{
    for(const [n,color] of [wood,red,green].entries())

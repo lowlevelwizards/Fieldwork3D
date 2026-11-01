@@ -11,6 +11,8 @@ const directional=new Set(['reception-desk','transaction-counter','parts-counter
  'bookcase','shelf','rack','wall-shelf','wardrobe','dresser','tv-stand','workbench',
  'checkout','reception-desk','transaction-counter','parts-counter','control-panel','meeting-table','dining-table',
  'prep-table','commercial-range','dish-station','handwash-station',
+ 'ice-machine','chest-freezer','upright-freezer','refrigerated-display',
+ 'dish-rack','utility-sink','tool-rack','linen-cart',
  'instrument-cart','retail-endcap','packing-station','parts-bin']);
 const facing:readonly Pt[]=[{x:0,y:1},{x:1,y:0},{x:0,y:-1},{x:-1,y:0}];
 const activeFixtures=new Set(['chair','office-chair','bar-stool','armchair','sofa','bench','patio-chair',
