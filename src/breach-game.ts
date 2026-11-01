@@ -35,6 +35,7 @@ import {searchCandidates} from './breach-ai-search.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
 import {reportToListener,type TacticalReport} from './breach-communication.ts';
 import {groupResponse,type GroupRole} from './breach-ai-coordination.ts';
+import {moraleResponse,witnessShock} from './breach-ai-morale.ts';
 import {newAwareness,addObservation,visibleObservation,
  ageAwareness,clearObservedPosition,bestBelief,
  type ActorAwareness} from './breach-awareness.ts';
@@ -71,6 +72,7 @@ export type TeamActor=Operator & {
   awareness:ActorAwareness;
   intent:AIIntent|null;combatChoice:CombatAction|null;lastReportAt:number;
   coordinationRole:GroupRole|null;coordinationUntil:number;
+  lastMoraleEventAt:number;
   searchOrigin:Pt|null;searchQueue:Pt[];
   plan:PlanNode[];history:PlanHistory;nav:Pt[];activeNode:number;
   posture:Posture;pace:'walk'|'run';alert:Alert;velocity:number;turning:number;
@@ -159,7 +161,7 @@ export const SCENARIOS=[
 ] as const;
 const withActions=(a:Operator):TeamActor=>({
   ...a,awareness:newAwareness(),intent:null,combatChoice:null,lastReportAt:-100,
-  coordinationRole:null,coordinationUntil:0,searchOrigin:null,searchQueue:[],plan:[],history:makeHistory(),nav:[],activeNode:-1,
+  coordinationRole:null,coordinationUntil:0,lastMoraleEventAt:-100,searchOrigin:null,searchQueue:[],plan:[],history:makeHistory(),nav:[],activeNode:-1,
   posture:'stand',pace:'walk',alert:'idle',velocity:0,turning:0,aim:0,
   targetId:null,suppression:0,stamina:1,magazine:12,reserve:36,
   reload:0,hits:0,kills:0,stopped:false,contact:null,heard:null,
@@ -2335,7 +2337,30 @@ export function stepSession(s:Session,dt:number){
     if(a.side==='red'&&a.health>0){
       a.morale=Math.min(1,a.morale+h*.006-
         (a.suppression>.65?h*.075:0));
-      if(a.morale<.12&&a.suppression>.55){
+      // Only a visible nearby casualty affects this actor's resolve.
+      for(const fallen of s.operators){
+        if(fallen===a||fallen.side!==a.side||fallen.health>0||
+           fallen.surrendered||fallen.lastDownAt<=a.lastMoraleEventAt)continue;
+        const distance=d(a.p,fallen.p);
+        const visible=distance<160&&
+          Math.abs(angleDifference(a.heading,angle(a.p,fallen.p)))<1.25&&
+          unobstructed(a.p,fallen.p,s,false);
+        const shock=witnessShock(distance,visible);
+        if(shock>0){
+          a.morale=Math.max(0,a.morale-shock);
+          a.lastMoraleEventAt=Math.max(a.lastMoraleEventAt,fallen.lastDownAt);
+        }
+      }
+      const resolve=moraleResponse(a.morale,a.suppression,
+        a.injuryStage,a.personality);
+      if(resolve==='withdraw'&&a.alert!=='retreat'){
+        const threat=a.contact??a.heard??a.watch;
+        if(threat){
+          a.retreatPoint=defensivePosition(a,threat,s);
+          if(a.retreatPoint){a.alert='retreat';a.nav=[];}
+        }
+      }
+      if(resolve==='surrender'){
         a.surrendered=true;a.health=0;a.injuryStage=3;
         a.lastDownAt=s.seconds;a.downPose='slump';
         a.velocity=0;a.nav=[];a.plan=[];
