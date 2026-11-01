@@ -1,6 +1,6 @@
 /** Shared low-resolution material library: build textures once, then reuse. */
 import * as THREE from 'three';
-import {pixelPattern,pixelRepeats,TILE_PIXELS,
+import {pixelPattern,pixelRepeats,TILE_PIXELS,TILE_WORLD_SIZE,
   type PixelSurface} from './pixel-recipes.ts';
 export {PIXEL_SURFACES,TEXELS_PER_OPERATOR,PIXEL_WORLD_SIZE,TILE_WORLD_SIZE}
  from './pixel-recipes.ts';
@@ -47,11 +47,14 @@ export function mapBoxPixelUV(geometry:THREE.BoxGeometry,w:number,h:number,d:num
  uv.needsUpdate=true;
  return geometry;
 }
-export function mapPlanePixelUV(geometry:THREE.PlaneGeometry,w:number,d:number){
+export function mapPlanePixelUV(geometry:THREE.PlaneGeometry,w:number,d:number,
+ x=0,z=0){
  const uv=geometry.getAttribute('uv') as THREE.BufferAttribute;
  const [u,v]=pixelRepeats(w,d);
- uv.setXY(0,0,v);uv.setXY(1,u,v);
- uv.setXY(2,0,0);uv.setXY(3,u,0);
+ // Anchored to world coordinates: adjacent room slabs share pixel seams.
+ const u0=(x-w/2)/TILE_WORLD_SIZE,v0=(z-d/2)/TILE_WORLD_SIZE;
+ uv.setXY(0,u0,v0);uv.setXY(1,u0+u,v0);
+ uv.setXY(2,u0,v0+v);uv.setXY(3,u0+u,v0+v);
  uv.needsUpdate=true;
  return geometry;
 }
