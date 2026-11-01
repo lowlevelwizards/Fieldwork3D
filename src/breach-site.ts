@@ -9,6 +9,8 @@ import {partitionMotelGuestUnits} from './worldgen/motel-suites.ts';
 import {orientArchitecturalSite,type EntrySide} from './worldgen/site-orientation.ts';
 import {buildingIdentity} from './worldgen/building-identity.ts';
 import {measureSiteCompleteness,shouldTryAnotherLayout,preferCompleteCandidate} from './worldgen/site-completeness.ts';
+import {attachEncounterPlan} from './worldgen/encounter-director.ts';
+import type {EncounterContext,EncounterPlan} from './worldgen/encounter-types.ts';
 export type Room={id:string;zoneId?:string;unitId?:string;x:number;y:number;w:number;h:number;
   kind:'room'|'hall';tone:number;purpose?:string};
 export type BuildingArchetype='house'|'townhouse'|'apartment'|'retail'|'office'|'garage'|'warehouse'|'restaurant'|'motel'|'utility'|'clinic';
@@ -30,6 +32,8 @@ export type SiteScale='standard'|'expanded'|'small'|'medium'|'large';
 export type Site={
   /** Nonpersistent authored practice map; ordinary missions never set this. */
   training?:boolean;
+  /** Seed-derived population plan; site.enemies remains the compatibility view. */
+  encounter?:EncounterPlan;
   /** Authored semantic programs bypass index-based purpose assignment. */
   programLocked?:boolean;
   identity?:import('./worldgen/building-identity.ts').BuildingIdentity;
@@ -69,7 +73,8 @@ export const seeded=(seed:number)=>{
  * regardless of scale. Older square-grid layouts are not in active rotation.
  */
 export function generateSite(seed:number,scale:SiteScale='standard',
- onProgress?:(phase:'layout'|'furnishing'|'scoring',attempt:number)=>void):Site{
+ onProgress?:(phase:'layout'|'furnishing'|'scoring',attempt:number)=>void,
+ encounterContext:EncounterContext={}):Site{
  const kind=(['house','townhouse','apartment','retail','office',
   'garage','warehouse','restaurant','motel','utility','clinic'] as const)
   [(seed>>>0)%11];
@@ -90,7 +95,8 @@ export function generateSite(seed:number,scale:SiteScale='standard',
    geometry.seed=seed;
    geometry.identity=buildingIdentity(kind,seed,scale,geometry.roomCount);
    onProgress?.('furnishing',attempt);
-   const candidate=applyArchetype(orientArchitecturalSite(geometry,seed),seed);
+   const candidate=attachEncounterPlan(
+     applyArchetype(orientArchitecturalSite(geometry,seed),seed),encounterContext);
    onProgress?.('scoring',attempt);
    const grade=measureSiteCompleteness(candidate);
    if(!bestGrade||preferCompleteCandidate(grade,bestGrade)){

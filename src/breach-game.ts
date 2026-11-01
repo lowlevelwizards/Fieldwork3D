@@ -19,6 +19,7 @@ import {
 import {validPieArc} from './breach-maneuvers.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
 import {generateSite,type Site,type SiteScale,seeded} from './breach-site.ts';
+import type {EncounterContext} from './worldgen/encounter-types.ts';
 import {WEAPONS,injuryOf,injurySpeed,injuryReload,
   woundSeverity,exposure,nearCover,type WeaponId,type BattleEvent}
   from './breach-combat.ts';
@@ -249,8 +250,11 @@ const withActions=(a:Operator):TeamActor=>({
  */
 export function newSession(index=0,siteSeed?:number,
   intelMode:IntelMode='floor-plan',scale:SiteScale='standard',
-  missionOverride?:OperationKind,prebuiltSite?:Site):Session{
-  const site=prebuiltSite??(siteSeed===undefined?undefined:generateSite(siteSeed>>>0,scale));
+  missionOverride?:OperationKind,prebuiltSite?:Site,
+  encounterContext:EncounterContext={}):Session{
+  const site=prebuiltSite??(siteSeed===undefined?undefined:
+    generateSite(siteSeed>>>0,scale,undefined,
+      {...encounterContext,mission:missionOverride??encounterContext.mission}));
   activateSite(site??null);
   const seed=newTacticalState();
   const variant=((index%SCENARIOS.length)+SCENARIOS.length)%SCENARIOS.length;
@@ -299,7 +303,8 @@ export function newSession(index=0,siteSeed?:number,
         operators.push(a);
       }
       a.p={...site.enemies[i]};a.priorP={...a.p};
-      a.heading=site.enemyHeadings?.[i]??enemyRng()*Math.PI*2;
+      a.heading=site.encounter?.actors[i]?.heading??
+        site.enemyHeadings?.[i]??enemyRng()*Math.PI*2;
       a.weaponYaw=a.heading;
       a.health=enemyRng()<.18?3:4;
       a.weapon=enemyRng()<.30?'smg':'carbine';
