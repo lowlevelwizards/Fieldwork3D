@@ -1,6 +1,6 @@
 /** Campaign screens. Render only on navigation and state changes, never per frame. */
 import type {CampaignState,Contract} from './campaign-state.ts';
-import {SKILL_NAMES} from './campaign-state.ts';
+import {SKILL_NAMES,WEAPON_PRICES} from './campaign-state.ts';
 import {sharedService} from './campaign-history.ts';
 import './campaign-style.css';
 
@@ -9,6 +9,8 @@ export type CampaignHandlers={
  chooseContract:(id:string)=>void;resumeContract:()=>void;
  buyAmmo:()=>void;buyMedical:()=>void;resupply:(id:string)=>void;treat:(id:string)=>void;
  recruit:()=>void;assignSlot:(slot:number,id:string)=>void;
+ buyWeapon:(weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
+ equipWeapon:(id:string,weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
 };
 const node=<K extends keyof HTMLElementTagNameMap>(tag:K,cls='',label='')=>{
  const el=document.createElement(tag);if(cls)el.className=cls;
@@ -101,6 +103,17 @@ export class CampaignScreen{
    }
    card.append(details);
    const actions=node('div','campaign-person-actions');
+   const weaponPick=node('select','campaign-select');
+   weaponPick.setAttribute('aria-label','Select weapon for '+p.callsign);
+   for(const weapon of ['carbine','smg','rifle','shotgun'] as const){
+    const opt=node('option','',weapon.toUpperCase()+' · '+c.inventory.weapons[weapon]+' SPARE');
+    opt.value=weapon;opt.disabled=weapon!==p.weapon&&c.inventory.weapons[weapon]<1;
+    weaponPick.append(opt);
+   }
+   weaponPick.value=p.weapon;weaponPick.disabled=!!c.activeContractId;
+   weaponPick.addEventListener('change',()=>this.handlers.equipWeapon(p.id,
+    weaponPick.value as 'carbine'|'smg'|'rifle'|'shotgun'));
+   actions.append(weaponPick);
    actions.append(button('RESUPPLY',()=>this.handlers.resupply(p.id)));
    if(p.recoveryDays>0)actions.append(button('TREAT',()=>this.handlers.treat(p.id)));
    card.append(actions);
@@ -111,6 +124,16 @@ export class CampaignScreen{
   purchases.append(button('BUY 60 ROUNDS · 120 CR',this.handlers.buyAmmo),
    button('BUY MEDICAL KIT · 170 CR',this.handlers.buyMedical));
   personnel.append(purchases);
+  const inventory=node('div','campaign-armory');
+  inventory.append(node('h2','','FIELD ARMORY'));
+  for(const weapon of ['carbine','smg','rifle','shotgun'] as const){
+   const stock=c.inventory.weapons[weapon],price=WEAPON_PRICES[weapon];
+   const buy=button('BUY '+weapon.toUpperCase()+' · '+price+' CR · '+stock+' STOCK',
+    ()=>this.handlers.buyWeapon(weapon));
+   buy.disabled=c.funds<price||!!c.activeContractId;
+   inventory.append(buy);
+  }
+  personnel.append(inventory);
   const recruit=button('RECRUIT OPERATOR · 450 CR',this.handlers.recruit);
   recruit.disabled=c.operators.length>=8||c.funds<450||!!c.activeContractId;
   personnel.append(recruit);
