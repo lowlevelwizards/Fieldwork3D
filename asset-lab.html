@@ -30,8 +30,9 @@ input{flex:1;min-width:100px}select{flex:1;min-width:140px}button:disabled{opaci
 <div id="labels"></div>
 <section id="controls" aria-label="Asset library">
  <div class="row"><label for="category">CATEGORY</label><select id="category"><option value="">All assets</option></select><input id="search" type="search" placeholder="Search asset names" aria-label="Search assets"></div>
+ <div class="row"><label for="review-status">REVIEW</label><select id="review-status"><option value="">All statuses</option><option value="needs-review">Needs review</option><option value="needs-cleanup">Needs cleanup</option><option value="needs-redesign">Needs redesign</option><option value="approved">Approved</option></select></div>
  <div class="row"><button id="previous">PREVIOUS</button><button id="next">NEXT</button><span id="summary"></span></div>
- <div class="row"><button id="iso">ISO</button><button id="top">TOP</button><button id="fit">FIT ALL</button><button id="focus">FOCUS</button><button id="bounds" aria-pressed="false">OUTLINE VOLUME</button><button id="textures" aria-pressed="true">TEXTURES ON</button><button id="variant" disabled>VARIANT +</button><button id="review">NEXT MODEL</button></div>
+ <div class="row"><button id="iso">ISO</button><button id="top">TOP</button><button id="fit">FIT ALL</button><button id="focus">FOCUS</button><button id="bounds" aria-pressed="false">OUTLINE VOLUME</button><button id="textures" aria-pressed="true">TEXTURES ON</button><button id="variant" disabled>VARIANT +</button><button id="review">NEXT MODEL</button><button id="scale-reference" aria-pressed="true">SCALE FIGURE</button><button id="context" aria-pressed="false">CONTEXT OFF</button></div>
  <div class="row"><span>Drag to orbit · pinch to zoom/pan · tap names to inspect · VARIANT + cycles three trims</span></div>
  <details id="material-inspector"><summary>MATERIAL INSPECTOR</summary>
  <div class="row" aria-label="Pixel material inspection">
