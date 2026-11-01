@@ -14,6 +14,8 @@ import {type Site,type WindowOpening} from './breach-site.ts';
 import {assetLibrary,assetLibraryCategories,type AssetLibraryEntry} from './worldgen/asset-library.ts';
 import {OPERATOR_REFERENCE_HEIGHT,WORLD_UNITS_PER_METRE,metres} from './worldgen/world-scale.ts';
 import {CHARACTER_FIXTURE_IDS} from './worldgen/asset-character-visuals.ts';
+import {assetReviewInventory} from './worldgen/asset-review.ts';
+import {propDefinition} from './worldgen/asset-catalog.ts';
 import {assetPrimarySurface,assetMaterialDescription} from './worldgen/material-inspection.ts';
 import {wearPixels} from './rendering/pixel-decals.ts';
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
@@ -21,6 +23,9 @@ const category=el<HTMLSelectElement>('category'),search=el<HTMLInputElement>('se
 const summary=el<HTMLElement>('summary'),detail=el<HTMLOutputElement>('detail');
 const labelLayer=el<HTMLElement>('labels');
 const all=assetLibrary();
+const reviewById=new Map(assetReviewInventory().map(r=>[r.id,r]));
+const reviewPicker=el<HTMLSelectElement>('review-status');
+let contextShown=false,scaleReferenceShown=true;
 let layout=showroomGrid(innerWidth);
 const header=el<HTMLElement>('lab-header'),controls=el<HTMLElement>('controls');
 const overlay=new THREE.Group();
@@ -131,7 +136,10 @@ function refreshScaleGuides(items:readonly AssetLibraryEntry[]){
    const mesh=new THREE.InstancedMesh(guideGeometries[i],guideMat,items.length);
    for(const [index] of items.entries()){
      const at=showroomSlot(index,layout);
-     dummy.position.set(at.x+58+part[0],part[1],at.y+53+part[2]);
+     const item=items[index];
+     // Never put the scale figure inside a vehicle or large tree trunk.
+     dummy.position.set(at.x+Math.min(71,item.width*.5+12)+part[0],
+       part[1],at.y+Math.min(60,item.depth*.5+12)+part[2]);
      dummy.updateMatrix();
      mesh.setMatrixAt(index,dummy.matrix);
    }
@@ -157,7 +165,9 @@ function refreshArchitectureSamples(items:readonly AssetLibraryEntry[]){
 let labels:{node:HTMLButtonElement;p:Pt}[]=[];
 function filtered(){
  const term=search.value.trim().toLowerCase();
- return all.filter(item=>(!category.value||item.category===category.value)&&
+ const status=reviewPicker.value;
+ return all.filter(item=>(!status||reviewById.get(item.id)?.status===status)&&
+   (!category.value||item.category===category.value)&&
    (!term||[item.id,item.label,item.category,...item.rooms].join(' ').toLowerCase().includes(term)));
 }
 function sampleSite(items:readonly AssetLibraryEntry[]):Site{
@@ -174,6 +184,20 @@ function sampleSite(items:readonly AssetLibraryEntry[]):Site{
         artCondition:el<HTMLSelectElement>('surface-condition').value as 'clean'|'used'|'neglected'|'vacant',
         artSurface:showroomMaterials.get(item.id),
       }:{})});
+     if(contextShown&&item.id===selectedId){
+       // Real catalog models, not fake context mockups.
+       const companion:Record<string,string>={
+         'office-chair':'desk',shower:'sink',dumpster:'trash-bin',
+         sedan:'parking-block',pickup:'parking-block',van:'parking-block',
+         suv:'parking-block',vehicle:'parking-block',
+         'tree-broadleaf':'shrub-round','tree-conifer':'shrub-round',
+         'tree-scrub':'shrub-round','tool-chest':'workbench',
+       };
+       const other=propDefinition(companion[item.id]??'');
+       if(other)cover.push({x:x+Math.min(49,(item.width+other.width)*.5+8),
+         y:y+Math.min(52,(item.depth+other.depth)*.5+8),
+         w:other.width,h:other.depth,low:other.cover==='low',fixture:other.id});
+     }
    }else if(item.origin==='dressing'){
      dressing.push({id:item.id,roomId:'showroom',kind:item.id.slice(7) as
        NonNullable<Site['dressing']>[number]['kind'],
@@ -238,7 +262,10 @@ function focusSelected(){
  const index=shownEntries.findIndex(item=>item.id===selectedId);
  if(index<0)return;
  stage.view.focus=showroomSlot(index,layout);
- stage.view.zoom=3.3;stage.updateCamera(1);
+ const item=shownEntries[index];
+ stage.view.zoom=Math.max(1.95,Math.min(5.2,
+   3.25*Math.sqrt(48/Math.max(item.width,item.depth,item.height))));
+ stage.updateCamera(1);
 }
 function select(item:AssetLibraryEntry){
  selectedId=item.id;
@@ -309,7 +336,7 @@ function refresh(){
    const node=document.createElement('button');
    node.textContent=item.label;node.dataset.assetId=item.id;
    node.title=item.id+' · '+item.category;
-   node.addEventListener('click',()=>select(item));
+   node.addEventListener('click',()=>{select(item);if(contextShown)refresh();});
    labelLayer.append(node);
    labels.push({node,p:showroomSlot(index,layout)});
  }
@@ -328,11 +355,23 @@ function refresh(){
 el<HTMLButtonElement>('next').addEventListener('click',()=>{page++;selectedId=null;refresh();});
 el<HTMLButtonElement>('previous').addEventListener('click',()=>{page--;selectedId=null;refresh();});
 category.addEventListener('change',()=>{page=0;selectedId=null;refresh();});
+reviewPicker.addEventListener('change',()=>{page=0;selectedId=null;refresh();});
 search.addEventListener('input',()=>{page=0;selectedId=null;refresh();});
 el<HTMLButtonElement>('iso').addEventListener('click',()=>stage.setMode('iso'));
 el<HTMLButtonElement>('top').addEventListener('click',()=>stage.setMode('top'));
 el<HTMLButtonElement>('fit').addEventListener('click',fitShowroom);
 el<HTMLButtonElement>('focus').addEventListener('click',focusSelected);
+el<HTMLButtonElement>('scale-reference').addEventListener('click',()=>{
+ scaleReferenceShown=!scaleReferenceShown;
+ scaleGuides.visible=scaleReferenceShown;
+ el<HTMLButtonElement>('scale-reference').setAttribute('aria-pressed',String(scaleReferenceShown));
+});
+el<HTMLButtonElement>('context').addEventListener('click',()=>{
+ contextShown=!contextShown;
+ el<HTMLButtonElement>('context').setAttribute('aria-pressed',String(contextShown));
+ el<HTMLButtonElement>('context').textContent=contextShown?'CONTEXT ON':'CONTEXT OFF';
+ refresh();
+});
 surfacePicker.addEventListener('change',()=>{
  const selected=surfacePicker.value as PixelSurface;
  if(selectedId)showroomMaterials.set(selectedId,selected);
