@@ -8,6 +8,7 @@ import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surfaces.ts';
 import {planEnvironmentalWear,type WearKind,type WearMark} from './worldgen/environment-wear.ts';
 import {summarizeWear} from './worldgen/wear-diagnostics.ts';
+import {conditionFloorPixels,effectiveCondition} from './worldgen/condition-visual.ts';
 import {planObjectWear,type ObjectWear} from './worldgen/object-wear.ts';
 import {planExposureWear} from './worldgen/wear-exposure.ts';
 import {planActivityWear} from './worldgen/wear-sources.ts';
@@ -149,6 +150,8 @@ export class TacticalScene3D{
   private windowPaneMaterial:THREE.MeshStandardMaterial|null=null;
   private readonly wearMaterials=new Map<string,THREE.MeshBasicMaterial>();
   private readonly surfaceWearMaterials=new Map<string,THREE.MeshStandardMaterial>();
+  private sitePatinaTextures:THREE.DataTexture[]=[];
+  private sitePatinaMaterials:THREE.MeshBasicMaterial[]=[];
   private currentWear:WearMark[]=[];
   private objectWear:ObjectWear[]=[];
   private wearBoost=1;
@@ -344,6 +347,9 @@ export class TacticalScene3D{
    * camera remain alive, avoiding a WebGL context restart on each site.
    */
   applySite(site:Site|null){
+    for(const texture of this.sitePatinaTextures)texture.dispose();
+    for(const material of this.sitePatinaMaterials)material.dispose();
+    this.sitePatinaTextures.length=0;this.sitePatinaMaterials.length=0;
     this.root.children.filter(c=>c!==this.fogUnknown&&
       c!==this.fogExplored).forEach(child=>{
       child.traverse(o=>{if(o instanceof THREE.Mesh&&
@@ -471,6 +477,22 @@ export class TacticalScene3D{
       const floorInset=site.programLocked?0:2;
       this.box(group,room.x+room.w/2,-.8,room.y+room.h/2,
         room.w-floorInset,1.6,room.h-floorInset,base,false);
+      // One whole-surface spatial aging field: rooms transform before decals.
+      // Each room uses a small seeded map, with edge/fixture influences.
+      if(effectiveCondition(site)>0){
+        const texture=new THREE.DataTexture(conditionFloorPixels(site,room),64,64,THREE.RGBAFormat);
+        texture.colorSpace=THREE.SRGBColorSpace;
+        texture.magFilter=THREE.NearestFilter;
+        texture.minFilter=THREE.LinearMipmapLinearFilter;
+        texture.generateMipmaps=true;texture.needsUpdate=true;
+        const material=new THREE.MeshBasicMaterial({map:texture,transparent:true,
+          depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,
+          side:THREE.DoubleSide});
+        this.sitePatinaTextures.push(texture);this.sitePatinaMaterials.push(material);
+        const overlay=this.plane(group,room.x+room.w/2,room.y+room.h/2,
+          room.w-floorInset,room.h-floorInset,.04,material);
+        overlay.castShadow=false;overlay.receiveShadow=false;
+      }
       // Pixel tile/board joints are already in the shared repeating texture.
       // Avoid redundant grout meshes and draw calls.
     }
