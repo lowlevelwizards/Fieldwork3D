@@ -47,6 +47,31 @@ function atriumApartmentBlueprint(seed:number):Blueprint{
   unitIds:mirror?unitIds.map(row=>row.slice().reverse()):unitIds,
   front:{col:3,row:4}};
 }
+/** Two flats flank a rear open-air service court. The shared entrance
+ * leads into a short lobby at the foot of the U rather than a long
+ * double-loaded hallway. Living rooms, not bedrooms, face shared access.
+ */
+function courtyardApartmentBlueprint(seed:number):Blueprint{
+ const widths=[148,100,118,133,116,102,142];
+ const depths=[130,121,113,124,105];
+ const cells:(string|null)[][]=[
+  ['bedroom','bathroom','closet',null,'bedroom','bathroom','closet'],
+  ['living','living','kitchen',null,'kitchen','living','living'],
+  ['living','living','living','lobby','living','living','living'],
+  ['living',null,'living','lobby','living',null,null],
+  [null,null,'lobby','lobby','lobby',null,null]
+ ];
+ const unitIds=cells.map(row=>row.map((role,col)=>
+  role&&role!=='lobby'&&role!=='hallway'?
+   col<3?'APT-1':col>3?'APT-2':null:null));
+ const mirror=seed%2===1;
+ return {kind:'apartment',family:'two flats / U-shaped courtyard and common lobby'+
+  (mirror?' / mirrored':''),
+  widths:mirror?widths.slice().reverse():widths,depths,
+  cells:mirror?cells.map(row=>row.slice().reverse()):cells,
+  unitIds:mirror?unitIds.map(row=>row.slice().reverse()):unitIds,
+  front:{col:3,row:4}};
+}
 export function apartmentUnitBlueprint(seed:number,scale:SiteScale):Blueprint{
  if(scale==='small'){
   const b=sizedBlueprint('apartment',seed,'small',architecturalBlueprint('apartment',seed));
@@ -55,6 +80,7 @@ export function apartmentUnitBlueprint(seed:number,scale:SiteScale):Blueprint{
  }
  // Distinct spatial topology, not merely a mirrored hallway or different kitchen.
  if(scale!=='large'&&seed%5===3)return atriumApartmentBlueprint(seed);
+ if(scale!=='large'&&seed%5===4)return courtyardApartmentBlueprint(seed);
  const large=scale==='large',bands=large?2:1;
  const cells:(string|null)[][]=[],unitIds:(string|null)[][]=[],depths:number[]=[];
  for(let band=0;band<bands;band++){
