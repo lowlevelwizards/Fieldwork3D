@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {graphicsBudget} from './breach-graphics-budget.ts';
-import {addRoomGroutInstances} from './breach-room-instancing.ts';
+import {PixelTextureLibrary,mapBoxPixelUV,mapPlanePixelUV,type PixelSurface} from './rendering/pixel-materials.ts';
+import {roomPixelSurface,zonePixelSurface} from './worldgen/pixel-surface-selection.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from './worldgen/fixture-visuals.ts';
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surfaces.ts';
@@ -129,17 +130,19 @@ export class TacticalScene3D{
   // Shared render resources persist between sites; repeated site rebuilds
   // must not leak another material and geometry per identical fixture.
   private solidCache=new Map<string,THREE.MeshStandardMaterial>();
+  private readonly pixelTextures=new PixelTextureLibrary();
   private boxGeometryCache=new Map<string,THREE.BoxGeometry>();
   private sharedBoxGeometries=new Set<THREE.BufferGeometry>();
   private windowPaneMaterial:THREE.MeshStandardMaterial|null=null;
   private readonly wearMaterials=new Map<WearKind,THREE.MeshBasicMaterial>();
   private windowGlass=new Map<string,THREE.Mesh>();
   private coverGroups=new Map<number,THREE.Group>();
-  private solid=(hex:number,roughness=.9)=>{
-    const key=hex+':'+roughness;
+  private solid=(hex:number,roughness=.9,surface?:PixelSurface)=>{
+    const key=hex+':'+roughness+':'+(surface??'plain');
     let material=this.solidCache.get(key);
     if(!material){
       material=mat(hex,roughness);
+      if(surface)material.map=this.pixelTextures.get(surface);
       this.solidCache.set(key,material);this.mats.push(material);
     }
     return material;
@@ -220,7 +223,7 @@ export class TacticalScene3D{
     const key=w+':'+h+':'+d;
     let geometry=this.boxGeometryCache.get(key);
     if(!geometry){
-      geometry=new THREE.BoxGeometry(w,h,d);
+      geometry=mapBoxPixelUV(new THREE.BoxGeometry(w,h,d),w,h,d);
       // Bound cache memory; uncommon one-off sizes remain independently owned.
       if(this.boxGeometryCache.size<384){
         this.boxGeometryCache.set(key,geometry);
@@ -233,7 +236,7 @@ export class TacticalScene3D{
   }
   private plane(parent:THREE.Object3D,x:number,z:number,w:number,d:number,
     y:number,material:THREE.Material){
-    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,d),material);
+    const mesh=new THREE.Mesh(mapPlanePixelUV(new THREE.PlaneGeometry(w,d),w,d,x,z),material);
     mesh.rotation.x=-Math.PI/2;mesh.position.set(x,y,z);
     mesh.receiveShadow=true;parent.add(mesh);return mesh;
   }
@@ -287,7 +290,7 @@ export class TacticalScene3D{
   }
   private buildGenerated(site:Site){
     const theme=buildingTheme(site.archetype,site.seed);
-    const earth=this.solid(site.layout==='courtyard'?0x465348:0x34443e);
+    const earth=this.solid(site.layout==='courtyard'?0x465348:0x34443e,.9,'earth');
     const bounds=site.bounds??{minX:0,minY:0,maxX:W,maxY:H};
     const bw=bounds.maxX-bounds.minX,bh=bounds.maxY-bounds.minY;
     this.plane(this.root,(bounds.minX+bounds.maxX)/2,
@@ -296,7 +299,7 @@ export class TacticalScene3D{
       service:0x6b6c60,garden:0x536b4b,parking:0x565d5c} as const;
     for(const zone of site.exteriorZones??[]){
       this.plane(this.root,zone.x,zone.y,zone.w,zone.h,-1.45,
-        this.solid(zoneColor[zone.kind]));
+        this.solid(zoneColor[zone.kind],.91,zonePixelSurface(zone.kind)));
     }
     const surfaceColor:Record<SurfaceKind,number>={
       path:0x919182,'driveway-stripe':0x858575,
@@ -307,7 +310,7 @@ export class TacticalScene3D{
     for(const mark of planPropertySurfaces(site))
       this.box(this.root,mark.x,-1.32,mark.y,mark.width,.2,
         mark.depth,this.solid(surfaceColor[mark.kind]),false);
-    const road=this.solid(0x59584a);
+    const road=this.solid(0x59584a,.91,'asphalt');
     const side=site.entrySide??'south';
     if(side==='east'||side==='west'){
       const edge=side==='east'?bounds.maxX:bounds.minX;
@@ -323,16 +326,16 @@ export class TacticalScene3D{
       const group=new THREE.Group();
       decorativeRoomGroups.set(room.id,group);this.root.add(group);
       this.intelSurfaces.push({obj:group,kind:'room',id:room.id});
+      const floorType=roomPixelSurface(site.archetype,room.purpose??room.kind);
       const base=this.solid(room.kind==='hall'?theme.hall:
-        roomFloor(theme,room.purpose,room.tone));
+        roomFloor(theme,room.purpose,room.tone),.92,floorType);
       // Connected blueprint cells make one continuous physical floor surface.
       // Legacy floor inset stays unchanged for historical visual parity.
       const floorInset=site.programLocked?0:2;
       this.box(group,room.x+room.w/2,-.8,room.y+room.h/2,
         room.w-floorInset,1.6,room.h-floorInset,base,false);
-      const grout=this.solid(theme.grout);
-      // One instanced draw per room instead of many tiny floor meshes.
-      addRoomGroutInstances(group,room,grout);
+      // Pixel tile/board joints are already in the shared repeating texture.
+      // Avoid redundant grout meshes and draw calls.
     }
     // Condition-dependent floor patina stays inside its room's fog group.
     // Decals are decorative only; they create no collision or cover.
