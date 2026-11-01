@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import type {Obstacle} from '../breach-core.ts';
 import type {FixtureVisualContext} from './fixture-visuals.ts';
 import {propDefinition} from './asset-catalog.ts';
+import {fixtureComponentSurface} from './pixel-surface-selection.ts';
 export const DETAILED_FIXTURE_IDS=new Set([
  'nightstand','side-table','rug','lamp','shower','office-chair',
  'computer','printer','cash-register','display-rack','product-box',
@@ -208,9 +209,11 @@ export function renderDetailedFixture(group:THREE.Group,c:Obstacle,
    return true;
  }
  case 'dumpster':{
-   b(0,H*.43,0,w*.96,H*.78,d*.94,green);
-   b(0,H*.85,-d*.25,w*.98,3,d*.51,ink);
-   b(0,H*.88,d*.25,w*.98,3,d*.46,ink);
+   const painted=ctx.solid(0x587267,.84,fixtureComponentSurface('dumpster','body'));
+   const lid=ctx.solid(0x303b38,.92,fixtureComponentSurface('dumpster','lid'));
+   b(0,H*.43,0,w*.96,H*.78,d*.94,painted);
+   b(0,H*.85,-d*.25,w*.98,3,d*.51,lid);
+   b(0,H*.88,d*.25,w*.98,3,d*.46,lid);
    for(const sx of [-1,1]){
     b(sx*w*.48,H*.46,0,2.4,H*.75,d,steel);
     b(sx*w*.35,2,0,4,4,4,ink);
