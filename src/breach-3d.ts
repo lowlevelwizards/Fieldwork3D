@@ -728,16 +728,18 @@ export class TacticalScene3D{
       const style=opening.style??'standard';
       // Window families retain the SAME underlying structural aperture,
       // low sill and true planar glass for shots/visibility.
-      const baseTop=14;
+      const baseTop=opening.sillHeight??14;
       const glassTop=style==='tall'?37:style==='picture'?36:
         style==='industrial'?27:32;
-      const glassHeight=glassTop-baseTop;
-      const trim=style==='industrial'?metal:
+      const glassHeight=(opening.headHeight??glassTop)-baseTop;
+      const trim=opening.interior?this.solid(0x4f605f,.66,'painted-metal'):
+        style==='industrial'?metal:
         style==='picture'?this.solid(0x627c79):doorTrim;
-      this.box(group,0,baseTop/2,0,opening.width,baseTop,9,wallMat);
-      this.box(group,0,(glassTop+40)/2,0,opening.width,
-        40-glassTop,9,wallMat);
-      this.box(group,0,baseTop+.1,4,opening.width+3,2,12,trim,false); // sill projection
+      if(baseTop>0)this.box(group,0,baseTop/2,0,opening.width,baseTop,9,wallMat);
+      const actualTop=opening.headHeight??glassTop;
+      if(actualTop<40)this.box(group,0,(actualTop+40)/2,0,opening.width,
+        40-actualTop,9,wallMat);
+      if(baseTop>0)this.box(group,0,baseTop+.1,4,opening.width+3,2,12,trim,false); // sill projection
       const glass=this.box(group,0,baseTop+glassHeight/2,0,
         opening.width-3,glassHeight,1,paneMat,false);
       glass.castShadow=false;
