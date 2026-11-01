@@ -33,6 +33,7 @@ import {localDetour} from './breach-cooperation.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
 import {relocateCover,canRelocateCover} from './breach-movable-cover.ts';
 import {materialForFixture,MATERIALS} from './breach-materials.ts';
+import {resolvePenetration,type BarrierHit} from './breach-penetration.ts';
 import {manipulateWindow} from './breach-windows.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {chooseAiIntent,type AIIntent} from './breach-ai-policy.ts';
@@ -124,7 +125,7 @@ export type ShotEvent={
   muzzleHeight?:number;firedAt?:number;
   impactHeight?:number;
   hitRegion?:WoundRegion;downPose?:FallPose;
-  surface?:'blood'|'wood'|'stone'|'metal'|'dust';
+  surface?:'blood'|'wood'|'stone'|'metal'|'glass'|'dust';
 };
 export type ImpactMark={id:number;p:Pt;surface:ShotEvent['surface'];age:number;
   height?:number;normal?:Pt};
@@ -1932,24 +1933,39 @@ function segmentImpact(from:Pt,to:Pt,segment:{a:Pt;b:Pt}):number|null{
   const u=(fx*dy-fy*dx)/determinant;
   return t>=0&&t<=1&&u>=0&&u<=1?t:null;
 }
+/** One ordered hit query for both collision and actual projectiles.
+ * energy=0 preserves original rigid muzzle/cover obstruction checks.
+ */
 function strikeSurface(from:Pt,aimed:Pt,s:Session,
-  fromZ=22,toZ=22):{
-  end:Pt;surface:ShotEvent['surface']}{
-  let best=1,material:ShotEvent['surface']='dust';
+  fromZ=22,toZ=22,energy=0):{
+  end:Pt;surface:ShotEvent['surface'];penetrated:number[];remaining:number}{
+  const hits:BarrierHit[]=[];
   for(const wall of WALLS){
     const t=segmentImpact(from,aimed,wall);
-    if(t!==null&&t<best){best=t;material='stone';}
+    if(t!==null)hits.push({fraction:t,material:'brick',thickness:10});
   }
   for(const door of s.doors){
-    const t=segmentImpact(from,aimed,doorLeafSegment(door));
-    if(t!==null&&t<best){best=t;material='wood';}
+    const leaf=doorLeafSegment(door);
+    const t=segmentImpact(from,aimed,leaf);
+    if(t!==null)hits.push({fraction:t,
+      material:door.kind==='shutter'?'steel':'hardwood',
+      thickness:door.kind==='shutter'?10:3});
   }
-  for(const box of COVER){
-    const u=coverImpactFraction(from,aimed,fromZ,toZ,box);
-    if(u!==null&&u<best){best=u;material=box.low?'wood':'metal';}
+  for(const [index,box] of COVER.entries()){
+    const t=coverImpactFraction(from,aimed,fromZ,toZ,box);
+    if(t===null)continue;
+    hits.push({fraction:t,
+      material:box.material??materialForFixture(box.fixture),
+      thickness:Math.min(4,Math.max(1,Math.min(box.w,box.h)*.08)),
+      coverIndex:index});
   }
-  return {end:{x:from.x+(aimed.x-from.x)*best,
-    y:from.y+(aimed.y-from.y)*best},surface:material};
+  const outcome=resolvePenetration(hits,energy);
+  const t=outcome.stoppedAt??1;
+  const surface=outcome.stoppedMaterial?
+    MATERIALS[outcome.stoppedMaterial].impact:'dust';
+  return {end:{x:from.x+(aimed.x-from.x)*t,
+    y:from.y+(aimed.y-from.y)*t},surface,
+    penetrated:outcome.penetrated,remaining:outcome.remaining};
 }
 /** Suppression is an authored area instruction: deliberate misses consume
  * real ammunition and can unsettle defenders, but never inflict an
@@ -2092,7 +2108,14 @@ function fire(s:Session,a:TeamActor,dt:number){
     sightMuzzle.y,target.p,aimHeight(target.posture==='crouch'),
     COVER,WALLS,s.doors,friends);
   a.lastFireBlock=lane.blocker;
-  if(lane.blocker!=='clear'){
+  const laneTrace=strikeSurface(
+    {x:sightMuzzle.x,y:sightMuzzle.z},target.p,s,
+    sightMuzzle.y,aimHeight(target.posture==='crouch'),
+    weapon.penetration);
+  const penetrableLane=lane.blocker==='cover'&&
+    laneTrace.remaining>.015&&
+    d(laneTrace.end,target.p)<.5;
+  if(lane.blocker!=='clear'&&!penetrableLane){
     if(a.side==='blue'&&s.seconds-a.lastLaneWarnAt>2){
       notify(s,a.name+' FIRE BLOCKED · '+lane.blocker.toUpperCase());
       a.lastLaneWarnAt=s.seconds;
@@ -2142,10 +2165,14 @@ function fire(s:Session,a:TeamActor,dt:number){
   // hitpoint. At close range this clears waist-high cover naturally.
   const strikeHeight=muzzle.y+(aimHeight(target.posture==='crouch')-
     muzzle.y)*d(muzzlePoint,far)/Math.max(1,muzzleRange);
-  const strike=strikeSurface(muzzlePoint,far,s,muzzle.y,strikeHeight);
+  const strike=strikeSurface(muzzlePoint,far,s,muzzle.y,strikeHeight,
+    weapon.penetration);
+  const targetTrace=strikeSurface(muzzlePoint,target.p,s,muzzle.y,
+    aimHeight(target.posture==='crouch'),weapon.penetration);
   // Obstruction before the target defeats a perfectly aligned barrel.
   const blockerDist=d(muzzlePoint,strike.end);
-  const hit=candidateHit&&blockerDist>=muzzleRange-hitRadius;
+  const hit=candidateHit&&blockerDist>=muzzleRange-hitRadius&&
+    d(targetTrace.end,target.p)<.5&&targetTrace.remaining>.015;
   const end=hit?clone(target.p):strike.end;
   const impact=hit?{end,surface:'blood' as const}:strike;
   a.recoil=Math.min(.9,a.recoil+profile.recoilKick*

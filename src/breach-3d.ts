@@ -1303,6 +1303,7 @@ export class TacticalScene3D{
         const impactMaterial=new THREE.MeshBasicMaterial({
           color:shot.surface==='blood'?0xa65a4e:
             shot.surface==='metal'?0xffd697:
+            shot.surface==='glass'?0xc8e4df:
             shot.surface==='wood'?0xdfb27a:
             shot.surface==='stone'?0xbeb9a2:0xe2d3b1,
           transparent:true,depthTest:true,depthWrite:false});
@@ -1311,7 +1312,8 @@ export class TacticalScene3D{
         root.add(line,impact);
         const chips:THREE.Mesh[]=[];
         if(shot.surface==='wood'||shot.surface==='stone'||
-          shot.surface==='metal'||shot.surface==='blood'){
+          shot.surface==='metal'||shot.surface==='glass'||
+          shot.surface==='blood'){
           for(let i=0;i<(shot.surface==='blood'?4:3);i++){
             const chip=new THREE.Mesh(this.tracerGeometry,impactMaterial);
             chip.scale.set(shot.surface==='blood'?.9:.42,
