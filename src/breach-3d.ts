@@ -344,13 +344,13 @@ export class TacticalScene3D{
   }
   private buildGenerated(site:Site){
     const theme=buildingTheme(site.archetype,site.seed);
-    const earth=this.solid(site.layout==='courtyard'?0x465348:0x34443e,.9,'earth');
+    const earth=this.solid(site.layout==='courtyard'?0x69825e:0x607a58,.9,'grass');
     const bounds=site.bounds??{minX:0,minY:0,maxX:W,maxY:H};
     const bw=bounds.maxX-bounds.minX,bh=bounds.maxY-bounds.minY;
     this.plane(this.root,(bounds.minX+bounds.maxX)/2,
       (bounds.minY+bounds.maxY)/2,bw,bh,-2,earth);
-    const zoneColor={yard:0x53604c,patio:0x7b7668,driveway:0x656b65,
-      service:0x6b6c60,garden:0x536b4b,parking:0x565d5c} as const;
+    const zoneColor={yard:0x70895e,patio:0x8b877a,driveway:0x737774,
+      service:0x7f827b,garden:0x788d61,parking:0x676c6b} as const;
     for(const zone of site.exteriorZones??[]){
       this.plane(this.root,zone.x,zone.y,zone.w,zone.h,-1.45,
         this.solid(zoneColor[zone.kind],.91,zonePixelSurface(zone.kind)));
