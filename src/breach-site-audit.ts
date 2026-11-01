@@ -18,6 +18,7 @@ import {measureRouteFriction,type RouteFriction} from './worldgen/route-friction
 import {auditEncounter,type EncounterSpatialAudit} from './worldgen/encounter-diagnostics.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type SiteAudit={seed:number;archetype:string;layout:string;
+  planFamily?:string;entrySide?:string;
   rooms:number;doors:number;enemies:number;windows:number;
   archOpenings:number;exteriorZones:number;dressing:number;
   condition:string;typedProps:number;functionalRooms:number;
@@ -124,7 +125,8 @@ export function auditSite(site:Site):SiteAudit{
   }));
   const roomContracts=assessRoomContracts(site);
   return {seed,archetype:site.archetype??'untyped',
-    layout:site.layout,rooms:site.rooms.length,
+    layout:site.layout,planFamily:site.planFamily,entrySide:site.entrySide,
+    rooms:site.rooms.length,
     doors:site.doors.length,enemies:site.enemies.length,
     windows:site.windows?.length??0,
     archOpenings:site.openings?.length??0,
