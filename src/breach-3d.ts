@@ -595,8 +595,15 @@ export class TacticalScene3D{
     const fragmentMaterial=this.solid(0x9b8e78,.98,'gravel');
     const fragmentGeometry=new THREE.BoxGeometry(1,1,1);
     const transform=new THREE.Object3D();
+    // Group fragment instances once, instead of rescanning the complete
+    // fragment list for every separate floor rectangle on large maps.
+    const fragmentsByRoom=new Map<string,typeof fragments>();
+    for(const fragment of fragments){
+      const group=fragmentsByRoom.get(fragment.roomId)??[];
+      group.push(fragment);fragmentsByRoom.set(fragment.roomId,group);
+    }
     for(const room of site.rooms){
-      const entries=fragments.filter(f=>f.roomId===room.id);
+      const entries=fragmentsByRoom.get(room.id)??[];
       if(!entries.length)continue;
       const group=decorativeRoomGroups.get(room.id);if(!group)continue;
       const batch=new THREE.InstancedMesh(fragmentGeometry,fragmentMaterial,entries.length);
