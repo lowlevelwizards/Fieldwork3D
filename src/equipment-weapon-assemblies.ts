@@ -75,15 +75,19 @@ export type PlatformGeometry={
  stockX:number;primaryX:number;primaryY:number;supportX:number;supportY:number;
  muzzleX:number;
 };
+/** Grip sockets measured against the actual receiver/pistol-grip and guard
+ * mesh extents in breach-weapon-geometry.ts. Never use a single grip position
+ * for every platform: that placed hands inside empty receiver space.
+ */
 export const WEAPON_PLATFORMS:Readonly<Record<WeaponId,PlatformGeometry>>={
  carbine:{weapon:'carbine',lengthScale:.86,baseMassKg:EQUIPMENT_CATALOG['primary-carbine'].massKg,
-  baseBalanceX:1,stockX:-13.5,primaryX:-1,primaryY:-2,supportX:1.7,supportY:-1.5,muzzleX:19.5},
+  baseBalanceX:1,stockX:-13.5,primaryX:0,primaryY:-2.7,supportX:8,supportY:-1.55,muzzleX:19.5},
  smg:{weapon:'smg',lengthScale:.73,baseMassKg:EQUIPMENT_CATALOG['primary-smg'].massKg,
-  baseBalanceX:0,stockX:-13.5,primaryX:-1,primaryY:-2,supportX:2.4,supportY:-1,muzzleX:19.5},
+  baseBalanceX:0,stockX:-13.5,primaryX:1.7,primaryY:-2.7,supportX:6,supportY:-1.3,muzzleX:19.5},
  rifle:{weapon:'rifle',lengthScale:.94,baseMassKg:EQUIPMENT_CATALOG['primary-rifle'].massKg,
-  baseBalanceX:1.8,stockX:-13.5,primaryX:-1,primaryY:-2,supportX:.35,supportY:-1.5,muzzleX:19.5},
+  baseBalanceX:1.8,stockX:-13.5,primaryX:-4,primaryY:-3.25,supportX:8.5,supportY:-1.55,muzzleX:19.5},
  shotgun:{weapon:'shotgun',lengthScale:.92,baseMassKg:EQUIPMENT_CATALOG['primary-shotgun'].massKg,
-  baseBalanceX:2,stockX:-13.5,primaryX:-1,primaryY:-2,supportX:1,supportY:-2,muzzleX:19.5}
+  baseBalanceX:2,stockX:-13.5,primaryX:-2.9,primaryY:-3.25,supportX:8,supportY:-2,muzzleX:19.5}
 };
 const DEFAULT_IDS:Readonly<Record<WeaponAttachmentSlot,string>>={
  optic:'optic-irons',muzzle:'muzzle-bare',foregrip:'foregrip-none',
@@ -157,7 +161,9 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   stockX:p.stockX+(mounted.stock.stockShift??0),
   primaryX:p.primaryX,primaryY:p.primaryY,
   supportX:p.supportX+(mounted.foregrip.supportShift??0),
-  supportY:p.supportY,sightHeight:mounted.optic.sightHeight??2.6,
+  supportY:mounted.foregrip.id==='foregrip-vertical'?-3.65:
+   mounted.foregrip.id==='foregrip-handstop'?-2.3:p.supportY,
+  sightHeight:mounted.optic.sightHeight??2.6,
   mounted};
  resolutionCache.set(raw,resolved);
  return resolved;
