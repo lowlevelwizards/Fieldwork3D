@@ -161,6 +161,9 @@ function report(site:Site,result:SiteAudit):string{
   result.functionalRooms+' rooms total\n'+
   result.incompleteZones.length+' functionally incomplete zones\n'+
   result.serviceIssues.length+' blocked fixture working faces\n'+
+  result.operationalRouteIssues.length+' unreachable/blocked workstation approaches'+
+  (result.operationalRouteIssues.length?': '+
+   result.operationalRouteIssues.slice(0,3).map(i=>i.fixture+' '+i.side+' ('+i.reason+')').join(', '):'')+'\n'+
   result.missingWorkflowLinks.length+' missing direct workflow links'+
   (result.missingWorkflowLinks.length?': '+
    result.missingWorkflowLinks.slice(0,4).map(link=>link.a+' / '+link.b).join(', ')+
