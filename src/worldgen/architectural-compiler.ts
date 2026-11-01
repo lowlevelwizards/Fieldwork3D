@@ -22,7 +22,7 @@ const openRoles=new Set(['living','kitchen','dining','sales','stockroom','loadin
  'storage','waiting','reception','lobby','hallway','aisle','cubicles','bay',
  'equipment']);
 const protectedRoles=new Set(['exam','treatment','bathroom','bedroom','guest','restroom']);
-const publicRoles=new Set(['waiting','reception','lobby','living','dining',
+const publicRoles=new Set(['foyer','vestibule','waiting','reception','lobby','living','dining',
  'sales','checkout','aisle','loading']);
 const center=(r:Room):Pt=>({x:r.x+r.w/2,y:r.y+r.h/2});
 const span=(w:Segment)=>Math.hypot(w.a.x-w.b.x,w.a.y-w.b.y);
@@ -223,7 +223,7 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  // real rear kitchens, service bays, clinic staff doors and loading operations.
  // Only split a truly exterior wall, never a partition between occupied rooms.
  const accessRoles:Partial<Record<BuildingArchetype,readonly string[]>>={
-  house:['kitchen','dining'],townhouse:['kitchen','dining'],
+  house:['mudroom','kitchen','dining'],townhouse:['mudroom','kitchen','dining'],
   apartment:['utility'],retail:['stockroom','service'],
   office:['storage','break'],garage:['bay','workshop'],
   warehouse:['loading','service'],restaurant:['kitchen','service'],

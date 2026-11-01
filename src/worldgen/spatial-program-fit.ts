@@ -6,10 +6,10 @@
 import type {Blueprint} from './architectural-program.ts';
 import {relationshipScore} from './room-relationships.ts';
 
-const publicRooms=new Set(['waiting','reception','lobby','sales','checkout','dining','living']);
+const publicRooms=new Set(['foyer','vestibule','waiting','reception','lobby','sales','checkout','dining','living']);
 const privateRooms=new Set(['bedroom','bathroom','restroom','guest','exam','treatment']);
 const serviceRooms=new Set(['stockroom','storage','kitchen','pantry','service',
- 'staff','supply','break','laundry','maintenance','packing','parts','workshop',
+ 'staff','supply','break','laundry','mudroom','maintenance','packing','parts','workshop',
  'equipment','control','office','meeting','utility']);
 const daylight=new Set(['bedroom','living','guest','dining','office','exam','waiting']);
 const access=new Set(['bay','loading','sales','reception','lobby','checkout']);

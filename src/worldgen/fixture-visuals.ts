@@ -72,6 +72,27 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         ctx.box(group,c.x,1.5,c.y,w,3,d,metal);
         ctx.box(group,c.x,12,c.y,2,23,2,post);
         ctx.box(group,c.x,24,c.y,4,2.5,4,post,false);
+      }else if(fixture==='entry-bench'){
+        const finish=visualCtx.solid(0x846a50,.88,'wood');
+        ctx.box(group,c.x,18,c.y,w,3,d,finish);
+        for(const x of [-w*.38,w*.38])
+          ctx.box(group,c.x+x,9,c.y,3,17,d*.82,wood);
+        ctx.box(group,c.x,8,c.y-d*.42,w*.82,2,3,finish,false);
+      }else if(fixture==='shoe-cubby'){
+        const finish=visualCtx.solid(0x7e715d,.88,'wood');
+        ctx.box(group,c.x,12,c.y,w,24,d,finish);
+        for(const level of [8,16])
+          ctx.box(group,c.x,level,c.y+d*.46,w-3,2,2,metal,false);
+        for(const x of [-w*.23,w*.23])
+          ctx.box(group,c.x+x,5,c.y+d*.53,w*.28,3,2,olive,false);
+      }else if(fixture==='coat-rack'){
+        const panel=visualCtx.solid(0x696e62,.85,'wood');
+        ctx.box(group,c.x,20,c.y-d*.29,w,40,3,panel);
+        for(const dx of [-w*.3,0,w*.3]){
+          ctx.box(group,c.x+dx,30,c.y+d*.22,2,9,2,metal,false);
+          ctx.box(group,c.x+dx,27,c.y+d*.36,5,2,2,metal,false);
+        }
+        ctx.box(group,c.x,8,c.y+d*.20,w*.90,16,d*.52,wood);
       }else if(fixture==='bar-stool'){
         const seat=visualCtx.solid(0x695b48,.87,'wood');
         ctx.box(group,c.x,22,c.y,w*.82,3,d*.82,seat);

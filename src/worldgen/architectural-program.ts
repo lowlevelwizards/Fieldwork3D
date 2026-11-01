@@ -16,14 +16,14 @@ const layouts:Record<BuildingArchetype,Spec>={
  house:{family:'offset-L / domestic hall',widths:[172,68,152,125],
   depths:[135,133,113],front:{col:1,row:2},cells:[
    ['bedroom','hallway','bedroom','bathroom'],
-   ['living','hallway','kitchen','kitchen'],
-   ['living','living','dining',null]]},
+   ['living','hallway','kitchen','mudroom'],
+   ['living','foyer','dining',null]]},
  townhouse:{family:'deep-narrow / side passage',widths:[160,62,152],
-  depths:[105,127,128,115],front:{col:0,row:3},cells:[
+  depths:[105,127,128,115],front:{col:1,row:3},cells:[
    ['bedroom','hallway','bathroom'],
    ['bedroom','hallway','study'],
    ['living','hallway','kitchen'],
-   ['living','living','dining']]},
+   ['living','foyer','dining']]},
  apartment:{family:'paired units / shared corridor',widths:[160,59,162,132],
   depths:[132,128,105],front:{col:1,row:2},cells:[
    ['bedroom','hallway','bedroom','bathroom'],
@@ -68,12 +68,12 @@ const layouts:Record<BuildingArchetype,Spec>={
   depths:[145,144,110],front:{col:1,row:2},cells:[
    ['exam','hallway','exam','supply'],
    ['treatment','hallway','exam','staff'],
-   ['waiting','waiting','reception','reception']]}
+   ['waiting','vestibule','reception','reception']]}
 };
 export const ARCHITECTURAL_FAMILIES:readonly BuildingArchetype[]=
  ['house','townhouse','apartment','retail','office','garage',
   'warehouse','restaurant','motel','utility','clinic'];
-const publicEntry=new Set(['living','lobby','reception','waiting','sales',
+const publicEntry=new Set(['foyer','vestibule','living','lobby','reception','waiting','sales',
  'dining','hallway','aisle','loading']);
 /** Some facilities have multiple genuinely different massing grammars.
  * Voids represent courtyards, service courts or setbacks, not phantom rooms.
@@ -81,11 +81,11 @@ const publicEntry=new Set(['living','lobby','reception','waiting','sales',
 const alternate:Partial<Record<BuildingArchetype,Spec>>={
  townhouse:{family:'courtyard rowhouse / lateral kitchen extension',
   widths:[158,65,142,114],depths:[116,112,113,107],
-  front:{col:0,row:3},cells:[
+  front:{col:1,row:3},cells:[
    ['bedroom','hallway','bedroom','bathroom'],
    ['bedroom','hallway','study',null],
    ['living','hallway','kitchen','dining'],
-   ['living','living','dining',null]]},
+   ['living','foyer','dining',null]]},
  apartment:{family:'double-loaded apartments / entry gallery',
   widths:[145,65,150,135],depths:[125,115,122,93],
   front:{col:1,row:3},cells:[
@@ -125,7 +125,7 @@ const alternate:Partial<Record<BuildingArchetype,Spec>>={
    ['exam','hallway','exam','supply'],
    ['treatment','hallway','exam','staff'],
    ['waiting','hallway',null,'service'],
-   ['waiting','waiting','reception',null]]},
+   ['waiting','vestibule','reception',null]]},
  warehouse:{family:'shipping-court warehouse / U footprint',
   widths:[182,70,182,154],depths:[157,112,136,111],
   front:{col:1,row:3},cells:[
@@ -137,9 +137,9 @@ const alternate:Partial<Record<BuildingArchetype,Spec>>={
   widths:[174,68,150,124],depths:[127,94,112,95],
   front:{col:1,row:3},cells:[
    ['bedroom','hallway','bedroom','bathroom'],
-   ['living','hallway','kitchen','kitchen'],
+   ['living','hallway','kitchen','mudroom'],
    ['living','hallway','dining',null],
-   ['living','living',null,null]]},
+   ['living','foyer',null,null]]},
  restaurant:{family:'back-of-house bar / stepped dining wing',
   widths:[188,75,167,133],depths:[151,139,106],
   front:{col:1,row:2},cells:[
@@ -159,11 +159,11 @@ const alternate:Partial<Record<BuildingArchetype,Spec>>={
 const tertiary:Partial<Record<BuildingArchetype,Spec>>={
  house:{family:'deep setback house / offset living wing',
   widths:[170,65,156,124],depths:[104,115,126,111],
-  front:{col:0,row:3},cells:[
+  front:{col:1,row:3},cells:[
    ['bedroom','hallway','bedroom','bathroom'],
-   ['bedroom','hallway','kitchen','kitchen'],
+   ['bedroom','hallway','kitchen','mudroom'],
    ['living','hallway','dining',null],
-   ['living','living','dining',null]]},
+   ['living','foyer','dining',null]]},
  clinic:{family:'split public and clinical wings / dogleg corridor',
   widths:[167,67,164,132],depths:[133,109,112,105],
   front:{col:1,row:3},cells:[

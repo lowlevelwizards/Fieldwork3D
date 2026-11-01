@@ -80,6 +80,15 @@ definitions.push(
 );
 definitions.push({id:'queue-stanchion',category:'commercial',width:7,depth:7,height:25,
  solid:true,cover:'low',rooms:['checkout','reception','lobby','parts']});
+// Purpose-built arrival furniture: hooks/coat rack, seat and shoe cubbies.
+definitions.push(
+ {id:'entry-bench',category:'residential',width:40,depth:19,height:18,
+  solid:true,cover:'low',rooms:['foyer','vestibule','mudroom']},
+ {id:'shoe-cubby',category:'residential',width:29,depth:17,height:24,
+  solid:true,cover:'low',rooms:['foyer','mudroom']},
+ {id:'coat-rack',category:'residential',width:27,depth:13,height:40,
+  solid:true,cover:'high',rooms:['foyer','mudroom','vestibule']}
+);
 // Functional workstations for real commercial, clinical, retail and industrial routines.
 definitions.push(
  {id:'prep-table',category:'commercial',width:44,depth:26,height:21,

@@ -7,9 +7,9 @@ import type {BuildingArchetype,Room,Site} from '../breach-site.ts';
 const pair=(a:string,b:string)=>[a,b].sort().join('|');
 type Rules={preferred:readonly string[];discouraged:readonly string[]};
 const relationships:Record<BuildingArchetype,Rules>={
- house:{preferred:['dining|kitchen','hallway|bedroom','hallway|bathroom','kitchen|living','dining|living'],
+ house:{preferred:['dining|kitchen','hallway|bedroom','hallway|bathroom','kitchen|living','dining|living','foyer|living','foyer|hallway','mudroom|kitchen'],
   discouraged:['bathroom|kitchen','bedroom|kitchen','bathroom|dining']},
- townhouse:{preferred:['dining|kitchen','hallway|bedroom','hallway|bathroom','hallway|living'],
+ townhouse:{preferred:['dining|kitchen','hallway|bedroom','hallway|bathroom','hallway|living','foyer|hallway','foyer|living'],
   discouraged:['bathroom|kitchen','bedroom|kitchen']},
  apartment:{preferred:['hallway|lobby','hallway|living','bedroom|living','kitchen|living'],
   discouraged:['bathroom|lobby','bedroom|lobby','bedroom|hallway']},
@@ -27,10 +27,10 @@ const relationships:Record<BuildingArchetype,Rules>={
   discouraged:['guest|guest','guest|laundry','guest|maintenance','guest|reception']},
  utility:{preferred:['equipment|service','control|equipment','maintenance|service','hallway|control'],
   discouraged:['equipment|storage']},
- clinic:{preferred:['waiting|reception','hallway|exam','hallway|treatment','hallway|staff','hallway|supply','reception|hallway'],
+ clinic:{preferred:['waiting|reception','hallway|exam','hallway|treatment','hallway|staff','hallway|supply','reception|hallway','vestibule|waiting','vestibule|reception'],
   discouraged:['exam|waiting','treatment|waiting','exam|reception','supply|waiting','treatment|reception']}
 };
-const publicRoles=new Set(['waiting','sales','checkout','reception','lobby','dining']);
+const publicRoles=new Set(['foyer','vestibule','waiting','sales','checkout','reception','lobby','dining']);
 const sensitiveRoles=new Set(['exam','treatment','bedroom','bathroom','restroom','guest']);
 /** Negative is desirable; positive is undesirable. */
 export function relationshipScore(kind:BuildingArchetype,a:string,b:string):number{
