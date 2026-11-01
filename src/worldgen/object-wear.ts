@@ -21,6 +21,6 @@ export function planObjectWear(site:Site):ObjectWear[]{
   if(canWear(s,'scuff'))add('fixture',i,'scuff');
  });
  site.doors.forEach((d,i)=>{if(rng()<.5)add('door',i,d.style==='wood'?'scrape':'scuff');});
- site.walls.forEach((w,i)=>{if(rng()<.13)add('wall',i,'scuff');});
+ site.walls.forEach((_,i)=>{if(rng()<.13)add('wall',i,'scuff');});
  return marks;
 }
