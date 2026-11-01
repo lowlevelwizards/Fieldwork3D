@@ -6,7 +6,7 @@ import {propDefinition} from '../src/worldgen/asset-catalog.ts';
 import {generateSite} from '../src/breach-site.ts';
 test('fixtures face inward, while seating looks toward the actual table',()=>{
  const room={id:'r',x:0,y:0,w:220,h:175,kind:'room',purpose:'dining'};
- assert.equal(fixtureFacing(room,'counter',{x:30,y:35}),0);
+ assert.equal(fixtureFacing(room,'counter',{x:60,y:17}),0);
  assert.equal(fixtureFacing(room,'counter',{x:190,y:80}),3);
  const table={fixture:'dining-table',x:110,y:80,w:34,h:26};
  assert.equal(fixtureFacing(room,'chair',{x:110,y:120},[table]),2);
