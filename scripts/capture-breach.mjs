@@ -34,6 +34,10 @@ try{
   // The Pages root must open this same game, not the archived watershed.
   const home=await browser.newPage({viewport:{width:390,height:844}});
   home.on('pageerror',e=>errors.push('homepage: '+e.message));
+  home.on('console',message=>{
+    if(message.type()==='warning'||message.type()==='error')
+      errors.push('console: '+message.text().slice(0,350));
+  });
   await home.goto(url.replace('breach.html',''),{
     waitUntil:'domcontentloaded'});
   await home.locator('#breach3dCanvas').waitFor({state:'visible'})
