@@ -1,4 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {newCampaign,acceptContract,resolveOperation,hireRecruit,assignOperatorToSlot,readCampaign,
  purchaseAmmo,resupplyOperator} from '../src/campaign-state.ts';
 import {exportCampaign,importCampaign} from '../src/campaign-persistence.ts';
@@ -36,7 +37,7 @@ test('long campaign across 16 operations preserves contracts, recruits, resource
  assert.deepEqual(importCampaign(exportCampaign(c)),c);
 });
 test('campaign overlay avoids running tactical frame work while browsing management',()=>{
- const src=(await import('node:fs')).readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
+ const src=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
  assert.match(src,/campaignMode==='menu'\|\|campaignMode==='home'/);
  assert.match(src,/campaignReturnButton/);
 });
