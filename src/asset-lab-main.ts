@@ -51,14 +51,21 @@ const architectureMat=new THREE.MeshStandardMaterial({
 });
 function refreshScaleGuides(items:readonly AssetLibraryEntry[]){
  scaleGuides.clear();
- for(const [index] of items.entries()){
-   const at=showroomSlot(index,layout);
-   for(let i=0;i<guideParts.length;i++){
-     const part=guideParts[i],mesh=new THREE.Mesh(guideGeometries[i],guideMat);
-     mesh.position.set(at.x+58+part[0],part[1],at.y+53+part[2]);
-     mesh.castShadow=false;mesh.receiveShadow=false;
-     scaleGuides.add(mesh);
+ if(!items.length)return;
+ // Six shared meshes instead of six draw calls PER displayed asset.
+ const dummy=new THREE.Object3D();
+ for(let i=0;i<guideParts.length;i++){
+   const part=guideParts[i];
+   const mesh=new THREE.InstancedMesh(guideGeometries[i],guideMat,items.length);
+   for(const [index] of items.entries()){
+     const at=showroomSlot(index,layout);
+     dummy.position.set(at.x+58+part[0],part[1],at.y+53+part[2]);
+     dummy.updateMatrix();
+     mesh.setMatrixAt(index,dummy.matrix);
    }
+   mesh.instanceMatrix.needsUpdate=true;
+   mesh.castShadow=false;mesh.receiveShadow=false;
+   scaleGuides.add(mesh);
  }
 }
 function refreshArchitectureSamples(items:readonly AssetLibraryEntry[]){
@@ -156,7 +163,7 @@ function focusSelected(){
 function select(item:AssetLibraryEntry){
  selectedId=item.id;
  detail.textContent=item.label+' ['+item.id+'] · '+item.category.toUpperCase()+
-   '\\n'+item.width+' × '+item.depth+' × '+item.height+' world units ('+
+   '\n'+item.width+' × '+item.depth+' × '+item.height+' world units ('+
     [item.width,item.depth,item.height].map(v=>metres(v).toFixed(2)).join(' × ')+
     ' m) · cover: '+item.cover+
    ' · '+(item.solid?'physical':'visual-only')+
