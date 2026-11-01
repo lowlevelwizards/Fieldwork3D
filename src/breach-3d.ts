@@ -4,6 +4,7 @@ import {PixelTextureLibrary,mapBoxPixelUV,mapPlanePixelUV,type PixelSurface} fro
 import {roomPixelSurface,zonePixelSurface,wallPixelSurface,fixturePixelSurface} from './worldgen/pixel-surface-selection.ts';
 import {wearFinish} from './rendering/wear-finish.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from './worldgen/fixture-visuals.ts';
+import {facingRadians} from './worldgen/fixture-facing.ts';
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surfaces.ts';
 import {planEnvironmentalWear,type WearKind,type WearMark} from './worldgen/environment-wear.ts';
@@ -681,12 +682,21 @@ export class TacticalScene3D{
       const group=new THREE.Group();this.root.add(group);
       this.coverGroups.set(i,group);
       this.intelSurfaces.push({obj:group,kind:'cover',index:i});
-      renderFixtureVisual(group,c,i,fixtureCtx,wood,steel,olive,metal);
+      // Existing fixture meshes are authored in world coordinates. Nest them
+      // under an offset local pivot before rotating, so the geometry rotates
+      // about the fixture center without shifting any tactical AABB.
+      const local=new THREE.Group();group.add(local);
+      const turns=c.facing??0;
+      const visual=turns%2===0?c:{...c,w:c.h,h:c.w};
+      renderFixtureVisual(local,visual,i,fixtureCtx,wood,steel,olive,metal);
+      local.position.set(-c.x,0,-c.y);
+      group.position.set(c.x,0,c.y);
+      group.rotation.y=facingRadians(turns);
       for(const mark of marksOn('fixture',i)){
         const height=visibleSurfaceHeight(c.fixture??'crate');
         if(height<8)continue;
-        this.addSurfaceWear(group,mark,c.x+(mark.u-.5)*c.w,
-          Math.min(height-2,Math.max(3,mark.v*height)),c.y+c.h/2+.8,
+        this.addSurfaceWear(local,mark,c.x+(mark.u-.5)*visual.w,
+          Math.min(height-2,Math.max(3,mark.v*height)),c.y+visual.h/2+.8,
           fixturePixelSurface(c.fixture));
       }
     });
