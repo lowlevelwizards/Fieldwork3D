@@ -3,6 +3,7 @@
  */
 import type {Session} from './breach-game.ts';
 import {WEAPONS,type WeaponId} from './breach-combat.ts';
+import {initialArmorIntegrity} from './equipment-armor.ts';
 import {magazineKit} from './breach-magazines.ts';
 import {initialEquipmentLoadout,readEquipmentLoadout,syncPrimaryWeapon,setEquipmentChoice,
  loadMovementScale,type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
@@ -68,6 +69,8 @@ export function applyRosterIdentity(s:Session,roster:RosterState){
    a.name=member.callsign;
    a.appearanceSeed=member.appearanceSeed;
    a.equipment=member.loadout;
+   const protection=initialArmorIntegrity(member.loadout);
+   a.armorIntegrity=protection.torso;a.helmetIntegrity=protection.head;
    a.loadMovementScale=loadMovementScale(member.loadout);
    a.weapon=member.weapon;
    a.magazine=Math.min(WEAPONS[a.weapon].capacity,member.magazine);
