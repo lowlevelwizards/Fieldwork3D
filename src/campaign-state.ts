@@ -47,6 +47,7 @@ export type CampaignReport={
  objective:boolean;events:CareerEvent[];
  performance?:OperatorPerformance[];gains?:SkillGains[];
  flashUsed?:number;
+ stabilizedIds?:string[];criticalIds?:string[];
 };
 export type CampaignState={
  version:1;id:string;seed:number;day:number;funds:number;
@@ -213,6 +214,7 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
  const gained=r.outcome==='success'?contract.reward:0;
  const participants=new Set(r.participatingIds);
  const casualties=new Set(r.casualties);
+ const stabilized=new Set(r.stabilizedIds??[]);
  const gainedSkills:SkillGains[]=[];
  const careerEvents:CareerEvent[]=[];
  const operators=c.operators.map(o=>{
@@ -231,7 +233,8 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
    detail:'Wounded during '+contract.title});
   const base={...o,missions:o.missions+1,
    successful:o.successful+(r.outcome==='success'?1:0),
-   recoveryDays:Math.max(0,o.recoveryDays-1,casualties.has(o.id)?2:0)};
+   recoveryDays:Math.max(0,o.recoveryDays-1,
+    casualties.has(o.id)?stabilized.has(o.id)?2:4:0)};
   if(!performance)return base;
   const progress=progressOperator(base,performance,r.outcome==='success');
   gainedSkills.push(progress.gains);
