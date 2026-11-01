@@ -384,8 +384,8 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
    }else if(fixture==='sink'){
      b(0,h+.35,0,w*.85,1.3,d*.80,steel);
      b(-w*.06,h+.55,0,w*.55,.5,d*.52,dark,false);
-     b(w*.20,h+4.8,-d*.28,2,8,2,metal,false);
-     b(w*.08,h+8.0,-d*.18,w*.26,1.4,2,metal,false);
+     b(w*.20,h+2.4,-d*.28,2,4.8,2,metal,false);
+     b(w*.08,h+5.0,-d*.18,w*.26,1.4,2,metal,false);
      b(0,h*.58,d*.49,w*.72,h*.5,.9,wood,false);
    }else if(fixture==='microwave'){
      b(0,h*.52,d*.47,w*.76,h*.55,1.4,dark,false);
