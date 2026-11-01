@@ -20,11 +20,14 @@ export function equipmentTrainingSite():Site{
   walls:[
    segment(115,120,525,120),segment(115,120,115,530),
    segment(525,120,525,530),segment(115,530,240,530),
-   segment(400,530,525,530),
+   // Framed door bays: no free path around the locked or glazed leaves.
+   segment(240,530,280,530),segment(322,530,340,530),
+   segment(385,530,400,530),segment(400,530,525,530),
    segment(240,530,240,635),segment(410,530,410,635),
    segment(240,635,310,635),segment(355,635,410,635),
    segment(120,545,225,545),segment(120,545,120,635),
-   segment(120,635,225,635),segment(225,545,225,635)
+   segment(120,635,225,635),
+   segment(225,545,225,570),segment(225,610,225,635)
   ],
   doors:[
    {id:'RANGE ENTRY',a:point(310,635),b:point(355,635),
@@ -33,7 +36,9 @@ export function equipmentTrainingSite():Site{
     open:false,openedAt:-1,style:'reinforced',kind:'hinged',hinge:'a',
     locked:true,latchIntegrity:3},
    {id:'GLAZED DEMO',a:point(340,530),b:point(385,530),
-    open:false,openedAt:-1,style:'glazed',kind:'hinged',hinge:'b'}
+    open:false,openedAt:-1,style:'glazed',kind:'hinged',hinge:'b'},
+   {id:'UTILITY BAY',a:point(225,570),b:point(225,610),
+    open:false,openedAt:-1,style:'wood',kind:'hinged',hinge:'b'}
   ],
   cover:[
    {x:185,y:205,w:18,h:32,low:false,fixture:'target-plate'},
