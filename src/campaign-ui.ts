@@ -81,8 +81,14 @@ export class CampaignScreen{
     c.squadIds.includes(p.id)?'DEPLOYMENT TEAM':'RESERVE'));
    const skill=p.skills.handling;
    card.append(node('small','','HANDLING '+Math.round(skill*100)+' / 100 · '+p.missions+' OPS'));
+   card.append(node('small','',p.trait));
    const details=node('details','campaign-dossier');
    details.append(node('summary','','DOSSIER / SKILLS'));
+   details.append(node('p','campaign-note','BACKGROUND · '+p.background));
+   details.append(node('p','campaign-note','SPECIAL APTITUDE · '+p.trait));
+   for(const distinction of p.distinctions.slice(-4)){
+    details.append(node('p','campaign-distinction','✦ '+distinction));
+   }
    for(const skill of SKILL_NAMES){
     const label=skill.replace(/([A-Z])/g,' $1').toUpperCase();
     const line=node('div','campaign-skill');
@@ -169,7 +175,7 @@ export class CampaignScreen{
     report.outcome.toUpperCase()+' · '+report.grade+' · '+
     report.participatingIds.length+' OPERATORS'));
   }
-  const highlights=c.journal.filter(e=>['wounded','first-deployment','first-success','objective','intel','down'].includes(e.kind)).slice(-6).reverse();
+  const highlights=c.journal.filter(e=>['wounded','first-deployment','first-success','objective','intel','down','distinction'].includes(e.kind)).slice(-6).reverse();
   for(const e of highlights){
    const person=c.operators.find(o=>o.id===e.operatorId);
    chronicle.append(node('p','campaign-note',
