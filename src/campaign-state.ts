@@ -7,6 +7,7 @@ import {initialEquipmentLoadout,readEquipmentLoadout,setEquipmentChoice,syncPrim
  type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
 import {progressOperator,type OperatorPerformance,type SkillGains} from './campaign-progression.ts';
 import {readKitPresets,nextPresetId,MAX_KIT_PRESETS,type EquipmentPreset} from './equipment-presets.ts';
+import {initialArmorIntegrity,type ArmorIntegrity} from './equipment-armor.ts';
 
 export type SkillName=keyof ShootingSkills;
 export const SKILL_NAMES:SkillName[]=['pointShooting','longRange','precision','recoilControl','composure','handling'];
@@ -18,7 +19,7 @@ export type CampaignOperator={
  missions:number;successful:number;injuries:number;recoveryDays:number;
  status:'available'|'reserve'|'lost'|'retired';weapon:'carbine'|'smg'|'rifle'|'shotgun';
  magazine:number;reserve:number;shotsFired:number;joinedDay:number;
- loadout:EquipmentLoadout;
+ loadout:EquipmentLoadout;armorCondition:ArmorIntegrity;
 };
 export type Contract={
  id:string;seed:number;kind:OperationKind;scale:'standard'|'expanded';
@@ -71,7 +72,8 @@ export function startingOperator(id:string,i:number,seed:number):CampaignOperato
   aptitudes:aptitude,trait:traitNames[strongest],distinctions:[],
   missions:0,successful:0,injuries:0,recoveryDays:0,status:'available',
   weapon,magazine:capacity,reserve,shotsFired:0,joinedDay:1,
-   loadout:initialEquipmentLoadout(weapon)};
+   loadout:initialEquipmentLoadout(weapon),
+   armorCondition:initialArmorIntegrity(initialEquipmentLoadout(weapon))};
 }
 export function createContracts(seed:number,day:number,existing:readonly Contract[]=[],pressure:Record<string,number>={}):Contract[]{
  const archive=existing.filter(c=>c.status!=='available'&&c.status!=='accepted').slice(-80);
@@ -144,6 +146,8 @@ export function readCampaign(raw:string|null):CampaignState|null{
     c.inventory.weapons[weapon]>=0?c.inventory.weapons[weapon]:0])) as Record<CampaignOperator['weapon'],number>;
   const operators=c.operators.map(o=>({...o,
    loadout:readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon),
+   armorCondition:normalizedArmorCondition((o as {armorCondition?:unknown}).armorCondition,
+    readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon)),
    trait:typeof o.trait==='string'?o.trait:'Experienced Operator',
    distinctions:Array.isArray(o.distinctions)?
     o.distinctions.filter((x):x is string=>typeof x==='string').slice(0,32):[]
@@ -191,7 +195,8 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   if(!performance)return base;
   const progress=progressOperator(base,performance,r.outcome==='success');
   gainedSkills.push(progress.gains);
-  return progress.operator;
+  return {...progress.operator,armorCondition:missionArmorCondition(
+   o.armorCondition,performance,initialArmorIntegrity(o.loadout))};
  });
  const milestones=[
   {key:'5-operations',label:'Five Operations',test:(o:CampaignOperator)=>o.missions>=5},
@@ -350,7 +355,8 @@ export function equipCampaignGear(c:CampaignState,id:string,slot:LoadoutSlot,
  if(!o)return c;
  const next=setEquipmentChoice(o.loadout,slot,itemId);
  if(next===o.loadout)return c;
- return {...c,operators:c.operators.map(m=>m.id===id?{...m,loadout:next}:m)};
+ return {...c,operators:c.operators.map(m=>m.id===id?{...m,loadout:next,
+  armorCondition:clampArmorToKit(m.armorCondition,next)}:m)};
 }
 
 /** Named equipment recipes are lightweight shared records, not physical stock. */
@@ -375,7 +381,8 @@ export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string
  const swapped=member.weapon===preset.weapon?c:equipCampaignWeapon(c,id,preset.weapon);
  if(swapped===c&&member.weapon!==preset.weapon)return c;
  return {...swapped,operators:swapped.operators.map(o=>o.id===id?{
-  ...o,loadout:readEquipmentLoadout(preset.kit,preset.weapon)}:o)};
+  ...o,loadout:readEquipmentLoadout(preset.kit,preset.weapon),
+  armorCondition:clampArmorToKit(o.armorCondition,preset.kit)}:o)};
 }
 export function deleteCampaignKitPreset(c:CampaignState,presetId:string):CampaignState{
  if(c.activeContractId||!c.kitPresets.some(p=>p.id===presetId))return c;
@@ -393,4 +400,45 @@ export function cycleCampaignAppearance(c:CampaignState,id:string):CampaignState
  if(c.activeContractId)return c;
  return {...c,operators:c.operators.map(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired'?
   {...o,appearanceSeed:(o.appearanceSeed+1)>>>0}:o)};
+}
+
+/** Campaign equipment persists as condition, not a fresh disposable vest.
+ * Swapping gear cannot restore previously depleted protection. */
+const validArmor=(x:unknown,maximum:number,fallback:number)=>
+ typeof x==='number'&&Number.isFinite(x)?
+  Math.min(maximum,Math.max(0,Math.floor(x))):fallback;
+export function normalizedArmorCondition(raw:unknown,kit:EquipmentLoadout):ArmorIntegrity{
+ const max=initialArmorIntegrity(kit);
+ if(!raw||typeof raw!=='object')return max;
+ const value=raw as Partial<ArmorIntegrity>;
+ return {torso:validArmor(value.torso,max.torso,max.torso),
+  head:validArmor(value.head,max.head,max.head)};
+}
+export function clampArmorToKit(condition:ArmorIntegrity,kit:EquipmentLoadout):ArmorIntegrity{
+ const max=initialArmorIntegrity(kit);
+ return {torso:Math.min(max.torso,Math.max(0,condition.torso)),
+  head:Math.min(max.head,Math.max(0,condition.head))};
+}
+export function missionArmorCondition(
+ previous:ArmorIntegrity,performance:OperatorPerformance,maximum:ArmorIntegrity
+):ArmorIntegrity{
+ return {
+  torso:validArmor(performance.armorIntegrity,maximum.torso,previous.torso),
+  head:validArmor(performance.helmetIntegrity,maximum.head,previous.head)
+ };
+}
+/** Repairs are explicit, paid and unavailable during an active contract. */
+export function armorRepairCost(o:CampaignOperator):number{
+ const max=initialArmorIntegrity(o.loadout);
+ return Math.max(0,max.torso-o.armorCondition.torso)*30+
+  Math.max(0,max.head-o.armorCondition.head)*24;
+}
+export function repairCampaignArmor(c:CampaignState,id:string):CampaignState{
+ if(c.activeContractId)return c;
+ const member=c.operators.find(o=>o.id===id&&o.status!=='retired'&&o.status!=='lost');
+ if(!member)return c;
+ const cost=armorRepairCost(member);
+ if(cost===0||cost>c.funds)return c;
+ return {...c,funds:c.funds-cost,operators:c.operators.map(o=>o.id===id?
+  {...o,armorCondition:initialArmorIntegrity(o.loadout)}:o)};
 }
