@@ -47,3 +47,8 @@
 .campaign-skill{display:flex;justify-content:space-between;gap:7px;margin-top:9px;font-size:10px;color:#bacabb}
 .campaign-skill-track{height:5px;border-radius:5px;background:#172724;overflow:hidden;margin-top:3px}
 .campaign-skill-fill{height:100%;background:#a5bd99}
+
+.campaign-person-actions{display:flex;gap:5px;flex-wrap:wrap}
+.campaign-person-actions button,.campaign-purchases button{min-height:36px;font-size:10px}
+.campaign-purchases{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+@media(max-width:420px){.campaign-purchases{grid-template-columns:1fr}}
