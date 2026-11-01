@@ -11,7 +11,8 @@ test('interior glazing cuts a partition, retains a physical sill and uses existi
   for(const w of glass){
    found++;
    const p={x:w.x,y:w.y};
-   assert.ok(s.cover.some(c=>c.fixture==='window-sill'&&Math.hypot(c.x-p.x,c.y-p.y)<.001));
+   assert.ok(s.cover.some(c=>c.fixture===(w.sillHeight===0?'glass-barrier':'window-sill')&&
+    Math.hypot(c.x-p.x,c.y-p.y)<.001));
    assert.ok(s.walls.every(wall=>pointToSegment(p,wall)>2));
    const state=initializeWindows([w])[0];
    assert.equal(state.operable,false);
