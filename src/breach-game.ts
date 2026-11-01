@@ -2290,6 +2290,10 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(a.health<=0){
     a.reload=0;a.reloadMode=null;return;
   }
+  // Medical intervention occupies both hands; no free shots while treating.
+  if(a.plan[0]?.kind==='treat'||a.treatmentActive){
+    a.aim=Math.max(0,a.aim-dt*3);return;
+  }
   // Shoulder-first passage keeps the long weapon tucked until clear.
   if(a.squeeze){a.aim=Math.max(0,a.aim-dt*2);return;}
   // Sprinting is a traversal decision, not free accurate fire on the move.
