@@ -29,7 +29,7 @@ export type CampaignReport={
 };
 export type CampaignState={
  version:1;id:string;seed:number;day:number;funds:number;
- operators:CampaignOperator[];contracts:Contract[];activeContractId:string|null;
+ operators:CampaignOperator[];squadIds:string[];contracts:Contract[];activeContractId:string|null;
  history:CampaignReport[];journal:CareerEvent[];appliedResults:string[];
  supplies:{medical:number;ammo:number};regionalPressure:Record<string,number>;
 };
@@ -82,6 +82,7 @@ export function newCampaign(seed:number):CampaignState{
  const normalized=(seed>>>0)||1;
  return {version:1,id:'campaign-'+normalized.toString(16),seed:normalized,day:1,funds:1200,
   operators:['rook','moss','ash','vale'].map((id,i)=>startingOperator(id,i,normalized)),
+  squadIds:['rook','moss','ash','vale'],
   contracts:createContracts(normalized,1),activeContractId:null,
   history:[],journal:[],appliedResults:[],supplies:{medical:3,ammo:240},
   regionalPressure:Object.fromEntries(REGIONS.map(r=>[r,0]))};
@@ -117,7 +118,12 @@ export function readCampaign(raw:string|null):CampaignState|null{
    if(!contract||typeof contract.id!=='string'||!Number.isInteger(contract.seed)||
      !CONTRACTS.some(k=>k.kind===contract.kind))return null;
   }
-  return {...c,regionalPressure:Object.fromEntries(REGIONS.map(region=>
+  const fallback=c.operators.slice(0,4).map(o=>o.id);
+  const chosen=Array.isArray(c.squadIds)&&c.squadIds.length===4&&
+   new Set(c.squadIds).size===4&&
+   c.squadIds.every(id=>c.operators.some(o=>o.id===id&&o.status!=='lost'))?
+   c.squadIds:fallback;
+  return {...c,squadIds:chosen,regionalPressure:Object.fromEntries(REGIONS.map(region=>
    [region,Math.max(-3,Math.min(3,Number.isFinite(c.regionalPressure?.[region])?
     c.regionalPressure[region]:0))]))};
  }catch{return null;}
@@ -219,4 +225,32 @@ export function resupplyOperator(c:CampaignState,id:string):CampaignState{
  return {...c,supplies:{...c.supplies,ammo:c.supplies.ammo-rounds},
   operators:c.operators.map(m=>m.id===id?{...m,
    magazine:m.magazine+toMag,reserve:m.reserve+rounds-toMag}:m)};
+}
+
+export const TACTICAL_SLOTS=['rook','moss','ash','vale'] as const;
+export function tacticalSlotOperator(c:CampaignState,slotId:string):CampaignOperator|undefined{
+ const index=TACTICAL_SLOTS.indexOf(slotId as typeof TACTICAL_SLOTS[number]);
+ return index<0?undefined:c.operators.find(o=>o.id===c.squadIds[index]);
+}
+export function assignOperatorToSlot(c:CampaignState,slot:number,id:string):CampaignState{
+ if(c.activeContractId||slot<0||slot>=4)return c;
+ if(!c.operators.some(o=>o.id===id&&o.status!=='lost'))return c;
+ const squads=[...c.squadIds],oldIndex=squads.indexOf(id);
+ if(oldIndex===slot)return c;
+ if(oldIndex>=0)squads[oldIndex]=squads[slot];
+ squads[slot]=id;
+ return {...c,squadIds:squads};
+}
+const RECRUIT_NAMES=['KITE','PIPER','JUNO','EMBER','DOVE','LIN','BRAM','SABLE'];
+export function hireRecruit(c:CampaignState):CampaignState{
+ if(c.funds<450||c.operators.length>=8||c.activeContractId)return c;
+ const i=c.operators.length;
+ const id='recruit-'+i;
+ const base=startingOperator(id,i,hash(c.seed+i*733+Math.imul(c.day,31)));
+ const member={...base,callsign:RECRUIT_NAMES[(hash(c.seed+i*59)>>>4)%RECRUIT_NAMES.length],
+  joinedDay:c.day,status:'reserve' as const};
+ const event:CareerEvent={id:'join-'+id+'-'+c.day,day:c.day,operatorId:id,
+  kind:'joined',detail:'Joined the unit'};
+ return {...c,funds:c.funds-450,operators:[...c.operators,member],
+  journal:[...c.journal,event].slice(-1000)};
 }
