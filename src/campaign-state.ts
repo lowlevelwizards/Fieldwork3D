@@ -39,7 +39,6 @@ const CONTRACTS:{kind:OperationKind;title:string;description:string}[]=[
  {kind:'hold',title:'Defensive Action',description:'Secure and hold the designated location.'},
  {kind:'capture',title:'Target Recovery',description:'Secure the designated hostile target.'}
 ];
-const clamp=(v:number,a:number,b:number)=>Math.max(a,Math.min(b,v));
 const hash=(n:number)=>{n=(n^n>>>16)>>>0;n=Math.imul(n,0x7feb352d);n=(n^n>>>15)>>>0;n=Math.imul(n,0x846ca68b);return (n^n>>>16)>>>0;};
 const values=(seed:number,kind:'skill'|'aptitude'):ShootingSkills=>{
  const nums=SKILL_NAMES.map((_,i)=>{const n=hash(seed+i*7127+(kind==='skill'?0:98711))/0xffffffff;
