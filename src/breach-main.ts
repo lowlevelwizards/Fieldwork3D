@@ -2305,14 +2305,18 @@ if(perfOverlay){
 const frameMeter=perfOverlay?new FrameMeter():null;
 function tick(now:number){
   const perfStart=perfOverlay?performance.now():0;
-  const dt=Math.min(.08,Math.max(0,(now-last)/1000));last=now;
+  const frameGap=Math.max(0,now-last);
+  const dt=Math.min(.08,frameGap/1000);last=now;
   let simSteps=0;
+  const simPhaseCosts=perfOverlay?new Map<string,number>():null;
   if(!replaying&&state.phase==='running'){
     const budget=fixedStepBudget(accum,dt);
     accum=budget.remaining;
     for(let i=0;i<budget.steps;i++){
       previousRenderActors=renderSnapshot(state.operators);
-      stepSession(state,1/60);
+      stepSession(state,1/60,simPhaseCosts?
+        (name,ms)=>simPhaseCosts.set(name,
+          (simPhaseCosts.get(name)??0)+ms):undefined);
       simSteps++;
       recorder.capture(state,isMissionTerminal(state));
     }
@@ -2421,17 +2425,22 @@ function tick(now:number){
   updateContext();advanceContextPalette(dt);
   if(frameMeter&&perfOverlay){
     const end=performance.now(),stats=stage?.performanceStats();
-    frameMeter.add({frame:end-perfStart,sim:perfRenderStart-perfStart,
+    frameMeter.add({frame:end-perfStart,cadence:frameGap,sim:perfRenderStart-perfStart,
       scene:overlayBegin-perfRenderStart,overlay:end-overlayBegin,
       steps:simSteps,draws:stats?.calls??0,triangles:stats?.triangles??0});
     const m=frameMeter.summary();
     if(Math.floor(now/750)!==Math.floor((now-dt*1000)/750))
-      perfOverlay.textContent='FRAME '+m.p50.toFixed(1)+'ms · P95 '+
+      perfOverlay.textContent='JS '+m.p50.toFixed(1)+'ms · P95 '+
         m.p95.toFixed(1)+' · MAX '+m.worst.toFixed(1)+
+        '\\nRAF GAP P50 '+m.rafP50.toFixed(1)+'ms · P95 '+
+        m.rafP95.toFixed(1)+'ms'+
         '\\nSIM '+m.simulation.toFixed(1)+'ms / '+m.steps.toFixed(1)+
         ' ticks · SCENE '+m.scene.toFixed(1)+'ms'+
         '\\nOVERLAY '+m.overlay.toFixed(1)+'ms · DRAWS '+
-        m.draws.toFixed(0)+' · TRI '+m.triangles.toFixed(0);
+        m.draws.toFixed(0)+' · TRI '+m.triangles.toFixed(0)+
+        (simPhaseCosts&&simPhaseCosts.size?'\\nHOT SIM '+
+          [...simPhaseCosts].sort((a,b)=>b[1]-a[1]).slice(0,2)
+            .map(([name,ms])=>name+' '+ms.toFixed(1)+'ms').join(' / '):'');
   }
   if(awarenessPanel&&Math.floor(now/500)!==
       Math.floor((now-dt*1000)/500)){
