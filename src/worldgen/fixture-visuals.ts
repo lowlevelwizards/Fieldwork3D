@@ -309,7 +309,6 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
             }
           }
         }
-      }
       }else if(fixture==='window-boards'){
         const timber=ctx.solid(0x7d6b54,.9,'wood'),nails=ctx.solid(0x4d514e,.8,'metal');
         const across=w>=d;
