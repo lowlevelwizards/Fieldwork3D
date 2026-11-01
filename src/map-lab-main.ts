@@ -163,6 +163,19 @@ conditionInput.addEventListener('input',()=>{
  if(conditionTimer!==null)clearTimeout(conditionTimer);
  conditionTimer=setTimeout(()=>{conditionTimer=null;previewCondition();},260);
 });
+function encounterText(site:Site,audit:SiteAudit):string{
+ const plan=site.encounter,stats=audit.encounterAudit;
+ if(!plan)return 'No encounter plan for this site.';
+ return [
+  'PREMISE '+plan.premise.toUpperCase()+' / MISSION '+plan.mission.toUpperCase()+' / RISK '+plan.risk,
+  'HOSTILES '+stats.hostiles+' / GROUPS '+stats.groups+' / OCCUPIED ZONES '+stats.occupiedZones+
+   ' / EMPTY ZONES '+stats.emptyZones,
+  'MEAN ENTRY DISTANCE '+stats.meanEntryDistance+' / NEAREST PAIR '+stats.closestPair,
+  'ROLES '+Object.entries(stats.roles).map(([k,v])=>k+':'+v).join(' '),
+  ...plan.actors.map(a=>a.id+' · '+a.role+' · '+a.activity+' / '+a.readiness+
+   ' · ('+Math.round(a.position.x)+','+Math.round(a.position.y)+')')
+ ].join('\n');
+}
 function updateLabels(){
  labelLayer.replaceChildren();markers=[];
  const site=session.site;if(!site)return;
@@ -186,6 +199,12 @@ function updateLabels(){
       '\nExpected missing: '+(contract.missingExpected.join(', ')||'none'):'');
   });
   labelLayer.append(button);markers.push({node:button,p:{x:room.x+room.w/2,y:room.y+room.h/2}});
+ }
+ if(el<HTMLInputElement>('enemyOverlay').checked)for(const enemy of site.encounter?.actors??[]){
+  const marker=document.createElement('button');marker.className='enemy-label';
+  marker.textContent='● '+enemy.role.toUpperCase();
+  marker.title=enemy.id+' · '+enemy.readiness+' · '+enemy.activity;
+  labelLayer.append(marker);markers.push({node:marker,p:enemy.position});
  }
  if(el<HTMLInputElement>('doors').checked)for(const door of site.doors){
   const button=document.createElement('button');button.className='door-label';
@@ -308,6 +327,7 @@ async function useGeneratedSite(id:number,site:Site,audit:SiteAudit,choice:LabSc
   session=newSession(0,site.seed,'floor-plan',site.scale,undefined,site);
   stage.applySite({...site,conditionLevel:selectedCondition});stage.resetCamera();
   const previewMs=Math.round(performance.now()-previewStart);
+  el<HTMLElement>('encounterDetails').textContent=encounterText(site,audit);
   reportBaseline=report(site,audit)+'\nTIMING: worldgen '+
     timing.generationMs+'ms · audit '+timing.auditMs+
     'ms · worker total '+timing.workerMs+'ms · preview '+previewMs+'ms';
@@ -361,6 +381,7 @@ el<HTMLInputElement>('needs').addEventListener('change',updateLabels);
 el<HTMLInputElement>('cover').addEventListener('change',updateLabels);
 el<HTMLInputElement>('facing').addEventListener('change',updateLabels);
 el<HTMLInputElement>('doors').addEventListener('change',updateLabels);
+el<HTMLInputElement>('enemyOverlay').addEventListener('change',updateLabels);
 let pointers=new Map<number,Pt>(),lastMid:Pt|null=null,lastGap=0;
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 document.body.addEventListener('pointerdown',event=>{
