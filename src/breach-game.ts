@@ -1086,7 +1086,7 @@ function advanceVisualAwareness(s:Session,dt:number){
  }
 }
 export const isSeen=(s:Session,target:TeamActor)=>
-  team(s).some(a=>inSight(a,target,s));
+  s.intel.mode==='full-view'||team(s).some(a=>inSight(a,target,s));
 export function lastKnown(s:Session,id:string){
   return s.known.get(id)??null;
 }
@@ -2770,9 +2770,11 @@ export function debrief(s:Session){
     rescueExtracted:!!s.rescue&&s.phase==='won'};
 }
 export function knownAt(s:Session,x:number,y:number){
+  if(s.intel.mode==='full-view')return true;
   return s.seenGround.has(Math.floor(x/40)+','+Math.floor(y/40));
 }
 export function liveVisibility(s:Session,p:Pt){
+  if(s.intel.mode==='full-view')return true;
   return team(s).some(a=>a.health>0&&d(a.p,p)<240&&
     Math.abs(angleDifference(a.heading,angle(a.p,p)))<1.15&&
     unobstructed(a.p,p,s,a.posture==='crouch'));
