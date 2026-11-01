@@ -20,7 +20,7 @@ const side=(door)=>{
 test('ordinary home entrance swings inward; public retail exit swings outward',()=>{
  const door=d('FRONT',{x:75,y:150},{x:123,y:150});
  const houseRoom=room('foyer','foyer',0,0,200,150);
- const home=planDoorSwings(sample([door],[houseRoom],'house'));
+ const home=planDoorSwings(sample([door],[houseRoom],[],'house'));
  assert.ok(side(home.doors[0])<0);
  const shop=planDoorSwings(sample([door],[houseRoom],[],'retail'));
  assert.ok(side(shop.doors[0])>0);
