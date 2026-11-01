@@ -4,7 +4,7 @@ import {heardIntensity} from './breach-acoustics.ts';
 import type {AwarenessObservation} from './breach-awareness.ts';
 export type TacticalReport={
  id:number;senderId:string;at:number;origin:Pt;estimate:Pt;
- uncertainty:number;deliveredTo:string[];
+ uncertainty:number;deliveredTo:string[];coordinated?:boolean;
 };
 export function reportToListener(report:TacticalReport,listenerId:string,
  listenerPosition:Pt,doors:readonly Door[],walls:readonly Segment[],
