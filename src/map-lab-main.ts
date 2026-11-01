@@ -188,8 +188,13 @@ function updateLabels(){
   const spaceMetric=currentAudit?.spaceQuality.rooms.find(r=>r.roomId===room.id);
   const showQuality=el<HTMLInputElement>('qualityOverlay').checked;
   const trouble=!!(spaceMetric?.crowded||
-    currentAudit?.spaceQuality.doorApproachIssues.some(d=>
-      d.roomId===room.id)||verdict&&!verdict.complete);
+    currentAudit?.spaceQuality.doorApproachIssues.some(issue=>{
+      const d=site.doors.find(door=>door.id===issue.doorId);
+      if(!d)return false;
+      const x=(d.a.x+d.b.x)/2,y=(d.a.y+d.b.y)/2;
+      return x>=room.x-1&&x<=room.x+room.w+1&&
+        y>=room.y-1&&y<=room.y+room.h+1;
+    })||verdict&&!verdict.complete);
   if(showQuality&&trouble)button.classList.add('quality-risk');
   else if(showQuality)button.classList.add('quality-space');
   button.textContent=(room.purpose??room.kind).toUpperCase()+
