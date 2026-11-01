@@ -3,7 +3,8 @@
 import {seeded,type Site} from '../breach-site.ts';
 import {roomPixelSurface} from './pixel-surface-selection.ts';
 import {surfaceMood} from './surface-moods.ts';
-export type WearKind='dust'|'stain'|'scrape'|'scuff';
+import type {WearTextureKind} from '../rendering/pixel-decals.ts';
+export type WearKind=WearTextureKind;
 export type WearMark={
  id:string;roomId:string;kind:WearKind;x:number;y:number;
  width:number;depth:number;rotation:number;opacity:number;
