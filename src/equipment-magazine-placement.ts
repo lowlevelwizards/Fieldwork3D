@@ -24,7 +24,7 @@ export function magazineSpace(kit:EquipmentLoadout){
  return {rig:capacity(kit.slots.rig),belt:capacity(kit.slots.belt),
   backpack:capacity(kit.slots.backpack),pocket:1};
 }
-const priority:readonly MagazineLocation[]=['rig','belt','pocket','backpack'];
+const priority:readonly Exclude<MagazineLocation,'overflow'>[]=['rig','belt','pocket','backpack'];
 export function stageMagazines(magazines:readonly MagazineItem[],
  kit:EquipmentLoadout):LocatedMagazine[]{
  const spaces=magazineSpace(kit);
