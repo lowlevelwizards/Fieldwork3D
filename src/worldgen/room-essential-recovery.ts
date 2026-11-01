@@ -7,6 +7,7 @@ import type {Site,Room} from '../breach-site.ts';
 import type {Obstacle,Pt} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 import {ROOM_CONTRACTS} from './room-contracts.ts';
+import {fixtureServiceClear,requiresServiceApproach} from './fixture-service-clearance.ts';
 type Input=Pick<Site,'rooms'|'doors'|'openings'|'spawn'|'enemies'|'objective'|'extract'>;
 export type RecoveryIssue={roomId:string;fixture:string;reason:string};
 const inside=(o:Obstacle,r:Room)=>o.x>r.x&&o.x<r.x+r.w&&o.y>r.y&&o.y<r.y+r.h;
@@ -97,7 +98,30 @@ function recoverPass(site:Input,initial:readonly Obstacle[],
           group.includes(fixture);
         return before&&!after;
        }))continue;
-       chosen=candidate;displaced=colliding;break;
+       // A required fixture is not functional merely because its body fits.
+       // Test all four working directions against the actual oriented shape.
+       // Keep already-usable working faces usable when introducing a new prop.
+       const retained=cover.filter(o=>!colliding.includes(o));
+       const turns=requiresServiceApproach(fixture)?[0,1,2,3]:[0];
+       const turn=turns.find(orientation=>{
+        const w=orientation%2===0?asset.width:asset.depth;
+        const h=orientation%2===0?asset.depth:asset.width;
+        const placed={...candidate,w,h,orientation};
+        if(pos.x-w/2<room.x+9||pos.x+w/2>room.x+room.w-9||
+          pos.y-h/2<room.y+9||pos.y+h/2>room.y+room.h-9)return false;
+        if(retained.some(o=>collides(o,placed)))return false;
+        if(!fixtureServiceClear(room,placed,retained))return false;
+        const withPlaced=[...retained,placed];
+        return retained.every(existing=>{
+         if(!requiresServiceApproach(existing.fixture)||!inside(existing,room)||
+            !fixtureServiceClear(room,existing,retained))return true;
+         return fixtureServiceClear(room,existing,withPlaced);
+        });
+       });
+       if(turn===undefined)continue;
+       chosen=requiresServiceApproach(fixture)?
+         {...candidate,orientation:turn}:candidate;
+       displaced=colliding;break;
       }
       if(chosen)break;
      }
