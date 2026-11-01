@@ -20,6 +20,7 @@ import {validPieArc} from './breach-maneuvers.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
 import {generateSite,type Site,type SiteScale,seeded} from './breach-site.ts';
 import type {EncounterContext,EncounterActivity,EncounterReadiness,EncounterRole} from './worldgen/encounter-types.ts';
+import {encounterReactionDelay} from './breach-encounter-readiness.ts';
 import {WEAPONS,injuryOf,injurySpeed,injuryReload,
   woundSeverity,exposure,nearCover,type WeaponId,type BattleEvent}
   from './breach-combat.ts';
@@ -142,6 +143,7 @@ export type TeamActor=Operator & {
   encounterActivity?:EncounterActivity;encounterReadiness?:EncounterReadiness;
   encounterRole?:EncounterRole;encounterGroupId?:string;
   encounterRoutine?:Pt[];routineIndex?:number;routinePauseUntil?:number;
+  encounterReactionUntil?:number;
   lastNoiseExaminedAt:number;lastNoiseExaminedId:number;
   flashUntil:number;lastThrowAt:number;lastDoorAt:number;
   lastDoorId:string|null;lastDoorMethod:DoorMethod;
@@ -315,7 +317,8 @@ export function newSession(index=0,siteSeed?:number,
       if(spec){a.encounterActivity=spec.activity;a.encounterReadiness=spec.readiness;
         a.encounterRole=spec.role;a.encounterGroupId=spec.groupId;
         a.encounterRoutine=spec.routine?.map(p=>({...p}));
-        a.routineIndex=0;a.routinePauseUntil=1.5+enemyRng()*3;}
+        a.routineIndex=0;a.routinePauseUntil=1.5+enemyRng()*3;
+        a.encounterReactionUntil=Number.POSITIVE_INFINITY;}
       a.health=enemyRng()<.18?3:4;
       a.weapon=enemyRng()<.30?'smg':'carbine';
       a.magazine=WEAPONS[a.weapon].capacity;
@@ -2050,6 +2053,9 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   if(a.health<=0||a.surrendered)return;
   if(!a.watch)a.watch=watchPoint(a.p,s.doors);
   const visible=team(s).filter(b=>inSight(a,b,s));
+  if(visible.length&&a.encounterReactionUntil===Number.POSITIVE_INFINITY)
+    a.encounterReactionUntil=s.seconds+encounterReactionDelay(
+      a.encounterReadiness??'attentive',a.id);
   // Intention selection reads only acquired observations, not hidden positions.
   const belief=bestBelief(a.awareness);
   const recentNoise=s.seconds-a.lastNoiseAt<6;
@@ -2149,6 +2155,9 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       newestNoise.id??a.lastNoiseExaminedId);
     a.lastNoiseExaminedAt=Math.max(a.lastNoiseExaminedAt,newestNoise.time);
   }
+  if(strongest&&a.encounterReactionUntil===Number.POSITIVE_INFINITY)
+    a.encounterReactionUntil=s.seconds+encounterReactionDelay(
+      a.encounterReadiness??'attentive',a.id);
   if(strongest&&!visible.length&&a.alert!=='retreat'){
     a.lastNoiseAt=strongest.at;
     const heard=strongest.estimate;
@@ -2520,6 +2529,11 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
 function fire(s:Session,a:TeamActor,dt:number){
   if(a.health<=0){
     a.reload=0;a.reloadMode=null;return;
+  }
+  // Encounter actors cannot fire during their first perceptual reaction.
+  // Infinity means they have not yet received evidence of a threat.
+  if(a.side==='red'&&(a.encounterReactionUntil??0)>s.seconds){
+    a.aim=Math.max(0,a.aim-dt*2);return;
   }
   // Medical intervention occupies both hands; no free shots while treating.
   if(a.plan[0]?.kind==='treat'||a.treatmentActive){
