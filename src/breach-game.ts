@@ -139,6 +139,7 @@ export type TeamActor=Operator & {
   personality:Personality;morale:number;lastNoiseAt:number;
   encounterActivity?:EncounterActivity;encounterReadiness?:EncounterReadiness;
   encounterRole?:EncounterRole;encounterGroupId?:string;
+  encounterRoutine?:Pt[];routineIndex?:number;routinePauseUntil?:number;
   lastNoiseExaminedAt:number;lastNoiseExaminedId:number;
   flashUntil:number;lastThrowAt:number;lastDoorAt:number;
   lastDoorId:string|null;lastDoorMethod:DoorMethod;
@@ -310,7 +311,9 @@ export function newSession(index=0,siteSeed?:number,
       a.weaponYaw=a.heading;
       const spec=site.encounter?.actors[i];
       if(spec){a.encounterActivity=spec.activity;a.encounterReadiness=spec.readiness;
-        a.encounterRole=spec.role;a.encounterGroupId=spec.groupId;}
+        a.encounterRole=spec.role;a.encounterGroupId=spec.groupId;
+        a.encounterRoutine=spec.routine?.map(p=>({...p}));
+        a.routineIndex=0;a.routinePauseUntil=1.5+enemyRng()*3;}
       a.health=enemyRng()<.18?3:4;
       a.weapon=enemyRng()<.30?'smg':'carbine';
       a.magazine=WEAPONS[a.weapon].capacity;
@@ -2159,6 +2162,24 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   }
   if(a.flashUntil>s.seconds){
     a.velocity=0;a.aim=0;a.alert='cover';return;
+  }
+  // Quiet functional activities use bounded, collision-checked local journeys.
+  // Combat reports, seen contacts, or sounds immediately interrupt the routine.
+  if(!a.contacted&&!a.contact&&a.alert==='idle'&&a.encounterRoutine?.length){
+    if(s.seconds<(a.routinePauseUntil??0)){a.velocity=0;return;}
+    const index=(a.routineIndex??0)%a.encounterRoutine.length;
+    const target=a.encounterRoutine[index];
+    if(d(a.p,target)<13){
+      a.routineIndex=(index+1)%a.encounterRoutine.length;
+      a.routinePauseUntil=s.seconds+2+(index%2);a.nav=[];a.velocity=0;
+      return;
+    }
+    if(!a.nav.length)a.nav=route(a.p,target);
+    if(!a.nav.length){
+      a.routineIndex=(index+1)%a.encounterRoutine.length;
+      a.routinePauseUntil=s.seconds+4;a.velocity=0;return;
+    }
+    approach(a,target,dt,s,.52);return;
   }
   // Unprepared occupants do not automatically run to combat positions.
   // Any credible sound or visual contact above interrupts this inactivity.
