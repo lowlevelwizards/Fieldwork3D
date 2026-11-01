@@ -40,7 +40,7 @@ export function fixtureFacing(room:Room,fixture:string,p:Pt,
 const requiringApproach=new Set([
  'desk','counter','sink','stove','fridge','toilet','shower','bathtub',
  'exam-bed','workbench','vehicle-lift','checkout','control-panel',
- 'office-chair','chair','dining-table','meeting-table'
+ 'dining-table','meeting-table'
 ]);
 export function workingClearance(room:Room,c:Obstacle,
  obstacles:readonly Obstacle[],depth=15):boolean{
