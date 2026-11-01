@@ -37,7 +37,8 @@ import {DisplayRouteCache} from './breach-route-cache.ts';
 import {FrameMeter} from './breach-perf.ts';
 import {formatAfterAction} from './breach-after-action.ts';
 import {initialRoster,readRoster,applyRosterIdentity,recordRosterMission,
-  resupplyRoster,equipRoster} from './breach-roster.ts';
+  resupplyRoster,equipRoster,equipRosterGear,renameRosterMember,cycleRosterAppearance} from './breach-roster.ts';
+import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
 import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOperation,
  purchaseAmmo,purchaseMedical,resupplyOperator,treatOperator,
  hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
@@ -311,6 +312,7 @@ Object.assign(operationsBoard.style,{
  boxShadow:'0 12px 35px #0008'
 });
 document.body.append(operationsBoard);
+let expandedQuickKit:string|null=null;
 function renderOperationsBoard(){
  operationsBoard.replaceChildren();
  const heading=document.createElement('div');
@@ -361,7 +363,58 @@ function renderOperationsBoard(){
    saveRoster();applyRosterIdentity(state,persistentRoster);
    renderOperationsBoard();updateHud();
   });
-  actions.append(equip);card.append(actions);operationsBoard.append(card);
+  const look=document.createElement('button');
+  look.type='button';look.textContent='NEXT LOOK';
+  look.addEventListener('click',()=>{
+   if(state.phase!=='planning'||replaying)return;
+   persistentRoster=cycleRosterAppearance(persistentRoster,member.id);
+   saveRoster();applyRosterIdentity(state,persistentRoster);
+   expandedQuickKit=member.id;renderOperationsBoard();updateHud();
+  });
+  actions.append(look);
+  const rename=document.createElement('button');
+  rename.type='button';rename.textContent='CALLSIGN';
+  rename.addEventListener('click',()=>{
+   if(state.phase!=='planning'||replaying)return;
+   const next=window.prompt('Operator callsign',member.callsign);
+   if(next===null)return;
+   persistentRoster=renameRosterMember(persistentRoster,member.id,next);
+   saveRoster();applyRosterIdentity(state,persistentRoster);
+   expandedQuickKit=member.id;renderOperationsBoard();updateHud();
+  });
+  actions.append(rename);
+  card.append(actions);
+  const kit=document.createElement('details');
+  kit.open=expandedQuickKit===member.id;
+  kit.addEventListener('toggle',()=>{if(kit.open)expandedQuickKit=member.id;
+   else if(expandedQuickKit===member.id)expandedQuickKit=null;});
+  const kitTitle=document.createElement('summary');
+  kitTitle.textContent='EQUIPMENT / LOADOUT';
+  kitTitle.style.cssText='min-height:40px;cursor:pointer;padding:11px 0;font-weight:700';
+  kit.append(kitTitle);
+  for(const slot of LOADOUT_SLOTS){
+   if(slot==='primary')continue; // Existing NEXT WEAPON action stays authoritative.
+   const row=document.createElement('label');
+   row.style.cssText='display:flex;justify-content:space-between;gap:8px;align-items:center;margin:8px 0';
+   const label=document.createElement('span');
+   label.textContent=slot.toUpperCase();label.style.fontSize='10px';
+   const select=document.createElement('select');
+   select.setAttribute('aria-label',slot+' for '+member.callsign);
+   select.style.cssText='max-width:65%;min-height:40px;touch-action:manipulation;background:#243530;color:#e5e9d8;border-radius:7px;padding:6px';
+   for(const item of itemsForSlot(slot)){
+    const option=document.createElement('option');
+    option.value=item.id;option.textContent=item.name;select.append(option);
+   }
+   select.value=member.loadout.slots[slot];
+   select.addEventListener('change',()=>{
+    if(state.phase!=='planning'||replaying)return;
+    persistentRoster=equipRosterGear(persistentRoster,member.id,slot,select.value);
+    saveRoster();applyRosterIdentity(state,persistentRoster);
+    expandedQuickKit=member.id;renderOperationsBoard();updateHud();
+   });
+   row.append(label,select);kit.append(row);
+  }
+  card.append(kit);operationsBoard.append(card);
  }
  const hint=document.createElement('p');
  hint.textContent='Close to deploy normally. Recovery advances after each operation.';
