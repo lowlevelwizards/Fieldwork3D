@@ -125,7 +125,7 @@ export type ShotEvent={
   muzzleHeight?:number;firedAt?:number;
   impactHeight?:number;
   hitRegion?:WoundRegion;downPose?:FallPose;
-  surface?:'blood'|'wood'|'stone'|'metal'|'dust';
+  surface?:'blood'|'wood'|'stone'|'metal'|'glass'|'dust';
 };
 export type ImpactMark={id:number;p:Pt;surface:ShotEvent['surface'];age:number;
   height?:number;normal?:Pt};
@@ -2108,13 +2108,13 @@ function fire(s:Session,a:TeamActor,dt:number){
     sightMuzzle.y,target.p,aimHeight(target.posture==='crouch'),
     COVER,WALLS,s.doors,friends);
   a.lastFireBlock=lane.blocker;
+  const laneTrace=strikeSurface(
+    {x:sightMuzzle.x,y:sightMuzzle.z},target.p,s,
+    sightMuzzle.y,aimHeight(target.posture==='crouch'),
+    weapon.penetration);
   const penetrableLane=lane.blocker==='cover'&&
-    strikeSurface({x:sightMuzzle.x,y:sightMuzzle.z},target.p,s,
-      sightMuzzle.y,aimHeight(target.posture==='crouch'),
-      weapon.penetration).remaining>0&&
-    d(strikeSurface({x:sightMuzzle.x,y:sightMuzzle.z},target.p,s,
-      sightMuzzle.y,aimHeight(target.posture==='crouch'),
-      weapon.penetration).end,target.p)<.5;
+    laneTrace.remaining>.015&&
+    d(laneTrace.end,target.p)<.5;
   if(lane.blocker!=='clear'&&!penetrableLane){
     if(a.side==='blue'&&s.seconds-a.lastLaneWarnAt>2){
       notify(s,a.name+' FIRE BLOCKED · '+lane.blocker.toUpperCase());
@@ -2167,10 +2167,12 @@ function fire(s:Session,a:TeamActor,dt:number){
     muzzle.y)*d(muzzlePoint,far)/Math.max(1,muzzleRange);
   const strike=strikeSurface(muzzlePoint,far,s,muzzle.y,strikeHeight,
     weapon.penetration);
+  const targetTrace=strikeSurface(muzzlePoint,target.p,s,muzzle.y,
+    aimHeight(target.posture==='crouch'),weapon.penetration);
   // Obstruction before the target defeats a perfectly aligned barrel.
   const blockerDist=d(muzzlePoint,strike.end);
   const hit=candidateHit&&blockerDist>=muzzleRange-hitRadius&&
-    strike.remaining>.015;
+    d(targetTrace.end,target.p)<.5&&targetTrace.remaining>.015;
   const end=hit?clone(target.p):strike.end;
   const impact=hit?{end,surface:'blood' as const}:strike;
   a.recoil=Math.min(.9,a.recoil+profile.recoilKick*
