@@ -17,15 +17,25 @@ function profile({seed,scale,record=false,hold=false,ticks=120}){
  const s=newSession(0,seed,'floor-plan',scale),recorder=new MissionRecorder();
  if(hold)for(const a of s.operators)a.firePolicy='hold';
  toggling(s);if(record)recorder.capture(s,true);
- const sim=[],recording=[];
+ const sim=[],recording=[],slowTicks=[];
+ let peak={ms:0,tick:-1,phases:{}};
  for(let i=0;i<ticks;i++){
-  sim.push(time(()=>stepSession(s,1/60)));
+  const phases={};
+  const ms=time(()=>stepSession(s,1/60,(name,cost)=>{
+    phases[name]=(phases[name]??0)+cost;
+  }));
+  sim.push(ms);
+  if(ms>peak.ms)peak={ms:+ms.toFixed(2),tick:i,phases};
+  if(ms>40)slowTicks.push({tick:i,ms:+ms.toFixed(2),
+    causes:Object.entries(phases).sort((a,b)=>b[1]-a[1])
+      .slice(0,5).map(([name,cost])=>[name,+cost.toFixed(2)])});
   if(record)recording.push(time(()=>recorder.capture(s)));
  }
  const out={seed,scale,record,hold,ticks,actors:s.operators.length,
   walls:WALLS.length,cover:COVER.length,rooms:s.site?.rooms.length,
   shots:s.nextShotId-1,groundCells:s.seenGround.size,
-  sim:stats(sim),recording:record?stats(recording):undefined};
+  sim:stats(sim),recording:record?stats(recording):undefined,
+  peak,slowTicks:slowTicks.slice(0,6)};
  console.log('SIMULATION',JSON.stringify(out));
  return out;
 }
