@@ -18,8 +18,8 @@ import {
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';
-import {activeRangeDiagnostic,rangeDiagnosticLabel}
- from './equipment-training-diagnostics.ts';
+import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
+ rangeTrialLabel,type RangeTrial} from './equipment-training-diagnostics.ts';
 import type {Site} from './breach-site.ts';
 import {equippedEntryMethods,issuedWedges} from './equipment-entry-tools.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
@@ -367,13 +367,14 @@ operationsToggle.id='operationsBoardToggle';operationsToggle.type='button';
 operationsToggle.textContent='OPERATIONS';
 operationsToggle.setAttribute('aria-label','Open squad operations and resupply');
 ui.siteSettings.append(operationsToggle);
+let lastRangeTrial:RangeTrial|null=null;
 const rangeTelemetry=document.createElement('aside');
 rangeTelemetry.id='equipmentRangeTelemetry';
 rangeTelemetry.hidden=true;
 rangeTelemetry.style.cssText='position:fixed;top:65px;right:10px;z-index:15;'+
  'max-width:min(80vw,460px);padding:8px 12px;border:1px solid #6e9480;'+
  'border-radius:8px;background:#152421e8;color:#d9e7d6;'+
- 'font:11px/1.6 Oxanium,sans-serif;pointer-events:none';
+ 'font:11px/1.6 Oxanium,sans-serif;pointer-events:none;white-space:pre-line';
 rangeTelemetry.setAttribute('aria-label','Equipment range live metrics');
 document.body.append(rangeTelemetry);
 const operationsBoard=document.createElement('section');
@@ -409,6 +410,7 @@ function renderOperationsBoard(){
  range.addEventListener('click',()=>{
   if(state.phase!=='planning'||replaying)return;
   campaignMode='quick';
+  lastRangeTrial=null;
   reset(state.variant,undefined,undefined,equipmentTrainingSite());
   showUiHelp('TEST RANGE · USE SUPPRESS TO FIRE AT THE TARGET PLATES · RESTART OR LEAVE RANGE TO EXIT',9000);
  });
@@ -1278,12 +1280,15 @@ function updateHud(){
   const telemetry=activeRangeDiagnostic(state,selected);
   rangeTelemetry.hidden=!telemetry;
   if(telemetry){
-   const line=rangeDiagnosticLabel(telemetry);
+   const line=rangeDiagnosticLabel(telemetry)+
+    (lastRangeTrial?'\n'+rangeTrialLabel(lastRangeTrial):'');
    if(rangeTelemetry.textContent!==line)rangeTelemetry.textContent=line;
   }
   const leaveRange=document.querySelector<HTMLButtonElement>(
    '[data-equipment-range-exit]');
   if(leaveRange)leaveRange.hidden=!state.site?.training;
+  const repeat=document.querySelector<HTMLButtonElement>('[data-range-repeat]');
+  if(repeat)repeat.hidden=!state.site?.training;
   paintOperatorAccent(ui.quickStates,selected);
   paintOperatorAccent(ui.context,selected);
   paintOperatorAccent(contextTether,selected);
@@ -2554,9 +2559,19 @@ const leaveRangeButton=document.createElement('button');
 leaveRangeButton.type='button';leaveRangeButton.textContent='LEAVE TEST RANGE';
 leaveRangeButton.dataset.equipmentRangeExit='';
 leaveRangeButton.addEventListener('click',()=>{
- if(state.site?.training){reset();updateHud();}
+ if(state.site?.training){lastRangeTrial=null;reset();updateHud();}
 });
 ui.siteSettings.append(leaveRangeButton);
+const rangeRepeat=document.createElement('button');
+rangeRepeat.type='button';rangeRepeat.textContent='RESTART RANGE TRIAL';
+rangeRepeat.dataset.rangeRepeat='';
+rangeRepeat.addEventListener('click',()=>{
+ if(!state.site?.training)return;
+ lastRangeTrial=captureRangeTrial(state,selected);
+ reset(state.variant,undefined,undefined,equipmentTrainingSite());
+ updateHud();
+});
+ui.siteSettings.append(rangeRepeat);
 medicalButton=document.createElement('button');
 medicalButton.type='button';
 medicalButton.className=ui.loadout.className;
