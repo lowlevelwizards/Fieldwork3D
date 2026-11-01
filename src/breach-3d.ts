@@ -132,6 +132,7 @@ export class TacticalScene3D{
   // must not leak another material and geometry per identical fixture.
   private solidCache=new Map<string,THREE.MeshStandardMaterial>();
   private readonly pixelTextures=new PixelTextureLibrary();
+  private pixelTexturesEnabled=true;
   private boxGeometryCache=new Map<string,THREE.BoxGeometry>();
   private sharedBoxGeometries=new Set<THREE.BufferGeometry>();
   private windowPaneMaterial:THREE.MeshStandardMaterial|null=null;
@@ -144,7 +145,10 @@ export class TacticalScene3D{
     let material=this.solidCache.get(key);
     if(!material){
       material=mat(hex,roughness);
-      if(surface)material.map=this.pixelTextures.get(surface);
+      if(surface){
+        material.userData.pixelSurface=surface;
+        if(this.pixelTexturesEnabled)material.map=this.pixelTextures.get(surface);
+      }
       this.solidCache.set(key,material);this.mats.push(material);
     }
     return material;
@@ -219,6 +223,22 @@ export class TacticalScene3D{
     this.smoothFog.frustumCulled=false;
     this.scene.add(this.smoothFog);
     this.resize(innerWidth,innerHeight);
+  }
+  /** Toggle source maps for the asset showroom without rebuilding gameplay geometry. */
+  setPixelTextures(enabled:boolean){
+    if(this.pixelTexturesEnabled===enabled)return;
+    this.pixelTexturesEnabled=enabled;
+    this.scene.traverse(object=>{
+      if(!(object instanceof THREE.Mesh))return;
+      const materials=Array.isArray(object.material)?object.material:[object.material];
+      for(const material of materials){
+        if(!(material instanceof THREE.MeshStandardMaterial))continue;
+        const surface=material.userData.pixelSurface as PixelSurface|undefined;
+        if(!surface)continue;
+        material.map=enabled?this.pixelTextures.get(surface):null;
+        material.needsUpdate=true;
+      }
+    });
   }
   private box(parent:THREE.Object3D,x:number,y:number,z:number,
     w:number,h:number,d:number,material:THREE.Material,cast=true){
