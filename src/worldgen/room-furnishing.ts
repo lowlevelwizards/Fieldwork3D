@@ -10,6 +10,7 @@ import {ROOM_CONTRACTS} from './room-contracts.ts';
 import {recoverRoomEssentials} from './room-essential-recovery.ts';
 import {placeServiceQueues} from './service-queue-layout.ts';
 import {planKitchenWorklines} from './kitchen-workline.ts';
+import {circulationReservations,overlapsCirculationReservation} from './circulation-reservations.ts';
 type Anchor='nw'|'ne'|'sw'|'se'|'west'|'east'|'center';
 type Item={id:string;anchor:Anchor};
 const compositions:Record<string,readonly Item[]>={
@@ -181,6 +182,7 @@ function perimeterPositions(room:Room,w:number,h:number):Pt[]{
 }
 export function furnishRooms(site:Site,seed:number):Site{
  const rng=seeded(seed^0x4f012f32);
+ const reservedCirculation=circulationReservations(site);
  // Preserve architectural sills and outdoor fixtures while furnishing interiors.
  const output:Obstacle[]=[...site.cover];
  const furnishingIssues:NonNullable<Site['furnishingIssues']>=[];
@@ -357,6 +359,10 @@ export function furnishRooms(site:Site,seed:number):Site{
     if(p.x-w/2<room.x+9||p.x+w/2>room.x+room.w-9||
        p.y-h/2<room.y+9||p.y+h/2>room.y+room.h-9)continue;
     const candidate:Obstacle={...p,w,h,fixture:item.id,low:asset.cover==='low'};
+    // Required groups retain access to this space; reject optional
+    // extras that would eat an everyday pedestrian approach.
+    if(i>=essential.length&&overlapsCirculationReservation(
+      candidate,reservedCirculation,room.id))continue;
     if(site.doors.some(d=>Math.hypot(p.x-(d.a.x+d.b.x)/2,p.y-(d.a.y+d.b.y)/2)<Math.max(compact?39:54,Math.max(w,h)/2+(compact?19:30))))continue;
     if((site.openings??[]).some(o=>Math.hypot(p.x-(o.a.x+o.b.x)/2,
       p.y-(o.a.y+o.b.y)/2)<Math.max(65,Math.max(w,h)/2+32)))continue;
