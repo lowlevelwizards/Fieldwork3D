@@ -10,8 +10,10 @@ test('service hatches occupy real partition cuts with collision on the lower wal
    found++;
    const p={x:(hatch.a.x+hatch.b.x)/2,y:(hatch.a.y+hatch.b.y)/2};
    assert.ok(site.walls.every(w=>pointToSegment(p,w)>1));
-   assert.ok(site.cover.some(c=>c.fixture==='window-sill'&&
-    Math.hypot(c.x-p.x,c.y-p.y)<1));
+   const atAperture=site.cover.filter(c=>
+    Math.hypot(c.x-p.x,c.y-p.y)<1);
+   assert.ok(atAperture.some(c=>c.low),
+    `seed ${seed} hatch ${hatch.id}: no physical low barrier (${atAperture.map(c=>c.fixture).join(',')})`);
   }
  }
  assert.ok(found>0,'service hatch should be emitted by compatible building programs');
