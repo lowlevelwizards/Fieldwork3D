@@ -7,6 +7,7 @@ import {activateSite,type Pt} from './breach-core.ts';
 import {auditGeneratedSite} from './breach-site-audit.ts';
 import {assessArchitecture} from './worldgen/architecture-quality.ts';
 import {assessRoomContracts} from './worldgen/room-contracts.ts';
+import {auditArchitecturalFeatures} from './worldgen/architecture-feature-audit.ts';
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const typeInput=el<HTMLSelectElement>('building');
 const scaleInput=el<HTMLSelectElement>('scale');
@@ -90,12 +91,16 @@ function updateLabels(){
 function describe(site:Site){
  const count=site.rooms.filter(room=>room.kind==='room').length;
  const structure=assessArchitecture(site);
+ const features=auditArchitecturalFeatures(site);
  return site.archetype?.toUpperCase()+' · '+site.name+' · seed '+site.seed+
   '\n'+(site.planFamily??site.layout)+' · '+structure.zones+' functional zones / '+
   structure.nonrectangularZones+' irregular rooms\n'+
   count+' floor sections / '+site.doors.length+' doors / '+(site.openings?.length??0)+
   ' open passages / '+site.cover.length+' physical props / '+
-  (site.exteriorZones?.length??0)+' exterior zones';
+  (site.exteriorZones?.length??0)+' exterior zones\n'+
+  features.pairs+' double doorways / '+features.shutters+' shutters / '+
+  features.interiorGlass+' interior glass / '+features.fullHeightGlass+' full-height panes / '+
+  features.structures+' outbuildings'+(features.issues.length?'\nARCH: '+features.issues.join('; '):'');
 }
 function report(site:Site):string{
  const result=auditGeneratedSite(site.seed,site.scale??'standard');

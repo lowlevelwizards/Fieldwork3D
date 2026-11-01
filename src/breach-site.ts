@@ -20,6 +20,7 @@ export type WindowOpening={
  id:string;x:number;y:number;width:number;vertical:boolean;
  /** Decorative family, never a substitute for the physical pane or sill. */
  style?:WindowStyle;
+ interior?:boolean;sillHeight?:number;headHeight?:number;
  treatment?:WindowTreatment;
 };
 export type WorldBounds={minX:number;minY:number;maxX:number;maxY:number};
@@ -49,6 +50,7 @@ export type Site={
   wallDetails?:import('./worldgen/wall-dresser.ts').WallDetail[];
   openings?:WideOpening[];
   exteriorZones?:ExteriorZone[];
+  structures?:{id:string;kind:string;x:number;y:number;w:number;h:number}[];
   cover:Obstacle[];entrance:Pt;spawn:Pt[];enemies:Pt[];
   objective:Pt;extract:Pt;roomCount:number;
   units?:{id:string;kind:'motel'|'apartment';roomIds:string[]}[];
