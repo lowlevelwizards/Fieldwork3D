@@ -14,6 +14,8 @@ import {type Site,type WindowOpening} from './breach-site.ts';
 import {assetLibrary,assetLibraryCategories,type AssetLibraryEntry} from './worldgen/asset-library.ts';
 import {OPERATOR_REFERENCE_HEIGHT,WORLD_UNITS_PER_METRE,metres} from './worldgen/world-scale.ts';
 import {CHARACTER_FIXTURE_IDS} from './worldgen/asset-character-visuals.ts';
+import {assetPrimarySurface,assetMaterialDescription} from './worldgen/material-inspection.ts';
+import {wearPixels} from './rendering/pixel-decals.ts';
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const category=el<HTMLSelectElement>('category'),search=el<HTMLInputElement>('search');
 const summary=el<HTMLElement>('summary'),detail=el<HTMLOutputElement>('detail');
@@ -24,6 +26,9 @@ const header=el<HTMLElement>('lab-header'),controls=el<HTMLElement>('controls');
 const overlay=new THREE.Group();
 const swatch=el<HTMLCanvasElement>('pixel-swatch');
 const swatchContext=swatch.getContext('2d');
+const cleanSwatch=el<HTMLCanvasElement>('pixel-clean-swatch');
+const cleanContext=cleanSwatch.getContext('2d');
+const liveWear=new THREE.Group();
 let texturesShown=true;
 let swatchSeed=0,swatchCondition='clean',currentSurface:PixelSurface='wood';
 const surfacePicker=el<HTMLSelectElement>('material-family');
@@ -36,6 +41,7 @@ function swatchMaterial(kind:PixelSurface){
  surfacePicker.value=kind;
  if(!swatchContext)return;
  const bytes=pixelPattern(kind,swatchSeed,32);
+ if(cleanContext)cleanContext.putImageData(new ImageData(new Uint8ClampedArray(bytes),32,32),0,0);
  // Preview-only localized condition examples. Does not mutate game materials.
  if(swatchCondition!=='clean'){
    const n=swatchCondition==='neglected'?3:2;
@@ -65,6 +71,31 @@ const showroomVariants=new Map<string,number>();
 const session=newSession(0,101);
 session.operators=[]; // There are no actors in the asset showroom.
 const stage=new TacticalScene3D();
+stage.scene.add(liveWear);
+const wearPreviewMaterials=new Map<string,THREE.MeshBasicMaterial>();
+function showLiveWear(item:AssetLibraryEntry){
+ for(const child of liveWear.children){
+   if(child instanceof THREE.Mesh)child.geometry.dispose();
+ }
+ liveWear.clear();
+ if(swatchCondition==='clean'||item.origin==='dressing')return;
+ const kind=swatchCondition==='vacant'?'dust':'scuff';
+ let mat=wearPreviewMaterials.get(kind);
+ if(!mat){
+   const texture=new THREE.DataTexture(wearPixels(kind),32,32,THREE.RGBAFormat);
+   texture.needsUpdate=true;texture.magFilter=THREE.NearestFilter;
+   texture.minFilter=THREE.LinearMipmapLinearFilter;texture.generateMipmaps=true;
+   mat=new THREE.MeshBasicMaterial({map:texture,transparent:true,opacity:.18,
+     depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,side:THREE.DoubleSide});
+   wearPreviewMaterials.set(kind,mat);
+ }
+ const ix=shownEntries.findIndex(x=>x.id===item.id);if(ix<0)return;
+ const at=showroomSlot(ix,layout);
+ const decal=new THREE.Mesh(new THREE.PlaneGeometry(
+   Math.max(3,item.width*.42),Math.max(3,item.height*.22)),mat);
+ decal.position.set(at.x,Math.max(3,item.height*.24),at.y+item.depth/2+.7);
+ decal.castShadow=false;decal.receiveShadow=false;liveWear.add(decal);
+}
 stage.setMode('iso');
 stage.scene.add(overlay);
 // A full-size tactical operator silhouette accompanies EVERY asset preview.
@@ -203,12 +234,10 @@ function focusSelected(){
 }
 function select(item:AssetLibraryEntry){
  selectedId=item.id;
- const pixelKind:PixelSurface=item.origin==='fixture'?fixturePixelSurface(item.id):
-   item.origin==='dressing'?'paper':
-   item.id.startsWith('wall')?'plaster':
-   item.id.startsWith('door')?'wood':
-   item.id==='floor'?roomPixelSurface('house','living'):'metal';
+ const pixelKind:PixelSurface=assetPrimarySurface(item);
  swatchMaterial(pixelKind);
+ showLiveWear(item);
+ el<HTMLElement>('material-diagnostics').textContent=assetMaterialDescription(item);
  detail.textContent=item.label+' ['+item.id+'] · '+item.category.toUpperCase()+
    '\n'+item.width+' × '+item.depth+' × '+item.height+' world units ('+
     [item.width,item.depth,item.height].map(v=>metres(v).toFixed(2)).join(' × ')+
@@ -254,6 +283,7 @@ function fitShowroom(){
  stage.updateCamera(1);
 }
 function refresh(){
+ liveWear.clear();
  const found=filtered(),max=Math.max(0,Math.ceil(found.length/layout.pageSize)-1);
  page=Math.min(page,max);
  const shown=found.slice(page*layout.pageSize,(page+1)*layout.pageSize);
@@ -301,6 +331,7 @@ surfacePicker.addEventListener('change',()=>{
 el<HTMLSelectElement>('surface-condition').addEventListener('change',e=>{
  swatchCondition=(e.currentTarget as HTMLSelectElement).value;
  swatchMaterial(currentSurface);
+ if(selectedId){const item=shownEntries.find(x=>x.id===selectedId);if(item)showLiveWear(item);}
 });
 el<HTMLButtonElement>('texture-variant').addEventListener('click',()=>{
  swatchSeed=(swatchSeed+1)%4;
