@@ -32,6 +32,7 @@ import {doorInteraction} from './breach-interactions.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
 import {relocateCover,canRelocateCover} from './breach-movable-cover.ts';
+import {materialForFixture,MATERIALS} from './breach-materials.ts';
 import {manipulateWindow} from './breach-windows.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {chooseAiIntent,type AIIntent} from './breach-ai-policy.ts';
@@ -264,7 +265,9 @@ export function newSession(index=0,siteSeed?:number,
       WEAPONS[a.weapon].capacity);
   });
   const state:Session={...seed,operators,objectRevision:0,
-    coverState:COVER.map(o=>({...o})),windows:initializeWindows(site?.windows??[]),
+    coverState:COVER.map(o=>({...o,material:materialForFixture(o.fixture),
+      integrity:MATERIALS[materialForFixture(o.fixture)].integrity})),
+    windows:initializeWindows(site?.windows??[]),
     passageLeases:{},
     doors:initialDoors().map((d,i)=>initDoor({
       ...d,locked:d.locked??!!(site&&i>2&&i%7===0&&
