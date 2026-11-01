@@ -36,7 +36,8 @@ export function initDoor(d:Door,i:number):Door{
  const prepared:Door={...d,hinge:d.hinge??(i%3===0?'b':'a'),
    swing:d.swing??(d.id==='FRONT'?-1:i%2===0?1:-1),openFraction:d.open?1:0,
    angularVelocity:0,resistance:d.resistance??1,
-   latchIntegrity:d.latchIntegrity??1.05,frameIntegrity:d.frameIntegrity??2.5,
+   latchIntegrity:d.locked?Math.max(2.2,d.latchIntegrity??0):
+     d.latchIntegrity??1.05,frameIntegrity:d.frameIntegrity??2.5,
    kicks:d.kicks??0,forced:d.forced??false,heldBy:d.heldBy??null};
  if(doorSwingBlocked(prepared,.32)){
    const opposite=prepared.swing===1?-1:1;
@@ -75,7 +76,8 @@ export function kickDoor(d:Door,from?:Pt):{opened:boolean;pushSide:boolean}{
  if(!pushSide)d.frameIntegrity=Math.max(0,(d.frameIntegrity??2.5)-.42);
  const opened=(d.latchIntegrity??1)>0?((d.frameIntegrity??1)<=0):true;
  if(opened){
-   d.heldBy=null;d.forced=true;d.open=true;d.kickImpulse=1;
+   d.heldBy=null;d.locked=false;d.jammed=false;
+   d.forced=true;d.open=true;d.kickImpulse=1;
    d.angularVelocity=Math.max(9,d.angularVelocity??0);
  }
  return {opened,pushSide};
