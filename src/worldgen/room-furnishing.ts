@@ -7,6 +7,7 @@ import {propDefinition} from './asset-catalog.ts';
 import {relatedFurniturePositions} from './room-composition.ts';
 import {ROOM_CONTRACTS} from './room-contracts.ts';
 import {recoverRoomEssentials} from './room-essential-recovery.ts';
+import {fixtureFacing,footprintAtFacing,workingClearance} from './fixture-facing.ts';
 type Anchor='nw'|'ne'|'sw'|'se'|'west'|'east';
 type Item={id:string;anchor:Anchor};
 const compositions:Record<string,readonly Item[]>={
@@ -227,14 +228,19 @@ export function furnishRooms(site:Site,seed:number):Site{
    ];
    let chosen:Obstacle|undefined;
    for(const p of candidates){
-    if(p.x-w/2<room.x+9||p.x+w/2>room.x+room.w-9||
-       p.y-h/2<room.y+9||p.y+h/2>room.y+room.h-9)continue;
-    const candidate:Obstacle={...p,w,h,fixture:item.id,low:asset.cover==='low'};
+    const facing=fixtureFacing(room,item.id,p,placed);
+    const footprint=footprintAtFacing(w,h,facing);
+    const pw=footprint.w,ph=footprint.h;
+    if(p.x-pw/2<room.x+9||p.x+pw/2>room.x+room.w-9||
+       p.y-ph/2<room.y+9||p.y+ph/2>room.y+room.h-9)continue;
+    const candidate:Obstacle={...p,w:pw,h:ph,facing,
+      fixture:item.id,low:asset.cover==='low'};
     if(site.doors.some(d=>Math.hypot(p.x-(d.a.x+d.b.x)/2,p.y-(d.a.y+d.b.y)/2)<Math.max(compact?39:54,Math.max(w,h)/2+(compact?19:30))))continue;
     if((site.openings??[]).some(o=>Math.hypot(p.x-(o.a.x+o.b.x)/2,
       p.y-(o.a.y+o.b.y)/2)<Math.max(65,Math.max(w,h)/2+32)))continue;
     if(reserved.some(q=>Math.abs(q.x-p.x)<w/2+24&&Math.abs(q.y-p.y)<h/2+24))continue;
     if([...output,...placed].some(o=>overlap(o,candidate)))continue;
+    if(!workingClearance(room,candidate,[...output,...placed]))continue;
     chosen=candidate;break;
    }
    if(chosen)placed.push(chosen);
