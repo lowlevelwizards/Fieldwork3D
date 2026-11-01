@@ -33,6 +33,7 @@ import {interpretSound} from './breach-sound-evidence.ts';
 import {chooseAiIntent,type AIIntent} from './breach-ai-policy.ts';
 import {searchCandidates} from './breach-ai-search.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
+import {reportToListener,type TacticalReport} from './breach-communication.ts';
 import {newAwareness,addObservation,visibleObservation,
  ageAwareness,clearObservedPosition,bestBelief,
  type ActorAwareness} from './breach-awareness.ts';
@@ -67,7 +68,7 @@ export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retrea
 export type Personality='guard'|'aggressor'|'cautious';
 export type TeamActor=Operator & {
   awareness:ActorAwareness;
-  intent:AIIntent|null;combatChoice:CombatAction|null;
+  intent:AIIntent|null;combatChoice:CombatAction|null;lastReportAt:number;
   searchOrigin:Pt|null;searchQueue:Pt[];
   plan:PlanNode[];history:PlanHistory;nav:Pt[];activeNode:number;
   posture:Posture;pace:'walk'|'run';alert:Alert;velocity:number;turning:number;
@@ -129,6 +130,7 @@ export type Scenario={index:number;name:string;objective:Pt;extract:Pt};
 export type Session=Omit<TacticalState,'operators'> & {
   operators:TeamActor[];variant:number;scenario:Scenario;
   mission:MissionStage;nextId:number;noise:NoiseEvent[];nextNoiseId:number;
+  reports:TacticalReport[];nextReportId:number;
   shots:ShotEvent[];casings:EjectedCasing[];nextShotId:number;
   known:Map<string,KnownContact>;
   seenGround:Set<string>;intel:IntelState;intelObservedAt:number;
@@ -154,7 +156,7 @@ export const SCENARIOS=[
   {index:2,name:'REAR GUARD',spots:[{x:262,y:213,h:1.1},{x:476,y:444,h:2.8}]},
 ] as const;
 const withActions=(a:Operator):TeamActor=>({
-  ...a,awareness:newAwareness(),intent:null,combatChoice:null,searchOrigin:null,searchQueue:[],plan:[],history:makeHistory(),nav:[],activeNode:-1,
+  ...a,awareness:newAwareness(),intent:null,combatChoice:null,lastReportAt:-100,searchOrigin:null,searchQueue:[],plan:[],history:makeHistory(),nav:[],activeNode:-1,
   posture:'stand',pace:'walk',alert:'idle',velocity:0,turning:0,aim:0,
   targetId:null,suppression:0,stamina:1,magazine:12,reserve:36,
   reload:0,hits:0,kills:0,stopped:false,contact:null,heard:null,
@@ -253,7 +255,7 @@ export function newSession(index=0,siteSeed?:number,
     scenario:{index:variant,name:site?.name??sample.name,
       objective:clone(site?.objective??OBJECTIVE),
       extract:clone(site?.extract??EXTRACTION)},
-    mission:'clear',noise:[],nextNoiseId:1,shots:[],casings:[],nextShotId:1,known:new Map(),
+    mission:'clear',noise:[],nextNoiseId:1,reports:[],nextReportId:1,shots:[],casings:[],nextShotId:1,known:new Map(),
     seenGround:new Set(),intel:initialIntel(intelMode,site,initialDoors()),
     intelObservedAt:-1,timesPaused:0,deaths:0,started:false,
     syncCode:0,report:[],movementNoiseAt:0,site,
@@ -1609,6 +1611,13 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.searchOrigin=null;a.searchQueue=[];
     const b=visible.sort((x,y)=>d(x.p,a.p)-d(y.p,a.p))[0];
     a.contact=clone(b.p);a.alertUntil=s.seconds+3;a.contacted=true;
+    if(s.seconds-a.lastReportAt>5){
+      s.reports.push({id:s.nextReportId++,senderId:a.id,at:s.seconds,
+        origin:clone(a.p),estimate:clone(b.p),uncertainty:35,deliveredTo:[]});
+      if(s.reports.length>16)s.reports.shift();
+      a.lastReportAt=s.seconds;
+      hear(s,a.p,220,'warning');
+    }
     a.watch=clone(b.p);
     if(a.suppression>.65&&a.alert!=='retreat'){
       a.retreatPoint=defensivePosition(a,b.p,s);
@@ -1765,6 +1774,28 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     else{a.defense=null;a.defenseUntil=s.seconds+.8;}
   }
   if(!a.contact&&a.watch)rotate(a,angle(a.p,a.watch),dt);
+}
+/** A verbal warning only reaches physically audible allies; no team hive mind. */
+function distributeReports(s:Session){
+ for(const report of s.reports){
+  if(s.seconds-report.at>1.5)continue;
+  for(const recipient of enemies(s)){
+   if(recipient.health<=0||report.deliveredTo.includes(recipient.id))continue;
+   const observation=reportToListener(report,recipient.id,recipient.p,
+     s.doors,WALLS,s.seconds);
+   if(!observation)continue;
+   report.deliveredTo.push(recipient.id);
+   addObservation(recipient.awareness,observation);
+   if(recipient.intent?.kind!=='engage'){
+    recipient.heard=clone(observation.estimate);
+    recipient.contact=clone(observation.estimate);
+    recipient.lastNoiseAt=s.seconds;
+    recipient.contacted=true;
+    recipient.alert='investigating';
+    recipient.nav=[];
+   }
+  }
+ }
 }
 function random(s:Session){
   s.rng=(Math.imul(s.rng,1664525)+1013904223)>>>0;
@@ -2291,6 +2322,7 @@ export function stepSession(s:Session,dt:number){
   }
   for(const a of s.operators)a.stride+=d(a.p,a.priorP);
   resolveCloseContact(s);
+  distributeReports(s);
   observe(s);
   for(const a of s.operators)fire(s,a,h);
   mission(s,h);
