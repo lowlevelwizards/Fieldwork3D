@@ -523,6 +523,7 @@ export class TacticalScene3D{
       path:0x919182,'driveway-stripe':0x858575,
       'parking-divider':0xd6caa9,'garden-border':0x4c5843,
       'service-pad':0x6c7069,'patio-paver':0x8b8578,
+      'drainage-grate':0x394d50,
     };
     // Exterior ground markings are legible construction details, not cover.
     for(const mark of planPropertySurfaces(site))

@@ -41,7 +41,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'worldgen2/27a-') }}
         run: node --experimental-strip-types --test tests/worldgen-27a-object-wear-materials.test.mjs tests/texture4-03-object.test.mjs tests/texture-08-material-wear.test.mjs tests/worldgen-contextual-wear.test.mjs
       - name: Focused architectural expansion tests
-        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'architecture/') && !startsWith(github.head_ref, 'architecture/14b-') && !startsWith(github.head_ref, 'architecture/15a-') && !startsWith(github.head_ref, 'architecture/16a-') }}
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'architecture/') && !startsWith(github.head_ref, 'architecture/14b-') && !startsWith(github.head_ref, 'architecture/15a-') && !startsWith(github.head_ref, 'architecture/16a-') && !startsWith(github.head_ref, 'architecture/18a-') }}
         run: node --experimental-strip-types --test tests/architecture-*.test.mjs tests/worldgen-double-doors.test.mjs tests/worldgen-architectural-compiler.test.mjs tests/worldgen-map-lab-audit.test.mjs tests/lw-windows.test.mjs tests/lw-glass-impact.test.mjs tests/architecture-physical-contracts.test.mjs tests/breach-142b.test.mjs tests/map-11-window-styles.test.mjs tests/worldgen-visuals.test.mjs tests/map-13-door-families.test.mjs tests/worldgen-maplab-scale-consistency.test.mjs
       - name: Focused covered-entry release check
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'architecture/14b-') }}
@@ -52,6 +52,9 @@ jobs:
       - name: Focused grouped-furnishing release check
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'architecture/16a-') }}
         run: node --experimental-strip-types --test tests/architecture-14b-covered-entry.test.mjs tests/architecture-15a-small-programs.test.mjs tests/architecture-16a-diner-booths.test.mjs tests/worldgen-room-contracts.test.mjs tests/worldgen-operational-fixtures.test.mjs
+      - name: Focused property access and Map Lab release check
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'architecture/18a-') }}
+        run: node --experimental-strip-types --test tests/architecture-18a-property-access.test.mjs tests/worldgen-maplab-scale-consistency.test.mjs tests/worldgen-map-lab-audit.test.mjs
       - name: Focused campaign integration tests
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'campaign-') }}
         run: node --experimental-strip-types --test tests/campaign-*.test.mjs tests/lw-roster*.test.mjs tests/lw-operations-board.test.mjs tests/breach-155.test.mjs
