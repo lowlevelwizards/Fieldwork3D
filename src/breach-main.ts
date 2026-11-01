@@ -33,6 +33,7 @@ import {INTEL_MODES,doorKnown,wallKnown,roomKnown,
 import {orderFailureText} from './breach-nav-diagnostics.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {FrameMeter} from './breach-perf.ts';
+import {formatAfterAction} from './breach-after-action.ts';
 import {initialRoster,readRoster,applyRosterIdentity,recordRosterMission}
   from './breach-roster.ts';
 import {awarenessDebugLine} from './breach-awareness-debug.ts';
@@ -900,7 +901,8 @@ function updateHud(){
       '\nCASUALTIES: '+stats.casualties+' · PAUSES: '+stats.pauses+
       '\n'+stats.squad.map(o=>o.name+' '+(o.survived?
         o.injury?'WOUNDED':'ACTIVE':'DOWN')+' · '+o.fired+' RDS').join('\n')+
-      '\nOPERATIONS LOGGED: '+operationHistory().length;
+      '\nOPERATIONS LOGGED: '+operationHistory().length+
+      '\n\nTACTICAL TIMELINE\n'+formatAfterAction(recorder.events,10);
   }
   for(const id of squadIds){
     const a=uid(id),button=ui[id];
