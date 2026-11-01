@@ -490,29 +490,6 @@ export function doorAtNode(s:Session,id:string,doorId:string,method:DoorMethod,n
 function validEditedPlan(s:Session,start:Pt,proposed:PlanNode[]){
   let from=start;
   for(const n of proposed){
-    if(n.kind==='interact'){
-    if(!n.objectId||!n.interaction){pop(a);return;}
-    const [kind,id]=n.objectId.split(':');
-    if(kind==='prop'&&n.interaction==='push'){
-      const index=Number(id),o=s.coverState[index];
-      if(!o||!canRelocateCover(o)||d(a.p,{x:o.x,y:o.y})>
-        Math.max(o.w,o.h)/2+43){pop(a);return;}
-      const dx=o.x-a.p.x,dy=o.y-a.p.y,
-        length=Math.hypot(dx,dy)||1;
-      const pushed={x:o.x+dx/length*15,y:o.y+dy/length*15};
-      notify(s,movePhysicalProp(s,index,pushed)?
-        a.name+' PUSHED '+(o.fixture??'OBJECT'):
-        a.name+' OBJECT OBSTRUCTED');
-    }else if(kind==='window'){
-      const window=s.windows.find(w=>w.id===id);
-      if(window&&d(a.p,{x:window.x,y:window.y})<54&&
-         manipulateWindow(window,n.interaction==='open-window'?'open':'close')){
-        hear(s,{x:window.x,y:window.y},85,'window');
-        notify(s,a.name+' MOVED WINDOW');
-      }else notify(s,a.name+' WINDOW UNAVAILABLE');
-    }
-    pop(a);return;
-  }
   if(n.kind==='pie'){
       if(!n.pivot||!n.pieSide)return false;
       const arc=validPieArc(from,n.pivot,n.pieSide,s.doors,n.pieDegrees??54);
@@ -1476,6 +1453,32 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       a.squeeze=false;a.squeezeTime=0;
     }
     a.pieIndex=0;
+  }
+    if(n.kind==='interact'){
+    if(!n.objectId||!n.interaction){pop(a);return;}
+    if(!near(a.p,n.p,7)){
+      approach(a,n.p,dt,s,.65);return;
+    }
+    const [kind,id]=n.objectId.split(':');
+    if(kind==='prop'&&n.interaction==='push'){
+      const index=Number(id),o=s.coverState[index];
+      if(!o||!canRelocateCover(o)||d(a.p,{x:o.x,y:o.y})>
+        Math.max(o.w,o.h)/2+43){pop(a);return;}
+      const dx=o.x-a.p.x,dy=o.y-a.p.y,
+        length=Math.hypot(dx,dy)||1;
+      const pushed={x:o.x+dx/length*15,y:o.y+dy/length*15};
+      notify(s,movePhysicalProp(s,index,pushed)?
+        a.name+' PUSHED '+(o.fixture??'OBJECT'):
+        a.name+' OBJECT OBSTRUCTED');
+    }else if(kind==='window'){
+      const window=s.windows.find(w=>w.id===id);
+      if(window&&d(a.p,{x:window.x,y:window.y})<54&&
+         manipulateWindow(window,n.interaction==='open-window'?'open':'close')){
+        hear(s,{x:window.x,y:window.y},85,'window');
+        notify(s,a.name+' MOVED WINDOW');
+      }else notify(s,a.name+' WINDOW UNAVAILABLE');
+    }
+    pop(a);return;
   }
   if(n.kind==='pie'){
     const arc=n.arc??[];
