@@ -7,6 +7,7 @@ import {LOADOUT_SLOTS,itemsForSlot,itemDefinition} from './equipment-catalog.ts'
 import {totalEquipmentMass,loadMobilityDescription,loadMovementScale,
  type LoadoutSlot} from './equipment-loadouts.ts';
 import {CampaignKitPreview} from './equipment-preview.ts';
+import {carryCapacityReport} from './equipment-carry-placement.ts';
 import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
  type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
@@ -296,6 +297,11 @@ export class CampaignScreen{
   const appearance=button('NEXT LOOK',()=>this.handlers.cycleAppearance(id));
   rename.disabled=!!c.activeContractId;appearance.disabled=!!c.activeContractId;
   identityActions.append(rename,appearance);summary.append(identityActions);
+  const carrying=carryCapacityReport(person.loadout,person.magazines);
+  const carryItems=carrying.placements.filter(p=>p.kind!=='magazine');
+  if(carryItems.length)summary.append(node('p','campaign-note',
+   'PHYSICAL CARRY · '+carryItems.map(p=>p.kind.toUpperCase()+' '+
+    p.location.toUpperCase()+' / '+p.accessSeconds.toFixed(2)+'s ACCESS').join(' · ')));
   summary.append(node('p','campaign-note',
    person.background+' · '+person.trait+' · '+person.missions+' OPERATIONS'));
   summary.append(node('p','campaign-kit-metrics','MOBILITY · '+

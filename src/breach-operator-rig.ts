@@ -26,6 +26,8 @@ import {blendedHandlingProfile,smoothHandling,type HandlingTransition}
 import {fallAngles,hitStagger,type FallPose,type WoundRegion}
   from './breach-wounds.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {equipmentCarryAnchor} from './equipment-carry-visuals.ts';
+import type {CarryLocation} from './equipment-carry-placement.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geometry.ts';
 import {buildWeaponAccessories} from './breach-weapon-accessories.ts';
 import {resolveWeaponAssembly,sameWeaponConfiguration,
@@ -61,6 +63,7 @@ export type OperatorPose={
   blocked?:boolean;footAllowed?:(point:{x:number;y:number})=>boolean;
   gait?:'walk'|'run'|'pie'|'squeeze';
   equipment?:EquipmentLoadout;flashCharges?:number;
+  medicalCarryLocation?:CarryLocation;utilityCarryLocation?:CarryLocation;
   weaponConfiguration?:WeaponConfiguration;
   weaponLightOn?:boolean;
   treatmentActive?:boolean;treatmentProgress?:number;
@@ -283,9 +286,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.medicalPouch.visible=gear?.medical==='medical-basic'||
     gear?.medical==='medical-trauma';
   r.medicalPouch.scale.set(gear?.medical==='medical-trauma'?1.35:1,1,1);
+  // Use actual carrier locations instead of rendering every pouch on chest.
+  const medicalAnchor=equipmentCarryAnchor('medical',p.medicalCarryLocation);
+  r.medicalPouch.position.set(medicalAnchor.x,medicalAnchor.y,medicalAnchor.z);
+  r.medicalPouch.rotation.z=medicalAnchor.angle;
   r.radioUnit.visible=gear?.utility==='utility-radio';
-  r.utilityTool.visible=gear?.utility==='utility-light'||
-    gear?.utility==='utility-breach';
+  r.utilityTool.visible=['utility-light','utility-breach','utility-pry',
+    'utility-cutter','utility-wedge'].includes(gear?.utility??'');
+  const utilityAnchor=equipmentCarryAnchor('utility',p.utilityCarryLocation);
+  r.utilityTool.position.set(utilityAnchor.x,utilityAnchor.y,utilityAnchor.z);
+  r.utilityTool.rotation.z=utilityAnchor.angle;
   r.utilityTool.scale.x=gear?.utility==='utility-breach'?1.45:1;
   r.flashCanister.visible=gear?.tactical==='tactical-flash'&&
     (p.flashCharges===undefined||p.flashCharges>0);
