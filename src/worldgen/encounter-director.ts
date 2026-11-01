@@ -36,6 +36,11 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
  const spatial=stabilizeEncounterReachability(site,
    assignExteriorOccupants(site,assignEncounterRoles(site,
      placement.actors,placement.groups,premise,mission,seed),premise,seed));
+ // Unsafe spawn fallback is worse than rejecting a seed. The outer
+ // architectural generator can retry a different layout if necessary.
+ if(spatial.actors.length<2||
+   (mission==='capture'&&!spatial.actors.some(a=>a.role==='target')))
+  throw new Error('no safe, mission-complete encounter population');
  const actors=assignEncounterRoutines(site,
    assignEncounterActivities(site,spatial.actors,premise,seed),seed);
  const rooms=site.rooms.filter(r=>r.kind==='room');
