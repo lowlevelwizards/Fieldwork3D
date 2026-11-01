@@ -9,6 +9,7 @@ import {synchronizeShowroomSession} from './asset-lab-preview.ts';
 import {showroomGrid,showroomSlot} from './asset-lab-layout.ts';
 import {type Site,type WindowOpening} from './breach-site.ts';
 import {assetLibrary,assetLibraryCategories,type AssetLibraryEntry} from './worldgen/asset-library.ts';
+import {OPERATOR_REFERENCE_HEIGHT,WORLD_UNITS_PER_METRE,metres} from './worldgen/world-scale.ts';
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const category=el<HTMLSelectElement>('category'),search=el<HTMLInputElement>('search');
 const summary=el<HTMLElement>('summary'),detail=el<HTMLOutputElement>('detail');
@@ -29,6 +30,50 @@ session.operators=[]; // There are no actors in the asset showroom.
 const stage=new TacticalScene3D();
 stage.setMode('iso');
 stage.scene.add(overlay);
+// A full-size tactical operator silhouette accompanies EVERY asset preview.
+// These translucent calibration figures have no collision or AI presence.
+const scaleGuides=new THREE.Group(),structureSamples=new THREE.Group();
+stage.scene.add(scaleGuides,structureSamples);
+const guideMat=new THREE.MeshStandardMaterial({
+ color:0xd5bb83,roughness:.95,transparent:true,opacity:.64,depthWrite:false,
+});
+const guideParts:[
+ number,number,number,number,number,number
+][]=[
+ [0,26,0,8,16,5],   // torso
+ [0,38,0,7,8,7],    // head; highest point = 42
+ [-2.4,10,0,3,20,4],[2.4,10,0,3,20,4], // legs
+ [-5.3,25,0,3,15,4],[5.3,25,0,3,15,4], // arms
+];
+const guideGeometries=guideParts.map(p=>new THREE.BoxGeometry(p[3],p[4],p[5]));
+const architectureMat=new THREE.MeshStandardMaterial({
+ color:0xb8a98e,roughness:1,flatShading:true,
+});
+function refreshScaleGuides(items:readonly AssetLibraryEntry[]){
+ scaleGuides.clear();
+ for(const [index] of items.entries()){
+   const at=showroomSlot(index,layout);
+   for(let i=0;i<guideParts.length;i++){
+     const part=guideParts[i],mesh=new THREE.Mesh(guideGeometries[i],guideMat);
+     mesh.position.set(at.x+58+part[0],part[1],at.y+53+part[2]);
+     mesh.castShadow=false;mesh.receiveShadow=false;
+     scaleGuides.add(mesh);
+   }
+ }
+}
+function refreshArchitectureSamples(items:readonly AssetLibraryEntry[]){
+ for(const child of structureSamples.children)
+   if(child instanceof THREE.Mesh)child.geometry.dispose();
+ structureSamples.clear();
+ for(const [index,item] of items.entries()){
+   if(!['floor','wall-cap','baseboard'].includes(item.id))continue;
+   const at=showroomSlot(index,layout),h=item.height;
+   const geometry=new THREE.BoxGeometry(item.width,h,item.depth);
+   const mesh=new THREE.Mesh(geometry,architectureMat);
+   mesh.position.set(at.x,Math.max(0.5,h/2),at.y);
+   structureSamples.add(mesh);
+ }
+}
 let labels:{node:HTMLButtonElement;p:Pt}[]=[];
 function filtered(){
  const term=search.value.trim().toLowerCase();
@@ -48,7 +93,7 @@ function sampleSite(items:readonly AssetLibraryEntry[]):Site{
      dressing.push({id:item.id,roomId:'showroom',kind:item.id.slice(7) as
        NonNullable<Site['dressing']>[number]['kind'],
        x,y,elevation:0,angle:0});
-   }else if(item.id==='wall'||item.id==='wall-cap'||item.id==='baseboard'){
+   }else if(item.id==='wall'){
      walls.push({a:{x:x-40,y},b:{x:x+40,y}});
    }else if(item.id==='window'||item.id.startsWith('window:')){
      windows.push({id:'window-'+index,x,y,width:52,vertical:false,
@@ -111,7 +156,9 @@ function focusSelected(){
 function select(item:AssetLibraryEntry){
  selectedId=item.id;
  detail.textContent=item.label+' ['+item.id+'] · '+item.category.toUpperCase()+
-   '\n'+item.width+' × '+item.depth+' × '+item.height+' world units · cover: '+item.cover+
+   '\\n'+item.width+' × '+item.depth+' × '+item.height+' world units ('+
+    [item.width,item.depth,item.height].map(v=>metres(v).toFixed(2)).join(' × ')+
+    ' m) · cover: '+item.cover+
    ' · '+(item.solid?'physical':'visual-only')+
    '\n'+item.origin+' / '+item.presentation+
    (item.presentation==='shared-shape'?' (generic model — review recommended)':'')+
@@ -159,6 +206,8 @@ function refresh(){
  synchronizeShowroomSession(session,site);
  activateSite(site);
  stage.applySite(site);
+ refreshScaleGuides(shown);
+ refreshArchitectureSamples(shown);
  fitShowroom();
  labelLayer.replaceChildren();labels=[];
  for(const [index,item] of shown.entries()){
@@ -175,7 +224,9 @@ function refresh(){
  }
  if(!selectedId&&shown[0])select(shown[0]);
  if(!shown.length)detail.textContent='No assets match this filter.';
- summary.textContent=found.length+' assets · page '+(page+1)+' / '+(max+1);
+ summary.textContent=found.length+' assets · page '+(page+1)+' / '+(max+1)+
+   ' · '+WORLD_UNITS_PER_METRE+' units/m · gold figure: '+
+   metres(OPERATOR_REFERENCE_HEIGHT).toFixed(1)+'m operator reference';
  el<HTMLButtonElement>('previous').disabled=page===0;
  el<HTMLButtonElement>('next').disabled=page===max;
 }
@@ -193,7 +244,7 @@ el<HTMLButtonElement>('bounds').addEventListener('click',()=>{
  showSelectionOutline();
 });
 el<HTMLButtonElement>('review').addEventListener('click',()=>{
- const weak=all.filter(a=>a.presentation==='shared-shape');
+ const weak=all.filter(a=>a.origin==='fixture');
  if(!weak.length)return;
  const next=weak[(weak.findIndex(a=>a.id===selectedId)+1)%weak.length];
  category.value='';search.value=next.id;

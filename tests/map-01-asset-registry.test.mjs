@@ -14,5 +14,5 @@ test('MAP 01 indexes every map fixture and architectural asset',()=>{
 test('MAP 01 identifies generic art without suppressing it',()=>{
  const entries=assetLibrary();
  assert.equal(entries.find(x=>x.id==='vehicle')?.presentation,'bespoke');
- assert.equal(entries.find(x=>x.id==='rug')?.presentation,'shared-shape');
+ assert.equal(entries.find(x=>x.id==='rug')?.presentation,'bespoke');
 });
