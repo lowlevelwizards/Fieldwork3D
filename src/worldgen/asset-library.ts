@@ -27,7 +27,7 @@ const bespoke = new Set([
   'filing-cabinet','stove','microwave','kitchen-island','sink','checkout',
   'toilet','bathtub','shelf','gondola-shelf','wall-shelf','bookcase','rack',
   'cabinet','dresser','laundry-machine','generator','control-panel','tool-chest',
-  'vehicle','chair','bench','sofa','armchair','tv-stand','barrel','tank',
+  'vehicle','sedan','pickup','van','suv','chair','bench','sofa','armchair','tv-stand','barrel','tank',
   'tire-stack','vehicle-lift','hedge','bush','tree','plant','fence','pallet',
 ]);
 const dressings = ['mug','books','papers','tools','plant','lamp','floor-lamp','packages','rug','bedside-rug','bath-mat','welcome-mat','runner'] as const;

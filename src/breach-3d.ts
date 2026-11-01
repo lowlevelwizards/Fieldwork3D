@@ -455,12 +455,60 @@ export class TacticalScene3D{
           for(const sx of [-1,0,1])
             this.box(group,c.x+sx*w*.27,tall*.8,c.y+d/2+1,
               3,3,2,this.solid(0xc6b182),false);
-      }else if(fixture==='vehicle'){
-        this.box(group,c.x,9,c.y,w,17,d,steel);
-        this.box(group,c.x-w*.1,21,c.y,w*.54,10,d*.73,steel);
-        for(const sx of [-1,1])for(const sz of [-1,1])
-          this.box(group,c.x+sx*w*.32,3,c.y+sz*d*.49,
-            w*.15,6,4,wood);
+      }else if(['vehicle','sedan','pickup','van','suv'].includes(fixture)){
+        // Purpose-shaped low-poly bodies, not a generic block on four sticks.
+        // X is vehicle length and Z is width; collision uses the same footprint.
+        const model=fixture==='vehicle'?'sedan':fixture;
+        const paint=this.solid([0x647b72,0x9c8e74,0x71838c,0x99745d][i%4],.76);
+        const glass=this.solid(0x557579,.25);
+        const rubber=this.solid(0x252b2b,.94);
+        const chrome=this.solid(0x9ea7a0,.48);
+        const radius=Math.max(2.2,Math.min(w*.085,d*.23));
+        this.box(group,c.x,10,c.y,w,11,d*.91,paint);
+        this.box(group,c.x,5,c.y,w*.9,4,d*.72,steel);
+        for(const sx of [-1,1])for(const sz of [-1,1]){
+          const tire=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,3,10),rubber);
+          tire.rotation.x=Math.PI/2;
+          tire.position.set(c.x+sx*w*.31,radius*.83,c.y+sz*d*.43);
+          tire.castShadow=true;group.add(tire);
+          const hub=new THREE.Mesh(new THREE.CylinderGeometry(radius*.42,radius*.42,3.3,10),chrome);
+          hub.rotation.x=Math.PI/2;hub.position.copy(tire.position);
+          group.add(hub);
+        }
+        if(model==='van'){
+          this.box(group,c.x,23,c.y,w*.78,20,d*.86,paint);
+          this.box(group,c.x-w*.32,23,c.y-d*.44,w*.21,13,1,glass,false);
+          this.box(group,c.x+w*.27,24,c.y,2,13,d*.7,glass,false);
+        }else{
+          const truck=model==='pickup',high=model==='suv';
+          const cabWidth=truck?w*.37:high?w*.63:w*.52;
+          const cabCenter=truck?c.x-w*.20:c.x-w*.035;
+          const cabHeight=high?17:truck?16:12;
+          this.box(group,cabCenter,15.5+cabHeight*.45,c.y,
+            cabWidth,cabHeight,d*.79,paint);
+          const windshield=this.box(group,cabCenter+cabWidth*.40,
+            16+cabHeight*.40,c.y,1.6,cabHeight*.65,d*.70,glass,false);
+          windshield.rotation.z=-.15;
+          const rearGlass=this.box(group,cabCenter-cabWidth*.43,
+            16+cabHeight*.40,c.y,1.4,cabHeight*.59,d*.67,glass,false);
+          rearGlass.rotation.z=.12;
+          if(truck){
+            const bedX=c.x+w*.27,bedW=w*.40;
+            this.box(group,bedX,14,c.y,bedW,3,d*.82,paint);
+            for(const sz of [-1,1])
+              this.box(group,bedX,17,c.y+sz*d*.41,bedW,6,2,paint);
+            this.box(group,c.x+w*.46,16,c.y,3,6,d*.85,paint);
+          }else if(model==='sedan'){
+            this.box(group,c.x+w*.36,12,c.y,w*.25,4,d*.85,paint);
+            this.box(group,c.x-w*.38,12,c.y,w*.21,4,d*.85,paint);
+          }
+        }
+        for(const sx of [-1,1]){
+          this.box(group,c.x+sx*w*.51,8,c.y,w*.025,3,d*.84,chrome,false);
+          const lamp=this.solid(sx>0?0xd8ca9e:0x954d48,.62);
+          this.box(group,c.x+sx*w*.515,12,c.y-d*.26,1.2,4,d*.17,lamp,false);
+          this.box(group,c.x+sx*w*.515,12,c.y+d*.26,1.2,4,d*.17,lamp,false);
+        }
       }else if(fixture==='chair'||fixture==='bench'){
         this.box(group,c.x,8,c.y,w,3,d,wood);
         this.box(group,c.x-w*.44,14,c.y,3,15,d,material);

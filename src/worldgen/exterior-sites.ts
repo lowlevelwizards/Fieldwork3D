@@ -86,7 +86,10 @@ export function addExteriorProperty(site:Site,seed:number):Site{
   const count=zone.id.startsWith('court-')?0:
     zone.kind==='yard'?1:2;
   for(let i=0;i<count;i++){
-   const item=available[(Math.floor(rng()*available.length)+i)%available.length];
+   // Vehicles belong to arrival/parking zones, not a random garden plot.
+   const choices=zone.kind==='parking'||zone.kind==='driveway'?
+     ['sedan','pickup','van','suv']:available;
+   const item=choices[(Math.floor(rng()*choices.length)+i)%choices.length];
    const asset=propDefinition(item);if(!asset)continue;
    const w=Math.min(asset.width,Math.max(12,zone.w*.24));
    const h=Math.min(asset.depth,Math.max(12,zone.h*.27));
