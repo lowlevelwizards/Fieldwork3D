@@ -26,6 +26,7 @@ import {blendedHandlingProfile,smoothHandling,type HandlingTransition}
 import {fallAngles,hitStagger,type FallPose,type WoundRegion}
   from './breach-wounds.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geometry.ts';
 import {weaponGrips,handlingPose,clampReach,
   fitWeaponPose,type Handling,type HandlingIntent}
   from './breach-weapon-pose.ts';
@@ -70,6 +71,8 @@ export type OperatorRig={
   root:THREE.Group;hip:THREE.Group;chest:THREE.Group;head:THREE.Group;
   weapon:THREE.Group;droppedGun:THREE.Group;feet:Foot[];arms:Arm[];
   magazineInserted:THREE.Mesh;magazineHand:THREE.Mesh;
+  weaponBody:THREE.Group;droppedWeaponBody:THREE.Group;
+  visualWeapon:WeaponId;weaponSteel:THREE.Material;weaponDark:THREE.Material;
   pack:THREE.Mesh;helmetShell:THREE.Mesh[];
   armorPanels:THREE.Mesh[];capBill:THREE.Mesh;
   rigPouches:THREE.Mesh[];beltPouch:THREE.Mesh;
@@ -170,16 +173,11 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     void sideSign;
   }
   weapon.position.set(8,-5,0);
-  block(weapon,1,0,0,14,3,3.5,steel);
-  block(weapon,13,0,0,13,2.4,2.7,steel);
-  block(weapon,-6,-1,0,6,4,3,boot);
-  // Stock, comb and narrow sight rail share the weapon's rigid transform.
-  block(weapon,-10,0,0,7,3,3.5,boot);
-  block(weapon,-1,2.6,0,11,1.2,1.5,steel);
-  // Weapon that can finish on the floor independently of a falling torso.
-  block(droppedGun,0,0,0,23,3.0,3.2,steel);
-  block(droppedGun,-9,0,0,8,4,4,boot);
-  block(droppedGun,12,0,0,8,1.5,2.1,steel);
+  // Real weapon-specific silhouettes, using the same receiver-local grip and
+  // muzzle axes as the fixed-step shot-time solver. Built only on weapon swap.
+  const weaponBody=buildWeaponSilhouette('carbine',steel,boot);
+  const droppedWeaponBody=buildWeaponSilhouette('carbine',steel,boot);
+  weapon.add(weaponBody);droppedGun.add(droppedWeaponBody);
   const magazineInserted=block(weapon,3,-4,0,2.7,6,2.5,boot);
   const magazineHand=block(chest,0,0,0,2.7,6,2.5,boot);
   magazineHand.visible=false;
@@ -191,7 +189,8 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     clothMaterial:cloth,vestMaterial:vest,baseCloth:cloth.color.clone(),
     baseVest:vest.color.clone(),helmetBadge,appearanceSeed:0,
     personality:operatorMotionTraits(id),
-    magazineInserted,magazineHand,
+    magazineInserted,magazineHand,weaponBody,droppedWeaponBody,
+    visualWeapon:'carbine',weaponSteel:steel,weaponDark:boot,
     lastTime:-1,lastPose:null,
     footsteps:createFootstepScheduler(),reachRequest:null,
     gripError:0,stockError:0,eyeError:0,handlingProfile:null,
@@ -501,6 +500,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }
   // Build 120: stock, both grips and forearm targets share a single rigid
   // firearm transform. The fit searches reachable posture before limb IK.
+  if(r.visualWeapon!==p.weapon){
+    // Never rebuild at every render tick: a changed primary is the only key.
+    clearWeaponSilhouette(r.weaponBody);
+    clearWeaponSilhouette(r.droppedWeaponBody);
+    for(const [dest,model] of [
+      [r.weaponBody,buildWeaponSilhouette(p.weapon,r.weaponSteel,r.weaponDark)],
+      [r.droppedWeaponBody,buildWeaponSilhouette(p.weapon,r.weaponSteel,r.weaponDark)]
+    ] as const){while(model.children.length)dest.add(model.children[0]);}
+    r.visualWeapon=p.weapon;
+  }
   const data=weaponGrips(p.weapon);
   const recoil=p.recoil??(p.firing?1.5:0);
   const fit=fitWeaponPose({weapon:p.weapon,handling,
@@ -517,6 +526,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.stockError=fit.stockError;
   // Contact coordinates and visible weapon use one rigid transform.
   r.weapon.scale.set(data.lengthScale,1,1);
+  r.droppedGun.scale.set(data.lengthScale,1,1);
   r.weapon.rotation.copy(fit.rotation);
   r.weapon.position.copy(fit.origin);
   // On ADS, bring the eyes toward the actual sight line, keeping the
