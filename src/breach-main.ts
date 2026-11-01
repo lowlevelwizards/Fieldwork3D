@@ -36,6 +36,9 @@ import {FrameMeter} from './breach-perf.ts';
 import {formatAfterAction} from './breach-after-action.ts';
 import {initialRoster,readRoster,applyRosterIdentity,recordRosterMission,
   resupplyRoster,equipRoster} from './breach-roster.ts';
+import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOperation,
+ type CampaignState,type CampaignReport} from './campaign-state.ts';
+import {CampaignScreen} from './campaign-ui.ts';
 import {awarenessDebugLine} from './breach-awareness-debug.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
 import './breach-style.css';
@@ -151,9 +154,28 @@ function saveRoster(){
  try{localStorage.setItem(ROSTER_KEY,JSON.stringify(persistentRoster));}
  catch{/* Private browser storage may be unavailable. */}
 }
+const CAMPAIGN_KEY='fieldwork3d.campaign.v1';
+let campaign:CampaignState|null=(()=>{
+ try{return readCampaign(localStorage.getItem(CAMPAIGN_KEY));}catch{return null;}
+})();
+let campaignMode:'menu'|'home'|'mission'|'quick'=
+ legacyStudy||startupParams.has('quick')?'quick':'menu';
+function saveCampaign(){
+ if(!campaign)return;
+ try{localStorage.setItem(CAMPAIGN_KEY,JSON.stringify(campaign));}
+ catch{console.warn('Campaign save unavailable');}
+}
+function applyCampaignSkills(){
+ if(campaignMode!=='mission'||!campaign)return;
+ for(const a of team(state)){
+  const m=campaign.operators.find(x=>x.id===a.id);
+  if(m){a.name=m.callsign;a.skills={...m.skills};}
+ }
+}
 let state:Session=newSession(0,legacyStudy?undefined:initialSiteSeed,
   selectedIntelMode,requestedSiteScale);
 applyRosterIdentity(state,persistentRoster);
+applyCampaignSkills();
 let recorder=new MissionRecorder();recorder.capture(state,true);
 const OPERATION_HISTORY_KEY='fieldwork3d.operation-history.v1';
 let recordedOperation:Session|null=null;
@@ -165,6 +187,19 @@ function recordCompletedOperation(){
   if(replaying||recordedOperation===state||!state.started||
     (state.phase!=='won'&&state.phase!=='lost'))return;
   recordedOperation=state;
+  if(campaignMode==='mission'&&campaign?.activeContractId){
+   const members=team(state);
+   const stats=debrief(state);
+   const result:CampaignReport={
+    id:'operation-'+campaign.activeContractId,contractId:campaign.activeContractId,
+    day:campaign.day,outcome:state.phase==='won'?'success':'failure',
+    grade:stats.grade,elapsed:stats.time,
+    participatingIds:members.map(a=>a.id),
+    casualties:members.filter(a=>a.health<=0).map(a=>a.id),
+    objective:stats.objective,events:[]
+   };
+   campaign=resolveOperation(campaign,result);saveCampaign();return;
+  }
   persistentRoster=recordRosterMission(state,persistentRoster);
   saveRoster();
   const stats=debrief(state);
@@ -969,6 +1004,9 @@ function updateHud(){
   ui.stance.setAttribute('aria-pressed',String(active?.posture==='crouch'));
   ui.contact.setAttribute('aria-pressed',String(active?.haltOnContact));
   ui.variant.textContent='NEW SITE';
+  ui.variant.disabled=campaignMode==='mission';
+  ui.siteSize.disabled=campaignMode==='mission';
+  ui.intelMode.disabled=campaignMode==='mission';
   ui.intelMode.textContent='INTEL · '+selectedIntelMode.replace('-', ' ').toUpperCase();
   ui.flash.textContent='FLASH ×'+state.flashRemaining;
   ui.cancelTarget.hidden=!(state.phase==='planning'&&
@@ -979,6 +1017,8 @@ function updateHud(){
   ui.undo.disabled=!(active?.history.undo.length);
   ui.redo.disabled=!(active?.history.redo.length);
   ui.debrief.hidden=replaying||(state.phase!=='won'&&state.phase!=='lost');
+  ui.next.textContent=campaignMode==='mission'?'RETURN TO BASE':'NEXT ARRANGEMENT';
+  ui.retry.disabled=campaignMode==='mission';
   if(!ui.debrief.hidden){
     const stats=debrief(state);
     ui.debriefTitle.textContent=state.phase==='won'?'OPERATION COMPLETE':'MISSION FAILED';
@@ -1898,14 +1938,15 @@ ui.replayAnalysis.addEventListener('click',()=>{
   replayAnalysis=!replayAnalysis;updateReplayHud();
 });
 ui.replayExit.addEventListener('click',exitReplay);
-function reset(next=state.variant,siteSeed?:number){
+function reset(next=state.variant,siteSeed?:number,missionOverride?:Session['missionType']){
   replaying=false;replayPlaying=false;finishedSession=null;
   operationsBoard.hidden=true;
   flashMode=false;document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
   state=newSession(next,legacyStudy?undefined:
-    siteSeed??randomSiteSeed(),selectedIntelMode,requestedSiteScale);
+    siteSeed??randomSiteSeed(),selectedIntelMode,requestedSiteScale,missionOverride);
   applyRosterIdentity(state,persistentRoster);
+  applyCampaignSkills();
   flashDoorId=null;
   stage?.applySite(state.site??null);selected='rook';looking=false;
   selectedNode=null;doorFocusId=null;draggingNode=null;
@@ -1914,6 +1955,44 @@ function reset(next=state.variant,siteSeed?:number){
   lastFootstepSoundTime=0;
   recorder=new MissionRecorder();recorder.capture(state,true);
   tacticalFeedback.clear();layout();updateHud();
+}
+const campaignScreen=new CampaignScreen({
+ newCampaign:()=>{
+  if(campaign&&!window.confirm('Replace the current campaign with a new one?'))return;
+  campaign=migrateLegacyRoster(newCampaign(randomSiteSeed()),persistentRoster);
+  saveCampaign();showCampaignHome();
+ },
+ continueCampaign:()=>showCampaignHome(),
+ quickPlay:()=>{campaignMode='quick';campaignScreen.hide();reset();},
+ chooseContract:(id)=>{
+  if(!campaign)return;
+  const next=acceptContract(campaign,id);
+  if(next===campaign)return;
+  campaign=next;saveCampaign();deployCampaignContract();
+ },
+ resumeContract:()=>deployCampaignContract()
+});
+function showCampaignHome(){
+ if(!campaign)return;
+ campaignMode='home';campaignScreen.home(campaign);
+}
+function deployCampaignContract(){
+ if(!campaign?.activeContractId)return;
+ const job=campaign.contracts.find(k=>k.id===campaign!.activeContractId);
+ if(!job)return;
+ campaignMode='mission';
+ selectedIntelMode=job.intel==='unknown'?'true-blind':
+  job.intel==='scouted'?'exterior-known':'floor-plan';
+ requestedSiteScale=job.scale;
+ ui.siteSize.textContent='MAP SIZE · '+requestedSiteScale.toUpperCase();
+ reset(0,job.seed,job.kind);
+ campaignScreen.hide();
+}
+function returnAfterCampaignMission(){
+ if(campaignMode==='mission'&&(state.phase==='won'||state.phase==='lost')){
+  showCampaignHome();return true;
+ }
+ return false;
 }
 ui.rook.addEventListener('click',()=>selectUnit('rook'));
 ui.back.addEventListener('click',()=>{
@@ -1970,12 +2049,13 @@ ui.intelMode.addEventListener('click',()=>{
   // Restart this exact building without preserving discoveries.
   reset(state.variant,state.site?.seed);
 });
-ui.retry.addEventListener('click',()=>reset());
-ui.next.addEventListener('click',()=>reset(state.variant+1));
+ui.retry.addEventListener('click',()=>{if(campaignMode!=='mission')reset();});
+ui.next.addEventListener('click',()=>{if(!returnAfterCampaignMission())reset(state.variant+1);});
 ui.play.addEventListener('click',()=>{
   unlockAudio();uiClickTone(state.phase==='running'?'pause':'go');
-  if(state.phase==='won'||state.phase==='lost')reset();
-  else{looking=false;toggling(state);updateHud();}
+  if(state.phase==='won'||state.phase==='lost'){
+   if(!returnAfterCampaignMission())reset();
+  }else{looking=false;toggling(state);updateHud();}
 });
 ui.restart.addEventListener('click',()=>reset());
 window.addEventListener('keydown',e=>{
@@ -2450,4 +2530,6 @@ function tick(now:number){
   }
   requestAnimationFrame(tick);
 }
-layout();cameraMode(viewMode);updateHud();requestAnimationFrame(tick);
+layout();cameraMode(viewMode);updateHud();
+if(campaignMode==='menu')campaignScreen.entry(!!campaign);
+requestAnimationFrame(tick);
