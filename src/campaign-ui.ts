@@ -1,6 +1,7 @@
 /** Campaign screens. Render only on navigation and state changes, never per frame. */
 import type {CampaignState,Contract} from './campaign-state.ts';
 import {SKILL_NAMES} from './campaign-state.ts';
+import {sharedService} from './campaign-history.ts';
 import './campaign-style.css';
 
 export type CampaignHandlers={
@@ -72,6 +73,12 @@ export class CampaignScreen{
    const history=c.journal.filter(e=>e.operatorId===p.id).slice(-4).reverse();
    for(const e of history)details.append(node('p','campaign-note',
     'DAY '+e.day+' · '+e.detail));
+   const colleagues=sharedService(c,p.id).slice(0,2);
+   for(const friend of colleagues){
+    const person=c.operators.find(x=>x.id===friend.id);
+    details.append(node('p','campaign-note',
+     'Served with '+(person?.callsign??friend.id)+' on '+friend.count+' operations'));
+   }
    card.append(details);
    const actions=node('div','campaign-person-actions');
    actions.append(button('RESUPPLY',()=>this.handlers.resupply(p.id)));
@@ -101,6 +108,24 @@ export class CampaignScreen{
    }
   }
   grid.append(jobs);main.append(grid);
+  const chronicle=node('section','campaign-section campaign-chronicle');
+  chronicle.append(node('h2','','UNIT CHRONICLE'));
+  if(c.history.length===0)chronicle.append(node('p','campaign-note',
+   'Your unit history will appear here after its first operation.'));
+  for(const report of c.history.slice(-8).reverse()){
+   const contract=c.contracts.find(k=>k.id===report.contractId);
+   chronicle.append(node('p','campaign-report',
+    'DAY '+report.day+' · '+(contract?.title??'Operation')+' · '+
+    report.outcome.toUpperCase()+' · '+report.grade+' · '+
+    report.participatingIds.length+' OPERATORS'));
+  }
+  const highlights=c.journal.filter(e=>['wounded','first-deployment','first-success','objective','intel','down'].includes(e.kind)).slice(-6).reverse();
+  for(const e of highlights){
+   const person=c.operators.find(o=>o.id===e.operatorId);
+   chronicle.append(node('p','campaign-note',
+    'DAY '+e.day+' · '+(person?.callsign??e.operatorId)+' — '+e.detail));
+  }
+  main.append(chronicle);
   const footer=node('div','campaign-footer');
   footer.append(button('QUICK PLAY (NO CAMPAIGN PROGRESS)',this.handlers.quickPlay));
   main.append(footer);this.root.append(main);
