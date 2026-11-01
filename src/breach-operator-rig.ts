@@ -1,6 +1,7 @@
 /** 109–113. Deliberately simple box anatomy and independently articulated limbs.
  * The battle motor remains authoritative. IK is presentation-only. */
 import * as THREE from 'three';
+import {operatorPixelTextures,mapBoxPixelUV,type PixelSurface} from './rendering/pixel-materials.ts';
 import {alignSegment,solveTwoBone,ARM_LIMITS,LEG_LIMITS,
   intersectsTorso} from './breach-ik.ts';
 import type {WeaponId} from './breach-combat.ts';
@@ -79,11 +80,13 @@ export type OperatorRig={
   colors:Map<THREE.MeshStandardMaterial,THREE.Color>;
   dispose:()=>void;
 };
-const mat=(hex:number)=>new THREE.MeshStandardMaterial({color:hex,
+const mat=(hex:number,surface?:PixelSurface)=>new THREE.MeshStandardMaterial({color:hex,
+  map:surface?operatorPixelTextures.get(surface):null,
   flatShading:true,roughness:.86});
 function block(group:THREE.Group,x:number,y:number,z:number,
   width:number,height:number,depth:number,material:THREE.Material){
-  const mesh=new THREE.Mesh(new THREE.BoxGeometry(width,height,depth),material);
+  const mesh=new THREE.Mesh(mapBoxPixelUV(new THREE.BoxGeometry(width,height,depth),
+    width,height,depth),material);
   mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;
   group.add(mesh);return mesh;
 }
@@ -97,9 +100,9 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   root.add(hip,chest,droppedGun);droppedGun.visible=false;chest.add(head,weapon);
   const cloth=mat(side==='red'?0x936e5b:
     id==='moss'?0x80826b:id==='ash'?0x8e846e:
-    id==='vale'?0x687c8d:0x6f9185);
-  const boot=mat(0x313935),vest=mat(0x43504b),
-    skin=mat(0xb29b83),steel=mat(0x414846);
+    id==='vale'?0x687c8d:0x6f9185,'fabric');
+  const boot=mat(0x313935,'rubber'),vest=mat(0x43504b,'fabric'),
+    skin=mat(0xb29b83),steel=mat(0x414846,'metal');
   hip.position.y=20.2;
   block(hip,0,0,0,8,5,12,cloth);
   chest.position.y=26;
