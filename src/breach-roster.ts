@@ -56,15 +56,30 @@ export function applyRosterIdentity(s:Session,roster:RosterState){
  for(const a of s.operators){
   if(a.side!=='blue')continue;
   const member=roster.members.find(m=>m.id===a.id);
-  if(member)a.name=member.callsign;
+  if(member){
+   a.name=member.callsign;
+   // Persistent wounds affect readiness but never invent fresh fatal damage.
+   if(member.recovery>0&&member.injuries>0){
+    const stage=Math.min(2,member.injuries);
+    a.injuryStage=Math.max(a.injuryStage,stage);
+    a.health=Math.min(a.health,4-stage);
+   }
+  }
  }
 }
 export function recordRosterMission(s:Session,roster:RosterState):RosterState{
  return {version:1,members:roster.members.map(m=>{
   const actor=s.operators.find(a=>a.id===m.id&&a.side==='blue');
   if(!actor)return {...m};
+  const fresh=actor.health<=0?2:Math.min(2,actor.injuryStage);
+  // Recovery advances one mission between major injuries, and an operator
+  // wounded again receives the appropriate new recovery duration.
+  const rest=Math.max(0,m.recovery-1);
+  const recovery=fresh>0?Math.max(rest,fresh*2):rest;
+  const injuries=fresh>0?Math.max(fresh,m.injuries):
+    recovery===0?0:m.injuries;
   return {...m,missions:m.missions+1,
     successful:m.successful+(s.phase==='won'?1:0),
-    fired:m.fired+actor.shots};
+    injuries,recovery,fired:m.fired+actor.shots};
  })};
 }
