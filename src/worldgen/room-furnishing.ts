@@ -8,6 +8,7 @@ import {relatedFurniturePositions} from './room-composition.ts';
 import {orientFurnishings} from './prop-orientation.ts';
 import {ROOM_CONTRACTS} from './room-contracts.ts';
 import {recoverRoomEssentials} from './room-essential-recovery.ts';
+import {placeServiceQueues} from './service-queue-layout.ts';
 type Anchor='nw'|'ne'|'sw'|'se'|'west'|'east'|'center';
 type Item={id:string;anchor:Anchor};
 const compositions:Record<string,readonly Item[]>={
@@ -327,6 +328,7 @@ export function furnishRooms(site:Site,seed:number):Site{
   if(placed.length)output.push(...placed);
  }
  const completed=recoverRoomEssentials(site,output);
- return {...site,cover:orientFurnishings(site,completed.cover),
+ return {...placeServiceQueues({...site,
+  cover:orientFurnishings(site,completed.cover)}),
   furnishingIssues:[...furnishingIssues,...completed.issues]};
 }
