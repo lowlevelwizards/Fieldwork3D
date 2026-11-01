@@ -15,6 +15,7 @@ import {
   cycleWeapon,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
+import type {SiteScale} from './breach-site.ts';
 import {renderSnapshot,type RenderActor}
   from './breach-frame-interpolation.ts';
 import {routeLineHit} from './breach-route-edit.ts';
@@ -149,8 +150,10 @@ const requestedSeed=Number(startupParams.get('seed'));
 const initialSiteSeed=startupParams.has('seed')&&Number.isSafeInteger(requestedSeed)&&
  requestedSeed>0&&requestedSeed<=0xffffffff?requestedSeed:randomSiteSeed();
 let selectedIntelMode:IntelMode='floor-plan';
-let requestedSiteScale:'standard'|'expanded'=
-  startupParams.get('scale')==='expanded'?'expanded':'standard';
+const requestedScaleParam=startupParams.get('scale');
+let requestedSiteScale:SiteScale=
+  ['standard','expanded','small','medium','large'].includes(requestedScaleParam??'')?
+    requestedScaleParam as SiteScale:'standard';
 const ROSTER_KEY='fieldwork3d.operator-roster.v1';
 let persistentRoster=(()=>{
  try{return readRoster(localStorage.getItem(ROSTER_KEY));}
@@ -2114,7 +2117,8 @@ ui.contact.addEventListener('click',()=>{toggleContactRule(state,selected);updat
 ui.siteSize.textContent='MAP SIZE · '+requestedSiteScale.toUpperCase();
 ui.siteSize.addEventListener('click',()=>{
   if(replaying)return;
-  requestedSiteScale=requestedSiteScale==='standard'?'expanded':'standard';
+  const tiers:SiteScale[]=['small','medium','large'];
+  requestedSiteScale=tiers[(tiers.indexOf(requestedSiteScale)+1)%tiers.length];
   ui.siteSize.textContent='MAP SIZE · '+requestedSiteScale.toUpperCase();
   const url=new URL(location.href);
   if(requestedSiteScale==='standard')url.searchParams.delete('scale');
