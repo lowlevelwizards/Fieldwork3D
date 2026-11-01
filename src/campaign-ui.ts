@@ -301,6 +301,9 @@ export class CampaignScreen{
    ()=>this.handlers.repairArmor(person.id));
   repair.disabled=!!c.activeContractId||repairCost===0||c.funds<repairCost;
   summary.append(repair);
+  summary.append(node('p','campaign-kit-metrics',
+   'WEAPON CONFIG · '+Object.values(person.weaponConfiguration.slots)
+    .map(v=>v.replace(/^[^-]+-/,'')).join(' / ')));
   summary.append(node('p','campaign-note',
    'Equipment is issued as a saved preparation kit. Carried weight now influences movement speed. Coarse armor coverage and durability are now simulated; detailed ballistic hitboxes, retrieval times, tools and attachment handling are still in development.'));
   summary.append(node('p','campaign-note',
@@ -409,7 +412,7 @@ export class CampaignScreen{
   grid.append(editor);main.append(grid);
   this.root.append(main);
   this.preview=new CampaignKitPreview(preview,person.id,person.weapon,
-   person.appearanceSeed,person.loadout);
+   person.appearanceSeed,person.loadout,person.weaponConfiguration);
  }
  private importPicker(){
   const input=node('input','campaign-import');
