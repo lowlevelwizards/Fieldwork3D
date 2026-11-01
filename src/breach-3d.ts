@@ -558,6 +558,20 @@ export class TacticalScene3D{
         this.box(prop,0,.8,0,10,1.6,10,smallWood,false);
         this.box(prop,0,15,0,2,29,2,smallWood,false);
         this.box(prop,0,31,0,13,9,13,smallPaper,false);break;
+      case 'rug': case 'bedside-rug': case 'bath-mat':
+      case 'welcome-mat': case 'runner':{
+        const palette=detail.kind==='bath-mat'?0x728b83:
+          detail.kind==='runner'?0x8a7c63:
+          detail.kind==='welcome-mat'?0x635646:
+          detail.kind==='bedside-rug'?0x8a7865:0x93765e;
+        const textile=this.solid(palette);
+        const border=this.solid(0xc1b295);
+        const w=detail.width??42,d=detail.depth??24;
+        this.box(prop,0,.11,0,w,.22,d,textile,false);
+        if(w>16&&d>12)this.box(prop,0,.23,0,w-4,.08,d-4,border,false);
+        if(w>21&&d>15)this.box(prop,0,.28,0,w-8,.08,d-8,textile,false);
+        break;
+      }
       }
       roomGroup.add(prop);
     }
