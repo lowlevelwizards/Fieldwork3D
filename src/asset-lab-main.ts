@@ -68,6 +68,7 @@ for(const kind of assetLibraryCategories()){
 let page=0,selectedId:string|null=null;
 // Preview-only variants: all tactical footprints remain catalog authoritative.
 const showroomVariants=new Map<string,number>();
+const showroomMaterials=new Map<string,PixelSurface>();
 const session=newSession(0,101);
 session.operators=[]; // There are no actors in the asset showroom.
 const stage=new TacticalScene3D();
@@ -168,7 +169,11 @@ function sampleSite(items:readonly AssetLibraryEntry[]):Site{
    const {x,y}=showroomSlot(index,layout);
    if(item.origin==='fixture'){
      cover.push({x,y,w:item.width,h:item.depth,low:item.cover==='low',
-       fixture:item.id,artVariant:index+(showroomVariants.get(item.id)??0)});
+       fixture:item.id,artVariant:index+(showroomVariants.get(item.id)??0),
+      ...(item.id===selectedId?{
+        artCondition:el<HTMLSelectElement>('surface-condition').value as 'clean'|'used'|'neglected'|'vacant',
+        artSurface:showroomMaterials.get(item.id),
+      }:{})});
    }else if(item.origin==='dressing'){
      dressing.push({id:item.id,roomId:'showroom',kind:item.id.slice(7) as
        NonNullable<Site['dressing']>[number]['kind'],
@@ -238,7 +243,7 @@ function focusSelected(){
 function select(item:AssetLibraryEntry){
  selectedId=item.id;
  const pixelKind:PixelSurface=assetPrimarySurface(item);
- swatchMaterial(pixelKind);
+ swatchMaterial(showroomMaterials.get(item.id)??pixelKind);
  showLiveWear(item);
  el<HTMLElement>('material-diagnostics').textContent=assetMaterialDescription(item);
  detail.textContent=item.label+' ['+item.id+'] · '+item.category.toUpperCase()+
@@ -329,12 +334,14 @@ el<HTMLButtonElement>('top').addEventListener('click',()=>stage.setMode('top'));
 el<HTMLButtonElement>('fit').addEventListener('click',fitShowroom);
 el<HTMLButtonElement>('focus').addEventListener('click',focusSelected);
 surfacePicker.addEventListener('change',()=>{
- swatchMaterial(surfacePicker.value as PixelSurface);
+ const selected=surfacePicker.value as PixelSurface;
+ if(selectedId)showroomMaterials.set(selectedId,selected);
+ swatchMaterial(selected);refresh();
 });
 el<HTMLSelectElement>('surface-condition').addEventListener('change',e=>{
  swatchCondition=(e.currentTarget as HTMLSelectElement).value;
  swatchMaterial(currentSurface);
- if(selectedId){const item=shownEntries.find(x=>x.id===selectedId);if(item)showLiveWear(item);}
+ refresh(); // apply material-aware finish on the actual previewed geometry
 });
 el<HTMLButtonElement>('texture-variant').addEventListener('click',()=>{
  swatchSeed=(swatchSeed+1)%4;

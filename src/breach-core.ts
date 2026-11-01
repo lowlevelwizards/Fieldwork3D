@@ -19,6 +19,9 @@ export type Obstacle={x:number;y:number;w:number;h:number;low?:boolean;
   fixture?:string;material?:import('./breach-materials.ts').MaterialId;
   /** Render-only deterministic trim selection; ignored by collision and AI. */
   artVariant?:number;
+  /** Preview-only finish overrides; never used by tactical logic. */
+  artCondition?:'clean'|'used'|'neglected'|'vacant';
+  artSurface?:import('./rendering/pixel-recipes.ts').PixelSurface;
   integrity?:number;destroyed?:boolean};
 export type Side='blue'|'red';
 export type Operator={id:string;name:string;side:Side;p:Pt;heading:number;

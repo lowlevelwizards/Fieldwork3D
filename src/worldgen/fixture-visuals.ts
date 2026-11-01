@@ -9,6 +9,7 @@ import {fixturePixelSurface} from './pixel-surface-selection.ts';
 import type {PixelSurface} from '../rendering/pixel-recipes.ts';
 import {renderDetailedFixture} from './detailed-fixture-visuals.ts';
 import {renderCharacterFixture} from './asset-character-visuals.ts';
+import {conditionColor,conditionRoughness} from './asset-condition.ts';
 /** Shared faceted primitives prevent new geometry allocations for every tree. */
 const FOLIAGE_LOBE_GEOMETRY=new THREE.IcosahedronGeometry(1,0);
 const FOLIAGE_CONE_GEOMETRY=new THREE.ConeGeometry(1,1,7);
@@ -22,12 +23,21 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
  olive:THREE.Material,metal:THREE.Material):void{
       const fixture=c.fixture??'crate';
       const asset=propDefinition(fixture);
-      const material=ctx.solid(i%3===0?0x87735e:i%3===1?0x677a76:0x787b65,
-        .87,fixturePixelSurface(fixture));
+      const nativeSurface=fixturePixelSurface(fixture);
+      // In normal gameplay the original context is reused without overrides.
+      const visualCtx:FixtureVisualContext=!c.artCondition&&!c.artSurface?ctx:{
+        box:ctx.box,solid:(hex,roughness,surface)=>{
+          const chosen=c.artSurface&&(!surface||surface===nativeSurface)?c.artSurface:surface??nativeSurface;
+          return ctx.solid(conditionColor(hex,chosen,c.artCondition??'clean'),
+            conditionRoughness(roughness,chosen,c.artCondition??'clean'),chosen);
+        },
+      };
+      const material=visualCtx.solid(i%3===0?0x87735e:i%3===1?0x677a76:0x787b65,
+        .87,nativeSurface);
       const w=c.w,d=c.h;
       // First choice: silhouette-first shared models. Existing asset types
       // keep the same tactical footprint, clearance and cover rules.
-      if(renderCharacterFixture(group,c,fixture,c.artVariant??i,ctx,wood,steel,olive,metal))
+      if(renderCharacterFixture(group,c,fixture,c.artVariant??i,visualCtx,wood,steel,olive,metal))
         return;
       if(['bed','exam-bed','guest'].includes(fixture)){
         const height=asset?.height??19;
@@ -358,7 +368,7 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           3,height,3,wood);
         for(const h of [height*.35,height*.75])
           ctx.box(group,c.x,h,c.y,w,2,3,steel,false);
-      }else if(renderDetailedFixture(group,c,fixture,ctx,wood,steel,olive,metal)){
+      }else if(renderDetailedFixture(group,c,fixture,visualCtx,wood,steel,olive,metal)){
         // Fully modeled specialty prop; same path in the lab and live maps.
       }else{
         const tall=asset?.height??(c.low?12:27);
