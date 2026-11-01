@@ -13,7 +13,7 @@ export type CampaignOperator={
  skills:ShootingSkills;experience:ShootingSkills;aptitudes:ShootingSkills;
  trait:string;distinctions:string[];
  missions:number;successful:number;injuries:number;recoveryDays:number;
- status:'available'|'reserve'|'lost';weapon:'carbine'|'smg'|'rifle'|'shotgun';
+ status:'available'|'reserve'|'lost'|'retired';weapon:'carbine'|'smg'|'rifle'|'shotgun';
  magazine:number;reserve:number;shotsFired:number;joinedDay:number;
 };
 export type Contract={
@@ -130,7 +130,7 @@ export function readCampaign(raw:string|null):CampaignState|null{
   const fallback=c.operators.slice(0,4).map(o=>o.id);
   const chosen=Array.isArray(c.squadIds)&&c.squadIds.length===4&&
    new Set(c.squadIds).size===4&&
-   c.squadIds.every(id=>c.operators.some(o=>o.id===id&&o.status!=='lost'))?
+   c.squadIds.every(id=>c.operators.some(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired'))?
    c.squadIds:fallback;
   const weapons=Object.fromEntries(WEAPONS.map(weapon=>
    [weapon,Number.isInteger(c.inventory?.weapons?.[weapon])&&
@@ -252,7 +252,7 @@ export function treatOperator(c:CampaignState,id:string):CampaignState{
 }
 export function resupplyOperator(c:CampaignState,id:string):CampaignState{
  if(c.activeContractId)return c;
- const o=c.operators.find(m=>m.id===id&&m.status!=='lost');
+ const o=c.operators.find(m=>m.id===id&&m.status!=='lost'&&m.status!=='retired');
  if(!o)return c;
  const weapon=COMBAT_WEAPONS[o.weapon];
  const needed=Math.max(0,weapon.capacity-o.magazine)+Math.max(0,weapon.reserve-o.reserve);
@@ -271,7 +271,7 @@ export function tacticalSlotOperator(c:CampaignState,slotId:string):CampaignOper
 }
 export function assignOperatorToSlot(c:CampaignState,slot:number,id:string):CampaignState{
  if(c.activeContractId||slot<0||slot>=4)return c;
- if(!c.operators.some(o=>o.id===id&&o.status!=='lost'))return c;
+ if(!c.operators.some(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired'))return c;
  const squads=[...c.squadIds],oldIndex=squads.indexOf(id);
  if(oldIndex===slot)return c;
  if(oldIndex>=0)squads[oldIndex]=squads[slot];
@@ -280,7 +280,8 @@ export function assignOperatorToSlot(c:CampaignState,slot:number,id:string):Camp
 }
 const RECRUIT_NAMES=['KITE','PIPER','JUNO','EMBER','DOVE','LIN','BRAM','SABLE'];
 export function hireRecruit(c:CampaignState):CampaignState{
- if(c.funds<450||c.operators.length>=8||c.activeContractId)return c;
+ if(c.funds<450||c.operators.length>=32||
+  c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').length>=8||c.activeContractId)return c;
  const i=c.operators.length;
  const id='recruit-'+i;
  const base=startingOperator(id,i,hash(c.seed+i*733+Math.imul(c.day,31)));
@@ -305,7 +306,7 @@ export function buyWeapon(c:CampaignState,weapon:CampaignOperator['weapon']):Cam
 export function equipCampaignWeapon(c:CampaignState,id:string,
  weapon:CampaignOperator['weapon']):CampaignState{
  if(c.activeContractId||!WEAPONS.includes(weapon))return c;
- const m=c.operators.find(o=>o.id===id&&o.status!=='lost');
+ const m=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!m||m.weapon===weapon||c.inventory.weapons[weapon]<1)return c;
  return {...c,inventory:{weapons:{
    ...c.inventory.weapons,
@@ -313,4 +314,19 @@ export function equipCampaignWeapon(c:CampaignState,id:string,
    [m.weapon]:c.inventory.weapons[m.weapon]+1
   }},
   operators:c.operators.map(o=>o.id===id?{...o,weapon,magazine:0,reserve:0}:o)};
+}
+
+/** Retirement is player-directed, never inferred from an ambiguous downed state. */
+export function retireOperator(c:CampaignState,id:string):CampaignState{
+ if(c.activeContractId||c.squadIds.includes(id))return c;
+ const available=c.operators.filter(o=>o.status==='available'||o.status==='reserve');
+ if(available.length<=4)return c;
+ const o=available.find(m=>m.id===id);
+ if(!o)return c;
+ const weapons={...c.inventory.weapons,[o.weapon]:c.inventory.weapons[o.weapon]+1};
+ const event:CareerEvent={id:'retired-'+id+'-'+c.day,day:c.day,operatorId:id,
+  kind:'retirement',detail:'Retired from active field service'};
+ return {...c,inventory:{weapons},operators:c.operators.map(m=>
+  m.id===id?{...m,status:'retired' as const}:m),
+  journal:[...c.journal,event].slice(-1000)};
 }
