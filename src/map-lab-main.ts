@@ -7,6 +7,7 @@ import {activateSite,type Pt} from './breach-core.ts';
 import {auditGeneratedSite} from './breach-site-audit.ts';
 import {assessArchitecture} from './worldgen/architecture-quality.ts';
 import {assessRoomContracts} from './worldgen/room-contracts.ts';
+import {inspectCounterAccess} from './worldgen/service-counter-access.ts';
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const typeInput=el<HTMLSelectElement>('building');
 const scaleInput=el<HTMLSelectElement>('scale');
@@ -131,12 +132,15 @@ function updateLabels(){
 function describe(site:Site){
  const count=site.rooms.filter(room=>room.kind==='room').length;
  const structure=assessArchitecture(site);
+ const counterAccess=inspectCounterAccess(site);
+ const usable=counterAccess.filter(a=>a.customerClear&&a.staffClear).length;
  return site.archetype?.toUpperCase()+' · '+site.name+' · seed '+site.seed+
   '\n'+(site.planFamily??site.layout)+' · '+structure.zones+' functional zones / '+
   structure.nonrectangularZones+' irregular rooms\n'+
   count+' floor sections / '+site.doors.length+' doors / '+(site.openings?.length??0)+
   ' open passages / '+site.cover.length+' physical props / '+
-  (site.exteriorZones?.length??0)+' exterior zones';
+  (site.exteriorZones?.length??0)+' exterior zones\n'+
+  usable+'/'+counterAccess.length+' service counters with two-sided access';
 }
 function report(site:Site):string{
  const result=auditGeneratedSite(site.seed,site.scale??'standard');
