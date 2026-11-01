@@ -18,6 +18,9 @@ button,select,input{background:#344d43;border:1px solid #78937d;color:#f6ebd8;bo
 input{flex:1;min-width:100px}select{flex:1;min-width:140px}button:disabled{opacity:.4}label{font-weight:700;font-size:11px}
 #detail{font:11px/1.55 ui-monospace,monospace;white-space:pre-wrap;color:#dbdecf}
 #summary{color:#dfceac;font-size:11px}
+#pixel-swatch{width:80px;height:80px;image-rendering:pixelated;border:1px solid #a8ab96;background:#657268;flex:none}
+#pixel-detail{font:11px/1.5 ui-monospace,monospace;color:#e6d7b5}
+#texture-preview{display:flex;align-items:center;gap:10px;padding:4px 0}
 @media(max-width:450px){#controls{max-height:35dvh;padding:8px}.row{gap:5px}button,select,input{font-size:11px;padding:6px}}
 </style></head><body>
 <header id="lab-header"><strong>FIELDWORK / ASSET LIBRARY</strong><a href="./map-lab.html">MAP LAB</a></header>
@@ -25,8 +28,9 @@ input{flex:1;min-width:100px}select{flex:1;min-width:140px}button:disabled{opaci
 <section id="controls" aria-label="Asset library">
  <div class="row"><label for="category">CATEGORY</label><select id="category"><option value="">All assets</option></select><input id="search" type="search" placeholder="Search asset names" aria-label="Search assets"></div>
  <div class="row"><button id="previous">PREVIOUS</button><button id="next">NEXT</button><span id="summary"></span></div>
- <div class="row"><button id="iso">ISO</button><button id="top">TOP</button><button id="fit">FIT ALL</button><button id="focus">FOCUS</button><button id="bounds" aria-pressed="false">OUTLINE VOLUME</button><button id="review">NEXT GENERIC</button></div>
+ <div class="row"><button id="iso">ISO</button><button id="top">TOP</button><button id="fit">FIT ALL</button><button id="focus">FOCUS</button><button id="bounds" aria-pressed="false">OUTLINE VOLUME</button><button id="textures" aria-pressed="true">TEXTURES ON</button><button id="review">NEXT GENERIC</button></div>
  <div class="row"><span>Drag to orbit · pinch to zoom/pan · tap names to inspect</span></div>
+ <div id="texture-preview"><canvas id="pixel-swatch" width="32" height="32" aria-label="Selected procedural pixel material tile"></canvas><div id="pixel-detail"></div></div>
  <output id="detail" role="status" aria-live="polite"></output>
 </section>
 <script type="module" src="./src/asset-lab-main.ts"></script></body></html>

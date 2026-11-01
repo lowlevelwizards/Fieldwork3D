@@ -2,6 +2,8 @@
  * Built from the same scene construction used in tactical encounters.
  */
 import * as THREE from 'three';
+import {pixelPattern,PIXEL_WORLD_SIZE,TEXELS_PER_OPERATOR,type PixelSurface} from './rendering/pixel-recipes.ts';
+import {fixturePixelSurface,roomPixelSurface} from './worldgen/pixel-surface-selection.ts';
 import {TacticalScene3D} from './breach-3d.ts';
 import {newSession} from './breach-game.ts';
 import {activateSite,type Door,type Obstacle,type Segment,type Pt} from './breach-core.ts';
@@ -18,6 +20,17 @@ const all=assetLibrary();
 let layout=showroomGrid(innerWidth);
 const header=el<HTMLElement>('lab-header'),controls=el<HTMLElement>('controls');
 const overlay=new THREE.Group();
+const swatch=el<HTMLCanvasElement>('pixel-swatch');
+const swatchContext=swatch.getContext('2d');
+let texturesShown=true;
+function swatchMaterial(kind:PixelSurface){
+ if(!swatchContext)return;
+ const bytes=pixelPattern(kind,0,32);
+ swatchContext.putImageData(new ImageData(new Uint8ClampedArray(bytes),32,32),0,0);
+ el<HTMLElement>('pixel-detail').textContent=kind.toUpperCase()+
+   ' · 32×32 source tile · '+TEXELS_PER_OPERATOR+
+   ' texels/operator · '+PIXEL_WORLD_SIZE.toFixed(2)+' world units/texel';
+}
 let outline:THREE.LineSegments|null=null;
 let showBounds=false;
 for(const kind of assetLibraryCategories()){
@@ -165,6 +178,12 @@ function focusSelected(){
 }
 function select(item:AssetLibraryEntry){
  selectedId=item.id;
+ const pixelKind:PixelSurface=item.origin==='fixture'?fixturePixelSurface(item.id):
+   item.origin==='dressing'?'paper':
+   item.id.startsWith('wall')?'plaster':
+   item.id.startsWith('door')?'wood':
+   item.id==='floor'?roomPixelSurface('house','living'):'metal';
+ swatchMaterial(pixelKind);
  detail.textContent=item.label+' ['+item.id+'] · '+item.category.toUpperCase()+
    '\n'+item.width+' × '+item.depth+' × '+item.height+' world units ('+
     [item.width,item.depth,item.height].map(v=>metres(v).toFixed(2)).join(' × ')+
@@ -248,6 +267,12 @@ el<HTMLButtonElement>('iso').addEventListener('click',()=>stage.setMode('iso'));
 el<HTMLButtonElement>('top').addEventListener('click',()=>stage.setMode('top'));
 el<HTMLButtonElement>('fit').addEventListener('click',fitShowroom);
 el<HTMLButtonElement>('focus').addEventListener('click',focusSelected);
+el<HTMLButtonElement>('textures').addEventListener('click',()=>{
+ texturesShown=!texturesShown;
+ stage.setPixelTextures(texturesShown);
+ el<HTMLButtonElement>('textures').setAttribute('aria-pressed',String(texturesShown));
+ el<HTMLButtonElement>('textures').textContent=texturesShown?'TEXTURES ON':'TEXTURES OFF';
+});
 el<HTMLButtonElement>('bounds').addEventListener('click',()=>{
  showBounds=!showBounds;
  el<HTMLButtonElement>('bounds').setAttribute('aria-pressed',String(showBounds));
