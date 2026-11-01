@@ -2,7 +2,7 @@
  * Runs in deterministic world space; a CLI can exercise thousands of maps
  * without incurring browser startup on every CI run. */
 import {activateSite,passable,route,type Pt} from './breach-core.ts';
-import {generateSite,type SiteScale} from './breach-site.ts';
+import {generateSite,type SiteScale,type Site} from './breach-site.ts';
 import {assessArchitecture} from './worldgen/architecture-quality.ts';
 import {auditRoomRelationships,type SpatialRelationshipDiagnostic} from './worldgen/room-relationships.ts';
 import {assessRoomContracts,type RoomContractResult} from './worldgen/room-contracts.ts';
@@ -20,7 +20,11 @@ export type SiteAudit={seed:number;archetype:string;layout:string;
   unitContracts:UnitContractResult[];serviceIssues:ServiceIssue[];
   errors:string[]};
 export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteAudit{
-  const site=generateSite(seed,scale);
+  return auditSite(generateSite(seed,scale));
+}
+/** Audit an already-generated site without constructing the entire map twice. */
+export function auditSite(site:Site):SiteAudit{
+  const seed=site.seed;
   activateSite(site);
   const errors:string[]=[];
   try{
