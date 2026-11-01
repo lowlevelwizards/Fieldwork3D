@@ -50,8 +50,8 @@ export function planObjectWear(site:Site):ObjectWear[]{
  const marks:ObjectWear[]=[];
  const add=(owner:ObjectWear['owner'],index:number,kind:WearKind)=>{
   if(marks.length>=max||marks.some(m=>m.owner===owner&&m.index===index))return;
-  const base=(kind==='rust'||kind==='oil'||kind==='drip')?.68:
-   kind==='fray'?.7:.25;
+  const base=(kind==='rust'||kind==='oil'||kind==='drip') ? .68 :
+   kind==='fray' ? .7 : .25;
   marks.push({id:owner+':'+index,owner,index,kind,
     u:.16+rng()*.68,v:base+rng()*(.97-base),size:6+rng()*11,
     opacity:continuous?.16+.40*t:site.condition==='neglected'?.34:.24});
