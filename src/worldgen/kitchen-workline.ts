@@ -21,6 +21,10 @@ export function planKitchenWorklines(site:Site,occupied:readonly Obstacle[]):Obs
   // A completed station sequence is one installation, not one on each wall.
   if(kinds.every(id=>occupied.some(o=>o.fixture===id&&
     o.x>room.x&&o.x<room.x+room.w&&o.y>room.y&&o.y<room.y+room.h)))continue;
+  // A finished workline owns the functional kitchen; never create a second
+  // parallel line on the opposite wall when this pass is reapplied.
+  if([...occupied,...result].some(o=>kinds.includes(o.fixture as typeof kinds[number])&&
+    o.x>room.x&&o.x<room.x+room.w&&o.y>room.y&&o.y<room.y+room.h))continue;
   const center=room.x+room.w/2;
   const candidates=[1,-1].map(side=>kinds.map((id,i):Obstacle=>({
    x:center+(i-1)*51,y:room.y+room.h/2+side*(room.h/2-28),
