@@ -2,7 +2,7 @@
  * so source colors remain exactly those authored in building palettes. */
 export type PixelSurface =
  'wood'|'plaster'|'brick'|'concrete'|'tile'|'carpet'|'metal'|
- 'fabric'|'asphalt'|'earth'|'gravel'|'rubber'|'foliage'|'paper';
+ 'fabric'|'asphalt'|'earth'|'gravel'|'grass'|'rubber'|'foliage'|'paper';
 export const OPERATOR_REFERENCE_HEIGHT=40;
 export const TEXELS_PER_OPERATOR=32;
 export const PIXEL_WORLD_SIZE=OPERATOR_REFERENCE_HEIGHT/TEXELS_PER_OPERATOR;
@@ -10,7 +10,7 @@ export const TILE_PIXELS=32;
 export const TILE_WORLD_SIZE=TILE_PIXELS*PIXEL_WORLD_SIZE;
 export const PIXEL_SURFACES:readonly PixelSurface[]=[
  'wood','plaster','brick','concrete','tile','carpet','metal',
- 'fabric','asphalt','earth','gravel','rubber','foliage','paper'
+ 'fabric','asphalt','earth','gravel','grass','rubber','foliage','paper'
 ];
 export const MATERIAL_RECIPE_VERSION=3;
 const hash=(x:number,y:number,s:number)=>{
@@ -56,9 +56,30 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
    case 'fabric':case 'carpet':
     // Fabrics are intentionally flat at tactical scale; visible seams use geometry.
     break;
-   case 'earth':case 'foliage':case 'gravel':case 'asphalt':
-   case 'plaster':case 'paper':
+   case 'grass':{
+    // Four small, coherent blade clusters; intentionally empty between them.
+    const cx=(5+seed%3),cy=7;
+    const sparse=(x===cx&&y===cy)||(x===cx+1&&y===cy-2)||
+      (x===24&&y===22)||(x===22&&y===23);
+    if(sparse)shade=236;
+    else if((x===cx-1&&y===cy-1)||(x===23&&y===21))shade=246;
     break;
+   }
+   case 'earth':
+    if((x===6&&y===9)||(x===25&&y===21))shade=245;
+    break;
+   case 'gravel':{
+    const stone=(x>=7&&x<=9&&y>=8&&y<=9)||
+      (x>=23&&x<=25&&y>=21&&y<=22);
+    if(stone)shade=226;
+    break;
+   }
+   case 'foliage':{
+    // Sparse leaf facets instead of dense camouflage-like noise.
+    if((x===9&&y===8)||(x===10&&y===8)||(x===24&&y===23))shade=243;
+    break;
+   }
+   case 'asphalt':case 'plaster':case 'paper':break;
   }
   const i=(y*size+x)*4;
   out[i]=shade;out[i+1]=shade;out[i+2]=shade;out[i+3]=255;

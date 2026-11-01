@@ -16,11 +16,11 @@ export function roomPixelSurface(archetype:string|undefined,
 }
 export function zonePixelSurface(zone:string):PixelSurface{
  switch(zone){
-  case 'yard':case 'garden':return 'earth';
+  case 'yard':case 'garden':return 'grass';
   case 'driveway':case 'parking':return 'asphalt';
   case 'service':return 'concrete';
   case 'patio':return 'tile';
-  default:return 'earth';
+  default:return 'grass';
  }
 }
 export function fixturePixelSurface(fixture:string|undefined):PixelSurface{
