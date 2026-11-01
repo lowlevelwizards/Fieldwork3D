@@ -118,6 +118,15 @@ export function setWeaponAttachment(config:WeaponConfiguration,slot:WeaponAttach
 export function changeWeaponPlatform(config:WeaponConfiguration,weapon:WeaponId):WeaponConfiguration{
  return readWeaponConfiguration(config,weapon);
 }
+/** Replay snapshots deserialize new objects; identical choices must never
+ * trigger mesh reconstruction on every playback frame. Allocation-free. */
+export function sameWeaponConfiguration(a?:WeaponConfiguration,b?:WeaponConfiguration):boolean{
+ if(a===b)return true;
+ if(!a||!b||a.weapon!==b.weapon||a.version!==b.version)return false;
+ for(const slot of WEAPON_ATTACHMENT_SLOTS)
+  if(a.slots[slot]!==b.slots[slot])return false;
+ return true;
+}
 export type ResolvedWeaponAssembly={
  weapon:WeaponId;configuration:WeaponConfiguration;
  lengthScale:number;massKg:number;balanceX:number;rotationalInertia:number;
