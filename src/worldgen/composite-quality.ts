@@ -19,8 +19,9 @@ export function scoreCompositeQuality(a:Input):CompositeQuality{
  const spatial=clamp(100-a.spaceQuality.crowdedRoomIds.length*8-
   a.spaceQuality.doorApproachIssues.length*9-
   a.accessibilityQuality.issues.length*3);
- const score=clamp(playability*.35+functionScore*.25+
+ const weighted=clamp(playability*.35+functionScore*.25+
   circulation*.25+spatial*.15);
+ const score=a.errors.length?Math.min(weighted,Math.max(0,65-a.errors.length*12)):weighted;
  const grade=playability<70||score<55?'critical':score<82?'review':'good';
  const notes=[
   ...(a.errors.length?[a.errors.length+' gameplay errors']:[]),
