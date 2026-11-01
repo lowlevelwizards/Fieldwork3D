@@ -15,10 +15,14 @@ test('MAP 05 decorative details use actual supports and floor lamps stand aside'
   const site=generateSite(seed);
   for(const d of site.dressing??[]){
    if(d.placement==='floor'){
-     assert.equal(d.kind,'floor-lamp');
      assert.equal(d.elevation,0);
-     assert.ok(site.cover.every(o=>Math.abs(o.x-d.x)>=o.w/2+7||
-       Math.abs(o.y-d.y)>=o.h/2+7));
+     if(d.kind==='floor-lamp'){
+       assert.ok(site.cover.every(o=>Math.abs(o.x-d.x)>=o.w/2+7||
+         Math.abs(o.y-d.y)>=o.h/2+7));
+     }else{
+       assert.ok(['rug','bedside-rug','bath-mat','welcome-mat','runner'].includes(d.kind));
+       assert.ok(d.width>0&&d.depth>0);
+     }
    }else if(d.placement==='surface'){
      assert.ok(d.supportFixture);
      assert.ok(compatibleDecoration(d.kind,d.supportFixture));
