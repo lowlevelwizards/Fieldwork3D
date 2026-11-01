@@ -60,7 +60,7 @@ jobs:
         run: node --experimental-strip-types --test tests/worldgen-variability-*.test.mjs tests/worldgen-architectural-program.test.mjs tests/worldgen-unified-generation.test.mjs
       - name: Focused environmental scenarios and nonblocking debris
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'worldgen2/36-') }}
-        run: node --experimental-strip-types --test tests/worldgen-36-*.test.mjs tests/worldgen-35-04-landscape-edges.test.mjs
+        run: node --experimental-strip-types --test tests/worldgen-36-*.test.mjs
       - name: Focused exterior property and arrival flow tests
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'worldgen2/35-') }}
         run: node --experimental-strip-types --test tests/worldgen-35-*.test.mjs tests/architecture-18a-property-access.test.mjs
