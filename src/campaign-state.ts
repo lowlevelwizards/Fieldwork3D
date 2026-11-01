@@ -6,6 +6,8 @@ import {WEAPONS as COMBAT_WEAPONS} from './breach-combat.ts';
 import {magazineKit,type MagazineItem} from './breach-magazines.ts';
 import {readPersistentMagazines,readLoadedMagazineId,addReserveRounds}
  from './equipment-magazine-persistence.ts';
+import {stageMagazines,magazineSpace,type MagazineLocation}
+ from './equipment-magazine-placement.ts';
 import {initialEquipmentLoadout,readEquipmentLoadout,setEquipmentChoice,syncPrimaryWeapon,
  type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
 import {progressOperator,type OperatorPerformance,type SkillGains} from './campaign-progression.ts';
@@ -382,6 +384,7 @@ export function equipCampaignGear(c:CampaignState,id:string,slot:LoadoutSlot,
  const next=setEquipmentChoice(o.loadout,slot,itemId);
  if(next===o.loadout)return c;
  return {...c,operators:c.operators.map(m=>m.id===id?{...m,loadout:next,
+  magazines:stageMagazines(m.magazines,next),
   armorCondition:clampArmorToKit(m.armorCondition,next)}:m)};
 }
 
@@ -408,6 +411,7 @@ export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string
  if(swapped===c&&member.weapon!==preset.weapon)return c;
  return {...swapped,operators:swapped.operators.map(o=>o.id===id?{
   ...o,loadout:readEquipmentLoadout(preset.kit,preset.weapon),
+  magazines:stageMagazines(o.magazines,preset.kit),
   armorCondition:clampArmorToKit(o.armorCondition,preset.kit)}:o)};
 }
 export function deleteCampaignKitPreset(c:CampaignState,presetId:string):CampaignState{
@@ -473,4 +477,24 @@ export function repairCampaignArmor(c:CampaignState,id:string):CampaignState{
 export function purchaseFlash(c:CampaignState):CampaignState{
  if(c.activeContractId||c.funds<150||c.supplies.flash>998)return c;
  return {...c,funds:c.funds-150,supplies:{...c.supplies,flash:c.supplies.flash+2}};
+}
+
+/** Manual pouch assignment changes one owned instance, not ammunition.
+ * Removing gear that held magazines repacks them into remaining storage.
+ */
+export function moveCampaignMagazine(
+ c:CampaignState,operatorId:string,magazineId:string,to:MagazineLocation
+):CampaignState{
+ if(c.activeContractId||!['rig','belt','pocket','backpack','overflow'].includes(to))
+  return c;
+ const soldier=c.operators.find(o=>o.id===operatorId&&o.status!=='lost'&&o.status!=='retired');
+ if(!soldier||soldier.weapon==='shotgun')return c;
+ const placed=stageMagazines(soldier.magazines,soldier.loadout);
+ const item=placed.find(m=>m.id===magazineId);
+ if(!item||item.location===to)return c;
+ const spaces=magazineSpace(soldier.loadout);
+ if(to!=='overflow'&&placed.filter(m=>m.location===to).length>=spaces[to])return c;
+ const relocated=placed.map(m=>m.id===magazineId?{...m,location:to}:m);
+ return {...c,operators:c.operators.map(o=>o.id===operatorId?
+  {...o,magazines:stageMagazines(relocated,o.loadout)}:o)};
 }
