@@ -100,7 +100,20 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
     cover.push({x,y,w:exteriorFixture==='fence'?58:46,
       h:exteriorFixture==='fence'?10:24,
       low:exteriorFixture!=='vehicle',fixture:exteriorFixture});
-  return addExteriorProperty(addInteriorGlazing({...site,walls,cover,windows},seed),seed);
+  const glazed=addInteriorGlazing({...site,walls,cover,windows},seed);
+  // The public window list is authoritative: each opening gets exactly one
+  // matching sill collider, even when interior glazing inserts apertures.
+  // Do not stack duplicate sills at the same window or leave orphan cover.
+  const sills=(glazed.windows??[]).map(opening=>({
+    x:opening.x,y:opening.y,
+    w:opening.vertical?10:opening.width,
+    h:opening.vertical?opening.width:10,
+    low:true,fixture:'window-sill'
+  }));
+  const physical={...glazed,cover:[
+    ...glazed.cover.filter(obstacle=>obstacle.fixture!=='window-sill'),...sills
+  ]};
+  return addExteriorProperty(physical,seed);
 }
 
 /** Gameplay window state never mutates the seed-derived architectural plan. */
