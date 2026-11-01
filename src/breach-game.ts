@@ -2741,6 +2741,9 @@ function fire(s:Session,a:TeamActor,dt:number){
   }
 }
 function mission(s:Session,dt:number){
+  // The equipment range is an intentionally open-ended live simulation.
+  // It cannot accidentally complete a Campaign mission or generate a debrief.
+  if(s.site?.training)return;
   if(s.rescue){
     if(s.rescue.following){
       const escort=team(s).find(a=>a.id===s.rescue!.following&&a.health>0);
