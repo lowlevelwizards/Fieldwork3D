@@ -48,6 +48,7 @@ import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOpera
  purchaseAmmo,purchaseMedical,resupplyOperator,treatOperator,
  hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
  retireOperator,equipCampaignGear,moveCampaignMagazine,
+ equipCampaignWeaponAttachment,purchaseAndEquipWeaponAttachment,
  saveCampaignKitPreset,applyCampaignKitPreset,
  deleteCampaignKitPreset,renameCampaignOperator,cycleCampaignAppearance,
  repairCampaignArmor,purchaseFlash,
@@ -2248,6 +2249,11 @@ const campaignScreen=new CampaignScreen({
   saveCampaign();showCampaignHome();}},
  equipGear:(id,slot,itemId)=>{if(campaign){
   campaign=equipCampaignGear(campaign,id,slot,itemId);
+  saveCampaign();showCampaignHome();}},
+ equipAttachment:(id,slot,partId,acquire)=>{if(campaign){
+  campaign=acquire?
+   purchaseAndEquipWeaponAttachment(campaign,id,slot,partId):
+   equipCampaignWeaponAttachment(campaign,id,slot,partId);
   saveCampaign();showCampaignHome();}},
  moveMagazine:(id,magazineId,location)=>{if(campaign){
   campaign=moveCampaignMagazine(campaign,id,magazineId,location);
