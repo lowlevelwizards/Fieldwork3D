@@ -32,6 +32,7 @@ export type CampaignState={
  operators:CampaignOperator[];squadIds:string[];contracts:Contract[];activeContractId:string|null;
  history:CampaignReport[];journal:CareerEvent[];appliedResults:string[];
  supplies:{medical:number;ammo:number};regionalPressure:Record<string,number>;
+ inventory:{weapons:Record<CampaignOperator['weapon'],number>};
 };
 const WEAPONS=['carbine','smg','rifle','shotgun'] as const;
 const REGIONS=['Cutwoods','Breadlands','Flooded Belt','Verdigris City','Timberline'] as const;
@@ -85,7 +86,8 @@ export function newCampaign(seed:number):CampaignState{
   squadIds:['rook','moss','ash','vale'],
   contracts:createContracts(normalized,1),activeContractId:null,
   history:[],journal:[],appliedResults:[],supplies:{medical:3,ammo:240},
-  regionalPressure:Object.fromEntries(REGIONS.map(r=>[r,0]))};
+  regionalPressure:Object.fromEntries(REGIONS.map(r=>[r,0])),
+  inventory:{weapons:{carbine:0,smg:0,rifle:0,shotgun:0}}};
 }
 export function migrateLegacyRoster(campaign:CampaignState,legacy:RosterState):CampaignState{
  if(!legacy||legacy.version!==1||!Array.isArray(legacy.members))return campaign;
@@ -123,7 +125,11 @@ export function readCampaign(raw:string|null):CampaignState|null{
    new Set(c.squadIds).size===4&&
    c.squadIds.every(id=>c.operators.some(o=>o.id===id&&o.status!=='lost'))?
    c.squadIds:fallback;
-  return {...c,squadIds:chosen,regionalPressure:Object.fromEntries(REGIONS.map(region=>
+  const weapons=Object.fromEntries(WEAPONS.map(weapon=>
+   [weapon,Number.isInteger(c.inventory?.weapons?.[weapon])&&
+    c.inventory.weapons[weapon]>=0?c.inventory.weapons[weapon]:0])) as Record<CampaignOperator['weapon'],number>;
+  return {...c,squadIds:chosen,inventory:{weapons},
+   regionalPressure:Object.fromEntries(REGIONS.map(region=>
    [region,Math.max(-3,Math.min(3,Number.isFinite(c.regionalPressure?.[region])?
     c.regionalPressure[region]:0))]))};
  }catch{return null;}
@@ -254,4 +260,26 @@ export function hireRecruit(c:CampaignState):CampaignState{
   kind:'joined',detail:'Joined the unit'};
  return {...c,funds:c.funds-450,operators:[...c.operators,member],
   journal:[...c.journal,event].slice(-1000)};
+}
+
+export const WEAPON_PRICES:Record<CampaignOperator['weapon'],number>={
+ carbine:300,smg:260,rifle:420,shotgun:330
+};
+export function buyWeapon(c:CampaignState,weapon:CampaignOperator['weapon']):CampaignState{
+ const price=WEAPON_PRICES[weapon];
+ if(!price||c.activeContractId||c.funds<price)return c;
+ return {...c,funds:c.funds-price,
+  inventory:{weapons:{...c.inventory.weapons,[weapon]:c.inventory.weapons[weapon]+1}}};
+}
+export function equipCampaignWeapon(c:CampaignState,id:string,
+ weapon:CampaignOperator['weapon']):CampaignState{
+ if(c.activeContractId||!WEAPONS.includes(weapon))return c;
+ const m=c.operators.find(o=>o.id===id&&o.status!=='lost');
+ if(!m||m.weapon===weapon||c.inventory.weapons[weapon]<1)return c;
+ return {...c,inventory:{weapons:{
+   ...c.inventory.weapons,
+   [weapon]:c.inventory.weapons[weapon]-1,
+   [m.weapon]:c.inventory.weapons[m.weapon]+1
+  }},
+  operators:c.operators.map(o=>o.id===id?{...o,weapon,magazine:0,reserve:0}:o)};
 }
