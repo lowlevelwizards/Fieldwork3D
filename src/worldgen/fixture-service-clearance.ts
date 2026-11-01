@@ -18,6 +18,9 @@ const paired:Readonly<Record<string,readonly string[]>>={
  'exam-bed':['instrument-cart'],workbench:['tool-chest'],
  'packing-station':['cart']
 };
+/** Equipment requiring a real reachable operating face. */
+export const requiresServiceApproach=(fixture?:string):boolean=>
+ workplaces.has(fixture??'');
 export type ServiceIssue={index:number;roomId:string;fixture:string;
  reason:'faces-wall'|'blocked-approach'};
 const inside=(p:Pt,r:Room)=>p.x>r.x+5&&p.x<r.x+r.w-5&&
