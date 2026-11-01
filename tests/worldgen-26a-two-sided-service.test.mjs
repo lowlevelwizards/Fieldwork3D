@@ -7,7 +7,7 @@ import {inspectCounterAccess,counterApproachFor}
 const room={id:'R',kind:'room',purpose:'reception',x:0,y:0,w:200,h:160};
 const site={rooms:[room],doors:[],openings:[]};
 test('counter near a wall turns to preserve real customer and staff access',()=>{
- const counter={fixture:'reception-desk',x:95,y:30,w:56,h:24,low:true};
+ const counter={fixture:'reception-desk',x:95,y:37,w:56,h:24,low:true};
  const result=orientFurnishings(site,[counter]);
  assert.ok([1,3].includes(result[0].orientation));
  const [access]=inspectCounterAccess({...site,cover:result});
