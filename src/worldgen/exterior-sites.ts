@@ -86,10 +86,14 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    parking:['sedan','pickup','van','suv','parking-block','parking-sign','bollard','bike-rack'],
    driveway:residential?['sedan','pickup','suv','mailbox','trash-bin']:
      ['van','pickup','bollard','utility-cabinet'],
-   service:['dumpster','utility-cabinet','trash-bin','bollard','crate'],
-   patio:['planter','patio-chair','bike-rack','trash-bin'],
-   garden:['tree-broadleaf','shrub-round','shrub-tall','picnic-table'],
-   yard:residential?['tree-broadleaf','shrub-round','mailbox','trash-bin','hydrant']:
+   service:industrial?['utility-cabinet','dumpster','bollard','crate',
+      'shipping-container','trash-bin']:['dumpster','trash-bin','bike-rack','planter'],
+   patio:kind==='restaurant'?
+      ['patio-chair','picnic-table','planter','trash-bin']:
+      ['planter','patio-chair','bike-rack','trash-bin','grill'],
+   garden:residential?['tree-broadleaf','shrub-round','shrub-tall',
+      'picnic-table','shed','grill']:['planter','shrub-tall','picnic-table'],
+   yard:residential?['mailbox','tree-broadleaf','shrub-round','trash-bin','hydrant']:
      ['planter','street-lamp','bollard','trash-bin'],
  };
  const cover=site.cover.slice();
@@ -100,7 +104,17 @@ export function addExteriorProperty(site:Site,seed:number):Site{
   for(let i=0;i<count;i++){
    // Vehicles belong to arrival/parking zones, not a random garden plot.
    const choices=byZone[zone.kind]??available;
-   const item=choices[(Math.floor(rng()*choices.length)+i)%choices.length];
+   // First object establishes what this exterior space is *for*. Subsequent
+   // objects add character; no vehicle in a garden or dumpsters at the
+   // public-facing cafe seating area.
+   const anchor:Partial<Record<ExteriorZone['kind'],string>>={
+     parking:'sedan',driveway:industrial?'van':'pickup',
+     service:industrial?'utility-cabinet':'dumpster',
+     patio:kind==='restaurant'?'patio-chair':'planter',
+     garden:'tree-broadleaf',yard:residential?'mailbox':'planter'
+   };
+   const item=i===0?(anchor[zone.kind]??choices[0]):
+     choices[Math.floor(rng()*choices.length)];
    const asset=propDefinition(item);if(!asset)continue;
    // Preserve true dimensions: a car never becomes smaller than an operator.
    const w=asset.width,h=asset.depth;
