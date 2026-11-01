@@ -21,7 +21,7 @@ test('essential control panel needs an actual operating face, not just body spac
  const oriented=panel.orientation%2?{...panel,w:panel.h,h:panel.w}:panel;
  assert.equal(fixtureServiceClear(ample.rooms[0],oriented,[oriented]),true);
  assert.deepEqual(restored,recoverRoomEssentials(ample,[]));
- const tiny=makeSite('control',61,55);
+ const tiny=makeSite('control',52,49);
  const impossible=recoverRoomEssentials(tiny,[]);
  assert.ok(impossible.issues.some(i=>i.fixture.includes('control-panel')));
  assert.ok(!impossible.cover.some(x=>x.fixture==='control-panel'));
