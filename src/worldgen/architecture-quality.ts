@@ -39,7 +39,7 @@ export function assessArchitecture(site:Site):ArchitectureQuality{
  if(site.programLocked){
   if(!front)errors.push('missing physical front door');
   if(['clinic','motel','office','retail'].includes(site.archetype??'')&&
-    !['waiting','reception','lobby','sales','hallway'].includes(entryPurpose))
+    !['waiting','vestibule','reception','lobby','sales','hallway'].includes(entryPurpose))
     errors.push('inappropriate public entrance: '+entryPurpose);
   if(site.archetype==='motel'&&guests<4)errors.push('motel has fewer than four guest rooms');
   if(site.archetype==='house'&&livingKitchenRatio!==null&&livingKitchenRatio<.85)
