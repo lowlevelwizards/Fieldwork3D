@@ -50,6 +50,12 @@ definitions.push(
 );
 definitions.push({id:'window-boards',category:'security',width:52,depth:10,
  height:36,solid:true,cover:'high',rooms:['yard','garden','parking','service-yard']});
+definitions.push(
+ {id:'half-wall',category:'architecture',width:56,depth:9,height:18,
+  solid:true,cover:'low',rooms:['living','dining','sales','lobby','office','waiting']},
+ {id:'support-column',category:'architecture',width:12,depth:12,height:40,
+  solid:true,cover:'high',rooms:['bay','loading','storage','aisle','workshop']}
+);
 definitions.push({id:'chain-link-fence',category:'exterior',width:80,depth:5,height:36,
  solid:true,cover:'high',rooms:['service-yard','parking','yard']});
 // Purpose-built public counter and correctly scaled tall bar seats.

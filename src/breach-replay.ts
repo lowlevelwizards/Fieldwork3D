@@ -13,7 +13,7 @@ export type ActorFrame=Pick<TeamActor,
   'magazine'|'reserve'|'reload'|'shots'|'fireCd'|'aim'|
   'insertedMagazineId'|'spareMagazines'|'reloadMode'|'reloadStartedAt'|
   'reloadDuration'|'reloadRemoved'|'reloadInserted'|
-  'reloadFromRounds'|'reloadTargetRounds'|
+  'reloadFromRounds'|'reloadTargetRounds'|'reloadSelectedMagazineId'|
   'lastHitAt'|'lastDownAt'|'lastHitRegion'|'lastHitYaw'|
   'lastHitSeverity'|'downPose'|'flashUntil'|'suppression'|
   'weapon'|'injuryStage'|'armorIntegrity'|'helmetIntegrity'|'flashCharges'|'morale'|'surrendered'|'defense'|'watch'|
@@ -55,6 +55,7 @@ export function snapshot(s:Session,seenGround?:string[]):ReplayFrame{
       reloadRemoved:a.reloadRemoved,reloadInserted:a.reloadInserted,
       reloadFromRounds:a.reloadFromRounds,
       reloadTargetRounds:a.reloadTargetRounds,
+      reloadSelectedMagazineId:a.reloadSelectedMagazineId,
       shots:a.shots,fireCd:a.fireCd,aim:a.aim,
       lastHitAt:a.lastHitAt,lastDownAt:a.lastDownAt,
       lastHitRegion:a.lastHitRegion,lastHitYaw:a.lastHitYaw,

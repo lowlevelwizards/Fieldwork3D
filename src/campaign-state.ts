@@ -8,6 +8,7 @@ import {initialEquipmentLoadout,readEquipmentLoadout,setEquipmentChoice,syncPrim
 import {progressOperator,type OperatorPerformance,type SkillGains} from './campaign-progression.ts';
 import {readKitPresets,nextPresetId,MAX_KIT_PRESETS,type EquipmentPreset} from './equipment-presets.ts';
 import {initialArmorIntegrity,type ArmorIntegrity} from './equipment-armor.ts';
+import {clampFlashUse} from './equipment-supply.ts';
 
 export type SkillName=keyof ShootingSkills;
 export const SKILL_NAMES:SkillName[]=['pointShooting','longRange','precision','recoilControl','composure','handling'];
@@ -32,12 +33,13 @@ export type CampaignReport={
  grade:string;elapsed:number;participatingIds:string[];casualties:string[];
  objective:boolean;events:CareerEvent[];
  performance?:OperatorPerformance[];gains?:SkillGains[];
+ flashUsed?:number;
 };
 export type CampaignState={
  version:1;id:string;seed:number;day:number;funds:number;
  operators:CampaignOperator[];squadIds:string[];contracts:Contract[];activeContractId:string|null;
  history:CampaignReport[];journal:CareerEvent[];appliedResults:string[];
- supplies:{medical:number;ammo:number};regionalPressure:Record<string,number>;
+ supplies:{medical:number;ammo:number;flash:number};regionalPressure:Record<string,number>;
  inventory:{weapons:Record<CampaignOperator['weapon'],number>};
  kitPresets:EquipmentPreset[];
 };
@@ -100,7 +102,7 @@ export function newCampaign(seed:number):CampaignState{
   operators:['rook','moss','ash','vale'].map((id,i)=>startingOperator(id,i,normalized)),
   squadIds:['rook','moss','ash','vale'],
   contracts:createContracts(normalized,1),activeContractId:null,
-  history:[],journal:[],appliedResults:[],supplies:{medical:3,ammo:240},
+  history:[],journal:[],appliedResults:[],supplies:{medical:3,ammo:240,flash:4},
   regionalPressure:Object.fromEntries(REGIONS.map(r=>[r,0])),
   inventory:{weapons:{carbine:0,smg:0,rifle:0,shotgun:0}},kitPresets:[]};
 }
@@ -153,6 +155,8 @@ export function readCampaign(raw:string|null):CampaignState|null{
     o.distinctions.filter((x):x is string=>typeof x==='string').slice(0,32):[]
   }));
   return {...c,squadIds:chosen,operators,inventory:{weapons},
+    supplies:{...c.supplies,flash:Number.isFinite(c.supplies.flash)?
+     Math.max(0,Math.min(1000,Math.floor(c.supplies.flash))):4},
     kitPresets:readKitPresets((c as {kitPresets?:unknown}).kitPresets),
    regionalPressure:Object.fromEntries(REGIONS.map(region=>
    [region,Math.max(-3,Math.min(3,Number.isFinite(c.regionalPressure?.[region])?
@@ -237,6 +241,7 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
    intel:'scouted',reward:contract.reward+180,deadline:day+3,status:'available'});
  }
  return {...c,day,funds:c.funds+gained,operators:developed,regionalPressure:pressure,
+  supplies:{...c.supplies,flash:Math.max(0,(c.supplies.flash??4)-clampFlashUse(r.flashUsed))},
   activeContractId:null,history:[...c.history,{...r,gains:gainedSkills}].slice(-200),
   journal:[...c.journal,...r.events,...careerEvents].slice(-1000),
   appliedResults:[...c.appliedResults,r.id].slice(-500),
@@ -441,4 +446,10 @@ export function repairCampaignArmor(c:CampaignState,id:string):CampaignState{
  if(cost===0||cost>c.funds)return c;
  return {...c,funds:c.funds-cost,operators:c.operators.map(o=>o.id===id?
   {...o,armorCondition:initialArmorIntegrity(o.loadout)}:o)};
+}
+
+/** Flashbang resupply is a paid transaction, never hidden kit duplication. */
+export function purchaseFlash(c:CampaignState):CampaignState{
+ if(c.activeContractId||c.funds<150||c.supplies.flash>998)return c;
+ return {...c,funds:c.funds-150,supplies:{...c.supplies,flash:c.supplies.flash+2}};
 }

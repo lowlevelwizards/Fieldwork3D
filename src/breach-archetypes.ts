@@ -1,6 +1,7 @@
 /** Semantic building types; furnishing data preserves authored collision. */
 import type {Site,BuildingArchetype} from './breach-site.ts';
 import {buildArchetypeEnvironment} from './breach-windows.ts';
+import {addArchitecturalInteriors} from './worldgen/architectural-interiors.ts';
 import {propDefinition} from './worldgen/asset-catalog.ts';
 import {furnishRooms} from './worldgen/room-furnishing.ts';
 import {assignRoomProgram} from './worldgen/room-assignment.ts';
@@ -81,7 +82,8 @@ export function applyArchetype(site:Site,seed:number):Site{
       addServiceHatches(addOpenPlanTransitions({...site,archetype,rooms,cover},seed),seed),seed);
     // Physical facade openings, sills and exterior obstructions exist before
     // furnishing, so room equipment cannot occupy their clearance envelope.
-    const environment=buildArchetypeEnvironment(architecture,seed);
+    const environment=addArchitecturalInteriors(
+      buildArchetypeEnvironment(architecture,seed),seed);
     const result=dressWindowSecurity(decorateWalls(populateFunctionalRooms(dressSite(
       furnishRooms(environment,seed),seed),seed),seed),seed);
     return {...enforceServiceHatchBarriers(synchronizeWindowBarriers(result)),bounds:site.bounds??

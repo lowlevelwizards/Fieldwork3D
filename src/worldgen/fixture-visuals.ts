@@ -374,6 +374,16 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
             ctx.box(group,c.x+(across?end*w:0),height,c.y+(across?0:end*d),
               2.3,2.3,across?8.5:8.5,nails,false);
         }
+      }else if(fixture==='half-wall'){
+        const masonry=visualCtx.solid(0x8f8877,.94,'brick');
+        ctx.box(group,c.x,8,c.y,w,16,d,masonry);
+        ctx.box(group,c.x,17,c.y,w+3,2.5,d+3,wood,false);
+        ctx.box(group,c.x,1,c.y,w+2,2,d+2,metal,false);
+      }else if(fixture==='support-column'){
+        const concrete=visualCtx.solid(0x807f77,.94,'concrete');
+        ctx.box(group,c.x,20,c.y,w,40,d,concrete);
+        ctx.box(group,c.x,2,c.y,w+5,4,d+5,metal,false);
+        ctx.box(group,c.x,39,c.y,w+3,3,d+3,metal,false);
       }else if(fixture==='chain-link-fence'){
         const h=36;
         for(const side of [-1,1])ctx.box(group,c.x+side*w*.47,h/2,c.y,3,h,3,metal);
