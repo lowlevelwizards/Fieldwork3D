@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import {pixelPattern,PIXEL_SURFACES,PIXEL_WORLD_SIZE,TEXELS_PER_OPERATOR,type PixelSurface} from './rendering/pixel-recipes.ts';
 import {materialProfile} from './rendering/pixel-profiles.ts';
-import {fixturePixelSurface,roomPixelSurface} from './worldgen/pixel-surface-selection.ts';
+
 import {TacticalScene3D} from './breach-3d.ts';
 import {newSession} from './breach-game.ts';
 import {activateSite,type Door,type Obstacle,type Segment,type Pt} from './breach-core.ts';
