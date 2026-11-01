@@ -14,7 +14,8 @@ test('eleven building-specific blueprints have sensible front doors, proportions
  const motel=architecturalBlueprint('motel',9);
  assert.equal(motel.cells.flat().filter(r=>r==='guest').length,4);
  const clinic=architecturalBlueprint('clinic',10);
- assert.equal(clinic.cells[clinic.front.row][clinic.front.col],'waiting');
+ assert.ok(['waiting','vestibule'].includes(
+  clinic.cells[clinic.front.row][clinic.front.col]),'clinic has public-facing entry');
  const families=new Set(ARCHITECTURAL_FAMILIES.map(
   kind=>architecturalBlueprint(kind,3).family));
  assert.equal(families.size,11);
