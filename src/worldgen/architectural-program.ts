@@ -302,7 +302,7 @@ const quaternary:Record<BuildingArchetype,Spec>={
    ['guest','guest','guest','guest'],
    ['hallway','hallway','hallway','hallway'],
    ['reception',null,'laundry',null],
-   ['reception','lobby',null,'maintenance']]},
+   ['reception','lobby','maintenance','maintenance']]},
  utility:{family:'stepped plant / multi-wing maintenance court',
   widths:[164,65,170,125],depths:[154,124,111,109],front:{col:2,row:3},
   cells:[
