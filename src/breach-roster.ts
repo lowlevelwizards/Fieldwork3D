@@ -88,6 +88,7 @@ export function applyRosterIdentity(s:Session,roster:RosterState){
    a.name=member.callsign;
    a.appearanceSeed=member.appearanceSeed;
    a.equipment=member.loadout;
+    a.weaponConfiguration=member.weaponConfiguration;
    a.flashCharges=equippedFlashCharges(member.loadout);
    const protection=initialArmorIntegrity(member.loadout);
    a.armorIntegrity=protection.torso;a.helmetIntegrity=protection.head;
