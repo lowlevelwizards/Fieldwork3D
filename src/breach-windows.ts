@@ -82,3 +82,26 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
       low:exteriorFixture!=='vehicle',fixture:exteriorFixture});
   return addExteriorProperty({...site,walls,cover,windows},seed);
 }
+
+/** Gameplay window state never mutates the seed-derived architectural plan. */
+export type WindowState=WindowOpening&{
+ open:boolean;integrity:number;shattered:boolean;operable:boolean;
+};
+export function initializeWindows(openings:readonly WindowOpening[]):WindowState[]{
+ return openings.map(w=>({...w,open:false,integrity:2,
+   shattered:false,operable:w.width>=38}));
+}
+export function manipulateWindow(w:WindowState,action:'open'|'close'|'break'){
+ if(action==='break'){
+  if(w.shattered)return false;
+  w.integrity=0;w.shattered=true;w.open=true;return true;
+ }
+ if(!w.operable||w.shattered||w.open===(action==='open'))return false;
+ w.open=action==='open';return true;
+}
+export function damageWindow(w:WindowState,energy:number):boolean{
+ if(w.shattered||energy<=0)return false;
+ w.integrity=Math.max(0,w.integrity-energy);
+ if(w.integrity===0)manipulateWindow(w,'break');
+ return true;
+}
