@@ -612,6 +612,10 @@ export class TacticalScene3D{
       group.rotation.y=Math.abs(opening.a.x-opening.b.x)<1?-Math.PI/2:0;
       for(const side of [-1,1])this.box(group,side*width/2,19,0,4,38,10,archMaterial);
       this.box(group,0,38,0,width+4,4,11,archMaterial);
+      if(opening.kind==='serving'){
+        this.box(group,0,10,0,width,20,10,archMaterial);
+        this.box(group,0,20.5,3,width+3,2,12,archMaterial,false);
+      }
       this.root.add(group);
     }
     const doorMat=this.solid(age(theme.door,'door-wood'),.88,'door-wood'),

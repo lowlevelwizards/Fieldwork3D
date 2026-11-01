@@ -54,6 +54,7 @@ const architecture:readonly AssetLibraryEntry[] = [
   {id:'door:exit',label:'Emergency exit door',width:48,depth:12,height:40,category:'Openings'},
   {id:'shutter',label:'Industrial shutter and frame',width:96,depth:12,height:45,category:'Openings'},
   {id:'arch',label:'Archway',width:72,depth:10,height:40,category:'Openings'},
+  {id:'service-hatch',label:'Kitchen and service pass-through',width:58,depth:10,height:40,category:'Openings'},
   {id:'wall-detail:poster',label:'Poster',width:24,depth:1,height:16,category:'Wall Details'},
   {id:'wall-detail:picture',label:'Picture',width:22,depth:1,height:16,category:'Wall Details'},
   {id:'wall-detail:noticeboard',label:'Noticeboard',width:26,depth:2,height:16,category:'Wall Details'},
