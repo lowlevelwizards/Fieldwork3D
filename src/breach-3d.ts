@@ -7,6 +7,7 @@ import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surfaces.ts';
 import {planEnvironmentalWear,type WearKind} from './worldgen/environment-wear.ts';
 import {wearPixels} from './rendering/pixel-decals.ts';
+import {pixelSign,type PixelSignKind} from './rendering/pixel-signage.ts';
 import {roofShouldShow} from './worldgen/roof-cutaways.ts';
 import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,activeSite,
   type Pt,type Door} from './breach-core.ts';
@@ -138,6 +139,7 @@ export class TacticalScene3D{
   private windowPaneMaterial:THREE.MeshStandardMaterial|null=null;
   private readonly wearMaterials=new Map<WearKind,THREE.MeshBasicMaterial>();
   private readonly wearTextures=new Map<WearKind,THREE.DataTexture>();
+  private readonly signMaterials=new Map<string,THREE.MeshBasicMaterial>();
   private windowGlass=new Map<string,THREE.Mesh>();
   private coverGroups=new Map<number,THREE.Group>();
   private solid=(hex:number,roughness=.9,surface?:PixelSurface)=>{
@@ -223,6 +225,19 @@ export class TacticalScene3D{
     this.smoothFog.frustumCulled=false;
     this.scene.add(this.smoothFog);
     this.resize(innerWidth,innerHeight);
+  }
+  private signMaterial(kind:PixelSignKind,variant=0){
+    const key=kind+':'+(variant%3);
+    const prior=this.signMaterials.get(key);if(prior)return prior;
+    const texture=new THREE.DataTexture(pixelSign(kind,variant%3),32,32,THREE.RGBAFormat);
+    texture.colorSpace=THREE.SRGBColorSpace;
+    texture.magFilter=THREE.NearestFilter;
+    texture.minFilter=THREE.LinearMipmapLinearFilter;
+    texture.generateMipmaps=true;
+    texture.needsUpdate=true;
+    const material=new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide});
+    this.signMaterials.set(key,material);this.mats.push(material);
+    return material;
   }
   /** Toggle source maps for the asset showroom without rebuilding gameplay geometry. */
   setPixelTextures(enabled:boolean){
@@ -604,10 +619,17 @@ export class TacticalScene3D{
           detail.kind==='poster'?wallRed:
           detail.kind==='noticeboard'?wallPaper:wallMetal,false);
         this.box(prop,-w*.12,h*.14,.99,w*.45,1,.15,wallPaper,false);
+        // A single shared texture communicates print/layout without extra geometry.
+        const printed=new THREE.Mesh(new THREE.PlaneGeometry(w-3,h-3),
+          this.signMaterial(detail.kind,site.seed));
+        printed.position.z=1.18;prop.add(printed);
         break;
       case 'exit-sign':
         this.box(prop,0,0,0,w,h,1.3,wallRed,false);
         this.box(prop,0,0,.8,w*.67,2,.3,wallPaper,false);
+        const exitGraphic=new THREE.Mesh(new THREE.PlaneGeometry(w-2,h-2),
+          this.signMaterial('exit'));
+        exitGraphic.position.z=1.05;prop.add(exitGraphic);
         break;
       case 'light-switch':
         this.box(prop,0,0,0,w,h,1.3,wallPaper,false);
@@ -644,8 +666,12 @@ export class TacticalScene3D{
       case 'tools':
         this.box(prop,0,1.5,0,13,2,3,smallWood,false);
         this.box(prop,3,1.5,3,3,3,7,smallPaper,false);break;
-      case 'packages':
-        this.box(prop,0,5,0,11,10,9,smallWood,false);break;
+      case 'packages':{
+        this.box(prop,0,5,0,11,10,9,smallWood,false);
+        const label=new THREE.Mesh(new THREE.PlaneGeometry(7,5),
+          this.signMaterial('package',site.seed));
+        label.position.set(0,6,4.61);prop.add(label);break;
+      }
       case 'plant':
         this.box(prop,0,4,0,8,8,8,smallClay,false);
         this.box(prop,0,12,0,11,9,11,smallGreen,false);break;
