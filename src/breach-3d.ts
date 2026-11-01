@@ -534,6 +534,8 @@ export class TacticalScene3D{
       'curb-ramp':0xb1aca0,'crosswalk-stripe':0xd8d2be,
       'reserved-parking':0x4f7880,'access-hatch':0xe2dfc9,
       'stall-end-line':0xc9c2a6,
+      'loading-zone':0x9f9685,'maintenance-bay':0x7e877d,
+      'waste-collection':0x696f65,'clear-route':0x8b8c7d,
     };
     // Exterior ground markings are legible construction details, not cover.
     for(const mark of planPropertySurfaces(site))
