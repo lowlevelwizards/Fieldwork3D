@@ -1,57 +1,73 @@
-/** Final simulation-route guard for expanded encounter placement.
- * Group offsets are locally plausible but can land on a grid-unreachable
- * endpoint after the director has checked architectural anchors.
- * Uses actual tactical A* only for larger maps and retains role identity.
- * Never weakens collision or allows a softlocked hostile spawn.
+/** Final tactical path validator. Never undo the insertion safety and room
+ * capacity limits established by encounter placement to salvage a bad point.
  */
-import type {Site} from '../breach-site.ts';
+import type {Site,Room} from '../breach-site.ts';
 import {activeSite,activateSite,passable,route,type Pt} from '../breach-core.ts';
 import type {EncounterActorSpec} from './encounter-types.ts';
+import {clearOfInsertion,roomOccupancyCapacity} from './encounter-spawn-safety.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
+const findRoom=(site:Site,p:Pt):Room|undefined=>site.rooms.find(r=>
+ r.kind==='room'&&p.x>=r.x&&p.x<=r.x+r.w&&
+ p.y>=r.y&&p.y<=r.y+r.h);
 export function stabilizeEncounterReachability(site:Site,
-  actors:readonly EncounterActorSpec[]):{
-    actors:EncounterActorSpec[];rehomed:number}{
+ actors:readonly EncounterActorSpec[]):{
+  actors:EncounterActorSpec[];rehomed:number}{
+ // The placement solver has already routed candidates on compact maps.
  if(site.scale!=='expanded'&&site.scale!=='large')
-   return {actors:actors.map(a=>({...a})),rehomed:0};
+  return {actors:actors.map(a=>({...a})),rehomed:0};
  const previous=activeSite();
- const checked=new Map<string,boolean>();
+ const occupied:{p:Pt;room?:Room}[]=[];
+ const placed:EncounterActorSpec[]=[];
  const start=site.spawn[0];
- const connected=(p:Pt)=>{
-   const key=p.x.toFixed(2)+':'+p.y.toFixed(2);
-   const found=checked.get(key);if(found!==undefined)return found;
-   const good=passable(p)&&!!route(start,p).length;
-   checked.set(key,good);return good;
- };
- const occupied:Pt[]=[],placed:EncounterActorSpec[]=[];
+ const reachable=new Map<string,boolean>();
  let rehomed=0;
- // Preserve essential mission targets first if only limited reachable space.
- const ordered=actors.slice().sort((a,b)=>
-  Number(b.role==='target')-Number(a.role==='target'));
  activateSite(site);
  try{
-  for(const actor of ordered){
-   let position=actor.position;
-   if(!connected(position)||occupied.some(q=>dist(q,position)<25)){
-     const anchors=site.enemies.slice().sort((a,b)=>
-       dist(a,actor.position)-dist(b,actor.position));
-     let chosen:Pt|null=null;
-     for(const a of anchors){
-       for(const [dx,dy] of [[0,0],[16,0],[-16,0],[0,16],[0,-16]]){
-         const p={x:a.x+dx,y:a.y+dy};
-         if(occupied.some(q=>dist(q,p)<25))continue;
-         if(connected(p)){chosen=p;break;}
-       }
-       if(chosen)break;
-     }
-     if(!chosen)continue; // Never insert an unreachable hostile.
-     position=chosen;rehomed++;
+  const valid=(p:Pt,outdoor:boolean)=>{
+   if(!clearOfInsertion(site,p,outdoor)||!passable(p))return false;
+   const key=p.x.toFixed(2)+':'+p.y.toFixed(2);
+   const old=reachable.get(key);
+   if(old!==undefined)return old;
+   const result=!!route(start,p).length;
+   reachable.set(key,result);
+   return result;
+  };
+  const fits=(p:Pt,exterior:boolean)=>{
+   const room=findRoom(site,p);
+   if(!exterior&&!room)return false;
+   if(occupied.some(o=>dist(o.p,p)<36))return false;
+   if(room){
+    const count=occupied.filter(o=>o.room?.id===room.id).length;
+    if(count>=roomOccupancyCapacity(room,site.cover))return false;
    }
-   occupied.push(position);
-   placed.push({...actor,position:{...position},
-     ...(position===actor.position?{}:{routine:undefined})});
+   return true;
+  };
+  // Preserve mission-critical capture targets before optional hostiles.
+  const ordered=actors.slice().sort((a,b)=>
+   Number(b.role==='target')-Number(a.role==='target'));
+  for(const actor of ordered){
+   const exterior=actor.zoneId?.startsWith('exterior:')??false;
+   let p:Pt|null=null;
+   if(fits(actor.position,exterior)&&valid(actor.position,exterior))
+    p=actor.position;
+   // Exterior lookouts may disappear if their route is invalid; never turn
+   // them into a guard standing next to the inserting team.
+   if(!p&&!exterior){
+    for(const original of site.enemies){
+     if(!fits(original,false)||!valid(original,false))continue;
+     p=original;break;
+    }
+   }
+   if(!p)continue;
+   if(p!==actor.position)rehomed++;
+   const room=findRoom(site,p);
+   occupied.push({p,room});
+   placed.push({...actor,position:{...p},
+     roomId:room?.id,zoneId:room?(room.zoneId??room.id):actor.zoneId,
+     ...(p!==actor.position?{routine:undefined}:{})});
   }
  }finally{activateSite(previous);}
- // Keep prior authored stable actor ordering for deterministic inspector indices.
  const ids=new Map(placed.map(a=>[a.id,a]));
- return {actors:actors.flatMap(a=>ids.has(a.id)?[ids.get(a.id)!]:[]),rehomed};
+ return {actors:actors.flatMap(a=>ids.has(a.id)?[ids.get(a.id)!]:[]),
+   rehomed};
 }
