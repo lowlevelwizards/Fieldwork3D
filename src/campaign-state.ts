@@ -2,6 +2,7 @@
 import type {OperationKind} from './breach-operations.ts';
 import type {ShootingSkills} from './breach-skills.ts';
 import type {RosterState} from './breach-roster.ts';
+import {progressOperator,type OperatorPerformance,type SkillGains} from './campaign-progression.ts';
 
 export type SkillName=keyof ShootingSkills;
 export const SKILL_NAMES:SkillName[]=['pointShooting','longRange','precision','recoilControl','composure','handling'];
@@ -23,6 +24,7 @@ export type CampaignReport={
  id:string;contractId:string;day:number;outcome:'success'|'failure';
  grade:string;elapsed:number;participatingIds:string[];casualties:string[];
  objective:boolean;events:CareerEvent[];
+ performance?:OperatorPerformance[];gains?:SkillGains[];
 };
 export type CampaignState={
  version:1;id:string;seed:number;day:number;funds:number;
@@ -51,7 +53,7 @@ export function startingOperator(id:string,i:number,seed:number):CampaignOperato
  const reserve={carbine:36,smg:72,rifle:30,shotgun:24}[weapon];
  return {id,callsign:id.toUpperCase(),background:['Patrol','Reconnaissance','Security','Emergency Response'][i%4],
   appearanceSeed:hash(seed+i+83),skills:values(hash(seed+i*313),'skill'),
-  experience:values(0,'skill')&&Object.fromEntries(SKILL_NAMES.map(k=>[k,0])) as ShootingSkills,
+  experience:Object.fromEntries(SKILL_NAMES.map(k=>[k,0])) as ShootingSkills,
   aptitudes:values(hash(seed+i*733),'aptitude'),
   missions:0,successful:0,injuries:0,recoveryDays:0,status:'available',
   weapon,magazine:capacity,reserve,shotsFired:0,joinedDay:1};
@@ -127,18 +129,34 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
  const gained=r.outcome==='success'?contract.reward:0;
  const participants=new Set(r.participatingIds);
  const casualties=new Set(r.casualties);
+ const gainedSkills:SkillGains[]=[];
+ const careerEvents:CareerEvent[]=[];
  const operators=c.operators.map(o=>{
   if(!participants.has(o.id))return {...o,recoveryDays:Math.max(0,o.recoveryDays-1)};
-  return {...o,missions:o.missions+1,successful:o.successful+(r.outcome==='success'?1:0),
-   recoveryDays:Math.max(o.recoveryDays-1,casualties.has(o.id)?2:0)};
+  if(o.missions===0)careerEvents.push({id:r.id+'-'+o.id+'-first',day:c.day,operatorId:o.id,
+   operationId:r.id,kind:'first-deployment',detail:'First field operation'});
+  if(r.outcome==='success'&&o.successful===0)careerEvents.push({
+   id:r.id+'-'+o.id+'-success',day:c.day,operatorId:o.id,operationId:r.id,
+   kind:'first-success',detail:'First successful operation'});
+  const performance=r.performance?.find(p=>p.id===o.id);
+  if(performance?.injuryStage)careerEvents.push({id:r.id+'-'+o.id+'-wound',
+   day:c.day,operatorId:o.id,operationId:r.id,kind:'wounded',
+   detail:'Wounded during '+contract.title});
+  const base={...o,missions:o.missions+1,
+   successful:o.successful+(r.outcome==='success'?1:0),
+   recoveryDays:Math.max(0,o.recoveryDays-1,casualties.has(o.id)?2:0)};
+  if(!performance)return base;
+  const progress=progressOperator(base,performance,r.outcome==='success');
+  gainedSkills.push(progress.gains);
+  return progress.operator;
  });
  const day=c.day+1;
  const contracts=c.contracts.map(k=>k.id===r.contractId?
   {...k,status:r.outcome==='success'?'completed' as const:'failed' as const}:
   k.status==='available'&&k.deadline<day?{...k,status:'expired' as const}:k);
  return {...c,day,funds:c.funds+gained,operators,
-  activeContractId:null,history:[...c.history,r].slice(-200),
-  journal:[...c.journal,...r.events].slice(-1000),
+  activeContractId:null,history:[...c.history,{...r,gains:gainedSkills}].slice(-200),
+  journal:[...c.journal,...r.events,...careerEvents].slice(-1000),
   appliedResults:[...c.appliedResults,r.id].slice(-500),
   contracts:createContracts(c.seed,day,contracts)};
 }
