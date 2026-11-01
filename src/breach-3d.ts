@@ -495,6 +495,10 @@ export class TacticalScene3D{
       if(!door.pairedWith||door.hinge!=='a')
         this.box(frame,length/2,18.5,0,4,37,10,doorTrim);
       this.box(frame,0,37,0,length+7,4,12,doorTrim);
+      // Continuous rebates and cap trim clarify the manufactured jamb.
+      this.box(frame,0,39.1,1.2,length+9,1.7,12,doorTrim,false);
+      for(const side of [-1,1])
+        this.box(frame,side*length*.50,19,4,1.2,34,2,doorTrim,false);
       const threshold=this.box(frame,0,.32,0,length,1.2,13,
         doorTrim,false);
       const leaf=new THREE.Group();
@@ -510,6 +514,9 @@ export class TacticalScene3D{
         for(let y=2;y<35;y+=5)
           this.box(leaf,0,y,0,length-3,4.7,4,metal,false);
         this.box(frame,0,42,0,length+10,9,13,metal,false);
+        for(const side of [-1,1])
+          this.box(frame,side*length*.49,20,2.1,2,38,4,metal,false); // shutter runners
+        this.box(leaf,0,4,2.5,length*.37,2,1.4,doorTrim,false); // lower pull
       }else{
         const style=door.style??'wood';
         const panel=style==='wood'?doorMat:style==='exit'?
@@ -526,8 +533,13 @@ export class TacticalScene3D{
               this.box(leaf,middle+sx*length*.32,y,2.8,1,10,.7,doorTrim,false);
           }
         }
-        for(const z of [-3,3])this.box(leaf,(invert?-1:1)*length*.7,
-          18,z,3,3,2,metal,false);
+        for(const z of [-3,3]){
+          // Lock-set plates and handles remain attached to the swing leaf.
+          const handleX=(invert?-1:1)*length*.70;
+          this.box(leaf,handleX,18,z,3,5,1.9,metal,false);
+          this.box(leaf,handleX+(invert?2:-2),18,z*1.12,4,1.4,1.6,metal,false);
+          this.box(leaf,handleX,13,z,1,1.3,1.7,metal,false);
+        }
         if(style==='steel'||style==='reinforced'){
           for(const y of style==='reinforced'?[6,17,28]:[8,28])
             this.box(leaf,middle,y,2.5,length*.78,2.2,1.2,metal,false);
@@ -585,6 +597,7 @@ export class TacticalScene3D{
       this.box(group,0,baseTop/2,0,opening.width,baseTop,9,wallMat);
       this.box(group,0,(glassTop+40)/2,0,opening.width,
         40-glassTop,9,wallMat);
+      this.box(group,0,baseTop+.1,4,opening.width+3,2,12,trim,false); // sill projection
       const glass=this.box(group,0,baseTop+glassHeight/2,0,
         opening.width-3,glassHeight,1,paneMat,false);
       glass.castShadow=false;
