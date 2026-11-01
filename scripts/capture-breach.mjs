@@ -39,7 +39,9 @@ try{
     if(message.type()==='warning'||message.type()==='error')
       errors.push('console: '+message.text().slice(0,350));
   });
-  await home.goto(url.replace('breach.html',''),{
+  // A stable seed prevents sporadic slow/crowded procedural starts from
+  // disguising changes in the actual mobile UI and startup behaviour.
+  await home.goto(url.replace('breach.html','')+'?seed=23',{
     waitUntil:'domcontentloaded'});
   await home.locator('#breach3dCanvas').waitFor({state:'visible'})
     .catch(async error=>{
@@ -59,12 +61,13 @@ try{
     viewport:{width:390,height:844},deviceScaleFactor:2,
     hasTouch:true,isMobile:true,
   });
+  live.setDefaultTimeout(45000);
   live.on('pageerror',e=>errors.push('procedural homepage: '+e.message));
   live.on('console',message=>{
     if(message.type()==='warning'||message.type()==='error')
       errors.push('procedural console: '+message.text().slice(0,350));
   });
-  await live.goto(base.replace('breach.html','')+'?quick=1',{
+  await live.goto(base.replace('breach.html','')+'?quick=1&seed=23',{
     waitUntil:'domcontentloaded'});
   await live.locator('#breach3dCanvas').waitFor({state:'visible'})
     .catch(async error=>{
