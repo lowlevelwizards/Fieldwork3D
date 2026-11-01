@@ -13,6 +13,8 @@ export type ClearanceResult={
   obstruction:boolean;blocked:boolean;retraction:number;
   blocker:FireBlock;muzzle:MuzzleSample;
 };
+/** 3.4 is the maximum valid underarm retraction supported by fitWeaponPose.
+ * Never retract the barrel beyond that rigid hand/stock solution. */
 const RETRACTION_STEPS=[0,1.15,2.35,3.4] as const;
 /** Returns the first viable rigid gun fit, never an ad hoc muzzle clamp.
  * All fits use the same weapon stock, grip, transform and barrel axis.
