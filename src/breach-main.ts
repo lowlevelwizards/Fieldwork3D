@@ -1029,6 +1029,8 @@ function updateHud(){
   ui.variant.disabled=campaignMode==='mission';
   ui.siteSize.disabled=campaignMode==='mission';
   ui.intelMode.disabled=campaignMode==='mission';
+  ui.restart.disabled=campaignMode==='mission';
+  ui.loadout.disabled=campaignMode==='mission';
   ui.intelMode.textContent='INTEL · '+selectedIntelMode.replace('-', ' ').toUpperCase();
   ui.flash.textContent='FLASH ×'+state.flashRemaining;
   ui.cancelTarget.hidden=!(state.phase==='planning'&&
@@ -2053,7 +2055,8 @@ ui.undo.addEventListener('click',()=>{undoPlan(state,selected);selectedNode=null
 ui.redo.addEventListener('click',()=>{redoPlan(state,selected);selectedNode=null;updateHud();});
 ui.wait.addEventListener('click',()=>{planWait(state,selected,.5);updateHud();});
 ui.loadout.addEventListener('click',()=>{
-  cycleWeapon(state,selected);updateHud();
+  if(campaignMode!=='mission')cycleWeapon(state,selected);
+  updateHud();
 });
 ui.reload.addEventListener('click',()=>{
   if(state.phase==='planning')planReload(state,selected);
@@ -2099,7 +2102,7 @@ ui.play.addEventListener('click',()=>{
    if(!returnAfterCampaignMission())reset();
   }else{looking=false;toggling(state);updateHud();}
 });
-ui.restart.addEventListener('click',()=>reset());
+ui.restart.addEventListener('click',()=>{if(campaignMode!=='mission')reset();});
 window.addEventListener('keydown',e=>{
   if(replaying){
     if(e.code==='Space'&&!e.repeat){e.preventDefault();replayPlaying=!replayPlaying;}
@@ -2110,8 +2113,9 @@ window.addEventListener('keydown',e=>{
   }
   if(e.code==='Space'&&!e.repeat){
     e.preventDefault();unlockAudio();
-    if(state.phase==='won'||state.phase==='lost')reset();
-    else toggling(state);updateHud();
+    if(state.phase==='won'||state.phase==='lost'){
+      if(!returnAfterCampaignMission())reset();
+    }else toggling(state);updateHud();
   }
   if(e.code==='Digit1')selectUnit('rook');
   if(e.code==='Digit2')selectUnit('moss');
@@ -2130,7 +2134,7 @@ window.addEventListener('keydown',e=>{
     if(e.shiftKey)redoPlan(state,selected);
     else undoPlan(state,selected);updateHud();
   }
-  if(e.code==='KeyR'&&!e.repeat)reset();
+  if(e.code==='KeyR'&&!e.repeat&&campaignMode!=='mission')reset();
   if(e.code==='KeyV'&&!e.repeat)cameraMode(viewMode==='iso'?'top':'iso');
   if(e.code==='KeyQ'&&!e.repeat)turnCamera(-Math.PI/8);
   if(e.code==='KeyE'&&!e.repeat)turnCamera(Math.PI/8);
