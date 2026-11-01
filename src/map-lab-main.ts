@@ -35,8 +35,11 @@ function updateLabels(){
   button.textContent=(room.purpose??room.kind).toUpperCase();
   button.title=room.id+' · '+Math.round(room.w)+' × '+Math.round(room.h);
   button.addEventListener('click',()=>{
+   const contract=assessments.find(a=>a.roomIds.includes(room.id));
    status.textContent=room.id+' / '+(room.purpose??room.kind)+' · '+
-    Math.round(room.w)+' × '+Math.round(room.h)+' units';
+    Math.round(room.w)+' × '+Math.round(room.h)+' units'+
+    (contract?'\nRequired missing: '+(contract.missing.map(group=>group.join(' OR ')).join(', ')||'none')+
+      '\nExpected missing: '+(contract.missingExpected.join(', ')||'none'):'');
   });
   labelLayer.append(button);markers.push({node:button,p:{x:room.x+room.w/2,y:room.y+room.h/2}});
  }
