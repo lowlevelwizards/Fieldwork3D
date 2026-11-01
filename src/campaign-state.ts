@@ -20,7 +20,7 @@ import {initialWeaponConfiguration,readWeaponConfiguration,changeWeaponPlatform,
  from './equipment-weapon-assemblies.ts';
 import {attachmentPrice,readAttachmentStock,returnAttachments}
  from './equipment-weapon-inventory.ts';
-import {recordWeaponRounds,type SerializedWeapon} from './equipment-weapon-identity.ts';
+import {recordWeaponRounds,serviceSerializedWeapon,type SerializedWeapon} from './equipment-weapon-identity.ts';
 import {reconcileCampaignWeaponOwnership} from './equipment-weapon-ownership.ts';
 import {kitMedicalSupplies,normalizedMedicalSupplies,medicalSupplyCount,
  type FieldMedicalSupplies} from './equipment-medical-supplies.ts';
@@ -576,6 +576,22 @@ export function armorRepairCost(o:CampaignOperator):number{
  const max=initialArmorIntegrity(o.loadout);
  return Math.max(0,max.torso-o.armorCondition.torso)*30+
   Math.max(0,max.head-o.armorCondition.head)*24;
+}
+/** Explicit workshop-only paid firearm service; inventory identity is preserved. */
+export function weaponServiceCost(w?:SerializedWeapon):number{
+ if(!w||w.condition>=100)return 0;
+ return 40+(100-w.condition)*4;
+}
+export function serviceCampaignWeapon(c:CampaignState,id:string):CampaignState{
+ if(c.activeContractId)return c;
+ const operator=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
+ if(!operator)return c;
+ const weapon=c.inventory.serializedWeapons?.find(w=>w.id===operator.weaponSerialId);
+ const cost=weaponServiceCost(weapon);
+ if(!weapon||cost===0||c.funds<cost)return c;
+ return {...c,funds:c.funds-cost,inventory:{...c.inventory,
+  serializedWeapons:c.inventory.serializedWeapons?.map(w=>w.id===weapon.id?
+   serviceSerializedWeapon(w,c.day,100-w.condition):w)}};
 }
 export function repairCampaignArmor(c:CampaignState,id:string):CampaignState{
  if(c.activeContractId)return c;
