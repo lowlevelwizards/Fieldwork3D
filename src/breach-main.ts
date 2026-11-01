@@ -46,6 +46,7 @@ import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOpera
  deleteCampaignKitPreset,renameCampaignOperator,cycleCampaignAppearance,
  type CampaignState,type CampaignReport} from './campaign-state.ts';
 import {loadMovementScale} from './equipment-loadouts.ts';
+import {initialArmorIntegrity} from './equipment-armor.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {exportCampaign,importCampaign} from './campaign-persistence.ts';
 import {careerEventsForOperation} from './campaign-history.ts';
@@ -194,6 +195,8 @@ function applyCampaignSkills(){
    a.name=m.callsign;a.skills={...m.skills};a.weapon=m.weapon;
    a.appearanceSeed=m.appearanceSeed;
    a.equipment=m.loadout;
+   const protection=initialArmorIntegrity(m.loadout);
+   a.armorIntegrity=protection.torso;a.helmetIntegrity=protection.head;
    a.loadMovementScale=loadMovementScale(m.loadout);
    a.magazine=m.magazine;a.reserve=m.reserve;
    a.insertedMagazineId=a.id+'/'+a.weapon+'/loaded';

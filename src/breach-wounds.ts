@@ -1,13 +1,13 @@
 /** 132: compact authoritative wound/collapse facts.
  * Shot metadata, not renderer RNG, selects the visual pose family.
  */
-export type WoundRegion='torso'|'arm'|'leg';
+export type WoundRegion='torso'|'head'|'arm'|'leg';
 export type FallPose='forward'|'back'|'left'|'right'|'slump';
 export const wrap=(v:number)=>Math.atan2(Math.sin(v),Math.cos(v));
 export function hitRegion(shotId:number):WoundRegion{
   // Mostly torso; coarse regions until height-aware hitboxes are available.
   const hash=(Math.imul(shotId+1,2654435761)>>>0)/4294967296;
-  return hash<.64?'torso':hash<.83?'arm':'leg';
+  return hash<.60?'torso':hash<.69?'head':hash<.85?'arm':'leg';
 }
 export function chooseFall(heading:number,shotYaw:number,
   supported:boolean=false):FallPose{

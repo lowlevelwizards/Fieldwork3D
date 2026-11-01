@@ -66,6 +66,7 @@ import {operationBrief,assessOperation,
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {initialIntel,observeIntel,discoverContactCover,routeWithIntel,intelPassable,doorKnown,
   type IntelMode,type IntelState} from './breach-intel.ts';
+import {resolveArmorImpact} from './equipment-armor.ts';
 import {magazineKit,fullestMagazineIndex,
   reloadDuration as reloadTiming,type MagazineItem,type ReloadMode}
   from './breach-magazines.ts';
@@ -119,6 +120,7 @@ export type TeamActor=Operator & {
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
   appearanceSeed:number;equipment?:EquipmentLoadout;
   loadMovementScale?:number;
+  armorIntegrity:number;helmetIntegrity:number;
   firePolicy:FirePolicy;suppressPoint:Pt|null;focusTargetId:string|null;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
   lastFireRepositionAt:number;
@@ -203,6 +205,7 @@ const withActions=(a:Operator):TeamActor=>({
   lastBashAt:-100,lastBashRole:null,
   lastLaneWarnAt:-100,lastFireBlock:'clear',
   fireMode:'point',burstCount:0,skills:{...DEFAULT_SKILLS},appearanceSeed:0,
+  armorIntegrity:0,helmetIntegrity:0,
   firePolicy:'engage',suppressPoint:null,focusTargetId:null,
   weapon:'carbine',injuryStage:0,defense:null,watch:null,
   defenseUntil:0,surrendered:false,lastFireRepositionAt:-100,
@@ -2307,20 +2310,28 @@ function fire(s:Session,a:TeamActor,dt:number){
   emitMaterialEvents(s,muzzlePoint,far,strike.materialHits,
     hit?fractionToTarget:1);
   const end=hit?clone(target.p):strike.end;
-  const impact=hit?{end,surface:'blood' as const}:strike;
   a.recoil=Math.min(.9,a.recoil+profile.recoilKick*
     (a.burstCount>2?1.20:1)*
     (2-skillMultiplier(a.skills.recoilControl,.42)));
   a.stability=Math.max(0,a.stability-
     (mode==='point'?.23:.16)*
     (2-skillMultiplier(a.skills.composure,.38))-a.recoil*.10);
+  const shotId=s.nextShotId++;
+  const region=hitRegion(shotId);
   const healthBefore=target.health;
-  const severity=hit&&s.site?woundSeverity(weapon,range,
+  const rawSeverity=hit&&s.site?woundSeverity(weapon,range,
     nearCover(target.p,a.p),random(s)):1;
+  const protection=resolveArmorImpact({kit:target.equipment,region,
+    incomingYaw:yaw,targetHeading:target.heading,
+    penetration:weapon.penetration,severity:rawSeverity,
+    shotId,torso:target.armorIntegrity,head:target.helmetIntegrity});
+  const severity=protection.severity;
   const nextStage=Math.min(3,target.injuryStage+(hit?severity:0));
   const healthAfter=hit?
     (s.site?nextStage>=3?0:4-nextStage:Math.max(0,healthBefore-1)):
     healthBefore;
+  const impact=hit?{end,surface:protection.blocked&&severity===0?
+    'metal' as const:'blood' as const}:strike;
   s.sparks.push({p:clone(a.p),side:a.side,age:0});
   // Immutable shot identity lets 2D/3D attach recoil and damage effects to
   // the correct actors without guessing from proximity or team color.
@@ -2329,8 +2340,6 @@ function fire(s:Session,a:TeamActor,dt:number){
   retainImpactMark(s,{id:s.nextEffectId++,p:clone(end),
     surface:impact.surface,height:impactHeight,age:0});
 
-  const shotId=s.nextShotId++;
-  const region=hitRegion(shotId);
   const nearSolid=COVER.some(c=>!c.low&&
     Math.abs(target.p.x-c.x)<=c.w/2+12&&
     Math.abs(target.p.y-c.y)<=c.h/2+12);
@@ -2370,6 +2379,8 @@ function fire(s:Session,a:TeamActor,dt:number){
   target.suppression=Math.min(1,target.suppression+.31);
   if(target.side==='red')target.morale=Math.max(0,target.morale-.035);
   if(hit){
+    target.armorIntegrity=protection.torso;
+    target.helmetIntegrity=protection.head;
     target.health=healthAfter;
     target.injuryStage=s.site?nextStage:Math.min(3,target.injuryStage+1);
     target.lastHitAt=s.seconds;
@@ -2381,8 +2392,9 @@ function fire(s:Session,a:TeamActor,dt:number){
     target.lastHitSeverity=severity;
     if(target.side==='red')target.morale=Math.max(0,
       target.morale-.18*severity);
-    battleEvent(s,healthAfter<=0?'down':'wound',target,target.p,
-      target.name+' '+injuryOf(target.injuryStage).toUpperCase());
+    battleEvent(s,healthAfter<=0?'down':severity===0?'impact':'wound',target,target.p,
+      target.name+' '+(severity===0?'ARMOR STOPPED HIT':
+        injuryOf(target.injuryStage).toUpperCase()));
     a.hits++;
     if(range>weapon.optimalRange)a.longHits++;
     if(target.health<=0){
