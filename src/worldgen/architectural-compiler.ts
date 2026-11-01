@@ -198,21 +198,21 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  const openingRoles:Partial<Record<BuildingArchetype,readonly string[]>>={
   garage:['bay','workshop','waiting'],
   warehouse:['loading','storage','packing'],
-  retail:['sales'],restaurant:['dining'],
+  retail:['sales','checkout'],restaurant:['dining','reception'],
   utility:['service','equipment','control']
  };
  const openPreferred=openingRoles[kind]??[];
  const portalCandidates=walls.map((wall,index)=>{
   const length=span(wall);
   const industrial=['garage','warehouse','utility'].includes(kind);
-  if(length<(industrial?135:158))return null;
+  if(length<(industrial?135:142))return null;
   const p={x:(wall.a.x+wall.b.x)/2,y:(wall.a.y+wall.b.y)/2};
   const vx=(wall.b.x-wall.a.x)/length,vy=(wall.b.y-wall.a.y)/length;
   const inward=interior({x:p.x-vy*17,y:p.y+vx*17})??
     interior({x:p.x+vy*17,y:p.y-vx*17});
   const roleIndex=openPreferred.indexOf(inward?.role??'');
   if(roleIndex<0||Math.hypot(p.x-frontMid.x,p.y-frontMid.y)<
-    (['garage','warehouse','utility'].includes(kind)?76:120))return null;
+    (['garage','warehouse','utility'].includes(kind)?76:78))return null;
   return {wall,index,length,roleIndex,p};
  }).filter((v):v is NonNullable<typeof v>=>v!==null)
    .sort((a,b)=>a.roleIndex-b.roleIndex||b.length-a.length);
