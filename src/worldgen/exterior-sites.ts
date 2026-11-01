@@ -7,6 +7,7 @@ import {propDefinition} from './asset-catalog.ts';
 import {arrivalAccessLane,overlapsArrivalLane} from './property-access-lane.ts';
 import {PARKING_VEHICLES,parkingStallCandidates} from './parking-stalls.ts';
 import {SERVICE_EDGE_FIXTURES,serviceYardEdgeCandidates} from './service-yard-layout.ts';
+import {landscapeEdgeCandidates} from './landscape-edge-program.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const overlaps=(a:Obstacle,b:Obstacle)=>Math.abs(a.x-b.x)<(a.w+b.w)/2+17&&Math.abs(a.y-b.y)<(a.h+b.h)/2+17;
 export function addExteriorProperty(site:Site,seed:number):Site{
@@ -187,6 +188,32 @@ export function addExteriorProperty(site:Site,seed:number):Site{
        candidate.x-w/2<room.x+room.w&&candidate.y+h/2>room.y&&
        candidate.y-h/2<room.y+room.h))continue;
      cover.push(candidate);inserted++;
+   }
+ }
+ // The landscaped perimeter is a sparse, legible set of real objects,
+ // not a scatter cloud. Every object goes through the same collision,
+ // tactical spawn and protected arrival-lane tests as furnishing.
+ for(const zone of zones){
+   const points=landscapeEdgeCandidates(zone,seed);
+   for(const point of points){
+     const asset=propDefinition(point.fixture);if(!asset)continue;
+     const candidate:Obstacle={x:point.x,y:point.y,
+       w:asset.width,h:asset.depth,fixture:point.fixture,
+       low:asset.cover==='low'};
+     const {x,y,w,h}=candidate;
+     if(x-w/2<zone.x-zone.w/2+9||x+w/2>zone.x+zone.w/2-9||
+       y-h/2<zone.y-zone.h/2+9||y+h/2>zone.y+zone.h/2-9)continue;
+     if(x-w/2<bounds.minX+17||x+w/2>bounds.maxX-17||
+       y-h/2<bounds.minY+22||y+h/2>bounds.maxY-22)continue;
+     if(site.rooms.some(room=>x+w/2>room.x&&x-w/2<room.x+room.w&&
+       y+h/2>room.y&&y-h/2<room.y+room.h))continue;
+     if(protectedPoints.some(p=>Math.abs(p.x-x)<w/2+31&&
+       Math.abs(p.y-y)<h/2+31))continue;
+     if(site.doors.some(d=>distance({x,y},{
+       x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2})<66))continue;
+     if(overlapsArrivalLane(site,zone,candidate))continue;
+     if(cover.some(o=>overlaps(o,candidate)))continue;
+     cover.push(candidate);
    }
  }
  return {...site,exteriorZones:zones,cover};
