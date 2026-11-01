@@ -2,6 +2,8 @@
  * Tactical rules continue to own collision; the library is metadata only.
  */
 import {propCatalog, type PropDefinition} from './asset-catalog.ts';
+import {CANONICAL_ASSET_DIMENSIONS} from './world-scale.ts';
+import {DETAILED_FIXTURE_IDS} from './detailed-fixture-visuals.ts';
 
 export type AssetLibraryEntry = {
   id:string; label:string; category:string; origin:'fixture'|'dressing'|'structure';
@@ -51,20 +53,20 @@ const architecture:readonly AssetLibraryEntry[] = [
   {id:'door:exit',label:'Emergency exit door',width:48,depth:12,height:40,category:'Openings'},
   {id:'shutter',label:'Industrial shutter and frame',width:96,depth:12,height:45,category:'Openings'},
   {id:'arch',label:'Archway',width:72,depth:10,height:40,category:'Openings'},
-  {id:'wall-detail:poster',label:'Poster',width:22,depth:2,height:25,category:'Wall Details'},
-  {id:'wall-detail:picture',label:'Picture',width:22,depth:2,height:25,category:'Wall Details'},
-  {id:'wall-detail:noticeboard',label:'Noticeboard',width:22,depth:2,height:25,category:'Wall Details'},
-  {id:'wall-detail:light-switch',label:'Light Switch',width:22,depth:2,height:25,category:'Wall Details'},
-  {id:'wall-detail:electrical-box',label:'Electrical Box',width:22,depth:2,height:25,category:'Wall Details'},
-  {id:'wall-detail:breaker-panel',label:'Breaker Panel',width:22,depth:2,height:25,category:'Wall Details'},
-  {id:'wall-detail:exit-sign',label:'Exit Sign',width:22,depth:2,height:25,category:'Wall Details'},
+  {id:'wall-detail:poster',label:'Poster',width:24,depth:1,height:16,category:'Wall Details'},
+  {id:'wall-detail:picture',label:'Picture',width:22,depth:1,height:16,category:'Wall Details'},
+  {id:'wall-detail:noticeboard',label:'Noticeboard',width:26,depth:2,height:16,category:'Wall Details'},
+  {id:'wall-detail:light-switch',label:'Light Switch',width:5,depth:1.3,height:3,category:'Wall Details'},
+  {id:'wall-detail:electrical-box',label:'Electrical Box',width:16,depth:3,height:16,category:'Wall Details'},
+  {id:'wall-detail:breaker-panel',label:'Breaker Panel',width:16,depth:3,height:19,category:'Wall Details'},
+  {id:'wall-detail:exit-sign',label:'Exit Sign',width:17,depth:1.3,height:7,category:'Wall Details'},
 ].map(item=>({...item,origin:'structure' as const,cover:'none' as const,
   solid:false,rooms:[] as readonly string[],presentation:'architectural' as const}));
 const fromProp=(item:PropDefinition):AssetLibraryEntry=>({
   id:item.id,label:label(item.id),category:item.category,
   origin:'fixture',width:item.width,depth:item.depth,height:item.height,
   cover:item.cover,solid:item.solid,rooms:item.rooms,
-  presentation:bespoke.has(item.id)?'bespoke':'shared-shape',
+  presentation:bespoke.has(item.id)||DETAILED_FIXTURE_IDS.has(item.id)?'bespoke':'shared-shape',
 });
 export function assetLibrary():readonly AssetLibraryEntry[]{
   const props=propCatalog().map(fromProp);
@@ -87,6 +89,8 @@ export function assetLibraryProblems():string[]{
     seen.add(item.id);
     if([item.width,item.depth,item.height].some(n=>!Number.isFinite(n)||n<=0))
       issues.push('Invalid dimensions: '+item.id);
+    if(item.origin==='fixture'&&!CANONICAL_ASSET_DIMENSIONS[item.id])
+      issues.push('Unscaled fixture: '+item.id);
     if(item.origin==='fixture'&&item.rooms.length===0)
       issues.push('No allowed rooms: '+item.id);
   }

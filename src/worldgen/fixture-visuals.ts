@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import {type Obstacle} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
+import {renderDetailedFixture} from './detailed-fixture-visuals.ts';
 export type FixtureVisualContext={
  box:(parent:THREE.Object3D,x:number,y:number,z:number,
    w:number,h:number,d:number,material:THREE.Material,cast?:boolean)=>THREE.Mesh;
@@ -18,25 +19,31 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
       const material=i%3===0?wood:i%3===1?steel:olive;
       const w=c.w,d=c.h;
       if(['bed','exam-bed','guest'].includes(fixture)){
-        ctx.box(group,c.x,5,c.y,w,8,d,material);
-        ctx.box(group,c.x,9.6,c.y,w-3,2.8,d-3,olive,false);
-        ctx.box(group,c.x-w*.32,11.2,c.y,w*.22,2,d*.7,steel,false);
+        const height=asset?.height??19;
+        ctx.box(group,c.x,height*.33,c.y,w,height*.66,d,material);
+        ctx.box(group,c.x,height*.75,c.y,w-3,height*.20,d-3,olive,false);
+        ctx.box(group,c.x-w*.32,height*.92,c.y,w*.22,2,d*.7,steel,false);
       }else if(['table','desk','counter','workbench','cart','dining-table','coffee-table','meeting-table'].includes(fixture)){
-        const top=fixture==='counter'?14:fixture==='workbench'?13:11;
+        const top=asset?.height??19;
         ctx.box(group,c.x,top,c.y,w,3,d,material);
         for(const sx of [-1,1])for(const sz of [-1,1])
           ctx.box(group,c.x+sx*(w/2-3),top/2,c.y+sz*(d/2-3),
             3,top,3,steel);
-        if(fixture==='counter')ctx.box(group,c.x,6,c.y,w-5,9,d-5,wood);
+        if(fixture==='counter')ctx.box(group,c.x,top*.42,c.y,w-5,top*.76,d-5,wood);
+        if(fixture==='cart'){
+          ctx.box(group,c.x,4,c.y,w*.83,1.8,d*.84,olive);
+          for(const sx of [-1,1])for(const sz of [-1,1])
+            ctx.box(group,c.x+sx*w*.38,2,c.y+sz*d*.34,4,4,4,metal);
+        }
       }else if(['fridge','cooler','wardrobe','locker','filing-cabinet'].includes(fixture)){
-        const height=Math.max(24,Math.min(40,asset?.height??32));
+        const height=asset?.height??32;
         const body=ctx.solid(fixture==='cooler'?0x748985:0x8a8c83);
         ctx.box(group,c.x,height/2,c.y,w,height,d,body);
         ctx.box(group,c.x+w*.42,height*.55,c.y+d/2+.7,2,height*.35,2,steel,false);
         if(fixture==='fridge'||fixture==='cooler')
           ctx.box(group,c.x,Math.min(20,height*.55),c.y+d/2+1,w-4,1.4,2,steel,false);
       }else if(['stove','microwave','kitchen-island','sink','checkout'].includes(fixture)){
-        const height=fixture==='microwave'?16:23;
+        const height=asset?.height??23;
         ctx.box(group,c.x,height/2,c.y,w,height,d,material);
         if(fixture==='stove'){
           const burner=ctx.solid(0x222b2c);
@@ -56,9 +63,10 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
       }else if(fixture==='toilet'||fixture==='bathtub'){
         const porcelain=ctx.solid(0xb9b9a9);
         if(fixture==='toilet'){
-          ctx.box(group,c.x,8,c.y+d*.17,w*.63,16,d*.6,porcelain);
-          ctx.box(group,c.x,15,c.y-d*.34,w*.75,29,d*.25,porcelain);
-          ctx.box(group,c.x,17,c.y+d*.15,w*.7,2,d*.58,steel,false);
+          const top=asset?.height??19;
+          ctx.box(group,c.x,top*.34,c.y+d*.17,w*.63,top*.67,d*.6,porcelain);
+          ctx.box(group,c.x,top*.50,c.y-d*.34,w*.75,top,d*.25,porcelain);
+          ctx.box(group,c.x,top*.61,c.y+d*.15,w*.7,2,d*.58,steel,false);
         }else{
           ctx.box(group,c.x,11,c.y,w,21,d,porcelain);
           ctx.box(group,c.x,15,c.y,w*.75,3,d*.68,steel,false);
@@ -78,7 +86,7 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           }
         }
       }else if(['cabinet','dresser','machine','laundry-machine','generator','control-panel','tool-chest'].includes(fixture)){
-        const tall=Math.max(22,Math.min(37,asset?.height??27));
+        const tall=asset?.height??27;
         ctx.box(group,c.x,tall/2,c.y,w,tall,d,material);
         for(const level of [tall*.32,tall*.65])
           ctx.box(group,c.x,level,c.y+d/2+1,w-4,1.5,2,steel,false);
@@ -107,15 +115,17 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           group.add(hub);
         }
         if(model==='van'){
-          ctx.box(group,c.x,23,c.y,w*.78,20,d*.86,paint);
-          ctx.box(group,c.x-w*.32,23,c.y-d*.44,w*.21,13,1,glass,false);
-          ctx.box(group,c.x+w*.27,24,c.y,2,13,d*.7,glass,false);
+          const roof=asset?.height??42;
+          ctx.box(group,c.x,(15+roof)/2,c.y,w*.78,roof-15,d*.86,paint);
+          ctx.box(group,c.x-w*.32,(16+roof)/2,c.y-d*.44,
+            w*.21,(roof-16)*.65,1,glass,false);
+          ctx.box(group,c.x+w*.27,(16+roof)/2,c.y,2,(roof-16)*.62,d*.7,glass,false);
         }else{
           const truck=model==='pickup',high=model==='suv';
           const cabWidth=truck?w*.37:high?w*.63:w*.52;
           const cabCenter=truck?c.x-w*.20:c.x-w*.035;
-          const cabHeight=high?17:truck?16:12;
-          ctx.box(group,cabCenter,15.5+cabHeight*.45,c.y,
+          const cabHeight=Math.max(12,(asset?.height??32)-15);
+          ctx.box(group,cabCenter,15+cabHeight*.5,c.y,
             cabWidth,cabHeight,d*.79,paint);
           const windshield=ctx.box(group,cabCenter+cabWidth*.40,
             16+cabHeight*.40,c.y,1.6,cabHeight*.65,d*.70,glass,false);
@@ -141,21 +151,31 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           ctx.box(group,c.x+sx*w*.515,12,c.y+d*.26,1.2,4,d*.17,lamp,false);
         }
       }else if(fixture==='chair'||fixture==='bench'){
-        ctx.box(group,c.x,8,c.y,w,3,d,wood);
-        ctx.box(group,c.x-w*.44,14,c.y,3,15,d,material);
+        const seat=10.4;
+        ctx.box(group,c.x,seat,c.y,w*.88,3,d*.87,wood);
+        const chairHeight=asset?.height??25;
+        ctx.box(group,c.x,(chairHeight+10)/2,c.y-d*.43,
+          w*.87,chairHeight-10,3,material);
+        for(const sx of [-1,1])for(const sz of [-1,1])
+          ctx.box(group,c.x+sx*w*.35,seat*.48,c.y+sz*d*.34,
+            2.8,seat,2.8,steel);
+        ctx.box(group,c.x,seat+2,c.y,w*.68,.9,d*.66,olive,false);
       }else if(fixture==='sofa'||fixture==='armchair'){
-        const back=Math.min(20,asset?.height??20);
+        const back=asset?.height??24;
         ctx.box(group,c.x,6,c.y,w,9,d,material);
-        ctx.box(group,c.x,back/2+4,c.y-d*.38,w,back,d*.24,material);
+        ctx.box(group,c.x,back/2,c.y-d*.38,w,back,d*.24,material);
         for(const sx of [-1,1])ctx.box(group,c.x+sx*(w/2-3),8,c.y,5,13,d,steel);
         const count=fixture==='armchair'?1:2;
         for(let n=0;n<count;n++)ctx.box(group,c.x+(n-(count-1)/2)*w/count,
           11,c.y+2,Math.max(4,w/count-3),3,d*.63,olive,false);
       }else if(fixture==='tv-stand'){
-        ctx.box(group,c.x,6,c.y,w,12,d,wood);
-        ctx.box(group,c.x,17,c.y,w*.78,19,2,steel,false);
+        const height=asset?.height??21;
+        ctx.box(group,c.x,height*.28,c.y,w,height*.56,d,wood);
+        ctx.box(group,c.x,height*.74,c.y-d*.15,w*.78,height*.50,2,steel,false);
+        ctx.box(group,c.x,height*.74,c.y-d*.15+1.1,
+          w*.70,height*.42,.4,ctx.solid(0x667f80,.33),false);
       }else if(fixture==='barrel'||fixture==='tank'||fixture==='tire-stack'){
-        const top=Math.min(36,asset?.height??22),radius=Math.min(w,d)*.43;
+        const top=asset?.height??22,radius=Math.min(w,d)*.43;
         const cylinder=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,top,12),steel);
         cylinder.position.set(c.x,top/2,c.y);cylinder.castShadow=true;group.add(cylinder);
         if(fixture==='tire-stack')for(const level of [4,11,18]){
@@ -165,7 +185,8 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         }
       }else if(fixture==='vehicle-lift'){
         ctx.box(group,c.x,2,c.y,w,4,d,steel);
-        for(const sx of [-1,1])ctx.box(group,c.x+sx*(w*.43),18,c.y,5,36,6,metal);
+        for(const sx of [-1,1])ctx.box(group,c.x+sx*(w*.43),
+          (asset?.height??37)/2,c.y,5,asset?.height??37,6,metal);
         ctx.box(group,c.x,9,c.y,w*.8,4,d*.55,wood);
       }else if(['hedge','bush','tree','plant','tree-broadleaf',
         'tree-conifer','tree-scrub','shrub-round','shrub-tall'].includes(fixture)){
@@ -224,11 +245,12 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         const signal=ctx.solid(0xb37c5a,.75);
         if(fixture==='mailbox'){
           ctx.box(group,c.x,9,c.y,3,18,3,dark);
-          ctx.box(group,c.x,21,c.y,w,10,d,enamel);
+          ctx.box(group,c.x,(asset?.height??27)-5,c.y,w,10,d,enamel);
           ctx.box(group,c.x+w*.43,25,c.y,2,8,2,signal,false);
         }else if(fixture==='trash-bin'){
-          ctx.box(group,c.x,10,c.y,w*.86,20,d*.86,dark);
-          ctx.box(group,c.x,21,c.y,w,3,d,enamel);
+          ctx.box(group,c.x,(asset?.height??23)*.45,c.y,
+            w*.86,(asset?.height??23)*.9,d*.86,dark);
+          ctx.box(group,c.x,(asset?.height??23)-1.5,c.y,w,3,d,enamel);
           ctx.box(group,c.x,22.7,c.y-d*.20,w*.6,1,d*.15,dark,false);
         }else if(fixture==='bollard'){
           ctx.box(group,c.x,11,c.y,5,22,5,safety);
@@ -240,8 +262,9 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           ctx.box(group,c.x,10,c.y,16,4,5,enamel,false);
           ctx.box(group,c.x,2,c.y,11,4,11,enamel);
         }else if(fixture==='utility-cabinet'){
-          ctx.box(group,c.x,17,c.y,w,34,d,enamel);
-          ctx.box(group,c.x,17,c.y+d*.51,w*.84,31,1,dark,false);
+          const height=asset?.height??37;
+          ctx.box(group,c.x,height/2,c.y,w,height,d,enamel);
+          ctx.box(group,c.x,height/2,c.y+d*.51,w*.84,height*.90,1,dark,false);
           ctx.box(group,c.x+w*.27,18,c.y+d*.56,2,7,1,safety,false);
           for(const yy of [8,13,18])ctx.box(group,c.x-w*.21,yy,c.y+d*.56,
             7,1,1,safety,false);
@@ -250,13 +273,15 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           for(const sx of [-.31,.31])ctx.box(group,c.x+w*sx,6.3,c.y,
             w*.2,.8,d*.74,safety,false);
         }else if(fixture==='parking-sign'){
-          ctx.box(group,c.x,21,c.y,2,42,2,dark);
-          ctx.box(group,c.x,35,c.y,w*.9,13,1,enamel,false);
-          ctx.box(group,c.x,35,c.y+.9,w*.55,1.8,.7,safety,false);
+          const height=asset?.height??44;
+          ctx.box(group,c.x,height*.5,c.y,2,height,2,dark);
+          ctx.box(group,c.x,height*.79,c.y,w*.9,13,1,enamel,false);
+          ctx.box(group,c.x,height*.79,c.y+.9,w*.55,1.8,.7,safety,false);
         }else if(fixture==='street-lamp'){
-          ctx.box(group,c.x,40,c.y,3,80,3,dark);
-          ctx.box(group,c.x,79,c.y-d*.22,14,3,4,dark,false);
-          ctx.box(group,c.x+5,77,c.y-d*.22,9,2,4,safety,false);
+          const height=asset?.height??82;
+          ctx.box(group,c.x,height*.49,c.y,3,height*.98,3,dark);
+          ctx.box(group,c.x,height*.95,c.y-d*.22,14,3,4,dark,false);
+          ctx.box(group,c.x+5,height*.93,c.y-d*.22,9,2,4,safety,false);
           ctx.box(group,c.x,2,c.y,7,4,7,enamel);
         }else if(fixture==='bike-rack'){
           for(const sx of [-.31,0,.31]){
@@ -280,9 +305,13 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
               2.3,2.3,across?8.5:8.5,nails,false);
         }
       }else if(fixture==='fence'){
-        for(const sx of [-1,1])ctx.box(group,c.x+sx*w*.47,11,c.y,
-          3,22,3,wood);
-        for(const h of [7,17])ctx.box(group,c.x,h,c.y,w,2,3,steel,false);
+        const height=asset?.height??24;
+        for(const sx of [-1,1])ctx.box(group,c.x+sx*w*.47,height/2,c.y,
+          3,height,3,wood);
+        for(const h of [height*.35,height*.75])
+          ctx.box(group,c.x,h,c.y,w,2,3,steel,false);
+      }else if(renderDetailedFixture(group,c,fixture,ctx,wood,steel,olive,metal)){
+        // Fully modeled specialty prop; same path in the lab and live maps.
       }else{
         const tall=asset?.height??(c.low?12:27);
         ctx.box(group,c.x,tall/2,c.y,w,tall,d,material);

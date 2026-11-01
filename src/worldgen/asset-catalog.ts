@@ -1,4 +1,5 @@
 /** Semantic prop definitions in established tactical world units. */
+import {CANONICAL_ASSET_DIMENSIONS} from './world-scale.ts';
 export type PropDefinition={
  id:string; category:string; width:number; depth:number; height:number;
  solid:boolean; cover:'none'|'low'|'high'; rooms:readonly string[];
@@ -49,6 +50,15 @@ definitions.push(
 );
 definitions.push({id:'window-boards',category:'security',width:52,depth:10,
  height:36,solid:true,cover:'high',rooms:['yard','garden','parking','service-yard']});
+// One physical envelope for collision, placement and live model geometry.
+for(const item of definitions){
+ const dimensions=CANONICAL_ASSET_DIMENSIONS[item.id];
+ if(dimensions){const [width,depth,height]=dimensions;
+   Object.assign(item,{width,depth,height});}
+}
+// Waist-high surfaces cannot be counted as tall/full cover.
+for(const item of definitions)
+ if(item.solid&&item.height<=28&&item.cover==='high')item.cover='low';
 export const PROP_CATALOG:ReadonlyMap<string,PropDefinition>=
  new Map(definitions.map(item=>[item.id,item]));
 export function propDefinition(id:string):PropDefinition|undefined{return PROP_CATALOG.get(id);}

@@ -102,8 +102,9 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    const choices=byZone[zone.kind]??available;
    const item=choices[(Math.floor(rng()*choices.length)+i)%choices.length];
    const asset=propDefinition(item);if(!asset)continue;
-   const w=Math.min(asset.width,Math.max(12,zone.w*.24));
-   const h=Math.min(asset.depth,Math.max(12,zone.h*.27));
+   // Preserve true dimensions: a car never becomes smaller than an operator.
+   const w=asset.width,h=asset.depth;
+   if(zone.w<w+22||zone.h<h+22)continue;
    let accepted=false;
    for(let attempt=0;attempt<12;attempt++){
     const x=zone.x+(rng()-.5)*Math.max(0,zone.w-w-20);
