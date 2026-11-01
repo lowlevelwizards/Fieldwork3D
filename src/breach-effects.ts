@@ -5,7 +5,9 @@ export type EjectedCasing={
  x:number;z:number;y:number;heading:number;
 };
 const hash=(n:number)=>((Math.imul(n^0x9e3779b9,1664525)+1013904223)>>>0)/4294967296;
-export const CASING_LIMIT=192;
+export const CASING_LIMIT=96;
+export const IMPACT_MARK_LIMIT=64;
+export const BLOOD_MARK_LIMIT=24;
 export function casingAt(c:EjectedCasing,time:number){
  const t=Math.max(0,time-c.at);
  const a=c.heading+Math.PI/2+(hash(c.id)*.5-.25);

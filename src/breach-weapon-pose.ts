@@ -108,7 +108,11 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       stockError:anchorGap(stock,stockPocket(input.handling))};
   }
   const data=weaponGrips(input.weapon),scale=data.lengthScale;
-  const yaw=clamp(input.yaw+(input.swayYaw??0),-1.1,1.1);
+  // Preserve the physical barrel's requested yaw even if the pelvis/chest
+  // lag behind during a pivot. Clamping here made visible guns aim sideways
+  // while simulation ballistics continued toward the actual target.
+  const requestedYaw=input.yaw+(input.swayYaw??0);
+  const yaw=Math.atan2(Math.sin(requestedYaw),Math.cos(requestedYaw));
   const recoilX=clamp(input.recoil,0,5);
   const recoilY=Math.min(1.1,Math.max(0,input.recoil)*.2);
   // Never replace a named silhouette with an unrelated fallback.
@@ -148,8 +152,9 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
           (stockPocket('ads').y-stockPocket('ready').y)*blendAim,
         z:normalPocket.z
       };
-    for(const offset of [0,-.035,.035]){
-      const candidateYaw=clamp(yaw+offset,-1.12,1.12);
+    // During deliberate aim, no visual-only angular offset is permitted.
+    for(const offset of (input.aimBlend??0)>=.20?[0]:[0,-.035,.035]){
+      const candidateYaw=yaw+offset;
       const cy=Math.cos(candidateYaw),sy=Math.sin(candidateYaw);
       const rotate=(x:number,y:number,z:number):[number,number,number]=>{
         const ux=cr*x*scale-sr*y;
