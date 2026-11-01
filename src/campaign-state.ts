@@ -3,6 +3,8 @@ import type {OperationKind} from './breach-operations.ts';
 import type {ShootingSkills} from './breach-skills.ts';
 import type {RosterState} from './breach-roster.ts';
 import {WEAPONS as COMBAT_WEAPONS} from './breach-combat.ts';
+import {initialEquipmentLoadout,readEquipmentLoadout,setEquipmentChoice,syncPrimaryWeapon,
+ type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
 import {progressOperator,type OperatorPerformance,type SkillGains} from './campaign-progression.ts';
 
 export type SkillName=keyof ShootingSkills;
@@ -15,6 +17,7 @@ export type CampaignOperator={
  missions:number;successful:number;injuries:number;recoveryDays:number;
  status:'available'|'reserve'|'lost'|'retired';weapon:'carbine'|'smg'|'rifle'|'shotgun';
  magazine:number;reserve:number;shotsFired:number;joinedDay:number;
+ loadout:EquipmentLoadout;
 };
 export type Contract={
  id:string;seed:number;kind:OperationKind;scale:'standard'|'expanded';
@@ -65,7 +68,8 @@ export function startingOperator(id:string,i:number,seed:number):CampaignOperato
   experience:Object.fromEntries(SKILL_NAMES.map(k=>[k,0])) as ShootingSkills,
   aptitudes:aptitude,trait:traitNames[strongest],distinctions:[],
   missions:0,successful:0,injuries:0,recoveryDays:0,status:'available',
-  weapon,magazine:capacity,reserve,shotsFired:0,joinedDay:1};
+  weapon,magazine:capacity,reserve,shotsFired:0,joinedDay:1,
+   loadout:initialEquipmentLoadout(weapon)};
 }
 export function createContracts(seed:number,day:number,existing:readonly Contract[]=[],pressure:Record<string,number>={}):Contract[]{
  const archive=existing.filter(c=>c.status!=='available'&&c.status!=='accepted').slice(-80);
@@ -103,7 +107,8 @@ export function migrateLegacyRoster(campaign:CampaignState,legacy:RosterState):C
   if(!old)return operator;
   return {...operator,callsign:old.callsign.slice(0,24),
    missions:old.missions,successful:old.successful,injuries:old.injuries,
-   recoveryDays:old.recovery,weapon:old.weapon,magazine:old.magazine,
+   recoveryDays:old.recovery,weapon:old.weapon,
+    loadout:initialEquipmentLoadout(old.weapon),magazine:old.magazine,
    reserve:old.reserve,shotsFired:old.fired};
  })};
 }
@@ -136,6 +141,7 @@ export function readCampaign(raw:string|null):CampaignState|null{
    [weapon,Number.isInteger(c.inventory?.weapons?.[weapon])&&
     c.inventory.weapons[weapon]>=0?c.inventory.weapons[weapon]:0])) as Record<CampaignOperator['weapon'],number>;
   const operators=c.operators.map(o=>({...o,
+   loadout:readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon),
    trait:typeof o.trait==='string'?o.trait:'Experienced Operator',
    distinctions:Array.isArray(o.distinctions)?
     o.distinctions.filter((x):x is string=>typeof x==='string').slice(0,32):[]
@@ -313,7 +319,8 @@ export function equipCampaignWeapon(c:CampaignState,id:string,
    [weapon]:c.inventory.weapons[weapon]-1,
    [m.weapon]:c.inventory.weapons[m.weapon]+1
   }},
-  operators:c.operators.map(o=>o.id===id?{...o,weapon,magazine:0,reserve:0}:o)};
+  operators:c.operators.map(o=>o.id===id?{...o,weapon,magazine:0,reserve:0,
+    loadout:syncPrimaryWeapon(o.loadout,weapon)}:o)};
 }
 
 /** Retirement is player-directed, never inferred from an ambiguous downed state. */
@@ -329,4 +336,16 @@ export function retireOperator(c:CampaignState,id:string):CampaignState{
  return {...c,inventory:{weapons},operators:c.operators.map(m=>
   m.id===id?{...m,status:'retired' as const}:m),
   journal:[...c.journal,event].slice(-1000)};
+}
+
+/** Non-weapon issued kit customization. Weapon swaps must go through the
+ * stock-aware equipCampaignWeapon path, never through this editor. */
+export function equipCampaignGear(c:CampaignState,id:string,slot:LoadoutSlot,
+ itemId:string):CampaignState{
+ if(c.activeContractId||slot==='primary')return c;
+ const o=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
+ if(!o)return c;
+ const next=setEquipmentChoice(o.loadout,slot,itemId);
+ if(next===o.loadout)return c;
+ return {...c,operators:c.operators.map(m=>m.id===id?{...m,loadout:next}:m)};
 }
