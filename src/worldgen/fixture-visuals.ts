@@ -428,6 +428,11 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         ctx.box(group,c.x,8,c.y,w,16,d,masonry);
         ctx.box(group,c.x,17,c.y,w+3,2.5,d+3,wood,false);
         ctx.box(group,c.x,1,c.y,w+2,2,d+2,metal,false);
+      }else if(fixture==='porch-post'){
+        const timber=visualCtx.solid(0x827258,.88,'wood');
+        ctx.box(group,c.x,20,c.y,w,40,d,timber);
+        ctx.box(group,c.x,2,c.y,w+4,4,d+4,metal,false);
+        ctx.box(group,c.x,39,c.y,w+4,3,d+4,wood,false);
       }else if(fixture==='support-column'){
         const concrete=visualCtx.solid(0x807f77,.94,'concrete');
         ctx.box(group,c.x,20,c.y,w,40,d,concrete);

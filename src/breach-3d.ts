@@ -467,6 +467,30 @@ export class TacticalScene3D{
         mark.castShadow=false;mark.receiveShadow=false;
       }
     }
+    // Structural roofs are open-slat and translucent for tabletop cutaway.
+    // Actual support posts are the collidable obstacles in site.cover.
+    for(const structure of site.structures??[]){
+      if(!['entry-canopy','porch-roof','service-awning'].includes(structure.kind))
+        continue;
+      const frame=this.solid(structure.kind==='service-awning'?0x59615e:
+        structure.kind==='porch-roof'?0x86755d:0x727c76,.83,'wood');
+      const roofMat=new THREE.MeshBasicMaterial({color:0x8b917e,transparent:true,
+        opacity:.16,depthWrite:false,side:THREE.DoubleSide});
+      const roof=this.box(this.root,structure.x,41,structure.y,
+        structure.w,1.2,structure.h,roofMat,false);
+      roof.castShadow=false;roof.receiveShadow=false;
+      this.box(this.root,structure.x,39.5,structure.y-structure.h/2,
+        structure.w,2.5,2.5,frame,false);
+      this.box(this.root,structure.x,39.5,structure.y+structure.h/2,
+        structure.w,2.5,2.5,frame,false);
+      this.box(this.root,structure.x-structure.w/2,39.5,structure.y,
+        2.5,2.5,structure.h,frame,false);
+      this.box(this.root,structure.x+structure.w/2,39.5,structure.y,
+        2.5,2.5,structure.h,frame,false);
+      for(const f of [-.26,.26])
+        this.box(this.root,structure.x+structure.w*f,40,structure.y,
+          2,1.8,structure.h,frame,false);
+    }
     const surfaceColor:Record<SurfaceKind,number>={
       path:0x919182,'driveway-stripe':0x858575,
       'parking-divider':0xd6caa9,'garden-border':0x4c5843,
