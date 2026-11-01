@@ -68,7 +68,10 @@ test('120: a gun is rigid; stock, firing hand and support grip derive from it',(
     for(const handling of ['low','high','point','ads','short']){
       for(const yaw of [-1.3,-.5,0,.6,1.3]){
         const fit=fitWeaponPose({weapon,handling,yaw,recoil:.4});
-        assert.ok(fit.rotation.y<=1.12&&fit.rotation.y>=-1.12);
+        assert.ok(Number.isFinite(fit.rotation.y));
+        assert.ok(Math.abs(Math.atan2(Math.sin(fit.rotation.y-yaw),
+          Math.cos(fit.rotation.y-yaw)))<.05,
+          'weapon yaw follows the requested heading instead of clipping');
         assert.ok(Number.isFinite(fit.origin.x));
         // Stock error now measures the actual anatomical shoulder separation;
         // high-yaw/recoil previews may legitimately show a large offset.
