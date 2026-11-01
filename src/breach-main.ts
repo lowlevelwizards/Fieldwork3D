@@ -42,6 +42,7 @@ import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOpera
  hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
  type CampaignState,type CampaignReport} from './campaign-state.ts';
 import {CampaignScreen} from './campaign-ui.ts';
+import {exportCampaign,importCampaign} from './campaign-persistence.ts';
 import {careerEventsForOperation} from './campaign-history.ts';
 import {awarenessDebugLine} from './breach-awareness-debug.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
@@ -2017,7 +2018,21 @@ const campaignScreen=new CampaignScreen({
   saveCampaign();showCampaignHome();}},
  buyWeapon:(weapon)=>{if(campaign){campaign=buyWeapon(campaign,weapon);saveCampaign();showCampaignHome();}},
  equipWeapon:(id,weapon)=>{if(campaign){campaign=equipCampaignWeapon(campaign,id,weapon);
-  saveCampaign();showCampaignHome();}}
+  saveCampaign();showCampaignHome();}},
+ exportSave:()=>{
+  if(!campaign)return;
+  const blob=new Blob([exportCampaign(campaign)],{type:'application/json'});
+  const href=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=href;link.download='fieldwork-'+campaign.id+'.json';
+  document.body.append(link);link.click();link.remove();
+  window.setTimeout(()=>URL.revokeObjectURL(href),1000);
+ },
+ importSave:(raw)=>{
+  const next=importCampaign(raw);
+  if(!next){window.alert('The selected file is not a valid Fieldwork campaign save.');return;}
+  if(campaign&&!window.confirm('Replace the saved campaign with this import?'))return;
+  campaign=next;saveCampaign();showCampaignHome();
+ }
 });
 function showCampaignHome(){
  if(!campaign)return;

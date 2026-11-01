@@ -11,6 +11,7 @@ export type CampaignHandlers={
  recruit:()=>void;assignSlot:(slot:number,id:string)=>void;
  buyWeapon:(weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipWeapon:(id:string,weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
+ exportSave:()=>void;importSave:(raw:string)=>void;
 };
 const node=<K extends keyof HTMLElementTagNameMap>(tag:K,cls='',label='')=>{
  const el=document.createElement(tag);if(cls)el.className=cls;
@@ -39,6 +40,8 @@ export class CampaignScreen{
   main.append(button('NEW CAMPAIGN',this.handlers.newCampaign,'campaign-primary'));
   main.append(button('QUICK PLAY — TACTICAL SANDBOX',this.handlers.quickPlay));
   main.append(node('p','campaign-note','Quick Play remains separate from your persistent campaign.'));
+  main.append(node('p','campaign-note','IMPORT EXISTING CAMPAIGN SAVE'));
+  main.append(this.importPicker());
   this.root.append(main);
  }
  home(c:CampaignState){
@@ -157,6 +160,7 @@ export class CampaignScreen{
   const accepted=c.contracts.find(k=>k.id===c.activeContractId);
   if(accepted){
    jobs.append(node('p','campaign-note','Deployment committed: '+accepted.title+' / '+accepted.region));
+   jobs.append(node('p','campaign-note','Continuing after reopening starts the same contract at planning.'));
    jobs.append(button('CONTINUE DEPLOYMENT',this.handlers.resumeContract,'campaign-primary'));
   }else{
    for(const contract of c.contracts.filter(k=>k.status==='available'&&k.deadline>=c.day).slice(0,3)){
@@ -183,8 +187,23 @@ export class CampaignScreen{
   }
   main.append(chronicle);
   const footer=node('div','campaign-footer');
+  footer.append(button('EXPORT CAMPAIGN SAVE',this.handlers.exportSave));
+  footer.append(node('p','campaign-note','IMPORT CAMPAIGN SAVE'));
+  footer.append(this.importPicker());
   footer.append(button('QUICK PLAY (NO CAMPAIGN PROGRESS)',this.handlers.quickPlay));
   main.append(footer);this.root.append(main);
+ }
+ private importPicker(){
+  const input=node('input','campaign-import');
+  input.type='file';input.accept='.json,application/json';
+  input.setAttribute('aria-label','Import campaign JSON save');
+  input.addEventListener('change',()=>{
+   const file=input.files?.[0];
+   if(!file)return;
+   void file.text().then(raw=>this.handlers.importSave(raw))
+    .catch(()=>window.alert('Could not read campaign save file.'));
+  });
+  return input;
  }
  private contract(c:Contract){
   const card=node('article','campaign-contract');
