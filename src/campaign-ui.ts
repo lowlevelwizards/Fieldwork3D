@@ -1,5 +1,6 @@
 /** Campaign screens. Render only on navigation and state changes, never per frame. */
 import type {CampaignState,Contract} from './campaign-state.ts';
+import {SKILL_NAMES} from './campaign-state.ts';
 import './campaign-style.css';
 
 export type CampaignHandlers={
@@ -54,6 +55,21 @@ export class CampaignScreen{
    card.append(node('small','',p.recoveryDays?'RECOVERING · '+p.recoveryDays+' DAYS':p.status.toUpperCase()));
    const skill=p.skills.handling;
    card.append(node('small','','HANDLING '+Math.round(skill*100)+' / 100 · '+p.missions+' OPS'));
+   const details=node('details','campaign-dossier');
+   details.append(node('summary','','DOSSIER / SKILLS'));
+   for(const skill of SKILL_NAMES){
+    const label=skill.replace(/([A-Z])/g,' $1').toUpperCase();
+    const line=node('div','campaign-skill');
+    line.append(node('span','',label),node('span','',Math.round(p.skills[skill]*100)+'/100'));
+    const bar=node('div','campaign-skill-track');
+    const fill=node('div','campaign-skill-fill');
+    fill.style.width=Math.round(p.skills[skill]*100)+'%';bar.append(fill);
+    details.append(line,bar);
+   }
+   const history=c.journal.filter(e=>e.operatorId===p.id).slice(-4).reverse();
+   for(const e of history)details.append(node('p','campaign-note',
+    'DAY '+e.day+' · '+e.detail));
+   card.append(details);
    roster.append(card);
   }
   personnel.append(roster);
