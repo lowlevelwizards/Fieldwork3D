@@ -13,10 +13,12 @@ import {
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,stepSession,liveVisibility,
   planReload,reloadNow,planFlash,moveFlashTarget,flashTrajectory,
-  cycleWeapon,toggleWeaponLight,planMedicalTreatment,
+  cycleWeapon,toggleWeaponLight,planMedicalTreatment,planEntryTool,
   planCasualtyTransport,planRecoverMedical,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
+import {equippedEntryMethods} from './equipment-entry-tools.ts';
+import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter}
  from './equipment-weapon-light-beam.ts';
@@ -879,6 +881,8 @@ function updateContext(){
     firePolicy:node?.firePolicyState??a.firePolicy,
     reserve:a.reserve,magazine:a.magazine,
     doorOpen:!!door&&(door.openFraction??(door.open?1:0))>=.35,
+    availableTools:door?equippedEntryMethods(a.equipment)
+      .filter(method=>entryToolVerdict(door,method).allowed):[],
     nodeKind:node?.kind,aimLabel:node?.aimLabel,
     nodeFirePolicy:node?.firePolicyState,
   });
@@ -1065,6 +1069,15 @@ const handleContextAction=(event:MouseEvent)=>{
   const node=selectedPlanNode();
   const door=doorFocusId?focusedDoor(a,node):undefined;
   const current=plannedControl(state,selected,node?.id);
+  if(door&&action?.startsWith('ctxTool-')){
+    const method=action.slice('ctxTool-'.length) as EntryTool;
+    const nearNode=node&&distance(node.p,doorCenter(door))<=43;
+    if(!planEntryTool(state,selected,door.id,method,
+      nearNode?node.id:undefined))
+      state.events.push('EQUIPPED TOOL CANNOT OPERATE THIS DOOR');
+    doorFocusId=null;doorMenuDismissedId=door.id;
+    updateHud();return;
+  }
   switch(action){
     case 'ctxFire':{
       const active=node?.firePolicyState??a.firePolicy;
