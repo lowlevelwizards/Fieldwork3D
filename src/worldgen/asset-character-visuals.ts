@@ -409,8 +409,9 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
      b(0,h+.25,0,w*.90,1.2,d*.87,dark,false);
      for(const dx of [-.24,.24])for(const dz of [-.22,.22])
        cyl(dx*w,h+1.4,dz*d,2.5,.7,steel);
-     b(0,h*.45,d*.48,w*.75,h*.44,1, dark,false);
+     b(0,h*.45,d*.48,w*.75,h*.44,1,dark,false);
      b(0,h*.47,d*.51,w*.62,h*.29,1,glass,false);
+     b(0,h*.27,d*.528,w*.45,1.5,1.3,steel,false); // oven door pull
      for(const dx of [-.28,-.09,.1,.29])
        b(dx*w,h*.89,d*.52,2,1.7,1.3,metal,false);
    }else if(fixture==='sink'){
@@ -422,6 +423,8 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
    }else if(fixture==='microwave'){
      b(0,h*.52,d*.47,w*.76,h*.55,1.4,dark,false);
      b(-w*.12,h*.55,d*.49,w*.48,h*.40,1,glass,false);
+     b(w*.23,h*.52,d*.53,1.4,h*.37,1.2,metal,false); // microwave handle
+     for(const side of [-1,1])b(side*w*.34,1.2,0,2,2.4,d*.60,rubber);
      b(w*.36,h*.57,d*.49,2,h*.34,1.1,steel,false);
      b(w*.35,h*.32,d*.50,2,2,1.2,light,false);
    }else{ // laundry machine
@@ -430,6 +433,8 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
      ring.position.set(c.x,h*.51,c.y+d*.49);group.add(ring);
      cyl(0,h*.51,d*.50,Math.min(w,d)*.19,1,glass,'z');
      b(0,h*.90,d*.49,w*.73,3,1,cream,false);
+     b(-w*.24,h*.91,d*.505,w*.18,1.6,1.4,dark,false); // soap tray
+     b(0,h*.88,-d*.25,w*.84,1.5,d*.36,steel,false);
      b(w*.25,h*.90,d*.52,2,1.2,1,red,false);
    }
    return true;
