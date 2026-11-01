@@ -22,7 +22,7 @@ export type EncounterContext = {
 export type EncounterActorSpec = {
   id:string;groupId:string;role:EncounterRole;activity:EncounterActivity;
   readiness:EncounterReadiness;zoneId?:string;roomId?:string;
-  position:Pt;heading:number;weaponProfile?:'ordinary'|'security'|'prepared';
+  position:Pt;heading:number;routine?:Pt[];weaponProfile?:'ordinary'|'security'|'prepared';
 };
 export type EncounterGroup = {
   id:string;purpose:'occupants'|'security'|'organised'|'response'|'target';
