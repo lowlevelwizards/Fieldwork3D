@@ -3,7 +3,7 @@
  * past actions. Rewind, scrubbing and speed changes cannot alter an outcome.
  */
 import type {Session,TeamActor,ShotEvent,DroppedMagazine,FlashGrenade,FlashBurst,ImpactMark} from './breach-game.ts';
-import type {Door,Pt} from './breach-core.ts';
+import {COVER,type Door,type Pt} from './breach-core.ts';
 import {intelSnapshot,intelRestore} from './breach-intel.ts';
 import type {BattleEvent} from './breach-combat.ts';
 import {ReplayMotionRecorder,type ReplayPresentation} from './breach-replay-motion.ts';
@@ -28,6 +28,7 @@ export type ReplayFrame={
   presentation?:ReplayPresentation;
   t:number;phase:Session['phase'];mission:Session['mission'];
   actors:ReplayActorFrame[];doors:Door[];shots:ShotEvent[];
+  objectRevision:number;windows:Session['windows'];coverState:Session['coverState'];
   casings:Session['casings'];
   dropped:DroppedMagazine[];impactMarks:ImpactMark[];grenades:FlashGrenade[];
   flashBursts:FlashBurst[];flashRemaining:number;
@@ -70,6 +71,9 @@ export function snapshot(s:Session,seenGround?:string[]):ReplayFrame{
       watch:a.watch?position(a.watch):null,
       intentKind:a.intent?.kind,awarenessCount:Object.keys(a.awareness.contacts).length})),
     doors:s.doors.map(d=>({...d,a:position(d.a),b:position(d.b)})),
+    objectRevision:s.objectRevision,
+    windows:s.windows.map(w=>({...w})),
+    coverState:s.coverState.map(o=>({...o})),
     shots:s.shots.map(shotCopy),
     casings:s.casings.map(x=>({...x})),
     dropped:s.dropped.map(m=>({...m,p:position(m.p)})),
@@ -117,6 +121,10 @@ export class MissionRecorder{
     // allocating thousands of duplicate tile arrays during long missions.
     if(last&&last.seenGround.length===frame.seenGround.length)
       frame.seenGround=last.seenGround;
+    if(last&&last.objectRevision===frame.objectRevision){
+      frame.windows=last.windows;
+      frame.coverState=last.coverState;
+    }
     this.frames.push(frame);
   }
   get duration(){return this.frames.at(-1)?.t??0;}
@@ -191,6 +199,12 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       spareMagazines:copy.spareMagazines.map(m=>({...m})),plan:[],nav:[]});
   }
   s.doors=f.doors.map(d=>({...d,a:position(d.a),b:position(d.b)}));
+  s.objectRevision=f.objectRevision??0;
+  s.windows=(f.windows??[]).map(w=>({...w}));
+  if(f.coverState){
+    s.coverState=f.coverState.map(c=>({...c}));
+    COVER.splice(0,COVER.length,...s.coverState);
+  }
   s.shots=f.shots.map(shotCopy);
   s.casings=(f.casings??[]).map(x=>({...x}));
   s.dropped=f.dropped.map(m=>({...m,p:position(m.p)}));
