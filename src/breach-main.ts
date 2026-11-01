@@ -32,6 +32,7 @@ import {INTEL_MODES,doorKnown,wallKnown,roomKnown,
 import {orderFailureText} from './breach-nav-diagnostics.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {FrameMeter} from './breach-perf.ts';
+import {awarenessDebugLine} from './breach-awareness-debug.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
 import './breach-style.css';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
@@ -170,6 +171,20 @@ let viewMode:ViewMode='iso';
 try{stage=new TacticalScene3D();}
 catch(error){console.warn('3D unavailable; reverting to tactical plan',error);
   viewMode='plan2d';}
+// Explicit developer opt-in only; no hidden intelligence in normal gameplay.
+const awarenessParam=new URLSearchParams(location.search).get('awareness');
+const awarenessPanel=awarenessParam!==null?
+  document.createElement('output'):null;
+if(awarenessPanel){
+ awarenessPanel.id='awarenessDiagnostics';
+ Object.assign(awarenessPanel.style,{
+  position:'fixed',right:'8px',top:'70px',zIndex:'75',
+  maxWidth:'260px',whiteSpace:'pre-wrap',pointerEvents:'none',
+  padding:'9px',font:'11px/1.35 monospace',
+  color:'#dce3c9',background:'rgba(5,10,10,.88)'
+ });
+ document.body.append(awarenessPanel);
+}
 const navDiagnostics=new URLSearchParams(location.search).has('nav');
 const navPanel=navDiagnostics?document.createElement('output'):null;
 if(navPanel){
@@ -2286,6 +2301,12 @@ function tick(now:number){
         ' ticks · SCENE '+m.scene.toFixed(1)+'ms'+
         '\\nOVERLAY '+m.overlay.toFixed(1)+'ms · DRAWS '+
         m.draws.toFixed(0)+' · TRI '+m.triangles.toFixed(0);
+  }
+  if(awarenessPanel&&Math.floor(now/500)!==
+      Math.floor((now-dt*1000)/500)){
+    const inspected=state.operators.find(a=>a.id===awarenessParam)??uid(selected);
+    awarenessPanel.textContent=inspected?awarenessDebugLine(inspected):
+      'No selected actor';
   }
   requestAnimationFrame(tick);
 }
