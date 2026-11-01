@@ -41,7 +41,7 @@ export function optionalOperationalFixtures(kind:BuildingArchetype|undefined,
   if(purpose==='laundry')return variant!==0?[{id:'linen-cart',anchor:'sw'}]:[];
  }
  if(kind==='office'){
-  if(purpose==='meeting')return variant===2?[{id:'noticeboard',anchor:'east'}]:[];
+  if(purpose==='meeting')return variant===2?[{id:'office-chair',anchor:'east'}]:[];
   if(purpose==='break')return variant===1?[{id:'fridge',anchor:'se'}]:[];
  }
  if(kind==='clinic'){
