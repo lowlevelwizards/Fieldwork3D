@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {graphicsBudget} from './breach-graphics-budget.ts';
 import {addRoomGroutInstances} from './breach-room-instancing.ts';
 import {propDefinition} from './worldgen/asset-catalog.ts';
+import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,activeSite,
   type Pt,type Door} from './breach-core.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
@@ -263,7 +264,7 @@ export class TacticalScene3D{
     this.resetCamera();
   }
   private buildGenerated(site:Site){
-    const palettes=[0x817b69,0x5b746d,0x79705f,0x616e65];
+    const theme=buildingTheme(site.archetype,site.seed);
     const earth=this.solid(site.layout==='courtyard'?0x465348:0x34443e);
     const bounds=site.bounds??{minX:0,minY:0,maxX:W,maxY:H};
     const bw=bounds.maxX-bounds.minX,bh=bounds.maxY-bounds.minY;
@@ -291,19 +292,19 @@ export class TacticalScene3D{
       const group=new THREE.Group();
       decorativeRoomGroups.set(room.id,group);this.root.add(group);
       this.intelSurfaces.push({obj:group,kind:'room',id:room.id});
-      const base=this.solid(room.kind==='hall'?0x495b55:
-        palettes[room.tone%palettes.length]);
+      const base=this.solid(room.kind==='hall'?theme.hall:
+        roomFloor(theme,room.purpose,room.tone));
       // Connected blueprint cells make one continuous physical floor surface.
       // Legacy floor inset stays unchanged for historical visual parity.
       const floorInset=site.programLocked?0:2;
       this.box(group,room.x+room.w/2,-.8,room.y+room.h/2,
         room.w-floorInset,1.6,room.h-floorInset,base,false);
-      const grout=this.solid(0x8d9282);
+      const grout=this.solid(theme.grout);
       // One instanced draw per room instead of many tiny floor meshes.
       addRoomGroutInstances(group,room,grout);
     }
-    const wallMat=this.solid(0xa89c81),capMat=this.solid(0x474439);
-    const skirting=this.solid(0x39463f);
+    const wallMat=this.solid(theme.wall),capMat=this.solid(theme.cap);
+    const skirting=this.solid(theme.trim);
     for(const [index,wall] of site.walls.entries()){
       const group=new THREE.Group();this.root.add(group);
       this.intelSurfaces.push({obj:group,kind:'wall',index});
@@ -323,7 +324,7 @@ export class TacticalScene3D{
       const cap=this.box(group,x,40.3,z,len+2,2,11,individualCap,false);
       cap.rotation.y=angle;this.walls.push({mesh:cap,mid:{x,y:z}});
     }
-    const archMaterial=this.solid(0xb4a68e);
+    const archMaterial=this.solid(theme.trim);
     for(const opening of site.openings??[]){
       const width=Math.hypot(opening.a.x-opening.b.x,opening.a.y-opening.b.y);
       const p={x:(opening.a.x+opening.b.x)/2,y:(opening.a.y+opening.b.y)/2};
@@ -333,7 +334,7 @@ export class TacticalScene3D{
       this.box(group,0,38,0,width+4,4,11,archMaterial);
       this.root.add(group);
     }
-    const doorMat=this.solid(0xb18b5f),doorTrim=this.solid(0xe0c390);
+    const doorMat=this.solid(theme.door),doorTrim=this.solid(theme.trim);
     const metal=this.solid(0x586665);
     for(const door of site.doors){
       const length=Math.hypot(door.a.x-door.b.x,door.a.y-door.b.y);
@@ -372,7 +373,7 @@ export class TacticalScene3D{
       this.doors.set(door.id,{root,leaf,frame,halo,threshold});
       this.observedDoorOpen.set(door.id,door.openFraction??0);
     }
-    const wood=this.solid(0x655748),steel=this.solid(0x465958);
+    const wood=this.solid(theme.wood),steel=this.solid(0x465958);
     const olive=this.solid(0x70715e);
     site.cover.forEach((c,i)=>{
       const group=new THREE.Group();this.root.add(group);
