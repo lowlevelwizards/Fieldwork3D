@@ -20,7 +20,10 @@ input{flex:1;min-width:100px}select{flex:1;min-width:140px}button:disabled{opaci
 #summary{color:#dfceac;font-size:11px}
 #pixel-swatch{width:96px;height:96px;image-rendering:pixelated;border:1px solid #a8ab96;background:#657268;flex:none}
 #pixel-detail{font:11px/1.5 ui-monospace,monospace;color:#e6d7b5}
-#texture-preview{display:flex;align-items:center;gap:10px;padding:4px 0}
+#texture-preview{display:flex;align-items:center;gap:10px;padding:4px 0;flex-wrap:wrap}
+#material-inspector summary{cursor:pointer;font-weight:700;color:#efd6a7;padding:5px 0}
+#material-diagnostics{font:11px/1.5 ui-monospace,monospace;color:#d9e6dc;white-space:pre-wrap}
+#pixel-clean-swatch{width:96px;height:96px;image-rendering:pixelated;border:1px solid #a8ab96;flex:none}
 @media(max-width:450px){#controls{max-height:35dvh;padding:8px}.row{gap:5px}button,select,input{font-size:11px;padding:6px}}
 </style></head><body>
 <header id="lab-header"><strong>FIELDWORK / ASSET LIBRARY</strong><a href="./map-lab.html">MAP LAB</a></header>
@@ -30,6 +33,7 @@ input{flex:1;min-width:100px}select{flex:1;min-width:140px}button:disabled{opaci
  <div class="row"><button id="previous">PREVIOUS</button><button id="next">NEXT</button><span id="summary"></span></div>
  <div class="row"><button id="iso">ISO</button><button id="top">TOP</button><button id="fit">FIT ALL</button><button id="focus">FOCUS</button><button id="bounds" aria-pressed="false">OUTLINE VOLUME</button><button id="textures" aria-pressed="true">TEXTURES ON</button><button id="variant" disabled>VARIANT +</button><button id="review">NEXT MODEL</button></div>
  <div class="row"><span>Drag to orbit · pinch to zoom/pan · tap names to inspect · VARIANT + cycles three trims</span></div>
+ <details id="material-inspector"><summary>MATERIAL INSPECTOR</summary>
  <div class="row" aria-label="Pixel material inspection">
  <label for="material-family">MATERIAL</label><select id="material-family" aria-label="Preview material family"></select>
  <label for="surface-condition">CONDITION</label><select id="surface-condition" aria-label="Preview condition">
@@ -38,7 +42,8 @@ input{flex:1;min-width:100px}select{flex:1;min-width:140px}button:disabled{opaci
  <div class="row" aria-label="Texture viewing distances">
  <button id="zoom-close">CLOSE VIEW</button><button id="zoom-tactical">TACTICAL VIEW</button>
  <button id="zoom-overview">OVERVIEW</button></div>
- <div id="texture-preview"><canvas id="pixel-swatch" width="32" height="32" aria-label="Selected procedural pixel material tile"></canvas><div id="pixel-detail"></div></div>
+ <div id="texture-preview"><div><canvas id="pixel-clean-swatch" width="32" height="32" aria-label="Clean material reference"></canvas><div>BASE</div></div><div><canvas id="pixel-swatch" width="32" height="32" aria-label="Condition material reference"></canvas><div>CONDITION</div></div><div id="pixel-detail"></div></div>
+ <div id="material-diagnostics" role="status"></div></details>
  <output id="detail" role="status" aria-live="polite"></output>
 </section>
 <script type="module" src="./src/asset-lab-main.ts"></script></body></html>
