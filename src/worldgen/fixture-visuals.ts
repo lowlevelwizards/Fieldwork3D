@@ -374,6 +374,11 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
             ctx.box(group,c.x+(across?end*w:0),height,c.y+(across?0:end*d),
               2.3,2.3,across?8.5:8.5,nails,false);
         }
+      }else if(fixture==='chain-link-fence'){
+        const h=36;
+        for(const side of [-1,1])ctx.box(group,c.x+side*w*.47,h/2,c.y,3,h,3,metal);
+        for(const level of [3,18,34])ctx.box(group,c.x,level,c.y,w,1.8,1.7,steel,false);
+        for(let x=-w/2+6;x<w/2;x+=9)ctx.box(group,c.x+x,h/2,c.y,1,31,1,metal,false);
       }else if(fixture==='fence'){
         const height=asset?.height??24;
         for(const sx of [-1,1])ctx.box(group,c.x+sx*w*.47,height/2,c.y,

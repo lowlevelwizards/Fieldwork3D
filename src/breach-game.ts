@@ -1039,7 +1039,8 @@ function unobstructed(a:Pt,b:Pt,s:Session,lowBlocks:boolean){
   if(doorBlocksSightRay(s.doors,ray))return false;
   // Exact slab intersection replaces dozens of short ray samples per
   // visibility query. Geometry remains authoritative at any framerate.
-  return !COVER.some(o=>(!o.low||lowBlocks)&&segmentHitsBox(a,b,o));
+  return !COVER.some(o=>o.fixture!=='chain-link-fence'&&
+    (!o.low||lowBlocks)&&segmentHitsBox(a,b,o));
 }
 /** Physical geometry visibility, independently of acquisition time. */
 export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){
@@ -1959,6 +1960,7 @@ function strikeSurface(from:Pt,aimed:Pt,s:Session,
     if(t!==null)hits.push({fraction:t,material:'brick',thickness:10});
   }
   for(const door of s.doors){
+    if(door.style==='mesh-gate')continue; // open steel mesh does not stop bullets
     const leaf=doorLeafSegment(door);
     const t=segmentImpact(from,aimed,leaf);
     if(t!==null)hits.push({fraction:t,
@@ -1966,6 +1968,7 @@ function strikeSurface(from:Pt,aimed:Pt,s:Session,
       thickness:door.kind==='shutter'?10:3});
   }
   for(const [index,box] of COVER.entries()){
+    if(box.fixture==='chain-link-fence')continue;
     const t=coverImpactFraction(from,aimed,fromZ,toZ,box);
     if(t===null)continue;
     hits.push({fraction:t,

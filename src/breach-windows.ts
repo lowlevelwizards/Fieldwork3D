@@ -4,6 +4,7 @@
 import {type Segment,type Obstacle,type Pt} from './breach-core.ts';
 import type {Site,WindowOpening,WindowStyle,BuildingArchetype} from './breach-site.ts';
 import {addExteriorProperty} from './worldgen/exterior-sites.ts';
+import {addSecurityPerimeter} from './worldgen/security-perimeter.ts';
 import {addInteriorGlazing} from './worldgen/interior-glazing.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const windowStyles:Record<BuildingArchetype,readonly WindowStyle[]>={

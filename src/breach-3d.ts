@@ -707,7 +707,14 @@ export class TacticalScene3D{
           this.solid(0x996c53,.78,'painted-metal'):style==='reinforced'?
           this.solid(0x53615e,.78,'industrial-steel'):this.solid(0x72817d,.78,'painted-metal');
         const middle=(invert?-1:1)*length/2;
-        if(style==='glazed'){
+        if(style==='mesh-gate'){
+          const frameMaterial=this.solid(0x586665,.8,'industrial-steel');
+          for(const sign of [-1,1])this.box(leaf,middle+sign*(length/2-2),18,0,3,35,3,frameMaterial,false);
+          for(const y of [3,34])this.box(leaf,middle,y,0,length-4,3,3,frameMaterial,false);
+          for(let x=-length/2+7;x<length/2-3;x+=9)
+            this.box(leaf,middle+x,18,0,1,28,1,frameMaterial,false);
+          for(const y of [11,21,31])this.box(leaf,middle,y,0,length-6,1,1,frameMaterial,false);
+        }else if(style==='glazed'){
           const pane=this.box(leaf,middle,18,0,length-8,29,1,doorGlass,false);
           pane.castShadow=false;
           for(const sign of [-1,1])
