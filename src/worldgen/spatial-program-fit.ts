@@ -27,7 +27,7 @@ type Cell=string|null;
  * Missing roles are ignored: small businesses may have fewer departments.
  * These remain weighted rather than absolute constraints on tiny footprints.
  */
-const criticalContacts:Partial<Record<Blueprint['kind'],readonly (readonly [string,string])[]>>={
+export const criticalContacts:Partial<Record<Blueprint['kind'],readonly (readonly [string,string])[]>>={
  house:[['kitchen','dining'],['foyer','living']],
  townhouse:[['kitchen','dining'],['foyer','living']],
  retail:[['checkout','sales'],['stockroom','sales']],
