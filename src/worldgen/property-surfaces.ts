@@ -2,6 +2,7 @@
  * Visual-only marks attached to existing exterior zones, never new collision.
  */
 import {type Site,type ExteriorZone} from '../breach-site.ts';
+import {arrivalAccessLane} from './property-access-lane.ts';
 export type SurfaceKind='path'|'driveway-stripe'|'parking-divider'|
  'garden-border'|'service-pad'|'patio-paver'|'drainage-grate';
 export type PropertySurface={
@@ -38,6 +39,9 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
      }
    }
    if(zone.kind==='driveway'){
+     const lane=arrivalAccessLane(site,zone);
+     if(lane)add(zone,'path',lane.x,lane.y,
+       Math.min(lane.w,24),Math.min(lane.h,zone.h*.9));
      if(broad)add(zone,'driveway-stripe',zone.x,zone.y,
        Math.max(15,zone.w-20),Math.min(zone.h*.10,5));
      else add(zone,'driveway-stripe',zone.x,zone.y,
