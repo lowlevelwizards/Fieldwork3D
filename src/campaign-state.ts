@@ -20,6 +20,8 @@ import {initialWeaponConfiguration,readWeaponConfiguration,changeWeaponPlatform,
  from './equipment-weapon-assemblies.ts';
 import {attachmentPrice,readAttachmentStock,returnAttachments}
  from './equipment-weapon-inventory.ts';
+import type {SerializedWeapon} from './equipment-weapon-identity.ts';
+import {reconcileCampaignWeaponOwnership} from './equipment-weapon-ownership.ts';
 import {kitMedicalSupplies,normalizedMedicalSupplies,medicalSupplyCount,
  type FieldMedicalSupplies} from './equipment-medical-supplies.ts';
 
@@ -36,6 +38,7 @@ export type CampaignOperator={
  loadout:EquipmentLoadout;armorCondition:ArmorIntegrity;
  medicalSupplies:FieldMedicalSupplies;
  weaponConfiguration:WeaponConfiguration;
+ weaponSerialId?:string|null;
  magazines:MagazineItem[];loadedMagazineId:string;
 };
 export type Contract={
@@ -59,7 +62,7 @@ export type CampaignState={
  history:CampaignReport[];journal:CareerEvent[];appliedResults:string[];
  supplies:{medical:number;ammo:number;flash:number};regionalPressure:Record<string,number>;
  inventory:{weapons:Record<CampaignOperator['weapon'],number>;
-  attachments:Record<string,number>};
+  attachments:Record<string,number>;serializedWeapons?:SerializedWeapon[]};
  kitPresets:EquipmentPreset[];
 };
 const WEAPONS=['carbine','smg','rifle','shotgun'] as const;
@@ -122,18 +125,18 @@ export function createContracts(seed:number,day:number,existing:readonly Contrac
 }
 export function newCampaign(seed:number):CampaignState{
  const normalized=(seed>>>0)||1;
- return {version:1,id:'campaign-'+normalized.toString(16),seed:normalized,day:1,funds:1200,
+ return reconcileCampaignWeaponOwnership({version:1,id:'campaign-'+normalized.toString(16),seed:normalized,day:1,funds:1200,
   operators:['rook','moss','ash','vale'].map((id,i)=>startingOperator(id,i,normalized)),
   squadIds:['rook','moss','ash','vale'],
   contracts:createContracts(normalized,1),activeContractId:null,
   history:[],journal:[],appliedResults:[],supplies:{medical:3,ammo:240,flash:4},
   regionalPressure:Object.fromEntries(REGIONS.map(r=>[r,0])),
   inventory:{weapons:{carbine:0,smg:0,rifle:0,shotgun:0},
-    attachments:readAttachmentStock(null)},kitPresets:[]};
+    attachments:readAttachmentStock(null)},kitPresets:[]});
 }
 export function migrateLegacyRoster(campaign:CampaignState,legacy:RosterState):CampaignState{
  if(!legacy||legacy.version!==1||!Array.isArray(legacy.members))return campaign;
- return {...campaign,operators:campaign.operators.map(operator=>{
+ return reconcileCampaignWeaponOwnership({...campaign,operators:campaign.operators.map(operator=>{
   const old=legacy.members.find(m=>m.id===operator.id);
   if(!old)return operator;
   return {...operator,callsign:old.callsign.slice(0,24),
@@ -150,7 +153,7 @@ export function migrateLegacyRoster(campaign:CampaignState,legacy:RosterState):C
     (old as {loadedMagazineId?:unknown}).loadedMagazineId,
     readPersistentMagazines(operator.id,old.weapon,old.reserve,
      (old as {magazines?:unknown}).magazines))};
- })};
+ })});
 }
 export function readCampaign(raw:string|null):CampaignState|null{
  if(!raw)return null;
@@ -198,14 +201,15 @@ export function readCampaign(raw:string|null):CampaignState|null{
    distinctions:Array.isArray(o.distinctions)?
     o.distinctions.filter((x):x is string=>typeof x==='string').slice(0,32):[]
   }));
-  return {...c,squadIds:chosen,operators,inventory:{weapons,
+  return reconcileCampaignWeaponOwnership({...c,squadIds:chosen,operators,inventory:{weapons,
+      serializedWeapons:(c.inventory as {serializedWeapons?:unknown})?.serializedWeapons as SerializedWeapon[]|undefined,
      attachments:readAttachmentStock((c.inventory as {attachments?:unknown})?.attachments)},
     supplies:{...c.supplies,flash:Number.isFinite(c.supplies.flash)?
      Math.max(0,Math.min(1000,Math.floor(c.supplies.flash))):4},
     kitPresets:readKitPresets((c as {kitPresets?:unknown}).kitPresets),
    regionalPressure:Object.fromEntries(REGIONS.map(region=>
    [region,Math.max(-3,Math.min(3,Number.isFinite(c.regionalPressure?.[region])?
-    c.regionalPressure[region]:0))]))};
+    c.regionalPressure[region]:0))]))});
  }catch{return null;}
 }
 export function acceptContract(c:CampaignState,id:string):CampaignState{
@@ -373,8 +377,8 @@ export function hireRecruit(c:CampaignState):CampaignState{
   joinedDay:c.day,status:'reserve' as const};
  const event:CareerEvent={id:'join-'+id+'-'+c.day,day:c.day,operatorId:id,
   kind:'joined',detail:'Joined the unit'};
- return {...c,funds:c.funds-450,operators:[...c.operators,member],
-  journal:[...c.journal,event].slice(-1000)};
+ return reconcileCampaignWeaponOwnership({...c,funds:c.funds-450,operators:[...c.operators,member],
+  journal:[...c.journal,event].slice(-1000)});
 }
 
 export const WEAPON_PRICES:Record<CampaignOperator['weapon'],number>={
@@ -383,8 +387,8 @@ export const WEAPON_PRICES:Record<CampaignOperator['weapon'],number>={
 export function buyWeapon(c:CampaignState,weapon:CampaignOperator['weapon']):CampaignState{
  const price=WEAPON_PRICES[weapon];
  if(!price||c.activeContractId||c.funds<price)return c;
- return {...c,funds:c.funds-price,
-  inventory:{...c.inventory,weapons:{...c.inventory.weapons,[weapon]:c.inventory.weapons[weapon]+1}}};
+ return reconcileCampaignWeaponOwnership({...c,funds:c.funds-price,
+  inventory:{...c.inventory,weapons:{...c.inventory.weapons,[weapon]:c.inventory.weapons[weapon]+1}}});
 }
 /** Buying an attachment adds one stock item without silently equipping it. */
 export function buyWeaponAttachment(c:CampaignState,partId:string):CampaignState{
@@ -430,7 +434,7 @@ export function equipCampaignWeapon(c:CampaignState,id:string,
  const targetConfig=changeWeaponPlatform(m.weaponConfiguration,weapon);
  const attachments=returnAttachments(c.inventory.attachments,
   m.weaponConfiguration,targetConfig);
- return {...c,inventory:{...c.inventory,attachments,weapons:{
+ return reconcileCampaignWeaponOwnership({...c,inventory:{...c.inventory,attachments,weapons:{
    ...c.inventory.weapons,
    [weapon]:c.inventory.weapons[weapon]-1,
    [m.weapon]:c.inventory.weapons[m.weapon]+1
@@ -438,7 +442,7 @@ export function equipCampaignWeapon(c:CampaignState,id:string,
   operators:c.operators.map(o=>o.id===id?{...o,weapon,magazine:0,reserve:0,
     magazines:[],loadedMagazineId:o.id+'/'+weapon+'/loaded',
     loadout:syncPrimaryWeapon(o.loadout,weapon),
-    weaponConfiguration:changeWeaponPlatform(o.weaponConfiguration,weapon)}:o)};
+    weaponConfiguration:changeWeaponPlatform(o.weaponConfiguration,weapon)}:o)});
 }
 
 /** Retirement is player-directed, never inferred from an ambiguous downed state. */
@@ -451,11 +455,11 @@ export function retireOperator(c:CampaignState,id:string):CampaignState{
  const weapons={...c.inventory.weapons,[o.weapon]:c.inventory.weapons[o.weapon]+1};
  const event:CareerEvent={id:'retired-'+id+'-'+c.day,day:c.day,operatorId:id,
   kind:'retirement',detail:'Retired from active field service'};
- return {...c,inventory:{...c.inventory,weapons,
+ return reconcileCampaignWeaponOwnership({...c,inventory:{...c.inventory,weapons,
   attachments:returnAttachments(c.inventory.attachments,o.weaponConfiguration)},
   operators:c.operators.map(m=>
   m.id===id?{...m,status:'retired' as const}:m),
-  journal:[...c.journal,event].slice(-1000)};
+  journal:[...c.journal,event].slice(-1000)});
 }
 
 /** Non-weapon issued kit customization. Weapon swaps must go through the
