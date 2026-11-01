@@ -8,10 +8,16 @@ test('every facade window keeps a real sill and clear furnishing envelope',()=>{
  for(const seed of [1,2,3,4,5,8,13,19]){
   const site=generateSite(seed,'standard');
   const sills=site.cover.filter(o=>o.fixture==='window-sill');
-  assert.equal(sills.length,site.windows?.length??0,'seed '+seed);
+  const barriers=site.cover.filter(o=>o.fixture==='glass-barrier');
+  assert.equal(sills.length,(site.windows??[]).filter(w=>w.sillHeight!==0).length,
+    'raised sills seed '+seed);
+  assert.equal(barriers.length,(site.windows??[]).filter(w=>w.sillHeight===0).length,
+    'floor-to-ceiling glass seed '+seed);
   for(const sill of sills){
-   assert.ok(!site.cover.some(o=>o!==sill&&o.fixture!=='window-sill'&&o.fixture!=='window-boards'&&
-     overlap(sill,o)), 'non-security fixture blocks window on seed '+seed);
+   const blocker=site.cover.find(o=>o!==sill&&o.fixture!=='window-sill'&&
+     o.fixture!=='window-boards'&&o.fixture!=='glass-barrier'&&overlap(sill,o));
+   assert.ok(!blocker,'non-security fixture blocks window on seed '+seed+
+     ': '+JSON.stringify({sill,blocker}));
   }
  }
 });

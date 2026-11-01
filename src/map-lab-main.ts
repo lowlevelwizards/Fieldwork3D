@@ -138,6 +138,7 @@ function report(site:Site):string{
   ' wide openings\n'+result.emptyRooms.length+' unfurnished functional rooms / '+ 
   result.functionalRooms+' rooms total\n'+
   result.incompleteZones.length+' functionally incomplete zones\n'+
+  result.serviceIssues.length+' blocked fixture working faces\n'+
   (result.unitContracts.length?
     result.unitContracts.filter(u=>u.complete).length+'/'+result.unitContracts.length+
       ' complete residential units\n':'')+(result.errors.length?

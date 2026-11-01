@@ -3,6 +3,7 @@
  */
 import type {Site,Room} from '../breach-site.ts';
 import type {Obstacle,Pt} from '../breach-core.ts';
+import {fixtureServiceClear} from './fixture-service-clearance.ts';
 export type QuarterTurn=0|1|2|3;
 const directional=new Set(['chair','office-chair','armchair','sofa','bench','patio-chair',
  'desk','bed','exam-bed','toilet','sink','stove','fridge','counter','cabinet',
@@ -72,7 +73,12 @@ export function orientFurnishings(site:Site,items:readonly Obstacle[]):Obstacle[
   const ranked=([0,1,2,3] as QuarterTurn[]).sort((a,b)=>
     (facing[b].x*dx+facing[b].y*dy)-(facing[a].x*dx+facing[a].y*dy)||
     a-b);
-  const turn=ranked.find(turn=>legal(site,out,i,room,turn));
+  const canUse=(turn:QuarterTurn)=>{
+   if(!legal(site,out,i,room,turn))return false;
+   const dims=rotatedFootprint(item,turn);
+   return fixtureServiceClear(room,{...item,w:dims.w,h:dims.h,orientation:turn},out,i);
+  };
+  const turn=ranked.find(canUse)??ranked.find(turn=>legal(site,out,i,room,turn));
   if(turn===undefined)continue; // never force an invalid collision.
   const dims=rotatedFootprint(item,turn);
   out[i]={...item,w:dims.w,h:dims.h,orientation:turn};

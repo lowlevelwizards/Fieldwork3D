@@ -7,6 +7,7 @@ import {assessArchitecture} from './worldgen/architecture-quality.ts';
 import {auditRoomRelationships,type SpatialRelationshipDiagnostic} from './worldgen/room-relationships.ts';
 import {assessRoomContracts,type RoomContractResult} from './worldgen/room-contracts.ts';
 import {assessUnitContracts,type UnitContractResult} from './worldgen/unit-contracts.ts';
+import {auditFixtureService,type ServiceIssue} from './worldgen/fixture-service-clearance.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type SiteAudit={seed:number;archetype:string;layout:string;
   rooms:number;doors:number;enemies:number;windows:number;
@@ -16,7 +17,7 @@ export type SiteAudit={seed:number;archetype:string;layout:string;
   roomContracts:RoomContractResult[];incompleteZones:string[];
   furnishingIssues:{roomId:string;fixture:string;reason:string}[];
   undesirableDoorways:SpatialRelationshipDiagnostic[];
-  unitContracts:UnitContractResult[];
+  unitContracts:UnitContractResult[];serviceIssues:ServiceIssue[];
   errors:string[]};
 export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteAudit{
   const site=generateSite(seed,scale);
@@ -51,9 +52,10 @@ export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteA
         errors.push('door width '+door.id);
     }
     for(const w of site.windows??[]){
-      const sill=site.cover.find(c=>c.fixture==='window-sill'&&
+      const expected=w.sillHeight===0?'glass-barrier':'window-sill';
+      const sill=site.cover.find(c=>c.fixture===expected&&
         dist({x:c.x,y:c.y},{x:w.x,y:w.y})<1);
-      if(!sill)errors.push('window lacks sill '+w.id);
+      if(!sill)errors.push('window lacks '+expected+' '+w.id);
     }
     if(site.archetype===undefined)errors.push('archetype not assigned');
     errors.push(...assessArchitecture(site).errors);
@@ -82,7 +84,7 @@ export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteA
   const roomFill=site.rooms.filter(r=>r.kind==='room').map(room=>({
     id:room.id,role:room.purpose??'untyped',
     areaM2:Math.round(room.w*room.h/400*10)/10,
-    fixtures:site.cover.filter(o=>o.fixture&&o.fixture!=='window-sill'&&
+    fixtures:site.cover.filter(o=>o.fixture&&o.fixture!=='window-sill'&&o.fixture!=='glass-barrier'&&
       o.x>room.x&&o.x<room.x+room.w&&o.y>room.y&&o.y<room.y+room.h).length
   }));
   const roomContracts=assessRoomContracts(site);
@@ -100,5 +102,6 @@ export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteA
     roomContracts,incompleteZones:roomContracts.filter(r=>!r.complete).map(r=>r.zoneId),
     furnishingIssues:site.furnishingIssues??[],
     undesirableDoorways:auditRoomRelationships(site),
-    unitContracts:assessUnitContracts(site),errors};
+    unitContracts:assessUnitContracts(site),
+    serviceIssues:auditFixtureService(site),errors};
 }
