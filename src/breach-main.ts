@@ -14,6 +14,7 @@ import {
   posture,toggleContactRule,toggling,stepSession,liveVisibility,
   planReload,reloadNow,planFlash,moveFlashTarget,flashTrajectory,
   cycleWeapon,toggleWeaponLight,planMedicalTreatment,
+  planCasualtyTransport,planRecoverMedical,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
@@ -287,6 +288,7 @@ function recordCompletedOperation(){
     casualties:members.filter(a=>a.health<=0).map(a=>careerId(a.id)),
     stabilizedIds:stats.stabilizedCasualties.map(careerId),
     criticalIds:stats.criticalCasualties.map(careerId),
+    evacuatedIds:stats.evacuatedCasualties.map(careerId),
     objective:stats.objective,
     flashUsed:state.battleEvents.filter(e=>e.kind==='flash'&&
      e.actor!==undefined&&e.text.endsWith('FLASH OUT')).length,
@@ -591,6 +593,7 @@ operationsToggle.addEventListener('click',()=>{
  }
 });
 let selected='rook';
+let evacMode:{patientId:string;mode:'drag'|'carry'}|null=null;
 let looking=false,flashMode=false;
 let firePlacement:'focus'|'suppress'|null=null;
 let lookMode:'look'|'pie'|'strafe'='look';
@@ -790,7 +793,7 @@ function turnCamera(shift:number){
 const uid=(id:string)=>team(state).find(o=>o.id===id);
 function selectUnit(id:string){
   const actor=uid(id);if(!actor||actor.health<=0)return;
-  uiClickTone('select');selected=id;looking=false;
+  uiClickTone('select');selected=id;looking=false;evacMode=null;
   selectedNode=null;doorFocusId=null;
   doorMenuDismissedId=null;updateHud();
 }
@@ -2129,6 +2132,12 @@ function render(){
 }
 function useSelectedGround(pt:Pt){
   if(state.phase!=='planning'||replaying)return;
+  if(evacMode){
+   const mode=evacMode;evacMode=null;
+   if(!planCasualtyTransport(state,selected,mode.patientId,pt,mode.mode))
+    showUiHelp('CASUALTY ROUTE BLOCKED — CHOOSE A REACHABLE DESTINATION');
+   updateHud();return;
+  }
   if(firePlacement){
     const mode=firePlacement;
     const nodeId=selectedNode??undefined;
