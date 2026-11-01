@@ -32,8 +32,8 @@ export function addCoveredEntries(site:Site,seed:number):Site{
  if(middle.x-w/2<bounds.minX+7||middle.x+w/2>bounds.maxX-7||
    middle.y-h/2<bounds.minY+7||middle.y+h/2>bounds.maxY-7)return site;
  // No shelter if the roof footprint would overlap an unrelated room.
- if(site.rooms.some(r=>r.x<source.x-2&&source.x<r.x+r.w+2&&
-   r.y<source.y-2&&source.y<r.y+r.h+2))return site;
+ if(site.rooms.some(r=>middle.x>r.x+8&&middle.x<r.x+r.w-8&&
+   middle.y>r.y+8&&middle.y<r.y+r.h-8))return site;
  const structures=[...(site.structures??[]),{
    id:'ENTRY-SHELTER',kind:roofKind,x:middle.x,y:middle.y,w,h
  }];
