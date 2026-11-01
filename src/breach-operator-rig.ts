@@ -62,6 +62,7 @@ export type OperatorPose={
   hitFade?:number;hitAge?:number;downProgress?:number;flashActive?:boolean;
   hitRegion?:WoundRegion;hitYaw?:number;hitSeverity?:number;
   downPose?:FallPose;
+  appearanceSeed?:number;
 };
 export type OperatorRig={
   root:THREE.Group;hip:THREE.Group;chest:THREE.Group;head:THREE.Group;
@@ -78,6 +79,9 @@ export type OperatorRig={
   autoHandling:(HandlingTransition&{at:number})|null;
   elbowSpread:[number,number];legGap:[number,number];
   colors:Map<THREE.MeshStandardMaterial,THREE.Color>;
+  clothMaterial:THREE.MeshStandardMaterial;vestMaterial:THREE.MeshStandardMaterial;
+  baseCloth:THREE.Color;baseVest:THREE.Color;helmetBadge:THREE.Mesh;
+  appearanceSeed:number;
   dispose:()=>void;
 };
 const mat=(hex:number,surface?:PixelSurface)=>new THREE.MeshStandardMaterial({color:hex,
@@ -119,6 +123,8 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   block(head,0,3,0,8,8,8,skin);
   block(head,0,6,0,9.4,3.5,9.4,vest);
   block(head,4,3,0,2,2.7,8,vest);
+  const helmetBadge=block(head,0,7.6,0,9.6,2,9.8,vest);
+  helmetBadge.visible=false;
   const feet:Foot[]=[],arms:Arm[]=[];
   for(const sideSign of [-1,1]){
     const upper=bone(root,4.7,5.3,cloth),lower=bone(root,4,4.3,cloth);
@@ -157,6 +163,8 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   const colors=new Map([cloth,boot,vest,skin,steel].map(material=>
     [material,material.color.clone()] as const));
   return {root,hip,chest,head,weapon,droppedGun,feet,arms,pack,colors,
+    clothMaterial:cloth,vestMaterial:vest,baseCloth:cloth.color.clone(),
+    baseVest:vest.color.clone(),helmetBadge,appearanceSeed:0,
     personality:operatorMotionTraits(id),
     magazineInserted,magazineHand,
     lastTime:-1,lastPose:null,
@@ -180,6 +188,21 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.lastTime=p.seconds;dt=0;
   }
   dt=clamp(dt,0,.08);
+  // Stable career-based presentation, never changing physical collision or IK.
+  const identity=p.appearanceSeed??0;
+  if(identity!==r.appearanceSeed){
+    r.appearanceSeed=identity;
+    const clothPalette=[0x6f9185,0x80826b,0x8e846e,0x687c8d,
+      0x798a79,0x92816a,0x65867c,0x8a8872];
+    const vestPalette=[0x43504b,0x4c5547,0x4b534e,0x4a5551];
+    r.colors.set(r.clothMaterial,identity===0?r.baseCloth.clone():
+      new THREE.Color(clothPalette[identity%clothPalette.length]));
+    r.colors.set(r.vestMaterial,identity===0?r.baseVest.clone():
+      new THREE.Color(vestPalette[(identity>>>3)%vestPalette.length]));
+    r.helmetBadge.visible=identity!==0&&identity%3===0;
+    r.pack.scale.set(1,identity===0?1:.90+(identity%5)*.05,
+      identity===0?1:.93+((identity>>>5)%4)*.04);
+  }
   // Retain costume identity, but subdued incapacitated bodies blend with
   // grounded blood and don't need floating status text. Reversible on seek.
   for(const [material,original] of r.colors){
