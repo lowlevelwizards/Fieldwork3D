@@ -6,8 +6,8 @@ test('one reusable geometry contains both exposed wall faces',()=>{
  const p=g.getAttribute('position');
  assert.equal(p.count,8);
  assert.equal(g.getIndex().count,12);
- assert.equal(p.getZ(0),4.64);
- assert.equal(p.getZ(4),-4.64);
+ assert.ok(Math.abs(p.getZ(0)-4.64)<.0001);
+ assert.ok(Math.abs(p.getZ(4)+4.64)<.0001);
  assert.equal(p.getX(0),-40);
  g.dispose();
 });
