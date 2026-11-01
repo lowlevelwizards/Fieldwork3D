@@ -224,6 +224,32 @@ export function furnishRooms(site:Site,seed:number):Site{
 
 
 
+ // Paired booth seating is a single authoritative footprint: no operator
+ // can squeeze through the table/bench gap that is not actually walkable.
+ if(site.archetype==='restaurant'&&
+    ['diner','sit-down-restaurant'].includes(site.identity?.subtype??'')){
+   for(const room of site.rooms.filter(r=>r.kind==='room'&&
+     r.purpose==='dining'&&r.w>=132&&r.h>=108)){
+     let placed=0;
+     for(const [fx,fy] of [[.31,.29],[.69,.71],[.69,.29],[.31,.71]]){
+       if(placed>=2)break;
+       const w=66,h=46,x=room.x+room.w*fx,y=room.y+room.h*fy;
+       const booth:Obstacle={x,y,w,h,fixture:'diner-booth',low:true};
+       if(x-w/2<=room.x+11||x+w/2>=room.x+room.w-11||
+         y-h/2<=room.y+11||y+h/2>=room.y+room.h-11)continue;
+       if(site.doors.some(d=>Math.hypot(x-(d.a.x+d.b.x)/2,
+         y-(d.a.y+d.b.y)/2)<58))continue;
+       if((site.openings??[]).some(d=>Math.hypot(x-(d.a.x+d.b.x)/2,
+         y-(d.a.y+d.b.y)/2)<60))continue;
+       if(reserved.some(p=>Math.abs(x-p.x)<w/2+25&&
+         Math.abs(y-p.y)<h/2+25))continue;
+       if(output.some(o=>overlap(o,booth,9)))continue;
+       output.push(booth);placed++;
+     }
+     if(placed>=2)break;
+   }
+ }
+
  const zoneCounts=new Map<string,number>(),zoneSeen=new Map<string,number>();
  for(const room of site.rooms){
   const key=room.zoneId??room.id;

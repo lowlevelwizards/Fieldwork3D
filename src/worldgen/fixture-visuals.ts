@@ -93,6 +93,19 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           ctx.box(group,c.x+dx,27,c.y+d*.36,5,2,2,metal,false);
         }
         ctx.box(group,c.x,8,c.y+d*.20,w*.90,16,d*.52,wood);
+      }else if(fixture==='diner-booth'){
+        const upholstery=visualCtx.solid(0x576d63,.91,'fabric');
+        const trim=visualCtx.solid(0x7f6b55,.85,'wood');
+        for(const z of [-d*.36,d*.36]){
+          ctx.box(group,c.x,10,c.y+z,w-4,5,d*.22,upholstery);
+          ctx.box(group,c.x,19,c.y+z+(z<0?-d*.1:d*.1),
+            w-4,17,3.4,upholstery);
+          ctx.box(group,c.x,5,c.y+z,w-5,10,d*.18,trim);
+        }
+        ctx.box(group,c.x,19,c.y,w-10,3,d*.34,trim);
+        for(const x of [-w*.32,w*.32])
+          ctx.box(group,c.x+x,9,c.y,3,17,3,steel);
+        ctx.box(group,c.x,28,c.y-d*.49,w-3,1.5,2,metal,false);
       }else if(fixture==='bar-stool'){
         const seat=visualCtx.solid(0x695b48,.87,'wood');
         ctx.box(group,c.x,22,c.y,w*.82,3,d*.82,seat);
