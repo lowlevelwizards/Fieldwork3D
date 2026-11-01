@@ -159,13 +159,22 @@ const sweepPassable=(from:Pt,to:Pt,canStand:(p:Pt)=>boolean)=>{
  * for a physically valid narrow route missed by the coarse grid. */
 export function route(from:Pt,to:Pt,
   canStand:(p:Pt)=>boolean=passable):Pt[]{
+  // Most routes have a legal snapped endpoint. Preserve the single cheap
+  // A* path in that overwhelmingly common case. A disconnected map must not
+  // pay for another full search on every attempted door or actor route.
+  const snap={x:Math.round(to.x/GRID)*GRID,
+    y:Math.round(to.y/GRID)*GRID};
+  const needsAlternate=canStand(to)&&
+    (!canStand(snap)||!sweepPassable(snap,to,canStand));
+  if(needsAlternate){
+    // Bypass the guaranteed failed first pass when the snapped target is
+    // physically invalid. A nearby swept legal grid anchor is enough.
+    return distance(from,to)>245?
+      routeGrid(from,to,canStand,GRID,5000,Infinity,true):
+      routeGrid(from,to,canStand,GRID/2,3800,76,true);
+  }
   const broad=routeGrid(from,to,canStand,GRID,6000);
-  if(broad.length)return broad;
-  // Long routes still use coarse A*: a valid exact target may round onto
-  // a blocked grid centre. Only on failure try adjacent legal end anchors,
-  // never incur the high-cost finer whole-building grid in routine play.
-  if(distance(from,to)>245)
-    return routeGrid(from,to,canStand,GRID,4200,Infinity,true);
+  if(broad.length||distance(from,to)>245)return broad;
   return routeGrid(from,to,canStand,GRID/2,3800,76,true);
 }
 function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
