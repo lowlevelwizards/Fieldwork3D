@@ -681,12 +681,18 @@ export class TacticalScene3D{
       const group=new THREE.Group();this.root.add(group);
       this.coverGroups.set(i,group);
       this.intelSurfaces.push({obj:group,kind:'cover',index:i});
-      renderFixtureVisual(group,c,i,fixtureCtx,wood,steel,olive,metal);
+      // Build models in local coordinates, so rotating a chair also rotates
+      // its back, legs and surface wear around its actual center.
+      group.position.set(c.x,0,c.y);
+      group.rotation.y=(c.orientation??0)*Math.PI/2;
+      const turned=(c.orientation??0)%2===1;
+      const visual={...c,x:0,y:0,w:turned?c.h:c.w,h:turned?c.w:c.h};
+      renderFixtureVisual(group,visual,i,fixtureCtx,wood,steel,olive,metal);
       for(const mark of marksOn('fixture',i)){
         const height=visibleSurfaceHeight(c.fixture??'crate');
         if(height<8)continue;
-        this.addSurfaceWear(group,mark,c.x+(mark.u-.5)*c.w,
-          Math.min(height-2,Math.max(3,mark.v*height)),c.y+c.h/2+.8,
+        this.addSurfaceWear(group,mark,(mark.u-.5)*visual.w,
+          Math.min(height-2,Math.max(3,mark.v*height)),visual.h/2+.8,
           fixturePixelSurface(c.fixture));
       }
     });
