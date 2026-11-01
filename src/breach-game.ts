@@ -1960,7 +1960,7 @@ function strikeSurface(from:Pt,aimed:Pt,s:Session,
     if(t!==null)hits.push({fraction:t,material:'brick',thickness:10});
   }
   for(const door of s.doors){
-    if(door.style==='mesh-gate')continue; // open steel mesh does not stop bullets
+    if(door.style==='mesh-gate'||door.style==='screen')continue; // fine mesh transmits most bullets
     const leaf=doorLeafSegment(door);
     const t=segmentImpact(from,aimed,leaf);
     if(t!==null)hits.push({fraction:t,

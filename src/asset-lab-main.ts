@@ -256,8 +256,8 @@ function sampleSite(items:readonly AssetLibraryEntry[]):Site{
    }else if(item.id==='door'||item.id==='shutter'||item.id.startsWith('door:')){
      const width=item.id==='shutter'?96:48;
      doors.push({id:'door-'+index,a:{x:x-width/2,y},b:{x:x+width/2,y},
-       kind:item.id==='shutter'?'shutter':item.id==='door:sliding-glass'?'sliding':'hinged',
-       slideDirection:item.id==='door:sliding-glass'?1:undefined,
+       kind:item.id==='shutter'?'shutter':['door:sliding-glass','door:barn','door:pocket'].includes(item.id)?'sliding':'hinged',
+       slideDirection:['door:sliding-glass','door:barn','door:pocket'].includes(item.id)?1:undefined,
        open:false,openedAt:-1,
        style:item.id==='door:sliding-glass'?'glazed':item.id.startsWith('door:')?
          item.id.slice(5) as NonNullable<Door['style']>:'wood'});
