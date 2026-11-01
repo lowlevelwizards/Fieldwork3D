@@ -13,10 +13,12 @@ export type ExteriorZone={id:string;kind:'yard'|'patio'|'driveway'|'service'|'ga
 export type WideOpening={id:string;a:Pt;b:Pt;kind:'arch'|'wide'};
 export type EnvironmentCondition='occupied'|'busy'|'neglected'|'vacant'|'renovation'|'disturbed';
 export type WindowStyle='standard'|'tall'|'picture'|'bay'|'industrial';
+export type WindowTreatment='none'|'open-curtains'|'bars'|'boarded';
 export type WindowOpening={
  id:string;x:number;y:number;width:number;vertical:boolean;
  /** Decorative family, never a substitute for the physical pane or sill. */
  style?:WindowStyle;
+ treatment?:WindowTreatment;
 };
 export type WorldBounds={minX:number;minY:number;maxX:number;maxY:number};
 export type SiteScale='standard'|'expanded';
