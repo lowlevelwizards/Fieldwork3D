@@ -5,6 +5,7 @@ import {type Site,type ExteriorZone,seeded} from '../breach-site.ts';
 import {type Obstacle,type Pt} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 import {overlapsArrivalLane} from './property-access-lane.ts';
+import {PARKING_VEHICLES,parkingStallCandidates} from './parking-stalls.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const overlaps=(a:Obstacle,b:Obstacle)=>Math.abs(a.x-b.x)<(a.w+b.w)/2+17&&Math.abs(a.y-b.y)<(a.h+b.h)/2+17;
 export function addExteriorProperty(site:Site,seed:number):Site{
@@ -123,13 +124,18 @@ export function addExteriorProperty(site:Site,seed:number):Site{
      choices[Math.floor(rng()*choices.length)];
    const asset=propDefinition(item);if(!asset)continue;
    // Preserve true dimensions: a car never becomes smaller than an operator.
-   const w=asset.width,h=asset.depth;
+   const parked=zone.kind==='parking'&&PARKING_VEHICLES.has(item);
+   const stalls=parked?parkingStallCandidates(zone,asset.width,asset.depth):[];
+   const w=parked&&zone.w>=zone.h?asset.depth:asset.width;
+   const h=parked&&zone.w>=zone.h?asset.width:asset.depth;
    if(zone.w<w+22||zone.h<h+22)continue;
    let accepted=false;
-   for(let attempt=0;attempt<12;attempt++){
-    const x=zone.x+(rng()-.5)*Math.max(0,zone.w-w-20);
-    const y=zone.y+(rng()-.5)*Math.max(0,zone.h-h-18);
-    const candidate:Obstacle={x,y,w,h,fixture:item,low:asset.cover==='low'};
+   for(let attempt=0;attempt<(parked?stalls.length:12);attempt++){
+    const slot=parked?stalls[attempt]:undefined;
+    const x=slot?.x??zone.x+(rng()-.5)*Math.max(0,zone.w-w-20);
+    const y=slot?.y??zone.y+(rng()-.5)*Math.max(0,zone.h-h-18);
+    const candidate:Obstacle={x,y,w,h,fixture:item,low:asset.cover==='low',
+     ...(slot?{orientation:slot.orientation}:{})};
     const bounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
     if(x-w/2<bounds.minX+17||x+w/2>bounds.maxX-17||
       y-h/2<bounds.minY+23||y+h/2>bounds.maxY-22)continue;
