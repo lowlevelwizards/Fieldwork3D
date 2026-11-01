@@ -240,12 +240,15 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
    b(-w*.34,top+2.8,0,w*.25,4,d*.65,light,false); // pillow
    b(-w*.47,top+3.3,0,3.5,6,d*.92,frame);
    if(clinical){
+     // Clinical articulating foot extension and reachable control lever.
      b(w*.30,top+1.4,0,w*.26,3,d*.77,glass,false); // foot panel
      for(const sx of [-1,1])b(sx*w*.35,4,0,3.5,8,d*.22,steel);
      b(w*.12,7,d*.46,3.2,10,2,steel,false); // adjustment handle
    }else{
      for(const sx of [-1,1])b(sx*w*.44,4,0,3.2,8,d*.83,wood);
      b(w*.14,top+2,0,w*.38,1.8,d*.82,accent,false); // folded blanket
+     // Thin mattress side piping and a frame skirting edge.
+     b(0,top-1.7,d*.43,w*.88,1.3,1.3,dark,false);
    }
    return true;
  }
@@ -258,13 +261,15 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
      b(sx*w*.44,10,0,w*.12,18,d*.91,base);
      b(sx*w*.44,19,0,w*.13,3,d*.65,light,false); // arms
      b(sx*w*.37,2.4,0,3.6,4.8,d*.62,dark);
+     b(sx*w*.44,H*.67,-d*.13,2,H*.27,2.8,base,false); // armrest support
    }
    const seats=single?1:2;
    for(let j=0;j<seats;j++){
      const x=(j-(seats-1)/2)*w*.48;
      b(x,14.3,d*.07,w*(single?.70:.40),3.3,d*.69,accent,false);
-     b(x,H*.70,-d*.28,w*(single?.66:.40),H*.29,3.1,
-      j===0?cream:base,false);
+     const cushion=b(x,H*.70,-d*.28,w*(single?.66:.40),H*.29,3.1,
+       j===0?cream:base,false);
+     cushion.rotation.x=-.09; // slightly reclining back, not a vertical brick
    }
    if(!single&&variation===1)b(w*.22,18.0,d*.14,5.5,4,6,red,false);
    return true;
@@ -273,7 +278,8 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
    const seat=11;
    b(0,seat,0,w*.82,3,d*.82,main);
    stand(seat,w*.67,d*.63);
-   b(0,(H+seat)/2,-d*.38,w*.78,H-seat,3.2,main);
+   const backrest=b(0,(H+seat)/2,-d*.38,w*.78,H-seat,3.2,main);
+   backrest.rotation.x=-.10;
    b(0,H-2,-d*.40,w*.78,3.5,4,wood,false);
    if(variation===0)for(const sx of [-1,1])
      b(sx*w*.26,(H+seat)/2,-d*.39,2.8,H-seat-5,2.0,steel,false);
@@ -308,11 +314,17 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
      for(const yy of [top*.43,top*.68])
        b(-w*.25,yy,d*.49,w*.22,1.4,.8,dark,false);
      b(w*.1,top-3,-d*.24,w*.48,2,2.5,steel,false);
+     b(-w*.25,top*.72,d*.48,w*.24,1.1,1.3,metal,false); // drawer pull
+     b(0,top*.40,-d*.38,w*.70,2,2.0,steel,false); // rear stabilizer
    }else if(work){
      b(0,5,0,w*.79,1.8,d*.80,wood);
      for(const sx of [-1,1])
        b(sx*w*.36,top*.55,-d*.41,3.6,top*.75,2.8,steel);
      b(0,top*.83,-d*.43,w*.73,6,2.3,dark,false);
+     for(const sx of [-1,1]){
+       const brace=b(sx*w*.37,top*.28,0,2,top*.48,d*.74,steel,false);
+       brace.rotation.x=sx*.18;
+     }
      for(const sx of [-.22,.20])
        b(sx*w,top*.84,-d*.48,3,3,1.2,accent,false);
    }else if(cart){
