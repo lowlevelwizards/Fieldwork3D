@@ -72,7 +72,7 @@ function report(site:Site):string{
   'ENTRANCE: '+assessArchitecture(site).entryPurpose.toUpperCase()+' · '+
   (site.condition??'ordinary').toUpperCase()+' · '+result.dressing+
   ' details · '+result.typedProps+' typed props · '+result.archOpenings+
-  ' wide openings\n'+(result.errors.length?
+  ' wide openings\n'+result.emptyRooms.length+' unfurnished functional rooms / '+\n  result.functionalRooms+' rooms total\n'+(result.errors.length?
    'CHECKS: '+result.errors.join('; '):'CHECKS: PASS');
 }
 // Site scale changes dimensions, not architectural fidelity or room count.
@@ -93,7 +93,7 @@ function generate(advance=false){
  playSite.href='./breach.html?seed='+chosen.seed+
    (siteScale()==='expanded'?'&scale=expanded':'');
  session=newSession(0,chosen.seed,'floor-plan',
-   scaleInput.value==='large'?'expanded':'standard');
+   siteScale());
  stage.applySite(session.site??null);stage.resetCamera();
  history.replaceState(null,'','?seed='+chosen.seed+
   (siteScale()==='expanded'?'&scale=expanded':''));
