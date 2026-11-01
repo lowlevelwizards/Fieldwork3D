@@ -71,7 +71,35 @@ export function relatedFurniturePositions(room:Room,fixture:string,
  }
  if(fixture==='armchair'){
   const sofa=by(placed,'sofa');
-  if(sofa)offer(sofa.x+sofa.w/2+width/2+11,sofa.y);
+  if(sofa){
+   const gap=sofa.w/2+width/2+11;
+   offer(sofa.x+gap,sofa.y);
+   offer(sofa.x-gap,sofa.y);
+   offer(sofa.x,sofa.y+sofa.h/2+depth/2+15);
+  }
+ }
+ if(fixture==='chair'&&!by(placed,'dining-table')&&!by(placed,'meeting-table')){
+  const first=by(placed,'chair');
+  if(first){
+   // Bank waiting-room chairs along the same practical sightline.
+   const gap=first.w/2+width/2+12;
+   offer(first.x+gap,first.y);offer(first.x-gap,first.y);
+  }
+ }
+ if(fixture==='instrument-cart'||fixture==='cart'){
+  const anchor=by(placed,'exam-bed')??by(placed,'workbench')??
+   by(placed,'packing-station');
+  if(anchor){
+   const gap=anchor.w/2+width/2+13;
+   offer(anchor.x+gap,anchor.y);offer(anchor.x-gap,anchor.y);
+  }
+ }
+ if(fixture==='filing-cabinet'||fixture==='bookcase'){
+  const desk=by(placed,'desk');
+  if(desk){
+   offer(desk.x+desk.w/2+width/2+12,desk.y);
+   offer(desk.x-desk.w/2-width/2-12,desk.y);
+  }
  }
  return result;
 }
