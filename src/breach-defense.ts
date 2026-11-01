@@ -2,6 +2,7 @@
 import {COVER,WALLS,activeSite,passable,route,doorCenter,type Door,type Pt} from './breach-core.ts';
 import {assessFireLane} from './breach-fire-safety.ts';
 import {nearCover} from './breach-combat.ts';
+import {coverScore} from './breach-defense-scoring.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type Defender={id:string;p:Pt;health:number;defense:Pt|null};
 export function defenseCandidates(origin:Pt,threat:Pt,doors:Door[]):Pt[]{
@@ -52,12 +53,12 @@ export function chooseDefense(origin:Pt,threat:Pt,doors:Door[],
   for(const p of options){
     const occupancy=others.filter(a=>a.id!==selfId&&a.health>0)
       .reduce((n,a)=>n+(dist(p,a.defense??a.p)<35?190:0),0);
-    const protectedSpot=nearCover(p,threat)?125:0;
+    const protectedSpot=nearCover(p,threat);
     // Cover is only useful if the defender can still bring the muzzle
     // above or around it. Eye-level sight does not guarantee a firing lane.
     const lane=assessFireLane(p,26,threat,32,COVER,WALLS,doors,
       others.filter(o=>o.id!==selfId&&o.health>0).map(o=>o.p));
-    const firingValue=lane.blocker==='clear'?70:-175;
+    const firingValue=lane.blocker==='clear';
     const span=others.filter(a=>a.id!==selfId&&a.health>0)
       .reduce((n,a)=>n+(dist(p,a.p)>55&&dist(p,a.p)<160?15:0),0);
     const doorHazard=doors.reduce((penalty,door)=>{
@@ -66,8 +67,12 @@ export function chooseDefense(origin:Pt,threat:Pt,doors:Door[],
     },0);
     // Choose watchable positions while favoring actual directional cover.
     const facing=dist(p,threat)>15?8:0;
-    const value=protectedSpot+firingValue+span+facing-dist(origin,p)*.30-
-      dist(p,threat)*.035-occupancy-doorHazard;
+    const value=coverScore({
+      protected:protectedSpot,shotClear:firingValue,travel:dist(origin,p),
+      range:dist(p,threat),allyConflict:occupancy>0,
+      nearDoor:doorHazard>25,
+      approachExposed:!nearCover(origin,threat)&&dist(origin,p)>85
+    })+span+facing;
     if(value>score){score=value;best=p;}
   }
   return best;
