@@ -28,7 +28,8 @@ function candidates(room:Room,width:number,depth:number):Pt[]{
  });
  return points;
 }
-export function recoverRoomEssentials(site:Input,initial:readonly Obstacle[]):{
+function recoverPass(site:Input,initial:readonly Obstacle[],
+  strategy:'original'|'constrained'):{
  cover:Obstacle[];issues:RecoveryIssue[];recovered:number
 }{
  const cover=[...initial],issues:RecoveryIssue[]=[];
@@ -43,7 +44,24 @@ export function recoverRoomEssentials(site:Input,initial:readonly Obstacle[]):{
  for(const [zone,rooms] of groups){
   const role=rooms[0]?.purpose??'storage';
   const contract=ROOM_CONTRACTS[role];if(!contract)continue;
-  for(const alternatives of contract.required){
+  const requirementOrder=[...contract.required];
+  if(strategy==='constrained'){
+   // Re-home the most difficult/largest real equipment first; a shower
+   // cannot be fitted into the last corner after small fittings have spread.
+   const difficulty=(group:readonly string[])=>{
+    const sizes=group.map(propDefinition).filter(
+      (a):a is NonNullable<typeof a>=>!!a?.solid);
+    const viable=sizes.filter(a=>rooms.some(r=>
+      a.width<=r.w-18&&a.depth<=r.h-18));
+    return {options:viable.length*rooms.length,
+      area:Math.max(0,...viable.map(a=>a.width*a.depth))};
+   };
+   requirementOrder.sort((a,b)=>{
+    const aa=difficulty(a),bb=difficulty(b);
+    return aa.options-bb.options||bb.area-aa.area;
+   });
+  }
+  for(const alternatives of requirementOrder){
    if(cover.some(o=>alternatives.includes(o.fixture??'')&&rooms.some(r=>inside(o,r))))continue;
    let chosen:Obstacle|undefined,displaced:Obstacle[]=[];
    // First seek genuinely empty positions. Reclaim one or two optional
@@ -95,4 +113,30 @@ export function recoverRoomEssentials(site:Input,initial:readonly Obstacle[]):{
   }
  }
  return {cover,issues,recovered};
+}
+
+/** A second, bounded attempt may re-home the room's existing ordinary
+ * fixtures, rather than allowing their first corner placements to obstruct
+ * the remaining required pieces. Only adopt a strictly better COMPLETE
+ * contract count; otherwise keep the original geometry without churn.
+ * Structural barriers, damaged items and other zones are never removed.
+ */
+export function recoverRoomEssentials(site:Input,initial:readonly Obstacle[]):{
+ cover:Obstacle[];issues:RecoveryIssue[];recovered:number
+}{
+ const first=recoverPass(site,initial,'original');
+ if(!first.issues.length)return first;
+ const failing=new Set(first.issues.map(issue=>issue.roomId));
+ const stripped=initial.filter(obstacle=>{
+  if(!obstacle.fixture||obstacle.integrity!==undefined||
+    obstacle.material!==undefined)return true;
+  const room=site.rooms.find(r=>r.kind==='room'&&
+    failing.has(r.zoneId??r.id)&&inside(obstacle,r));
+  if(!room)return true;
+  const required=ROOM_CONTRACTS[room.purpose??'']?.required??[];
+  return !required.some(group=>group.includes(obstacle.fixture!));
+ });
+ if(stripped.length===initial.length)return first;
+ const alternative=recoverPass(site,stripped,'constrained');
+ return alternative.issues.length<first.issues.length?alternative:first;
 }
