@@ -12,6 +12,7 @@ export function parkingStallCandidates(zone:ExteriorZone,width:number,depth:numb
  Pick<Obstacle,'x'|'y'|'w'|'h'|'orientation'>[]{
  const broad=zone.w>=zone.h,slots=parkingStallCount(zone);
  const w=broad?depth:width,h=broad?width:depth;
+ const orientation:0|1=broad?1:0;
  const centers=Array.from({length:slots},(_,i)=>{
   const t=(i+.5)/slots-.5;
   return {x:zone.x+(broad?t*zone.w:0),
@@ -23,5 +24,5 @@ export function parkingStallCandidates(zone:ExteriorZone,width:number,depth:numb
  return centers.filter(p=>p.x-w/2>=zone.x-zone.w/2+9&&
   p.x+w/2<=zone.x+zone.w/2-9&&p.y-h/2>=zone.y-zone.h/2+9&&
   p.y+h/2<=zone.y+zone.h/2-9).map(p=>({...p,w,h,
-   orientation:broad?1:0}));
+   orientation}));
 }
