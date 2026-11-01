@@ -2,6 +2,7 @@
 import {seeded,type Site} from '../breach-site.ts';
 import {roomPixelSurface} from './pixel-surface-selection.ts';
 import {canWear,type WearEffect} from './material-properties.ts';
+import {effectiveCondition} from './condition-visual.ts';
 import type {WearMark,WearKind} from './environment-wear.ts';
 export type ActivitySource='mechanical-leak'|'water-use'|'foot-traffic'|
  'work-contact'|'storage-dust';
@@ -18,7 +19,10 @@ const rules:Record<string,{kind:WearKind;source:ActivitySource;max:number}>={
 export function planActivityWear(site:Site):WearMark[]{
  const rng=seeded(site.seed^0x9be715ad);
  const condition=site.condition??'occupied';
- const budget=condition==='occupied'?2:condition==='busy'?7:
+ const continuous=site.conditionLevel!==undefined,t=effectiveCondition(site)/100;
+ if(continuous&&t<.04)return [];
+ const budget=continuous?Math.min(20,Math.round(t*21)):
+   condition==='occupied'?2:condition==='busy'?7:
    condition==='neglected'||condition==='disturbed'?14:9;
  const result:WearMark[]=[];
  for(const [i,item] of site.cover.entries()){
@@ -29,15 +33,15 @@ export function planActivityWear(site:Site):WearMark[]{
   if(!room)continue;
   const material=roomPixelSurface(site.archetype,room.purpose??room.kind);
   if(!canWear(material,rule.kind as WearEffect))continue;
-  if(condition==='occupied'&&(rule.kind==='oil'||rule.kind==='grease'))continue;
-  if(rng()>(condition==='occupied'?.25:.75))continue;
+  if(!continuous&&condition==='occupied'&&(rule.kind==='oil'||rule.kind==='grease'))continue;
+  if(rng()>(continuous?.08+.90*t:condition==='occupied'?.25:.75))continue;
   const size=Math.min(rule.max,Math.max(10,item.w*.55));
   const x=Math.max(room.x+size/2,Math.min(room.x+room.w-size/2,item.x));
   const y=Math.max(room.y+size/2,Math.min(room.y+room.h-size/2,item.y+item.h*.17));
   result.push({id:room.id+':activity:'+i,roomId:room.id,
     kind:rule.kind,x,y,width:size,depth:size*.72,
     rotation:Math.floor(rng()*4)*Math.PI/2,
-    opacity:condition==='neglected'?.42:.29});
+    opacity:continuous?.12+.34*t:condition==='neglected'?.42:.29});
  }
  return result;
 }
