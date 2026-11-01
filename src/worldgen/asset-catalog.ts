@@ -47,6 +47,8 @@ definitions.push(
  {id:'bike-rack',category:'exterior',width:39,depth:19,height:25,
   solid:true,cover:'low',rooms:['parking','patio','service-yard']}
 );
+definitions.push({id:'window-boards',category:'security',width:52,depth:10,
+ height:36,solid:true,cover:'high',rooms:['yard','garden','parking','service-yard']});
 export const PROP_CATALOG:ReadonlyMap<string,PropDefinition>=
  new Map(definitions.map(item=>[item.id,item]));
 export function propDefinition(id:string):PropDefinition|undefined{return PROP_CATALOG.get(id);}

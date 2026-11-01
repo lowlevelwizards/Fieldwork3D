@@ -469,6 +469,25 @@ export class TacticalScene3D{
         opening.width-3,glassHeight,1,paneMat,false);
       glass.castShadow=false;
       this.windowGlass.set(opening.id,glass);
+      if(opening.treatment==='bars'){
+        const bars=this.solid(0x586866,.64);
+        for(const frac of [-.32,-.1,.12,.34])
+          this.box(group,frac*opening.width,
+            baseTop+glassHeight/2,2,1.8,glassHeight+1,2.2,bars,false);
+        for(const y of [baseTop+3,glassTop-3])
+          this.box(group,0,y,2,opening.width-3,1.7,2.2,bars,false);
+      }
+      if(opening.treatment==='open-curtains'){
+        const fabric=this.solid(0x8f8779);
+        for(const side of [-1,1]){
+          this.box(group,side*(opening.width/2-4),
+            baseTop+glassHeight/2,3,
+            6,glassHeight*.91,3,fabric,false);
+          this.box(group,side*(opening.width/2-4),
+            baseTop+glassHeight*.17,3.2,6,1.7,3.7,doorTrim,false);
+        }
+      }
+
       for(const x of [-opening.width/2,opening.width/2])
         this.box(group,x,baseTop+glassHeight/2,0,3,
           glassHeight+2,9,trim,false);

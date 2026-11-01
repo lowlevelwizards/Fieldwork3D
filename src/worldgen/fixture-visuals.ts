@@ -269,6 +269,16 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
             ctx.box(group,c.x+w*sx,4,c.y+d*.29,3,8,3,enamel);
           }
         }
+      }else if(fixture==='window-boards'){
+        const timber=ctx.solid(0x7d6b54),nails=ctx.solid(0x4d514e);
+        const across=w>=d;
+        for(const height of [6,13,20,27,34]){
+          ctx.box(group,c.x,height,c.y,
+            across?w:8,3,across?8:d,timber);
+          for(const end of [-.38,.38])
+            ctx.box(group,c.x+(across?end*w:0),height,c.y+(across?0:end*d),
+              2.3,2.3,across?8.5:8.5,nails,false);
+        }
       }else if(fixture==='fence'){
         for(const sx of [-1,1])ctx.box(group,c.x+sx*w*.47,11,c.y,
           3,22,3,wood);
