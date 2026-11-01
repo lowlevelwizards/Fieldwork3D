@@ -32,6 +32,7 @@ function sampleSite(items:readonly AssetLibraryEntry[]):Site{
  const cover:Obstacle[]=[],walls:Segment[]=[],doors:Door[]=[];
  const windows:WindowOpening[]=[],openings:NonNullable<Site['openings']>=[];
  const dressing:NonNullable<Site['dressing']>=[];
+ const wallDetails:NonNullable<Site['wallDetails']>=[];
  for(const [index,item] of items.entries()){
    const col=index%COLUMNS,row=Math.floor(index/COLUMNS);
    const x=118+col*DX,y=95+row*DY;
@@ -49,6 +50,12 @@ function sampleSite(items:readonly AssetLibraryEntry[]):Site{
      const width=item.id==='shutter'?96:48;
      doors.push({id:'door-'+index,a:{x:x-width/2,y},b:{x:x+width/2,y},
        kind:item.id==='shutter'?'shutter':'hinged',open:false,openedAt:-1});
+   }else if(item.id.startsWith('wall-detail:')){
+     const id=item.id.slice('wall-detail:'.length);
+     walls.push({a:{x:x-37,y:y-6},b:{x:x+37,y:y-6}});
+     wallDetails.push({id:item.id,roomId:'showroom',
+       kind:id as NonNullable<Site['wallDetails']>[number]['kind'],
+       x,y,height:23,angle:0,width:22,depth:17});
    }else if(item.id==='arch'){
      openings.push({id:'arch-'+index,a:{x:x-36,y},b:{x:x+36,y},kind:'arch'});
    }
@@ -56,7 +63,7 @@ function sampleSite(items:readonly AssetLibraryEntry[]):Site{
  return {
    seed:1,name:'ASSET SHOWROOM',archetype:'warehouse',layout:'office',
    rooms:[{id:'showroom',x:20,y:18,w:665,h:495,kind:'room',purpose:'showroom',tone:1}],
-   walls,doors,windows,openings,cover,dressing,entrance:{x:350,y:485},
+   walls,doors,windows,openings,cover,dressing,wallDetails,entrance:{x:350,y:485},
    spawn:[],enemies:[],objective:{x:350,y:450},extract:{x:350,y:450},
    roomCount:1,bounds:{minX:0,minY:0,maxX:705,maxY:535},programLocked:true,
  };

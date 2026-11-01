@@ -9,6 +9,7 @@ import {correctPublicEntrance} from './worldgen/public-entrance.ts';
 import {activeSite,activateSite,passable,route} from './breach-core.ts';
 import {addOpenPlanTransitions} from './worldgen/open-plan.ts';
 import {dressSite} from './worldgen/environment-dresser.ts';
+import {decorateWalls} from './worldgen/wall-dresser.ts';
 import {populateFunctionalRooms} from './worldgen/scenario-population.ts';
 export const BUILDING_ARCHETYPES:readonly BuildingArchetype[]=
  ['house','townhouse','apartment','retail','office','garage','warehouse','restaurant','motel','utility','clinic'] as const;
@@ -73,8 +74,8 @@ export function applyArchetype(site:Site,seed:number):Site{
       return {...o,fixture:asset?.id??'crate',low:asset?.cover==='low'};
     });
     const architecture=addOpenPlanTransitions({...site,archetype,rooms,cover},seed);
-    const result=populateFunctionalRooms(dressSite(
-      buildArchetypeEnvironment(furnishRooms(architecture,seed),seed),seed),seed);
+    const result=decorateWalls(populateFunctionalRooms(dressSite(
+      buildArchetypeEnvironment(furnishRooms(architecture,seed),seed),seed),seed),seed);
     return {...result,bounds:site.bounds??
       {minX:0,minY:0,maxX:640,maxY:740}};
   };
