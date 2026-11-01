@@ -435,13 +435,45 @@ export class TacticalScene3D{
       const group=new THREE.Group();
       group.position.set(opening.x,0,opening.y);
       group.rotation.y=opening.vertical?-Math.PI/2:0;
-      this.box(group,0,7,0,opening.width,14,9,wallMat);
-      this.box(group,0,35,0,opening.width,10,9,wallMat);
-      const glass=this.box(group,0,23,0,opening.width-3,18,1,paneMat,false);
+      const style=opening.style??'standard';
+      // Window families retain the SAME underlying structural aperture,
+      // low sill and true planar glass for shots/visibility.
+      const baseTop=14;
+      const glassTop=style==='tall'?37:style==='picture'?36:
+        style==='industrial'?27:32;
+      const glassHeight=glassTop-baseTop;
+      const trim=style==='industrial'?metal:
+        style==='picture'?this.solid(0x627c79):doorTrim;
+      this.box(group,0,baseTop/2,0,opening.width,baseTop,9,wallMat);
+      this.box(group,0,(glassTop+40)/2,0,opening.width,
+        40-glassTop,9,wallMat);
+      const glass=this.box(group,0,baseTop+glassHeight/2,0,
+        opening.width-3,glassHeight,1,paneMat,false);
       glass.castShadow=false;
       this.windowGlass.set(opening.id,glass);
       for(const x of [-opening.width/2,opening.width/2])
-        this.box(group,x,23,0,3,20,9,doorTrim,false);
+        this.box(group,x,baseTop+glassHeight/2,0,3,
+          glassHeight+2,9,trim,false);
+      // Architectural divisions remain thin mullions, never extra cover.
+      if(style==='standard'||style==='bay')
+        this.box(group,0,baseTop+glassHeight*.48,1,
+          opening.width-4,2.4,2.2,trim,false);
+      if(style==='industrial'){
+        for(const f of [-.28,0,.28])
+          this.box(group,f*opening.width,baseTop+glassHeight/2,1,
+            1.6,glassHeight,2.4,trim,false);
+      }
+      if(style==='tall')
+        this.box(group,0,baseTop+1,1,opening.width,1.6,2.4,trim,false);
+      if(style==='bay'){
+        // A shallow projecting frame; the gameplay glass remains central.
+        this.box(group,-opening.width*.37,baseTop+glassHeight/2,-2.3,
+          2.5,glassHeight,5,trim,false);
+        this.box(group,opening.width*.37,baseTop+glassHeight/2,-2.3,
+          2.5,glassHeight,5,trim,false);
+        this.box(group,0,baseTop,-2.3,opening.width,2,5,trim,false);
+        this.box(group,0,glassTop,-2.3,opening.width,2,5,trim,false);
+      }
       const nearest=site.walls.findIndex(w=>
         Math.hypot(w.a.x-opening.x,w.a.y-opening.y)<38||
         Math.hypot(w.b.x-opening.x,w.b.y-opening.y)<38);
