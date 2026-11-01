@@ -3,6 +3,7 @@
  */
 import type {Session} from './breach-game.ts';
 import {WEAPONS,type WeaponId} from './breach-combat.ts';
+import {magazineKit} from './breach-magazines.ts';
 export type RosterMember={
  id:string;callsign:string;missions:number;successful:number;
  injuries:number;recovery:number;weapon:WeaponId;magazine:number;reserve:number;
@@ -58,6 +59,13 @@ export function applyRosterIdentity(s:Session,roster:RosterState){
   const member=roster.members.find(m=>m.id===a.id);
   if(member){
    a.name=member.callsign;
+   a.weapon=member.weapon;
+   a.magazine=Math.min(WEAPONS[a.weapon].capacity,member.magazine);
+   a.reserve=member.reserve;
+   a.insertedMagazineId=a.id+'/'+a.weapon+'/loaded';
+   a.spareMagazines=a.weapon==='shotgun'?[]:
+      magazineKit(a.id,a.weapon,a.reserve,WEAPONS[a.weapon].capacity);
+   a.reload=0;a.reloadMode=null;
    // Persistent wounds affect readiness but never invent fresh fatal damage.
    if(member.recovery>0&&member.injuries>0){
     const stage=Math.min(2,member.injuries);
@@ -80,6 +88,21 @@ export function recordRosterMission(s:Session,roster:RosterState):RosterState{
     recovery===0?0:m.injuries;
   return {...m,missions:m.missions+1,
     successful:m.successful+(s.phase==='won'?1:0),
-    injuries,recovery,fired:m.fired+actor.shots};
+    injuries,recovery,fired:m.fired+actor.shots,
+    weapon:actor.weapon,magazine:actor.magazine,reserve:actor.reserve};
  })};
+}
+
+/** Explicit between-mission resupply: no hidden refill or weapon swap. */
+export function resupplyRoster(roster:RosterState,id?:string):RosterState{
+ return {version:1,members:roster.members.map(m=>
+  id!==undefined&&m.id!==id?{...m}:{
+   ...m,magazine:WEAPONS[m.weapon].capacity,reserve:WEAPONS[m.weapon].reserve
+  })};
+}
+/** Pre-mission equipment swap with coherent ammunition, not just HUD text. */
+export function equipRoster(roster:RosterState,id:string,weapon:WeaponId):RosterState{
+ return {version:1,members:roster.members.map(m=>m.id===id?{
+   ...m,weapon,magazine:WEAPONS[weapon].capacity,reserve:WEAPONS[weapon].reserve
+  }:{...m})};
 }
