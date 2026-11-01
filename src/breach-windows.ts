@@ -121,10 +121,12 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
     x:opening.x,y:opening.y,
     w:opening.vertical?10:opening.width,
     h:opening.vertical?opening.width:10,
-    low:true,fixture:'window-sill'
+    low:true,fixture:opening.sillHeight===0?'glass-barrier':'window-sill'
   }));
   const physical={...glazed,cover:[
-    ...glazed.cover.filter(obstacle=>obstacle.fixture!=='window-sill'),...sills
+    ...glazed.cover.filter(obstacle=>
+      obstacle.fixture!=='window-sill'&&obstacle.fixture!=='glass-barrier'),
+    ...sills
   ]};
   return addExteriorProperty(physical,seed);
 }
