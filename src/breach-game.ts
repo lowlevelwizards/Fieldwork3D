@@ -35,7 +35,7 @@ import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool,issuedWedges} from './equipment-entry-tools.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
-import {relocateCover,canRelocateCover} from './breach-movable-cover.ts';
+import {relocateCover,canRelocateCover,coverPushDistance} from './breach-movable-cover.ts';
 import {materialForFixture,MATERIALS,type MaterialId} from './breach-materials.ts';
 import {resolvePenetration,type BarrierHit} from './breach-penetration.ts';
 import {damageCover} from './breach-reactive-cover.ts';
@@ -1818,7 +1818,8 @@ function runOrders(s:Session,a:TeamActor,dt:number){
         Math.max(o.w,o.h)/2+43){pop(a);return;}
       const dx=o.x-a.p.x,dy=o.y-a.p.y,
         length=Math.hypot(dx,dy)||1;
-      const pushed={x:o.x+dx/length*15,y:o.y+dy/length*15};
+      const amount=coverPushDistance(o);
+      const pushed={x:o.x+dx/length*amount,y:o.y+dy/length*amount};
       notify(s,movePhysicalProp(s,index,pushed)?
         a.name+' PUSHED '+(o.fixture??'OBJECT'):
         a.name+' OBJECT OBSTRUCTED');
