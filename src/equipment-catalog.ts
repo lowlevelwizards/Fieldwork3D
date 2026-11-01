@@ -87,8 +87,14 @@ export const EQUIPMENT_CATALOG:Readonly<Record<string,EquipmentDefinition>>={
   massKg:.22,bulk:0,capability:'light',description:'Portable light; combat implementation pending.'},
  'utility-radio':{id:'utility-radio',name:'Team Radio',category:'utility',slot:'utility',
   massKg:.48,bulk:1,capability:'radio',description:'Radio equipment; gameplay integration pending.'},
- 'utility-breach':{id:'utility-breach',name:'Breaching Tool',category:'utility',slot:'utility',
-  massKg:2.2,bulk:3,capability:'breach',description:'Manual entry tool; combat implementation pending.'},
+ 'utility-breach':{id:'utility-breach',name:'Breaching Ram',category:'utility',slot:'utility',
+  massKg:2.2,bulk:3,capability:'breach',description:'Force suitable hinged entry doors.'},
+ 'utility-pry':{id:'utility-pry',name:'Pry Bar',category:'utility',slot:'utility',
+  massKg:1.6,bulk:2,capability:'breach',description:'Lever compatible door frames; slower but quieter.'},
+ 'utility-cutter':{id:'utility-cutter',name:'Bolt Cutters',category:'utility',slot:'utility',
+  massKg:1.9,bulk:2,capability:'breach',description:'Cut cuttable gate and mesh fasteners.'},
+ 'utility-wedge':{id:'utility-wedge',name:'Door Wedges',category:'utility',slot:'utility',
+  massKg:.28,bulk:1,capability:'breach',description:'Reusable wedges for suitable hinged doors.'},
 };
 export const LOADOUT_SLOTS:readonly Exclude<EquipmentSlot,'secondary'>[]=[
  'primary','head','armor','rig','belt','backpack','top','legs','hands','feet','medical','tactical','utility'
