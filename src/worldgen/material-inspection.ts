@@ -9,8 +9,10 @@ export function assetPrimarySurface(item:Pick<AssetLibraryEntry,'id'|'origin'>):
  if(item.id==='door:steel'||item.id==='door:reinforced'||item.id==='shutter')
   return 'industrial-steel';
  if(item.id==='door:exit')return 'painted-metal';
- if(item.id.startsWith('wall')||item.id==='baseboard')return 'plaster';
- if(item.id==='floor')return 'wood';
+ if(item.id==='wall-cap')return 'concrete';
+ if(item.id==='baseboard')return 'painted-wood';
+ if(item.id.startsWith('wall')||item.id==='arch')return 'plaster';
+ if(item.id==='floor')return 'concrete';
  if(item.id.startsWith('window'))return 'painted-metal';
  return 'metal';
 }
