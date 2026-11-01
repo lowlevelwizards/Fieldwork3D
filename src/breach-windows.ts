@@ -8,17 +8,17 @@ import {addSecurityPerimeter} from './worldgen/security-perimeter.ts';
 import {addInteriorGlazing} from './worldgen/interior-glazing.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const windowStyles:Record<BuildingArchetype,readonly WindowStyle[]>={
- house:['standard','tall','bay','picture'],
- townhouse:['standard','tall','bay','standard'],
- apartment:['standard','tall','standard','picture'],
- retail:['picture','tall','standard'],
- office:['tall','picture','standard'],
- garage:['industrial','standard'],
- warehouse:['industrial','tall'],
- restaurant:['picture','bay','tall'],
- motel:['standard','picture','standard'],
- utility:['industrial','standard'],
- clinic:['tall','picture','standard'],
+ house:['standard','tall','bay','awning'],
+ townhouse:['standard','tall','bay','awning'],
+ apartment:['standard','tall','standard','awning'],
+ retail:['storefront','tall','standard'],
+ office:['tall','picture','clerestory'],
+ garage:['industrial','awning'],
+ warehouse:['industrial','clerestory'],
+ restaurant:['picture','bay','awning'],
+ motel:['standard','picture','awning'],
+ utility:['industrial','wire'],
+ clinic:['tall','picture','wire'],
 };
 export function openingStyle(kind:BuildingArchetype|undefined,seed:number,index:number):WindowStyle{
  const list=windowStyles[kind??'house'];
@@ -65,10 +65,12 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
     const b={x:item.p.x+dx*half,y:item.p.y+dy*half};
     if(dist(a,wall.a)<20||dist(b,wall.b)<20)continue;
     chosen.add(item.index);
+    const style=fullHeight?'storefront':openingStyle(site.archetype,seed,windows.length);
+    const clerestory=style==='clerestory';
     windows.push({id:'W'+windows.length,x:item.p.x,y:item.p.y,
-      width:half*2,vertical:item.vertical,
-      style:fullHeight?'picture':openingStyle(site.archetype,seed,windows.length),
-      sillHeight:fullHeight?0:undefined,headHeight:fullHeight?39:undefined});
+      width:half*2,vertical:item.vertical,style,
+      sillHeight:fullHeight?0:clerestory?28:style==='awning'?19:undefined,
+      headHeight:fullHeight||clerestory?39:style==='awning'?35:undefined});
   }
   const walls:Segment[]=[];
   site.walls.forEach((wall,index)=>{
@@ -88,7 +90,8 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
     x:opening.x,y:opening.y,
     w:opening.vertical?10:opening.width,
     h:opening.vertical?opening.width:10,
-    low:true,fixture:opening.sillHeight===0?'glass-barrier':'window-sill'});
+    low:(opening.sillHeight??14)<25,
+    fixture:opening.sillHeight===0?'glass-barrier':'window-sill'});
   const exteriorFixture=site.archetype==='warehouse'?'pallet':
     site.archetype==='garage'?'vehicle':
     site.archetype==='house'?'fence':
@@ -122,7 +125,8 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
     x:opening.x,y:opening.y,
     w:opening.vertical?10:opening.width,
     h:opening.vertical?opening.width:10,
-    low:true,fixture:opening.sillHeight===0?'glass-barrier':'window-sill'
+    low:(opening.sillHeight??14)<25,
+    fixture:opening.sillHeight===0?'glass-barrier':'window-sill'
   }));
   const physical={...glazed,cover:[
     ...glazed.cover.filter(obstacle=>
@@ -138,7 +142,8 @@ export type WindowState=WindowOpening&{
 };
 export function initializeWindows(openings:readonly WindowOpening[]):WindowState[]{
  return openings.map(w=>({...w,open:false,integrity:2,
-   shattered:false,operable:!w.interior&&w.width>=38&&w.style!=='picture'}));
+   shattered:false,operable:!w.interior&&w.width>=38&&
+    !['picture','storefront','clerestory','wire'].includes(w.style??'standard')}));
 }
 export function manipulateWindow(w:WindowState,action:'open'|'close'|'break'){
  if(action==='break'){

@@ -837,11 +837,12 @@ export class TacticalScene3D{
       // Window families retain the SAME underlying structural aperture,
       // low sill and true planar glass for shots/visibility.
       const baseTop=opening.sillHeight??14;
-      const glassTop=style==='tall'?37:style==='picture'?36:
-        style==='industrial'?27:32;
+      const glassTop=style==='tall'?37:style==='picture'||style==='storefront'?39:
+        style==='industrial'?27:style==='clerestory'?39:
+        style==='awning'?35:style==='wire'?34:32;
       const glassHeight=(opening.headHeight??glassTop)-baseTop;
       const trim=opening.interior?this.solid(0x4f605f,.66,'painted-metal'):
-        style==='industrial'?metal:
+        ['industrial','wire','clerestory','storefront'].includes(style)?metal:
         style==='picture'?this.solid(0x627c79):doorTrim;
       if(baseTop>0)this.box(group,0,baseTop/2,0,opening.width,baseTop,9,wallMat);
       const actualTop=opening.headHeight??glassTop;
@@ -878,12 +879,23 @@ export class TacticalScene3D{
       if(style==='standard'||style==='bay')
         this.box(group,0,baseTop+glassHeight*.48,1,
           opening.width-4,2.4,2.2,trim,false);
-      if(style==='industrial'){
-        for(const f of [-.28,0,.28])
+      if(style==='industrial'||style==='wire'||style==='storefront'){
+        for(const f of style==='storefront'?[-.25,.25]:[-.28,0,.28])
           this.box(group,f*opening.width,baseTop+glassHeight/2,1,
             1.6,glassHeight,2.4,trim,false);
       }
-      if(style==='tall')
+      if(style==='wire'){
+        // Readable sparse wire grid; the single glass pane remains authoritative.
+        for(const y of [baseTop+4,baseTop+10,baseTop+16,baseTop+22])
+          if(y<actualTop-2)this.box(group,0,y,1.8,opening.width-4,.8,1.4,trim,false);
+      }
+      if(style==='storefront')
+        this.box(group,0,baseTop+glassHeight*.51,1,opening.width-4,1.8,2.1,trim,false);
+      if(style==='awning'){
+        this.box(group,0,actualTop-2,1,opening.width-4,2,2.4,trim,false);
+        this.box(group,0,baseTop+glassHeight*.50,1,opening.width-4,1,1.5,trim,false);
+      }
+      if(style==='tall'||style==='clerestory')
         this.box(group,0,baseTop+1,1,opening.width,1.6,2.4,trim,false);
       if(style==='bay'){
         // A shallow projecting frame; the gameplay glass remains central.
