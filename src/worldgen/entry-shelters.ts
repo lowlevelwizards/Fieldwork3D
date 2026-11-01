@@ -22,7 +22,7 @@ export function addCoveredEntries(site:Site,seed:number):Site{
  const residential=['house','townhouse','motel'].includes(kind);
  const industrial=['garage','warehouse','utility'].includes(kind);
  const roofKind=residential?'porch-roof':industrial?'service-awning':'entrance-canopy';
- const width=industrial?106:residential?90:96;
+ const width=industrial?106:residential?90+(seed%2)*6:96;
  const depth=residential?47:industrial?38:40;
  const middle={x:source.x+outward.x*(depth/2-5),
   y:source.y+outward.y*(depth/2-5)};
