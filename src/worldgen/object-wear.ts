@@ -21,6 +21,12 @@ const preferred:Record<string,readonly WearKind[]>={
  sofa:['fray','stain','scuff'],armchair:['fray','stain'],
  bed:['fray','stain'],chair:['scuff','fray'],
  'office-chair':['fray','scuff'],'exam-bed':['stain','scuff'],
+ 'tool-rack':['scratch','rust'],'linen-cart':['scuff','scratch'],
+ 'supply-cart':['scratch','scuff'],'storage-tote':['scuff','fade'],
+ 'ice-machine':['mineral','rust','scuff'],
+ 'chest-freezer':['scratch','rust'],'upright-freezer':['scratch','rust'],
+ 'refrigerated-display':['scuff','scratch'],'dish-rack':['scratch','rust'],
+ 'utility-sink':['mineral','scuff'],
  rack:['rust','scratch'],shelf:['rust','scratch'],
  pallet:['scratch','chip'],crate:['scratch','chip'],
  fridge:['scratch','rust'],counter:['scratch','chip']

@@ -4,6 +4,7 @@ import {seeded,type Site} from '../breach-site.ts';
 import {roomPixelSurface} from './pixel-surface-selection.ts';
 import {surfaceMood} from './surface-moods.ts';
 import {effectiveCondition} from './condition-visual.ts';
+import {materialWearKind,type WearActivity} from './material-wear-language.ts';
 import type {WearTextureKind} from '../rendering/pixel-decals.ts';
 export type WearKind=WearTextureKind;
 export type WearMark={
@@ -53,9 +54,10 @@ export function planEnvironmentalWear(site:Site):WearMark[]{
    if(i%4===0)kind='stain';
    else if(i%7===0)kind='chip';
   }
-  if(surface==='carpet'&&['scrape','rust','mineral'].includes(kind))kind='stain';
   if(mood.maintenance==='clinical'&&['stain','grease'].includes(kind))kind='scuff';
-  if((surface==='tile'||surface==='linoleum')&&kind==='dust')kind='scuff';
+  const activity:WearActivity=industrial?'industrial':cooking?'cooking':
+   wet?'wet':['loading','aisle','service','hallway'].includes(role)?'traffic':'private';
+  kind=materialWearKind(surface,kind,activity,random());
   const width=8+random()*Math.min(13,room.w*.1);
   const depth=8+random()*Math.min(13,room.h*.1);
   const edge=kind==='dust'||kind==='scuff';
@@ -75,8 +77,10 @@ export function planEnvironmentalWear(site:Site):WearMark[]{
   const fixtures=site.cover.filter(o=>o.fixture&&o.x>=room.x&&o.x<=room.x+room.w&&
     o.y>=room.y&&o.y<=room.y+room.h);
   const associated=kind==='oil'||kind==='grease'||kind==='rust'?
-    ['vehicle-lift','workbench','compressor','generator','tank','stove']:
-    kind==='mineral'||kind==='drip'?['sink','toilet','bathtub','laundry-machine']:[];
+    ['vehicle-lift','workbench','compressor','generator','tank','stove',
+     'tool-rack','commercial-range','upright-freezer']:
+    kind==='mineral'||kind==='drip'?['sink','utility-sink','toilet','bathtub',
+     'laundry-machine','ice-machine','dish-station']:[];
   const anchor=associated.length?fixtures.find(o=>associated.includes(o.fixture??'')):undefined;
   const x=anchor?
    clamp(anchor.x,room.x+width/2,room.x+room.w-width/2):threshold?
