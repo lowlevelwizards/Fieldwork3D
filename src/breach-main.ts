@@ -41,7 +41,7 @@ import {initialRoster,readRoster,applyRosterIdentity,recordRosterMission,
 import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOperation,
  purchaseAmmo,purchaseMedical,resupplyOperator,treatOperator,
  hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
- retireOperator,
+ retireOperator,equipCampaignGear,
  type CampaignState,type CampaignReport} from './campaign-state.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {exportCampaign,importCampaign} from './campaign-persistence.ts';
@@ -2042,6 +2042,9 @@ const campaignScreen=new CampaignScreen({
   saveCampaign();showCampaignHome();}},
  buyWeapon:(weapon)=>{if(campaign){campaign=buyWeapon(campaign,weapon);saveCampaign();showCampaignHome();}},
  equipWeapon:(id,weapon)=>{if(campaign){campaign=equipCampaignWeapon(campaign,id,weapon);
+  saveCampaign();showCampaignHome();}},
+ equipGear:(id,slot,itemId)=>{if(campaign){
+  campaign=equipCampaignGear(campaign,id,slot,itemId);
   saveCampaign();showCampaignHome();}},
  exportSave:()=>{
   if(!campaign)return;
