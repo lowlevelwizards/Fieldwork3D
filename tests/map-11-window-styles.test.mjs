@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {generateSite} from '../src/breach-site.ts';
 import {initializeWindows,openingStyle} from '../src/breach-windows.ts';
 test('MAP 11 window kinds are deterministic and keep physical sills',()=>{
- const accepted=new Set(['standard','tall','picture','bay','industrial']);
+ const accepted=new Set(['standard','tall','picture','bay','industrial',
+  'clerestory','awning','wire','storefront']);
  let found=0;
  for(let seed=1;seed<=60;seed++){
   const a=generateSite(seed),b=generateSite(seed);
@@ -21,5 +22,5 @@ test('MAP 11 window kinds are deterministic and keep physical sills',()=>{
     if(w.style==='picture')assert.equal(w.operable,false);
  }
  assert.ok(found>0);
- assert.equal(openingStyle('garage',15,0),'standard');
+ assert.equal(openingStyle('garage',15,0),'awning');
 });

@@ -15,7 +15,8 @@ export type BuildingArchetype='house'|'townhouse'|'apartment'|'retail'|'office'|
 export type ExteriorZone={id:string;kind:'yard'|'patio'|'driveway'|'service'|'garden'|'parking';x:number;y:number;w:number;h:number};
 export type WideOpening={id:string;a:Pt;b:Pt;kind:'arch'|'wide'|'serving'};
 export type EnvironmentCondition='occupied'|'busy'|'neglected'|'vacant'|'renovation'|'disturbed';
-export type WindowStyle='standard'|'tall'|'picture'|'bay'|'industrial';
+export type WindowStyle='standard'|'tall'|'picture'|'bay'|'industrial'|
+  'clerestory'|'awning'|'wire'|'storefront';
 export type WindowTreatment='none'|'open-curtains'|'bars'|'boarded';
 export type WindowOpening={
  id:string;x:number;y:number;width:number;vertical:boolean;

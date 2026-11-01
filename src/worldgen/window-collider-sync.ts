@@ -11,7 +11,7 @@ export function synchronizeWindowBarriers<T extends Pick<Site,'windows'|'cover'>
   x:window.x,y:window.y,
   w:window.vertical?10:window.width,
   h:window.vertical?window.width:10,
-  low:true,
+  low:(window.sillHeight??14)<25,
   fixture:window.sillHeight===0?'glass-barrier':'window-sill'
  }));
  return {...site,cover:[...staticCover,...barriers]};

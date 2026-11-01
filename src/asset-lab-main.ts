@@ -251,8 +251,11 @@ function sampleSite(items:readonly AssetLibraryEntry[]):Site{
        style:item.id==='window:interior'||item.id==='window:full-height'?'picture':item.id.startsWith('window:')?
          item.id.slice(7) as NonNullable<WindowOpening['style']>:'standard',
        interior:item.id==='window:interior',
-       sillHeight:item.id==='window:full-height'?0:item.id==='window:interior'?9:undefined,
-       headHeight:item.id==='window:full-height'?39:item.id==='window:interior'?37:undefined});
+       sillHeight:item.id==='window:full-height'||item.id==='window:storefront'?0:
+         item.id==='window:clerestory'?28:item.id==='window:awning'?19:
+         item.id==='window:interior'?9:undefined,
+       headHeight:['window:full-height','window:storefront','window:clerestory'].includes(item.id)?39:
+         item.id==='window:awning'?35:item.id==='window:interior'?37:undefined});
    }else if(item.id==='door'||item.id==='shutter'||item.id.startsWith('door:')){
      const width=item.id==='shutter'?96:48;
      doors.push({id:'door-'+index,a:{x:x-width/2,y},b:{x:x+width/2,y},
