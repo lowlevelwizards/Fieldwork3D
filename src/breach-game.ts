@@ -57,7 +57,8 @@ import {bodyClear,sweptBodyClear,squeezeFacing,
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
   from './breach-squeeze-route.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
-import {kitMedicalSupplies,spendMedicalSupply,type FieldMedicalSupplies}
+import {kitMedicalSupplies,spendMedicalSupply,transferMedicalSupply,
+ medicalSupplyCount,type FieldMedicalSupplies}
  from './equipment-medical-supplies.ts';
 import {treatmentSupplyForWound,treatmentDuration}
  from './breach-medical-treatment.ts';
@@ -847,6 +848,17 @@ export function planHoldClear(s:Session,id:string,origin:'here'|'end'='end',afte
 /** A treatment order uses the same planning history and navigation authority. */
 /** One authored order carries a downed teammate to a player-chosen point.
  * Existing tactical route and swept body collision remain authoritative. */
+/** Retrieve one accessible item from a downed teammate into real kit capacity. */
+export function planRecoverMedical(s:Session,id:string,patientId:string):boolean{
+ const a=party(s,id),patient=s.operators.find(o=>o.id===patientId);
+ if(!a||!patient||a===patient||a.side!==patient.side||
+  patient.health>0||!canEdit(s)||medicalSupplyCount(patient.medicalSupplies)<1)return false;
+ const cap=kitMedicalSupplies(a.equipment);
+ if(!(['tourniquet','trauma-dressing','field-dressing'] as const)
+  .some(item=>patient.medicalSupplies[item]>0&&a.medicalSupplies[item]<cap[item]))return false;
+ if(!routeWithSqueezeIntel(s.intel,finalPoint(a),patient.p).length)return false;
+ return addNode(s,id,'recover-medical',finalPoint(a),{patientId});
+}
 export function planCasualtyTransport(s:Session,id:string,patientId:string,
  to:Pt,mode:TransportMode='drag'):boolean{
  const a=party(s,id),patient=s.operators.find(o=>o.id===patientId);
@@ -1583,6 +1595,27 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       a.squeeze=false;a.squeezeTime=0;
     }
     a.pieIndex=0;
+  }
+  if(n.kind==='recover-medical'){
+    const patient=s.operators.find(o=>o.id===n.patientId&&o.side===a.side);
+    if(!patient||patient.health>0){pop(a);return;}
+    if(!near(a.p,patient.p,27)){
+      const dir=angle(patient.p,a.p);
+      approach(a,{x:patient.p.x+Math.cos(dir)*21,
+        y:patient.p.y+Math.sin(dir)*21},dt,s,.66);return;
+    }
+    a.velocity=0;a.actionTimer+=dt;
+    if(a.actionTimer>=1.35){
+      const transferred=transferMedicalSupply(patient.medicalSupplies,
+        a.medicalSupplies,kitMedicalSupplies(a.equipment));
+      if(transferred){
+        notify(s,a.name+' RECOVERED '+transferred.toUpperCase());
+        battleEvent(s,'interaction',a,patient.p,
+          a.name+' RECOVERED '+transferred.toUpperCase());
+      }
+      pop(a);
+    }
+    return;
   }
   if(n.kind==='evacuate'){
     const patient=s.operators.find(o=>o.id===n.patientId&&o.side===a.side);
@@ -2938,6 +2971,8 @@ export function debrief(s:Session){
   const own=team(s);
   const casualties=own.filter(a=>a.health<=0).length;
   const casualtyCare=stabilizationSummary(own);
+  const evacuated=own.filter(a=>a.health<=0&&
+   near(a.p,s.scenario.extract,47)).map(a=>a.id);
   const shots=own.reduce((t,a)=>t+a.shots,0);
   const hits=own.reduce((t,a)=>t+a.hits,0);
   const target=enemies(s).find(e=>e.id===s.captureTarget);
@@ -2953,6 +2988,7 @@ export function debrief(s:Session){
   return {result:s.phase,time:Math.floor(s.seconds),casualties,
     stabilizedCasualties:casualtyCare.stabilized,
     criticalCasualties:casualtyCare.critical,
+    evacuatedCasualties:evacuated,
     shots,hits,
     kills:own.reduce((t,a)=>t+a.kills,0),
     pauses:s.timesPaused,variant:s.scenario.name,
