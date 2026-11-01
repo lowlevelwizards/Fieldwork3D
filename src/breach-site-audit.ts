@@ -15,6 +15,7 @@ import {assessSpaceQuality,type SpaceQuality} from './worldgen/space-quality.ts'
 import {assessAccessibilityClearance,type AccessibilityQuality} from './worldgen/accessibility-clearance.ts';
 import {inspectHumanJourneys,type JourneyAudit} from './worldgen/human-journeys.ts';
 import {measureRouteFriction,type RouteFriction} from './worldgen/route-friction.ts';
+import {auditEncounter,type EncounterSpatialAudit} from './worldgen/encounter-diagnostics.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type SiteAudit={seed:number;archetype:string;layout:string;
   rooms:number;doors:number;enemies:number;windows:number;
@@ -29,7 +30,7 @@ export type SiteAudit={seed:number;archetype:string;layout:string;
   operationalRouteIssues:OperationalRouteIssue[];
   designQuality:CompletenessScore;spaceQuality:SpaceQuality;
   accessibilityQuality:AccessibilityQuality;humanJourneys:JourneyAudit;
-  routeFriction:RouteFriction;errors:string[]};
+  routeFriction:RouteFriction;encounterAudit:EncounterSpatialAudit;errors:string[]};
 export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteAudit{
   return auditSite(generateSite(seed,scale));
 }
@@ -142,5 +143,5 @@ export function auditSite(site:Site):SiteAudit{
     designQuality:measureSiteCompleteness(site),
     spaceQuality:assessSpaceQuality(site),
     accessibilityQuality:assessAccessibilityClearance(site),humanJourneys,
-    routeFriction,errors};
+    routeFriction,encounterAudit:auditEncounter(site),errors};
 }

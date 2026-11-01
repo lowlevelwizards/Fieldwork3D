@@ -19,6 +19,10 @@ button:disabled{opacity:.47;cursor:default}
 .progress-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:6px}
 #cancelGeneration{min-height:30px;padding:4px 10px;font-size:11px}
 @media(max-width:450px){#generationProgress{top:calc(54px + env(safe-area-inset-top));padding:10px}}
+#encounterInspector{border:1px solid #7b6c4a;border-radius:6px;padding:7px 9px;touch-action:pan-y}
+#encounterInspector summary{font-weight:700;cursor:pointer;touch-action:manipulation}
+#encounterDetails{max-height:210px;overflow:auto;white-space:pre-wrap;font:11px/1.45 ui-monospace,monospace;color:#f0d7b0;touch-action:pan-y}
+#labels .enemy-label{background:#674c34de;border-color:#dcb079;color:#ffe8bc}
 #functionalQuality{border:1px solid #58766b;border-radius:6px;padding:7px 9px;touch-action:pan-y}
 #functionalQuality summary{font-weight:700;cursor:pointer;touch-action:manipulation}
 #functionalSummary{padding:7px 0;color:#cdd9cf}
@@ -46,7 +50,9 @@ button:disabled{opacity:.47;cursor:default}
   <label><input id="needs" type="checkbox" checked> Missing essentials</label>
   <label><input id="cover" type="checkbox"> Cover</label>
   <label><input id="facing" type="checkbox"> Facing</label>
-  <label><input id="doors" type="checkbox"> Doors</label></div>
+  <label><input id="doors" type="checkbox"> Doors</label>
+  <label><input id="enemyOverlay" type="checkbox"> Enemies</label></div>
+ <details id="encounterInspector"><summary>ENCOUNTER INSPECTOR / SPAWN PLAN</summary><pre id="encounterDetails">Generate a site to inspect encounter details.</pre></details>
  <details id="functionalQuality"><summary>FUNCTIONAL QUALITY / SPACE AUDIT</summary>
   <div id="functionalSummary">Generate a site to inspect space quality.</div>
   <div id="functionalWarnings" aria-label="Spatial quality warnings"></div>
