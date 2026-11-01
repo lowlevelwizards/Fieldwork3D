@@ -43,7 +43,8 @@ import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
 import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOperation,
  purchaseAmmo,purchaseMedical,resupplyOperator,treatOperator,
  hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
- retireOperator,equipCampaignGear,saveCampaignKitPreset,applyCampaignKitPreset,
+ retireOperator,equipCampaignGear,moveCampaignMagazine,
+ saveCampaignKitPreset,applyCampaignKitPreset,
  deleteCampaignKitPreset,renameCampaignOperator,cycleCampaignAppearance,
  repairCampaignArmor,purchaseFlash,
  type CampaignState,type CampaignReport} from './campaign-state.ts';
@@ -2125,6 +2126,9 @@ const campaignScreen=new CampaignScreen({
   saveCampaign();showCampaignHome();}},
  equipGear:(id,slot,itemId)=>{if(campaign){
   campaign=equipCampaignGear(campaign,id,slot,itemId);
+  saveCampaign();showCampaignHome();}},
+ moveMagazine:(id,magazineId,location)=>{if(campaign){
+  campaign=moveCampaignMagazine(campaign,id,magazineId,location);
   saveCampaign();showCampaignHome();}},
  saveKitPreset:(id,name)=>{if(campaign){campaign=saveCampaignKitPreset(campaign,id,name);
   saveCampaign();showCampaignHome();}},
