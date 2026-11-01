@@ -15,6 +15,7 @@ import {
   cycleWeapon,toggleWeaponLight,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
+import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
 import type {SiteScale} from './breach-site.ts';
 import {renderSnapshot,type RenderActor}
   from './breach-frame-interpolation.ts';
@@ -42,8 +43,8 @@ import {initialRoster,readRoster,applyRosterIdentity,recordRosterMission,
  configureRosterWeapon,
  renameRosterMember,cycleRosterAppearance} from './breach-roster.ts';
 import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
-import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly}
- from './equipment-weapon-assemblies.ts';
+import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
+ type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
 import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOperation,
  purchaseAmmo,purchaseMedical,resupplyOperator,treatOperator,
  hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
@@ -347,7 +348,10 @@ Object.assign(operationsBoard.style,{
 document.body.append(operationsBoard);
 let expandedQuickKit:string|null=null;
 let expandedQuickWeapon:string|null=null;
+let quickWorkbench:WeaponWorkbenchPreview|null=null;
+let quickWorkbenchId:string|null=null;
 function renderOperationsBoard(){
+ quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
  operationsBoard.replaceChildren();
  const heading=document.createElement('div');
  heading.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px';
@@ -451,14 +455,36 @@ function renderOperationsBoard(){
   }
   const weaponEditor=document.createElement('details');
   weaponEditor.open=expandedQuickWeapon===member.id;
+  const mountSelectors=new Map<WeaponAttachmentSlot,HTMLSelectElement>();
+  const workbenchHost=document.createElement('div');
+  workbenchHost.style.cssText='margin:10px 0 14px';
+  const syncWorkbench=()=>{
+   const active=kit.open&&weaponEditor.open;
+   if(!active){if(quickWorkbenchId===member.id){
+    quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
+   }return;}
+   if(quickWorkbenchId===member.id)return;
+   quickWorkbench?.dispose();quickWorkbench=null;
+   quickWorkbenchId=member.id;
+   quickWorkbench=new WeaponWorkbenchPreview(workbenchHost,
+    member.weaponConfiguration,slot=>{
+     const select=mountSelectors.get(slot);
+     if(!select)return;
+     select.focus({preventScroll:true});
+     select.scrollIntoView({block:'nearest',behavior:'smooth'});
+     try{select.showPicker();}catch{/* native picker unavailable */}
+    });
+  };
   weaponEditor.addEventListener('toggle',()=>{
    if(weaponEditor.open)expandedQuickWeapon=member.id;
    else if(expandedQuickWeapon===member.id)expandedQuickWeapon=null;
+   syncWorkbench();
   });
+  kit.addEventListener('toggle',syncWorkbench);
   const weaponTitle=document.createElement('summary');
   weaponTitle.textContent='PRIMARY WEAPON / ATTACHMENTS';
   weaponTitle.style.cssText='min-height:40px;cursor:pointer;padding:12px 0;font-weight:700;font-size:11px';
-  weaponEditor.append(weaponTitle);
+  weaponEditor.append(weaponTitle,workbenchHost);
   for(const slot of WEAPON_ATTACHMENT_SLOTS){
    const row=document.createElement('label');
    row.style.cssText='display:flex;justify-content:space-between;gap:8px;align-items:center;margin:8px 0';
@@ -474,6 +500,9 @@ function renderOperationsBoard(){
    }
    select.value=member.weaponConfiguration.slots[slot];
    select.disabled=state.phase!=='planning'||replaying;
+   mountSelectors.set(slot,select);
+   select.addEventListener('focus',()=>quickWorkbenchId===member.id&&
+    quickWorkbench?.setActiveSlot(slot));
    select.addEventListener('change',()=>{
     if(state.phase!=='planning'||replaying)return;
     persistentRoster=configureRosterWeapon(persistentRoster,member.id,slot,select.value);
