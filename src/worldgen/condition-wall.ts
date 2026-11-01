@@ -45,7 +45,7 @@ export function conditionWallPixels(site:Site,index:number,
   const a=noise(u,v,3,s),b=noise(u,v,13,s+47);
   const low=clamp((v-.45)/.55),side=clamp((.12-Math.min(u,1-u))/.12);
   const patches=clamp((a-.37)*2.5)*(.35+.65*b);
-  const damp=low*low*(.5+.5*noise(u,v,5,s+19))*(exterior?1.55:wetWall?1.38:.72);
+  const damp=low*low*(.5+.5*noise(u,v,5,s+19))*((exterior?1.3:.72)+(wetWall?.62:0));
   const windowLeak=windowInfluences.reduce((strongest,w)=>{
    const drift=w.u+.025*Math.sin(v*17+s);
    const horizontal=Math.pow(clamp(1-Math.abs(u-drift)/.085),2);
