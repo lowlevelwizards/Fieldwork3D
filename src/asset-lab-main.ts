@@ -53,10 +53,12 @@ function sampleSite(items:readonly AssetLibraryEntry[]):Site{
      windows.push({id:'window-'+index,x,y,width:52,vertical:false,
        style:item.id.startsWith('window:')?
          item.id.slice(7) as NonNullable<WindowOpening['style']>:'standard'});
-   }else if(item.id==='door'||item.id==='shutter'){
+   }else if(item.id==='door'||item.id==='shutter'||item.id.startsWith('door:')){
      const width=item.id==='shutter'?96:48;
      doors.push({id:'door-'+index,a:{x:x-width/2,y},b:{x:x+width/2,y},
-       kind:item.id==='shutter'?'shutter':'hinged',open:false,openedAt:-1});
+       kind:item.id==='shutter'?'shutter':'hinged',open:false,openedAt:-1,
+       style:item.id.startsWith('door:')?
+         item.id.slice(5) as NonNullable<Door['style']>:'wood'});
    }else if(item.id.startsWith('wall-detail:')){
      const id=item.id.slice('wall-detail:'.length);
      walls.push({a:{x:x-37,y:y-6},b:{x:x+37,y:y-6}});
