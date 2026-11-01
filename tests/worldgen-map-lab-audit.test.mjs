@@ -5,7 +5,11 @@ import {auditGeneratedSite} from '../src/breach-site-audit.ts';
 
 test('Map Lab generation uses exactly the selected site scale',()=>{
  const source=readFileSync(new URL('../src/map-lab-main.ts',import.meta.url),'utf8');
- assert.match(source,/newSession\(0,chosen.seed,'floor-plan',\s*siteScale\(\)\)/);
+ const worker=readFileSync(new URL('../src/map-lab-worker.ts',import.meta.url),'utf8');
+ assert.match(source,/const id=\+\+generationId,archetype=typeInput.value as BuildingArchetype,choice=siteScale\(\)/);
+ assert.match(source,/worker.postMessage\(request\)/);
+ assert.match(source,/newSession\(0,site.seed,'floor-plan',site.scale,undefined,site\)/);
+ assert.match(worker,/resolveLabScale\(req.scale,seed\)/);
  assert.doesNotMatch(source,/scaleInput.value==='large'/);
 });
 test('audit exposes furnishing density and empty functional rooms',()=>{
