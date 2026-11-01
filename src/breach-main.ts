@@ -41,7 +41,8 @@ import {initialRoster,readRoster,applyRosterIdentity,recordRosterMission,
 import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOperation,
  purchaseAmmo,purchaseMedical,resupplyOperator,treatOperator,
  hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
- retireOperator,equipCampaignGear,
+ retireOperator,equipCampaignGear,saveCampaignKitPreset,applyCampaignKitPreset,
+ deleteCampaignKitPreset,renameCampaignOperator,cycleCampaignAppearance,
  type CampaignState,type CampaignReport} from './campaign-state.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {exportCampaign,importCampaign} from './campaign-persistence.ts';
@@ -2046,6 +2047,16 @@ const campaignScreen=new CampaignScreen({
   saveCampaign();showCampaignHome();}},
  equipGear:(id,slot,itemId)=>{if(campaign){
   campaign=equipCampaignGear(campaign,id,slot,itemId);
+  saveCampaign();showCampaignHome();}},
+ saveKitPreset:(id,name)=>{if(campaign){campaign=saveCampaignKitPreset(campaign,id,name);
+  saveCampaign();showCampaignHome();}},
+ applyKitPreset:(id,presetId)=>{if(campaign){campaign=applyCampaignKitPreset(campaign,id,presetId);
+  saveCampaign();showCampaignHome();}},
+ deleteKitPreset:(presetId)=>{if(campaign){campaign=deleteCampaignKitPreset(campaign,presetId);
+  saveCampaign();showCampaignHome();}},
+ renameOperator:(id,callsign)=>{if(campaign){campaign=renameCampaignOperator(campaign,id,callsign);
+  saveCampaign();showCampaignHome();}},
+ cycleAppearance:(id)=>{if(campaign){campaign=cycleCampaignAppearance(campaign,id);
   saveCampaign();showCampaignHome();}},
  exportSave:()=>{
   if(!campaign)return;
