@@ -25,7 +25,7 @@ import {roofShouldShow} from './worldgen/roof-cutaways.ts';
 import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,activeSite,
   type Pt,type Door} from './breach-core.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
-import {type Site} from './breach-site.ts';
+import {type Site,type Room} from './breach-site.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
 import {coverPresentation,shotVisibility} from './breach-presentation.ts';
 import {doorKnown,wallKnown,roomKnown}
@@ -154,6 +154,22 @@ export class TacticalScene3D{
   private readonly surfaceWearMaterials=new Map<string,THREE.MeshStandardMaterial>();
   private sitePatinaTextures:THREE.DataTexture[]=[];
   private sitePatinaMaterials:THREE.MeshBasicMaterial[]=[];
+  private patinaRoomSurfaces:{room:Room;texture:THREE.DataTexture}[]=[];
+  private patinaWallSurfaces:{index:number;texture:THREE.DataTexture}[]=[];
+  /** Lightweight slider preview: update only 64px masks; keep all room and
+   * furniture meshes, render groups, camera and GPU materials alive. */
+  previewConditionMasks(site:Site,level:number){
+    for(const item of this.patinaRoomSurfaces){
+      const image=item.texture.image as {data:Uint8Array};
+      image.data.set(conditionFloorPixels(site,item.room,level));
+      item.texture.needsUpdate=true;
+    }
+    for(const item of this.patinaWallSurfaces){
+      const image=item.texture.image as {data:Uint8Array};
+      image.data.set(conditionWallPixels(site,item.index,level));
+      item.texture.needsUpdate=true;
+    }
+  }
   private currentWear:WearMark[]=[];
   private objectWear:ObjectWear[]=[];
   private wearBoost=1;
@@ -352,6 +368,7 @@ export class TacticalScene3D{
     for(const texture of this.sitePatinaTextures)texture.dispose();
     for(const material of this.sitePatinaMaterials)material.dispose();
     this.sitePatinaTextures.length=0;this.sitePatinaMaterials.length=0;
+    this.patinaRoomSurfaces.length=0;this.patinaWallSurfaces.length=0;
     this.root.children.filter(c=>c!==this.fogUnknown&&
       c!==this.fogExplored).forEach(child=>{
       child.traverse(o=>{if(o instanceof THREE.Mesh&&
@@ -494,6 +511,7 @@ export class TacticalScene3D{
           depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,
           side:THREE.DoubleSide});
         this.sitePatinaTextures.push(texture);this.sitePatinaMaterials.push(material);
+        this.patinaRoomSurfaces.push({room,texture});
         const overlay=this.plane(group,room.x+room.w/2,room.y+room.h/2,
           room.w-floorInset,room.h-floorInset,.04,material);
         overlay.castShadow=false;overlay.receiveShadow=false;
@@ -584,6 +602,7 @@ export class TacticalScene3D{
           depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,
           side:THREE.DoubleSide});
         this.sitePatinaTextures.push(texture);this.sitePatinaMaterials.push(material);
+        this.patinaWallSurfaces.push({index,texture});
         body.userData.patinaMaterial=material;
         for(const face of [-1,1]){
           const plane=new THREE.Mesh(new THREE.PlaneGeometry(len,39.6),material);
