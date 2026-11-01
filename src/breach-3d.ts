@@ -17,7 +17,7 @@ import {handlePoint,doorReachable} from './breach-door.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {WEAPONS} from './breach-combat.ts';
-import {casingAt,CASING_LIMIT,impactProfile} from './breach-effects.ts';
+import {casingAt,CASING_LIMIT,IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
 import {sampleThrow} from './breach-flash.ts';
 import {paintFogMask,paintOccupiedRoomContext,occupiedFogRooms,FOG_WIDTH,FOG_HEIGHT,maskSize} from './breach-fog-mask.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
@@ -92,8 +92,13 @@ export class TacticalScene3D{
   private effectCache=new Map<number,{root:THREE.Group;line:THREE.Mesh;
     impact:THREE.Mesh;chips:THREE.Mesh[];material:THREE.MeshBasicMaterial;
     impactMaterial:THREE.MeshBasicMaterial}>();
-  private impactDecals=new Map<number,THREE.Mesh>();
+  // One instanced draw for every stain and impact mark, rather than a mesh
+  // and transparent material allocation per hit.
+  private impactDecalMesh:THREE.InstancedMesh|null=null;
+  private impactDecalMatrix=new THREE.Object3D();
+  private impactDecalColor=new THREE.Color();
   private casingMesh:THREE.InstancedMesh|null=null;
+  private casingIds:number[]=[];
   private casingMatrix=new THREE.Object3D();
   private rescueFigure:THREE.Group|null=null;
   private discarded=new Map<number,THREE.Mesh>();
@@ -245,8 +250,15 @@ export class TacticalScene3D{
     this.coverGroups.clear();
     this.intelSurfaces.length=0;
     this.observedDoorOpen.clear();
-    for(const cache of [this.impactDecals,this.discarded,
-      this.thrown,this.detonations]){
+    if(this.impactDecalMesh)this.impactDecalMesh.count=0;
+    if(this.casingMesh)this.casingMesh.count=0;
+    this.casingIds.length=0;
+    for(const effect of this.effectCache.values()){
+      this.effects.remove(effect.root);
+      effect.material.dispose();effect.impactMaterial.dispose();
+    }
+    this.effectCache.clear();
+    for(const cache of [this.discarded,this.thrown,this.detonations]){
       for(const mesh of cache.values()){
         this.effects.remove(mesh);mesh.geometry.dispose();
         (mesh.material as THREE.Material).dispose();
@@ -1164,38 +1176,52 @@ export class TacticalScene3D{
       }
     }
     if(!this.casingMesh){
-      // One draw call for the entire retained casing pool.
+      // Shared unlit brass is inexpensive on mobile; no shadows or per-shell
+      // draw calls. A settled set needs NO GPU matrix upload until it changes.
       this.casingMesh=new THREE.InstancedMesh(
         new THREE.CylinderGeometry(.75,.75,3.1,6),
-        new THREE.MeshStandardMaterial({color:0xc7a361,
-          metalness:.46,roughness:.48}),CASING_LIMIT);
+        new THREE.MeshBasicMaterial({color:0xc7a361}),CASING_LIMIT);
       this.casingMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       this.casingMesh.frustumCulled=false;
       this.effects.add(this.casingMesh);
     }
     const casingDraw=this.casingMesh;
-    let count=0;
+    let casingCount=0,casingDirty=false;
     for(const brass of s.casings){
       if(!omniscient&&!liveVisibility(s,{x:brass.x,y:brass.z}))continue;
-      const p=casingAt(brass,s.seconds);
-      this.casingMatrix.position.set(p.x,p.y,p.z);
-      this.casingMatrix.rotation.set(.9,p.rotation,1.2);
-      const factor=brass.weapon==='shotgun'?1.45:
-        brass.weapon==='smg'?.73:brass.weapon==='rifle'?1.2:1;
-      this.casingMatrix.scale.set(factor,factor,factor);
-      this.casingMatrix.updateMatrix();
-      casingDraw.setMatrixAt(count++,this.casingMatrix.matrix);
+      if(casingCount>=CASING_LIMIT)break;
+      // Full ballistic + bounce motion ends comfortably before two seconds.
+      // Settled cartridges retain their previous instance matrices.
+      if(this.casingIds[casingCount]!==brass.id||
+         s.seconds-brass.at<2){
+        const p=casingAt(brass,s.seconds);
+        this.casingMatrix.position.set(p.x,p.y,p.z);
+        this.casingMatrix.rotation.set(.9,p.rotation,1.2);
+        const factor=brass.weapon==='shotgun'?1.45:
+          brass.weapon==='smg'?.73:brass.weapon==='rifle'?1.2:1;
+        this.casingMatrix.scale.set(factor,factor,factor);
+        this.casingMatrix.updateMatrix();
+        casingDraw.setMatrixAt(casingCount,this.casingMatrix.matrix);
+        casingDirty=true;
+      }
+      this.casingIds[casingCount++]=brass.id;
     }
-    casingDraw.count=count;
-    if(count)casingDraw.instanceMatrix.needsUpdate=true;
+    if(casingDraw.count!==casingCount)casingDirty=true;
+    casingDraw.count=casingCount;
+    this.casingIds.length=casingCount;
+    if(casingDirty)casingDraw.instanceMatrix.needsUpdate=true;
     // 079: One persistent, ID-keyed effect per actual simulation shot.
     // Shared geometry and bounded per-shot materials avoid frame-by-frame GC.
     const active=new Set<number>();
-    for(const shot of s.shots){
+    let visibleShots=0;
+    // Dense bursts keep their newest effects; older traces are cosmetic.
+    for(let index=s.shots.length-1;index>=0;index--){
+      if(visibleShots>=20)break;
+      const shot=s.shots[index];
       const visibility=omniscient?
         {flash:true,trace:true,impact:true}:shotVisibility(s,shot);
       if(!visibility.flash&&!visibility.trace&&!visibility.impact)continue;
-      active.add(shot.id);
+      active.add(shot.id);visibleShots++;
       let effect=this.effectCache.get(shot.id);
       if(!effect){
         const root=new THREE.Group();
@@ -1257,31 +1283,40 @@ export class TacticalScene3D{
           (omniscient||liveVisibility(s,{x:chip.position.x,y:chip.position.z}));
       }
     }
-    // Surface-hit marks remain for 24 simulation seconds and are always
-    // derived from authoritative collision outcomes. Bounded to 92.
-    const currentMarks=new Set<number>();
+    // Stable cap, one render call and no individual decal meshes/materials.
+    if(!this.impactDecalMesh){
+      this.impactDecalMesh=new THREE.InstancedMesh(
+        new THREE.CircleGeometry(1,9),
+        new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,
+          opacity:.82,depthWrite:false,side:THREE.DoubleSide}),
+        IMPACT_MARK_LIMIT);
+      this.impactDecalMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      this.impactDecalMesh.frustumCulled=false;
+      this.effects.add(this.impactDecalMesh);
+    }
+    const markDraw=this.impactDecalMesh;
+    let markCount=0;
     for(const mark of s.impactMarks){
       if(!omniscient&&!liveVisibility(s,mark.p))continue;
-      currentMarks.add(mark.id);
-      let mesh=this.impactDecals.get(mark.id);
-      if(!mesh){
-        const dark=mark.surface==='blood'?0x763c38:
-          mark.surface==='wood'?0x3a2920:
-          mark.surface==='stone'?0x38332c:
-          mark.surface==='metal'?0x202b2e:0x514e42;
-        mesh=new THREE.Mesh(new THREE.CircleGeometry(1,9),
-          new THREE.MeshBasicMaterial({color:dark,transparent:true,
-            opacity:.85,depthWrite:false,side:THREE.DoubleSide}));
-        mesh.rotation.x=-Math.PI/2;
-        this.impactDecals.set(mark.id,mesh);this.effects.add(mesh);
-      }
-      // Blood is a ground stain, not a floating disc at torso height.
-      // World depth tests and the overhead black fog then occlude it.
-      mesh.position.set(mark.p.x,
+      if(markCount>=IMPACT_MARK_LIMIT)break;
+      const dark=mark.surface==='blood'?0x763c38:
+        mark.surface==='wood'?0x3a2920:
+        mark.surface==='stone'?0x38332c:
+        mark.surface==='metal'?0x202b2e:0x514e42;
+      this.impactDecalMatrix.position.set(mark.p.x,
         mark.surface==='blood'?.85:(mark.height??1),mark.p.y);
-      mesh.scale.setScalar(mark.surface==='blood'?4:2.3);
-      (mesh.material as THREE.MeshBasicMaterial).opacity=
-        Math.max(.19,.82-mark.age*.025);
+      this.impactDecalMatrix.rotation.set(-Math.PI/2,0,0);
+      this.impactDecalMatrix.scale.setScalar(mark.surface==='blood'?4:2.3);
+      this.impactDecalMatrix.updateMatrix();
+      markDraw.setMatrixAt(markCount,this.impactDecalMatrix.matrix);
+      this.impactDecalColor.setHex(dark).multiplyScalar(
+        Math.max(.28,1-mark.age*.027));
+      markDraw.setColorAt(markCount++,this.impactDecalColor);
+    }
+    markDraw.count=markCount;
+    if(markCount){
+      markDraw.instanceMatrix.needsUpdate=true;
+      if(markDraw.instanceColor)markDraw.instanceColor.needsUpdate=true;
     }
     // Retained physical magazines, grenades in flight and expanding flashes.
     const activeMag=new Set<number>();
@@ -1330,7 +1365,6 @@ export class TacticalScene3D{
         Math.max(0,.78*(1-burst.age/.7));
     }
     for(const [cache,activeIds] of [
-      [this.impactDecals,currentMarks],
       [this.discarded,activeMag],[this.thrown,liveGrenades],
       [this.detonations,liveBursts],
     ] as [Map<number,THREE.Mesh>,Set<number>][])
