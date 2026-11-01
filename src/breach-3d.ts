@@ -11,6 +11,7 @@ import {summarizeWear} from './worldgen/wear-diagnostics.ts';
 import {planObjectWear,type ObjectWear} from './worldgen/object-wear.ts';
 import {planExposureWear} from './worldgen/wear-exposure.ts';
 import {planActivityWear} from './worldgen/wear-sources.ts';
+import {planHistoryWear} from './worldgen/surface-history.ts';
 import {planMicroDebris,type DebrisKind} from './worldgen/micro-debris.ts';
 import {visibleSurfaceHeight} from './worldgen/decoration-anchors.ts';
 import {wearPixels} from './rendering/pixel-decals.ts';
@@ -483,7 +484,7 @@ export class TacticalScene3D{
       footprint:0x655647,mineral:0xd3cec1,fade:0xc6bfaa,
       soot:0x343c39,moss:0x59714e,'paint-peel':0xbdb19f,
     };
-    this.currentWear=[...planEnvironmentalWear(site),...planActivityWear(site)];
+    this.currentWear=[...planEnvironmentalWear(site),...planActivityWear(site),...planHistoryWear(site)];
     for(const detail of this.currentWear){
       const roomGroup=decorativeRoomGroups.get(detail.roomId);
       if(!roomGroup)continue;
