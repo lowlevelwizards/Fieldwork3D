@@ -1,6 +1,7 @@
 /** MAP 02: Browse live environmental geometry with names and inspection.
  * Built from the same scene construction used in tactical encounters.
  */
+import * as THREE from 'three';
 import {TacticalScene3D} from './breach-3d.ts';
 import {newSession} from './breach-game.ts';
 import {activateSite,type Door,type Obstacle,type Segment,type Pt} from './breach-core.ts';
@@ -13,6 +14,9 @@ const summary=el<HTMLElement>('summary'),detail=el<HTMLOutputElement>('detail');
 const labelLayer=el<HTMLElement>('labels');
 const all=assetLibrary();
 const PAGE_SIZE=12,COLUMNS=4,DX=155,DY=139;
+const overlay=new THREE.Group();
+let outline:THREE.LineSegments|null=null;
+let showBounds=false;
 for(const kind of assetLibraryCategories()){
  const opt=document.createElement('option');opt.value=kind;opt.textContent=kind;
  category.append(opt);
@@ -22,6 +26,7 @@ const session=newSession(0,101);
 session.operators=[]; // There are no actors in the asset showroom.
 const stage=new TacticalScene3D();
 stage.setMode('iso');
+stage.scene.add(overlay);
 let labels:{node:HTMLButtonElement;p:Pt;height:number}[]=[];
 function filtered(){
  const term=search.value.trim().toLowerCase();
@@ -68,6 +73,33 @@ function sampleSite(items:readonly AssetLibraryEntry[]):Site{
    roomCount:1,bounds:{minX:0,minY:0,maxX:705,maxY:535},programLocked:true,
  };
 }
+function clearOutline(){
+ if(outline){overlay.remove(outline);outline.geometry.dispose();
+   (outline.material as THREE.Material).dispose();outline=null;}
+}
+function showSelectionOutline(){
+ clearOutline();
+ if(!showBounds||!selectedId)return;
+ const index=shownEntries.findIndex(item=>item.id===selectedId);
+ if(index<0)return;
+ const item=shownEntries[index];
+ const h=Math.max(1,item.height),w=item.width,d=item.depth;
+ const geometry=new THREE.EdgesGeometry(new THREE.BoxGeometry(w,h,d));
+ const material=new THREE.LineBasicMaterial({color:item.solid?0xf1aa75:0x90c8b8,
+   depthTest:true,transparent:true,opacity:.86});
+ outline=new THREE.LineSegments(geometry,material);
+ outline.position.set(118+(index%COLUMNS)*DX,h/2,
+   95+Math.floor(index/COLUMNS)*DY);
+ overlay.add(outline);
+}
+let shownEntries:readonly AssetLibraryEntry[]=[];
+function focusSelected(){
+ const index=shownEntries.findIndex(item=>item.id===selectedId);
+ if(index<0)return;
+ stage.view.focus={x:118+(index%COLUMNS)*DX,
+   y:95+Math.floor(index/COLUMNS)*DY};
+ stage.view.zoom=3.3;stage.updateCamera(1);
+}
 function select(item:AssetLibraryEntry){
  selectedId=item.id;
  detail.textContent=item.label+' ['+item.id+'] · '+item.category.toUpperCase()+
@@ -78,11 +110,14 @@ function select(item:AssetLibraryEntry){
    (item.rooms.length?'\nRooms: '+item.rooms.join(', '):'');
  for(const marker of labels)marker.node.setAttribute('aria-pressed',
    String(marker.node.dataset.assetId===selectedId));
+ showSelectionOutline();
 }
 function refresh(){
  const found=filtered(),max=Math.max(0,Math.ceil(found.length/PAGE_SIZE)-1);
  page=Math.min(page,max);
  const shown=found.slice(page*PAGE_SIZE,(page+1)*PAGE_SIZE);
+ shownEntries=shown;
+ clearOutline();
  const site=sampleSite(shown);
  session.site=site;
  session.doors=site.doors.map(initDoor);
@@ -115,6 +150,19 @@ search.addEventListener('input',()=>{page=0;selectedId=null;refresh();});
 el<HTMLButtonElement>('iso').addEventListener('click',()=>stage.setMode('iso'));
 el<HTMLButtonElement>('top').addEventListener('click',()=>stage.setMode('top'));
 el<HTMLButtonElement>('fit').addEventListener('click',()=>stage.resetCamera());
+el<HTMLButtonElement>('focus').addEventListener('click',focusSelected);
+el<HTMLButtonElement>('bounds').addEventListener('click',()=>{
+ showBounds=!showBounds;
+ el<HTMLButtonElement>('bounds').setAttribute('aria-pressed',String(showBounds));
+ showSelectionOutline();
+});
+el<HTMLButtonElement>('review').addEventListener('click',()=>{
+ const weak=all.filter(a=>a.presentation==='shared-shape');
+ if(!weak.length)return;
+ const next=weak[(weak.findIndex(a=>a.id===selectedId)+1)%weak.length];
+ category.value='';search.value=next.id;
+ page=0;selectedId=null;refresh();focusSelected();
+});
 const fingers=new Map<number,Pt>();
 let lastMid:Pt|null=null,lastGap=0;
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);

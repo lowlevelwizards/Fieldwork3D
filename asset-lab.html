@@ -22,7 +22,8 @@ input{flex:1;min-width:100px}select{flex:1;min-width:140px}button:disabled{opaci
 <section id="controls" aria-label="Asset library">
  <div class="row"><label for="category">CATEGORY</label><select id="category"><option value="">All assets</option></select><input id="search" type="search" placeholder="Search asset names" aria-label="Search assets"></div>
  <div class="row"><button id="previous">PREVIOUS</button><button id="next">NEXT</button><span id="summary"></span></div>
- <div class="row"><button id="iso">ISO</button><button id="top">TOP</button><button id="fit">FIT</button><span>Drag to orbit · pinch to zoom/pan · tap names to inspect</span></div>
+ <div class="row"><button id="iso">ISO</button><button id="top">TOP</button><button id="fit">FIT ALL</button><button id="focus">FOCUS</button><button id="bounds" aria-pressed="false">OUTLINE VOLUME</button><button id="review">NEXT GENERIC</button></div>
+ <div class="row"><span>Drag to orbit · pinch to zoom/pan · tap names to inspect</span></div>
  <output id="detail" role="status" aria-live="polite"></output>
 </section>
 <script type="module" src="./src/asset-lab-main.ts"></script></body></html>
