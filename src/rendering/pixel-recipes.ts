@@ -21,7 +21,7 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
   if(kind==='wood'){
    if(y%8===0)shade=204;
    else if(y%8===1)shade=239;
-   else if((x+(Math.floor(y/8)%2)*11)%size===0)shade=217;
+   else if((x+(Math.floor(y/8)%2)*11+seed%7)%size===0)shade=217;
   }else if(kind==='tile'){
    if(x%8===0||y%8===0)shade=224;
   }else if(kind==='brick'){
