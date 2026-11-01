@@ -7,27 +7,27 @@ import type {BuildingArchetype,Room,Site} from '../breach-site.ts';
 const pair=(a:string,b:string)=>[a,b].sort().join('|');
 type Rules={preferred:readonly string[];discouraged:readonly string[]};
 const relationships:Record<BuildingArchetype,Rules>={
- house:{preferred:['dining|kitchen','hallway|bedroom','hallway|bathroom','kitchen|living','dining|living'],
+ house:{preferred:['foyer|living','dining|kitchen','hallway|bedroom','hallway|bathroom','kitchen|living','dining|living'],
   discouraged:['bathroom|kitchen','bedroom|kitchen','bathroom|dining']},
- townhouse:{preferred:['dining|kitchen','hallway|bedroom','hallway|bathroom','hallway|living'],
+ townhouse:{preferred:['foyer|living','dining|kitchen','hallway|bedroom','hallway|bathroom','hallway|living'],
   discouraged:['bathroom|kitchen','bedroom|kitchen']},
  apartment:{preferred:['hallway|lobby','hallway|living','bedroom|living','kitchen|living'],
   discouraged:['bathroom|lobby','bedroom|lobby','bedroom|hallway']},
- retail:{preferred:['checkout|sales','sales|stockroom','service|stockroom','office|service'],
+ retail:{preferred:['sales|vestibule','checkout|sales','sales|stockroom','service|stockroom','office|service'],
   discouraged:['sales|storage','office|sales','checkout|stockroom']},
- office:{preferred:['hallway|office','hallway|meeting','lobby|reception','cubicles|hallway','meeting|reception'],
+ office:{preferred:['reception|vestibule','hallway|office','hallway|meeting','lobby|reception','cubicles|hallway','meeting|reception'],
   discouraged:['break|reception','lobby|storage']},
  garage:{preferred:['bay|workshop','parts|workshop','bay|aisle','office|reception','reception|waiting'],
   discouraged:['bay|waiting','parts|waiting','bay|office']},
  warehouse:{preferred:['aisle|storage','loading|storage','loading|packing','office|service'],
   discouraged:['office|loading','packing|office']},
- restaurant:{preferred:['dining|reception','kitchen|pantry','kitchen|service','dining|service','restroom|dining'],
+ restaurant:{preferred:['dining|vestibule','dining|reception','kitchen|pantry','kitchen|service','dining|service','restroom|dining'],
   discouraged:['dining|kitchen','kitchen|restroom','pantry|restroom']},
  motel:{preferred:['guest|hallway','laundry|maintenance','lobby|reception','hallway|reception'],
   discouraged:['guest|guest','guest|laundry','guest|maintenance','guest|reception']},
  utility:{preferred:['equipment|service','control|equipment','maintenance|service','hallway|control'],
   discouraged:['equipment|storage']},
- clinic:{preferred:['waiting|reception','hallway|exam','hallway|treatment','hallway|staff','hallway|supply','reception|hallway'],
+ clinic:{preferred:['vestibule|waiting','waiting|reception','hallway|exam','hallway|treatment','hallway|staff','hallway|supply','reception|hallway'],
   discouraged:['exam|waiting','treatment|waiting','exam|reception','supply|waiting','treatment|reception']}
 };
 const publicRoles=new Set(['waiting','sales','checkout','reception','lobby','dining']);

@@ -5,9 +5,9 @@
 import type {BuildingArchetype,Site} from '../breach-site.ts';
 import {entryInteriorPoint} from './site-orientation.ts';
 const allowed:Record<BuildingArchetype,readonly string[]>={
- clinic:['waiting','reception'],motel:['reception'],retail:['sales','checkout'],
- office:['reception','lobby'],restaurant:['dining'],
- house:['living','studio'],townhouse:['living','studio'],
+ clinic:['waiting','reception','vestibule'],motel:['reception'],retail:['sales','checkout','vestibule'],
+ office:['reception','lobby','vestibule'],restaurant:['dining','vestibule'],
+ house:['living','studio','foyer'],townhouse:['living','studio','foyer'],
  apartment:['lobby','living','studio'],garage:['waiting','bay'],
  warehouse:['loading','aisle'],utility:['control','service']
 };

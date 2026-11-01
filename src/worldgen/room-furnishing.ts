@@ -14,6 +14,8 @@ type Anchor='nw'|'ne'|'sw'|'se'|'west'|'east'|'center';
 type Item={id:string;anchor:Anchor};
 const compositions:Record<string,readonly Item[]>={
  studio:[{id:'bed',anchor:'nw'},{id:'sofa',anchor:'se'}],
+ foyer:[{id:'chair',anchor:'nw'},{id:'cabinet',anchor:'se'}],
+ vestibule:[{id:'chair',anchor:'nw'}],
  dining:[{id:'dining-table',anchor:'center'},{id:'chair',anchor:'se'}],
  study:[{id:'desk',anchor:'nw'},{id:'bookcase',anchor:'se'}],
  'garage-storage':[{id:'shelf',anchor:'nw'},{id:'tire-stack',anchor:'se'}],

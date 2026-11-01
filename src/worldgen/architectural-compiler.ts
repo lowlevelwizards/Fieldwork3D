@@ -11,6 +11,7 @@ import {specializeBlueprint} from './subtype-blueprints.ts';
 import {fitSpatialProgram} from './spatial-program-fit.ts';
 import {synthesizeFootprint} from './footprint-synthesis.ts';
 import {fitFunctionalBaySizes} from './functional-bay-sizing.ts';
+import {addEntryTransition} from './entry-transition.ts';
 import {relationshipScore,allowSecondaryConnection} from './room-relationships.ts';
 import {circulationFor,circulationScore,loopChance,type CirculationStyle} from './circulation-grammar.ts';
 import {type Site,type Room,type BuildingArchetype,type SiteScale,seeded} from '../breach-site.ts';
@@ -22,7 +23,7 @@ const openRoles=new Set(['living','kitchen','dining','sales','stockroom','loadin
  'storage','waiting','reception','lobby','hallway','aisle','cubicles','bay',
  'equipment']);
 const protectedRoles=new Set(['exam','treatment','bathroom','bedroom','guest','restroom']);
-const publicRoles=new Set(['waiting','reception','lobby','living','dining',
+const publicRoles=new Set(['foyer','vestibule','waiting','reception','lobby','living','dining',
  'sales','checkout','aisle','loading']);
 const center=(r:Room):Pt=>({x:r.x+r.w/2,y:r.y+r.h/2});
 const span=(w:Segment)=>Math.hypot(w.a.x-w.b.x,w.a.y-w.b.y);
@@ -97,13 +98,14 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  };
  // Guest units must reserve enough physical area for a real private wet room.
  // Never scale a compact motel into a bed-only cube without a bathroom.
- const b:Blueprint=fitFunctionalBaySizes(kind==='motel'?{
+ const fitted:Blueprint=fitFunctionalBaySizes(kind==='motel'?{
   ...basePlan,
   widths:basePlan.widths.map((w,col)=>basePlan.cells.some(row=>row[col]==='guest')?
     Math.max(112,w):w),
   depths:basePlan.depths.map((d,row)=>basePlan.cells[row].some(role=>role==='guest')?
     Math.max(145,d):d)
  }:basePlan);
+ const b=addEntryTransition(fitted,seed);
  const rng=seeded(seed^0x2a33bedd);
  const circulationStyle=circulationFor(kind,seed);
  const xs=[80],ys=[92];

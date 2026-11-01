@@ -14,6 +14,8 @@ const contract=(required:readonly (readonly string[])[],expected:string[]=[],opt
   ({required,expected,optional});
 export const ROOM_CONTRACTS:Readonly<Record<string,RoomContract>>={
  studio:contract([['bed'],['sofa','armchair']],['nightstand','dresser'],['desk']),
+ foyer:contract([],['chair'],['cabinet','plant']),
+ vestibule:contract([],['chair'],['plant','rug']),
  living:contract([['sofa','armchair']],['coffee-table','tv-stand'],['bookcase','plant']),
  dining:contract([['dining-table']],['chair'],['cabinet']),
  kitchen:contract([['counter','kitchen-island','prep-table'],['fridge'],['stove','microwave','commercial-range'],['sink','dish-station']],['cabinet'],['dining-table']),

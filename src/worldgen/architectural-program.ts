@@ -73,7 +73,7 @@ const layouts:Record<BuildingArchetype,Spec>={
 export const ARCHITECTURAL_FAMILIES:readonly BuildingArchetype[]=
  ['house','townhouse','apartment','retail','office','garage',
   'warehouse','restaurant','motel','utility','clinic'];
-const publicEntry=new Set(['living','lobby','reception','waiting','sales',
+const publicEntry=new Set(['foyer','vestibule','living','lobby','reception','waiting','sales',
  'dining','hallway','aisle','loading']);
 /** Some facilities have multiple genuinely different massing grammars.
  * Voids represent courtyards, service courts or setbacks, not phantom rooms.
