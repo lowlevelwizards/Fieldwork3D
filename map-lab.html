@@ -19,6 +19,11 @@ button:disabled{opacity:.47;cursor:default}
 .progress-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:6px}
 #cancelGeneration{min-height:30px;padding:4px 10px;font-size:11px}
 @media(max-width:450px){#generationProgress{top:calc(54px + env(safe-area-inset-top));padding:10px}}
+#functionalQuality{border:1px solid #58766b;border-radius:6px;padding:7px 9px;touch-action:pan-y}
+#functionalQuality summary{font-weight:700;cursor:pointer;touch-action:manipulation}
+#functionalSummary{padding:7px 0;color:#cdd9cf}
+#functionalWarnings{display:flex;flex-wrap:wrap;gap:5px;max-height:160px;overflow:auto;touch-action:pan-y}
+#functionalWarnings .quality-warning{background:#594c3d;border:1px solid #90775b;text-align:left;min-height:29px;padding:5px 8px}
 #info{font:11px/1.5 ui-monospace,monospace;color:#dbdfd4;white-space:pre-wrap}#labels{position:fixed;inset:0;pointer-events:none;z-index:8}#labels button{position:absolute;transform:translate(-50%,-50%);padding:3px 5px;min-height:21px;font:10px ui-monospace,monospace;white-space:nowrap;background:#20382cd9;border:1px solid #9b956e;pointer-events:auto}#labels .room-incomplete{background:#714b38e6;border-color:#e3a27a;color:#fff0dc}#labels .room-complete{background:#20382cd9}#labels .door-label{background:#654a34d9;border-color:#d1a66d}#labels .facing-arrow{position:absolute;display:grid;place-items:center;pointer-events:none;color:#ffe1a7;background:#35483eda;border:1px solid #b59a68;border-radius:100%;width:22px;height:22px;font:bold 15px monospace}#labels .cover-dot{position:absolute;width:7px;height:7px;background:#d6ae75;border:1px solid #1d2e29;border-radius:50%;pointer-events:none}
 @media(max-width:450px){#controls{max-height:37dvh;padding:9px}.row{gap:5px}button,select,input{min-height:33px;font-size:11px}}
 </style></head>
@@ -42,6 +47,10 @@ button:disabled{opacity:.47;cursor:default}
   <label><input id="cover" type="checkbox"> Cover</label>
   <label><input id="facing" type="checkbox"> Facing</label>
   <label><input id="doors" type="checkbox"> Doors</label></div>
+ <details id="functionalQuality"><summary>FUNCTIONAL QUALITY / SPACE AUDIT</summary>
+  <div id="functionalSummary">Generate a site to inspect space quality.</div>
+  <div id="functionalWarnings" aria-label="Spatial quality warnings"></div>
+ </details>
  <output id="info" role="status" aria-live="polite"></output>
 </section>
 <script type="module" src="./src/map-lab-main.ts"></script>
