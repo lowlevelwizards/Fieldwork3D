@@ -11,12 +11,12 @@ export function assignExteriorOccupants(site:Site,actors:EncounterActorSpec[],
  if(!zones.length||actors.length<3||premise==='vacant')return actors;
  const rng=encounterRng(seed,9);
  const industrial=['garage','warehouse','utility'].includes(site.archetype??'house');
- const chance=premise==='guarded'||premise==='defensive'?.66:
-   industrial?.38:premise==='after-hours'?.27:.15;
+ const chance=premise==='guarded'||premise==='defensive'? .66 :
+   industrial? .38 :premise==='after-hours'? .27 : .15;
  if(rng()>chance)return actors;
  const exterior:EncounterActorSpec[]=actors.map(a=>({...a}));
  const preferred=zones.filter(z=>['service','yard','patio','parking','driveway'].includes(z.kind))
-  .map(z=>({z,k:rng()+((industrial&&z.kind==='service')?.4:0)}))
+  .map(z=>({z,k:rng()+((industrial&&z.kind==='service')? .4 : 0)}))
   .sort((a,b)=>b.k-a.k).slice(0,3);
  const maxExterior=Math.min(2,Math.max(1,Math.floor(actors.length/4)));
  const candidates=(z:ExteriorZone):Pt[]=>[
