@@ -7,6 +7,8 @@ import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surfaces.ts';
 import {planEnvironmentalWear,type WearKind,type WearMark} from './worldgen/environment-wear.ts';
 import {summarizeWear} from './worldgen/wear-diagnostics.ts';
+import {planObjectWear,type ObjectWear} from './worldgen/object-wear.ts';
+import {visibleSurfaceHeight} from './worldgen/decoration-anchors.ts';
 import {wearPixels} from './rendering/pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './rendering/wear-opacity.ts';
 import {pixelSign,type PixelSignKind} from './rendering/pixel-signage.ts';
@@ -142,6 +144,7 @@ export class TacticalScene3D{
   private windowPaneMaterial:THREE.MeshStandardMaterial|null=null;
   private readonly wearMaterials=new Map<string,THREE.MeshBasicMaterial>();
   private currentWear:WearMark[]=[];
+  private objectWear:ObjectWear[]=[];
   private wearBoost=1;
   wearStats(){return summarizeWear(this.currentWear);}
   setWearExaggeration(multiplier:number){
@@ -319,7 +322,7 @@ export class TacticalScene3D{
     for(const material of this.wallMaterials)material.dispose();
     this.wallMaterials.clear();
     this.walls.length=0;this.doors.clear();this.windowGlass.clear();
-    this.currentWear=[];
+    this.currentWear=[];this.objectWear=[];
     this.roofGroups.clear();
     this.coverGroups.clear();
     this.intelSurfaces.length=0;
@@ -395,6 +398,9 @@ export class TacticalScene3D{
       this.box(this.root,site.entrance.x,-1,(site.entrance.y+edge)/2,
         85,1,Math.abs(site.entrance.y-edge)+10,road,false);
     }
+    this.objectWear=planObjectWear(site);
+    const marksOn=(owner:ObjectWear['owner'],index:number)=>
+      this.objectWear.filter(m=>m.owner===owner&&m.index===index);
     const decorativeRoomGroups=new Map<string,THREE.Group>();
     for(const room of site.rooms){
       const group=new THREE.Group();
@@ -478,6 +484,8 @@ export class TacticalScene3D{
       const body=this.box(group,x,20,z,len+1,40,9,individualWall);
       body.rotation.y=angle;
       this.walls.push({mesh:body,mid:{x,y:z}});
+      for(const mark of marksOn('wall',index))
+        this.addSurfaceWear(body,mark,(mark.u-.5)*len,(mark.v-.5)*32,4.6);
       const foot=this.box(group,x,2,z,len+1,4,12,skirting,false);
       foot.rotation.y=angle;
       const individualCap=capMat.clone();
@@ -567,6 +575,11 @@ export class TacticalScene3D{
             this.box(leaf,middle+x,16.5,4,2,4,3.1,metal,false);
         }
       }
+      for(const mark of marksOn('door',site.doors.indexOf(door))){
+        const middle=(door.hinge==='b'?-1:1)*length/2;
+        this.addSurfaceWear(leaf,mark,middle+(mark.u-.5)*(length-8),
+          7+mark.v*24,3.6);
+      }
       const halo=doorSweepArc(door,length);
       root.add(halo);
       this.root.add(root);
@@ -585,6 +598,12 @@ export class TacticalScene3D{
       this.coverGroups.set(i,group);
       this.intelSurfaces.push({obj:group,kind:'cover',index:i});
       renderFixtureVisual(group,c,i,fixtureCtx,wood,steel,olive,metal);
+      for(const mark of marksOn('fixture',i)){
+        const height=visibleSurfaceHeight(c.fixture??'crate');
+        if(height<8)continue;
+        this.addSurfaceWear(group,mark,c.x+(mark.u-.5)*c.w,
+          Math.min(height-2,Math.max(3,mark.v*height)),c.y+c.h/2+.8);
+      }
     });
     // Glass does not impede sight; the low sill does impede traversal.
     if(!this.windowPaneMaterial){
