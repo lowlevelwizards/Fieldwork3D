@@ -34,8 +34,19 @@ typeInput.value=session.site?.archetype??'house';
 const stage=new TacticalScene3D();
 stage.setMode('iso');stage.view.zoom=1.25;
 let markers:{node:HTMLElement;p:Pt;orientation?:number}[]=[];
+let reportBaseline='';
 const conditionLabel=(n:number)=>n<20?'PRISTINE':n<40?'LIVED-IN':
   n<60?'WORN':n<80?'NEGLECTED':'DECREPIT';
+function paintConditionDiagnostics(){
+ const site=session.site;if(!site)return;
+ const stats=stage.wearStats();
+ status.textContent=reportBaseline+'\nCONDITION: '+selectedCondition+
+   '/100 · '+conditionLabel(selectedCondition)+
+   '\nSURFACES: '+site.rooms.length+' room floors / '+site.walls.length+' walls'+
+   '\nLOCALIZED WEAR: '+stats.markCount+' marks · '+
+   Math.round(stats.effectiveAlpha*100)+'% mean mask intensity'+
+   ' · '+stats.lowVisibility+' very subtle marks';
+}
 function previewCondition(){
  const site=session.site;if(!site)return;
  playSite.href='./breach.html?seed='+site.seed+
@@ -44,6 +55,7 @@ function previewCondition(){
  stage.applySite({...site,conditionLevel:selectedCondition});
  Object.assign(stage.view,view);
  conditionValue.textContent=selectedCondition+' / 100 · '+conditionLabel(selectedCondition);
+ paintConditionDiagnostics();
 }
 let conditionTimer:ReturnType<typeof setTimeout>|null=null;
 let maskPreviewFrame:number|null=null;
@@ -167,7 +179,8 @@ function generate(advance=false){
  stage.applySite({...session.site!,conditionLevel:selectedCondition});stage.resetCamera();
  history.replaceState(null,'','?seed='+chosen.seed+
   (siteScale()==='standard'?'':'&scale='+siteScale())+'&condition='+selectedCondition);
- status.textContent=report(session.site!)+'\nVISUAL CONDITION: '+selectedCondition+' / 100';
+ reportBaseline=report(session.site!);
+ paintConditionDiagnostics();
  updateLabels();
 }
 el<HTMLButtonElement>('generate').addEventListener('click',()=>generate());
@@ -205,7 +218,8 @@ document.body.addEventListener('pointerup',stop);
 document.body.addEventListener('pointercancel',stop);
 window.addEventListener('wheel',e=>{e.preventDefault();stage.zoomAt(Math.exp(-e.deltaY*.001),e.clientX,e.clientY);},{passive:false});
 window.addEventListener('resize',()=>stage.resize(innerWidth,innerHeight));
-status.textContent=describe(session.site!);
+reportBaseline=describe(session.site!);
+status.textContent=reportBaseline;
 playSite.href='./breach.html?seed='+session.site!.seed+'&condition='+selectedCondition;
 previewCondition();
 updateLabels();
