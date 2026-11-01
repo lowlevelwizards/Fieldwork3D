@@ -18,7 +18,7 @@ export type ActorFrame=Pick<TeamActor,
   'reloadFromRounds'|'reloadTargetRounds'|'reloadSelectedMagazineId'|
   'lastHitAt'|'lastDownAt'|'lastHitRegion'|'lastHitYaw'|
   'lastHitSeverity'|'downPose'|'flashUntil'|'suppression'|
-  'carryingId'|'carriedById'|
+  'wedgeRemaining'|'carryingId'|'carriedById'|
   'lastTreatmentAt'|'lastTreatmentTargetId'|'treatmentActive'|'treatmentProgress'|
   'medical'|'medicalSupplies'|'weapon'|'weaponConfiguration'|'weaponLightOn'|'injuryStage'|'armorIntegrity'|'helmetIntegrity'|'flashCharges'|'morale'|'surrendered'|'defense'|'watch'|
   'lastThrowAt'|'lastDoorAt'|'lastDoorId'|'lastDoorMethod'|'stride'|
@@ -74,6 +74,7 @@ export function snapshot(s:Session,seenGround?:string[]):ReplayFrame{
        lastTreatmentTargetId:a.lastTreatmentTargetId,
        treatmentActive:a.treatmentActive,treatmentProgress:a.treatmentProgress,
        carryingId:a.carryingId,carriedById:a.carriedById,
+       wedgeRemaining:a.wedgeRemaining,
        weaponLightOn:a.weaponLightOn,
       armorIntegrity:a.armorIntegrity,helmetIntegrity:a.helmetIntegrity,
       flashCharges:a.flashCharges,
