@@ -5,6 +5,7 @@ import type {Session} from './breach-game.ts';
 import {WEAPONS,type WeaponId} from './breach-combat.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {magazineKit} from './breach-magazines.ts';
+import {stageMagazines} from './equipment-magazine-placement.ts';
 import {equippedFlashCharges,
  initialEquipmentLoadout,readEquipmentLoadout,syncPrimaryWeapon,setEquipmentChoice,
  loadMovementScale,type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
@@ -79,7 +80,8 @@ export function applyRosterIdentity(s:Session,roster:RosterState){
    a.reserve=member.reserve;
    a.insertedMagazineId=a.id+'/'+a.weapon+'/loaded';
    a.spareMagazines=a.weapon==='shotgun'?[]:
-      magazineKit(a.id,a.weapon,a.reserve,WEAPONS[a.weapon].capacity);
+      stageMagazines(magazineKit(a.id,a.weapon,a.reserve,
+       WEAPONS[a.weapon].capacity),member.loadout);
    a.reload=0;a.reloadMode=null;
    // Persistent wounds affect readiness but never invent fresh fatal damage.
    if(member.recovery>0&&member.injuries>0){

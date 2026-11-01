@@ -28,6 +28,7 @@ import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
 import {magazineKit} from './breach-magazines.ts';
+import {stageMagazines} from './equipment-magazine-placement.ts';
 import {doorReachable} from './breach-door.ts';
 import {canRelocateCover} from './breach-movable-cover.ts';
 import {INTEL_MODES,doorKnown,wallKnown,roomKnown,
@@ -205,7 +206,8 @@ function applyCampaignSkills(){
    a.magazine=m.magazine;a.reserve=m.reserve;
    a.insertedMagazineId=a.id+'/'+a.weapon+'/loaded';
    a.spareMagazines=a.weapon==='shotgun'?[]:
-    magazineKit(a.id,a.weapon,a.reserve,WEAPONS[a.weapon].capacity);
+    stageMagazines(magazineKit(a.id,a.weapon,a.reserve,
+     WEAPONS[a.weapon].capacity),m.loadout);
    if(m.recoveryDays>0&&m.injuries>0){
     a.injuryStage=Math.max(a.injuryStage,Math.min(2,m.injuries));
     a.health=Math.min(a.health,4-a.injuryStage);
