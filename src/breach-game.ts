@@ -32,6 +32,7 @@ import {localDetour} from './breach-cooperation.ts';
 import {heardIntensity,acousticDistance} from './breach-acoustics.ts';
 import {newAwareness,addObservation,visibleObservation,
  type ActorAwareness} from './breach-awareness.ts';
+import {visualGain,advanceSight,confirmedSight} from './breach-visual-perception.ts';
 import {doorContactImpulse,passageWait,type PassageActor}
   from './breach-passage.ts';
 import {diagnoseMovement,projectReachableGoal,type Blocker}
@@ -981,12 +982,30 @@ function unobstructed(a:Pt,b:Pt,s:Session,lowBlocks:boolean){
   // visibility query. Geometry remains authoritative at any framerate.
   return !COVER.some(o=>(!o.low||lowBlocks)&&segmentHitsBox(a,b,o));
 }
-export function inSight(a:TeamActor,b:TeamActor,s:Session){
+function rawSight(a:TeamActor,b:TeamActor,s:Session){
   if(a.health<=0||b.health<=0||d(a.p,b.p)>240)return false;
   const delta=angleDifference(a.heading,angle(a.p,b.p));
   if(Math.abs(delta)>.94)return false;
   return !exposure(a.p,b.p,s.doors,
     b.posture==='crouch',a.posture==='crouch').blocked;
+}
+/** Confirmed vision is acquired over simulated time; rendering never grants sight. */
+export function inSight(a:TeamActor,b:TeamActor,s:Session){
+ return rawSight(a,b,s)&&confirmedSight(a.awareness.visualProgress[b.id]??0);
+}
+function advanceVisualAwareness(s:Session,dt:number){
+ for(const observer of s.operators){
+  if(observer.health<=0)continue;
+  for(const subject of s.operators){
+   if(subject.side===observer.side||subject.health<=0)continue;
+   const visible=rawSight(observer,subject,s);
+   const signal=visible?visualGain(d(observer.p,subject.p),
+    angleDifference(observer.heading,angle(observer.p,subject.p)),
+    subject.velocity>10,subject.posture==='crouch'):0;
+   const old=observer.awareness.visualProgress[subject.id]??0;
+   observer.awareness.visualProgress[subject.id]=advanceSight(old,dt,signal,visible);
+  }
+ }
 }
 export const isSeen=(s:Session,target:TeamActor)=>
   team(s).some(a=>inSight(a,target,s));
@@ -2183,6 +2202,7 @@ export function stepSession(s:Session,dt:number){
   s.impactMarks=s.impactMarks.filter(mark=>(mark.age+=h)<24);
   s.flashBursts=s.flashBursts.filter(b=>(b.age+=h)<.70);
   stepFlashbangs(s,h);
+  advanceVisualAwareness(s,h);
   for(const a of s.operators){
     if(a.health<=0&&a.reload>0){a.reload=0;a.reloadMode=null;}
     a.fireCd=Math.max(0,a.fireCd-h);
