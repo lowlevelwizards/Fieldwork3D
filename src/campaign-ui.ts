@@ -276,7 +276,6 @@ export class CampaignScreen{
    'The preview uses the same 3D operator rig as the mission. Some equipment slots are metadata-only until their gameplay systems are implemented.'));
   grid.append(summary);
   const editor=node('section','campaign-section campaign-kit-editor');
-  editor.append(node('h2','','EQUIPMENT SLOTS'));
   const locked=!!c.activeContractId;
   const presetTitle=node('h2','','SAVED KIT PRESETS');
   editor.append(presetTitle);
