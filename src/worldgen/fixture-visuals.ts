@@ -9,6 +9,9 @@ import {fixturePixelSurface} from './pixel-surface-selection.ts';
 import type {PixelSurface} from '../rendering/pixel-recipes.ts';
 import {renderDetailedFixture} from './detailed-fixture-visuals.ts';
 import {renderCharacterFixture} from './asset-character-visuals.ts';
+/** Shared faceted primitives prevent new geometry allocations for every tree. */
+const FOLIAGE_LOBE_GEOMETRY=new THREE.IcosahedronGeometry(1,0);
+const FOLIAGE_CONE_GEOMETRY=new THREE.ConeGeometry(1,1,7);
 export type FixtureVisualContext={
  box:(parent:THREE.Object3D,x:number,y:number,z:number,
    w:number,h:number,d:number,material:THREE.Material,cast?:boolean)=>THREE.Mesh;
@@ -211,28 +214,53 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         const bark=ctx.solid(0x645846,.94,'wood');
         const isTree=fixture==='tree'||fixture.startsWith('tree-');
         const tall=asset?.height??(isTree?72:22);
-        const blob=(x:number,y:number,z:number,r:number)=>{
-          const b=new THREE.Mesh(new THREE.IcosahedronGeometry(Math.max(3,r),0),leaves);
-          b.position.set(x,y,z);b.castShadow=true;group.add(b);
+        const blob=(x:number,y:number,z:number,r:number,scaleY=.83)=>{
+          const crown=new THREE.Mesh(FOLIAGE_LOBE_GEOMETRY,leaves);
+          crown.position.set(x,y,z);
+          crown.scale.set(r,Math.max(2,r*scaleY),r*.88);
+          crown.castShadow=true;group.add(crown);
+        };
+        const branch=(x:number,y:number,z:number,dx:number,dy:number,dz:number)=>{
+          const length=Math.hypot(dx,dy,dz);
+          const part=ctx.box(group,x+dx*.5,y+dy*.5,z+dz*.5,
+            Math.max(2,w*.055),length,Math.max(2,d*.055),bark);
+          part.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),
+            new THREE.Vector3(dx,dy,dz).normalize());
         };
         if(isTree){
-          const trunkHeight=fixture==='tree-scrub'?tall*.55:tall*.63;
-          ctx.box(group,c.x,trunkHeight*.5,c.y,Math.min(8,w*.18),
-            trunkHeight,Math.min(8,d*.18),bark);
-          if(fixture==='tree-conifer'){
-            for(let level=0;level<3;level++){
-              const r=Math.min(w,d)*(.51-level*.12);
-              const cone=new THREE.Mesh(new THREE.ConeGeometry(r,tall*.38,7),leaves);
-              cone.position.set(c.x,tall*(.49+level*.17),c.y);
-              cone.castShadow=true;group.add(cone);
+          const scrub=fixture==='tree-scrub';
+          const conifer=fixture==='tree-conifer';
+          const n=(Math.abs(i)%5-2)*.04;
+          const trunkHeight=tall*(scrub?.48:conifer?.67:.61);
+          // Trunk flare and a readable branching hierarchy anchor the foliage.
+          ctx.box(group,c.x,trunkHeight*.48,c.y,
+            Math.min(8,w*.15),trunkHeight,Math.min(8,d*.15),bark);
+          ctx.box(group,c.x,3,c.y,Math.min(12,w*.24),6,Math.min(12,d*.24),bark);
+          if(conifer){
+            for(let layer=0;layer<3;layer++){
+              const radius=Math.min(w,d)*(.43-layer*.09);
+              const crown=new THREE.Mesh(FOLIAGE_CONE_GEOMETRY,leaves);
+              crown.scale.set(radius,tall*(.38-layer*.035),radius*.91);
+              crown.position.set(c.x+(layer%2?1:-1)*w*.045,
+                tall*(.51+layer*.145),c.y+(layer-1)*d*.028);
+              crown.castShadow=true;group.add(crown);
             }
+            blob(c.x,tall*.86,c.y,Math.min(w,d)*.12,1.4);
+          }else if(scrub){
+            // A crooked, low tree: lateral load, not a scaled broadleaf ball.
+            branch(c.x,trunkHeight*.72,c.y,-w*.23,tall*.09,d*.06);
+            branch(c.x,trunkHeight*.64,c.y,w*.24,tall*.10,-d*.12);
+            blob(c.x-w*.23,tall*.55,c.y+d*.05,w*.23,.70);
+            blob(c.x+w*.21,tall*.58,c.y-d*.13,w*.25,.75);
+            blob(c.x+w*n,tall*.73,c.y,w*.19,.72);
           }else{
-            const spread=fixture==='tree-scrub'?.25:.31;
-            blob(c.x,tall*.77,c.y,Math.min(w,d)*.39);
-            blob(c.x-w*spread,tall*.68,c.y+d*.11,Math.min(w,d)*.31);
-            blob(c.x+w*spread,tall*.69,c.y-d*.13,Math.min(w,d)*.33);
-            if(fixture==='tree-broadleaf')blob(c.x,tall*.94,c.y,
-              Math.min(w,d)*.27);
+            branch(c.x,trunkHeight*.78,c.y,-w*.25,tall*.16,d*.06);
+            branch(c.x,trunkHeight*.73,c.y,w*.21,tall*.20,-d*.08);
+            blob(c.x-w*.22,tall*.72,c.y+d*.07,Math.min(w,d)*.28,1.0);
+            blob(c.x+w*.20,tall*.76,c.y-d*.09,Math.min(w,d)*.32,.86);
+            blob(c.x+w*n,tall*.89,c.y,Math.min(w,d)*.31,.82);
+            if(fixture==='tree-broadleaf')
+              blob(c.x-w*.06,tall*.97,c.y-d*.09,Math.min(w,d)*.20,.70);
           }
         }else if(fixture==='hedge'){
           ctx.box(group,c.x,tall*.38,c.y,w*.96,tall*.55,d*.65,leaves);
