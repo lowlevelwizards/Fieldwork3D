@@ -169,8 +169,9 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       const left=rotate(data.supportX-data.stockX,data.supportY,-1.6);
       for(const dx of [0,.7,-.7,1.4,-1.4])
         for(const dz of [0,.4,-.4,.8,-.8]){
-          const sx=shoulderPocket.x+dx-recoilX-
-            (mode==='short'?clamp(input.clearanceRetraction??0,0,3.4):0);
+          // Select stable anatomy first. Applying clearance during fit
+          // lets the optimizer move dx forward and cancel the retraction.
+          const sx=shoulderPocket.x+dx-recoilX;
           const sy=shoulderPocket.y+recoilY;
           const sz=shoulderPocket.z+dz;
           // Buttplate now nests into the outer padded chest contour. Hard
@@ -197,11 +198,14 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
     }
   }
   const b=best!;
-  const stock=new THREE.Vector3(b.sx,b.sy,b.sz);
+  // Apply a single rigid slide to the stock AND both physical hand sockets.
+  const retract=input.handling==='short'?
+    clamp(input.clearanceRetraction??0,0,3.4):0;
+  const stock=new THREE.Vector3(b.sx-retract,b.sy,b.sz);
   const primary=new THREE.Vector3(
-    b.sx+b.primary[0],b.sy+b.primary[1],b.sz+b.primary[2]);
+    b.sx+b.primary[0]-retract,b.sy+b.primary[1],b.sz+b.primary[2]);
   const support=new THREE.Vector3(
-    b.sx+b.support[0],b.sy+b.support[1],b.sz+b.support[2]);
+    b.sx+b.support[0]-retract,b.sy+b.support[1],b.sz+b.support[2]);
   const origin=stock.clone().sub(
     new THREE.Vector3(...b.stock));
   // Absolute stock shoulder error includes recoil impulse, but no
@@ -218,10 +222,12 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
         clamp(input.aimBlend,0,1),
       z:stockPocket(input.handling).z
     };
+  const rightGap=Math.max(0,primary.distanceTo(new THREE.Vector3(1,4,7))-LIMIT);
+  const leftGap=Math.max(0,support.distanceTo(new THREE.Vector3(1,4,-7))-LIMIT);
   return {origin,rotation:new THREE.Euler(0,b.yaw,b.roll,'XYZ'),
-    stock,primary,support,twoHanded:b.twoHanded,
-    primaryReachable:b.primaryReachable,handling:b.mode,
-    contactError:b.contactError,stockError:anchorGap(stock,pocket)};
+    stock,primary,support,twoHanded:rightGap===0&&leftGap===0,
+    primaryReachable:rightGap===0,handling:b.mode,
+    contactError:rightGap+leftGap,stockError:anchorGap(stock,pocket)};
 }
 /** The support-hand rest/guard target for an impossible two-handed fit. */
 export function supportGuardTarget(weapon:THREE.Vector3):THREE.Vector3{
