@@ -320,14 +320,17 @@ export function newSession(index=0,siteSeed?:number,
         a.routineIndex=0;a.routinePauseUntil=1.5+enemyRng()*3;
         a.encounterReactionUntil=Number.POSITIVE_INFINITY;}
       a.health=enemyRng()<.18?3:4;
-      a.weapon=enemyRng()<.30?'smg':'carbine';
+      a.weapon=spec?.weaponProfile==='security'?'carbine':
+        enemyRng()<.30?'smg':'carbine';
       a.magazine=WEAPONS[a.weapon].capacity;
       a.reserve=WEAPONS[a.weapon].reserve;
       a.insertedMagazineId=a.id+'/'+a.weapon+'/loaded';
       a.spareMagazines=magazineKit(a.id,a.weapon,a.reserve,
         WEAPONS[a.weapon].capacity);
       a.injuryStage=0;
-      a.personality=(['guard','aggressor','cautious'] as const)[Math.floor(enemyRng()*3)];
+      a.personality=spec?.role==='investigator'?'aggressor':
+        spec?.role==='reserve'||spec?.role==='target'?'cautious':
+        (['guard','aggressor','cautious'] as const)[Math.floor(enemyRng()*3)];
       a.morale=.48+enemyRng()*.52;
     }
   }else operators.filter(a=>a.side==='red').forEach((a,i)=>{

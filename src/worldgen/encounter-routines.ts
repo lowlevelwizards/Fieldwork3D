@@ -9,8 +9,10 @@ export function assignEncounterRoutines(site:Site,actors:EncounterActorSpec[],
  seed:number):EncounterActorSpec[]{
  const rng=encounterRng(seed,7);
  return actors.map(a=>{
-  if(a.readiness!=='relaxed'||!['working','inspecting','idle'].includes(a.activity)||
-     rng()>.38)return a;
+  const patrol=a.role==='patrol';
+  if((a.readiness!=='relaxed'&&!patrol)||
+     (!patrol&&!['working','inspecting','idle'].includes(a.activity))||
+     (!patrol&&rng()>.38))return a;
   const room=site.rooms.find(r=>r.kind==='room'&&a.position.x>=r.x&&
    a.position.x<=r.x+r.w&&a.position.y>=r.y&&a.position.y<=r.y+r.h);
   if(!room)return a;
