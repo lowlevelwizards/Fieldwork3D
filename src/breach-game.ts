@@ -30,6 +30,8 @@ import {assessFireLane,type FireBlock} from './breach-fire-safety.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from './breach-door.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {heardIntensity,acousticDistance} from './breach-acoustics.ts';
+import {newAwareness,addObservation,visibleObservation,
+ type ActorAwareness} from './breach-awareness.ts';
 import {doorContactImpulse,passageWait,type PassageActor}
   from './breach-passage.ts';
 import {diagnoseMovement,projectReachableGoal,type Blocker}
@@ -59,6 +61,7 @@ export type Posture='stand'|'crouch';
 export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retreat';
 export type Personality='guard'|'aggressor'|'cautious';
 export type TeamActor=Operator & {
+  awareness:ActorAwareness;
   plan:PlanNode[];history:PlanHistory;nav:Pt[];activeNode:number;
   posture:Posture;pace:'walk'|'run';alert:Alert;velocity:number;turning:number;
   aim: number;targetId:string|null;suppression:number;stamina:number;
@@ -144,7 +147,7 @@ export const SCENARIOS=[
   {index:2,name:'REAR GUARD',spots:[{x:262,y:213,h:1.1},{x:476,y:444,h:2.8}]},
 ] as const;
 const withActions=(a:Operator):TeamActor=>({
-  ...a,plan:[],history:makeHistory(),nav:[],activeNode:-1,
+  ...a,awareness:newAwareness(),plan:[],history:makeHistory(),nav:[],activeNode:-1,
   posture:'stand',pace:'walk',alert:'idle',velocity:0,turning:0,aim:0,
   targetId:null,suppression:0,stamina:1,magazine:12,reserve:36,
   reload:0,hits:0,kills:0,stopped:false,contact:null,heard:null,
@@ -991,6 +994,16 @@ export function lastKnown(s:Session,id:string){
   return s.known.get(id)??null;
 }
 function observe(s:Session){
+  // Every actor receives independent sightings; this never shares enemy truth.
+  if(s.seconds===0||Math.floor(s.seconds*10)!==Math.floor((s.seconds-1/60)*10))
+    for(const observer of s.operators){
+      if(observer.health<=0)continue;
+      for(const subject of s.operators){
+        if(subject.side===observer.side||!inSight(observer,subject,s))continue;
+        addObservation(observer.awareness,visibleObservation(
+          observer.id,subject.id,subject.p,s.seconds));
+      }
+    }
   const updateGround=s.intelObservedAt<0||
     s.seconds-s.intelObservedAt>=.14;
   if(updateGround){
