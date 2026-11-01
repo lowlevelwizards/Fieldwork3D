@@ -14,6 +14,9 @@ test('diner and sit-down booths are contextual and never overlap clearance regio
  let booths=0;
  for(let seed=0;seed<144;seed++){
   const site=generateSite(seed);
+  if(site.archetype==='restaurant')console.log('BOOTH-DIAG',seed,site.identity?.subtype,
+   site.rooms.filter(r=>r.purpose==='dining').map(r=>[r.w,r.h,r.x,r.y]),
+   site.cover.filter(c=>c.fixture==='half-wall'||c.fixture==='bar-counter').map(c=>[c.fixture,c.x,c.y]));
   for(const o of site.cover.filter(c=>c.fixture==='diner-booth')){
    booths++;
    assert.equal(site.archetype,'restaurant');
