@@ -4,7 +4,8 @@ export type ContextAction={id:string;label:string;group:'primary'|'state'|'destr
 export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   posture:'stand'|'crouch';pace:'walk'|'run';firePolicy:string;
   reserve:number;magazine:number;doorOpen?:boolean;
-  nodeKind?:string;aimLabel?:string;nodeFirePolicy?:string};
+  nodeKind?:string;aimLabel?:string;nodeFirePolicy?:string;
+  nearMovable?:boolean;nearWindow?:boolean};
 export function contextActionChoices(o:ContextOptions):ContextAction[]{
   if(o.door)return o.doorOpen?[
     {id:'ctxClose',label:'CLOSE',group:'primary',title:'Pull the open door shut'},
@@ -18,6 +19,10 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     {id:'ctxHold',label:'HOLD',group:'primary',title:'Brace this closed door'},
   ];
   return [
+    ...(o.nearMovable?[{id:'ctxPush',label:'PUSH',group:'primary' as const,
+      title:'Queue a physical push of nearby light furniture'}]:[]),
+    ...(o.nearWindow?[{id:'ctxWindow',label:'WINDOW',group:'primary' as const,
+      title:'Queue opening or closing the nearby window'}]:[]),
     {id:'ctxLook',label:'LOOK',group:'primary',pressed:o.nodeKind==='look'||o.aimLabel==='look',title:'Face a direction at this point'},
     {id:'ctxPie',label:'PIE',group:'primary',pressed:o.nodeKind==='pie',title:'Sweep a corner while moving'},
     {id:'ctxFlash',label:'FLASH ×'+o.flashRemaining,group:'primary',
