@@ -17,7 +17,8 @@ import {CHARACTER_FIXTURE_IDS} from './worldgen/asset-character-visuals.ts';
 import {assetReviewInventory} from './worldgen/asset-review.ts';
 import {propDefinition} from './worldgen/asset-catalog.ts';
 import {assetPrimarySurface,assetMaterialDescription} from './worldgen/material-inspection.ts';
-import {wearPixels} from './rendering/pixel-decals.ts';
+import {wearPixels,type WearTextureKind} from './rendering/pixel-decals.ts';
+import {canWear} from './worldgen/material-properties.ts';
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const category=el<HTMLSelectElement>('category'),search=el<HTMLInputElement>('search');
 const summary=el<HTMLElement>('summary'),detail=el<HTMLOutputElement>('detail');
@@ -35,6 +36,18 @@ const cleanSwatch=el<HTMLCanvasElement>('pixel-clean-swatch');
 const cleanContext=cleanSwatch.getContext('2d');
 const liveWear=new THREE.Group();
 let texturesShown=true;
+let wearMultiplier=1,selectedWearKind:WearTextureKind='oil';
+const wearPicker=el<HTMLSelectElement>('wear-kind');
+const wearKinds:WearTextureKind[]=['oil','grease','rust','chip','crack','scratch',
+ 'drip','mud','footprint','mineral','fade','dust','stain','scrape','scuff',
+ 'soot','moss','paint-peel'];
+for(const kind of wearKinds){
+ const option=document.createElement('option');option.value=kind;
+ option.textContent=kind.replaceAll('-',' ');
+ wearPicker.append(option);
+}
+wearPicker.value=selectedWearKind;
+
 let swatchSeed=0,swatchCondition='clean',currentSurface:PixelSurface='wood';
 const surfacePicker=el<HTMLSelectElement>('material-family');
 for(const kind of PIXEL_SURFACES){
@@ -64,6 +77,29 @@ function swatchMaterial(kind:PixelSurface){
    ' texels/operator · '+PIXEL_WORLD_SIZE.toFixed(2)+' world units/texel'+
    ' · '+materialProfile(kind).structure+' · '+swatchCondition+' · seed '+swatchSeed;
 }
+function drawWearPreview(){
+ const canvas=el<HTMLCanvasElement>('wear-swatch'),ctx=canvas.getContext('2d');
+ if(!ctx)return;
+ const pixels=wearPixels(selectedWearKind,swatchSeed);
+ const dst=new Uint8ClampedArray(pixels);
+ for(let i=0;i<dst.length;i+=4){
+   // Pixel-perfect RGB compositing on neutral backing for a readable gallery.
+   const alpha=dst[i+3]/255*Math.min(1,.45*wearMultiplier);
+   const base=208,ink=selectedWearKind==='rust'?123:
+     selectedWearKind==='oil'?54:93;
+   dst[i]=Math.round(base*(1-alpha)+ink*alpha);
+   dst[i+1]=Math.round(base*(1-alpha)+(selectedWearKind==='rust'?79:ink)*alpha);
+   dst[i+2]=Math.round(base*(1-alpha)+(selectedWearKind==='rust'?49:ink)*alpha);
+   dst[i+3]=255;
+ }
+ ctx.putImageData(new ImageData(dst,32,32),0,0);
+ const asset=all.find(x=>x.id===selectedId);
+ const surface=asset?assetPrimarySurface(asset):currentSurface;
+ el<HTMLElement>('wear-diagnostics').textContent=
+  selectedWearKind.toUpperCase()+' · '+(canWear(surface,selectedWearKind)?
+   'COMPATIBLE':'INCOMPATIBLE')+' with '+surface+
+   ' · preview ×'+wearMultiplier;
+}
 let outline:THREE.LineSegments|null=null;
 let showBounds=false;
 for(const kind of assetLibraryCategories()){
@@ -88,16 +124,18 @@ function clearLiveWear(){
 function showLiveWear(item:AssetLibraryEntry){
  clearLiveWear();
  if(swatchCondition==='clean'||item.origin==='dressing')return;
- const kind=swatchCondition==='vacant'?'dust':'scuff';
+ const kind=selectedWearKind;
+ if(!canWear(assetPrimarySurface(item),kind))return;
  let mat=wearPreviewMaterials.get(kind);
  if(!mat){
    const texture=new THREE.DataTexture(wearPixels(kind),32,32,THREE.RGBAFormat);
    texture.needsUpdate=true;texture.magFilter=THREE.NearestFilter;
    texture.minFilter=THREE.LinearMipmapLinearFilter;texture.generateMipmaps=true;
-   mat=new THREE.MeshBasicMaterial({map:texture,transparent:true,opacity:.18,
+   mat=new THREE.MeshBasicMaterial({map:texture,transparent:true,opacity:.22,
      depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,side:THREE.DoubleSide});
    wearPreviewMaterials.set(kind,mat);
  }
+ mat.opacity=Math.min(1,.22*wearMultiplier);
  const ix=shownEntries.findIndex(x=>x.id===item.id);if(ix<0)return;
  const at=showroomSlot(ix,layout);
  const decal=new THREE.Mesh(new THREE.PlaneGeometry(
@@ -372,6 +410,20 @@ el<HTMLButtonElement>('context').addEventListener('click',()=>{
  el<HTMLButtonElement>('context').textContent=contextShown?'CONTEXT ON':'CONTEXT OFF';
  refresh();
 });
+wearPicker.addEventListener('change',()=>{
+ selectedWearKind=wearPicker.value as WearTextureKind;
+ drawWearPreview();
+ const asset=all.find(x=>x.id===selectedId);
+ if(asset)showLiveWear(asset);
+});
+el<HTMLButtonElement>('wear-boost').addEventListener('click',()=>{
+ wearMultiplier=wearMultiplier===1?2:wearMultiplier===2?4:1;
+ stage.setWearExaggeration(wearMultiplier);
+ for(const material of wearPreviewMaterials.values())
+  material.opacity=Math.min(1,.22*wearMultiplier);
+ el<HTMLButtonElement>('wear-boost').textContent='WEAR ×'+wearMultiplier;
+ drawWearPreview();
+});
 surfacePicker.addEventListener('change',()=>{
  const selected=surfacePicker.value as PixelSurface;
  if(selectedId)showroomMaterials.set(selectedId,selected);
@@ -384,7 +436,7 @@ el<HTMLSelectElement>('surface-condition').addEventListener('change',e=>{
 });
 el<HTMLButtonElement>('texture-variant').addEventListener('click',()=>{
  swatchSeed=(swatchSeed+1)%4;
- swatchMaterial(currentSurface);
+ swatchMaterial(currentSurface);drawWearPreview();
 });
 for(const [id,zoom] of [['zoom-close',4.5],['zoom-tactical',2.3],
   ['zoom-overview',.95]] as const){

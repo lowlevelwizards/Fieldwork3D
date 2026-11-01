@@ -23,6 +23,8 @@ input{flex:1;min-width:100px}select{flex:1;min-width:140px}button:disabled{opaci
 #texture-preview{display:flex;align-items:center;gap:10px;padding:4px 0;flex-wrap:wrap}
 #material-inspector summary{cursor:pointer;font-weight:700;color:#efd6a7;padding:5px 0}
 #material-diagnostics{font:11px/1.5 ui-monospace,monospace;color:#d9e6dc;white-space:pre-wrap}
+#wear-swatch{width:96px;height:96px;image-rendering:pixelated;border:1px solid #a8ab96;background:#d3cbbc}
+#wear-diagnostics{font:11px/1.5 ui-monospace,monospace;max-width:220px;color:#f0dcae}
 #pixel-clean-swatch{width:96px;height:96px;image-rendering:pixelated;border:1px solid #a8ab96;flex:none}
 @media(max-width:450px){#controls{max-height:35dvh;padding:8px}.row{gap:5px}button,select,input{font-size:11px;padding:6px}}
 </style></head><body>
@@ -44,6 +46,10 @@ input{flex:1;min-width:100px}select{flex:1;min-width:140px}button:disabled{opaci
  <button id="zoom-close">CLOSE VIEW</button><button id="zoom-tactical">TACTICAL VIEW</button>
  <button id="zoom-overview">OVERVIEW</button></div>
  <div id="texture-preview"><div><canvas id="pixel-clean-swatch" width="32" height="32" aria-label="Clean material reference"></canvas><div>BASE</div></div><div><canvas id="pixel-swatch" width="32" height="32" aria-label="Condition material reference"></canvas><div>CONDITION</div></div><div id="pixel-detail"></div></div>
+ <div class="row"><label for="wear-kind">WEAR</label><select id="wear-kind" aria-label="Selected wear effect"></select>
+ <button id="wear-boost">WEAR ×1</button></div>
+ <div class="row"><canvas id="wear-swatch" width="32" height="32" aria-label="Procedural wear mask"></canvas>
+ <div id="wear-diagnostics"></div></div>
  <div id="material-diagnostics" role="status"></div></details>
  <output id="detail" role="status" aria-live="polite"></output>
 </section>
