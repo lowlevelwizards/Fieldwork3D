@@ -11,7 +11,7 @@ export type CampaignHandlers={
  recruit:()=>void;assignSlot:(slot:number,id:string)=>void;
  buyWeapon:(weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipWeapon:(id:string,weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
- exportSave:()=>void;importSave:(raw:string)=>void;
+ exportSave:()=>void;importSave:(raw:string)=>void;retire:(id:string)=>void;
 };
 const node=<K extends keyof HTMLElementTagNameMap>(tag:K,cls='',label='')=>{
  const el=document.createElement(tag);if(cls)el.className=cls;
@@ -65,7 +65,7 @@ export class CampaignScreen{
    line.append(node('span','','SLOT 0'+(slot+1)));
    const picker=node('select','campaign-select');
    picker.setAttribute('aria-label','Choose operator for tactical slot '+(slot+1));
-   for(const member of c.operators.filter(p=>p.status!=='lost')){
+   for(const member of c.operators.filter(p=>p.status!=='lost'&&p.status!=='retired')){
     const option=node('option','',member.callsign);
     option.value=member.id;
     picker.append(option);
@@ -77,7 +77,7 @@ export class CampaignScreen{
   }
   personnel.append(deployment);
   const roster=node('div','campaign-roster');
-  for(const p of c.operators){
+  for(const p of c.operators.filter(p=>p.status!=='retired'&&p.status!=='lost')){
    const card=node('article','campaign-person');
    card.append(node('strong','',p.callsign),node('span','',p.background));
    card.append(node('small','',p.recoveryDays?'RECOVERING · '+p.recoveryDays+' DAYS':
@@ -125,6 +125,9 @@ export class CampaignScreen{
    actions.append(weaponPick);
    actions.append(button('RESUPPLY',()=>this.handlers.resupply(p.id)));
    if(p.recoveryDays>0)actions.append(button('TREAT',()=>this.handlers.treat(p.id)));
+   if(!c.squadIds.includes(p.id)&&
+    c.operators.filter(o=>o.status==='available'||o.status==='reserve').length>4)
+    actions.append(button('RETIRE',()=>this.handlers.retire(p.id)));
    card.append(actions);
    roster.append(card);
   }
@@ -144,7 +147,7 @@ export class CampaignScreen{
   }
   personnel.append(inventory);
   const recruit=button('RECRUIT OPERATOR · 450 CR',this.handlers.recruit);
-  recruit.disabled=c.operators.length>=8||c.funds<450||!!c.activeContractId;
+  recruit.disabled=c.operators.length>=32||c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').length>=8||c.funds<450||!!c.activeContractId;
   personnel.append(recruit);
   const notice=node('p','campaign-note',c.history.length?
    'LAST OPERATION: '+c.history[c.history.length-1].grade+' · '+c.history[c.history.length-1].outcome.toUpperCase():
@@ -184,6 +187,12 @@ export class CampaignScreen{
    const person=c.operators.find(o=>o.id===e.operatorId);
    chronicle.append(node('p','campaign-note',
     'DAY '+e.day+' · '+(person?.callsign??e.operatorId)+' — '+e.detail));
+  }
+  const retirees=c.operators.filter(o=>o.status==='retired'||o.status==='lost');
+  if(retirees.length){
+   chronicle.append(node('h2','','SERVICE ARCHIVE'));
+   for(const o of retirees)chronicle.append(node('p','campaign-report',
+    o.callsign+' · '+o.missions+' DEPLOYMENTS · '+o.successful+' SUCCESSES · '+o.status.toUpperCase()));
   }
   main.append(chronicle);
   const footer=node('div','campaign-footer');
