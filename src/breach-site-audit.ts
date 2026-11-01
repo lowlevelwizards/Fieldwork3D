@@ -13,6 +13,7 @@ import {inspectOperationalRoutes,straightWorkApproach,type OperationalRouteIssue
 import {measureSiteCompleteness,type CompletenessScore} from './worldgen/site-completeness.ts';
 import {assessSpaceQuality,type SpaceQuality} from './worldgen/space-quality.ts';
 import {assessAccessibilityClearance,type AccessibilityQuality} from './worldgen/accessibility-clearance.ts';
+import {inspectHumanJourneys,type JourneyAudit} from './worldgen/human-journeys.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type SiteAudit={seed:number;archetype:string;layout:string;
   rooms:number;doors:number;enemies:number;windows:number;
@@ -26,7 +27,7 @@ export type SiteAudit={seed:number;archetype:string;layout:string;
   unitContracts:UnitContractResult[];serviceIssues:ServiceIssue[];
   operationalRouteIssues:OperationalRouteIssue[];
   designQuality:CompletenessScore;spaceQuality:SpaceQuality;
-  accessibilityQuality:AccessibilityQuality;errors:string[]};
+  accessibilityQuality:AccessibilityQuality;humanJourneys:JourneyAudit;errors:string[]};
 export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteAudit{
   return auditSite(generateSite(seed,scale));
 }
@@ -36,6 +37,7 @@ export function auditSite(site:Site):SiteAudit{
   activateSite(site);
   const errors:string[]=[];
   const operationalRouteIssues:OperationalRouteIssue[]=[];
+  let humanJourneys:JourneyAudit={checkedLegs:0,issues:[],inspected:[]};
   try{
     if(site.spawn.length!==4)errors.push('expected four operator spawns');
     if(site.enemies.length<2)errors.push('insufficient enemies');
@@ -60,6 +62,10 @@ export function auditSite(site:Site):SiteAudit{
     if(site.spawn.length)operationalRouteIssues.push(...inspectOperationalRoutes(
       site,p=>passable(p)&&(straightWorkApproach(site.spawn[0],p,passable)||
        route(site.spawn[0],p).length>0)));
+    // A handful of physical customer/staff journeys, never a whole-building
+    // per-object path flood. Straight paths use the same standing predicate.
+    if(site.spawn.length)humanJourneys=inspectHumanJourneys(site,passable,
+      (a,b)=>straightWorkApproach(a,b,passable)||route(a,b).length>0,4);
     const ids=new Set<string>();
     for(const door of site.doors){
       if(ids.has(door.id))errors.push('duplicate door '+door.id);
@@ -125,5 +131,5 @@ export function auditSite(site:Site):SiteAudit{
     serviceIssues:auditFixtureService(site),operationalRouteIssues,
     designQuality:measureSiteCompleteness(site),
     spaceQuality:assessSpaceQuality(site),
-    accessibilityQuality:assessAccessibilityClearance(site),errors};
+    accessibilityQuality:assessAccessibilityClearance(site),humanJourneys,errors};
 }

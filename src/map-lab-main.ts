@@ -57,7 +57,8 @@ function showFunctionalQuality(site:Site,audit:SiteAudit){
   space.doorApproachIssues.length+' doorway conflicts · '+
   audit.incompleteZones.length+' incomplete zones · '+
   audit.operationalRouteIssues.length+' work-route issues · '+
-  audit.accessibilityQuality.issues.length+' accessibility-reference warnings';
+  audit.accessibilityQuality.issues.length+' accessibility-reference warnings · '+
+  audit.humanJourneys.issues.length+' journey warnings';
  functionalWarnings.replaceChildren();
  const issues=[
   ...space.rooms.filter(r=>r.crowded).map(r=>({
@@ -76,6 +77,10 @@ function showFunctionalQuality(site:Site,audit:SiteAudit){
   ...audit.accessibilityQuality.issues.map(issue=>({
     label:issue.id+' / '+issue.kind+' · '+issue.detail,
     roomId:issue.roomId
+  })),
+  ...audit.humanJourneys.issues.map(issue=>({
+    label:issue.name+' / '+issue.to+' · '+issue.reason,
+    roomId:site.rooms.find(r=>r.purpose===issue.to)?.id??''
   }))
  ];
  if(!issues.length){
