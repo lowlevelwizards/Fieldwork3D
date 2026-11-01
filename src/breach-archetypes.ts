@@ -8,6 +8,7 @@ import {programRooms} from './worldgen/building-programs.ts';
 import {correctPublicEntrance} from './worldgen/public-entrance.ts';
 import {activeSite,activateSite,passable,route} from './breach-core.ts';
 import {addOpenPlanTransitions} from './worldgen/open-plan.ts';
+import {addServiceHatches} from './worldgen/service-hatches.ts';
 import {dressSite} from './worldgen/environment-dresser.ts';
 import {decorateWalls} from './worldgen/wall-dresser.ts';
 import {styleArchitecturalDoors} from './worldgen/door-families.ts';
@@ -76,7 +77,7 @@ export function applyArchetype(site:Site,seed:number):Site{
       return {...o,fixture:asset?.id??'crate',low:asset?.cover==='low'};
     });
     const architecture=styleArchitecturalDoors(
-      addOpenPlanTransitions({...site,archetype,rooms,cover},seed),seed);
+      addServiceHatches(addOpenPlanTransitions({...site,archetype,rooms,cover},seed),seed),seed);
     // Physical facade openings, sills and exterior obstructions exist before
     // furnishing, so room equipment cannot occupy their clearance envelope.
     const environment=buildArchetypeEnvironment(architecture,seed);

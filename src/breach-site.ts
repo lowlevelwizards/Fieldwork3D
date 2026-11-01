@@ -12,7 +12,7 @@ export type Room={id:string;zoneId?:string;unitId?:string;x:number;y:number;w:nu
   kind:'room'|'hall';tone:number;purpose?:string};
 export type BuildingArchetype='house'|'townhouse'|'apartment'|'retail'|'office'|'garage'|'warehouse'|'restaurant'|'motel'|'utility'|'clinic';
 export type ExteriorZone={id:string;kind:'yard'|'patio'|'driveway'|'service'|'garden'|'parking';x:number;y:number;w:number;h:number};
-export type WideOpening={id:string;a:Pt;b:Pt;kind:'arch'|'wide'};
+export type WideOpening={id:string;a:Pt;b:Pt;kind:'arch'|'wide'|'serving'};
 export type EnvironmentCondition='occupied'|'busy'|'neglected'|'vacant'|'renovation'|'disturbed';
 export type WindowStyle='standard'|'tall'|'picture'|'bay'|'industrial';
 export type WindowTreatment='none'|'open-curtains'|'bars'|'boarded';

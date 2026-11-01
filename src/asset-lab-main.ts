@@ -242,6 +242,10 @@ function sampleSite(items:readonly AssetLibraryEntry[]):Site{
        x,y,elevation:0,angle:0});
    }else if(item.id==='wall'){
      walls.push({a:{x:x-40,y},b:{x:x+40,y}});
+   }else if(item.id==='service-hatch'){
+     openings.push({id:'service-hatch-'+index,
+       a:{x:x-29,y},b:{x:x+29,y},kind:'serving'});
+     cover.push({x,y,w:58,h:10,fixture:'window-sill',low:true});
    }else if(item.id==='window'||item.id.startsWith('window:')){
      windows.push({id:'window-'+index,x,y,width:52,vertical:false,
        style:item.id==='window:interior'?'picture':item.id.startsWith('window:')?
