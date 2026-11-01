@@ -63,9 +63,10 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
       }else if(fixture==='toilet'||fixture==='bathtub'){
         const porcelain=ctx.solid(0xb9b9a9);
         if(fixture==='toilet'){
-          ctx.box(group,c.x,8,c.y+d*.17,w*.63,16,d*.6,porcelain);
-          ctx.box(group,c.x,15,c.y-d*.34,w*.75,29,d*.25,porcelain);
-          ctx.box(group,c.x,17,c.y+d*.15,w*.7,2,d*.58,steel,false);
+          const top=asset?.height??19;
+          ctx.box(group,c.x,top*.34,c.y+d*.17,w*.63,top*.67,d*.6,porcelain);
+          ctx.box(group,c.x,top*.50,c.y-d*.34,w*.75,top,d*.25,porcelain);
+          ctx.box(group,c.x,top*.61,c.y+d*.15,w*.7,2,d*.58,steel,false);
         }else{
           ctx.box(group,c.x,11,c.y,w,21,d,porcelain);
           ctx.box(group,c.x,15,c.y,w*.75,3,d*.68,steel,false);
@@ -168,8 +169,11 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         for(let n=0;n<count;n++)ctx.box(group,c.x+(n-(count-1)/2)*w/count,
           11,c.y+2,Math.max(4,w/count-3),3,d*.63,olive,false);
       }else if(fixture==='tv-stand'){
-        ctx.box(group,c.x,6,c.y,w,12,d,wood);
-        ctx.box(group,c.x,17,c.y,w*.78,19,2,steel,false);
+        const height=asset?.height??21;
+        ctx.box(group,c.x,height*.28,c.y,w,height*.56,d,wood);
+        ctx.box(group,c.x,height*.74,c.y-d*.15,w*.78,height*.50,2,steel,false);
+        ctx.box(group,c.x,height*.74,c.y-d*.15+1.1,
+          w*.70,height*.42,.4,ctx.solid(0x667f80,.33),false);
       }else if(fixture==='barrel'||fixture==='tank'||fixture==='tire-stack'){
         const top=asset?.height??22,radius=Math.min(w,d)*.43;
         const cylinder=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,top,12),steel);
@@ -258,8 +262,9 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           ctx.box(group,c.x,10,c.y,16,4,5,enamel,false);
           ctx.box(group,c.x,2,c.y,11,4,11,enamel);
         }else if(fixture==='utility-cabinet'){
-          ctx.box(group,c.x,17,c.y,w,34,d,enamel);
-          ctx.box(group,c.x,17,c.y+d*.51,w*.84,31,1,dark,false);
+          const height=asset?.height??37;
+          ctx.box(group,c.x,height/2,c.y,w,height,d,enamel);
+          ctx.box(group,c.x,height/2,c.y+d*.51,w*.84,height*.90,1,dark,false);
           ctx.box(group,c.x+w*.27,18,c.y+d*.56,2,7,1,safety,false);
           for(const yy of [8,13,18])ctx.box(group,c.x-w*.21,yy,c.y+d*.56,
             7,1,1,safety,false);

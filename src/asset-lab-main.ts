@@ -77,7 +77,8 @@ function refreshArchitectureSamples(items:readonly AssetLibraryEntry[]){
    const at=showroomSlot(index,layout),h=item.height;
    const geometry=new THREE.BoxGeometry(item.width,h,item.depth);
    const mesh=new THREE.Mesh(geometry,architectureMat);
-   mesh.position.set(at.x,Math.max(0.5,h/2),at.y);
+   mesh.position.set(at.x,item.id==='wall-cap'?41:
+     item.id==='baseboard'?2:Math.max(.5,h/2),at.y);
    structureSamples.add(mesh);
  }
 }
@@ -117,7 +118,9 @@ function sampleSite(items:readonly AssetLibraryEntry[]):Site{
      walls.push({a:{x:x-37,y:y-6},b:{x:x+37,y:y-6}});
      wallDetails.push({id:item.id,roomId:'showroom',
        kind:id as NonNullable<Site['wallDetails']>[number]['kind'],
-       x,y,height:23,angle:0,width:22,depth:17});
+       x,y,height:id==='light-switch'?17:id==='exit-sign'?31:
+         id==='electrical-box'||id==='breaker-panel'?21:25,
+       angle:0,width:item.width,depth:item.height});
    }else if(item.id==='arch'){
      openings.push({id:'arch-'+index,a:{x:x-36,y},b:{x:x+36,y},kind:'arch'});
    }
