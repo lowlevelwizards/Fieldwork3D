@@ -15,6 +15,10 @@ type Item={id:string;anchor:Anchor};
 const compositions:Record<string,readonly Item[]>={
  studio:[{id:'bed',anchor:'nw'},{id:'sofa',anchor:'se'}],
  dining:[{id:'dining-table',anchor:'center'},{id:'chair',anchor:'se'}],
+ foyer:[{id:'entry-bench',anchor:'nw'},{id:'coat-rack',anchor:'se'}],
+ vestibule:[{id:'entry-bench',anchor:'nw'},{id:'coat-rack',anchor:'se'}],
+ mudroom:[{id:'shoe-cubby',anchor:'nw'},{id:'entry-bench',anchor:'se'},
+   {id:'coat-rack',anchor:'east'}],
  study:[{id:'desk',anchor:'nw'},{id:'bookcase',anchor:'se'}],
  'garage-storage':[{id:'shelf',anchor:'nw'},{id:'tire-stack',anchor:'se'}],
  sales:[{id:'gondola-shelf',anchor:'nw'},{id:'gondola-shelf',anchor:'se'}],

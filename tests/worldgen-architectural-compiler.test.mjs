@@ -25,7 +25,7 @@ test('new architectural compiler creates real varied and connected physical envi
   // Frontage now faces any cardinal direction, not always the old south.
   const interiorSamples=[-1,1].map(sign=>({
     x:mid.x-sign*dy/len*19,y:mid.y+sign*dx/len*19}));
-  assert.ok(a.rooms.some(r=>['waiting','reception','lobby',
+  assert.ok(a.rooms.some(r=>['foyer','vestibule','mudroom','waiting','reception','lobby',
    'living','dining','sales','aisle','loading','hallway'].includes(r.purpose)&&
    interiorSamples.some(p=>p.x>r.x&&p.x<r.x+r.w&&
     p.y>r.y&&p.y<r.y+r.h)));
