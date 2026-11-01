@@ -2,11 +2,10 @@
  * while this stable plan remains the one source of session metadata. */
 import type {Site} from '../breach-site.ts';
 import type {EncounterContext,EncounterPlan,EncounterPremise} from './encounter-types.ts';
+import {chooseEncounterPremise} from './encounter-premises.ts';
 export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
  if(site.training)return site;
- const premise:EncounterPremise=context.premise??
-   (site.scenarioStyle==='guarded'?'guarded':
-    site.scenarioStyle==='disrupted'?'disturbance':'routine');
+ const premise:EncounterPremise=chooseEncounterPremise(site,context);
  const actors=site.enemies.map((position,i)=>({
    id:'hostile-'+i,groupId:'hostile-'+i,role:'sentry' as const,
    activity:'watching' as const,readiness:'attentive' as const,
