@@ -1,6 +1,6 @@
 /** 053: Player-authored instructions are not generated navigation vertices. */
 export type Pt={x:number;y:number};
-export type PlanKind='recover-medical'|'evacuate'|'treat'|'move'|'door'|'wait'|'holdClear'|'look'|'sync'|'pie'|'reload'|'flash'|'interact';
+export type PlanKind='tool'|'recover-medical'|'evacuate'|'treat'|'move'|'door'|'wait'|'holdClear'|'look'|'sync'|'pie'|'reload'|'flash'|'interact';
 export type MoveMode='advance'|'strafe'|'sprint';
 export type FirePolicy='engage'|'hold'|'return'|'focus'|'suppress';
 /** Persistent world-facing instruction, independent of any movement route. */
@@ -15,6 +15,7 @@ export type PlanNode={
   postureState?:'stand'|'crouch';paceState?:'walk'|'run';
   moveMode?:MoveMode;pivot?:Pt;pieSide?:PieSide;pieDegrees?:number;arc?:Pt[];
   aimMode?:AimMode;aimPoint?:Pt;aimLabel?:'look'|'strafe'|'pie';
+  toolMethod?:'pry'|'cut'|'wedge'|'unwedge'|'breach';
   patientId?:string;woundId?:number;
   transportMode?:'drag'|'carry';
   stackDoorId?:string;
