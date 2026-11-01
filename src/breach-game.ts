@@ -29,7 +29,7 @@ import {MICRO_KEYS,MICRO_COLS} from './breach-fog-memory.ts';
 import {assessFireLane,type FireBlock} from './breach-fire-safety.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from './breach-door.ts';
 import {localDetour} from './breach-cooperation.ts';
-import {heardIntensity,acousticDistance} from './breach-acoustics.ts';
+import {interpretSound} from './breach-sound-evidence.ts';
 import {newAwareness,addObservation,visibleObservation,
  type ActorAwareness} from './breach-awareness.ts';
 import {visualGain,advanceSight,confirmedSight} from './breach-visual-perception.ts';
@@ -87,7 +87,7 @@ export type TeamActor=Operator & {
   /** Temporary cooperative sidestep, independent of authored orders. */
   yieldTarget:Pt|null;yieldFor:string|null;yieldUntil:number;
   personality:Personality;morale:number;lastNoiseAt:number;
-  lastNoiseExaminedAt:number;
+  lastNoiseExaminedAt:number;lastNoiseExaminedId:number;
   flashUntil:number;lastThrowAt:number;lastDoorAt:number;
   lastDoorId:string|null;lastDoorMethod:DoorMethod;
   stride:number;weapon:WeaponId;injuryStage:number;
@@ -99,7 +99,7 @@ export type TeamActor=Operator & {
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
   lastFireRepositionAt:number;
 };
-export type NoiseEvent={p:Pt;radius:number;time:number;kind:string};
+export type NoiseEvent={id?:number;p:Pt;radius:number;time:number;kind:string};
 export type ShotEvent={
   id:number;shooterId:string;targetId:string|null;
   start:Pt;end:Pt;age:number;hit:boolean;side:Side;
@@ -122,7 +122,7 @@ export type MissionStage='clear'|'secure'|'extract'|'done';
 export type Scenario={index:number;name:string;objective:Pt;extract:Pt};
 export type Session=Omit<TacticalState,'operators'> & {
   operators:TeamActor[];variant:number;scenario:Scenario;
-  mission:MissionStage;nextId:number;noise:NoiseEvent[];
+  mission:MissionStage;nextId:number;noise:NoiseEvent[];nextNoiseId:number;
   shots:ShotEvent[];casings:EjectedCasing[];nextShotId:number;
   known:Map<string,KnownContact>;
   seenGround:Set<string>;intel:IntelState;intelObservedAt:number;
@@ -166,7 +166,7 @@ const withActions=(a:Operator):TeamActor=>({
   downPose:'forward',
   yieldTarget:null,yieldFor:null,yieldUntil:0,
   personality:'guard',morale:1,lastNoiseAt:-1,
-  lastNoiseExaminedAt:-1,flashUntil:-1,
+  lastNoiseExaminedAt:-1,lastNoiseExaminedId:0,flashUntil:-1,
   lastThrowAt:-100,lastDoorAt:-100,lastDoorId:null,
   lastDoorMethod:'open',stride:0,
   weaponYaw:a.heading,stability:.55,recoil:0,lastShotAt:-100,
@@ -247,7 +247,7 @@ export function newSession(index=0,siteSeed?:number,
     scenario:{index:variant,name:site?.name??sample.name,
       objective:clone(site?.objective??OBJECTIVE),
       extract:clone(site?.extract??EXTRACTION)},
-    mission:'clear',noise:[],shots:[],casings:[],nextShotId:1,known:new Map(),
+    mission:'clear',noise:[],nextNoiseId:1,shots:[],casings:[],nextShotId:1,known:new Map(),
     seenGround:new Set(),intel:initialIntel(intelMode,site,initialDoors()),
     intelObservedAt:-1,timesPaused:0,deaths:0,started:false,
     syncCode:0,report:[],movementNoiseAt:0,site,
@@ -971,7 +971,7 @@ export function notify(s:Session,event:string){
   s.events.push(event);if(s.events.length>12)s.events.shift();
 }
 function hear(s:Session,p:Pt,radius:number,kind:string){
-  s.noise.push({p:clone(p),radius,time:s.seconds,kind});
+  s.noise.push({id:s.nextNoiseId++,p:clone(p),radius,time:s.seconds,kind});
   if(s.noise.length>22)s.noise.shift();
 }
 function unobstructed(a:Pt,b:Pt,s:Session,lowBlocks:boolean){
@@ -1631,21 +1631,30 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     const high=assessFireLane(a.p,26,b.p,height,COVER,WALLS,s.doors);
     if(low.blocker==='cover'&&high.blocker==='clear')a.posture='stand';
   }
-  // Evaluate each event once rather than running expensive portal rays
-  // sixty times a second for an unheard sound.
-  const sound=[...s.noise].reverse().find(n=>
-    n.time>a.lastNoiseExaminedAt&&s.seconds-n.time<1);
-  if(sound)a.lastNoiseExaminedAt=sound.time;
-  const intensity=sound?heardIntensity(sound.p,a.p,sound.radius,
-    s.doors,WALLS):0;
-  const newest=intensity>0?sound:null;
-  if(newest&&!visible.length&&a.alert!=='retreat'){
-    a.lastNoiseAt=newest.time;
-    const travel=acousticDistance(newest.p,a.p,s.doors,WALLS);
-    const spread=newest.kind==='gunshot'?
-      Math.max(25,travel*.16):Math.max(13,travel*.13);
-    const heard={x:newest.p.x+(random(s)-.5)*spread,
-      y:newest.p.y+(random(s)-.5)*spread};
+  // Every unheard event is considered once. Multiple same-tick sounds survive.
+  let strongest:ReturnType<typeof interpretSound>=null;
+  for(const sound of s.noise){
+    if(sound.id!==undefined?sound.id<=a.lastNoiseExaminedId:
+      sound.time<=a.lastNoiseExaminedAt)continue;
+    if(s.seconds-sound.time>1)continue;
+    const evidence=interpretSound(sound,a.id,a.p,s.doors,WALLS);
+    if(evidence){
+      addObservation(a.awareness,{id:'audio/'+a.id+'/'+evidence.id,
+        observerId:a.id,source:'auditory',at:evidence.at,
+        estimate:evidence.estimate,uncertainty:evidence.uncertainty,
+        kind:evidence.kind});
+      if(!strongest||evidence.intensity>strongest.intensity)strongest=evidence;
+    }
+  }
+  const newestNoise=s.noise.at(-1);
+  if(newestNoise){
+    a.lastNoiseExaminedId=Math.max(a.lastNoiseExaminedId,
+      newestNoise.id??a.lastNoiseExaminedId);
+    a.lastNoiseExaminedAt=Math.max(a.lastNoiseExaminedAt,newestNoise.time);
+  }
+  if(strongest&&!visible.length&&a.alert!=='retreat'){
+    a.lastNoiseAt=strongest.at;
+    const heard=strongest.estimate;
     a.heard=heard;a.contact=heard;a.watch=clone(heard);
     a.defense=null;
     a.alertUntil=s.seconds+(a.personality==='aggressor'?.5:1.4);
