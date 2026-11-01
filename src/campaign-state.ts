@@ -247,7 +247,8 @@ export function hireRecruit(c:CampaignState):CampaignState{
  const i=c.operators.length;
  const id='recruit-'+i;
  const base=startingOperator(id,i,hash(c.seed+i*733+Math.imul(c.day,31)));
- const member={...base,callsign:RECRUIT_NAMES[(hash(c.seed+i*59)>>>4)%RECRUIT_NAMES.length],
+ const available=RECRUIT_NAMES.filter(name=>!c.operators.some(o=>o.callsign===name));
+ const member={...base,callsign:available[(hash(c.seed+i*59)>>>4)%available.length]??('RECRUIT '+i),
   joinedDay:c.day,status:'reserve' as const};
  const event:CareerEvent={id:'join-'+id+'-'+c.day,day:c.day,operatorId:id,
   kind:'joined',detail:'Joined the unit'};
