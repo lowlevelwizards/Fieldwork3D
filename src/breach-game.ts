@@ -31,6 +31,7 @@ import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from 
 import {doorInteraction} from './breach-interactions.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
+import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {chooseAiIntent,type AIIntent} from './breach-ai-policy.ts';
 import {searchCandidates} from './breach-ai-search.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
@@ -133,7 +134,8 @@ export type KnownContact={p:Pt;at:number;status:'seen'|'heard'};
 export type MissionStage='clear'|'secure'|'extract'|'done';
 export type Scenario={index:number;name:string;objective:Pt;extract:Pt};
 export type Session=Omit<TacticalState,'operators'> & {
-  operators:TeamActor[];passageLeases:Record<string,PassageLease>;
+  operators:TeamActor[];windows:WindowState[];
+  passageLeases:Record<string,PassageLease>;
   variant:number;scenario:Scenario;
   mission:MissionStage;nextId:number;noise:NoiseEvent[];nextNoiseId:number;
   reports:TacticalReport[];nextReportId:number;
@@ -258,7 +260,8 @@ export function newSession(index=0,siteSeed?:number,
     a.spareMagazines=magazineKit(a.id,a.weapon,a.reserve,
       WEAPONS[a.weapon].capacity);
   });
-  const state:Session={...seed,operators,passageLeases:{},
+  const state:Session={...seed,operators,windows:initializeWindows(site?.windows??[]),
+    passageLeases:{},
     doors:initialDoors().map((d,i)=>initDoor({
       ...d,locked:d.locked??!!(site&&i>2&&i%7===0&&
         d.kind!=='shutter'&&d.id!=='FRONT')},i)),variant,nextId:1,
