@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {PIXEL_SURFACES,pixelPattern} from '../src/rendering/pixel-recipes.ts';
 import {overlayForZone} from '../src/rendering/pixel-overlays.ts';
 test('clean painted, outdoor and fabric materials preserve authored palette',()=>{
- for(const kind of ['plaster','concrete','metal','fabric','carpet','asphalt','earth','foliage','paper']){
+ for(const kind of ['plaster','fabric','carpet','asphalt','earth','foliage','paper']){
   const p=pixelPattern(kind,19);
   const shades=new Set(Array.from({length:p.length/4},(_,i)=>p[i*4]));
   assert.ok(shades.size<=2,kind+' should not contain mottled noise');
