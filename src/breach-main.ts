@@ -42,14 +42,15 @@ import {orderFailureText} from './breach-nav-diagnostics.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {FrameMeter} from './breach-perf.ts';
 import {formatAfterAction} from './breach-after-action.ts';
-import {initialRoster,readRoster,applyRosterIdentity,recordRosterMission,
+import {readRoster,applyRosterIdentity,freshQuickPlayRoster,
+  serializeQuickPlayCosmetics,
   resupplyRoster,equipRoster,equipRosterGear,moveRosterMagazine,
  configureRosterWeapon,
  renameRosterMember,cycleRosterAppearance} from './breach-roster.ts';
 import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
  sameWeaponConfiguration,type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
-import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOperation,
+import {newCampaign,readCampaign,acceptContract,resolveOperation,
  purchaseAmmo,purchaseMedical,resupplyOperator,treatOperator,
  hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
  retireOperator,equipCampaignGear,moveCampaignMagazine,
@@ -187,13 +188,26 @@ const requestedScaleParam=startupParams.get('scale');
 let requestedSiteScale:SiteScale=
   ['standard','expanded','small','medium','large'].includes(requestedScaleParam??'')?
     requestedScaleParam as SiteScale:'standard';
-const ROSTER_KEY='fieldwork3d.operator-roster.v1';
+const LEGACY_ROSTER_KEY='fieldwork3d.operator-roster.v1';
+const QUICK_COSMETICS_KEY='fieldwork3d.quickplay-cosmetics.v1';
 let persistentRoster=(()=>{
- try{return readRoster(localStorage.getItem(ROSTER_KEY));}
- catch{return initialRoster();}
+ let saved:string|null=null;
+ try{saved=localStorage.getItem(QUICK_COSMETICS_KEY)??
+   localStorage.getItem(LEGACY_ROSTER_KEY);}
+ catch{/* Storage is optional. */}
+ return freshQuickPlayRoster(readRoster(saved));
 })();
+// One-time migration: discard old Quick Play combat saves, keep appearances.
+try{
+ if(localStorage.getItem(LEGACY_ROSTER_KEY)!==null){
+  localStorage.setItem(QUICK_COSMETICS_KEY,
+   serializeQuickPlayCosmetics(persistentRoster));
+  localStorage.removeItem(LEGACY_ROSTER_KEY);
+ }
+}catch{/* Private browser storage may be unavailable. */}
 function saveRoster(){
- try{localStorage.setItem(ROSTER_KEY,JSON.stringify(persistentRoster));}
+ try{localStorage.setItem(QUICK_COSMETICS_KEY,
+   serializeQuickPlayCosmetics(persistentRoster));}
  catch{/* Private browser storage may be unavailable. */}
 }
 const CAMPAIGN_KEY='fieldwork3d.campaign.v1';
@@ -281,8 +295,6 @@ function recordCompletedOperation(){
    };
    campaign=resolveOperation(campaign,result);saveCampaign();return;
   }
-  persistentRoster=recordRosterMission(state,persistentRoster);
-  saveRoster();
   const stats=debrief(state);
   const record:OperationRecord={
     seed:state.site?.seed??state.variant,
@@ -369,7 +381,7 @@ function renderOperationsBoard(){
  const intro=document.createElement('p');
  intro.textContent='OPERATIONS: '+history.length+
   ' · LAST: '+(history.at(-1)?.grade??'NONE')+
-  ' · Gear and injuries carry between deployments.';
+  ' · Fresh health and equipment every Quick Play round.';
  operationsBoard.append(intro);
  for(const member of persistentRoster.members){
   const card=document.createElement('article');
@@ -378,10 +390,8 @@ function renderOperationsBoard(){
   name.textContent=member.callsign+'  ·  '+member.weapon.toUpperCase();
   card.append(name);
   const details=document.createElement('p');
-  details.textContent=member.missions+' OPS · '+member.successful+
-   ' SUCCESSES · '+member.magazine+' / '+member.reserve+' RDS · '+
-   member.magazines.length+' SPARE MAGS'+
-   (member.recovery>0?' · RECOVERING '+member.recovery+' OPS':' · READY');
+  details.textContent='FULL HEALTH · '+member.magazine+' / '+
+   member.reserve+' RDS · '+member.magazines.length+' SPARE MAGS · READY';
   card.append(details);
   const actions=document.createElement('div');
   actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
@@ -1199,8 +1209,7 @@ function updateHud(){
     brief.condition+'\nEXTRACT: '+brief.extraction+'\n\nSITE: '+
     brief.building+' · '+brief.layout+'\nSQUAD: '+brief.squad+
     ' OPERATORS\n\nINTELLIGENCE: '+brief.notes+
-    '\n\nROSTER: '+persistentRoster.members.map(m=>
-      m.callsign+' ('+m.missions+' ops)').join(' · ');
+    '\n\nROSTER: '+persistentRoster.members.map(m=>m.callsign).join(' · ');
   if(state.phase!=='planning'){
     ui.briefingPanel.hidden=true;operationsBoard.hidden=true;
   }
@@ -2278,6 +2287,7 @@ function reset(next=state.variant,siteSeed?:number,missionOverride?:Session['mis
   ui.replayPanel.hidden=true;
   state=newSession(next,legacyStudy?undefined:
     siteSeed??randomSiteSeed(),selectedIntelMode,requestedSiteScale,missionOverride);
+  if(campaignMode==='quick')persistentRoster=freshQuickPlayRoster(persistentRoster);
   applyRequestedCondition(state);
   applyRosterIdentity(state,persistentRoster);
   applyCampaignSkills();
@@ -2298,7 +2308,7 @@ ui.siteSettings.append(campaignBackButton);
 const campaignScreen=new CampaignScreen({
  newCampaign:()=>{
   if(campaign&&!window.confirm('Replace the current campaign with a new one?'))return;
-  campaign=migrateLegacyRoster(newCampaign(randomSiteSeed()),persistentRoster);
+  campaign=newCampaign(randomSiteSeed());
   saveCampaign();showCampaignHome();
  },
  continueCampaign:()=>showCampaignHome(),

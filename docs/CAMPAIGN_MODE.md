@@ -2,6 +2,8 @@
 
 The tactical sandbox remains accessible through **Quick Play**. Campaign has a separate save.
 
+**Quick Play is round-based, not a persistent roster:** every new site, retry, or round starts at full health with fresh default weapons, armor, supplies, ammunition, and magazines. Equipment and weapon changes made while planning apply to that round only. Callsigns and appearance preferences may be retained, but wounds, equipment configurations, remaining ammunition, and mission statistics never transfer to the next Quick Play round or to a new Campaign. Existing Campaign saves continue to preserve injuries, gear, ammo, armor condition, and careers.
+
 ## Playing a campaign
 
 1. Choose **New Campaign** or **Continue Campaign** at launch.

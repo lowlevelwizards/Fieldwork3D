@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {initialRoster,readRoster,applyRosterIdentity,recordRosterMission,
- resupplyRoster,equipRoster} from '../src/breach-roster.ts';
+ resupplyRoster,equipRoster,equipRosterGear,renameRosterMember,
+ freshQuickPlayRoster,serializeQuickPlayCosmetics} from '../src/breach-roster.ts';
 import {newSession} from '../src/breach-game.ts';
 import {reserveRounds} from '../src/breach-magazines.ts';
 import {WEAPONS} from '../src/breach-combat.ts';
@@ -17,26 +18,50 @@ test('legacy Quick Play roster gains independent magazines without gaining ammun
   assert.equal(member.loadedMagazineId,member.id+'/'+member.weapon+'/loaded');
  }
 });
-test('partial-magazine IDs survive a complete quick-play mission, save and redeploy',()=>{
+test('Quick Play discards wounds, spent magazines and equipment at round boundaries',()=>{
  let roster=initialRoster();
- const s=newSession();applyRosterIdentity(s,roster);
- const actor=s.operators.find(a=>a.id==='rook');
- const initialId=actor.spareMagazines[0].id;
- actor.spareMagazines[0].rounds-=5;
- actor.reserve-=5;
- actor.insertedMagazineId='rook/carbine/deployed';
- const next=recordRosterMission(s,roster);
+ roster=renameRosterMember(roster,'rook','HAWK');
+ roster=equipRoster(roster,'rook','rifle');
+ roster=equipRosterGear(roster,'rook','backpack','backpack-field');
+ const session=newSession();applyRosterIdentity(session,roster);
+ const actor=session.operators.find(a=>a.id==='rook');
+ actor.health=1;actor.injuryStage=2;
+ actor.magazine=3;actor.reserve=5;
+ actor.spareMagazines[0].rounds=2;
+ actor.insertedMagazineId='rook/rifle/depleted';
+ const completed=recordRosterMission(session,roster);
+ assert.equal(completed.members[0].injuries,2);
+ const next=freshQuickPlayRoster(completed);
+ const initial=initialRoster().members[0];
  const member=next.members[0];
- assert.equal(member.magazines[0].id,initialId);
- assert.equal(member.magazines[0].rounds,WEAPONS.carbine.capacity-5);
- assert.equal(member.loadedMagazineId,'rook/carbine/deployed');
- assert.equal(reserveRounds(member.magazines),member.reserve);
- roster=readRoster(JSON.stringify(next));
- const fresh=newSession();applyRosterIdentity(fresh,roster);
- const returned=fresh.operators.find(a=>a.id==='rook');
- assert.equal(returned.spareMagazines[0].id,initialId);
- assert.equal(returned.spareMagazines[0].rounds,WEAPONS.carbine.capacity-5);
- assert.equal(returned.insertedMagazineId,'rook/carbine/deployed');
+ assert.equal(member.callsign,'HAWK');
+ assert.equal(member.weapon,initial.weapon);
+ assert.deepEqual(member.loadout,initial.loadout);
+ assert.deepEqual(member.weaponConfiguration,initial.weaponConfiguration);
+ assert.equal(member.injuries,0);
+ assert.equal(member.recovery,0);
+ assert.equal(member.magazine,initial.magazine);
+ assert.equal(member.reserve,initial.reserve);
+ assert.deepEqual(member.magazines,initial.magazines);
+ assert.equal(member.loadedMagazineId,initial.loadedMagazineId);
+ const redeployed=newSession();applyRosterIdentity(redeployed,next);
+ const freshActor=redeployed.operators.find(a=>a.id==='rook');
+ const cleanSession=newSession();applyRosterIdentity(cleanSession,initialRoster());
+ assert.equal(freshActor.health,cleanSession.operators.find(a=>a.id==='rook').health);
+ assert.equal(freshActor.injuryStage,0);
+ assert.equal(freshActor.weapon,'carbine');
+});
+test('Quick Play storage contains cosmetic preferences only',()=>{
+ let roster=initialRoster();
+ roster=renameRosterMember(roster,'rook','HAWK');
+ roster=equipRoster(roster,'rook','rifle');
+ const snapshot=serializeQuickPlayCosmetics(roster);
+ const fields=Object.keys(JSON.parse(snapshot).members[0]).sort();
+ assert.deepEqual(fields,['appearanceSeed','callsign','id']);
+ const restored=freshQuickPlayRoster(readRoster(snapshot));
+ assert.equal(restored.members[0].callsign,'HAWK');
+ assert.deepEqual(restored.members[0].loadout,initialRoster().members[0].loadout);
+ assert.equal(restored.members[0].weapon,'carbine');
 });
 test('unlimited Quick Play restock keeps previous magazine IDs and fills them',()=>{
  const base=initialRoster();
