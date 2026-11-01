@@ -78,13 +78,13 @@ export function addExteriorProperty(site:Site,seed:number):Site{
      residential?'garden':'patio',x:cx,y:cy,w,h});
   }
  const available=industrial?['barrel','crate','tire-stack','pallet']:
-  residential?['bush','planter','hedge','picnic-table']:
-  ['planter','bush','patio-chair','dumpster'];
+  residential?['tree-broadleaf','shrub-round','hedge','picnic-table','tree-scrub']:
+  ['planter','shrub-tall','patio-chair','dumpster'];
  const cover=site.cover.slice();
  const protectedPoints=[...site.spawn,...site.enemies,site.objective,site.extract,site.entrance];
  for(const zone of zones){
   const count=zone.id.startsWith('court-')?0:
-    zone.kind==='yard'?1:2;
+    zone.kind==='garden'?3:zone.kind==='yard'?2:2;
   for(let i=0;i<count;i++){
    // Vehicles belong to arrival/parking zones, not a random garden plot.
    const choices=zone.kind==='parking'||zone.kind==='driveway'?

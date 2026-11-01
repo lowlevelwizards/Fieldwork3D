@@ -536,12 +536,55 @@ export class TacticalScene3D{
         this.box(group,c.x,2,c.y,w,4,d,steel);
         for(const sx of [-1,1])this.box(group,c.x+sx*(w*.43),18,c.y,5,36,6,metal);
         this.box(group,c.x,9,c.y,w*.8,4,d*.55,wood);
-      }else if(fixture==='hedge'||fixture==='bush'||fixture==='tree'||fixture==='plant'){
-        const foliage=this.solid(0x506f4d);
-        if(fixture==='tree')this.box(group,c.x,20,c.y,7,40,7,wood);
-        const canopy=new THREE.Mesh(new THREE.IcosahedronGeometry(Math.max(6,Math.min(w,d)*.42),1),foliage);
-        canopy.position.set(c.x,fixture==='tree'?48:15,c.y);
-        canopy.castShadow=true;group.add(canopy);
+      }else if(['hedge','bush','tree','plant','tree-broadleaf',
+        'tree-conifer','tree-scrub','shrub-round','shrub-tall'].includes(fixture)){
+        const leaves=this.solid(fixture==='tree-conifer'?0x425b4d:
+          fixture==='tree-scrub'?0x6b7955:
+          fixture==='shrub-tall'?0x596a50:0x526e51);
+        const bark=this.solid(0x645846);
+        const isTree=fixture==='tree'||fixture.startsWith('tree-');
+        const tall=asset?.height??(isTree?72:22);
+        const blob=(x:number,y:number,z:number,r:number)=>{
+          const b=new THREE.Mesh(new THREE.IcosahedronGeometry(Math.max(3,r),0),leaves);
+          b.position.set(x,y,z);b.castShadow=true;group.add(b);
+        };
+        if(isTree){
+          const trunkHeight=fixture==='tree-scrub'?tall*.55:tall*.63;
+          this.box(group,c.x,trunkHeight*.5,c.y,Math.min(8,w*.18),
+            trunkHeight,Math.min(8,d*.18),bark);
+          if(fixture==='tree-conifer'){
+            for(let level=0;level<3;level++){
+              const r=Math.min(w,d)*(.51-level*.12);
+              const cone=new THREE.Mesh(new THREE.ConeGeometry(r,tall*.38,7),leaves);
+              cone.position.set(c.x,tall*(.49+level*.17),c.y);
+              cone.castShadow=true;group.add(cone);
+            }
+          }else{
+            const spread=fixture==='tree-scrub'?.25:.31;
+            blob(c.x,tall*.77,c.y,Math.min(w,d)*.39);
+            blob(c.x-w*spread,tall*.68,c.y+d*.11,Math.min(w,d)*.31);
+            blob(c.x+w*spread,tall*.69,c.y-d*.13,Math.min(w,d)*.33);
+            if(fixture==='tree-broadleaf')blob(c.x,tall*.94,c.y,
+              Math.min(w,d)*.27);
+          }
+        }else if(fixture==='hedge'){
+          this.box(group,c.x,tall*.38,c.y,w*.96,tall*.55,d*.65,leaves);
+          for(const sx of [-.34,0,.34])
+            blob(c.x+w*sx,tall*.70,c.y,Math.min(w*.18,d*.40));
+        }else if(fixture==='plant'){
+          const pot=this.solid(0x927665);
+          this.box(group,c.x,5,c.y,w*.45,10,d*.48,pot);
+          for(const sx of [-.19,.18])
+            blob(c.x+w*sx,15,c.y+d*sx,Math.min(w,d)*.23);
+        }else{
+          const round=fixture==='shrub-round';
+          const height=round?Math.min(19,tall):tall;
+          for(const sx of [-.24,.05,.29]){
+            blob(c.x+w*sx,height*(round?.60:.70),
+              c.y+d*(sx*.60),Math.min(w,d)*(round?.34:.28));
+          }
+          if(!round)blob(c.x,height*.91,c.y,Math.min(w,d)*.24);
+        }
       }else if(fixture==='fence'){
         for(const sx of [-1,1])this.box(group,c.x+sx*w*.47,11,c.y,
           3,22,3,wood);

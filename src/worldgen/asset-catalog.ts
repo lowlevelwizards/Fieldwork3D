@@ -15,6 +15,18 @@ definitions.push(
  {id:'suv',category:'exterior',width:65,depth:34,height:33,solid:true,
   cover:'high',rooms:['parking','driveway','yard','service-yard']}
 );
+definitions.push(
+ {id:'tree-broadleaf',category:'exterior',width:46,depth:45,height:82,
+  solid:true,cover:'high',rooms:['yard','garden','patio']},
+ {id:'tree-conifer',category:'exterior',width:35,depth:36,height:86,
+  solid:true,cover:'high',rooms:['yard','garden','service-yard']},
+ {id:'tree-scrub',category:'exterior',width:39,depth:36,height:53,
+  solid:true,cover:'high',rooms:['yard','garden','service-yard']},
+ {id:'shrub-round',category:'exterior',width:26,depth:23,height:19,
+  solid:true,cover:'low',rooms:['yard','garden','patio','parking']},
+ {id:'shrub-tall',category:'exterior',width:29,depth:25,height:32,
+  solid:true,cover:'high',rooms:['yard','garden','patio','parking']}
+);
 export const PROP_CATALOG:ReadonlyMap<string,PropDefinition>=
  new Map(definitions.map(item=>[item.id,item]));
 export function propDefinition(id:string):PropDefinition|undefined{return PROP_CATALOG.get(id);}
