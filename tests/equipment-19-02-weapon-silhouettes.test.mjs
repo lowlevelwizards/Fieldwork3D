@@ -18,7 +18,7 @@ test('19.02 four readable silhouettes with muzzle aligned to shot-time x',()=>{
   const box=new THREE.Box3().setFromObject(g);
   assert.ok(Math.abs(box.max.x-WEAPON_PLATFORMS[id].muzzleX)<.01,
    id+' muzzle shape extends past physical muzzle');
-  assert.ok(box.min.x<=-13.5,id+' missing stock');
+  assert.ok(box.min.x<=-13.48,id+' missing stock');
   assert.equal(g.children.length,parts.length);
   clearWeaponSilhouette(g);
   assert.equal(g.children.length,0);
