@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {pixelPattern,pixelRepeats,TILE_PIXELS,TILE_WORLD_SIZE,MATERIAL_RECIPE_VERSION,
   type PixelSurface} from './pixel-recipes.ts';
 import {readableMipChain} from './texture-lod.ts';
+import {materialProfile} from './pixel-profiles.ts';
 export {PIXEL_SURFACES,TEXELS_PER_OPERATOR,PIXEL_WORLD_SIZE,TILE_WORLD_SIZE}
  from './pixel-recipes.ts';
 export type {PixelSurface} from './pixel-recipes.ts';
@@ -17,7 +18,7 @@ export class PixelTextureLibrary {
   const source=pixelPattern(kind,safeVariant,TILE_PIXELS);
   texture=new THREE.DataTexture(source,
     TILE_PIXELS,TILE_PIXELS,THREE.RGBAFormat,THREE.UnsignedByteType);
-  texture.mipmaps=readableMipChain(source,TILE_PIXELS);
+  texture.mipmaps=readableMipChain(source,TILE_PIXELS,materialProfile(kind).structure);
   texture.colorSpace=THREE.SRGBColorSpace;
   texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
   texture.magFilter=THREE.NearestFilter;
@@ -31,6 +32,11 @@ export class PixelTextureLibrary {
   return texture;
  }
  get count(){return this.textures.size;}
+ /** Conservative RGBA8 storage accounting including the authored mip chain. */
+ get estimatedBytes(){
+  return [...this.textures.values()].reduce((total,t)=>
+   total+(t.mipmaps as {data:Uint8Array}[]).reduce((s,m)=>s+m.data.byteLength,0),0);
+ }
  dispose(){
   for(const texture of this.textures.values())texture.dispose();
   this.textures.clear();
