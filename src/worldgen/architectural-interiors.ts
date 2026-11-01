@@ -1,35 +1,42 @@
-/** Building-specific half-height masonry partitions and load-bearing posts.
- * Obstacles are real cover and player collision; no render-only geometry.
+/** Building-specific, physically blocking low partitions and structural posts.
+ * Placement searches several plausible periphery positions rather than assuming
+ * every generated room has the same proportions.
  */
 import type {Site} from '../breach-site.ts';
 import type {Obstacle,Pt} from '../breach-core.ts';
-const lowUses=new Set(['living','dining','sales','lobby','office','waiting']);
-const columnUses=new Set(['bay','loading','storage','aisle','workshop']);
+const lowUses=new Set(['living','dining','sales','lobby','office','waiting','reception','cubicles']);
+const columnUses=new Set(['bay','loading','storage','aisle','workshop','equipment','service']);
+const near=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function addArchitecturalInteriors(site:Site,seed:number):Site{
  const cover=site.cover.slice();
  const critical=[...site.spawn,...site.enemies,site.entrance,site.objective,site.extract];
  let lowCount=0,columnCount=0;
  for(const [i,room] of site.rooms.entries()){
-  if(room.kind==='hall'||(seed+i)%3===1)continue;
+  if(room.kind==='hall')continue;
   const role=room.purpose??'';
-  const isLow=lowUses.has(role)&&room.w>=148&&room.h>=111&&lowCount<2;
-  const isColumn=!isLow&&columnUses.has(role)&&room.w>=145&&room.h>=135&&columnCount<2;
+  const isLow=lowUses.has(role)&&room.w>=105&&room.h>=82&&lowCount<2;
+  const isColumn=!isLow&&columnUses.has(role)&&room.w>=92&&room.h>=85&&columnCount<2;
   if(!isLow&&!isColumn)continue;
   const w=isLow?56:12,h=isLow?9:12;
-  // Favor the periphery: preserve the room's center and its main circulation line.
-  const x=room.x+room.w*(isLow?.38:.29);
-  const y=room.y+room.h*(isLow?.29:.36);
-  const obj:Obstacle={x,y,w,h,low:isLow,
-   fixture:isLow?'half-wall':'support-column',
-   material:isLow?'brick':'concrete'};
-  if(x-w/2<=room.x+11||x+w/2>=room.x+room.w-11||
-     y-h/2<=room.y+11||y+h/2>=room.y+room.h-11)continue;
-  if(site.doors.some(d=>Math.hypot(x-(d.a.x+d.b.x)/2,y-(d.a.y+d.b.y)/2)<54))continue;
-  if((site.windows??[]).some(p=>Math.hypot(x-p.x,y-p.y)<48))continue;
-  if(critical.some((p:Pt)=>Math.abs(p.x-x)<w/2+26&&Math.abs(p.y-y)<h/2+26))continue;
-  if(cover.some(o=>Math.abs(o.x-x)<(o.w+w)/2+7&&Math.abs(o.y-y)<(o.h+h)/2+7))continue;
-  cover.push(obj);
-  if(isLow)lowCount++;else columnCount++;
+  const fractions:[[number,number],[number,number],[number,number],
+   [number,number],[number,number],[number,number]]=[
+    [.3,.3],[.65,.3],[.3,.68],[.68,.68],[.5,.27],[.5,.72]];
+  const offset=(seed+i)%fractions.length;
+  for(let n=0;n<fractions.length;n++){
+   const [fx,fy]=fractions[(n+offset)%fractions.length];
+   const x=room.x+room.w*fx,y=room.y+room.h*fy;
+   const obj:Obstacle={x,y,w,h,low:isLow,
+    fixture:isLow?'half-wall':'support-column',material:isLow?'brick':'concrete'};
+   if(x-w/2<=room.x+10||x+w/2>=room.x+room.w-10||
+      y-h/2<=room.y+10||y+h/2>=room.y+room.h-10)continue;
+   if(site.doors.some(d=>near({x,y},{x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2})<54))continue;
+   if((site.windows??[]).some(p=>near({x,y},{x:p.x,y:p.y})<35))continue;
+   if(critical.some(p=>Math.abs(p.x-x)<w/2+22&&Math.abs(p.y-y)<h/2+22))continue;
+   if(cover.some(o=>Math.abs(o.x-x)<(o.w+w)/2+6&&Math.abs(o.y-y)<(o.h+h)/2+6))continue;
+   cover.push(obj);
+   if(isLow)lowCount++;else columnCount++;
+   break;
+  }
  }
  return {...site,cover};
 }
