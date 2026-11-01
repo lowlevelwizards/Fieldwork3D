@@ -105,3 +105,12 @@ export function damageWindow(w:WindowState,energy:number):boolean{
  if(w.integrity===0)manipulateWindow(w,'break');
  return true;
 }
+
+/** The pane intersects shots in the actual facade plane; the low sill and
+ * frame remain their original authoritative geometry when glass breaks.
+ */
+export function windowPaneSegment(w:WindowState):Segment{
+ const half=w.width/2;
+ return w.vertical?{a:{x:w.x,y:w.y-half},b:{x:w.x,y:w.y+half}}:
+   {a:{x:w.x-half,y:w.y},b:{x:w.x+half,y:w.y}};
+}
