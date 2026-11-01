@@ -149,7 +149,6 @@ export class TacticalScene3D{
   private windowPaneMaterial:THREE.MeshStandardMaterial|null=null;
   private readonly wearMaterials=new Map<string,THREE.MeshBasicMaterial>();
   private readonly surfaceWearMaterials=new Map<string,THREE.MeshStandardMaterial>();
-  private readonly surfaceWearMaterials=new Map<string,THREE.MeshStandardMaterial>();
   private currentWear:WearMark[]=[];
   private objectWear:ObjectWear[]=[];
   private wearBoost=1;
