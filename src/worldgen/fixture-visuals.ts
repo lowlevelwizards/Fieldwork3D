@@ -44,6 +44,29 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         ctx.box(group,c.x,12,c.y,w-3,23,d-4,finish);
         ctx.box(group,c.x,27,c.y+d*.12,w+2,3,d+4,steel,false);
         ctx.box(group,c.x,7,c.y-d*.42,w*.87,3,3,wood,false);
+      }else if(['reception-desk','transaction-counter','parts-counter'].includes(fixture)){
+        const top=asset?.height??27;
+        const front=visualCtx.solid(fixture==='parts-counter'?0x59635c:
+          fixture==='reception-desk'?0x687778:0x746958,.84,
+          fixture==='transaction-counter'?'wood':'painted-metal');
+        const trim=visualCtx.solid(0xc5b99a,.68,'wood');
+        ctx.box(group,c.x,top*.48,c.y,w-2,top*.89,d-2,front);
+        ctx.box(group,c.x,top+.2,c.y,w+3,3,d+3,trim,false);
+        ctx.box(group,c.x,top*.73,c.y+d*.5,w*.84,2.3,2,metal,false);
+        for(const x of [-w*.44,w*.44])
+          ctx.box(group,c.x+x,top*.49,c.y+d*.47,2,top*.82,2.2,metal,false);
+        if(fixture==='reception-desk'){
+          ctx.box(group,c.x,top+4,c.y-d*.3,w*.61,7,3,front,false);
+          ctx.box(group,c.x,top+7,c.y-d*.3,w*.62,1.6,4,trim,false);
+        }else if(fixture==='transaction-counter'){
+          ctx.box(group,c.x-w*.22,top+5,c.y-d*.14,w*.29,9,d*.31,metal,false);
+          ctx.box(group,c.x-w*.22,top+10,c.y-d*.14,w*.25,1,3,trim,false);
+          ctx.box(group,c.x+w*.25,top+1,c.y+d*.12,w*.28,1.5,d*.35,metal,false);
+        }else{
+          for(const x of [-w*.26,w*.26])
+            ctx.box(group,c.x+x,top*.45,c.y+d*.51,2,top*.6,1.4,metal,false);
+          ctx.box(group,c.x,top*.35,c.y+d*.52,w*.67,2,2,metal,false);
+        }
       }else if(fixture==='bar-stool'){
         const seat=visualCtx.solid(0x695b48,.87,'wood');
         ctx.box(group,c.x,22,c.y,w*.82,3,d*.82,seat);

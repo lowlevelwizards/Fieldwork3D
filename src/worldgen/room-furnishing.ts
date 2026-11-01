@@ -16,7 +16,7 @@ const compositions:Record<string,readonly Item[]>={
  study:[{id:'desk',anchor:'nw'},{id:'bookcase',anchor:'se'}],
  'garage-storage':[{id:'shelf',anchor:'nw'},{id:'tire-stack',anchor:'se'}],
  sales:[{id:'gondola-shelf',anchor:'nw'},{id:'gondola-shelf',anchor:'se'}],
- checkout:[{id:'checkout',anchor:'nw'},{id:'display-rack',anchor:'se'}],
+ checkout:[{id:'transaction-counter',anchor:'nw'},{id:'display-rack',anchor:'se'}],
  stockroom:[{id:'rack',anchor:'nw'},{id:'box',anchor:'se'}],
  pantry:[{id:'shelf',anchor:'nw'},{id:'box',anchor:'se'}],
  restroom:[{id:'toilet',anchor:'nw'},{id:'sink',anchor:'se'}],
@@ -29,7 +29,7 @@ const compositions:Record<string,readonly Item[]>={
  bedroom:[{id:'bed',anchor:'nw'},{id:'nightstand',anchor:'ne'},{id:'dresser',anchor:'se'}],
  guest:[{id:'bed',anchor:'nw'},{id:'nightstand',anchor:'se'}],
  bathroom:[{id:'toilet',anchor:'nw'},{id:'sink',anchor:'se'}],
- reception:[{id:'desk',anchor:'nw'},{id:'chair',anchor:'se'}],
+ reception:[{id:'reception-desk',anchor:'nw'},{id:'office-chair',anchor:'se'}],
  office:[{id:'desk',anchor:'nw'},{id:'filing-cabinet',anchor:'se'}],
  cubicles:[{id:'desk',anchor:'nw'},{id:'desk',anchor:'se'}],
  meeting:[{id:'meeting-table',anchor:'center'}],
@@ -67,7 +67,7 @@ const zoneCompositions:Record<string,readonly (readonly Item[])[]>={
   [{id:'gondola-shelf',anchor:'nw'}],
   [{id:'gondola-shelf',anchor:'se'},{id:'display-rack',anchor:'nw'}]],
  reception:[
-  [{id:'desk',anchor:'nw'},{id:'office-chair',anchor:'se'}],
+  [{id:'reception-desk',anchor:'nw'},{id:'office-chair',anchor:'se'}],
   [{id:'chair',anchor:'nw'},{id:'plant',anchor:'se'}]],
  waiting:[
   [{id:'chair',anchor:'nw'},{id:'chair',anchor:'se'}],
@@ -250,7 +250,9 @@ export function furnishRooms(site:Site,seed:number):Site{
     site.archetype==='warehouse'&&room.purpose==='packing'?
       [{id:'packing-station',anchor:'nw'},{id:'box',anchor:'se'}]:
     site.archetype==='garage'&&room.purpose==='parts'?
-      [{id:'parts-bin',anchor:'nw'},{id:'rack',anchor:'se'}]:
+      [{id:'parts-counter',anchor:'nw'},{id:'parts-bin',anchor:'se'}]:
+    site.archetype==='retail'&&room.purpose==='checkout'?
+      [{id:'transaction-counter',anchor:'nw'},{id:'display-rack',anchor:'se'}]:
     site.archetype==='retail'&&room.purpose==='sales'&&multi&&index%2===1?
       [{id:'retail-endcap',anchor:'nw'},{id:'display-rack',anchor:'se'}]:
     undefined;

@@ -5,20 +5,21 @@ import type {Site,Room} from '../breach-site.ts';
 import type {Obstacle,Pt} from '../breach-core.ts';
 import {fixtureServiceClear} from './fixture-service-clearance.ts';
 export type QuarterTurn=0|1|2|3;
-const directional=new Set(['bar-stool','chair','office-chair','armchair','sofa','bench','patio-chair',
+const directional=new Set(['reception-desk','transaction-counter','parts-counter','bar-stool','chair','office-chair','armchair','sofa','bench','patio-chair',
  'desk','bed','exam-bed','toilet','sink','stove','fridge','counter','cabinet',
  'bookcase','shelf','rack','wall-shelf','wardrobe','dresser','tv-stand','workbench',
- 'checkout','control-panel','meeting-table','dining-table',
+ 'checkout','reception-desk','transaction-counter','parts-counter','control-panel','meeting-table','dining-table',
  'prep-table','commercial-range','dish-station','handwash-station',
  'instrument-cart','retail-endcap','packing-station','parts-bin']);
 const facing:readonly Pt[]=[{x:0,y:1},{x:1,y:0},{x:0,y:-1},{x:-1,y:0}];
 const activeFixtures=new Set(['chair','office-chair','armchair','sofa','bench','patio-chair',
- 'desk','toilet','sink','stove','fridge','checkout','workbench','control-panel',
+ 'desk','toilet','sink','stove','fridge','checkout',
+ 'reception-desk','transaction-counter','parts-counter','workbench','control-panel',
  'commercial-range','handwash-station','prep-table']);
 const groups:Record<string,readonly string[]>={
  'bar-stool':['bar-counter'],
+ 'office-chair':['desk','reception-desk','meeting-table','control-panel','checkout'],
  chair:['dining-table','meeting-table','coffee-table','desk','checkout'],
- 'office-chair':['desk','meeting-table','control-panel','checkout'],
  'patio-chair':['picnic-table','dining-table'],
  armchair:['coffee-table','tv-stand','sofa'],
  sofa:['tv-stand','coffee-table'],
@@ -66,7 +67,7 @@ export function orientFurnishings(site:Site,items:readonly Obstacle[]):Obstacle[
   // Waiting seats orient to the reception desk even when the desk is in
   // a neighboring foyer. Avoid arbitrary facing toward the room center.
   const waiting=['waiting','lobby'].includes(room.purpose??'');
-  const reception=waiting?out.filter(o=>['desk','checkout','counter'].includes(o.fixture??''))
+  const reception=waiting?out.filter(o=>['desk','checkout','counter','reception-desk','transaction-counter'].includes(o.fixture??''))
     .sort((a,b)=>near(item,a)-near(item,b))[0]:undefined;
   const goal=target??reception??{x:room.x+room.w/2,y:room.y+room.h/2};
   const dx=goal.x-item.x,dy=goal.y-item.y;

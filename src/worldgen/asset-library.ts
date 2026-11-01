@@ -14,6 +14,9 @@ export type AssetLibraryEntry = {
 const names:Readonly<Record<string,string>> = {
   'tv-stand':'Television stand', 'exam-bed':'Examination bed',
   'bar-counter':'Restaurant bar counter','bar-stool':'Restaurant bar stool',
+  'reception-desk':'Clinic and office reception desk',
+  'transaction-counter':'Retail customer transaction counter',
+  'parts-counter':'Garage parts service counter',
   'gondola-shelf':'Retail gondola shelf','vehicle-lift':'Vehicle lift',
   'tire-stack':'Stacked tires','picture-frame':'Picture frame',
   'cash-register':'Cash register','filing-cabinet':'Filing cabinet',
@@ -25,7 +28,8 @@ const label=(id:string)=>names[id]??id.split('-').map(
 // These have a purpose-built branch in the live tactical renderer.
 // Shared-shape objects are still listed: the lab is meant to expose weak art.
 const bespoke = new Set([
-  'bed','exam-bed','desk','counter','bar-counter','bar-stool','workbench','cart','dining-table',
+  'bed','exam-bed','desk','counter','bar-counter','bar-stool',
+  'reception-desk','transaction-counter','parts-counter','workbench','cart','dining-table',
   'coffee-table','meeting-table','fridge','cooler','wardrobe','locker',
   'filing-cabinet','stove','microwave','kitchen-island','sink','checkout',
   'toilet','bathtub','shelf','gondola-shelf','wall-shelf','bookcase','rack',

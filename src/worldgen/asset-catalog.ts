@@ -69,6 +69,15 @@ definitions.push(
  {id:'bar-stool',category:'commercial',width:15,depth:15,height:23,
   solid:true,cover:'low',rooms:['dining']}
 );
+// Customer-facing workstations occupy real collision/cover footprints.
+definitions.push(
+ {id:'reception-desk',category:'commercial',width:56,depth:24,height:27,
+  solid:true,cover:'high',rooms:['reception','lobby','waiting']},
+ {id:'transaction-counter',category:'commercial',width:52,depth:24,height:27,
+  solid:true,cover:'high',rooms:['checkout','sales','service']},
+ {id:'parts-counter',category:'industrial',width:58,depth:24,height:27,
+  solid:true,cover:'high',rooms:['parts','service','workshop']}
+);
 // Functional workstations for real commercial, clinical, retail and industrial routines.
 definitions.push(
  {id:'prep-table',category:'commercial',width:44,depth:26,height:21,
