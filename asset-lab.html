@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#202b28"><title>FIELDWORK — ASSET LIBRARY</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#1c2927;color:#edeae0;font:12px/1.4 system-ui,sans-serif;touch-action:none}
+header{position:fixed;top:env(safe-area-inset-top);left:0;right:0;z-index:12;padding:10px 14px;background:#1c2d29ef;border-bottom:1px solid #6b8275;display:flex;align-items:center;justify-content:space-between;gap:12px}
+header strong{font-size:15px;letter-spacing:.07em}a{color:#e4c58c}
+#labels{position:fixed;inset:0;pointer-events:none;z-index:6}
+#labels button{position:absolute;transform:translate(-50%,-50%);background:#213a33ed;border:1px solid #9cac8b;border-radius:5px;padding:3px 5px;color:#f4eddb;font:10px/1.2 ui-monospace,monospace;pointer-events:auto;max-width:124px;white-space:normal;cursor:pointer;touch-action:manipulation}
+#labels button[aria-pressed=true]{background:#6c593c;border-color:#f0d49d}
+#controls{position:fixed;z-index:10;bottom:env(safe-area-inset-bottom);left:0;right:0;background:#1d302ceF;border-top:1px solid #78917a;padding:11px;display:grid;gap:8px;max-height:39dvh;overflow:auto;touch-action:pan-y}
+.row{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+button,select,input{background:#344d43;border:1px solid #78937d;color:#f6ebd8;border-radius:6px;padding:8px;min-height:34px;font:12px system-ui;touch-action:manipulation}
+input{flex:1;min-width:100px}select{flex:1;min-width:140px}button:disabled{opacity:.4}label{font-weight:700;font-size:11px}
+#detail{font:11px/1.55 ui-monospace,monospace;white-space:pre-wrap;color:#dbdecf}
+#summary{color:#dfceac;font-size:11px}
+@media(max-width:450px){#controls{max-height:35dvh;padding:8px}.row{gap:5px}button,select,input{font-size:11px;padding:6px}}
+</style></head><body>
+<header><strong>FIELDWORK / ASSET LIBRARY</strong><a href="./map-lab.html">MAP LAB</a></header>
+<div id="labels"></div>
+<section id="controls" aria-label="Asset library">
+ <div class="row"><label for="category">CATEGORY</label><select id="category"><option value="">All assets</option></select><input id="search" type="search" placeholder="Search asset names" aria-label="Search assets"></div>
+ <div class="row"><button id="previous">PREVIOUS</button><button id="next">NEXT</button><span id="summary"></span></div>
+ <div class="row"><button id="iso">ISO</button><button id="top">TOP</button><button id="fit">FIT</button><span>Drag to orbit · pinch to zoom/pan · tap names to inspect</span></div>
+ <output id="detail" role="status" aria-live="polite"></output>
+</section>
+<script type="module" src="./src/asset-lab-main.ts"></script></body></html>
