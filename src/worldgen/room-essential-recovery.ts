@@ -102,7 +102,7 @@ function recoverPass(site:Input,initial:readonly Obstacle[],
        // Test all four working directions against the actual oriented shape.
        // Keep already-usable working faces usable when introducing a new prop.
        const retained=cover.filter(o=>!colliding.includes(o));
-       const turns=requiresServiceApproach(fixture)?[0,1,2,3]:[0];
+       const turns:readonly (0|1|2|3)[]=requiresServiceApproach(fixture)?[0,1,2,3]:[0];
        const turn=turns.find(orientation=>{
         const w=orientation%2===0?asset.width:asset.depth;
         const h=orientation%2===0?asset.depth:asset.width;
