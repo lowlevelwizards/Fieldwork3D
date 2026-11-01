@@ -384,6 +384,18 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         ctx.box(group,c.x,20,c.y,w,40,d,concrete);
         ctx.box(group,c.x,2,c.y,w+5,4,d+5,metal,false);
         ctx.box(group,c.x,39,c.y,w+3,3,d+3,metal,false);
+      }else if(fixture==='privacy-fence'){
+        const planks=visualCtx.solid(0x816f56,.94,'wood');
+        for(let x=-w/2+4;x<w/2;x+=9)
+          ctx.box(group,c.x+x,17,c.y,7.6,34,4,planks);
+        for(const y of [9,28])ctx.box(group,c.x,y,c.y-2,w,3,3,wood,false);
+        for(const x of [-w*.47,w*.47])ctx.box(group,c.x+x,19,c.y,4,38,5,wood);
+      }else if(fixture==='iron-fence'){
+        const iron=visualCtx.solid(0x4b5554,.78,'industrial-steel');
+        for(const x of [-w*.47,w*.47])ctx.box(group,c.x+x,19,c.y,3,38,3,iron);
+        for(let x=-w/2+8;x<w/2-4;x+=10)
+          ctx.box(group,c.x+x,19,c.y,1.8,35,1.8,iron,false);
+        for(const y of [6,30])ctx.box(group,c.x,y,c.y,w,2,2.2,iron,false);
       }else if(fixture==='chain-link-fence'){
         const h=36;
         for(const side of [-1,1])ctx.box(group,c.x+side*w*.47,h/2,c.y,3,h,3,metal);

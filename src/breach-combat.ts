@@ -37,7 +37,7 @@ export function exposure(from:Pt,to:Pt,doors:Door[],
     return {blocked:true,soft:false,hard:true,penalty:1,material:'stone'};
   let hard=false,soft=false,material:Exposure['material']='dust';
   for(const cover of COVER){
-    if(cover.fixture==='chain-link-fence')continue;
+    if(['chain-link-fence','iron-fence'].includes(cover.fixture??''))continue;
     if(!segmentBox(from,to,cover))continue;
     if(coverImpactFraction(from,to,eyeHeight(shooterCrouched),
       aimHeight(targetCrouched),cover)!==null){

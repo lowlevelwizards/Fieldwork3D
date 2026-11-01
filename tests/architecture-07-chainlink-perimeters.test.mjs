@@ -18,8 +18,10 @@ test('security yards may generate a linked gate and two matching fence sections'
   const gate=site.doors.find(d=>d.id==='PROPERTY-GATE');
   if(!gate)continue;
   groups++;
-  assert.equal(gate.style,'mesh-gate');
-  assert.equal(site.cover.filter(c=>c.fixture==='chain-link-fence').length,2);
+  const style=site.archetype==='warehouse'?'chain-link-fence':
+   site.archetype==='utility'||site.archetype==='townhouse'?'iron-fence':'privacy-fence';
+  assert.equal(gate.style,style==='privacy-fence'?'wood':'mesh-gate');
+  assert.equal(site.cover.filter(c=>c.fixture===style).length,2);
  }
  assert.ok(groups>0,'eligible industrial sites should generate fenced service yards');
 });
