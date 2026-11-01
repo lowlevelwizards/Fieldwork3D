@@ -229,21 +229,21 @@ export function furnishRooms(site:Site,seed:number):Site{
  if(site.archetype==='restaurant'&&
     ['diner','sit-down-restaurant'].includes(site.identity?.subtype??'')){
    for(const room of site.rooms.filter(r=>r.kind==='room'&&
-     r.purpose==='dining'&&r.w>=132&&r.h>=108)){
+     r.purpose==='dining'&&r.w>=154&&r.h>=132)){
      let placed=0;
-     for(const [fx,fy] of [[.31,.29],[.69,.71],[.69,.29],[.31,.71]]){
+     for(const [fx,fy] of [[.25,.25],[.75,.75],[.75,.25],[.25,.75]]){
        if(placed>=2)break;
        const w=66,h=46,x=room.x+room.w*fx,y=room.y+room.h*fy;
        const booth:Obstacle={x,y,w,h,fixture:'diner-booth',low:true};
        if(x-w/2<=room.x+11||x+w/2>=room.x+room.w-11||
          y-h/2<=room.y+11||y+h/2>=room.y+room.h-11)continue;
        if(site.doors.some(d=>Math.hypot(x-(d.a.x+d.b.x)/2,
-         y-(d.a.y+d.b.y)/2)<58))continue;
+         y-(d.a.y+d.b.y)/2)<45))continue;
        if((site.openings??[]).some(d=>Math.hypot(x-(d.a.x+d.b.x)/2,
-         y-(d.a.y+d.b.y)/2)<60))continue;
-       if(reserved.some(p=>Math.abs(x-p.x)<w/2+25&&
-         Math.abs(y-p.y)<h/2+25))continue;
-       if(output.some(o=>overlap(o,booth,9)))continue;
+         y-(d.a.y+d.b.y)/2)<50))continue;
+       if(reserved.some(p=>Math.abs(x-p.x)<w/2+9&&
+         Math.abs(y-p.y)<h/2+9))continue;
+       if(output.some(o=>overlap(o,booth,4)))continue;
        output.push(booth);placed++;
      }
      if(placed>=2)break;
