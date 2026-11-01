@@ -8,6 +8,7 @@ export type CampaignHandlers={
  newCampaign:()=>void;continueCampaign:()=>void;quickPlay:()=>void;
  chooseContract:(id:string)=>void;resumeContract:()=>void;
  buyAmmo:()=>void;buyMedical:()=>void;resupply:(id:string)=>void;treat:(id:string)=>void;
+ recruit:()=>void;assignSlot:(slot:number,id:string)=>void;
 };
 const node=<K extends keyof HTMLElementTagNameMap>(tag:K,cls='',label='')=>{
  const el=document.createElement(tag);if(cls)el.className=cls;
@@ -52,11 +53,30 @@ export class CampaignScreen{
   personnel.append(node('h2','','PERSONNEL'));
   personnel.append(node('p','campaign-note',
    'STOCK: '+c.supplies.ammo+' ROUNDS · '+c.supplies.medical+' MEDICAL KITS'));
+  const deployment=node('div','campaign-assignment');
+  deployment.append(node('h2','','DEPLOYMENT TEAM'));
+  for(let slot=0;slot<4;slot++){
+   const line=node('label','campaign-assignment-row');
+   line.append(node('span','','SLOT 0'+(slot+1)));
+   const picker=node('select','campaign-select');
+   picker.setAttribute('aria-label','Choose operator for tactical slot '+(slot+1));
+   for(const member of c.operators.filter(p=>p.status!=='lost')){
+    const option=node('option','',member.callsign);
+    option.value=member.id;
+    picker.append(option);
+   }
+   picker.value=c.squadIds[slot];
+   picker.disabled=!!c.activeContractId;
+   picker.addEventListener('change',()=>this.handlers.assignSlot(slot,picker.value));
+   line.append(picker);deployment.append(line);
+  }
+  personnel.append(deployment);
   const roster=node('div','campaign-roster');
   for(const p of c.operators){
    const card=node('article','campaign-person');
    card.append(node('strong','',p.callsign),node('span','',p.background));
-   card.append(node('small','',p.recoveryDays?'RECOVERING · '+p.recoveryDays+' DAYS':p.status.toUpperCase()));
+   card.append(node('small','',p.recoveryDays?'RECOVERING · '+p.recoveryDays+' DAYS':
+    c.squadIds.includes(p.id)?'DEPLOYMENT TEAM':'RESERVE'));
    const skill=p.skills.handling;
    card.append(node('small','','HANDLING '+Math.round(skill*100)+' / 100 · '+p.missions+' OPS'));
    const details=node('details','campaign-dossier');
@@ -91,6 +111,9 @@ export class CampaignScreen{
   purchases.append(button('BUY 60 ROUNDS · 120 CR',this.handlers.buyAmmo),
    button('BUY MEDICAL KIT · 170 CR',this.handlers.buyMedical));
   personnel.append(purchases);
+  const recruit=button('RECRUIT OPERATOR · 450 CR',this.handlers.recruit);
+  recruit.disabled=c.operators.length>=8||c.funds<450||!!c.activeContractId;
+  personnel.append(recruit);
   const notice=node('p','campaign-note',c.history.length?
    'LAST OPERATION: '+c.history[c.history.length-1].grade+' · '+c.history[c.history.length-1].outcome.toUpperCase():
    'No operations completed. Select your first contract.');
