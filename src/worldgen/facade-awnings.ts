@@ -2,7 +2,7 @@
  * fabricated openings. Their overhead silhouettes are not walkable floors.
  * No posts are placed in customer or emergency access routes.
  */
-import type {Site,WindowOpening} from '../breach-site.ts';
+import type {Site} from '../breach-site.ts';
 const inside=(site:Site,x:number,y:number)=>site.rooms.some(r=>
  x>r.x+2&&x<r.x+r.w-2&&y>r.y+2&&y<r.y+r.h-2);
 export type FacadeAwning={id:string;hostWindowId:string;x:number;y:number;
