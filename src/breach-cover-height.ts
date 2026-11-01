@@ -3,7 +3,11 @@
  * actual physical height. The target posture changes the aim height. */
 import type {Pt,Obstacle} from './breach-core.ts';
 import {propDefinition} from './worldgen/asset-catalog.ts';
+/** Glass panes are physically full height, not knee-high furniture.
+ * Raised masonry sills remain low cover and still stop crouched fire. */
 export const coverHeight=(c:Obstacle)=>
+  c.fixture==='glass-barrier'?39:
+  c.fixture==='window-sill'?14:
   (c.fixture&&propDefinition(c.fixture)?.height)||(c.low?12:27);
 export const eyeHeight=(crouched:boolean)=>crouched?15:32;
 export const aimHeight=(crouched:boolean)=>crouched?11:32;

@@ -37,12 +37,18 @@ import {DisplayRouteCache} from './breach-route-cache.ts';
 import {FrameMeter} from './breach-perf.ts';
 import {formatAfterAction} from './breach-after-action.ts';
 import {initialRoster,readRoster,applyRosterIdentity,recordRosterMission,
-  resupplyRoster,equipRoster} from './breach-roster.ts';
+  resupplyRoster,equipRoster,equipRosterGear,renameRosterMember,cycleRosterAppearance} from './breach-roster.ts';
+import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
 import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOperation,
  purchaseAmmo,purchaseMedical,resupplyOperator,treatOperator,
  hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
- retireOperator,
+ retireOperator,equipCampaignGear,saveCampaignKitPreset,applyCampaignKitPreset,
+ deleteCampaignKitPreset,renameCampaignOperator,cycleCampaignAppearance,
+ repairCampaignArmor,purchaseFlash,
  type CampaignState,type CampaignReport} from './campaign-state.ts';
+import {loadMovementScale,equippedFlashCharges} from './equipment-loadouts.ts';
+import {initialArmorIntegrity} from './equipment-armor.ts';
+import {allocateFlashSupply} from './equipment-supply.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {exportCampaign,importCampaign} from './campaign-persistence.ts';
 import {careerEventsForOperation} from './campaign-history.ts';
@@ -190,6 +196,12 @@ function applyCampaignSkills(){
   if(m){
    a.name=m.callsign;a.skills={...m.skills};a.weapon=m.weapon;
    a.appearanceSeed=m.appearanceSeed;
+   a.equipment=m.loadout;
+   a.flashCharges=equippedFlashCharges(m.loadout);
+   const protection=initialArmorIntegrity(m.loadout);
+   a.armorIntegrity=Math.min(protection.torso,m.armorCondition.torso);
+   a.helmetIntegrity=Math.min(protection.head,m.armorCondition.head);
+   a.loadMovementScale=loadMovementScale(m.loadout);
    a.magazine=m.magazine;a.reserve=m.reserve;
    a.insertedMagazineId=a.id+'/'+a.weapon+'/loaded';
    a.spareMagazines=a.weapon==='shotgun'?[]:
@@ -199,6 +211,12 @@ function applyCampaignSkills(){
     a.health=Math.min(a.health,4-a.injuryStage);
    }
   }
+ }
+ if(!state.started){
+  const squad=team(state);
+  const issued=allocateFlashSupply(squad.map(a=>a.flashCharges),campaign.supplies.flash);
+  squad.forEach((a,i)=>{a.flashCharges=issued[i];});
+  state.flashRemaining=issued.reduce((n,qty)=>n+qty,0);
  }
 }
 let state:Session=newSession(0,legacyStudy?undefined:initialSiteSeed,
@@ -229,11 +247,14 @@ function recordCompletedOperation(){
     participatingIds:members.map(a=>careerId(a.id)),
     casualties:members.filter(a=>a.health<=0).map(a=>careerId(a.id)),
     objective:stats.objective,
+    flashUsed:state.battleEvents.filter(e=>e.kind==='flash'&&
+     e.actor!==undefined&&e.text.endsWith('FLASH OUT')).length,
     events:careerEventsForOperation(campaign,'operation-'+campaign.activeContractId,state.battleEvents,mapping),
     performance:members.map(a=>({
      id:careerId(a.id),shots:a.shots,hits:a.hits,pointShots:a.pointShots,
      aimedShots:a.aimedShots,longHits:a.longHits,injuryStage:a.injuryStage,
-     survived:a.health>0,magazine:a.magazine,reserve:a.reserve
+     survived:a.health>0,magazine:a.magazine,reserve:a.reserve,
+     armorIntegrity:a.armorIntegrity,helmetIntegrity:a.helmetIntegrity
     }))
    };
    campaign=resolveOperation(campaign,result);saveCampaign();return;
@@ -307,6 +328,7 @@ Object.assign(operationsBoard.style,{
  boxShadow:'0 12px 35px #0008'
 });
 document.body.append(operationsBoard);
+let expandedQuickKit:string|null=null;
 function renderOperationsBoard(){
  operationsBoard.replaceChildren();
  const heading=document.createElement('div');
@@ -357,7 +379,58 @@ function renderOperationsBoard(){
    saveRoster();applyRosterIdentity(state,persistentRoster);
    renderOperationsBoard();updateHud();
   });
-  actions.append(equip);card.append(actions);operationsBoard.append(card);
+  const look=document.createElement('button');
+  look.type='button';look.textContent='NEXT LOOK';
+  look.addEventListener('click',()=>{
+   if(state.phase!=='planning'||replaying)return;
+   persistentRoster=cycleRosterAppearance(persistentRoster,member.id);
+   saveRoster();applyRosterIdentity(state,persistentRoster);
+   expandedQuickKit=member.id;renderOperationsBoard();updateHud();
+  });
+  actions.append(look);
+  const rename=document.createElement('button');
+  rename.type='button';rename.textContent='CALLSIGN';
+  rename.addEventListener('click',()=>{
+   if(state.phase!=='planning'||replaying)return;
+   const next=window.prompt('Operator callsign',member.callsign);
+   if(next===null)return;
+   persistentRoster=renameRosterMember(persistentRoster,member.id,next);
+   saveRoster();applyRosterIdentity(state,persistentRoster);
+   expandedQuickKit=member.id;renderOperationsBoard();updateHud();
+  });
+  actions.append(rename);
+  card.append(actions);
+  const kit=document.createElement('details');
+  kit.open=expandedQuickKit===member.id;
+  kit.addEventListener('toggle',()=>{if(kit.open)expandedQuickKit=member.id;
+   else if(expandedQuickKit===member.id)expandedQuickKit=null;});
+  const kitTitle=document.createElement('summary');
+  kitTitle.textContent='EQUIPMENT / LOADOUT';
+  kitTitle.style.cssText='min-height:40px;cursor:pointer;padding:11px 0;font-weight:700';
+  kit.append(kitTitle);
+  for(const slot of LOADOUT_SLOTS){
+   if(slot==='primary')continue; // Existing NEXT WEAPON action stays authoritative.
+   const row=document.createElement('label');
+   row.style.cssText='display:flex;justify-content:space-between;gap:8px;align-items:center;margin:8px 0';
+   const label=document.createElement('span');
+   label.textContent=slot.toUpperCase();label.style.fontSize='10px';
+   const select=document.createElement('select');
+   select.setAttribute('aria-label',slot+' for '+member.callsign);
+   select.style.cssText='max-width:65%;min-height:40px;touch-action:manipulation;background:#243530;color:#e5e9d8;border-radius:7px;padding:6px';
+   for(const item of itemsForSlot(slot)){
+    const option=document.createElement('option');
+    option.value=item.id;option.textContent=item.name;select.append(option);
+   }
+   select.value=member.loadout.slots[slot];
+   select.addEventListener('change',()=>{
+    if(state.phase!=='planning'||replaying)return;
+    persistentRoster=equipRosterGear(persistentRoster,member.id,slot,select.value);
+    saveRoster();applyRosterIdentity(state,persistentRoster);
+    expandedQuickKit=member.id;renderOperationsBoard();updateHud();
+   });
+   row.append(label,select);kit.append(row);
+  }
+  card.append(kit);operationsBoard.append(card);
  }
  const hint=document.createElement('p');
  hint.textContent='Close to deploy normally. Recovery advances after each operation.';
@@ -2035,6 +2108,7 @@ const campaignScreen=new CampaignScreen({
  resumeContract:()=>deployCampaignContract(),
  buyAmmo:()=>{if(campaign){campaign=purchaseAmmo(campaign);saveCampaign();showCampaignHome();}},
  buyMedical:()=>{if(campaign){campaign=purchaseMedical(campaign);saveCampaign();showCampaignHome();}},
+ buyFlash:()=>{if(campaign){campaign=purchaseFlash(campaign);saveCampaign();showCampaignHome();}},
  resupply:(id)=>{if(campaign){campaign=resupplyOperator(campaign,id);saveCampaign();showCampaignHome();}},
  treat:(id)=>{if(campaign){campaign=treatOperator(campaign,id);saveCampaign();showCampaignHome();}},
  recruit:()=>{if(campaign){campaign=hireRecruit(campaign);saveCampaign();showCampaignHome();}},
@@ -2042,6 +2116,21 @@ const campaignScreen=new CampaignScreen({
   saveCampaign();showCampaignHome();}},
  buyWeapon:(weapon)=>{if(campaign){campaign=buyWeapon(campaign,weapon);saveCampaign();showCampaignHome();}},
  equipWeapon:(id,weapon)=>{if(campaign){campaign=equipCampaignWeapon(campaign,id,weapon);
+  saveCampaign();showCampaignHome();}},
+ repairArmor:(id)=>{if(campaign){campaign=repairCampaignArmor(campaign,id);
+  saveCampaign();showCampaignHome();}},
+ equipGear:(id,slot,itemId)=>{if(campaign){
+  campaign=equipCampaignGear(campaign,id,slot,itemId);
+  saveCampaign();showCampaignHome();}},
+ saveKitPreset:(id,name)=>{if(campaign){campaign=saveCampaignKitPreset(campaign,id,name);
+  saveCampaign();showCampaignHome();}},
+ applyKitPreset:(id,presetId)=>{if(campaign){campaign=applyCampaignKitPreset(campaign,id,presetId);
+  saveCampaign();showCampaignHome();}},
+ deleteKitPreset:(presetId)=>{if(campaign){campaign=deleteCampaignKitPreset(campaign,presetId);
+  saveCampaign();showCampaignHome();}},
+ renameOperator:(id,callsign)=>{if(campaign){campaign=renameCampaignOperator(campaign,id,callsign);
+  saveCampaign();showCampaignHome();}},
+ cycleAppearance:(id)=>{if(campaign){campaign=cycleCampaignAppearance(campaign,id);
   saveCampaign();showCampaignHome();}},
  exportSave:()=>{
   if(!campaign)return;

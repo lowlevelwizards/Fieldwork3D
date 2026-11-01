@@ -8,6 +8,7 @@ import {compileArchitecturalSite} from './worldgen/architectural-compiler.ts';
 import {partitionMotelGuestUnits} from './worldgen/motel-suites.ts';
 import {orientArchitecturalSite,type EntrySide} from './worldgen/site-orientation.ts';
 import {buildingIdentity} from './worldgen/building-identity.ts';
+import {measureSiteCompleteness,shouldTryAnotherLayout,preferCompleteCandidate} from './worldgen/site-completeness.ts';
 export type Room={id:string;zoneId?:string;unitId?:string;x:number;y:number;w:number;h:number;
   kind:'room'|'hall';tone:number;purpose?:string};
 export type BuildingArchetype='house'|'townhouse'|'apartment'|'retail'|'office'|'garage'|'warehouse'|'restaurant'|'motel'|'utility'|'clinic';
@@ -72,13 +73,30 @@ export function generateSite(seed:number,scale:SiteScale='standard'):Site{
  // Keep one semantic building identity and a reproducible sequence of
  // massing variants when a furniture arrangement blocks the critical route.
  const subtype=buildingIdentity(kind,seed,scale,0).subtype;
+ let best:Site|undefined;
+ let bestGrade:ReturnType<typeof measureSiteCompleteness>|undefined;
+ let firstSuccess=-1;
  for(let attempt=0;attempt<6;attempt++){
-  const geometry=partitionMotelGuestUnits(
-    compileArchitecturalSite(kind,seed+attempt*9973,scale,subtype));
-  geometry.seed=seed;
-  geometry.identity=buildingIdentity(kind,seed,scale,geometry.roomCount);
-  try{return applyArchetype(orientArchitecturalSite(geometry,seed),seed);}
-  catch{/* Retry a different architectural grammar, not the old grid. */}
+  // One optional alternate after the first navigable map; do not multiply
+  // full scene generation on every mobile load.
+  if(firstSuccess>=0&&attempt>firstSuccess+1)break;
+  try{
+   const geometry=partitionMotelGuestUnits(
+     compileArchitecturalSite(kind,seed+attempt*9973,scale,subtype));
+   geometry.seed=seed;
+   geometry.identity=buildingIdentity(kind,seed,scale,geometry.roomCount);
+   const candidate=applyArchetype(orientArchitecturalSite(geometry,seed),seed);
+   const grade=measureSiteCompleteness(candidate);
+   if(!bestGrade||preferCompleteCandidate(grade,bestGrade)){
+    best=candidate;bestGrade=grade;
+   }
+   if(firstSuccess<0){
+    firstSuccess=attempt;
+    if(!shouldTryAnotherLayout(grade,scale))return candidate;
+   }
+   if(grade.score===0)return candidate;
+  }catch{/* Retry a different authored physical grammar when disconnected. */}
  }
+ if(best)return best;
  throw new Error('Cannot generate connected '+kind+' site for seed '+seed);
 }

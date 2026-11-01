@@ -6,6 +6,7 @@ export type OperatorPerformance={
  id:string;shots:number;hits:number;pointShots:number;aimedShots:number;
  longHits:number;injuryStage:number;survived:boolean;
  magazine:number;reserve:number;
+ armorIntegrity?:number;helmetIntegrity?:number;
 };
 export type SkillGains={id:string;gains:Partial<Record<SkillName,number>>};
 const clamp=(n:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,n));

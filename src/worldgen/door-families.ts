@@ -24,11 +24,6 @@ export function styleArchitecturalDoors(site:Site,seed:number):Site{
     ['warehouse','utility','garage'].includes(kind)&&index%3===0?'reinforced':
     ['warehouse','office','clinic','retail','motel'].includes(kind)&&index%4===0?'exit':
     index%5===0?'steel':'wood';
-  // Strengthening actual latch/frame resistance is not a visual fake.
-  const strength=style==='reinforced'?{resistance:2.2,latchIntegrity:2.1,
-    frameIntegrity:4.8}:style==='steel'?{resistance:1.4,latchIntegrity:1.25,
-    frameIntegrity:3.2}:style==='exit'?{resistance:1.15,
-    latchIntegrity:1.1,frameIntegrity:3}:null;
   // Secondary construction families retain authoritative hinge or sliding mechanics.
   // Split Dutch and folding leaf mechanisms are intentionally not emulated here.
   let finish:DoorStyle=style;
@@ -48,6 +43,14 @@ export function styleArchitecturalDoors(site:Site,seed:number):Site{
       finish='pocket';mode='sliding';
     }
   }
+  // The *final* manufactured family owns physical resistance. Otherwise a
+  // reinforced initial selection can leave a sliding barn door artificially
+  // reinforced, or a fire-rated replacement can inherit a weak timber frame.
+  const strength=finish==='reinforced'?{resistance:2.2,latchIntegrity:2.1,
+    frameIntegrity:4.8}:finish==='fire'?{resistance:1.9,latchIntegrity:1.7,
+    frameIntegrity:4.2}:finish==='steel'?{resistance:1.4,latchIntegrity:1.25,
+    frameIntegrity:3.2}:finish==='exit'?{resistance:1.15,latchIntegrity:1.1,
+    frameIntegrity:3}:null;
   return {...door,style:finish,
     ...(mode==='sliding'?{kind:'sliding' as const,
        slideDirection:(seed%2===0?1:-1) as 1|-1}:{}),
