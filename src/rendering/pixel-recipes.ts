@@ -6,7 +6,8 @@ export type PixelSurface =
  'linoleum'|'sealed-concrete'|'cinderblock'|'siding'|'panel'|
  'plastic'|'porcelain'|'door-wood'|'painted-wood'|'furniture-wood'|'rough-wood'|
  'painted-metal'|'industrial-steel'|'corrugated-metal'|'enamel-metal'|
- 'scruffy-grass'|'worn-asphalt'|'packed-earth';
+ 'scruffy-grass'|'worn-asphalt'|'packed-earth'|
+ 'woven-fabric'|'molded-plastic'|'tire-rubber';
 export const OPERATOR_REFERENCE_HEIGHT=40;
 export const TEXELS_PER_OPERATOR=32;
 export const PIXEL_WORLD_SIZE=OPERATOR_REFERENCE_HEIGHT/TEXELS_PER_OPERATOR;
@@ -18,7 +19,8 @@ export const PIXEL_SURFACES:readonly PixelSurface[]=[
  'linoleum','sealed-concrete','cinderblock','siding','panel',
  'plastic','porcelain','door-wood','painted-wood','furniture-wood','rough-wood',
  'painted-metal','industrial-steel','corrugated-metal','enamel-metal',
- 'scruffy-grass','worn-asphalt','packed-earth'
+ 'scruffy-grass','worn-asphalt','packed-earth',
+ 'woven-fabric','molded-plastic','tire-rubber'
 ];
 export const MATERIAL_RECIPE_VERSION=3;
 const hash=(x:number,y:number,s:number)=>{
@@ -95,11 +97,12 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
    case 'concrete':case 'sealed-concrete':
     if(x===0||y===0)shade=kind==='sealed-concrete'?245:239;
     break;
-   case 'rubber':
-    if(x%8===0&&y%8<2)shade=246;
+   case 'rubber':case 'tire-rubber':
+    if(x%8===0&&y%8<2)shade=kind==='tire-rubber'?236:246;
+    if(kind==='tire-rubber'&&x%8===5&&y%8===4)shade=243;
     break;
-   case 'fabric':case 'carpet':
-    if(manufacturedSpeck(x,y,seed,16))shade=251;
+   case 'fabric':case 'carpet':case 'woven-fabric':
+    if(manufacturedSpeck(x,y,seed,kind==='woven-fabric'?10:16))shade=kind==='woven-fabric'?244:251;
     break;
    case 'grass':case 'scruffy-grass':{
     // Four small, coherent blade clusters; intentionally empty between them.
@@ -132,6 +135,9 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
     break;
    case 'plaster':
     if(manufacturedSpeck(x,y,seed,32))shade=252;
+    break;
+   case 'molded-plastic':
+    if(x===0&&y>3&&y<29)shade=246;
     break;
    case 'asphalt':case 'worn-asphalt':
     if(manufacturedSpeck(x,y,seed,16))shade=kind==='worn-asphalt'?243:252;
