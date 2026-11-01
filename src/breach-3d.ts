@@ -1081,7 +1081,7 @@ export class TacticalScene3D{
     for(const [doorIndex,sourceDoor] of initialDoors().entries()){
       const door=initDoor(sourceDoor,doorIndex);
       const width=Math.hypot(door.a.x-door.b.x,door.a.y-door.b.y);
-      const p=doorCenter(door),vertical=Math.abs(door.a.x-door.b.x)<1;
+      const p=doorCenter(door);
       const group=new THREE.Group();group.position.set(p.x,0,p.y);
       group.rotation.y=-Math.atan2(door.b.y-door.a.y,door.b.x-door.a.x);
       const frame=new THREE.Group();group.add(frame);
