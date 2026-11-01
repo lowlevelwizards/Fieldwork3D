@@ -54,7 +54,8 @@ let site:Site|null=null;
 export function activateSite(next:Site|null){
   site=next;
   WALLS.splice(0,WALLS.length,...(next?.walls??BASE_WALLS));
-  COVER.splice(0,COVER.length,...(next?.cover??BASE_COVER));
+  COVER.splice(0,COVER.length,...(next?.cover??BASE_COVER).map(o=>({...o})));
+  // Runtime displacements never mutate the seed-derived site data.
 }
 export const activeSite=()=>site;
 export const initialDoors=():Door[]=>
