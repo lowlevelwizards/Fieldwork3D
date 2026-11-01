@@ -57,8 +57,10 @@ import {bodyClear,sweptBodyClear,squeezeFacing,
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
   from './breach-squeeze-route.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
-import {kitMedicalSupplies,type FieldMedicalSupplies}
+import {kitMedicalSupplies,spendMedicalSupply,type FieldMedicalSupplies}
  from './equipment-medical-supplies.ts';
+import {treatmentSupplyForWound,treatmentDuration}
+ from './breach-medical-treatment.ts';
 import {changeWeaponPlatform,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {weaponHandlingModifiers,sightAcquisitionScale,sightSpreadScale}
  from './equipment-weapon-handling.ts';
@@ -82,13 +84,15 @@ import {CASING_LIMIT,IMPACT_MARK_LIMIT,BLOOD_MARK_LIMIT,
 import {chooseFall,hitRegion,type WoundRegion,type FallPose}
   from './breach-wounds.ts';
 import {newMedicalCondition,registerWound,advanceMedicalCondition,
- type MedicalCondition} from './breach-medical-wounds.ts';
+ stabilizeWound,mostUrgentWound,type MedicalCondition}
+ from './breach-medical-wounds.ts';
 
 export type Posture='stand'|'crouch';
 export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retreat';
 export type Personality='guard'|'aggressor'|'cautious';
 export type TeamActor=Operator & {
   medical:MedicalCondition;medicalSupplies:FieldMedicalSupplies;
+  lastTreatmentAt:number;lastTreatmentTargetId:string|null;
   awareness:ActorAwareness;
   intent:AIIntent|null;combatChoice:CombatAction|null;lastReportAt:number;
   coordinationRole:GroupRole|null;coordinationUntil:number;
@@ -192,6 +196,7 @@ export const SCENARIOS=[
 ] as const;
 const withActions=(a:Operator):TeamActor=>({
   ...a,medical:newMedicalCondition(),medicalSupplies:kitMedicalSupplies(),
+  lastTreatmentAt:-100,lastTreatmentTargetId:null,
   awareness:newAwareness(),intent:null,combatChoice:null,lastReportAt:-100,
   coordinationRole:null,coordinationUntil:0,lastMoraleEventAt:-100,searchOrigin:null,searchQueue:[],plan:[],history:makeHistory(),nav:[],activeNode:-1,
   posture:'stand',pace:'walk',alert:'idle',velocity:0,turning:0,aim:0,
@@ -831,6 +836,27 @@ export function planHoldClear(s:Session,id:string,origin:'here'|'end'='end',afte
     a.plan.splice(idx+1,0,{id:s.nextId++,kind:'holdClear',p:clone(p),duration:.5});
   });
   return addNode(s,id,'holdClear',p,{duration:.5});
+}
+/** A treatment order uses the same planning history and navigation authority. */
+export function planMedicalTreatment(s:Session,id:string,patientId:string):boolean{
+ const a=party(s,id),patient=s.operators.find(o=>o.id===patientId);
+ if(!a||!patient||patient.side!==a.side||!canEdit(s))return false;
+ const wound=mostUrgentWound(patient.medical);
+ if(!wound||!treatmentSupplyForWound(wound,a.medicalSupplies))return false;
+ const at=finalPoint(a),distance=d(at,patient.p);
+ let goal=at;
+ if(distance>26){
+  const theta=angle(patient.p,at);
+  goal={x:patient.p.x+Math.cos(theta)*21,
+   y:patient.p.y+Math.sin(theta)*21};
+  if(!intelPassable(goal,s.intel,5.4)||
+     !routeWithSqueezeIntel(s.intel,at,goal).length)return false;
+ }
+ return edit(s,a,()=>{
+  if(distance>26)a.plan.push({id:s.nextId++,kind:'move',p:clone(goal)});
+  a.plan.push({id:s.nextId++,kind:'treat',p:clone(goal),
+   patientId:patient.id,woundId:wound.id});
+ });
 }
 export function planWait(s:Session,id:string,seconds=.5){
   const a=party(s,id);return a?addNode(s,id,'wait',finalPoint(a),
@@ -1534,7 +1560,36 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     }
     a.pieIndex=0;
   }
-    if(n.kind==='interact'){
+  if(n.kind==='treat'){
+    const patient=s.operators.find(o=>o.id===n.patientId&&o.side===a.side);
+    const wound=patient?.medical.wounds.find(w=>w.id===n.woundId);
+    if(!patient||!wound||wound.stabilized||wound.bleeding<=0){pop(a);return;}
+    const supply=treatmentSupplyForWound(wound,a.medicalSupplies);
+    if(!supply){notify(s,a.name+' MEDICAL SUPPLY UNAVAILABLE');pop(a);return;}
+    if(!near(a.p,patient.p,27)){
+      const direction=angle(patient.p,a.p);
+      const destination={x:patient.p.x+Math.cos(direction)*21,
+        y:patient.p.y+Math.sin(direction)*21};
+      a.actionTimer=0;approach(a,destination,dt,s,.58);return;
+    }
+    a.velocity=0;rotate(a,angle(a.p,patient.p),dt);
+    if(s.seconds-a.lastHitAt<.35){a.actionTimer=0;return;}
+    if(a.actionTimer===0){
+      a.lastTreatmentAt=s.seconds;a.lastTreatmentTargetId=patient.id;
+    }
+    a.actionTimer+=dt;
+    if(a.actionTimer>=treatmentDuration(supply)){
+      if(stabilizeWound(patient.medical,wound.id)){
+        spendMedicalSupply(a.medicalSupplies,supply);
+        battleEvent(s,'interaction',a,patient.p,
+          a.name+' STABILIZED '+patient.name);
+        notify(s,a.name+' STABILIZED '+patient.name);
+      }
+      pop(a);
+    }
+    return;
+  }
+  if(n.kind==='interact'){
     if(!n.objectId||!n.interaction){pop(a);return;}
     if(!near(a.p,n.p,7)){
       approach(a,n.p,dt,s,.65);return;
