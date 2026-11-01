@@ -72,3 +72,9 @@
 @media(max-width:420px){.campaign-armory{grid-template-columns:1fr}}
 
 .campaign-distinction{font-size:11px;color:#e6d1a0;line-height:1.45;margin:8px 0}
+
+.campaign-import{display:block;width:100%;box-sizing:border-box;padding:10px;
+ color:#d7e3d5;background:#293b37;border:1px solid #5c7869;border-radius:8px;
+ font:12px Oxanium,system-ui,sans-serif;touch-action:manipulation}
+.campaign-import::file-selector-button{background:#a8b99a;color:#182523;border:0;
+ border-radius:6px;padding:8px 10px;margin-right:8px;font:600 11px Oxanium,system-ui,sans-serif}
