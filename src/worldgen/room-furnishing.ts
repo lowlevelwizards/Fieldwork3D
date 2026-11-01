@@ -345,7 +345,10 @@ export function furnishRooms(site:Site,seed:number):Site{
    const rotation=Math.floor(rng()*4);
    const order=i===0?positions:[positions[0],...positions.slice(1+rotation),...positions.slice(1,1+rotation)];
    const candidates=[
-     ...relatedFurniturePositions(room,item.id,w,h,placed),
+     ...relatedFurniturePositions(room,item.id,w,h,
+       [...output,...placed].filter(o=>o.fixture&&site.rooms.some(r=>
+         r.kind==='room'&&(r.zoneId??r.id)===zone&&
+         o.x>r.x&&o.x<r.x+r.w&&o.y>r.y&&o.y<r.y+r.h))),
      ...order.map(anchor=>position(room,w,h,anchor)),
      ...perimeterPositions(room,w,h),
    ];
