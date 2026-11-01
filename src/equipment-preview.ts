@@ -39,7 +39,8 @@ export class CampaignKitPreview{
     stride:0,posture:'stand',injury:0,weapon,
     reload:0,reloadDuration:0,lastThrowAt:-100,lastDoorAt:-100,
     down:false,surrender:false,aiming:false,firing:false,turning:0,
-    appearanceSeed,equipment,deterministic:true},0);
+    appearanceSeed,equipment,flashCharges:equipment.slots.tactical==='tactical-flash'?1:0,
+    deterministic:true},0);
    host.addEventListener('pointerdown',this.pointerDown);
    host.addEventListener('pointermove',this.pointerMove);
    host.addEventListener('pointerup',this.pointerUp);
