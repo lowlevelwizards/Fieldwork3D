@@ -77,8 +77,9 @@ export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
     anchor=p;break;
    }
    if(!anchor)continue;
-   const choices=[anchor,...points.filter(p=>dist(p,anchor)>18&&
-     staticLegal(p,room)&&localClear(anchor,p,room))];
+   const confirmed=anchor;
+   const choices=[confirmed,...points.filter(p=>dist(p,confirmed)>18&&
+     staticLegal(p,room)&&localClear(confirmed,p,room))];
    anchors.push({room,p:anchor,capacity:roomOccupancyCapacity(room,site.cover),
      choices});
   }
