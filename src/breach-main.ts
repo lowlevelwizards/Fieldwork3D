@@ -38,7 +38,7 @@ import {orderFailureText} from './breach-nav-diagnostics.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {FrameMeter} from './breach-perf.ts';
 import {formatAfterAction} from './breach-after-action.ts';
-import {initialRoster,readRoster,applyRosterIdentity,freshQuickPlayRoster,
+import {readRoster,applyRosterIdentity,freshQuickPlayRoster,
   serializeQuickPlayCosmetics,
   resupplyRoster,equipRoster,equipRosterGear,moveRosterMagazine,
  configureRosterWeapon,
