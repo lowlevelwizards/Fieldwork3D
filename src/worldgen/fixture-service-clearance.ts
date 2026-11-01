@@ -6,12 +6,15 @@ import type {Site,Room} from '../breach-site.ts';
 import type {Obstacle,Pt} from '../breach-core.ts';
 const workplaces=new Set([
  'sink','toilet','shower','bathtub','stove','fridge','counter','workbench',
- 'checkout','control-panel','exam-bed','vehicle-lift','prep-table',
+ 'checkout','reception-desk','transaction-counter','parts-counter',
+ 'control-panel','exam-bed','vehicle-lift','prep-table',
  'commercial-range','dish-station','handwash-station','instrument-cart',
  'packing-station','parts-bin','retail-endcap'
 ]);
 const paired:Readonly<Record<string,readonly string[]>>={
  checkout:['office-chair','chair'],counter:['chair','office-chair'],
+ 'reception-desk':['office-chair','chair'],
+ 'transaction-counter':['office-chair'], 'parts-counter':['office-chair'],
  'exam-bed':['instrument-cart'],workbench:['tool-chest'],
  'packing-station':['cart']
 };
