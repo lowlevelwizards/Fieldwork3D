@@ -13,6 +13,6 @@ test('campaign menu and results settlement integrate without replacing quick pla
  assert.match(main,/new CampaignScreen/);
  assert.match(main,/campaignMode='quick'/);
  assert.match(main,/resolveOperation\(campaign,result\)/);
- assert.match(main,/reset\(0,job.seed,job.kind\)/);
+ assert.match(main,/reset\(0,job.seed,job.kind,undefined,job.risk\)/);
  assert.match(main,/returnAfterCampaignMission\(\)/);
 });

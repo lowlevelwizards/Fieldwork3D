@@ -2408,14 +2408,15 @@ ui.replayAnalysis.addEventListener('click',()=>{
 });
 ui.replayExit.addEventListener('click',exitReplay);
 function reset(next=state.variant,siteSeed?:number,
- missionOverride?:Session['missionType'],prebuiltSite?:Site){
+ missionOverride?:Session['missionType'],prebuiltSite?:Site,
+ encounterRisk?:1|2|3){
   replaying=false;replayPlaying=false;finishedSession=null;
   operationsBoard.hidden=true;
   flashMode=false;document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
   state=newSession(next,legacyStudy?undefined:
     siteSeed??randomSiteSeed(),selectedIntelMode,requestedSiteScale,missionOverride,
-    prebuiltSite);
+    prebuiltSite,{risk:encounterRisk});
   if(campaignMode==='quick')persistentRoster=freshQuickPlayRoster(persistentRoster);
   applyRequestedCondition(state);
   applyRosterIdentity(state,persistentRoster);
@@ -2517,7 +2518,7 @@ function deployCampaignContract(){
   job.intel==='scouted'?'exterior-known':'floor-plan';
  requestedSiteScale=job.scale;
  ui.siteSize.textContent='MAP SIZE · '+requestedSiteScale.toUpperCase();
- reset(0,job.seed,job.kind);
+ reset(0,job.seed,job.kind,undefined,job.risk);
  campaignScreen.hide();
 }
 function returnAfterCampaignMission(){
