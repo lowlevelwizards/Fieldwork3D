@@ -7,6 +7,7 @@ import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surfaces.ts';
 import {planEnvironmentalWear,type WearKind} from './worldgen/environment-wear.ts';
 import {wearPixels} from './rendering/pixel-decals.ts';
+import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './rendering/wear-opacity.ts';
 import {pixelSign,type PixelSignKind} from './rendering/pixel-signage.ts';
 import {pixelOverlay,overlayForZone,type PixelOverlay} from './rendering/pixel-overlays.ts';
 import {roofShouldShow} from './worldgen/roof-cutaways.ts';
@@ -138,7 +139,7 @@ export class TacticalScene3D{
   private boxGeometryCache=new Map<string,THREE.BoxGeometry>();
   private sharedBoxGeometries=new Set<THREE.BufferGeometry>();
   private windowPaneMaterial:THREE.MeshStandardMaterial|null=null;
-  private readonly wearMaterials=new Map<WearKind,THREE.MeshBasicMaterial>();
+  private readonly wearMaterials=new Map<string,THREE.MeshBasicMaterial>();
   private readonly wearTextures=new Map<WearKind,THREE.DataTexture>();
   private readonly signMaterials=new Map<string,THREE.MeshBasicMaterial>();
   private readonly groundOverlays=new Map<PixelOverlay,THREE.MeshBasicMaterial>();
@@ -406,7 +407,9 @@ export class TacticalScene3D{
     for(const detail of planEnvironmentalWear(site)){
       const roomGroup=decorativeRoomGroups.get(detail.roomId);
       if(!roomGroup)continue;
-      let material=this.wearMaterials.get(detail.kind);
+      const bucket=wearOpacityBucket(detail.opacity);
+      const wearKey=detail.kind+':'+bucket;
+      let material=this.wearMaterials.get(wearKey);
       if(!material){
         let texture=this.wearTextures.get(detail.kind);
         if(!texture){
@@ -419,10 +422,11 @@ export class TacticalScene3D{
           this.wearTextures.set(detail.kind,texture);
         }
         material=new THREE.MeshBasicMaterial({
-          color:wearColor[detail.kind],map:texture,transparent:true,opacity:.14,
+          color:wearColor[detail.kind],map:texture,transparent:true,
+          opacity:WEAR_ALPHA_BANDS[bucket],
           depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,
           side:THREE.DoubleSide});
-        this.wearMaterials.set(detail.kind,material);
+        this.wearMaterials.set(wearKey,material);
         this.mats.push(material);
       }
       const patch=this.plane(roomGroup,detail.x,detail.y,

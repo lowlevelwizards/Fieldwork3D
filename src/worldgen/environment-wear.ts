@@ -8,7 +8,7 @@ export type WearMark={
  width:number;depth:number;rotation:number;opacity:number;
 };
 export const WEAR_BUDGET:Record<NonNullable<Site['condition']>,number>={
- occupied:0,busy:1,neglected:3,vacant:2,renovation:3,disturbed:4,
+ occupied:0,busy:3,neglected:5,vacant:3,renovation:5,disturbed:6,
 };
 export function planEnvironmentalWear(site:Site):WearMark[]{
  const budget=WEAR_BUDGET[site.condition??'occupied'];
@@ -38,10 +38,24 @@ export function planEnvironmentalWear(site:Site):WearMark[]{
    width/2+5+random()*Math.max(0,room.w-width-10);
   const dy=edge?(random()<.5?depth/2+5:room.h-depth/2-5):
    depth/2+5+random()*Math.max(0,room.h-depth-10);
-  const opacity=site.condition==='disturbed'?.18:.11;
-  marks.push({id:room.id+':wear:'+i,roomId:room.id,
-   kind,x:room.x+dx,y:room.y+dy,width,depth,
-   rotation:Math.floor(random()*4)*Math.PI/2,opacity});
+  // Find actual circulation thresholds, not arbitrary middle-of-room stains.
+  const touching=site.doors.filter(door=>{
+   const x=(door.a.x+door.b.x)/2,y=(door.a.y+door.b.y)/2;
+   return x>=room.x-8&&x<=room.x+room.w+8&&
+          y>=room.y-8&&y<=room.y+room.h+8;
+  });
+  const threshold=touching.length&&kind==='scuff'?
+   touching[Math.floor(random()*touching.length)]:null;
+  const clamp=(v:number,a:number,b:number)=>Math.min(b,Math.max(a,v));
+  const x=threshold?
+   clamp((threshold.a.x+threshold.b.x)/2,room.x+width/2,room.x+room.w-width/2):
+   room.x+dx;
+  const y=threshold?
+   clamp((threshold.a.y+threshold.b.y)/2,room.y+depth/2,room.y+room.h-depth/2):
+   room.y+dy;
+  const opacity=site.condition==='disturbed'?.2:site.condition==='neglected'?.15:.09;
+  marks.push({id:room.id+':wear:'+i,roomId:room.id,kind,
+   x,y,width,depth,rotation:Math.floor(random()*4)*Math.PI/2,opacity});
  }
  return marks;
 }
