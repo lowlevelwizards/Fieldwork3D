@@ -8,11 +8,16 @@ const start=performance.now();
 let failed=0,max=0;
 const types=new Map(),layouts=new Map(),conditions=new Map(),errors=[];
 let openPassages=0,exteriorZones=0,decorativeDetails=0,typedProps=0;
+const families=new Map(),entrySides=new Map();
 for(let seed=1;seed<=count;seed++){
   const before=performance.now();
   const result=auditGeneratedSite(seed);
   max=Math.max(max,performance.now()-before);
   types.set(result.archetype,(types.get(result.archetype)??0)+1);
+  const family=result.archetype+':'+(result.planFamily??result.layout);
+  families.set(family,(families.get(family)??0)+1);
+  const side=result.entrySide??'unknown';
+  entrySides.set(side,(entrySides.get(side)??0)+1);
   layouts.set(result.layout,(layouts.get(result.layout)??0)+1);
   conditions.set(result.condition,(conditions.get(result.condition)??0)+1);
   openPassages+=result.archOpenings;
@@ -30,6 +35,9 @@ console.log(JSON.stringify({seeds:count,failed,
   slowestMapMs:+max.toFixed(1),
   archetypes:Object.fromEntries(types),layouts:Object.fromEntries(layouts),
   conditions:Object.fromEntries(conditions),
+  planFamilies:Object.fromEntries(families),
+  entranceSides:Object.fromEntries(entrySides),
+  distinctPlans:families.size,
   openPassages,exteriorZones,decorativeDetails,typedProps,
   examples:errors},null,2));
 if(failed)process.exitCode=1;
