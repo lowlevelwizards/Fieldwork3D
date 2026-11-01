@@ -73,11 +73,14 @@ session.operators=[]; // There are no actors in the asset showroom.
 const stage=new TacticalScene3D();
 stage.scene.add(liveWear);
 const wearPreviewMaterials=new Map<string,THREE.MeshBasicMaterial>();
-function showLiveWear(item:AssetLibraryEntry){
+function clearLiveWear(){
  for(const child of liveWear.children){
    if(child instanceof THREE.Mesh)child.geometry.dispose();
  }
  liveWear.clear();
+}
+function showLiveWear(item:AssetLibraryEntry){
+ clearLiveWear();
  if(swatchCondition==='clean'||item.origin==='dressing')return;
  const kind=swatchCondition==='vacant'?'dust':'scuff';
  let mat=wearPreviewMaterials.get(kind);
@@ -283,7 +286,7 @@ function fitShowroom(){
  stage.updateCamera(1);
 }
 function refresh(){
- liveWear.clear();
+ clearLiveWear();
  const found=filtered(),max=Math.max(0,Math.ceil(found.length/layout.pageSize)-1);
  page=Math.min(page,max);
  const shown=found.slice(page*layout.pageSize,(page+1)*layout.pageSize);
