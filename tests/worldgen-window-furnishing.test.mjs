@@ -9,8 +9,15 @@ test('every facade window keeps a real sill and clear furnishing envelope',()=>{
   const site=generateSite(seed,'standard');
   const sills=site.cover.filter(o=>o.fixture==='window-sill');
   const barriers=site.cover.filter(o=>o.fixture==='glass-barrier');
-  assert.equal(sills.length,(site.windows??[]).filter(w=>w.sillHeight!==0).length,
-    'raised sills seed '+seed);
+  const serving=(site.openings??[]).filter(o=>o.kind==='serving');
+  assert.equal(sills.length,
+    (site.windows??[]).filter(w=>w.sillHeight!==0).length+serving.length,
+    'raised window and service-hatch sills seed '+seed);
+  for(const opening of serving){
+   const x=(opening.a.x+opening.b.x)/2,y=(opening.a.y+opening.b.y)/2;
+   assert.ok(sills.some(o=>Math.hypot(o.x-x,o.y-y)<1),
+     'physical serving hatch sill missing '+opening.id);
+  }
   assert.equal(barriers.length,(site.windows??[]).filter(w=>w.sillHeight===0).length,
     'floor-to-ceiling glass seed '+seed);
   for(const sill of sills){
