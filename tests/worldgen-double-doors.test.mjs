@@ -5,7 +5,7 @@ import {doorBlocksSegment,doorCenter} from '../src/breach-core.ts';
 import {initDoor,advanceDoor} from '../src/breach-door.ts';
 test('paired retail and restaurant doors have two separate physical swinging leaves',()=>{
  let pairs=0;
- for(const kind of ['retail','restaurant'])for(let seed=0;seed<34;seed++){
+ for(const kind of ['retail','restaurant'])for(let seed=0;seed<160;seed++){
   const site=compileArchitecturalSite(kind,seed,'standard');
   const left=site.doors.find(d=>d.id==='DOUBLE-L');
   const right=site.doors.find(d=>d.id==='DOUBLE-R');

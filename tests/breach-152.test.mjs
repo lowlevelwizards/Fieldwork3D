@@ -34,6 +34,7 @@ test('152: blocked visible fire triggers a bounded defender reposition attempt',
  a.p={x:390,y:164};a.heading=0;
  b.p={x:550,y:164};b.heading=Math.PI;
  a.alert='idle';a.lastFireRepositionAt=-100;
+ a.awareness.visualProgress[b.id]=1; // Confirmed, not an unidentified glimpse.
  toggling(s);
  for(let i=0;i<30;i++)stepSession(s,1/60);
  assert.ok(a.lastFireRepositionAt>=0,'blocked lane should cause evaluation');

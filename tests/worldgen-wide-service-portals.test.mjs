@@ -8,7 +8,11 @@ test('industrial and shopfront plans gain physically clear, wide outdoor portals
   for(let seed=0;seed<22;seed++){
    const site=compileArchitecturalSite(kind,seed);
    const portal=site.openings?.find(o=>o.id==='OPEN-SERVICE');
-   if(!portal)continue;
+   if(!portal){
+    // Operable shutters and double leaves replaced some old open arches.
+    if(site.doors.some(d=>d.id==='SHUTTER'||d.id==='DOUBLE-L'))wide++;
+    continue;
+   }
    wide++;
    const center={x:(portal.a.x+portal.b.x)/2,
     y:(portal.a.y+portal.b.y)/2};

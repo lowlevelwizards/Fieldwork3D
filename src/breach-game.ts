@@ -995,7 +995,8 @@ function unobstructed(a:Pt,b:Pt,s:Session,lowBlocks:boolean){
   // visibility query. Geometry remains authoritative at any framerate.
   return !COVER.some(o=>(!o.low||lowBlocks)&&segmentHitsBox(a,b,o));
 }
-function rawSight(a:TeamActor,b:TeamActor,s:Session){
+/** Physical geometry visibility, independently of acquisition time. */
+export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){
   if(a.health<=0||b.health<=0||d(a.p,b.p)>240)return false;
   const delta=angleDifference(a.heading,angle(a.p,b.p));
   if(Math.abs(delta)>.94)return false;
@@ -1004,14 +1005,14 @@ function rawSight(a:TeamActor,b:TeamActor,s:Session){
 }
 /** Confirmed vision is acquired over simulated time; rendering never grants sight. */
 export function inSight(a:TeamActor,b:TeamActor,s:Session){
- return rawSight(a,b,s)&&confirmedSight(a.awareness.visualProgress[b.id]??0);
+ return geometricallyVisible(a,b,s)&&confirmedSight(a.awareness.visualProgress[b.id]??0);
 }
 function advanceVisualAwareness(s:Session,dt:number){
  for(const observer of s.operators){
   if(observer.health<=0)continue;
   for(const subject of s.operators){
    if(subject.side===observer.side||subject.health<=0)continue;
-   const visible=rawSight(observer,subject,s);
+   const visible=geometricallyVisible(observer,subject,s);
    const signal=visible?visualGain(d(observer.p,subject.p),
     angleDifference(observer.heading,angle(observer.p,subject.p)),
     subject.velocity>10,subject.posture==='crouch'):0;

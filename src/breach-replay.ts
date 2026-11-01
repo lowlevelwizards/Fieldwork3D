@@ -20,7 +20,9 @@ export type ActorFrame=Pick<TeamActor,
   'lastThrowAt'|'lastDoorAt'|'lastDoorId'|'lastDoorMethod'|'stride'|
   'weaponYaw'|'stability'|'recoil'|'lastShotAt'|'fireMode'|'burstCount'|'skills'|
   'squeeze'|'squeezeYaw'|'squeezeTime'>;
-export type ReplayActorFrame=ActorFrame & {travelYaw?:number};
+export type ReplayActorFrame=ActorFrame & {
+ travelYaw?:number;intentKind?:string;awarenessCount?:number;
+};
 export type ReplayFrame={
   /** Presentation data is sampled on demand, never written to snapshots. */
   presentation?:ReplayPresentation;
@@ -65,7 +67,8 @@ export function snapshot(s:Session,seenGround?:string[]):ReplayFrame{
       lastShotAt:a.lastShotAt,fireMode:a.fireMode,burstCount:a.burstCount,
       skills:{...a.skills},
       surrendered:a.surrendered,defense:a.defense?position(a.defense):null,
-      watch:a.watch?position(a.watch):null})),
+      watch:a.watch?position(a.watch):null,
+      intentKind:a.intent?.kind,awarenessCount:Object.keys(a.awareness.contacts).length})),
     doors:s.doors.map(d=>({...d,a:position(d.a),b:position(d.b)})),
     shots:s.shots.map(shotCopy),
     casings:s.casings.map(x=>({...x})),
