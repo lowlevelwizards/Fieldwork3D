@@ -375,7 +375,7 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
               2.3,2.3,across?8.5:8.5,nails,false);
         }
       }else if(fixture==='half-wall'){
-        const masonry=visualCtx.solid(0x8f8877,.94,'masonry');
+        const masonry=visualCtx.solid(0x8f8877,.94,'brick');
         ctx.box(group,c.x,8,c.y,w,16,d,masonry);
         ctx.box(group,c.x,17,c.y,w+3,2.5,d+3,wood,false);
         ctx.box(group,c.x,1,c.y,w+2,2,d+2,metal,false);
