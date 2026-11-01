@@ -15,6 +15,11 @@ export type CampaignHandlers={
  buyWeapon:(weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipWeapon:(id:string,weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipGear:(id:string,slot:LoadoutSlot,itemId:string)=>void;
+ saveKitPreset:(id:string,name:string)=>void;
+ applyKitPreset:(id:string,presetId:string)=>void;
+ deleteKitPreset:(presetId:string)=>void;
+ renameOperator:(id:string,callsign:string)=>void;
+ cycleAppearance:(id:string)=>void;
  exportSave:()=>void;importSave:(raw:string)=>void;retire:(id:string)=>void;
 };
 const node=<K extends keyof HTMLElementTagNameMap>(tag:K,cls='',label='')=>{
@@ -221,6 +226,7 @@ export class CampaignScreen{
   main.append(footer);this.root.append(main);
  }
  private armory(c:CampaignState,id:string){
+  this.disposePreview();
   const person=c.operators.find(o=>o.id===id);
   if(!person){this.armoryOperatorId=null;this.home(c);return;}
   this.root.hidden=false;this.root.replaceChildren();
@@ -250,6 +256,14 @@ export class CampaignScreen{
   const preview=node('div','campaign-kit-preview');
   summary.append(preview,node('p','campaign-note','DRAG THE SOLDIER TO ROTATE'));
   summary.append(node('strong','campaign-kit-name',person.callsign));
+  const identityActions=node('div','campaign-kit-actions');
+  const rename=button('EDIT CALLSIGN',()=>{
+   const name=window.prompt('Operator callsign (up to 24 characters)',person.callsign);
+   if(name!==null)this.handlers.renameOperator(id,name);
+  });
+  const appearance=button('NEXT LOOK',()=>this.handlers.cycleAppearance(id));
+  rename.disabled=!!c.activeContractId;appearance.disabled=!!c.activeContractId;
+  identityActions.append(rename,appearance);summary.append(identityActions);
   summary.append(node('p','campaign-note',
    person.background+' · '+person.trait+' · '+person.missions+' OPERATIONS'));
   summary.append(node('div','campaign-kit-metrics',
@@ -264,6 +278,41 @@ export class CampaignScreen{
   const editor=node('section','campaign-section campaign-kit-editor');
   editor.append(node('h2','','EQUIPMENT SLOTS'));
   const locked=!!c.activeContractId;
+  const presetTitle=node('h2','','SAVED KIT PRESETS');
+  editor.append(presetTitle);
+  const presetActions=node('div','campaign-kit-actions');
+  const save=button('SAVE CURRENT KIT',()=>{
+   const name=window.prompt('Preset name (up to 32 characters)',person.callsign+' / FIELD');
+   if(name!==null)this.handlers.saveKitPreset(id,name);
+  });
+  save.disabled=locked||c.kitPresets.length>=24;
+  presetActions.append(save);
+  const picker=node('select','campaign-select');
+  picker.setAttribute('aria-label','Choose saved equipment preset');
+  const blank=node('option','','SELECT PRESET');blank.value='';picker.append(blank);
+  for(const preset of c.kitPresets){
+   const option=node('option','',preset.name+' · '+preset.weapon.toUpperCase());
+   option.value=preset.id;picker.append(option);
+  }
+  const load=button('APPLY PRESET',()=>{
+   if(picker.value){
+    const preset=c.kitPresets.find(p=>p.id===picker.value);
+    if(preset&&preset.weapon!==person.weapon&&c.inventory.weapons[preset.weapon]<1){
+     window.alert('This preset requires a primary weapon not currently available in the Armory.');return;
+    }
+    this.handlers.applyKitPreset(id,picker.value);
+   }
+  });
+  const remove=button('DELETE PRESET',()=>{
+   if(picker.value&&window.confirm('Delete selected kit preset?'))
+    this.handlers.deleteKitPreset(picker.value);
+  });
+  load.disabled=locked||c.kitPresets.length===0;
+  remove.disabled=locked||c.kitPresets.length===0;
+  presetActions.append(picker,load,remove);
+  editor.append(presetActions,node('p','campaign-note',
+   'Presets save a configuration, not copies of purchased equipment. Applying one requires an available primary weapon.'));
+  editor.append(node('h2','','EQUIPMENT SLOTS'));
   if(locked)editor.append(node('p','campaign-note','ACTIVE DEPLOYMENT · KIT CHANGES LOCKED'));
   for(const slot of LOADOUT_SLOTS){
    const row=node('label','campaign-kit-row');
