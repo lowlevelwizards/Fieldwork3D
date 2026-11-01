@@ -4,6 +4,7 @@
  */
 import * as THREE from 'three';
 import type {WeaponId} from './breach-combat.ts';
+import {resolveWeaponAssembly,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
 type Part=readonly [number,number,number,number,number,number,0|1];
 /** x, y, z, width, height, depth, material (0=steel, 1=dark). */
@@ -40,9 +41,16 @@ const PARTS:Record<WeaponId,readonly Part[]>={
 };
 export function weaponSilhouetteParts(id:WeaponId):readonly Part[]{return PARTS[id];}
 export function buildWeaponSilhouette(id:WeaponId,
- steel:THREE.Material,dark:THREE.Material):THREE.Group{
+ steel:THREE.Material,dark:THREE.Material,
+ config?:WeaponConfiguration):THREE.Group{
  const g=new THREE.Group();
- for(const [x,y,z,w,h,d,mat] of PARTS[id]){
+ const stockX=config&&config.weapon===id?resolveWeaponAssembly(config).stockX:-13.5;
+ for(const [baseX,y,z,baseW,h,d,mat] of PARTS[id]){
+  let x=baseX,w=baseW;
+  // Stock stays one continuous physical object when the buttplate length changes.
+  if(baseX< -12){x=stockX+baseW/2;}
+  else if(baseX< -8){const front=baseX+baseW/2;
+   w=Math.max(1.2,front-stockX);x=(front+stockX)/2;}
   const geometry=mapBoxPixelUV(new THREE.BoxGeometry(w,h,d),w,h,d);
   const mesh=new THREE.Mesh(geometry,mat===0?steel:dark);
   mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);

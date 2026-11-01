@@ -27,6 +27,8 @@ import {fallAngles,hitStagger,type FallPose,type WoundRegion}
   from './breach-wounds.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geometry.ts';
+import {buildWeaponAccessories} from './breach-weapon-accessories.ts';
+import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {weaponGrips,handlingPose,clampReach,
   fitWeaponPose,type Handling,type HandlingIntent}
   from './breach-weapon-pose.ts';
@@ -58,6 +60,7 @@ export type OperatorPose={
   blocked?:boolean;footAllowed?:(point:{x:number;y:number})=>boolean;
   gait?:'walk'|'run'|'pie'|'squeeze';
   equipment?:EquipmentLoadout;flashCharges?:number;
+  weaponConfiguration?:WeaponConfiguration;
   /** Opt-in to contact-position weight transfer for lab candidate only. */
   hybridSupport?:boolean;
   acceleration?:number;
@@ -72,7 +75,9 @@ export type OperatorRig={
   weapon:THREE.Group;droppedGun:THREE.Group;feet:Foot[];arms:Arm[];
   magazineInserted:THREE.Mesh;magazineHand:THREE.Mesh;
   weaponBody:THREE.Group;droppedWeaponBody:THREE.Group;
-  visualWeapon:WeaponId;weaponSteel:THREE.Material;weaponDark:THREE.Material;
+  weaponAccessories:THREE.Group;droppedAccessories:THREE.Group;
+  visualWeapon:WeaponId;visualWeaponConfiguration?:WeaponConfiguration;
+  weaponSteel:THREE.Material;weaponDark:THREE.Material;
   pack:THREE.Mesh;helmetShell:THREE.Mesh[];
   armorPanels:THREE.Mesh[];capBill:THREE.Mesh;
   rigPouches:THREE.Mesh[];beltPouch:THREE.Mesh;
@@ -177,7 +182,9 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   // muzzle axes as the fixed-step shot-time solver. Built only on weapon swap.
   const weaponBody=buildWeaponSilhouette('carbine',steel,boot);
   const droppedWeaponBody=buildWeaponSilhouette('carbine',steel,boot);
-  weapon.add(weaponBody);droppedGun.add(droppedWeaponBody);
+  const weaponAccessories=new THREE.Group(),droppedAccessories=new THREE.Group();
+  weapon.add(weaponBody,weaponAccessories);
+  droppedGun.add(droppedWeaponBody,droppedAccessories);
   const magazineInserted=block(weapon,3,-4,0,2.7,6,2.5,boot);
   const magazineHand=block(chest,0,0,0,2.7,6,2.5,boot);
   magazineHand.visible=false;
@@ -190,7 +197,9 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     baseVest:vest.color.clone(),helmetBadge,appearanceSeed:0,
     personality:operatorMotionTraits(id),
     magazineInserted,magazineHand,weaponBody,droppedWeaponBody,
-    visualWeapon:'carbine',weaponSteel:steel,weaponDark:boot,
+    weaponAccessories,droppedAccessories,
+    visualWeapon:'carbine',visualWeaponConfiguration:undefined,
+    weaponSteel:steel,weaponDark:boot,
     lastTime:-1,lastPose:null,
     footsteps:createFootstepScheduler(),reachRequest:null,
     gripError:0,stockError:0,eyeError:0,handlingProfile:null,
@@ -500,15 +509,26 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }
   // Build 120: stock, both grips and forearm targets share a single rigid
   // firearm transform. The fit searches reachable posture before limb IK.
-  if(r.visualWeapon!==p.weapon){
-    // Never rebuild at every render tick: a changed primary is the only key.
-    clearWeaponSilhouette(r.weaponBody);
-    clearWeaponSilhouette(r.droppedWeaponBody);
-    for(const [dest,model] of [
-      [r.weaponBody,buildWeaponSilhouette(p.weapon,r.weaponSteel,r.weaponDark)],
-      [r.droppedWeaponBody,buildWeaponSilhouette(p.weapon,r.weaponSteel,r.weaponDark)]
-    ] as const){while(model.children.length)dest.add(model.children[0]);}
-    r.visualWeapon=p.weapon;
+  const config=p.weaponConfiguration?.weapon===p.weapon?
+    p.weaponConfiguration:undefined;
+  if(r.visualWeapon!==p.weapon||r.visualWeaponConfiguration!==config){
+    // A weapon/platform or immutable attachment configuration changed.
+    // Keep the live and dropped silhouette exactly in sync.
+    for(const group of [r.weaponBody,r.droppedWeaponBody,
+      r.weaponAccessories,r.droppedAccessories])clearWeaponSilhouette(group);
+    const models=[
+      [r.weaponBody,buildWeaponSilhouette(p.weapon,r.weaponSteel,r.weaponDark,config)],
+      [r.droppedWeaponBody,buildWeaponSilhouette(p.weapon,r.weaponSteel,r.weaponDark,config)]
+    ] as const;
+    for(const [dest,model] of models)
+      while(model.children.length)dest.add(model.children[0]);
+    if(config){
+      for(const dest of [r.weaponAccessories,r.droppedAccessories]){
+        const model=buildWeaponAccessories(config,r.weaponSteel,r.weaponDark);
+        while(model.children.length)dest.add(model.children[0]);
+      }
+    }
+    r.visualWeapon=p.weapon;r.visualWeaponConfiguration=config;
   }
   const data=weaponGrips(p.weapon);
   const recoil=p.recoil??(p.firing?1.5:0);
