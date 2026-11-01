@@ -27,17 +27,26 @@ export function magazineSpace(kit:EquipmentLoadout){
 const priority:readonly Exclude<MagazineLocation,'overflow'>[]=['rig','belt','pocket','backpack'];
 export function stageMagazines(magazines:readonly MagazineItem[],
  kit:EquipmentLoadout):LocatedMagazine[]{
- const spaces=magazineSpace(kit);
- const left={...spaces};
- const unique=new Set<string>();
+ const left={...magazineSpace(kit)};
+ const seen=new Set<string>();
+ // Honor explicitly assigned locations first; invalidated locations
+ // repack automatically when the player removes carrying equipment.
+ const positions:(MagazineLocation|undefined)[]=magazines.map((m,i)=>{
+  if(seen.has(m.id))throw Error('Duplicate magazine identity at '+i);
+  seen.add(m.id);
+  if(m.location==='overflow')return 'overflow';
+  if(m.location&&left[m.location]>0){left[m.location]--;return m.location;}
+  return undefined;
+ });
  return magazines.map((m,i)=>{
-  let location:MagazineLocation='overflow';
-  for(const where of priority)if(left[where]>0){location=where;left[where]--;break;}
-  // Existing magazine identities survive, including retained partial mags.
-  // Duplicated IDs do not create ammunition, but are rejected by validation.
-  if(unique.has(m.id))throw Error('Duplicate magazine identity at '+i);
-  unique.add(m.id);
-  return {...m,location};
+  let loc=positions[i];
+  if(!loc){
+   loc='overflow';
+   for(const where of priority)if(left[where]>0){
+    loc=where;left[where]--;break;
+   }
+  }
+  return {...m,location:loc};
  });
 }
 /** Prefer immediately accessible magazines. Within a carrying position,
