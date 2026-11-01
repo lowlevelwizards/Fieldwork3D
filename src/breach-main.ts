@@ -44,10 +44,11 @@ import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOpera
  hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
  retireOperator,equipCampaignGear,saveCampaignKitPreset,applyCampaignKitPreset,
  deleteCampaignKitPreset,renameCampaignOperator,cycleCampaignAppearance,
- repairCampaignArmor,
+ repairCampaignArmor,purchaseFlash,
  type CampaignState,type CampaignReport} from './campaign-state.ts';
 import {loadMovementScale,equippedFlashCharges} from './equipment-loadouts.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
+import {allocateFlashSupply} from './equipment-supply.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {exportCampaign,importCampaign} from './campaign-persistence.ts';
 import {careerEventsForOperation} from './campaign-history.ts';
@@ -211,8 +212,12 @@ function applyCampaignSkills(){
    }
   }
  }
- if(!state.started)state.flashRemaining=Math.min(2,team(state).reduce(
-  (sum,actor)=>sum+actor.flashCharges,0));
+ if(!state.started){
+  const squad=team(state);
+  const issued=allocateFlashSupply(squad.map(a=>a.flashCharges),campaign.supplies.flash);
+  squad.forEach((a,i)=>{a.flashCharges=issued[i];});
+  state.flashRemaining=issued.reduce((n,qty)=>n+qty,0);
+ }
 }
 let state:Session=newSession(0,legacyStudy?undefined:initialSiteSeed,
   selectedIntelMode,requestedSiteScale);
@@ -242,6 +247,8 @@ function recordCompletedOperation(){
     participatingIds:members.map(a=>careerId(a.id)),
     casualties:members.filter(a=>a.health<=0).map(a=>careerId(a.id)),
     objective:stats.objective,
+    flashUsed:state.battleEvents.filter(e=>e.kind==='flash'&&
+     e.actor!==undefined&&e.text.endsWith('FLASH OUT')).length,
     events:careerEventsForOperation(campaign,'operation-'+campaign.activeContractId,state.battleEvents,mapping),
     performance:members.map(a=>({
      id:careerId(a.id),shots:a.shots,hits:a.hits,pointShots:a.pointShots,
@@ -2101,6 +2108,7 @@ const campaignScreen=new CampaignScreen({
  resumeContract:()=>deployCampaignContract(),
  buyAmmo:()=>{if(campaign){campaign=purchaseAmmo(campaign);saveCampaign();showCampaignHome();}},
  buyMedical:()=>{if(campaign){campaign=purchaseMedical(campaign);saveCampaign();showCampaignHome();}},
+ buyFlash:()=>{if(campaign){campaign=purchaseFlash(campaign);saveCampaign();showCampaignHome();}},
  resupply:(id)=>{if(campaign){campaign=resupplyOperator(campaign,id);saveCampaign();showCampaignHome();}},
  treat:(id)=>{if(campaign){campaign=treatOperator(campaign,id);saveCampaign();showCampaignHome();}},
  recruit:()=>{if(campaign){campaign=hireRecruit(campaign);saveCampaign();showCampaignHome();}},
