@@ -40,6 +40,7 @@ import {initialRoster,readRoster,applyRosterIdentity,recordRosterMission,
 import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOperation,
  purchaseAmmo,purchaseMedical,resupplyOperator,treatOperator,
  hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
+ retireOperator,
  type CampaignState,type CampaignReport} from './campaign-state.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {exportCampaign,importCampaign} from './campaign-persistence.ts';
@@ -2026,6 +2027,10 @@ const campaignScreen=new CampaignScreen({
   link.href=href;link.download='fieldwork-'+campaign.id+'.json';
   document.body.append(link);link.click();link.remove();
   window.setTimeout(()=>URL.revokeObjectURL(href),1000);
+ },
+ retire:(id)=>{
+  if(!campaign||!window.confirm('Retire this operator from active service? Their career record will remain.'))return;
+  campaign=retireOperator(campaign,id);saveCampaign();showCampaignHome();
  },
  importSave:(raw)=>{
   const next=importCampaign(raw);
