@@ -4,6 +4,7 @@
 import {type Site,type Room,seeded} from '../breach-site.ts';
 import {type Obstacle,type Pt} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
+import {relatedFurniturePositions} from './room-composition.ts';
 type Anchor='nw'|'ne'|'sw'|'se'|'west'|'east';
 type Item={id:string;anchor:Anchor};
 const compositions:Record<string,readonly Item[]>={
@@ -120,9 +121,12 @@ export function furnishRooms(site:Site,seed:number):Site{
    const positions:Anchor[]=[item.anchor,'ne','sw','se','nw','west','east'];
    const rotation=Math.floor(rng()*4);
    const order=i===0?positions:[positions[0],...positions.slice(1+rotation),...positions.slice(1,1+rotation)];
+   const candidates=[
+     ...relatedFurniturePositions(room,item.id,w,h,placed),
+     ...order.map(anchor=>position(room,w,h,anchor)),
+   ];
    let chosen:Obstacle|undefined;
-   for(const anchor of order){
-    const p=position(room,w,h,anchor);
+   for(const p of candidates){
     const candidate:Obstacle={...p,w,h,fixture:item.id,low:asset.cover==='low'};
     if(site.doors.some(d=>Math.hypot(p.x-(d.a.x+d.b.x)/2,p.y-(d.a.y+d.b.y)/2)<Math.max(compact?39:54,Math.max(w,h)/2+(compact?19:30))))continue;
     if((site.openings??[]).some(o=>Math.hypot(p.x-(o.a.x+o.b.x)/2,
