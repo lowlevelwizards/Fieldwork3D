@@ -7,9 +7,8 @@ import {LOADOUT_SLOTS,itemsForSlot,itemDefinition} from './equipment-catalog.ts'
 import {totalEquipmentMass,loadMobilityDescription,loadMovementScale,
  type LoadoutSlot} from './equipment-loadouts.ts';
 import {CampaignKitPreview} from './equipment-preview.ts';
-import {magazineKit} from './breach-magazines.ts';
-import {magazinePlacementSummary} from './equipment-magazine-placement.ts';
-import {WEAPONS as COMBAT_WEAPONS} from './breach-combat.ts';
+import {stageMagazines,magazinePlacementSummary,magazineSpace,
+ type MagazineLocation} from './equipment-magazine-placement.ts';
 import './campaign-style.css';
 
 export type CampaignHandlers={
@@ -21,6 +20,7 @@ export type CampaignHandlers={
  buyWeapon:(weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipWeapon:(id:string,weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipGear:(id:string,slot:LoadoutSlot,itemId:string)=>void;
+ moveMagazine:(id:string,magazineId:string,location:MagazineLocation)=>void;
  repairArmor:(id:string)=>void;
  saveKitPreset:(id:string,name:string)=>void;
  applyKitPreset:(id:string,presetId:string)=>void;
@@ -282,15 +282,16 @@ export class CampaignScreen{
    'PRIMARY · '+person.weapon.toUpperCase()+
    '    /    MAGAZINE · '+person.magazine+
    '    /    RESERVE · '+person.reserve));
-  const magSlots=person.weapon==='shotgun'?null:magazinePlacementSummary(
-   magazineKit(person.id,person.weapon,person.reserve,COMBAT_WEAPONS[person.weapon].capacity),
-   person.loadout);
+  const placed=person.weapon==='shotgun'?[]:
+   stageMagazines(person.magazines,person.loadout);
+  const magSlots=person.weapon==='shotgun'?null:
+   magazinePlacementSummary(person.magazines,person.loadout);
   if(magSlots)summary.append(node('p','campaign-kit-metrics',
    'MAGAZINES · CHEST '+magSlots.rig+' · BELT '+magSlots.belt+
    ' · POCKET '+magSlots.pocket+' · PACK '+magSlots.backpack+
    ' · STOWED '+magSlots.overflow));
   summary.append(node('p','campaign-note',
-   'Spare magazines auto-stage in available pouches. Accessible magazines reload faster; backpack and overflow retrievals take longer. Manual pouch assignment is a later build.'));
+   'Spare magazines can be individually placed below. Chest and belt magazines reload faster; backpack and overflow retrievals take longer.'));
   const maximum=initialArmorIntegrity(person.loadout);
   const repairCost=armorRepairCost(person);
   summary.append(node('p','campaign-kit-metrics',
@@ -379,6 +380,31 @@ export class CampaignScreen{
    const wrap=node('div','campaign-kit-choice');
    wrap.append(row,info);
    editor.append(wrap);
+  }
+  if(placed.length){
+   editor.append(node('h2','','PHYSICAL MAGAZINE PLACEMENT'));
+   editor.append(node('p','campaign-note',
+    'Each magazine is a real saved item. Change its location; the system will enforce available pouch capacity.'));
+   const capacity=magazineSpace(person.loadout);
+   const locations:MagazineLocation[]=['rig','belt','pocket','backpack','overflow'];
+   for(const [i,mag] of placed.entries()){
+    const row=node('label','campaign-kit-row campaign-kit-choice');
+    row.append(node('span','', 'MAG '+String(i+1).padStart(2,'0')+
+     ' · '+mag.rounds+' RDS'));
+    const picker=node('select','campaign-select');
+    picker.setAttribute('aria-label','Carry magazine '+(i+1)+' for '+person.callsign);
+    for(const loc of locations){
+     const count=placed.filter(m=>m.location===loc).length;
+     const available=loc==='overflow'||loc===mag.location||count<capacity[loc];
+     const opt=node('option','',loc.toUpperCase());
+     opt.value=loc;opt.disabled=!available;picker.append(opt);
+    }
+    picker.value=mag.location;
+    picker.disabled=locked;
+    picker.addEventListener('change',()=>this.handlers.moveMagazine(
+     id,mag.id,picker.value as MagazineLocation));
+    row.append(picker);editor.append(row);
+   }
   }
   grid.append(editor);main.append(grid);
   this.root.append(main);
