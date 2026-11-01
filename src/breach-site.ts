@@ -42,6 +42,8 @@ export type Site={
   enemyHeadings?:number[];
   scenarioStyle?:'routine'|'guarded'|'disrupted';
   condition?:EnvironmentCondition;
+  /** Continuous appearance aging 0 (pristine) to 100 (decrepit); render-only. */
+  conditionLevel?:number;
   dressing?:import('./worldgen/environment-dresser.ts').DecorativeDetail[];
   furnishingIssues?:{roomId:string;fixture:string;reason:string}[];
   wallDetails?:import('./worldgen/wall-dresser.ts').WallDetail[];
