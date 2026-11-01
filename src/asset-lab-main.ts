@@ -410,6 +410,20 @@ el<HTMLButtonElement>('context').addEventListener('click',()=>{
  el<HTMLButtonElement>('context').textContent=contextShown?'CONTEXT ON':'CONTEXT OFF';
  refresh();
 });
+wearPicker.addEventListener('change',()=>{
+ selectedWearKind=wearPicker.value as WearTextureKind;
+ drawWearPreview();
+ const asset=all.find(x=>x.id===selectedId);
+ if(asset)showLiveWear(asset);
+});
+el<HTMLButtonElement>('wear-boost').addEventListener('click',()=>{
+ wearMultiplier=wearMultiplier===1?2:wearMultiplier===2?4:1;
+ stage.setWearExaggeration(wearMultiplier);
+ for(const material of wearPreviewMaterials.values())
+  material.opacity=Math.min(1,.22*wearMultiplier);
+ el<HTMLButtonElement>('wear-boost').textContent='WEAR ×'+wearMultiplier;
+ drawWearPreview();
+});
 surfacePicker.addEventListener('change',()=>{
  const selected=surfacePicker.value as PixelSurface;
  if(selectedId)showroomMaterials.set(selectedId,selected);
@@ -422,7 +436,7 @@ el<HTMLSelectElement>('surface-condition').addEventListener('change',e=>{
 });
 el<HTMLButtonElement>('texture-variant').addEventListener('click',()=>{
  swatchSeed=(swatchSeed+1)%4;
- swatchMaterial(currentSurface);
+ swatchMaterial(currentSurface);drawWearPreview();
 });
 for(const [id,zoom] of [['zoom-close',4.5],['zoom-tactical',2.3],
   ['zoom-overview',.95]] as const){
