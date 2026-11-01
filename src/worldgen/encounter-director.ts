@@ -13,8 +13,13 @@ import {assignExteriorOccupants} from './encounter-exteriors.ts';
 export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
  if(site.training)return site;
  const seed=context.seed??site.seed;
- const premise:EncounterPremise=chooseEncounterPremise(site,context);
- const target=chooseHostileBudget(site,context,premise);
+ // Default Quick Play and Map Lab use the same seed-selected mission as
+ // newSession; explicit Campaign contracts still override that mission.
+ const missions=['clear','intel','rescue','hold','capture'] as const;
+ const mission=context.mission??missions[(site.seed>>>0)%missions.length];
+ const resolved={...context,mission};
+ const premise:EncounterPremise=chooseEncounterPremise(site,resolved);
+ const target=chooseHostileBudget(site,resolved,premise);
  const anchors=site.enemies;
  // All anchors were checked by the architectural circulation audit.
  // Repeated provisional positions are expanded around them by the solver.
@@ -30,13 +35,13 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
  const actors=assignEncounterRoutines(site,
   assignEncounterActivities(site,assignExteriorOccupants(site,
     assignEncounterRoles(site,placement.actors,placement.groups,premise,
-      context.mission??'clear',seed),premise,seed),premise,seed),seed);
+      mission,seed),premise,seed),premise,seed),seed);
  const rooms=site.rooms.filter(r=>r.kind==='room');
  const occupiedZones=new Set(actors.map(a=>a.zoneId).filter(Boolean)).size;
  const zones=new Set(rooms.map(r=>r.zoneId??r.id));
  const plan:EncounterPlan={
   version:1,seed,building:site.archetype??'house',
-  scale:site.scale??'standard',premise,mission:context.mission??'clear',
+  scale:site.scale??'standard',premise,mission,
   risk:context.risk??1,
   expectedOccupancy:site.identity?.capacity??actors.length,hostileBudget:target,
   groups:placement.groups,actors,
