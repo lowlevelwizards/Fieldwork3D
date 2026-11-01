@@ -77,9 +77,21 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    zones.push({id:'court-'+courts++,kind:industrial?'service':
      residential?'garden':'patio',x:cx,y:cy,w,h});
   }
- const available=industrial?['barrel','crate','tire-stack','pallet']:
-  residential?['tree-broadleaf','shrub-round','hedge','picnic-table','tree-scrub']:
-  ['planter','shrub-tall','patio-chair','dumpster'];
+ const available=industrial?
+  ['barrel','crate','tire-stack','pallet','bollard','utility-cabinet']:
+  residential?
+  ['tree-broadleaf','shrub-round','hedge','picnic-table','tree-scrub','mailbox','trash-bin']:
+  ['planter','shrub-tall','patio-chair','dumpster','bike-rack'];
+ const byZone:Partial<Record<ExteriorZone['kind'],readonly string[]>>={
+   parking:['sedan','pickup','van','suv','parking-block','parking-sign','bollard','bike-rack'],
+   driveway:residential?['sedan','pickup','suv','mailbox','trash-bin']:
+     ['van','pickup','bollard','utility-cabinet'],
+   service:['dumpster','utility-cabinet','trash-bin','bollard','crate'],
+   patio:['planter','patio-chair','bike-rack','trash-bin'],
+   garden:['tree-broadleaf','shrub-round','shrub-tall','picnic-table'],
+   yard:residential?['tree-broadleaf','shrub-round','mailbox','trash-bin','hydrant']:
+     ['planter','street-lamp','bollard','trash-bin'],
+ };
  const cover=site.cover.slice();
  const protectedPoints=[...site.spawn,...site.enemies,site.objective,site.extract,site.entrance];
  for(const zone of zones){
@@ -87,8 +99,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
     zone.kind==='garden'?3:zone.kind==='yard'?2:2;
   for(let i=0;i<count;i++){
    // Vehicles belong to arrival/parking zones, not a random garden plot.
-   const choices=zone.kind==='parking'||zone.kind==='driveway'?
-     ['sedan','pickup','van','suv']:available;
+   const choices=byZone[zone.kind]??available;
    const item=choices[(Math.floor(rng()*choices.length)+i)%choices.length];
    const asset=propDefinition(item);if(!asset)continue;
    const w=Math.min(asset.width,Math.max(12,zone.w*.24));
