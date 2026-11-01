@@ -11,7 +11,7 @@ test('floor materials follow room purpose and location',()=>{
 });
 test('outside and fixtures reuse stable semantic materials',()=>{
  assert.equal(zonePixelSurface('parking'),'asphalt');
- assert.equal(zonePixelSurface('garden'),'earth');
+ assert.equal(zonePixelSurface('garden'),'grass');
  assert.equal(fixturePixelSurface('sedan'),'metal');
  assert.equal(fixturePixelSurface('sofa'),'fabric');
  assert.equal(fixturePixelSurface('pallet'),'wood');
