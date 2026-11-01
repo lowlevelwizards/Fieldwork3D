@@ -38,7 +38,7 @@ const bespoke = new Set([
   'toilet','bathtub','shelf','gondola-shelf','wall-shelf','bookcase','rack',
   'cabinet','dresser','laundry-machine','generator','control-panel','tool-chest',
   'entry-bench','shoe-cubby','coat-rack',
-  'half-wall','support-column','chain-link-fence','iron-fence','privacy-fence','vehicle','sedan','pickup','van','suv','chair','bench','sofa','armchair','tv-stand','barrel','tank',
+  'half-wall','support-column','porch-post','chain-link-fence','iron-fence','privacy-fence','vehicle','sedan','pickup','van','suv','chair','bench','sofa','armchair','tv-stand','barrel','tank',
   'tire-stack','vehicle-lift','hedge','bush','tree','tree-broadleaf','tree-conifer','tree-scrub','shrub-round','shrub-tall','plant','fence','pallet',
   'mailbox','trash-bin','bollard','hydrant','utility-cabinet',
   'parking-block','parking-sign','street-lamp','bike-rack','window-boards',
@@ -46,6 +46,9 @@ const bespoke = new Set([
 const dressings = ['mug','books','papers','tools','plant','lamp','floor-lamp','packages','rug','bedside-rug','bath-mat','welcome-mat','runner'] as const;
 const architecture:readonly AssetLibraryEntry[] = [
   {id:'floor',label:'Floor slab',width:80,depth:80,height:2,category:'Structure'},
+  {id:'entry-canopy',label:'Cantilevered commercial entrance canopy',width:96,depth:40,height:40,category:'Structure'},
+  {id:'porch-roof',label:'Residential post-supported entrance roof',width:90,depth:47,height:40,category:'Structure'},
+  {id:'service-awning',label:'Industrial overhead entrance awning',width:106,depth:38,height:40,category:'Structure'},
   {id:'wall',label:'Interior wall',width:80,depth:9,height:40,category:'Structure'},
   {id:'wall-cap',label:'Wall cap',width:80,depth:11,height:2,category:'Structure'},
   {id:'baseboard',label:'Wall skirting',width:80,depth:12,height:4,category:'Structure'},

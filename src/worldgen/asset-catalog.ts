@@ -89,6 +89,8 @@ definitions.push(
  {id:'coat-rack',category:'residential',width:27,depth:13,height:40,
   solid:true,cover:'high',rooms:['foyer','mudroom','vestibule']}
 );
+definitions.push({id:'porch-post',category:'architecture',width:8,depth:8,height:40,
+ solid:true,cover:'high',rooms:['yard','patio','garden','parking']});
 // Functional workstations for real commercial, clinical, retail and industrial routines.
 definitions.push(
  {id:'prep-table',category:'commercial',width:44,depth:26,height:21,
