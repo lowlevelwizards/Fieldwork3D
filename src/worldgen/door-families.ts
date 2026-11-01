@@ -21,7 +21,7 @@ const midpoint=(d:Door):Pt=>({x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2});
 function adjoining(site:Site,door:Door):[Room|undefined,Room|undefined]{
  const dx=door.b.x-door.a.x,dy=door.b.y-door.a.y;
  const len=Math.hypot(dx,dy)||1,p=midpoint(door),nx=-dy/len,ny=dx/len;
- const at=(side:number)=>site.rooms.find(r=>{
+ const at=(side:number)=>(site.rooms??[]).find(r=>{
   const x=p.x+nx*side,y=p.y+ny*side;
   return x>r.x+1&&x<r.x+r.w-1&&y>r.y+1&&y<r.y+r.h-1;
  });
