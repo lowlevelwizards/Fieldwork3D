@@ -9,7 +9,7 @@ test('133: bounded, deterministic casing flight and settling',()=>{
  assert.deepEqual(casingAt(c,3.5),casingAt(c,3.5));
  assert.ok(casingAt(c,3.7).settled);
  assert.ok(casingAt(c,2.15).y>casingAt(c,3).y);
- assert.equal(CASING_LIMIT,192);
+ assert.equal(CASING_LIMIT,96);
  for(const surface of ['stone','wood','metal','dust','blood']){
   const p=impactProfile(surface);
   assert.ok(p.count>0&&p.count<9&&p.lifetime>0&&p.lifetime<.5);
