@@ -1,3 +1,4 @@
+import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import * as THREE from 'three';
 import {graphicsBudget} from './breach-graphics-budget.ts';
 import {PixelTextureLibrary,mapBoxPixelUV,mapPlanePixelUV,type PixelSurface} from './rendering/pixel-materials.ts';
@@ -86,6 +87,8 @@ function doorSweepArc(door:Door,length:number):THREE.Group{
   return group;
 }
 export class TacticalScene3D{
+  private readonly hemisphere=new THREE.HemisphereLight(0xdde8df,0x24302e,1.18);
+  private appliedLightingMode:import('./equipment-site-lighting.ts').LightingMode|null=null;
   private readonly quality=graphicsBudget(
     new URLSearchParams(location.search).get('quality'),
     navigator.maxTouchPoints>0);
@@ -230,7 +233,7 @@ export class TacticalScene3D{
     // Visibility is handled separately by authoritative exploration tiles.
     this.scene.background=color(0x182a2a);
     this.scene.fog=null;
-    this.scene.add(new THREE.HemisphereLight(0xdde8df,0x24302e,1.18));
+    this.scene.add(this.hemisphere);
     this.sun=new THREE.DirectionalLight(0xf4dab4,2.35);
     this.sun.position.set(-100,260,180);this.sun.castShadow=true;
     this.sun.shadow.mapSize.set(this.quality.shadowSize,this.quality.shadowSize);
@@ -1421,6 +1424,12 @@ export class TacticalScene3D{
     renderFrame?:RenderFrame|null,
     liveMotion?:ReplayPresentation|null){
     if(this.view.mode==='plan2d')return;
+    if(this.appliedLightingMode!==s.lightingMode){
+      const mood=lightingPresentation(s.lightingMode);
+      this.hemisphere.intensity=mood.hemisphere;
+      this.sun.intensity=mood.sun;
+      this.appliedLightingMode=s.lightingMode;
+    }
     for(const [index,group] of this.coverGroups){
       const before=s.site?.cover[index],current=s.coverState[index];
       if(before&&current){

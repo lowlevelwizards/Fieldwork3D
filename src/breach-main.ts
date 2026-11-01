@@ -32,6 +32,8 @@ import {mostUrgentWound} from './breach-medical-wounds.ts';
 import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
 import {lightControlState} from './equipment-weapon-light-ui.ts';
 import type {SiteScale} from './breach-site.ts';
+import type {LightingMode} from './equipment-site-lighting.ts';
+import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import {renderSnapshot,type RenderActor}
   from './breach-frame-interpolation.ts';
 import {routeLineHit} from './breach-route-edit.ts';
@@ -125,6 +127,7 @@ const ui={
   cancelTarget:el<HTMLButtonElement>('cancelTarget'),
   siteSettingsToggle:el<HTMLButtonElement>('siteSettingsToggle'),
   siteSize:el<HTMLButtonElement>('siteSize'),
+  siteLighting:el<HTMLButtonElement>('siteLighting'),
   siteSettings:el<HTMLElement>('siteSettings'),
   replayMore:el<HTMLButtonElement>('replayMore'),
   replayExtra:el<HTMLElement>('replayExtra'),
@@ -195,6 +198,9 @@ function applyRequestedCondition(session:Session){
   session.site={...session.site,conditionLevel:requestedCondition};
   activateSite(session.site);
 }
+const LIGHTING_MODES:LightingMode[]=['day','evening','night','blackout','emergency'];
+let selectedLightingMode:LightingMode=
+  LIGHTING_MODES.find(mode=>mode===startupParams.get('lighting'))??'day';
 const requestedScaleParam=startupParams.get('scale');
 let requestedSiteScale:SiteScale=
   ['standard','expanded','small','medium','large'].includes(requestedScaleParam??'')?
@@ -268,6 +274,7 @@ function applyCampaignSkills(){
 }
 let state:Session=newSession(0,legacyStudy?undefined:initialSiteSeed,
   selectedIntelMode,requestedSiteScale);
+state.lightingMode=selectedLightingMode;
 applyRequestedCondition(state);
 applyRosterIdentity(state,persistentRoster);
 applyCampaignSkills();
@@ -2147,6 +2154,14 @@ let beam2DBlockers:Segment[]=[];
 let beam2DBlockerTick=-1,beam2DSite=-1,beam2DRevision=-1;
 const beam2DHistory=new Map<string,{x:number;y:number;yaw:number;tick:number;
  config:TeamActor['weaponConfiguration'];footprint:Pt[]}>();
+function renderLightingMood2D(){
+ const mood=lightingPresentation(state.lightingMode);
+ if(mood.floorTint<=0)return;
+ draw.save();
+ draw.fillStyle='rgba(2,7,11,'+mood.floorTint+')';
+ draw.fillRect(-9,-9,W+18,H+18);
+ draw.restore();
+}
 function renderWeaponLights2D(){
  const active=state.operators.filter(a=>a.health>0&&a.weaponLightOn&&
   a.weaponConfiguration?.slots.light==='light-compact');
@@ -2205,7 +2220,7 @@ function render(){
   draw.save();
   draw.translate(ox,oy);draw.scale(viewScale,viewScale);
   draw.fillStyle='#52655b';draw.fillRect(-9,-9,W+18,H+18);
-  terrain();furniture();renderGroundMarks();renderWeaponLights2D();
+  terrain();furniture();renderGroundMarks();renderLightingMood2D();renderWeaponLights2D();
   architecture();fog();missionMarkers();
   paths();
   for(const a of state.operators)sprite(a);
@@ -2343,6 +2358,7 @@ function enterReplay(){
   ui.replayExtra.hidden=true;ui.replayMore.setAttribute('aria-expanded','false');
   state=newSession(finishedSession.variant,finishedSession.site?.seed,
     finishedSession.intel.mode,finishedSession.site?.scale??'standard');
+  state.lightingMode=finishedSession.lightingMode;
   applyRequestedCondition(state);
   applyRosterIdentity(state,persistentRoster);
   stage?.applySite(state.site??null);
@@ -2417,6 +2433,7 @@ function reset(next=state.variant,siteSeed?:number,
   state=newSession(next,legacyStudy?undefined:
     siteSeed??randomSiteSeed(),selectedIntelMode,requestedSiteScale,missionOverride,
     prebuiltSite,{risk:encounterRisk});
+  state.lightingMode=selectedLightingMode;
   if(campaignMode==='quick')persistentRoster=freshQuickPlayRoster(persistentRoster);
   applyRequestedCondition(state);
   applyRosterIdentity(state,persistentRoster);
@@ -2633,6 +2650,21 @@ ui.stance.addEventListener('click',()=>{
   posture(state,selected);fogStamp=-1;updateHud();
 });
 ui.contact.addEventListener('click',()=>{toggleContactRule(state,selected);updateHud();});
+ui.siteLighting.textContent='LIGHTING · '+selectedLightingMode.toUpperCase();
+ui.siteLighting.addEventListener('click',()=>{
+  if(replaying||state.started||state.phase!=='planning'){
+    showUiHelp('CHOOSE LIGHTING BEFORE DEPLOYMENT');return;
+  }
+  const current=LIGHTING_MODES.indexOf(selectedLightingMode);
+  selectedLightingMode=LIGHTING_MODES[(current+1)%LIGHTING_MODES.length];
+  state.lightingMode=selectedLightingMode;
+  ui.siteLighting.textContent='LIGHTING · '+selectedLightingMode.toUpperCase();
+  const url=new URL(location.href);
+  if(selectedLightingMode==='day')url.searchParams.delete('lighting');
+  else url.searchParams.set('lighting',selectedLightingMode);
+  history.replaceState(null,'',url.href);
+  updateHud();
+});
 ui.siteSize.textContent='MAP SIZE · '+requestedSiteScale.toUpperCase();
 ui.siteSize.addEventListener('click',()=>{
   if(replaying)return;
