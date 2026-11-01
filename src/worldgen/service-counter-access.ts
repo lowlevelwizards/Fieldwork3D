@@ -21,6 +21,24 @@ const nearDoor=(p:Pt,site:Pick<Site,'doors'|'openings'>)=>
    p.y-(d.a.y+d.b.y)/2)<22)||
  (site.openings??[]).some(d=>Math.hypot(p.x-(d.a.x+d.b.x)/2,
    p.y-(d.a.y+d.b.y)/2)<22);
+/** Shared placement predicate: use the same front/back clearance rule
+ * during orientation as the final Map Lab service-access audit. */
+export function counterApproachFor(room:Room,counter:Obstacle,
+ cover:readonly Obstacle[],site:Pick<Site,'doors'|'openings'>):CounterAccess{
+ const face=([{x:0,y:1},{x:1,y:0},{x:0,y:-1},{x:-1,y:0}] as const)
+  [((counter.orientation??0)%4+4)%4];
+ const distance=(counter.orientation??0)%2===0?counter.h/2+17:
+  counter.w/2+17;
+ const customer={x:counter.x+face.x*distance,
+  y:counter.y+face.y*distance};
+ const staff={x:counter.x-face.x*distance,
+  y:counter.y-face.y*distance};
+ const clear=(p:Pt)=>inside(room,p)&&!blocked(p,cover,counter)&&
+  !nearDoor(p,site);
+ return {fixture:counter.fixture??'',x:counter.x,y:counter.y,
+  customer,staff,customerClear:clear(customer),staffClear:clear(staff)};
+}
+
 export function inspectCounterAccess(
  site:Pick<Site,'rooms'|'cover'|'doors'|'openings'>):CounterAccess[]{
  const results:CounterAccess[]=[];
@@ -29,18 +47,7 @@ export function inspectCounterAccess(
   const room=site.rooms.find(r=>r.kind==='room'&&counter.x>r.x&&
    counter.x<r.x+r.w&&counter.y>r.y&&counter.y<r.y+r.h);
   if(!room)continue;
-  const face=([{x:0,y:1},{x:1,y:0},{x:0,y:-1},{x:-1,y:0}] as const)
-   [((counter.orientation??0)%4+4)%4];
-  const distance=(counter.orientation??0)%2===0?counter.h/2+17:
-   counter.w/2+17;
-  const customer={x:counter.x+face.x*distance,
-   y:counter.y+face.y*distance};
-  const staff={x:counter.x-face.x*distance,
-   y:counter.y-face.y*distance};
-  const clear=(p:Pt)=>inside(room,p)&&!blocked(p,site.cover,counter)&&
-    !nearDoor(p,site);
-  results.push({fixture:counter.fixture!,x:counter.x,y:counter.y,
-   customer,staff,customerClear:clear(customer),staffClear:clear(staff)});
+  results.push(counterApproachFor(room,counter,site.cover,site));
  }
  return results;
 }

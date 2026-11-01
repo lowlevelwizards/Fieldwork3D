@@ -4,6 +4,7 @@
 import type {Site,Room} from '../breach-site.ts';
 import type {Obstacle,Pt} from '../breach-core.ts';
 import {fixtureServiceClear} from './fixture-service-clearance.ts';
+import {SERVICE_COUNTERS,counterApproachFor} from './service-counter-access.ts';
 export type QuarterTurn=0|1|2|3;
 const directional=new Set(['reception-desk','transaction-counter','parts-counter','bar-stool','chair','office-chair','armchair','sofa','bench','patio-chair',
  'desk','bed','exam-bed','toilet','sink','stove','fridge','counter','cabinet',
@@ -75,12 +76,31 @@ export function orientFurnishings(site:Site,items:readonly Obstacle[]):Obstacle[
   const ranked=([0,1,2,3] as QuarterTurn[]).sort((a,b)=>
     (facing[b].x*dx+facing[b].y*dy)-(facing[a].x*dx+facing[a].y*dy)||
     a-b);
+  const shaped=(turn:QuarterTurn):Obstacle=>{
+   const dims=rotatedFootprint(item,turn);
+   return {...item,w:dims.w,h:dims.h,orientation:turn};
+  };
+  const counterScore=(turn:QuarterTurn):number=>{
+   const candidate=shaped(turn),surroundings=out.slice();
+   surroundings[i]=candidate;
+   const access=counterApproachFor(room,candidate,surroundings,site);
+   return Number(access.customerClear)+Number(access.staffClear);
+  };
   const canUse=(turn:QuarterTurn)=>{
    if(!legal(site,out,i,room,turn))return false;
-   const dims=rotatedFootprint(item,turn);
-   return fixtureServiceClear(room,{...item,w:dims.w,h:dims.h,orientation:turn},out,i);
+   const candidate=shaped(turn);
+   if(!fixtureServiceClear(room,candidate,out,i))return false;
+   if(SERVICE_COUNTERS.has(fixture))return counterScore(turn)===2;
+   return true;
   };
-  const turn=ranked.find(canUse)??ranked.find(turn=>legal(site,out,i,room,turn));
+  // A reception/check-out counter needs two genuine operating sides.
+  // If the geometry cannot satisfy both, maximize accessible sides instead
+  // of pretending its original direction is a functional workstation.
+  const fallback=SERVICE_COUNTERS.has(fixture)?
+   ranked.filter(turn=>legal(site,out,i,room,turn)).sort((a,b)=>
+    counterScore(b)-counterScore(a))[0]:
+   ranked.find(turn=>legal(site,out,i,room,turn));
+  const turn=ranked.find(canUse)??fallback;
   if(turn===undefined)continue; // never force an invalid collision.
   const dims=rotatedFootprint(item,turn);
   out[i]={...item,w:dims.w,h:dims.h,orientation:turn};
