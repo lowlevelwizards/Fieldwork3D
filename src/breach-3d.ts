@@ -3,6 +3,7 @@ import {graphicsBudget} from './breach-graphics-budget.ts';
 import {PixelTextureLibrary,mapBoxPixelUV,mapPlanePixelUV,type PixelSurface} from './rendering/pixel-materials.ts';
 import {roomPixelSurface,zonePixelSurface,wallPixelSurface,fixturePixelSurface} from './worldgen/pixel-surface-selection.ts';
 import {wearFinish} from './rendering/wear-finish.ts';
+import {ageMaterialColor} from './rendering/condition-materials.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from './worldgen/fixture-visuals.ts';
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surfaces.ts';
@@ -423,6 +424,9 @@ export class TacticalScene3D{
   }
   private buildGenerated(site:Site){
     const theme=buildingTheme(site.archetype,site.seed);
+    const finishCondition=effectiveCondition(site);
+    const age=(hex:number,surface:PixelSurface|undefined,variation=0)=>
+      ageMaterialColor(hex,surface,finishCondition,variation);
     const earth=this.solid(site.layout==='courtyard'?0x69825e:0x607a58,.9,'grass');
     const bounds=site.bounds??{minX:0,minY:0,maxX:W,maxY:H};
     const bw=bounds.maxX-bounds.minX,bh=bounds.maxY-bounds.minY;
@@ -553,7 +557,7 @@ export class TacticalScene3D{
         Math.max(12,room.w+2),2,Math.max(12,room.h+2),
         this.roofMaterial,false).receiveShadow=false;
     }
-    const wallMat=this.solid(theme.wall,.94,wallPixelSurface(site.archetype)),
+    const wallMat=this.solid(age(theme.wall,wallPixelSurface(site.archetype)),.94,wallPixelSurface(site.archetype)),
       capMat=this.solid(theme.cap,.94,'concrete');
     const skirting=this.solid(theme.trim,.91,'painted-wood');
     for(const [index,wall] of site.walls.entries()){
@@ -610,7 +614,8 @@ export class TacticalScene3D{
       this.box(group,0,38,0,width+4,4,11,archMaterial);
       this.root.add(group);
     }
-    const doorMat=this.solid(theme.door,.88,'door-wood'),doorTrim=this.solid(theme.trim,.9,'painted-wood');
+    const doorMat=this.solid(age(theme.door,'door-wood'),.88,'door-wood'),
+      doorTrim=this.solid(age(theme.trim,'painted-wood'),.9,'painted-wood');
     const metal=this.solid(0x586665,.78,'industrial-steel');
     for(const door of site.doors){
       const length=Math.hypot(door.a.x-door.b.x,door.a.y-door.b.y);
@@ -693,12 +698,14 @@ export class TacticalScene3D{
       this.doors.set(door.id,{root,leaf,frame,halo,threshold});
       this.observedDoorOpen.set(door.id,door.openFraction??0);
     }
-    const wood=this.solid(theme.wood,.9,'furniture-wood'),steel=this.solid(0x465958,.8,'metal');
-    const olive=this.solid(0x70715e,.9,'fabric');
+    const wood=this.solid(age(theme.wood,'furniture-wood'),.9,'furniture-wood'),
+      steel=this.solid(age(0x465958,'metal'),.8,'metal');
+    const olive=this.solid(age(0x70715e,'fabric'),.9,'fabric');
+    const agedMetal=this.solid(age(0x586665,'industrial-steel'),.78,'industrial-steel');
     const fixtureCtx:FixtureVisualContext={
       box:(parent,x,y,z,w,h,d,material,cast)=>
         this.box(parent,x,y,z,w,h,d,material,cast),
-      solid:(hex,roughness,surface)=>this.solid(hex,roughness,surface),
+      solid:(hex,roughness,surface)=>this.solid(age(hex,surface),roughness,surface),
     };
     site.cover.forEach((c,i)=>{
       const group=new THREE.Group();this.root.add(group);
@@ -710,7 +717,16 @@ export class TacticalScene3D{
       group.rotation.y=(c.orientation??0)*Math.PI/2;
       const turned=(c.orientation??0)%2===1;
       const visual={...c,x:0,y:0,w:turned?c.h:c.w,h:turned?c.w:c.h};
-      renderFixtureVisual(group,visual,i,fixtureCtx,wood,steel,olive,metal);
+      // Five deterministic condition tones prevent furniture from looking
+      // as though every object aged uniformly at precisely the same rate.
+      const variant=((i%5)-2)/2;
+      const localCtx:FixtureVisualContext={...fixtureCtx,
+        solid:(hex,roughness,surface)=>this.solid(age(hex,surface,variant),roughness,surface)};
+      renderFixtureVisual(group,visual,i,localCtx,
+        this.solid(age(theme.wood,'furniture-wood',variant),.9,'furniture-wood'),
+        this.solid(age(0x465958,'metal',variant),.8,'metal'),
+        this.solid(age(0x70715e,'fabric',variant),.9,'fabric'),
+        this.solid(age(0x586665,'industrial-steel',variant),.78,'industrial-steel'));
       for(const mark of marksOn('fixture',i)){
         const height=visibleSurfaceHeight(c.fixture??'crate');
         if(height<8)continue;
