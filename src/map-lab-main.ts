@@ -1,10 +1,11 @@
 /** Standalone omniscient generation inspector, not a tactical encounter. */
 import {TacticalScene3D} from './breach-3d.ts';
 import {newSession,type Session} from './breach-game.ts';
-import {generateSite,type Site,type BuildingArchetype,type SiteScale} from './breach-site.ts';
+import {type Site,type BuildingArchetype} from './breach-site.ts';
+import {labScaleChoice,type LabScale,type GeneratorRequest,type GeneratorResponse} from './map-lab-generation.ts';
 import {BUILDING_ARCHETYPES} from './breach-archetypes.ts';
-import {activateSite,type Pt} from './breach-core.ts';
-import {auditGeneratedSite} from './breach-site-audit.ts';
+import {type Pt} from './breach-core.ts';
+import type {SiteAudit} from './breach-site-audit.ts';
 import {assessArchitecture} from './worldgen/architecture-quality.ts';
 import {assessRoomContracts} from './worldgen/room-contracts.ts';
 import {inspectCounterAccess} from './worldgen/service-counter-access.ts';
@@ -21,17 +22,26 @@ conditionInput.value=String(selectedCondition);
 const playSite=el<HTMLAnchorElement>('playSite');
 const status=el<HTMLOutputElement>('info');
 const labelLayer=el<HTMLDivElement>('labels');
+const progressPanel=el<HTMLDivElement>('generationProgress');
+const progressBar=el<HTMLProgressElement>('progressBar');
+const progressPercent=el<HTMLOutputElement>('progressPercent');
+const progressStage=el<HTMLDivElement>('progressStage');
+const progressDetail=el<HTMLSpanElement>('progressDetail');
+const progressClock=el<HTMLSpanElement>('progressClock');
+const generateButton=el<HTMLButtonElement>('generate');
+const nextButton=el<HTMLButtonElement>('next');
 for(const kind of BUILDING_ARCHETYPES){
  const option=document.createElement('option');option.value=kind;option.textContent=kind.toUpperCase();
  typeInput.append(option);
 }
 const initial=Number.parseInt(new URLSearchParams(location.search).get('seed')??'101',10)||101;
 const initialScale=new URLSearchParams(location.search).get('scale');
-scaleInput.value=['small','medium','large','standard','expanded'].includes(initialScale??'')?
-  initialScale!:'standard';
+scaleInput.value=labScaleChoice(initialScale);
 seedInput.value=String(initial);
-let session:Session=newSession(0,initial);
-typeInput.value=session.site?.archetype??'house';
+// Initial preview also uses the worker: no silent startup freeze.
+let session:Session=newSession(0);
+let siteReady=false;
+typeInput.value=BUILDING_ARCHETYPES[(initial>>>0)%BUILDING_ARCHETYPES.length];
 const stage=new TacticalScene3D();
 stage.setMode('iso');stage.view.zoom=1.25;
 let markers:{node:HTMLElement;p:Pt;orientation?:number}[]=[];
@@ -51,7 +61,7 @@ function paintConditionDiagnostics(){
 function previewCondition(){
  const site=session.site;if(!site)return;
  playSite.href='./breach.html?seed='+site.seed+
-   (siteScale()==='standard'?'':'&scale='+siteScale())+'&condition='+selectedCondition;
+   '&scale='+(site.scale??'medium')+'&condition='+selectedCondition;
  const view={...stage.view,focus:{...stage.view.focus}};
  stage.applySite({...site,conditionLevel:selectedCondition});
  Object.assign(stage.view,view);
@@ -73,7 +83,7 @@ conditionInput.addEventListener('input',()=>{
  const site=session.site;
  if(site){
   playSite.href='./breach.html?seed='+site.seed+
-   (siteScale()==='standard'?'':'&scale='+siteScale())+'&condition='+selectedCondition;
+   '&scale='+(site.scale??'medium')+'&condition='+selectedCondition;
   // A single queued frame updates existing patina maps. Full scene/fixture
   // regeneration is deferred until the slider settles.
   if(maskPreviewFrame===null)maskPreviewFrame=requestAnimationFrame(()=>{
@@ -142,11 +152,7 @@ function describe(site:Site){
   (site.exteriorZones?.length??0)+' exterior zones\n'+
   usable+'/'+counterAccess.length+' service counters with two-sided access';
 }
-function report(site:Site):string{
- const result=auditGeneratedSite(site.seed,site.scale??'standard');
- // The legacy audit temporarily activates its own site for route checks.
- // Restore the live lab's spatial authority before resuming rendering.
- activateSite(site);
+function report(site:Site,result:SiteAudit):string{
  return describe(site)+'\n'+
   'ENTRANCE: '+assessArchitecture(site).entryPurpose.toUpperCase()+' · '+
   (site.condition??'ordinary').toUpperCase()+' · '+result.dressing+
@@ -160,35 +166,103 @@ function report(site:Site):string{
       ' complete residential units\n':'')+(result.errors.length?
    'CHECKS: '+result.errors.join('; '):'CHECKS: PASS');
 }
-// Site scale changes dimensions, not architectural fidelity or room count.
-const siteScale=():SiteScale=>scaleInput.value as SiteScale;
-function generate(advance=false){
- const starting=Math.max(1,Number.parseInt(seedInput.value,10)||1)+(advance?1:0);
- const wanted=typeInput.value as BuildingArchetype;
- let chosen:Site|null=null;
- for(let step=0;step<600;step++){
-  const candidate=generateSite((starting+step)>>>0,
-    siteScale());
-  if(candidate.archetype===wanted){
-   chosen=candidate;break;
-  }
- }
- if(!chosen){status.textContent='No matching configuration in the current generator range.';return;}
- seedInput.value=String(chosen.seed);
- playSite.href='./breach.html?seed='+chosen.seed+
-   (siteScale()==='standard'?'':'&scale='+siteScale())+
-   '&condition='+selectedCondition;
- session=newSession(0,chosen.seed,'floor-plan',
-   siteScale());
- stage.applySite({...session.site!,conditionLevel:selectedCondition});stage.resetCamera();
- history.replaceState(null,'','?seed='+chosen.seed+
-  (siteScale()==='standard'?'':'&scale='+siteScale())+'&condition='+selectedCondition);
- reportBaseline=report(session.site!);
- paintConditionDiagnostics();
- updateLabels();
+// Stage percentages are measured checkpoints, not predicted time.
+const siteScale=():LabScale=>scaleInput.value as LabScale;
+let worker:Worker|null=null,generationId=0,generating=false,percent=0;
+let startedAt=0,lastUpdate=0,clock:ReturnType<typeof setInterval>|null=null;
+const cancelButton=el<HTMLButtonElement>('cancelGeneration');
+function showProgress(value:number,stage:string,detail=''){
+ percent=Math.max(percent,Math.min(100,Math.round(value)));
+ progressBar.value=percent;progressPercent.textContent=percent+'%';
+ progressStage.textContent=stage;progressDetail.textContent=detail;
 }
-el<HTMLButtonElement>('generate').addEventListener('click',()=>generate());
-el<HTMLButtonElement>('next').addEventListener('click',()=>generate(true));
+function clockTick(){
+ const elapsed=Math.floor((performance.now()-startedAt)/1000);
+ const quiet=Math.floor((performance.now()-lastUpdate)/1000);
+ progressClock.textContent=elapsed+'s elapsed'+
+   (generating&&quiet>10?' · No new checkpoint yet (large plans can take time)':'');
+}
+function setBusy(active:boolean){
+ generating=active;
+ generateButton.disabled=active;nextButton.disabled=active;
+ typeInput.disabled=active;scaleInput.disabled=active;seedInput.disabled=active;
+ playSite.setAttribute('aria-disabled',String(active||!siteReady));
+ playSite.style.pointerEvents=active||!siteReady?'none':'';
+ if(!active&&clock!==null){clearInterval(clock);clock=null;}
+}
+function stopGeneration(){
+ if(!generating)return;
+ generationId++;worker?.terminate();worker=null;setBusy(false);
+ progressPanel.hidden=true;
+ status.textContent=siteReady?reportBaseline+'\\nGeneration cancelled. Previous site retained.':
+   'Generation cancelled. Press GENERATE to retry.';
+}
+cancelButton.addEventListener('click',stopGeneration);
+function generationError(message:string){
+ worker?.terminate();worker=null;setBusy(false);
+ progressPanel.dataset.state='error';progressPanel.hidden=false;
+ progressStage.textContent='GENERATION FAILED';
+ progressDetail.textContent=message;
+ progressClock.textContent='Stopped · try a different seed or size';
+ status.textContent='GENERATION FAILED: '+message;
+}
+const allowPaint=()=>new Promise<void>(resolve=>
+ requestAnimationFrame(()=>setTimeout(resolve,0)));
+async function useGeneratedSite(id:number,site:Site,audit:SiteAudit,choice:LabScale){
+ worker?.terminate();worker=null;
+ showProgress(85,'Creating tactical session','Loading actors and navigation');
+ await allowPaint();
+ if(id!==generationId)return;
+ try{
+  showProgress(91,'Building 3D preview','Uploading fixtures, surfaces and wear');
+  await allowPaint();
+  if(id!==generationId)return;
+  // Commit simulation and scene together; cancellation never leaves a mismatched site.
+  session=newSession(0,site.seed,'floor-plan',site.scale,undefined,site);
+  stage.applySite({...site,conditionLevel:selectedCondition});stage.resetCamera();
+  reportBaseline=report(site,audit);
+  seedInput.value=String(site.seed);
+  playSite.href='./breach.html?seed='+site.seed+
+    '&scale='+(site.scale??'medium')+'&condition='+selectedCondition;
+  history.replaceState(null,'','?seed='+site.seed+'&scale='+choice+
+    '&condition='+selectedCondition);
+  siteReady=true;
+  updateLabels();paintConditionDiagnostics();
+  showProgress(100,'MAP READY',(site.archetype??'BUILDING').toUpperCase()+
+    ' · '+(site.scale??'medium').toUpperCase()+' · '+site.rooms.length+' rooms');
+  setBusy(false);
+  setTimeout(()=>{if(generationId===id&&!generating)progressPanel.hidden=true;},1400);
+ }catch(error){generationError(error instanceof Error?error.message:String(error));}
+}
+function generate(advance=false){
+ if(generating)return;
+ const seed=Math.max(1,Number.parseInt(seedInput.value,10)||1)+(advance?1:0);
+ const id=++generationId,archetype=typeInput.value as BuildingArchetype,choice=siteScale();
+ percent=0;progressPanel.hidden=false;progressPanel.dataset.state='running';
+ showProgress(0,'Starting generator','Preparing '+archetype+' · '+choice);
+ startedAt=performance.now();lastUpdate=startedAt;setBusy(true);
+ clockTick();clock=setInterval(clockTick,1000);
+ try{
+  worker=new Worker(new URL('./map-lab-worker.ts',import.meta.url),{type:'module'});
+  worker.onmessage=(event:MessageEvent<GeneratorResponse>)=>{
+   const response=event.data;
+   if(!generating||response.id!==generationId)return;
+   lastUpdate=performance.now();
+   if(response.kind==='progress')
+    showProgress(response.percent,response.stage,response.detail);
+   else if(response.kind==='error')generationError(response.message);
+   else void useGeneratedSite(id,response.site,response.audit,choice);
+  };
+  worker.onerror=event=>{
+   event.preventDefault();
+   if(generationId===id)generationError('Generator stopped unexpectedly. Try again.');
+  };
+  const request:GeneratorRequest={id,seed,archetype,scale:choice};
+  worker.postMessage(request);
+ }catch(error){generationError(error instanceof Error?error.message:String(error));}
+}
+generateButton.addEventListener('click',()=>generate());
+nextButton.addEventListener('click',()=>generate(true));
 el<HTMLButtonElement>('iso').addEventListener('click',()=>stage.setMode('iso'));
 el<HTMLButtonElement>('top').addEventListener('click',()=>stage.setMode('top'));
 el<HTMLButtonElement>('fit').addEventListener('click',()=>stage.resetCamera());
@@ -200,7 +274,7 @@ el<HTMLInputElement>('doors').addEventListener('change',updateLabels);
 let pointers=new Map<number,Pt>(),lastMid:Pt|null=null,lastGap=0;
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 document.body.addEventListener('pointerdown',event=>{
- if((event.target as Element).closest('header,#controls,#labels'))return;
+ if((event.target as Element).closest('header,#controls,#labels,#generationProgress'))return;
  event.preventDefault();document.body.setPointerCapture(event.pointerId);
  pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
 });
@@ -222,15 +296,13 @@ document.body.addEventListener('pointerup',stop);
 document.body.addEventListener('pointercancel',stop);
 window.addEventListener('wheel',e=>{e.preventDefault();stage.zoomAt(Math.exp(-e.deltaY*.001),e.clientX,e.clientY);},{passive:false});
 window.addEventListener('resize',()=>stage.resize(innerWidth,innerHeight));
-reportBaseline=describe(session.site!);
-status.textContent=reportBaseline;
-playSite.href='./breach.html?seed='+session.site!.seed+'&condition='+selectedCondition;
-previewCondition();
-updateLabels();
+status.textContent='Starting map generator…';
+conditionValue.textContent=selectedCondition+' / 100 · '+conditionLabel(selectedCondition);
+void generate();
 let last=performance.now();
 function frame(now:number){
  const dt=Math.min(.05,Math.max(0,(now-last)/1000));last=now;
- stage.update(session,'rook',dt,null,true);
+ if(siteReady)stage.update(session,'rook',dt,null,true);
  for(const marker of markers){
   const p=stage.project(marker.p,5);
   marker.node.style.left=p.x+'px';marker.node.style.top=p.y+'px';

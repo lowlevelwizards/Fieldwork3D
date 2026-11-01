@@ -218,8 +218,8 @@ const withActions=(a:Operator):TeamActor=>({
  */
 export function newSession(index=0,siteSeed?:number,
   intelMode:IntelMode='floor-plan',scale:SiteScale='standard',
-  missionOverride?:OperationKind):Session{
-  const site=siteSeed===undefined?undefined:generateSite(siteSeed>>>0,scale);
+  missionOverride?:OperationKind,prebuiltSite?:Site):Session{
+  const site=prebuiltSite??(siteSeed===undefined?undefined:generateSite(siteSeed>>>0,scale));
   activateSite(site??null);
   const seed=newTacticalState();
   const variant=((index%SCENARIOS.length)+SCENARIOS.length)%SCENARIOS.length;
