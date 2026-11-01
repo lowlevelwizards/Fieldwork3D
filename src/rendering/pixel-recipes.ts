@@ -3,7 +3,8 @@
 export type PixelSurface =
  'wood'|'plaster'|'brick'|'concrete'|'tile'|'carpet'|'metal'|
  'fabric'|'asphalt'|'earth'|'gravel'|'grass'|'rubber'|'foliage'|'paper'|
- 'linoleum'|'sealed-concrete'|'cinderblock'|'siding'|'panel';
+ 'linoleum'|'sealed-concrete'|'cinderblock'|'siding'|'panel'|
+ 'plastic'|'porcelain';
 export const OPERATOR_REFERENCE_HEIGHT=40;
 export const TEXELS_PER_OPERATOR=32;
 export const PIXEL_WORLD_SIZE=OPERATOR_REFERENCE_HEIGHT/TEXELS_PER_OPERATOR;
@@ -12,7 +13,8 @@ export const TILE_WORLD_SIZE=TILE_PIXELS*PIXEL_WORLD_SIZE;
 export const PIXEL_SURFACES:readonly PixelSurface[]=[
  'wood','plaster','brick','concrete','tile','carpet','metal',
  'fabric','asphalt','earth','gravel','grass','rubber','foliage','paper',
- 'linoleum','sealed-concrete','cinderblock','siding','panel'
+ 'linoleum','sealed-concrete','cinderblock','siding','panel',
+ 'plastic','porcelain'
 ];
 export const MATERIAL_RECIPE_VERSION=3;
 const hash=(x:number,y:number,s:number)=>{
@@ -90,7 +92,7 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
     // Clean commercial sheet vinyl: no visible checkerboard.
     if(seed%4===1&&x===0)shade=252;
     break;
-   case 'asphalt':case 'plaster':case 'paper':break;
+   case 'asphalt':case 'plaster':case 'paper':case 'plastic':case 'porcelain':break;
   }
   const i=(y*size+x)*4;
   out[i]=shade;out[i+1]=shade;out[i+2]=shade;out[i+3]=255;
