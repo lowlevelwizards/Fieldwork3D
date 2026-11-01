@@ -7,6 +7,7 @@ import {propDefinition} from './asset-catalog.ts';
 import {relatedFurniturePositions} from './room-composition.ts';
 import {activityClusterCandidates} from './activity-clusters.ts';
 import {withinOptionalFurnitureBudget} from './furniture-density.ts';
+import {optionalOperationalFixtures} from './archetype-operational-variants.ts';
 import {orientFurnishings} from './prop-orientation.ts';
 import {ROOM_CONTRACTS} from './room-contracts.ts';
 import {recoverRoomEssentials} from './room-essential-recovery.ts';
@@ -354,7 +355,9 @@ export function furnishRooms(site:Site,seed:number):Site{
   const essentialIds=new Set(essential.map(item=>item.id));
   // Preserve repeated seating and shelving; only de-duplicate an item's
   // first authored instance when the required contract already added it.
-  const remaining=activityFurniture(room.purpose??'',room,roomItems,site.identity?.subtype);
+  const remaining=[...activityFurniture(room.purpose??'',room,roomItems,
+    site.identity?.subtype),...optionalOperationalFixtures(
+      site.archetype,room,site.identity?.subtype,seed)];
   const seenRequired=new Set<string>();
   const equipment:Item[]=[...essential];
   for(const item of remaining){
