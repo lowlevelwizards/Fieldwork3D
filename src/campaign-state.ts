@@ -2,6 +2,7 @@
 import type {OperationKind} from './breach-operations.ts';
 import type {ShootingSkills} from './breach-skills.ts';
 import type {RosterState} from './breach-roster.ts';
+import {WEAPONS as COMBAT_WEAPONS} from './breach-combat.ts';
 import {progressOperator,type OperatorPerformance,type SkillGains} from './campaign-progression.ts';
 
 export type SkillName=keyof ShootingSkills;
@@ -132,7 +133,10 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
  const gainedSkills:SkillGains[]=[];
  const careerEvents:CareerEvent[]=[];
  const operators=c.operators.map(o=>{
-  if(!participants.has(o.id))return {...o,recoveryDays:Math.max(0,o.recoveryDays-1)};
+  if(!participants.has(o.id)){
+   const recoveryDays=Math.max(0,o.recoveryDays-1);
+   return {...o,recoveryDays,injuries:recoveryDays===0?0:o.injuries};
+  }
   if(o.missions===0)careerEvents.push({id:r.id+'-'+o.id+'-first',day:c.day,operatorId:o.id,
    operationId:r.id,kind:'first-deployment',detail:'First field operation'});
   if(r.outcome==='success'&&o.successful===0)careerEvents.push({
@@ -159,4 +163,39 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   journal:[...c.journal,...r.events,...careerEvents].slice(-1000),
   appliedResults:[...c.appliedResults,r.id].slice(-500),
   contracts:createContracts(c.seed,day,contracts)};
+}
+
+/** Supplies are counted in actual rounds; no infinite free resupply. */
+export function purchaseAmmo(c:CampaignState):CampaignState{
+ const cost=120,rounds=60;
+ if(c.funds<cost)return c;
+ return {...c,funds:c.funds-cost,supplies:{...c.supplies,ammo:c.supplies.ammo+rounds}};
+}
+export function purchaseMedical(c:CampaignState):CampaignState{
+ const cost=170;
+ if(c.funds<cost)return c;
+ return {...c,funds:c.funds-cost,supplies:{...c.supplies,medical:c.supplies.medical+1}};
+}
+export function treatOperator(c:CampaignState,id:string):CampaignState{
+ const o=c.operators.find(m=>m.id===id&&m.recoveryDays>0);
+ if(!o||c.supplies.medical<=0||c.activeContractId)return c;
+ return {...c,supplies:{...c.supplies,medical:c.supplies.medical-1},
+  operators:c.operators.map(m=>{
+   if(m.id!==id)return m;
+   const recoveryDays=Math.max(0,m.recoveryDays-2);
+   return {...m,recoveryDays,injuries:recoveryDays===0?0:m.injuries};
+  })};
+}
+export function resupplyOperator(c:CampaignState,id:string):CampaignState{
+ if(c.activeContractId)return c;
+ const o=c.operators.find(m=>m.id===id&&m.status!=='lost');
+ if(!o)return c;
+ const weapon=COMBAT_WEAPONS[o.weapon];
+ const needed=Math.max(0,weapon.capacity-o.magazine)+Math.max(0,weapon.reserve-o.reserve);
+ const rounds=Math.min(c.supplies.ammo,needed);
+ if(rounds<=0)return c;
+ const toMag=Math.min(rounds,Math.max(0,weapon.capacity-o.magazine));
+ return {...c,supplies:{...c.supplies,ammo:c.supplies.ammo-rounds},
+  operators:c.operators.map(m=>m.id===id?{...m,
+   magazine:m.magazine+toMag,reserve:m.reserve+rounds-toMag}:m)};
 }
