@@ -10,7 +10,8 @@ export type DoorStyle='wood'|'steel'|'reinforced'|'exit'|'glazed'|'mesh-gate';
 export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number;
   style?:DoorStyle;
   /** Mechanical closure with vertical lift; routes and shots respect shutter state. */
-  kind?:'hinged'|'shutter';
+  kind?:'hinged'|'shutter'|'sliding';
+  slideDirection?:-1|1;
   pairedWith?:string;
   hinge?:'a'|'b';swing?:-1|1;openFraction?:number;
   angularVelocity?:number;resistance?:number;kickImpulse?:number;heldBy?:string|null;latchIntegrity?:number;frameIntegrity?:number;
@@ -100,13 +101,18 @@ export function passable(p:Pt,clearance=OPERATOR_RADIUS):boolean{
 /** The rotated leaf is the single collision/sightline surface. A hinge on
  * endpoint B reverses the closed direction. Tactical (x,y) rotates opposite
  * THREE's Y-axis door yaw so the 2D and 3D leaves overlap. */
-export const doorYaw=(d:Door)=>(d.swing??-1)*
+export const doorYaw=(d:Door)=>d.kind==='sliding'?0:(d.swing??-1)*
   (d.openFraction??(d.open?1:0))*1.54;
 export function doorLeafSegment(d:Door):Segment{
  // Vertical shutters obstruct their full width until the panel is
  // sufficiently high for an operator to pass underneath.
  if(d.kind==='shutter')return (d.openFraction??(d.open?1:0))>=.72?
    {a:{...d.a},b:{...d.a}}:{a:{...d.a},b:{...d.b}};
+ if(d.kind==='sliding'){
+   const fraction=d.openFraction??(d.open?1:0),sign=d.slideDirection??1;
+   const dx=(d.b.x-d.a.x)*fraction*sign,dy=(d.b.y-d.a.y)*fraction*sign;
+   return {a:{x:d.a.x+dx,y:d.a.y+dy},b:{x:d.b.x+dx,y:d.b.y+dy}};
+ }
  const hinge=d.hinge==='b'?d.b:d.a;
  const end=d.hinge==='b'?d.a:d.b;
  const x=end.x-hinge.x,y=end.y-hinge.y;

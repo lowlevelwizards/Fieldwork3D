@@ -686,10 +686,10 @@ export class TacticalScene3D{
         doorTrim,false);
       const leaf=new THREE.Group();
        const invert=door.hinge==='b';
-      leaf.position.x=door.kind==='shutter'?0:invert?length/2:-length/2;
+      leaf.position.x=door.kind==='shutter'||door.kind==='sliding'?0:invert?length/2:-length/2;
       // Actual hinge barrels identify the swing side without requiring
       // a user to inspect a top-down arrow on every doorway.
-      if(door.kind!=='shutter')for(const y of [7,18,29])
+      if(door.kind!=='shutter'&&door.kind!=='sliding')for(const y of [7,18,29])
         this.box(frame,invert?length/2:-length/2,y,0,
           4.2,5.2,6,metal,false);
       root.add(leaf);
@@ -701,11 +701,15 @@ export class TacticalScene3D{
           this.box(frame,side*length*.49,20,2.1,2,38,4,metal,false); // shutter runners
         this.box(leaf,0,4,2.5,length*.37,2,1.4,doorTrim,false); // lower pull
       }else{
+        if(door.kind==='sliding'){
+          this.box(frame,0,39.5,1.6,length*2.1,3,6,metal,false);
+          this.box(frame,0,1,1.6,length*2.1,1.3,4,metal,false);
+        }
         const style=door.style??'wood';
         const panel=style==='wood'?doorMat:style==='exit'?
           this.solid(0x996c53,.78,'painted-metal'):style==='reinforced'?
           this.solid(0x53615e,.78,'industrial-steel'):this.solid(0x72817d,.78,'painted-metal');
-        const middle=(invert?-1:1)*length/2;
+        const middle=door.kind==='sliding'?0:(invert?-1:1)*length/2;
         if(style==='mesh-gate'){
           const frameMaterial=this.solid(0x586665,.8,'industrial-steel');
           for(const sign of [-1,1])this.box(leaf,middle+sign*(length/2-2),18,0,3,35,3,frameMaterial,false);
@@ -756,7 +760,7 @@ export class TacticalScene3D{
         this.addSurfaceWear(leaf,mark,middle+(mark.u-.5)*(length-8),
           7+mark.v*24,3.6,door.style==='wood'?'door-wood':'painted-metal');
       }
-      const halo=doorSweepArc(door,length);
+      const halo=door.kind==='sliding'?new THREE.Group():doorSweepArc(door,length);
       root.add(halo);
       this.root.add(root);
       this.doors.set(door.id,{root,leaf,frame,halo,threshold});
@@ -1375,12 +1379,16 @@ export class TacticalScene3D{
       if(door.kind==='shutter'){
         object.leaf.rotation.y=0;
         object.leaf.position.y=shownFraction*37;
+      }else if(door.kind==='sliding'){
+        object.leaf.rotation.y=0;
+        object.leaf.position.x=shownFraction*
+          Math.hypot(door.b.x-door.a.x,door.b.y-door.a.y)*(door.slideDirection??1);
       }else object.leaf.rotation.y=(door.swing??-1)*shownFraction*1.54;
       const selectedActor=team(s).find(a=>a.id===selected);
       const reachable=selectedActor&&selectedActor.health>0&&
         [selectedActor.p,...selectedActor.plan.filter(n=>n.id===selectedActor.plan.at(-1)?.id).map(n=>n.p)].some(p=>
           doorReachable(p,door));
-      object.halo.visible=door.kind!=='shutter'&&object.root.visible&&focusedDoorId===door.id&&!!reachable&&
+      object.halo.visible=door.kind!=='shutter'&&door.kind!=='sliding'&&object.root.visible&&focusedDoorId===door.id&&!!reachable&&
         (liveVisibility(s,doorCenter(door))||
          knownAt(s,doorCenter(door).x,doorCenter(door).y));
       // Ground sweep stays attached to the fixed hinge; no rotating target ring.

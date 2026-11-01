@@ -256,8 +256,10 @@ function sampleSite(items:readonly AssetLibraryEntry[]):Site{
    }else if(item.id==='door'||item.id==='shutter'||item.id.startsWith('door:')){
      const width=item.id==='shutter'?96:48;
      doors.push({id:'door-'+index,a:{x:x-width/2,y},b:{x:x+width/2,y},
-       kind:item.id==='shutter'?'shutter':'hinged',open:false,openedAt:-1,
-       style:item.id.startsWith('door:')?
+       kind:item.id==='shutter'?'shutter':item.id==='door:sliding-glass'?'sliding':'hinged',
+       slideDirection:item.id==='door:sliding-glass'?1:undefined,
+       open:false,openedAt:-1,
+       style:item.id==='door:sliding-glass'?'glazed':item.id.startsWith('door:')?
          item.id.slice(5) as NonNullable<Door['style']>:'wood'});
    }else if(item.id.startsWith('wall-detail:')){
      const id=item.id.slice('wall-detail:'.length);
