@@ -7,6 +7,7 @@ import {chooseHostileBudget} from './encounter-population.ts';
 import {composeEncounterGroups} from './encounter-groups.ts';
 import {placeEncounterActors} from './encounter-placement.ts';
 import {assignEncounterActivities} from './encounter-activities.ts';
+import {assignEncounterRoutines} from './encounter-routines.ts';
 export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
  if(site.training)return site;
  const seed=context.seed??site.seed;
@@ -24,7 +25,8 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
  }));
  const composition=composeEncounterGroups(site,provisional,premise,seed);
  const placement=placeEncounterActors(site,composition.actors,composition.groups,seed);
- const actors=assignEncounterActivities(site,placement.actors,premise,seed);
+ const actors=assignEncounterRoutines(site,
+  assignEncounterActivities(site,placement.actors,premise,seed),seed);
  const rooms=site.rooms.filter(r=>r.kind==='room');
  const occupiedZones=new Set(actors.map(a=>a.zoneId).filter(Boolean)).size;
  const zones=new Set(rooms.map(r=>r.zoneId??r.id));
