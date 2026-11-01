@@ -5,9 +5,10 @@
 import {type Pt,type Segment,type Door,type Obstacle} from './breach-core.ts';
 import {applyArchetype} from './breach-archetypes.ts';
 import {compileArchitecturalSite} from './worldgen/architectural-compiler.ts';
+import {partitionMotelGuestUnits} from './worldgen/motel-suites.ts';
 import {orientArchitecturalSite,type EntrySide} from './worldgen/site-orientation.ts';
 import {buildingIdentity} from './worldgen/building-identity.ts';
-export type Room={id:string;zoneId?:string;x:number;y:number;w:number;h:number;
+export type Room={id:string;zoneId?:string;unitId?:string;x:number;y:number;w:number;h:number;
   kind:'room'|'hall';tone:number;purpose?:string};
 export type BuildingArchetype='house'|'townhouse'|'apartment'|'retail'|'office'|'garage'|'warehouse'|'restaurant'|'motel'|'utility'|'clinic';
 export type ExteriorZone={id:string;kind:'yard'|'patio'|'driveway'|'service'|'garden'|'parking';x:number;y:number;w:number;h:number};
@@ -48,6 +49,7 @@ export type Site={
   exteriorZones?:ExteriorZone[];
   cover:Obstacle[];entrance:Pt;spawn:Pt[];enemies:Pt[];
   objective:Pt;extract:Pt;roomCount:number;
+  units?:{id:string;kind:'motel'|'apartment';roomIds:string[]}[];
   layout:'office'|'workshop'|'corridor'|'courtyard';
 };
 export const seeded=(seed:number)=>{
@@ -65,7 +67,8 @@ export function generateSite(seed:number,scale:SiteScale='standard'):Site{
  // Keep one semantic building identity and a reproducible sequence of
  // massing variants when a furniture arrangement blocks the critical route.
  for(let attempt=0;attempt<6;attempt++){
-  const geometry=compileArchitecturalSite(kind,seed+attempt*9973,scale);
+  const geometry=partitionMotelGuestUnits(
+    compileArchitecturalSite(kind,seed+attempt*9973,scale));
   geometry.seed=seed;
   geometry.identity=buildingIdentity(kind,seed,scale,geometry.roomCount);
   try{return applyArchetype(orientArchitecturalSite(geometry,seed),seed);}

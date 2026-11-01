@@ -53,7 +53,7 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
    sizedBlueprint(kind,seed,scale,baseline):baseline;
  // Compact buildings use the identical architectural grammar, with smaller
  // habitable rooms but never shrink the 48-unit door or operator clearance.
- const b:Blueprint=scale!=='standard'?authored:{
+ const basePlan:Blueprint=scale!=='standard'?authored:{
   ...authored,
   family:authored.family+' / compact',
   widths:authored.widths.map((w,col)=>Math.round(Math.max(
@@ -61,6 +61,15 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   depths:authored.depths.map((h,row)=>Math.round(Math.max(
    authored.cells[row].every(role=>role==='hallway'||role===null)?63:86,h*.81)))
  };
+ // Guest units must reserve enough physical area for a real private wet room.
+ // Never scale a compact motel into a bed-only cube without a bathroom.
+ const b:Blueprint=kind==='motel'?{
+  ...basePlan,
+  widths:basePlan.widths.map((w,col)=>basePlan.cells.some(row=>row[col]==='guest')?
+    Math.max(112,w):w),
+  depths:basePlan.depths.map((d,row)=>basePlan.cells[row].some(role=>role==='guest')?
+    Math.max(145,d):d)
+ }:basePlan;
  const rng=seeded(seed^0x2a33bedd);
  const circulationStyle=circulationFor(kind,seed);
  const xs=[80],ys=[92];
