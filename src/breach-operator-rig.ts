@@ -28,7 +28,8 @@ import {fallAngles,hitStagger,type FallPose,type WoundRegion}
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geometry.ts';
 import {buildWeaponAccessories} from './breach-weapon-accessories.ts';
-import {resolveWeaponAssembly,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
+import {resolveWeaponAssembly,sameWeaponConfiguration,
+ type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {weaponGrips,handlingPose,clampReach,
   fitWeaponPose,type Handling,type HandlingIntent}
   from './breach-weapon-pose.ts';
@@ -511,7 +512,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // firearm transform. The fit searches reachable posture before limb IK.
   const config=p.weaponConfiguration?.weapon===p.weapon?
     p.weaponConfiguration:undefined;
-  if(r.visualWeapon!==p.weapon||r.visualWeaponConfiguration!==config){
+  if(r.visualWeapon!==p.weapon||
+     !sameWeaponConfiguration(r.visualWeaponConfiguration,config)){
     // A weapon/platform or immutable attachment configuration changed.
     // Keep the live and dropped silhouette exactly in sync.
     for(const group of [r.weaponBody,r.droppedWeaponBody,
