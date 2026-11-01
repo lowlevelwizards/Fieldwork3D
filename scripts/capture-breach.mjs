@@ -36,7 +36,11 @@ try{
   home.on('pageerror',e=>errors.push('homepage: '+e.message));
   await home.goto(url.replace('breach.html',''),{
     waitUntil:'domcontentloaded'});
-  await home.locator('#breach3dCanvas').waitFor({state:'visible'});
+  await home.locator('#breach3dCanvas').waitFor({state:'visible'})
+    .catch(async error=>{
+      throw Error('Battlefield startup failed: '+errors.join(' | ')+
+        ' · '+(await home.locator('body').innerText()).slice(0,320),{cause:error});
+    });
   if(await home.locator('#app').count())
     throw Error('Pages root is still the old Verdigris game');
   if(!await home.locator('#play').count())

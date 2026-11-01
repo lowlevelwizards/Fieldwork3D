@@ -91,13 +91,12 @@ const alternate:Partial<Record<BuildingArchetype,Spec>>={
    ['bedroom','hallway','bedroom','kitchen'],
    ['living','hallway','living',null],
    ['lobby','lobby','lobby','service']]},
- retail:{family:'corner storefront / stepped stockrooms',
-  widths:[168,120,68,147],depths:[129,106,119,94],
-  front:{col:0,row:3},cells:[
-   ['stockroom','stockroom','service','office'],
-   ['stockroom','sales','checkout','storage'],
-   ['sales','sales','sales',null],
-   ['sales','sales',null,null]]},
+ retail:{family:'corner shop / offset stock and sales',
+  widths:[185,78,165,134],depths:[131,142,111],
+  front:{col:0,row:2},cells:[
+   ['stockroom','service','office','storage'],
+   ['sales','sales','sales','storage'],
+   ['sales','sales','checkout',null]]},
  garage:{family:'vehicle yard / elongated parallel service bays',
   widths:[190,68,188,135],depths:[168,112,109,98],
   front:{col:0,row:3},cells:[
