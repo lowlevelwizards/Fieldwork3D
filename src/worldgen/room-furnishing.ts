@@ -6,6 +6,7 @@ import {type Obstacle,type Pt} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 import {relatedFurniturePositions} from './room-composition.ts';
 import {ROOM_CONTRACTS} from './room-contracts.ts';
+import {recoverRoomEssentials} from './room-essential-recovery.ts';
 type Anchor='nw'|'ne'|'sw'|'se'|'west'|'east';
 type Item={id:string;anchor:Anchor};
 const compositions:Record<string,readonly Item[]>={
@@ -245,5 +246,7 @@ export function furnishRooms(site:Site,seed:number):Site{
   if(placed.length)output.push(...placed);
   else output.push(...site.cover.filter(o=>inside(o,room)));
  }
- return {...site,cover:output,furnishingIssues};
+ const completed=recoverRoomEssentials(site,output);
+ return {...site,cover:completed.cover,
+  furnishingIssues:[...furnishingIssues,...completed.issues]};
 }
