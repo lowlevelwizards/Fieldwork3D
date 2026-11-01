@@ -32,7 +32,7 @@ import {doorInteraction} from './breach-interactions.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
 import {relocateCover,canRelocateCover} from './breach-movable-cover.ts';
-import {materialForFixture,MATERIALS,type MaterialId} from './breach-materials.ts';
+import {materialForFixture,MATERIALS} from './breach-materials.ts';
 import {resolvePenetration,type BarrierHit} from './breach-penetration.ts';
 import {manipulateWindow} from './breach-windows.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
