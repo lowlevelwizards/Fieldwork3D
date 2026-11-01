@@ -57,8 +57,22 @@ export function conditionFloorPixels(site:Site,room:Room,level=effectiveConditio
   // Favor coherent color regions, edge accumulation, and intermittent
   // source stains. Keep dark channels strong enough at tactical zoom.
   const patches=clamp((broad-.38)*2.2)*(.35+.65*medium);
-  const coverage=clamp(.14+.32*patches+.32*corner+.22*source+
-    .14*asym*(medium>.48?1:.2)+.08*(fine-.5));
+  let coverage=.14+.32*patches+.32*corner+.22*source+
+    .14*asym*(medium>.48?1:.2)+.08*(fine-.5);
+  // Darken actual repeated tile grout and weathered wood seams rather
+  // than laying uniform stains over clean underlying material.
+  const wx=room.x+u*room.w,wy=room.y+v*room.h;
+  const joint=(p:number,spacing:number)=>Math.min(
+    ((p%spacing)+spacing)%spacing,spacing-((p%spacing)+spacing)%spacing);
+  if(surface==='tile'&&Math.min(joint(wx,10),joint(wy,10))<1.8)
+    coverage+=.20*(.35+.65*medium);
+  if(surface==='wood'&&joint(wy,10)<1.6)
+    coverage+=.09*(.4+.6*broad);
+  if((surface==='concrete'||surface==='sealed-concrete')&&t>.55){
+    const crack=.28+.25*Math.sin(v*8+s)+.06*Math.sin(v*27+s);
+    if(Math.abs(u-crack)<.012)coverage+=.34*(t-.55)/.45;
+  }
+  coverage=clamp(coverage);
   const opacity=Math.round(255*Math.pow(t,1.38)*coverage*1.55);
   const i=(y*size+x)*4;
   out[i]=Math.round(tint[0]*(.85+.26*medium));
