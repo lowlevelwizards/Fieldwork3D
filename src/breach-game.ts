@@ -57,6 +57,7 @@ import {bodyClear,sweptBodyClear,squeezeFacing,
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
   from './breach-squeeze-route.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {changeWeaponPlatform,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
   rayHitsActor,muzzleEndpoint,recoverWeapon,handlingInstability,type FiringMode} from './breach-ballistics.ts';
@@ -121,6 +122,7 @@ export type TeamActor=Operator & {
   lastLaneWarnAt:number;lastFireBlock:FireBlock;
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
   appearanceSeed:number;equipment?:EquipmentLoadout;
+  weaponConfiguration?:WeaponConfiguration;
   loadMovementScale?:number;
   armorIntegrity:number;helmetIntegrity:number;
   flashCharges:number;
@@ -1014,7 +1016,9 @@ export function cycleWeapon(s:Session,id:string):boolean{
   const a=party(s,id);if(!a||!canEdit(s))return false;
   const ids:WeaponId[]=['carbine','smg','rifle','shotgun'];
   const next=ids[(ids.indexOf(a.weapon)+1)%ids.length];
-  a.weapon=next;a.magazine=WEAPONS[next].capacity;
+  a.weapon=next;
+  if(a.weaponConfiguration)a.weaponConfiguration=changeWeaponPlatform(a.weaponConfiguration,next);
+  a.magazine=WEAPONS[next].capacity;
   a.reserve=WEAPONS[next].reserve;a.reload=0;a.aim=0;
   a.insertedMagazineId=a.id+'/'+next+'/loaded';
   a.spareMagazines=next==='shotgun'?[]:magazineKit(
@@ -2158,7 +2162,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     a.suppression,a.injuryStage,a.recoil)*.9;
   const proposedYaw=shotYaw(a.weaponYaw,spread,random(s),random(s));
   const clearance=weaponClearance({x:a.p.x,z:a.p.y,
-    heading:a.heading,weaponYaw:proposedYaw,weapon:a.weapon,aim:a.aim,posture:a.posture,
+    heading:a.heading,weaponYaw:proposedYaw,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,aim:a.aim,posture:a.posture,
     velocity:a.velocity,recoil:a.recoil},s.doors);
   if(clearance.blocked)return;
   const muzzle=clearance.muzzle;
@@ -2273,7 +2277,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   // Hold the shot rather than dumping ammunition into adjacent cover or
   // risking a friendly operator standing in the near firing corridor.
   const sightClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
-    weaponYaw:a.weaponYaw,weapon:a.weapon,aim:a.aim,posture:a.posture,
+    weaponYaw:a.weaponYaw,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,aim:a.aim,posture:a.posture,
     velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors);
   if(sightClearance.blocked){
     a.lastFireBlock=sightClearance.blocker;
@@ -2311,7 +2315,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   // happens *before* muzzle construction, not as an invisible post-shot roll.
   const proposedYaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
   const shotClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
-    weaponYaw:proposedYaw,weapon:a.weapon,aim:a.aim,posture:a.posture,
+    weaponYaw:proposedYaw,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,aim:a.aim,posture:a.posture,
     velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors);
   if(shotClearance.blocked)return;
   const muzzle=shotClearance.muzzle;

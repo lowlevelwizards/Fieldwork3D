@@ -4,10 +4,12 @@
  */
 import * as THREE from 'three';
 import type {WeaponId} from './breach-combat.ts';
+import {resolveWeaponAssembly,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {fitWeaponPose,handlingPose,weaponGrips} from './breach-weapon-pose.ts';
 export type MuzzleSample={x:number;y:number;z:number;yaw:number;pitch:number};
 export type MuzzleInput={x:number;z:number;heading:number;
   weaponYaw:number;weapon:WeaponId;aim:number;velocity:number;
+  weaponConfiguration?:WeaponConfiguration;
   recoil:number;obstruction?:boolean;friendlyNear?:boolean;
   threatRange?:number|null;clearanceRetraction?:number;
   posture?:'stand'|'crouch'};
@@ -16,11 +18,14 @@ export function muzzleAtShot(p:MuzzleInput):MuzzleSample{
   const handling=handlingPose({aim:p.aim,moving:Math.min(1,p.velocity/72),
     obstruction:!!p.obstruction,friendlyNear:!!p.friendlyNear,
     threatRange:p.threatRange,weapon:p.weapon});
-  const fit=fitWeaponPose({weapon:p.weapon,handling,
+  const configuration=p.weaponConfiguration?.weapon===p.weapon?
+    p.weaponConfiguration:undefined;
+  const fit=fitWeaponPose({weapon:p.weapon,handling,configuration,
     yaw:-p.weaponYaw+p.heading,recoil:p.recoil*6,
     aimBlend:p.aim,clearanceRetraction:p.clearanceRetraction});
-  const grip=weaponGrips(p.weapon);
-  const local=new THREE.Vector3(MUZZLE_TIP*grip.lengthScale,0,0)
+  const grip=weaponGrips(p.weapon,configuration);
+  const tip=configuration?resolveWeaponAssembly(configuration).muzzleX:MUZZLE_TIP;
+  const local=new THREE.Vector3(tip*grip.lengthScale,0,0)
     .applyEuler(fit.rotation).add(fit.origin);
   const worldUp=new THREE.Vector3(0,1,0);
   const axis=new THREE.Vector3(1,0,0).applyEuler(fit.rotation)

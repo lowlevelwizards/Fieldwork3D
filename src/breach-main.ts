@@ -206,6 +206,7 @@ function applyCampaignSkills(){
    a.name=m.callsign;a.skills={...m.skills};a.weapon=m.weapon;
    a.appearanceSeed=m.appearanceSeed;
    a.equipment=m.loadout;
+    a.weaponConfiguration=m.weaponConfiguration;
    a.flashCharges=equippedFlashCharges(m.loadout);
    const protection=initialArmorIntegrity(m.loadout);
    a.armorIntegrity=Math.min(protection.torso,m.armorCondition.torso);

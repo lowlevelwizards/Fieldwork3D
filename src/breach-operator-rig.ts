@@ -28,7 +28,7 @@ import {fallAngles,hitStagger,type FallPose,type WoundRegion}
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geometry.ts';
 import {buildWeaponAccessories} from './breach-weapon-accessories.ts';
-import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
+import {resolveWeaponAssembly,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {weaponGrips,handlingPose,clampReach,
   fitWeaponPose,type Handling,type HandlingIntent}
   from './breach-weapon-pose.ts';
@@ -530,9 +530,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }
     r.visualWeapon=p.weapon;r.visualWeaponConfiguration=config;
   }
-  const data=weaponGrips(p.weapon);
+  const data=weaponGrips(p.weapon,p.weaponConfiguration);
   const recoil=p.recoil??(p.firing?1.5:0);
   const fit=fitWeaponPose({weapon:p.weapon,handling,
+    configuration:p.weaponConfiguration,
     yaw:-(p.shotHeading??p.heading)-r.root.rotation.y-r.chest.rotation.y,
     recoil,clearanceRetraction:p.clearanceRetraction,
     swayYaw:motion.weaponYaw*freeMotion,
@@ -556,7 +557,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const strength=p.handlingOverride?1:
       clamp(p.aimBlend??(p.aiming?1:0),0,1);
     const eye=P(4.5,r.head.position.y+3,3.0);
-    const sight=P(-1*data.lengthScale,2.6,0)
+    const sight=P(-1*data.lengthScale,
+      p.weaponConfiguration?resolveWeaponAssembly(p.weaponConfiguration).sightHeight:2.6,0)
       .applyEuler(fit.rotation).add(fit.origin);
     const ray=P(1,0,0).applyEuler(fit.rotation).normalize();
     const nearest=sight.addScaledVector(ray,
@@ -571,7 +573,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       -maxHeadLateral,maxHeadLateral)*strength;
   }
   const eye=P(4.5,r.head.position.y+3,3+r.head.position.z);
-  const sight=P(-1*data.lengthScale,2.6,0)
+  const sight=P(-1*data.lengthScale,
+    p.weaponConfiguration?resolveWeaponAssembly(p.weaponConfiguration).sightHeight:2.6,0)
     .applyEuler(fit.rotation).add(fit.origin);
   const axis=P(1,0,0).applyEuler(fit.rotation).normalize();
   const delta=eye.sub(sight);
