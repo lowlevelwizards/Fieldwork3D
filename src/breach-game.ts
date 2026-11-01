@@ -1455,30 +1455,9 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     a.pieIndex=0;
   }
     if(n.kind==='interact'){
-    if(!n.objectId||!n.interaction){pop(a);return;}
-    if(!near(a.p,n.p,7)){
-      approach(a,n.p,dt,s,.65);return;
-    }
-    const [kind,id]=n.objectId.split(':');
-    if(kind==='prop'&&n.interaction==='push'){
-      const index=Number(id),o=s.coverState[index];
-      if(!o||!canRelocateCover(o)||d(a.p,{x:o.x,y:o.y})>
-        Math.max(o.w,o.h)/2+43){pop(a);return;}
-      const dx=o.x-a.p.x,dy=o.y-a.p.y,
-        length=Math.hypot(dx,dy)||1;
-      const pushed={x:o.x+dx/length*15,y:o.y+dy/length*15};
-      notify(s,movePhysicalProp(s,index,pushed)?
-        a.name+' PUSHED '+(o.fixture??'OBJECT'):
-        a.name+' OBJECT OBSTRUCTED');
-    }else if(kind==='window'){
-      const window=s.windows.find(w=>w.id===id);
-      if(window&&d(a.p,{x:window.x,y:window.y})<54&&
-         manipulateWindow(window,n.interaction==='open-window'?'open':'close')){
-        hear(s,{x:window.x,y:window.y},85,'window');
-        notify(s,a.name+' MOVED WINDOW');
-      }else notify(s,a.name+' WINDOW UNAVAILABLE');
-    }
-    pop(a);return;
+    if(!n.objectId||!n.interaction||
+       !intelPassable(n.p,s.intel,5.4))return false;
+    from=n.p;continue;
   }
   if(n.kind==='pie'){
     const arc=n.arc??[];
@@ -1496,7 +1475,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     return;
   }
   const at=near(a.p,n.p,5);
-  if(!at&&(n.kind==='move'||n.kind==='door'||n.kind==='sync')){
+  if(!at&&(n.kind==='move'||n.kind==='door'||n.kind==='sync'||n.kind==='interact')){
     // A persistent tracking/PIE stance stays cautious on every segment,
     // not only on explicitly marked strafe nodes.
     const tracking=a.aimInstruction?.mode==='track'||
@@ -1545,6 +1524,32 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   // Door/wait/sync orders should not cancel a persistent look/track intent.
   const held=aimHeading(a);
   if(held!==null)rotate(a,held,dt);
+  if(n.kind==='interact'){
+    if(!n.objectId||!n.interaction){pop(a);return;}
+    if(!near(a.p,n.p,7)){
+      approach(a,n.p,dt,s,.65);return;
+    }
+    const [kind,id]=n.objectId.split(':');
+    if(kind==='prop'&&n.interaction==='push'){
+      const index=Number(id),o=s.coverState[index];
+      if(!o||!canRelocateCover(o)||d(a.p,{x:o.x,y:o.y})>
+        Math.max(o.w,o.h)/2+43){pop(a);return;}
+      const dx=o.x-a.p.x,dy=o.y-a.p.y,
+        length=Math.hypot(dx,dy)||1;
+      const pushed={x:o.x+dx/length*15,y:o.y+dy/length*15};
+      notify(s,movePhysicalProp(s,index,pushed)?
+        a.name+' PUSHED '+(o.fixture??'OBJECT'):
+        a.name+' OBJECT OBSTRUCTED');
+    }else if(kind==='window'){
+      const window=s.windows.find(w=>w.id===id);
+      if(window&&d(a.p,{x:window.x,y:window.y})<54&&
+         manipulateWindow(window,n.interaction==='open-window'?'open':'close')){
+        hear(s,{x:window.x,y:window.y},85,'window');
+        notify(s,a.name+' MOVED WINDOW');
+      }else notify(s,a.name+' WINDOW UNAVAILABLE');
+    }
+    pop(a);return;
+  }
   if(n.kind==='holdClear'||n.kind==='wait'){
     // One WAIT: stay at least .5s and keep waiting while a live,
     // physically seen contact is present. Clear timer resets on sight.
