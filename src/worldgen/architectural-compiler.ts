@@ -13,6 +13,7 @@ import {synthesizeFootprint} from './footprint-synthesis.ts';
 import {fitFunctionalBaySizes} from './functional-bay-sizing.ts';
 import {relationshipScore,allowSecondaryConnection} from './room-relationships.ts';
 import {chooseCirculationTree} from './privacy-aware-circulation.ts';
+import {choosePublicFrontage} from './public-frontage.ts';
 import {circulationFor,circulationScore,loopChance,type CirculationStyle} from './circulation-grammar.ts';
 import {type Site,type Room,type BuildingArchetype,type SiteScale,seeded} from '../breach-site.ts';
 import {type Pt,type Door,type Segment} from '../breach-core.ts';
@@ -50,11 +51,12 @@ const weight=(a:Cell,b:Cell,rng:()=>number,style:CirculationStyle,kind:BuildingA
  const sensitive=protectedRoles.has(a.role)&&protectedRoles.has(b.role)?38:0;
  return semantic+sensitive+relationshipScore(kind,a.role,b.role)+rng()*6;
 };
-function cut(wall:Segment,id:string,walls:Segment[],doors:Door[]){
+function cut(wall:Segment,id:string,walls:Segment[],doors:Door[],fraction=.5){
  const length=span(wall);
  if(length<55){walls.push(wall);return;}
  const vx=(wall.b.x-wall.a.x)/length,vy=(wall.b.y-wall.a.y)/length;
- const middle={x:(wall.a.x+wall.b.x)/2,y:(wall.a.y+wall.b.y)/2};
+ const t=Math.max(24/length+.08,Math.min(1-24/length-.08,fraction));
+ const middle={x:wall.a.x+vx*length*t,y:wall.a.y+vy*length*t};
  const a={x:middle.x-vx*24,y:middle.y-vy*24};
  const b={x:middle.x+vx*24,y:middle.y+vy*24};
  if(span({a:wall.a,b:a})>.05)walls.push({a:wall.a,b:a});
@@ -106,6 +108,9 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
     Math.max(145,d):d)
  }:basePlan);
  const rng=seeded(seed^0x2a33bedd);
+ const frontage=choosePublicFrontage(b,seed);
+ const openRetailCheckout=kind==='retail'&&
+   (subtype==='convenience-store'||(seed>>>0)%4===1);
  const circulationStyle=circulationFor(kind,seed);
  const xs=[80],ys=[92];
  for(const w of b.widths)xs.push(xs[xs.length-1]+w);
@@ -127,9 +132,13 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  const adj=(c:Cell,row:number,col:number,wall:Segment,orientation:Edge['orientation'])=>{
   const i=lookup.get(key(row,col));if(i===undefined)return false;
   const a=lookup.get(key(c.row,c.col))!,neighbor=cells[i];
+  // Cashier counter and sales floor form one public retail space, not a
+  // separate room that shoppers must open a door to enter.
+  const salesCashier=openRetailCheckout&&
+    [c.role,neighbor.role].sort().join('|')==='checkout|sales';
   internal.push({a,b:i,wall,length:span(wall),orientation,
    score:weight(c,neighbor,rng,circulationStyle,kind),
-   free:straight(c,neighbor),selected:false});
+   free:straight(c,neighbor)||salesCashier,selected:false});
   return true;
  };
  let frontFound=false;
@@ -141,8 +150,8 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
   if(!adj(c,c.row,c.col+1,east,'vertical'))walls.push(east);
   const south=side(x,yy,xx,yy);
   if(!adj(c,c.row+1,c.col,south,'horizontal')){
-   if(c.col===b.front.col&&c.row===b.front.row){
-    cut(south,'FRONT',walls,doors);frontFound=true;
+   if(c.col===frontage.col&&c.row===frontage.row){
+    cut(south,'FRONT',walls,doors,frontage.fraction);frontFound=true;
    }else walls.push(south);
   }
  }
@@ -198,8 +207,10 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
    else cut(edge.wall,'D'+id++,walls,doors);
   }else walls.push(edge.wall);
  }
- const entry=cells[lookup.get(key(b.front.row,b.front.col))!];
- const frontY=ys[b.front.row+1],frontX=entry.room.x+entry.room.w/2;
+ const entry=cells[lookup.get(key(frontage.row,frontage.col))!];
+ const actualFront=doors.find(d=>d.id==='FRONT')!;
+ const frontX=(actualFront.a.x+actualFront.b.x)/2;
+ const frontY=(actualFront.a.y+actualFront.b.y)/2;
  const entrance=point(frontX,frontY+53);
  const spawn=[point(frontX-18,frontY+45),point(frontX+18,frontY+45),
   point(frontX-18,frontY+74),point(frontX+18,frontY+74)];
