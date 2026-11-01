@@ -280,7 +280,7 @@ export class CampaignScreen{
   summary.append(node('p','campaign-note',
    person.background+' · '+person.trait+' · '+person.missions+' OPERATIONS'));
   summary.append(node('p','campaign-kit-metrics','MOBILITY · '+
-   loadMobilityDescription(person.loadout,person.weaponConfiguration)+' · '
+   loadMobilityDescription(person.loadout,person.weaponConfiguration)+' · '+
    Math.round(loadMovementScale(person.loadout,person.weaponConfiguration)*100)+'% MOVEMENT SPEED'));
   summary.append(node('div','campaign-kit-metrics',
    'PRIMARY · '+person.weapon.toUpperCase()+
