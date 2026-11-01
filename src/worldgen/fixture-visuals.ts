@@ -294,14 +294,19 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           ctx.box(group,c.x+5,height*.93,c.y-d*.22,9,2,4,safety,false);
           ctx.box(group,c.x,2,c.y,7,4,7,enamel);
         }else if(fixture==='bike-rack'){
+          // Three continuous upright hoops in the YZ plane. The old
+          // X rotation laid open semicircles horizontally like C glyphs.
+          const height=asset?.height??24;
+          const r=Math.min(7.4,d*.33);
           for(const sx of [-.31,0,.31]){
-            const pipe=new THREE.Mesh(new THREE.TorusGeometry(
-              Math.min(7,d*.38),1.5,6,12,Math.PI),enamel);
-            pipe.rotation.x=Math.PI/2;
-            pipe.position.set(c.x+w*sx,9,c.y);
-            group.add(pipe);
-            ctx.box(group,c.x+w*sx,4,c.y-d*.29,3,8,3,enamel);
-            ctx.box(group,c.x+w*sx,4,c.y+d*.29,3,8,3,enamel);
+            const x=c.x+w*sx,top=height-r;
+            const hoop=new THREE.Mesh(new THREE.TorusGeometry(r,1.45,6,12,Math.PI),enamel);
+            hoop.rotation.y=Math.PI/2;
+            hoop.position.set(x,top,c.y);hoop.castShadow=true;group.add(hoop);
+            for(const sign of [-1,1]){
+              ctx.box(group,x,top*.5,c.y+sign*r,2.9,top,2.9,enamel);
+              ctx.box(group,x,1,c.y+sign*r,5.7,2,5.7,dark,false);
+            }
           }
         }
       }else if(fixture==='window-boards'){
