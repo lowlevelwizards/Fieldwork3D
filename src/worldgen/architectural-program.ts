@@ -234,8 +234,94 @@ const tertiary:Partial<Record<BuildingArchetype,Spec>>={
    ['sales','sales','service','storage'],
    ['sales','sales','checkout',null]]}
 };
+/** Fourth authored families deliberately change how the building works:
+ * public frontages away from fixed hall spines, adjacent restrooms,
+ * lateral wings, U-notches and alternate service flow. Every null is
+ * genuine exterior void rather than a decorative missing floor.
+ */
+const quaternary:Record<BuildingArchetype,Spec>={
+ house:{family:'offset courtyard house / public living entrance',
+  widths:[163,66,150,117],depths:[124,116,108,111],front:{col:2,row:3},
+  cells:[
+   ['bedroom','hallway','bedroom',null],
+   ['living','hallway','kitchen','mudroom'],
+   ['living','hallway','dining',null],
+   [null,'foyer','living',null]]},
+ townhouse:{family:'notched townhouse / lateral living entry',
+  widths:[155,61,143,112],depths:[120,105,115,113],front:{col:2,row:3},
+  cells:[
+   ['bedroom','hallway','bathroom',null],
+   ['bedroom','hallway','study',null],
+   ['living','hallway','kitchen','mudroom'],
+   ['living','foyer','living','dining']]},
+ apartment:{family:'open lobby duplex / offset entry',
+  widths:[156,65,148,128],depths:[123,116,108,103],front:{col:2,row:3},
+  cells:[
+   ['bedroom','hallway','bedroom','bathroom'],
+   ['living','hallway','kitchen','bedroom'],
+   ['living','hallway','living',null],
+   ['lobby','lobby','lobby',null]]},
+ retail:{family:'open corner store / restroom on public floor',
+  widths:[175,151,127,127],depths:[120,147,112,106],front:{col:0,row:3},
+  cells:[
+   ['stockroom','stockroom','service',null],
+   ['stockroom','sales','sales','storage'],
+   ['sales','sales','restroom',null],
+   ['sales','checkout','checkout',null]]},
+ office:{family:'L-shaped office / reception on working wing',
+  widths:[164,67,158,132],depths:[123,115,135,108],front:{col:0,row:3},
+  cells:[
+   ['meeting','hallway','office','break'],
+   ['office','hallway','cubicles','cubicles'],
+   ['office','hallway','meeting',null],
+   ['reception','lobby','lobby',null]]},
+ garage:{family:'U-shaped fleet shop / front transverse reception',
+  widths:[191,68,181,127],depths:[145,123,121,104],front:{col:2,row:3},
+  cells:[
+   ['bay','aisle','bay','workshop'],
+   ['bay','aisle',null,'parts'],
+   ['bay','aisle','bay','parts'],
+   ['waiting','reception','reception',null]]},
+ warehouse:{family:'U-shaped loading facility / working-side entrance',
+  widths:[172,70,172,142],depths:[157,111,121,109],front:{col:3,row:3},
+  cells:[
+   ['storage','aisle','storage','loading'],
+   ['storage','aisle',null,'loading'],
+   ['storage','aisle','packing','loading'],
+   [null,'aisle','office','loading']]},
+ restaurant:{family:'courtyard restaurant / main-room restroom access',
+  widths:[185,142,72,121],depths:[146,125,108,110],front:{col:0,row:3},
+  cells:[
+   ['kitchen','kitchen','pantry','service'],
+   ['dining','dining','service','service'],
+   ['dining','dining','restroom',null],
+   ['dining','dining',null,null]]},
+ motel:{family:'breezeway motel / split support court',
+  widths:[137,137,137,137],depths:[147,64,112,110],front:{col:0,row:3},
+  cells:[
+   ['guest','guest','guest','guest'],
+   ['hallway','hallway','hallway','hallway'],
+   ['reception',null,'laundry',null],
+   ['reception','lobby','maintenance','maintenance']]},
+ utility:{family:'stepped plant / multi-wing maintenance court',
+  widths:[164,65,170,125],depths:[154,124,111,109],front:{col:2,row:3},
+  cells:[
+   ['equipment','hallway','equipment','control'],
+   ['equipment','hallway',null,'maintenance'],
+   ['storage','hallway','equipment','service'],
+   [null,'service','service',null]]},
+ clinic:{family:'L-shaped clinic / large waiting lobby',
+  widths:[150,67,163,134],depths:[134,114,108,117],front:{col:2,row:3},
+  cells:[
+   ['exam','hallway','exam','supply'],
+   ['treatment','hallway','exam','staff'],
+   ['waiting','hallway','waiting',null],
+   ['waiting','reception','waiting',null]]}
+};
 export function architecturalBlueprint(kind:BuildingArchetype,seed=0):Blueprint{
- const original=seed%13<3&&tertiary[kind]?tertiary[kind]!:
+ const topology=(seed>>>0)%11;
+ const original=[3,5,8].includes(topology)?quaternary[kind]:
+  seed%13<3&&tertiary[kind]?tertiary[kind]!:
   seed%7<3&&alternate[kind]?alternate[kind]!:layouts[kind];
  // Independent architectural stream: variation never changes the intended
  // frontage, program or circulation, only bay sizes and left/right orientation.

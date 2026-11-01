@@ -163,7 +163,9 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  // Strongly prefer hall/service access to making a sensitive room a corridor.
  const circulation=chooseCirculationTree(cells.map(c=>c.role),
   internal.map(edge=>({a:edge.a,b:edge.b,score:edge.score,free:edge.free,
-   eligible:edge.length>=68&&
+   // A continuous open room/hall edge needs no 48-unit hinged opening;
+   // only actual cuts require the 68-unit wall-length allowance.
+   eligible:(edge.free||edge.length>=68)&&
      !forbiddenUnitConnection(cells[edge.a],cells[edge.b])})));
  internal.forEach((edge,index)=>{
   if(circulation.has(index)){edge.selected=true;union(edge.a,edge.b);}
