@@ -70,7 +70,7 @@ import {newCampaign,readCampaign,acceptContract,resolveOperation,
  equipCampaignWeaponAttachment,purchaseAndEquipWeaponAttachment,
  saveCampaignKitPreset,applyCampaignKitPreset,
  deleteCampaignKitPreset,renameCampaignOperator,cycleCampaignAppearance,
- repairCampaignArmor,purchaseFlash,
+ repairCampaignArmor,serviceCampaignWeapon,purchaseFlash,
  type CampaignState,type CampaignReport} from './campaign-state.ts';
 import {loadMovementScale,equippedFlashCharges} from './equipment-loadouts.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
@@ -2481,6 +2481,8 @@ const campaignScreen=new CampaignScreen({
  equipWeapon:(id,weapon)=>{if(campaign){campaign=equipCampaignWeapon(campaign,id,weapon);
   saveCampaign();showCampaignHome();}},
  repairArmor:(id)=>{if(campaign){campaign=repairCampaignArmor(campaign,id);
+  saveCampaign();showCampaignHome();}},
+ serviceWeapon:(id)=>{if(campaign){campaign=serviceCampaignWeapon(campaign,id);
   saveCampaign();showCampaignHome();}},
  equipGear:(id,slot,itemId)=>{if(campaign){
   campaign=equipCampaignGear(campaign,id,slot,itemId);
