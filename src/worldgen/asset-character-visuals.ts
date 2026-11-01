@@ -40,13 +40,13 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
  const variation=characterVariant(fixture,index);
  const baseColors=[0x687e76,0x9e8765,0x9c725b];
  const main=ctx.solid(baseColors[variation],.86,fixturePixelSurface(fixture));
- const dark=ctx.solid(0x333d3c,.92,'metal');
+ const dark=ctx.solid(0x333d3c,.92,'industrial-steel');
  const cream=ctx.solid(0xbdb79e,.9,'metal');
  const light=ctx.solid(0xc4b89e,.89,'metal');
  const glass=ctx.solid(0x557780,.32);
  const rubber=ctx.solid(0x293332,.97,'rubber');
  const red=ctx.solid(0xa16d57,.9,'metal');
- const accent=ctx.solid(variation===1?0xb69b57:0x82988d,.86,'metal');
+ const accent=ctx.solid(variation===1?0xb69b57:0x82988d,.86,'painted-metal');
  const b=(x:number,y:number,z:number,bw:number,bh:number,bd:number,
  mat:THREE.Material=main,cast=true)=>{
    const mesh=ctx.box(group,c.x+x,y,c.y+z,

@@ -30,16 +30,18 @@ export function zonePixelSurface(zone:string):PixelSurface{
 /** Component-level overrides; the body material is never assumed from shape. */
 export type FixtureMaterialRole='body'|'lid'|'frame'|'hardware'|'label'|'wheel';
 export const FIXTURE_MATERIAL_OVERRIDES:Readonly<Record<string,Partial<Record<FixtureMaterialRole,PixelSurface>>>>={
- dumpster:{body:'metal',lid:'plastic',frame:'metal',hardware:'metal',label:'paper',wheel:'rubber'},
- 'shipping-container':{body:'metal',frame:'metal',hardware:'metal'},
+ dumpster:{body:'painted-metal',lid:'plastic',frame:'industrial-steel',hardware:'metal',label:'paper',wheel:'rubber'},
+ 'shipping-container':{body:'corrugated-metal',frame:'industrial-steel',hardware:'metal'},
  'trash-bin':{body:'plastic',lid:'plastic',frame:'metal'},
  shed:{body:'rough-wood',frame:'rough-wood'},
  'window-boards':{body:'rough-wood',hardware:'metal'},
  pallet:{body:'rough-wood',frame:'rough-wood'},
  crate:{body:'rough-wood',frame:'rough-wood'},
- 'filing-cabinet':{body:'metal',hardware:'metal'},
- locker:{body:'metal',hardware:'metal'},
- 'tool-chest':{body:'metal',hardware:'metal'},
+ 'filing-cabinet':{body:'painted-metal',hardware:'metal'},
+ locker:{body:'painted-metal',hardware:'metal'},
+ 'tool-chest':{body:'painted-metal',hardware:'metal'},
+ generator:{body:'painted-metal',frame:'industrial-steel'},
+ 'utility-cabinet':{body:'painted-metal',frame:'industrial-steel'},
 };
 export function fixtureComponentSurface(fixture:string,role:FixtureMaterialRole):PixelSurface{
  const override=FIXTURE_MATERIAL_OVERRIDES[fixture]?.[role];

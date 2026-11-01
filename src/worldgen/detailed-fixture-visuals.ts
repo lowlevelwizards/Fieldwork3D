@@ -222,7 +222,8 @@ export function renderDetailedFixture(group:THREE.Group,c:Obstacle,
    return true;
  }
  case 'shipping-container':{
-   b(0,H*.5,0,w,H,d*.95,red);
+   const shippingPaint=ctx.solid(0xa77762,.89,fixtureComponentSurface('shipping-container','body'));
+   b(0,H*.5,0,w,H,d*.95,shippingPaint);
    for(const sx of [-1,1])
     b(sx*w*.495,H*.50,0,2.5,H,d,metal);
    for(const sz of [-1,1]){

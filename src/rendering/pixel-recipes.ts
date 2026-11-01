@@ -4,7 +4,8 @@ export type PixelSurface =
  'wood'|'plaster'|'brick'|'concrete'|'tile'|'carpet'|'metal'|
  'fabric'|'asphalt'|'earth'|'gravel'|'grass'|'rubber'|'foliage'|'paper'|
  'linoleum'|'sealed-concrete'|'cinderblock'|'siding'|'panel'|
- 'plastic'|'porcelain'|'door-wood'|'painted-wood'|'furniture-wood'|'rough-wood';
+ 'plastic'|'porcelain'|'door-wood'|'painted-wood'|'furniture-wood'|'rough-wood'|
+ 'painted-metal'|'industrial-steel'|'corrugated-metal'|'enamel-metal';
 export const OPERATOR_REFERENCE_HEIGHT=40;
 export const TEXELS_PER_OPERATOR=32;
 export const PIXEL_WORLD_SIZE=OPERATOR_REFERENCE_HEIGHT/TEXELS_PER_OPERATOR;
@@ -14,7 +15,8 @@ export const PIXEL_SURFACES:readonly PixelSurface[]=[
  'wood','plaster','brick','concrete','tile','carpet','metal',
  'fabric','asphalt','earth','gravel','grass','rubber','foliage','paper',
  'linoleum','sealed-concrete','cinderblock','siding','panel',
- 'plastic','porcelain','door-wood','painted-wood','furniture-wood','rough-wood'
+ 'plastic','porcelain','door-wood','painted-wood','furniture-wood','rough-wood',
+ 'painted-metal','industrial-steel','corrugated-metal','enamel-metal'
 ];
 export const MATERIAL_RECIPE_VERSION=3;
 const hash=(x:number,y:number,s:number)=>{
@@ -74,9 +76,15 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
    case 'tile':
     if(x%8===0||y%8===0)shade=231;
     break;
-   case 'metal':case 'panel':
-    if(x%16===0)shade=kind==='panel'?237:249;
+   case 'metal':case 'panel':case 'painted-metal':case 'industrial-steel':
+   case 'corrugated-metal':case 'enamel-metal':{
+    if(kind==='corrugated-metal')shade=x%8===0?231:x%8===1?248:255;
+    else if(kind==='industrial-steel')shade=x%16===0?239:255;
+    else if(kind==='painted-metal')shade=x%16===0?246:255;
+    else if(kind==='enamel-metal')shade=x%16===0?251:255;
+    else if(x%16===0)shade=kind==='panel'?237:249;
     break;
+   }
    case 'siding':
     if(y%8===0)shade=241;
     break;
