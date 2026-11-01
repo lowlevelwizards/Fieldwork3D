@@ -64,6 +64,9 @@ import {kitMedicalSupplies,spendMedicalSupply,transferMedicalSupply,
  from './equipment-medical-supplies.ts';
 import {treatmentSupplyForWound,treatmentDuration}
  from './breach-medical-treatment.ts';
+import {equipmentRetrievalSeconds}
+ from './equipment-carry-placement.ts';
+import {initialEquipmentLoadout} from './equipment-loadouts.ts';
 import {stabilizationSummary} from './breach-casualty-status.ts';
 import {casualtyTrailingPosition,transportIsClear,type TransportMode}
  from './breach-casualty-transport.ts';
@@ -1633,8 +1636,12 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     a.velocity=0;rotate(a,angle(a.p,doorCenter(door)),dt);
     if(a.actionTimer===0){a.lastDoorAt=s.seconds;a.lastDoorId=door.id;
       a.lastDoorMethod='open';}
+    // Tool retrieval from a backpack or inaccessible overflow is slower
+    // than a belt mount. Wedge removal still uses the required tool.
+    const access=equipmentRetrievalSeconds(
+      a.equipment??initialEquipmentLoadout(a.weapon),a.spareMagazines,'utility');
     a.actionTimer+=dt;
-    if(a.actionTimer<verdict.seconds)return;
+    if(a.actionTimer<verdict.seconds+(Number.isFinite(access)?access:0))return;
     if(method==='wedge'){
       door.wedged=true;door.wedgeOwnerId=a.id;
       a.wedgeRemaining--;
@@ -1741,10 +1748,13 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     if(a.actionTimer===0){
       a.lastTreatmentAt=s.seconds;a.lastTreatmentTargetId=patient.id;
     }
+    const access=equipmentRetrievalSeconds(
+      a.equipment??initialEquipmentLoadout(a.weapon),a.spareMagazines,'medical');
+    const duration=treatmentDuration(supply)+(Number.isFinite(access)?access:0);
     a.actionTimer+=dt;
     a.treatmentActive=true;
-    a.treatmentProgress=Math.min(1,a.actionTimer/treatmentDuration(supply));
-    if(a.actionTimer>=treatmentDuration(supply)){
+    a.treatmentProgress=Math.min(1,a.actionTimer/duration);
+    if(a.actionTimer>=duration){
       if(stabilizeWound(patient.medical,wound.id)){
         spendMedicalSupply(a.medicalSupplies,supply);
         battleEvent(s,'interaction',a,patient.p,
