@@ -5,6 +5,7 @@ import {activateSite,passable,route,type Pt} from './breach-core.ts';
 import {generateSite,type SiteScale,type Site} from './breach-site.ts';
 import {assessArchitecture} from './worldgen/architecture-quality.ts';
 import {auditRoomRelationships,type SpatialRelationshipDiagnostic} from './worldgen/room-relationships.ts';
+import {missingPhysicalWorkflowLinks,type MissingWorkflowLink} from './worldgen/workflow-door-audit.ts';
 import {assessRoomContracts,type RoomContractResult} from './worldgen/room-contracts.ts';
 import {assessUnitContracts,type UnitContractResult} from './worldgen/unit-contracts.ts';
 import {auditFixtureService,type ServiceIssue} from './worldgen/fixture-service-clearance.ts';
@@ -17,6 +18,7 @@ export type SiteAudit={seed:number;archetype:string;layout:string;
   roomContracts:RoomContractResult[];incompleteZones:string[];
   furnishingIssues:{roomId:string;fixture:string;reason:string}[];
   undesirableDoorways:SpatialRelationshipDiagnostic[];
+  missingWorkflowLinks:MissingWorkflowLink[];
   unitContracts:UnitContractResult[];serviceIssues:ServiceIssue[];
   errors:string[]};
 export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteAudit{
@@ -106,6 +108,7 @@ export function auditSite(site:Site):SiteAudit{
     roomContracts,incompleteZones:roomContracts.filter(r=>!r.complete).map(r=>r.zoneId),
     furnishingIssues:site.furnishingIssues??[],
     undesirableDoorways:auditRoomRelationships(site),
+    missingWorkflowLinks:missingPhysicalWorkflowLinks(site),
     unitContracts:assessUnitContracts(site),
     serviceIssues:auditFixtureService(site),errors};
 }
