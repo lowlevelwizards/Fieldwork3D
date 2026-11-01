@@ -27,7 +27,7 @@ import {parseOperationHistory,addOperationRecord,
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
-import {magazineKit} from './breach-magazines.ts';
+
 import {stageMagazines} from './equipment-magazine-placement.ts';
 import {doorReachable} from './breach-door.ts';
 import {canRelocateCover} from './breach-movable-cover.ts';
@@ -204,10 +204,9 @@ function applyCampaignSkills(){
    a.helmetIntegrity=Math.min(protection.head,m.armorCondition.head);
    a.loadMovementScale=loadMovementScale(m.loadout);
    a.magazine=m.magazine;a.reserve=m.reserve;
-   a.insertedMagazineId=a.id+'/'+a.weapon+'/loaded';
+   a.insertedMagazineId=m.loadedMagazineId;
    a.spareMagazines=a.weapon==='shotgun'?[]:
-    stageMagazines(magazineKit(a.id,a.weapon,a.reserve,
-     WEAPONS[a.weapon].capacity),m.loadout);
+    stageMagazines(m.magazines,m.loadout);
    if(m.recoveryDays>0&&m.injuries>0){
     a.injuryStage=Math.max(a.injuryStage,Math.min(2,m.injuries));
     a.health=Math.min(a.health,4-a.injuryStage);
@@ -256,7 +255,9 @@ function recordCompletedOperation(){
      id:careerId(a.id),shots:a.shots,hits:a.hits,pointShots:a.pointShots,
      aimedShots:a.aimedShots,longHits:a.longHits,injuryStage:a.injuryStage,
      survived:a.health>0,magazine:a.magazine,reserve:a.reserve,
-     armorIntegrity:a.armorIntegrity,helmetIntegrity:a.helmetIntegrity
+     armorIntegrity:a.armorIntegrity,helmetIntegrity:a.helmetIntegrity,
+     spareMagazines:a.spareMagazines.map(m=>({...m})),
+     loadedMagazineId:a.insertedMagazineId
     }))
    };
    campaign=resolveOperation(campaign,result);saveCampaign();return;
