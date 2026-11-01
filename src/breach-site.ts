@@ -40,6 +40,7 @@ export type Site={
   scenarioStyle?:'routine'|'guarded'|'disrupted';
   condition?:EnvironmentCondition;
   dressing?:import('./worldgen/environment-dresser.ts').DecorativeDetail[];
+  furnishingIssues?:{roomId:string;fixture:string;reason:string}[];
   wallDetails?:import('./worldgen/wall-dresser.ts').WallDetail[];
   openings?:WideOpening[];
   exteriorZones?:ExteriorZone[];
