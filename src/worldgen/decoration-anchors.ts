@@ -16,8 +16,11 @@ export function compatibleDecoration(kind:SurfaceDetail,fixture:string):boolean{
 /** Match the actual visible top of the shape in breach-3d.ts, not its
  * approximate collision/cover classification. */
 export function visibleSurfaceHeight(fixture:string):number{
- // Live geometry and surface dressing now share the canonical object height.
- return propDefinition(fixture)?.height??0;
+ // Tables are boxes centered AT their canonical top, with a 3u slab.
+ // Place decorations on the upper face, rather than embedding in the table.
+ const tableTop=['table','desk','counter','workbench','cart',
+  'dining-table','coffee-table','meeting-table'].includes(fixture);
+ return (propDefinition(fixture)?.height??0)+(tableTop?1.5:0);
 }
 
 export function surfaceOffset(_fixture:string,width:number,depth:number,rng:()=>number){
