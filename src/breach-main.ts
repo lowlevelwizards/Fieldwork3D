@@ -17,6 +17,8 @@ import {
   planCasualtyTransport,planRecoverMedical,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
+import {equipmentTrainingSite} from './equipment-training-range.ts';
+import type {Site} from './breach-site.ts';
 import {equippedEntryMethods,issuedWedges} from './equipment-entry-tools.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
@@ -390,7 +392,15 @@ function renderOperationsBoard(){
  const close=document.createElement('button');
  close.type='button';close.textContent='CLOSE';
  close.addEventListener('click',()=>{operationsBoard.hidden=true;});
- heading.append(close);operationsBoard.append(heading);
+ heading.append(close);
+ const range=document.createElement('button');range.type='button';
+ range.textContent='TEST RANGE';range.title='Nonpersistent equipment range';
+ range.addEventListener('click',()=>{
+  if(state.phase!=='planning'||replaying)return;
+  campaignMode='quick';
+  reset(state.variant,undefined,undefined,equipmentTrainingSite());
+ });
+ heading.append(range);operationsBoard.append(heading);
  const history=operationHistory();
  const intro=document.createElement('p');
  intro.textContent='OPERATIONS: '+history.length+
@@ -1253,6 +1263,9 @@ function medicalCandidate(id:string){
  }).sort((x,y)=>distance(a.p,x.p)-distance(a.p,y.p))[0]??null;
 }
 function updateHud(){
+  const leaveRange=document.querySelector<HTMLButtonElement>(
+   '[data-equipment-range-exit]');
+  if(leaveRange)leaveRange.hidden=!state.site?.training;
   paintOperatorAccent(ui.quickStates,selected);
   paintOperatorAccent(ui.context,selected);
   paintOperatorAccent(contextTether,selected);
@@ -2371,13 +2384,15 @@ ui.replayAnalysis.addEventListener('click',()=>{
   replayAnalysis=!replayAnalysis;updateReplayHud();
 });
 ui.replayExit.addEventListener('click',exitReplay);
-function reset(next=state.variant,siteSeed?:number,missionOverride?:Session['missionType']){
+function reset(next=state.variant,siteSeed?:number,
+ missionOverride?:Session['missionType'],prebuiltSite?:Site){
   replaying=false;replayPlaying=false;finishedSession=null;
   operationsBoard.hidden=true;
   flashMode=false;document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
   state=newSession(next,legacyStudy?undefined:
-    siteSeed??randomSiteSeed(),selectedIntelMode,requestedSiteScale,missionOverride);
+    siteSeed??randomSiteSeed(),selectedIntelMode,requestedSiteScale,missionOverride,
+    prebuiltSite);
   if(campaignMode==='quick')persistentRoster=freshQuickPlayRoster(persistentRoster);
   applyRequestedCondition(state);
   applyRosterIdentity(state,persistentRoster);
@@ -2517,6 +2532,13 @@ fieldLightButton.addEventListener('click',()=>{
  toggleWeaponLight(state,selected);updateHud();
 });
 ui.siteSettings.append(fieldLightButton);
+const leaveRangeButton=document.createElement('button');
+leaveRangeButton.type='button';leaveRangeButton.textContent='LEAVE TEST RANGE';
+leaveRangeButton.dataset.equipmentRangeExit='';
+leaveRangeButton.addEventListener('click',()=>{
+ if(state.site?.training){reset();updateHud();}
+});
+ui.siteSettings.append(leaveRangeButton);
 medicalButton=document.createElement('button');
 medicalButton.type='button';
 medicalButton.className=ui.loadout.className;
