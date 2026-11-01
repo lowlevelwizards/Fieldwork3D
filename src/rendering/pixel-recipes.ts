@@ -5,7 +5,8 @@ export type PixelSurface =
  'fabric'|'asphalt'|'earth'|'gravel'|'grass'|'rubber'|'foliage'|'paper'|
  'linoleum'|'sealed-concrete'|'cinderblock'|'siding'|'panel'|
  'plastic'|'porcelain'|'door-wood'|'painted-wood'|'furniture-wood'|'rough-wood'|
- 'painted-metal'|'industrial-steel'|'corrugated-metal'|'enamel-metal';
+ 'painted-metal'|'industrial-steel'|'corrugated-metal'|'enamel-metal'|
+ 'scruffy-grass'|'worn-asphalt'|'packed-earth';
 export const OPERATOR_REFERENCE_HEIGHT=40;
 export const TEXELS_PER_OPERATOR=32;
 export const PIXEL_WORLD_SIZE=OPERATOR_REFERENCE_HEIGHT/TEXELS_PER_OPERATOR;
@@ -16,7 +17,8 @@ export const PIXEL_SURFACES:readonly PixelSurface[]=[
  'fabric','asphalt','earth','gravel','grass','rubber','foliage','paper',
  'linoleum','sealed-concrete','cinderblock','siding','panel',
  'plastic','porcelain','door-wood','painted-wood','furniture-wood','rough-wood',
- 'painted-metal','industrial-steel','corrugated-metal','enamel-metal'
+ 'painted-metal','industrial-steel','corrugated-metal','enamel-metal',
+ 'scruffy-grass','worn-asphalt','packed-earth'
 ];
 export const MATERIAL_RECIPE_VERSION=3;
 const hash=(x:number,y:number,s:number)=>{
@@ -99,17 +101,19 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
    case 'fabric':case 'carpet':
     if(manufacturedSpeck(x,y,seed,16))shade=251;
     break;
-   case 'grass':{
+   case 'grass':case 'scruffy-grass':{
     // Four small, coherent blade clusters; intentionally empty between them.
     const cx=(5+seed%3),cy=7;
     const sparse=(x===cx&&y===cy)||(x===cx+1&&y===cy-2)||
       (x===24&&y===22)||(x===22&&y===23);
-    if(sparse)shade=236;
+    if(sparse)shade=kind==='scruffy-grass'?227:236;
     else if((x===cx-1&&y===cy-1)||(x===23&&y===21))shade=246;
+    if(kind==='scruffy-grass'&&x>=14&&x<=16&&y>=12&&y<=14)shade=239;
     break;
    }
-   case 'earth':
-    if((x===6&&y===9)||(x===25&&y===21))shade=245;
+   case 'earth':case 'packed-earth':
+    if((x===6&&y===9)||(x===25&&y===21))shade=kind==='packed-earth'?237:245;
+    if(kind==='packed-earth'&&y===16&&x>=8&&x<=14)shade=247;
     break;
    case 'gravel':{
     const stone=(x>=7&&x<=9&&y>=8&&y<=9)||
@@ -129,8 +133,9 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
    case 'plaster':
     if(manufacturedSpeck(x,y,seed,32))shade=252;
     break;
-   case 'asphalt':
-    if(manufacturedSpeck(x,y,seed,16))shade=252;
+   case 'asphalt':case 'worn-asphalt':
+    if(manufacturedSpeck(x,y,seed,16))shade=kind==='worn-asphalt'?243:252;
+    if(kind==='worn-asphalt'&&y===19&&x>=10&&x<=15)shade=241;
     break;
    case 'paper':case 'plastic':case 'porcelain':break;
   }
