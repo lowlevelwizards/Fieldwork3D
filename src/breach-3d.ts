@@ -517,6 +517,15 @@ export class TacticalScene3D{
           this.solid(0x53615e,.78,'industrial-steel'):this.solid(0x72817d,.78,'painted-metal');
         const middle=(invert?-1:1)*length/2;
         this.box(leaf,middle,17,0,length-4,34,4,panel);
+        if(style==='wood'){
+          // Quiet manufactured two-panel door joinery; no floorboard motif.
+          const inset=this.solid(theme.door,.9,'painted-wood');
+          for(const y of [12,26]){
+            this.box(leaf,middle,y,2.6,length*.64,10,.7,inset,false);
+            for(const sx of [-1,1])
+              this.box(leaf,middle+sx*length*.32,y,2.8,1,10,.7,doorTrim,false);
+          }
+        }
         for(const z of [-3,3])this.box(leaf,(invert?-1:1)*length*.7,
           18,z,3,3,2,metal,false);
         if(style==='steel'||style==='reinforced'){

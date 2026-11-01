@@ -513,11 +513,17 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
      b(0,H*.43,0,w*.92,H*.79,d*.91,paint);
      b(0,H*.86,-d*.24,w*.91,3,d*.47,lid);
      b(0,H*.86,d*.24,w*.91,3,d*.47,lid);
+     for(const sx of [-.35,.35])b(sx*w,H*.84,0,3,3,d*.5,steel,false);
      for(const sx of [-1,1]){
        b(sx*w*.46,H*.48,0,2.4,H*.83,d*.94,steel);
        b(sx*w*.34,2.4,0,5,4.8,5,rubber);
      }
      b(0,H*.42,d*.465,w*.40,H*.24,.8,cream,false);
+     // Welded reinforcing channels, not wooden planks.
+     for(const sx of [-.28,.28]){
+       b(sx*w,H*.46,d*.466,1.6,H*.54,1.2,paint,false);
+       b(sx*w,H*.20,d*.48,w*.16,3.6,1.8,dark,false); // fork socket
+     }
      for(const sx of [-.29,.29])
        b(sx*w,H*.54,d*.468,3,H*.33,1.1,dark,false);
    }else if(fixture==='grill'){
