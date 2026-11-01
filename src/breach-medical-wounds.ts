@@ -17,7 +17,7 @@ export function bleedingGrade(region:WoundRegion,severity:number,seed:number):Bl
  if(severity<=0)return 0;
  // Some hits cause little external bleeding, and armor blocks have none.
  if(severity===1)return seed%5===0?0:seed%3===0?2:1;
- return seed%4===0?2:3;
+ return region==='head'?2:seed%4===0?2:3;
 }
 export function registerWound(state:MedicalCondition,shotId:number,region:WoundRegion,
  severity:number,at:number):void{
