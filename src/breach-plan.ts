@@ -1,6 +1,6 @@
 /** 053: Player-authored instructions are not generated navigation vertices. */
 export type Pt={x:number;y:number};
-export type PlanKind='move'|'door'|'wait'|'holdClear'|'look'|'sync'|'pie'|'reload'|'flash';
+export type PlanKind='move'|'door'|'wait'|'holdClear'|'look'|'sync'|'pie'|'reload'|'flash'|'interact';
 export type MoveMode='advance'|'strafe'|'sprint';
 export type FirePolicy='engage'|'hold'|'return'|'focus'|'suppress';
 /** Persistent world-facing instruction, independent of any movement route. */
@@ -10,6 +10,7 @@ export type PieSide='cw'|'ccw';
 export type DoorMethod='open'|'close'|'kick'|'hold';
 export type PlanNode={
   id:number;kind:PlanKind;p:Pt;facing?:number;doorId?:string;
+  objectId?:string;interaction?:'push'|'open-window'|'close-window';
   method?:DoorMethod;duration?:number;syncCode?:string;holdOnContact?:boolean;
   postureState?:'stand'|'crouch';paceState?:'walk'|'run';
   moveMode?:MoveMode;pivot?:Pt;pieSide?:PieSide;pieDegrees?:number;arc?:Pt[];
@@ -45,7 +46,7 @@ export function modifyNode(nodes:PlanNode[],id:number,patch:Partial<PlanNode>){
   if(!node)return false;
   if(patch.p)node.p={...patch.p};
   for(const prop of ['facing','kind','doorId','method','duration','syncCode','holdOnContact','moveMode','postureState','paceState','pieSide','aimMode','aimLabel',
-    'firePolicyState','fireTargetId'] as const){
+    'firePolicyState','fireTargetId','objectId','interaction'] as const){
     const val=patch[prop];
     if(val!==undefined){
       // Values have different property types; assign to the matching key.
