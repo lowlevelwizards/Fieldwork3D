@@ -6,6 +6,7 @@ import {BUILDING_ARCHETYPES} from './breach-archetypes.ts';
 import {activateSite,type Pt} from './breach-core.ts';
 import {auditGeneratedSite} from './breach-site-audit.ts';
 import {assessArchitecture} from './worldgen/architecture-quality.ts';
+import {assessRoomContracts} from './worldgen/room-contracts.ts';
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const typeInput=el<HTMLSelectElement>('building');
 const scaleInput=el<HTMLSelectElement>('scale');
@@ -28,6 +29,7 @@ let markers:{node:HTMLElement;p:Pt}[]=[];
 function updateLabels(){
  labelLayer.replaceChildren();markers=[];
  const site=session.site;if(!site)return;
+ const assessments=assessRoomContracts(site);
  if(el<HTMLInputElement>('rooms').checked)for(const room of site.rooms){
   const button=document.createElement('button');
   button.textContent=(room.purpose??room.kind).toUpperCase();
@@ -73,7 +75,8 @@ function report(site:Site):string{
   (site.condition??'ordinary').toUpperCase()+' · '+result.dressing+
   ' details · '+result.typedProps+' typed props · '+result.archOpenings+
   ' wide openings\n'+result.emptyRooms.length+' unfurnished functional rooms / '+ 
-  result.functionalRooms+' rooms total\n'+(result.errors.length?
+  result.functionalRooms+' rooms total\n'+
+  result.incompleteZones.length+' functionally incomplete zones\n'+(result.errors.length?
    'CHECKS: '+result.errors.join('; '):'CHECKS: PASS');
 }
 // Site scale changes dimensions, not architectural fidelity or room count.
