@@ -26,7 +26,7 @@ import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './rendering/wear-opacity.ts';
 import {pixelSign,type PixelSignKind} from './rendering/pixel-signage.ts';
 import {pixelOverlay,overlayForZone,type PixelOverlay} from './rendering/pixel-overlays.ts';
 import {roofShouldShow} from './worldgen/roof-cutaways.ts';
-import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,activeSite,
+import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,doorLeafSegment,activeSite,
   type Pt,type Door} from './breach-core.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {type Site,type Room} from './breach-site.ts';
@@ -1438,7 +1438,7 @@ export class TacticalScene3D{
           THREE.LineDashedMaterial|THREE.MeshBasicMaterial;
         if('opacity' in material){
           material.transparent=true;
-          material.opacity=focused?.95:.27;
+          material.opacity=focused ? .95 : .27;
         }
       }
       // Ground sweep is visible from the briefing, not only after stacking.
