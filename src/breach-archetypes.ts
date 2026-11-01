@@ -84,7 +84,7 @@ export function applyArchetype(site:Site,seed:number):Site{
     const environment=buildArchetypeEnvironment(architecture,seed);
     const result=dressWindowSecurity(decorateWalls(populateFunctionalRooms(dressSite(
       furnishRooms(environment,seed),seed),seed),seed),seed);
-    return {...synchronizeWindowBarriers(enforceServiceHatchBarriers(result)),bounds:site.bounds??
+    return {...enforceServiceHatchBarriers(synchronizeWindowBarriers(result)),bounds:site.bounds??
       {minX:0,minY:0,maxX:640,maxY:740}};
   };
   // Controlled rollout: keep standard maps fast and proven while sampling
