@@ -21,9 +21,9 @@ test('small impossible rooms transparently report unmet essentials',()=>{
 });
 test('required objects may recover into a second connected rectangle',()=>{
  const input={...site('bathroom',70,100),rooms:[
-  {id:'r1',kind:'room',purpose:'bathroom',zoneId:'unit',x:0,y:0,w:70,h:100},
-  {id:'r2',kind:'room',purpose:'bathroom',zoneId:'unit',x:70,y:0,w:95,h:100}]};
+  {id:'r1',kind:'room',purpose:'bathroom',zoneId:'unit',x:0,y:0,w:32,h:100},
+  {id:'r2',kind:'room',purpose:'bathroom',zoneId:'unit',x:32,y:0,w:95,h:100}]};
  const result=recoverRoomEssentials(input,[]);
- assert.ok(result.cover.some(o=>o.x>70));
+ assert.ok(result.cover.some(o=>o.x>32));
  assert.equal(assessRoomContracts({...input,cover:result.cover})[0].complete,true);
 });
