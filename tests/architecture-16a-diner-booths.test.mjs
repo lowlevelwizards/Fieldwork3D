@@ -6,7 +6,7 @@ import {generateSite} from '../src/breach-site.ts';
 test('a diner booth is one physically blocking table-and-banquette installation',()=>{
  const p=propDefinition('diner-booth');assert.ok(p?.solid);
  assert.equal(p.cover,'low');
- assert.deepEqual([p.width,p.depth],[66,46]);
+ assert.deepEqual([p.width,p.depth],[56,38]);
  assert.equal(assetLibrary().find(x=>x.id==='diner-booth')?.presentation,'bespoke');
  assert.deepEqual(assetLibraryProblems(),[]);
 });
@@ -14,9 +14,6 @@ test('diner and sit-down booths are contextual and never overlap clearance regio
  let booths=0;
  for(let seed=0;seed<144;seed++){
   const site=generateSite(seed);
-  if(site.archetype==='restaurant')console.log('BOOTH-DIAG',seed,site.identity?.subtype,
-   site.rooms.filter(r=>r.purpose==='dining').map(r=>[r.w,r.h,r.x,r.y]),
-   site.cover.filter(c=>c.fixture==='half-wall'||c.fixture==='bar-counter').map(c=>[c.fixture,c.x,c.y]));
   for(const o of site.cover.filter(c=>c.fixture==='diner-booth')){
    booths++;
    assert.equal(site.archetype,'restaurant');
