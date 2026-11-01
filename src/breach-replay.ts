@@ -16,7 +16,7 @@ export type ActorFrame=Pick<TeamActor,
   'reloadFromRounds'|'reloadTargetRounds'|'reloadSelectedMagazineId'|
   'lastHitAt'|'lastDownAt'|'lastHitRegion'|'lastHitYaw'|
   'lastHitSeverity'|'downPose'|'flashUntil'|'suppression'|
-  'weapon'|'weaponConfiguration'|'injuryStage'|'armorIntegrity'|'helmetIntegrity'|'flashCharges'|'morale'|'surrendered'|'defense'|'watch'|
+  'weapon'|'weaponConfiguration'|'weaponLightOn'|'injuryStage'|'armorIntegrity'|'helmetIntegrity'|'flashCharges'|'morale'|'surrendered'|'defense'|'watch'|
   'lastThrowAt'|'lastDoorAt'|'lastDoorId'|'lastDoorMethod'|'stride'|
   'weaponYaw'|'stability'|'recoil'|'lastShotAt'|'fireMode'|'burstCount'|'skills'|
   'squeeze'|'squeezeYaw'|'squeezeTime'>;
@@ -64,7 +64,7 @@ export function snapshot(s:Session,seenGround?:string[]):ReplayFrame{
       weapon:a.weapon,weaponConfiguration:a.weaponConfiguration?
         {version:1,weapon:a.weaponConfiguration.weapon,
           slots:{...a.weaponConfiguration.slots}}:undefined,
-       injuryStage:a.injuryStage,
+       injuryStage:a.injuryStage,weaponLightOn:a.weaponLightOn,
       armorIntegrity:a.armorIntegrity,helmetIntegrity:a.helmetIntegrity,
       flashCharges:a.flashCharges,
       morale:a.morale,

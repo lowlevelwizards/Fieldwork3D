@@ -62,6 +62,7 @@ export type OperatorPose={
   gait?:'walk'|'run'|'pie'|'squeeze';
   equipment?:EquipmentLoadout;flashCharges?:number;
   weaponConfiguration?:WeaponConfiguration;
+  weaponLightOn?:boolean;
   /** Opt-in to contact-position weight transfer for lab candidate only. */
   hybridSupport?:boolean;
   acceleration?:number;
@@ -77,6 +78,8 @@ export type OperatorRig={
   magazineInserted:THREE.Mesh;magazineHand:THREE.Mesh;
   weaponBody:THREE.Group;droppedWeaponBody:THREE.Group;
   weaponAccessories:THREE.Group;droppedAccessories:THREE.Group;
+  weaponLightLens:THREE.Object3D|null;droppedLightLens:THREE.Object3D|null;
+  weaponLensMaterial:THREE.MeshStandardMaterial;
   visualWeapon:WeaponId;visualWeaponConfiguration?:WeaponConfiguration;
   weaponSteel:THREE.Material;weaponDark:THREE.Material;
   pack:THREE.Mesh;helmetShell:THREE.Mesh[];
@@ -184,6 +187,9 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   const weaponBody=buildWeaponSilhouette('carbine',steel,boot);
   const droppedWeaponBody=buildWeaponSilhouette('carbine',steel,boot);
   const weaponAccessories=new THREE.Group(),droppedAccessories=new THREE.Group();
+  const weaponLensMaterial=mat(0xb7e6df);
+  weaponLensMaterial.emissive.setHex(0x7fdac9);
+  weaponLensMaterial.emissiveIntensity=.90;
   weapon.add(weaponBody,weaponAccessories);
   droppedGun.add(droppedWeaponBody,droppedAccessories);
   const magazineInserted=block(weapon,3,-4,0,2.7,6,2.5,boot);
@@ -198,7 +204,8 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     baseVest:vest.color.clone(),helmetBadge,appearanceSeed:0,
     personality:operatorMotionTraits(id),
     magazineInserted,magazineHand,weaponBody,droppedWeaponBody,
-    weaponAccessories,droppedAccessories,
+    weaponAccessories,droppedAccessories,weaponLensMaterial,
+    weaponLightLens:null,droppedLightLens:null,
     visualWeapon:'carbine',visualWeaponConfiguration:undefined,
     weaponSteel:steel,weaponDark:boot,
     lastTime:-1,lastPose:null,
@@ -209,7 +216,9 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     dispose:()=>{root.traverse(obj=>{if(obj instanceof THREE.Mesh){
       obj.geometry.dispose();
       const m=obj.material as THREE.Material;m.dispose();
-    }})}};
+    }});
+    // The lens material exists even when no light is mounted.
+    weaponLensMaterial.dispose();}};
 }
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 const diff=(a:number,b:number)=>Math.atan2(Math.sin(b-a),Math.cos(b-a));
@@ -526,12 +535,18 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       while(model.children.length)dest.add(model.children[0]);
     if(config){
       for(const dest of [r.weaponAccessories,r.droppedAccessories]){
-        const model=buildWeaponAccessories(config,r.weaponSteel,r.weaponDark);
+        const model=buildWeaponAccessories(config,r.weaponSteel,r.weaponDark,
+         r.weaponLensMaterial);
         while(model.children.length)dest.add(model.children[0]);
       }
     }
+    r.weaponLightLens=r.weaponAccessories.getObjectByName('weapon-light-lens')??null;
+    r.droppedLightLens=r.droppedAccessories.getObjectByName('weapon-light-lens')??null;
     r.visualWeapon=p.weapon;r.visualWeaponConfiguration=config;
   }
+  if(r.weaponLightLens)r.weaponLightLens.visible=!!p.weaponLightOn&&
+    !p.down&&!p.surrender;
+  if(r.droppedLightLens)r.droppedLightLens.visible=false;
   const data=weaponGrips(p.weapon,p.weaponConfiguration);
   const recoil=p.recoil??(p.firing?1.5:0);
   const fit=fitWeaponPose({weapon:p.weapon,handling,
@@ -761,7 +776,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const orientation=r.weapon.getWorldQuaternion(new THREE.Quaternion());
     const origin=r.root.getWorldPosition(new THREE.Vector3());
     const side=p.downPose==='left'?-1:1;
-    const rest=P(origin.x+9,1.8,origin.z+side*11);
+    const sling=p.weaponConfiguration?.slots.sling==='sling-two-point'&&
+     !p.surrender;
+    // Attached guns stay near the hip instead of dropping far onto the floor.
+    const rest=P(origin.x+(sling?4:9),sling?6:1.8,
+     origin.z+side*(sling?5:11));
     const t=smooth((downProgress-.30)/.70);
     const location=held.lerp(rest,t);
     r.droppedGun.position.copy(r.root.worldToLocal(location));

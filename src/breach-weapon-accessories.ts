@@ -12,7 +12,8 @@ const block=(root:THREE.Group,x:number,y:number,z:number,
  root.add(mesh);return mesh;
 };
 export function buildWeaponAccessories(raw:WeaponConfiguration,
- steel:THREE.Material,dark:THREE.Material):THREE.Group{
+ steel:THREE.Material,dark:THREE.Material,
+ lensMaterial:THREE.Material=steel):THREE.Group{
  const assembly=resolveWeaponAssembly(raw),g=new THREE.Group(),parts=assembly.mounted;
  const optic=parts.optic;
  if(optic.id==='optic-reflex'){
@@ -45,6 +46,9 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
   const light=parts.light;
   block(g,light.mountX,light.mountY,light.mountZ,4.6,2.2,2.6,dark);
   block(g,light.mountX+2.25,light.mountY,light.mountZ,1,2.6,3,steel);
+  const lens=block(g,light.mountX+2.85,light.mountY,light.mountZ,
+   .25,1.5,2.1,lensMaterial);
+  lens.name='weapon-light-lens';lens.visible=false;
   block(g,light.mountX-2,light.mountY+.9,light.mountZ,2,.8,2.5,steel);
  }
  if(parts.sling.id==='sling-two-point'){
