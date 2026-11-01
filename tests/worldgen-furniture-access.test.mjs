@@ -15,7 +15,7 @@ test('waiting seats face a separate reception desk',()=>{
 test('front-use clearance prevents chairs from pointing into a wall',()=>{
  const site={rooms:[{id:'r',kind:'room',purpose:'waiting',tone:0,x:0,y:0,w:110,h:100}],
  doors:[],openings:[]};
- const result=orientFurnishings(site,[{x:45,y:12,w:30,h:24,fixture:'chair'}]);
+ const result=orientFurnishings(site,[{x:45,y:24,w:30,h:24,fixture:'chair'}]);
  assert.notEqual(result[0].orientation,2,'chair cannot face through north boundary');
- assert.deepEqual(result,orientFurnishings(site,[{x:45,y:12,w:30,h:24,fixture:'chair'}]));
+ assert.deepEqual(result,orientFurnishings(site,[{x:45,y:24,w:30,h:24,fixture:'chair'}]));
 });
