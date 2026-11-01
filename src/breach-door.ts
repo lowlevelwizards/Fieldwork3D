@@ -2,7 +2,7 @@
 import {doorCenter,passable,route,pointToSegment,
   doorYaw,doorLeafSegment,WALLS,COVER,activeSite,initialDoors,
   pointToSegment as distanceToWall,
-  type Door,type Pt} from './breach-core.ts';
+  OPERATOR_RADIUS,type Door,type Pt} from './breach-core.ts';
 export {doorYaw,doorLeafSegment};
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export const DOOR_REACH=39;
@@ -80,6 +80,17 @@ export function kickDoor(d:Door,from?:Pt):{opened:boolean;pushSide:boolean}{
  }
  return {opened,pushSide};
 }
+/** A swept leaf cannot move further into a living actor's body.
+ * Existing overlap may resolve by moving away; it must never deepen.
+ */
+export function doorWouldStrikeActors(d:Door,next:number,actors:readonly Pt[],
+ radius=OPERATOR_RADIUS):boolean{
+ const old=doorLeafSegment(d),candidate=doorLeafSegment({...d,openFraction:next});
+ return actors.some(p=>{
+   const before=pointToSegment(p,old),after=pointToSegment(p,candidate);
+   return after<radius+1&&after<before-.01;
+ });
+}
 /** Door leaf stops against architecture and furniture, not an arbitrary
  * renderer-only angle; sample away from the hinge itself. */
 export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[]){
@@ -96,10 +107,7 @@ export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[]){
    if(COVER.some(o=>Math.abs(o.x-p.x)<o.w/2+1.25&&
      Math.abs(o.y-p.y)<o.h/2+1.25))return true;
  }
- if(!d.open){
-   const segment=doorLeafSegment({...d,openFraction:next});
-   if(actors.some(p=>pointToSegment(p,segment)<8.5))return true;
- }
+ if(doorWouldStrikeActors(d,next,actors))return true;
  return false;
 }
 export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[]){
