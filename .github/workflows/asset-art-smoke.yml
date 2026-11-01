@@ -1,0 +1,26 @@
+name: Asset silhouette smoke
+on:
+  pull_request:
+    paths:
+      - 'src/worldgen/asset-character-visuals.ts'
+      - 'src/worldgen/fixture-visuals.ts'
+      - 'src/asset-lab-main.ts'
+      - 'tests/map-21-asset-character-pass.test.mjs'
+      - '.github/workflows/asset-art-smoke.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  geometry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Fixture geometry and scale regression
+        run: node --experimental-strip-types --test tests/map-21-asset-character-pass.test.mjs tests/map-17-vehicles.test.mjs tests/map-04-fixture-renderer.test.mjs tests/map-01-asset-registry.test.mjs
+      - name: Typecheck
+        run: npm run check
