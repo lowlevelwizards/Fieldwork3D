@@ -20,6 +20,7 @@ import {weaponClearance} from './breach-weapon-clearance.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter}
  from './equipment-weapon-light-beam.ts';
 import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
+import {lightControlState} from './equipment-weapon-light-ui.ts';
 import type {SiteScale} from './breach-site.ts';
 import {renderSnapshot,type RenderActor}
   from './breach-frame-interpolation.ts';
@@ -1197,11 +1198,21 @@ function updateQuickStates(){
   }
 }
 const blockedEpisode=new Map<string,string>();
+let fieldLightButton:HTMLButtonElement|null=null;
 function updateHud(){
   paintOperatorAccent(ui.quickStates,selected);
   paintOperatorAccent(ui.context,selected);
   paintOperatorAccent(contextTether,selected);
   updateQuickStates();
+  if(fieldLightButton){
+   const selectedActor=team(state).find(a=>a.id===selected);
+   const light=lightControlState(selectedActor,state.phase,replaying);
+   if(fieldLightButton.textContent!==light.text)fieldLightButton.textContent=light.text;
+   fieldLightButton.setAttribute('aria-label',light.aria);
+   fieldLightButton.setAttribute('aria-pressed',String(light.pressed));
+   fieldLightButton.disabled=light.disabled;
+   fieldLightButton.style.borderColor=light.pressed?colorFor(selected):'';
+  }
   recordCompletedOperation();
   const brief=operationBriefing(state);
   ui.briefingTitle.textContent=brief.code+' / '+brief.name;
@@ -2416,14 +2427,12 @@ ui.clear.addEventListener('click',()=>{clearPlan(state,selected);selectedNode=nu
 ui.undo.addEventListener('click',()=>{undoPlan(state,selected);selectedNode=null;updateHud();});
 ui.redo.addEventListener('click',()=>{redoPlan(state,selected);selectedNode=null;updateHud();});
 ui.wait.addEventListener('click',()=>{planWait(state,selected,.5);updateHud();});
-const fieldLightButton=document.createElement('button');
+fieldLightButton=document.createElement('button');
 fieldLightButton.type='button';fieldLightButton.textContent='WEAPON LIGHT';
 fieldLightButton.setAttribute('aria-label','Toggle selected operator weapon light');
 fieldLightButton.addEventListener('click',()=>{
  if(replaying)return;
  toggleWeaponLight(state,selected);updateHud();
- fieldLightButton.setAttribute('aria-pressed',String(!!team(state)
-  .find(a=>a.id===selected)?.weaponLightOn));
 });
 ui.siteSettings.append(fieldLightButton);
 ui.loadout.addEventListener('click',()=>{
