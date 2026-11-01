@@ -36,5 +36,7 @@ test('153: audible source has positional sound, not enemy map disclosure',()=>{
  assert.match(main,/heardIntensity\(shot.start,listener/);
  const game=readFileSync(new URL('../src/breach-game.ts',import.meta.url),'utf8');
  assert.match(game,/lastNoiseExaminedAt/);
- assert.match(game,/acousticDistance\(newest.p,a.p/);
+ assert.match(game,/interpretSound\(sound,a.id,a.p/);
+ const evidence=readFileSync(new URL('../src/breach-sound-evidence.ts',import.meta.url),'utf8');
+ assert.match(evidence,/acousticDistance\(event.p,at/);
 });
