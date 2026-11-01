@@ -16,6 +16,7 @@ const names:Readonly<Record<string,string>> = {
   'entry-bench':'Entryway shoe-changing bench',
   'shoe-cubby':'Entryway shoe storage cubby','coat-rack':'Wall coat hooks and storage',
   'bar-counter':'Restaurant bar counter','bar-stool':'Restaurant bar stool',
+  'diner-booth':'Paired upholstered diner booth and table',
   'reception-desk':'Clinic and office reception desk',
   'transaction-counter':'Retail customer transaction counter',
   'parts-counter':'Garage parts service counter',
@@ -31,7 +32,7 @@ const label=(id:string)=>names[id]??id.split('-').map(
 // These have a purpose-built branch in the live tactical renderer.
 // Shared-shape objects are still listed: the lab is meant to expose weak art.
 const bespoke = new Set([
-  'bed','exam-bed','desk','counter','bar-counter','bar-stool',
+  'bed','exam-bed','desk','counter','bar-counter','bar-stool','diner-booth',
   'reception-desk','transaction-counter','parts-counter','queue-stanchion','workbench','cart','dining-table',
   'coffee-table','meeting-table','fridge','cooler','wardrobe','locker',
   'filing-cabinet','stove','microwave','kitchen-island','sink','checkout',

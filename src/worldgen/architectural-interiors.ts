@@ -14,7 +14,11 @@ export function addArchitecturalInteriors(site:Site,seed:number):Site{
  for(const [i,room] of site.rooms.entries()){
   if(room.kind==='hall')continue;
   const role=room.purpose??'';
-  const isLow=lowUses.has(role)&&room.w>=105&&room.h>=82&&lowCount<2;
+  // A restaurant dining floor needs booth and table lanes, not unrelated
+  // masonry partitions occupying every useful corner first.
+  const isLow=lowUses.has(role)&&
+    !(site.archetype==='restaurant'&&role==='dining')&&
+    room.w>=105&&room.h>=82&&lowCount<2;
   const isColumn=!isLow&&columnUses.has(role)&&room.w>=92&&room.h>=85&&columnCount<2;
   if(!isLow&&!isColumn)continue;
   const w=isLow?56:12,h=isLow?9:12;
