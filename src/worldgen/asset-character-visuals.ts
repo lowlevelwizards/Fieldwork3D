@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import type {Obstacle} from '../breach-core.ts';
 import type {FixtureVisualContext} from './fixture-visuals.ts';
 import {propDefinition} from './asset-catalog.ts';
-import {fixturePixelSurface} from './pixel-surface-selection.ts';
+import {fixturePixelSurface,fixtureComponentSurface} from './pixel-surface-selection.ts';
 
 export const CHARACTER_FIXTURE_IDS=new Set([
  'vehicle','sedan','pickup','van','suv',
@@ -475,9 +475,11 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
      b(-w*.34,H*.55,d*.45,w*.16,H*.24,1.4,glass,false);
      b(w*.32,H*.17,d*.46,w*.12,H*.16,1.5,accent,false);
    }else if(fixture==='dumpster'){
-     b(0,H*.43,0,w*.92,H*.79,d*.91,main);
-     b(0,H*.86,-d*.24,w*.91,3,d*.47,dark);
-     b(0,H*.86,d*.24,w*.91,3,d*.47,dark);
+     const paint=ctx.solid(baseColors[variation],.86,fixtureComponentSurface('dumpster','body'));
+     const lid=ctx.solid(0x313b39,.9,fixtureComponentSurface('dumpster','lid'));
+     b(0,H*.43,0,w*.92,H*.79,d*.91,paint);
+     b(0,H*.86,-d*.24,w*.91,3,d*.47,lid);
+     b(0,H*.86,d*.24,w*.91,3,d*.47,lid);
      for(const sx of [-1,1]){
        b(sx*w*.46,H*.48,0,2.4,H*.83,d*.94,steel);
        b(sx*w*.34,2.4,0,5,4.8,5,rubber);

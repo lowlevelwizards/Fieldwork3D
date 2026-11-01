@@ -27,8 +27,30 @@ export function zonePixelSurface(zone:string):PixelSurface{
   default:return 'grass';
  }
 }
+/** Component-level overrides; the body material is never assumed from shape. */
+export type FixtureMaterialRole='body'|'lid'|'frame'|'hardware'|'label'|'wheel';
+export const FIXTURE_MATERIAL_OVERRIDES:Readonly<Record<string,Partial<Record<FixtureMaterialRole,PixelSurface>>>>={
+ dumpster:{body:'metal',lid:'plastic',frame:'metal',hardware:'metal',label:'paper',wheel:'rubber'},
+ 'shipping-container':{body:'metal',frame:'metal',hardware:'metal'},
+ 'trash-bin':{body:'plastic',lid:'plastic',frame:'metal'},
+ shed:{body:'wood',frame:'wood'},
+ 'window-boards':{body:'wood',hardware:'metal'},
+ 'filing-cabinet':{body:'metal',hardware:'metal'},
+ locker:{body:'metal',hardware:'metal'},
+ 'tool-chest':{body:'metal',hardware:'metal'},
+};
+export function fixtureComponentSurface(fixture:string,role:FixtureMaterialRole):PixelSurface{
+ const override=FIXTURE_MATERIAL_OVERRIDES[fixture]?.[role];
+ if(override)return override;
+ if(role==='body')return fixturePixelSurface(fixture);
+ if(role==='wheel')return 'rubber';
+ if(role==='label')return 'paper';
+ if(role==='lid')return 'plastic';
+ return 'metal';
+}
 export function fixturePixelSurface(fixture:string|undefined):PixelSurface{
  const id=fixture??'crate';
+ if(FIXTURE_MATERIAL_OVERRIDES[id]?.body)return FIXTURE_MATERIAL_OVERRIDES[id].body;
  if(['toilet','bathtub','sink','shower'].includes(id))return 'porcelain';
  if(['printer','computer','cash-register','microwave','cooler'].includes(id))
   return 'plastic';
@@ -49,7 +71,8 @@ export function fixturePixelSurface(fixture:string|undefined):PixelSurface{
  if(['fence','bollard','hydrant','utility-cabinet','street-lamp',
  'mailbox','trash-bin','parking-sign','bike-rack'].includes(id))
  return 'metal';
- return 'wood';
+ // Unknown assets are neutral metal for visibility, never misleading lumber.
+ return 'metal';
 }
 
 /** Render-side classification, never a substitute for wall physics. */
