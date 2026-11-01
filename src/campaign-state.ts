@@ -14,6 +14,8 @@ import {progressOperator,type OperatorPerformance,type SkillGains} from './campa
 import {readKitPresets,nextPresetId,MAX_KIT_PRESETS,type EquipmentPreset} from './equipment-presets.ts';
 import {initialArmorIntegrity,type ArmorIntegrity} from './equipment-armor.ts';
 import {clampFlashUse} from './equipment-supply.ts';
+import {initialWeaponConfiguration,readWeaponConfiguration,changeWeaponPlatform,
+ type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 
 export type SkillName=keyof ShootingSkills;
 export const SKILL_NAMES:SkillName[]=['pointShooting','longRange','precision','recoilControl','composure','handling'];
@@ -26,6 +28,7 @@ export type CampaignOperator={
  status:'available'|'reserve'|'lost'|'retired';weapon:'carbine'|'smg'|'rifle'|'shotgun';
  magazine:number;reserve:number;shotsFired:number;joinedDay:number;
  loadout:EquipmentLoadout;armorCondition:ArmorIntegrity;
+ weaponConfiguration:WeaponConfiguration;
  magazines:MagazineItem[];loadedMagazineId:string;
 };
 export type Contract={
@@ -84,6 +87,7 @@ export function startingOperator(id:string,i:number,seed:number):CampaignOperato
     magazineKit(id,weapon,reserve,COMBAT_WEAPONS[weapon].capacity),
    loadedMagazineId:id+'/'+weapon+'/loaded',
    loadout:initialEquipmentLoadout(weapon),
+   weaponConfiguration:initialWeaponConfiguration(weapon),
    armorCondition:initialArmorIntegrity(initialEquipmentLoadout(weapon))};
 }
 export function createContracts(seed:number,day:number,existing:readonly Contract[]=[],pressure:Record<string,number>={}):Contract[]{
@@ -123,7 +127,9 @@ export function migrateLegacyRoster(campaign:CampaignState,legacy:RosterState):C
   return {...operator,callsign:old.callsign.slice(0,24),
    missions:old.missions,successful:old.successful,injuries:old.injuries,
    recoveryDays:old.recovery,weapon:old.weapon,
-    loadout:initialEquipmentLoadout(old.weapon),magazine:old.magazine,
+    loadout:initialEquipmentLoadout(old.weapon),
+    weaponConfiguration:readWeaponConfiguration(old.weaponConfiguration,old.weapon),
+    magazine:old.magazine,
    reserve:old.reserve,shotsFired:old.fired,
    magazines:readPersistentMagazines(operator.id,old.weapon,old.reserve,
     (old as {magazines?:unknown}).magazines),
@@ -169,6 +175,8 @@ export function readCampaign(raw:string|null):CampaignState|null{
      readPersistentMagazines(o.id,o.weapon,o.reserve,
       (o as {magazines?:unknown}).magazines)),
    loadout:readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon),
+    weaponConfiguration:readWeaponConfiguration(
+     (o as {weaponConfiguration?:unknown}).weaponConfiguration,o.weapon),
    armorCondition:normalizedArmorCondition((o as {armorCondition?:unknown}).armorCondition,
     readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon)),
    trait:typeof o.trait==='string'?o.trait:'Experienced Operator',
@@ -356,7 +364,8 @@ export function equipCampaignWeapon(c:CampaignState,id:string,
   }},
   operators:c.operators.map(o=>o.id===id?{...o,weapon,magazine:0,reserve:0,
     magazines:[],loadedMagazineId:o.id+'/'+weapon+'/loaded',
-    loadout:syncPrimaryWeapon(o.loadout,weapon)}:o)};
+    loadout:syncPrimaryWeapon(o.loadout,weapon),
+    weaponConfiguration:changeWeaponPlatform(o.weaponConfiguration,weapon)}:o)};
 }
 
 /** Retirement is player-directed, never inferred from an ambiguous downed state. */
