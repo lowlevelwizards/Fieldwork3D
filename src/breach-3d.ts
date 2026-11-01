@@ -22,7 +22,7 @@ import {planActivityWear} from './worldgen/wear-sources.ts';
 import {planHistoryWear} from './worldgen/surface-history.ts';
 import {planThresholdTrafficWear} from './worldgen/threshold-traffic-wear.ts';
 import {planMicroDebris,type DebrisKind} from './worldgen/micro-debris.ts';
-import {planInteriorFragments} from './worldgen/interior-fragments.ts';
+import {planInteriorFragments,type InteriorFragment} from './worldgen/interior-fragments.ts';
 import {visibleSurfaceHeight} from './worldgen/decoration-anchors.ts';
 import {wearPixels} from './rendering/pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './rendering/wear-opacity.ts';
@@ -598,14 +598,20 @@ export class TacticalScene3D{
       if(!entries.length)continue;
       const group=decorativeRoomGroups.get(room.id);if(!group)continue;
       const batch=new THREE.InstancedMesh(fragmentGeometry,fragmentMaterial,entries.length);
+      const fragmentColors:Record<InteriorFragment['kind'],number>={
+        flake:0xb6a893,dust:0x8b816d,plaster:0xc9bbaa,
+        leaf:0x647257,paper:0xe3dccc,glass:0x8fbac0,
+      };
       batch.frustumCulled=false;batch.castShadow=false;batch.receiveShadow=false;
       for(const [i,f] of entries.entries()){
         transform.position.set(f.x,.65,f.y);
         transform.rotation.set(0,f.angle,0);
         transform.scale.set(f.size,.5,f.size*.6);
         transform.updateMatrix();batch.setMatrixAt(i,transform.matrix);
+        batch.setColorAt(i,new THREE.Color(fragmentColors[f.kind]));
       }
       batch.instanceMatrix.needsUpdate=true;
+      if(batch.instanceColor)batch.instanceColor.needsUpdate=true;
       group.add(batch);
     }
     if(!fragments.length)fragmentGeometry.dispose();
