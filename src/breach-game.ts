@@ -125,6 +125,7 @@ export type TeamActor=Operator & {
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
   appearanceSeed:number;equipment?:EquipmentLoadout;
   weaponConfiguration?:WeaponConfiguration;
+  weaponLightOn:boolean;
   loadMovementScale?:number;
   armorIntegrity:number;helmetIntegrity:number;
   flashCharges:number;
@@ -212,6 +213,7 @@ const withActions=(a:Operator):TeamActor=>({
   lastBashAt:-100,lastBashRole:null,
   lastLaneWarnAt:-100,lastFireBlock:'clear',
   fireMode:'point',burstCount:0,skills:{...DEFAULT_SKILLS},appearanceSeed:0,
+  weaponLightOn:false,
   armorIntegrity:0,helmetIntegrity:0,flashCharges:2,
   firePolicy:'engage',suppressPoint:null,focusTargetId:null,
   weapon:'carbine',injuryStage:0,defense:null,watch:null,
@@ -1046,6 +1048,15 @@ export function reloadNow(s:Session,id:string):boolean{
   const a=party(s,id);
   return !!a&&s.phase==='running'&&beginReload(s,a);
 }
+/** Lights are manually operated in the field and are only usable when mounted.
+ * The toggle never simulates unauthoritative fog-of-war or changes a shot. */
+export function toggleWeaponLight(s:Session,id:string):boolean{
+ const a=party(s,id);
+ if(!a||s.phase!=='planning'&&s.phase!=='running'||
+  a.weaponConfiguration?.slots.light!=='light-compact')return false;
+ a.weaponLightOn=!a.weaponLightOn;
+ return true;
+}
 export function toggleContactRule(s:Session,id:string){
   const a=party(s,id);if(!a||!canEdit(s))return false;
   a.haltOnContact=!a.haltOnContact;return true;
@@ -1096,7 +1107,8 @@ function advanceVisualAwareness(s:Session,dt:number){
    const visible=geometricallyVisible(observer,subject,s);
    const signal=visible?visualGain(d(observer.p,subject.p),
     angleDifference(observer.heading,angle(observer.p,subject.p)),
-    subject.velocity>10,subject.posture==='crouch'):0;
+    subject.velocity>10,subject.posture==='crouch')*
+    (subject.weaponLightOn&&subject.weaponConfiguration?.slots.light==='light-compact'?1.18:1):0;
    const old=observer.awareness.visualProgress[subject.id]??0;
    observer.awareness.visualProgress[subject.id]=advanceSight(old,dt,signal,visible);
   }
