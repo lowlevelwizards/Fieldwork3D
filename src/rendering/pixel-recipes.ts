@@ -24,6 +24,7 @@ const hash=(x:number,y:number,s:number)=>{
  n=Math.imul(n^(n>>>13),1274126177);
  return (n^(n>>>16))>>>0;
 };
+import {manufacturedSpeck,grainStroke} from './pixel-detail-primitives.ts';
 const mod=(n:number,m:number)=>((n%m)+m)%m;
 export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
  if(!Number.isInteger(size)||size<8||size>256||(size&(size-1))!==0)
@@ -58,6 +59,7 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
     const line=(y+seed%5)%11;
     if(line===4&&x>4&&x<21)shade=248;
     if(line===7&&x>23&&x<30)shade=251;
+    if(grainStroke(x,y,seed))shade=246;
     break;
    }
    case 'rough-wood':{
@@ -95,7 +97,7 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
     if(x%8===0&&y%8<2)shade=246;
     break;
    case 'fabric':case 'carpet':
-    // Fabrics are intentionally flat at tactical scale; visible seams use geometry.
+    if(manufacturedSpeck(x,y,seed,16))shade=251;
     break;
    case 'grass':{
     // Four small, coherent blade clusters; intentionally empty between them.
@@ -121,10 +123,16 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
     break;
    }
    case 'linoleum':
-    // Clean commercial sheet vinyl: no visible checkerboard.
     if(seed%4===1&&x===0)shade=252;
+    else if(manufacturedSpeck(x,y,seed,24))shade=253;
     break;
-   case 'asphalt':case 'plaster':case 'paper':case 'plastic':case 'porcelain':break;
+   case 'plaster':
+    if(manufacturedSpeck(x,y,seed,32))shade=252;
+    break;
+   case 'asphalt':
+    if(manufacturedSpeck(x,y,seed,16))shade=252;
+    break;
+   case 'paper':case 'plastic':case 'porcelain':break;
   }
   const i=(y*size+x)*4;
   out[i]=shade;out[i+1]=shade;out[i+2]=shade;out[i+3]=255;

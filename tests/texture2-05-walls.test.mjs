@@ -4,7 +4,7 @@ import {pixelPattern} from '../src/rendering/pixel-recipes.ts';
 import {wallPixelSurface} from '../src/worldgen/pixel-surface-selection.ts';
 test('structural wall families differ without generic random noise',()=>{
  const plaster=pixelPattern('plaster'),block=pixelPattern('cinderblock');
- assert.ok(plaster.every((x,i)=>i%4===3||x===255));
+ assert.ok(plaster.every((x,i)=>i%4===3||x>=252));
  assert.notDeepEqual(block,pixelPattern('siding'));
  assert.notDeepEqual(block,pixelPattern('panel'));
  assert.equal(wallPixelSurface('clinic'),'plaster');
