@@ -15,7 +15,8 @@ import {readKitPresets,nextPresetId,MAX_KIT_PRESETS,type EquipmentPreset} from '
 import {initialArmorIntegrity,type ArmorIntegrity} from './equipment-armor.ts';
 import {clampFlashUse} from './equipment-supply.ts';
 import {initialWeaponConfiguration,readWeaponConfiguration,changeWeaponPlatform,
- setWeaponAttachment,type WeaponConfiguration,type WeaponAttachmentSlot}
+ setWeaponAttachment,WEAPON_ATTACHMENT_SLOTS,
+ type WeaponConfiguration,type WeaponAttachmentSlot}
  from './equipment-weapon-assemblies.ts';
 import {attachmentPrice,readAttachmentStock,returnAttachments}
  from './equipment-weapon-inventory.ts';
@@ -454,7 +455,8 @@ export function saveCampaignKitPreset(c:CampaignState,id:string,name:string):Cam
  if(!presetId)return c;
  return {...c,kitPresets:[...c.kitPresets,{
    id:presetId,name:name.trim().slice(0,32),weapon:member.weapon,
-   kit:readEquipmentLoadout(member.loadout,member.weapon)}]};
+   kit:readEquipmentLoadout(member.loadout,member.weapon),
+   weaponConfiguration:readWeaponConfiguration(member.weaponConfiguration,member.weapon)}]};
 }
 export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string):CampaignState{
  if(c.activeContractId)return c;
@@ -463,12 +465,26 @@ export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string
  if(!member||!preset)return c;
  // Entire recipe is atomic. Never silently skip a missing primary weapon.
  if(member.weapon!==preset.weapon&&c.inventory.weapons[preset.weapon]<1)return c;
+ const desired=readWeaponConfiguration(preset.weaponConfiguration,preset.weapon);
+ // Return obsolete paid parts before checking whether the saved recipe fits
+ // finite workshop stock. Refuse the entire preset if any part is unavailable.
+ const attachments=returnAttachments(c.inventory.attachments,
+  member.weaponConfiguration,desired);
+ for(const slot of WEAPON_ATTACHMENT_SLOTS){
+  const part=desired.slots[slot];
+  if(part===member.weaponConfiguration.slots[slot]||attachmentPrice(part)<=0)
+   continue;
+  if((attachments[part]??0)<1)return c;
+  attachments[part]--;
+ }
  const swapped=member.weapon===preset.weapon?c:equipCampaignWeapon(c,id,preset.weapon);
  if(swapped===c&&member.weapon!==preset.weapon)return c;
- return {...swapped,operators:swapped.operators.map(o=>o.id===id?{
-  ...o,loadout:readEquipmentLoadout(preset.kit,preset.weapon),
-  magazines:stageMagazines(o.magazines,preset.kit),
-  armorCondition:clampArmorToKit(o.armorCondition,preset.kit)}:o)};
+ return {...swapped,inventory:{...swapped.inventory,attachments},
+  operators:swapped.operators.map(o=>o.id===id?{
+   ...o,weaponConfiguration:desired,
+   loadout:readEquipmentLoadout(preset.kit,preset.weapon),
+   magazines:stageMagazines(o.magazines,preset.kit),
+   armorCondition:clampArmorToKit(o.armorCondition,preset.kit)}:o)};
 }
 export function deleteCampaignKitPreset(c:CampaignState,presetId:string):CampaignState{
  if(c.activeContractId||!c.kitPresets.some(p=>p.id===presetId))return c;
