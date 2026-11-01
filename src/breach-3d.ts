@@ -28,9 +28,11 @@ import {pixelSign,type PixelSignKind} from './rendering/pixel-signage.ts';
 import {pixelOverlay,overlayForZone,type PixelOverlay} from './rendering/pixel-overlays.ts';
 import {roofShouldShow} from './worldgen/roof-cutaways.ts';
 import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,doorLeafSegment,activeSite,
-  type Pt,type Door} from './breach-core.ts';
+  type Pt,type Door,type Segment} from './breach-core.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {resolveWeaponAssembly} from './equipment-weapon-assemblies.ts';
+import {lightBeamBlockers,lightBeamFootprint,LIGHT_BEAM_SAMPLES}
+ from './equipment-weapon-light-beam.ts';
 import {type Site,type Room} from './breach-site.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
 import {coverPresentation,shotVisibility} from './breach-presentation.ts';
@@ -106,9 +108,12 @@ export class TacticalScene3D{
   private fogTexture!:THREE.CanvasTexture;
   private smoothFog!:THREE.Mesh;
   private actors=new Map<string,{root:THREE.Group;flash:THREE.Mesh;
+    beam:THREE.Mesh;beamLast:{x:number;y:number;yaw:number;tick:number}|null;
     pack:THREE.Mesh;
     weapon:THREE.Group;status:THREE.Mesh;physical:OperatorRig;
     contactShadows:THREE.Mesh[]}>();
+  private beamBlockerTick=-1;private beamBlockerSite=-1;
+  private beamBlockerRevision=-1;private beamBlockers:Segment[]=[];
   private doors=new Map<string,{root:THREE.Group;leaf:THREE.Group;
     frame:THREE.Group;halo:THREE.Group;threshold:THREE.Mesh}>();
   private observedDoorOpen=new Map<string,number>();
@@ -1356,6 +1361,16 @@ export class TacticalScene3D{
         opacity:.94,depthWrite:false}));
     // Flash belongs to the firearm, not an independent actor-root guess.
     flash.position.set(19.5,0,0);flash.visible=false;weapon.add(flash);
+    // One fixed-size buffer per soldier. Only filled when muzzle/door state moves.
+    const beamPositions=new Float32Array((LIGHT_BEAM_SAMPLES-1)*9);
+    const beamGeometry=new THREE.BufferGeometry();
+    beamGeometry.setAttribute('position',
+      new THREE.BufferAttribute(beamPositions,3).setUsage(THREE.DynamicDrawUsage));
+    const beam=new THREE.Mesh(beamGeometry,new THREE.MeshBasicMaterial({
+      color:0xbde9d5,transparent:true,opacity:.15,depthWrite:false,
+      side:THREE.DoubleSide,blending:THREE.AdditiveBlending}));
+    beam.frustumCulled=false;beam.visible=false;beam.renderOrder=4;
+    this.scene.add(beam);
     const status=new THREE.Mesh(new THREE.RingGeometry(12,16,30),
       new THREE.MeshBasicMaterial({color:0xdb8d76,transparent:true,
         opacity:.9,depthWrite:false,side:THREE.DoubleSide}));
@@ -1371,7 +1386,7 @@ export class TacticalScene3D{
       this.scene.add(shadow);return shadow;
     });
     this.actors.set(a.id,{root,flash,pack,weapon,status,
-      physical,contactShadows});
+      beam,beamLast:null,physical,contactShadows});
   }
   update(s:Session,selected:string,dt:number,
     focusedDoorId:string|null=null,omniscient=false,
@@ -1579,6 +1594,39 @@ export class TacticalScene3D{
         aim:actor.aim,velocity:actor.velocity,recoil:actor.recoil,
         posture:actor.posture,threatRange
       },s.doors);
+      const lightOn=!!actor.weaponLightOn&&actor.health>0&&
+        actor.weaponConfiguration?.slots.light==='light-compact'&&object.root.visible;
+      object.beam.visible=lightOn;
+      if(lightOn){
+       const tick=Math.floor(s.seconds*8),siteSeed=s.site?.seed??-1;
+       if(tick!==this.beamBlockerTick||siteSeed!==this.beamBlockerSite||
+          this.beamBlockerRevision!==s.objectRevision){
+        this.beamBlockers=lightBeamBlockers(WALLS,s.doors,COVER);
+        this.beamBlockerTick=tick;this.beamBlockerSite=siteSeed;
+        this.beamBlockerRevision=s.objectRevision;
+       }
+       const physical=resolveWeaponAssembly(actor.weaponConfiguration!);
+       const angle=clearance.muzzle.yaw;
+       const offset=(physical.muzzleX-physical.mounted.light.mountX)*
+        physical.lengthScale;
+       const bx=clearance.muzzle.x-Math.cos(angle)*offset;
+       const by=clearance.muzzle.z-Math.sin(angle)*offset;
+       const prev=object.beamLast;
+       if(!prev||Math.hypot(prev.x-bx,prev.y-by)>.7||
+          Math.abs(Math.atan2(Math.sin(prev.yaw-angle),Math.cos(prev.yaw-angle)))>.025||
+          prev.tick!==tick){
+        const polygon=lightBeamFootprint({x:bx,y:by},angle,this.beamBlockers);
+        const positions=object.beam.geometry.getAttribute('position') as THREE.BufferAttribute;
+        const values=positions.array as Float32Array;
+        for(let i=0;i<LIGHT_BEAM_SAMPLES-1;i++){
+         const a=polygon[0],p=polygon[i+1],q=polygon[i+2],n=i*9;
+         values[n]=a.x;values[n+1]=.38;values[n+2]=a.y;
+         values[n+3]=p.x;values[n+4]=.38;values[n+5]=p.y;
+         values[n+6]=q.x;values[n+7]=.38;values[n+8]=q.y;
+        }
+        positions.needsUpdate=true;object.beamLast={x:bx,y:by,yaw:angle,tick};
+       }
+      }
       poseOperator(object.physical,{
         x:drawActor.x,z:drawActor.z,heading:drawActor.heading,
         velocity:actor.velocity,seconds:poseSeconds,stride:actor.stride,
