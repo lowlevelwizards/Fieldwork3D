@@ -824,8 +824,9 @@ function updateContext(){
     if(choice.pressed===undefined)button.removeAttribute('aria-pressed');
     else button.setAttribute('aria-pressed',String(choice.pressed));
     button.classList.toggle('danger',choice.group==='destructive');
-    if(button.parentElement!==buckets[choice.group])
-      buckets[choice.group].append(button);
+    // Reconcile DOM order as well as membership: a newly available
+    // contextual action must never reorder the fixed command slots.
+    buckets[choice.group].append(button);
   }
   for(const btn of ui.context.querySelectorAll<HTMLButtonElement>('button[data-action]')){
     if(!wanted.has(btn.dataset.action??''))btn.remove();
