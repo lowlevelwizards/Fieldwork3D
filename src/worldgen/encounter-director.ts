@@ -5,6 +5,7 @@ import type {EncounterContext,EncounterPlan,EncounterPremise} from './encounter-
 import {chooseEncounterPremise} from './encounter-premises.ts';
 import {chooseHostileBudget} from './encounter-population.ts';
 import {encounterRng} from './encounter-rng.ts';
+import {composeEncounterGroups} from './encounter-groups.ts';
 export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
  if(site.training)return site;
  const premise:EncounterPremise=chooseEncounterPremise(site,context);
@@ -25,14 +26,14 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
    weaponProfile:'ordinary' as const
  }));
  const rooms=site.rooms.filter(r=>r.kind==='room');
+ const composition=composeEncounterGroups(site,actors,premise,context.seed??site.seed);
  const plan:EncounterPlan={
    version:1,seed:context.seed??site.seed,building:site.archetype??'house',
    scale:site.scale??'standard',
    premise,mission:context.mission??'clear',risk:context.risk??1,
    expectedOccupancy:site.identity?.capacity??actors.length,
    hostileBudget:target,
-   groups:actors.map(a=>({id:a.groupId,purpose:'security' as const,
-     members:[a.id]})),actors,
+   groups:composition.groups,actors:composition.actors,
    diagnostics:{targetHostiles:target,placedHostiles:actors.length,
      rejected:0,fallbacks:0,occupiedZones:0,emptyZones:rooms.length,
      notes:target>actors.length?['placement budget capped by legacy safe locations until Build 07']:[]}
