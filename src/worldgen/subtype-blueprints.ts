@@ -25,14 +25,19 @@ const changes:Partial<Record<BuildingArchetype,Record<string,Change>>>={
  },
  restaurant:{
   'cafe':{from:'service',to:'checkout',minimumRemaining:1},
-  'diner':{from:'service',to:'checkout',minimumRemaining:1}
+  'diner':{from:'service',to:'checkout',minimumRemaining:1},
+  'sit-down-restaurant':{from:'service',to:'dining',minimumRemaining:1}
+ },
+ motel:{
+  'roadside-motel':{from:'maintenance',to:'laundry',minimumRemaining:1},
+  'motor-lodge':{from:'maintenance',to:'office',minimumRemaining:1}
  },
  clinic:{
   'urgent-care':{from:'exam',to:'treatment',minimumRemaining:1}
  }
 };
 export function specializeBlueprint(
- blueprint:Blueprint,subtype:string):Blueprint{
+ blueprint:Blueprint,subtype:string,seed=0):Blueprint{
  if(!subtype||blueprint.unitIds)return blueprint;
  const rule=changes[blueprint.kind]?.[subtype];
  if(!rule)return blueprint;
@@ -59,11 +64,17 @@ export function specializeBlueprint(
  }
  // Choose the redundant cell nearest its relevant workflow area: service near
  // dining, storage near public sales, office desks near the main work spine.
- const target=candidates.sort((a,b)=>{
+ const ranked=candidates.sort((a,b)=>{
    const dist=(c:typeof a)=>Math.abs(c.x-blueprint.front.col)+
      Math.abs(c.y-blueprint.front.row);
    return dist(a)-dist(b)||a.y-b.y||a.x-b.x;
- })[0];
+ });
+ // Treat subtype role conversion as a set of real planning choices,
+ // instead of always converting the nearest identical service room.
+ const pool=ranked.slice(0,Math.min(3,ranked.length));
+ const selected=seed===0?0:
+   (Math.imul((seed>>>0)^0x37ad38e1,2654435761)>>>0)%pool.length;
+ const target=pool[selected];
  cells[target.y][target.x]=rule.to;
- return {...blueprint,cells,family:blueprint.family+' / '+subtype};
+ return {...blueprint,cells,family:blueprint.family+' / '+subtype+' / program-'+selected};
 }

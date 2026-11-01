@@ -84,7 +84,7 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  const selected:Blueprint=kind==='apartment'?apartmentUnitBlueprint(seed,scale):
    scale==='small'||scale==='large'?sizedBlueprint(kind,seed,scale,baseline):baseline;
  const functional=fitSpatialProgram(ensureFacilityProgram(
-   specializeBlueprint(selected,subtype),scale));
+   specializeBlueprint(selected,subtype,seed),scale));
  // Only a subset of deterministic seeds exercise module relocation until
  // unit-aware topology and broad mobile benchmarks are completed.
  const authored=seed%3===0?synthesizeFootprint(functional,seed):functional;
