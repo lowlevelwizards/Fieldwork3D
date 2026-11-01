@@ -527,6 +527,45 @@ export class TacticalScene3D{
       if(nearest>=0)this.intelSurfaces.push({obj:group,kind:'wall',index:nearest});
       this.root.add(group);
     }
+    // Wall-mounted art and electrical hardware inherit room visibility.
+    // They do not add collision, cover or new sightline blockers.
+    const wallPaper=this.solid(0xb8ad8e),wallFrame=this.solid(0x615246);
+    const wallMetal=this.solid(0x697b79),wallDark=this.solid(0x343e3c);
+    const wallRed=this.solid(0xa66f57);
+    for(const detail of site.wallDetails??[]){
+      const roomGroup=decorativeRoomGroups.get(detail.roomId);
+      if(!roomGroup)continue;
+      const prop=new THREE.Group();
+      prop.position.set(detail.x,detail.height,detail.y);
+      prop.rotation.y=detail.angle;
+      const w=detail.width,h=detail.depth;
+      switch(detail.kind){
+      case 'poster': case 'picture': case 'noticeboard':
+        this.box(prop,0,0,0,w,h,.9,
+          detail.kind==='noticeboard'?wallFrame:wallPaper,false);
+        this.box(prop,0,0,.65,w-2,h-2,.5,
+          detail.kind==='poster'?wallRed:
+          detail.kind==='noticeboard'?wallPaper:wallMetal,false);
+        this.box(prop,-w*.12,h*.14,.99,w*.45,1,.15,wallPaper,false);
+        break;
+      case 'exit-sign':
+        this.box(prop,0,0,0,w,h,1.3,wallRed,false);
+        this.box(prop,0,0,.8,w*.67,2,.3,wallPaper,false);
+        break;
+      case 'light-switch':
+        this.box(prop,0,0,0,w,h,1.3,wallPaper,false);
+        this.box(prop,0,0,1,1.4,3,.8,wallDark,false);
+        break;
+      case 'breaker-panel': case 'electrical-box':
+        this.box(prop,0,0,0,w,h,3,wallMetal,false);
+        this.box(prop,w*.25,0,1.8,1.5,h*.6,1,wallDark,false);
+        if(detail.kind==='breaker-panel')
+          for(const y of [-5,0,5])
+            this.box(prop,-w*.16,y,2.2,w*.35,1.5,.7,wallDark,false);
+        break;
+      }
+      roomGroup.add(prop);
+    }
     // Small storytelling details inherit room visibility, with no independent
     // collider, cover or occlusion. They can never block a tactical passage.
     const smallWood=this.solid(0x9a8669),smallPaper=this.solid(0xb8b4a0);

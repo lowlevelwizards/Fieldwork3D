@@ -40,6 +40,13 @@ const architecture:readonly AssetLibraryEntry[] = [
   {id:'door',label:'Hinged door and frame',width:48,depth:12,height:40,category:'Openings'},
   {id:'shutter',label:'Industrial shutter and frame',width:96,depth:12,height:45,category:'Openings'},
   {id:'arch',label:'Archway',width:72,depth:10,height:40,category:'Openings'},
+  {id:'wall-detail:poster',label:'Poster',width:22,depth:2,height:25,category:'Wall Details'},
+  {id:'wall-detail:picture',label:'Picture',width:22,depth:2,height:25,category:'Wall Details'},
+  {id:'wall-detail:noticeboard',label:'Noticeboard',width:22,depth:2,height:25,category:'Wall Details'},
+  {id:'wall-detail:light-switch',label:'Light Switch',width:22,depth:2,height:25,category:'Wall Details'},
+  {id:'wall-detail:electrical-box',label:'Electrical Box',width:22,depth:2,height:25,category:'Wall Details'},
+  {id:'wall-detail:breaker-panel',label:'Breaker Panel',width:22,depth:2,height:25,category:'Wall Details'},
+  {id:'wall-detail:exit-sign',label:'Exit Sign',width:22,depth:2,height:25,category:'Wall Details'},
 ].map(item=>({...item,origin:'structure' as const,cover:'none' as const,
   solid:false,rooms:[] as readonly string[],presentation:'architectural' as const}));
 const fromProp=(item:PropDefinition):AssetLibraryEntry=>({

@@ -33,6 +33,7 @@ export type Site={
   scenarioStyle?:'routine'|'guarded'|'disrupted';
   condition?:EnvironmentCondition;
   dressing?:import('./worldgen/environment-dresser.ts').DecorativeDetail[];
+  wallDetails?:import('./worldgen/wall-dresser.ts').WallDetail[];
   openings?:WideOpening[];
   exteriorZones?:ExteriorZone[];
   cover:Obstacle[];entrance:Pt;spawn:Pt[];enemies:Pt[];
