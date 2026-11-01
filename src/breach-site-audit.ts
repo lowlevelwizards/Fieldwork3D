@@ -4,12 +4,14 @@
 import {activateSite,passable,route,type Pt} from './breach-core.ts';
 import {generateSite,type SiteScale} from './breach-site.ts';
 import {assessArchitecture} from './worldgen/architecture-quality.ts';
+import {assessRoomContracts,type RoomContractResult} from './worldgen/room-contracts.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type SiteAudit={seed:number;archetype:string;layout:string;
   rooms:number;doors:number;enemies:number;windows:number;
   archOpenings:number;exteriorZones:number;dressing:number;
   condition:string;typedProps:number;functionalRooms:number;
   roomFill:{id:string;role:string;fixtures:number;areaM2:number}[];emptyRooms:string[];
+  roomContracts:RoomContractResult[];incompleteZones:string[];
   errors:string[]};
 export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteAudit{
   const site=generateSite(seed,scale);
@@ -78,6 +80,7 @@ export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteA
     fixtures:site.cover.filter(o=>o.fixture&&o.fixture!=='window-sill'&&
       o.x>room.x&&o.x<room.x+room.w&&o.y>room.y&&o.y<room.y+room.h).length
   }));
+  const roomContracts=assessRoomContracts(site);
   return {seed,archetype:site.archetype??'untyped',
     layout:site.layout,rooms:site.rooms.length,
     doors:site.doors.length,enemies:site.enemies.length,
@@ -88,5 +91,6 @@ export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteA
     condition:site.condition??'unknown',
     typedProps:site.cover.filter(c=>!!c.fixture).length,
     functionalRooms:roomFill.length,roomFill,
-    emptyRooms:roomFill.filter(r=>r.fixtures===0).map(r=>r.id),errors};
+    emptyRooms:roomFill.filter(r=>r.fixtures===0).map(r=>r.id),
+    roomContracts,incompleteZones:roomContracts.filter(r=>!r.complete).map(r=>r.zoneId),errors};
 }
