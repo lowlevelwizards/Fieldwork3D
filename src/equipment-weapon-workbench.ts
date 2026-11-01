@@ -70,6 +70,9 @@ export class WeaponWorkbenchPreview{
  }
  setConfiguration(config:WeaponConfiguration){
   this.config=config;
+  // Markers share one geometry: remove them before disposing bespoke gun meshes.
+  for(const child of [...this.model.children])
+   if(child.name.startsWith('mount-'))this.model.remove(child);
   clearWeaponSilhouette(this.model);
   const body=buildWeaponSilhouette(config.weapon,this.steel,this.dark,config);
   const accessories=buildWeaponAccessories(config,this.steel,this.dark);
@@ -162,6 +165,9 @@ export class WeaponWorkbenchPreview{
   this.canvasHost.removeEventListener('pointercancel',this.up);
   this.canvasHost.removeEventListener('wheel',this.wheel);
   this.pointerPositions.clear();
+  // Markers share one geometry: remove them before disposing bespoke gun meshes.
+  for(const child of [...this.model.children])
+   if(child.name.startsWith('mount-'))this.model.remove(child);
   clearWeaponSilhouette(this.model);
   this.steel.dispose();this.dark.dispose();this.selectedMaterial.dispose();
   this.markerMaterial.dispose();this.markerGeometry.dispose();
