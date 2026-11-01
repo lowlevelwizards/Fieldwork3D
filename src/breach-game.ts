@@ -51,6 +51,8 @@ import {newAwareness,addObservation,visibleObservation,
  ageAwareness,clearObservedPosition,bestBelief,
  type ActorAwareness} from './breach-awareness.ts';
 import {visualGain,advanceSight,confirmedSight} from './breach-visual-perception.ts';
+import {actorLightingLevels,lightVisibilityGain} from './equipment-sight-lighting.ts';
+import type {LightingMode} from './equipment-site-lighting.ts';
 import {doorContactImpulse,passageWait,type PassageActor,type PassageLease}
   from './breach-passage.ts';
 import {diagnoseMovement,projectReachableGoal,type Blocker}
@@ -188,7 +190,7 @@ export type Session=Omit<TacticalState,'operators'> & {
   seenGround:Set<string>;intel:IntelState;intelObservedAt:number;
   timesPaused:number;deaths:number;
   started:boolean;syncCode:number;report:string[];
-  movementNoiseAt:number;site?:Site;dropped:DroppedMagazine[];
+  movementNoiseAt:number;site?:Site;lightingMode:LightingMode;dropped:DroppedMagazine[];
   grenades:FlashGrenade[];flashBursts:FlashBurst[];flashRemaining:number;
   nextEffectId:number;impactMarks:ImpactMark[];
   battleEvents:BattleEvent[];nextBattleId:number;
@@ -343,7 +345,7 @@ export function newSession(index=0,siteSeed?:number,
     mission:'clear',noise:[],nextNoiseId:1,reports:[],nextReportId:1,shots:[],casings:[],nextShotId:1,known:new Map(),
     seenGround:new Set(),intel:initialIntel(intelMode,site,initialDoors()),
     intelObservedAt:-1,timesPaused:0,deaths:0,started:false,
-    syncCode:0,report:[],movementNoiseAt:0,site,
+    syncCode:0,report:[],movementNoiseAt:0,site,lightingMode:'day',
     dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1,
     impactMarks:[],battleEvents:[],nextBattleId:1,
     missionType:missionOverride??(site?(['clear','intel','rescue','hold','capture'] as const)[site.seed%5]:'clear'),
@@ -1198,6 +1200,8 @@ export function inSight(a:TeamActor,b:TeamActor,s:Session){
  return geometricallyVisible(a,b,s)&&confirmedSight(a.awareness.visualProgress[b.id]??0);
 }
 function advanceVisualAwareness(s:Session,dt:number){
+ // One scene sample per simulation-time bucket, never one raycast per sight pair.
+ const lighting=actorLightingLevels(s);
  for(const observer of s.operators){
   if(observer.health<=0)continue;
   for(const subject of s.operators){
@@ -1206,6 +1210,7 @@ function advanceVisualAwareness(s:Session,dt:number){
    const signal=visible?visualGain(d(observer.p,subject.p),
     angleDifference(observer.heading,angle(observer.p,subject.p)),
     subject.velocity>10,subject.posture==='crouch')*
+    lightVisibilityGain(lighting.get(subject.id)??1)*
     (subject.weaponLightOn&&subject.weaponConfiguration?.slots.light==='light-compact'?1.18:1):0;
    const old=observer.awareness.visualProgress[subject.id]??0;
    observer.awareness.visualProgress[subject.id]=advanceSight(old,dt,signal,visible);
