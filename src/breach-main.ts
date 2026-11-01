@@ -39,7 +39,7 @@ import {initialRoster,readRoster,applyRosterIdentity,recordRosterMission,
   resupplyRoster,equipRoster} from './breach-roster.ts';
 import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOperation,
  purchaseAmmo,purchaseMedical,resupplyOperator,treatOperator,
- hireRecruit,assignOperatorToSlot,tacticalSlotOperator,
+ hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
  type CampaignState,type CampaignReport} from './campaign-state.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {careerEventsForOperation} from './campaign-history.ts';
@@ -2014,6 +2014,9 @@ const campaignScreen=new CampaignScreen({
  treat:(id)=>{if(campaign){campaign=treatOperator(campaign,id);saveCampaign();showCampaignHome();}},
  recruit:()=>{if(campaign){campaign=hireRecruit(campaign);saveCampaign();showCampaignHome();}},
  assignSlot:(slot,id)=>{if(campaign){campaign=assignOperatorToSlot(campaign,slot,id);
+  saveCampaign();showCampaignHome();}},
+ buyWeapon:(weapon)=>{if(campaign){campaign=buyWeapon(campaign,weapon);saveCampaign();showCampaignHome();}},
+ equipWeapon:(id,weapon)=>{if(campaign){campaign=equipCampaignWeapon(campaign,id,weapon);
   saveCampaign();showCampaignHome();}}
 });
 function showCampaignHome(){
