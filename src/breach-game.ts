@@ -93,6 +93,7 @@ export type Personality='guard'|'aggressor'|'cautious';
 export type TeamActor=Operator & {
   medical:MedicalCondition;medicalSupplies:FieldMedicalSupplies;
   lastTreatmentAt:number;lastTreatmentTargetId:string|null;
+  treatmentActive:boolean;treatmentProgress:number;
   awareness:ActorAwareness;
   intent:AIIntent|null;combatChoice:CombatAction|null;lastReportAt:number;
   coordinationRole:GroupRole|null;coordinationUntil:number;
@@ -197,6 +198,7 @@ export const SCENARIOS=[
 const withActions=(a:Operator):TeamActor=>({
   ...a,medical:newMedicalCondition(),medicalSupplies:kitMedicalSupplies(),
   lastTreatmentAt:-100,lastTreatmentTargetId:null,
+  treatmentActive:false,treatmentProgress:0,
   awareness:newAwareness(),intent:null,combatChoice:null,lastReportAt:-100,
   coordinationRole:null,coordinationUntil:0,lastMoraleEventAt:-100,searchOrigin:null,searchQueue:[],plan:[],history:makeHistory(),nav:[],activeNode:-1,
   posture:'stand',pace:'walk',alert:'idle',velocity:0,turning:0,aim:0,
@@ -1578,6 +1580,8 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       a.lastTreatmentAt=s.seconds;a.lastTreatmentTargetId=patient.id;
     }
     a.actionTimer+=dt;
+    a.treatmentActive=true;
+    a.treatmentProgress=Math.min(1,a.actionTimer/treatmentDuration(supply));
     if(a.actionTimer>=treatmentDuration(supply)){
       if(stabilizeWound(patient.medical,wound.id)){
         spendMedicalSupply(a.medicalSupplies,supply);
@@ -2726,6 +2730,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   };
   const h=clamp(dt,0,1/30);
   s.seconds+=h;
+  for(const operator of s.operators)operator.treatmentActive=false;
   // Medical state advances on the authoritative fixed tick only.
   for(const casualty of s.operators){
     if(casualty.health<=0)continue;
