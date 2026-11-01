@@ -6,6 +6,7 @@ import {type Obstacle,type Pt} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 import {overlapsArrivalLane} from './property-access-lane.ts';
 import {PARKING_VEHICLES,parkingStallCandidates} from './parking-stalls.ts';
+import {SERVICE_EDGE_FIXTURES,serviceYardEdgeCandidates} from './service-yard-layout.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const overlaps=(a:Obstacle,b:Obstacle)=>Math.abs(a.x-b.x)<(a.w+b.w)/2+17&&Math.abs(a.y-b.y)<(a.h+b.h)/2+17;
 export function addExteriorProperty(site:Site,seed:number):Site{
@@ -128,12 +129,16 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    const stalls=parked?parkingStallCandidates(zone,asset.width,asset.depth):[];
    const w=parked&&zone.w>=zone.h?asset.depth:asset.width;
    const h=parked&&zone.w>=zone.h?asset.width:asset.depth;
+   const serviceEdge=zone.kind==='service'&&SERVICE_EDGE_FIXTURES.has(item);
+   const edgeSpots=serviceEdge?serviceYardEdgeCandidates(zone,w,h):[];
    if(zone.w<w+22||zone.h<h+22)continue;
    let accepted=false;
-   for(let attempt=0;attempt<(parked?stalls.length:12);attempt++){
+   for(let attempt=0;attempt<(parked?stalls.length:
+      serviceEdge?edgeSpots.length:12);attempt++){
     const slot=parked?stalls[attempt]:undefined;
-    const x=slot?.x??zone.x+(rng()-.5)*Math.max(0,zone.w-w-20);
-    const y=slot?.y??zone.y+(rng()-.5)*Math.max(0,zone.h-h-18);
+    const edge=serviceEdge?edgeSpots[attempt]:undefined;
+    const x=slot?.x??edge?.x??zone.x+(rng()-.5)*Math.max(0,zone.w-w-20);
+    const y=slot?.y??edge?.y??zone.y+(rng()-.5)*Math.max(0,zone.h-h-18);
     const candidate:Obstacle={x,y,w,h,fixture:item,low:asset.cover==='low',
      ...(slot?{orientation:slot.orientation}:{})};
     const bounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
