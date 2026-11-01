@@ -22,5 +22,5 @@ test('functional contracts evaluate connected zones and alternatives',()=>{
  assert.equal(result.complete,true);
  const [incomplete]=assessRoomContracts({...site,cover:site.cover.filter(o=>o.fixture!=='sink')});
  assert.equal(incomplete.complete,false);
- assert.deepEqual(incomplete.missing,[['sink']]);
+ assert.deepEqual(incomplete.missing,[['sink','dish-station']]);
 });

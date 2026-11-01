@@ -50,6 +50,25 @@ definitions.push(
 );
 definitions.push({id:'window-boards',category:'security',width:52,depth:10,
  height:36,solid:true,cover:'high',rooms:['yard','garden','parking','service-yard']});
+// Functional workstations for real commercial, clinical, retail and industrial routines.
+definitions.push(
+ {id:'prep-table',category:'commercial',width:44,depth:26,height:21,
+  solid:true,cover:'low',rooms:["kitchen","service"]},
+ {id:'commercial-range',category:'commercial',width:42,depth:27,height:25,
+  solid:true,cover:'low',rooms:["kitchen"]},
+ {id:'dish-station',category:'commercial',width:40,depth:25,height:24,
+  solid:true,cover:'low',rooms:["kitchen","service"]},
+ {id:'handwash-station',category:'medical',width:26,depth:19,height:30,
+  solid:true,cover:'low',rooms:["exam","treatment","staff"]},
+ {id:'instrument-cart',category:'medical',width:29,depth:21,height:28,
+  solid:true,cover:'low',rooms:["exam","treatment"]},
+ {id:'retail-endcap',category:'retail',width:30,depth:24,height:40,
+  solid:true,cover:'high',rooms:["sales","checkout"]},
+ {id:'packing-station',category:'industrial',width:43,depth:26,height:22,
+  solid:true,cover:'low',rooms:["packing","loading"]},
+ {id:'parts-bin',category:'industrial',width:34,depth:23,height:37,
+  solid:true,cover:'high',rooms:["parts","workshop"]}
+);
 // One physical envelope for collision, placement and live model geometry.
 for(const item of definitions){
  const dimensions=CANONICAL_ASSET_DIMENSIONS[item.id];

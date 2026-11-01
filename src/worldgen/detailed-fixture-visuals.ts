@@ -13,6 +13,8 @@ export const DETAILED_FIXTURE_IDS=new Set([
  'crate','box','pallet','compressor','cable-reel','planter','picnic-table',
  'patio-chair','grill','shed','dumpster','shipping-container','books',
  'papers','mug','tools','trash','packages','picture-frame',
+ 'prep-table','commercial-range','dish-station','handwash-station',
+ 'instrument-cart','retail-endcap','packing-station','parts-bin',
 ]);
 export function renderDetailedFixture(group:THREE.Group,c:Obstacle,
  fixture:string,ctx:FixtureVisualContext,wood:THREE.Material,
@@ -31,6 +33,75 @@ export function renderDetailedFixture(group:THREE.Group,c:Obstacle,
     b(sx*spanW*.5,top*.5,sz*spanD*.5,2.6,top,2.6,steel);
  };
  switch(fixture){
+ case 'prep-table':case 'packing-station':{
+   const sanitary=fixture==='prep-table';
+   const top=sanitary?light:wood;
+   b(0,H-1.4,0,w,2.8,d,top);
+   legs(H-2.8,w*.85,d*.73);
+   b(0,H*.44,0,w*.82,2,d*.76,steel,false);
+   if(sanitary){
+    b(0,H+1.8,-d*.46,w*.95,3.2,2.2,light,false);
+    for(const sign of [-1,1])b(sign*w*.26,H+.9,0,w*.20,1.6,d*.28,olive,false);
+   }else{
+    for(const sign of [-1,1])b(sign*w*.25,H+1.1,0,w*.28,2.2,d*.36,paper,false);
+    b(-w*.39,H*.52,d*.36,3,H*.69,3,ink);
+   }
+   return true;
+ }
+ case 'commercial-range':{
+   b(0,H*.48,0,w*.98,H*.91,d*.96,steel);
+   b(0,H*.93,0,w,2.8,d,ink,false);
+   for(const sx of [-.25,.25])for(const sz of [-.22,.22]){
+    b(sx*w,H+1.0,sz*d,w*.24,.9,d*.22,ink,false);
+    b(sx*w,H+1.7,sz*d,w*.11,.65,d*.09,light,false);
+   }
+   b(0,H*.49,d*.49,w*.69,H*.46,1.5,ink,false);
+   b(0,H*.31,d*.53,w*.46,2,1.5,light,false);
+   for(let n=-1;n<=1;n++)b(n*w*.22,H*.82,d*.50,3,3,2,red,false);
+   b(0,H+7,-d*.47,w,13,2.4,light);
+   return true;
+ }
+ case 'dish-station':case 'handwash-station':{
+   const clinical=fixture==='handwash-station';
+   b(0,H*.45,0,w*.94,H*.72,d*.86,clinical?light:steel);
+   b(0,H*.83,-d*.39,w*.98,H*.29,2.4,light);
+   b(0,H*.85,d*.06,w*.77,2.2,d*.68,steel,false);
+   b(0,H*.88,d*.06,w*.57,1.3,d*.50,ink,false);
+   for(const sx of [-.30,.30])b(sx*w,H+1.8,-d*.17,2.8,6,2.8,metal,false);
+   b(0,H+3.8,-d*.15,w*.46,2.5,2.1,steel,false);
+   if(clinical){
+    b(-w*.34,H*.61,d*.45,w*.15,7,1.8,olive,false);
+    b(w*.31,H*.61,d*.45,w*.17,7,1.8,red,false);
+   }else b(0,H*.36,d*.45,w*.78,H*.30,1.2,ink,false);
+   return true;
+ }
+ case 'instrument-cart':{
+   for(const y of [H*.29,H*.58,H*.87]){
+    b(0,y,0,w*.89,2,d*.84,light);
+    for(const sx of [-1,1])b(sx*w*.42,y+2,0,1.8,4,d*.80,steel,false);
+   }
+   for(const sx of [-1,1])for(const sz of [-1,1]){
+    b(sx*w*.39,H*.45,sz*d*.36,2,H*.85,2,steel);
+    b(sx*w*.39,2,sz*d*.36,3.5,4,3.5,ink);
+   }
+   b(w*.39,H*.91,0,2,6,d*.75,steel);
+   b(0,H*.93,0,w*.62,1.6,d*.59,olive,false);
+   return true;
+ }
+ case 'retail-endcap':case 'parts-bin':{
+   const parts=fixture==='parts-bin';
+   b(0,H*.49,-d*.38,w*.92,H*.95,3,steel);
+   for(const y of [H*.20,H*.43,H*.66,H*.89]){
+    b(0,y,0,w*.94,2.6,d*.89,steel);
+    for(const sx of [-.30,0,.30]){
+     b(sx*w,y+4,d*.08,w*.25,8,d*.55,
+       parts?(Math.abs(sx)<.01?red:olive):(Math.abs(sx)<.01?paper:wood));
+     b(sx*w,y+4,d*.37,w*.22,1.3,1,ink,false);
+    }
+   }
+   for(const sx of [-1,1])b(sx*w*.48,H*.51,0,2,H*.95,2,metal);
+   return true;
+ }
  case 'nightstand':case 'side-table':{
    const drawer=fixture==='nightstand';
    const y=H-1.2;b(0,y,0,w,2.4,d,wood);
