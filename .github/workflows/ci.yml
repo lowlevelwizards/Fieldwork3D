@@ -115,8 +115,11 @@ jobs:
       - name: Focused equipment and personnel tests
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'equipment/') }}
         run: node --experimental-strip-types --test tests/equipment-*.test.mjs tests/campaign-*.test.mjs tests/lw-roster*.test.mjs
+      - name: Focused encounter safety regression tests
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/encounter-') }}
+        run: node --experimental-strip-types --test tests/worldgen-encounter-safety.test.mjs tests/worldgen-encounter-placement.test.mjs tests/worldgen-encounter-exteriors.test.mjs
       - name: Full game tests (main and other PRs)
-        if: ${{ github.event_name != 'pull_request' || (!startsWith(github.head_ref, 'texture2/') && !startsWith(github.head_ref, 'campaign-') && !startsWith(github.head_ref, 'worldgen2/') && !startsWith(github.head_ref, 'architecture/') && !startsWith(github.head_ref, 'equipment/')) }}
+        if: ${{ github.event_name != 'pull_request' || (!startsWith(github.head_ref, 'texture2/') && !startsWith(github.head_ref, 'campaign-') && !startsWith(github.head_ref, 'worldgen2/') && !startsWith(github.head_ref, 'architecture/') && !startsWith(github.head_ref, 'equipment/') && !startsWith(github.head_ref, 'fix/encounter-')) }}
         run: npm test
       - name: Typecheck
         run: npm run check
