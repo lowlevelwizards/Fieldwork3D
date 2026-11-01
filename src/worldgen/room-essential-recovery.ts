@@ -21,9 +21,9 @@ function candidates(room:Room,width:number,depth:number):Pt[]{
  for(let y=0;y<=dy;y++)for(let x=0;x<=dx;x++)
   points.push({x:l+(r-l)*x/dx,y:t+(b-t)*y/dy});
  // Prioritize room walls, preserving the most usable central circulation.
- points.sort((a,b)=>{
+ points.sort((a,c)=>{
   const edge=(p:Pt)=>Math.min(p.x-l,r-p.x,p.y-t,b-p.y);
-  return edge(a)-edge(b)||a.y-b.y||a.x-b.x;
+  return edge(a)-edge(c)||a.y-c.y||a.x-c.x;
  });
  return points;
 }
