@@ -11,7 +11,7 @@ test('dining rooms allow a sparse table setup and reject optional crowding',()=>
  const third={...chair,x:30};
  assert.equal(roomSolidFootprint(room,[table,chair]),1756);
  assert.equal(withinOptionalFurnitureBudget(room,[table,chair,second],361),true);
- assert.equal(withinOptionalFurnitureBudget(room,[table,chair,second,third],361),false);
+ assert.equal(withinOptionalFurnitureBudget(room,[table,chair,second,third,{...chair,x:40}],361),false);
 });
 test('display/architectural framing does not count as usable furnishing',()=>{
  const frame={x:50,y:50,w:90,h:20,fixture:'window-sill'};
