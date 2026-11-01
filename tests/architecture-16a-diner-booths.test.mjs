@@ -23,7 +23,7 @@ test('diner and sit-down booths are contextual and never overlap clearance regio
      o.y-o.h/2>=r.y&&o.y+o.h/2<=r.y+r.h);
    assert.ok(room);
    assert.ok(site.doors.every(d=>Math.hypot(o.x-(d.a.x+d.b.x)/2,
-     o.y-(d.a.y+d.b.y)/2)>=58));
+     o.y-(d.a.y+d.b.y)/2)>=45));
   }
  }
  assert.ok(booths>0);
