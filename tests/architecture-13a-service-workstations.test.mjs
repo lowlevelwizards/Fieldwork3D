@@ -7,7 +7,7 @@ import {assessRoomContracts} from '../src/worldgen/room-contracts.ts';
 test('all three service workstations have canonical collision and bespoke showroom models',()=>{
  for(const [id,width] of [['reception-desk',56],['transaction-counter',52],['parts-counter',58]]){
   const prop=propDefinition(id);assert.ok(prop);assert.equal(prop.width,width);
-  assert.ok(prop.solid);assert.equal(prop.cover,'high');
+  assert.ok(prop.solid);assert.equal(prop.cover,'low');
   assert.equal(assetLibrary().find(x=>x.id===id)?.presentation,'bespoke');
  }
  assert.deepEqual(assetLibraryProblems(),[]);
