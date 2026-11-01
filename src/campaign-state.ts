@@ -183,7 +183,7 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
    kind:nextKind,scale:contract.scale,region:contract.region,
    title:template.title,description:template.description,
    risk:Math.min(3,contract.risk+1) as 1|2|3,
-   intel:'exterior-known',reward:contract.reward+180,deadline:day+3,status:'available'});
+   intel:'scouted',reward:contract.reward+180,deadline:day+3,status:'available'});
  }
  return {...c,day,funds:c.funds+gained,operators,regionalPressure:pressure,
   activeContractId:null,history:[...c.history,{...r,gains:gainedSkills}].slice(-200),
