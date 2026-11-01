@@ -10,6 +10,7 @@ import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surface
 import {planEnvironmentalWear,type WearKind,type WearMark} from './worldgen/environment-wear.ts';
 import {summarizeWear} from './worldgen/wear-diagnostics.ts';
 import {conditionFloorPixels,effectiveCondition} from './worldgen/condition-visual.ts';
+import {outdoorVisualCondition} from './worldgen/outdoor-condition.ts';
 import {conditionWallPixels} from './worldgen/condition-wall.ts';
 import {planObjectWear,type ObjectWear} from './worldgen/object-wear.ts';
 import {planExposureWear} from './worldgen/wear-exposure.ts';
@@ -443,7 +444,8 @@ export class TacticalScene3D{
     const finishCondition=effectiveCondition(site);
     const age=(hex:number,surface:PixelSurface|undefined,variation=0)=>
       ageMaterialColor(hex,surface,finishCondition,variation);
-    const earth=this.solid(site.layout==='courtyard'?0x69825e:0x607a58,.9,'grass');
+    const outdoors=outdoorVisualCondition(site);
+    const earth=this.solid(age(site.layout==='courtyard'?0x69825e:0x607a58,'grass'),.9,'grass');
     const bounds=site.bounds??{minX:0,minY:0,maxX:W,maxY:H};
     const bw=bounds.maxX-bounds.minX,bh=bounds.maxY-bounds.minY;
     this.plane(this.root,(bounds.minX+bounds.maxX)/2,
@@ -451,10 +453,11 @@ export class TacticalScene3D{
     const zoneColor={yard:0x70895e,patio:0x8b877a,driveway:0x737774,
       service:0x7f827b,garden:0x788d61,parking:0x676c6b} as const;
     for(const zone of site.exteriorZones??[]){
+      const ground=zonePixelSurface(zone.kind,outdoors);
       this.plane(this.root,zone.x,zone.y,zone.w,zone.h,-1.45,
-        this.solid(zoneColor[zone.kind],.91,zonePixelSurface(zone.kind,site.condition)));
+        this.solid(age(zoneColor[zone.kind],ground),.91,ground));
       // One cheap repeated layer per relevant exterior zone, no dynamic allocation.
-      const overlay=overlayForZone(site.condition,zone.kind);
+      const overlay=overlayForZone(outdoors,zone.kind);
       if(overlay){
         const mark=this.plane(this.root,zone.x,zone.y,zone.w,zone.h,-1.42,
           this.groundOverlayMaterial(overlay));
@@ -469,8 +472,8 @@ export class TacticalScene3D{
     // Exterior ground markings are legible construction details, not cover.
     for(const mark of planPropertySurfaces(site))
       this.box(this.root,mark.x,-1.32,mark.y,mark.width,.2,
-        mark.depth,this.solid(surfaceColor[mark.kind]),false);
-    const road=this.solid(0x59584a,.91,'asphalt');
+        mark.depth,this.solid(age(surfaceColor[mark.kind],'concrete')),false);
+    const road=this.solid(age(0x59584a,'asphalt'),.91,'asphalt');
     const side=site.entrySide??'south';
     if(side==='east'||side==='west'){
       const edge=side==='east'?bounds.maxX:bounds.minX;
