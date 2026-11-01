@@ -87,6 +87,52 @@ function position(room:Room,w:number,h:number,side:Anchor):Pt{
  case 'east':return {x:right,y:midY};
  }
 }
+/** Occupancy and activity determine furniture quantities, not only room labels.
+ * Repeated chairs and storage banks are intentional separate objects.
+ */
+function activityFurniture(purpose:string,room:Room,items:readonly Item[]):Item[]{
+ const spacious=room.w*room.h>=22000;
+ const large=room.w*room.h>=34000;
+ const extras:Item[]=[];
+ const add=(id:string,anchor:Anchor)=>extras.push({id,anchor});
+ switch(purpose){
+  case 'dining':
+   add('chair','ne');add('chair','sw');
+   if(spacious){add('chair','se');add('chair','nw');}
+   break;
+  case 'meeting':
+   add('chair','nw');add('chair','ne');
+   if(spacious){add('chair','sw');add('chair','se');}
+   break;
+  case 'waiting':
+   if(spacious){add('chair','sw');add('chair','ne');}
+   if(large)add('chair','west');
+   break;
+  case 'office':case 'reception':case 'study':
+   add('office-chair','ne');break;
+  case 'cubicles':
+   add('office-chair','ne');
+   if(spacious)add('office-chair','sw');
+   break;
+  case 'sales':
+   if(spacious)add('gondola-shelf','sw');
+   if(large)add('gondola-shelf','ne');
+   break;
+  case 'stockroom':case 'storage':
+   if(spacious)add('rack','sw');
+   break;
+  case 'guest':
+   if(spacious)add('dresser','sw');
+   break;
+  case 'workshop':
+   if(spacious)add('compressor','sw');
+   break;
+  case 'exam':
+   if(spacious)add('cart','sw');
+   break;
+ }
+ return [...items,...extras];
+}
 /** Deterministic wall-parallel candidates fill the space left by coarse corner anchors.
  * Only near-wall positions are offered; the navigable centre is protected.
  */
@@ -143,11 +189,17 @@ export function furnishRooms(site:Site,seed:number):Site{
     })??group[0];
     return {id:assetId,anchor:'nw' as Anchor};
   });
-  const selectedIds=new Set<string>();
-  const equipment:Item[]=[];
-  for(const item of [...essential,...roomItems]){
-    if(selectedIds.has(item.id))continue;
-    selectedIds.add(item.id);equipment.push(item);
+  const essentialIds=new Set(essential.map(item=>item.id));
+  // Preserve repeated seating and shelving; only de-duplicate an item's
+  // first authored instance when the required contract already added it.
+  const remaining=activityFurniture(room.purpose??'',room,roomItems);
+  const seenRequired=new Set<string>();
+  const equipment:Item[]=[...essential];
+  for(const item of remaining){
+    if(essentialIds.has(item.id)&&!seenRequired.has(item.id)){
+      seenRequired.add(item.id);continue;
+    }
+    equipment.push(item);
   }
   // Compact rooms still need defining fixtures (a toilet in a restroom,
   // an exam bed in a clinic), but never force large furniture inside them.

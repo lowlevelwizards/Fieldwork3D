@@ -41,6 +41,14 @@ export function relatedFurniturePositions(room:Room,fixture:string,
    offer(table.x+table.w/2+width/2+11,table.y);
    offer(table.x-table.w/2-width/2-11,table.y);
    offer(table.x,table.y+table.h/2+depth/2+11);
+   offer(table.x,table.y-table.h/2-depth/2-11);
+  }
+ }
+ if(fixture==='sink'||fixture==='stove'||fixture==='fridge'){
+  const counter=by(placed,'counter');
+  if(counter){
+   offer(counter.x+counter.w/2+width/2+11,counter.y);
+   offer(counter.x-counter.w/2-width/2-11,counter.y);
   }
  }
  if(fixture==='tool-chest'){
