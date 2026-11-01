@@ -1,6 +1,5 @@
-/** MAP 10: subtle visual wear from a building's deterministic condition.
- * A decorative layer only: no physics, pathfinding or intel mutations.
- */
+/** Localized visual wear. A condition describes a property, not a full-surface filter.
+ * These are render-only decals with a small whole-site budget. */
 import {seeded,type Site} from '../breach-site.ts';
 import {roomPixelSurface} from './pixel-surface-selection.ts';
 export type WearKind='dust'|'stain'|'scrape'|'scuff';
@@ -8,36 +7,41 @@ export type WearMark={
  id:string;roomId:string;kind:WearKind;x:number;y:number;
  width:number;depth:number;rotation:number;opacity:number;
 };
-const conditionCounts:Record<NonNullable<Site['condition']>,number>={
- occupied:0,busy:1,neglected:4,vacant:2,renovation:3,disturbed:4,
+export const WEAR_BUDGET:Record<NonNullable<Site['condition']>,number>={
+ occupied:0,busy:1,neglected:3,vacant:2,renovation:3,disturbed:4,
 };
 export function planEnvironmentalWear(site:Site):WearMark[]{
- const count=conditionCounts[site.condition??'occupied'];
- if(count===0)return [];
- const random=seeded(site.seed^0x66ee4a12),marks:WearMark[]=[];
- const all:readonly WearKind[]=['dust','stain','scrape','scuff'];
- for(const room of site.rooms){
-  if(room.w<40||room.h<40)continue;
-  const amount=Math.min(5,count)*(room.kind==='hall'?.5:1);
-  for(let i=0;i<Math.floor(amount);i++){
-   let kind=site.condition==='renovation'?
-     (i%2===0?'scrape':'dust'):site.condition==='disturbed'?
-     (i%3===0?'stain':'scuff'):all[Math.floor(random()*all.length)];
-   // Match scuffs and stains to the actual rendered surface family.
-   const surface=roomPixelSurface(site.archetype,room.purpose??room.kind);
-   if(surface==='carpet'&&kind==='scrape')kind='stain';
-   if(surface==='tile'&&kind==='dust')kind='scuff';
-   const width=7+random()*Math.min(19,room.w*.15);
-   const depth=8+random()*Math.min(20,room.h*.15);
-   const mx=room.x+Math.max(10,width/2+2);
-   const my=room.y+Math.max(10,depth/2+2);
-   const x=mx+random()*Math.max(0,room.x+room.w-mx-width/2-8);
-   const y=my+random()*Math.max(0,room.y+room.h-my-depth/2-8);
-   const opacity=site.condition==='disturbed'?.26:
-     site.condition==='neglected'?.23:.15;
-   marks.push({id:room.id+':wear:'+i,roomId:room.id,
-     kind,x,y,width,depth,rotation:Math.floor(random()*4)*Math.PI/2,opacity});
+ const budget=WEAR_BUDGET[site.condition??'occupied'];
+ if(budget===0)return [];
+ const random=seeded(site.seed^0x66ee4a12);
+ const rooms=site.rooms.filter(r=>r.w>=40&&r.h>=40);
+ if(!rooms.length)return [];
+ const marks:WearMark[]=[];
+ for(let i=0;i<budget;i++){
+  // Distribute marks across a site rather than multiplying per room.
+  const room=rooms[Math.floor(random()*rooms.length)];
+  const surface=roomPixelSurface(site.archetype,room.purpose??room.kind);
+  let kind:WearKind;
+  switch(site.condition){
+   case 'renovation':kind=i%2===0?'scrape':'dust';break;
+   case 'disturbed':kind=i%3===0?'stain':'scuff';break;
+   case 'vacant':kind='dust';break;
+   case 'busy':kind='scuff';break;
+   default:kind=i%2===0?'scuff':'stain';break;
   }
+  if(surface==='carpet'&&kind==='scrape')kind='stain';
+  if((surface==='tile'||surface==='linoleum')&&kind==='dust')kind='scuff';
+  const width=8+random()*Math.min(13,room.w*.1);
+  const depth=8+random()*Math.min(13,room.h*.1);
+  const edge=kind==='dust'||kind==='scuff';
+  const dx=edge?(random()<.5?width/2+5:room.w-width/2-5):
+   width/2+5+random()*Math.max(0,room.w-width-10);
+  const dy=edge?(random()<.5?depth/2+5:room.h-depth/2-5):
+   depth/2+5+random()*Math.max(0,room.h-depth-10);
+  const opacity=site.condition==='disturbed'?.18:.11;
+  marks.push({id:room.id+':wear:'+i,roomId:room.id,
+   kind,x:room.x+dx,y:room.y+dy,width,depth,
+   rotation:Math.floor(random()*4)*Math.PI/2,opacity});
  }
  return marks;
 }

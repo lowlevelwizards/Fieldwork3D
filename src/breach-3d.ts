@@ -419,7 +419,7 @@ export class TacticalScene3D{
           this.wearTextures.set(detail.kind,texture);
         }
         material=new THREE.MeshBasicMaterial({
-          color:wearColor[detail.kind],map:texture,transparent:true,opacity:.32,
+          color:wearColor[detail.kind],map:texture,transparent:true,opacity:.14,
           depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,
           side:THREE.DoubleSide});
         this.wearMaterials.set(detail.kind,material);
