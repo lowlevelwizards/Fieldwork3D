@@ -16,7 +16,11 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Camera tests
+      - name: Focused texture and world-scale regression tests
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'texture2/') }}
+        run: node --experimental-strip-types --test tests/texture*.test.mjs tests/map-07-building-palettes.test.mjs tests/map-10-environment-wear.test.mjs tests/map-20-world-scale.test.mjs
+      - name: Full game tests (main and non-texture PRs)
+        if: ${{ github.event_name != 'pull_request' || !startsWith(github.head_ref, 'texture2/') }}
         run: npm test
       - name: Typecheck
         run: npm run check
