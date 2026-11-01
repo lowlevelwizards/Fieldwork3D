@@ -125,7 +125,11 @@ export type ResolvedWeaponAssembly={
  supportX:number;supportY:number;sightHeight:number;
  mounted:Record<WeaponAttachmentSlot,WeaponAttachment>;
 };
+const resolutionCache=new WeakMap<WeaponConfiguration,ResolvedWeaponAssembly>();
+/** Configurations are immutable by contract: calculate once per saved change. */
 export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAssembly{
+ const cached=resolutionCache.get(raw);
+ if(cached)return cached;
  const config=readWeaponConfiguration(raw,raw.weapon);
  const p=WEAPON_PLATFORMS[config.weapon];
  const mounted={} as Record<WeaponAttachmentSlot,WeaponAttachment>;
@@ -138,7 +142,7 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   inertia+=part.massKg*part.massX*part.massX;
  }
  const balance=weighted/mass;
- return {weapon:config.weapon,configuration:config,lengthScale:p.lengthScale,
+ const resolved:ResolvedWeaponAssembly={weapon:config.weapon,configuration:config,lengthScale:p.lengthScale,
   massKg:mass,balanceX:balance,rotationalInertia:Math.max(1,inertia),
   muzzleX:p.muzzleX+(mounted.muzzle.muzzleExtension??0),
   stockX:p.stockX+(mounted.stock.stockShift??0),
@@ -146,4 +150,6 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   supportX:p.supportX+(mounted.foregrip.supportShift??0),
   supportY:p.supportY,sightHeight:mounted.optic.sightHeight??2.6,
   mounted};
+ resolutionCache.set(raw,resolved);
+ return resolved;
 }
