@@ -4,6 +4,7 @@
  */
 import {type Pt,type Segment,type Door,type Obstacle} from './breach-core.ts';
 import {applyArchetype} from './breach-archetypes.ts';
+import {enforceServiceHatchBarriers} from './worldgen/service-hatches.ts';
 import {compileArchitecturalSite} from './worldgen/architectural-compiler.ts';
 import {partitionMotelGuestUnits} from './worldgen/motel-suites.ts';
 import {orientArchitecturalSite,type EntrySide} from './worldgen/site-orientation.ts';
@@ -76,7 +77,8 @@ export function generateSite(seed:number,scale:SiteScale='standard'):Site{
     compileArchitecturalSite(kind,seed+attempt*9973,scale,subtype));
   geometry.seed=seed;
   geometry.identity=buildingIdentity(kind,seed,scale,geometry.roomCount);
-  try{return applyArchetype(orientArchitecturalSite(geometry,seed),seed);}
+  try{return enforceServiceHatchBarriers(
+    applyArchetype(orientArchitecturalSite(geometry,seed),seed));}
   catch{/* Retry a different architectural grammar, not the old grid. */}
  }
  throw new Error('Cannot generate connected '+kind+' site for seed '+seed);
