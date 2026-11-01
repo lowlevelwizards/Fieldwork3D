@@ -38,7 +38,7 @@ export function addScenarioDisarray(site:Site,seed:number):Site{
   for(let j=0;j<spots.length;j++){
    const p=spots[(offset+j)%spots.length];
    const obstacle:Obstacle={x:p.x,y:p.y,w,h,low:asset.cover==='low',
-     fixture,orientation:(offset+j)%4};
+     fixture,orientation:((offset+j)%4) as 0|1|2|3};
    if(site.doors.some(d=>dist(p,{x:(d.a.x+d.b.x)/2,
      y:(d.a.y+d.b.y)/2})<72))continue;
    if(protectedPoints.some(q=>dist(p,q)<48))continue;
