@@ -4,7 +4,7 @@
 import type {Site,Room} from '../breach-site.ts';
 import type {Obstacle,Pt} from '../breach-core.ts';
 export type QuarterTurn=0|1|2|3;
-const directional=new Set(['chair','office-chair','armchair','sofa','bench','patio-chair',
+const directional=new Set(['bar-stool','chair','office-chair','armchair','sofa','bench','patio-chair',
  'desk','bed','exam-bed','toilet','sink','stove','fridge','counter','cabinet',
  'bookcase','shelf','rack','wall-shelf','wardrobe','dresser','tv-stand','workbench',
  'checkout','control-panel','meeting-table','dining-table',
@@ -12,6 +12,7 @@ const directional=new Set(['chair','office-chair','armchair','sofa','bench','pat
  'instrument-cart','retail-endcap','packing-station','parts-bin']);
 const facing:readonly Pt[]=[{x:0,y:1},{x:1,y:0},{x:0,y:-1},{x:-1,y:0}];
 const groups:Record<string,readonly string[]>={
+ 'bar-stool':['bar-counter'],
  chair:['dining-table','meeting-table','coffee-table','desk','checkout'],
  'office-chair':['desk','meeting-table','control-panel','checkout'],
  'patio-chair':['picnic-table','dining-table'],

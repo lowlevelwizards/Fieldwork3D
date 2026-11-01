@@ -219,6 +219,10 @@ export function furnishRooms(site:Site,seed:number):Site{
   const remaining=activityFurniture(room.purpose??'',room,roomItems,site.identity?.subtype);
   const seenRequired=new Set<string>();
   const equipment:Item[]=[...essential];
+  if(room.purpose==='dining'&&index===0&&site.archetype==='restaurant'&&
+    ['diner','sit-down-restaurant'].includes(site.identity?.subtype??'')&&
+    room.w>=150&&room.h>=110)
+    equipment.unshift({id:'bar-counter',anchor:'east'});
   for(const item of remaining){
     if(essentialIds.has(item.id)&&!seenRequired.has(item.id)){
       seenRequired.add(item.id);continue;
@@ -258,6 +262,23 @@ export function furnishRooms(site:Site,seed:number):Site{
    }
    if(chosen)placed.push(chosen);
    else furnishingIssues.push({roomId:room.id,fixture:item.id,reason:'all-placements-blocked'});
+  }
+  // Counter stools form one inward-facing seating group, never random scattered chairs.
+  const bar=placed.find(o=>o.fixture==='bar-counter');
+  if(bar){
+    const side=(room.y+room.h/2)>=bar.y?1:-1;
+    for(const ratio of [-.30,0,.30]){
+      const candidate:Obstacle={x:bar.x+ratio*bar.w,
+        y:bar.y+side*(bar.h/2+17),w:15,h:15,
+        fixture:'bar-stool',low:true};
+      if(candidate.x-8<room.x+9||candidate.x+8>room.x+room.w-9||
+        candidate.y-8<room.y+9||candidate.y+8>room.y+room.h-9)continue;
+      if(site.doors.some(d=>Math.hypot(candidate.x-(d.a.x+d.b.x)/2,
+        candidate.y-(d.a.y+d.b.y)/2)<37))continue;
+      if(reserved.some(q=>Math.hypot(q.x-candidate.x,q.y-candidate.y)<28))continue;
+      if([...output,...placed].some(o=>overlap(o,candidate,2)))continue;
+      placed.push(candidate);
+    }
   }
   if(placed.length)output.push(...placed);
  }

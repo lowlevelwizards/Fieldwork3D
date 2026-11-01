@@ -39,7 +39,19 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
       // keep the same tactical footprint, clearance and cover rules.
       if(renderCharacterFixture(group,c,fixture,c.artVariant??i,visualCtx,wood,steel,olive,metal))
         return;
-      if(['bed','exam-bed','guest'].includes(fixture)){
+      if(fixture==='bar-counter'){
+        const finish=visualCtx.solid(0x776951,.88,'wood');
+        ctx.box(group,c.x,12,c.y,w-3,23,d-4,finish);
+        ctx.box(group,c.x,27,c.y+d*.12,w+2,3,d+4,steel,false);
+        ctx.box(group,c.x,7,c.y-d*.42,w*.87,3,3,wood,false);
+      }else if(fixture==='bar-stool'){
+        const seat=visualCtx.solid(0x695b48,.87,'wood');
+        ctx.box(group,c.x,22,c.y,w*.82,3,d*.82,seat);
+        for(const xx of [-1,1])for(const zz of [-1,1])
+          ctx.box(group,c.x+xx*w*.28,11,c.y+zz*d*.28,2,22,2,steel);
+        ctx.box(group,c.x,8,c.y,w*.75,1.8,2,steel,false);
+        ctx.box(group,c.x,8,c.y,2,1.8,d*.75,steel,false);
+      }else if(['bed','exam-bed','guest'].includes(fixture)){
         const height=asset?.height??19;
         ctx.box(group,c.x,height*.33,c.y,w,height*.66,d,material);
         ctx.box(group,c.x,height*.75,c.y,w-3,height*.20,d-3,olive,false);

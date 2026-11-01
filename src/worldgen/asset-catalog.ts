@@ -50,6 +50,13 @@ definitions.push(
 );
 definitions.push({id:'window-boards',category:'security',width:52,depth:10,
  height:36,solid:true,cover:'high',rooms:['yard','garden','parking','service-yard']});
+// Purpose-built public counter and correctly scaled tall bar seats.
+definitions.push(
+ {id:'bar-counter',category:'commercial',width:66,depth:22,height:26,
+  solid:true,cover:'high',rooms:['dining','service']},
+ {id:'bar-stool',category:'commercial',width:15,depth:15,height:23,
+  solid:true,cover:'low',rooms:['dining']}
+);
 // Functional workstations for real commercial, clinical, retail and industrial routines.
 definitions.push(
  {id:'prep-table',category:'commercial',width:44,depth:26,height:21,
