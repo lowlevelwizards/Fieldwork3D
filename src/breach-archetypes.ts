@@ -8,7 +8,7 @@ import {programRooms} from './worldgen/building-programs.ts';
 import {correctPublicEntrance} from './worldgen/public-entrance.ts';
 import {activeSite,activateSite,passable,route} from './breach-core.ts';
 import {addOpenPlanTransitions} from './worldgen/open-plan.ts';
-import {addServiceHatches} from './worldgen/service-hatches.ts';
+import {addServiceHatches,enforceServiceHatchBarriers} from './worldgen/service-hatches.ts';
 import {dressSite} from './worldgen/environment-dresser.ts';
 import {decorateWalls} from './worldgen/wall-dresser.ts';
 import {styleArchitecturalDoors} from './worldgen/door-families.ts';
@@ -83,7 +83,7 @@ export function applyArchetype(site:Site,seed:number):Site{
     const environment=buildArchetypeEnvironment(architecture,seed);
     const result=dressWindowSecurity(decorateWalls(populateFunctionalRooms(dressSite(
       furnishRooms(environment,seed),seed),seed),seed),seed);
-    return {...result,bounds:site.bounds??
+    return {...enforceServiceHatchBarriers(result),bounds:site.bounds??
       {minX:0,minY:0,maxX:640,maxY:740}};
   };
   // Controlled rollout: keep standard maps fast and proven while sampling
