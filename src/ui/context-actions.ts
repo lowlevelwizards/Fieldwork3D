@@ -6,7 +6,7 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   reserve:number;magazine:number;doorOpen?:boolean;
   nodeKind?:string;aimLabel?:string;nodeFirePolicy?:string;
   nearMovable?:boolean;nearWindow?:boolean;
-  availableTools?:readonly string[];doorWedged?:boolean;
+  availableTools?:readonly string[];doorWedged?:boolean;};
 export function contextActionChoices(o:ContextOptions):ContextAction[]{
   if(o.door)return o.doorOpen?[
     {id:'ctxClose',label:'CLOSE',group:'primary',title:'Pull the open door shut'},
