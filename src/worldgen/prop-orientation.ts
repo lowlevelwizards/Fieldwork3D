@@ -5,7 +5,7 @@ import type {Site,Room} from '../breach-site.ts';
 import type {Obstacle,Pt} from '../breach-core.ts';
 import {fixtureServiceClear} from './fixture-service-clearance.ts';
 export type QuarterTurn=0|1|2|3;
-const directional=new Set(['chair','office-chair','armchair','sofa','bench','patio-chair',
+const directional=new Set(['bar-stool','chair','office-chair','armchair','sofa','bench','patio-chair',
  'desk','bed','exam-bed','toilet','sink','stove','fridge','counter','cabinet',
  'bookcase','shelf','rack','wall-shelf','wardrobe','dresser','tv-stand','workbench',
  'checkout','control-panel','meeting-table','dining-table',
@@ -16,6 +16,7 @@ const activeFixtures=new Set(['chair','office-chair','armchair','sofa','bench','
  'desk','toilet','sink','stove','fridge','checkout','workbench','control-panel',
  'commercial-range','handwash-station','prep-table']);
 const groups:Record<string,readonly string[]>={
+ 'bar-stool':['bar-counter'],
  chair:['dining-table','meeting-table','coffee-table','desk','checkout'],
  'office-chair':['desk','meeting-table','control-panel','checkout'],
  'patio-chair':['picnic-table','dining-table'],
