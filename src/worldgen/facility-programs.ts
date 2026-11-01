@@ -21,9 +21,11 @@ export function facilityProgramIssues(blueprint:Blueprint):string[]{
    .map(rule=>'missing '+rule.required);
 }
 export function ensureFacilityProgram(blueprint:Blueprint,scale:SiteScale):Blueprint{
- // Small businesses can share off-site/common amenities. The larger layouts
- // modeled as complete establishments require accessible dedicated restrooms.
- if(scale==='small')return blueprint;
+ // Compact standalone businesses still need sanitary support when an existing
+ // redundant service/storage cell can be converted without losing their
+ // indispensable public or operational rooms.
+ const compactAllowed=new Set(['office','retail','utility']);
+ if(scale==='small'&&!compactAllowed.has(blueprint.kind))return blueprint;
  if(blueprint.unitIds)return blueprint;
  const cells=blueprint.cells.map(row=>[...row]);
  let changed=0;

@@ -16,7 +16,7 @@ const changes:Partial<Record<BuildingArchetype,Record<string,Change>>>={
   'open-workplace':{from:'office',to:'cubicles',minimumRemaining:1}
  },
  garage:{
-  'tire-service':{from:'bay',to:'parts',minimumRemaining:2},
+  'tire-service':{from:'bay',to:'parts',minimumRemaining:1},
   'fleet-maintenance':{from:'bay',to:'workshop',minimumRemaining:2}
  },
  warehouse:{
@@ -40,7 +40,23 @@ export function specializeBlueprint(
  const candidates=cells.flatMap((row,y)=>row.map((role,x)=>({x,y,role})))
   .filter(c=>c.role===rule.from&&
     !(c.x===blueprint.front.col&&c.y===blueprint.front.row));
- if(candidates.length<=rule.minimumRemaining)return blueprint;
+ if(candidates.length<=rule.minimumRemaining){
+  // Small cafés lack a dedicated service cell. Their compact reception
+  // transforms into a real checkout counter while dining/kitchen remain.
+  if(blueprint.kind==='restaurant'&&
+    (subtype==='cafe'||subtype==='diner')&&
+    blueprint.depths.length===2){
+   const entry=blueprint.cells.map((row,y)=>
+     row.map((role,x)=>({x,y,role}))).flat().find(c=>c.role==='reception'&&
+       !(c.x===blueprint.front.col&&c.y===blueprint.front.row));
+   if(entry){
+    const cells=blueprint.cells.map(row=>[...row]);
+    cells[entry.y][entry.x]='checkout';
+    return {...blueprint,cells,family:blueprint.family+' / '+subtype};
+   }
+  }
+  return blueprint;
+ }
  // Choose the redundant cell nearest its relevant workflow area: service near
  // dining, storage near public sales, office desks near the main work spine.
  const target=candidates.sort((a,b)=>{
