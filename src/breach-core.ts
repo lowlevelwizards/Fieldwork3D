@@ -6,7 +6,7 @@
 import {type Site} from './breach-site.ts';
 export type Pt={x:number;y:number};
 export type Segment={a:Pt;b:Pt};
-export type DoorStyle='wood'|'steel'|'reinforced'|'exit'|'glazed';
+export type DoorStyle='wood'|'steel'|'reinforced'|'exit'|'glazed'|'mesh-gate';
 export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number;
   style?:DoorStyle;
   /** Mechanical closure with vertical lift; routes and shots respect shutter state. */
@@ -119,11 +119,11 @@ export function doorBlocksSegment(door:Door,line:Segment):boolean{
  return segmentsCross(line,leaf);
 }
 export function doorBlocksRay(doors:Door[],line:Segment):boolean{
- return doors.some(door=>doorBlocksSegment(door,line));
+ return doors.some(door=>door.style!=='mesh-gate'&&doorBlocksSegment(door,line));
 }
 /** Transparent hinged glass transmits sight but retains its physical collision leaf. */
 export function doorBlocksSightRay(doors:Door[],ray:Segment):boolean{
- return doors.some(d=>d.style!=='glazed'&&doorBlocksSegment(d,ray));
+ return doors.some(d=>d.style!=='glazed'&&d.style!=='mesh-gate'&&doorBlocksSegment(d,ray));
 }
 export function isClear(a:Pt,b:Pt,doors:Door[],ignoreDoors=false):boolean{
   const shot={a,b};
@@ -134,7 +134,7 @@ export function isClear(a:Pt,b:Pt,doors:Door[],ignoreDoors=false):boolean{
   const n=Math.max(1,Math.ceil(distance(a,b)/8));
   for(let i=1;i<n;i++){
     const t=i/n,p={x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t};
-    if(COVER.some(o=>pointInCover(p,o,0)))return false;
+    if(COVER.some(o=>o.fixture!=='chain-link-fence'&&pointInCover(p,o,0)))return false;
   }
   return true;
 }
