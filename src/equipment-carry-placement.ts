@@ -51,6 +51,12 @@ export function carryPlacementLedger(kit:EquipmentLoadout,
  }
  return placements;
 }
+/** Returns true retrieval time from the physically occupied carrier slot. */
+export function equipmentRetrievalSeconds(kit:EquipmentLoadout,
+ magazines:readonly MagazineItem[],kind:'medical'|'utility'):number{
+ const placed=carriedItemPlacement(kit,magazines,kind);
+ return placed?placed.accessSeconds:Infinity;
+}
 export function carriedItemPlacement(kit:EquipmentLoadout,
  magazines:readonly MagazineItem[],kind:'medical'|'utility'){
  return carryPlacementLedger(kit,magazines).find(p=>p.kind===kind);
