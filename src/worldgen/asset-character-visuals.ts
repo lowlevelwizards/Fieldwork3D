@@ -348,22 +348,33 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
    const clothes=['wardrobe','locker'].includes(fixture);
    const metalCase=['locker','filing-cabinet','rack','gondola-shelf','display-rack'].includes(fixture);
    const shell=metalCase?steel:wood;
-   b(0,H*.50,-d*.04,w*.96,H*.97,d*.87,shell);
-   b(0,H*.50,d*.455,w*.87,H*.91,1,dark,false);
+   if(!shelves){
+     b(0,H*.50,-d*.04,w*.96,H*.97,d*.87,shell);
+     b(0,H*.50,d*.455,w*.87,H*.91,1,dark,false);
+   }else{
+     // Open racking shows negative space and its actual load path.
+     b(0,H*.50,-d*.45,w*.92,H*.96,1.8,shell,false);
+     for(const side of [-1,1])
+       b(side*w*.465,H*.5,0,2.7,H*.97,d*.83,shell);
+   }
    if(shelves){
      // Dense silhouettes at a distance, but distinct stocked rows up close.
      const count=fixture==='rack'?3:fixture==='wall-shelf'?2:4;
      for(let k=0;k<count;k++){
        const y=H*(k+.28)/(count+.25);
-       b(0,y,d*.47,w*.90,2.5,d*.16,metalCase?steel:wood,false);
+       b(0,y,0,w*.90,2.1,d*.86,metalCase?steel:wood,false);
+       b(0,y,d*.44,w*.90,2.5,1.3,shell,false); // shelf lip
        for(const x of [-.25,.05,.29]){
          const j=(k+variation+(x<0?1:0))%3;
-         b(x*w,y+H*.085,d*.40,w*.18,H*.15,d*.15,
+         if(j===2&&k>0)continue; // purposeful partly empty bays
+         b(x*w,y+H*.084,d*.08,w*.18,H*.15,d*.38,
            j===0?accent:j===1?cream:main,false);
        }
      }
-     for(const sx of [-1,1])
+     for(const sx of [-1,1]){
        b(sx*w*.465,H*.49,d*.33,2.2,H*.96,2.3,shell);
+       b(sx*w*.465,H*.50,-d*.35,2.2,H*.96,2.3,shell);
+     }
      if(fixture==='gondola-shelf'||fixture==='display-rack')
        b(0,H*.94,d*.49,w*.89,H*.10,d*.16,accent,false);
    }else if(clothes){
@@ -457,6 +468,8 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
      for(const yy of [h*.24,h*.78])
        b(0,yy,d*.42,w*.59,1.8,1.2,accent,false);
      b(w*.25,h*.92,0,4,5,4,metal);
+     for(const z of [-d*.27,d*.27])
+       b(0,h*.11,z,w*.67,3,2.5,dark); // bolted tank cradle
    }else if(fixture==='barrel'||fixture==='tire-stack'){
      const tire=fixture==='tire-stack',levels=tire?3:1;
      for(let k=0;k<levels;k++){
@@ -483,6 +496,8 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
          b(0,h*yy,d*.53,w*.21,1.6,1.4,cream,false);
        }
        b(0,h*.98,0,w*.94,2.3,d*.95,metal);
+       for(const side of [-1,1])
+         b(side*w*.47,h*.68,0,2.3,h*.42,d*.83,dark,false); // folded cabinet rails
        for(const sx of [-1,1])cyl(sx*w*.35,3,0,3,2,rubber,'z');
      }else{
        b(0,h*.66,d*.48,w*.73,h*.55,2,controls?dark:steel,false);
@@ -495,6 +510,8 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
          for(const sx of [-1,1])b(sx*w*.37,h*.42,d*.48,2,h*.60,2,dark,false);
          for(const yy of [.34,.49,.64,.79])
            b(0,h*yy,d*.52,w*.46,1.1,1.3,metal,false);
+         b(0,h*.88,d*.52,w*.64,2.2,1.5,dark,false); // exhaust guard
+         b(-w*.32,h*.88,d*.52,3.1,3.6,1.5,red,false);
          b(w*.22,h*.92,0,6,7,5,steel);
        }
      }
