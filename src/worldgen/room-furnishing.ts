@@ -6,6 +6,7 @@ import {type Obstacle,type Pt} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 import {relatedFurniturePositions} from './room-composition.ts';
 import {activityClusterCandidates} from './activity-clusters.ts';
+import {withinOptionalFurnitureBudget} from './furniture-density.ts';
 import {orientFurnishings} from './prop-orientation.ts';
 import {ROOM_CONTRACTS} from './room-contracts.ts';
 import {recoverRoomEssentials} from './room-essential-recovery.ts';
@@ -107,16 +108,17 @@ function activityFurniture(purpose:string,room:Room,items:readonly Item[],subtyp
  const add=(id:string,anchor:Anchor)=>extras.push({id,anchor});
  switch(purpose){
   case 'dining':
-   add('chair','ne');add('chair','sw');
-   if(spacious){add('chair','se');add('chair','nw');}
+   // A table suggests seating; don't force a full four-place dining set.
+   if(spacious)add('chair','ne');
+   if(large)add('chair','sw');
    break;
   case 'meeting':
-   add('chair','nw');add('chair','ne');
-   if(spacious){add('chair','sw');add('chair','se');}
+   add('chair','nw');
+   if(spacious)add('chair','ne');
+   if(large)add('chair','sw');
    break;
   case 'waiting':
-   if(spacious){add('chair','sw');add('chair','ne');}
-   if(large)add('chair','west');
+   if(spacious)add('chair','sw');
    break;
   case 'office':case 'reception':case 'study':
    add('office-chair','ne');break;
@@ -125,8 +127,7 @@ function activityFurniture(purpose:string,room:Room,items:readonly Item[],subtyp
    if(spacious)add('office-chair','sw');
    break;
   case 'sales':
-   if(spacious)add('gondola-shelf','sw');
-   if(large)add('gondola-shelf','ne');
+   if(large)add('gondola-shelf','sw');
    break;
   case 'stockroom':case 'storage':
    if(spacious)add('rack','sw');
@@ -362,6 +363,10 @@ export function furnishRooms(site:Site,seed:number):Site{
     if(p.x-w/2<room.x+9||p.x+w/2>room.x+room.w-9||
        p.y-h/2<room.y+9||p.y+h/2>room.y+room.h-9)continue;
     const candidate:Obstacle={...p,w,h,fixture:item.id,low:asset.cover==='low'};
+    // Only optional additions obey the soft density budget. Never remove
+    // mandatory sanitary fixtures or equipment to satisfy a furniture ratio.
+    if(i>=essential.length&&!withinOptionalFurnitureBudget(
+      room,[...output,...placed],w*h))continue;
     // Required groups retain access to this space; reject optional
     // extras that would eat an everyday pedestrian approach.
     if(i>=essential.length&&overlapsCirculationReservation(
