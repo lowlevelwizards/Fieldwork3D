@@ -57,6 +57,7 @@ import {bodyClear,sweptBodyClear,squeezeFacing,
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
   from './breach-squeeze-route.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {changeWeaponPlatform,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
   rayHitsActor,muzzleEndpoint,recoverWeapon,handlingInstability,type FiringMode} from './breach-ballistics.ts';
@@ -121,6 +122,7 @@ export type TeamActor=Operator & {
   lastLaneWarnAt:number;lastFireBlock:FireBlock;
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
   appearanceSeed:number;equipment?:EquipmentLoadout;
+  weaponConfiguration?:WeaponConfiguration;
   loadMovementScale?:number;
   armorIntegrity:number;helmetIntegrity:number;
   flashCharges:number;
@@ -1014,7 +1016,9 @@ export function cycleWeapon(s:Session,id:string):boolean{
   const a=party(s,id);if(!a||!canEdit(s))return false;
   const ids:WeaponId[]=['carbine','smg','rifle','shotgun'];
   const next=ids[(ids.indexOf(a.weapon)+1)%ids.length];
-  a.weapon=next;a.magazine=WEAPONS[next].capacity;
+  a.weapon=next;
+  if(a.weaponConfiguration)a.weaponConfiguration=changeWeaponPlatform(a.weaponConfiguration,next);
+  a.magazine=WEAPONS[next].capacity;
   a.reserve=WEAPONS[next].reserve;a.reload=0;a.aim=0;
   a.insertedMagazineId=a.id+'/'+next+'/loaded';
   a.spareMagazines=next==='shotgun'?[]:magazineKit(
