@@ -41,6 +41,7 @@ import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOpera
  purchaseAmmo,purchaseMedical,resupplyOperator,treatOperator,
  type CampaignState,type CampaignReport} from './campaign-state.ts';
 import {CampaignScreen} from './campaign-ui.ts';
+import {careerEventsForOperation} from './campaign-history.ts';
 import {awarenessDebugLine} from './breach-awareness-debug.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
 import './breach-style.css';
@@ -208,7 +209,8 @@ function recordCompletedOperation(){
     grade:stats.grade,elapsed:stats.time,
     participatingIds:members.map(a=>a.id),
     casualties:members.filter(a=>a.health<=0).map(a=>a.id),
-    objective:stats.objective,events:[],
+    objective:stats.objective,
+    events:careerEventsForOperation(campaign,'operation-'+campaign.activeContractId,state.battleEvents),
     performance:members.map(a=>({
      id:a.id,shots:a.shots,hits:a.hits,pointShots:a.pointShots,
      aimedShots:a.aimedShots,longHits:a.longHits,injuryStage:a.injuryStage,
@@ -1051,6 +1053,17 @@ function updateHud(){
         o.injury?'WOUNDED':'ACTIVE':'DOWN')+' · '+o.fired+' RDS').join('\n')+
       '\nOPERATIONS LOGGED: '+operationHistory().length+
       '\n\nTACTICAL TIMELINE\n'+formatAfterAction(recorder.events,10);
+    if(campaignMode==='mission'&&campaign?.history.length){
+     const recent=campaign.history[campaign.history.length-1];
+     const lines=recent.gains?.flatMap(person=>{
+      const member=campaign?.operators.find(m=>m.id===person.id);
+      const improvements=Object.entries(person.gains)
+       .filter(([,gain])=>(gain??0)>0)
+       .map(([skill,gain])=>skill.replace(/([A-Z])/g,' $1')+' +'+((gain??0)*100).toFixed(1));
+      return improvements.length?[((member?.callsign??person.id)+': '+improvements.join(', '))]:[];
+     })??[];
+     if(lines.length)ui.debriefStats.textContent+='\n\nCAREER DEVELOPMENT\n'+lines.join('\n');
+    }
   }
   for(const id of squadIds){
     const a=uid(id),button=ui[id];
