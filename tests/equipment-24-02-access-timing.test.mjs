@@ -15,6 +15,11 @@ test('24.02 medical treatment and tool access come from actual carry locations',
  assert.equal(carriedItemPlacement(trauma,[], 'medical').location,'backpack');
  assert.equal(equipmentRetrievalSeconds(
   setEquipmentChoice(basic,'medical','medical-none'),[],'medical'),Infinity);
+ let pry=setEquipmentChoice(basic,'utility','utility-pry');
+ const tool=equipmentRetrievalSeconds(pry,[],'utility');
+ assert.ok(Number.isFinite(tool)&&tool>=0);
+ const empty=setEquipmentChoice(pry,'utility','utility-none');
+ assert.equal(equipmentRetrievalSeconds(empty,[],'utility'),Infinity);
 });
 test('24.02 medical action cannot finish before required physical access time',()=>{
  const s=newSession(),a=s.operators.find(o=>o.id==='rook'),p=s.operators.find(o=>o.id==='moss');
