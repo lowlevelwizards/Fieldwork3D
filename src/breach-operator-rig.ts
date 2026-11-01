@@ -25,6 +25,7 @@ import {blendedHandlingProfile,smoothHandling,type HandlingTransition}
   from './breach-handling-transition.ts';
 import {fallAngles,hitStagger,type FallPose,type WoundRegion}
   from './breach-wounds.ts';
+import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {weaponGrips,handlingPose,clampReach,
   fitWeaponPose,type Handling,type HandlingIntent}
   from './breach-weapon-pose.ts';
@@ -55,6 +56,7 @@ export type OperatorPose={
   clearanceRetraction?:number;clearanceBlocked?:boolean;
   blocked?:boolean;footAllowed?:(point:{x:number;y:number})=>boolean;
   gait?:'walk'|'run'|'pie'|'squeeze';
+  equipment?:EquipmentLoadout;
   /** Opt-in to contact-position weight transfer for lab candidate only. */
   hybridSupport?:boolean;
   acceleration?:number;
@@ -68,7 +70,9 @@ export type OperatorRig={
   root:THREE.Group;hip:THREE.Group;chest:THREE.Group;head:THREE.Group;
   weapon:THREE.Group;droppedGun:THREE.Group;feet:Foot[];arms:Arm[];
   magazineInserted:THREE.Mesh;magazineHand:THREE.Mesh;
-  pack:THREE.Mesh;lastTime:number;lastPose:OperatorPose|null;
+  pack:THREE.Mesh;helmetShell:THREE.Mesh[];
+  armorPanels:THREE.Mesh[];capBill:THREE.Mesh;
+  lastTime:number;lastPose:OperatorPose|null;
   personality:ReturnType<typeof operatorMotionTraits>;
   footsteps:FootstepScheduler;
   /** Non-authoritative request for the motor/controller to reposition. */
@@ -111,18 +115,20 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   block(hip,0,0,0,8,5,12,cloth);
   chest.position.y=26;
   block(chest,0,0,0,10,12,14,cloth);
-  block(chest,3,0,0,2.8,9,13,vest);
-  block(chest,-3,1,0,2,8,11,vest);
+  const armorPanels=[block(chest,3,0,0,2.8,9,13,vest),
+    block(chest,-3,1,0,2,8,11,vest)];
   // Low-poly padded upper-pec/shoulder contour is the visible buttplate
   // contact. The stock seats into this pad rather than the arm geometry.
   for(const sign of [-1,1])
-    block(chest,1.35,4.6,sign*6.05,3.8,3.1,2.0,vest);
+    armorPanels.push(block(chest,1.35,4.6,sign*6.05,3.8,3.1,2.0,vest));
   const pack=block(chest,-7,0,0,6,11,11,vest);
   head.position.y=10;
   block(head,0,-3,0,3.6,4,3.8,skin);
   block(head,0,3,0,8,8,8,skin);
-  block(head,0,6,0,9.4,3.5,9.4,vest);
-  block(head,4,3,0,2,2.7,8,vest);
+  const helmetShell=[block(head,0,6,0,9.4,3.5,9.4,vest),
+    block(head,4,3,0,2,2.7,8,vest)];
+  const capBill=block(head,5.3,5.7,0,5,1.25,8,cloth);
+  capBill.visible=false;
   const helmetBadge=block(head,0,7.6,0,9.6,2,9.8,vest);
   helmetBadge.visible=false;
   const feet:Foot[]=[],arms:Arm[]=[];
@@ -162,7 +168,8 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   magazineHand.visible=false;
   const colors=new Map([cloth,boot,vest,skin,steel].map(material=>
     [material,material.color.clone()] as const));
-  return {root,hip,chest,head,weapon,droppedGun,feet,arms,pack,colors,
+  return {root,hip,chest,head,weapon,droppedGun,feet,arms,pack,
+    helmetShell,armorPanels,capBill,colors,
     clothMaterial:cloth,vestMaterial:vest,baseCloth:cloth.color.clone(),
     baseVest:vest.color.clone(),helmetBadge,appearanceSeed:0,
     personality:operatorMotionTraits(id),
@@ -203,6 +210,21 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.pack.scale.set(1,identity===0?1:.90+(identity%5)*.05,
       identity===0?1:.93+((identity>>>5)%4)*.04);
   }
+  // Kit presentation reuses the live rig without altering shot transforms.
+  const gear=p.equipment?.slots;
+  const headItem=gear?.head??'head-helmet';
+  for(const mesh of r.helmetShell)mesh.visible=headItem==='head-helmet';
+  r.capBill.visible=headItem==='head-cap';
+  r.helmetBadge.visible=identity!==0&&identity%3===0&&headItem==='head-helmet';
+  const armorItem=gear?.armor??'armor-soft';
+  for(const mesh of r.armorPanels){
+    mesh.visible=armorItem!=='armor-none';
+    mesh.scale.x=armorItem==='armor-carrier'?1.16:1;
+  }
+  const packItem=gear?.backpack??'backpack-day';
+  r.pack.visible=packItem!=='backpack-none';
+  const packSize=packItem==='backpack-field'?1.24:1;
+  r.pack.scale.set(r.pack.scale.x,packSize,packSize);
   // Retain costume identity, but subdued incapacitated bodies blend with
   // grounded blood and don't need floating status text. Reversible on seek.
   for(const [material,original] of r.colors){

@@ -56,6 +56,7 @@ import {bodyClear,sweptBodyClear,squeezeFacing,
   sweptProfileClear} from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
   from './breach-squeeze-route.ts';
+import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
   rayHitsActor,muzzleEndpoint,recoverWeapon,handlingInstability,type FiringMode} from './breach-ballistics.ts';
@@ -116,7 +117,7 @@ export type TeamActor=Operator & {
   lastBashAt:number;lastBashRole:'push'|'receive'|null;
   lastLaneWarnAt:number;lastFireBlock:FireBlock;
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
-  appearanceSeed:number;
+  appearanceSeed:number;equipment?:EquipmentLoadout;
   firePolicy:FirePolicy;suppressPoint:Pt|null;focusTargetId:string|null;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
   lastFireRepositionAt:number;
