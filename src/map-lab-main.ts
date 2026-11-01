@@ -46,6 +46,59 @@ const stage=new TacticalScene3D();
 stage.setMode('iso');stage.view.zoom=1.25;
 let markers:{node:HTMLElement;p:Pt;orientation?:number}[]=[];
 let reportBaseline='';
+let currentAudit:SiteAudit|null=null;
+const functionalSummary=el<HTMLDivElement>('functionalSummary');
+const functionalWarnings=el<HTMLDivElement>('functionalWarnings');
+function showFunctionalQuality(site:Site,audit:SiteAudit){
+ const space=audit.spaceQuality;
+ functionalSummary.textContent='Average solid footprint: '+
+  Math.round(space.averageSolidFraction*100)+'% · '+
+  space.crowdedRoomIds.length+' crowded rooms · '+
+  space.doorApproachIssues.length+' doorway conflicts · '+
+  audit.incompleteZones.length+' incomplete zones · '+
+  audit.operationalRouteIssues.length+' work-route issues';
+ functionalWarnings.replaceChildren();
+ const issues=[
+  ...space.rooms.filter(r=>r.crowded).map(r=>({
+    label:r.roomId+' / '+r.purpose+' · '+Math.round(r.solidFraction*100)+'% furnished',
+    roomId:r.roomId
+  })),
+  ...space.doorApproachIssues.map(d=>({
+    label:d.doorId+' / nearby '+d.fixture,roomId:''
+  })),
+  ...audit.serviceIssues.map(i=>({
+    label:i.roomId+' / '+i.fixture+' · '+i.reason,roomId:i.roomId
+  })),
+  ...audit.incompleteZones.map(id=>({
+    label:id+' / missing essential fixture',roomId:id
+  }))
+ ];
+ if(!issues.length){
+  functionalWarnings.textContent='No measured space or fixture warnings.';
+  return;
+ }
+ for(const issue of issues.slice(0,28)){
+  const button=document.createElement('button');
+  button.type='button';button.className='quality-warning';
+  button.textContent=issue.label;
+  button.addEventListener('click',()=>{
+   const room=site.rooms.find(r=>r.id===issue.roomId||
+     (r.zoneId??r.id)===issue.roomId);
+   const metric=space.rooms.find(r=>r.roomId===room?.id);
+   status.textContent='QUALITY WARNING: '+issue.label+
+    (metric?'\nRoom area: '+metric.areaM2+' m² · '+
+      metric.solidCount+' physical objects · '+
+      Math.round(metric.freeFraction*100)+'% estimated free floor':'');
+   if(room){stage.view.focus={x:room.x+room.w/2,y:room.y+room.h/2};}
+  });
+  functionalWarnings.append(button);
+ }
+ if(issues.length>28){
+  const note=document.createElement('span');
+  note.textContent=' +'+(issues.length-28)+' more; see main audit';
+  functionalWarnings.append(note);
+ }
+}
 const conditionLabel=(n:number)=>n<20?'PRISTINE':n<40?'LIVED-IN':
   n<60?'WORN':n<80?'NEGLECTED':'DECREPIT';
 function paintConditionDiagnostics(){
@@ -105,7 +158,9 @@ function updateLabels(){
   button.className=showIssues&&verdict&&!verdict.complete?'room-incomplete':'room-complete';
   button.textContent=(room.purpose??room.kind).toUpperCase()+
     (showIssues&&verdict&&!verdict.complete?' !':'');
+  const spaceMetric=currentAudit?.spaceQuality.rooms.find(r=>r.roomId===room.id);
   button.title=room.id+' · '+Math.round(room.w)+' × '+Math.round(room.h)+
+    (spaceMetric?' · '+Math.round(spaceMetric.solidFraction*100)+'% solid':'')+
     (verdict&&!verdict.complete?' · missing '+verdict.missing.length+' required groups':'');
   button.addEventListener('click',()=>{
    const contract=assessments.find(a=>a.roomIds.includes(room.id));
@@ -160,6 +215,10 @@ function report(site:Site,result:SiteAudit):string{
   ' wide openings\n'+result.emptyRooms.length+' unfurnished functional rooms / '+ 
   result.functionalRooms+' rooms total\n'+
   result.incompleteZones.length+' functionally incomplete zones\n'+
+  'SPATIAL QUALITY: '+Math.round(result.spaceQuality.averageSolidFraction*100)+
+  '% mean solid footprint · '+result.spaceQuality.crowdedRoomIds.length+
+  ' crowded rooms · '+result.spaceQuality.doorApproachIssues.length+
+  ' doorway proximity warnings\n'+
   'FUNCTIONAL QUALITY: '+result.designQuality.score+' penalty points'+
   ' · '+result.designQuality.criticalMissing+' critical fixtures missing'+
   ' · '+result.designQuality.incompleteUnits+' incomplete units'+
@@ -241,8 +300,8 @@ async function useGeneratedSite(id:number,site:Site,audit:SiteAudit,choice:LabSc
     '&scale='+(site.scale??'medium')+'&condition='+selectedCondition;
   history.replaceState(null,'','?seed='+site.seed+'&scale='+choice+
     '&condition='+selectedCondition);
-  siteReady=true;
-  updateLabels();paintConditionDiagnostics();
+  siteReady=true;currentAudit=audit;
+  updateLabels();showFunctionalQuality(site,audit);paintConditionDiagnostics();
   showProgress(100,'MAP READY',(site.archetype??'BUILDING').toUpperCase()+
     ' · '+(site.scale??'medium').toUpperCase()+' · '+site.rooms.length+' rooms');
   setBusy(false);
