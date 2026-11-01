@@ -40,7 +40,7 @@ test('every upgraded asset produces visible non-box-only geometry within its foo
   const obstacle={x:0,y:0,w:item.width,h:item.depth,low:item.cover==='low',fixture:id};
   for(let variant=0;variant<3;variant++){
    const group=new THREE.Group();
-   assert.equal(renderCharacterFixture(group,obstacle,variant,ctx,...materials),true,id);
+   assert.equal(renderCharacterFixture(group,obstacle,id,variant,ctx,...materials),true,id);
    assert.ok(group.children.length>=3,id+' trim '+variant);
    const bounds=new THREE.Box3().setFromObject(group);
    const finite=[...bounds.min.toArray(),...bounds.max.toArray()];
@@ -64,7 +64,7 @@ test('vehicle families have a sloped cabin, instanced wheels, and recognisable t
  for(const id of ['vehicle','sedan','pickup','van','suv']){
   const item=propDefinition(id),group=new THREE.Group();
   assert.equal(renderCharacterFixture(group,{
-   x:2,y:3,w:item.width,h:item.depth,fixture:id},1,ctx,...materials),true);
+   x:2,y:3,w:item.width,h:item.depth,fixture:id},id,1,ctx,...materials),true);
   assert.ok(group.children.some(x=>x instanceof THREE.Mesh&&
     x.geometry instanceof THREE.ExtrudeGeometry),id+' shaped roof');
   assert.ok(group.children.filter(x=>x instanceof THREE.InstancedMesh).length>=2,
