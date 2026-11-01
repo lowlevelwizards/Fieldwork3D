@@ -116,6 +116,7 @@ export type TeamActor=Operator & {
   lastBashAt:number;lastBashRole:'push'|'receive'|null;
   lastLaneWarnAt:number;lastFireBlock:FireBlock;
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
+  appearanceSeed:number;
   firePolicy:FirePolicy;suppressPoint:Pt|null;focusTargetId:string|null;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
   lastFireRepositionAt:number;
@@ -199,7 +200,7 @@ const withActions=(a:Operator):TeamActor=>({
   weaponYaw:a.heading,stability:.55,recoil:0,lastShotAt:-100,
   lastBashAt:-100,lastBashRole:null,
   lastLaneWarnAt:-100,lastFireBlock:'clear',
-  fireMode:'point',burstCount:0,skills:{...DEFAULT_SKILLS},
+  fireMode:'point',burstCount:0,skills:{...DEFAULT_SKILLS},appearanceSeed:0,
   firePolicy:'engage',suppressPoint:null,focusTargetId:null,
   weapon:'carbine',injuryStage:0,defense:null,watch:null,
   defenseUntil:0,surrendered:false,lastFireRepositionAt:-100,
