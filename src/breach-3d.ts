@@ -5,6 +5,7 @@ import {renderFixtureVisual,type FixtureVisualContext} from './worldgen/fixture-
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surfaces.ts';
 import {planEnvironmentalWear,type WearKind} from './worldgen/environment-wear.ts';
+import {roofShouldShow} from './worldgen/roof-cutaways.ts';
 import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,activeSite,
   type Pt,type Door} from './breach-core.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
@@ -103,6 +104,8 @@ export class TacticalScene3D{
   private tracerGeometry=new THREE.CylinderGeometry(.65,.65,1,6);
   private impactGeometry=new THREE.IcosahedronGeometry(1,1);
   private walls:{mesh:THREE.Mesh;mid:Pt}[]=[];
+  private readonly roofGroups=new Map<string,THREE.Group>();
+  private roofMaterial:THREE.MeshStandardMaterial|null=null;
   private intelSurfaces:{obj:THREE.Object3D;kind:'wall'|'cover'|'room';
     index?:number;id?:string}[]=[];
   private wallMaterials=new Set<THREE.Material>();
@@ -242,6 +245,7 @@ export class TacticalScene3D{
     for(const material of this.wallMaterials)material.dispose();
     this.wallMaterials.clear();
     this.walls.length=0;this.doors.clear();this.windowGlass.clear();
+    this.roofGroups.clear();
     this.coverGroups.clear();
     this.intelSurfaces.length=0;
     this.observedDoorOpen.clear();
@@ -339,6 +343,22 @@ export class TacticalScene3D{
         detail.width,detail.depth,.09,material);
       patch.rotation.z=detail.rotation;
       patch.castShadow=false;patch.receiveShadow=false;
+    }
+    // Light, room-aware roof slabs for known but unoccupied interiors.
+    // Unknown rooms have NO roof geometry exposed above the ground fog.
+    if(!this.roofMaterial){
+      this.roofMaterial=new THREE.MeshStandardMaterial({
+        color:theme.cap,roughness:.95,transparent:true,
+        opacity:.21,depthWrite:false,side:THREE.DoubleSide});
+      this.mats.push(this.roofMaterial);
+    }else this.roofMaterial.color.setHex(theme.cap);
+    for(const room of site.rooms){
+      const roof=new THREE.Group();
+      roof.visible=false;this.root.add(roof);
+      this.roofGroups.set(room.id,roof);
+      this.box(roof,room.x+room.w/2,43,room.y+room.h/2,
+        Math.max(12,room.w+2),2,Math.max(12,room.h+2),
+        this.roofMaterial,false).receiveShadow=false;
     }
     const wallMat=this.solid(theme.wall),capMat=this.solid(theme.cap);
     const skirting=this.solid(theme.trim);
@@ -959,6 +979,9 @@ export class TacticalScene3D{
     // An operator physically standing in a room can still read that room's
     // structure even when their viewing cone is pointed at one corner.
     const occupiedRoomIds=new Set(occupiedFogRooms(s).map(room=>room.id));
+    for(const [id,roof] of this.roofGroups)
+      roof.visible=roofShouldShow(omniscient,
+        roomKnown(s.intel,id),occupiedRoomIds.has(id));
     for(const item of this.intelSurfaces){
       item.obj.visible=omniscient||(
         item.kind==='wall'?wallKnown(s.intel,item.index!):
