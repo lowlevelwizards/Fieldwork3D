@@ -9,6 +9,8 @@ import {propDefinition} from './asset-catalog.ts';
 import {fixtureComponentSurface} from './pixel-surface-selection.ts';
 export const DETAILED_FIXTURE_IDS=new Set([
  'nightstand','side-table','rug','lamp','shower','office-chair',
+ 'trash-bag','recycling-bin','tipped-trash-bin','mop-bucket',
+ 'step-ladder','fire-extinguisher','supply-cart','storage-tote',
  'computer','printer','cash-register','display-rack','product-box',
  'crate','box','pallet','compressor','cable-reel','planter','picnic-table',
  'patio-chair','grill','shed','dumpster','shipping-container','books',
@@ -337,6 +339,75 @@ export function renderDetailedFixture(group:THREE.Group,c:Obstacle,
     b(w*.51,H*.45,sx*d,2.5,H*.65,1,metal,false);
    }
    b(0,H*.97,0,w,2.6,d,steel);
+   return true;
+ }
+ case 'trash-bag':{
+   // Bulged asymmetric body and gathered knot distinguish it from a crate.
+   b(0,H*.35,0,w*.84,H*.65,d*.91,ink);
+   b(w*.10,H*.68,-d*.1,w*.67,H*.33,d*.72,ink);
+   b(0,H*.90,0,w*.24,H*.19,d*.24,ink);
+   b(w*.13,H*.99,0,w*.12,H*.13,d*.12,light,false);
+   return true;
+ }
+ case 'recycling-bin':{
+   b(0,H*.48,0,w*.86,H*.91,d*.88,green);
+   b(0,H*.96,-d*.04,w,2.2,d,ink);
+   b(0,H*.55,d*.45,w*.38,H*.31,.9,light,false);
+   b(0,H*.57,d*.51,w*.16,H*.14,.6,green,false);
+   return true;
+ }
+ case 'tipped-trash-bin':{
+   b(0,H*.52,0,w*.92,H*.75,d*.82,steel);
+   b(0,H*.53,d*.42,w,2.3,3,ink);
+   b(-w*.24,H*.81,-d*.13,w*.27,3,d*.34,ink,false);
+   for(const sx of [-.24,.16])b(sx*w,2,d*.46,w*.21,2.2,d*.23,paper,false);
+   return true;
+ }
+ case 'mop-bucket':{
+   b(0,H*.39,0,w*.8,H*.61,d*.78,red);
+   b(0,H*.74,0,w*.9,2.2,d*.85,steel,false);
+   for(const sign of [-1,1])
+    b(sign*w*.32,2.2,d*.33,4.5,4.3,4.5,ink);
+   b(-w*.24,H+9,-d*.14,1.7,25,1.7,wood);
+   b(-w*.24,H+21,-d*.14,6,1.7,2.5,light,false);
+   return true;
+ }
+ case 'step-ladder':{
+   // Two folding frames and three steps; silhouette remains unmistakable.
+   for(const sx of [-1,1]){
+    b(sx*w*.37,H*.47,-d*.22,2.8,H*.91,3,steel);
+    b(sx*w*.37,H*.45,d*.28,2.8,H*.87,3,steel);
+   }
+   for(const level of [.24,.44,.64])
+    b(0,H*level,-d*.16,w*.72,2.4,d*.44,light,false);
+   b(0,H*.94,0,w*.84,2.7,d*.45,olive,false);
+   return true;
+ }
+ case 'fire-extinguisher':{
+   b(0,H*.45,0,w*.65,H*.79,d*.65,red);
+   b(0,H*.85,0,w*.48,2,d*.55,ink,false);
+   b(0,H*.96,0,w*.25,H*.15,d*.22,steel,false);
+   b(w*.35,H*.91,0,w*.47,1.3,1.5,ink,false);
+   b(0,H*.48,d*.36,w*.49,H*.29,.6,light,false);
+   return true;
+ }
+ case 'supply-cart':{
+   for(const level of [H*.18,H*.53,H*.83])
+    b(0,level,0,w*.95,2.4,d*.92,light,false);
+   for(const sx of [-1,1])for(const sz of [-1,1]){
+    b(sx*w*.43,H*.49,sz*d*.40,2.4,H*.85,2.4,steel);
+    b(sx*w*.43,2,sz*d*.40,4,4,4,ink);
+   }
+   b(0,H*.99,-d*.42,w*.83,2.5,2,metal,false);
+   b(-w*.21,H*.66,0,w*.33,3,d*.52,olive,false);
+   return true;
+ }
+ case 'storage-tote':{
+   b(0,H*.47,0,w*.9,H*.78,d*.92,olive);
+   b(0,H*.86,0,w,2.1,d,steel,false);
+   b(0,H*.97,0,w*.93,1.7,d*.95,light,false);
+   for(const sx of [-1,1])
+    b(sx*w*.49,H*.60,0,1.6,H*.18,d*.32,ink,false);
    return true;
  }
  case 'books':{
