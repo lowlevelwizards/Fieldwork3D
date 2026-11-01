@@ -1068,7 +1068,8 @@ function updateQuickStates(){
   if(!shown||!actor)return;
   const node=selectedPlanNode();
   const index=node?actor.plan.findIndex(n=>n.id===node.id)+1:0;
-  ui.quickScope.textContent=node?'NODE '+index:'HERE';
+  ui.quickScope.textContent=(node?'NODE '+index:'HERE')+
+    (actor.aimInstruction?.mode==='track'&&actor.pace!=='run'?' · PIE ACTIVE':'');
   const current=plannedControl(state,selected,node?.id);
   const choices=contextActionChoices({
     door:false,node:!!node,flashRemaining:state.flashRemaining,
@@ -1841,9 +1842,13 @@ function sprite(a:TeamActor){
   if(friendly){
     draw.textAlign='center';draw.font='bold 10px monospace';
     draw.fillStyle=c;draw.fillText(a.name,a.p.x,a.p.y-21);
+    if(a.aimInstruction?.mode==='track'&&a.pace!=='run'){
+      draw.fillStyle='#f0cd96';draw.font='bold 9px monospace';
+      draw.fillText('PIE ACTIVE',a.p.x,a.p.y-33);
+    }
     if(a.suppression>.53){
       draw.fillStyle='#eac69d';draw.font='bold 9px monospace';
-      draw.fillText('SUPP',a.p.x,a.p.y-32);
+      draw.fillText('SUPP',a.p.x,a.p.y-43);
     }
     if(a.health===1){draw.fillStyle='#e7a886';
       draw.fillRect(a.p.x-8,a.p.y+13,16,2);}
