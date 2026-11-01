@@ -80,6 +80,7 @@ export type OperatorRig={
   weaponAccessories:THREE.Group;droppedAccessories:THREE.Group;
   weaponLightLens:THREE.Object3D|null;droppedLightLens:THREE.Object3D|null;
   weaponLensMaterial:THREE.MeshStandardMaterial;
+  slingStraps:THREE.Mesh[];
   visualWeapon:WeaponId;visualWeaponConfiguration?:WeaponConfiguration;
   weaponSteel:THREE.Material;weaponDark:THREE.Material;
   pack:THREE.Mesh;helmetShell:THREE.Mesh[];
@@ -192,6 +193,13 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   weaponLensMaterial.emissiveIntensity=.90;
   weapon.add(weaponBody,weaponAccessories);
   droppedGun.add(droppedWeaponBody,droppedAccessories);
+  // Three geometry-reused fabric spans connect gun mounts with shoulder
+  // routing. No ropes, IK targets, simulated joints or per-frame geometry.
+  const slingStraps=[0,1,2].map(()=>{
+   const strap=block(chest,0,0,0,.8,1,.7,vest);
+   strap.castShadow=false;strap.receiveShadow=false;strap.visible=false;
+   return strap;
+  });
   const magazineInserted=block(weapon,3,-4,0,2.7,6,2.5,boot);
   const magazineHand=block(chest,0,0,0,2.7,6,2.5,boot);
   magazineHand.visible=false;
@@ -204,7 +212,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     baseVest:vest.color.clone(),helmetBadge,appearanceSeed:0,
     personality:operatorMotionTraits(id),
     magazineInserted,magazineHand,weaponBody,droppedWeaponBody,
-    weaponAccessories,droppedAccessories,weaponLensMaterial,
+    weaponAccessories,droppedAccessories,weaponLensMaterial,slingStraps,
     weaponLightLens:null,droppedLightLens:null,
     visualWeapon:'carbine',visualWeaponConfiguration:undefined,
     weaponSteel:steel,weaponDark:boot,
@@ -789,6 +797,35 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     orientation.slerp(flat,t);
     const inverse=r.root.getWorldQuaternion(new THREE.Quaternion()).invert();
     r.droppedGun.quaternion.copy(inverse.multiply(orientation));
+  }
+  // Fabric loop follows the exact solved weapon rather than floating as a
+  // rigid receiver part. The same deterministic calculation works in replay.
+  const slingEquipped=p.weaponConfiguration?.slots.sling==='sling-two-point'&&
+   !p.surrender;
+  for(const mesh of r.slingStraps)mesh.visible=!!slingEquipped;
+  if(slingEquipped){
+   const gun=r.droppedGun.visible?r.droppedGun:r.weapon;
+   const scale=r.weapon.scale.x;
+   let rear:THREE.Vector3,front:THREE.Vector3;
+   if(r.droppedGun.visible){
+    r.root.updateMatrixWorld(true);
+    rear=r.chest.worldToLocal(gun.localToWorld(P(-9,-.4,3)));
+    front=r.chest.worldToLocal(gun.localToWorld(P(10,-.4,3)));
+   }else{
+    rear=P(-9*scale,-.4,3).applyEuler(gun.rotation).add(gun.position);
+    front=P(10*scale,-.4,3).applyEuler(gun.rotation).add(gun.position);
+   }
+   const sway=Math.sin(p.stride*Math.PI*2)*Math.min(1,physicalSpeed/80)*.6;
+   const points=[rear,P(-2.5,4.5,10.1),P(1.5+sway,-5.8,11.5),front];
+   const vertical=P(0,1,0);
+   for(let i=0;i<r.slingStraps.length;i++){
+    const start=points[i],end=points[i+1];
+    const delta=end.clone().sub(start),length=delta.length();
+    const mesh=r.slingStraps[i];
+    mesh.position.copy(start).addScaledVector(delta,.5);
+    mesh.scale.set(1,Math.max(.1,length),1);
+    mesh.quaternion.setFromUnitVectors(vertical,delta.normalize());
+   }
   }
   r.lastPose={...p};r.lastTime=p.seconds;
 }
