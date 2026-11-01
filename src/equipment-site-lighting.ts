@@ -14,6 +14,16 @@ export type SiteLightingProgram={
 };
 const LIGHT_CAP=32;
 const mod=(v:number,n:number)=>((v%n)+n)%n;
+const programCache=new WeakMap<Site,Map<LightingMode,SiteLightingProgram>>();
+/** Cache fixture layouts by immutable site and selected light scenario. */
+export function siteLightingProgram(site:Site,mode:LightingMode=site.lightingMode??'day'){
+ let cached=programCache.get(site);
+ if(!cached){cached=new Map();programCache.set(site,cached);}
+ const existing=cached.get(mode);
+ if(existing)return existing;
+ const program=planSiteLighting(site,mode);
+ cached.set(mode,program);return program;
+}
 export function planSiteLighting(site:Site,mode:LightingMode='day'):SiteLightingProgram{
  const ambient=mode==='day'?.85:mode==='evening'?.44:
   mode==='night'?.10:mode==='blackout'?.035:.055;
