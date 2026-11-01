@@ -4,6 +4,7 @@ import {fixtureWearEffect,planObjectWear}
  from '../src/worldgen/object-wear.ts';
 import {fixturePixelSurface} from '../src/worldgen/pixel-surface-selection.ts';
 import {canWear} from '../src/worldgen/material-properties.ts';
+import {wearPixels} from '../src/rendering/pixel-decals.ts';
 
 test('a fixture physically ages according to its substrate and use',()=>{
  assert.equal(fixtureWearEffect('vehicle-lift',0),'oil');
@@ -33,5 +34,14 @@ test('object wear is deterministic, bounded and attached to real fixtures',()=>{
    const fixture=site.cover[mark.index].fixture;
    assert.ok(canWear(fixturePixelSurface(fixture),mark.kind));
   }
+ }
+});
+
+test('new fray and abrasion materials produce nonempty repeatable pixel masks',()=>{
+ for(const kind of ['fray','abrade']){
+  const pixels=wearPixels(kind,17,32);
+  assert.equal(pixels.length,32*32*4);
+  assert.ok(pixels.some((value,i)=>i%4===3&&value>0),kind+' invisible');
+  assert.deepEqual(pixels,wearPixels(kind,17,32));
  }
 });
