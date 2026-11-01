@@ -69,7 +69,7 @@ export function assessRoomContracts(site:Pick<Site,'rooms'|'cover'>):RoomContrac
  return [...zones].map(([zoneId,rooms])=>{
   const purpose=rooms[0]?.purpose??'storage';
   const contract=ROOM_CONTRACTS[purpose]??ROOM_CONTRACTS.storage;
-  const present=[...new Set(site.cover.filter(o=>o.fixture&&o.fixture!=='window-sill'&&
+  const present=[...new Set(site.cover.filter(o=>o.fixture&&o.fixture!=='window-sill'&&o.fixture!=='glass-barrier'&&
     rooms.some(r=>o.x>r.x&&o.x<r.x+r.w&&o.y>r.y&&o.y<r.y+r.h))
     .map(o=>o.fixture!))];
   const missing=contract.required.filter(group=>!group.some(id=>present.includes(id)))

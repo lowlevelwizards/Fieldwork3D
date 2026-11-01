@@ -10,12 +10,14 @@ import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surface
 import {planEnvironmentalWear,type WearKind,type WearMark} from './worldgen/environment-wear.ts';
 import {summarizeWear} from './worldgen/wear-diagnostics.ts';
 import {conditionFloorPixels,effectiveCondition} from './worldgen/condition-visual.ts';
+import {outdoorVisualCondition} from './worldgen/outdoor-condition.ts';
 import {conditionWallPixels} from './worldgen/condition-wall.ts';
 import {planObjectWear,type ObjectWear} from './worldgen/object-wear.ts';
 import {planExposureWear} from './worldgen/wear-exposure.ts';
 import {planActivityWear} from './worldgen/wear-sources.ts';
 import {planHistoryWear} from './worldgen/surface-history.ts';
 import {planMicroDebris,type DebrisKind} from './worldgen/micro-debris.ts';
+import {planInteriorFragments} from './worldgen/interior-fragments.ts';
 import {visibleSurfaceHeight} from './worldgen/decoration-anchors.ts';
 import {wearPixels} from './rendering/pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './rendering/wear-opacity.ts';
@@ -25,7 +27,7 @@ import {roofShouldShow} from './worldgen/roof-cutaways.ts';
 import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,activeSite,
   type Pt,type Door} from './breach-core.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
-import {type Site} from './breach-site.ts';
+import {type Site,type Room} from './breach-site.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
 import {coverPresentation,shotVisibility} from './breach-presentation.ts';
 import {doorKnown,wallKnown,roomKnown}
@@ -154,6 +156,21 @@ export class TacticalScene3D{
   private readonly surfaceWearMaterials=new Map<string,THREE.MeshStandardMaterial>();
   private sitePatinaTextures:THREE.DataTexture[]=[];
   private sitePatinaMaterials:THREE.MeshBasicMaterial[]=[];
+  private patinaRoomSurfaces:{room:Room;texture:THREE.DataTexture}[]=[];
+  private patinaWallSurfaces:{index:number;texture:THREE.DataTexture}[]=[];
+  /** Live slider scrubbing changes pixel masks, not the physical scene. */
+  previewConditionMasks(site:Site,level:number){
+    for(const item of this.patinaRoomSurfaces){
+      const image=item.texture.image as {data:Uint8Array};
+      image.data.set(conditionFloorPixels(site,item.room,level));
+      item.texture.needsUpdate=true;
+    }
+    for(const item of this.patinaWallSurfaces){
+      const image=item.texture.image as {data:Uint8Array};
+      image.data.set(conditionWallPixels(site,item.index,level));
+      item.texture.needsUpdate=true;
+    }
+  }
   private currentWear:WearMark[]=[];
   private objectWear:ObjectWear[]=[];
   private wearBoost=1;
@@ -352,6 +369,7 @@ export class TacticalScene3D{
     for(const texture of this.sitePatinaTextures)texture.dispose();
     for(const material of this.sitePatinaMaterials)material.dispose();
     this.sitePatinaTextures.length=0;this.sitePatinaMaterials.length=0;
+    this.patinaRoomSurfaces.length=0;this.patinaWallSurfaces.length=0;
     this.root.children.filter(c=>c!==this.fogUnknown&&
       c!==this.fogExplored).forEach(child=>{
       child.traverse(o=>{if(o instanceof THREE.Mesh&&
@@ -427,7 +445,8 @@ export class TacticalScene3D{
     const finishCondition=effectiveCondition(site);
     const age=(hex:number,surface:PixelSurface|undefined,variation=0)=>
       ageMaterialColor(hex,surface,finishCondition,variation);
-    const earth=this.solid(site.layout==='courtyard'?0x69825e:0x607a58,.9,'grass');
+    const outdoors=outdoorVisualCondition(site);
+    const earth=this.solid(age(site.layout==='courtyard'?0x69825e:0x607a58,'grass'),.9,'grass');
     const bounds=site.bounds??{minX:0,minY:0,maxX:W,maxY:H};
     const bw=bounds.maxX-bounds.minX,bh=bounds.maxY-bounds.minY;
     this.plane(this.root,(bounds.minX+bounds.maxX)/2,
@@ -435,10 +454,11 @@ export class TacticalScene3D{
     const zoneColor={yard:0x70895e,patio:0x8b877a,driveway:0x737774,
       service:0x7f827b,garden:0x788d61,parking:0x676c6b} as const;
     for(const zone of site.exteriorZones??[]){
+      const ground=zonePixelSurface(zone.kind,outdoors);
       this.plane(this.root,zone.x,zone.y,zone.w,zone.h,-1.45,
-        this.solid(zoneColor[zone.kind],.91,zonePixelSurface(zone.kind,site.condition)));
+        this.solid(age(zoneColor[zone.kind],ground),.91,ground));
       // One cheap repeated layer per relevant exterior zone, no dynamic allocation.
-      const overlay=overlayForZone(site.condition,zone.kind);
+      const overlay=overlayForZone(outdoors,zone.kind);
       if(overlay){
         const mark=this.plane(this.root,zone.x,zone.y,zone.w,zone.h,-1.42,
           this.groundOverlayMaterial(overlay));
@@ -453,8 +473,8 @@ export class TacticalScene3D{
     // Exterior ground markings are legible construction details, not cover.
     for(const mark of planPropertySurfaces(site))
       this.box(this.root,mark.x,-1.32,mark.y,mark.width,.2,
-        mark.depth,this.solid(surfaceColor[mark.kind]),false);
-    const road=this.solid(0x59584a,.91,'asphalt');
+        mark.depth,this.solid(age(surfaceColor[mark.kind],'concrete')),false);
+    const road=this.solid(age(0x59584a,'asphalt'),.91,'asphalt');
     const side=site.entrySide??'south';
     if(side==='east'||side==='west'){
       const edge=side==='east'?bounds.maxX:bounds.minX;
@@ -494,6 +514,7 @@ export class TacticalScene3D{
           depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,
           side:THREE.DoubleSide});
         this.sitePatinaTextures.push(texture);this.sitePatinaMaterials.push(material);
+        this.patinaRoomSurfaces.push({room,texture});
         const overlay=this.plane(group,room.x+room.w/2,room.y+room.h/2,
           room.w-floorInset,room.h-floorInset,.04,material);
         overlay.castShadow=false;overlay.receiveShadow=false;
@@ -501,6 +522,28 @@ export class TacticalScene3D{
       // Pixel tile/board joints are already in the shared repeating texture.
       // Avoid redundant grout meshes and draw calls.
     }
+    // Sparse, instanced fragments collect against physical room boundaries.
+    // These are tiny render-only fragments, never new cover or navigation.
+    const fragments=planInteriorFragments(site);
+    const fragmentMaterial=this.solid(0x9b8e78,.98,'gravel');
+    const fragmentGeometry=new THREE.BoxGeometry(1,1,1);
+    const transform=new THREE.Object3D();
+    for(const room of site.rooms){
+      const entries=fragments.filter(f=>f.roomId===room.id);
+      if(!entries.length)continue;
+      const group=decorativeRoomGroups.get(room.id);if(!group)continue;
+      const batch=new THREE.InstancedMesh(fragmentGeometry,fragmentMaterial,entries.length);
+      batch.frustumCulled=false;batch.castShadow=false;batch.receiveShadow=false;
+      for(const [i,f] of entries.entries()){
+        transform.position.set(f.x,.65,f.y);
+        transform.rotation.set(0,f.angle,0);
+        transform.scale.set(f.size,.5,f.size*.6);
+        transform.updateMatrix();batch.setMatrixAt(i,transform.matrix);
+      }
+      batch.instanceMatrix.needsUpdate=true;
+      group.add(batch);
+    }
+    if(!fragments.length)fragmentGeometry.dispose();
     // Condition-dependent floor patina stays inside its room's fog group.
     // Decals are decorative only; they create no collision or cover.
     const wearColor:Record<WearKind,number>={
@@ -584,6 +627,7 @@ export class TacticalScene3D{
           depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,
           side:THREE.DoubleSide});
         this.sitePatinaTextures.push(texture);this.sitePatinaMaterials.push(material);
+        this.patinaWallSurfaces.push({index,texture});
         body.userData.patinaMaterial=material;
         for(const face of [-1,1]){
           const plane=new THREE.Mesh(new THREE.PlaneGeometry(len,39.6),material);
@@ -718,8 +762,6 @@ export class TacticalScene3D{
       solid:(hex,roughness,surface)=>this.solid(age(hex,surface),roughness,surface),
     };
     site.cover.forEach((c,i)=>{
-      // Glass is drawn by its window assembly, not a second opaque fixture.
-      if(c.fixture==='glass-barrier')return;
       const group=new THREE.Group();this.root.add(group);
       this.coverGroups.set(i,group);
       this.intelSurfaces.push({obj:group,kind:'cover',index:i});
