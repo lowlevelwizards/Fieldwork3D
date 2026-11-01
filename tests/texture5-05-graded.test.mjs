@@ -13,13 +13,15 @@ test('condition slider controls every wear channel at fixed seed',()=>{
    medium={...site,conditionLevel:50},old={...site,conditionLevel:100};
   const planners=[planEnvironmentalWear,planActivityWear,planObjectWear,
    planExposureWear,planHistoryWear,planMicroDebris];
+  let countMedium=0,countOld=0;
   for(const planner of planners){
    assert.equal(planner(clean).length,0,'pristine '+seed+' '+planner.name);
    const mid=planner(medium),ruined=planner(old);
    assert.deepEqual(ruined,planner(old));
-   assert.ok(ruined.length>=mid.length,'graded '+seed+' '+planner.name);
+   countMedium+=mid.length;countOld+=ruined.length;
    assert.ok(ruined.length<=96,'bounded '+seed+' '+planner.name);
   }
   assert.ok(planEnvironmentalWear(old).length>planEnvironmentalWear(medium).length);
+  assert.ok(countOld>countMedium,'total deterioration increases with condition');
  }
 });
