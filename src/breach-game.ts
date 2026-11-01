@@ -259,7 +259,9 @@ export function newSession(index=0,siteSeed?:number,
       WEAPONS[a.weapon].capacity);
   });
   const state:Session={...seed,operators,passageLeases:{},
-    doors:initialDoors().map(initDoor),variant,nextId:1,
+    doors:initialDoors().map((d,i)=>initDoor({
+      ...d,locked:d.locked??!!(site&&i>2&&i%7===0&&
+        d.kind!=='shutter'&&d.id!=='FRONT')},i)),variant,nextId:1,
     scenario:{index:variant,name:site?.name??sample.name,
       objective:clone(site?.objective??OBJECTIVE),
       extract:clone(site?.extract??EXTRACTION)},
@@ -1230,8 +1232,14 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   if(doorAhead){
     const opening=doorInteraction({target:doorAhead,actorId:a.id,
       actorPosition:a.p,action:'open'});
-    if(opening.reason==='held'||opening.reason==='locked'){
-      a.velocity=0;return true;
+    if(opening.reason==='held'||opening.reason==='locked'||
+       opening.reason==='obstructed'){
+      a.velocity=0;a.blockedTime+=dt;
+      // A blocked door remains physically closed; no AI magic opening.
+      if(a.side==='red'&&a.blockedTime>1.2){
+        a.nav=[];a.alert='cover';a.contact=null;
+      }
+      return true;
     }
     a.velocity=0;a.actionTimer+=dt;
     if(a.actionTimer>=.36&&!doorAhead.open){
@@ -1546,6 +1554,10 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     if(!interaction.allowed&&a.actionTimer===0){
       if(interaction.reason==='out-of-reach'){
         notify(s,a.name+' TOO FAR FROM DOOR');return;
+      }
+      if(interaction.reason==='locked'||interaction.reason==='obstructed'){
+        hear(s,doorCenter(door),65,'latch');
+        notify(s,door.id+(interaction.reason==='locked'?' LOCKED':' JAMMED'));
       }
       if(interaction.reason==='held')notify(s,door.id+' HELD SHUT');
       else if(interaction.reason==='unsupported')
