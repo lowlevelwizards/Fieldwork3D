@@ -29,6 +29,13 @@ export function zonePixelSurface(zone:string):PixelSurface{
 }
 export function fixturePixelSurface(fixture:string|undefined):PixelSurface{
  const id=fixture??'crate';
+ if(['toilet','bathtub','sink','shower'].includes(id))return 'porcelain';
+ if(['printer','computer','cash-register','microwave','cooler'].includes(id))
+  return 'plastic';
+ if(['cabinet','wardrobe','dresser','tv-stand','desk','nightstand',
+  'side-table','dining-table','coffee-table','meeting-table','bookcase',
+  'picnic-table','pallet','window-boards','crate'].includes(id))return 'wood';
+ if(['rug','patio-chair'].includes(id))return 'fabric';
  if(['sofa','armchair','chair','office-chair','bed','exam-bed','mattress',
  'rug'].includes(id))return 'fabric';
  if(['fridge','cooler','locker','filing-cabinet','stove','laundry-machine',
@@ -40,7 +47,7 @@ export function fixturePixelSurface(fixture:string|undefined):PixelSurface{
  if(['tire-stack','tire','parking-block'].includes(id))return 'rubber';
  if(['cardboard-box','package','product-box','box'].includes(id))return 'paper';
  if(['fence','bollard','hydrant','utility-cabinet','street-lamp',
- 'mailbox','trash-bin','parking-sign','bike-rack','window-boards'].includes(id))
+ 'mailbox','trash-bin','parking-sign','bike-rack'].includes(id))
  return 'metal';
  return 'wood';
 }

@@ -27,5 +27,7 @@ const profiles:Record<PixelSurface,MaterialProfile>={
  rubber:{family:'manufactured',structure:'directional',maxDarkening:12},
  foliage:{family:'natural',structure:'clusters',maxDarkening:15},
  paper:{family:'manufactured',structure:'none',maxDarkening:0},
+ plastic:{family:'manufactured',structure:'none',maxDarkening:0},
+ porcelain:{family:'manufactured',structure:'none',maxDarkening:0},
 };
 export const materialProfile=(kind:PixelSurface):MaterialProfile=>profiles[kind];

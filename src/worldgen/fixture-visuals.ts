@@ -45,7 +45,8 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         }
       }else if(['fridge','cooler','wardrobe','locker','filing-cabinet'].includes(fixture)){
         const height=asset?.height??32;
-        const body=ctx.solid(fixture==='cooler'?0x748985:0x8a8c83,.82,'metal');
+        const body=ctx.solid(fixture==='cooler'?0x8da7a1:0xadb5b0,.82,
+          fixture==='cooler'?'plastic':'metal');
         ctx.box(group,c.x,height/2,c.y,w,height,d,body);
         ctx.box(group,c.x+w*.42,height*.55,c.y+d/2+.7,2,height*.35,2,steel,false);
         if(fixture==='fridge'||fixture==='cooler')
@@ -69,7 +70,7 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           ctx.box(group,c.x,height+4,c.y+d*.28,w*.4,8,d*.27,steel,false);
         }
       }else if(fixture==='toilet'||fixture==='bathtub'){
-        const porcelain=ctx.solid(0xb9b9a9);
+        const porcelain=ctx.solid(0xd9dfd5,.94,'porcelain');
         if(fixture==='toilet'){
           const top=asset?.height??19;
           ctx.box(group,c.x,top*.34,c.y+d*.17,w*.63,top*.67,d*.6,porcelain);
