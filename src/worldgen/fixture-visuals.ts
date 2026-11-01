@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import {type Obstacle} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
+import {renderDetailedFixture} from './detailed-fixture-visuals.ts';
 export type FixtureVisualContext={
  box:(parent:THREE.Object3D,x:number,y:number,z:number,
    w:number,h:number,d:number,material:THREE.Material,cast?:boolean)=>THREE.Mesh;
@@ -22,12 +23,17 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         ctx.box(group,c.x,9.6,c.y,w-3,2.8,d-3,olive,false);
         ctx.box(group,c.x-w*.32,11.2,c.y,w*.22,2,d*.7,steel,false);
       }else if(['table','desk','counter','workbench','cart','dining-table','coffee-table','meeting-table'].includes(fixture)){
-        const top=fixture==='counter'?14:fixture==='workbench'?13:11;
+        const top=asset?.height??19;
         ctx.box(group,c.x,top,c.y,w,3,d,material);
         for(const sx of [-1,1])for(const sz of [-1,1])
           ctx.box(group,c.x+sx*(w/2-3),top/2,c.y+sz*(d/2-3),
             3,top,3,steel);
-        if(fixture==='counter')ctx.box(group,c.x,6,c.y,w-5,9,d-5,wood);
+        if(fixture==='counter')ctx.box(group,c.x,top*.42,c.y,w-5,top*.76,d-5,wood);
+        if(fixture==='cart'){
+          ctx.box(group,c.x,4,c.y,w*.83,1.8,d*.84,olive);
+          for(const sx of [-1,1])for(const sz of [-1,1])
+            ctx.box(group,c.x+sx*w*.38,2,c.y+sz*d*.34,4,4,4,metal);
+        }
       }else if(['fridge','cooler','wardrobe','locker','filing-cabinet'].includes(fixture)){
         const height=Math.max(24,Math.min(40,asset?.height??32));
         const body=ctx.solid(fixture==='cooler'?0x748985:0x8a8c83);
@@ -141,8 +147,14 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           ctx.box(group,c.x+sx*w*.515,12,c.y+d*.26,1.2,4,d*.17,lamp,false);
         }
       }else if(fixture==='chair'||fixture==='bench'){
-        ctx.box(group,c.x,8,c.y,w,3,d,wood);
-        ctx.box(group,c.x-w*.44,14,c.y,3,15,d,material);
+        const seat=10.4;
+        ctx.box(group,c.x,seat,c.y,w*.88,3,d*.87,wood);
+        ctx.box(group,c.x,asset?.height?asset.height*.68:17,c.y-d*.43,
+          w*.87,11,3,material);
+        for(const sx of [-1,1])for(const sz of [-1,1])
+          ctx.box(group,c.x+sx*w*.35,seat*.48,c.y+sz*d*.34,
+            2.8,seat,2.8,steel);
+        ctx.box(group,c.x,seat+2,c.y,w*.68,.9,d*.66,olive,false);
       }else if(fixture==='sofa'||fixture==='armchair'){
         const back=Math.min(20,asset?.height??20);
         ctx.box(group,c.x,6,c.y,w,9,d,material);
@@ -283,6 +295,8 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         for(const sx of [-1,1])ctx.box(group,c.x+sx*w*.47,11,c.y,
           3,22,3,wood);
         for(const h of [7,17])ctx.box(group,c.x,h,c.y,w,2,3,steel,false);
+      }else if(renderDetailedFixture(group,c,fixture,ctx,wood,steel,olive,metal)){
+        // Fully modeled specialty prop; same path in the lab and live maps.
       }else{
         const tall=asset?.height??(c.low?12:27);
         ctx.box(group,c.x,tall/2,c.y,w,tall,d,material);

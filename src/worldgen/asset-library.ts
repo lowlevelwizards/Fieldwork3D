@@ -3,6 +3,7 @@
  */
 import {propCatalog, type PropDefinition} from './asset-catalog.ts';
 import {CANONICAL_ASSET_DIMENSIONS} from './world-scale.ts';
+import {DETAILED_FIXTURE_IDS} from './detailed-fixture-visuals.ts';
 
 export type AssetLibraryEntry = {
   id:string; label:string; category:string; origin:'fixture'|'dressing'|'structure';
@@ -65,7 +66,7 @@ const fromProp=(item:PropDefinition):AssetLibraryEntry=>({
   id:item.id,label:label(item.id),category:item.category,
   origin:'fixture',width:item.width,depth:item.depth,height:item.height,
   cover:item.cover,solid:item.solid,rooms:item.rooms,
-  presentation:bespoke.has(item.id)?'bespoke':'shared-shape',
+  presentation:bespoke.has(item.id)||DETAILED_FIXTURE_IDS.has(item.id)?'bespoke':'shared-shape',
 });
 export function assetLibrary():readonly AssetLibraryEntry[]{
   const props=propCatalog().map(fromProp);
