@@ -101,12 +101,18 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
     Math.abs(far-(horizontal?site.entrance.x:site.entrance.y))?near:far;
   const x=horizontal?lateral:entrySide==='east'?maxX+79:minX-79;
   const y=horizontal?(entrySide==='south'?maxY+79:minY-79):lateral;
+  const frontage:Obstacle={x,y,w:exteriorFixture==='fence'?58:46,
+    h:exteriorFixture==='fence'?10:24,
+    low:exteriorFixture!=='vehicle',fixture:exteriorFixture};
+  // A frontage vehicle/planter must not occupy a real glazed aperture
+  // and its sill. Earlier it was added unconditionally after the windows.
+  const clearsFacade=cover.every(o=>
+    Math.abs(o.x-x)>=(o.w+frontage.w)/2+7||
+    Math.abs(o.y-y)>=(o.h+frontage.h)/2+7);
   if(x>bounds.minX+25&&x<bounds.maxX-25&&
     y>bounds.minY+25&&y<bounds.maxY-25&&
-    dist({x,y},site.entrance)>80)
-    cover.push({x,y,w:exteriorFixture==='fence'?58:46,
-      h:exteriorFixture==='fence'?10:24,
-      low:exteriorFixture!=='vehicle',fixture:exteriorFixture});
+    dist({x,y},site.entrance)>80&&clearsFacade)
+    cover.push(frontage);
   const glazed=addInteriorGlazing({...site,walls,cover,windows},seed);
   // The public window list is authoritative: each opening gets exactly one
   // matching sill collider, even when interior glazing inserts apertures.
