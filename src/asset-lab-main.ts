@@ -2,7 +2,8 @@
  * Built from the same scene construction used in tactical encounters.
  */
 import * as THREE from 'three';
-import {pixelPattern,PIXEL_WORLD_SIZE,TEXELS_PER_OPERATOR,type PixelSurface} from './rendering/pixel-recipes.ts';
+import {pixelPattern,PIXEL_SURFACES,PIXEL_WORLD_SIZE,TEXELS_PER_OPERATOR,type PixelSurface} from './rendering/pixel-recipes.ts';
+import {materialProfile} from './rendering/pixel-profiles.ts';
 import {fixturePixelSurface,roomPixelSurface} from './worldgen/pixel-surface-selection.ts';
 import {TacticalScene3D} from './breach-3d.ts';
 import {newSession} from './breach-game.ts';
@@ -24,13 +25,33 @@ const overlay=new THREE.Group();
 const swatch=el<HTMLCanvasElement>('pixel-swatch');
 const swatchContext=swatch.getContext('2d');
 let texturesShown=true;
+let swatchSeed=0,swatchCondition='clean',currentSurface:PixelSurface='wood';
+const surfacePicker=el<HTMLSelectElement>('material-family');
+for(const kind of PIXEL_SURFACES){
+ const option=document.createElement('option');option.value=kind;
+ option.textContent=kind.replaceAll('-',' ');surfacePicker.append(option);
+}
 function swatchMaterial(kind:PixelSurface){
+ currentSurface=kind;
+ surfacePicker.value=kind;
  if(!swatchContext)return;
- const bytes=pixelPattern(kind,0,32);
+ const bytes=pixelPattern(kind,swatchSeed,32);
+ // Preview-only localized condition examples. Does not mutate game materials.
+ if(swatchCondition!=='clean'){
+   const n=swatchCondition==='neglected'?3:2;
+   for(let p=0;p<n;p++){
+     const left=5+p*9,top=8+(p%2)*13;
+     for(let y=top;y<top+3;y++)for(let x=left;x<left+4;x++){
+       const i=(y*32+x)*4;
+       bytes[i]=bytes[i+1]=bytes[i+2]=swatchCondition==='vacant'?237:223;
+     }
+   }
+ }
  swatchContext.putImageData(new ImageData(new Uint8ClampedArray(bytes),32,32),0,0);
  el<HTMLElement>('pixel-detail').textContent=kind.toUpperCase()+
    ' · 32×32 source tile · '+TEXELS_PER_OPERATOR+
-   ' texels/operator · '+PIXEL_WORLD_SIZE.toFixed(2)+' world units/texel';
+   ' texels/operator · '+PIXEL_WORLD_SIZE.toFixed(2)+' world units/texel'+
+   ' · '+materialProfile(kind).structure+' · '+swatchCondition+' · seed '+swatchSeed;
 }
 let outline:THREE.LineSegments|null=null;
 let showBounds=false;
@@ -274,6 +295,24 @@ el<HTMLButtonElement>('iso').addEventListener('click',()=>stage.setMode('iso'));
 el<HTMLButtonElement>('top').addEventListener('click',()=>stage.setMode('top'));
 el<HTMLButtonElement>('fit').addEventListener('click',fitShowroom);
 el<HTMLButtonElement>('focus').addEventListener('click',focusSelected);
+surfacePicker.addEventListener('change',()=>{
+ swatchMaterial(surfacePicker.value as PixelSurface);
+});
+el<HTMLSelectElement>('surface-condition').addEventListener('change',e=>{
+ swatchCondition=(e.currentTarget as HTMLSelectElement).value;
+ swatchMaterial(currentSurface);
+});
+el<HTMLButtonElement>('texture-variant').addEventListener('click',()=>{
+ swatchSeed=(swatchSeed+1)%4;
+ swatchMaterial(currentSurface);
+});
+for(const [id,zoom] of [['zoom-close',4.5],['zoom-tactical',2.3],
+  ['zoom-overview',.95]] as const){
+ el<HTMLButtonElement>(id).addEventListener('click',()=>{
+   focusSelected();
+   stage.view.zoom=zoom;stage.updateCamera(1);
+ });
+}
 el<HTMLButtonElement>('textures').addEventListener('click',()=>{
  texturesShown=!texturesShown;
  stage.setPixelTextures(texturesShown);

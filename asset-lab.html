@@ -30,6 +30,14 @@ input{flex:1;min-width:100px}select{flex:1;min-width:140px}button:disabled{opaci
  <div class="row"><button id="previous">PREVIOUS</button><button id="next">NEXT</button><span id="summary"></span></div>
  <div class="row"><button id="iso">ISO</button><button id="top">TOP</button><button id="fit">FIT ALL</button><button id="focus">FOCUS</button><button id="bounds" aria-pressed="false">OUTLINE VOLUME</button><button id="textures" aria-pressed="true">TEXTURES ON</button><button id="variant" disabled>VARIANT +</button><button id="review">NEXT MODEL</button></div>
  <div class="row"><span>Drag to orbit · pinch to zoom/pan · tap names to inspect · VARIANT + cycles three trims</span></div>
+ <div class="row" aria-label="Pixel material inspection">
+ <label for="material-family">MATERIAL</label><select id="material-family" aria-label="Preview material family"></select>
+ <label for="surface-condition">CONDITION</label><select id="surface-condition" aria-label="Preview condition">
+ <option value="clean">Clean</option><option value="neglected">Neglected</option><option value="vacant">Vacant</option>
+ </select><button id="texture-variant">SEED +</button></div>
+ <div class="row" aria-label="Texture viewing distances">
+ <button id="zoom-close">CLOSE VIEW</button><button id="zoom-tactical">TACTICAL VIEW</button>
+ <button id="zoom-overview">OVERVIEW</button></div>
  <div id="texture-preview"><canvas id="pixel-swatch" width="32" height="32" aria-label="Selected procedural pixel material tile"></canvas><div id="pixel-detail"></div></div>
  <output id="detail" role="status" aria-live="polite"></output>
 </section>
