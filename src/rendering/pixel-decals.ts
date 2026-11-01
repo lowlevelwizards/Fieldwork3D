@@ -1,6 +1,6 @@
 /** Tiny procedural decal masks. World-space sizing stays with the plane. */
 import {PIXEL_WORLD_SIZE} from './pixel-recipes.ts';
-export type WearTextureKind='dust'|'stain'|'scrape'|'scuff'|'oil'|'grease'|'rust'|'chip'|'crack'|'scratch'|'drip'|'mud'|'footprint'|'mineral'|'fade'|'soot'|'moss'|'paint-peel';
+export type WearTextureKind='dust'|'stain'|'scrape'|'scuff'|'oil'|'grease'|'rust'|'chip'|'crack'|'scratch'|'drip'|'mud'|'footprint'|'mineral'|'fade'|'soot'|'moss'|'paint-peel'|'fray'|'abrade';
 const hash=(x:number,y:number,s:number)=>{
  let n=Math.imul(x+Math.imul(y,127)+Math.imul(s,19),1103515245);
  n^=n>>>13;return (n>>>0)%101;
@@ -36,6 +36,14 @@ export function wearPixels(kind:WearTextureKind,seed=0,size=32):Uint8Array{
   else if(kind==='fade')a=radius<.8+jag*.3?90:0;
   else if(kind==='soot')a=radius<.7+jag&&hash(x,y,seed)>24?140:0;
   else if(kind==='moss')a=dy>.17&&radius<.86+jag&&hash(x,y,seed)>35?180:0;
+  // Individual loose fibres at textile seams, not a uniform dirt patch.
+  else if(kind==='fray')a=
+    ((Math.abs(dx)>.63&&Math.abs(dx)<.95&&Math.abs(dy)<.84)&&
+     hash(Math.floor(x/2),y,seed)>53)?195:0;
+  // Broad shallow rubbed fibres/paint, with uneven directional grain.
+  else if(kind==='abrade')a=radius<.78+jag&&
+    (Math.abs(dy+Math.sin(x*.49+seed)*.055)<.10||
+     Math.abs(dy-.29+dx*.13)<.065)&&hash(x,y,seed)>29?165:0;
   const i=(y*size+x)*4;out[i]=out[i+1]=out[i+2]=255;out[i+3]=a;
  }
  return out;
