@@ -132,6 +132,25 @@ definitions.push(
  {id:'storage-tote',category:'storage',width:26,depth:19,height:17,
   solid:true,cover:'low',rooms:['closet','stockroom','packing','storage','supply']}
 );
+// Specialist equipment for the everyday routines of real buildings.
+definitions.push(
+ {id:'ice-machine',category:'hospitality',width:29,depth:27,height:37,
+  solid:true,cover:'high',rooms:["laundry","service","kitchen","lobby"]},
+ {id:'chest-freezer',category:'food-service',width:37,depth:27,height:26,
+  solid:true,cover:'low',rooms:["stockroom","kitchen","sales","service"]},
+ {id:'upright-freezer',category:'food-service',width:28,depth:27,height:43,
+  solid:true,cover:'high',rooms:["kitchen","pantry","stockroom"]},
+ {id:'refrigerated-display',category:'retail',width:51,depth:25,height:43,
+  solid:true,cover:'high',rooms:["sales","checkout"]},
+ {id:'dish-rack',category:'food-service',width:28,depth:19,height:28,
+  solid:true,cover:'low',rooms:["kitchen","service","pantry"]},
+ {id:'utility-sink',category:'utility',width:32,depth:24,height:27,
+  solid:true,cover:'low',rooms:["laundry","service","workshop","maintenance"]},
+ {id:'tool-rack',category:'industrial',width:41,depth:18,height:40,
+  solid:true,cover:'high',rooms:["workshop","parts","bay","maintenance"]},
+ {id:'linen-cart',category:'hospitality',width:36,depth:24,height:34,
+  solid:true,cover:'high',rooms:["laundry","service","supply","hallway"]}
+);
 // One physical envelope for collision, placement and live model geometry.
 for(const item of definitions){
  const dimensions=CANONICAL_ASSET_DIMENSIONS[item.id];
