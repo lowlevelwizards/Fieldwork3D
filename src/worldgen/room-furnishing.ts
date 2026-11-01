@@ -177,6 +177,8 @@ export function furnishRooms(site:Site,seed:number):Site{
  // Preserve architectural sills and outdoor fixtures while furnishing interiors.
  const output:Obstacle[]=[...site.cover];
  const furnishingIssues:NonNullable<Site['furnishingIssues']>=[];
+
+ const reserved:Pt[]=[...site.spawn,...site.enemies,site.objective,site.extract];
  // Reserve a complete bar installation BEFORE generic furnishing occupies the
  // useful circulation-adjacent space. Only compatible dining plans receive one.
  if(site.archetype==='restaurant'&&
@@ -211,7 +213,6 @@ export function furnishRooms(site:Site,seed:number):Site{
    }
  }
 
- const reserved:Pt[]=[...site.spawn,...site.enemies,site.objective,site.extract];
 
  const zoneCounts=new Map<string,number>(),zoneSeen=new Map<string,number>();
  for(const room of site.rooms){
