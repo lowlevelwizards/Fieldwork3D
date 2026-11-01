@@ -86,7 +86,10 @@ function report(site:Site):string{
   ' details · '+result.typedProps+' typed props · '+result.archOpenings+
   ' wide openings\n'+result.emptyRooms.length+' unfurnished functional rooms / '+ 
   result.functionalRooms+' rooms total\n'+
-  result.incompleteZones.length+' functionally incomplete zones\n'+(result.errors.length?
+  result.incompleteZones.length+' functionally incomplete zones\n'+
+  (result.unitContracts.length?
+    result.unitContracts.filter(u=>u.complete).length+'/'+result.unitContracts.length+
+      ' complete residential units\n':'')+(result.errors.length?
    'CHECKS: '+result.errors.join('; '):'CHECKS: PASS');
 }
 // Site scale changes dimensions, not architectural fidelity or room count.
