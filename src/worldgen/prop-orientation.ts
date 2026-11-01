@@ -13,10 +13,14 @@ const directional=new Set(['reception-desk','transaction-counter','parts-counter
  'prep-table','commercial-range','dish-station','handwash-station',
  'instrument-cart','retail-endcap','packing-station','parts-bin']);
 const facing:readonly Pt[]=[{x:0,y:1},{x:1,y:0},{x:0,y:-1},{x:-1,y:0}];
-const activeFixtures=new Set(['chair','office-chair','armchair','sofa','bench','patio-chair',
+const activeFixtures=new Set(['chair','office-chair','bar-stool','armchair','sofa','bench','patio-chair',
  'desk','toilet','sink','stove','fridge','checkout',
  'reception-desk','transaction-counter','parts-counter','workbench','control-panel',
  'commercial-range','handwash-station','prep-table']);
+// Pulled-out seats are typically approached from behind or the aisle side.
+ // Reserving an empty area *between* a dining chair and its table makes
+ // the chair incorrectly face away from the table.
+const rearApproach=new Set(['chair','office-chair','bar-stool','patio-chair']);
 const groups:Record<string,readonly string[]>={
  'bar-stool':['bar-counter'],
  'office-chair':['desk','reception-desk','meeting-table','control-panel','checkout'],
@@ -41,7 +45,9 @@ function legal(site:Site,out:readonly Obstacle[],index:number,r:Room,turn:Quarte
    Math.abs(o.y-item.y)<(o.h+h)/2+3))return false;
  if(activeFixtures.has(item.fixture??'')){
   const face=facing[turn],depth=turn%2?w:h;
-  const reach={x:item.x+face.x*(depth/2+8),y:item.y+face.y*(depth/2+8)};
+  const sign=rearApproach.has(item.fixture??'')?-1:1;
+  const reach={x:item.x+sign*face.x*(depth/2+8),
+    y:item.y+sign*face.y*(depth/2+8)};
   if(reach.x<r.x+8||reach.x>r.x+r.w-8||
     reach.y<r.y+8||reach.y>r.y+r.h-8)return false;
   if(out.some((o,j)=>j!==index&&Math.abs(o.x-reach.x)<o.w/2+3&&
