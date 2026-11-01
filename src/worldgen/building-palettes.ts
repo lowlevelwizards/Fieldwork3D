@@ -47,9 +47,9 @@ const schemes:Record<BuildingArchetype,readonly Scheme[]>={
  {name:'Safety Yellow',wall:0xb8b4a5,floor:0x696a5d,door:0xb0a05d,trim:0xd1c6a5,cap:0x4d5042,tile:0x9a9987,wood:0x786449},
  {name:'Aging Substation',wall:0x979e92,floor:0x5d6c66,door:0x7a816b,trim:0xabb5a4,cap:0x414941,tile:0x8c9486,wood:0x655c4a}],
  clinic:[
- {name:'Soft Sage',wall:0xd0dcd4,floor:0x9cab9e,door:0x87a398,trim:0xe2e9dc,cap:0x647871,tile:0xc4d3c8,wood:0x7c7b6c},
- {name:'Blue White Modern',wall:0xd8e0e0,floor:0x9eafb5,door:0x7c9fac,trim:0xe7e9e3,cap:0x5c7782,tile:0xc6d8d8,wood:0x808378},
- {name:'Older Institutional',wall:0xc5c7b7,floor:0x929c91,door:0x849b87,trim:0xd7d9c9,cap:0x606b5d,tile:0xb8c1b2,wood:0x818072}],
+ {name:'Soft Sage',wall:0xdce8de,floor:0xbccdc2,door:0x8caea1,trim:0xf0f2e9,cap:0x647871,tile:0xe0e9dd,wood:0x7c7b6c},
+ {name:'Blue White Modern',wall:0xe4eae7,floor:0xc3d5d5,door:0x8aafb9,trim:0xf1f2ea,cap:0x5c7782,tile:0xe0eded,wood:0x808378},
+ {name:'Older Institutional',wall:0xd6d9c8,floor:0xb2c0b1,door:0x90aa94,trim:0xe5e8d9,cap:0x606b5d,tile:0xd7e0d2,wood:0x818072}],
 };
 const mix=(a:number,b:number,t:number)=>{
  const channel=(shift:number)=>Math.round(((a>>shift)&255)*(1-t)+((b>>shift)&255)*t);
