@@ -95,7 +95,7 @@ export type OperatorRig={
 const mat=(hex:number,surface?:PixelSurface)=>new THREE.MeshStandardMaterial({color:hex,
   map:surface?operatorPixelTextures.get(surface):null,
   flatShading:true,roughness:.86});
-function block(group:THREE.Group,x:number,y:number,z:number,
+function block(group:THREE.Object3D,x:number,y:number,z:number,
   width:number,height:number,depth:number,material:THREE.Material){
   const mesh=new THREE.Mesh(mapBoxPixelUV(new THREE.BoxGeometry(width,height,depth),
     width,height,depth),material);
