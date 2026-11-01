@@ -70,3 +70,5 @@
 .campaign-armory button{font-size:10px;min-height:39px;margin:0}
 .campaign-person-actions .campaign-select{width:100%;max-width:100%}
 @media(max-width:420px){.campaign-armory{grid-template-columns:1fr}}
+
+.campaign-distinction{font-size:11px;color:#e6d1a0;line-height:1.45;margin:8px 0}
