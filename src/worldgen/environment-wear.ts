@@ -2,6 +2,7 @@
  * A decorative layer only: no physics, pathfinding or intel mutations.
  */
 import {seeded,type Site} from '../breach-site.ts';
+import {roomPixelSurface} from './pixel-surface-selection.ts';
 export type WearKind='dust'|'stain'|'scrape'|'scuff';
 export type WearMark={
  id:string;roomId:string;kind:WearKind;x:number;y:number;
@@ -19,9 +20,13 @@ export function planEnvironmentalWear(site:Site):WearMark[]{
   if(room.w<40||room.h<40)continue;
   const amount=Math.min(5,count)*(room.kind==='hall'?.5:1);
   for(let i=0;i<Math.floor(amount);i++){
-   const kind=site.condition==='renovation'?
+   let kind=site.condition==='renovation'?
      (i%2===0?'scrape':'dust'):site.condition==='disturbed'?
      (i%3===0?'stain':'scuff'):all[Math.floor(random()*all.length)];
+   // Match scuffs and stains to the actual rendered surface family.
+   const surface=roomPixelSurface(site.archetype,room.purpose??room.kind);
+   if(surface==='carpet'&&kind==='scrape')kind='stain';
+   if(surface==='tile'&&kind==='dust')kind='scuff';
    const width=7+random()*Math.min(19,room.w*.15);
    const depth=8+random()*Math.min(20,room.h*.15);
    const mx=room.x+Math.max(10,width/2+2);

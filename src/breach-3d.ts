@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {graphicsBudget} from './breach-graphics-budget.ts';
 import {PixelTextureLibrary,mapBoxPixelUV,mapPlanePixelUV,type PixelSurface} from './rendering/pixel-materials.ts';
-import {roomPixelSurface,zonePixelSurface} from './worldgen/pixel-surface-selection.ts';
+import {roomPixelSurface,zonePixelSurface,wallPixelSurface} from './worldgen/pixel-surface-selection.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from './worldgen/fixture-visuals.ts';
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surfaces.ts';
@@ -446,7 +446,8 @@ export class TacticalScene3D{
         Math.max(12,room.w+2),2,Math.max(12,room.h+2),
         this.roofMaterial,false).receiveShadow=false;
     }
-    const wallMat=this.solid(theme.wall,.94,'plaster'),capMat=this.solid(theme.cap,.94,'concrete');
+    const wallMat=this.solid(theme.wall,.94,wallPixelSurface(site.archetype)),
+      capMat=this.solid(theme.cap,.94,'concrete');
     const skirting=this.solid(theme.trim,.91,'wood');
     for(const [index,wall] of site.walls.entries()){
       const group=new THREE.Group();this.root.add(group);

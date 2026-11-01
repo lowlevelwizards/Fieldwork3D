@@ -40,3 +40,9 @@ export function fixturePixelSurface(fixture:string|undefined):PixelSurface{
  return 'metal';
  return 'wood';
 }
+
+/** Render-side classification, never a substitute for wall physics. */
+export function wallPixelSurface(archetype:string|undefined):PixelSurface{
+ return ['garage','warehouse','utility'].includes(archetype??'')?'concrete':
+   archetype==='townhouse'?'brick':'plaster';
+}
