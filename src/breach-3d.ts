@@ -5,7 +5,8 @@ import {roomPixelSurface,zonePixelSurface,wallPixelSurface} from './worldgen/pix
 import {renderFixtureVisual,type FixtureVisualContext} from './worldgen/fixture-visuals.ts';
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surfaces.ts';
-import {planEnvironmentalWear,type WearKind} from './worldgen/environment-wear.ts';
+import {planEnvironmentalWear,type WearKind,type WearMark} from './worldgen/environment-wear.ts';
+import {summarizeWear} from './worldgen/wear-diagnostics.ts';
 import {wearPixels} from './rendering/pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './rendering/wear-opacity.ts';
 import {pixelSign,type PixelSignKind} from './rendering/pixel-signage.ts';
@@ -140,6 +141,16 @@ export class TacticalScene3D{
   private sharedBoxGeometries=new Set<THREE.BufferGeometry>();
   private windowPaneMaterial:THREE.MeshStandardMaterial|null=null;
   private readonly wearMaterials=new Map<string,THREE.MeshBasicMaterial>();
+  private currentWear:WearMark[]=[];
+  private wearBoost=1;
+  wearStats(){return summarizeWear(this.currentWear);}
+  setWearExaggeration(multiplier:number){
+    this.wearBoost=Math.max(1,Math.min(4,multiplier));
+    for(const [key,material] of this.wearMaterials){
+      const bucket=Number(key.slice(key.lastIndexOf(':')+1));
+      material.opacity=Math.min(1,WEAR_ALPHA_BANDS[bucket]*this.wearBoost);
+    }
+  }
   private readonly wearTextures=new Map<WearKind,THREE.DataTexture>();
   private readonly signMaterials=new Map<string,THREE.MeshBasicMaterial>();
   private readonly groundOverlays=new Map<PixelOverlay,THREE.MeshBasicMaterial>();
@@ -308,6 +319,7 @@ export class TacticalScene3D{
     for(const material of this.wallMaterials)material.dispose();
     this.wallMaterials.clear();
     this.walls.length=0;this.doors.clear();this.windowGlass.clear();
+    this.currentWear=[];
     this.roofGroups.clear();
     this.coverGroups.clear();
     this.intelSurfaces.length=0;
@@ -404,7 +416,8 @@ export class TacticalScene3D{
     const wearColor:Record<WearKind,number>={
       dust:0x92816c,stain:0x655e4b,scrape:0xb2ae9e,scuff:0x444d47,
     };
-    for(const detail of planEnvironmentalWear(site)){
+    this.currentWear=planEnvironmentalWear(site);
+    for(const detail of this.currentWear){
       const roomGroup=decorativeRoomGroups.get(detail.roomId);
       if(!roomGroup)continue;
       const bucket=wearOpacityBucket(detail.opacity);
@@ -423,7 +436,7 @@ export class TacticalScene3D{
         }
         material=new THREE.MeshBasicMaterial({
           color:wearColor[detail.kind],map:texture,transparent:true,
-          opacity:WEAR_ALPHA_BANDS[bucket],
+          opacity:Math.min(1,WEAR_ALPHA_BANDS[bucket]*this.wearBoost),
           depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,
           side:THREE.DoubleSide});
         this.wearMaterials.set(wearKey,material);
