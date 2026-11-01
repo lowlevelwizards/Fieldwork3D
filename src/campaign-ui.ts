@@ -13,13 +13,15 @@ import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
 import {attachmentPrice} from './equipment-weapon-inventory.ts';
 import {stageMagazines,magazinePlacementSummary,magazineSpace,
  type MagazineLocation} from './equipment-magazine-placement.ts';
+import {kitMedicalSupplies,medicalSupplyCount} from './equipment-medical-supplies.ts';
 import './campaign-style.css';
 
 export type CampaignHandlers={
  newCampaign:()=>void;continueCampaign:()=>void;quickPlay:()=>void;
  chooseContract:(id:string)=>void;resumeContract:()=>void;
  buyAmmo:()=>void;buyMedical:()=>void;buyFlash:()=>void;
- resupply:(id:string)=>void;treat:(id:string)=>void;
+ resupply:(id:string)=>void;resupplyMedical:(id:string)=>void;
+ treat:(id:string)=>void;
  recruit:()=>void;assignSlot:(slot:number,id:string)=>void;
  buyWeapon:(weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipWeapon:(id:string,weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
@@ -164,6 +166,14 @@ export class CampaignScreen{
    },'campaign-primary'));
    actions.append(weaponPick);
    actions.append(button('RESUPPLY',()=>this.handlers.resupply(p.id)));
+   const med=kitMedicalSupplies(p.loadout);
+   const replenish=button('REISSUE MEDICAL '+medicalSupplyCount(p.medicalSupplies)+
+    '/'+medicalSupplyCount(med)+' · 1 STOCK',
+    ()=>this.handlers.resupplyMedical(p.id));
+   replenish.disabled=!!c.activeContractId||c.supplies.medical<1||
+    medicalSupplyCount(p.medicalSupplies)>=medicalSupplyCount(med)||
+    medicalSupplyCount(med)===0;
+   actions.append(replenish);
    if(p.recoveryDays>0)actions.append(button('TREAT',()=>this.handlers.treat(p.id)));
    if(!c.squadIds.includes(p.id)&&
     c.operators.filter(o=>o.status==='available'||o.status==='reserve').length>4)
@@ -314,6 +324,10 @@ export class CampaignScreen{
    ()=>this.handlers.repairArmor(person.id));
   repair.disabled=!!c.activeContractId||repairCost===0||c.funds<repairCost;
   summary.append(repair);
+  const capacity=kitMedicalSupplies(person.loadout);
+  summary.append(node('p','campaign-kit-metrics',
+   'FIELD MEDICAL · '+medicalSupplyCount(person.medicalSupplies)+' / '+
+    medicalSupplyCount(capacity)+' · HQ RESERVE '+c.supplies.medical));
   summary.append(node('p','campaign-kit-metrics',
    'WEAPON CONFIG · '+Object.values(person.weaponConfiguration.slots)
     .map(v=>v.replace(/^[^-]+-/,'')).join(' / ')));
