@@ -3,7 +3,8 @@ import type {CampaignState,Contract} from './campaign-state.ts';
 import {SKILL_NAMES,WEAPON_PRICES} from './campaign-state.ts';
 import {sharedService} from './campaign-history.ts';
 import {LOADOUT_SLOTS,itemsForSlot,itemDefinition} from './equipment-catalog.ts';
-import {totalEquipmentMass,type LoadoutSlot} from './equipment-loadouts.ts';
+import {totalEquipmentMass,loadMobilityDescription,loadMovementScale,
+ type LoadoutSlot} from './equipment-loadouts.ts';
 import {CampaignKitPreview} from './equipment-preview.ts';
 import './campaign-style.css';
 
@@ -266,12 +267,15 @@ export class CampaignScreen{
   identityActions.append(rename,appearance);summary.append(identityActions);
   summary.append(node('p','campaign-note',
    person.background+' · '+person.trait+' · '+person.missions+' OPERATIONS'));
+  summary.append(node('p','campaign-kit-metrics','MOBILITY · '+
+   loadMobilityDescription(person.loadout)+' · '+
+   Math.round(loadMovementScale(person.loadout)*100)+'% MOVEMENT SPEED'));
   summary.append(node('div','campaign-kit-metrics',
    'PRIMARY · '+person.weapon.toUpperCase()+
    '    /    MAGAZINE · '+person.magazine+
    '    /    RESERVE · '+person.reserve));
   summary.append(node('p','campaign-note',
-   'Equipment is issued as a saved preparation kit. Weight shown is physical item mass only. Armor coverage, retrieval times, tools and handling effects are not yet active in combat.'));
+   'Equipment is issued as a saved preparation kit. Carried weight now influences movement speed. Armor coverage, retrieval times, tools and weapon handling effects are not yet active in combat.'));
   summary.append(node('p','campaign-note',
    'The preview uses the same 3D operator rig as the mission. Some equipment slots are metadata-only until their gameplay systems are implemented.'));
   grid.append(summary);
