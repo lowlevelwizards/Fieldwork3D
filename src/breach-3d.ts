@@ -9,6 +9,7 @@ import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surface
 import {planEnvironmentalWear,type WearKind,type WearMark} from './worldgen/environment-wear.ts';
 import {summarizeWear} from './worldgen/wear-diagnostics.ts';
 import {conditionFloorPixels,effectiveCondition} from './worldgen/condition-visual.ts';
+import {conditionWallPixels} from './worldgen/condition-wall.ts';
 import {planObjectWear,type ObjectWear} from './worldgen/object-wear.ts';
 import {planExposureWear} from './worldgen/wear-exposure.ts';
 import {planActivityWear} from './worldgen/wear-sources.ts';
@@ -566,6 +567,28 @@ export class TacticalScene3D{
       this.wallMaterials.add(individualWall);
       const body=this.box(group,x,20,z,len+1,40,9,individualWall);
       body.rotation.y=angle;
+      // Whole-wall weathering follows the actual structural wall mesh.
+      // Both faces share one deterministic texture, while a single instance
+      // controls opacity during close-camera cutaways.
+      if(effectiveCondition(site)>0){
+        const texture=new THREE.DataTexture(conditionWallPixels(site,index),64,64,THREE.RGBAFormat);
+        texture.colorSpace=THREE.SRGBColorSpace;
+        texture.magFilter=THREE.NearestFilter;
+        texture.minFilter=THREE.LinearMipmapLinearFilter;
+        texture.generateMipmaps=true;texture.needsUpdate=true;
+        const material=new THREE.MeshBasicMaterial({map:texture,transparent:true,
+          depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,
+          side:THREE.DoubleSide});
+        this.sitePatinaTextures.push(texture);this.sitePatinaMaterials.push(material);
+        body.userData.patinaMaterial=material;
+        for(const face of [-1,1]){
+          const plane=new THREE.Mesh(new THREE.PlaneGeometry(len,39.6),material);
+          plane.position.set(0,0,face*4.64);
+          if(face<0)plane.rotation.y=Math.PI;
+          plane.castShadow=false;plane.receiveShadow=false;
+          body.add(plane);
+        }
+      }
       this.walls.push({mesh:body,mid:{x,y:z}});
       for(const mark of marksOn('wall',index))
         this.addSurfaceWear(body,mark,(mark.u-.5)*len,(mark.v-.5)*32,
@@ -1244,6 +1267,8 @@ export class TacticalScene3D{
       // A 10%-opaque wall vanishes against black fog; keep an identifiable
       // translucent surface and draw it after the fog compositing pass.
       material.opacity=cut?.38:1;
+      const wallPatina=wall.mesh.userData.patinaMaterial as THREE.MeshBasicMaterial|undefined;
+      if(wallPatina)wallPatina.opacity=cut?.24:1;
       wall.mesh.renderOrder=cut?1001:0;
     }
     for(const door of s.doors){
