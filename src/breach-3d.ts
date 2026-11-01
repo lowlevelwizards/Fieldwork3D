@@ -8,6 +8,7 @@ import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surface
 import {planEnvironmentalWear,type WearKind,type WearMark} from './worldgen/environment-wear.ts';
 import {summarizeWear} from './worldgen/wear-diagnostics.ts';
 import {planObjectWear,type ObjectWear} from './worldgen/object-wear.ts';
+import {planExposureWear} from './worldgen/wear-exposure.ts';
 import {planActivityWear} from './worldgen/wear-sources.ts';
 import {visibleSurfaceHeight} from './worldgen/decoration-anchors.ts';
 import {wearPixels} from './rendering/pixel-decals.ts';
@@ -323,7 +324,9 @@ export class TacticalScene3D{
       this.wearMaterials.set(key,material);this.mats.push(material);
     }
     const decal=new THREE.Mesh(new THREE.PlaneGeometry(mark.size,mark.size*.7),material);
-    decal.position.set(x,y,z);decal.castShadow=false;decal.receiveShadow=false;
+    decal.position.set(x,y,z);
+    if(mark.face==='back')decal.rotation.y=Math.PI;
+    decal.castShadow=false;decal.receiveShadow=false;
     parent.add(decal);
   }
   private plane(parent:THREE.Object3D,x:number,z:number,w:number,d:number,
@@ -421,7 +424,7 @@ export class TacticalScene3D{
       this.box(this.root,site.entrance.x,-1,(site.entrance.y+edge)/2,
         85,1,Math.abs(site.entrance.y-edge)+10,road,false);
     }
-    this.objectWear=planObjectWear(site);
+    this.objectWear=[...planObjectWear(site),...planExposureWear(site)];
     const marksOn=(owner:ObjectWear['owner'],index:number)=>
       this.objectWear.filter(m=>m.owner===owner&&m.index===index);
     const decorativeRoomGroups=new Map<string,THREE.Group>();
@@ -512,7 +515,8 @@ export class TacticalScene3D{
       body.rotation.y=angle;
       this.walls.push({mesh:body,mid:{x,y:z}});
       for(const mark of marksOn('wall',index))
-        this.addSurfaceWear(body,mark,(mark.u-.5)*len,(mark.v-.5)*32,4.6);
+        this.addSurfaceWear(body,mark,(mark.u-.5)*len,(mark.v-.5)*32,
+          mark.face==='back'?-4.6:4.6);
       const foot=this.box(group,x,2,z,len+1,4,12,skirting,false);
       foot.rotation.y=angle;
       const individualCap=capMat.clone();
