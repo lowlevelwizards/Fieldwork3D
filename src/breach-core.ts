@@ -160,11 +160,17 @@ const sweepPassable=(from:Pt,to:Pt,canStand:(p:Pt)=>boolean)=>{
 export function route(from:Pt,to:Pt,
   canStand:(p:Pt)=>boolean=passable):Pt[]{
   const broad=routeGrid(from,to,canStand,GRID,6000);
-  if(broad.length||distance(from,to)>245)return broad;
-  return routeGrid(from,to,canStand,GRID/2,3800,76);
+  if(broad.length)return broad;
+  // Long routes still use coarse A*: a valid exact target may round onto
+  // a blocked grid centre. Only on failure try adjacent legal end anchors,
+  // never incur the high-cost finer whole-building grid in routine play.
+  if(distance(from,to)>245)
+    return routeGrid(from,to,canStand,GRID,4200,Infinity,true);
+  return routeGrid(from,to,canStand,GRID/2,3800,76,true);
 }
 function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
-  grid:number,budget:number,padding=Infinity):Pt[]{
+  grid:number,budget:number,padding=Infinity,
+  alternateGoal=false):Pt[]{
   const cellAt=(p:Pt)=>({col:Math.round(p.x/grid),
     row:Math.round(p.y/grid)});
   const cellPoint=(col:number,row:number):Pt=>({x:col*grid,
@@ -173,17 +179,29 @@ function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
   const st=cellAt(from),goal=cellAt(to);
   const startKey=key(st.col,st.row),goalKey=key(goal.col,goal.row);
   if(startKey===goalKey)return [{...to}];
+  // Endpoint rescue: an exact walkable location can snap to an illegal
+  // grid vertex. Find a nearby legal vertex with a swept final connector.
+  // Do this only after the inexpensive ordinary A* has failed.
+  const targets=new Set<string>();
+  if(alternateGoal){
+    for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){
+      const col=goal.col+dx,row=goal.row+dy,p=cellPoint(col,row);
+      if(canStand(p)&&sweepPassable(p,to,canStand))
+        targets.add(key(col,row));
+    }
+    if(!targets.size)return [];
+  }else targets.add(goalKey);
   const open=[{col:st.col,row:st.row,g:0,f:0}];
   const best=new Map<string,number>([[startKey,0]]);
   const parents=new Map<string,string>();
   const visited=new Set<string>();
-  let found=false;
+  let reachedKey:string|null=null;
   const dirs=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
   for(let iter=0;open.length&&iter<budget;iter++){
     open.sort((a,b)=>a.f-b.f);
     const at=open.shift()!,k=key(at.col,at.row);
     if(visited.has(k))continue;visited.add(k);
-    if(k===goalKey){found=true;break;}
+    if(targets.has(k)){reachedKey=k;break;}
     for(const [dx,dy] of dirs){
       const col=at.col+dx,row=at.row+dy,p=cellPoint(col,row);
       if(padding!==Infinity&&
@@ -208,9 +226,9 @@ function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
         f:cost+Math.hypot(col-goal.col,row-goal.row)});
     }
   }
-  if(!found)return [];
+  if(!reachedKey)return [];
   const path:Pt[]=[];
-  let cursor=goalKey;
+  let cursor=reachedKey;
   while(cursor!==startKey){
     const [col,row]=cursor.split(',').map(Number);
     path.push(cellPoint(col,row));
