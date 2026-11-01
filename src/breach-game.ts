@@ -30,8 +30,9 @@ import {assessFireLane,type FireBlock} from './breach-fire-safety.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from './breach-door.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
+import {chooseAiIntent,type AIIntent} from './breach-ai-policy.ts';
 import {newAwareness,addObservation,visibleObservation,
- ageAwareness,clearObservedPosition,
+ ageAwareness,clearObservedPosition,bestBelief,
  type ActorAwareness} from './breach-awareness.ts';
 import {visualGain,advanceSight,confirmedSight} from './breach-visual-perception.ts';
 import {doorContactImpulse,passageWait,type PassageActor}
@@ -64,6 +65,7 @@ export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retrea
 export type Personality='guard'|'aggressor'|'cautious';
 export type TeamActor=Operator & {
   awareness:ActorAwareness;
+  intent:AIIntent|null;
   plan:PlanNode[];history:PlanHistory;nav:Pt[];activeNode:number;
   posture:Posture;pace:'walk'|'run';alert:Alert;velocity:number;turning:number;
   aim: number;targetId:string|null;suppression:number;stamina:number;
@@ -149,7 +151,7 @@ export const SCENARIOS=[
   {index:2,name:'REAR GUARD',spots:[{x:262,y:213,h:1.1},{x:476,y:444,h:2.8}]},
 ] as const;
 const withActions=(a:Operator):TeamActor=>({
-  ...a,awareness:newAwareness(),plan:[],history:makeHistory(),nav:[],activeNode:-1,
+  ...a,awareness:newAwareness(),intent:null,plan:[],history:makeHistory(),nav:[],activeNode:-1,
   posture:'stand',pace:'walk',alert:'idle',velocity:0,turning:0,aim:0,
   targetId:null,suppression:0,stamina:1,magazine:12,reserve:36,
   reload:0,hits:0,kills:0,stopped:false,contact:null,heard:null,
@@ -1583,6 +1585,20 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   if(a.health<=0||a.surrendered)return;
   if(!a.watch)a.watch=watchPoint(a.p,s.doors);
   const visible=team(s).filter(b=>inSight(a,b,s));
+  // Intention selection reads only acquired observations, not hidden positions.
+  const belief=bestBelief(a.awareness);
+  const recentNoise=s.seconds-a.lastNoiseAt<6;
+  a.intent=chooseAiIntent(a.intent,{
+    visible:visible.length>0,hasBelief:!!belief,recentSound:recentNoise,
+    suppression:a.suppression,morale:a.morale},s.seconds);
+  if(!visible.length){
+    if(belief&&belief.lastAt>=s.seconds-24)
+      a.contact=clone(belief.estimate);
+    else if(!recentNoise){
+      a.contact=null;a.heard=null;a.contacted=false;
+      if(a.alert==='investigating')a.alert='idle';
+    }
+  }
   if(visible.length){
     const b=visible.sort((x,y)=>d(x.p,a.p)-d(y.p,a.p))[0];
     a.contact=clone(b.p);a.alertUntil=s.seconds+3;a.contacted=true;
