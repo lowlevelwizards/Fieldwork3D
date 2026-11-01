@@ -1979,7 +1979,7 @@ function strikeSurface(from:Pt,aimed:Pt,s:Session,
     const t=segmentImpact(from,aimed,windowPaneSegment(window));
     if(t===null)continue;
     const height=fromZ+(toZ-fromZ)*t;
-    if(height<14||height>32)continue;
+    if(height<(window.sillHeight??14)||height>(window.headHeight??32))continue;
     hits.push({fraction:t,material:'glass',thickness:1});
     paneHits.push({index,fraction:t});
   }
