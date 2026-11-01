@@ -2,9 +2,26 @@
  * archetype-specific outdoor cover. Visibility and navigation use the same
  * wall/cover geometry as rendering, never a visual-only false opening. */
 import {type Segment,type Obstacle,type Pt} from './breach-core.ts';
-import type {Site,WindowOpening} from './breach-site.ts';
+import type {Site,WindowOpening,WindowStyle,BuildingArchetype} from './breach-site.ts';
 import {addExteriorProperty} from './worldgen/exterior-sites.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
+const windowStyles:Record<BuildingArchetype,readonly WindowStyle[]>={
+ house:['standard','tall','bay','picture'],
+ townhouse:['standard','tall','bay','standard'],
+ apartment:['standard','tall','standard','picture'],
+ retail:['picture','tall','standard'],
+ office:['tall','picture','standard'],
+ garage:['industrial','standard'],
+ warehouse:['industrial','tall'],
+ restaurant:['picture','bay','tall'],
+ motel:['standard','picture','standard'],
+ utility:['industrial','standard'],
+ clinic:['tall','picture','standard'],
+};
+export function openingStyle(kind:BuildingArchetype|undefined,seed:number,index:number):WindowStyle{
+ const list=windowStyles[kind??'house'];
+ return list[(Math.abs(seed)+index*3)%list.length];
+}
 export function buildArchetypeEnvironment(site:Site,seed:number):Site{
   const minX=Math.min(...site.rooms.map(r=>r.x));
   const maxX=Math.max(...site.rooms.map(r=>r.x+r.w));
@@ -40,7 +57,8 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
     if(dist(a,wall.a)<20||dist(b,wall.b)<20)continue;
     chosen.add(item.index);
     windows.push({id:'W'+windows.length,x:item.p.x,y:item.p.y,
-      width:half*2,vertical:item.vertical});
+      width:half*2,vertical:item.vertical,
+      style:openingStyle(site.archetype,seed,windows.length)});
   }
   const walls:Segment[]=[];
   site.walls.forEach((wall,index)=>{
@@ -89,7 +107,7 @@ export type WindowState=WindowOpening&{
 };
 export function initializeWindows(openings:readonly WindowOpening[]):WindowState[]{
  return openings.map(w=>({...w,open:false,integrity:2,
-   shattered:false,operable:w.width>=38}));
+   shattered:false,operable:w.width>=38&&w.style!=='picture'}));
 }
 export function manipulateWindow(w:WindowState,action:'open'|'close'|'break'){
  if(action==='break'){
