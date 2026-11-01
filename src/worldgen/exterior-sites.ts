@@ -4,7 +4,7 @@
 import {type Site,type ExteriorZone,seeded} from '../breach-site.ts';
 import {type Obstacle,type Pt} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
-import {overlapsArrivalLane} from './property-access-lane.ts';
+import {arrivalAccessLane,overlapsArrivalLane} from './property-access-lane.ts';
 import {PARKING_VEHICLES,parkingStallCandidates} from './parking-stalls.ts';
 import {SERVICE_EDGE_FIXTURES,serviceYardEdgeCandidates} from './service-yard-layout.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -154,6 +154,40 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    }
    if(!accepted)continue;
   }
+ }
+ // Wheel stops are actual low physical parking-block fixtures in empty
+ // marked stalls, not painted decals and never on the front approach.
+ // They are placed after vehicle selection so vacant bays remain usable.
+ for(const zone of zones.filter(z=>z.kind==='parking')){
+   const block=propDefinition('parking-block');
+   if(!block)continue;
+   const broad=zone.w>=zone.h;
+   const candidates=parkingStallCandidates(zone,98,40);
+   const lane=arrivalAccessLane(site,zone);
+   let inserted=0;
+   for(const slot of candidates){
+     if(inserted>=2)break;
+     const w=broad?block.width:block.depth;
+     const h=broad?block.depth:block.width;
+     const candidate:Obstacle={
+       x:broad?slot.x:zone.x-zone.w/2+14,
+       y:broad?zone.y-zone.h/2+14:slot.y,
+       w,h,low:true,fixture:'parking-block',orientation:broad?0:1
+     };
+     if(candidate.x-w/2<zone.x-zone.w/2+3||
+       candidate.y-h/2<zone.y-zone.h/2+3||
+       candidate.x+w/2>zone.x+zone.w/2-3||
+       candidate.y+h/2>zone.y+zone.h/2-3)continue;
+     if(lane&&Math.abs(candidate.x-lane.x)<(w+lane.w)/2+10&&
+       Math.abs(candidate.y-lane.y)<(h+lane.h)/2+10)continue;
+     if(protectedPoints.some(p=>Math.abs(p.x-candidate.x)<w/2+23&&
+       Math.abs(p.y-candidate.y)<h/2+23))continue;
+     if(cover.some(other=>overlaps(other,candidate)))continue;
+     if(site.rooms.some(room=>candidate.x+w/2>room.x&&
+       candidate.x-w/2<room.x+room.w&&candidate.y+h/2>room.y&&
+       candidate.y-h/2<room.y+room.h))continue;
+     cover.push(candidate);inserted++;
+   }
  }
  return {...site,exteriorZones:zones,cover};
 }
