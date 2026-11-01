@@ -606,6 +606,7 @@ export class TacticalScene3D{
       crack:0x4c4a43,scratch:0xd1cab7,drip:0x6e7771,mud:0x6b5641,
       footprint:0x655647,mineral:0xd3cec1,fade:0xc6bfaa,
       soot:0x343c39,moss:0x59714e,'paint-peel':0xbdb19f,
+      fray:0xc4b9aa,abrade:0x918878,
     };
     this.currentWear=[...planEnvironmentalWear(site),...planActivityWear(site),...planHistoryWear(site)];
     for(const detail of this.currentWear){
