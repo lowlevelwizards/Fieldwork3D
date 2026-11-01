@@ -9,7 +9,8 @@ test('Map Lab has a continuous condition control',()=>{
  assert.match(lab,/type="range"/);
 });
 test('floor condition is deterministic and transformative',()=>{
- const s=generateSite(126),r=s.rooms.find(r=>r.kind==='room')!;
+ const s=generateSite(126),r=s.rooms.find(r=>r.kind==='room');
+ assert.ok(r);
  const clean=conditionFloorPixels(s,r,0),old=conditionFloorPixels(s,r,100);
  assert.deepEqual(clean,conditionFloorPixels(s,r,0));
  assert.deepEqual(old,conditionFloorPixels(s,r,100));
