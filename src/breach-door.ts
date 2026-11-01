@@ -15,6 +15,11 @@ export function handlePoint(d:Door):Pt{
     y:leaf.a.y+(leaf.b.y-leaf.a.y)*.82};
 }
 export function doorReachable(p:Pt,d:Door):boolean{
+  // An opened leaf can be grabbed from anywhere along its actual panel.
+  // Requiring proximity to the empty frame made closing a swung door
+  // impossible even with the operator's hand against the leaf.
+  if(d.open&&(d.openFraction??1)>.15)
+    return pointToSegment(p,doorLeafSegment(d))<DOOR_REACH;
   return (dist(p,handlePoint(d))<DOOR_REACH||pointToSegment(p,d)<31)&&
     dist(p,doorCenter(d))<DOOR_REACH+16;
 }
@@ -24,6 +29,18 @@ export function doorApproach(from:Pt,d:Door):Pt|null{
   const n={x:-t.y,y:t.x};
   const side=Math.sign((from.x-m.x)*n.x+(from.y-m.y)*n.y)||1;
   const candidates:Pt[]=[];
+  if(d.open&&(d.openFraction??1)>.15){
+    const leaf=doorLeafSegment(d),dx=leaf.b.x-leaf.a.x,dy=leaf.b.y-leaf.a.y;
+    const length=Math.hypot(dx,dy)||1;
+    const leafNormal={x:-dy/length,y:dx/length};
+    const leafSide=Math.sign((from.x-leaf.a.x)*leafNormal.x+
+      (from.y-leaf.a.y)*leafNormal.y)||1;
+    for(const fraction of [.25,.5,.78])
+      for(const reach of [17,23,29]){
+        candidates.push({x:leaf.a.x+dx*fraction+leafNormal.x*reach*leafSide,
+          y:leaf.a.y+dy*fraction+leafNormal.y*reach*leafSide});
+      }
+  }
   for(const point of [handlePoint(d),m])
     for(const outward of [20,24,29])
       for(const along of [0,-12,12])
@@ -70,11 +87,14 @@ export function kickDoor(d:Door,from?:Pt):{opened:boolean;pushSide:boolean}{
  const cross=(p:Pt)=>(d.b.x-d.a.x)*(p.y-center.y)-
    (d.b.y-d.a.y)*(p.x-center.x);
  const pushSide=cross(from)*cross(leaf.b)<0;
- const force=pushSide?1.2:.48,brace=d.heldBy?.75:0;
  d.kicks=(d.kicks??0)+1;
- d.latchIntegrity=Math.max(-1,(d.latchIntegrity??1.05)-force+brace);
- if(!pushSide)d.frameIntegrity=Math.max(0,(d.frameIntegrity??2.5)-.42);
- const opened=(d.latchIntegrity??1)>0?((d.frameIntegrity??1)<=0):true;
+ // Hinges cannot reverse because of an impact from the pull side.
+ // The rattled door stays latched; the player must use the other side
+ // or open it by hand. Never animate a kick opening into the kicker.
+ if(!pushSide)return {opened:false,pushSide:false};
+ const brace=d.heldBy?.75:0;
+ d.latchIntegrity=Math.max(-1,(d.latchIntegrity??1.05)-1.2+brace);
+ const opened=(d.latchIntegrity??1)<=0;
  if(opened){
    d.heldBy=null;d.locked=false;d.jammed=false;
    d.forced=true;d.open=true;d.kickImpulse=1;
