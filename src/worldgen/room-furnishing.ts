@@ -5,6 +5,7 @@ import {type Site,type Room,seeded} from '../breach-site.ts';
 import {type Obstacle,type Pt} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 import {relatedFurniturePositions} from './room-composition.ts';
+import {orientFurnishings} from './prop-orientation.ts';
 import {ROOM_CONTRACTS} from './room-contracts.ts';
 import {recoverRoomEssentials} from './room-essential-recovery.ts';
 type Anchor='nw'|'ne'|'sw'|'se'|'west'|'east';
@@ -243,6 +244,6 @@ export function furnishRooms(site:Site,seed:number):Site{
   if(placed.length)output.push(...placed);
  }
  const completed=recoverRoomEssentials(site,output);
- return {...site,cover:completed.cover,
+ return {...site,cover:orientFurnishings(site,completed.cover),
   furnishingIssues:[...furnishingIssues,...completed.issues]};
 }
