@@ -76,9 +76,14 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           ctx.box(group,c.x,top*.34,c.y+d*.17,w*.63,top*.67,d*.6,porcelain);
           ctx.box(group,c.x,top*.50,c.y-d*.34,w*.75,top,d*.25,porcelain);
           ctx.box(group,c.x,top*.61,c.y+d*.15,w*.7,2,d*.58,steel,false);
+          ctx.box(group,c.x,top*.74,c.y+d*.17,w*.72,1.7,d*.59,porcelain,false); // rim
+          ctx.box(group,c.x+w*.25,top*.50,c.y-d*.47,2,3,2,steel,false);
         }else{
           ctx.box(group,c.x,11,c.y,w,21,d,porcelain);
           ctx.box(group,c.x,15,c.y,w*.75,3,d*.68,steel,false);
+          ctx.box(group,c.x,16.8,c.y,w*.67,1,d*.61,porcelain,false); // bath lip
+          ctx.box(group,c.x-w*.39,22,c.y-d*.30,2,9,2,steel,false); // tap riser
+          ctx.box(group,c.x-w*.36,25,c.y-d*.22,5,1.5,2,steel,false);
         }
       }else if(['shelf','gondola-shelf','wall-shelf','bookcase','rack'].includes(fixture)){
         // Stock and shelving fill the silhouette, matching the authoritative

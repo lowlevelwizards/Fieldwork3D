@@ -109,6 +109,8 @@ export function renderDetailedFixture(group:THREE.Group,c:Obstacle,
    b(0,H*.58,-d*.19,w*.83,H*.70,2.2,steel);
    b(0,H*.60,-d*.10,w*.71,H*.58,.8,glass,false);
    b(0,3,d*.29,w*.68,1.3,d*.22,light,false);
+   b(0,2.8,d*.37,w*.57,.45,d*.12,ink,false); // keyboard key bed
+   b(w*.39,H*.54,-d*.19,1.4,H*.34,1.6,steel,false); // monitor support
    b(0,2.0,-d*.10,2.3,5,2.3,steel);
    return true;
  }
@@ -118,6 +120,8 @@ export function renderDetailedFixture(group:THREE.Group,c:Obstacle,
    b(0,H*.62,d*.48,w*.80,2.2,4,ink,false);
    b(0,H*.62,d*.57,w*.62,.4,4,paper,false);
    b(w*.34,H*.86,d*.20,2,1.2,1,green,false);
+   for(const x of [-.23,0,.23])
+     b(x*w,H*.76,-d*.32,w*.16,1.1,d*.16,ink,false); // paper feed guides
    return true;
  }
  case 'cash-register':{
@@ -126,6 +130,8 @@ export function renderDetailedFixture(group:THREE.Group,c:Obstacle,
    b(0,H*.78,-d*.22,w*.63,1.3,d*.37,glass,false);
    b(0,H*.30,d*.49,w*.71,2,1.8,wood,false);
    b(w*.29,H*.52,d*.38,2,1.5,2,light,false);
+   for(const x of [-.24,-.07,.10])
+     b(x*w,H*.59,d*.20,w*.10,1.1,d*.08,light,false); // physical keypad rows
    return true;
  }
  case 'display-rack':{
