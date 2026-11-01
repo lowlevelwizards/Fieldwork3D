@@ -62,6 +62,8 @@ import {kitMedicalSupplies,spendMedicalSupply,type FieldMedicalSupplies}
 import {treatmentSupplyForWound,treatmentDuration}
  from './breach-medical-treatment.ts';
 import {stabilizationSummary} from './breach-casualty-status.ts';
+import {casualtyTrailingPosition,transportIsClear,type TransportMode}
+ from './breach-casualty-transport.ts';
 import {changeWeaponPlatform,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {weaponHandlingModifiers,sightAcquisitionScale,sightSpreadScale}
  from './equipment-weapon-handling.ts';
@@ -95,6 +97,7 @@ export type TeamActor=Operator & {
   medical:MedicalCondition;medicalSupplies:FieldMedicalSupplies;
   lastTreatmentAt:number;lastTreatmentTargetId:string|null;
   treatmentActive:boolean;treatmentProgress:number;
+  carryingId:string|null;carriedById:string|null;
   awareness:ActorAwareness;
   intent:AIIntent|null;combatChoice:CombatAction|null;lastReportAt:number;
   coordinationRole:GroupRole|null;coordinationUntil:number;
@@ -200,6 +203,7 @@ const withActions=(a:Operator):TeamActor=>({
   ...a,medical:newMedicalCondition(),medicalSupplies:kitMedicalSupplies(),
   lastTreatmentAt:-100,lastTreatmentTargetId:null,
   treatmentActive:false,treatmentProgress:0,
+  carryingId:null,carriedById:null,
   awareness:newAwareness(),intent:null,combatChoice:null,lastReportAt:-100,
   coordinationRole:null,coordinationUntil:0,lastMoraleEventAt:-100,searchOrigin:null,searchQueue:[],plan:[],history:makeHistory(),nav:[],activeNode:-1,
   posture:'stand',pace:'walk',alert:'idle',velocity:0,turning:0,aim:0,
@@ -841,6 +845,18 @@ export function planHoldClear(s:Session,id:string,origin:'here'|'end'='end',afte
   return addNode(s,id,'holdClear',p,{duration:.5});
 }
 /** A treatment order uses the same planning history and navigation authority. */
+/** One authored order carries a downed teammate to a player-chosen point.
+ * Existing tactical route and swept body collision remain authoritative. */
+export function planCasualtyTransport(s:Session,id:string,patientId:string,
+ to:Pt,mode:TransportMode='drag'):boolean{
+ const a=party(s,id),patient=s.operators.find(o=>o.id===patientId);
+ if(!a||!patient||patient===a||patient.side!==a.side||patient.health>0||
+    patient.surrendered||!canEdit(s))return false;
+ if(!intelPassable(to,s.intel,5.4)||
+  !routeWithSqueezeIntel(s.intel,finalPoint(a),patient.p).length||
+  !routeWithSqueezeIntel(s.intel,patient.p,to).length)return false;
+ return addNode(s,id,'evacuate',to,{patientId,transportMode:mode});
+}
 export function planMedicalTreatment(s:Session,id:string,patientId:string):boolean{
  const a=party(s,id),patient=s.operators.find(o=>o.id===patientId);
  if(!a||!patient||patient.side!==a.side||!canEdit(s))return false;
@@ -1540,6 +1556,11 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   // A stationary or opposing teammate may briefly step aside, then resume
   // its original queue. This overrides motor movement, not tactical aiming.
   const n=a.plan[0];
+  if(a.carryingId&&(n?.kind!=='evacuate'||n.patientId!==a.carryingId)){
+    const previous=s.operators.find(o=>o.id===a.carryingId);
+    if(previous)previous.carriedById=null;
+    a.carryingId=null;
+  }
   if(a.haltOnContact){
     const threat=enemies(s).find(e=>inSight(a,e,s));
     if(threat){
@@ -1562,6 +1583,48 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       a.squeeze=false;a.squeezeTime=0;
     }
     a.pieIndex=0;
+  }
+  if(n.kind==='evacuate'){
+    const patient=s.operators.find(o=>o.id===n.patientId&&o.side===a.side);
+    if(!patient||patient.health>0||patient.surrendered||
+       (patient.carriedById&&patient.carriedById!==a.id)){
+      if(patient)patient.carriedById=null;
+      a.carryingId=null;pop(a);return;
+    }
+    const mode=n.transportMode??'drag';
+    if(a.carryingId!==patient.id){
+      if(!near(a.p,patient.p,24)){
+        const theta=angle(patient.p,a.p);
+        const goal={x:patient.p.x+Math.cos(theta)*19,
+          y:patient.p.y+Math.sin(theta)*19};
+        approach(a,goal,dt,s,.70);return;
+      }
+      a.velocity=0;a.actionTimer+=dt;
+      if(a.actionTimer>=(mode==='drag'?.85:1.45)){
+        a.carryingId=patient.id;patient.carriedById=a.id;
+        a.actionTimer=0;notify(s,a.name+' '+mode.toUpperCase()+
+          'ING '+patient.name);
+      }
+      return;
+    }
+    if(near(a.p,n.p,8)){
+      patient.carriedById=null;a.carryingId=null;
+      notify(s,patient.name+' RELEASED');pop(a);return;
+    }
+    const before=clone(a.p);
+    approach(a,n.p,dt,s,mode==='drag'?.48:.38);
+    const attached=casualtyTrailingPosition(before,a.p,a.heading,mode);
+    const people=s.operators.filter(o=>o!==a&&o!==patient&&o.health>0)
+     .map(o=>o.p);
+    if(!transportIsClear(patient.p,attached,
+      (from,to)=>sweptBodyClear(from,to,s.doors),people)){
+      // Reject both movements rather than teleporting the body through a
+      // frame or displacing the next member of the stack.
+      a.p=before;a.velocity=0;a.nav=[];return;
+    }
+    patient.priorP=clone(patient.p);patient.p=attached;
+    patient.velocity=0;
+    return;
   }
   if(n.kind==='treat'){
     const patient=s.operators.find(o=>o.id===n.patientId&&o.side===a.side);
@@ -2738,6 +2801,11 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   for(const operator of s.operators)operator.treatmentActive=false;
   // Medical state advances on the authoritative fixed tick only.
   for(const casualty of s.operators){
+    if(casualty.carryingId&&casualty.health<=0){
+      const patient=s.operators.find(o=>o.id===casualty.carryingId);
+      if(patient)patient.carriedById=null;
+      casualty.carryingId=null;
+    }
     if(casualty.health<=0)continue;
     const loss=advanceMedicalCondition(casualty.medical,h);
     if(loss<=0)continue;
