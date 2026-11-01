@@ -12,7 +12,12 @@ export type BuildingArchetype='house'|'townhouse'|'apartment'|'retail'|'office'|
 export type ExteriorZone={id:string;kind:'yard'|'patio'|'driveway'|'service'|'garden'|'parking';x:number;y:number;w:number;h:number};
 export type WideOpening={id:string;a:Pt;b:Pt;kind:'arch'|'wide'};
 export type EnvironmentCondition='occupied'|'busy'|'neglected'|'vacant'|'renovation'|'disturbed';
-export type WindowOpening={id:string;x:number;y:number;width:number;vertical:boolean};
+export type WindowStyle='standard'|'tall'|'picture'|'bay'|'industrial';
+export type WindowOpening={
+ id:string;x:number;y:number;width:number;vertical:boolean;
+ /** Decorative family, never a substitute for the physical pane or sill. */
+ style?:WindowStyle;
+};
 export type WorldBounds={minX:number;minY:number;maxX:number;maxY:number};
 export type SiteScale='standard'|'expanded';
 export type Site={
