@@ -160,6 +160,10 @@ function report(site:Site,result:SiteAudit):string{
   ' wide openings\n'+result.emptyRooms.length+' unfurnished functional rooms / '+ 
   result.functionalRooms+' rooms total\n'+
   result.incompleteZones.length+' functionally incomplete zones\n'+
+  'FUNCTIONAL QUALITY: '+result.designQuality.score+' penalty points'+
+  ' · '+result.designQuality.criticalMissing+' critical fixtures missing'+
+  ' · '+result.designQuality.incompleteUnits+' incomplete units'+
+  ' · '+result.designQuality.counterAccessProblems+' counter access issues\n'+
   result.serviceIssues.length+' blocked fixture working faces\n'+
   result.operationalRouteIssues.length+' unreachable/blocked workstation approaches'+
   (result.operationalRouteIssues.length?': '+

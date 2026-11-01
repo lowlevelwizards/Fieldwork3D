@@ -10,6 +10,7 @@ import {assessRoomContracts,type RoomContractResult} from './worldgen/room-contr
 import {assessUnitContracts,type UnitContractResult} from './worldgen/unit-contracts.ts';
 import {auditFixtureService,type ServiceIssue} from './worldgen/fixture-service-clearance.ts';
 import {inspectOperationalRoutes,type OperationalRouteIssue} from './worldgen/operational-route-audit.ts';
+import {measureSiteCompleteness,type CompletenessScore} from './worldgen/site-completeness.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type SiteAudit={seed:number;archetype:string;layout:string;
   rooms:number;doors:number;enemies:number;windows:number;
@@ -22,7 +23,7 @@ export type SiteAudit={seed:number;archetype:string;layout:string;
   missingWorkflowLinks:MissingWorkflowLink[];
   unitContracts:UnitContractResult[];serviceIssues:ServiceIssue[];
   operationalRouteIssues:OperationalRouteIssue[];
-  errors:string[]};
+  designQuality:CompletenessScore;errors:string[]};
 export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteAudit{
   return auditSite(generateSite(seed,scale));
 }
@@ -117,5 +118,6 @@ export function auditSite(site:Site):SiteAudit{
     undesirableDoorways:auditRoomRelationships(site),
     missingWorkflowLinks:missingPhysicalWorkflowLinks(site),
     unitContracts:assessUnitContracts(site),
-    serviceIssues:auditFixtureService(site),operationalRouteIssues,errors};
+    serviceIssues:auditFixtureService(site),operationalRouteIssues,
+    designQuality:measureSiteCompleteness(site),errors};
 }
