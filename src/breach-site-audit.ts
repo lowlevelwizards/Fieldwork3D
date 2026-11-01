@@ -16,6 +16,7 @@ import {assessAccessibilityClearance,type AccessibilityQuality} from './worldgen
 import {inspectHumanJourneys,type JourneyAudit} from './worldgen/human-journeys.ts';
 import {measureRouteFriction,type RouteFriction} from './worldgen/route-friction.ts';
 import {auditEncounter,type EncounterSpatialAudit} from './worldgen/encounter-diagnostics.ts';
+import {scoreCompositeQuality,type CompositeQuality} from './worldgen/composite-quality.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type SiteAudit={seed:number;archetype:string;layout:string;
   rooms:number;doors:number;enemies:number;windows:number;
@@ -30,7 +31,8 @@ export type SiteAudit={seed:number;archetype:string;layout:string;
   operationalRouteIssues:OperationalRouteIssue[];
   designQuality:CompletenessScore;spaceQuality:SpaceQuality;
   accessibilityQuality:AccessibilityQuality;humanJourneys:JourneyAudit;
-  routeFriction:RouteFriction;encounterAudit:EncounterSpatialAudit;errors:string[]};
+  routeFriction:RouteFriction;encounterAudit:EncounterSpatialAudit;errors:string[];
+  compositeQuality:CompositeQuality};
 export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteAudit{
   return auditSite(generateSite(seed,scale));
 }
@@ -123,7 +125,7 @@ export function auditSite(site:Site):SiteAudit{
       o.x>room.x&&o.x<room.x+room.w&&o.y>room.y&&o.y<room.y+room.h).length
   }));
   const roomContracts=assessRoomContracts(site);
-  return {seed,archetype:site.archetype??'untyped',
+  const base={seed,archetype:site.archetype??'untyped',
     layout:site.layout,rooms:site.rooms.length,
     doors:site.doors.length,enemies:site.enemies.length,
     windows:site.windows?.length??0,
@@ -144,4 +146,5 @@ export function auditSite(site:Site):SiteAudit{
     spaceQuality:assessSpaceQuality(site),
     accessibilityQuality:assessAccessibilityClearance(site),humanJourneys,
     routeFriction,encounterAudit:auditEncounter(site),errors};
+  return {...base,compositeQuality:scoreCompositeQuality(base)};
 }
