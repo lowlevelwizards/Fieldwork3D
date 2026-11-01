@@ -12,7 +12,12 @@ const exterior:Record<BuildingArchetype,DoorStyle>={
 export function styleArchitecturalDoors(site:Site,seed:number):Site{
  const doors=site.doors.map((door,index):Door=>{
   const kind=site.archetype??'house';
+  const sliding=door.kind!=='shutter'&&!door.pairedWith&&(
+    (door.id==='FRONT'&&kind==='retail'&&seed%3===0)||
+    (door.id.startsWith('COURT-')&&['house','townhouse','restaurant','motel'].includes(kind)&&seed%2===0)||
+    (door.id==='SERVICE'&&kind==='warehouse'&&seed%5===0));
   const style:DoorStyle=door.kind==='shutter'?'steel':
+    sliding?(kind==='warehouse'?'steel':'glazed'):
     door.pairedWith&&['retail','restaurant'].includes(kind)?'glazed':
     door.id==='FRONT'&&['retail','restaurant','office','clinic'].includes(kind)?'glazed':
     door.id==='FRONT'?exterior[kind]:
@@ -24,7 +29,9 @@ export function styleArchitecturalDoors(site:Site,seed:number):Site{
     frameIntegrity:4.8}:style==='steel'?{resistance:1.4,latchIntegrity:1.25,
     frameIntegrity:3.2}:style==='exit'?{resistance:1.15,
     latchIntegrity:1.1,frameIntegrity:3}:null;
-  return {...door,style,...(strength??{})};
+  return {...door,style,
+    ...(sliding?{kind:'sliding' as const,slideDirection:(seed%2===0?1:-1) as 1|-1}:{}),
+    ...(strength??{})};
  });
  void seed;
  return {...site,doors};
