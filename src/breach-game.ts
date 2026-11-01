@@ -34,7 +34,7 @@ import {interpretSound} from './breach-sound-evidence.ts';
 import {relocateCover,canRelocateCover} from './breach-movable-cover.ts';
 import {materialForFixture,MATERIALS} from './breach-materials.ts';
 import {resolvePenetration,type BarrierHit} from './breach-penetration.ts';
-import {manipulateWindow} from './breach-windows.ts';
+import {manipulateWindow,damageWindow,windowPaneSegment} from './breach-windows.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {chooseAiIntent,type AIIntent} from './breach-ai-policy.ts';
 import {searchCandidates} from './breach-ai-search.ts';
@@ -1938,7 +1938,8 @@ function segmentImpact(from:Pt,to:Pt,segment:{a:Pt;b:Pt}):number|null{
  */
 function strikeSurface(from:Pt,aimed:Pt,s:Session,
   fromZ=22,toZ=22,energy=0):{
-  end:Pt;surface:ShotEvent['surface'];penetrated:number[];remaining:number}{
+  end:Pt;surface:ShotEvent['surface'];penetrated:number[];remaining:number;
+  paneHits:number[]}{
   const hits:BarrierHit[]=[];
   for(const wall of WALLS){
     const t=segmentImpact(from,aimed,wall);
@@ -1959,13 +1960,33 @@ function strikeSurface(from:Pt,aimed:Pt,s:Session,
       thickness:Math.min(4,Math.max(1,Math.min(box.w,box.h)*.08)),
       coverIndex:index});
   }
+  const paneHits:{index:number;fraction:number}[]=[];
+  for(const [index,window] of s.windows.entries()){
+    if(window.shattered||window.open)continue;
+    const t=segmentImpact(from,aimed,windowPaneSegment(window));
+    if(t===null)continue;
+    const height=fromZ+(toZ-fromZ)*t;
+    if(height<14||height>32)continue;
+    hits.push({fraction:t,material:'glass',thickness:1});
+    paneHits.push({index,fraction:t});
+  }
   const outcome=resolvePenetration(hits,energy);
   const t=outcome.stoppedAt??1;
   const surface=outcome.stoppedMaterial?
     MATERIALS[outcome.stoppedMaterial].impact:'dust';
   return {end:{x:from.x+(aimed.x-from.x)*t,
     y:from.y+(aimed.y-from.y)*t},surface,
-    penetrated:outcome.penetrated,remaining:outcome.remaining};
+    penetrated:outcome.penetrated,remaining:outcome.remaining,
+    paneHits:paneHits.filter(p=>p.fraction<=t+.00001).map(p=>p.index)};
+}
+/** Commit impacts only for the actual shot path, never aim/LOS queries. */
+function shatterStruckWindows(s:Session,paneHits:readonly number[],force:number){
+ for(const index of new Set(paneHits)){
+  const window=s.windows[index];
+  if(!window||!damageWindow(window,force))continue;
+  s.objectRevision++;
+  hear(s,{x:window.x,y:window.y},170,'glass');
+ }
 }
 /** Suppression is an authored area instruction: deliberate misses consume
  * real ammunition and can unsettle defenders, but never inflict an
@@ -1994,7 +2015,9 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   const friends=team(s).filter(o=>o!==a&&o.health>0).map(o=>o.p);
   if(assessFireLane(from,muzzle.y,far,14,COVER,WALLS,s.doors,
     friends).blocker==='friendly')return;
-  const impact=strikeSurface(from,far,s,muzzle.y,14);
+  const impact=strikeSurface(from,far,s,muzzle.y,14,
+    WEAPONS[a.weapon].penetration);
+  shatterStruckWindows(s,impact.paneHits,Math.max(1,WEAPONS[a.weapon].damage));
   a.fireCd=WEAPONS[a.weapon].interval*1.6;
   a.magazine--;a.shots++;a.lastShotAt=s.seconds;
   a.recoil=Math.min(.9,a.recoil+BALLISTICS[a.weapon].recoilKick);
@@ -2173,6 +2196,15 @@ function fire(s:Session,a:TeamActor,dt:number){
   const blockerDist=d(muzzlePoint,strike.end);
   const hit=candidateHit&&blockerDist>=muzzleRange-hitRadius&&
     d(targetTrace.end,target.p)<.5&&targetTrace.remaining>.015;
+  const fractionToTarget=d(muzzlePoint,target.p)/
+    Math.max(1,d(muzzlePoint,far));
+  const actualRay=strike.paneHits.filter(index=>{
+    const w=s.windows[index];
+    if(!w)return false;
+    const t=segmentImpact(muzzlePoint,far,windowPaneSegment(w));
+    return t!==null&&(!hit||t<=fractionToTarget+.0001);
+  });
+  shatterStruckWindows(s,actualRay,Math.max(1,weapon.damage));
   const end=hit?clone(target.p):strike.end;
   const impact=hit?{end,surface:'blood' as const}:strike;
   a.recoil=Math.min(.9,a.recoil+profile.recoilKick*
