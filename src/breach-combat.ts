@@ -38,7 +38,7 @@ export function exposure(from:Pt,to:Pt,doors:Door[],
   let hard=false,soft=false,material:Exposure['material']='dust';
   for(const cover of COVER){
     // Physical glass intercepts bullets but is transparent to human vision.
-    if(cover.fixture==='chain-link-fence'||
+    if(['chain-link-fence','iron-fence'].includes(cover.fixture??'')||
       (visionOnly&&cover.fixture==='glass-barrier'))continue;
     if(!segmentBox(from,to,cover))continue;
     if(coverImpactFraction(from,to,eyeHeight(shooterCrouched),

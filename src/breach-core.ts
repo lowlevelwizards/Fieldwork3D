@@ -140,7 +140,7 @@ export function isClear(a:Pt,b:Pt,doors:Door[],ignoreDoors=false):boolean{
   const n=Math.max(1,Math.ceil(distance(a,b)/8));
   for(let i=1;i<n;i++){
     const t=i/n,p={x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t};
-    if(COVER.some(o=>o.fixture!=='chain-link-fence'&&pointInCover(p,o,0)))return false;
+    if(COVER.some(o=>!['chain-link-fence','iron-fence'].includes(o.fixture??'')&&pointInCover(p,o,0)))return false;
   }
   return true;
 }

@@ -6,24 +6,26 @@ import type {Obstacle,Pt,Door} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function addSecurityPerimeter(site:Site,seed:number):Site{
- if(!['garage','warehouse','utility'].includes(site.archetype??''))return site;
+ if(!['house','townhouse','garage','warehouse','utility'].includes(site.archetype??''))return site;
  const zone=site.exteriorZones?.find(z=>z.id==='rear-property')??null;
  if(!zone)return site;
  const horizontal=zone.w>=zone.h,span=horizontal?zone.w:zone.h;
  if(span<222)return site;
- const width=propDefinition('chain-link-fence')?.width??80;
+ const fixture=site.archetype==='warehouse'?'chain-link-fence':
+   site.archetype==='utility'||site.archetype==='townhouse'?'iron-fence':'privacy-fence';
+ const width=propDefinition(fixture)?.width??80;
  const x=zone.x,y=zone.y;
  const positions=horizontal?[
   {x:x-(48+width)/2,y},{x:x+(48+width)/2,y}
  ]:[{x,y:y-(48+width)/2},{x,y:y+(48+width)/2}];
  const sections:Obstacle[]=positions.map(p=>({
   ...p,w:horizontal?width:5,h:horizontal?5:width,
-  low:false,fixture:'chain-link-fence',material:'sheet-metal'
+  low:false,fixture,material:fixture==='privacy-fence'?'hardwood':'sheet-metal'
  }));
  const gate:Door={
   id:'PROPERTY-GATE',a:horizontal?{x:x-24,y}:{x,y:y-24},
   b:horizontal?{x:x+24,y}:{x,y:y+24},
-  kind:'hinged',style:'mesh-gate',hinge:'a',swing:-1,
+  kind:'hinged',style:fixture==='privacy-fence'?'wood':'mesh-gate',hinge:'a',swing:-1,
   open:false,openedAt:-1,latchIntegrity:1.5,frameIntegrity:3.2
  };
  const bounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
