@@ -354,7 +354,7 @@ export class TacticalScene3D{
       service:0x7f827b,garden:0x788d61,parking:0x676c6b} as const;
     for(const zone of site.exteriorZones??[]){
       this.plane(this.root,zone.x,zone.y,zone.w,zone.h,-1.45,
-        this.solid(zoneColor[zone.kind],.91,zonePixelSurface(zone.kind)));
+        this.solid(zoneColor[zone.kind],.91,zonePixelSurface(zone.kind,site.condition)));
       // One cheap repeated layer per relevant exterior zone, no dynamic allocation.
       const overlay=overlayForZone(site.condition,zone.kind);
       if(overlay){

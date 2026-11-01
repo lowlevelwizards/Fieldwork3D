@@ -18,11 +18,11 @@ export function roomPixelSurface(archetype:string|undefined,
  return ['warehouse','garage','utility'].includes(archetype??'')?'concrete':
   ['clinic','restaurant','retail'].includes(archetype??'')?'tile':'wood';
 }
-export function zonePixelSurface(zone:string):PixelSurface{
+export function zonePixelSurface(zone:string,condition?:string):PixelSurface{
  switch(zone){
-  case 'yard':case 'garden':return 'grass';
-  case 'driveway':case 'parking':return 'asphalt';
-  case 'service':return 'concrete';
+  case 'yard':case 'garden':return ['vacant','neglected'].includes(condition??'')?'scruffy-grass':'grass';
+  case 'driveway':case 'parking':return ['neglected','disturbed'].includes(condition??'')?'worn-asphalt':'asphalt';
+  case 'service':return condition==='disturbed'?'packed-earth':'concrete';
   case 'patio':return 'tile';
   default:return 'grass';
  }
