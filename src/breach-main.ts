@@ -34,8 +34,8 @@ import {orderFailureText} from './breach-nav-diagnostics.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {FrameMeter} from './breach-perf.ts';
 import {formatAfterAction} from './breach-after-action.ts';
-import {initialRoster,readRoster,applyRosterIdentity,recordRosterMission}
-  from './breach-roster.ts';
+import {initialRoster,readRoster,applyRosterIdentity,recordRosterMission,
+  resupplyRoster,equipRoster} from './breach-roster.ts';
 import {awarenessDebugLine} from './breach-awareness-debug.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
 import './breach-style.css';
@@ -147,6 +147,10 @@ let persistentRoster=(()=>{
  try{return readRoster(localStorage.getItem(ROSTER_KEY));}
  catch{return initialRoster();}
 })();
+function saveRoster(){
+ try{localStorage.setItem(ROSTER_KEY,JSON.stringify(persistentRoster));}
+ catch{/* Private browser storage may be unavailable. */}
+}
 let state:Session=newSession(0,legacyStudy?undefined:initialSiteSeed,
   selectedIntelMode,requestedSiteScale);
 applyRosterIdentity(state,persistentRoster);
@@ -162,8 +166,7 @@ function recordCompletedOperation(){
     (state.phase!=='won'&&state.phase!=='lost'))return;
   recordedOperation=state;
   persistentRoster=recordRosterMission(state,persistentRoster);
-  try{localStorage.setItem(ROSTER_KEY,JSON.stringify(persistentRoster));}
-  catch{/* Saving may be unavailable in private browsing. */}
+  saveRoster();
   const stats=debrief(state);
   const record:OperationRecord={
     seed:state.site?.seed??state.variant,
@@ -210,6 +213,91 @@ if(navPanel){
   });
   document.body.append(navPanel);
 }
+/** Optional, compact between-mission operations board.
+ * No mandatory management screen blocks immediate mission deployment.
+ */
+const operationsToggle=document.createElement('button');
+operationsToggle.id='operationsBoardToggle';operationsToggle.type='button';
+operationsToggle.textContent='OPERATIONS';
+operationsToggle.setAttribute('aria-label','Open squad operations and resupply');
+ui.siteSettings.append(operationsToggle);
+const operationsBoard=document.createElement('section');
+operationsBoard.id='operationsBoard';
+operationsBoard.hidden=true;
+operationsBoard.setAttribute('aria-label','Squad operations board');
+Object.assign(operationsBoard.style,{
+ position:'fixed',right:'12px',top:'76px',bottom:'84px',zIndex:'95',
+ boxSizing:'border-box',width:'min(360px, calc(100vw - 24px))',
+ overflowY:'auto',padding:'14px',borderRadius:'12px',
+ background:'rgba(12,20,20,.96)',border:'1px solid #687973',
+ color:'#e0e9de',font:'13px/1.45 Oxanium, sans-serif',
+ boxShadow:'0 12px 35px #0008'
+});
+document.body.append(operationsBoard);
+function renderOperationsBoard(){
+ operationsBoard.replaceChildren();
+ const heading=document.createElement('div');
+ heading.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px';
+ const title=document.createElement('strong');
+ title.textContent='SQUAD OPERATIONS';heading.append(title);
+ const close=document.createElement('button');
+ close.type='button';close.textContent='CLOSE';
+ close.addEventListener('click',()=>{operationsBoard.hidden=true;});
+ heading.append(close);operationsBoard.append(heading);
+ const history=operationHistory();
+ const intro=document.createElement('p');
+ intro.textContent='OPERATIONS: '+history.length+
+  ' · LAST: '+(history.at(-1)?.grade??'NONE')+
+  ' · Gear and injuries carry between deployments.';
+ operationsBoard.append(intro);
+ for(const member of persistentRoster.members){
+  const card=document.createElement('article');
+  card.style.cssText='border:1px solid #566760;border-radius:9px;padding:10px;margin:9px 0';
+  const name=document.createElement('strong');
+  name.textContent=member.callsign+'  ·  '+member.weapon.toUpperCase();
+  card.append(name);
+  const details=document.createElement('p');
+  details.textContent=member.missions+' OPS · '+member.successful+
+   ' SUCCESSES · '+member.magazine+' / '+member.reserve+' RDS'+
+   (member.recovery>0?' · RECOVERING '+member.recovery+' OPS':' · READY');
+  card.append(details);
+  const actions=document.createElement('div');
+  actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
+  const supply=document.createElement('button');
+  supply.type='button';supply.textContent='RESUPPLY';
+  supply.setAttribute('aria-label','Resupply '+member.callsign);
+  supply.addEventListener('click',()=>{
+   if(state.phase!=='planning'||replaying)return;
+   persistentRoster=resupplyRoster(persistentRoster,member.id);
+   saveRoster();applyRosterIdentity(state,persistentRoster);
+   renderOperationsBoard();updateHud();
+  });
+  actions.append(supply);
+  const equip=document.createElement('button');
+  equip.type='button';equip.textContent='NEXT WEAPON';
+  equip.setAttribute('aria-label','Change weapon for '+member.callsign);
+  equip.addEventListener('click',()=>{
+   if(state.phase!=='planning'||replaying)return;
+   const ids=['carbine','smg','rifle','shotgun'] as const;
+   const next=ids[(ids.indexOf(member.weapon)+1)%ids.length];
+   persistentRoster=equipRoster(persistentRoster,member.id,next);
+   saveRoster();applyRosterIdentity(state,persistentRoster);
+   renderOperationsBoard();updateHud();
+  });
+  actions.append(equip);card.append(actions);operationsBoard.append(card);
+ }
+ const hint=document.createElement('p');
+ hint.textContent='Close to deploy normally. Recovery advances after each operation.';
+ operationsBoard.append(hint);
+}
+operationsToggle.addEventListener('click',()=>{
+ if(state.phase!=='planning'||replaying)return;
+ operationsBoard.hidden=!operationsBoard.hidden;
+ if(!operationsBoard.hidden){
+  hideContextPalette();
+  renderOperationsBoard();
+ }
+});
 let selected='rook';
 let looking=false,flashMode=false;
 let firePlacement:'focus'|'suppress'|null=null;
@@ -826,7 +914,10 @@ function updateHud(){
     ' OPERATORS\n\nINTELLIGENCE: '+brief.notes+
     '\n\nROSTER: '+persistentRoster.members.map(m=>
       m.callsign+' ('+m.missions+' ops)').join(' · ');
-  if(state.phase!== 'planning')ui.briefingPanel.hidden=true;
+  if(state.phase!=='planning'){
+    ui.briefingPanel.hidden=true;operationsBoard.hidden=true;
+  }
+  operationsToggle.disabled=state.phase!=='planning'||replaying;
   ui.phase.textContent=replaying?'REPLAY':
     state.phase==='planning'?'PLANNING':
     state.phase==='running'?'EXECUTING':
@@ -1809,6 +1900,7 @@ ui.replayAnalysis.addEventListener('click',()=>{
 ui.replayExit.addEventListener('click',exitReplay);
 function reset(next=state.variant,siteSeed?:number){
   replaying=false;replayPlaying=false;finishedSession=null;
+  operationsBoard.hidden=true;
   flashMode=false;document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
   state=newSession(next,legacyStudy?undefined:
