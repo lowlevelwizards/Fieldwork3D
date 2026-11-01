@@ -1,7 +1,8 @@
 /** Optional physically valid exterior occupancy: no free teleport, no
  * automatic front-door ambush, and no off-map spawn. */
 import type {Site,ExteriorZone} from '../breach-site.ts';
-import {activateSite,activeSite,passable,route,type Pt} from '../breach-core.ts';
+import {activateSite,activeSite,passable,route,segmentsCross,type Pt} from '../breach-core.ts';
+import {exteriorSpawnAllowed} from './encounter-spawn-safety.ts';
 import type {EncounterActorSpec,EncounterPremise} from './encounter-types.ts';
 import {encounterRng} from './encounter-rng.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -15,7 +16,8 @@ export function assignExteriorOccupants(site:Site,actors:EncounterActorSpec[],
    industrial? .38 :premise==='after-hours'? .27 : .15;
  if(rng()>chance)return actors;
  const exterior:EncounterActorSpec[]=actors.map(a=>({...a}));
- const preferred=zones.filter(z=>['service','yard','patio','parking','driveway'].includes(z.kind))
+ const preferred=zones.filter(z=>z.id!=='arrival-forecourt'&&
+  ['service','yard','patio','parking','driveway'].includes(z.kind))
   .map(z=>({z,k:rng()+((industrial&&z.kind==='service')? .4 : 0)}))
   .sort((a,b)=>b.k-a.k).slice(0,3);
  const maxExterior=Math.min(2,Math.max(1,Math.floor(actors.length/4)));
@@ -32,8 +34,10 @@ export function assignExteriorOccupants(site:Site,actors:EncounterActorSpec[],
    if(count>=maxExterior||attempts>=7)break;
    for(const p of candidates(z)){
     if(++attempts>7)break;
-    if(!passable(p)||distance(p,site.spawn[0])<85||
-       distance(p,site.extract)<52||
+    if(!exteriorSpawnAllowed(site,z,p)||!passable(p)||
+       // An insertion must never start looking directly at a nearby lookout.
+       (site.spawn.some(operator=>distance(operator,p)<275&&
+        !site.walls.some(w=>segmentsCross({a:operator,b:p},w))))||
        site.rooms.some(r=>p.x>=r.x&&p.x<=r.x+r.w&&
         p.y>=r.y&&p.y<=r.y+r.h)||
        exterior.some(a=>distance(a.position,p)<32))continue;
