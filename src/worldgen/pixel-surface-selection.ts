@@ -3,6 +3,10 @@ import type {PixelSurface} from '../rendering/pixel-recipes.ts';
 export function roomPixelSurface(archetype:string|undefined,
  purpose:string|undefined):PixelSurface{
  const p=purpose??'';
+ // Smooth washable commercial finishes, rather than a tiled dungeon.
+ if(archetype==='clinic')return ['bathroom','restroom'].includes(p)?'tile':'linoleum';
+ if(archetype==='garage'&&['bay','workshop','maintenance','service','parking'].includes(p))
+  return 'sealed-concrete';
  if(['kitchen','bathroom','restroom','pantry','laundry','exam','treatment',
  'waiting','reception','checkout','service','utility','lobby'].includes(p))return 'tile';
  if(['bay','workshop','loading','storage','equipment','maintenance','aisle',

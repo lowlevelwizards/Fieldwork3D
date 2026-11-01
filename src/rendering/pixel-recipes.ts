@@ -2,7 +2,8 @@
  * so source colors remain exactly those authored in building palettes. */
 export type PixelSurface =
  'wood'|'plaster'|'brick'|'concrete'|'tile'|'carpet'|'metal'|
- 'fabric'|'asphalt'|'earth'|'gravel'|'grass'|'rubber'|'foliage'|'paper';
+ 'fabric'|'asphalt'|'earth'|'gravel'|'grass'|'rubber'|'foliage'|'paper'|
+ 'linoleum'|'sealed-concrete';
 export const OPERATOR_REFERENCE_HEIGHT=40;
 export const TEXELS_PER_OPERATOR=32;
 export const PIXEL_WORLD_SIZE=OPERATOR_REFERENCE_HEIGHT/TEXELS_PER_OPERATOR;
@@ -10,7 +11,8 @@ export const TILE_PIXELS=32;
 export const TILE_WORLD_SIZE=TILE_PIXELS*PIXEL_WORLD_SIZE;
 export const PIXEL_SURFACES:readonly PixelSurface[]=[
  'wood','plaster','brick','concrete','tile','carpet','metal',
- 'fabric','asphalt','earth','gravel','grass','rubber','foliage','paper'
+ 'fabric','asphalt','earth','gravel','grass','rubber','foliage','paper',
+ 'linoleum','sealed-concrete'
 ];
 export const MATERIAL_RECIPE_VERSION=3;
 const hash=(x:number,y:number,s:number)=>{
@@ -47,8 +49,8 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
    case 'metal':
     if(x%16===0)shade=249;
     break;
-   case 'concrete':
-    if((x===0||y===0)&&seed%3===0)shade=249;
+   case 'concrete':case 'sealed-concrete':
+    if(x===0||y===0)shade=kind==='sealed-concrete'?245:239;
     break;
    case 'rubber':
     if(x%8===0&&y%8<2)shade=246;
@@ -79,6 +81,10 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
     if((x===9&&y===8)||(x===10&&y===8)||(x===24&&y===23))shade=243;
     break;
    }
+   case 'linoleum':
+    // Clean commercial sheet vinyl: no visible checkerboard.
+    if(seed%4===1&&x===0)shade=252;
+    break;
    case 'asphalt':case 'plaster':case 'paper':break;
   }
   const i=(y*size+x)*4;

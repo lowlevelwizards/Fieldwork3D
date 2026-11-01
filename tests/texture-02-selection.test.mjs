@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {roomPixelSurface,zonePixelSurface,fixturePixelSurface}
  from '../src/worldgen/pixel-surface-selection.ts';
 test('floor materials follow room purpose and location',()=>{
- assert.equal(roomPixelSurface('clinic','exam'),'tile');
+ assert.equal(roomPixelSurface('clinic','exam'),'linoleum');
  assert.equal(roomPixelSurface('house','bedroom'),'wood');
  assert.equal(roomPixelSurface('office','meeting'),'carpet');
  assert.equal(roomPixelSurface('warehouse','loading'),'concrete');

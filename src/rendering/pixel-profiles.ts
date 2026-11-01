@@ -12,6 +12,8 @@ const profiles:Record<PixelSurface,MaterialProfile>={
  brick:{family:'manufactured',structure:'joints',maxDarkening:38},
  concrete:{family:'manufactured',structure:'panels',maxDarkening:10},
  tile:{family:'manufactured',structure:'joints',maxDarkening:28},
+ linoleum:{family:'manufactured',structure:'none',maxDarkening:3},
+ 'sealed-concrete':{family:'manufactured',structure:'joints',maxDarkening:10},
  carpet:{family:'textile',structure:'none',maxDarkening:5},
  metal:{family:'manufactured',structure:'panels',maxDarkening:8},
  fabric:{family:'textile',structure:'none',maxDarkening:4},
