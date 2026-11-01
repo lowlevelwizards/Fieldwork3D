@@ -1,0 +1,22 @@
+name: Simulation performance probe
+on:
+  pull_request:
+    paths:
+      - 'scripts/bench-breach-performance.mjs'
+      - '.github/workflows/simulation-performance.yml'
+      - 'src/breach-game.ts'
+      - 'src/breach-intel.ts'
+      - 'src/breach-core.ts'
+  workflow_dispatch:
+jobs:
+  simulation-benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Simulation workload profiles (host CPU, not device FPS)
+        run: node --experimental-strip-types scripts/bench-breach-performance.mjs
