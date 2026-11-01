@@ -58,6 +58,8 @@ import {routeWithSqueezeIntel,routeWithSqueezeWorld}
   from './breach-squeeze-route.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {changeWeaponPlatform,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
+import {weaponHandlingModifiers,sightAcquisitionScale,sightSpreadScale}
+ from './equipment-weapon-handling.ts';
 import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
   rayHitsActor,muzzleEndpoint,recoverWeapon,handlingInstability,type FiringMode} from './breach-ballistics.ts';
@@ -2151,7 +2153,8 @@ function shatterStruckWindows(s:Session,paneHits:readonly number[],force:number)
 function fireSuppression(s:Session,a:TeamActor,dt:number){
   const point=a.suppressPoint;
   if(!point||a.fireCd>0)return;
-  a.weaponYaw=approachAngle(a.weaponYaw,angle(a.p,point),dt*4.5);
+  const mods=weaponHandlingModifiers(a.weaponConfiguration);
+  a.weaponYaw=approachAngle(a.weaponYaw,angle(a.p,point),dt*4.5*mods.turn);
   a.aim=Math.min(1,a.aim+dt*1.3);
   if(a.aim<.65||Math.abs(angleDifference(a.weaponYaw,
     angle(a.p,point)))>.18)return;
@@ -2159,7 +2162,8 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     rotate(a,a.weaponYaw,dt);return;
   }
   const spread=dispersion(a.weapon,'ads',a.stability,a.velocity>10,
-    a.suppression,a.injuryStage,a.recoil)*.9;
+    a.suppression,a.injuryStage,a.recoil)*.9*
+    sightSpreadScale(mods,'ads',d(a.p,point));
   const proposedYaw=shotYaw(a.weaponYaw,spread,random(s),random(s));
   const clearance=weaponClearance({x:a.p.x,z:a.p.y,
     heading:a.heading,weaponYaw:proposedYaw,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,aim:a.aim,posture:a.posture,
@@ -2179,7 +2183,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   emitMaterialEvents(s,from,far,impact.materialHits);
   a.fireCd=WEAPONS[a.weapon].interval*1.6;
   a.magazine--;a.shots++;a.lastShotAt=s.seconds;
-  a.recoil=Math.min(.9,a.recoil+BALLISTICS[a.weapon].recoilKick);
+  a.recoil=Math.min(.9,a.recoil+BALLISTICS[a.weapon].recoilKick*mods.recoilKick);
   a.stability=Math.max(0,a.stability-.13);
   const shotId=s.nextShotId++;
   const height=impact.surface==='dust'?1:14;
@@ -2196,7 +2200,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     y:muzzle.y-3,heading:yaw});
   if(s.casings.length>CASING_LIMIT)s.casings.shift();
   s.sparks.push({p:clone(a.p),side:a.side,age:0});
-  hear(s,a.p,WEAPONS[a.weapon].noise,'gunshot');
+  hear(s,a.p,WEAPONS[a.weapon].noise*mods.noise,'gunshot');
   battleEvent(s,'shot',a,a.p,a.name+' SUPPRESSING AREA');
   for(const e of enemies(s)){
     if(e.health<=0||d(e.p,impact.end)>50)continue;
@@ -2218,7 +2222,9 @@ function fire(s:Session,a:TeamActor,dt:number){
     return;
   }
   const profile=BALLISTICS[a.weapon];
-  const recovering=recoverWeapon(a.recoil,a.stability,dt,profile,a.velocity>10);
+  const mods=weaponHandlingModifiers(a.weaponConfiguration);
+  const recovering=recoverWeapon(a.recoil,a.stability,dt*mods.recovery,
+   profile,a.velocity>10);
   a.recoil=recovering.recoil;a.stability=recovering.stability;
   // An abrupt turn disturbs the actual weapon state, even if movement
   // speed is zero. It takes time to settle the sights again.
@@ -2248,21 +2254,21 @@ function fire(s:Session,a:TeamActor,dt:number){
     visible.sort((x,y)=>d(a.p,x.p)-d(a.p,y.p))[0];
   if(!target){
     a.targetId=null;a.aim=Math.max(0,a.aim-dt*.6);
-    a.weaponYaw=approachAngle(a.weaponYaw,a.heading,dt*profile.turnSpeed);
+    a.weaponYaw=approachAngle(a.weaponYaw,a.heading,dt*profile.turnSpeed*mods.turn);
     return;
   }
   if(a.targetId!==target.id){a.targetId=target.id;a.aim=0;
     a.stability=Math.min(a.stability,.65);}
   const moving=a.velocity>10;
   const weapon=WEAPONS[a.weapon];
+  const range=d(a.p,target.p);
   const acquisition=(moving?weapon.acquisition*1.8:weapon.acquisition)*
     (2-skillMultiplier(a.skills.handling,.4))*
-    (a.side==='red'?1.65:1)+
+    (a.side==='red'?1.65:1)*sightAcquisitionScale(mods,range)+
     (a.personality==='cautious'?.12:0);
   a.aim=Math.min(1,a.aim+dt/acquisition);
-  const range=d(a.p,target.p);
   const desiredYaw=angle(a.p,target.p);
-  a.weaponYaw=approachAngle(a.weaponYaw,desiredYaw,dt*profile.turnSpeed*
+  a.weaponYaw=approachAngle(a.weaponYaw,desiredYaw,dt*profile.turnSpeed*mods.turn*
     (a.suppression>.6?.75:1));
   const mode=readyMode(range,a.aim,a.weapon);
   if(!mode||a.fireCd>0)return;
@@ -2310,7 +2316,8 @@ function fire(s:Session,a:TeamActor,dt:number){
     a.suppression,a.injuryStage,a.recoil)+
     handlingInstability(a.turning,a.velocity,a.recoil,a.stability))*
     (2-skillMultiplier(mode==='point'?a.skills.pointShooting:
-      range>weapon.optimalRange?a.skills.longRange:a.skills.precision,.28));
+      range>weapon.optimalRange?a.skills.longRange:a.skills.precision,.28))*
+     sightSpreadScale(mods,mode,range);
   // Shot direction is the firearm's physical yaw at ignition. Sampling
   // happens *before* muzzle construction, not as an invisible post-shot roll.
   const proposedYaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
@@ -2370,7 +2377,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   emitMaterialEvents(s,muzzlePoint,far,strike.materialHits,
     hit?fractionToTarget:1);
   const end=hit?clone(target.p):strike.end;
-  a.recoil=Math.min(.9,a.recoil+profile.recoilKick*
+  a.recoil=Math.min(.9,a.recoil+profile.recoilKick*mods.recoilKick*
     (a.burstCount>2?1.20:1)*
     (2-skillMultiplier(a.skills.recoilControl,.42)));
   a.stability=Math.max(0,a.stability-
@@ -2425,7 +2432,7 @@ function fire(s:Session,a:TeamActor,dt:number){
     x:muzzle.x-4*Math.cos(a.weaponYaw),z:muzzle.z-4*Math.sin(a.weaponYaw),
     y:muzzle.y-3,heading:a.weaponYaw});
   if(s.casings.length>CASING_LIMIT)s.casings.shift();
-  hear(s,a.p,weapon.noise,'gunshot');
+  hear(s,a.p,weapon.noise*mods.noise,'gunshot');
   battleEvent(s,'shot',a,a.p,a.name+' FIRED '+weapon.label);
   // A shot heard behind the team suggests an imprecise location.
   // A sound NEVER exposes the exact shooter through a wall.
