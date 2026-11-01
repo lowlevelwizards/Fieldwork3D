@@ -22,7 +22,7 @@ test('hallways have stricter density than storage and normal rooms',()=>{
  const storage=assessSpaceQuality({rooms:[room('storage')],cover:obstacles,doors:[]});
  const hallway=assessSpaceQuality({rooms:[room('hallway')],cover:obstacles,doors:[]});
  assert.equal(storage.crowdedRoomIds.length,0);
- assert.equal(hallway.crowdedRoomIds.length,0); // halls excluded from functional room statistics
+ assert.equal(hallway.crowdedRoomIds.length,1); // a room marked hallway is deliberately less tolerant of shelving
 });
 test('all known public, service and residential roles have finite density targets',()=>{
  for(const purpose of ['dining','kitchen','guest','restroom','sales','bay',
