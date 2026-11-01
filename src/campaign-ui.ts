@@ -4,6 +4,7 @@ import {SKILL_NAMES,WEAPON_PRICES} from './campaign-state.ts';
 import {sharedService} from './campaign-history.ts';
 import {LOADOUT_SLOTS,itemsForSlot,itemDefinition} from './equipment-catalog.ts';
 import {totalEquipmentMass,type LoadoutSlot} from './equipment-loadouts.ts';
+import {CampaignKitPreview} from './equipment-preview.ts';
 import './campaign-style.css';
 
 export type CampaignHandlers={
@@ -27,15 +28,18 @@ export class CampaignScreen{
  readonly root=node('section','campaign-screen');
  private readonly handlers:CampaignHandlers;
  private armoryOperatorId:string|null=null;
+ private preview:CampaignKitPreview|null=null;
+ private disposePreview(){this.preview?.dispose();this.preview=null;}
  constructor(handlers:CampaignHandlers){
   this.handlers=handlers;
   this.root.setAttribute('aria-label','Fieldwork campaign');
   this.root.hidden=true;
   document.body.append(this.root);
  }
- hide(){this.root.hidden=true;this.armoryOperatorId=null;}
+ hide(){this.disposePreview();this.root.hidden=true;this.armoryOperatorId=null;}
  entry(hasSave:boolean){
   this.armoryOperatorId=null;
+  this.disposePreview();
   this.root.hidden=false;this.root.replaceChildren();
   const main=node('main','campaign-shell');
   main.append(node('div','campaign-eyebrow','FIELDWORK / VERDIGRIS'));
@@ -55,6 +59,7 @@ export class CampaignScreen{
    if(target){this.armory(c,target.id);return;}
    this.armoryOperatorId=null;
   }
+  this.disposePreview();
   this.root.hidden=false;this.root.replaceChildren();
   const main=node('main','campaign-shell campaign-wide');
   const top=node('div','campaign-head');
@@ -242,6 +247,8 @@ export class CampaignScreen{
   const grid=node('div','campaign-kit-grid');
   const summary=node('section','campaign-section campaign-kit-summary');
   summary.append(node('h2','','OPERATOR'));
+  const preview=node('div','campaign-kit-preview');
+  summary.append(preview,node('p','campaign-note','DRAG THE SOLDIER TO ROTATE'));
   summary.append(node('strong','campaign-kit-name',person.callsign));
   summary.append(node('p','campaign-note',
    person.background+' · '+person.trait+' · '+person.missions+' OPERATIONS'));
@@ -252,7 +259,7 @@ export class CampaignScreen{
   summary.append(node('p','campaign-note',
    'Equipment is issued as a saved preparation kit. Weight shown is physical item mass only. Armor coverage, retrieval times, tools and handling effects are not yet active in combat.'));
   summary.append(node('p','campaign-note',
-   'Next build: 3D operator preview and modular visible equipment.'));
+   'The preview uses the same 3D operator rig as the mission. Some equipment slots are metadata-only until their gameplay systems are implemented.'));
   grid.append(summary);
   const editor=node('section','campaign-section campaign-kit-editor');
   editor.append(node('h2','','EQUIPMENT SLOTS'));
@@ -297,6 +304,8 @@ export class CampaignScreen{
   }
   grid.append(editor);main.append(grid);
   this.root.append(main);
+  this.preview=new CampaignKitPreview(preview,person.id,person.weapon,
+   person.appearanceSeed,person.loadout);
  }
  private importPicker(){
   const input=node('input','campaign-import');
