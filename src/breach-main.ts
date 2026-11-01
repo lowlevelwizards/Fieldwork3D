@@ -38,6 +38,7 @@ import {formatAfterAction} from './breach-after-action.ts';
 import {initialRoster,readRoster,applyRosterIdentity,recordRosterMission,
   resupplyRoster,equipRoster} from './breach-roster.ts';
 import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOperation,
+ purchaseAmmo,purchaseMedical,resupplyOperator,treatOperator,
  type CampaignState,type CampaignReport} from './campaign-state.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {awarenessDebugLine} from './breach-awareness-debug.ts';
@@ -1986,7 +1987,11 @@ const campaignScreen=new CampaignScreen({
   if(next===campaign)return;
   campaign=next;saveCampaign();deployCampaignContract();
  },
- resumeContract:()=>deployCampaignContract()
+ resumeContract:()=>deployCampaignContract(),
+ buyAmmo:()=>{if(campaign){campaign=purchaseAmmo(campaign);saveCampaign();showCampaignHome();}},
+ buyMedical:()=>{if(campaign){campaign=purchaseMedical(campaign);saveCampaign();showCampaignHome();}},
+ resupply:(id)=>{if(campaign){campaign=resupplyOperator(campaign,id);saveCampaign();showCampaignHome();}},
+ treat:(id)=>{if(campaign){campaign=treatOperator(campaign,id);saveCampaign();showCampaignHome();}}
 });
 function showCampaignHome(){
  if(!campaign)return;
