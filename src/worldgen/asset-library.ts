@@ -47,6 +47,7 @@ const architecture:readonly AssetLibraryEntry[] = [
   {id:'window:bay',label:'Bay-front window',width:52,depth:9,height:40,category:'Openings'},
   {id:'window:industrial',label:'Industrial divided glazing',width:52,depth:9,height:40,category:'Openings'},
   {id:'window:interior',label:'Interior glazed partition',width:52,depth:9,height:40,category:'Openings'},
+  {id:'window:full-height',label:'Floor-to-ceiling architectural glass',width:88,depth:9,height:40,category:'Openings'},
   {id:'door',label:'Hinged door and frame',width:48,depth:12,height:40,category:'Openings'},
   {id:'door:wood',label:'Wood door',width:48,depth:12,height:40,category:'Openings'},
   {id:'door:steel',label:'Steel door',width:48,depth:12,height:40,category:'Openings'},
