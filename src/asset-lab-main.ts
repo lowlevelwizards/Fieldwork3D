@@ -248,11 +248,11 @@ function sampleSite(items:readonly AssetLibraryEntry[]):Site{
      cover.push({x,y,w:58,h:10,fixture:'window-sill',low:true});
    }else if(item.id==='window'||item.id.startsWith('window:')){
      windows.push({id:'window-'+index,x,y,width:52,vertical:false,
-       style:item.id==='window:interior'?'picture':item.id.startsWith('window:')?
+       style:item.id==='window:interior'||item.id==='window:full-height'?'picture':item.id.startsWith('window:')?
          item.id.slice(7) as NonNullable<WindowOpening['style']>:'standard',
        interior:item.id==='window:interior',
-       sillHeight:item.id==='window:interior'?9:undefined,
-       headHeight:item.id==='window:interior'?37:undefined});
+       sillHeight:item.id==='window:full-height'?0:item.id==='window:interior'?9:undefined,
+       headHeight:item.id==='window:full-height'?39:item.id==='window:interior'?37:undefined});
    }else if(item.id==='door'||item.id==='shutter'||item.id.startsWith('door:')){
      const width=item.id==='shutter'?96:48;
      doors.push({id:'door-'+index,a:{x:x-width/2,y},b:{x:x+width/2,y},

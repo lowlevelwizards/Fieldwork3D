@@ -45,13 +45,19 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
       occupied({x:p.x-(vertical?13:0),y:p.y-(horizontal?13:0)});
     const clear=site.doors.every(d=>dist(p,{x:(d.a.x+d.b.x)/2,
       y:(d.a.y+d.b.y)/2})>68);
-    return {wall,index,horizontal,vertical,length,outside,clear,p};
+    const side=site.entrySide??'south';
+    const frontFacing=side==='north'?horizontal&&Math.abs(p.y-minY)<2:
+      side==='south'?horizontal&&Math.abs(p.y-maxY)<2:
+      side==='west'?vertical&&Math.abs(p.x-minX)<2:
+        vertical&&Math.abs(p.x-maxX)<2;
+    return {wall,index,horizontal,vertical,length,outside,clear,p,frontFacing};
   }).filter(x=>x.outside&&x.length>89&&x.clear)
-    .sort((a,b)=>b.length-a.length||a.index-b.index);
+    .sort((a,b)=>Number(b.frontFacing)-Number(a.frontFacing)||b.length-a.length||a.index-b.index);
   const chosen=new Set<number>(),windows:WindowOpening[]=[];
   for(const item of eligible){
     if(windows.length>=desired)break;
-    const half=Math.min(26,(item.length-42)/2),
+    const fullHeight=item.frontFacing&&['retail','office','restaurant'].includes(site.archetype??'');
+    const half=Math.min(fullHeight?44:26,(item.length-42)/2),
       wall=item.wall,dx=(wall.b.x-wall.a.x)/item.length,
       dy=(wall.b.y-wall.a.y)/item.length;
     const a={x:item.p.x-dx*half,y:item.p.y-dy*half};
@@ -60,7 +66,8 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
     chosen.add(item.index);
     windows.push({id:'W'+windows.length,x:item.p.x,y:item.p.y,
       width:half*2,vertical:item.vertical,
-      style:openingStyle(site.archetype,seed,windows.length)});
+      style:fullHeight?'picture':openingStyle(site.archetype,seed,windows.length),
+      sillHeight:fullHeight?0:undefined,headHeight:fullHeight?39:undefined});
   }
   const walls:Segment[]=[];
   site.walls.forEach((wall,index)=>{
@@ -80,7 +87,7 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
     x:opening.x,y:opening.y,
     w:opening.vertical?10:opening.width,
     h:opening.vertical?opening.width:10,
-    low:true,fixture:'window-sill'});
+    low:true,fixture:opening.sillHeight===0?'glass-barrier':'window-sill'});
   const exteriorFixture=site.archetype==='warehouse'?'pallet':
     site.archetype==='garage'?'vehicle':
     site.archetype==='house'?'fence':

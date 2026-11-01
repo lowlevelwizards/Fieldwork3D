@@ -708,6 +708,8 @@ export class TacticalScene3D{
       solid:(hex,roughness,surface)=>this.solid(age(hex,surface),roughness,surface),
     };
     site.cover.forEach((c,i)=>{
+      // Glass is drawn by its window assembly, not a second opaque fixture.
+      if(c.fixture==='glass-barrier')return;
       const group=new THREE.Group();this.root.add(group);
       this.coverGroups.set(i,group);
       this.intelSurfaces.push({obj:group,kind:'cover',index:i});

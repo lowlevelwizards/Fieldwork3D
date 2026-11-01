@@ -41,15 +41,16 @@ export function addInteriorGlazing(site:Site,seed:number):Site{
   const width=Math.min(64,candidate.length-44);
   const cut=cutWallAperture(walls,index,'IW'+count,width,.5,20);
   if(!cut)continue;
-  const sillHeight=kind==='office'||kind==='retail'?9:13;
+  const sillHeight=kind==='office'&&count===0?0:
+    kind==='office'||kind==='retail'?9:13;
   windows.push({id:cut.aperture.id,x:candidate.middle.x,y:candidate.middle.y,
    width,vertical:Math.abs(candidate.wall.a.x-candidate.wall.b.x)<1,
    style:['garage','warehouse','utility'].includes(kind)?'industrial':'picture',
-   interior:true,sillHeight,headHeight:37});
+   interior:true,sillHeight,headHeight:sillHeight===0?39:37});
   cover.push({x:candidate.middle.x,y:candidate.middle.y,
    w:Math.abs(candidate.wall.a.x-candidate.wall.b.x)<1?10:width,
    h:Math.abs(candidate.wall.a.x-candidate.wall.b.x)<1?width:10,
-   low:true,fixture:'window-sill'});
+   low:true,fixture:sillHeight===0?'glass-barrier':'window-sill'});
   walls=cut.walls;count++;
  }
  void seed;
