@@ -2,6 +2,7 @@
  * These are render-only decals with a small whole-site budget. */
 import {seeded,type Site} from '../breach-site.ts';
 import {roomPixelSurface} from './pixel-surface-selection.ts';
+import {surfaceMood} from './surface-moods.ts';
 export type WearKind='dust'|'stain'|'scrape'|'scuff';
 export type WearMark={
  id:string;roomId:string;kind:WearKind;x:number;y:number;
@@ -11,7 +12,9 @@ export const WEAR_BUDGET:Record<NonNullable<Site['condition']>,number>={
  occupied:0,busy:3,neglected:5,vacant:3,renovation:5,disturbed:6,
 };
 export function planEnvironmentalWear(site:Site):WearMark[]{
- const budget=WEAR_BUDGET[site.condition??'occupied'];
+ const mood=surfaceMood(site.archetype);
+ const budget=Math.min(WEAR_BUDGET[site.condition??'occupied'],
+   Math.ceil(WEAR_BUDGET[site.condition??'occupied']*mood.wearFraction));
  if(budget===0)return [];
  const random=seeded(site.seed^0x66ee4a12);
  const rooms=site.rooms.filter(r=>r.w>=40&&r.h>=40);
@@ -30,6 +33,7 @@ export function planEnvironmentalWear(site:Site):WearMark[]{
    default:kind=i%2===0?'scuff':'stain';break;
   }
   if(surface==='carpet'&&kind==='scrape')kind='stain';
+  if(mood.maintenance==='clinical'&&kind==='stain')kind='scuff';
   if((surface==='tile'||surface==='linoleum')&&kind==='dust')kind='scuff';
   const width=8+random()*Math.min(13,room.w*.1);
   const depth=8+random()*Math.min(13,room.h*.1);
