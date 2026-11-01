@@ -585,6 +585,59 @@ export class TacticalScene3D{
           }
           if(!round)blob(c.x,height*.91,c.y,Math.min(w,d)*.24);
         }
+      }else if(['mailbox','trash-bin','bollard','hydrant','utility-cabinet',
+        'parking-block','parking-sign','street-lamp','bike-rack'].includes(fixture)){
+        const enamel=this.solid(0x777f79,.72);
+        const dark=this.solid(0x343c3b,.86);
+        const safety=this.solid(0xae8e52,.78);
+        const signal=this.solid(0xb37c5a,.75);
+        if(fixture==='mailbox'){
+          this.box(group,c.x,9,c.y,3,18,3,dark);
+          this.box(group,c.x,21,c.y,w,10,d,enamel);
+          this.box(group,c.x+w*.43,25,c.y,2,8,2,signal,false);
+        }else if(fixture==='trash-bin'){
+          this.box(group,c.x,10,c.y,w*.86,20,d*.86,dark);
+          this.box(group,c.x,21,c.y,w,3,d,enamel);
+          this.box(group,c.x,22.7,c.y-d*.20,w*.6,1,d*.15,dark,false);
+        }else if(fixture==='bollard'){
+          this.box(group,c.x,11,c.y,5,22,5,safety);
+          this.box(group,c.x,20,c.y,5.8,3,5.8,dark,false);
+          this.box(group,c.x,1.6,c.y,8,3.2,8,enamel);
+        }else if(fixture==='hydrant'){
+          this.box(group,c.x,8,c.y,7,16,7,signal);
+          this.box(group,c.x,17,c.y,9,5,9,signal);
+          this.box(group,c.x,10,c.y,16,4,5,enamel,false);
+          this.box(group,c.x,2,c.y,11,4,11,enamel);
+        }else if(fixture==='utility-cabinet'){
+          this.box(group,c.x,17,c.y,w,34,d,enamel);
+          this.box(group,c.x,17,c.y+d*.51,w*.84,31,1,dark,false);
+          this.box(group,c.x+w*.27,18,c.y+d*.56,2,7,1,safety,false);
+          for(const yy of [8,13,18])this.box(group,c.x-w*.21,yy,c.y+d*.56,
+            7,1,1,safety,false);
+        }else if(fixture==='parking-block'){
+          this.box(group,c.x,3,c.y,w,6,d*.85,enamel);
+          for(const sx of [-.31,.31])this.box(group,c.x+w*sx,6.3,c.y,
+            w*.2,.8,d*.74,safety,false);
+        }else if(fixture==='parking-sign'){
+          this.box(group,c.x,21,c.y,2,42,2,dark);
+          this.box(group,c.x,35,c.y,w*.9,13,1,enamel,false);
+          this.box(group,c.x,35,c.y+.9,w*.55,1.8,.7,safety,false);
+        }else if(fixture==='street-lamp'){
+          this.box(group,c.x,40,c.y,3,80,3,dark);
+          this.box(group,c.x,79,c.y-d*.22,14,3,4,dark,false);
+          this.box(group,c.x+5,77,c.y-d*.22,9,2,4,safety,false);
+          this.box(group,c.x,2,c.y,7,4,7,enamel);
+        }else if(fixture==='bike-rack'){
+          for(const sx of [-.31,0,.31]){
+            const pipe=new THREE.Mesh(new THREE.TorusGeometry(
+              Math.min(7,d*.38),1.5,6,12,Math.PI),enamel);
+            pipe.rotation.x=Math.PI/2;
+            pipe.position.set(c.x+w*sx,9,c.y);
+            group.add(pipe);
+            this.box(group,c.x+w*sx,4,c.y-d*.29,3,8,3,enamel);
+            this.box(group,c.x+w*sx,4,c.y+d*.29,3,8,3,enamel);
+          }
+        }
       }else if(fixture==='fence'){
         for(const sx of [-1,1])this.box(group,c.x+sx*w*.47,11,c.y,
           3,22,3,wood);

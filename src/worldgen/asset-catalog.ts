@@ -27,6 +27,26 @@ definitions.push(
  {id:'shrub-tall',category:'exterior',width:29,depth:25,height:32,
   solid:true,cover:'high',rooms:['yard','garden','patio','parking']}
 );
+definitions.push(
+ {id:'mailbox',category:'exterior',width:11,depth:12,height:27,
+  solid:true,cover:'low',rooms:['yard','driveway']},
+ {id:'trash-bin',category:'exterior',width:18,depth:18,height:23,
+  solid:true,cover:'low',rooms:['yard','garden','parking','service-yard']},
+ {id:'bollard',category:'exterior',width:11,depth:11,height:23,
+  solid:true,cover:'low',rooms:['parking','driveway','service-yard']},
+ {id:'hydrant',category:'exterior',width:13,depth:13,height:20,
+  solid:true,cover:'low',rooms:['yard','parking','service-yard']},
+ {id:'utility-cabinet',category:'exterior',width:30,depth:20,height:37,
+  solid:true,cover:'high',rooms:['service-yard','parking']},
+ {id:'parking-block',category:'exterior',width:38,depth:9,height:8,
+  solid:true,cover:'low',rooms:['parking','driveway']},
+ {id:'parking-sign',category:'exterior',width:9,depth:9,height:44,
+  solid:true,cover:'low',rooms:['parking','driveway']},
+ {id:'street-lamp',category:'exterior',width:9,depth:9,height:82,
+  solid:true,cover:'low',rooms:['parking','driveway','yard']},
+ {id:'bike-rack',category:'exterior',width:39,depth:19,height:25,
+  solid:true,cover:'low',rooms:['parking','patio','service-yard']}
+);
 export const PROP_CATALOG:ReadonlyMap<string,PropDefinition>=
  new Map(definitions.map(item=>[item.id,item]));
 export function propDefinition(id:string):PropDefinition|undefined{return PROP_CATALOG.get(id);}
