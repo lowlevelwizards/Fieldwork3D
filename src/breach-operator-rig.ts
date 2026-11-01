@@ -573,6 +573,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const leftGrip=P(data.supportX,data.supportY,-1.6);
   const rightGrip=P(data.primaryX,data.primaryY,1.8);
   let reaching=false,releaseLeft=false,releaseRight=false;
+  let fullDoorContact:THREE.Vector3|null=null;
   if(p.surrender){
     // Deliberate visible surrender: discard the gun, kneel and raise both
     // hands overhead. Unlike an incapacitated actor this is not a fall.
@@ -622,8 +623,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const reach=smooth(doorAge/.32)*
       (1-smooth((doorAge-.62)/.48));
     r.chest.position.x=clamp(local.x-13,0,2.4)*reach;
-    leftGrip.copy(fit.support).lerp(
-      local.sub(P(r.chest.position.x,0,0)),reach);
+    fullDoorContact=local.sub(P(r.chest.position.x,0,0)).clone();
+    leftGrip.copy(fit.support).lerp(fullDoorContact,reach);
   }
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
@@ -650,8 +651,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         .applyEuler(fit.rotation).add(fit.origin);
     }
     const reachable=desired.distanceTo(shoulder)<=19.92;
-    if(i===0&&reaching&&!reachable)
-      r.reachRequest={kind:'door',distance:desired.distanceTo(shoulder)};
+    // Evaluate the true handle target even during the wind-up: easing the
+    // arm from the weapon must not hide an unreachable world interaction.
+    const contactDistance=i===0&&fullDoorContact?
+      fullDoorContact.distanceTo(shoulder):0;
+    if(i===0&&reaching&&(!reachable||contactDistance>19.92))
+      r.reachRequest={kind:'door',distance:Math.max(
+        desired.distanceTo(shoulder),contactDistance)};
     // Impossible interactions must report the need for repositioning, not
     // stretch a joint or rotate an arm through the upper torso.
     const wrist=clampReach(shoulder,desired,19.92);
