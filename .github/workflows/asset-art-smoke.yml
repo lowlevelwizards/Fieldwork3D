@@ -4,6 +4,9 @@ on:
     paths:
       - 'src/worldgen/asset-character-visuals.ts'
       - 'src/worldgen/fixture-visuals.ts'
+      - 'src/worldgen/detailed-fixture-visuals.ts'
+      - 'src/worldgen/asset-review.ts'
+      - 'tests/map-22-asset-audit.test.mjs'
       - 'src/asset-lab-main.ts'
       - 'tests/map-21-asset-character-pass.test.mjs'
       - '.github/workflows/asset-art-smoke.yml'
@@ -21,6 +24,6 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Fixture geometry and scale regression
-        run: node --experimental-strip-types --test tests/map-21-asset-character-pass.test.mjs tests/map-17-vehicles.test.mjs tests/map-04-fixture-renderer.test.mjs tests/map-01-asset-registry.test.mjs
+        run: node --experimental-strip-types --test tests/map-21-asset-character-pass.test.mjs tests/map-17-vehicles.test.mjs tests/map-04-fixture-renderer.test.mjs tests/map-01-asset-registry.test.mjs tests/map-22-asset-audit.test.mjs
       - name: Typecheck
         run: npm run check
