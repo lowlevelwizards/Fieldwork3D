@@ -8,7 +8,7 @@ on:
       - 'tests/map-29-architecture-hardware.test.mjs'
       - 'src/worldgen/detailed-fixture-visuals.ts'
       - 'src/worldgen/asset-review.ts'
-      - 'tests/map-22-asset-audit.test.mjs tests/map-30-asset-condition.test.mjs'
+      - 'tests/map-22-asset-audit.test.mjs tests/map-30-asset-condition.test.mjs tests/map-32-full-asset-render-smoke.test.mjs'
       - 'src/asset-lab-main.ts'
       - 'tests/map-21-asset-character-pass.test.mjs'
       - '.github/workflows/asset-art-smoke.yml'
