@@ -68,9 +68,5 @@ export function enforceServiceHatchBarriers(site:Site):Site{
   cover.push({x:center.x,y:center.y,w:vertical?10:width,
    h:vertical?width:10,low:true,fixture:'window-sill'});
  }
- if(site.seed===3)console.log('hatch-debug',JSON.stringify({
-  openings:(site.openings??[]).filter(o=>o.kind==='serving'),
-  colliders:cover.filter(o=>o.fixture==='window-sill'||o.fixture==='glass-barrier')
- }));
  return {...site,cover};
 }
