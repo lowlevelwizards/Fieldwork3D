@@ -56,7 +56,7 @@ export type OperatorPose={
   clearanceRetraction?:number;clearanceBlocked?:boolean;
   blocked?:boolean;footAllowed?:(point:{x:number;y:number})=>boolean;
   gait?:'walk'|'run'|'pie'|'squeeze';
-  equipment?:EquipmentLoadout;
+  equipment?:EquipmentLoadout;flashCharges?:number;
   /** Opt-in to contact-position weight transfer for lab candidate only. */
   hybridSupport?:boolean;
   acceleration?:number;
@@ -72,6 +72,10 @@ export type OperatorRig={
   magazineInserted:THREE.Mesh;magazineHand:THREE.Mesh;
   pack:THREE.Mesh;helmetShell:THREE.Mesh[];
   armorPanels:THREE.Mesh[];capBill:THREE.Mesh;
+  rigPouches:THREE.Mesh[];beltPouch:THREE.Mesh;
+  medicalPouch:THREE.Mesh;radioUnit:THREE.Mesh;
+  flashCanister:THREE.Mesh;utilityTool:THREE.Mesh;
+  gloveCovers:THREE.Mesh[];
   lastTime:number;lastPose:OperatorPose|null;
   personality:ReturnType<typeof operatorMotionTraits>;
   footsteps:FootstepScheduler;
@@ -122,6 +126,17 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   for(const sign of [-1,1])
     armorPanels.push(block(chest,1.35,4.6,sign*6.05,3.8,3.1,2.0,vest));
   const pack=block(chest,-7,0,0,6,11,11,vest);
+  // Very few additional silhouettes, all rigidly attached to existing bones.
+  // No new IK, physics bodies or shot-line geometry.
+  const rigPouches=[block(chest,6.5,-1,-4,2.8,3.8,3.2,boot),
+    block(chest,6.5,-1,4,2.8,3.8,3.2,boot)];
+  const beltPouch=block(hip,3.5,-2.7,-4.1,3,3.7,3.6,vest);
+  const medicalPouch=block(chest,-1,-4.1,7.7,3.3,4.2,2.5,vest);
+  const radioUnit=block(chest,-4.4,2.4,7.5,3.5,5.4,2.8,steel);
+  const flashCanister=block(hip,1,-4,7.2,2.5,5.8,2.5,steel);
+  const utilityTool=block(chest,-5,-4.1,-7.9,4.4,2.1,2.3,steel);
+  for(const mesh of [...rigPouches,beltPouch,medicalPouch,
+    radioUnit,flashCanister,utilityTool])mesh.visible=false;
   head.position.y=10;
   block(head,0,-3,0,3.6,4,3.8,skin);
   block(head,0,3,0,8,8,8,skin);
@@ -131,7 +146,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   capBill.visible=false;
   const helmetBadge=block(head,0,7.6,0,9.6,2,9.8,vest);
   helmetBadge.visible=false;
-  const feet:Foot[]=[],arms:Arm[]=[];
+  const feet:Foot[]=[],arms:Arm[]=[],gloveCovers:THREE.Mesh[]=[];
   for(const sideSign of [-1,1]){
     const upper=bone(root,4.7,5.3,cloth),lower=bone(root,4,4.3,cloth);
     const shoe=block(root,0,0,0,8,2.9,5.8,boot);
@@ -148,6 +163,8 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     const armUpper=bone(chest,3.9,4.0,cloth);
     const armLower=bone(chest,3.4,3.5,cloth);
     const hand=block(chest,0,0,0,3.6,3.2,3.9,skin);
+    const glove=block(hand,.12,0,0,3.9,3.5,4.1,vest);
+    glove.visible=false;gloveCovers.push(glove);
     arms.push({upper:armUpper,lower:armLower,hand,
       bend:new THREE.Vector3(5,-2,sideSign*7),outOfReach:false});
     void sideSign;
@@ -169,7 +186,8 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   const colors=new Map([cloth,boot,vest,skin,steel].map(material=>
     [material,material.color.clone()] as const));
   return {root,hip,chest,head,weapon,droppedGun,feet,arms,pack,
-    helmetShell,armorPanels,capBill,colors,
+    helmetShell,armorPanels,capBill,rigPouches,beltPouch,
+    medicalPouch,radioUnit,flashCanister,utilityTool,gloveCovers,colors,
     clothMaterial:cloth,vestMaterial:vest,baseCloth:cloth.color.clone(),
     baseVest:vest.color.clone(),helmetBadge,appearanceSeed:0,
     personality:operatorMotionTraits(id),
@@ -225,6 +243,22 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.pack.visible=packItem!=='backpack-none';
   const packSize=packItem==='backpack-field'?1.24:1;
   r.pack.scale.set(r.pack.scale.x,packSize,packSize);
+  // Visible compact modules use exactly the configured kit (not free extras).
+  const rigItem=gear?.rig??'rig-none';
+  r.rigPouches.forEach((mesh,i)=>{
+    mesh.visible=rigItem==='rig-full'||(rigItem==='rig-light'&&i===0);
+  });
+  r.beltPouch.visible=gear?.belt==='belt-standard';
+  r.medicalPouch.visible=gear?.medical==='medical-basic'||
+    gear?.medical==='medical-trauma';
+  r.medicalPouch.scale.set(gear?.medical==='medical-trauma'?1.35:1,1,1);
+  r.radioUnit.visible=gear?.utility==='utility-radio';
+  r.utilityTool.visible=gear?.utility==='utility-light'||
+    gear?.utility==='utility-breach';
+  r.utilityTool.scale.x=gear?.utility==='utility-breach'?1.45:1;
+  r.flashCanister.visible=gear?.tactical==='tactical-flash'&&
+    (p.flashCharges===undefined||p.flashCharges>0);
+  for(const glove of r.gloveCovers)glove.visible=gear?.hands==='hands-gloves';
   // Retain costume identity, but subdued incapacitated bodies blend with
   // grounded blood and don't need floating status text. Reversible on seek.
   for(const [material,original] of r.colors){
