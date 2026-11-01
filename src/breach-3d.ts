@@ -17,6 +17,7 @@ import {planExposureWear} from './worldgen/wear-exposure.ts';
 import {planActivityWear} from './worldgen/wear-sources.ts';
 import {planHistoryWear} from './worldgen/surface-history.ts';
 import {planMicroDebris,type DebrisKind} from './worldgen/micro-debris.ts';
+import {planInteriorFragments} from './worldgen/interior-fragments.ts';
 import {visibleSurfaceHeight} from './worldgen/decoration-anchors.ts';
 import {wearPixels} from './rendering/pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './rendering/wear-opacity.ts';
@@ -521,6 +522,28 @@ export class TacticalScene3D{
       // Pixel tile/board joints are already in the shared repeating texture.
       // Avoid redundant grout meshes and draw calls.
     }
+    // Sparse, instanced fragments collect against physical room boundaries.
+    // These are tiny render-only fragments, never new cover or navigation.
+    const fragments=planInteriorFragments(site);
+    const fragmentMaterial=this.solid(0x9b8e78,.98,'gravel');
+    const fragmentGeometry=new THREE.BoxGeometry(1,1,1);
+    const transform=new THREE.Object3D();
+    for(const room of site.rooms){
+      const entries=fragments.filter(f=>f.roomId===room.id);
+      if(!entries.length)continue;
+      const group=decorativeRoomGroups.get(room.id);if(!group)continue;
+      const batch=new THREE.InstancedMesh(fragmentGeometry,fragmentMaterial,entries.length);
+      batch.frustumCulled=false;batch.castShadow=false;batch.receiveShadow=false;
+      for(const [i,f] of entries.entries()){
+        transform.position.set(f.x,.65,f.y);
+        transform.rotation.set(0,f.angle,0);
+        transform.scale.set(f.size,.5,f.size*.6);
+        transform.updateMatrix();batch.setMatrixAt(i,transform.matrix);
+      }
+      batch.instanceMatrix.needsUpdate=true;
+      group.add(batch);
+    }
+    if(!fragments.length)fragmentGeometry.dispose();
     // Condition-dependent floor patina stays inside its room's fog group.
     // Decals are decorative only; they create no collision or cover.
     const wearColor:Record<WearKind,number>={
