@@ -129,7 +129,7 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
       obstacle.fixture!=='window-sill'&&obstacle.fixture!=='glass-barrier'),
     ...sills
   ]};
-  return addExteriorProperty(physical,seed);
+  return addSecurityPerimeter(addExteriorProperty(physical,seed),seed);
 }
 
 /** Gameplay window state never mutates the seed-derived architectural plan. */
