@@ -1,7 +1,7 @@
 /** Standalone omniscient generation inspector, not a tactical encounter. */
 import {TacticalScene3D} from './breach-3d.ts';
 import {newSession,type Session} from './breach-game.ts';
-import {generateSite,type Site,type BuildingArchetype} from './breach-site.ts';
+import {generateSite,type Site,type BuildingArchetype,type SiteScale} from './breach-site.ts';
 import {BUILDING_ARCHETYPES} from './breach-archetypes.ts';
 import {activateSite,type Pt} from './breach-core.ts';
 import {auditGeneratedSite} from './breach-site-audit.ts';
@@ -19,7 +19,9 @@ for(const kind of BUILDING_ARCHETYPES){
  typeInput.append(option);
 }
 const initial=Number.parseInt(new URLSearchParams(location.search).get('seed')??'101',10)||101;
-scaleInput.value=new URLSearchParams(location.search).get('scale')==='expanded'?'expanded':'standard';
+const initialScale=new URLSearchParams(location.search).get('scale');
+scaleInput.value=['small','medium','large','standard','expanded'].includes(initialScale??'')?
+  initialScale!:'standard';
 seedInput.value=String(initial);
 let session:Session=newSession(0,initial);
 typeInput.value=session.site?.archetype??'house';
@@ -83,7 +85,7 @@ function report(site:Site):string{
    'CHECKS: '+result.errors.join('; '):'CHECKS: PASS');
 }
 // Site scale changes dimensions, not architectural fidelity or room count.
-const siteScale=()=>scaleInput.value==='expanded'?'expanded':'standard';
+const siteScale=():SiteScale=>scaleInput.value as SiteScale;
 function generate(advance=false){
  const starting=Math.max(1,Number.parseInt(seedInput.value,10)||1)+(advance?1:0);
  const wanted=typeInput.value as BuildingArchetype;
@@ -98,7 +100,7 @@ function generate(advance=false){
  if(!chosen){status.textContent='No matching configuration in the current generator range.';return;}
  seedInput.value=String(chosen.seed);
  playSite.href='./breach.html?seed='+chosen.seed+
-   (siteScale()==='expanded'?'&scale=expanded':'');
+   (siteScale()==='standard'?'':'&scale='+siteScale());
  session=newSession(0,chosen.seed,'floor-plan',
    siteScale());
  stage.applySite(session.site??null);stage.resetCamera();

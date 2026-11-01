@@ -4,6 +4,7 @@
  * One purpose can occupy an L-shaped union of several rectangular cells.
  */
 import {architecturalBlueprint,type Blueprint} from './architectural-program.ts';
+import {sizedBlueprint} from './size-blueprints.ts';
 import {circulationFor,circulationScore,loopChance,type CirculationStyle} from './circulation-grammar.ts';
 import {type Site,type Room,type BuildingArchetype,type SiteScale,seeded} from '../breach-site.ts';
 import {type Pt,type Door,type Segment} from '../breach-core.ts';
@@ -46,10 +47,12 @@ function cut(wall:Segment,id:string,walls:Segment[],doors:Door[]){
 }
 export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  scale:SiteScale='expanded'):Site{
- const authored:Blueprint=architecturalBlueprint(kind,seed);
+ const baseline=architecturalBlueprint(kind,seed);
+ const authored:Blueprint=scale==='small'||scale==='large'?
+   sizedBlueprint(kind,seed,scale,baseline):baseline;
  // Compact buildings use the identical architectural grammar, with smaller
  // habitable rooms but never shrink the 48-unit door or operator clearance.
- const b:Blueprint=scale==='expanded'?authored:{
+ const b:Blueprint=scale!=='standard'?authored:{
   ...authored,
   family:authored.family+' / compact',
   widths:authored.widths.map((w,col)=>Math.round(Math.max(
@@ -291,6 +294,6 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
    entrance,spawn,enemies,objective,extract:point(frontX,frontY+117),
    roomCount:habitable.length,layout:'corridor',
    bounds:{minX:Math.min(0,west-80),minY:Math.min(0,north-80),
-    maxX:Math.max(scale==='expanded'?720:640,east+84),
+    maxX:Math.max(['expanded','medium','large'].includes(scale)?720:640,east+84),
     maxY:Math.max(740,south+156)}};
 }

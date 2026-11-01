@@ -21,7 +21,7 @@ export type WindowOpening={
  treatment?:WindowTreatment;
 };
 export type WorldBounds={minX:number;minY:number;maxX:number;maxY:number};
-export type SiteScale='standard'|'expanded';
+export type SiteScale='standard'|'expanded'|'small'|'medium'|'large';
 export type Site={
   /** Authored semantic programs bypass index-based purpose assignment. */
   programLocked?:boolean;
