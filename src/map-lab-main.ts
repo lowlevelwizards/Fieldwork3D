@@ -185,9 +185,16 @@ function updateLabels(){
   const verdict=assessments.find(a=>a.roomIds.includes(room.id));
   const showIssues=el<HTMLInputElement>('needs').checked;
   button.className=showIssues&&verdict&&!verdict.complete?'room-incomplete':'room-complete';
-  button.textContent=(room.purpose??room.kind).toUpperCase()+
-    (showIssues&&verdict&&!verdict.complete?' !':'');
   const spaceMetric=currentAudit?.spaceQuality.rooms.find(r=>r.roomId===room.id);
+  const showQuality=el<HTMLInputElement>('qualityOverlay').checked;
+  const trouble=!!(spaceMetric?.crowded||
+    currentAudit?.spaceQuality.doorApproachIssues.some(d=>
+      d.roomId===room.id)||verdict&&!verdict.complete);
+  if(showQuality&&trouble)button.classList.add('quality-risk');
+  else if(showQuality)button.classList.add('quality-space');
+  button.textContent=(room.purpose??room.kind).toUpperCase()+
+    (showIssues&&verdict&&!verdict.complete?' !':'')+
+    (showQuality&&spaceMetric?' · '+Math.round(spaceMetric.solidFraction*100)+'%':'');
   button.title=room.id+' · '+Math.round(room.w)+' × '+Math.round(room.h)+
     (spaceMetric?' · '+Math.round(spaceMetric.solidFraction*100)+'% solid':'')+
     (verdict&&!verdict.complete?' · missing '+verdict.missing.length+' required groups':'');
@@ -208,7 +215,10 @@ function updateLabels(){
  }
  if(el<HTMLInputElement>('doors').checked)for(const door of site.doors){
   const button=document.createElement('button');button.className='door-label';
-  button.textContent=door.id;
+  const blocked=el<HTMLInputElement>('qualityOverlay').checked&&
+    currentAudit?.spaceQuality.doorApproachIssues.some(d=>d.doorId===door.id);
+  button.textContent=door.id+(blocked?' !':'');
+  if(blocked)button.classList.add('quality-risk');
   button.title=door.id+' · '+Math.round(Math.hypot(door.a.x-door.b.x,
     door.a.y-door.b.y))+' units';
   labelLayer.append(button);
@@ -378,6 +388,7 @@ el<HTMLButtonElement>('top').addEventListener('click',()=>stage.setMode('top'));
 el<HTMLButtonElement>('fit').addEventListener('click',()=>stage.resetCamera());
 el<HTMLInputElement>('rooms').addEventListener('change',updateLabels);
 el<HTMLInputElement>('needs').addEventListener('change',updateLabels);
+el<HTMLInputElement>('qualityOverlay').addEventListener('change',updateLabels);
 el<HTMLInputElement>('cover').addEventListener('change',updateLabels);
 el<HTMLInputElement>('facing').addEventListener('change',updateLabels);
 el<HTMLInputElement>('doors').addEventListener('change',updateLabels);
