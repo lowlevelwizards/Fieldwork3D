@@ -553,6 +553,10 @@ export class TacticalScene3D{
       case 'lamp':
         this.box(prop,0,8,0,2,16,2,smallWood,false);
         this.box(prop,0,17,0,12,7,12,smallPaper,false);break;
+      case 'floor-lamp':
+        this.box(prop,0,.8,0,10,1.6,10,smallWood,false);
+        this.box(prop,0,15,0,2,29,2,smallWood,false);
+        this.box(prop,0,31,0,13,9,13,smallPaper,false);break;
       }
       roomGroup.add(prop);
     }

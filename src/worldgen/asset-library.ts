@@ -30,7 +30,7 @@ const bespoke = new Set([
   'vehicle','chair','bench','sofa','armchair','tv-stand','barrel','tank',
   'tire-stack','vehicle-lift','hedge','bush','tree','plant','fence','pallet',
 ]);
-const dressings = ['mug','books','papers','tools','plant','lamp','packages'] as const;
+const dressings = ['mug','books','papers','tools','plant','lamp','floor-lamp','packages'] as const;
 const architecture:readonly AssetLibraryEntry[] = [
   {id:'floor',label:'Floor slab',width:80,depth:80,height:2,category:'Structure'},
   {id:'wall',label:'Interior wall',width:80,depth:9,height:40,category:'Structure'},
