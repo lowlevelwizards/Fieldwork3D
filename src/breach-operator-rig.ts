@@ -809,8 +809,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
    let rear:THREE.Vector3,front:THREE.Vector3;
    if(r.droppedGun.visible){
     r.root.updateMatrixWorld(true);
-    rear=r.chest.worldToLocal(gun.localToWorld(P(-9*scale,-.4,3)));
-    front=r.chest.worldToLocal(gun.localToWorld(P(10*scale,-.4,3)));
+    rear=r.chest.worldToLocal(gun.localToWorld(P(-9,-.4,3)));
+    front=r.chest.worldToLocal(gun.localToWorld(P(10,-.4,3)));
    }else{
     rear=P(-9*scale,-.4,3).applyEuler(gun.rotation).add(gun.position);
     front=P(10*scale,-.4,3).applyEuler(gun.rotation).add(gun.position);
