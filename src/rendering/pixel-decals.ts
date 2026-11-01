@@ -26,7 +26,7 @@ export function wearPixels(kind:WearTextureKind,seed=0,size=32):Uint8Array{
   else if(kind==='crack')a=Math.abs(dx+Math.sin(y*.44+seed)*.15)<.048&&
     Math.abs(dy)<.91?230:0;
   else if(kind==='scratch')a=Math.abs(dy-dx*.32)<.043&&Math.abs(dx)<.88?215:0;
-  else if(kind==='drip')a=Math.abs(dx)<(.045+.035*(dy>.46))&&
+  else if(kind==='drip')a=Math.abs(dx)<(.045+.035*(dy>.46?1:0))&&
     dy>-.75&&dy<.85?170:0;
   else if(kind==='mud')a=radius<.7+jag&&hash(x,y,seed)>35?190:0;
   else if(kind==='footprint')a=((dx*dx/.20+dy*dy/.31)<1&&dy>-.2)||
