@@ -28,8 +28,11 @@ jobs:
       - name: Focused campaign integration tests
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'campaign-') }}
         run: node --experimental-strip-types --test tests/campaign-*.test.mjs tests/lw-roster*.test.mjs tests/lw-operations-board.test.mjs tests/breach-155.test.mjs
+      - name: Focused equipment and personnel tests
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'equipment/') }}
+        run: node --experimental-strip-types --test tests/equipment-*.test.mjs tests/campaign-*.test.mjs tests/lw-roster*.test.mjs
       - name: Full game tests (main and other PRs)
-        if: ${{ github.event_name != 'pull_request' || (!startsWith(github.head_ref, 'texture2/') && !startsWith(github.head_ref, 'campaign-') && !startsWith(github.head_ref, 'worldgen2/') && !startsWith(github.head_ref, 'architecture/')) }}
+        if: ${{ github.event_name != 'pull_request' || (!startsWith(github.head_ref, 'texture2/') && !startsWith(github.head_ref, 'campaign-') && !startsWith(github.head_ref, 'worldgen2/') && !startsWith(github.head_ref, 'architecture/') && !startsWith(github.head_ref, 'equipment/')) }}
         run: npm test
       - name: Typecheck
         run: npm run check
