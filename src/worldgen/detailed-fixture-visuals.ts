@@ -22,9 +22,9 @@ export function renderDetailedFixture(group:THREE.Group,c:Obstacle,
     mat:THREE.Material,cast=true)=>
    ctx.box(group,c.x+x,y,c.y+z,Math.max(.4,bw),Math.max(.3,bh),
      Math.max(.4,bd),mat,cast);
- const ink=ctx.solid(0x363f40),light=ctx.solid(0xc5bca4),
-   paper=ctx.solid(0xb9b09a),red=ctx.solid(0xa77762),
-   green=ctx.solid(0x536e55),glass=ctx.solid(0x64848a,.36);
+ const ink=ctx.solid(0x363f40,.9,'rubber'),light=ctx.solid(0xc5bca4,.92,'metal'),
+   paper=ctx.solid(0xb9b09a,.97,'paper'),red=ctx.solid(0xa77762,.87,'metal'),
+   green=ctx.solid(0x536e55,.9,'foliage'),glass=ctx.solid(0x64848a,.36);
  const legs=(top:number,spanW=w*.78,spanD=d*.75)=>{
    for(const sx of [-1,1])for(const sz of [-1,1])
     b(sx*spanW*.5,top*.5,sz*spanD*.5,2.6,top,2.6,steel);
@@ -147,7 +147,7 @@ export function renderDetailedFixture(group:THREE.Group,c:Obstacle,
    return true;
  }
  case 'cable-reel':{
-   const spool=ctx.solid(0x826b51);
+   const spool=ctx.solid(0x826b51,.91,'wood');
    const radius=d*.45;
    for(const sx of [-1,1]){
     const disc=new THREE.Mesh(new THREE.CylinderGeometry(

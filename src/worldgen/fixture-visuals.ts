@@ -5,18 +5,21 @@
 import * as THREE from 'three';
 import {type Obstacle} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
+import {fixturePixelSurface} from './pixel-surface-selection.ts';
+import type {PixelSurface} from '../rendering/pixel-recipes.ts';
 import {renderDetailedFixture} from './detailed-fixture-visuals.ts';
 export type FixtureVisualContext={
  box:(parent:THREE.Object3D,x:number,y:number,z:number,
    w:number,h:number,d:number,material:THREE.Material,cast?:boolean)=>THREE.Mesh;
- solid:(hex:number,roughness?:number)=>THREE.MeshStandardMaterial;
+ solid:(hex:number,roughness?:number,surface?:PixelSurface)=>THREE.MeshStandardMaterial;
 };
 export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
  ctx:FixtureVisualContext,wood:THREE.Material,steel:THREE.Material,
  olive:THREE.Material,metal:THREE.Material):void{
       const fixture=c.fixture??'crate';
       const asset=propDefinition(fixture);
-      const material=i%3===0?wood:i%3===1?steel:olive;
+      const material=ctx.solid(i%3===0?0x87735e:i%3===1?0x677a76:0x787b65,
+        .87,fixturePixelSurface(fixture));
       const w=c.w,d=c.h;
       if(['bed','exam-bed','guest'].includes(fixture)){
         const height=asset?.height??19;
@@ -37,7 +40,7 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         }
       }else if(['fridge','cooler','wardrobe','locker','filing-cabinet'].includes(fixture)){
         const height=asset?.height??32;
-        const body=ctx.solid(fixture==='cooler'?0x748985:0x8a8c83);
+        const body=ctx.solid(fixture==='cooler'?0x748985:0x8a8c83,.82,'metal');
         ctx.box(group,c.x,height/2,c.y,w,height,d,body);
         ctx.box(group,c.x+w*.42,height*.55,c.y+d/2+.7,2,height*.35,2,steel,false);
         if(fixture==='fridge'||fixture==='cooler')
@@ -75,7 +78,8 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         // Stock and shelving fill the silhouette, matching the authoritative
         // obstacle/visibility envelope instead of suggesting a passable void.
         const tall=Math.max(27,asset?.height??27);
-        const shelfWood=ctx.solid(fixture==='bookcase'?0x715d4a:0x6b6b60);
+        const shelfWood=ctx.solid(fixture==='bookcase'?0x715d4a:0x6b6b60,.88,
+          fixture==='bookcase'?'wood':'metal');
         ctx.box(group,c.x,tall/2,c.y,w,tall,d*.88,shelfWood);
         for(const level of [tall*.22,tall*.49,tall*.77]){
           ctx.box(group,c.x,level,c.y+d*.46,w,2,d*.2,steel,false);
@@ -98,10 +102,10 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         // Purpose-shaped low-poly bodies, not a generic block on four sticks.
         // X is vehicle length and Z is width; collision uses the same footprint.
         const model=fixture==='vehicle'?'sedan':fixture;
-        const paint=ctx.solid([0x647b72,0x9c8e74,0x71838c,0x99745d][i%4],.76);
+        const paint=ctx.solid([0x647b72,0x9c8e74,0x71838c,0x99745d][i%4],.76,'metal');
         const glass=ctx.solid(0x557579,.25);
-        const rubber=ctx.solid(0x252b2b,.94);
-        const chrome=ctx.solid(0x9ea7a0,.48);
+        const rubber=ctx.solid(0x252b2b,.94,'rubber');
+        const chrome=ctx.solid(0x9ea7a0,.48,'metal');
         const radius=Math.max(2.2,Math.min(w*.085,d*.23));
         ctx.box(group,c.x,10,c.y,w,11,d*.91,paint);
         ctx.box(group,c.x,5,c.y,w*.9,4,d*.72,steel);
@@ -192,8 +196,8 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         'tree-conifer','tree-scrub','shrub-round','shrub-tall'].includes(fixture)){
         const leaves=ctx.solid(fixture==='tree-conifer'?0x425b4d:
           fixture==='tree-scrub'?0x6b7955:
-          fixture==='shrub-tall'?0x596a50:0x526e51);
-        const bark=ctx.solid(0x645846);
+          fixture==='shrub-tall'?0x596a50:0x526e51,.9,'foliage');
+        const bark=ctx.solid(0x645846,.94,'wood');
         const isTree=fixture==='tree'||fixture.startsWith('tree-');
         const tall=asset?.height??(isTree?72:22);
         const blob=(x:number,y:number,z:number,r:number)=>{
@@ -239,7 +243,7 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         }
       }else if(['mailbox','trash-bin','bollard','hydrant','utility-cabinet',
         'parking-block','parking-sign','street-lamp','bike-rack'].includes(fixture)){
-        const enamel=ctx.solid(0x777f79,.72);
+        const enamel=ctx.solid(0x777f79,.72,'metal');
         const dark=ctx.solid(0x343c3b,.86);
         const safety=ctx.solid(0xae8e52,.78);
         const signal=ctx.solid(0xb37c5a,.75);
@@ -295,7 +299,7 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           }
         }
       }else if(fixture==='window-boards'){
-        const timber=ctx.solid(0x7d6b54),nails=ctx.solid(0x4d514e);
+        const timber=ctx.solid(0x7d6b54,.9,'wood'),nails=ctx.solid(0x4d514e,.8,'metal');
         const across=w>=d;
         for(const height of [3.5,10.5,17.5,24.5,31.5]){
           ctx.box(group,c.x,height,c.y,
