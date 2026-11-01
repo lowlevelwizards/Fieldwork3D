@@ -1,13 +1,17 @@
 /** Tiny decorative ground fragments; never create collisions or cover. */
 import {seeded,type Site} from '../breach-site.ts';
+import {effectiveCondition} from './condition-visual.ts';
 export type DebrisKind='stone'|'leaf'|'weed'|'flake';
 export type Debris={id:string;kind:DebrisKind;x:number;y:number;size:number;angle:number};
 export const DEBRIS_LIMIT=96;
 export function planMicroDebris(site:Site):Debris[]{
  const random=seeded(site.seed^0x14d753ac),out:Debris[]=[];
- const neglected=site.condition==='neglected'||site.condition==='vacant';
+ const continuous=site.conditionLevel!==undefined,t=effectiveCondition(site)/100;
+ const neglected=continuous?t>=.60:
+   site.condition==='neglected'||site.condition==='vacant';
  for(const zone of site.exteriorZones??[]){
-  const count=Math.min(24,Math.floor(zone.w*zone.h/(neglected?1200:2300)));
+  const count=continuous?Math.min(30,Math.floor(Math.pow(t,1.35)*zone.w*zone.h/650)):
+    Math.min(24,Math.floor(zone.w*zone.h/(neglected?1200:2300)));
   for(let i=0;i<count&&out.length<DEBRIS_LIMIT;i++){
    const x=zone.x+(random()-.5)*Math.max(0,zone.w-8);
    const y=zone.y+(random()-.5)*Math.max(0,zone.h-8);

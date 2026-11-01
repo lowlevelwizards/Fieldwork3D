@@ -2,6 +2,7 @@
 import {seeded,type Site} from '../breach-site.ts';
 import {roomPixelSurface} from './pixel-surface-selection.ts';
 import {canWear,type WearEffect} from './material-properties.ts';
+import {effectiveCondition} from './condition-visual.ts';
 import type {WearMark,WearKind} from './environment-wear.ts';
 export type SurfaceIncident={id:string;roomId:string;kind:WearEffect;
  severity:number;source:'usage'|'leak'|'repair'|'weather'|'impact'};
@@ -10,19 +11,22 @@ export type SurfaceHistory={version:1;siteSeed:number;incidents:SurfaceIncident[
  repairs:SurfaceRepair[]};
 export function generateSurfaceHistory(site:Site):SurfaceHistory{
  const rng=seeded(site.seed^0x82ae981a),incidents:SurfaceIncident[]=[];
- if(site.condition==='occupied')return {version:1,siteSeed:site.seed,incidents,repairs:[]};
+ const continuous=site.conditionLevel!==undefined,t=effectiveCondition(site)/100;
+ if(continuous?t<.12:site.condition==='occupied')
+   return {version:1,siteSeed:site.seed,incidents,repairs:[]};
  const roomKinds:Record<string,WearEffect>={
   garage:'oil',warehouse:'scratch',restaurant:'grease',utility:'drip',
   motel:'stain',apartment:'scuff',office:'scuff',clinic:'scuff',
  };
  const prefer=roomKinds[site.archetype??'']??'stain';
  for(const [i,r] of site.rooms.entries()){
-  if(incidents.length>=5)break;
-  if(rng()>.35)continue;
+  if(incidents.length>=(continuous?Math.min(10,Math.round(t*11)):5))break;
+  if(rng()>(continuous?.08+.82*t:.35))continue;
   const surface=roomPixelSurface(site.archetype,r.purpose??r.kind);
   const kind=canWear(surface,prefer)?prefer:canWear(surface,'scuff')?'scuff':'dust';
   incidents.push({id:'history:'+i,roomId:r.id,kind,
-   severity:.28+rng()*.44,source:kind==='oil'||kind==='grease'?'usage':
+   severity:continuous?.2+t*.60+rng()*.16:.28+rng()*.44,
+   source:kind==='oil'||kind==='grease'?'usage':
     kind==='drip'?'leak':'weather'});
  }
  return {version:1,siteSeed:site.seed,incidents,repairs:[]};

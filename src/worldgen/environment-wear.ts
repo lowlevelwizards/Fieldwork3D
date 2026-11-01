@@ -3,6 +3,7 @@
 import {seeded,type Site} from '../breach-site.ts';
 import {roomPixelSurface} from './pixel-surface-selection.ts';
 import {surfaceMood} from './surface-moods.ts';
+import {effectiveCondition} from './condition-visual.ts';
 import type {WearTextureKind} from '../rendering/pixel-decals.ts';
 export type WearKind=WearTextureKind;
 export type WearMark={
@@ -14,16 +15,22 @@ export const WEAR_BUDGET:Record<NonNullable<Site['condition']>,number>={
 };
 export function planEnvironmentalWear(site:Site):WearMark[]{
  const mood=surfaceMood(site.archetype);
- const budget=Math.min(WEAR_BUDGET[site.condition??'occupied'],
-   Math.ceil(WEAR_BUDGET[site.condition??'occupied']*mood.wearFraction));
- if(budget===0)return [];
  const random=seeded(site.seed^0x66ee4a12);
  const rooms=site.rooms.filter(r=>r.w>=40&&r.h>=40);
  if(!rooms.length)return [];
+ const continuous=site.conditionLevel!==undefined;
+ const t=effectiveCondition(site)/100;
+ const legacy=Math.min(WEAR_BUDGET[site.condition??'occupied'],
+   Math.ceil(WEAR_BUDGET[site.condition??'occupied']*mood.wearFraction));
+ // The continuous slider increases density across rooms, not just per-site
+ // opacity. Whole-surface patina remains the primary low-cost visual layer.
+ const budget=continuous?Math.min(28,Math.round(Math.pow(t,1.3)*rooms.length*2.1)):legacy;
+ if(!budget)return [];
  const marks:WearMark[]=[];
  for(let i=0;i<budget;i++){
   // Distribute marks across a site rather than multiplying per room.
-  const room=rooms[Math.floor(random()*rooms.length)];
+  const room=continuous?rooms[(i+(site.seed%rooms.length))%rooms.length]:
+    rooms[Math.floor(random()*rooms.length)];
   const surface=roomPixelSurface(site.archetype,room.purpose??room.kind);
   // Activity and material determine the mark. A garage accumulates oil near
   // machinery, a kitchen grease, a utility sink mineral buildup and traffic
@@ -42,6 +49,10 @@ export function planEnvironmentalWear(site:Site):WearMark[]{
   else if(['loading','aisle','service'].includes(role))kind=i%2===0?'mud':'scuff';
   else if(site.condition==='neglected')kind=i%3===0?'chip':'stain';
   else kind=i%2===0?'scuff':'scratch';
+  if(continuous&&t>.55&&!industrial&&!cooking&&!wet){
+   if(i%4===0)kind='stain';
+   else if(i%7===0)kind='chip';
+  }
   if(surface==='carpet'&&['scrape','rust','mineral'].includes(kind))kind='stain';
   if(mood.maintenance==='clinical'&&['stain','grease'].includes(kind))kind='scuff';
   if((surface==='tile'||surface==='linoleum')&&kind==='dust')kind='scuff';
@@ -75,7 +86,8 @@ export function planEnvironmentalWear(site:Site):WearMark[]{
    clamp(anchor.y,room.y+depth/2,room.y+room.h-depth/2):threshold?
    clamp((threshold.a.y+threshold.b.y)/2,room.y+depth/2,room.y+room.h-depth/2):
    room.y+dy;
-  const opacity=site.condition==='disturbed'?.2:site.condition==='neglected'?.15:.09;
+  const opacity=continuous?Math.min(.52,.09+t*.43):
+    site.condition==='disturbed'?.2:site.condition==='neglected'?.15:.09;
   marks.push({id:room.id+':wear:'+i,roomId:room.id,kind,
    x,y,width,depth,rotation:Math.floor(random()*4)*Math.PI/2,opacity});
  }
