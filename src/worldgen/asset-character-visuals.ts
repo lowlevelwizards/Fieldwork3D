@@ -107,25 +107,29 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
  if(['vehicle','sedan','pickup','van','suv'].includes(fixture)){
    const model=fixture==='vehicle'?'sedan':fixture;
    const pickup=model==='pickup',van=model==='van',suv=model==='suv';
-   const cabTop=H-(van?1.6:2);
-   const cabBottom=van?17.5:18;
+   // Type-specific belt lines and roof heights are more important than trim.
+   const cabTop=van?H*.89:pickup?H*.86:suv?H*.89:H*.80;
+   const cabBottom=van?18:pickup?18.5:suv?18.2:16.8;
    const tireRadius=Math.min(d*.177,8.3);
    const paint=ctx.solid(
      variation===0?0x667f76:variation===1?0xb39a6c:0x946e5e,.82,'metal');
    const trim=ctx.solid(0x77807b,.72,'metal');
    // Lower sill, separate nose and tail heights establish the front (+X).
-   b(0,10.7,0,w*.94,11.4,d*.91,paint);
+   // One coherent chassis profile; cut corners separate deck and bonnet
+   // without replacing the vehicle with a dense rounded mesh.
+   prism([[-w*.465,6.7],[-w*.465,14.2],[-w*.34,17],
+     [w*.29,17],[w*.465,13.2],[w*.465,6.7]],d*.89,paint);
    b(0,5.5,0,w*.90,4,d*.77,dark);
    b(w*.35,17.2,0,w*.24,6,d*.82,paint);
    if(!pickup)b(-w*.35,16.3,0,w*.23,5.2,d*.83,paint);
    wheels([-w*.31,w*.31],tireRadius);
    // Four-point sloped cabin profile: sedan = low arch, van = squared box,
    // pickup = short passenger compartment and an OPEN rear load bed.
-   const rear=pickup?w*.00:van?-w*.43:suv?-w*.35:-w*.30;
-   const rearRoof=pickup?w*.10:van?-w*.35:suv?-w*.30:-w*.18;
-   const frontRoof=pickup?w*.34:van?w*.25:suv?w*.20:w*.10;
-   const front=pickup?w*.42:van?w*.39:suv?w*.31:w*.28;
-   const cabinWidth=d*(van?.80:.73);
+   const rear=pickup?-w*.03:van?-w*.425:suv?-w*.36:-w*.30;
+   const rearRoof=pickup?w*.04:van?-w*.355:suv?-w*.285:-w*.155;
+   const frontRoof=pickup?w*.27:van?w*.205:suv?w*.19:w*.105;
+   const front=pickup?w*.38:van?w*.325:suv?w*.30:w*.275;
+   const cabinWidth=d*(van?.82:suv?.77:.72);
    prism([[rear,cabBottom],[front,cabBottom],
      [frontRoof,cabTop],[rearRoof,cabTop]],cabinWidth,paint);
    // Glazing is actually inset into the angled cabin sides, not entire box
@@ -154,6 +158,14 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
      };
      emit(frontGlass);
      if(!pickup&&!van)emit(rearGlass);
+     // Painted B pillar is deliberately on top of glazing and never floating.
+     if(!pickup&&!van)b(midX, (bottomY+upperY)*.5,side+
+       sign*.65,1.8,upperY-bottomY+2,1.4,paint,false);
+     if(van){
+       // Cargo van: glazing belongs only to passenger compartment.
+       b(-w*.15,(bottomY+upperY)*.5,side+sign*.65,w*.36,
+         upperY-bottomY+2,1.2,paint,false);
+     }
      // Chunky door seams, lower rub rail, handle and outward mirrors.
      const doorAt=pickup?w*.20:van?w*.13:0;
      b(doorAt,cabBottom*.73,sign*d*.455,1.1,9,1.3,dark,false);
@@ -176,6 +188,8 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
    b(w*.49,10.1,0,3.4,4,d*.92,trim,false);
    b(-w*.49,10.0,0,3.4,4,d*.90,trim,false);
    b(w*.482,14,0,2.3,3.8,d*.42,dark,false); // front grille
+   b(w*.48,19,0,w*.11,1.3,d*.70,paint,false); // defined hood edge
+   if(!van)b(-w*.45,17,0,w*.095,2,d*.78,paint,false); // rear deck seam
    b(-w*.486,13.8,0,2,3.5,d*.32,dark,false); // licence plate
    for(const sign of [-1,1]){
      b(w*.489,16,sign*d*.32,1.7,3.3,d*.21,cream,false);
@@ -187,6 +201,7 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
      for(const sign of [-1,1])
        b(-w*.28,17.5,sign*d*.41,w*.40,8.5,2.7,paint);
      b(-w*.485,17,0,3.1,8,d*.84,paint);
+     b(-w*.486,18,0,3.4,1.8,d*.76,dark,false); // functional tailgate seam
      if(variation===1)
        b(-w*.35,22,0,w*.20,8,d*.05,trim,false); // service crossbar
    }else if(van){
@@ -197,6 +212,10 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
        b(-w*.31,H*.48,sign*d*.437,5,2.1,1.1,trim,false);
      }
      b(-w*.42,H*.59,0,3,H*.49,d*.70,trim,false);
+     // Cargo hatch seams and roof reinforcement break the monolithic slab.
+     for(const x of [-w*.28,-w*.04])
+       b(x,cabTop+.55,0,1.6,1.1,d*.73,trim,false);
+     b(-w*.43,H*.56,0,2.0,H*.50,d*.70,dark,false);
      if(variation===2)b(-w*.09,H+.15,0,w*.25,1.3,d*.39,cream,false);
    }else if(suv){
      // Overland/ranger SUV: rack rails and spare wheel on rear hatch.
@@ -204,6 +223,7 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
        b(0,H-1,sign*d*.29,w*.57,2.3,2.5,dark,false);
      for(const x of [-w*.25,w*.15])b(x,H,0,2.5,1.5,d*.62,trim,false);
      cyl(-w*.491,15,0,tireRadius*.68,2.4,rubber,'x');
+     b(-w*.45,H*.52,0,2.3,H*.35,d*.64,trim,false); // rear hatch definition
    }else if(variation===1){
      // Occasional service / taxi sedan, without changing the chassis.
      b(0,cabTop+1.2,0,12,2.6,5.5,accent,false);
