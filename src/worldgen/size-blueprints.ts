@@ -64,7 +64,12 @@ export function sizedBlueprint(kind:BuildingArchetype,seed:number,
  const extras=LARGE_EXTRA[kind];
  const row=medium.widths.map((_,col)=>{
   const previous=medium.cells[0][col];
-  return previous===null?null:previous==='hallway'?'hallway':extras[col%extras.length];
+  if(previous===null)return null;
+  // Preserve an existing narrow corridor spine, but never stamp a corridor
+  // role into a column that is dimensioned for a full room.
+  if(previous==='hallway')return 'hallway';
+  const role=extras[col%extras.length];
+  return role==='hallway'?'storage':role;
  });
  const extraDepth=kind==='motel'?145:kind==='warehouse'||kind==='garage'?157:127;
  return {...medium,family:medium.family+' / larger program',
