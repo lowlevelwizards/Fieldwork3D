@@ -18,5 +18,5 @@ test('Map Lab exposes current physical scale profiles and forwards the selected 
  assert.match(code,/const candidate=generateSite\(\(starting\+step\)>>>0,/);
  assert.match(code,/session=newSession\(0,chosen.seed,'floor-plan',/);
  assert.match(code,/siteScale\(\)/);
- assert.match(code,/scaleInput.addEventListener\('change'/);
+ assert.ok(code.includes("el<HTMLButtonElement>('generate').addEventListener('click',()=>generate())"));
 });
