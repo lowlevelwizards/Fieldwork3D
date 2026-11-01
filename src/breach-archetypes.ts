@@ -77,8 +77,11 @@ export function applyArchetype(site:Site,seed:number):Site{
     });
     const architecture=styleArchitecturalDoors(
       addOpenPlanTransitions({...site,archetype,rooms,cover},seed),seed);
+    // Physical facade openings, sills and exterior obstructions exist before
+    // furnishing, so room equipment cannot occupy their clearance envelope.
+    const environment=buildArchetypeEnvironment(architecture,seed);
     const result=dressWindowSecurity(decorateWalls(populateFunctionalRooms(dressSite(
-      buildArchetypeEnvironment(furnishRooms(architecture,seed),seed),seed),seed),seed),seed);
+      furnishRooms(environment,seed),seed),seed),seed),seed);
     return {...result,bounds:site.bounds??
       {minX:0,minY:0,maxX:640,maxY:740}};
   };
