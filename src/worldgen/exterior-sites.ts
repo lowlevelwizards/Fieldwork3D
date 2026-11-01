@@ -4,6 +4,7 @@
 import {type Site,type ExteriorZone,seeded} from '../breach-site.ts';
 import {type Obstacle,type Pt} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
+import {overlapsArrivalLane} from './property-access-lane.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const overlaps=(a:Obstacle,b:Obstacle)=>Math.abs(a.x-b.x)<(a.w+b.w)/2+17&&Math.abs(a.y-b.y)<(a.h+b.h)/2+17;
 export function addExteriorProperty(site:Site,seed:number):Site{
@@ -38,9 +39,14 @@ export function addExteriorProperty(site:Site,seed:number):Site{
     side==='west'?minX-bounds.minX:bounds.maxX-maxX;
   if(gap<32)return;
   const thickness=Math.min(maxLength,Math.max(24,gap-18));
-  const c=side==='north'?minY-gap/2:
-    side==='south'?maxY+gap/2:
-    side==='west'?minX-gap/2:maxX+gap/2;
+  // Arrival pavement starts at the facade, not floating halfway across
+  // a deep setback; the actual public door must meet its outside approach.
+  const nearFacade=id==='arrival-forecourt';
+  const inset=7;
+  const c=side==='north'?minY-(nearFacade?thickness/2+inset:gap/2):
+    side==='south'?maxY+(nearFacade?thickness/2+inset:gap/2):
+    side==='west'?minX-(nearFacade?thickness/2+inset:gap/2):
+    maxX+(nearFacade?thickness/2+inset:gap/2);
   zones.push({id,kind:zoneKind,
     x:horizontal?middleX:c,y:horizontal?c:middleY,
     w:horizontal?width:thickness,h:horizontal?thickness:depth});
@@ -131,6 +137,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
       y+h/2>r.y&&y-h/2<r.y+r.h))continue;
     if(protectedPoints.some(p=>Math.abs(p.x-x)<w/2+32&&Math.abs(p.y-y)<h/2+32))continue;
     if(site.doors.some(d=>distance({x,y},{x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2})<68))continue;
+    if(overlapsArrivalLane(site,zone,candidate))continue;
     if(cover.some(o=>overlaps(o,candidate)))continue;
     cover.push(candidate);accepted=true;break;
    }
