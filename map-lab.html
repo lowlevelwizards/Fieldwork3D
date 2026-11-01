@@ -23,6 +23,8 @@ button:disabled{opacity:.47;cursor:default}
 #encounterInspector summary{font-weight:700;cursor:pointer;touch-action:manipulation}
 #encounterDetails{max-height:210px;overflow:auto;white-space:pre-wrap;font:11px/1.45 ui-monospace,monospace;color:#f0d7b0;touch-action:pan-y}
 #labels .enemy-label{background:#674c34de;border-color:#dcb079;color:#ffe8bc}
+#labels .quality-risk{background:#6b4935e8;border-color:#e6ab78;color:#fff0d2}
+#labels .quality-space{background:#4a5742e8;border-color:#b6bb84;color:#f0f1cf}
 #functionalQuality{border:1px solid #58766b;border-radius:6px;padding:7px 9px;touch-action:pan-y}
 #functionalQuality summary{font-weight:700;cursor:pointer;touch-action:manipulation}
 #functionalSummary{padding:7px 0;color:#cdd9cf}
@@ -48,6 +50,7 @@ button:disabled{opacity:.47;cursor:default}
  <div class="row"><button id="iso">ISO</button><button id="top">TOP</button><button id="fit">FIT</button>
   <label><input id="rooms" type="checkbox" checked> Rooms</label>
   <label><input id="needs" type="checkbox" checked> Missing essentials</label>
+  <label><input id="qualityOverlay" type="checkbox"> QA overlay</label>
   <label><input id="cover" type="checkbox"> Cover</label>
   <label><input id="facing" type="checkbox"> Facing</label>
   <label><input id="doors" type="checkbox"> Doors</label>
