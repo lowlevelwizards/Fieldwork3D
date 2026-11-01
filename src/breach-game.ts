@@ -41,7 +41,7 @@ import {newAwareness,addObservation,visibleObservation,
  ageAwareness,clearObservedPosition,bestBelief,
  type ActorAwareness} from './breach-awareness.ts';
 import {visualGain,advanceSight,confirmedSight} from './breach-visual-perception.ts';
-import {doorContactImpulse,passageWait,type PassageActor}
+import {doorContactImpulse,passageWait,type PassageActor,type PassageLease}
   from './breach-passage.ts';
 import {diagnoseMovement,projectReachableGoal,type Blocker}
   from './breach-nav-diagnostics.ts';
@@ -133,7 +133,8 @@ export type KnownContact={p:Pt;at:number;status:'seen'|'heard'};
 export type MissionStage='clear'|'secure'|'extract'|'done';
 export type Scenario={index:number;name:string;objective:Pt;extract:Pt};
 export type Session=Omit<TacticalState,'operators'> & {
-  operators:TeamActor[];variant:number;scenario:Scenario;
+  operators:TeamActor[];passageLeases:Record<string,PassageLease>;
+  variant:number;scenario:Scenario;
   mission:MissionStage;nextId:number;noise:NoiseEvent[];nextNoiseId:number;
   reports:TacticalReport[];nextReportId:number;
   shots:ShotEvent[];casings:EjectedCasing[];nextShotId:number;
@@ -257,7 +258,8 @@ export function newSession(index=0,siteSeed?:number,
     a.spareMagazines=magazineKit(a.id,a.weapon,a.reserve,
       WEAPONS[a.weapon].capacity);
   });
-  const state:Session={...seed,operators,doors:initialDoors().map(initDoor),variant,nextId:1,
+  const state:Session={...seed,operators,passageLeases:{},
+    doors:initialDoors().map(initDoor),variant,nextId:1,
     scenario:{index:variant,name:site?.name??sample.name,
       objective:clone(site?.objective??OBJECTIVE),
       extract:clone(site?.extract??EXTRACTION)},
@@ -1249,7 +1251,8 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     active:unit===a||unit.nav.length>0||
       unit.plan.some(n=>n.kind==='move'||n.kind==='door'||n.kind==='pie'),
   }));
-  if(passageWait(traffic.find(unit=>unit.id===a.id)!,s.doors,traffic)){
+  if(passageWait(traffic.find(unit=>unit.id===a.id)!,s.doors,
+     traffic,s.passageLeases,s.seconds)){
     a.velocity=0;a.blockedTime=0;
     return true;
   }
