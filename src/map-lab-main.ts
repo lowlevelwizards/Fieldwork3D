@@ -11,6 +11,12 @@ const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const typeInput=el<HTMLSelectElement>('building');
 const scaleInput=el<HTMLSelectElement>('scale');
 const seedInput=el<HTMLInputElement>('seed');
+const conditionInput=el<HTMLInputElement>('condition');
+const conditionValue=el<HTMLOutputElement>('conditionValue');
+const conditionParam=new URLSearchParams(location.search).get('condition');
+let selectedCondition=conditionParam!==null&&Number.isFinite(Number(conditionParam))?
+  Math.max(0,Math.min(100,Number(conditionParam))):50;
+conditionInput.value=String(selectedCondition);
 const playSite=el<HTMLAnchorElement>('playSite');
 const status=el<HTMLOutputElement>('info');
 const labelLayer=el<HTMLDivElement>('labels');
@@ -28,6 +34,22 @@ typeInput.value=session.site?.archetype??'house';
 const stage=new TacticalScene3D();
 stage.setMode('iso');stage.view.zoom=1.25;
 let markers:{node:HTMLElement;p:Pt}[]=[];
+const conditionLabel=(n:number)=>n<20?'PRISTINE':n<40?'LIVED-IN':
+  n<60?'WORN':n<80?'NEGLECTED':'DECREPIT';
+function previewCondition(){
+ const site=session.site;if(!site)return;
+ const view={...stage.view,focus:{...stage.view.focus}};
+ stage.applySite({...site,conditionLevel:selectedCondition});
+ Object.assign(stage.view,view);
+ conditionValue.textContent=selectedCondition+' / 100 · '+conditionLabel(selectedCondition);
+}
+let conditionTimer:ReturnType<typeof setTimeout>|null=null;
+conditionInput.addEventListener('input',()=>{
+ selectedCondition=Number(conditionInput.value);
+ conditionValue.textContent=selectedCondition+' / 100 · '+conditionLabel(selectedCondition);
+ if(conditionTimer!==null)clearTimeout(conditionTimer);
+ conditionTimer=setTimeout(()=>{conditionTimer=null;previewCondition();},90);
+});
 function updateLabels(){
  labelLayer.replaceChildren();markers=[];
  const site=session.site;if(!site)return;
@@ -108,13 +130,14 @@ function generate(advance=false){
  if(!chosen){status.textContent='No matching configuration in the current generator range.';return;}
  seedInput.value=String(chosen.seed);
  playSite.href='./breach.html?seed='+chosen.seed+
-   (siteScale()==='standard'?'':'&scale='+siteScale());
+   (siteScale()==='standard'?'':'&scale='+siteScale())+
+   '&condition='+selectedCondition;
  session=newSession(0,chosen.seed,'floor-plan',
    siteScale());
- stage.applySite(session.site??null);stage.resetCamera();
+ stage.applySite({...session.site!,conditionLevel:selectedCondition});stage.resetCamera();
  history.replaceState(null,'','?seed='+chosen.seed+
-  (siteScale()==='expanded'?'&scale=expanded':''));
- status.textContent=report(session.site!);
+  (siteScale()==='standard'?'':'&scale='+siteScale())+'&condition='+selectedCondition);
+ status.textContent=report(session.site!)+'\nVISUAL CONDITION: '+selectedCondition+' / 100';
  updateLabels();
 }
 el<HTMLButtonElement>('generate').addEventListener('click',()=>generate());
@@ -152,7 +175,8 @@ document.body.addEventListener('pointercancel',stop);
 window.addEventListener('wheel',e=>{e.preventDefault();stage.zoomAt(Math.exp(-e.deltaY*.001),e.clientX,e.clientY);},{passive:false});
 window.addEventListener('resize',()=>stage.resize(innerWidth,innerHeight));
 status.textContent=describe(session.site!);
-playSite.href='./breach.html?seed='+session.site!.seed;
+playSite.href='./breach.html?seed='+session.site!.seed+'&condition='+selectedCondition;
+previewCondition();
 updateLabels();
 let last=performance.now();
 function frame(now:number){

@@ -1,5 +1,5 @@
 import {
-  W,H,activeWorldBounds,WALLS,COVER,GRID,doorCenter,doorLeafSegment,type Pt,
+  W,H,activeWorldBounds,WALLS,COVER,GRID,doorCenter,doorLeafSegment,activateSite,type Pt,
 } from './breach-core.ts';
 import {
   type Session,type TeamActor,
@@ -150,6 +150,15 @@ const requestedSeed=Number(startupParams.get('seed'));
 const initialSiteSeed=startupParams.has('seed')&&Number.isSafeInteger(requestedSeed)&&
  requestedSeed>0&&requestedSeed<=0xffffffff?requestedSeed:randomSiteSeed();
 let selectedIntelMode:IntelMode='floor-plan';
+const requestedConditionParam=startupParams.get('condition');
+const requestedCondition=requestedConditionParam!==null&&
+  Number.isFinite(Number(requestedConditionParam))?
+  Math.max(0,Math.min(100,Number(requestedConditionParam))):null;
+function applyRequestedCondition(session:Session){
+  if(requestedCondition===null||!session.site)return;
+  session.site={...session.site,conditionLevel:requestedCondition};
+  activateSite(session.site);
+}
 const requestedScaleParam=startupParams.get('scale');
 let requestedSiteScale:SiteScale=
   ['standard','expanded','small','medium','large'].includes(requestedScaleParam??'')?
@@ -194,6 +203,7 @@ function applyCampaignSkills(){
 }
 let state:Session=newSession(0,legacyStudy?undefined:initialSiteSeed,
   selectedIntelMode,requestedSiteScale);
+applyRequestedCondition(state);
 applyRosterIdentity(state,persistentRoster);
 applyCampaignSkills();
 let recorder=new MissionRecorder();recorder.capture(state,true);
@@ -1920,6 +1930,7 @@ function enterReplay(){
   ui.replayExtra.hidden=true;ui.replayMore.setAttribute('aria-expanded','false');
   state=newSession(finishedSession.variant,finishedSession.site?.seed,
     finishedSession.intel.mode,finishedSession.site?.scale??'standard');
+  applyRequestedCondition(state);
   applyRosterIdentity(state,persistentRoster);
   stage?.applySite(state.site??null);
   document.body.classList.add('replaying');
@@ -1990,6 +2001,7 @@ function reset(next=state.variant,siteSeed?:number,missionOverride?:Session['mis
   ui.replayPanel.hidden=true;
   state=newSession(next,legacyStudy?undefined:
     siteSeed??randomSiteSeed(),selectedIntelMode,requestedSiteScale,missionOverride);
+  applyRequestedCondition(state);
   applyRosterIdentity(state,persistentRoster);
   applyCampaignSkills();
   flashDoorId=null;
