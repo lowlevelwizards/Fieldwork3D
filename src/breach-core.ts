@@ -6,7 +6,9 @@
 import {type Site} from './breach-site.ts';
 export type Pt={x:number;y:number};
 export type Segment={a:Pt;b:Pt};
+export type DoorStyle='wood'|'steel'|'reinforced'|'exit';
 export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number;
+  style?:DoorStyle;
   /** Mechanical closure with vertical lift; routes and shots respect shutter state. */
   kind?:'hinged'|'shutter';
   pairedWith?:string;

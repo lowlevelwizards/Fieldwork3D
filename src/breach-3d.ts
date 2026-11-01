@@ -400,9 +400,27 @@ export class TacticalScene3D{
           this.box(leaf,0,y,0,length-3,4.7,4,metal,false);
         this.box(frame,0,42,0,length+10,9,13,metal,false);
       }else{
-        this.box(leaf,(invert?-1:1)*length/2,17,0,length-4,34,4,doorMat);
+        const style=door.style??'wood';
+        const panel=style==='wood'?doorMat:style==='exit'?
+          this.solid(0x996c53):style==='reinforced'?
+          this.solid(0x53615e):this.solid(0x72817d);
+        const middle=(invert?-1:1)*length/2;
+        this.box(leaf,middle,17,0,length-4,34,4,panel);
         for(const z of [-3,3])this.box(leaf,(invert?-1:1)*length*.7,
           18,z,3,3,2,metal,false);
+        if(style==='steel'||style==='reinforced'){
+          for(const y of style==='reinforced'?[6,17,28]:[8,28])
+            this.box(leaf,middle,y,2.5,length*.78,2.2,1.2,metal,false);
+        }
+        if(style==='reinforced')
+          for(const x of [-length*.30,length*.30])
+            this.box(leaf,middle+x,17,2.5,2,30,1.4,metal,false);
+        if(style==='exit'){
+          const bar=this.solid(0xc5ad88);
+          this.box(leaf,middle,18,3.6,length*.75,2.2,3.2,bar,false);
+          for(const x of [-length*.29,length*.29])
+            this.box(leaf,middle+x,16.5,4,2,4,3.1,metal,false);
+        }
       }
       const halo=doorSweepArc(door,length);
       root.add(halo);
