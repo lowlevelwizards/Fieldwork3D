@@ -8,11 +8,11 @@ import {relatedFurniturePositions} from './room-composition.ts';
 import {orientFurnishings} from './prop-orientation.ts';
 import {ROOM_CONTRACTS} from './room-contracts.ts';
 import {recoverRoomEssentials} from './room-essential-recovery.ts';
-type Anchor='nw'|'ne'|'sw'|'se'|'west'|'east';
+type Anchor='nw'|'ne'|'sw'|'se'|'west'|'east'|'center';
 type Item={id:string;anchor:Anchor};
 const compositions:Record<string,readonly Item[]>={
  studio:[{id:'bed',anchor:'nw'},{id:'sofa',anchor:'se'}],
- dining:[{id:'dining-table',anchor:'west'},{id:'chair',anchor:'se'}],
+ dining:[{id:'dining-table',anchor:'center'},{id:'chair',anchor:'se'}],
  study:[{id:'desk',anchor:'nw'},{id:'bookcase',anchor:'se'}],
  'garage-storage':[{id:'shelf',anchor:'nw'},{id:'tire-stack',anchor:'se'}],
  sales:[{id:'gondola-shelf',anchor:'nw'},{id:'gondola-shelf',anchor:'se'}],
@@ -32,8 +32,8 @@ const compositions:Record<string,readonly Item[]>={
  reception:[{id:'desk',anchor:'nw'},{id:'chair',anchor:'se'}],
  office:[{id:'desk',anchor:'nw'},{id:'filing-cabinet',anchor:'se'}],
  cubicles:[{id:'desk',anchor:'nw'},{id:'desk',anchor:'se'}],
- meeting:[{id:'meeting-table',anchor:'west'}],
- break:[{id:'dining-table',anchor:'west'},{id:'counter',anchor:'se'}],
+ meeting:[{id:'meeting-table',anchor:'center'}],
+ break:[{id:'dining-table',anchor:'center'},{id:'counter',anchor:'se'}],
  storage:[{id:'shelf',anchor:'nw'},{id:'crate',anchor:'se'}],
  utility:[{id:'shelf',anchor:'nw'}],
  laundry:[{id:'laundry-machine',anchor:'nw'},{id:'shelf',anchor:'se'}],
@@ -80,6 +80,7 @@ function position(room:Room,w:number,h:number,side:Anchor):Pt{
  const top=room.y+h/2+13,bottom=room.y+room.h-h/2-13;
  const midY=(top+bottom)/2;
  switch(side){
+ case 'center':return {x:room.x+room.w/2,y:room.y+room.h/2};
  case 'nw':return {x:left,y:top};
  case 'ne':return {x:right,y:top};
  case 'sw':return {x:left,y:bottom};
