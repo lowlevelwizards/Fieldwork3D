@@ -2310,8 +2310,6 @@ function fire(s:Session,a:TeamActor,dt:number){
   emitMaterialEvents(s,muzzlePoint,far,strike.materialHits,
     hit?fractionToTarget:1);
   const end=hit?clone(target.p):strike.end;
-  const impact=hit?{end,surface:protection.blocked&&severity===0?
-    'metal' as const:'blood' as const}:strike;
   a.recoil=Math.min(.9,a.recoil+profile.recoilKick*
     (a.burstCount>2?1.20:1)*
     (2-skillMultiplier(a.skills.recoilControl,.42)));
@@ -2332,6 +2330,8 @@ function fire(s:Session,a:TeamActor,dt:number){
   const healthAfter=hit?
     (s.site?nextStage>=3?0:4-nextStage:Math.max(0,healthBefore-1)):
     healthBefore;
+  const impact=hit?{end,surface:protection.blocked&&severity===0?
+    'metal' as const:'blood' as const}:strike;
   s.sparks.push({p:clone(a.p),side:a.side,age:0});
   // Immutable shot identity lets 2D/3D attach recoil and damage effects to
   // the correct actors without guessing from proximity or team color.
