@@ -685,7 +685,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.elbowSpread[i]=Math.max(0,
       sign*(solved.joint.z-shoulder.z));
     arm.bend.copy(solved.bendPlane);
-    arm.outOfReach=!reachable||!solved.reached;
+    arm.outOfReach=!reachable||!solved.reached||
+      (i===0&&reaching&&contactDistance>19.92);
     if(!releaseLeft&&i===0)r.gripError=Math.max(r.gripError,
       desired.distanceTo(solved.effector));
     if(i===1&&!p.surrender)r.gripError=Math.max(r.gripError,
