@@ -21,7 +21,6 @@ import {weaponClearance} from './breach-weapon-clearance.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter}
  from './equipment-weapon-light-beam.ts';
 import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
-import {kitMedicalSupplies} from './equipment-medical-supplies.ts';
 import {mostUrgentWound} from './breach-medical-wounds.ts';
 import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
 import {lightControlState} from './equipment-weapon-light-ui.ts';
@@ -56,7 +55,7 @@ import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
  sameWeaponConfiguration,type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
 import {newCampaign,readCampaign,acceptContract,resolveOperation,
- purchaseAmmo,purchaseMedical,resupplyOperator,treatOperator,
+ purchaseAmmo,purchaseMedical,resupplyOperator,resupplyMedicalOperator,treatOperator,
  hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
  retireOperator,equipCampaignGear,moveCampaignMagazine,
  equipCampaignWeaponAttachment,purchaseAndEquipWeaponAttachment,
@@ -235,7 +234,7 @@ function applyCampaignSkills(){
    a.appearanceSeed=m.appearanceSeed;
    a.equipment=m.loadout;
     a.weaponConfiguration=m.weaponConfiguration;
-    a.medicalSupplies=kitMedicalSupplies(m.loadout);
+    a.medicalSupplies={...m.medicalSupplies};
     a.weaponLightOn=m.weaponConfiguration.slots.light==='light-compact';
    a.flashCharges=equippedFlashCharges(m.loadout);
    const protection=initialArmorIntegrity(m.loadout);
@@ -289,6 +288,8 @@ function recordCompletedOperation(){
     stabilizedIds:stats.stabilizedCasualties.map(careerId),
     criticalIds:stats.criticalCasualties.map(careerId),
     evacuatedIds:stats.evacuatedCasualties.map(careerId),
+    medicalRemaining:Object.fromEntries(members.map(a=>[
+     careerId(a.id),{...a.medicalSupplies}])),
     objective:stats.objective,
     flashUsed:state.battleEvents.filter(e=>e.kind==='flash'&&
      e.actor!==undefined&&e.text.endsWith('FLASH OUT')).length,
@@ -2385,6 +2386,8 @@ const campaignScreen=new CampaignScreen({
  buyMedical:()=>{if(campaign){campaign=purchaseMedical(campaign);saveCampaign();showCampaignHome();}},
  buyFlash:()=>{if(campaign){campaign=purchaseFlash(campaign);saveCampaign();showCampaignHome();}},
  resupply:(id)=>{if(campaign){campaign=resupplyOperator(campaign,id);saveCampaign();showCampaignHome();}},
+ resupplyMedical:(id)=>{if(campaign){
+  campaign=resupplyMedicalOperator(campaign,id);saveCampaign();showCampaignHome();}},
  treat:(id)=>{if(campaign){campaign=treatOperator(campaign,id);saveCampaign();showCampaignHome();}},
  recruit:()=>{if(campaign){campaign=hireRecruit(campaign);saveCampaign();showCampaignHome();}},
  assignSlot:(slot,id)=>{if(campaign){campaign=assignOperatorToSlot(campaign,slot,id);

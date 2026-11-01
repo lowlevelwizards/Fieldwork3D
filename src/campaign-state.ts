@@ -20,6 +20,8 @@ import {initialWeaponConfiguration,readWeaponConfiguration,changeWeaponPlatform,
  from './equipment-weapon-assemblies.ts';
 import {attachmentPrice,readAttachmentStock,returnAttachments}
  from './equipment-weapon-inventory.ts';
+import {kitMedicalSupplies,normalizedMedicalSupplies,medicalSupplyCount,
+ type FieldMedicalSupplies} from './equipment-medical-supplies.ts';
 
 export type SkillName=keyof ShootingSkills;
 export const SKILL_NAMES:SkillName[]=['pointShooting','longRange','precision','recoilControl','composure','handling'];
@@ -32,6 +34,7 @@ export type CampaignOperator={
  status:'available'|'reserve'|'lost'|'retired';weapon:'carbine'|'smg'|'rifle'|'shotgun';
  magazine:number;reserve:number;shotsFired:number;joinedDay:number;
  loadout:EquipmentLoadout;armorCondition:ArmorIntegrity;
+ medicalSupplies:FieldMedicalSupplies;
  weaponConfiguration:WeaponConfiguration;
  magazines:MagazineItem[];loadedMagazineId:string;
 };
@@ -48,6 +51,7 @@ export type CampaignReport={
  performance?:OperatorPerformance[];gains?:SkillGains[];
  flashUsed?:number;
  stabilizedIds?:string[];criticalIds?:string[];evacuatedIds?:string[];
+ medicalRemaining?:Record<string,FieldMedicalSupplies>;
 };
 export type CampaignState={
  version:1;id:string;seed:number;day:number;funds:number;
@@ -93,6 +97,7 @@ export function startingOperator(id:string,i:number,seed:number):CampaignOperato
     magazineKit(id,weapon,reserve,COMBAT_WEAPONS[weapon].capacity),
    loadedMagazineId:id+'/'+weapon+'/loaded',
    loadout:initialEquipmentLoadout(weapon),
+   medicalSupplies:kitMedicalSupplies(initialEquipmentLoadout(weapon)),
    weaponConfiguration:initialWeaponConfiguration(weapon),
    armorCondition:initialArmorIntegrity(initialEquipmentLoadout(weapon))};
 }
@@ -135,6 +140,7 @@ export function migrateLegacyRoster(campaign:CampaignState,legacy:RosterState):C
    missions:old.missions,successful:old.successful,injuries:old.injuries,
    recoveryDays:old.recovery,weapon:old.weapon,
     loadout:initialEquipmentLoadout(old.weapon),
+    medicalSupplies:kitMedicalSupplies(initialEquipmentLoadout(old.weapon)),
     weaponConfiguration:readWeaponConfiguration(old.weaponConfiguration,old.weapon),
     magazine:old.magazine,
    reserve:old.reserve,shotsFired:old.fired,
@@ -182,6 +188,8 @@ export function readCampaign(raw:string|null):CampaignState|null{
      readPersistentMagazines(o.id,o.weapon,o.reserve,
       (o as {magazines?:unknown}).magazines)),
    loadout:readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon),
+   medicalSupplies:normalizedMedicalSupplies((o as {medicalSupplies?:unknown}).medicalSupplies,
+    kitMedicalSupplies(readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon))),
     weaponConfiguration:readWeaponConfiguration(
      (o as {weaponConfiguration?:unknown}).weaponConfiguration,o.weapon),
    armorCondition:normalizedArmorCondition((o as {armorCondition?:unknown}).armorCondition,
@@ -232,7 +240,9 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   if(performance?.injuryStage)careerEvents.push({id:r.id+'-'+o.id+'-wound',
    day:c.day,operatorId:o.id,operationId:r.id,kind:'wounded',
    detail:'Wounded during '+contract.title});
-  const base={...o,missions:o.missions+1,
+  const base={...o,medicalSupplies:r.medicalRemaining?.[o.id]?
+   normalizedMedicalSupplies(r.medicalRemaining[o.id],kitMedicalSupplies(o.loadout)):
+   o.medicalSupplies,missions:o.missions+1,
    successful:o.successful+(r.outcome==='success'?1:0),
    recoveryDays:Math.max(0,o.recoveryDays-1,
     casualties.has(o.id)?(r.stabilizedIds===undefined?2:
@@ -310,6 +320,17 @@ export function treatOperator(c:CampaignState,id:string):CampaignState{
    const recoveryDays=Math.max(0,m.recoveryDays-2);
    return {...m,recoveryDays,injuries:recoveryDays===0?0:m.injuries};
   })};
+}
+/** A purchased HQ medical pack replenishes one operator; no free refill. */
+export function resupplyMedicalOperator(c:CampaignState,id:string):CampaignState{
+ if(c.activeContractId||c.supplies.medical<=0)return c;
+ const o=c.operators.find(m=>m.id===id&&m.status!=='lost'&&m.status!=='retired');
+ if(!o)return c;
+ const capacity=kitMedicalSupplies(o.loadout);
+ if(medicalSupplyCount(capacity)===0||
+    medicalSupplyCount(o.medicalSupplies)>=medicalSupplyCount(capacity))return c;
+ return {...c,supplies:{...c.supplies,medical:c.supplies.medical-1},
+  operators:c.operators.map(m=>m.id===id?{...m,medicalSupplies:capacity}:m)};
 }
 export function resupplyOperator(c:CampaignState,id:string):CampaignState{
  if(c.activeContractId)return c;
@@ -447,6 +468,7 @@ export function equipCampaignGear(c:CampaignState,id:string,slot:LoadoutSlot,
  const next=setEquipmentChoice(o.loadout,slot,itemId);
  if(next===o.loadout)return c;
  return {...c,operators:c.operators.map(m=>m.id===id?{...m,loadout:next,
+  medicalSupplies:normalizedMedicalSupplies(m.medicalSupplies,kitMedicalSupplies(next)),
   magazines:stageMagazines(m.magazines,next),
   armorCondition:clampArmorToKit(m.armorCondition,next)}:m)};
 }
@@ -489,6 +511,8 @@ export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string
   operators:swapped.operators.map(o=>o.id===id?{
    ...o,weaponConfiguration:desired,
    loadout:readEquipmentLoadout(preset.kit,preset.weapon),
+   medicalSupplies:normalizedMedicalSupplies(o.medicalSupplies,
+    kitMedicalSupplies(readEquipmentLoadout(preset.kit,preset.weapon))),
    magazines:stageMagazines(o.magazines,preset.kit),
    armorCondition:clampArmorToKit(o.armorCondition,preset.kit)}:o)};
 }
