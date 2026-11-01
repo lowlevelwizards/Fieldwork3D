@@ -1,6 +1,6 @@
 /** Campaign screens. Render only on navigation and state changes, never per frame. */
 import type {CampaignState,Contract} from './campaign-state.ts';
-import {SKILL_NAMES,WEAPON_PRICES,armorRepairCost} from './campaign-state.ts';
+import {SKILL_NAMES,WEAPON_PRICES,armorRepairCost,weaponServiceCost} from './campaign-state.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {sharedService} from './campaign-history.ts';
 import {LOADOUT_SLOTS,itemsForSlot,itemDefinition} from './equipment-catalog.ts';
@@ -29,7 +29,7 @@ export type CampaignHandlers={
  equipGear:(id:string,slot:LoadoutSlot,itemId:string)=>void;
  equipAttachment:(id:string,slot:WeaponAttachmentSlot,partId:string,acquire:boolean)=>void;
  moveMagazine:(id:string,magazineId:string,location:MagazineLocation)=>void;
- repairArmor:(id:string)=>void;
+ repairArmor:(id:string)=>void;serviceWeapon:(id:string)=>void;
  saveKitPreset:(id:string,name:string)=>void;
  applyKitPreset:(id:string,presetId:string)=>void;
  deleteKitPreset:(presetId:string)=>void;
@@ -313,6 +313,11 @@ export class CampaignScreen{
    '    /    RESERVE · '+person.reserve));
   const firearm=c.inventory.serializedWeapons?.find(w=>w.id===person.weaponSerialId);
   if(firearm){
+   const serviceCost=weaponServiceCost(firearm);
+   const service=button('SERVICE WEAPON · '+serviceCost+' CR',
+    ()=>this.handlers.serviceWeapon(person.id));
+   service.disabled=!!c.activeContractId||serviceCost===0||c.funds<serviceCost;
+   summary.append(service);
    summary.append(node('p','campaign-kit-metrics',
     'SERIAL · '+firearm.id+' · CONDITION '+firearm.condition+'% · '+
     firearm.roundsFired+' ROUNDS FIRED'));
