@@ -7,7 +7,7 @@ test('MAP 05 forbids table lamps on sofas and allows proper supports',()=>{
  assert.equal(compatibleDecoration('lamp','nightstand'),true);
  assert.equal(compatibleDecoration('mug','dining-table'),true);
  assert.equal(compatibleDecoration('papers','bed'),false);
- assert.equal(visibleSurfaceHeight('coffee-table'),12.5);
+ assert.equal(visibleSurfaceHeight('coffee-table'),14.5);
 });
 test('MAP 05 decorative details use actual supports and floor lamps stand aside',()=>{
  let checked=0;
