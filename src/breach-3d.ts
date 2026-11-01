@@ -8,6 +8,7 @@ import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surface
 import {planEnvironmentalWear,type WearKind} from './worldgen/environment-wear.ts';
 import {wearPixels} from './rendering/pixel-decals.ts';
 import {pixelSign,type PixelSignKind} from './rendering/pixel-signage.ts';
+import {pixelOverlay,overlayForZone,type PixelOverlay} from './rendering/pixel-overlays.ts';
 import {roofShouldShow} from './worldgen/roof-cutaways.ts';
 import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,activeSite,
   type Pt,type Door} from './breach-core.ts';
@@ -140,6 +141,7 @@ export class TacticalScene3D{
   private readonly wearMaterials=new Map<WearKind,THREE.MeshBasicMaterial>();
   private readonly wearTextures=new Map<WearKind,THREE.DataTexture>();
   private readonly signMaterials=new Map<string,THREE.MeshBasicMaterial>();
+  private readonly groundOverlays=new Map<PixelOverlay,THREE.MeshBasicMaterial>();
   private windowGlass=new Map<string,THREE.Mesh>();
   private coverGroups=new Map<number,THREE.Group>();
   private solid=(hex:number,roughness=.9,surface?:PixelSurface)=>{
@@ -225,6 +227,21 @@ export class TacticalScene3D{
     this.smoothFog.frustumCulled=false;
     this.scene.add(this.smoothFog);
     this.resize(innerWidth,innerHeight);
+  }
+  private groundOverlayMaterial(kind:PixelOverlay){
+    const existing=this.groundOverlays.get(kind);if(existing)return existing;
+    const texture=new THREE.DataTexture(pixelOverlay(kind),32,32,THREE.RGBAFormat);
+    texture.colorSpace=THREE.SRGBColorSpace;
+    texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
+    texture.magFilter=THREE.NearestFilter;
+    texture.minFilter=THREE.LinearMipmapLinearFilter;
+    texture.generateMipmaps=true;texture.needsUpdate=true;
+    const material=new THREE.MeshBasicMaterial({map:texture,
+      color:kind==='mud'?0x655440:kind==='tire'?0x3b403a:0x91806c,
+      transparent:true,opacity:.25,depthWrite:false,polygonOffset:true,
+      polygonOffsetFactor:-1});
+    this.groundOverlays.set(kind,material);this.mats.push(material);
+    return material;
   }
   private signMaterial(kind:PixelSignKind,variant=0){
     const key=kind+':'+(variant%3);
@@ -337,6 +354,13 @@ export class TacticalScene3D{
     for(const zone of site.exteriorZones??[]){
       this.plane(this.root,zone.x,zone.y,zone.w,zone.h,-1.45,
         this.solid(zoneColor[zone.kind],.91,zonePixelSurface(zone.kind)));
+      // One cheap repeated layer per relevant exterior zone, no dynamic allocation.
+      const overlay=overlayForZone(site.condition,zone.kind);
+      if(overlay){
+        const mark=this.plane(this.root,zone.x,zone.y,zone.w,zone.h,-1.42,
+          this.groundOverlayMaterial(overlay));
+        mark.castShadow=false;mark.receiveShadow=false;
+      }
     }
     const surfaceColor:Record<SurfaceKind,number>={
       path:0x919182,'driveway-stripe':0x858575,
