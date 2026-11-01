@@ -5,7 +5,8 @@ import {type Site,type ExteriorZone} from '../breach-site.ts';
 import {arrivalAccessLane} from './property-access-lane.ts';
 import {parkingStallCount} from './parking-stalls.ts';
 export type SurfaceKind='path'|'driveway-stripe'|'parking-divider'|
- 'garden-border'|'service-pad'|'patio-paver'|'drainage-grate';
+ 'garden-border'|'service-pad'|'patio-paver'|'drainage-grate'|
+ 'sidewalk'|'curb-edge'|'curb-ramp'|'crosswalk-stripe';
 export type PropertySurface={
  id:string;zoneId:string;kind:SurfaceKind;
  x:number;y:number;width:number;depth:number;
@@ -25,6 +26,40 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
  };
  for(const zone of site.exteriorZones??[]){
    if(zone.w<16||zone.h<16)continue;
+   // An arrival facade has a pedestrian street edge and an accessible
+   // interruption in the kerb on the line of the actual FRONT door. Surface
+   // markings never block movement, cast cover or alter navigation.
+   if(zone.id==='arrival-forecourt'&&frontCenter){
+     const lane=arrivalAccessLane(site,zone);
+     const vertical=entry==='south'||entry==='north';
+     const streetSign=(entry==='south'||entry==='east')?1:-1;
+     const along=vertical?zone.x:zone.y;
+     const across=vertical?zone.y:zone.x;
+     const span=vertical?zone.w:zone.h;
+     const thickness=vertical?zone.h:zone.w;
+     if(span>=70&&thickness>=35){
+       const edge=across+streetSign*(thickness/2-9);
+       const sidewalk=vertical?
+        {x:along,y:edge,width:span*.92,depth:16}:
+        {x:edge,y:along,width:16,depth:span*.92};
+       add(zone,'sidewalk',sidewalk.x,sidewalk.y,sidewalk.width,sidewalk.depth);
+       const curbCenter=edge-streetSign*9;
+       if(vertical){
+         add(zone,'curb-edge',along,curbCenter,span*.90,2.2);
+         if(lane)add(zone,'curb-ramp',lane.x,curbCenter,26,12);
+       }else{
+         add(zone,'curb-edge',curbCenter,along,2.2,span*.90);
+         if(lane)add(zone,'curb-ramp',curbCenter,lane.y,12,26);
+       }
+       // Parking/drop-off approaches get ground stripes; gardens do not.
+       if(lane&&(zone.kind==='parking'||zone.kind==='driveway'))
+         for(let n=-1;n<=1;n++){
+           const coord=edge+streetSign*(2+n*3.5);
+           if(vertical)add(zone,'crosswalk-stripe',lane.x,coord,24,1.6);
+           else add(zone,'crosswalk-stripe',coord,lane.y,1.6,24);
+         }
+     }
+   }
    const broad=zone.w>=zone.h;
    if(zone.kind==='yard'){
      const arrival=zone.id==='arrival-forecourt'&&frontCenter;

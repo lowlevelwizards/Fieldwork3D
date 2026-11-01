@@ -527,6 +527,8 @@ export class TacticalScene3D{
       'parking-divider':0xd6caa9,'garden-border':0x4c5843,
       'service-pad':0x6c7069,'patio-paver':0x8b8578,
       'drainage-grate':0x394d50,
+      sidewalk:0x92918b,'curb-edge':0x5c605e,
+      'curb-ramp':0xb1aca0,'crosswalk-stripe':0xd8d2be,
     };
     // Exterior ground markings are legible construction details, not cover.
     for(const mark of planPropertySurfaces(site))
