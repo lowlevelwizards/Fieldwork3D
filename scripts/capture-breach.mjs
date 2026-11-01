@@ -50,15 +50,24 @@ try{
   if(!await home.locator('#play').count())
     throw Error('Pages root missing tactical GO control');
   await home.screenshot({path:resolve(folder,'00-pages-home-breach.png')});
+  // Do not keep two software-WebGL battlefields alive concurrently in CI.
+  await home.close();
   // 083–088: default public entry is the four-person generated game.
   const live=await browser.newPage({
     viewport:{width:390,height:844},deviceScaleFactor:2,
     hasTouch:true,isMobile:true,
   });
   live.on('pageerror',e=>errors.push('procedural homepage: '+e.message));
+  live.on('console',message=>{
+    if(message.type()==='warning'||message.type()==='error')
+      errors.push('procedural console: '+message.text().slice(0,350));
+  });
   await live.goto(base.replace('breach.html',''),{
     waitUntil:'domcontentloaded'});
-  await live.locator('#breach3dCanvas').waitFor({state:'visible'});
+  await live.locator('#breach3dCanvas').waitFor({state:'visible'})
+    .catch(async error=>{
+      throw Error('Procedural battlefield startup failed: '+errors.join(' | '),{cause:error});
+    });
   for(const id of ['rook','moss','ash','vale']){
     if(!await live.locator('#'+id).isVisible())
       throw Error('Four-player live homepage missing '+id);
@@ -92,7 +101,7 @@ try{
   await original.goto(url.replace('breach.html','verdigris.html'),{
     waitUntil:'domcontentloaded'});
   await original.locator('#app').waitFor();
-  await original.close();await home.close();
+  await original.close();
   phone.on('pageerror',e=>errors.push(e.message));
   await phone.goto(url,{waitUntil:'domcontentloaded'});
   await phone.locator('#breach3dCanvas').waitFor({state:'visible'});
