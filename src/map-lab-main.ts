@@ -161,6 +161,10 @@ function report(site:Site,result:SiteAudit):string{
   result.functionalRooms+' rooms total\n'+
   result.incompleteZones.length+' functionally incomplete zones\n'+
   result.serviceIssues.length+' blocked fixture working faces\n'+
+  result.missingWorkflowLinks.length+' missing direct workflow links'+
+  (result.missingWorkflowLinks.length?': '+
+   result.missingWorkflowLinks.slice(0,4).map(link=>link.a+' / '+link.b).join(', ')+
+   (result.missingWorkflowLinks.length>4?' +more':''):'')+'\\n'+
   (result.unitContracts.length?
     result.unitContracts.filter(u=>u.complete).length+'/'+result.unitContracts.length+
       ' complete residential units\n':'')+(result.errors.length?
