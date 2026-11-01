@@ -26,7 +26,9 @@ export function assignEncounterActivities(site:Site,actors:EncounterActorSpec[],
   let activity:EncounterActivity='idle';
   let readiness:EncounterReadiness=prepared?'prepared':alert?'suspicious':'relaxed';
   let heading=a.heading;
-  if(a.role==='sentry'||a.role==='lookout'){
+  if(a.role==='patrol'){
+   activity='patrolling';readiness=prepared?'prepared':'attentive';
+  }else if(a.role==='sentry'||a.role==='lookout'){
    activity='watching';readiness=prepared?'prepared':'attentive';
    const door=site.doors.slice().sort((b,c)=>{
     const pb={x:(b.a.x+b.b.x)/2,y:(b.a.y+b.b.y)/2};
