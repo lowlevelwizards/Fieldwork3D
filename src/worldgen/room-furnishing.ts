@@ -128,10 +128,23 @@ function activityFurniture(purpose:string,room:Room,items:readonly Item[],subtyp
   case 'workshop':
    if(spacious)add('compressor','sw');
    break;
-  case 'exam':
-   if(spacious)add('cart','sw');
+  case 'exam':case 'treatment':
+   if(spacious)add('handwash-station','ne');
+   if(large)add('instrument-cart','sw');
+   break;
+  case 'packing':
+   if(spacious)add('packing-station','se');
+   break;
+  case 'parts':
+   if(spacious)add('parts-bin','sw');
    break;
  }
+ if(purpose==='kitchen'&&['cafe','diner','sit-down-restaurant'].includes(subtype)){
+   if(spacious)add('prep-table','sw');
+   if(spacious)add('commercial-range','ne');
+   if(large)add('dish-station','se');
+ }
+ if(purpose==='sales'&&spacious)add('retail-endcap','sw');
  if(purpose==='sales'&&subtype==='convenience-store')add('cooler','se');
  if(purpose==='sales'&&subtype==='hardware-store')add('wall-shelf','ne');
  if(purpose==='bay'&&subtype==='tire-service')add('tire-stack','sw');
@@ -187,6 +200,11 @@ export function furnishRooms(site:Site,seed:number):Site{
   const required=(zoneCounts.get(zone)??0)===1?
     (ROOM_CONTRACTS[room.purpose??'']?.required??[]):[];
   const essential:Item[]=required.map(group=>{
+    const commercialKitchen=room.purpose==='kitchen'&&
+      ['cafe','diner','sit-down-restaurant'].includes(site.identity?.subtype??'');
+    const favorite=commercialKitchen?
+      group.find(id=>['prep-table','commercial-range','dish-station'].includes(id)):undefined;
+    if(favorite)return {id:favorite,anchor:'nw' as Anchor};
     const existing=roomItems.find(item=>group.includes(item.id));
     if(existing)return existing;
     const assetId=group.find(id=>{

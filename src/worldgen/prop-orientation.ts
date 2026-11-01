@@ -7,7 +7,9 @@ export type QuarterTurn=0|1|2|3;
 const directional=new Set(['chair','office-chair','armchair','sofa','bench','patio-chair',
  'desk','bed','exam-bed','toilet','sink','stove','fridge','counter','cabinet',
  'bookcase','shelf','rack','wall-shelf','wardrobe','dresser','tv-stand','workbench',
- 'checkout','control-panel','meeting-table','dining-table']);
+ 'checkout','control-panel','meeting-table','dining-table',
+ 'prep-table','commercial-range','dish-station','handwash-station',
+ 'instrument-cart','retail-endcap','packing-station','parts-bin']);
 const facing:readonly Pt[]=[{x:0,y:1},{x:1,y:0},{x:0,y:-1},{x:-1,y:0}];
 const groups:Record<string,readonly string[]>={
  chair:['dining-table','meeting-table','coffee-table','desk','checkout'],
