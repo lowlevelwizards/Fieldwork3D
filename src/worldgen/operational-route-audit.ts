@@ -7,6 +7,22 @@ import type {Site} from '../breach-site.ts';
 import type {Pt} from '../breach-core.ts';
 import {inspectCounterAccess} from './service-counter-access.ts';
 
+/** Route-free fast path for a short straight physical approach. It uses
+ * the same standing/footprint predicate as A* and samples every 4 units;
+ * otherwise the caller must fall back to the authoritative pathfinder.
+ */
+export function straightWorkApproach(from:Pt,to:Pt,
+ canStand:(p:Pt)=>boolean,maxDistance=180):boolean{
+ const length=Math.hypot(to.x-from.x,to.y-from.y);
+ if(length>maxDistance)return false;
+ const steps=Math.max(1,Math.ceil(length/4));
+ for(let i=0;i<=steps;i++){
+  const t=i/steps;
+  if(!canStand({x:from.x+(to.x-from.x)*t,
+    y:from.y+(to.y-from.y)*t}))return false;
+ }
+ return true;
+}
 export type OperationalRouteIssue={
  fixture:string;x:number;y:number;side:'customer'|'staff';
  reason:'blocked-face'|'unreachable';
