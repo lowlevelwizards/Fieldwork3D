@@ -1030,8 +1030,14 @@ export class TacticalScene3D{
     if(this.view.mode==='plan2d')return;
     for(const [index,group] of this.coverGroups){
       const before=s.site?.cover[index],current=s.coverState[index];
-      if(before&&current)group.position.set(
-        current.x-before.x,0,current.y-before.y);
+      if(before&&current){
+        const sx=current.w/Math.max(1,before.w),
+          sz=current.h/Math.max(1,before.h);
+        const sy=current.destroyed?.32:1;
+        group.scale.set(sx,sy,sz);
+        group.position.set(current.x-before.x+before.x*(1-sx),
+          0,current.y-before.y+before.y*(1-sz));
+      }
     }
     for(const [id,glass] of this.windowGlass){
       const state=s.windows.find(w=>w.id===id);
