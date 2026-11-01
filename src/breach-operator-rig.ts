@@ -216,7 +216,9 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     dispose:()=>{root.traverse(obj=>{if(obj instanceof THREE.Mesh){
       obj.geometry.dispose();
       const m=obj.material as THREE.Material;m.dispose();
-    }})}};
+    }});
+    // The lens material exists even when no light is mounted.
+    weaponLensMaterial.dispose();}};
 }
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 const diff=(a:number,b:number)=>Math.atan2(Math.sin(b-a),Math.cos(b-a));
