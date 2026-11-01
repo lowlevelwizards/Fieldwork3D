@@ -32,9 +32,10 @@ import {doorInteraction} from './breach-interactions.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
 import {relocateCover,canRelocateCover} from './breach-movable-cover.ts';
-import {materialForFixture,MATERIALS} from './breach-materials.ts';
+import {materialForFixture,MATERIALS,type MaterialId} from './breach-materials.ts';
 import {resolvePenetration,type BarrierHit} from './breach-penetration.ts';
 import {damageCover} from './breach-reactive-cover.ts';
+import {materialResponse} from './breach-impact-responses.ts';
 import {manipulateWindow,damageWindow,windowPaneSegment} from './breach-windows.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {chooseAiIntent,type AIIntent} from './breach-ai-policy.ts';
@@ -1940,7 +1941,8 @@ function segmentImpact(from:Pt,to:Pt,segment:{a:Pt;b:Pt}):number|null{
 function strikeSurface(from:Pt,aimed:Pt,s:Session,
   fromZ=22,toZ=22,energy=0):{
   end:Pt;surface:ShotEvent['surface'];penetrated:number[];remaining:number;
-  paneHits:number[];coverHits:{index:number;fraction:number}[]}{
+  paneHits:number[];coverHits:{index:number;fraction:number}[];
+  materialHits:{fraction:number;material:MaterialId}[]}{
   const hits:BarrierHit[]=[];
   for(const wall of WALLS){
     const t=segmentImpact(from,aimed,wall);
@@ -1980,7 +1982,30 @@ function strikeSurface(from:Pt,aimed:Pt,s:Session,
     penetrated:outcome.penetrated,remaining:outcome.remaining,
     paneHits:paneHits.filter(p=>p.fraction<=t+.00001).map(p=>p.index),
     coverHits:hits.filter(h=>h.coverIndex!==undefined&&
-      h.fraction<=t+.00001).map(h=>({index:h.coverIndex!,fraction:h.fraction}))};
+      h.fraction<=t+.00001).map(h=>({index:h.coverIndex!,fraction:h.fraction})),
+    materialHits:hits.filter(h=>h.fraction<=t+.00001)
+      .sort((a,b)=>a.fraction-b.fraction).map(h=>({fraction:h.fraction,
+      material:h.material}))};
+}
+/** Distinct pre-target penetration events leave physical evidence. */
+function emitMaterialEvents(s:Session,from:Pt,to:Pt,
+ hits:readonly {fraction:number;material:MaterialId}[],
+ maximum=1){
+ const unique=new Set<string>();
+ for(const hit of hits){
+  if(hit.fraction>maximum+.00001||hit.fraction>=.9999)continue;
+  const p={x:from.x+(to.x-from.x)*hit.fraction,
+    y:from.y+(to.y-from.y)*hit.fraction};
+  const key=Math.round(p.x/3)+','+Math.round(p.y/3);
+  if(unique.has(key))continue;unique.add(key);
+  const response=materialResponse(hit.material);
+  s.impactMarks.push({id:s.nextEffectId++,p,
+    surface:response.visual,age:0,height:20});
+  if(response.sound!=='glass')
+    hear(s,p,response.radius,'impact-'+response.sound);
+ }
+ if(s.impactMarks.length>92)
+  s.impactMarks.splice(0,s.impactMarks.length-92);
 }
 /** Mutate only struck cover, never the planning ray or visual renderer. */
 function damageStruckCover(s:Session,hits:readonly {index:number;fraction:number}[],
@@ -2036,6 +2061,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     WEAPONS[a.weapon].penetration);
   shatterStruckWindows(s,impact.paneHits,Math.max(1,WEAPONS[a.weapon].damage));
   damageStruckCover(s,impact.coverHits,WEAPONS[a.weapon].damage*.36);
+  emitMaterialEvents(s,from,far,impact.materialHits);
   a.fireCd=WEAPONS[a.weapon].interval*1.6;
   a.magazine--;a.shots++;a.lastShotAt=s.seconds;
   a.recoil=Math.min(.9,a.recoil+BALLISTICS[a.weapon].recoilKick);
@@ -2224,6 +2250,8 @@ function fire(s:Session,a:TeamActor,dt:number){
   });
   shatterStruckWindows(s,actualRay,Math.max(1,weapon.damage));
   damageStruckCover(s,strike.coverHits,weapon.damage*.45,
+    hit?fractionToTarget:1);
+  emitMaterialEvents(s,muzzlePoint,far,strike.materialHits,
     hit?fractionToTarget:1);
   const end=hit?clone(target.p):strike.end;
   const impact=hit?{end,surface:'blood' as const}:strike;
