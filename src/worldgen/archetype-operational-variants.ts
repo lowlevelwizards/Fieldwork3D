@@ -48,11 +48,9 @@ export function optionalOperationalFixtures(kind:BuildingArchetype|undefined,
   if(purpose==='supply')return variant===2?[{id:'linen-cart',anchor:'ne'}]:[];
   if(purpose==='treatment')return variant===1?[{id:'instrument-cart',anchor:'sw'}]:[];
  }
- if(kind==='garage'){
-  if(purpose==='workshop'||purpose==='parts')return variant===0?
-    [{id:'tool-rack',anchor:'west'}]:variant===1?
-    [{id:'storage-tote',anchor:'ne'}]:[];
- }
+ // Garage bays and parts aisles already have specialized base equipment.
+ // Never add discretionary solid cover to these tight combat/service routes.
+ if(kind==='garage')return [];
  if(kind==='warehouse'){
   if(purpose==='packing')return variant===0?[{id:'supply-cart',anchor:'se'}]:[];
   if(purpose==='loading')return variant===1?[{id:'storage-tote',anchor:'ne'}]:[];
