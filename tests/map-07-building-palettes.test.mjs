@@ -11,7 +11,7 @@ test('MAP 07 assigns three stable real palettes to all archetypes',()=>{
      theme.tile,theme.wood,theme.hall,theme.grout].every(c=>c>=0&&c<=0xffffff));
   }
   assert.deepEqual(buildingTheme(kind,12),buildingTheme(kind,12));
- });
+ }
 });
 test('MAP 07 differentiates wet room floor from living room',()=>{
  const theme=buildingTheme('house',42);
