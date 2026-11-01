@@ -53,7 +53,8 @@ export function enforceServiceHatchBarriers(site:Site):Site{
  for(const opening of site.openings??[]){
   if(opening.kind!=='serving')continue;
   const center={x:(opening.a.x+opening.b.x)/2,y:(opening.a.y+opening.b.y)/2};
-  if(cover.some(c=>c.low&&dist(center,{x:c.x,y:c.y})<1))continue;
+  if(cover.some(c=>c.fixture==='window-sill'&&c.low&&
+      dist(center,{x:c.x,y:c.y})<1))continue;
   const vertical=Math.abs(opening.a.x-opening.b.x)<1;
   const width=dist(opening.a,opening.b);
   cover.push({x:center.x,y:center.y,w:vertical?10:width,

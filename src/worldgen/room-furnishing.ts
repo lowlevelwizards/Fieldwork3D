@@ -134,18 +134,18 @@ function activityFurniture(purpose:string,room:Room,items:readonly Item[],subtyp
    if(large)add('instrument-cart','sw');
    break;
   case 'packing':
-   if(spacious)add('packing-station','se');
+   if(spacious)add('cart','sw');
    break;
   case 'parts':
-   if(spacious)add('parts-bin','sw');
+   if(spacious)add('tire-stack','sw');
    break;
  }
+ // Industrial and institutional fixtures are placed as primary equipment
+ // below, not sprinkled on top of a domestic kitchen composition.
  if(purpose==='kitchen'&&['cafe','diner','sit-down-restaurant'].includes(subtype)){
-   if(spacious)add('prep-table','sw');
-   if(spacious)add('commercial-range','ne');
-   if(large)add('dish-station','se');
+   if(large)add('cart','sw');
  }
- if(purpose==='sales'&&spacious)add('retail-endcap','sw');
+ if(purpose==='sales'&&large)add('retail-endcap','sw');
  if(purpose==='sales'&&subtype==='convenience-store')add('cooler','se');
  if(purpose==='sales'&&subtype==='hardware-store')add('wall-shelf','ne');
  if(purpose==='bay'&&subtype==='tire-service')add('tire-stack','sw');
@@ -190,7 +190,8 @@ export function furnishRooms(site:Site,seed:number):Site{
        for(const shift of [0,-.18,.18]){
          const x=room.x+room.w*(.5+shift);
          const y=room.y+room.h/2+side*(room.h/2-29);
-         const counter:Obstacle={x,y,w:66,h:22,fixture:'bar-counter',low:false};
+         const counter:Obstacle={x,y,w:66,h:22,fixture:'bar-counter',
+            low:propDefinition('bar-counter')?.cover==='low'};
          const stools:Obstacle[]=[-.27,.27].map(ratio=>({
            x:x+ratio*66,y:y-side*27,w:15,h:15,
            fixture:'bar-stool',low:true
@@ -226,8 +227,34 @@ export function furnishRooms(site:Site,seed:number):Site{
   zoneSeen.set(zone,index+1);
   const ordinary=compositions[room.purpose??'']??[{id:'crate',anchor:'nw'}];
   const alternate=zoneCompositions[room.purpose??''];
-  const available=(zoneCounts.get(zone)??0)>1&&alternate?
-   alternate[Math.min(index,alternate.length-1)]:ordinary;
+  const multi=(zoneCounts.get(zone)??0)>1;
+  const defaultItems=multi&&alternate?
+    alternate[Math.min(index,alternate.length-1)]:ordinary;
+  const restaurant=site.archetype==='restaurant'&&
+    ['cafe','diner','sit-down-restaurant'].includes(site.identity?.subtype??'');
+  // Assign complete working stations to *functional* rooms. The home kitchen,
+  // medical exam, shipping and service shop do not share one random furniture
+  // pool simply because all contain counters and shelving.
+  const specialized:readonly Item[]|undefined=
+    restaurant&&room.purpose==='kitchen'?
+      (multi?(index%2===0?
+        [{id:'prep-table',anchor:'nw'},{id:'commercial-range',anchor:'se'}]:
+        [{id:'dish-station',anchor:'nw'},{id:'fridge',anchor:'se'}]):
+       [{id:'prep-table',anchor:'nw'},{id:'commercial-range',anchor:'se'},
+        {id:'dish-station',anchor:'west'},{id:'fridge',anchor:'ne'}]):
+    restaurant&&room.purpose==='service'?
+      [{id:'dish-station',anchor:'nw'},{id:'cart',anchor:'se'}]:
+    site.archetype==='clinic'&&['exam','treatment'].includes(room.purpose??'')?
+      [{id:'exam-bed',anchor:'nw'},{id:'handwash-station',anchor:'se'},
+       {id:'instrument-cart',anchor:'west'}]:
+    site.archetype==='warehouse'&&room.purpose==='packing'?
+      [{id:'packing-station',anchor:'nw'},{id:'box',anchor:'se'}]:
+    site.archetype==='garage'&&room.purpose==='parts'?
+      [{id:'parts-bin',anchor:'nw'},{id:'rack',anchor:'se'}]:
+    site.archetype==='retail'&&room.purpose==='sales'&&multi&&index%2===1?
+      [{id:'retail-endcap',anchor:'nw'},{id:'display-rack',anchor:'se'}]:
+    undefined;
+  const available=specialized??defaultItems;
   const placed:Obstacle[]=[];
   const compact=room.w<108||room.h<104;
   const roomItems=compact?available.slice(0,1):available;

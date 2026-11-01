@@ -13,10 +13,10 @@ export type ActorFrame=Pick<TeamActor,
   'magazine'|'reserve'|'reload'|'shots'|'fireCd'|'aim'|
   'insertedMagazineId'|'spareMagazines'|'reloadMode'|'reloadStartedAt'|
   'reloadDuration'|'reloadRemoved'|'reloadInserted'|
-  'reloadFromRounds'|'reloadTargetRounds'|
+  'reloadFromRounds'|'reloadTargetRounds'|'reloadSelectedMagazineId'|
   'lastHitAt'|'lastDownAt'|'lastHitRegion'|'lastHitYaw'|
   'lastHitSeverity'|'downPose'|'flashUntil'|'suppression'|
-  'weapon'|'injuryStage'|'morale'|'surrendered'|'defense'|'watch'|
+  'weapon'|'injuryStage'|'armorIntegrity'|'helmetIntegrity'|'flashCharges'|'morale'|'surrendered'|'defense'|'watch'|
   'lastThrowAt'|'lastDoorAt'|'lastDoorId'|'lastDoorMethod'|'stride'|
   'weaponYaw'|'stability'|'recoil'|'lastShotAt'|'fireMode'|'burstCount'|'skills'|
   'squeeze'|'squeezeYaw'|'squeezeTime'>;
@@ -55,12 +55,16 @@ export function snapshot(s:Session,seenGround?:string[]):ReplayFrame{
       reloadRemoved:a.reloadRemoved,reloadInserted:a.reloadInserted,
       reloadFromRounds:a.reloadFromRounds,
       reloadTargetRounds:a.reloadTargetRounds,
+      reloadSelectedMagazineId:a.reloadSelectedMagazineId,
       shots:a.shots,fireCd:a.fireCd,aim:a.aim,
       lastHitAt:a.lastHitAt,lastDownAt:a.lastDownAt,
       lastHitRegion:a.lastHitRegion,lastHitYaw:a.lastHitYaw,
       lastHitSeverity:a.lastHitSeverity,downPose:a.downPose,
       flashUntil:a.flashUntil,suppression:a.suppression,
-      weapon:a.weapon,injuryStage:a.injuryStage,morale:a.morale,
+      weapon:a.weapon,injuryStage:a.injuryStage,
+      armorIntegrity:a.armorIntegrity,helmetIntegrity:a.helmetIntegrity,
+      flashCharges:a.flashCharges,
+      morale:a.morale,
       lastThrowAt:a.lastThrowAt,lastDoorAt:a.lastDoorAt,
       lastDoorId:a.lastDoorId,lastDoorMethod:a.lastDoorMethod,
       stride:a.stride,

@@ -8,6 +8,8 @@ import {sizedBlueprint} from './size-blueprints.ts';
 import {apartmentUnitBlueprint} from './apartment-units.ts';
 import {ensureFacilityProgram} from './facility-programs.ts';
 import {specializeBlueprint} from './subtype-blueprints.ts';
+import {fitSpatialProgram} from './spatial-program-fit.ts';
+import {synthesizeFootprint} from './footprint-synthesis.ts';
 import {relationshipScore,allowSecondaryConnection} from './room-relationships.ts';
 import {circulationFor,circulationScore,loopChance,type CirculationStyle} from './circulation-grammar.ts';
 import {type Site,type Room,type BuildingArchetype,type SiteScale,seeded} from '../breach-site.ts';
@@ -57,12 +59,31 @@ function cut(wall:Segment,id:string,walls:Segment[],doors:Door[]){
  if(span({a:b,b:wall.b})>.05)walls.push({a:b,b:wall.b});
  doors.push({id,a,b,open:false,openedAt:-1});
 }
+/** A genuinely wide passage with two independent, operable 48-unit leaves. */
+function cutPaired(wall:Segment,id:string,walls:Segment[],doors:Door[]):boolean{
+ const length=span(wall);
+ if(length<146)return false;
+ const ux=(wall.b.x-wall.a.x)/length,uy=(wall.b.y-wall.a.y)/length;
+ const mid={x:(wall.a.x+wall.b.x)/2,y:(wall.a.y+wall.b.y)/2};
+ const a={x:mid.x-ux*48,y:mid.y-uy*48};
+ const b={x:mid.x+ux*48,y:mid.y+uy*48};
+ walls.push({a:wall.a,b:a},{a:b,b:wall.b});
+ doors.push({id:id+'-L',a,b:mid,kind:'hinged',hinge:'a',swing:-1,
+   pairedWith:id+'-R',open:false,openedAt:-1});
+ doors.push({id:id+'-R',a:mid,b,kind:'hinged',hinge:'b',swing:1,
+   pairedWith:id+'-L',open:false,openedAt:-1});
+ return true;
+}
 export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  scale:SiteScale='expanded',subtype=''):Site{
  const baseline=architecturalBlueprint(kind,seed);
  const selected:Blueprint=kind==='apartment'?apartmentUnitBlueprint(seed,scale):
    scale==='small'||scale==='large'?sizedBlueprint(kind,seed,scale,baseline):baseline;
- const authored=ensureFacilityProgram(specializeBlueprint(selected,subtype),scale);
+ const functional=fitSpatialProgram(ensureFacilityProgram(
+   specializeBlueprint(selected,subtype),scale));
+ // Only a subset of deterministic seeds exercise module relocation until
+ // unit-aware topology and broad mobile benchmarks are completed.
+ const authored=seed%3===0?synthesizeFootprint(functional,seed):functional;
  // Compact buildings use the identical architectural grammar, with smaller
  // habitable rooms but never shrink the 48-unit door or operator clearance.
  const basePlan:Blueprint=scale!=='standard'?authored:{
@@ -149,7 +170,13 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  // manufacturing a disconnected room with no physical traversal.
  if(new Set(cells.map((_,i)=>root(i))).size!==1)
    throw Error('Blueprint circulation disconnected');
- let id=1;
+ let id=1,pairedPassage=false;
+ const pairedRoles:Partial<Record<BuildingArchetype,readonly string[]>>={
+  office:['hallway|lobby','hallway|meeting','lobby|reception'],
+  clinic:['hallway|reception','hallway|waiting','reception|waiting'],
+  retail:['checkout|sales'],
+  restaurant:['dining|reception','dining|service']
+ };
  for(const edge of internal){
   if(edge.free)continue;
   const a=cells[edge.a],b=cells[edge.b];
@@ -157,8 +184,14 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
     !forbiddenUnitConnection(a,b)&&
     allowSecondaryConnection(kind,a.role,b.role)&&
     rng()<loopChance(circulationStyle,a,b);
-  if(edge.selected||optionalLoop)cut(edge.wall,'D'+id++,walls,doors);
-  else walls.push(edge.wall);
+  if(edge.selected||optionalLoop){
+   const pair=[a.role,b.role].sort().join('|');
+   const double=seed%3!==1&&!pairedPassage&&edge.selected&&
+     edge.length>=146&&(pairedRoles[kind]??[]).includes(pair);
+   if(double&&cutPaired(edge.wall,'INTER-DOUBLE',walls,doors))
+     pairedPassage=true;
+   else cut(edge.wall,'D'+id++,walls,doors);
+  }else walls.push(edge.wall);
  }
  const entry=cells[lookup.get(key(b.front.row,b.front.col))!];
  const frontY=ys[b.front.row+1],frontX=entry.room.x+entry.room.w/2;

@@ -56,6 +56,7 @@ import {bodyClear,sweptBodyClear,squeezeFacing,
   sweptProfileClear} from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
   from './breach-squeeze-route.ts';
+import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
   rayHitsActor,muzzleEndpoint,recoverWeapon,handlingInstability,type FiringMode} from './breach-ballistics.ts';
@@ -65,7 +66,9 @@ import {operationBrief,assessOperation,
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {initialIntel,observeIntel,discoverContactCover,routeWithIntel,intelPassable,doorKnown,
   type IntelMode,type IntelState} from './breach-intel.ts';
-import {magazineKit,fullestMagazineIndex,
+import {resolveArmorImpact} from './equipment-armor.ts';
+import {stageMagazines,chooseReloadMagazine,reloadMagazineDelay} from './equipment-magazine-placement.ts';
+import {magazineKit,
   reloadDuration as reloadTiming,type MagazineItem,type ReloadMode}
   from './breach-magazines.ts';
 import {KICK_DURATION} from './breach-door-actions.ts';
@@ -92,6 +95,7 @@ export type TeamActor=Operator & {
   reloadMode:ReloadMode|null;reloadStartedAt:number;
   reloadDuration:number;reloadRemoved:boolean;reloadInserted:boolean;
   reloadFromRounds:number;reloadTargetRounds:number;
+  reloadSelectedMagazineId:string|null;
   stopped:boolean;haltOnContact:boolean;retreatPoint:Pt|null;
   contact:Pt|null;heard:Pt|null;
   alertUntil:number;waitRemaining:number;syncReady:string|null;
@@ -116,7 +120,10 @@ export type TeamActor=Operator & {
   lastBashAt:number;lastBashRole:'push'|'receive'|null;
   lastLaneWarnAt:number;lastFireBlock:FireBlock;
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
-  appearanceSeed:number;
+  appearanceSeed:number;equipment?:EquipmentLoadout;
+  loadMovementScale?:number;
+  armorIntegrity:number;helmetIntegrity:number;
+  flashCharges:number;
   firePolicy:FirePolicy;suppressPoint:Pt|null;focusTargetId:string|null;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
   lastFireRepositionAt:number;
@@ -184,7 +191,7 @@ const withActions=(a:Operator):TeamActor=>({
   spareMagazines:magazineKit(a.id,'carbine',36,12),
   reloadMode:null,reloadStartedAt:-100,reloadDuration:0,
   reloadRemoved:false,reloadInserted:false,reloadFromRounds:0,
-  reloadTargetRounds:0,
+  reloadTargetRounds:0,reloadSelectedMagazineId:null,
   alertUntil:0,waitRemaining:0,syncReady:null,actionTimer:0,
   blockedTime:0,lastNavRepairAt:-10,priorP:clone(a.p),haltOnContact:false,retreatPoint:null,
   squeeze:false,squeezeYaw:a.heading,squeezeTime:0,
@@ -201,6 +208,7 @@ const withActions=(a:Operator):TeamActor=>({
   lastBashAt:-100,lastBashRole:null,
   lastLaneWarnAt:-100,lastFireBlock:'clear',
   fireMode:'point',burstCount:0,skills:{...DEFAULT_SKILLS},appearanceSeed:0,
+  armorIntegrity:0,helmetIntegrity:0,flashCharges:2,
   firePolicy:'engage',suppressPoint:null,focusTargetId:null,
   weapon:'carbine',injuryStage:0,defense:null,watch:null,
   defenseUntil:0,surrendered:false,lastFireRepositionAt:-100,
@@ -829,13 +837,18 @@ export function redoPlan(s:Session,id:string){
 export function beginReload(s:Session,a:TeamActor):boolean{
   const w=WEAPONS[a.weapon];
   if(a.health<=0||a.reload>0||a.reserve<=0||a.magazine>=w.capacity)return false;
-  if(a.weapon!=='shotgun'&&!a.spareMagazines.length)
-    a.spareMagazines=magazineKit(a.id,a.weapon,a.reserve,w.capacity);
+  if(a.weapon!=='shotgun'&&!a.spareMagazines.length){
+    const replacement=magazineKit(a.id,a.weapon,a.reserve,w.capacity);
+    a.spareMagazines=a.equipment?stageMagazines(replacement,a.equipment):replacement;
+  }
   const mode:ReloadMode=a.weapon==='shotgun'?'shells':
     a.magazine===0?'emergency':'retention';
   a.reloadMode=mode;a.reloadStartedAt=s.seconds;
+  const selected=a.weapon==='shotgun'?-1:chooseReloadMagazine(a.spareMagazines);
+  a.reloadSelectedMagazineId=selected>=0?a.spareMagazines[selected].id:null;
+  const source=selected>=0?a.spareMagazines[selected]:undefined;
   a.reloadDuration=reloadTiming(w.reload,injuryReload(a.injuryStage),
-    mode,w.capacity-a.magazine);
+    mode,w.capacity-a.magazine)+reloadMagazineDelay(source);
   a.reload=a.reloadDuration;a.reloadRemoved=false;
   a.reloadInserted=false;a.reloadFromRounds=a.magazine;
   a.reloadTargetRounds=Math.min(w.capacity-a.magazine,a.reserve);
@@ -867,6 +880,7 @@ export function advanceReload(s:Session,a:TeamActor,dt:number){
      a.insertedMagazineId='';
      if(mode==='retention'&&oldRounds>0){
        a.spareMagazines.push({id:oldId,weapon:a.weapon,rounds:oldRounds});
+        if(a.equipment)a.spareMagazines=stageMagazines(a.spareMagazines,a.equipment);
        a.reserve+=oldRounds;
      }else{
        s.dropped.push({id:s.nextEffectId++,p:clone(a.p),
@@ -876,7 +890,8 @@ export function advanceReload(s:Session,a:TeamActor,dt:number){
      }
    }
    if(!a.reloadInserted&&t>=.82){
-     const index=fullestMagazineIndex(a.spareMagazines,a.weapon);
+     const selected=a.spareMagazines.findIndex(m=>m.id===a.reloadSelectedMagazineId&&m.rounds>0);
+      const index=selected>=0?selected:chooseReloadMagazine(a.spareMagazines);
      if(index>=0){
        const mag=a.spareMagazines.splice(index,1)[0];
        a.magazine=mag.rounds;a.reserve-=mag.rounds;
@@ -892,6 +907,7 @@ export function advanceReload(s:Session,a:TeamActor,dt:number){
      if(missing>0){a.magazine+=missing;a.reserve-=missing;}
    }
    a.reloadMode=null;
+   a.reloadSelectedMagazineId=null;
    a.reloadInserted=true;
    notify(s,a.name+' RELOADED');
  }
@@ -917,7 +933,7 @@ export function planFlash(s:Session,id:string,target:Pt):boolean{
   const queued=team(s).reduce((n,x)=>n+
     x.plan.filter(node=>node.kind==='flash').length,0);
   const start=finalPoint(a);
-  if(queued>=s.flashRemaining)return false;
+  if(queued>=s.flashRemaining||a.plan.filter(n=>n.kind==='flash').length>=a.flashCharges)return false;
   const plannedOpen=a.plan.filter(n=>n.kind==='door'&&(n.method==='open'||n.method==='kick'))
     .map(n=>n.doorId??'');
   const landing=snapFlashTarget(start,target,s.doors,plannedOpen);
@@ -934,7 +950,7 @@ export function planDoorFlash(s:Session,id:string,doorId:string,target:Pt,
     !doorKnown(s.intel,doorId))return false;
   const queued=team(s).reduce((sum,x)=>sum+
     x.plan.filter(n=>n.kind==='flash').length,0);
-  if(queued>=s.flashRemaining)return false;
+  if(queued>=s.flashRemaining||a.plan.filter(n=>n.kind==='flash').length>=a.flashCharges)return false;
   const index=afterNodeId===undefined?a.plan.length:
     a.plan.findIndex(n=>n.id===afterNodeId)+1;
   if(index<0)return false;
@@ -1040,6 +1056,7 @@ function unobstructed(a:Pt,b:Pt,s:Session,lowBlocks:boolean){
   // Exact slab intersection replaces dozens of short ray samples per
   // visibility query. Geometry remains authoritative at any framerate.
   return !COVER.some(o=>!['chain-link-fence','iron-fence'].includes(o.fixture??'')&&
+    o.fixture!=='glass-barrier'&&
     (!o.low||lowBlocks)&&segmentHitsBox(a,b,o));
 }
 /** Physical geometry visibility, independently of acquisition time. */
@@ -1048,7 +1065,7 @@ export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){
   const delta=angleDifference(a.heading,angle(a.p,b.p));
   if(Math.abs(delta)>.94)return false;
   return !exposure(a.p,b.p,s.doors,
-    b.posture==='crouch',a.posture==='crouch').blocked;
+    b.posture==='crouch',a.posture==='crouch',true).blocked;
 }
 /** Confirmed vision is acquired over simulated time; rendering never grants sight. */
 export function inSight(a:TeamActor,b:TeamActor,s:Session){
@@ -1240,13 +1257,14 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const movingSpeed=a.side==='blue'?53:48;
   const suppression=clamp(1-a.suppression*.4,.45,1);
   const requested=movingSpeed*(a.posture==='crouch'?.58:1)*suppression*
-    speedScale*injurySpeed(a.injuryStage);
+    speedScale*injurySpeed(a.injuryStage)*(a.loadMovementScale??1);
   // A lateral shuffle cannot use the same stride speed as forward running.
   // Scale the limit continuously for diagonal travel, preserving ordinary
   // forward movement and crouch/injury speed reductions.
   const lateral=Math.abs(Math.sin(direction-a.heading));
   const sideLimit=(38+37*(1-lateral*lateral))*
-    (a.posture==='crouch'?.58:1)*injurySpeed(a.injuryStage);
+    (a.posture==='crouch'?.58:1)*injurySpeed(a.injuryStage)*
+    (a.loadMovementScale??1);
   // Narrow travel is genuine slow sideways movement, not a global
   // reduction to actor collision radius or a high-speed clipping shortcut.
   const desired=Math.min(requested,sideLimit,a.squeeze?16:Infinity);
@@ -1597,7 +1615,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     return;
   }
   if(n.kind==='flash'){
-    if(!n.aimPoint||s.flashRemaining<=0){pop(a);return;}
+    if(!n.aimPoint||s.flashRemaining<=0||a.flashCharges<=0){pop(a);return;}
     const trajectory=validateThrow(a.p,n.aimPoint,s.doors);
     if(!trajectory.valid){
       notify(s,a.name+' FLASH BLOCKED — '+(trajectory.reason??'CHECK TRAJECTORY'));
@@ -1606,7 +1624,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     a.velocity=0;rotate(a,angle(a.p,n.aimPoint),dt);
     a.actionTimer+=dt;
     if(a.actionTimer>=.3){
-      s.flashRemaining--;a.lastThrowAt=s.seconds;
+      s.flashRemaining--;a.flashCharges--;a.lastThrowAt=s.seconds;
       s.grenades.push({id:s.nextEffectId++,p:clone(a.p),
         from:clone(a.p),to:clone(n.aimPoint),age:0,fuse:1.15,
         path:trajectory});
@@ -2303,20 +2321,28 @@ function fire(s:Session,a:TeamActor,dt:number){
   emitMaterialEvents(s,muzzlePoint,far,strike.materialHits,
     hit?fractionToTarget:1);
   const end=hit?clone(target.p):strike.end;
-  const impact=hit?{end,surface:'blood' as const}:strike;
   a.recoil=Math.min(.9,a.recoil+profile.recoilKick*
     (a.burstCount>2?1.20:1)*
     (2-skillMultiplier(a.skills.recoilControl,.42)));
   a.stability=Math.max(0,a.stability-
     (mode==='point'?.23:.16)*
     (2-skillMultiplier(a.skills.composure,.38))-a.recoil*.10);
+  const shotId=s.nextShotId++;
+  const region=hitRegion(shotId);
   const healthBefore=target.health;
-  const severity=hit&&s.site?woundSeverity(weapon,range,
+  const rawSeverity=hit&&s.site?woundSeverity(weapon,range,
     nearCover(target.p,a.p),random(s)):1;
+  const protection=resolveArmorImpact({kit:target.equipment,region,
+    incomingYaw:yaw,targetHeading:target.heading,
+    penetration:weapon.penetration,severity:rawSeverity,
+    shotId,torso:target.armorIntegrity,head:target.helmetIntegrity});
+  const severity=protection.severity;
   const nextStage=Math.min(3,target.injuryStage+(hit?severity:0));
   const healthAfter=hit?
     (s.site?nextStage>=3?0:4-nextStage:Math.max(0,healthBefore-1)):
     healthBefore;
+  const impact=hit?{end,surface:protection.blocked&&severity===0?
+    'metal' as const:'blood' as const}:strike;
   s.sparks.push({p:clone(a.p),side:a.side,age:0});
   // Immutable shot identity lets 2D/3D attach recoil and damage effects to
   // the correct actors without guessing from proximity or team color.
@@ -2325,8 +2351,6 @@ function fire(s:Session,a:TeamActor,dt:number){
   retainImpactMark(s,{id:s.nextEffectId++,p:clone(end),
     surface:impact.surface,height:impactHeight,age:0});
 
-  const shotId=s.nextShotId++;
-  const region=hitRegion(shotId);
   const nearSolid=COVER.some(c=>!c.low&&
     Math.abs(target.p.x-c.x)<=c.w/2+12&&
     Math.abs(target.p.y-c.y)<=c.h/2+12);
@@ -2366,6 +2390,8 @@ function fire(s:Session,a:TeamActor,dt:number){
   target.suppression=Math.min(1,target.suppression+.31);
   if(target.side==='red')target.morale=Math.max(0,target.morale-.035);
   if(hit){
+    target.armorIntegrity=protection.torso;
+    target.helmetIntegrity=protection.head;
     target.health=healthAfter;
     target.injuryStage=s.site?nextStage:Math.min(3,target.injuryStage+1);
     target.lastHitAt=s.seconds;
@@ -2377,8 +2403,9 @@ function fire(s:Session,a:TeamActor,dt:number){
     target.lastHitSeverity=severity;
     if(target.side==='red')target.morale=Math.max(0,
       target.morale-.18*severity);
-    battleEvent(s,healthAfter<=0?'down':'wound',target,target.p,
-      target.name+' '+injuryOf(target.injuryStage).toUpperCase());
+    battleEvent(s,healthAfter<=0?'down':severity===0?'impact':'wound',target,target.p,
+      target.name+' '+(severity===0?'ARMOR STOPPED HIT':
+        injuryOf(target.injuryStage).toUpperCase()));
     a.hits++;
     if(range>weapon.optimalRange)a.longHits++;
     if(target.health<=0){

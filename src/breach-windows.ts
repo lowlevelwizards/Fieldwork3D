@@ -29,21 +29,31 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
   const maxX=Math.max(...site.rooms.map(r=>r.x+r.w));
   const minY=Math.min(...site.rooms.map(r=>r.y));
   const maxY=Math.max(...site.rooms.map(r=>r.y+r.h));
-  const desired=site.archetype==='garage'?1:
-    site.archetype==='apartment'?Math.min(12,Math.max(3,(site.units?.length??1)*2)):
-    site.archetype==='house'?2:site.archetype==='warehouse'?2:3;
+  // Daylight is a room-use requirement, not a universal three-window budget.
+  // Keep a moderate cap so glass colliders and tactical visibility stay cheap.
+  const habitable=site.rooms.filter(r=>r.kind==='room');
+  const density=['garage','warehouse','utility'].includes(site.archetype??'')?.42:.72;
+  const maxWindows=site.scale==='small'?4:site.scale==='large'?12:9;
+  const desired=Math.min(maxWindows,Math.max(2,Math.ceil(habitable.length*density)));
   const eligible=site.walls.map((wall,index)=>{
     const horizontal=Math.abs(wall.a.y-wall.b.y)<.01;
     const vertical=Math.abs(wall.a.x-wall.b.x)<.01;
     const length=dist(wall.a,wall.b);
     const p={x:(wall.a.x+wall.b.x)/2,y:(wall.a.y+wall.b.y)/2};
-    const occupied=(q:Pt)=>site.rooms.some(r=>
+    const occupied=(q:Pt)=>site.rooms.find(r=>
       q.x>r.x+1&&q.x<r.x+r.w-1&&q.y>r.y+1&&q.y<r.y+r.h-1);
-    // A true exterior wall separates a room from outdoors, regardless of
-    // compass direction, setback or courtyard shape.
-    const outside=(horizontal||vertical)&&
-      occupied({x:p.x+(vertical?13:0),y:p.y+(horizontal?13:0)})!==
-      occupied({x:p.x-(vertical?13:0),y:p.y-(horizontal?13:0)});
+    // One occupied side and one outdoors: genuine external glazing only.
+    const onA=occupied({x:p.x+(vertical?13:0),y:p.y+(horizontal?13:0)});
+    const onB=occupied({x:p.x-(vertical?13:0),y:p.y-(horizontal?13:0)});
+    const outside=(horizontal||vertical)&&Boolean(onA)!==Boolean(onB);
+    const room=onA??onB;
+    const role=room?.purpose??'';
+    // Wet, medical and secure spaces do not receive a shopfront by accident.
+    const daylightPriority=['living','dining','bedroom','guest','office',
+      'meeting','reception','lobby','waiting','sales','checkout','studio',
+      'study','cubicles','break'].includes(role)?3:
+      ['kitchen','service','workshop','bay','hallway','staff'].includes(role)?2:
+      ['exam','treatment','storage','loading','equipment'].includes(role)?1:0;
     const clear=site.doors.every(d=>dist(p,{x:(d.a.x+d.b.x)/2,
       y:(d.a.y+d.b.y)/2})>68);
     const side=site.entrySide??'south';
@@ -51,13 +61,21 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
       side==='south'?horizontal&&Math.abs(p.y-maxY)<2:
       side==='west'?vertical&&Math.abs(p.x-minX)<2:
         vertical&&Math.abs(p.x-maxX)<2;
-    return {wall,index,horizontal,vertical,length,outside,clear,p,frontFacing};
-  }).filter(x=>x.outside&&x.length>89&&x.clear)
-    .sort((a,b)=>Number(b.frontFacing)-Number(a.frontFacing)||b.length-a.length||a.index-b.index);
+    return {wall,index,horizontal,vertical,length,outside,clear,p,frontFacing,
+      room,role,daylightPriority};
+  }).filter(x=>x.outside&&x.length>89&&x.clear&&x.room&&x.daylightPriority>0)
+    .sort((a,b)=>b.daylightPriority-a.daylightPriority||
+      Number(b.frontFacing)-Number(a.frontFacing)||b.length-a.length||a.index-b.index);
   const chosen=new Set<number>(),windows:WindowOpening[]=[];
+  const litRooms=new Set<string>();
   for(const item of eligible){
     if(windows.length>=desired)break;
-    const fullHeight=item.frontFacing&&['retail','office','restaurant'].includes(site.archetype??'');
+    // A connected room wing may have several facade segments; favor daylight
+    // in different rooms rather than a string of identical windows in one.
+    if(litRooms.has(item.room!.id))continue;
+    const fullHeight=item.frontFacing&&
+      ['retail','office','restaurant'].includes(site.archetype??'')&&
+      ['sales','checkout','dining','reception','lobby','waiting','meeting'].includes(item.role);
     const half=Math.min(fullHeight?44:26,(item.length-42)/2),
       wall=item.wall,dx=(wall.b.x-wall.a.x)/item.length,
       dy=(wall.b.y-wall.a.y)/item.length;
@@ -65,6 +83,7 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
     const b={x:item.p.x+dx*half,y:item.p.y+dy*half};
     if(dist(a,wall.a)<20||dist(b,wall.b)<20)continue;
     chosen.add(item.index);
+    litRooms.add(item.room!.id);
     const style=fullHeight?'storefront':openingStyle(site.archetype,seed,windows.length);
     const clerestory=style==='clerestory';
     windows.push({id:'W'+windows.length,x:item.p.x,y:item.p.y,

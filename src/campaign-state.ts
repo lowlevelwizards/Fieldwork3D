@@ -3,7 +3,15 @@ import type {OperationKind} from './breach-operations.ts';
 import type {ShootingSkills} from './breach-skills.ts';
 import type {RosterState} from './breach-roster.ts';
 import {WEAPONS as COMBAT_WEAPONS} from './breach-combat.ts';
+import {magazineKit,type MagazineItem} from './breach-magazines.ts';
+import {readPersistentMagazines,readLoadedMagazineId,addReserveRounds}
+ from './equipment-magazine-persistence.ts';
+import {initialEquipmentLoadout,readEquipmentLoadout,setEquipmentChoice,syncPrimaryWeapon,
+ type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
 import {progressOperator,type OperatorPerformance,type SkillGains} from './campaign-progression.ts';
+import {readKitPresets,nextPresetId,MAX_KIT_PRESETS,type EquipmentPreset} from './equipment-presets.ts';
+import {initialArmorIntegrity,type ArmorIntegrity} from './equipment-armor.ts';
+import {clampFlashUse} from './equipment-supply.ts';
 
 export type SkillName=keyof ShootingSkills;
 export const SKILL_NAMES:SkillName[]=['pointShooting','longRange','precision','recoilControl','composure','handling'];
@@ -15,6 +23,8 @@ export type CampaignOperator={
  missions:number;successful:number;injuries:number;recoveryDays:number;
  status:'available'|'reserve'|'lost'|'retired';weapon:'carbine'|'smg'|'rifle'|'shotgun';
  magazine:number;reserve:number;shotsFired:number;joinedDay:number;
+ loadout:EquipmentLoadout;armorCondition:ArmorIntegrity;
+ magazines:MagazineItem[];loadedMagazineId:string;
 };
 export type Contract={
  id:string;seed:number;kind:OperationKind;scale:'standard'|'expanded';
@@ -27,13 +37,15 @@ export type CampaignReport={
  grade:string;elapsed:number;participatingIds:string[];casualties:string[];
  objective:boolean;events:CareerEvent[];
  performance?:OperatorPerformance[];gains?:SkillGains[];
+ flashUsed?:number;
 };
 export type CampaignState={
  version:1;id:string;seed:number;day:number;funds:number;
  operators:CampaignOperator[];squadIds:string[];contracts:Contract[];activeContractId:string|null;
  history:CampaignReport[];journal:CareerEvent[];appliedResults:string[];
- supplies:{medical:number;ammo:number};regionalPressure:Record<string,number>;
+ supplies:{medical:number;ammo:number;flash:number};regionalPressure:Record<string,number>;
  inventory:{weapons:Record<CampaignOperator['weapon'],number>};
+ kitPresets:EquipmentPreset[];
 };
 const WEAPONS=['carbine','smg','rifle','shotgun'] as const;
 const REGIONS=['Cutwoods','Breadlands','Flooded Belt','Verdigris City','Timberline'] as const;
@@ -65,7 +77,12 @@ export function startingOperator(id:string,i:number,seed:number):CampaignOperato
   experience:Object.fromEntries(SKILL_NAMES.map(k=>[k,0])) as ShootingSkills,
   aptitudes:aptitude,trait:traitNames[strongest],distinctions:[],
   missions:0,successful:0,injuries:0,recoveryDays:0,status:'available',
-  weapon,magazine:capacity,reserve,shotsFired:0,joinedDay:1};
+  weapon,magazine:capacity,reserve,shotsFired:0,joinedDay:1,
+   magazines:weapon==='shotgun'?[]:
+    magazineKit(id,weapon,reserve,COMBAT_WEAPONS[weapon].capacity),
+   loadedMagazineId:id+'/'+weapon+'/loaded',
+   loadout:initialEquipmentLoadout(weapon),
+   armorCondition:initialArmorIntegrity(initialEquipmentLoadout(weapon))};
 }
 export function createContracts(seed:number,day:number,existing:readonly Contract[]=[],pressure:Record<string,number>={}):Contract[]{
  const archive=existing.filter(c=>c.status!=='available'&&c.status!=='accepted').slice(-80);
@@ -92,9 +109,9 @@ export function newCampaign(seed:number):CampaignState{
   operators:['rook','moss','ash','vale'].map((id,i)=>startingOperator(id,i,normalized)),
   squadIds:['rook','moss','ash','vale'],
   contracts:createContracts(normalized,1),activeContractId:null,
-  history:[],journal:[],appliedResults:[],supplies:{medical:3,ammo:240},
+  history:[],journal:[],appliedResults:[],supplies:{medical:3,ammo:240,flash:4},
   regionalPressure:Object.fromEntries(REGIONS.map(r=>[r,0])),
-  inventory:{weapons:{carbine:0,smg:0,rifle:0,shotgun:0}}};
+  inventory:{weapons:{carbine:0,smg:0,rifle:0,shotgun:0}},kitPresets:[]};
 }
 export function migrateLegacyRoster(campaign:CampaignState,legacy:RosterState):CampaignState{
  if(!legacy||legacy.version!==1||!Array.isArray(legacy.members))return campaign;
@@ -103,8 +120,15 @@ export function migrateLegacyRoster(campaign:CampaignState,legacy:RosterState):C
   if(!old)return operator;
   return {...operator,callsign:old.callsign.slice(0,24),
    missions:old.missions,successful:old.successful,injuries:old.injuries,
-   recoveryDays:old.recovery,weapon:old.weapon,magazine:old.magazine,
-   reserve:old.reserve,shotsFired:old.fired};
+   recoveryDays:old.recovery,weapon:old.weapon,
+    loadout:initialEquipmentLoadout(old.weapon),magazine:old.magazine,
+   reserve:old.reserve,shotsFired:old.fired,
+   magazines:readPersistentMagazines(operator.id,old.weapon,old.reserve,
+    (old as {magazines?:unknown}).magazines),
+   loadedMagazineId:readLoadedMagazineId(operator.id,old.weapon,
+    (old as {loadedMagazineId?:unknown}).loadedMagazineId,
+    readPersistentMagazines(operator.id,old.weapon,old.reserve,
+     (old as {magazines?:unknown}).magazines))};
  })};
 }
 export function readCampaign(raw:string|null):CampaignState|null{
@@ -136,11 +160,23 @@ export function readCampaign(raw:string|null):CampaignState|null{
    [weapon,Number.isInteger(c.inventory?.weapons?.[weapon])&&
     c.inventory.weapons[weapon]>=0?c.inventory.weapons[weapon]:0])) as Record<CampaignOperator['weapon'],number>;
   const operators=c.operators.map(o=>({...o,
+    magazines:readPersistentMagazines(o.id,o.weapon,o.reserve,
+     (o as {magazines?:unknown}).magazines),
+    loadedMagazineId:readLoadedMagazineId(o.id,o.weapon,
+     (o as {loadedMagazineId?:unknown}).loadedMagazineId,
+     readPersistentMagazines(o.id,o.weapon,o.reserve,
+      (o as {magazines?:unknown}).magazines)),
+   loadout:readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon),
+   armorCondition:normalizedArmorCondition((o as {armorCondition?:unknown}).armorCondition,
+    readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon)),
    trait:typeof o.trait==='string'?o.trait:'Experienced Operator',
    distinctions:Array.isArray(o.distinctions)?
     o.distinctions.filter((x):x is string=>typeof x==='string').slice(0,32):[]
   }));
   return {...c,squadIds:chosen,operators,inventory:{weapons},
+    supplies:{...c.supplies,flash:Number.isFinite(c.supplies.flash)?
+     Math.max(0,Math.min(1000,Math.floor(c.supplies.flash))):4},
+    kitPresets:readKitPresets((c as {kitPresets?:unknown}).kitPresets),
    regionalPressure:Object.fromEntries(REGIONS.map(region=>
    [region,Math.max(-3,Math.min(3,Number.isFinite(c.regionalPressure?.[region])?
     c.regionalPressure[region]:0))]))};
@@ -182,7 +218,8 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   if(!performance)return base;
   const progress=progressOperator(base,performance,r.outcome==='success');
   gainedSkills.push(progress.gains);
-  return progress.operator;
+  return {...progress.operator,armorCondition:missionArmorCondition(
+   o.armorCondition,performance,initialArmorIntegrity(o.loadout))};
  });
  const milestones=[
   {key:'5-operations',label:'Five Operations',test:(o:CampaignOperator)=>o.missions>=5},
@@ -223,6 +260,7 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
    intel:'scouted',reward:contract.reward+180,deadline:day+3,status:'available'});
  }
  return {...c,day,funds:c.funds+gained,operators:developed,regionalPressure:pressure,
+  supplies:{...c.supplies,flash:Math.max(0,(c.supplies.flash??4)-clampFlashUse(r.flashUsed))},
   activeContractId:null,history:[...c.history,{...r,gains:gainedSkills}].slice(-200),
   journal:[...c.journal,...r.events,...careerEvents].slice(-1000),
   appliedResults:[...c.appliedResults,r.id].slice(-500),
@@ -261,7 +299,8 @@ export function resupplyOperator(c:CampaignState,id:string):CampaignState{
  const toMag=Math.min(rounds,Math.max(0,weapon.capacity-o.magazine));
  return {...c,supplies:{...c.supplies,ammo:c.supplies.ammo-rounds},
   operators:c.operators.map(m=>m.id===id?{...m,
-   magazine:m.magazine+toMag,reserve:m.reserve+rounds-toMag}:m)};
+   magazine:m.magazine+toMag,reserve:m.reserve+rounds-toMag,
+    magazines:addReserveRounds(m.id,m.weapon,m.magazines,rounds-toMag)}:m)};
 }
 
 export const TACTICAL_SLOTS=['rook','moss','ash','vale'] as const;
@@ -313,7 +352,9 @@ export function equipCampaignWeapon(c:CampaignState,id:string,
    [weapon]:c.inventory.weapons[weapon]-1,
    [m.weapon]:c.inventory.weapons[m.weapon]+1
   }},
-  operators:c.operators.map(o=>o.id===id?{...o,weapon,magazine:0,reserve:0}:o)};
+  operators:c.operators.map(o=>o.id===id?{...o,weapon,magazine:0,reserve:0,
+    magazines:[],loadedMagazineId:o.id+'/'+weapon+'/loaded',
+    loadout:syncPrimaryWeapon(o.loadout,weapon)}:o)};
 }
 
 /** Retirement is player-directed, never inferred from an ambiguous downed state. */
@@ -329,4 +370,107 @@ export function retireOperator(c:CampaignState,id:string):CampaignState{
  return {...c,inventory:{weapons},operators:c.operators.map(m=>
   m.id===id?{...m,status:'retired' as const}:m),
   journal:[...c.journal,event].slice(-1000)};
+}
+
+/** Non-weapon issued kit customization. Weapon swaps must go through the
+ * stock-aware equipCampaignWeapon path, never through this editor. */
+export function equipCampaignGear(c:CampaignState,id:string,slot:LoadoutSlot,
+ itemId:string):CampaignState{
+ if(c.activeContractId||slot==='primary')return c;
+ const o=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
+ if(!o)return c;
+ const next=setEquipmentChoice(o.loadout,slot,itemId);
+ if(next===o.loadout)return c;
+ return {...c,operators:c.operators.map(m=>m.id===id?{...m,loadout:next,
+  armorCondition:clampArmorToKit(m.armorCondition,next)}:m)};
+}
+
+/** Named equipment recipes are lightweight shared records, not physical stock. */
+export function saveCampaignKitPreset(c:CampaignState,id:string,name:string):CampaignState{
+ if(c.activeContractId||c.kitPresets.length>=MAX_KIT_PRESETS||
+    !name.trim())return c;
+ const member=c.operators.find(o=>o.id===id&&o.status!=='retired'&&o.status!=='lost');
+ if(!member)return c;
+ const presetId=nextPresetId(c.kitPresets);
+ if(!presetId)return c;
+ return {...c,kitPresets:[...c.kitPresets,{
+   id:presetId,name:name.trim().slice(0,32),weapon:member.weapon,
+   kit:readEquipmentLoadout(member.loadout,member.weapon)}]};
+}
+export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string):CampaignState{
+ if(c.activeContractId)return c;
+ const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
+ const preset=c.kitPresets.find(p=>p.id===presetId);
+ if(!member||!preset)return c;
+ // Entire recipe is atomic. Never silently skip a missing primary weapon.
+ if(member.weapon!==preset.weapon&&c.inventory.weapons[preset.weapon]<1)return c;
+ const swapped=member.weapon===preset.weapon?c:equipCampaignWeapon(c,id,preset.weapon);
+ if(swapped===c&&member.weapon!==preset.weapon)return c;
+ return {...swapped,operators:swapped.operators.map(o=>o.id===id?{
+  ...o,loadout:readEquipmentLoadout(preset.kit,preset.weapon),
+  armorCondition:clampArmorToKit(o.armorCondition,preset.kit)}:o)};
+}
+export function deleteCampaignKitPreset(c:CampaignState,presetId:string):CampaignState{
+ if(c.activeContractId||!c.kitPresets.some(p=>p.id===presetId))return c;
+ return {...c,kitPresets:c.kitPresets.filter(p=>p.id!==presetId)};
+}
+/** Allow cosmetic identity edits without changing personnel service history. */
+export function renameCampaignOperator(c:CampaignState,id:string,callsign:string):CampaignState{
+ const next=callsign.trim().slice(0,24);
+ if(!next||c.activeContractId||c.operators.some(o=>o.id!==id&&o.callsign.toLowerCase()===next.toLowerCase()))
+  return c;
+ return {...c,operators:c.operators.map(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired'?
+  {...o,callsign:next}:o)};
+}
+export function cycleCampaignAppearance(c:CampaignState,id:string):CampaignState{
+ if(c.activeContractId)return c;
+ return {...c,operators:c.operators.map(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired'?
+  {...o,appearanceSeed:(o.appearanceSeed+1)>>>0}:o)};
+}
+
+/** Campaign equipment persists as condition, not a fresh disposable vest.
+ * Swapping gear cannot restore previously depleted protection. */
+const validArmor=(x:unknown,maximum:number,fallback:number)=>
+ typeof x==='number'&&Number.isFinite(x)?
+  Math.min(maximum,Math.max(0,Math.floor(x))):fallback;
+export function normalizedArmorCondition(raw:unknown,kit:EquipmentLoadout):ArmorIntegrity{
+ const max=initialArmorIntegrity(kit);
+ if(!raw||typeof raw!=='object')return max;
+ const value=raw as Partial<ArmorIntegrity>;
+ return {torso:validArmor(value.torso,max.torso,max.torso),
+  head:validArmor(value.head,max.head,max.head)};
+}
+export function clampArmorToKit(condition:ArmorIntegrity,kit:EquipmentLoadout):ArmorIntegrity{
+ const max=initialArmorIntegrity(kit);
+ return {torso:Math.min(max.torso,Math.max(0,condition.torso)),
+  head:Math.min(max.head,Math.max(0,condition.head))};
+}
+export function missionArmorCondition(
+ previous:ArmorIntegrity,performance:OperatorPerformance,maximum:ArmorIntegrity
+):ArmorIntegrity{
+ return {
+  torso:validArmor(performance.armorIntegrity,maximum.torso,previous.torso),
+  head:validArmor(performance.helmetIntegrity,maximum.head,previous.head)
+ };
+}
+/** Repairs are explicit, paid and unavailable during an active contract. */
+export function armorRepairCost(o:CampaignOperator):number{
+ const max=initialArmorIntegrity(o.loadout);
+ return Math.max(0,max.torso-o.armorCondition.torso)*30+
+  Math.max(0,max.head-o.armorCondition.head)*24;
+}
+export function repairCampaignArmor(c:CampaignState,id:string):CampaignState{
+ if(c.activeContractId)return c;
+ const member=c.operators.find(o=>o.id===id&&o.status!=='retired'&&o.status!=='lost');
+ if(!member)return c;
+ const cost=armorRepairCost(member);
+ if(cost===0||cost>c.funds)return c;
+ return {...c,funds:c.funds-cost,operators:c.operators.map(o=>o.id===id?
+  {...o,armorCondition:initialArmorIntegrity(o.loadout)}:o)};
+}
+
+/** Flashbang resupply is a paid transaction, never hidden kit duplication. */
+export function purchaseFlash(c:CampaignState):CampaignState{
+ if(c.activeContractId||c.funds<150||c.supplies.flash>998)return c;
+ return {...c,funds:c.funds-150,supplies:{...c.supplies,flash:c.supplies.flash+2}};
 }
