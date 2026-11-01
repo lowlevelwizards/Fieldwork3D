@@ -1,6 +1,7 @@
 /** Campaign screens. Render only on navigation and state changes, never per frame. */
 import type {CampaignState,Contract} from './campaign-state.ts';
-import {SKILL_NAMES,WEAPON_PRICES} from './campaign-state.ts';
+import {SKILL_NAMES,WEAPON_PRICES,armorRepairCost} from './campaign-state.ts';
+import {initialArmorIntegrity} from './equipment-armor.ts';
 import {sharedService} from './campaign-history.ts';
 import {LOADOUT_SLOTS,itemsForSlot,itemDefinition} from './equipment-catalog.ts';
 import {totalEquipmentMass,loadMobilityDescription,loadMovementScale,
@@ -16,6 +17,7 @@ export type CampaignHandlers={
  buyWeapon:(weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipWeapon:(id:string,weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipGear:(id:string,slot:LoadoutSlot,itemId:string)=>void;
+ repairArmor:(id:string)=>void;
  saveKitPreset:(id:string,name:string)=>void;
  applyKitPreset:(id:string,presetId:string)=>void;
  deleteKitPreset:(presetId:string)=>void;
@@ -274,6 +276,15 @@ export class CampaignScreen{
    'PRIMARY · '+person.weapon.toUpperCase()+
    '    /    MAGAZINE · '+person.magazine+
    '    /    RESERVE · '+person.reserve));
+  const maximum=initialArmorIntegrity(person.loadout);
+  const repairCost=armorRepairCost(person);
+  summary.append(node('p','campaign-kit-metrics',
+   'ARMOR · '+person.armorCondition.torso+'/'+maximum.torso+
+   '     HELMET · '+person.armorCondition.head+'/'+maximum.head));
+  const repair=button('REPAIR PROTECTION · '+repairCost+' CR',
+   ()=>this.handlers.repairArmor(person.id));
+  repair.disabled=!!c.activeContractId||repairCost===0||c.funds<repairCost;
+  summary.append(repair);
   summary.append(node('p','campaign-note',
    'Equipment is issued as a saved preparation kit. Carried weight now influences movement speed. Coarse armor coverage and durability are now simulated; detailed ballistic hitboxes, retrieval times, tools and attachment handling are still in development.'));
   summary.append(node('p','campaign-note',
