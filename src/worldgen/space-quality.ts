@@ -4,6 +4,7 @@
  */
 import type {Site,Room} from '../breach-site.ts';
 import type {Obstacle} from '../breach-core.ts';
+import {maxSolidOccupancy} from './functional-space.ts';
 export type SpaceRoomMetric={
  roomId:string;purpose:string;areaM2:number;solidCount:number;
  solidFraction:number;freeFraction:number;crowded:boolean;
@@ -35,7 +36,7 @@ export function assessSpaceQuality(site:Pick<Site,'rooms'|'cover'|'doors'>):Spac
    areaM2:Math.round(area/400*10)/10,solidCount:intersecting.length,
    solidFraction:Math.round(solidFraction*1000)/1000,
    freeFraction:Math.round((1-solidFraction)*1000)/1000,
-   crowded:solidFraction>.32};
+   crowded:solidFraction>maxSolidOccupancy(r)};
  });
  const doorApproachIssues:{doorId:string;fixture:string}[]=[];
  for(const d of site.doors){
