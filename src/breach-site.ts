@@ -66,7 +66,8 @@ export const seeded=(seed:number)=>{
 /** Every live map now uses the building-specific architectural compiler,
  * regardless of scale. Older square-grid layouts are not in active rotation.
  */
-export function generateSite(seed:number,scale:SiteScale='standard'):Site{
+export function generateSite(seed:number,scale:SiteScale='standard',
+ onProgress?:(phase:'layout'|'furnishing'|'scoring',attempt:number)=>void):Site{
  const kind=(['house','townhouse','apartment','retail','office',
   'garage','warehouse','restaurant','motel','utility','clinic'] as const)
   [(seed>>>0)%11];
@@ -81,11 +82,14 @@ export function generateSite(seed:number,scale:SiteScale='standard'):Site{
   // full scene generation on every mobile load.
   if(firstSuccess>=0&&attempt>firstSuccess+1)break;
   try{
+   onProgress?.('layout',attempt);
    const geometry=partitionMotelGuestUnits(
      compileArchitecturalSite(kind,seed+attempt*9973,scale,subtype));
    geometry.seed=seed;
    geometry.identity=buildingIdentity(kind,seed,scale,geometry.roomCount);
+   onProgress?.('furnishing',attempt);
    const candidate=applyArchetype(orientArchitecturalSite(geometry,seed),seed);
+   onProgress?.('scoring',attempt);
    const grade=measureSiteCompleteness(candidate);
    if(!bestGrade||preferCompleteCandidate(grade,bestGrade)){
     best=candidate;bestGrade=grade;
