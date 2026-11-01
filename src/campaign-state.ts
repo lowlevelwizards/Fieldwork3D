@@ -11,6 +11,7 @@ export type CareerEvent={id:string;day:number;operatorId:string;operationId?:str
 export type CampaignOperator={
  id:string;callsign:string;background:string;appearanceSeed:number;
  skills:ShootingSkills;experience:ShootingSkills;aptitudes:ShootingSkills;
+ trait:string;distinctions:string[];
  missions:number;successful:number;injuries:number;recoveryDays:number;
  status:'available'|'reserve'|'lost';weapon:'carbine'|'smg'|'rifle'|'shotgun';
  magazine:number;reserve:number;shotsFired:number;joinedDay:number;
@@ -50,13 +51,19 @@ const values=(seed:number,kind:'skill'|'aptitude'):ShootingSkills=>{
  return Object.fromEntries(SKILL_NAMES.map((key,i)=>[key,nums[i]])) as ShootingSkills;
 };
 export function startingOperator(id:string,i:number,seed:number):CampaignOperator{
+ const aptitude=values(hash(seed+i*733),'aptitude');
+ const strongest=SKILL_NAMES.reduce((best,key)=>aptitude[key]>aptitude[best]?key:best);
+ const traitNames:Record<SkillName,string>={
+  pointShooting:'Close Quarters Instinct',longRange:'Patient Marksman',
+  precision:'Careful Aim',recoilControl:'Steady Hands',
+  composure:'Calm Under Pressure',handling:'Fast Hands'};
  const weapon=WEAPONS[i%WEAPONS.length];
  const capacity={carbine:12,smg:24,rifle:10,shotgun:6}[weapon];
  const reserve={carbine:36,smg:72,rifle:30,shotgun:24}[weapon];
  return {id,callsign:id.toUpperCase(),background:['Patrol','Reconnaissance','Security','Emergency Response'][i%4],
   appearanceSeed:hash(seed+i+83),skills:values(hash(seed+i*313),'skill'),
   experience:Object.fromEntries(SKILL_NAMES.map(k=>[k,0])) as ShootingSkills,
-  aptitudes:values(hash(seed+i*733),'aptitude'),
+  aptitudes:aptitude,trait:traitNames[strongest],distinctions:[],
   missions:0,successful:0,injuries:0,recoveryDays:0,status:'available',
   weapon,magazine:capacity,reserve,shotsFired:0,joinedDay:1};
 }
@@ -128,7 +135,12 @@ export function readCampaign(raw:string|null):CampaignState|null{
   const weapons=Object.fromEntries(WEAPONS.map(weapon=>
    [weapon,Number.isInteger(c.inventory?.weapons?.[weapon])&&
     c.inventory.weapons[weapon]>=0?c.inventory.weapons[weapon]:0])) as Record<CampaignOperator['weapon'],number>;
-  return {...c,squadIds:chosen,inventory:{weapons},
+  const operators=c.operators.map(o=>({...o,
+   trait:typeof o.trait==='string'?o.trait:'Experienced Operator',
+   distinctions:Array.isArray(o.distinctions)?
+    o.distinctions.filter((x):x is string=>typeof x==='string').slice(0,32):[]
+  }));
+  return {...c,squadIds:chosen,operators,inventory:{weapons},
    regionalPressure:Object.fromEntries(REGIONS.map(region=>
    [region,Math.max(-3,Math.min(3,Number.isFinite(c.regionalPressure?.[region])?
     c.regionalPressure[region]:0))]))};
@@ -172,6 +184,25 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   gainedSkills.push(progress.gains);
   return progress.operator;
  });
+ const milestones=[
+  {key:'5-operations',label:'Five Operations',test:(o:CampaignOperator)=>o.missions>=5},
+  {key:'10-operations',label:'Ten Operations',test:(o:CampaignOperator)=>o.missions>=10},
+  {key:'5-successes',label:'Five Successful Operations',test:(o:CampaignOperator)=>o.successful>=5},
+  {key:'precision-specialist',label:'Precision Specialist',test:(o:CampaignOperator)=>o.skills.precision>=.7},
+  {key:'recoil-specialist',label:'Weapon Control Specialist',test:(o:CampaignOperator)=>o.skills.recoilControl>=.7}
+ ];
+ const developed=operators.map(o=>{
+  if(!participants.has(o.id))return o;
+  const distinctions=[...o.distinctions];
+  for(const milestone of milestones){
+   if(!milestone.test(o)||distinctions.includes(milestone.label))continue;
+   distinctions.push(milestone.label);
+   careerEvents.push({id:r.id+'-'+o.id+'-'+milestone.key,
+    day:c.day,operatorId:o.id,operationId:r.id,kind:'distinction',
+    detail:'Earned distinction: '+milestone.label});
+  }
+  return {...o,distinctions};
+ });
  const day=c.day+1;
  const contracts=c.contracts.map(k=>k.id===r.contractId?
   {...k,status:r.outcome==='success'?'completed' as const:'failed' as const}:
@@ -191,7 +222,7 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
    risk:Math.min(3,contract.risk+1) as 1|2|3,
    intel:'scouted',reward:contract.reward+180,deadline:day+3,status:'available'});
  }
- return {...c,day,funds:c.funds+gained,operators,regionalPressure:pressure,
+ return {...c,day,funds:c.funds+gained,operators:developed,regionalPressure:pressure,
   activeContractId:null,history:[...c.history,{...r,gains:gainedSkills}].slice(-200),
   journal:[...c.journal,...r.events,...careerEvents].slice(-1000),
   appliedResults:[...c.appliedResults,r.id].slice(-500),
