@@ -14,6 +14,7 @@ import {dressSite} from './worldgen/environment-dresser.ts';
 import {decorateWalls} from './worldgen/wall-dresser.ts';
 import {styleArchitecturalDoors} from './worldgen/door-families.ts';
 import {planDoorSwings} from './worldgen/door-swing-planner.ts';
+import {addScenarioDisarray} from './worldgen/scenario-disarray.ts';
 import {dressWindowSecurity} from './worldgen/window-security.ts';
 import {synchronizeWindowBarriers} from './worldgen/window-collider-sync.ts';
 import {populateFunctionalRooms} from './worldgen/scenario-population.ts';
@@ -87,7 +88,7 @@ export function applyArchetype(site:Site,seed:number):Site{
       buildArchetypeEnvironment(architecture,seed),seed);
     const result=dressWindowSecurity(decorateWalls(populateFunctionalRooms(dressSite(
       furnishRooms(environment,seed),seed),seed),seed),seed);
-    return {...planDoorSwings(enforceServiceHatchBarriers(synchronizeWindowBarriers(result))),bounds:site.bounds??
+    return {...addScenarioDisarray(planDoorSwings(enforceServiceHatchBarriers(synchronizeWindowBarriers(result))),seed),bounds:site.bounds??
       {minX:0,minY:0,maxX:640,maxY:740}};
   };
   // Controlled rollout: keep standard maps fast and proven while sampling
