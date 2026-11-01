@@ -1,7 +1,8 @@
 /** Shared low-resolution material library: build textures once, then reuse. */
 import * as THREE from 'three';
-import {pixelPattern,pixelRepeats,TILE_PIXELS,TILE_WORLD_SIZE,
+import {pixelPattern,pixelRepeats,TILE_PIXELS,TILE_WORLD_SIZE,MATERIAL_RECIPE_VERSION,
   type PixelSurface} from './pixel-recipes.ts';
+import {readableMipChain} from './texture-lod.ts';
 export {PIXEL_SURFACES,TEXELS_PER_OPERATOR,PIXEL_WORLD_SIZE,TILE_WORLD_SIZE}
  from './pixel-recipes.ts';
 export type {PixelSurface} from './pixel-recipes.ts';
@@ -10,17 +11,20 @@ export class PixelTextureLibrary {
  private textures=new Map<string,THREE.DataTexture>();
  get(kind:PixelSurface,variant=0):THREE.DataTexture{
   const safeVariant=((variant|0)%PIXEL_VARIANTS+PIXEL_VARIANTS)%PIXEL_VARIANTS;
-  const key=kind+':'+safeVariant;
+  const key=MATERIAL_RECIPE_VERSION+':'+kind+':'+safeVariant;
   let texture=this.textures.get(key);
   if(texture)return texture;
-  texture=new THREE.DataTexture(pixelPattern(kind,safeVariant,TILE_PIXELS),
+  const source=pixelPattern(kind,safeVariant,TILE_PIXELS);
+  texture=new THREE.DataTexture(source,
     TILE_PIXELS,TILE_PIXELS,THREE.RGBAFormat,THREE.UnsignedByteType);
+  texture.mipmaps=readableMipChain(source,TILE_PIXELS);
   texture.colorSpace=THREE.SRGBColorSpace;
   texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
   texture.magFilter=THREE.NearestFilter;
   // Mips reduce distant-camera shimmering; source pixels stay integer and crisp.
   texture.minFilter=THREE.LinearMipmapLinearFilter;
-  texture.generateMipmaps=true;
+  // The chain is authored, not driver-averaged into a dark blur.
+  texture.generateMipmaps=false;
   texture.needsUpdate=true;
   texture.name='Fieldwork pixel '+key;
   this.textures.set(key,texture);
