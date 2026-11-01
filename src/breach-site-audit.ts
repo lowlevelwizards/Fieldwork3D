@@ -8,7 +8,8 @@ const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type SiteAudit={seed:number;archetype:string;layout:string;
   rooms:number;doors:number;enemies:number;windows:number;
   archOpenings:number;exteriorZones:number;dressing:number;
-  condition:string;typedProps:number;functionalRooms:number;\n  roomFill:{id:string;role:string;fixtures:number;areaM2:number}[];emptyRooms:string[];
+  condition:string;typedProps:number;functionalRooms:number;
+  roomFill:{id:string;role:string;fixtures:number;areaM2:number}[];emptyRooms:string[];
   errors:string[]};
 export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteAudit{
   const site=generateSite(seed,scale);
@@ -71,7 +72,13 @@ export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteA
       site.enemyHeadings.some(h=>!Number.isFinite(h))))
       errors.push('invalid enemy orientations');
   }finally{activateSite(null);}
-  const roomFill=site.rooms.filter(r=>r.kind==='room').map(room=>({\n    id:room.id,role:room.purpose??'untyped',\n    areaM2:Math.round(room.w*room.h/400*10)/10,\n    fixtures:site.cover.filter(o=>o.fixture&&o.fixture!=='window-sill'&&\n      o.x>room.x&&o.x<room.x+room.w&&o.y>room.y&&o.y<room.y+room.h).length\n  }));\n  return {seed,archetype:site.archetype??'untyped',
+  const roomFill=site.rooms.filter(r=>r.kind==='room').map(room=>({
+    id:room.id,role:room.purpose??'untyped',
+    areaM2:Math.round(room.w*room.h/400*10)/10,
+    fixtures:site.cover.filter(o=>o.fixture&&o.fixture!=='window-sill'&&
+      o.x>room.x&&o.x<room.x+room.w&&o.y>room.y&&o.y<room.y+room.h).length
+  }));
+  return {seed,archetype:site.archetype??'untyped',
     layout:site.layout,rooms:site.rooms.length,
     doors:site.doors.length,enemies:site.enemies.length,
     windows:site.windows?.length??0,
@@ -79,5 +86,7 @@ export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteA
     exteriorZones:site.exteriorZones?.length??0,
     dressing:site.dressing?.length??0,
     condition:site.condition??'unknown',
-    typedProps:site.cover.filter(c=>!!c.fixture).length,\n    functionalRooms:roomFill.length,roomFill,\n    emptyRooms:roomFill.filter(r=>r.fixtures===0).map(r=>r.id),errors};
+    typedProps:site.cover.filter(c=>!!c.fixture).length,
+    functionalRooms:roomFill.length,roomFill,
+    emptyRooms:roomFill.filter(r=>r.fixtures===0).map(r=>r.id),errors};
 }
