@@ -2,7 +2,7 @@
 import type {OperationKind} from './breach-operations.ts';
 import type {ShootingSkills} from './breach-skills.ts';
 import type {RosterState} from './breach-roster.ts';
-import {WEAPONS} from './breach-combat.ts';
+import {WEAPONS as COMBAT_WEAPONS} from './breach-combat.ts';
 import {progressOperator,type OperatorPerformance,type SkillGains} from './campaign-progression.ts';
 
 export type SkillName=keyof ShootingSkills;
@@ -190,7 +190,7 @@ export function resupplyOperator(c:CampaignState,id:string):CampaignState{
  if(c.activeContractId)return c;
  const o=c.operators.find(m=>m.id===id&&m.status!=='lost');
  if(!o)return c;
- const weapon=WEAPONS[o.weapon];
+ const weapon=COMBAT_WEAPONS[o.weapon];
  const needed=Math.max(0,weapon.capacity-o.magazine)+Math.max(0,weapon.reserve-o.reserve);
  const rounds=Math.min(c.supplies.ammo,needed);
  if(rounds<=0)return c;
