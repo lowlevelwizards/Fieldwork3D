@@ -28,6 +28,7 @@ import {coverImpactFraction,aimHeight} from './breach-cover-height.ts';
 import {MICRO_KEYS,MICRO_COLS} from './breach-fog-memory.ts';
 import {assessFireLane,type FireBlock} from './breach-fire-safety.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from './breach-door.ts';
+import {doorInteraction} from './breach-interactions.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
 import {chooseAiIntent,type AIIntent} from './breach-ai-policy.ts';
@@ -1225,7 +1226,11 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
        d(next,center)<22);
   }):undefined;
   if(doorAhead){
-    if(doorAhead.heldBy){a.velocity=0;return true;}
+    const opening=doorInteraction({target:doorAhead,actorId:a.id,
+      actorPosition:a.p,action:'open'});
+    if(opening.reason==='held'||opening.reason==='locked'){
+      a.velocity=0;return true;
+    }
     a.velocity=0;a.actionTimer+=dt;
     if(a.actionTimer>=.36&&!doorAhead.open){
       doorAhead.open=true;doorAhead.openedAt=s.seconds;
@@ -1533,8 +1538,16 @@ function runOrders(s:Session,a:TeamActor,dt:number){
        (n.method!=='close'&&n.method!=='kick'&&n.method!=='hold'&&door.open)){
       pop(a);return;
     }
-    if(!doorReachable(a.p,door)&&a.actionTimer===0){
-      notify(s,a.name+' TOO FAR FROM DOOR');return;
+    const interaction=doorInteraction({target:door,actorId:a.id,
+      actorPosition:a.p,action:n.method??'open'});
+    if(!interaction.allowed&&a.actionTimer===0){
+      if(interaction.reason==='out-of-reach'){
+        notify(s,a.name+' TOO FAR FROM DOOR');return;
+      }
+      if(interaction.reason==='held')notify(s,door.id+' HELD SHUT');
+      else if(interaction.reason==='unsupported')
+        notify(s,door.id+' REQUIRES SHUTTER CONTROL');
+      pop(a);return;
     }
     const required=n.method==='kick'?KICK_DURATION:
       n.method==='hold'?1.3:n.method==='close'?.65:.49;
