@@ -12,7 +12,6 @@ export function addSecurityPerimeter(site:Site,seed:number):Site{
  const horizontal=zone.w>=zone.h,span=horizontal?zone.w:zone.h;
  if(span<222)return site;
  const width=propDefinition('chain-link-fence')?.width??80;
- const length=width*2+48;
  const x=zone.x,y=zone.y;
  const positions=horizontal?[
   {x:x-(48+width)/2,y},{x:x+(48+width)/2,y}
