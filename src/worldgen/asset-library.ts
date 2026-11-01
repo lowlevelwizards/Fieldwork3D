@@ -38,7 +38,7 @@ const bespoke = new Set([
   'toilet','bathtub','shelf','gondola-shelf','wall-shelf','bookcase','rack',
   'cabinet','dresser','laundry-machine','generator','control-panel','tool-chest',
   'entry-bench','shoe-cubby','coat-rack',
-  'half-wall','support-column','chain-link-fence','iron-fence','privacy-fence','vehicle','sedan','pickup','van','suv','chair','bench','sofa','armchair','tv-stand','barrel','tank',
+  'half-wall','support-column','canopy-post','chain-link-fence','iron-fence','privacy-fence','vehicle','sedan','pickup','van','suv','chair','bench','sofa','armchair','tv-stand','barrel','tank',
   'tire-stack','vehicle-lift','hedge','bush','tree','tree-broadleaf','tree-conifer','tree-scrub','shrub-round','shrub-tall','plant','fence','pallet',
   'mailbox','trash-bin','bollard','hydrant','utility-cabinet',
   'parking-block','parking-sign','street-lamp','bike-rack','window-boards',

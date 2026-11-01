@@ -62,6 +62,8 @@ definitions.push({id:'iron-fence',category:'exterior',width:80,depth:5,height:36
  solid:true,cover:'high',rooms:['service-yard','parking','yard']});
 definitions.push({id:'privacy-fence',category:'exterior',width:80,depth:5,height:36,
  solid:true,cover:'high',rooms:['service-yard','parking','yard']});
+definitions.push({id:'canopy-post',category:'architecture',width:6,depth:6,height:50,
+ solid:true,cover:'high',rooms:['yard','parking','driveway','patio','service-yard']});
 // Purpose-built public counter and correctly scaled tall bar seats.
 definitions.push(
  {id:'bar-counter',category:'commercial',width:66,depth:22,height:26,

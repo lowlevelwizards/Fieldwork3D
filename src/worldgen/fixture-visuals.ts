@@ -428,6 +428,11 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         ctx.box(group,c.x,8,c.y,w,16,d,masonry);
         ctx.box(group,c.x,17,c.y,w+3,2.5,d+3,wood,false);
         ctx.box(group,c.x,1,c.y,w+2,2,d+2,metal,false);
+      }else if(fixture==='canopy-post'){
+        const steelPost=visualCtx.solid(0x596b6c,.82,'industrial-steel');
+        ctx.box(group,c.x,25,c.y,4.5,50,4.5,steelPost);
+        ctx.box(group,c.x,1.8,c.y,8,3.6,8,metal,false);
+        ctx.box(group,c.x,49,c.y,7,2.5,7,metal,false);
       }else if(fixture==='support-column'){
         const concrete=visualCtx.solid(0x807f77,.94,'concrete');
         ctx.box(group,c.x,20,c.y,w,40,d,concrete);

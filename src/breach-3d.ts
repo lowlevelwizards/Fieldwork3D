@@ -467,6 +467,24 @@ export class TacticalScene3D{
         mark.castShadow=false;mark.receiveShadow=false;
       }
     }
+    // Roofs are above an operator's head; posts alone define collision.
+    const entryCanopies=(site.structures??[]).filter(s=>s.kind==='entry-canopy');
+    if(entryCanopies.length){
+      const frame=this.solid(0x495a5b,.82,'industrial-steel');
+      const sheet=new THREE.MeshStandardMaterial({color:0x96a6a1,roughness:.57,
+        transparent:true,opacity:.46,depthWrite:false,side:THREE.DoubleSide});
+      this.mats.push(sheet);
+      for(const canopy of entryCanopies){
+        const group=new THREE.Group();this.root.add(group);
+        const {x,y,w,h}=canopy;
+        const roof=this.box(group,x,51,y,w,2.6,h,sheet,false);
+        roof.castShadow=false;
+        for(const sign of [-1,1]){
+          this.box(group,x+sign*(w/2-2),51,y,2.5,3.2,h,frame,false);
+          this.box(group,x,51,y+sign*(h/2-2),w,3.2,2.5,frame,false);
+        }
+      }
+    }
     const surfaceColor:Record<SurfaceKind,number>={
       path:0x919182,'driveway-stripe':0x858575,
       'parking-divider':0xd6caa9,'garden-border':0x4c5843,

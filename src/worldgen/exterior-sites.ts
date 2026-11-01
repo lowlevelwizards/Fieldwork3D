@@ -4,6 +4,7 @@
 import {type Site,type ExteriorZone,seeded} from '../breach-site.ts';
 import {type Obstacle,type Pt} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
+import {addCoveredEntry} from './covered-entries.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const overlaps=(a:Obstacle,b:Obstacle)=>Math.abs(a.x-b.x)<(a.w+b.w)/2+17&&Math.abs(a.y-b.y)<(a.h+b.h)/2+17;
 export function addExteriorProperty(site:Site,seed:number):Site{
@@ -137,5 +138,5 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    if(!accepted)continue;
   }
  }
- return {...site,exteriorZones:zones,cover};
+ return addCoveredEntry({...site,exteriorZones:zones,cover},seed);
 }
