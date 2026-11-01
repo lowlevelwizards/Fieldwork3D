@@ -5,6 +5,7 @@ import {
   movePlanNode,deletePlanNode,insertPlanNode,clearPlan,
   undoPlan,redoPlan,posture,toggling,stepSession,
   isSeen,lastKnown,debrief,missionText,toggleContactRule,inSight,
+  geometricallyVisible,
 } from '../src/breach-game.ts';
 const run=(s,time)=>{const n=Math.floor(time*60);
   for(let i=0;i<n;i++)stepSession(s,1/60);};
@@ -83,6 +84,9 @@ test('061: contact memory is knowledge, not global enemy visibility',()=>{
   assert.equal(lastKnown(s,b.id),null);
   a.p={x:191,y:330};a.heading=0;
   b.p={x:248,y:330};b.heading=3.14;
+  // This test covers remembered intel after a confirmed sighting;
+  // acquisition latency is independently tested by AW-02.
+  a.awareness.visualProgress[b.id]=1;
   toggling(s);stepSession(s,1/60);
   assert.equal(isSeen(s,b),true);
   assert.ok(lastKnown(s,b.id));
@@ -125,13 +129,13 @@ test('057: high cover occludes sight while exposed positions remain visible',()=
   const s=newSession(),a=team(s)[0],b=enemies(s)[0];
   a.p={x:404,y:169};a.heading=0;
   b.p={x:543,y:169};b.heading=Math.PI;
-  assert.equal(inSight(a,b,s),true,'standing target exposes head above cover');
+  assert.equal(geometricallyVisible(a,b,s),true,'standing target exposes head above cover');
   b.posture='crouch';
-  assert.equal(inSight(a,b,s),false,'crouched target stays concealed');
+  assert.equal(geometricallyVisible(a,b,s),false,'crouched target stays concealed');
   b.posture='stand';
   a.p={x:392,y:269};a.heading=0;
   b.p={x:448,y:269};
-  assert.equal(inSight(a,b,s),true,'open corridor is visible');
+  assert.equal(geometricallyVisible(a,b,s),true,'open corridor is visible');
 });
 test('060: halt-on-contact stops movement, not perception or aiming',()=>{
   const s=newSession(),a=team(s)[0],b=enemies(s)[0];
@@ -141,6 +145,8 @@ test('060: halt-on-contact stops movement, not perception or aiming',()=>{
   assert.ok(toggleContactRule(s,'rook'));
   assert.equal(a.haltOnContact,true);
   const at={...a.p};
+  // Already acquired contact should halt at the first simulation step.
+  a.awareness.visualProgress[b.id]=1;
   toggling(s);stepSession(s,1/60);
   assert.deepEqual(a.p,at,'stops when enemy is already visible');
   assert.ok(a.plan.length>0,'holding contact does not discard route');
