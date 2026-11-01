@@ -19,7 +19,7 @@ import {
 import {validPieArc} from './breach-maneuvers.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
 import {generateSite,type Site,type SiteScale,seeded} from './breach-site.ts';
-import type {EncounterContext} from './worldgen/encounter-types.ts';
+import type {EncounterContext,EncounterActivity,EncounterReadiness,EncounterRole} from './worldgen/encounter-types.ts';
 import {WEAPONS,injuryOf,injurySpeed,injuryReload,
   woundSeverity,exposure,nearCover,type WeaponId,type BattleEvent}
   from './breach-combat.ts';
@@ -137,6 +137,8 @@ export type TeamActor=Operator & {
   /** Temporary cooperative sidestep, independent of authored orders. */
   yieldTarget:Pt|null;yieldFor:string|null;yieldUntil:number;
   personality:Personality;morale:number;lastNoiseAt:number;
+  encounterActivity?:EncounterActivity;encounterReadiness?:EncounterReadiness;
+  encounterRole?:EncounterRole;encounterGroupId?:string;
   lastNoiseExaminedAt:number;lastNoiseExaminedId:number;
   flashUntil:number;lastThrowAt:number;lastDoorAt:number;
   lastDoorId:string|null;lastDoorMethod:DoorMethod;
@@ -306,6 +308,9 @@ export function newSession(index=0,siteSeed?:number,
       a.heading=site.encounter?.actors[i]?.heading??
         site.enemyHeadings?.[i]??enemyRng()*Math.PI*2;
       a.weaponYaw=a.heading;
+      const spec=site.encounter?.actors[i];
+      if(spec){a.encounterActivity=spec.activity;a.encounterReadiness=spec.readiness;
+        a.encounterRole=spec.role;a.encounterGroupId=spec.groupId;}
       a.health=enemyRng()<.18?3:4;
       a.weapon=enemyRng()<.30?'smg':'carbine';
       a.magazine=WEAPONS[a.weapon].capacity;
@@ -2154,6 +2159,12 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   }
   if(a.flashUntil>s.seconds){
     a.velocity=0;a.aim=0;a.alert='cover';return;
+  }
+  // Unprepared occupants do not automatically run to combat positions.
+  // Any credible sound or visual contact above interrupts this inactivity.
+  if(!a.contacted&&!a.contact&&a.alert==='idle'&&
+    (a.encounterReadiness==='relaxed'||a.encounterReadiness==='unaware')){
+    a.velocity=0;return;
   }
   if(!a.contacted&&!a.contact&&a.alert==='idle'&&a.watch){
     if(a.defense===null&&s.seconds>=a.defenseUntil){
