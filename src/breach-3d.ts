@@ -1635,6 +1635,10 @@ export class TacticalScene3D{
         equipment:actor.equipment,
          weaponConfiguration:actor.weaponConfiguration,
          weaponLightOn:actor.weaponLightOn,
+        treatmentActive:actor.treatmentActive,
+        treatmentProgress:actor.treatmentProgress,
+        treatmentPoint:actor.treatmentActive?
+         s.operators.find(o=>o.id===actor.lastTreatmentTargetId)?.p:undefined,
         flashCharges:actor.flashCharges,
         // A path collision may leave residual motor velocity while position
         // is stationary: feet should brace, not march in place.
