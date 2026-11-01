@@ -7,8 +7,11 @@
 header{position:fixed;top:env(safe-area-inset-top);left:0;right:0;z-index:12;padding:10px 14px;background:#1c2d29ef;border-bottom:1px solid #6b8275;display:flex;align-items:center;justify-content:space-between;gap:12px}
 header strong{font-size:15px;letter-spacing:.07em}a{color:#e4c58c}
 #labels{position:fixed;inset:0;pointer-events:none;z-index:6}
-#labels button{position:absolute;transform:translate(-50%,-50%);background:#213a33ed;border:1px solid #9cac8b;border-radius:5px;padding:3px 5px;color:#f4eddb;font:10px/1.2 ui-monospace,monospace;pointer-events:auto;max-width:124px;white-space:normal;cursor:pointer;touch-action:manipulation}
+#labels button{position:absolute;transform:translate(-50%,0);background:#213a33ed;border:1px solid #9cac8b;border-radius:5px;padding:3px 5px;color:#f4eddb;font:10px/1.2 ui-monospace,monospace;pointer-events:auto;max-width:124px;white-space:normal;cursor:pointer;touch-action:manipulation}
 #labels button[aria-pressed=true]{background:#6c593c;border-color:#f0d49d}
+#labels button::before{content:'';position:absolute;bottom:100%;left:50%;
+ height:9px;border-left:1px solid #e4c58c;pointer-events:none}
+#labels button[hidden]{display:none}
 #controls{position:fixed;z-index:10;bottom:env(safe-area-inset-bottom);left:0;right:0;background:#1d302ceF;border-top:1px solid #78917a;padding:11px;display:grid;gap:8px;max-height:39dvh;overflow:auto;touch-action:pan-y}
 .row{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 button,select,input{background:#344d43;border:1px solid #78937d;color:#f6ebd8;border-radius:6px;padding:8px;min-height:34px;font:12px system-ui;touch-action:manipulation}
@@ -17,7 +20,7 @@ input{flex:1;min-width:100px}select{flex:1;min-width:140px}button:disabled{opaci
 #summary{color:#dfceac;font-size:11px}
 @media(max-width:450px){#controls{max-height:35dvh;padding:8px}.row{gap:5px}button,select,input{font-size:11px;padding:6px}}
 </style></head><body>
-<header><strong>FIELDWORK / ASSET LIBRARY</strong><a href="./map-lab.html">MAP LAB</a></header>
+<header id="lab-header"><strong>FIELDWORK / ASSET LIBRARY</strong><a href="./map-lab.html">MAP LAB</a></header>
 <div id="labels"></div>
 <section id="controls" aria-label="Asset library">
  <div class="row"><label for="category">CATEGORY</label><select id="category"><option value="">All assets</option></select><input id="search" type="search" placeholder="Search asset names" aria-label="Search assets"></div>
