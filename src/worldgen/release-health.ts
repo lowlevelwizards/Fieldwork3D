@@ -2,7 +2,6 @@
  * Never called by Quick Play, Campaign, or the normal Map Lab generator.
  * Timings are relative CI/host measures and are not an iPhone FPS claim.
  */
-import {performance} from 'node:perf_hooks';
 import type {SiteScale} from '../breach-site.ts';
 import {auditGeneratedSite,type SiteAudit} from '../breach-site-audit.ts';
 import {summarizeSiteQuality} from './quality-matrix.ts';
