@@ -7,7 +7,8 @@ import {initialArmorIntegrity} from './equipment-armor.ts';
 import {magazineKit,type MagazineItem} from './breach-magazines.ts';
 import {readPersistentMagazines,readLoadedMagazineId,addReserveRounds}
  from './equipment-magazine-persistence.ts';
-import {stageMagazines} from './equipment-magazine-placement.ts';
+import {stageMagazines,magazineSpace,type MagazineLocation}
+ from './equipment-magazine-placement.ts';
 import {equippedFlashCharges,
  initialEquipmentLoadout,readEquipmentLoadout,syncPrimaryWeapon,setEquipmentChoice,
  loadMovementScale,type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
@@ -163,7 +164,7 @@ export function equipRosterGear(roster:RosterState,id:string,slot:LoadoutSlot,
  const next=setEquipmentChoice(member.loadout,slot,itemId);
  if(next===member.loadout)return roster;
  return {...roster,members:roster.members.map(m=>m.id===id?
-  {...m,loadout:next}:m)};
+  {...m,loadout:next,magazines:stageMagazines(m.magazines,next)}:m)};
 }
 export function renameRosterMember(roster:RosterState,id:string,name:string):RosterState{
  const next=name.trim().slice(0,24);
@@ -174,4 +175,22 @@ export function renameRosterMember(roster:RosterState,id:string,name:string):Ros
 export function cycleRosterAppearance(roster:RosterState,id:string):RosterState{
  return {...roster,members:roster.members.map(m=>m.id===id?
   {...m,appearanceSeed:(m.appearanceSeed+1)>>>0}:m)};
+}
+
+/** Quick Play manual pouch editing. No campaign costs or artificial limits
+ * other than the actual carrying equipment's physical capacity. */
+export function moveRosterMagazine(roster:RosterState,id:string,
+ magazineId:string,to:MagazineLocation):RosterState{
+ if(!['rig','belt','pocket','backpack','overflow'].includes(to))return roster;
+ const member=roster.members.find(m=>m.id===id);
+ if(!member||member.weapon==='shotgun')return roster;
+ const placed=stageMagazines(member.magazines,member.loadout);
+ const mag=placed.find(m=>m.id===magazineId);
+ if(!mag||mag.location===to)return roster;
+ const space=magazineSpace(member.loadout);
+ if(to!=='overflow'&&placed.filter(m=>m.location===to).length>=space[to])return roster;
+ const moved=stageMagazines(placed.map(m=>m.id===magazineId?
+  {...m,location:to}:m),member.loadout);
+ return {...roster,members:roster.members.map(m=>m.id===id?
+  {...m,magazines:moved}:m)};
 }
