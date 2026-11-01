@@ -698,10 +698,6 @@ export class TacticalScene3D{
       this.doors.set(door.id,{root,leaf,frame,halo,threshold});
       this.observedDoorOpen.set(door.id,door.openFraction??0);
     }
-    const wood=this.solid(age(theme.wood,'furniture-wood'),.9,'furniture-wood'),
-      steel=this.solid(age(0x465958,'metal'),.8,'metal');
-    const olive=this.solid(age(0x70715e,'fabric'),.9,'fabric');
-    const agedMetal=this.solid(age(0x586665,'industrial-steel'),.78,'industrial-steel');
     const fixtureCtx:FixtureVisualContext={
       box:(parent,x,y,z,w,h,d,material,cast)=>
         this.box(parent,x,y,z,w,h,d,material,cast),
