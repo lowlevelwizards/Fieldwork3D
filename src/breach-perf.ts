@@ -8,7 +8,7 @@ export class FrameMeter{
     const data=this.samples;
     const series=(key:keyof FrameMeasures)=>data.map(s=>s[key]??0).sort((a,b)=>a-b);
     const percentile=(v:number[],p:number)=>v.length?v[Math.min(v.length-1,Math.floor(p*(v.length-1)))]:0;
-    const avg=(key:keyof FrameMeasures)=>data.reduce((sum,s)=>sum+s[key],0)/Math.max(1,data.length);
+    const avg=(key:keyof FrameMeasures)=>data.reduce((sum,s)=>sum+(s[key]??0),0)/Math.max(1,data.length);
     return {fps:1000/Math.max(.001,percentile(series('frame'),.5)),
       p50:percentile(series('frame'),.5),p95:percentile(series('frame'),.95),
       rafP50:percentile(series('cadence'),.5),
