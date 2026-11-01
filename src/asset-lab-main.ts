@@ -49,8 +49,10 @@ function sampleSite(items:readonly AssetLibraryEntry[]):Site{
        x,y,elevation:0,angle:0});
    }else if(item.id==='wall'||item.id==='wall-cap'||item.id==='baseboard'){
      walls.push({a:{x:x-40,y},b:{x:x+40,y}});
-   }else if(item.id==='window'){
-     windows.push({id:'window-'+index,x,y,width:52,vertical:false});
+   }else if(item.id==='window'||item.id.startsWith('window:')){
+     windows.push({id:'window-'+index,x,y,width:52,vertical:false,
+       style:item.id.startsWith('window:')?
+         item.id.slice(7) as NonNullable<WindowOpening['style']>:'standard'});
    }else if(item.id==='door'||item.id==='shutter'){
      const width=item.id==='shutter'?96:48;
      doors.push({id:'door-'+index,a:{x:x-width/2,y},b:{x:x+width/2,y},
