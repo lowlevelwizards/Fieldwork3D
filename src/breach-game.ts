@@ -1676,8 +1676,19 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       approach(a,{x:patient.p.x+Math.cos(dir)*21,
         y:patient.p.y+Math.sin(dir)*21},dt,s,.66);return;
     }
+    // Reaching a casualty's pouch and stowing the recovered item each
+    // incur the actual kit container access time; no instant inventory swap.
+    const fromTime=equipmentRetrievalSeconds(
+      patient.equipment??initialEquipmentLoadout(patient.weapon),
+      patient.spareMagazines,'medical');
+    const toTime=equipmentRetrievalSeconds(
+      a.equipment??initialEquipmentLoadout(a.weapon),
+      a.spareMagazines,'medical');
+    if(!Number.isFinite(fromTime)||!Number.isFinite(toTime)){
+      notify(s,a.name+' MEDICAL STORAGE UNAVAILABLE');pop(a);return;
+    }
     a.velocity=0;a.actionTimer+=dt;
-    if(a.actionTimer>=1.35){
+    if(a.actionTimer>=1.35+fromTime+toTime){
       const transferred=transferMedicalSupply(patient.medicalSupplies,
         a.medicalSupplies,kitMedicalSupplies(a.equipment));
       if(transferred){
