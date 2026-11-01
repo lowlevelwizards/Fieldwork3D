@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {propDefinition} from '../src/worldgen/asset-catalog.ts';
 import {generateSite} from '../src/breach-site.ts';
-import {isClear,activateSite,pointInCover} from '../src/breach-core.ts';
 test('perimeter fence families share physical span but retain different cover and visibility meaning',()=>{
  const chain=propDefinition('chain-link-fence');
  const iron=propDefinition('iron-fence');
