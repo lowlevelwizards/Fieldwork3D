@@ -11,6 +11,7 @@ import {assessUnitContracts,type UnitContractResult} from './worldgen/unit-contr
 import {auditFixtureService,type ServiceIssue} from './worldgen/fixture-service-clearance.ts';
 import {inspectOperationalRoutes,straightWorkApproach,type OperationalRouteIssue} from './worldgen/operational-route-audit.ts';
 import {measureSiteCompleteness,type CompletenessScore} from './worldgen/site-completeness.ts';
+import {assessSpaceQuality,type SpaceQuality} from './worldgen/space-quality.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type SiteAudit={seed:number;archetype:string;layout:string;
   rooms:number;doors:number;enemies:number;windows:number;
@@ -23,7 +24,7 @@ export type SiteAudit={seed:number;archetype:string;layout:string;
   missingWorkflowLinks:MissingWorkflowLink[];
   unitContracts:UnitContractResult[];serviceIssues:ServiceIssue[];
   operationalRouteIssues:OperationalRouteIssue[];
-  designQuality:CompletenessScore;errors:string[]};
+  designQuality:CompletenessScore;spaceQuality:SpaceQuality;errors:string[]};
 export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteAudit{
   return auditSite(generateSite(seed,scale));
 }
@@ -120,5 +121,6 @@ export function auditSite(site:Site):SiteAudit{
     missingWorkflowLinks:missingPhysicalWorkflowLinks(site),
     unitContracts:assessUnitContracts(site),
     serviceIssues:auditFixtureService(site),operationalRouteIssues,
-    designQuality:measureSiteCompleteness(site),errors};
+    designQuality:measureSiteCompleteness(site),
+    spaceQuality:assessSpaceQuality(site),errors};
 }
