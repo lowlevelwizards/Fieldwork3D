@@ -9,6 +9,7 @@ import {missingPhysicalWorkflowLinks,type MissingWorkflowLink} from './worldgen/
 import {assessRoomContracts,type RoomContractResult} from './worldgen/room-contracts.ts';
 import {assessUnitContracts,type UnitContractResult} from './worldgen/unit-contracts.ts';
 import {auditFixtureService,type ServiceIssue} from './worldgen/fixture-service-clearance.ts';
+import {inspectOperationalRoutes,type OperationalRouteIssue} from './worldgen/operational-route-audit.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type SiteAudit={seed:number;archetype:string;layout:string;
   rooms:number;doors:number;enemies:number;windows:number;
@@ -20,6 +21,7 @@ export type SiteAudit={seed:number;archetype:string;layout:string;
   undesirableDoorways:SpatialRelationshipDiagnostic[];
   missingWorkflowLinks:MissingWorkflowLink[];
   unitContracts:UnitContractResult[];serviceIssues:ServiceIssue[];
+  operationalRouteIssues:OperationalRouteIssue[];
   errors:string[]};
 export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteAudit{
   return auditSite(generateSite(seed,scale));
@@ -29,6 +31,7 @@ export function auditSite(site:Site):SiteAudit{
   const seed=site.seed;
   activateSite(site);
   const errors:string[]=[];
+  const operationalRouteIssues:OperationalRouteIssue[]=[];
   try{
     if(site.spawn.length!==4)errors.push('expected four operator spawns');
     if(site.enemies.length<2)errors.push('insufficient enemies');
@@ -48,6 +51,10 @@ export function auditSite(site:Site):SiteAudit{
       if(passable(p)&&!route(from,p).length)
         errors.push(label+' unreachable');
     }
+    // The existing mission A* is authoritative for reachability. Workstation
+    // warnings are diagnostics, never a reason to discard a playable map.
+    if(site.spawn.length)operationalRouteIssues.push(...inspectOperationalRoutes(
+      site,p=>passable(p)&&route(site.spawn[0],p).length>0));
     const ids=new Set<string>();
     for(const door of site.doors){
       if(ids.has(door.id))errors.push('duplicate door '+door.id);
@@ -110,5 +117,5 @@ export function auditSite(site:Site):SiteAudit{
     undesirableDoorways:auditRoomRelationships(site),
     missingWorkflowLinks:missingPhysicalWorkflowLinks(site),
     unitContracts:assessUnitContracts(site),
-    serviceIssues:auditFixtureService(site),errors};
+    serviceIssues:auditFixtureService(site),operationalRouteIssues,errors};
 }
