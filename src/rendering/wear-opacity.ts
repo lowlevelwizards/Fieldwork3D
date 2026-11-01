@@ -1,5 +1,5 @@
 /** Quantize wear opacity so each kind uses only a few shared GPU materials. */
-export const WEAR_ALPHA_BANDS=[.06,.1,.15,.2] as const;
+export const WEAR_ALPHA_BANDS=[.12,.2,.3,.42] as const;
 export function wearOpacityBucket(alpha:number):number{
  const normalized=Math.max(0,Math.min(1,Number.isFinite(alpha)?alpha:0));
  let best=0,dist=Infinity;
