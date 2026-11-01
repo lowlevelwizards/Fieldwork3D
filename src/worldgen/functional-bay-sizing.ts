@@ -10,7 +10,8 @@ import {propDefinition} from './asset-catalog.ts';
 type Extent={w:number;d:number};
 const operationalMinima:Record<string,Extent>={
  kitchen:{w:119,d:119},bathroom:{w:111,d:118},
- restroom:{w:99,d:104},exam:{w:127,d:124},
+ restroom:{w:99,d:104},'half-bath':{w:89,d:96},
+ closet:{w:72,d:76},'utility-closet':{w:80,d:83},exam:{w:127,d:124},
  treatment:{w:128,d:126},guest:{w:112,d:114},
  bedroom:{w:109,d:113},studio:{w:126,d:120},
  bay:{w:163,d:144},workshop:{w:125,d:126},
@@ -37,10 +38,15 @@ export function roomCapacityTarget(purpose:string):Extent{
  return {w:Math.max(dynamic.w,authored.w),d:Math.max(dynamic.d,authored.d)};
 }
 export function fitFunctionalBaySizes(plan:Blueprint):Blueprint{
+ const compactService=new Set(['closet','utility-closet','half-bath','restroom','storage']);
  const widths=plan.widths.map((width,col)=>{
   // Never turn a narrow public corridor into a broad square room.
   if(plan.cells.some(row=>row[col]==='hallway'||row[col]==='aisle'))
    return width;
+  const roles=plan.cells.map(row=>row[col]).filter((v):v is string=>!!v);
+  // Compact service-only wings don't inherit an oversized public room bay.
+  if(roles.length&&roles.every(role=>compactService.has(role)))
+   return Math.max(80,Math.max(...roles.map(r=>roomCapacityTarget(r).w)),Math.min(width,96));
   const target=Math.max(0,...plan.cells.map(row=>row[col]?
     roomCapacityTarget(row[col]!).w:0));
   return Math.round(Math.max(width,Math.min(width+36,target)));
@@ -48,6 +54,8 @@ export function fitFunctionalBaySizes(plan:Blueprint):Blueprint{
  const depths=plan.depths.map((depth,row)=>{
   const roles=plan.cells[row].filter((r):r is string=>r!==null);
   if(!roles.some(r=>r!=='hallway'&&r!=='aisle'))return depth;
+  if(roles.every(role=>compactService.has(role)))
+   return Math.max(83,Math.max(...roles.map(r=>roomCapacityTarget(r).d)),Math.min(depth,102));
   const target=Math.max(0,...roles.filter(r=>r!=='hallway'&&r!=='aisle')
    .map(role=>roomCapacityTarget(role).d));
   return Math.round(Math.max(depth,Math.min(depth+36,target)));
