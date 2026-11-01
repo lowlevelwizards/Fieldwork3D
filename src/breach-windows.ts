@@ -11,7 +11,7 @@ const windowStyles:Record<BuildingArchetype,readonly WindowStyle[]>={
  house:['standard','tall','bay','awning'],
  townhouse:['standard','tall','bay','awning'],
  apartment:['standard','tall','standard','awning'],
- retail:['storefront','tall','standard'],
+ retail:['picture','tall','standard'],
  office:['tall','picture','clerestory'],
  garage:['industrial','awning'],
  warehouse:['industrial','clerestory'],
