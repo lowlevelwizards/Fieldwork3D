@@ -136,7 +136,7 @@ export type KnownContact={p:Pt;at:number;status:'seen'|'heard'};
 export type MissionStage='clear'|'secure'|'extract'|'done';
 export type Scenario={index:number;name:string;objective:Pt;extract:Pt};
 export type Session=Omit<TacticalState,'operators'> & {
-  operators:TeamActor[];windows:WindowState[];
+  operators:TeamActor[];windows:WindowState[];objectRevision:number;
   coverState:typeof COVER;
   passageLeases:Record<string,PassageLease>;
   variant:number;scenario:Scenario;
@@ -263,7 +263,7 @@ export function newSession(index=0,siteSeed?:number,
     a.spareMagazines=magazineKit(a.id,a.weapon,a.reserve,
       WEAPONS[a.weapon].capacity);
   });
-  const state:Session={...seed,operators,
+  const state:Session={...seed,operators,objectRevision:0,
     coverState:COVER.map(o=>({...o})),windows:initializeWindows(site?.windows??[]),
     passageLeases:{},
     doors:initialDoors().map((d,i)=>initDoor({
@@ -1474,6 +1474,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       const window=s.windows.find(w=>w.id===id);
       if(window&&d(a.p,{x:window.x,y:window.y})<54&&
          manipulateWindow(window,n.interaction==='open-window'?'open':'close')){
+        s.objectRevision++;
         hear(s,{x:window.x,y:window.y},85,'window');
         notify(s,a.name+' MOVED WINDOW');
       }else notify(s,a.name+' WINDOW UNAVAILABLE');
@@ -2389,6 +2390,7 @@ export function movePhysicalProp(s:Session,index:number,to:Pt):boolean{
  const moved=relocateCover(s.coverState,index,to,WALLS,s.doors,
    s.operators.filter(a=>a.health>0).map(a=>a.p));
  if(!moved)return false;
+ s.objectRevision++;
  COVER.splice(0,COVER.length,...s.coverState);
  hear(s,to,65,'furniture');
  return true;
