@@ -10,11 +10,13 @@ test('moving leaves stop when they would deepen occupant overlap',()=>{
  assert.equal(hit,doorWouldStrikeActors(d,.3,[near]));
  assert.equal(doorWouldStrikeActors(d,.3,[]),false);
 });
-test('open hinged leaves retain collision; moving away from existing overlap escapes',()=>{
+test('open hinged leaves stay escapable, while closed leaves forbid entering',()=>{
  const near={x:325,y:250};
- assert.equal(bodyClear(near,[d]),false);
+ assert.equal(bodyClear(near,[d]),true);
  assert.equal(sweptBodyClear(near,{x:325,y:225},[d]),true);
- assert.equal(sweptBodyClear({x:325,y:225},near,[d]),false);
+ assert.equal(sweptBodyClear({x:325,y:225},near,[d]),true);
+ const closed={...d,open:false,openFraction:0};
+ assert.equal(sweptBodyClear({x:325,y:225},near,[closed]),false);
  const shutter={...d,kind:'shutter',openFraction:1};
  assert.equal(bodyClear(near,[shutter]),true);
 });

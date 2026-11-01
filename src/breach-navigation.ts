@@ -10,17 +10,14 @@ const leafGap=(p:Pt,d:Door)=>pointToSegment(p,doorLeafSegment(d));
  * leaf may never make an existing overlap permanently inescapable. */
 export function bodyClear(p:Pt,doors:Door[],radius=OPERATOR_RADIUS){
   if(!passable(p,radius))return false;
-  // A raised shutter is absent at ground level; an open hinged leaf is
-  // still solid and can be pushed through its motor instead of phased through.
-  return !doors.some(door=>
-    !(door.kind==='shutter'&&(door.openFraction??0)>=.72)&&
-    leafGap(p,door)<radius+1);
+  // Open leaves are pushable, not a hard pathfinding obstacle.
+  // Their hinge collision is solved by the contact motor; closed doors block.
+  return !doors.some(door=>!door.open&&leafGap(p,door)<radius+1);
 }
 export function sweptBodyClear(from:Pt,to:Pt,doors:Door[],
   radius=OPERATOR_RADIUS){
   const steps=Math.max(1,Math.ceil(distance(from,to)/4));
-  const trapped=doors.filter(door=>
-    !(door.kind==='shutter'&&(door.openFraction??0)>=.72)&&
+  const trapped=doors.filter(door=>!door.open&&
     leafGap(from,door)<radius+1);
   for(let i=1;i<=steps;i++){
     const f=i/steps;
@@ -28,7 +25,7 @@ export function sweptBodyClear(from:Pt,to:Pt,doors:Door[],
       y:from.y+(to.y-from.y)*f};
     if(!passable(at,radius))return false;
     for(const door of doors){
-      if(door.kind==='shutter'&&(door.openFraction??0)>=.72)continue;
+      if(door.open)continue;
       const gap=leafGap(at,door);
       if(gap>=radius+1)continue;
       // A leaf can close into an actor. Permit movement away from it;
