@@ -3,6 +3,7 @@ import {graphicsBudget} from './breach-graphics-budget.ts';
 import {addRoomGroutInstances} from './breach-room-instancing.ts';
 import {propDefinition} from './worldgen/asset-catalog.ts';
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
+import {planEnvironmentalWear,type WearKind} from './worldgen/environment-wear.ts';
 import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,activeSite,
   type Pt,type Door} from './breach-core.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
@@ -305,6 +306,29 @@ export class TacticalScene3D{
       const grout=this.solid(theme.grout);
       // One instanced draw per room instead of many tiny floor meshes.
       addRoomGroutInstances(group,room,grout);
+    }
+    // Condition-dependent floor patina stays inside its room's fog group.
+    // Decals are decorative only; they create no collision or cover.
+    const wearColor:Record<WearKind,number>={
+      dust:0x92816c,stain:0x655e4b,scrape:0xb2ae9e,scuff:0x444d47,
+    };
+    const wearMaterials=new Map<WearKind,THREE.MeshBasicMaterial>();
+    for(const detail of planEnvironmentalWear(site)){
+      const roomGroup=decorativeRoomGroups.get(detail.roomId);
+      if(!roomGroup)continue;
+      let material=wearMaterials.get(detail.kind);
+      if(!material){
+        material=new THREE.MeshBasicMaterial({
+          color:wearColor[detail.kind],transparent:true,opacity:.19,
+          depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,
+          side:THREE.DoubleSide});
+        wearMaterials.set(detail.kind,material);
+        this.mats.push(material);
+      }
+      const patch=this.plane(roomGroup,detail.x,detail.y,
+        detail.width,detail.depth,.09,material);
+      patch.rotation.z=detail.rotation;
+      patch.castShadow=false;patch.receiveShadow=false;
     }
     const wallMat=this.solid(theme.wall),capMat=this.solid(theme.cap);
     const skirting=this.solid(theme.trim);
