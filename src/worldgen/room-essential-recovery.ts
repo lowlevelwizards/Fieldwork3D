@@ -6,6 +6,7 @@ import type {Site,Room} from '../breach-site.ts';
 import type {Obstacle,Pt} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 import {ROOM_CONTRACTS} from './room-contracts.ts';
+import {fixtureFacing,footprintAtFacing,workingClearance} from './fixture-facing.ts';
 type Input=Pick<Site,'rooms'|'doors'|'openings'|'spawn'|'enemies'|'objective'|'extract'>;
 export type RecoveryIssue={roomId:string;fixture:string;reason:string};
 const inside=(o:Obstacle,r:Room)=>o.x>r.x&&o.x<r.x+r.w&&o.y>r.y&&o.y<r.y+r.h;
@@ -52,8 +53,14 @@ export function recoverRoomEssentials(site:Input,initial:readonly Obstacle[]):{
      if(asset.width>room.w-18||asset.depth>room.h-18)continue;
      const spots=candidates(room,asset.width,asset.depth);
      for(const pos of spots){
-      const candidate:Obstacle={...pos,w:asset.width,h:asset.depth,fixture,low:asset.cover==='low'};
+      const facing=fixtureFacing(room,fixture,pos,cover);
+      const dim=footprintAtFacing(asset.width,asset.depth,facing);
+      const candidate:Obstacle={...pos,w:dim.w,h:dim.h,facing,
+       fixture,low:asset.cover==='low'};
+      if(pos.x-dim.w/2<room.x+8||pos.x+dim.w/2>room.x+room.w-8||
+         pos.y-dim.h/2<room.y+8||pos.y+dim.h/2>room.y+room.h-8)continue;
       if(cover.some(o=>collides(o,candidate)))continue;
+      if(!workingClearance(room,candidate,cover))continue;
       if(reserved.some(p=>Math.abs(p.x-pos.x)<asset.width/2+23&&
         Math.abs(p.y-pos.y)<asset.depth/2+23))continue;
       if(site.doors.some(d=>distance(pos,{x:(d.a.x+d.b.x)/2,
