@@ -90,7 +90,7 @@ export const EQUIPMENT_CATALOG:Readonly<Record<string,EquipmentDefinition>>={
  'utility-breach':{id:'utility-breach',name:'Breaching Tool',category:'utility',slot:'utility',
   massKg:2.2,bulk:3,capability:'breach',description:'Manual entry tool; combat implementation pending.'},
 };
-export const LOADOUT_SLOTS:readonly EquipmentSlot[]=[
+export const LOADOUT_SLOTS:readonly Exclude<EquipmentSlot,'secondary'>[]=[
  'primary','head','armor','rig','belt','backpack','top','legs','hands','feet','medical','tactical','utility'
 ];
 export const DEFAULT_EQUIPMENT:Readonly<Record<Exclude<EquipmentSlot,'secondary'>,string>>={
