@@ -40,5 +40,15 @@ export function spendMedicalSupply(supplies:FieldMedicalSupplies,
  if(!Object.hasOwn(supplies,id)||supplies[id]<=0)return false;
  supplies[id]--;return true;
 }
+/** All-or-nothing physical transfer; the receiver must actually have storage. */
+export function transferMedicalSupply(from:FieldMedicalSupplies,
+ to:FieldMedicalSupplies,capacity:FieldMedicalSupplies):MedicalSupplyId|null{
+ for(const id of ['tourniquet','trauma-dressing','field-dressing'] as const){
+  if(from[id]>0&&to[id]<capacity[id]){
+   from[id]--;to[id]++;return id;
+  }
+ }
+ return null;
+}
 export const medicalSupplyCount=(s:FieldMedicalSupplies)=>
  s['tourniquet']+s['field-dressing']+s['trauma-dressing'];
