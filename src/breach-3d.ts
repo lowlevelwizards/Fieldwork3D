@@ -3,6 +3,7 @@ import {graphicsBudget} from './breach-graphics-budget.ts';
 import {PixelTextureLibrary,mapBoxPixelUV,mapPlanePixelUV,type PixelSurface} from './rendering/pixel-materials.ts';
 import {roomPixelSurface,zonePixelSurface,wallPixelSurface,fixturePixelSurface} from './worldgen/pixel-surface-selection.ts';
 import {wearFinish} from './rendering/wear-finish.ts';
+import {doubleSidedWallWear} from './rendering/wear-wall-geometry.ts';
 import {ageMaterialColor} from './rendering/condition-materials.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from './worldgen/fixture-visuals.ts';
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
@@ -629,13 +630,11 @@ export class TacticalScene3D{
         this.sitePatinaTextures.push(texture);this.sitePatinaMaterials.push(material);
         this.patinaWallSurfaces.push({index,texture});
         body.userData.patinaMaterial=material;
-        for(const face of [-1,1]){
-          const plane=new THREE.Mesh(new THREE.PlaneGeometry(len,39.6),material);
-          plane.position.set(0,0,face*4.64);
-          if(face<0)plane.rotation.y=Math.PI;
-          plane.castShadow=false;plane.receiveShadow=false;
-          body.add(plane);
-        }
+        // A single mesh carries front and rear patina. Unlike two separate
+        // transparent planes this submits one WebGL draw for each wall.
+        const wearMesh=new THREE.Mesh(doubleSidedWallWear(len,39.6),material);
+        wearMesh.castShadow=false;wearMesh.receiveShadow=false;
+        body.add(wearMesh);
       }
       this.walls.push({mesh:body,mid:{x,y:z}});
       for(const mark of marksOn('wall',index))
