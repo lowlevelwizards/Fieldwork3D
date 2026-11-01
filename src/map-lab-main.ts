@@ -180,7 +180,7 @@ function clockTick(){
  const elapsed=Math.floor((performance.now()-startedAt)/1000);
  const quiet=Math.floor((performance.now()-lastUpdate)/1000);
  progressClock.textContent=elapsed+'s elapsed'+
-   (generating&&quiet>10?' · Still working on this step…':'');
+   (generating&&quiet>10?' · No new checkpoint yet (large plans can take time)':'');
 }
 function setBusy(active:boolean){
  generating=active;
