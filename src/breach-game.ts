@@ -31,6 +31,7 @@ import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from 
 import {localDetour} from './breach-cooperation.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
 import {newAwareness,addObservation,visibleObservation,
+ ageAwareness,clearObservedPosition,
  type ActorAwareness} from './breach-awareness.ts';
 import {visualGain,advanceSight,confirmedSight} from './breach-visual-perception.ts';
 import {doorContactImpulse,passageWait,type PassageActor}
@@ -2212,6 +2213,18 @@ export function stepSession(s:Session,dt:number){
   s.flashBursts=s.flashBursts.filter(b=>(b.age+=h)<.70);
   stepFlashbangs(s,h);
   advanceVisualAwareness(s,h);
+  for(const actor of s.operators){
+    if(actor.health<=0)continue;
+    ageAwareness(actor.awareness,h,s.seconds);
+    for(const belief of Object.values(actor.awareness.contacts)){
+      // Only direct vision of the *estimated floor position* can disprove it.
+      if((actor.awareness.visualProgress[belief.id]??0)>.95)continue;
+      if(s.seconds-belief.lastAt<.65||d(actor.p,belief.estimate)>235)continue;
+      if(Math.abs(angleDifference(actor.heading,angle(actor.p,belief.estimate)))>.90)continue;
+      if(unobstructed(actor.p,belief.estimate,s,actor.posture==='crouch'))
+        clearObservedPosition(actor.awareness,belief.id);
+    }
+  }
   for(const a of s.operators){
     if(a.health<=0&&a.reload>0){a.reload=0;a.reloadMode=null;}
     a.fireCd=Math.max(0,a.fireCd-h);

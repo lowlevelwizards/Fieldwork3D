@@ -44,3 +44,24 @@ export function visibleObservation(observerId:string,subjectId:string,
   observerId,subjectId,estimate:{...position},uncertainty:0,
   source:'visual',kind:'contact',at};
 }
+
+/** Memory becomes imprecise when a contact is no longer observed. */
+export function ageAwareness(memory:ActorAwareness,dt:number,at:number):void{
+ for(const belief of Object.values(memory.contacts)){
+  if(at-belief.lastAt<.10)continue;
+  belief.uncertainty=Math.min(240,belief.uncertainty+dt*13);
+  belief.confidence=Math.max(0,belief.confidence-dt*.007);
+  if(belief.confidence<.04)delete memory.contacts[belief.id];
+ }
+}
+/** A legitimately inspected empty position invalidates its old estimate. */
+export function clearObservedPosition(memory:ActorAwareness,id:string):void{
+ const belief=memory.contacts[id];if(!belief)return;
+ belief.confidence=Math.max(0,belief.confidence-.48);
+ belief.uncertainty=Math.max(belief.uncertainty,48);
+ if(belief.confidence<.04)delete memory.contacts[id];
+}
+export function bestBelief(memory:ActorAwareness):ContactBelief|null{
+ return Object.values(memory.contacts).filter(c=>c.confidence>.1)
+  .sort((a,b)=>b.confidence-a.confidence||b.lastAt-a.lastAt)[0]??null;
+}
