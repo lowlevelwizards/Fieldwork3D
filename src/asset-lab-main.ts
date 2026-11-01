@@ -17,7 +17,8 @@ import {CHARACTER_FIXTURE_IDS} from './worldgen/asset-character-visuals.ts';
 import {assetReviewInventory} from './worldgen/asset-review.ts';
 import {propDefinition} from './worldgen/asset-catalog.ts';
 import {assetPrimarySurface,assetMaterialDescription} from './worldgen/material-inspection.ts';
-import {wearPixels} from './rendering/pixel-decals.ts';
+import {wearPixels,type WearTextureKind} from './rendering/pixel-decals.ts';
+import {canWear} from './worldgen/material-properties.ts';
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const category=el<HTMLSelectElement>('category'),search=el<HTMLInputElement>('search');
 const summary=el<HTMLElement>('summary'),detail=el<HTMLOutputElement>('detail');
@@ -35,6 +36,18 @@ const cleanSwatch=el<HTMLCanvasElement>('pixel-clean-swatch');
 const cleanContext=cleanSwatch.getContext('2d');
 const liveWear=new THREE.Group();
 let texturesShown=true;
+let wearMultiplier=1,selectedWearKind:WearTextureKind='oil';
+const wearPicker=el<HTMLSelectElement>('wear-kind');
+const wearKinds:WearTextureKind[]=['oil','grease','rust','chip','crack','scratch',
+ 'drip','mud','footprint','mineral','fade','dust','stain','scrape','scuff',
+ 'soot','moss','paint-peel'];
+for(const kind of wearKinds){
+ const option=document.createElement('option');option.value=kind;
+ option.textContent=kind.replaceAll('-',' ');
+ wearPicker.append(option);
+}
+wearPicker.value=selectedWearKind;
+
 let swatchSeed=0,swatchCondition='clean',currentSurface:PixelSurface='wood';
 const surfacePicker=el<HTMLSelectElement>('material-family');
 for(const kind of PIXEL_SURFACES){
