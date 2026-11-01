@@ -177,6 +177,40 @@ export function furnishRooms(site:Site,seed:number):Site{
  // Preserve architectural sills and outdoor fixtures while furnishing interiors.
  const output:Obstacle[]=[...site.cover];
  const furnishingIssues:NonNullable<Site['furnishingIssues']>=[];
+ // Reserve a complete bar installation BEFORE generic furnishing occupies the
+ // useful circulation-adjacent space. Only compatible dining plans receive one.
+ if(site.archetype==='restaurant'&&
+   ['cafe','diner','sit-down-restaurant'].includes(site.identity?.subtype??'')){
+   for(const room of site.rooms.filter(r=>r.kind==='room'&&r.purpose==='dining'&&
+     r.w>=105&&r.h>=90)){
+     let installed=false;
+     for(const side of [1,-1]){
+       for(const shift of [0,-.18,.18]){
+         const x=room.x+room.w*(.5+shift);
+         const y=room.y+room.h/2+side*(room.h/2-29);
+         const counter:Obstacle={x,y,w:66,h:22,fixture:'bar-counter',low:false};
+         const stools:Obstacle[]=[-.27,.27].map(ratio=>({
+           x:x+ratio*66,y:y-side*27,w:15,h:15,
+           fixture:'bar-stool',low:true
+         }));
+         const group=[counter,...stools];
+         const within=(o:Obstacle)=>o.x-o.w/2>room.x+9&&
+           o.x+o.w/2<room.x+room.w-9&&o.y-o.h/2>room.y+9&&
+           o.y+o.h/2<room.y+room.h-9;
+         if(!group.every(within))continue;
+         if(group.some(o=>[...site.doors].some(d=>
+           Math.hypot(o.x-(d.a.x+d.b.x)/2,o.y-(d.a.y+d.b.y)/2)<38)))continue;
+         if(group.some(o=>reserved.some(p=>Math.abs(p.x-o.x)<o.w/2+15&&
+           Math.abs(p.y-o.y)<o.h/2+15)))continue;
+         if(group.some(o=>output.some(other=>overlap(o,other,3))))continue;
+         output.push(...group);installed=true;break;
+       }
+       if(installed)break;
+     }
+     if(installed)break;
+   }
+ }
+
  const reserved:Pt[]=[...site.spawn,...site.enemies,site.objective,site.extract];
 
  const zoneCounts=new Map<string,number>(),zoneSeen=new Map<string,number>();
@@ -219,10 +253,7 @@ export function furnishRooms(site:Site,seed:number):Site{
   const remaining=activityFurniture(room.purpose??'',room,roomItems,site.identity?.subtype);
   const seenRequired=new Set<string>();
   const equipment:Item[]=[...essential];
-  if(room.purpose==='dining'&&index===0&&site.archetype==='restaurant'&&
-    ['diner','sit-down-restaurant'].includes(site.identity?.subtype??'')&&
-    room.w>=150&&room.h>=110)
-    equipment.unshift({id:'bar-counter',anchor:'east'});
+
   for(const item of remaining){
     if(essentialIds.has(item.id)&&!seenRequired.has(item.id)){
       seenRequired.add(item.id);continue;
@@ -263,7 +294,7 @@ export function furnishRooms(site:Site,seed:number):Site{
    if(chosen)placed.push(chosen);
    else furnishingIssues.push({roomId:room.id,fixture:item.id,reason:'all-placements-blocked'});
   }
-  // Counter stools form one inward-facing seating group, never random scattered chairs.
+  // Extra counter installations placed by ordinary furnishing share one rule.
   const bar=placed.find(o=>o.fixture==='bar-counter');
   if(bar){
     const side=(room.y+room.h/2)>=bar.y?1:-1;
