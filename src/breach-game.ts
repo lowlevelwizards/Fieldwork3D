@@ -242,7 +242,14 @@ export function newSession(index=0,siteSeed?:number,
       a.spareMagazines=a.weapon==='shotgun'?[]:magazineKit(
         a.id,a.weapon,a.reserve,WEAPONS[a.weapon].capacity);
       a.health=4;a.injuryStage=0;
-      a.p={...site.spawn[i]};a.heading=-Math.PI/2;
+      a.p={...site.spawn[i]};
+      // Entry teams face the nearest actual interior, not a hard-coded
+      // compass direction that is wrong for rotated/generated buildings.
+      const room=[...site.rooms].sort((u,v)=>
+        d(a.p,{x:u.x+u.w/2,y:u.y+u.h/2})-
+        d(a.p,{x:v.x+v.w/2,y:v.y+v.h/2}))[0];
+      a.heading=room?angle(a.p,{x:room.x+room.w/2,y:room.y+room.h/2}):
+        angle(a.p,site.entrance);
       a.weaponYaw=a.heading;
       a.priorP={...a.p};
     });
