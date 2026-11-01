@@ -1,6 +1,6 @@
 /** Physically grounded encounter placement. Functional rooms are evaluated
  * after furnishing, rather than cloning the same few compiler anchors until
- * a crowd forms. Each usable room is route-checked once (bounded on mobile).
+ * a crowd forms. Route checks are deferred to selected rooms (bounded on mobile).
  */
 import type {Site,Room} from '../breach-site.ts';
 import {activeSite,activateSite,passable,route,pointToSegment,type Pt}
@@ -72,8 +72,7 @@ export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
    for(const p of points){
     if(!staticLegal(p,room))continue;
     if(!passable(p)){rejected++;continue;}
-    // Only a bounded number of actual A* checks per functional room.
-    if(!route(site.spawn[0],p).length){rejected++;break;}
+    // Sample all valid rooms cheaply. A* runs only for selected group homes.
     anchor=p;break;
    }
    if(!anchor)continue;
@@ -84,6 +83,21 @@ export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
      choices});
   }
  }finally{activateSite(previous);}
+ const verified=new Map<string,boolean>();
+ const routeLimit=Math.min(14,Math.max(5,Math.ceil(planned.length*1.5)));
+ let routeChecks=0;
+ const roomReachable=(anchor:Anchor):boolean=>{
+  const known=verified.get(anchor.room.id);
+  if(known!==undefined)return known;
+  if(routeChecks>=routeLimit)return false;
+  routeChecks++;
+  const prior=activeSite();
+  activateSite(site);
+  try{
+   const ok=!!route(site.spawn[0],anchor.p).length;
+   verified.set(anchor.room.id,ok);return ok;
+  }finally{activateSite(prior);}
+ };
  const placed=new Map<string,EncounterActorSpec>();
  const used=new Map<string,number>();
  const occupied:{p:Pt;roomId:string;groupId:string}[]=[];
@@ -113,7 +127,7 @@ export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
    return {anchor,score};
   }).filter(x=>(used.get(x.anchor.room.id)??0)<x.anchor.capacity)
    .sort((a,b)=>b.score-a.score);
-  const home=ranked[0]?.anchor;
+  const home=ranked.find(item=>roomReachable(item.anchor))?.anchor;
   if(!home)break;
   const preferred=anchors.slice().sort((a,b)=>{
    if(a===home)return -1;if(b===home)return 1;
@@ -126,7 +140,8 @@ export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
   for(const member of members){
    let accepted=false;
    for(const anchor of preferred){
-    if((used.get(anchor.room.id)??0)>=anchor.capacity)continue;
+    if((used.get(anchor.room.id)??0)>=anchor.capacity||
+       !roomReachable(anchor))continue;
     for(const p of anchor.choices){
      if(!eligible(p,anchor,group.id)){rejected++;continue;}
      placed.set(member.id,{...member,position:{...p},
