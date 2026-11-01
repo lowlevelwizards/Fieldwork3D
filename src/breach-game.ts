@@ -1302,12 +1302,17 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   }
   // Look ahead to the route's next node, stopping to open a door before
   // the actor's capsule contacts the physical leaf.
-  const doorAhead=a.side==='red'?s.doors.find(door=>{
+  // Crossing a physical closed door during a move implicitly attempts to
+  // open it, even if a briefed doorway missed the drawn-path insertion.
+  // Deliberate DOOR actions (including KICK) retain priority and must not
+  // be preempted by this convenience interaction.
+  const autoDoor=a.side==='red'||a.plan[0]?.kind==='move'||
+    a.plan[0]?.kind==='pie';
+  const doorAhead=autoDoor?s.doors.find(door=>{
     if(door.open&&(door.openFraction??0)>=.72)return false;
-    const center=doorCenter(door);
-    return d(a.p,center)<52&&
-      (doorBlocksSegment(door,{a:a.p,b:next})||
-       d(next,center)<22);
+    if(!doorReachable(a.p,door))return false;
+    return doorBlocksSegment(door,{a:a.p,b:next})||
+      doorBlocksSegment(door,{a:a.p,b:p});
   }):undefined;
   if(doorAhead){
     const opening=doorInteraction({target:doorAhead,actorId:a.id,
