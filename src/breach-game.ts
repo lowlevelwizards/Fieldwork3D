@@ -30,7 +30,7 @@ import {assessFireLane,type FireBlock} from './breach-fire-safety.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
-import {canUseEntryTool} from './equipment-entry-tools.ts';
+import {canUseEntryTool,issuedWedges} from './equipment-entry-tools.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
 import {relocateCover,canRelocateCover} from './breach-movable-cover.ts';
@@ -101,6 +101,7 @@ export type TeamActor=Operator & {
   lastTreatmentAt:number;lastTreatmentTargetId:string|null;
   treatmentActive:boolean;treatmentProgress:number;
   carryingId:string|null;carriedById:string|null;
+  wedgeRemaining:number;
   awareness:ActorAwareness;
   intent:AIIntent|null;combatChoice:CombatAction|null;lastReportAt:number;
   coordinationRole:GroupRole|null;coordinationUntil:number;
@@ -206,7 +207,7 @@ const withActions=(a:Operator):TeamActor=>({
   ...a,medical:newMedicalCondition(),medicalSupplies:kitMedicalSupplies(),
   lastTreatmentAt:-100,lastTreatmentTargetId:null,
   treatmentActive:false,treatmentProgress:0,
-  carryingId:null,carriedById:null,
+  carryingId:null,carriedById:null,wedgeRemaining:0,
   awareness:newAwareness(),intent:null,combatChoice:null,lastReportAt:-100,
   coordinationRole:null,coordinationUntil:0,lastMoraleEventAt:-100,searchOrigin:null,searchQueue:[],plan:[],history:makeHistory(),nav:[],activeNode:-1,
   posture:'stand',pace:'walk',alert:'idle',velocity:0,turning:0,aim:0,
@@ -654,7 +655,8 @@ export function planEntryTool(s:Session,id:string,doorId:string,
  method:EntryTool,nodeId?:number):boolean{
  const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
  if(!a||!door||!canEdit(s)||!canUseEntryTool(a.equipment,method)||
-  !entryToolVerdict(door,method).allowed)return false;
+  !entryToolVerdict(door,method).allowed||
+  (method==='wedge'&&a.wedgeRemaining<1))return false;
  if(nodeId!==undefined){
   const index=a.plan.findIndex(n=>n.id===nodeId);
   if(index<0||!doorReachable(a.plan[index].p,door))return false;
@@ -1618,7 +1620,8 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   if(n.kind==='tool'){
     const door=s.doors.find(door=>door.id===n.doorId);
     const method=n.toolMethod;
-    if(!door||!method||!canUseEntryTool(a.equipment,method)){pop(a);return;}
+    if(!door||!method||!canUseEntryTool(a.equipment,method)||
+       (method==='wedge'&&a.wedgeRemaining<1)){pop(a);return;}
     if(!doorReachable(a.p,door)){
       const approachPoint=doorApproach(a.p,door);
       if(approachPoint)approach(a,approachPoint,dt,s,.66);
@@ -1632,8 +1635,17 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       a.lastDoorMethod='open';}
     a.actionTimer+=dt;
     if(a.actionTimer<verdict.seconds)return;
-    if(method==='wedge')door.wedged=true;
-    else if(method==='unwedge')door.wedged=false;
+    if(method==='wedge'){
+      door.wedged=true;door.wedgeOwnerId=a.id;
+      a.wedgeRemaining--;
+    }else if(method==='unwedge'){
+      door.wedged=false;
+      const owner=s.operators.find(o=>o.id===door.wedgeOwnerId);
+      if(owner&&canUseEntryTool(owner.equipment,'wedge'))
+       owner.wedgeRemaining=Math.min(issuedWedges(owner.equipment),
+        owner.wedgeRemaining+1);
+      door.wedgeOwnerId=undefined;
+    }
     else{
       door.latchIntegrity=Math.max(-1,(door.latchIntegrity??1)-verdict.damage);
       if((door.latchIntegrity??0)<=0){

@@ -10,6 +10,7 @@ import {readPersistentMagazines,readLoadedMagazineId,addReserveRounds}
 import {stageMagazines,magazineSpace,type MagazineLocation}
  from './equipment-magazine-placement.ts';
 import {kitMedicalSupplies} from './equipment-medical-supplies.ts';
+import {issuedWedges} from './equipment-entry-tools.ts';
 import {initialWeaponConfiguration,readWeaponConfiguration,changeWeaponPlatform,
  setWeaponAttachment,type WeaponConfiguration,type WeaponAttachmentSlot}
  from './equipment-weapon-assemblies.ts';
@@ -107,6 +108,7 @@ export function applyRosterIdentity(s:Session,roster:RosterState){
    a.equipment=member.loadout;
     a.weaponConfiguration=member.weaponConfiguration;
     a.medicalSupplies=kitMedicalSupplies(member.loadout);
+    a.wedgeRemaining=issuedWedges(member.loadout);
     a.weaponLightOn=member.weaponConfiguration.slots.light==='light-compact';
    a.flashCharges=equippedFlashCharges(member.loadout);
    const protection=initialArmorIntegrity(member.loadout);

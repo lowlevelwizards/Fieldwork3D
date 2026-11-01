@@ -65,7 +65,7 @@ export function initDoor(d:Door,i:number):Door{
 }
 /** A small fixed-step hinge motor with damped impulses; no renderer physics. */
 export function pushDoor(d:Door,force:number):boolean{
- if(d.heldBy||(!d.open&&(d.openFraction??0)<.08))return false;
+ if(d.wedged||d.heldBy||(!d.open&&(d.openFraction??0)<.08))return false;
  d.angularVelocity=Math.max(-5.5,Math.min(5.5,
    (d.angularVelocity??0)+force/Math.max(.35,d.resistance??1)));
  d.open=true;
@@ -74,7 +74,8 @@ export function pushDoor(d:Door,force:number):boolean{
 export function kickDoor(d:Door,from?:Pt):{opened:boolean;pushSide:boolean}{
  // Industrial shutters are lifted via their controls. A kick cannot
  // unrealistically throw a heavy, vertically guided steel panel open.
- if(d.kind==='shutter'||d.kind==='sliding')return {opened:false,pushSide:false};
+ if(d.wedged||d.kind==='shutter'||d.kind==='sliding')
+  return {opened:false,pushSide:false};
  // Retain the legacy direct impulse API for already-open hinged leaves.
  // Authored game kicks always pass the operator position and use integrity.
  if(!from){
@@ -134,6 +135,7 @@ export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[]){
  return false;
 }
 export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[]){
+  if(d.wedged)d.open=false;
   // Fixed internal substeps prevent a paused or coarse test tick from
   // overshooting a hinge and keep old half-second door timings intact.
   let remaining=Math.max(0,Math.min(dt,.5));

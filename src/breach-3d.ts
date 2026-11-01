@@ -116,7 +116,8 @@ export class TacticalScene3D{
   private beamBlockerTick=-1;private beamBlockerSite=-1;
   private beamBlockerRevision=-1;private beamBlockers:Segment[]=[];
   private doors=new Map<string,{root:THREE.Group;leaf:THREE.Group;
-    frame:THREE.Group;halo:THREE.Group;threshold:THREE.Mesh}>();
+    frame:THREE.Group;halo:THREE.Group;threshold:THREE.Mesh;
+    wedge:THREE.Mesh}>();
   private observedDoorOpen=new Map<string,number>();
   private effectCache=new Map<number,{root:THREE.Group;line:THREE.Mesh;
     impact:THREE.Mesh;chips:THREE.Mesh[];material:THREE.MeshBasicMaterial;
@@ -843,7 +844,9 @@ export class TacticalScene3D{
       const halo=door.kind==='sliding'?new THREE.Group():doorSweepArc(door,length);
       root.add(halo);
       this.root.add(root);
-      this.doors.set(door.id,{root,leaf,frame,halo,threshold});
+      const wedge=this.box(frame,0,1.9,6,6,2.7,6,metal,false);
+      wedge.visible=false;
+      this.doors.set(door.id,{root,leaf,frame,halo,threshold,wedge});
       this.observedDoorOpen.set(door.id,door.openFraction??0);
     }
     const fixtureCtx:FixtureVisualContext={
@@ -1153,7 +1156,9 @@ export class TacticalScene3D{
       const halo=doorSweepArc(door,width);
       group.add(halo);
       this.root.add(group);
-      this.doors.set(door.id,{root:group,leaf:hinge,frame,halo,threshold});
+      const wedge=this.box(frame,0,1.9,6,6,2.7,6,thresholdMat,false);
+      wedge.visible=false;
+      this.doors.set(door.id,{root:group,leaf:hinge,frame,halo,threshold,wedge});
       this.observedDoorOpen.set(door.id,0);
     }
     // Furniture height matches cover classification: low crates vs high cabinets.
@@ -1467,6 +1472,7 @@ export class TacticalScene3D{
       if(omniscient||liveVisibility(s,doorCenter(door)))
         this.observedDoorOpen.set(door.id,door.openFraction??(door.open?1:0));
       const directlyObserved=liveVisibility(s,doorCenter(door));
+      object.wedge.visible=door.wedged===true&&(omniscient||directlyObserved);
       const fraction=omniscient||directlyObserved?
         (door.openFraction??(door.open?1:0)):
         (s.intel.doorMemory.get(door.id)??0);
