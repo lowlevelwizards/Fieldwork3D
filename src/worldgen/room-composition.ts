@@ -14,16 +14,27 @@ export function relatedFurniturePositions(room:Room,fixture:string,
      y-depth/2>=room.y+margin&&y+depth/2<=room.y+room.h-margin)
     result.push({x,y});
  };
- if(fixture==='tv-stand'){
-  const sofa=by(placed,'sofa');
-  if(sofa)offer(sofa.x,room.y+room.h-depth/2-14);
- }
- if(fixture==='coffee-table'){
+ if(fixture==='tv-stand'||fixture==='coffee-table'){
   const sofa=by(placed,'sofa');
   if(sofa){
-   const forward=sofa.y+sofa.h/2+depth/2+13;
-   offer(sofa.x,forward);
-   offer(sofa.x,sofa.y-sofa.h/2-depth/2-13);
+   const distance=fixture==='coffee-table'?12:31;
+   const candidateOffsets=[
+    {x:0,y:sofa.h/2+depth/2+distance},
+    {x:0,y:-sofa.h/2-depth/2-distance},
+    {x:sofa.w/2+width/2+distance,y:0},
+    {x:-sofa.w/2-width/2-distance,y:0},
+   ];
+   // Prefer the side with the most useful room space, rather than always
+   // placing the television north/south regardless of the wall geometry.
+   candidateOffsets.sort((a,b)=>{
+    const score=(d:Pt)=>{
+     const x=sofa.x+d.x,y=sofa.y+d.y;
+     return Math.min(x-room.x,room.x+room.w-x,
+       y-room.y,room.y+room.h-y);
+    };
+    return score(b)-score(a);
+   });
+   for(const d of candidateOffsets)offer(sofa.x+d.x,sofa.y+d.y);
   }
  }
  if(fixture==='nightstand'){

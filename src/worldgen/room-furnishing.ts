@@ -8,11 +8,11 @@ import {relatedFurniturePositions} from './room-composition.ts';
 import {orientFurnishings} from './prop-orientation.ts';
 import {ROOM_CONTRACTS} from './room-contracts.ts';
 import {recoverRoomEssentials} from './room-essential-recovery.ts';
-type Anchor='nw'|'ne'|'sw'|'se'|'west'|'east';
+type Anchor='nw'|'ne'|'sw'|'se'|'west'|'east'|'center';
 type Item={id:string;anchor:Anchor};
 const compositions:Record<string,readonly Item[]>={
  studio:[{id:'bed',anchor:'nw'},{id:'sofa',anchor:'se'}],
- dining:[{id:'dining-table',anchor:'west'},{id:'chair',anchor:'se'}],
+ dining:[{id:'dining-table',anchor:'center'},{id:'chair',anchor:'se'}],
  study:[{id:'desk',anchor:'nw'},{id:'bookcase',anchor:'se'}],
  'garage-storage':[{id:'shelf',anchor:'nw'},{id:'tire-stack',anchor:'se'}],
  sales:[{id:'gondola-shelf',anchor:'nw'},{id:'gondola-shelf',anchor:'se'}],
@@ -32,8 +32,8 @@ const compositions:Record<string,readonly Item[]>={
  reception:[{id:'desk',anchor:'nw'},{id:'chair',anchor:'se'}],
  office:[{id:'desk',anchor:'nw'},{id:'filing-cabinet',anchor:'se'}],
  cubicles:[{id:'desk',anchor:'nw'},{id:'desk',anchor:'se'}],
- meeting:[{id:'meeting-table',anchor:'west'}],
- break:[{id:'dining-table',anchor:'west'},{id:'counter',anchor:'se'}],
+ meeting:[{id:'meeting-table',anchor:'center'}],
+ break:[{id:'dining-table',anchor:'center'},{id:'counter',anchor:'se'}],
  storage:[{id:'shelf',anchor:'nw'},{id:'crate',anchor:'se'}],
  utility:[{id:'shelf',anchor:'nw'}],
  laundry:[{id:'laundry-machine',anchor:'nw'},{id:'shelf',anchor:'se'}],
@@ -80,6 +80,7 @@ function position(room:Room,w:number,h:number,side:Anchor):Pt{
  const top=room.y+h/2+13,bottom=room.y+room.h-h/2-13;
  const midY=(top+bottom)/2;
  switch(side){
+ case 'center':return {x:room.x+room.w/2,y:room.y+room.h/2};
  case 'nw':return {x:left,y:top};
  case 'ne':return {x:right,y:top};
  case 'sw':return {x:left,y:bottom};
@@ -177,7 +178,6 @@ export function furnishRooms(site:Site,seed:number):Site{
  // Preserve architectural sills and outdoor fixtures while furnishing interiors.
  const output:Obstacle[]=[...site.cover];
  const furnishingIssues:NonNullable<Site['furnishingIssues']>=[];
-
  const reserved:Pt[]=[...site.spawn,...site.enemies,site.objective,site.extract];
  // Reserve a complete bar installation BEFORE generic furnishing occupies the
  // useful circulation-adjacent space. Only compatible dining plans receive one.
@@ -212,6 +212,7 @@ export function furnishRooms(site:Site,seed:number):Site{
      if(installed)break;
    }
  }
+
 
 
  const zoneCounts=new Map<string,number>(),zoneSeen=new Map<string,number>();
@@ -254,7 +255,6 @@ export function furnishRooms(site:Site,seed:number):Site{
   const remaining=activityFurniture(room.purpose??'',room,roomItems,site.identity?.subtype);
   const seenRequired=new Set<string>();
   const equipment:Item[]=[...essential];
-
   for(const item of remaining){
     if(essentialIds.has(item.id)&&!seenRequired.has(item.id)){
       seenRequired.add(item.id);continue;
@@ -294,23 +294,6 @@ export function furnishRooms(site:Site,seed:number):Site{
    }
    if(chosen)placed.push(chosen);
    else furnishingIssues.push({roomId:room.id,fixture:item.id,reason:'all-placements-blocked'});
-  }
-  // Extra counter installations placed by ordinary furnishing share one rule.
-  const bar=placed.find(o=>o.fixture==='bar-counter');
-  if(bar){
-    const side=(room.y+room.h/2)>=bar.y?1:-1;
-    for(const ratio of [-.30,0,.30]){
-      const candidate:Obstacle={x:bar.x+ratio*bar.w,
-        y:bar.y+side*(bar.h/2+17),w:15,h:15,
-        fixture:'bar-stool',low:true};
-      if(candidate.x-8<room.x+9||candidate.x+8>room.x+room.w-9||
-        candidate.y-8<room.y+9||candidate.y+8>room.y+room.h-9)continue;
-      if(site.doors.some(d=>Math.hypot(candidate.x-(d.a.x+d.b.x)/2,
-        candidate.y-(d.a.y+d.b.y)/2)<37))continue;
-      if(reserved.some(q=>Math.hypot(q.x-candidate.x,q.y-candidate.y)<28))continue;
-      if([...output,...placed].some(o=>overlap(o,candidate,2)))continue;
-      placed.push(candidate);
-    }
   }
   if(placed.length)output.push(...placed);
  }
