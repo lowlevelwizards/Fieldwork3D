@@ -121,6 +121,7 @@ export type TeamActor=Operator & {
   appearanceSeed:number;equipment?:EquipmentLoadout;
   loadMovementScale?:number;
   armorIntegrity:number;helmetIntegrity:number;
+  flashCharges:number;
   firePolicy:FirePolicy;suppressPoint:Pt|null;focusTargetId:string|null;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
   lastFireRepositionAt:number;
@@ -205,7 +206,7 @@ const withActions=(a:Operator):TeamActor=>({
   lastBashAt:-100,lastBashRole:null,
   lastLaneWarnAt:-100,lastFireBlock:'clear',
   fireMode:'point',burstCount:0,skills:{...DEFAULT_SKILLS},appearanceSeed:0,
-  armorIntegrity:0,helmetIntegrity:0,
+  armorIntegrity:0,helmetIntegrity:0,flashCharges:2,
   firePolicy:'engage',suppressPoint:null,focusTargetId:null,
   weapon:'carbine',injuryStage:0,defense:null,watch:null,
   defenseUntil:0,surrendered:false,lastFireRepositionAt:-100,
@@ -922,7 +923,7 @@ export function planFlash(s:Session,id:string,target:Pt):boolean{
   const queued=team(s).reduce((n,x)=>n+
     x.plan.filter(node=>node.kind==='flash').length,0);
   const start=finalPoint(a);
-  if(queued>=s.flashRemaining)return false;
+  if(queued>=s.flashRemaining||a.plan.filter(n=>n.kind==='flash').length>=a.flashCharges)return false;
   const plannedOpen=a.plan.filter(n=>n.kind==='door'&&(n.method==='open'||n.method==='kick'))
     .map(n=>n.doorId??'');
   const landing=snapFlashTarget(start,target,s.doors,plannedOpen);
@@ -939,7 +940,7 @@ export function planDoorFlash(s:Session,id:string,doorId:string,target:Pt,
     !doorKnown(s.intel,doorId))return false;
   const queued=team(s).reduce((sum,x)=>sum+
     x.plan.filter(n=>n.kind==='flash').length,0);
-  if(queued>=s.flashRemaining)return false;
+  if(queued>=s.flashRemaining||a.plan.filter(n=>n.kind==='flash').length>=a.flashCharges)return false;
   const index=afterNodeId===undefined?a.plan.length:
     a.plan.findIndex(n=>n.id===afterNodeId)+1;
   if(index<0)return false;
@@ -1604,7 +1605,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     return;
   }
   if(n.kind==='flash'){
-    if(!n.aimPoint||s.flashRemaining<=0){pop(a);return;}
+    if(!n.aimPoint||s.flashRemaining<=0||a.flashCharges<=0){pop(a);return;}
     const trajectory=validateThrow(a.p,n.aimPoint,s.doors);
     if(!trajectory.valid){
       notify(s,a.name+' FLASH BLOCKED — '+(trajectory.reason??'CHECK TRAJECTORY'));
@@ -1613,7 +1614,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     a.velocity=0;rotate(a,angle(a.p,n.aimPoint),dt);
     a.actionTimer+=dt;
     if(a.actionTimer>=.3){
-      s.flashRemaining--;a.lastThrowAt=s.seconds;
+      s.flashRemaining--;a.flashCharges--;a.lastThrowAt=s.seconds;
       s.grenades.push({id:s.nextEffectId++,p:clone(a.p),
         from:clone(a.p),to:clone(n.aimPoint),age:0,fuse:1.15,
         path:trajectory});

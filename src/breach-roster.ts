@@ -5,7 +5,8 @@ import type {Session} from './breach-game.ts';
 import {WEAPONS,type WeaponId} from './breach-combat.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {magazineKit} from './breach-magazines.ts';
-import {initialEquipmentLoadout,readEquipmentLoadout,syncPrimaryWeapon,setEquipmentChoice,
+import {equippedFlashCharges,
+ initialEquipmentLoadout,readEquipmentLoadout,syncPrimaryWeapon,setEquipmentChoice,
  loadMovementScale,type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
 export type RosterMember={
  id:string;callsign:string;missions:number;successful:number;
@@ -69,6 +70,7 @@ export function applyRosterIdentity(s:Session,roster:RosterState){
    a.name=member.callsign;
    a.appearanceSeed=member.appearanceSeed;
    a.equipment=member.loadout;
+   a.flashCharges=equippedFlashCharges(member.loadout);
    const protection=initialArmorIntegrity(member.loadout);
    a.armorIntegrity=protection.torso;a.helmetIntegrity=protection.head;
    a.loadMovementScale=loadMovementScale(member.loadout);
@@ -87,6 +89,14 @@ export function applyRosterIdentity(s:Session,roster:RosterState){
    }
   }
  }
+ reconcileSquadFlashes(s);
+}
+/** Keep the existing mission-wide device budget, but never display usable
+ * devices when nobody actually carries one. */
+export function reconcileSquadFlashes(s:Session){
+ if(s.started)return;
+ s.flashRemaining=Math.min(2,s.operators.filter(a=>a.side==='blue')
+  .reduce((n,a)=>n+a.flashCharges,0));
 }
 export function recordRosterMission(s:Session,roster:RosterState):RosterState{
  return {version:1,members:roster.members.map(m=>{
