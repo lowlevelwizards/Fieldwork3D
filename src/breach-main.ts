@@ -158,7 +158,13 @@ const legacyStudy=startupParams.has('fixedSite');
 const requestedSeed=Number(startupParams.get('seed'));
 const initialSiteSeed=startupParams.has('seed')&&Number.isSafeInteger(requestedSeed)&&
  requestedSeed>0&&requestedSeed<=0xffffffff?requestedSeed:randomSiteSeed();
-let selectedIntelMode:IntelMode='floor-plan';
+const INTEL_PREFERENCE_KEY='fieldwork3d.intel.mode.v1';
+let selectedIntelMode:IntelMode=(()=>{
+  try{
+    const stored=localStorage.getItem(INTEL_PREFERENCE_KEY) as IntelMode|null;
+    return stored&&INTEL_MODES.includes(stored)?stored:'exterior-known';
+  }catch{return 'exterior-known';}
+})();
 const requestedConditionParam=startupParams.get('condition');
 const requestedCondition=requestedConditionParam!==null&&
   Number.isFinite(Number(requestedConditionParam))?
@@ -1164,7 +1170,7 @@ function updateHud(){
   const homeButton=document.getElementById('campaignReturnButton') as HTMLButtonElement|null;
   if(homeButton)homeButton.disabled=campaignMode==='mission'&&state.phase==='running';
   ui.loadout.disabled=campaignMode==='mission';
-  ui.intelMode.textContent='INTEL · '+selectedIntelMode.replace('-', ' ').toUpperCase();
+  ui.intelMode.textContent='INTEL · '+selectedIntelMode.replaceAll('-', ' ').toUpperCase();
   ui.flash.textContent='FLASH ×'+state.flashRemaining;
   ui.cancelTarget.hidden=!(state.phase==='planning'&&
     (looking||flashMode||!!firePlacement));
@@ -1370,6 +1376,22 @@ function architecture(){
     const visuallyOpen=liveVisibility(state,center)?
       (door.openFraction??(door.open?1:0)):
       (state.intel.doorMemory.get(door.id)??0);
+    // Every known hinged door has a true-to-geometry swing preview
+    // before selection, so an entry side can be chosen from the briefing.
+    if(state.phase==='planning'&&door.kind!=='sliding'&&door.kind!=='shutter'){
+      const hinge=door.hinge==='b'?door.b:door.a;
+      const end=doorLeafSegment({...door,openFraction:1}).b;
+      draw.save();draw.globalAlpha=.62;
+      line(hinge,end,'#d2ad7459',2);
+      circle(hinge.x,hinge.y,4.2,'#f7d39c');
+      draw.setLineDash([3,4]);draw.strokeStyle='#ecd5a47a';draw.lineWidth=1.3;
+      draw.beginPath();
+      for(let i=0;i<=8;i++){
+        const tip=doorLeafSegment({...door,openFraction:i/8}).b;
+        if(i===0)draw.moveTo(tip.x,tip.y);else draw.lineTo(tip.x,tip.y);
+      }
+      draw.stroke();draw.setLineDash([]);draw.restore();
+    }
     if(visuallyOpen<.14){
       line(a,b,'#1c2727',15);
       line(a,b,'#b5a17a',8);
@@ -2277,6 +2299,8 @@ ui.intelMode.addEventListener('click',()=>{
   if(replaying)return;
   const index=INTEL_MODES.indexOf(selectedIntelMode);
   selectedIntelMode=INTEL_MODES[(index+1)%INTEL_MODES.length];
+  try{localStorage.setItem(INTEL_PREFERENCE_KEY,selectedIntelMode);}
+  catch{/* Preferences are optional in restricted browsing contexts. */}
   // Restart this exact building without preserving discoveries.
   reset(state.variant,state.site?.seed);
 });
@@ -2514,14 +2538,21 @@ function releasePointer(e:PointerEvent,cancelled=false){
       // Out-of-reach door geometry must NOT steal a ground tap intended
       // to author a waypoint beside the door. Once the planned endpoint
       // is within reach, the physical door becomes selectable.
-      const door=state.doors.find(d=>doorKnown(state.intel,d.id)&&
-        (state.intel.doorMemory.get(d.id)??0)<.72&&!!selectedActor&&
-        [selectedActor.p,finalPoint(selectedActor)].some(p=>
-          doorReachable(p,d))&&
-        (distance(worldToScreen(doorCenter(d),10),
-          {x:e.clientX,y:e.clientY})<24||
-         distance(worldToScreen(doorCenter(d),38),
-          {x:e.clientX,y:e.clientY})<25));
+      const tap={x:e.clientX,y:e.clientY};
+      const door=state.doors.find(d=>{
+        if(!doorKnown(state.intel,d.id)||!selectedActor||
+          ![selectedActor.p,finalPoint(selectedActor)].some(p=>
+            doorReachable(p,d)))return false;
+        const fraction=liveVisibility(state,doorCenter(d))?
+          (d.openFraction??(d.open?1:0)):
+          (state.intel.doorMemory.get(d.id)??0);
+        const leaf=doorLeafSegment({...d,openFraction:fraction});
+        const midpoint={x:(leaf.a.x+leaf.b.x)/2,
+          y:(leaf.a.y+leaf.b.y)/2};
+        return [doorCenter(d),midpoint,leaf.b].some(p=>
+          distance(worldToScreen(p,10),tap)<28||
+          distance(worldToScreen(p,38),tap)<28);
+      });
       if(door&&!looking&&!flashMode&&!firePlacement){
         doorFocusId=door.id;selectedNode=null;
         doorMenuDismissedId=null;
