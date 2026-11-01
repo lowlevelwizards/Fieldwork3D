@@ -33,6 +33,8 @@ import {INTEL_MODES,doorKnown,wallKnown,roomKnown,
 import {orderFailureText} from './breach-nav-diagnostics.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {FrameMeter} from './breach-perf.ts';
+import {initialRoster,readRoster,applyRosterIdentity,recordRosterMission}
+  from './breach-roster.ts';
 import {awarenessDebugLine} from './breach-awareness-debug.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
 import './breach-style.css';
@@ -139,8 +141,14 @@ const initialSiteSeed=startupParams.has('seed')&&Number.isSafeInteger(requestedS
 let selectedIntelMode:IntelMode='floor-plan';
 let requestedSiteScale:'standard'|'expanded'=
   startupParams.get('scale')==='expanded'?'expanded':'standard';
+const ROSTER_KEY='fieldwork3d.operator-roster.v1';
+let persistentRoster=(()=>{
+ try{return readRoster(localStorage.getItem(ROSTER_KEY));}
+ catch{return initialRoster();}
+})();
 let state:Session=newSession(0,legacyStudy?undefined:initialSiteSeed,
   selectedIntelMode,requestedSiteScale);
+applyRosterIdentity(state,persistentRoster);
 let recorder=new MissionRecorder();recorder.capture(state,true);
 const OPERATION_HISTORY_KEY='fieldwork3d.operation-history.v1';
 let recordedOperation:Session|null=null;
@@ -152,6 +160,9 @@ function recordCompletedOperation(){
   if(replaying||recordedOperation===state||!state.started||
     (state.phase!=='won'&&state.phase!=='lost'))return;
   recordedOperation=state;
+  persistentRoster=recordRosterMission(state,persistentRoster);
+  try{localStorage.setItem(ROSTER_KEY,JSON.stringify(persistentRoster));}
+  catch{/* Saving may be unavailable in private browsing. */}
   const stats=debrief(state);
   const record:OperationRecord={
     seed:state.site?.seed??state.variant,
@@ -811,7 +822,9 @@ function updateHud(){
   ui.briefingBody.textContent=brief.objective+'\n\nSUCCESS: '+
     brief.condition+'\nEXTRACT: '+brief.extraction+'\n\nSITE: '+
     brief.building+' · '+brief.layout+'\nSQUAD: '+brief.squad+
-    ' OPERATORS\n\nINTELLIGENCE: '+brief.notes;
+    ' OPERATORS\n\nINTELLIGENCE: '+brief.notes+
+    '\n\nROSTER: '+persistentRoster.members.map(m=>
+      m.callsign+' ('+m.missions+' ops)').join(' · ');
   if(state.phase!== 'planning')ui.briefingPanel.hidden=true;
   ui.phase.textContent=replaying?'REPLAY':
     state.phase==='planning'?'PLANNING':
@@ -1729,6 +1742,7 @@ function enterReplay(){
   ui.replayExtra.hidden=true;ui.replayMore.setAttribute('aria-expanded','false');
   state=newSession(finishedSession.variant,finishedSession.site?.seed,
     finishedSession.intel.mode,finishedSession.site?.scale??'standard');
+  applyRosterIdentity(state,persistentRoster);
   stage?.applySite(state.site??null);
   document.body.classList.add('replaying');
   ui.replayPanel.hidden=false;
@@ -1797,6 +1811,7 @@ function reset(next=state.variant,siteSeed?:number){
   ui.replayPanel.hidden=true;
   state=newSession(next,legacyStudy?undefined:
     siteSeed??randomSiteSeed(),selectedIntelMode,requestedSiteScale);
+  applyRosterIdentity(state,persistentRoster);
   flashDoorId=null;
   stage?.applySite(state.site??null);selected='rook';looking=false;
   selectedNode=null;doorFocusId=null;draggingNode=null;
