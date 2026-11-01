@@ -1192,7 +1192,13 @@ function yieldPocket(blocker:TeamActor,requester:TeamActor,s:Session):Pt|null{
     d(u,blocker.p)-d(v,blocker.p))[0]??null;
 }
 function deferToTeammate(s:Session,blocker:TeamActor,requester:TeamActor){
-  if(blocker.yieldTarget||blocker.health<=0)return false;
+  if(blocker.yieldTarget||requester.yieldTarget||blocker.health<=0||
+     requester.blockedTime<1.1)return false;
+  // Deliberately held stacks and threshold guards are never involuntarily
+  // shoved by an arriving teammate, even if they have no active route.
+  if(blocker.plan.some(n=>n.stackDoorId||n.kind==='holdClear'||
+     n.kind==='wait'||n.kind==='door')||
+     s.doors.some(door=>d(blocker.p,doorCenter(door))<52))return false;
   const requesterRank=s.operators.indexOf(requester);
   const blockerRank=s.operators.indexOf(blocker);
   const blockerActive=blocker.plan.some(n=>n.kind==='move'||n.kind==='door');
@@ -1338,7 +1344,8 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const nearPeer=s.operators.find(b=>b!==a&&b.health>0&&
     b.side===a.side&&d(b.p,move)<20);
   if(nearPeer&&a.side==='blue'&&!nearPeer.plan.length&&
-    d(a.p,nearPeer.p)<27)deferToTeammate(s,nearPeer,a);
+    d(a.p,nearPeer.p)<27&&a.blockedTime>1.1)
+    deferToTeammate(s,nearPeer,a);
   let desiredMove=move;
   if(nearPeer){
     const tangent={x:-Math.sin(direction),y:Math.cos(direction)};
@@ -1516,6 +1523,15 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     pop(a);return;
   }
   if(n.kind==='pie'){
+    // Running abandons the cautious corner sweep for ordinary fast travel.
+    // The same run override also releases a previously persistent PIE look.
+    if(a.pace==='run'){
+      a.aimInstruction=null;
+      if(near(a.p,n.p,5)){pop(a);return;}
+      approach(a,n.p,dt,s,1.40);
+      if(a.nav.length)rotate(a,angle(a.p,a.nav[0]),dt);
+      return;
+    }
     const arc=n.arc??[];
     const point=arc[a.pieIndex];
     if(!point){pop(a);return;}
@@ -1534,11 +1550,12 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   if(!at&&(n.kind==='move'||n.kind==='door'||n.kind==='sync')){
     // A persistent tracking/PIE stance stays cautious on every segment,
     // not only on explicitly marked strafe nodes.
-    const tracking=a.aimInstruction?.mode==='track'||
-      n.aimMode==='track';
-    const cautious=n.moveMode==='strafe'||tracking;
-    approach(a,n.p,dt,s,n.moveMode==='sprint'||a.pace==='run'?1.40:
-      cautious?.70:1);
+    const running=n.moveMode==='sprint'||a.pace==='run';
+    const tracking=!running&&(a.aimInstruction?.mode==='track'||
+      n.aimMode==='track');
+    const cautious=!running&&(n.moveMode==='strafe'||tracking);
+    if(running&&a.aimInstruction?.mode==='track')a.aimInstruction=null;
+    approach(a,n.p,dt,s,running?1.40:cautious?.70:1);
     // Unmodified movement follows its route, while an explicit fixed STRAFE
     // or PIE/TRACK instruction persists until LOOK releases it.
     // While wedged sideways, the physical shoulder axis has priority
@@ -1656,7 +1673,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       pop(a);return;
     }
     const required=n.method==='kick'?KICK_DURATION:
-      n.method==='hold'?1.3:n.method==='close'?.65:.49;
+      n.method==='hold'?1.3:n.method==='close'?.75:.78;
     if(a.actionTimer===0){
       a.lastDoorAt=s.seconds;a.lastDoorId=door.id;
       a.lastDoorMethod=n.method??'open';
@@ -1666,14 +1683,26 @@ function runOrders(s:Session,a:TeamActor,dt:number){
        a.actionTimer-dt<required*.53){
       if(!door.open){
         const outcome=kickDoor(door,a.p);
+        door.lastKickAt=s.seconds;
         if(outcome.opened)door.openedAt=s.seconds;
         hear(s,doorCenter(door),340,'kick');
-        const result=outcome.opened?'FORCED OPEN':'KICK RESISTED';
+        const result=!outcome.pushSide?'WRONG SIDE · CANNOT KICK INWARD':
+          outcome.opened?'FORCED OPEN':'KICK RESISTED';
         notify(s,door.id+' '+result);
         battleEvent(s,'door',a,doorCenter(door),door.id+' '+result);
+        if(!outcome.pushSide){pop(a);return;}
       }
     }
     if(a.actionTimer>=required){
+      if(n.method==='kick'){
+        // Keep kicking automatically until the latch yields, but avoid
+        // an endless loop for a held or physically impossible opening.
+        if(!door.open&&(door.kicks??0)<8){
+          a.actionTimer=0;return;
+        }
+        if(!door.open)notify(s,door.id+' RESISTED · CHECK ENTRY SIDE');
+        pop(a);return;
+      }
       if(n.method==='hold'){
         if(door.open)notify(s,door.id+' MUST BE CLOSED TO HOLD');
         else{
@@ -2163,7 +2192,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   // Shoulder-first passage keeps the long weapon tucked until clear.
   if(a.squeeze){a.aim=Math.max(0,a.aim-dt*2);return;}
   // Sprinting is a traversal decision, not free accurate fire on the move.
-  if((a.pace==='run'||a.plan[0]?.moveMode==='sprint')&&a.velocity>12){
+  if(a.pace==='run'||a.plan[0]?.moveMode==='sprint'){
     a.aim=Math.max(0,a.aim-dt*2.2);
     a.weaponYaw=approachAngle(a.weaponYaw,a.heading,dt*4);
     return;
