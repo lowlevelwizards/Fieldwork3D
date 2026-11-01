@@ -4,6 +4,7 @@
  */
 import type {Site,Room} from '../breach-site.ts';
 import type {Obstacle,Pt} from '../breach-core.ts';
+import {inspectCounterAccess} from './service-counter-access.ts';
 const station=new Set(['transaction-counter','reception-desk','parts-counter']);
 const eligible=new Set(['checkout','reception','lobby','parts']);
 const overlaps=(a:Obstacle,b:Obstacle,gap=6)=>
@@ -13,9 +14,13 @@ const inside=(r:Room,o:Obstacle)=>
  o.y-o.h/2>r.y+12&&o.y+o.h/2<r.y+r.h-12;
 export function placeServiceQueues(site:Site):Site{
  const cover=site.cover.slice();
+ const access=inspectCounterAccess(site);
  const protectedPoints:Pt[]=[...site.spawn,...site.enemies,site.entrance,
   site.objective,site.extract];
  for(const service of site.cover.filter(o=>station.has(o.fixture??''))){
+  const entry=access.find(a=>a.x===service.x&&a.y===service.y&&
+   a.fixture===service.fixture);
+  if(!entry?.customerClear||!entry.staffClear)continue;
   const room=site.rooms.find(r=>r.kind==='room'&&
    service.x>r.x&&service.x<r.x+r.w&&service.y>r.y&&service.y<r.y+r.h);
   if(!room||!eligible.has(room.purpose??'')||
