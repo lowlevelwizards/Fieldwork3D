@@ -14,5 +14,5 @@ test('outside and fixtures reuse stable semantic materials',()=>{
  assert.equal(zonePixelSurface('garden'),'grass');
  assert.equal(fixturePixelSurface('sedan'),'metal');
  assert.equal(fixturePixelSurface('sofa'),'fabric');
- assert.equal(fixturePixelSurface('pallet'),'wood');
+ assert.equal(fixturePixelSurface('pallet'),'rough-wood');
 });
