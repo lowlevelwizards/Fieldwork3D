@@ -12,7 +12,7 @@ export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number;
   pairedWith?:string;
   hinge?:'a'|'b';swing?:-1|1;openFraction?:number;
   angularVelocity?:number;resistance?:number;kickImpulse?:number;heldBy?:string|null;latchIntegrity?:number;frameIntegrity?:number;
-  kicks?:number;forced?:boolean;}
+  kicks?:number;forced?:boolean;locked?:boolean;jammed?:boolean;}
 export type Obstacle={x:number;y:number;w:number;h:number;low?:boolean;
   fixture?:string};
 export type Side='blue'|'red';
