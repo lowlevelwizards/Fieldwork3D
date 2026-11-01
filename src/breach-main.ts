@@ -44,6 +44,7 @@ import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOpera
  retireOperator,equipCampaignGear,saveCampaignKitPreset,applyCampaignKitPreset,
  deleteCampaignKitPreset,renameCampaignOperator,cycleCampaignAppearance,
  type CampaignState,type CampaignReport} from './campaign-state.ts';
+import {loadMovementScale} from './equipment-loadouts.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {exportCampaign,importCampaign} from './campaign-persistence.ts';
 import {careerEventsForOperation} from './campaign-history.ts';
@@ -192,6 +193,7 @@ function applyCampaignSkills(){
    a.name=m.callsign;a.skills={...m.skills};a.weapon=m.weapon;
    a.appearanceSeed=m.appearanceSeed;
    a.equipment=m.loadout;
+   a.loadMovementScale=loadMovementScale(m.loadout);
    a.magazine=m.magazine;a.reserve=m.reserve;
    a.insertedMagazineId=a.id+'/'+a.weapon+'/loaded';
    a.spareMagazines=a.weapon==='shotgun'?[]:
