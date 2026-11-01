@@ -213,7 +213,8 @@ export function blueprintIssues(b:Blueprint):string[]{
    b.cells.some(row=>row.length!==b.widths.length))
    issues.push('invalid blueprint grid');
  const entry=b.cells[b.front.row]?.[b.front.col];
- if(!entry||!publicEntry.has(entry))issues.push('front entry not public');
+ if(!entry||(!publicEntry.has(entry)&&!(b.kind==='utility'&&entry==='service')))
+   issues.push('front entry not public');
  const roles=b.cells.flat().filter((x):x is string=>!!x);
  if(b.kind==='motel'&&roles.filter(x=>x==='guest').length<4)
    issues.push('motel missing guest room bank');
