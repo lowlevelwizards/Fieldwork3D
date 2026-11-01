@@ -7,6 +7,7 @@ import {LOADOUT_SLOTS,itemsForSlot,itemDefinition} from './equipment-catalog.ts'
 import {totalEquipmentMass,loadMobilityDescription,loadMovementScale,
  type LoadoutSlot} from './equipment-loadouts.ts';
 import {CampaignKitPreview} from './equipment-preview.ts';
+import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
  type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
 import {attachmentPrice} from './equipment-weapon-inventory.ts';
@@ -45,7 +46,11 @@ export class CampaignScreen{
  private readonly handlers:CampaignHandlers;
  private armoryOperatorId:string|null=null;
  private preview:CampaignKitPreview|null=null;
- private disposePreview(){this.preview?.dispose();this.preview=null;}
+ private workbench:WeaponWorkbenchPreview|null=null;
+ private weaponView=false;
+ private selectedMount:WeaponAttachmentSlot='optic';
+ private disposePreview(){this.preview?.dispose();this.preview=null;
+  this.workbench?.dispose();this.workbench=null;}
  constructor(handlers:CampaignHandlers){
   this.handlers=handlers;
   this.root.setAttribute('aria-label','Fieldwork campaign');
@@ -267,7 +272,11 @@ export class CampaignScreen{
   const summary=node('section','campaign-section campaign-kit-summary');
   summary.append(node('h2','','OPERATOR'));
   const preview=node('div','campaign-kit-preview');
-  summary.append(preview,node('p','campaign-note','DRAG THE SOLDIER TO ROTATE'));
+  const viewToggle=button(this.weaponView?'SHOW FULL OPERATOR':'INSPECT WEAPON / MOUNTS',()=>{
+   this.weaponView=!this.weaponView;this.armory(c,id);
+  });
+  summary.append(preview,viewToggle,node('p','campaign-note',
+   this.weaponView?'DRAG TO ROTATE · TAP A MOUNT TO SELECT ITS SLOT':'DRAG THE SOLDIER TO ROTATE'));
   summary.append(node('strong','campaign-kit-name',person.callsign));
   const identityActions=node('div','campaign-kit-actions');
   const rename=button('EDIT CALLSIGN',()=>{
@@ -388,6 +397,7 @@ export class CampaignScreen{
    wrap.append(row,info);
    editor.append(wrap);
   }
+  const mountSelectors=new Map<WeaponAttachmentSlot,HTMLSelectElement>();
   editor.append(node('h2','','WEAPON ATTACHMENTS'));
   editor.append(node('p','campaign-note',
    'Factory parts are included. Additional modules are finite workshop stock; purchase and install before deployment. The preview uses your assembled firearm.'));
@@ -407,6 +417,9 @@ export class CampaignScreen{
     option.value=part.id;select.append(option);
    }
    select.value=current;select.disabled=locked;
+   mountSelectors.set(slot,select);
+   select.addEventListener('focus',()=>{this.selectedMount=slot;
+    this.workbench?.setActiveSlot(slot);});
    select.addEventListener('change',()=>{
     const partId=select.value,price=attachmentPrice(partId);
     const stock=c.inventory.attachments[partId]??0;
@@ -454,7 +467,17 @@ export class CampaignScreen{
   }
   grid.append(editor);main.append(grid);
   this.root.append(main);
-  this.preview=new CampaignKitPreview(preview,person.id,person.weapon,
+  if(this.weaponView){
+   this.workbench=new WeaponWorkbenchPreview(preview,person.weaponConfiguration,slot=>{
+    this.selectedMount=slot;
+    const select=mountSelectors.get(slot);
+    if(!select)return;
+    select.focus({preventScroll:true});
+    select.scrollIntoView({block:'nearest',behavior:'smooth'});
+    try{select.showPicker();}catch{/* mobile browser may require a second tap */}
+   });
+   this.workbench.setActiveSlot(this.selectedMount);
+  }else this.preview=new CampaignKitPreview(preview,person.id,person.weapon,
    person.appearanceSeed,person.loadout,person.weaponConfiguration);
  }
  private importPicker(){
