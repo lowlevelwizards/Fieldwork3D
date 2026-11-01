@@ -47,6 +47,11 @@ export function fixturePixelSurface(fixture:string|undefined):PixelSurface{
 
 /** Render-side classification, never a substitute for wall physics. */
 export function wallPixelSurface(archetype:string|undefined):PixelSurface{
- return ['garage','warehouse','utility'].includes(archetype??'')?'concrete':
-   archetype==='townhouse'?'brick':'plaster';
+ switch(archetype){
+  case 'garage':case 'utility':return 'cinderblock';
+  case 'warehouse':return 'panel';
+  case 'motel':return 'siding';
+  // Residential and medical *interiors* are painted, not raw masonry.
+  default:return 'plaster';
+ }
 }

@@ -3,7 +3,7 @@
 export type PixelSurface =
  'wood'|'plaster'|'brick'|'concrete'|'tile'|'carpet'|'metal'|
  'fabric'|'asphalt'|'earth'|'gravel'|'grass'|'rubber'|'foliage'|'paper'|
- 'linoleum'|'sealed-concrete';
+ 'linoleum'|'sealed-concrete'|'cinderblock'|'siding'|'panel';
 export const OPERATOR_REFERENCE_HEIGHT=40;
 export const TEXELS_PER_OPERATOR=32;
 export const PIXEL_WORLD_SIZE=OPERATOR_REFERENCE_HEIGHT/TEXELS_PER_OPERATOR;
@@ -12,7 +12,7 @@ export const TILE_WORLD_SIZE=TILE_PIXELS*PIXEL_WORLD_SIZE;
 export const PIXEL_SURFACES:readonly PixelSurface[]=[
  'wood','plaster','brick','concrete','tile','carpet','metal',
  'fabric','asphalt','earth','gravel','grass','rubber','foliage','paper',
- 'linoleum','sealed-concrete'
+ 'linoleum','sealed-concrete','cinderblock','siding','panel'
 ];
 export const MATERIAL_RECIPE_VERSION=3;
 const hash=(x:number,y:number,s:number)=>{
@@ -38,16 +38,21 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
       shade=248; // a short directional grain mark, not whole-surface mottling
     break;
    }
-   case 'brick':{
-    const row=Math.floor(y/8);
-    if(y%8===0||mod(x+(row%2)*8+seed%2,16)===0)shade=217;
+   case 'brick':case 'cinderblock':{
+    const row=Math.floor(y/(kind==='cinderblock'?16:8));
+    if(y%(kind==='cinderblock'?16:8)===0||
+       mod(x+(row%2)*8+seed%2,kind==='cinderblock'?32:16)===0)
+      shade=kind==='cinderblock'?233:217;
     break;
    }
    case 'tile':
     if(x%8===0||y%8===0)shade=231;
     break;
-   case 'metal':
-    if(x%16===0)shade=249;
+   case 'metal':case 'panel':
+    if(x%16===0)shade=kind==='panel'?237:249;
+    break;
+   case 'siding':
+    if(y%8===0)shade=241;
     break;
    case 'concrete':case 'sealed-concrete':
     if(x===0||y===0)shade=kind==='sealed-concrete'?245:239;
