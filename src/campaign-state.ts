@@ -382,6 +382,18 @@ export function equipCampaignWeaponAttachment(c:CampaignState,id:string,
  return {...c,inventory:{...c.inventory,attachments},operators:c.operators.map(m=>
   m.id===id?{...m,weaponConfiguration:next}:m)};
 }
+/** Player-authorized buy-and-equip is all-or-nothing. */
+export function purchaseAndEquipWeaponAttachment(c:CampaignState,id:string,
+ slot:WeaponAttachmentSlot,partId:string):CampaignState{
+ const direct=equipCampaignWeaponAttachment(c,id,slot,partId);
+ if(direct!==c)return direct;
+ const price=attachmentPrice(partId);
+ if(price<=0||c.activeContractId||c.funds<price)return c;
+ const purchased=buyWeaponAttachment(c,partId);
+ if(purchased===c)return c;
+ const equipped=equipCampaignWeaponAttachment(purchased,id,slot,partId);
+ return equipped===purchased?c:equipped;
+}
 export function equipCampaignWeapon(c:CampaignState,id:string,
  weapon:CampaignOperator['weapon']):CampaignState{
  if(c.activeContractId||!WEAPONS.includes(weapon))return c;
