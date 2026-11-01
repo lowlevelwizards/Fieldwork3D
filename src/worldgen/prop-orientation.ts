@@ -38,7 +38,8 @@ function legal(site:Site,out:readonly Obstacle[],index:number,r:Room,turn:Quarte
  if(activeFixtures.has(item.fixture??'')){
   const face=facing[turn],depth=turn%2?w:h;
   const reach={x:item.x+face.x*(depth/2+8),y:item.y+face.y*(depth/2+8)};
-  if(!within(reach,r))return false;
+  if(reach.x<r.x+8||reach.x>r.x+r.w-8||
+    reach.y<r.y+8||reach.y>r.y+r.h-8)return false;
   if(out.some((o,j)=>j!==index&&Math.abs(o.x-reach.x)<o.w/2+3&&
     Math.abs(o.y-reach.y)<o.h/2+3))return false;
  }
