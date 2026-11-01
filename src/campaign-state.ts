@@ -6,6 +6,7 @@ import {WEAPONS as COMBAT_WEAPONS} from './breach-combat.ts';
 import {initialEquipmentLoadout,readEquipmentLoadout,setEquipmentChoice,syncPrimaryWeapon,
  type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
 import {progressOperator,type OperatorPerformance,type SkillGains} from './campaign-progression.ts';
+import {readKitPresets,nextPresetId,MAX_KIT_PRESETS,type EquipmentPreset} from './equipment-presets.ts';
 
 export type SkillName=keyof ShootingSkills;
 export const SKILL_NAMES:SkillName[]=['pointShooting','longRange','precision','recoilControl','composure','handling'];
@@ -37,6 +38,7 @@ export type CampaignState={
  history:CampaignReport[];journal:CareerEvent[];appliedResults:string[];
  supplies:{medical:number;ammo:number};regionalPressure:Record<string,number>;
  inventory:{weapons:Record<CampaignOperator['weapon'],number>};
+ kitPresets:EquipmentPreset[];
 };
 const WEAPONS=['carbine','smg','rifle','shotgun'] as const;
 const REGIONS=['Cutwoods','Breadlands','Flooded Belt','Verdigris City','Timberline'] as const;
@@ -98,7 +100,7 @@ export function newCampaign(seed:number):CampaignState{
   contracts:createContracts(normalized,1),activeContractId:null,
   history:[],journal:[],appliedResults:[],supplies:{medical:3,ammo:240},
   regionalPressure:Object.fromEntries(REGIONS.map(r=>[r,0])),
-  inventory:{weapons:{carbine:0,smg:0,rifle:0,shotgun:0}}};
+  inventory:{weapons:{carbine:0,smg:0,rifle:0,shotgun:0}},kitPresets:[]};
 }
 export function migrateLegacyRoster(campaign:CampaignState,legacy:RosterState):CampaignState{
  if(!legacy||legacy.version!==1||!Array.isArray(legacy.members))return campaign;
@@ -147,6 +149,7 @@ export function readCampaign(raw:string|null):CampaignState|null{
     o.distinctions.filter((x):x is string=>typeof x==='string').slice(0,32):[]
   }));
   return {...c,squadIds:chosen,operators,inventory:{weapons},
+    kitPresets:readKitPresets((c as {kitPresets?:unknown}).kitPresets),
    regionalPressure:Object.fromEntries(REGIONS.map(region=>
    [region,Math.max(-3,Math.min(3,Number.isFinite(c.regionalPressure?.[region])?
     c.regionalPressure[region]:0))]))};
@@ -348,4 +351,46 @@ export function equipCampaignGear(c:CampaignState,id:string,slot:LoadoutSlot,
  const next=setEquipmentChoice(o.loadout,slot,itemId);
  if(next===o.loadout)return c;
  return {...c,operators:c.operators.map(m=>m.id===id?{...m,loadout:next}:m)};
+}
+
+/** Named equipment recipes are lightweight shared records, not physical stock. */
+export function saveCampaignKitPreset(c:CampaignState,id:string,name:string):CampaignState{
+ if(c.activeContractId||c.kitPresets.length>=MAX_KIT_PRESETS||
+    !name.trim())return c;
+ const member=c.operators.find(o=>o.id===id&&o.status!=='retired'&&o.status!=='lost');
+ if(!member)return c;
+ const presetId=nextPresetId(c.kitPresets);
+ if(!presetId)return c;
+ return {...c,kitPresets:[...c.kitPresets,{
+   id:presetId,name:name.trim().slice(0,32),weapon:member.weapon,
+   kit:readEquipmentLoadout(member.loadout,member.weapon)}]};
+}
+export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string):CampaignState{
+ if(c.activeContractId)return c;
+ const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
+ const preset=c.kitPresets.find(p=>p.id===presetId);
+ if(!member||!preset)return c;
+ // Entire recipe is atomic. Never silently skip a missing primary weapon.
+ if(member.weapon!==preset.weapon&&c.inventory.weapons[preset.weapon]<1)return c;
+ const swapped=member.weapon===preset.weapon?c:equipCampaignWeapon(c,id,preset.weapon);
+ if(swapped===c&&member.weapon!==preset.weapon)return c;
+ return {...swapped,operators:swapped.operators.map(o=>o.id===id?{
+  ...o,loadout:readEquipmentLoadout(preset.kit,preset.weapon)}:o)};
+}
+export function deleteCampaignKitPreset(c:CampaignState,presetId:string):CampaignState{
+ if(c.activeContractId||!c.kitPresets.some(p=>p.id===presetId))return c;
+ return {...c,kitPresets:c.kitPresets.filter(p=>p.id!==presetId)};
+}
+/** Allow cosmetic identity edits without changing personnel service history. */
+export function renameCampaignOperator(c:CampaignState,id:string,callsign:string):CampaignState{
+ const next=callsign.trim().slice(0,24);
+ if(!next||c.activeContractId||c.operators.some(o=>o.id!==id&&o.callsign.toLowerCase()===next.toLowerCase()))
+  return c;
+ return {...c,operators:c.operators.map(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired'?
+  {...o,callsign:next}:o)};
+}
+export function cycleCampaignAppearance(c:CampaignState,id:string):CampaignState{
+ if(c.activeContractId)return c;
+ return {...c,operators:c.operators.map(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired'?
+  {...o,appearanceSeed:(o.appearanceSeed+1)>>>0}:o)};
 }
