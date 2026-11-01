@@ -91,7 +91,7 @@ definitions.push(
 );
 definitions.push({id:'porch-post',category:'architecture',width:8,depth:8,height:40,
  solid:true,cover:'high',rooms:['yard','patio','garden','parking']});
-definitions.push({id:'diner-booth',category:'commercial',width:66,depth:46,height:28,
+definitions.push({id:'diner-booth',category:'commercial',width:56,depth:38,height:28,
  solid:true,cover:'low',rooms:['dining']});
 // Functional workstations for real commercial, clinical, retail and industrial routines.
 definitions.push(
