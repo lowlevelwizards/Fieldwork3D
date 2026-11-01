@@ -4,6 +4,7 @@
 import {type Segment,type Obstacle,type Pt} from './breach-core.ts';
 import type {Site,WindowOpening,WindowStyle,BuildingArchetype} from './breach-site.ts';
 import {addExteriorProperty} from './worldgen/exterior-sites.ts';
+import {addInteriorGlazing} from './worldgen/interior-glazing.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const windowStyles:Record<BuildingArchetype,readonly WindowStyle[]>={
  house:['standard','tall','bay','picture'],
@@ -99,7 +100,7 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
     cover.push({x,y,w:exteriorFixture==='fence'?58:46,
       h:exteriorFixture==='fence'?10:24,
       low:exteriorFixture!=='vehicle',fixture:exteriorFixture});
-  return addExteriorProperty({...site,walls,cover,windows},seed);
+  return addExteriorProperty(addInteriorGlazing({...site,walls,cover,windows},seed),seed);
 }
 
 /** Gameplay window state never mutates the seed-derived architectural plan. */
@@ -108,7 +109,7 @@ export type WindowState=WindowOpening&{
 };
 export function initializeWindows(openings:readonly WindowOpening[]):WindowState[]{
  return openings.map(w=>({...w,open:false,integrity:2,
-   shattered:false,operable:w.width>=38&&w.style!=='picture'}));
+   shattered:false,operable:!w.interior&&w.width>=38&&w.style!=='picture'}));
 }
 export function manipulateWindow(w:WindowState,action:'open'|'close'|'break'){
  if(action==='break'){
