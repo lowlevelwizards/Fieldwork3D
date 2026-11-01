@@ -85,7 +85,20 @@ export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
    positions.set(member.id,placed);occupied.push(chosen);
   }
  });
- const actors=planned.flatMap(a=>positions.has(a.id)?[positions.get(a.id)!]:[]);
+ let actors=planned.flatMap(a=>positions.has(a.id)?[positions.get(a.id)!]:[]);
+ // Mission-critical fallback: when every candidate is blocked, preserve
+ // architecturally audited original anchors rather than an empty mission.
+ if(actors.length<2&&site.enemies.length>=2){
+  fallbacks+=2;
+  actors=planned.slice(0,2).map((a,i)=>({...a,
+   position:{...site.enemies[i]},heading:site.enemyHeadings?.[i]??a.heading,
+   roomId:roomOf(site,site.enemies[i])?.id,
+   zoneId:roomOf(site,site.enemies[i])?.zoneId}));
+  const fallbackGroup:EncounterGroup={id:'fallback',purpose:'security',
+   members:actors.map(a=>a.id)};
+  actors=actors.map(a=>({...a,groupId:fallbackGroup.id}));
+  return {actors,groups:[fallbackGroup],rejected,fallbacks};
+ }
  const surviving=new Set(actors.map(a=>a.id));
  const retainedGroups=groups.map(g=>({...g,
    members:g.members.filter(id=>surviving.has(id))}))
