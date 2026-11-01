@@ -231,7 +231,7 @@ export function furnishRooms(site:Site,seed:number):Site{
    for(const room of site.rooms.filter(r=>r.kind==='room'&&
      r.purpose==='dining'&&r.w>=112&&r.h>=96)){
      let placed=0;
-     for(const [fx,fy] of [[.32,.27],[.68,.73],[.68,.27],[.32,.73]]){
+     for(const [fx,fy] of [[.32,.26],[.68,.74],[.68,.26],[.32,.74]]){
        if(placed>=2)break;
        const w=56,h=38,x=room.x+room.w*fx,y=room.y+room.h*fy;
        const booth:Obstacle={x,y,w,h,fixture:'diner-booth',low:true};
