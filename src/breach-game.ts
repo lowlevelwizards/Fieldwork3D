@@ -1770,7 +1770,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     if(sound.id!==undefined?sound.id<=a.lastNoiseExaminedId:
       sound.time<=a.lastNoiseExaminedAt)continue;
     if(s.seconds-sound.time>1)continue;
-    const evidence=interpretSound(sound,a.id,a.p,s.doors,WALLS);
+    const evidence=interpretSound(sound,a.id,a.p,s.doors,WALLS,s.windows);
     if(evidence){
       addObservation(a.awareness,{id:'audio/'+a.id+'/'+evidence.id,
         observerId:a.id,source:'auditory',at:evidence.at,
@@ -2018,6 +2018,20 @@ function damageStruckCover(s:Session,hits:readonly {index:number;fraction:number
   const result=damageCover(piece,force);
   if(result==='immune')continue;
   s.objectRevision++;
+  if(result==='collapsed'){
+    // Nearby defenders perceive their own cover crumbling. Uninformed
+    // distant guards are not globally told the new geometry.
+    for(const defender of enemies(s)){
+      if(defender.health<=0)continue;
+      const near=d(defender.p,{x:piece.x,y:piece.y})<
+        Math.max(piece.w,piece.h)+34;
+      if(near){
+        defender.defense=null;defender.defenseUntil=s.seconds;
+        defender.nav=[];defender.suppression=Math.min(1,
+          defender.suppression+.12);
+      }
+    }
+  }
  }
  if(touched.size)COVER.splice(0,COVER.length,...s.coverState);
 }

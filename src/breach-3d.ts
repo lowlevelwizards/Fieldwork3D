@@ -1509,7 +1509,8 @@ export class TacticalScene3D{
     // while operators are stationary in planning. Quantized pose and intel
     // changes make the key; real LOS is still computed by the fog renderer.
     const fogSignature=omniscient?'omniscient':[
-      s.seenGround.size,s.intel.cover.size,s.intel.rooms.size,
+      s.seenGround.size,s.objectRevision,
+      s.intel.cover.size,s.intel.rooms.size,
       s.intel.walls.size,
       ...team(s).filter(a=>a.health>0).map(a=>[
         a.id,Math.round(a.p.x*10),Math.round(a.p.y*10),
