@@ -20,7 +20,7 @@ import {initialWeaponConfiguration,readWeaponConfiguration,changeWeaponPlatform,
  from './equipment-weapon-assemblies.ts';
 import {attachmentPrice,readAttachmentStock,returnAttachments}
  from './equipment-weapon-inventory.ts';
-import type {SerializedWeapon} from './equipment-weapon-identity.ts';
+import {recordWeaponRounds,type SerializedWeapon} from './equipment-weapon-identity.ts';
 import {reconcileCampaignWeaponOwnership} from './equipment-weapon-ownership.ts';
 import {kitMedicalSupplies,normalizedMedicalSupplies,medicalSupplyCount,
  type FieldMedicalSupplies} from './equipment-medical-supplies.ts';
@@ -296,7 +296,15 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
    risk:Math.min(3,contract.risk+1) as 1|2|3,
    intel:'scouted',reward:contract.reward+180,deadline:day+3,status:'available'});
  }
+ // The appliedResults gate above prevents replay/debrief double charging.
+ const serials=c.inventory.serializedWeapons?.map(w=>{
+  const owner=c.operators.find(o=>o.weaponSerialId===w.id&&participants.has(o.id));
+  if(!owner)return w;
+  const actual=r.performance?.find(p=>p.id===owner.id)?.shots??0;
+  return recordWeaponRounds(w,actual,c.day,r.id);
+ });
  return {...c,day,funds:c.funds+gained,operators:developed,regionalPressure:pressure,
+  inventory:{...c.inventory,serializedWeapons:serials},
   supplies:{...c.supplies,flash:Math.max(0,(c.supplies.flash??4)-clampFlashUse(r.flashUsed))},
   activeContractId:null,history:[...c.history,{...r,gains:gainedSkills}].slice(-200),
   journal:[...c.journal,...r.events,...careerEvents].slice(-1000),
