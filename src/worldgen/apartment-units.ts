@@ -72,13 +72,41 @@ function courtyardApartmentBlueprint(seed:number):Blueprint{
   unitIds:mirror?unitIds.map(row=>row.slice().reverse()):unitIds,
   front:{col:3,row:4}};
 }
+/** Two self-contained flats reached from a short transverse T gallery.
+ * Public space turns sideways into the flats rather than running the
+ * entire length of the building with doors on both sides.
+ */
+function crossGalleryApartmentBlueprint(seed:number):Blueprint{
+ const widths=[147,113,121,126,121,111,151];
+ const depths=[128,124,110,111,96];
+ const cells:(string|null)[][]=[
+  ['bedroom','bathroom','closet',null,'closet','bathroom','bedroom'],
+  ['living','kitchen','living',null,'living','kitchen','living'],
+  ['living','living','lobby','lobby','lobby','living','living'],
+  [null,'living','living','lobby','living','living',null],
+  [null,null,'lobby','lobby','lobby',null,null]
+ ];
+ const unitIds=cells.map(row=>row.map((role,col)=>
+  role&&role!=='lobby'&&role!=='hallway'?
+   col<3?'APT-1':col>3?'APT-2':null:null));
+ const mirror=seed%2===1;
+ return {kind:'apartment',
+   family:'two flats / transverse T gallery and split residential wings'+
+    (mirror?' / mirrored':''),
+   widths:mirror?widths.slice().reverse():widths,depths,
+   cells:mirror?cells.map(row=>row.slice().reverse()):cells,
+   unitIds:mirror?unitIds.map(row=>row.slice().reverse()):unitIds,
+   front:{col:3,row:4}};
+}
 export function apartmentUnitBlueprint(seed:number,scale:SiteScale):Blueprint{
  if(scale==='small'){
   const b=sizedBlueprint('apartment',seed,'small',architecturalBlueprint('apartment',seed));
   return {...b,unitIds:b.cells.map(row=>row.map(role=>
     role&&role!=='hallway'&&role!=='lobby'?'APT-1':null))};
  }
- // Distinct spatial topology, not merely a mirrored hallway or different kitchen.
+ // Public gallery variants reduce repeated double-loaded apartment corridors.
+ if(scale!=='large'&&(seed%5===0||seed%5===1))
+   return crossGalleryApartmentBlueprint(seed);
  if(scale!=='large'&&seed%5===3)return atriumApartmentBlueprint(seed);
  if(scale!=='large'&&seed%5===4)return courtyardApartmentBlueprint(seed);
  const large=scale==='large',bands=large?2:1;
