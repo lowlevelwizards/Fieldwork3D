@@ -44,7 +44,7 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
  const cream=ctx.solid(0xbdb79e,.9,'metal');
  const light=ctx.solid(0xc4b89e,.89,'metal');
  const glass=ctx.solid(0x557780,.32);
- const rubber=ctx.solid(0x293332,.97,'rubber');
+ const rubber=ctx.solid(0x293332,.97,'tire-rubber');
  const red=ctx.solid(0xa16d57,.9,'metal');
  const accent=ctx.solid(variation===1?0xb69b57:0x82988d,.86,'painted-metal');
  const b=(x:number,y:number,z:number,bw:number,bh:number,bd:number,
@@ -231,7 +231,7 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
  }
  if(fixture==='sofa'||fixture==='armchair'){
    const single=fixture==='armchair';
-   const base=ctx.solid(variation===2?0x8f7467:0x6d8176,.92,'fabric');
+   const base=ctx.solid(variation===2?0x8f7467:0x6d8176,.92,'woven-fabric');
    b(0,7,0,w*.94,12,d*.88,base);
    b(0,H*.59,-d*.39,w*.95,H*.75,d*.20,base); // raised back
    for(const sx of [-1,1]){
