@@ -18,6 +18,8 @@ import {
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';
+import {activeRangeDiagnostic,rangeDiagnosticLabel}
+ from './equipment-training-diagnostics.ts';
 import type {Site} from './breach-site.ts';
 import {equippedEntryMethods,issuedWedges} from './equipment-entry-tools.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
@@ -365,6 +367,15 @@ operationsToggle.id='operationsBoardToggle';operationsToggle.type='button';
 operationsToggle.textContent='OPERATIONS';
 operationsToggle.setAttribute('aria-label','Open squad operations and resupply');
 ui.siteSettings.append(operationsToggle);
+const rangeTelemetry=document.createElement('aside');
+rangeTelemetry.id='equipmentRangeTelemetry';
+rangeTelemetry.hidden=true;
+rangeTelemetry.style.cssText='position:fixed;top:65px;right:10px;z-index:15;'+
+ 'max-width:min(80vw,460px);padding:8px 12px;border:1px solid #6e9480;'+
+ 'border-radius:8px;background:#152421e8;color:#d9e7d6;'+
+ 'font:11px/1.6 Oxanium,sans-serif;pointer-events:none';
+rangeTelemetry.setAttribute('aria-label','Equipment range live metrics');
+document.body.append(rangeTelemetry);
 const operationsBoard=document.createElement('section');
 operationsBoard.id='operationsBoard';
 operationsBoard.hidden=true;
@@ -1264,6 +1275,12 @@ function medicalCandidate(id:string){
  }).sort((x,y)=>distance(a.p,x.p)-distance(a.p,y.p))[0]??null;
 }
 function updateHud(){
+  const telemetry=activeRangeDiagnostic(state,selected);
+  rangeTelemetry.hidden=!telemetry;
+  if(telemetry){
+   const line=rangeDiagnosticLabel(telemetry);
+   if(rangeTelemetry.textContent!==line)rangeTelemetry.textContent=line;
+  }
   const leaveRange=document.querySelector<HTMLButtonElement>(
    '[data-equipment-range-exit]');
   if(leaveRange)leaveRange.hidden=!state.site?.training;
