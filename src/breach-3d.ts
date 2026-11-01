@@ -35,7 +35,7 @@ import {resolveWeaponAssembly} from './equipment-weapon-assemblies.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter,LIGHT_BEAM_SAMPLES}
  from './equipment-weapon-light-beam.ts';
 import {type Site,type Room} from './breach-site.ts';
-import {carriedItemPlacement} from './equipment-carry-placement.ts';
+import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
 import {coverPresentation,shotVisibility} from './breach-presentation.ts';
 import {doorKnown,wallKnown,roomKnown}
@@ -1635,17 +1635,16 @@ export class TacticalScene3D{
         positions.needsUpdate=true;object.beamLast={x:bx,y:by,yaw:angle,tick};
        }
       }
+      // Shared, bounded inventory projection for both visible containers.
+      const carried=actor.equipment?
+       carryPlacementLedger(actor.equipment,actor.spareMagazines):[];
       poseOperator(object.physical,{
         x:drawActor.x,z:drawActor.z,heading:drawActor.heading,
         velocity:actor.velocity,seconds:poseSeconds,stride:actor.stride,
         appearanceSeed:actor.appearanceSeed,
         equipment:actor.equipment,
-        medicalCarryLocation:actor.equipment?
-         carriedItemPlacement(actor.equipment,actor.spareMagazines,'medical')?.location:
-         undefined,
-        utilityCarryLocation:actor.equipment?
-         carriedItemPlacement(actor.equipment,actor.spareMagazines,'utility')?.location:
-         undefined,
+        medicalCarryLocation:carried.find(p=>p.kind==='medical')?.location,
+        utilityCarryLocation:carried.find(p=>p.kind==='utility')?.location,
          weaponConfiguration:actor.weaponConfiguration,
          weaponLightOn:actor.weaponLightOn,
         treatmentActive:actor.treatmentActive,
