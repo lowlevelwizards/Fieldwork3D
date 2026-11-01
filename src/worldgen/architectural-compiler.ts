@@ -12,6 +12,7 @@ import {fitSpatialProgram} from './spatial-program-fit.ts';
 import {synthesizeFootprint} from './footprint-synthesis.ts';
 import {fitFunctionalBaySizes} from './functional-bay-sizing.ts';
 import {relationshipScore,allowSecondaryConnection} from './room-relationships.ts';
+import {chooseCirculationTree} from './privacy-aware-circulation.ts';
 import {circulationFor,circulationScore,loopChance,type CirculationStyle} from './circulation-grammar.ts';
 import {type Site,type Room,type BuildingArchetype,type SiteScale,seeded} from '../breach-site.ts';
 import {type Pt,type Door,type Segment} from '../breach-core.ts';
@@ -150,11 +151,15 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  const root=(i:number):number=>{while(parent[i]!==i)i=parent[i];return i;};
  const union=(a:number,b:number)=>{const pa=root(a),pb=root(b);if(pa===pb)return false;
   parent[pb]=pa;return true;};
- for(const edge of internal)if(edge.free){edge.selected=true;union(edge.a,edge.b);}
- for(const edge of internal.slice().sort((a,b)=>a.score-b.score||
-   a.a-b.a||a.b-b.b))if(!edge.selected&&edge.length>=68&&
-   !forbiddenUnitConnection(cells[edge.a],cells[edge.b])&&
-   union(edge.a,edge.b))edge.selected=true;
+ // A connected door tree is required, but a second doorway through a
+ // bedroom, exam room or bath should not become the default shortcut.
+ const circulation=chooseCirculationTree(cells.map(c=>c.role),
+  internal.map(edge=>({a:edge.a,b:edge.b,score:edge.score,free:edge.free,
+   eligible:edge.length>=68&&
+     !forbiddenUnitConnection(cells[edge.a],cells[edge.b])})));
+ internal.forEach((edge,index)=>{
+  if(circulation.has(index)){edge.selected=true;union(edge.a,edge.b);}
+ });
  // A functional zone is a *connected* cluster of matching room rectangles.
  // Two garage bays divided by a service aisle are not one giant shared bay.
  const zoneParent=cells.map((_,i)=>i);
