@@ -33,8 +33,10 @@ export const FIXTURE_MATERIAL_OVERRIDES:Readonly<Record<string,Partial<Record<Fi
  dumpster:{body:'metal',lid:'plastic',frame:'metal',hardware:'metal',label:'paper',wheel:'rubber'},
  'shipping-container':{body:'metal',frame:'metal',hardware:'metal'},
  'trash-bin':{body:'plastic',lid:'plastic',frame:'metal'},
- shed:{body:'wood',frame:'wood'},
- 'window-boards':{body:'wood',hardware:'metal'},
+ shed:{body:'rough-wood',frame:'rough-wood'},
+ 'window-boards':{body:'rough-wood',hardware:'metal'},
+ pallet:{body:'rough-wood',frame:'rough-wood'},
+ crate:{body:'rough-wood',frame:'rough-wood'},
  'filing-cabinet':{body:'metal',hardware:'metal'},
  locker:{body:'metal',hardware:'metal'},
  'tool-chest':{body:'metal',hardware:'metal'},
@@ -56,7 +58,7 @@ export function fixturePixelSurface(fixture:string|undefined):PixelSurface{
   return 'plastic';
  if(['cabinet','wardrobe','dresser','tv-stand','desk','nightstand',
   'side-table','dining-table','coffee-table','meeting-table','bookcase',
-  'picnic-table','pallet','window-boards','crate'].includes(id))return 'wood';
+  'picnic-table','pallet','window-boards','crate'].includes(id))return 'furniture-wood';
  if(['rug','patio-chair'].includes(id))return 'fabric';
  if(['sofa','armchair','chair','office-chair','bed','exam-bed','mattress',
  'rug'].includes(id))return 'fabric';
