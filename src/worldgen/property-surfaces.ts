@@ -3,6 +3,7 @@
  */
 import {type Site,type ExteriorZone} from '../breach-site.ts';
 import {arrivalAccessLane} from './property-access-lane.ts';
+import {parkingStallCount} from './parking-stalls.ts';
 export type SurfaceKind='path'|'driveway-stripe'|'parking-divider'|
  'garden-border'|'service-pad'|'patio-paver'|'drainage-grate';
 export type PropertySurface={
@@ -68,8 +69,7 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
          add(zone,'path',zone.x,y,zone.w*.88,Math.min(19,zone.h*.14));
        }
      }
-     const slots=Math.min(5,Math.max(2,Math.floor(
-       (broad?zone.w:zone.h)/58)));
+     const slots=parkingStallCount(zone);
      for(let i=1;i<slots;i++){
        const along=(i/slots-.5)*(broad?zone.w:zone.h);
        if(broad)add(zone,'parking-divider',zone.x+along,zone.y,
