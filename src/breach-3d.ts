@@ -479,7 +479,7 @@ export class TacticalScene3D{
       this.root.add(group);
     }
     const doorMat=this.solid(theme.door,.88,'door-wood'),doorTrim=this.solid(theme.trim,.9,'painted-wood');
-    const metal=this.solid(0x586665,.78,'metal');
+    const metal=this.solid(0x586665,.78,'industrial-steel');
     for(const door of site.doors){
       const length=Math.hypot(door.a.x-door.b.x,door.a.y-door.b.y);
       const p=doorCenter(door),vertical=Math.abs(door.a.x-door.b.x)<1;
@@ -509,8 +509,8 @@ export class TacticalScene3D{
       }else{
         const style=door.style??'wood';
         const panel=style==='wood'?doorMat:style==='exit'?
-          this.solid(0x996c53,.78,'metal'):style==='reinforced'?
-          this.solid(0x53615e,.78,'metal'):this.solid(0x72817d,.78,'metal');
+          this.solid(0x996c53,.78,'painted-metal'):style==='reinforced'?
+          this.solid(0x53615e,.78,'industrial-steel'):this.solid(0x72817d,.78,'painted-metal');
         const middle=(invert?-1:1)*length/2;
         this.box(leaf,middle,17,0,length-4,34,4,panel);
         for(const z of [-3,3])this.box(leaf,(invert?-1:1)*length*.7,
