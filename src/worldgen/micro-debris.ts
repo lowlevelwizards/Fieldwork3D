@@ -10,8 +10,7 @@ export function planMicroDebris(site:Site):Debris[]{
  const neglected=continuous?t>=.60:
    site.condition==='neglected'||site.condition==='vacant';
  for(const zone of site.exteriorZones??[]){
-  const count=continuous?Math.min(30,Math.floor(zone.w*zone.h/
-      (4000-3400*t))):
+  const count=continuous?Math.min(30,Math.floor(Math.pow(t,1.35)*zone.w*zone.h/650)):
     Math.min(24,Math.floor(zone.w*zone.h/(neglected?1200:2300)));
   for(let i=0;i<count&&out.length<DEBRIS_LIMIT;i++){
    const x=zone.x+(random()-.5)*Math.max(0,zone.w-8);
