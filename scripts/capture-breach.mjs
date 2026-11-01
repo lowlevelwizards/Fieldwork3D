@@ -24,6 +24,7 @@ try{
   if(!ready)throw Error('Breach preview unavailable');
   browser=await chromium.launch({headless:true,args:[
     '--use-gl=angle','--use-angle=swiftshader',
+    '--enable-unsafe-swiftshader',
   ]});
   const phone=await browser.newPage({
     viewport:{width:390,height:844},deviceScaleFactor:2,
