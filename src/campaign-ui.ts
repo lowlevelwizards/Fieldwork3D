@@ -311,6 +311,17 @@ export class CampaignScreen{
    'PRIMARY · '+person.weapon.toUpperCase()+
    '    /    MAGAZINE · '+person.magazine+
    '    /    RESERVE · '+person.reserve));
+  const firearm=c.inventory.serializedWeapons?.find(w=>w.id===person.weaponSerialId);
+  if(firearm){
+   summary.append(node('p','campaign-kit-metrics',
+    'SERIAL · '+firearm.id+' · CONDITION '+firearm.condition+'% · '+
+    firearm.roundsFired+' ROUNDS FIRED'));
+   const recent=firearm.history.slice(-3).map(e=>
+    'DAY '+e.day+' '+e.kind.toUpperCase()+
+    (e.rounds?' · '+e.rounds+' RDS':'')).join(' / ');
+   summary.append(node('p','campaign-note',
+    'WEAPON SERVICE LOG · '+(recent||'NO RECORDED EVENTS')));
+  }
   const placed=person.weapon==='shotgun'?[]:
    stageMagazines(person.magazines,person.loadout);
   const magSlots=person.weapon==='shotgun'?null:
