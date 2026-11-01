@@ -1209,6 +1209,15 @@ function updateQuickStates(){
 const blockedEpisode=new Map<string,string>();
 let fieldLightButton:HTMLButtonElement|null=null;
 let medicalButton:HTMLButtonElement|null=null;
+let dragButton:HTMLButtonElement|null=null;
+let carryButton:HTMLButtonElement|null=null;
+let retrieveButton:HTMLButtonElement|null=null;
+function casualtyCandidate(id:string){
+ const operator=team(state).find(o=>o.id===id&&o.health>0);
+ if(!operator)return null;
+ return team(state).filter(o=>o.health<=0&&!o.surrendered)
+  .sort((a,b)=>distance(operator.p,a.p)-distance(operator.p,b.p))[0]??null;
+}
 function medicalCandidate(id:string){
  const a=team(state).find(o=>o.id===id&&o.health>0);
  if(!a)return null;
@@ -1229,6 +1238,15 @@ function updateHud(){
     'TREAT · NO SUITABLE SUPPLIES';
    medicalButton.setAttribute('aria-label',patient?
     'Plan medical stabilization for '+patient.name:'No treatable wound with available supplies');
+  }
+  const casualty=casualtyCandidate(selected);
+  for(const [button,mode] of [
+   [dragButton,'DRAG'],[carryButton,'CARRY'],[retrieveButton,'RECOVER']
+  ] as const){
+   if(!button)continue;
+   button.hidden=!casualty;
+   button.disabled=!casualty||state.phase!=='planning'||replaying;
+   button.textContent=casualty?mode+' · '+casualty.name.toUpperCase():mode;
   }
   if(fieldLightButton){
    const selectedActor=team(state).find(a=>a.id===selected);
@@ -2479,6 +2497,33 @@ medicalButton.addEventListener('click',()=>{
  updateHud();
 });
 ui.loadout.insertAdjacentElement('afterend',medicalButton);
+function casualtyActionButton(label:string,action:(target:TeamActor)=>void){
+ const button=document.createElement('button');button.type='button';
+ button.className=ui.loadout.className;button.textContent=label;
+ button.hidden=true;
+ button.addEventListener('click',()=>{
+  if(state.phase!=='planning'||replaying)return;
+  const patient=casualtyCandidate(selected);
+  if(patient)action(patient);
+  updateHud();
+ });
+ medicalButton!.insertAdjacentElement('afterend',button);
+ return button;
+}
+dragButton=casualtyActionButton('DRAG',target=>{
+ evacMode={patientId:target.id,mode:'drag'};
+ looking=false;flashMode=false;firePlacement=null;
+ showUiHelp('TAP DESTINATION FOR CASUALTY DRAG',5500);
+});
+carryButton=casualtyActionButton('CARRY',target=>{
+ evacMode={patientId:target.id,mode:'carry'};
+ looking=false;flashMode=false;firePlacement=null;
+ showUiHelp('TAP DESTINATION FOR CASUALTY CARRY',5500);
+});
+retrieveButton=casualtyActionButton('RECOVER',target=>{
+ if(!planRecoverMedical(state,selected,target.id))
+  showUiHelp('NO ACCESSIBLE MEDICAL SUPPLY OR ROUTE');
+});
 ui.loadout.addEventListener('click',()=>{
   if(campaignMode!=='mission')cycleWeapon(state,selected);
   updateHud();
