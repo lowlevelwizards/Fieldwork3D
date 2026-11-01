@@ -410,7 +410,11 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
         if(!doorKnown(s.intel,door.id)||
            (s.intel.doorMemory.get(door.id)??0)>=.72||
            opened.has(door.id)||
-           !segmentsCross({a:points[i-1],b:points[i]},door))continue;
+           !segmentsCross({a:points[i-1],b:points[i]},door)&&
+           pointToSegment(doorCenter(door),
+             {a:points[i-1],b:points[i]})>9&&
+           pointToSegment(doorCenter(door),
+             {a:prior,b:node.p})>9)continue;
         const staging=doorApproach(prior,door);
         if(!staging)continue;
         expanded.push({id:s.nextId+expanded.length,kind:'door',
