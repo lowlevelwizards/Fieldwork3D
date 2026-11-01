@@ -32,6 +32,7 @@ import {localDetour} from './breach-cooperation.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
 import {chooseAiIntent,type AIIntent} from './breach-ai-policy.ts';
 import {searchCandidates} from './breach-ai-search.ts';
+import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
 import {newAwareness,addObservation,visibleObservation,
  ageAwareness,clearObservedPosition,bestBelief,
  type ActorAwareness} from './breach-awareness.ts';
@@ -66,7 +67,8 @@ export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retrea
 export type Personality='guard'|'aggressor'|'cautious';
 export type TeamActor=Operator & {
   awareness:ActorAwareness;
-  intent:AIIntent|null;searchOrigin:Pt|null;searchQueue:Pt[];
+  intent:AIIntent|null;combatChoice:CombatAction|null;
+  searchOrigin:Pt|null;searchQueue:Pt[];
   plan:PlanNode[];history:PlanHistory;nav:Pt[];activeNode:number;
   posture:Posture;pace:'walk'|'run';alert:Alert;velocity:number;turning:number;
   aim: number;targetId:string|null;suppression:number;stamina:number;
@@ -152,7 +154,7 @@ export const SCENARIOS=[
   {index:2,name:'REAR GUARD',spots:[{x:262,y:213,h:1.1},{x:476,y:444,h:2.8}]},
 ] as const;
 const withActions=(a:Operator):TeamActor=>({
-  ...a,awareness:newAwareness(),intent:null,searchOrigin:null,searchQueue:[],plan:[],history:makeHistory(),nav:[],activeNode:-1,
+  ...a,awareness:newAwareness(),intent:null,combatChoice:null,searchOrigin:null,searchQueue:[],plan:[],history:makeHistory(),nav:[],activeNode:-1,
   posture:'stand',pace:'walk',alert:'idle',velocity:0,turning:0,aim:0,
   targetId:null,suppression:0,stamina:1,magazine:12,reserve:36,
   reload:0,hits:0,kills:0,stopped:false,contact:null,heard:null,
@@ -1589,6 +1591,9 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   // Intention selection reads only acquired observations, not hidden positions.
   const belief=bestBelief(a.awareness);
   const recentNoise=s.seconds-a.lastNoiseAt<6;
+  if(!visible.length)a.combatChoice=chooseCombatAction({
+    visible:false,remembered:!!belief,ammunition:a.magazine,
+    laneClear:false,suppression:a.suppression,morale:a.morale});
   a.intent=chooseAiIntent(a.intent,{
     visible:visible.length>0,hasBelief:!!belief,recentSound:recentNoise,
     suppression:a.suppression,morale:a.morale},s.seconds);
@@ -1615,7 +1620,10 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     const friends=enemies(s).filter(o=>o!==a&&o.health>0).map(o=>o.p);
     const lane=assessFireLane(a.p,a.posture==='crouch'?18:26,
       b.p,aimHeight(b.posture==='crouch'),COVER,WALLS,s.doors,friends);
-    if(lane.blocker!=='clear'&&a.alert!=='retreat'&&
+    a.combatChoice=chooseCombatAction({visible:true,remembered:true,
+      laneClear:lane.blocker==='clear',ammunition:a.magazine,
+      suppression:a.suppression,morale:a.morale});
+    if(a.combatChoice==='reposition'&&a.alert!=='retreat'&&
       s.seconds-a.lastFireRepositionAt>2.6){
       const candidate=defensivePosition(a,b.p,s);
       a.lastFireRepositionAt=s.seconds;
