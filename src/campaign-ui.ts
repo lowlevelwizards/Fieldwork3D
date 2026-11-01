@@ -12,7 +12,8 @@ import './campaign-style.css';
 export type CampaignHandlers={
  newCampaign:()=>void;continueCampaign:()=>void;quickPlay:()=>void;
  chooseContract:(id:string)=>void;resumeContract:()=>void;
- buyAmmo:()=>void;buyMedical:()=>void;resupply:(id:string)=>void;treat:(id:string)=>void;
+ buyAmmo:()=>void;buyMedical:()=>void;buyFlash:()=>void;
+ resupply:(id:string)=>void;treat:(id:string)=>void;
  recruit:()=>void;assignSlot:(slot:number,id:string)=>void;
  buyWeapon:(weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipWeapon:(id:string,weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
@@ -80,7 +81,8 @@ export class CampaignScreen{
   const personnel=node('section','campaign-section');
   personnel.append(node('h2','','PERSONNEL'));
   personnel.append(node('p','campaign-note',
-   'STOCK: '+c.supplies.ammo+' ROUNDS · '+c.supplies.medical+' MEDICAL KITS'));
+   'STOCK: '+c.supplies.ammo+' ROUNDS · '+c.supplies.medical+
+   ' MEDICAL KITS · '+c.supplies.flash+' FLASHBANGS'));
   const deployment=node('div','campaign-assignment');
   deployment.append(node('h2','','DEPLOYMENT TEAM'));
   for(let slot=0;slot<4;slot++){
@@ -160,7 +162,8 @@ export class CampaignScreen{
   personnel.append(roster);
   const purchases=node('div','campaign-purchases');
   purchases.append(button('BUY 60 ROUNDS · 120 CR',this.handlers.buyAmmo),
-   button('BUY MEDICAL KIT · 170 CR',this.handlers.buyMedical));
+   button('BUY MEDICAL KIT · 170 CR',this.handlers.buyMedical),
+   button('BUY 2 FLASHBANGS · 150 CR',this.handlers.buyFlash));
   personnel.append(purchases);
   const inventory=node('div','campaign-armory');
   inventory.append(node('h2','','FIELD ARMORY'));
