@@ -4,7 +4,7 @@ export type PixelSurface =
  'wood'|'plaster'|'brick'|'concrete'|'tile'|'carpet'|'metal'|
  'fabric'|'asphalt'|'earth'|'gravel'|'grass'|'rubber'|'foliage'|'paper'|
  'linoleum'|'sealed-concrete'|'cinderblock'|'siding'|'panel'|
- 'plastic'|'porcelain';
+ 'plastic'|'porcelain'|'door-wood'|'painted-wood'|'furniture-wood'|'rough-wood';
 export const OPERATOR_REFERENCE_HEIGHT=40;
 export const TEXELS_PER_OPERATOR=32;
 export const PIXEL_WORLD_SIZE=OPERATOR_REFERENCE_HEIGHT/TEXELS_PER_OPERATOR;
@@ -14,7 +14,7 @@ export const PIXEL_SURFACES:readonly PixelSurface[]=[
  'wood','plaster','brick','concrete','tile','carpet','metal',
  'fabric','asphalt','earth','gravel','grass','rubber','foliage','paper',
  'linoleum','sealed-concrete','cinderblock','siding','panel',
- 'plastic','porcelain'
+ 'plastic','porcelain','door-wood','painted-wood','furniture-wood','rough-wood'
 ];
 export const MATERIAL_RECIPE_VERSION=3;
 const hash=(x:number,y:number,s:number)=>{
@@ -33,11 +33,35 @@ export function pixelPattern(kind:PixelSurface,seed=0,size=32):Uint8Array{
    case 'wood':{
     const board=Math.floor(y/8),offset=(board%2)*11+seed%7;
     const joint=mod(x+offset,size)===0;
-    if(y%8===0)shade=207;
-    else if(y%8===1)shade=246;
-    else if(joint)shade=215;
+    if(y%8===0)shade=225;
+    else if(y%8===1)shade=249;
+    else if(joint)shade=236;
     else if(y%8===5&&hash(Math.floor((x+offset)/12),board,seed)%11===0&&x%12<6)
       shade=248; // a short directional grain mark, not whole-surface mottling
+    break;
+   }
+   case 'door-wood':{
+    // Factory-finished panels: subtle *vertical* grain, no horizontal planks.
+    const rib=(x+seed%3)%15;
+    if(rib===0&&y>2&&y<29)shade=249;
+    if(rib===7&&y>=9&&y<=19)shade=252;
+    break;
+   }
+   case 'painted-wood':
+    // Painted baseboards and casings are intentionally almost smooth.
+    if(x===0&&seed%3===1)shade=252;
+    break;
+   case 'furniture-wood':{
+    // Fine, short directional grain interrupted by broad plain surfaces.
+    const line=(y+seed%5)%11;
+    if(line===4&&x>4&&x<21)shade=248;
+    if(line===7&&x>23&&x<30)shade=251;
+    break;
+   }
+   case 'rough-wood':{
+    const board=Math.floor(y/6),seam=y%6===0;
+    if(seam)shade=226;
+    else if((x+seed+board*7)%23===0&&y%6<4)shade=242;
     break;
    }
    case 'brick':case 'cinderblock':{

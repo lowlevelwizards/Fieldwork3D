@@ -448,7 +448,7 @@ export class TacticalScene3D{
     }
     const wallMat=this.solid(theme.wall,.94,wallPixelSurface(site.archetype)),
       capMat=this.solid(theme.cap,.94,'concrete');
-    const skirting=this.solid(theme.trim,.91,'wood');
+    const skirting=this.solid(theme.trim,.91,'painted-wood');
     for(const [index,wall] of site.walls.entries()){
       const group=new THREE.Group();this.root.add(group);
       this.intelSurfaces.push({obj:group,kind:'wall',index});
@@ -478,7 +478,7 @@ export class TacticalScene3D{
       this.box(group,0,38,0,width+4,4,11,archMaterial);
       this.root.add(group);
     }
-    const doorMat=this.solid(theme.door,.88,'wood'),doorTrim=this.solid(theme.trim,.9,'wood');
+    const doorMat=this.solid(theme.door,.88,'door-wood'),doorTrim=this.solid(theme.trim,.9,'painted-wood');
     const metal=this.solid(0x586665,.78,'metal');
     for(const door of site.doors){
       const length=Math.hypot(door.a.x-door.b.x,door.a.y-door.b.y);
@@ -535,7 +535,7 @@ export class TacticalScene3D{
       this.doors.set(door.id,{root,leaf,frame,halo,threshold});
       this.observedDoorOpen.set(door.id,door.openFraction??0);
     }
-    const wood=this.solid(theme.wood,.9,'wood'),steel=this.solid(0x465958,.8,'metal');
+    const wood=this.solid(theme.wood,.9,'furniture-wood'),steel=this.solid(0x465958,.8,'metal');
     const olive=this.solid(0x70715e,.9,'fabric');
     const fixtureCtx:FixtureVisualContext={
       box:(parent,x,y,z,w,h,d,material,cast)=>

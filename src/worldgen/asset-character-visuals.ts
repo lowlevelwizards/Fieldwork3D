@@ -468,7 +468,8 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
    // Finishing touches on the detailed family, emphasizing usable form and
    // logical asymmetry rather than a second set of ornamental boxes.
    if(fixture==='shed'){
-     b(0,H*.38,0,w*.91,H*.73,d*.88,wood);
+     const lumber=ctx.solid(0x92785c,.9,'rough-wood');
+     b(0,H*.38,0,w*.91,H*.73,d*.88,lumber);
      prism([[-w*.53,H*.75],[0,H],[w*.53,H*.75]],d*.98,steel);
      b(0,H*.34,d*.448,w*.35,H*.62,1.4,dark,false);
      b(w*.13,H*.33,d*.46,2.2,2.2,1.3,cream,false);
