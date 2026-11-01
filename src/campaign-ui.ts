@@ -7,6 +7,9 @@ import {LOADOUT_SLOTS,itemsForSlot,itemDefinition} from './equipment-catalog.ts'
 import {totalEquipmentMass,loadMobilityDescription,loadMovementScale,
  type LoadoutSlot} from './equipment-loadouts.ts';
 import {CampaignKitPreview} from './equipment-preview.ts';
+import {magazineKit} from './breach-magazines.ts';
+import {magazinePlacementSummary} from './equipment-magazine-placement.ts';
+import {WEAPONS as COMBAT_WEAPONS} from './breach-combat.ts';
 import './campaign-style.css';
 
 export type CampaignHandlers={
@@ -279,6 +282,15 @@ export class CampaignScreen{
    'PRIMARY · '+person.weapon.toUpperCase()+
    '    /    MAGAZINE · '+person.magazine+
    '    /    RESERVE · '+person.reserve));
+  const magSlots=person.weapon==='shotgun'?null:magazinePlacementSummary(
+   magazineKit(person.id,person.weapon,person.reserve,COMBAT_WEAPONS[person.weapon].capacity),
+   person.loadout);
+  if(magSlots)summary.append(node('p','campaign-kit-metrics',
+   'MAGAZINES · CHEST '+magSlots.rig+' · BELT '+magSlots.belt+
+   ' · POCKET '+magSlots.pocket+' · PACK '+magSlots.backpack+
+   ' · STOWED '+magSlots.overflow));
+  summary.append(node('p','campaign-note',
+   'Spare magazines auto-stage in available pouches. Accessible magazines reload faster; backpack and overflow retrievals take longer. Manual pouch assignment is a later build.'));
   const maximum=initialArmorIntegrity(person.loadout);
   const repairCost=armorRepairCost(person);
   summary.append(node('p','campaign-kit-metrics',

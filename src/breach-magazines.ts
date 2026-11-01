@@ -1,7 +1,9 @@
 /** 136: inventory-backed magazine states and deterministic handling phases. */
 import type {WeaponId} from './breach-combat.ts';
 export type ReloadMode='emergency'|'retention'|'shells';
-export type MagazineItem={id:string;weapon:WeaponId;rounds:number};
+export type MagazineItem={id:string;weapon:WeaponId;rounds:number;
+ /** Optional until older roster/session save data is migrated. */
+ location?:'rig'|'belt'|'backpack'|'pocket'|'overflow';};
 export const magazineKit=(actorId:string,weapon:WeaponId,
   rounds:number,capacity:number):MagazineItem[]=>{
  const result:MagazineItem[]=[];

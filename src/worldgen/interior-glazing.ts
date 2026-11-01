@@ -8,7 +8,19 @@ const limits:Record<BuildingArchetype,number>={
  house:1,townhouse:1,apartment:1,retail:2,office:3,garage:1,
  warehouse:1,restaurant:2,motel:1,utility:1,clinic:3
 };
-const privateUses=new Set(['bathroom','restroom','bedroom','guest','treatment','exam']);
+const privateUses=new Set(['bathroom','restroom','bedroom','guest','treatment','exam',
+ 'supply','laundry','pantry']);
+/** Glass makes sense when staff need to watch or share a public work zone.
+ * Avoid arbitrary vision holes into stock, bedrooms and restrooms.
+ */
+const usefulPairs=new Set([
+ 'hallway|office','hallway|meeting','hallway|reception','hallway|waiting',
+ 'hallway|cubicles','lobby|reception','lobby|meeting','lobby|office',
+ 'meeting|office','cubicles|office','cubicles|meeting',
+ 'reception|waiting','checkout|sales','office|sales','dining|service',
+ 'kitchen|service','bay|workshop','control|hallway','control|equipment'
+]);
+const paired=(a:string,b:string)=>[a,b].sort().join('|');
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function addInteriorGlazing(site:Site,seed:number):Site{
  const kind=site.archetype??'house';
@@ -26,11 +38,13 @@ export function addInteriorGlazing(site:Site,seed:number):Site{
    privateUses.has(left.purpose??'')||privateUses.has(right.purpose??''))return null;
   if(site.doors.some(d=>distance(middle,{x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2})<61))return null;
   if((site.windows??[]).some(w=>distance(middle,{x:w.x,y:w.y})<62))return null;
-  const useful=['office','meeting','reception','lobby','waiting','sales','checkout',
-   'kitchen','dining','workshop','bay','control','service','hallway'];
-  const score=Number(useful.includes(left.purpose??''))+Number(useful.includes(right.purpose??''));
-  if(score<1)return null;
-  return {wall,index,middle,length,score};
+  const pair=paired(left.purpose??'',right.purpose??'');
+  if(!usefulPairs.has(pair))return null;
+  const publicSide=['lobby','reception','waiting','sales','checkout','hallway'];
+  const score=Number(publicSide.includes(left.purpose??''))+
+    Number(publicSide.includes(right.purpose??''))+
+    Number(['office','clinic','retail'].includes(kind))*2;
+  return {wall,index,middle,length,score,pair};
  }).filter((x):x is NonNullable<typeof x>=>x!==null)
   .sort((a,b)=>b.score-a.score||b.length-a.length||a.index-b.index);
  let walls=site.walls.slice(),windows:WindowOpening[]=[...(site.windows??[])];
@@ -41,8 +55,13 @@ export function addInteriorGlazing(site:Site,seed:number):Site{
   const width=Math.min(64,candidate.length-44);
   const cut=cutWallAperture(walls,index,'IW'+count,width,.5,20);
   if(!cut)continue;
-  const sillHeight=kind==='office'&&count===0?0:
-    kind==='office'||kind==='retail'?9:13;
+  // A full-height glazed partition is sensible in a public office or shop;
+  // service kitchens, equipment rooms and workshops keep a solid parapet.
+  const transparentPartition=['office','retail','clinic'].includes(kind)&&
+    !candidate.pair.includes('control')&&!candidate.pair.includes('equipment')&&
+    !candidate.pair.includes('kitchen')&&!candidate.pair.includes('service');
+  const sillHeight=transparentPartition&&count%2===0?0:
+    ['office','retail','clinic'].includes(kind)?9:13;
   windows.push({id:cut.aperture.id,x:candidate.middle.x,y:candidate.middle.y,
    width,vertical:Math.abs(candidate.wall.a.x-candidate.wall.b.x)<1,
    style:['garage','warehouse','utility'].includes(kind)?'industrial':'picture',

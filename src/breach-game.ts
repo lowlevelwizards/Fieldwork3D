@@ -67,7 +67,8 @@ import {weaponClearance} from './breach-weapon-clearance.ts';
 import {initialIntel,observeIntel,discoverContactCover,routeWithIntel,intelPassable,doorKnown,
   type IntelMode,type IntelState} from './breach-intel.ts';
 import {resolveArmorImpact} from './equipment-armor.ts';
-import {magazineKit,fullestMagazineIndex,
+import {stageMagazines,chooseReloadMagazine,reloadMagazineDelay} from './equipment-magazine-placement.ts';
+import {magazineKit,
   reloadDuration as reloadTiming,type MagazineItem,type ReloadMode}
   from './breach-magazines.ts';
 import {KICK_DURATION} from './breach-door-actions.ts';
@@ -94,6 +95,7 @@ export type TeamActor=Operator & {
   reloadMode:ReloadMode|null;reloadStartedAt:number;
   reloadDuration:number;reloadRemoved:boolean;reloadInserted:boolean;
   reloadFromRounds:number;reloadTargetRounds:number;
+  reloadSelectedMagazineId:string|null;
   stopped:boolean;haltOnContact:boolean;retreatPoint:Pt|null;
   contact:Pt|null;heard:Pt|null;
   alertUntil:number;waitRemaining:number;syncReady:string|null;
@@ -189,7 +191,7 @@ const withActions=(a:Operator):TeamActor=>({
   spareMagazines:magazineKit(a.id,'carbine',36,12),
   reloadMode:null,reloadStartedAt:-100,reloadDuration:0,
   reloadRemoved:false,reloadInserted:false,reloadFromRounds:0,
-  reloadTargetRounds:0,
+  reloadTargetRounds:0,reloadSelectedMagazineId:null,
   alertUntil:0,waitRemaining:0,syncReady:null,actionTimer:0,
   blockedTime:0,lastNavRepairAt:-10,priorP:clone(a.p),haltOnContact:false,retreatPoint:null,
   squeeze:false,squeezeYaw:a.heading,squeezeTime:0,
@@ -835,13 +837,18 @@ export function redoPlan(s:Session,id:string){
 export function beginReload(s:Session,a:TeamActor):boolean{
   const w=WEAPONS[a.weapon];
   if(a.health<=0||a.reload>0||a.reserve<=0||a.magazine>=w.capacity)return false;
-  if(a.weapon!=='shotgun'&&!a.spareMagazines.length)
-    a.spareMagazines=magazineKit(a.id,a.weapon,a.reserve,w.capacity);
+  if(a.weapon!=='shotgun'&&!a.spareMagazines.length){
+    const replacement=magazineKit(a.id,a.weapon,a.reserve,w.capacity);
+    a.spareMagazines=a.equipment?stageMagazines(replacement,a.equipment):replacement;
+  }
   const mode:ReloadMode=a.weapon==='shotgun'?'shells':
     a.magazine===0?'emergency':'retention';
   a.reloadMode=mode;a.reloadStartedAt=s.seconds;
+  const selected=a.weapon==='shotgun'?-1:chooseReloadMagazine(a.spareMagazines);
+  a.reloadSelectedMagazineId=selected>=0?a.spareMagazines[selected].id:null;
+  const source=selected>=0?a.spareMagazines[selected]:undefined;
   a.reloadDuration=reloadTiming(w.reload,injuryReload(a.injuryStage),
-    mode,w.capacity-a.magazine);
+    mode,w.capacity-a.magazine)+reloadMagazineDelay(source);
   a.reload=a.reloadDuration;a.reloadRemoved=false;
   a.reloadInserted=false;a.reloadFromRounds=a.magazine;
   a.reloadTargetRounds=Math.min(w.capacity-a.magazine,a.reserve);
@@ -873,6 +880,7 @@ export function advanceReload(s:Session,a:TeamActor,dt:number){
      a.insertedMagazineId='';
      if(mode==='retention'&&oldRounds>0){
        a.spareMagazines.push({id:oldId,weapon:a.weapon,rounds:oldRounds});
+        if(a.equipment)a.spareMagazines=stageMagazines(a.spareMagazines,a.equipment);
        a.reserve+=oldRounds;
      }else{
        s.dropped.push({id:s.nextEffectId++,p:clone(a.p),
@@ -882,7 +890,8 @@ export function advanceReload(s:Session,a:TeamActor,dt:number){
      }
    }
    if(!a.reloadInserted&&t>=.82){
-     const index=fullestMagazineIndex(a.spareMagazines,a.weapon);
+     const selected=a.spareMagazines.findIndex(m=>m.id===a.reloadSelectedMagazineId&&m.rounds>0);
+      const index=selected>=0?selected:chooseReloadMagazine(a.spareMagazines);
      if(index>=0){
        const mag=a.spareMagazines.splice(index,1)[0];
        a.magazine=mag.rounds;a.reserve-=mag.rounds;
@@ -898,6 +907,7 @@ export function advanceReload(s:Session,a:TeamActor,dt:number){
      if(missing>0){a.magazine+=missing;a.reserve-=missing;}
    }
    a.reloadMode=null;
+   a.reloadSelectedMagazineId=null;
    a.reloadInserted=true;
    notify(s,a.name+' RELOADED');
  }
