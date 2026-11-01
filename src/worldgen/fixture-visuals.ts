@@ -8,6 +8,7 @@ import {propDefinition} from './asset-catalog.ts';
 import {fixturePixelSurface} from './pixel-surface-selection.ts';
 import type {PixelSurface} from '../rendering/pixel-recipes.ts';
 import {renderDetailedFixture} from './detailed-fixture-visuals.ts';
+import {renderCharacterFixture} from './asset-character-visuals.ts';
 export type FixtureVisualContext={
  box:(parent:THREE.Object3D,x:number,y:number,z:number,
    w:number,h:number,d:number,material:THREE.Material,cast?:boolean)=>THREE.Mesh;
@@ -21,6 +22,10 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
       const material=ctx.solid(i%3===0?0x87735e:i%3===1?0x677a76:0x787b65,
         .87,fixturePixelSurface(fixture));
       const w=c.w,d=c.h;
+      // First choice: silhouette-first shared models. Existing asset types
+      // keep the same tactical footprint, clearance and cover rules.
+      if(renderCharacterFixture(group,c,fixture,c.artVariant??i,ctx,wood,steel,olive,metal))
+        return;
       if(['bed','exam-bed','guest'].includes(fixture)){
         const height=asset?.height??19;
         ctx.box(group,c.x,height*.33,c.y,w,height*.66,d,material);
