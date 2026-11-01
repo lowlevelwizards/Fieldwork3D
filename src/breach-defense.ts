@@ -3,6 +3,7 @@ import {COVER,WALLS,activeSite,passable,route,doorCenter,type Door,type Pt} from
 import {assessFireLane} from './breach-fire-safety.ts';
 import {nearCover} from './breach-combat.ts';
 import {coverScore} from './breach-defense-scoring.ts';
+import {sweptBodyClear} from './breach-navigation.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type Defender={id:string;p:Pt;health:number;defense:Pt|null};
 export function defenseCandidates(origin:Pt,threat:Pt,doors:Door[]):Pt[]{
@@ -12,7 +13,12 @@ export function defenseCandidates(origin:Pt,threat:Pt,doors:Door[]):Pt[]{
   const consider=(p:Pt,max=220)=>{
     const key=Math.round(p.x)+','+Math.round(p.y);
     if(candidates.has(key)||dist(origin,p)>max||!passable(p))return;
-    if(!route(origin,p).length)return;
+    // Defense is an immediate local maneuver, not a full-building mission.
+    // A full A* route for EVERY corner/cover candidate caused >5 second
+    // pauses when all defenders chose their first position on unpause.
+    // Require a valid swept physical corridor instead. Pursuit/search still
+    // use authoritative routed navigation when moving across rooms.
+    if(!sweptBodyClear(origin,p,doors))return;
     candidates.add(key);options.push(p);
   };
   for(const c of COVER){
