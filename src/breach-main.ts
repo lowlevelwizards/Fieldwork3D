@@ -1,5 +1,6 @@
 import {
-  W,H,activeWorldBounds,WALLS,COVER,GRID,doorCenter,doorLeafSegment,activateSite,type Pt,
+  W,H,activeWorldBounds,WALLS,COVER,GRID,doorCenter,doorLeafSegment,activateSite,
+  type Pt,type Segment,
 } from './breach-core.ts';
 import {
   type Session,type TeamActor,
@@ -15,6 +16,9 @@ import {
   cycleWeapon,toggleWeaponLight,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
+import {weaponClearance} from './breach-weapon-clearance.ts';
+import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter}
+ from './equipment-weapon-light-beam.ts';
 import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
 import type {SiteScale} from './breach-site.ts';
 import {renderSnapshot,type RenderActor}
@@ -44,7 +48,7 @@ import {initialRoster,readRoster,applyRosterIdentity,recordRosterMission,
  renameRosterMember,cycleRosterAppearance} from './breach-roster.ts';
 import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
- type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
+ sameWeaponConfiguration,type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
 import {newCampaign,readCampaign,migrateLegacyRoster,acceptContract,resolveOperation,
  purchaseAmmo,purchaseMedical,resupplyOperator,treatOperator,
  hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
@@ -2008,6 +2012,47 @@ function endMessage(){
 // Blood and bullet decals are part of the floor, not HUD sprites.
 // Render beneath architecture AND fog so marks cannot float over walls
 // or leak into an unrevealed room.
+/** Shared 3D/2D light footprint, shaded beneath architecture and fog. */
+let beam2DBlockers:Segment[]=[];
+let beam2DBlockerTick=-1,beam2DSite=-1,beam2DRevision=-1;
+const beam2DHistory=new Map<string,{x:number;y:number;yaw:number;tick:number;
+ config:TeamActor['weaponConfiguration'];footprint:Pt[]}>();
+function renderWeaponLights2D(){
+ const active=state.operators.filter(a=>a.health>0&&a.weaponLightOn&&
+  a.weaponConfiguration?.slots.light==='light-compact');
+ if(!active.length)return;
+ const tick=Math.floor(state.seconds*8),site=state.site?.seed??-1;
+ if(tick!==beam2DBlockerTick||site!==beam2DSite||
+  state.objectRevision!==beam2DRevision){
+  beam2DBlockers=lightBeamBlockers(WALLS,state.doors,COVER);
+  beam2DBlockerTick=tick;beam2DSite=site;
+  beam2DRevision=state.objectRevision;
+ }
+ draw.save();draw.fillStyle='rgba(183,240,205,.12)';
+ for(const actor of active){
+  if(actor.side==='red'&&!replayOmniscient&&!isSeen(state,actor))continue;
+  const previous=beam2DHistory.get(actor.id);
+  const yaw=actor.weaponYaw;
+  if(!previous||previous.tick!==tick||!sameWeaponConfiguration(previous.config,actor.weaponConfiguration)||
+   Math.hypot(previous.x-actor.p.x,previous.y-actor.p.y)>.7||
+   Math.abs(Math.atan2(Math.sin(previous.yaw-yaw),Math.cos(previous.yaw-yaw)))>.025){
+   const muzzle=weaponClearance({x:actor.p.x,z:actor.p.y,
+    heading:actor.heading,weaponYaw:yaw,weapon:actor.weapon,
+    weaponConfiguration:actor.weaponConfiguration,aim:actor.aim,
+    velocity:actor.velocity,recoil:actor.recoil,posture:actor.posture},
+    state.doors).muzzle;
+   const from=weaponLightEmitter(muzzle,actor.weaponConfiguration!);
+   beam2DHistory.set(actor.id,{x:actor.p.x,y:actor.p.y,yaw,tick,
+    config:actor.weaponConfiguration,
+    footprint:lightBeamFootprint(from,muzzle.yaw,beam2DBlockers)});
+  }
+  const polygon=beam2DHistory.get(actor.id)!.footprint;
+  draw.beginPath();draw.moveTo(polygon[0].x,polygon[0].y);
+  for(let i=1;i<polygon.length;i++)draw.lineTo(polygon[i].x,polygon[i].y);
+  draw.closePath();draw.fill();
+ }
+ draw.restore();
+}
 function renderGroundMarks(){
   for(const mark of state.impactMarks){
     if(!(replaying&&replayOmniscient)&&!liveVisibility(state,mark.p))continue;
@@ -2030,7 +2075,8 @@ function render(){
   draw.save();
   draw.translate(ox,oy);draw.scale(viewScale,viewScale);
   draw.fillStyle='#52655b';draw.fillRect(-9,-9,W+18,H+18);
-  terrain();furniture();renderGroundMarks();architecture();fog();missionMarkers();
+  terrain();furniture();renderGroundMarks();renderWeaponLights2D();
+  architecture();fog();missionMarkers();
   paths();
   for(const a of state.operators)sprite(a);
   contacts();endMessage();
