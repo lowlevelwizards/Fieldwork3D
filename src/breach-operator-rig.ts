@@ -30,6 +30,8 @@ import {equipmentCarryAnchor} from './equipment-carry-visuals.ts';
 import type {CarryLocation} from './equipment-carry-placement.ts';
 import {createOperatorVisualKit,applyOperatorVisualKit,
  type OperatorVisualKit} from './operator-visual-kit.ts';
+import {createOperatorEquipmentDetails,updateOperatorEquipmentDetails,
+ type OperatorEquipmentDetails} from './operator-equipment-details.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geometry.ts';
 import {buildWeaponAccessories} from './breach-weapon-accessories.ts';
 import {resolveWeaponAssembly,sameWeaponConfiguration,
@@ -98,6 +100,7 @@ export type OperatorRig={
   medicalPouch:THREE.Mesh;radioUnit:THREE.Mesh;
   flashCanister:THREE.Mesh;utilityTool:THREE.Mesh;
   gloveCovers:THREE.Mesh[];visualKit:OperatorVisualKit;
+  equipmentDetails:OperatorEquipmentDetails;
   lastTime:number;lastPose:OperatorPose|null;
   personality:ReturnType<typeof operatorMotionTraits>;
   footsteps:FootstepScheduler;
@@ -214,13 +217,16 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   magazineHand.visible=false;
   const medicalItem=block(chest,0,0,0,2.3,1.45,2.1,steel);
   medicalItem.visible=false;
+  const equipmentDetails=createOperatorEquipmentDetails(
+    medicalPouch,radioUnit,flashCanister,utilityTool,vest,boot,steel);
   const visualKit=createOperatorVisualKit(chest,hip,head,pack,feet,arms,
     {cloth,vest,dark:boot,skin,steel});
   const colors=new Map([cloth,boot,vest,skin,steel].map(material=>
     [material,material.color.clone()] as const));
   return {root,hip,chest,head,weapon,droppedGun,feet,arms,pack,
     helmetShell,armorPanels,capBill,rigPouches,beltPouch,
-    medicalPouch,radioUnit,flashCanister,utilityTool,gloveCovers,visualKit,colors,
+    medicalPouch,radioUnit,flashCanister,utilityTool,gloveCovers,
+    visualKit,equipmentDetails,colors,
     clothMaterial:cloth,vestMaterial:vest,baseCloth:cloth.color.clone(),
     baseVest:vest.color.clone(),helmetBadge,appearanceSeed:0,
     personality:operatorMotionTraits(id),
@@ -303,11 +309,17 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const utilityAnchor=equipmentCarryAnchor('utility',p.utilityCarryLocation);
   r.utilityTool.position.set(utilityAnchor.x,utilityAnchor.y,utilityAnchor.z);
   r.utilityTool.rotation.z=utilityAnchor.angle;
-  r.utilityTool.scale.x=gear?.utility==='utility-breach'?1.45:1;
+  r.utilityTool.scale.set(
+    gear?.utility==='utility-breach'?1.45:
+    gear?.utility==='utility-light'?.72:1,
+    gear?.utility==='utility-breach'?1.2:
+    gear?.utility==='utility-cutter'?1.25:1,
+    1);
   r.flashCanister.visible=gear?.tactical==='tactical-flash'&&
     (p.flashCharges===undefined||p.flashCharges>0);
   for(const glove of r.gloveCovers)glove.visible=gear?.hands==='hands-gloves';
   applyOperatorVisualKit(r.visualKit,gear,identity,p.magazineCarryLocations);
+  updateOperatorEquipmentDetails(r.equipmentDetails,gear);
   // Retain costume identity, but subdued incapacitated bodies blend with
   // grounded blood and don't need floating status text. Reversible on seek.
   for(const [material,original] of r.colors){
