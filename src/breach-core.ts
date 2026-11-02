@@ -4,6 +4,7 @@
  * No dependency on the abandoned regional terrain or 3D prototypes.
  */
 import {type Site} from './breach-site.ts';
+import {DOOR_PANEL_END_RECESS} from './breach-door-proportions.ts';
 export type Pt={x:number;y:number};
 export type Segment={a:Pt;b:Pt};
 export type DoorStyle='wood'|'steel'|'reinforced'|'exit'|'glazed'|'mesh-gate'|'french'|'louvered'|'screen'|'barn'|'pocket'|'fire';
@@ -120,10 +121,17 @@ export function doorLeafSegment(d:Door):Segment{
  }
  const hinge=d.hinge==='b'?d.b:d.a;
  const end=d.hinge==='b'?d.a:d.b;
- const x=end.x-hinge.x,y=end.y-hinge.y;
+ // The physical leaf stops just shy of the latch jamb instead of
+ // mathematically occupying the entire structural opening. The rendered
+ // panel already has an equivalent inset; keeping both aligned prevents
+ // the last few units of open door from trapping an operator at the tip.
+ const rawX=end.x-hinge.x,rawY=end.y-hinge.y;
+ const reach=Math.hypot(rawX,rawY);
+ const scale=reach?Math.max(0,reach-DOOR_PANEL_END_RECESS)/reach:0;
+ const x=rawX*scale,y=rawY*scale;
  const angle=-doorYaw(d),cos=Math.cos(angle),sin=Math.sin(angle);
- return {a:{...hinge},b:{x:hinge.x+x*cos-y*sin,
-   y:hinge.y+x*sin+y*cos}};
+ return {a:{...hinge},b:{x:hinge+x*cos-y*sin,
+   y:hinge+x*sin+y*cos}};
 }
 export function doorBlocksSegment(door:Door,line:Segment):boolean{
  const leaf=doorLeafSegment(door);
