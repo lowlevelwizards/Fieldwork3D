@@ -97,6 +97,9 @@ import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactica
 import {contextActionChoices} from './ui/context-actions.ts';
 import {PaletteMotion} from './ui/palette-motion.ts';
 import {TacticalFeedback} from './ui/tactical-feedback.ts';
+import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
+  from './ui/contextual-teaching.ts';
+import {recoveryAdviceFor} from './ui/recovery-guidance.ts';
 import {paintFogMask,FOG_WIDTH,FOG_HEIGHT} from './breach-fog-mask.ts';
 
 const el=<T extends HTMLElement>(id:string)=>{
@@ -1045,19 +1048,26 @@ function selectUnit(id:string){
   selectedNode=null;doorFocusId=null;
   doorMenuDismissedId=null;updateHud();
 }
-// First-use explanations never obstruct play permanently; settings can reopen help.
+// Progressive tips stay out of the player's way and never inspect game intel.
+const teaching=new ContextualTeaching(
+  key=>{try{return localStorage.getItem('fieldwork3d.ui.teach.v2.'+key)==='1';}
+    catch{return false;}},
+  key=>{try{localStorage.setItem('fieldwork3d.ui.teach.v2.'+key,'1');}
+    catch{/* In-memory familiarity remains valid without browser storage. */}}
+);
+teaching.offer('planning-start',
+  'Tap the floor to draw a route. Select a waypoint to LOOK, WATCH or WAIT.',
+  performance.now(),6200);
+function teach(key:string,description:string,duration=4200){
+  teaching.offer(key,description,performance.now(),duration);
+}
 let helpText='',helpUntil=0;
 function showUiHelp(text:string,duration=4200){
   if(!text)return;
   helpText=text;helpUntil=performance.now()+duration;
 }
 function discoverAction(action:string,description:string){
-  try{
-    const key='fieldwork3d.ui.discovered.'+action;
-    if(localStorage.getItem(key))return;
-    localStorage.setItem(key,'1');
-  }catch{/* in-memory hints still work when private storage is disabled */}
-  showUiHelp(description);
+  teach('action-'+action,description,3600);
 }
 
 /** A hold shows the current action's description without executing that order.
@@ -1479,9 +1489,11 @@ const handleContextAction=(event:MouseEvent)=>{
   }
   const failed=state.events.length>beforeErrors;
   uiClickTone(failed?'warning':'command');
+  const lastFailure=failed?state.events.at(-1)??'ACTION BLOCKED':'';
   tacticalFeedback.emit(failed?'error':'command',
     door?doorCenter(door):node?.p??a.p,
-    failed?'Blocked':button.querySelector('.command-label')?.textContent??'');
+    failed?(recoveryAdviceFor(lastFailure)?.marker??'BLOCKED'):
+      button.querySelector('.command-label')?.textContent??'');
   updateHud();
 };
 ui.context.addEventListener('click',handleContextAction);
@@ -1501,10 +1513,19 @@ function updateUiNotice(node:HTMLElement,events:string[],phase:string){
     const label=document.createElement('strong');
     label.className='fw-notice-label';
     label.textContent=notice.label;
+    const body=document.createElement('span');
+    body.className='fw-notice-body';
     const description=document.createElement('span');
     description.className='fw-notice-content';
     description.textContent=notice.text;
-    node.replaceChildren(label,description);
+    body.append(description);
+    if(notice.recovery){
+      const next=document.createElement('span');
+      next.className='fw-notice-recovery';
+      next.textContent=notice.recovery;
+      body.append(next);
+    }
+    node.replaceChildren(label,body);
     node.dataset.noticeKey=key;
   }
   node.dataset.severity=notice.severity;
@@ -1807,11 +1828,27 @@ function updateHud(){
     (state.intel.mode==='floor-plan'?state.site.roomCount:'?')+' KNOWN ROOMS':
     'TACTICAL TRAINING';
   if(siteHeader)siteHeader.title=state.site?.name??'Cutwoods';
-  const hasHelp=performance.now()<helpUntil;
-  ui.hint.textContent=hasHelp?helpText:message();
-  ui.hint.hidden=!(hasHelp||looking||flashMode||!!firePlacement);
-  updateContext();
   updateUiNotice(ui.feed,state.events,state.phase);
+  const now=performance.now();
+  const hasHelp=now<helpUntil;
+  const tip=teaching.current(now);
+  const targeting=looking||flashMode||!!firePlacement||!!evacMode;
+  const phase:HudPhase=replaying?'replay':
+    state.phase==='planning'?(targeting?'targeting':'planning'):
+    state.phase==='running'?'execution':'debrief';
+  const severity=ui.feed.hidden?'normal':ui.feed.dataset.severity;
+  const urgency:HudUrgency=severity==='warning'||severity==='contact'||
+    severity==='danger'?severity:'normal';
+  const presentation=resolveHudPresentation({
+    phase,urgency,explicitHelp:hasHelp,coaching:!!tip,targetPrompt:targeting
+  });
+  document.body.dataset.hudPhase=phase;
+  document.body.dataset.hudUrgency=urgency;
+  ui.hint.dataset.hintKind=hasHelp?'help':targeting?'target':'coach';
+  ui.hint.textContent=hasHelp?helpText:targeting?message():
+    presentation.showCoaching?(tip?.text??''):message();
+  ui.hint.hidden=!presentation.showGuidance;
+  updateContext();
   const visible=enemies(state).filter(e=>e.health>0&&isSeen(state,e)).length;
   ui.mission.textContent=(state.phase==='planning'?
       brief.code+' • ':'')+missionText(state)+
@@ -2586,6 +2623,12 @@ function render(){
   draw.strokeRect(0,0,W,H);
   draw.restore();
 }
+/** Rejected authoring orders keep the existing plan intact and mark only
+ * the attempted world point; no hidden geometry or actors are inspected. */
+function rejectAt(pt:Pt,reason:string){
+  state.events.push(reason);
+  tacticalFeedback.emit('error',pt,recoveryAdviceFor(reason)?.marker??'INVALID');
+}
 function useSelectedGround(pt:Pt){
   if(state.phase!=='planning'||replaying)return;
   if(evacMode){
@@ -2597,7 +2640,7 @@ function useSelectedGround(pt:Pt){
   if(firePlacement){
     const nodeId=selectedNode??undefined;
     if(!setFirePolicy(state,selected,'suppress',nodeId,pt))
-      state.events.push('INVALID SUPPRESSION POINT');
+      rejectAt(pt,'INVALID SUPPRESSION POINT');
     firePlacement=null;updateHud();return;
   }
   if(flashMode){
@@ -2605,7 +2648,7 @@ function useSelectedGround(pt:Pt){
     if(!(flashDoorId?
       planDoorFlash(state,selected,flashDoorId,pt):
       planFlash(state,selected,pt)))
-      state.events.push('FLASH TARGET BLOCKED / OUT OF RANGE');
+      rejectAt(pt,'FLASH TARGET BLOCKED / OUT OF RANGE');
     else selectedNode=flashDoorId?state.nextId-1:id;
     flashMode=false;flashDoorId=null;updateHud();return;
   }
@@ -2614,19 +2657,27 @@ function useSelectedGround(pt:Pt){
     const committed=lookMode==='watch'?
       planWatch(state,selected,pt,selectedNode??undefined,armedOrigin):
       planAim(state,selected,'free',pt,selectedNode??undefined,'look',armedOrigin);
-    if(!committed)state.events.push('SELECT A DIFFERENT AIM POINT');
-    else if(selectedNode===null)selectedNode=placedId;
+    if(!committed)rejectAt(pt,'SELECT A DIFFERENT AIM POINT');
+    else{
+      if(selectedNode===null)selectedNode=placedId;
+      teach(lookMode==='watch'?'watch-placed':'look-placed',
+        lookMode==='watch'?
+          'WATCH stays on that point while moving. Drag its ring to adjust.':
+          'LOOK checks that direction briefly, then returns to the route.',4100);
+    }
     looking=false;updateHud();return;
   }
   const beforeRoute=uid(selected)?finalPoint(uid(selected)!):pt;
   lastAuthoringAt=performance.now();
   if(!planMove(state,selected,pt))
-    state.events.push(!intelPassable(pt,state.intel)?
+    rejectAt(pt,!intelPassable(pt,state.intel)?
       'DESTINATION BLOCKED · CHOOSE NEARBY FLOOR':
       'NO WALKABLE ROUTE · CHECK DOOR OR PATH');
   else{
     selectedNode=uid(selected)?.plan.at(-1)?.id??null;
     tacticalFeedback.emit('route',pt,undefined,beforeRoute);
+    teach('waypoint-created',
+      'Waypoint added. Drag it to reposition, or use LOOK / WATCH / WAIT.',4900);
   }
   updateHud();
 }
@@ -3277,6 +3328,8 @@ canvas.addEventListener('pointerdown',e=>{
       lastAuthoringAt=performance.now();
       if(node.owner!==selected)selectUnit(node.owner);
       selectedNode=node.id;doorFocusId=null;
+      teach('waypoint-selected',
+        'Drag this waypoint to move it. LOOK checks briefly; WATCH persists.',4200);
     }else if(hit)selectUnit(hit.id);
     activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
       startX:e.clientX,startY:e.clientY,wasUnit:!!hit&&!node,
@@ -3379,12 +3432,13 @@ function insertAtRouteLine(screen:Pt,pointerKind:string):boolean{
   const id=state.nextId;
   if(!insertPlanNode(state,selected,hit.index,hit.point)){
     canvas.dataset.lastRouteTap='blocked:'+hit.index;
-    state.events.push('CANNOT INSERT WAYPOINT HERE');
+    rejectAt(hit.point,'CANNOT INSERT WAYPOINT HERE');
     return true; // This was a route tap, not a new destination order.
   }
   canvas.dataset.lastRouteTap='inserted:'+hit.index;
   lastAuthoringAt=performance.now();
   tacticalFeedback.emit('node',hit.point);
+  teach('route-inserted','Waypoint inserted. Drag to reposition, or add LOOK / WATCH.',4100);
   selectedNode=id;doorFocusId=null;contextSignature='';
   return true;
 }
@@ -3401,7 +3455,7 @@ function releasePointer(e:PointerEvent,cancelled=false){
         useSelectedGround(pt);
     }else if(p.mode==='watchTarget'&&p.nodeId!==null){
       if(p.moved&&!planWatch(state,selected,pt,p.nodeId))
-        state.events.push('WATCH TARGET UNAVAILABLE');
+        rejectAt(pt,'WATCH TARGET UNAVAILABLE');
       selectedNode=p.nodeId;doorFocusId=null;
       tacticalFeedback.emit(p.moved?'command':'select',pt,
         p.moved?'WATCH UPDATED':undefined);
@@ -3414,7 +3468,7 @@ function releasePointer(e:PointerEvent,cancelled=false){
         if(!moved){
           const chosen=uid(selected)?.plan.find(n=>n.id===p.nodeId);
           const origin=uid(selected)?.p??pt;
-          state.events.push(orderFailureText(origin,pt,{
+          rejectAt(pt,orderFailureText(origin,pt,{
             canStand:at=>intelPassable(at,state.intel),
             routeTo:(a,b)=>routeWithIntel(state.intel,a,b),
             remainingPlanValid:chosen?.kind==='move'?false:undefined
@@ -3428,7 +3482,7 @@ function releasePointer(e:PointerEvent,cancelled=false){
       distance(trace[0],pt)>16){
       const points=[...trace,pt];
       if(!planMoveStroke(state,selected,points.slice(1)))
-        state.events.push('NO WALKABLE STROKE');
+        rejectAt(pt,'NO WALKABLE STROKE');
       else selectedNode=uid(selected)?.plan.filter(n=>n.kind==='move').at(-1)?.id??null;
       doorFocusId=null;
     }else if(!p.moved&&!p.wasUnit&&pt.x>=0&&pt.y>=0&&
@@ -3456,6 +3510,7 @@ function releasePointer(e:PointerEvent,cancelled=false){
         doorFocusId=door.id;selectedNode=null;
         doorMenuDismissedId=null;
         tacticalFeedback.emit('select',doorCenter(door));
+        teach('door-selected','Door selected. Choose OPEN, KICK or another available action.',4700);
       }else if(!looking&&!flashMode&&!firePlacement&&insertAtRouteLine({x:e.clientX,y:e.clientY},e.pointerType)){
         // Insert-and-select: contextual LOOK/WATCH/WAIT/DELETE are immediately
         // available on the newly authored waypoint.
