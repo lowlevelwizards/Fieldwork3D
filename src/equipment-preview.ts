@@ -47,6 +47,10 @@ export class CampaignKitPreview{
     appearanceSeed,equipment,weaponConfiguration,
     magazineCarryLocations:carryPlacementLedger(equipment,magazines)
       .filter(item=>item.kind==='magazine').map(item=>item.location),
+    medicalCarryLocation:carryPlacementLedger(equipment,magazines)
+      .find(item=>item.kind==='medical')?.location,
+    utilityCarryLocation:carryPlacementLedger(equipment,magazines)
+      .find(item=>item.kind==='utility')?.location,
     flashCharges:equipment.slots.tactical==='tactical-flash'?1:0,
     deterministic:true},0);
    host.addEventListener('pointerdown',this.pointerDown);

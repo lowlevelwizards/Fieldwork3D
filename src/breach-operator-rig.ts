@@ -26,7 +26,7 @@ import {blendedHandlingProfile,smoothHandling,type HandlingTransition}
 import {fallAngles,hitStagger,type FallPose,type WoundRegion}
   from './breach-wounds.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
-import {equipmentCarryAnchor} from './equipment-carry-visuals.ts';
+import {equipmentCarrySocket} from './equipment-carry-visuals.ts';
 import type {CarryLocation} from './equipment-carry-placement.ts';
 import {createOperatorVisualKit,applyOperatorVisualKit,
  type OperatorVisualKit} from './operator-visual-kit.ts';
@@ -221,6 +221,12 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   medicalItem.visible=false;
   const equipmentDetails=createOperatorEquipmentDetails(
     medicalPouch,radioUnit,flashCanister,utilityTool,vest,boot,steel);
+  // Meshes remain stable attachment nodes; their child models provide the
+  // silhouette instead of a large generic steel box under every tool.
+  utilityTool.geometry.dispose();
+  utilityTool.geometry=new THREE.BufferGeometry();
+  flashCanister.geometry.dispose();
+  flashCanister.geometry=new THREE.CylinderGeometry(1.25,1.25,5.8,8);
   const visualKit=createOperatorVisualKit(chest,hip,head,pack,feet,arms,
     {cloth,vest,dark:boot,skin,steel});
   const colors=new Map([cloth,boot,vest,skin,steel].map(material=>
@@ -276,7 +282,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       0xaa7c63,0xd3b698,0x98765c,0x533a32];
     r.colors.set(r.skinMaterial,
       new THREE.Color(complexion[(identity>>>6)%complexion.length]));
-    r.helmetBadge.visible=identity!==0&&identity%3===0;
+    r.helmetBadge.visible=false;
     r.pack.scale.set(1,identity===0?1:.90+(identity%5)*.05,
       identity===0?1:.93+((identity>>>5)%4)*.04);
   }
@@ -287,7 +293,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // assembled helmet and garment surfaces.
   for(const mesh of r.helmetShell)mesh.visible=false;
   r.capBill.visible=false;
-  r.helmetBadge.visible=identity!==0&&identity%3===0&&headItem==='head-helmet';
+  r.helmetBadge.visible=false; // superseded by the integrated helmet shell
   const armorItem=gear?.armor??'armor-soft';
   for(const mesh of r.armorPanels){
     mesh.visible=false;
@@ -307,13 +313,19 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     gear?.medical==='medical-trauma';
   r.medicalPouch.scale.set(gear?.medical==='medical-trauma'?1.35:1,1,1);
   // Use actual carrier locations instead of rendering every pouch on chest.
-  const medicalAnchor=equipmentCarryAnchor('medical',p.medicalCarryLocation);
+  const medicalAnchor=equipmentCarrySocket('medical',p.medicalCarryLocation);
+  const medicalParent=medicalAnchor.bone==='hip'?r.hip:
+    medicalAnchor.bone==='pack'?r.pack:r.chest;
+  if(r.medicalPouch.parent!==medicalParent)medicalParent.add(r.medicalPouch);
   r.medicalPouch.position.set(medicalAnchor.x,medicalAnchor.y,medicalAnchor.z);
   r.medicalPouch.rotation.z=medicalAnchor.angle;
   r.radioUnit.visible=gear?.utility==='utility-radio';
   r.utilityTool.visible=['utility-light','utility-breach','utility-pry',
     'utility-cutter','utility-wedge'].includes(gear?.utility??'');
-  const utilityAnchor=equipmentCarryAnchor('utility',p.utilityCarryLocation);
+  const utilityAnchor=equipmentCarrySocket('utility',p.utilityCarryLocation);
+  const utilityParent=utilityAnchor.bone==='hip'?r.hip:
+    utilityAnchor.bone==='pack'?r.pack:r.chest;
+  if(r.utilityTool.parent!==utilityParent)utilityParent.add(r.utilityTool);
   r.utilityTool.position.set(utilityAnchor.x,utilityAnchor.y,utilityAnchor.z);
   r.utilityTool.rotation.z=utilityAnchor.angle;
   r.utilityTool.scale.set(

@@ -25,3 +25,30 @@ export function equipmentCarryAnchor(kind:'medical'|'utility',
  location:CarryLocation='rig'):EquipmentCarryAnchor{
  return ANCHORS[kind][location]??ANCHORS[kind].rig;
 }
+
+/** OV-17: parent-local physical sockets. Belt pieces follow the pelvis;
+ * rear-mounted items follow the existing inertial backpack anchor.
+ * These are visual-only, never change item access costs or inventory.
+ */
+export type EquipmentCarrySocket=EquipmentCarryAnchor&{bone:'chest'|'hip'|'pack'};
+const SOCKETS:Readonly<Record<'medical'|'utility',
+ Record<CarryLocation,EquipmentCarrySocket>>>={
+ medical:{
+  rig:{bone:'chest',x:2,y:-4,z:8.0,angle:0},
+  belt:{bone:'hip',x:2,y:-3.2,z:6.55,angle:-.14},
+  pocket:{bone:'hip',x:-1.5,y:-4,z:6.25,angle:-.12},
+  backpack:{bone:'pack',x:-.85,y:-.5,z:6.3,angle:0},
+  overflow:{bone:'hip',x:-2.6,y:-4.5,z:7.1,angle:-.18}
+ },
+ utility:{
+  rig:{bone:'chest',x:-2.8,y:-3.3,z:-8.0,angle:0},
+  belt:{bone:'hip',x:1.2,y:-3.4,z:-6.6,angle:.16},
+  pocket:{bone:'hip',x:-1.9,y:-4.1,z:-6.1,angle:.13},
+  backpack:{bone:'pack',x:-1.1,y:-1,z:-6.0,angle:-.1},
+  overflow:{bone:'hip',x:-2.3,y:-4.5,z:-7.0,angle:.16}
+ }
+};
+export function equipmentCarrySocket(kind:'medical'|'utility',
+ location:CarryLocation='rig'):EquipmentCarrySocket{
+ return SOCKETS[kind][location]??SOCKETS[kind].rig;
+}
