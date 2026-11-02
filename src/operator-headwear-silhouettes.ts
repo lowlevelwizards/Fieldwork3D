@@ -27,7 +27,7 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
  'pasgt':{id:'pasgt',frontExtent:-6.34,rearExtent:5.68,
   top:8.78,earEdge:1.71,foreheadEdge:4.055,billLength:0},
  'soviet-steel':{id:'soviet-steel',frontExtent:-5.53,rearExtent:5.53,
-  top:8.605,earEdge:3.75,foreheadEdge:3.75,billLength:0},
+  top:8.605,earEdge:3.70,foreheadEdge:4.05,billLength:0},
  'ach':{id:'ach',frontExtent:-5.62,rearExtent:5.60,
   top:8.84,earEdge:2.23,foreheadEdge:4.40,billLength:0},
  'high-cut':{id:'high-cut',frontExtent:-5.485,rearExtent:5.35,
@@ -153,8 +153,9 @@ const PASGT_CUBOIDS:readonly HeadwearCuboid[]=[
  * a German Stahlhelm, medieval kettle, or brimmed hat. A substantial
  * continuous upper dome and deep HOLLOW bowl. The small lower flare
  * extends <0.5 unit past the bowl, removing the former wide roof shelf.
- * All four sectors now share identical top/bottom heights and corner extents;
- * this eliminates narrow corner seams and little micro-steps at their joins.
+ * All four sectors share exact outer X/Z corner extents and substantial
+ * 1.20-unit thickness; front Y4.05, sides Y3.70 and rear Y3.40 are
+ * PURPOSEFUL coverage steps, not the former fractional corner artifacts.
  * Reference: original SSh-40 side/front/rear shell photographs.
  */
 const STEEL_CUBOIDS:readonly HeadwearCuboid[]=[
@@ -168,13 +169,13 @@ const STEEL_CUBOIDS:readonly HeadwearCuboid[]=[
   name:sign===-1?'ssh40-bowl-left':'ssh40-bowl-right',
   x:sign*4.51,y:5.71,z:0,width:.98,height:3.62,depth:10.16
  })),
- {name:'ssh40-integrated-front-edge',x:0,y:4.30,z:-5.00,
-  width:10.60,height:1.10,depth:1.06},
- {name:'ssh40-integrated-rear-edge',x:0,y:4.30,z:5.00,
-  width:10.60,height:1.10,depth:1.06},
+ {name:'ssh40-integrated-front-edge',x:0,y:4.65,z:-5.00,
+  width:10.60,height:1.20,depth:1.06},
+ {name:'ssh40-integrated-rear-edge',x:0,y:4.00,z:5.00,
+  width:10.60,height:1.20,depth:1.06},
  ...([-1,1] as const).map(sign=>({
   name:sign===-1?'ssh40-integrated-left-edge':'ssh40-integrated-right-edge',
-  x:sign*4.775,y:4.30,z:0,width:1.05,height:1.10,depth:11.06
+  x:sign*4.775,y:4.30,z:0,width:1.05,height:1.20,depth:11.06
  }))
 ];
 /** Stage 1E — confident, subtractive helmet silhouettes.
