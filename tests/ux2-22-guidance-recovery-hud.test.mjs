@@ -27,6 +27,8 @@ test('target instructions and manual help outrank coaching; danger silences tips
  const critical=resolveHudPresentation({phase:'planning',urgency:'contact',
    explicitHelp:false,coaching:true,targetPrompt:false});
  assert.equal(critical.showGuidance,false);
+ assert.equal(resolveHudPresentation({phase:'planning',urgency:'danger',
+   explicitHelp:true,coaching:false,targetPrompt:false}).showGuidance,false);
  const executing=resolveHudPresentation({phase:'execution',urgency:'danger',
    explicitHelp:true,coaching:true,targetPrompt:false});
  assert.equal(executing.showGuidance,false);

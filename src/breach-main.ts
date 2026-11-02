@@ -2677,7 +2677,7 @@ function useSelectedGround(pt:Pt){
     selectedNode=uid(selected)?.plan.at(-1)?.id??null;
     tacticalFeedback.emit('route',pt,undefined,beforeRoute);
     teach('waypoint-created',
-      'Waypoint added. Drag it to reposition, or use LOOK / WATCH / WAIT.',4900);
+      'Waypoint added. Drag to move it; choose LOOK / WATCH, or DELETE.',4900);
   }
   updateHud();
 }

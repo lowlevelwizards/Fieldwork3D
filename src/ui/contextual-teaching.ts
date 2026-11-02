@@ -38,7 +38,7 @@ export function resolveHudPresentation(options:{
   const planning=phase==='planning'||phase==='targeting';
   const critical=urgency==='warning'||urgency==='contact'||urgency==='danger';
   return {
-    showGuidance:planning&&(targetPrompt||explicitHelp||(!critical&&coaching)),
+    showGuidance:planning&&(targetPrompt||(!critical&&(explicitHelp||coaching))),
     showCoaching:planning&&!critical&&!targetPrompt&&!explicitHelp&&coaching,
     compactMission:phase==='execution'||phase==='replay'
   };
