@@ -915,3 +915,21 @@ body.replaying #tacticalFeedback{display:none}
  background:var(--fw-sage);color:var(--fw-bg);border-color:var(--fw-sage)}
 .fw-weapon-chooser .fw-weapon-dismiss{grid-column:1/-1}
 @media(max-width:340px){.fw-weapon-chooser{grid-template-columns:1fr}}
+
+/* UX12: Squad Operations is a compact expandable preparation sheet. */
+#operationsBoard .fw-squad-card{border:1px solid var(--fw-panel-border);
+ border-radius:var(--fw-radius-sm);margin:8px 0;background:var(--fw-panel)}
+#operationsBoard .fw-squad-card>summary{display:block;list-style:none;
+ cursor:pointer;padding:12px;font:700 14px/1.3 var(--ui-font);
+ min-height:44px;touch-action:manipulation}
+#operationsBoard .fw-squad-card>summary::-webkit-details-marker{display:none}
+#operationsBoard .fw-squad-card>summary:after{content:'+';float:right;
+ color:var(--fw-text-muted)}
+#operationsBoard .fw-squad-card[open]>summary:after{content:'−'}
+#operationsBoard .fw-squad-card>p,
+#operationsBoard .fw-squad-card>div,
+#operationsBoard .fw-squad-card>details{margin-left:10px;margin-right:10px}
+#operationsBoard .fw-squad-card>details{margin-bottom:10px}
+#operationsBoard .fw-squad-card>summary:focus-visible{
+ outline:2px solid var(--fw-focus);outline-offset:-3px}
+#operationsBoard button,#operationsBoard select{min-height:44px}
