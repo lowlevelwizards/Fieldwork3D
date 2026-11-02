@@ -765,7 +765,7 @@ export class TacticalScene3D{
       // the walkable interval, instead of projecting into the threshold.
       const jambX=length/2+profile.jambWidth/2-.25;
       const jambSides=door.pairedWith?
-        [door.hinge==='b'?-1:1]:[-1,1];
+        [door.hinge==='b'?1:-1]:[-1,1];
       for(const side of jambSides){
         this.box(frame,side*jambX,18.5,0,
           profile.jambWidth,37,profile.jambDepth,doorTrim);
