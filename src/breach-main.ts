@@ -38,7 +38,7 @@ import {renderSnapshot,type RenderActor}
   from './breach-frame-interpolation.ts';
 import {routeLineHit} from './breach-route-edit.ts';
 import {placeContextMenu,type AvoidRect,type ScreenPath,type MenuSide} from './breach-context-placement.ts';
-import {coverPresentation,shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
+import {spatialSurfaceState,shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
 import {heardIntensity} from './breach-acoustics.ts';
 import {parseOperationHistory,addOperationRecord,
   type OperationRecord} from './breach-operations.ts';
@@ -49,7 +49,7 @@ import {injuryOf,WEAPONS} from './breach-combat.ts';
 import {stageMagazines,magazineSpace,type MagazineLocation} from './equipment-magazine-placement.ts';
 import {doorReachable} from './breach-door.ts';
 import {canRelocateCover} from './breach-movable-cover.ts';
-import {INTEL_MODES,doorKnown,wallKnown,roomKnown,
+import {INTEL_MODES,doorKnown,
   routeWithIntel,intelPassable,type IntelMode} from './breach-intel.ts';
 import {orderFailureText} from './breach-nav-diagnostics.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
@@ -1520,7 +1520,7 @@ function terrain(){
     draw.lineTo(x+34,y-21);draw.lineTo(x-34,y-21);
     draw.closePath();draw.fill();
     for(const room of site.rooms){
-      if(!roomKnown(state.intel,room.id))continue;
+      if(spatialSurfaceState(state,'room',room.id,replaying&&replayOmniscient)==='unknown')continue;
       const palette=['#666558','#526b66','#77705c','#58605a'];
       rect(room.x+2,room.y+2,room.w-4,room.h-4,
         room.kind==='hall'?'#4a5c55':palette[room.tone]);
@@ -1577,7 +1577,7 @@ function terrain(){
 }
 function furniture(){
   for(const [i,c] of COVER.entries()){
-    if(coverPresentation(state,i,replaying&&replayOmniscient)==='unknown')continue;
+    if(spatialSurfaceState(state,'cover',i,replaying&&replayOmniscient)==='unknown')continue;
     draw.fillStyle='#0f1b1c66';
     draw.fillRect(c.x-c.w/2+6,c.y-c.h/2+7,c.w,c.h);
     rect(c.x-c.w/2,c.y-c.h/2,c.w,c.h,c.low?'#81725b':'#485552');
@@ -1598,11 +1598,12 @@ function wallShape(a:Pt,b:Pt){
   line({x:a.x,y:a.y-2},{x:b.x,y:b.y-2},'#d5c9a962',1.4);
 }
 function architecture(){
-  for(const [i,wall] of WALLS.entries())if(wallKnown(state.intel,i))
+  for(const [i,wall] of WALLS.entries())if(
+    spatialSurfaceState(state,'wall',i,replaying&&replayOmniscient)!=='unknown')
     wallShape(wall.a,wall.b);
   // Closed doors obscure sight and movement; opened doors have an arc.
   for(const door of state.doors){
-    if(!doorKnown(state.intel,door.id))continue;
+    if(spatialSurfaceState(state,'door',door.id,replaying&&replayOmniscient)==='unknown')continue;
     const a=door.a,b=door.b,center=doorCenter(door);
     const visuallyOpen=liveVisibility(state,center)?
       (door.openFraction??(door.open?1:0)):

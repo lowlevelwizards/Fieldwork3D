@@ -39,9 +39,8 @@ import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter,LIGHT_BEAM_SAMPL
 import {type Site,type Room} from './breach-site.ts';
 import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
-import {coverPresentation,shotVisibility} from './breach-presentation.ts';
-import {doorKnown,wallKnown,roomKnown}
-  from './breach-intel.ts';
+import {spatialSurfaceState,shotVisibility} from './breach-presentation.ts';
+import {doorKnown} from './breach-intel.ts';
 import {handlePoint,doorReachable,initDoor} from './breach-door.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
@@ -1525,12 +1524,11 @@ export class TacticalScene3D{
     const occupiedRoomIds=new Set(occupiedFogRooms(s).map(room=>room.id));
     for(const [id,roof] of this.roofGroups)
       roof.visible=roofShouldShow(omniscient,
-        roomKnown(s.intel,id),occupiedRoomIds.has(id));
+        spatialSurfaceState(s,'room',id,omniscient)!=='unknown',
+        occupiedRoomIds.has(id));
     for(const item of this.intelSurfaces){
-      item.obj.visible=omniscient||(
-        item.kind==='wall'?wallKnown(s.intel,item.index!):
-        item.kind==='cover'?coverPresentation(s,item.index!,omniscient)!=='unknown':
-        roomKnown(s.intel,item.id!)||occupiedRoomIds.has(item.id!));
+      item.obj.visible=spatialSurfaceState(s,item.kind,
+        item.kind==='room'?item.id!:item.index!,omniscient)!=='unknown';
     }
     // For camera-facing walls use translucent near-side cutaways.
     const fromCamera=this.camera.position.clone().sub(this.target);
@@ -1554,7 +1552,7 @@ export class TacticalScene3D{
     for(const door of s.doors){
       const object=this.doors.get(door.id);
       if(!object)continue;
-      object.root.visible=omniscient||doorKnown(s.intel,door.id);
+      object.root.visible=spatialSurfaceState(s,'door',door.id,omniscient)!=='unknown';
       // Freeze the last observed door state when it drops out of view:
       // a guard opening an unseen door may not broadcast its exact state.
       if(omniscient||liveVisibility(s,doorCenter(door)))
