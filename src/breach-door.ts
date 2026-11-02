@@ -50,7 +50,7 @@ export function doorApproach(from:Pt,d:Door):Pt|null{
     route(from,p).length).sort((a,b)=>dist(a,from)-dist(b,from))[0]??null;
 }
 export function initDoor(d:Door,i:number):Door{
- const prepared:Door={...d,hinge:d.hinge??(i%3===0?'b':'a'),
+ const prepared:Door={...d,pushTarget:1,hinge:d.hinge??(i%3===0?'b':'a'),
    swing:d.swing??(d.id==='FRONT'?-1:i%2===0?1:-1),openFraction:d.open?1:0,
    angularVelocity:0,resistance:d.resistance??1,
    latchIntegrity:d.locked?Math.max(2.2,d.latchIntegrity??0):
@@ -66,6 +66,11 @@ export function initDoor(d:Door,i:number):Door{
 /** A small fixed-step hinge motor with damped impulses; no renderer physics. */
 export function pushDoor(d:Door,force:number):boolean{
  if(d.wedged||d.heldBy||(!d.open&&(d.openFraction??0)<.08))return false;
+ // Extra body pressure requests a wider swing without teleporting the leaf.
+ // The hinge motor validates each additional angle against its surroundings.
+ if((d.openFraction??0)>=.68)
+   d.pushTarget=Math.min(1.27,Math.max(1,d.pushTarget??1)+
+     Math.min(.028,Math.max(0,force)*.007));
  d.angularVelocity=Math.max(-5.5,Math.min(5.5,
    (d.angularVelocity??0)+force/Math.max(.35,d.resistance??1)));
  d.open=true;
@@ -116,7 +121,7 @@ export function doorWouldStrikeActors(d:Door,next:number,actors:readonly Pt[],
 }
 /** Door leaf stops against architecture and furniture, not an arbitrary
  * renderer-only angle; sample away from the hinge itself. */
-export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[]){
+export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[], actorRadius=OPERATOR_RADIUS){
  if(d.kind==='shutter')return false;
  if(d.kind==='sliding')return doorWouldStrikeActors(d,next,actors);
  // Standalone door fixtures have no registered architecture; do not
@@ -131,7 +136,7 @@ export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[]){
    if(COVER.some(o=>Math.abs(o.x-p.x)<o.w/2+1.25&&
      Math.abs(o.y-p.y)<o.h/2+1.25))return true;
  }
- if(doorWouldStrikeActors(d,next,actors))return true;
+ if(doorWouldStrikeActors(d,next,actors,actorRadius))return true;
  return false;
 }
 export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[]){
@@ -141,7 +146,8 @@ export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[]){
   let remaining=Math.max(0,Math.min(dt,.5));
   while(remaining>1e-8){
     const h=Math.min(1/60,remaining);
-    const target=d.open?1:0,current=d.openFraction??target;
+    const target=d.open?Math.max(1,d.pushTarget??1):0;
+    const current=d.openFraction??(d.open?1:0);
     // Hinge orientation stays fixed throughout the mission.
     const v=d.angularVelocity??0;
     const kicked=(d.kickImpulse??0)>0;
@@ -149,12 +155,17 @@ export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[]){
       (target-current)*64-v*12;
     const velocity=Math.max(-4.5,Math.min(kicked?15:5.5,
       v+acceleration*h));
-    const next=Math.max(0,Math.min(1,current+velocity*h));
+    const next=Math.max(0,Math.min(d.open?target:1.27,current+velocity*h));
     const blocked=Math.abs(next-current)>.0001&&
-      (d.open?next>.12:next<current)&&doorSwingBlocked(d,next,actors);
+      (d.open?next>.12:next<current)&&doorSwingBlocked(d,next,
+        // Opening leaves may harmlessly brush a body. A full navigational
+        // radius here made even slightly nearby actors jam the hinge.
+        d.open?actors.filter(p=>pointToSegment(p,doorLeafSegment({
+          ...d,openFraction:next}))<3.5):actors, d.open?3.5:OPERATOR_RADIUS);
     d.openFraction=blocked?current:next;
-    d.angularVelocity=blocked||next===0||next===1?0:velocity;
+    d.angularVelocity=blocked||next===0||(d.open&&next>=target)?0:velocity;
     if(blocked||next>=.98)d.kickImpulse=0;
+    if(!d.open&&next<=.02)d.pushTarget=1;
     remaining-=h;
   }
 }
