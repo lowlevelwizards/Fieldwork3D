@@ -41,3 +41,26 @@
 
 This file records implementation scope, not a claim that user-side artistic
 acceptance or real-device performance validation has completed.
+
+## OV-24–34 refinement and release acceptance
+- Distinct field jacket, light shirt, soft vest, carrier, light rig and webbing.
+- Explicit armor-to-webbing separation and alternative full rig arrangement;
+  this prevents many overlapping and nearly coplanar surfaces.
+- Real day/field bag geometry attached to the inertial pack node: no common
+  square brick underneath both choices.
+- Optional blank/quiet/graphic face treatments in Operator Lab, three compact
+  hair silhouettes, stable subdued uniform palettes and sleeve patches.
+- Full-webbing extra magazines wrapped around the torso rather than an
+  intersecting second row; redundant decorative pouches are suppressed.
+- Medical pouch transfers to a hand-held treatment visual, radio follows
+  its actual assigned carry socket, and weapon receiver silhouettes vary.
+- Field boots/light footwear have separate accent geometry while planted
+  ankle geometry and movement remain unchanged.
+- Rear and gameplay-distance Operator Lab views with renderer draw-call and
+  triangle counts; focused automated visual-choice consistency checks.
+
+Remaining acceptance is user-side artistic review and physical-device
+performance inspection. No body-proportion changes have been approved or
+silently introduced. The following systems are explicitly unchanged:
+authoritative movement, hitboxes, door interaction rules, shot origin,
+foot IK, weapon hand sockets, animation times, campaign and Quick Play rules.
