@@ -92,13 +92,25 @@ try{
   await live.locator('#vale').click();
   if(await live.locator('#vale').getAttribute('aria-pressed')!=='true')
     throw Error('Vale cannot be selected');
-  // Build 117: camera and mission options now live in a separate, compact
-  // settings tray. Open it only when needed; never toggle it closed by mistake.
+  // Settings lives inside Tools, but opening it intentionally collapses Tools.
+  // Never click a hidden trigger or treat a stateful toggle as an open action.
   async function openSettings(page){
-    if(!await page.locator('#siteSettings').isVisible())
-      await page.locator('#siteSettingsToggle').click();
+    if(await page.locator('#siteSettings').isVisible())return;
+    if(!await page.locator('#siteSettingsToggle').isVisible() &&
+       !await page.locator('#advancedOrders').isVisible())
+      await page.locator('#moreOrders').click();
+    await page.locator('#siteSettingsToggle').click();
+    if(!await page.locator('#siteSettings').isVisible() ||
+       !await page.locator('#closeSiteSettings').isVisible())
+      throw Error('Mission Settings did not open with a reachable close control');
   }
-  await live.locator('#moreOrders').click();
+  async function chooseCamera(page,view){
+    await openSettings(page);
+    await page.locator(view).click();
+    if(await page.locator('#siteSettings').isVisible() ||
+       await page.locator('#advancedOrders').isVisible())
+      throw Error('Camera selection failed to return to the map');
+  }
   await openSettings(live);
   await live.locator('#variant').click();
   await live.waitForFunction(previous=>
@@ -140,21 +152,12 @@ try{
     throw Error('Expected only five persistent tactical controls, got '+visibleButtons);
   // 078: three views of one unchanged authoritative planning state.
   await phone.screenshot({path:resolve(folder,'10-presentation-iso.png')});
-  await phone.locator('#moreOrders').click();
-  await openSettings(phone);
-  await phone.locator('#viewTop').click();
-  await phone.locator('#moreOrders').click();
+  await chooseCamera(phone,'#viewTop');
   await phone.waitForTimeout(380);
   await phone.screenshot({path:resolve(folder,'11-presentation-top.png')});
-  await phone.locator('#moreOrders').click();
-  await openSettings(phone);
-  await phone.locator('#view2d').click();
-  await phone.locator('#moreOrders').click();
+  await chooseCamera(phone,'#view2d');
   await phone.screenshot({path:resolve(folder,'12-presentation-2d.png')});
-  await phone.locator('#moreOrders').click();
-  await openSettings(phone);
-  await phone.locator('#viewIso').click();
-  await phone.locator('#moreOrders').click();
+  await chooseCamera(phone,'#viewIso');
   await phone.waitForTimeout(380);
   if(await phone.locator('#moreOrders').getAttribute('aria-pressed')!=='false')
     throw Error('Presentation view audit left TOOLS open');
@@ -207,11 +210,8 @@ try{
   await phone.locator('#moreOrders').click();
   if(!await phone.locator('#advancedOrders').isVisible())
     throw Error('TOOLS drawer did not open');
-  await openSettings(phone);
-  await phone.locator('#cameraFit').click();
-  await openSettings(phone);
-  await phone.locator('#view2d').click();
-  await phone.locator('#moreOrders').click();
+  await chooseCamera(phone,'#cameraFit');
+  await chooseCamera(phone,'#view2d');
   if(await phone.locator('#advancedOrders').isVisible())
     throw Error('TOOLS drawer failed to collapse');
 
@@ -254,10 +254,9 @@ try{
   await phone.locator('#moreOrders').click();
 
   // Selecting a waypoint near a door exposes door actions only there.
-  await phone.locator('#moreOrders').click();
   await openSettings(phone);
   await phone.locator('#restart').click();
-  await phone.locator('#moreOrders').click();
+  await phone.locator('#closeSiteSettings').click();
   const doorPoint=screen(301,505);
   await phone.touchscreen.tap(doorPoint.x,doorPoint.y);
   // The *final planned position* is enough to trigger door options;
@@ -272,7 +271,7 @@ try{
     throw Error('Contextual aiming/door buttons obscure the TOOLS drawer');
   await openSettings(phone);
   await phone.locator('#restart').click();
-  await phone.locator('#moreOrders').click();
+  await phone.locator('#closeSiteSettings').click();
   await phone.touchscreen.tap(doorPoint.x,doorPoint.y);
   // Directly tapping the closed doorway must also expose entry actions,
   // even when no movement waypoint has been authored yet.
@@ -294,12 +293,9 @@ try{
   await phone.locator('#play').click();
   await phone.waitForFunction(()=>document.querySelector('#clock')?.textContent!=='00:00');
   await phone.locator('#play').click();
-  if(await phone.locator('#phase').innerText()!=='PLANNING')
+  if(await phone.locator('#phase').innerText()!=='PAUSED')
     throw Error('GO / PAUSE regression');
-  await phone.locator('#moreOrders').click();
-  await openSettings(phone);
-  await phone.locator('#viewIso').click();
-  await phone.locator('#moreOrders').click();
+  await chooseCamera(phone,'#viewIso');
   await phone.screenshot({path:resolve(folder,'07-phone-iso-battlefield.png')});
 
   // 081: editing a *completed* route by tapping its drawn line.
@@ -311,10 +307,7 @@ try{
   routePhone.on('pageerror',e=>errors.push('route editor: '+e.message));
   await routePhone.goto(url,{waitUntil:'domcontentloaded'});
   await routePhone.locator('#breachCanvas').waitFor();
-  await routePhone.locator('#moreOrders').click();
-  await openSettings(routePhone);
-  await routePhone.locator('#view2d').click();
-  await routePhone.locator('#moreOrders').click();
+  await chooseCamera(routePhone,'#view2d');
   await routePhone.locator('#rook').click();
   const count=()=>routePhone.locator('#breachCanvas')
     .getAttribute('data-plan-nodes');

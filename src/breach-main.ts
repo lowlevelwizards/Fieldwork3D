@@ -3414,12 +3414,28 @@ canvas.addEventListener('lostpointercapture',e=>releasePointer(e,true));
 window.addEventListener('blur',()=>{activePointers.clear();trace=null;
   panMid=null;pinchDistance=0;});
 window.addEventListener('resize',layout);
-ui.viewIso.addEventListener('click',()=>cameraMode('iso'));
-ui.viewTop.addEventListener('click',()=>cameraMode('top'));
-ui.view2d.addEventListener('click',()=>cameraMode('plan2d'));
+// The Settings trigger lives in the collapsible Tools drawer. Settings
+// therefore owns an always-visible close action, and camera changes return
+// immediately to the map without leaving a hidden trigger focused.
+const closeSiteSettingsButton=el<HTMLButtonElement>('closeSiteSettings');
+function closeMissionSettings(returnFocus=true){
+  if(ui.siteSettings.hidden)return;
+  collapseTacticalSheets(null);
+  if(returnFocus)ui.moreOrders.focus();
+  updateContext();
+}
+closeSiteSettingsButton.addEventListener('click',()=>closeMissionSettings());
+function chooseCameraView(mode:ViewMode){
+  cameraMode(mode);
+  closeMissionSettings();
+}
+ui.viewIso.addEventListener('click',()=>chooseCameraView('iso'));
+ui.viewTop.addEventListener('click',()=>chooseCameraView('top'));
+ui.view2d.addEventListener('click',()=>chooseCameraView('plan2d'));
 ui.cameraFit.addEventListener('click',()=>{
   if(stage&&viewMode!=='plan2d')stage.resetCamera();
   else{zoom=1;panX=0;panY=0;layout();}
+  closeMissionSettings();
   updateContext();
 });
 ui.briefingToggle.addEventListener('click',()=>{
@@ -3445,8 +3461,7 @@ ui.uiSoundToggle.addEventListener('click',()=>{
   if(uiSoundEnabled)uiClickTone('select');
 });
 ui.uiHelp.addEventListener('click',()=>{
-  ui.siteSettings.hidden=true;
-  ui.siteSettingsToggle.setAttribute('aria-expanded','false');
+  closeMissionSettings();
   showUiHelp('Tap operator = HERE · Tap a route line = add waypoint · Tap node or door = context actions · Hold an action for a description.',8500);
   updateHud();
 });
@@ -3455,6 +3470,8 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
   collapseTacticalSheets(opening?'settings':null);
   ui.siteSettings.hidden=!opening;
   ui.siteSettingsToggle.setAttribute('aria-expanded',String(opening));
+  if(opening)closeSiteSettingsButton.focus();
+  else ui.moreOrders.focus();
   updateContext();
 });
 ui.moreOrders.addEventListener('click',()=>{
