@@ -86,6 +86,12 @@ export class CampaignKitPreview{
   this.pointerId=null;
   try{this.host.releasePointerCapture(event.pointerId);}catch{/* optional */}
  };
+ getAzimuth(){return this.azimuth;}
+ setAzimuth(value:number){
+  if(!Number.isFinite(value))return;
+  this.azimuth=value;
+  this.draw();
+ }
  private draw(){
   if(!this.renderer)return;
   const width=Math.max(160,this.host.clientWidth);
