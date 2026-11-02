@@ -29,7 +29,10 @@ for(const select of kitSelects){
  const slot=select.dataset.kitSlot as LoadoutSlot;
  for(const item of itemsForSlot(slot)){
   const option=document.createElement('option');
-  option.value=item.id;option.textContent=item.name;select.append(option);
+  option.value=item.id;
+  option.textContent=item.id==='tactical-smoke'?
+    item.name+' (visual preview only)':item.name;
+  select.append(option);
  }
  select.addEventListener('change',()=>{
   labKit=setEquipmentChoice(labKit,slot,select.value);syncKit();

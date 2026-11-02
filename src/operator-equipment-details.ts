@@ -8,7 +8,8 @@ import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 type ToolType='utility-light'|'utility-breach'|'utility-pry'|'utility-cutter'|'utility-wedge';
 export type OperatorEquipmentDetails={
  tools:Record<ToolType,THREE.Group>;
- medicalMark:THREE.Group;radioTrim:THREE.Group;flashHardware:THREE.Group;
+ medicalMark:THREE.Group;traumaHardware:THREE.Group;
+ radioTrim:THREE.Group;flashHardware:THREE.Group;smokeHardware:THREE.Group;
 };
 const box=(parent:THREE.Object3D,m:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number)=>{
@@ -36,6 +37,10 @@ export function createOperatorEquipmentDetails(medical:THREE.Mesh,
  box(medicalMark,red,1.9,0,0,.25,1.65,.46);
  box(medicalMark,red,1.9,0,0,.25,.46,1.65);
  box(medicalMark,dark,1.65,1.65,0,.45,.38,3.0);
+ const traumaHardware=group(medical);
+ for(const z of [-1.45,1.45])
+  box(traumaHardware,dark,0,2.25,z,.9,1.55,.65);
+ box(traumaHardware,fabric,-.3,-1.8,0,2.0,.5,3.0);
  const radioTrim=group(radio);
  cylinder(radioTrim,dark,-.45,4.1,0,.33,6.5,6);
  box(radioTrim,mark,1.85,1.15,0,.2,1.2,1.5);
@@ -44,6 +49,12 @@ export function createOperatorEquipmentDetails(medical:THREE.Mesh,
  cylinder(flashHardware,dark,0,2.8,0,1.45,.75,8);
  box(flashHardware,mark,0,3.35,0,2.5,.45,.45);
  box(flashHardware,dark,0,2.15,1.2,.65,2.1,.35);
+ const smokeHardware=group(flash);
+ const stripe=new THREE.MeshStandardMaterial({
+  color:0xb5a27c,roughness:.95,flatShading:true});
+ cylinder(smokeHardware,stripe,0,.5,0,1.34,.85,8);
+ cylinder(smokeHardware,dark,0,2.9,0,1.32,.65,8);
+ box(smokeHardware,mark,0,3.4,0,2.4,.38,.5);
  const tools={
   'utility-light':group(tool),
   'utility-breach':group(tool),
@@ -79,10 +90,11 @@ export function createOperatorEquipmentDetails(medical:THREE.Mesh,
   const wedge=box(tools['utility-wedge'],fabric,0,0,z,4.0,1.4,1.2);
   wedge.rotation.z=-.16;
  }
- for(const g of [medicalMark,radioTrim,flashHardware,...Object.values(tools)])
+ for(const g of [medicalMark,traumaHardware,radioTrim,flashHardware,
+  smokeHardware,...Object.values(tools)])
   consolidateVisualGroup(g);
  for(const g of Object.values(tools))g.visible=false;
- return {tools,medicalMark,radioTrim,flashHardware};
+ return {tools,medicalMark,traumaHardware,radioTrim,flashHardware,smokeHardware};
 }
 export function updateOperatorEquipmentDetails(
  d:OperatorEquipmentDetails,slots:EquipmentLoadout['slots']|undefined){
@@ -90,6 +102,8 @@ export function updateOperatorEquipmentDetails(
  for(const [id,obj] of Object.entries(d.tools))obj.visible=chosen===id;
  d.medicalMark.visible=slots?.medical==='medical-basic'||
   slots?.medical==='medical-trauma'||!slots;
+ d.traumaHardware.visible=slots?.medical==='medical-trauma';
  d.radioTrim.visible=chosen==='utility-radio';
  d.flashHardware.visible=slots?.tactical==='tactical-flash'||!slots;
+ d.smokeHardware.visible=slots?.tactical==='tactical-smoke';
 }

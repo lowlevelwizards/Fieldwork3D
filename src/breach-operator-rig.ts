@@ -229,8 +229,15 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   flashCanister.geometry=new THREE.CylinderGeometry(1.25,1.25,5.8,8);
   const visualKit=createOperatorVisualKit(chest,hip,head,pack,feet,arms,
     {cloth,vest,dark:boot,skin,steel});
-  const colors=new Map([cloth,boot,vest,skin,steel].map(material=>
-    [material,material.color.clone()] as const));
+  // Include costume, face and accessory materials as well as the core skin,
+  // cloth and steel. This keeps silhouette inspection and downed desaturation
+  // honest instead of leaving floating colored eye marks and gear details.
+  const colors=new Map<THREE.MeshStandardMaterial,THREE.Color>();
+  root.traverse(obj=>{
+    if(obj instanceof THREE.Mesh&&
+      obj.material instanceof THREE.MeshStandardMaterial)
+      colors.set(obj.material,obj.material.color.clone());
+  });
   return {root,hip,chest,head,weapon,droppedGun,feet,arms,pack,
     helmetShell,armorPanels,capBill,rigPouches,beltPouch,
     medicalPouch,radioUnit,flashCanister,utilityTool,gloveCovers,
@@ -334,10 +341,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     gear?.utility==='utility-breach'?1.2:
     gear?.utility==='utility-cutter'?1.25:1,
     1);
-  r.flashCanister.visible=gear?.tactical==='tactical-flash'&&
-    (p.flashCharges===undefined||p.flashCharges>0);
+  r.flashCanister.visible=gear?.tactical==='tactical-smoke'||
+    (gear?.tactical==='tactical-flash'&&
+      (p.flashCharges===undefined||p.flashCharges>0));
   for(const glove of r.gloveCovers)glove.visible=gear?.hands==='hands-gloves';
   applyOperatorVisualKit(r.visualKit,gear,identity,p.magazineCarryLocations);
+  // Hair is seeded by the costume assembler and must join the same reversible
+  // palette ledger used by replay, silhouette mode and injury desaturation.
+  r.colors.set(r.visualKit.hairMaterial,r.visualKit.hairMaterial.color.clone());
   updateOperatorEquipmentDetails(r.equipmentDetails,gear);
   // Retain costume identity, but subdued incapacitated bodies blend with
   // grounded blood and don't need floating status text. Reversible on seek.
