@@ -4,7 +4,7 @@ export type ContextAction={id:string;label:string;group:'primary'|'state'|'destr
 export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   posture:'stand'|'crouch';pace:'walk'|'run';firePolicy:string;
   reserve:number;magazine:number;doorOpen?:boolean;
-  nodeKind?:string;aimLabel?:string;nodeFirePolicy?:string;
+  nodeKind?:string;nodeMoveMode?:string;aimLabel?:string;nodeFirePolicy?:string;
   nearMovable?:boolean;nearWindow?:boolean;
   availableTools?:readonly string[];doorWedged?:boolean;};
 export function contextActionChoices(o:ContextOptions):ContextAction[]{
@@ -25,6 +25,13 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
   return [
     {id:'ctxLook',label:'LOOK',group:'primary',pressed:o.nodeKind==='look'||o.aimLabel==='look',title:'Face a direction at this point'},
     {id:'ctxPie',label:'PIE',group:'primary',pressed:o.nodeKind==='pie',title:'Sweep a corner while moving'},
+    {id:'ctxStrafe',label:'STRAFE',group:'primary',pressed:o.aimLabel==='strafe',
+      title:'Choose a direction to face and hold while moving'},
+    ...(o.node&&o.nodeKind==='move'?[{
+      id:'ctxStrafeMove',label:o.nodeMoveMode==='strafe'?'NORMAL MOVE':'STRAFE MOVE',
+      group:'primary' as const,pressed:o.nodeMoveMode==='strafe',
+      title:'Toggle sideways movement into this waypoint while holding facing',
+    }]:[]),
     {id:'ctxFlash',label:'FLASH ×'+o.flashRemaining,group:'primary',
       disabled:o.flashRemaining<=0,title:o.flashRemaining>0?'Choose a flash target':'No flash grenades remaining'},
     {id:'ctxWait',label:'WAIT',group:'primary',pressed:o.nodeKind==='wait'||o.nodeKind==='holdClear',title:'Wait at this position'},
