@@ -100,7 +100,7 @@ test('live pose swaps camo and solid without animation restoring gray or mutatin
    assert.equal(material.color.getHex(),0xffffff,model+':'+id);
    poseOperator(rig,pose(kit,selection),0);
    assert.equal(material.map,headwearCamoTexture(model,id,
-    headwearCamoPlacement('rook','headwear',id,0)),'repeated pose reuses atlas');
+    headwearCamoPlacement('rook','headwear:'+model,id,0)),'repeated pose reuses atlas');
    assert.equal(material.roughnessMap,finish,'physical map preserved');
    assert.equal(rig.visualKit.wardrobeHead.headwear[model].children[0].children[0].geometry,geo,
     'no silhouette mutation');
