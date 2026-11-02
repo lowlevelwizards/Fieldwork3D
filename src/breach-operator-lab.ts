@@ -1107,6 +1107,7 @@ function draw(){
       wardrobe:chosen.wardrobe,unarmedPreview:!chosen.weaponVisible,
       magazineCarryLocations:[],down:false,injury:0,
       posture:'stand',deterministic:true},0);
+    if(silhouettes)applySilhouette(body,true);
    }
   }
   if(!comparing&&!kitComparing&&!variantComparing)isolateKit(rig);
@@ -1231,7 +1232,8 @@ function draw(){
   const stats=choose<HTMLOutputElement>('visualStats');
   const current=renderer.info.render;
   const display='DRAWS '+current.calls+' · TRIS '+
-    current.triangles+' · '+(kitComparing?'3 KITS':'1 KIT');
+    current.triangles+' · '+(variantComparing?'2 LOOKS':
+      kitComparing?'3 KITS':'1 KIT');
   if(stats.textContent!==display)stats.textContent=display;
   canvas.dataset.kitComparison=String(kitComparing);
   canvas.dataset.variantComparison=String(variantComparing);
