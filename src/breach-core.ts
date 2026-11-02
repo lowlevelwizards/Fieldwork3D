@@ -130,7 +130,7 @@ export function doorLeafSegment(d:Door):Segment{
  const scale=reach?Math.max(0,reach-DOOR_PANEL_END_RECESS)/reach:0;
  const x=rawX*scale,y=rawY*scale;
  const angle=-doorYaw(d),cos=Math.cos(angle),sin=Math.sin(angle);
- return {a:{...hinge},b:{x:hinge+x*cos-y*sin,
+ return {a:{...hinge},b:{x:hinge.x+x*cos-y*sin,
    y:hinge.y+x*sin+y*cos}};
 }
 export function doorBlocksSegment(door:Door,line:Segment):boolean{
