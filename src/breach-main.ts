@@ -1110,10 +1110,25 @@ function updateContext(){
     contextActionsSignature='';
     contextSignature=identity;
     ui.context.replaceChildren();
+    const heading=document.createElement('div');
+    heading.className='fw-context-heading';
+    heading.setAttribute('aria-live','off');
+    ui.context.append(heading);
     const primary=document.createElement('div');primary.className='context-primary';
     const secondary=document.createElement('div');secondary.className='context-state';
     const destructive=document.createElement('div');destructive.className='context-danger';
     ui.context.append(primary,secondary,destructive);
+  }
+  const contextHeading=ui.context.querySelector<HTMLElement>('.fw-context-heading');
+  if(contextHeading){
+    const nodeIndex=node?a.plan.findIndex(n=>n.id===node.id)+1:0;
+    const title=door?'DOOR · '+(door.open?'OPEN':'CLOSED'):
+      node?('WAYPOINT '+String(nodeIndex).padStart(2,'0')):'OPERATOR / HERE';
+    const scope=door?'Door interactions':
+      node?'Orders queued at this waypoint':'Orders for the selected operator';
+    const text=a.name.toUpperCase()+' · '+title;
+    if(contextHeading.textContent!==text)contextHeading.textContent=text;
+    contextHeading.title=scope;
   }
   const actionSignature=identity+'/'+paletteChoices.map(c=>
     c.id+':'+c.label+':'+c.group+':'+!!c.disabled+':'+!!c.pressed).join('|');
@@ -1405,8 +1420,13 @@ function updateQuickStates(){
   if(!shown||!actor)return;
   const node=selectedPlanNode();
   const index=node?actor.plan.findIndex(n=>n.id===node.id)+1:0;
-  ui.quickScope.textContent=(node?'NODE '+index:'HERE')+
+  const scopeText=node?'WAYPOINT '+String(index).padStart(2,'0'):'OPERATOR / HERE';
+  ui.quickScope.textContent=actor.name.toUpperCase()+' · '+scopeText+
     (actor.aimInstruction?.mode==='track'&&actor.pace!=='run'?' · PIE ACTIVE':'');
+  ui.quickScope.title=node?
+    'Commands apply when '+actor.name+' reaches waypoint '+index:
+    'Commands apply to '+actor.name+' at their current position';
+  ui.quickStates.setAttribute('aria-label',actor.name+' · '+scopeText+' commands');
   const current=plannedControl(state,selected,node?.id);
   const choices=contextActionChoices({
     door:false,node:!!node,flashRemaining:state.flashRemaining,
