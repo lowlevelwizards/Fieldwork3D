@@ -16,7 +16,8 @@ import {createWardrobeBodyLayers,updateWardrobeBodyLayers,
 type Slots=EquipmentLoadout['slots'];
 type Material=THREE.MeshStandardMaterial;
 type VisualMaterials={cloth:Material;vest:Material;trousers:Material;
- packFabric:Material;dark:Material;skin:Material;steel:Material};
+ packFabric:Material;gearFabric:Material;headCloth:Material;
+ headArmor:Material;dark:Material;skin:Material;steel:Material};
 type Limb={upper:THREE.Mesh;lower:THREE.Mesh;shoe?:THREE.Mesh};
 export type OperatorVisualKit={
  wardrobeHead:WardrobeHeadLayers;wardrobeBody:WardrobeBodyLayers;
@@ -44,7 +45,8 @@ const bundle=(parent:THREE.Object3D)=>{const g=new THREE.Group();parent.add(g);r
 export function createOperatorVisualKit(
  chest:THREE.Group,hip:THREE.Group,head:THREE.Group,pack:THREE.Mesh,
  legs:readonly Limb[],arms:readonly Limb[],m:VisualMaterials):OperatorVisualKit{
- const {cloth,vest,trousers,packFabric,dark,skin,steel}=m;
+ const {cloth,vest,trousers,packFabric,gearFabric,headCloth,
+  headArmor,dark,skin,steel}=m;
  const trim=new THREE.MeshStandardMaterial({color:0x777d6d,roughness:.94,flatShading:true});
  const seam=new THREE.MeshStandardMaterial({color:0x303b36,roughness:.95,flatShading:true});
  const hairMaterial=new THREE.MeshStandardMaterial({color:0x302d29,roughness:1,flatShading:true});
@@ -75,21 +77,21 @@ export function createOperatorVisualKit(
  // Helmet shell: each visible exterior plane lies at a distinct depth;
  // avoid three coincident slabs competing in the z buffer.
  const helmet=bundle(head);
- part(helmet,vest,-.65,6.75,0,9.15,2.2,9.35);
- part(helmet,vest,-1.15,8.1,0,7.75,.46,7.85);
+ part(helmet,headArmor,-.65,6.75,0,9.15,2.2,9.35);
+ part(helmet,headArmor,-1.15,8.1,0,7.75,.46,7.85);
  part(helmet,dark,3.58,5.95,0,.52,.65,9.45);
  for(const sign of [-1,1]){
-  part(helmet,vest,-2.3,4.7,sign*4.7,4.0,2.2,.8);
+  part(helmet,headArmor,-2.3,4.7,sign*4.7,4.0,2.2,.8);
   part(helmet,dark,-1.8,4.75,sign*5.13,2.6,.56,.24);
   part(helmet,seam,-1.9,2.7,sign*4.98,.50,2.4,.25);
  }
  part(helmet,trim,-1.1,8.49,0,1.65,.22,2.0);
  // The cap body overlaps its brim by a deliberate joint, closing the gap.
  const cap=bundle(head);
- part(cap,cloth,-.55,6.70,0,8.25,1.6,8.35);
+ part(cap,headCloth,-.55,6.70,0,8.25,1.6,8.35);
  part(cap,dark,3.62,6.07,0,.32,.28,7.9);
- part(cap,cloth,4.05,5.92,0,4.3,.44,7.65);
- const wardrobeHead=createWardrobeHeadLayers(head,cloth,vest,dark,skin);
+ part(cap,headCloth,4.05,5.92,0,4.3,.44,7.65);
+ const wardrobeHead=createWardrobeHeadLayers(head,headCloth,headArmor,dark,skin);
  const wardrobeBody=createWardrobeBodyLayers(chest,legs,arms,
   cloth,trousers,trim,dark);
  // Separate clothing profiles: jacket has a heavier collar, flap and
@@ -133,7 +135,7 @@ export function createOperatorVisualKit(
  // Full field webbing is deliberately a REPLACEMENT, never two stacked rigs.
  for(const sign of [-1,1]){
   part(fieldWebbing,trim,5.95,2.9,sign*4.75,1.45,5.8,1.85);
-  part(fieldWebbing,vest,-.4,-.5,sign*7.4,8.6,1.45,.72);
+  part(fieldWebbing,gearFabric,-.4,-.5,sign*7.4,8.6,1.45,.72);
  }
  part(fieldWebbing,dark,6.25,-3.1,0,.85,1.65,13.8);
  const belt=bundle(hip);
@@ -201,7 +203,7 @@ export function createOperatorVisualKit(
   const mag=part(chest,dark,7.75,row?-6.55:-2,z,2.0,4.1,2.05);
   // The strap crosses the pouch at a different plane than the pouch flap.
   part(mag,trim,.04,1.12,0,2.09,.42,2.16);
-  part(mag,vest,-1.08,-.2,0,.22,3.8,2.3);
+  part(mag,gearFabric,-1.08,-.2,0,.22,3.8,2.3);
   magazines.rig.push(mag);
  }
  for(let i=0;i<3;i++){

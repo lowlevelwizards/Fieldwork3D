@@ -119,6 +119,9 @@ export type OperatorRig={
   colors:Map<THREE.MeshStandardMaterial,THREE.Color>;
   clothMaterial:THREE.MeshStandardMaterial;vestMaterial:THREE.MeshStandardMaterial;
   trouserMaterial:THREE.MeshStandardMaterial;packMaterial:THREE.MeshStandardMaterial;
+  headClothMaterial:THREE.MeshStandardMaterial;
+  headArmorMaterial:THREE.MeshStandardMaterial;
+  gearMaterial:THREE.MeshStandardMaterial;
   skinMaterial:THREE.MeshStandardMaterial;
   baseCloth:THREE.Color;baseVest:THREE.Color;helmetBadge:THREE.Mesh;
   appearanceSeed:number;
@@ -148,7 +151,8 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   const trousers=cloth.clone();
   const boot=mat(0x313935,'rubber'),vest=mat(0x43504b,'fabric'),
     skin=mat(0xb29b83),steel=mat(0x414846,'metal');
-  const packFabric=vest.clone();
+  const packFabric=vest.clone(),gearFabric=vest.clone(),
+    headCloth=cloth.clone(),headArmor=vest.clone();
   hip.position.y=20.2;
   block(hip,0,0,0,8,5,12,trousers);
   chest.position.y=26;
@@ -166,10 +170,10 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   pack.position.set(-8.2,0,0);chest.add(pack);
   // Very few additional silhouettes, all rigidly attached to existing bones.
   // No new IK, physics bodies or shot-line geometry.
-  const rigPouches=[block(chest,2.1,-2,-7.35,2.4,3.8,2.7,boot),
-    block(chest,2.1,-2,7.35,2.4,3.8,2.7,boot)];
-  const beltPouch=block(hip,-3,-2.7,-4.3,2.8,3.7,3.2,vest);
-  const medicalPouch=block(chest,-1,-4.1,7.7,3.3,4.2,2.5,vest);
+  const rigPouches=[block(chest,2.1,-2,-7.35,2.4,3.8,2.7,gearFabric),
+    block(chest,2.1,-2,7.35,2.4,3.8,2.7,gearFabric)];
+  const beltPouch=block(hip,-3,-2.7,-4.3,2.8,3.7,3.2,gearFabric);
+  const medicalPouch=block(chest,-1,-4.1,7.7,3.3,4.2,2.5,gearFabric);
   const radioUnit=block(chest,-4.4,2.4,7.5,3.5,5.4,2.8,steel);
   const flashCanister=block(hip,1,-4,7.2,2.5,5.8,2.5,steel);
   const utilityTool=block(chest,-5,-4.1,-7.9,4.4,2.1,2.3,steel);
@@ -245,7 +249,8 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   flashCanister.geometry.dispose();
   flashCanister.geometry=new THREE.CylinderGeometry(1.25,1.25,5.8,8);
   const visualKit=createOperatorVisualKit(chest,hip,head,pack,feet,arms,
-    {cloth,vest,trousers,packFabric,dark:boot,skin,steel});
+    {cloth,vest,trousers,packFabric,gearFabric,headCloth,headArmor,
+      dark:boot,skin,steel});
   // Include costume, face and accessory materials as well as the core skin,
   // cloth and steel. This keeps silhouette inspection and downed desaturation
   // honest instead of leaving floating colored eye marks and gear details.
@@ -260,7 +265,9 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     medicalPouch,radioUnit,flashCanister,utilityTool,gloveCovers,
     visualKit,equipmentDetails,colors,
     clothMaterial:cloth,vestMaterial:vest,trouserMaterial:trousers,
-    packMaterial:packFabric,skinMaterial:skin,baseCloth:cloth.color.clone(),
+    packMaterial:packFabric,gearMaterial:gearFabric,
+    headClothMaterial:headCloth,headArmorMaterial:headArmor,
+    skinMaterial:skin,baseCloth:cloth.color.clone(),
     baseVest:vest.color.clone(),helmetBadge,appearanceSeed:0,
     personality:operatorMotionTraits(id),
     magazineInserted,magazineHand,medicalItem,weaponBody,droppedWeaponBody,
@@ -410,12 +417,21 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
    ['top',r.clothMaterial],
    ['trousers',r.trouserMaterial],
    ['armor',r.vestMaterial],
-   ['pack',r.packMaterial]
+   ['pack',r.packMaterial],
+   ['gear',r.gearMaterial],
+   ['head',r.headClothMaterial],
+   ['head',r.headArmorMaterial]
   ] as const;
   r.colors.set(r.trouserMaterial,
     (r.colors.get(r.clothMaterial)??r.baseCloth).clone());
   r.colors.set(r.packMaterial,
     (r.colors.get(r.vestMaterial)??r.baseVest).clone());
+  r.colors.set(r.gearMaterial,
+    (r.colors.get(r.vestMaterial)??r.baseVest).clone());
+  r.colors.set(r.headArmorMaterial,
+    (r.colors.get(r.vestMaterial)??r.baseVest).clone());
+  r.colors.set(r.headClothMaterial,
+    (r.colors.get(r.clothMaterial)??r.baseCloth).clone());
   for(const [channel,material] of fabricChannels){
    const pattern=p.wardrobe?.patterns[channel];
    const map=pattern&&pattern!=='solid'?
