@@ -13,8 +13,8 @@ import {createWardrobeHeadLayers,updateWardrobeHeadLayers,
 
 type Slots=EquipmentLoadout['slots'];
 type Material=THREE.MeshStandardMaterial;
-type VisualMaterials={cloth:Material;vest:Material;dark:Material;
- skin:Material;steel:Material};
+type VisualMaterials={cloth:Material;vest:Material;trousers:Material;
+ packFabric:Material;dark:Material;skin:Material;steel:Material};
 type Limb={upper:THREE.Mesh;lower:THREE.Mesh;shoe?:THREE.Mesh};
 export type OperatorVisualKit={
  wardrobeHead:WardrobeHeadLayers;
@@ -42,7 +42,7 @@ const bundle=(parent:THREE.Object3D)=>{const g=new THREE.Group();parent.add(g);r
 export function createOperatorVisualKit(
  chest:THREE.Group,hip:THREE.Group,head:THREE.Group,pack:THREE.Mesh,
  legs:readonly Limb[],arms:readonly Limb[],m:VisualMaterials):OperatorVisualKit{
- const {cloth,vest,dark,skin,steel}=m;
+ const {cloth,vest,trousers,packFabric,dark,skin,steel}=m;
  const trim=new THREE.MeshStandardMaterial({color:0x777d6d,roughness:.94,flatShading:true});
  const seam=new THREE.MeshStandardMaterial({color:0x303b36,roughness:.95,flatShading:true});
  const hairMaterial=new THREE.MeshStandardMaterial({color:0x302d29,roughness:1,flatShading:true});
@@ -151,15 +151,15 @@ export function createOperatorVisualKit(
  }
  // Pack parent follows existing inertial motion; visible day/field bags are
  // complete distinct silhouettes, not scale variations of the same cube.
- part(dayPack,vest,0,.7,0,5.0,8.1,10.2);
+ part(dayPack,packFabric,0,.7,0,5.0,8.1,10.2);
  part(dayPack,dark,-2.63,-2.0,0,.3,1.0,8.0);
  for(const sign of [-1,1])
   part(dayPack,trim,-2.68,1.7,sign*3.45,.24,5.0,.65);
- part(fieldPack,vest,-.55,.45,0,6.3,14.2,13.15);
+ part(fieldPack,packFabric,-.55,.45,0,6.3,14.2,13.15);
  part(fieldPack,trim,-3.8,5.5,0,.4,2.0,11.4);
  part(fieldPack,dark,-3.8,-4.4,0,.42,1.25,10.6);
  for(const sign of [-1,1]){
-  part(fieldPack,vest,-1.5,-2.8,sign*7.75,3.65,6.3,2.3);
+  part(fieldPack,packFabric,-1.5,-2.8,sign*7.75,3.65,6.3,2.3);
   part(fieldPack,trim,-2.9,1.4,sign*6.65,.6,8.8,.65);
  }
  const cargoPockets:THREE.Mesh[]=[],bootCuffs:THREE.Mesh[]=[],sleeveCuffs:THREE.Mesh[]=[];
@@ -168,7 +168,7 @@ export function createOperatorVisualKit(
  const patches:THREE.Mesh[]=[];
  for(const leg of legs){
   // Thin, leg-mounted pieces follow the solved IK. No additional leg length.
-  cargoPockets.push(part(leg.upper,cloth,0,0.08,3.0,3.3,.29,1.45));
+  cargoPockets.push(part(leg.upper,trousers,0,0.08,3.0,3.3,.29,1.45));
   kneePanels.push(part(leg.lower,trim,0,.36,2.25,3.7,.22,1.2));
   if(leg.shoe){
    // The shoe's ankle pivot and geometry translation remain unmodified.

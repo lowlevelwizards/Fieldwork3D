@@ -28,6 +28,7 @@ import {fallAngles,hitStagger,type FallPose,type WoundRegion}
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {equipmentCarrySocket,utilityDisplaySocket} from './equipment-carry-visuals.ts';
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
+import {wardrobePatternTexture} from './operator-wardrobe-patterns.ts';
 import type {CarryLocation} from './equipment-carry-placement.ts';
 import {createOperatorVisualKit,applyOperatorVisualKit,
  type OperatorVisualKit} from './operator-visual-kit.ts';
@@ -116,6 +117,7 @@ export type OperatorRig={
   elbowSpread:[number,number];legGap:[number,number];
   colors:Map<THREE.MeshStandardMaterial,THREE.Color>;
   clothMaterial:THREE.MeshStandardMaterial;vestMaterial:THREE.MeshStandardMaterial;
+  trouserMaterial:THREE.MeshStandardMaterial;packMaterial:THREE.MeshStandardMaterial;
   skinMaterial:THREE.MeshStandardMaterial;
   baseCloth:THREE.Color;baseVest:THREE.Color;helmetBadge:THREE.Mesh;
   appearanceSeed:number;
@@ -142,10 +144,12 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   const cloth=mat(side==='red'?0x936e5b:
     id==='moss'?0x80826b:id==='ash'?0x8e846e:
     id==='vale'?0x687c8d:0x6f9185,'fabric');
+  const trousers=cloth.clone();
   const boot=mat(0x313935,'rubber'),vest=mat(0x43504b,'fabric'),
     skin=mat(0xb29b83),steel=mat(0x414846,'metal');
+  const packFabric=vest.clone();
   hip.position.y=20.2;
-  block(hip,0,0,0,8,5,12,cloth);
+  block(hip,0,0,0,8,5,12,trousers);
   chest.position.y=26;
   block(chest,0,0,0,10,12,14,cloth);
   const armorPanels=[block(chest,3,0,0,2.8,9,13,vest),
@@ -181,7 +185,8 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   helmetBadge.visible=false;
   const feet:Foot[]=[],arms:Arm[]=[],gloveCovers:THREE.Mesh[]=[];
   for(const sideSign of [-1,1]){
-    const upper=bone(root,4.7,5.3,cloth),lower=bone(root,4,4.3,cloth);
+    const upper=bone(root,4.7,5.3,trousers),
+      lower=bone(root,4,4.3,trousers);
     const shoe=block(root,0,0,0,8,2.9,5.8,boot);
     // The mesh transform must remain at the scheduled ankle anchor.
     // Translate *vertices in local toe-forward +X* instead: the toe box
@@ -239,7 +244,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   flashCanister.geometry.dispose();
   flashCanister.geometry=new THREE.CylinderGeometry(1.25,1.25,5.8,8);
   const visualKit=createOperatorVisualKit(chest,hip,head,pack,feet,arms,
-    {cloth,vest,dark:boot,skin,steel});
+    {cloth,vest,trousers,packFabric,dark:boot,skin,steel});
   // Include costume, face and accessory materials as well as the core skin,
   // cloth and steel. This keeps silhouette inspection and downed desaturation
   // honest instead of leaving floating colored eye marks and gear details.
@@ -253,7 +258,8 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     helmetShell,armorPanels,capBill,rigPouches,beltPouch,
     medicalPouch,radioUnit,flashCanister,utilityTool,gloveCovers,
     visualKit,equipmentDetails,colors,
-    clothMaterial:cloth,vestMaterial:vest,skinMaterial:skin,baseCloth:cloth.color.clone(),
+    clothMaterial:cloth,vestMaterial:vest,trouserMaterial:trousers,
+    packMaterial:packFabric,skinMaterial:skin,baseCloth:cloth.color.clone(),
     baseVest:vest.color.clone(),helmetBadge,appearanceSeed:0,
     personality:operatorMotionTraits(id),
     magazineInserted,magazineHand,medicalItem,weaponBody,droppedWeaponBody,
@@ -377,6 +383,27 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   for(const glove of r.gloveCovers)glove.visible=gear?.hands==='hands-gloves';
   applyOperatorVisualKit(r.visualKit,gear,identity,
     p.magazineCarryLocations,p.faceStyle,p.wardrobe);
+  // Independent fabric channels keep the upper garment, trousers, armor and
+  // pack textures separate while retaining the original authored pixel UVs.
+  const fabricChannels=[
+   ['top',r.clothMaterial],
+   ['trousers',r.trouserMaterial],
+   ['armor',r.vestMaterial],
+   ['pack',r.packMaterial]
+  ] as const;
+  r.colors.set(r.trouserMaterial,
+    (r.colors.get(r.clothMaterial)??r.baseCloth).clone());
+  r.colors.set(r.packMaterial,
+    (r.colors.get(r.vestMaterial)??r.baseVest).clone());
+  for(const [channel,material] of fabricChannels){
+   const pattern=p.wardrobe?.patterns[channel];
+   const map=pattern&&pattern!=='solid'?
+    wardrobePatternTexture(pattern,p.wardrobe?.palette??0):
+    operatorPixelTextures.get('fabric');
+   if(material.map!==map){material.map=map;material.needsUpdate=true;}
+   if(pattern&&pattern!=='solid')
+    r.colors.set(material,new THREE.Color(0xffffff));
+  }
   // Hair is seeded by the costume assembler and must join the same reversible
   // palette ledger used by replay, silhouette mode and injury desaturation.
   r.colors.set(r.visualKit.hairMaterial,r.visualKit.hairMaterial.color.clone());
