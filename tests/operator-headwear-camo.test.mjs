@@ -11,7 +11,7 @@ import {initialWardrobe,readWardrobe} from '../src/operator-wardrobe-data.ts';
 import {bareLabEquipment} from '../src/operator-lab-baseline.ts';
 import {selectWardrobeItem} from '../src/operator-wardrobe-unified.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
-import {HEADWEAR_SOLID_COLORS} from '../src/operator-headwear-colors.ts';
+import {HEADWEAR_SOLID_COLORS,headwearColorChoices} from '../src/operator-headwear-colors.ts';
 
 const pose=(kit,wardrobe)=>({
  x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
@@ -102,10 +102,11 @@ test('live pose swaps camo and solid without animation restoring gray or mutatin
    assert.equal(rig.visualKit.wardrobeHead.headwear[model].children[0].children[0].geometry,geo,
     'no silhouette mutation');
   }
-  const solid={...wardrobe,headwearCamo:undefined,headwearColor:'olive-drab'};
+  const solidId=headwearColorChoices(model)[0];
+  const solid={...wardrobe,headwearCamo:undefined,headwearColor:solidId};
   poseOperator(rig,pose(kit,solid),0);
   assert.equal(material.map,headwearDetailTexture(model),'solid construction atlas restored');
-  assert.equal(material.color.getHex(),HEADWEAR_SOLID_COLORS['olive-drab'].hex);
+  assert.equal(material.color.getHex(),HEADWEAR_SOLID_COLORS[solidId].hex);
  }
  rig.dispose();
 });
