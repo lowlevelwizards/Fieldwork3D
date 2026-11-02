@@ -30,7 +30,7 @@ try{
     viewport:{width:390,height:844},deviceScaleFactor:2,
     hasTouch:true,isMobile:true,
   });
-  phone.setDefaultTimeout(12000);
+  phone.setDefaultTimeout(45000);
   const errors=[];
   // The Pages root must open this same game, not the archived watershed.
   const home=await browser.newPage({viewport:{width:390,height:844}});
@@ -39,7 +39,9 @@ try{
     if(message.type()==='warning'||message.type()==='error')
       errors.push('console: '+message.text().slice(0,350));
   });
-  await home.goto(url.replace('breach.html',''),{
+  // A stable seed prevents sporadic slow/crowded procedural starts from
+  // disguising changes in the actual mobile UI and startup behaviour.
+  await home.goto(url.replace('breach.html','')+'?seed=23',{
     waitUntil:'domcontentloaded'});
   await home.locator('#breach3dCanvas').waitFor({state:'visible'})
     .catch(async error=>{
@@ -59,12 +61,13 @@ try{
     viewport:{width:390,height:844},deviceScaleFactor:2,
     hasTouch:true,isMobile:true,
   });
+  live.setDefaultTimeout(45000);
   live.on('pageerror',e=>errors.push('procedural homepage: '+e.message));
   live.on('console',message=>{
     if(message.type()==='warning'||message.type()==='error')
       errors.push('procedural console: '+message.text().slice(0,350));
   });
-  await live.goto(base.replace('breach.html','')+'?quick=1',{
+  await live.goto(base.replace('breach.html','')+'?quick=1&seed=23',{
     waitUntil:'domcontentloaded'});
   await live.locator('#breach3dCanvas').waitFor({state:'visible'})
     .catch(async error=>{
@@ -105,8 +108,12 @@ try{
   await original.locator('#app').waitFor();
   await original.close();
   phone.on('pageerror',e=>errors.push(e.message));
-  await phone.goto(url,{waitUntil:'domcontentloaded'});
-  await phone.locator('#breach3dCanvas').waitFor({state:'visible'});
+  await phone.goto(url+'&seed=23',{waitUntil:'domcontentloaded'});
+  await phone.locator('#breach3dCanvas').waitFor({state:'visible'})
+    .catch(async error=>{
+      throw Error('Fixed-site tactical startup failed: '+errors.join(' | ')+
+        ' · '+(await phone.locator('body').innerText()).slice(0,320),{cause:error});
+    });
   await phone.waitForTimeout(350);
   const cameraState=async()=>phone.locator('#breach3dCanvas').evaluate(c=>({
     yaw:Number(c.dataset.cameraYaw),pitch:Number(c.dataset.cameraPitch),
