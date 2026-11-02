@@ -23,7 +23,7 @@ export type OperatorVisualKit={
  packHarness:THREE.Group;
  cargoPockets:THREE.Mesh[];bootCuffs:THREE.Mesh[];sleeveCuffs:THREE.Mesh[];
  rolledForearms:THREE.Mesh[];rolledCuffs:THREE.Mesh[];kneePanels:THREE.Mesh[];
- eyeMarks:THREE.Mesh[];hairMaterial:Material;
+ eyeMarks:THREE.Mesh[];hairMaterial:Material;patchMaterial:Material;patches:THREE.Mesh[];
  magazines:Record<'rig'|'belt'|'pocket',THREE.Mesh[]>;
 };
 const part=(parent:THREE.Object3D,m:THREE.Material,
@@ -41,6 +41,8 @@ export function createOperatorVisualKit(
  const trim=new THREE.MeshStandardMaterial({color:0x777d6d,roughness:.94,flatShading:true});
  const seam=new THREE.MeshStandardMaterial({color:0x303b36,roughness:.95,flatShading:true});
  const hairMaterial=new THREE.MeshStandardMaterial({color:0x302d29,roughness:1,flatShading:true});
+ const patchMaterial=new THREE.MeshStandardMaterial({color:0x87775f,
+   roughness:.96,flatShading:true});
  // +X is forward. The head is intentionally chunky; no anatomical joint
  // translations or scale changes occur in this visual pass.
  const hair=bundle(head);
@@ -158,6 +160,7 @@ export function createOperatorVisualKit(
  }
  const cargoPockets:THREE.Mesh[]=[],bootCuffs:THREE.Mesh[]=[],sleeveCuffs:THREE.Mesh[]=[];
  const rolledForearms:THREE.Mesh[]=[],rolledCuffs:THREE.Mesh[]=[],kneePanels:THREE.Mesh[]=[];
+ const patches:THREE.Mesh[]=[];
  for(const leg of legs){
   // Thin, leg-mounted pieces follow the solved IK. No additional leg length.
   cargoPockets.push(part(leg.upper,cloth,0,0.08,3.0,3.3,.29,1.45));
@@ -165,6 +168,9 @@ export function createOperatorVisualKit(
   if(leg.shoe)bootCuffs.push(part(leg.shoe,dark,-1.55,1.5,0,4.1,1.55,5.0));
  }
  for(const arm of arms){
+  // Low-contrast cloth identifier sewn onto the upper arm's outward face.
+  // Its parent is the articulated limb, not an independently floating mesh.
+  patches.push(part(arm.upper,patchMaterial,0,.09,2.12,1.5,.15,1.05));
   sleeveCuffs.push(part(arm.lower,trim,0,-.36,0,3.65,.13,3.75));
   // A rolled sleeve exposes the outer forearm as geometry above its cloth
   // bone. The shared IK still positions both arms exactly as before.
@@ -197,7 +203,7 @@ export function createOperatorVisualKit(
  return {helmet,cap,hair,jacket,lightShirt,softArmor,plateCarrier,chestRig,
   fieldWebbing,belt,dayPack,fieldPack,packHarness,cargoPockets,bootCuffs,sleeveCuffs,
   rolledForearms,rolledCuffs,kneePanels,eyeMarks,hairMaterial,magazines,
-  haircuts,graphicMarks};
+  haircuts,graphicMarks,patchMaterial,patches};
 }
 const DEFAULT:Slots={
  primary:'primary-carbine',head:'head-helmet',armor:'armor-soft',
@@ -212,7 +218,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  v.helmet.visible=s.head==='head-helmet';
  v.cap.visible=s.head==='head-cap';
  v.hair.visible=s.head==='head-none';
- v.haircuts.forEach((h,i)=>{h.visible=i===(seed>>>2)%3;});
+ v.haircuts.forEach((h,i)=>{h.visible=i===seed%3;});
  v.eyeMarks.forEach(m=>{m.visible=faceStyle==='quiet';});
  v.graphicMarks.visible=faceStyle==='graphic';
  v.softArmor.visible=s.armor==='armor-soft';
@@ -238,8 +244,12 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  for(const mesh of v.rolledForearms)mesh.visible=s.top==='top-light';
  for(const mesh of v.rolledCuffs)mesh.visible=s.top==='top-light';
  for(const mesh of v.kneePanels)mesh.visible=s.legs==='legs-field';
+ // A curated cloth/hair palette, not fluorescent operator identifiers.
  const hairs=[0x332e29,0x635244,0x2f3530,0x9b8060,0x4d4136,0x6c6255];
- v.hairMaterial.color.setHex(hairs[(seed>>>5)%hairs.length]);
+ const patchColors=[0x88735b,0x52655b,0x8d8474,0x61717b,0x786f50,0x847265];
+ v.hairMaterial.color.setHex(hairs[seed%hairs.length]);
+ v.patchMaterial.color.setHex(patchColors[seed%patchColors.length]);
+ for(const patch of v.patches)patch.visible=s.top==='top-uniform';
  const magShape=s.primary==='primary-smg'?
   {x:.73,y:1.17,z:.86}:s.primary==='primary-rifle'?
   {x:1.1,y:1.06,z:1.04}:

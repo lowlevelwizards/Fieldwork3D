@@ -282,11 +282,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.appearanceSeed=identity;
     const clothPalette=[0x6f9185,0x80826b,0x8e846e,0x687c8d,
       0x798a79,0x92816a,0x65867c,0x8a8872];
-    const vestPalette=[0x43504b,0x4c5547,0x4b534e,0x4a5551];
+    const vestPalette=[0x43504b,0x545a47,0x535550,0x46595a,
+      0x5a5544,0x415a51,0x636056,0x465354];
     r.colors.set(r.clothMaterial,identity===0?r.baseCloth.clone():
       new THREE.Color(clothPalette[identity%clothPalette.length]));
     r.colors.set(r.vestMaterial,identity===0?r.baseVest.clone():
-      new THREE.Color(vestPalette[(identity>>>3)%vestPalette.length]));
+      new THREE.Color(vestPalette[(identity-1)%vestPalette.length]));
     // Individual complexion variation affects appearance only.
     const complexion=[0xb29b83,0x8b6754,0xc4aa86,0x6e4938,
       0xaa7c63,0xd3b698,0x98765c,0x533a32];
@@ -353,6 +354,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Hair is seeded by the costume assembler and must join the same reversible
   // palette ledger used by replay, silhouette mode and injury desaturation.
   r.colors.set(r.visualKit.hairMaterial,r.visualKit.hairMaterial.color.clone());
+  r.colors.set(r.visualKit.patchMaterial,r.visualKit.patchMaterial.color.clone());
   updateOperatorEquipmentDetails(r.equipmentDetails,gear);
   // Retain costume identity, but subdued incapacitated bodies blend with
   // grounded blood and don't need floating status text. Reversible on seek.
