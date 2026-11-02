@@ -2006,6 +2006,26 @@ function paths(){
       draw.setLineDash([8,4]);draw.stroke();draw.setLineDash([]);
       draw.globalAlpha=1;
     }
+    // Selected WATCH instructions remain readable throughout the route they
+    // govern, without cluttering unselected operators' plans.
+    if(a.id===selected){
+      let watching=false,previous=a.p;
+      for(const node of plan){
+        if((node.kind==='move'||node.kind==='door')&&watching){
+          const course=displayRouteCache.get(previous,node.p,state.intel,
+            state.phase==='planning').points;
+          draw.save();draw.strokeStyle='#e6c990';draw.globalAlpha=.73;
+          draw.lineWidth=3.2;draw.setLineDash([3,6]);draw.beginPath();
+          draw.moveTo(previous.x,previous.y);
+          for(const point of course)draw.lineTo(point.x,point.y);
+          draw.stroke();draw.restore();
+        }
+        if(node.kind==='move'||node.kind==='door'||node.kind==='pie')
+          previous=node.p;
+        if(node.aimMode==='track')watching=true;
+        else if(node.aimMode==='free'||node.aimMode==='fixed')watching=false;
+      }
+    }
     for(let i=0;i<plan.length;i++){
       const n=plan[i],selectedNow=a.id===selected&&selectedNode===n.id;
       const point=selectedNow&&draggingNode&&!draggingWatchTarget&&n.kind!=='flash'?
@@ -2099,7 +2119,7 @@ function renderProjectedPlans(){
   for(const a of team(state)){
     if(a.health<=0)continue;
     const color=colorFor(a.id);
-    let previous=a.p;
+    let previous=a.p,watching=false;
     for(const n of a.plan){
       const cachedRoute=n.kind==='move'||n.kind==='door'?
         displayRouteCache.get(previous,n.p,state.intel,state.phase==='planning'):null;
@@ -2114,10 +2134,11 @@ function renderProjectedPlans(){
         }
         draw.strokeStyle=color;
         draw.globalAlpha=a.id===selected?.94:.50;
-        draw.lineWidth=n.kind==='pie'?3:2.4;
+        draw.lineWidth=n.kind==='pie'?3:watching&&a.id===selected?3.6:2.4;
         const narrowOnly=n.kind==='move'&&!!cachedRoute?.narrowOnly;
         // Narrow routes use a finer dash without another overlay.
         draw.setLineDash(n.kind==='pie'?[3,3]:
+          watching&&a.id===selected?[3,5]:
           narrowOnly?[2,4]:[7,4]);
         draw.stroke();draw.setLineDash([]);draw.globalAlpha=1;
       }
@@ -2211,6 +2232,8 @@ function renderProjectedPlans(){
           point.x+12,point.y+18);
       }
       if(n.kind==='move'||n.kind==='door'||n.kind==='pie')previous=n.p;
+      if(n.aimMode==='track')watching=true;
+      else if(n.aimMode==='free'||n.aimMode==='fixed')watching=false;
     }
     const pawn=worldToScreen(a.p,32),ground=worldToScreen(a.p,1);
     const squadIndex=team(state).findIndex(member=>member.id===a.id);
