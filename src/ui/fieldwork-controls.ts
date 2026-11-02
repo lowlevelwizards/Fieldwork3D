@@ -19,3 +19,53 @@ export function fieldworkSelectField(
  select.addEventListener('change',()=>onChange(select.value));
  row.append(name,select);return row;
 }
+
+/** Accessible, non-blocking confirmation for destructive scene transitions. */
+export function confirmFieldworkAction(options:{
+ title:string;message:string;confirmLabel:string;danger?:boolean;
+}):Promise<boolean>{
+ return new Promise(resolve=>{
+  const backdrop=document.createElement('div');
+  backdrop.className='fw-confirm-backdrop';
+  const dialog=document.createElement('section');
+  dialog.className='fw-confirm-dialog fw-sheet';
+  dialog.setAttribute('role','alertdialog');
+  dialog.setAttribute('aria-modal','true');
+  const title=document.createElement('h2');
+  title.textContent=options.title;
+  const description=document.createElement('p');
+  description.textContent=options.message;
+  const actions=document.createElement('div');
+  actions.className='fw-confirm-actions';
+  const cancel=document.createElement('button');
+  cancel.type='button';cancel.className='fw-button';
+  cancel.textContent='CANCEL';
+  const confirm=document.createElement('button');
+  confirm.type='button';confirm.className='fw-button';
+  confirm.textContent=options.confirmLabel;
+  if(options.danger)confirm.dataset.danger='';
+  else confirm.dataset.primary='';
+  const prior=document.activeElement instanceof HTMLElement?document.activeElement:null;
+  const finish=(result:boolean)=>{
+   backdrop.remove();
+   prior?.focus({preventScroll:true});
+   resolve(result);
+  };
+  cancel.addEventListener('click',()=>finish(false));
+  confirm.addEventListener('click',()=>finish(true));
+  backdrop.addEventListener('click',event=>{
+   if(event.target===backdrop)finish(false);
+  });
+  backdrop.addEventListener('keydown',event=>{
+   if(event.key==='Escape'){event.preventDefault();finish(false);}
+   if(event.key==='Tab'){
+    event.preventDefault();
+    (document.activeElement===cancel?confirm:cancel).focus();
+   }
+  });
+  actions.append(cancel,confirm);
+  dialog.append(title,description,actions);
+  backdrop.append(dialog);document.body.append(backdrop);
+  cancel.focus({preventScroll:true});
+ });
+}
