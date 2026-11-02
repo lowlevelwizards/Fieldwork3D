@@ -7,7 +7,7 @@ import {LOADOUT_SLOTS,itemsForSlot,itemDefinition} from './equipment-catalog.ts'
 import {totalEquipmentMass,loadMobilityDescription,loadMovementScale,
  type LoadoutSlot} from './equipment-loadouts.ts';
 import {CampaignKitPreview} from './equipment-preview.ts';
-import {initialWardrobe,readWardrobe,resolvedWardrobe,
+import {readWardrobe,resolvedWardrobe,
  setWardrobeStyle,setWardrobePattern,WARDROBE_SLOTS,WARDROBE_PATTERNS,
  wardrobeItemsForSlot,type WardrobeOptions,type WardrobeSlot}
  from './operator-wardrobe-data.ts';
