@@ -1,0 +1,85 @@
+/* Fieldwork UX01 — shared visual primitives. Source of truth for new UI.
+   Legacy selectors may still apply; migrate screen by screen, without changing simulation. */
+:root {
+  --fw-bg:#111d1c;
+  --fw-panel:#223631;
+  --fw-panel-raised:#2d423c;
+  --fw-panel-deep:#172825;
+  --fw-panel-border:#61796c;
+  --fw-text:#e6e8da;
+  --fw-text-muted:#afc0b1;
+  --fw-text-faint:#8b9f93;
+  --fw-sage:#a7b995;
+  --fw-mint:#9fccc4;
+  --fw-brass:#cfb184;
+  --fw-warning:#cc907d;
+  --fw-focus:#f1cd97;
+  --fw-radius-xs:5px;
+  --fw-radius-sm:8px;
+  --fw-radius-md:12px;
+  --fw-radius-lg:16px;
+  --fw-control-min:44px;
+  --fw-space-1:4px;
+  --fw-space-2:8px;
+  --fw-space-3:12px;
+  --fw-space-4:16px;
+  --fw-space-5:24px;
+  --fw-fast:110ms;
+  --fw-medium:170ms;
+  --fw-ease:cubic-bezier(.2,.8,.2,1);
+  --fw-safe-top:env(safe-area-inset-top,0px);
+  --fw-safe-bottom:env(safe-area-inset-bottom,0px);
+}
+/* Explicit UI primitives, safe to share across game and workbench screens. */
+.fw-button, .fw-icon-button, .fw-segment {
+  appearance:none;
+  -webkit-appearance:none;
+  border:1px solid var(--fw-panel-border);
+  background:var(--fw-panel-raised);
+  color:var(--fw-text);
+  border-radius:var(--fw-radius-sm);
+  min-height:var(--fw-control-min);
+  font:600 13px/1.2 "IBM Plex Sans",system-ui,sans-serif;
+  touch-action:manipulation;
+  cursor:pointer;
+  transition:background-color var(--fw-fast) ease,border-color var(--fw-fast) ease,
+    color var(--fw-fast) ease,transform var(--fw-fast) var(--fw-ease);
+}
+.fw-button{padding:9px 13px}
+.fw-icon-button{display:inline-grid;place-items:center;min-width:var(--fw-control-min);padding:8px}
+.fw-button[data-primary],.fw-button.is-primary {
+  background:var(--fw-sage);border-color:#c0ceb1;color:var(--fw-bg);
+}
+.fw-button[data-danger]{border-color:var(--fw-warning);color:#f0b7a6}
+.fw-button:active,.fw-icon-button:active,.fw-segment:active{transform:scale(.97)}
+.fw-button:focus-visible,.fw-icon-button:focus-visible,.fw-segment:focus-visible {
+  outline:2px solid var(--fw-focus);outline-offset:2px;
+}
+.fw-button:disabled,.fw-icon-button:disabled,.fw-segment:disabled{
+  opacity:.5;cursor:not-allowed;transform:none;
+}
+.fw-segment[aria-pressed="true"],.fw-segment[aria-selected="true"]{
+  color:var(--fw-bg);background:var(--fw-sage);border-color:var(--fw-sage);
+}
+.fw-sheet{
+  border:1px solid var(--fw-panel-border);
+  background:var(--fw-panel-deep);
+  border-radius:var(--fw-radius-lg);
+  color:var(--fw-text);
+  box-shadow:0 14px 40px #020b0b70;
+}
+.fw-card{background:var(--fw-panel);border:1px solid var(--fw-panel-border);
+  border-radius:var(--fw-radius-md)}
+.fw-muted{color:var(--fw-text-muted)}
+.fw-overline{font-size:11px;letter-spacing:.12em;color:var(--fw-text-muted);
+  font-weight:650}
+.fw-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;
+  background:var(--fw-panel-raised);border-radius:999px;
+  color:var(--fw-text-muted);font-size:11px}
+.fw-screen-reader-only{position:absolute!important;width:1px;height:1px;
+  padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;
+  border:0}
+@media(prefers-reduced-motion:reduce){
+  .fw-button,.fw-icon-button,.fw-segment{transition:none!important}
+  .fw-button:active,.fw-icon-button:active,.fw-segment:active{transform:none}
+}
