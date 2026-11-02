@@ -55,6 +55,7 @@ export class CampaignScreen{
  readonly root=node('section','campaign-screen');
  private readonly handlers:CampaignHandlers;
  private armoryOperatorId:string|null=null;
+ private homeTab:'overview'|'personnel'|'contracts'|'logistics'|'chronicle'='overview';
  private preview:CampaignKitPreview|null=null;
  private workbench:WeaponWorkbenchPreview|null=null;
  private weaponView=false;
@@ -190,11 +191,16 @@ export class CampaignScreen{
    roster.append(card);
   }
   personnel.append(roster);
+  const logistics=node('section','campaign-section');
+  logistics.append(node('h2','','SUPPLIES & LOGISTICS'));
+  logistics.append(node('p','campaign-note',
+   'STOCK: '+c.supplies.ammo+' ROUNDS · '+c.supplies.medical+
+   ' MEDICAL KITS · '+c.supplies.flash+' FLASHBANGS'));
   const purchases=node('div','campaign-purchases');
   purchases.append(button('BUY 60 ROUNDS · 120 CR',this.handlers.buyAmmo),
    button('BUY MEDICAL KIT · 170 CR',this.handlers.buyMedical),
    button('BUY 2 FLASHBANGS · 150 CR',this.handlers.buyFlash));
-  personnel.append(purchases);
+  logistics.append(purchases);
   const inventory=node('div','campaign-armory');
   inventory.append(node('h2','','FIELD ARMORY'));
   for(const weapon of ['carbine','smg','rifle','shotgun'] as const){
@@ -204,7 +210,7 @@ export class CampaignScreen{
    buy.disabled=c.funds<price||!!c.activeContractId;
    inventory.append(buy);
   }
-  personnel.append(inventory);
+  logistics.append(inventory);
   const recruit=button('RECRUIT OPERATOR · 450 CR',this.handlers.recruit);
   recruit.disabled=c.operators.length>=32||c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').length>=8||c.funds<450||!!c.activeContractId;
   personnel.append(recruit);
@@ -253,13 +259,67 @@ export class CampaignScreen{
    for(const o of retirees)chronicle.append(node('p','campaign-report',
     o.callsign+' · '+o.missions+' DEPLOYMENTS · '+o.successful+' SUCCESSES · '+o.status.toUpperCase()));
   }
-  main.append(chronicle);
+  grid.append(chronicle);
   const footer=node('div','campaign-footer');
   footer.append(button('EXPORT CAMPAIGN SAVE',this.handlers.exportSave));
   footer.append(node('p','campaign-note','IMPORT CAMPAIGN SAVE'));
   footer.append(this.importPicker());
   footer.append(button('QUICK PLAY (NO CAMPAIGN PROGRESS)',this.handlers.quickPlay));
-  main.append(footer);this.root.append(main);
+  const overview=node('section','campaign-section campaign-overview');
+  overview.append(node('h2','','UNIT OVERVIEW'));
+  const stats=node('div','campaign-overview-stats');
+  const available=c.operators.filter(o=>o.status==='available'||o.status==='reserve').length;
+  for(const [value,label] of [
+   [String(available),'AVAILABLE'],[String(c.squadIds.length),'ASSIGNED'],
+   [String(c.contracts.filter(k=>k.status==='available'&&k.deadline>=c.day).length),'CONTRACTS']
+  ]){
+   const stat=node('div','campaign-stat');
+   stat.append(node('strong','',value),node('span','',label));stats.append(stat);
+  }
+  overview.append(stats);
+  overview.append(node('p','campaign-note',
+   'SUPPLIES · '+c.supplies.ammo+' ROUNDS · '+c.supplies.medical+
+   ' MEDICAL KITS · '+c.supplies.flash+' FLASHBANGS'));
+  if(accepted)overview.append(button('CONTINUE · '+accepted.title.toUpperCase(),
+   this.handlers.resumeContract,'campaign-primary'));
+  const shortcuts=node('div','campaign-overview-actions');
+  for(const [tab,label] of [
+   ['contracts','VIEW CONTRACTS'],['personnel','MANAGE PERSONNEL'],
+   ['logistics','SUPPLIES & ARMORY']
+  ] as const){
+   shortcuts.append(button(label,()=>{
+    this.homeTab=tab;this.root.scrollTop=0;this.home(c);
+   }));
+  }
+  overview.append(shortcuts,footer);
+  grid.append(overview,logistics);
+  const sections={
+   overview,personnel,contracts:jobs,logistics,chronicle
+  } as const;
+  const nav=node('nav','campaign-tabs');
+  nav.setAttribute('role','tablist');
+  nav.setAttribute('aria-label','Operations Room sections');
+  for(const [tab,label] of [
+   ['overview','Overview'],['personnel','Personnel'],
+   ['contracts','Contracts'],['logistics','Logistics'],
+   ['chronicle','Chronicle']
+  ] as const){
+   const panel=sections[tab];
+   panel.id='campaign-panel-'+tab;panel.setAttribute('role','tabpanel');
+   panel.hidden=this.homeTab!==tab;
+   const trigger=button(label,()=>{
+    this.homeTab=tab;this.root.scrollTop=0;this.home(c);
+   },'campaign-tab');
+   trigger.id='campaign-tab-'+tab;
+   trigger.setAttribute('role','tab');
+   trigger.setAttribute('aria-selected',String(this.homeTab===tab));
+   trigger.setAttribute('aria-controls',panel.id);
+   trigger.tabIndex=this.homeTab===tab?0:-1;
+   panel.setAttribute('aria-labelledby',trigger.id);
+   nav.append(trigger);
+  }
+  main.insertBefore(nav,grid);
+  this.root.append(main);
  }
  private armory(c:CampaignState,id:string){
   this.disposePreview();
