@@ -455,7 +455,7 @@ export class TacticalScene3D{
     // No elevated parallax planes and no N separate draw calls per room.
     this.exteriorKnownFog.geometry.dispose();
     const positions:number[]=[],uvs:number[]=[],indices:number[]=[];
-    for(const rect of exteriorKnownFogRects(site)){
+    for(const rect of site?exteriorKnownFogRects(site):[]){
       const corners=[
         {x:rect.x,y:rect.y},
         {x:rect.x,y:rect.y+rect.h},
