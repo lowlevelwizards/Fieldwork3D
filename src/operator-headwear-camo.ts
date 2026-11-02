@@ -5,6 +5,13 @@
  */
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 export const HEADWEAR_CAMO_SIZE=32;
+/** Print detail is independent from the one-texel-per-unit structural stitching atlas.
+ * 1x for large historic fields; 2x for directional, digital and multiscale cloth.
+ * These are fabric pixels per model unit, not a global model-geometry rescale.
+ */
+export const HEADWEAR_CAMO_DENSITY:Readonly<Record<HeadwearCamoId,number>>={
+ 'm81-woodland':1,'three-color-desert':1,'tiger-stripe':2,ucp:2,multicam:2
+};
 export const HEADWEAR_CAMO_IDS=[
  'm81-woodland','three-color-desert','tiger-stripe','ucp','multicam'
 ] as const;
@@ -63,19 +70,23 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   description:'Broken dark tapered directional streaks over green, olive and tan fields',
   colors:[[124,135,91],[77,101,70],[147,122,84],[42,55,43]],
   targetCoverage:[.32,.25,.16,.27],
-  motifs:[
-   p(1,-4,3,9,2,17,6,27,4,35,7,35,10,23,8,13,10,3,7,-4,8),
-   p(2,-4,15,9,12,18,14,31,11,35,13,35,17,23,17,14,19,4,17,-4,19),
-   p(1,-4,25,10,22,19,24,34,20,35,24,24,27,12,26,-4,30),
-   p(3,-4,1,6,1,16,3,24,2,35,4,35,5,23,4,12,5,2,3,-4,4),
-   p(3,-4,11,7,10,14,12,25,10,35,12,35,13,26,11,16,13,7,11,-4,12),
-   p(3,-4,22,7,20,17,22,26,19,35,20,35,21,24,22,14,24,5,23,-4,24),
-   p(3,-4,31,7,30,15,31,25,28,35,29,35,30,24,31,14,33,3,32,-4,33)
+    motifs:[
+   // Broken tapered strokes are NOT equally spaced horizontal bands. Each
+   // crosses the tile edges seamlessly; body panels choose their own axis.
+   p(1,-5,0,4,1,12,4,18,8,21,10,17,11,10,7,3,5,-5,6),
+   p(2,13,-2,22,1,28,4,35,6,35,11,27,9,23,6,17,6,12,2),
+   p(1,-4,15,5,12,12,15,17,20,24,22,28,20,34,19,35,24,25,27,17,24,11,20,3,18,-4,21),
+   p(2,0,26,7,23,14,25,19,28,25,30,34,27,35,32,24,34,16,31,10,29,3,30,-4,33),
+   p(3,-5,2,5,4,12,7,17,8,20,10,16,10,12,9,6,8,-5,7),
+   p(3,9,-3,15,0,20,3,24,4,23,6,17,5,13,3,8,1),
+   p(3,24,8,29,9,35,12,35,15,29,13,25,12,20,12,17,11),
+   p(3,-4,18,3,16,11,18,18,23,25,24,29,23,35,22,35,24,26,26,18,25,10,21,2,20,-4,22),
+   p(3,7,27,12,27,16,30,23,32,29,30,35,31,35,33,28,33,20,34,13,32)
   ]
  },
  ucp:{
   label:'UCP',
-  description:'Pale, low-contrast, square-step digital clusters in gray, sage and sand',
+  description:'Dense 1–3 pixel stair-steps nested inside subdued gray, sage and sand fields',
   colors:[[166,171,158],[136,146,134],[188,188,169]],
   targetCoverage:[.45,.28,.27],
   motifs:[
@@ -94,9 +105,9 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  },
  multicam:{
   label:'MULTICAM',
-  description:'Multiscale olive and sand organic islands with restrained dark accents',
-  colors:[[171,158,117],[206,189,149],[109,126,88],[129,102,74],[67,84,64]],
-  targetCoverage:[.22,.23,.29,.21,.05],
+  description:'Large muted fields, medium brown/green islands, dark hooks and tiny pale cream chips',
+  colors:[[171,158,117],[206,189,149],[109,126,88],[129,102,74],[67,84,64],[228,213,177],[151,142,107]],
+  targetCoverage:[.22,.23,.25,.17,.05,.04,.04],
   motifs:[
    p(1,-4,1,7,-2,13,1,10,5,4,8,-4,6),
    p(1,18,13,27,11,35,17,34,22,25,23,20,20),
@@ -111,7 +122,17 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
    p(4,29,24,31,23,34,27,32,30,29,28),
    p(4,5,5,7,3,9,5,8,7,6,8),
    p(1,16,21,20,19,22,22,21,24,18,25),
-   p(2,1,28,4,26,7,28,6,30,3,31)
+   p(2,1,28,4,26,7,28,6,30,3,31),
+   // Tiny cream glints and dry sage flecks are identity marks, not weathering.
+   p(5,7,1,9,1,10,2,9,3,7,3),p(5,26,5,29,5,28,7,26,7),
+   p(5,11,18,13,17,15,18,14,20,12,20),
+   p(5,1,29,3,28,5,29,5,30,2,31),
+   p(5,22,28,25,27,26,29,23,30),
+   p(5,18,10,20,9,22,10,20,12),
+   p(6,2,5,5,4,7,5,6,6,3,7),
+   p(6,21,2,24,1,27,3,24,5),
+   p(6,8,24,10,22,12,23,11,25),
+   p(6,28,15,31,14,33,15,32,17,29,17)
   ]
  }
 };
@@ -156,6 +177,16 @@ export function headwearCamoIndices(id:HeadwearCamoId):Uint8Array{
     if(!marked&&inPolygon(px-dx,py-dy,polygon))marked=true;
    }
    if(marked)ink=tone;
+  }
+  if(id==='ucp'){
+   // Restrained interlocking digital bits, most 1–3 source pixels wide.
+   // Deterministic periodic arithmetic (no RNG, blur or subpixel marks).
+   const cellX=Math.floor(x/3),cellY=Math.floor(y/3);
+   const gate=(cellX*11+cellY*7+Math.floor(x/8)*3+Math.floor(y/8)*5)%13;
+   if(gate===1||gate===5||gate===9){
+    const corner=((x%3)+(2*(y%3))+(cellX%2))%5;
+    if(corner<3)ink=(ink+1+(cellY%2))%3;
+   }
   }
   data[y*32+x]=ink;
  }
