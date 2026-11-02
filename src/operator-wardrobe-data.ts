@@ -153,7 +153,8 @@ export type WardrobePattern=typeof WARDROBE_PATTERNS[number];
 export type WardrobeOptions={
  version:1;styles:Partial<Record<WardrobeSlot,string>>;
  patterns:Partial<Record<'top'|'trousers'|'armor'|'gear'|'pack'|'head',WardrobePattern>>;
- palette:number;headwearColor?:HeadwearSolidColorId;headwearCamo?:HeadwearCamoId;rolledSleeves:boolean;
+ palette:number;headwearColor?:HeadwearSolidColorId;headwearCamo?:HeadwearCamoId;
+ headwearCamoRoll?:number;rolledSleeves:boolean;
  accessories:WardrobeAccessoryConfiguration;
  mounts:{medical?:string;utility?:string;magazineOrder:'left-right'|'right-left'};
 };
@@ -191,6 +192,8 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
   result.palette=v.palette!;
  if(isHeadwearSolidColorId(v.headwearColor))result.headwearColor=v.headwearColor;
  if(isHeadwearCamoId(v.headwearCamo))result.headwearCamo=v.headwearCamo;
+ if(Number.isInteger(v.headwearCamoRoll)&&v.headwearCamoRoll!>=0&&v.headwearCamoRoll!<4096)
+  result.headwearCamoRoll=v.headwearCamoRoll;
  result.rolledSleeves=v.rolledSleeves===true;
  result.accessories=readWardrobeAccessories(v.accessories);
  if(v.mounts&&typeof v.mounts==='object'){

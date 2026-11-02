@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import {readFileSync} from 'node:fs';
 import {HEADWEAR_CAMO_IDS,HEADWEAR_CAMO_RECIPES,HEADWEAR_CAMO_SIZE,HEADWEAR_CAMO_DENSITY,
  headwearCamoChoices,headwearCamoIndices,headwearCamoCoverage,
- headwearCamoPixels,resolvedHeadwearCamo} from '../src/operator-headwear-camo.ts';
+ headwearCamoPixels,resolvedHeadwearCamo,headwearCamoPlacement,
+ headwearCamoFrontBrownFraction,nextHeadwearCamoRoll} from '../src/operator-headwear-camo.ts';
 import {headwearCamoTexture,headwearDetailTexture,headwearFinishTexture}
  from '../src/operator-headwear-materials.ts';
 import {initialWardrobe,readWardrobe} from '../src/operator-wardrobe-data.ts';
@@ -94,10 +95,12 @@ test('live pose swaps camo and solid without animation restoring gray or mutatin
   for(const id of headwearCamoChoices(model)){
    const selection={...wardrobe,headwearCamo:id};
    poseOperator(rig,pose(kit,selection),0);
-   assert.equal(material.map,headwearCamoTexture(model,id));
+   assert.equal(material.map,headwearCamoTexture(model,id,
+    headwearCamoPlacement('rook','headwear',id,0)));
    assert.equal(material.color.getHex(),0xffffff,model+':'+id);
    poseOperator(rig,pose(kit,selection),0);
-   assert.equal(material.map,headwearCamoTexture(model,id),'repeated pose reuses atlas');
+   assert.equal(material.map,headwearCamoTexture(model,id,
+    headwearCamoPlacement('rook','headwear',id,0)),'repeated pose reuses atlas');
    assert.equal(material.roughnessMap,finish,'physical map preserved');
    assert.equal(rig.visualKit.wardrobeHead.headwear[model].children[0].children[0].geometry,geo,
     'no silhouette mutation');
@@ -137,4 +140,57 @@ test('pattern family density and pigment scales preserve hierarchy',()=>{
  for(let y=0;y<32;y++)for(let x=1;x<32;x++)
   if(pixels[y*32+x]!==pixels[y*32+x-1])transitions++;
  assert.ok(transitions>100,'UCP must read as fine stair-step digital print');
+});
+
+test('operator-specific print phases are stable, change on reroll, and keep print density',()=>{
+ const operators=['rook','moss','ash','vale','operator-3','operator-4'];
+ for(const id of HEADWEAR_CAMO_IDS){
+  const phases=operators.map(operator=>headwearCamoPlacement(operator,'headwear',id));
+  assert.deepEqual(phases[0],headwearCamoPlacement('rook','headwear',id));
+  assert.ok(new Set(phases.map(p=>p.offsetX+':'+p.offsetY)).size>=4,id+' squad variation');
+  for(const phase of phases){
+   assert.ok(Number.isInteger(phase.offsetX)&&phase.offsetX>=0&&phase.offsetX<32);
+   assert.ok(Number.isInteger(phase.offsetY)&&phase.offsetY>=0&&phase.offsetY<32);
+   if(id==='m81-woodland')
+    assert.ok(headwearCamoFrontBrownFraction(phase)<=.34,
+     'woodland forward panel must not be brown dominated');
+  }
+  const reroll=headwearCamoPlacement('rook','headwear',id,1);
+  assert.notDeepEqual(phases[0],reroll,id+' reroll changes crop');
+  const same=headwearCamoTexture('boonie',id,phases[0]);
+  assert.equal(same,headwearCamoTexture('boonie',id,phases[0]),'cache equal phases');
+  const changed=headwearCamoTexture('boonie',id,reroll);
+  assert.notEqual(same,changed,'independent texture phase');
+  assert.equal(changed.channel,1,'must retain fabric UV1 channel');
+  assert.equal(HEADWEAR_CAMO_DENSITY[id],id==='ucp'||id==='tiger-stripe'||id==='multicam'?2:1);
+ }
+ assert.equal(nextHeadwearCamoRoll(0),1);
+ assert.equal(nextHeadwearCamoRoll(4095),0);
+});
+test('reroll persists in wardrobe recipes and flows through live rig pose',()=>{
+ const saved=readWardrobe({...initialWardrobe(),headwearCamo:'m81-woodland',headwearCamoRoll:17});
+ assert.equal(saved.headwearCamoRoll,17);
+ assert.equal(readWardrobe({...saved,headwearCamoRoll:-8}).headwearCamoRoll,undefined);
+ assert.equal(readWardrobe({...saved,headwearCamoRoll:100000}).headwearCamoRoll,undefined);
+ const rig=createOperatorRig('moss','blue');
+ const {kit,wardrobe}=selectWardrobeItem(bareLabEquipment(),saved,'headwear','boonie');
+ const material=rig.visualKit.wardrobeHead.headwearMaterials.boonie;
+ const phase=headwearCamoPlacement('moss','headwear','m81-woodland',17);
+ poseOperator(rig,pose(kit,wardrobe),0);
+ assert.equal(material.map,headwearCamoTexture('boonie','m81-woodland',phase));
+ poseOperator(rig,pose(kit,{...wardrobe,headwearCamoRoll:18}),0);
+ assert.equal(material.map,headwearCamoTexture('boonie','m81-woodland',
+  headwearCamoPlacement('moss','headwear','m81-woodland',18)));
+ rig.dispose();
+});
+test('the Lab exposes a dedicated accessible reroll without changing the canonical artwork',()=>{
+ const html=readFileSync(new URL('../operator-lab.html',import.meta.url),'utf8');
+ const lab=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
+ assert.match(html,/id="headwearCamoReroll"/);
+ assert.match(lab,/nextHeadwearCamoRoll/);
+ assert.match(lab,/headwearCamoRoll:selected===id/);
+ assert.match(lab,/headwearCamoRoll:nextHeadwearCamoRoll/);
+ const coverage=headwearCamoCoverage('m81-woodland');
+ assert.ok(coverage[0]+coverage[2]>.65,'M81 must be green-forward');
+ assert.ok(coverage[1]<.28,'M81 brown secondary only');
 });

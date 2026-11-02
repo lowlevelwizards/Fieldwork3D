@@ -14,7 +14,7 @@
 import * as THREE from 'three';
 import {PIXEL_WORLD_SIZE} from './rendering/pixel-recipes.ts';
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
-import {headwearCamoPixels,HEADWEAR_CAMO_DENSITY,type HeadwearCamoId} from './operator-headwear-camo.ts';
+import {headwearCamoPixels,HEADWEAR_CAMO_DENSITY,type HeadwearCamoId,type HeadwearCamoPlacement} from './operator-headwear-camo.ts';
 export type HeadwearMaterialKind='cotton'|'knit'|'composite'|'steel';
 export const HEADWEAR_DETAIL_PIXEL_WORLD_SIZE=PIXEL_WORLD_SIZE;
 export const HEADWEAR_ATLAS_PIXELS=64;
@@ -134,8 +134,11 @@ export function headwearDetailTexture(id:HeadSilhouetteId):THREE.DataTexture{
  * use 2px per world unit. Regions are contextual fabric panels, not new
  * geometry or arbitrary stickers. Pixel filtering is nearest throughout.
  */
-export function headwearCamoTexture(id:HeadSilhouetteId,camo:HeadwearCamoId):THREE.DataTexture{
- const key=id+':'+camo,existing=camoCache.get(key);if(existing)return existing;
+export function headwearCamoTexture(id:HeadSilhouetteId,camo:HeadwearCamoId,
+ placement:HeadwearCamoPlacement={offsetX:0,offsetY:0}):THREE.DataTexture{
+ const offsetX=((placement.offsetX%32)+32)%32,offsetY=((placement.offsetY%32)+32)%32;
+ const key=id+':'+camo+':'+offsetX+':'+offsetY;
+ const existing=camoCache.get(key);if(existing)return existing;
  const artwork=headwearCamoPixels(camo),density=HEADWEAR_CAMO_DENSITY[camo];
  const px=new Uint8Array(128*128*4);
  for(let region=0;region<4;region++)for(let y=0;y<64;y++)for(let x=0;x<64;x++){
@@ -145,7 +148,7 @@ export function headwearCamoTexture(id:HeadSilhouetteId,camo:HeadwearCamoId):THR
   const artY=density===1?Math.floor(y/2):y;
   if(camo==='tiger-stripe'&&region===1)
    artX+=Math.floor(y/3); // modest diagonal direction on wrapped walls
-  const source=(((artY%32)*32+(artX%32))*4);
+  const source=((((artY+offsetY)%32)*32+((artX+offsetX)%32))*4);
   const tone=headwearRegionPixel(id,region as 0|1|2|3,
    Math.floor(x/2),Math.floor(y/2))/255;
   const dest=((Math.floor(region/2)*64+y)*128+(region%2)*64+x)*4;

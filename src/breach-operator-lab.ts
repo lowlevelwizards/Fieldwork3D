@@ -40,7 +40,8 @@ import {WARDROBE_RECIPES,wardrobeRecipe,applyWardrobeRecipe}
 import {HEADWEAR_SOLID_COLORS,headwearColorChoices,resolvedHeadwearSolid}
  from './operator-headwear-colors.ts';
 import {headwearCamoChoices,resolvedHeadwearCamo,headwearCamoPixels,
- HEADWEAR_CAMO_RECIPES,HEADWEAR_CAMO_DENSITY,type HeadwearCamoId} from './operator-headwear-camo.ts';
+ HEADWEAR_CAMO_RECIPES,HEADWEAR_CAMO_DENSITY,nextHeadwearCamoRoll,
+ headwearCamoPlacement,type HeadwearCamoId} from './operator-headwear-camo.ts';
 import {initialWardrobe,readWardrobe,setWardrobePattern,resolvedWardrobe,
  WARDROBE_PATTERNS,wardrobeConflicts,wardrobeItemsForSlot,wardrobeItem,
  type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
@@ -270,6 +271,13 @@ const camoChooser=document.getElementById('headwearCamoChooser') as HTMLElement;
 const camoGrid=document.getElementById('headwearCamoGrid') as HTMLElement;
 const camoInspector=document.getElementById('headwearCamoInspector') as HTMLElement;
 const camoStatus=document.getElementById('headwearCamoChoice') as HTMLOutputElement;
+const camoReroll=document.getElementById('headwearCamoReroll') as HTMLButtonElement;
+camoReroll.addEventListener('click',()=>{
+ if(!wardrobeOptions.headwearCamo)return;
+ wardrobeOptions={...wardrobeOptions,
+  headwearCamoRoll:nextHeadwearCamoRoll(wardrobeOptions.headwearCamoRoll)};
+ renderHeadwearCamoSwatches(resolvedWardrobe(wardrobeOptions,labKit).headwear);
+});
 /** Nearest-neighbor previews use the EXACT same 32x32 RGBA artwork as the
  * live material atlas. The right panel is a literal 3x3 repetition.
  * No canvas noise, gradients, bilinear resampling or preview-only art.
@@ -289,7 +297,7 @@ function renderHeadwearCamoSwatches(model:string){
  const choices=headwearCamoChoices(model);
  camoChooser.hidden=choices.length===0;camoGrid.replaceChildren();
  camoInspector.hidden=choices.length===0;
- if(!choices.length){camoStatus.textContent='';return;}
+ if(!choices.length){camoStatus.textContent='';camoReroll.hidden=true;return;}
  const selected=resolvedHeadwearCamo(model,wardrobeOptions.headwearCamo);
  for(const id of choices){
   const recipe=HEADWEAR_CAMO_RECIPES[id];
@@ -303,15 +311,21 @@ function renderHeadwearCamoSwatches(model:string){
   const caption=document.createElement('span');caption.textContent=recipe.label;
   button.append(image,caption);
   button.addEventListener('click',()=>{
-   wardrobeOptions={...wardrobeOptions,headwearCamo:id};
+   wardrobeOptions={...wardrobeOptions,headwearCamo:id,
+     headwearCamoRoll:selected===id?
+      nextHeadwearCamoRoll(wardrobeOptions.headwearCamoRoll):0};
    renderHeadwearSolidSwatches(model);renderHeadwearCamoSwatches(model);
   });camoGrid.append(button);
  }
+ camoReroll.hidden=!selected;
  const preview=selected??choices[0];
  paintHeadwearCamo(document.getElementById('headwearCamoArt') as HTMLCanvasElement,preview,1);
  paintHeadwearCamo(document.getElementById('headwearCamoTiled') as HTMLCanvasElement,preview,3);
  camoStatus.textContent=HEADWEAR_CAMO_RECIPES[preview].label+
   (selected?' · APPLIED TO LIVE MODEL':' · PREVIEW ONLY — TAP TO APPLY')+
+  (selected?' · VARIATION '+((wardrobeOptions.headwearCamoRoll??0)+1)+
+    ' · PHASE '+Object.values(headwearCamoPlacement('rook','headwear',preview,
+      wardrobeOptions.headwearCamoRoll??0)).join(','):'')+
   ' · '+HEADWEAR_CAMO_DENSITY[preview]+'× PRINT PIXELS / UNIT · '+
   HEADWEAR_CAMO_RECIPES[preview].description;
 }

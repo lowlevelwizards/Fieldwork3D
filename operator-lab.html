@@ -172,6 +172,8 @@ body.kit-compare main>.row[data-lab-group="view"]:has(#comparePose){display:flex
 .camo-inspect-row canvas{display:block;width:100%;max-width:170px;aspect-ratio:1;image-rendering:pixelated;image-rendering:crisp-edges;border:1px solid #98a69b;background:#657469}
 .camo-inspect-row figcaption{color:#d9ddc6;font:500 10px "IBM Plex Mono",monospace;margin-top:4px}
 #headwearCamoChoice{display:block;margin:7px 0;color:#d9dccc;font-size:11px;line-height:1.5}
+#headwearCamoReroll{margin:6px 0 4px;background:#496154;border:1px solid #abc0a4;color:#f3e7cf;font-weight:700}
+#headwearCamoReroll[hidden]{display:none}
 
 </style></head>
 <body><canvas id="preview"></canvas><div id="compareLabels" hidden></div>
@@ -243,8 +245,9 @@ body.kit-compare main>.row[data-lab-group="view"]:has(#comparePose){display:flex
 <figure><canvas id="headwearCamoArt" width="32" height="32" aria-label="Original 32 by 32 camouflage pixel art"></canvas><figcaption>ORIGINAL · 32×32 PIXELS</figcaption></figure>
 <figure><canvas id="headwearCamoTiled" width="96" height="96" aria-label="Camouflage repeated three times across both axes"></canvas><figcaption>TILED · 3×3 REPEAT</figcaption></figure>
 </div>
+<button id="headwearCamoReroll" type="button" hidden aria-label="Reroll this headgear's camouflage placement">↻ REROLL PATTERN PLACEMENT</button>
 <output id="headwearCamoChoice" aria-live="polite"></output>
-<small>The 32×32 previews show canonical artwork; the live model applies fabric-specific print density (1× or 2×) with separate UVs for crown tops and wrapped sides. Tap a pattern to apply it to the live 3D headgear above. Solid swatches restore solid fabric or shell colors. Patterns are restricted by item and period plausibility.</small>
+<small>The 32×32 previews show canonical artwork; the live model applies fabric-specific print density (1× or 2×) with separate UVs for crown tops and wrapped sides. Tap a pattern to apply it; tap the active pattern again or use REROLL to change only its print placement, preserving the same fabric scale. Saved looks remember the reroll. Solid swatches restore solid fabric or shell colors. Patterns are restricted by item and period plausibility.</small>
 </div>
 </div>
 </details>
