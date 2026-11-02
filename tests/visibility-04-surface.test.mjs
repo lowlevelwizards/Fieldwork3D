@@ -1,3 +1,4 @@
+/** Visibility contract: structural context never implies hostile discovery. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spatialSurfaceState} from '../src/breach-presentation.ts';
