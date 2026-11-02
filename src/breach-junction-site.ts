@@ -4,6 +4,7 @@
 import {pointToSegment,type Door,type Segment,type Obstacle,type Pt}
   from './breach-core.ts';
 import type {Site,Room} from './breach-site.ts';
+import {ordinaryDoorOpeningWidth} from './breach-door-proportions.ts';
 const seg=(x:number,y:number,u:number,v:number):Segment=>
  ({a:{x,y},b:{x:u,y:v}});
 const length=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -35,7 +36,7 @@ export function generateJunctionSite(seed:number):Site{
   const append=(boundary:Segment,id:string|null)=>{
     if(!id){walls.push(boundary);return;}
     const {a,b}=boundary,vertical=Math.abs(b.x-a.x)<.01;
-    const span=length(a,b),half=24;
+    const span=length(a,b),half=ordinaryDoorOpeningWidth(id)/2;
     const offset=(rand()-.5)*Math.min(16,Math.max(0,span-2*half-14));
     const middle=vertical?{x:a.x,y:(a.y+b.y)/2+offset}:
       {x:(a.x+b.x)/2+offset,y:a.y};
@@ -57,7 +58,7 @@ export function generateJunctionSite(seed:number):Site{
   if(Math.abs(frontMid-frontX)>4){
     walls.splice(walls.length-2,2);
     doors.pop();
-    const half=24;
+    const half=ordinaryDoorOpeningWidth('FRONT')/2;
     walls.push(seg(x0,y2,frontX-half,y2),
       seg(frontX+half,y2,x3,y2));
     doors.push({id:'FRONT',a:{x:frontX-half,y:y2},
