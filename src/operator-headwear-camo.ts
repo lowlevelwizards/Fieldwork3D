@@ -181,6 +181,14 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
    p(2,-5,12,3,10,6,12,11,14,14,17,21,18,19,23,15,22,12,20,7,20,4,18,0,19,-5,22),
    p(2,18,26,24,22,29,23,36,28,35,34,29,32,25,30,21,33,17,31),
    p(2,7,28,13,25,17,28,20,30,21,35,15,34,12,31,9,32),
+   // The recognizable DPM negative spaces are broad khaki windows and
+   // pointed green fingers interrupting the broad brown paint sweeps.
+   p(1,17,2,20,1,23,3,22,6,19,7,16,6),
+   p(1,3,12,7,11,12,14,17,14,15,17,10,17,7,15),
+   p(1,22,24,25,23,30,25,31,27,26,27,23,30,21,29),
+   p(0,12,2,16,4,18,7,16,9,13,7,11,4),
+   p(0,5,18,9,17,12,19,10,21,7,21),
+   p(0,23,15,26,14,29,16,28,19,25,20),
    // Small lobe shapes at stroke tips, not rounded M81 islands.
    p(2,4,5,8,4,10,7,9,10,6,10),
    p(1,22,0,26,-1,29,1,26,3,22,3),
