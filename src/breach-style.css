@@ -1004,3 +1004,6 @@ body.replaying #tacticalFeedback{display:none}
  color:var(--fw-text-muted);white-space:normal}
 .site-settings .fw-site-choice-option[aria-pressed="true"]{
  border-color:var(--fw-brass);background:#415546}
+
+.site-settings{max-height:min(68dvh,590px);overflow-y:auto;
+ overscroll-behavior:contain;align-content:flex-start;touch-action:pan-y}
