@@ -167,6 +167,10 @@ function draw(){
  }
  el<HTMLElement>('elapsed').textContent=elapsed.toFixed(1)+'s';
  el<HTMLElement>('blocked').textContent=String(blockedTicks);
+ const movers=units.filter(u=>!u.held);
+ const reached=movers.filter(u=>distance(u.p,u.goal)<6).length;
+ el<HTMLElement>('passed').textContent=reached+' / '+movers.length+
+   (reached===movers.length?' · PASS':'');
  el<HTMLElement>('overlaps').textContent=String(overlaps);
  el<HTMLElement>('angle').textContent=(activeDoors[0]?
   ((activeDoors[0].openFraction??0)*88.24).toFixed(0)+'°':'—');
