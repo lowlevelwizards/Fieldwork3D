@@ -27,7 +27,7 @@ import {fallAngles,hitStagger,type FallPose,type WoundRegion}
   from './breach-wounds.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {equipmentCarrySocket,utilityDisplaySocket} from './equipment-carry-visuals.ts';
-import type {WardrobeOptions} from './operator-wardrobe-data.ts';
+import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {wardrobePatternTexture} from './operator-wardrobe-patterns.ts';
 import type {CarryLocation} from './equipment-carry-placement.ts';
 import {createOperatorVisualKit,applyOperatorVisualKit,
@@ -383,6 +383,19 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   for(const glove of r.gloveCovers)glove.visible=gear?.hands==='hands-gloves';
   applyOperatorVisualKit(r.visualKit,gear,identity,
     p.magazineCarryLocations,p.faceStyle,p.wardrobe);
+  // Clothing coverage changes materials on existing articulated limbs only.
+  // The bones, solved knee/elbow positions and planted feet stay identical.
+  const clothing=resolvedWardrobe(p.wardrobe,p.equipment);
+  const bareForearm=['tank-top','t-shirt','button-short'].includes(clothing.top)||
+    !!p.wardrobe?.rolledSleeves;
+  for(const arm of r.arms){
+   arm.lower.material=bareForearm?r.skinMaterial:r.clothMaterial;
+   arm.upper.material=clothing.top==='tank-top'?
+    r.skinMaterial:r.clothMaterial;
+  }
+  for(const leg of r.feet)
+   leg.lower.material=clothing.trousers==='shorts'?
+    r.skinMaterial:r.trouserMaterial;
   // Independent fabric channels keep the upper garment, trousers, armor and
   // pack textures separate while retaining the original authored pixel UVs.
   const fabricChannels=[

@@ -251,6 +251,11 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  v.graphicMarks.visible=faceStyle==='graphic';
  v.softArmor.visible=s.armor==='armor-soft';
  v.plateCarrier.visible=s.armor==='armor-carrier';
+ v.softArmor.scale.set(looks.armorStyle==='soft-slick'?.85:
+  looks.armorStyle==='soft-paca'?.93:1,1,1);
+ v.plateCarrier.scale.set(looks.armorStyle==='plate-slick'?.87:
+  looks.armorStyle==='plate-jpc'?.92:
+  looks.armorStyle==='plate-heavy'?1.15:1,1,1);
  const heavyTop=['field-jacket','bdu-shirt','acu-shirt','softshell',
   'softshell-hood','pcu-shell','tactical-sweater'].includes(looks.top);
  v.jacket.visible=usingWardrobe?heavyTop:s.top==='top-uniform';
@@ -260,6 +265,9 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   looks.knees,looks.wrist);
  v.chestRig.visible=s.rig==='rig-light';
  v.fieldWebbing.visible=s.rig==='rig-full';
+ v.chestRig.scale.set(looks.rigStyle==='micro-rig'?.76:1,1,1);
+ v.fieldWebbing.scale.set(looks.rigStyle==='lbv'?1.12:
+  looks.rigStyle==='belt-harness'?.92:1,1,1);
  // Positive-X is outward/front. Armor layers define the bearing surface,
  // eliminating intersecting and coplanar webbing/plate details.
  const armorOffset=s.armor==='armor-carrier'?1.95:
@@ -267,18 +275,44 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  v.chestRig.position.x=armorOffset;
  v.fieldWebbing.position.x=armorOffset;
  v.belt.visible=true;
- v.belt.scale.set(1,s.belt==='belt-light'?.72:1,1);
+ v.belt.scale.set(looks.beltStyle==='plain-belt'?.76:
+  looks.beltStyle==='light-belt'?.82:1,
+  looks.beltStyle==='padded-belt'?1.35:
+  s.belt==='belt-light'?.72:1,1);
  v.dayPack.visible=s.backpack==='backpack-day';
  v.fieldPack.visible=s.backpack==='backpack-field';
+ const dayStyle=looks.packStyle;
+ v.dayPack.scale.set(dayStyle==='hydration'?.64:
+  dayStyle==='admin-pack'?.79:
+  dayStyle==='assault-pack'?1.17:
+  dayStyle==='sling-bag'?.82:1,
+  dayStyle==='hydration'?.92:dayStyle==='assault-pack'?1.15:1,
+  dayStyle==='sling-bag'?.80:1);
+ v.fieldPack.scale.set(dayStyle==='rucksack'?1.15:
+  dayStyle==='duffel'?1.24:1,
+  dayStyle==='medic-pack'?.92:1,
+  dayStyle==='comms-pack'?.90:1);
  v.packHarness.visible=s.backpack!=='backpack-none';
  for(const pocket of v.cargoPockets)
   pocket.visible=!usingWardrobe&&s.legs==='legs-field';
- for(const cuff of v.bootCuffs)cuff.visible=s.feet==='feet-boots';
- for(const toe of v.fieldToeCaps)toe.visible=s.feet==='feet-boots';
- for(const instep of v.lightInstepPanels)instep.visible=s.feet==='feet-light';
- for(const cuff of v.sleeveCuffs)cuff.visible=s.top==='top-uniform';
- for(const mesh of v.rolledForearms)mesh.visible=s.top==='top-light';
- for(const mesh of v.rolledCuffs)mesh.visible=s.top==='top-light';
+ const tallBoot=['field-boots','combat-boots','tall-boots','hiking-boots']
+  .includes(looks.footwear);
+ for(const cuff of v.bootCuffs){
+  cuff.visible=usingWardrobe?tallBoot:s.feet==='feet-boots';
+  cuff.scale.y=looks.footwear==='tall-boots'?1.55:
+   looks.footwear==='hiking-boots'?.85:1;
+ }
+ for(const toe of v.fieldToeCaps)toe.visible=usingWardrobe?
+  tallBoot:s.feet==='feet-boots';
+ for(const instep of v.lightInstepPanels)instep.visible=usingWardrobe?
+  !tallBoot:s.feet==='feet-light';
+ const shortSleeves=['tank-top','t-shirt','button-short'].includes(looks.top);
+ const rolled=usingWardrobe?!!wardrobe?.rolledSleeves&&!shortSleeves:
+  s.top==='top-light';
+ for(const cuff of v.sleeveCuffs)cuff.visible=usingWardrobe?
+  !shortSleeves&&!rolled:s.top==='top-uniform';
+ for(const mesh of v.rolledForearms)mesh.visible=rolled;
+ for(const mesh of v.rolledCuffs)mesh.visible=rolled;
  for(const mesh of v.kneePanels)
   mesh.visible=!usingWardrobe&&s.legs==='legs-field';
  // A curated cloth/hair palette, not fluorescent operator identifiers.
