@@ -376,6 +376,18 @@ function updateMagazineState(){
 }
 weapon.addEventListener('change',updateMagazineState);
 updateMagazineState();
+choose<HTMLButtonElement>('unequipAll').addEventListener('click',()=>{
+ const empty=unequipLabAppearance();
+ labKit=empty.kit;wardrobeOptions=empty.wardrobe;
+ weapon.value='none';injury.value='0';
+ magazineSelector.value='0';
+ choose<HTMLSelectElement>('faceTreatment').value='blank';
+ for(const select of patternSelects)select.value='solid';
+ labPalette=1;choose<HTMLSelectElement>('kitPalette').value='1';
+ showAllGroups();updateMagazineState();syncKit();
+ if(kitComparing)endKitComparison();
+ chooseTrack('idle');frameWardrobeSelection();
+});
 const labWeapon=():WeaponId=>weapon.value==='none'?'carbine':weapon.value as WeaponId;
 const COMPARE_POSES:{label:string;mode:Handling;track:LabTrack}[]=[
   {label:'HIGH READY',mode:'high',track:'high-ready'},
@@ -430,27 +442,71 @@ function endKitComparison(){
  kitCompareButton.textContent='COMPARE THREE';
  document.body.classList.remove('kit-compare');
 }
+let hideSelectedGroup=false;
+const hideSelectedButton=choose<HTMLButtonElement>('hideSelected');
+const focusSelectedButton=choose<HTMLButtonElement>('focusSelected');
+const showAllButton=choose<HTMLButtonElement>('showAll');
+const setGroupHidden=(group:THREE.Object3D,hide:boolean)=>{
+ if(hide)group.visible=false;
+};
 function isolateKit(body:OperatorRig){
  const focus=isolation.value;
  if(focus==='all')return;
- const visual=body.visualKit;
- if(focus!=='head'){
-  visual.helmet.visible=false;visual.cap.visible=false;visual.hair.visible=false;
+ const v=body.visualKit;
+ const keep=(kind:string)=>hideSelectedGroup?focus!==kind:focus===kind;
+ const hide=(kind:string,...groups:THREE.Object3D[])=>{
+  if(keep(kind))return;
+  for(const group of groups)setGroupHidden(group,true);
+ };
+ const all=(groups:Record<string,THREE.Object3D>)=>Object.values(groups);
+ hide('head',v.helmet,v.cap,v.hair,v.graphicMarks,...v.eyeMarks,
+  ...all(v.wardrobeHead.headwear),...all(v.wardrobeHead.facewear),
+  ...all(v.wardrobeHead.eyewear),...all(v.wardrobeHead.headset));
+ hide('armor',v.softArmor,v.plateCarrier,...all(v.wardrobeGear.armor));
+ hide('carry',v.chestRig,v.fieldWebbing,v.belt,
+  ...all(v.wardrobeGear.rig),...all(v.wardrobeGear.belt),
+  ...v.rigPouches,...all(v.accessories.beltLeft),
+  ...all(v.accessories.beltRight),...all(v.accessories.chest));
+ if(!keep('carry')){
+  for(const section of Object.values(v.magazines))
+   for(const mesh of section)mesh.visible=false;
+  for(const mesh of [...body.rigPouches,body.beltPouch,
+   body.medicalPouch,body.radioUnit,body.utilityTool,
+   body.flashCanister])mesh.visible=false;
  }
- if(focus!=='armor'){
-  visual.softArmor.visible=false;visual.plateCarrier.visible=false;
- }
- if(focus!=='carry'){
-  visual.chestRig.visible=false;visual.fieldWebbing.visible=false;
-  visual.belt.visible=false;visual.dayPack.visible=false;
-  visual.fieldPack.visible=false;body.pack.visible=false;
-  for(const items of Object.values(visual.magazines))
-   for(const item of items)item.visible=false;
-  for(const item of [...body.rigPouches,body.beltPouch,
-   body.medicalPouch,body.radioUnit,body.utilityTool,body.flashCanister])
-    item.visible=false;
- }
+ hide('pack',body.pack,v.dayPack,v.fieldPack,v.packHarness,
+  ...all(v.wardrobeGear.pack),...all(v.accessories.pack));
+ hide('clothes',v.jacket,v.lightShirt,...all(v.wardrobeBody.tops),
+  ...Object.values(v.wardrobeBody.trousers).flat(),
+  ...v.cargoPockets,...v.sleeveCuffs,...v.rolledForearms,...v.rolledCuffs,
+  ...v.patches);
+ hide('hands',...body.gloveCovers,...all(v.wardrobeBody.wrist));
+ hide('knees',...v.kneePanels,
+  ...Object.values(v.wardrobeBody.knees).flat());
+ hide('feet',...v.bootCuffs,...v.fieldToeCaps,...v.lightInstepPanels);
+ // The unarmored body and IK bones remain visible as an inspection
+ // mannequin; only item groups are isolated.
 }
+function showAllGroups(){
+ isolation.value='all';hideSelectedGroup=false;
+ hideSelectedButton.textContent='HIDE GROUP';
+ hideSelectedButton.setAttribute('aria-pressed','false');
+ hideSelectedButton.disabled=true;
+}
+isolation.addEventListener('change',()=>{
+ hideSelectedGroup=false;
+ hideSelectedButton.textContent='HIDE GROUP';
+ hideSelectedButton.setAttribute('aria-pressed','false');
+ hideSelectedButton.disabled=isolation.value==='all';
+});
+hideSelectedButton.disabled=true;
+hideSelectedButton.addEventListener('click',()=>{
+ if(isolation.value==='all')return;
+ hideSelectedGroup=!hideSelectedGroup;
+ hideSelectedButton.setAttribute('aria-pressed',String(hideSelectedGroup));
+ hideSelectedButton.textContent=hideSelectedGroup?'RESTORE GROUP':'HIDE GROUP';
+});
+showAllButton.addEventListener('click',()=>{showAllGroups();fit();});
 kitCompareButton.addEventListener('click',()=>{
  if(kitComparing){endKitComparison();fit();return;}
  kitComparing=true;
@@ -601,6 +657,21 @@ document.querySelectorAll<HTMLButtonElement>('[data-pose]').forEach(button=>
 document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(button=>
   button.addEventListener('click',()=>fit(button.dataset.view)));
 choose<HTMLButtonElement>('resetCamera').addEventListener('click',()=>fit());
+function frameWardrobeSelection(){
+ if(comparing||kitComparing)endKitComparison();
+ const focus=isolation.value;
+ const y=({all:16,head:38,armor:27,carry:23,pack:26,
+  clothes:23,hands:25,knees:13,feet:4} as Record<string,number>)[focus]??16;
+ const x=rig?.root.position.x??0,z=rig?.root.position.z??0;
+ camera.position.set(x+54,y+35,z+57);
+ control.target.set(x,y,z);
+ camera.zoom=focus==='all'?1.4:
+  focus==='head'?3.0:focus==='hands'||focus==='knees'||focus==='feet'?2.45:1.95;
+ camera.updateProjectionMatrix();control.update();
+ cameraFollow={x,z};
+}
+focusSelectedButton.addEventListener('click',frameWardrobeSelection);
+isolation.addEventListener('change',frameWardrobeSelection);
 gaitCompareButton.addEventListener('click',()=>{
   if(kitComparing)endKitComparison();
   gaitComparing=!gaitComparing;
