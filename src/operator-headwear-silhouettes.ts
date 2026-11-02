@@ -1,4 +1,4 @@
-/** Stage 1M: restrained final silhouette polish on approved Stage 1L forms.
+/** Stage 1N: bold secondary shape hierarchy with the approved family silhouettes protected.
  *
  * All models are authored with +Y up, -Z toward the face, +X to the
  * operator's right. They attach to the canonical head node, preserving
@@ -23,7 +23,7 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
  'boonie':{id:'boonie',frontExtent:-6.725,rearExtent:6.725,
   top:8.255,earEdge:4.54,foreheadEdge:4.54,billLength:0},
  'beanie':{id:'beanie',frontExtent:-5.00,rearExtent:5.00,
-  top:8.475,earEdge:3.745,foreheadEdge:3.745,billLength:0},
+  top:8.65,earEdge:3.745,foreheadEdge:3.745,billLength:0},
  'pasgt':{id:'pasgt',frontExtent:-6.34,rearExtent:5.68,
   top:8.78,earEdge:1.71,foreheadEdge:4.055,billLength:0},
  'soviet-steel':{id:'soviet-steel',frontExtent:-5.53,rearExtent:5.53,
@@ -40,7 +40,7 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
  * -Z is front; +Z is nape; X sides are symmetric unless stated otherwise.
  */
 
-/** Stage 1M PATROL: taller band, still THREE reads. A flat fitted crown, ONE lower
+/** Stage 1N PATROL: taller band, still THREE reads. A flat fitted crown, ONE lower
  * band, ONE bill. Each hollow four-wall structure deliberately shares its
  * exterior planes; no 0.05-unit trim or stacked interstitial ledges.
  */
@@ -55,19 +55,19 @@ const PATROL_CAP_CUBOIDS:readonly HeadwearCuboid[]=[
   name:sign===-1?'patrol-left-crown':'patrol-right-crown',
   x:sign*3.96,y:6.25,z:0,width:.94,height:1.90,depth:8.96
  })),
- {name:'patrol-front-band',x:0,y:5.33,z:-4.33,
-  width:9.60,height:1.38,depth:1.00},
- {name:'patrol-rear-band',x:0,y:5.33,z:4.33,
-  width:9.60,height:1.38,depth:1.00},
+ {name:'patrol-front-band',x:0,y:5.50,z:-4.33,
+  width:9.60,height:1.72,depth:1.00},
+ {name:'patrol-rear-band',x:0,y:5.50,z:4.33,
+  width:9.60,height:1.72,depth:1.00},
  ...([-1,1] as const).map(sign=>({
   name:sign===-1?'patrol-left-band':'patrol-right-band',
-  x:sign*4.28,y:5.33,z:0,width:1.04,height:1.38,depth:9.66
+  x:sign*4.28,y:5.50,z:0,width:1.04,height:1.72,depth:9.66
  })),
- {name:'patrol-anchored-bill',x:0,y:4.94,z:-5.94,
-  width:7.65,height:.78,depth:2.85}
+ {name:'patrol-anchored-bill',x:0,y:5.06,z:-5.94,
+  width:7.65,height:1.02,depth:2.85}
 ];
 
-/** Stage 1M BOONIE: taller band, still THREE reads. One low flat fabric crown, one
+/** Stage 1N BOONIE: taller band, still THREE reads. One low flat fabric crown, one
  * broad fitted band and one continuous, level, unbroken ring brim.
  * The technical sectors vanish in the union: no roof-shaped ledges.
  */
@@ -82,31 +82,31 @@ const BOONIE_CUBOIDS:readonly HeadwearCuboid[]=[
   name:sign===-1?'boonie-left-crown':'boonie-right-crown',
   x:sign*3.88,y:6.19,z:0,width:.94,height:2.03,depth:8.76
  })),
- {name:'boonie-front-band',x:0,y:5.31,z:-4.20,
-  width:9.30,height:1.54,depth:.96},
- {name:'boonie-rear-band',x:0,y:5.31,z:4.20,
-  width:9.30,height:1.54,depth:.96},
+ {name:'boonie-front-band',x:0,y:5.48,z:-4.20,
+  width:9.30,height:1.88,depth:.96},
+ {name:'boonie-rear-band',x:0,y:5.48,z:4.20,
+  width:9.30,height:1.88,depth:.96},
  ...([-1,1] as const).map(sign=>({
   name:sign===-1?'boonie-left-band':'boonie-right-band',
-  x:sign*4.17,y:5.31,z:0,width:.96,height:1.54,depth:9.36
+  x:sign*4.17,y:5.48,z:0,width:.96,height:1.88,depth:9.36
  })),
- {name:'boonie-front-brim',x:0,y:4.87,z:-5.50,
-  width:13.45,height:.70,depth:2.45},
- {name:'boonie-rear-brim',x:0,y:4.87,z:5.50,
-  width:13.45,height:.70,depth:2.45},
+ {name:'boonie-front-brim',x:0,y:4.97,z:-5.50,
+  width:13.45,height:.90,depth:2.45},
+ {name:'boonie-rear-brim',x:0,y:4.97,z:5.50,
+  width:13.45,height:.90,depth:2.45},
  ...([-1,1] as const).map(sign=>({
   name:sign===-1?'boonie-left-brim':'boonie-right-brim',
-  x:sign*5.50,y:4.87,z:0,width:2.45,height:.70,depth:13.45
+  x:sign*5.50,y:4.97,z:0,width:2.45,height:.90,depth:13.45
  }))
 ];
 
-/** Stage 1M BEANIE: a stronger folded cuff retains the TWO-read profile,
+/** Stage 1N BEANIE: a stronger folded cuff retains the TWO-read profile,
  * but restores the taller knitted crown and deeper folded cuff visible in
  * the real watch-cap reference. No additional crown shoulder is introduced.
  */
 const BEANIE_CUBOIDS:readonly HeadwearCuboid[]=[
- {name:'beanie-fitted-crown',x:0,y:7.70,z:0,
-  width:9.20,height:1.55,depth:9.40},
+ {name:'beanie-fitted-crown',x:0,y:7.7875,z:0,
+  width:9.20,height:1.725,depth:9.40},
  {name:'beanie-front-body',x:0,y:5.96,z:-4.23,
   width:9.20,height:3.20,depth:.94},
  {name:'beanie-rear-body',x:0,y:5.96,z:4.23,
@@ -115,17 +115,17 @@ const BEANIE_CUBOIDS:readonly HeadwearCuboid[]=[
   name:sign===-1?'beanie-left-body':'beanie-right-body',
   x:sign*4.13,y:5.96,z:0,width:.94,height:3.20,depth:9.40
  })),
- {name:'beanie-front-cuff',x:0,y:4.79,z:-4.54,
-  width:9.80,height:2.09,depth:.92},
- {name:'beanie-rear-cuff',x:0,y:4.79,z:4.54,
-  width:9.80,height:2.09,depth:.92},
+ {name:'beanie-front-cuff',x:0,y:4.955,z:-4.54,
+  width:9.80,height:2.42,depth:.92},
+ {name:'beanie-rear-cuff',x:0,y:4.955,z:4.54,
+  width:9.80,height:2.42,depth:.92},
  ...([-1,1] as const).map(sign=>({
   name:sign===-1?'beanie-left-cuff':'beanie-right-cuff',
-  x:sign*4.44,y:4.79,z:0,width:.92,height:2.09,depth:10.00
+  x:sign*4.44,y:4.955,z:0,width:.92,height:2.42,depth:10.00
  }))
 ];
 
-/** Stage 1M PASGT: brow seam cleanup preserves the original U.S.
+/** Stage 1N PASGT: brow seam cleanup preserves the original U.S.
  * PASGT (not an ACH derivative). One uninterrupted shell rather than
  * two crown tiers; its defining FEATURES are the protruding eyebrow peak,
  * long backward ear lobes and a deep continuous rear skirt.
@@ -135,8 +135,8 @@ const BEANIE_CUBOIDS:readonly HeadwearCuboid[]=[
 const PASGT_CUBOIDS:readonly HeadwearCuboid[]=[
  {name:'pasgt-single-protective-crown',x:0,y:7.08,z:0,
   width:10.35,height:3.40,depth:10.05},
- {name:'pasgt-integrated-front-peak',x:0,y:4.83,z:-5.40,
-  width:10.35,height:1.55,depth:1.88},
+ {name:'pasgt-integrated-front-peak',x:0,y:4.98,z:-5.40,
+  width:10.35,height:1.85,depth:1.88},
  {name:'pasgt-low-rear-skirt',x:0,y:3.845,z:4.88,
   width:10.35,height:4.33,depth:1.60},
  ...([-1,1] as const).flatMap(sign=>[
@@ -149,12 +149,12 @@ const PASGT_CUBOIDS:readonly HeadwearCuboid[]=[
  ])
 ];
 
-/** Stage 1M SSh-40: a single level, thicker intentional rim on the original Soviet SSh-40 bowl, not
+/** Stage 1N SSh-40: a single continuous, bold, anatomically stepped rim on the original Soviet SSh-40 bowl, not
  * a German Stahlhelm, medieval kettle, or brimmed hat. A substantial
  * continuous upper dome and deep HOLLOW bowl. The small lower flare
  * extends <0.5 unit past the bowl, removing the former wide roof shelf.
  * All four sectors share exact outer X/Z corner extents and substantial
- * 1.20-unit thickness; front Y4.05, sides Y3.70 and rear Y3.40 are
+ * 1.48-unit thickness; front Y4.05, sides Y3.70 and rear Y3.40 are
  * PURPOSEFUL coverage steps, not the former fractional corner artifacts.
  * Reference: original SSh-40 side/front/rear shell photographs.
  */
@@ -169,13 +169,13 @@ const STEEL_CUBOIDS:readonly HeadwearCuboid[]=[
   name:sign===-1?'ssh40-bowl-left':'ssh40-bowl-right',
   x:sign*4.51,y:5.71,z:0,width:.98,height:3.62,depth:10.16
  })),
- {name:'ssh40-integrated-front-edge',x:0,y:4.65,z:-5.00,
-  width:10.60,height:1.20,depth:1.06},
- {name:'ssh40-integrated-rear-edge',x:0,y:4.00,z:5.00,
-  width:10.60,height:1.20,depth:1.06},
+ {name:'ssh40-integrated-front-edge',x:0,y:4.79,z:-5.00,
+  width:10.80,height:1.48,depth:1.06},
+ {name:'ssh40-integrated-rear-edge',x:0,y:4.14,z:5.00,
+  width:10.80,height:1.48,depth:1.06},
  ...([-1,1] as const).map(sign=>({
   name:sign===-1?'ssh40-integrated-left-edge':'ssh40-integrated-right-edge',
-  x:sign*4.775,y:4.30,z:0,width:1.05,height:1.20,depth:11.06
+  x:sign*4.875,y:4.44,z:0,width:1.05,height:1.48,depth:11.06
  }))
 ];
 /** Stage 1E — confident, subtractive helmet silhouettes.
@@ -276,8 +276,8 @@ export function createHeadwearSilhouette(
  group.name='cuboid-'+id+'-minus-Z-forward';
  headwearFromVolumes(group,material,id);
  group.userData.stage=({
-  'patrol-cap':'1M','boonie':'1M','beanie':'1M',
-  'pasgt':'1M','soviet-steel':'1M',
+  'patrol-cap':'1N','boonie':'1N','beanie':'1N',
+  'pasgt':'1N','soviet-steel':'1N',
   'ach':'1E','high-cut':'1E'
  } as const)[id];
  group.userData.modelAxes='-Z-forward,+X-right,+Y-up';
