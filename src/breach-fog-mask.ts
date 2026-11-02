@@ -99,7 +99,7 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
     if(level===2)continue;
     // Exterior briefing has already been clipped to the exact footprint;
     // never erase an entire partially-interior tile from its center sample.
-    if(s.intel.mode==='exterior-known'&&!fineSeen&&level===1)continue;
+    if(s.intel.mode==='exterior-known'&&s.site&&!fineSeen&&level===1)continue;
     // Blueprint outlines are briefed, but unseen interiors must read as
     // distinctly unobserved rather than nearly as bright as explored rooms.
     const blueprintUnknown=s.intel.mode==='floor-plan'&&!fineSeen;
