@@ -21,6 +21,16 @@ header a{color:#c8b992}main{position:fixed;bottom:env(safe-area-inset-bottom);le
 #headwearReviewButtons button{min-height:44px}
 #headwearReviewButtons button[aria-pressed="true"]{background:#a8b995;color:#172824}
 #headwearReviewStatus{display:block;margin:5px 0;font-size:11px;color:#c9d7c8}
+ #headwearSolidChooser{margin:10px 0 7px;padding:9px 8px;background:#1b3028;border:1px solid #667f70;border-radius:6px}
+ #headwearSolidChooser .swatch-heading{font-weight:700;color:#d9d5b5;font-size:11px;letter-spacing:.055em;margin-bottom:7px}
+ #headwearColorGrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}
+ #headwearColorGrid button{position:relative;min-width:0;min-height:45px;height:45px;padding:0;border:2px solid #aeb9ae;border-radius:5px;touch-action:manipulation}
+ #headwearColorGrid button[aria-pressed="true"]{border:3px solid #f5e4bc;outline:2px solid #223b32;outline-offset:-5px}
+ #headwearColorGrid button[aria-pressed="true"]::after{content:"✓";position:absolute;top:2px;right:4px;font:bold 15px sans-serif;color:#fef4df;text-shadow:0 1px 2px #15221c,0 -1px 2px #15221c}
+ #headwearSolidChooser[hidden]{display:none}
+ #headwearColorChoice{display:block;margin:7px 1px 0;color:#d9dccc;font-size:11px;min-height:15px}
+ @media(max-width:360px){#headwearColorGrid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+
 
 #variantCompareStatus{display:block;color:#dbc69c;font-size:11px;padding:3px 0}
 #comparePinned[disabled]{opacity:.45}
@@ -190,8 +200,8 @@ body.kit-compare main>.row[data-lab-group="view"]:has(#comparePose){display:flex
 <small>Start bare. Choose one actual item per category below. The Lab does not change saved campaign inventory.</small>
 <output id="variantCompareStatus" aria-live="polite"></output>
 <details id="headwearSilhouetteReview" open>
-<summary>HEADGEAR / MATERIAL LAB 2B</summary>
-<p class="kit-help">Stage 2C surface review: 1 model unit = 1 pixel. Patrol has a quieter panel join and bill stitch; boonie has a broken sewing orbit instead of a carved groove. Woven twill, canvas, knit, matte composite and painted steel now have separate neutral surface finishes. All shapes remain unchanged. Contextual colors and camo are next.</p>
+<summary>HEADGEAR / SOLID COLORS</summary>
+<p class="kit-help">Choose headgear, then select a solid-color square. Only realistic options for that particular item appear. The underlying cloth, composite or painted-steel finish stays intact. Camo patterns and helmet covers come later.</p>
 <div class="row" id="headwearReviewButtons">
 <button type="button" data-head-silhouette="bare">BARE</button>
 <button type="button" data-head-silhouette="patrol-cap">PATROL CAP</button>
@@ -203,6 +213,11 @@ body.kit-compare main>.row[data-lab-group="view"]:has(#comparePose){display:flex
 <button type="button" data-head-silhouette="soviet-steel">STEEL HELMET</button>
 </div>
 <output id="headwearReviewStatus" aria-live="polite">Choose a headwear silhouette to inspect. The camera focuses on the head automatically.</output>
+<div id="headwearSolidChooser" role="group" aria-label="Solid headgear colors" hidden>
+<div class="swatch-heading">SOLID COLOR · SELECT A SWATCH</div>
+<div id="headwearColorGrid" role="group" aria-label="Available colors for selected headgear"></div>
+<output id="headwearColorChoice" aria-live="polite"></output>
+</div>
 </details>
 <div class="kit-grid">
 <label>MEDICAL<select data-kit-slot="medical"></select></label>
@@ -213,9 +228,7 @@ body.kit-compare main>.row[data-lab-group="view"]:has(#comparePose){display:flex
 <option value="blank" selected>BLANK FACE</option>
 <option value="graphic">GRAPHIC EYES</option>
 </select></label>
-<label>PALETTE<select id="kitPalette">
-<option value="1">PALETTE 1</option><option value="2">PALETTE 2</option><option value="3">PALETTE 3</option><option value="4">PALETTE 4</option><option value="5">PALETTE 5</option><option value="6">PALETTE 6</option><option value="7">PALETTE 7</option><option value="8">PALETTE 8</option>
-</select></label>
+
 <label>MAGAZINE COUNT<select id="kitMagazines">
 <option value="0" selected>0 SPARE</option><option value="1" >1 SPARE</option><option value="2" >2 SPARE</option><option value="3">3 SPARE</option><option value="4" >4 SPARE</option><option value="5" >5 SPARE</option><option value="6" >6 SPARE</option>
 </select></label>
