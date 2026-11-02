@@ -875,3 +875,11 @@ body.replaying #tacticalFeedback{display:none}
     color-mix(in srgb,var(--operator-accent) 34%,transparent));
   box-shadow:0 0 6px color-mix(in srgb,var(--operator-accent) 30%,transparent);
 }
+
+/* UX04: compact mission heading retains room for the simulation on narrow screens. */
+.ident{min-width:0;max-width:min(72vw,450px)}
+.ident strong{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+ overflow:hidden;overflow-wrap:anywhere;line-height:1.15}
+.ident small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+ max-width:100%;opacity:.88}
+@media(max-width:450px){.ident{max-width:72vw}.ident strong{font-size:14px;letter-spacing:.045em}}
