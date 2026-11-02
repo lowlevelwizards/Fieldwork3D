@@ -33,11 +33,11 @@ function runScene(name,ticks=720){
    angle:el('angle').textContent};
 }
 test('Physicality Lab default scenes actually move through the obstacle',()=>{
- const outcomes=['stack','headon','vestibule','furniture'].map(runScene);
+ const outcomes=['stack','headon','vestibule','furniture'].map(s=>runScene(s));
  for(const result of outcomes){
   console.log('PHYSICALITY CASE '+JSON.stringify({scenario:result.name,
     rows:result.rows,blocked:result.blocked,door:result.angle}));
-  assert.ok(result.rows.some(r=>r.remaining<15),
+  assert.ok(result.rows.filter(r=>r.name!=='ROOK'||result.name!=='stack').some(r=>r.remaining<15),
     JSON.stringify(result,null,2));
  }
 });
