@@ -117,6 +117,7 @@ export class TacticalScene3D{
   private fogContext!:CanvasRenderingContext2D;
   private fogTexture!:THREE.CanvasTexture;
   private smoothFog!:THREE.Mesh;
+  private overheadFog!:THREE.Mesh;
   private actors=new Map<string,{root:THREE.Group;flash:THREE.Mesh;
     beam:THREE.Mesh;beamLast:{x:number;y:number;yaw:number;tick:number}|null;
     pack:THREE.Mesh;
@@ -291,6 +292,20 @@ export class TacticalScene3D{
     this.smoothFog.renderOrder=1000;
     this.smoothFog.frustumCulled=false;
     this.scene.add(this.smoothFog);
+    // The original ground mask cannot conceal models standing *above*
+    // the floor. A matching overhead mask hides undiscovered geometry,
+    // details and shadows across the whole vertical diorama. It shares
+    // the authoritative sight texture, so actual visible areas open up.
+    const overheadMat=new THREE.MeshBasicMaterial({
+      map:this.fogTexture,transparent:true,depthTest:true,depthWrite:false,
+      opacity:1,toneMapped:false,side:THREE.DoubleSide});
+    this.mats.push(overheadMat);
+    this.overheadFog=new THREE.Mesh(new THREE.PlaneGeometry(W,H),overheadMat);
+    this.overheadFog.rotation.x=-Math.PI/2;
+    this.overheadFog.position.set(W/2,46,H/2);
+    this.overheadFog.renderOrder=1002;
+    this.overheadFog.frustumCulled=false;
+    this.scene.add(this.overheadFog);
     this.resize(innerWidth,innerHeight);
   }
   private groundOverlayMaterial(kind:PixelOverlay){
@@ -432,6 +447,11 @@ export class TacticalScene3D{
       bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
     this.smoothFog.position.set((bounds.minX+bounds.maxX)/2,
       1.05,(bounds.minY+bounds.maxY)/2);
+    this.overheadFog.geometry.dispose();
+    this.overheadFog.geometry=new THREE.PlaneGeometry(
+      bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
+    this.overheadFog.position.set((bounds.minX+bounds.maxX)/2,
+      46,(bounds.minY+bounds.maxY)/2);
     this.fogTexture.needsUpdate=true;
     this.buildWorld(site);
     this.root.add(this.fogUnknown,this.fogExplored);
@@ -2029,6 +2049,7 @@ export class TacticalScene3D{
     // intelligence and must not leak through texture transparency.
     this.fogUnknown.count=0;this.fogExplored.count=0;
     this.smoothFog.visible=!omniscient;
+    this.overheadFog.visible=!omniscient;
     // Do not repaint/re-upload an identical visibility texture every 55ms
     // while operators are stationary in planning. Quantized pose and intel
     // changes make the key; real LOS is still computed by the fog renderer.

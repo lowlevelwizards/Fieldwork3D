@@ -1,10 +1,10 @@
 /** One low-resolution, softly filtered fog mask shared by 2D and 3D.
  * The fog presentation never changes detection or player intelligence. */
-import {W,H} from './breach-core.ts';
+import {W,H,WALLS} from './breach-core.ts';
 import type {Site,WorldBounds} from './breach-site.ts';
 import {team,type Session} from './breach-game.ts';
 import {intelFogLevel} from './breach-intel.ts';
-import {exteriorBriefedAt} from './breach-site-footprint.ts';
+import {exteriorBriefedAt,accessibleExteriorWall} from './breach-site-footprint.ts';
 import {visionPolygon} from './breach-vision-polygon.ts';
 import {MICRO_KEYS,MICRO_COLS} from './breach-fog-memory.ts';
 export const FOG_WIDTH=320,FOG_HEIGHT=370;
@@ -35,25 +35,54 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
   ctx.fillRect(bounds.minX,bounds.minY,
     bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
   ctx.globalCompositeOperation='destination-out';
-  // The 20-unit tile centers used to erase entire tiles at exterior walls,
-  // leaking 'exterior known' across the actual building boundary. Reveal the
-  // accessible exterior under an exact room-footprint clip instead. The
-  // exterior clipping pass never clears an unknown interior.
+  // Exterior Known is an exterior *region*, not a collection of room
+  // rectangles to alternate with even/odd clipping. Those rectangles may
+  // overlap at joints: even/odd produces unintended holes inside buildings.
+  // Erase reachable exterior first, then re-cover the UNION of all interior
+  // modules at their exact physical boundaries before applying real sight.
   if(s.intel.mode==='exterior-known'&&s.site){
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(bounds.minX,bounds.minY,
-      bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
-    for(const room of s.site.rooms)ctx.rect(room.x,room.y,room.w,room.h);
-    ctx.clip('evenodd');
-    ctx.filter='blur(1.5px)';
-    ctx.fillStyle='rgba(255,255,255,.76)';
-    for(let row=Math.floor(bounds.minY/20);row<Math.ceil(bounds.maxY/20);row++)
-      for(let col=Math.floor(bounds.minX/20);col<Math.ceil(bounds.maxX/20);col++){
-        const p={x:col*20+10,y:row*20+10};
-        if(exteriorBriefedAt(s.site,p))ctx.fillRect(col*20,row*20,20,20);
+    ctx.filter='none';
+    ctx.fillStyle='#fff';
+    for(let row=Math.floor(bounds.minY/10);row<Math.ceil(bounds.maxY/10);row++)
+      for(let col=Math.floor(bounds.minX/10);col<Math.ceil(bounds.maxX/10);col++){
+        const p={x:col*10+5,y:row*10+5};
+        if(exteriorBriefedAt(s.site,p))ctx.fillRect(col*10,row*10,10,10);
       }
-    ctx.restore();
+    // All interior modules use source-over compositing, so overlaps stay
+    // covered instead of turning into false exterior as parity flips.
+    ctx.globalCompositeOperation='source-over';
+    ctx.fillStyle='#000';
+    for(const room of s.site.rooms)
+      ctx.fillRect(room.x,room.y,room.w,room.h);
+    ctx.globalCompositeOperation='destination-out';
+    // The upper 3D fog curtain must not hide publicly known facade walls,
+    // glazing and front doors. A slim perimeter aperture displays their
+    // physical silhouettes without opening up the rooms behind them.
+    ctx.strokeStyle='#fff';
+    ctx.lineWidth=11;
+    for(const wall of WALLS){
+      if(!accessibleExteriorWall(s.site,wall))continue;
+      ctx.beginPath();ctx.moveTo(wall.a.x,wall.a.y);
+      ctx.lineTo(wall.b.x,wall.b.y);ctx.stroke();
+    }
+    for(const door of s.doors){
+      if(!accessibleExteriorWall(s.site,door))continue;
+      ctx.beginPath();ctx.moveTo(door.a.x,door.a.y);
+      ctx.lineTo(door.b.x,door.b.y);ctx.stroke();
+    }
+    // Window openings are gaps in WALLS, so their exterior frames need
+    // their own narrow aperture in the high concealment layer.
+    for(const window of s.site.windows??[]){
+      if(window.interior)continue;
+      const half=window.width/2;
+      const a=window.vertical?
+        {x:window.x,y:window.y-half}:{x:window.x-half,y:window.y};
+      const b=window.vertical?
+        {x:window.x,y:window.y+half}:{x:window.x+half,y:window.y};
+      if(!accessibleExteriorWall(s.site,{a,b}))continue;
+      ctx.beginPath();ctx.moveTo(a.x,a.y);
+      ctx.lineTo(b.x,b.y);ctx.stroke();
+    }
   }
   // Exploration gets a short feather rather than 40-unit hard rectangles.
   // This is presentation only: intel and hidden actor visibility are
@@ -70,7 +99,7 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
     if(level===2)continue;
     // Exterior briefing has already been clipped to the exact footprint;
     // never erase an entire partially-interior tile from its center sample.
-    if(s.intel.mode==='exterior-known'&&!fineSeen&&level===1)continue;
+    if(s.intel.mode==='exterior-known'&&s.site&&!fineSeen&&level===1)continue;
     // Blueprint outlines are briefed, but unseen interiors must read as
     // distinctly unobserved rather than nearly as bright as explored rooms.
     const blueprintUnknown=s.intel.mode==='floor-plan'&&!fineSeen;
