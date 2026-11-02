@@ -88,10 +88,33 @@ export const WARDROBE_RECIPES:readonly WardrobeRecipe[]=[
   {headwear:'beanie',facewear:'gaiter',top:'pcu-shell',
    trousers:'softshell-trousers',packStyle:'field-pack'},
   {top:'winter',trousers:'winter'},3),
- recipe('verdigris-patrol','Verdigris patrol template','setting','carbine',
-  {head:'head-helmet',armor:'armor-soft',rig:'rig-light'},
-  {headwear:'ach',top:'field-jacket',armorStyle:'soft-vest',
-   trousers:'field-trousers'},{top:'woodland'},4)
+ // Verdigris' original three organizations are visual/role templates,
+ // not player allegiances or permanent restrictions on freeform kits.
+ recipe('northline','Northline stabilization patrol','setting','carbine',
+  {head:'head-helmet',armor:'armor-carrier',rig:'rig-full',
+   backpack:'backpack-field',belt:'belt-standard'},
+  {headwear:'ach',armorStyle:'plate-standard',rigStyle:'full-chest',
+   packStyle:'field-pack',top:'acu-shirt',trousers:'acu-trousers',
+   headset:'helmet-ears',footwear:'combat-boots'},
+  {top:'multi-terrain',trousers:'multi-terrain'},1,
+  'Standardized coalition protection, communications and supply-line kit'),
+ recipe('commune','Commune valley defender','setting','rifle',
+  {head:'head-cap',armor:'armor-soft',rig:'rig-full',
+   backpack:'backpack-day',belt:'belt-standard'},
+  {headwear:'beanie',facewear:'gaiter',armorStyle:'soft-paca',
+   rigStyle:'belt-harness',packStyle:'assault-pack',
+   top:'flannel',trousers:'work-pants',footwear:'hiking-boots'},
+  {top:'flannel',trousers:'woodland'},0,
+  'Locally sourced mixed civilian workwear and refurbished field gear'),
+ recipe('freelancers','Freelancer port contractor','setting','smg',
+  {head:'head-helmet',armor:'armor-carrier',rig:'rig-light',
+   backpack:'backpack-day',belt:'belt-standard'},
+  {headwear:'high-cut-rails',eyewear:'sunglasses',
+   headset:'boom-headset',armorStyle:'plate-jpc',
+   rigStyle:'micro-rig',packStyle:'admin-pack',
+   top:'softshell',trousers:'combat-trousers',footwear:'trail-shoes'},
+  {top:'atacs-inspired',trousers:'solid'},3,
+  'Modular boutique contractor kit emphasizing mobile communications')
 ];
 export function applyWardrobeRecipe(selected:WardrobeRecipe):{
  kit:EquipmentLoadout;wardrobe:WardrobeOptions
