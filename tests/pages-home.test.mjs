@@ -16,10 +16,13 @@ test('Pages root opens the latest tactical Breach game',()=>{
     'the old Verdigris renderer must no longer own the Pages root');
 });
 
-test('Dedicated Breach URL remains directly accessible',()=>{
+test('Dedicated Breach URL redirects to the canonical game and preserves deep links',()=>{
   const breach=read('breach.html');
-  assert.match(breach,/src="\.\/src\/breach-main\.ts"/);
-  assert.match(breach,/id="contextTools"/);
+  assert.match(breach,/<a href="\.\/index\.html">Fieldwork<\/a>/);
+  assert.match(breach,/const target=new URL\('\.\/index\.html',window\.location\.href\)/);
+  assert.match(breach,/target\.search=window\.location\.search/);
+  assert.match(breach,/target\.hash=window\.location\.hash/);
+  assert.match(breach,/window\.location\.replace\(target\.href\)/);
 });
 
 test('Original Verdigris is archived and included in the Pages build',()=>{
