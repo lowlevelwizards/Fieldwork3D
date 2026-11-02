@@ -49,6 +49,7 @@ import {casingAt,CASING_LIMIT,IMPACT_MARK_LIMIT,impactProfile} from './breach-ef
 import {sampleThrow} from './breach-flash.ts';
 import {doorProportions,DOOR_PANEL_END_RECESS,DOOR_FRAME_INSET} from './breach-door-proportions.ts';
 import {paintFogMask,occupiedFogRooms,FOG_WIDTH,FOG_HEIGHT,maskSize} from './breach-fog-mask.ts';
+import {exteriorKnownFogRects,fogUvAt} from './breach-fog-domain.ts';
 import {fogFingerprint} from './breach-fog-cache.ts';
 import {wallOccludesFriendly,transitionWallOpacity} from './breach-camera-occlusion.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
@@ -117,6 +118,7 @@ export class TacticalScene3D{
   private fogContext!:CanvasRenderingContext2D;
   private fogTexture!:THREE.CanvasTexture;
   private smoothFog!:THREE.Mesh;
+  private exteriorKnownFog!:THREE.Mesh;
   private actors=new Map<string,{root:THREE.Group;flash:THREE.Mesh;
     beam:THREE.Mesh;beamLast:{x:number;y:number;yaw:number;tick:number}|null;
     pack:THREE.Mesh;
@@ -295,6 +297,14 @@ export class TacticalScene3D{
     this.smoothFog.renderOrder=1000;
     this.smoothFog.frustumCulled=false;
     this.scene.add(this.smoothFog);
+    // In Exterior Known, mask only actual building-floor footprints, not
+    // the site bounding rectangle. It uses this SAME texture and material,
+    // but cannot paint black over grass beyond the building walls.
+    this.exteriorKnownFog=new THREE.Mesh(new THREE.BufferGeometry(),fogMat);
+    this.exteriorKnownFog.renderOrder=1000;
+    this.exteriorKnownFog.frustumCulled=false;
+    this.exteriorKnownFog.visible=false;
+    this.scene.add(this.exteriorKnownFog);
     // Ground-aligned fog is the sole map-space concealment layer.
     // Raised horizontal fog sheets suffer isometric parallax: they appear
     // skewed away from room footprints and black out exterior terrain.
@@ -441,6 +451,31 @@ export class TacticalScene3D{
       bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
     this.smoothFog.position.set((bounds.minX+bounds.maxX)/2,
       1.05,(bounds.minY+bounds.maxY)/2);
+    // One batched, nonoverlapping union of all actual room footprints.
+    // No elevated parallax planes and no N separate draw calls per room.
+    this.exteriorKnownFog.geometry.dispose();
+    const positions:number[]=[],uvs:number[]=[],indices:number[]=[];
+    for(const rect of site?exteriorKnownFogRects(site):[]){
+      const corners=[
+        {x:rect.x,y:rect.y},
+        {x:rect.x,y:rect.y+rect.h},
+        {x:rect.x+rect.w,y:rect.y+rect.h},
+        {x:rect.x+rect.w,y:rect.y}
+      ];
+      const offset=positions.length/3;
+      for(const p of corners){
+        positions.push(p.x,1.05,p.y);
+        const uv=fogUvAt(p,bounds);
+        uvs.push(uv.u,uv.v);
+      }
+      indices.push(offset,offset+1,offset+2,offset,offset+2,offset+3);
+    }
+    const geometry=new THREE.BufferGeometry();
+    geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+    geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    this.exteriorKnownFog.geometry=geometry;
     this.fogTexture.needsUpdate=true;
     this.buildWorld(site);
     this.root.add(this.fogUnknown,this.fogExplored);
@@ -2052,7 +2087,10 @@ export class TacticalScene3D{
     // Ground-aligned cone/memory mask: no elevated fog surfaces and no
     // automatic room clearing. Static objects are independently gated.
     this.fogUnknown.count=0;this.fogExplored.count=0;
-    this.smoothFog.visible=!omniscient;
+    const clippedExteriorFog=!omniscient&&
+      s.intel.mode==='exterior-known'&&!!s.site;
+    this.smoothFog.visible=!omniscient&&!clippedExteriorFog;
+    this.exteriorKnownFog.visible=clippedExteriorFog;
     // Do not repaint/re-upload an identical visibility texture every 55ms
     // while operators are stationary in planning. Quantized pose and intel
     // changes make the key; real LOS is still computed by the fog renderer.

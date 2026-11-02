@@ -35,6 +35,8 @@ test('fog mask clears directional polygons, not complete occupied rooms',()=>{
 test('3D fog stays ground-aligned and hides unobserved object details',()=>{
  const code=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
  assert.match(code,/this\.smoothFog\.renderOrder=1000;/);
+ assert.match(code,/this\.exteriorKnownFog\.visible=clippedExteriorFog;/);
+ assert.match(code,/exteriorKnownFogRects\(site\)/);
  assert.match(code,/wallOccludesFriendly/);
  assert.match(code,/transitionWallOpacity/);
  assert.match(code,/this\.observedDetails\.push/);
