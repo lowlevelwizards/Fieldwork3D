@@ -58,6 +58,25 @@ test('selected headwear swatches actually tint the material and survive look ser
   assert.equal(rig.visualKit.wardrobeHead.headwearMaterials[id].color.getHex(),HEADWEAR_SOLID_COLORS[requested].hex,id);
   assert.ok(rig.visualKit.wardrobeHead.headwearMaterials[id].roughnessMap,id);
  }
+ // Regression: the previous renderer applied the swatch, then the rig's
+ // neutral material ledger silently restored the gray preview every frame.
+ // Exercise repeated poses with the same mesh rather than only UI selection.
+ const chosen=selectWardrobeItem(bareLabEquipment(),initialWardrobe(),'headwear','boonie');
+ const mesh=rig.visualKit.wardrobeHead.headwearMaterials.boonie;
+ const map=mesh.map,roughness=mesh.roughnessMap;
+ for(const color of ['black','desert-tan','olive-drab','black']){
+  const current={...chosen.wardrobe,headwearColor:color};
+  poseOperator(rig,pose(chosen.kit,current),0);
+  assert.equal(mesh.color.getHex(),HEADWEAR_SOLID_COLORS[color].hex,
+   'repeated pose must visibly retain '+color);
+  assert.equal(mesh.map,map,'construction detail must stay intact');
+  assert.equal(mesh.roughnessMap,roughness,'surface finish must stay intact');
+ }
+ // Reset to the correct new item's default, never the prior hat's black.
+ const steel=selectWardrobeItem(bareLabEquipment(),initialWardrobe(),'headwear','soviet-steel');
+ poseOperator(rig,pose(steel.kit,steel.wardrobe),0);
+ assert.equal(rig.visualKit.wardrobeHead.headwearMaterials['soviet-steel'].color.getHex(),
+  HEADWEAR_SOLID_COLORS['soviet-4bo'].hex);
  const colorless=readWardrobe({...initialWardrobe(),headwearColor:'fake-metallic'});
  assert.equal(colorless.headwearColor,undefined);
  rig.dispose();
