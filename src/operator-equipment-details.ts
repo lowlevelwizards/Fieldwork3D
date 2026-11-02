@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
+import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 
 type ToolType='utility-light'|'utility-breach'|'utility-pry'|'utility-cutter'|'utility-wedge';
 export type OperatorEquipmentDetails={
@@ -78,6 +79,8 @@ export function createOperatorEquipmentDetails(medical:THREE.Mesh,
   const wedge=box(tools['utility-wedge'],fabric,0,0,z,4.0,1.4,1.2);
   wedge.rotation.z=-.16;
  }
+ for(const g of [medicalMark,radioTrim,flashHardware,...Object.values(tools)])
+  consolidateVisualGroup(g);
  for(const g of Object.values(tools))g.visible=false;
  return {tools,medicalMark,radioTrim,flashHardware};
 }

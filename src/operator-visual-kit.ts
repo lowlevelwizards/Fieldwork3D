@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import type {CarryLocation} from './equipment-carry-placement.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
+import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 
 type Slots=EquipmentLoadout['slots'];
 type Material=THREE.MeshStandardMaterial;
@@ -134,6 +135,11 @@ export function createOperatorVisualKit(
  magazines.pocket.push(part(hip,dark,-1.6,-4.25,6,2.0,3.2,2.15));
  for(const mesh of [...magazines.rig,...magazines.belt,...magazines.pocket])
   mesh.visible=false;
+ // Static layered clothing/armor/pack geometry becomes a few multi-face
+ // meshes per material. Keep individually issued magazines unmerged.
+ for(const surface of [helmet,cap,hair,jacket,lightShirt,softArmor,
+  plateCarrier,chestRig,fieldWebbing,belt,dayPack,fieldPack])
+   consolidateVisualGroup(surface);
  return {helmet,cap,hair,jacket,lightShirt,softArmor,plateCarrier,chestRig,
   fieldWebbing,belt,dayPack,fieldPack,cargoPockets,bootCuffs,sleeveCuffs,
   eyeMarks,hairMaterial,magazines};
