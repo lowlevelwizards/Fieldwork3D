@@ -8,7 +8,7 @@ function fakeContext(){
   globalCompositeOperation:'source-over',fillStyle:'#000',
   save(){calls.push(['save'])},restore(){calls.push(['restore'])},
   setTransform(){},clearRect(){},beginPath(){},moveTo(){},
-  lineTo(){},closePath(){},fill(){},stroke(){calls.push(['stroke'])},
+  lineTo(){},closePath(){},rect(){},fill(){},stroke(){calls.push(['stroke'])},
   clip(){throw new Error('Even-odd room clipping must not return')},
   fillRect(x,y,w,h){calls.push(['rect',this.globalCompositeOperation,
     this.fillStyle,x,y,w,h])},

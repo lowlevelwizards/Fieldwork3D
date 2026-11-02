@@ -1,6 +1,6 @@
 /** One low-resolution, softly filtered fog mask shared by 2D and 3D.
  * The fog presentation never changes detection or player intelligence. */
-import {W,H,WALLS} from './breach-core.ts';
+import {W,H,WALLS,type Pt} from './breach-core.ts';
 import type {Site,WorldBounds} from './breach-site.ts';
 import {team,type Session} from './breach-game.ts';
 import {intelFogLevel} from './breach-intel.ts';
@@ -8,11 +8,20 @@ import {exteriorBriefedAt,accessibleExteriorWall} from './breach-site-footprint.
 import {visionPolygon} from './breach-vision-polygon.ts';
 import {MICRO_KEYS,MICRO_COLS} from './breach-fog-memory.ts';
 export const FOG_WIDTH=320,FOG_HEIGHT=370;
+/** Display-only supersampling. Cap expanded sites to protect mobile VRAM. */
+export const MAX_FOG_TEXTURE_EDGE=1280;
 export const maskBounds=(site?:Site|null):WorldBounds=>
   site?.bounds??{minX:0,minY:0,maxX:W,maxY:H};
 export const maskSize=(site?:Site|null)=>{
-  const b=maskBounds(site);return {width:Math.ceil((b.maxX-b.minX)/2),
-    height:Math.ceil((b.maxY-b.minY)/2)};
+  // Preserve historical authored training map dimensions; procedural sites
+  // receive the extra precision needed for smooth mobile isometric fog.
+  if(!site)return {width:FOG_WIDTH,height:FOG_HEIGHT};
+  const b=maskBounds(site);
+  const worldW=b.maxX-b.minX,worldH=b.maxY-b.minY;
+  const worldUnitsPerPixel=Math.max(1,worldW/MAX_FOG_TEXTURE_EDGE,
+    worldH/MAX_FOG_TEXTURE_EDGE);
+  return {width:Math.ceil(worldW/worldUnitsPerPixel),
+    height:Math.ceil(worldH/worldUnitsPerPixel)};
 };
 const prepare=(ctx:CanvasRenderingContext2D,site?:Site|null)=>{
   const bounds=maskBounds(site),size=maskSize(site);
@@ -84,52 +93,65 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
       ctx.lineTo(b.x,b.y);ctx.stroke();
     }
   }
-  // Exploration gets a short feather rather than 40-unit hard rectangles.
-  // This is presentation only: intel and hidden actor visibility are
-  // still checked in the authoritative simulation every tick.
-  ctx.filter='blur(1.5px)';
+  // Group every remembered tile into one combined path per knowledge
+  // level. Blurring each rect separately caused visible staircase corners,
+  // overlapping alpha seams and checkerboard patterns after zooming.
+  // These visual paths do NOT modify actual sight or persistent knowledge.
+  const fineVisible:Pt[]=[];
+  const blueprint:Pt[]=[];
   for(let row=Math.floor(bounds.minY/20);row<Math.ceil(bounds.maxY/20);row++)
     for(let col=Math.floor(bounds.minX/20);col<Math.ceil(bounds.maxX/20);col++){
-    const p={x:col*20+10,y:row*20+10};
-    const fineSeen=s.seenGround.has('fine:'+col+','+row);
-    // Sight is cleared only by the continuous occluded polygons below.
-    // A center-pixel sample clearing a whole 20-unit cell was the source
-    // of square holes through walls, and inconsistent live/fog states.
-    const level=intelFogLevel(s.intel,s.site,p,false,fineSeen);
-    if(level===2)continue;
-    // Exterior briefing has already been clipped to the exact footprint;
-    // never erase an entire partially-interior tile from its center sample.
-    if(s.intel.mode==='exterior-known'&&s.site&&!fineSeen&&level===1)continue;
-    // Blueprint outlines are briefed, but unseen interiors must read as
-    // distinctly unobserved rather than nearly as bright as explored rooms.
-    const blueprintUnknown=s.intel.mode==='floor-plan'&&!fineSeen;
-    ctx.fillStyle=level===1?
-      (blueprintUnknown?'rgba(255,255,255,.34)':'rgba(255,255,255,.76)'):'#fff';
-    ctx.fillRect(col*20,row*20,20,20);
-  }
-  // Small explored footprints fill the gaps left by coarse center samples,
-  // while preserving the existing 20-unit replay memory and intelligence.
-  ctx.filter='blur(1.5px)';
+      const p={x:col*20+10,y:row*20+10};
+      const fineSeen=s.seenGround.has('fine:'+col+','+row);
+      const level=intelFogLevel(s.intel,s.site,p,false,fineSeen);
+      if(level===2)continue;
+      // Exterior Known is already clipped by exact building footprints.
+      if(s.intel.mode==='exterior-known'&&s.site&&!fineSeen&&level===1)continue;
+      if(s.intel.mode==='floor-plan'&&!fineSeen)blueprint.push({x:col*20,y:row*20});
+      else fineVisible.push({x:col*20,y:row*20});
+    }
+  ctx.filter='blur(2.8px)';
   ctx.fillStyle='rgba(255,255,255,.76)';
+  if(fineVisible.length){
+    ctx.beginPath();
+    for(const p of fineVisible)ctx.rect(p.x,p.y,20,20);
+    ctx.fill();
+  }
+  ctx.fillStyle='rgba(255,255,255,.34)';
+  if(blueprint.length){
+    ctx.beginPath();
+    for(const p of blueprint)ctx.rect(p.x,p.y,20,20);
+    ctx.fill();
+  }
+  // Micro-memory is a continuous union before feathering, not hundreds
+  // of independently blurred pixel blocks.
+  ctx.filter='blur(3px)';
+  ctx.fillStyle='rgba(255,255,255,.76)';
+  ctx.beginPath();
+  let microCount=0;
   for(let row=Math.floor(bounds.minY/10);row<Math.ceil(bounds.maxY/10);row++)
     for(let col=Math.floor(bounds.minX/10);col<Math.ceil(bounds.maxX/10);col++)
-    if(s.seenGround.has(MICRO_KEYS[row*MICRO_COLS+col]??
-      'micro:'+col+','+row))
-      ctx.fillRect(col*10,row*10,10,10);
-  // Continuous sight polygons are eased along their outline without
-  // changing target detection, opacity or LOS blockers.
-  ctx.filter='blur(1.2px)';
+      if(s.seenGround.has(MICRO_KEYS[row*MICRO_COLS+col]??
+        'micro:'+col+','+row)){
+        ctx.rect(col*10,row*10,10,10);microCount++;
+      }
+  if(microCount)ctx.fill();
+  // Keep actual directional line-of-sight polygons exact; a light edge
+  // feather is display-only and cannot grant tactical information.
+  ctx.filter='blur(2px)';
   ctx.fillStyle='#fff';
+  ctx.beginPath();
+  let polygonCount=0;
   for(const a of team(s)){
     if(a.health<=0)continue;
     const poly=visionPolygon(a.p,a.heading,240,undefined,s.doors,
       a.posture==='crouch');
     if(poly.length<3)continue;
-    ctx.beginPath();
     ctx.moveTo(poly[0].x,poly[0].y);
     for(let i=1;i<poly.length;i++)ctx.lineTo(poly[i].x,poly[i].y);
-    ctx.closePath();ctx.fill();
+    ctx.closePath();polygonCount++;
   }
+  if(polygonCount)ctx.fill();
   ctx.restore();
 }
 
