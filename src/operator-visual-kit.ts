@@ -10,6 +10,8 @@ import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {createWardrobeHeadLayers,updateWardrobeHeadLayers,
  type WardrobeHeadLayers} from './operator-wardrobe-head-visuals.ts';
+import {createWardrobeBodyLayers,updateWardrobeBodyLayers,
+ type WardrobeBodyLayers} from './operator-wardrobe-body-visuals.ts';
 
 type Slots=EquipmentLoadout['slots'];
 type Material=THREE.MeshStandardMaterial;
@@ -17,7 +19,7 @@ type VisualMaterials={cloth:Material;vest:Material;trousers:Material;
  packFabric:Material;dark:Material;skin:Material;steel:Material};
 type Limb={upper:THREE.Mesh;lower:THREE.Mesh;shoe?:THREE.Mesh};
 export type OperatorVisualKit={
- wardrobeHead:WardrobeHeadLayers;
+ wardrobeHead:WardrobeHeadLayers;wardrobeBody:WardrobeBodyLayers;
  helmet:THREE.Group;cap:THREE.Group;hair:THREE.Group;
  haircuts:THREE.Group[];graphicMarks:THREE.Group;
  jacket:THREE.Group;lightShirt:THREE.Group;
@@ -88,6 +90,8 @@ export function createOperatorVisualKit(
  part(cap,dark,3.62,6.07,0,.32,.28,7.9);
  part(cap,cloth,4.05,5.92,0,4.3,.44,7.65);
  const wardrobeHead=createWardrobeHeadLayers(head,cloth,vest,dark,skin);
+ const wardrobeBody=createWardrobeBodyLayers(chest,legs,arms,
+  cloth,trousers,trim,dark);
  // Separate clothing profiles: jacket has a heavier collar, flap and
  // squared hem; the shirt exposes a narrow collar instead of extra panels.
  const jacket=bundle(chest);
@@ -212,7 +216,8 @@ export function createOperatorVisualKit(
  for(const surface of [helmet,cap,hair,jacket,lightShirt,softArmor,
   plateCarrier,chestRig,fieldWebbing,belt,dayPack,fieldPack,packHarness])
    consolidateVisualGroup(surface);
- return {wardrobeHead,helmet,cap,hair,jacket,lightShirt,softArmor,plateCarrier,chestRig,
+ return {wardrobeHead,wardrobeBody,helmet,cap,hair,jacket,lightShirt,
+  softArmor,plateCarrier,chestRig,
   fieldWebbing,belt,dayPack,fieldPack,packHarness,cargoPockets,bootCuffs,
   fieldToeCaps,lightInstepPanels,sleeveCuffs,
   rolledForearms,rolledCuffs,kneePanels,eyeMarks,hairMaterial,magazines,
@@ -246,8 +251,13 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  v.graphicMarks.visible=faceStyle==='graphic';
  v.softArmor.visible=s.armor==='armor-soft';
  v.plateCarrier.visible=s.armor==='armor-carrier';
- v.jacket.visible=s.top==='top-uniform';
- v.lightShirt.visible=s.top==='top-light';
+ const heavyTop=['field-jacket','bdu-shirt','acu-shirt','softshell',
+  'softshell-hood','pcu-shell','tactical-sweater'].includes(looks.top);
+ v.jacket.visible=usingWardrobe?heavyTop:s.top==='top-uniform';
+ v.lightShirt.visible=usingWardrobe?!heavyTop:s.top==='top-light';
+ v.jacket.scale.set(looks.top==='pcu-shell'?1.12:1,1,1);
+ updateWardrobeBodyLayers(v.wardrobeBody,looks.top,looks.trousers,
+  looks.knees,looks.wrist);
  v.chestRig.visible=s.rig==='rig-light';
  v.fieldWebbing.visible=s.rig==='rig-full';
  // Positive-X is outward/front. Armor layers define the bearing surface,
@@ -261,14 +271,16 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  v.dayPack.visible=s.backpack==='backpack-day';
  v.fieldPack.visible=s.backpack==='backpack-field';
  v.packHarness.visible=s.backpack!=='backpack-none';
- for(const pocket of v.cargoPockets)pocket.visible=s.legs==='legs-field';
+ for(const pocket of v.cargoPockets)
+  pocket.visible=!usingWardrobe&&s.legs==='legs-field';
  for(const cuff of v.bootCuffs)cuff.visible=s.feet==='feet-boots';
  for(const toe of v.fieldToeCaps)toe.visible=s.feet==='feet-boots';
  for(const instep of v.lightInstepPanels)instep.visible=s.feet==='feet-light';
  for(const cuff of v.sleeveCuffs)cuff.visible=s.top==='top-uniform';
  for(const mesh of v.rolledForearms)mesh.visible=s.top==='top-light';
  for(const mesh of v.rolledCuffs)mesh.visible=s.top==='top-light';
- for(const mesh of v.kneePanels)mesh.visible=s.legs==='legs-field';
+ for(const mesh of v.kneePanels)
+  mesh.visible=!usingWardrobe&&s.legs==='legs-field';
  // A curated cloth/hair palette, not fluorescent operator identifiers.
  const hairs=[0x332e29,0x635244,0x2f3530,0x9b8060,0x4d4136,0x6c6255];
  const patchColors=[0x88735b,0x52655b,0x8d8474,0x61717b,0x786f50,0x847265];
