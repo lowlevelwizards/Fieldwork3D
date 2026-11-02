@@ -1,6 +1,6 @@
 /** Deterministic isolated tactical movement harness, not campaign state. */
 import {activateSite,doorCenter,doorLeafSegment,segmentsCross,route,
-  passable,type Door,type Pt,type Side,type Obstacle,type Segment}
+  type Door,type Pt,type Side,type Obstacle,type Segment}
  from './breach-core.ts';
 import {initDoor,advanceDoor,pushDoor,approachingDoorLeaf} from './breach-door.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
