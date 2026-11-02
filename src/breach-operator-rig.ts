@@ -122,7 +122,7 @@ const mat=(hex:number,surface?:PixelSurface)=>new THREE.MeshStandardMaterial({co
   map:surface?operatorPixelTextures.get(surface):null,
   flatShading:true,roughness:.86});
 function block(group:THREE.Object3D,x:number,y:number,z:number,
-  width:number,height:number,depth:number,material:THREE.Material){
+  width:number,height:number,depth:number,material:THREE.Material):THREE.Mesh{
   const mesh=new THREE.Mesh(mapBoxPixelUV(new THREE.BoxGeometry(width,height,depth),
     width,height,depth),material);
   mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;
@@ -295,7 +295,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }
   // Kit presentation reuses the live rig without altering shot transforms.
   const gear=p.equipment?.slots;
-  const headItem=gear?.head??'head-helmet';
   // Legacy rectangles are retained for compatibility but superseded by
   // assembled helmet and garment surfaces.
   for(const mesh of r.helmetShell)mesh.visible=false;
