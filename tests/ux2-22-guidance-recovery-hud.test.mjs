@@ -58,6 +58,12 @@ test('recovery instructions travel with prioritized warnings',()=>{
  assert.equal(feed.update(['DESTINATION HAS INSUFFICIENT CLEARANCE',
   'ROOK RELOADED'],'planning',200)?.severity,'warning');
 });
+test('TOOLS and Settings hide the floating palette immediately, never after fade',()=>{
+ const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
+ assert.match(main,/const exclusive=!ui\.orders\.classList\.contains\('compact'\)/);
+ assert.match(main,/if\(reducedMotionMedia\.matches\|\|exclusive\)/);
+ assert.match(main,/paletteExit\?\.cancel\(\);paletteExit=null;[\s\S]*?ui\.context\.hidden=true/);
+});
 test('integration only renders tips in planning, no extra permanent HUD control',()=>{
  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');

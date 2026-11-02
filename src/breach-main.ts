@@ -857,10 +857,21 @@ contextTether.id='contextTether';
 contextTether.setAttribute('aria-hidden','true');
 document.body.append(contextTether);
 function hideContextPalette(){
-  if(!paletteMotion.active)return;
+  // Mutually exclusive sheets must take over immediately. A fading palette
+  // still counts as visible/hit-testable and can obscure the TOOLS drawer.
+  const exclusive=!ui.orders.classList.contains('compact')||
+    !ui.siteSettings.hidden||!ui.briefingPanel.hidden;
+  if(!paletteMotion.active){
+    if(exclusive){paletteExit?.cancel();paletteExit=null;
+      ui.context.hidden=true;contextTether.hidden=true;}
+    return;
+  }
   paletteMotion.hide();contextTether.hidden=true;
   ui.context.style.pointerEvents='none';
-  if(reducedMotionMedia.matches){ui.context.hidden=true;return;}
+  if(reducedMotionMedia.matches||exclusive){
+    paletteExit?.cancel();paletteExit=null;
+    ui.context.hidden=true;return;
+  }
   paletteExit?.cancel();
   paletteExit=ui.context.animate([
     {opacity:1,scale:1},{opacity:0,scale:.96}
