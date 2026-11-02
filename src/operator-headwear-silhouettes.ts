@@ -1,4 +1,4 @@
-/** Stages 1E–1J: confident, anatomically grounded cuboid headwear.
+/** Stage 1K: anatomically fitted reference-led silhouette remakes.
  *
  * All models are authored with +Y up, -Z toward the face, +X to the
  * operator's right. They attach to the canonical head node, preserving
@@ -18,74 +18,145 @@ export type HeadSilhouetteMetrics={
  earEdge:number;foreheadEdge:number;billLength:number;
 };
 export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhouetteMetrics>>={
- 'patrol-cap':{id:'patrol-cap',frontExtent:-7.79,rearExtent:4.525,
-  top:8.89,earEdge:6.37,foreheadEdge:6.37,billLength:3.70},
- 'boonie':{id:'boonie',frontExtent:-6.95,rearExtent:6.60,
-  top:8.85,earEdge:5.975,foreheadEdge:5.69,billLength:0},
- 'beanie':{id:'beanie',frontExtent:-4.75,rearExtent:4.75,
-  top:8.75,earEdge:5.58,foreheadEdge:5.58,billLength:0},
- 'pasgt':{id:'pasgt',frontExtent:-5.80,rearExtent:5.83,
-  top:9.25,earEdge:2.15,foreheadEdge:4.42,billLength:0},
- 'soviet-steel':{id:'soviet-steel',frontExtent:-6.275,rearExtent:6.275,
-  top:9.195,earEdge:4.635,foreheadEdge:4.635,billLength:0},
+ 'patrol-cap':{id:'patrol-cap',frontExtent:-7.335,rearExtent:4.78,
+  top:8.22,earEdge:4.695,foreheadEdge:4.695,billLength:3.15},
+ 'boonie':{id:'boonie',frontExtent:-6.695,rearExtent:6.695,
+  top:8.18,earEdge:4.615,foreheadEdge:4.615,billLength:0},
+ 'beanie':{id:'beanie',frontExtent:-5.05,rearExtent:5.05,
+  top:8.18,earEdge:3.77,foreheadEdge:3.77,billLength:0},
+ 'pasgt':{id:'pasgt',frontExtent:-6.08,rearExtent:5.755,
+  top:8.85,earEdge:1.79,foreheadEdge:3.98,billLength:0},
+ 'soviet-steel':{id:'soviet-steel',frontExtent:-6.39,rearExtent:6.39,
+  top:8.86,earEdge:3.605,foreheadEdge:4.01,billLength:0},
  'ach':{id:'ach',frontExtent:-5.62,rearExtent:5.60,
   top:8.84,earEdge:2.23,foreheadEdge:4.40,billLength:0},
  'high-cut':{id:'high-cut',frontExtent:-5.485,rearExtent:5.35,
   top:8.70,earEdge:5.95,foreheadEdge:4.50,billLength:0}
 };
-/** Stage 1F: one flat crown, one substantial wrap and a short, solid bill.
- * The band is not decorative trim. Its lower edge is the cap's fit line.
+/** Stage 1K: hollow fitting bands instead of solid boxes perched on top.
+ * Upper cap volumes sit above the skull; the side/front/rear panels wrap
+ * around its existing 8x8 perimeter. In particular, these panels leave the
+ * facial region and the space beneath the brim OPEN.
+ * -Z is front; +Z is nape; X sides are symmetric unless stated otherwise.
+ */
+
+/** Patrol cap: single visually continuous low fabric crown + one bold bill.
+ * The six authored volumes form just TWO apparent masses, not six tiers.
  */
 const PATROL_CAP_CUBOIDS:readonly HeadwearCuboid[]=[
- {name:'patrol-solid-crown',x:0,y:7.98,z:0,width:8.65,height:1.82,depth:8.65},
- {name:'patrol-structural-wrap',x:0,y:6.93,z:0,width:9.10,height:1.12,depth:9.05},
- {name:'patrol-bill',x:0,y:6.49,z:-5.94,width:7.20,height:.72,depth:3.70}
+ {name:'patrol-integrated-crown',x:0,y:7.48,z:0,
+  width:8.70,height:1.48,depth:8.78},
+ {name:'patrol-front-fit',x:0,y:5.82,z:-4.32,
+  width:8.75,height:2.25,depth:.92},
+ {name:'patrol-rear-fit',x:0,y:5.84,z:4.32,
+  width:8.75,height:2.22,depth:.92},
+ ...([-1,1] as const).map(sign=>({
+  name:sign===-1?'patrol-left-fit':'patrol-right-fit',
+  x:sign*4.36,y:5.82,z:0,width:.94,height:2.25,depth:8.90
+ })),
+ {name:'patrol-anchored-bill',x:0,y:5.03,z:-5.76,
+  width:7.65,height:.70,depth:3.15}
 ];
 
-/** Stage 1G: wide, confident fabric brim. One broad front drop suggests
- * weight and soft fabric without a staircase of little corner tabs.
+/** Boonie: one deep fitted fabric crown and one open-centred brim ring.
+ * A solid 13x13 slab would cut through the face when placed correctly;
+ * four broad connected brim sectors are one visible continuous gesture.
  */
 const BOONIE_CUBOIDS:readonly HeadwearCuboid[]=[
- {name:'boonie-low-crown',x:0,y:7.90,z:0,width:8.90,height:1.90,depth:8.95},
- {name:'boonie-structural-wrap',x:0,y:6.95,z:0,width:9.25,height:1.15,depth:9.30},
- {name:'boonie-wide-brim',x:0,y:6.40,z:0,width:13.25,height:.85,depth:13.20},
- {name:'boonie-front-fabric-drop',x:0,y:6.20,z:-5.95,
-  width:11.60,height:1.02,depth:2.00}
+ {name:'boonie-integrated-crown',x:0,y:7.43,z:0,
+  width:8.78,height:1.50,depth:8.88},
+ {name:'boonie-front-fit',x:0,y:5.79,z:-4.34,
+  width:8.80,height:2.35,depth:.94},
+ {name:'boonie-rear-fit',x:0,y:5.79,z:4.34,
+  width:8.80,height:2.35,depth:.94},
+ ...([-1,1] as const).map(sign=>({
+  name:sign===-1?'boonie-left-fit':'boonie-right-fit',
+  x:sign*4.37,y:5.79,z:0,width:.94,height:2.35,depth:8.94
+ })),
+ {name:'boonie-front-brim',x:0,y:4.91,z:-5.47,
+  width:12.70,height:.74,depth:2.45},
+ {name:'boonie-rear-brim',x:0,y:4.91,z:5.47,
+  width:12.70,height:.74,depth:2.45},
+ ...([-1,1] as const).map(sign=>({
+  name:sign===-1?'boonie-left-brim':'boonie-right-brim',
+  x:sign*5.43,y:4.91,z:0,width:2.52,height:.74,depth:12.70
+ }))
 ];
 
-/** Stage 1H: no decorative ribbing or pixel-scale approximated curvature.
- * The low broad cuff is the only secondary mass.
+/** Beanie: close-fitting shell and ONE broad folded cuff, both hollow.
+ * The cuff crosses the brow/upper-ear plane, rather than sitting at Y5.58.
  */
 const BEANIE_CUBOIDS:readonly HeadwearCuboid[]=[
- {name:'beanie-fitted-crown',x:0,y:7.75,z:0,width:8.65,height:2.00,depth:8.75},
- {name:'beanie-folded-cuff',x:0,y:6.28,z:0,width:9.40,height:1.40,depth:9.50}
+ {name:'beanie-fitted-crown',x:0,y:7.52,z:0,
+  width:8.62,height:1.32,depth:8.72},
+ {name:'beanie-front-body',x:0,y:5.63,z:-4.32,
+  width:8.64,height:3.03,depth:.92},
+ {name:'beanie-rear-body',x:0,y:5.63,z:4.32,
+  width:8.64,height:3.03,depth:.92},
+ ...([-1,1] as const).map(sign=>({
+  name:sign===-1?'beanie-left-body':'beanie-right-body',
+  x:sign*4.33,y:5.63,z:0,width:.92,height:3.03,depth:8.84
+ })),
+ {name:'beanie-front-cuff',x:0,y:4.46,z:-4.55,
+  width:9.14,height:1.38,depth:1.00},
+ {name:'beanie-rear-cuff',x:0,y:4.46,z:4.55,
+  width:9.14,height:1.38,depth:1.00},
+ ...([-1,1] as const).map(sign=>({
+  name:sign===-1?'beanie-left-cuff':'beanie-right-cuff',
+  x:sign*4.53,y:4.46,z:0,width:1.08,height:1.38,depth:9.28
+ }))
 ];
 
-/** Stage 1I: larger and deeper than the ACH, never a scaled ACH clone.
- * Brow, temple, ear and nape heights each correspond to protective coverage.
+/** PASGT: an independently authored older Kevlar shell, based on original
+ * US PASGT ortho references. Low brow/peak, deep side lobes, low rear.
+ * Unlike the ACH, its protective profile is deliberately skirted and
+ * projects well forward of the forehead. All joins physically overlap.
  */
 const PASGT_CUBOIDS:readonly HeadwearCuboid[]=[
- {name:'pasgt-full-crown',x:0,y:7.48,z:0,width:10.65,height:3.54,depth:10.75},
- {name:'pasgt-deep-brow',x:0,y:5.42,z:-5.10,width:10.65,height:2.00,depth:1.40},
- {name:'pasgt-low-nape',x:0,y:4.40,z:5.07,width:10.65,height:4.50,depth:1.52},
+ {name:'pasgt-upper-dome',x:0,y:7.95,z:0,
+  width:9.20,height:1.80,depth:9.30},
+ {name:'pasgt-broad-shoulder',x:0,y:7.02,z:0,
+  width:10.45,height:2.15,depth:10.50},
+ {name:'pasgt-integrated-front-peak',x:0,y:5.16,z:-5.34,
+  width:10.45,height:2.36,depth:1.48},
+ {name:'pasgt-low-rear-skirt',x:0,y:4.15,z:4.98,
+  width:10.85,height:4.72,depth:1.55},
  ...([-1,1] as const).flatMap(sign=>[
   {name:sign===-1?'pasgt-left-temple':'pasgt-right-temple',
-   x:sign*4.85,y:5.28,z:-3.25,width:1.30,height:2.70,depth:3.30},
-  {name:sign===-1?'pasgt-left-ear':'pasgt-right-ear',
-   x:sign*4.85,y:4.40,z:1.55,width:1.30,height:4.50,depth:7.00}
+   x:sign*4.88,y:5.05,z:-3.35,
+   width:1.36,height:2.55,depth:3.35},
+  {name:sign===-1?'pasgt-left-ear-lobe':'pasgt-right-ear-lobe',
+   x:sign*4.88,y:4.17,z:1.42,
+   width:1.36,height:4.76,depth:6.75}
  ])
 ];
 
-/** Stage 1J: deliberately broad, historical steel-pot mass. The upper
- * crown step represents the dome; the one thick projecting rim represents
- * the steel shell's brim, not an added ornament.
+/** SSh-40: not stacked roofing slabs. A two-step blocky dome enters one
+ * deep HOLLOW bell, whose lower four rim sectors form one integrated flare.
+ * The characteristic shallow front projection, low ear sides, and rear
+ * flare are independently sized from reference, not scaled from PASGT.
  */
 const STEEL_CUBOIDS:readonly HeadwearCuboid[]=[
- {name:'steel-pot-body',x:0,y:6.95,z:0,width:10.80,height:2.95,depth:10.90},
- {name:'steel-pot-upper-crown',x:0,y:8.22,z:0,
-  width:9.10,height:1.95,depth:9.20},
- {name:'steel-pot-strong-rim',x:0,y:5.26,z:0,
-  width:12.35,height:1.25,depth:12.55}
+ {name:'ssh40-dome-crown',x:0,y:8.00,z:0,
+  width:8.35,height:1.72,depth:8.55},
+ {name:'ssh40-dome-shoulder',x:0,y:6.98,z:0,
+  width:9.70,height:2.36,depth:9.82},
+ {name:'ssh40-bell-front',x:0,y:5.08,z:-4.74,
+  width:9.80,height:2.12,depth:.96},
+ {name:'ssh40-bell-rear',x:0,y:4.86,z:4.74,
+  width:9.80,height:2.54,depth:.96},
+ ...([-1,1] as const).map(sign=>({
+  name:sign===-1?'ssh40-bell-left':'ssh40-bell-right',
+  x:sign*4.80,y:4.99,z:0,width:1.00,height:2.35,depth:9.62
+ })),
+ {name:'ssh40-flared-front',x:0,y:4.43,z:-5.43,
+  width:12.35,height:.84,depth:1.92},
+ {name:'ssh40-flared-rear',x:0,y:4.00,z:5.43,
+  width:12.35,height:.90,depth:1.92},
+ ...([-1,1] as const).map(sign=>({
+  name:sign===-1?'ssh40-flared-left':'ssh40-flared-right',
+  x:sign*5.40,y:4.12,z:0,width:1.82,height:1.03,depth:11.75
+ }))
 ];
 
 /** Stage 1E — confident, subtractive helmet silhouettes.
@@ -186,8 +257,8 @@ export function createHeadwearSilhouette(
  group.name='cuboid-'+id+'-minus-Z-forward';
  headwearFromVolumes(group,material,id);
  group.userData.stage=({
-  'patrol-cap':'1F','boonie':'1G','beanie':'1H',
-  'pasgt':'1I','soviet-steel':'1J',
+  'patrol-cap':'1K','boonie':'1K','beanie':'1K',
+  'pasgt':'1K','soviet-steel':'1K',
   'ach':'1E','high-cut':'1E'
  } as const)[id];
  group.userData.modelAxes='-Z-forward,+X-right,+Y-up';
