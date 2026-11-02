@@ -37,7 +37,8 @@ export function generateJunctionSite(seed:number):Site{
     if(!id){walls.push(boundary);return;}
     const {a,b}=boundary,vertical=Math.abs(b.x-a.x)<.01;
     const span=length(a,b),half=ordinaryDoorOpeningWidth(id)/2;
-    const offset=(rand()-.5)*Math.min(16,Math.max(0,span-2*half-14));
+    // Retain established door center/seed variation; only resize the cut.
+    const offset=(rand()-.5)*Math.min(16,Math.max(0,span-48-14));
     const middle=vertical?{x:a.x,y:(a.y+b.y)/2+offset}:
       {x:(a.x+b.x)/2+offset,y:a.y};
     const near=vertical?{x:middle.x,y:middle.y-half}:
