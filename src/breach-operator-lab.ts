@@ -17,7 +17,61 @@ import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH,LEG_HIP_SIDE} from './breach-leg-geome
 import {LabMotionCache,LabHistoricalMotionCache,LabDistanceMotionCache,TRACK_DURATION,type LabTrack}
   from './breach-lab-tracks.ts';
 import type {WeaponId} from './breach-combat.ts';
+import {initialEquipmentLoadout,setEquipmentChoice,
+ type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
+import {itemsForSlot} from './equipment-catalog.ts';
 
+
+let labKit:EquipmentLoadout=initialEquipmentLoadout();
+let labPalette=1;
+const kitSelects=Array.from(document.querySelectorAll<HTMLSelectElement>('[data-kit-slot]'));
+for(const select of kitSelects){
+ const slot=select.dataset.kitSlot as LoadoutSlot;
+ for(const item of itemsForSlot(slot)){
+  const option=document.createElement('option');
+  option.value=item.id;option.textContent=item.name;select.append(option);
+ }
+ select.addEventListener('change',()=>{
+  labKit=setEquipmentChoice(labKit,slot,select.value);syncKit();
+ });
+}
+const kitPresets:Record<string,Partial<Record<LoadoutSlot,string>>>={
+ light:{head:'head-none',armor:'armor-none',rig:'rig-light',belt:'belt-light',
+ backpack:'backpack-none',top:'top-light',legs:'legs-light',feet:'feet-light'},
+ standard:{head:'head-helmet',armor:'armor-soft',rig:'rig-light',
+ belt:'belt-standard',backpack:'backpack-day',top:'top-uniform',
+ legs:'legs-field',feet:'feet-boots'},
+ heavy:{head:'head-helmet',armor:'armor-carrier',rig:'rig-full',
+ belt:'belt-standard',backpack:'backpack-field',top:'top-uniform',
+ legs:'legs-field',feet:'feet-boots'}
+};
+function kitPreset(name:string){
+ let next=initialEquipmentLoadout();
+ for(const [slot,id] of Object.entries(kitPresets[name]??{}))
+  next=setEquipmentChoice(next,slot as LoadoutSlot,id);
+ return next;
+}
+function magazineFixture(kit:EquipmentLoadout){
+ const target=Number((document.getElementById('kitMagazines') as HTMLSelectElement).value);
+ const capacity={rig:kit.slots.rig==='rig-full'?7:kit.slots.rig==='rig-light'?4:0,
+ belt:kit.slots.belt==='belt-standard'?3:kit.slots.belt==='belt-light'?1:0,
+ pocket:1,backpack:kit.slots.backpack==='backpack-field'?16:
+  kit.slots.backpack==='backpack-day'?8:0};
+ const locations:('rig'|'belt'|'pocket'|'backpack')[]=[];
+ for(const loc of ['rig','belt','pocket','backpack'] as const)
+  while(locations.length<target&&capacity[loc]-->0)locations.push(loc);
+ return locations;
+}
+function syncKit(){for(const select of kitSelects)
+ select.value=labKit.slots[select.dataset.kitSlot as LoadoutSlot];}
+for(const button of document.querySelectorAll<HTMLButtonElement>('[data-kit-preset]'))
+ button.addEventListener('click',()=>{
+  labKit=kitPreset(button.dataset.kitPreset??'standard');syncKit();
+ });
+document.getElementById('kitPalette')?.addEventListener('change',e=>{
+ labPalette=Number((e.target as HTMLSelectElement).value);
+});
+syncKit();
 const choose=<T extends HTMLElement>(id:string)=>
   document.getElementById(id)! as T;
 const canvas=choose<HTMLCanvasElement>('preview');
@@ -114,6 +168,58 @@ function applySilhouette(body:OperatorRig,enabled:boolean){
     material.color.copy(enabled?silhouetteColor:originalColor);
 }
 const labelLayer=choose<HTMLElement>('compareLabels');
+
+const isolation=choose<HTMLSelectElement>('kitIsolation');
+const kitCompareButton=choose<HTMLButtonElement>('compareKit');
+let kitComparing=false;
+const kitBodies:OperatorRig[]=[];
+function endKitComparison(){
+ while(kitBodies.length){const body=kitBodies.pop()!;
+  scene.remove(body.root);body.dispose();}
+ kitComparing=false;kitCompareButton.setAttribute('aria-pressed','false');
+}
+function isolateKit(body:OperatorRig){
+ const focus=isolation.value;
+ if(focus==='all')return;
+ const visual=body.visualKit;
+ if(focus!=='head'){
+  visual.helmet.visible=false;visual.cap.visible=false;visual.hair.visible=false;
+ }
+ if(focus!=='armor'){
+  visual.softArmor.visible=false;visual.plateCarrier.visible=false;
+ }
+ if(focus!=='carry'){
+  visual.chestRig.visible=false;visual.fieldWebbing.visible=false;
+  visual.belt.visible=false;visual.dayPack.visible=false;
+  visual.fieldPack.visible=false;body.pack.visible=false;
+  for(const items of Object.values(visual.magazines))
+   for(const item of items)item.visible=false;
+  for(const item of [...body.rigPouches,body.beltPouch,
+   body.medicalPouch,body.radioUnit,body.utilityTool,body.flashCanister])
+    item.visible=false;
+ }
+}
+kitCompareButton.addEventListener('click',()=>{
+ if(kitComparing){endKitComparison();fit();return;}
+ kitComparing=true;
+ if(comparing){
+  comparing=false;clearComparison();
+  poseCompareButton.setAttribute('aria-pressed','false');
+  labelLayer.hidden=true;document.body.classList.remove('compare-open');
+ }
+ if(gaitComparing){
+  gaitComparing=false;clearGaitCompare();
+  gaitCompareButton.setAttribute('aria-pressed','false');
+  gaitCompareStatus.hidden=true;
+ }
+ for(let i=0;i<3;i++){
+  const body=createOperatorRig(operator.value,
+   operator.value==='hostile'?'red':'blue');
+  scene.add(body.root);kitBodies.push(body);
+ }
+ kitCompareButton.setAttribute('aria-pressed','true');fit();
+});
+
 const poseCompareButton=choose<HTMLButtonElement>('comparePose');
 const silhouetteButton=choose<HTMLButtonElement>('silhouetteMode');
 function clearComparison(){
@@ -186,6 +292,7 @@ const build=()=>{
   labSwitch=null;
   clearComparison();clearGaitCompare();
   if(rig){scene.remove(rig.root);rig.dispose();}
+  endKitComparison();
   rig=createOperatorRig(operator.value,operator.value==='hostile'?'red':'blue');
   scene.add(rig.root);
 };
@@ -199,7 +306,7 @@ function fit(next='iso'){
     center.z+dz);
   camera.zoom=comparing?
     Math.min(.34,Math.max(.21,.58*window.innerWidth/window.innerHeight)):
-    gaitComparing?(compact?.60:.77):1.4;camera.updateProjectionMatrix();
+    gaitComparing?(compact?.60:.77):kitComparing?(compact?.65:.9):1.4;camera.updateProjectionMatrix();
   control.target.set(center.x,16,center.z);control.update();
   cameraFollow={x:center.x,z:center.z};
 }
@@ -557,6 +664,8 @@ function draw(){
     replayFeet:feet,pelvisYaw:state.pelvisYaw,
     hybridSupport:gaitReference.value==='candidate',
     deterministic:true,shotHeading:motion.heading,
+     equipment:labKit,appearanceSeed:labPalette,
+     magazineCarryLocations:magazineFixture(labKit),
     downPose:track==='down-back'?'back':
       track==='down-left'?'left':
       track==='down-right'?'right':
@@ -566,6 +675,7 @@ function draw(){
     hitYaw:motion.heading+Math.PI/2,
     hitAge:track==='wounded'?Math.max(0,clock-.7):undefined,
     hitSeverity:2},0);
+  if(!comparing&&!kitComparing)isolateKit(rig);
   if(gaitComparing&&rig.lastPose){
     ensureGaitCompare();
     const historical=historicalGait!.sample(clock);
@@ -590,7 +700,19 @@ function draw(){
     gaitCompareStatus.textContent='LEFT: PRE-180 · RIGHT: HYBRID · '+
       'SYNC '+clock.toFixed(2)+'s';
   }else if(gaitCompareRig)gaitCompareRig.root.visible=false;
-  rig.root.visible=!comparing;
+  rig.root.visible=!comparing&&!kitComparing;
+  if(kitComparing&&rig.lastPose){
+   const types=['light','standard','heavy'] as const;
+   for(let i=0;i<kitBodies.length;i++){
+    const body=kitBodies[i],x=(i-1)*31;
+    body.root.position.set(x,0,0);
+    poseOperator(body,{...rig.lastPose,x,z:0,velocity:0,turning:0,
+     equipment:kitPreset(types[i]),appearanceSeed:labPalette+i,
+     magazineCarryLocations:['rig','rig','belt'],
+     down:false,injury:0,posture:'stand',deterministic:true},0);
+    if(silhouettes)applySilhouette(body,true);
+   }
+  }
   // poseOperator restores all original material colors every tick.
   // Keep the silhouette applied *after* each pose, not only on toggle.
   if(!comparing&&silhouettes)applySilhouette(rig,true);
@@ -618,16 +740,18 @@ function draw(){
       });
     }
   }else for(const body of comparisonRigs)body.root.visible=false;
-  const dx=comparing?0:motion.x-cameraFollow.x,
-    dz=comparing?0:motion.z-cameraFollow.z;
+  const dx=comparing||kitComparing?0:motion.x-cameraFollow.x,
+    dz=comparing||kitComparing?0:motion.z-cameraFollow.z;
   camera.position.x+=dx;camera.position.z+=dz;
   control.target.x+=dx;control.target.z+=dz;
   cameraFollow={x:motion.x,z:motion.z};
   timeline.value=String(Math.round(clock*1000));
   timeOutput.textContent=clock.toFixed(2)+'s';
-  if(comparing){
+  if(comparing||kitComparing){
     debug.visible=false;
-    diagnosticText.textContent='SIX STANCES · ORBIT / ZOOM TO COMPARE';
+    diagnosticText.textContent=kitComparing?
+      'LIGHT / STANDARD / HEAVY · PROPORTIONS LOCKED':
+      'SIX STANCES · ORBIT / ZOOM TO COMPARE';
   }else showDiagnostics();
   canvas.dataset.compare=String(comparing);
   canvas.dataset.compareGaits=String(gaitComparing);

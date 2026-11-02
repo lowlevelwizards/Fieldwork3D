@@ -11,6 +11,11 @@ header{position:fixed;top:env(safe-area-inset-top);left:0;right:0;z-index:2;back
 header a{color:#c8b992}main{position:fixed;bottom:env(safe-area-inset-bottom);left:0;right:0;z-index:3;padding:8px;background:#202c2bf0;display:grid;gap:8px;max-height:48dvh;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
 .row{display:flex;gap:5px;flex-wrap:wrap;align-items:center}label{min-width:55px;color:#b9c5bd}button,select{background:#4a5b52;color:#fff1d8;border:1px solid #728177;padding:8px 11px;font:11px monospace;border-radius:3px;min-height:35px;touch-action:manipulation}button[aria-pressed=true]{background:#c8ac72;color:#1a2522}select{min-width:120px}small{opacity:.85}
 #timeline{flex:1;min-width:120px;accent-color:#c8ac72;touch-action:pan-x}
+#kitPanel{background:#23392f;border:1px solid #718b7e;border-radius:7px;padding:7px}
+#kitPanel summary{cursor:pointer;touch-action:manipulation;color:#e2c693;font-weight:700;padding:5px}
+#kitPanel .kit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:7px;padding-top:9px}
+#kitPanel label{display:grid;gap:3px}#kitPanel select{min-width:0;width:100%}
+#kitPanel .row{margin-top:8px}#kitPanel small{color:#b9c7bd}
 #diagnosticText{position:fixed;top:50px;left:8px;z-index:2;
   padding:8px;white-space:pre-line;pointer-events:none;
   background:#16231fdd;color:#e8e6da;max-width:260px;font:11px monospace}
@@ -85,6 +90,37 @@ button:focus-visible,select:focus-visible{outline:2px solid #c9a778;outline-offs
 <div class="row"><label>MODEL</label><select id="operator"><option value="rook">ROOK</option><option value="moss">MOSS</option><option value="ash">ASH</option><option value="vale">VALE</option><option value="hostile">HOSTILE</option></select>
 <select id="weapon"><option value="carbine">CARBINE</option><option value="smg">SMG</option><option value="rifle">RIFLE</option><option value="shotgun">SHOTGUN</option></select>
 <select id="injury"><option value="0">HEALTHY</option><option value="1">INJURED</option><option value="2">HEAVY</option><option value="3">DOWN</option></select></div>
+<details id="kitPanel"><summary>APPEARANCE / EQUIPMENT · PROPORTIONS LOCKED</summary>
+<div class="kit-grid">
+<label>HEAD<select data-kit-slot="head"></select></label>
+<label>ARMOR<select data-kit-slot="armor"></select></label>
+<label>RIG<select data-kit-slot="rig"></select></label>
+<label>BELT<select data-kit-slot="belt"></select></label>
+<label>BACKPACK<select data-kit-slot="backpack"></select></label>
+<label>TOP<select data-kit-slot="top"></select></label>
+<label>LEGS<select data-kit-slot="legs"></select></label>
+<label>HANDS<select data-kit-slot="hands"></select></label>
+<label>FEET<select data-kit-slot="feet"></select></label>
+<label>MEDICAL<select data-kit-slot="medical"></select></label>
+<label>TACTICAL<select data-kit-slot="tactical"></select></label>
+<label>UTILITY<select data-kit-slot="utility"></select></label>
+<label>PALETTE<select id="kitPalette">
+<option value="1">PALETTE 1</option><option value="2">PALETTE 2</option><option value="3">PALETTE 3</option><option value="4">PALETTE 4</option><option value="5">PALETTE 5</option><option value="6">PALETTE 6</option><option value="7">PALETTE 7</option><option value="8">PALETTE 8</option>
+</select></label>
+<label>MAGAZINE COUNT<select id="kitMagazines">
+<option value="0" >0 SPARE</option><option value="1" >1 SPARE</option><option value="2" >2 SPARE</option><option value="3" selected>3 SPARE</option><option value="4" >4 SPARE</option><option value="5" >5 SPARE</option><option value="6" >6 SPARE</option>
+</select></label>
+<label>ISOLATE<select id="kitIsolation">
+<option value="all">FULL OPERATOR</option><option value="head">HEADGEAR</option>
+<option value="armor">ARMOR</option><option value="carry">LOAD BEARING</option>
+<option value="clothes">CLOTHING</option></select></label>
+</div><div class="row"><label>PRESETS</label>
+<button data-kit-preset="light">LIGHT</button>
+<button data-kit-preset="standard">STANDARD</button>
+<button data-kit-preset="heavy">HEAVY</button>
+<button id="compareKit" aria-pressed="false">COMPARE THREE</button></div>
+<small>Preview sandbox only; no campaign inventory changes or body-proportion changes.</small>
+</details>
 <div class="row"><label>MOTION</label>
 <button data-pose="idle">IDLE</button><button data-pose="walk">WALK</button><button data-pose="run">RUN</button>
 <button data-pose="accelerate">ACCEL</button><button data-pose="stop">STOP</button>
