@@ -14,7 +14,7 @@
 import * as THREE from 'three';
 import {PIXEL_WORLD_SIZE} from './rendering/pixel-recipes.ts';
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
-import {headwearCamoPixels,type HeadwearCamoId} from './operator-headwear-camo.ts';
+import {headwearCamoPixels,HEADWEAR_CAMO_DENSITY,type HeadwearCamoId} from './operator-headwear-camo.ts';
 export type HeadwearMaterialKind='cotton'|'knit'|'composite'|'steel';
 export const HEADWEAR_DETAIL_PIXEL_WORLD_SIZE=PIXEL_WORLD_SIZE;
 export const HEADWEAR_ATLAS_PIXELS=64;
@@ -124,28 +124,42 @@ export function headwearDetailTexture(id:HeadSilhouetteId):THREE.DataTexture{
  texture.needsUpdate=true;textureCache.set(id,texture);return texture;
 }
 
-/** Precomposes the canonical camouflage tile with each existing *grayscale*
- * construction region. The same world-unit-per-pixel atlas UVs, vertex
- * tone hierarchy, and physical roughness map survive the pattern switch.
- * No extra meshes, decals, stochastic noise or UV rewrapping.
+/** Camo cloth is printed at pattern-specific density, NOT the construction
+ * pixel grid. The union's uv1 follows the sewn fabric's top and perimeter.
+ * The original 64px UV0 atlas and physical roughness UVs stay untouched,
+ * so switching to a solid restores every 1:1 material feature exactly.
+ *
+ * Each 64px region samples the same authored periodic 32px master artwork.
+ * Large M81/DCU fields use 1px per world unit; Tiger, UCP and MultiCam
+ * use 2px per world unit. Regions are contextual fabric panels, not new
+ * geometry or arbitrary stickers. Pixel filtering is nearest throughout.
  */
 export function headwearCamoTexture(id:HeadSilhouetteId,camo:HeadwearCamoId):THREE.DataTexture{
  const key=id+':'+camo,existing=camoCache.get(key);if(existing)return existing;
- const art=headwearCamoPixels(camo),pixels=new Uint8Array(64*64*4);
- for(let region=0;region<4;region++)for(let y=0;y<32;y++)for(let x=0;x<32;x++){
-  const tone=headwearRegionPixel(id,region as 0|1|2|3,x,y)/255;
-  const source=(y*32+x)*4;
-  const dest=((Math.floor(region/2)*32+y)*64+(region%2)*32+x)*4;
-  for(let n=0;n<3;n++)pixels[dest+n]=Math.round(art[source+n]*tone);
-  pixels[dest+3]=255;
+ const artwork=headwearCamoPixels(camo),density=HEADWEAR_CAMO_DENSITY[camo];
+ const px=new Uint8Array(128*128*4);
+ for(let region=0;region<4;region++)for(let y=0;y<64;y++)for(let x=0;x<64;x++){
+  // The band/cuff and brim are independently sewn panels, but their print
+  // remains equally scaled and does not repeat separately on every box face.
+  let artX=density===1?Math.floor(x/2):x;
+  const artY=density===1?Math.floor(y/2):y;
+  if(camo==='tiger-stripe'&&region===1)
+   artX+=Math.floor(y/3); // modest diagonal direction on wrapped walls
+  const source=(((artY%32)*32+(artX%32))*4);
+  const tone=headwearRegionPixel(id,region as 0|1|2|3,
+   Math.floor(x/2),Math.floor(y/2))/255;
+  const dest=((Math.floor(region/2)*64+y)*128+(region%2)*64+x)*4;
+  for(let n=0;n<3;n++)px[dest+n]=Math.round(artwork[source+n]*tone);
+  px[dest+3]=255;
  }
- const tex=new THREE.DataTexture(pixels,64,64,THREE.RGBAFormat,THREE.UnsignedByteType);
+ const tex=new THREE.DataTexture(px,128,128,THREE.RGBAFormat,THREE.UnsignedByteType);
+ tex.channel=1; // unionCuboids uv1: sewn cloth, not structural 1:1 uv0
  tex.colorSpace=THREE.SRGBColorSpace;
  tex.wrapS=tex.wrapT=THREE.ClampToEdgeWrapping;
  tex.magFilter=THREE.NearestFilter;
  tex.minFilter=THREE.NearestMipmapNearestFilter;
  tex.generateMipmaps=true;
- tex.name='Fieldwork headwear camo '+key+' 1:1 atlas';
+ tex.name='Fieldwork fabric camo '+key+' / '+density+'x 128px sewn-panel atlas';
  tex.needsUpdate=true;camoCache.set(key,tex);return tex;
 }
 

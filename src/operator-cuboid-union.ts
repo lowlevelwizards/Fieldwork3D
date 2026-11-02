@@ -32,7 +32,7 @@ export function unionCuboids(parts:readonly HeadwearCuboid[],
  }
  const solid=(q:number[])=>q.every((v,a)=>v>=0&&v<shape[a])?
   !!occupancy[idx(q[0],q[1],q[2])]:false;
- const vertices:number[]=[],indices:number[]=[],uvs:number[]=[],colors:number[]=[];
+ const vertices:number[]=[],indices:number[]=[],uvs:number[]=[],camoUvs:number[]=[],colors:number[]=[];
  const planeAxes:[[number,number],[number,number],[number,number]]=[
   [1,2],[2,0],[0,1]
  ];
@@ -99,6 +99,25 @@ export function unionCuboids(parts:readonly HeadwearCuboid[],
      const ru=region%2,rv=Math.floor(region/2);
      uvs.push((ru*32+16+texU/PIXEL_WORLD_SIZE)/64,
               (rv*32+16+texV/PIXEL_WORLD_SIZE)/64);
+     // Printed fabric has independent UVs. Tops use plan projection;
+     // crown/band walls unwrap continuously around the perimeter rather
+     // than resetting at each cuboid face. This is deliberately decoupled
+     // from the 1:1 construction/roughness atlas above.
+     const half=5.5;
+     let printU:number,printV:number;
+     if(axis===1){
+      printU=16+q[0];printV=16+q[2];
+     }else{
+      const perimeter=axis===2
+       ?(sign===-1?half+q[0]:5*half-q[0])
+       :(sign===1?3*half+q[2]:7*half-q[2]);
+      // A single circumference spans 32 artwork units; join at rear-left.
+      printU=perimeter*32/(8*half);
+      printV=16+q[1];
+     }
+     const safe=(v:number)=>Math.max(.005,Math.min(31.995,v));
+     camoUvs.push((ru*64+2*safe(printU))/128,
+                  (rv*64+2*safe(printV))/128);
      if(options.faceTone)colors.push(tone,tone,tone);
     }
     if(sign===1)indices.push(start,start+1,start+2,start,start+2,start+3);
@@ -110,6 +129,7 @@ export function unionCuboids(parts:readonly HeadwearCuboid[],
  const geometry=new THREE.BufferGeometry();
  geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
  geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
+ geometry.setAttribute('uv1',new THREE.Float32BufferAttribute(camoUvs,2));
  if(options.faceTone)
   geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
  geometry.setIndex(indices);geometry.computeVertexNormals();
@@ -119,6 +139,8 @@ export function unionCuboids(parts:readonly HeadwearCuboid[],
  geometry.userData.exteriorQuads=quads;
  geometry.userData.pixelWorldSize=PIXEL_WORLD_SIZE;
  geometry.userData.materialAtlasPixels=64;
+ geometry.userData.camoAtlasPixels=128;
+ geometry.userData.camoUvLayout='planar-top/continuous-perimeter';
  geometry.userData.materialRegions=!!options.faceRegion||!!options.faceTone;
  return geometry;
 }
