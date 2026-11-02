@@ -26,7 +26,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'M81 WOODLAND',
   description:'Large green/brown/tan organic fields with sparse black branching hooks',
   colors:[[94,111,77],[138,121,90],[64,83,66],[46,54,44]],
-  targetCoverage:[.36,.27,.24,.13],
+  targetCoverage:[.25,.33,.32,.10],
   motifs:[
    p(1,-3,0,6,0,10,3,7,8,1,9,-3,7),
    p(1,16,2,23,0,29,3,27,8,21,10,16,7),
@@ -46,7 +46,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'3-COLOR DESERT',
   description:'Open pale sand with large light-khaki islands and sparse brown branching accents',
   colors:[[193,173,133],[221,201,162],[145,105,73]],
-  targetCoverage:[.50,.34,.16],
+  targetCoverage:[.45,.45,.10],
   motifs:[
    p(1,-3,3,4,0,10,3,11,8,6,12,-3,11),
    p(1,16,0,23,-2,30,2,29,9,23,11,17,8),
@@ -62,7 +62,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'TIGER STRIPE',
   description:'Broken dark tapered directional streaks over green, olive and tan fields',
   colors:[[124,135,91],[77,101,70],[147,122,84],[42,55,43]],
-  targetCoverage:[.28,.28,.19,.25],
+  targetCoverage:[.32,.25,.16,.27],
   motifs:[
    p(1,-4,3,9,2,17,6,27,4,35,7,35,10,23,8,13,10,3,7,-4,8),
    p(2,-4,15,9,12,18,14,31,11,35,13,35,17,23,17,14,19,4,17,-4,19),
@@ -77,7 +77,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'UCP',
   description:'Pale, low-contrast, square-step digital clusters in gray, sage and sand',
   colors:[[166,171,158],[136,146,134],[188,188,169]],
-  targetCoverage:[.37,.30,.33],
+  targetCoverage:[.45,.28,.27],
   motifs:[
    p(1,0,0,9,0,9,3,12,3,12,6,8,6,8,9,3,9,3,5,0,5),
    p(2,14,0,22,0,22,3,26,3,26,7,23,7,23,10,18,10,18,6,14,6),
@@ -96,7 +96,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'MULTICAM',
   description:'Multiscale olive and sand organic islands with restrained dark accents',
   colors:[[171,158,117],[206,189,149],[109,126,88],[129,102,74],[67,84,64]],
-  targetCoverage:[.30,.23,.24,.16,.07],
+  targetCoverage:[.22,.23,.29,.21,.05],
   motifs:[
    p(1,-4,1,7,-2,13,1,10,5,4,8,-4,6),
    p(1,18,13,27,11,35,17,34,22,25,23,20,20),
