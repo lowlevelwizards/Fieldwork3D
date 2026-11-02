@@ -14,7 +14,7 @@ This is a **subtractive** pass on the Stage 1D anatomical fit. The unchanged 8×
 | Brow | Single protective lower edge Y4.40 | Single lower edge Y4.50 |
 | Ear | Deep continuous side wrap down to Y2.23 | Open central ear: Y5.95 |
 | Nape | Joins ear wrap at Y2.23 | One broad rear return at Y3.10 |
-| Authored volumes | 7 (previously 9) | 5 (previously 6) |
+| Authored volumes | 7 (previously 10) | 5 (previously 6) |
 | Silhouette logic | One clear drop from temple to ear/nape | Brow / open ear / rear return |
 
 The ACH knowingly lowers the old mid-ear edge from Y2.70 to Y2.23 so the nape and ear share a confident continuous lower edge, instead of retaining two tiny transitions. The high-cut retains its prior ear-clearance measurement. Both crowns retain their Stage 1D top measurements.
