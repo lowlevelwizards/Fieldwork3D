@@ -29,7 +29,8 @@ import {segmentHitsBox} from './breach-ray.ts';
 import {coverImpactFraction,aimHeight} from './breach-cover-height.ts';
 import {MICRO_KEYS,MICRO_COLS} from './breach-fog-memory.ts';
 import {assessFireLane,type FireBlock} from './breach-fire-safety.ts';
-import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor} from './breach-door.ts';
+import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor,
+  approachingDoorLeaf,PUSHED_OPEN_LIMIT} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool,issuedWedges} from './equipment-entry-tools.ts';
@@ -1348,12 +1349,17 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     y:a.p.y+Math.sin(direction)*advance};
   // Push an open leaf as soon as the body touches it, not only when
   // the centre line crosses it (which was too late to escape collision).
-  const closedDoor=s.doors.find(door=>
-    pointToSegment(move,doorLeafSegment(door))<15||
-    doorBlocksSegment(door,{a:a.p,b:move}));
+  // Resolve nearest actual leaf first: adjacent/paired doors must not
+  // steal contact from the panel the operator is physically approaching.
+  const closedDoor=s.doors.filter(door=>
+    pointToSegment(move,doorLeafSegment(door))<18||
+    doorBlocksSegment(door,{a:a.p,b:move}))
+    .sort((u,v)=>pointToSegment(move,doorLeafSegment(u))-
+      pointToSegment(move,doorLeafSegment(v)))[0];
   // Keep applying contact pressure beyond the normal open stop, right up
   // to the wider swept limit. Previously .99 cut off the new overswing.
-  if(closedDoor?.open&&(closedDoor.openFraction??0)<1.27){
+  if(closedDoor&&(closedDoor.openFraction??0)<PUSHED_OPEN_LIMIT&&
+     approachingDoorLeaf(a.p,move,closedDoor)){
     // Sustained contact at the latch generates more torque than at the
     // hinge; an already open door can always be pushed toward its stop.
     const impulse=doorContactImpulse(closedDoor,move);
