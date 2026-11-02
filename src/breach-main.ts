@@ -125,6 +125,11 @@ const ui={
   briefingPanel:el<HTMLElement>('briefingPanel'),
   briefingTitle:el<HTMLElement>('briefingTitle'),
   briefingBody:el<HTMLElement>('briefingBody'),
+  briefingCondition:el<HTMLElement>('briefingCondition'),
+  briefingExtraction:el<HTMLElement>('briefingExtraction'),
+  briefingSite:el<HTMLElement>('briefingSite'),
+  briefingIntel:el<HTMLElement>('briefingIntel'),
+  briefingRoster:el<HTMLElement>('briefingRoster'),
   briefingClose:el<HTMLButtonElement>('briefingClose'),
   context:el<HTMLElement>('contextTools'),
   quickStates:el<HTMLElement>('quickStates'),
@@ -1491,11 +1496,13 @@ function updateHud(){
   recordCompletedOperation();
   const brief=operationBriefing(state);
   ui.briefingTitle.textContent=brief.code+' / '+brief.name;
-  ui.briefingBody.textContent=brief.objective+'\n\nSUCCESS: '+
-    brief.condition+'\nEXTRACT: '+brief.extraction+'\n\nSITE: '+
-    brief.building+' · '+brief.layout+'\nSQUAD: '+brief.squad+
-    ' OPERATORS\n\nINTELLIGENCE: '+brief.notes+
-    '\n\nROSTER: '+persistentRoster.members.map(m=>m.callsign).join(' · ');
+  ui.briefingBody.textContent=brief.objective;
+  ui.briefingCondition.textContent=brief.condition;
+  ui.briefingExtraction.textContent=brief.extraction;
+  ui.briefingSite.textContent=brief.building+' · '+brief.layout;
+  ui.briefingIntel.textContent=brief.notes;
+  ui.briefingRoster.textContent=brief.squad+' OPERATORS · '+
+    team(state).map(a=>a.name).join(' · ');
   if(state.phase!=='planning'){
     ui.briefingPanel.hidden=true;operationsBoard.hidden=true;
   }
