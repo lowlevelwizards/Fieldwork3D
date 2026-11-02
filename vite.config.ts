@@ -16,6 +16,7 @@ export default defineConfig({
       breachVisualLab: 'breach-visual-lab.html',
       operatorLab: 'operator-lab.html',
       mapLab: 'map-lab.html',
+      physicalityLab: 'physicality-lab.html',
       assetLab: 'asset-lab.html',
     } },
   },
