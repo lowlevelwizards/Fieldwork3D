@@ -154,3 +154,17 @@
  align-items:center;font-size:12px;touch-action:manipulation}
 .campaign-shell select:focus-visible{outline:2px solid var(--fw-focus);
  outline-offset:2px}
+
+/* UX2-08: the Operations Room immediately communicates actionable readiness. */
+.campaign-readiness{margin:12px 0 15px;padding:12px;
+ background:var(--fw-panel-deep);border:1px solid var(--fw-panel-border);
+ border-radius:var(--fw-radius-md)}
+.campaign-readiness h2{font-size:12px;margin:0 0 8px}
+.campaign-readiness-label{font-size:12px;line-height:1.5;
+ color:var(--fw-text-muted);margin:6px 0 9px}
+.campaign-shell .campaign-readiness-warning{width:100%;
+ text-align:left;font-size:12px;line-height:1.45;
+ min-height:44px;margin:5px 0;background:#493c30;
+ border-color:var(--fw-brass);color:#f1dfc3}
+.campaign-readiness-ok{font:650 12px/1.5 "IBM Plex Sans",system-ui,sans-serif;
+ color:var(--fw-sage);margin:8px 0 0}
