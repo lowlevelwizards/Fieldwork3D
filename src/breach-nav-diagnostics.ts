@@ -1,7 +1,7 @@
 /** Build 146: one deterministic description of movement failures.
  * Plan authoring keeps imperfect map intel; actual movement always checks
  * authoritative geometry and never fabricates a new tactical destination. */
-import {W,H,WALLS,COVER,pointToSegment,passable,doorLeafSegment,route,
+import {activeWorldBounds,WALLS,COVER,pointToSegment,passable,doorLeafSegment,route,
   type Pt,type Door,type Obstacle} from './breach-core.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 export type Blocker='bounds'|'wall'|'furniture'|'door'|'actor'|'route'|'clear';
@@ -13,16 +13,18 @@ const inBox=(p:Pt,b:Obstacle,r:number)=>
 export function diagnoseMovement(from:Pt,to:Pt,doors:readonly Door[],
   actors:readonly Pt[]=[],radius=8):MoveDiagnostic{
   const samples=Math.max(1,Math.ceil(distance(from,to)/3.5));
+  const bounds=activeWorldBounds();
   for(let i=1;i<=samples;i++){
     const f=i/samples,p={x:from.x+(to.x-from.x)*f,
       y:from.y+(to.y-from.y)*f};
-    if(p.x<13||p.y<20||p.x>W-13||p.y>H-13)
+    if(p.x<bounds.minX+13||p.y<bounds.minY+20||
+       p.x>bounds.maxX-13||p.y>bounds.maxY-13)
       return {blocker:'bounds',point:p,distance:distance(from,p)};
     if(WALLS.some(w=>pointToSegment(p,w)<radius+1))
       return {blocker:'wall',point:p,distance:distance(from,p)};
     if(COVER.some(b=>inBox(p,b,radius)))
       return {blocker:'furniture',point:p,distance:distance(from,p)};
-    const blocked=doors.find(d=>!d.open&&
+    const blocked=doors.find(d=>
       pointToSegment(p,doorLeafSegment(d))<radius+1);
     if(blocked)return {blocker:'door',point:p,
       distance:distance(from,p),id:blocked.id};

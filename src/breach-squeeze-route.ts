@@ -1,6 +1,7 @@
 /** Normal routes win when available. Narrow fallback remains constrained
  * by the known map: never reveal hidden walls or furniture while planning. */
-import {type Pt,route,passable,type Door} from './breach-core.ts';
+import {type Pt,route,passable,type Door,OPERATOR_RADIUS,
+  pointToSegment,doorLeafSegment} from './breach-core.ts';
 import {type IntelState,intelPassable,routeWithIntel} from './breach-intel.ts';
 import {profileSamples,squeezeFacing,sweptProfileClear}
   from './breach-navigation.ts';
@@ -37,16 +38,32 @@ export function routeWithSqueezeIntel(intel:IntelState,from:Pt,to:Pt):Pt[]{
 /** Collision-truth replan after contact or a known obstruction.
  * Open door leaves use the same rule as the ordinary motor. */
 export function routeWithSqueezeWorld(from:Pt,to:Pt,doors:Door[]):Pt[]{
-  const standard=route(from,to);
-  if(standard.length)return standard;
-  const narrow=narrowRoute(from,to,(p,r)=>passable(p,r));
-  let previous=from;
-  for(const point of narrow){
-    const heading=squeezeFacing(Math.atan2(
-      point.y-previous.y,point.x-previous.x));
-    if(!sweptProfileClear(previous,point,doors,heading,'squeeze'))
-      return [];
-    previous=point;
-  }
-  return narrow;
+ // A door being opened is an intentional, actionable obstruction; it must
+ // remain routable so the motor can open it. A leaf already swung into a
+ // walkway is different: a physical route needs to steer around the leaf.
+ const canStand=(p:Pt,r:number)=>
+   passable(p,r)&&!doors.some(d=>d.open&&(d.openFraction??0)>=.72&&
+     pointToSegment(p,doorLeafSegment(d))<r+1);
+ const standard=route(from,to,p=>canStand(p,OPERATOR_RADIUS));
+ if(standard.length){
+   // A grid path can still have a swept leaf collision near its origin.
+   let previous=from,valid=true;
+   for(const point of standard){
+     if(!sweptProfileClear(previous,point,doors,0,'normal')){
+       valid=false;break;
+     }
+     previous=point;
+   }
+   if(valid)return standard;
+ }
+ const narrow=narrowRoute(from,to,canStand);
+ let previous=from;
+ for(const point of narrow){
+   const heading=squeezeFacing(Math.atan2(
+     point.y-previous.y,point.x-previous.x));
+   if(!sweptProfileClear(previous,point,doors,heading,'squeeze'))
+     return [];
+   previous=point;
+ }
+ return narrow;
 }
