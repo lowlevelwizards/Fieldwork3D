@@ -4,6 +4,8 @@
  */
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {wardrobeMount} from './operator-wardrobe-mounts.ts';
+import {initialWardrobeAccessories,readWardrobeAccessories,
+ type WardrobeAccessoryConfiguration} from './operator-wardrobe-accessories.ts';
 export const WARDROBE_SLOTS=[
  'headwear','facewear','eyewear','headset','top','trousers','footwear',
  'armorStyle','rigStyle','beltStyle','packStyle','gloves','knees','wrist'
@@ -146,6 +148,7 @@ export type WardrobeOptions={
  version:1;styles:Partial<Record<WardrobeSlot,string>>;
  patterns:Partial<Record<'top'|'trousers'|'armor'|'gear'|'pack'|'head',WardrobePattern>>;
  palette:number;rolledSleeves:boolean;
+ accessories:WardrobeAccessoryConfiguration;
  mounts:{medical?:string;utility?:string;magazineOrder:'left-right'|'right-left'};
 };
 const DEFAULTS:Record<WardrobeSlot,string>={
@@ -157,6 +160,7 @@ const DEFAULTS:Record<WardrobeSlot,string>={
 };
 export const initialWardrobe=():WardrobeOptions=>({
  version:1,styles:{},patterns:{},palette:0,rolledSleeves:false,
+ accessories:initialWardrobeAccessories(),
  mounts:{magazineOrder:'left-right'}
 });
 export function readWardrobe(raw:unknown):WardrobeOptions{
@@ -180,6 +184,7 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(Number.isInteger(v.palette)&&v.palette!>=0&&v.palette!<=15)
   result.palette=v.palette!;
  result.rolledSleeves=v.rolledSleeves===true;
+ result.accessories=readWardrobeAccessories(v.accessories);
  if(v.mounts&&typeof v.mounts==='object'){
   const incoming=v.mounts;
   for(const kind of ['medical','utility'] as const){

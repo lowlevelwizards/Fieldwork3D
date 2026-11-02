@@ -14,6 +14,9 @@ import {createWardrobeBodyLayers,updateWardrobeBodyLayers,
  type WardrobeBodyLayers} from './operator-wardrobe-body-visuals.ts';
 import {createWardrobeGearLayers,updateWardrobeGearLayers,
  type WardrobeGearLayers} from './operator-wardrobe-gear-visuals.ts';
+import {createWardrobeAccessoryVisuals,updateWardrobeAccessories,
+ initialWardrobeAccessories,type WardrobeAccessoryVisuals}
+ from './operator-wardrobe-accessories.ts';
 
 type Slots=EquipmentLoadout['slots'];
 type Material=THREE.MeshStandardMaterial;
@@ -23,7 +26,7 @@ type VisualMaterials={cloth:Material;vest:Material;trousers:Material;
 type Limb={upper:THREE.Mesh;lower:THREE.Mesh;shoe?:THREE.Mesh};
 export type OperatorVisualKit={
  wardrobeHead:WardrobeHeadLayers;wardrobeBody:WardrobeBodyLayers;
- wardrobeGear:WardrobeGearLayers;
+ wardrobeGear:WardrobeGearLayers;accessories:WardrobeAccessoryVisuals;
  helmet:THREE.Group;cap:THREE.Group;hair:THREE.Group;
  haircuts:THREE.Group[];graphicMarks:THREE.Group;
  jacket:THREE.Group;lightShirt:THREE.Group;
@@ -218,12 +221,14 @@ export function createOperatorVisualKit(
   mesh.visible=false;
  const wardrobeGear=createWardrobeGearLayers(chest,hip,pack,vest,
   gearFabric,packFabric,dark,trim);
+ const accessories=createWardrobeAccessoryVisuals(chest,hip,pack,
+  gearFabric,dark,trim);
  // Static layered clothing/armor/pack geometry becomes a few multi-face
  // meshes per material. Keep individually issued magazines unmerged.
  for(const surface of [helmet,cap,hair,jacket,lightShirt,softArmor,
   plateCarrier,chestRig,fieldWebbing,belt,dayPack,fieldPack,packHarness])
    consolidateVisualGroup(surface);
- return {wardrobeHead,wardrobeBody,wardrobeGear,
+ return {wardrobeHead,wardrobeBody,wardrobeGear,accessories,
   helmet,cap,hair,jacket,lightShirt,
   softArmor,plateCarrier,chestRig,
   fieldWebbing,belt,dayPack,fieldPack,packHarness,cargoPockets,bootCuffs,
@@ -273,6 +278,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   looks.knees,looks.wrist);
  updateWardrobeGearLayers(v.wardrobeGear,looks.armorStyle,looks.rigStyle,
   looks.beltStyle,looks.packStyle);
+ updateWardrobeAccessories(v.accessories,
+  wardrobe?.accessories??initialWardrobeAccessories());
  v.chestRig.visible=s.rig==='rig-light';
  v.fieldWebbing.visible=s.rig==='rig-full';
  v.chestRig.scale.set(looks.rigStyle==='micro-rig'?.76:1,1,1);
