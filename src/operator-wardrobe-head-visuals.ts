@@ -22,6 +22,12 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  canonicalHead:THREE.Group,cloth:THREE.Material,
  vest:THREE.Material,dark:THREE.Material,skin:THREE.Material):WardrobeHeadLayers{
  const headwear:Model={},facewear:Model={},eyewear:Model={},headset:Model={};
+ // All three Stage 1A candidates use the same untextured neutral material.
+ // This isolates geometric silhouette from broken camouflage and makes the
+ // first visual approval possible without the Stage 2 fabric rewrite.
+ const silhouetteMaterial=new THREE.MeshStandardMaterial({
+  color:0x899089,roughness:.96,flatShading:true
+ });
  const g=(set:Model,id:string,canonical=false)=>{
   const model=group(canonical?canonicalHead:head);
   model.visible=false;set[id]=model;return model;
@@ -36,7 +42,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  brimCap('baseball-cap');
  brimCap('backwards-cap',true);
  // Stage 1 silhouette prototypes live in -Z forward head space.
- g(headwear,'patrol-cap',true).add(createHeadwearSilhouette('patrol-cap',cloth));
+ g(headwear,'patrol-cap',true).add(createHeadwearSilhouette('patrol-cap',silhouetteMaterial));
  brimCap('field-cap',false,true);
  const beanie=g(headwear,'beanie');
  cube(beanie,cloth,-.1,6.9,0,8.8,1.5,9.1);
@@ -59,8 +65,8 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   if(rail)cube(model,dark,2.0,8.52,0,1.4,.4,2.0);
  };
  helmet('pasgt',10.4,0,false);
- g(headwear,'ach',true).add(createHeadwearSilhouette('ach',vest));
- g(headwear,'high-cut',true).add(createHeadwearSilhouette('high-cut',vest));
+ g(headwear,'ach',true).add(createHeadwearSilhouette('ach',silhouetteMaterial));
+ g(headwear,'high-cut',true).add(createHeadwearSilhouette('high-cut',silhouetteMaterial));
  // Existing saved rail layouts keep the correct base shell, with actual
  // rails explicitly deferred to the approved detailing phase.
  g(headwear,'high-cut-rails',true).add(createHeadwearSilhouette('high-cut',vest));

@@ -45,3 +45,18 @@ test('silhouette models are finite, indexed, bounded and contain no overlapping 
   });
  }
 });
+
+test('geometry itself, not just metadata, keeps the ACH ear edge low and the high-cut high',()=>{
+ const mat=new THREE.MeshStandardMaterial();
+ const ach=createHeadwearSilhouette('ach',mat).children[0].geometry;
+ const high=createHeadwearSilhouette('high-cut',mat).children[0].geometry;
+ // First ring starts at front theta=0, with ear/side theta=PI/2 (index 4).
+ const a=ach.getAttribute('position'),b=high.getAttribute('position');
+ assert.ok(a.getY(0)>a.getY(4)+1.5,'ACH ear edge should drop below brow');
+ assert.ok(b.getY(4)>b.getY(0)+1.0,'high-cut ear edge should rise above brow');
+ assert.ok(b.getY(4)>a.getY(4)+2.5,'high-cut must actually clear the ear');
+ assert.ok(Math.abs(a.getZ(0))>4.2&&Math.abs(b.getZ(0))>4.2,
+  'forehead shells project outside the skull');
+ assert.ok(Math.abs(a.getX(4))>4.5&&Math.abs(b.getX(4))>4.4,
+  'shells fit around the chunky operator head');
+});
