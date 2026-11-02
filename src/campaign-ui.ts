@@ -314,7 +314,8 @@ export class CampaignScreen{
    trigger.setAttribute('role','tab');
    trigger.setAttribute('aria-selected',String(this.homeTab===tab));
    trigger.setAttribute('aria-controls',panel.id);
-   trigger.tabIndex=this.homeTab===tab?0:-1;
+   // Each tab remains keyboard-reachable; arrow-key navigation is optional.
+   trigger.tabIndex=0;
    panel.setAttribute('aria-labelledby',trigger.id);
    nav.append(trigger);
   }
