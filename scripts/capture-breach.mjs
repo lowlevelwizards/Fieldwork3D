@@ -263,8 +263,12 @@ try{
   await phone.locator('#closeSiteSettings').click();
   const doorPoint=screen(301,505);
   await phone.touchscreen.tap(doorPoint.x,doorPoint.y);
-  // The *final planned position* is enough to trigger door options;
-  // requiring the player to tap its node first was a 076 UX regression.
+  // A reachable door remains selectable even if a tiny leaf overlaps the
+  // operator's touch hitbox. Explicit DOOR opens its interaction palette.
+  const doorShortcut=phone.locator('#contextTools button[data-action="ctxDoor"]');
+  if(!await doorShortcut.isVisible())
+    throw Error('Reachable door shortcut missing from planned destination');
+  await doorShortcut.click();
   for(const action of ['ctxOpen','ctxKick','ctxHold']){
     if(!await phone.locator('#contextTools button[data-action="'+action+'"]').isVisible())
       throw Error('Missing contextual door option '+action+' at planned destination');

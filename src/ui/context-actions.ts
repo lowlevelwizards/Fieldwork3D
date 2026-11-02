@@ -6,7 +6,7 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   reserve:number;magazine:number;doorOpen?:boolean;
   nodeKind?:string;nodeMoveMode?:string;aimLabel?:string;nodeFirePolicy?:string;
   watchActive?:boolean;
-  nearMovable?:boolean;nearWindow?:boolean;
+  nearMovable?:boolean;nearWindow?:boolean;nearDoor?:boolean;
   availableTools?:readonly string[];doorWedged?:boolean;};
 export function contextActionChoices(o:ContextOptions):ContextAction[]{
   if(o.door)return o.doorOpen?[
@@ -30,6 +30,8 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
       title:'Keep watching a chosen point as you move until released'},
     {id:'ctxWait',label:'WAIT',group:'primary',
       pressed:o.nodeKind==='wait'||o.nodeKind==='holdClear',title:'Wait at this position'},
+    ...(o.nearDoor?[{id:'ctxDoor',label:'DOOR',group:'primary' as const,
+      title:'Show actions for a reachable door'}]:[]),
     ...(o.watchActive?[{id:'ctxReleaseWatch',label:'RELEASE',group:'primary' as const,
       title:'End WATCH here and return to automatic movement-facing'}]:[]),
     {id:'ctxFlash',label:'FLASH ×'+o.flashRemaining,group:'advanced',

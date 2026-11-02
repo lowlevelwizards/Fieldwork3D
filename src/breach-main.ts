@@ -1145,7 +1145,8 @@ function updateContext(){
   const a=uid(selected);
   if(!a||a.health<=0){hideContextPalette();return;}
   const node=selectedPlanNode();
-  const door=doorFocusId?focusedDoor(a,node):undefined;
+  const nearbyDoor=focusedDoor(a,node);
+  const door=doorFocusId?nearbyDoor:undefined;
   const current=plannedControl(state,selected,node?.id);
   const at=finalPoint(a);
   const nearMovable=state.coverState.some(o=>canRelocateCover(o)&&
@@ -1163,7 +1164,7 @@ function updateContext(){
   }
   const choices=contextActionChoices({
     door:!!door,node:!!node,flashRemaining:state.flashRemaining,
-    nearMovable,nearWindow,
+    nearMovable,nearWindow,nearDoor:!door&&!!nearbyDoor,
     posture:current.posture,pace:current.pace,
     firePolicy:node?.firePolicyState??a.firePolicy,
     reserve:a.reserve,magazine:a.magazine,
@@ -1408,6 +1409,13 @@ const handleContextAction=(event:MouseEvent)=>{
     case 'ctxLook':
       tacticalFeedback.emit('command',node?.p??a.p,'LOOK');
       uiClickTone('command');armFacing('look');return;
+    case 'ctxDoor':{
+      const available=focusedDoor(a,node);
+      if(!available){state.events.push('NO KNOWN DOOR IN REACH');break;}
+      doorFocusId=available.id;doorMenuDismissedId=null;
+      uiClickTone('select');
+      updateHud();return;
+    }
     case 'ctxWatch':
       tacticalFeedback.emit('command',node?.p??a.p,'WATCH');
       uiClickTone('command');armFacing('watch');return;
