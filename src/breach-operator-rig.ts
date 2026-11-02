@@ -33,7 +33,7 @@ import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {equipmentCarrySocket,utilityDisplaySocket} from './equipment-carry-visuals.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {headwearSolidHex} from './operator-headwear-colors.ts';
-import {resolvedHeadwearCamo} from './operator-headwear-camo.ts';
+import {resolvedHeadwearCamo,headwearCamoPlacement} from './operator-headwear-camo.ts';
 import {headwearCamoTexture,headwearDetailTexture} from './operator-headwear-materials.ts';
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import {wardrobePatternTexture} from './operator-wardrobe-patterns.ts';
@@ -100,6 +100,8 @@ export type OperatorPose={
 export type OperatorRig={
   /** Public space: -Z forward / +X right. Legacy animation is internal. */
   root:THREE.Group;
+  /** Stable personnel identity used only for camouflage print selection. */
+  camoIdentity:string;
   /** +X authored anatomy compatibility node (+90° Y), never world-facing. */
   legacyFrame:THREE.Group;
   /** Future headwear may be authored in -Z using this head-local child. */
@@ -289,7 +291,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
       obj.material instanceof THREE.MeshStandardMaterial)
       colors.set(obj.material,obj.material.color.clone());
   });
-  return {root,legacyFrame,headCanonicalFrame,
+  return {root,camoIdentity:id,legacyFrame,headCanonicalFrame,
     legacyYaw:0,legacyPitch:0,legacyRoll:0,
     hip,chest,head,weapon,droppedGun,feet,arms,pack,
     helmetShell,armorPanels,capBill,rigPouches,beltPouch,
@@ -484,7 +486,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
    const selected=id===clothing.headwear;
    const modelId=(id==='high-cut-rails'?'high-cut':id) as HeadSilhouetteId;
    const camo=selected?resolvedHeadwearCamo(modelId,p.wardrobe?.headwearCamo):null;
-   const map=camo?headwearCamoTexture(modelId,camo):headwearDetailTexture(modelId);
+   const map=camo?headwearCamoTexture(modelId,camo,
+     headwearCamoPlacement(r.camoIdentity,'headwear:'+modelId,camo,
+      p.wardrobe?.headwearCamoRoll??0)):headwearDetailTexture(modelId);
    if(material.map!==map){material.map=map;material.needsUpdate=true;}
    if(camo){
     // Chromatic artwork lives in the map; white avoids a second tint.
