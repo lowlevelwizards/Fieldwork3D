@@ -21,7 +21,7 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
  'patrol-cap':{id:'patrol-cap',frontExtent:-7.335,rearExtent:4.78,
   top:8.22,earEdge:4.695,foreheadEdge:4.695,billLength:3.15},
  'boonie':{id:'boonie',frontExtent:-6.695,rearExtent:6.695,
-  top:8.18,earEdge:4.615,foreheadEdge:4.615,billLength:0},
+  top:8.18,earEdge:4.54,foreheadEdge:4.54,billLength:0},
  'beanie':{id:'beanie',frontExtent:-5.05,rearExtent:5.05,
   top:8.18,earEdge:3.77,foreheadEdge:3.77,billLength:0},
  'pasgt':{id:'pasgt',frontExtent:-6.08,rearExtent:5.755,
@@ -155,7 +155,7 @@ const STEEL_CUBOIDS:readonly HeadwearCuboid[]=[
   width:12.35,height:.90,depth:1.92},
  ...([-1,1] as const).map(sign=>({
   name:sign===-1?'ssh40-flared-left':'ssh40-flared-right',
-  x:sign*5.40,y:4.12,z:0,width:1.82,height:1.03,depth:11.75
+  x:sign*5.25,y:4.12,z:0,width:2.10,height:1.03,depth:11.75
  }))
 ];
 
