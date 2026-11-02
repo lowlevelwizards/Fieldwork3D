@@ -1152,6 +1152,15 @@ function updateContext(){
     distance(at,{x:o.x,y:o.y})<Math.max(o.w,o.h)/2+43);
   const nearWindow=state.windows.some(w=>w.operable&&!w.shattered&&
     distance(at,{x:w.x,y:w.y})<54);
+  // WATCH remains active through later waypoints until LOOK or RELEASE.
+  // Read the authored history, not merely this node's local modifier.
+  let watchActive=a.aimInstruction?.mode==='track';
+  if(node)for(const order of a.plan){
+    if(order.aimMode==='track')watchActive=true;
+    else if(order.aimMode==='free'||order.aimMode==='fixed')
+      watchActive=false;
+    if(order.id===node.id)break;
+  }
   const choices=contextActionChoices({
     door:!!door,node:!!node,flashRemaining:state.flashRemaining,
     nearMovable,nearWindow,
@@ -1162,7 +1171,7 @@ function updateContext(){
     availableTools:door?equippedEntryMethods(a.equipment)
       .filter(method=>entryToolVerdict(door,method).allowed):[],
     nodeKind:node?.kind,nodeMoveMode:node?.moveMode,aimLabel:node?.aimLabel,
-    watchActive:node?.aimMode==='track'||(!node&&a.aimInstruction?.mode==='track'),
+    watchActive,
     nodeFirePolicy:node?.firePolicyState,
   });
   const paletteChoices=choices.filter(choice=>choice.group!=='state');
