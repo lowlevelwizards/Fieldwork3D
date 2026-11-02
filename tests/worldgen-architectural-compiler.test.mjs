@@ -37,7 +37,12 @@ test('new architectural compiler creates real varied and connected physical envi
   assert.ok(a.rooms.some(r=>['foyer','vestibule','mudroom','waiting','reception','lobby',
    'living','dining','sales','aisle','loading','hallway'].includes(r.purpose)&&
    interiorSamples.some(p=>p.x>r.x&&p.x<r.x+r.w&&
-    p.y>r.y&&p.y<r.y+r.h)));
+    p.y>r.y&&p.y<r.y+r.h)),
+    'front-facing public access seed '+seed+' archetype '+a.archetype+
+    ' front '+JSON.stringify(mid)+' samples '+JSON.stringify(interiorSamples)+
+    ' neighboring rooms '+JSON.stringify(a.rooms.filter(r=>
+      Math.abs(r.x-mid.x)<100&&Math.abs(r.y-mid.y)<100).map(r=>({
+       id:r.id,purpose:r.purpose,x:r.x,y:r.y,w:r.w,h:r.h}))));
   activateSite(a);
   try{
    for(const p of [...a.spawn,a.objective,...a.enemies,a.extract])
