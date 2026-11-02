@@ -21,8 +21,10 @@ test('patrol cap preserves one merged surface while wrapping actual head',()=>{
  const v=headwearCuboidVolumes('patrol-cap');
  assert.equal(cap.children.length,1);
  assert.equal(cap.children[0].geometry.userData.greedyCuboidUnion,true);
- assert.equal(v.length,6,'one crown, four fitted walls, one anchored bill');
+ assert.equal(v.length,10,'fitted crown, single fitted band, one anchored bill');
  const bill=byName(v,'patrol-anchored-bill');
+ const band=byName(v,'patrol-front-band');
+ assert.ok(band&&band.width>8.8);
  const crown=byName(v,'patrol-integrated-crown');
  assert.ok(bill&&crown);
  assert.ok(bill.z-bill.depth/2<crown.z-crown.depth/2-2.8);
