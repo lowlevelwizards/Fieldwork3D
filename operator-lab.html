@@ -102,6 +102,26 @@ button:focus-visible,select:focus-visible{outline:2px solid #c9a778;outline-offs
 #labStatus p{font:12px/1.5 "IBM Plex Sans",sans-serif}
 @media(max-width:440px){button,select{font-size:11px;min-height:36px}}
 @media(prefers-reduced-motion:reduce){button,select{transition:none}}
+
+/* UX09: Categorized model workbench — the model remains visible on phone. */
+.lab-category-nav{position:sticky;top:-8px;z-index:4;display:flex;gap:6px;
+ overflow-x:auto;touch-action:pan-x;padding:6px 0 8px;background:#202c2bf9}
+.lab-category-nav button{flex:0 0 auto;min-height:44px;white-space:nowrap;
+ padding:8px 12px;border-radius:7px;font:600 11px "IBM Plex Sans",sans-serif}
+.lab-category-nav button[aria-pressed="true"]{background:#a8b995;
+ color:#172824;border-color:#c4d2b4}
+main [data-lab-group]{min-width:0}
+main[data-lab-active="appearance"]>[data-lab-group]:not([data-lab-group="appearance"]),
+main[data-lab-active="motion"]>[data-lab-group]:not([data-lab-group="motion"]),
+main[data-lab-active="ready"]>[data-lab-group]:not([data-lab-group="ready"]),
+main[data-lab-active="actions"]>[data-lab-group]:not([data-lab-group="actions"]),
+main[data-lab-active="playback"]>[data-lab-group]:not([data-lab-group="playback"]),
+main[data-lab-active="view"]>[data-lab-group]:not([data-lab-group="view"]){display:none}
+main>.row[data-lab-group]{align-items:flex-start}
+main>.row[data-lab-group]>button{min-height:44px}
+body.kit-compare .lab-category-nav{display:none}
+body.kit-compare main #kitPanel{display:block!important}
+body.kit-compare main>.row[data-lab-group="view"]:has(#comparePose){display:flex!important}
 </style></head>
 <body><canvas id="preview"></canvas><div id="compareLabels" hidden></div>
 <aside id="labStatus" role="status" aria-live="polite">
@@ -112,11 +132,19 @@ button:focus-visible,select:focus-visible{outline:2px solid #c9a778;outline-offs
 </aside>
 <header><strong>FIELDWORK / OPERATOR LAB <small>FIT LAB</small></strong><a href="./index.html">← BATTLE</a></header>
 <output id="diagnosticText" aria-live="off"></output>
-<main>
+<main data-lab-active="appearance">
 <div class="row"><label>MODEL</label><select id="operator"><option value="rook">ROOK</option><option value="moss">MOSS</option><option value="ash">ASH</option><option value="vale">VALE</option><option value="hostile">HOSTILE</option></select>
 <select id="weapon"><option value="none" selected>NO WEAPON</option><option value="carbine">CARBINE</option><option value="smg">SMG</option><option value="rifle">RIFLE</option><option value="shotgun">SHOTGUN</option></select>
 <select id="injury"><option value="0">HEALTHY</option><option value="1">INJURED</option><option value="2">HEAVY</option><option value="3">DOWN</option></select></div>
-<details id="kitPanel" open><summary>WARDROBE / ASSEMBLE · PROPORTIONS LOCKED</summary>
+<nav class="lab-category-nav" aria-label="Operator lab workbench categories">
+<button type="button" data-lab-tab="appearance" aria-pressed="true">APPEARANCE</button>
+<button type="button" data-lab-tab="motion" aria-pressed="false">MOTION</button>
+<button type="button" data-lab-tab="ready" aria-pressed="false">READY</button>
+<button type="button" data-lab-tab="actions" aria-pressed="false">ACTIONS</button>
+<button type="button" data-lab-tab="playback" aria-pressed="false">PLAYBACK</button>
+<button type="button" data-lab-tab="view" aria-pressed="false">VIEW / DIAG</button>
+</nav>
+<details id="kitPanel" data-lab-group="appearance" open><summary>WARDROBE / ASSEMBLE · PROPORTIONS LOCKED</summary>
 <div class="row" id="wardrobeTools">
 <button id="unequipAll" type="button">UNEQUIP ALL</button>
 <button id="focusSelected" type="button">FRAME GROUP</button>
@@ -211,7 +239,7 @@ These are display positions of actual carried items, not extra inventory.</p>
 <small id="magazineHint">Preview locations use the real equipment carrying ledger.</small>
 <small>Preview sandbox only; no campaign inventory changes or body-proportion changes.</small>
 </details>
-<div class="row"><label>MOTION</label>
+<div class="row" data-lab-group="motion"><label>MOTION</label>
 <button data-pose="idle">IDLE</button><button data-pose="walk">WALK</button><button data-pose="run">RUN</button>
 <button data-pose="accelerate">ACCEL</button><button data-pose="stop">STOP</button>
 <button data-pose="restart">RESTART</button><button data-pose="back">BACK</button>
@@ -226,7 +254,7 @@ These are display positions of actual carried items, not extra inventory.</p>
 <button data-pose="pie">PIE</button><button data-pose="look">MOVE + LOOK</button>
 <button data-pose="crouch-walk">CROUCH WALK</button><button data-pose="crouch">CROUCH</button>
 <button data-pose="wounded">WOUNDED</button><button data-pose="aim">ADS</button></div>
-<div class="row"><label>READY</label>
+<div class="row" data-lab-group="ready"><label>READY</label>
 <button data-pose="high-ready">HIGH READY</button>
 <button data-pose="low-ready">LOW READY</button>
 <button data-pose="ready">READY</button>
@@ -235,7 +263,7 @@ These are display positions of actual carried items, not extra inventory.</p>
 <button data-pose="point-shoot">POINT SHOOT</button>
 <button data-pose="ready-to-ads">READY → ADS</button>
 <button data-pose="ads-to-low">ADS → LOW</button></div>
-<div class="row"><label>ACTIONS</label>
+<div class="row" data-lab-group="actions"><label>ACTIONS</label>
 <button data-pose="reload">RELOAD</button>
 <button data-pose="reload-emergency">EMPTY RELOAD</button>
 <button data-pose="reload-retention">RETENTION</button>
@@ -250,19 +278,19 @@ These are display positions of actual carried items, not extra inventory.</p>
 <button data-pose="down-left">FALL LEFT</button>
 <button data-pose="down-right">FALL RIGHT</button>
 <button data-pose="down-slump">SUPPORTED SLUMP</button></div>
-<div class="row"><label>GAIT REFERENCE</label>
+<div class="row" data-lab-group="playback"><label>GAIT REFERENCE</label>
 <select id="gaitReference" aria-label="Gait implementation">
 <option value="current">CURRENT</option>
 <option value="historical">PRE-180 REFERENCE</option>
 <option value="candidate">DISTANCE GAIT (EXPERIMENTAL)</option>
 </select><small>Same track and model; historical contact scheduler is lab-only.</small></div>
-<div class="row"><label>PLAYBACK</label>
+<div class="row" data-lab-group="playback"><label>PLAYBACK</label>
 <button id="playPause">PAUSE</button><button id="stepFrame">+1 FRAME</button>
 <button id="restartTrack">RESTART</button>
 <button id="loopTrack" aria-pressed="true">LOOP</button>
 <input type="range" id="timeline" min="0" max="4000" step="1" value="0"
  aria-label="Motion timestamp"/><output id="timestamp">0.00s</output></div>
-<div class="row"><label>VIEW</label>
+<div class="row" data-lab-group="view"><label>VIEW</label>
 <button id="compareGaits" aria-pressed="false">COMPARE GAITS</button>
 <small id="gaitCompareStatus" hidden>LEFT: PRE-180 · RIGHT: HYBRID</small>
 <button id="comparePose" aria-pressed="false">COMPARE SIX</button>
@@ -283,6 +311,23 @@ These are display positions of actual carried items, not extra inventory.</p>
 <option value="weapon">WEAPON CONTACTS</option><option value="replay">REPLAY SAMPLES</option>
 </select><small>Drag orbit · Pinch zoom · Two fingers pan</small></div>
 </main>
+<script>
+(function(){
+ const main=document.querySelector('main[data-lab-active]');
+ if(!main)return;
+ const tabs=[...document.querySelectorAll('[data-lab-tab]')];
+ for(const tab of tabs){
+  tab.addEventListener('click',()=>{
+   const section=tab.getAttribute('data-lab-tab');
+   if(!section)return;
+   main.setAttribute('data-lab-active',section);
+   for(const other of tabs)other.setAttribute('aria-pressed',
+    String(other===tab));
+   main.scrollTop=0;
+  });
+ }
+})();
+</script>
 <script>
 // Keep failures visible even if the ES module never evaluates or WebGL
 // throws before the Lab's own render-loop error handling is installed.
