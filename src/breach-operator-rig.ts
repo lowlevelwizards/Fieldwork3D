@@ -151,12 +151,13 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   // contact. The stock seats into this pad rather than the arm geometry.
   for(const sign of [-1,1])
     armorPanels.push(block(chest,1.35,4.6,sign*6.05,3.8,3.1,2.0,vest));
-  const pack=block(chest,-7,0,0,6,11,11,vest);
+  // Keep the pack outside the rear armor bag instead of interpenetrating it.
+  const pack=block(chest,-9.4,0,0,4.4,11,11,vest);
   // Very few additional silhouettes, all rigidly attached to existing bones.
   // No new IK, physics bodies or shot-line geometry.
-  const rigPouches=[block(chest,6.5,-1,-4,2.8,3.8,3.2,boot),
-    block(chest,6.5,-1,4,2.8,3.8,3.2,boot)];
-  const beltPouch=block(hip,3.5,-2.7,-4.1,3,3.7,3.6,vest);
+  const rigPouches=[block(chest,2.1,-2,-7.35,2.4,3.8,2.7,boot),
+    block(chest,2.1,-2,7.35,2.4,3.8,2.7,boot)];
+  const beltPouch=block(hip,-3,-2.7,-4.3,2.8,3.7,3.2,vest);
   const medicalPouch=block(chest,-1,-4.1,7.7,3.3,4.2,2.5,vest);
   const radioUnit=block(chest,-4.4,2.4,7.5,3.5,5.4,2.8,steel);
   const flashCanister=block(hip,1,-4,7.2,2.5,5.8,2.5,steel);
@@ -448,7 +449,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     position:{x:p.x,y:p.z}});
   // Pack follows the torso with restrained inertia, not separate timing.
   const packMotion=packInertia(p.acceleration??0,motion.torsoSide);
-  r.pack.position.set(-7,0,
+  r.pack.position.set(-9.4,0,
     packMotion.side*r.personality.packScale);
   r.pack.rotation.z=packMotion.lean*r.personality.packScale;
   // Wide side-steps need a physical lowering of the center of mass,

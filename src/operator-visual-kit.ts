@@ -156,7 +156,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  v.lightShirt.visible=s.top==='top-light';
  v.chestRig.visible=s.rig==='rig-light'||s.rig==='rig-full';
  v.fieldWebbing.visible=s.rig==='rig-full';
- v.belt.visible=s.belt!=='belt-light'&&s.belt!=='belt-none';
+ v.belt.visible=true;
+ v.belt.scale.set(1,s.belt==='belt-light'?.72:1,1);
  v.dayPack.visible=s.backpack==='backpack-day';
  v.fieldPack.visible=s.backpack==='backpack-field';
  for(const pocket of v.cargoPockets)pocket.visible=s.legs==='legs-field';
