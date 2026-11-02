@@ -6,7 +6,7 @@ import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   operationBriefing,
-  planMove,planMoveStroke,setStrafe,planNearbyInteraction,planAim,setFirePolicy,planWait,planWaitAt,setWaitDuration,
+  planMove,planMoveStroke,setStrafe,planNearbyInteraction,planAim,planWatch,releaseWatch,setFirePolicy,planWait,planWaitAt,setWaitDuration,
   plannedControl,setNodeControl,setStartPace,planReloadAt,planDoorFlash,
   planSync,movePlanNode,
   finalPoint,doorAtNode,backOne,
@@ -838,8 +838,8 @@ operationsToggle.addEventListener('click',()=>{
 let selected='rook';
 let evacMode:{patientId:string;mode:'drag'|'carry'}|null=null;
 let looking=false,flashMode=false;
-let firePlacement:'focus'|'suppress'|null=null;
-let lookMode:'look'|'pie'|'strafe'='look';
+let firePlacement:'suppress'|null=null;
+let lookMode:'look'|'watch'='look';
 let contextSignature='';
 let contextActionsSignature='';
 let lastContextSide:MenuSide|null=null;
@@ -1097,19 +1097,17 @@ function message(){
   if(replaying)return 'MISSION FILM · ORBIT, PAN, ZOOM AND SCRUB FREELY';
   if(flashMode)return 'FLASH: tap a target, or CANCEL to back out.';
   if(state.phase==='planning'){
-    if(looking)return lookMode==='pie'?
-      'PIE: tap a point to watch continuously while moving.':
-      lookMode==='strafe'?
-        'STRAFE: tap a direction to hold while moving.':
-        'LOOK: tap a direction to face at this node, then resume normal travel-facing.';
-    if(selectedNode!==null)return 'Waypoint selected: LOOK / PIE / STRAFE, drag to move, DELETE to remove.';
+    if(looking)return lookMode==='watch'?
+      'WATCH: choose a point to keep watching through your route.':
+      'LOOK: choose a direction to check briefly, then continue.';
+    if(selectedNode!==null)return 'Waypoint: LOOK briefly / WATCH continuously · drag to move · DELETE to remove.';
     return 'Tap a route line to insert a waypoint · tap a node to edit or delete.';
   }
   if(state.phase==='running')return 'Executing. Pause to change your plan.';
   return state.phase==='won'?'Station secured. Review your report.':
     'Team lost. Review the debrief and try another approach.';
 }
-function armFacing(mode:'look'|'pie'|'strafe'){
+function armFacing(mode:'look'|'watch'){
   looking=!looking||lookMode!==mode;
   lookMode=mode;
   armedOrigin=selectedNode===null?'here':'end';
@@ -1163,6 +1161,7 @@ function updateContext(){
     availableTools:door?equippedEntryMethods(a.equipment)
       .filter(method=>entryToolVerdict(door,method).allowed):[],
     nodeKind:node?.kind,nodeMoveMode:node?.moveMode,aimLabel:node?.aimLabel,
+    watchActive:node?.aimMode==='track'||(!node&&a.aimInstruction?.mode==='track'),
     nodeFirePolicy:node?.firePolicyState,
   });
   const paletteChoices=choices.filter(choice=>choice.group!=='state');
@@ -1180,9 +1179,13 @@ function updateContext(){
     heading.setAttribute('aria-live','off');
     ui.context.append(heading);
     const primary=document.createElement('div');primary.className='context-primary';
+    const more=document.createElement('details');more.className='context-more';
+    const summary=document.createElement('summary');summary.textContent='MORE ACTIONS';
+    const advanced=document.createElement('div');advanced.className='context-advanced';
+    more.append(summary,advanced);
     const secondary=document.createElement('div');secondary.className='context-state';
     const destructive=document.createElement('div');destructive.className='context-danger';
-    ui.context.append(primary,secondary,destructive);
+    ui.context.append(primary,more,secondary,destructive);
   }
   const contextHeading=ui.context.querySelector<HTMLElement>('.fw-context-heading');
   if(contextHeading){
@@ -1201,6 +1204,7 @@ function updateContext(){
   contextActionsSignature=actionSignature;
   const buckets:Record<string,HTMLElement>={
     primary:ui.context.querySelector<HTMLElement>('.context-primary')!,
+    advanced:ui.context.querySelector<HTMLElement>('.context-advanced')!,
     state:ui.context.querySelector<HTMLElement>('.context-state')!,
     destructive:ui.context.querySelector<HTMLElement>('.context-danger')!
   };
@@ -1239,6 +1243,8 @@ function updateContext(){
   for(const btn of ui.context.querySelectorAll<HTMLButtonElement>('button[data-action]')){
     if(!wanted.has(btn.dataset.action??''))btn.remove();
   }
+  ui.context.querySelector<HTMLElement>('.context-more')!.hidden=
+    !buckets.advanced.childElementCount;
   buckets.state.hidden=!buckets.state.childElementCount;
   buckets.destructive.hidden=!buckets.destructive.childElementCount;
   ui.context.classList.toggle('door-menu',!!door);
@@ -1381,10 +1387,6 @@ const handleContextAction=(event:MouseEvent)=>{
       setFirePolicy(state,selected,policy,node?.id);
       break;
     }
-    case 'ctxFocus':
-      firePlacement='focus';looking=false;flashMode=false;
-      tacticalFeedback.emit('command',node?.p??a.p,'FOCUS');
-      uiClickTone('command');updateHud();return;
     case 'ctxSuppress':
       firePlacement='suppress';looking=false;flashMode=false;
       tacticalFeedback.emit('command',node?.p??a.p,'SUPPRESS');
@@ -1396,15 +1398,12 @@ const handleContextAction=(event:MouseEvent)=>{
     case 'ctxLook':
       tacticalFeedback.emit('command',node?.p??a.p,'LOOK');
       uiClickTone('command');armFacing('look');return;
-    case 'ctxPie':
-      tacticalFeedback.emit('command',node?.p??a.p,'PIE');
-      uiClickTone('command');armFacing('pie');return;
-    case 'ctxStrafe':
-      tacticalFeedback.emit('command',node?.p??a.p,'STRAFE');
-      uiClickTone('command');armFacing('strafe');return;
-    case 'ctxStrafeMove':
-      if(!node||node.kind!=='move'||!setStrafe(state,selected,node.id))
-        state.events.push('SELECT A MOVEMENT WAYPOINT TO TOGGLE STRAFE');
+    case 'ctxWatch':
+      tacticalFeedback.emit('command',node?.p??a.p,'WATCH');
+      uiClickTone('command');armFacing('watch');return;
+    case 'ctxReleaseWatch':
+      if(!releaseWatch(state,selected,node?.id,'here'))
+        state.events.push('CANNOT RELEASE WATCH HERE');
       break;
     case 'ctxWait':{
       if(node?.kind==='wait')setWaitDuration(state,selected,node.id,.5);
@@ -1507,7 +1506,7 @@ function updateQuickStates(){
   const index=node?actor.plan.findIndex(n=>n.id===node.id)+1:0;
   const scopeText=node?'WAYPOINT '+String(index).padStart(2,'0'):'OPERATOR / HERE';
   ui.quickScope.textContent=actor.name.toUpperCase()+' · '+scopeText+
-    (actor.aimInstruction?.mode==='track'&&actor.pace!=='run'?' · PIE ACTIVE':'');
+    (actor.aimInstruction?.mode==='track'&&actor.pace!=='run'?' · WATCH ACTIVE':'');
   ui.quickScope.title=node?
     'Commands apply when '+actor.name+' reaches waypoint '+index:
     'Commands apply to '+actor.name+' at their current position';
@@ -2027,11 +2026,11 @@ function paths(){
         circle(n.aimPoint.x,n.aimPoint.y,3,'#203732');
         draw.textAlign='left';draw.font='bold 10px monospace';
         draw.fillStyle='#e8cba2';
-        draw.fillText('PIE · TRACK',point.x+12,point.y-12);
+        draw.fillText('WATCH',point.x+12,point.y-12);
       }else if(n.aimMode==='fixed'){
         draw.textAlign='left';draw.font='bold 10px monospace';
         draw.fillStyle='#d5e8de';
-        draw.fillText(n.aimLabel==='strafe'?'STRAFE · HOLD':'LOOK',
+        draw.fillText(n.aimLabel==='strafe'?'HOLD DIR':'LOOK',
           point.x+12,point.y-12);
       }
       if(n.kind==='flash'&&n.aimPoint){
@@ -2052,7 +2051,7 @@ function paths(){
       if(n.kind==='move'&&n.moveMode==='strafe'){
         draw.textAlign='left';draw.font='bold 10px monospace';
         draw.fillStyle='#b8e7dd';
-        draw.fillText('STRAFE',point.x+12,point.y-11);
+        draw.fillText('HOLD DIR',point.x+12,point.y-11);
       }
       if(n.kind==='pie'&&n.pivot&&n.arc?.length){
         draw.save();
@@ -2143,17 +2142,17 @@ function renderProjectedPlans(){
         circle(target.x,target.y,3,'#264039');
         draw.fillStyle='#f1d7a4';draw.textAlign='left';
         draw.font='bold 10px monospace';
-        draw.fillText('PIE · TRACK',point.x+12,point.y-13);
+        draw.fillText('WATCH',point.x+12,point.y-13);
       }else if(n.aimMode==='fixed'){
         draw.fillStyle='#d2eee4';draw.textAlign='left';
         draw.font='bold 10px monospace';
-        draw.fillText(n.aimLabel==='strafe'?'STRAFE · HOLD':'LOOK',
+        draw.fillText(n.aimLabel==='strafe'?'HOLD DIR':'LOOK',
           point.x+12,point.y-13);
       }
       if(n.kind==='move'&&n.moveMode==='strafe'){
         draw.fillStyle='#e0f7e9';draw.textAlign='left';
         draw.font='bold 10px monospace';
-        draw.fillText('STRAFE',point.x+13,point.y-12);
+        draw.fillText('HOLD DIR',point.x+13,point.y-12);
       }
       if(n.kind==='flash'&&n.aimPoint){
         const path=flashTrajectory(state,a,n);
@@ -2553,14 +2552,7 @@ function useSelectedGround(pt:Pt){
   if(firePlacement){
     const mode=firePlacement;
     const nodeId=selectedNode??undefined;
-    if(mode==='focus'){
-      const target=enemies(state).find(e=>e.health>0&&isSeen(state,e)&&
-        distance(e.p,pt)<25);
-      if(!target||!setFirePolicy(state,selected,'focus',
-        nodeId,undefined,target.id)){
-        state.events.push('FOCUS REQUIRES A VISIBLE ENEMY');
-      }
-    }else if(!setFirePolicy(state,selected,'suppress',nodeId,pt))
+    if(!setFirePolicy(state,selected,'suppress',nodeId,pt))
       state.events.push('INVALID SUPPRESSION POINT');
     firePlacement=null;updateHud();return;
   }
@@ -2574,9 +2566,10 @@ function useSelectedGround(pt:Pt){
     flashMode=false;flashDoorId=null;updateHud();return;
   }
   if(looking){
-    const mode=lookMode==='pie'?'track':lookMode==='strafe'?'fixed':'free';
-    if(!planAim(state,selected,mode,pt,selectedNode??undefined,
-      lookMode,armedOrigin))
+    const committed=lookMode==='watch'?
+      planWatch(state,selected,pt,selectedNode??undefined,armedOrigin):
+      planAim(state,selected,'free',pt,selectedNode??undefined,'look',armedOrigin);
+    if(!committed)
       state.events.push('SELECT A DIFFERENT AIM POINT');
     looking=false;updateHud();return;
   }
@@ -3156,8 +3149,7 @@ window.addEventListener('keydown',e=>{
     }else cancelTargeting();
     return;
   }
-  if(e.code==='KeyF'&&!e.repeat)armFacing('strafe');
-  if(e.code==='KeyB'&&!e.repeat)armFacing('pie');
+  if(e.code==='KeyW'&&!e.repeat)armFacing('watch');
   if(e.code==='KeyZ'&&(e.ctrlKey||e.metaKey)){
     e.preventDefault();
     if(e.shiftKey)redoPlan(state,selected);
@@ -3405,7 +3397,7 @@ function releasePointer(e:PointerEvent,cancelled=false){
         doorMenuDismissedId=null;
         tacticalFeedback.emit('select',doorCenter(door));
       }else if(!looking&&!flashMode&&!firePlacement&&insertAtRouteLine({x:e.clientX,y:e.clientY},e.pointerType)){
-        // Insert-and-select: contextual LOOK/PIE/STRAFE/DELETE are immediately
+        // Insert-and-select: contextual LOOK/WATCH/WAIT/DELETE are immediately
         // available on the newly authored waypoint.
       }else{
         doorFocusId=null;useSelectedGround(pt);
@@ -3471,7 +3463,7 @@ ui.uiSoundToggle.addEventListener('click',()=>{
 });
 ui.uiHelp.addEventListener('click',()=>{
   closeMissionSettings();
-  showUiHelp('Tap operator = HERE · Tap a route line = add waypoint · Tap node or door = context actions · Hold an action for a description.',8500);
+  showUiHelp('Tap a route line to insert a waypoint · LOOK = brief check · WATCH = keep watching as you move · Hold a command for help.',8500);
   updateHud();
 });
 ui.siteSettingsToggle.addEventListener('click',()=>{
