@@ -2936,6 +2936,15 @@ ui.restart.addEventListener('click',async()=>{
   reset();
 });
 window.addEventListener('keydown',e=>{
+  // Global game shortcuts must never fire while the player edits a name,
+  // operates a dialog, or navigates Campaign / the front menu.
+  if(e.isComposing||e.altKey||campaignMode==='menu'||campaignMode==='home')return;
+  const target=e.target;
+  if(target instanceof HTMLElement&&
+    (target.isContentEditable||target.closest(
+      'input,textarea,select,[contenteditable="true"],[role="dialog"],[role="alertdialog"]'
+    )))return;
+  if(document.querySelector('.fw-confirm-backdrop'))return;
   if(replaying){
     if(e.code==='Space'&&!e.repeat){e.preventDefault();replayPlaying=!replayPlaying;}
     if(e.code==='Escape')exitReplay();
@@ -2953,12 +2962,28 @@ window.addEventListener('keydown',e=>{
   if(e.code==='Digit2')selectUnit('moss');
   if(e.code==='Digit3')selectUnit('ash');
   if(e.code==='Digit4')selectUnit('vale');
-  if(e.code==='KeyX'){clearPlan(state,selected);updateHud();}
+  if(e.code==='KeyX'&&!e.repeat){
+    e.preventDefault();
+    // Keyboard and touch must use the exact same guarded clear-plan workflow.
+    ui.clear.click();
+  }
   if(e.code==='KeyL')armFacing('look');
   if(e.code==='Backspace'&&!e.repeat){
     e.preventDefault();ui.back.click();
   }
-  if(e.code==='Escape'){cancelTargeting();return;}
+  if(e.code==='Escape'){
+    e.preventDefault();
+    if(!weaponChooser.hidden)hideWeaponChooser();
+    else if(!operationsBoard.hidden)operationsBoard.hidden=true;
+    else if(!ui.briefingPanel.hidden){
+      ui.briefingClose.click();
+    }else if(!ui.siteSettings.hidden){
+      ui.siteSettingsToggle.click();
+    }else if(!ui.orders.classList.contains('compact')){
+      ui.moreOrders.click();
+    }else cancelTargeting();
+    return;
+  }
   if(e.code==='KeyF'&&!e.repeat)armFacing('strafe');
   if(e.code==='KeyB'&&!e.repeat)armFacing('pie');
   if(e.code==='KeyZ'&&(e.ctrlKey||e.metaKey)){
@@ -2966,7 +2991,10 @@ window.addEventListener('keydown',e=>{
     if(e.shiftKey)redoPlan(state,selected);
     else undoPlan(state,selected);updateHud();
   }
-  if(e.code==='KeyR'&&!e.repeat&&campaignMode!=='mission')reset();
+  if(e.code==='KeyR'&&!e.repeat&&campaignMode!=='mission'){
+    e.preventDefault();
+    ui.restart.click();
+  }
   if(e.code==='KeyV'&&!e.repeat)cameraMode(viewMode==='iso'?'top':'iso');
   if(e.code==='KeyQ'&&!e.repeat)turnCamera(-Math.PI/8);
   if(e.code==='KeyE'&&!e.repeat)turnCamera(Math.PI/8);
