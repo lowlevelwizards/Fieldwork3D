@@ -1124,3 +1124,10 @@ body.replaying #tacticalFeedback{display:none}
   env(safe-area-inset-bottom,0px));padding:5px 9px;font-size:10px;
   max-height:51px}
 }
+
+/* UX2-18: the reproducible current site stays in mission settings, not on the HUD. */
+.site-identity{display:block;width:100%;margin:4px 0 10px;
+  padding:8px 10px;border:1px solid var(--fw-panel-border,#6b8777);
+  border-radius:6px;background:#182c27dd;color:#d5d8bd;
+  font:700 11px/1.4 "IBM Plex Mono",monospace;
+  letter-spacing:.025em;overflow-wrap:anywhere}
