@@ -9,7 +9,6 @@ import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {createCanonicalAttachment} from './operator-axis-convention.ts';
-import {headwearSolidHex} from './operator-headwear-colors.ts';
 import {createWardrobeHeadLayers,updateWardrobeHeadLayers,
  type WardrobeHeadLayers} from './operator-wardrobe-head-visuals.ts';
 import {createWardrobeBodyLayers,updateWardrobeBodyLayers,
@@ -261,12 +260,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  v.hair.visible=false; // Stage 1 bare reference is intentionally clean.
  updateWardrobeHeadLayers(v.wardrobeHead,
   looks.headwear,looks.facewear,looks.eyewear,looks.headset);
- // Actual shell/hat is tinted; neutral construction map and physical finish
- // remain in their own layers. No universal operator palette reaches here.
- const shellId=looks.headwear==='high-cut-rails'?'high-cut':looks.headwear;
- const solid=headwearSolidHex(shellId,wardrobe?.headwearColor);
- const material=v.wardrobeHead.headwearMaterials[looks.headwear];
- if(material&&solid!==null)material.color.setHex(solid);
+ // Rig pose color ledger owns final headwear tint (and reversible injury
+ // desaturation). Setting it here was overwritten later in poseOperator.
 
  const usingWardrobe=!!wardrobe||s.head==='head-bump';
  const key=seed>>>0;
