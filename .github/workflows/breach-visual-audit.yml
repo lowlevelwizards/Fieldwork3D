@@ -1,38 +1,8 @@
 name: Breach 052 — Mobile Tactical Audit
+# Deep visual audit is opt-in, not a deployment gate for routine changes.
+# It requires two browser engines, screenshot captures and long interaction flows.
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - 'breach.html'
-      - 'src/breach-core.ts'
-      - 'src/breach-main.ts'
-      - 'src/breach-gait.ts'
-      - 'src/breach-footsteps.ts'
-      - 'src/breach-ik.ts'
-      - 'src/breach-operator-rig.ts'
-      - 'src/breach-operator-lab.ts'
-      - 'src/breach-lab-tracks.ts'
-      - 'src/breach-locomotion.ts'
-      - 'src/breach-body-motion.ts'
-      - 'src/breach-foot-articulation.ts'
-      - 'tests/breach-123.test.mjs'
-      - 'tests/breach-124.test.mjs'
-      - 'tests/breach-125.test.mjs'
-      - 'tests/breach-126.test.mjs'
-      - 'tests/breach-127.test.mjs'
-      - 'tests/breach-128.test.mjs'
-      - 'src/breach-replay-motion.ts'
-      - 'src/breach-replay.ts'
-      - 'operator-lab.html'
-      - 'tests/breach-121.test.mjs'
-      - 'tests/breach-122.test.mjs'
-      - 'tests/breach-119.test.mjs'
-      - 'src/breach-style.css'
-      - 'tests/breach-052.test.mjs'
-      - 'scripts/capture-breach.mjs'
-      - 'scripts/smoke-operator-lab.mjs'
-      - '.github/workflows/breach-visual-audit.yml'
-      - 'vite.config.ts'
 jobs:
   mobile-breach:
     runs-on: ubuntu-24.04

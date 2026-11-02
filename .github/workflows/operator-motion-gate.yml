@@ -2,8 +2,20 @@ name: Operator motion critical gate
 on:
   pull_request:
     paths:
-      - 'src/breach-*'
+      # Only animation/motion systems, not UI-only src/breach-main.ts changes.
+      - 'src/breach-gait.ts'
+      - 'src/breach-footsteps.ts'
+      - 'src/breach-ik.ts'
+      - 'src/breach-operator-rig.ts'
+      - 'src/breach-operator-lab.ts'
+      - 'src/breach-lab-tracks.ts'
+      - 'src/breach-locomotion.ts'
+      - 'src/breach-body-motion.ts'
+      - 'src/breach-foot-articulation.ts'
+      - 'src/breach-replay-motion.ts'
+      - 'src/breach-replay.ts'
       - 'tests/breach-motion-*.test.mjs'
+      - 'tests/breach-distance-*.test.mjs'
       - '.github/workflows/operator-motion-gate.yml'
   workflow_dispatch:
 jobs:

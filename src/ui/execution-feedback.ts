@@ -1,9 +1,10 @@
+import {recoveryAdviceFor} from './recovery-guidance.ts';
 /** Priority-based, time-limited HUD notices from the EXISTING player-facing event log.
  * No inspection of enemy state, fog, or world geometry. */
 export type FeedbackSeverity='danger'|'contact'|'warning'|'progress'|'routine'|'state';
 export type ExecutionNotice={
   text:string;label:string;severity:FeedbackSeverity;priority:number;
-  born:number;expires:number;
+  born:number;expires:number;recovery?:string;
 };
 type Classified={label:string;severity:FeedbackSeverity;priority:number;duration:number};
 export function classifyExecutionNotice(message:string):Classified{
@@ -12,7 +13,7 @@ export function classifyExecutionNotice(message:string):Classified{
     return {label:'URGENT',severity:'danger',priority:5,duration:5200};
   if(/\b(CONTACT|SPOTTED|UNSEEN GUNFIRE)\b/.test(text))
     return {label:'CONTACT',severity:'contact',priority:4,duration:4100};
-  if(/\b(BLOCKED|OBSTRUCT|NO SAFE ROUTE|CANNOT|INVALID|JAMMED|OUT OF RANGE|NO WALKABLE|LOCKED|RESISTED)\b/.test(text))
+  if(/\b(BLOCKED|OBSTRUCT|NO SAFE ROUTE|CANNOT|INVALID|JAMMED|OUT OF RANGE|NO WALKABLE|LOCKED|RESISTED|INSUFFICIENT CLEARANCE|INVALIDATE A LATER WAYPOINT|NOT REACHABLE|NO KNOWN DOOR|NO PUSHABLE|NO OPERABLE|AIM POINT|TARGET UNAVAILABLE)\b/.test(text))
     return {label:'OBSTRUCTED',severity:'warning',priority:3,duration:3500};
   if(/\b(INJURED|WOUND|HIT|HURT|STABILIZED)\b/.test(text))
     return {label:'MEDICAL',severity:'danger',priority:4,duration:4500};
@@ -63,7 +64,8 @@ export class ExecutionNoticeFeed{
     const c:Classified=phase?
       {label:'STATE',severity:'state',priority:1,duration:1600}:
       classifyExecutionNotice(text);
-    this.queue.push({text,label:c.label,severity:c.severity,
+    const recovery=c.severity==='warning'?recoveryAdviceFor(text)?.next:undefined;
+    this.queue.push({text,label:c.label,severity:c.severity,recovery,
       priority:c.priority,born:now,expires:now+c.duration});
     if(this.queue.length>8)this.queue.splice(0,this.queue.length-8);
   }

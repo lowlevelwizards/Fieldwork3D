@@ -144,6 +144,9 @@ jobs:
       - name: Focused headgear silhouette tests
         if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'operator/headgear-') || startsWith(github.head_ref, 'art/headwear-')) }}
         run: node --experimental-strip-types --test tests/operator-headwear-expansion.test.mjs tests/operator-headwear-silhouettes.test.mjs tests/operator-headwear-fit-metrics.test.mjs tests/operator-headwear-anatomy.test.mjs tests/operator-cuboid-union.test.mjs tests/operator-stage1b-lab.test.mjs tests/operator-headwear-materials.test.mjs
+      - name: Focused UX2-22 contextual teaching and recovery tests
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'ux2/22-') }}
+        run: node --experimental-strip-types --test tests/ux2-22-guidance-recovery-hud.test.mjs tests/ux2-execution-feedback.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}

@@ -11,7 +11,7 @@ export class TacticalFeedback{
   private events:Effect[]=[];
   emit(kind:FeedbackKind,point:FeedbackPoint,text?:string,from?:FeedbackPoint){
     this.events.push({kind,point:{...point},from:from?{...from}:undefined,
-      text,born:performance.now(),duration:kind==='route'?490:kind==='error'?430:360});
+      text,born:performance.now(),duration:kind==='route'?490:kind==='error'?830:360});
     if(this.events.length>20)this.events.splice(0,this.events.length-20);
   }
   clear(){this.events.length=0}
@@ -36,6 +36,15 @@ export class TacticalFeedback{
       g.setLineDash([]);
       g.beginPath();g.arc(p.x,p.y,8+24*t,0,Math.PI*2);g.stroke();
       g.beginPath();g.arc(p.x,p.y,3+3*(1-t),0,Math.PI*2);g.fill();
+      if(e.kind==='error'){
+        // Only the attempted position is known. Never infer unseen blockers.
+        const r=12+5*t;g.lineWidth=2.2;g.beginPath();
+        g.moveTo(p.x-r,p.y-r+6);g.lineTo(p.x-r,p.y-r);g.lineTo(p.x-r+6,p.y-r);
+        g.moveTo(p.x+r-6,p.y-r);g.lineTo(p.x+r,p.y-r);g.lineTo(p.x+r,p.y-r+6);
+        g.moveTo(p.x-r,p.y+r-6);g.lineTo(p.x-r,p.y+r);g.lineTo(p.x-r+6,p.y+r);
+        g.moveTo(p.x+r-6,p.y+r);g.lineTo(p.x+r,p.y+r);g.lineTo(p.x+r,p.y+r-6);
+        g.stroke();
+      }
       if(e.text&&t<.72){
         g.font='600 11px "IBM Plex Sans",sans-serif';
         g.textAlign='center';g.fillText(e.text.toUpperCase(),p.x,p.y-26-6*t);
