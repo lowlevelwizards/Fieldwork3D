@@ -23,7 +23,6 @@ export const HEADWEAR_MATERIAL_KIND:Readonly<Record<HeadSilhouetteId,HeadwearMat
  'ach':'composite','high-cut':'composite','pasgt':'composite','soviet-steel':'steel'
 };
 const textureCache=new Map<HeadSilhouetteId,THREE.DataTexture>();
-const clamp8=(n:number)=>Math.max(0,Math.min(255,Math.round(n)));
 const local=(n:number)=>n-16;
 /** An authored, sparse shape-aware design, not random noise or edge shimmer.
  * Pixel addresses are local to their region's 32x32 square and align with
