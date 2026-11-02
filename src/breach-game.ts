@@ -37,6 +37,7 @@ import {canUseEntryTool,issuedWedges} from './equipment-entry-tools.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {friendlyPassingStep,nearOccupiedFriendlyGoal} from './breach-friendly-traffic.ts';
 import {resolveMovementFrame} from './breach-movement-authority.ts';
+import {recoveryAction,routeRetrySeconds} from './breach-movement-recovery.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
 import {relocateCover,canRelocateCover,coverPushDistance} from './breach-movable-cover.ts';
 import {materialForFixture,MATERIALS,type MaterialId} from './breach-materials.ts';
@@ -131,6 +132,7 @@ export type TeamActor=Operator & {
   contact:Pt|null;heard:Pt|null;
   alertUntil:number;waitRemaining:number;syncReady:string|null;
   actionTimer:number;blockedTime:number;lastNavRepairAt:number;priorP:Pt;pieIndex:number;
+  recoveryAttempts:number;retryRouteAt:number;routeGoalKey:string;
   /** Motor-authoritative traversal state. The normal body never shrinks. */
   squeeze:boolean;squeezeYaw:number;squeezeTime:number;
   lastBlocker:Blocker;
@@ -235,6 +237,7 @@ const withActions=(a:Operator):TeamActor=>({
   reloadTargetRounds:0,reloadSelectedMagazineId:null,
   alertUntil:0,waitRemaining:0,syncReady:null,actionTimer:0,
   blockedTime:0,lastNavRepairAt:-10,priorP:clone(a.p),haltOnContact:false,retreatPoint:null,
+  recoveryAttempts:0,retryRouteAt:0,routeGoalKey:'',
   squeeze:false,squeezeYaw:a.heading,squeezeTime:0,
   lastBlocker:'clear',
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
@@ -1311,18 +1314,28 @@ function observe(s:Session){
   }
 }
 function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
+  const goalKey=Math.round(p.x*2)+':'+Math.round(p.y*2);
+  if(a.routeGoalKey!==goalKey){
+    a.routeGoalKey=goalKey;a.retryRouteAt=0;a.recoveryAttempts=0;
+  }
   if(!a.nav.length){
+    // Never execute expensive route searches every fixed tick for a proven
+    // unreachable destination. Changes of goal or recovered progress reset.
+    if(s.seconds<a.retryRouteAt){a.velocity=0;return false;}
     a.nav=a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
       routeWithSqueezeWorld(a.p,p,s.doors);
     if(!a.nav.length){
       // A failed route is a stationary brace, not phantom walking speed.
       a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
+      a.recoveryAttempts++;
+      a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);
       if(s.seconds-a.lastNavRepairAt>1.2){
         notify(s,a.name+' CANNOT REACH');
         a.lastNavRepairAt=s.seconds;
       }
       return false;
     }
+    a.retryRouteAt=0;a.recoveryAttempts=0;
   }
   const next=a.nav[0],gap=d(a.p,next);
   if(gap<3){a.nav.shift();return false;}
@@ -1461,7 +1474,8 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const traversable=a.squeeze?narrowClear:normalClear;
   // Try nearby route repair for actor jams, furniture, and door leaves.
   if((!traversable||blocking)&&
-    a.blockedTime>.30&&s.seconds-a.lastNavRepairAt>.6){
+    recoveryAction(blocking?'actor':a.lastBlocker,a.blockedTime,
+      s.seconds-a.lastNavRepairAt,a.recoveryAttempts)==='detour'){
     const candidate=localDetour(a.p,next,s.doors,s.operators
       .filter(o=>o!==a&&o.health>0).map(o=>o.p));
     if(candidate&&d(candidate,p)<d(a.p,p)+12&&
@@ -1472,6 +1486,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   }
   if(!closed&&!blocking&&traversable){
     a.priorP=clone(a.p);a.p=desiredMove;a.blockedTime=0;
+    a.recoveryAttempts=0;a.retryRouteAt=0;
     a.lastBlocker='clear';
     if(a.side==='blue'&&s.seconds-s.movementNoiseAt>.54){
       hear(s,a.p,a.posture==='crouch'?30:68,'footstep');
@@ -1492,14 +1507,23 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     }
     if(a.blockedTime>1&&a.blockedTime<1.1)
       notify(s,a.name+' BLOCKED · '+a.lastBlocker.toUpperCase());
-    if(a.blockedTime>1.25&&s.seconds-a.lastNavRepairAt>1.2){
+    const repair=recoveryAction(a.lastBlocker,a.blockedTime,
+      s.seconds-a.lastNavRepairAt,a.recoveryAttempts);
+    if(repair==='replan'||repair==='report'){
       a.lastNavRepairAt=s.seconds;
+      a.recoveryAttempts++;
       // Once actual collision is observed, repair against real geometry,
       // not only the incomplete player-intel route that may run through
       // an undiscovered door frame. The authored final goal is unchanged.
       const repaired=routeWithSqueezeWorld(a.p,p,s.doors);
-      if(repaired.length)a.nav=repaired;
-      else if(a.side==='blue')a.nav=routeWithSqueezeIntel(s.intel,a.p,p);
+      if(repaired.length){a.nav=repaired;a.retryRouteAt=0;}
+      else if(a.side==='blue'){
+        a.nav=routeWithSqueezeIntel(s.intel,a.p,p);
+        if(!a.nav.length)
+          a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);
+      }
+      if(repair==='report'&&a.side==='blue')
+        notify(s,a.name+' NO SAFE ROUTE · ORDERS RETAINED');
     }
     // Do not discard an authored plan just because someone is in the way.
   }
