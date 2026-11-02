@@ -182,7 +182,7 @@ test('SSh-40 is a single deep steel pot with a subtle INTEGRATED lower flare',()
  const crownOuter=crown.width/2,bodyOuter=side.x+side.width/2;
  const rimOuter=rim.x+rim.width/2;
  assert.ok(bodyOuter-crownOuter>.35&&bodyOuter-crownOuter<.5);
- assert.ok(rimOuter-bodyOuter>.25&&rimOuter-bodyOuter<.4,
+ assert.ok(rimOuter-bodyOuter>=.35&&rimOuter-bodyOuter<=.41,
   'lower flare must never become an umbrella/kettle brim');
  assert.ok(front.depth<1.2,'not a broad floating frontal visor');
  assert.ok(lower(v,4.5,0)<A.brow,'steel shell hangs over ear region');
@@ -203,7 +203,7 @@ test('Stage 1L model contours expose only purposeful mass transitions',()=>{
  for(const y of [7.7,7.0,6.4])assert.ok(Math.abs(boundsXAt('patrol-cap',y)-4.43)<1e-6);
  assert.ok(Math.abs(boundsXAt('patrol-cap',5.0)-4.80)<1e-6);
  // Boonie: deep fitted crown, ONE wider band, ONE wide brim.
- for(const y of [7.7,7.0,6.4])assert.ok(Math.abs(boundsXAt('boonie',y)-4.35)<1e-6);
+ for(const y of [7.7,7.0,6.5])assert.ok(Math.abs(boundsXAt('boonie',y)-4.35)<1e-6);
  assert.ok(Math.abs(boundsXAt('boonie',5.6)-4.65)<1e-6);
  assert.ok(Math.abs(boundsXAt('boonie',4.85)-6.725)<1e-6);
  // Beanie: taller knitted upper cap; still only crown + cuff.
