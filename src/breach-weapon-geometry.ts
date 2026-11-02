@@ -66,6 +66,40 @@ const DETAILS:Record<WeaponId,readonly Part[]>={
   [13.5,1.4,0,2.2,.45,2.45,1],[-11.8,-2.1,0,2.0,3.1,3.2,1]
  ]
 };
+/** Asymmetric exterior receiver faces, sights and handling furniture. These
+ * ride outside the existing body, not on coincident old-model surfaces. */
+const SIGNATURES:Record<WeaponId,readonly Part[]>={
+ smg:[
+  [-3,.3,2.04,5.4,1.25,.34,1],
+  [4.0,.9,1.9,3.8,.58,.35,0],
+  [-9.6,1.2,-1.95,3.7,.65,.38,0],
+  [3.5,-4.25,-1.7,1.7,2.5,.55,1],
+  [11.2,1.4,0,2.1,1.05,2.0,1]
+ ],
+ carbine:[
+  [-2.3,.3,2.04,6.8,1.6,.38,1],
+  [-4.1,2.65,-.35,2.3,.85,1.4,1],
+  [4.0,2.8,0,4.0,.62,2.25,0],
+  [12.5,-1.8,2.1,4.8,.57,.42,0],
+  [-10.8,1.3,1.9,3.1,.65,.4,0]
+ ],
+ rifle:[
+  [-2.1,.3,2.34,7.0,2.0,.4,1],
+  [5.7,2.9,0,6.4,.95,2.15,0],
+  [12.0,-1.9,-2.3,6.1,.72,.42,0],
+  [-10.5,-.9,2.27,3.7,1.3,.38,0],
+  [2.0,-4.8,1.95,2.7,2.3,.45,1]
+ ],
+ shotgun:[
+  [-2.4,.55,2.42,5.5,1.6,.4,1],
+  [3.0,-2.05,2.26,5.3,.68,.42,0],
+  [7.0,-2.05,-2.22,5.6,.64,.42,0],
+  [-8.4,1.45,2.25,3.1,.65,.42,0],
+  [16.4,-1.55,0,2.7,.56,1.7,1]
+ ]
+};
+export const weaponSignatureParts=(id:WeaponId):readonly Part[]=>SIGNATURES[id];
+
 export const weaponDetailParts=(id:WeaponId):readonly Part[]=>DETAILS[id];
 
 export function weaponSilhouetteParts(id:WeaponId):readonly Part[]{return PARTS[id];}
@@ -84,7 +118,7 @@ export function buildWeaponSilhouette(id:WeaponId,
   const mesh=new THREE.Mesh(geometry,mat===0?steel:dark);
   mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);
  }
- for(const [x,y,z,w,h,d,materialIndex] of DETAILS[id]){
+ for(const [x,y,z,w,h,d,materialIndex] of [...DETAILS[id],...SIGNATURES[id]]){
   const geometry=mapBoxPixelUV(new THREE.BoxGeometry(w,h,d),w,h,d);
   const mesh=new THREE.Mesh(geometry,materialIndex===0?steel:dark);
   mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;
