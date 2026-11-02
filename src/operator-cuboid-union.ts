@@ -1,12 +1,17 @@
-/** Orthogonal exterior mesher: unions a handful of Blockbench-style boxes
- * into one shell without overlapping visible faces or internal geometry.
- * Every face is a rectangle; coplanar cells are greedily merged.
- * Generated once at model creation, never in the animation loop.
+/** Exterior-only greedy cuboid union; a single solid mesh with no coplanar
+ * doubles. Optional face tones are baked into vertex colors, never separate
+ * overlay geometry. Every surface receives world-scale pixel UV coordinates.
  */
 import * as THREE from 'three';
+import {PIXEL_WORLD_SIZE} from './rendering/pixel-recipes.ts';
 export type HeadwearCuboid={name:string;x:number;y:number;z:number;
  width:number;height:number;depth:number};
-export function unionCuboids(parts:readonly HeadwearCuboid[]):THREE.BufferGeometry{
+export type CuboidUnionOptions={
+ faceTone?:(part:HeadwearCuboid,axis:number,sign:number)=>number;
+ faceRegion?:(part:HeadwearCuboid,axis:number,sign:number)=>0|1|2|3;
+};
+export function unionCuboids(parts:readonly HeadwearCuboid[],
+ options:CuboidUnionOptions={}):THREE.BufferGeometry{
  if(!parts.length)throw Error('empty cuboid shell');
  const boundaries=[0,1,2].map(axis=>[...new Set(parts.flatMap(p=>{
   const center=[p.x,p.y,p.z][axis],size=[p.width,p.height,p.depth][axis];
@@ -17,18 +22,17 @@ export function unionCuboids(parts:readonly HeadwearCuboid[]):THREE.BufferGeomet
  const shape=boundaries.map(a=>a.length-1),[nx,ny,nz]=shape;
  const idx=(x:number,y:number,z:number)=>(x*ny+y)*nz+z;
  const occupancy=new Uint8Array(nx*ny*nz);
+ const within=(p:HeadwearCuboid,q:readonly number[])=>[0,1,2].every(a=>
+  Math.abs(q[a]-[p.x,p.y,p.z][a])<[p.width,p.height,p.depth][a]/2-1e-6);
+ const center=(q:readonly number[])=>q.map((n,a)=>
+  (boundaries[a][n]+boundaries[a][n+1])/2);
  for(let x=0;x<nx;x++)for(let y=0;y<ny;y++)for(let z=0;z<nz;z++){
-  const q=[(boundaries[0][x]+boundaries[0][x+1])/2,
-   (boundaries[1][y]+boundaries[1][y+1])/2,
-   (boundaries[2][z]+boundaries[2][z+1])/2];
-  occupancy[idx(x,y,z)]=parts.some(p=>
-   Math.abs(q[0]-p.x)<p.width/2-1e-6&&
-   Math.abs(q[1]-p.y)<p.height/2-1e-6&&
-   Math.abs(q[2]-p.z)<p.depth/2-1e-6)?1:0;
+  const q=center([x,y,z]);
+  occupancy[idx(x,y,z)]=parts.some(p=>within(p,q))?1:0;
  }
  const solid=(q:number[])=>q.every((v,a)=>v>=0&&v<shape[a])?
   !!occupancy[idx(q[0],q[1],q[2])]:false;
- const vertices:number[]=[],indices:number[]=[];
+ const vertices:number[]=[],indices:number[]=[],uvs:number[]=[],colors:number[]=[];
  const planeAxes:[[number,number],[number,number],[number,number]]=[
   [1,2],[2,0],[0,1]
  ];
@@ -36,20 +40,36 @@ export function unionCuboids(parts:readonly HeadwearCuboid[]):THREE.BufferGeomet
  for(let axis=0;axis<3;axis++)for(const sign of [-1,1]){
   const [u,v]=planeAxes[axis],w=shape[u],h=shape[v];
   for(let slice=0;slice<shape[axis];slice++){
-   const mask=new Uint8Array(w*h);
+   // The material-aware mask preserves real crown/band/rim transitions on
+   // otherwise coplanar faces. It does not generate extra surfaces.
+   const mask=new Uint16Array(w*h);
    const at=(i:number,j:number)=>{
     const q=[0,0,0];q[axis]=slice;q[u]=i;q[v]=j;return q;
    };
    for(let j=0;j<h;j++)for(let i=0;i<w;i++){
     const q=at(i,j),neighbor=q.slice();neighbor[axis]+=sign;
-    if(solid(q)&&!solid(neighbor))mask[j*w+i]=1;
+    if(!solid(q)||solid(neighbor))continue;
+    if(!options.faceTone){mask[j*w+i]=1;continue;}
+    const p=center(q);
+    const edge=boundaries[axis][slice+(sign===1?1:0)];
+    // Choose a source cuboid with its actual outward face at this
+    // exterior plane. Internal source boundaries never become visible.
+    let chosen=-1;
+    for(let k=parts.length-1;k>=0;k--){
+     const part=parts[k],bound=[part.x,part.y,part.z][axis]+
+      sign*[part.width,part.height,part.depth][axis]/2;
+     if(within(part,p)&&Math.abs(bound-edge)<1e-5){chosen=k;break;}
+    }
+    if(chosen<0)throw Error('headwear union face without source');
+    mask[j*w+i]=chosen+1;
    }
    for(let j=0;j<h;j++)for(let i=0;i<w;i++){
-    if(!mask[j*w+i])continue;
+    const owner=mask[j*w+i];if(!owner)continue;
     let width=1,height=1;
-    while(i+width<w&&mask[j*w+i+width])width++;
+    while(i+width<w&&mask[j*w+i+width]===owner)width++;
     heightScan:while(j+height<h){
-     for(let k=0;k<width;k++)if(!mask[(j+height)*w+i+k])break heightScan;
+     for(let k=0;k<width;k++)
+      if(mask[(j+height)*w+i+k]!==owner)break heightScan;
      height++;
     }
     for(let r=0;r<height;r++)for(let c=0;c<width;c++)
@@ -62,8 +82,25 @@ export function unionCuboids(parts:readonly HeadwearCuboid[]):THREE.BufferGeomet
      q[v]=boundaries[v][j+(b?height:0)];
      return q;
     };
-    for(const q of [p(0,0),p(1,0),p(1,1),p(0,1)])
+    let tone=1;
+    if(options.faceTone){
+     tone=options.faceTone(parts[owner-1],axis,sign);
+     if(!Number.isFinite(tone)||tone<=0||tone>1)
+      throw Error('invalid headwear face tone');
+    }
+    const region=options.faceRegion?options.faceRegion(parts[owner-1],axis,sign):0;
+    if(!Number.isInteger(region)||region<0||region>3)throw Error('invalid headwear pixel region');
+    for(const q of [p(0,0),p(1,0),p(1,1),p(0,1)]){
      vertices.push(...q);
+     // A fixed 64x64 atlas: four 32x32 construction regions. Physical
+     // model-space axes advance exactly one texel per world unit (1:1).
+     // +16 gives all current helmet faces safe interior atlas margins.
+     const texU=axis===0?q[2]:q[0],texV=axis===1?q[2]:q[1];
+     const ru=region%2,rv=Math.floor(region/2);
+     uvs.push((ru*32+16+texU/PIXEL_WORLD_SIZE)/64,
+              (rv*32+16+texV/PIXEL_WORLD_SIZE)/64);
+     if(options.faceTone)colors.push(tone,tone,tone);
+    }
     if(sign===1)indices.push(start,start+1,start+2,start,start+2,start+3);
     else indices.push(start,start+2,start+1,start,start+3,start+2);
     quads++;
@@ -72,10 +109,16 @@ export function unionCuboids(parts:readonly HeadwearCuboid[]):THREE.BufferGeomet
  }
  const geometry=new THREE.BufferGeometry();
  geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
+ geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
+ if(options.faceTone)
+  geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
  geometry.setIndex(indices);geometry.computeVertexNormals();
  geometry.computeBoundingBox();
  geometry.userData.greedyCuboidUnion=true;
  geometry.userData.cuboids=parts.map(p=>({...p}));
  geometry.userData.exteriorQuads=quads;
+ geometry.userData.pixelWorldSize=PIXEL_WORLD_SIZE;
+ geometry.userData.materialAtlasPixels=64;
+ geometry.userData.materialRegions=!!options.faceRegion||!!options.faceTone;
  return geometry;
 }

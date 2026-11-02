@@ -472,6 +472,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
    if(pattern&&pattern!=='solid')
     r.colors.set(material,new THREE.Color(0xffffff));
   }
+  // Neutral headwear construction tones multiply the selected base colors.
+  // Keep the Stage 2A pass visually restrained; context-specific camo and
+  // pattern overlays will get separate, item-appropriate recipes later.
+  for(const [id,material] of Object.entries(r.visualKit.wardrobeHead.headwearMaterials)){
+   const soft=['patrol-cap','boonie','beanie'].includes(id);
+   const source=r.colors.get(soft?r.headClothMaterial:r.headArmorMaterial);
+   const chosen=(source??new THREE.Color(0x899089)).clone();
+   const neutral=new THREE.Color(0x899089);
+   r.colors.set(material,neutral.lerp(chosen,.38));
+  }
   // Hair is seeded by the costume assembler and must join the same reversible
   // palette ledger used by replay, silhouette mode and injury desaturation.
   r.colors.set(r.visualKit.hairMaterial,r.visualKit.hairMaterial.color.clone());
