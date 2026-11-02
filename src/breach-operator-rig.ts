@@ -394,7 +394,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // The bones, solved knee/elbow positions and planted feet stay identical.
   const clothing=resolvedWardrobe(p.wardrobe,p.equipment);
   const bareForearm=['tank-top','t-shirt','button-short'].includes(clothing.top)||
-    !!p.wardrobe?.rolledSleeves;
+    (p.wardrobe?.rolledSleeves??
+      (p.equipment?.slots.top==='top-light'));
   for(const arm of r.arms){
    arm.lower.material=bareForearm?r.skinMaterial:r.clothMaterial;
    arm.upper.material=clothing.top==='tank-top'?

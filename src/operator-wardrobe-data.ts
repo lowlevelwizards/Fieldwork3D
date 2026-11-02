@@ -229,6 +229,16 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
   ['bare'],slots.head==='head-bump'?'bump-helmet':'ach');
  if(slots.head==='head-none')desired.headwear='bare';
  if(slots.head==='head-cap'&&desired.headwear==='ach')desired.headwear='patrol-cap';
+ // Face/helmet assembly constraints: one eyewear layer, one face cover and
+ // only mounted hearing protection on a shell that can actually mount it.
+ if(desired.facewear==='gas-mask'){
+  desired.eyewear='eyes-none';
+  if(desired.headset==='helmet-ears')desired.headset='comms-none';
+ }
+ if(desired.headset==='helmet-ears'&&
+   !['ach','high-cut','high-cut-rails','bump-helmet',
+     'pasgt'].includes(desired.headwear))
+  desired.headset='comms-none';
  choose('armorStyle',slots.armor==='armor-carrier'?
   ['plate-slick','plate-jpc','plate-standard','plate-heavy']:
   slots.armor==='armor-soft'?
