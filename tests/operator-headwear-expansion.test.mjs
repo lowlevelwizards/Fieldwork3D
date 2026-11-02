@@ -327,7 +327,7 @@ test('Stage 1N bold secondary forms preserve all five bottom contacts and footpr
 
 test('all wardrobe choices use canonical silhouette rendering in both lab and battle',()=>{
  const source=readFileSync(new URL('../src/operator-wardrobe-head-visuals.ts',import.meta.url),'utf8');
- assert.match(source,/g\\(headwear,id,true\\)\\.add\\(createHeadwearSilhouette\\(id,detail\\(id\\)\\)\\)/);
+ assert.ok(source.includes('g(headwear,id,true).add(createHeadwearSilhouette(id,detail(id)))'));
  assert.match(source,/createHeadwearDetailMaterial/);
  assert.match(source,/headwearMaterials/);
  for(const legacy of ["helmet('pasgt'","const beanie=g(headwear",
