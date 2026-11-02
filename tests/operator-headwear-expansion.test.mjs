@@ -57,7 +57,8 @@ test('all seven heads render one real orthogonal exterior per wardrobe item',()=
     overlap(p,v[i],'x')>.10&&overlap(p,v[i],'y')>.10&&
     overlap(p,v[i],'z')>.10),id+' disconnected cuboid: '+v[i].name);
   }
-  if(remade.includes(id))assert.equal(g.userData.stage,'1K');
+  if(id==='beanie')assert.equal(g.userData.stage,'1L-A');
+  else if(remade.includes(id))assert.equal(g.userData.stage,'1K');
  }
 });
 
@@ -114,6 +115,39 @@ test('beanie has full-height fitted sides plus exactly one bold folded cuff',()=
  assert.ok(lower(v,4.4,0)<A.earTop,'cuff reaches upper ear');
  assert.ok(bounds(v).maxX<5.2,'fitted, not helmet wide');
  assert.ok(!covering(v,0,4.5,0),'no giant face-occluding slab');
+});
+
+test('Stage 1L-A beanie has exactly TWO visible contour levels: crown and cuff',()=>{
+ const v=headwearCuboidVolumes('beanie');
+ const crown=by(v,'beanie-fitted-crown'),front=by(v,'beanie-front-body');
+ const side=by(v,'beanie-right-body'),cuff=by(v,'beanie-right-cuff');
+ const cuffFront=by(v,'beanie-front-cuff');
+ assert.ok(crown&&front&&side&&cuff&&cuffFront);
+ // There is no third tier at the crown/sidewall joint.
+ assert.equal(front.width,crown.width);
+ assert.ok(Math.abs(side.x+side.width/2-crown.width/2)<1e-6);
+ assert.ok(Math.abs(front.z-front.depth/2+crown.depth/2)<1e-6);
+ // The ONLY perimeter expansion is the single, physically meaningful fold.
+ assert.ok(cuff.x+cuff.width/2>side.x+side.width/2+.25);
+ assert.ok(cuff.x+cuff.width/2<side.x+side.width/2+.40);
+ assert.ok(cuffFront.z-cuffFront.depth/2<front.z-front.depth/2-.25);
+ const outerXAtY=y=>Math.max(...v.filter(p=>Math.abs(y-p.y)<p.height/2-1e-5)
+  .map(p=>p.x+p.width/2));
+ const frontZAtY=y=>Math.min(...v.filter(p=>Math.abs(y-p.y)<p.height/2-1e-5)
+  .map(p=>p.z-p.depth/2));
+ for(const y of [7.6,6.9,6.0,5.4]){
+  assert.ok(Math.abs(outerXAtY(y)-4.60)<1e-6,
+   'one unbroken crown profile from top to actual fold');
+  assert.ok(Math.abs(frontZAtY(y)+4.70)<1e-6,
+   'no little horizontal ledge above the cuff');
+ }
+ assert.ok(Math.abs(outerXAtY(4.5)-4.90)<1e-6);
+ assert.ok(Math.abs(frontZAtY(4.5)+5.00)<1e-6);
+ assert.ok(!covering(v,0,4.5,0),'fold remains hollow around the head');
+ assert.ok(!covering(v,0,4.3,-3.5),'face is not filled by a crown slab');
+ assert.ok(Math.abs(bounds(v).maxY-7.92)<1e-6);
+ assert.ok(Math.abs(M.beanie.earEdge-3.77)<1e-6);
+ assert.ok(cuff.height>=1.4,'the fold has material thickness');
 });
 
 test('PASGT front peak and deep skirt differentiate it from protected ACH',()=>{
