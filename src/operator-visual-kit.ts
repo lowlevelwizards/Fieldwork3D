@@ -22,6 +22,7 @@ export type OperatorVisualKit={
  belt:THREE.Group;dayPack:THREE.Group;fieldPack:THREE.Group;
  packHarness:THREE.Group;
  cargoPockets:THREE.Mesh[];bootCuffs:THREE.Mesh[];sleeveCuffs:THREE.Mesh[];
+ fieldToeCaps:THREE.Mesh[];lightInstepPanels:THREE.Mesh[];
  rolledForearms:THREE.Mesh[];rolledCuffs:THREE.Mesh[];kneePanels:THREE.Mesh[];
  eyeMarks:THREE.Mesh[];hairMaterial:Material;patchMaterial:Material;patches:THREE.Mesh[];
  magazines:Record<'rig'|'belt'|'pocket',THREE.Mesh[]>;
@@ -159,13 +160,21 @@ export function createOperatorVisualKit(
   part(fieldPack,trim,-2.9,1.4,sign*6.65,.6,8.8,.65);
  }
  const cargoPockets:THREE.Mesh[]=[],bootCuffs:THREE.Mesh[]=[],sleeveCuffs:THREE.Mesh[]=[];
+ const fieldToeCaps:THREE.Mesh[]=[],lightInstepPanels:THREE.Mesh[]=[];
  const rolledForearms:THREE.Mesh[]=[],rolledCuffs:THREE.Mesh[]=[],kneePanels:THREE.Mesh[]=[];
  const patches:THREE.Mesh[]=[];
  for(const leg of legs){
   // Thin, leg-mounted pieces follow the solved IK. No additional leg length.
   cargoPockets.push(part(leg.upper,cloth,0,0.08,3.0,3.3,.29,1.45));
   kneePanels.push(part(leg.lower,trim,0,.36,2.25,3.7,.22,1.2));
-  if(leg.shoe)bootCuffs.push(part(leg.shoe,dark,-1.55,1.5,0,4.1,1.55,5.0));
+  if(leg.shoe){
+   // The shoe's ankle pivot and geometry translation remain unmodified.
+   // Field boots have a raised toe guard and shaft; light shoes have a
+   // thinner, narrower instep and no shaft.
+   bootCuffs.push(part(leg.shoe,dark,-1.55,1.5,0,4.1,1.55,5.0));
+   fieldToeCaps.push(part(leg.shoe,trim,3.45,1.48,0,3.4,.42,5.7));
+   lightInstepPanels.push(part(leg.shoe,trim,1.65,1.48,0,4.3,.20,4.65));
+  }
  }
  for(const arm of arms){
   // Low-contrast cloth identifier sewn onto the upper arm's outward face.
@@ -201,7 +210,8 @@ export function createOperatorVisualKit(
   plateCarrier,chestRig,fieldWebbing,belt,dayPack,fieldPack,packHarness])
    consolidateVisualGroup(surface);
  return {helmet,cap,hair,jacket,lightShirt,softArmor,plateCarrier,chestRig,
-  fieldWebbing,belt,dayPack,fieldPack,packHarness,cargoPockets,bootCuffs,sleeveCuffs,
+  fieldWebbing,belt,dayPack,fieldPack,packHarness,cargoPockets,bootCuffs,
+  fieldToeCaps,lightInstepPanels,sleeveCuffs,
   rolledForearms,rolledCuffs,kneePanels,eyeMarks,hairMaterial,magazines,
   haircuts,graphicMarks,patchMaterial,patches};
 }
@@ -240,6 +250,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  v.packHarness.visible=s.backpack!=='backpack-none';
  for(const pocket of v.cargoPockets)pocket.visible=s.legs==='legs-field';
  for(const cuff of v.bootCuffs)cuff.visible=s.feet==='feet-boots';
+ for(const toe of v.fieldToeCaps)toe.visible=s.feet==='feet-boots';
+ for(const instep of v.lightInstepPanels)instep.visible=s.feet==='feet-light';
  for(const cuff of v.sleeveCuffs)cuff.visible=s.top==='top-uniform';
  for(const mesh of v.rolledForearms)mesh.visible=s.top==='top-light';
  for(const mesh of v.rolledCuffs)mesh.visible=s.top==='top-light';
