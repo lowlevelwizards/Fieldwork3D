@@ -34,7 +34,7 @@ import {WARDROBE_ACCESSORY_SLOTS,WARDROBE_ACCESSORY_OPTIONS}
 import {WARDROBE_MOUNTS,wardrobeMount} from './operator-wardrobe-mounts.ts';
 import {WARDROBE_RECIPES,wardrobeRecipe,applyWardrobeRecipe}
  from './operator-wardrobe-recipes.ts';
-import {initialWardrobe,setWardrobeStyle,setWardrobePattern,resolvedWardrobe,
+import {initialWardrobe,readWardrobe,setWardrobeStyle,setWardrobePattern,resolvedWardrobe,
  WARDROBE_PATTERNS,wardrobeConflicts,wardrobeItemsForSlot,wardrobeItem,
  type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
 
@@ -447,6 +447,54 @@ const isolation=choose<HTMLSelectElement>('kitIsolation');
 const kitCompareButton=choose<HTMLButtonElement>('compareKit');
 let kitComparing=false;
 const kitBodies:OperatorRig[]=[];
+let variantComparing=false;
+let pinnedLook:null|{kit:EquipmentLoadout;wardrobe:WardrobeOptions;
+ weapon:WeaponId;weaponVisible:boolean}=null;
+const variantBodies:OperatorRig[]=[];
+const comparePinnedButton=choose<HTMLButtonElement>('comparePinned');
+const variantCompareStatus=choose<HTMLOutputElement>('variantCompareStatus');
+function endVariantComparison(){
+ while(variantBodies.length){
+  const body=variantBodies.pop()!;scene.remove(body.root);body.dispose();
+ }
+ variantComparing=false;
+ comparePinnedButton.setAttribute('aria-pressed','false');
+ comparePinnedButton.textContent='COMPARE A / B';
+ variantCompareStatus.textContent=pinnedLook?'Reference pinned':'';
+}
+document.getElementById('pinLook')?.addEventListener('click',()=>{
+ pinnedLook={kit:{version:1,slots:{...labKit.slots}},
+  wardrobe:readWardrobe(wardrobeOptions),
+  weapon:labWeapon(),weaponVisible:weapon.value!=='none'};
+ comparePinnedButton.disabled=false;
+ variantCompareStatus.textContent='Reference pinned. Edit the right-hand outfit.';
+});
+comparePinnedButton.addEventListener('click',()=>{
+ if(variantComparing){endVariantComparison();fit();return;}
+ if(!pinnedLook)return;
+ if(kitComparing)endKitComparison();
+ if(comparing){
+  comparing=false;clearComparison();labelLayer.hidden=true;
+  poseCompareButton.setAttribute('aria-pressed','false');
+  document.body.classList.remove('compare-open');
+ }
+ if(gaitComparing){
+  gaitComparing=false;clearGaitCompare();
+  gaitCompareButton.setAttribute('aria-pressed','false');
+  gaitCompareStatus.hidden=true;
+ }
+ variantComparing=true;
+ for(let i=0;i<2;i++){
+  const body=createOperatorRig(operator.value,
+   operator.value==='hostile'?'red':'blue');
+  variantBodies.push(body);scene.add(body.root);
+ }
+ comparePinnedButton.setAttribute('aria-pressed','true');
+ comparePinnedButton.textContent='EXIT A / B';
+ variantCompareStatus.textContent='LEFT: PINNED REFERENCE · RIGHT: CURRENT';
+ fit();
+});
+
 function endKitComparison(){
  while(kitBodies.length){const body=kitBodies.pop()!;
   scene.remove(body.root);body.dispose();}
@@ -520,6 +568,7 @@ hideSelectedButton.addEventListener('click',()=>{
 });
 showAllButton.addEventListener('click',()=>{showAllGroups();fit();});
 kitCompareButton.addEventListener('click',()=>{
+ if(variantComparing)endVariantComparison();
  if(kitComparing){endKitComparison();fit();return;}
  kitComparing=true;
  (document.getElementById('kitPanel') as HTMLDetailsElement).open=true;
@@ -612,6 +661,7 @@ const supportBoxes=[0,1].map(()=>{
   debug.add(mesh);return mesh;
 });
 const build=()=>{
+  if(variantComparing)endVariantComparison();
   labSwitch=null;
   clearComparison();clearGaitCompare();
   if(rig){scene.remove(rig.root);rig.dispose();}
@@ -621,7 +671,7 @@ const build=()=>{
 };
 operator.addEventListener('change',build);
 function fit(next='iso'){
-  const center=comparing||kitComparing?new THREE.Vector3():rig?.root.position??
+  const center=comparing||kitComparing||variantComparing?new THREE.Vector3():rig?.root.position??
     new THREE.Vector3();
   const dx=next==='front'?75:next==='back'?-75:
     next==='top'?.01:next==='side'?0:65;
@@ -631,6 +681,7 @@ function fit(next='iso'){
     center.z+dz);
   camera.zoom=comparing?
     Math.min(.34,Math.max(.21,.58*window.innerWidth/window.innerHeight)):
+    variantComparing?(compact?.72:.92):
     gaitComparing?(compact?.60:.77):kitComparing?(compact?.65:.9):
     next==='game'?.65:1.4;camera.updateProjectionMatrix();
   control.target.set(center.x,16,center.z);control.update();
@@ -695,6 +746,7 @@ function frameWardrobeSelection(){
 focusSelectedButton.addEventListener('click',frameWardrobeSelection);
 isolation.addEventListener('change',frameWardrobeSelection);
 gaitCompareButton.addEventListener('click',()=>{
+  if(variantComparing)endVariantComparison();
   if(kitComparing)endKitComparison();
   gaitComparing=!gaitComparing;
   if(gaitComparing){
@@ -708,6 +760,7 @@ gaitCompareButton.addEventListener('click',()=>{
   fit();
 });
 poseCompareButton.addEventListener('click',()=>{
+  if(variantComparing)endVariantComparison();
   if(kitComparing)endKitComparison();
   comparing=!comparing;
   if(comparing&&gaitComparing){
@@ -1040,7 +1093,23 @@ function draw(){
   if(weapon.value==='none'&&!comparing){
     rig.visualKit.hair.visible=false; // clean neutral mannequin baseline
   }
-  if(!comparing&&!kitComparing)isolateKit(rig);
+  if(variantComparing&&rig.lastPose&&pinnedLook){
+   for(let i=0;i<variantBodies.length;i++){
+    const body=variantBodies[i],reference=i===0;
+    const chosen=reference?pinnedLook:{
+      kit:labKit,wardrobe:wardrobeOptions,
+      weapon:labWeapon(),weaponVisible:weapon.value!=='none'
+    };
+    const x=(i===0?-17:17);
+    body.root.position.set(x,0,0);body.root.visible=true;
+    poseOperator(body,{...rig.lastPose,x,z:0,velocity:0,turning:0,
+      weapon:chosen.weapon,equipment:chosen.kit,
+      wardrobe:chosen.wardrobe,unarmedPreview:!chosen.weaponVisible,
+      magazineCarryLocations:[],down:false,injury:0,
+      posture:'stand',deterministic:true},0);
+   }
+  }
+  if(!comparing&&!kitComparing&&!variantComparing)isolateKit(rig);
   if(gaitComparing&&rig.lastPose){
     ensureGaitCompare();
     const historical=historicalGait!.sample(clock);
@@ -1065,7 +1134,7 @@ function draw(){
     gaitCompareStatus.textContent='LEFT: PRE-180 · RIGHT: HYBRID · '+
       'SYNC '+clock.toFixed(2)+'s';
   }else if(gaitCompareRig)gaitCompareRig.root.visible=false;
-  rig.root.visible=!comparing&&!kitComparing;
+  rig.root.visible=!comparing&&!kitComparing&&!variantComparing;
   if(kitComparing&&rig.lastPose){
    const types=['light','standard','heavy'] as const;
    for(let i=0;i<kitBodies.length;i++){
@@ -1110,16 +1179,17 @@ function draw(){
       });
     }
   }else for(const body of comparisonRigs)body.root.visible=false;
-  const dx=comparing||kitComparing?0:motion.x-cameraFollow.x,
-    dz=comparing||kitComparing?0:motion.z-cameraFollow.z;
+  const dx=comparing||kitComparing||variantComparing?0:motion.x-cameraFollow.x,
+    dz=comparing||kitComparing||variantComparing?0:motion.z-cameraFollow.z;
   camera.position.x+=dx;camera.position.z+=dz;
   control.target.x+=dx;control.target.z+=dz;
   cameraFollow={x:motion.x,z:motion.z};
   timeline.value=String(Math.round(clock*1000));
   timeOutput.textContent=clock.toFixed(2)+'s';
-  if(comparing||kitComparing){
+  if(comparing||kitComparing||variantComparing){
     debug.visible=false;
-    diagnosticText.textContent=kitComparing?
+    diagnosticText.textContent=variantComparing?
+      'LEFT: PINNED · RIGHT: CURRENT · PROPORTIONS LOCKED':kitComparing?
       'LIGHT / STANDARD / HEAVY · PROPORTIONS LOCKED':
       'SIX STANCES · ORBIT / ZOOM TO COMPARE';
   }else showDiagnostics();
@@ -1164,6 +1234,7 @@ function draw(){
     current.triangles+' · '+(kitComparing?'3 KITS':'1 KIT');
   if(stats.textContent!==display)stats.textContent=display;
   canvas.dataset.kitComparison=String(kitComparing);
+  canvas.dataset.variantComparison=String(variantComparing);
   if(canvas.dataset.ready!=='true'){
     canvas.dataset.ready='true';
     choose<HTMLElement>('labStatus').hidden=true;
