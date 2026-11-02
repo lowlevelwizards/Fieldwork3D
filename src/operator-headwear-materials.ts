@@ -138,7 +138,9 @@ export function headwearCamoTexture(id:HeadSilhouetteId,camo:HeadwearCamoId,
  placement:HeadwearCamoPlacement={offsetX:0,offsetY:0}):THREE.DataTexture{
  const offsetX=((placement.offsetX%32)+32)%32,offsetY=((placement.offsetY%32)+32)%32;
  const key=id+':'+camo+':'+offsetX+':'+offsetY;
- const existing=camoCache.get(key);if(existing)return existing;
+ // Refresh the active entry so visible operator textures are not evicted on reroll.
+ const existing=camoCache.get(key);
+ if(existing){camoCache.delete(key);camoCache.set(key,existing);return existing;}
  const artwork=headwearCamoPixels(camo),density=HEADWEAR_CAMO_DENSITY[camo];
  const px=new Uint8Array(128*128*4);
  for(let region=0;region<4;region++)for(let y=0;y<64;y++)for(let x=0;x<64;x++){
@@ -163,7 +165,21 @@ export function headwearCamoTexture(id:HeadSilhouetteId,camo:HeadwearCamoId,
  tex.minFilter=THREE.NearestMipmapNearestFilter;
  tex.generateMipmaps=true;
  tex.name='Fieldwork fabric camo '+key+' / '+density+'x 128px sewn-panel atlas';
- tex.needsUpdate=true;camoCache.set(key,tex);return tex;
+ tex.needsUpdate=true;camoCache.set(key,tex);
+ // Each variation costs ~85 KiB including mipmaps. Keep a bounded LRU
+ // rather than retaining thousands of rerolled textures for the whole session.
+ // Disposing an idle atlas is safe: poseOperator resolves the current cut
+ // on every update and rebinds it if it is needed again.
+ const MAX_CACHED_CAMO_CUTS=192;
+ if(camoCache.size>MAX_CACHED_CAMO_CUTS){
+  const oldest=camoCache.keys().next().value;
+  if(oldest!==undefined){
+   const evicted=camoCache.get(oldest);
+   camoCache.delete(oldest);
+   evicted?.dispose();
+  }
+ }
+ return tex;
 }
 
 /** Lighting-only roughness atlas, on the SAME 1:1 pixel grid as the
