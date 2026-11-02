@@ -389,9 +389,10 @@ if(navPanel){
  */
 const operationsToggle=document.createElement('button');
 operationsToggle.id='operationsBoardToggle';operationsToggle.type='button';
-operationsToggle.textContent='OPERATIONS';
-operationsToggle.setAttribute('aria-label','Open squad operations and resupply');
-ui.siteSettings.append(operationsToggle);
+operationsToggle.textContent='SQUAD';
+operationsToggle.setAttribute('aria-label','Open Quick Play squad preparation and equipment');
+operationsToggle.title='Edit squad and equipment before the mission';
+(document.querySelector('.mode')??ui.siteSettings).append(operationsToggle);
 let lastRangeTrial:RangeTrial|null=null;
 const rangeTelemetry=document.createElement('aside');
 rangeTelemetry.id='equipmentRangeTelemetry';
@@ -1567,7 +1568,9 @@ function updateHud(){
   if(state.phase!=='planning'){
     ui.briefingPanel.hidden=true;operationsBoard.hidden=true;
   }
-  operationsToggle.disabled=state.phase!=='planning'||replaying;
+  operationsToggle.hidden=campaignMode!=='quick'||state.phase!=='planning'||replaying;
+  operationsToggle.disabled=operationsToggle.hidden;
+  if(operationsToggle.hidden)operationsBoard.hidden=true;
   ui.phase.textContent=replaying?'REPLAY':
     state.phase==='planning'?'PLANNING':
     state.phase==='running'?'EXECUTING':
