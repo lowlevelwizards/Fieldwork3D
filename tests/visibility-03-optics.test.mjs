@@ -34,6 +34,7 @@ test('VIS-03 polygon permits sight through glazed door',()=>{
  const from={x:0,y:10},heading=0;
  const clear=visionPolygon(from,heading,90,[],[door('glazed')],false,[]);
  const solid=visionPolygon(from,heading,90,[],[door('wood')],false,[]);
+ // Sample the central aiming ray, not the oblique cone boundary.
  const forward=(poly)=>poly.slice(1).reduce((best,p)=>
    Math.abs(p.y-from.y)<Math.abs(best.y-from.y)?p:best);
  assert.ok(forward(clear).x>80);
