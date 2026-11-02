@@ -323,13 +323,16 @@ operator.addEventListener('change',build);
 function fit(next='iso'){
   const center=comparing||kitComparing?new THREE.Vector3():rig?.root.position??
     new THREE.Vector3();
-  const dx=next==='front'?75:next==='top'?.01:next==='side'?0:65;
-  const dz=next==='side'?75:next==='top'?.01:next==='front'?0:68;
-  camera.position.set(center.x+dx,next==='top'?115:next==='front'||next==='side'?16:48,
+  const dx=next==='front'?75:next==='back'?-75:
+    next==='top'?.01:next==='side'?0:65;
+  const dz=next==='side'?75:next==='top'||next==='front'||next==='back'?0:68;
+  camera.position.set(center.x+dx,next==='top'?115:
+    ['front','back','side'].includes(next)?16:48,
     center.z+dz);
   camera.zoom=comparing?
     Math.min(.34,Math.max(.21,.58*window.innerWidth/window.innerHeight)):
-    gaitComparing?(compact?.60:.77):kitComparing?(compact?.65:.9):1.4;camera.updateProjectionMatrix();
+    gaitComparing?(compact?.60:.77):kitComparing?(compact?.65:.9):
+    next==='game'?.65:1.4;camera.updateProjectionMatrix();
   control.target.set(center.x,16,center.z);control.update();
   cameraFollow={x:center.x,z:center.z};
 }
@@ -826,6 +829,11 @@ function draw(){
     throw Error('3D renderer returned without drawing an operator');
   canvas.dataset.drawCalls=String(renderer.info.render.calls);
   canvas.dataset.triangles=String(renderer.info.render.triangles);
+  const stats=choose<HTMLOutputElement>('visualStats');
+  const current=renderer.info.render;
+  const display='DRAWS '+current.calls+' · TRIS '+
+    current.triangles+' · '+(kitComparing?'3 KITS':'1 KIT');
+  if(stats.textContent!==display)stats.textContent=display;
   canvas.dataset.kitComparison=String(kitComparing);
   if(canvas.dataset.ready!=='true'){
     canvas.dataset.ready='true';
