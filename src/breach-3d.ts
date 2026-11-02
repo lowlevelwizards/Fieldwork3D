@@ -36,10 +36,10 @@ import {weaponClearance} from './breach-weapon-clearance.ts';
 import {resolveWeaponAssembly} from './equipment-weapon-assemblies.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter,LIGHT_BEAM_SAMPLES}
  from './equipment-weapon-light-beam.ts';
-import {type Site,type Room} from './breach-site.ts';
+import {type Site,type Room,type WideOpening} from './breach-site.ts';
 import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import {type Session,type TeamActor,team,isSeen,knownAt,liveVisibility} from './breach-game.ts';
-import {spatialSurfaceState,shotVisibility} from './breach-presentation.ts';
+import {spatialSurfaceState,shotVisibility,architecturalOpeningKnown} from './breach-presentation.ts';
 import {doorKnown} from './breach-intel.ts';
 import {handlePoint,doorReachable,initDoor} from './breach-door.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
@@ -154,6 +154,7 @@ export class TacticalScene3D{
   private intelSurfaces:{obj:THREE.Object3D;kind:'wall'|'cover';
     index:number}[]=[];
   private observedDetails:{obj:THREE.Object3D;position:Pt}[]=[];
+  private architecturalOpenings:{obj:THREE.Object3D;opening:WideOpening}[]=[];
   private wallMaterials=new Set<THREE.Material>();
   private effects=new THREE.Group();
   private target=new THREE.Vector3(339,0,413);
@@ -247,7 +248,9 @@ export class TacticalScene3D{
     this.sun.shadow.mapSize.set(this.quality.shadowSize,this.quality.shadowSize);
     Object.assign(this.sun.shadow.camera,{
       left:-320,right:320,top:320,bottom:-320,near:.5,far:800,
-    });this.sun.shadow.bias=-.0004;this.sun.shadow.normalBias=.08;
+    });// A small normal offset mitigates repeated shadow-map stripes on flat
+    // exterior terrain without removing contact shadows under operators.
+    this.sun.shadow.bias=-.00012;this.sun.shadow.normalBias=.16;
     this.scene.add(this.sun,this.sun.target);
     this.scene.add(this.root,this.effects);
     this.buildWorld();
@@ -411,6 +414,7 @@ export class TacticalScene3D{
     this.roofGroups.clear();
     this.coverGroups.clear();
     this.intelSurfaces.length=0;this.observedDetails.length=0;
+    this.architecturalOpenings.length=0;
     this.observedDoorOpen.clear();
     if(this.impactDecalMesh)this.impactDecalMesh.count=0;
     if(this.casingMesh)this.casingMesh.count=0;
@@ -760,6 +764,7 @@ export class TacticalScene3D{
         this.box(group,0,20.5,3,width+3,2,12,archMaterial,false);
       }
       this.root.add(group);
+      this.architecturalOpenings.push({obj:group,opening});
     }
     const doorMat=this.solid(age(theme.door,'door-wood'),.88,'door-wood'),
       doorTrim=this.solid(age(theme.trim,'painted-wood'),.9,'painted-wood');
@@ -1546,6 +1551,8 @@ export class TacticalScene3D{
     }
     // Unlike the room's floor, decorative props must be individually
     // seen (or remembered at their own position) before they are rendered.
+    for(const opening of this.architecturalOpenings)
+      opening.obj.visible=architecturalOpeningKnown(s,opening.opening,omniscient);
     for(const detail of this.observedDetails){
       const p=detail.position;
       const micro='micro:'+Math.floor(p.x/10)+','+Math.floor(p.y/10);

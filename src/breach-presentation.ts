@@ -1,4 +1,6 @@
 import {COVER,WALLS,type Pt,doorCenter,type Door} from './breach-core.ts';
+import type {WideOpening} from './breach-site.ts';
+import {accessibleExteriorWall} from './breach-site-footprint.ts';
 import {type Session,type ShotEvent,liveVisibility,knownAt} from './breach-game.ts';
 
 /**
@@ -51,6 +53,32 @@ export function spatialSurfaceState(s:Session,kind:SpatialSurfaceKind,
  const door=s.doors.find(d=>d.id===key);
  if(door&&liveVisibility(s,doorCenter(door)))return 'visible';
  return s.intel.doorMemory.has(String(key))?'remembered':'briefed';
+}
+/** A wide arch or service counter is architecture, but is NOT a wall
+ * index or a discovered room. Hide it until it is physically observed,
+ * remembered locally, or legitimately included in the briefing. */
+export function architecturalOpeningKnown(s:Session,opening:WideOpening,
+ omniscient=false):boolean{
+ if(omniscient||s.intel.mode==='full-view'||s.intel.mode==='floor-plan')
+  return true;
+ if(s.intel.mode==='exterior-known'&&
+    accessibleExteriorWall(s.site,opening))return true;
+ const dx=opening.b.x-opening.a.x,dy=opening.b.y-opening.a.y;
+ const length=Math.hypot(dx,dy);
+ if(length<.001)return false;
+ const middle={x:(opening.a.x+opening.b.x)/2,
+   y:(opening.a.y+opening.b.y)/2};
+ const nx=-dy/length,ny=dx/length;
+ // Sample both sides of the open threshold. The midpoint may coincide
+ // with a ray/segment boundary and not itself register as visible.
+ for(const sign of [-1,1]){
+   const p={x:middle.x+nx*8*sign,y:middle.y+ny*8*sign};
+   if(liveVisibility(s,p))return true;
+   if(s.seenGround.has('micro:'+Math.floor(p.x/10)+','+Math.floor(p.y/10))||
+      s.seenGround.has('fine:'+Math.floor(p.x/20)+','+Math.floor(p.y/20)))
+     return true;
+ }
+ return false;
 }
 export type ShotVisibility={flash:boolean;trace:boolean;impact:boolean};
 export function shotVisibility(s:Session,shot:ShotEvent):ShotVisibility{

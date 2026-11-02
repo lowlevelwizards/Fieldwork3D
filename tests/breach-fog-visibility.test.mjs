@@ -21,7 +21,7 @@ test('fog mask clears directional polygons, not complete occupied rooms',()=>{
  const calls=[],ctx={
   canvas:{width:320,height:370},
   save(){},restore(){},setTransform(){},clearRect(){},
-  beginPath(){calls.push('begin')},moveTo(){},lineTo(){},closePath(){},
+  beginPath(){calls.push('begin')},moveTo(){},lineTo(){},closePath(){},rect(){},
   fill(){calls.push('polygon')},fillRect(){calls.push('rect')},
   filter:'none',fillStyle:'#000',globalCompositeOperation:'source-over'
  };
