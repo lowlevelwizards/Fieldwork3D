@@ -6,7 +6,7 @@ import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   operationBriefing,
-  planMove,planMoveStroke,planNearbyInteraction,planAim,setFirePolicy,planWait,planWaitAt,setWaitDuration,
+  planMove,planMoveStroke,setStrafe,planNearbyInteraction,planAim,setFirePolicy,planWait,planWaitAt,setWaitDuration,
   plannedControl,setNodeControl,setStartPace,planReloadAt,planDoorFlash,
   planSync,movePlanNode,
   finalPoint,doorAtNode,backOne,
@@ -1162,7 +1162,7 @@ function updateContext(){
     doorOpen:!!door&&(door.openFraction??(door.open?1:0))>=.35,
     availableTools:door?equippedEntryMethods(a.equipment)
       .filter(method=>entryToolVerdict(door,method).allowed):[],
-    nodeKind:node?.kind,aimLabel:node?.aimLabel,
+    nodeKind:node?.kind,nodeMoveMode:node?.moveMode,aimLabel:node?.aimLabel,
     nodeFirePolicy:node?.firePolicyState,
   });
   const paletteChoices=choices.filter(choice=>choice.group!=='state');
@@ -1399,6 +1399,13 @@ const handleContextAction=(event:MouseEvent)=>{
     case 'ctxPie':
       tacticalFeedback.emit('command',node?.p??a.p,'PIE');
       uiClickTone('command');armFacing('pie');return;
+    case 'ctxStrafe':
+      tacticalFeedback.emit('command',node?.p??a.p,'STRAFE');
+      uiClickTone('command');armFacing('strafe');return;
+    case 'ctxStrafeMove':
+      if(!node||node.kind!=='move'||!setStrafe(state,selected,node.id))
+        state.events.push('SELECT A MOVEMENT WAYPOINT TO TOGGLE STRAFE');
+      break;
     case 'ctxWait':{
       if(node?.kind==='wait')setWaitDuration(state,selected,node.id,.5);
       else planWaitAt(state,selected,.5,node?'end':'here',node?.id);
@@ -3212,7 +3219,8 @@ canvas.addEventListener('pointerdown',e=>{
     const overSelectedLine=!contextual&&state.phase==='planning'&&
       !!selectedActor&&!!routeLineHit(selectedActor.p,selectedActor.plan,
         {x:e.clientX,y:e.clientY},p=>worldToScreen(p,4),
-        tacticalHitProfile(e.pointerType).route);
+        tacticalHitProfile(e.pointerType).route,
+        (from,to)=>displayRouteCache.get(from,to,state.intel,true).points);
     const hit=contextual?undefined:team(state).find(a=>{
       if(a.health<=0)return false;
       const direct=overSelectedLine&&a.id!==selected;
@@ -3318,7 +3326,8 @@ function insertAtRouteLine(screen:Pt,pointerKind:string):boolean{
   const actor=uid(selected);
   if(!actor||state.phase!=='planning')return false;
   const hit=routeLineHit(actor.p,actor.plan,screen,
-    point=>worldToScreen(point,4),tacticalHitProfile(pointerKind).route);
+    point=>worldToScreen(point,4),tacticalHitProfile(pointerKind).route,
+    (from,to)=>displayRouteCache.get(from,to,state.intel,true).points);
   if(!hit){canvas.dataset.lastRouteTap='miss:'+actor.plan.length+'/'+selected;return false;}
   canvas.dataset.lastRouteTap='route:'+hit.index;
   const id=state.nextId;

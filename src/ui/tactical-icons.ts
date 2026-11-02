@@ -8,6 +8,8 @@ const glyphs:Record<string,string>={
   ctxHold:'<rect x="5" y="4" width="14" height="17" rx="1"/><path d="M10 12h5m-3-3v6"/>',
   ctxLook:'<path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/>',
   ctxPie:'<circle cx="5" cy="19" r="2"/><path d="M5 19V8M5 19h11M5 19A14 14 0 0 1 19 5"/><path d="M15 4h4v4"/>',
+  ctxStrafe:'<path d="M4 12h16m-4-4 4 4-4 4"/><path d="M12 5v14"/><circle cx="12" cy="12" r="2"/>',
+  ctxStrafeMove:'<path d="M4 12h16m-4-4-4 4 4 4m12-8 4 4-4 4"/><path d="M12 4v16" stroke-dasharray="2 3"/>',
   ctxFlash:'<circle cx="12" cy="12" r="3"/><path d="M12 2v5m0 10v5M2 12h5m10 0h5M5 5l3 3m8 8 3 3m0-14-3 3M8 16l-3 3"/>',
   ctxWait:'<path d="M8 5v14m8-14v14"/>',
   ctxFocus:'<circle cx="12" cy="12" r="4"/><path d="M12 2v5m0 10v5M2 12h5m10 0h5"/>',

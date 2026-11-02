@@ -7,12 +7,14 @@ import {type PlanNode} from './breach-plan.ts';
  */
 export type RouteLineHit={index:number;point:Pt;distancePx:number};
 export function routeLineHit(origin:Pt,plan:PlanNode[],screen:Pt,
-  project:(p:Pt)=>Pt,thresholdPx=14):RouteLineHit|null{
+  project:(p:Pt)=>Pt,thresholdPx=14,
+  resolveRoute:(from:Pt,to:Pt)=>readonly Pt[]=route):RouteLineHit|null{
   let from={...origin},best:RouteLineHit|null=null;
   for(let index=0;index<plan.length;index++){
     const node=plan[index];
     if(node.kind==='move'||node.kind==='door'){
-      const steps=route(from,node.p);
+      // Use the same geometry that the HUD draws (including intel/squeeze routes).
+      const steps=resolveRoute(from,node.p);
       let previous=from;
       for(const current of steps){
         const a=project(previous),b=project(current);
