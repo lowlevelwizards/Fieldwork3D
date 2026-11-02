@@ -3163,7 +3163,9 @@ const hitNode=(cursor:Pt,pointerKind:string):{id:number;index:number;owner:strin
   return candidates[0]??null;
 };
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
-canvas.addEventListener('pointerenter',e=>{if(e.pointerType!=='touch')previewHover=true;});
+canvas.addEventListener('pointerenter',e=>{
+  if(e.pointerType!=='touch'){previewHover=true;cursor=pointerWorld(e);}
+});
 canvas.addEventListener('pointerleave',()=>{previewHover=false;});
 canvas.addEventListener('pointerdown',e=>{
   e.preventDefault();canvas.setPointerCapture(e.pointerId);
