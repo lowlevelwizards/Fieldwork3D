@@ -42,7 +42,7 @@ test('headwear texture scale and grayscale-only pixels match operator materials'
    assert.equal(pixels[i],pixels[i+1]);
    assert.equal(pixels[i+1],pixels[i+2]);
    assert.equal(pixels[i+3],255);
-   if(pixels[i]<236)dark++;
+   if(pixels[i]<245)dark++;
   }
   assert.ok(dark/(pixels.length/4)>.01,kind+' must be visibly developed');
   assert.ok(dark/(pixels.length/4)<.90,kind+' must retain flat negative space');
