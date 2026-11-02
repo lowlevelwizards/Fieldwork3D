@@ -95,13 +95,13 @@ const BOONIE_CUBOIDS:readonly HeadwearCuboid[]=[
 const BEANIE_CUBOIDS:readonly HeadwearCuboid[]=[
  {name:'beanie-fitted-crown',x:0,y:7.31,z:0,
   width:9.20,height:1.22,depth:9.40},
- {name:'beanie-front-body',x:0,y:5.88,z:-4.27,
-  width:9.20,height:2.60,depth:.86},
- {name:'beanie-rear-body',x:0,y:5.88,z:4.27,
-  width:9.20,height:2.60,depth:.86},
+ {name:'beanie-front-body',x:0,y:5.88,z:-4.23,
+  width:9.20,height:2.60,depth:.94},
+ {name:'beanie-rear-body',x:0,y:5.88,z:4.23,
+  width:9.20,height:2.60,depth:.94},
  ...([-1,1] as const).map(sign=>({
   name:sign===-1?'beanie-left-body':'beanie-right-body',
-  x:sign*4.17,y:5.88,z:0,width:.86,height:2.60,depth:9.40
+  x:sign*4.13,y:5.88,z:0,width:.94,height:2.60,depth:9.40
  })),
  {name:'beanie-front-cuff',x:0,y:4.49,z:-4.54,
   width:9.80,height:1.44,depth:.92},
