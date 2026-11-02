@@ -52,3 +52,49 @@ test('cuboid shells cover the skull without projecting absurdly beyond it',()=>{
   assert.ok(b.min.y>2.5&&b.max.y<10.6,id);
  }
 });
+
+test('connected helmet assemblies have no physical gaps at brow, temple, rear or crown',()=>{
+ const intersects=(a,b)=>{
+  const x=new THREE.Box3().setFromObject(a);
+  const y=new THREE.Box3().setFromObject(b);
+  // Require a positive overlap volume, not a face-only touch that creates
+  // a floating seam or becomes a gap with subpixel raster precision.
+  const overlap=new THREE.Box3().copy(x).intersect(y);
+  return !overlap.isEmpty()&&overlap.getSize(new THREE.Vector3())
+   .toArray().every(axis=>axis>.08);
+ };
+ for(const id of ['ach','high-cut']){
+  const g=built(id),prefix=id==='ach'?'ach':'highcut';
+  const shell=piece(g,id==='ach'?'ach-primary-shell':'highcut-compact-shell');
+  const upper=piece(g,id==='ach'?'ach-stepped-upper-crown':'highcut-stepped-top');
+  const brow=piece(g,prefix+'-brow');
+  const nape=piece(g,id==='ach'?'ach-nape':'highcut-short-nape');
+  const sides=id==='ach'?['ach-deep-left-ear','ach-deep-right-ear']:
+   ['highcut-left-temple','highcut-right-temple'];
+  assert.ok(intersects(shell,upper),id+' crown');
+  assert.ok(intersects(shell,brow),id+' brow');
+  assert.ok(intersects(shell,nape),id+' nape');
+  for(const side of sides){
+   const part=piece(g,side);
+   for(const [name,other] of [['main shell',shell],['front brow',brow],
+    ['rear nape',nape]])
+    assert.ok(intersects(part,other),id+' '+side+' must meet '+name);
+  }
+ }
+});
+test('cap crown joins wrap and bill, with no disconnected rectangular tabs',()=>{
+ const cap=built('patrol-cap'),part=name=>piece(cap,name);
+ const overlap=(a,b)=>{
+  const intersection=new THREE.Box3().setFromObject(a)
+    .intersect(new THREE.Box3().setFromObject(b));
+  return !intersection.isEmpty()&&intersection.getSize(
+   new THREE.Vector3()).toArray().every(v=>v>.08);
+ };
+ for(const id of ['forehead-band','left-soft-side','right-soft-side','rear-band']){
+  assert.ok(overlap(part(id),part('soft-flat-crown')),id+' must join crown');
+ }
+ assert.ok(overlap(part('flat-short-bill'),part('forehead-band')),
+  'bill must be seated in brow, not floating under it');
+ assert.ok(overlap(part('left-soft-side'),part('forehead-band')));
+ assert.ok(overlap(part('right-soft-side'),part('forehead-band')));
+});
