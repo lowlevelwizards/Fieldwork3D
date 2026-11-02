@@ -38,6 +38,6 @@ test('Physicality Lab default scenes actually move through the obstacle',()=>{
   console.log('PHYSICALITY CASE '+JSON.stringify({scenario:result.name,
     rows:result.rows,blocked:result.blocked,door:result.angle}));
  for(const result of outcomes)
-  assert.ok(result.rows.filter(r=>r.name!=='ROOK'||result.name!=='stack')
-    .some(r=>r.remaining<15),JSON.stringify(result,null,2));
+  for(const actor of result.rows.filter(r=>r.name!=='ROOK'||result.name!=='stack'))
+   assert.ok(actor.remaining<6,JSON.stringify(result,null,2));
 });
