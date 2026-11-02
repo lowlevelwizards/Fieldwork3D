@@ -901,6 +901,7 @@ let flashDoorId:string|null=null;
 let armedOrigin:'here'|'end'='end';
 let doorFocusId:string|null=null;
 let draggingNode:Pt|null=null;
+let draggingWatchTarget=false;
 function cancelTargeting(){
   looking=false;flashMode=false;firePlacement=null;flashDoorId=null;
   contextSignature='';updateHud();
@@ -973,7 +974,7 @@ let previewHover=false;
 let trace:Pt[]|null=null;
 const activePointers=new Map<number,{x:number;y:number;startX:number;startY:number;
   wasUnit:boolean;nodeId:number|null;
-  mode:'undecided'|'route'|'pan'|'node'|'pivot'|'sweep'|'cameraOrbit'|'cameraPan'|'cameraMulti'|'targetPreview';moved:boolean}>();
+  mode:'undecided'|'route'|'pan'|'node'|'watchTarget'|'pivot'|'sweep'|'cameraOrbit'|'cameraPan'|'cameraMulti'|'targetPreview';moved:boolean}>();
 let pinchDistance=0,panMid:Pt|null=null;
 const colors:Record<string,string>={
   rook:'#a2d4ca',moss:'#b9c6a0',ash:'#dfb992',vale:'#b7b1d9',
@@ -2007,7 +2008,7 @@ function paths(){
     }
     for(let i=0;i<plan.length;i++){
       const n=plan[i],selectedNow=a.id===selected&&selectedNode===n.id;
-      const point=selectedNow&&draggingNode&&n.kind!=='flash'?
+      const point=selectedNow&&draggingNode&&!draggingWatchTarget&&n.kind!=='flash'?
         draggingNode:n.p;
       circle(point.x,point.y,selectedNow?10:7,
         selectedNow?'#ecd29f':n.kind==='move'?c:'#c8ae7f');
@@ -2021,13 +2022,15 @@ function paths(){
         line(point,end,c,2.1);circle(end.x,end.y,2.2,c);
       }
       if(n.aimMode==='track'&&n.aimPoint){
-        line(point,n.aimPoint,c,1.8);
-        circle(n.aimPoint.x,n.aimPoint.y,7,c);
-        circle(n.aimPoint.x,n.aimPoint.y,3,'#203732');
+        const watched=selectedNow&&draggingWatchTarget&&draggingNode?
+          draggingNode:n.aimPoint;
+        line(point,watched,c,1.8);
+        circle(watched.x,watched.y,selectedNow?9:7,c);
+        circle(watched.x,watched.y,3,'#203732');
         draw.textAlign='left';draw.font='bold 10px monospace';
         draw.fillStyle='#e8cba2';
         draw.fillText('WATCH',point.x+12,point.y-12);
-      }else if(n.aimMode==='fixed'){
+      }else if(n.aimMode==='fixed'||(n.aimMode==='free'&&n.facing!==undefined)){
         draw.textAlign='left';draw.font='bold 10px monospace';
         draw.fillStyle='#d5e8de';
         draw.fillText(n.aimLabel==='strafe'?'HOLD DIR':'LOOK',
@@ -2119,9 +2122,9 @@ function renderProjectedPlans(){
         draw.stroke();draw.setLineDash([]);draw.globalAlpha=1;
       }
       const selectedNow=a.id===selected&&selectedNode===n.id;
-      const point=worldToScreen(selectedNow&&draggingNode&&n.kind!=='flash'?
+      const point=worldToScreen(selectedNow&&draggingNode&&!draggingWatchTarget&&n.kind!=='flash'?
         draggingNode:n.p,8);
-      const invalidDrag=selectedNow&&draggingNode&&
+      const invalidDrag=selectedNow&&draggingNode&&!draggingWatchTarget&&
         !intelPassable(draggingNode,state.intel,5.4);
       circle(point.x,point.y,selectedNow?11:7,
         invalidDrag?'#df8070':selectedNow?'#ecd29f':color);
@@ -2136,14 +2139,16 @@ function renderProjectedPlans(){
         circle(aim.x,aim.y,3,color);
       }
       if(n.aimMode==='track'&&n.aimPoint){
-        const target=worldToScreen(n.aimPoint,12);
+        const watched=selectedNow&&draggingWatchTarget&&draggingNode?
+          draggingNode:n.aimPoint;
+        const target=worldToScreen(watched,12);
         line(point,target,color,1.8);
         circle(target.x,target.y,8,color);
         circle(target.x,target.y,3,'#264039');
         draw.fillStyle='#f1d7a4';draw.textAlign='left';
         draw.font='bold 10px monospace';
         draw.fillText('WATCH',point.x+12,point.y-13);
-      }else if(n.aimMode==='fixed'){
+      }else if(n.aimMode==='fixed'||(n.aimMode==='free'&&n.facing!==undefined)){
         draw.fillStyle='#d2eee4';draw.textAlign='left';
         draw.font='bold 10px monospace';
         draw.fillText(n.aimLabel==='strafe'?'HOLD DIR':'LOOK',
@@ -2566,11 +2571,12 @@ function useSelectedGround(pt:Pt){
     flashMode=false;flashDoorId=null;updateHud();return;
   }
   if(looking){
+    const placedId=state.nextId;
     const committed=lookMode==='watch'?
       planWatch(state,selected,pt,selectedNode??undefined,armedOrigin):
       planAim(state,selected,'free',pt,selectedNode??undefined,'look',armedOrigin);
-    if(!committed)
-      state.events.push('SELECT A DIFFERENT AIM POINT');
+    if(!committed)state.events.push('SELECT A DIFFERENT AIM POINT');
+    else if(selectedNode===null)selectedNode=placedId;
     looking=false;updateHud();return;
   }
   const beforeRoute=uid(selected)?finalPoint(uid(selected)!):pt;
@@ -3165,16 +3171,19 @@ window.addEventListener('keydown',e=>{
   if(e.code==='Digit0'&&!e.repeat)ui.cameraFit.click();
 });
 function pointerWorld(e:PointerEvent){return toWorld(e.clientX,e.clientY);}
-const hitNode=(cursor:Pt,pointerKind:string):{id:number;index:number;owner:string}|null=>{
+const hitNode=(cursor:Pt,pointerKind:string):{id:number;index:number;owner:string;marker:'node'|'watch'|'flash'}|null=>{
   const radius=tacticalHitProfile(pointerKind).waypoint;
-  const candidates:{id:number;index:number;owner:string;gap:number}[]=[];
+  const candidates:{id:number;index:number;owner:string;gap:number;marker:'node'|'watch'|'flash'}[]=[];
   for(const unit of team(state))if(unit.health>0){
     for(let i=unit.plan.length-1;i>=0;i--){
       const n=unit.plan[i];
-      for(const point of [n.p,...(n.kind==='flash'&&n.aimPoint?[n.aimPoint]:[])]){
-        const marker=worldToScreen(point,point===n.p?8:6);
-        const gap=distance(marker,cursor);
-        if(gap<radius)candidates.push({id:n.id,index:i,owner:unit.id,gap});
+      const targets:[Pt,'node'|'watch'|'flash'][]=[[n.p,'node']];
+      if(n.aimPoint&&n.aimMode==='track')targets.push([n.aimPoint,'watch']);
+      if(n.aimPoint&&n.kind==='flash')targets.push([n.aimPoint,'flash']);
+      for(const [point,kind] of targets){
+        const projected=worldToScreen(point,kind==='node'?8:12);
+        const gap=distance(projected,cursor);
+        if(gap<radius)candidates.push({id:n.id,index:i,owner:unit.id,gap,marker:kind});
       }
     }
   }
@@ -3233,7 +3242,7 @@ canvas.addEventListener('pointerdown',e=>{
     activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
       startX:e.clientX,startY:e.clientY,wasUnit:!!hit&&!node,
       nodeId:node?.id??null,
-      mode:node?'node':'undecided',moved:false});
+      mode:node?.marker==='watch'?'watchTarget':node?'node':'undecided',moved:false});
   }
   if(activePointers.size>=2){
     // Cancel any tentative route gesture when a second finger arrives.
@@ -3243,7 +3252,7 @@ canvas.addEventListener('pointerdown',e=>{
     pinchDistance=distance({x:pts[0].x,y:pts[0].y},
       {x:pts[1].x,y:pts[1].y});
     panMid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
-    trace=null;draggingNode=null;
+    trace=null;draggingNode=null;draggingWatchTarget=false;
   }
 });
 canvas.addEventListener('pointermove',e=>{
@@ -3301,8 +3310,14 @@ canvas.addEventListener('pointermove',e=>{
     stage.orbit(dx,dy);
     return;
   }
+  if(p.mode==='watchTarget'){
+    if(p.moved&&p.nodeId!==null){
+      draggingNode=cursor;draggingWatchTarget=true;
+    }
+    return;
+  }
   if(p.mode==='node'&&p.moved&&p.nodeId!==null){
-    draggingNode=cursor;return;
+    draggingWatchTarget=false;draggingNode=cursor;return;
   }
   if(state.phase==='planning'&&p.wasUnit&&p.moved){
     p.mode='route';
@@ -3345,6 +3360,12 @@ function releasePointer(e:PointerEvent,cancelled=false){
       if((looking||flashMode||firePlacement||evacMode)&&
          pt.x>=0&&pt.y>=0&&pt.x<=W&&pt.y<=H)
         useSelectedGround(pt);
+    }else if(p.mode==='watchTarget'&&p.nodeId!==null){
+      if(p.moved&&!planWatch(state,selected,pt,p.nodeId))
+        state.events.push('WATCH TARGET UNAVAILABLE');
+      selectedNode=p.nodeId;doorFocusId=null;
+      tacticalFeedback.emit(p.moved?'command':'select',pt,
+        p.moved?'WATCH UPDATED':undefined);
     }else if(p.mode==='node'&&p.nodeId!==null){
       if(p.moved){
         const moving=uid(selected)?.plan.find(node=>node.id===p.nodeId);
@@ -3404,7 +3425,8 @@ function releasePointer(e:PointerEvent,cancelled=false){
       }
     }
   }
-  trace=null;draggingNode=null;activePointers.delete(e.pointerId);
+  trace=null;draggingNode=null;draggingWatchTarget=false;
+  activePointers.delete(e.pointerId);
   if(e.pointerType==='touch')previewHover=false;
   if(activePointers.size<2){panMid=null;pinchDistance=0;}
   updateHud();
@@ -3413,7 +3435,7 @@ canvas.addEventListener('pointerup',e=>releasePointer(e));
 canvas.addEventListener('pointercancel',e=>releasePointer(e,true));
 canvas.addEventListener('lostpointercapture',e=>releasePointer(e,true));
 window.addEventListener('blur',()=>{activePointers.clear();trace=null;
-  panMid=null;pinchDistance=0;});
+  panMid=null;pinchDistance=0;draggingWatchTarget=false;});
 window.addEventListener('resize',layout);
 // The Settings trigger lives in the collapsible Tools drawer. Settings
 // therefore owns an always-visible close action, and camera changes return
