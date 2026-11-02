@@ -13,7 +13,7 @@ import {
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,stepSession,liveVisibility,
   planReload,reloadNow,planFlash,moveFlashTarget,flashTrajectory,
-  cycleWeapon,toggleWeaponLight,planMedicalTreatment,planEntryTool,
+  equipWeaponChoice,toggleWeaponLight,planMedicalTreatment,planEntryTool,
   planCasualtyTransport,planRecoverMedical,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
@@ -406,6 +406,49 @@ Object.assign(operationsBoard.style,{
  boxShadow:'0 12px 35px #0008'
 });
 document.body.append(operationsBoard);
+// Weapon choices are explicit: never change the selected weapon merely by opening a menu.
+const weaponChooser=document.createElement('section');
+weaponChooser.id='quickWeaponChooser';
+weaponChooser.className='fw-weapon-chooser';
+weaponChooser.hidden=true;
+weaponChooser.setAttribute('role','group');
+weaponChooser.setAttribute('aria-label','Choose selected operator weapon');
+document.body.append(weaponChooser);
+function hideWeaponChooser(){
+ weaponChooser.hidden=true;
+ ui.loadout.setAttribute('aria-expanded','false');
+}
+function showWeaponChooser(){
+ const current=team(state).find(a=>a.id===selected);
+ if(!current||campaignMode==='mission'||state.phase!=='planning'||replaying)return;
+ weaponChooser.replaceChildren();
+ const label=document.createElement('div');
+ label.className='fw-weapon-chooser-title';
+ label.textContent='CHOOSE WEAPON · '+current.name;
+ weaponChooser.append(label);
+ for(const id of ['carbine','smg','rifle','shotgun'] as const){
+  const btn=document.createElement('button');
+  btn.type='button';btn.className='fw-button';
+  btn.textContent=WEAPONS[id].label;
+  btn.setAttribute('aria-pressed',String(id===current.weapon));
+  btn.addEventListener('click',()=>{
+   if(equipWeaponChoice(state,selected,id)){
+    hideWeaponChooser();updateHud();
+   }
+  });
+  weaponChooser.append(btn);
+ }
+ const cancel=document.createElement('button');
+ cancel.type='button';cancel.className='fw-button fw-weapon-dismiss';
+ cancel.textContent='CLOSE';
+ cancel.addEventListener('click',hideWeaponChooser);
+ weaponChooser.append(cancel);
+ weaponChooser.hidden=false;
+ ui.loadout.setAttribute('aria-expanded','true');
+}
+weaponChooser.addEventListener('keydown',event=>{
+ if(event.key==='Escape'){event.preventDefault();hideWeaponChooser();ui.loadout.focus();}
+});
 let expandedQuickKit:string|null=null;
 let expandedQuickWeapon:string|null=null;
 let quickWorkbench:WeaponWorkbenchPreview|null=null;
@@ -939,6 +982,7 @@ function turnCamera(shift:number){
 const uid=(id:string)=>team(state).find(o=>o.id===id);
 function selectUnit(id:string){
   const actor=uid(id);if(!actor||actor.health<=0)return;
+  hideWeaponChooser();
   uiClickTone('select');selected=id;looking=false;evacMode=null;
   selectedNode=null;doorFocusId=null;
   doorMenuDismissedId=null;updateHud();
@@ -1508,6 +1552,8 @@ function updateHud(){
   ui.cancelTarget.hidden=!(state.phase==='planning'&&
     (looking||flashMode||!!firePlacement));
   ui.loadout.textContent='WEAPON · '+(active?.weapon.toUpperCase()??'—');
+  ui.loadout.disabled=campaignMode==='mission'||state.phase!=='planning'||replaying;
+  if(ui.loadout.disabled&&!weaponChooser.hidden)hideWeaponChooser();
   ui.flash.disabled=state.flashRemaining<=0||replaying;
   ui.back.disabled=!active?.plan.length;
   ui.undo.disabled=!(active?.history.undo.length);
@@ -2538,6 +2584,7 @@ function reset(next=state.variant,siteSeed?:number,
  encounterRisk?:1|2|3){
   replaying=false;replayPlaying=false;finishedSession=null;
   operationsBoard.hidden=true;
+  hideWeaponChooser();
   flashMode=false;document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
   state=newSession(next,legacyStudy?undefined:
@@ -2748,9 +2795,11 @@ retrieveButton=casualtyActionButton('RECOVER',target=>{
  if(!planRecoverMedical(state,selected,target.id))
   showUiHelp('NO ACCESSIBLE MEDICAL SUPPLY OR ROUTE');
 });
+ui.loadout.setAttribute('aria-haspopup','true');
+ui.loadout.setAttribute('aria-expanded','false');
 ui.loadout.addEventListener('click',()=>{
-  if(campaignMode!=='mission')cycleWeapon(state,selected);
-  updateHud();
+ if(weaponChooser.hidden)showWeaponChooser();
+ else hideWeaponChooser();
 });
 ui.reload.addEventListener('click',()=>{
   if(state.phase==='planning')planReload(state,selected);

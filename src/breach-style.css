@@ -898,3 +898,20 @@ body.replaying #tacticalFeedback{display:none}
  letter-spacing:.07em;color:var(--fw-text-muted);touch-action:manipulation}
 .site-settings-tools[open] .site-settings-row{margin-top:7px}
 .site-settings-tools .site-settings-row a{display:grid;place-items:center}
+
+/* UX11: explicit choice replaces blind weapon cycling on the battlefield. */
+.fw-weapon-chooser{position:fixed;z-index:17;right:12px;left:12px;
+ bottom:calc(var(--tactical-hud-height,138px) + 16px + env(safe-area-inset-bottom));
+ max-height:min(44dvh,330px);overflow-y:auto;overscroll-behavior:contain;
+ padding:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-md);
+ background:var(--fw-panel-deep);box-shadow:0 15px 35px #051313bb;
+ touch-action:pan-y}
+.fw-weapon-chooser[hidden]{display:none}
+.fw-weapon-chooser-title{grid-column:1/-1;color:var(--fw-text-muted);
+ font:700 11px/1.4 var(--ui-font);letter-spacing:.08em}
+.fw-weapon-chooser .fw-button{min-height:44px;margin:0}
+.fw-weapon-chooser .fw-button[aria-pressed="true"]{
+ background:var(--fw-sage);color:var(--fw-bg);border-color:var(--fw-sage)}
+.fw-weapon-chooser .fw-weapon-dismiss{grid-column:1/-1}
+@media(max-width:340px){.fw-weapon-chooser{grid-template-columns:1fr}}

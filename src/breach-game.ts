@@ -1139,10 +1139,10 @@ function battleEvent(s:Session,kind:BattleEvent['kind'],a:TeamActor|null,p:Pt,te
     actor:a?.id,p:clone(p),text});
   if(s.battleEvents.length>500)s.battleEvents.shift();
 }
-export function cycleWeapon(s:Session,id:string):boolean{
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  const ids:WeaponId[]=['carbine','smg','rifle','shotgun'];
-  const next=ids[(ids.indexOf(a.weapon)+1)%ids.length];
+export function equipWeaponChoice(s:Session,id:string,next:WeaponId):boolean{
+  const a=party(s,id);if(!a||!canEdit(s)||
+    !(['carbine','smg','rifle','shotgun'] as WeaponId[]).includes(next))return false;
+  if(a.weapon===next)return true;
   a.weapon=next;
   if(a.weaponConfiguration)a.weaponConfiguration=changeWeaponPlatform(a.weaponConfiguration,next);
   a.magazine=WEAPONS[next].capacity;
@@ -1153,6 +1153,12 @@ export function cycleWeapon(s:Session,id:string):boolean{
   a.reloadMode=null;a.reloadRemoved=false;a.reloadInserted=false;
   notify(s,a.name+' EQUIPPED '+WEAPONS[next].label);
   return true;
+}
+/** Historical cycling API retained for callers that still use it. */
+export function cycleWeapon(s:Session,id:string):boolean{
+  const a=party(s,id);if(!a)return false;
+  const ids:WeaponId[]=['carbine','smg','rifle','shotgun'];
+  return equipWeaponChoice(s,id,ids[(ids.indexOf(a.weapon)+1)%ids.length]);
 }
 export function planReload(s:Session,id:string):boolean{
   const a=party(s,id);
