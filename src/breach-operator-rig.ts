@@ -220,7 +220,12 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   const magazineInserted=block(weapon,3,-4,0,2.7,6,2.5,boot);
   const magazineHand=block(chest,0,0,0,2.7,6,2.5,boot);
   magazineHand.visible=false;
-  const medicalItem=block(chest,0,0,0,2.3,1.45,2.1,steel);
+  const medicalItem=block(chest,0,0,0,2.3,1.45,2.1,vest);
+  const careMark=new THREE.MeshStandardMaterial({
+    color:0x9e7767,roughness:1,flatShading:true});
+  // Compact pouch follows the hand during treatment; no duplicated stowed kit.
+  block(medicalItem,1.21,0,0,.15,.8,.19,careMark);
+  block(medicalItem,1.22,0,0,.16,.19,.8,careMark);
   medicalItem.visible=false;
   const equipmentDetails=createOperatorEquipmentDetails(
     medicalPouch,radioUnit,flashCanister,utilityTool,vest,boot,steel);
@@ -320,8 +325,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     mesh.visible=rigItem==='rig-full'||(rigItem==='rig-light'&&i===0);
   });
   r.beltPouch.visible=gear?.belt==='belt-standard';
-  r.medicalPouch.visible=gear?.medical==='medical-basic'||
-    gear?.medical==='medical-trauma';
+  r.medicalPouch.visible=(gear?.medical==='medical-basic'||
+    gear?.medical==='medical-trauma')&&!p.treatmentActive;
   r.medicalPouch.scale.set(gear?.medical==='medical-trauma'?1.35:1,1,1);
   // Use actual carrier locations instead of rendering every pouch on chest.
   const medicalAnchor=equipmentCarrySocket('medical',p.medicalCarryLocation);
@@ -336,6 +341,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const utilityAnchor=equipmentCarrySocket('utility',p.utilityCarryLocation);
   const utilityParent=utilityAnchor.bone==='hip'?r.hip:
     utilityAnchor.bone==='pack'?r.pack:r.chest;
+  // Radios and tools share the authoritative utility slot. A radio in the
+  // backpack cannot remain magically attached to the shoulder.
+  if(r.radioUnit.parent!==utilityParent)utilityParent.add(r.radioUnit);
+  r.radioUnit.position.set(utilityAnchor.x,
+    utilityAnchor.y+2.0,utilityAnchor.z);
+  r.radioUnit.rotation.z=utilityAnchor.angle;
   if(r.utilityTool.parent!==utilityParent)utilityParent.add(r.utilityTool);
   r.utilityTool.position.set(utilityAnchor.x,utilityAnchor.y,utilityAnchor.z);
   r.utilityTool.rotation.z=utilityAnchor.angle;
