@@ -102,7 +102,7 @@ function tick(){
   // Combat opponents remain solid but can negotiate shoulder-to-shoulder
   // space instead of both walking straight into each other forever.
   move=opposingPassingStep(start,move,target,
-    units.filter(v=>v!==u&&v.side!==u.side).map((v,j)=>frame[units.indexOf(v)]),
+    units.filter(v=>v!==u&&v.side!==u.side).map(v=>frame[units.indexOf(v)]),
     (a,b)=>sweptBodyClear(a,b,activeDoors));
   if(traffic.value==='strict'&&units.some(v=>v!==u&&v.side===u.side&&
      distance(move,v.p)<16))move=start;
