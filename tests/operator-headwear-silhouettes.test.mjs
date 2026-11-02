@@ -16,14 +16,16 @@ const lowerAt=(volumes,x,z)=>{
  }
  return lowest;
 };
-test('headwear remains entirely orthogonal and patrol cap retains short flat bill',()=>{
+test('patrol cap uses one joined exterior with a confident short bill',()=>{
  const cap=build('patrol-cap');
- assert.equal(cap.children.length,6);
- for(const mesh of cap.children)assert.equal(mesh.geometry.type,'BoxGeometry');
- const bill=cap.children.find(x=>x.name==='flat-short-bill');
- const crown=cap.children.find(x=>x.name==='soft-flat-crown');
+ assert.equal(cap.children.length,1);
+ assert.equal(cap.children[0].geometry.userData.greedyCuboidUnion,true);
+ assert.equal(cap.children[0].geometry.userData.cuboids.length,3);
+ const bill=byName(headwearCuboidVolumes('patrol-cap'),'patrol-bill');
+ const crown=byName(headwearCuboidVolumes('patrol-cap'),'patrol-solid-crown');
  assert.ok(bill&&crown);
- assert.ok(box(bill).min.z<box(crown).min.z-2);
+ assert.ok(bill.z-bill.depth/2<crown.z-crown.depth/2-2.8);
+ assert.ok(bill.height>=.7,'bill must be a real mass not a paper-thin trim');
  assert.ok(box(cap).max.y<9.1);
 });
 test('two helmet families render single joined faceless-interior cuboid exterior',()=>{
