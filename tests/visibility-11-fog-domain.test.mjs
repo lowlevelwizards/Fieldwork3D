@@ -13,7 +13,7 @@ test('VIS-11: overlapping townhouse rooms have exact nonoverlapping union',()=>{
   room(150,290,140,110)];
  const a=unionRoomRects(rooms);
  assert.equal(totalArea(a),100*240+140*240+140*110-
-  20*240-90*50-40*50);
+  20*240-50*50-110*50+20*50);
  assert.equal(covers(a,{x:170,y:200}),true);
  assert.equal(covers(a,{x:110,y:110}),true);
  assert.equal(covers(a,{x:330,y:200}),false);
