@@ -48,6 +48,7 @@ import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator
 import {WEAPONS} from './breach-combat.ts';
 import {casingAt,CASING_LIMIT,IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
 import {sampleThrow} from './breach-flash.ts';
+import {doorProportions,DOOR_PANEL_END_RECESS} from './breach-door-proportions.ts';
 import {paintFogMask,paintOccupiedRoomContext,occupiedFogRooms,FOG_WIDTH,FOG_HEIGHT,maskSize} from './breach-fog-mask.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {interpolatedActor,type RenderFrame}
@@ -68,11 +69,12 @@ function doorSweepArc(door:Door,length:number):THREE.Group{
   const group=new THREE.Group(),points:THREE.Vector3[]=[];
   const hinge=door.hinge==='b'?length/2:-length/2;
   const sign=door.hinge==='b'?-1:1;
+  const reach=Math.max(0,length-DOOR_PANEL_END_RECESS);
   for(let i=0;i<=24;i++){
     const angle=(door.swing??-1)*1.54*i/24;
     points.push(new THREE.Vector3(
-      hinge+sign*length*Math.cos(angle),1.7,
-      -sign*length*Math.sin(angle)));
+      hinge+sign*reach*Math.cos(angle),1.7,
+      -sign*reach*Math.sin(angle)));
   }
   const material=new THREE.LineDashedMaterial({
     color:0xf5d68e,transparent:true,opacity:.9,
@@ -758,26 +760,36 @@ export class TacticalScene3D{
       const root=new THREE.Group();root.position.set(p.x,0,p.y);
       root.rotation.y=-Math.atan2(door.b.y-door.a.y,door.b.x-door.a.x);
       const frame=new THREE.Group();root.add(frame);
-      if(!door.pairedWith||door.hinge!=='b')
-        this.box(frame,-length/2,18.5,0,4,37,10,doorTrim);
-      if(!door.pairedWith||door.hinge!=='a')
-        this.box(frame,length/2,18.5,0,4,37,10,doorTrim);
-      this.box(frame,0,37,0,length+7,4,12,doorTrim);
-      // Continuous rebates and cap trim clarify the manufactured jamb.
-      this.box(frame,0,39.1,1.2,length+9,1.7,12,doorTrim,false);
-      for(const side of [-1,1])
-        this.box(frame,side*length*.50,19,4,1.2,34,2,doorTrim,false);
-      const threshold=this.box(frame,0,.32,0,length,1.2,13,
-        doorTrim,false);
+      const profile=doorProportions(door);
+      // Preserve the full structural opening: jambs are mounted outside
+      // the walkable interval, instead of projecting into the threshold.
+      const jambX=length/2+profile.jambWidth/2-.25;
+      const jambSides=door.pairedWith?
+        [door.hinge==='b'?-1:1]:[-1,1];
+      for(const side of jambSides){
+        this.box(frame,side*jambX,18.5,0,
+          profile.jambWidth,37,profile.jambDepth,doorTrim);
+        // Small face rebate keeps the chunky iconography without two
+        // massive offset bars dominating the aperture.
+        this.box(frame,side*jambX,18.5,
+          profile.jambDepth/2+.35,profile.casingWidth,34,
+          profile.casingDepth,doorTrim,false);
+      }
+      this.box(frame,0,37.4,0,length+2*profile.jambWidth,
+        profile.headerHeight,profile.headerDepth,doorTrim);
+      this.box(frame,0,39.2,.45,length+2*profile.jambWidth+1,
+        1.1,profile.headerDepth+.8,doorTrim,false);
+      const threshold=this.box(frame,0,.275,0,length,
+        profile.thresholdHeight,profile.thresholdDepth,doorTrim,false);
       const leaf=new THREE.Group();
       let glassPane:THREE.Mesh|undefined;
-       const invert=door.hinge==='b';
+      const invert=door.hinge==='b';
       leaf.position.x=door.kind==='shutter'||door.kind==='sliding'?0:invert?length/2:-length/2;
       // Actual hinge barrels identify the swing side without requiring
       // a user to inspect a top-down arrow on every doorway.
       if(door.kind!=='shutter'&&door.kind!=='sliding')for(const y of [7,18,29])
         this.box(frame,invert?length/2:-length/2,y,0,
-          4.2,5.2,6,metal,false);
+          profile.hingeDiameter,5.2,profile.hingeDepth,metal,false);
       root.add(leaf);
       if(door.kind==='shutter'){
         for(let y=2;y<35;y+=5)
@@ -805,8 +817,10 @@ export class TacticalScene3D{
           for(const y of [11,21,31])this.box(leaf,middle,y,0,length-6,1,1,frameMaterial,false);
         }else if(style==='french'||style==='screen'){
           for(const sign of [-1,1])
-            this.box(leaf,middle+sign*(length/2-3),18,0,3.5,34,4,metal,false);
-          for(const y of [3,34])this.box(leaf,middle,y,0,length-4,4,4,metal,false);
+            this.box(leaf,middle+sign*(length/2-3),18,0,
+              3.2,34,profile.leafThickness,metal,false);
+          for(const y of [3,34])this.box(leaf,middle,y,0,length-4,
+              3.4,profile.leafThickness,metal,false);
           if(style==='french'){
             const pane=this.box(leaf,middle,18,0,length-8,29,1,doorGlass,false);
             pane.castShadow=false;glassPane=pane;
@@ -820,21 +834,27 @@ export class TacticalScene3D{
           const pane=this.box(leaf,middle,18,0,length-8,29,1,doorGlass,false);
           pane.castShadow=false;glassPane=pane;
           for(const sign of [-1,1])
-            this.box(leaf,middle+sign*(length/2-3),18,0,3.5,34,4,metal,false);
-          for(const y of [3,34])this.box(leaf,middle,y,0,length-4,4.5,4,metal,false);
+            this.box(leaf,middle+sign*(length/2-3),18,0,
+              3.2,34,profile.leafThickness,metal,false);
+          for(const y of [3,34])this.box(leaf,middle,y,0,length-4,
+              3.8,profile.leafThickness,metal,false);
           this.box(leaf,middle,18,0,length-5,2.3,3,metal,false);
-        }else this.box(leaf,middle,17,0,length-4,34,4,panel);
+        }else this.box(leaf,middle,17,0,length-4,34,
+          profile.leafThickness,panel);
         if(style==='wood'){
           // Quiet manufactured two-panel door joinery; no floorboard motif.
           const inset=this.solid(theme.door,.9,'painted-wood');
           for(const y of [12,26]){
-            this.box(leaf,middle,y,2.6,length*.64,10,.7,inset,false);
+            this.box(leaf,middle,y,
+              profile.leafThickness/2+.16,length*.64,10,.7,inset,false);
             for(const sx of [-1,1])
-              this.box(leaf,middle+sx*length*.32,y,2.8,1,10,.7,doorTrim,false);
+              this.box(leaf,middle+sx*length*.32,y,
+                profile.leafThickness/2+.24,1,10,.7,doorTrim,false);
           }
         }
-        for(const z of [-3,3]){
-          // Lock-set plates and handles remain attached to the swing leaf.
+        for(const sign of [-1,1]){
+          // Hardware sits against the panel face, not at the old slab depth.
+          const z=sign*(profile.leafThickness/2+1.05);
           const handleX=(invert?-1:1)*length*.70;
           this.box(leaf,handleX,18,z,3,5,1.9,metal,false);
           this.box(leaf,handleX+(invert?2:-2),18,z*1.12,4,1.4,1.6,metal,false);
@@ -866,7 +886,8 @@ export class TacticalScene3D{
       for(const mark of marksOn('door',doorIndex)){
         const middle=(door.hinge==='b'?-1:1)*length/2;
         this.addSurfaceWear(leaf,mark,middle+(mark.u-.5)*(length-8),
-          7+mark.v*24,3.6,door.style==='wood'?'door-wood':'painted-metal');
+          7+mark.v*24,profile.leafThickness/2+.27,
+          door.style==='wood'?'door-wood':'painted-metal');
       }
       const halo=door.kind==='sliding'?new THREE.Group():doorSweepArc(door,length);
       root.add(halo);
