@@ -136,11 +136,11 @@
     <input id="replaySeek" type="range" min="0" max="1000" value="0" aria-label="Seek through mission"/>
   </div>
   <div class="replay-actions">
-    <button id="replayPrevEvent" type="button" title="Previous combat event">|◀</button>
-    <button id="replayBack" type="button" aria-label="Rewind ten seconds">◀◀</button>
-    <button id="replayPlay" type="button" aria-label="Play replay" title="Play replay">▶</button>
-    <button id="replayForward" type="button" aria-label="Advance ten seconds">▶▶</button>
-    <button id="replayNextEvent" type="button" title="Next combat event">▶|</button>
+    <button id="replayPrevEvent" type="button" title="Previous significant event" aria-label="Previous significant event" data-caption="EVENT −">|◀</button>
+    <button id="replayBack" type="button" aria-label="Rewind ten seconds" data-caption="−10 SEC">◀◀</button>
+    <button id="replayPlay" type="button" aria-label="Play replay" title="Play replay" data-caption="PLAY">▶</button>
+    <button id="replayForward" type="button" aria-label="Advance ten seconds" data-caption="+10 SEC">▶▶</button>
+    <button id="replayNextEvent" type="button" title="Next significant event" aria-label="Next significant event" data-caption="EVENT +">▶|</button>
   </div><div id="replayExtra" class="replay-extra" hidden>
     <button id="replaySpeed" type="button">1×</button>
     <button id="replaySight" type="button">FULL VIEW</button>
