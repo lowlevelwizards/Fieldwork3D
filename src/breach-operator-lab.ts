@@ -22,6 +22,9 @@ import {initialEquipmentLoadout,setEquipmentChoice,syncPrimaryWeapon,
 import type {MagazineItem} from './breach-magazines.ts';
 import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import {itemsForSlot} from './equipment-catalog.ts';
+import {MAX_WARDROBE_LOOKS,makeWardrobeLook,readWardrobeLooks,
+ exportWardrobeLook,importWardrobeLook,type WardrobeLook}
+ from './operator-wardrobe-storage.ts';
 import {WARDROBE_MOUNTS,wardrobeMount} from './operator-wardrobe-mounts.ts';
 import {WARDROBE_RECIPES,wardrobeRecipe,applyWardrobeRecipe}
  from './operator-wardrobe-recipes.ts';
@@ -127,6 +130,70 @@ document.getElementById('wardrobeMagazineOrder')?.addEventListener('change',e=>{
    'right-left':'left-right'
  }};
 });
+// This library stores style recipes, never personnel health or actual stock.
+const LOOKS_KEY='fieldwork.operator-wardrobe.looks.v1';
+const outfitSelect=document.getElementById('outfitSelect') as HTMLSelectElement;
+const outfitStatus=document.getElementById('outfitStatus') as HTMLOutputElement;
+const outfitTransfer=document.getElementById('outfitTransfer') as HTMLTextAreaElement;
+const outfitName=document.getElementById('outfitName') as HTMLInputElement;
+let savedLooks:WardrobeLook[]=[];
+try{savedLooks=readWardrobeLooks(JSON.parse(localStorage.getItem(LOOKS_KEY)??'[]'));}
+catch{savedLooks=[];}
+function updateSavedLooks(){
+ const selected=outfitSelect.value;
+ outfitSelect.replaceChildren();
+ for(const look of savedLooks){
+  const opt=document.createElement('option');opt.value=look.id;
+  opt.textContent=look.name;outfitSelect.append(opt);
+ }
+ if(savedLooks.some(x=>x.id===selected))outfitSelect.value=selected;
+}
+function persistLooks(){
+ try{localStorage.setItem(LOOKS_KEY,JSON.stringify(savedLooks));return true;}
+ catch{outfitStatus.textContent='Local storage unavailable';return false;}
+}
+function applyLook(look:WardrobeLook){
+ labKit=look.kit;wardrobeOptions=look.wardrobe;
+ labPalette=Math.min(8,Math.max(1,look.wardrobe.palette+1));
+ (document.getElementById('kitPalette') as HTMLSelectElement).value=
+  String(labPalette);
+ syncKit();
+ for(const select of patternSelects){
+  const slot=select.dataset.wardrobePattern as keyof WardrobeOptions['patterns'];
+  select.value=wardrobeOptions.patterns[slot]??'solid';
+ }
+}
+document.getElementById('outfitSave')?.addEventListener('click',()=>{
+ const look=makeWardrobeLook(outfitName.value,labKit,wardrobeOptions);
+ const existing=savedLooks.findIndex(x=>x.id===look.id);
+ if(existing>=0)savedLooks[existing]=look;
+ else if(savedLooks.length<MAX_WARDROBE_LOOKS)savedLooks.push(look);
+ else{outfitStatus.textContent='Maximum 24 outfits';return;}
+ persistLooks();updateSavedLooks();outfitSelect.value=look.id;
+ outfitStatus.textContent='Outfit recipe saved locally';
+});
+document.getElementById('outfitLoad')?.addEventListener('click',()=>{
+ const look=savedLooks.find(x=>x.id===outfitSelect.value);
+ if(!look)return;applyLook(look);outfitStatus.textContent='Outfit loaded';
+});
+document.getElementById('outfitExport')?.addEventListener('click',()=>{
+ const look=savedLooks.find(x=>x.id===outfitSelect.value)??
+  makeWardrobeLook(outfitName.value,labKit,wardrobeOptions);
+ outfitTransfer.value=exportWardrobeLook(look);
+ outfitTransfer.focus();outfitTransfer.select();
+ outfitStatus.textContent='Copy this outfit JSON to share it';
+});
+document.getElementById('outfitImport')?.addEventListener('click',()=>{
+ const look=importWardrobeLook(outfitTransfer.value);
+ if(!look){outfitStatus.textContent='Invalid outfit format';return;}
+ const idx=savedLooks.findIndex(x=>x.id===look.id);
+ if(idx>=0)savedLooks[idx]=look;
+ else if(savedLooks.length<MAX_WARDROBE_LOOKS)savedLooks.push(look);
+ else{outfitStatus.textContent='Maximum 24 outfits';return;}
+ persistLooks();updateSavedLooks();outfitSelect.value=look.id;
+ applyLook(look);outfitStatus.textContent='Outfit imported';
+});
+updateSavedLooks();
 const wardrobeSelects=Array.from(document.querySelectorAll<HTMLSelectElement>(
  '[data-wardrobe-slot]'));
 function syncWardrobe(){

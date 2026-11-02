@@ -146,6 +146,17 @@ button:focus-visible,select:focus-visible{outline:2px solid #c9a778;outline-offs
 <div class="row"><label>STYLE / ROLE RECIPE<select id="wardrobeRecipe"></select></label>
 <button id="wardrobeApply">APPLY LOOK</button></div>
 <p class="kit-help">Visual styles only. Protection, inventory and carrying capacity stay with the equipped kit above.</p>
+<details id="outfitLibrary"><summary>SAVED LOOKS / SHARE</summary>
+<div class="row"><label>OUTFIT NAME<input id="outfitName" type="text" maxlength="44" placeholder="My outfit"></label>
+<button id="outfitSave">SAVE</button></div>
+<div class="row"><label>SAVED OUTFITS<select id="outfitSelect"></select></label>
+<button id="outfitLoad">LOAD</button><button id="outfitExport">EXPORT</button></div>
+<textarea id="outfitTransfer" rows="3" placeholder="Paste exported outfit JSON to import"
+ style="width:100%;font-size:11px"></textarea>
+<div class="row"><button id="outfitImport">IMPORT FROM TEXT</button>
+<output id="outfitStatus" role="status"></output></div>
+<p class="kit-help">Outfits save locally on this device. Recipes do not grant campaign items.</p>
+</details>
 <div class="kit-grid"><label>HEADWEAR<select data-wardrobe-slot="headwear"></select></label>
 <label>FACE COVERING<select data-wardrobe-slot="facewear"></select></label>
 <label>EYEWEAR<select data-wardrobe-slot="eyewear"></select></label>
