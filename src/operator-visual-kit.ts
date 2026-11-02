@@ -48,14 +48,12 @@ export function createOperatorVisualKit(
  // translations or scale changes occur in this visual pass.
  const hair=bundle(head);
  const haircuts=[bundle(hair),bundle(hair),bundle(hair)];
- // Short crop: squared crown and nape.
- part(haircuts[0],hairMaterial,-.45,7.1,0,8.25,1.2,8.5);
- part(haircuts[0],hairMaterial,-3.5,4.8,0,1.1,2.1,7.9);
- // Side part: a slightly uneven front, kept below the helmet silhouette.
- part(haircuts[1],hairMaterial,-1.2,7.2,0,7.9,1.35,8.3);
- part(haircuts[1],hairMaterial,2.35,6.7,-1.0,2.5,1.05,5.0);
- // Close-cut buzz: barely raised upper head with clear exposed temples.
- part(haircuts[2],hairMaterial,-.55,7.05,0,7.7,.53,8.1);
+ // Compact hair hugging the existing head. The head top is y=7.
+ // No floating block cap, and no hair protrudes through headwear.
+ part(haircuts[0],hairMaterial,-.2,7.16,0,7.6,.38,7.65);
+ part(haircuts[1],hairMaterial,-.7,7.22,0,7.1,.5,7.55);
+ part(haircuts[1],hairMaterial,-3.2,5.2,0,.48,2.0,6.45);
+ part(haircuts[2],hairMaterial,-.15,7.13,0,7.3,.30,7.45);
  // Small low-contrast eye slashes, no attached cube nose or floating mouth.
  // At gameplay distance the face reads as a quiet plane beneath the brow.
  const face=bundle(head);
@@ -68,25 +66,23 @@ export function createOperatorVisualKit(
  part(graphicMarks,facialInk,4.155,3.5,-2,.15,.50,1.15);
  part(graphicMarks,facialInk,4.155,3.5,2,.15,.50,1.15);
  graphicMarks.visible=false;
- // An angular helmet shell: broad temple coverage, smaller crown, short
- // side rails, and close-fitting retention instead of dangling ear blocks.
+ // Helmet shell: each visible exterior plane lies at a distinct depth;
+ // avoid three coincident slabs competing in the z buffer.
  const helmet=bundle(head);
- part(helmet,vest,-.5,6.25,0,9.0,2.25,9.2);
- part(helmet,vest,-.9,7.65,0,7.8,1.4,8.25);
- part(helmet,vest,-1.8,4.75,0,7.1,2.0,8.8);
- part(helmet,dark,3.65,5.6,0,1.15,.85,9.0);
+ part(helmet,vest,-.65,6.75,0,9.15,2.2,9.35);
+ part(helmet,vest,-1.15,8.1,0,7.75,.46,7.85);
+ part(helmet,dark,3.58,5.95,0,.52,.65,9.45);
  for(const sign of [-1,1]){
-  part(helmet,vest,-2.15,3.5,sign*4.25,3.7,2.6,1.0);
-  part(helmet,dark,-1.4,4.7,sign*4.8,3.4,.65,.45);
-  part(helmet,seam,-1.7,1.45,sign*4.3,.65,2.1,.4);
+  part(helmet,vest,-2.3,4.7,sign*4.7,4.0,2.2,.8);
+  part(helmet,dark,-1.8,4.75,sign*5.13,2.6,.56,.24);
+  part(helmet,seam,-1.9,2.7,sign*4.98,.50,2.4,.25);
  }
- part(helmet,seam,-1.6,.35,0,1.15,.5,6.5);
- part(helmet,trim,-1.2,8.45,0,2.0,.28,2.5);
- // Soft cap should look soft and low-profile, not another ballistic shell.
+ part(helmet,trim,-1.1,8.49,0,1.65,.22,2.0);
+ // The cap body overlaps its brim by a deliberate joint, closing the gap.
  const cap=bundle(head);
- part(cap,cloth,-.45,6.85,0,8.1,1.2,8.25);
- part(cap,cloth,-1.0,7.5,0,6.6,.85,7.3);
- part(cap,cloth,4.35,5.92,0,4.2,.46,7.8);
+ part(cap,cloth,-.55,6.70,0,8.25,1.6,8.35);
+ part(cap,dark,3.62,6.07,0,.32,.28,7.9);
+ part(cap,cloth,4.05,5.92,0,4.3,.44,7.65);
  // Separate clothing profiles: jacket has a heavier collar, flap and
  // squared hem; the shirt exposes a narrow collar instead of extra panels.
  const jacket=bundle(chest);
@@ -223,7 +219,7 @@ const DEFAULT:Slots={
 };
 export function applyOperatorVisualKit(v:OperatorVisualKit,
  slots:Slots|undefined,seed:number,magazineLocations:readonly CarryLocation[]=[],
- faceStyle:'blank'|'quiet'|'graphic'='quiet'){
+ faceStyle:'blank'|'quiet'|'graphic'='blank'){
  const s=slots??DEFAULT;
  v.helmet.visible=s.head==='head-helmet';
  v.cap.visible=s.head==='head-cap';

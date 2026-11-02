@@ -155,7 +155,8 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   // Empty animated attachment node. The day and field pack are now complete
   // exclusive models, so a hidden shared box cannot intersect either one.
   const pack=new THREE.Mesh(new THREE.BufferGeometry(),vest);
-  pack.position.set(-10.4,0,0);chest.add(pack);
+  // Front of pack meets the back of the torso (X=-5), not a floating gap.
+  pack.position.set(-8.2,0,0);chest.add(pack);
   // Very few additional silhouettes, all rigidly attached to existing bones.
   // No new IK, physics bodies or shot-line geometry.
   const rigPouches=[block(chest,2.1,-2,-7.35,2.4,3.8,2.7,boot),
@@ -498,7 +499,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     position:{x:p.x,y:p.z}});
   // Pack follows the torso with restrained inertia, not separate timing.
   const packMotion=packInertia(p.acceleration??0,motion.torsoSide);
-  r.pack.position.set(-10.4,0,
+  r.pack.position.set(-8.2,0,
     packMotion.side*r.personality.packScale);
   r.pack.rotation.z=packMotion.lean*r.personality.packScale;
   // Wide side-steps need a physical lowering of the center of mass,
