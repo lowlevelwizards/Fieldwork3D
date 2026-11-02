@@ -49,6 +49,7 @@ export function nearOccupiedFriendlyGoal(at:Pt,goal:Pt,
 export function opposingPassingStep(from:Pt,desired:Pt,goal:Pt,
  peers:readonly Pt[],sweep:(a:Pt,b:Pt)=>boolean):Pt{
  const step=dist(from,desired);
+ const startGoalDistance=dist(from,goal);
  if(step<1e-6||!peers.length)return desired;
  const close=peers.filter(p=>dist(from,p)<44);
  if(!close.length)return desired;
@@ -65,7 +66,7 @@ export function opposingPassingStep(from:Pt,desired:Pt,goal:Pt,
      y:from.y+(dy+dx*side*strength)*step/scale};
    if(!sweep(from,candidate))continue;
    const gap=minGap(candidate,close);
-   if(gap>bestScore+.14){
+   if(gap>bestScore+.14&&dist(candidate,goal)<startGoalDistance+.1){
     best=candidate;bestScore=gap;
     if(side===1)break;
    }
