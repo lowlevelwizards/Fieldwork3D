@@ -83,7 +83,7 @@ try{
   if(!siteTitle?.includes('4 OPERATORS'))
     throw Error('Quick Play did not present the full four-person squad');
   const beforeSeed=await live.locator('#siteIdentity').getAttribute('data-site-seed');
-  if(!beforeSeed||!/^\\d+$/.test(beforeSeed))
+  if(!beforeSeed||!/^[0-9]+$/.test(beforeSeed))
     throw Error('Current Quick Play site is missing a reproducible identity');
   await live.screenshot({path:resolve(folder,'20-procedural-four-operator-site.png')});
   await live.locator('#ash').click();
