@@ -16,6 +16,12 @@ header a{color:#c8b992}main{position:fixed;bottom:env(safe-area-inset-bottom);le
 #kitPanel .kit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:7px;padding-top:9px}
 #kitPanel label{display:grid;gap:3px}#kitPanel select{min-width:0;width:100%}
 #kitPanel .row{margin-top:8px}#kitPanel small{color:#b9c7bd}
+#wardrobePanel{margin:7px 0;padding:5px;border:1px solid #526c60;border-radius:6px}
+#wardrobePanel summary{font-size:12px;color:#d6e4d6}
+#wardrobePanel .kit-help{color:#b9c7bd;font-size:11px;margin:5px 2px}
+#wardrobePanel .row{display:flex;justify-content:space-between;flex-wrap:wrap}
+#wardrobeCompatibility{display:block;color:#c8ac72;font-size:11px;padding:5px 0}
+body.kit-compare #wardrobePanel{display:none}
 body.kit-compare main{max-height:calc(112px + env(safe-area-inset-bottom));
  overflow:hidden;display:flex;flex-direction:column;gap:3px}
 body.kit-compare main>.row:not(:has(#comparePose)){display:none}
@@ -136,7 +142,26 @@ button:focus-visible,select:focus-visible{outline:2px solid #c9a778;outline-offs
 <option value="all">FULL OPERATOR</option><option value="head">HEADGEAR</option>
 <option value="armor">ARMOR</option><option value="carry">LOAD BEARING</option>
 <option value="clothes">CLOTHING</option></select></label>
-</div><div class="row"><label>PRESETS</label>
+</div><details id="wardrobePanel"><summary>WARDROBE / STYLE OPTIONS</summary>
+<p class="kit-help">Visual styles only. Protection, inventory and carrying capacity stay with the equipped kit above.</p>
+<div class="kit-grid"><label>HEADWEAR<select data-wardrobe-slot="headwear"></select></label>
+<label>FACE COVERING<select data-wardrobe-slot="facewear"></select></label>
+<label>EYEWEAR<select data-wardrobe-slot="eyewear"></select></label>
+<label>HEADSET<select data-wardrobe-slot="headset"></select></label>
+<label>UPPER GARMENT<select data-wardrobe-slot="top"></select></label>
+<label>PANTS<select data-wardrobe-slot="trousers"></select></label>
+<label>FOOTWEAR<select data-wardrobe-slot="footwear"></select></label>
+<label>ARMOR CUT<select data-wardrobe-slot="armorStyle"></select></label>
+<label>RIG STYLE<select data-wardrobe-slot="rigStyle"></select></label>
+<label>BELT STYLE<select data-wardrobe-slot="beltStyle"></select></label>
+<label>PACK STYLE<select data-wardrobe-slot="packStyle"></select></label>
+<label>GLOVES<select data-wardrobe-slot="gloves"></select></label>
+<label>KNEE PADS<select data-wardrobe-slot="knees"></select></label>
+<label>WRISTWEAR<select data-wardrobe-slot="wrist"></select></label></div>
+<div class="row"><label><input id="rolledSleeves" type="checkbox"> ROLLED SLEEVES</label>
+<button id="wardrobeReset">RESET STYLES</button></div>
+<output id="wardrobeCompatibility" role="status"></output></details>
+<div class="row"><label>PRESETS</label>
 <button data-kit-preset="light">LIGHT</button>
 <button data-kit-preset="standard">STANDARD</button>
 <button data-kit-preset="heavy">HEAVY</button>

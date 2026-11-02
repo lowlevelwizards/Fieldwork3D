@@ -22,10 +22,14 @@ import {initialEquipmentLoadout,setEquipmentChoice,syncPrimaryWeapon,
 import type {MagazineItem} from './breach-magazines.ts';
 import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import {itemsForSlot} from './equipment-catalog.ts';
+import {initialWardrobe,setWardrobeStyle,resolvedWardrobe,
+ wardrobeConflicts,wardrobeItemsForSlot,wardrobeItem,
+ type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
 
 
 let labKit:EquipmentLoadout=initialEquipmentLoadout();
 let labPalette=1;
+let wardrobeOptions:WardrobeOptions=initialWardrobe();
 const kitSelects=Array.from(document.querySelectorAll<HTMLSelectElement>('[data-kit-slot]'));
 for(const select of kitSelects){
  const slot=select.dataset.kitSlot as LoadoutSlot;
@@ -69,8 +73,51 @@ function previewCarry(kit:EquipmentLoadout,weapon:WeaponId){
  }));
  return carryPlacementLedger(kit,sample);
 }
-function syncKit(){for(const select of kitSelects)
- select.value=labKit.slots[select.dataset.kitSlot as LoadoutSlot];}
+function syncKit(){
+ for(const select of kitSelects)
+  select.value=labKit.slots[select.dataset.kitSlot as LoadoutSlot];
+ syncWardrobe();
+}
+const wardrobeSelects=Array.from(document.querySelectorAll<HTMLSelectElement>(
+ '[data-wardrobe-slot]'));
+function syncWardrobe(){
+ const compatible=resolvedWardrobe(wardrobeOptions,labKit);
+ for(const select of wardrobeSelects){
+  const slot=select.dataset.wardrobeSlot as WardrobeSlot;
+  select.value=compatible[slot];
+  for(const option of Array.from(select.options)){
+   const candidate=setWardrobeStyle(wardrobeOptions,slot,option.value);
+   option.disabled=resolvedWardrobe(candidate,labKit)[slot]!==option.value;
+  }
+ }
+ (document.getElementById('rolledSleeves') as HTMLInputElement).checked=
+  wardrobeOptions.rolledSleeves;
+ const incompatible=wardrobeConflicts(wardrobeOptions,labKit);
+ document.getElementById('wardrobeCompatibility')!.textContent=incompatible.length?
+  'Style unavailable for current kit: '+incompatible.join(', '):
+  'Compatible visual styles. Gameplay equipment is unchanged.';
+}
+for(const select of wardrobeSelects){
+ const slot=select.dataset.wardrobeSlot as WardrobeSlot;
+ for(const item of wardrobeItemsForSlot(slot)){
+  const option=document.createElement('option');
+  option.value=item.id;option.textContent=item.name;select.append(option);
+ }
+ select.addEventListener('change',()=>{
+  if(!wardrobeItem(slot,select.value))return;
+  const next=setWardrobeStyle(wardrobeOptions,slot,select.value);
+  if(resolvedWardrobe(next,labKit)[slot]===select.value)
+   wardrobeOptions=next;
+  syncWardrobe();
+ });
+}
+document.getElementById('rolledSleeves')?.addEventListener('change',e=>{
+ wardrobeOptions={...wardrobeOptions,
+  rolledSleeves:(e.target as HTMLInputElement).checked};
+});
+document.getElementById('wardrobeReset')?.addEventListener('click',()=>{
+ wardrobeOptions=initialWardrobe();syncWardrobe();
+});
 for(const button of document.querySelectorAll<HTMLButtonElement>('[data-kit-preset]'))
  button.addEventListener('click',()=>{
   labKit=kitPreset(button.dataset.kitPreset??'standard');syncKit();
@@ -695,7 +742,7 @@ function draw(){
     replayFeet:feet,pelvisYaw:state.pelvisYaw,
     hybridSupport:gaitReference.value==='candidate',
     deterministic:true,shotHeading:motion.heading,
-     equipment:currentKit,appearanceSeed:labPalette,
+     equipment:currentKit,appearanceSeed:labPalette,wardrobe:wardrobeOptions,
      faceStyle:choose<HTMLSelectElement>('faceTreatment').value as
        'blank'|'quiet'|'graphic',
      magazineCarryLocations:currentCarry.filter(p=>p.kind==='magazine')
@@ -744,7 +791,7 @@ function draw(){
     body.root.position.set(x,0,0);
     poseOperator(body,{...rig.lastPose,x,z:0,velocity:0,turning:0,
      equipment:syncPrimaryWeapon(kitPreset(types[i]),weapon.value as WeaponId),
-     appearanceSeed:labPalette+i,
+     appearanceSeed:labPalette+i,wardrobe:wardrobeOptions,
      faceStyle:choose<HTMLSelectElement>('faceTreatment').value as
        'blank'|'quiet'|'graphic',
      magazineCarryLocations:previewCarry(kitPreset(types[i]),
