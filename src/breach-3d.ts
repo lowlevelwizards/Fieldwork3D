@@ -1732,6 +1732,7 @@ export class TacticalScene3D{
         velocity:actor.velocity,seconds:poseSeconds,stride:actor.stride,
         appearanceSeed:actor.appearanceSeed,
         equipment:actor.equipment,
+        magazineCarryLocations:carried.filter(p=>p.kind==='magazine').map(p=>p.location),
         medicalCarryLocation:carried.find(p=>p.kind==='medical')?.location,
         utilityCarryLocation:carried.find(p=>p.kind==='utility')?.location,
          weaponConfiguration:actor.weaponConfiguration,

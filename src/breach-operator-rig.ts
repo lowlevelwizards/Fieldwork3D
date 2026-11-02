@@ -28,6 +28,8 @@ import {fallAngles,hitStagger,type FallPose,type WoundRegion}
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {equipmentCarryAnchor} from './equipment-carry-visuals.ts';
 import type {CarryLocation} from './equipment-carry-placement.ts';
+import {createOperatorVisualKit,applyOperatorVisualKit,
+ type OperatorVisualKit} from './operator-visual-kit.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geometry.ts';
 import {buildWeaponAccessories} from './breach-weapon-accessories.ts';
 import {resolveWeaponAssembly,sameWeaponConfiguration,
@@ -64,6 +66,7 @@ export type OperatorPose={
   gait?:'walk'|'run'|'pie'|'squeeze';
   equipment?:EquipmentLoadout;flashCharges?:number;
   medicalCarryLocation?:CarryLocation;utilityCarryLocation?:CarryLocation;
+  magazineCarryLocations?:readonly CarryLocation[];
   weaponConfiguration?:WeaponConfiguration;
   weaponLightOn?:boolean;
   treatmentActive?:boolean;treatmentProgress?:number;
@@ -94,7 +97,7 @@ export type OperatorRig={
   rigPouches:THREE.Mesh[];beltPouch:THREE.Mesh;
   medicalPouch:THREE.Mesh;radioUnit:THREE.Mesh;
   flashCanister:THREE.Mesh;utilityTool:THREE.Mesh;
-  gloveCovers:THREE.Mesh[];
+  gloveCovers:THREE.Mesh[];visualKit:OperatorVisualKit;
   lastTime:number;lastPose:OperatorPose|null;
   personality:ReturnType<typeof operatorMotionTraits>;
   footsteps:FootstepScheduler;
@@ -211,11 +214,13 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   magazineHand.visible=false;
   const medicalItem=block(chest,0,0,0,2.3,1.45,2.1,steel);
   medicalItem.visible=false;
+  const visualKit=createOperatorVisualKit(chest,hip,head,pack,feet,arms,
+    {cloth,vest,dark:boot,skin,steel});
   const colors=new Map([cloth,boot,vest,skin,steel].map(material=>
     [material,material.color.clone()] as const));
   return {root,hip,chest,head,weapon,droppedGun,feet,arms,pack,
     helmetShell,armorPanels,capBill,rigPouches,beltPouch,
-    medicalPouch,radioUnit,flashCanister,utilityTool,gloveCovers,colors,
+    medicalPouch,radioUnit,flashCanister,utilityTool,gloveCovers,visualKit,colors,
     clothMaterial:cloth,vestMaterial:vest,baseCloth:cloth.color.clone(),
     baseVest:vest.color.clone(),helmetBadge,appearanceSeed:0,
     personality:operatorMotionTraits(id),
@@ -265,12 +270,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Kit presentation reuses the live rig without altering shot transforms.
   const gear=p.equipment?.slots;
   const headItem=gear?.head??'head-helmet';
-  for(const mesh of r.helmetShell)mesh.visible=headItem==='head-helmet';
-  r.capBill.visible=headItem==='head-cap';
+  // Legacy rectangles are retained for compatibility but superseded by
+  // assembled helmet and garment surfaces.
+  for(const mesh of r.helmetShell)mesh.visible=false;
+  r.capBill.visible=false;
   r.helmetBadge.visible=identity!==0&&identity%3===0&&headItem==='head-helmet';
   const armorItem=gear?.armor??'armor-soft';
   for(const mesh of r.armorPanels){
-    mesh.visible=armorItem!=='armor-none';
+    mesh.visible=false;
     mesh.scale.x=armorItem==='armor-carrier'?1.16:1;
   }
   const packItem=gear?.backpack??'backpack-day';
@@ -300,6 +307,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.flashCanister.visible=gear?.tactical==='tactical-flash'&&
     (p.flashCharges===undefined||p.flashCharges>0);
   for(const glove of r.gloveCovers)glove.visible=gear?.hands==='hands-gloves';
+  applyOperatorVisualKit(r.visualKit,gear,identity,p.magazineCarryLocations);
   // Retain costume identity, but subdued incapacitated bodies blend with
   // grounded blood and don't need floating status text. Reversible on seek.
   for(const [material,original] of r.colors){
