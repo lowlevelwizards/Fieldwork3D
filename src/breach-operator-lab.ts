@@ -22,6 +22,8 @@ import {initialEquipmentLoadout,setEquipmentChoice,syncPrimaryWeapon,
 import type {MagazineItem} from './breach-magazines.ts';
 import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import {itemsForSlot} from './equipment-catalog.ts';
+import {WARDROBE_RECIPES,wardrobeRecipe,applyWardrobeRecipe}
+ from './operator-wardrobe-recipes.ts';
 import {initialWardrobe,setWardrobeStyle,setWardrobePattern,resolvedWardrobe,
  WARDROBE_PATTERNS,wardrobeConflicts,wardrobeItemsForSlot,wardrobeItem,
  type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
@@ -78,6 +80,25 @@ function syncKit(){
   select.value=labKit.slots[select.dataset.kitSlot as LoadoutSlot];
  syncWardrobe();
 }
+const recipeSelect=document.getElementById('wardrobeRecipe') as HTMLSelectElement;
+for(const recipe of WARDROBE_RECIPES){
+ const option=document.createElement('option');option.value=recipe.id;
+ option.textContent=recipe.name+' · '+recipe.category.toUpperCase();
+ recipeSelect.append(option);
+}
+document.getElementById('wardrobeApply')?.addEventListener('click',()=>{
+ const recipe=wardrobeRecipe(recipeSelect.value);if(!recipe)return;
+ const result=applyWardrobeRecipe(recipe);
+ labKit=result.kit;wardrobeOptions=result.wardrobe;
+ labPalette=Math.min(8,Math.max(1,result.wardrobe.palette+1));
+ (document.getElementById('kitPalette') as HTMLSelectElement).value=
+  String(labPalette);
+ syncKit();
+ for(const select of patternSelects){
+  const channel=select.dataset.wardrobePattern as keyof WardrobeOptions['patterns'];
+  select.value=wardrobeOptions.patterns[channel]??'solid';
+ }
+});
 const wardrobeSelects=Array.from(document.querySelectorAll<HTMLSelectElement>(
  '[data-wardrobe-slot]'));
 function syncWardrobe(){
