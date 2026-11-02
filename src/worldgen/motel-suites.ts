@@ -4,6 +4,7 @@
  */
 import type {Site,Room} from '../breach-site.ts';
 import type {Segment,Door,Pt} from '../breach-core.ts';
+import {INTERIOR_DOOR_OPENING_WIDTH} from '../breach-door-proportions.ts';
 const point=(x:number,y:number):Pt=>({x,y});
 const wall=(x:number,y:number,xx:number,yy:number):Segment=>({a:point(x,y),b:point(xx,yy)});
 export function partitionMotelGuestUnits(site:Site):Site{
@@ -37,7 +38,7 @@ export function partitionMotelGuestUnits(site:Site):Site{
    walls.push(wall(room.x+bathWidth,room.y,room.x+bathWidth,room.y+bathDepth));
   }
   rooms.push(bath);
-  const doorWidth=48,half=doorWidth/2,cx=room.x+bathWidth/2,y=room.y+bathDepth;
+  const doorWidth=INTERIOR_DOOR_OPENING_WIDTH,half=doorWidth/2,cx=room.x+bathWidth/2,y=room.y+bathDepth;
   const l=cx-half,r=cx+half;
   if(l>room.x+1)walls.push(wall(room.x,y,l,y));
   if(r<room.x+bathWidth-1)walls.push(wall(r,y,room.x+bathWidth,y));

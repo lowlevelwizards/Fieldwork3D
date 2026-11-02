@@ -5,6 +5,18 @@
  */
 import type {Door} from './breach-core.ts';
 export const DOOR_PANEL_END_RECESS=2;
+/** Geometry, not just trim: a standard single interior doorway used to be
+ * 48 units wide (wider than its 34-unit-tall leaf). Keep a friendly 36-unit
+ * passage for 16-unit-diameter operators; public entrances remain roomier.
+ * Double and industrial openings retain their separate wide assemblies. */
+export const INTERIOR_DOOR_OPENING_WIDTH=36;
+export const ENTRY_DOOR_OPENING_WIDTH=42;
+export function ordinaryDoorOpeningWidth(id:string):number{
+ // Property gates are actual fencing access, not human-scale room doors.
+ if(id==='PROPERTY-GATE')return 48;
+ return id==='FRONT'||id==='SERVICE'||id.startsWith('COURT-')?
+   ENTRY_DOOR_OPENING_WIDTH:INTERIOR_DOOR_OPENING_WIDTH;
+}
 export type DoorProportions={
   jambWidth:number;jambDepth:number;
   headerHeight:number;headerDepth:number;
