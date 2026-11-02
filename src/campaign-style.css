@@ -108,3 +108,24 @@
 .campaign-kit-actions button{width:auto;min-height:40px;font-size:10px;margin:0;flex:1 1 100px}
 .campaign-kit-actions select{width:100%;max-width:none;flex:1 0 100%;min-height:42px}
 .campaign-kit-actions button:disabled{opacity:.46;cursor:default}
+
+/* UX06: Operations Room navigation. A single department is visible at a time. */
+.campaign-grid{grid-template-columns:minmax(0,1fr)}
+.campaign-grid>.campaign-section[hidden]{display:none!important}
+.campaign-tabs{display:flex;gap:5px;overflow-x:auto;touch-action:pan-x;
+  margin:0 0 12px;padding:1px 1px 6px;scrollbar-width:thin}
+.campaign-shell .campaign-tab{flex:1 0 auto;width:auto;min-height:44px;
+  margin:0;padding:9px 12px;border-radius:var(--fw-radius-sm);
+  white-space:nowrap;font-size:12px;background:var(--fw-panel-deep);
+  border-color:var(--fw-panel-border);color:var(--fw-text-muted)}
+.campaign-shell .campaign-tab[aria-selected="true"]{
+  background:var(--fw-sage);color:var(--fw-bg);border-color:var(--fw-sage)}
+.campaign-overview-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.campaign-stat{display:flex;flex-direction:column;gap:4px;min-width:0;
+  background:var(--fw-panel-deep);border-radius:var(--fw-radius-sm);padding:12px}
+.campaign-stat strong{font-size:24px;line-height:1.1;color:var(--fw-text)}
+.campaign-stat span{font-size:10px;letter-spacing:.04em;color:var(--fw-text-muted)}
+.campaign-overview-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.campaign-overview-actions button{margin:0}
+.campaign-grid .campaign-chronicle{margin-top:0}
+@media(max-width:420px){.campaign-overview-actions{grid-template-columns:1fr}}
