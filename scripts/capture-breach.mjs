@@ -77,10 +77,14 @@ try{
     if(!await live.locator('#'+id).isVisible())
       throw Error('Four-player live homepage missing '+id);
   }
+  // The primary HUD shows human-readable site identity. The reproducible
+  // seed lives in Mission Settings rather than leaking into the main HUD.
   const siteTitle=await live.locator('.ident small').textContent();
-  if(!siteTitle?.includes('4 OPERATORS')||!siteTitle.includes('SEED'))
-    throw Error('Public homepage does not show a generated site');
-  const beforeSeed=siteTitle;
+  if(!siteTitle?.includes('4 OPERATORS'))
+    throw Error('Quick Play did not present the full four-person squad');
+  const beforeSeed=await live.locator('#siteIdentity').getAttribute('data-site-seed');
+  if(!beforeSeed||!/^[0-9]+$/.test(beforeSeed))
+    throw Error('Current Quick Play site is missing a reproducible identity');
   await live.screenshot({path:resolve(folder,'20-procedural-four-operator-site.png')});
   await live.locator('#ash').click();
   if(await live.locator('#ash').getAttribute('aria-pressed')!=='true')
@@ -97,9 +101,12 @@ try{
   await live.locator('#moreOrders').click();
   await openSettings(live);
   await live.locator('#variant').click();
-  const secondSeed=await live.locator('.ident small').textContent();
-  if(secondSeed===beforeSeed)
-    throw Error('NEW SITE failed to change procedural seed');
+  await live.waitForFunction(previous=>
+    document.getElementById('siteIdentity')?.dataset.siteSeed!==previous,
+    beforeSeed,{timeout:18000});
+  const secondSeed=await live.locator('#siteIdentity').getAttribute('data-site-seed');
+  if(!secondSeed||secondSeed===beforeSeed)
+    throw Error('NEW SITE failed to change the current procedural seed');
   await live.screenshot({path:resolve(folder,'21-procedural-new-layout.png')});
   await live.close();
   const original=await browser.newPage({viewport:{width:390,height:844}});
