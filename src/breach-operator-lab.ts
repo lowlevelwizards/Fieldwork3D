@@ -36,14 +36,16 @@ for(const select of kitSelects){
  });
 }
 const kitPresets:Record<string,Partial<Record<LoadoutSlot,string>>>={
- light:{head:'head-none',armor:'armor-none',rig:'rig-light',belt:'belt-light',
- backpack:'backpack-none',top:'top-light',legs:'legs-light',feet:'feet-light'},
+ light:{head:'head-none',armor:'armor-none',rig:'rig-none',belt:'belt-light',
+ backpack:'backpack-none',top:'top-light',legs:'legs-light',feet:'feet-light',
+ medical:'medical-none',tactical:'tactical-none',utility:'utility-none'},
  standard:{head:'head-helmet',armor:'armor-soft',rig:'rig-light',
  belt:'belt-standard',backpack:'backpack-day',top:'top-uniform',
  legs:'legs-field',feet:'feet-boots'},
  heavy:{head:'head-helmet',armor:'armor-carrier',rig:'rig-full',
  belt:'belt-standard',backpack:'backpack-field',top:'top-uniform',
- legs:'legs-field',feet:'feet-boots'}
+ legs:'legs-field',feet:'feet-boots',medical:'medical-trauma',
+ tactical:'tactical-flash',utility:'utility-breach'}
 };
 function kitPreset(name:string){
  let next=initialEquipmentLoadout();

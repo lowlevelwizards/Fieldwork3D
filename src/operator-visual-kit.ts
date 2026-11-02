@@ -34,7 +34,7 @@ const bundle=(parent:THREE.Object3D)=>{const g=new THREE.Group();parent.add(g);r
 export function createOperatorVisualKit(
  chest:THREE.Group,hip:THREE.Group,head:THREE.Group,pack:THREE.Mesh,
  legs:readonly Limb[],arms:readonly Limb[],m:VisualMaterials):OperatorVisualKit{
- const {cloth,vest,dark,skin,steel}=m;
+ const {cloth,vest,dark,steel}=m;
  const trim=new THREE.MeshStandardMaterial({color:0x777d6d,roughness:.94,flatShading:true});
  const seam=new THREE.MeshStandardMaterial({color:0x303b36,roughness:.95,flatShading:true});
  const hairMaterial=new THREE.MeshStandardMaterial({color:0x302d29,roughness:1,flatShading:true});
@@ -44,24 +44,33 @@ export function createOperatorVisualKit(
  part(hair,hairMaterial,0,7.1,0,8.3,1.35,8.35);
  part(hair,hairMaterial,-3.2,4.5,-3.5,1.5,3.2,1.4);
  part(hair,hairMaterial,-3.2,4.5,3.5,1.5,3.2,1.4);
+ // Small low-contrast eye slashes, no attached cube nose or floating mouth.
+ // At gameplay distance the face reads as a quiet plane beneath the brow.
  const face=bundle(head);
+ const facialInk=new THREE.MeshStandardMaterial({
+  color:0x564a40,roughness:1,flatShading:true});
  const eyeMarks=[
-  part(face,seam,4.18,3.6,-2,0.32,.52,.85),
-  part(face,seam,4.18,3.6,2,0.32,.52,.85)];
- part(face,skin,4.48,2.55,0,.85,1.15,1.2);
+  part(face,facialInk,4.035,3.45,-2,0.16,.27,1.0),
+  part(face,facialInk,4.035,3.45,2,0.16,.27,1.0)];
+ // An angular helmet shell: broad temple coverage, smaller crown, short
+ // side rails, and close-fitting retention instead of dangling ear blocks.
  const helmet=bundle(head);
- part(helmet,vest,-.25,7.25,0,9.9,2.15,9.9);
- part(helmet,vest,-2.25,4.3,-3.8,4.8,3.15,2.25);
- part(helmet,vest,-2.25,4.3,3.8,4.8,3.15,2.25);
- part(helmet,dark,4.5,5.25,0,2,1.05,10.1);
- part(helmet,seam,-2.2,0.45,-4.65,1,4.1,.58);
- part(helmet,seam,-2.2,0.45,4.65,1,4.1,.58);
- part(helmet,dark,1.7,-1.35,0,1.5,.55,7.15);
- part(helmet,trim,-2,8.55,0,3,.42,4.3);
+ part(helmet,vest,-.5,6.25,0,9.0,2.25,9.2);
+ part(helmet,vest,-.9,7.65,0,7.8,1.4,8.25);
+ part(helmet,vest,-1.8,4.75,0,7.1,2.0,8.8);
+ part(helmet,dark,3.65,5.6,0,1.15,.85,9.0);
+ for(const sign of [-1,1]){
+  part(helmet,vest,-2.15,3.5,sign*4.25,3.7,2.6,1.0);
+  part(helmet,dark,-1.4,4.7,sign*4.8,3.4,.65,.45);
+  part(helmet,seam,-1.7,1.45,sign*4.3,.65,2.1,.4);
+ }
+ part(helmet,seam,-1.6,.35,0,1.15,.5,6.5);
+ part(helmet,trim,-1.2,8.45,0,2.0,.28,2.5);
+ // Soft cap should look soft and low-profile, not another ballistic shell.
  const cap=bundle(head);
- part(cap,cloth,-.25,7.0,0,8.55,1.8,8.65);
- part(cap,cloth,4.55,5.9,0,5.4,.7,8.35);
- part(cap,trim,-.3,6.9,0,8.65,.32,8.8);
+ part(cap,cloth,-.45,6.85,0,8.1,1.2,8.25);
+ part(cap,cloth,-1.0,7.5,0,6.6,.85,7.3);
+ part(cap,cloth,4.35,5.92,0,4.2,.46,7.8);
  const jacket=bundle(chest);
  part(jacket,cloth,4.95,-2.0,-3.6,.42,4,2.4);
  part(jacket,cloth,4.95,-2.0,3.6,.42,4,2.4);
