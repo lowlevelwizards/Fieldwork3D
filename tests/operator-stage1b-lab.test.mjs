@@ -13,7 +13,7 @@ test('Lab calls new shapes cuboids and retains neutral matched headwear review',
  const html=readFileSync(new URL('../operator-lab.html',import.meta.url),'utf8');
  const lab=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
  assert.match(html,/HEADGEAR \/ MATERIAL LAB 2B/);
- assert.match(html,/Stage 2B material review/);
+ assert.match(html,/Stage 2B.1 construction review/);
  assert.match(lab,/rectilinear cuboid silhouette/);
  for(const id of ['boonie','beanie','pasgt','soviet-steel'])
   assert.ok(html.includes('data-head-silhouette="'+id+'"'),id+' in headgear lab');
