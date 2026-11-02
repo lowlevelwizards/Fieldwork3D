@@ -6,6 +6,16 @@ import {doorCenter,passable,route,pointToSegment,
 export {doorYaw,doorLeafSegment};
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export const DOOR_REACH=39;
+/** A body can extend the opening leaf's sweep without manual PUSH orders. */
+export const PUSHED_OPEN_LIMIT=1.27;
+/** The actor must approach the leaf or already be in sustained contact. */
+export function approachingDoorLeaf(from:Pt,next:Pt,d:Door):boolean{
+ if(!d.open||d.kind==='shutter'||d.kind==='sliding'||d.wedged||d.heldBy)return false;
+ const leaf=doorLeafSegment(d);
+ const prior=pointToSegment(from,leaf),approach=pointToSegment(next,leaf);
+ return approach<18&&(approach<prior-.08||(prior<10&&approach<=prior+.2));
+}
+
 export function handlePoint(d:Door):Pt{
   if(d.kind==='shutter')return doorCenter(d);
   // Handle follows the actual rotated leaf, letting the support hand track
@@ -69,7 +79,7 @@ export function pushDoor(d:Door,force:number):boolean{
  // Extra body pressure requests a wider swing without teleporting the leaf.
  // The hinge motor validates each additional angle against its surroundings.
  if((d.openFraction??0)>=.68)
-   d.pushTarget=Math.min(1.27,Math.max(1,d.pushTarget??1)+
+   d.pushTarget=Math.min(PUSHED_OPEN_LIMIT,Math.max(1,d.pushTarget??1)+
      Math.min(.028,Math.max(0,force)*.007));
  d.angularVelocity=Math.max(-5.5,Math.min(5.5,
    (d.angularVelocity??0)+force/Math.max(.35,d.resistance??1)));
@@ -155,13 +165,13 @@ export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[]){
       (target-current)*64-v*12;
     const velocity=Math.max(-4.5,Math.min(kicked?15:5.5,
       v+acceleration*h));
-    const next=Math.max(0,Math.min(d.open?target:1.27,current+velocity*h));
+    const next=Math.max(0,Math.min(d.open?target:PUSHED_OPEN_LIMIT,current+velocity*h));
     const blocked=Math.abs(next-current)>.0001&&
       (d.open?next>.12:next<current)&&doorSwingBlocked(d,next,
         // Opening leaves may harmlessly brush a body. A full navigational
         // radius here made even slightly nearby actors jam the hinge.
         d.open?actors.filter(p=>pointToSegment(p,doorLeafSegment({
-          ...d,openFraction:next}))<3.5):actors, d.open?3.5:OPERATOR_RADIUS);
+          ...d,openFraction:next}))<2.5):actors, d.open?1.5:OPERATOR_RADIUS);
     d.openFraction=blocked?current:next;
     d.angularVelocity=blocked||next===0||(d.open&&next>=target)?0:velocity;
     if(blocked||next>=.98)d.kickImpulse=0;
