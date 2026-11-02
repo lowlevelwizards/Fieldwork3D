@@ -17,8 +17,8 @@ test('Stage 0 Lab controls are wired, have empty startup, and avoid duplicate ki
 test('new isolation covers new wardrobe layers, and framing supports hands and knees',()=>{
  for(const layer of ['wardrobeHead','wardrobeGear','wardrobeBody','accessories'])
   assert.ok(lab.includes('v.'+layer));
- assert.match(lab,/hide\\('knees'/);
- assert.match(lab,/hide\\('hands'/);
- assert.match(lab,/hide\\('pack'/);
+ assert.ok(lab.includes("hide('knees'"));
+ assert.ok(lab.includes("hide('hands'"));
+ assert.ok(lab.includes("hide('pack'"));
  assert.match(lab,/frameWardrobeSelection/);
 });

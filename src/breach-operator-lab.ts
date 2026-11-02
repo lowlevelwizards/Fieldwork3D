@@ -465,7 +465,7 @@ function isolateKit(body:OperatorRig){
  hide('armor',v.softArmor,v.plateCarrier,...all(v.wardrobeGear.armor));
  hide('carry',v.chestRig,v.fieldWebbing,v.belt,
   ...all(v.wardrobeGear.rig),...all(v.wardrobeGear.belt),
-  ...v.rigPouches,...all(v.accessories.beltLeft),
+  ...all(v.accessories.beltLeft),
   ...all(v.accessories.beltRight),...all(v.accessories.chest));
  if(!keep('carry')){
   for(const section of Object.values(v.magazines))
