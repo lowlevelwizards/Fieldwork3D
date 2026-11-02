@@ -1,10 +1,10 @@
 /** One low-resolution, softly filtered fog mask shared by 2D and 3D.
  * The fog presentation never changes detection or player intelligence. */
-import {W,H} from './breach-core.ts';
+import {W,H,WALLS} from './breach-core.ts';
 import type {Site,WorldBounds} from './breach-site.ts';
 import {team,type Session} from './breach-game.ts';
 import {intelFogLevel} from './breach-intel.ts';
-import {exteriorBriefedAt} from './breach-site-footprint.ts';
+import {exteriorBriefedAt,accessibleExteriorWall} from './breach-site-footprint.ts';
 import {visionPolygon} from './breach-vision-polygon.ts';
 import {MICRO_KEYS,MICRO_COLS} from './breach-fog-memory.ts';
 export const FOG_WIDTH=320,FOG_HEIGHT=370;
@@ -55,6 +55,21 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
     for(const room of s.site.rooms)
       ctx.fillRect(room.x,room.y,room.w,room.h);
     ctx.globalCompositeOperation='destination-out';
+    // The upper 3D fog curtain must not hide publicly known facade walls,
+    // glazing and front doors. A slim perimeter aperture displays their
+    // physical silhouettes without opening up the rooms behind them.
+    ctx.strokeStyle='#fff';
+    ctx.lineWidth=11;
+    for(const wall of WALLS){
+      if(!accessibleExteriorWall(s.site,wall))continue;
+      ctx.beginPath();ctx.moveTo(wall.a.x,wall.a.y);
+      ctx.lineTo(wall.b.x,wall.b.y);ctx.stroke();
+    }
+    for(const door of s.doors){
+      if(!accessibleExteriorWall(s.site,door))continue;
+      ctx.beginPath();ctx.moveTo(door.a.x,door.a.y);
+      ctx.lineTo(door.b.x,door.b.y);ctx.stroke();
+    }
   }
   // Exploration gets a short feather rather than 40-unit hard rectangles.
   // This is presentation only: intel and hidden actor visibility are
