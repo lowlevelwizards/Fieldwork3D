@@ -3,7 +3,7 @@
 export type FeedbackPoint={x:number;y:number};
 export type FeedbackKind='select'|'node'|'route'|'command'|'error';
 /** A prospective command, never confirmed until its game rule validates on release. */
-export type TacticalPreviewMode='look'|'pie'|'strafe'|'flash'|'focus'|'suppress'|'drag'|'carry';
+export type TacticalPreviewMode='look'|'watch'|'flash'|'suppress'|'drag'|'carry';
 export type TacticalOrderPreview={origin:FeedbackPoint;direction:FeedbackPoint;mode:TacticalPreviewMode};
 type Effect={kind:FeedbackKind;point:FeedbackPoint;from?:FeedbackPoint;
   text?:string;born:number;duration:number};
@@ -48,13 +48,13 @@ export class TacticalFeedback{
       const angle=Math.atan2(q.y-p.y,q.x-p.x);
       const separation=Math.hypot(q.x-p.x,q.y-p.y);
       const radius=Math.min(68,Math.max(22,separation));
-      const isAim=preview.mode==='look'||preview.mode==='pie'||preview.mode==='strafe';
+      const isAim=preview.mode==='look'||preview.mode==='watch';
       const isArea=preview.mode==='flash'||preview.mode==='suppress';
       const lineColor=preview.mode==='flash'?'#ebc17c':
         preview.mode==='suppress'?'#dfaa87':'#d7d5aa';
       const captions:Record<TacticalPreviewMode,string>={
-        look:'LOOK',pie:'PIE · TRACK',strafe:'STRAFE · HOLD',
-        flash:'FLASH · TARGET',focus:'FOCUS · TARGET',
+        look:'LOOK · BRIEF',watch:'WATCH · PERSISTENT',
+        flash:'FLASH · TARGET',
         suppress:'SUPPRESS · AREA',drag:'DRAG · DESTINATION',
         carry:'CARRY · DESTINATION'
       };
@@ -67,16 +67,16 @@ export class TacticalFeedback{
       }else g.lineTo(q.x,q.y);
       g.stroke();g.setLineDash([]);
       if(isAim){
-        // Look and strafe show the chosen facing; pie includes a sweep sector.
+        // LOOK shows a facing arrow; WATCH also shows its tracked location.
         const tip={x:p.x+Math.cos(angle)*radius,y:p.y+Math.sin(angle)*radius};
         g.beginPath();g.moveTo(tip.x,tip.y);
         g.lineTo(tip.x-Math.cos(angle-.48)*10,tip.y-Math.sin(angle-.48)*10);
         g.moveTo(tip.x,tip.y);
         g.lineTo(tip.x-Math.cos(angle+.48)*10,tip.y-Math.sin(angle+.48)*10);
         g.stroke();
-        if(preview.mode==='pie'){
-          g.beginPath();g.arc(p.x,p.y,radius,angle-.42,angle+.42);
-          g.stroke();
+        if(preview.mode==='watch'){
+          g.beginPath();g.arc(q.x,q.y,10,0,Math.PI*2);g.stroke();
+          g.beginPath();g.arc(q.x,q.y,3,0,Math.PI*2);g.fill();
         }
       }else{
         // A prospective destination, not a guarantee that a throw or shot is valid.
