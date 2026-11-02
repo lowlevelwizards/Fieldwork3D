@@ -83,7 +83,8 @@ test('patrol cap has low wrap and one thick bill anchored to its forehead',()=>{
  assert.equal(v.length,10,'three visual forms assembled as hollow shell and anchored bill');
  const crown=by(v,'patrol-integrated-crown'),bill=by(v,'patrol-anchored-bill');
  assert.ok(crown&&bill);
- assert.ok(bill.height>=.7&&bill.depth>3);
+ assert.ok(bill.height>=.7&&bill.depth>=2.7&&bill.depth<=3.0,
+  'short, substantial military bill rather than an extended shelf');
  assert.ok(M['patrol-cap'].foreheadEdge<A.hairline);
  assert.ok(M['patrol-cap'].frontExtent<-7);
  assert.ok(M['patrol-cap'].rearExtent<5);
