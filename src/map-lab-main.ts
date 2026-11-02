@@ -57,6 +57,7 @@ function showFunctionalQuality(site:Site,audit:SiteAudit){
   Math.round(space.averageSolidFraction*100)+'% · '+
   space.crowdedRoomIds.length+' crowded rooms · '+
   space.doorApproachIssues.length+' doorway conflicts · '+
+  audit.mobilityQuality.issues.length+' operator mobility issues · '+
   audit.incompleteZones.length+' incomplete zones · '+
   audit.operationalRouteIssues.length+' work-route issues · '+
   audit.accessibilityQuality.issues.length+' accessibility-reference warnings · '+
@@ -70,6 +71,10 @@ function showFunctionalQuality(site:Site,audit:SiteAudit){
   })),
   ...space.doorApproachIssues.map(d=>({
     label:d.doorId+' / nearby '+d.fixture,roomId:''
+  })),
+  ...audit.mobilityQuality.issues.map(issue=>({
+    label:issue.doorId+' / '+issue.kind+' · operator clearance',
+    roomId:''
   })),
   ...audit.serviceIssues.map(i=>({
     label:i.roomId+' / '+i.fixture+' · '+i.reason,roomId:i.roomId
