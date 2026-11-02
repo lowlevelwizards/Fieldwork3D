@@ -37,10 +37,14 @@ test('mannequin relaxation applies only to unarmed stationary stand',()=>{
   originalGap)<.01,'shorts-to-torso separation is invariant');
  rig.feet.forEach((f,i)=>assert.ok(f.shoe.position.distanceTo(shoes[i])<1e-6,
   'bare mannequin should not relocate authoritative shoe anchors'));
+ poseOperator(rig,pose(false,18),0);
+ const movingChest=rig.chest.position.y;
+ const movingHip=rig.hip.position.y;
  poseOperator(rig,pose(true,18),0);
- assert.ok(rig.hip.position.y<originalHip+1,'moving stance recovers normal balance');
- assert.ok(Math.abs(rig.chest.position.y-originalChest)<1,
-  'moving stance also recovers normal torso height');
+ assert.ok(Math.abs(rig.hip.position.y-movingHip)<.01,
+  'movement does not apply the extra mannequin hip lift');
+ assert.ok(Math.abs(rig.chest.position.y-movingChest)<.01,
+  'movement does not apply the extra mannequin chest lift');
  rig.dispose();
 });
 test('both free hands rest near straight below their shoulders; elbow poles are outward and back',()=>{
