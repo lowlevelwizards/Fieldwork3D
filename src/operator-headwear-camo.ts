@@ -226,8 +226,10 @@ function camoHash(value:string):number{
  }
  return hash>>>0;
 }
+const m81BrownIndices=headwearCamoIndices('m81-woodland');
+const placementCache=new Map<string,HeadwearCamoPlacement>();
 export function headwearCamoFrontBrownFraction(phase:HeadwearCamoPlacement):number{
- const indices=headwearCamoIndices('m81-woodland');
+ const indices=m81BrownIndices;
  let brown=0;
  // UV1 maps the forward side onto the first eighth of the 32-pixel
  // circumference. The crown/side front shares this uninterrupted print.
@@ -240,16 +242,23 @@ export function headwearCamoFrontBrownFraction(phase:HeadwearCamoPlacement):numb
 export function headwearCamoPlacement(operatorId:string,slot:string,
  camo:HeadwearCamoId,roll=0):HeadwearCamoPlacement{
  const validRoll=Number.isInteger(roll)&&roll>=0&&roll<HEADWEAR_CAMO_ROLL_LIMIT?roll:0;
- const hash=camoHash(operatorId+'|'+slot+'|'+camo+'|'+validRoll);
+ const key=operatorId+'|'+slot+'|'+camo+'|'+validRoll;
+ const cached=placementCache.get(key);if(cached)return cached;
+ const hash=camoHash(key);
+ const remember=(value:HeadwearCamoPlacement):HeadwearCamoPlacement=>{
+  // Bound CPU memoization without destroying any GPU textures still on rigs.
+  if(placementCache.size>=256)placementCache.delete(placementCache.keys().next().value!);
+  placementCache.set(key,value);return value;
+ };
  let best:HeadwearCamoPlacement={offsetX:hash&31,offsetY:(hash>>>8)&31};
- if(camo!=='m81-woodland')return best;
+ if(camo!=='m81-woodland')return remember(best);
  let bestScore=Infinity;
  for(let i=0;i<48;i++){
   const phase={offsetX:((hash&31)+i*11)&31,
    offsetY:(((hash>>>8)&31)+i*7+Math.floor(i/4))&31};
   const brown=headwearCamoFrontBrownFraction(phase);
   if(brown<bestScore){bestScore=brown;best=phase;}
-  if(brown<=.34)return phase;
+  if(brown<=.34)return remember(phase);
  }
- return best;
+ return remember(best);
 }
