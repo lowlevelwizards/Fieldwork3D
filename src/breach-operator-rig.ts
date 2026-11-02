@@ -26,7 +26,7 @@ import {blendedHandlingProfile,smoothHandling,type HandlingTransition}
 import {fallAngles,hitStagger,type FallPose,type WoundRegion}
   from './breach-wounds.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
-import {equipmentCarrySocket} from './equipment-carry-visuals.ts';
+import {equipmentCarrySocket,utilityDisplaySocket} from './equipment-carry-visuals.ts';
 import type {CarryLocation} from './equipment-carry-placement.ts';
 import {createOperatorVisualKit,applyOperatorVisualKit,
  type OperatorVisualKit} from './operator-visual-kit.ts';
@@ -348,15 +348,18 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.radioUnit.visible=gear?.utility==='utility-radio';
   r.utilityTool.visible=['utility-light','utility-breach','utility-pry',
     'utility-cutter','utility-wedge'].includes(gear?.utility??'');
-  const utilityAnchor=equipmentCarrySocket('utility',p.utilityCarryLocation);
+  const utilityAnchor=utilityDisplaySocket(gear?.utility??'utility-none',
+    p.utilityCarryLocation,packItem!=='backpack-none');
   const utilityParent=utilityAnchor.bone==='hip'?r.hip:
     utilityAnchor.bone==='pack'?r.pack:r.chest;
-  // Radios and tools share the authoritative utility slot. A radio in the
-  // backpack cannot remain magically attached to the shoulder.
-  if(r.radioUnit.parent!==utilityParent)utilityParent.add(r.radioUnit);
-  r.radioUnit.position.set(utilityAnchor.x,
-    utilityAnchor.y+2.0,utilityAnchor.z);
-  r.radioUnit.rotation.z=utilityAnchor.angle;
+  // Small radios retain their ledger position; large tools use a rear-facing
+  // visual socket to clear the moving thigh without changing access mechanics.
+  const radioAnchor=equipmentCarrySocket('utility',p.utilityCarryLocation);
+  const radioParent=radioAnchor.bone==='hip'?r.hip:
+    radioAnchor.bone==='pack'?r.pack:r.chest;
+  if(r.radioUnit.parent!==radioParent)radioParent.add(r.radioUnit);
+  r.radioUnit.position.set(radioAnchor.x,radioAnchor.y+2,radioAnchor.z);
+  r.radioUnit.rotation.z=radioAnchor.angle;
   if(r.utilityTool.parent!==utilityParent)utilityParent.add(r.utilityTool);
   r.utilityTool.position.set(utilityAnchor.x,utilityAnchor.y,utilityAnchor.z);
   r.utilityTool.rotation.z=utilityAnchor.angle;

@@ -141,6 +141,8 @@ export function createOperatorVisualKit(
  for(const sign of [-1,1]){
   part(packHarness,trim,-.5,5.25,sign*5.4,8.1,.65,1.1);
   part(packHarness,dark,-4.35,-1.7,sign*6.1,3.35,1.0,.75);
+  // Close the last strap span to the backpack front surface.
+  part(packHarness,trim,-6.0,4.55,sign*5.4,3.25,.66,1.0);
  }
  // Pack parent follows existing inertial motion; visible day/field bags are
  // complete distinct silhouettes, not scale variations of the same cube.

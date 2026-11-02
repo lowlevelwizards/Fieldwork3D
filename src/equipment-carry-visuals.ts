@@ -52,3 +52,16 @@ export function equipmentCarrySocket(kind:'medical'|'utility',
  location:CarryLocation='rig'):EquipmentCarrySocket{
  return SOCKETS[kind][location]??SOCKETS[kind].rig;
 }
+
+/** Visual storage only. Long equipment never hangs vertically from the thigh
+ * even if the inventory ledger chooses a faster belt/pocket location.
+ * This deliberately does NOT modify ownership, weight or access timing.
+ */
+export function utilityDisplaySocket(itemId:string,
+ location:CarryLocation='rig',hasPack=false):EquipmentCarrySocket{
+ const base=equipmentCarrySocket('utility',location);
+ const long=['utility-breach','utility-pry','utility-cutter'].includes(itemId);
+ if(!long)return base;
+ if(hasPack)return {bone:'pack',x:-2.2,y:1.7,z:-8.8,angle:0};
+ return {bone:'chest',x:-6.45,y:3.0,z:-8.85,angle:0};
+}

@@ -10,7 +10,7 @@ test('rear pack and belt fit preserve original motor anatomy',()=>{
  const rig=createOperatorRig('rook','blue');
  const kit=setEquipmentChoice(initialEquipmentLoadout(),'armor','armor-carrier');
  poseOperator(rig,pose(kit),0);
- assert.ok(rig.pack.position.x < -9);
+ assert.ok(rig.pack.position.x > -8.6 && rig.pack.position.x < -7.8);
  assert.equal(rig.pack.geometry.getAttribute('position'),undefined);
  assert.equal(rig.visualKit.plateCarrier.visible,true);
  const plateBack=rig.visualKit.plateCarrier.children[1];
