@@ -118,8 +118,11 @@ jobs:
       - name: Focused encounter safety regression tests
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/encounter-') }}
         run: node --experimental-strip-types --test tests/worldgen-encounter-safety.test.mjs tests/worldgen-encounter-placement.test.mjs tests/worldgen-encounter-exteriors.test.mjs
+      - name: Focused visibility critical tests
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'visibility/') }}
+        run: node --experimental-strip-types --test tests/visibility-*.test.mjs tests/breach-fog-visibility.test.mjs tests/worldgen-dynamic-fog.test.mjs tests/equipment-26-03-sight-lighting.test.mjs
       - name: Full game tests (main and other PRs)
-        if: ${{ github.event_name != 'pull_request' || (!startsWith(github.head_ref, 'texture2/') && !startsWith(github.head_ref, 'campaign-') && !startsWith(github.head_ref, 'worldgen2/') && !startsWith(github.head_ref, 'architecture/') && !startsWith(github.head_ref, 'equipment/') && !startsWith(github.head_ref, 'fix/encounter-')) }}
+        if: ${{ github.event_name != 'pull_request' || (!startsWith(github.head_ref, 'texture2/') && !startsWith(github.head_ref, 'campaign-') && !startsWith(github.head_ref, 'worldgen2/') && !startsWith(github.head_ref, 'architecture/') && !startsWith(github.head_ref, 'equipment/') && !startsWith(github.head_ref, 'fix/encounter-') && !startsWith(github.head_ref, 'visibility/')) }}
         run: npm test
       - name: Typecheck
         run: npm run check

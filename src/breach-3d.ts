@@ -50,6 +50,7 @@ import {casingAt,CASING_LIMIT,IMPACT_MARK_LIMIT,impactProfile} from './breach-ef
 import {sampleThrow} from './breach-flash.ts';
 import {doorProportions,DOOR_PANEL_END_RECESS} from './breach-door-proportions.ts';
 import {paintFogMask,paintOccupiedRoomContext,occupiedFogRooms,FOG_WIDTH,FOG_HEIGHT,maskSize} from './breach-fog-mask.ts';
+import {fogFingerprint} from './breach-fog-cache.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {interpolatedActor,type RenderFrame}
   from './breach-frame-interpolation.ts';
@@ -96,6 +97,7 @@ export class TacticalScene3D{
     new URLSearchParams(location.search).get('quality'),
     navigator.maxTouchPoints>0);
   private lastFogSignature='';
+  private lastFogSession:Session|null=null;
   /** Counts submitted WebGL work; GPU timings require a separate timer. */
   performanceStats(){
     const info=this.renderer.info.render;
@@ -432,7 +434,7 @@ export class TacticalScene3D{
     this.fogTexture.needsUpdate=true;
     this.buildWorld(site);
     this.root.add(this.fogUnknown,this.fogExplored);
-    this.fogAt=-1;this.lastFogSignature='';
+    this.fogAt=-1;this.lastFogSignature='';this.lastFogSession=null;
     this.resetCamera();
   }
   private buildMicroDebris(site:Site){
@@ -2024,19 +2026,21 @@ export class TacticalScene3D{
     // Do not repaint/re-upload an identical visibility texture every 55ms
     // while operators are stationary in planning. Quantized pose and intel
     // changes make the key; real LOS is still computed by the fog renderer.
-    const fogSignature=omniscient?'omniscient':[
-      s.seenGround.size,s.objectRevision,
-      s.intel.cover.size,s.intel.rooms.size,
-      s.intel.walls.size,
-      ...team(s).filter(a=>a.health>0).map(a=>[
-        a.id,Math.round(a.p.x*10),Math.round(a.p.y*10),
-        Math.round(a.heading*100),a.posture,a.health
-      ].join(':')),
-      ...s.doors.map(d=>d.id+':'+Math.round((d.openFraction??0)*100))
-    ].join('|');
-    if(!omniscient&&(this.fogAt>=.055||this.fogAt<0)&&
-        fogSignature!==this.lastFogSignature){
+    const fogSignature=omniscient?'omniscient':fogFingerprint({
+      mode:s.intel.mode,seed:s.site?.seed??null,
+      seenCount:s.seenGround.size,revision:s.objectRevision,
+      actors:team(s).filter(a=>a.health>0).map(a=>({
+        id:a.id,x:a.p.x,y:a.p.y,heading:a.heading,
+        posture:a.posture,health:a.health
+      })),
+      doors:s.doors.map(d=>({id:d.id,fraction:d.openFraction??(d.open?1:0)}))
+    });
+    // Two sessions may have identical knowledge counts but different sites.
+    const sessionChanged=this.lastFogSession!==s;
+    if(!omniscient&&(sessionChanged||this.fogAt>=.055||this.fogAt<0)&&
+        (sessionChanged||fogSignature!==this.lastFogSignature)){
       this.fogAt=0;this.lastFogSignature=fogSignature;
+      this.lastFogSession=s;
       paintFogMask(this.fogContext,s);
       paintOccupiedRoomContext(this.fogContext,s);
       this.fogTexture.needsUpdate=true;
