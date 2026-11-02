@@ -17,8 +17,10 @@ import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH,LEG_HIP_SIDE} from './breach-leg-geome
 import {LabMotionCache,LabHistoricalMotionCache,LabDistanceMotionCache,TRACK_DURATION,type LabTrack}
   from './breach-lab-tracks.ts';
 import type {WeaponId} from './breach-combat.ts';
-import {initialEquipmentLoadout,setEquipmentChoice,
+import {initialEquipmentLoadout,setEquipmentChoice,syncPrimaryWeapon,
  type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
+import type {MagazineItem} from './breach-magazines.ts';
+import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import {itemsForSlot} from './equipment-catalog.ts';
 
 
@@ -56,16 +58,16 @@ function kitPreset(name:string){
   next=setEquipmentChoice(next,slot as LoadoutSlot,id);
  return next;
 }
-function magazineFixture(kit:EquipmentLoadout){
- const target=Number((document.getElementById('kitMagazines') as HTMLSelectElement).value);
- const capacity={rig:kit.slots.rig==='rig-full'?7:kit.slots.rig==='rig-light'?4:0,
- belt:kit.slots.belt==='belt-standard'?3:kit.slots.belt==='belt-light'?1:0,
- pocket:1,backpack:kit.slots.backpack==='backpack-field'?16:
-  kit.slots.backpack==='backpack-day'?8:0};
- const locations:('rig'|'belt'|'pocket'|'backpack')[]=[];
- for(const loc of ['rig','belt','pocket','backpack'] as const)
-  while(locations.length<target&&capacity[loc]-->0)locations.push(loc);
- return locations;
+/** The Lab can display synthetic magazines, but their storage locations
+ * must be the real game's authoritative placement projection. Shotguns use
+ * individually loaded shells and have no detachable magazines. */
+function previewCarry(kit:EquipmentLoadout,weapon:WeaponId){
+ const requested=weapon==='shotgun'?0:
+   Number((document.getElementById('kitMagazines') as HTMLSelectElement).value);
+ const sample:MagazineItem[]=Array.from({length:requested},(_,i)=>({
+  id:'lab-preview/'+i,weapon,rounds:1
+ }));
+ return carryPlacementLedger(kit,sample);
 }
 function syncKit(){for(const select of kitSelects)
  select.value=labKit.slots[select.dataset.kitSlot as LoadoutSlot];}
@@ -132,6 +134,17 @@ const operator=choose<HTMLSelectElement>('operator'),
   diagnosticText=choose<HTMLOutputElement>('diagnosticText'),
   playPause=choose<HTMLButtonElement>('playPause'),
   loopButton=choose<HTMLButtonElement>('loopTrack');
+const magazineSelector=choose<HTMLSelectElement>('kitMagazines');
+const magazineHint=choose<HTMLElement>('magazineHint');
+function updateMagazineState(){
+ const shotgun=weapon.value==='shotgun';
+ magazineSelector.disabled=shotgun;
+ magazineHint.textContent=shotgun?
+  'SHOTGUN: loose shells; detachable spare magazines are not applicable.':
+  'Preview locations use the real equipment carrying ledger.';
+}
+weapon.addEventListener('change',updateMagazineState);
+updateMagazineState();
 const COMPARE_POSES:{label:string;mode:Handling;track:LabTrack}[]=[
   {label:'HIGH READY',mode:'high',track:'high-ready'},
   {label:'LOW READY',mode:'low',track:'low-ready'},
@@ -649,6 +662,9 @@ function draw(){
   const selectedHandling=transition?.to??previewHandling[track];
   doorProp.visible=track==='door'||track==='kick';
   rig.root.position.set(motion.x,0,motion.z);
+  const currentWeapon=(track==='reload-shotgun'?'shotgun':weapon.value) as WeaponId;
+  const currentKit=syncPrimaryWeapon(labKit,currentWeapon);
+  const currentCarry=previewCarry(currentKit,currentWeapon);
   if(!comparing)poseOperator(rig,{x:motion.x,z:motion.z,heading:motion.heading,
     travelYaw:motion.travelYaw,seconds:clock,stride:clock*40,
     velocity:motion.speed,posture:motion.posture,
@@ -676,8 +692,11 @@ function draw(){
     replayFeet:feet,pelvisYaw:state.pelvisYaw,
     hybridSupport:gaitReference.value==='candidate',
     deterministic:true,shotHeading:motion.heading,
-     equipment:labKit,appearanceSeed:labPalette,
-     magazineCarryLocations:magazineFixture(labKit),
+     equipment:currentKit,appearanceSeed:labPalette,
+     magazineCarryLocations:currentCarry.filter(p=>p.kind==='magazine')
+      .map(p=>p.location),
+     medicalCarryLocation:currentCarry.find(p=>p.kind==='medical')?.location,
+     utilityCarryLocation:currentCarry.find(p=>p.kind==='utility')?.location,
     downPose:track==='down-back'?'back':
       track==='down-left'?'left':
       track==='down-right'?'right':
@@ -719,8 +738,11 @@ function draw(){
     const body=kitBodies[i],x=(i-1)*31;
     body.root.position.set(x,0,0);
     poseOperator(body,{...rig.lastPose,x,z:0,velocity:0,turning:0,
-     equipment:kitPreset(types[i]),appearanceSeed:labPalette+i,
-     magazineCarryLocations:['rig','rig','belt'],
+     equipment:syncPrimaryWeapon(kitPreset(types[i]),weapon.value as WeaponId),
+     appearanceSeed:labPalette+i,
+     magazineCarryLocations:previewCarry(kitPreset(types[i]),
+       weapon.value as WeaponId).filter(p=>p.kind==='magazine')
+       .map(p=>p.location),
      down:false,injury:0,posture:'stand',deterministic:true},0);
     if(silhouettes)applySilhouette(body,true);
    }
