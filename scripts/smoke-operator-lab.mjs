@@ -43,7 +43,16 @@ try{
           await page.locator('#labStatus').textContent());
       if(!await page.locator('#labStatus').isHidden())
         throw Error(name+' Lab success overlay remained visible');
+      // Real workbench navigation: motion tracks are intentionally hidden
+      // until the user opens the Motion category.
+      await page.locator('[data-lab-tab="motion"]').click();
+      if(!await page.locator('[data-pose="strafe-stop"]').isVisible())
+        throw Error(name+' Motion category failed to reveal the selected track');
       await page.locator('[data-pose="strafe-stop"]').click();
+      // Transport is global; switching to the camera controls must not hide it.
+      await page.locator('[data-lab-tab="view"]').click();
+      if(!await page.locator('#timeline').isVisible())
+        throw Error(name+' shared timeline disappeared after category change');
       await page.locator('#timeline').evaluate(el=>{
         el.value='900';el.dispatchEvent(new Event('input',{bubbles:true}));
       });
