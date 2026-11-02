@@ -37,6 +37,8 @@ import {WARDROBE_ACCESSORY_SLOTS,WARDROBE_ACCESSORY_OPTIONS}
 import {WARDROBE_MOUNTS,wardrobeMount} from './operator-wardrobe-mounts.ts';
 import {WARDROBE_RECIPES,wardrobeRecipe,applyWardrobeRecipe}
  from './operator-wardrobe-recipes.ts';
+import {HEADWEAR_SOLID_COLORS,headwearColorChoices,resolvedHeadwearSolid}
+ from './operator-headwear-colors.ts';
 import {initialWardrobe,readWardrobe,setWardrobePattern,resolvedWardrobe,
  WARDROBE_PATTERNS,wardrobeConflicts,wardrobeItemsForSlot,wardrobeItem,
  type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
@@ -106,9 +108,8 @@ document.getElementById('wardrobeApply')?.addEventListener('click',()=>{
  labKit=result.kit;wardrobeOptions=result.wardrobe;
  (document.getElementById('weapon') as HTMLSelectElement).value=
   result.kit.slots.primary.replace(/^primary-/,'');
- labPalette=Math.min(8,Math.max(1,result.wardrobe.palette+1));
- (document.getElementById('kitPalette') as HTMLSelectElement).value=
-  String(labPalette);
+ // Archived color wheels are retired; headwear receives its own swatch.
+ labPalette=1;wardrobeOptions={...wardrobeOptions,palette:0};
  syncKit();updateMagazineState();
  for(const select of patternSelects){
   const channel=select.dataset.wardrobePattern as keyof WardrobeOptions['patterns'];
@@ -185,9 +186,7 @@ function applyLook(look:WardrobeLook){
  labKit=look.kit;wardrobeOptions=look.wardrobe;
  (document.getElementById('weapon') as HTMLSelectElement).value=
   look.weaponVisible===false?'none':look.kit.slots.primary.replace(/^primary-/,'');
- labPalette=Math.min(8,Math.max(1,look.wardrobe.palette+1));
- (document.getElementById('kitPalette') as HTMLSelectElement).value=
-  String(labPalette);
+ labPalette=1;wardrobeOptions={...wardrobeOptions,palette:0};
  syncKit();updateMagazineState();
  for(const select of patternSelects){
   const slot=select.dataset.wardrobePattern as keyof WardrobeOptions['patterns'];
@@ -229,8 +228,41 @@ document.getElementById('outfitImport')?.addEventListener('click',()=>{
 updateSavedLooks();
 const wardrobeSelects=Array.from(document.querySelectorAll<HTMLSelectElement>(
  '[data-wardrobe-slot]'));
+/** Visual color picker: no universal palette, no color dropdown and no
+ * visually repetitive named options. Names are accessible labels and the
+ * selected-color confirmation only; the controls themselves are swatches.
+ */
+const solidChooser=document.getElementById('headwearSolidChooser') as HTMLElement;
+const solidGrid=document.getElementById('headwearColorGrid') as HTMLElement;
+const solidStatus=document.getElementById('headwearColorChoice') as HTMLOutputElement;
+function renderHeadwearSolidSwatches(id:string){
+ const colors=headwearColorChoices(id);
+ solidChooser.hidden=colors.length===0;
+ solidGrid.replaceChildren();
+ if(!colors.length){solidStatus.textContent='';return;}
+ const selected=resolvedHeadwearSolid(id,wardrobeOptions.headwearColor);
+ for(const color of colors){
+  const definition=HEADWEAR_SOLID_COLORS[color];
+  const button=document.createElement('button');
+  button.type='button';
+  button.className='headwear-color-swatch';
+  button.style.backgroundColor='#'+definition.hex.toString(16).padStart(6,'0');
+  button.setAttribute('aria-label',definition.label);
+  button.title=definition.label;
+  button.setAttribute('aria-pressed',String(selected===color));
+  button.dataset.headwearColor=color;
+  button.addEventListener('click',()=>{
+   wardrobeOptions={...wardrobeOptions,headwearColor:color,palette:0};
+   renderHeadwearSolidSwatches(id);
+  });
+  solidGrid.append(button);
+ }
+ solidStatus.textContent=selected?HEADWEAR_SOLID_COLORS[selected].label+' · SOLID':'';
+}
+
 function syncWardrobe(){
  const compatible=resolvedWardrobe(wardrobeOptions,labKit);
+ renderHeadwearSolidSwatches(compatible.headwear);
  for(const select of cosmeticMountSelects){
   const slot=select.dataset.wardrobeAccessory as
     typeof WARDROBE_ACCESSORY_SLOTS[number];
@@ -315,10 +347,7 @@ for(const button of document.querySelectorAll<HTMLButtonElement>('[data-kit-pres
   (document.getElementById('weapon') as HTMLSelectElement).value='carbine';
   updateMagazineState();syncKit();
  });
-document.getElementById('kitPalette')?.addEventListener('change',e=>{
- labPalette=Number((e.target as HTMLSelectElement).value);
- wardrobeOptions={...wardrobeOptions,palette:Math.max(0,labPalette-1)};
-});
+
 syncKit();
 const choose=<T extends HTMLElement>(id:string)=>
   document.getElementById(id)! as T;
@@ -398,7 +427,7 @@ choose<HTMLButtonElement>('unequipAll').addEventListener('click',()=>{
  magazineSelector.value='0';
  choose<HTMLSelectElement>('faceTreatment').value='blank';
  for(const select of patternSelects)select.value='solid';
- labPalette=1;choose<HTMLSelectElement>('kitPalette').value='1';
+ labPalette=1;
  showAllGroups();updateMagazineState();syncKit();
  if(kitComparing)endKitComparison();
  chooseTrack('idle');frameWardrobeSelection();
