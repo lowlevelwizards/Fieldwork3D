@@ -51,6 +51,7 @@ import {sampleThrow} from './breach-flash.ts';
 import {doorProportions,DOOR_PANEL_END_RECESS} from './breach-door-proportions.ts';
 import {paintFogMask,paintOccupiedRoomContext,occupiedFogRooms,FOG_WIDTH,FOG_HEIGHT,maskSize} from './breach-fog-mask.ts';
 import {fogFingerprint} from './breach-fog-cache.ts';
+import {wallOccludesFriendly,transitionWallOpacity} from './breach-camera-occlusion.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {interpolatedActor,type RenderFrame}
   from './breach-frame-interpolation.ts';
@@ -147,7 +148,8 @@ export class TacticalScene3D{
   private tracerAxis=new THREE.Vector3(0,1,0);
   private tracerGeometry=new THREE.CylinderGeometry(.65,.65,1,6);
   private impactGeometry=new THREE.IcosahedronGeometry(1,1);
-  private walls:{mesh:THREE.Mesh;mid:Pt}[]=[];
+  private walls:{mesh:THREE.Mesh;mid:Pt;segment:Segment}[]=[];
+  private wallFade=new Map<THREE.Mesh,number>();
   private readonly roofGroups=new Map<string,THREE.Group>();
   private roofMaterial:THREE.MeshStandardMaterial|null=null;
   private intelSurfaces:{obj:THREE.Object3D;kind:'wall'|'cover'|'room';
@@ -399,7 +401,7 @@ export class TacticalScene3D{
     });
     for(const material of this.wallMaterials)material.dispose();
     this.wallMaterials.clear();
-    this.walls.length=0;this.doors.clear();this.windowGlass.clear();
+    this.walls.length=0;this.wallFade.clear();this.doors.clear();this.windowGlass.clear();
     this.observedDoorGlass.clear();
     this.currentWear=[];this.objectWear=[];
     this.roofGroups.clear();
@@ -724,16 +726,19 @@ export class TacticalScene3D{
         wearMesh.castShadow=false;wearMesh.receiveShadow=false;
         body.add(wearMesh);
       }
-      this.walls.push({mesh:body,mid:{x,y:z}});
+      this.walls.push({mesh:body,mid:{x,y:z},segment:wall});
       for(const mark of marksOn('wall',index))
         this.addSurfaceWear(body,mark,(mark.u-.5)*len,(mark.v-.5)*32,
           mark.face==='back'?-4.6:4.6,wallPixelSurface(site.archetype));
-      const foot=this.box(group,x,2,z,len,4,12,skirting,false);
-      foot.rotation.y=angle;
+      const individualFoot=skirting.clone();
+       this.wallMaterials.add(individualFoot);
+       const foot=this.box(group,x,2,z,len,4,12,individualFoot,false);
+       foot.rotation.y=angle;
+       this.walls.push({mesh:foot,mid:{x,y:z},segment:wall});
       const individualCap=capMat.clone();
       this.wallMaterials.add(individualCap);
       const cap=this.box(group,x,40.3,z,len,2,11,individualCap,false);
-      cap.rotation.y=angle;this.walls.push({mesh:cap,mid:{x,y:z}});
+      cap.rotation.y=angle;this.walls.push({mesh:cap,mid:{x,y:z},segment:wall});
     }
     const archMaterial=this.solid(theme.trim);
     for(const opening of site.openings??[]){
@@ -1187,15 +1192,16 @@ export class TacticalScene3D{
       const mesh=this.box(this.root,(p1.x+p2.x)/2,20,(p1.y+p2.y)/2,
         len+3,40,9,this.solid(i===4?0x81877d:0xb4a991));
       mesh.rotation.y=-Math.atan2(dz,dx);
-      this.walls.push({mesh,mid:{x:(p1.x+p2.x)/2,y:(p1.y+p2.y)/2}});
+      this.walls.push({mesh,mid:{x:(p1.x+p2.x)/2,y:(p1.y+p2.y)/2},segment});
       // Dark skirting separates the wall footprint from similar floor values.
       const skirting=this.box(this.root,mesh.position.x,2,mesh.position.z,
         len+4,4,12,this.solid(0x36453f),false);
       skirting.rotation.y=mesh.rotation.y;
+       this.walls.push({mesh:skirting,mid:{x:mesh.position.x,y:mesh.position.z},segment});
       // A dark, legible wall cap communicates height in either camera mode.
       const cap=this.box(this.root,mesh.position.x,40,mesh.position.z,
         len+4,2,11,this.solid(0x51483a),false);cap.rotation.y=mesh.rotation.y;
-      this.walls.push({mesh:cap,mid:{x:mesh.position.x,y:mesh.position.z}});
+      this.walls.push({mesh:cap,mid:{x:mesh.position.x,y:mesh.position.z},segment});
     }
     for(const x of [209,502]){
       const pane=this.box(this.root,x+25,16,99,51,21,2,glass,false);
@@ -1532,24 +1538,26 @@ export class TacticalScene3D{
         item.kind==='cover'?coverPresentation(s,item.index!,omniscient)!=='unknown':
         roomKnown(s.intel,item.id!)||occupiedRoomIds.has(item.id!));
     }
-    // For camera-facing walls use translucent near-side cutaways.
+    // Fade only physical walls obstructing the selected friendly from camera.
     const fromCamera=this.camera.position.clone().sub(this.target);
+    const pawn=team(s).find(a=>a.id===selected&&a.health>0)?.p;
+    const maxCutDistance=Math.max(40,Math.min(150,
+      90/Math.tan(Math.max(.38,this.view.pitch))));
     for(const wall of this.walls){
-      const pawn=team(s).find(a=>a.id===selected)?.p??this.view.focus;
-      const between=(wall.mid.x-pawn.x)*fromCamera.x+
-        (wall.mid.y-pawn.y)*fromCamera.z;
-      const cut=this.view.mode==='iso'&&between>1800;
+      const cut=this.view.mode==='iso'&&!!pawn&&wallOccludesFriendly(
+        wall.segment,pawn,{x:fromCamera.x,y:fromCamera.z},maxCutDistance);
+      const opacity=transitionWallOpacity(this.wallFade.get(wall.mesh)??1,cut,dt);
+      this.wallFade.set(wall.mesh,opacity);
+      const translucent=opacity<.995;
       const material=wall.mesh.material as THREE.MeshStandardMaterial;
-      if(material.transparent!==cut){
-        material.transparent=cut;
-        material.depthWrite=!cut;material.needsUpdate=true;
+      if(material.transparent!==translucent){
+        material.transparent=translucent;
+        material.depthWrite=!translucent;material.needsUpdate=true;
       }
-      // A 10%-opaque wall vanishes against black fog; keep an identifiable
-      // translucent surface and draw it after the fog compositing pass.
-      material.opacity=cut?.38:1;
-      const wallPatina=wall.mesh.userData.patinaMaterial as THREE.MeshBasicMaterial|undefined;
-      if(wallPatina)wallPatina.opacity=cut?.24:1;
-      wall.mesh.renderOrder=cut?1001:0;
+      material.opacity=opacity;
+      const patina=wall.mesh.userData.patinaMaterial as THREE.MeshBasicMaterial|undefined;
+      if(patina)patina.opacity=Math.max(.24,1-(1-opacity)*1.226);
+      wall.mesh.renderOrder=translucent?1001:0;
     }
     for(const door of s.doors){
       const object=this.doors.get(door.id);
