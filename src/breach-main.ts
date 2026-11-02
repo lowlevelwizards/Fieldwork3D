@@ -87,7 +87,7 @@ import {careerEventsForOperation} from './campaign-history.ts';
 import {awarenessDebugLine} from './breach-awareness-debug.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
 import './breach-style.css';
-import {fieldworkSelectField} from './ui/fieldwork-controls.ts';
+import {fieldworkSelectField,confirmFieldworkAction} from './ui/fieldwork-controls.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {contextActionChoices} from './ui/context-actions.ts';
 import {PaletteMotion} from './ui/palette-motion.ts';
@@ -1495,7 +1495,14 @@ function updateHud(){
   const homeButton=document.getElementById('campaignReturnButton') as HTMLButtonElement|null;
   if(homeButton)homeButton.disabled=campaignMode==='mission'&&state.phase==='running';
   ui.loadout.disabled=campaignMode==='mission';
-  ui.intelMode.textContent='INTEL · '+selectedIntelMode.replaceAll('-', ' ').toUpperCase();
+  // These selectors configure the *next* site; they never reset current knowledge.
+  ui.intelMode.textContent='NEXT SITE INTEL · '+selectedIntelMode.replaceAll('-', ' ').toUpperCase();
+  ui.intelMode.disabled=campaignMode==='mission'||replaying;
+  ui.intelMode.title=campaignMode==='mission'?
+    'Campaign intelligence is defined by the active contract':
+    'Applies to your next new site; current mission stays unchanged';
+  ui.siteSize.textContent='NEXT SITE SIZE · '+requestedSiteScale.toUpperCase();
+  ui.siteSize.disabled=campaignMode==='mission'||replaying;
   ui.flash.textContent='FLASH ×'+state.flashRemaining;
   ui.cancelTarget.hidden=!(state.phase==='planning'&&
     (looking||flashMode||!!firePlacement));
@@ -2772,25 +2779,34 @@ ui.siteLighting.addEventListener('click',()=>{
 });
 ui.siteSize.textContent='MAP SIZE · '+requestedSiteScale.toUpperCase();
 ui.siteSize.addEventListener('click',()=>{
-  if(replaying)return;
+  if(replaying||campaignMode==='mission')return;
   const tiers:SiteScale[]=['small','medium','large'];
   requestedSiteScale=tiers[(tiers.indexOf(requestedSiteScale)+1)%tiers.length];
-  ui.siteSize.textContent='MAP SIZE · '+requestedSiteScale.toUpperCase();
+  ui.siteSize.textContent='NEXT SITE SIZE · '+requestedSiteScale.toUpperCase();
   const url=new URL(location.href);
   if(requestedSiteScale==='standard')url.searchParams.delete('scale');
   else url.searchParams.set('scale',requestedSiteScale);
   history.replaceState(null,'',url.href);
-  reset(state.variant,state.site?.seed);
+  showUiHelp('SITE SIZE SAVED · APPLIES TO NEXT NEW SITE',2500);
 });
-ui.variant.addEventListener('click',()=>reset(state.variant+1));
+ui.variant.addEventListener('click',async()=>{
+  if(replaying||campaignMode==='mission')return;
+  if((state.started||team(state).some(a=>a.plan.length>0))&&
+    !await confirmFieldworkAction({
+      title:'Generate a new site?',
+      message:'Your current routes and progress will be replaced. Your Quick Play campaign data remains separate.',
+      confirmLabel:'GENERATE NEW SITE',danger:true
+    }))return;
+  reset(state.variant+1);
+});
 ui.intelMode.addEventListener('click',()=>{
-  if(replaying)return;
+  if(replaying||campaignMode==='mission')return;
   const index=INTEL_MODES.indexOf(selectedIntelMode);
   selectedIntelMode=INTEL_MODES[(index+1)%INTEL_MODES.length];
   try{localStorage.setItem(INTEL_PREFERENCE_KEY,selectedIntelMode);}
   catch{/* Preferences are optional in restricted browsing contexts. */}
-  // Restart this exact building without preserving discoveries.
-  reset(state.variant,state.site?.seed);
+  showUiHelp('INTELLIGENCE RULE SAVED · APPLIES TO NEXT NEW SITE',2800);
+  updateHud();
 });
 ui.retry.addEventListener('click',()=>{if(campaignMode!=='mission')reset();});
 ui.next.addEventListener('click',()=>{if(!returnAfterCampaignMission())reset(state.variant+1);});
@@ -2800,7 +2816,16 @@ ui.play.addEventListener('click',()=>{
    if(!returnAfterCampaignMission())reset();
   }else{looking=false;toggling(state);updateHud();}
 });
-ui.restart.addEventListener('click',()=>{if(campaignMode!=='mission')reset();});
+ui.restart.addEventListener('click',async()=>{
+  if(campaignMode==='mission'||replaying)return;
+  if((state.started||team(state).some(a=>a.plan.length>0))&&
+    !await confirmFieldworkAction({
+      title:'Restart this mission?',
+      message:'All current orders and discoveries will be discarded.',
+      confirmLabel:'RESTART MISSION',danger:true
+    }))return;
+  reset();
+});
 window.addEventListener('keydown',e=>{
   if(replaying){
     if(e.code==='Space'&&!e.repeat){e.preventDefault();replayPlaying=!replayPlaying;}
