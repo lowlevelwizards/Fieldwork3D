@@ -4,6 +4,7 @@ import {W,H} from './breach-core.ts';
 import type {Site,WorldBounds} from './breach-site.ts';
 import {team,type Session} from './breach-game.ts';
 import {intelFogLevel} from './breach-intel.ts';
+import {exteriorBriefedAt} from './breach-site-footprint.ts';
 import {visionPolygon} from './breach-vision-polygon.ts';
 import {MICRO_KEYS,MICRO_COLS} from './breach-fog-memory.ts';
 export const FOG_WIDTH=320,FOG_HEIGHT=370;
@@ -34,6 +35,26 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
   ctx.fillRect(bounds.minX,bounds.minY,
     bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
   ctx.globalCompositeOperation='destination-out';
+  // The 20-unit tile centers used to erase entire tiles at exterior walls,
+  // leaking 'exterior known' across the actual building boundary. Reveal the
+  // accessible exterior under an exact room-footprint clip instead. The
+  // exterior clipping pass never clears an unknown interior.
+  if(s.intel.mode==='exterior-known'&&s.site){
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(bounds.minX,bounds.minY,
+      bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
+    for(const room of s.site.rooms)ctx.rect(room.x,room.y,room.w,room.h);
+    ctx.clip('evenodd');
+    ctx.filter='blur(1.5px)';
+    ctx.fillStyle='rgba(255,255,255,.76)';
+    for(let row=Math.floor(bounds.minY/20);row<Math.ceil(bounds.maxY/20);row++)
+      for(let col=Math.floor(bounds.minX/20);col<Math.ceil(bounds.maxX/20);col++){
+        const p={x:col*20+10,y:row*20+10};
+        if(exteriorBriefedAt(s.site,p))ctx.fillRect(col*20,row*20,20,20);
+      }
+    ctx.restore();
+  }
   // Exploration gets a short feather rather than 40-unit hard rectangles.
   // This is presentation only: intel and hidden actor visibility are
   // still checked in the authoritative simulation every tick.
@@ -47,6 +68,9 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
     // of square holes through walls, and inconsistent live/fog states.
     const level=intelFogLevel(s.intel,s.site,p,false,fineSeen);
     if(level===2)continue;
+    // Exterior briefing has already been clipped to the exact footprint;
+    // never erase an entire partially-interior tile from its center sample.
+    if(s.intel.mode==='exterior-known'&&!fineSeen&&level===1)continue;
     // Blueprint outlines are briefed, but unseen interiors must read as
     // distinctly unobserved rather than nearly as bright as explored rooms.
     const blueprintUnknown=s.intel.mode==='floor-plan'&&!fineSeen;
