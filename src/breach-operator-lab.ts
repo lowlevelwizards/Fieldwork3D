@@ -23,6 +23,8 @@ import type {MagazineItem} from './breach-magazines.ts';
 import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import {itemsForSlot} from './equipment-catalog.ts';
 import {bareLabEquipment,unequipLabAppearance} from './operator-lab-baseline.ts';
+import {operatorAttachmentPoint,type OperatorAttachmentZone}
+ from './operator-attachment-zones.ts';
 import {selectWardrobeItem} from './operator-wardrobe-unified.ts';
 import {MAX_WARDROBE_LOOKS,makeWardrobeLook,readWardrobeLooks,
  exportWardrobeLook,importWardrobeLook,type WardrobeLook}
@@ -658,13 +660,23 @@ document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(button=>
   button.addEventListener('click',()=>fit(button.dataset.view)));
 choose<HTMLButtonElement>('resetCamera').addEventListener('click',()=>fit());
 function frameWardrobeSelection(){
- if(comparing||kitComparing)endKitComparison();
+ if(kitComparing)endKitComparison();
+ if(comparing){
+  comparing=false;clearComparison();labelLayer.hidden=true;
+  document.body.classList.remove('compare-open');
+  poseCompareButton.setAttribute('aria-pressed','false');
+ }
  const focus=isolation.value;
- const y=({all:16,head:38,armor:27,carry:23,pack:26,
-  clothes:23,hands:25,knees:13,feet:4} as Record<string,number>)[focus]??16;
- const x=rig?.root.position.x??0,z=rig?.root.position.z??0;
+ const focusZone=({head:'head',armor:'chest',carry:'waist',
+  pack:'backpack',clothes:'chest',hands:'hand-left',
+  knees:'knee-left',feet:'foot-left'} as Partial<Record<string,
+  OperatorAttachmentZone>>)[focus];
+ const target=rig&&focusZone?
+  operatorAttachmentPoint(rig,focusZone):new THREE.Vector3(
+    rig?.root.position.x??0,16,rig?.root.position.z??0);
+ const {x,y,z}=target;
  camera.position.set(x+54,y+35,z+57);
- control.target.set(x,y,z);
+ control.target.copy(target);
  camera.zoom=focus==='all'?1.4:
   focus==='head'?3.0:focus==='hands'||focus==='knees'||focus==='feet'?2.45:1.95;
  camera.updateProjectionMatrix();control.update();
