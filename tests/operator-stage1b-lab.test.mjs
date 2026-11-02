@@ -12,7 +12,7 @@ test('bare modeling pose is a true neutral reference; ADS alignment needs a real
 test('Lab calls new shapes cuboids and retains neutral matched headwear review',()=>{
  const html=readFileSync(new URL('../operator-lab.html',import.meta.url),'utf8');
  const lab=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
- assert.match(html,/HEADGEAR \/ SILHOUETTE LIBRARY/);
+ assert.match(html,/HEADGEAR \/ MATERIAL LAB 2B/);
  assert.match(html,/Stage 2B material review/);
  assert.match(lab,/rectilinear cuboid silhouette/);
  for(const id of ['boonie','beanie','pasgt','soviet-steel'])
