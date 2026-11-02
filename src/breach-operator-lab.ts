@@ -755,6 +755,34 @@ function frameWardrobeSelection(){
  camera.updateProjectionMatrix();control.update();
  cameraFollow={x,z};
 }
+// A quick matched setup for the first artistic review. This only changes
+// the Lab's cosmetic pose; Campaign and Quick Play kit stay untouched.
+const headReviewStatus=choose<HTMLOutputElement>('headwearReviewStatus');
+const reviewButtons=Array.from(document.querySelectorAll<HTMLButtonElement>(
+ '[data-head-silhouette]'));
+function selectReviewSilhouette(id:string){
+ const available=['bare','patrol-cap','ach','high-cut'];
+ if(!available.includes(id))return;
+ const selected=selectWardrobeItem(bareLabEquipment(),
+  initialWardrobe(),'headwear',id);
+ labKit=selected.kit;wardrobeOptions=selected.wardrobe;
+ weapon.value='none';magazineSelector.value='0';
+ choose<HTMLSelectElement>('faceTreatment').value='blank';
+ isolation.value='head';hideSelectedGroup=false;
+ hideSelectedButton.disabled=false;
+ hideSelectedButton.textContent='HIDE GROUP';
+ hideSelectedButton.setAttribute('aria-pressed','false');
+ updateMagazineState();syncKit();
+ chooseTrack('idle');frameWardrobeSelection();
+ for(const button of reviewButtons)
+  button.setAttribute('aria-pressed',String(button.dataset.headSilhouette===id));
+ headReviewStatus.textContent=id==='bare'?
+  'BARE · no headwear meshes':
+  id.toUpperCase().replaceAll('-',' ')+' · shape-only prototype; details pending approval';
+}
+for(const button of reviewButtons)
+ button.addEventListener('click',()=>selectReviewSilhouette(
+  button.dataset.headSilhouette??'bare'));
 focusSelectedButton.addEventListener('click',frameWardrobeSelection);
 isolation.addEventListener('change',frameWardrobeSelection);
 gaitCompareButton.addEventListener('click',()=>{
