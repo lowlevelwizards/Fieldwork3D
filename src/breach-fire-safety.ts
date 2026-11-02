@@ -9,13 +9,16 @@ export type FireLane={blocker:FireBlock;point?:Pt};
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function assessFireLane(from:Pt,muzzleHeight:number,to:Pt,
   targetHeight:number,cover:readonly Obstacle[],walls:readonly Segment[],
-  doors:readonly Door[],friends:readonly Pt[]=[]):FireLane{
+  doors:readonly Door[],friends:readonly Pt[]=[],
+  purpose:'projectile'|'weapon'='projectile'):FireLane{
   const ray={a:from,b:to};
   if(walls.some(w=>segmentsCross(ray,w)))return {blocker:'wall'};
-  if(doors.some(d=>segmentsCross(ray,doorLeafSegment(d))))
+  if(doors.some(d=>
+    (purpose==='weapon'||!['glazed','french','mesh-gate','screen'].includes(d.style??'wood'))&&
+    segmentsCross(ray,doorLeafSegment(d))))
     return {blocker:'door'};
-  if(cover.some(c=>coverImpactFraction(from,to,
-    muzzleHeight,targetHeight,c)!==null))
+  if(cover.some(c=>(purpose==='weapon'||c.fixture!=='glass-barrier')&&
+    coverImpactFraction(from,to,muzzleHeight,targetHeight,c)!==null))
     return {blocker:'cover'};
   const dx=to.x-from.x,dy=to.y-from.y;
   const total=distance(from,to);

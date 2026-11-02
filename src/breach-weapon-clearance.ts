@@ -27,7 +27,7 @@ export function weaponClearance(input:MuzzleInput,
   const from:Pt={x:input.x,y:input.z};
   const check=(muzzle:MuzzleSample):FireBlock=>
     assessFireLane(from,muzzle.y,{x:muzzle.x,y:muzzle.z},
-      muzzle.y,cover,walls,doors).blocker;
+      muzzle.y,cover,walls,doors,[],'weapon').blocker;
   const ready=muzzleAtShot({...input,obstruction:false,
     clearanceRetraction:0});
   let blocker=check(ready);
