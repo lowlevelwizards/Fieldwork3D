@@ -39,6 +39,8 @@ import {WARDROBE_RECIPES,wardrobeRecipe,applyWardrobeRecipe}
  from './operator-wardrobe-recipes.ts';
 import {HEADWEAR_SOLID_COLORS,headwearColorChoices,resolvedHeadwearSolid}
  from './operator-headwear-colors.ts';
+import {headwearCamoChoices,resolvedHeadwearCamo,headwearCamoPixels,
+ HEADWEAR_CAMO_RECIPES,type HeadwearCamoId} from './operator-headwear-camo.ts';
 import {initialWardrobe,readWardrobe,setWardrobePattern,resolvedWardrobe,
  WARDROBE_PATTERNS,wardrobeConflicts,wardrobeItemsForSlot,wardrobeItem,
  type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
@@ -249,20 +251,74 @@ function renderHeadwearSolidSwatches(id:string){
   button.style.backgroundColor='#'+definition.hex.toString(16).padStart(6,'0');
   button.setAttribute('aria-label',definition.label);
   button.title=definition.label;
-  button.setAttribute('aria-pressed',String(selected===color));
+  button.setAttribute('aria-pressed',String(selected===color&&!wardrobeOptions.headwearCamo));
   button.dataset.headwearColor=color;
   button.addEventListener('click',()=>{
-   wardrobeOptions={...wardrobeOptions,headwearColor:color,palette:0};
+   wardrobeOptions={...wardrobeOptions,headwearColor:color,headwearCamo:undefined,palette:0};
    renderHeadwearSolidSwatches(id);
+   renderHeadwearCamoSwatches(id);
   });
   solidGrid.append(button);
  }
- solidStatus.textContent=selected?HEADWEAR_SOLID_COLORS[selected].label+' · SOLID':'';
+ solidStatus.textContent=wardrobeOptions.headwearCamo?
+  'CAMO ACTIVE · TAP A SOLID TO RESTORE':
+  selected?HEADWEAR_SOLID_COLORS[selected].label+' · SOLID':'';
+}
+
+
+const camoChooser=document.getElementById('headwearCamoChooser') as HTMLElement;
+const camoGrid=document.getElementById('headwearCamoGrid') as HTMLElement;
+const camoInspector=document.getElementById('headwearCamoInspector') as HTMLElement;
+const camoStatus=document.getElementById('headwearCamoChoice') as HTMLOutputElement;
+/** Nearest-neighbor previews use the EXACT same 32x32 RGBA artwork as the
+ * live material atlas. The right panel is a literal 3x3 repetition.
+ * No canvas noise, gradients, bilinear resampling or preview-only art.
+ */
+function paintHeadwearCamo(canvas:HTMLCanvasElement,id:HeadwearCamoId,repeats:number){
+ const size=32*repeats,ctx=canvas.getContext('2d');
+ if(!ctx)return;
+ canvas.width=canvas.height=size;
+ const pixels=headwearCamoPixels(id),image=ctx.createImageData(size,size);
+ for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+  const from=((y%32)*32+(x%32))*4,to=(y*size+x)*4;
+  for(let channel=0;channel<4;channel++)image.data[to+channel]=pixels[from+channel];
+ }
+ ctx.imageSmoothingEnabled=false;ctx.putImageData(image,0,0);
+}
+function renderHeadwearCamoSwatches(model:string){
+ const choices=headwearCamoChoices(model);
+ camoChooser.hidden=choices.length===0;camoGrid.replaceChildren();
+ camoInspector.hidden=choices.length===0;
+ if(!choices.length){camoStatus.textContent='';return;}
+ const selected=resolvedHeadwearCamo(model,wardrobeOptions.headwearCamo);
+ for(const id of choices){
+  const recipe=HEADWEAR_CAMO_RECIPES[id];
+  const button=document.createElement('button');button.type='button';
+  button.className='camo-entry';button.dataset.headwearCamo=id;
+  button.title=recipe.label+' · '+recipe.description;
+  button.setAttribute('aria-label','Apply '+recipe.label+' to headgear');
+  button.setAttribute('aria-pressed',String(selected===id));
+  const image=document.createElement('canvas');image.width=32;image.height=32;
+  image.setAttribute('aria-hidden','true');paintHeadwearCamo(image,id,1);
+  const caption=document.createElement('span');caption.textContent=recipe.label;
+  button.append(image,caption);
+  button.addEventListener('click',()=>{
+   wardrobeOptions={...wardrobeOptions,headwearCamo:id};
+   renderHeadwearSolidSwatches(model);renderHeadwearCamoSwatches(model);
+  });camoGrid.append(button);
+ }
+ const preview=selected??choices[0];
+ paintHeadwearCamo(document.getElementById('headwearCamoArt') as HTMLCanvasElement,preview,1);
+ paintHeadwearCamo(document.getElementById('headwearCamoTiled') as HTMLCanvasElement,preview,3);
+ camoStatus.textContent=HEADWEAR_CAMO_RECIPES[preview].label+
+  (selected?' · APPLIED TO LIVE MODEL':' · PREVIEW ONLY — TAP TO APPLY')+
+  ' · '+HEADWEAR_CAMO_RECIPES[preview].description;
 }
 
 function syncWardrobe(){
  const compatible=resolvedWardrobe(wardrobeOptions,labKit);
  renderHeadwearSolidSwatches(compatible.headwear);
+ renderHeadwearCamoSwatches(compatible.headwear);
  for(const select of cosmeticMountSelects){
   const slot=select.dataset.wardrobeAccessory as
     typeof WARDROBE_ACCESSORY_SLOTS[number];

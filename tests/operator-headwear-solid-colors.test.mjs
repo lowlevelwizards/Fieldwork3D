@@ -90,7 +90,7 @@ test('Lab uses touch-friendly visual grid, not legacy named global palette selec
  assert.doesNotMatch(html,/id="kitPalette"/);
  assert.match(js,/button\.style\.backgroundColor/);
  assert.match(js,/button\.setAttribute\('aria-label',definition\.label\)/);
- assert.match(js,/button\.setAttribute\('aria-pressed',String\(selected===color\)\)/);
+ assert.match(js,/button\.setAttribute\('aria-pressed',String\(selected===color&&!wardrobeOptions\.headwearCamo\)\)/);
  assert.match(js,/headwearColor:color/);
  assert.match(js,/renderHeadwearSolidSwatches\(compatible\.headwear\)/);
 });

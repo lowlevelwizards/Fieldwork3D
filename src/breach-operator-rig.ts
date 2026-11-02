@@ -33,6 +33,9 @@ import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {equipmentCarrySocket,utilityDisplaySocket} from './equipment-carry-visuals.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {headwearSolidHex} from './operator-headwear-colors.ts';
+import {resolvedHeadwearCamo} from './operator-headwear-camo.ts';
+import {headwearCamoTexture,headwearDetailTexture} from './operator-headwear-materials.ts';
+import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import {wardrobePatternTexture} from './operator-wardrobe-patterns.ts';
 import {resolveWardrobeDisplayMount} from './operator-wardrobe-mounts.ts';
 import type {CarryLocation} from './equipment-carry-placement.ts';
@@ -479,8 +482,18 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Its grayscale construction atlas and physical finish stay independent.
   for(const [id,material] of Object.entries(r.visualKit.wardrobeHead.headwearMaterials)){
    const selected=id===clothing.headwear;
+   const modelId=(id==='high-cut-rails'?'high-cut':id) as HeadSilhouetteId;
+   const camo=selected?resolvedHeadwearCamo(modelId,p.wardrobe?.headwearCamo):null;
+   const map=camo?headwearCamoTexture(modelId,camo):headwearDetailTexture(modelId);
+   if(material.map!==map){material.map=map;material.needsUpdate=true;}
+   if(camo){
+    // Chromatic artwork lives in the map; white avoids a second tint.
+    // The pose-time ledger still owns desaturation and replay.
+    r.colors.set(material,new THREE.Color(0xffffff));
+    continue;
+   }
    const solid=selected?headwearSolidHex(
-     id==='high-cut-rails'?'high-cut':id,p.wardrobe?.headwearColor):null;
+     modelId,p.wardrobe?.headwearColor):null;
    if(solid!==null){
     r.colors.set(material,new THREE.Color(solid));
     continue;
