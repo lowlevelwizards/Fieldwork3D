@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import {createHeadwearSilhouette,headwearCuboidVolumes}
  from '../src/operator-headwear-silhouettes.ts';
 import {createHeadwearDetailMaterial,headwearDetailPixels,
- headwearFaceTone,headwearFaceRegion,headwearRegionPixel,HEADWEAR_ATLAS_PIXELS,
+ headwearFaceTone,headwearFaceRegion,headwearRegionPixel,headwearFinishPixel,
+ headwearFinishTexture,HEADWEAR_SURFACE_PROFILE,HEADWEAR_ATLAS_PIXELS,
  HEADWEAR_DETAIL_PIXEL_WORLD_SIZE}
  from '../src/operator-headwear-materials.ts';
 import {TILE_PIXELS,PIXEL_WORLD_SIZE}
@@ -127,4 +128,47 @@ test('2B.1: physical top/underside mapping is intentional',()=>{
   assert.equal(headwearFaceRegion(id,id+'-continuous-crown',1,1),3,id);
  }
  assert.equal(headwearFaceRegion('soviet-steel','ssh40-integrated-front-edge',2,-1),2);
+});
+
+test('Stage 2C: quiet patrol seams and sewn boonie brim, no hard channel',()=>{
+ assert.equal(headwearRegionPixel('patrol-cap',0,16,23),244);
+ assert.equal(headwearRegionPixel('patrol-cap',0,16,22),250);
+ assert.equal(headwearRegionPixel('patrol-cap',3,16,20),251);
+ assert.equal(headwearRegionPixel('patrol-cap',3,16,17),246);
+ assert.equal(headwearRegionPixel('patrol-cap',2,16,10),239);
+ assert.equal(headwearRegionPixel('patrol-cap',2,16,8),248);
+ assert.equal(headwearRegionPixel('boonie',2,21,16),236);
+ assert.equal(headwearRegionPixel('boonie',2,21,17),248);
+ assert.equal(headwearRegionPixel('boonie',2,21,19),236);
+ assert.equal(headwearRegionPixel('boonie',2,20,16),248);
+ assert.equal(headwearRegionPixel('boonie',3,16,16),250);
+});
+test('Stage 2C: physically distinct tint-independent finishes, 1:1 scale',()=>{
+ const expected={
+  'patrol-cap':'woven-twill','boonie':'woven-canvas','beanie':'ribbed-knit',
+  'ach':'matte-composite','high-cut':'matte-composite',
+  'pasgt':'matte-composite','soviet-steel':'painted-steel'
+ };
+ for(const id of ids){
+  const finish=HEADWEAR_SURFACE_PROFILE[id],m=createHeadwearDetailMaterial(id);
+  assert.equal(finish.family,expected[id]);
+  assert.ok(finish.roughness>=.7&&finish.roughness<=1);
+  assert.equal(m.userData.headwearFinish,expected[id]);
+  assert.equal(m.userData.tintAndPatternReady,true);
+  assert.equal(m.userData.pixelWorldSize,1);
+  assert.equal(m.roughness,1);
+  assert.equal(m.metalness,finish.metalness);
+  assert.equal(m.roughnessMap,headwearFinishTexture(id));
+  assert.equal(m.roughnessMap.colorSpace,THREE.NoColorSpace);
+  assert.equal(m.roughnessMap.magFilter,THREE.NearestFilter);
+  assert.equal(m.map.colorSpace,THREE.SRGBColorSpace);
+  assert.equal(m.roughnessMap.image.width,HEADWEAR_ATLAS_PIXELS);
+  assert.equal(m.roughnessMap.image.height,HEADWEAR_ATLAS_PIXELS);
+ }
+ assert.ok(headwearFinishPixel('boonie',0,17,18)>
+  headwearFinishPixel('soviet-steel',0,17,18));
+ assert.equal(headwearFinishPixel('ach',0,12,16),
+  headwearFinishPixel('ach',0,15,19));
+ assert.notEqual(headwearFinishPixel('beanie',1,16,16),
+  headwearFinishPixel('beanie',1,17,16));
 });
