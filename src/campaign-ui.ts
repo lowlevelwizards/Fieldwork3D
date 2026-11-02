@@ -62,7 +62,13 @@ export class CampaignScreen{
  private workbench:WeaponWorkbenchPreview|null=null;
  private weaponView=false;
  private selectedMount:WeaponAttachmentSlot='optic';
- private disposePreview(){this.preview?.dispose();this.preview=null;
+ private lastArmoryRenderedId:string|null=null;
+ private wardrobeExpanded=false;
+ private readonly operatorViewAngles=new Map<string,number>();
+ private disposePreview(){
+  if(this.preview&&this.lastArmoryRenderedId)
+   this.operatorViewAngles.set(this.lastArmoryRenderedId,this.preview.getAzimuth());
+  this.preview?.dispose();this.preview=null;
   this.workbench?.dispose();this.workbench=null;}
  constructor(handlers:CampaignHandlers){
   this.handlers=handlers;
@@ -102,6 +108,7 @@ export class CampaignScreen{
    this.armoryOperatorId=null;
   }
   this.disposePreview();
+  this.lastArmoryRenderedId=null;
   this.root.hidden=false;this.root.replaceChildren();
   const main=node('main','campaign-shell campaign-wide');
   const top=node('div','campaign-head');
@@ -333,7 +340,13 @@ export class CampaignScreen{
   this.root.append(main);
  }
  private armory(c:CampaignState,id:string){
+  const sameOperator=this.lastArmoryRenderedId===id;
+  const restoreScroll=sameOperator?this.root.scrollTop:0;
+  const previousFocus=this.root.contains(document.activeElement)?
+    document.activeElement?.getAttribute('aria-label'):null;
   this.disposePreview();
+  if(!sameOperator)this.wardrobeExpanded=false;
+  this.lastArmoryRenderedId=id;
   const person=c.operators.find(o=>o.id===id);
   if(!person){this.armoryOperatorId=null;this.home(c);return;}
   this.root.hidden=false;this.root.replaceChildren();
@@ -532,6 +545,10 @@ export class CampaignScreen{
   // equipment. Incompatible helmet/carrier styles are disabled, not silently
   // granted as gameplay items.
   const wardrobePanel=node('details','campaign-wardrobe');
+  wardrobePanel.open=this.wardrobeExpanded;
+  wardrobePanel.addEventListener('toggle',()=>{
+   if(wardrobePanel.isConnected)this.wardrobeExpanded=wardrobePanel.open;
+  });
   wardrobePanel.append(node('summary','','WARDROBE / APPEARANCE'));
   wardrobePanel.append(node('p','campaign-note',
    'Personal styling only. Armor protection, weight and carry capacity remain controlled by EQUIPMENT SLOTS.'));
@@ -681,9 +698,19 @@ export class CampaignScreen{
     try{select.showPicker();}catch{/* mobile browser may require a second tap */}
    });
    this.workbench.setActiveSlot(this.selectedMount);
-  }else this.preview=new CampaignKitPreview(preview,person.id,person.weapon,
-   person.appearanceSeed,person.loadout,person.weaponConfiguration,
+  }else{
+   this.preview=new CampaignKitPreview(preview,person.id,person.weapon,
+    person.appearanceSeed,person.loadout,person.weaponConfiguration,
     person.magazines,person.wardrobe);
+   const azimuth=this.operatorViewAngles.get(id);
+   if(azimuth!==undefined)this.preview.setAzimuth(azimuth);
+  }
+  this.root.scrollTop=restoreScroll;
+  if(previousFocus){
+   const restored=Array.from(this.root.querySelectorAll<HTMLElement>('[aria-label]'))
+    .find(el=>el.getAttribute('aria-label')===previousFocus);
+   restored?.focus({preventScroll:true});
+  }
  }
  private importPicker(){
   const input=node('input','campaign-import');
