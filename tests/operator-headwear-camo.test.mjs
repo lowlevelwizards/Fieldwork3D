@@ -21,9 +21,9 @@ const pose=(kit,wardrobe)=>({
  aiming:false,firing:false,turning:0,deterministic:true,
  unarmedPreview:true,equipment:kit,wardrobe
 });
-test('five deliberate 32px camo families use fixed opaque canonical colors',()=>{
+test('twelve deliberate 32px camo families use fixed opaque canonical colors',()=>{
  assert.equal(HEADWEAR_CAMO_SIZE,32);
- assert.equal(HEADWEAR_CAMO_IDS.length,5);
+ assert.equal(HEADWEAR_CAMO_IDS.length,12);
  const unique=new Set();
  for(const id of HEADWEAR_CAMO_IDS){
   const tile=headwearCamoPixels(id),indices=headwearCamoIndices(id);
@@ -46,7 +46,7 @@ test('five deliberate 32px camo families use fixed opaque canonical colors',()=>
   }
   unique.add(Buffer.from(tile).toString('base64'));
  }
- assert.equal(unique.size,5,'patterns must not be color-only variations of one tile');
+ assert.equal(unique.size,12,'patterns must not be color-only variations of one tile');
 });
 test('item compatibility is restricted, validated, and persists through outfit serialization',()=>{
  assert.equal(headwearCamoChoices('beanie').length,0);
@@ -116,7 +116,7 @@ test('live pose swaps camo and solid without animation restoring gray or mutatin
 test('operator lab exposes raw art, 3x3 repeat and live selected headwear',()=>{
  const html=readFileSync(new URL('../operator-lab.html',import.meta.url),'utf8');
  const js=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
- for(const id of ['headwearCamoGrid','headwearCamoArt','headwearCamoTiled','headwearCamoChoice'])
+ for(const id of ['headwearCamoGrid','headwearCamoCompareGrid','headwearCamoArt','headwearCamoTiled','headwearCamoChoice'])
   assert.ok(html.includes('id="'+id+'"'),id);
  assert.match(js,/paintHeadwearCamo\(.*preview,3\)/);
  assert.match(js,/headwearCamo:id/);
@@ -125,6 +125,10 @@ test('operator lab exposes raw art, 3x3 repeat and live selected headwear',()=>{
  assert.match(html,/TILED · 3×3 REPEAT/);
  assert.match(html,/fabric-specific print density/);
  assert.match(js,/HEADWEAR_CAMO_DENSITY/);
+ assert.match(js,/renderHeadwearCamoComparison/);
+ assert.match(js,/HEADWEAR_CAMO_IDS/);
+ assert.match(js,/camo-study-views/);
+ assert.match(html,/COMPARE ALL 12/);
 });
 test('pattern family density and pigment scales preserve hierarchy',()=>{
  assert.equal(HEADWEAR_CAMO_DENSITY['m81-woodland'],1);
@@ -162,7 +166,7 @@ test('operator-specific print phases are stable, change on reroll, and keep prin
   const changed=headwearCamoTexture('boonie',id,reroll);
   assert.notEqual(same,changed,'independent texture phase');
   assert.equal(changed.channel,1,'must retain fabric UV1 channel');
-  assert.equal(HEADWEAR_CAMO_DENSITY[id],id==='ucp'||id==='tiger-stripe'||id==='multicam'?2:1);
+  assert.equal(HEADWEAR_CAMO_DENSITY[id],['ucp','tiger-stripe','multicam','flecktarn','woodland-marpat','desert-marpat'].includes(id)?2:1);
  }
  assert.equal(nextHeadwearCamoRoll(0),1);
  assert.equal(nextHeadwearCamoRoll(4095),0);
@@ -193,4 +197,56 @@ test('the Lab exposes a dedicated accessible reroll without changing the canonic
  const coverage=headwearCamoCoverage('m81-woodland');
  assert.ok(coverage[0]+coverage[2]>.65,'M81 must be green-forward');
  assert.ok(coverage[1]<.28,'M81 brown secondary only');
+});
+
+test('seven authored auditions are independently structured, correctly dense, and compatible',()=>{
+ const newIds=['flecktarn','woodland-dpm','swedish-m90','six-color-desert',
+  'woodland-marpat','alpenflage','desert-marpat'];
+ assert.deepEqual(HEADWEAR_CAMO_IDS.slice(5),newIds);
+ for(const id of newIds){
+  assert.ok(headwearCamoChoices('patrol-cap').includes(id));
+  assert.ok(headwearCamoChoices('boonie').includes(id));
+  assert.equal(readWardrobe({...initialWardrobe(),headwearCamo:id}).headwearCamo,id);
+  assert.notDeepEqual(headwearCamoIndices(id),headwearCamoIndices('m81-woodland'));
+ }
+ for(const id of ['flecktarn','woodland-marpat','desert-marpat'])
+  assert.equal(HEADWEAR_CAMO_DENSITY[id],2,'fine printed fabric must be two pixels/unit');
+ for(const id of ['woodland-dpm','swedish-m90','six-color-desert','alpenflage'])
+  assert.equal(HEADWEAR_CAMO_DENSITY[id],1,'broad motifs must remain one pixel/unit');
+ assert.equal(headwearCamoChoices('pasgt').includes('six-color-desert'),true);
+ assert.equal(headwearCamoChoices('pasgt').includes('woodland-marpat'),false);
+ assert.equal(headwearCamoChoices('ach').includes('alpenflage'),false);
+ assert.equal(headwearCamoChoices('high-cut').includes('woodland-dpm'),false);
+ assert.equal(headwearCamoChoices('beanie').length,0);
+});
+test('3B palette reuses historic colors and adds only three justified pigments',()=>{
+ const approved=new Set(HEADWEAR_CAMO_IDS.slice(0,5).flatMap(
+  id=>HEADWEAR_CAMO_RECIPES[id].colors.map(rgb=>rgb.join(','))));
+ const newPigments=new Set(HEADWEAR_CAMO_IDS.slice(5).flatMap(
+  id=>HEADWEAR_CAMO_RECIPES[id].colors.map(rgb=>rgb.join(',')))
+  .filter(key=>!approved.has(key)));
+ assert.deepEqual([...newPigments].sort(),
+  ['137,83,66','143,159,101','160,64,52'].sort());
+ assert.ok(headwearCamoCoverage('alpenflage')[4]>=.10);
+ assert.ok(headwearCamoCoverage('alpenflage')[4]<=.21,'red must be iconic but not dominant');
+ assert.ok(headwearCamoCoverage('desert-marpat')[0]>.40,'desert digital stays light');
+ assert.ok(headwearCamoCoverage('six-color-desert')[4]>.01);
+ assert.ok(headwearCamoCoverage('six-color-desert')[5]>.01,'chocolate chips remain visible');
+});
+test('3B fabric cut and material channels are consistent for all new prints',()=>{
+ const ids=HEADWEAR_CAMO_IDS.slice(5);
+ for(const id of ids){
+  const first=headwearCamoPlacement('new-operator','headwear:boonie',id,1);
+  const again=headwearCamoPlacement('new-operator','headwear:boonie',id,1);
+  assert.deepEqual(first,again);
+  const tex=headwearCamoTexture('boonie',id,first);
+  assert.equal(tex.channel,1);
+  assert.equal(tex.image.width,128);
+  assert.equal(tex.image.height,128);
+  assert.equal(tex.magFilter,THREE.NearestFilter);
+  assert.equal(tex,headwearCamoTexture('boonie',id,first));
+ }
+ const code=readFileSync(new URL('../src/operator-headwear-materials.ts',import.meta.url),'utf8');
+ assert.match(code,/MAX_CACHED_CAMO_CUTS=192/);
+ assert.match(code,/evicted\?\.dispose\(\)/);
 });

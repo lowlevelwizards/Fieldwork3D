@@ -1,5 +1,5 @@
 /** Phase 3A: authored 1:1 camouflage motifs for approved Fieldwork headgear.
- * Five 32px seamless canonical tiles. Each polygon is hand placed, with no
+ * Twelve 32px seamless canonical tiles. Each polygon is hand placed, with no
  * RNG/noise pixels or filtering. Palette colors are art-directed adaptations
  * of reference fabric, not claims of measured military color standards.
  */
@@ -10,10 +10,14 @@ export const HEADWEAR_CAMO_SIZE=32;
  * These are fabric pixels per model unit, not a global model-geometry rescale.
  */
 export const HEADWEAR_CAMO_DENSITY:Readonly<Record<HeadwearCamoId,number>>={
- 'm81-woodland':1,'three-color-desert':1,'tiger-stripe':2,ucp:2,multicam:2
+ 'm81-woodland':1,'three-color-desert':1,'tiger-stripe':2,ucp:2,multicam:2,
+ flecktarn:2,'woodland-dpm':1,'swedish-m90':1,'six-color-desert':1,
+ 'woodland-marpat':2,alpenflage:1,'desert-marpat':2
 };
 export const HEADWEAR_CAMO_IDS=[
- 'm81-woodland','three-color-desert','tiger-stripe','ucp','multicam'
+ 'm81-woodland','three-color-desert','tiger-stripe','ucp','multicam',
+ 'flecktarn','woodland-dpm','swedish-m90','six-color-desert',
+ 'woodland-marpat','alpenflage','desert-marpat'
 ] as const;
 export type HeadwearCamoId=typeof HEADWEAR_CAMO_IDS[number];
 type RGB=readonly [number,number,number];
@@ -134,15 +138,179 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
    p(6,8,24,10,22,12,23,11,25),
    p(6,28,15,31,14,33,15,32,17,29,17)
   ]
+ },
+ // 3B auditions: each is an independently authored 32x32 periodic fabric cut.
+ // RGB values are reused from the established five prints wherever possible.
+ 'flecktarn':{
+  label:'FLECKTARN',
+  description:'Clustered forest flecks: green masses, warm brown droplets and dark spot constellations',
+  colors:[[94,111,77],[64,83,66],[138,121,90],[137,83,66],[46,54,44]],
+  targetCoverage:[0.304,0.234,0.225,0.143,0.095],
+  motifs:[
+   p(1,-5,1,2,-2,10,0,13,4,9,8,4,9,-3,7),
+   p(1,14,12,19,9,25,11,28,16,25,22,19,21,14,18),
+   p(1,1,25,7,22,13,25,14,31,7,35,0,32),
+   p(2,17,-3,25,0,31,4,30,9,24,10,18,5),
+   p(2,-3,12,4,10,11,15,10,19,4,21,-4,18),
+   p(2,26,25,31,23,35,27,35,33,27,35,23,30),
+   p(3,3,2,6,1,8,3,7,5,3,5),p(3,9,4,11,3,13,5,12,7,10,7),
+   p(3,19,3,23,2,25,5,23,7,20,6),p(3,28,12,31,11,33,13,32,16,29,16),
+   p(3,3,17,6,15,9,17,8,20,5,21),p(3,13,23,17,22,19,24,18,27,14,27),
+   p(3,24,19,27,17,29,20,27,23,24,23),p(3,7,29,11,28,12,31,10,34,7,33),
+   p(4,1,6,3,5,5,7,3,9,1,8),p(4,14,1,16,0,18,2,17,5,14,4),
+   p(4,22,8,25,7,27,10,25,12,23,11),
+   p(4,9,12,11,10,13,13,12,16,9,15),
+   p(4,19,17,21,15,23,18,22,21,20,20),
+   p(4,28,29,30,27,33,29,32,32,29,33),
+   p(4,2,28,4,26,6,29,4,31)
+  ]
+ },
+ 'woodland-dpm':{
+  label:'WOODLAND DPM',
+  description:'Flowing long brushstrokes with olive ribbons, khaki breaks and tapered dark branches',
+  colors:[[147,122,84],[77,101,70],[138,121,90],[42,55,43]],
+  targetCoverage:[0.198,0.244,0.291,0.267],
+  motifs:[
+   p(1,-5,4,1,1,9,3,17,8,24,8,28,12,22,14,14,11,8,10,0,8,-5,11),
+   p(1,11,18,15,15,22,18,30,21,35,25,35,30,27,28,19,24,12,25,8,22),
+   p(1,-3,28,3,25,9,27,16,32,15,36,7,34,0,32),
+   p(2,18,-4,22,0,31,2,35,6,28,8,23,5,16,6,12,1),
+   p(2,-4,17,2,14,8,15,14,20,20,21,18,26,11,23,5,21,-4,22),
+   p(2,25,29,31,26,36,29,35,35,29,35),
+   p(3,-4,8,2,7,9,10,15,13,21,15,25,18,21,18,14,16,8,14,1,11,-4,12),
+   p(3,7,-4,10,2,14,4,18,7,21,9,19,10,14,7,11,7,8,3),
+   p(3,26,5,28,7,33,8,35,12,31,11,27,9,24,8),
+   p(3,-4,25,3,23,10,25,15,28,22,31,19,32,12,29,6,28,0,27,-4,30),
+   p(3,17,17,21,16,24,18,28,19,31,23,28,22,23,21,19,20)
+  ]
+ },
+ 'swedish-m90':{
+  label:'SWEDISH M90',
+  description:'Bold interlocking angular splinters in light green, olive, dark forest and near-black',
+  colors:[[94,111,77],[143,159,101],[64,83,66],[46,54,44]],
+  targetCoverage:[0.131,0.257,0.31,0.303],
+  motifs:[
+   p(1,-5,0,8,0,16,7,12,11,5,8,-5,13),
+   p(1,16,19,23,12,35,12,35,21,29,21,24,29,18,27),
+   p(1,-5,22,3,17,11,19,8,25,16,30,11,35,-5,34),
+   p(2,12,-3,20,-3,29,7,24,13,18,8,15,13,8,6),
+   p(2,3,11,11,8,17,14,13,19,20,24,14,28,6,22,-5,23),
+   p(2,24,26,33,20,35,32,29,35),
+   p(3,25,-4,35,-4,35,6,31,6,25,12,19,6),
+   p(3,7,17,13,13,21,21,17,25,11,20,3,25,-4,19),
+   p(3,21,30,26,25,33,29,35,35,28,35),
+   p(0,3,29,6,26,11,31,8,35,0,35)
+  ]
+ },
+ 'six-color-desert':{
+  label:'6-COLOR DESERT',
+  description:'Chocolate-chip desert: large pale dunes, khaki islands and scattered dark-rimmed light pebbles',
+  colors:[[193,173,133],[221,201,162],[145,105,73],[138,121,90],[228,213,177],[46,54,44]],
+  targetCoverage:[0.228,0.305,0.277,0.1,0.022,0.068],
+  motifs:[
+   p(1,-4,1,5,-2,13,1,13,7,7,11,-4,9),
+   p(1,16,13,23,9,35,12,35,19,28,22,21,20),
+   p(1,-4,24,5,22,12,26,16,33,6,35,-4,31),
+   p(2,18,-3,25,0,30,5,27,9,20,7,15,4),
+   p(2,4,14,11,11,17,15,16,20,10,22,5,19),
+   p(2,24,25,30,22,36,26,35,32,28,34,23,30),
+   p(3,0,9,4,8,7,12,5,15,1,14),
+   p(3,12,22,17,20,20,24,16,27,13,26),
+   p(3,27,2,32,1,35,5,32,8,29,7),
+   // The dark outlines and pale insets form little clustered pebbles.
+   p(5,8,5,11,4,14,6,13,9,10,10,7,8),
+   p(4,9,6,12,6,12,8,9,8),
+   p(5,24,16,27,14,30,17,29,20,25,20),
+   p(4,26,16,29,17,28,19,26,19),
+   p(5,1,27,4,25,7,27,6,30,2,31),
+   p(4,2,27,5,27,5,29,2,29),
+   p(5,18,28,20,26,23,28,22,31,19,32),
+   p(4,19,28,22,28,21,30,19,30)
+  ]
+ },
+ 'woodland-marpat':{
+  label:'WOODLAND MARPAT',
+  description:'Layered green and brown macro-fields assembled from uneven 1-3px digital fragments',
+  colors:[[94,111,77],[138,121,90],[64,83,66],[46,54,44]],
+  targetCoverage:[0.313,0.28,0.295,0.112],
+  motifs:[
+   p(1,0,1,7,1,7,4,11,4,11,8,14,8,14,12,8,12,8,10,3,10,3,7,0,7),
+   p(1,17,19,23,19,23,16,28,16,28,20,33,20,33,26,29,26,29,30,22,30,22,27,17,27),
+   p(1,2,24,9,24,9,27,13,27,13,31,9,31,9,34,2,34),
+   p(2,19,0,26,0,26,3,31,3,31,9,27,9,27,12,20,12,20,9,16,9,16,5,19,5),
+   p(2,-2,15,5,15,5,12,9,12,9,17,14,17,14,21,10,21,10,24,3,24,3,21,-2,21),
+   p(2,14,28,19,28,19,25,23,25,23,32,17,32,17,35,14,35),
+   p(3,10,3,13,3,13,6,16,6,16,10,12,10,12,8,10,8),
+   p(3,29,11,32,11,32,14,35,14,35,17,31,17,31,15,28,15),
+   p(3,3,22,7,22,7,25,10,25,10,28,6,28,6,26,3,26),
+   p(3,17,15,20,15,20,18,23,18,23,21,19,21,19,19,16,19),
+   p(1,14,14,16,14,16,16,18,16,18,18,14,18),
+   p(2,25,30,28,30,28,32,31,32,31,34,25,34),
+   p(3,0,0,2,0,2,2,4,2,4,4,0,4)
+  ]
+ },
+ 'alpenflage':{
+  label:'SWISS ALPENFLAGE',
+  description:'Bold brick-red islands among branching forest green, olive, black and small warm highlights',
+  colors:[[94,111,77],[64,83,66],[138,121,90],[46,54,44],[160,64,52],[206,189,149]],
+  targetCoverage:[0.228,0.242,0.233,0.099,0.163,0.035],
+  motifs:[
+   p(1,-5,0,3,-2,11,3,13,7,8,9,0,7,-5,11),
+   p(1,19,13,24,9,32,13,35,20,29,24,22,21,16,17),
+   p(1,1,23,9,21,15,27,15,34,7,35,-5,31),
+   p(2,14,-3,22,-3,30,2,31,8,23,10,16,7),
+   p(2,-4,13,2,10,9,12,14,17,11,21,4,19,-4,20),
+   p(2,23,27,29,23,36,25,35,32,28,35),
+   p(3,8,5,11,4,14,7,16,11,12,10,10,8),
+   p(3,27,12,31,10,35,15,33,19,28,18),
+   p(3,1,29,4,27,7,30,6,34,2,34),
+   p(4,3,2,7,1,9,4,8,7,5,8,2,6),
+   p(4,20,2,24,1,26,4,24,8,21,9,19,6),
+   p(4,3,15,6,14,9,17,8,20,5,21,2,19),
+   p(4,17,19,21,18,24,20,22,24,18,25,16,22),
+   p(4,27,27,30,26,33,28,32,31,29,32,26,30),
+   p(5,10,12,12,10,14,12,12,15),
+   p(5,29,2,32,2,31,5,29,5),
+   p(5,7,27,10,26,12,29,9,30),
+   p(5,23,30,25,28,27,30,25,32)
+  ]
+ },
+ 'desert-marpat':{
+  label:'DESERT MARPAT',
+  description:'Bright tan digital fields with light coyote steps and sparse dark brown pixels',
+  colors:[[221,201,162],[193,173,133],[171,158,117],[145,105,73]],
+  targetCoverage:[0.435,0.293,0.209,0.063],
+  motifs:[
+   p(1,2,1,10,1,10,4,14,4,14,9,11,9,11,12,5,12,5,9,2,9),
+   p(1,17,16,24,16,24,13,29,13,29,19,33,19,33,25,27,25,27,29,19,29,19,26,16,26),
+   p(1,1,26,7,26,7,23,12,23,12,28,15,28,15,34,9,34,9,32,1,32),
+   p(1,24,0,29,0,29,4,34,4,34,10,30,10,30,12,24,12),
+   // Unprinted pale islands interrupt the mid-tan fields at macro scale.
+   p(0,3,4,7,4,7,8,10,8,10,11,3,11),
+   p(0,19,19,23,19,23,23,27,23,27,27,18,27,18,24,19,24),
+   p(0,4,28,10,28,10,32,5,32),
+   p(0,27,6,32,6,32,10,27,10),
+   p(2,18,2,22,2,22,5,26,5,26,9,23,9,23,12,18,12,18,9,15,9,15,5,18,5),
+   p(2,3,16,9,16,9,14,13,14,13,20,10,20,10,23,3,23,3,21,0,21,0,18,3,18),
+   p(2,23,29,27,29,27,27,31,27,31,32,29,32,29,35,23,35),
+   p(3,11,2,13,2,13,5,16,5,16,8,12,8,12,6,10,6),
+   p(3,29,20,31,20,31,22,34,22,34,25,30,25,30,24,28,24),
+   p(3,7,28,9,28,9,30,11,30,11,32,7,32),
+   p(3,19,14,21,14,21,16,23,16,23,18,19,18),
+   p(1,0,0,2,0,2,2,4,2,4,4,0,4),
+   p(2,14,30,17,30,17,33,19,33,19,35,14,35)
+  ]
  }
 };
 export const HEADWEAR_CAMO_ELIGIBILITY:Readonly<Record<HeadSilhouetteId,readonly HeadwearCamoId[]>>={
- 'patrol-cap':['m81-woodland','three-color-desert','tiger-stripe','ucp','multicam'],
- boonie:['m81-woodland','three-color-desert','tiger-stripe','ucp','multicam'],
+ 'patrol-cap':[...HEADWEAR_CAMO_IDS],
+ boonie:[...HEADWEAR_CAMO_IDS],
  beanie:[],
- ach:['m81-woodland','three-color-desert','ucp','multicam'],
- 'high-cut':['m81-woodland','ucp','multicam'],
- pasgt:['m81-woodland','three-color-desert'],
+ ach:['m81-woodland','three-color-desert','ucp','multicam','flecktarn',
+  'woodland-dpm','swedish-m90','six-color-desert','woodland-marpat','desert-marpat'],
+ 'high-cut':['m81-woodland','ucp','multicam','flecktarn','swedish-m90',
+  'woodland-marpat','desert-marpat'],
+ pasgt:['m81-woodland','three-color-desert','woodland-dpm','six-color-desert'],
  'soviet-steel':[]
 };
 export function headwearCamoChoices(model:string):readonly HeadwearCamoId[]{
