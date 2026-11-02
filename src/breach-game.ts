@@ -35,6 +35,7 @@ import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool,issuedWedges} from './equipment-entry-tools.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {friendlyPassingStep,nearOccupiedFriendlyGoal} from './breach-friendly-traffic.ts';
+import {resolveMovementFrame} from './breach-movement-authority.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
 import {relocateCover,canRelocateCover,coverPushDistance} from './breach-movable-cover.ts';
 import {materialForFixture,MATERIALS,type MaterialId} from './breach-materials.ts';
@@ -2980,6 +2981,9 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     }
   }
   mark('belief-aging');
+  // Capture immutable actor origins before any movement or enemy routine runs.
+  // Final positions are reconciled together after the fixed-tick actor loop.
+  const motionStart=new Map(s.operators.map(a=>[a.id,clone(a.p)]));
   for(const a of s.operators){
     if(a.health<=0&&a.reload>0){a.reload=0;a.reloadMode=null;}
     a.fireCd=Math.max(0,a.fireCd-h);
@@ -3026,6 +3030,21 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     if(probe)mark('operator-'+a.id);
   }
   mark('actor-loop');
+  const proposals=s.operators.map(a=>({id:a.id,side:a.side,
+    from:motionStart.get(a.id)??a.p,to:a.p,alive:a.health>0,
+    carried:!!a.carriedById}));
+  const decisions=resolveMovementFrame(proposals,p=>{
+    const a=s.operators.find(unit=>unit.id===p.id)!;
+    return a.squeeze?sweptProfileClear(p.from,p.to,s.doors,
+      a.squeezeYaw,'squeeze'):sweptBodyClear(p.from,p.to,s.doors);
+  });
+  for(const decision of decisions){
+    if(!decision.blocked)continue;
+    const a=s.operators.find(unit=>unit.id===decision.id)!;
+    a.p=clone(decision.point);
+    a.priorP=clone(decision.point);a.velocity=0;
+    a.blockedTime+=h;a.lastBlocker=decision.blocked==='actor'?'actor':'route';
+  }
   for(const a of s.operators)a.stride+=d(a.p,a.priorP);
   resolveCloseContact(s);
   mark('contacts');
