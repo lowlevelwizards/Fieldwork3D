@@ -35,25 +35,26 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
   ctx.fillRect(bounds.minX,bounds.minY,
     bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
   ctx.globalCompositeOperation='destination-out';
-  // The 20-unit tile centers used to erase entire tiles at exterior walls,
-  // leaking 'exterior known' across the actual building boundary. Reveal the
-  // accessible exterior under an exact room-footprint clip instead. The
-  // exterior clipping pass never clears an unknown interior.
+  // Exterior Known is an exterior *region*, not a collection of room
+  // rectangles to alternate with even/odd clipping. Those rectangles may
+  // overlap at joints: even/odd produces unintended holes inside buildings.
+  // Erase reachable exterior first, then re-cover the UNION of all interior
+  // modules at their exact physical boundaries before applying real sight.
   if(s.intel.mode==='exterior-known'&&s.site){
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(bounds.minX,bounds.minY,
-      bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
-    for(const room of s.site.rooms)ctx.rect(room.x,room.y,room.w,room.h);
-    ctx.clip('evenodd');
-    ctx.filter='blur(1.5px)';
-    ctx.fillStyle='rgba(255,255,255,.76)';
-    for(let row=Math.floor(bounds.minY/20);row<Math.ceil(bounds.maxY/20);row++)
-      for(let col=Math.floor(bounds.minX/20);col<Math.ceil(bounds.maxX/20);col++){
-        const p={x:col*20+10,y:row*20+10};
-        if(exteriorBriefedAt(s.site,p))ctx.fillRect(col*20,row*20,20,20);
+    ctx.filter='none';
+    ctx.fillStyle='#fff';
+    for(let row=Math.floor(bounds.minY/10);row<Math.ceil(bounds.maxY/10);row++)
+      for(let col=Math.floor(bounds.minX/10);col<Math.ceil(bounds.maxX/10);col++){
+        const p={x:col*10+5,y:row*10+5};
+        if(exteriorBriefedAt(s.site,p))ctx.fillRect(col*10,row*10,10,10);
       }
-    ctx.restore();
+    // All interior modules use source-over compositing, so overlaps stay
+    // covered instead of turning into false exterior as parity flips.
+    ctx.globalCompositeOperation='source-over';
+    ctx.fillStyle='#000';
+    for(const room of s.site.rooms)
+      ctx.fillRect(room.x,room.y,room.w,room.h);
+    ctx.globalCompositeOperation='destination-out';
   }
   // Exploration gets a short feather rather than 40-unit hard rectangles.
   // This is presentation only: intel and hidden actor visibility are
