@@ -33,6 +33,9 @@ test('five deliberate 32px camo families use fixed opaque canonical colors',()=>
   assert.equal(coverage.length,recipe.colors.length,id);
   assert.ok(Math.abs(coverage.reduce((a,b)=>a+b,0)-1)<1e-10,id);
   assert.equal(recipe.targetCoverage.length,coverage.length,id);
+  for(let tone=0;tone<coverage.length;tone++)
+   assert.ok(Math.abs(coverage[tone]-recipe.targetCoverage[tone])<=.04,
+    id+' color '+tone+' must keep authored color proportions');
   assert.ok(coverage.every(n=>n>.01&&n<.80),id+' every authored color must appear');
   assert.ok(recipe.colors.length>=3&&recipe.colors.length<=5,id);
   for(let i=0;i<1024;i++){
