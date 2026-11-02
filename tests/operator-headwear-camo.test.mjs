@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {readFileSync} from 'node:fs';
-import {HEADWEAR_CAMO_IDS,HEADWEAR_CAMO_RECIPES,HEADWEAR_CAMO_SIZE,
+import {HEADWEAR_CAMO_IDS,HEADWEAR_CAMO_RECIPES,HEADWEAR_CAMO_SIZE,HEADWEAR_CAMO_DENSITY,
  headwearCamoChoices,headwearCamoIndices,headwearCamoCoverage,
  headwearCamoPixels,resolvedHeadwearCamo} from '../src/operator-headwear-camo.ts';
 import {headwearCamoTexture,headwearDetailTexture,headwearFinishTexture}
@@ -37,7 +37,7 @@ test('five deliberate 32px camo families use fixed opaque canonical colors',()=>
    assert.ok(Math.abs(coverage[tone]-recipe.targetCoverage[tone])<=.04,
     id+' color '+tone+' must keep authored color proportions');
   assert.ok(coverage.every(n=>n>.01&&n<.80),id+' every authored color must appear');
-  assert.ok(recipe.colors.length>=3&&recipe.colors.length<=5,id);
+  assert.ok(recipe.colors.length>=3&&recipe.colors.length<=7,id);
   for(let i=0;i<1024;i++){
    assert.equal(tile[i*4+3],255,id);
    assert.ok(indices[i]<recipe.colors.length,id);
@@ -60,15 +60,17 @@ test('item compatibility is restricted, validated, and persists through outfit s
  }
  assert.equal(readWardrobe({...initialWardrobe(),headwearCamo:'unknown'}).headwearCamo,undefined);
 });
-test('camouflage composites onto existing 1:1 64px atlas and preserves material finish',()=>{
+test('printed camouflage uses a separate 128px UV1 atlas; 1:1 finish remains unchanged',()=>{
  for(const model of ['boonie','ach','high-cut','patrol-cap','pasgt']){
   const id=headwearCamoChoices(model)[0],texture=headwearCamoTexture(model,id);
-  assert.equal(texture.image.width,64);
-  assert.equal(texture.image.height,64);
+  assert.equal(texture.image.width,128);
+  assert.equal(texture.image.height,128);
   assert.equal(texture.magFilter,THREE.NearestFilter);
+  assert.equal(texture.channel,1,'camo must use independent sewn fabric UV1');
   assert.equal(texture.colorSpace,THREE.SRGBColorSpace);
   assert.equal(texture.wrapS,THREE.ClampToEdgeWrapping);
   assert.equal(texture,headwearCamoTexture(model,id),'cache by model and camo');
+  assert.equal(headwearDetailTexture(model).image.width,64,'structural pixels remain 1:1');
   assert.notEqual(texture,headwearDetailTexture(model));
   assert.equal(headwearFinishTexture(model),headwearFinishTexture(model));
   const pixels=texture.image.data;
@@ -87,6 +89,8 @@ test('live pose swaps camo and solid without animation restoring gray or mutatin
   const material=rig.visualKit.wardrobeHead.headwearMaterials[model];
   const finish=material.roughnessMap;
   const geo=rig.visualKit.wardrobeHead.headwear[model].children[0].children[0].geometry;
+  assert.ok(geo.getAttribute('uv1'),'cloth UVs must survive visual geometry consolidation');
+  assert.equal(geo.getAttribute('uv1').count,geo.getAttribute('uv').count);
   for(const id of headwearCamoChoices(model)){
    const selection={...wardrobe,headwearCamo:id};
    poseOperator(rig,pose(kit,selection),0);
@@ -115,4 +119,21 @@ test('operator lab exposes raw art, 3x3 repeat and live selected headwear',()=>{
  assert.match(js,/headwearCamo:undefined/);
  assert.match(html,/ORIGINAL · 32×32 PIXELS/);
  assert.match(html,/TILED · 3×3 REPEAT/);
+ assert.match(html,/fabric-specific print density/);
+ assert.match(js,/HEADWEAR_CAMO_DENSITY/);
+});
+test('pattern family density and pigment scales preserve hierarchy',()=>{
+ assert.equal(HEADWEAR_CAMO_DENSITY['m81-woodland'],1);
+ assert.equal(HEADWEAR_CAMO_DENSITY['three-color-desert'],1);
+ for(const id of ['tiger-stripe','ucp','multicam'])
+  assert.equal(HEADWEAR_CAMO_DENSITY[id],2,id);
+ assert.equal(HEADWEAR_CAMO_RECIPES.multicam.colors.length,7);
+ assert.ok(headwearCamoCoverage('multicam')[5]>.02,'cream chips must be represented');
+ assert.ok(headwearCamoCoverage('multicam')[6]>.02,'small dry flecks must survive');
+ // UCP should exhibit numerous 1-3 texel transitions in its native tile.
+ const pixels=headwearCamoIndices('ucp');
+ let transitions=0;
+ for(let y=0;y<32;y++)for(let x=1;x<32;x++)
+  if(pixels[y*32+x]!==pixels[y*32+x-1])transitions++;
+ assert.ok(transitions>100,'UCP must read as fine stair-step digital print');
 });
