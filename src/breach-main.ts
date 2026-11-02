@@ -1058,7 +1058,7 @@ function installTouchCommandHelp(button:HTMLButtonElement){
   consumed=false;event.preventDefault();event.stopImmediatePropagation();
  },true);
  button.addEventListener('contextmenu',event=>{
-  if(event.pointerType==='mouse')return;
+  if(event instanceof PointerEvent&&event.pointerType==='mouse')return;
   event.preventDefault();clear();explain();
  });
 }
