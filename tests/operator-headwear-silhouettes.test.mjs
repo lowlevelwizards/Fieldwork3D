@@ -48,11 +48,11 @@ test('two helmet families render single joined faceless-interior cuboid exterior
   assert.equal(g.children[0].receiveShadow,false);
  }
 });
-test('ACH has a true stepped brow, temple, ear and nape side silhouette',()=>{
+test('ACH uses one decisive side drop instead of narrow stepping',()=>{
  const v=headwearCuboidVolumes('ach');
- const brow=byName(v,'ach-brow'),ear=byName(v,'ach-deep-right-ear');
+ const brow=byName(v,'ach-protective-brow'),ear=byName(v,'ach-right-ear-wrap');
  assert.ok(brow&&ear);
- assert.ok(lowerAt(v,4.4,0)<3.0,'ACH extends into implied ear center');
+ assert.ok(lowerAt(v,4.4,0)<2.4,'ACH extends through implied ear center');
  assert.ok(lowerAt(v,4.4,-3)<6,'temple descends from brow');
  assert.ok(lowerAt(v,0,-5)<4.6,'front edge is near implied brow');
  assert.ok(lowerAt(v,0,4.95)<2.4,'protective lower rear skull');
@@ -75,4 +75,28 @@ test('both fit head dimensions without changing proportions or scale',()=>{
   assert.ok(b.min.z>=-6&&b.max.z<=5.9);
   assert.ok(b.min.y>=2.1&&b.max.y<9.0);
  }
+});
+
+test('stage 1E removes insignificant crown trim and consolidates silhouette steps',()=>{
+ const ach=headwearCuboidVolumes('ach');
+ const high=headwearCuboidVolumes('high-cut');
+ assert.equal(ach.length,7,'ACH: crown, brow, nape and two broad side pairs');
+ assert.equal(high.length,5,'high-cut: crown, brow, rear and two temple returns');
+ for(const [id,v] of [['ach',ach],['high-cut',high]]){
+  assert.ok(v.every(p=>p.height>=1.7),
+   id+' must not add little upper strips or narrow silhouette risers');
+  assert.ok(v.every(p=>p.width>=.96&&p.depth>=1.26),
+   id+' must use substantial deliberate masses');
+  assert.ok(!v.some(p=>/step|trim|ridge|plate/i.test(p.name)),
+   id+' should contain no decorative staircase');
+  assert.equal(build(id).userData.stage,'1E');
+ }
+ // The ACH side is two intentional plateaus; ear and nape share a bottom.
+ assert.ok(Math.abs(lowerAt(ach,4.4,-3.5)-4.40)<.01);
+ assert.ok(Math.abs(lowerAt(ach,4.4,0)-2.23)<.01);
+ assert.ok(Math.abs(lowerAt(ach,4.4,4.6)-2.23)<.01);
+ // The high-cut instead has exactly one broad, exposed ear interval.
+ assert.ok(Math.abs(lowerAt(high,4.4,-3.5)-4.50)<.01);
+ assert.ok(Math.abs(lowerAt(high,4.4,0)-5.95)<.01);
+ assert.ok(Math.abs(lowerAt(high,4.4,3.5)-3.10)<.01);
 });
