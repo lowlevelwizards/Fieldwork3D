@@ -347,7 +347,10 @@ try{
   await routePhone.locator('#rook').click();
   const count=()=>routePhone.locator('#breachCanvas')
     .getAttribute('data-plan-nodes');
-  const end=screen(400,628);
+  // Choose a long, passable exterior route away from the teammate at (346,642).
+  // The old destination at (400,628) left no clear touch segment between
+  // the nearby operator marker and the destination's 34px hit target.
+  const end=screen(400,565);
   await routePhone.touchscreen.tap(end.x,end.y);
   if(await count()!=='1')throw Error('Route test failed to author first waypoint');
   const candidates=JSON.parse(await routePhone.locator('#breachCanvas')
