@@ -12,8 +12,10 @@ test('bare modeling pose is a true neutral reference; ADS alignment needs a real
 test('Lab calls new shapes cuboids and retains neutral matched headwear review',()=>{
  const html=readFileSync(new URL('../operator-lab.html',import.meta.url),'utf8');
  const lab=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
- assert.match(html,/STAGE 1E \/ SILHOUETTE CONFIDENCE/);
- assert.match(html,/Fewer, stronger cuboids/);
+ assert.match(html,/HEADGEAR \/ SILHOUETTE LIBRARY/);
+ assert.match(html,/Seven deliberate forms/);
  assert.match(lab,/rectilinear cuboid silhouette/);
+ for(const id of ['boonie','beanie','pasgt','soviet-steel'])
+  assert.ok(html.includes('data-head-silhouette="'+id+'"'),id+' in headgear lab');
  assert.match(lab,/selectWardrobeItem\(bareLabEquipment\(\)/);
 });
