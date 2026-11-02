@@ -52,18 +52,18 @@ test('ACH has a true stepped brow, temple, ear and nape side silhouette',()=>{
  const v=headwearCuboidVolumes('ach');
  const brow=byName(v,'ach-brow'),ear=byName(v,'ach-deep-right-ear');
  assert.ok(brow&&ear);
- assert.ok(lowerAt(v,4.4,0)<5.0,'deep ACH ear coverage');
+ assert.ok(lowerAt(v,4.4,0)<3.0,'ACH extends into implied ear center');
  assert.ok(lowerAt(v,4.4,-3)<6,'temple descends from brow');
- assert.ok(lowerAt(v,0,-5)<6.1,'protective brow');
- assert.ok(lowerAt(v,0,4.95)<5.2,'protective nape');
- assert.ok(box(build('ach')).max.y>9.9);
+ assert.ok(lowerAt(v,0,-5)<4.6,'front edge is near implied brow');
+ assert.ok(lowerAt(v,0,4.95)<2.4,'protective lower rear skull');
+ assert.ok(box(build('ach')).max.y<9.0,'crown no longer sits far above head');
 });
 test('high-cut exposes actual ear region and differs without accessory rails',()=>{
  const high=headwearCuboidVolumes('high-cut'),ach=headwearCuboidVolumes('ach');
- assert.ok(lowerAt(high,4.4,0)>6.85);
+ assert.ok(lowerAt(high,4.4,0)>5.8,'high-cut retains real ear clearance');
  assert.ok(lowerAt(high,4.4,0)-lowerAt(ach,4.4,0)>2);
  assert.ok(lowerAt(high,4.4,-3)<7);
- assert.ok(lowerAt(high,0,4.95)<6.2);
+ assert.ok(lowerAt(high,0,4.95)<3.4,'high-cut still protects rear skull');
  assert.ok(box(build('high-cut')).max.y<=10.2);
  const side=byName(high,'highcut-right-temple');
  assert.ok(side.z+side.depth/2<0,'front side return stops before ear');
@@ -73,6 +73,6 @@ test('both fit head dimensions without changing proportions or scale',()=>{
   const b=box(build(id));
   assert.ok(b.min.x>=-5.6&&b.max.x<=5.6);
   assert.ok(b.min.z>=-6&&b.max.z<=5.9);
-  assert.ok(b.min.y>4.0&&b.max.y<10.6);
+  assert.ok(b.min.y>=2.1&&b.max.y<9.0);
  }
 });

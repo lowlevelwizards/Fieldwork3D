@@ -17,4 +17,6 @@ test('high-cut gains substantial ear clearance while keeping both brow profiles'
  const high=HEAD_SILHOUETTE_METRICS['high-cut'];
  assert.ok(high.earEdge-ach.earEdge>2.5);
  assert.ok(Math.abs(high.foreheadEdge-ach.foreheadEdge)<.5);
+ assert.ok(ach.top<9.0&&high.top<9.0,
+  'helmet tops sit close to the unchanged skull crown');
 });
