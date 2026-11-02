@@ -514,7 +514,8 @@ export class CampaignScreen{
    });
    this.workbench.setActiveSlot(this.selectedMount);
   }else this.preview=new CampaignKitPreview(preview,person.id,person.weapon,
-   person.appearanceSeed,person.loadout,person.weaponConfiguration);
+   person.appearanceSeed,person.loadout,person.weaponConfiguration,
+    person.magazines);
  }
  private importPicker(){
   const input=node('input','campaign-import');

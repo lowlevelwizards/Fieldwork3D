@@ -5,6 +5,8 @@
 import * as THREE from 'three';
 import type {WeaponId} from './breach-combat.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import type {MagazineItem} from './breach-magazines.ts';
+import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 
@@ -20,7 +22,8 @@ export class CampaignKitPreview{
  private lastX=0;
  constructor(host:HTMLElement,id:string,weapon:WeaponId,
   appearanceSeed:number,equipment:EquipmentLoadout,
-  weaponConfiguration?:WeaponConfiguration){
+  weaponConfiguration?:WeaponConfiguration,
+  magazines:readonly MagazineItem[]=[]){
   this.host=host;
   host.classList.add('campaign-kit-preview');
   host.setAttribute('role','img');
@@ -42,6 +45,8 @@ export class CampaignKitPreview{
     reload:0,reloadDuration:0,lastThrowAt:-100,lastDoorAt:-100,
     down:false,surrender:false,aiming:false,firing:false,turning:0,
     appearanceSeed,equipment,weaponConfiguration,
+    magazineCarryLocations:carryPlacementLedger(equipment,magazines)
+      .filter(item=>item.kind==='magazine').map(item=>item.location),
     flashCharges:equipment.slots.tactical==='tactical-flash'?1:0,
     deterministic:true},0);
    host.addEventListener('pointerdown',this.pointerDown);

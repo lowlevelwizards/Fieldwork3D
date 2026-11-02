@@ -113,6 +113,7 @@ export type OperatorRig={
   elbowSpread:[number,number];legGap:[number,number];
   colors:Map<THREE.MeshStandardMaterial,THREE.Color>;
   clothMaterial:THREE.MeshStandardMaterial;vestMaterial:THREE.MeshStandardMaterial;
+  skinMaterial:THREE.MeshStandardMaterial;
   baseCloth:THREE.Color;baseVest:THREE.Color;helmetBadge:THREE.Mesh;
   appearanceSeed:number;
   dispose:()=>void;
@@ -227,7 +228,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     helmetShell,armorPanels,capBill,rigPouches,beltPouch,
     medicalPouch,radioUnit,flashCanister,utilityTool,gloveCovers,
     visualKit,equipmentDetails,colors,
-    clothMaterial:cloth,vestMaterial:vest,baseCloth:cloth.color.clone(),
+    clothMaterial:cloth,vestMaterial:vest,skinMaterial:skin,baseCloth:cloth.color.clone(),
     baseVest:vest.color.clone(),helmetBadge,appearanceSeed:0,
     personality:operatorMotionTraits(id),
     magazineInserted,magazineHand,medicalItem,weaponBody,droppedWeaponBody,
@@ -269,6 +270,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       new THREE.Color(clothPalette[identity%clothPalette.length]));
     r.colors.set(r.vestMaterial,identity===0?r.baseVest.clone():
       new THREE.Color(vestPalette[(identity>>>3)%vestPalette.length]));
+    // Individual complexion variation affects appearance only.
+    const complexion=[0xb29b83,0x8b6754,0xc4aa86,0x6e4938,
+      0xaa7c63,0xd3b698,0x98765c,0x533a32];
+    r.colors.set(r.skinMaterial,
+      new THREE.Color(complexion[(identity>>>6)%complexion.length]));
     r.helmetBadge.visible=identity!==0&&identity%3===0;
     r.pack.scale.set(1,identity===0?1:.90+(identity%5)*.05,
       identity===0?1:.93+((identity>>>5)%4)*.04);
