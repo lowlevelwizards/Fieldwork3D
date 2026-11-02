@@ -166,7 +166,7 @@ test('operator-specific print phases are stable, change on reroll, and keep prin
   const changed=headwearCamoTexture('boonie',id,reroll);
   assert.notEqual(same,changed,'independent texture phase');
   assert.equal(changed.channel,1,'must retain fabric UV1 channel');
-  assert.equal(HEADWEAR_CAMO_DENSITY[id],id==='ucp'||id==='tiger-stripe'||id==='multicam'?2:1);
+  assert.equal(HEADWEAR_CAMO_DENSITY[id],['ucp','tiger-stripe','multicam','flecktarn','woodland-marpat','desert-marpat'].includes(id)?2:1);
  }
  assert.equal(nextHeadwearCamoRoll(0),1);
  assert.equal(nextHeadwearCamoRoll(4095),0);
