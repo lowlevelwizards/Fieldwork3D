@@ -883,3 +883,18 @@ body.replaying #tacticalFeedback{display:none}
 .ident small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
  max-width:100%;opacity:.88}
 @media(max-width:450px){.ident{max-width:72vw}.ident strong{font-size:14px;letter-spacing:.045em}}
+
+/* UX08: Settings are grouped by scope; labs no longer compete with common view controls. */
+.site-settings{align-content:flex-start;justify-content:stretch}
+.site-settings-group,.site-settings-tools{flex:1 1 100%;min-width:0}
+.site-settings-group h3{font:700 11px/1.25 var(--ui-font);
+ letter-spacing:.09em;color:var(--fw-text-muted);margin:4px 3px 8px}
+.site-settings-row{display:flex;gap:7px;flex-wrap:wrap}
+.site-settings-row>button,.site-settings-row>a{min-height:44px;flex:1 1 auto}
+.site-settings-tools{border-top:1px solid var(--fw-panel-border);
+ margin-top:4px;padding-top:9px}
+.site-settings-tools summary{cursor:pointer;min-height:36px;
+ padding:7px 5px;font:700 11px/1.25 var(--ui-font);
+ letter-spacing:.07em;color:var(--fw-text-muted);touch-action:manipulation}
+.site-settings-tools[open] .site-settings-row{margin-top:7px}
+.site-settings-tools .site-settings-row a{display:grid;place-items:center}
