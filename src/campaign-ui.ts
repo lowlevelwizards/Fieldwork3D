@@ -7,6 +7,10 @@ import {LOADOUT_SLOTS,itemsForSlot,itemDefinition} from './equipment-catalog.ts'
 import {totalEquipmentMass,loadMobilityDescription,loadMovementScale,
  type LoadoutSlot} from './equipment-loadouts.ts';
 import {CampaignKitPreview} from './equipment-preview.ts';
+import {initialWardrobe,readWardrobe,resolvedWardrobe,
+ setWardrobeStyle,setWardrobePattern,WARDROBE_SLOTS,WARDROBE_PATTERNS,
+ wardrobeItemsForSlot,type WardrobeOptions,type WardrobeSlot}
+ from './operator-wardrobe-data.ts';
 import {carryCapacityReport} from './equipment-carry-placement.ts';
 import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
@@ -27,6 +31,7 @@ export type CampaignHandlers={
  buyWeapon:(weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipWeapon:(id:string,weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipGear:(id:string,slot:LoadoutSlot,itemId:string)=>void;
+ setWardrobe:(id:string,look:WardrobeOptions)=>void;
  equipAttachment:(id:string,slot:WeaponAttachmentSlot,partId:string,acquire:boolean)=>void;
  moveMagazine:(id:string,magazineId:string,location:MagazineLocation)=>void;
  repairArmor:(id:string)=>void;serviceWeapon:(id:string)=>void;
@@ -433,6 +438,54 @@ export class CampaignScreen{
    wrap.append(row,info);
    editor.append(wrap);
   }
+  // Wardrobe uses a separate cosmetic record and never edits purchased
+  // equipment. Incompatible helmet/carrier styles are disabled, not silently
+  // granted as gameplay items.
+  const wardrobePanel=node('details','campaign-wardrobe');
+  wardrobePanel.append(node('summary','','WARDROBE / APPEARANCE'));
+  wardrobePanel.append(node('p','campaign-note',
+   'Personal styling only. Armor protection, weight and carry capacity remain controlled by EQUIPMENT SLOTS.'));
+  const wardrobe=readWardrobe(person.wardrobe);
+  const looks=resolvedWardrobe(wardrobe,person.loadout);
+  for(const slot of WARDROBE_SLOTS){
+   const row=node('label','campaign-kit-row');
+   row.append(node('span','',slot.replace(/([A-Z])/g,' $1').toUpperCase()));
+   const select=node('select','campaign-select');
+   select.setAttribute('aria-label','Wardrobe '+slot+' for '+person.callsign);
+   for(const item of wardrobeItemsForSlot(slot)){
+    const option=node('option','',item.name);option.value=item.id;
+    const candidate=setWardrobeStyle(wardrobe,slot,item.id);
+    option.disabled=resolvedWardrobe(candidate,person.loadout)[slot]!==item.id;
+    select.append(option);
+   }
+   select.value=looks[slot];select.disabled=locked;
+   select.addEventListener('change',()=>this.handlers.setWardrobe(
+    id,setWardrobeStyle(wardrobe,slot as WardrobeSlot,select.value)));
+   row.append(select);wardrobePanel.append(row);
+  }
+  for(const channel of ['top','trousers','armor','gear','pack','head'] as const){
+   const row=node('label','campaign-kit-row');
+   row.append(node('span','',channel.toUpperCase()+' CAMOUFLAGE'));
+   const select=node('select','campaign-select');
+   for(const pattern of WARDROBE_PATTERNS){
+    const option=node('option','',pattern.replace(/-/g,' ').toUpperCase());
+    option.value=pattern;select.append(option);
+   }
+   select.value=wardrobe.patterns[channel]??'solid';
+   select.disabled=locked;
+   select.addEventListener('change',()=>this.handlers.setWardrobe(id,
+    setWardrobePattern(wardrobe,channel,
+     select.value as typeof WARDROBE_PATTERNS[number])));
+   row.append(select);wardrobePanel.append(row);
+  }
+  const sleeveRow=node('label','campaign-kit-row');
+  sleeveRow.append(node('span','','ROLLED SLEEVES'));
+  const sleeveToggle=node('input');sleeveToggle.type='checkbox';
+  sleeveToggle.checked=wardrobe.rolledSleeves;sleeveToggle.disabled=locked;
+  sleeveToggle.addEventListener('change',()=>this.handlers.setWardrobe(id,
+   {...wardrobe,rolledSleeves:sleeveToggle.checked}));
+  sleeveRow.append(sleeveToggle);wardrobePanel.append(sleeveRow);
+  editor.append(wardrobePanel);
   const mountSelectors=new Map<WeaponAttachmentSlot,HTMLSelectElement>();
   editor.append(node('h2','','WEAPON ATTACHMENTS'));
   editor.append(node('p','campaign-note',
@@ -515,7 +568,7 @@ export class CampaignScreen{
    this.workbench.setActiveSlot(this.selectedMount);
   }else this.preview=new CampaignKitPreview(preview,person.id,person.weapon,
    person.appearanceSeed,person.loadout,person.weaponConfiguration,
-    person.magazines);
+    person.magazines,person.wardrobe);
  }
  private importPicker(){
   const input=node('input','campaign-import');

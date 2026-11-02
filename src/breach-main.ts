@@ -70,6 +70,7 @@ import {newCampaign,readCampaign,acceptContract,resolveOperation,
  equipCampaignWeaponAttachment,purchaseAndEquipWeaponAttachment,
  saveCampaignKitPreset,applyCampaignKitPreset,
  deleteCampaignKitPreset,renameCampaignOperator,cycleCampaignAppearance,
+ setCampaignWardrobe,
  repairCampaignArmor,serviceCampaignWeapon,purchaseFlash,
  type CampaignState,type CampaignReport} from './campaign-state.ts';
 import {loadMovementScale,equippedFlashCharges} from './equipment-loadouts.ts';
@@ -2507,6 +2508,9 @@ const campaignScreen=new CampaignScreen({
  renameOperator:(id,callsign)=>{if(campaign){campaign=renameCampaignOperator(campaign,id,callsign);
   saveCampaign();showCampaignHome();}},
  cycleAppearance:(id)=>{if(campaign){campaign=cycleCampaignAppearance(campaign,id);
+  saveCampaign();showCampaignHome();}},
+ setWardrobe:(id,look)=>{if(campaign){
+  campaign=setCampaignWardrobe(campaign,id,look);
   saveCampaign();showCampaignHome();}},
  exportSave:()=>{
   if(!campaign)return;
