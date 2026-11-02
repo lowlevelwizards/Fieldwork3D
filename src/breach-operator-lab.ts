@@ -24,6 +24,8 @@ import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import {itemsForSlot} from './equipment-catalog.ts';
 import {bareLabEquipment,unequipLabAppearance} from './operator-lab-baseline.ts';
 import {LEGACY_FRAME_YAW} from './operator-axis-convention.ts';
+import {safeLabWindow,safeLabZoom,safeLabProjectionShift,
+ type LabCameraFraming} from './operator-lab-camera-framing.ts';
 import {operatorAttachmentPoint,type OperatorAttachmentZone}
  from './operator-attachment-zones.ts';
 import {selectWardrobeItem} from './operator-wardrobe-unified.ts';
@@ -636,6 +638,33 @@ gaitReference.addEventListener('change',()=>{
 });
 let clock=0,last=performance.now(),rate=1,playing=true,loop=true;
 let cameraFollow={x:0,z:0};
+let safeView=safeLabWindow(window.innerWidth,window.innerHeight,90,
+ window.innerHeight*.55);
+const cameraHalfHeight=36;
+let projectionZoom=Number.NaN;
+function refreshVisibleWindow(){
+ const headerBottom=document.querySelector('header')?.getBoundingClientRect().bottom??90;
+ const editorTop=document.querySelector('main')?.getBoundingClientRect().top??
+  window.innerHeight*.55;
+ const overlayBottom=document.getElementById('modelAxisLegend')?.
+  getBoundingClientRect().bottom??0;
+ safeView=safeLabWindow(window.innerWidth,window.innerHeight,
+  headerBottom,editorTop,overlayBottom);
+ projectionZoom=Number.NaN;
+ updateSafeProjection();
+}
+function updateSafeProjection(){
+ if(projectionZoom===camera.zoom)return;
+ const shift=safeLabProjectionShift(safeView,camera.zoom,cameraHalfHeight);
+ camera.top=cameraHalfHeight+shift;camera.bottom=-cameraHalfHeight+shift;
+ camera.updateProjectionMatrix();projectionZoom=camera.zoom;
+}
+function cameraFitZoom(mode:LabCameraFraming){
+ refreshVisibleWindow();
+ camera.zoom=safeLabZoom(mode,safeView,cameraHalfHeight);
+ updateSafeProjection();
+}
+
 const debug=new THREE.Group();scene.add(debug);
 const markerColors=[0xf1b77d,0x7cbbae,0xf2d88b,0xa0a8df];
 const markers=Array.from({length:8},(_,i)=>{
@@ -687,12 +716,12 @@ function fit(next='iso'){
   camera.position.set(center.x+relative.x,next==='top'?115:
     ['front','back','side'].includes(next)?16:48,
     center.z+relative.z);
-  camera.zoom=comparing?
-    Math.min(.34,Math.max(.21,.58*window.innerWidth/window.innerHeight)):
-    variantComparing?(compact?.72:.92):
-    gaitComparing?(compact?.60:.77):kitComparing?(compact?.65:.9):
-    next==='game'?.65:1.4;camera.updateProjectionMatrix();
-  control.target.set(center.x,16,center.z);control.update();
+  if(comparing||kitComparing||variantComparing||gaitComparing){
+    camera.zoom=comparing?.28:variantComparing?.60:
+      kitComparing?.48:.52;
+    refreshVisibleWindow();updateSafeProjection();
+  }else cameraFitZoom('full');
+  control.target.set(center.x,25,center.z);control.update();
   cameraFollow={x:center.x,z:center.z};
 }
 function chooseTrack(next:LabTrack){
@@ -750,9 +779,11 @@ function frameWardrobeSelection(){
    new THREE.Vector3(0,1,0),(rig?.legacyYaw??0)-LEGACY_FRAME_YAW);
  camera.position.copy(target).add(threeQuarter);
  control.target.copy(target);
- camera.zoom=focus==='all'?1.4:
-  focus==='head'?3.0:focus==='hands'||focus==='knees'||focus==='feet'?2.45:1.95;
- camera.updateProjectionMatrix();control.update();
+ const mode:LabCameraFraming=focus==='head'?'head':
+  focus==='armor'||focus==='carry'||focus==='pack'||focus==='clothes'?
+    'upper':focus==='hands'?'hands':focus==='knees'?'knees':
+    focus==='feet'?'feet':'full';
+ cameraFitZoom(mode);control.update();
  cameraFollow={x,z};
 }
 // A quick matched setup for the first artistic review. This only changes
@@ -876,12 +907,22 @@ timeline.addEventListener('input',()=>{
 function resize(){
   const w=window.innerWidth,h=window.innerHeight;
   renderer.setSize(w,h,false);
-  const half=36,aspect=w/h;
-  camera.left=-half*aspect;camera.right=half*aspect;
-  camera.top=half;camera.bottom=-half;camera.updateProjectionMatrix();
-  if(comparing)fit();
+  const aspect=w/h;
+  camera.left=-cameraHalfHeight*aspect;
+  camera.right=cameraHalfHeight*aspect;
+  refreshVisibleWindow();
 }
 window.addEventListener('resize',resize);
+if(typeof ResizeObserver!=='undefined'){
+ const uiObserver=new ResizeObserver(()=>refreshVisibleWindow());
+ for(const selector of ['main','header','#modelAxisLegend']){
+  const element=document.querySelector(selector);
+  if(element)uiObserver.observe(element);
+ }
+}
+// Orbit/zoom by touch stays user-controlled: a pinch only updates projection
+// centering; it never invokes fit() or rewrites the camera's orbit position.
+control.addEventListener('change',updateSafeProjection);
 const world=new THREE.Vector3(),world2=new THREE.Vector3();
 function showDiagnostics(){
   if(!rig)return;
@@ -1253,6 +1294,7 @@ function draw(){
   canvas.dataset.crossed=String(!uncrossed(feet[0].position,
     feet[1].position,-state.pelvisYaw,3.5));
   control.update();
+  updateSafeProjection();
   if(comparing){
     comparisonRigs.forEach((body,i)=>{
       body.root.updateMatrixWorld(true);
@@ -1297,7 +1339,7 @@ function tick(now:number){
   }catch(error){showLabFailure(error);}
 }
 try{
-  build();fit();resize();chooseTrack('idle');
+  build();resize();fit();chooseTrack('idle');
   // Render immediately rather than depending on a delayed first
   // requestAnimationFrame callback on a newly navigated mobile tab.
   draw();requestAnimationFrame(tick);
