@@ -1211,15 +1211,28 @@ export class TacticalScene3D{
       const group=new THREE.Group();group.position.set(p.x,0,p.y);
       group.rotation.y=-Math.atan2(door.b.y-door.a.y,door.b.x-door.a.x);
       const frame=new THREE.Group();group.add(frame);
-      this.box(frame,-width/2,18.5,0,4,37,10,doorTrim);
-      this.box(frame,width/2,18.5,0,4,37,10,doorTrim);
-      this.box(frame,0,37,0,width+7,4,12,doorTrim);
-      const threshold=this.box(frame,0,.32,0,width,1.2,13,thresholdMat,false);
+      const profile=doorProportions(door);
+      const jambX=width/2+profile.jambWidth/2-.25;
+      for(const side of [-1,1]){
+        this.box(frame,side*jambX,18.5,0,
+          profile.jambWidth,37,profile.jambDepth,doorTrim);
+        this.box(frame,side*jambX,18.5,
+          profile.jambDepth/2+.35,profile.casingWidth,34,
+          profile.casingDepth,doorTrim,false);
+      }
+      this.box(frame,0,37.4,0,width+2*profile.jambWidth,
+        profile.headerHeight,profile.headerDepth,doorTrim);
+      this.box(frame,0,39.2,.45,width+2*profile.jambWidth+1,
+        1.1,profile.headerDepth+.8,doorTrim,false);
+      const threshold=this.box(frame,0,.275,0,width,
+        profile.thresholdHeight,profile.thresholdDepth,thresholdMat,false);
       const hinge=new THREE.Group();hinge.position.x=door.hinge==='b'?width/2:-width/2;
       group.add(hinge);
-      this.box(hinge,(door.hinge==='b'?-1:1)*width/2,17,0,width-3,34,4,doorMat);
-      this.box(hinge,(door.hinge==='b'?-1:1)*width*.7,18,2.6,3,4,2,doorTrim,false);
-       this.box(hinge,(door.hinge==='b'?-1:1)*width*.7,18,-2.6,3,4,2,doorTrim,false);
+      this.box(hinge,(door.hinge==='b'?-1:1)*width/2,17,0,
+        width-2*DOOR_PANEL_END_RECESS,34,profile.leafThickness,doorMat);
+      for(const side of [-1,1])
+        this.box(hinge,(door.hinge==='b'?-1:1)*width*.7,18,
+          side*(profile.leafThickness/2+1),3,4,2,doorTrim,false);
       const halo=doorSweepArc(door,width);
       group.add(halo);
       this.root.add(group);
