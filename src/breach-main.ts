@@ -76,6 +76,8 @@ import {newCampaign,readCampaign,acceptContract,resolveOperation,
 import {loadMovementScale,equippedFlashCharges} from './equipment-loadouts.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {allocateFlashSupply} from './equipment-supply.ts';
+import {WARDROBE_ACCESSORY_SLOTS,WARDROBE_ACCESSORY_OPTIONS}
+ from './operator-wardrobe-accessories.ts';
 import {readWardrobe,resolvedWardrobe,setWardrobeStyle,setWardrobePattern,
  wardrobeItemsForSlot,WARDROBE_SLOTS,WARDROBE_PATTERNS}
  from './operator-wardrobe-data.ts';
@@ -573,6 +575,30 @@ function renderOperationsBoard(){
    row.append(label,picker);patterns.append(row);
   }
   wardrobeEditor.append(patterns);
+  const cosmeticExtras=document.createElement('details');
+  const extraTitle=document.createElement('summary');
+  extraTitle.textContent='EMPTY / COSMETIC ATTACHMENTS';
+  cosmeticExtras.append(extraTitle);
+  for(const slot of WARDROBE_ACCESSORY_SLOTS){
+   const row=document.createElement('label');
+   row.style.cssText='display:flex;justify-content:space-between;gap:8px;margin:7px 0';
+   const label=document.createElement('span');
+   label.textContent=slot.replace(/([A-Z])/g,' $1').toUpperCase();
+   const picker=document.createElement('select');
+   picker.style.cssText='max-width:65%;min-height:40px;background:#243530;color:#e5e9d8';
+   for(const name of WARDROBE_ACCESSORY_OPTIONS[slot]){
+    const option=document.createElement('option');
+    option.value=name;option.textContent=name.replaceAll('-',' ');
+    picker.append(option);
+   }
+   picker.value=currentWardrobe.accessories[slot];
+   picker.addEventListener('change',()=>writeCosmetics({
+    ...currentWardrobe,
+    accessories:{...currentWardrobe.accessories,[slot]:picker.value}
+   }));
+   row.append(label,picker);cosmeticExtras.append(row);
+  }
+  wardrobeEditor.append(cosmeticExtras);
   kit.append(wardrobeEditor);
   const weaponEditor=document.createElement('details');
   weaponEditor.open=expandedQuickWeapon===member.id;

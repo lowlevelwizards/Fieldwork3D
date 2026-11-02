@@ -7,6 +7,8 @@ import {LOADOUT_SLOTS,itemsForSlot,itemDefinition} from './equipment-catalog.ts'
 import {totalEquipmentMass,loadMobilityDescription,loadMovementScale,
  type LoadoutSlot} from './equipment-loadouts.ts';
 import {CampaignKitPreview} from './equipment-preview.ts';
+import {WARDROBE_ACCESSORY_SLOTS,WARDROBE_ACCESSORY_OPTIONS}
+ from './operator-wardrobe-accessories.ts';
 import {readWardrobe,resolvedWardrobe,
  setWardrobeStyle,setWardrobePattern,WARDROBE_SLOTS,WARDROBE_PATTERNS,
  wardrobeItemsForSlot,type WardrobeOptions,type WardrobeSlot}
@@ -478,6 +480,26 @@ export class CampaignScreen{
      select.value as typeof WARDROBE_PATTERNS[number])));
    row.append(select);wardrobePanel.append(row);
   }
+  const cosmeticExtras=node('details','campaign-wardrobe-extras');
+  cosmeticExtras.append(node('summary','','COSMETIC EMPTY POUCHES / ACCESSORIES'));
+  cosmeticExtras.append(node('p','campaign-note',
+   'Appearance-only empty holders and fabric details. No additional mission equipment.'));
+  for(const slot of WARDROBE_ACCESSORY_SLOTS){
+   const row=node('label','campaign-kit-row');
+   row.append(node('span','',slot.replace(/([A-Z])/g,' $1').toUpperCase()));
+   const select=node('select','campaign-select');
+   select.setAttribute('aria-label','Wardrobe accessory '+slot);
+   for(const name of WARDROBE_ACCESSORY_OPTIONS[slot]){
+    const option=node('option','',name.replace(/-/g,' ').toUpperCase());
+    option.value=name;select.append(option);
+   }
+   select.value=wardrobe.accessories[slot];select.disabled=locked;
+   select.addEventListener('change',()=>this.handlers.setWardrobe(id,{
+    ...wardrobe,accessories:{...wardrobe.accessories,[slot]:select.value}
+   }));
+   row.append(select);cosmeticExtras.append(row);
+  }
+  wardrobePanel.append(cosmeticExtras);
   const sleeveRow=node('label','campaign-kit-row');
   sleeveRow.append(node('span','','ROLLED SLEEVES'));
   const sleeveToggle=node('input');sleeveToggle.type='checkbox';
