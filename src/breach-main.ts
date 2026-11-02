@@ -1662,8 +1662,15 @@ function updateHud(){
   ui.siteSize.textContent='NEXT SITE SIZE · '+requestedSiteScale.toUpperCase();
   ui.siteSize.disabled=campaignMode==='mission'||replaying;
   ui.flash.textContent='FLASH ×'+state.flashRemaining;
-  ui.cancelTarget.hidden=!(state.phase==='planning'&&
-    (looking||flashMode||!!firePlacement));
+  const activeTargetMode=state.phase!=='planning'||replaying?'':looking?
+    lookMode.toUpperCase():flashMode?'FLASH':firePlacement?
+    firePlacement.toUpperCase():'';
+  ui.cancelTarget.hidden=!activeTargetMode;
+  if(activeTargetMode){
+    ui.cancelTarget.textContent='✕ CANCEL '+activeTargetMode;
+    ui.cancelTarget.setAttribute('aria-label','Cancel '+activeTargetMode+' targeting');
+  }
+  ui.hint.dataset.targetMode=activeTargetMode;
   ui.loadout.textContent='WEAPON · '+(active?.weapon.toUpperCase()??'—');
   ui.loadout.disabled=campaignMode==='mission'||state.phase!=='planning'||replaying;
   if(ui.loadout.disabled&&!weaponChooser.hidden)hideWeaponChooser();
