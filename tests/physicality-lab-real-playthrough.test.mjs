@@ -33,10 +33,10 @@ function runScene(name,ticks=720){
    angle:el('angle').textContent};
 }
 test('Physicality Lab default scenes actually move through the obstacle',()=>{
- for(const scenario of ['stack','headon','vestibule','furniture']){
-  const result=runScene(scenario);
-  // Every case has at least one moving actor required to reach an endpoint
-  // on the opposite side of the obstruction.
+ const outcomes=['stack','headon','vestibule','furniture'].map(runScene);
+ for(const result of outcomes){
+  console.log('PHYSICALITY CASE '+JSON.stringify({scenario:result.name,
+    rows:result.rows,blocked:result.blocked,door:result.angle}));
   assert.ok(result.rows.some(r=>r.remaining<15),
     JSON.stringify(result,null,2));
  }
