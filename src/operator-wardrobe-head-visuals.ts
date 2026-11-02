@@ -22,7 +22,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  canonicalHead:THREE.Group,cloth:THREE.Material,
  vest:THREE.Material,dark:THREE.Material,skin:THREE.Material):WardrobeHeadLayers{
  const headwear:Model={},facewear:Model={},eyewear:Model={},headset:Model={};
- // All three Stage 1A candidates use the same untextured neutral material.
+ // All silhouette candidates use the same untextured neutral material.
  // This isolates geometric silhouette from broken camouflage and makes the
  // first visual approval possible without the Stage 2 fabric rewrite.
  const silhouetteMaterial=new THREE.MeshStandardMaterial({
@@ -44,15 +44,11 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  // Stage 1 silhouette prototypes live in -Z forward head space.
  g(headwear,'patrol-cap',true).add(createHeadwearSilhouette('patrol-cap',silhouetteMaterial));
  brimCap('field-cap',false,true);
- const beanie=g(headwear,'beanie');
- cube(beanie,cloth,-.1,6.9,0,8.8,1.5,9.1);
- cube(beanie,vest,-.1,5.83,0,8.95,.65,9.25);
- const boonie=g(headwear,'boonie');
- cube(boonie,cloth,-.4,7.0,0,8.5,1.6,8.65);
- cube(boonie,cloth,-.5,5.9,0,12.0,.38,12.8);
- const steel=g(headwear,'soviet-steel');
- cube(steel,vest,-.3,6.7,0,10.5,2.25,10.5);
- cube(steel,vest,-1.0,5.35,0,11.5,.7,10.7);
+ // Stage 1G–1J: these already exist in the wardrobe catalog. Replace
+ // their older multi-cube placeholders with the same canonical, unified
+ // silhouette system as the approved ACH and high-cut.
+ for(const id of ['boonie','beanie','pasgt','soviet-steel'] as const)
+  g(headwear,id,true).add(createHeadwearSilhouette(id,silhouetteMaterial));
  const helmet=(id:string,size:number,cut:number,rail:boolean)=>{
   const model=g(headwear,id);
   cube(model,vest,-.5,6.85,0,size,2.45,size);
@@ -64,7 +60,6 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   }
   if(rail)cube(model,dark,2.0,8.52,0,1.4,.4,2.0);
  };
- helmet('pasgt',10.4,0,false);
  g(headwear,'ach',true).add(createHeadwearSilhouette('ach',silhouetteMaterial));
  g(headwear,'high-cut',true).add(createHeadwearSilhouette('high-cut',silhouetteMaterial));
  // Existing saved rail layouts keep the correct base shell, with actual

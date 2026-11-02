@@ -1,4 +1,4 @@
-/** Stage 1E: intentional, bold cuboid headwear.
+/** Stages 1E–1J: confident, anatomically grounded cuboid headwear.
  *
  * All models are authored with +Y up, -Z toward the face, +X to the
  * operator's right. They attach to the canonical head node, preserving
@@ -12,54 +12,82 @@
 import * as THREE from 'three';
 import {unionCuboids,type HeadwearCuboid} from './operator-cuboid-union.ts';
 import {CUBE_HEAD_ANATOMY} from './operator-head-anatomy.ts';
-export type HeadSilhouetteId='patrol-cap'|'ach'|'high-cut';
+export type HeadSilhouetteId='patrol-cap'|'boonie'|'beanie'|'pasgt'|'soviet-steel'|'ach'|'high-cut';
 export type HeadSilhouetteMetrics={
  id:HeadSilhouetteId;frontExtent:number;rearExtent:number;top:number;
  earEdge:number;foreheadEdge:number;billLength:number;
 };
 export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhouetteMetrics>>={
- 'patrol-cap':{id:'patrol-cap',frontExtent:-7.82,rearExtent:4.80,
-  top:8.89,earEdge:6.52,foreheadEdge:6.52,billLength:3.35},
+ 'patrol-cap':{id:'patrol-cap',frontExtent:-7.79,rearExtent:4.525,
+  top:8.89,earEdge:6.37,foreheadEdge:6.37,billLength:3.70},
+ 'boonie':{id:'boonie',frontExtent:-6.95,rearExtent:6.60,
+  top:8.85,earEdge:5.975,foreheadEdge:5.69,billLength:0},
+ 'beanie':{id:'beanie',frontExtent:-4.75,rearExtent:4.75,
+  top:8.75,earEdge:5.58,foreheadEdge:5.58,billLength:0},
+ 'pasgt':{id:'pasgt',frontExtent:-5.80,rearExtent:5.83,
+  top:9.25,earEdge:2.15,foreheadEdge:4.42,billLength:0},
+ 'soviet-steel':{id:'soviet-steel',frontExtent:-6.275,rearExtent:6.275,
+  top:9.195,earEdge:4.635,foreheadEdge:4.635,billLength:0},
  'ach':{id:'ach',frontExtent:-5.62,rearExtent:5.60,
   top:8.84,earEdge:2.23,foreheadEdge:4.40,billLength:0},
  'high-cut':{id:'high-cut',frontExtent:-5.485,rearExtent:5.35,
   top:8.70,earEdge:5.95,foreheadEdge:4.50,billLength:0}
 };
-type Cuboid={
- name:string;x:number;y:number;z:number;
- width:number;height:number;depth:number;
-};
-/** Explicit BoxGeometry construction: every surface is orthogonal. */
-function addCuboid(parent:THREE.Group,material:THREE.Material,p:Cuboid){
- const box=new THREE.Mesh(new THREE.BoxGeometry(
-  p.width,p.height,p.depth),material);
- box.name=p.name;
- box.position.set(p.x,p.y,p.z);
- box.castShadow=true;box.receiveShadow=true;
- box.userData.primitive='cuboid';
- parent.add(box);
-}
-/** Low, fairly flat cloth shape. A separated projecting bill is joined
- * by overlap behind the front band; there is NO round/warped visor.
- * The bands sit slightly outside the 8x8 skull to avoid coplanar faces.
+/** Stage 1F: one flat crown, one substantial wrap and a short, solid bill.
+ * The band is not decorative trim. Its lower edge is the cap's fit line.
  */
-/** A few broad intersecting cuboids read as ONE cloth cap. Crown and
- * wrap overlap by ~.35 units, and bill seats within brow (not below it).
- * No separate little corner tabs or coplanar band and crown faces.
+const PATROL_CAP_CUBOIDS:readonly HeadwearCuboid[]=[
+ {name:'patrol-solid-crown',x:0,y:7.98,z:0,width:8.65,height:1.82,depth:8.65},
+ {name:'patrol-structural-wrap',x:0,y:6.93,z:0,width:9.10,height:1.12,depth:9.05},
+ {name:'patrol-bill',x:0,y:6.49,z:-5.94,width:7.20,height:.72,depth:3.70}
+];
+
+/** Stage 1G: wide, confident fabric brim. One broad front drop suggests
+ * weight and soft fabric without a staircase of little corner tabs.
  */
-function patrolCap(g:THREE.Group,m:THREE.Material){
- addCuboid(g,m,{name:'soft-flat-crown',x:0,y:8.00,z:.05,
-  width:8.70,height:1.78,depth:8.82});
- addCuboid(g,m,{name:'forehead-band',x:0,y:7.00,z:-4.45,
-  width:8.60,height:.96,depth:.70});
- for(const side of [-1,1])
-  addCuboid(g,m,{name:side<0?'left-soft-side':'right-soft-side',
-   x:side*4.10,y:7.00,z:0,width:.63,height:.96,depth:8.80});
- addCuboid(g,m,{name:'rear-band',x:0,y:7.00,z:4.45,
-  width:8.60,height:.96,depth:.70});
- addCuboid(g,m,{name:'flat-short-bill',x:0,y:6.44,z:-6.14,
-  width:7.20,height:.40,depth:3.35});
-}
+const BOONIE_CUBOIDS:readonly HeadwearCuboid[]=[
+ {name:'boonie-low-crown',x:0,y:7.90,z:0,width:8.90,height:1.90,depth:8.95},
+ {name:'boonie-structural-wrap',x:0,y:6.95,z:0,width:9.25,height:1.15,depth:9.30},
+ {name:'boonie-wide-brim',x:0,y:6.40,z:0,width:13.25,height:.85,depth:13.20},
+ {name:'boonie-front-fabric-drop',x:0,y:6.20,z:-5.95,
+  width:11.60,height:1.02,depth:2.00}
+];
+
+/** Stage 1H: no decorative ribbing or pixel-scale approximated curvature.
+ * The low broad cuff is the only secondary mass.
+ */
+const BEANIE_CUBOIDS:readonly HeadwearCuboid[]=[
+ {name:'beanie-fitted-crown',x:0,y:7.75,z:0,width:8.65,height:2.00,depth:8.75},
+ {name:'beanie-folded-cuff',x:0,y:6.28,z:0,width:9.40,height:1.40,depth:9.50}
+];
+
+/** Stage 1I: larger and deeper than the ACH, never a scaled ACH clone.
+ * Brow, temple, ear and nape heights each correspond to protective coverage.
+ */
+const PASGT_CUBOIDS:readonly HeadwearCuboid[]=[
+ {name:'pasgt-full-crown',x:0,y:7.48,z:0,width:10.65,height:3.54,depth:10.75},
+ {name:'pasgt-deep-brow',x:0,y:5.42,z:-5.10,width:10.65,height:2.00,depth:1.40},
+ {name:'pasgt-low-nape',x:0,y:4.40,z:5.07,width:10.65,height:4.50,depth:1.52},
+ ...([-1,1] as const).flatMap(sign=>[
+  {name:sign===-1?'pasgt-left-temple':'pasgt-right-temple',
+   x:sign*4.85,y:5.28,z:-3.25,width:1.30,height:2.70,depth:3.30},
+  {name:sign===-1?'pasgt-left-ear':'pasgt-right-ear',
+   x:sign*4.85,y:4.40,z:1.55,width:1.30,height:4.50,depth:7.00}
+ ])
+];
+
+/** Stage 1J: deliberately broad, historical steel-pot mass. The upper
+ * crown step represents the dome; the one thick projecting rim represents
+ * the steel shell's brim, not an added ornament.
+ */
+const STEEL_CUBOIDS:readonly HeadwearCuboid[]=[
+ {name:'steel-pot-body',x:0,y:6.95,z:0,width:10.80,height:2.95,depth:10.90},
+ {name:'steel-pot-upper-crown',x:0,y:8.22,z:0,
+  width:9.10,height:1.95,depth:9.20},
+ {name:'steel-pot-strong-rim',x:0,y:5.26,z:0,
+  width:12.35,height:1.25,depth:12.55}
+];
+
 /** Stage 1E — confident, subtractive helmet silhouettes.
  * Every external step denotes a coverage decision, not a decorative rim:
  * ACH has one deep ear/nape wrap; high-cut has one open ear interval.
@@ -126,19 +154,27 @@ export const HEADWEAR_FIT_TARGETS=Object.freeze({
 /** Authored source of silhouette proportions; never derive helmet type
  * by scaling another helmet or by swapping detail strips.
  */
-export function headwearCuboidVolumes(
- id:'ach'|'high-cut'
-):readonly HeadwearCuboid[]{
- return id==='ach'?ACH_CUBOIDS:HIGH_CUT_CUBOIDS;
+const HEADGEAR_VOLUMES:Readonly<Record<HeadSilhouetteId,readonly HeadwearCuboid[]>>={
+ 'patrol-cap':PATROL_CAP_CUBOIDS,
+ 'boonie':BOONIE_CUBOIDS,
+ 'beanie':BEANIE_CUBOIDS,
+ 'pasgt':PASGT_CUBOIDS,
+ 'soviet-steel':STEEL_CUBOIDS,
+ 'ach':ACH_CUBOIDS,
+ 'high-cut':HIGH_CUT_CUBOIDS
+};
+/** All seven authored shapes use one exterior union mesh and the same -Z
+ * head-local attachment, in battle as well as Operator Lab.
+ */
+export function headwearCuboidVolumes(id:HeadSilhouetteId):readonly HeadwearCuboid[]{
+ return HEADGEAR_VOLUMES[id];
 }
-function helmetFromVolumes(g:THREE.Group,m:THREE.Material,
- id:'ach'|'high-cut'){
+function headwearFromVolumes(g:THREE.Group,m:THREE.Material,id:HeadSilhouetteId){
  const volume=headwearCuboidVolumes(id);
  const mesh=new THREE.Mesh(unionCuboids(volume),m);
  mesh.name=id+'-continuous-cuboid-exterior';
  mesh.castShadow=true;
- // A single exterior can cast onto the head, but shouldn't create
- // shadow-map striping from itself during neutral close-up inspection.
+ // Keep its self-shadow noise out of the clean close-up silhouette review.
  mesh.receiveShadow=false;
  g.add(mesh);
  g.userData.sourceCuboids=volume.map(v=>({...v}));
@@ -148,10 +184,12 @@ export function createHeadwearSilhouette(
 ):THREE.Group{
  const group=new THREE.Group();
  group.name='cuboid-'+id+'-minus-Z-forward';
- if(id==='patrol-cap')patrolCap(group,material);
- else if(id==='ach')helmetFromVolumes(group,material,'ach');
- else helmetFromVolumes(group,material,'high-cut');
- group.userData.stage='1E';
+ headwearFromVolumes(group,material,id);
+ group.userData.stage=({
+  'patrol-cap':'1F','boonie':'1G','beanie':'1H',
+  'pasgt':'1I','soviet-steel':'1J',
+  'ach':'1E','high-cut':'1E'
+ } as const)[id];
  group.userData.modelAxes='-Z-forward,+X-right,+Y-up';
  group.userData.silhouette=id;
  group.userData.primitive='cuboids-only';

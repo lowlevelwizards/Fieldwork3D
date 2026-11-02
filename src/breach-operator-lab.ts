@@ -792,7 +792,8 @@ const headReviewStatus=choose<HTMLOutputElement>('headwearReviewStatus');
 const reviewButtons=Array.from(document.querySelectorAll<HTMLButtonElement>(
  '[data-head-silhouette]'));
 function selectReviewSilhouette(id:string){
- const available=['bare','patrol-cap','ach','high-cut'];
+ const available=['bare','patrol-cap','boonie','beanie',
+  'pasgt','soviet-steel','ach','high-cut'];
  if(!available.includes(id))return;
  const selected=selectWardrobeItem(bareLabEquipment(),
   initialWardrobe(),'headwear',id);
