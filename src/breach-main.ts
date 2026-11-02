@@ -87,6 +87,7 @@ import {careerEventsForOperation} from './campaign-history.ts';
 import {awarenessDebugLine} from './breach-awareness-debug.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
 import './breach-style.css';
+import {fieldworkSelectField} from './ui/fieldwork-controls.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {contextActionChoices} from './ui/context-actions.ts';
 import {PaletteMotion} from './ui/palette-motion.ts';
@@ -457,24 +458,21 @@ function renderOperationsBoard(){
    renderOperationsBoard();updateHud();
   });
   actions.append(supply);
-  const equip=document.createElement('button');
-  equip.type='button';equip.textContent='NEXT WEAPON';
-  equip.setAttribute('aria-label','Change weapon for '+member.callsign);
-  equip.addEventListener('click',()=>{
-   if(state.phase!=='planning'||replaying)return;
-   const ids=['carbine','smg','rifle','shotgun'] as const;
-   const next=ids[(ids.indexOf(member.weapon)+1)%ids.length];
-   persistentRoster=equipRoster(persistentRoster,member.id,next);
-   saveRoster();applyRosterIdentity(state,persistentRoster);
-   renderOperationsBoard();updateHud();
-  });
+  const equip=fieldworkSelectField('WEAPON · '+member.callsign,
+   [{value:'carbine',label:'Carbine'},{value:'smg',label:'SMG'},
+    {value:'rifle',label:'Rifle'},{value:'shotgun',label:'Shotgun'}],
+   member.weapon,next=>{
+    if(state.phase!=='planning'||replaying)return;
+    persistentRoster=equipRoster(persistentRoster,member.id,next as typeof member.weapon);
+    saveRoster();applyRosterIdentity(state,persistentRoster);
+    expandedQuickKit=member.id;renderOperationsBoard();updateHud();
+   });
   const look=document.createElement('button');
-  look.type='button';look.textContent='NEXT LOOK';
+  look.type='button';look.textContent='EDIT APPEARANCE';
+  look.setAttribute('aria-label','Open wardrobe for '+member.callsign);
   look.addEventListener('click',()=>{
-   if(state.phase!=='planning'||replaying)return;
-   persistentRoster=cycleRosterAppearance(persistentRoster,member.id);
-   saveRoster();applyRosterIdentity(state,persistentRoster);
-   expandedQuickKit=member.id;renderOperationsBoard();updateHud();
+   kit.open=true;wardrobeEditor.open=true;
+   wardrobeEditor.scrollIntoView({block:'nearest',behavior:'smooth'});
   });
   actions.append(equip,look);
   const rename=document.createElement('button');
@@ -575,6 +573,17 @@ function renderOperationsBoard(){
    row.append(label,picker);patterns.append(row);
   }
   wardrobeEditor.append(patterns);
+  const randomize=document.createElement('button');
+  randomize.type='button';randomize.textContent='RANDOMIZE FACE / LOOK';
+  randomize.setAttribute('aria-label','Choose another appearance for '+member.callsign);
+  randomize.addEventListener('click',()=>{
+   if(state.phase!=='planning'||replaying)return;
+   persistentRoster=cycleRosterAppearance(persistentRoster,member.id);
+   saveRoster();applyRosterIdentity(state,persistentRoster);
+   expandedQuickKit=member.id;renderOperationsBoard();updateHud();
+  });
+  wardrobeEditor.append(randomize);
+
   const cosmeticExtras=document.createElement('details');
   const extraTitle=document.createElement('summary');
   extraTitle.textContent='EMPTY / COSMETIC ATTACHMENTS';
