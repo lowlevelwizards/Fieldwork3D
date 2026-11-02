@@ -25,6 +25,8 @@ import {itemsForSlot} from './equipment-catalog.ts';
 import {MAX_WARDROBE_LOOKS,makeWardrobeLook,readWardrobeLooks,
  exportWardrobeLook,importWardrobeLook,type WardrobeLook}
  from './operator-wardrobe-storage.ts';
+import {WARDROBE_ACCESSORY_SLOTS,WARDROBE_ACCESSORY_OPTIONS}
+ from './operator-wardrobe-accessories.ts';
 import {WARDROBE_MOUNTS,wardrobeMount} from './operator-wardrobe-mounts.ts';
 import {WARDROBE_RECIPES,wardrobeRecipe,applyWardrobeRecipe}
  from './operator-wardrobe-recipes.ts';
@@ -103,6 +105,23 @@ document.getElementById('wardrobeApply')?.addEventListener('click',()=>{
   select.value=wardrobeOptions.patterns[channel]??'solid';
  }
 });
+const cosmeticMountSelects=Array.from(
+ document.querySelectorAll<HTMLSelectElement>('[data-wardrobe-accessory]'));
+for(const select of cosmeticMountSelects){
+ const slot=select.dataset.wardrobeAccessory as
+  typeof WARDROBE_ACCESSORY_SLOTS[number];
+ for(const id of WARDROBE_ACCESSORY_OPTIONS[slot]){
+  const option=document.createElement('option');option.value=id;
+  option.textContent=id.replaceAll('-',' ').toUpperCase();
+  select.append(option);
+ }
+ select.addEventListener('change',()=>{
+  wardrobeOptions={...wardrobeOptions,accessories:{
+   ...wardrobeOptions.accessories,[slot]:select.value
+  }};
+  syncWardrobe();
+ });
+}
 const mountSelectors=Array.from(document.querySelectorAll<HTMLSelectElement>(
  '[data-wardrobe-mount]'));
 for(const select of mountSelectors){
@@ -198,6 +217,11 @@ const wardrobeSelects=Array.from(document.querySelectorAll<HTMLSelectElement>(
  '[data-wardrobe-slot]'));
 function syncWardrobe(){
  const compatible=resolvedWardrobe(wardrobeOptions,labKit);
+ for(const select of cosmeticMountSelects){
+  const slot=select.dataset.wardrobeAccessory as
+    typeof WARDROBE_ACCESSORY_SLOTS[number];
+  select.value=wardrobeOptions.accessories[slot];
+ }
  const weaponId=(document.getElementById('weapon') as HTMLSelectElement).value as WeaponId;
  const realKit=syncPrimaryWeapon(labKit,weaponId);
  const carrying=previewCarry(realKit,weaponId);
