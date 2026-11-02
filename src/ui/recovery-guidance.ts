@@ -23,6 +23,12 @@ export function recoveryAdviceFor(message:string):RecoveryAdvice|null{
       next:'Choose another reachable floor point or check known doors along your route.',marker:'ROUTE'};
   if(/WATCH TARGET UNAVAILABLE|AIM POINT|INVALID SUPPRESSION/.test(s))
     return {title:'INVALID TARGET',next:'Choose a valid point inside the map and try again.',marker:'TARGET'};
+  if(/NO OPERABLE WINDOW|WINDOW.*CANNOT/.test(s))
+    return {title:'WINDOW UNAVAILABLE',
+      next:'Move closer to a known operable window, or select another entry.',marker:'WINDOW'};
+  if(/NO PUSHABLE/.test(s))
+    return {title:'NO OBJECT IN REACH',
+      next:'Move beside an object you can push before issuing this order.',marker:'PUSH'};
   if(/RELOAD/.test(s)&&/CANNOT|BLOCKED|NO RESERVE/.test(s))
     return {title:'RELOAD UNAVAILABLE',next:'Check ammunition and operator readiness.',marker:'RELOAD'};
   if(/BLOCKED|OBSTRUCT|CANNOT|INVALID|JAMMED|OUT OF RANGE|RESISTED/.test(s)){

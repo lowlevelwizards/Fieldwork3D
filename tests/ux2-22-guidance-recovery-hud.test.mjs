@@ -40,6 +40,8 @@ test('error advice is actionable and does not infer concealed geography',()=>{
  assert.match(recoveryAdviceFor('FLASH TARGET BLOCKED \/ OUT OF RANGE').next,/closer/);
  assert.match(recoveryAdviceFor('ROOK BLOCKED · FURNITURE').next,/route/);
  assert.match(recoveryAdviceFor('DOOR NOT REACHABLE FROM THAT POINT').next,/door action/);
+ assert.match(recoveryAdviceFor('NO KNOWN DOOR IN REACH').next,/door action/);
+ assert.match(recoveryAdviceFor('NO OPERABLE WINDOW IN REACH').next,/window/);
  assert.equal(recoveryAdviceFor('CONTACT HOSTILE'),null);
  assert.equal(recoveryAdviceFor('ROOK RELOADED'),null);
 });
@@ -49,6 +51,10 @@ test('recovery instructions travel with prioritized warnings',()=>{
  const warn=feed.update(['DESTINATION HAS INSUFFICIENT CLEARANCE'],'planning',100);
  assert.equal(warn?.severity,'warning');
  assert.match(warn?.recovery??'',/nearby clear floor/);
+ const door=feed.update(['DESTINATION HAS INSUFFICIENT CLEARANCE',
+   'DOOR NOT REACHABLE FROM THAT POINT'],'planning',110);
+ assert.equal(door?.severity,'warning');
+ assert.match(door?.recovery??'',/available door action/);
  assert.equal(feed.update(['DESTINATION HAS INSUFFICIENT CLEARANCE',
   'ROOK RELOADED'],'planning',200)?.severity,'warning');
 });

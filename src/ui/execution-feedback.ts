@@ -13,7 +13,7 @@ export function classifyExecutionNotice(message:string):Classified{
     return {label:'URGENT',severity:'danger',priority:5,duration:5200};
   if(/\b(CONTACT|SPOTTED|UNSEEN GUNFIRE)\b/.test(text))
     return {label:'CONTACT',severity:'contact',priority:4,duration:4100};
-  if(/\b(BLOCKED|OBSTRUCT|NO SAFE ROUTE|CANNOT|INVALID|JAMMED|OUT OF RANGE|NO WALKABLE|LOCKED|RESISTED|INSUFFICIENT CLEARANCE|INVALIDATE A LATER WAYPOINT)\b/.test(text))
+  if(/\b(BLOCKED|OBSTRUCT|NO SAFE ROUTE|CANNOT|INVALID|JAMMED|OUT OF RANGE|NO WALKABLE|LOCKED|RESISTED|INSUFFICIENT CLEARANCE|INVALIDATE A LATER WAYPOINT|NOT REACHABLE|NO KNOWN DOOR|NO PUSHABLE|NO OPERABLE|AIM POINT|TARGET UNAVAILABLE)\b/.test(text))
     return {label:'OBSTRUCTED',severity:'warning',priority:3,duration:3500};
   if(/\b(INJURED|WOUND|HIT|HURT|STABILIZED)\b/.test(text))
     return {label:'MEDICAL',severity:'danger',priority:4,duration:4500};
