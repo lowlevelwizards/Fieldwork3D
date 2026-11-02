@@ -37,6 +37,6 @@ test('VIS-05 ground-space mask cannot project over exterior terrain',()=>{
  assert.doesNotMatch(source,/overheadFog|roomFogRoofs|roomFogMaterial/);
  assert.match(source,/this\.smoothFog=new THREE\.Mesh/);
  assert.match(source,/this\.smoothFog\.rotation\.x=-Math\.PI\/2;/);
- assert.match(source,/this\.smoothFog\.visible=!omniscient;/);
+ assert.match(source,/this\.exteriorKnownFog\.visible=clippedExteriorFog;/);
  assert.doesNotMatch(source,/paintOccupiedRoomContext/);
 });
