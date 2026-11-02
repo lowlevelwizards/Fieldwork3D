@@ -19,8 +19,8 @@ function previewCalls(mode){
 }
 test('all precommit intents render a legible label',()=>{
  for(const [mode,label] of Object.entries({
-  look:'LOOK',pie:'PIE · TRACK',strafe:'STRAFE · HOLD',
-  flash:'FLASH · TARGET',focus:'FOCUS · TARGET',
+  look:'LOOK · BRIEF',watch:'WATCH · PERSISTENT',
+  flash:'FLASH · TARGET',
   suppress:'SUPPRESS · AREA',drag:'DRAG · DESTINATION',
   carry:'CARRY · DESTINATION'
  })){
@@ -30,9 +30,9 @@ test('all precommit intents render a legible label',()=>{
   assert.ok(calls.some(c=>c.method==='stroke'),'missing guide for '+mode);
  }
 });
-test('pie shows a facing sweep; flash and suppress show different area rings',()=>{
- const pie=previewCalls('pie');
- assert.ok(pie.some(c=>c.method==='arc'&&c.args.length>=5));
+test('WATCH shows a point target; flash and suppress have distinct areas',()=>{
+ const watch=previewCalls('watch');
+ assert.ok(watch.some(c=>c.method==='arc'&&c.args[2]===10));
  const flash=previewCalls('flash');
  assert.ok(flash.some(c=>c.method==='arc'&&c.args[2]===26));
  const suppress=previewCalls('suppress');

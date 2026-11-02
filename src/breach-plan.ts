@@ -14,7 +14,7 @@ export type PlanNode={
   method?:DoorMethod;duration?:number;syncCode?:string;holdOnContact?:boolean;
   postureState?:'stand'|'crouch';paceState?:'walk'|'run';
   moveMode?:MoveMode;pivot?:Pt;pieSide?:PieSide;pieDegrees?:number;arc?:Pt[];
-  aimMode?:AimMode;aimPoint?:Pt;aimLabel?:'look'|'strafe'|'pie';
+  aimMode?:AimMode;aimPoint?:Pt;aimLabel?:'look'|'watch'|'strafe'|'pie';
   toolMethod?:'pry'|'cut'|'wedge'|'unwedge'|'breach';
   patientId?:string;woundId?:number;
   transportMode?:'drag'|'carry';

@@ -10,17 +10,19 @@ const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8')
 const common={door:false,node:true,nodeKind:'move',flashRemaining:2,posture:'stand',
   pace:'walk',firePolicy:'engage',reserve:24,magazine:12};
 
-test('Stra​fe direction and segment movement are separate contextual controls',()=>{
- const ready=contextActionChoices({...common,aimLabel:'strafe',nodeMoveMode:'advance'});
- assert.ok(ready.some(x=>x.id==='ctxStrafe'&&x.pressed));
- assert.ok(ready.some(x=>x.id==='ctxStrafeMove'&&x.label==='STRAFE MOVE'));
- const active=contextActionChoices({...common,nodeMoveMode:'strafe'});
- assert.ok(active.some(x=>x.id==='ctxStrafeMove'&&x.pressed&&x.label==='NORMAL MOVE'));
- assert.ok(!contextActionChoices({...common,node:false,nodeKind:undefined})
-   .some(x=>x.id==='ctxStrafeMove'));
- assert.ok(!contextActionChoices({...common,door:true}).some(x=>x.id==='ctxStrafe'));
- assert.match(main,/case 'ctxStrafe':[\s\S]*?armFacing\('strafe'\)/);
- assert.match(main,/case 'ctxStrafeMove':[\s\S]*?setStrafe\(state,selected,node\.id\)/);
+test('LOOK/WATCH replaces overlapping strafe/pie controls',()=>{
+ const ready=contextActionChoices({...common});
+ assert.deepEqual(ready.filter(x=>x.group==='primary').map(x=>x.id),
+   ['ctxLook','ctxWatch','ctxWait']);
+ for(const old of ['ctxPie','ctxStrafe','ctxStrafeMove','ctxFocus'])
+   assert.ok(!ready.some(x=>x.id===old));
+ const active=contextActionChoices({...common,watchActive:true});
+ assert.ok(active.some(x=>x.id==='ctxWatch'&&x.pressed));
+ assert.ok(active.some(x=>x.id==='ctxReleaseWatch'));
+ assert.ok(!contextActionChoices({...common,door:true})
+   .some(x=>x.id==='ctxWatch'));
+ assert.match(main,/case 'ctxWatch':[\s\S]*?armFacing\('watch'\)/);
+ assert.match(main,/case 'ctxReleaseWatch':[\s\S]*?releaseWatch\(state/);
 });
 
 test('route line uses supplied rendered path and retains insertion order',()=>{
