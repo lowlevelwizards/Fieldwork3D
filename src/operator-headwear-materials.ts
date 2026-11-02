@@ -14,6 +14,7 @@
 import * as THREE from 'three';
 import {PIXEL_WORLD_SIZE} from './rendering/pixel-recipes.ts';
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
+import {headwearCamoPixels,type HeadwearCamoId} from './operator-headwear-camo.ts';
 export type HeadwearMaterialKind='cotton'|'knit'|'composite'|'steel';
 export const HEADWEAR_DETAIL_PIXEL_WORLD_SIZE=PIXEL_WORLD_SIZE;
 export const HEADWEAR_ATLAS_PIXELS=64;
@@ -38,6 +39,7 @@ export const HEADWEAR_SURFACE_PROFILE:Readonly<Record<HeadSilhouetteId,HeadwearS
 };
 const textureCache=new Map<HeadSilhouetteId,THREE.DataTexture>();
 const finishCache=new Map<HeadSilhouetteId,THREE.DataTexture>();
+const camoCache=new Map<string,THREE.DataTexture>();
 const local=(n:number)=>n-16;
 /** An authored, sparse shape-aware design, not random noise or edge shimmer.
  * Pixel addresses are local to their region's 32x32 square and align with
@@ -121,6 +123,32 @@ export function headwearDetailTexture(id:HeadSilhouetteId):THREE.DataTexture{
  texture.name='Fieldwork 2C: '+id+' 1-to-1 material atlas';
  texture.needsUpdate=true;textureCache.set(id,texture);return texture;
 }
+
+/** Precomposes the canonical camouflage tile with each existing *grayscale*
+ * construction region. The same world-unit-per-pixel atlas UVs, vertex
+ * tone hierarchy, and physical roughness map survive the pattern switch.
+ * No extra meshes, decals, stochastic noise or UV rewrapping.
+ */
+export function headwearCamoTexture(id:HeadSilhouetteId,camo:HeadwearCamoId):THREE.DataTexture{
+ const key=id+':'+camo,existing=camoCache.get(key);if(existing)return existing;
+ const art=headwearCamoPixels(camo),pixels=new Uint8Array(64*64*4);
+ for(let region=0;region<4;region++)for(let y=0;y<32;y++)for(let x=0;x<32;x++){
+  const tone=headwearRegionPixel(id,region as 0|1|2|3,x,y)/255;
+  const source=(y*32+x)*4;
+  const dest=((Math.floor(region/2)*32+y)*64+(region%2)*32+x)*4;
+  for(let n=0;n<3;n++)pixels[dest+n]=Math.round(art[source+n]*tone);
+  pixels[dest+3]=255;
+ }
+ const tex=new THREE.DataTexture(pixels,64,64,THREE.RGBAFormat,THREE.UnsignedByteType);
+ tex.colorSpace=THREE.SRGBColorSpace;
+ tex.wrapS=tex.wrapT=THREE.ClampToEdgeWrapping;
+ tex.magFilter=THREE.NearestFilter;
+ tex.minFilter=THREE.NearestMipmapNearestFilter;
+ tex.generateMipmaps=true;
+ tex.name='Fieldwork headwear camo '+key+' 1:1 atlas';
+ tex.needsUpdate=true;camoCache.set(key,tex);return tex;
+}
+
 /** Lighting-only roughness atlas, on the SAME 1:1 pixel grid as the
  * neutral construction artwork. Never adds colored marks or new geometry.
  */
