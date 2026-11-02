@@ -13,6 +13,9 @@ header a{color:#c8b992}main{position:fixed;bottom:env(safe-area-inset-bottom);le
 #timeline{flex:1;min-width:120px;accent-color:#c8ac72;touch-action:pan-x}
 #kitPanel{background:#23392f;border:1px solid #718b7e;border-radius:7px;padding:7px}
 #kitPanel summary{cursor:pointer;touch-action:manipulation;color:#e2c693;font-weight:700;padding:5px}
+#wardrobeTools{display:flex;gap:5px;flex-wrap:wrap;padding:4px 0}
+#wardrobeTools button{flex:1 1 42%;min-height:40px}
+#wardrobePanel>.kit-grid{margin-top:8px}
 #kitPanel .kit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:7px;padding-top:9px}
 #kitPanel label{display:grid;gap:3px}#kitPanel select{min-width:0;width:100%}
 #kitPanel .row{margin-top:8px}#kitPanel small{color:#b9c7bd}
@@ -107,23 +110,21 @@ button:focus-visible,select:focus-visible{outline:2px solid #c9a778;outline-offs
   <a href="./operator-lab.html?retry=1">RETRY LAB</a>
   <a href="./index.html">BACK TO BATTLE</a>
 </aside>
-<header><strong>FIELDWORK / OPERATOR LAB <small>GEAR 20</small></strong><a href="./index.html">← BATTLE</a></header>
+<header><strong>FIELDWORK / OPERATOR LAB <small>FIT LAB</small></strong><a href="./index.html">← BATTLE</a></header>
 <output id="diagnosticText" aria-live="off"></output>
 <main>
 <div class="row"><label>MODEL</label><select id="operator"><option value="rook">ROOK</option><option value="moss">MOSS</option><option value="ash">ASH</option><option value="vale">VALE</option><option value="hostile">HOSTILE</option></select>
-<select id="weapon"><option value="carbine">CARBINE</option><option value="smg">SMG</option><option value="rifle">RIFLE</option><option value="shotgun">SHOTGUN</option></select>
+<select id="weapon"><option value="none" selected>NO WEAPON</option><option value="carbine">CARBINE</option><option value="smg">SMG</option><option value="rifle">RIFLE</option><option value="shotgun">SHOTGUN</option></select>
 <select id="injury"><option value="0">HEALTHY</option><option value="1">INJURED</option><option value="2">HEAVY</option><option value="3">DOWN</option></select></div>
-<details id="kitPanel"><summary>APPEARANCE / EQUIPMENT · PROPORTIONS LOCKED</summary>
+<details id="kitPanel" open><summary>WARDROBE / ASSEMBLE · PROPORTIONS LOCKED</summary>
+<div class="row" id="wardrobeTools">
+<button id="unequipAll" type="button">UNEQUIP ALL</button>
+<button id="focusSelected" type="button">FRAME GROUP</button>
+<button id="hideSelected" type="button" aria-pressed="false">HIDE GROUP</button>
+<button id="showAll" type="button">SHOW ALL</button>
+</div>
+<small>Start bare. Choose one actual item per category below. The Lab does not change saved campaign inventory.</small>
 <div class="kit-grid">
-<label>HEAD<select data-kit-slot="head"></select></label>
-<label>ARMOR<select data-kit-slot="armor"></select></label>
-<label>RIG<select data-kit-slot="rig"></select></label>
-<label>BELT<select data-kit-slot="belt"></select></label>
-<label>BACKPACK<select data-kit-slot="backpack"></select></label>
-<label>TOP<select data-kit-slot="top"></select></label>
-<label>LEGS<select data-kit-slot="legs"></select></label>
-<label>HANDS<select data-kit-slot="hands"></select></label>
-<label>FEET<select data-kit-slot="feet"></select></label>
 <label>MEDICAL<select data-kit-slot="medical"></select></label>
 <label>TACTICAL<select data-kit-slot="tactical"></select></label>
 <label>UTILITY<select data-kit-slot="utility"></select></label>
@@ -136,16 +137,18 @@ button:focus-visible,select:focus-visible{outline:2px solid #c9a778;outline-offs
 <option value="1">PALETTE 1</option><option value="2">PALETTE 2</option><option value="3">PALETTE 3</option><option value="4">PALETTE 4</option><option value="5">PALETTE 5</option><option value="6">PALETTE 6</option><option value="7">PALETTE 7</option><option value="8">PALETTE 8</option>
 </select></label>
 <label>MAGAZINE COUNT<select id="kitMagazines">
-<option value="0" >0 SPARE</option><option value="1" >1 SPARE</option><option value="2" >2 SPARE</option><option value="3" selected>3 SPARE</option><option value="4" >4 SPARE</option><option value="5" >5 SPARE</option><option value="6" >6 SPARE</option>
+<option value="0" selected>0 SPARE</option><option value="1" >1 SPARE</option><option value="2" >2 SPARE</option><option value="3">3 SPARE</option><option value="4" >4 SPARE</option><option value="5" >5 SPARE</option><option value="6" >6 SPARE</option>
 </select></label>
 <label>ISOLATE<select id="kitIsolation">
-<option value="all">FULL OPERATOR</option><option value="head">HEADGEAR</option>
-<option value="armor">ARMOR</option><option value="carry">LOAD BEARING</option>
-<option value="clothes">CLOTHING</option></select></label>
-</div><details id="wardrobePanel"><summary>WARDROBE / STYLE OPTIONS</summary>
+<option value="all">FULL OPERATOR</option><option value="head">HEAD / FACE</option>
+<option value="armor">ARMOR</option><option value="carry">RIG / BELT / TOOLS</option>
+<option value="pack">BACKPACK</option><option value="clothes">CLOTHING</option>
+<option value="hands">HANDS / GLOVES</option>
+<option value="knees">KNEES</option><option value="feet">FEET / FOOTWEAR</option></select></label>
+</div><details id="wardrobePanel" open><summary>EQUIP INDIVIDUAL ITEMS</summary>
 <div class="row"><label>STYLE / ROLE RECIPE<select id="wardrobeRecipe"></select></label>
 <button id="wardrobeApply">APPLY LOOK</button></div>
-<p class="kit-help">Visual styles only. Protection, inventory and carrying capacity stay with the equipped kit above.</p>
+<p class="kit-help">One item per category. Selecting a helmet, carrier, garment or pack also sets its real equipment class automatically. Detailed models are being refined one category at a time.</p>
 <details id="outfitLibrary"><summary>SAVED LOOKS / SHARE</summary>
 <div class="row"><label>OUTFIT NAME<input id="outfitName" type="text" maxlength="44" placeholder="My outfit"></label>
 <button id="outfitSave">SAVE</button></div>

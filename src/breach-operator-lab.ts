@@ -22,6 +22,8 @@ import {initialEquipmentLoadout,setEquipmentChoice,syncPrimaryWeapon,
 import type {MagazineItem} from './breach-magazines.ts';
 import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import {itemsForSlot} from './equipment-catalog.ts';
+import {bareLabEquipment,unequipLabAppearance} from './operator-lab-baseline.ts';
+import {selectWardrobeItem} from './operator-wardrobe-unified.ts';
 import {MAX_WARDROBE_LOOKS,makeWardrobeLook,readWardrobeLooks,
  exportWardrobeLook,importWardrobeLook,type WardrobeLook}
  from './operator-wardrobe-storage.ts';
@@ -35,7 +37,7 @@ import {initialWardrobe,setWardrobeStyle,setWardrobePattern,resolvedWardrobe,
  type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
 
 
-let labKit:EquipmentLoadout=initialEquipmentLoadout();
+let labKit:EquipmentLoadout=bareLabEquipment();
 let labPalette=1;
 let wardrobeOptions:WardrobeOptions=initialWardrobe();
 const kitSelects=Array.from(document.querySelectorAll<HTMLSelectElement>('[data-kit-slot]'));
@@ -74,7 +76,8 @@ function kitPreset(name:string){
  * must be the real game's authoritative placement projection. Shotguns use
  * individually loaded shells and have no detachable magazines. */
 function previewCarry(kit:EquipmentLoadout,weapon:WeaponId){
- const requested=weapon==='shotgun'?0:
+ const requested=(document.getElementById('weapon') as HTMLSelectElement).value==='none'||
+  weapon==='shotgun'?0:
    Number((document.getElementById('kitMagazines') as HTMLSelectElement).value);
  const sample:MagazineItem[]=Array.from({length:requested},(_,i)=>({
   id:'lab-preview/'+i,weapon,rounds:1
@@ -246,8 +249,8 @@ function syncWardrobe(){
   const slot=select.dataset.wardrobeSlot as WardrobeSlot;
   select.value=compatible[slot];
   for(const option of Array.from(select.options)){
-   const candidate=setWardrobeStyle(wardrobeOptions,slot,option.value);
-   option.disabled=resolvedWardrobe(candidate,labKit)[slot]!==option.value;
+   const candidate=selectWardrobeItem(labKit,wardrobeOptions,slot,option.value);
+   option.disabled=resolvedWardrobe(candidate.wardrobe,candidate.kit)[slot]!==option.value;
   }
  }
  (document.getElementById('rolledSleeves') as HTMLInputElement).checked=
@@ -265,10 +268,11 @@ for(const select of wardrobeSelects){
  }
  select.addEventListener('change',()=>{
   if(!wardrobeItem(slot,select.value))return;
-  const next=setWardrobeStyle(wardrobeOptions,slot,select.value);
-  if(resolvedWardrobe(next,labKit)[slot]===select.value)
-   wardrobeOptions=next;
-  syncWardrobe();
+  const selected=selectWardrobeItem(labKit,wardrobeOptions,slot,select.value);
+  if(resolvedWardrobe(selected.wardrobe,selected.kit)[slot]===select.value){
+   labKit=selected.kit;wardrobeOptions=selected.wardrobe;
+  }
+  syncKit();
  });
 }
 document.getElementById('rolledSleeves')?.addEventListener('change',e=>{
@@ -295,7 +299,10 @@ document.getElementById('wardrobeReset')?.addEventListener('click',()=>{
 });
 for(const button of document.querySelectorAll<HTMLButtonElement>('[data-kit-preset]'))
  button.addEventListener('click',()=>{
-  labKit=kitPreset(button.dataset.kitPreset??'standard');syncKit();
+  labKit=kitPreset(button.dataset.kitPreset??'standard');
+  wardrobeOptions=initialWardrobe();
+  (document.getElementById('weapon') as HTMLSelectElement).value='carbine';
+  updateMagazineState();syncKit();
  });
 document.getElementById('kitPalette')?.addEventListener('change',e=>{
  labPalette=Number((e.target as HTMLSelectElement).value);
@@ -360,14 +367,16 @@ const operator=choose<HTMLSelectElement>('operator'),
 const magazineSelector=choose<HTMLSelectElement>('kitMagazines');
 const magazineHint=choose<HTMLElement>('magazineHint');
 function updateMagazineState(){
- const shotgun=weapon.value==='shotgun';
- magazineSelector.disabled=shotgun;
- magazineHint.textContent=shotgun?
+ const shotgun=weapon.value==='shotgun',unarmed=weapon.value==='none';
+ magazineSelector.disabled=shotgun||unarmed;
+ if(unarmed)magazineSelector.value='0';
+ magazineHint.textContent=unarmed?'Unarmed inspection: zero carried magazines.':shotgun?
   'SHOTGUN: loose shells; detachable spare magazines are not applicable.':
   'Preview locations use the real equipment carrying ledger.';
 }
 weapon.addEventListener('change',updateMagazineState);
 updateMagazineState();
+const labWeapon=():WeaponId=>weapon.value==='none'?'carbine':weapon.value as WeaponId;
 const COMPARE_POSES:{label:string;mode:Handling;track:LabTrack}[]=[
   {label:'HIGH READY',mode:'high',track:'high-ready'},
   {label:'LOW READY',mode:'low',track:'low-ready'},
@@ -758,7 +767,7 @@ function showDiagnostics(){
   }
   if(layer==='weapon'){
     rig.root.updateMatrixWorld(true);
-    const g=weaponGrips(weapon.value as WeaponId);
+    const g=weaponGrips(labWeapon());
     const coords=[
       [g.stockX,0,0],[g.primaryX,g.primaryY,1.8],
       [g.supportX,g.supportY,-1.6]
@@ -888,7 +897,8 @@ function draw(){
   const selectedHandling=transition?.to??previewHandling[track];
   doorProp.visible=track==='door'||track==='kick';
   rig.root.position.set(motion.x,0,motion.z);
-  const currentWeapon=(track==='reload-shotgun'?'shotgun':weapon.value) as WeaponId;
+  const currentWeapon=(track==='reload-shotgun'?'shotgun':
+    weapon.value==='none'?'carbine':weapon.value) as WeaponId;
   const currentKit=syncPrimaryWeapon(labKit,currentWeapon);
   const currentCarry=previewCarry(currentKit,currentWeapon);
   if(!comparing)poseOperator(rig,{x:motion.x,z:motion.z,heading:motion.heading,
@@ -898,7 +908,7 @@ function draw(){
       track==='squeeze'?'squeeze':'walk',
     injury:Math.max(motion.injury,Number(injury.value),
       track==='reload-wounded'?2:0),
-    weapon:(track==='reload-shotgun'?'shotgun':weapon.value) as WeaponId,
+    weapon:currentWeapon,unarmedPreview:weapon.value==='none',
     reload:motion.reload,reloadDuration:1.8,
     reloadMode:track==='reload-retention'?'retention':
       track==='reload-shotgun'?'shells':'emergency',
@@ -934,6 +944,9 @@ function draw(){
     hitYaw:motion.heading+Math.PI/2,
     hitAge:track==='wounded'?Math.max(0,clock-.7):undefined,
     hitSeverity:2},0);
+  if(weapon.value==='none'&&!comparing){
+    rig.visualKit.hair.visible=false; // clean neutral mannequin baseline
+  }
   if(!comparing&&!kitComparing)isolateKit(rig);
   if(gaitComparing&&rig.lastPose){
     ensureGaitCompare();
@@ -966,12 +979,12 @@ function draw(){
     const body=kitBodies[i],x=(i-1)*31;
     body.root.position.set(x,0,0);
     poseOperator(body,{...rig.lastPose,x,z:0,velocity:0,turning:0,
-     equipment:syncPrimaryWeapon(kitPreset(types[i]),weapon.value as WeaponId),
+     equipment:syncPrimaryWeapon(kitPreset(types[i]),labWeapon()),
      appearanceSeed:labPalette+i,wardrobe:wardrobeOptions,
      faceStyle:choose<HTMLSelectElement>('faceTreatment').value as
        'blank'|'quiet'|'graphic',
      magazineCarryLocations:previewCarry(kitPreset(types[i]),
-       weapon.value as WeaponId).filter(p=>p.kind==='magazine')
+       labWeapon()).filter(p=>p.kind==='magazine')
        .map(p=>p.location),
      down:false,injury:0,posture:'stand',deterministic:true},0);
     if(silhouettes)applySilhouette(body,true);
@@ -992,7 +1005,7 @@ function draw(){
       body.root.visible=true;body.root.position.set(x,0,z);
       poseOperator(body,{x,z,heading:0,travelYaw:0,seconds:clock,
         stride:0,velocity:0,posture:'stand',injury:0,
-        weapon:weapon.value as WeaponId,
+        weapon:labWeapon(),
         reload:0,reloadDuration:1.8,lastDoorAt:-100,lastThrowAt:-100,
         down:false,surrender:false,aiming:info.mode==='ads',
         firing:false,turning:0,handlingOverride:info.mode,
