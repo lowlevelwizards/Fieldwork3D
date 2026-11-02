@@ -58,7 +58,8 @@ export function createOperatorVisualKit(
  const hairMaterial=new THREE.MeshStandardMaterial({color:0x302d29,roughness:1,flatShading:true});
  const patchMaterial=new THREE.MeshStandardMaterial({color:0x87775f,
    roughness:.96,flatShading:true});
- // +X is forward. The head is intentionally chunky; no anatomical joint
+ // Legacy head-local +X remains forward behind the new -Z compatibility adapter.
+ // The head stays chunky; no anatomical joint
  // translations or scale changes occur in this visual pass.
  const hair=bundle(head);
  const haircuts=[bundle(hair),bundle(hair),bundle(hair)];

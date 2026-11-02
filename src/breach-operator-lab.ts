@@ -889,7 +889,7 @@ function showDiagnostics(){
     supportBoxes.forEach((box,i)=>{
       box.visible=true;
       box.position.set(f[i].plantedAt.x,1,f[i].plantedAt.y);
-      box.rotation.y=rig!.root.rotation.y;
+      box.rotation.y=rig!.legacyYaw;
     });
   }
   if(layer==='polygon'){
