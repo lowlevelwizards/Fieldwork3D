@@ -70,6 +70,19 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
       ctx.beginPath();ctx.moveTo(door.a.x,door.a.y);
       ctx.lineTo(door.b.x,door.b.y);ctx.stroke();
     }
+    // Window openings are gaps in WALLS, so their exterior frames need
+    // their own narrow aperture in the high concealment layer.
+    for(const window of s.site.windows??[]){
+      if(window.interior)continue;
+      const half=window.width/2;
+      const a=window.vertical?
+        {x:window.x,y:window.y-half}:{x:window.x-half,y:window.y};
+      const b=window.vertical?
+        {x:window.x,y:window.y+half}:{x:window.x+half,y:window.y};
+      if(!accessibleExteriorWall(s.site,{a,b}))continue;
+      ctx.beginPath();ctx.moveTo(a.x,a.y);
+      ctx.lineTo(b.x,b.y);ctx.stroke();
+    }
   }
   // Exploration gets a short feather rather than 40-unit hard rectangles.
   // This is presentation only: intel and hidden actor visibility are
