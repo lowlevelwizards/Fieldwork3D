@@ -2,8 +2,9 @@
  * No Three.js and no gameplay visibility changes: physical rays stop at opaque
  * world walls, solid door leaves, and high cover. Never illuminates through walls.
  */
-import {doorLeafSegment,type Door,type Segment,type Pt,type Obstacle}
+import {type Door,type Segment,type Pt,type Obstacle}
  from './breach-core.ts';
+import {opticalBlockerSegments} from './breach-optical-occlusion.ts';
 import {resolveWeaponAssembly,type WeaponConfiguration}
  from './equipment-weapon-assemblies.ts';
 export const LIGHT_BEAM_HALF_ANGLE=.34;
@@ -17,7 +18,6 @@ export function weaponLightEmitter(muzzle:{x:number;z:number;yaw:number},
  return {x:muzzle.x-Math.cos(muzzle.yaw)*offset,
   y:muzzle.z-Math.sin(muzzle.yaw)*offset};
 }
-const transparentDoor=(d:Door)=>['glazed','mesh-gate','screen','french'].includes(d.style??'wood');
 export function lightRayDistance(from:Pt,angle:number,maximum:number,
  blockers:readonly Segment[]):number{
  const dx=Math.cos(angle),dy=Math.sin(angle);
@@ -36,19 +36,7 @@ export function lightRayDistance(from:Pt,angle:number,maximum:number,
 /** Build once when door/cover geometry changes; renderer may cache on revision. */
 export function lightBeamBlockers(walls:readonly Segment[],doors:readonly Door[],
  cover:readonly Obstacle[]=[]):Segment[]{
- const lines:Segment[]=[...walls];
- for(const door of doors){
-  if(transparentDoor(door))continue;
-  const leaf=doorLeafSegment(door);
-  if(Math.hypot(leaf.b.x-leaf.a.x,leaf.b.y-leaf.a.y)>.1)lines.push(leaf);
- }
- for(const o of cover){
-  if(o.low||['glass-barrier','chain-link-fence','mesh-gate'].includes(o.fixture??''))continue;
-  const x0=o.x-o.w/2,x1=o.x+o.w/2,y0=o.y-o.h/2,y1=o.y+o.h/2;
-  const p=[{x:x0,y:y0},{x:x1,y:y0},{x:x1,y:y1},{x:x0,y:y1}];
-  for(let i=0;i<4;i++)lines.push({a:p[i],b:p[(i+1)%4]});
- }
- return lines;
+ return opticalBlockerSegments(walls,doors,cover,false);
 }
 /** Constant sample count enables reuse of a single BufferGeometry per light. */
 export function lightBeamFootprint(from:Pt,yaw:number,

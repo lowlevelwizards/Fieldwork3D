@@ -140,9 +140,12 @@ export function doorBlocksSegment(door:Door,line:Segment):boolean{
 export function doorBlocksRay(doors:Door[],line:Segment):boolean{
  return doors.some(door=>door.style!=='mesh-gate'&&door.style!=='screen'&&doorBlocksSegment(door,line));
 }
-/** Transparent hinged glass transmits sight but retains its physical collision leaf. */
+/** Optical transparency is shared by sight, fog and portable light rays. */
+export const doorTransmitsSightAndLight=(d:Door):boolean=>
+ ['glazed','mesh-gate','screen','french'].includes(d.style??'wood');
+/** Glass transmits sight but retains its physical collision leaf. */
 export function doorBlocksSightRay(doors:Door[],ray:Segment):boolean{
- return doors.some(d=>!['glazed','mesh-gate','screen','french'].includes(d.style??'wood')&&doorBlocksSegment(d,ray));
+ return doors.some(d=>!doorTransmitsSightAndLight(d)&&doorBlocksSegment(d,ray));
 }
 export function isClear(a:Pt,b:Pt,doors:Door[],ignoreDoors=false):boolean{
   const shot={a,b};
