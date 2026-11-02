@@ -341,7 +341,7 @@ try{
     hasTouch:true,isMobile:true,
   });
   routePhone.on('pageerror',e=>errors.push('route editor: '+e.message));
-  await routePhone.goto(url,{waitUntil:'domcontentloaded'});
+  await routePhone.goto(url+'&audit=1',{waitUntil:'domcontentloaded'});
   await routePhone.locator('#breachCanvas').waitFor();
   await chooseCamera(routePhone,'#view2d');
   await routePhone.locator('#rook').click();
@@ -350,7 +350,13 @@ try{
   const end=screen(400,628);
   await routePhone.touchscreen.tap(end.x,end.y);
   if(await count()!=='1')throw Error('Route test failed to author first waypoint');
-  const middle=screen(350,624);
+  const candidates=JSON.parse(await routePhone.locator('#breachCanvas')
+    .getAttribute('data-audit-route-points')??'[]');
+  const middle=await routePhone.evaluate(points=>
+    points.find(p=>document.elementFromPoint(p.x,p.y)?.id==='breachCanvas'),
+    candidates);
+  if(!middle)throw Error('No exposed unobstructed segment of actual authored route: '+
+    JSON.stringify(candidates));
   const beforeInsert=await routePhone.evaluate(pt=>{
     const el=document.elementFromPoint(pt.x,pt.y);
     const box=document.querySelector('#contextTools')?.getBoundingClientRect();

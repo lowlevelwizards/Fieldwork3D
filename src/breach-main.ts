@@ -909,6 +909,7 @@ function advanceContextPalette(dt:number){
     contextTether.style.transform='rotate('+Math.atan2(dy,dx)+'rad)';
   }
 }
+const auditRouteMode=new URLSearchParams(location.search).has('audit');
 let selectedNode:number|null=null;
 let doorMenuDismissedId:string|null=null;
 let flashDoorId:string|null=null;
@@ -1721,6 +1722,34 @@ function updateHud(){
   // Read-only plan status for phone gesture regression tests.
   canvas.dataset.planNodes=String(active?.plan.length??0);
   canvas.dataset.selectedNode=selectedNode===null?'':String(selectedNode);
+  // Explicit browser audit mode exposes ONLY already-authored friendly routes.
+  // Use the actual rendered polyline, rather than guessing a touch coordinate
+  // from an old screenshot or hardcoded map bounds.
+  if(auditRouteMode&&active&&viewMode==='plan2d'){
+    const candidates:{x:number;y:number;clearance:number}[]=[];
+    let from=active.p;
+    const markers=[...team(state).map(unit=>worldToScreen(unit.p,8)),
+      ...active.plan.map(n=>worldToScreen(n.p,8))];
+    for(const node of active.plan){
+      if(node.kind!=='move'&&node.kind!=='door')continue;
+      const steps=displayRouteCache.get(from,node.p,state.intel,true).points;
+      let previous=from;
+      for(const point of steps){
+        for(const t of [.2,.35,.5,.65,.8]){
+          const world={x:previous.x+(point.x-previous.x)*t,
+            y:previous.y+(point.y-previous.y)*t};
+          const p=worldToScreen(world,4);
+          if(p.x<12||p.x>cssW-12||p.y<72||p.y>cssH-120)continue;
+          const clearance=markers.length?Math.min(...markers.map(q=>distance(p,q))):99;
+          if(clearance>=34)candidates.push({x:p.x,y:p.y,clearance});
+        }
+        previous=point;
+      }
+      from=node.p;
+    }
+    candidates.sort((a,b)=>b.clearance-a.clearance);
+    canvas.dataset.auditRoutePoints=JSON.stringify(candidates.slice(0,40));
+  }
   ui.stance.textContent=active?.posture==='crouch'?'STAND':'CROUCH';
   ui.stance.setAttribute('aria-pressed',String(active?.posture==='crouch'));
   ui.contact.setAttribute('aria-pressed',String(active?.haltOnContact));
