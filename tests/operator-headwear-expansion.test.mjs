@@ -258,24 +258,29 @@ test('Stage 1M PASGT brow has no arbitrary fraction-sized side and rear join not
  assert.ok(M.pasgt.earEdge< M.ach.earEdge);
 });
 
-test('Stage 1M steel rim is thicker and one aligned joined perimeter',()=>{
+test('Stage 1M steel rim has thick deliberate brow/ear/nape steps and exact corner joins',()=>{
  const v=headwearCuboidVolumes('soviet-steel');
  const names=['ssh40-integrated-front-edge','ssh40-integrated-rear-edge',
   'ssh40-integrated-left-edge','ssh40-integrated-right-edge'];
- const rim=names.map(n=>by(v,n));
- assert.ok(rim.every(Boolean));
- for(const p of rim){
-  assert.ok(Math.abs(p.y-4.30)<1e-6);
-  assert.ok(Math.abs(p.height-1.10)<1e-6);
- }
- const front=rim[0],rear=rim[1],left=rim[2],right=rim[3];
+ const [front,rear,left,right]=names.map(n=>by(v,n));
+ assert.ok(front&&rear&&left&&right);
+ for(const p of [front,rear,left,right])assert.ok(Math.abs(p.height-1.20)<1e-6);
+ const bottom=p=>p.y-p.height/2;
+ assert.ok(Math.abs(bottom(front)-4.05)<1e-6,'front stays above upper ear and clears brow');
+ assert.ok(Math.abs(bottom(left)-3.70)<1e-6,'side edge covers upper ear');
+ assert.ok(Math.abs(bottom(right)-3.70)<1e-6);
+ assert.ok(Math.abs(bottom(rear)-3.40)<1e-6,'rear provides a distinct nape drop');
+ // Two broad 0.30–0.35 unit protective transitions, not tiny trim steps.
+ assert.ok(bottom(front)-bottom(right)>.30);
+ assert.ok(bottom(right)-bottom(rear)>.25);
  assert.ok(Math.abs(front.width/2-(right.x+right.width/2))<1e-6,
-  'side and front rim line up in X; no 0.005-unit corner spurs');
+  'front and side rim X outer faces coincide; no 0.005 unit corner spur');
  assert.ok(Math.abs(rear.width/2-(-left.x+left.width/2))<1e-6);
- assert.ok(Math.abs(front.z-front.depth/2+(right.depth/2))<1e-6,
-  'front and side rim outer Z aligns exactly');
+ assert.ok(Math.abs(front.z-front.depth/2+right.depth/2)<1e-6,
+  'front and side rim Z outer faces coincide');
  assert.ok(Math.abs(rear.z+rear.depth/2-right.depth/2)<1e-6);
- assert.ok(M['soviet-steel'].earEdge>=3.7 && M['soviet-steel'].foreheadEdge>=3.7);
+ assert.ok(Math.abs(M['soviet-steel'].foreheadEdge-4.05)<1e-6);
+ assert.ok(Math.abs(M['soviet-steel'].earEdge-3.70)<1e-6);
 });
 
 test('all wardrobe choices use canonical silhouette rendering in both lab and battle',()=>{
