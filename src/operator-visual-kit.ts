@@ -15,6 +15,7 @@ type VisualMaterials={cloth:Material;vest:Material;dark:Material;
 type Limb={upper:THREE.Mesh;lower:THREE.Mesh;shoe?:THREE.Mesh};
 export type OperatorVisualKit={
  helmet:THREE.Group;cap:THREE.Group;hair:THREE.Group;
+ haircuts:THREE.Group[];graphicMarks:THREE.Group;
  jacket:THREE.Group;lightShirt:THREE.Group;
  softArmor:THREE.Group;plateCarrier:THREE.Group;
  chestRig:THREE.Group;fieldWebbing:THREE.Group;
@@ -43,17 +44,27 @@ export function createOperatorVisualKit(
  // +X is forward. The head is intentionally chunky; no anatomical joint
  // translations or scale changes occur in this visual pass.
  const hair=bundle(head);
- part(hair,hairMaterial,0,7.1,0,8.3,1.35,8.35);
- part(hair,hairMaterial,-3.2,4.5,-3.5,1.5,3.2,1.4);
- part(hair,hairMaterial,-3.2,4.5,3.5,1.5,3.2,1.4);
+ const haircuts=[bundle(hair),bundle(hair),bundle(hair)];
+ // Short crop: squared crown and nape.
+ part(haircuts[0],hairMaterial,-.45,7.1,0,8.25,1.2,8.5);
+ part(haircuts[0],hairMaterial,-3.5,4.8,0,1.1,2.1,7.9);
+ // Side part: a slightly uneven front, kept below the helmet silhouette.
+ part(haircuts[1],hairMaterial,-1.2,7.2,0,7.9,1.35,8.3);
+ part(haircuts[1],hairMaterial,2.35,6.7,-1.0,2.5,1.05,5.0);
+ // Close-cut buzz: barely raised upper head with clear exposed temples.
+ part(haircuts[2],hairMaterial,-.55,7.05,0,7.7,.53,8.1);
  // Small low-contrast eye slashes, no attached cube nose or floating mouth.
  // At gameplay distance the face reads as a quiet plane beneath the brow.
  const face=bundle(head);
  const facialInk=new THREE.MeshStandardMaterial({
   color:0x564a40,roughness:1,flatShading:true});
  const eyeMarks=[
-  part(face,facialInk,4.035,3.45,-2,0.16,.27,1.0),
-  part(face,facialInk,4.035,3.45,2,0.16,.27,1.0)];
+  part(face,facialInk,4.15,3.45,-2,.15,.24,.9),
+  part(face,facialInk,4.15,3.45,2,.15,.24,.9)];
+ const graphicMarks=bundle(head);
+ part(graphicMarks,facialInk,4.155,3.5,-2,.15,.50,1.15);
+ part(graphicMarks,facialInk,4.155,3.5,2,.15,.50,1.15);
+ graphicMarks.visible=false;
  // An angular helmet shell: broad temple coverage, smaller crown, short
  // side rails, and close-fitting retention instead of dangling ear blocks.
  const helmet=bundle(head);
@@ -183,7 +194,8 @@ export function createOperatorVisualKit(
    consolidateVisualGroup(surface);
  return {helmet,cap,hair,jacket,lightShirt,softArmor,plateCarrier,chestRig,
   fieldWebbing,belt,dayPack,fieldPack,packHarness,cargoPockets,bootCuffs,sleeveCuffs,
-  rolledForearms,rolledCuffs,kneePanels,eyeMarks,hairMaterial,magazines};
+  rolledForearms,rolledCuffs,kneePanels,eyeMarks,hairMaterial,magazines,
+  haircuts,graphicMarks};
 }
 const DEFAULT:Slots={
  primary:'primary-carbine',head:'head-helmet',armor:'armor-soft',
@@ -192,11 +204,15 @@ const DEFAULT:Slots={
  medical:'medical-basic',tactical:'tactical-flash',utility:'utility-radio'
 };
 export function applyOperatorVisualKit(v:OperatorVisualKit,
- slots:Slots|undefined,seed:number,magazineLocations:readonly CarryLocation[]=[]){
+ slots:Slots|undefined,seed:number,magazineLocations:readonly CarryLocation[]=[],
+ faceStyle:'blank'|'quiet'|'graphic'='quiet'){
  const s=slots??DEFAULT;
  v.helmet.visible=s.head==='head-helmet';
  v.cap.visible=s.head==='head-cap';
  v.hair.visible=s.head==='head-none';
+ v.haircuts.forEach((h,i)=>{h.visible=i===(seed>>>2)%3;});
+ v.eyeMarks.forEach(m=>{m.visible=faceStyle==='quiet';});
+ v.graphicMarks.visible=faceStyle==='graphic';
  v.softArmor.visible=s.armor==='armor-soft';
  v.plateCarrier.visible=s.armor==='armor-carrier';
  v.jacket.visible=s.top==='top-uniform';

@@ -81,6 +81,7 @@ export type OperatorPose={
   hitRegion?:WoundRegion;hitYaw?:number;hitSeverity?:number;
   downPose?:FallPose;
   appearanceSeed?:number;
+  faceStyle?:'blank'|'quiet'|'graphic';
 };
 export type OperatorRig={
   root:THREE.Group;hip:THREE.Group;chest:THREE.Group;head:THREE.Group;
@@ -347,7 +348,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     (gear?.tactical==='tactical-flash'&&
       (p.flashCharges===undefined||p.flashCharges>0));
   for(const glove of r.gloveCovers)glove.visible=gear?.hands==='hands-gloves';
-  applyOperatorVisualKit(r.visualKit,gear,identity,p.magazineCarryLocations);
+  applyOperatorVisualKit(r.visualKit,gear,identity,
+    p.magazineCarryLocations,p.faceStyle);
   // Hair is seeded by the costume assembler and must join the same reversible
   // palette ledger used by replay, silhouette mode and injury desaturation.
   r.colors.set(r.visualKit.hairMaterial,r.visualKit.hairMaterial.color.clone());

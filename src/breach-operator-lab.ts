@@ -693,6 +693,8 @@ function draw(){
     hybridSupport:gaitReference.value==='candidate',
     deterministic:true,shotHeading:motion.heading,
      equipment:currentKit,appearanceSeed:labPalette,
+     faceStyle:choose<HTMLSelectElement>('faceTreatment').value as
+       'blank'|'quiet'|'graphic',
      magazineCarryLocations:currentCarry.filter(p=>p.kind==='magazine')
       .map(p=>p.location),
      medicalCarryLocation:currentCarry.find(p=>p.kind==='medical')?.location,
@@ -740,6 +742,8 @@ function draw(){
     poseOperator(body,{...rig.lastPose,x,z:0,velocity:0,turning:0,
      equipment:syncPrimaryWeapon(kitPreset(types[i]),weapon.value as WeaponId),
      appearanceSeed:labPalette+i,
+     faceStyle:choose<HTMLSelectElement>('faceTreatment').value as
+       'blank'|'quiet'|'graphic',
      magazineCarryLocations:previewCarry(kitPreset(types[i]),
        weapon.value as WeaponId).filter(p=>p.kind==='magazine')
        .map(p=>p.location),
