@@ -29,6 +29,7 @@ import {segmentHitsBox} from './breach-ray.ts';
 import {coverImpactFraction,aimHeight} from './breach-cover-height.ts';
 import {MICRO_KEYS,MICRO_COLS} from './breach-fog-memory.ts';
 import {assessFireLane,type FireBlock} from './breach-fire-safety.ts';
+import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor,
   approachingDoorLeaf,PUSHED_OPEN_LIMIT} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
@@ -1205,9 +1206,8 @@ function unobstructed(a:Pt,b:Pt,s:Session,lowBlocks:boolean){
   if(doorBlocksSightRay(s.doors,ray))return false;
   // Exact slab intersection replaces dozens of short ray samples per
   // visibility query. Geometry remains authoritative at any framerate.
-  return !COVER.some(o=>!['chain-link-fence','iron-fence'].includes(o.fixture??'')&&
-    o.fixture!=='glass-barrier'&&
-    (!o.low||lowBlocks)&&segmentHitsBox(a,b,o));
+  return !COVER.some(o=>coverBlocksOpticalSight(o,lowBlocks)&&
+    segmentHitsBox(a,b,o));
 }
 /** Physical geometry visibility, independently of acquisition time. */
 export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){

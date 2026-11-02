@@ -1,8 +1,8 @@
 /** Build 141D: CPU occlusion rays produce a continuous directional visibility
  * polygon. The renderer only composites it; intelligence remains authoritative
  * in breach-game. Endpoints and cone edges are included for crisp corners. */
-import {WALLS,COVER,doorLeafSegment,
-  type Pt,type Segment,type Door} from './breach-core.ts';
+import {WALLS,COVER,type Pt,type Segment,type Door} from './breach-core.ts';
+import {opticalBlockerSegments} from './breach-optical-occlusion.ts';
 export const VISION_HALF_ANGLE=1.15;
 const cross=(ax:number,ay:number,bx:number,by:number)=>ax*by-ay*bx;
 function rayHit(p:Pt,dx:number,dy:number,s:Segment,range:number){
@@ -16,13 +16,7 @@ function rayHit(p:Pt,dx:number,dy:number,s:Segment,range:number){
 export function visionPolygon(origin:Pt,heading:number,range=240,
   walls:Segment[]=WALLS,doors:Door[]=[],lowObstructs=false,
   cover= COVER):Pt[]{
-  const blockers:Segment[]=[...walls,...doors.map(doorLeafSegment)];
-  for(const c of cover){
-    if(c.low&&!lowObstructs)continue;
-    const l=c.x-c.w/2,r=c.x+c.w/2,t=c.y-c.h/2,b=c.y+c.h/2;
-    const pts=[{x:l,y:t},{x:r,y:t},{x:r,y:b},{x:l,y:b}];
-    for(let i=0;i<4;i++)blockers.push({a:pts[i],b:pts[(i+1)%4]});
-  }
+  const blockers=opticalBlockerSegments(walls,doors,cover,lowObstructs);
   const angles:number[]=[];
   for(let i=0;i<=64;i++)
     angles.push(-VISION_HALF_ANGLE+2*VISION_HALF_ANGLE*i/64);
