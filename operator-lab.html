@@ -121,6 +121,9 @@ main[data-lab-active="playback"]>[data-lab-group]:not([data-lab-group="playback"
 main[data-lab-active="view"]>[data-lab-group]:not([data-lab-group="view"]){display:none}
 main>.row[data-lab-group]{align-items:flex-start}
 main>.row[data-lab-group]>button{min-height:44px}
+#modelAxisLegend{display:block;position:fixed;right:8px;top:62px;z-index:8;
+ background:#1f302dcf;color:#c3cfbb;font:600 9px "IBM Plex Mono",monospace;
+ padding:4px 6px;border:1px solid #62776c;border-radius:4px;pointer-events:none}
 body.kit-compare .lab-category-nav{display:none}
 body.kit-compare main #kitPanel{display:block!important}
 body.kit-compare main>.row[data-lab-group="view"]:has(#comparePose){display:flex!important}
@@ -134,6 +137,9 @@ body.kit-compare main>.row[data-lab-group="view"]:has(#comparePose){display:flex
 </aside>
 <header><strong>FIELDWORK / OPERATOR LAB <small>FIT LAB</small></strong><a href="./index.html">← BATTLE</a></header>
 <output id="diagnosticText" aria-live="off"></output>
+<output id="modelAxisLegend" aria-label="Operator model coordinate convention">
+  MODEL AXES: FORWARD −Z · RIGHT +X · UP +Y
+</output>
 <main data-lab-active="appearance">
 <div class="row"><label>MODEL</label><select id="operator"><option value="rook">ROOK</option><option value="moss">MOSS</option><option value="ash">ASH</option><option value="vale">VALE</option><option value="hostile">HOSTILE</option></select>
 <select id="weapon"><option value="none" selected>NO WEAPON</option><option value="carbine">CARBINE</option><option value="smg">SMG</option><option value="rifle">RIFLE</option><option value="shotgun">SHOTGUN</option></select>

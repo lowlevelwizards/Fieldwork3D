@@ -7,7 +7,7 @@ import {canonicalRootOrientation,OPERATOR_FORWARD,
 import {initialEquipmentLoadout} from '../src/equipment-loadouts.ts';
 const P=(x=0,y=0,z=0)=>new THREE.Vector3(x,y,z);
 const pose=(heading,extra={})=>({
- x:36,z:91,heading,velocity:0,seconds:1,stride:0,
+ x:36,z:91,heading,pelvisYaw:-heading,velocity:0,seconds:1,stride:0,
  posture:'stand',injury:0,weapon:'carbine',reload:0,reloadDuration:0,
  lastDoorAt:-100,lastThrowAt:-100,down:false,surrender:false,aiming:false,
  firing:false,turning:0,deterministic:true,equipment:initialEquipmentLoadout(),...extra

@@ -23,6 +23,7 @@ import type {MagazineItem} from './breach-magazines.ts';
 import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import {itemsForSlot} from './equipment-catalog.ts';
 import {bareLabEquipment,unequipLabAppearance} from './operator-lab-baseline.ts';
+import {LEGACY_FRAME_YAW} from './operator-axis-convention.ts';
 import {operatorAttachmentPoint,type OperatorAttachmentZone}
  from './operator-attachment-zones.ts';
 import {selectWardrobeItem} from './operator-wardrobe-unified.ts';
@@ -673,12 +674,19 @@ operator.addEventListener('change',build);
 function fit(next='iso'){
   const center=comparing||kitComparing||variantComparing?new THREE.Vector3():rig?.root.position??
     new THREE.Vector3();
-  const dx=next==='front'?75:next==='back'?-75:
-    next==='top'?.01:next==='side'?0:65;
-  const dz=next==='side'?75:next==='top'||next==='front'||next==='back'?0:68;
-  camera.position.set(center.x+dx,next==='top'?115:
+  // Camera presets are defined in the public -Z-forward model space,
+  // not arbitrary world X/Z directions. Pivot/turns can't swap front & side.
+  const relative=next==='front'?new THREE.Vector3(0,0,-75):
+    next==='back'?new THREE.Vector3(0,0,75):
+    next==='side'?new THREE.Vector3(75,0,0):
+    next==='top'?new THREE.Vector3(.01,0,0):
+    new THREE.Vector3(68,0,-65);
+  // Use only yaw: injury lean and falling must not spin the camera up/down.
+  relative.applyAxisAngle(new THREE.Vector3(0,1,0),
+    (rig?.legacyYaw??0)-LEGACY_FRAME_YAW);
+  camera.position.set(center.x+relative.x,next==='top'?115:
     ['front','back','side'].includes(next)?16:48,
-    center.z+dz);
+    center.z+relative.z);
   camera.zoom=comparing?
     Math.min(.34,Math.max(.21,.58*window.innerWidth/window.innerHeight)):
     variantComparing?(compact?.72:.92):

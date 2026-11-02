@@ -6,7 +6,9 @@ test('operator lab exposes rear and gameplay distance viewing and render counts'
  const lab=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
  assert.match(html,/data-view="back"/);assert.match(html,/data-view="game"/);
  assert.match(html,/id="visualStats"/);
- assert.match(lab,/next==='back'\?-75/);
+ assert.match(lab,/next==='back'\?new THREE\.Vector3\(0,0,75\)/);
+ assert.match(lab,/rig\?\.legacyYaw/);
+ assert.match(lab,/LEGACY_FRAME_YAW/);
  assert.match(lab,/next==='game'\?\.65/);
  assert.match(lab,/renderer\.info\.render\.triangles/);
 });
