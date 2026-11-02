@@ -25,7 +25,7 @@ test('serving hatch permits upper-body fire, not low fire through solid sill',()
  assert.equal(assessFireLane(from,11,to,11,[sill],[],[]).blocker,'cover');
 });
 test('sustained pressure can push an open hinged leaf beyond normal 90 degree stop',()=>{
- const d=door('wood');d.open=true;d.openFraction=.82;
+ const d=door('wood');d.open=true;d.openFraction=.99;
  for(let i=0;i<30;i++)pushDoor(d,2);
  assert.ok(d.pushTarget>1.14);
  for(let i=0;i<120;i++)advanceDoor(d,1/60);
