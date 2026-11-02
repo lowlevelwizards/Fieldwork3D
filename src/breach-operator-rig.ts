@@ -151,8 +151,10 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   // contact. The stock seats into this pad rather than the arm geometry.
   for(const sign of [-1,1])
     armorPanels.push(block(chest,1.35,4.6,sign*6.05,3.8,3.1,2.0,vest));
-  // Keep the pack outside the rear armor bag instead of interpenetrating it.
-  const pack=block(chest,-9.4,0,0,4.4,11,11,vest);
+  // Empty animated attachment node. The day and field pack are now complete
+  // exclusive models, so a hidden shared box cannot intersect either one.
+  const pack=new THREE.Mesh(new THREE.BufferGeometry(),vest);
+  pack.position.set(-10.4,0,0);chest.add(pack);
   // Very few additional silhouettes, all rigidly attached to existing bones.
   // No new IK, physics bodies or shot-line geometry.
   const rigPouches=[block(chest,2.1,-2,-7.35,2.4,3.8,2.7,boot),
@@ -307,8 +309,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }
   const packItem=gear?.backpack??'backpack-day';
   r.pack.visible=packItem!=='backpack-none';
-  const packSize=packItem==='backpack-field'?1.24:1;
-  r.pack.scale.set(r.pack.scale.x,packSize,packSize);
+  // Explicit pack geometries already carry different volume; extra scaling
+  // used to produce huge square overlapping cubes.
+  r.pack.scale.set(1,1,1);
   // Visible compact modules use exactly the configured kit (not free extras).
   const rigItem=gear?.rig??'rig-none';
   r.rigPouches.forEach((mesh,i)=>{
@@ -471,7 +474,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     position:{x:p.x,y:p.z}});
   // Pack follows the torso with restrained inertia, not separate timing.
   const packMotion=packInertia(p.acceleration??0,motion.torsoSide);
-  r.pack.position.set(-9.4,0,
+  r.pack.position.set(-10.4,0,
     packMotion.side*r.personality.packScale);
   r.pack.rotation.z=packMotion.lean*r.personality.packScale;
   // Wide side-steps need a physical lowering of the center of mass,
