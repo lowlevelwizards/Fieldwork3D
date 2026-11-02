@@ -1,5 +1,5 @@
 /** VIS-03: Shared optical geometry; not ballistic or collision geometry. */
-import {doorLeafSegment,doorTransmitsSightAndLight,
+import {doorOpticalSegment,doorTransmitsSightAndLight,
  type Door,type Obstacle,type Pt,type Segment} from './breach-core.ts';
 const TRANSPARENT_COVER=new Set(['chain-link-fence','iron-fence',
  'glass-barrier','mesh-gate']);
@@ -12,7 +12,7 @@ export function opticalBlockerSegments(
  const segments:Segment[]=[...walls];
  for(const door of doors){
   if(doorTransmitsSightAndLight(door))continue;
-  const leaf=doorLeafSegment(door);
+  const leaf=doorOpticalSegment(door);
   if(Math.hypot(leaf.b.x-leaf.a.x,leaf.b.y-leaf.a.y)>.1)segments.push(leaf);
  }
  for(const o of cover){

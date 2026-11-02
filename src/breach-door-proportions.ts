@@ -5,6 +5,9 @@
  */
 import type {Door} from './breach-core.ts';
 export const DOOR_PANEL_END_RECESS=2;
+/** Visual jambs overlap the slightly recessed leaf without narrowing the
+ * authoritative physical doorway or changing operator collision. */
+export const DOOR_FRAME_INSET=DOOR_PANEL_END_RECESS+.65;
 /** Geometry, not just trim: a standard single interior doorway used to be
  * 48 units wide (wider than its 34-unit-tall leaf). Keep a friendly 36-unit
  * passage for 16-unit-diameter operators; public entrances remain roomier.
@@ -32,11 +35,11 @@ export function doorProportions(door:Pick<Door,'kind'|'style'>):DoorProportions{
    .includes(door.style??'wood');
  const sliding=door.kind==='sliding';
  return {
-  jambWidth:door.kind==='shutter'?3.6:heavy?3.2:2.8,
+  jambWidth:door.kind==='shutter'?6:heavy?5.8:5.4,
   jambDepth:door.kind==='shutter'?9:heavy?7.8:6.8,
   headerHeight:heavy?3.6:3.1,
   headerDepth:heavy?8.4:7.4,
-  casingWidth:heavy?1.25:1,
+  casingWidth:heavy?1.55:1.35,
   casingDepth:1.5,
   leafThickness:sliding?3:heavy?3.6:2.8,
   thresholdHeight:door.kind==='shutter'?.9:.55,

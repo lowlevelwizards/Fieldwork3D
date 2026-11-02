@@ -144,8 +144,17 @@ export function doorBlocksRay(doors:Door[],line:Segment):boolean{
 export const doorTransmitsSightAndLight=(d:Door):boolean=>
  ['glazed','mesh-gate','screen','french'].includes(d.style??'wood');
 /** Glass transmits sight but retains its physical collision leaf. */
+/** Closed leaves optically meet both jambs even though the collision panel
+ * retains a short latch-end recess to avoid snagging moving operators. */
+export function doorOpticalSegment(d:Door):Segment{
+ const fraction=d.openFraction??(d.open?1:0);
+ if(fraction<=.035&&d.kind!=='sliding')
+   return {a:{...d.a},b:{...d.b}};
+ return doorLeafSegment(d);
+}
 export function doorBlocksSightRay(doors:Door[],ray:Segment):boolean{
- return doors.some(d=>!doorTransmitsSightAndLight(d)&&doorBlocksSegment(d,ray));
+ return doors.some(d=>!doorTransmitsSightAndLight(d)&&
+   segmentsCross(ray,doorOpticalSegment(d)));
 }
 export function isClear(a:Pt,b:Pt,doors:Door[],ignoreDoors=false):boolean{
   const shot={a,b};
