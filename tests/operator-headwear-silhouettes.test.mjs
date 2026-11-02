@@ -3,60 +3,52 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createHeadwearSilhouette,HEAD_SILHOUETTE_METRICS}
  from '../src/operator-headwear-silhouettes.ts';
-function bounds(g){
- const box=new THREE.Box3().setFromObject(g);
- return {min:box.min,max:box.max};
-}
-test('patrol cap is shallow with a real continuous projecting bill',()=>{
- const cap=createHeadwearSilhouette('patrol-cap',new THREE.MeshStandardMaterial());
- assert.equal(cap.children.length,2);
- const {min,max}=bounds(cap);
- assert.ok(min.z < -8.8,'bill must project clearly in forward -Z direction');
- assert.ok(max.y>8.4&&max.y<9,'soft, shallow crown');
- assert.ok(max.x-min.x<10,'cap narrower than helmet');
- assert.equal(cap.userData.modelAxes,'-Z-forward,+X-right,+Y-up');
- cap.traverse(x=>{if(x.isMesh){const a=x.geometry.getAttribute('position');
-  for(let i=0;i<a.count;i++)for(const v of [a.getX(i),a.getY(i),a.getZ(i)])
-   assert.ok(Number.isFinite(v));}});
-});
-test('ACH covers ears; high-cut shell raises the side edge substantially',()=>{
- const a=HEAD_SILHOUETTE_METRICS.ach;
- const b=HEAD_SILHOUETTE_METRICS['high-cut'];
- assert.ok(a.earEdge+2.0<b.earEdge);
- assert.ok(a.top>b.top);
- const mat=new THREE.MeshStandardMaterial();
- const ach=createHeadwearSilhouette('ach',mat);
- const cut=createHeadwearSilhouette('high-cut',mat);
- assert.equal(ach.children.length,1);
- assert.equal(cut.children.length,1);
- assert.ok(bounds(ach).max.y>bounds(cut).max.y);
- assert.notEqual(ach.children[0].geometry.getAttribute('position').array.toString(),
-  cut.children[0].geometry.getAttribute('position').array.toString());
-});
-test('silhouette models are finite, indexed, bounded and contain no overlapping box mesh stacks',()=>{
+const material=new THREE.MeshStandardMaterial();
+const built=(id)=>createHeadwearSilhouette(id,material);
+const box=(g)=>new THREE.Box3().setFromObject(g);
+const piece=(group,name)=>group.children.find(x=>x.name===name);
+test('every Stage 1B component is an intentional cuboid, not a faceted/extruded shell',()=>{
  for(const id of ['patrol-cap','ach','high-cut']){
-  const obj=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial());
-  obj.traverse(x=>{
-   if(!x.isMesh)return;
-   const geometry=x.geometry,positions=geometry.getAttribute('position');
-   assert.ok(geometry.index&&geometry.index.count>40,id);
-   for(const n of positions.array)assert.ok(Number.isFinite(n),id);
-   assert.equal(geometry.type,'BufferGeometry');
-  });
+  const g=built(id);
+  assert.ok(g.children.length>=5&&g.children.length<=8,id);
+  assert.equal(g.userData.primitive,'cuboids-only');
+  assert.equal(g.userData.modelAxes,'-Z-forward,+X-right,+Y-up');
+  for(const p of g.children){
+   assert.equal(p.geometry.type,'BoxGeometry',id+'/'+p.name);
+   assert.ok(p.geometry.index.count===36);
+   assert.ok(p.position.toArray().every(Number.isFinite));
+  }
  }
 });
-
-test('geometry itself, not just metadata, keeps the ACH ear edge low and the high-cut high',()=>{
- const mat=new THREE.MeshStandardMaterial();
- const ach=createHeadwearSilhouette('ach',mat).children[0].geometry;
- const high=createHeadwearSilhouette('high-cut',mat).children[0].geometry;
- // First ring starts at front theta=0, with ear/side theta=PI/2 (index 4).
- const a=ach.getAttribute('position'),b=high.getAttribute('position');
- assert.ok(a.getY(0)>a.getY(4)+1.5,'ACH ear edge should drop below brow');
- assert.ok(b.getY(4)>b.getY(0)+1.0,'high-cut ear edge should rise above brow');
- assert.ok(b.getY(4)>a.getY(4)+2.5,'high-cut must actually clear the ear');
- assert.ok(Math.abs(a.getZ(0))>4.2&&Math.abs(b.getZ(0))>4.2,
-  'forehead shells project outside the skull');
- assert.ok(Math.abs(a.getX(4))>4.5&&Math.abs(b.getX(4))>4.4,
-  'shells fit around the chunky operator head');
+test('patrol cap has flat bill forward of a shallow, rectangular crown',()=>{
+ const cap=built('patrol-cap');
+ const crown=piece(cap,'soft-flat-crown');
+ const bill=piece(cap,'flat-short-bill');
+ assert.ok(crown&&bill);
+ assert.ok(crown.geometry.parameters.height<2);
+ assert.ok(bill.geometry.parameters.height<.6);
+ assert.ok(bill.geometry.parameters.width>bill.geometry.parameters.depth);
+ assert.ok(box(bill).min.z<box(crown).min.z-2.5);
+ assert.ok(box(cap).max.y<9.1);
+});
+test('ACH deep coverage and high-cut open ears are demonstrably different cuboid silhouettes',()=>{
+ const ach=built('ach'),high=built('high-cut');
+ const achEar=piece(ach,'ach-deep-left-ear');
+ const highTemple=piece(high,'highcut-left-temple');
+ assert.ok(achEar&&highTemple);
+ assert.ok(box(highTemple).min.y-box(achEar).min.y>3.0);
+ assert.ok(box(ach).max.y>box(high).max.y);
+ assert.ok(achEar.geometry.parameters.height>highTemple.geometry.parameters.height*3);
+ assert.ok(HEAD_SILHOUETTE_METRICS.ach.earEdge<
+   HEAD_SILHOUETTE_METRICS['high-cut'].earEdge-3);
+ assert.ok(piece(ach,'ach-nape').geometry.parameters.height>
+   piece(high,'highcut-short-nape').geometry.parameters.height);
+});
+test('cuboid shells cover the skull without projecting absurdly beyond it',()=>{
+ for(const id of ['patrol-cap','ach','high-cut']){
+  const b=box(built(id));
+  assert.ok(b.min.x>=-5.6&&b.max.x<=5.6,id);
+  assert.ok(b.max.z<=5.9&&b.min.z>=-8.3,id);
+  assert.ok(b.min.y>2.5&&b.max.y<10.6,id);
+ }
 });
