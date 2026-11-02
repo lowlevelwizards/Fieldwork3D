@@ -2,139 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
-<meta name="theme-color" content="#171f22"/>
-<title>FIELDWORK — Breach 01</title>
-<link rel="stylesheet" href="./src/breach-style.css"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#111d1c"/>
+<title>FIELDWORK — Tactical Breach</title>
 </head>
 <body>
-<canvas id="breachCanvas" aria-label="Top-down tactical encounter. Choose an operator, plan waypoints and execute." role="img"></canvas>
-<header class="top">
-  <div class="ident"><span>FIELDWORK <i>/</i> TACTICAL STUDY</span>
-    <strong>CUTWOODS / BREACH</strong><small>PROCEDURAL SITE — FOUR OPERATORS</small></div>
-  <div class="mode"><strong id="phase">PLANNING</strong><output id="clock">00:00</output></div>
-</header>
-<div class="guidance" id="hint" role="status" aria-live="polite">Tap to move · Select an order for LOOK, PIE, or STRAFE</div>
-<section class="orders compact" id="advancedOrders" aria-label="Additional tactical options">
-  <button id="undo" type="button" title="Undo the last planning edit">UNDO</button>
-  <button id="redo" type="button" title="Redo the last planning edit">REDO</button>
-  <button id="wait" type="button">WAIT</button>
-  <button id="reload" type="button">RELOAD</button>
-  <button id="loadout" type="button" title="Cycle selected operator weapon">WEAPON</button>
-  <button id="flash" type="button">FLASH ×2</button>
-  <button id="sync" type="button" title="Synchronize the squad's planned go-code">SYNC</button>
-  <button id="stance" type="button">CROUCH</button>
-  <button id="contact" type="button" aria-pressed="false">STOP ON CONTACT</button>
-  <button id="siteSettingsToggle" type="button" aria-expanded="false">⚙ SETTINGS</button>
-  <button id="clear" type="button" title="Clear all remaining orders for selected operator">CLEAR PLAN</button>
-</section>
-<section id="siteSettings" class="site-settings" hidden aria-label="Mission and view options">
-  <div class="site-settings-group">
-    <h3>MISSION & SITE</h3>
-    <div class="site-settings-row">
-      <button id="briefingToggle" type="button" aria-expanded="false">BRIEFING</button>
-      <button id="variant" type="button">NEW SITE</button>
-      <button id="siteSize" type="button" title="Set the size of the next generated site">NEXT SITE SIZE · MEDIUM</button>
-      <button id="intelMode" type="button" title="Set intelligence rules for the next site; does not reset this mission">NEXT SITE INTEL</button>
-      <button id="siteLighting" type="button" title="Choose lighting before deployment">LIGHTING · DAY</button>
-      <button id="restart" type="button">RESTART</button>
-    </div>
-  </div>
-  <div class="site-settings-group">
-    <h3>VIEW & CONTROLS</h3>
-    <div class="site-settings-row">
-      <button id="viewIso" type="button" aria-pressed="true">ISO</button>
-      <button id="viewTop" type="button" aria-pressed="false">TOP</button>
-      <button id="view2d" type="button" aria-pressed="false">2D</button>
-      <button id="cameraFit" type="button">FIT VIEW</button>
-      
-      
-    </div>
-  </div>
-  <details class="site-settings-tools">
-    <summary>DEVELOPMENT TOOLS</summary>
-    <div class="site-settings-row"><a class="operator-lab-link" href="./operator-lab.html">OPERATOR LAB</a>
-      <a class="operator-lab-link" href="./map-lab.html">MAP LAB</a>
-      <a class="operator-lab-link" href="./physicality-lab.html">PHYSICALITY LAB</a>
-      </div>
-  </details>
-</section>
-<section id="briefingPanel" class="briefing-panel fw-mission-dossier" hidden aria-label="Operation briefing">
-  <div class="fw-dossier-eyebrow">FIELD OPERATIONS / MISSION DOSSIER</div>
-  <strong id="briefingTitle">OPERATION BRIEFING</strong>
-  <div class="fw-dossier-block fw-dossier-objective">
-    <h3>OBJECTIVE</h3><p id="briefingBody"></p>
-  </div>
-  <div class="fw-dossier-grid">
-    <div class="fw-dossier-block"><h3>SUCCESS CONDITION</h3><p id="briefingCondition"></p></div>
-    <div class="fw-dossier-block"><h3>EXTRACTION</h3><p id="briefingExtraction"></p></div>
-  </div>
-  <div class="fw-dossier-block"><h3>SITE INTELLIGENCE</h3><p id="briefingSite"></p></div>
-  <div class="fw-dossier-block"><h3>KNOWN INTELLIGENCE</h3><p id="briefingIntel"></p></div>
-  <div class="fw-dossier-block"><h3>ASSIGNED TEAM</h3><p id="briefingRoster"></p></div>
-  <button id="briefingClose" type="button">RETURN TO PLANNING</button>
-</section>
-<div id="contextTools" class="context-tools" role="toolbar" aria-label="Contextual tactical actions" hidden></div>
-<button id="cancelTarget" class="cancel-target" type="button" hidden aria-label="Cancel target selection">✕ CANCEL</button>
-<div class="feed" id="feed" aria-live="polite">PLAN THE ENTRY</div>
-<nav class="bar" aria-label="Tactical controls">
-  <div class="units">
-    <button id="rook" class="unit selected" type="button" aria-pressed="true">
-      <span class="unit-code">01</span><strong>ROOK</strong><small id="rookHp">●●</small><em id="rookAmmo">12/36</em>
-    </button>
-    <button id="moss" class="unit" type="button" aria-pressed="false">
-      <span class="unit-code">02</span><strong>MOSS</strong><small id="mossHp">●●</small><em id="mossAmmo">12/36</em>
-    </button>
-    <button id="ash" class="unit" type="button" aria-pressed="false">
-      <span class="unit-code">03</span><strong>ASH</strong><small id="ashHp">●●</small><em id="ashAmmo">12/36</em>
-    </button>
-    <button id="vale" class="unit" type="button" aria-pressed="false">
-      <span class="unit-code">04</span><strong>VALE</strong><small id="valeHp">●●</small><em id="valeAmmo">12/36</em>
-    </button>
-  </div>
-  <div class="actions">
-    <button id="back" type="button" title="Remove just the final pending order">BACK −1</button>
-    <button id="moreOrders" type="button" aria-pressed="false" title="Operator tactical actions">ACTIONS</button>
-    <button id="play" type="button" class="play">GO <span>▶</span></button>
-  </div>
-</nav>
-<section id="debrief" class="debrief" hidden aria-label="Mission debrief">
-  <strong id="debriefTitle">MISSION COMPLETE</strong>
-  <div class="fw-after-action-stats">
-    <div><span>GRADE</span><strong id="debriefGrade">—</strong></div>
-    <div><span>SURVIVORS</span><strong id="debriefSurvivors">—</strong></div>
-    <div><span>ACCURACY</span><strong id="debriefAccuracy">—</strong></div>
-  </div>
-  <p class="fw-after-action-objective" id="debriefObjective"></p>
-  <details class="fw-after-action-detail">
-    <summary>FULL REPORT / TACTICAL TIMELINE</summary>
-    <p id="debriefStats"></p>
-  </details>
-  <button id="watchReplay" type="button">WATCH REPLAY ▶</button>
-  <button id="retry" type="button">RETRY MISSION</button>
-  <button id="next" type="button">NEXT ARRANGEMENT</button>
-</section>
-<section id="replayPanel" class="replay-panel" hidden aria-label="Mission replay controls">
-  <div class="replay-head"><strong>MISSION REPLAY</strong><output id="replayClock">00:00 / 00:00</output></div>
-  <input id="replaySeek" type="range" min="0" max="1000" value="0" aria-label="Seek through mission"/>
-  <div class="replay-actions">
-    <button id="replayPrevEvent" type="button" title="Previous combat event">|◀</button>
-    <button id="replayBack" type="button" aria-label="Rewind ten seconds">◀◀</button>
-    <button id="replayPlay" type="button">PLAY ▶</button>
-    <button id="replayForward" type="button" aria-label="Advance ten seconds">▶▶</button>
-    <button id="replayNextEvent" type="button" title="Next combat event">▶|</button>
-  </div><div id="replayExtra" class="replay-extra" hidden>
-    <button id="replaySpeed" type="button">1×</button>
-    <button id="replaySight" type="button">FULL VIEW</button>
-    <button id="replayView" type="button">ISO</button>
-    <button id="replayFollow" type="button">FOLLOW</button>
-    <button id="replayAnalysis" type="button">ANALYSIS</button>
-  </div>
-  <button id="replayMore" type="button" aria-expanded="false">CAMERA / ANALYSIS</button>
-  <button id="replayExit" type="button">EXIT</button>
-  <output id="replayEventText" class="replay-event" aria-live="off">Mission events</output>
-</section>
-<div class="foot"><span id="mission">CONTACTS UNKNOWN • SECURE THE STATION</span><span class="shortcut">TAP TO ORDER · DRAG TO ORBIT · 2 FINGERS PAN/PINCH</span></div>
-<script type="module" src="./src/breach-main.ts"></script>
+<p>Opening <a href="./index.html">Fieldwork</a>…</p>
+<script>
+/* UX18: canonical tactical entry.
+   Keep query data from Map Lab (?seed, scale, condition), deep links and anchors. */
+(function(){
+ const target=new URL('./index.html',window.location.href);
+ target.search=window.location.search;
+ target.hash=window.location.hash;
+ window.location.replace(target.href);
+})();
+</script>
 </body>
 </html>
