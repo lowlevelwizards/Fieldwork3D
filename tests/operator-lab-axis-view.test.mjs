@@ -12,9 +12,10 @@ test('operator Lab front/back/side and inspection camera depend on local -Z axis
  assert.match(s,/box\.rotation\.y=rig!\.legacyYaw/);
 });
 
-test('full look frame aims at torso-center and review starts in context',()=>{
+test('full look frame aims at torso-center; headwear selection is automatically framed',()=>{
  const s=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
  assert.match(s,/rig\?\.root\.position\.x\?\?0,25,rig\?\.root\.position\.z\?\?0/);
- assert.match(s,/let headReviewCloseUp=false/);
- assert.match(s,/headReviewCloseUp\?'head':'all'/);
+ assert.match(s,/isolation\.value='head'/);
+ assert.match(s,/chooseTrack\('idle'\);frameWardrobeSelection\(\)/);
+ assert.doesNotMatch(s,/headReviewFraming/);
 });

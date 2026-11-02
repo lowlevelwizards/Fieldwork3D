@@ -791,19 +791,6 @@ function frameWardrobeSelection(){
 const headReviewStatus=choose<HTMLOutputElement>('headwearReviewStatus');
 const reviewButtons=Array.from(document.querySelectorAll<HTMLButtonElement>(
  '[data-head-silhouette]'));
-const reviewFramingButton=choose<HTMLButtonElement>('headReviewFraming');
-let headReviewCloseUp=false;
-function updateHeadReviewFraming(){
- reviewFramingButton.textContent=headReviewCloseUp?
-  'SHOW FULL OPERATOR':'ZOOM TO HEAD';
- reviewFramingButton.setAttribute('aria-pressed',String(headReviewCloseUp));
- isolation.value=headReviewCloseUp?'head':'all';
- frameWardrobeSelection();
-}
-reviewFramingButton.addEventListener('click',()=>{
- headReviewCloseUp=!headReviewCloseUp;
- updateHeadReviewFraming();
-});
 function selectReviewSilhouette(id:string){
  const available=['bare','patrol-cap','ach','high-cut'];
  if(!available.includes(id))return;
@@ -812,12 +799,12 @@ function selectReviewSilhouette(id:string){
  labKit=selected.kit;wardrobeOptions=selected.wardrobe;
  weapon.value='none';magazineSelector.value='0';
  choose<HTMLSelectElement>('faceTreatment').value='blank';
- isolation.value=headReviewCloseUp?'head':'all';hideSelectedGroup=false;
+ isolation.value='head';hideSelectedGroup=false;
  hideSelectedButton.disabled=false;
  hideSelectedButton.textContent='HIDE GROUP';
  hideSelectedButton.setAttribute('aria-pressed','false');
  updateMagazineState();syncKit();
- chooseTrack('idle');updateHeadReviewFraming();
+ chooseTrack('idle');frameWardrobeSelection();
  for(const button of reviewButtons)
   button.setAttribute('aria-pressed',String(button.dataset.headSilhouette===id));
  headReviewStatus.textContent=id==='bare'?
