@@ -16,17 +16,19 @@ const lowerAt=(volumes,x,z)=>{
  }
  return lowest;
 };
-test('patrol cap uses one joined exterior with a confident short bill',()=>{
+test('patrol cap preserves one merged surface while wrapping actual head',()=>{
  const cap=build('patrol-cap');
+ const v=headwearCuboidVolumes('patrol-cap');
  assert.equal(cap.children.length,1);
  assert.equal(cap.children[0].geometry.userData.greedyCuboidUnion,true);
- assert.equal(cap.children[0].geometry.userData.cuboids.length,3);
- const bill=byName(headwearCuboidVolumes('patrol-cap'),'patrol-bill');
- const crown=byName(headwearCuboidVolumes('patrol-cap'),'patrol-solid-crown');
+ assert.equal(v.length,6,'one crown, four fitted walls, one anchored bill');
+ const bill=byName(v,'patrol-anchored-bill');
+ const crown=byName(v,'patrol-integrated-crown');
  assert.ok(bill&&crown);
  assert.ok(bill.z-bill.depth/2<crown.z-crown.depth/2-2.8);
- assert.ok(bill.height>=.7,'bill must be a real mass not a paper-thin trim');
- assert.ok(box(cap).max.y<9.1);
+ assert.ok(bill.height>=.7,'structural bill, not a paper-thin trim');
+ assert.ok(lowerAt(v,4.4,0)<5,'real upper temple coverage');
+ assert.ok(box(cap).max.y<8.5);
 });
 test('two helmet families render single joined faceless-interior cuboid exterior',()=>{
  for(const id of ['ach','high-cut']){
