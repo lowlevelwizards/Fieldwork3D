@@ -118,6 +118,7 @@ export class TacticalScene3D{
   private fogTexture!:THREE.CanvasTexture;
   private smoothFog!:THREE.Mesh;
   private roomFogRoofs:THREE.Mesh[]=[];
+  private roomFogMaterial!:THREE.MeshBasicMaterial;
   private actors=new Map<string,{root:THREE.Group;flash:THREE.Mesh;
     beam:THREE.Mesh;beamLast:{x:number;y:number;yaw:number;tick:number}|null;
     pack:THREE.Mesh;
@@ -292,9 +293,14 @@ export class TacticalScene3D{
     this.smoothFog.renderOrder=1000;
     this.smoothFog.frustumCulled=false;
     this.scene.add(this.smoothFog);
-    // No world-wide elevated fog plane: in isometric view it projects
-    // outside the building and conceals grass in front of the facade.
-    // Footprint-aligned covers are generated per architectural room below.
+    // A single shared material survives site generation without allocating
+    // new WebGL shader/material state every time New Site is pressed.
+    this.roomFogMaterial=new THREE.MeshBasicMaterial({
+      map:this.fogTexture,transparent:true,depthTest:true,depthWrite:false,
+      opacity:1,toneMapped:false,side:THREE.DoubleSide});
+    this.mats.push(this.roomFogMaterial);
+    // No world-wide elevated fog plane: its projection covers grass outside
+    // the building. Room-footprint covers are generated per site instead.
     this.resize(innerWidth,innerHeight);
   }
   private groundOverlayMaterial(kind:PixelOverlay){
@@ -689,10 +695,7 @@ export class TacticalScene3D{
       this.mats.push(this.roofMaterial);
     }else this.roofMaterial.color.setHex(theme.cap);
     const roofBounds=site.bounds??{minX:0,minY:0,maxX:W,maxY:H};
-    const fogRoofMaterial=new THREE.MeshBasicMaterial({
-      map:this.fogTexture,transparent:true,depthTest:true,depthWrite:false,
-      opacity:1,toneMapped:false,side:THREE.DoubleSide});
-    this.mats.push(fogRoofMaterial);
+    const fogRoofMaterial=this.roomFogMaterial;
     for(const room of site.rooms){
       const roof=new THREE.Group();
       roof.visible=false;this.root.add(roof);
