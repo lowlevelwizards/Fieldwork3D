@@ -145,7 +145,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'FLECKTARN',
   description:'Dense micro-speckled five-color fleck clusters over moss, forest and rust-brown fields',
   colors:[[119,134,86],[54,83,55],[161,137,91],[129,77,53],[42,48,37]],
-  targetCoverage:[0.304,0.234,0.225,0.143,0.095],
+  targetCoverage:[0.242,0.197,0.196,0.177,0.188],
   motifs:[
    p(1,-5,1,2,-2,10,0,13,4,9,8,4,9,-3,7),
    p(1,14,12,19,9,25,11,28,16,25,22,19,21,14,18),
@@ -169,7 +169,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'WOODLAND DPM',
   description:'British temperate brushstroke: warm khaki windows, broad oak-like green/brown strokes, thin hooked charcoal boughs and serrated edges',
   colors:[[175,155,105],[87,118,73],[118,85,60],[48,55,39]],
-  targetCoverage:[0.3,0.3,0.27,0.13],
+  targetCoverage:[0.218,0.293,0.306,0.184],
   motifs:[
    // Wide flat khaki openings between green and brown brush sweeps.
    p(1,-6,1,2,-2,8,1,13,5,17,8,14,11,10,9,7,7,3,7,-4,12),
@@ -252,7 +252,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'WOODLAND MARPAT',
   description:'Layered green and brown macro-fields assembled from uneven 1-3px digital fragments',
   colors:[[94,111,77],[138,121,90],[64,83,66],[46,54,44]],
-  targetCoverage:[0.313,0.28,0.295,0.112],
+  targetCoverage:[0.379,0.209,0.321,0.091],
   motifs:[
    p(1,0,1,7,1,7,4,11,4,11,8,14,8,14,12,8,12,8,10,3,10,3,7,0,7),
    p(1,17,19,23,19,23,16,28,16,28,20,33,20,33,26,29,26,29,30,22,30,22,27,17,27),
@@ -299,7 +299,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'DESERT MARPAT',
   description:'Bright tan digital fields with light coyote steps and sparse dark brown pixels',
   colors:[[221,201,162],[193,173,133],[171,158,117],[145,105,73]],
-  targetCoverage:[0.435,0.293,0.209,0.063],
+  targetCoverage:[0.422,0.368,0.163,0.047],
   motifs:[
    p(1,2,1,10,1,10,4,14,4,14,9,11,9,11,12,5,12,5,9,2,9),
    p(1,17,16,24,16,24,13,29,13,29,19,33,19,33,25,27,25,27,29,19,29,19,26,16,26),
