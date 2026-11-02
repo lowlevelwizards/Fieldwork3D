@@ -31,6 +31,7 @@ jobs:
         run: |
           node --experimental-strip-types --test tests/breach-motion-*.test.mjs tests/breach-distance-*.test.mjs tests/breach-hybrid-*.test.mjs tests/breach-121.test.mjs tests/breach-126.test.mjs tests/breach-127.test.mjs
           node --experimental-strip-types --test tests/pages-cache-bust.test.mjs tests/pages-home.test.mjs tests/equipment-13-visuals.test.mjs
+          node --experimental-strip-types --test tests/operator-cuboid-union.test.mjs tests/operator-headwear-silhouettes.test.mjs tests/operator-headwear-fit-metrics.test.mjs tests/operator-headwear-anatomy.test.mjs
           npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
