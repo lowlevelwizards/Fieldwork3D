@@ -39,7 +39,7 @@ import {WARDROBE_RECIPES,wardrobeRecipe,applyWardrobeRecipe}
  from './operator-wardrobe-recipes.ts';
 import {HEADWEAR_SOLID_COLORS,headwearColorChoices,resolvedHeadwearSolid}
  from './operator-headwear-colors.ts';
-import {headwearCamoChoices,resolvedHeadwearCamo,headwearCamoPixels,
+import {HEADWEAR_CAMO_IDS,headwearCamoChoices,resolvedHeadwearCamo,headwearCamoPixels,
  HEADWEAR_CAMO_RECIPES,HEADWEAR_CAMO_DENSITY,nextHeadwearCamoRoll,
  type HeadwearCamoId} from './operator-headwear-camo.ts';
 import {initialWardrobe,readWardrobe,setWardrobePattern,resolvedWardrobe,
@@ -269,6 +269,7 @@ function renderHeadwearSolidSwatches(id:string){
 
 const camoChooser=document.getElementById('headwearCamoChooser') as HTMLElement;
 const camoGrid=document.getElementById('headwearCamoGrid') as HTMLElement;
+const camoCompareGrid=document.getElementById('headwearCamoCompareGrid') as HTMLElement;
 const camoInspector=document.getElementById('headwearCamoInspector') as HTMLElement;
 const camoStatus=document.getElementById('headwearCamoChoice') as HTMLOutputElement;
 const camoReroll=document.getElementById('headwearCamoReroll') as HTMLButtonElement;
@@ -293,12 +294,51 @@ function paintHeadwearCamo(canvas:HTMLCanvasElement,id:HeadwearCamoId,repeats:nu
  }
  ctx.imageSmoothingEnabled=false;ctx.putImageData(image,0,0);
 }
+function applyHeadwearCamoChoice(id:HeadwearCamoId,selected:HeadwearCamoId|null,model:string){
+ wardrobeOptions={...wardrobeOptions,headwearCamo:id,
+  headwearCamoRoll:selected===id?
+   nextHeadwearCamoRoll(wardrobeOptions.headwearCamoRoll):0};
+ renderHeadwearSolidSwatches(model);renderHeadwearCamoSwatches(model);
+}
+/** Compare identical raw/tiled images at fixed CSS dimensions. Only the
+ * selected item is rendered in actual 3D using the Lab's shared camera,
+ * lighting and pose. This study does not substitute a mock helmet render.
+ */
+function renderHeadwearCamoComparison(model:string,selected:HeadwearCamoId|null){
+ const allowed=headwearCamoChoices(model);
+ camoCompareGrid.replaceChildren();
+ for(const id of HEADWEAR_CAMO_IDS){
+  const recipe=HEADWEAR_CAMO_RECIPES[id],canApply=allowed.includes(id);
+  const button=document.createElement('button');
+  button.type='button';button.className='camo-study';
+  button.dataset.camoStudy=id;button.disabled=!canApply;
+  button.setAttribute('aria-pressed',String(selected===id&&canApply));
+  button.setAttribute('aria-label',recipe.label+
+   (canApply?' · apply to selected headgear':' · unavailable on selected headgear'));
+  const heading=document.createElement('span');heading.className='camo-study-title';
+  heading.textContent=recipe.label;
+  const views=document.createElement('div');views.className='camo-study-views';
+  for(const [repeat,label] of [[1,'RAW'],[3,'TILED']] as const){
+   const figure=document.createElement('figure');
+   const canvas=document.createElement('canvas');
+   canvas.setAttribute('aria-hidden','true');paintHeadwearCamo(canvas,id,repeat);
+   const caption=document.createElement('figcaption');caption.textContent=label;
+   figure.append(canvas,caption);views.append(figure);
+  }
+  const density=document.createElement('span');density.className='camo-study-density';
+  density.textContent=HEADWEAR_CAMO_DENSITY[id]+'× PRINT'+(canApply?'':' · INCOMPATIBLE');
+  button.append(heading,views,density);
+  if(canApply)button.addEventListener('click',()=>applyHeadwearCamoChoice(id,selected,model));
+  camoCompareGrid.append(button);
+ }
+}
 function renderHeadwearCamoSwatches(model:string){
  const choices=headwearCamoChoices(model);
  camoChooser.hidden=choices.length===0;camoGrid.replaceChildren();
  camoInspector.hidden=choices.length===0;
- if(!choices.length){camoStatus.textContent='';camoReroll.hidden=true;return;}
+ if(!choices.length){camoStatus.textContent='';camoReroll.hidden=true;camoCompareGrid.replaceChildren();return;}
  const selected=resolvedHeadwearCamo(model,wardrobeOptions.headwearCamo);
+ renderHeadwearCamoComparison(model,selected);
  for(const id of choices){
   const recipe=HEADWEAR_CAMO_RECIPES[id];
   const button=document.createElement('button');button.type='button';
@@ -310,12 +350,8 @@ function renderHeadwearCamoSwatches(model:string){
   image.setAttribute('aria-hidden','true');paintHeadwearCamo(image,id,1);
   const caption=document.createElement('span');caption.textContent=recipe.label;
   button.append(image,caption);
-  button.addEventListener('click',()=>{
-   wardrobeOptions={...wardrobeOptions,headwearCamo:id,
-     headwearCamoRoll:selected===id?
-      nextHeadwearCamoRoll(wardrobeOptions.headwearCamoRoll):0};
-   renderHeadwearSolidSwatches(model);renderHeadwearCamoSwatches(model);
-  });camoGrid.append(button);
+  button.addEventListener('click',()=>applyHeadwearCamoChoice(id,selected,model));
+  camoGrid.append(button);
  }
  camoReroll.hidden=!selected;
  const preview=selected??choices[0];
