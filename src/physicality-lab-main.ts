@@ -4,7 +4,7 @@ import {activateSite,doorCenter,doorLeafSegment,segmentsCross,route,
  from './breach-core.ts';
 import {initDoor,advanceDoor,pushDoor,approachingDoorLeaf} from './breach-door.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
-import {friendlyPassingStep} from './breach-friendly-traffic.ts';
+import {friendlyPassingStep,opposingPassingStep} from './breach-friendly-traffic.ts';
 import {resolveMovementFrame} from './breach-movement-authority.ts';
 import {passageWait,type PassageLease} from './breach-passage.ts';
 import type {Site} from './breach-site.ts';
@@ -99,6 +99,11 @@ function tick(){
      units.filter(v=>v!==u&&v.side===u.side).map(v=>v.p),
      (a,b)=>sweptBodyClear(a,b,activeDoors));
   }
+  // Combat opponents remain solid but can negotiate shoulder-to-shoulder
+  // space instead of both walking straight into each other forever.
+  move=opposingPassingStep(start,move,target,
+    units.filter(v=>v!==u&&v.side!==u.side).map((v,j)=>frame[units.indexOf(v)]),
+    (a,b)=>sweptBodyClear(a,b,activeDoors));
   if(traffic.value==='strict'&&units.some(v=>v!==u&&v.side===u.side&&
      distance(move,v.p)<16))move=start;
   const actors=units.map(v=>({id:v.id,p:v.p,goal:v.held?null:v.goal,
