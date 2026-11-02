@@ -2,6 +2,8 @@
  * The battle motor remains authoritative. IK is presentation-only. */
 import * as THREE from 'three';
 import {operatorPixelTextures,mapBoxPixelUV,type PixelSurface} from './rendering/pixel-materials.ts';
+import {canonicalRootOrientation,LEGACY_FRAME_YAW,
+  createCanonicalAttachment} from './operator-axis-convention.ts';
 import {alignSegment,solveTwoBone,ARM_LIMITS,LEG_LIMITS,
   intersectsTorso} from './breach-ik.ts';
 import type {WeaponId} from './breach-combat.ts';
@@ -90,7 +92,15 @@ export type OperatorPose={
   wardrobe?:WardrobeOptions;
 };
 export type OperatorRig={
-  root:THREE.Group;hip:THREE.Group;chest:THREE.Group;head:THREE.Group;
+  /** Public space: -Z forward / +X right. Legacy animation is internal. */
+  root:THREE.Group;
+  /** +X authored anatomy compatibility node (+90° Y), never world-facing. */
+  legacyFrame:THREE.Group;
+  /** Future headwear may be authored in -Z using this head-local child. */
+  headCanonicalFrame:THREE.Group;
+  /** Authoritative, old motor yaw; a tactical heading is never remapped. */
+  legacyYaw:number;legacyPitch:number;legacyRoll:number;
+  hip:THREE.Group;chest:THREE.Group;head:THREE.Group;
   weapon:THREE.Group;droppedGun:THREE.Group;feet:Foot[];arms:Arm[];
   magazineInserted:THREE.Mesh;magazineHand:THREE.Mesh;
   medicalItem:THREE.Mesh;
@@ -144,9 +154,20 @@ function bone(parent:THREE.Group,w:number,depth:number,m:THREE.Material){
   return mesh;
 }
 export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
-  const root=new THREE.Group(),hip=new THREE.Group(),chest=new THREE.Group(),
-    head=new THREE.Group(),weapon=new THREE.Group(),droppedGun=new THREE.Group();
-  root.add(hip,chest,droppedGun);droppedGun.visible=false;chest.add(head,weapon);
+  // One compatibility seam: new public model root is -Z forward, while all
+  // existing limbs, muzzle, grip coordinates and IK remain legacy +X.
+  // The +90° frame exactly cancels the root's -90° offset at zero heading.
+  const root=new THREE.Group(),legacyFrame=new THREE.Group(),
+    hip=new THREE.Group(),chest=new THREE.Group(),head=new THREE.Group(),
+    weapon=new THREE.Group(),droppedGun=new THREE.Group();
+  root.name='operator-canonical-minus-Z';
+  legacyFrame.name='operator-legacy-plus-X';
+  legacyFrame.rotation.y=LEGACY_FRAME_YAW;
+  root.add(legacyFrame);
+  legacyFrame.add(hip,chest,droppedGun);droppedGun.visible=false;
+  chest.add(head,weapon);
+  const headCanonicalFrame=createCanonicalAttachment(head);
+  root.quaternion.copy(canonicalRootOrientation(0,0,0));
   const cloth=mat(side==='red'?0x936e5b:
     id==='moss'?0x80826b:id==='ash'?0x8e846e:
     id==='vale'?0x687c8d:0x6f9185,'fabric');
@@ -192,15 +213,15 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   helmetBadge.visible=false;
   const feet:Foot[]=[],arms:Arm[]=[],gloveCovers:THREE.Mesh[]=[];
   for(const sideSign of [-1,1]){
-    const upper=bone(root,4.7,5.3,trousers),
-      lower=bone(root,4,4.3,trousers);
-    const shoe=block(root,0,0,0,8,2.9,5.8,boot);
+    const upper=bone(legacyFrame,4.7,5.3,trousers),
+      lower=bone(legacyFrame,4,4.3,trousers);
+    const shoe=block(legacyFrame,0,0,0,8,2.9,5.8,boot);
     // The mesh transform must remain at the scheduled ankle anchor.
     // Translate *vertices in local toe-forward +X* instead: the toe box
     // now extends 5.6 units forward, the heel only 2.4 units behind.
     // This avoids changing foot IK, grounded contact, yaw or replay.
     shoe.geometry.translate(BOOT_FOREFOOT_OFFSET,0,0);
-    const ankleLink=bone(root,3.8,3.8,boot);
+    const ankleLink=bone(legacyFrame,3.8,3.8,boot);
     ankleLink.visible=false;
     feet.push({upper,lower,shoe,ankleLink,
       anchor:new THREE.Vector3(),
@@ -262,7 +283,9 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
       obj.material instanceof THREE.MeshStandardMaterial)
       colors.set(obj.material,obj.material.color.clone());
   });
-  return {root,hip,chest,head,weapon,droppedGun,feet,arms,pack,
+  return {root,legacyFrame,headCanonicalFrame,
+    legacyYaw:0,legacyPitch:0,legacyRoll:0,
+    hip,chest,head,weapon,droppedGun,feet,arms,pack,
     helmetShell,armorPanels,capBill,rigPouches,beltPouch,
     medicalPouch,radioUnit,flashCanister,utilityTool,gloveCovers,
     visualKit,equipmentDetails,colors,
@@ -549,9 +572,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const motorYaw=-hipTarget;
   const scheduledYaw=p.pelvisYaw??(r.footsteps.mode==='pivot'?
     r.footsteps.pelvisYaw:undefined);
-  r.root.rotation.y=scheduledYaw??(p.deterministic?motorYaw:
-    approach(r.root.rotation.y,motorYaw,3.8,dt));
-  const headingYaw=r.root.rotation.y;
+  r.legacyYaw=scheduledYaw??(p.deterministic?motorYaw:
+    approach(r.legacyYaw,motorYaw,3.8,dt));
+  const headingYaw=r.legacyYaw;
   const turn=turnHierarchy({pelvisYaw:headingYaw,
     bodyHeading:p.heading,targetHeading:p.shotHeading??p.heading,
     speed:physicalSpeed,aiming:p.aiming});
@@ -626,15 +649,20 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const injuryTilt=p.injury===2?.16:p.injury===1?.05:0;
   const collapse=fallAngles(p.downPose??'forward',downProgress);
   const impactPulse=Math.sin(Math.PI*downProgress);
-  r.root.rotation.x=p.surrender?-.22:
+  r.legacyPitch=p.surrender?-.22:
     p.down?collapse.x+reaction.forward*.12*impactPulse:
       -(injuryTilt+reaction.forward);
-  r.root.rotation.z=p.surrender?.09:
+  r.legacyRoll=p.surrender?.09:
     p.down?collapse.z+reaction.side*.10*impactPulse:
       clamp(p.injury===2?.065:p.injury===1?.018:0,0,.08)+
       reaction.side;
   r.root.position.y=p.surrender?-3-3*kneel:p.down?collapse.y:0;
-  const bodyInverse=r.root.quaternion.clone().invert();
+  // World-space anatomy is IDENTICAL to the old model:
+  // canonicalRoot * legacyFrame(+90 Y) = original Euler(pitch,yaw,roll).
+  r.root.quaternion.copy(
+    canonicalRootOrientation(r.legacyPitch,r.legacyYaw,r.legacyRoll));
+  const bodyInverse=new THREE.Quaternion().setFromEuler(
+    new THREE.Euler(r.legacyPitch,r.legacyYaw,r.legacyRoll,'XYZ')).invert();
   for(let i=0;i<2;i++){
     const foot=r.feet[i],sign=i===0?-1:1,target=targets[i];
     const hipLocal=P(0,r.hip.position.y,r.hip.position.z+sign*LEG_HIP_SIDE);
@@ -726,7 +754,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const recoil=p.recoil??(p.firing?1.5:0);
   const fit=fitWeaponPose({weapon:p.weapon,handling,
     configuration:p.weaponConfiguration,
-    yaw:-(p.shotHeading??p.heading)-r.root.rotation.y-r.chest.rotation.y,
+    yaw:-(p.shotHeading??p.heading)-r.legacyYaw-r.chest.rotation.y,
     recoil,clearanceRetraction:p.clearanceRetraction,
     swayYaw:motion.weaponYaw*freeMotion,
     swayPitch:motion.weaponPitch*freeMotion,
@@ -817,7 +845,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const target=p.treatmentPoint??{x:p.x+Math.cos(p.heading)*12,
       y:p.z+Math.sin(p.heading)*12};
     const local=P(target.x-p.x,12-r.chest.position.y,target.y-p.z);
-    local.applyAxisAngle(P(0,1,0),-r.root.rotation.y);
+    local.applyAxisAngle(P(0,1,0),-r.legacyYaw);
     local.applyAxisAngle(P(0,1,0),-r.chest.rotation.y);
     const reach=smooth((p.treatmentProgress??0)/.26);
     const left=fit.support.clone().lerp(local.clone().add(P(-1,3,-2)),reach);
@@ -855,7 +883,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     releaseLeft=true;reaching=true;
     const local=P(p.doorPoint.x-p.x,19-r.chest.position.y,
       p.doorPoint.y-p.z);
-    local.applyAxisAngle(P(0,1,0),-r.root.rotation.y);
+    local.applyAxisAngle(P(0,1,0),-r.legacyYaw);
     local.applyAxisAngle(P(0,1,0),-r.chest.rotation.y);
     // Deliberate hand-off: release weapon, reach physical handle, and
     // return the support hand to its real gun grip after the latch moves.
@@ -946,7 +974,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }
   // The pose system is the final writer for actor tilts and reactions.
   // The scene controls XY world placement only, not anatomy or weapon pose.
-  if(p.flashActive&&!p.down)r.root.rotation.z+=.10*Math.sin(p.seconds*24);
+  if(p.flashActive&&!p.down){
+    r.legacyRoll+=.10*Math.sin(p.seconds*24);
+    r.root.quaternion.copy(
+      canonicalRootOrientation(r.legacyPitch,r.legacyYaw,r.legacyRoll));
+  }
   if(p.surrender)r.chest.rotation.x=.15;
   else if(p.down){
     // Spine and neck settle independently; the fall isn't a single
@@ -975,11 +1007,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
      origin.z+side*(sling?5:11));
     const t=smooth((downProgress-.30)/.70);
     const location=held.lerp(rest,t);
-    r.droppedGun.position.copy(r.root.worldToLocal(location));
+    r.droppedGun.position.copy(r.legacyFrame.worldToLocal(location));
     const flat=new THREE.Quaternion().setFromAxisAngle(P(0,1,0),
       -p.heading+side*.18);
     orientation.slerp(flat,t);
-    const inverse=r.root.getWorldQuaternion(new THREE.Quaternion()).invert();
+    const inverse=r.legacyFrame.getWorldQuaternion(new THREE.Quaternion()).invert();
     r.droppedGun.quaternion.copy(inverse.multiply(orientation));
   }
   // Fabric loop follows the exact solved weapon rather than floating as a
