@@ -641,13 +641,22 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     motion.torsoSide;
   r.chest.rotation.y+=motion.torsoYaw+
     poseWeight*profile.torsoTurn;
+  if(p.unarmedPreview&&physicalSpeed<.5&&p.posture==='stand'&&
+    !p.down&&!p.surrender){
+    // Stable unarmed modeling reference. These transforms belong to
+    // wardrobe presentation only; no replay/weapon/locomotion changes.
+    r.chest.rotation.x=0;
+    r.chest.rotation.z=0;
+    r.hip.rotation.x=0;
+  }
   // A smaller head-only response can run in combat without shifting the
   // weapon/stock muzzle from the authoritative shot-time geometry.
-  const sightEngagement=p.handlingOverride?1:
+  const sightEngagement=p.unarmedPreview?0:p.handlingOverride?1:
     p.down||p.surrender?0:clamp(p.aimBlend??(p.aiming?1:0),0,1);
   r.head.position.y=10-sightEngagement*profile.headDrop;
-  r.head.rotation.x=motion.headCounter+bash.head+
-    poseWeight*profile.headPitch;
+  r.head.rotation.x=p.unarmedPreview&&physicalSpeed<.5&&
+    p.posture==='stand'&&!p.down?0:
+    motion.headCounter+bash.head+poseWeight*profile.headPitch;
   // Apply the collapsing root transform before solving the legs.
   // Inverse full-body rotation holds each shoe in world-space contact
   // instead of sweeping planted boots through the floor during a fall.
@@ -781,7 +790,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // On ADS, bring the eyes toward the actual sight line, keeping the
   // firearm fixed. Head-only accommodation cannot change shot ballistics.
   r.head.position.z=0;
-  if(handling==='ads'&&!p.down&&!p.surrender){
+  if(!p.unarmedPreview&&handling==='ads'&&!p.down&&!p.surrender){
     const strength=p.handlingOverride?1:
       clamp(p.aimBlend??(p.aiming?1:0),0,1);
     const eye=P(4.5,r.head.position.y+3,3.0);

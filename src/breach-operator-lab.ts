@@ -778,7 +778,7 @@ function selectReviewSilhouette(id:string){
   button.setAttribute('aria-pressed',String(button.dataset.headSilhouette===id));
  headReviewStatus.textContent=id==='bare'?
   'BARE · no headwear meshes':
-  id.toUpperCase().replaceAll('-',' ')+' · shape-only prototype; details pending approval';
+  id.toUpperCase().replaceAll('-',' ')+' · rectilinear cuboid silhouette; details pending approval';
 }
 for(const button of reviewButtons)
  button.addEventListener('click',()=>selectReviewSilhouette(
