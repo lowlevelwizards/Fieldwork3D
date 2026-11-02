@@ -4,6 +4,7 @@
 import {WALLS,COVER,activeWorldBounds,pointToSegment,route,type Door,type Pt,
   type Segment} from './breach-core.ts';
 import type {Site} from './breach-site.ts';
+import {insideSiteFootprint,exteriorBriefedAt,accessibleExteriorWall} from './breach-site-footprint.ts';
 export type IntelMode='true-blind'|'exterior-known'|'floor-plan'|'full-view';
 export type IntelState={
  mode:IntelMode;
@@ -14,8 +15,7 @@ export const INTEL_MODES:readonly IntelMode[]=[
  'true-blind','exterior-known','floor-plan','full-view'];
 export function insideBuilding(site:Site|undefined,p:Pt):boolean{
  if(!site)return p.x>112&&p.x<590&&p.y>100&&p.y<532;
- return site.rooms.some(room=>p.x>=room.x&&p.x<=room.x+room.w&&
-   p.y>=room.y&&p.y<=room.y+room.h);
+ return insideSiteFootprint(site,p);
 }
 export const exteriorAt=(site:Site|undefined,p:Pt)=>
  !insideBuilding(site,p);
@@ -41,10 +41,9 @@ export function initialIntel(mode:IntelMode,site:Site|undefined,
    doors.forEach(d=>intel.doors.add(d.id));
    site?.rooms.forEach(r=>intel.rooms.add(r.id));
  }else if(mode==='exterior-known'){
-   WALLS.forEach((w,i)=>{if(exteriorWall(site,w))intel.walls.add(i)});
+   WALLS.forEach((w,i)=>{if(accessibleExteriorWall(site,w))intel.walls.add(i)});
    doors.forEach(d=>{
-     if(exteriorAt(site,{x:(d.a.x+d.b.x)*.5,y:(d.a.y+d.b.y)*.5})||
-        exteriorWall(site,d))intel.doors.add(d.id);
+     if(accessibleExteriorWall(site,d))intel.doors.add(d.id);
    });
  }
  return intel;
@@ -119,7 +118,7 @@ export function intelFogLevel(intel:IntelState,site:Site|undefined,
  if(intel.mode==='full-view'||currentlyVisible)return 0;
  if(everSeen)return 1;
  if(intel.mode==='floor-plan')return 1;
- if(intel.mode==='exterior-known'&&exteriorAt(site,p))return 1;
+ if(intel.mode==='exterior-known'&&exteriorBriefedAt(site,p))return 1;
  return 2;
 }
 export const intelSnapshot=(intel:IntelState)=>({
