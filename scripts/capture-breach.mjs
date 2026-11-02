@@ -260,6 +260,16 @@ try{
   // Selecting a waypoint near a door exposes door actions only there.
   await openSettings(phone);
   await phone.locator('#restart').click();
+  // Restarting authored plans intentionally requires explicit confirmation.
+  // Dismiss the safety dialog before returning to the battlefield; never
+  // click through a modal or bypass its interaction checks.
+  const restartConfirmation=phone.locator('.fw-confirm-dialog button[data-danger]');
+  if(await restartConfirmation.isVisible()){
+    if((await restartConfirmation.innerText()).trim()!=='RESTART MISSION')
+      throw Error('Unexpected destructive confirmation during restart');
+    await restartConfirmation.click();
+    await phone.locator('.fw-confirm-backdrop').waitFor({state:'hidden'});
+  }
   await phone.locator('#closeSiteSettings').click();
   const doorPoint=screen(301,505);
   await phone.touchscreen.tap(doorPoint.x,doorPoint.y);
@@ -279,6 +289,16 @@ try{
     throw Error('Contextual aiming/door buttons obscure the TOOLS drawer');
   await openSettings(phone);
   await phone.locator('#restart').click();
+  // Restarting authored plans intentionally requires explicit confirmation.
+  // Dismiss the safety dialog before returning to the battlefield; never
+  // click through a modal or bypass its interaction checks.
+  const restartConfirmation=phone.locator('.fw-confirm-dialog button[data-danger]');
+  if(await restartConfirmation.isVisible()){
+    if((await restartConfirmation.innerText()).trim()!=='RESTART MISSION')
+      throw Error('Unexpected destructive confirmation during restart');
+    await restartConfirmation.click();
+    await phone.locator('.fw-confirm-backdrop').waitFor({state:'hidden'});
+  }
   await phone.locator('#closeSiteSettings').click();
   await phone.touchscreen.tap(doorPoint.x,doorPoint.y);
   // Directly tapping the closed doorway must also expose entry actions,
