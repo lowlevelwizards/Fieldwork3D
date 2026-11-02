@@ -4,6 +4,7 @@ import {generateSite} from '../src/breach-site.ts';
 import {ARCHITECTURAL_FAMILIES} from '../src/worldgen/architectural-program.ts';
 import {activateSite,passable,route} from '../src/breach-core.ts';
 import {intelPassable,initialIntel} from '../src/breach-intel.ts';
+import {ordinaryDoorOpeningWidth} from '../src/breach-door-proportions.ts';
 test('new architectural compiler creates real varied and connected physical environments',()=>{
  let diverse=0;
  const observed=new Set();
@@ -15,8 +16,12 @@ test('new architectural compiler creates real varied and connected physical envi
   assert.ok(a.planFamily);
   assert.ok(a.rooms.some(r=>!!r.zoneId));
   assert.equal(a.doors.find(d=>d.id==='FRONT')!==undefined,true);
-  assert.ok(a.doors.every(d=>d.kind==='shutter'?Math.hypot(d.b.x-d.a.x,d.b.y-d.a.y)>=80:
-    Math.abs(Math.hypot(d.b.x-d.a.x,d.b.y-d.a.y)-48)<.001));
+  assert.ok(a.doors.every(d=>d.kind==='shutter'?
+    Math.hypot(d.b.x-d.a.x,d.b.y-d.a.y)>=80:
+    d.pairedWith?
+      Math.abs(Math.hypot(d.b.x-d.a.x,d.b.y-d.a.y)-48)<.001:
+      Math.abs(Math.hypot(d.b.x-d.a.x,d.b.y-d.a.y)-
+        ordinaryDoorOpeningWidth(d.id))<.001));
   const front=a.doors.find(d=>d.id==='FRONT');
   assert.ok(front);
   const mid={x:(front.a.x+front.b.x)/2,y:(front.a.y+front.b.y)/2};
