@@ -18,6 +18,8 @@ export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number;
   kicks?:number;lastKickAt?:number;forced?:boolean;locked?:boolean;jammed?:boolean;
   /** Pressure may request a wider-than-normal door swing. */
   pushTarget?:number;
+  /** A glass leaf keeps its frame after the glazing has shattered. */
+  glassShattered?:boolean;
   wedged?:boolean;wedgeOwnerId?:string;}
 export type Obstacle={x:number;y:number;w:number;h:number;low?:boolean;
   fixture?:string;material?:import('./breach-materials.ts').MaterialId;
