@@ -35,8 +35,8 @@ const p=(index:number,...coords:number[]):Motif=>[index,coords];
 export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  'm81-woodland':{
   label:'M81 WOODLAND',
-  description:'Large green/brown/tan organic fields with sparse black branching hooks',
-  colors:[[94,111,77],[138,121,90],[64,83,66],[46,54,44]],
+  description:'Saturated mid-green woodland, warm khaki-brown islands and slender charcoal hooks',
+  colors:[[104,131,69],[146,126,79],[47,88,57],[43,51,36]],
   targetCoverage:[.35,.23,.32,.10],
   motifs:[
    p(1,-3,0,6,0,10,3,7,8,1,9,-3,7),
@@ -143,9 +143,9 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  // RGB values are reused from the established five prints wherever possible.
  'flecktarn':{
   label:'FLECKTARN',
-  description:'Clustered forest flecks: green masses, warm brown droplets and dark spot constellations',
-  colors:[[94,111,77],[64,83,66],[138,121,90],[137,83,66],[46,54,44]],
-  targetCoverage:[0.304,0.234,0.225,0.143,0.095],
+  description:'Dense micro-speckled five-color fleck clusters over moss, forest and rust-brown fields',
+  colors:[[119,134,86],[54,83,55],[161,137,91],[129,77,53],[42,48,37]],
+  targetCoverage:[0.242,0.197,0.196,0.177,0.188],
   motifs:[
    p(1,-5,1,2,-2,10,0,13,4,9,8,4,9,-3,7),
    p(1,14,12,19,9,25,11,28,16,25,22,19,21,14,18),
@@ -167,21 +167,41 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  },
  'woodland-dpm':{
   label:'WOODLAND DPM',
-  description:'Flowing long brushstrokes with olive ribbons, khaki breaks and tapered dark branches',
-  colors:[[147,122,84],[77,101,70],[138,121,90],[42,55,43]],
-  targetCoverage:[0.198,0.244,0.291,0.267],
+  description:'British temperate brushstroke: warm khaki windows, broad oak-like green/brown strokes, thin hooked charcoal boughs and serrated edges',
+  colors:[[175,155,105],[87,118,73],[118,85,60],[48,55,39]],
+  targetCoverage:[0.218,0.293,0.306,0.184],
   motifs:[
-   p(1,-5,4,1,1,9,3,17,8,24,8,28,12,22,14,14,11,8,10,0,8,-5,11),
-   p(1,11,18,15,15,22,18,30,21,35,25,35,30,27,28,19,24,12,25,8,22),
-   p(1,-3,28,3,25,9,27,16,32,15,36,7,34,0,32),
-   p(2,18,-4,22,0,31,2,35,6,28,8,23,5,16,6,12,1),
-   p(2,-4,17,2,14,8,15,14,20,20,21,18,26,11,23,5,21,-4,22),
-   p(2,25,29,31,26,36,29,35,35,29,35),
-   p(3,-4,8,2,7,9,10,15,13,21,15,25,18,21,18,14,16,8,14,1,11,-4,12),
-   p(3,7,-4,10,2,14,4,18,7,21,9,19,10,14,7,11,7,8,3),
-   p(3,26,5,28,7,33,8,35,12,31,11,27,9,24,8),
-   p(3,-4,25,3,23,10,25,15,28,22,31,19,32,12,29,6,28,0,27,-4,30),
-   p(3,17,17,21,16,24,18,28,19,31,23,28,22,23,21,19,20)
+   // Wide flat khaki openings between green and brown brush sweeps.
+   p(1,-6,1,2,-2,8,1,13,5,17,8,14,11,10,9,7,7,3,7,-4,12),
+   p(1,17,14,24,9,31,10,36,15,36,23,29,20,24,18,19,22,13,20),
+   p(1,-4,25,2,22,7,24,13,29,16,36,11,34,6,30,2,29,-5,32),
+   // Rounded flat-ended earthy brushstrokes, elongated and interleaved,
+   // including unmistakable broad "fingers" into negative space.
+   p(2,16,-4,22,-3,28,1,35,5,36,8,30,7,27,6,24,9,20,9,23,5,18,4,13,2),
+   p(2,-5,12,3,10,6,12,11,14,14,17,21,18,19,23,15,22,12,20,7,20,4,18,0,19,-5,22),
+   p(2,18,26,24,22,29,23,36,28,35,34,29,32,25,30,21,33,17,31),
+   p(2,7,28,13,25,17,28,20,30,21,35,15,34,12,31,9,32),
+   // The recognizable DPM negative spaces are broad khaki windows and
+   // pointed green fingers interrupting the broad brown paint sweeps.
+   p(1,17,2,20,1,23,3,22,6,19,7,16,6),
+   p(1,3,12,7,11,12,14,17,14,15,17,10,17,7,15),
+   p(1,22,24,25,23,30,25,31,27,26,27,23,30,21,29),
+   p(0,12,2,16,4,18,7,16,9,13,7,11,4),
+   p(0,5,18,9,17,12,19,10,21,7,21),
+   p(0,23,15,26,14,29,16,28,19,25,20),
+   // Small lobe shapes at stroke tips, not rounded M81 islands.
+   p(2,4,5,8,4,10,7,9,10,6,10),
+   p(1,22,0,26,-1,29,1,26,3,22,3),
+   // Strong dark tapered zigzag branches cutting across fields.
+   p(3,-5,8,1,8,4,9,8,11,13,13,17,15,18,16,14,15,9,13,4,11,0,10,-5,10),
+   p(3,10,-4,12,0,16,3,21,6,24,9,23,10,18,7,15,5,12,4,10,0),
+   p(3,25,9,28,9,33,11,36,13,31,12,28,11,23,14,19,17,18,18,22,15,26,12),
+   p(3,-4,27,2,26,5,27,9,29,14,31,18,34,14,32,9,30,5,28,1,28,-4,29),
+   p(3,21,23,24,20,26,20,30,22,33,24,30,23,27,22,25,23,22,26,20,29),
+   // Fine branch junctions, tapering to one or two pixels.
+   p(3,3,13,6,12,8,14,7,16,5,15),
+   p(3,16,18,19,17,21,19,20,21,18,21),
+   p(3,29,30,31,28,34,29,33,32,30,33)
   ]
  },
  'swedish-m90':{
@@ -205,7 +225,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  'six-color-desert':{
   label:'6-COLOR DESERT',
   description:'Chocolate-chip desert: large pale dunes, khaki islands and scattered dark-rimmed light pebbles',
-  colors:[[193,173,133],[221,201,162],[145,105,73],[138,121,90],[228,213,177],[46,54,44]],
+  colors:[[193,173,133],[221,201,162],[145,105,73],[138,121,90],[228,213,177],[79,72,55]],
   targetCoverage:[0.228,0.305,0.277,0.1,0.022,0.068],
   motifs:[
    p(1,-4,1,5,-2,13,1,13,7,7,11,-4,9),
@@ -232,7 +252,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'WOODLAND MARPAT',
   description:'Layered green and brown macro-fields assembled from uneven 1-3px digital fragments',
   colors:[[94,111,77],[138,121,90],[64,83,66],[46,54,44]],
-  targetCoverage:[0.313,0.28,0.295,0.112],
+  targetCoverage:[0.379,0.209,0.321,0.091],
   motifs:[
    p(1,0,1,7,1,7,4,11,4,11,8,14,8,14,12,8,12,8,10,3,10,3,7,0,7),
    p(1,17,19,23,19,23,16,28,16,28,20,33,20,33,26,29,26,29,30,22,30,22,27,17,27),
@@ -279,7 +299,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'DESERT MARPAT',
   description:'Bright tan digital fields with light coyote steps and sparse dark brown pixels',
   colors:[[221,201,162],[193,173,133],[171,158,117],[145,105,73]],
-  targetCoverage:[0.435,0.293,0.209,0.063],
+  targetCoverage:[0.422,0.368,0.163,0.047],
   motifs:[
    p(1,2,1,10,1,10,4,14,4,14,9,11,9,11,12,5,12,5,9,2,9),
    p(1,17,16,24,16,24,13,29,13,29,19,33,19,33,25,27,25,27,29,19,29,19,26,16,26),
@@ -323,6 +343,64 @@ export function isHeadwearCamoId(value:unknown):value is HeadwearCamoId{
 export function resolvedHeadwearCamo(model:string,value:unknown):HeadwearCamoId|null{
  return isHeadwearCamoId(value)&&headwearCamoChoices(model).includes(value)?value:null;
 }
+/**
+ * Flecktarn's silhouette comes from hundreds of tiny droplets rather than a
+ * handful of large polygons. Each cluster center is an intentional art mark.
+ * Satellite offsets produce uneven 1-2 px dot constellations within that center,
+ * with size/spacing guided by the surrounding broad color mass.
+ */
+type FleckCluster=readonly [number,number,number,number];
+const FLECKTARN_CLUSTERS:readonly FleckCluster[]=[
+ // ink, center X, center Y, cluster type: deliberately staggered, not a lattice
+ [4,2,3,0],[4,10,4,1],[4,17,2,2],[4,25,4,0],[4,31,6,1],
+ [4,6,10,2],[4,14,10,0],[4,22,12,1],[4,30,14,2],
+ [4,2,19,1],[4,11,18,2],[4,18,21,0],[4,27,22,1],
+ [4,5,27,0],[4,14,28,1],[4,21,29,2],[4,30,30,0],
+ [3,7,3,1],[3,20,6,2],[3,29,2,1],[3,2,13,0],
+ [3,12,15,1],[3,25,16,0],[3,6,23,2],[3,17,25,1],[3,29,28,2],
+ [2,13,5,0],[2,28,9,1],[2,5,16,1],[2,18,14,2],[2,24,26,0],
+ [0,2,8,2],[0,16,17,2],[0,31,21,0],[0,11,30,2],
+ [1,8,7,0],[1,23,3,1],[1,8,21,0],[1,20,30,1]
+];
+const FLECKTARN_SATELLITES:readonly (readonly (readonly [number,number])[])[]=[
+ [[0,0],[2,0],[-2,1],[1,2],[-1,-2],[3,-2],[-3,-1]],
+ [[0,0],[2,-1],[-1,2],[-2,-1],[1,-2],[3,2],[-3,2]],
+ [[0,0],[1,-2],[-2,0],[2,2],[-1,2],[3,0],[-3,-2]]
+];
+/** 1-2 pixel blobs; little linked speckle pairs are more readable than noise. */
+function applyFlecktarnSpeckle(x:number,y:number,ink:number):number{
+ for(const [tone,cx,cy,kind] of FLECKTARN_CLUSTERS){
+  const offsets=FLECKTARN_SATELLITES[kind];
+  for(let j=0;j<offsets.length;j++){
+   const [dx,dy]=offsets[j];
+   const px=(cx+dx+32)&31,py=(cy+dy+32)&31;
+   const xx=(x-px+32)&31,yy=(y-py+32)&31;
+   if((xx===0&&yy===0)||(j%4===0&&xx===1&&yy===0))ink=tone;
+  }
+ }
+ return ink;
+}
+/** Digital MARPAT uses small 1-3 texel step motifs within larger authored
+ * fields, similar in density to UCP but with independent woodland/desert tone
+ * decisions. Coordinates wrap periodically so repeat seams remain identical.
+ */
+function applyMarpatFragments(x:number,y:number,ink:number,desert:boolean):number{
+ const cx=Math.floor(x/2),cy=Math.floor(y/2);
+ const gate=(cx*7+cy*13+Math.floor(x/8)*5+Math.floor(y/8)*3)%17;
+ if(gate===1||gate===4||gate===7||gate===10||gate===14){
+  const corner=((x&1)+2*(y&1)+(cx&1))%4;
+  if(corner<3){
+   if(desert){
+    // Light sand remains the prevailing mass; dark coyote is kept rare.
+    ink=ink===0?1:ink===1?0:ink===2?1:2;
+   }else{
+    ink=ink===0?2:ink===2?0:ink===1?0:2;
+   }
+  }
+ }
+ return ink;
+}
+
 function inPolygon(x:number,y:number,coords:readonly number[]):boolean{
  let inside=false;
  for(let i=0,j=coords.length-2;i<coords.length;j=i,i+=2){
@@ -356,6 +434,9 @@ export function headwearCamoIndices(id:HeadwearCamoId):Uint8Array{
     if(corner<3)ink=(ink+1+(cellY%2))%3;
    }
   }
+  if(id==='flecktarn')ink=applyFlecktarnSpeckle(x,y,ink);
+  if(id==='woodland-marpat'||id==='desert-marpat')
+   ink=applyMarpatFragments(x,y,ink,id==='desert-marpat');
   data[y*32+x]=ink;
  }
  return data;
