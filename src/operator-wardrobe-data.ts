@@ -193,6 +193,17 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
  kit?:EquipmentLoadout):Record<WardrobeSlot,string>{
  const desired={...DEFAULTS,...(wardrobe?.styles??{})};
  if(!kit)return desired;
+ // Cosmetic defaults follow the *actual* selected kit when a user hasn't
+ // explicitly chosen a style. Choosing light boots must never show field
+ // boots merely because an empty WardrobeOptions object exists.
+ if(!wardrobe?.styles.top)
+  desired.top=kit.slots.top==='top-light'?'light-shirt':'field-jacket';
+ if(!wardrobe?.styles.trousers)
+  desired.trousers=kit.slots.legs==='legs-light'?'work-pants':'field-trousers';
+ if(!wardrobe?.styles.footwear)
+  desired.footwear=kit.slots.feet==='feet-light'?'light-boots':'field-boots';
+ if(!wardrobe?.styles.gloves)
+  desired.gloves=kit.slots.hands==='hands-none'?'gloves-none':'gloves-field';
  const slots=kit.slots;
  const choose=(slot:WardrobeSlot,allowed:readonly string[],fallback:string)=>{
   if(!allowed.includes(desired[slot]))desired[slot]=fallback;

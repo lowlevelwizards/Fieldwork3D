@@ -22,8 +22,8 @@ import {initialEquipmentLoadout,setEquipmentChoice,syncPrimaryWeapon,
 import type {MagazineItem} from './breach-magazines.ts';
 import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import {itemsForSlot} from './equipment-catalog.ts';
-import {initialWardrobe,setWardrobeStyle,resolvedWardrobe,
- wardrobeConflicts,wardrobeItemsForSlot,wardrobeItem,
+import {initialWardrobe,setWardrobeStyle,setWardrobePattern,resolvedWardrobe,
+ WARDROBE_PATTERNS,wardrobeConflicts,wardrobeItemsForSlot,wardrobeItem,
  type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
 
 
@@ -115,8 +115,23 @@ document.getElementById('rolledSleeves')?.addEventListener('change',e=>{
  wardrobeOptions={...wardrobeOptions,
   rolledSleeves:(e.target as HTMLInputElement).checked};
 });
+const patternSelects=Array.from(document.querySelectorAll<HTMLSelectElement>(
+ '[data-wardrobe-pattern]'));
+for(const select of patternSelects){
+ const slot=select.dataset.wardrobePattern as keyof WardrobeOptions['patterns'];
+ for(const id of WARDROBE_PATTERNS){
+  const option=document.createElement('option');option.value=id;
+  option.textContent=id.replaceAll('-',' ').toUpperCase();
+  select.append(option);
+ }
+ select.addEventListener('change',()=>{
+  wardrobeOptions=setWardrobePattern(wardrobeOptions,slot,
+    select.value as typeof WARDROBE_PATTERNS[number]);
+ });
+}
 document.getElementById('wardrobeReset')?.addEventListener('click',()=>{
  wardrobeOptions=initialWardrobe();syncWardrobe();
+ for(const select of patternSelects)select.value='solid';
 });
 for(const button of document.querySelectorAll<HTMLButtonElement>('[data-kit-preset]'))
  button.addEventListener('click',()=>{
@@ -124,6 +139,7 @@ for(const button of document.querySelectorAll<HTMLButtonElement>('[data-kit-pres
  });
 document.getElementById('kitPalette')?.addEventListener('change',e=>{
  labPalette=Number((e.target as HTMLSelectElement).value);
+ wardrobeOptions={...wardrobeOptions,palette:Math.max(0,labPalette-1)};
 });
 syncKit();
 const choose=<T extends HTMLElement>(id:string)=>
