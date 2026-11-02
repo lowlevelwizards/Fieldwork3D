@@ -4,8 +4,12 @@ export type TeachingHint={key:string;text:string;expires:number};
 export class ContextualTeaching{
   private seen=new Set<string>();
   private active:TeachingHint|null=null;
-  constructor(private readonly read:(key:string)=>boolean=()=>false,
-    private readonly write:(key:string)=>void=()=>{}){}
+  private readonly read:(key:string)=>boolean;
+  private readonly write:(key:string)=>void;
+  constructor(read:(key:string)=>boolean=()=>false,
+    write:(key:string)=>void=()=>{}){
+    this.read=read;this.write=write;
+  }
   offer(key:string,text:string,now:number,duration=4000):boolean{
     if(!text.trim()||this.seen.has(key))return false;
     if(this.read(key)){this.seen.add(key);return false;}
