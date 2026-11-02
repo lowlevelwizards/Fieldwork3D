@@ -1073,3 +1073,17 @@ body.replaying #tacticalFeedback{display:none}
  .cancel-target:not([hidden]){top:calc(env(safe-area-inset-top,0px) + 116px);
   padding:8px 10px}
 }
+
+/* UX2 13: self-explanatory replay transport instead of unexplained arrows. */
+.replay-actions button{display:flex!important;flex-direction:column;
+ align-items:center;justify-content:center;gap:3px;min-height:48px;
+ font:600 17px/1.1 var(--ui-font);touch-action:manipulation}
+.replay-actions button::after{content:attr(data-caption);display:block;
+ white-space:nowrap;font:700 9px/1.1 var(--ui-font);
+ letter-spacing:.025em;color:inherit;opacity:.87}
+.replay-actions #replayPlay{flex-direction:column}
+.replay-actions #replayPlay::after{font-size:10px;opacity:1}
+#replayMore{min-height:44px}
+@media(max-width:370px){.replay-actions button{font-size:14px;
+ padding:5px 1px}.replay-actions button::after{font-size:8px}}
+@media(max-height:470px){.replay-actions button{min-height:43px}}
