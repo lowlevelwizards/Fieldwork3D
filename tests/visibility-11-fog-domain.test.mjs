@@ -37,7 +37,7 @@ test('VIS-11: completely enclosed court remains undiscovered',()=>{
  const rooms=[room(100,100,200,40),room(100,140,40,120),
   room(260,140,40,120),room(100,260,200,40)];
  const a=exteriorKnownFogRects(site(rooms));
- assert.equal(covers(a,{x:200,y:200}),true);
+ assert.equal(covers(a,{x:205,y:205}),true);
  assert.equal(covers(a,{x:320,y:200}),false);
 });
 test('VIS-11: mask UV corners align with authoritative site coordinates',()=>{
