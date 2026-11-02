@@ -76,9 +76,13 @@ test('connected helmet assemblies have no physical gaps at brow, temple, rear or
   assert.ok(intersects(shell,nape),id+' nape');
   for(const side of sides){
    const part=piece(g,side);
-   for(const [name,other] of [['main shell',shell],['front brow',brow],
-    ['rear nape',nape]])
+   for(const [name,other] of [['main shell',shell],['front brow',brow]])
     assert.ok(intersects(part,other),id+' '+side+' must meet '+name);
+   if(id==='ach')
+    assert.ok(intersects(part,nape),id+' '+side+' must join nape');
+   else
+    assert.ok(!intersects(part,nape),
+      'high-cut must have a genuinely open center ear region');
   }
  }
 });
@@ -97,4 +101,28 @@ test('cap crown joins wrap and bill, with no disconnected rectangular tabs',()=>
   'bill must be seated in brow, not floating under it');
  assert.ok(overlap(part('left-soft-side'),part('forehead-band')));
  assert.ok(overlap(part('right-soft-side'),part('forehead-band')));
+});
+
+test('side panels are inset from the outer face to avoid near-coplanar flicker',()=>{
+ const ach=built('ach'),high=built('high-cut');
+ for(const [group,bodyName,panelName] of [
+  [ach,'ach-primary-shell','ach-deep-right-ear'],
+  [high,'highcut-compact-shell','highcut-right-temple']
+ ]){
+  const main=piece(group,bodyName),panel=piece(group,panelName);
+  const mainExtent=box(main).max.x,panelExtent=box(panel).max.x;
+  assert.ok(mainExtent-panelExtent>=.14,
+   'side panel must be safely inset from the main crown surface');
+ }
+});
+test('high-cut has an actual center-side ear opening, not a continuous lower band',()=>{
+ const high=built('high-cut');
+ const side=piece(high,'highcut-right-temple');
+ const nape=piece(high,'highcut-short-nape');
+ const bounds=box(side);
+ assert.ok(bounds.max.z<2.0,'side return must stop ahead of rear');
+ assert.ok(bounds.min.z<-4.4,'side return joins the brow');
+ assert.ok(box(nape).min.z>3.8,'rear skirt leaves side ear opening');
+ const main=piece(high,'highcut-compact-shell');
+ assert.ok(box(main).min.y>6.7,'main shell sits high above ear');
 });

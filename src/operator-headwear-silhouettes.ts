@@ -71,14 +71,15 @@ function achHelmet(g:THREE.Group,m:THREE.Material){
   width:9.64,height:1.20,depth:1.12});
  for(const side of [-1,1])
   addCuboid(g,m,{name:side<0?'ach-deep-left-ear':'ach-deep-right-ear',
-   x:side*4.62,y:5.23,z:.10,
-   width:1.02,height:4.30,depth:10.00});
+   x:side*4.47,y:5.23,z:.10,
+   width:.92,height:4.30,depth:9.90});
  addCuboid(g,m,{name:'ach-nape',x:0,y:5.55,z:5.22,
   width:9.66,height:3.55,depth:1.08});
 }
-/** Clean uninterrupted high side band. Its front meets the brow and its
- * back meets the short nape, avoiding the previous 'hanging hook' look.
- * Open ear region below y6.58 remains visibly distinct from the ACH.
+/** High-cut shell with a genuine OPEN side. The side pieces are short
+ * forehead returns, not full-length rails over the ears. From the side,
+ * the central ear zone ends at the crown's raised lower edge, and the
+ * lowered rear nape remains joined THROUGH the main shell.
  */
 function highCutHelmet(g:THREE.Group,m:THREE.Material){
  addCuboid(g,m,{name:'highcut-compact-shell',x:0,y:8.17,z:0,
@@ -89,8 +90,8 @@ function highCutHelmet(g:THREE.Group,m:THREE.Material){
   width:9.20,height:1.10,depth:1.12});
  for(const side of [-1,1])
   addCuboid(g,m,{name:side<0?'highcut-left-temple':'highcut-right-temple',
-   x:side*4.53,y:7.24,z:-.12,
-   width:.88,height:1.32,depth:9.50});
+   x:side*4.42,y:7.08,z:-2.93,
+   width:.94,height:1.18,depth:4.60});
  addCuboid(g,m,{name:'highcut-short-nape',x:0,y:6.50,z:4.95,
   width:9.20,height:1.65,depth:1.00});
 }
