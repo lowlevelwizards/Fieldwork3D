@@ -167,6 +167,17 @@ button:focus-visible,select:focus-visible{outline:2px solid #c9a778;outline-offs
 <label>GEAR PATTERN<select data-wardrobe-pattern="gear"></select></label>
 <label>PACK PATTERN<select data-wardrobe-pattern="pack"></select></label>
 <label>HEAD PATTERN<select data-wardrobe-pattern="head"></select></label></div></details>
+<details id="wardrobePlacement"><summary>ADVANCED / PHYSICAL CARRY</summary>
+<div class="kit-grid">
+<label>MEDICAL POSITION<select data-wardrobe-mount="medical"></select></label>
+<label>UTILITY POSITION<select data-wardrobe-mount="utility"></select></label>
+<label>MAGAZINE DIRECTION<select id="wardrobeMagazineOrder">
+<option value="left-right">LEFT TO RIGHT</option>
+<option value="right-left">RIGHT TO LEFT</option>
+</select></label>
+</div><p class="kit-help">Only compatible positions are selectable.
+These are display positions of actual carried items, not extra inventory.</p>
+</details>
 <div class="row"><label><input id="rolledSleeves" type="checkbox"> ROLLED SLEEVES</label>
 <button id="wardrobeReset">RESET STYLES</button></div>
 <output id="wardrobeCompatibility" role="status"></output></details>

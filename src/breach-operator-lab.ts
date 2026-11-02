@@ -22,6 +22,7 @@ import {initialEquipmentLoadout,setEquipmentChoice,syncPrimaryWeapon,
 import type {MagazineItem} from './breach-magazines.ts';
 import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import {itemsForSlot} from './equipment-catalog.ts';
+import {WARDROBE_MOUNTS,wardrobeMount} from './operator-wardrobe-mounts.ts';
 import {WARDROBE_RECIPES,wardrobeRecipe,applyWardrobeRecipe}
  from './operator-wardrobe-recipes.ts';
 import {initialWardrobe,setWardrobeStyle,setWardrobePattern,resolvedWardrobe,
@@ -99,10 +100,57 @@ document.getElementById('wardrobeApply')?.addEventListener('click',()=>{
   select.value=wardrobeOptions.patterns[channel]??'solid';
  }
 });
+const mountSelectors=Array.from(document.querySelectorAll<HTMLSelectElement>(
+ '[data-wardrobe-mount]'));
+for(const select of mountSelectors){
+ const kind=select.dataset.wardrobeMount as 'medical'|'utility';
+ const automatic=document.createElement('option');
+ automatic.value='auto';automatic.textContent='AUTO ARRANGE';
+ select.append(automatic);
+ for(const mount of WARDROBE_MOUNTS.filter(m=>m.kind===kind)){
+  const option=document.createElement('option');
+  option.value=mount.id;option.textContent=mount.name+' · '+mount.location;
+  select.append(option);
+ }
+ select.addEventListener('change',()=>{
+  wardrobeOptions={...wardrobeOptions,mounts:{
+   ...wardrobeOptions.mounts,
+   [kind]:select.value==='auto'?undefined:select.value
+  }};
+  syncWardrobe();
+ });
+}
+document.getElementById('wardrobeMagazineOrder')?.addEventListener('change',e=>{
+ wardrobeOptions={...wardrobeOptions,mounts:{
+  ...wardrobeOptions.mounts,
+  magazineOrder:(e.target as HTMLSelectElement).value==='right-left'?
+   'right-left':'left-right'
+ }};
+});
 const wardrobeSelects=Array.from(document.querySelectorAll<HTMLSelectElement>(
  '[data-wardrobe-slot]'));
 function syncWardrobe(){
  const compatible=resolvedWardrobe(wardrobeOptions,labKit);
+ const weaponId=(document.getElementById('weapon') as HTMLSelectElement).value as WeaponId;
+ const realKit=syncPrimaryWeapon(labKit,weaponId);
+ const carrying=previewCarry(realKit,weaponId);
+ for(const select of mountSelectors){
+  const kind=select.dataset.wardrobeMount as 'medical'|'utility';
+  const item=carrying.find(c=>c.kind===kind);
+  for(const option of Array.from(select.options)){
+   const candidate=wardrobeMount(option.value);
+   const long=kind==='utility'&&
+    ['utility-breach','utility-pry','utility-cutter'].includes(realKit.slots.utility);
+   option.disabled=!!candidate&&(!item||candidate.location!==item.location||
+    candidate.socket.bone==='pack'&&realKit.slots.backpack==='backpack-none'||
+    long&&!candidate.longAllowed);
+  }
+  const requested=wardrobeOptions.mounts[kind]??'auto';
+  select.value=Array.from(select.options).some(o=>o.value===requested&&!o.disabled)?
+   requested:'auto';
+ }
+ (document.getElementById('wardrobeMagazineOrder') as HTMLSelectElement).value=
+  wardrobeOptions.mounts.magazineOrder;
  for(const select of wardrobeSelects){
   const slot=select.dataset.wardrobeSlot as WardrobeSlot;
   select.value=compatible[slot];
