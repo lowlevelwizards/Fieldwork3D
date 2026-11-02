@@ -2,6 +2,7 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#202b28"><title>FIELDWORK — ASSET LIBRARY</title>
+<link rel="stylesheet" href="./src/ui/fieldwork-design.css">
 <style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#1c2927;color:#edeae0;font:12px/1.4 system-ui,sans-serif;touch-action:none}
 header{position:fixed;top:env(safe-area-inset-top);left:0;right:0;z-index:12;padding:10px 14px;background:#1c2d29ef;border-bottom:1px solid #6b8275;display:flex;align-items:center;justify-content:space-between;gap:12px}
@@ -14,7 +15,7 @@ header strong{font-size:15px;letter-spacing:.07em}a{color:#e4c58c}
 #labels button[hidden]{display:none}
 #controls{position:fixed;z-index:10;bottom:env(safe-area-inset-bottom);left:0;right:0;background:#1d302ceF;border-top:1px solid #78917a;padding:11px;display:grid;gap:8px;max-height:39dvh;overflow:auto;touch-action:pan-y}
 .row{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-button,select,input{background:#344d43;border:1px solid #78937d;color:#f6ebd8;border-radius:6px;padding:8px;min-height:34px;font:12px system-ui;touch-action:manipulation}
+button,select,input{background:#344d43;border:1px solid #78937d;color:#f6ebd8;border-radius:6px;padding:8px;min-height:44px;font:12px system-ui;touch-action:manipulation}
 input{flex:1;min-width:100px}select{flex:1;min-width:140px}button:disabled{opacity:.4}label{font-weight:700;font-size:11px}
 #detail{font:11px/1.55 ui-monospace,monospace;white-space:pre-wrap;color:#dbdecf}
 #summary{color:#dfceac;font-size:11px}
@@ -27,14 +28,29 @@ input{flex:1;min-width:100px}select{flex:1;min-width:140px}button:disabled{opaci
 #wear-diagnostics{font:11px/1.5 ui-monospace,monospace;max-width:220px;color:#f0dcae}
 #pixel-clean-swatch{width:96px;height:96px;image-rendering:pixelated;border:1px solid #a8ab96;flex:none}
 @media(max-width:450px){#controls{max-height:35dvh;padding:8px}.row{gap:5px}button,select,input{font-size:11px;padding:6px}}
+
+/* UX16: lab workbench keeps discovery/selection visible, technical options collapsed. */
+.fw-asset-options{border:1px solid var(--fw-panel-border);border-radius:8px;
+ background:var(--fw-panel-deep);padding:5px 9px}
+.fw-asset-options summary{cursor:pointer;touch-action:manipulation;
+ font:700 11px/1.3 system-ui,sans-serif;color:var(--fw-text-muted);
+ letter-spacing:.055em;min-height:36px;padding:8px 0}
+.fw-asset-options .row{margin:8px 0}
+#controls button:focus-visible,#controls select:focus-visible{
+ outline:2px solid var(--fw-focus);outline-offset:2px}
+header nav{display:flex;gap:9px;align-items:center;font-size:11px;
+ white-space:nowrap}
+@media(max-width:440px){header nav{font-size:10px}header strong{font-size:13px}}
 </style></head><body>
-<header id="lab-header"><strong>FIELDWORK / ASSET LIBRARY</strong><a href="./map-lab.html">MAP LAB</a></header>
+<header id="lab-header"><strong>FIELDWORK / ASSET LIBRARY</strong><nav aria-label="Lab navigation"><a href="./map-lab.html">MAP LAB</a> · <a href="./breach.html">BACK TO GAME</a></nav></header>
 <div id="labels"></div>
 <section id="controls" aria-label="Asset library">
  <div class="row"><label for="category">CATEGORY</label><select id="category"><option value="">All assets</option></select><input id="search" type="search" placeholder="Search asset names" aria-label="Search assets"></div>
  <div class="row"><label for="review-status">REVIEW</label><select id="review-status"><option value="">All statuses</option><option value="needs-review">Needs review</option><option value="needs-cleanup">Needs cleanup</option><option value="needs-redesign">Needs redesign</option><option value="approved">Approved</option></select></div>
  <div class="row"><button id="previous">PREVIOUS</button><button id="next">NEXT</button><span id="summary"></span></div>
- <div class="row"><button id="iso">ISO</button><button id="top">TOP</button><button id="fit">FIT ALL</button><button id="focus">FOCUS</button><button id="bounds" aria-pressed="false">OUTLINE VOLUME</button><button id="textures" aria-pressed="true">TEXTURES ON</button><button id="variant" disabled>VARIANT +</button><button id="review">NEXT MODEL</button><button id="scale-reference" aria-pressed="true">SCALE FIGURE</button><button id="context" aria-pressed="false">CONTEXT OFF</button></div>
+ <div class="row"><button id="iso">ISO</button><button id="top">TOP</button><button id="fit">FIT ALL</button><button id="focus">FOCUS</button></div>
+ <details class="fw-asset-options"><summary>VIEW / PRESENTATION OPTIONS</summary>
+ <div class="row"><button id="bounds" aria-pressed="false">OUTLINE VOLUME</button><button id="textures" aria-pressed="true">TEXTURES ON</button><button id="variant" disabled>VARIANT +</button><button id="review">NEXT MODEL</button><button id="scale-reference" aria-pressed="true">SCALE FIGURE</button><button id="context" aria-pressed="false">CONTEXT OFF</button></div></details>
  <div class="row"><span>Drag to orbit · pinch to zoom/pan · tap names to inspect · VARIANT + cycles three trims</span></div>
  <details id="material-inspector"><summary>MATERIAL INSPECTOR</summary>
  <div class="row" aria-label="Pixel material inspection">
