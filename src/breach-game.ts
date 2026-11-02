@@ -2354,11 +2354,17 @@ function strikeSurface(from:Pt,aimed:Pt,s:Session,
     const leaf=doorLeafSegment(door);
     const t=segmentImpact(from,aimed,leaf);
     if(t!==null)hits.push({fraction:t,
-      material:door.kind==='shutter'?'steel':'hardwood',
-      thickness:door.kind==='shutter'?10:3});
+      material:door.kind==='shutter'?'steel':
+        ['glazed','french'].includes(door.style??'')?'glass':'hardwood',
+      thickness:door.kind==='shutter'?10:
+        ['glazed','french'].includes(door.style??'')?1:3});
   }
   for(const [index,box] of COVER.entries()){
     if(['chain-link-fence','iron-fence'].includes(box.fixture??''))continue;
+    // Full-height window glass has both a body collider and a pane event.
+    // Counting both would make thin glass absorb bullet energy twice.
+    if(box.fixture==='glass-barrier'&&s.windows.some(w=>
+      w.sillHeight===0&&Math.hypot(w.x-box.x,w.y-box.y)<1))continue;
     const t=coverImpactFraction(from,aimed,fromZ,toZ,box);
     if(t===null)continue;
     hits.push({fraction:t,
