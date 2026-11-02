@@ -6,7 +6,7 @@ import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   operationBriefing,
-  planMove,planMoveStroke,setStrafe,planNearbyInteraction,planAim,planWatch,releaseWatch,setFirePolicy,planWait,planWaitAt,setWaitDuration,
+  planMove,planMoveStroke,planNearbyInteraction,planAim,planWatch,releaseWatch,setFirePolicy,planWait,planWaitAt,setWaitDuration,
   plannedControl,setNodeControl,setStartPace,planReloadAt,planDoorFlash,
   planSync,movePlanNode,
   finalPoint,doorAtNode,backOne,
@@ -2555,7 +2555,6 @@ function useSelectedGround(pt:Pt){
    updateHud();return;
   }
   if(firePlacement){
-    const mode=firePlacement;
     const nodeId=selectedNode??undefined;
     if(!setFirePolicy(state,selected,'suppress',nodeId,pt))
       state.events.push('INVALID SUPPRESSION POINT');
