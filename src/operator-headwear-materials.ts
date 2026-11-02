@@ -1,4 +1,4 @@
-/** Stage 2B.1 — construction-led 1:1 authored pixel material for the seven approved
+/** Stage 2C — finalized soft-hat stitching and physical material finishes for the seven approved
  * silhouettes. All pixel colors are neutral, with independently authored
  * 32x32 construction-region tiles inside one 64x64 atlas per item.
  *
@@ -22,7 +22,22 @@ export const HEADWEAR_MATERIAL_KIND:Readonly<Record<HeadSilhouetteId,HeadwearMat
  'patrol-cap':'cotton','boonie':'cotton','beanie':'knit',
  'ach':'composite','high-cut':'composite','pasgt':'composite','soviet-steel':'steel'
 };
+/** Neutral surface-lighting finish independent of contextual color/camo. */
+export type HeadwearSurfaceProfile={
+ family:'woven-twill'|'woven-canvas'|'ribbed-knit'|'matte-composite'|'painted-steel';
+ roughness:number;metalness:number;
+};
+export const HEADWEAR_SURFACE_PROFILE:Readonly<Record<HeadSilhouetteId,HeadwearSurfaceProfile>>={
+ 'patrol-cap':{family:'woven-twill',roughness:.96,metalness:0},
+ 'boonie':{family:'woven-canvas',roughness:.985,metalness:0},
+ 'beanie':{family:'ribbed-knit',roughness:.99,metalness:0},
+ 'ach':{family:'matte-composite',roughness:.92,metalness:0},
+ 'high-cut':{family:'matte-composite',roughness:.91,metalness:0},
+ 'pasgt':{family:'matte-composite',roughness:.945,metalness:0},
+ 'soviet-steel':{family:'painted-steel',roughness:.77,metalness:.12}
+};
 const textureCache=new Map<HeadSilhouetteId,THREE.DataTexture>();
+const finishCache=new Map<HeadSilhouetteId,THREE.DataTexture>();
 const local=(n:number)=>n-16;
 /** An authored, sparse shape-aware design, not random noise or edge shimmer.
  * Pixel addresses are local to their region's 32x32 square and align with
@@ -38,29 +53,20 @@ export function headwearRegionPixel(id:HeadSilhouetteId,region:0|1|2|3,
  const u=local(x),v=local(y);
  switch(id){
   case 'patrol-cap':
-   if(region===0){
-    // ONE crown panel join, continuing around the four fitted side faces.
-    return u===0&&v>=6&&v<=8?220:250;
-   }
-   if(region===1)return 239; // solid fitted band / shaded bill underside
-   if(region===2){
-    // A single short seam just inside the FRONT bill lip, not dark tabs.
-    return v===-6&&Math.abs(u)<=3?214:248;
-   }
-   // A center crown-panel seam; roof remains otherwise entirely quiet.
-   return u===0&&Math.abs(v)<=3?232:251;
+   if(region===0)return u===0&&v===7?244:250; // one quiet panel join
+   if(region===1)return 239; // robust sewn band / bill underside
+   if(region===2)return v===-6&&Math.abs(u)<=2?239:248; // short bill stitches
+   return u===0&&Math.abs(v)<=1?246:251; // short, faint top join
   case 'boonie':
-   if(region===0){
-    // Fabric crown with one quiet panel join, no repeated side markings.
-    return u===0&&v>=6&&v<=8?232:250;
-   }
-   if(region===1)return 240; // one continuous cloth band / brim underside
+   if(region===0)return u===0&&v===7?244:250; // one quiet panel join
+   if(region===1)return 240; // soft cloth band / plain brim underside
    if(region===2){
-    // ONE stitch orbit inside the outer 13.45-unit square brim.
-    const distance=Math.max(Math.abs(u),Math.abs(v));
-    return distance===5?208:248;
+    // Broken stitch orbit: never a solid groove or hard inset tray.
+    const edge=Math.max(Math.abs(u),Math.abs(v));
+    const along=Math.abs(u)===5?Math.abs(v):Math.abs(u);
+    return edge===5&&along%3===0?236:248;
    }
-   return 250; // crown roof is plain fabric
+   return 250; // blank fabric crown roof
   case 'beanie':
    if(region===0){
     // Wide, quiet knitted crown ribs; no dense alternating barcode.
