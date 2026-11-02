@@ -462,7 +462,8 @@ try{
   if(await pc.locator('#phase').innerText()!=='EXECUTING')
     throw Error('Desktop execution shortcut failed');
   await pc.keyboard.press('Space');
-  if(await pc.locator('#phase').innerText()!=='PLANNING')
+  // Once execution has begun, a paused plan is explicitly labeled PAUSED.
+  if(await pc.locator('#phase').innerText()!=='PAUSED')
     throw Error('Desktop pause shortcut failed');
   // 079: independently inspect the presentation lab; the fixture must not
   // be attached to a normal battle or alter any combat result.
