@@ -34,6 +34,7 @@ import {doorInteraction} from './breach-interactions.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool,issuedWedges} from './equipment-entry-tools.ts';
 import {localDetour} from './breach-cooperation.ts';
+import {friendlyPassingStep,nearOccupiedFriendlyGoal} from './breach-friendly-traffic.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
 import {relocateCover,canRelocateCover,coverPushDistance} from './breach-movable-cover.ts';
 import {materialForFixture,MATERIALS,type MaterialId} from './breach-materials.ts';
@@ -1307,86 +1308,6 @@ function observe(s:Session){
     }
   }
 }
-/** Let a temporarily idle teammate step into a safe passing pocket.
- * Keep every authored waypoint: this is transient traffic, not plan editing.
- */
-function yieldPocket(blocker:TeamActor,requester:TeamActor,s:Session):Pt|null{
-  const dx=blocker.p.x-requester.p.x;
-  const dy=blocker.p.y-requester.p.y;
-  const len=Math.hypot(dx,dy)||1;
-  const side={x:-dy/len,y:dx/len};
-  const backwards={x:dx/len,y:dy/len};
-  const options:Pt[]=[];
-  for(const offset of [18,23,28,14]){
-    for(const sign of [1,-1]){
-      options.push({x:blocker.p.x+side.x*offset*sign,
-        y:blocker.p.y+side.y*offset*sign});
-    }
-  }
-  // A doorway can have only one free side; retreating into a nearby
-  // pocket is preferable to overlapping actors whenever space exists.
-  for(const offset of [18,25]){
-    options.push({x:blocker.p.x+backwards.x*offset,
-      y:blocker.p.y+backwards.y*offset});
-  }
-  return options.filter(pos=>{
-    if(s.operators.some(b=>b!==blocker&&b!==requester&&b.health>0&&
-      d(pos,b.p)<18))return false;
-    return sweptBodyClear(blocker.p,pos,s.doors);
-  }).sort((u,v)=>
-    d(v,requester.p)-d(u,requester.p)||
-    d(u,blocker.p)-d(v,blocker.p))[0]??null;
-}
-function deferToTeammate(s:Session,blocker:TeamActor,requester:TeamActor){
-  if(blocker.yieldTarget||requester.yieldTarget||blocker.health<=0||
-     requester.blockedTime<1.1)return false;
-  // Deliberately held stacks and threshold guards are never involuntarily
-  // shoved by an arriving teammate, even if they have no active route.
-  if(blocker.plan.some(n=>n.stackDoorId||n.kind==='holdClear'||
-     n.kind==='wait'||n.kind==='door')||
-     s.doors.some(door=>d(blocker.p,doorCenter(door))<52))return false;
-  const requesterRank=s.operators.indexOf(requester);
-  const blockerRank=s.operators.indexOf(blocker);
-  const blockerActive=blocker.plan.some(n=>n.kind==='move'||n.kind==='door');
-  // A teammate actually making progress owns the lane. If both are stuck,
-  // a stable actor order breaks ties rather than yielding to each other.
-  if(blockerActive&&blocker.blockedTime<.14&&blocker.velocity>12)
-    return false;
-  if(blockerActive&&blocker.blockedTime>.14&&requesterRank>blockerRank)
-    return false;
-  const target=yieldPocket(blocker,requester,s);
-  if(!target)return false;
-  blocker.yieldTarget=target;blocker.yieldFor=requester.id;
-  blocker.yieldUntil=s.seconds+2.1;blocker.nav=[];
-  notify(s,blocker.name+' YIELDING TO '+requester.name);
-  return true;
-}
-function stepYield(s:Session,a:TeamActor,dt:number):boolean{
-  if(!a.yieldTarget)return false;
-  const requester=s.operators.find(other=>other.id===a.yieldFor);
-  const clear= !requester||requester.health<=0||
-    d(a.p,requester.p)>31;
-  const arrived=d(a.p,a.yieldTarget)<2;
-  if(s.seconds>a.yieldUntil||(clear&&arrived)){
-    a.yieldTarget=null;a.yieldFor=null;a.yieldUntil=0;
-    a.nav=[];a.velocity=0;
-    return false;
-  }
-  if(!arrived){
-    const distance=d(a.p,a.yieldTarget);
-    const advance=Math.min(distance,50*dt);
-    const candidate={x:a.p.x+
-      (a.yieldTarget.x-a.p.x)/distance*advance,
-      y:a.p.y+(a.yieldTarget.y-a.p.y)/distance*advance};
-    if(sweptBodyClear(a.p,candidate,s.doors)){
-      a.priorP=clone(a.p);a.p=candidate;a.velocity=50;
-    }else{
-      a.yieldTarget=null;a.yieldFor=null;a.yieldUntil=0;a.nav=[];
-      return false;
-    }
-  }else a.velocity=0;
-  return true;
-}
 function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   if(!a.nav.length){
     a.nav=a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
@@ -1492,23 +1413,13 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   // authored routes. Only an opposing actor is a physical traffic barrier.
   const blocking=s.operators.find(b=>b!==a&&b.health>0&&
     b.side!==a.side&&d(b.p,move)<11);
-  const nearPeer=s.operators.find(b=>b!==a&&b.health>0&&
-    b.side===a.side&&d(b.p,move)<20);
-  if(nearPeer&&a.side==='blue'&&!nearPeer.plan.length&&
-    d(a.p,nearPeer.p)<27&&a.blockedTime>1.1)
-    deferToTeammate(s,nearPeer,a);
-  let desiredMove=move;
-  if(nearPeer){
-    const tangent={x:-Math.sin(direction),y:Math.cos(direction)};
-    const choices=[.4,-.4,.7,-.7].map(factor=>({
-      x:move.x+tangent.x*advance*factor,
-      y:move.y+tangent.y*advance*factor,
-    })).filter(pos=>d(pos,nearPeer.p)>d(move,nearPeer.p)+2&&
-      (a.squeeze?sweptProfileClear(a.p,pos,s.doors,
-        a.squeezeYaw,'squeeze'):sweptBodyClear(a.p,pos,s.doors)));
-    if(choices.length)desiredMove=choices.sort((u,v)=>
-      d(u,next)-d(v,next))[0];
-  }
+  const friendlyPositions=s.operators.filter(b=>b!==a&&b.health>0&&
+    b.side===a.side).map(b=>b.p);
+  // Teammates are soft traffic, not rigid obstacles: preserve movement when
+  // there is no safe sidestep, and never force the stationary teammate away.
+  const desiredMove=friendlyPassingStep(a.p,move,next,friendlyPositions,
+    (from,to)=>a.squeeze?sweptProfileClear(from,to,s.doors,
+      a.squeezeYaw,'squeeze'):sweptBodyClear(from,to,s.doors));
   // The physical transition requires a valid oriented three-point torso
   // sweep; normal clearance remains the preference whenever it fits.
   const normalClear=sweptBodyClear(a.p,desiredMove,s.doors);
@@ -1614,13 +1525,8 @@ function pop(a:TeamActor){
   a.actionTimer=0;a.syncReady=null;a.pieIndex=0;pathFor(a);
 }
 function runOrders(s:Session,a:TeamActor,dt:number){
-  if(a.yieldTarget&&stepYield(s,a,dt)){
-    const held=aimHeading(a);
-    if(held!==null)rotate(a,held,dt);
-    return;
-  }
-  // A stationary or opposing teammate may briefly step aside, then resume
-  // its original queue. This overrides motor movement, not tactical aiming.
+  // Player-authored positions are sacred. Traffic steering only moves the
+  // actor who requested movement, never a stationary friend or held stack.
   const n=a.plan[0];
   if(a.carryingId&&(n?.kind!=='evacuate'||n.patientId!==a.carryingId)){
     const previous=s.operators.find(o=>o.id===a.carryingId);
@@ -1859,7 +1765,10 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     if(n.pivot&&!a.squeeze)rotate(a,angle(a.p,n.pivot),dt);
     return;
   }
-  const at=near(a.p,n.p,5);
+  const at=near(a.p,n.p,5)||(
+    n.kind==='move'&&nearOccupiedFriendlyGoal(a.p,n.p,
+      s.operators.filter(b=>b!==a&&b.health>0&&b.side===a.side)
+        .map(b=>b.p),(from,to)=>sweptBodyClear(from,to,s.doors)));
   if(!at&&(n.kind==='move'||n.kind==='door'||n.kind==='sync')){
     // A persistent tracking/PIE stance stays cautious on every segment,
     // not only on explicitly marked strafe nodes.
