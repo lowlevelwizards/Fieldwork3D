@@ -230,7 +230,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  wardrobe?:WardrobeOptions){
  const s=slots??DEFAULT;
  const looks=resolvedWardrobe(wardrobe,slots?{version:1,slots:s}:undefined);
- const usingWardrobe=!!wardrobe;
+ const usingWardrobe=!!wardrobe||s.head==='head-bump';
  // Exact headgear families replace the two legacy base mesh treatments.
  v.helmet.visible=!usingWardrobe&&s.head==='head-helmet';
  v.cap.visible=!usingWardrobe&&s.head==='head-cap';

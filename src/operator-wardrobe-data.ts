@@ -210,9 +210,10 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
  };
  choose('headwear',slots.head==='head-helmet'?
   ['soviet-steel','pasgt','ach','high-cut','high-cut-rails']:
+  slots.head==='head-bump'?['skate-helmet','bump-helmet']:
   slots.head==='head-cap'?
   ['patrol-cap','baseball-cap','backwards-cap','beanie','boonie','field-cap']:
-  ['bare'],'ach');
+  ['bare'],slots.head==='head-bump'?'bump-helmet':'ach');
  if(slots.head==='head-none')desired.headwear='bare';
  if(slots.head==='head-cap'&&desired.headwear==='ach')desired.headwear='patrol-cap';
  choose('armorStyle',slots.armor==='armor-carrier'?
