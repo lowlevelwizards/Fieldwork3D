@@ -122,7 +122,8 @@ export class TacticalScene3D{
   private beamBlockerRevision=-1;private beamBlockers:Segment[]=[];
   private doors=new Map<string,{root:THREE.Group;leaf:THREE.Group;
     frame:THREE.Group;halo:THREE.Group;threshold:THREE.Mesh;
-    wedge:THREE.Mesh}>();
+    wedge:THREE.Mesh;glassPane?:THREE.Mesh}>();
+  private observedDoorGlass=new Map<string,boolean>();
   private observedDoorOpen=new Map<string,number>();
   private effectCache=new Map<number,{root:THREE.Group;line:THREE.Mesh;
     impact:THREE.Mesh;chips:THREE.Mesh[];material:THREE.MeshBasicMaterial;
@@ -395,6 +396,7 @@ export class TacticalScene3D{
     for(const material of this.wallMaterials)material.dispose();
     this.wallMaterials.clear();
     this.walls.length=0;this.doors.clear();this.windowGlass.clear();
+    this.observedDoorGlass.clear();
     this.currentWear=[];this.objectWear=[];
     this.roofGroups.clear();
     this.coverGroups.clear();
@@ -768,6 +770,7 @@ export class TacticalScene3D{
       const threshold=this.box(frame,0,.32,0,length,1.2,13,
         doorTrim,false);
       const leaf=new THREE.Group();
+      let glassPane:THREE.Mesh|undefined;
        const invert=door.hinge==='b';
       leaf.position.x=door.kind==='shutter'||door.kind==='sliding'?0:invert?length/2:-length/2;
       // Actual hinge barrels identify the swing side without requiring
@@ -806,7 +809,7 @@ export class TacticalScene3D{
           for(const y of [3,34])this.box(leaf,middle,y,0,length-4,4,4,metal,false);
           if(style==='french'){
             const pane=this.box(leaf,middle,18,0,length-8,29,1,doorGlass,false);
-            pane.castShadow=false;
+            pane.castShadow=false;glassPane=pane;
             for(const y of [12,24])this.box(leaf,middle,y,0,length-5,2,3,metal,false);
             this.box(leaf,middle,18,0,2,30,3,metal,false);
           }else{
@@ -815,7 +818,7 @@ export class TacticalScene3D{
           }
         }else if(style==='glazed'){
           const pane=this.box(leaf,middle,18,0,length-8,29,1,doorGlass,false);
-          pane.castShadow=false;
+          pane.castShadow=false;glassPane=pane;
           for(const sign of [-1,1])
             this.box(leaf,middle+sign*(length/2-3),18,0,3.5,34,4,metal,false);
           for(const y of [3,34])this.box(leaf,middle,y,0,length-4,4.5,4,metal,false);
@@ -870,7 +873,8 @@ export class TacticalScene3D{
       this.root.add(root);
       const wedge=this.box(frame,0,1.9,6,6,2.7,6,metal,false);
       wedge.visible=false;
-      this.doors.set(door.id,{root,leaf,frame,halo,threshold,wedge});
+      this.doors.set(door.id,{root,leaf,frame,halo,threshold,wedge,glassPane});
+      this.observedDoorGlass.set(door.id,!!door.glassShattered);
       this.observedDoorOpen.set(door.id,door.openFraction??0);
     }
     const fixtureCtx:FixtureVisualContext={
@@ -1520,6 +1524,10 @@ export class TacticalScene3D{
       if(omniscient||liveVisibility(s,doorCenter(door)))
         this.observedDoorOpen.set(door.id,door.openFraction??(door.open?1:0));
       const directlyObserved=liveVisibility(s,doorCenter(door));
+      if(omniscient||directlyObserved)
+        this.observedDoorGlass.set(door.id,!!door.glassShattered);
+      if(object.glassPane)
+        object.glassPane.visible=!(this.observedDoorGlass.get(door.id)??false);
       object.wedge.visible=door.wedged===true&&(omniscient||directlyObserved);
       const fraction=omniscient||directlyObserved?
         (door.openFraction??(door.open?1:0)):
