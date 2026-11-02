@@ -16,7 +16,7 @@ export function classifyExecutionNotice(message:string):Classified{
     return {label:'OBSTRUCTED',severity:'warning',priority:3,duration:3500};
   if(/\b(INJURED|WOUND|HIT|HURT|STABILIZED)\b/.test(text))
     return {label:'MEDICAL',severity:'danger',priority:4,duration:4500};
-  if(/\b(RELOAD|MAGAZINE|FLASH|DOOR|OPENED|CLOSING|FORCED|EXTRACT|RECOVERED|SECURED)\b/.test(text))
+  if(/\b(RELOAD(?:ED|ING)?|MAGAZINE|FLASH|DOOR|OPENED|CLOSING|FORCED|EXTRACT|RECOVERED|SECURED)\b/.test(text))
     return {label:'ACTION',severity:'progress',priority:2,duration:2300};
   return {label:'UPDATE',severity:'routine',priority:1,duration:1750};
 }
