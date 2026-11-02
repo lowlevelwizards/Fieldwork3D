@@ -311,6 +311,8 @@ function clockTick(){
 }
 function setBusy(active:boolean){
  generating=active;
+ cancelButton.hidden=!active;
+ cancelButton.textContent='CANCEL';
  generateButton.disabled=active;nextButton.disabled=active;
  typeInput.disabled=active;scaleInput.disabled=active;seedInput.disabled=active;
  playSite.setAttribute('aria-disabled',String(active||!siteReady));
@@ -324,10 +326,14 @@ function stopGeneration(){
  status.textContent=siteReady?reportBaseline+'\\nGeneration cancelled. Previous site retained.':
    'Generation cancelled. Press GENERATE to retry.';
 }
-cancelButton.addEventListener('click',stopGeneration);
+cancelButton.addEventListener('click',()=>{
+ if(generating)stopGeneration();
+ else progressPanel.hidden=true;
+});
 function generationError(message:string){
  worker?.terminate();worker=null;setBusy(false);
  progressPanel.dataset.state='error';progressPanel.hidden=false;
+ cancelButton.hidden=false;cancelButton.textContent='DISMISS';
  progressStage.textContent='GENERATION FAILED';
  progressDetail.textContent=message;
  progressClock.textContent='Stopped · try a different seed or size';
@@ -360,9 +366,11 @@ async function useGeneratedSite(id:number,site:Site,audit:SiteAudit,choice:LabSc
     '&condition='+selectedCondition);
   siteReady=true;currentAudit=audit;
   updateLabels();showFunctionalQuality(site,audit);paintConditionDiagnostics();
-  showProgress(100,'MAP READY',(site.archetype??'BUILDING').toUpperCase()+
+  showProgress(100,'SITE READY',(site.archetype??'BUILDING').toUpperCase()+
     ' · '+(site.scale??'medium').toUpperCase()+' · '+site.rooms.length+' rooms');
+  progressPanel.dataset.state='ready';
   setBusy(false);
+  progressClock.textContent='Ready to play · use PLAY THIS SITE below';
   setTimeout(()=>{if(generationId===id&&!generating)progressPanel.hidden=true;},1400);
  }catch(error){generationError(error instanceof Error?error.message:String(error));}
 }
