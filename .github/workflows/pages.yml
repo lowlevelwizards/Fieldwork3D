@@ -28,6 +28,7 @@ jobs:
       - name: Validate production and critical motion/replay
         run: |
           node --experimental-strip-types --test tests/breach-motion-*.test.mjs tests/breach-distance-*.test.mjs tests/breach-hybrid-*.test.mjs tests/breach-121.test.mjs tests/breach-126.test.mjs tests/breach-127.test.mjs
+          node --experimental-strip-types --test tests/operator-*.test.mjs tests/equipment-13-visuals.test.mjs
           npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
