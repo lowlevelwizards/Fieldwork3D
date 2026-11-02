@@ -2251,17 +2251,22 @@ function segmentImpact(from:Pt,to:Pt,segment:{a:Pt;b:Pt}):number|null{
 function strikeSurface(from:Pt,aimed:Pt,s:Session,
   fromZ=22,toZ=22,energy=0):{
   end:Pt;surface:ShotEvent['surface'];penetrated:number[];remaining:number;
-  paneHits:number[];coverHits:{index:number;fraction:number}[];
+  paneHits:number[];glassDoorHits:{index:number;fraction:number}[];
+  coverHits:{index:number;fraction:number}[];
   materialHits:{fraction:number;material:MaterialId}[]}{
   const hits:BarrierHit[]=[];
+  const glassDoorHits:{index:number;fraction:number}[]=[];
   for(const wall of WALLS){
     const t=segmentImpact(from,aimed,wall);
     if(t!==null)hits.push({fraction:t,material:'brick',thickness:10});
   }
-  for(const door of s.doors){
+  for(const [index,door] of s.doors.entries()){
     if(door.style==='mesh-gate'||door.style==='screen')continue; // fine mesh transmits most bullets
+    const isGlass=['glazed','french'].includes(door.style??'');
+    if(isGlass&&door.glassShattered)continue;
     const leaf=doorLeafSegment(door);
     const t=segmentImpact(from,aimed,leaf);
+    if(t!==null&&isGlass)glassDoorHits.push({index,fraction:t});
     if(t!==null)hits.push({fraction:t,
       material:door.kind==='shutter'?'steel':
         ['glazed','french'].includes(door.style??'')?'glass':'hardwood',
@@ -2299,6 +2304,7 @@ function strikeSurface(from:Pt,aimed:Pt,s:Session,
     y:from.y+(aimed.y-from.y)*t},surface,
     penetrated:outcome.penetrated,remaining:outcome.remaining,
     paneHits:paneHits.filter(p=>p.fraction<=t+.00001).map(p=>p.index),
+    glassDoorHits:glassDoorHits.filter(p=>p.fraction<=t+.00001),
     coverHits:hits.filter(h=>h.coverIndex!==undefined&&
       h.fraction<=t+.00001).map(h=>({index:h.coverIndex!,fraction:h.fraction})),
     materialHits:hits.filter(h=>h.fraction<=t+.00001)
@@ -2353,6 +2359,21 @@ function damageStruckCover(s:Session,hits:readonly {index:number;fraction:number
   }
  }
  if(touched.size)COVER.splice(0,COVER.length,...s.coverState);
+}
+/** Persist actual glass-door damage only after a fired projectile. The metal
+ * frame and physical leaf remain operational; only glazing shatters. */
+function shatterStruckDoorGlass(s:Session,
+ hits:readonly {index:number;fraction:number}[],maxFraction=1){
+ for(const hit of hits){
+  if(hit.fraction>maxFraction+.00001)continue;
+  const door=s.doors[hit.index];
+  if(!door||door.glassShattered||
+     !['glazed','french'].includes(door.style??''))continue;
+  door.glassShattered=true;s.objectRevision++;
+  const at=doorCenter(door);
+  hear(s,at,175,'glass');
+  battleEvent(s,'impact',null,at,'GLASS DOOR SHATTERED');
+ }
 }
 /** Keep decorative evidence bounded separately from authoritative hits.
  * Nearby blood spatters merge rather than creating dozens of overlapping
@@ -2415,6 +2436,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   const impact=strikeSurface(from,far,s,muzzle.y,14,
     WEAPONS[a.weapon].penetration);
   shatterStruckWindows(s,impact.paneHits,Math.max(1,WEAPONS[a.weapon].damage));
+  shatterStruckDoorGlass(s,impact.glassDoorHits);
   damageStruckCover(s,impact.coverHits,WEAPONS[a.weapon].damage*.36);
   emitMaterialEvents(s,from,far,impact.materialHits);
   a.fireCd=WEAPONS[a.weapon].interval*1.6;
@@ -2617,6 +2639,7 @@ function fire(s:Session,a:TeamActor,dt:number){
     return t!==null&&(!hit||t<=fractionToTarget+.0001);
   });
   shatterStruckWindows(s,actualRay,Math.max(1,weapon.damage));
+  shatterStruckDoorGlass(s,strike.glassDoorHits,hit?fractionToTarget:1);
   damageStruckCover(s,strike.coverHits,weapon.damage*.45,
     hit?fractionToTarget:1);
   emitMaterialEvents(s,muzzlePoint,far,strike.materialHits,
