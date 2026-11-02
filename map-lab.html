@@ -6,10 +6,13 @@
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#202d2b;color:#e8e8dd;font:12px/1.45 system-ui,sans-serif;touch-action:none}
 header{position:fixed;top:env(safe-area-inset-top);left:0;right:0;z-index:12;background:#1c302ded;border-bottom:1px solid #678278;padding:10px 13px;display:flex;align-items:center;justify-content:space-between}
 header strong{font-size:16px;letter-spacing:.09em}a{color:#e0c38e}#controls{position:fixed;bottom:env(safe-area-inset-bottom);left:0;right:0;z-index:12;background:#20332ff0;border-top:1px solid #7b8e7c;padding:12px;display:grid;gap:9px;max-height:40dvh;overflow:auto;touch-action:pan-y}
-.row{display:flex;align-items:center;flex-wrap:wrap;gap:8px}label{font-weight:600;font-size:11px}button,input,select,#playSite{background:#3b544a;color:#f5efdf;border:1px solid #718f80;border-radius:5px;padding:8px;min-height:35px;font:12px system-ui;touch-action:manipulation}button:active{background:#ac9167}input[type=number]{width:110px}input[type=range]{flex:1;min-width:120px;accent-color:#d5a96b}select{flex:1;min-width:110px}
+.row{display:flex;align-items:center;flex-wrap:wrap;gap:8px}label{font-weight:600;font-size:11px}button,input,select,#playSite{background:#3b544a;color:#f5efdf;border:1px solid #718f80;border-radius:5px;padding:8px;min-height:44px;font:12px system-ui;touch-action:manipulation}button:active{background:#ac9167}input[type=number]{width:110px}input[type=range]{flex:1;min-width:120px;accent-color:#d5a96b}select{flex:1;min-width:110px}
 button:disabled{opacity:.47;cursor:default}
 #generationProgress{position:fixed;z-index:15;top:calc(60px + env(safe-area-inset-top));left:12px;width:min(390px,calc(100vw - 24px));padding:12px;border:1px solid #a9bd97;border-radius:10px;background:#1b2d28f5;box-shadow:0 9px 35px #0b181ac9;touch-action:manipulation}
 #generationProgress[hidden]{display:none}
+#generationProgress[data-state="ready"]{border-color:#a7be9d;background:#19352ceF}
+#generationProgress[data-state="ready"] #progressStage{color:#d5efcb}
+#generationProgress[data-state="error"]{border-color:#cb907a}
 .progress-heading{display:flex;align-items:center;gap:10px;justify-content:space-between;font-weight:700;letter-spacing:.04em}
 #progressPercent{font:700 19px ui-monospace,monospace;color:#e9c88f;font-variant-numeric:tabular-nums}
 #progressBar{display:block;width:100%;height:12px;accent-color:#afcdab;margin:8px 0 7px}
@@ -17,7 +20,7 @@ button:disabled{opacity:.47;cursor:default}
 #progressDetail{display:block;font-size:11px;color:#c4d0c6;min-height:17px}
 #progressClock{font:10px ui-monospace,monospace;color:#a6b9b0}
 .progress-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:6px}
-#cancelGeneration{min-height:30px;padding:4px 10px;font-size:11px}
+#cancelGeneration{min-height:44px;padding:4px 10px;font-size:11px}
 @media(max-width:450px){#generationProgress{top:calc(54px + env(safe-area-inset-top));padding:10px}}
 #encounterInspector{border:1px solid #7b6c4a;border-radius:6px;padding:7px 9px;touch-action:pan-y}
 #encounterInspector summary{font-weight:700;cursor:pointer;touch-action:manipulation}
