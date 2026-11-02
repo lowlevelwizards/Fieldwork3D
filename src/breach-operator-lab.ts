@@ -182,6 +182,8 @@ function endKitComparison(){
  while(kitBodies.length){const body=kitBodies.pop()!;
   scene.remove(body.root);body.dispose();}
  kitComparing=false;kitCompareButton.setAttribute('aria-pressed','false');
+ kitCompareButton.textContent='COMPARE THREE';
+ document.body.classList.remove('kit-compare');
 }
 function isolateKit(body:OperatorRig){
  const focus=isolation.value;
@@ -207,6 +209,9 @@ function isolateKit(body:OperatorRig){
 kitCompareButton.addEventListener('click',()=>{
  if(kitComparing){endKitComparison();fit();return;}
  kitComparing=true;
+ (document.getElementById('kitPanel') as HTMLDetailsElement).open=true;
+ document.body.classList.add('kit-compare');
+ kitCompareButton.textContent='EXIT KIT COMPARISON';
  if(comparing){
   comparing=false;clearComparison();
   poseCompareButton.setAttribute('aria-pressed','false');
@@ -303,7 +308,7 @@ const build=()=>{
 };
 operator.addEventListener('change',build);
 function fit(next='iso'){
-  const center=comparing?new THREE.Vector3():rig?.root.position??
+  const center=comparing||kitComparing?new THREE.Vector3():rig?.root.position??
     new THREE.Vector3();
   const dx=next==='front'?75:next==='top'?.01:next==='side'?0:65;
   const dz=next==='side'?75:next==='top'?.01:next==='front'?0:68;
@@ -349,6 +354,7 @@ document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(button=>
   button.addEventListener('click',()=>fit(button.dataset.view)));
 choose<HTMLButtonElement>('resetCamera').addEventListener('click',()=>fit());
 gaitCompareButton.addEventListener('click',()=>{
+  if(kitComparing)endKitComparison();
   gaitComparing=!gaitComparing;
   if(gaitComparing){
     comparing=false;labelLayer.hidden=true;
@@ -361,6 +367,7 @@ gaitCompareButton.addEventListener('click',()=>{
   fit();
 });
 poseCompareButton.addEventListener('click',()=>{
+  if(kitComparing)endKitComparison();
   comparing=!comparing;
   if(comparing&&gaitComparing){
     gaitComparing=false;clearGaitCompare();
@@ -792,6 +799,8 @@ function draw(){
   if(renderer.info.render.calls<1)
     throw Error('3D renderer returned without drawing an operator');
   canvas.dataset.drawCalls=String(renderer.info.render.calls);
+  canvas.dataset.triangles=String(renderer.info.render.triangles);
+  canvas.dataset.kitComparison=String(kitComparing);
   if(canvas.dataset.ready!=='true'){
     canvas.dataset.ready='true';
     choose<HTMLElement>('labStatus').hidden=true;
