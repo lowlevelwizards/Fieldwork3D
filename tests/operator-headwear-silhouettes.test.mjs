@@ -91,6 +91,16 @@ test('stage 1E removes insignificant crown trim and consolidates silhouette step
    id+' should contain no decorative staircase');
   assert.equal(build(id).userData.stage,'1E');
  }
+ // Each authored broad section overlaps its neighbor by >= 0.2 units,
+ // avoiding near-coplanar floating-point cracks in the cuboid union.
+ const zOverlap=(a,b)=>Math.min(a.z+a.depth/2,b.z+b.depth/2)-
+  Math.max(a.z-a.depth/2,b.z-b.depth/2);
+ assert.ok(zOverlap(byName(ach,'ach-protective-brow'),
+  byName(ach,'ach-right-temple'))>.2);
+ assert.ok(zOverlap(byName(ach,'ach-right-temple'),
+  byName(ach,'ach-right-ear-wrap'))>.2);
+ assert.ok(zOverlap(byName(high,'highcut-protective-brow'),
+  byName(high,'highcut-right-temple'))>.2);
  // The ACH side is two intentional plateaus; ear and nape share a bottom.
  assert.ok(Math.abs(lowerAt(ach,4.4,-3.5)-4.40)<.01);
  assert.ok(Math.abs(lowerAt(ach,4.4,0)-2.23)<.01);
