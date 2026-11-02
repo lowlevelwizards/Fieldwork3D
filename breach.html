@@ -59,9 +59,19 @@
       </div>
   </details>
 </section>
-<section id="briefingPanel" class="briefing-panel" hidden aria-label="Operation briefing">
+<section id="briefingPanel" class="briefing-panel fw-mission-dossier" hidden aria-label="Operation briefing">
+  <div class="fw-dossier-eyebrow">FIELD OPERATIONS / MISSION DOSSIER</div>
   <strong id="briefingTitle">OPERATION BRIEFING</strong>
-  <p id="briefingBody"></p>
+  <div class="fw-dossier-block fw-dossier-objective">
+    <h3>OBJECTIVE</h3><p id="briefingBody"></p>
+  </div>
+  <div class="fw-dossier-grid">
+    <div class="fw-dossier-block"><h3>SUCCESS CONDITION</h3><p id="briefingCondition"></p></div>
+    <div class="fw-dossier-block"><h3>EXTRACTION</h3><p id="briefingExtraction"></p></div>
+  </div>
+  <div class="fw-dossier-block"><h3>SITE INTELLIGENCE</h3><p id="briefingSite"></p></div>
+  <div class="fw-dossier-block"><h3>KNOWN INTELLIGENCE</h3><p id="briefingIntel"></p></div>
+  <div class="fw-dossier-block"><h3>ASSIGNED TEAM</h3><p id="briefingRoster"></p></div>
   <button id="briefingClose" type="button">RETURN TO PLANNING</button>
 </section>
 <div id="contextTools" class="context-tools" role="toolbar" aria-label="Contextual tactical actions" hidden></div>
