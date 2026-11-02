@@ -8,6 +8,7 @@ import type {CarryLocation} from './equipment-carry-placement.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
+import {createCanonicalAttachment} from './operator-axis-convention.ts';
 import {createWardrobeHeadLayers,updateWardrobeHeadLayers,
  type WardrobeHeadLayers} from './operator-wardrobe-head-visuals.ts';
 import {createWardrobeBodyLayers,updateWardrobeBodyLayers,
@@ -50,7 +51,8 @@ const part=(parent:THREE.Object3D,m:THREE.Material,
 const bundle=(parent:THREE.Object3D)=>{const g=new THREE.Group();parent.add(g);return g;};
 export function createOperatorVisualKit(
  chest:THREE.Group,hip:THREE.Group,head:THREE.Group,pack:THREE.Mesh,
- legs:readonly Limb[],arms:readonly Limb[],m:VisualMaterials):OperatorVisualKit{
+ legs:readonly Limb[],arms:readonly Limb[],m:VisualMaterials,
+ canonicalHead?:THREE.Group):OperatorVisualKit{
  const {cloth,vest,trousers,packFabric,gearFabric,headCloth,
   headArmor,dark,skin,steel}=m;
  const trim=new THREE.MeshStandardMaterial({color:0x777d6d,roughness:.94,flatShading:true});
@@ -98,7 +100,9 @@ export function createOperatorVisualKit(
  part(cap,headCloth,-.55,6.70,0,8.25,1.6,8.35);
  part(cap,dark,3.62,6.07,0,.32,.28,7.9);
  part(cap,headCloth,4.05,5.92,0,4.3,.44,7.65);
- const wardrobeHead=createWardrobeHeadLayers(head,headCloth,headArmor,dark,skin);
+ const wardrobeHead=createWardrobeHeadLayers(head,
+  canonicalHead??createCanonicalAttachment(head),
+  headCloth,headArmor,dark,skin);
  const wardrobeBody=createWardrobeBodyLayers(chest,legs,arms,
   cloth,trousers,trim,dark);
  // Separate clothing profiles: jacket has a heavier collar, flap and
@@ -249,16 +253,14 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  wardrobe?:WardrobeOptions){
  const s=slots??DEFAULT;
  const looks=resolvedWardrobe(wardrobe,slots?{version:1,slots:s}:undefined);
- const usingWardrobe=!!wardrobe||s.head==='head-bump';
- // Exact headgear families replace the two legacy base mesh treatments.
- v.helmet.visible=!usingWardrobe&&s.head==='head-helmet';
- v.cap.visible=!usingWardrobe&&s.head==='head-cap';
- v.hair.visible=s.head==='head-none';
+ // Single source of truth: the actual equipped head item resolves its
+ // visible model. Never draw a legacy generic shell under headwear.
+ v.helmet.visible=false;
+ v.cap.visible=false;
+ v.hair.visible=false; // Stage 1 bare reference is intentionally clean.
  updateWardrobeHeadLayers(v.wardrobeHead,
-  usingWardrobe?looks.headwear:'bare',
-  usingWardrobe?looks.facewear:'face-none',
-  usingWardrobe?looks.eyewear:'eyes-none',
-  usingWardrobe?looks.headset:'comms-none');
+  looks.headwear,looks.facewear,looks.eyewear,looks.headset);
+ const usingWardrobe=!!wardrobe||s.head==='head-bump';
  const key=seed>>>0;
  v.haircuts.forEach((h,i)=>{h.visible=i===key%3;});
  v.eyeMarks.forEach(m=>{m.visible=faceStyle==='quiet';});

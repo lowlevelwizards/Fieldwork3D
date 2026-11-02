@@ -14,7 +14,8 @@ test('new appearance layers honor protection and clothes while preserving rig an
  let gear=initialEquipmentLoadout();
  const oldHead=rig.head.position.y;
  poseOperator(rig,base(gear),0);
- assert.equal(rig.visualKit.helmet.visible,true);
+ assert.equal(rig.visualKit.helmet.visible,false);
+ assert.equal(rig.visualKit.wardrobeHead.headwear.ach.visible,true);
  assert.equal(rig.visualKit.plateCarrier.visible,false);
  assert.equal(rig.visualKit.jacket.visible,true);
  gear=setEquipmentChoice(gear,'head','head-none');
@@ -22,7 +23,8 @@ test('new appearance layers honor protection and clothes while preserving rig an
  gear=setEquipmentChoice(gear,'top','top-light');
  poseOperator(rig,base(gear),0);
  assert.equal(rig.visualKit.helmet.visible,false);
- assert.equal(rig.visualKit.hair.visible,true);
+ assert.equal(rig.visualKit.hair.visible,false);
+ assert.ok(Object.values(rig.visualKit.wardrobeHead.headwear).every(g=>!g.visible));
  assert.equal(rig.visualKit.plateCarrier.visible,true);
  assert.equal(rig.visualKit.jacket.visible,false);
  assert.equal(rig.head.position.y,oldHead);

@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
+import {createHeadwearSilhouette} from './operator-headwear-silhouettes.ts';
 import type {WardrobeSlot} from './operator-wardrobe-data.ts';
 type Model=Record<string,THREE.Group>;
 export type WardrobeHeadLayers={
@@ -17,10 +18,14 @@ const cube=(g:THREE.Group,m:THREE.Material,
  g.add(mesh);return mesh;
 };
 const group=(parent:THREE.Group)=>{const g=new THREE.Group();parent.add(g);return g;};
-export function createWardrobeHeadLayers(head:THREE.Group,cloth:THREE.Material,
+export function createWardrobeHeadLayers(head:THREE.Group,
+ canonicalHead:THREE.Group,cloth:THREE.Material,
  vest:THREE.Material,dark:THREE.Material,skin:THREE.Material):WardrobeHeadLayers{
  const headwear:Model={},facewear:Model={},eyewear:Model={},headset:Model={};
- const g=(set:Model,id:string)=>{const model=group(head);model.visible=false;set[id]=model;return model;};
+ const g=(set:Model,id:string,canonical=false)=>{
+  const model=group(canonical?canonicalHead:head);
+  model.visible=false;set[id]=model;return model;
+ };
  const brimCap=(id:string,backward=false,soft=false)=>{
   const cap=g(headwear,id);
   cube(cap,cloth,-.5,6.66,0,8.45,1.65,8.35);
@@ -30,7 +35,8 @@ export function createWardrobeHeadLayers(head:THREE.Group,cloth:THREE.Material,
  };
  brimCap('baseball-cap');
  brimCap('backwards-cap',true);
- brimCap('patrol-cap');
+ // Stage 1 silhouette prototypes live in -Z forward head space.
+ g(headwear,'patrol-cap',true).add(createHeadwearSilhouette('patrol-cap',cloth));
  brimCap('field-cap',false,true);
  const beanie=g(headwear,'beanie');
  cube(beanie,cloth,-.1,6.9,0,8.8,1.5,9.1);
@@ -53,9 +59,11 @@ export function createWardrobeHeadLayers(head:THREE.Group,cloth:THREE.Material,
   if(rail)cube(model,dark,2.0,8.52,0,1.4,.4,2.0);
  };
  helmet('pasgt',10.4,0,false);
- helmet('ach',9.45,1,false);
- helmet('high-cut',9.1,2,false);
- helmet('high-cut-rails',9.1,2,true);
+ g(headwear,'ach',true).add(createHeadwearSilhouette('ach',vest));
+ g(headwear,'high-cut',true).add(createHeadwearSilhouette('high-cut',vest));
+ // Existing saved rail layouts keep the correct base shell, with actual
+ // rails explicitly deferred to the approved detailing phase.
+ g(headwear,'high-cut-rails',true).add(createHeadwearSilhouette('high-cut',vest));
  helmet('skate-helmet',9.65,2,false);
  helmet('bump-helmet',9.1,2,true);
  // One-opening and three-opening balaclavas use a forehead and chin with

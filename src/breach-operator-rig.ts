@@ -273,7 +273,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   flashCanister.geometry=new THREE.CylinderGeometry(1.25,1.25,5.8,8);
   const visualKit=createOperatorVisualKit(chest,hip,head,pack,feet,arms,
     {cloth,vest,trousers,packFabric,gearFabric,headCloth,headArmor,
-      dark:boot,skin,steel});
+      dark:boot,skin,steel},headCanonicalFrame);
   // Include costume, face and accessory materials as well as the core skin,
   // cloth and steel. This keeps silhouette inspection and downed desaturation
   // honest instead of leaving floating colored eye marks and gear details.
