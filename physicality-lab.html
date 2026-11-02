@@ -1,6 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#1c302b"><title>FIELDWORK — PHYSICALITY LAB</title>
+<link rel="stylesheet" href="./src/ui/fieldwork-design.css">
 <style>
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#182824;color:#ecede1;font:13px system-ui,sans-serif}
 header{display:flex;align-items:center;justify-content:space-between;background:#243a34;padding:12px 15px;border-bottom:1px solid #688879}
@@ -9,7 +10,7 @@ main{max-width:1020px;margin:auto;padding:12px;display:grid;gap:12px}
 section{background:#263a34;border:1px solid #678777;border-radius:10px;padding:12px}
 .controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
 label{display:grid;gap:6px;font-size:11px;font-weight:700;letter-spacing:.05em}
-select,button{background:#39554a;color:#f6efe2;border:1px solid #92a48a;border-radius:6px;padding:10px;font:inherit;min-height:40px}
+select,button{background:#39554a;color:#f6efe2;border:1px solid #92a48a;border-radius:6px;padding:10px;font:inherit;min-height:44px}
 button{cursor:pointer}button:active{background:#b69564;color:#1b2a23}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 canvas{display:block;width:100%;aspect-ratio:16/10;background:#34473f;border:1px solid #8ba491;border-radius:7px;touch-action:none}
@@ -19,15 +20,30 @@ canvas{display:block;width:100%;aspect-ratio:16/10;background:#34473f;border:1px
 pre{white-space:pre-wrap;overflow:auto;max-height:160px;font:11px/1.5 ui-monospace,monospace;color:#c9dacb}
 p{line-height:1.5;color:#ced8cf;margin:8px 0 0}
 @media(max-width:550px){.stats{grid-template-columns:repeat(2,1fr)}}
+
+/* UX17: focus the lab on scenario, run and observed outcome. */
+.physicality-advanced{margin:9px 0;border:1px solid var(--fw-panel-border);
+ background:var(--fw-panel-deep);border-radius:8px;padding:8px 10px}
+.physicality-advanced summary{cursor:pointer;min-height:38px;padding:10px 1px;
+ font:700 11px/1.3 system-ui,sans-serif;letter-spacing:.06em;
+ color:var(--fw-text-muted);touch-action:manipulation}
+.physicality-advanced .controls{margin:8px 0}
+section{border-color:var(--fw-panel-border);border-radius:var(--fw-radius-md)}
+button:focus-visible,select:focus-visible,summary:focus-visible{
+ outline:2px solid var(--fw-focus);outline-offset:2px}
+@media(max-width:550px){.actions button{flex:1 1 30%;min-height:46px}}
 </style></head><body>
 <header><strong>FIELDWORK / PHYSICALITY LAB</strong><a href="./breach.html">BACK TO GAME</a></header>
 <main><section>
 <div class="controls">
 <label>TEST SCENARIO<select id="scenario"><option value="stack">Held doorway + passing</option><option value="headon">Opposing traffic</option><option value="vestibule">Two-door vestibule</option><option value="furniture">Furniture pinch</option></select></label>
+</div>
+<details class="physicality-advanced"><summary>PHYSICS PARAMETERS / COMPARISON MODE</summary>
+<div class="controls">
 <label>FRIENDLY COLLISION<select id="traffic"><option value="hybrid">Hybrid cooperative (default)</option><option value="free">Free passing</option><option value="strict">Strict solid bodies</option></select></label>
 <label>OPEN DOORS<select id="doors"><option value="assisted">Assisted physical (default)</option><option value="strict">Strict physical</option><option value="forgiving">Forgiving open leaves</option></select></label>
 <label>SIMULATION SPEED<select id="speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
-</div>
+</div></details>
 <div class="actions"><button id="run">RUN</button><button id="step">SINGLE STEP</button><button id="reset">RESET</button></div>
 <p>Isolated deterministic movement test. Compare approaches against the same physical map, then inspect obstruction and progress. This lab does not alter Quick Play or Campaign rules.</p>
 </section>
