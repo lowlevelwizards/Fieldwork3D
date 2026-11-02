@@ -245,6 +245,7 @@ function applyCampaignSkills(){
   if(m){
    a.name=m.callsign;a.skills={...m.skills};a.weapon=m.weapon;
    a.appearanceSeed=m.appearanceSeed;
+   a.wardrobe=m.wardrobe;
    a.equipment=m.loadout;
     a.weaponConfiguration=m.weaponConfiguration;
     a.medicalSupplies={...m.medicalSupplies};

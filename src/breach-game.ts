@@ -67,6 +67,7 @@ import {bodyClear,sweptBodyClear,squeezeFacing,
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
   from './breach-squeeze-route.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import {kitMedicalSupplies,spendMedicalSupply,transferMedicalSupply,
  medicalSupplyCount,type FieldMedicalSupplies}
  from './equipment-medical-supplies.ts';
@@ -158,6 +159,7 @@ export type TeamActor=Operator & {
   lastLaneWarnAt:number;lastFireBlock:FireBlock;
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
   appearanceSeed:number;equipment?:EquipmentLoadout;
+  wardrobe?:WardrobeOptions;
   weaponConfiguration?:WeaponConfiguration;
   weaponLightOn:boolean;
   loadMovementScale?:number;

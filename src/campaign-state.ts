@@ -2,6 +2,7 @@
 import type {OperationKind} from './breach-operations.ts';
 import type {ShootingSkills} from './breach-skills.ts';
 import type {RosterState} from './breach-roster.ts';
+import {initialWardrobe,readWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {WEAPONS as COMBAT_WEAPONS} from './breach-combat.ts';
 import {magazineKit,type MagazineItem} from './breach-magazines.ts';
 import {readPersistentMagazines,readLoadedMagazineId,addReserveRounds}
@@ -30,6 +31,7 @@ export const SKILL_NAMES:SkillName[]=['pointShooting','longRange','precision','r
 export type CareerEvent={id:string;day:number;operatorId:string;operationId?:string;kind:string;detail:string;otherOperatorId?:string};
 export type CampaignOperator={
  id:string;callsign:string;background:string;appearanceSeed:number;
+ wardrobe?:WardrobeOptions;
  skills:ShootingSkills;experience:ShootingSkills;aptitudes:ShootingSkills;
  trait:string;distinctions:string[];
  missions:number;successful:number;injuries:number;recoveryDays:number;
@@ -91,7 +93,8 @@ export function startingOperator(id:string,i:number,seed:number):CampaignOperato
  const capacity={carbine:12,smg:24,rifle:10,shotgun:6}[weapon];
  const reserve={carbine:36,smg:72,rifle:30,shotgun:24}[weapon];
  return {id,callsign:id.toUpperCase(),background:['Patrol','Reconnaissance','Security','Emergency Response'][i%4],
-  appearanceSeed:hash(seed+i+83),skills:values(hash(seed+i*313),'skill'),
+  appearanceSeed:hash(seed+i+83),wardrobe:initialWardrobe(),
+  skills:values(hash(seed+i*313),'skill'),
   experience:Object.fromEntries(SKILL_NAMES.map(k=>[k,0])) as ShootingSkills,
   aptitudes:aptitude,trait:traitNames[strongest],distinctions:[],
   missions:0,successful:0,injuries:0,recoveryDays:0,status:'available',
@@ -191,6 +194,7 @@ export function readCampaign(raw:string|null):CampaignState|null{
      readPersistentMagazines(o.id,o.weapon,o.reserve,
       (o as {magazines?:unknown}).magazines)),
    loadout:readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon),
+   wardrobe:readWardrobe((o as {wardrobe?:unknown}).wardrobe),
    medicalSupplies:normalizedMedicalSupplies((o as {medicalSupplies?:unknown}).medicalSupplies,
     kitMedicalSupplies(readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon))),
     weaponConfiguration:readWeaponConfiguration(
@@ -627,4 +631,17 @@ export function moveCampaignMagazine(
  const relocated=placed.map(m=>m.id===magazineId?{...m,location:to}:m);
  return {...c,operators:c.operators.map(o=>o.id===operatorId?
   {...o,magazines:stageMagazines(relocated,o.loadout)}:o)};
+}
+
+/** Appearance-only customization: never issues stock or alters carried gear.
+ * An active operation freezes personnel appearance with their deployed kit.
+ */
+export function setCampaignWardrobe(c:CampaignState,id:string,
+ raw:unknown):CampaignState{
+ if(c.activeContractId)return c;
+ const member=c.operators.find(x=>x.id===id&&
+  x.status!=='retired'&&x.status!=='lost');
+ if(!member)return c;
+ const wardrobe=readWardrobe(raw);
+ return {...c,operators:c.operators.map(x=>x.id===id?{...x,wardrobe}:x)};
 }

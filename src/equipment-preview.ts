@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import type {WeaponId} from './breach-combat.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import type {MagazineItem} from './breach-magazines.ts';
 import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
@@ -23,7 +24,7 @@ export class CampaignKitPreview{
  constructor(host:HTMLElement,id:string,weapon:WeaponId,
   appearanceSeed:number,equipment:EquipmentLoadout,
   weaponConfiguration?:WeaponConfiguration,
-  magazines:readonly MagazineItem[]=[]){
+  magazines:readonly MagazineItem[]=[],wardrobe?:WardrobeOptions){
   this.host=host;
   host.classList.add('campaign-kit-preview');
   host.setAttribute('role','img');
@@ -44,7 +45,7 @@ export class CampaignKitPreview{
     stride:0,posture:'stand',injury:0,weapon,
     reload:0,reloadDuration:0,lastThrowAt:-100,lastDoorAt:-100,
     down:false,surrender:false,aiming:false,firing:false,turning:0,
-    appearanceSeed,equipment,weaponConfiguration,
+    appearanceSeed,equipment,weaponConfiguration,wardrobe,
     magazineCarryLocations:carryPlacementLedger(equipment,magazines)
       .filter(item=>item.kind==='magazine').map(item=>item.location),
     medicalCarryLocation:carryPlacementLedger(equipment,magazines)

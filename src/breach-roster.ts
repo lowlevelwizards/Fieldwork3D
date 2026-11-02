@@ -2,6 +2,8 @@
  * Save state belongs to operations, never to the 60Hz world simulation.
  */
 import type {Session} from './breach-game.ts';
+import {initialWardrobe,readWardrobe,type WardrobeOptions}
+ from './operator-wardrobe-data.ts';
 import {WEAPONS,type WeaponId} from './breach-combat.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {magazineKit,type MagazineItem} from './breach-magazines.ts';
@@ -21,6 +23,7 @@ export type RosterMember={
  id:string;callsign:string;missions:number;successful:number;
  injuries:number;recovery:number;weapon:WeaponId;magazine:number;reserve:number;
  fired:number;appearanceSeed:number;loadout:EquipmentLoadout;
+ wardrobe:WardrobeOptions;
  magazines:MagazineItem[];loadedMagazineId:string;
  weaponConfiguration:WeaponConfiguration;
 };
@@ -31,7 +34,7 @@ const defaultMember=(id:string,i:number):RosterMember=>({
  id,callsign:id.toUpperCase(),missions:0,successful:0,
  injuries:0,recovery:0,weapon:weapons[i],
  magazine:WEAPONS[weapons[i]].capacity,reserve:WEAPONS[weapons[i]].reserve,
- fired:0,appearanceSeed:i+1,
+ fired:0,appearanceSeed:i+1,wardrobe:initialWardrobe(),
  loadout:initialEquipmentLoadout(weapons[i]),
  weaponConfiguration:initialWeaponConfiguration(weapons[i]),
  magazines:weapons[i]==='shotgun'?[]:
@@ -66,6 +69,7 @@ export function readRoster(raw:string|null):RosterState{
      f.callsign.trim().slice(0,24):base.callsign,
     appearanceSeed:finite(f.appearanceSeed,0,0xffffffff,base.appearanceSeed),
     loadout:readEquipmentLoadout(f.loadout,weapon),
+    wardrobe:readWardrobe(f.wardrobe),
     weaponConfiguration:readWeaponConfiguration(f.weaponConfiguration,weapon),
     magazines,loadedMagazineId:readLoadedMagazineId(base.id,weapon,
      f.loadedMagazineId,magazines),
@@ -89,13 +93,15 @@ export function freshQuickPlayRoster(previous:RosterState=initialRoster()):Roste
   const fresh=initialRoster();
   return {version:1,members:fresh.members.map(base=>{
     const prior=previous.members.find(m=>m.id===base.id);
-    return prior?{...base,callsign:prior.callsign,appearanceSeed:prior.appearanceSeed}:base;
+    return prior?{...base,callsign:prior.callsign,
+      appearanceSeed:prior.appearanceSeed,wardrobe:readWardrobe(prior.wardrobe)}:base;
   })};
 }
 /** Cosmetic preferences are the only Quick Play operator data stored on disk. */
 export function serializeQuickPlayCosmetics(roster:RosterState):string{
   return JSON.stringify({version:1,members:roster.members.map(m=>({
-    id:m.id,callsign:m.callsign,appearanceSeed:m.appearanceSeed
+    id:m.id,callsign:m.callsign,appearanceSeed:m.appearanceSeed,
+    wardrobe:readWardrobe(m.wardrobe)
   }))});
 }
 export function applyRosterIdentity(s:Session,roster:RosterState){
@@ -105,6 +111,7 @@ export function applyRosterIdentity(s:Session,roster:RosterState){
   if(member){
    a.name=member.callsign;
    a.appearanceSeed=member.appearanceSeed;
+   a.wardrobe=member.wardrobe;
    a.equipment=member.loadout;
     a.weaponConfiguration=member.weaponConfiguration;
     a.medicalSupplies=kitMedicalSupplies(member.loadout);
