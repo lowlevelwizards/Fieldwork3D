@@ -607,17 +607,20 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Build 184: the balance solver already accounts for reachable hip
   // height. Do not apply another independent stance-radius correction.
   const neutralHip=20.2-crouch;
+  // Keep BOTH pelvis and chest together when straightening the Lab-only
+  // mannequin. Raising only the pelvis pushes shorts/belt into the torso.
+  // This lift is cosmetic to the no-gun preview: grounded feet, gait and
+  // normal battle skeleton stay unchanged.
+  const mannequinLift=p.unarmedPreview?
+    neutralMannequinHipRise(physicalSpeed,p.posture,p.down,p.surrender):0;
   const stanceHip=neutralHip+motion.pelvisY-bash.brace;
   r.hip.position.y=Math.max(
     17.35-crouch-buckle*8-kneel*9,
     stanceHip-buckle*8-kneel*9);
   r.hip.position.y-=poseWeight*profile.stanceCompression;
-  // Lab-only relaxed stand: the old 20.2-unit rest hip made the operator
-  // look perpetually crouched even when wearing nothing. No foot targets
-  // or battle locomotion are altered; motion fades this adjustment out.
-  if(p.unarmedPreview)
-    r.hip.position.y+=neutralMannequinHipRise(
-      physicalSpeed,p.posture,p.down,p.surrender);
+  // The pelvis lifts WITH the upper body; it never drives its visual
+  // shell up into a stationary chest.
+  r.hip.position.y+=mannequinLift;
   // The pelvic shell accepts support rotation but is not a second
   // independent writer of the world/root heading or foot anchors.
   r.hip.rotation.x=clamp(-motion.support*physicalSpeed/72*.022,-.03,.03);
@@ -630,7 +633,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     clamp((.32-aimLevel)/.32,0,1);
   r.chest.position.y=26-crouch+motion.breath+motion.pelvisY*.5+
     motion.chestLift*freeMotion*1.4-
-    bash.brace*.4-buckle*7-kneel*12;
+    bash.brace*.4-buckle*7-kneel*12+mannequinLift;
   r.chest.position.z=motion.pelvisSide*.75+
     poseWeight*profile.pelvisShift*.45;
   r.chest.rotation.z=motion.torsoForward+braking*.018+
