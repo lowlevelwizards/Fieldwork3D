@@ -1581,6 +1581,8 @@ function updateHud(){
   if(ui.loadout.disabled&&!weaponChooser.hidden)hideWeaponChooser();
   ui.flash.disabled=state.flashRemaining<=0||replaying;
   ui.back.disabled=!active?.plan.length;
+  ui.clear.disabled=!active?.plan.length||state.phase!=='planning'||replaying;
+  ui.clear.title='Clear this operator\'s route (Undo restores it)';
   ui.undo.disabled=!(active?.history.undo.length);
   ui.redo.disabled=!(active?.history.redo.length);
   ui.debrief.hidden=replaying||(state.phase!=='won'&&state.phase!=='lost');
@@ -2752,7 +2754,24 @@ ui.back.addEventListener('click',()=>{
 ui.moss.addEventListener('click',()=>selectUnit('moss'));
 ui.ash.addEventListener('click',()=>selectUnit('ash'));
 ui.vale.addEventListener('click',()=>selectUnit('vale'));
-ui.clear.addEventListener('click',()=>{clearPlan(state,selected);selectedNode=null;updateHud();});
+ui.clear.addEventListener('click',async()=>{
+ if(state.phase!=='planning'||replaying)return;
+ const session=state,targetId=selected;
+ const operator=team(session).find(a=>a.id===targetId);
+ const count=operator?.plan.length??0;
+ if(count===0)return;
+ if(count>=3&&!await confirmFieldworkAction({
+   title:'Clear '+(operator?.name??'operator')+' route?',
+   message:count+' queued orders will be cleared. Undo can restore the route.',
+   confirmLabel:'CLEAR ROUTE',danger:true
+ }))return;
+ if(session!==state||state.phase!=='planning')return;
+ if(clearPlan(state,targetId)){
+   selectedNode=null;
+   showUiHelp('ROUTE CLEARED · UNDO TO RESTORE',3000);
+   updateHud();
+ }
+});
 ui.undo.addEventListener('click',()=>{undoPlan(state,selected);selectedNode=null;updateHud();});
 ui.redo.addEventListener('click',()=>{redoPlan(state,selected);selectedNode=null;updateHud();});
 ui.wait.addEventListener('click',()=>{planWait(state,selected,.5);updateHud();});
