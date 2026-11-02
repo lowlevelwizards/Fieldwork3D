@@ -3,6 +3,7 @@
  * equipment-catalog / equipment-loadouts / campaign-state.
  */
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {wardrobeMount} from './operator-wardrobe-mounts.ts';
 export const WARDROBE_SLOTS=[
  'headwear','facewear','eyewear','headset','top','trousers','footwear',
  'armorStyle','rigStyle','beltStyle','packStyle','gloves','knees','wrist'
@@ -145,6 +146,7 @@ export type WardrobeOptions={
  version:1;styles:Partial<Record<WardrobeSlot,string>>;
  patterns:Partial<Record<'top'|'trousers'|'armor'|'gear'|'pack'|'head',WardrobePattern>>;
  palette:number;rolledSleeves:boolean;
+ mounts:{medical?:string;utility?:string;magazineOrder:'left-right'|'right-left'};
 };
 const DEFAULTS:Record<WardrobeSlot,string>={
  headwear:'ach',facewear:'face-none',eyewear:'eyes-none',headset:'comms-none',
@@ -154,7 +156,8 @@ const DEFAULTS:Record<WardrobeSlot,string>={
  wrist:'wrist-none'
 };
 export const initialWardrobe=():WardrobeOptions=>({
- version:1,styles:{},patterns:{},palette:0,rolledSleeves:false
+ version:1,styles:{},patterns:{},palette:0,rolledSleeves:false,
+ mounts:{magazineOrder:'left-right'}
 });
 export function readWardrobe(raw:unknown):WardrobeOptions{
  const result=initialWardrobe();
@@ -177,6 +180,16 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(Number.isInteger(v.palette)&&v.palette!>=0&&v.palette!<=15)
   result.palette=v.palette!;
  result.rolledSleeves=v.rolledSleeves===true;
+ if(v.mounts&&typeof v.mounts==='object'){
+  const incoming=v.mounts;
+  for(const kind of ['medical','utility'] as const){
+   const id=incoming[kind];
+   if(typeof id==='string'&&wardrobeMount(id)?.kind===kind)
+    result.mounts[kind]=id;
+  }
+  result.mounts.magazineOrder=incoming.magazineOrder==='right-left'?
+   'right-left':'left-right';
+ }
  return result;
 }
 export const setWardrobeStyle=(wardrobe:WardrobeOptions,slot:WardrobeSlot,id:string)=>

@@ -29,6 +29,7 @@ import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {equipmentCarrySocket,utilityDisplaySocket} from './equipment-carry-visuals.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {wardrobePatternTexture} from './operator-wardrobe-patterns.ts';
+import {resolveWardrobeDisplayMount} from './operator-wardrobe-mounts.ts';
 import type {CarryLocation} from './equipment-carry-placement.ts';
 import {createOperatorVisualKit,applyOperatorVisualKit,
  type OperatorVisualKit} from './operator-visual-kit.ts';
@@ -347,7 +348,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     gear?.medical==='medical-trauma')&&!p.treatmentActive;
   r.medicalPouch.scale.set(gear?.medical==='medical-trauma'?1.35:1,1,1);
   // Use actual carrier locations instead of rendering every pouch on chest.
-  const medicalAnchor=equipmentCarrySocket('medical',p.medicalCarryLocation);
+  const medicalAnchor=resolveWardrobeDisplayMount(
+    'medical',p.medicalCarryLocation??'rig',p.wardrobe?.mounts?.medical,
+    gear?.medical??'medical-none',packItem!=='backpack-none')??
+   equipmentCarrySocket('medical',p.medicalCarryLocation);
   const medicalParent=medicalAnchor.bone==='hip'?r.hip:
     medicalAnchor.bone==='pack'?r.pack:r.chest;
   if(r.medicalPouch.parent!==medicalParent)medicalParent.add(r.medicalPouch);
@@ -356,7 +360,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.radioUnit.visible=gear?.utility==='utility-radio';
   r.utilityTool.visible=['utility-light','utility-breach','utility-pry',
     'utility-cutter','utility-wedge'].includes(gear?.utility??'');
-  const utilityAnchor=utilityDisplaySocket(gear?.utility??'utility-none',
+  const utilityAnchor=resolveWardrobeDisplayMount(
+    'utility',p.utilityCarryLocation??'rig',p.wardrobe?.mounts?.utility,
+    gear?.utility??'utility-none',packItem!=='backpack-none')??
+    utilityDisplaySocket(gear?.utility??'utility-none',
     p.utilityCarryLocation,packItem!=='backpack-none');
   const utilityParent=utilityAnchor.bone==='hip'?r.hip:
     utilityAnchor.bone==='pack'?r.pack:r.chest;

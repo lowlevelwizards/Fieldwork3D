@@ -332,12 +332,13 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
    s.armor==='armor-soft'?8.25:6.65;
  const surfaceZ=s.armor==='armor-carrier'?9.0:
    s.armor==='armor-soft'?8.65:8.1;
+ const order=wardrobe?.mounts?.magazineOrder==='right-left'?-1:1;
  v.magazines.rig.forEach((mag,i)=>{
   if(i<4){
-   mag.position.set(surfaceX,-1.6,(i-1.5)*3.1);
+   mag.position.set(surfaceX,-1.6,order*(i-1.5)*3.1);
    mag.rotation.y=0;
   }else{
-   const side=i===4?1:-1;
+   const side=order*(i===4?1:-1);
    mag.position.set(i===6?1.7:-2.8,-1.55,
      side*surfaceZ);
    mag.rotation.y=side*Math.PI/2;
