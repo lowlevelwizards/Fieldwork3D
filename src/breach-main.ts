@@ -17,6 +17,7 @@ import {
   planCasualtyTransport,planRecoverMedical,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
+import type {TacticalOrderPreview} from './ui/tactical-feedback.ts';
 import {tacticalHitProfile} from './ui/touch-hit-targets.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
@@ -966,10 +967,11 @@ const displayRouteCache=new DisplayRouteCache();
 let cssW=innerWidth,cssH=innerHeight,dpr=1;
 let viewScale=1,ox=0,oy=0,zoom=1,panX=0,panY=0;
 let cursor:Pt|null=null;
+let previewHover=false;
 let trace:Pt[]|null=null;
 const activePointers=new Map<number,{x:number;y:number;startX:number;startY:number;
   wasUnit:boolean;nodeId:number|null;
-  mode:'undecided'|'route'|'pan'|'node'|'pivot'|'sweep'|'cameraOrbit'|'cameraPan'|'cameraMulti';moved:boolean}>();
+  mode:'undecided'|'route'|'pan'|'node'|'pivot'|'sweep'|'cameraOrbit'|'cameraPan'|'cameraMulti'|'targetPreview';moved:boolean}>();
 let pinchDistance=0,panMid:Pt|null=null;
 const colors:Record<string,string>={
   rook:'#a2d4ca',moss:'#b9c6a0',ash:'#dfb992',vale:'#b7b1d9',
@@ -3161,9 +3163,13 @@ const hitNode=(cursor:Pt,pointerKind:string):{id:number;index:number;owner:strin
   return candidates[0]??null;
 };
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
+canvas.addEventListener('pointerenter',e=>{if(e.pointerType!=='touch')previewHover=true;});
+canvas.addEventListener('pointerleave',()=>{previewHover=false;});
 canvas.addEventListener('pointerdown',e=>{
   e.preventDefault();canvas.setPointerCapture(e.pointerId);
   const pt=pointerWorld(e);
+  cursor=pt;
+  if(e.pointerType==='touch')previewHover=false;
   // Explicit camera interaction does NOT select units or place orders.
   // Touch defaults to direct orbit on empty ground after a drag threshold.
   // Desktop retains RMB orbit, MMB/Shift pan; plain clicks still plan.
@@ -3175,7 +3181,7 @@ canvas.addEventListener('pointerdown',e=>{
       startX:e.clientX,startY:e.clientY,wasUnit:false,nodeId:null,
       mode:orbit?'cameraOrbit':'cameraPan',moved:false});
   }else{
-    const contextual=looking||flashMode||!!firePlacement;
+    const contextual=looking||flashMode||!!firePlacement||!!evacMode;
     // A selected route can pass near a teammate. Its line remains tappable
     // unless the finger is directly over the teammate's physical icon.
     // Previously the oversized soldier hitbox stole mid-route insert taps.
@@ -3255,6 +3261,14 @@ canvas.addEventListener('pointermove',e=>{
     return;
   }
   if(p.mode==='cameraMulti')return;
+  // While a command is armed, one-finger dragging previews its target.
+  // Two fingers still exclusively pan/pinch and never author an order.
+  if(p.mode==='undecided'&&e.pointerType==='touch'&&p.moved&&
+     (looking||flashMode||!!firePlacement||!!evacMode)){
+    p.mode='targetPreview';
+    return;
+  }
+  if(p.mode==='targetPreview')return;
   // On touch a drag starting in empty space or the map ground orbits.
   // Tapping that same spot still creates a waypoint; dragging from a
   // selected operator or node keeps its deliberate tactical editing semantics.
@@ -3301,7 +3315,13 @@ function releasePointer(e:PointerEvent,cancelled=false){
   if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
   const pt=pointerWorld(e);
   if(!cancelled&&state.phase==='planning'&&!replaying&&activePointers.size===1){
-    if(p.mode==='node'&&p.nodeId!==null){
+    if(p.mode==='targetPreview'){
+      // Release commits the indicated destination through the same existing
+      // rule validation used by a tap; cancelling or adding a finger does not.
+      if((looking||flashMode||firePlacement||evacMode)&&
+         pt.x>=0&&pt.y>=0&&pt.x<=W&&pt.y<=H)
+        useSelectedGround(pt);
+    }else if(p.mode==='node'&&p.nodeId!==null){
       if(p.moved){
         const moving=uid(selected)?.plan.find(node=>node.id===p.nodeId);
         const moved=moving?.kind==='flash'?
@@ -3361,6 +3381,7 @@ function releasePointer(e:PointerEvent,cancelled=false){
     }
   }
   trace=null;draggingNode=null;activePointers.delete(e.pointerId);
+  if(e.pointerType==='touch')previewHover=false;
   if(activePointers.size<2){panMid=null;pinchDistance=0;}
   updateHud();
 }
@@ -3557,9 +3578,22 @@ function tick(now:number){
   if(feedbackDraw){
     feedbackDraw.setTransform(dpr,0,0,dpr,0,0);
     feedbackDraw.clearRect(0,0,cssW,cssH);
-    const origin=selectedPlanNode()?.p??uid(selected)?.p;
-    const preview=state.phase==='planning'&&looking&&cursor&&origin?
-      {origin,direction:cursor,pie:lookMode==='pie'}:undefined;
+    const actor=uid(selected);
+    const authoringPointer=activePointers.size===1?
+      [...activePointers.values()][0]:null;
+    const canPreview=state.phase==='planning'&&!replaying&&
+      !!cursor&&(previewHover||!!authoringPointer)&&
+      (!authoringPointer||!['cameraMulti','cameraOrbit','cameraPan'].includes(
+        authoringPointer.mode))&&cursor.x>=0&&cursor.y>=0&&
+      cursor.x<=W&&cursor.y<=H;
+    const orderMode=looking?lookMode:flashMode?'flash':
+      firePlacement??evacMode?.mode;
+    const origin=looking?
+      (selectedPlanNode()?.p??(armedOrigin==='here'?actor?.p:
+        actor?finalPoint(actor):undefined)):
+      actor?finalPoint(actor):undefined;
+    const preview:TacticalOrderPreview|undefined=canPreview&&actor&&origin&&
+      orderMode?{origin,direction:cursor!,mode:orderMode}:undefined;
     tacticalFeedback.draw(feedbackDraw,p=>worldToScreen(p,7),
       performance.now(),preview);
   }
