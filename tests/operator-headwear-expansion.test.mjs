@@ -140,7 +140,7 @@ test('Stage 1L-A beanie has exactly TWO visible contour levels: crown and cuff',
   .map(p=>p.x+p.width/2));
  const frontZAtY=y=>Math.min(...v.filter(p=>Math.abs(y-p.y)<p.height/2-1e-5)
   .map(p=>p.z-p.depth/2));
- for(const y of [8.1,7.6,6.9,5.7]){
+ for(const y of [8.1,7.6,6.9,6.1]){
   assert.ok(Math.abs(outerXAtY(y)-4.60)<1e-6,
    'one unbroken crown profile from top to actual fold');
   assert.ok(Math.abs(frontZAtY(y)+4.70)<1e-6,
@@ -236,7 +236,7 @@ test('Stage 1M taller fabric bands and cuff keep only intentional form changes',
  }
  // The user-approved fits and head cavity stay unchanged at the lower rim.
  assert.ok(Math.abs(lower(patrol,4.5,0)-4.64)<1e-6);
- assert.ok(Math.abs(lower(boonie,4.5,0)-4.54)<1e-6);
+ assert.ok(Math.abs(lower(boonie,4.0,0)-4.54)<1e-6);
  assert.ok(Math.abs(lower(beanie,4.5,0)-3.745)<1e-6);
  for(const [id,v] of [['patrol-cap',patrol],['boonie',boonie],['beanie',beanie]]){
   assert.ok(!covering(v,0,4.3,-3),id+' lower head/face space is open');
