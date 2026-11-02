@@ -19,6 +19,7 @@ import {
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import type {TacticalOrderPreview} from './ui/tactical-feedback.ts';
 import {ExecutionNoticeFeed} from './ui/execution-feedback.ts';
+import {currentSiteIdentity} from './ui/current-site-identity.ts';
 import {tacticalHitProfile} from './ui/touch-hit-targets.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
@@ -1532,6 +1533,7 @@ function updateQuickStates(){
     else button.setAttribute('aria-pressed',String(choice.pressed));
   }
 }
+const siteIdentityOutput=el<HTMLOutputElement>('siteIdentity');
 const blockedEpisode=new Map<string,string>();
 let fieldLightButton:HTMLButtonElement|null=null;
 let medicalButton:HTMLButtonElement|null=null;
@@ -1553,6 +1555,11 @@ function medicalCandidate(id:string){
  }).sort((x,y)=>distance(a.p,x.p)-distance(a.p,y.p))[0]??null;
 }
 function updateHud(){
+  const identity=currentSiteIdentity(state.site,campaignMode==='quick');
+  if(siteIdentityOutput.textContent!==identity.text)
+    siteIdentityOutput.textContent=identity.text;
+  if(identity.seed!==null)siteIdentityOutput.dataset.siteSeed=identity.seed;
+  else delete siteIdentityOutput.dataset.siteSeed;
   const telemetry=activeRangeDiagnostic(state,selected);
   rangeTelemetry.hidden=!telemetry;
   if(telemetry){
