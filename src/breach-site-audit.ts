@@ -12,6 +12,7 @@ import {auditFixtureService,type ServiceIssue} from './worldgen/fixture-service-
 import {inspectOperationalRoutes,straightWorkApproach,type OperationalRouteIssue} from './worldgen/operational-route-audit.ts';
 import {measureSiteCompleteness,type CompletenessScore} from './worldgen/site-completeness.ts';
 import {assessSpaceQuality,type SpaceQuality} from './worldgen/space-quality.ts';
+import {auditTacticalMobility,type MobilityAudit} from './worldgen/tactical-mobility-audit.ts';
 import {assessAccessibilityClearance,type AccessibilityQuality} from './worldgen/accessibility-clearance.ts';
 import {inspectHumanJourneys,type JourneyAudit} from './worldgen/human-journeys.ts';
 import {measureRouteFriction,type RouteFriction} from './worldgen/route-friction.ts';
@@ -31,6 +32,7 @@ export type SiteAudit={seed:number;archetype:string;layout:string;
   unitContracts:UnitContractResult[];serviceIssues:ServiceIssue[];
   operationalRouteIssues:OperationalRouteIssue[];
   designQuality:CompletenessScore;spaceQuality:SpaceQuality;
+  mobilityQuality:MobilityAudit;
   accessibilityQuality:AccessibilityQuality;humanJourneys:JourneyAudit;
   routeFriction:RouteFriction;encounterAudit:EncounterSpatialAudit;errors:string[];
   compositeQuality:CompositeQuality};
@@ -146,6 +148,7 @@ export function auditSite(site:Site):SiteAudit{
     serviceIssues:auditFixtureService(site),operationalRouteIssues,
     designQuality:measureSiteCompleteness(site),
     spaceQuality:assessSpaceQuality(site),
+    mobilityQuality:auditTacticalMobility(site),
     accessibilityQuality:assessAccessibilityClearance(site),humanJourneys,
     routeFriction,encounterAudit:auditEncounter(site),errors};
   return {...base,compositeQuality:scoreCompositeQuality(base)};
