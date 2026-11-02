@@ -88,6 +88,7 @@ import {awarenessDebugLine} from './breach-awareness-debug.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
 import './breach-style.css';
 import {fieldworkSelectField,confirmFieldworkAction} from './ui/fieldwork-controls.ts';
+import {compactSiteTitle} from './ui/site-title.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {contextActionChoices} from './ui/context-actions.ts';
 import {PaletteMotion} from './ui/palette-motion.ts';
@@ -1577,13 +1578,15 @@ function updateHud(){
       ' rounds loaded, '+a.reserve+' reserve'+(a.reload>0?', reloading':''):
       id+', unavailable');
   }
-  document.querySelector('.ident strong')!.textContent=
-    (state.site?.name??'CUTWOODS')+' / BREACH';
-  document.querySelector('.ident small')!.textContent=state.site?
-    (state.intel.mode==='floor-plan'?state.site.roomCount:'??')+
-      ' ROOMS · '+team(state).length+' OPERATORS · SEED '+
-      state.site.seed.toString(16).toUpperCase().padStart(8,'0'):
-    'TWO ROOMS · TWO OPERATORS';
+  // Show the site as a place, not as a raw procedural generation dump.
+  const siteHeader=document.querySelector<HTMLElement>('.ident strong');
+  const siteSubheading=document.querySelector<HTMLElement>('.ident small');
+  if(siteHeader)siteHeader.textContent=compactSiteTitle(state.site);
+  if(siteSubheading)siteSubheading.textContent=state.site?
+    team(state).length+' OPERATORS · '+
+    (state.intel.mode==='floor-plan'?state.site.roomCount:'?')+' KNOWN ROOMS':
+    'TACTICAL TRAINING';
+  if(siteHeader)siteHeader.title=state.site?.name??'Cutwoods';
   const hasHelp=performance.now()<helpUntil;
   ui.hint.textContent=hasHelp?helpText:message();
   ui.hint.hidden=!(hasHelp||looking||flashMode||!!firePlacement);
