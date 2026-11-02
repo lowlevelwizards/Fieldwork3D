@@ -58,8 +58,8 @@ test('all seven heads render one real orthogonal exterior per wardrobe item',()=
     overlap(p,v[i],'z')>.10),id+' disconnected cuboid: '+v[i].name);
   }
   const stage={
-   'patrol-cap':'1L-B','boonie':'1L-C','beanie':'1L-A+',
-   'pasgt':'1L-D','soviet-steel':'1L-E',
+   'patrol-cap':'1M','boonie':'1M','beanie':'1M',
+   'pasgt':'1M','soviet-steel':'1M',
    'ach':'1E','high-cut':'1E'
   };
   assert.equal(g.userData.stage,stage[id]);
@@ -140,7 +140,7 @@ test('Stage 1L-A beanie has exactly TWO visible contour levels: crown and cuff',
   .map(p=>p.x+p.width/2));
  const frontZAtY=y=>Math.min(...v.filter(p=>Math.abs(y-p.y)<p.height/2-1e-5)
   .map(p=>p.z-p.depth/2));
- for(const y of [8.1,7.6,6.9,5.7]){
+ for(const y of [8.1,7.6,6.9,6.1]){
   assert.ok(Math.abs(outerXAtY(y)-4.60)<1e-6,
    'one unbroken crown profile from top to actual fold');
   assert.ok(Math.abs(frontZAtY(y)+4.70)<1e-6,
@@ -152,7 +152,7 @@ test('Stage 1L-A beanie has exactly TWO visible contour levels: crown and cuff',
  assert.ok(!covering(v,0,4.3,-3.5),'face is not filled by a crown slab');
  assert.ok(Math.abs(bounds(v).maxY-8.475)<1e-6);
  assert.ok(Math.abs(M.beanie.earEdge-3.745)<1e-6);
- assert.ok(cuff.height>=1.7,'the knitted fold is substantial');
+ assert.ok(cuff.height>=2.0,'the knitted fold is intentionally taller');
 });
 
 test('PASGT front peak and deep skirt differentiate it from protected ACH',()=>{
@@ -208,8 +208,79 @@ test('Stage 1L model contours expose only purposeful mass transitions',()=>{
  assert.ok(Math.abs(boundsXAt('boonie',4.85)-6.725)<1e-6);
  // Beanie: taller knitted upper cap; still only crown + cuff.
  assert.ok(Math.abs(boundsXAt('beanie',8.1)-4.60)<1e-6);
- assert.ok(Math.abs(boundsXAt('beanie',5.7)-4.60)<1e-6);
+ assert.ok(Math.abs(boundsXAt('beanie',6.1)-4.60)<1e-6);
+ assert.ok(Math.abs(boundsXAt('beanie',5.7)-4.90)<1e-6,
+  'taller cuff begins higher without adding a third crown tier');
  assert.ok(Math.abs(boundsXAt('beanie',4.5)-4.90)<1e-6);
+});
+
+test('Stage 1M taller fabric bands and cuff keep only intentional form changes',()=>{
+ const patrol=headwearCuboidVolumes('patrol-cap');
+ const boonie=headwearCuboidVolumes('boonie');
+ const beanie=headwearCuboidVolumes('beanie');
+ const b=(v,n)=>by(v,n);
+ for(const name of ['patrol-front-band','patrol-rear-band','patrol-left-band','patrol-right-band']){
+  const part=b(patrol,name);
+  assert.ok(part&&Math.abs(part.height-1.38)<1e-6,'patrol band is a single taller ring');
+  assert.ok(Math.abs(part.y+part.height/2-6.02)<1e-6);
+ }
+ for(const name of ['boonie-front-band','boonie-rear-band','boonie-left-band','boonie-right-band']){
+  const part=b(boonie,name);
+  assert.ok(part&&Math.abs(part.height-1.54)<1e-6,'boonie band is one taller ring');
+  assert.ok(Math.abs(part.y+part.height/2-6.08)<1e-6);
+ }
+ for(const name of ['beanie-front-cuff','beanie-rear-cuff','beanie-left-cuff','beanie-right-cuff']){
+  const part=b(beanie,name);
+  assert.ok(part&&Math.abs(part.height-2.09)<1e-6,'the watch cap has ONE taller cuff');
+  assert.ok(Math.abs(part.y+part.height/2-5.835)<1e-6);
+ }
+ // The user-approved fits and head cavity stay unchanged at the lower rim.
+ assert.ok(Math.abs(lower(patrol,4.5,0)-4.64)<1e-6);
+ assert.ok(Math.abs(lower(boonie,4.0,0)-4.54)<1e-6);
+ assert.ok(Math.abs(lower(beanie,4.5,0)-3.745)<1e-6);
+ for(const [id,v] of [['patrol-cap',patrol],['boonie',boonie],['beanie',beanie]]){
+  assert.ok(!covering(v,0,4.3,-3),id+' lower head/face space is open');
+ }
+});
+
+test('Stage 1M PASGT brow has no arbitrary fraction-sized side and rear join notches',()=>{
+ const v=headwearCuboidVolumes('pasgt');
+ const crown=by(v,'pasgt-single-protective-crown');
+ const temple=by(v,'pasgt-right-temple');
+ const lobe=by(v,'pasgt-right-ear-lobe');
+ const rear=by(v,'pasgt-low-rear-skirt');
+ assert.ok(crown&&temple&&lobe&&rear);
+ assert.ok(Math.abs(temple.z-temple.depth/2-(crown.z-crown.depth/2))<1e-6,
+  'temple front aligns precisely to shell face rather than creating a 0.1-unit spur');
+ assert.ok(Math.abs(rear.y+rear.height/2-(lobe.y+lobe.height/2))<1e-6,
+  'ear/skirt share their upper edge instead of a 0.03-unit line');
+ assert.ok(M.pasgt.foreheadEdge< M.ach.foreheadEdge);
+ assert.ok(M.pasgt.earEdge< M.ach.earEdge);
+});
+
+test('Stage 1M steel rim has thick deliberate brow/ear/nape steps and exact corner joins',()=>{
+ const v=headwearCuboidVolumes('soviet-steel');
+ const names=['ssh40-integrated-front-edge','ssh40-integrated-rear-edge',
+  'ssh40-integrated-left-edge','ssh40-integrated-right-edge'];
+ const [front,rear,left,right]=names.map(n=>by(v,n));
+ assert.ok(front&&rear&&left&&right);
+ for(const p of [front,rear,left,right])assert.ok(Math.abs(p.height-1.20)<1e-6);
+ const bottom=p=>p.y-p.height/2;
+ assert.ok(Math.abs(bottom(front)-4.05)<1e-6,'front stays above upper ear and clears brow');
+ assert.ok(Math.abs(bottom(left)-3.70)<1e-6,'side edge covers upper ear');
+ assert.ok(Math.abs(bottom(right)-3.70)<1e-6);
+ assert.ok(Math.abs(bottom(rear)-3.40)<1e-6,'rear provides a distinct nape drop');
+ // Two broad 0.30–0.35 unit protective transitions, not tiny trim steps.
+ assert.ok(bottom(front)-bottom(right)>.30);
+ assert.ok(bottom(right)-bottom(rear)>.25);
+ assert.ok(Math.abs(front.width/2-(right.x+right.width/2))<1e-6,
+  'front and side rim X outer faces coincide; no 0.005 unit corner spur');
+ assert.ok(Math.abs(rear.width/2-(-left.x+left.width/2))<1e-6);
+ assert.ok(Math.abs(front.z-front.depth/2+right.depth/2)<1e-6,
+  'front and side rim Z outer faces coincide');
+ assert.ok(Math.abs(rear.z+rear.depth/2-right.depth/2)<1e-6);
+ assert.ok(Math.abs(M['soviet-steel'].foreheadEdge-4.05)<1e-6);
+ assert.ok(Math.abs(M['soviet-steel'].earEdge-3.70)<1e-6);
 });
 
 test('all wardrobe choices use canonical silhouette rendering in both lab and battle',()=>{
