@@ -65,3 +65,14 @@ test('UX2-21: WATCH and LOOK are separate editable instructions',()=>{
  assert.equal(a.plan[0].aimMode,'free');
  assert.equal(a.plan[0].aimLabel,'look');
 });
+
+test('UX2-22: nearby door has an explicit contextual entry',()=>{
+ const nearby=contextActionChoices({...context,nearDoor:true});
+ assert.ok(nearby.some(a=>a.id==='ctxDoor'&&a.group==='primary'));
+ assert.ok(nearby.some(a=>a.id==='ctxLook'));
+ assert.ok(nearby.some(a=>a.id==='ctxWatch'));
+ assert.ok(!contextActionChoices({...context,nearDoor:false})
+   .some(a=>a.id==='ctxDoor'));
+ assert.ok(!contextActionChoices({...context,nearDoor:true,door:true})
+   .some(a=>a.id==='ctxDoor'));
+});

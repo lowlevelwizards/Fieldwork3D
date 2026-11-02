@@ -263,8 +263,12 @@ try{
   await phone.locator('#closeSiteSettings').click();
   const doorPoint=screen(301,505);
   await phone.touchscreen.tap(doorPoint.x,doorPoint.y);
-  // The *final planned position* is enough to trigger door options;
-  // requiring the player to tap its node first was a 076 UX regression.
+  // A reachable door remains selectable even if a tiny leaf overlaps the
+  // operator's touch hitbox. Explicit DOOR opens its interaction palette.
+  const doorShortcut=phone.locator('#contextTools button[data-action="ctxDoor"]');
+  if(!await doorShortcut.isVisible())
+    throw Error('Reachable door shortcut missing from planned destination');
+  await doorShortcut.click();
   for(const action of ['ctxOpen','ctxKick','ctxHold']){
     if(!await phone.locator('#contextTools button[data-action="'+action+'"]').isVisible())
       throw Error('Missing contextual door option '+action+' at planned destination');
@@ -281,8 +285,16 @@ try{
   // even when no movement waypoint has been authored yet.
   const doorMarker=screen(302,532);
   await phone.touchscreen.tap(doorMarker.x,doorMarker.y);
+  // Tiny geometry and overlapping operator markers are legitimate reasons
+  // to use the explicit nearby-door shortcut instead of a pixel-perfect tap.
+  if(!await phone.locator('#contextTools button[data-action="ctxOpen"]').isVisible()){
+    const fallback=phone.locator('#contextTools button[data-action="ctxDoor"]');
+    if(!await fallback.isVisible())
+      throw Error('No reachable door action from nearby planned position');
+    await fallback.click();
+  }
   if(!await phone.locator('#contextTools button[data-action="ctxOpen"]').isVisible())
-    throw Error('Tapping a door did not open the contextual door controls');
+    throw Error('Reachable door menu did not open');
   const bounds=await phone.locator('#contextTools').boundingBox();
   const nav=await phone.locator('#moreOrders').boundingBox();
   if(!bounds||!nav||bounds.y+bounds.height>=nav.y)
