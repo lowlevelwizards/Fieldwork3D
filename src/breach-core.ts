@@ -131,7 +131,7 @@ export function doorLeafSegment(d:Door):Segment{
  const x=rawX*scale,y=rawY*scale;
  const angle=-doorYaw(d),cos=Math.cos(angle),sin=Math.sin(angle);
  return {a:{...hinge},b:{x:hinge+x*cos-y*sin,
-   y:hinge+x*sin+y*cos}};
+   y:hinge.y+x*sin+y*cos}};
 }
 export function doorBlocksSegment(door:Door,line:Segment):boolean{
  const leaf=doorLeafSegment(door);
