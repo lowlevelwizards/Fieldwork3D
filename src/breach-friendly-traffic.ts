@@ -41,3 +41,36 @@ export function nearOccupiedFriendlyGoal(at:Pt,goal:Pt,
    peers.some(p=>dist(p,goal)<11&&dist(p,at)>=14)&&
    canConnect(at,goal);
 }
+
+/** Opposing actors are physically solid, but two people in a sufficiently
+ * wide corridor can naturally sidestep around one another. Prefer each
+ * actor's own right-hand side: this breaks mirror-symmetric head-on jams
+ * without moving or shoving the other actor. Never pass through geometry. */
+export function opposingPassingStep(from:Pt,desired:Pt,goal:Pt,
+ peers:readonly Pt[],sweep:(a:Pt,b:Pt)=>boolean):Pt{
+ const step=dist(from,desired);
+ if(step<1e-6||!peers.length)return desired;
+ const close=peers.filter(p=>dist(from,p)<44);
+ if(!close.length)return desired;
+ const dx=(desired.x-from.x)/step,dy=(desired.y-from.y)/step;
+ const forwardGap=minGap(desired,close);
+ if(forwardGap>=29)return desired;
+ let best=desired,bestScore=forwardGap;
+ // Try right first, then left only when actual space does not permit right.
+ // Preserve length and forward progress to avoid a sideways jiggle loop.
+ for(const side of [1,-1]){
+  for(const strength of [1.7,1.05,.55]){
+   const scale=Math.hypot(1,strength);
+   const candidate={x:from.x+(dx-dy*side*strength)*step/scale,
+     y:from.y+(dy+dx*side*strength)*step/scale};
+   if(!sweep(from,candidate))continue;
+   const gap=minGap(candidate,close);
+   if(gap>bestScore+.14){
+    best=candidate;bestScore=gap;
+    if(side===1)break;
+   }
+  }
+  if(best!==desired)break;
+ }
+ return best;
+}
