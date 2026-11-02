@@ -19,6 +19,7 @@ export type OperatorVisualKit={
  softArmor:THREE.Group;plateCarrier:THREE.Group;
  chestRig:THREE.Group;fieldWebbing:THREE.Group;
  belt:THREE.Group;dayPack:THREE.Group;fieldPack:THREE.Group;
+ packHarness:THREE.Group;
  cargoPockets:THREE.Mesh[];bootCuffs:THREE.Mesh[];sleeveCuffs:THREE.Mesh[];
  rolledForearms:THREE.Mesh[];rolledCuffs:THREE.Mesh[];kneePanels:THREE.Mesh[];
  eyeMarks:THREE.Mesh[];hairMaterial:Material;
@@ -112,6 +113,13 @@ export function createOperatorVisualKit(
  // The existing pack mesh remains the inertia parent, preserving the exact
  // existing animation. These are surface details, not new physics bodies.
  const dayPack=bundle(pack),fieldPack=bundle(pack);
+ // Harness rides with the chest rather than hanging off the animated pack.
+ // Its rear end visually meets the bag, while leaving the actual IK alone.
+ const packHarness=bundle(chest);
+ for(const sign of [-1,1]){
+  part(packHarness,trim,-.5,5.25,sign*5.4,8.1,.65,1.1);
+  part(packHarness,dark,-4.35,-1.7,sign*6.1,3.35,1.0,.75);
+ }
  part(dayPack,vest,-.57,1.45,0,1.0,3.5,8.5);
  part(dayPack,dark,-.62,-2.25,0,1.05,.7,7.2);
  for(const z of [-3.7,3.7])
@@ -156,10 +164,10 @@ export function createOperatorVisualKit(
  // Static layered clothing/armor/pack geometry becomes a few multi-face
  // meshes per material. Keep individually issued magazines unmerged.
  for(const surface of [helmet,cap,hair,jacket,lightShirt,softArmor,
-  plateCarrier,chestRig,fieldWebbing,belt,dayPack,fieldPack])
+  plateCarrier,chestRig,fieldWebbing,belt,dayPack,fieldPack,packHarness])
    consolidateVisualGroup(surface);
  return {helmet,cap,hair,jacket,lightShirt,softArmor,plateCarrier,chestRig,
-  fieldWebbing,belt,dayPack,fieldPack,cargoPockets,bootCuffs,sleeveCuffs,
+  fieldWebbing,belt,dayPack,fieldPack,packHarness,cargoPockets,bootCuffs,sleeveCuffs,
   rolledForearms,rolledCuffs,kneePanels,eyeMarks,hairMaterial,magazines};
 }
 const DEFAULT:Slots={
@@ -184,6 +192,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  v.belt.scale.set(1,s.belt==='belt-light'?.72:1,1);
  v.dayPack.visible=s.backpack==='backpack-day';
  v.fieldPack.visible=s.backpack==='backpack-field';
+ v.packHarness.visible=s.backpack!=='backpack-none';
  for(const pocket of v.cargoPockets)pocket.visible=s.legs==='legs-field';
  for(const cuff of v.bootCuffs)cuff.visible=s.feet==='feet-boots';
  for(const cuff of v.sleeveCuffs)cuff.visible=s.top==='top-uniform';
@@ -192,12 +201,19 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  for(const mesh of v.kneePanels)mesh.visible=s.legs==='legs-field';
  const hairs=[0x332e29,0x635244,0x2f3530,0x9b8060,0x4d4136,0x6c6255];
  v.hairMaterial.color.setHex(hairs[(seed>>>5)%hairs.length]);
+ const magShape=s.primary==='primary-smg'?
+  {x:.73,y:1.17,z:.86}:s.primary==='primary-rifle'?
+  {x:1.1,y:1.06,z:1.04}:
+  {x:1,y:1,z:1};
  for(const loc of ['rig','belt','pocket'] as const){
   let count=magazineLocations.filter(x=>x===loc).length;
   // Backpacks do not display imaginary accessible chest magazines.
   if(loc==='rig'&&s.rig==='rig-none')count=0;
   if(loc==='rig'&&s.rig==='rig-light')count=Math.min(4,count);
   if(loc==='belt'&&s.belt==='belt-light')count=Math.min(1,count);
-  v.magazines[loc].forEach((m,i)=>{m.visible=i<count;});
+  v.magazines[loc].forEach((m,i)=>{
+   m.visible=i<count;
+   m.scale.set(magShape.x,magShape.y,magShape.z);
+  });
  }
 }
