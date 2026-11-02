@@ -2563,8 +2563,12 @@ campaignBackButton.textContent='OPERATIONS ROOM';
 campaignBackButton.setAttribute('aria-label','Return to campaign operations room');
 ui.siteSettings.append(campaignBackButton);
 const campaignScreen=new CampaignScreen({
- newCampaign:()=>{
-  if(campaign&&!window.confirm('Replace the current campaign with a new one?'))return;
+ newCampaign:async()=>{
+  if(campaign&&!await confirmFieldworkAction({
+   title:'Start a new campaign?',
+   message:'This replaces the active local campaign. Export a save first if you want to preserve it.',
+   confirmLabel:'START NEW CAMPAIGN',danger:true
+  }))return;
   campaign=newCampaign(randomSiteSeed());
   saveCampaign();showCampaignHome();
  },

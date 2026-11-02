@@ -77,12 +77,20 @@ export class CampaignScreen{
   main.append(node('div','campaign-eyebrow','FIELDWORK / VERDIGRIS'));
   main.append(node('h1','','FIELD OPERATIONS'));
   main.append(node('p','campaign-lede','One unit. Persistent operations. Every deployment leaves a history.'));
-  if(hasSave)main.append(button('CONTINUE CAMPAIGN',this.handlers.continueCampaign,'campaign-primary'));
-  main.append(button('NEW CAMPAIGN',this.handlers.newCampaign,'campaign-primary'));
-  main.append(button('QUICK PLAY — TACTICAL SANDBOX',this.handlers.quickPlay));
-  main.append(node('p','campaign-note','Quick Play remains separate from your persistent campaign.'));
-  main.append(node('p','campaign-note','IMPORT EXISTING CAMPAIGN SAVE'));
-  main.append(this.importPicker());
+  const actions=node('div','campaign-entry-actions');
+  if(hasSave)actions.append(button('CONTINUE CAMPAIGN',this.handlers.continueCampaign,'campaign-primary'));
+  actions.append(button('NEW CAMPAIGN',this.handlers.newCampaign,
+    hasSave?'':'campaign-primary'));
+  actions.append(button('QUICK PLAY · TACTICAL SANDBOX',this.handlers.quickPlay));
+  main.append(actions);
+  main.append(node('p','campaign-note',
+    'Quick Play has fresh health and equipment every round. Campaign progress stays separate.'));
+  const saves=node('details','campaign-save-management');
+  saves.append(node('summary','','MANAGE SAVES / IMPORT'));
+  saves.append(node('p','campaign-note',
+   'Import an exported Fieldwork campaign save to continue on this device.'));
+  saves.append(this.importPicker());
+  main.append(saves);
   this.root.append(main);
  }
  home(c:CampaignState){
