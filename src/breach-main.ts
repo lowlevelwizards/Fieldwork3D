@@ -1028,6 +1028,41 @@ function discoverAction(action:string,description:string){
   }catch{/* in-memory hints still work when private storage is disabled */}
   showUiHelp(description);
 }
+
+/** A hold shows the current action's description without executing that order.
+ * Touch and pen only: desktop pointer hover keeps ordinary title tooltips. */
+function installTouchCommandHelp(button:HTMLButtonElement){
+ if(button.dataset.touchHelpInstalled==='true')return;
+ button.dataset.touchHelpInstalled='true';
+ let timer:ReturnType<typeof setTimeout>|null=null;
+ let consumed=false,startX=0,startY=0;
+ const clear=()=>{if(timer!==null){clearTimeout(timer);timer=null;}};
+ const explain=()=>{
+  const description=button.title||button.getAttribute('aria-label')||button.textContent;
+  if(description){
+   consumed=true;showUiHelp(description,5700);updateHud();
+  }
+ };
+ button.addEventListener('pointerdown',event=>{
+  if(event.pointerType==='mouse'||button.disabled)return;
+  clear();consumed=false;startX=event.clientX;startY=event.clientY;
+  timer=setTimeout(()=>{timer=null;explain();},540);
+ });
+ button.addEventListener('pointermove',event=>{
+  if(Math.hypot(event.clientX-startX,event.clientY-startY)>14)clear();
+ });
+ button.addEventListener('pointerup',clear);
+ button.addEventListener('pointercancel',()=>{clear();consumed=false;});
+ button.addEventListener('click',event=>{
+  if(!consumed)return;
+  consumed=false;event.preventDefault();event.stopImmediatePropagation();
+ },true);
+ button.addEventListener('contextmenu',event=>{
+  if(event instanceof PointerEvent&&event.pointerType==='mouse')return;
+  event.preventDefault();clear();explain();
+ });
+}
+
 function message(){
   if(replaying)return 'MISSION FILM · ORBIT, PAN, ZOOM AND SCRUB FREELY';
   if(flashMode)return 'FLASH: tap a target, or CANCEL to back out.';
@@ -1162,6 +1197,7 @@ function updateContext(){
     if(label.textContent!==choice.label)label.textContent=choice.label;
     button.setAttribute('aria-label',choice.label);
     button.title=choice.title??choice.label;
+    installTouchCommandHelp(button);
     button.disabled=!!choice.disabled;
     if(choice.pressed===undefined)button.removeAttribute('aria-pressed');
     else button.setAttribute('aria-pressed',String(choice.pressed));
@@ -1447,6 +1483,7 @@ function updateQuickStates(){
     const label=button.querySelector<HTMLElement>('.command-label');
     if(label&&label.textContent!==choice.label)label.textContent=choice.label;
     button.title=choice.title??choice.label;
+    installTouchCommandHelp(button);
     button.setAttribute('aria-label',(node?'Waypoint: ':'Operator: ')+
       choice.label+'. '+(choice.title??''));
     button.disabled=!!choice.disabled;
