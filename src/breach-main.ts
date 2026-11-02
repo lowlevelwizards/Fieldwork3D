@@ -17,6 +17,7 @@ import {
   planCasualtyTransport,planRecoverMedical,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
+import {tacticalHitProfile} from './ui/touch-hit-targets.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
  rangeTrialLabel,type RangeTrial} from './equipment-training-diagnostics.ts';
@@ -3142,8 +3143,8 @@ window.addEventListener('keydown',e=>{
   if(e.code==='Digit0'&&!e.repeat)ui.cameraFit.click();
 });
 function pointerWorld(e:PointerEvent){return toWorld(e.clientX,e.clientY);}
-const hitNode=(p:Pt):{id:number;index:number;owner:string}|null=>{
-  const cursor=worldToScreen(p,7);
+const hitNode=(cursor:Pt,pointerKind:string):{id:number;index:number;owner:string}|null=>{
+  const radius=tacticalHitProfile(pointerKind).waypoint;
   const candidates:{id:number;index:number;owner:string;gap:number}[]=[];
   for(const unit of team(state))if(unit.health>0){
     for(let i=unit.plan.length-1;i>=0;i--){
@@ -3151,7 +3152,7 @@ const hitNode=(p:Pt):{id:number;index:number;owner:string}|null=>{
       for(const point of [n.p,...(n.kind==='flash'&&n.aimPoint?[n.aimPoint]:[])]){
         const marker=worldToScreen(point,point===n.p?8:6);
         const gap=distance(marker,cursor);
-        if(gap<27)candidates.push({id:n.id,index:i,owner:unit.id,gap});
+        if(gap<radius)candidates.push({id:n.id,index:i,owner:unit.id,gap});
       }
     }
   }
@@ -3181,7 +3182,8 @@ canvas.addEventListener('pointerdown',e=>{
     const selectedActor=uid(selected);
     const overSelectedLine=!contextual&&state.phase==='planning'&&
       !!selectedActor&&!!routeLineHit(selectedActor.p,selectedActor.plan,
-        {x:e.clientX,y:e.clientY},p=>worldToScreen(p,4),14);
+        {x:e.clientX,y:e.clientY},p=>worldToScreen(p,4),
+        tacticalHitProfile(e.pointerType).route);
     const hit=contextual?undefined:team(state).find(a=>{
       if(a.health<=0)return false;
       const direct=overSelectedLine&&a.id!==selected;
@@ -3192,7 +3194,8 @@ canvas.addEventListener('pointerdown',e=>{
     });
     // Tapping the operator always selects HERE, even if a waypoint
     // happens to overlap its icon.
-    const node=state.phase==='planning'&&!contextual&&!hit?hitNode(pt):null;
+    const node=state.phase==='planning'&&!contextual&&!hit?
+      hitNode({x:e.clientX,y:e.clientY},e.pointerType):null;
     if(node){
       lastAuthoringAt=performance.now();
       if(node.owner!==selected)selectUnit(node.owner);
@@ -3221,7 +3224,8 @@ canvas.addEventListener('pointermove',e=>{
   e.preventDefault();
   const dx=e.clientX-p.x,dy=e.clientY-p.y;
   p.x=e.clientX;p.y=e.clientY;
-  if(Math.hypot(e.clientX-p.startX,e.clientY-p.startY)>9)p.moved=true;
+  if(Math.hypot(e.clientX-p.startX,e.clientY-p.startY)>
+     tacticalHitProfile(e.pointerType).dragStart)p.moved=true;
   if(activePointers.size===2){
     const pts=[...activePointers.values()];
     const gap=distance({x:pts[0].x,y:pts[0].y},
@@ -3273,11 +3277,11 @@ canvas.addEventListener('pointermove',e=>{
 });
 /** Insert precisely where the player tapped the existing routed line.
  * The original plan before and after the inserted node stays intact. */
-function insertAtRouteLine(screen:Pt):boolean{
+function insertAtRouteLine(screen:Pt,pointerKind:string):boolean{
   const actor=uid(selected);
   if(!actor||state.phase!=='planning')return false;
   const hit=routeLineHit(actor.p,actor.plan,screen,
-    point=>worldToScreen(point,4),14);
+    point=>worldToScreen(point,4),tacticalHitProfile(pointerKind).route);
   if(!hit){canvas.dataset.lastRouteTap='miss:'+actor.plan.length+'/'+selected;return false;}
   canvas.dataset.lastRouteTap='route:'+hit.index;
   const id=state.nextId;
@@ -3341,14 +3345,14 @@ function releasePointer(e:PointerEvent,cancelled=false){
         const midpoint={x:(leaf.a.x+leaf.b.x)/2,
           y:(leaf.a.y+leaf.b.y)/2};
         return [doorCenter(d),midpoint,leaf.b].some(p=>
-          distance(worldToScreen(p,10),tap)<28||
-          distance(worldToScreen(p,38),tap)<28);
+          distance(worldToScreen(p,10),tap)<tacticalHitProfile(e.pointerType).reachableDoor||
+          distance(worldToScreen(p,38),tap)<tacticalHitProfile(e.pointerType).reachableDoor);
       });
       if(door&&!looking&&!flashMode&&!firePlacement){
         doorFocusId=door.id;selectedNode=null;
         doorMenuDismissedId=null;
         tacticalFeedback.emit('select',doorCenter(door));
-      }else if(!looking&&!flashMode&&!firePlacement&&insertAtRouteLine({x:e.clientX,y:e.clientY})){
+      }else if(!looking&&!flashMode&&!firePlacement&&insertAtRouteLine({x:e.clientX,y:e.clientY},e.pointerType)){
         // Insert-and-select: contextual LOOK/PIE/STRAFE/DELETE are immediately
         // available on the newly authored waypoint.
       }else{
