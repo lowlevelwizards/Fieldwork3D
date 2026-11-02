@@ -7,7 +7,7 @@ cut from the same printed fabric instead of sharing a fixed blotch.
 
 ## Contracts
 - Stable input: `createOperatorRig(id)` supplies the personnel identity;
-  selection derives a 32-texel toroidal offset from identity, slot, pattern and
+  selection derives a 32-texel toroidal offset from identity, equipment slot, item model, pattern and
   persisted `headwearCamoRoll` (integer 0..4095, default 0).
 - The 128x128 panel atlas and UV1 stay unchanged: 1 texel/model unit for
   M81 and DCU; 2 for Tiger Stripe, UCP and MultiCam. No rotations or mirroring.

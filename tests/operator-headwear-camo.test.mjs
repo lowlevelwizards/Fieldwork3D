@@ -96,7 +96,7 @@ test('live pose swaps camo and solid without animation restoring gray or mutatin
    const selection={...wardrobe,headwearCamo:id};
    poseOperator(rig,pose(kit,selection),0);
    assert.equal(material.map,headwearCamoTexture(model,id,
-    headwearCamoPlacement('rook','headwear',id,0)));
+    headwearCamoPlacement('rook','headwear:'+model,id,0)));
    assert.equal(material.color.getHex(),0xffffff,model+':'+id);
    poseOperator(rig,pose(kit,selection),0);
    assert.equal(material.map,headwearCamoTexture(model,id,
@@ -175,12 +175,12 @@ test('reroll persists in wardrobe recipes and flows through live rig pose',()=>{
  const rig=createOperatorRig('moss','blue');
  const {kit,wardrobe}=selectWardrobeItem(bareLabEquipment(),saved,'headwear','boonie');
  const material=rig.visualKit.wardrobeHead.headwearMaterials.boonie;
- const phase=headwearCamoPlacement('moss','headwear','m81-woodland',17);
+ const phase=headwearCamoPlacement('moss','headwear:boonie','m81-woodland',17);
  poseOperator(rig,pose(kit,wardrobe),0);
  assert.equal(material.map,headwearCamoTexture('boonie','m81-woodland',phase));
  poseOperator(rig,pose(kit,{...wardrobe,headwearCamoRoll:18}),0);
  assert.equal(material.map,headwearCamoTexture('boonie','m81-woodland',
-  headwearCamoPlacement('moss','headwear','m81-woodland',18)));
+  headwearCamoPlacement('moss','headwear:boonie','m81-woodland',18)));
  rig.dispose();
 });
 test('the Lab exposes a dedicated accessible reroll without changing the canonical artwork',()=>{

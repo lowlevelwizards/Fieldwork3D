@@ -487,7 +487,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
    const modelId=(id==='high-cut-rails'?'high-cut':id) as HeadSilhouetteId;
    const camo=selected?resolvedHeadwearCamo(modelId,p.wardrobe?.headwearCamo):null;
    const map=camo?headwearCamoTexture(modelId,camo,
-     headwearCamoPlacement(r.camoIdentity,'headwear',camo,
+     headwearCamoPlacement(r.camoIdentity,'headwear:'+modelId,camo,
       p.wardrobe?.headwearCamoRoll??0)):headwearDetailTexture(modelId);
    if(material.map!==map){material.map=map;material.needsUpdate=true;}
    if(camo){

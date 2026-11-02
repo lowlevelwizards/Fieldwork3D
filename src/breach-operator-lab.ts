@@ -41,7 +41,7 @@ import {HEADWEAR_SOLID_COLORS,headwearColorChoices,resolvedHeadwearSolid}
  from './operator-headwear-colors.ts';
 import {headwearCamoChoices,resolvedHeadwearCamo,headwearCamoPixels,
  HEADWEAR_CAMO_RECIPES,HEADWEAR_CAMO_DENSITY,nextHeadwearCamoRoll,
- headwearCamoPlacement,type HeadwearCamoId} from './operator-headwear-camo.ts';
+ type HeadwearCamoId} from './operator-headwear-camo.ts';
 import {initialWardrobe,readWardrobe,setWardrobePattern,resolvedWardrobe,
  WARDROBE_PATTERNS,wardrobeConflicts,wardrobeItemsForSlot,wardrobeItem,
  type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
@@ -323,9 +323,7 @@ function renderHeadwearCamoSwatches(model:string){
  paintHeadwearCamo(document.getElementById('headwearCamoTiled') as HTMLCanvasElement,preview,3);
  camoStatus.textContent=HEADWEAR_CAMO_RECIPES[preview].label+
   (selected?' · APPLIED TO LIVE MODEL':' · PREVIEW ONLY — TAP TO APPLY')+
-  (selected?' · VARIATION '+((wardrobeOptions.headwearCamoRoll??0)+1)+
-    ' · PHASE '+Object.values(headwearCamoPlacement('rook','headwear',preview,
-      wardrobeOptions.headwearCamoRoll??0)).join(','):'')+
+  (selected?' · VARIATION '+((wardrobeOptions.headwearCamoRoll??0)+1):'')+
   ' · '+HEADWEAR_CAMO_DENSITY[preview]+'× PRINT PIXELS / UNIT · '+
   HEADWEAR_CAMO_RECIPES[preview].description;
 }
