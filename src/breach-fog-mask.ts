@@ -13,6 +13,9 @@ export const MAX_FOG_TEXTURE_EDGE=1280;
 export const maskBounds=(site?:Site|null):WorldBounds=>
   site?.bounds??{minX:0,minY:0,maxX:W,maxY:H};
 export const maskSize=(site?:Site|null)=>{
+  // Preserve historical authored training map dimensions; procedural sites
+  // receive the extra precision needed for smooth mobile isometric fog.
+  if(!site)return {width:FOG_WIDTH,height:FOG_HEIGHT};
   const b=maskBounds(site);
   const worldW=b.maxX-b.minX,worldH=b.maxY-b.minY;
   const worldUnitsPerPixel=Math.max(1,worldW/MAX_FOG_TEXTURE_EDGE,
