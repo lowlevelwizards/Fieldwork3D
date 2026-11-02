@@ -50,6 +50,7 @@ add('headset','headset',[
  ['over-ear','Over-ear headset'],['boom-headset','Boom microphone headset'],
  ['helmet-ears','Helmet-integrated hearing protection']
 ]);
+add('top','underlayer',[['base-layer','Base underlayer']]);
 add('top','uniform',[
  ['field-jacket','Field jacket'],['bdu-shirt','BDU field blouse'],
  ['acu-shirt','ACU field blouse'],['combat-shirt','Combat shirt'],
@@ -65,6 +66,7 @@ add('top','outerwear',[
  ['tactical-sweater','Tactical sweater'],['softshell','Softshell jacket'],
  ['softshell-hood','Hooded softshell'],['pcu-shell','Insulated field shell']
 ]);
+add('trousers','underlayer',[['base-shorts','Base shorts']]);
 add('trousers','uniform',[
  ['field-trousers','Field trousers'],['bdu-trousers','BDU trousers'],
  ['acu-trousers','ACU trousers'],['combat-trousers','Combat trousers'],
@@ -74,6 +76,7 @@ add('trousers','civilian',[
  ['work-pants','Work trousers'],['jeans','Jeans'],['track-pants','Track pants'],
  ['shorts','Shorts']
 ]);
+add('footwear','unshod',[['bare-feet','Bare feet']]);
 add('footwear','boots',[
  ['field-boots','Field boots'],['combat-boots','Combat boots'],
  ['tall-boots','Tall field boots'],['hiking-boots','Hiking boots'],
@@ -102,6 +105,7 @@ add('rigStyle','full',[
  ['field-webbing','Field webbing'],['lbv','Load-bearing vest'],
  ['full-chest','Full chest rig'],['belt-harness','Belt-and-suspender webbing']
 ]);
+add('beltStyle','none',[['no-belt','No belt']]);
 add('beltStyle','light',[
  ['plain-belt','Clothing belt'],['light-belt','Light utility belt']
 ]);
@@ -215,11 +219,11 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
  // explicitly chosen a style. Choosing light boots must never show field
  // boots merely because an empty WardrobeOptions object exists.
  if(!wardrobe?.styles.top)
-  desired.top=kit.slots.top==='top-light'?'light-shirt':'field-jacket';
+  desired.top=kit.slots.top==='top-none'?'base-layer':kit.slots.top==='top-light'?'light-shirt':'field-jacket';
  if(!wardrobe?.styles.trousers)
-  desired.trousers=kit.slots.legs==='legs-light'?'work-pants':'field-trousers';
+  desired.trousers=kit.slots.legs==='legs-none'?'base-shorts':kit.slots.legs==='legs-light'?'work-pants':'field-trousers';
  if(!wardrobe?.styles.footwear)
-  desired.footwear=kit.slots.feet==='feet-light'?'light-boots':'field-boots';
+  desired.footwear=kit.slots.feet==='feet-none'?'bare-feet':kit.slots.feet==='feet-light'?'light-boots':'field-boots';
  if(!wardrobe?.styles.gloves)
   desired.gloves=kit.slots.hands==='hands-none'?'gloves-none':'gloves-field';
  const slots=kit.slots;
@@ -255,15 +259,19 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
   slots.rig==='rig-light'?['micro-rig','light-rig','chest-placard']:
   ['no-rig'],slots.rig==='rig-full'?'field-webbing':
     slots.rig==='rig-light'?'light-rig':'no-rig');
- choose('beltStyle',slots.belt==='belt-light'?
-  ['plain-belt','light-belt']:['duty-belt','battle-belt','padded-belt'],
-  slots.belt==='belt-light'?'light-belt':'duty-belt');
+ choose('beltStyle',slots.belt==='belt-none'?['no-belt']:
+  slots.belt==='belt-light'?['plain-belt','light-belt']:['duty-belt','battle-belt','padded-belt'],
+  slots.belt==='belt-none'?'no-belt':slots.belt==='belt-light'?'light-belt':'duty-belt');
  choose('packStyle',slots.backpack==='backpack-day'?
   ['hydration','admin-pack','day-pack','assault-pack','sling-bag']:
   slots.backpack==='backpack-field'?
   ['field-pack','rucksack','medic-pack','comms-pack','duffel']:
   ['no-pack'],slots.backpack==='backpack-day'?'day-pack':
   slots.backpack==='backpack-field'?'field-pack':'no-pack');
+ choose('footwear',slots.feet==='feet-none'?['bare-feet']:
+  slots.feet==='feet-light'?['hiking-shoes','trail-shoes','sneakers','light-boots']:
+  ['field-boots','combat-boots','tall-boots','hiking-boots'],
+  slots.feet==='feet-none'?'bare-feet':slots.feet==='feet-light'?'light-boots':'field-boots');
  choose('gloves',slots.hands==='hands-none'?
   ['gloves-none']:['gloves-light','gloves-field','gloves-heavy'],
   slots.hands==='hands-none'?'gloves-none':'gloves-field');

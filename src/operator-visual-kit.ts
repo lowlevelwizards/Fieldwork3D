@@ -269,10 +269,11 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  v.plateCarrier.scale.set(looks.armorStyle==='plate-slick'?.87:
   looks.armorStyle==='plate-jpc'?.92:
   looks.armorStyle==='plate-heavy'?1.15:1,1,1);
+ const bareTop=looks.top==='base-layer';
  const heavyTop=['field-jacket','bdu-shirt','acu-shirt','softshell',
   'softshell-hood','pcu-shell','tactical-sweater'].includes(looks.top);
  v.jacket.visible=usingWardrobe?heavyTop:s.top==='top-uniform';
- v.lightShirt.visible=usingWardrobe?!heavyTop:s.top==='top-light';
+ v.lightShirt.visible=usingWardrobe?!heavyTop&&!bareTop:s.top==='top-light';
  v.jacket.scale.set(looks.top==='pcu-shell'?1.12:1,1,1);
  updateWardrobeBodyLayers(v.wardrobeBody,looks.top,looks.trousers,
   looks.knees,looks.wrist);
@@ -291,7 +292,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   s.armor==='armor-soft'?1.15:0;
  v.chestRig.position.x=armorOffset;
  v.fieldWebbing.position.x=armorOffset;
- v.belt.visible=true;
+ v.belt.visible=s.belt!=='belt-none';
  v.belt.scale.set(looks.beltStyle==='plain-belt'?.76:
   looks.beltStyle==='light-belt'?.82:1,
   looks.beltStyle==='padded-belt'?1.35:
@@ -322,7 +323,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  for(const toe of v.fieldToeCaps)toe.visible=usingWardrobe?
   tallBoot:s.feet==='feet-boots';
  for(const instep of v.lightInstepPanels)instep.visible=usingWardrobe?
-  !tallBoot:s.feet==='feet-light';
+  !tallBoot&&looks.footwear!=='bare-feet':s.feet==='feet-light';
  const shortSleeves=['tank-top','t-shirt','button-short'].includes(looks.top);
  const rolled=usingWardrobe?!!wardrobe?.rolledSleeves&&!shortSleeves:
   s.top==='top-light';

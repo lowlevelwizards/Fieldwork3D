@@ -85,6 +85,8 @@ export type OperatorPose={
   downPose?:FallPose;
   appearanceSeed?:number;
   faceStyle?:'blank'|'quiet'|'graphic';
+  /** Only used in the Wardrobe Lab; never propagated to battle actors. */
+  unarmedPreview?:boolean;
   wardrobe?:WardrobeOptions;
 };
 export type OperatorRig={
@@ -122,7 +124,7 @@ export type OperatorRig={
   headClothMaterial:THREE.MeshStandardMaterial;
   headArmorMaterial:THREE.MeshStandardMaterial;
   gearMaterial:THREE.MeshStandardMaterial;
-  skinMaterial:THREE.MeshStandardMaterial;
+  skinMaterial:THREE.MeshStandardMaterial;bootMaterial:THREE.MeshStandardMaterial;
   baseCloth:THREE.Color;baseVest:THREE.Color;helmetBadge:THREE.Mesh;
   appearanceSeed:number;
   dispose:()=>void;
@@ -267,7 +269,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     clothMaterial:cloth,vestMaterial:vest,trouserMaterial:trousers,
     packMaterial:packFabric,gearMaterial:gearFabric,
     headClothMaterial:headCloth,headArmorMaterial:headArmor,
-    skinMaterial:skin,baseCloth:cloth.color.clone(),
+    skinMaterial:skin,bootMaterial:boot,baseCloth:cloth.color.clone(),
     baseVest:vest.color.clone(),helmetBadge,appearanceSeed:0,
     personality:operatorMotionTraits(id),
     magazineInserted,magazineHand,medicalItem,weaponBody,droppedWeaponBody,
@@ -400,17 +402,21 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Clothing coverage changes materials on existing articulated limbs only.
   // The bones, solved knee/elbow positions and planted feet stay identical.
   const clothing=resolvedWardrobe(p.wardrobe,p.equipment);
-  const bareForearm=['tank-top','t-shirt','button-short'].includes(clothing.top)||
+  const bareForearm=['tank-top','t-shirt','button-short','base-layer'].includes(clothing.top)||
     (p.wardrobe?.rolledSleeves??
       (p.equipment?.slots.top==='top-light'));
   for(const arm of r.arms){
    arm.lower.material=bareForearm?r.skinMaterial:r.clothMaterial;
-   arm.upper.material=clothing.top==='tank-top'?
+   arm.upper.material=['tank-top','base-layer'].includes(clothing.top)?
     r.skinMaterial:r.clothMaterial;
   }
-  for(const leg of r.feet)
-   leg.lower.material=clothing.trousers==='shorts'?
+  for(const leg of r.feet){
+   leg.lower.material=['shorts','base-shorts'].includes(clothing.trousers)?
     r.skinMaterial:r.trouserMaterial;
+   const barefoot=clothing.footwear==='bare-feet';
+   leg.shoe.material=barefoot?r.skinMaterial:r.bootMaterial;
+   leg.shoe.scale.set(1,barefoot?.7:1,barefoot?.88:1);
+  }
   // Independent fabric channels keep the upper garment, trousers, armor and
   // pack textures separate while retaining the original authored pixel UVs.
   const fabricChannels=[
@@ -883,6 +889,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       desired=grip.clone().multiply(P(data.lengthScale,1,1))
         .applyEuler(fit.rotation).add(fit.origin);
     }
+    if(p.unarmedPreview&&!p.down&&!p.surrender)
+      desired=P(1,-11,sign*9.2);
     const reachable=desired.distanceTo(shoulder)<=19.92;
     // Evaluate the true handle target even during the wind-up: easing the
     // arm from the weapon must not hide an unreachable world interaction.
@@ -927,7 +935,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     alignSegment(arm.upper,shoulder,solved.joint,P(0,0,sign));
     alignSegment(arm.lower,solved.joint,solved.effector,P(0,0,sign));
     arm.hand.position.copy(solved.effector);
-    arm.hand.rotation.set(0,p.surrender?0:clamp(fit.rotation.y,-1,1),0);
+    arm.hand.rotation.set(0,p.unarmedPreview||p.surrender?0:
+      clamp(fit.rotation.y,-1,1),0);
   }
   if(r.magazineHand.visible){
     // Magazine visual follows the *solved* support wrist. The original
@@ -1001,6 +1010,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     mesh.scale.set(1,Math.max(.1,length),1);
     mesh.quaternion.setFromUnitVectors(vertical,delta.normalize());
    }
+  }
+  if(p.unarmedPreview){
+    r.weapon.visible=false;r.droppedGun.visible=false;
+    r.magazineHand.visible=false;r.magazineInserted.visible=false;
+    for(const sling of r.slingStraps)sling.visible=false;
   }
   r.lastPose={...p};r.lastTime=p.seconds;
 }
