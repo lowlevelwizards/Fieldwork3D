@@ -112,7 +112,16 @@
 </div>
 <section id="debrief" class="debrief" hidden aria-label="Mission debrief">
   <strong id="debriefTitle">MISSION COMPLETE</strong>
-  <p id="debriefStats"></p>
+  <div class="fw-after-action-stats">
+    <div><span>GRADE</span><strong id="debriefGrade">—</strong></div>
+    <div><span>SURVIVORS</span><strong id="debriefSurvivors">—</strong></div>
+    <div><span>ACCURACY</span><strong id="debriefAccuracy">—</strong></div>
+  </div>
+  <p class="fw-after-action-objective" id="debriefObjective"></p>
+  <details class="fw-after-action-detail">
+    <summary>FULL REPORT / TACTICAL TIMELINE</summary>
+    <p id="debriefStats"></p>
+  </details>
   <button id="watchReplay" type="button">WATCH REPLAY ▶</button>
   <button id="retry" type="button">RETRY MISSION</button>
   <button id="next" type="button">NEXT ARRANGEMENT</button>

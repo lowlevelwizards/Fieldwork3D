@@ -160,6 +160,10 @@ const ui={
   contact:el<HTMLButtonElement>('contact'),
   debrief:el<HTMLElement>('debrief'),
   debriefTitle:el<HTMLElement>('debriefTitle'),
+  debriefGrade:el<HTMLElement>('debriefGrade'),
+  debriefSurvivors:el<HTMLElement>('debriefSurvivors'),
+  debriefAccuracy:el<HTMLElement>('debriefAccuracy'),
+  debriefObjective:el<HTMLElement>('debriefObjective'),
   debriefStats:el<HTMLElement>('debriefStats'),
   retry:el<HTMLButtonElement>('retry'),next:el<HTMLButtonElement>('next'),
   watchReplay:el<HTMLButtonElement>('watchReplay'),
@@ -1591,6 +1595,11 @@ function updateHud(){
   if(!ui.debrief.hidden){
     const stats=debrief(state);
     ui.debriefTitle.textContent=state.phase==='won'?'OPERATION COMPLETE':'MISSION FAILED';
+    ui.debriefGrade.textContent=stats.grade+' · '+stats.score;
+    ui.debriefSurvivors.textContent=stats.survived+' / '+team(state).length;
+    ui.debriefAccuracy.textContent=stats.accuracy+'%';
+    ui.debriefObjective.textContent=stats.objective?
+     'OBJECTIVE SECURED':'OBJECTIVE NOT COMPLETED';
     ui.debriefStats.textContent=
       'OPERATION: '+brief.name.toUpperCase()+'\nGRADE: '+stats.grade+
       ' · SCORE '+stats.score+'\nTIME: '+stats.time+'s'+
