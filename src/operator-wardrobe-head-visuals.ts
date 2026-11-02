@@ -28,9 +28,9 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  // Each approved silhouette keeps its geometry, but now owns a neutral
  // recolorable material. Material detail never produces coplanar geometry.
  const headwearMaterials:Record<string,THREE.MeshStandardMaterial>={};
- const detail=(id:HeadSilhouetteId)=>{
+ const detail=(id:HeadSilhouetteId,key:string=id)=>{
   const material=createHeadwearDetailMaterial(id);
-  headwearMaterials[id]=material;
+  headwearMaterials[key]=material;
   return material;
  };
  const g=(set:Model,id:string,canonical=false)=>{
@@ -69,7 +69,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  g(headwear,'high-cut',true).add(createHeadwearSilhouette('high-cut',detail('high-cut')));
  // Existing saved rail layouts keep the correct base shell, with actual
  // rails explicitly deferred to the approved detailing phase.
- g(headwear,'high-cut-rails',true).add(createHeadwearSilhouette('high-cut',detail('high-cut')));
+ g(headwear,'high-cut-rails',true).add(createHeadwearSilhouette('high-cut',detail('high-cut','high-cut-rails')));
  helmet('skate-helmet',9.65,2,false);
  helmet('bump-helmet',9.1,2,true);
  // One-opening and three-opening balaclavas use a forehead and chin with

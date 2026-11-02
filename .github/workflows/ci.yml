@@ -142,8 +142,8 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'visibility/') || startsWith(github.head_ref, 'fix/fog-roof-')) }}
         run: node --experimental-strip-types --test tests/visibility-*.test.mjs tests/breach-fog-visibility.test.mjs tests/worldgen-dynamic-fog.test.mjs tests/equipment-26-03-sight-lighting.test.mjs
       - name: Focused headgear silhouette tests
-        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'operator/headgear-') }}
-        run: node --experimental-strip-types --test tests/operator-headwear-expansion.test.mjs tests/operator-headwear-silhouettes.test.mjs tests/operator-headwear-fit-metrics.test.mjs tests/operator-headwear-anatomy.test.mjs tests/operator-cuboid-union.test.mjs tests/operator-stage1b-lab.test.mjs
+        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'operator/headgear-') || startsWith(github.head_ref, 'art/headwear-')) }}
+        run: node --experimental-strip-types --test tests/operator-headwear-expansion.test.mjs tests/operator-headwear-silhouettes.test.mjs tests/operator-headwear-fit-metrics.test.mjs tests/operator-headwear-anatomy.test.mjs tests/operator-cuboid-union.test.mjs tests/operator-stage1b-lab.test.mjs tests/operator-headwear-materials.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}
