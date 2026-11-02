@@ -7,6 +7,9 @@ import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import type {CarryLocation} from './equipment-carry-placement.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
+import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
+import {createWardrobeHeadLayers,updateWardrobeHeadLayers,
+ type WardrobeHeadLayers} from './operator-wardrobe-head-visuals.ts';
 
 type Slots=EquipmentLoadout['slots'];
 type Material=THREE.MeshStandardMaterial;
@@ -14,6 +17,7 @@ type VisualMaterials={cloth:Material;vest:Material;dark:Material;
  skin:Material;steel:Material};
 type Limb={upper:THREE.Mesh;lower:THREE.Mesh;shoe?:THREE.Mesh};
 export type OperatorVisualKit={
+ wardrobeHead:WardrobeHeadLayers;
  helmet:THREE.Group;cap:THREE.Group;hair:THREE.Group;
  haircuts:THREE.Group[];graphicMarks:THREE.Group;
  jacket:THREE.Group;lightShirt:THREE.Group;
@@ -83,6 +87,7 @@ export function createOperatorVisualKit(
  part(cap,cloth,-.55,6.70,0,8.25,1.6,8.35);
  part(cap,dark,3.62,6.07,0,.32,.28,7.9);
  part(cap,cloth,4.05,5.92,0,4.3,.44,7.65);
+ const wardrobeHead=createWardrobeHeadLayers(head,cloth,vest,dark,skin);
  // Separate clothing profiles: jacket has a heavier collar, flap and
  // squared hem; the shirt exposes a narrow collar instead of extra panels.
  const jacket=bundle(chest);
@@ -207,7 +212,7 @@ export function createOperatorVisualKit(
  for(const surface of [helmet,cap,hair,jacket,lightShirt,softArmor,
   plateCarrier,chestRig,fieldWebbing,belt,dayPack,fieldPack,packHarness])
    consolidateVisualGroup(surface);
- return {helmet,cap,hair,jacket,lightShirt,softArmor,plateCarrier,chestRig,
+ return {wardrobeHead,helmet,cap,hair,jacket,lightShirt,softArmor,plateCarrier,chestRig,
   fieldWebbing,belt,dayPack,fieldPack,packHarness,cargoPockets,bootCuffs,
   fieldToeCaps,lightInstepPanels,sleeveCuffs,
   rolledForearms,rolledCuffs,kneePanels,eyeMarks,hairMaterial,magazines,
@@ -221,11 +226,20 @@ const DEFAULT:Slots={
 };
 export function applyOperatorVisualKit(v:OperatorVisualKit,
  slots:Slots|undefined,seed:number,magazineLocations:readonly CarryLocation[]=[],
- faceStyle:'blank'|'quiet'|'graphic'='blank'){
+ faceStyle:'blank'|'quiet'|'graphic'='blank',
+ wardrobe?:WardrobeOptions){
  const s=slots??DEFAULT;
- v.helmet.visible=s.head==='head-helmet';
- v.cap.visible=s.head==='head-cap';
+ const looks=resolvedWardrobe(wardrobe,slots?{version:1,slots:s}:undefined);
+ const usingWardrobe=!!wardrobe;
+ // Exact headgear families replace the two legacy base mesh treatments.
+ v.helmet.visible=!usingWardrobe&&s.head==='head-helmet';
+ v.cap.visible=!usingWardrobe&&s.head==='head-cap';
  v.hair.visible=s.head==='head-none';
+ updateWardrobeHeadLayers(v.wardrobeHead,
+  usingWardrobe?looks.headwear:'bare',
+  usingWardrobe?looks.facewear:'face-none',
+  usingWardrobe?looks.eyewear:'eyes-none',
+  usingWardrobe?looks.headset:'comms-none');
  const key=seed>>>0;
  v.haircuts.forEach((h,i)=>{h.visible=i===key%3;});
  v.eyeMarks.forEach(m=>{m.visible=faceStyle==='quiet';});

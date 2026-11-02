@@ -27,6 +27,7 @@ import {fallAngles,hitStagger,type FallPose,type WoundRegion}
   from './breach-wounds.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {equipmentCarrySocket,utilityDisplaySocket} from './equipment-carry-visuals.ts';
+import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import type {CarryLocation} from './equipment-carry-placement.ts';
 import {createOperatorVisualKit,applyOperatorVisualKit,
  type OperatorVisualKit} from './operator-visual-kit.ts';
@@ -82,6 +83,7 @@ export type OperatorPose={
   downPose?:FallPose;
   appearanceSeed?:number;
   faceStyle?:'blank'|'quiet'|'graphic';
+  wardrobe?:WardrobeOptions;
 };
 export type OperatorRig={
   root:THREE.Group;hip:THREE.Group;chest:THREE.Group;head:THREE.Group;
@@ -374,7 +376,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       (p.flashCharges===undefined||p.flashCharges>0));
   for(const glove of r.gloveCovers)glove.visible=gear?.hands==='hands-gloves';
   applyOperatorVisualKit(r.visualKit,gear,identity,
-    p.magazineCarryLocations,p.faceStyle);
+    p.magazineCarryLocations,p.faceStyle,p.wardrobe);
   // Hair is seeded by the costume assembler and must join the same reversible
   // palette ledger used by replay, silhouette mode and injury desaturation.
   r.colors.set(r.visualKit.hairMaterial,r.visualKit.hairMaterial.color.clone());
