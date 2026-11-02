@@ -3,6 +3,7 @@
  * without incurring browser startup on every CI run. */
 import {activateSite,passable,route,type Pt} from './breach-core.ts';
 import {generateSite,type SiteScale,type Site} from './breach-site.ts';
+import {ordinaryDoorOpeningWidth} from './breach-door-proportions.ts';
 import {assessArchitecture} from './worldgen/architecture-quality.ts';
 import {auditRoomRelationships,type SpatialRelationshipDiagnostic} from './worldgen/room-relationships.ts';
 import {missingPhysicalWorkflowLinks,type MissingWorkflowLink} from './worldgen/workflow-door-audit.ts';
@@ -88,7 +89,8 @@ export function auditSite(site:Site):SiteAudit{
       ids.add(door.id);
       const width=dist(door.a,door.b);
       if(door.kind==='shutter'?
-         width<80||width>114:Math.abs(width-48)>1e-5)
+         width<80||width>114:
+         Math.abs(width-(door.pairedWith?48:ordinaryDoorOpeningWidth(door.id)))>1e-5)
         errors.push('door width '+door.id);
     }
     for(const w of site.windows??[]){
