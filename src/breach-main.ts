@@ -2907,16 +2907,53 @@ ui.siteLighting.addEventListener('click',()=>{
   updateHud();
 });
 ui.siteSize.textContent='MAP SIZE · '+requestedSiteScale.toUpperCase();
+// Explicit, touch-friendly choices for next-site rules. This chooser only
+// updates future generation settings and never mutates the active mission.
+const siteChoicePopup=document.createElement('div');
+siteChoicePopup.className='fw-site-choice';
+let siteChoiceOwner:HTMLButtonElement|null=null;
+function closeSiteChoice(){
+ siteChoicePopup.remove();
+ siteChoiceOwner?.setAttribute('aria-expanded','false');
+ siteChoiceOwner=null;
+}
+function openSiteChoices(button:HTMLButtonElement,label:string,
+ choices:readonly {value:string;label:string;description:string}[],
+ selectedValue:string,choose:(value:string)=>void){
+ if(siteChoiceOwner===button){closeSiteChoice();return;}
+ closeSiteChoice();
+ siteChoiceOwner=button;
+ button.setAttribute('aria-expanded','true');
+ siteChoicePopup.replaceChildren();
+ const heading=document.createElement('strong');
+ heading.textContent=label+' · NEXT SITE';
+ siteChoicePopup.append(heading);
+ for(const choice of choices){
+  const option=document.createElement('button');
+  option.type='button';option.className='fw-site-choice-option';
+  option.setAttribute('aria-pressed',String(choice.value===selectedValue));
+  const name=document.createElement('strong');name.textContent=choice.label;
+  const detail=document.createElement('small');detail.textContent=choice.description;
+  option.append(name,detail);
+  option.addEventListener('click',()=>{choose(choice.value);closeSiteChoice();});
+  siteChoicePopup.append(option);
+ }
+ button.insertAdjacentElement('afterend',siteChoicePopup);
+}
 ui.siteSize.addEventListener('click',()=>{
-  if(replaying||campaignMode==='mission')return;
-  const tiers:SiteScale[]=['small','medium','large'];
-  requestedSiteScale=tiers[(tiers.indexOf(requestedSiteScale)+1)%tiers.length];
-  ui.siteSize.textContent='NEXT SITE SIZE · '+requestedSiteScale.toUpperCase();
+ if(replaying||campaignMode==='mission')return;
+ openSiteChoices(ui.siteSize,'BUILDING SIZE',[
+  {value:'small',label:'SMALL',description:'Shorter operation · compact site'},
+  {value:'medium',label:'MEDIUM',description:'Balanced layout and encounter'},
+  {value:'large',label:'LARGE',description:'Larger, more involved operation'}
+ ],requestedSiteScale,selected=>{
+  requestedSiteScale=selected as SiteScale;
+  ui.siteSize.textContent='NEXT SITE SIZE · '+selected.toUpperCase();
   const url=new URL(location.href);
-  if(requestedSiteScale==='standard')url.searchParams.delete('scale');
-  else url.searchParams.set('scale',requestedSiteScale);
+  url.searchParams.set('scale',selected);
   history.replaceState(null,'',url.href);
-  showUiHelp('SITE SIZE SAVED · APPLIES TO NEXT NEW SITE',2500);
+  showUiHelp('NEXT SITE SIZE SET · CURRENT SITE UNCHANGED',2300);
+ });
 });
 ui.variant.addEventListener('click',async()=>{
   if(replaying||campaignMode==='mission')return;
@@ -2929,13 +2966,20 @@ ui.variant.addEventListener('click',async()=>{
   reset(state.variant+1);
 });
 ui.intelMode.addEventListener('click',()=>{
-  if(replaying||campaignMode==='mission')return;
-  const index=INTEL_MODES.indexOf(selectedIntelMode);
-  selectedIntelMode=INTEL_MODES[(index+1)%INTEL_MODES.length];
+ if(replaying||campaignMode==='mission')return;
+ openSiteChoices(ui.intelMode,'INTELLIGENCE',[
+  {value:'true-blind',label:'TRUE BLIND',description:'Discover the environment during play'},
+  {value:'exterior-known',label:'EXTERIOR KNOWN',description:'Exterior known · interior unexplored'},
+  {value:'floor-plan',label:'FLOOR PLAN',description:'Building plan known · threats unknown'},
+  {value:'full-view',label:'FULL VIEW',description:'Sandbox-style full site knowledge'}
+ ],selectedIntelMode,selected=>{
+  if(!INTEL_MODES.includes(selected as IntelMode))return;
+  selectedIntelMode=selected as IntelMode;
   try{localStorage.setItem(INTEL_PREFERENCE_KEY,selectedIntelMode);}
   catch{/* Preferences are optional in restricted browsing contexts. */}
-  showUiHelp('INTELLIGENCE RULE SAVED · APPLIES TO NEXT NEW SITE',2800);
+  showUiHelp('NEXT SITE INTEL SET · CURRENT KNOWLEDGE UNCHANGED',3000);
   updateHud();
+ });
 });
 ui.retry.addEventListener('click',()=>{if(campaignMode!=='mission')reset();});
 ui.next.addEventListener('click',()=>{if(!returnAfterCampaignMission())reset(state.variant+1);});
@@ -3284,6 +3328,7 @@ ui.uiHelp.addEventListener('click',()=>{
 });
 ui.siteSettingsToggle.addEventListener('click',()=>{
   ui.siteSettings.hidden=!ui.siteSettings.hidden;
+  if(ui.siteSettings.hidden)closeSiteChoice();
   ui.siteSettingsToggle.setAttribute('aria-expanded',String(!ui.siteSettings.hidden));
   updateContext();
 });

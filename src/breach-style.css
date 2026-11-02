@@ -988,3 +988,22 @@ body.replaying #tacticalFeedback{display:none}
  font-size:11px;max-width:min(270px,55vw)}
 @media(max-width:440px){.fw-context-heading{font-size:10.5px}
  .quick-scope{font-size:10px;max-width:50vw}}
+
+/* UX2 05: a deliberate choice, never a surprise tap-to-cycle next-site rule. */
+.fw-site-choice{flex:1 1 100%;width:100%;display:grid;gap:5px;
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm);
+ background:var(--fw-panel-deep);padding:9px;min-width:0}
+.fw-site-choice>strong{font:700 11px/1.3 "IBM Plex Sans",system-ui,sans-serif;
+ letter-spacing:.06em;color:var(--fw-brass);padding:3px}
+.site-settings .fw-site-choice-option{display:flex;flex-direction:column;
+ align-items:flex-start;gap:3px;text-align:left;width:100%;min-height:44px;
+ border-radius:var(--fw-radius-sm);padding:10px 11px;
+ color:var(--fw-text);background:var(--fw-panel-raised)}
+.fw-site-choice-option strong{font-size:12px}
+.fw-site-choice-option small{font-size:11px;line-height:1.35;
+ color:var(--fw-text-muted);white-space:normal}
+.site-settings .fw-site-choice-option[aria-pressed="true"]{
+ border-color:var(--fw-brass);background:#415546}
+
+.site-settings{max-height:min(68dvh,590px);overflow-y:auto;
+ overscroll-behavior:contain;align-content:flex-start;touch-action:pan-y}
