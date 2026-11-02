@@ -312,7 +312,8 @@ function renderHeadwearCamoSwatches(model:string){
  paintHeadwearCamo(document.getElementById('headwearCamoTiled') as HTMLCanvasElement,preview,3);
  camoStatus.textContent=HEADWEAR_CAMO_RECIPES[preview].label+
   (selected?' · APPLIED TO LIVE MODEL':' · PREVIEW ONLY — TAP TO APPLY')+
-  ' · '+HEADWEAR_CAMO_RECIPES[preview].description;
+  ' · '+HEADWEAR_CAMO_DENSITY[preview]+'× PRINT PIXELS / UNIT · '+
+  HEADWEAR_CAMO_RECIPES[preview].description;
 }
 
 function syncWardrobe(){
