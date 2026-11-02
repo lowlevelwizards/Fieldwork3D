@@ -99,8 +99,8 @@ const ACH_CUBOIDS:readonly HeadwearCuboid[]=[
  * Ear clearance is the ABSENCE of lower geometry in the central side.
  */
 const HIGH_CUT_CUBOIDS:readonly HeadwearCuboid[]=[
- {name:'highcut-compact-shell',x:0,y:7.15,z:0,
-  width:9.75,height:2.50,depth:9.85},
+ {name:'highcut-compact-shell',x:0,y:7.175,z:0,
+  width:9.75,height:2.45,depth:9.85},
  {name:'highcut-stepped-top',x:0,y:8.40,z:.08,
   width:8.60,height:.60,depth:8.50},
  {name:'highcut-brow',x:0,y:5.45,z:-4.86,
