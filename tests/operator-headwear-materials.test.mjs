@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import {createHeadwearSilhouette,headwearCuboidVolumes}
  from '../src/operator-headwear-silhouettes.ts';
 import {createHeadwearDetailMaterial,headwearDetailPixels,
- headwearFaceTone,HEADWEAR_DETAIL_PIXEL_WORLD_SIZE}
+ headwearFaceTone,headwearFaceRegion,HEADWEAR_ATLAS_PIXELS,
+ HEADWEAR_DETAIL_PIXEL_WORLD_SIZE}
  from '../src/operator-headwear-materials.ts';
 import {TILE_PIXELS,PIXEL_WORLD_SIZE}
  from '../src/rendering/pixel-recipes.ts';
@@ -20,7 +21,8 @@ test('all approved headwear stays one unioned, UV mapped exterior mesh',()=>{
   assert.equal(geo.userData.cuboids.length,headwearCuboidVolumes(id).length,id);
   assert.equal(geo.getAttribute('uv').count,geo.getAttribute('position').count,id);
   assert.equal(geo.getAttribute('color').count,geo.getAttribute('position').count,id);
-  assert.equal(geo.userData.pixelWorldSize,1.25,id);
+  assert.equal(geo.userData.pixelWorldSize,1,id);
+  assert.equal(geo.userData.materialAtlasPixels,64,id);
   assert.ok(geo.userData.exteriorQuads<300,id+' no detail-surface explosion');
   const uv=geo.getAttribute('uv'),color=geo.getAttribute('color');
   for(let i=0;i<uv.count;i++){
@@ -34,7 +36,7 @@ test('headwear texture scale and grayscale-only pixels match operator materials'
  assert.equal(HEADWEAR_DETAIL_PIXEL_WORLD_SIZE,PIXEL_WORLD_SIZE);
  for(const kind of ['cotton','knit','composite','steel']){
   const pixels=headwearDetailPixels(kind);
-  assert.equal(pixels.length,TILE_PIXELS*TILE_PIXELS*4);
+  assert.equal(pixels.length,HEADWEAR_ATLAS_PIXELS**2*4);
   let dark=0;
   for(let i=0;i<pixels.length;i+=4){
    assert.equal(pixels[i],pixels[i+1]);
@@ -42,7 +44,8 @@ test('headwear texture scale and grayscale-only pixels match operator materials'
    assert.equal(pixels[i+3],255);
    if(pixels[i]<255)dark++;
   }
-  assert.ok(dark/(pixels.length/4)<.16,kind+' must stay quiet');
+  assert.ok(dark/(pixels.length/4)>.08,kind+' must be visibly developed');
+  assert.ok(dark/(pixels.length/4)<.98,kind+' must retain flat negative space');
  }
 });
 test('big material hierarchy is explicit; no fake micro seams on helmets',()=>{
@@ -61,4 +64,29 @@ test('materials are neutral, reusable and nearest sampled',()=>{
  assert.equal(mat.map.magFilter,THREE.NearestFilter);
  assert.equal(mat.map.colorSpace,THREE.SRGBColorSpace);
  assert.equal(mat.map,createHeadwearDetailMaterial('beanie').map);
+});
+
+test('Stage 2B physical pixel scale is identical across operator and environment',()=>{
+ assert.equal(PIXEL_WORLD_SIZE,1);
+ assert.equal(HEADWEAR_DETAIL_PIXEL_WORLD_SIZE,1);
+ assert.equal(TILE_PIXELS,32);
+});
+test('Stage 2B detail is anchored to the correct construction regions',()=>{
+ assert.equal(headwearFaceRegion('patrol-cap','patrol-anchored-bill',1,1),2);
+ assert.equal(headwearFaceRegion('patrol-cap','patrol-anchored-bill',1,-1),3);
+ assert.equal(headwearFaceRegion('boonie','boonie-left-brim',1,1),2);
+ assert.equal(headwearFaceRegion('beanie','beanie-front-cuff',2,-1),1);
+ assert.equal(headwearFaceRegion('beanie','beanie-fitted-crown',1,1),3);
+ assert.equal(headwearFaceRegion('soviet-steel','ssh40-integrated-front-edge',2,-1),2);
+});
+test('Stage 2B patterns are individualized and substantially legible',()=>{
+ const equal=(a,b)=>Buffer.from(a).equals(Buffer.from(b));
+ assert.equal(equal(headwearDetailPixels('patrol-cap'),headwearDetailPixels('boonie')),false);
+ assert.equal(equal(headwearDetailPixels('ach'),headwearDetailPixels('pasgt')),false);
+ assert.equal(equal(headwearDetailPixels('beanie'),headwearDetailPixels('patrol-cap')),false);
+ const tex=createHeadwearDetailMaterial('boonie').map;
+ assert.equal(tex.image.width,64);
+ assert.equal(tex.image.height,64);
+ assert.equal(tex.wrapS,THREE.ClampToEdgeWrapping);
+ assert.equal(tex.magFilter,THREE.NearestFilter);
 });

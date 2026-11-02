@@ -12,7 +12,7 @@
 import * as THREE from 'three';
 import {unionCuboids,type HeadwearCuboid} from './operator-cuboid-union.ts';
 import {CUBE_HEAD_ANATOMY} from './operator-head-anatomy.ts';
-import {headwearFaceTone} from './operator-headwear-materials.ts';
+import {headwearFaceTone,headwearFaceRegion} from './operator-headwear-materials.ts';
 export type HeadSilhouetteId='patrol-cap'|'boonie'|'beanie'|'pasgt'|'soviet-steel'|'ach'|'high-cut';
 export type HeadSilhouetteMetrics={
  id:HeadSilhouetteId;frontExtent:number;rearExtent:number;top:number;
@@ -263,7 +263,8 @@ export function headwearCuboidVolumes(id:HeadSilhouetteId):readonly HeadwearCubo
 function headwearFromVolumes(g:THREE.Group,m:THREE.Material,id:HeadSilhouetteId){
  const volume=headwearCuboidVolumes(id);
  const geometry=unionCuboids(volume,{faceTone:(part,axis,sign)=>
-  headwearFaceTone(id,part.name,axis,sign)});
+  headwearFaceTone(id,part.name,axis,sign),
+  faceRegion:(part,axis,sign)=>headwearFaceRegion(id,part.name,axis,sign)});
  const mesh=new THREE.Mesh(geometry,m);
  mesh.name=id+'-continuous-cuboid-exterior';
  mesh.castShadow=true;
