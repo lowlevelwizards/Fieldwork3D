@@ -23,12 +23,14 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      # Full cross-domain regression remains in ci.yml. A pending map
-      # redesign must not block a verified animation/deployment release.
+      # Keep the Pages gate focused on runtime-critical tactical invariants,
+      # release-stamp integrity, and a verified production compilation.
+      # Broad operator wardrobe / research checks continue in ci.yml, but
+      # must not block unrelated changes from reaching the playable site.
       - name: Validate production and critical motion/replay
         run: |
           node --experimental-strip-types --test tests/breach-motion-*.test.mjs tests/breach-distance-*.test.mjs tests/breach-hybrid-*.test.mjs tests/breach-121.test.mjs tests/breach-126.test.mjs tests/breach-127.test.mjs
-          node --experimental-strip-types --test tests/operator-*.test.mjs tests/equipment-13-visuals.test.mjs
+          node --experimental-strip-types --test tests/pages-cache-bust.test.mjs tests/pages-home.test.mjs tests/equipment-13-visuals.test.mjs
           npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
