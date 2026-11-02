@@ -69,7 +69,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'TIGER STRIPE',
   description:'Broken dark tapered directional streaks over green, olive and tan fields',
   colors:[[124,135,91],[77,101,70],[147,122,84],[42,55,43]],
-  targetCoverage:[.32,.25,.16,.27],
+  targetCoverage:[.32,.16,.16,.36],
     motifs:[
    // Broken tapered strokes are NOT equally spaced horizontal bands. Each
    // crosses the tile edges seamlessly; body panels choose their own axis.
