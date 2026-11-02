@@ -20,6 +20,7 @@ export type OperatorVisualKit={
  chestRig:THREE.Group;fieldWebbing:THREE.Group;
  belt:THREE.Group;dayPack:THREE.Group;fieldPack:THREE.Group;
  cargoPockets:THREE.Mesh[];bootCuffs:THREE.Mesh[];sleeveCuffs:THREE.Mesh[];
+ rolledForearms:THREE.Mesh[];rolledCuffs:THREE.Mesh[];kneePanels:THREE.Mesh[];
  eyeMarks:THREE.Mesh[];hairMaterial:Material;
  magazines:Record<'rig'|'belt'|'pocket',THREE.Mesh[]>;
 };
@@ -34,7 +35,7 @@ const bundle=(parent:THREE.Object3D)=>{const g=new THREE.Group();parent.add(g);r
 export function createOperatorVisualKit(
  chest:THREE.Group,hip:THREE.Group,head:THREE.Group,pack:THREE.Mesh,
  legs:readonly Limb[],arms:readonly Limb[],m:VisualMaterials):OperatorVisualKit{
- const {cloth,vest,dark,steel}=m;
+ const {cloth,vest,dark,skin,steel}=m;
  const trim=new THREE.MeshStandardMaterial({color:0x777d6d,roughness:.94,flatShading:true});
  const seam=new THREE.MeshStandardMaterial({color:0x303b36,roughness:.95,flatShading:true});
  const hairMaterial=new THREE.MeshStandardMaterial({color:0x302d29,roughness:1,flatShading:true});
@@ -122,19 +123,27 @@ export function createOperatorVisualKit(
  for(const z of [-4.5,4.5])
   part(fieldPack,trim,-1.58,2.7,z,.4,1,2.7);
  const cargoPockets:THREE.Mesh[]=[],bootCuffs:THREE.Mesh[]=[],sleeveCuffs:THREE.Mesh[]=[];
+ const rolledForearms:THREE.Mesh[]=[],rolledCuffs:THREE.Mesh[]=[],kneePanels:THREE.Mesh[]=[];
  for(const leg of legs){
-  // Children follow the existing bone quaternion and length scaling.
+  // Thin, leg-mounted pieces follow the solved IK. No additional leg length.
   cargoPockets.push(part(leg.upper,cloth,0,0.08,3.0,3.3,.29,1.45));
+  kneePanels.push(part(leg.lower,trim,0,.36,2.25,3.7,.22,1.2));
   if(leg.shoe)bootCuffs.push(part(leg.shoe,dark,-1.55,1.5,0,4.1,1.55,5.0));
  }
- for(const arm of arms)
+ for(const arm of arms){
   sleeveCuffs.push(part(arm.lower,trim,0,-.36,0,3.65,.13,3.75));
+  // A rolled sleeve exposes the outer forearm as geometry above its cloth
+  // bone. The shared IK still positions both arms exactly as before.
+  rolledForearms.push(part(arm.lower,skin,0,.22,0,3.55,.52,3.65));
+  rolledCuffs.push(part(arm.lower,cloth,0,-.13,0,3.9,.12,3.9));
+ }
  const magazines:{rig:THREE.Mesh[];belt:THREE.Mesh[];pocket:THREE.Mesh[]}={
   rig:[],belt:[],pocket:[]};
- for(let i=0;i<4;i++){
-  const z=(i-1.5)*3.1;
-  const mag=part(chest,dark,7.75,-2,z,2.0,4.7,2.05);
-  part(mag,trim,0,.48,0,2.05,.36,2.1);
+ for(let i=0;i<7;i++){
+  const row=i<4?0:1,at=row?i-4:i;
+  const z=(at-(row?1:1.5))*(row?3.7:3.1);
+  const mag=part(chest,dark,7.75,row?-6.55:-2,z,2.0,4.1,2.05);
+  part(mag,trim,0,.42,0,2.05,.36,2.1);
   magazines.rig.push(mag);
  }
  for(let i=0;i<3;i++){
@@ -151,7 +160,7 @@ export function createOperatorVisualKit(
    consolidateVisualGroup(surface);
  return {helmet,cap,hair,jacket,lightShirt,softArmor,plateCarrier,chestRig,
   fieldWebbing,belt,dayPack,fieldPack,cargoPockets,bootCuffs,sleeveCuffs,
-  eyeMarks,hairMaterial,magazines};
+  rolledForearms,rolledCuffs,kneePanels,eyeMarks,hairMaterial,magazines};
 }
 const DEFAULT:Slots={
  primary:'primary-carbine',head:'head-helmet',armor:'armor-soft',
@@ -178,12 +187,16 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  for(const pocket of v.cargoPockets)pocket.visible=s.legs==='legs-field';
  for(const cuff of v.bootCuffs)cuff.visible=s.feet==='feet-boots';
  for(const cuff of v.sleeveCuffs)cuff.visible=s.top==='top-uniform';
+ for(const mesh of v.rolledForearms)mesh.visible=s.top==='top-light';
+ for(const mesh of v.rolledCuffs)mesh.visible=s.top==='top-light';
+ for(const mesh of v.kneePanels)mesh.visible=s.legs==='legs-field';
  const hairs=[0x332e29,0x635244,0x2f3530,0x9b8060,0x4d4136,0x6c6255];
  v.hairMaterial.color.setHex(hairs[(seed>>>5)%hairs.length]);
  for(const loc of ['rig','belt','pocket'] as const){
   let count=magazineLocations.filter(x=>x===loc).length;
   // Backpacks do not display imaginary accessible chest magazines.
   if(loc==='rig'&&s.rig==='rig-none')count=0;
+  if(loc==='rig'&&s.rig==='rig-light')count=Math.min(4,count);
   if(loc==='belt'&&s.belt==='belt-light')count=Math.min(1,count);
   v.magazines[loc].forEach((m,i)=>{m.visible=i<count;});
  }
