@@ -1,0 +1,26 @@
+name: Physicality doorway width acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/breach-door-proportions.ts'
+      - 'src/breach-core.ts'
+      - 'src/breach-junction-site.ts'
+      - 'src/worldgen/architectural-compiler.ts'
+      - 'tests/physicality-13-doorway-widths.test.mjs'
+      - 'tests/worldgen-architectural-compiler.test.mjs'
+      - '.github/workflows/physicality-door-width.yml'
+  workflow_dispatch:
+jobs:
+  passage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Narrow door structural and actor clearance regression
+        run: node --experimental-strip-types --test tests/physicality-13-doorway-widths.test.mjs tests/worldgen-architectural-compiler.test.mjs
+      - name: Typecheck
+        run: npm run check
