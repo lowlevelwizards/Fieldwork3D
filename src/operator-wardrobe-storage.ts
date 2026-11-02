@@ -6,19 +6,21 @@ import {readWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import type {WeaponId} from './breach-combat.ts';
 export type WardrobeLook={
  id:string;name:string;kit:EquipmentLoadout;wardrobe:WardrobeOptions;
+ /** Lab display only; does not modify the authoritative primary weapon. */
+ weaponVisible?:boolean;
 };
 export const MAX_WARDROBE_LOOKS=24;
 const validWeapon=(v:unknown):v is WeaponId=>
  v==='carbine'||v==='smg'||v==='rifle'||v==='shotgun';
 const safeName=(s:string)=>s.trim().slice(0,44);
 export function makeWardrobeLook(name:string,kit:EquipmentLoadout,
- wardrobe:WardrobeOptions,id?:string):WardrobeLook{
+ wardrobe:WardrobeOptions,id?:string,weaponVisible=true):WardrobeLook{
  const label=safeName(name)||'Untitled outfit';
  const identifier=id&&/^look-[a-z0-9-]{1,40}$/.test(id)?id:
   'look-'+label.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,36);
  return {id:identifier||'look-untitled',name:label,
   kit:readEquipmentLoadout(kit,kit.slots.primary.slice(8) as WeaponId),
-  wardrobe:readWardrobe(wardrobe)};
+  wardrobe:readWardrobe(wardrobe),weaponVisible};
 }
 export function readWardrobeLook(raw:unknown):WardrobeLook|null{
  if(!raw||typeof raw!=='object')return null;
@@ -32,7 +34,8 @@ export function readWardrobeLook(raw:unknown):WardrobeLook|null{
  const safe=validWeapon(weapon)?weapon:validWeapon(value.weapon)?value.weapon:'carbine';
  return {id:value.id,name:safeName(value.name),
   kit:readEquipmentLoadout(value.kit,safe),
-  wardrobe:readWardrobe(value.wardrobe)};
+  wardrobe:readWardrobe(value.wardrobe),
+  weaponVisible:value.weaponVisible!==false};
 }
 export function readWardrobeLooks(raw:unknown):WardrobeLook[]{
  if(!Array.isArray(raw))return [];

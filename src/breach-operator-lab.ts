@@ -101,10 +101,12 @@ document.getElementById('wardrobeApply')?.addEventListener('click',()=>{
  const recipe=wardrobeRecipe(recipeSelect.value);if(!recipe)return;
  const result=applyWardrobeRecipe(recipe);
  labKit=result.kit;wardrobeOptions=result.wardrobe;
+ (document.getElementById('weapon') as HTMLSelectElement).value=
+  result.kit.slots.primary.replace(/^primary-/,'');
  labPalette=Math.min(8,Math.max(1,result.wardrobe.palette+1));
  (document.getElementById('kitPalette') as HTMLSelectElement).value=
   String(labPalette);
- syncKit();
+ syncKit();updateMagazineState();
  for(const select of patternSelects){
   const channel=select.dataset.wardrobePattern as keyof WardrobeOptions['patterns'];
   select.value=wardrobeOptions.patterns[channel]??'solid';
@@ -178,17 +180,20 @@ function persistLooks(){
 }
 function applyLook(look:WardrobeLook){
  labKit=look.kit;wardrobeOptions=look.wardrobe;
+ (document.getElementById('weapon') as HTMLSelectElement).value=
+  look.weaponVisible===false?'none':look.kit.slots.primary.replace(/^primary-/,'');
  labPalette=Math.min(8,Math.max(1,look.wardrobe.palette+1));
  (document.getElementById('kitPalette') as HTMLSelectElement).value=
   String(labPalette);
- syncKit();
+ syncKit();updateMagazineState();
  for(const select of patternSelects){
   const slot=select.dataset.wardrobePattern as keyof WardrobeOptions['patterns'];
   select.value=wardrobeOptions.patterns[slot]??'solid';
  }
 }
 document.getElementById('outfitSave')?.addEventListener('click',()=>{
- const look=makeWardrobeLook(outfitName.value,labKit,wardrobeOptions);
+ const look=makeWardrobeLook(outfitName.value,labKit,wardrobeOptions,
+  undefined,(document.getElementById('weapon') as HTMLSelectElement).value!=='none');
  const existing=savedLooks.findIndex(x=>x.id===look.id);
  if(existing>=0)savedLooks[existing]=look;
  else if(savedLooks.length<MAX_WARDROBE_LOOKS)savedLooks.push(look);
@@ -202,7 +207,8 @@ document.getElementById('outfitLoad')?.addEventListener('click',()=>{
 });
 document.getElementById('outfitExport')?.addEventListener('click',()=>{
  const look=savedLooks.find(x=>x.id===outfitSelect.value)??
-  makeWardrobeLook(outfitName.value,labKit,wardrobeOptions);
+  makeWardrobeLook(outfitName.value,labKit,wardrobeOptions,
+   undefined,(document.getElementById('weapon') as HTMLSelectElement).value!=='none');
  outfitTransfer.value=exportWardrobeLook(look);
  outfitTransfer.focus();outfitTransfer.select();
  outfitStatus.textContent='Copy this outfit JSON to share it';
@@ -376,7 +382,11 @@ function updateMagazineState(){
   'SHOTGUN: loose shells; detachable spare magazines are not applicable.':
   'Preview locations use the real equipment carrying ledger.';
 }
-weapon.addEventListener('change',updateMagazineState);
+weapon.addEventListener('change',()=>{
+ if(weapon.value!=='none')
+  labKit=syncPrimaryWeapon(labKit,weapon.value as WeaponId);
+ updateMagazineState();
+});
 updateMagazineState();
 choose<HTMLButtonElement>('unequipAll').addEventListener('click',()=>{
  const empty=unequipLabAppearance();
