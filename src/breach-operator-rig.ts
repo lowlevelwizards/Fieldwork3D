@@ -321,10 +321,17 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.pack.scale.set(1,1,1);
   // Visible compact modules use exactly the configured kit (not free extras).
   const rigItem=gear?.rig??'rig-none';
+  const placements=p.magazineCarryLocations??[];
+  const rigOccupied=placements.includes('rig');
+  const beltOccupied=placements.includes('belt')||
+    p.medicalCarryLocation==='belt'||p.utilityCarryLocation==='belt';
+  // Generic pouches are fillers ONLY on otherwise empty rigs or belts:
+  // never superimpose them on genuine inventory-backed magazine pouches.
   r.rigPouches.forEach((mesh,i)=>{
-    mesh.visible=rigItem==='rig-full'||(rigItem==='rig-light'&&i===0);
+    mesh.visible=!rigOccupied&&
+      (rigItem==='rig-full'||(rigItem==='rig-light'&&i===0));
   });
-  r.beltPouch.visible=gear?.belt==='belt-standard';
+  r.beltPouch.visible=gear?.belt==='belt-standard'&&!beltOccupied;
   r.medicalPouch.visible=(gear?.medical==='medical-basic'||
     gear?.medical==='medical-trauma')&&!p.treatmentActive;
   r.medicalPouch.scale.set(gear?.medical==='medical-trauma'?1.35:1,1,1);
