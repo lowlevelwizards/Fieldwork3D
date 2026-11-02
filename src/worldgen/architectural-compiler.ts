@@ -1,6 +1,6 @@
 /** Compiles a building-specific architectural program into one physical
  * authoritative site: contiguous floor rectangles, perimeter/partition wall
- * segments, actual 48-unit doors, and purposeful connected circulation.
+ * segments, room-appropriate single-door apertures, and purposeful connected circulation.
  * One purpose can occupy an L-shaped union of several rectangular cells.
  */
 import {architecturalBlueprint,type Blueprint} from './architectural-program.ts';
@@ -17,6 +17,7 @@ import {choosePublicFrontage} from './public-frontage.ts';
 import {circulationFor,circulationScore,loopChance,type CirculationStyle} from './circulation-grammar.ts';
 import {type Site,type Room,type BuildingArchetype,type SiteScale,seeded} from '../breach-site.ts';
 import {type Pt,type Door,type Segment} from '../breach-core.ts';
+import {ordinaryDoorOpeningWidth} from '../breach-door-proportions.ts';
 type Cell={col:number;row:number;role:string;room:Room};
 type Edge={a:number;b:number;wall:Segment;length:number;
   orientation:'horizontal'|'vertical';score:number;free:boolean;selected:boolean};
@@ -53,12 +54,15 @@ const weight=(a:Cell,b:Cell,rng:()=>number,style:CirculationStyle,kind:BuildingA
 };
 function cut(wall:Segment,id:string,walls:Segment[],doors:Door[],fraction=.5){
  const length=span(wall);
- if(length<55){walls.push(wall);return;}
+ const half=ordinaryDoorOpeningWidth(id)/2;
+ // Leave meaningful wall stubs beyond the jambs, not barely attached trim.
+ if(length<Math.max(55,2*half+16)){walls.push(wall);return;}
  const vx=(wall.b.x-wall.a.x)/length,vy=(wall.b.y-wall.a.y)/length;
- const t=Math.max(24/length+.08,Math.min(1-24/length-.08,fraction));
+ const margin=half/length+.08;
+ const t=Math.max(margin,Math.min(1-margin,fraction));
  const middle={x:wall.a.x+vx*length*t,y:wall.a.y+vy*length*t};
- const a={x:middle.x-vx*24,y:middle.y-vy*24};
- const b={x:middle.x+vx*24,y:middle.y+vy*24};
+ const a={x:middle.x-vx*half,y:middle.y-vy*half};
+ const b={x:middle.x+vx*half,y:middle.y+vy*half};
  if(span({a:wall.a,b:a})>.05)walls.push({a:wall.a,b:a});
  if(span({a:b,b:wall.b})>.05)walls.push({a:b,b:wall.b});
  doors.push({id,a,b,open:false,openedAt:-1});
@@ -89,7 +93,7 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  // unit-aware topology and broad mobile benchmarks are completed.
  const authored=seed%3===0?synthesizeFootprint(functional,seed):functional;
  // Compact buildings use the identical architectural grammar, with smaller
- // habitable rooms but never shrink the 48-unit door or operator clearance.
+ // habitable rooms while preserving the minimum operator aperture clearance.
  const basePlan:Blueprint=scale!=='standard'?authored:{
   ...authored,
   family:authored.family+' / compact',
