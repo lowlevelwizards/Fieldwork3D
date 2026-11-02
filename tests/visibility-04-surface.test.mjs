@@ -14,10 +14,10 @@ test('VIS-04 unknown room stays hidden without briefing',()=>{
  assert.equal(spatialSurfaceState(s,'room','A'),'unknown');
  assert.equal(spatialSurfaceState(s,'room','B'),'unknown');
 });
-test('VIS-04 occupied room exposes shell but not adjacent room',()=>{
+test('VIS-04 entry does not reveal the occupied room or adjacent room',()=>{
  const s=session();
- s.operators.push({side:'blue',health:100,p:{x:40,y:40}});
- assert.equal(spatialSurfaceState(s,'room','A'),'occupied-structure');
+ s.operators.push({side:'blue',health:100,p:{x:40,y:40},heading:0});
+ assert.equal(spatialSurfaceState(s,'room','A'),'unknown');
  assert.equal(spatialSurfaceState(s,'room','B'),'unknown');
 });
 test('VIS-04 briefed door is not mistaken for live observed state',()=>{

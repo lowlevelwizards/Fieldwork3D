@@ -32,12 +32,11 @@ test('VIS-05: intersecting building room modules remain dark in Exterior Known',
  assert.ok(cover.some(c=>c[3]===35&&c[4]===35));
  assert.ok(calls.some(c=>c[1]==='destination-out'&&c[3]<0));
 });
-test('VIS-05: high fog is clipped to room footprints, not a shifted world plane',()=>{
+test('VIS-05 ground-space mask cannot project over exterior terrain',()=>{
  const source=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
- assert.doesNotMatch(source,/this\.overheadFog=new THREE\.Mesh/);
- assert.match(source,/this\.roomFogRoofs\.push\(concealed\)/);
- assert.match(source,/this\.roomFogRoofs\)roof\.visible=!omniscient/);
- assert.match(source,/geometry\.rotateX\(-Math\.PI\/2\)/);
- assert.match(source,/roofBounds\.minX/);
- assert.match(source,/paintOccupiedRoomContext\(this\.fogContext,s\);/);
+ assert.doesNotMatch(source,/overheadFog|roomFogRoofs|roomFogMaterial/);
+ assert.match(source,/this\.smoothFog=new THREE\.Mesh/);
+ assert.match(source,/this\.smoothFog\.rotation\.x=-Math\.PI\/2;/);
+ assert.match(source,/this\.smoothFog\.visible=!omniscient;/);
+ assert.doesNotMatch(source,/paintOccupiedRoomContext/);
 });

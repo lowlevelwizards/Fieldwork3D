@@ -1,5 +1,5 @@
 import {COVER,WALLS,type Pt,doorCenter,type Door} from './breach-core.ts';
-import {type Session,type ShotEvent,liveVisibility,knownAt,team} from './breach-game.ts';
+import {type Session,type ShotEvent,liveVisibility,knownAt} from './breach-game.ts';
 
 /**
  * Shared tactical presentation policy.
@@ -25,17 +25,13 @@ export function coverPresentation(s:Session,index:number,omniscient=false):
  */
 export type SpatialSurfaceKind='wall'|'room'|'door'|'cover';
 export type SpatialSurfaceState='unknown'|'briefed'|'remembered'|
- 'visible'|'occupied-structure';
+ 'visible';
 export function spatialSurfaceState(s:Session,kind:SpatialSurfaceKind,
  key:number|string,omniscient=false):SpatialSurfaceState{
  if(omniscient||s.intel.mode==='full-view')return 'visible';
  if(kind==='cover')return coverPresentation(s,Number(key),omniscient);
  if(kind==='room'){
   const room=s.site?.rooms.find(r=>r.id===key);
-  if(room&&team(s).some(a=>a.health>0&&
-    a.p.x>room.x+4&&a.p.x<room.x+room.w-4&&
-    a.p.y>room.y+4&&a.p.y<room.y+room.h-4))
-    return 'occupied-structure';
   if(!s.intel.rooms.has(String(key)))return 'unknown';
   if(!room)return 'remembered';
   const p={x:room.x+room.w/2,y:room.y+room.h/2};
