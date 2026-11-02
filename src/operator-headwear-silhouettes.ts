@@ -22,8 +22,8 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
   top:8.22,earEdge:4.695,foreheadEdge:4.695,billLength:3.15},
  'boonie':{id:'boonie',frontExtent:-6.695,rearExtent:6.695,
   top:8.18,earEdge:4.54,foreheadEdge:4.54,billLength:0},
- 'beanie':{id:'beanie',frontExtent:-5.05,rearExtent:5.05,
-  top:8.18,earEdge:3.77,foreheadEdge:3.77,billLength:0},
+ 'beanie':{id:'beanie',frontExtent:-5.00,rearExtent:5.00,
+  top:7.92,earEdge:3.77,foreheadEdge:3.77,billLength:0},
  'pasgt':{id:'pasgt',frontExtent:-6.08,rearExtent:5.755,
   top:8.85,earEdge:1.79,foreheadEdge:3.98,billLength:0},
  'soviet-steel':{id:'soviet-steel',frontExtent:-6.39,rearExtent:6.39,
@@ -83,27 +83,33 @@ const BOONIE_CUBOIDS:readonly HeadwearCuboid[]=[
  }))
 ];
 
-/** Beanie: close-fitting shell and ONE broad folded cuff, both hollow.
- * The cuff crosses the brow/upper-ear plane, rather than sitting at Y5.58.
+/** Stage 1L-A: BEANIE. Two exterior reads only:
+ * (1) a continuous fitted crown, (2) one strong folded cuff.
+ *
+ * The 5 crown cuboids are a single HOLLOW volume with identical exterior
+ * width/depth through its full height; no shoulder/ledge near the crown.
+ * The 4 cuff cuboids form a continuous lower ring, offset outward only
+ * once by the actual fabric fold. All are intersected and unioned to a
+ * single exterior mesh; the head / face remain visible inside.
  */
 const BEANIE_CUBOIDS:readonly HeadwearCuboid[]=[
- {name:'beanie-fitted-crown',x:0,y:7.52,z:0,
-  width:8.62,height:1.32,depth:8.72},
- {name:'beanie-front-body',x:0,y:5.63,z:-4.32,
-  width:8.64,height:3.03,depth:.92},
- {name:'beanie-rear-body',x:0,y:5.63,z:4.32,
-  width:8.64,height:3.03,depth:.92},
+ {name:'beanie-fitted-crown',x:0,y:7.31,z:0,
+  width:9.20,height:1.22,depth:9.40},
+ {name:'beanie-front-body',x:0,y:5.88,z:-4.27,
+  width:9.20,height:2.60,depth:.86},
+ {name:'beanie-rear-body',x:0,y:5.88,z:4.27,
+  width:9.20,height:2.60,depth:.86},
  ...([-1,1] as const).map(sign=>({
   name:sign===-1?'beanie-left-body':'beanie-right-body',
-  x:sign*4.33,y:5.63,z:0,width:.92,height:3.03,depth:8.84
+  x:sign*4.17,y:5.88,z:0,width:.86,height:2.60,depth:9.40
  })),
- {name:'beanie-front-cuff',x:0,y:4.46,z:-4.55,
-  width:9.14,height:1.38,depth:1.00},
- {name:'beanie-rear-cuff',x:0,y:4.46,z:4.55,
-  width:9.14,height:1.38,depth:1.00},
+ {name:'beanie-front-cuff',x:0,y:4.49,z:-4.54,
+  width:9.80,height:1.44,depth:.92},
+ {name:'beanie-rear-cuff',x:0,y:4.49,z:4.54,
+  width:9.80,height:1.44,depth:.92},
  ...([-1,1] as const).map(sign=>({
   name:sign===-1?'beanie-left-cuff':'beanie-right-cuff',
-  x:sign*4.53,y:4.46,z:0,width:1.08,height:1.38,depth:9.28
+  x:sign*4.44,y:4.49,z:0,width:.92,height:1.44,depth:10.00
  }))
 ];
 
@@ -257,7 +263,7 @@ export function createHeadwearSilhouette(
  group.name='cuboid-'+id+'-minus-Z-forward';
  headwearFromVolumes(group,material,id);
  group.userData.stage=({
-  'patrol-cap':'1K','boonie':'1K','beanie':'1K',
+  'patrol-cap':'1K','boonie':'1K','beanie':'1L-A',
   'pasgt':'1K','soviet-steel':'1K',
   'ach':'1E','high-cut':'1E'
  } as const)[id];
