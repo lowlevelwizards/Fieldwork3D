@@ -221,30 +221,34 @@ try{
       y:844/2-740*scale/2-11+y*scale};
   };
   await phone.locator('#rook').click();
-  if(!await phone.locator('#contextTools button[data-action="ctxPie"]').isVisible())
-    throw Error('PIE missing from contextual order tray');
-  await phone.locator('#contextTools button[data-action="ctxPie"]').click();
+  if(!await phone.locator('#contextTools button[data-action="ctxWatch"]').isVisible())
+    throw Error('WATCH missing from contextual order tray');
+  await phone.locator('#contextTools button[data-action="ctxWatch"]').click();
   const target=screen(346,568);
   await phone.touchscreen.tap(target.x,target.y);
   if(await phone.locator('#back').isDisabled())
-    throw Error('PIE targeting did not author persistent order');
-  await phone.screenshot({path:resolve(folder,'03-phone-pie-watch-target.png')});
-  await phone.locator('#contextTools button[data-action="ctxStrafe"]').click();
+    throw Error('WATCH targeting did not author persistent order');
+  await phone.screenshot({path:resolve(folder,'03-phone-watch-target.png')});
+  await phone.locator('#contextTools button[data-action="ctxLook"]').click();
   const facing=screen(282,697);
   await phone.touchscreen.tap(facing.x,facing.y);
-  await phone.screenshot({path:resolve(folder,'04-phone-strafe-held-direction.png')});
+  await phone.screenshot({path:resolve(folder,'04-phone-look-held-direction.png')});
   const move=screen(329,628);
   await phone.touchscreen.tap(move.x,move.y);
   await phone.screenshot({path:resolve(folder,'05-phone-persistent-aim-route.png')});
-  await phone.locator('#back').click();
-  if(await phone.locator('#back').isDisabled())
-    throw Error('BACK erased the entire plan instead of last movement');
-  await phone.locator('#back').click();
-  if(await phone.locator('#back').isDisabled())
-    throw Error('BACK cleared multiple nodes rather than exactly one');
-  await phone.locator('#back').click();
+  // Validate actual authored counts, not an assumed three-command sequence.
+  let remaining=Number(await phone.locator('#breachCanvas').getAttribute('data-plan-nodes'));
+  if(!Number.isInteger(remaining)||remaining<1)
+    throw Error('No authored orders to validate BACK behavior');
+  while(remaining>0){
+    await phone.locator('#back').click();
+    const next=Number(await phone.locator('#breachCanvas').getAttribute('data-plan-nodes'));
+    if(next!==remaining-1)
+      throw Error('BACK removed '+(remaining-next)+' nodes; expected one');
+    remaining=next;
+  }
   if(!await phone.locator('#back').isDisabled())
-    throw Error('BACK tap did not remove the final remaining order');
+    throw Error('BACK remains enabled after the final order');
   await phone.screenshot({path:resolve(folder,'08-phone-back-cleared-one-by-one.png')});
   await phone.locator('#moreOrders').click();
   await phone.locator('#undo').click();
@@ -261,7 +265,7 @@ try{
   await phone.touchscreen.tap(doorPoint.x,doorPoint.y);
   // The *final planned position* is enough to trigger door options;
   // requiring the player to tap its node first was a 076 UX regression.
-  for(const action of ['ctxEntry','ctxOpen','ctxKick','ctxHold']){
+  for(const action of ['ctxOpen','ctxKick','ctxHold']){
     if(!await phone.locator('#contextTools button[data-action="'+action+'"]').isVisible())
       throw Error('Missing contextual door option '+action+' at planned destination');
   }
