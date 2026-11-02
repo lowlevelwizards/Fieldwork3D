@@ -1,11 +1,11 @@
-/** Stage 2B — true 1:1 hand-authored pixel material for the seven approved
+/** Stage 2B.1 — construction-led 1:1 authored pixel material for the seven approved
  * silhouettes. All pixel colors are neutral, with independently authored
  * 32x32 construction-region tiles inside one 64x64 atlas per item.
  *
  * Region 0: crown / primary shell
  * Region 1: band / cuff / protective skirt
  * Region 2: brim/bill top or structural lower steel lip
- * Region 3: underside / end grain / alternate top detail
+ * Region 3: quiet top plane (no artificial patches)
  *
  * Each texel corresponds to ONE operator model unit. The atlas projects
  * around the actual cuboid-union exterior; no floating detail planes,
@@ -23,80 +23,70 @@ export const HEADWEAR_MATERIAL_KIND:Readonly<Record<HeadSilhouetteId,HeadwearMat
  'ach':'composite','high-cut':'composite','pasgt':'composite','soviet-steel':'steel'
 };
 const textureCache=new Map<HeadSilhouetteId,THREE.DataTexture>();
-const clamp8=(n:number)=>Math.max(0,Math.min(255,Math.round(n)));
 const local=(n:number)=>n-16;
 /** An authored, sparse shape-aware design, not random noise or edge shimmer.
  * Pixel addresses are local to their region's 32x32 square and align with
  * the approved operator-head coordinate system (-Z forward, +Y upward).
  */
+/** Stage 2B.1: construction-first pixel art. Coordinates are world-model
+ * positions projected onto the real surface at exactly one texel per unit.
+ * A mark must correspond to a seam, a folded knit rib, one stitch orbit,
+ * a material region, or a protective shell edge. No faux patch rectangles.
+ */
 export function headwearRegionPixel(id:HeadSilhouetteId,region:0|1|2|3,
  x:number,y:number):number{
  const u=local(x),v=local(y);
- const textile=HEADWEAR_MATERIAL_KIND[id];
- let shade=252;
- if(textile==='cotton'){
-  // Short clustered weave/twill marks. Each cluster spans multiple pixels
-  // and is surrounded by quiet cloth so it never becomes surface static.
-  if(((x+2*Math.floor(y/4))%9===2)&&y%7>=2&&y%7<=3)shade=223;
-  else if(((x+2*Math.floor(y/4))%9===3)&&y%7===2)shade=236;
-  if(id==='patrol-cap'){
+ switch(id){
+  case 'patrol-cap':
    if(region===0){
-    // One real panel seam, aligned through crown top and side profile.
-    if(u===0&&v>=-7&&v<=11)shade=200;
-    if(u===1&&v>=-5&&v<=10)shade=236;
-   }else if(region===1){
-    // Band is distinguishable through material and solid value, not faux
-    // bands drawn on top of a fitted ring.
-    shade=(x%8>=2&&x%8<=4&&y%6===2)?221:245;
-   }else if(region===2){
-    // A single bill-top construction line, parallel to front lip.
-    shade=(v===-5&&Math.abs(u)<=3)?195:247;
-   }else shade=237;
-  }else{
-   if(region===1)shade=(x%7>=1&&x%7<=3&&y%5===0)?219:245;
-   if(region===2){
-    // Boonie: one substantial stitch orbit 1 unit inside the wide brim;
-    // never the multi-ring scratchwork which previously looked fiddly.
-    const ring=Math.max(Math.abs(u),Math.abs(v));
-    shade=(ring===6)?202:246;
+    // ONE crown panel join, continuing around the four fitted side faces.
+    return u===0&&v>=6&&v<=8?220:250;
    }
-   if(region===3)shade=235;
-  }
- }else if(textile==='knit'){
-  if(region===0){
-   // Tall broken columns establish a knitted crown, with clear negative
-   // space between ribs; no crosshatch and no sweater-fuzz speckles.
-   const rib=((x+64)%4);
-   shade=rib===0?207:rib===1?231:249;
-   if(y%8===1&&rib===0)shade=220;
-  }else if(region===1){
-   // Folded cuff: wide, regular and slightly higher contrast.
-   const rib=((x+64)%3);
-   shade=rib===0?189:rib===1?223:249;
-  }else{
-   // Crown top has no fake vertical stripes painted across its roof.
-   shade=(Math.abs(u)<=2&&Math.abs(v)<=2)?231:246;
-  }
- }else if(textile==='composite'){
-  // Composite stays clean but NOT blank. Large manufacturing-value
-  // groups give tonal identity with nothing resembling Velcro/rails.
-  if(region===0){
-   shade=248;
-   if((u>=-3&&u<=0&&v>=2&&v<=4)||
-      (u>=2&&u<=4&&v>=-1&&v<=1))shade=223;
-   if((u>=-4&&u<=-2&&v>=-4&&v<=-3))shade=236;
-  }else if(region===1)shade=(u>=-3&&u<=3&&v>=2&&v<=4)?218:240;
-  else if(region===2)shade=(u>=-3&&u<=3&&v>=2&&v<=3)?210:235;
-  else shade=237;
-  if(id==='pasgt'&&region===2)shade=(v>=1&&v<=4)?205:233;
-  if(id==='high-cut'&&region===1&&v>=3)shade=224;
- }else{ // SSh-40: paint over a steel stamping, no rust/insignia/speckle.
-  if(region===0)shade=(u>=-3&&u<=2&&v>=2&&v<=4)?222:248;
-  else if(region===1)shade=(u>=-5&&u<=1&&v>=1&&v<=3)?221:244;
-  else if(region===2)shade=(v>=2&&v<=4)?205:232;
-  else shade=226;
+   if(region===1)return 239; // solid fitted band / shaded bill underside
+   if(region===2){
+    // A single short seam just inside the FRONT bill lip, not dark tabs.
+    return v===-6&&Math.abs(u)<=3?214:248;
+   }
+   // A center crown-panel seam; roof remains otherwise entirely quiet.
+   return u===0&&Math.abs(v)<=3?232:251;
+  case 'boonie':
+   if(region===0){
+    // Fabric crown with one quiet panel join, no repeated side markings.
+    return u===0&&v>=6&&v<=8?232:250;
+   }
+   if(region===1)return 240; // one continuous cloth band / brim underside
+   if(region===2){
+    // ONE stitch orbit inside the outer 13.45-unit square brim.
+    const distance=Math.max(Math.abs(u),Math.abs(v));
+    return distance===5?208:248;
+   }
+   return 250; // crown roof is plain fabric
+  case 'beanie':
+   if(region===0){
+    // Wide, quiet knitted crown ribs; no dense alternating barcode.
+    const rib=((u+24)%6);
+    return rib===0?233:rib===1?244:250;
+   }
+   if(region===1){
+    // The folded cuff is the focal detail: thicker, spaced knitted ribs.
+    const rib=((u+24)%4);
+    return rib===0?211:rib===1?234:248;
+   }
+   return 250; // absolutely no artificial square on crown top
+  case 'ach':
+   // Matte manufactured shell: shape/edge through vertex colors, not
+   // simulated patch/Velcro rectangles on the crown or side.
+   return region===1?241:region===2?231:region===3?251:249;
+  case 'high-cut':
+   // Even quieter than the ACH. Ear relief is actual geometry.
+   return region===1?240:region===2?228:region===3?251:249;
+  case 'pasgt':
+   // Monolithic older shell with distinctly weighty brow and lower skirt.
+   return region===1?236:region===2?217:region===3?251:249;
+  case 'soviet-steel':
+   // Stamped painted bowl: absolutely clean roof, one purposeful dark rim.
+   return region===1?245:region===2?221:region===3?251:249;
  }
- return clamp8(shade);
 }
 /** Compatibility accepts material names for older tests/tools. Runtime
  * uses individual item IDs to retain distinct construction markings.
@@ -122,7 +112,7 @@ export function headwearDetailTexture(id:HeadSilhouetteId):THREE.DataTexture{
  texture.magFilter=THREE.NearestFilter;
  texture.minFilter=THREE.NearestMipmapNearestFilter;
  texture.generateMipmaps=true;
- texture.name='Fieldwork 2B: '+id+' 1-to-1 material atlas';
+ texture.name='Fieldwork 2B.1: '+id+' 1-to-1 material atlas';
  texture.needsUpdate=true;textureCache.set(id,texture);return texture;
 }
 export function createHeadwearDetailMaterial(id:HeadSilhouetteId):THREE.MeshStandardMaterial{
@@ -140,10 +130,12 @@ export function createHeadwearDetailMaterial(id:HeadSilhouetteId):THREE.MeshStan
  */
 export function headwearFaceRegion(id:HeadSilhouetteId,name:string,
  axis:number,sign:number):0|1|2|3{
+ // Region 3 always means the bare, quiet top, never an underside decal.
+ // Region 2 always means a real construction lip/brow or a brim TOP.
  if(id==='patrol-cap'||id==='boonie'){
   if(name.includes('band'))return 1;
   if(name.includes('bill')||name.includes('brim'))
-   return axis===1&&sign===1?2:3;
+   return axis===1&&sign===1?2:1;
   return axis===1&&sign===1?3:0;
  }
  if(id==='beanie'){
@@ -153,16 +145,16 @@ export function headwearFaceRegion(id:HeadSilhouetteId,name:string,
  if(id==='pasgt'){
   if(name.includes('peak'))return 2;
   if(name.includes('skirt')||name.includes('ear-lobe')||name.includes('temple'))return 1;
-  return axis===1&&sign===-1?3:0;
+  return axis===1&&sign===1?3:0;
  }
  if(id==='soviet-steel'){
   if(name.includes('edge'))return 2;
   if(name.includes('bowl'))return 1;
-  return axis===1&&sign===-1?3:0;
+  return axis===1&&sign===1?3:0;
  }
  if(name.includes('nape')||name.includes('temple')||name.includes('wrap'))return 1;
  if(name.includes('brow'))return 2;
- return axis===1&&sign===-1?3:0;
+ return axis===1&&sign===1?3:0;
 }
 /** Large intentional vertex-color hierarchy. Texture values add material
  * identity; this adds no triangles, new bands or decorative rails. */

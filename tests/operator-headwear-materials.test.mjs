@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import {createHeadwearSilhouette,headwearCuboidVolumes}
  from '../src/operator-headwear-silhouettes.ts';
 import {createHeadwearDetailMaterial,headwearDetailPixels,
- headwearFaceTone,headwearFaceRegion,HEADWEAR_ATLAS_PIXELS,
+ headwearFaceTone,headwearFaceRegion,headwearRegionPixel,HEADWEAR_ATLAS_PIXELS,
  HEADWEAR_DETAIL_PIXEL_WORLD_SIZE}
  from '../src/operator-headwear-materials.ts';
 import {TILE_PIXELS,PIXEL_WORLD_SIZE}
@@ -42,7 +42,7 @@ test('headwear texture scale and grayscale-only pixels match operator materials'
    assert.equal(pixels[i],pixels[i+1]);
    assert.equal(pixels[i+1],pixels[i+2]);
    assert.equal(pixels[i+3],255);
-   if(pixels[i]<236)dark++;
+   if(pixels[i]<245)dark++;
   }
   assert.ok(dark/(pixels.length/4)>.01,kind+' must be visibly developed');
   assert.ok(dark/(pixels.length/4)<.90,kind+' must retain flat negative space');
@@ -73,7 +73,7 @@ test('Stage 2B physical pixel scale is identical across operator and environment
 });
 test('Stage 2B detail is anchored to the correct construction regions',()=>{
  assert.equal(headwearFaceRegion('patrol-cap','patrol-anchored-bill',1,1),2);
- assert.equal(headwearFaceRegion('patrol-cap','patrol-anchored-bill',1,-1),3);
+ assert.equal(headwearFaceRegion('patrol-cap','patrol-anchored-bill',1,-1),1);
  assert.equal(headwearFaceRegion('boonie','boonie-left-brim',1,1),2);
  assert.equal(headwearFaceRegion('beanie','beanie-front-cuff',2,-1),1);
  assert.equal(headwearFaceRegion('beanie','beanie-fitted-crown',1,1),3);
@@ -89,4 +89,42 @@ test('Stage 2B patterns are individualized and substantially legible',()=>{
  assert.equal(tex.image.height,64);
  assert.equal(tex.wrapS,THREE.ClampToEdgeWrapping);
  assert.equal(tex.magFilter,THREE.NearestFilter);
+});
+
+test('2B.1: crown tops are quiet instead of containing arbitrary dark blocks',()=>{
+ for(const id of ids){
+  const values=new Set();
+  for(let y=0;y<32;y++)for(let x=0;x<32;x++)values.add(headwearRegionPixel(id,3,x,y));
+  assert.ok(values.size<=2,id+' top must be clean');
+ }
+ for(const id of ['beanie','ach','high-cut','pasgt','soviet-steel']){
+  assert.equal(headwearRegionPixel(id,3,10,10),headwearRegionPixel(id,3,20,20),id);
+ }
+});
+test('2B.1: marks must explain construction, not random rectangles',()=>{
+ // One patrol seam on the vertical crown and a bill-edge run.
+ assert.ok(headwearRegionPixel('patrol-cap',0,16,23)<
+  headwearRegionPixel('patrol-cap',0,19,23));
+ assert.ok(headwearRegionPixel('patrol-cap',2,16,10)<
+  headwearRegionPixel('patrol-cap',2,16,13));
+ // A single boonie stitch ring at a real distance from brim perimeter.
+ assert.ok(headwearRegionPixel('boonie',2,21,16)<
+  headwearRegionPixel('boonie',2,19,16));
+ // Ribbed cuff is higher contrast than the soft crown; roof is plain.
+ assert.ok(headwearRegionPixel('beanie',1,16,17)<
+  headwearRegionPixel('beanie',0,16,17));
+ // No helmet has three unmotivated dark spots on the crown.
+ for(const id of ['ach','high-cut','pasgt','soviet-steel']){
+  assert.equal(headwearRegionPixel(id,0,12,15),
+   headwearRegionPixel(id,0,20,24),id);
+ }
+});
+test('2B.1: physical top/underside mapping is intentional',()=>{
+ assert.equal(headwearFaceRegion('patrol-cap','patrol-integrated-crown',1,1),3);
+ assert.equal(headwearFaceRegion('boonie','boonie-integrated-crown',1,1),3);
+ assert.equal(headwearFaceRegion('boonie','boonie-front-brim',1,-1),1);
+ for(const id of ['ach','high-cut','pasgt','soviet-steel']){
+  assert.equal(headwearFaceRegion(id,id+'-continuous-crown',1,1),3,id);
+ }
+ assert.equal(headwearFaceRegion('soviet-steel','ssh40-integrated-front-edge',2,-1),2);
 });
