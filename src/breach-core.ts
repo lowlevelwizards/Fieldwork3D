@@ -50,8 +50,8 @@ const wall=(x:number,y:number,u:number,v:number):Segment=>
 export const WALLS:Segment[]=[
   wall(112,100,590,100),wall(112,100,112,532),
   wall(590,100,590,532),
-  wall(112,532,276,532),wall(329,532,590,532),
-  wall(382,100,382,305),wall(382,345,382,532),
+  wall(112,532,282,532),wall(324,532,590,532),
+  wall(382,100,382,307),wall(382,343,382,532),
 ];
 export const COVER:Obstacle[]=[
   {x:159,y:189,w:86,h:39,low:true},
@@ -77,8 +77,8 @@ export function activateSite(next:Site|null){
 export const activeSite=()=>site;
 export const initialDoors=():Door[]=>
   (site?.doors??[
-    {id:'FRONT',a:{x:276,y:532},b:{x:329,y:532},open:false,openedAt:-1},
-    {id:'INNER',a:{x:382,y:305},b:{x:382,y:345},open:false,openedAt:-1},
+    {id:'FRONT',a:{x:282,y:532},b:{x:324,y:532},open:false,openedAt:-1},
+    {id:'INNER',a:{x:382,y:307},b:{x:382,y:343},open:false,openedAt:-1},
   ]).map(d=>({...d,a:{...d.a},b:{...d.b}}));
 export const pointToSegment=(p:Pt,s:Segment):number=>{
   const dx=s.b.x-s.a.x,dy=s.b.y-s.a.y;
