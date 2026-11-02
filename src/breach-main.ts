@@ -2585,6 +2585,9 @@ function updateReplayHud(){
     Math.round(1000*replayTime/recorder.duration):0);
   ui.replayClock.textContent=clockText(replayTime)+' / '+
     clockText(recorder.duration);
+  ui.replaySeek.setAttribute('aria-valuetext',
+    clockText(replayTime)+' of '+clockText(recorder.duration));
+  ui.replayPlay.dataset.caption=replayPlaying?'PAUSE':'PLAY';
   const playbackIcon=replayPlaying?'pause':'go';
   if(ui.replayPlay.dataset.mode!==playbackIcon){
     ui.replayPlay.dataset.mode=playbackIcon;
@@ -2593,6 +2596,9 @@ function updateReplayHud(){
     ui.replayPlay.title=replayPlaying?'Pause replay':'Play replay';
   }
   ui.replaySpeed.textContent=replayRate+'×';
+  ui.replaySpeed.title='Playback speed '+replayRate+'× · Tap to change';
+  ui.replaySpeed.setAttribute('aria-label',
+    'Playback speed '+replayRate+' times. Tap to select next speed');
   ui.replaySight.textContent=replayOmniscient?'FULL VIEW':'TEAM SIGHT';
   ui.replayView.textContent=viewMode.toUpperCase();
   ui.replayFollow.textContent=replayFollow?'FOLLOW '+replayFollowId.toUpperCase():'FOLLOW';
