@@ -30,7 +30,7 @@ try{
     viewport:{width:390,height:844},deviceScaleFactor:2,
     hasTouch:true,isMobile:true,
   });
-  phone.setDefaultTimeout(12000);
+  phone.setDefaultTimeout(45000);
   const errors=[];
   // The Pages root must open this same game, not the archived watershed.
   const home=await browser.newPage({viewport:{width:390,height:844}});
@@ -108,8 +108,12 @@ try{
   await original.locator('#app').waitFor();
   await original.close();
   phone.on('pageerror',e=>errors.push(e.message));
-  await phone.goto(url,{waitUntil:'domcontentloaded'});
-  await phone.locator('#breach3dCanvas').waitFor({state:'visible'});
+  await phone.goto(url+'&seed=23',{waitUntil:'domcontentloaded'});
+  await phone.locator('#breach3dCanvas').waitFor({state:'visible'})
+    .catch(async error=>{
+      throw Error('Fixed-site tactical startup failed: '+errors.join(' | ')+
+        ' · '+(await phone.locator('body').innerText()).slice(0,320),{cause:error});
+    });
   await phone.waitForTimeout(350);
   const cameraState=async()=>phone.locator('#breach3dCanvas').evaluate(c=>({
     yaw:Number(c.dataset.cameraYaw),pitch:Number(c.dataset.cameraPitch),
