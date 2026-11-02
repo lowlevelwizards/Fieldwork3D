@@ -38,6 +38,8 @@ test('settings present reproducible current seed, not hidden room layout in HUD'
 test('mobile audit validates the actual new site rather than outdated HUD seed text',()=>{
  assert.match(audit,/locator\('#siteIdentity'\)\.getAttribute\('data-site-seed'\)/);
  assert.match(audit,/waitForFunction\(previous=>/);
+ assert.ok(audit.includes('!/^[0-9]+$/.test(beforeSeed)'),
+  'Browser audit must recognize numeric seeds without escaped-backslash errors');
  assert.doesNotMatch(audit,/siteTitle\.includes\('SEED'\)/);
  assert.match(audit,/siteTitle\?\.includes\('4 OPERATORS'\)/);
 });
