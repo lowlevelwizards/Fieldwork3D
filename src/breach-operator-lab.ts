@@ -744,7 +744,11 @@ function frameWardrobeSelection(){
   operatorAttachmentPoint(rig,focusZone):new THREE.Vector3(
     rig?.root.position.x??0,16,rig?.root.position.z??0);
  const {x,y,z}=target;
- camera.position.set(x+54,y+35,z+57);
+ // Match the same canonical model-space 3/4 view as the standard camera.
+ // The view follows the actor's facing, rather than hard-coded world +X.
+ const threeQuarter=new THREE.Vector3(57,35,-54).applyAxisAngle(
+   new THREE.Vector3(0,1,0),(rig?.legacyYaw??0)-LEGACY_FRAME_YAW);
+ camera.position.copy(target).add(threeQuarter);
  control.target.copy(target);
  camera.zoom=focus==='all'?1.4:
   focus==='head'?3.0:focus==='hands'||focus==='knees'||focus==='feet'?2.45:1.95;
