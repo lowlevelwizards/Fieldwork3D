@@ -12,6 +12,8 @@ export const DOOR_PANEL_END_RECESS=2;
 export const INTERIOR_DOOR_OPENING_WIDTH=36;
 export const ENTRY_DOOR_OPENING_WIDTH=42;
 export function ordinaryDoorOpeningWidth(id:string):number{
+ // Property gates are actual fencing access, not human-scale room doors.
+ if(id==='PROPERTY-GATE')return 48;
  return id==='FRONT'||id==='SERVICE'||id.startsWith('COURT-')?
    ENTRY_DOOR_OPENING_WIDTH:INTERIOR_DOOR_OPENING_WIDTH;
 }
