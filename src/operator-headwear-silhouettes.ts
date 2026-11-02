@@ -25,7 +25,7 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
  'beanie':{id:'beanie',frontExtent:-4.75,rearExtent:4.75,
   top:8.75,earEdge:5.58,foreheadEdge:5.58,billLength:0},
  'pasgt':{id:'pasgt',frontExtent:-5.80,rearExtent:5.83,
-  top:9.25,earEdge:2.46,foreheadEdge:4.42,billLength:0},
+  top:9.25,earEdge:2.15,foreheadEdge:4.42,billLength:0},
  'soviet-steel':{id:'soviet-steel',frontExtent:-6.275,rearExtent:6.275,
   top:9.195,earEdge:4.635,foreheadEdge:4.635,billLength:0},
  'ach':{id:'ach',frontExtent:-5.62,rearExtent:5.60,
@@ -67,12 +67,12 @@ const BEANIE_CUBOIDS:readonly HeadwearCuboid[]=[
 const PASGT_CUBOIDS:readonly HeadwearCuboid[]=[
  {name:'pasgt-full-crown',x:0,y:7.48,z:0,width:10.65,height:3.54,depth:10.75},
  {name:'pasgt-deep-brow',x:0,y:5.42,z:-5.10,width:10.65,height:2.00,depth:1.40},
- {name:'pasgt-low-nape',x:0,y:4.54,z:5.07,width:10.65,height:4.16,depth:1.52},
+ {name:'pasgt-low-nape',x:0,y:4.40,z:5.07,width:10.65,height:4.50,depth:1.52},
  ...([-1,1] as const).flatMap(sign=>[
   {name:sign===-1?'pasgt-left-temple':'pasgt-right-temple',
    x:sign*4.85,y:5.28,z:-3.25,width:1.30,height:2.70,depth:3.30},
   {name:sign===-1?'pasgt-left-ear':'pasgt-right-ear',
-   x:sign*4.85,y:4.54,z:1.55,width:1.30,height:4.16,depth:7.00}
+   x:sign*4.85,y:4.40,z:1.55,width:1.30,height:4.50,depth:7.00}
  ])
 ];
 
