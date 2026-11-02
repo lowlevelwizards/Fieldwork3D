@@ -6,6 +6,7 @@ import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {wardrobeMount} from './operator-wardrobe-mounts.ts';
 import {initialWardrobeAccessories,readWardrobeAccessories,
  type WardrobeAccessoryConfiguration} from './operator-wardrobe-accessories.ts';
+import {isHeadwearSolidColorId,type HeadwearSolidColorId} from './operator-headwear-colors.ts';
 export const WARDROBE_SLOTS=[
  'headwear','facewear','eyewear','headset','top','trousers','footwear',
  'armorStyle','rigStyle','beltStyle','packStyle','gloves','knees','wrist'
@@ -151,7 +152,7 @@ export type WardrobePattern=typeof WARDROBE_PATTERNS[number];
 export type WardrobeOptions={
  version:1;styles:Partial<Record<WardrobeSlot,string>>;
  patterns:Partial<Record<'top'|'trousers'|'armor'|'gear'|'pack'|'head',WardrobePattern>>;
- palette:number;rolledSleeves:boolean;
+ palette:number;headwearColor?:HeadwearSolidColorId;rolledSleeves:boolean;
  accessories:WardrobeAccessoryConfiguration;
  mounts:{medical?:string;utility?:string;magazineOrder:'left-right'|'right-left'};
 };
@@ -187,6 +188,7 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  }
  if(Number.isInteger(v.palette)&&v.palette!>=0&&v.palette!<=15)
   result.palette=v.palette!;
+ if(isHeadwearSolidColorId(v.headwearColor))result.headwearColor=v.headwearColor;
  result.rolledSleeves=v.rolledSleeves===true;
  result.accessories=readWardrobeAccessories(v.accessories);
  if(v.mounts&&typeof v.mounts==='object'){
