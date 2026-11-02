@@ -6,10 +6,13 @@ import * as THREE from 'three';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {createHeadwearSilhouette} from './operator-headwear-silhouettes.ts';
+import {createHeadwearDetailMaterial} from './operator-headwear-materials.ts';
+import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import type {WardrobeSlot} from './operator-wardrobe-data.ts';
 type Model=Record<string,THREE.Group>;
 export type WardrobeHeadLayers={
  headwear:Model;facewear:Model;eyewear:Model;headset:Model;
+ headwearMaterials:Record<string,THREE.MeshStandardMaterial>;
 };
 const cube=(g:THREE.Group,m:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number)=>{
@@ -22,12 +25,14 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  canonicalHead:THREE.Group,cloth:THREE.Material,
  vest:THREE.Material,dark:THREE.Material,skin:THREE.Material):WardrobeHeadLayers{
  const headwear:Model={},facewear:Model={},eyewear:Model={},headset:Model={};
- // All silhouette candidates use the same untextured neutral material.
- // This isolates geometric silhouette from broken camouflage and makes the
- // first visual approval possible without the Stage 2 fabric rewrite.
- const silhouetteMaterial=new THREE.MeshStandardMaterial({
-  color:0x899089,roughness:.96,flatShading:true
- });
+ // Each approved silhouette keeps its geometry, but now owns a neutral
+ // recolorable material. Material detail never produces coplanar geometry.
+ const headwearMaterials:Record<string,THREE.MeshStandardMaterial>={};
+ const detail=(id:HeadSilhouetteId)=>{
+  const material=createHeadwearDetailMaterial(id);
+  headwearMaterials[id]=material;
+  return material;
+ };
  const g=(set:Model,id:string,canonical=false)=>{
   const model=group(canonical?canonicalHead:head);
   model.visible=false;set[id]=model;return model;
@@ -42,13 +47,13 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  brimCap('baseball-cap');
  brimCap('backwards-cap',true);
  // Stage 1 silhouette prototypes live in -Z forward head space.
- g(headwear,'patrol-cap',true).add(createHeadwearSilhouette('patrol-cap',silhouetteMaterial));
+ g(headwear,'patrol-cap',true).add(createHeadwearSilhouette('patrol-cap',detail('patrol-cap')));
  brimCap('field-cap',false,true);
  // Stage 1G–1J: these already exist in the wardrobe catalog. Replace
  // their older multi-cube placeholders with the same canonical, unified
  // silhouette system as the approved ACH and high-cut.
  for(const id of ['boonie','beanie','pasgt','soviet-steel'] as const)
-  g(headwear,id,true).add(createHeadwearSilhouette(id,silhouetteMaterial));
+  g(headwear,id,true).add(createHeadwearSilhouette(id,detail(id)));
  const helmet=(id:string,size:number,cut:number,rail:boolean)=>{
   const model=g(headwear,id);
   cube(model,vest,-.5,6.85,0,size,2.45,size);
@@ -60,11 +65,11 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   }
   if(rail)cube(model,dark,2.0,8.52,0,1.4,.4,2.0);
  };
- g(headwear,'ach',true).add(createHeadwearSilhouette('ach',silhouetteMaterial));
- g(headwear,'high-cut',true).add(createHeadwearSilhouette('high-cut',silhouetteMaterial));
+ g(headwear,'ach',true).add(createHeadwearSilhouette('ach',detail('ach')));
+ g(headwear,'high-cut',true).add(createHeadwearSilhouette('high-cut',detail('high-cut')));
  // Existing saved rail layouts keep the correct base shell, with actual
  // rails explicitly deferred to the approved detailing phase.
- g(headwear,'high-cut-rails',true).add(createHeadwearSilhouette('high-cut',vest));
+ g(headwear,'high-cut-rails',true).add(createHeadwearSilhouette('high-cut',detail('high-cut')));
  helmet('skate-helmet',9.65,2,false);
  helmet('bump-helmet',9.1,2,true);
  // One-opening and three-opening balaclavas use a forehead and chin with
@@ -123,7 +128,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  // Consolidate only static meshes; hidden families still incur no draw calls.
  for(const set of [headwear,facewear,eyewear,headset])
   for(const model of Object.values(set))consolidateVisualGroup(model);
- return {headwear,facewear,eyewear,headset};
+ return {headwear,facewear,eyewear,headset,headwearMaterials};
 }
 export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  headwear:string,facewear:string,eyewear:string,headset:string){
