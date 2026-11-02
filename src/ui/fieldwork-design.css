@@ -109,3 +109,13 @@
 .fw-confirm-actions{display:flex;gap:10px}
 .fw-confirm-actions>.fw-button{flex:1}
 @media(max-width:355px){.fw-confirm-actions{flex-direction:column}}
+
+/* UX2-03 — fieldwork text editing, no browser-default alert/prompt surfaces. */
+.fw-text-prompt-label{display:grid;gap:9px;margin:14px 0 18px;
+ font:650 12px/1.3 "IBM Plex Sans",system-ui,sans-serif;
+ color:var(--fw-text-muted);letter-spacing:.04em}
+.fw-text-prompt{width:100%;box-sizing:border-box;min-height:46px;
+ border-radius:var(--fw-radius-sm);border:1px solid var(--fw-panel-border);
+ background:var(--fw-panel-raised);color:var(--fw-text);padding:10px;
+ font:600 16px/1.2 "IBM Plex Sans",system-ui,sans-serif}
+.fw-text-prompt:focus-visible{outline:2px solid var(--fw-focus);outline-offset:2px}

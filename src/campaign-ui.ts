@@ -21,6 +21,8 @@ import {attachmentPrice} from './equipment-weapon-inventory.ts';
 import {stageMagazines,magazinePlacementSummary,magazineSpace,
  type MagazineLocation} from './equipment-magazine-placement.ts';
 import {kitMedicalSupplies,medicalSupplyCount} from './equipment-medical-supplies.ts';
+import {promptFieldworkText,confirmFieldworkAction,showFieldworkNotice}
+ from './ui/fieldwork-controls.ts';
 import './campaign-style.css';
 
 export type CampaignHandlers={
@@ -366,11 +368,17 @@ export class CampaignScreen{
    this.weaponView?'DRAG TO ROTATE · TAP A MOUNT TO SELECT ITS SLOT':'DRAG THE SOLDIER TO ROTATE'));
   summary.append(node('strong','campaign-kit-name',person.callsign));
   const identityActions=node('div','campaign-kit-actions');
-  const rename=button('EDIT CALLSIGN',()=>{
-   const name=window.prompt('Operator callsign (up to 24 characters)',person.callsign);
-   if(name!==null)this.handlers.renameOperator(id,name);
+  const rename=button('EDIT CALLSIGN',async()=>{
+   const name=await promptFieldworkText({
+    title:'Edit operator callsign',label:'CALLSIGN',value:person.callsign,
+    maxLength:24,confirmLabel:'SAVE CALLSIGN'
+   });
+   if(name!==null&&name!==person.callsign)this.handlers.renameOperator(id,name);
   });
-  const appearance=button('NEXT LOOK',()=>this.handlers.cycleAppearance(id));
+  const appearance=button('EDIT APPEARANCE',()=>{
+   wardrobePanel.open=true;
+   wardrobePanel.scrollIntoView({block:'start',behavior:'smooth'});
+  });
   rename.disabled=!!c.activeContractId;appearance.disabled=!!c.activeContractId;
   identityActions.append(rename,appearance);summary.append(identityActions);
   const carrying=carryCapacityReport(person.loadout,person.magazines);
@@ -439,8 +447,12 @@ export class CampaignScreen{
   const presetTitle=node('h2','','SAVED KIT PRESETS');
   editor.append(presetTitle);
   const presetActions=node('div','campaign-kit-actions');
-  const save=button('SAVE CURRENT KIT',()=>{
-   const name=window.prompt('Preset name (up to 32 characters)',person.callsign+' / FIELD');
+  const save=button('SAVE CURRENT KIT',async()=>{
+   const name=await promptFieldworkText({
+    title:'Save equipment preset',label:'PRESET NAME',
+    value:person.callsign+' / FIELD',maxLength:32,
+    confirmLabel:'SAVE PRESET'
+   });
    if(name!==null)this.handlers.saveKitPreset(id,name);
   });
   save.disabled=locked||c.kitPresets.length>=24;
@@ -456,14 +468,21 @@ export class CampaignScreen{
    if(picker.value){
     const preset=c.kitPresets.find(p=>p.id===picker.value);
     if(preset&&preset.weapon!==person.weapon&&c.inventory.weapons[preset.weapon]<1){
-     window.alert('This preset requires a primary weapon not currently available in the Armory.');return;
+     void showFieldworkNotice('Equipment unavailable',
+      'This preset requires a primary weapon not currently available in the armory.');
+     return;
     }
     this.handlers.applyKitPreset(id,picker.value);
    }
   });
-  const remove=button('DELETE PRESET',()=>{
-   if(picker.value&&window.confirm('Delete selected kit preset?'))
-    this.handlers.deleteKitPreset(picker.value);
+  const remove=button('DELETE PRESET',async()=>{
+   if(!picker.value)return;
+   const selectedPreset=picker.value;
+   if(await confirmFieldworkAction({
+    title:'Delete saved kit preset?',
+    message:'This deletes the preset, not the equipment you own.',
+    confirmLabel:'DELETE PRESET',danger:true
+   }))this.handlers.deleteKitPreset(selectedPreset);
   });
   load.disabled=locked||c.kitPresets.length===0;
   remove.disabled=locked||c.kitPresets.length===0;
@@ -600,16 +619,21 @@ export class CampaignScreen{
    mountSelectors.set(slot,select);
    select.addEventListener('focus',()=>{this.selectedMount=slot;
     this.workbench?.setActiveSlot(slot);});
-   select.addEventListener('change',()=>{
+   select.addEventListener('change',async()=>{
     const partId=select.value,price=attachmentPrice(partId);
     const stock=c.inventory.attachments[partId]??0;
     const acquire=price>0&&stock<1;
     if(acquire&&c.funds<price){
-     window.alert('Not enough credits for this attachment.');
+     void showFieldworkNotice('Insufficient funds',
+      'You do not have enough credits for this attachment.');
      select.value=current;return;
     }
-    if(acquire&&!window.confirm('Buy and install '+
-     (WEAPON_ATTACHMENTS[partId]?.name??partId)+' for '+price+' credits?')){
+    if(acquire&&!await confirmFieldworkAction({
+     title:'Purchase and install attachment?',
+     message:(WEAPON_ATTACHMENTS[partId]?.name??partId)+
+      ' costs '+price+' credits. Confirm this armory purchase.',
+     confirmLabel:'BUY & INSTALL'
+    })){
      select.value=current;return;
     }
     this.handlers.equipAttachment(id,slot,partId,acquire);
@@ -669,7 +693,8 @@ export class CampaignScreen{
    const file=input.files?.[0];
    if(!file)return;
    void file.text().then(raw=>this.handlers.importSave(raw))
-    .catch(()=>window.alert('Could not read campaign save file.'));
+    .catch(()=>{void showFieldworkNotice('Import failed',
+     'Could not read the selected campaign save file.');});
   });
   return input;
  }
