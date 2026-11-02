@@ -168,3 +168,37 @@
  border-color:var(--fw-brass);color:#f1dfc3}
 .campaign-readiness-ok{font:650 12px/1.5 "IBM Plex Sans",system-ui,sans-serif;
  color:var(--fw-sage);margin:8px 0 0}
+
+/* UX2 10: contract decision happens after a readable, cancellable preflight. */
+.campaign-preflight-backdrop{position:fixed;z-index:165;inset:0;
+ display:grid;place-items:center;padding:calc(14px + env(safe-area-inset-top))
+ 14px calc(14px + env(safe-area-inset-bottom));
+ background:#04110fe8;touch-action:pan-y}
+.campaign-preflight{width:min(100%,510px);max-height:88dvh;overflow-y:auto;
+ overscroll-behavior:contain;padding:20px;color:var(--fw-text);
+ font:13px/1.5 Oxanium,system-ui,sans-serif}
+.campaign-preflight h2{font-size:21px;line-height:1.2;margin:8px 0 16px}
+.campaign-preflight h3{font-size:12px;letter-spacing:.08em;color:var(--fw-brass)}
+.campaign-preflight-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.campaign-preflight-field{padding:10px;background:var(--fw-panel);
+ border:1px solid #486056;border-radius:var(--fw-radius-sm)}
+.campaign-preflight-field span{font-size:10px;font-weight:700;color:var(--fw-brass)}
+.campaign-preflight-field p{font-size:12px;line-height:1.45;margin:5px 0 0}
+.campaign-preflight-roster{margin:15px 0 8px}
+.campaign-preflight-member{display:flex;align-items:center;
+ justify-content:space-between;gap:10px;min-height:36px;
+ padding:6px 0;border-bottom:1px solid #50635955}
+.campaign-preflight-member span{font-size:11px;color:var(--fw-text-muted);text-align:right}
+.campaign-preflight-warning{margin:12px 0;border:1px solid var(--fw-warning);
+ border-radius:var(--fw-radius-sm);padding:9px 12px;color:#edd2bb}
+.campaign-preflight-warning>strong{font-size:11px;letter-spacing:.06em}
+.campaign-preflight-warning p{font-size:12px;margin:4px 0}
+.campaign-preflight-actions{display:flex;gap:8px;margin-top:18px}
+.campaign-preflight-actions button{flex:1;min-height:46px;
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm);
+ background:var(--fw-panel-raised);color:var(--fw-text);font:700 12px Oxanium,system-ui,sans-serif;
+ padding:10px;touch-action:manipulation}
+.campaign-preflight-actions .campaign-primary{background:var(--fw-sage);
+ color:var(--fw-bg)}
+@media(max-width:390px){.campaign-preflight-fields{grid-template-columns:1fr}
+ .campaign-preflight-actions{flex-direction:column}}

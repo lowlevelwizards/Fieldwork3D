@@ -249,7 +249,7 @@ export class CampaignScreen{
    jobs.append(button('CONTINUE DEPLOYMENT',this.handlers.resumeContract,'campaign-primary'));
   }else{
    for(const contract of c.contracts.filter(k=>k.status==='available'&&k.deadline>=c.day).slice(0,3)){
-    jobs.append(this.contract(contract));
+    jobs.append(this.contract(contract,c));
    }
   }
   grid.append(jobs);main.append(grid);
@@ -756,7 +756,7 @@ export class CampaignScreen{
   });
   return input;
  }
- private contract(c:Contract){
+ private contract(c:Contract,campaign:CampaignState){
   const card=node('article','campaign-contract');
   card.append(node('strong','',c.title));
   card.append(node('div','campaign-muted',c.region+' · '+['','LOW','MODERATE','HIGH'][c.risk]+' RISK'));
@@ -764,7 +764,86 @@ export class CampaignScreen{
   card.append(node('p','',c.description));
   const row=node('div','campaign-contract-row');
   row.append(node('span','',c.reward+' CR · DEADLINE DAY '+c.deadline));
-  row.append(button('BRIEF / DEPLOY',()=>this.handlers.chooseContract(c.id),'campaign-primary'));
+  row.append(button('REVIEW DEPLOYMENT',()=>this.reviewContract(c,campaign),'campaign-primary'));
   card.append(row);return card;
+ }
+ /** Review only information the contract already reveals. Acceptance is a separate action. */
+ private reviewContract(contract:Contract,campaign:CampaignState){
+  const prior=document.activeElement instanceof HTMLElement?document.activeElement:null;
+  const overlay=node('div','campaign-preflight-backdrop');
+  const panel=node('section','campaign-preflight fw-sheet');
+  panel.setAttribute('role','dialog');
+  panel.setAttribute('aria-modal','true');
+  const heading=node('h2','',contract.title);
+  heading.id='campaign-preflight-title';
+  panel.setAttribute('aria-labelledby',heading.id);
+  panel.append(node('div','campaign-eyebrow','CONTRACT / PREDEPLOYMENT REVIEW'),heading);
+  const info=node('div','campaign-preflight-fields');
+  const add=(label:string,value:string)=>{
+   const section=node('div','campaign-preflight-field');
+   section.append(node('span','',label),node('p','',value));
+   info.append(section);
+  };
+  add('OBJECTIVE',contract.description);
+  add('ASSIGNMENT',contract.kind.replace(/-/g,' ').toUpperCase());
+  add('LOCATION',contract.region);
+  add('RISK',['','LOW','MODERATE','HIGH'][contract.risk]);
+  add('REWARD / DEADLINE',contract.reward+' CR · DAY '+contract.deadline);
+  add('INTELLIGENCE',{
+   unknown:'Site layout and threats are unknown until discovered',
+   scouted:'Exterior intelligence available; interior remains uncertain',
+   'floor-plan':'Floor plan known; hostile positions remain unknown'
+  }[contract.intel]);
+  panel.append(info);
+  const roster=node('div','campaign-preflight-roster');
+  roster.append(node('h3','','ASSIGNED OPERATORS'));
+  const assigned=campaign.squadIds.map(id=>campaign.operators.find(o=>o.id===id))
+   .filter((o):o is NonNullable<typeof o>=>!!o);
+  for(const member of assigned){
+   const person=node('div','campaign-preflight-member');
+   person.append(node('strong','',member.callsign),node('span','',
+    member.weapon.toUpperCase()+' · '+(member.recoveryDays>0?
+     'RECOVERING '+member.recoveryDays+' DAYS':'READY')));
+   roster.append(person);
+  }
+  if(!assigned.length)roster.append(node('p','campaign-note','NO SQUAD ASSIGNED'));
+  panel.append(roster);
+  const cautions:string[]=[];
+  if(assigned.length<4)cautions.push('Only '+assigned.length+' of 4 squad slots filled');
+  if(assigned.some(p=>p.recoveryDays>0))cautions.push('Assigned operator still recovering');
+  if(campaign.supplies.ammo<60)cautions.push('Low ammunition stock for future resupply');
+  if(campaign.supplies.medical===0)cautions.push('No spare medical kits in stock');
+  if(cautions.length){
+   const warnings=node('div','campaign-preflight-warning');
+   warnings.append(node('strong','','READINESS ADVISORIES'));
+   for(const warning of cautions)warnings.append(node('p','',warning));
+   panel.append(warnings);
+  }
+  const actions=node('div','campaign-preflight-actions');
+  const cancel=button('RETURN TO CONTRACTS',()=>dismiss());
+  const deploy=button('ACCEPT & DEPLOY',()=>{
+   dismiss();
+   this.handlers.chooseContract(contract.id);
+  },'campaign-primary');
+  const dismiss=()=>{
+   overlay.remove();
+   prior?.focus({preventScroll:true});
+  };
+  overlay.addEventListener('click',e=>{
+   if(e.target===overlay)dismiss();
+  });
+  overlay.addEventListener('keydown',e=>{
+   if(e.key==='Escape'){e.preventDefault();dismiss();}
+   else if(e.key==='Tab'){
+    const active=document.activeElement;
+    if(active===cancel&&e.shiftKey){e.preventDefault();deploy.focus();}
+    else if(active===deploy&&!e.shiftKey){e.preventDefault();cancel.focus();}
+   }
+  });
+  actions.append(cancel,deploy);
+  panel.append(actions);
+  overlay.append(panel);
+  document.body.append(overlay);
+  cancel.focus({preventScroll:true});
  }
 }
