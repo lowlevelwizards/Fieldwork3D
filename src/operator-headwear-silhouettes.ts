@@ -90,7 +90,7 @@ function highCutHelmet(g:THREE.Group,m:THREE.Material){
   width:9.20,height:1.10,depth:1.12});
  for(const side of [-1,1])
   addCuboid(g,m,{name:side<0?'highcut-left-temple':'highcut-right-temple',
-   x:side*4.42,y:7.08,z:-2.93,
+   x:side*4.25,y:7.08,z:-2.93,
    width:.94,height:1.18,depth:4.60});
  addCuboid(g,m,{name:'highcut-short-nape',x:0,y:6.50,z:4.95,
   width:9.20,height:1.65,depth:1.00});
