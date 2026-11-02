@@ -72,7 +72,8 @@ const ACH_CUBOIDS:readonly HeadwearCuboid[]=[
  // contour with no distinct protective purpose.
  {name:'ach-continuous-crown',x:0,y:7.32,z:0,
   width:10.15,height:3.04,depth:10.25},
- // One broad brow line; a side return meets it at the same lower edge.
+ // One broad brow line; side volumes share its lower edge and overlap
+ // by a visible margin, rather than merely touching at float-precision seams.
  {name:'ach-protective-brow',x:0,y:5.25,z:-4.98,
   width:10.15,height:1.70,depth:1.28},
  // Deep nape and ear coverage share ONE lower line (Y2.23). We deliberately
@@ -81,11 +82,11 @@ const ACH_CUBOIDS:readonly HeadwearCuboid[]=[
   width:10.15,height:4.10,depth:1.26},
  ...([-1,1] as const).flatMap(sign=>[
   {name:sign===-1?'ach-left-temple':'ach-right-temple',
-   x:sign*4.55,y:5.25,z:-3.12,
-   width:1.05,height:1.70,depth:2.44},
+   x:sign*4.55,y:5.25,z:-3.25,
+   width:1.05,height:1.70,depth:2.60},
   {name:sign===-1?'ach-left-ear-wrap':'ach-right-ear-wrap',
-   x:sign*4.55,y:4.28,z:1.85,
-   width:1.05,height:4.10,depth:7.50}
+   x:sign*4.55,y:4.28,z:1.70,
+   width:1.05,height:4.10,depth:7.80}
  ])
 ];
 /** High-cut uses the same single-mass crown logic, but the ear region
@@ -102,8 +103,8 @@ const HIGH_CUT_CUBOIDS:readonly HeadwearCuboid[]=[
   width:9.75,height:3.20,depth:2.35},
  ...([-1,1] as const).map(sign=>({
   name:sign===-1?'highcut-left-temple':'highcut-right-temple',
-  x:sign*4.395,y:5.40,z:-3.2625,
-  width:.96,height:1.80,depth:1.925
+  x:sign*4.395,y:5.40,z:-3.35,
+  width:.96,height:1.80,depth:2.25
  }))
 ];
 /** Symbolic anatomical coverage contract, based on current unchanged head.
