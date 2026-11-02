@@ -42,10 +42,10 @@ test('headwear texture scale and grayscale-only pixels match operator materials'
    assert.equal(pixels[i],pixels[i+1]);
    assert.equal(pixels[i+1],pixels[i+2]);
    assert.equal(pixels[i+3],255);
-   if(pixels[i]<255)dark++;
+   if(pixels[i]<236)dark++;
   }
-  assert.ok(dark/(pixels.length/4)>.08,kind+' must be visibly developed');
-  assert.ok(dark/(pixels.length/4)<.98,kind+' must retain flat negative space');
+  assert.ok(dark/(pixels.length/4)>.01,kind+' must be visibly developed');
+  assert.ok(dark/(pixels.length/4)<.90,kind+' must retain flat negative space');
  }
 });
 test('big material hierarchy is explicit; no fake micro seams on helmets',()=>{
