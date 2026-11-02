@@ -174,6 +174,20 @@ body.kit-compare main>.row[data-lab-group="view"]:has(#comparePose){display:flex
 #headwearCamoChoice{display:block;margin:7px 0;color:#d9dccc;font-size:11px;line-height:1.5}
 #headwearCamoReroll{margin:6px 0 4px;background:#496154;border:1px solid #abc0a4;color:#f3e7cf;font-weight:700}
 #headwearCamoReroll[hidden]{display:none}
+#headwearCamoCompareDetails{margin:10px 0 5px;padding:8px;border:1px solid #607869;border-radius:5px}
+#headwearCamoCompareDetails summary{cursor:pointer;color:#f3dba7;font:700 11px "IBM Plex Mono",monospace}
+#headwearCamoCompareDetails>small{display:block;margin:7px 0;line-height:1.5;color:#c8d4c5}
+#headwearCamoCompareGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:9px}
+.camo-study{min-width:0;padding:5px;background:#2e463d;border:1px solid #688170;border-radius:4px;color:#eee7d5;text-align:left}
+.camo-study[aria-pressed="true"]{border-color:#f3dba7;outline:1px solid #f3dba7}
+.camo-study:disabled{opacity:.65;cursor:not-allowed}
+.camo-study-title{display:block;min-height:25px;font:700 9px "IBM Plex Mono",monospace}
+.camo-study-views{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.camo-study-views figure{min-width:0;margin:0;text-align:center}
+.camo-study-views canvas{display:block;width:100%;max-width:68px;aspect-ratio:1;margin:auto;image-rendering:pixelated;image-rendering:crisp-edges}
+.camo-study-views figcaption{font:500 9px "IBM Plex Mono",monospace;color:#ccd6c5}
+.camo-study-density{display:block;font:500 9px "IBM Plex Mono",monospace;color:#c5d1c0;margin-top:5px}
+@media(min-width:680px){#headwearCamoCompareGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
 </style></head>
 <body><canvas id="preview"></canvas><div id="compareLabels" hidden></div>
@@ -240,6 +254,11 @@ body.kit-compare main>.row[data-lab-group="view"]:has(#comparePose){display:flex
 <div id="headwearCamoChooser" role="group" aria-label="Available headgear camouflage patterns" hidden>
 <div class="swatch-heading">CAMOUFLAGE · PANEL-WRAPPED FABRIC PRINT</div>
 <div id="headwearCamoGrid" aria-label="Choose compatible camouflage"></div>
+<details id="headwearCamoCompareDetails">
+<summary>COMPARE ALL 12 · UNIFORM SCALE</summary>
+<small>Same artwork scale on every card. RAW shows the canonical tile; TILED shows the repeated print at a smaller display size. Unavailable patterns remain visible for comparison, but cannot be applied to this headgear. Select an available print to inspect the actual 3D model above at the current fixed pose, zoom and lighting.</small>
+<div id="headwearCamoCompareGrid" role="group" aria-label="All twelve camouflage patterns compared at identical artwork size"></div>
+</details>
 <div id="headwearCamoInspector" hidden>
 <div class="camo-inspect-row">
 <figure><canvas id="headwearCamoArt" width="32" height="32" aria-label="Original 32 by 32 camouflage pixel art"></canvas><figcaption>ORIGINAL · 32×32 PIXELS</figcaption></figure>
