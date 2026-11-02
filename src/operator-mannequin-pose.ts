@@ -4,7 +4,7 @@
  * Coordinates are legacy chest +X forward; renderer adapter is unchanged.
  */
 import * as THREE from 'three';
-export const NEUTRAL_MANNEQUIN_HIP_RISE=2.35;
+export const NEUTRAL_MANNEQUIN_HIP_RISE=3.05;
 export function neutralMannequinHipRise(speed:number,posture:'stand'|'crouch',
  down:boolean,surrender:boolean):number{
  if(posture!=='stand'||down||surrender)return 0;

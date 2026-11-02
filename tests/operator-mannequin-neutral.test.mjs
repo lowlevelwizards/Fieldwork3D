@@ -6,6 +6,8 @@ import {neutralMannequinHipRise,neutralMannequinWrist,
  neutralMannequinElbowPole,NEUTRAL_MANNEQUIN_HIP_RISE}
  from '../src/operator-mannequin-pose.ts';
 import {bareLabEquipment} from '../src/operator-lab-baseline.ts';
+import {LEG_HIP_HEIGHT,LEG_ANKLE_HEIGHT,LEG_STANCE_SIDE,
+ LEG_HIP_SIDE,legMaximumLength} from '../src/breach-leg-geometry.ts';
 const pose=(unarmedPreview,velocity=0)=>({
  x:0,z:0,heading:0,velocity,seconds:0,stride:0,
  posture:'stand',injury:0,weapon:'carbine',reload:0,
@@ -43,4 +45,15 @@ test('both free hands rest near straight below their shoulders; elbow poles are 
   assert.ok(side*pole.z>0,'elbow bends outward');
   assert.ok(wrist.y<-14,'hands naturally fall down along the thighs');
  }
+});
+
+test('raised idle mannequin hip retains a reachable gentle-knee stance',()=>{
+ const rise=neutralMannequinHipRise(0,'stand',false,false);
+ const vertical=LEG_HIP_HEIGHT+rise-LEG_ANKLE_HEIGHT;
+ const lateral=LEG_STANCE_SIDE-LEG_HIP_SIDE;
+ const distance=Math.hypot(vertical,lateral);
+ assert.ok(distance<legMaximumLength()-.20,
+  'not so tall that leg IK can no longer reach the planted ankle');
+ assert.ok(distance>legMaximumLength()-1.0,
+  'not a deep squat: knee only slightly unlocked');
 });
