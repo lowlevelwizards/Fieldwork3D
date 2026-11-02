@@ -16,12 +16,16 @@ test('new architectural compiler creates real varied and connected physical envi
   assert.ok(a.planFamily);
   assert.ok(a.rooms.some(r=>!!r.zoneId));
   assert.equal(a.doors.find(d=>d.id==='FRONT')!==undefined,true);
-  assert.ok(a.doors.every(d=>d.kind==='shutter'?
-    Math.hypot(d.b.x-d.a.x,d.b.y-d.a.y)>=80:
-    d.pairedWith?
-      Math.abs(Math.hypot(d.b.x-d.a.x,d.b.y-d.a.y)-48)<.001:
-      Math.abs(Math.hypot(d.b.x-d.a.x,d.b.y-d.a.y)-
-        ordinaryDoorOpeningWidth(d.id))<.001));
+  const badDoors=a.doors.filter(d=>{
+   const actual=Math.hypot(d.b.x-d.a.x,d.b.y-d.a.y);
+   const expected=d.kind==='shutter'?80:
+     d.pairedWith?48:ordinaryDoorOpeningWidth(d.id);
+   return d.kind==='shutter'?actual<80:Math.abs(actual-expected)>.001;
+  }).map(d=>({id:d.id,kind:d.kind,pairedWith:d.pairedWith,
+    actual:Math.hypot(d.b.x-d.a.x,d.b.y-d.a.y),
+    expected:d.kind==='shutter'?'at least 80':
+      d.pairedWith?48:ordinaryDoorOpeningWidth(d.id)}));
+  assert.deepEqual(badDoors,[],'seed '+seed+' '+a.archetype);
   const front=a.doors.find(d=>d.id==='FRONT');
   assert.ok(front);
   const mid={x:(front.a.x+front.b.x)/2,y:(front.a.y+front.b.y)/2};
