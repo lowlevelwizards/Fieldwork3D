@@ -656,7 +656,7 @@ export function insertPlanNode(s:Session,id:string,index:number,p:Pt){
  * walking inherits it until another aim instruction explicitly overrides it.
  */
 export function planAim(s:Session,id:string,mode:AimMode,target:Pt,nodeId?:number,
-  label:'look'|'strafe'|'pie'=mode==='track'?'pie':'look',
+  label:'look'|'watch'|'strafe'|'pie'=mode==='track'?'watch':'look',
   origin:'end'|'here'='end'){
   const a=party(s,id);
   if(!a||!canEdit(s)||!Number.isFinite(target.x)||!Number.isFinite(target.y))return false;
@@ -682,7 +682,29 @@ export function updatePlanFacing(s:Session,id:string,nodeId:number,p:Pt){
 export function planLook(s:Session,id:string,p:Pt,nodeId?:number){
   const a=party(s,id);if(!a)return false;
   const node=nodeId!==undefined?a.plan.find(n=>n.id===nodeId):a.plan.at(-1);
-  return planAim(s,id,'fixed',p,node?.id);
+  return planAim(s,id,'free',p,node?.id,'look');
+}
+/** A WATCH target is world-fixed; heading follows it during movement. */
+export function planWatch(s:Session,id:string,p:Pt,nodeId?:number,
+  origin:'here'|'end'='end'){
+  return planAim(s,id,'track',p,nodeId,'watch',origin);
+}
+/** Release an existing WATCH using an explicit AUTO transition. */
+export function releaseWatch(s:Session,id:string,nodeId?:number,
+  origin:'here'|'end'='here'):boolean{
+  const a=party(s,id);if(!a||!canEdit(s))return false;
+  const node=nodeId===undefined?undefined:a.plan.find(n=>n.id===nodeId);
+  if(nodeId!==undefined&&!node)return false;
+  if(node)return edit(s,a,()=>{
+    node.aimMode='free';node.aimPoint=undefined;
+    node.facing=undefined;node.aimLabel=undefined;
+  });
+  const pos=origin==='here'?a.p:finalPoint(a);
+  return edit(s,a,()=>{
+    const entry:PlanNode={id:s.nextId++,kind:'look',p:clone(pos),aimMode:'free'};
+    if(origin==='here')a.plan.unshift(entry);
+    else a.plan.push(entry);
+  });
 }
 /** A paired entrance is one user interaction but two collision leaves. */
 function pairedLeaves(s:Session,door:Door):Door[]{
@@ -1569,13 +1591,17 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   // Player-authored positions are sacred. Traffic steering only moves the
   // actor who requested movement, never a stationary friend or held stack.
   const n=a.plan[0];
+  // A confirmed visible threat can temporarily interrupt authored attention.
+  // This is reactive execution only; it never modifies the player's plan.
+  const visibleThreat=enemies(s).filter(e=>e.health>0&&inSight(a,e,s))
+    .sort((x,y)=>d(a.p,x.p)-d(a.p,y.p))[0];
   if(a.carryingId&&(n?.kind!=='evacuate'||n.patientId!==a.carryingId)){
     const previous=s.operators.find(o=>o.id===a.carryingId);
     if(previous)previous.carriedById=null;
     a.carryingId=null;
   }
   if(a.haltOnContact){
-    const threat=enemies(s).find(e=>inSight(a,e,s));
+    const threat=visibleThreat;
     if(threat){
       a.velocity=0;rotate(a,angle(a.p,threat.p),dt);return;
     }
@@ -1585,7 +1611,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       a.squeeze=false;a.squeezeTime=0;
     }
     a.velocity=Math.max(0,a.velocity-dt*160);
-    const held=aimHeading(a);
+    const held=visibleThreat?angle(a.p,visibleThreat.p):aimHeading(a);
     if(a.health>0&&held!==null)rotate(a,held,dt);
     return;
   }
@@ -1817,14 +1843,15 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     const tracking=!running&&(a.aimInstruction?.mode==='track'||
       n.aimMode==='track');
     const cautious=!running&&(n.moveMode==='strafe'||tracking);
-    if(running&&a.aimInstruction?.mode==='track')a.aimInstruction=null;
+    // Running temporarily suspends tracking but never deletes WATCH.
     approach(a,n.p,dt,s,running?1.40:cautious?.70:1);
     // Unmodified movement follows its route, while an explicit fixed STRAFE
     // or PIE/TRACK instruction persists until LOOK releases it.
     // While wedged sideways, the physical shoulder axis has priority
     // over target tracking. The authored look resumes on exit.
     if(a.squeeze)return;
-    const held=aimHeading(a);
+    const held=!running&&visibleThreat?angle(a.p,visibleThreat.p):
+      running&&a.aimInstruction?.mode==='track'?null:aimHeading(a);
     if(held!==null)rotate(a,held,dt);
     else if(n.kind==='move'&&n.moveMode==='strafe')
       rotate(a,n.facing??a.heading,dt);
@@ -1850,8 +1877,12 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       // LOOK deliberately orients at this node, then releases any tracking
       // or fixed strafe constraint. The next move faces the travel direction.
       if(!rotate(a,n.facing,dt))return;
+      // Briefly settle the sightline, allowing normal time-based acquisition.
+      if(!visibleThreat&&a.waitRemaining<.22){
+        a.waitRemaining+=dt;return;
+      }
     }else{
-      const held=aimHeading(a);
+      const held=visibleThreat?angle(a.p,visibleThreat.p):aimHeading(a);
       if(held!==null)rotate(a,held,dt);
     }
     pop(a);return;
@@ -2557,9 +2588,9 @@ function fire(s:Session,a:TeamActor,dt:number){
   }
   const enemiesOf=a.side==='blue'?enemies(s):team(s);
   const visible=enemiesOf.filter(e=>inSight(a,e,s));
-  const target=a.side==='blue'&&a.firePolicy==='focus'?
-    visible.find(e=>e.id===a.focusTargetId):
-    visible.sort((x,y)=>d(a.p,x.p)-d(a.p,y.p))[0];
+  // Legacy FOCUS saves use ordinary acquisition rather than an
+  // inaccessible exclusive lock after FOCUS is removed from the interface.
+  const target=visible.sort((x,y)=>d(a.p,x.p)-d(a.p,y.p))[0];
   if(!target){
     a.targetId=null;a.aim=Math.max(0,a.aim-dt*.6);
     a.weaponYaw=approachAngle(a.weaponYaw,a.heading,dt*profile.turnSpeed*mods.turn);
