@@ -1,3 +1,4 @@
+@import './ui/fieldwork-design.css';
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{color-scheme:dark;background:#121a1c;color:#d7dedb;
   font:12px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace;
@@ -430,10 +431,10 @@ body.replaying .foot,body.replaying .guidance,body.replaying .feed{display:none!
 
 /* UI Overhaul 03 — Fieldwork design primitives. Network fonts have system fallbacks. */
 :root{
- --ui-bg:#111b1d;--ui-panel:#263a37;--ui-surface:#425b52;
- --ui-text:#e3e0d1;--ui-muted:#a8b8ac;--ui-active:#a8bfae;
- --ui-action:#c9a778;--ui-danger:#c48570;
- --ui-line:#62786c;--ui-radius:7px;
+ --ui-bg:var(--fw-bg);--ui-panel:var(--fw-panel);--ui-surface:var(--fw-panel-raised);
+ --ui-text:var(--fw-text);--ui-muted:var(--fw-text-muted);--ui-active:var(--fw-sage);
+ --ui-action:var(--fw-brass);--ui-danger:var(--fw-warning);
+ --ui-line:var(--fw-panel-border);--ui-radius:var(--fw-radius-sm);
  --ui-font:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
  --ui-display:"Barlow Condensed","Arial Narrow",sans-serif;
  --ui-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
