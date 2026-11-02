@@ -40,7 +40,7 @@ import {WARDROBE_RECIPES,wardrobeRecipe,applyWardrobeRecipe}
 import {HEADWEAR_SOLID_COLORS,headwearColorChoices,resolvedHeadwearSolid}
  from './operator-headwear-colors.ts';
 import {headwearCamoChoices,resolvedHeadwearCamo,headwearCamoPixels,
- HEADWEAR_CAMO_RECIPES,type HeadwearCamoId} from './operator-headwear-camo.ts';
+ HEADWEAR_CAMO_RECIPES,HEADWEAR_CAMO_DENSITY,type HeadwearCamoId} from './operator-headwear-camo.ts';
 import {initialWardrobe,readWardrobe,setWardrobePattern,resolvedWardrobe,
  WARDROBE_PATTERNS,wardrobeConflicts,wardrobeItemsForSlot,wardrobeItem,
  type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
