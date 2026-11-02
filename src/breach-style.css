@@ -977,3 +977,14 @@ body.replaying #tacticalFeedback{display:none}
  font:400 12px/1.6 var(--ui-font);white-space:pre-line}
 .debrief button{min-height:44px}
 @media(max-width:360px){.fw-after-action-stats strong{font-size:15px}}
+
+/* UX2 02 — selected action scope is explicit, not inferred from a tiny HERE label. */
+.fw-context-heading{flex:1 1 100%;width:100%;min-width:0;
+ font:700 11px/1.3 "IBM Plex Sans",system-ui,sans-serif;
+ letter-spacing:.045em;color:var(--fw-brass);
+ border-bottom:1px solid #687d7055;padding:3px 4px 7px;
+ overflow-wrap:anywhere}
+.quick-scope{white-space:normal;line-height:1.25;letter-spacing:.03em;
+ font-size:11px;max-width:min(270px,55vw)}
+@media(max-width:440px){.fw-context-heading{font-size:10.5px}
+ .quick-scope{font-size:10px;max-width:50vw}}
