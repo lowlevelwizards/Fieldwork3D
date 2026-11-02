@@ -1350,7 +1350,9 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const closedDoor=s.doors.find(door=>
     pointToSegment(move,doorLeafSegment(door))<15||
     doorBlocksSegment(door,{a:a.p,b:move}));
-  if(closedDoor?.open&&(closedDoor.openFraction??0)<.99){
+  // Keep applying contact pressure beyond the normal open stop, right up
+  // to the wider swept limit. Previously .99 cut off the new overswing.
+  if(closedDoor?.open&&(closedDoor.openFraction??0)<1.27){
     // Sustained contact at the latch generates more torque than at the
     // hinge; an already open door can always be pushed toward its stop.
     const impulse=doorContactImpulse(closedDoor,move);
