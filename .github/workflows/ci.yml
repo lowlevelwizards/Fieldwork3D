@@ -18,6 +18,9 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Focused UX2-18 Quick Play site identity regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'ux2/18-') }}
+        run: node --experimental-strip-types --test tests/ux2-current-site-identity.test.mjs
       - name: Focused UX2-17 Operator Lab workflow regression
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'ux2/17-') }}
         run: node --experimental-strip-types --test tests/ux2-operator-lab-workflow.test.mjs
