@@ -177,7 +177,9 @@ export function createOperatorVisualKit(
   const row=i<4?0:1,at=row?i-4:i;
   const z=(at-(row?1:1.5))*(row?3.7:3.1);
   const mag=part(chest,dark,7.75,row?-6.55:-2,z,2.0,4.1,2.05);
-  part(mag,trim,0,.42,0,2.05,.36,2.1);
+  // The strap crosses the pouch at a different plane than the pouch flap.
+  part(mag,trim,.04,1.12,0,2.09,.42,2.16);
+  part(mag,vest,-1.08,-.2,0,.22,3.8,2.3);
   magazines.rig.push(mag);
  }
  for(let i=0;i<3;i++){
@@ -242,10 +244,24 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   {x:.73,y:1.17,z:.86}:s.primary==='primary-rifle'?
   {x:1.1,y:1.06,z:1.04}:
   {x:1,y:1,z:1};
- // Stowaway magazines sit outside the *outermost* protection layer.
- const surfaceX=s.armor==='armor-carrier'?10.25:
-   s.armor==='armor-soft'?9.05:7.15;
- v.magazines.rig.forEach(m=>{m.position.x=surfaceX;});
+ // Four front pouches and three side-webbing pouches. This keeps the full
+ // seven-space rig around the torso rather than hanging a second row below
+ // the waist. All mount faces sit beyond the selected armor shell.
+ const surfaceX=s.armor==='armor-carrier'?9.15:
+   s.armor==='armor-soft'?8.25:6.65;
+ const surfaceZ=s.armor==='armor-carrier'?9.0:
+   s.armor==='armor-soft'?8.65:8.1;
+ v.magazines.rig.forEach((mag,i)=>{
+  if(i<4){
+   mag.position.set(surfaceX,-1.6,(i-1.5)*3.1);
+   mag.rotation.y=0;
+  }else{
+   const side=i===4?1:-1;
+   mag.position.set(i===6?1.7:-2.8,-1.55,
+     side*surfaceZ);
+   mag.rotation.y=side*Math.PI/2;
+  }
+ });
  for(const loc of ['rig','belt','pocket'] as const){
   let count=magazineLocations.filter(x=>x===loc).length;
   // Backpacks do not display imaginary accessible chest magazines.
