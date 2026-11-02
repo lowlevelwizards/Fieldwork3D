@@ -18,6 +18,9 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Focused UX2-15 tactical preview regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'ux2/15-') }}
+        run: node --experimental-strip-types --test tests/ux2-order-previews.test.mjs
       - name: Focused texture and world-scale regression tests
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'texture2/') }}
         run: node --experimental-strip-types --test tests/texture*.test.mjs tests/worldgen-prop-facing.test.mjs tests/worldgen-furniture-access.test.mjs tests/condition5-01.test.mjs tests/condition5-02.test.mjs tests/worldgen-condition-lab.test.mjs tests/map-07-building-palettes.test.mjs tests/map-10-environment-wear.test.mjs tests/map-20-world-scale.test.mjs
