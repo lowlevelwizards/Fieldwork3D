@@ -219,20 +219,56 @@ test('seven authored auditions are independently structured, correctly dense, an
  assert.equal(headwearCamoChoices('high-cut').includes('woodland-dpm'),false);
  assert.equal(headwearCamoChoices('beanie').length,0);
 });
-test('3B palette reuses historic colors and adds only three justified pigments',()=>{
- const approved=new Set(HEADWEAR_CAMO_IDS.slice(0,5).flatMap(
-  id=>HEADWEAR_CAMO_RECIPES[id].colors.map(rgb=>rgb.join(','))));
- const newPigments=new Set(HEADWEAR_CAMO_IDS.slice(5).flatMap(
-  id=>HEADWEAR_CAMO_RECIPES[id].colors.map(rgb=>rgb.join(',')))
-  .filter(key=>!approved.has(key)));
- assert.deepEqual([...newPigments].sort(),
-  ['137,83,66','143,159,101','160,64,52'].sort());
- assert.ok(headwearCamoCoverage('alpenflage')[4]>=.10);
- assert.ok(headwearCamoCoverage('alpenflage')[4]<=.21,'red must be iconic but not dominant');
- assert.ok(headwearCamoCoverage('desert-marpat')[0]>.40,'desert digital stays light');
+test('3C palettes give M81 and DPM distinct identities without recoloring woodland MARPAT',()=>{
+ const m81=HEADWEAR_CAMO_RECIPES['m81-woodland'].colors;
+ const dpm=HEADWEAR_CAMO_RECIPES['woodland-dpm'].colors;
+ const marpat=HEADWEAR_CAMO_RECIPES['woodland-marpat'].colors;
+ assert.deepEqual(marpat,[[94,111,77],[138,121,90],[64,83,66],[46,54,44]],
+  'MARPAT retains the earthy green/brown palette that already read well');
+ assert.deepEqual(m81,[[104,131,69],[146,126,79],[47,88,57],[43,51,36]],
+  'M81 has visibly stronger classic saturated woodland greens');
+ assert.deepEqual(dpm,[[175,155,105],[87,118,73],[118,85,60],[48,55,39]],
+  'DPM warm khaki/green/earth-brown does not borrow MARPAT wash');
+ assert.notDeepEqual(m81,dpm);
+ assert.notDeepEqual(dpm,marpat);
+ const dpmCoverage=headwearCamoCoverage('woodland-dpm');
+ assert.ok(dpmCoverage[0]>.20&&dpmCoverage[1]>.25&&dpmCoverage[2]>.25);
+ assert.ok(dpmCoverage[3]<.20,'DPM charcoal branches must not dominate');
+ assert.ok(HEADWEAR_CAMO_RECIPES['woodland-dpm'].motifs.length>=20,
+  'DPM requires distinct thin brushes, khaki negative space and green fingers');
+ const chips=HEADWEAR_CAMO_RECIPES['six-color-desert'].colors;
+ assert.deepEqual(chips[5],[79,72,55],
+  'chocolate-chip dark outlines must be soft olive charcoal, not stark black');
  assert.ok(headwearCamoCoverage('six-color-desert')[4]>.01);
- assert.ok(headwearCamoCoverage('six-color-desert')[5]>.01,'chocolate chips remain visible');
+ assert.ok(headwearCamoCoverage('six-color-desert')[5]>.01);
+ assert.ok(headwearCamoCoverage('alpenflage')[4]>=.10);
+ assert.ok(headwearCamoCoverage('alpenflage')[4]<=.21);
+ assert.ok(headwearCamoCoverage('desert-marpat')[0]>.40);
 });
+test('3C Flecktarn and both MARPATs carry fine dense motifs compared with UCP',()=>{
+ const transitions=id=>{
+  const pixels=headwearCamoIndices(id);let changes=0;
+  for(let y=0;y<32;y++)for(let x=1;x<32;x++)
+   if(pixels[y*32+x]!==pixels[y*32+x-1])changes++;
+  return changes;
+ };
+ const ucp=transitions('ucp');
+ assert.ok(ucp>200,'the existing UCP digital density is our reference');
+ assert.ok(transitions('flecktarn')>ucp*1.35,'Flecktarn should be denser than UCP');
+ assert.ok(transitions('woodland-marpat')>ucp,'woodland MARPAT should be at least as dense as UCP');
+ assert.ok(transitions('desert-marpat')>ucp,'desert MARPAT should be at least as dense as UCP');
+ assert.ok(transitions('woodland-dpm')>transitions('m81-woodland'),
+  'DPM must have its own more elongated edge language');
+ assert.equal(HEADWEAR_CAMO_DENSITY.flecktarn,2);
+ assert.equal(HEADWEAR_CAMO_DENSITY['woodland-marpat'],2);
+ assert.equal(HEADWEAR_CAMO_DENSITY['desert-marpat'],2);
+ const code=readFileSync(new URL('../src/operator-headwear-camo.ts',import.meta.url),'utf8');
+ assert.match(code,/FLECKTARN_CLUSTERS/);
+ assert.match(code,/FLECKTARN_SATELLITES/);
+ assert.match(code,/applyMarpatFragments/);
+ assert.match(code,/applyFlecktarnSpeckle/);
+});
+
 test('3B fabric cut and material channels are consistent for all new prints',()=>{
  const ids=HEADWEAR_CAMO_IDS.slice(5);
  for(const id of ids){
