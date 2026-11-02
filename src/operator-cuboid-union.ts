@@ -3,11 +3,12 @@
  * overlay geometry. Every surface receives world-scale pixel UV coordinates.
  */
 import * as THREE from 'three';
-import {TILE_WORLD_SIZE} from './rendering/pixel-recipes.ts';
+import {PIXEL_WORLD_SIZE} from './rendering/pixel-recipes.ts';
 export type HeadwearCuboid={name:string;x:number;y:number;z:number;
  width:number;height:number;depth:number};
 export type CuboidUnionOptions={
  faceTone?:(part:HeadwearCuboid,axis:number,sign:number)=>number;
+ faceRegion?:(part:HeadwearCuboid,axis:number,sign:number)=>0|1|2|3;
 };
 export function unionCuboids(parts:readonly HeadwearCuboid[],
  options:CuboidUnionOptions={}):THREE.BufferGeometry{
@@ -87,12 +88,17 @@ export function unionCuboids(parts:readonly HeadwearCuboid[],
      if(!Number.isFinite(tone)||tone<=0||tone>1)
       throw Error('invalid headwear face tone');
     }
+    const region=options.faceRegion?options.faceRegion(parts[owner-1],axis,sign):0;
+    if(!Number.isInteger(region)||region<0||region>3)throw Error('invalid headwear pixel region');
     for(const q of [p(0,0),p(1,0),p(1,1),p(0,1)]){
      vertices.push(...q);
-     // Oriented on the actual model axes; exactly 32 authored pixels
-     // cover TILE_WORLD_SIZE (40 operator-local units), no UV stretching.
+     // A fixed 64x64 atlas: four 32x32 construction regions. Physical
+     // model-space axes advance exactly one texel per world unit (1:1).
+     // +16 gives all current helmet faces safe interior atlas margins.
      const texU=axis===0?q[2]:q[0],texV=axis===1?q[2]:q[1];
-     uvs.push(texU/TILE_WORLD_SIZE,texV/TILE_WORLD_SIZE);
+     const ru=region%2,rv=Math.floor(region/2);
+     uvs.push((ru*32+16+texU/PIXEL_WORLD_SIZE)/64,
+              (rv*32+16+texV/PIXEL_WORLD_SIZE)/64);
      if(options.faceTone)colors.push(tone,tone,tone);
     }
     if(sign===1)indices.push(start,start+1,start+2,start,start+2,start+3);
@@ -111,7 +117,8 @@ export function unionCuboids(parts:readonly HeadwearCuboid[],
  geometry.userData.greedyCuboidUnion=true;
  geometry.userData.cuboids=parts.map(p=>({...p}));
  geometry.userData.exteriorQuads=quads;
- geometry.userData.pixelWorldSize=TILE_WORLD_SIZE/32;
- geometry.userData.materialRegions=!!options.faceTone;
+ geometry.userData.pixelWorldSize=PIXEL_WORLD_SIZE;
+ geometry.userData.materialAtlasPixels=64;
+ geometry.userData.materialRegions=!!options.faceRegion||!!options.faceTone;
  return geometry;
 }
