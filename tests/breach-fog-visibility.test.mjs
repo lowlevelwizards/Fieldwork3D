@@ -34,8 +34,8 @@ test('3D fog: occupied-room removal remains bounded to its own floor',()=>{
 test('3D fog: translucent cutaway walls draw after fog while blood stays gated',()=>{
   const code=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
   assert.match(code,/this\.smoothFog\.renderOrder=1000;/);
-  assert.match(code,/wall\.mesh\.renderOrder=cut\?1001:0;/);
-  assert.match(code,/material\.opacity=cut\?\.38:1;/);
+  assert.match(code,/wallOccludesFriendly/);
+  assert.match(code,/transitionWallOpacity/);
   assert.match(code,/paintOccupiedRoomContext\(this\.fogContext,s\);/);
   assert.match(code,/depthTest:true,opacity:\.82/);
   assert.match(code,/if\(!omniscient&&!liveVisibility\(s,mark\.p\)\)continue;/);
