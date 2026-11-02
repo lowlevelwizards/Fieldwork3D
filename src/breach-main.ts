@@ -59,7 +59,7 @@ import {readRoster,applyRosterIdentity,freshQuickPlayRoster,
   serializeQuickPlayCosmetics,
   resupplyRoster,equipRoster,equipRosterGear,moveRosterMagazine,
  configureRosterWeapon,
- renameRosterMember,cycleRosterAppearance} from './breach-roster.ts';
+ renameRosterMember,cycleRosterAppearance,setRosterWardrobe} from './breach-roster.ts';
 import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
  sameWeaponConfiguration,type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
@@ -76,6 +76,9 @@ import {newCampaign,readCampaign,acceptContract,resolveOperation,
 import {loadMovementScale,equippedFlashCharges} from './equipment-loadouts.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {allocateFlashSupply} from './equipment-supply.ts';
+import {readWardrobe,resolvedWardrobe,setWardrobeStyle,setWardrobePattern,
+ wardrobeItemsForSlot,WARDROBE_SLOTS,WARDROBE_PATTERNS}
+ from './operator-wardrobe-data.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {exportCampaign,importCampaign} from './campaign-persistence.ts';
 import {careerEventsForOperation} from './campaign-history.ts';
@@ -514,6 +517,63 @@ function renderOperationsBoard(){
    });
    row.append(label,select);kit.append(row);
   }
+  const wardrobeEditor=document.createElement('details');
+  wardrobeEditor.open=false;
+  const wardrobeTitle=document.createElement('summary');
+  wardrobeTitle.textContent='WARDROBE / COSMETIC APPEARANCE';
+  wardrobeTitle.style.cssText='min-height:40px;cursor:pointer;padding:11px 0;font-weight:700';
+  wardrobeEditor.append(wardrobeTitle);
+  const currentWardrobe=readWardrobe(member.wardrobe);
+  const effective=resolvedWardrobe(currentWardrobe,member.loadout);
+  const writeCosmetics=(next:typeof currentWardrobe)=>{
+   if(state.phase!=='planning'||replaying)return;
+   persistentRoster=setRosterWardrobe(persistentRoster,member.id,next);
+   saveRoster();applyRosterIdentity(state,persistentRoster);
+   expandedQuickKit=member.id;renderOperationsBoard();updateHud();
+  };
+  for(const slot of WARDROBE_SLOTS){
+   const row=document.createElement('label');
+   row.style.cssText='display:flex;justify-content:space-between;gap:8px;margin:7px 0';
+   const label=document.createElement('span');
+   label.textContent=slot.replace(/([A-Z])/g,' $1').toUpperCase();
+   const select=document.createElement('select');
+   select.style.cssText='max-width:65%;min-height:40px;background:#243530;color:#e5e9d8';
+   for(const item of wardrobeItemsForSlot(slot)){
+    const option=document.createElement('option');
+    option.value=item.id;option.textContent=item.name;
+    const next=setWardrobeStyle(currentWardrobe,slot,item.id);
+    option.disabled=resolvedWardrobe(next,member.loadout)[slot]!==item.id;
+    select.append(option);
+   }
+   select.value=effective[slot];
+   select.addEventListener('change',()=>writeCosmetics(
+    setWardrobeStyle(currentWardrobe,slot,select.value)));
+   row.append(label,select);wardrobeEditor.append(row);
+  }
+  const patterns=document.createElement('details');
+  const patternTitle=document.createElement('summary');
+  patternTitle.textContent='FABRIC / CAMOUFLAGE';
+  patterns.append(patternTitle);
+  for(const channel of ['top','trousers','armor','gear','pack','head'] as const){
+   const row=document.createElement('label');
+   row.style.cssText='display:flex;justify-content:space-between;gap:8px;margin:7px 0';
+   const label=document.createElement('span');
+   label.textContent=channel.toUpperCase();
+   const picker=document.createElement('select');
+   picker.style.cssText='max-width:65%;min-height:40px;background:#243530;color:#e5e9d8';
+   for(const pattern of WARDROBE_PATTERNS){
+    const option=document.createElement('option');
+    option.value=pattern;option.textContent=pattern.replaceAll('-',' ');
+    picker.append(option);
+   }
+   picker.value=currentWardrobe.patterns[channel]??'solid';
+   picker.addEventListener('change',()=>writeCosmetics(
+    setWardrobePattern(currentWardrobe,channel,
+     picker.value as typeof WARDROBE_PATTERNS[number])));
+   row.append(label,picker);patterns.append(row);
+  }
+  wardrobeEditor.append(patterns);
+  kit.append(wardrobeEditor);
   const weaponEditor=document.createElement('details');
   weaponEditor.open=expandedQuickWeapon===member.id;
   const mountSelectors=new Map<WeaponAttachmentSlot,HTMLSelectElement>();

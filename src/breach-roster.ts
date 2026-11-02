@@ -241,3 +241,11 @@ export function moveRosterMagazine(roster:RosterState,id:string,
  return {...roster,members:roster.members.map(m=>m.id===id?
   {...m,magazines:moved}:m)};
 }
+
+/** Cosmetic Quick Play wardrobe preferences survive the next round, unlike
+ * carried kit, wound state and magazines. No inventory is created here. */
+export function setRosterWardrobe(roster:RosterState,id:string,raw:unknown):RosterState{
+ if(!roster.members.some(m=>m.id===id))return roster;
+ const wardrobe=readWardrobe(raw);
+ return {...roster,members:roster.members.map(m=>m.id===id?{...m,wardrobe}:m)};
+}
