@@ -47,7 +47,7 @@ import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator
 import {WEAPONS} from './breach-combat.ts';
 import {casingAt,CASING_LIMIT,IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
 import {sampleThrow} from './breach-flash.ts';
-import {doorProportions,DOOR_PANEL_END_RECESS} from './breach-door-proportions.ts';
+import {doorProportions,DOOR_PANEL_END_RECESS,DOOR_FRAME_INSET} from './breach-door-proportions.ts';
 import {paintFogMask,paintOccupiedRoomContext,occupiedFogRooms,FOG_WIDTH,FOG_HEIGHT,maskSize} from './breach-fog-mask.ts';
 import {fogFingerprint} from './breach-fog-cache.ts';
 import {wallOccludesFriendly,transitionWallOpacity} from './breach-camera-occlusion.ts';
@@ -117,7 +117,8 @@ export class TacticalScene3D{
   private fogContext!:CanvasRenderingContext2D;
   private fogTexture!:THREE.CanvasTexture;
   private smoothFog!:THREE.Mesh;
-  private overheadFog!:THREE.Mesh;
+  private roomFogRoofs:THREE.Mesh[]=[];
+  private roomFogMaterial!:THREE.MeshBasicMaterial;
   private actors=new Map<string,{root:THREE.Group;flash:THREE.Mesh;
     beam:THREE.Mesh;beamLast:{x:number;y:number;yaw:number;tick:number}|null;
     pack:THREE.Mesh;
@@ -292,20 +293,14 @@ export class TacticalScene3D{
     this.smoothFog.renderOrder=1000;
     this.smoothFog.frustumCulled=false;
     this.scene.add(this.smoothFog);
-    // The original ground mask cannot conceal models standing *above*
-    // the floor. A matching overhead mask hides undiscovered geometry,
-    // details and shadows across the whole vertical diorama. It shares
-    // the authoritative sight texture, so actual visible areas open up.
-    const overheadMat=new THREE.MeshBasicMaterial({
+    // A single shared material survives site generation without allocating
+    // new WebGL shader/material state every time New Site is pressed.
+    this.roomFogMaterial=new THREE.MeshBasicMaterial({
       map:this.fogTexture,transparent:true,depthTest:true,depthWrite:false,
       opacity:1,toneMapped:false,side:THREE.DoubleSide});
-    this.mats.push(overheadMat);
-    this.overheadFog=new THREE.Mesh(new THREE.PlaneGeometry(W,H),overheadMat);
-    this.overheadFog.rotation.x=-Math.PI/2;
-    this.overheadFog.position.set(W/2,46,H/2);
-    this.overheadFog.renderOrder=1002;
-    this.overheadFog.frustumCulled=false;
-    this.scene.add(this.overheadFog);
+    this.mats.push(this.roomFogMaterial);
+    // No world-wide elevated fog plane: its projection covers grass outside
+    // the building. Room-footprint covers are generated per site instead.
     this.resize(innerWidth,innerHeight);
   }
   private groundOverlayMaterial(kind:PixelOverlay){
@@ -415,7 +410,9 @@ export class TacticalScene3D{
     });
     for(const material of this.wallMaterials)material.dispose();
     this.wallMaterials.clear();
-    this.walls.length=0;this.wallFade.clear();this.doors.clear();this.windowGlass.clear();
+    this.walls.length=0;this.wallFade.clear();
+    this.roomFogRoofs.length=0;
+    this.doors.clear();this.windowGlass.clear();
     this.observedDoorGlass.clear();
     this.currentWear=[];this.objectWear=[];
     this.roofGroups.clear();
@@ -447,11 +444,6 @@ export class TacticalScene3D{
       bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
     this.smoothFog.position.set((bounds.minX+bounds.maxX)/2,
       1.05,(bounds.minY+bounds.maxY)/2);
-    this.overheadFog.geometry.dispose();
-    this.overheadFog.geometry=new THREE.PlaneGeometry(
-      bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
-    this.overheadFog.position.set((bounds.minX+bounds.maxX)/2,
-      46,(bounds.minY+bounds.maxY)/2);
     this.fogTexture.needsUpdate=true;
     this.buildWorld(site);
     this.root.add(this.fogUnknown,this.fogExplored);
@@ -702,6 +694,8 @@ export class TacticalScene3D{
         opacity:.21,depthWrite:false,side:THREE.DoubleSide});
       this.mats.push(this.roofMaterial);
     }else this.roofMaterial.color.setHex(theme.cap);
+    const roofBounds=site.bounds??{minX:0,minY:0,maxX:W,maxY:H};
+    const fogRoofMaterial=this.roomFogMaterial;
     for(const room of site.rooms){
       const roof=new THREE.Group();
       roof.visible=false;this.root.add(roof);
@@ -709,6 +703,26 @@ export class TacticalScene3D{
       this.box(roof,room.x+room.w/2,43,room.y+room.h/2,
         Math.max(12,room.w+2),2,Math.max(12,room.h+2),
         this.roofMaterial,false).receiveShadow=false;
+      // Only internal architectural footprints receive elevated fog. Each
+      // mesh samples the same world-space mask as the ground, with UVs tied
+      // to its exact room rectangle rather than stretched over the room.
+      const geometry=new THREE.PlaneGeometry(room.w,room.h);
+      geometry.rotateX(-Math.PI/2);
+      const position=geometry.getAttribute('position');
+      const uv=geometry.getAttribute('uv');
+      for(let i=0;i<position.count;i++){
+        const wx=room.x+room.w/2+position.getX(i);
+        const wz=room.y+room.h/2+position.getZ(i);
+        uv.setXY(i,
+          (wx-roofBounds.minX)/(roofBounds.maxX-roofBounds.minX),
+          1-(wz-roofBounds.minY)/(roofBounds.maxY-roofBounds.minY));
+      }
+      uv.needsUpdate=true;
+      const concealed=new THREE.Mesh(geometry,fogRoofMaterial);
+      concealed.position.set(room.x+room.w/2,41.35,room.y+room.h/2);
+      concealed.renderOrder=1002;concealed.frustumCulled=false;
+      concealed.castShadow=false;concealed.receiveShadow=false;
+      this.roomFogRoofs.push(concealed);this.root.add(concealed);
     }
     const wallMat=this.solid(age(theme.wall,wallPixelSurface(site.archetype)),.94,wallPixelSurface(site.archetype)),
       capMat=this.solid(theme.cap,.94,'concrete');
@@ -789,7 +803,7 @@ export class TacticalScene3D{
       const profile=doorProportions(door);
       // Preserve the full structural opening: jambs are mounted outside
       // the walkable interval, instead of projecting into the threshold.
-      const jambX=length/2+profile.jambWidth/2-.25;
+      const jambX=length/2+profile.jambWidth/2-DOOR_FRAME_INSET;
       const jambSides=door.pairedWith?
         [door.hinge==='b'?1:-1]:[-1,1];
       for(const side of jambSides){
@@ -1239,7 +1253,7 @@ export class TacticalScene3D{
       group.rotation.y=-Math.atan2(door.b.y-door.a.y,door.b.x-door.a.x);
       const frame=new THREE.Group();group.add(frame);
       const profile=doorProportions(door);
-      const jambX=width/2+profile.jambWidth/2-.25;
+      const jambX=width/2+profile.jambWidth/2-DOOR_FRAME_INSET;
       for(const side of [-1,1]){
         this.box(frame,side*jambX,18.5,0,
           profile.jambWidth,37,profile.jambDepth,doorTrim);
@@ -2049,7 +2063,7 @@ export class TacticalScene3D{
     // intelligence and must not leak through texture transparency.
     this.fogUnknown.count=0;this.fogExplored.count=0;
     this.smoothFog.visible=!omniscient;
-    this.overheadFog.visible=!omniscient;
+    for(const roof of this.roomFogRoofs)roof.visible=!omniscient;
     // Do not repaint/re-upload an identical visibility texture every 55ms
     // while operators are stationary in planning. Quantized pose and intel
     // changes make the key; real LOS is still computed by the fog renderer.
