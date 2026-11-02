@@ -35,7 +35,7 @@ import {WARDROBE_ACCESSORY_SLOTS,WARDROBE_ACCESSORY_OPTIONS}
 import {WARDROBE_MOUNTS,wardrobeMount} from './operator-wardrobe-mounts.ts';
 import {WARDROBE_RECIPES,wardrobeRecipe,applyWardrobeRecipe}
  from './operator-wardrobe-recipes.ts';
-import {initialWardrobe,readWardrobe,setWardrobeStyle,setWardrobePattern,resolvedWardrobe,
+import {initialWardrobe,readWardrobe,setWardrobePattern,resolvedWardrobe,
  WARDROBE_PATTERNS,wardrobeConflicts,wardrobeItemsForSlot,wardrobeItem,
  type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
 
@@ -743,7 +743,7 @@ function frameWardrobeSelection(){
  const target=rig&&focusZone?
   operatorAttachmentPoint(rig,focusZone):new THREE.Vector3(
     rig?.root.position.x??0,16,rig?.root.position.z??0);
- const {x,y,z}=target;
+ const {x,z}=target;
  // Match the same canonical model-space 3/4 view as the standard camera.
  // The view follows the actor's facing, rather than hard-coded world +X.
  const threeQuarter=new THREE.Vector3(57,35,-54).applyAxisAngle(
