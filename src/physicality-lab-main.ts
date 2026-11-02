@@ -60,7 +60,7 @@ function reset(){
  }else{
   walls=[wall(320,48,320,211),wall(320,259,320,452)];
   activeDoors=[door('SHOP',320)];
-  units=[unit('ROOK','blue',350,235,350,235,true),
+  units=[unit('ROOK','blue',355,260,355,260,true),
    unit('MOSS','blue',276,225,450,225),
    unit('ASH','blue',241,235,455,235),
    unit('VALE','blue',203,245,455,245)];
