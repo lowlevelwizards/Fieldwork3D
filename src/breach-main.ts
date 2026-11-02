@@ -398,8 +398,10 @@ operationsBoard.id='operationsBoard';
 operationsBoard.hidden=true;
 operationsBoard.setAttribute('aria-label','Squad operations board');
 Object.assign(operationsBoard.style,{
- position:'fixed',right:'12px',top:'76px',bottom:'84px',zIndex:'95',
- boxSizing:'border-box',width:'min(360px, calc(100vw - 24px))',
+ position:'fixed',right:'12px',
+ bottom:'calc(var(--tactical-hud-height,138px) + 14px + env(safe-area-inset-bottom))',
+ zIndex:'95',boxSizing:'border-box',
+ width:'min(420px, calc(100vw - 24px))',maxHeight:'min(52dvh, 530px)',
  overflowY:'auto',padding:'14px',borderRadius:'12px',
  background:'rgba(12,20,20,.96)',border:'1px solid #687973',
  color:'#e0e9de',font:'13px/1.45 Oxanium, sans-serif',
@@ -449,6 +451,8 @@ function showWeaponChooser(){
 weaponChooser.addEventListener('keydown',event=>{
  if(event.key==='Escape'){event.preventDefault();hideWeaponChooser();ui.loadout.focus();}
 });
+// One operator expanded at a time in the mobile preparation sheet.
+let expandedQuickOperator:string|null='rook';
 let expandedQuickKit:string|null=null;
 let expandedQuickWeapon:string|null=null;
 let quickWorkbench:WeaponWorkbenchPreview|null=null;
@@ -481,10 +485,21 @@ function renderOperationsBoard(){
   ' · Fresh health and equipment every Quick Play round.';
  operationsBoard.append(intro);
  for(const member of persistentRoster.members){
-  const card=document.createElement('article');
-  card.style.cssText='border:1px solid #566760;border-radius:9px;padding:10px;margin:9px 0';
-  const name=document.createElement('strong');
-  name.textContent=member.callsign+'  ·  '+member.weapon.toUpperCase();
+  const card=document.createElement('details');
+  card.dataset.squadCard=member.id;
+  card.className='fw-squad-card';
+  card.open=expandedQuickOperator===member.id;
+  card.addEventListener('toggle',()=>{
+   if(card.open){
+    expandedQuickOperator=member.id;
+    for(const other of operationsBoard.querySelectorAll<HTMLDetailsElement>(
+     'details[data-squad-card]')){
+     if(other!==card&&other.open)other.open=false;
+    }
+   }else if(expandedQuickOperator===member.id)expandedQuickOperator=null;
+  });
+  const name=document.createElement('summary');
+  name.textContent=member.callsign+' · '+member.weapon.toUpperCase();
   card.append(name);
   const details=document.createElement('p');
   details.textContent='FULL HEALTH · '+member.magazine+' / '+
@@ -768,9 +783,12 @@ function renderOperationsBoard(){
   card.append(kit);operationsBoard.append(card);
  }
  const hint=document.createElement('p');
- hint.textContent='Close to deploy normally. Recovery advances after each operation.';
+ hint.textContent='Select an operator to edit. Close to resume planning.';
  operationsBoard.append(hint);
 }
+operationsBoard.addEventListener('keydown',event=>{
+ if(event.key==='Escape'){operationsBoard.hidden=true;operationsToggle.focus();}
+});
 operationsToggle.addEventListener('click',()=>{
  if(state.phase!=='planning'||replaying)return;
  operationsBoard.hidden=!operationsBoard.hidden;
