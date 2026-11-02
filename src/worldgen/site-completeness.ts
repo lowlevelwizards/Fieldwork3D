@@ -9,11 +9,12 @@ import {assessUnitContracts} from './unit-contracts.ts';
 import {auditFixtureService} from './fixture-service-clearance.ts';
 import {ROOM_CONTRACTS} from './room-contracts.ts';
 import {inspectCounterAccess} from './service-counter-access.ts';
+import {auditTacticalMobility} from './tactical-mobility-audit.ts';
 const important=new Set(['kitchen','bathroom','restroom','guest','exam',
  'treatment','bay','workshop','waiting','bedroom','living']);
 export type CompletenessScore={missingEssentials:number;
  criticalMissing:number;incompleteUnits:number;blockedWorkingFaces:number;
- counterAccessProblems:number;score:number};
+ counterAccessProblems:number;mobilityIssues:number;score:number};
 export function measureSiteCompleteness(site:Site):CompletenessScore{
  const contracts=assessRoomContracts(site);
  let missingEssentials=0,criticalMissing=0;
@@ -33,17 +34,23 @@ export function measureSiteCompleteness(site:Site):CompletenessScore{
  // compensate for a worker trapped against a wall or blocked by stock.
  const counterAccessProblems=inspectCounterAccess(site).reduce((count,counter)=>
   count+Number(!counter.customerClear)+Number(!counter.staffClear),0);
+ // Assess only local door clearances during generator candidate selection.
+ // Full operational routes are evaluated separately in the on-demand audit.
+ const mobility=auditTacticalMobility(site);
  return {missingEssentials,criticalMissing,incompleteUnits,blockedWorkingFaces,
-  counterAccessProblems,
+  counterAccessProblems,mobilityIssues:mobility.blockedApproaches+
+    mobility.pinchedThresholds+mobility.blockedSwings,
   score:criticalMissing*3+missingEssentials+incompleteUnits*8+
-   blockedWorkingFaces*2+counterAccessProblems*3};
+   blockedWorkingFaces*2+counterAccessProblems*3+
+   mobility.blockedApproaches*3+mobility.pinchedThresholds*4+
+   mobility.blockedSwings};
 }
 export function shouldTryAnotherLayout(score:CompletenessScore,scale:SiteScale){
  // Only serious deficiencies merit one more expensive architecture build.
  // Compact and standard mobile cases have the tighter threshold.
  return score.criticalMissing>=
    (scale==='small'||scale==='standard'?3:2)||
-   score.incompleteUnits>=2;
+   score.incompleteUnits>=2||score.mobilityIssues>=3;
 }
 export function preferCompleteCandidate(candidate:CompletenessScore,
  incumbent:CompletenessScore):boolean{
