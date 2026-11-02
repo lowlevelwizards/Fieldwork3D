@@ -433,6 +433,7 @@ function hideWeaponChooser(){
 function showWeaponChooser(){
  const current=team(state).find(a=>a.id===selected);
  if(!current||campaignMode==='mission'||state.phase!=='planning'||replaying)return;
+ collapseTacticalSheets('weapon');
  weaponChooser.replaceChildren();
  const label=document.createElement('div');
  label.className='fw-weapon-chooser-title';
@@ -799,13 +800,36 @@ function renderOperationsBoard(){
 operationsBoard.addEventListener('keydown',event=>{
  if(event.key==='Escape'){operationsBoard.hidden=true;operationsToggle.focus();}
 });
+/** Only one major tactical sheet owns the viewport and touch focus at a time. */
+function collapseTacticalSheets(except:'squad'|'weapon'|'settings'|'tools'|'briefing'|null){
+ if(except!=='squad')operationsBoard.hidden=true;
+ if(except!=='weapon')hideWeaponChooser();
+ if(except!=='settings'){
+  ui.siteSettings.hidden=true;
+  ui.siteSettingsToggle.setAttribute('aria-expanded','false');
+  closeSiteChoice();
+ }
+ if(except!=='tools'){
+  ui.orders.classList.add('compact');
+  ui.moreOrders.setAttribute('aria-pressed','false');
+  ui.moreOrders.setAttribute('aria-label','More tactical tools');
+  ui.moreOrders.title='More tactical tools';
+ }
+ if(except!=='briefing'){
+  ui.briefingPanel.hidden=true;
+  ui.briefingToggle.setAttribute('aria-expanded','false');
+ }
+}
 operationsToggle.addEventListener('click',()=>{
  if(state.phase!=='planning'||replaying)return;
- operationsBoard.hidden=!operationsBoard.hidden;
- if(!operationsBoard.hidden){
+ const opening=operationsBoard.hidden;
+ collapseTacticalSheets(opening?'squad':null);
+ operationsBoard.hidden=!opening;
+ if(opening){
   hideContextPalette();
   renderOperationsBoard();
  }
+ updateContext();
 });
 let selected='rook';
 let evacMode:{patientId:string;mode:'drag'|'carry'}|null=null;
@@ -3339,8 +3363,7 @@ ui.cameraFit.addEventListener('click',()=>{
 });
 ui.briefingToggle.addEventListener('click',()=>{
   if(state.phase!=='planning'||replaying)return;
-  ui.siteSettings.hidden=true;
-  ui.siteSettingsToggle.setAttribute('aria-expanded','false');
+  collapseTacticalSheets('briefing');
   ui.briefingPanel.hidden=false;
   ui.briefingToggle.setAttribute('aria-expanded','true');
   updateContext();
@@ -3367,17 +3390,16 @@ ui.uiHelp.addEventListener('click',()=>{
   updateHud();
 });
 ui.siteSettingsToggle.addEventListener('click',()=>{
-  ui.siteSettings.hidden=!ui.siteSettings.hidden;
-  if(ui.siteSettings.hidden)closeSiteChoice();
-  ui.siteSettingsToggle.setAttribute('aria-expanded',String(!ui.siteSettings.hidden));
+  const opening=ui.siteSettings.hidden;
+  collapseTacticalSheets(opening?'settings':null);
+  ui.siteSettings.hidden=!opening;
+  ui.siteSettingsToggle.setAttribute('aria-expanded',String(opening));
   updateContext();
 });
 ui.moreOrders.addEventListener('click',()=>{
-  const expanded=ui.orders.classList.toggle('compact')===false;
-  if(!expanded){
-    ui.siteSettings.hidden=true;
-    ui.siteSettingsToggle.setAttribute('aria-expanded','false');
-  }
+  const expanded=ui.orders.classList.contains('compact');
+  collapseTacticalSheets(expanded?'tools':null);
+  ui.orders.classList.toggle('compact',!expanded);
   ui.moreOrders.setAttribute('aria-pressed',String(expanded));
   ui.moreOrders.replaceChildren(tacticalIcon('moreOrders'));
   ui.moreOrders.setAttribute('aria-label',expanded?'Close tools':'More tactical tools');
