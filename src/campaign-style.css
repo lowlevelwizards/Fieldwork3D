@@ -139,3 +139,18 @@
  touch-action:manipulation;color:var(--fw-text-muted);
  font:650 12px "IBM Plex Sans",system-ui,sans-serif;letter-spacing:.06em}
 .campaign-save-management[open] summary{color:var(--fw-brass)}
+
+/* UX2-07: improve touch readability for personnel and equipment management. */
+.campaign-select,.campaign-kit-row select,.campaign-kit-actions select{min-height:44px;
+ font-size:13px;line-height:1.35}
+.campaign-person small,.campaign-kit-description{font-size:11.5px;line-height:1.45}
+.campaign-person span,.campaign-kit-row span{font-size:12px;line-height:1.35}
+.campaign-person-actions button,.campaign-purchases button,
+.campaign-armory button,.campaign-kit-actions button{min-height:44px;font-size:12px}
+.campaign-tabs .campaign-tab{min-height:46px;font-size:13px}
+.campaign-skill,.campaign-report{font-size:12px}
+.campaign-wardrobe summary,.campaign-dossier summary,
+.campaign-save-management summary{min-height:44px;display:flex;
+ align-items:center;font-size:12px;touch-action:manipulation}
+.campaign-shell select:focus-visible{outline:2px solid var(--fw-focus);
+ outline-offset:2px}
