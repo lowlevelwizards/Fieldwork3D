@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import {operatorPixelTextures,mapBoxPixelUV,type PixelSurface} from './rendering/pixel-materials.ts';
 import {canonicalRootOrientation,LEGACY_FRAME_YAW,
   createCanonicalAttachment} from './operator-axis-convention.ts';
+import {neutralMannequinHipRise,neutralMannequinWrist,
+ neutralMannequinElbowPole} from './operator-mannequin-pose.ts';
 import {alignSegment,solveTwoBone,ARM_LIMITS,LEG_LIMITS,
   intersectsTorso} from './breach-ik.ts';
 import type {WeaponId} from './breach-combat.ts';
@@ -610,6 +612,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     17.35-crouch-buckle*8-kneel*9,
     stanceHip-buckle*8-kneel*9);
   r.hip.position.y-=poseWeight*profile.stanceCompression;
+  // Lab-only relaxed stand: the old 20.2-unit rest hip made the operator
+  // look perpetually crouched even when wearing nothing. No foot targets
+  // or battle locomotion are altered; motion fades this adjustment out.
+  if(p.unarmedPreview)
+    r.hip.position.y+=neutralMannequinHipRise(
+      physicalSpeed,p.posture,p.down,p.surrender);
   // The pelvic shell accepts support rotation but is not a second
   // independent writer of the world/root heading or foot anchors.
   r.hip.rotation.x=clamp(-motion.support*physicalSpeed/72*.022,-.03,.03);
@@ -917,8 +925,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       desired=grip.clone().multiply(P(data.lengthScale,1,1))
         .applyEuler(fit.rotation).add(fit.origin);
     }
-    if(p.unarmedPreview&&!p.down&&!p.surrender)
-      desired=P(1,-11,sign*9.2);
+    const neutralArms=!!p.unarmedPreview&&!p.down&&!p.surrender;
+    if(neutralArms)
+      desired=neutralMannequinWrist(sign as -1|1);
     const reachable=desired.distanceTo(shoulder)<=19.92;
     // Evaluate the true handle target even during the wind-up: easing the
     // arm from the weapon must not hide an unreachable world interaction.
@@ -937,10 +946,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // The same pose parameters that drive weapon-ready silhouettes now
     // drive each arm independently, including during interrupted blends.
     const corridor=elbowCorridor(handling,sign as -1|1,profile);
-    const wanted=P(corridor.x,corridor.y,corridor.z).sub(shoulder);
+    const wanted=neutralArms?neutralMannequinElbowPole(sign as -1|1):
+      P(corridor.x,corridor.y,corridor.z).sub(shoulder);
     let solved=solveTwoBone(shoulder,wrist,10,10,
-      wanted,ARM_LIMITS,arm.bend);
-    if(intersectsTorso(solved.joint,.3)){
+      wanted,ARM_LIMITS,neutralArms?undefined:arm.bend);
+    if(!neutralArms&&intersectsTorso(solved.joint,.3)){
       // Try a low forward/down elbow before the wide elbow escape route.
       const compact=P(corridor.x+1.0,corridor.y-1.2,
         corridor.z+sign*.22).sub(shoulder);
