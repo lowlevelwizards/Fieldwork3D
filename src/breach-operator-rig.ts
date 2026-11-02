@@ -32,6 +32,7 @@ import {fallAngles,hitStagger,type FallPose,type WoundRegion}
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {equipmentCarrySocket,utilityDisplaySocket} from './equipment-carry-visuals.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
+import {headwearSolidHex} from './operator-headwear-colors.ts';
 import {wardrobePatternTexture} from './operator-wardrobe-patterns.ts';
 import {resolveWardrobeDisplayMount} from './operator-wardrobe-mounts.ts';
 import type {CarryLocation} from './equipment-carry-placement.ts';
@@ -472,15 +473,24 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
    if(pattern&&pattern!=='solid')
     r.colors.set(material,new THREE.Color(0xffffff));
   }
-  // Neutral headwear construction tones multiply the selected base colors.
-  // Keep the Stage 2A pass visually restrained; context-specific camo and
-  // pattern overlays will get separate, item-appropriate recipes later.
+  // One authoritative color ledger owns *every* material before the final
+  // pose-time restore and optional injury desaturation. In particular, do not
+  // overwrite the selected headgear swatch with the old neutral blend.
+  // Its grayscale construction atlas and physical finish stay independent.
   for(const [id,material] of Object.entries(r.visualKit.wardrobeHead.headwearMaterials)){
+   const selected=id===clothing.headwear;
+   const solid=selected?headwearSolidHex(
+     id==='high-cut-rails'?'high-cut':id,p.wardrobe?.headwearColor):null;
+   if(solid!==null){
+    r.colors.set(material,new THREE.Color(solid));
+    continue;
+   }
+   // Unselected variants remain neutral; they cannot inherit the last
+   // inspected item's swatch when another hat/helmet is equipped.
    const soft=['patrol-cap','boonie','beanie'].includes(id);
    const source=r.colors.get(soft?r.headClothMaterial:r.headArmorMaterial);
    const chosen=(source??new THREE.Color(0x899089)).clone();
-   const neutral=new THREE.Color(0x899089);
-   r.colors.set(material,neutral.lerp(chosen,.38));
+   r.colors.set(material,new THREE.Color(0x899089).lerp(chosen,.38));
   }
   // Hair is seeded by the costume assembler and must join the same reversible
   // palette ledger used by replay, silhouette mode and injury desaturation.
