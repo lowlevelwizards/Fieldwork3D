@@ -8,7 +8,7 @@ import {type PlanNode} from './breach-plan.ts';
 export type RouteLineHit={index:number;point:Pt;distancePx:number};
 export function routeLineHit(origin:Pt,plan:PlanNode[],screen:Pt,
   project:(p:Pt)=>Pt,thresholdPx=14,
-  resolveRoute:(from:Pt,to:Pt)=>Pt[]=route):RouteLineHit|null{
+  resolveRoute:(from:Pt,to:Pt)=>readonly Pt[]=route):RouteLineHit|null{
   let from={...origin},best:RouteLineHit|null=null;
   for(let index=0;index<plan.length;index++){
     const node=plan[index];
