@@ -21,6 +21,7 @@ header a{color:#c8b992}main{position:fixed;bottom:env(safe-area-inset-bottom);le
 #headwearReviewButtons button{min-height:44px}
 #headwearReviewButtons button[aria-pressed="true"]{background:#a8b995;color:#172824}
 #headwearReviewStatus{display:block;margin:5px 0;font-size:11px;color:#c9d7c8}
+#headReviewFraming{width:100%;min-height:40px;margin-top:6px}
 #variantCompareStatus{display:block;color:#dbc69c;font-size:11px;padding:3px 0}
 #comparePinned[disabled]{opacity:.45}
 #wardrobePanel>.kit-grid{margin-top:8px}
@@ -178,7 +179,8 @@ body.kit-compare main>.row[data-lab-group="view"]:has(#comparePose){display:flex
 <button type="button" data-head-silhouette="ach">ACH / MICH</button>
 <button type="button" data-head-silhouette="high-cut">HIGH-CUT</button>
 </div>
-<output id="headwearReviewStatus" aria-live="polite">Choose a headwear silhouette to inspect.</output>
+<button id="headReviewFraming" type="button" aria-pressed="false">ZOOM TO HEAD</button>
+<output id="headwearReviewStatus" aria-live="polite">Choose a headwear silhouette to inspect. Starts with full operator visible.</output>
 </details>
 <div class="kit-grid">
 <label>MEDICAL<select data-kit-slot="medical"></select></label>

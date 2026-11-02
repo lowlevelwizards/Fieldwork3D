@@ -8,7 +8,9 @@ test('first headwear review has four matched one-tap silhouettes without creatin
   assert.match(html,new RegExp('data-head-silhouette="'+id+'"'));
  assert.match(js,/selectWardrobeItem\(bareLabEquipment\(\)/);
  assert.match(js,/weapon\.value='none'/);
- assert.match(js,/isolation\.value='head'/);
+ assert.match(html,/id="headReviewFraming"/);
+ assert.match(js,/headReviewCloseUp\?'head':'all'/);
+ assert.match(js,/updateHeadReviewFraming\(\)/);
  assert.match(js,/frameWardrobeSelection\(\)/);
  assert.match(js,/chooseTrack\('idle'\)/);
  assert.match(html,/shape|silhouette|HEADWEAR SILHOUETTE/i);
