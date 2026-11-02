@@ -60,6 +60,14 @@ export function resolveMovementFrame(
   const loser=!movingA?b:!movingB?a:b;
   const result=draft.get(loser.id)!;
   result.point=loser.from;result.blocked='actor';
+  // Recheck the winner against the *stationary* loser's original position.
+  // Otherwise a moving-versus-moving conflict could still leave both body
+  // centers overlapping after only one proposal is rejected.
+  const winner=loser===a?b:a,winning=draft.get(winner.id)!;
+  if(dist(winning.point,loser.from)<11&&
+     dist(winner.from,loser.from)>dist(winning.point,loser.from)+.001){
+    winning.point=winner.from;winning.blocked='actor';
+  }
  }
  return proposals.map(p=>draft.get(p.id)!);
 }
