@@ -120,18 +120,30 @@ button:focus-visible,select:focus-visible{outline:2px solid #c9a778;outline-offs
 .lab-category-nav button[aria-pressed="true"]{background:#a8b995;
  color:#172824;border-color:#c4d2b4}
 main [data-lab-group]{min-width:0}
-main[data-lab-active="appearance"]>[data-lab-group]:not([data-lab-group="appearance"]),
-main[data-lab-active="motion"]>[data-lab-group]:not([data-lab-group="motion"]),
-main[data-lab-active="ready"]>[data-lab-group]:not([data-lab-group="ready"]),
-main[data-lab-active="actions"]>[data-lab-group]:not([data-lab-group="actions"]),
-main[data-lab-active="playback"]>[data-lab-group]:not([data-lab-group="playback"]),
-main[data-lab-active="view"]>[data-lab-group]:not([data-lab-group="view"]){display:none}
+main[data-lab-active="appearance"]>[data-lab-group]:not([data-lab-group="appearance"]):not([data-lab-group="transport"]),
+main[data-lab-active="motion"]>[data-lab-group]:not([data-lab-group="motion"]):not([data-lab-group="transport"]),
+main[data-lab-active="ready"]>[data-lab-group]:not([data-lab-group="ready"]):not([data-lab-group="transport"]),
+main[data-lab-active="actions"]>[data-lab-group]:not([data-lab-group="actions"]):not([data-lab-group="transport"]),
+main[data-lab-active="playback"]>[data-lab-group]:not([data-lab-group="playback"]):not([data-lab-group="transport"]),
+main[data-lab-active="view"]>[data-lab-group]:not([data-lab-group="view"]):not([data-lab-group="transport"]),
+main[data-lab-active="diagnostics"]>[data-lab-group]:not([data-lab-group="diagnostics"]):not([data-lab-group="transport"]){display:none}
 main>.row[data-lab-group]{align-items:flex-start}
 main>.row[data-lab-group]>button{min-height:44px}
 #modelAxisLegend{display:block;position:fixed;right:8px;top:62px;z-index:8;
  background:#1f302dcf;color:#c3cfbb;font:600 9px "IBM Plex Mono",monospace;
  padding:4px 6px;border:1px solid #62776c;border-radius:4px;pointer-events:none}
 body.kit-compare .lab-category-nav{display:none}
+/* UX2-17: persistent compact transport and separate diagnostics. */
+#labCategoryHint{display:block;color:#c5d1bc;font:600 11px/1.35 "IBM Plex Sans",sans-serif;
+ letter-spacing:.01em;padding:0 3px}
+.lab-transport{position:sticky;top:45px;z-index:3;display:flex;align-items:center;
+ flex-wrap:nowrap;gap:8px;background:#182e2aeF;border:1px solid #637c6c;
+ padding:5px 7px;border-radius:7px;min-height:49px}
+.lab-transport #playPause{min-width:73px;min-height:40px;font-weight:700}
+.lab-transport #timeline{min-width:65px;flex:1}
+.lab-transport #timestamp{font:600 11px "IBM Plex Mono",monospace;white-space:nowrap}
+@media(max-width:440px){.lab-transport{gap:6px;padding:4px 6px}
+ .lab-transport #playPause{min-width:63px}}
 body.kit-compare main #kitPanel{display:block!important}
 body.kit-compare main>.row[data-lab-group="view"]:has(#comparePose){display:flex!important}
 </style></head>
@@ -157,8 +169,15 @@ body.kit-compare main>.row[data-lab-group="view"]:has(#comparePose){display:flex
 <button type="button" data-lab-tab="ready" aria-pressed="false">READY</button>
 <button type="button" data-lab-tab="actions" aria-pressed="false">ACTIONS</button>
 <button type="button" data-lab-tab="playback" aria-pressed="false">PLAYBACK</button>
-<button type="button" data-lab-tab="view" aria-pressed="false">VIEW / DIAG</button>
+<button type="button" data-lab-tab="view" aria-pressed="false">CAMERA</button>
+<button type="button" data-lab-tab="diagnostics" aria-pressed="false">DIAGNOSTICS</button>
 </nav>
+<output id="labCategoryHint" aria-live="polite">APPEARANCE · Dress and inspect the operator</output>
+<div class="row lab-transport" data-lab-group="transport" role="group" aria-label="Preview playback controls">
+<button id="playPause" type="button">PAUSE</button>
+<input type="range" id="timeline" min="0" max="4000" step="1" value="0" aria-label="Motion timestamp"/>
+<output id="timestamp" for="timeline">0.00s</output>
+</div>
 <details id="kitPanel" data-lab-group="appearance" open><summary>WARDROBE / ASSEMBLE · PROPORTIONS LOCKED</summary>
 <div class="row" id="wardrobeTools">
 <button id="unequipAll" type="button">UNEQUIP ALL</button>
@@ -318,11 +337,11 @@ These are display positions of actual carried items, not extra inventory.</p>
 <option value="candidate">DISTANCE GAIT (EXPERIMENTAL)</option>
 </select><small>Same track and model; historical contact scheduler is lab-only.</small></div>
 <div class="row" data-lab-group="playback"><label>PLAYBACK</label>
-<button id="playPause">PAUSE</button><button id="stepFrame">+1 FRAME</button>
+<button id="stepFrame">+1 FRAME</button>
 <button id="restartTrack">RESTART</button>
 <button id="loopTrack" aria-pressed="true">LOOP</button>
-<input type="range" id="timeline" min="0" max="4000" step="1" value="0"
- aria-label="Motion timestamp"/><output id="timestamp">0.00s</output></div>
+<button id="slowMotion" aria-pressed="false">SLOW</button>
+<small>Preview transport stays available while changing models, poses and camera views.</small></div>
 <div class="row" data-lab-group="view"><label>VIEW</label>
 <button id="compareGaits" aria-pressed="false">COMPARE GAITS</button>
 <small id="gaitCompareStatus" hidden>LEFT: PRE-180 · RIGHT: HYBRID</small>
@@ -333,8 +352,10 @@ These are display positions of actual carried items, not extra inventory.</p>
 <button data-view="top">TOP</button><button data-view="game">GAME ZOOM</button>
 <button id="resetCamera">FIT</button>
 <button id="savePoseView">SAVE REFERENCE</button>
+<small>Drag orbit · Pinch zoom · Two fingers pan</small></div>
+<div class="row" data-lab-group="diagnostics"><label>DIAGNOSTICS</label>
 <output id="visualStats" aria-live="off" style="color:#c8ac72">DRAWS — · TRIS —</output>
-<button id="diagnostics" aria-pressed="false">JOINTS</button><button id="slowMotion" aria-pressed="false">SLOW</button>
+<button id="diagnostics" aria-pressed="false">JOINTS</button>
 <select id="diagnosticLayer" aria-label="Diagnostic layer">
 <option value="off">DIAG: OFF</option>
 <option value="anchors">FOOT ANCHORS</option>
@@ -342,21 +363,38 @@ These are display positions of actual carried items, not extra inventory.</p>
 <option value="support">SUPPORT REGION</option><option value="polygon">SUPPORT POLYGON</option>
 <option value="planes">KNEE/ELBOW PLANES</option><option value="limits">JOINT LIMITS</option>
 <option value="weapon">WEAPON CONTACTS</option><option value="replay">REPLAY SAMPLES</option>
-</select><small>Drag orbit · Pinch zoom · Two fingers pan</small></div>
+</select><small>Render and motion diagnostics are optional. They do not change game simulation.</small></div>
 </main>
 <script>
 (function(){
  const main=document.querySelector('main[data-lab-active]');
  if(!main)return;
  const tabs=[...document.querySelectorAll('[data-lab-tab]')];
+ const hint=document.getElementById('labCategoryHint');
+ const descriptions={appearance:'APPEARANCE · Dress and inspect the operator',
+  motion:'MOTION · Choose a walking, strafing or turning track',
+  ready:'READY · Compare weapon handling and ready positions',
+  actions:'ACTIONS · Preview interactions, falls and reloads',
+  playback:'PLAYBACK · Step, loop and compare motion references',
+  view:'CAMERA · Inspect silhouette from any angle',
+  diagnostics:'DIAGNOSTICS · Inspect joints, support and render stats'};
+ function activate(tab){
+  const section=tab.getAttribute('data-lab-tab');
+  if(!section)return;
+  main.setAttribute('data-lab-active',section);
+  for(const other of tabs)other.setAttribute('aria-pressed',String(other===tab));
+  if(hint)hint.textContent=descriptions[section]||section;
+  main.scrollTop=0;
+ }
  for(const tab of tabs){
-  tab.addEventListener('click',()=>{
-   const section=tab.getAttribute('data-lab-tab');
-   if(!section)return;
-   main.setAttribute('data-lab-active',section);
-   for(const other of tabs)other.setAttribute('aria-pressed',
-    String(other===tab));
-   main.scrollTop=0;
+  tab.addEventListener('click',()=>activate(tab));
+  tab.addEventListener('keydown',event=>{
+   if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+   event.preventDefault();
+   const index=tabs.indexOf(tab);
+   const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:
+    (index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
+   tabs[next].focus();activate(tabs[next]);
   });
  }
 })();
