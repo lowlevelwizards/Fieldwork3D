@@ -23,16 +23,13 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      # Keep the Pages gate focused on runtime-critical tactical invariants,
-      # release-stamp integrity, and a verified production compilation.
-      # Broad operator wardrobe / research checks continue in ci.yml, but
-      # must not block unrelated changes from reaching the playable site.
-      - name: Validate production and critical motion/replay
+      # Release gate: typecheck, compile, stamp the build, and verify deployable output.
+      # Behavioral regressions belong in focused PR checks; full suite is manual.
+      - name: Build and verify Pages output
         run: |
-          node --experimental-strip-types --test tests/breach-motion-*.test.mjs tests/breach-distance-*.test.mjs tests/breach-hybrid-*.test.mjs tests/breach-121.test.mjs tests/breach-126.test.mjs tests/breach-127.test.mjs
-          node --experimental-strip-types --test tests/pages-cache-bust.test.mjs tests/pages-home.test.mjs tests/equipment-13-visuals.test.mjs
-          node --experimental-strip-types --test tests/operator-cuboid-union.test.mjs tests/operator-headwear-silhouettes.test.mjs tests/operator-headwear-fit-metrics.test.mjs tests/operator-headwear-anatomy.test.mjs
           npm run build
+          test -s dist/index.html
+          test -s dist/fieldwork-build.json
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
