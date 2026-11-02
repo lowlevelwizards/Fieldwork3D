@@ -58,7 +58,9 @@ function cut(wall:Segment,id:string,walls:Segment[],doors:Door[],fraction=.5){
  // Leave meaningful wall stubs beyond the jambs, not barely attached trim.
  if(length<Math.max(55,2*half+16)){walls.push(wall);return;}
  const vx=(wall.b.x-wall.a.x)/length,vy=(wall.b.y-wall.a.y)/length;
- const margin=half/length+.08;
+ // Preserve the original doorway *center placement* even though the panel is
+ // now narrower. Moving the center changed room/frontage relationships.
+ const margin=24/length+.08;
  const t=Math.max(margin,Math.min(1-margin,fraction));
  const middle={x:wall.a.x+vx*length*t,y:wall.a.y+vy*length*t};
  const a={x:middle.x-vx*half,y:middle.y-vy*half};
