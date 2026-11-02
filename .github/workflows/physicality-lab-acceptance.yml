@@ -1,0 +1,22 @@
+name: Physicality Lab passage acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/physicality-lab-*'
+      - 'src/breach-passage.ts'
+      - 'src/breach-door.ts'
+      - 'tests/physicality-lab-real-playthrough.test.mjs'
+      - '.github/workflows/physicality-lab-acceptance.yml'
+  workflow_dispatch:
+jobs:
+  passage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Actual 720-tick interactive lab passage tests
+        run: node --experimental-strip-types --test tests/physicality-lab-real-playthrough.test.mjs

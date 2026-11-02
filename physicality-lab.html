@@ -13,7 +13,7 @@ select,button{background:#39554a;color:#f6efe2;border:1px solid #92a48a;border-r
 button{cursor:pointer}button:active{background:#b69564;color:#1b2a23}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 canvas{display:block;width:100%;aspect-ratio:16/10;background:#34473f;border:1px solid #8ba491;border-radius:7px;touch-action:none}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
 .stat{background:#192e2a;padding:9px;border-radius:6px;font:11px ui-monospace,monospace}
 .stat strong{display:block;font-size:17px;color:#e9c994}
 pre{white-space:pre-wrap;overflow:auto;max-height:160px;font:11px/1.5 ui-monospace,monospace;color:#c9dacb}
@@ -37,5 +37,6 @@ p{line-height:1.5;color:#ced8cf;margin:8px 0 0}
 <div class="stat">BLOCKED TICKS<strong id="blocked">0</strong></div>
 <div class="stat">BODY OVERLAPS<strong id="overlaps">0</strong></div>
 <div class="stat">DOOR OPEN<strong id="angle">0°</strong></div>
+<div class="stat">OPERATORS THROUGH<strong id="passed">0 / 0</strong></div>
 </div><pre id="detail" aria-live="polite"></pre></section>
 </main><script type="module" src="./src/physicality-lab-main.ts"></script></body></html>

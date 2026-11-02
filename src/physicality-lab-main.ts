@@ -4,13 +4,14 @@ import {activateSite,doorCenter,doorLeafSegment,segmentsCross,route,
  from './breach-core.ts';
 import {initDoor,advanceDoor,pushDoor,approachingDoorLeaf} from './breach-door.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
-import {friendlyPassingStep} from './breach-friendly-traffic.ts';
+import {routeWithSqueezeWorld} from './breach-squeeze-route.ts';
+import {friendlyPassingStep,opposingPassingStep} from './breach-friendly-traffic.ts';
 import {resolveMovementFrame} from './breach-movement-authority.ts';
 import {passageWait,type PassageLease} from './breach-passage.ts';
 import type {Site} from './breach-site.ts';
 
 type Unit={id:string;side:Side;p:Pt;goal:Pt;held:boolean;path:Pt[];
- blocked:string;blockedTicks:number};
+ blocked:string;blockedTicks:number;stalledTicks:number};
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const canvas=el<HTMLCanvasElement>('stage'),ctx=canvas.getContext('2d')!;
 const scenario=el<HTMLSelectElement>('scenario');
@@ -20,13 +21,14 @@ const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const wall=(x:number,y:number,u:number,v:number):Segment=>({a:{x,y},b:{x:u,y:v}});
 const door=(id:string,x:number):Door=>({
  id,a:{x,y:211},b:{x,y:259},open:false,openedAt:-1,kind:'hinged',
- hinge:'a',swing:-1,style:'wood'
+ hinge:'a',swing:1,style:'wood'
 });
 let units:Unit[]=[],activeDoors:Door[]=[],walls:Segment[]=[],cover:Obstacle[]=[];
 let elapsed=0,blockedTicks=0,overlaps=0,running=false;
 let leases:Record<string,PassageLease>={};
 const unit=(id:string,side:Side,x:number,y:number,gx:number,gy:number,held=false):Unit=>({
- id,side,p:{x,y},goal:{x:gx,y:gy},held,path:[],blocked:'clear',blockedTicks:0
+ id,side,p:{x,y},goal:{x:gx,y:gy},held,path:[],blocked:'clear',blockedTicks:0,
+ stalledTicks:0
 });
 function reset(){
  running=false;el<HTMLButtonElement>('run').textContent='RUN';
@@ -43,7 +45,7 @@ function reset(){
    unit('VALE','blue',125,235,476,244)];
  }else if(choice==='headon'){
   walls=[wall(320,48,320,211),wall(320,259,320,452)];
-  activeDoors=[door('PASSAGE',320)];
+  activeDoors=[{...door('PASSAGE',320),open:true}];
   units=[unit('ROOK','blue',265,229,410,229),
    unit('MOSS','blue',232,239,417,239),
    unit('GUARD','red',392,229,230,229),
@@ -58,7 +60,7 @@ function reset(){
  }else{
   walls=[wall(320,48,320,211),wall(320,259,320,452)];
   activeDoors=[door('SHOP',320)];
-  units=[unit('ROOK','blue',350,235,350,235,true),
+  units=[unit('ROOK','blue',355,260,355,260,true),
    unit('MOSS','blue',276,225,450,225),
    unit('ASH','blue',241,235,455,235),
    unit('VALE','blue',203,245,455,245)];
@@ -99,6 +101,11 @@ function tick(){
      units.filter(v=>v!==u&&v.side===u.side).map(v=>v.p),
      (a,b)=>sweptBodyClear(a,b,activeDoors));
   }
+  // Combat opponents remain solid but can negotiate shoulder-to-shoulder
+  // space instead of both walking straight into each other forever.
+  move=opposingPassingStep(start,move,target,
+    units.filter(v=>v!==u&&v.side!==u.side).map(v=>frame[units.indexOf(v)]),
+    (a,b)=>sweptBodyClear(a,b,activeDoors));
   if(traffic.value==='strict'&&units.some(v=>v!==u&&v.side===u.side&&
      distance(move,v.p)<16))move=start;
   const actors=units.map(v=>({id:v.id,p:v.p,goal:v.held?null:v.goal,
@@ -119,7 +126,15 @@ function tick(){
    distance(result.point,p.from)<.01?'waiting':'clear');
   u.blocked=blocked;
   if(blocked!=='clear'){u.blockedTicks++;blockedTicks++;}
+  const progressed=distance(result.point,p.from)>.05;
+  u.stalledTicks=progressed?0:u.held?0:u.stalledTicks+1;
   u.p={...result.point};
+  // The original lab never tried a new path after finding a leaf in the
+  // current way. Dynamic open doors need route repair just like the game.
+  if(u.stalledTicks===24||u.stalledTicks>24&&u.stalledTicks%45===0){
+   const repaired=routeWithSqueezeWorld(u.p,u.goal,activeDoors);
+   if(repaired.length)u.path=repaired;
+  }
  }
  for(let i=0;i<units.length;i++)for(let j=i+1;j<units.length;j++)
   if(distance(units[i].p,units[j].p)<12)overlaps++;
@@ -152,6 +167,10 @@ function draw(){
  }
  el<HTMLElement>('elapsed').textContent=elapsed.toFixed(1)+'s';
  el<HTMLElement>('blocked').textContent=String(blockedTicks);
+ const movers=units.filter(u=>!u.held);
+ const reached=movers.filter(u=>distance(u.p,u.goal)<6).length;
+ el<HTMLElement>('passed').textContent=reached+' / '+movers.length+
+   (reached===movers.length?' · PASS':'');
  el<HTMLElement>('overlaps').textContent=String(overlaps);
  el<HTMLElement>('angle').textContent=(activeDoors[0]?
   ((activeDoors[0].openFraction??0)*88.24).toFixed(0)+'°':'—');
