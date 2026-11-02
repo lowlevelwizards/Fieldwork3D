@@ -19,10 +19,10 @@ export type HeadSilhouetteMetrics={
 export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhouetteMetrics>>={
  'patrol-cap':{id:'patrol-cap',frontExtent:-7.82,rearExtent:4.80,
   top:8.89,earEdge:6.52,foreheadEdge:6.52,billLength:3.35},
- 'ach':{id:'ach',frontExtent:-5.66,rearExtent:5.76,
-  top:10.20,earEdge:3.08,foreheadEdge:6.19,billLength:0},
- 'high-cut':{id:'high-cut',frontExtent:-5.58,rearExtent:5.45,
-  top:9.94,earEdge:6.58,foreheadEdge:6.29,billLength:0}
+ 'ach':{id:'ach',frontExtent:-5.525,rearExtent:5.56,
+  top:10.17,earEdge:4.33,foreheadEdge:5.905,billLength:0},
+ 'high-cut':{id:'high-cut',frontExtent:-5.485,rearExtent:5.35,
+  top:10.135,earEdge:6.92,foreheadEdge:6.11,billLength:0}
 };
 type Cuboid={
  name:string;x:number;y:number;z:number;
