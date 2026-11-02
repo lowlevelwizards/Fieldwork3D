@@ -31,23 +31,36 @@
   <button id="siteSettingsToggle" type="button" aria-expanded="false">⚙ SETTINGS</button>
   <button id="clear" type="button" title="Clear all remaining orders for selected operator">CLEAR PLAN</button>
 </section>
-<section id="siteSettings" class="site-settings" hidden aria-label="Camera and mission settings">
-  <button id="variant" type="button">NEW SITE</button>
-  <button id="siteSize" type="button" title="Toggle standard or expanded playable properties">MAP SIZE · STANDARD</button>
-  <button id="siteLighting" type="button" title="Choose site lighting before deployment">LIGHTING · DAY</button>
-  <button id="briefingToggle" type="button" aria-expanded="false">BRIEFING</button>
-  <button id="uiHelp" type="button" aria-label="Show contextual help">? HELP</button>
-  <button id="uiSoundToggle" type="button" aria-pressed="true">UI SOUND ON</button>
-  <button id="restart" type="button">RESTART</button>
-  <button id="viewIso" type="button" aria-pressed="true">ISO</button>
-  <button id="viewTop" type="button" aria-pressed="false">TOP</button>
-  <button id="view2d" type="button" aria-pressed="false">2D</button>
-  <button id="cameraFit" type="button">FIT VIEW</button>
-  <button id="intelMode" type="button" title="Cycle mission intelligence rules; restarts this seed">INTEL · FLOOR PLAN</button>
-   <a class="operator-lab-link" href="./operator-lab.html">OPERATOR LAB</a>
-   <a class="operator-lab-link" href="./map-lab.html">MAP LAB</a>
-   <a class="operator-lab-link" href="./physicality-lab.html">PHYSICALITY LAB</a>
-   <a class="operator-lab-link" href="./asset-lab.html">ASSET LIBRARY</a>
+<section id="siteSettings" class="site-settings" hidden aria-label="Mission and view options">
+  <div class="site-settings-group">
+    <h3>MISSION & SITE</h3>
+    <div class="site-settings-row">
+      <button id="briefingToggle" type="button" aria-expanded="false">BRIEFING</button>
+      <button id="variant" type="button">NEW SITE</button>
+      <button id="siteSize" type="button" title="Set the size of the next generated site">NEXT SITE SIZE · MEDIUM</button>
+      <button id="intelMode" type="button" title="Set intelligence rules for the next site; does not reset this mission">NEXT SITE INTEL</button>
+      <button id="siteLighting" type="button" title="Choose lighting before deployment">LIGHTING · DAY</button>
+      <button id="restart" type="button">RESTART</button>
+    </div>
+  </div>
+  <div class="site-settings-group">
+    <h3>VIEW & CONTROLS</h3>
+    <div class="site-settings-row">
+      <button id="viewIso" type="button" aria-pressed="true">ISO</button>
+      <button id="viewTop" type="button" aria-pressed="false">TOP</button>
+      <button id="view2d" type="button" aria-pressed="false">2D</button>
+      <button id="cameraFit" type="button">FIT VIEW</button>
+      <button id="uiHelp" type="button" aria-label="Show contextual help">? HELP</button>
+      <button id="uiSoundToggle" type="button" aria-pressed="true">UI SOUND ON</button>
+    </div>
+  </div>
+  <details class="site-settings-tools">
+    <summary>DEVELOPMENT TOOLS</summary>
+    <div class="site-settings-row"><a class="operator-lab-link" href="./operator-lab.html">OPERATOR LAB</a>
+      <a class="operator-lab-link" href="./map-lab.html">MAP LAB</a>
+      <a class="operator-lab-link" href="./physicality-lab.html">PHYSICALITY LAB</a>
+      <a class="operator-lab-link" href="./asset-lab.html">ASSET LIBRARY</a></div>
+  </details>
 </section>
 <section id="briefingPanel" class="briefing-panel" hidden aria-label="Operation briefing">
   <strong id="briefingTitle">OPERATION BRIEFING</strong>
