@@ -1087,3 +1087,40 @@ body.replaying #tacticalFeedback{display:none}
 @media(max-width:370px){.replay-actions button{font-size:14px;
  padding:5px 1px}.replay-actions button::after{font-size:8px}}
 @media(max-height:470px){.replay-actions button{min-height:43px}}
+
+/* UX2-16: concise, ranked execution feedback. One notice; no persistent toast stack. */
+.feed:not([hidden]){
+ display:flex!important;align-items:flex-start;gap:9px;
+ position:fixed;left:50%;right:auto;
+ bottom:calc(var(--tactical-hud-height, 110px) + 14px + env(safe-area-inset-bottom,0px));
+ transform:translateX(-50%);
+ width:max-content;max-width:min(410px,calc(100vw - 26px));
+ padding:9px 11px;
+ background:#1c302aeF;border:1px solid #71877a;
+ border-radius:7px;box-shadow:0 5px 18px #07120e99;
+ color:#e4e7d8;text-shadow:none;
+ font:500 12px/1.35 "IBM Plex Sans",system-ui,sans-serif;
+ letter-spacing:0;pointer-events:none;z-index:8;
+}
+.feed .fw-notice-label{
+ color:#b8c8b6;font:800 10px/1.5 "IBM Plex Sans",system-ui,sans-serif;
+ letter-spacing:.07em;flex:none;white-space:nowrap
+}
+.feed .fw-notice-content{min-width:0;max-height:3.9em;overflow:hidden}
+.feed[data-severity="contact"]{border-color:#c7ab78;background:#27352bef}
+.feed[data-severity="contact"] .fw-notice-label{color:#f0cf8d}
+.feed[data-severity="warning"]{border-color:#b18b68;background:#372e26ef}
+.feed[data-severity="warning"] .fw-notice-label{color:#f0b88d}
+.feed[data-severity="danger"]{border-color:#bd7469;background:#392b29f2}
+.feed[data-severity="danger"] .fw-notice-label{color:#f3b6ac}
+.feed[data-severity="state"]{border-color:#82998b}
+@media(max-width:420px){
+ .feed:not([hidden]){font-size:11px;padding:8px 10px;
+  gap:7px;max-width:calc(100vw - 20px)}
+ .feed .fw-notice-label{font-size:9px}
+}
+@media(max-height:470px){
+ .feed:not([hidden]){bottom:calc(var(--tactical-hud-height, 73px) + 5px +
+  env(safe-area-inset-bottom,0px));padding:5px 9px;font-size:10px;
+  max-height:51px}
+}

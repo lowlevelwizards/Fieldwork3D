@@ -18,6 +18,7 @@ import {
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import type {TacticalOrderPreview} from './ui/tactical-feedback.ts';
+import {ExecutionNoticeFeed} from './ui/execution-feedback.ts';
 import {tacticalHitProfile} from './ui/touch-hit-targets.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
@@ -1460,17 +1461,29 @@ const handleContextAction=(event:MouseEvent)=>{
 };
 ui.context.addEventListener('click',handleContextAction);
 ui.quickStates.addEventListener('click',handleContextAction);
-// World-first status: repetitive instructions are hidden; critical events persist.
-let lastNoticeKey='',noticeBorn=0;
+// World-first event hierarchy: never read unobserved enemy state or persist
+// old critical messages indefinitely. Only existing player-facing events.
+const executionNoticeFeed=new ExecutionNoticeFeed();
 function updateUiNotice(node:HTMLElement,events:string[],phase:string){
-  const latest=events.at(-1)??'';
-  const key=events.length+'|'+latest+'|'+phase;
-  if(key!==lastNoticeKey){lastNoticeKey=key;noticeBorn=performance.now();}
-  const critical=/DOWN|BLOCKED|INVALID|FAILED|OUT OF RANGE|NO WALKABLE|CANNOT|LOST/i.test(latest);
-  const show=!!latest&&(critical||performance.now()-noticeBorn<2600);
-  node.hidden=!show;
-  if(show)node.textContent=latest;
-  node.classList.toggle('critical',critical&&show);
+  const notice=executionNoticeFeed.update(events,phase,performance.now());
+  node.hidden=!notice||replaying;
+  if(!notice||replaying){
+    node.removeAttribute('data-notice-key');
+    return;
+  }
+  const key=notice.born+'|'+notice.label+'|'+notice.text;
+  if(node.dataset.noticeKey!==key){
+    const label=document.createElement('strong');
+    label.className='fw-notice-label';
+    label.textContent=notice.label;
+    const description=document.createElement('span');
+    description.className='fw-notice-content';
+    description.textContent=notice.text;
+    node.replaceChildren(label,description);
+    node.dataset.noticeKey=key;
+  }
+  node.dataset.severity=notice.severity;
+  node.classList.toggle('critical',notice.severity==='danger');
 }
 function updateQuickStates(){
   const actor=uid(selected);
@@ -1599,7 +1612,7 @@ function updateHud(){
   operationsToggle.disabled=operationsToggle.hidden;
   if(operationsToggle.hidden)operationsBoard.hidden=true;
   ui.phase.textContent=replaying?'REPLAY':
-    state.phase==='planning'?'PLANNING':
+    state.phase==='planning'?(state.started?'PAUSED':'PLANNING'):
     state.phase==='running'?'EXECUTING':
     state.phase==='won'?'COMPLETE':'FAILED';
   ui.phase.classList.toggle('live',state.phase==='running');
@@ -2726,6 +2739,7 @@ function reset(next=state.variant,siteSeed?:number,
   state=newSession(next,legacyStudy?undefined:
     siteSeed??randomSiteSeed(),selectedIntelMode,requestedSiteScale,missionOverride,
     prebuiltSite,{risk:encounterRisk});
+  executionNoticeFeed.reset();
   state.lightingMode=selectedLightingMode;
   if(campaignMode==='quick')persistentRoster=freshQuickPlayRoster(persistentRoster);
   applyRequestedCondition(state);
