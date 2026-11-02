@@ -297,6 +297,37 @@ export class CampaignScreen{
   overview.append(node('p','campaign-note',
    'SUPPLIES · '+c.supplies.ammo+' ROUNDS · '+c.supplies.medical+
    ' MEDICAL KITS · '+c.supplies.flash+' FLASHBANGS'));
+  const readiness=node('div','campaign-readiness');
+  readiness.append(node('h2','','DEPLOYMENT READINESS'));
+  const assigned=c.operators.filter(o=>c.squadIds.includes(o.id));
+  const recovering=assigned.filter(o=>o.recoveryDays>0);
+  const rosterStatus=node('p','campaign-readiness-label',
+   assigned.map(o=>o.callsign).join(' · ')||'NO OPERATORS ASSIGNED');
+  readiness.append(rosterStatus);
+  const checks=[
+   {attention:assigned.length<4,label:assigned.length+' / 4 SQUAD SLOTS FILLED',
+    action:'personnel' as const},
+   {attention:recovering.length>0,
+    label:recovering.length+' ASSIGNED OPERATOR'+(recovering.length===1?'':'S')+
+     ' RECOVERING',action:'personnel' as const},
+   {attention:c.supplies.ammo<60,
+    label:'LOW AMMUNITION RESERVE · '+c.supplies.ammo+' ROUNDS IN STOCK',
+    action:'logistics' as const},
+   {attention:c.supplies.medical===0,
+    label:'NO SPARE MEDICAL KITS IN STOCK',action:'logistics' as const}
+  ];
+  for(const check of checks){
+   if(!check.attention)continue;
+   const item=button(check.label,()=>{
+    this.homeTab=check.action;this.root.scrollTop=0;this.home(c);
+   },'campaign-readiness-warning');
+   readiness.append(item);
+  }
+  if(!checks.some(check=>check.attention)){
+   readiness.append(node('p','campaign-readiness-ok',
+    'SQUAD ASSIGNED · BASE RESERVES AVAILABLE'));
+  }
+  overview.append(readiness);
   if(accepted)overview.append(button('CONTINUE · '+accepted.title.toUpperCase(),
    this.handlers.resumeContract,'campaign-primary'));
   const shortcuts=node('div','campaign-overview-actions');
