@@ -585,6 +585,18 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.colors.set(additional.gorkaCuff,new THREE.Color(cuffHex));
   r.colors.set(r.visualKit.fieldBlouses['bdu-shirt'].cuffMaterial,
    new THREE.Color(cuffHex));
+  // Trouser rolls use the SAME deliberate cuff-solid policy as sleeves,
+  // but resolve against trousers, never the jacket's selected fabric.
+  // A user-selected cuff swatch deliberately overrides both channels.
+  const legPrint=p.wardrobe?.fabricCamo?.trousers;
+  const trouserCuff=resolvedCuffSolid({
+   print:legPrint&&fabricCamoCompatible(legPrint,'trousers',clothing)?legPrint:null,
+   solid:p.wardrobe?.fabricSolids?.trousers,
+   override:p.wardrobe?.cuffSolid,
+   fallback:clothing.trousers==='gorka-trousers'?'khaki':'olive-drab'
+  });
+  r.colors.set(r.visualKit.fieldTrousers['bdu-trousers'].cuffMaterial,
+   new THREE.Color(garmentSolidHex(trouserCuff)));
   // The upper and lower Gorka pieces are separate clothing channels. In
   // particular a jacket two-tone choice must never recolor the trousers.
   const selectedTop=p.wardrobe?.fabricCamo?.top;
