@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {TILE_WORLD_SIZE} from './rendering/pixel-materials.ts';
+import {outwardLimbPocket} from './operator-garment-mount-frame.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import type {SleeveState} from './operator-wardrobe-data.ts';
 
@@ -197,7 +198,7 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
   const upper:THREE.Group[]=[],lower:THREE.Group[]=[],
   cuffed:THREE.Group[]=[],cuffedLower:THREE.Group[]=[],rolledUpper:THREE.Group[]=[];
   for(const [index,arm] of arms.entries()){
-   const outside=index===0?-1:1;
+   // Both IK limb frames expose their external surface on local +X.
    const a=group(arm.upper,cut+':upper-sleeve:'+index);
    const b=group(arm.lower,cut+':forearm-sleeve:'+index);
    const c=group(arm.lower,cut+':cuffed-wrist:'+index);
@@ -218,14 +219,18 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
     box(b,cloth,0,.38,2.65,2.45,.12,.56);
     seamBand(c,solidCuff,profile.lowerRadius[0]+.24,.19,.21);
    }else{
-    // A pocket on EACH OUTER bicep, using left/right ±Z. The short
-    // upright pouch and flap are not forward-facing or sideways strips.
+    // A true +X bicep pocket on BOTH articulated arms. Nominal +X is
+    // anatomical outside in the actual alignSegment limb basis.
+    const pouch=outwardLimbPocket(profile.upperRadius[0],.08,.32,2.28,.40);
     for(const g of [a,rolled]){
-     const z=outside*(profile.upperRadius[0]+.19);
-     box(g,cloth,0,.14,z,2.50,.28,.51);
-     box(g,trim,0,.28,z+outside*.12,2.48,.09,.52);
+     box(g,cloth,pouch.x,pouch.y,pouch.z,
+      pouch.width,pouch.height,pouch.depth);
+     box(g,trim,pouch.x+.25,pouch.y+.16,0,
+      .10,.09,pouch.depth+.12);
     }
-    box(b,cloth,0,.34,2.58,2.02,.09,.40);
+    const elbow=outwardLimbPocket(profile.lowerRadius[0],.18,.25,2.00,.13);
+    box(b,cloth,elbow.x,elbow.y,elbow.z,
+     elbow.width,elbow.height,elbow.depth);
     seamBand(c,solidCuff,profile.lowerRadius[0]+.23,.19,.19);
    }
    for(const g of [a,b,c,short,rolled])consolidateVisualGroup(g);
