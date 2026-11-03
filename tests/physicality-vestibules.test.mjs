@@ -18,7 +18,11 @@ test('passage retains owner while passing the vestibule midpoint',()=>{
  const leases={};
  assert.equal(passageWait(firstActor,[first,second],[firstActor,other],leases,1),false);
  firstActor.p.y=134;
- assert.equal(passageWait(other,[first,second],[firstActor,other],leases,1.1),true);
+ // Counterflow may approach the next mouth but must not enter while its
+ // current owner is passing through the vestibule.
+ assert.equal(passageWait(other,[first,second],[firstActor,other],leases,1.1),false);
+ other.p.y=186;
+ assert.equal(passageWait(other,[first,second],[firstActor,other],leases,1.2),true);
  assert.equal(leases['zone:A-DOOR+B-DOOR'].actorId,'first');
  firstActor.p.y=218;
  assert.equal(passageWait(other,[first,second],[firstActor,other],leases,2),false);
