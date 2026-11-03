@@ -83,6 +83,8 @@ export type OperatorPose={
   clearanceRetraction?:number;clearanceBlocked?:boolean;
   blocked?:boolean;footAllowed?:(point:{x:number;y:number})=>boolean;
   gait?:'walk'|'run'|'pie'|'squeeze';
+  /** 0-1 motor-owned vault phase, also restored during replay. */
+  traversalProgress?:number;
   equipment?:EquipmentLoadout;flashCharges?:number;
   medicalCarryLocation?:CarryLocation;utilityCarryLocation?:CarryLocation;
   magazineCarryLocations?:readonly CarryLocation[];
@@ -884,14 +886,20 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const injuryTilt=p.injury===2?.16:p.injury===1?.05:0;
   const collapse=fallAngles(p.downPose??'forward',downProgress);
   const impactPulse=Math.sin(Math.PI*downProgress);
+  const vaultPhase=Math.max(0,Math.min(1,p.traversalProgress??0));
+  const vaultTuck=vaultPhase>0&&vaultPhase<1?
+    Math.sin(Math.PI*vaultPhase):0;
   r.legacyPitch=p.surrender?-.22:
     p.down?collapse.x+reaction.forward*.12*impactPulse:
-      -(injuryTilt+reaction.forward);
+      -(injuryTilt+reaction.forward)-vaultTuck*.26;
   r.legacyRoll=p.surrender?.09:
     p.down?collapse.z+reaction.side*.10*impactPulse:
       clamp(p.injury===2?.065:p.injury===1?.018:0,0,.08)+
       reaction.side;
-  r.root.position.y=p.surrender?-3-3*kneel:p.down?collapse.y:0;
+  // The scene translates the whole miniature to the motor's elevation.
+  // Here only tuck the local torso. Avoid a second independent vertical arc.
+  r.root.position.y=p.surrender?-3-3*kneel:p.down?collapse.y:
+    -vaultTuck*2.8;
   // World-space anatomy is IDENTICAL to the old model:
   // canonicalRoot * legacyFrame(+90 Y) = original Euler(pitch,yaw,roll).
   r.root.quaternion.copy(
