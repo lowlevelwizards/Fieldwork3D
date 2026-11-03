@@ -29,6 +29,8 @@ import {safeLabWindow,safeLabZoom,safeLabProjectionShift,
 import {operatorAttachmentPoint,type OperatorAttachmentZone}
  from './operator-attachment-zones.ts';
 import {selectWardrobeItem} from './operator-wardrobe-unified.ts';
+import {createWardrobeFabricCamoPicker} from './operator-fabric-camo-picker.ts';
+import './operator-fabric-camo-picker.css';
 import {MAX_WARDROBE_LOOKS,makeWardrobeLook,readWardrobeLooks,
  exportWardrobeLook,importWardrobeLook,type WardrobeLook}
  from './operator-wardrobe-storage.ts';
@@ -491,6 +493,7 @@ function renderHeadwearCamoSwatches(model:string){
 }
 
 function syncWardrobe(){
+ renderFabricPicker();
  const compatible=resolvedWardrobe(wardrobeOptions,labKit);
  renderHeadwearSolidSwatches(compatible.headwear);
  renderHeadwearCamoSwatches(compatible.headwear);
@@ -553,6 +556,17 @@ document.getElementById('rolledSleeves')?.addEventListener('change',e=>{
  checkpointAppearance();wardrobeOptions={...wardrobeOptions,
   rolledSleeves:(e.target as HTMLInputElement).checked};
 });
+const fabricPickerState:{expanded:boolean;openChannel:null|import('./operator-fabric-camo-policy.ts').FabricCamoChannel;filter:string}={
+ expanded:false,openChannel:null,filter:''
+};
+function renderFabricPicker(){
+ const target=document.getElementById('wardrobeFabricCamo');
+ if(!target)return;
+ target.replaceChildren(createWardrobeFabricCamoPicker(labKit,wardrobeOptions,next=>{
+  checkpointAppearance();
+  wardrobeOptions=next;syncWardrobe();
+ },fabricPickerState));
+}
 const patternSelects=Array.from(document.querySelectorAll<HTMLSelectElement>(
  '[data-wardrobe-pattern]'));
 for(const select of patternSelects){
@@ -565,6 +579,7 @@ for(const select of patternSelects){
  select.addEventListener('change',()=>{
   checkpointAppearance();wardrobeOptions=setWardrobePattern(wardrobeOptions,slot,
     select.value as typeof WARDROBE_PATTERNS[number]);
+  syncWardrobe();
  });
 }
 document.getElementById('wardrobeReset')?.addEventListener('click',()=>{

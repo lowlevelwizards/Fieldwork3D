@@ -81,6 +81,8 @@ import {loadMovementScale,equippedFlashCharges} from './equipment-loadouts.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {allocateFlashSupply} from './equipment-supply.ts';
 import {createHeadwearAppearancePicker} from './operator-headwear-picker.ts';
+import {createWardrobeFabricCamoPicker} from './operator-fabric-camo-picker.ts';
+import './operator-fabric-camo-picker.css';
 import {WARDROBE_ACCESSORY_SLOTS,WARDROBE_ACCESSORY_OPTIONS}
  from './operator-wardrobe-accessories.ts';
 import {readWardrobe,resolvedWardrobe,setWardrobeStyle,setWardrobePattern,
@@ -488,6 +490,7 @@ let expandedQuickKit:string|null=null;
 let expandedQuickWardrobe:string|null=null;
 let expandedQuickHeadwear:string|null=null;
 let expandedQuickHeadwearCamo:string|null=null;
+const quickFabricPickerState:{expanded:boolean;openChannel:null|import('./operator-fabric-camo-policy.ts').FabricCamoChannel;filter:string}={expanded:false,openChannel:null,filter:''};
 let expandedQuickWeapon:string|null=null;
 let quickWorkbench:WeaponWorkbenchPreview|null=null;
 let quickWorkbenchId:string|null=null;
@@ -656,6 +659,8 @@ function renderOperationsBoard(){
     onExpandedChange:open=>{expandedQuickHeadwear=open?member.id:null;},
     onCamoExpandedChange:open=>{expandedQuickHeadwearCamo=open?member.id:null;}
    }));
+  wardrobeEditor.append(createWardrobeFabricCamoPicker(member.loadout,
+   currentWardrobe,writeCosmetics,quickFabricPickerState));
   const patterns=document.createElement('details');
   const patternTitle=document.createElement('summary');
   patternTitle.textContent='FABRIC / CAMOUFLAGE';

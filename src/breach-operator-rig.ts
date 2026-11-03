@@ -1,7 +1,7 @@
 /** 109–113. Deliberately simple box anatomy and independently articulated limbs.
  * The battle motor remains authoritative. IK is presentation-only. */
 import * as THREE from 'three';
-import {operatorPixelTextures,mapBoxPixelUV,type PixelSurface} from './rendering/pixel-materials.ts';
+import {operatorPixelTextures,type PixelSurface} from './rendering/pixel-materials.ts';
 import {canonicalRootOrientation,LEGACY_FRAME_YAW,
   createCanonicalAttachment} from './operator-axis-convention.ts';
 import {neutralMannequinHipRise,neutralMannequinWrist,
@@ -37,6 +37,8 @@ import {resolvedHeadwearCamo,headwearCamoPlacement} from './operator-headwear-ca
 import {headwearCamoTexture,headwearDetailTexture} from './operator-headwear-materials.ts';
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import {wardrobePatternTexture} from './operator-wardrobe-patterns.ts';
+import {garmentBoxUV,wardrobeFabricCamoTexture} from './operator-fabric-camo-materials.ts';
+import {fabricCamoCompatible,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {resolveWardrobeDisplayMount} from './operator-wardrobe-mounts.ts';
 import type {CarryLocation} from './equipment-carry-placement.ts';
 import {createOperatorVisualKit,applyOperatorVisualKit,
@@ -152,8 +154,8 @@ const mat=(hex:number,surface?:PixelSurface)=>new THREE.MeshStandardMaterial({co
   flatShading:true,roughness:.86});
 function block(group:THREE.Object3D,x:number,y:number,z:number,
   width:number,height:number,depth:number,material:THREE.Material):THREE.Mesh{
-  const mesh=new THREE.Mesh(mapBoxPixelUV(new THREE.BoxGeometry(width,height,depth),
-    width,height,depth),material);
+  const mesh=new THREE.Mesh(garmentBoxUV(new THREE.BoxGeometry(width,height,depth),
+    width,height,depth,material,x,y,z),material);
   mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;
   group.add(mesh);return mesh;
 }
@@ -184,6 +186,10 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     skin=mat(0xb29b83),steel=mat(0x414846,'metal');
   const packFabric=vest.clone(),gearFabric=vest.clone(),
     headCloth=cloth.clone(),headArmor=vest.clone();
+   // Only textiles are unfolded across adjacent faces; leave rubber, steel,
+   // skin and the approved, separately authored headwear atlas untouched.
+   for(const material of [cloth,trousers,vest,packFabric,gearFabric])
+    material.userData.fieldworkFabric=true;
   hip.position.y=20.2;
   block(hip,0,0,0,8,5,12,trousers);
   chest.position.y=26;
@@ -471,11 +477,20 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     (r.colors.get(r.clothMaterial)??r.baseCloth).clone());
   for(const [channel,material] of fabricChannels){
    const pattern=p.wardrobe?.patterns[channel];
-   const map=pattern&&pattern!=='solid'?
-    wardrobePatternTexture(pattern,p.wardrobe?.palette??0):
-    operatorPixelTextures.get('fabric');
+   const authored=channel==='head'?null:
+    p.wardrobe?.fabricCamo?.[channel as FabricCamoChannel];
+   const print=authored&&channel!=='head'&&
+    fabricCamoCompatible(authored,channel as FabricCamoChannel,clothing)?
+     authored:null;
+   const map=print?
+    wardrobeFabricCamoTexture(print,channel as FabricCamoChannel,
+     headwearCamoPlacement(r.camoIdentity,'garment:'+channel,print,
+      p.wardrobe?.fabricCamoRoll?.[channel as FabricCamoChannel]??0)):
+    pattern&&pattern!=='solid'?
+     wardrobePatternTexture(pattern,p.wardrobe?.palette??0):
+     operatorPixelTextures.get('fabric');
    if(material.map!==map){material.map=map;material.needsUpdate=true;}
-   if(pattern&&pattern!=='solid')
+   if(print||(pattern&&pattern!=='solid'))
     r.colors.set(material,new THREE.Color(0xffffff));
   }
   // One authoritative color ledger owns *every* material before the final
