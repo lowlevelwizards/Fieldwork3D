@@ -50,11 +50,13 @@ export function placeContextMenu({
   const margin=8,xMin=margin,xMax=Math.max(margin,viewportWidth-width-margin);
   const yMin=top,yMax=Math.max(yMin,bottom-height);
   // Candidate screen pockets, not merely the nearest side/edge.
-  const xs=[xMin,xMax,anchor.x-width-120,anchor.x+120,
+  // The current position must be an actual candidate, not merely a nearby
+  // sample. Otherwise tiny camera motion can make a good pocket disappear.
+  const xs=[preferredPosition?.x??xMin,xMin,xMax,anchor.x-width-120,anchor.x+120,
     viewportWidth*.25-width/2,viewportWidth*.5-width/2,
     viewportWidth*.75-width/2];
-  const ys=[yMin,yMax,anchor.y-height*.5,anchor.y-height-140,
-    anchor.y+140];
+  const ys=[preferredPosition?.y??yMin,yMin,yMax,
+    anchor.y-height*.5,anchor.y-height-140,anchor.y+140];
   for(let k=0;k<=12;k++)ys.push(yMin+(yMax-yMin)*k/12);
   let best:ContextMenuPlacement={x:xMin,y:yMin,side:'left'};
   let bestScore=Infinity;
@@ -79,8 +81,11 @@ export function placeContextMenu({
     if(preferredSide===side)score-=320;
     if(preferredPosition){
       const delta=Math.hypot(x-preferredPosition.x,y-preferredPosition.y);
-      if(delta<28)score-=850;
-      else if(delta<65)score-=400;
+      // Favor staying put unless meaningful obstruction outweighs stability.
+      // The large clearance and overlap penalties still take precedence.
+      if(delta<12)score-=1800;
+      else if(delta<40)score-=900;
+      else if(delta<70)score-=350;
     }
     if(score<bestScore){bestScore=score;best={x,y,side};}
   }
