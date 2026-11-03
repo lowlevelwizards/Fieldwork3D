@@ -159,6 +159,9 @@ jobs:
       - name: Focused garment fit Stage 3A anatomy and motion protection
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'appearance/stage3a-') }}
         run: node --experimental-strip-types --test tests/operator-garment-fit-stage3a.test.mjs tests/operator-visual-fit.test.mjs tests/operator-visual-silhouette-matrix.test.mjs tests/operator-mannequin-neutral.test.mjs tests/operator-wardrobe-tool-clearance.test.mjs tests/operator-visual-kit.test.mjs tests/operator-fabric-camo-stage2.test.mjs tests/operator-headwear-fit-metrics.test.mjs tests/operator-wardrobe-persistence.test.mjs
+      - name: Focused authentic BDU vs ACU Stage 3B silhouette and material regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'appearance/stage3b-') }}
+        run: node --experimental-strip-types --test tests/operator-uniform-blouse-stage3b.test.mjs tests/operator-garment-fit-stage3a.test.mjs tests/operator-fabric-camo-stage2.test.mjs tests/operator-visual-silhouette-matrix.test.mjs tests/operator-visual-fit.test.mjs tests/operator-wardrobe-body.test.mjs tests/operator-wardrobe-persistence.test.mjs tests/operator-visual-merge.test.mjs tests/operator-headwear-fit-metrics.test.mjs tests/operator-mannequin-neutral.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}
