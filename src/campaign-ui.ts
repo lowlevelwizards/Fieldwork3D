@@ -673,7 +673,7 @@ export class CampaignScreen{
    select.value=wardrobe[field];
    select.disabled=locked||(field==='sleeveState'?
     sleeveStateOptions(looks.top).length===1:
-    !['bdu-trousers','acu-trousers'].includes(looks.trousers)||
+    !['bdu-trousers','acu-trousers','gorka-trousers'].includes(looks.trousers)||
     looks.footwear==='bare-feet');
    select.addEventListener('change',()=>{
     if(field==='sleeveState')
