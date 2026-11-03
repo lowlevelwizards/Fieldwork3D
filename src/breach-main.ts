@@ -21,6 +21,7 @@ import type {TacticalOrderPreview} from './ui/tactical-feedback.ts';
 import {ExecutionNoticeFeed} from './ui/execution-feedback.ts';
 import {currentSiteIdentity} from './ui/current-site-identity.ts';
 import {tacticalHitProfile,preferSelectedHit,shouldAppendStrokePoint} from './ui/touch-hit-targets.ts';
+import {orderVisualScopes} from './ui/order-visual-state.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
  rangeTrialLabel,type RangeTrial} from './equipment-training-diagnostics.ts';
@@ -2117,6 +2118,10 @@ function paths(){
     if(a.health<=0)continue;
     const c=colorFor(a.id);
     const plan=a.plan;
+    const visual=orderVisualScopes(plan,{
+      watch:a.aimInstruction?.mode==='track',pace:a.pace,
+      posture:a.posture,fire:a.firePolicy
+    });
     if(plan.length){
       draw.beginPath();draw.moveTo(a.p.x,a.p.y);
       let from=a.p;
@@ -2134,6 +2139,25 @@ function paths(){
       draw.lineWidth=a.id===selected?2.6:1.6;
       draw.setLineDash([8,4]);draw.stroke();draw.setLineDash([]);
       draw.globalAlpha=1;
+    }
+    if(a.id===selected){
+      let previous=a.p;
+      for(let i=0;i<plan.length;i++){
+        const node=plan[i];
+        if(node.kind==='move'||node.kind==='door'){
+          // A longer, amber dash reads as RUN without needing another label.
+          if(visual[i].before.pace==='run'){
+            const steps=displayRouteCache.get(previous,node.p,state.intel,
+              state.phase==='planning').points;
+            draw.save();draw.strokeStyle='#f0ce8e';draw.globalAlpha=.68;
+            draw.lineWidth=2.2;draw.setLineDash([11,3]);draw.beginPath();
+            draw.moveTo(previous.x,previous.y);
+            for(const p of steps)draw.lineTo(p.x,p.y);
+            draw.stroke();draw.restore();
+          }
+          previous=node.p;
+        }else if(node.kind==='pie')previous=node.p;
+      }
     }
     // Selected WATCH instructions remain readable throughout the route they
     // govern, without cluttering unselected operators' plans.
@@ -2157,6 +2181,7 @@ function paths(){
     }
     for(let i=0;i<plan.length;i++){
       const n=plan[i],selectedNow=a.id===selected&&selectedNode===n.id;
+      const semantics=visual[i];
       const point=selectedNow&&draggingNode&&!draggingWatchTarget&&n.kind!=='flash'?
         draggingNode:n.p;
       circle(point.x,point.y,selectedNow?10:7,
@@ -2184,6 +2209,20 @@ function paths(){
         draw.fillStyle='#d5e8de';
         draw.fillText(n.aimLabel==='strafe'?'HOLD DIR':'LOOK',
           point.x+12,point.y-12);
+      }
+      if(semantics.watchEnds&&n.facing===undefined){
+        draw.textAlign='left';draw.font='bold 11px "Saira Condensed",sans-serif';
+        draw.fillStyle='#ead5ad';
+        draw.fillText('AUTO',point.x+12,point.y-12);
+      }
+      if(semantics.suppressionPoint){
+        const target=semantics.suppressionPoint;
+        draw.save();draw.strokeStyle='#e9a883';draw.lineWidth=1.8;
+        draw.setLineDash([4,4]);draw.beginPath();
+        draw.moveTo(point.x,point.y);draw.lineTo(target.x,target.y);draw.stroke();
+        draw.setLineDash([]);draw.beginPath();
+        draw.arc(target.x,target.y,20,0,Math.PI*2);draw.stroke();
+        draw.restore();
       }
       if(n.kind==='flash'&&n.aimPoint){
         const path=flashTrajectory(state,a,n);
