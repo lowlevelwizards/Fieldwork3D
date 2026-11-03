@@ -752,6 +752,28 @@ function camoHash(value:string):number{
 }
 const m81BrownIndices=headwearCamoIndices('m81-woodland');
 const placementCache=new Map<string,HeadwearCamoPlacement>();
+/** The 64px source is seen through a ~32px square crown UV1 cut on
+ * 1x M81 fabric. Evaluate the actual visible crop rather than only
+ * checking the tiny forward wall. Rerolls should never make a solid-color hat.
+ */
+export function headwearCamoM81CrownCoverage(phase:HeadwearCamoPlacement):number[]{
+ const size=headwearCamoSize('m81-woodland'),counts=[0,0,0,0];
+ for(let y=0;y<32;y++)for(let x=0;x<32;x++){
+  const xx=(x+phase.offsetX)&(size-1),yy=(y+phase.offsetY)&(size-1);
+  counts[m81BrownIndices[yy*size+xx]]++;
+ }
+ return counts.map(c=>c/1024);
+}
+function m81CutScore(phase:HeadwearCamoPlacement):number{
+ const c=headwearCamoM81CrownCoverage(phase);
+ // Prioritize recognizably dark branches throughout the crown, followed
+ // by non-monolithic olive/brown/tan. Warm brown still cannot dominate front.
+ return Math.max(0,.10-c[3])*7+Math.max(0,c[3]-.26)*2+
+  Math.max(0,.17-c[2])*4+Math.max(0,.13-c[1])*3+
+  Math.max(0,.22-c[0])*2+Math.max(0,c[0]-.50)*4+
+  Math.max(0,c[1]-.36)*3+Math.max(0,c[2]-.38)*3+
+  Math.max(0,headwearCamoFrontBrownFraction(phase)-.34)*7;
+}
 export function headwearCamoFrontBrownFraction(phase:HeadwearCamoPlacement):number{
  const indices=m81BrownIndices,size=headwearCamoSize('m81-woodland');
  let brown=0;
@@ -777,12 +799,14 @@ export function headwearCamoPlacement(operatorId:string,slot:string,
  let best:HeadwearCamoPlacement={offsetX:hash&mask,offsetY:(hash>>>8)&mask};
  if(camo!=='m81-woodland')return remember(best);
  let bestScore=Infinity;
- for(let i=0;i<96;i++){
+ // Check the *visible crown* and forward wall, not simply brown on
+ // an abstract 8x10 slice. Deterministic phase offsets retain rerolls.
+ for(let i=0;i<192;i++){
   const phase={offsetX:((hash&mask)+i*11)&mask,
    offsetY:(((hash>>>8)&mask)+i*7+Math.floor(i/4))&mask};
-  const brown=headwearCamoFrontBrownFraction(phase);
-  if(brown<bestScore){bestScore=brown;best=phase;}
-  if(brown<=.34)return remember(phase);
+  const score=m81CutScore(phase);
+  if(score<bestScore){bestScore=score;best=phase;}
+  if(score<.005)return remember(phase);
  }
  return remember(best);
 }
