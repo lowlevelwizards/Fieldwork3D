@@ -90,6 +90,8 @@ export function fabricCamoCompatible(id:HeadwearCamoId,
    return (outfit.top==='bdu-shirt'||outfit.top==='acu-shirt')&&
     uniformCutCamoCompatible(outfit.top,id);
   case 'trousers':
+   if(outfit.trousers==='gorka-trousers')
+    return ['russian-flora','russian-emr','multicam','polish-pantera'].includes(id);
    return (outfit.trousers==='bdu-trousers'||
     outfit.trousers==='acu-trousers')&&
     uniformCutCamoCompatible(outfit.trousers,id);
