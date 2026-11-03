@@ -149,30 +149,38 @@ export function createFieldTrouserPrototypes(legs:readonly Limb[],
    const [fw,fh,fd]=p.flap;
    part(upper,wear,-.62,.19,lateral+side*.12,fw,fh,fd,
     classic?0:side*.19);
-   if(!classic){
-    // Modern trouser reinforced knee panel rides the LOWER segment,
-    // never changes the contact or bend of the actual knee.
+   if(!classic&&!gorka){
+    // Modern-utility reinforcement follows the existing knee joint.
     part(upper,cloth,2.86,-.39,0,.20,.20,4.38);
     part(upper,trim,-.62,.33,lateral+side*.19,3.65,.08,.24);
-   }else{
-    // Simple field trouser pocket bellows and high fold.
+   }else if(classic){
     part(upper,cloth,-.62,-.07,lateral+side*.56,3.35,.31,.30);
+   }else{
+    // Broad wear patches on the outer thigh and above the knee.
+    part(upper,wear,2.83,-.32,0,.36,.38,6.62);
+    part(upper,wear,-1.50,-.27,lateral*.72,3.2,.22,1.70);
    }
    thigh.push(upper);
    for(const hem of ['unbloused','bloused','cuffed'] as const){
     const lower=group(leg.lower,cut+':'+hem+':shin:'+i);
-    clothShell(lower,cloth,p[hem],LEG_LOWER_LENGTH);
-    if(!classic){
+    clothShell(lower,textile,p[hem],LEG_LOWER_LENGTH);
+    if(!classic&&!gorka){
      // ACU-family calf cargo pocket: a separate physical feature,
      // with an angled flap; older BDU trousers deliberately omit it.
      part(lower,cloth,-.43,-.08,side*3.51,3.06,.34,.97);
      part(lower,cloth,-.43,.055,side*3.63,3.35,.12,1.14,side*.12);
     }
+    if(gorka){
+     // Strong reinforced outer knee and weather-tight ankle band.
+     part(lower,wear,2.86,-.26,0,.36,.38,6.25);
+     part(lower,wear,0,.23,side*3.04,3.56,.22,.75);
+     part(lower,wear,0,.42,0,5.65,.13,5.78);
+    }
     // The bloused outline narrows at the boot collar; the straight hem
     // stays wider and overlaps its shaft. Both have a visible textile fold.
-    hemFinishBand(lower,cloth,p[hem][p[hem].length-1]);
+    hemFinishBand(lower,textile,p[hem][p[hem].length-1]);
     if(hem==='cuffed')
-     hemFinishBand(lower,cloth,[.39,
+     hemFinishBand(lower,textile,[.39,
       p.cuffed[3][1]+.22,p.cuffed[3][2]+.22]);
     consolidateVisualGroup(lower);
     (hem==='bloused'?bloused:hem==='cuffed'?cuffed:unbloused).push(lower);
