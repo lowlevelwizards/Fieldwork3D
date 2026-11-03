@@ -467,8 +467,13 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
   const proposed:PlanNode[]=[];
   let from=finalPoint(a);
   const facing=[...a.plan].reverse().find(n=>n.facing!==undefined)?.facing??a.heading;
-  for(const point of points.slice(0,60)){
-    if(d(from,point)<20||!intelPassable(point,s.intel,SQUEEZE_RADIUS)||
+  // Input strokes may still contain many meaningful bends; keep the
+  // actual release position even if the safety cap clips the middle.
+  const stroke=points.length>60?[...points.slice(0,59),points.at(-1)!]:points;
+  for(let i=0;i<stroke.length;i++){
+    const point=stroke[i],last=i===stroke.length-1;
+    if(d(from,point)<(last?3:20)||
+      !intelPassable(point,s.intel,SQUEEZE_RADIUS)||
       !routeWithSqueezeIntel(s.intel,from,point).length)continue;
     proposed.push({id:s.nextId+proposed.length,kind:'move',p:clone(point),
       ...(strafe?{moveMode:'strafe' as const,facing}:{})});
