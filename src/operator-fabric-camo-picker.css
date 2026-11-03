@@ -16,4 +16,4 @@
 @media(max-width:370px){.fw-fabric-match{grid-template-columns:1fr}}
 
 /* Fabric picker controls use the same Work Sans action labels. */
-.fw-fabric-camo-choice,.fw-fabric-camo-choice button{font-family:"Work Sans",system-ui,sans-serif}
+.fw-fabric-match button,.fw-fabric-actions button{font-family:"Work Sans",system-ui,sans-serif}
