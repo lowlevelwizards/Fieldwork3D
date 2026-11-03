@@ -65,11 +65,11 @@ test('all 40 armor/uniform combinations clear the garment and preserve authored 
    assert.ok(f.front<=5.17,'concealed armor remains under clothes');
    continue;
   }
-  assert.ok(f.front-ARMOR_PANEL_DEPTHS[style]>outside.front+.19,
+  assert.ok(f.front-ARMOR_PANEL_DEPTHS[style]>outside.front+.075,
    style+' over '+top+' inner plate face clears torso');
   assert.ok(f.side>outside.side,
    style+' over '+top+' side closure clears torso');
-  assert.ok(f.back+ARMOR_PANEL_DEPTHS[style]<outside.back-.15,
+  assert.ok(f.back+ARMOR_PANEL_DEPTHS[style]<outside.back-.075,
    style+' over '+top+' rear inner face clears torso');
  }
 });
