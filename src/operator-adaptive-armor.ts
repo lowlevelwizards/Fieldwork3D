@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {ARMOR_PROPORTIONS,type ArmorProportion}
  from './operator-armor-proportions.ts';
-import {fittedArmorBag,fittedShoulderBridge,fittedSideWrap,fittedArmorCollar}
+import {fittedArmorBag,fittedShoulderBridge,fittedArmorCollar}
  from './operator-armor-shapes.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {armorSideLayout} from './operator-armor-side-layout.ts';
