@@ -5,11 +5,11 @@ import {initialRoster,setRosterWardrobe,freshQuickPlayRoster}
 import {initialWardrobe,setWardrobeStyle} from '../src/operator-wardrobe-data.ts';
 test('Quick Play cosmetic editor is separate from finite gameplay equipment',()=>{
  const original=initialRoster(),id=original.members[0].id;
- const look=setWardrobeStyle(initialWardrobe(),'top','combat-shirt');
+ const look=setWardrobeStyle(initialWardrobe(),'top','acu-shirt');
  const changed=setRosterWardrobe(original,id,look);
- assert.equal(changed.members[0].wardrobe.styles.top,'combat-shirt');
+ assert.equal(changed.members[0].wardrobe.styles.top,'acu-shirt');
  const after=freshQuickPlayRoster(changed);
- assert.equal(after.members[0].wardrobe.styles.top,'combat-shirt');
+ assert.equal(after.members[0].wardrobe.styles.top,'acu-shirt');
  assert.equal(after.members[0].loadout.slots.primary,
   initialRoster().members[0].loadout.slots.primary);
  assert.equal(setRosterWardrobe(original,'unknown',look),original);
