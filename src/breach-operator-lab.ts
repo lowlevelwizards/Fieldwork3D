@@ -87,7 +87,6 @@ function undoAppearance(){
  (document.getElementById('faceTreatment') as HTMLSelectElement).value=restore.face;
  syncKit();updateMagazineState();
 
- const active=resolvedWardrobe(wardrobeOptions,labKit).headwear;
 }
 wardrobeUndoButton.addEventListener('click',undoAppearance);
 
