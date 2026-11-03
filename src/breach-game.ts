@@ -1408,7 +1408,11 @@ function observe(s:Session){
 }
 const traversalWorld=(s:Session,a:TeamActor)=>({
  cover:s.coverState,walls:WALLS,doors:s.doors,windows:s.windows,
- actors:s.operators.filter(other=>other!==a&&other.health>0).map(o=>o.p),
+ // A teammate in the air already owns their landing. The next member of
+ // the stack may approach, but must not launch into that reserved spot.
+ actors:s.operators.filter(other=>other!==a&&other.health>0)
+   .flatMap(o=>[o.p,...(o.traversal?[o.traversal.landing]:
+     o.traversalPending?[o.traversalPending.landing]:[])]),
  canStand:(p:Pt)=>passable(p)
 });
 const traversalFitness=(a:TeamActor)=>({
