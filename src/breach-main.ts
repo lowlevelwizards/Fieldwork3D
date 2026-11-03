@@ -20,7 +20,8 @@ import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import type {TacticalOrderPreview} from './ui/tactical-feedback.ts';
 import {ExecutionNoticeFeed} from './ui/execution-feedback.ts';
 import {currentSiteIdentity} from './ui/current-site-identity.ts';
-import {tacticalHitProfile,preferSelectedHit,shouldAppendStrokePoint} from './ui/touch-hit-targets.ts';
+import {tacticalHitProfile,preferSelectedHit,shouldAppendStrokePoint,
+  simplifyStrokePoints} from './ui/touch-hit-targets.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
 import {interruptsWatch} from './breach-plan.ts';
 import {SQUEEZE_RADIUS} from './breach-navigation.ts';
@@ -3855,7 +3856,22 @@ function releasePointer(e:PointerEvent,cancelled=false){
       if(chosen)tacticalFeedback.emit('node',chosen.p);
     }else if(p.mode==='route'&&trace&&
       distance(trace[0],pt)>16){
-      const points=[...trace,pt];
+      // The finger trace is a high-frequency preview, NOT one order per
+      // input sample. Preserve meaningful screen-space bends and reject
+      // simplifications that would cut across KNOWN obstacles. Unseen
+      // obstacles remain undisclosed to the plan author.
+      const points=simplifyStrokePoints([...trace,pt],
+        point=>worldToScreen(point,8),15,(from,to)=>{
+          const span=distance(from,to);
+          const steps=Math.max(1,Math.ceil(span/4));
+          for(let i=1;i<steps;i++){
+            const t=i/steps;
+            if(!intelPassable({x:from.x+(to.x-from.x)*t,
+               y:from.y+(to.y-from.y)*t},state.intel,SQUEEZE_RADIUS))
+              return false;
+          }
+          return true;
+        });
       if(!planMoveStroke(state,selected,points.slice(1)))
         rejectAt(pt,'NO WALKABLE STROKE');
       else selectedNode=uid(selected)?.plan.filter(n=>n.kind==='move').at(-1)?.id??null;
