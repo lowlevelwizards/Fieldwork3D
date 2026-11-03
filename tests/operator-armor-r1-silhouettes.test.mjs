@@ -11,8 +11,18 @@ const size=(group)=>{
  return new THREE.Box3().setFromObject(group).getSize(new THREE.Vector3());
 };
 const bounds=(group)=>{
+ // The rig's +X-front local chest frame is yaw-rotated into world space.
+ // Measure the authored surface relative to that local frame.
  group.updateMatrixWorld(true);
- return new THREE.Box3().setFromObject(group);
+ const inverse=group.matrixWorld.clone().invert();
+ const result=new THREE.Box3().makeEmpty();
+ group.traverse(obj=>{
+  if(!(obj instanceof THREE.Mesh))return;
+  const localMatrix=inverse.clone().multiply(obj.matrixWorld);
+  obj.geometry.computeBoundingBox();
+  result.union(obj.geometry.boundingBox.clone().applyMatrix4(localMatrix));
+ });
+ return result;
 };
 const rayHits=(group,x,y,z,direction)=>{
  group.updateMatrixWorld(true);
