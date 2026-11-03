@@ -59,6 +59,7 @@ import {canRelocateCover} from './breach-movable-cover.ts';
 import {INTEL_MODES,doorKnown,
   routeWithIntel,intelPassable,type IntelMode} from './breach-intel.ts';
 import {orderFailureText} from './breach-nav-diagnostics.ts';
+import {routeWithSqueezeIntel} from './breach-squeeze-route.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {FrameMeter} from './breach-perf.ts';
 import {formatAfterAction} from './breach-after-action.ts';
@@ -3727,8 +3728,11 @@ function releasePointer(e:PointerEvent,cancelled=false){
           const chosen=uid(selected)?.plan.find(n=>n.id===p.nodeId);
           const origin=uid(selected)?.p??pt;
           rejectAt(pt,orderFailureText(origin,pt,{
-            canStand:at=>intelPassable(at,state.intel),
-            routeTo:(a,b)=>routeWithIntel(state.intel,a,b),
+            // The failure message must use the SAME narrow-body clearance
+            // rules as planning. Otherwise reachable squeeze positions are
+            // incorrectly reported as having "insufficient clearance".
+            canStand:at=>intelPassable(at,state.intel,SQUEEZE_RADIUS),
+            routeTo:(a,b)=>routeWithSqueezeIntel(state.intel,a,b),
             remainingPlanValid:chosen?.kind==='move'?false:undefined
           }));
         }
