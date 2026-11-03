@@ -159,10 +159,22 @@ export class OperatorAppearanceGrid{
   // Dress a neutral mannequin in a real baseline uniform, not a hollow
   // isolated prop. The selected item's own equipment class always wins.
   for(const [slot,id] of [
-   ['top','bdu-shirt'],['trousers','field-trousers'],
+   ['top','bdu-shirt'],['trousers','bdu-trousers'],
    ['footwear','field-boots'],['headwear','bare']
   ] as const){
    const next=selectWardrobeItem(kit,w,slot,id);kit=next.kit;w=next.wardrobe;
+  }
+  // Pair matching structural families in thumbnails, so the new pants
+  // show honestly instead of beneath an unrelated uniform blouse.
+  if(item.slot==='top'&&(item.id==='bdu-shirt'||item.id==='acu-shirt')){
+   const t=item.id==='bdu-shirt'?'bdu-trousers':'acu-trousers';
+   const next=selectWardrobeItem(kit,w,'trousers',t);
+   kit=next.kit;w=next.wardrobe;
+  }
+  if(item.slot==='trousers'&&(item.id==='bdu-trousers'||item.id==='acu-trousers')){
+   const top=item.id==='bdu-trousers'?'bdu-shirt':'acu-shirt';
+   const next=selectWardrobeItem(kit,w,'top',top);
+   kit=next.kit;w=next.wardrobe;
   }
   const choice=selectWardrobeItem(kit,w,item.slot,item.id);
   kit=choice.kit;w=choice.wardrobe;
