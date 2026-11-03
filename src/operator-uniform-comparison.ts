@@ -14,8 +14,8 @@ export const UNIFORM_COMPARE_DEFAULT_PRINTS={
  'acu-shirt':'scorpion-w2'
 } as const satisfies Record<UniformCompareCut,HeadwearCamoId>;
 export const UNIFORM_COMPARE_LABELS={
- 'bdu-shirt':'A · HISTORICAL BDU / FIELD',
- 'acu-shirt':'B · MODERN ACU'
+ 'bdu-shirt':'A · CLASSIC FIELD',
+ 'acu-shirt':'B · MODERN UTILITY'
 } as const;
 export function uniformCompareKit():EquipmentLoadout{
  let kit=initialEquipmentLoadout();
