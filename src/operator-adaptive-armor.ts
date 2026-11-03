@@ -161,20 +161,44 @@ function shoulders(g:THREE.Group,m:THREE.Material,
    link(g,m,nodes[i],nodes[i+1],width,.74);
  }
 }
+/** An upright armor panel between two X/Z points. Unlike the old generic
+ * link, this keeps the full panel height vertical while turning corners.
+ * Its short overlapped ends prevent cracks without producing free rails.
+ */
+function wrapPanel(g:THREE.Group,m:THREE.Material,
+ ax:number,az:number,bx:number,bz:number,
+ y:number,height:number,thickness:number){
+ const dx=bx-ax,dz=bz-az,length=Math.hypot(dx,dz);
+ if(length<.01)return;
+ const mesh=makeBox(g,m,(ax+bx)*.5,y,(az+bz)*.5,
+  length+.20,height,thickness);
+ mesh.rotation.y=-Math.atan2(dz,dx);
+}
+/** Side closures are narrow three-piece *wraps*, NOT bars running across
+ * the entire front/back depth at the outside of the operator. Each return
+ * starts within the physical plate-bag edge and bends around the garment.
+ * The middle flank panel is short, so nothing sticks past the front plate.
+ */
 function attachedSide(g:THREE.Group,m:THREE.Material,
  fit:ArmorFitSurfaces,span:number,thickness:number,
  frontW:number,rearW:number,y:number){
+ const depth=ARMOR_PANEL_DEPTHS[fit.style]??1.2;
+ const frontX=fit.front-depth*.50,backX=fit.back+depth*.50;
+ const flankHalf=(fit.style==='soft-vest'||fit.style==='soft-flak'||
+  fit.style==='plate-legacy')?2.16:1.75;
+ // Side geometry stays close to the fabric, retaining a readable
+ // silhouette without placing full-length beams out by the arms.
+ const sideX=Math.min(flankHalf,(frontX-backX)*.20);
  for(const sign of [-1,1]){
-  const edgeZ=fit.side*sign,frontZ=sign*(frontW*.5-.22),
-   backZ=sign*(rearW*.5-.22);
-  // Full side band follows true uniform width, with front/rear joins
-  // extending to the authored bag edges. No unsupported floating slab.
-  makeBox(g,m,(fit.front+fit.back)*.5,y,edgeZ,
-   fit.front-fit.back+.08,span,thickness);
-  link(g,m,[fit.front-.40,y,frontZ],[fit.front-.55,y,edgeZ],
-   span,thickness);
-  link(g,m,[fit.back+.40,y,backZ],[fit.back+.55,y,edgeZ],
-   span,thickness);
+  const sideZ=sign*fit.side;
+  const frontZ=sign*(frontW*.50-.35);
+  const backZ=sign*(rearW*.50-.35);
+  wrapPanel(g,m,frontX,frontZ,sideX,sideZ,
+   y,span,thickness);
+  wrapPanel(g,m,sideX,sideZ,-sideX,sideZ,
+   y,span,thickness);
+  wrapPanel(g,m,-sideX,sideZ,backX,backZ,
+   y,span,thickness);
  }
 }
 function neckProtection(g:THREE.Group,m:THREE.Material,
@@ -224,8 +248,9 @@ function regenerateConnections(entry:ArmorEntry,top:string){
   shoulders(connectors,r.style==='heavy'?cloth:utility,fit,
    r.shoulder,3.72,3.65,Math.min(r.neck*.45,4.10));
   if(r.style==='skeleton'){
-   for(const y of [-2.62,-.90,1.26])
-    attachedSide(connectors,utility,fit,.58,.73,r.wide,r.wide+.1,y);
+   // Two open but substantial skeleton rails; not three projecting ribs.
+   for(const y of [-2.20,.60])
+    attachedSide(connectors,utility,fit,.78,.66,r.wide,r.wide+.1,y);
   }else{
    attachedSide(connectors,r.style==='heavy'?cloth:utility,fit,
     r.sideHeight,r.style==='slick'?.68:1.05,
