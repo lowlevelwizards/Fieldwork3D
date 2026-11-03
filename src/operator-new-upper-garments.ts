@@ -173,7 +173,8 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
    // the chest, cloth gathers at the waist and simple reinforced forearms.
    // The short panels remain thin sewn fabric, NOT plate-like armor.
    for(const sign of [-1,1]){
-    box(torso,body,.92,6.75,sign*3.12,4.60,.76,1.70);
+    // One shoulder reinforcement per side is enough; the two extra
+    // raised fabric bars above the neckline looked like floating handles.
     box(torso,wear,.20,4.64,sign*7.91,5.96,.86,.31);
     box(torso,wear,6.18,4.56,sign*5.77,.16,1.22,2.08);
    }
