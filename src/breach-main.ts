@@ -1338,7 +1338,9 @@ function updateContext(){
   const a=uid(selected);
   if(!a||a.health<=0){hideContextPalette();return;}
   const node=selectedPlanNode();
-  const nearbyDoor=focusedDoor(a,node);
+  const selectedWatch=selectedActiveWatch?activeWatchTarget(a):null;
+  // A watch ring is a sightline target, never a physical door/fixture.
+  const nearbyDoor=selectedWatch?undefined:focusedDoor(a,node);
   const door=doorFocusId?nearbyDoor:undefined;
   const current=plannedControl(state,selected,node?.id);
   const at=finalPoint(a);
@@ -1358,7 +1360,12 @@ function updateContext(){
       watchActive=false;
     if(order.id===node.id)break;
   }
-  const choices=contextActionChoices({
+  const choices:ReturnType<typeof contextActionChoices>=selectedWatch?[
+    {id:'ctxWatch',label:'RETARGET',group:'primary',
+      pressed:true,title:'Choose a new point for this active WATCH'},
+    {id:'ctxDelete',label:'DELETE WATCH',group:'destructive',
+      title:'Stop tracking this point; leave movement orders unchanged'}
+  ]:contextActionChoices({
     door:!!door,node:!!node,flashRemaining:state.flashRemaining,
     nearMovable,nearWindow,nearDoor:!door&&!!nearbyDoor,
     posture:current.posture,pace:current.pace,
@@ -1374,7 +1381,8 @@ function updateContext(){
   const paletteChoices=choices.filter(choice=>choice.group!=='state');
   // The four persistent toggles have their own stationary bar above the HUD.
   // Reconcile buttons in-place: avoid tearing down the menu when a toggle changes.
-  const identity=(door?'door:'+door.id:node?'node:'+node.id:'here')+'/'+selected;
+  const identity=(door?'door:'+door.id:node?'node:'+node.id:
+    selectedWatch?'active-watch':'here')+'/'+selected;
   const contextChanged=contextSignature!==identity;
   if(contextChanged){
     tetherBrightUntil=performance.now()+420;
@@ -1396,9 +1404,12 @@ function updateContext(){
   if(contextHeading){
     const nodeIndex=node?a.plan.findIndex(n=>n.id===node.id)+1:0;
     const title=door?'DOOR · '+(door.open?'OPEN':'CLOSED'):
-      node?('WAYPOINT '+String(nodeIndex).padStart(2,'0')):'OPERATOR / HERE';
+      node?('WAYPOINT '+String(nodeIndex).padStart(2,'0')):
+      selectedWatch?'WATCH TARGET':'OPERATOR / HERE';
     const scope=door?'Door interactions':
-      node?'Orders queued at this waypoint':'Orders for the selected operator';
+      node?'Orders queued at this waypoint':
+      selectedWatch?'Drag the ring to reposition or DELETE WATCH to release':
+      'Orders for the selected operator';
     const text=a.name.toUpperCase()+' · '+title;
     if(contextHeading.textContent!==text)contextHeading.textContent=text;
     contextHeading.title=scope;
@@ -1465,8 +1476,8 @@ function updateContext(){
     'Door actions':'Selected position actions and operator settings');
   // Keep the full operator bodies, selected route, and tap targets visible.
   // Don't inspect concealed enemies: context placement must not leak intel.
-  const target=door?doorCenter(door):node?.p??a.p;
-  const anchor=worldToScreen(target,door?15:node?8:24);
+  const target=door?doorCenter(door):node?.p??selectedWatch??a.p;
+  const anchor=worldToScreen(target,door?15:node?8:selectedWatch?12:24);
   // Re-measure DOM only when contents change; reading offset dimensions every
   // animation frame forces avoidable synchronous layout on mobile browsers.
   const measure=contextChanged||actionChanged||paletteWidth<=0||paletteHeight<=0;
@@ -1674,8 +1685,9 @@ const handleContextAction=(event:MouseEvent)=>{
       flashDoorId=door.id;flashMode=true;looking=false;
       doorFocusId=null;doorMenuDismissedId=door.id;break;
     case 'ctxDelete':
-      if(node)deletePlanNode(state,selected,node.id);
-      selectedNode=null;doorFocusId=null;break;
+      if(selectedActiveWatch)removeActiveWatch(state,selected);
+      else if(node)deletePlanNode(state,selected,node.id);
+      selectedNode=null;selectedActiveWatch=false;doorFocusId=null;break;
     case 'ctxOpen':
     case 'ctxClose':
     case 'ctxKick':
@@ -1741,12 +1753,15 @@ function updateQuickStates(){
   if(!shown||!actor)return;
   const node=selectedPlanNode();
   const index=node?actor.plan.findIndex(n=>n.id===node.id)+1:0;
-  const scopeText=node?'WAYPOINT '+String(index).padStart(2,'0'):'OPERATOR / HERE';
+  const scopeText=node?'WAYPOINT '+String(index).padStart(2,'0'):
+    selectedActiveWatch&&activeWatchTarget(actor)?'WATCH TARGET':'OPERATOR / HERE';
   ui.quickScope.textContent=actor.name.toUpperCase()+' · '+scopeText+
     (actor.aimInstruction?.mode==='track'&&actor.pace!=='run'?' · WATCH ACTIVE':'');
   ui.quickScope.title=node?
     'Commands apply when '+actor.name+' reaches waypoint '+index:
-    'Commands apply to '+actor.name+' at their current position';
+    selectedActiveWatch&&activeWatchTarget(actor)?
+      'The active WATCH point can be dragged or deleted from its marker':
+      'Commands apply to '+actor.name+' at their current position';
   ui.quickStates.setAttribute('aria-label',actor.name+' · '+scopeText+' commands');
   const current=plannedControl(state,selected,node?.id);
   const choices=contextActionChoices({
@@ -3340,6 +3355,9 @@ ui.back.addEventListener('click',()=>{
   // BACK must always escape an unfinished targeting gesture first.
   // It cannot accidentally remove an unrelated prior waypoint.
   if(looking||flashMode||firePlacement||evacMode){cancelTargeting();return;}
+  if(selectedActiveWatch){
+    selectedActiveWatch=false;updateHud();return;
+  }
   // Build 076 accidentally removed this listener when slimming the HUD.
   if(backOne(state,selected)){
     selectedNode=null;doorFocusId=null;
