@@ -6,7 +6,7 @@ import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   operationBriefing,
-  planMove,planMoveStroke,planNearbyInteraction,planAim,planWatch,releaseWatch,setFirePolicy,planWait,planWaitAt,setWaitDuration,
+  planMove,planMoveStroke,planNearbyInteraction,planAim,planWatch,setFirePolicy,planWait,planWaitAt,setWaitDuration,
   plannedControl,setNodeControl,setStartPace,planReloadAt,planDoorFlash,
   planSync,movePlanNode,
   finalPoint,doorAtNode,backOne,
@@ -22,6 +22,7 @@ import {ExecutionNoticeFeed} from './ui/execution-feedback.ts';
 import {currentSiteIdentity} from './ui/current-site-identity.ts';
 import {tacticalHitProfile,preferSelectedHit,shouldAppendStrokePoint} from './ui/touch-hit-targets.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
+import {interruptsWatch} from './breach-plan.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
  rangeTrialLabel,type RangeTrial} from './equipment-training-diagnostics.ts';
@@ -1171,9 +1172,9 @@ function message(){
   if(flashMode)return 'FLASH: tap a target, or CANCEL to back out.';
   if(state.phase==='planning'){
     if(looking)return lookMode==='watch'?
-      'WATCH: choose a point to keep watching through your route.':
-      'LOOK: choose a direction to check briefly, then continue.';
-    if(selectedNode!==null)return 'Waypoint: LOOK briefly / WATCH continuously · drag to move · DELETE to remove.';
+      'WATCH ARMED · TAP A POINT · CANCEL/BACK TO EXIT. Replaces prior WATCH; RUN or interactions end tracking.':
+      'LOOK ARMED · TAP ANY DIRECTION · CANCEL/BACK TO EXIT. Replaces prior WATCH.';
+    if(selectedNode!==null)return 'Waypoint: LOOK changes direction · WATCH tracks a point · choose another to replace · UNDO reverses it.';
     return 'Tap a route line to insert a waypoint · tap a node to edit or delete.';
   }
   if(state.phase==='running')return 'Executing. Pause to change your plan.';
@@ -1229,7 +1230,8 @@ function updateContext(){
   // Read the authored history, not merely this node's local modifier.
   let watchActive=a.aimInstruction?.mode==='track';
   if(node)for(const order of a.plan){
-    if(order.aimMode==='track')watchActive=true;
+    if(interruptsWatch(order,current.pace))watchActive=false;
+    else if(order.aimMode==='track')watchActive=true;
     else if(order.aimMode==='free'||order.aimMode==='fixed')
       watchActive=false;
     if(order.id===node.id)break;
@@ -1495,8 +1497,9 @@ const handleContextAction=(event:MouseEvent)=>{
         looking=false;firePlacement=null;}
       break;
     case 'ctxLook':
-      tacticalFeedback.emit('armed',node?.p??a.p,'LOOK READY');
-      uiClickTone('select');armFacing('look');return;
+      armFacing('look');
+      if(looking)tacticalFeedback.emit('armed',node?.p??a.p,'TAP A DIRECTION');
+      uiClickTone('select');return;
     case 'ctxDoor':{
       const available=focusedDoor(a,node);
       if(!available){state.events.push('NO KNOWN DOOR IN REACH');break;}
@@ -1505,12 +1508,9 @@ const handleContextAction=(event:MouseEvent)=>{
       updateHud();return;
     }
     case 'ctxWatch':
-      tacticalFeedback.emit('armed',node?.p??a.p,'WATCH READY');
-      uiClickTone('select');armFacing('watch');return;
-    case 'ctxReleaseWatch':
-      if(!releaseWatch(state,selected,node?.id,'here'))
-        state.events.push('CANNOT RELEASE WATCH HERE');
-      break;
+      armFacing('watch');
+      if(looking)tacticalFeedback.emit('armed',node?.p??a.p,'TAP WATCH TARGET');
+      uiClickTone('select');return;
     case 'ctxWait':{
       if(node?.kind==='wait')setWaitDuration(state,selected,node.id,.5);
       else planWaitAt(state,selected,.5,node?'end':'here',node?.id);
@@ -2896,7 +2896,10 @@ function useSelectedGround(pt:Pt){
     const committed=lookMode==='watch'?
       planWatch(state,selected,pt,selectedNode??undefined,armedOrigin):
       planAim(state,selected,'free',pt,selectedNode??undefined,'look',armedOrigin);
-    if(!committed)rejectAt(pt,'SELECT A DIFFERENT AIM POINT');
+    if(!committed){
+      rejectAt(pt,'AIM TOO CLOSE · TAP FARTHER FROM THE OPERATOR OR WAYPOINT');
+      showUiHelp('AIM TOO CLOSE · TAP FARTHER AWAY, OR CANCEL',3200);
+    }
     else{
       tacticalFeedback.emit('command',pt,lookMode==='watch'?'WATCH':'LOOK');
       uiClickTone('command');
@@ -3213,6 +3216,9 @@ campaignBackButton.addEventListener('click',()=>{
 ui.rook.addEventListener('click',()=>selectUnit('rook'));
 ui.back.addEventListener('click',()=>{
   uiClickTone('select');
+  // BACK must always escape an unfinished targeting gesture first.
+  // It cannot accidentally remove an unrelated prior waypoint.
+  if(looking||flashMode||firePlacement||evacMode){cancelTargeting();return;}
   // Build 076 accidentally removed this listener when slimming the HUD.
   if(backOne(state,selected)){
     selectedNode=null;doorFocusId=null;
@@ -3697,12 +3703,13 @@ function releasePointer(e:PointerEvent,cancelled=false){
   if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
   const pt=pointerWorld(e);
   if(!cancelled&&state.phase==='planning'&&!replaying&&activePointers.size===1){
-    if(p.mode==='targetPreview'){
-      // Release commits the indicated destination through the same existing
-      // rule validation used by a tap; cancelling or adding a finger does not.
-      if((looking||flashMode||firePlacement||evacMode)&&
-         pt.x>=0&&pt.y>=0&&pt.x<=W&&pt.y<=H)
-        useSelectedGround(pt);
+    if((looking||flashMode||firePlacement||evacMode)&&
+       (p.mode==='targetPreview'||p.mode==='undecided')){
+      // A brief iPhone tap often travels a few pixels without entering
+      // targetPreview. Always commit an armed target on release, even then.
+      // CameraMulti/cancelled pointers remain excluded.
+      if(pt.x>=0&&pt.y>=0&&pt.x<=W&&pt.y<=H)useSelectedGround(pt);
+      else showUiHelp('TAP INSIDE THE MAP TO PLACE THE TARGET',2700);
     }else if(p.mode==='watchTarget'&&p.nodeId!==null){
       const accepted=!p.moved||planWatch(state,selected,pt,p.nodeId);
       if(!accepted)rejectAt(pt,'WATCH TARGET UNAVAILABLE');
