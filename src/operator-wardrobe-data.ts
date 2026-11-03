@@ -57,14 +57,14 @@ add('headset','headset',[
  ['over-ear','Over-ear headset'],['boom-headset','Boom microphone headset'],
  ['helmet-ears','Helmet-integrated hearing protection']
 ]);
-add('top','underlayer',[['base-layer','Base underlayer']]);
+// The clothed base rig is an internal foundation, not a selectable legacy cut.
 // Stage 3B: only the two approved prototype families remain in the active catalog.
 add('top','uniform',[
  ['bdu-shirt','Classic Field Blouse'],['acu-shirt','Modern Utility Blouse'],
  ['combat-shirt','Combat Shirt'],['smock-jacket','Windproof Field Smock'],
  ['gorka-jacket','Mountain / Gorka Jacket']
 ]);
-add('trousers','underlayer',[['base-shorts','Base shorts']]);
+// Bare-short placeholders are no longer visible wardrobe options.
 // Unremodeled lower-body pieces are represented by one honest foundation.
 add('trousers','uniform',[
  ['bdu-trousers','Classic Field Trousers'],
@@ -287,9 +287,9 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
  // explicitly chosen a style. Choosing light boots must never show field
  // boots merely because an empty WardrobeOptions object exists.
  if(!wardrobe?.styles.top)
-  desired.top=kit.slots.top==='top-none'?'base-layer':'bdu-shirt';
+  desired.top='bdu-shirt';
  if(!wardrobe?.styles.trousers)
-  desired.trousers=kit.slots.legs==='legs-none'?'base-shorts':'bdu-trousers';
+  desired.trousers='bdu-trousers';
  if(!wardrobe?.styles.footwear)
   desired.footwear=kit.slots.feet==='feet-none'?'bare-feet':'field-boots';
  if(!wardrobe?.styles.gloves)
@@ -298,14 +298,15 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
  const choose=(slot:WardrobeSlot,allowed:readonly string[],fallback:string)=>{
   if(!allowed.includes(desired[slot]))desired[slot]=fallback;
  };
- choose('headwear',slots.head==='head-helmet'?
-  ['soviet-steel','pasgt','ach','high-cut','high-cut-rails']:
-  slots.head==='head-bump'?['skate-helmet','bump-helmet']:
-  slots.head==='head-cap'?
-  ['patrol-cap','baseball-cap','backwards-cap','beanie','boonie','field-cap']:
-  ['bare'],slots.head==='head-bump'?'bump-helmet':'ach');
- if(slots.head==='head-none')desired.headwear='bare';
- if(slots.head==='head-cap'&&desired.headwear==='ach')desired.headwear='patrol-cap';
+ // Headwear is an explicitly cosmetic Studio choice, independent of the
+ // equipment loadout's helmet/cap protection. The real kit stays authoritative
+ // for weight, inventory and injury; never silently swap it from a look edit.
+ // When no style was chosen, the initial look still follows the real kit.
+ if(!wardrobe?.styles.headwear){
+  desired.headwear=slots.head==='head-helmet'?'ach':
+   slots.head==='head-bump'?'bump-helmet':
+   slots.head==='head-cap'?'patrol-cap':'bare';
+ }
  // Face/helmet assembly constraints: one eyewear layer, one face cover and
  // only mounted hearing protection on a shell that can actually mount it.
  if(desired.facewear==='gas-mask'){
@@ -336,9 +337,8 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
   ['field-pack','rucksack','medic-pack','comms-pack','duffel']:
   ['no-pack'],slots.backpack==='backpack-day'?'day-pack':
   slots.backpack==='backpack-field'?'field-pack':'no-pack');
- choose('trousers',slots.legs==='legs-none'?['base-shorts']:
-  ['bdu-trousers','acu-trousers','gorka-trousers'],
-  slots.legs==='legs-none'?'base-shorts':'bdu-trousers');
+ choose('trousers',['bdu-trousers','acu-trousers','gorka-trousers'],
+  'bdu-trousers');
  choose('footwear',slots.feet==='feet-none'?['bare-feet']:['field-boots'],
   slots.feet==='feet-none'?'bare-feet':'field-boots');
  choose('gloves',slots.hands==='hands-none'?
