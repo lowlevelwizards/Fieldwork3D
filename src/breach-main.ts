@@ -57,7 +57,7 @@ import {stageMagazines,magazineSpace,type MagazineLocation} from './equipment-ma
 import {doorReachable} from './breach-door.ts';
 import {canRelocateCover} from './breach-movable-cover.ts';
 import {INTEL_MODES,doorKnown,
-  routeWithIntel,intelPassable,type IntelMode} from './breach-intel.ts';
+  intelPassable,type IntelMode} from './breach-intel.ts';
 import {orderFailureText} from './breach-nav-diagnostics.ts';
 import {routeWithSqueezeIntel} from './breach-squeeze-route.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
