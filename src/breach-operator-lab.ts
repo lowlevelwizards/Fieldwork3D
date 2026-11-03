@@ -34,6 +34,8 @@ import {selectWardrobeItem} from './operator-wardrobe-unified.ts';
 import {OperatorAppearanceGrid} from './operator-appearance-grid.ts';
 import './operator-appearance-grid.css';
 import {createWardrobeFabricCamoPicker} from './operator-fabric-camo-picker.ts';
+import {topColorwayChoices,resolvedTopColorway} from './operator-upper-colorways.ts';
+import {sleeveStateOptions} from './operator-wardrobe-data.ts';
 import {uniformCutCamoChoices,type UniformCompareCut}
  from './operator-uniform-cut-eligibility.ts';
 import {uniformCompareKit,uniformCompareWardrobe,UNIFORM_COMPARE_LABELS,
@@ -392,10 +394,10 @@ function applyHeadwearCamoChoice(id:HeadwearCamoId,selected:HeadwearCamoId|null,
  * lighting and pose. This study does not substitute a mock helmet render.
  */
 function renderHeadwearCamoComparison(model:string,selected:HeadwearCamoId|null){
- const allowed=headwearCamoChoices(model);
+ const allowed=headwearCamoChoices(model).filter(id=>id!=='splittertarn-31');
  camoCompareGrid.replaceChildren();
  if(!camoCompareDetails.open)return; // Avoid 60 large canvases on every mobile swatch.
- for(const id of HEADWEAR_CAMO_IDS){
+ for(const id of HEADWEAR_CAMO_IDS.filter(id=>id!=='splittertarn-31')){
   const recipe=HEADWEAR_CAMO_RECIPES[id],canApply=allowed.includes(id);
   const button=document.createElement('button');
   button.type='button';button.className='camo-study';
@@ -422,7 +424,7 @@ function renderHeadwearCamoComparison(model:string,selected:HeadwearCamoId|null)
  }
 }
 function renderHeadwearCamoSwatches(model:string){
- const choices=headwearCamoChoices(model);
+ const choices=headwearCamoChoices(model).filter(id=>id!=='splittertarn-31');
  const compatible=new Set(choices);
  camoChooser.hidden=choices.length===0;camoGrid.replaceChildren();
  camoInspector.hidden=choices.length===0;
@@ -520,7 +522,17 @@ function syncWardrobe(){
  appearanceGrid?.refresh(labKit,wardrobeOptions);
  const sleeveSelect=document.getElementById('wardrobeSleeveState') as HTMLSelectElement;
  sleeveSelect.value=wardrobeOptions.sleeveState;
- sleeveSelect.disabled=compatible.top!=='bdu-shirt'&&compatible.top!=='acu-shirt';
+ sleeveSelect.disabled=sleeveStateOptions(compatible.top).length===1;
+ const colors=topColorwayChoices(compatible.top);
+ const colorRow=document.getElementById('wardrobeColorwayRow') as HTMLLabelElement;
+ const colorSelect=document.getElementById('wardrobeTopColorway') as HTMLSelectElement;
+ colorRow.hidden=colors.length===0;
+ colorSelect.replaceChildren();
+ for(const [id,label] of colors){
+  const option=document.createElement('option');option.value=id;
+  option.textContent=label;colorSelect.append(option);
+ }
+ colorSelect.value=resolvedTopColorway(compatible.top,wardrobeOptions.topColorway);
  const hemSelect=document.getElementById('wardrobeTrouserHem') as HTMLSelectElement;
  hemSelect.value=wardrobeOptions.trouserHem;
  hemSelect.disabled=!['bdu-trousers','acu-trousers'].includes(compatible.trousers)
@@ -530,6 +542,13 @@ function syncWardrobe(){
   'Style unavailable for current kit: '+incompatible.join(', '):
   'Compatible visual styles. Gameplay equipment is unchanged.';
 }
+document.getElementById('wardrobeTopColorway')?.addEventListener('change',e=>{
+ checkpointAppearance();
+ const top=resolvedWardrobe(wardrobeOptions,labKit).top;
+ const selected=resolvedTopColorway(top,(e.target as HTMLSelectElement).value);
+ wardrobeOptions={...wardrobeOptions,topColorway:selected};
+ syncWardrobe();
+});
 for(const [id,field] of [
  ['wardrobeSleeveState','sleeveState'],
  ['wardrobeTrouserHem','trouserHem']
@@ -857,6 +876,8 @@ function isolateKit(body:OperatorRig){
  hide('clothes',v.jacket,v.lightShirt,
   ...Object.values(v.fieldBlouses).flatMap(b=>[
     b.torso,...b.upper,...b.lower,...b.cuffed,...b.cuffedLower,...b.rolledUpper]),
+   ...Object.values(v.newUpper.cuts).flatMap(u=>[
+    u.torso,...u.upper,...u.lower,...u.cuffedLower,...u.rolledUpper]),
    ...Object.values(v.fieldTrousers).flatMap(t=>[
     ...t.thigh,...t.bloused,...t.unbloused,...t.cuffed]),
   ...all(v.wardrobeBody.tops),
