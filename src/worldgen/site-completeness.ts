@@ -39,11 +39,13 @@ export function measureSiteCompleteness(site:Site):CompletenessScore{
  const mobility=auditTacticalMobility(site);
  return {missingEssentials,criticalMissing,incompleteUnits,blockedWorkingFaces,
   counterAccessProblems,mobilityIssues:mobility.blockedApproaches+
-    mobility.pinchedThresholds+mobility.blockedSwings,
+    mobility.pinchedThresholds+mobility.blockedSwings+
+    mobility.blockedFlow*3+mobility.tightApproaches,
   score:criticalMissing*3+missingEssentials+incompleteUnits*8+
    blockedWorkingFaces*2+counterAccessProblems*3+
    mobility.blockedApproaches*3+mobility.pinchedThresholds*4+
-   mobility.blockedSwings};
+   mobility.blockedSwings+mobility.blockedFlow*5+
+   mobility.tightApproaches};
 }
 export function shouldTryAnotherLayout(score:CompletenessScore,scale:SiteScale){
  // Only serious deficiencies merit one more expensive architecture build.
