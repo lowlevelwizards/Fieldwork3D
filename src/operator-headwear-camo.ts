@@ -14,12 +14,16 @@ export function headwearCamoSize(id:HeadwearCamoId):32|64{return HEADWEAR_CAMO_T
 export const HEADWEAR_CAMO_DENSITY:Readonly<Record<HeadwearCamoId,number>>={
  'm81-woodland':1,'three-color-desert':1,'tiger-stripe':2,ucp:2,multicam:2,
  flecktarn:2,'woodland-dpm':1,'swedish-m90':1,'six-color-desert':1,
- 'woodland-marpat':2,alpenflage:1,'desert-marpat':2
+ 'woodland-marpat':2,alpenflage:1,'desert-marpat':2,
+ 'erdl-lowland':2,'finnish-m05':2,'polish-pantera':1,
+ 'russian-flora':1,'rhodesian-brushstroke':1,'desert-tropentarn':2
 };
 export const HEADWEAR_CAMO_IDS=[
  'm81-woodland','three-color-desert','tiger-stripe','ucp','multicam',
  'flecktarn','woodland-dpm','swedish-m90','six-color-desert',
- 'woodland-marpat','alpenflage','desert-marpat'
+ 'woodland-marpat','alpenflage','desert-marpat',
+ 'erdl-lowland','finnish-m05','polish-pantera','russian-flora',
+ 'rhodesian-brushstroke','desert-tropentarn'
 ] as const;
 export type HeadwearCamoId=typeof HEADWEAR_CAMO_IDS[number];
 type RGB=readonly [number,number,number];
@@ -335,6 +339,140 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
    p(1,0,0,2,0,2,2,4,2,4,4,0,4),
    p(2,14,30,17,30,17,33,19,33,19,35,14,35)
   ]
+ },
+ // 4A: six separate historical pattern families. All motifs are independently authored.
+ 'erdl-lowland':{
+  label:'ERDL LOWLAND',description:'Fine leaf-and-branch woodland with thin ink trails, green ground and small khaki breaks',
+  colors:[[87,118,73],[119,134,86],[118,85,60],[175,155,105],[48,55,39]],
+  targetCoverage:[.31,.22,.18,.18,.11],
+  motifs:[
+   p(1,-4,0,4,-2,12,2,16,7,11,11,4,9,-3,12),
+   p(1,18,13,24,10,32,13,35,19,30,23,21,21,17,17),
+   p(1,-4,23,4,20,11,24,15,30,11,35,2,33,-4,30),
+   p(2,17,-4,26,-2,33,5,30,10,24,10,20,5,14,3),
+   p(2,-4,13,3,11,10,15,13,21,8,24,1,22,-4,19),
+   p(2,20,26,29,22,35,27,34,34,26,35,19,30),
+   p(3,5,5,11,4,14,7,10,10,6,9),
+   p(3,22,14,28,12,32,16,30,21,24,20),
+   p(3,2,28,6,26,11,29,9,33,3,33),
+   p(3,14,22,18,19,21,22,19,26,15,26),
+   p(4,-3,7,3,7,7,9,11,13,14,14,12,15,7,12,1,11,-3,12),
+   p(4,10,-3,12,2,16,6,19,8,20,12,18,10,13,7,11,3),
+   p(4,25,3,29,5,33,9,34,11,30,9,27,7,24,8),
+   p(4,16,13,19,12,23,16,27,18,30,21,27,20,22,18,18,17),
+   p(4,1,19,4,18,8,20,11,24,16,28,14,29,10,25,5,22,1,23),
+   p(4,23,27,27,25,31,28,35,30,33,32,29,31,25,29),
+   p(3,4,15,6,14,8,16,7,18),
+   p(3,14,3,16,2,18,4,17,6),
+   p(3,28,23,30,22,32,24,31,26)
+  ]
+ },
+ 'finnish-m05':{
+  label:'FINNISH M05',description:'Strong blocky Finnish forest bands with stepped woodland boundaries and high-contrast dark fractures',
+  colors:[[94,111,77],[143,159,101],[64,83,66],[46,54,44]],
+  targetCoverage:[.25,.22,.28,.25],
+  motifs:[
+   p(1,-4,1,5,1,5,4,9,4,9,9,13,9,13,13,7,13,7,10,2,10,2,7,-4,7),
+   p(1,18,20,23,20,23,17,28,17,28,21,34,21,34,27,30,27,30,31,23,31,23,28,18,28),
+   p(1,2,25,8,25,8,22,13,22,13,29,9,29,9,35,3,35),
+   p(2,17,-3,24,-3,24,1,30,1,30,5,34,5,34,13,28,13,28,10,21,10,21,6,17,6),
+   p(2,-3,14,4,14,4,11,9,11,9,16,14,16,14,24,9,24,9,20,3,20,3,23,-3,23),
+   p(2,13,25,18,25,18,29,21,29,21,34,15,34,15,31,12,31),
+   p(3,9,1,13,1,13,4,17,4,17,7,14,7,14,11,10,11,10,8,7,8,7,5,9,5),
+   p(3,23,12,28,12,28,15,32,15,32,19,27,19,27,17,22,17,22,14,23,14),
+   p(3,0,21,5,21,5,25,10,25,10,30,6,30,6,28,1,28),
+   p(3,15,15,20,15,20,18,23,18,23,23,19,23,19,21,15,21),
+   p(1,14,2,16,2,16,4,19,4,19,6,15,6),
+   p(2,28,27,32,27,32,29,35,29,35,32,29,32),
+   p(3,9,30,12,30,12,32,14,32,14,34,9,34)
+  ]
+ },
+ 'polish-pantera':{
+  label:'POLISH WZ.93',description:'Broad Polish woodland amoeba lobes with irregular inward notches and warm khaki breaks',
+  colors:[[87,118,73],[118,85,60],[175,155,105],[48,55,39]],
+  targetCoverage:[.3,.29,.25,.16],
+  motifs:[
+   p(1,-5,0,4,-2,12,1,14,4,10,6,12,10,6,13,-2,11,-5,8),
+   p(1,14,16,21,13,27,15,31,20,29,25,24,26,22,29,15,28,10,22),
+   p(1,0,28,6,25,12,29,14,34,5,35,-4,32),
+   p(1,22,-4,28,-3,34,3,33,9,26,11,20,7,19,2),
+   p(2,-4,14,3,10,11,15,15,19,11,23,4,22,0,25,-4,22),
+   p(2,17,1,23,-1,31,3,33,8,26,12,22,10,18,12,13,7),
+   p(2,24,25,29,22,35,25,35,33,29,35,23,30),
+   p(2,6,28,12,25,18,29,18,33,13,35,8,32),
+   p(3,3,5,7,4,9,7,7,11,3,10,1,8),
+   p(3,26,11,30,10,33,13,31,17,28,16,25,14),
+   p(3,4,21,7,18,11,20,10,24,7,26,5,24),
+   p(3,18,28,22,27,25,31,22,34,19,32),
+   p(3,16,10,19,9,21,12,18,14,15,13),
+   p(3,31,28,34,27,35,31,32,33)
+  ]
+ },
+ 'russian-flora':{
+  label:'VSR-98 FLORA',description:'Horizontal Russian Flora brush bands, broken wavy reeds and olive-to-brown alternating corridors',
+  colors:[[77,101,70],[124,135,91],[138,121,90],[46,54,44]],
+  targetCoverage:[.28,.24,.25,.23],
+  motifs:[
+   p(1,-4,0,6,1,13,3,21,3,28,6,35,5,35,9,26,8,19,7,12,8,4,5,-4,5),
+   p(1,-4,16,5,14,12,17,19,17,26,20,34,19,34,23,26,23,18,21,11,22,3,19,-4,20),
+   p(1,-3,29,6,27,14,30,22,29,30,31,35,29,35,35,-4,35),
+   p(2,-5,7,2,8,9,10,16,10,24,12,30,12,35,14,35,17,27,16,19,14,12,14,5,12,-5,12),
+   p(2,-4,22,4,21,11,24,19,23,26,25,34,24,35,29,28,29,21,27,14,28,6,26,-4,27),
+   p(2,12,-4,19,-2,26,-2,35,1,35,5,27,4,21,2,15,2),
+   p(3,-4,12,4,12,12,14,20,15,27,16,35,17,35,19,26,18,18,18,10,17,3,15,-4,16),
+   p(3,1,25,7,24,15,26,23,27,30,28,35,28,35,31,27,30,19,30,13,29,5,28,-3,29),
+   p(3,10,6,16,5,22,7,29,7,35,9,35,11,28,10,20,9,13,9),
+   p(3,21,0,27,-1,34,1,35,3,27,2,22,3),
+   p(2,3,2,8,1,14,3,13,5,6,5),
+   p(1,20,25,24,23,30,25,28,27,22,27)
+  ]
+ },
+ 'rhodesian-brushstroke':{
+  label:'RHODESIAN BRUSH',description:'Oversized slashing brush strokes with feathered spear tips across a dry khaki field',
+  colors:[[193,173,133],[87,118,73],[118,85,60],[48,55,39]],
+  targetCoverage:[.32,.29,.27,.12],
+  motifs:[
+   p(1,-5,1,2,-2,10,2,18,8,25,13,27,17,20,14,14,12,5,7,-5,7),
+   p(1,14,20,18,16,25,17,33,25,36,31,29,28,23,25,17,24,10,21),
+   p(1,-5,23,2,21,8,26,14,31,15,35,5,32,-5,29),
+   p(2,16,-4,22,0,29,4,35,9,35,16,28,13,24,10,18,7,12,6),
+   p(2,-4,11,4,11,12,17,19,22,25,24,23,28,17,25,11,21,3,16,-4,16),
+   p(2,21,27,28,24,35,29,35,35,27,35),
+   p(2,6,1,9,0,14,4,15,7,11,6),
+   p(3,-4,7,2,7,9,10,17,14,24,18,28,20,24,20,16,16,10,14,3,10,-4,11),
+   p(3,10,-4,15,0,21,5,28,10,35,15,34,17,26,12,19,8,12,3),
+   p(3,-4,25,3,23,10,26,18,30,25,34,21,34,13,29,7,28,0,27,-4,29),
+   p(3,24,12,28,11,34,15,35,18,30,16,25,15),
+   p(1,3,17,8,15,14,18,18,21,16,23,10,21,5,20)
+  ]
+ },
+ 'desert-tropentarn':{
+  label:'GERMAN TROPENTARN',description:'Pale sand islands interrupted by compact rust-brown and restrained olive droplet clusters',
+  colors:[[221,201,162],[193,173,133],[145,105,73],[109,126,88],[46,54,44]],
+  targetCoverage:[.36,.31,.19,.11,.03],
+  motifs:[
+   p(1,-5,0,4,-2,12,2,17,6,13,11,5,11,-4,7),
+   p(1,15,14,21,11,29,14,35,19,32,25,23,25,17,21),
+   p(1,-4,24,3,21,11,25,16,31,12,35,3,34,-4,31),
+   p(1,21,-4,29,-2,35,3,33,10,25,12,19,7),
+   p(2,3,4,6,3,8,5,7,7,4,7),
+   p(2,12,2,15,1,17,3,16,6,13,6),
+   p(2,24,4,27,3,29,6,27,9,24,8),
+   p(2,30,13,33,12,35,15,33,18,30,17),
+   p(2,4,17,7,15,10,18,9,21,5,22),
+   p(2,14,18,17,16,20,19,19,22,15,23),
+   p(2,23,21,26,19,29,22,28,25,24,25),
+   p(2,2,28,5,27,8,29,6,32,3,32),
+   p(2,13,29,16,27,19,30,17,33,14,33),
+   p(2,28,28,31,26,34,29,32,32,29,33),
+   p(3,8,9,11,8,13,10,12,12,9,12),
+   p(3,19,7,22,6,24,9,22,11,19,10),
+   p(3,27,17,30,16,32,19,30,21,28,20),
+   p(3,9,24,12,23,14,25,12,28,9,27),
+   p(4,5,13,7,12,9,14,8,16,5,15),
+   p(4,20,27,22,26,24,28,23,30,21,29),
+   p(4,30,2,32,1,34,3,33,5,31,4)
+  ]
  }
 };
 export const HEADWEAR_CAMO_ELIGIBILITY:Readonly<Record<HeadSilhouetteId,readonly HeadwearCamoId[]>>={
@@ -342,10 +480,12 @@ export const HEADWEAR_CAMO_ELIGIBILITY:Readonly<Record<HeadSilhouetteId,readonly
  boonie:[...HEADWEAR_CAMO_IDS],
  beanie:[],
  ach:['m81-woodland','three-color-desert','ucp','multicam','flecktarn',
-  'woodland-dpm','swedish-m90','six-color-desert','woodland-marpat','desert-marpat'],
+  'woodland-dpm','swedish-m90','six-color-desert','woodland-marpat','desert-marpat',
+  'erdl-lowland','finnish-m05','polish-pantera','russian-flora','rhodesian-brushstroke','desert-tropentarn'],
  'high-cut':['m81-woodland','ucp','multicam','flecktarn','swedish-m90',
-  'woodland-marpat','desert-marpat'],
- pasgt:['m81-woodland','three-color-desert','woodland-dpm','six-color-desert'],
+  'woodland-marpat','desert-marpat','finnish-m05','polish-pantera','desert-tropentarn'],
+ pasgt:['m81-woodland','three-color-desert','woodland-dpm','six-color-desert',
+  'erdl-lowland','polish-pantera','russian-flora','rhodesian-brushstroke'],
  'soviet-steel':[]
 };
 export function headwearCamoChoices(model:string):readonly HeadwearCamoId[]{
