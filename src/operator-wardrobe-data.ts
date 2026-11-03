@@ -4,7 +4,7 @@
  */
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {wardrobeMount} from './operator-wardrobe-mounts.ts';
-import {isGarmentColorway,topColorwayChoices} from './operator-upper-colorways.ts';
+import {isGarmentColorway} from './operator-upper-colorways.ts';
 import {initialWardrobeAccessories,readWardrobeAccessories,
  type WardrobeAccessoryConfiguration} from './operator-wardrobe-accessories.ts';
 import {isHeadwearSolidColorId,type HeadwearSolidColorId} from './operator-headwear-colors.ts';
@@ -170,7 +170,7 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(v.fabricCamo&&typeof v.fabricCamo==='object'&&!Array.isArray(v.fabricCamo)){
   for(const channel of FABRIC_CAMO_CHANNELS){
    const id=v.fabricCamo[channel];
-   if(isHeadwearCamoId(id)){
+   if(isHeadwearCamoId(id)&&id!=='splittertarn-31'){
     (result.fabricCamo??={})[channel]=id;
    }
   }
@@ -183,7 +183,7 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
   }
  }
  if(isHeadwearSolidColorId(v.headwearColor))result.headwearColor=v.headwearColor;
- if(isHeadwearCamoId(v.headwearCamo))result.headwearCamo=v.headwearCamo;
+ if(isHeadwearCamoId(v.headwearCamo)&&v.headwearCamo!=='splittertarn-31')result.headwearCamo=v.headwearCamo;
  if(Number.isInteger(v.headwearCamoRoll)&&v.headwearCamoRoll!>=0&&v.headwearCamoRoll!<4096)
   result.headwearCamoRoll=v.headwearCamoRoll;
  if(SLEEVE_STATES.includes(v.sleeveState as SleeveState))
