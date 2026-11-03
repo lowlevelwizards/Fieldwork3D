@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
 <meta name="theme-color" content="#242c2b"/><title>FIELDWORK — OPERATOR LAB</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@400;500;600;700;800&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#c4c5bd;color:#e8e6da;font:12px monospace;overflow:hidden;touch-action:none}
 #preview{position:fixed;inset:0;width:100%;height:100%;touch-action:none}
@@ -100,25 +100,25 @@ body.compare-open main>.row:has(#comparePose)>#savePoseView{
 button,select{padding:6px 8px;font-size:10px;min-height:31px}}
 
 /* Shared Fieldwork instrument identity; lab viewport stays intentionally neutral. */
-html,body{font:13px/1.4 "IBM Plex Sans",system-ui,sans-serif}
+html,body{font:13px/1.4 "Saira Condensed",system-ui,sans-serif}
 header{background:#192b29f0;border-bottom:1px solid #728b7c;padding:10px 13px}
-header strong{font:700 19px "Chakra Petch","Arial Narrow",sans-serif;letter-spacing:.045em}
-header small{font:500 11px "IBM Plex Mono",monospace;opacity:.55}
-header a{font:600 12px "IBM Plex Sans",sans-serif}
+header strong{font:700 19px "Saira Condensed","Arial Narrow",sans-serif;letter-spacing:.045em}
+header small{font:500 11px "Saira Condensed",monospace;opacity:.55}
+header a{font:600 12px "Saira Condensed",sans-serif}
 main{background:#192b29f2;border-top:1px solid #6e8a79;gap:8px}
 .row{gap:6px}
-label{font:600 11px "IBM Plex Sans",sans-serif;letter-spacing:.06em}
-button,select{font:500 12px "IBM Plex Sans",sans-serif;border-radius:6px;
+label{font:600 11px "Saira Condensed",sans-serif;letter-spacing:.06em}
+button,select{font:500 12px "Saira Condensed",sans-serif;border-radius:6px;
  border-color:#718b7e;background:#344d44;color:#e7e7d9;
  transition:background 110ms ease,border-color 110ms ease}
 button:active{background:#536e5f}
 button[aria-pressed=true]{background:#c9a778;color:#162721}
 button:focus-visible,select:focus-visible{outline:2px solid #c9a778;outline-offset:2px}
-#timestamp{font:12px "IBM Plex Mono",monospace}
-#diagnosticText{font:11px/1.4 "IBM Plex Mono",monospace}
+#timestamp{font:12px "Saira Condensed",monospace}
+#diagnosticText{font:11px/1.4 "Saira Condensed",monospace}
 #labStatus{background:#182c27f3;border-radius:9px}
-#labStatus strong{font:700 19px "Chakra Petch",sans-serif}
-#labStatus p{font:12px/1.5 "IBM Plex Sans",sans-serif}
+#labStatus strong{font:700 19px "Saira Condensed",sans-serif}
+#labStatus p{font:12px/1.5 "Saira Condensed",sans-serif}
 @media(max-width:440px){button,select{font-size:11px;min-height:36px}}
 @media(prefers-reduced-motion:reduce){button,select{transition:none}}
 
@@ -126,7 +126,7 @@ button:focus-visible,select:focus-visible{outline:2px solid #c9a778;outline-offs
 .lab-category-nav{position:sticky;top:-8px;z-index:4;display:flex;gap:6px;
  overflow-x:auto;touch-action:pan-x;padding:6px 0 8px;background:#202c2bf9}
 .lab-category-nav button{flex:0 0 auto;min-height:44px;white-space:nowrap;
- padding:8px 12px;border-radius:7px;font:600 11px "IBM Plex Sans",sans-serif}
+ padding:8px 12px;border-radius:7px;font:600 11px "Saira Condensed",sans-serif}
 .lab-category-nav button[aria-pressed="true"]{background:#a8b995;
  color:#172824;border-color:#c4d2b4}
 main [data-lab-group]{min-width:0}
@@ -140,18 +140,18 @@ main[data-lab-active="diagnostics"]>[data-lab-group]:not([data-lab-group="diagno
 main>.row[data-lab-group]{align-items:flex-start}
 main>.row[data-lab-group]>button{min-height:44px}
 #modelAxisLegend{display:block;position:fixed;right:8px;top:62px;z-index:8;
- background:#1f302dcf;color:#c3cfbb;font:600 9px "IBM Plex Mono",monospace;
+ background:#1f302dcf;color:#c3cfbb;font:600 9px "Saira Condensed",monospace;
  padding:4px 6px;border:1px solid #62776c;border-radius:4px;pointer-events:none}
 body.kit-compare .lab-category-nav{display:none}
 /* UX2-17: persistent compact transport and separate diagnostics. */
-#labCategoryHint{display:block;color:#c5d1bc;font:600 11px/1.35 "IBM Plex Sans",sans-serif;
+#labCategoryHint{display:block;color:#c5d1bc;font:600 11px/1.35 "Saira Condensed",sans-serif;
  letter-spacing:.01em;padding:0 3px}
 .lab-transport{position:sticky;top:45px;z-index:3;display:flex;align-items:center;
  flex-wrap:nowrap;gap:8px;background:#182e2aeF;border:1px solid #637c6c;
  padding:5px 7px;border-radius:7px;min-height:49px}
 .lab-transport #playPause{min-width:73px;min-height:40px;font-weight:700}
 .lab-transport #timeline{min-width:65px;flex:1}
-.lab-transport #timestamp{font:600 11px "IBM Plex Mono",monospace;white-space:nowrap}
+.lab-transport #timestamp{font:600 11px "Saira Condensed",monospace;white-space:nowrap}
 @media(max-width:440px){.lab-transport{gap:6px;padding:4px 6px}
  .lab-transport #playPause{min-width:63px}}
 body.kit-compare main #kitPanel{display:block!important}
@@ -163,15 +163,15 @@ body.kit-compare main>.row[data-lab-group="view"]:has(#comparePose){display:flex
 #headwearCamoChooser .swatch-heading{font-weight:700;color:#d9d5b5;font-size:11px;letter-spacing:.055em;margin-bottom:7px}
 
 #camoBrowseControls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:8px 0;padding:7px;background:#243b32;border:1px solid #597568;border-radius:6px}
-#camoBrowseControls label{min-width:0;font:600 10px "IBM Plex Mono",monospace;color:#d8d9c0}
+#camoBrowseControls label{min-width:0;font:600 10px "Saira Condensed",monospace;color:#d8d9c0}
 #camoBrowseControls select,#camoBrowseControls input[type="search"]{box-sizing:border-box;width:100%;min-width:0;height:34px;padding:5px;color:#f3f0dc;background:#344d43;border:1px solid #718578;border-radius:4px}
 #camoBrowseControls .camo-search{grid-column:1/-1}
 #camoBrowseControls .camo-filter-check{display:flex;align-items:center;gap:6px;min-height:36px;font-size:10px}
 #camoBrowseControls .camo-filter-check input{width:17px;height:17px;accent-color:#c9bd8e}
-#camoBrowseSummary{display:block;grid-column:1/-1;font:500 10px "IBM Plex Mono",monospace;color:#d2d6c7;line-height:1.5}
+#camoBrowseSummary{display:block;grid-column:1/-1;font:500 10px "Saira Condensed",monospace;color:#d2d6c7;line-height:1.5}
 #camoRecentRow{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0 9px}
 #camoRecentRow[hidden]{display:none}
-#camoRecentRow button{padding:5px 7px;min-height:32px;font:600 10px "IBM Plex Mono",monospace;background:#465d51;color:#e5e6d5;border:1px solid #8e9f83}
+#camoRecentRow button{padding:5px 7px;min-height:32px;font:600 10px "Saira Condensed",monospace;background:#465d51;color:#e5e6d5;border:1px solid #8e9f83}
 #headwearCamoGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .camo-card{position:relative;min-width:0}
 .camo-card .camo-entry{width:100%;height:100%;padding-right:29px}
@@ -183,38 +183,48 @@ body.kit-compare main>.row[data-lab-group="view"]:has(#comparePose){display:flex
 #headwearCamoGrid .camo-entry{display:flex;flex-direction:column;gap:4px;align-items:stretch;padding:5px;min-width:0;min-height:88px;text-align:left;background:#344d44;color:#e9eadf}
 #headwearCamoGrid .camo-entry[aria-pressed="true"]{border:3px solid #f3dba7;background:#506b59}
 #headwearCamoGrid canvas{width:100%;height:53px;image-rendering:pixelated;image-rendering:crisp-edges;border-radius:2px}
-#headwearCamoGrid span{font:600 10px "IBM Plex Mono",monospace}
+#headwearCamoGrid span{font:600 10px "Saira Condensed",monospace}
 #headwearCamoInspector{margin-top:10px;border-top:1px solid #62776c;padding-top:9px}
 .camo-inspect-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .camo-inspect-row figure{margin:0;min-width:0}
 .camo-inspect-row canvas{display:block;width:100%;max-width:170px;aspect-ratio:1;image-rendering:pixelated;image-rendering:crisp-edges;border:1px solid #98a69b;background:#657469}
-.camo-inspect-row figcaption{color:#d9ddc6;font:500 10px "IBM Plex Mono",monospace;margin-top:4px}
+.camo-inspect-row figcaption{color:#d9ddc6;font:500 10px "Saira Condensed",monospace;margin-top:4px}
 #headwearCamoChoice{display:block;margin:7px 0;color:#d9dccc;font-size:11px;line-height:1.5}
 #headwearCamoReroll{margin:6px 0 4px;background:#496154;border:1px solid #abc0a4;color:#f3e7cf;font-weight:700}
 #headwearCamoReroll[hidden]{display:none}
 #headwearCamoCompareDetails{margin:10px 0 5px;padding:8px;border:1px solid #607869;border-radius:5px}
-#headwearCamoCompareDetails summary{cursor:pointer;color:#f3dba7;font:700 11px "IBM Plex Mono",monospace}
+#headwearCamoCompareDetails summary{cursor:pointer;color:#f3dba7;font:700 11px "Saira Condensed",monospace}
 #headwearCamoCompareDetails>small{display:block;margin:7px 0;line-height:1.5;color:#c8d4c5}
 #headwearCamoCompareGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:9px}
 .camo-study{min-width:0;padding:5px;background:#2e463d;border:1px solid #688170;border-radius:4px;color:#eee7d5;text-align:left}
 .camo-study[aria-pressed="true"]{border-color:#f3dba7;outline:1px solid #f3dba7}
 .camo-study:disabled{opacity:.65;cursor:not-allowed}
-.camo-study-title{display:block;min-height:25px;font:700 9px "IBM Plex Mono",monospace}
+.camo-study-title{display:block;min-height:25px;font:700 9px "Saira Condensed",monospace}
 .camo-study-views{display:grid;grid-template-columns:1fr 1fr;gap:4px}
 .camo-study-views figure{min-width:0;margin:0;text-align:center}
 .camo-study-views canvas{display:block;width:100%;max-width:68px;aspect-ratio:1;margin:auto;image-rendering:pixelated;image-rendering:crisp-edges}
-.camo-study-views figcaption{font:500 9px "IBM Plex Mono",monospace;color:#ccd6c5}
-.camo-study-density{display:block;font:500 9px "IBM Plex Mono",monospace;color:#c5d1c0;margin-top:5px}
+.camo-study-views figcaption{font:500 9px "Saira Condensed",monospace;color:#ccd6c5}
+.camo-study-density{display:block;font:500 9px "Saira Condensed",monospace;color:#c5d1c0;margin-top:5px}
 @media(min-width:680px){#headwearCamoCompareGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
 #blouseComparePanel{margin:7px 0 10px;padding:6px 8px;border:1px solid #83998c;border-radius:6px;background:#23372f;color:#e8e9d7}
 #blouseComparePanel summary{font-weight:700;letter-spacing:.03em;font-size:12px}
 #blouseComparePanel button{min-height:42px;background:#456653;color:#fff4da;border:1px solid #a2b99a;border-radius:5px}
 #blouseComparePanel select{min-height:40px;background:#1c302c;color:#e6e6dc}
-#blouseCompareStatus{font:11px/1.4 "IBM Plex Sans",sans-serif;color:#dbc49a}
+#blouseCompareStatus{font:11px/1.4 "Saira Condensed",sans-serif;color:#dbc49a}
 #uniformCutLabels{position:fixed;top:calc(80px + env(safe-area-inset-top));inset-inline:0;z-index:3;display:flex;justify-content:space-around;gap:6px;pointer-events:none;padding:0 8px}
 #uniformCutLabels[hidden]{display:none}
-#uniformCutLabels span{max-width:47%;font:700 10px/1.35 "IBM Plex Sans",sans-serif;text-align:center;letter-spacing:.025em;background:#182923e8;color:#f5e2b7;padding:6px 8px;border:1px solid #748d7e;border-radius:5px}
+#uniformCutLabels span{max-width:47%;font:700 10px/1.35 "Saira Condensed",sans-serif;text-align:center;letter-spacing:.025em;background:#182923e8;color:#f5e2b7;padding:6px 8px;border:1px solid #748d7e;border-radius:5px}
+/* Fieldwork / approved typography families, workbench UI */
+html,body,header,header a,main,label,select,summary{font-family:"Saira Condensed","Arial Narrow",sans-serif}
+header strong{font-weight:800;letter-spacing:.025em}
+button{font-family:"Work Sans",system-ui,sans-serif;font-weight:600;letter-spacing:0}
+#labStatus p,.kit-help,#headwearReviewStatus,#wardrobeCompatibility{font-family:"Work Sans",system-ui,sans-serif}
+#timestamp,#diagnosticText,#camoBrowseSummary,#headwearCamoGrid span,
+#headwearCamoChoice,#headwearCamoCompareDetails summary{
+ font-family:"Saira Condensed","Arial Narrow",sans-serif;font-variant-numeric:tabular-nums;
+ font-feature-settings:"tnum" 1;
+}
 </style></head>
 <body><canvas id="preview"></canvas><div id="compareLabels" hidden></div>
 <div id="uniformCutLabels" hidden aria-hidden="true"><span id="blouseLabelA">A · HISTORICAL BDU</span><span id="blouseLabelB">B · MODERN ACU</span></div>
