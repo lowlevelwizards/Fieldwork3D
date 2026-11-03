@@ -35,7 +35,7 @@ type CamoRecipe={
 };
 const p=(index:number,...coords:number[]):Motif=>[index,coords];
 /** Sequence is painter's order: visible background -> medium field -> identifying accents.
- * All coordinates are integer art pixels in a periodic 32x32 tile. Motifs
+ * Coordinates are authored pixels in each pattern's periodic 32x32 or 64x64 tile. Motifs
  * can cross its edge and are wrapped across both axes by the rasterizer.
  */
 export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
@@ -568,13 +568,13 @@ function inPolygon(x:number,y:number,coords:readonly number[]):boolean{
  * used for the actual garment map, rather than a separate fake preview.
  */
 export function headwearCamoIndices(id:HeadwearCamoId):Uint8Array{
- const data=new Uint8Array(HEADWEAR_CAMO_SIZE**2);
+ const size=headwearCamoSize(id),data=new Uint8Array(size**2);
  const shapes=HEADWEAR_CAMO_RECIPES[id].motifs;
- for(let y=0;y<32;y++)for(let x=0;x<32;x++){
+ for(let y=0;y<size;y++)for(let x=0;x<size;x++){
   const px=x+.5,py=y+.5;let ink=0;
   for(const [tone,polygon] of shapes){
    let marked=false;
-   for(const dy of [-32,0,32])for(const dx of [-32,0,32]){
+   for(const dy of [-size,0,size])for(const dx of [-size,0,size]){
     if(!marked&&inPolygon(px-dx,py-dy,polygon))marked=true;
    }
    if(marked)ink=tone;
@@ -592,7 +592,7 @@ export function headwearCamoIndices(id:HeadwearCamoId):Uint8Array{
   if(id==='flecktarn')ink=applyFlecktarnSpeckle(x,y,ink);
   if(id==='woodland-marpat'||id==='desert-marpat')
    ink=applyMarpatFragments(x,y,ink,id==='desert-marpat');
-  data[y*32+x]=ink;
+  data[y*size+x]=ink;
  }
  return data;
 }
@@ -600,8 +600,8 @@ const pixelCache=new Map<HeadwearCamoId,Uint8Array>();
 export function headwearCamoPixels(id:HeadwearCamoId):Uint8Array{
  const cached=pixelCache.get(id);if(cached)return cached;
  const recipe=HEADWEAR_CAMO_RECIPES[id],indices=headwearCamoIndices(id);
- const bytes=new Uint8Array(32*32*4);
- for(let k=0;k<1024;k++){
+ const bytes=new Uint8Array(indices.length*4);
+ for(let k=0;k<indices.length;k++){
   const c=recipe.colors[indices[k]],o=k*4;
   bytes[o]=c[0];bytes[o+1]=c[1];bytes[o+2]=c[2];bytes[o+3]=255;
  }
@@ -610,11 +610,11 @@ export function headwearCamoPixels(id:HeadwearCamoId):Uint8Array{
 export function headwearCamoCoverage(id:HeadwearCamoId):number[]{
  const counts=HEADWEAR_CAMO_RECIPES[id].colors.map(()=>0);
  for(const i of headwearCamoIndices(id))counts[i]++;
- return counts.map(n=>n/1024);
+ return counts.map(n=>n/(headwearCamoSize(id)**2));
 }
 /** Stable pixel-phase selection. No UV rescaling, mirroring or randomness at
  * pose time. All parts of a cut item share the same phase (in tile texels).
- * The M81 placement gate avoids a monolithic brown front-facing 8x10 sample.
+ * M81 uses a 64px phase and avoids a monolithic brown 8x10 frontal sample.
  */
 export type HeadwearCamoPlacement={offsetX:number;offsetY:number};
 export const HEADWEAR_CAMO_ROLL_LIMIT=4096;
@@ -633,13 +633,13 @@ function camoHash(value:string):number{
 const m81BrownIndices=headwearCamoIndices('m81-woodland');
 const placementCache=new Map<string,HeadwearCamoPlacement>();
 export function headwearCamoFrontBrownFraction(phase:HeadwearCamoPlacement):number{
- const indices=m81BrownIndices;
+ const indices=m81BrownIndices,size=headwearCamoSize('m81-woodland');
  let brown=0;
  // UV1 maps the forward side onto the first eighth of the 32-pixel
  // circumference. The crown/side front shares this uninterrupted print.
  for(let y=15;y<25;y++)for(let x=0;x<8;x++){
-  const xx=(x+phase.offsetX)&31,yy=(y+phase.offsetY)&31;
-  if(indices[yy*32+xx]===1)brown++;
+  const xx=(x+phase.offsetX)&(size-1),yy=(y+phase.offsetY)&(size-1);
+  if(indices[yy*size+xx]===1)brown++;
  }
  return brown/80;
 }
@@ -648,18 +648,18 @@ export function headwearCamoPlacement(operatorId:string,slot:string,
  const validRoll=Number.isInteger(roll)&&roll>=0&&roll<HEADWEAR_CAMO_ROLL_LIMIT?roll:0;
  const key=operatorId+'|'+slot+'|'+camo+'|'+validRoll;
  const cached=placementCache.get(key);if(cached)return cached;
- const hash=camoHash(key);
+ const hash=camoHash(key),size=headwearCamoSize(camo),mask=size-1;
  const remember=(value:HeadwearCamoPlacement):HeadwearCamoPlacement=>{
   // Bound CPU memoization without destroying any GPU textures still on rigs.
   if(placementCache.size>=256)placementCache.delete(placementCache.keys().next().value!);
   placementCache.set(key,value);return value;
  };
- let best:HeadwearCamoPlacement={offsetX:hash&31,offsetY:(hash>>>8)&31};
+ let best:HeadwearCamoPlacement={offsetX:hash&mask,offsetY:(hash>>>8)&mask};
  if(camo!=='m81-woodland')return remember(best);
  let bestScore=Infinity;
- for(let i=0;i<48;i++){
-  const phase={offsetX:((hash&31)+i*11)&31,
-   offsetY:(((hash>>>8)&31)+i*7+Math.floor(i/4))&31};
+ for(let i=0;i<96;i++){
+  const phase={offsetX:((hash&mask)+i*11)&mask,
+   offsetY:(((hash>>>8)&mask)+i*7+Math.floor(i/4))&mask};
   const brown=headwearCamoFrontBrownFraction(phase);
   if(brown<bestScore){bestScore=brown;best=phase;}
   if(brown<=.34)return remember(phase);
