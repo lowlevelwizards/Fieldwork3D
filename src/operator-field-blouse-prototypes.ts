@@ -115,7 +115,7 @@ function box(parent:THREE.Object3D,m:THREE.Material,
 }
 function sleeve(parent:THREE.Group,cloth:THREE.Material,
  topRadius:number,bottomRadius:number,nominalLength:number,
- height=1.07,offsetY=0){
+ height=.96,offsetY=-.02){
  // Segment bone.scale.y is actual solved IK length, so a 1.07 high
  // sleeve follows it without ever changing its foot/hand transforms.
  const g=new THREE.CylinderGeometry(topRadius,bottomRadius,height,8,1,false);
@@ -150,6 +150,11 @@ function seamBand(parent:THREE.Group,cloth:THREE.Material,
 export function createFieldBlousePrototypes(chest:THREE.Group,
  arms:readonly Arm[],cloth:THREE.Material,trim:THREE.Material):FieldBlousePrototypes{
  const models={} as FieldBlousePrototypes;
+ // Woven roll/cuff undersides are solid material, not a repeated
+ // camouflage swatch. Their detail is the fold silhouette, not pixel noise.
+ const solidCuff=new THREE.MeshStandardMaterial({
+  color:0x90866d,roughness:1,metalness:0
+ });
  for(const cut of FIELD_BLOUSE_CUTS){
   const historic=cut==='bdu-shirt',profile=BLOUSE_CUT_PROFILE[cut];
   // Exaggerated primary masses remain cosmetic; shoulder sockets and IK stay fixed.
@@ -191,35 +196,36 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
   const upper:THREE.Group[]=[],lower:THREE.Group[]=[],
   cuffed:THREE.Group[]=[],cuffedLower:THREE.Group[]=[],rolledUpper:THREE.Group[]=[];
   for(const [index,arm] of arms.entries()){
+   const outside=index===0?-1:1;
    const a=group(arm.upper,cut+':upper-sleeve:'+index);
    const b=group(arm.lower,cut+':forearm-sleeve:'+index);
    const c=group(arm.lower,cut+':cuffed-wrist:'+index);
    const short=group(arm.lower,cut+':short-cuffed-forearm:'+index);
    const rolled=group(arm.upper,cut+':rolled-upper:'+index);
    sleeve(a,cloth,profile.upperRadius[0],profile.upperRadius[1],10.0);
-   sleeve(b,cloth,profile.lowerRadius[0],profile.lowerRadius[1],9.6);
+   sleeve(b,cloth,profile.lowerRadius[0],profile.lowerRadius[1],9.6,.92,-.035);
    // Sleeve ends substantially above the wrist when cuffed; the original
    // lower-arm bone becomes bare skin under this shortened cloth shell.
    sleeve(short,cloth,profile.lowerRadius[0]+.07,
-    profile.lowerRadius[1]+.17,9.6,.77,-.135);
+    profile.lowerRadius[1]+.13,9.6,.72,-.14);
    // Double-layer rolled fabric, with sleeve shortened to ABOVE elbow.
    // No manipulation of either IK limb transform or hand contact.
    sleeve(rolled,cloth,profile.upperRadius[0],profile.upperRadius[1],
-    10.0,.80,-.135);
-   seamBand(rolled,cloth,profile.upperRadius[1]+.36,.285,.12);
+    10.0,.74,-.11);
+   seamBand(rolled,solidCuff,profile.upperRadius[1]+.22,.235,.18);
    if(historic){
     box(b,cloth,0,.38,2.65,2.45,.12,.56);
-    seamBand(c,cloth,profile.lowerRadius[0]+.42,.235,.24);
-    seamBand(c,cloth,profile.lowerRadius[0]+.30,.125,.21);
+    seamBand(c,solidCuff,profile.lowerRadius[0]+.24,.19,.21);
    }else{
-    // Upper-arm sleeve pockets survive in either regular or rolled fit.
+    // A pocket on EACH OUTER bicep, using left/right ±Z. The short
+    // upright pouch and flap are not forward-facing or sideways strips.
     for(const g of [a,rolled]){
-     box(g,cloth,0,.10,3.10,3.05,.30,.95);
-     box(g,trim,.02,.290,3.15,2.80,.08,1.00);
+     const z=outside*(profile.upperRadius[0]+.19);
+     box(g,cloth,0,.14,z,2.50,.28,.51);
+     box(g,trim,0,.28,z+outside*.12,2.48,.09,.52);
     }
-    box(b,cloth,0,.40,2.62,2.25,.10,.48);
-    seamBand(c,cloth,profile.lowerRadius[0]+.33,.235,.24);
-    seamBand(c,cloth,profile.lowerRadius[0]+.21,.125,.18);
+    box(b,cloth,0,.34,2.58,2.02,.09,.40);
+    seamBand(c,solidCuff,profile.lowerRadius[0]+.23,.19,.19);
    }
    for(const g of [a,b,c,short,rolled])consolidateVisualGroup(g);
    upper.push(a);lower.push(b);cuffed.push(c);cuffedLower.push(short);rolledUpper.push(rolled);
