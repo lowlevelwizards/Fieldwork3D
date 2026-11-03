@@ -39,5 +39,6 @@ test('both visual paths use semantic order scope and neutral route drafts',()=>{
   assert.match(main,/function draftRouteNeighbors\(/);
   assert.match(main,/fillText\('DRAFT'/);
   assert.match(main,/semantics\.suppressionPoint/);
+  assert.match(main,/a.id===selected&&a.firePolicy==='suppress'&&a.suppressPoint/);
   assert.match(main,/semantics\.watchEnds/);
 });
