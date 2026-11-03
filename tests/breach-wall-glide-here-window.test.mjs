@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {WALLS,COVER,activateSite,passable}
  from '../src/breach-core.ts';
-import {glideAlongStaticWall,sweptBodyClear}
+import {glideAlongStaticWall,releaseStaticWallOverlap,sweptBodyClear}
  from '../src/breach-navigation.ts';
 import {newSession,planMove,planMoveStroke,undoPlan,redoPlan,
  team,toggling,stepSession} from '../src/breach-game.ts';
@@ -43,6 +43,25 @@ test('walking both directions alongside a wall glides, without any radius reduct
     assert.ok(forbidden.x>start.x,'an inward push may only recover outward');
     assert.ok(sweptBodyClear(start,forbidden,[]));
   }
+ }finally{
+  WALLS.splice(0,WALLS.length,...oldWalls);
+  COVER.splice(0,COVER.length,...oldCover);
+ }
+});
+test('a tiny static-wall overlap can escape outward without teleporting or rotating first',()=>{
+ const oldWalls=[...WALLS],oldCover=[...COVER];
+ try{
+  WALLS.splice(0,WALLS.length,{a:{x:100,y:60},b:{x:100,y:250}});
+  COVER.splice(0,COVER.length);
+  const embedded={x:108.4,y:160};
+  assert.equal(passable(embedded),false);
+  const escaped=releaseStaticWallOverlap(embedded,{x:115,y:195},[],1.3);
+  assert.ok(escaped);
+  assert.ok(escaped.x>embedded.x,'should leave the wall, not press into it');
+  assert.ok(d(embedded,escaped)<=1.401,'must be a small physical step');
+  assert.equal(passable(escaped),true);
+  // Facing isn't an input to releaseStaticWallOverlap; it cannot lock
+  // escape movement just because the rig looks toward the wall.
  }finally{
   WALLS.splice(0,WALLS.length,...oldWalls);
   COVER.splice(0,COVER.length,...oldCover);
