@@ -33,7 +33,7 @@ const look=(top,trousers,sleeveState='unrolled',trouserHem='bloused')=>({
 const visible=(xs)=>xs.every(x=>x.visible);
 test('Stage 3C real trouser catalog, player-facing names and no old placeholders',()=>{
  assert.deepEqual(wardrobeItemsForSlot('trousers').map(x=>x.id),
-  ['base-shorts','bdu-trousers','acu-trousers']);
+  ['base-shorts','bdu-trousers','acu-trousers','gorka-trousers']);
  assert.deepEqual(wardrobeItemsForSlot('top').map(x=>x.name),
   ['Base underlayer','Classic Field Blouse','Modern Utility Blouse',
    'Combat Shirt','Windproof Field Smock','Mountain / Gorka Jacket']);
@@ -68,7 +68,7 @@ test('valid sleeve/hem states persist but the old rolled checkbox is NOT migrate
  assert.equal(roundtrip.members[0].wardrobe.trouserHem,'unbloused');
 });
 test('two real pants cuts have separate shaped thighs, cuffs, pocket assemblies and stable UVs',()=>{
- assert.deepEqual(FIELD_TROUSER_CUTS,['bdu-trousers','acu-trousers']);
+ assert.deepEqual(FIELD_TROUSER_CUTS,['bdu-trousers','acu-trousers','gorka-trousers']);
  const a=FIELD_TROUSER_PROFILES['bdu-trousers'];
  const b=FIELD_TROUSER_PROFILES['acu-trousers'];
  assert.ok(a.thigh[2][1]>b.thigh[2][1]+.25);
