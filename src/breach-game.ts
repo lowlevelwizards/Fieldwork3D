@@ -66,12 +66,12 @@ import {diagnoseMovement,projectReachableGoal,type Blocker}
   from './breach-nav-diagnostics.ts';
 import {bodyClear,sweptBodyClear,squeezeFacing,
   sweptProfileClear,SQUEEZE_RADIUS,escapeOpenDoorOverlap,
-  slideAroundStaticCorner}
+  slideAroundStaticCorner,glideAlongStaticWall,releaseStaticWallOverlap}
   from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
   from './breach-squeeze-route.ts';
 import {probeObstacleCrossing,probeWindowCrossing,
-  preferTraversal,sampleTraversal,
+  canOpenWindowForClimb,preferTraversal,sampleTraversal,
   traversalStepClear,type TraverseOpportunity}
   from './breach-mantle.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
@@ -419,13 +419,23 @@ function knownTraversal(s:Session,from:Pt,to:Pt):boolean{
  const world={
    cover:visible,walls:WALLS.filter((_,i)=>s.intel.walls.has(i)),
    doors:s.doors.filter(door=>doorKnown(s.intel,door.id)),
+   // Planning is allowed to expect the operator to OPEN a known standard
+   // sash on arrival, not reject the entire move because it starts closed.
+   // Nothing hidden becomes eligible; the authoritative motor rechecks it.
    windows:s.windows.filter(w=>s.intel.cover.has(s.coverState.findIndex(o=>
       (o.fixture==='window-sill'||o.fixture==='glass-barrier')&&
-      Math.hypot(o.x-w.x,o.y-w.y)<1))),
+      Math.hypot(o.x-w.x,o.y-w.y)<1))).map(w=>
+        canOpenWindowForClimb(w)?{...w,open:true}:w),
    canStand:(at:Pt)=>intelPassable(at,s.intel)
  };
- return !!(probeObstacleCrossing(from,to,world)||
-   probeWindowCrossing(from,to,world));
+ const ordinaryCrossing=probeObstacleCrossing(from,to,world);
+ if(ordinaryCrossing)return true;
+ const windowCrossing=probeWindowCrossing(from,to,world);
+ if(!windowCrossing)return false;
+ // A crossable pane alone is not a route. Both feet-on-ground connectors
+ // must also be reachable under the player's known world geometry.
+ return !!routeWithSqueezeIntel(s.intel,from,windowCrossing.approach).length&&
+   !!routeWithSqueezeIntel(s.intel,windowCrossing.landing,to).length;
 }
 const legalMoveRoute=(s:Session,from:Pt,to:Pt):Pt[]=>{
  const ordinary=routeWithSqueezeIntel(s.intel,from,to);
@@ -502,11 +512,13 @@ export function planMove(s:Session,id:string,p:Pt,strafe=false){
   return addNode(s,id,'move',target.point,extra);
 }
 /** A finger-drawn path is one undoable gesture, while BACK removes one node. */
-export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
+export function planMoveStroke(s:Session,id:string,points:Pt[],
+ strafe=false,replaceExisting=false){
   const a=party(s,id);if(!a||!canEdit(s))return false;
   const proposed:PlanNode[]=[];
-  let from=finalPoint(a);
-  const facing=[...a.plan].reverse().find(n=>n.facing!==undefined)?.facing??a.heading;
+  let from=replaceExisting?a.p:finalPoint(a);
+  const facing=replaceExisting?a.heading:
+    [...a.plan].reverse().find(n=>n.facing!==undefined)?.facing??a.heading;
   // Input strokes may still contain many meaningful bends; keep the
   // actual release position even if the safety cap clips the middle.
   const stroke=points.length>60?[...points.slice(0,59),points.at(-1)!]:points;
@@ -521,8 +533,9 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
   }
   if(!proposed.length)return false;
   // Door actions inserted during one stroke remain one undoable edit.
-  const expanded:PlanNode[]=[];let prior=finalPoint(a);
-  const opened=new Set(a.plan.filter(n=>n.kind==='door'&&(n.method==='open'||n.method==='kick'))
+  const expanded:PlanNode[]=[];let prior=replaceExisting?a.p:finalPoint(a);
+  const opened=new Set((replaceExisting?[]:a.plan).filter(n=>
+    n.kind==='door'&&(n.method==='open'||n.method==='kick'))
     .map(n=>n.doorId??''));
   for(const node of proposed){
     const points=[prior,...routeWithIntel(s.intel,prior,node.p)];
@@ -545,7 +558,13 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
     expanded.push({...node,id:s.nextId+expanded.length});
     prior=node.p;
   }
-  return edit(s,a,()=>{a.plan.push(...expanded);s.nextId+=expanded.length;});
+  // The entire replacement stroke (including implicit door actions) is
+  // ONE undoable transaction. A rejected stroke leaves the old route intact.
+  return edit(s,a,()=>{
+    if(replaceExisting)a.plan=expanded;
+    else a.plan.push(...expanded);
+    s.nextId+=expanded.length;
+  });
 }
 export function setStrafe(s:Session,id:string,nodeId:number):boolean{
   const a=party(s,id);if(!a||!canEdit(s))return false;
@@ -1429,8 +1448,14 @@ function desiredTraverse(s:Session,a:TeamActor,goal:Pt){
  const world=traversalWorld(s,a);
  const fit=traversalFitness(a);
  const op=probeObstacleCrossing(a.p,goal,world,fit)||
-   probeWindowCrossing(a.p,goal,world,fit);
+   probeWindowCrossing(a.p,goal,{
+     ...world,
+     windows:world.windows.map(w=>
+       canOpenWindowForClimb(w)?{...w,open:true}:w)
+   },fit);
  if(!op||!s.intel.cover.has(op.obstacleIndex))return null;
+ if(op.windowId&&!routeWithSqueezeWorld(op.landing,goal,s.doors).length)
+   return null;
  const ordinary=routeWithSqueezeIntel(s.intel,a.p,goal);
  if(!preferTraversal(a.p,goal,op,ordinary))return null;
  const approachPath=routeWithSqueezeWorld(a.p,op.approach,s.doors);
@@ -1480,8 +1505,41 @@ function tickTraversal(a:TeamActor,s:Session,dt:number):boolean{
 function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   // The simulation frame, not rendering, advances and validates traversal.
   if(tickTraversal(a,s,dt))return true;
+  // If an operator became fractionally embedded in plain wall clearance,
+  // move outward through actual swept samples BEFORE any route/squeeze
+  // decisions. This never deletes the authored route or forces a pivot
+  // toward the wall to begin reversing.
+  const wallRelease=releaseStaticWallOverlap(a.p,p,s.doors,dt*50);
+  if(wallRelease){
+    a.priorP=clone(a.p);a.p=wallRelease;
+    a.velocity=0;a.squeeze=false;a.squeezeTime=0;
+    a.blockedTime=0;a.lastBlocker='clear';
+    a.nav=[];a.retryRouteAt=0;return true;
+  }
   if(a.traversalPending&&d(a.p,a.traversalPending.approach)<3.3){
     const planned=a.traversalPending;
+    if(planned.windowId){
+      const pane=s.windows.find(w=>w.id===planned.windowId);
+      if(!pane){a.traversalPending=null;a.nav=[];return true;}
+      if(canOpenWindowForClimb(pane)){
+        // A closed standard sash is an interaction, not an impossible
+        // crossing. Pause at full-body clearance before opening it.
+        a.velocity=0;a.actionTimer+=dt;
+        if(a.actionTimer<.36)return true;
+        a.actionTimer=0;
+        if(manipulateWindow(pane,'open')){
+          s.objectRevision++;
+          hear(s,{x:pane.x,y:pane.y},85,'window');
+          notify(s,a.name+' OPENED WINDOW');
+          battleEvent(s,'interaction',a,a.p,a.name+' OPENED WINDOW');
+        }
+        return true;
+      }
+      if(!pane.open&&!pane.shattered){
+        a.traversalPending=null;a.nav=[];a.actionTimer=0;
+        a.lastTraversalAt=s.seconds;return true;
+      }
+    }
     const world=traversalWorld(s,a),fit=traversalFitness(a);
     const validated=probeObstacleCrossing(a.p,p,world,fit)||
       probeWindowCrossing(a.p,p,world,fit);
@@ -1670,6 +1728,27 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const sidewaysYaw=squeezeFacing(travelHeading);
   const narrowClear=sweptProfileClear(a.p,desiredMove,s.doors,
     sidewaysYaw,'squeeze');
+  // A grazing wall is not a narrow corridor. Glide the legal tangential
+  // component at the full body radius, even when the proposed step points
+  // slightly INTO the wall. Avoid rotating into a squeeze facing while
+  // simply walking parallel to a solid wall or reversing alongside it.
+  if(!normalClear&&!blocking&&!closed){
+    const glide=glideAlongStaticWall(a.p,desiredMove,s.doors);
+    if(glide){
+      const old=clone(a.p);
+      a.priorP=old;a.p=glide;
+      // Point the body along its real sliding movement, not at the
+      // obstructed grid waypoint. Explicit WATCH remains authoritative.
+      if(a.aimInstruction?.mode!=='track')
+        a.heading=angle(old,glide);
+      a.blockedTime=0;a.lastBlocker='clear';a.retryRouteAt=0;
+      a.recoveryAttempts=0;
+      if(a.squeeze&&bodyClear(a.p,s.doors)){
+        a.squeeze=false;a.squeezeTime=0;
+      }
+      return true;
+    }
+  }
   if(!normalClear&&narrowClear&&!a.squeeze){
     a.squeeze=true;a.squeezeYaw=sidewaysYaw;a.squeezeTime=0;
     a.velocity=0;

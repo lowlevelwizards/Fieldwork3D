@@ -45,6 +45,9 @@ jobs:
       - name: Traversal recovery Stage 4a landing and replay regressions
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-traversal-recovery-') }}
         run: node --experimental-strip-types --test tests/breach-traversal-recovery.test.mjs tests/breach-mantle-session.test.mjs tests/breach-mantle-contract.test.mjs
+      - name: Wall glide, HERE route undo and standard-window climb regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/breach-wall-glide-here-window-') }}
+        run: node --experimental-strip-types --test tests/breach-wall-glide-here-window.test.mjs tests/breach-mantle-contract.test.mjs tests/breach-mantle-session.test.mjs tests/breach-door-corner-stroke.test.mjs
       - name: Mantle Stage 3a crossing contract and window eligibility
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-vault-mantle-') }}
         run: node --experimental-strip-types --test tests/breach-mantle-contract.test.mjs tests/breach-mantle-session.test.mjs
@@ -213,7 +216,7 @@ jobs:
       # Release checkpoint: verify that public Pages actually serves the
       # latest main commit, not merely that a deployment workflow reported green.
       - name: Verify previous Pages build is publicly served
-        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'ux/interaction2-') || startsWith(github.head_ref, 'feature/breach-traversal-') || startsWith(github.head_ref, 'feature/breach-map-clearance-') || startsWith(github.head_ref, 'feature/breach-vault-mantle-') || startsWith(github.head_ref, 'ux/watch-active-marker-') || startsWith(github.head_ref, 'appearance/stage4-') || startsWith(github.head_ref, 'fix/attention-doors-') || startsWith(github.head_ref, 'fix/doorway-right-of-way-') || startsWith(github.head_ref, 'fix/coupled-door-contact-') || startsWith(github.head_ref, 'fix/door-leaf-overlap-')) }}
+        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'ux/interaction2-') || startsWith(github.head_ref, 'feature/breach-traversal-') || startsWith(github.head_ref, 'feature/breach-map-clearance-') || startsWith(github.head_ref, 'feature/breach-vault-mantle-') || startsWith(github.head_ref, 'ux/watch-active-marker-') || startsWith(github.head_ref, 'appearance/stage4-') || startsWith(github.head_ref, 'fix/attention-doors-') || startsWith(github.head_ref, 'fix/doorway-right-of-way-') || startsWith(github.head_ref, 'fix/coupled-door-contact-') || startsWith(github.head_ref, 'fix/door-leaf-overlap-') || startsWith(github.head_ref, 'fix/breach-wall-glide-here-window-')) }}
         run: |
           expected="$(git ls-remote origin refs/heads/main | cut -c1-12)"
           for attempt in 1 2 3 4 5 6 7 8; do

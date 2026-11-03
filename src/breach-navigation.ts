@@ -2,8 +2,9 @@
  * An OPENING door is a pushable obstacle, not a rigid wall. A closed leaf
  * still blocks entry, but an actor already inside its capsule may escape.
  * Static walls and cover remain unconditionally solid. */
-import {passable,pointToSegment,doorLeafSegment,WALLS,segmentsCross,
+import {passable,pointToSegment,doorLeafSegment,WALLS,COVER,segmentsCross,
   OPERATOR_RADIUS,type Door,type Pt} from './breach-core.ts';
+import {isFootstepObstacle} from './breach-traversal-surfaces.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const leafGap=(p:Pt,d:Door)=>pointToSegment(p,doorLeafSegment(d));
 /** Open leaves are still solid. The door motor can swing them out of the
@@ -163,6 +164,114 @@ export function slideAroundStaticCorner(from:Pt,intended:Pt,toward:Pt,
    if(gain<=.07||!sweptBodyClear(from,candidate,doors))continue;
    const score=gain-Math.abs(turn)*.015;
    if(score>bestScore){best=candidate;bestScore=score;}
+ }
+ return best;
+}
+
+/** Retain the *tangential* part of an attempted step when the shoulder
+ * grazes an ordinary wall. Without this, a route almost parallel to a wall
+ * may reject every step (and get stuck in the recovery loop). All candidates
+ * are swept with the unchanged full-size collision radius.
+ *
+ * Wall direction is irrelevant to actor facing: walking back along the wall
+ * does not require first rotating the shoulders INTO the wall.
+ */
+export function glideAlongStaticWall(from:Pt,intended:Pt,
+  doors:Door[]):Pt|null{
+ const dx=intended.x-from.x,dy=intended.y-from.y;
+ const step=Math.hypot(dx,dy);
+ if(step<.04)return null;
+ let best:Pt|null=null,bestMovement=-Infinity;
+ for(const wall of WALLS){
+   const vx=wall.b.x-wall.a.x,vy=wall.b.y-wall.a.y;
+   const len=Math.hypot(vx,vy);
+   if(len<.001)continue;
+   const tx=vx/len,ty=vy/len;
+   const near=pointToSegment(from,wall);
+   if(near>OPERATOR_RADIUS+6||
+      pointToSegment(intended,wall)>OPERATOR_RADIUS+6)continue;
+   // Only attempt a gliding correction if this wall is actually in
+   // contact with the attempted motion; distant parallel walls do nothing.
+   const normalX=-ty,normalY=tx;
+   const signed=(from.x-wall.a.x)*normalX+
+     (from.y-wall.a.y)*normalY;
+   const sign=signed>=0?1:-1;
+   const outwardX=normalX*sign,outwardY=normalY*sign;
+   const tangent=dx*tx+dy*ty;
+   const outward=dx*outwardX+dy*outwardY;
+   if(outward>0&&near>=OPERATOR_RADIUS+1)continue;
+   const correction=Math.min(step,
+     Math.max(0,OPERATOR_RADIUS+1.2-near));
+   const allowedTangent=Math.sqrt(Math.max(0,step*step-
+     correction*correction));
+   const glide=Math.max(-allowedTangent,
+     Math.min(allowedTangent,tangent));
+   // Never creep sideways without an intended tangential component. A
+   // nearly embedded shoulder may still take a small outward recovery step.
+   if(Math.abs(glide)<.035&&correction<.035)continue;
+   const candidate={
+     x:from.x+tx*glide+outwardX*correction,
+     y:from.y+ty*glide+outwardY*correction
+   };
+   if(!sweptBodyClear(from,candidate,doors))continue;
+   const movement=Math.hypot(candidate.x-from.x,candidate.y-from.y);
+   const score=movement+Math.abs(glide)*.25-correction*.08;
+   if(score>bestMovement){bestMovement=score;best=candidate;}
+ }
+ return best;
+}
+
+/** A generated corner, small numerical drift or a previous body resolution
+ * can leave an operator a fraction INSIDE static wall clearance. Ordinary
+ * swept checks then reject even an outward step forever. Search one tiny
+ * physical release along wall normals (with swept samples), never deeper
+ * through the wall, a door leaf, or a solid prop.
+ */
+export function releaseStaticWallOverlap(from:Pt,goal:Pt,
+ doors:Door[],maxStep=1.3):Pt|null{
+ const r=OPERATOR_RADIUS+1;
+ const overlaps=WALLS.filter(w=>pointToSegment(from,w)<r-.01);
+ if(!overlaps.length)return null;
+ const step=Math.max(.15,Math.min(1.4,maxStep));
+ const aim=Math.atan2(goal.y-from.y,goal.x-from.x);
+ const headings=[aim,...overlaps.flatMap(w=>{
+   const dx=w.b.x-w.a.x,dy=w.b.y-w.a.y;
+   return [Math.atan2(dx,-dy),Math.atan2(-dx,dy)];
+ }),...Array.from({length:12},(_,i)=>i*Math.PI/6)];
+ let best:Pt|null=null,bestScore=-Infinity;
+ for(const heading of headings){
+   const candidate={x:from.x+Math.cos(heading)*step,
+     y:from.y+Math.sin(heading)*step};
+   let valid=true;
+   for(let i=1;i<=4;i++){
+     const t=i/4,at={x:from.x+(candidate.x-from.x)*t,
+       y:from.y+(candidate.y-from.y)*t};
+     // Near-zero-radius check maintains bounds and furniture identity.
+     if(!passable(at,0)){valid=false;break;}
+     // Check furniture at the same full operator radius.
+     // A temporarily overlapping wall must never grant cover ghosting.
+     const wallBlocked=WALLS.some(w=>
+       !overlaps.includes(w)&&pointToSegment(at,w)<r-.001);
+     const coverBlocked=COVER.some(o=>isFootstepObstacle(o)&&
+       Math.abs(at.x-o.x)<o.w/2+OPERATOR_RADIUS&&
+       Math.abs(at.y-o.y)<o.h/2+OPERATOR_RADIUS);
+     if(wallBlocked||coverBlocked){valid=false;break;}
+     for(const wall of overlaps){
+       const before=pointToSegment(from,wall);
+       if(pointToSegment(at,wall)<before+.02*t){valid=false;break;}
+     }
+     if(!valid)break;
+     if(doors.some(door=>leafGap(at,door)<r)){valid=false;break;}
+   }
+   if(!valid)continue;
+   const gains=overlaps.map(w=>
+     pointToSegment(candidate,w)-pointToSegment(from,w));
+   if(gains.some(g=>g<.08))continue;
+   const toward=(candidate.x-from.x)*(goal.x-from.x)+
+     (candidate.y-from.y)*(goal.y-from.y);
+   const score=Math.min(...gains)*10+
+     toward/(Math.max(1,distance(from,goal))*step);
+   if(score>bestScore){bestScore=score;best=candidate;}
  }
  return best;
 }
