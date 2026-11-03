@@ -242,7 +242,8 @@ export function probeWindowCrossing(from:Pt,to:Pt,world:CrossingWorld,
  * Bars, boards, overhead glazing and narrow/high apertures aren't shortcuts.
  */
 export function hasClimbableWindowOpening(window:WindowState):boolean{
- if(window.treatment==='bars'||window.treatment==='boarded')return false;
+ if(window.treatment==='bars'||window.treatment==='boarded'||
+    window.style==='wire')return false;
  if(window.width<25)return false;
  const sill=window.sillHeight??14,head=window.headHeight??38;
  return sill<=30&&head-sill>=18;
