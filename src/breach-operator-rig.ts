@@ -1,7 +1,7 @@
 /** 109–113. Deliberately simple box anatomy and independently articulated limbs.
  * The battle motor remains authoritative. IK is presentation-only. */
 import * as THREE from 'three';
-import {operatorPixelTextures,mapBoxPixelUV,type PixelSurface} from './rendering/pixel-materials.ts';
+import {operatorPixelTextures,type PixelSurface} from './rendering/pixel-materials.ts';
 import {canonicalRootOrientation,LEGACY_FRAME_YAW,
   createCanonicalAttachment} from './operator-axis-convention.ts';
 import {neutralMannequinHipRise,neutralMannequinWrist,
