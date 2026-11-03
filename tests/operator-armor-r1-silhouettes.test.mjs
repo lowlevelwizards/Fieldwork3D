@@ -96,3 +96,16 @@ test('R1 armor identities survive with no rig, no extra protection or magazines'
  }
  r.dispose();
 });
+test('R1 final contrast separates police/flak and slick/light at actual kit scale',()=>{
+ const r=createOperatorRig('rook','blue');
+ const a=r.visualKit.wardrobeGear.armor;
+ assert.ok(size(a['soft-flak']).y>size(a['soft-vest']).y+2,
+  'padded raised collar and long flak body differ clearly from fitted police vest');
+ assert.ok(size(a['plate-jpc']).z>size(a['plate-slick']).z+.75,
+  'skeletonized plate carrier is visibly wider than minimalist slick');
+ assert.ok(size(a['plate-heavy']).z>size(a['plate-standard']).z+.75,
+  'heavy side armor adds meaningful lateral bulk');
+ assert.ok(size(a['plate-slick']).y<size(a['plate-jpc']).y,
+  'slick leaves a visibly shorter protected front');
+ r.dispose();
+});

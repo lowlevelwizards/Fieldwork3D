@@ -21,8 +21,8 @@ import {createWardrobeBodyLayers,updateWardrobeBodyLayers,
  type WardrobeBodyLayers} from './operator-wardrobe-body-visuals.ts';
 import {createWardrobeGearLayers,updateWardrobeGearLayers,
  type WardrobeGearLayers} from './operator-wardrobe-gear-visuals.ts';
-import {rigMagazineMount}
- from './operator-armor-rig-silhouettes.ts';
+import {armorMountedMagazineSocket}
+ from './operator-armor-attachment-frame.ts';
 import {createWardrobeAccessoryVisuals,updateWardrobeAccessories,
  initialWardrobeAccessories,type WardrobeAccessoryVisuals}
  from './operator-wardrobe-accessories.ts';
@@ -371,7 +371,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  const order=wardrobe?.mounts?.magazineOrder==='right-left'?-1:1;
  v.magazines.rig.forEach((mag,i)=>{
   if(usingWardrobe){
-   const socket=rigMagazineMount(looks.rigStyle,i,looks.armorStyle,order);
+   const socket=armorMountedMagazineSocket(looks.rigStyle,i,looks.armorStyle,order);
    mag.position.set(socket.x,socket.y,socket.z);
    mag.rotation.y=socket.rotation;
   }else if(i<4){

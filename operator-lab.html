@@ -152,6 +152,11 @@ body.kit-compare .lab-category-nav{display:none}
 .lab-transport #playPause{min-width:73px;min-height:40px;font-weight:700}
 .lab-transport #timeline{min-width:65px;flex:1}
 .lab-transport #timestamp{font:600 11px "Saira Condensed",monospace;white-space:nowrap}
+/* R1: Appearance is for comparing silhouettes, not replay scrubbing.
+   Remove the sticky transport over the first card row; Playback/Motion/
+   Camera categories retain the complete timeline and Play control. */
+main[data-lab-active="appearance"]>.lab-transport{display:none}
+
 @media(max-width:440px){.lab-transport{gap:6px;padding:4px 6px}
  .lab-transport #playPause{min-width:63px}}
 body.kit-compare main #kitPanel{display:block!important}

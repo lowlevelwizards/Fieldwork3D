@@ -24,6 +24,9 @@ jobs:
       - name: Focused Release C automatic fabric and pouch material regressions
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/armor-rig-release-c-') }}
         run: node --experimental-strip-types --test tests/operator-armor-rig-release-c.test.mjs
+      - name: Focused R1 armor/rig socket and equipment truth
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/armor-r1-integration-') }}
+        run: node --experimental-strip-types --test tests/operator-armor-r1-integration.test.mjs
       - name: Focused R1 armor silhouettes and unchanged equipment authority
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/armor-r1-') }}
         run: node --experimental-strip-types --test tests/operator-armor-r1-silhouettes.test.mjs tests/operator-armor-rig-release-a.test.mjs
