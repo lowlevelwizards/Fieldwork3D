@@ -456,8 +456,8 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   ]
  },
  'desert-tropentarn':{
-  label:'GERMAN TROPENTARN',description:'Pale wheat sand covered by thousands of visually clustered tiny brown and olive flecks',
-  colors:[[230,214,178],[206,182,138],[118,87,64],[99,115,84],[53,65,53]],
+  label:'DESERT FLECKTARN',description:'German Wüstentarn: pale wheat sand filled with fine brown and dark-olive fleck clusters',
+  colors:[[230,214,178],[206,182,138],[118,87,64],[99,115,84]],
   targetCoverage:[.255,.447,.211,.062,.025],
   motifs:[
    p(1,-5,0,4,-2,12,2,17,6,13,11,5,11,-4,7),
