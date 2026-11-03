@@ -21,7 +21,7 @@ jobs:
       - name: Focused garment metric UVs, cuff/hem state and independent materials
         if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feat/garment-readability-') || startsWith(github.head_ref, 'feat/wardrobe-cuff-roll-elbow-')) }}
         run: node --experimental-strip-types --test tests/operator-garment-readability-20261103.test.mjs
-      - name: Traversal foundation: squeeze, step-over and clutter contact
+      - name: 'Traversal foundation: squeeze, step-over and clutter contact'
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-traversal-') }}
         run: node --experimental-strip-types --test tests/breach-traversal-foundation.test.mjs tests/physicality-door-aware-routing.test.mjs tests/physicality-friendly-traffic.test.mjs tests/doorway-right-of-way-session.test.mjs
       - name: Focused active WATCH marker lifecycle and mobile editing
