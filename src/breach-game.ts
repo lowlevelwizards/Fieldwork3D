@@ -70,6 +70,9 @@ import {bodyClear,sweptBodyClear,squeezeFacing,
   from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
   from './breach-squeeze-route.ts';
+import {probeObstacleCrossing,preferTraversal,sampleTraversal,
+  traversalStepClear,type TraverseOpportunity}
+  from './breach-mantle.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import {kitMedicalSupplies,spendMedicalSupply,transferMedicalSupply,
@@ -142,6 +145,10 @@ export type TeamActor=Operator & {
   lastAutoShoveAt:number;
   /** Motor-authoritative traversal state. The normal body never shrinks. */
   squeeze:boolean;squeezeYaw:number;squeezeTime:number;
+  /** Transit is transient motor intent, not an authored waypoint. */
+  traversalPending:TraverseOpportunity|null;
+  traversal:TraverseOpportunity|null;traversalElapsed:number;
+  traversalElevation:number;lastTraversalAt:number;
   lastBlocker:Blocker;
   /** Last executed facing command; survives across movement waypoints. */
   aimInstruction:AimInstruction|null;
@@ -248,6 +255,8 @@ const withActions=(a:Operator):TeamActor=>({
   recoveryAttempts:0,retryRouteAt:0,routeGoalKey:'',
   lastAutoShoveAt:-100,
   squeeze:false,squeezeYaw:a.heading,squeezeTime:0,
+  traversalPending:null,traversal:null,traversalElapsed:0,
+  traversalElevation:0,lastTraversalAt:-100,
   lastBlocker:'clear',
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
   lastHitRegion:'torso',lastHitYaw:0,lastHitSeverity:0,
