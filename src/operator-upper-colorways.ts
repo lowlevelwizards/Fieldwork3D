@@ -50,10 +50,12 @@ const smockColors:Readonly<Record<string,number>>={
 export function garmentColorValues(top:string,id:string){
  const chosen=resolvedTopColorway(top,id);
  const gorka=gorkaColors[chosen]??gorkaColors.standard;
+ const specialty:'ss-leto'|'ss-autumn'|null=
+  chosen==='ss-leto'||chosen==='ss-autumn'?chosen as 'ss-leto'|'ss-autumn':null;
  return {combat:combatColors[chosen]??combatColors.standard,
   smock:smockColors[chosen]??smockColors.standard,
   gorkaBase:gorka.base,gorkaPanel:gorka.panel,
-  specialty:chosen==='ss-leto'||chosen==='ss-autumn'?chosen:null};
+  specialty};
 }
 /** Two original hand-authored, intentionally reusable 64px masters.
  * Oak-leaf/Partizan-style foliage, one green summer and one ochre autumn.
