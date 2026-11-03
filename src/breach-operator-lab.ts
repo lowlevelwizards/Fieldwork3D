@@ -52,6 +52,40 @@ import {initialWardrobe,readWardrobe,setWardrobePattern,resolvedWardrobe,
 let labKit:EquipmentLoadout=bareLabEquipment();
 let labPalette=1;
 let wardrobeOptions:WardrobeOptions=initialWardrobe();
+/** One-step Lab-only undo: snapshot display choices, never owned inventory. */
+type AppearanceSnapshot={kit:EquipmentLoadout;wardrobe:WardrobeOptions;
+ weapon:string;magazines:string;face:string;seed:number};
+let previousAppearance:AppearanceSnapshot|null=null;
+const wardrobeUndoButton=document.getElementById('wardrobeUndo') as HTMLButtonElement;
+function checkpointAppearance(){
+ previousAppearance={
+  kit:{...labKit,slots:{...labKit.slots}},
+  wardrobe:readWardrobe(wardrobeOptions),
+  weapon:(document.getElementById('weapon') as HTMLSelectElement).value,
+  magazines:(document.getElementById('kitMagazines') as HTMLSelectElement).value,
+  face:(document.getElementById('faceTreatment') as HTMLSelectElement).value,
+  seed:labPalette
+ };
+ wardrobeUndoButton.disabled=false;
+}
+function undoAppearance(){
+ const restore=previousAppearance;if(!restore)return;
+ previousAppearance=null;wardrobeUndoButton.disabled=true;
+ labKit=restore.kit;wardrobeOptions=restore.wardrobe;labPalette=restore.seed;
+ (document.getElementById('weapon') as HTMLSelectElement).value=restore.weapon;
+ (document.getElementById('kitMagazines') as HTMLSelectElement).value=restore.magazines;
+ (document.getElementById('faceTreatment') as HTMLSelectElement).value=restore.face;
+ syncKit();updateMagazineState();
+ for(const select of patternSelects){
+  const channel=select.dataset.wardrobePattern as keyof WardrobeOptions['patterns'];
+  select.value=wardrobeOptions.patterns[channel]??'solid';
+ }
+ const active=resolvedWardrobe(wardrobeOptions,labKit).headwear;
+ for(const button of document.querySelectorAll<HTMLButtonElement>('[data-head-silhouette]'))
+  button.setAttribute('aria-pressed',String(button.dataset.headSilhouette===active));
+}
+wardrobeUndoButton.addEventListener('click',undoAppearance);
+
 const kitSelects=Array.from(document.querySelectorAll<HTMLSelectElement>('[data-kit-slot]'));
 for(const select of kitSelects){
  const slot=select.dataset.kitSlot as LoadoutSlot;
@@ -63,7 +97,7 @@ for(const select of kitSelects){
   select.append(option);
  }
  select.addEventListener('change',()=>{
-  labKit=setEquipmentChoice(labKit,slot,select.value);syncKit();
+  checkpointAppearance();labKit=setEquipmentChoice(labKit,slot,select.value);syncKit();
  });
 }
 const kitPresets:Record<string,Partial<Record<LoadoutSlot,string>>>={
@@ -110,11 +144,11 @@ for(const recipe of WARDROBE_RECIPES){
 document.getElementById('wardrobeApply')?.addEventListener('click',()=>{
  const recipe=wardrobeRecipe(recipeSelect.value);if(!recipe)return;
  const result=applyWardrobeRecipe(recipe);
- labKit=result.kit;wardrobeOptions=result.wardrobe;
+ checkpointAppearance();labKit=result.kit;wardrobeOptions=result.wardrobe;
  (document.getElementById('weapon') as HTMLSelectElement).value=
   result.kit.slots.primary.replace(/^primary-/,'');
  // Archived color wheels are retired; headwear receives its own swatch.
- labPalette=1;wardrobeOptions={...wardrobeOptions,palette:0};
+ labPalette=1;
  syncKit();updateMagazineState();
  for(const select of patternSelects){
   const channel=select.dataset.wardrobePattern as keyof WardrobeOptions['patterns'];
@@ -132,7 +166,7 @@ for(const select of cosmeticMountSelects){
   select.append(option);
  }
  select.addEventListener('change',()=>{
-  wardrobeOptions={...wardrobeOptions,accessories:{
+  checkpointAppearance();wardrobeOptions={...wardrobeOptions,accessories:{
    ...wardrobeOptions.accessories,[slot]:select.value
   }};
   syncWardrobe();
@@ -151,7 +185,7 @@ for(const select of mountSelectors){
   select.append(option);
  }
  select.addEventListener('change',()=>{
-  wardrobeOptions={...wardrobeOptions,mounts:{
+  checkpointAppearance();wardrobeOptions={...wardrobeOptions,mounts:{
    ...wardrobeOptions.mounts,
    [kind]:select.value==='auto'?undefined:select.value
   }};
@@ -159,7 +193,7 @@ for(const select of mountSelectors){
  });
 }
 document.getElementById('wardrobeMagazineOrder')?.addEventListener('change',e=>{
- wardrobeOptions={...wardrobeOptions,mounts:{
+ checkpointAppearance();wardrobeOptions={...wardrobeOptions,mounts:{
   ...wardrobeOptions.mounts,
   magazineOrder:(e.target as HTMLSelectElement).value==='right-left'?
    'right-left':'left-right'
@@ -191,7 +225,7 @@ function applyLook(look:WardrobeLook){
  labKit=look.kit;wardrobeOptions=look.wardrobe;
  (document.getElementById('weapon') as HTMLSelectElement).value=
   look.weaponVisible===false?'none':look.kit.slots.primary.replace(/^primary-/,'');
- labPalette=1;wardrobeOptions={...wardrobeOptions,palette:0};
+ labPalette=1;
  syncKit();updateMagazineState();
  for(const select of patternSelects){
   const slot=select.dataset.wardrobePattern as keyof WardrobeOptions['patterns'];
@@ -210,7 +244,7 @@ document.getElementById('outfitSave')?.addEventListener('click',()=>{
 });
 document.getElementById('outfitLoad')?.addEventListener('click',()=>{
  const look=savedLooks.find(x=>x.id===outfitSelect.value);
- if(!look)return;applyLook(look);outfitStatus.textContent='Outfit loaded';
+ if(!look)return;checkpointAppearance();applyLook(look);outfitStatus.textContent='Outfit loaded';
 });
 document.getElementById('outfitExport')?.addEventListener('click',()=>{
  const look=savedLooks.find(x=>x.id===outfitSelect.value)??
@@ -228,7 +262,7 @@ document.getElementById('outfitImport')?.addEventListener('click',()=>{
  else if(savedLooks.length<MAX_WARDROBE_LOOKS)savedLooks.push(look);
  else{outfitStatus.textContent='Maximum 24 outfits';return;}
  persistLooks();updateSavedLooks();outfitSelect.value=look.id;
- applyLook(look);outfitStatus.textContent='Outfit imported';
+ checkpointAppearance();applyLook(look);outfitStatus.textContent='Outfit imported';
 });
 updateSavedLooks();
 const wardrobeSelects=Array.from(document.querySelectorAll<HTMLSelectElement>(
@@ -257,7 +291,7 @@ function renderHeadwearSolidSwatches(id:string){
   button.setAttribute('aria-pressed',String(selected===color&&!wardrobeOptions.headwearCamo));
   button.dataset.headwearColor=color;
   button.addEventListener('click',()=>{
-   wardrobeOptions={...wardrobeOptions,headwearColor:color,headwearCamo:undefined,palette:0};
+   checkpointAppearance();wardrobeOptions={...wardrobeOptions,headwearColor:color,headwearCamo:undefined};
    renderHeadwearSolidSwatches(id);
    renderHeadwearCamoSwatches(id);
   });
@@ -329,7 +363,7 @@ const camoStatus=document.getElementById('headwearCamoChoice') as HTMLOutputElem
 const camoReroll=document.getElementById('headwearCamoReroll') as HTMLButtonElement;
 camoReroll.addEventListener('click',()=>{
  if(!wardrobeOptions.headwearCamo)return;
- wardrobeOptions={...wardrobeOptions,
+ checkpointAppearance();wardrobeOptions={...wardrobeOptions,
   headwearCamoRoll:nextHeadwearCamoRoll(wardrobeOptions.headwearCamoRoll)};
  renderHeadwearCamoSwatches(resolvedWardrobe(wardrobeOptions,labKit).headwear);
 });
@@ -349,7 +383,7 @@ function paintHeadwearCamo(canvas:HTMLCanvasElement,id:HeadwearCamoId,repeats:nu
  ctx.imageSmoothingEnabled=false;ctx.putImageData(image,0,0);
 }
 function applyHeadwearCamoChoice(id:HeadwearCamoId,selected:HeadwearCamoId|null,model:string){
- camoRecents=[id,...camoRecents.filter(c=>c!==id)].slice(0,5);
+ checkpointAppearance();camoRecents=[id,...camoRecents.filter(c=>c!==id)].slice(0,5);
  storeCamoBrowser();
  wardrobeOptions={...wardrobeOptions,headwearCamo:id,
   headwearCamoRoll:selected===id?
@@ -510,13 +544,13 @@ for(const select of wardrobeSelects){
   if(!wardrobeItem(slot,select.value))return;
   const selected=selectWardrobeItem(labKit,wardrobeOptions,slot,select.value);
   if(resolvedWardrobe(selected.wardrobe,selected.kit)[slot]===select.value){
-   labKit=selected.kit;wardrobeOptions=selected.wardrobe;
+   checkpointAppearance();labKit=selected.kit;wardrobeOptions=selected.wardrobe;
   }
   syncKit();
  });
 }
 document.getElementById('rolledSleeves')?.addEventListener('change',e=>{
- wardrobeOptions={...wardrobeOptions,
+ checkpointAppearance();wardrobeOptions={...wardrobeOptions,
   rolledSleeves:(e.target as HTMLInputElement).checked};
 });
 const patternSelects=Array.from(document.querySelectorAll<HTMLSelectElement>(
@@ -529,17 +563,17 @@ for(const select of patternSelects){
   select.append(option);
  }
  select.addEventListener('change',()=>{
-  wardrobeOptions=setWardrobePattern(wardrobeOptions,slot,
+  checkpointAppearance();wardrobeOptions=setWardrobePattern(wardrobeOptions,slot,
     select.value as typeof WARDROBE_PATTERNS[number]);
  });
 }
 document.getElementById('wardrobeReset')?.addEventListener('click',()=>{
- wardrobeOptions=initialWardrobe();syncWardrobe();
+ checkpointAppearance();wardrobeOptions=initialWardrobe();syncWardrobe();
  for(const select of patternSelects)select.value='solid';
 });
 for(const button of document.querySelectorAll<HTMLButtonElement>('[data-kit-preset]'))
  button.addEventListener('click',()=>{
-  labKit=kitPreset(button.dataset.kitPreset??'standard');
+  checkpointAppearance();labKit=kitPreset(button.dataset.kitPreset??'standard');
   wardrobeOptions=initialWardrobe();
   (document.getElementById('weapon') as HTMLSelectElement).value='carbine';
   updateMagazineState();syncKit();
@@ -618,7 +652,7 @@ weapon.addEventListener('change',()=>{
 });
 updateMagazineState();
 choose<HTMLButtonElement>('unequipAll').addEventListener('click',()=>{
- const empty=unequipLabAppearance();
+ checkpointAppearance();const empty=unequipLabAppearance();
  labKit=empty.kit;wardrobeOptions=empty.wardrobe;
  weapon.value='none';injury.value='0';
  magazineSelector.value='0';
@@ -1021,7 +1055,7 @@ function selectReviewSilhouette(id:string){
  const available=['bare','patrol-cap','boonie','beanie',
   'pasgt','soviet-steel','ach','high-cut'];
  if(!available.includes(id))return;
- const selected=selectWardrobeItem(bareLabEquipment(),
+ checkpointAppearance();const selected=selectWardrobeItem(bareLabEquipment(),
   initialWardrobe(),'headwear',id);
  labKit=selected.kit;wardrobeOptions=selected.wardrobe;
  weapon.value='none';magazineSelector.value='0';
