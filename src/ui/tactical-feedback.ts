@@ -1,7 +1,7 @@
 /** Transient screen-projected responses for user-authored tactical orders.
  * Effects never inspect enemy/hidden world state; callers pass only approved points. */
 export type FeedbackPoint={x:number;y:number};
-export type FeedbackKind='select'|'node'|'route'|'command'|'error';
+export type FeedbackKind='select'|'node'|'route'|'armed'|'command'|'error'|'cancel';
 /** A prospective command, never confirmed until its game rule validates on release. */
 export type TacticalPreviewMode='look'|'watch'|'flash'|'suppress'|'drag'|'carry';
 export type TacticalOrderPreview={origin:FeedbackPoint;direction:FeedbackPoint;mode:TacticalPreviewMode};
@@ -11,19 +11,22 @@ export class TacticalFeedback{
   private events:Effect[]=[];
   emit(kind:FeedbackKind,point:FeedbackPoint,text?:string,from?:FeedbackPoint){
     this.events.push({kind,point:{...point},from:from?{...from}:undefined,
-      text,born:performance.now(),duration:kind==='route'?490:kind==='error'?830:360});
+      text,born:performance.now(),duration:kind==='route'?490:
+        kind==='error'?830:kind==='armed'?460:kind==='cancel'?240:360});
     if(this.events.length>20)this.events.splice(0,this.events.length-20);
   }
   clear(){this.events.length=0}
   draw(g:CanvasRenderingContext2D,project:(p:FeedbackPoint)=>FeedbackPoint,
-    now:number,preview?:TacticalOrderPreview){
+    now:number,preview?:TacticalOrderPreview,reducedMotion=false){
     this.events=this.events.filter(e=>now-e.born<e.duration);
     for(const e of this.events){
       const t=Math.min(1,Math.max(0,(now-e.born)/e.duration));
+      const motionT=reducedMotion?.45:t;
       const p=project(e.point);
-      const fade=Math.pow(1-t,1.4);
+      const fade=reducedMotion?Math.min(1,(1-t)*2):Math.pow(1-t,1.4);
       g.save();g.globalAlpha=fade;
-      const color=e.kind==='error'?'#d79380':'#d7d0a3';
+      const color=e.kind==='error'?'#d79380':
+        e.kind==='cancel'?'#9caf9f':e.kind==='armed'?'#ebc48a':'#d7d0a3';
       g.strokeStyle=color;g.fillStyle=color;
       g.lineWidth=e.kind==='select'?2.3:1.8;
       if(e.kind==='route'&&e.from){
@@ -34,8 +37,10 @@ export class TacticalFeedback{
           a.y+(q.y-a.y)*Math.min(1,t*2.4));g.stroke();
       }
       g.setLineDash([]);
-      g.beginPath();g.arc(p.x,p.y,8+24*t,0,Math.PI*2);g.stroke();
-      g.beginPath();g.arc(p.x,p.y,3+3*(1-t),0,Math.PI*2);g.fill();
+      g.beginPath();
+      g.arc(p.x,p.y,(e.kind==='armed'?12:8)+(reducedMotion?0:24*motionT),
+        0,Math.PI*2);g.stroke();
+      g.beginPath();g.arc(p.x,p.y,3+3*(1-motionT),0,Math.PI*2);g.fill();
       if(e.kind==='error'){
         // Only the attempted position is known. Never infer unseen blockers.
         const r=12+5*t;g.lineWidth=2.2;g.beginPath();
@@ -46,7 +51,7 @@ export class TacticalFeedback{
         g.stroke();
       }
       if(e.text&&t<.72){
-        g.font='600 11px "IBM Plex Sans",sans-serif';
+        g.font='600 11px "Work Sans",sans-serif';
         g.textAlign='center';g.fillText(e.text.toUpperCase(),p.x,p.y-26-6*t);
       }
       g.restore();
@@ -103,7 +108,7 @@ export class TacticalFeedback{
       }
       // Label is offset so the touch itself does not cover the instruction.
       const label=captions[preview.mode];
-      g.globalAlpha=.94;g.font='700 10px "IBM Plex Sans",sans-serif';
+      g.globalAlpha=.94;g.font='700 10px "Work Sans",sans-serif';
       g.textAlign='center';g.textBaseline='middle';
       const labelX=isAim?p.x+Math.cos(angle)*radius:q.x;
       const labelY=(isAim?p.y+Math.sin(angle)*radius:q.y)-34;
