@@ -108,7 +108,8 @@ function tick(){
     (a,b)=>sweptBodyClear(a,b,activeDoors));
   if(traffic.value==='strict'&&units.some(v=>v!==u&&v.side===u.side&&
      distance(move,v.p)<16))move=start;
-  const actors=units.map(v=>({id:v.id,p:v.p,goal:v.held?null:v.goal,
+  const actors=units.map(v=>({id:v.id,side:v.side,p:v.p,
+    goal:v.held?null:v.goal,
     health:4,blockedTime:v.blockedTicks*dt,active:!v.held}));
   if(activeDoors.length&&passageWait(actors[i],activeDoors,actors,leases,elapsed))
    move=start;
