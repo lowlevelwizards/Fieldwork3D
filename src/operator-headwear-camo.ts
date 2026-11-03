@@ -922,6 +922,143 @@ function apply4BDetail(id:HeadwearCamoId,x:number,y:number,ink:number):number{
  return ink;
 }
 
+/** Twelve distinct authored micro-print treatments, executed once while
+ * producing native RGBA artwork (not per frame). The layouts and colors
+ * are stylized approximations: no scan, traced mask or copied textile.
+ */
+function camo5Grain(x:number,y:number,cell:number,seed:number,size:number):number{
+ const cells=size/cell,x0=Math.floor(x/cell),y0=Math.floor(y/cell);
+ const fx=x%cell/cell,fy=y%cell/cell;
+ const u=fx*fx*(3-2*fx),v=fy*fy*(3-2*fy);
+ const a=(xx:number,yy:number)=>camoLattice((xx+cells)%cells,(yy+cells)%cells,seed);
+ return (a(x0,y0)*(1-u)+a((x0+1)%cells,y0)*u)*(1-v)+
+  (a(x0,(y0+1)%cells)*(1-u)+a((x0+1)%cells,(y0+1)%cells)*u)*v;
+}
+function camo5Near(x:number,y:number,cx:number,cy:number,size:number,rx:number,ry:number):boolean{
+ const dx=Math.min(Math.abs(x-cx),size-Math.abs(x-cx));
+ const dy=Math.min(Math.abs(y-cy),size-Math.abs(y-cy));
+ return dx*dx/(rx*rx)+dy*dy/(ry*ry)<=1;
+}
+function apply5APrint(id:HeadwearCamoId,x:number,y:number,ink:number):number{
+ const size=headwearCamoSize(id),fine=camo5Grain(x,y,2,17,size);
+ if(id==='east-german-strichtarn'){
+  // Nearly monochrome; staggered 1px red-brown vertical raindrops.
+  for(let k=0;k<66;k++){
+   const cx=(k*23+Math.floor(k/4)*7+3)&31;
+   const cy=(k*11+Math.floor(k/7)*13+5)&31;
+   const len=2+(k%4);
+   if(x===cx&&((y-cy+32)&31)<len)return k%9===0?2:1;
+  }
+  return ink;
+ }
+ if(id==='splittertarn-31'){
+  // Distinct fine, VERTICAL raindrop overprint on sharp angular shards.
+  for(let k=0;k<96;k++){
+   const cx=(k*23+Math.floor(k/5)*9+5)&63;
+   const cy=(k*19+Math.floor(k/6)*7+11)&63;
+   if(x===cx&&((y-cy+64)&63)<2+(k%5))return 3;
+  }
+  return ink;
+ }
+ if(id==='belgian-jigsaw'){
+  // Tiny off-white edge nicks around huge interlocked red/green pieces.
+  const edge=camo5Grain(x,y,4,36,64);
+  if(ink===3&&edge>.80)return 4;
+  if((ink===1||ink===2)&&edge<.09)return 3;
+  return ink;
+ }
+ if(id==='mitchell-leaf'){
+  // A few branching veins and distinctive separated leaf lobes.
+  const g=camo5Grain(x,y,4,7,64),stem=((x+2*y+64)%19);
+  if((ink===1||ink===2)&&stem===0&&g>.35)return 4;
+  if(ink===1&&g>.87)return 0;
+  if(ink===0&&g<.14)return 2;
+  return ink;
+ }
+ if(id==='australian-dpcu'){
+  // Small rounded jellybeans reinforce the softer dots (not digital).
+  for(let k=0;k<34;k++){
+   const cx=(k*29+Math.floor(k/5)*13+4)&63;
+   const cy=(k*17+Math.floor(k/4)*11+7)&63;
+   if(camo5Near(x,y,cx,cy,64,2+(k%2),2+(k%3)))return [2,1,3,4][k%4];
+  }
+  return ink;
+ }
+ if(id==='italian-vegetato'){
+  // Thin irregular broken leaf fringes. No rectangular MARPAT stairs.
+  const g=.7*camo5Grain(x,y,4,49,64)+.3*fine;
+  if(g>.77&&(ink===1||ink===3))return 4;
+  if(g<.16&&ink===1)return 2;
+  if(g>.72&&ink===0)return 3;
+  if(g<.24&&ink===2)return 1;
+  return ink;
+ }
+ if(id==='scorpion-w2'){
+  // Horizontal rounded bark shapes, deliberately no upright dark twiglets.
+  const g=camo5Grain(x,y,4,31,64);
+  const band=(y+Math.floor(x/11))%17;
+  if(band<2&&g>.69&&ink===3)return 5;
+  if(g>.86&&ink===1)return 4;
+  if(g<.12&&ink===2)return 6;
+  return ink;
+ }
+ if(id==='russian-emr'){
+  // Dense light-green "Tsifra" micro-square interruptions with brown/black
+  // specks: fine, unlike the larger, greener CADPAT fractal.
+  const g=camo5Grain(x,y,2,61,32),noise=camoLattice(x,y,79);
+  const cell=camo5Grain(x,y,4,28,32);
+  if(g<.25&&noise>.30)return 3;
+  if(g>.75&&noise>.37)return 2;
+  if(cell>.61&&g>.47)return 1;
+  if(noise>.87)return 0;
+  return ink;
+ }
+ if(id==='pla-xingkong'){
+  // Starry Sky's extremely fine dusting on subdued near-neutral fields:
+  // many 1px pale "stars", no repeating MARPAT stair-step checkerboard.
+  const noise=camoLattice(x,y,71);
+  const g=camo5Grain(x,y,4,41,64);
+  if(noise>.94)return 3;
+  if(noise<.055&&g>.4)return 2;
+  if(g<.25&&noise<.36)return 4;
+  if(g>.78&&ink===1)return 0;
+  return ink;
+ }
+ if(id==='cadpat-tw'){
+  // Canadian TW: darkest of our digital woodland prints; dense black/
+  // yellow-green fractal pixels with broader connected forest masses.
+  const g=.65*camo5Grain(x,y,4,33,64)+.35*camo5Grain(x,y,2,13,64);
+  const threshold=camoLattice(Math.floor(x/2),Math.floor(y/2),23);
+  if(g<.27&&threshold>.36)return 3;
+  if(g>.71&&threshold>.25)return 1;
+  if(g>.43&&g<.54&&threshold>.77)return 4;
+  if(g>.59&&ink===3)return 0;
+  return ink;
+ }
+ if(id==='british-mtp'){
+  // MTP's DPM-like tapered pterodactyl twigs and peppered margins;
+  // these slant sideways rather than MultiCam's frequent vertical bits.
+  const g=camo5Grain(x,y,4,55,64);
+  const hook=((y-Math.floor(x/4)+128)%23);
+  if((hook===1||hook===2)&&g>.58&&ink===3)return 5;
+  if((hook===3||hook===4)&&g>.72&&ink===2)return 6;
+  if(g>.91&&ink===1)return 4;
+  return ink;
+ }
+ if(id==='indian-digital-2022'){
+  // Inspired by India's olive/earth digital family; original deterministic
+  // stepped motif, NOT an exact reproduction of the registered Indian design.
+  const g=.65*camo5Grain(x,y,4,61,64)+.35*camo5Grain(x,y,2,49,64);
+  const digit=camoLattice(Math.floor(x/2),Math.floor(y/2),89);
+  if(g>.69&&digit>.3)return 3;
+  if(g<.24&&digit>.22)return 4;
+  if(g>.51&&g<.63&&digit>.72)return 2;
+  if(g<.39&&digit<.28)return 0;
+  return ink;
+ }
+ return ink;
+}
+
 function inPolygon(x:number,y:number,coords:readonly number[]):boolean{
  let inside=false;
  for(let i=0,j=coords.length-2;i<coords.length;j=i,i+=2){
@@ -959,6 +1096,7 @@ export function headwearCamoIndices(id:HeadwearCamoId):Uint8Array{
   if(id==='woodland-marpat'||id==='desert-marpat')
    ink=applyMarpatFragments(x,y,ink,id==='desert-marpat');
   ink=apply4BDetail(id,x,y,ink);
+  ink=apply5APrint(id,x,y,ink);
   data[y*size+x]=ink;
  }
  return data;
