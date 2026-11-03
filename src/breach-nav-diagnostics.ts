@@ -4,6 +4,7 @@
 import {activeWorldBounds,WALLS,COVER,pointToSegment,passable,doorLeafSegment,route,
   type Pt,type Door,type Obstacle} from './breach-core.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
+import {isFootstepObstacle} from './breach-traversal-surfaces.ts';
 export type Blocker='bounds'|'wall'|'furniture'|'door'|'actor'|'route'|'clear';
 export type MoveDiagnostic={blocker:Blocker;point:Pt;distance:number;
   id?:string};
@@ -22,7 +23,7 @@ export function diagnoseMovement(from:Pt,to:Pt,doors:readonly Door[],
       return {blocker:'bounds',point:p,distance:distance(from,p)};
     if(WALLS.some(w=>pointToSegment(p,w)<radius+1))
       return {blocker:'wall',point:p,distance:distance(from,p)};
-    if(COVER.some(b=>inBox(p,b,radius)))
+    if(COVER.some(b=>isFootstepObstacle(b)&&inBox(p,b,radius)))
       return {blocker:'furniture',point:p,distance:distance(from,p)};
     const blocked=doors.find(d=>
       pointToSegment(p,doorLeafSegment(d))<radius+1);
