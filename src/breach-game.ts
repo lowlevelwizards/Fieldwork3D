@@ -31,7 +31,7 @@ import {MICRO_KEYS,MICRO_COLS} from './breach-fog-memory.ts';
 import {assessFireLane,type FireBlock} from './breach-fire-safety.ts';
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor,
-  pressDoorOnBodyAttempt,PUSHED_OPEN_LIMIT} from './breach-door.ts';
+  pressDoorOnBodyAttempt} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool,issuedWedges} from './equipment-entry-tools.ts';
@@ -59,7 +59,7 @@ import {newAwareness,addObservation,visibleObservation,
 import {visualGain,advanceSight,confirmedSight} from './breach-visual-perception.ts';
 import {actorLightingLevels,lightVisibilityGain} from './equipment-sight-lighting.ts';
 import type {LightingMode} from './equipment-site-lighting.ts';
-import {doorContactImpulse,passageWait,type PassageActor,type PassageLease}
+import {passageWait,type PassageActor,type PassageLease}
   from './breach-passage.ts';
 import {diagnoseMovement,projectReachableGoal,type Blocker}
   from './breach-nav-diagnostics.ts';
