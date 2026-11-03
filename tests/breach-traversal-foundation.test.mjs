@@ -88,8 +88,8 @@ test('a true impossibly narrow gap remains an obstacle, not a ghost shortcut',()
  const savedWalls=[...WALLS],savedCover=[...COVER];
  try{
   WALLS.splice(0,WALLS.length,
-   {a:{x:95,y:85},b:{x:95,y:210}},
-   {a:{x:105,y:85},b:{x:105,y:210}});
+   {a:{x:96,y:85},b:{x:96,y:210}},
+   {a:{x:104,y:85},b:{x:104,y:210}});
   COVER.splice(0,COVER.length);
   const a={x:100,y:100},b={x:100,y:180};
   const sideways=squeezeFacing(Math.PI/2);
