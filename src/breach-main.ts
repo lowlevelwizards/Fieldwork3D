@@ -861,6 +861,9 @@ let lastAuthoringAt=0;
 const paletteMotion=new PaletteMotion();
 const reducedMotionMedia=matchMedia('(prefers-reduced-motion: reduce)');
 let paletteWidth=0,paletteHeight=0;
+let lastPlacementKey='';
+let contextPointerCount=0;
+let placementRecalculations=0;
 let tetherBrightUntil=0;
 let paletteExit:Animation|null=null;
 const contextTether=document.createElement('div');
@@ -868,6 +871,7 @@ contextTether.id='contextTether';
 contextTether.setAttribute('aria-hidden','true');
 document.body.append(contextTether);
 function hideContextPalette(){
+  lastPlacementKey='';
   // Mutually exclusive sheets must take over immediately. A fading palette
   // still counts as visible/hit-testable and can obscure the TOOLS drawer.
   const exclusive=!ui.orders.classList.contains('compact')||
@@ -1244,7 +1248,8 @@ function updateContext(){
   }
   const actionSignature=identity+'/'+paletteChoices.map(c=>
     c.id+':'+c.label+':'+c.group+':'+!!c.disabled+':'+!!c.pressed).join('|');
-  if(contextActionsSignature!==actionSignature){
+  const actionChanged=contextActionsSignature!==actionSignature;
+  if(actionChanged){
   contextActionsSignature=actionSignature;
   const buckets:Record<string,HTMLElement>={
     primary:ui.context.querySelector<HTMLElement>('.context-primary')!,
@@ -1305,8 +1310,11 @@ function updateContext(){
   // Don't inspect concealed enemies: context placement must not leak intel.
   const target=door?doorCenter(door):node?.p??a.p;
   const anchor=worldToScreen(target,door?15:node?8:24);
-  const w=ui.context.offsetWidth,h=ui.context.offsetHeight;
-  paletteWidth=w;paletteHeight=h;
+  // Re-measure DOM only when contents change; reading offset dimensions every
+  // animation frame forces avoidable synchronous layout on mobile browsers.
+  const measure=contextChanged||actionChanged||paletteWidth<=0||paletteHeight<=0;
+  if(measure){paletteWidth=ui.context.offsetWidth;paletteHeight=ui.context.offsetHeight;}
+  const w=paletteWidth,h=paletteHeight;
   const header=document.querySelector<HTMLElement>('.top');
   const nav=document.querySelector<HTMLElement>('.bar');
   const minY=Math.max(8,(header?.getBoundingClientRect().bottom??62)+8);
@@ -1314,6 +1322,22 @@ function updateContext(){
     ui.quickStates.getBoundingClientRect().top:
     (nav?.getBoundingClientRect().top??ui.play.getBoundingClientRect().top);
   const maxY=Math.max(minY+h,hudTop-10);
+  // Lightweight dirty key: only meaningfully changed screen geometry may
+  // trigger the expensive avoid-zone and candidate placement calculations.
+  // The existing palette holds its pocket through incidental frame updates.
+  const unitKey=team(state).map(unit=>{
+    const point=worldToScreen(unit.p,8);
+    return unit.id+':'+Math.round(point.x/6)+','+Math.round(point.y/6)+
+      ':'+unit.plan.map(n=>Math.round(n.p.x/3)+','+
+      Math.round(n.p.y/3)+','+n.kind).join(';');
+  }).join('|');
+  const placementKey=[identity,actionSignature,Math.round(anchor.x/6),
+    Math.round(anchor.y/6),Math.round(cssW),Math.round(cssH),
+    Math.round(minY/3),Math.round(maxY/3),w,h,unitKey].join('|');
+  if(paletteMotion.active&&!contextChanged&&!actionChanged&&
+     (contextPointerCount>0||placementKey===lastPlacementKey))return;
+  lastPlacementKey=placementKey;
+  placementRecalculations++;
   const avoid:AvoidRect[]=[{x:anchor.x-38,y:anchor.y-38,
     w:76,h:76,weight:3}];
   for(const unit of team(state)){
@@ -1337,8 +1361,16 @@ function updateContext(){
     let previous=friendly.p;
     for(const waypoint of friendly.plan){
       if(waypoint.kind==='move'||waypoint.kind==='door'){
-        paths.push({a:worldToScreen(previous,8),
-          b:worldToScreen(waypoint.p,8)});
+        // Match the actual visible navigated polyline, not a straight
+        // authored-endpoint chord that may cut across walls and doors.
+        const routed=displayRouteCache.get(previous,waypoint.p,
+          state.intel,true).points;
+        let segmentStart=previous;
+        for(const point of routed){
+          paths.push({a:worldToScreen(segmentStart,8),
+            b:worldToScreen(point,8)});
+          segmentStart=point;
+        }
         previous=waypoint.p;
       }
       const p=worldToScreen(waypoint.p,8);
@@ -1381,6 +1413,16 @@ function updateContext(){
   // Keep the actual menu hit target in its visually interpolated position.
   // Geometry measurement uses offsetWidth/Height (unaffected by transforms).
 }
+// While a command finger is down, freeze the palette's pocket so it cannot
+// slip out from under the touch. This does not block camera or map rendering.
+ui.context.addEventListener('pointerdown',event=>{
+  if((event.target as HTMLElement).closest('button'))contextPointerCount++;
+});
+for(const type of ['pointerup','pointercancel','lostpointercapture'] as const)
+  ui.context.addEventListener(type,()=>{
+    contextPointerCount=Math.max(0,contextPointerCount-1);
+  });
+window.addEventListener('blur',()=>{contextPointerCount=0;});
 // One shared long-press handler is installed on each actual command button.
 // Duplicating a second timer on the palette caused conflicting 450/540ms holds.
 const handleContextAction=(event:MouseEvent)=>{
