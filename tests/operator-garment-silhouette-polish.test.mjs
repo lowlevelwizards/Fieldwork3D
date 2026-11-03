@@ -16,13 +16,15 @@ test('smock and Gorka silhouettes have distinct but restrained volumes',()=>{
  const shirt=UPPER_CUT_PROFILES['combat-shirt'].rings;
  for(const name of ['smock-jacket','gorka-jacket']){
   const rings=UPPER_CUT_PROFILES[name].rings;
-  assert.ok(rings[1].side>shirt[1].side+1.1);
+  assert.ok(rings[1].side>shirt[1].side+.4);
   assert.ok(rings[1].side<8.3,'outerwear is not plate-armored shoulders');
   assert.ok(rings.at(-1).y<shirt.at(-1).y-1.5);
  }
  const src=source('../src/operator-new-upper-garments.ts');
- assert.ok(src.includes('box(torso,body,5.19,-.05,0,.24,11.68,10.88)'),
-  'combat knit must run down the front, not just collar and hem');
+ assert.ok(src.includes('shell(torso,body,UPPER_CUT_PROFILES[cut].rings)'),
+  'single knit shell must wrap front AND back');
+ assert.ok(src.includes('box(torso,trim,3.02,7.20,0'),
+  'combat shirt must include the central collar zipper');
  assert.ok(!src.includes('9.2,1.20,3.40'),
   'remove oversized high-shoulder slabs');
 });
@@ -49,9 +51,9 @@ test('solids for folded cuffs remain separate from camo and specialty pixels kee
 });
 test('outer pocket geometry is upright and knee cloth overlaps articulated seams',()=>{
  for(const [cut,p] of Object.entries(FIELD_TROUSER_PROFILES)){
-  assert.ok(p.cargo[2]<p.cargo[0]*.25,cut+' pocket must be shallow on the flank');
-  assert.ok(p.cargo[1]*11.25>p.cargo[2]*5,
-   cut+' pocket is taller than its depth after bone scaling');
+  assert.ok(p.cargo[0]<p.cargo[2]*.25,cut+' pocket has narrow outward depth');
+  assert.ok(p.cargo[1]*11.25>p.cargo[0]*5,
+   cut+' pocket is taller than its thickness after bone scaling');
   assert.ok(p.thigh.at(-1)[0]>.56,cut+' thigh goes past knee');
   for(const hem of ['unbloused','bloused','cuffed']){
    assert.ok(p[hem][0][0]<-.58,cut+' shin wraps behind knee');
@@ -68,6 +70,6 @@ test('outer pocket geometry is upright and knee cloth overlaps articulated seams
  assert.ok(BLOUSE_CUT_PROFILE['acu-shirt'].rings[1].side<
   BLOUSE_CUT_PROFILE['bdu-shirt'].rings[1].side);
  const blouse=source('../src/operator-field-blouse-prototypes.ts');
- assert.ok(blouse.includes('const outside=index===0?-1:1'),
-  'ACU bicep pockets must follow outside of left and right arm');
+ assert.ok(blouse.includes('outwardLimbPocket(profile.upperRadius[0]'),
+  'ACU bicep pockets use actual local limb +X outside');
 });

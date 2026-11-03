@@ -207,6 +207,9 @@ jobs:
       - name: Door leaf overlap and wrong-side collision regression tests
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/door-leaf-overlap-') }}
         run: node --experimental-strip-types --test tests/door-leaf-overlap-recovery.test.mjs tests/door-leaf-overlap-session.test.mjs tests/coupled-door-contact.test.mjs tests/coupled-door-session.test.mjs tests/lw-door-contact.test.mjs tests/physicality-08-door-contact.test.mjs tests/doorway-right-of-way-session.test.mjs
+      - name: Focused Stage 5 garment frame, uniform and rig checks
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'operator/garments-') }}
+        run: node --experimental-strip-types --test tests/operator-garment-frame-stage5.test.mjs tests/operator-outerwear-stage4.test.mjs tests/operator-garment-silhouette-polish.test.mjs tests/operator-uniform-blouse-stage3b.test.mjs tests/operator-uniform-trousers-states-stage3c.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}

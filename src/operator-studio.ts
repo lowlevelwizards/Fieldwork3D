@@ -9,7 +9,7 @@ import {OperatorAppearanceGrid,APPEARANCE_GROUP_LABELS} from './operator-appeara
 import {readRoster,initialRoster,setRosterWardrobe,
  freshQuickPlayRoster,serializeQuickPlayCosmetics} from './breach-roster.ts';
 import {readCampaign,setCampaignWardrobe} from './campaign-state.ts';
-import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {setEquipmentChoice,type EquipmentLoadout} from './equipment-loadouts.ts';
 import {readWardrobe,initialWardrobe,resolvedWardrobe,setWardrobeStyle,
  setWardrobeFabricSolid,setWardrobeFabricCamo,rerollWardrobeFabricCamo,
  sleeveStateOptions,trouserHemOptions,
@@ -37,6 +37,7 @@ let selected=params.get('operator')??'rook';
 let readOnly=false;
 let people:StudioPerson[]=[];
 let activeCategory:WardrobeSlot='top';
+let clothesOnly=true;
 let rig:OperatorRig|null=null;
 const history=new Map<string,WardrobeOptions[]>();
 const edits=new Map<string,WardrobeOptions>();
@@ -47,6 +48,7 @@ const stage=canvas.parentElement!;
 const materialRoot=$<HTMLElement>('studioMaterials');
 const applyButton=$<HTMLButtonElement>('studioApply');
 const modelSelector=$<HTMLSelectElement>('studioOperator');
+const gearToggle=$<HTMLButtonElement>('studioGearToggle');
 const undoButton=$<HTMLButtonElement>('studioUndo');
 const categories=$<HTMLElement>('studioCategories');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:'low-power'});
@@ -90,21 +92,53 @@ function renderScene(){
 }
 controls.addEventListener('change',renderScene);
 new ResizeObserver(resize).observe(stage);
+/** The current pose uses the preserved legacy +X forward axis. The
+ * public rig name is canonical -Z, but its root -90°/legacy +90°
+ * adapters cancel at neutral heading. These are actual rendered views. */
 function frameView(view:'front'|'side'|'back'|'fit'){
  const center=new THREE.Vector3(0,23,0);
  controls.target.copy(center);
- const distance=view==='fit'?78:82;
- camera.position.copy(center).add(new THREE.Vector3(
-  view==='side'?distance:view==='fit'?51:0,
-  view==='fit'?35:17,
-  view==='back'?distance:view==='side'?0:view==='fit'?-51:-distance));
- if(view==='fit')camera.zoom=1; 
+ const distance=82;
+ const directions={
+  front:new THREE.Vector3(distance,18,0),
+  side:new THREE.Vector3(0,18,distance),
+  back:new THREE.Vector3(-distance,18,0),
+  fit:new THREE.Vector3(distance*.75,35,distance*.68)
+ } as const;
+ camera.position.copy(center).add(directions[view]);
+ if(view==='fit')camera.zoom=1;
  camera.updateProjectionMatrix();
  controls.update();renderScene();
 }
 document.querySelectorAll<HTMLButtonElement>('[data-studio-view]').forEach(button=>
  button.addEventListener('click',()=>frameView(
   button.dataset.studioView as 'front'|'side'|'back'|'fit')));
+/** Clothes-only inspection is display-only, never a saved gear change.
+  * Strip the visible vest/rig/pack/helmet without changing the real kit,
+  * inventory, or the player's saved appearance. */
+function inspectKit(kit:EquipmentLoadout):EquipmentLoadout{
+ if(!clothesOnly)return kit;
+ let preview=kit;
+ for(const [slot,id] of [
+  ['head','head-none'],['armor','armor-none'],['rig','rig-none'],
+  ['belt','belt-none'],['backpack','backpack-none']
+ ] as const)preview=setEquipmentChoice(preview,slot,id);
+ return preview;
+}
+function inspectWardrobe(wardrobe:WardrobeOptions):WardrobeOptions{
+ if(!clothesOnly)return wardrobe;
+ return {...wardrobe,styles:{...wardrobe.styles,headwear:'bare',
+  armorStyle:'armor-bare',rigStyle:'no-rig',beltStyle:'no-belt',
+  packStyle:'no-pack'}};
+}
+function syncGearToggle(){
+ gearToggle.setAttribute('aria-pressed',String(clothesOnly));
+ gearToggle.textContent=clothesOnly?'CLOTHES ONLY':'SHOWING GEAR';
+}
+gearToggle.addEventListener('click',()=>{
+ clothesOnly=!clothesOnly;syncGearToggle();posePreview();
+});
+syncGearToggle();
 function posePreview(){
  const p=member();if(!p)return;
  if(!rig||rig.camoIdentity!==p.id){
@@ -117,7 +151,8 @@ function posePreview(){
   posture:'stand',injury:0,weapon:'carbine',reload:0,reloadDuration:0,
   lastDoorAt:-100,lastThrowAt:-100,down:false,surrender:false,
   aiming:false,firing:false,turning:0,deterministic:true,
-  unarmedPreview:true,equipment:p.loadout,wardrobe:current()
+  unarmedPreview:true,equipment:inspectKit(p.loadout),
+  wardrobe:inspectWardrobe(current())
  },0);
  renderScene();
 }
@@ -329,7 +364,11 @@ function renderCategories(){
  categories.replaceChildren();
  for(const [slot,label] of categoryRows){
   const button=makeButton(label,slot===activeCategory,()=>{
-   activeCategory=slot;refresh();
+   activeCategory=slot;
+   // Inspect the cloth unobscured for TOPS/LEGS; display equipment for
+   // HEAD, ARMOR and other gear so selecting items remains intuitive.
+   clothesOnly=slot==='top'||slot==='trousers';
+   syncGearToggle();refresh();
   });
   button.setAttribute('aria-label','Customize '+APPEARANCE_GROUP_LABELS[slot]);
   categories.append(button);

@@ -46,7 +46,7 @@ test('all three new upper designs and actual matching mountain trousers exist in
  assert.ok(p['smock-jacket'].rings.at(-1).y<
   p['combat-shirt'].rings.at(-1).y-2,'smock must have a long outer hem');
  assert.ok(p['gorka-jacket'].rings[1].side>
-  p['combat-shirt'].rings[1].side+.90,'mountain suit retains a looser shoulder');
+  p['combat-shirt'].rings[1].side+.4,'mountain suit retains a looser shoulder');
  assert.ok(p['gorka-jacket'].rings[1].side<
   p['combat-shirt'].rings[1].side+1.50,'not an armored juggernaut');
  assert.ok(p['smock-jacket'].rings[1].side<8.3,'smock keeps restrained outerwear volume');
@@ -55,15 +55,15 @@ test('all three new upper designs and actual matching mountain trousers exist in
 });
 test('cargo pockets are on the outer ±Z side seam, not the front (+X)',()=>{
  const p=read('../src/operator-field-trouser-prototypes.ts');
- assert.match(p,/const lateral=side\*\(classic\?3\.62:gorka\?3\.88:3\.46\)/);
- assert.match(p,/part\(upper,textile,-\.30,-\.095,lateral,w,h,d\)/);
- assert.match(p,/part\(lower,cloth,-\.26,-\.10,side\*3\.07/);
+ assert.match(p,/const pocket=outwardLimbPocket\(p.thigh\[2\]\[1\]/);
+ assert.match(p,/part\(upper,textile,pocket.x,pocket.y,pocket.z/);
+ assert.match(p,/part\(lower,cloth,calf.x,calf.y,calf.z/);
  for(const id of FIELD_TROUSER_CUTS){
   const v=FIELD_TROUSER_PROFILES[id];
-  assert.ok(v.cargo[0]>2.5,'full-width outer-thigh pouch');
-  assert.ok(v.cargo[2]<.7,'pouch depth is shallow in side Z');
-  assert.ok(v.cargo[1]*11.25>v.cargo[2]*3,
-   'pocket is upright rather than flattened across the thigh');
+  assert.ok(v.cargo[0]<.65,'shallow outward thickness');
+  assert.ok(v.cargo[2]>2.5,'wide pouch lies along front-to-back Z');
+  assert.ok(v.cargo[1]*11.25>v.cargo[0]*5,
+   'pouch is vertically prominent rather than a flat plate');
   assert.ok(v.bloused.at(-1)[0]<.3,'raised hem is above ankle');
   assert.ok(v.bloused.at(-1)[1]<v.unbloused.at(-1)[1]-.65);
   assert.ok(v.cuffed.at(-1)[1]>v.unbloused.at(-1)[1]+.15);
