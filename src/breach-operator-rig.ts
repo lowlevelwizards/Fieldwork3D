@@ -38,6 +38,8 @@ import {headwearCamoTexture,headwearDetailTexture} from './operator-headwear-mat
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import {garmentBoxUV,wardrobeFabricCamoTexture} from './operator-fabric-camo-materials.ts';
 import {garmentColorValues,gorkaSpecialtyTexture} from './operator-upper-colorways.ts';
+import {garmentSolidHex,isGarmentSolidId,resolvedCuffSolid}
+ from './operator-garment-color-policy.ts';
 import {fabricCamoCompatible,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {resolveWardrobeDisplayMount} from './operator-wardrobe-mounts.ts';
 import type {CarryLocation} from './equipment-carry-placement.ts';
@@ -495,8 +497,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       p.wardrobe?.fabricCamoRoll?.[channel as FabricCamoChannel]??0)):
     operatorPixelTextures.get('fabric');
    if(material.map!==map){material.map=map;material.needsUpdate=true;}
-   if(print)
-    r.colors.set(material,new THREE.Color(0xffffff));
+   if(print)r.colors.set(material,new THREE.Color(0xffffff));
+   else if(channel!=='head'){
+    const solid=p.wardrobe?.fabricSolids?.[channel as FabricCamoChannel];
+    if(isGarmentSolidId(solid))
+     r.colors.set(material,new THREE.Color(garmentSolidHex(solid)));
+   }
   }
   // One authoritative color ledger owns *every* material before the final
   // pose-time restore and optional injury desaturation. In particular, do not
@@ -505,9 +511,21 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const finish=garmentColorValues(clothing.top,
     p.wardrobe?.topColorway??'standard');
   const additional=r.visualKit.newUpper;
-  r.colors.set(additional.combatKnit,new THREE.Color(finish.combat));
-  r.colors.set(additional.smockCuff,new THREE.Color(finish.smock));
-  r.colors.set(additional.gorkaCuff,new THREE.Color(finish.gorkaBase));
+  const chosenKnit=p.wardrobe?.knitSolid;
+  r.colors.set(additional.combatKnit,new THREE.Color(
+   isGarmentSolidId(chosenKnit)?garmentSolidHex(chosenKnit):finish.combat));
+  const topPrint=p.wardrobe?.fabricCamo?.top;
+  const cuff=resolvedCuffSolid({
+   print:topPrint&&fabricCamoCompatible(topPrint,'top',clothing)?topPrint:null,
+   solid:p.wardrobe?.fabricSolids?.top,
+   override:p.wardrobe?.cuffSolid,
+   fallback:clothing.top==='gorka-jacket'?'khaki':'olive-drab'
+  });
+  const cuffHex=garmentSolidHex(cuff);
+  r.colors.set(additional.smockCuff,new THREE.Color(cuffHex));
+  r.colors.set(additional.gorkaCuff,new THREE.Color(cuffHex));
+  r.colors.set(r.visualKit.fieldBlouses['bdu-shirt'].cuffMaterial,
+   new THREE.Color(cuffHex));
   r.colors.set(additional.mountainCanvas,new THREE.Color(finish.gorkaBase));
   r.colors.set(additional.mountainLegCanvas,new THREE.Color(finish.gorkaBase));
   const selectedTop=p.wardrobe?.fabricCamo?.top;
@@ -534,7 +552,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }
   r.colors.set(additional.mountainLegPanel,new THREE.Color(
     finish.specialty||hasAuthoredLeg?0xffffff:finish.gorkaPanel));
-  if(clothing.top==='smock-jacket'&&!hasAuthoredTop)
+  if(clothing.top==='smock-jacket'&&!hasAuthoredTop&&
+     !p.wardrobe?.fabricSolids?.top)
     r.colors.set(r.clothMaterial,new THREE.Color(finish.smock));
   for(const [id,material] of Object.entries(r.visualKit.wardrobeHead.headwearMaterials)){
    const selected=id===clothing.headwear;
