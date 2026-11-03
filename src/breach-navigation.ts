@@ -54,15 +54,18 @@ export function footAnchorReachable(from:Pt,p:Pt,
  * In narrow mode the operator's shoulders extend along the passage while
  * the torso presents its shorter depth across the passage. */
 export type BodyProfile='normal'|'squeeze';
+// A deliberate sideways profile remains a real three-point body sweep,
+// with just enough give for the clearance of a jacket/soft gear.
+export const SQUEEZE_RADIUS=4.8;
 export const squeezeFacing=(travelYaw:number)=>travelYaw-Math.PI/2;
 export function profileSamples(p:Pt,heading:number,
   profile:BodyProfile){
   if(profile==='normal')return [{position:{...p},radius:OPERATOR_RADIUS}];
-  const sx=-Math.sin(heading)*3.6,sy=Math.cos(heading)*3.6;
+  const sx=-Math.sin(heading)*3.25,sy=Math.cos(heading)*3.25;
   return [
-    {position:{x:p.x-sx,y:p.y-sy},radius:5.4},
-    {position:{...p},radius:5.4},
-    {position:{x:p.x+sx,y:p.y+sy},radius:5.4}
+    {position:{x:p.x-sx,y:p.y-sy},radius:SQUEEZE_RADIUS},
+    {position:{...p},radius:SQUEEZE_RADIUS},
+    {position:{x:p.x+sx,y:p.y+sy},radius:SQUEEZE_RADIUS}
   ];
 }
 export function profileClear(p:Pt,doors:Door[],heading:number,
@@ -77,7 +80,20 @@ export function sweptProfileClear(from:Pt,to:Pt,doors:Door[],
   for(let i=1;i<=steps;i++){
     const t=i/steps,at={x:from.x+(to.x-from.x)*t,
       y:from.y+(to.y-from.y)*t};
-    if(!profileClear(at,doors,heading,'squeeze'))return false;
+    // When a swinging leaf has already brushed the operator, permit
+    // a narrow body to ESCAPE that overlap. Never deepen it, and never
+    // relax static wall/furniture clearance.
+    const start=profileSamples(from,heading,'squeeze');
+    const current=profileSamples(at,heading,'squeeze');
+    for(let j=0;j<current.length;j++){
+      const sample=current[j],startSample=start[j];
+      if(!passable(sample.position,sample.radius))return false;
+      for(const door of doors){
+        const gap=leafGap(sample.position,door),before=leafGap(startSample.position,door);
+        if(gap<sample.radius+1&&
+           (before>=sample.radius+1||gap+1e-5<before))return false;
+      }
+    }
   }
   return true;
 }

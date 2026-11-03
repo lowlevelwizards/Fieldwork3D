@@ -6,7 +6,7 @@ import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   operationBriefing,
-  planMove,planMoveStroke,planNearbyInteraction,planAim,planWatch,releaseWatch,setFirePolicy,planWait,planWaitAt,setWaitDuration,
+  planMove,planMoveStroke,planNearbyInteraction,planAim,planWatch,setFirePolicy,planWait,planWaitAt,setWaitDuration,
   plannedControl,setNodeControl,setStartPace,planReloadAt,planDoorFlash,
   planSync,movePlanNode,
   finalPoint,doorAtNode,backOne,
@@ -22,6 +22,8 @@ import {ExecutionNoticeFeed} from './ui/execution-feedback.ts';
 import {currentSiteIdentity} from './ui/current-site-identity.ts';
 import {tacticalHitProfile,preferSelectedHit,shouldAppendStrokePoint} from './ui/touch-hit-targets.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
+import {interruptsWatch} from './breach-plan.ts';
+import {SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
  rangeTrialLabel,type RangeTrial} from './equipment-training-diagnostics.ts';
@@ -55,8 +57,9 @@ import {stageMagazines,magazineSpace,type MagazineLocation} from './equipment-ma
 import {doorReachable} from './breach-door.ts';
 import {canRelocateCover} from './breach-movable-cover.ts';
 import {INTEL_MODES,doorKnown,
-  routeWithIntel,intelPassable,type IntelMode} from './breach-intel.ts';
+  intelPassable,type IntelMode} from './breach-intel.ts';
 import {orderFailureText} from './breach-nav-diagnostics.ts';
+import {routeWithSqueezeIntel} from './breach-squeeze-route.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {FrameMeter} from './breach-perf.ts';
 import {formatAfterAction} from './breach-after-action.ts';
@@ -1190,9 +1193,9 @@ function message(){
   if(flashMode)return 'FLASH: tap a target, or CANCEL to back out.';
   if(state.phase==='planning'){
     if(looking)return lookMode==='watch'?
-      'WATCH: choose a point to keep watching through your route.':
-      'LOOK: choose a direction to check briefly, then continue.';
-    if(selectedNode!==null)return 'Waypoint: LOOK briefly / WATCH continuously · drag to move · DELETE to remove.';
+      'WATCH ARMED · TAP A POINT · CANCEL/BACK TO EXIT. Replaces prior WATCH; RUN or interactions end tracking.':
+      'LOOK ARMED · TAP ANY DIRECTION · CANCEL/BACK TO EXIT. Replaces prior WATCH.';
+    if(selectedNode!==null)return 'Waypoint: LOOK changes direction · WATCH tracks a point · choose another to replace · UNDO reverses it.';
     return 'Tap a route line to insert a waypoint · tap a node to edit or delete.';
   }
   if(state.phase==='running')return 'Executing. Pause to change your plan.';
@@ -1246,9 +1249,12 @@ function updateContext(){
     distance(at,{x:w.x,y:w.y})<54);
   // WATCH remains active through later waypoints until LOOK or RELEASE.
   // Read the authored history, not merely this node's local modifier.
-  let watchActive=a.aimInstruction?.mode==='track';
+  let watchActive=a.aimInstruction?.mode==='track'&&a.pace!=='run';
+  let planPace=a.pace;
   if(node)for(const order of a.plan){
-    if(order.aimMode==='track')watchActive=true;
+    if(order.paceState)planPace=order.paceState;
+    if(interruptsWatch(order,planPace))watchActive=false;
+    else if(order.aimMode==='track')watchActive=true;
     else if(order.aimMode==='free'||order.aimMode==='fixed')
       watchActive=false;
     if(order.id===node.id)break;
@@ -1514,8 +1520,9 @@ const handleContextAction=(event:MouseEvent)=>{
         looking=false;firePlacement=null;}
       break;
     case 'ctxLook':
-      tacticalFeedback.emit('armed',node?.p??a.p,'LOOK READY');
-      uiClickTone('select');armFacing('look');return;
+      armFacing('look');
+      if(looking)tacticalFeedback.emit('armed',node?.p??a.p,'TAP A DIRECTION');
+      uiClickTone('select');return;
     case 'ctxDoor':{
       const available=focusedDoor(a,node);
       if(!available){state.events.push('NO KNOWN DOOR IN REACH');break;}
@@ -1524,12 +1531,9 @@ const handleContextAction=(event:MouseEvent)=>{
       updateHud();return;
     }
     case 'ctxWatch':
-      tacticalFeedback.emit('armed',node?.p??a.p,'WATCH READY');
-      uiClickTone('select');armFacing('watch');return;
-    case 'ctxReleaseWatch':
-      if(!releaseWatch(state,selected,node?.id,'here'))
-        state.events.push('CANNOT RELEASE WATCH HERE');
-      break;
+      armFacing('watch');
+      if(looking)tacticalFeedback.emit('armed',node?.p??a.p,'TAP WATCH TARGET');
+      uiClickTone('select');return;
     case 'ctxWait':{
       if(node?.kind==='wait')setWaitDuration(state,selected,node.id,.5);
       else planWaitAt(state,selected,.5,node?'end':'here',node?.id);
@@ -2228,9 +2232,10 @@ function paths(){
     // Selected WATCH instructions remain readable throughout the route they
     // govern, without cluttering unselected operators' plans.
     if(a.id===selected){
-      let watching=false,previous=a.p;
-      for(const node of plan){
-        if((node.kind==='move'||node.kind==='door')&&watching){
+      let previous=a.p;
+      for(let i=0;i<plan.length;i++){
+        const node=plan[i];
+        if((node.kind==='move'||node.kind==='door')&&visual[i].before.watch){
           const course=displayRouteCache.get(previous,node.p,state.intel,
             state.phase==='planning').points;
           draw.save();draw.strokeStyle='#e6c990';draw.globalAlpha=.73;
@@ -2241,8 +2246,6 @@ function paths(){
         }
         if(node.kind==='move'||node.kind==='door'||node.kind==='pie')
           previous=node.p;
-        if(node.aimMode==='track')watching=true;
-        else if(node.aimMode==='free'||node.aimMode==='fixed')watching=false;
       }
     }
     for(let i=0;i<plan.length;i++){
@@ -2375,7 +2378,7 @@ function renderProjectedPlans(){
   for(const a of team(state)){
     if(a.health<=0)continue;
     const color=colorFor(a.id);
-    let previous=a.p,watching=false;
+    let previous=a.p;
     const visual=orderVisualScopes(a.plan,{
       watch:a.aimInstruction?.mode==='track',pace:a.pace,
       posture:a.posture,fire:a.firePolicy
@@ -2396,11 +2399,12 @@ function renderProjectedPlans(){
         }
         draw.strokeStyle=color;
         draw.globalAlpha=a.id===selected?.94:.50;
-        draw.lineWidth=n.kind==='pie'?3:watching&&a.id===selected?3.6:2.4;
+        draw.lineWidth=n.kind==='pie'?3:
+          semantics.before.watch&&a.id===selected?3.6:2.4;
         const narrowOnly=n.kind==='move'&&!!cachedRoute?.narrowOnly;
         // Narrow routes use a finer dash without another overlay.
         draw.setLineDash(n.kind==='pie'?[3,3]:
-          watching&&a.id===selected?[3,5]:
+          semantics.before.watch&&a.id===selected?[3,5]:
           semantics.before.pace==='run'?[12,3]:
           narrowOnly?[2,4]:[7,4]);
         draw.stroke();draw.setLineDash([]);draw.globalAlpha=1;
@@ -2409,7 +2413,7 @@ function renderProjectedPlans(){
       const point=worldToScreen(selectedNow&&draggingNode&&!draggingWatchTarget&&n.kind!=='flash'?
         draggingNode:n.p,8);
       const invalidDrag=selectedNow&&draggingNode&&!draggingWatchTarget&&
-        !intelPassable(draggingNode,state.intel,5.4);
+        !intelPassable(draggingNode,state.intel,SQUEEZE_RADIUS);
       circle(point.x,point.y,selectedNow?11:7,
         invalidDrag?'#df8070':selectedNow?'#ecd29f':color);
       circle(point.x,point.y,3,'#233b39');
@@ -2512,8 +2516,6 @@ function renderProjectedPlans(){
           .filter(Boolean).join(' · '),point.x+12,point.y+18);
       }
       if(n.kind==='move'||n.kind==='door'||n.kind==='pie')previous=n.p;
-      if(n.aimMode==='track')watching=true;
-      else if(n.aimMode==='free'||n.aimMode==='fixed')watching=false;
     }
     const pawn=worldToScreen(a.p,32),ground=worldToScreen(a.p,1);
     const squadIndex=team(state).findIndex(member=>member.id===a.id);
@@ -2915,7 +2917,10 @@ function useSelectedGround(pt:Pt){
     const committed=lookMode==='watch'?
       planWatch(state,selected,pt,selectedNode??undefined,armedOrigin):
       planAim(state,selected,'free',pt,selectedNode??undefined,'look',armedOrigin);
-    if(!committed)rejectAt(pt,'SELECT A DIFFERENT AIM POINT');
+    if(!committed){
+      rejectAt(pt,'AIM TOO CLOSE · TAP FARTHER FROM THE OPERATOR OR WAYPOINT');
+      showUiHelp('AIM TOO CLOSE · TAP FARTHER AWAY, OR CANCEL',3200);
+    }
     else{
       tacticalFeedback.emit('command',pt,lookMode==='watch'?'WATCH':'LOOK');
       uiClickTone('command');
@@ -3232,6 +3237,9 @@ campaignBackButton.addEventListener('click',()=>{
 ui.rook.addEventListener('click',()=>selectUnit('rook'));
 ui.back.addEventListener('click',()=>{
   uiClickTone('select');
+  // BACK must always escape an unfinished targeting gesture first.
+  // It cannot accidentally remove an unrelated prior waypoint.
+  if(looking||flashMode||firePlacement||evacMode){cancelTargeting();return;}
   // Build 076 accidentally removed this listener when slimming the HUD.
   if(backOne(state,selected)){
     selectedNode=null;doorFocusId=null;
@@ -3716,12 +3724,13 @@ function releasePointer(e:PointerEvent,cancelled=false){
   if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
   const pt=pointerWorld(e);
   if(!cancelled&&state.phase==='planning'&&!replaying&&activePointers.size===1){
-    if(p.mode==='targetPreview'){
-      // Release commits the indicated destination through the same existing
-      // rule validation used by a tap; cancelling or adding a finger does not.
-      if((looking||flashMode||firePlacement||evacMode)&&
-         pt.x>=0&&pt.y>=0&&pt.x<=W&&pt.y<=H)
-        useSelectedGround(pt);
+    if((looking||flashMode||firePlacement||evacMode)&&
+       (p.mode==='targetPreview'||p.mode==='undecided')){
+      // A brief iPhone tap often travels a few pixels without entering
+      // targetPreview. Always commit an armed target on release, even then.
+      // CameraMulti/cancelled pointers remain excluded.
+      if(pt.x>=0&&pt.y>=0&&pt.x<=W&&pt.y<=H)useSelectedGround(pt);
+      else showUiHelp('TAP INSIDE THE MAP TO PLACE THE TARGET',2700);
     }else if(p.mode==='watchTarget'&&p.nodeId!==null){
       const accepted=!p.moved||planWatch(state,selected,pt,p.nodeId);
       if(!accepted)rejectAt(pt,'WATCH TARGET UNAVAILABLE');
@@ -3738,8 +3747,11 @@ function releasePointer(e:PointerEvent,cancelled=false){
           const chosen=uid(selected)?.plan.find(n=>n.id===p.nodeId);
           const origin=uid(selected)?.p??pt;
           rejectAt(pt,orderFailureText(origin,pt,{
-            canStand:at=>intelPassable(at,state.intel),
-            routeTo:(a,b)=>routeWithIntel(state.intel,a,b),
+            // The failure message must use the SAME narrow-body clearance
+            // rules as planning. Otherwise reachable squeeze positions are
+            // incorrectly reported as having "insufficient clearance".
+            canStand:at=>intelPassable(at,state.intel,SQUEEZE_RADIUS),
+            routeTo:(a,b)=>routeWithSqueezeIntel(state.intel,a,b),
             remainingPlanValid:chosen?.kind==='move'?false:undefined
           }));
         }

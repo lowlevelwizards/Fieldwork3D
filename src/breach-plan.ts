@@ -62,3 +62,13 @@ export const targetAngle=(a:Pt,b:Pt)=>Math.atan2(b.y-a.y,b.x-a.x);
 export const length=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export const angleDifference=(a:number,b:number)=>
   Math.atan2(Math.sin(b-a),Math.cos(b-a));
+
+/** End sustained attention when movement becomes a run or the operator
+ * performs a physical task. LOOK/WATCH themselves replace the prior aim. */
+export function interruptsWatch(node:Pick<PlanNode,'kind'|'paceState'|'moveMode'>,
+ currentPace:'walk'|'run'):boolean{
+ return currentPace==='run'||node.paceState==='run'||
+   node.moveMode==='sprint'||
+   ['door','tool','interact','flash','reload','treat','recover-medical',
+    'evacuate'].includes(node.kind);
+}

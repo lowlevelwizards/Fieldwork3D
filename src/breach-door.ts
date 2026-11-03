@@ -13,7 +13,11 @@ export function approachingDoorLeaf(from:Pt,next:Pt,d:Door):boolean{
  if(!d.open||d.kind==='shutter'||d.kind==='sliding'||d.wedged||d.heldBy)return false;
  const leaf=doorLeafSegment(d);
  const prior=pointToSegment(from,leaf),approach=pointToSegment(next,leaf);
- return approach<18&&(approach<prior-.08||(prior<10&&approach<=prior+.2));
+ // Footsteps are short fixed ticks: a real body contact may reduce the
+ // clearance by only a few hundredths per frame. Accept sustained pressure
+ // from within the shoulder envelope, before the solid capsule stalls.
+ return approach<24&&(approach<prior-.015||
+   (prior<21&&approach<=prior+.25));
 }
 
 export function handlePoint(d:Door):Pt{
@@ -76,11 +80,11 @@ export function initDoor(d:Door,i:number):Door{
 /** A small fixed-step hinge motor with damped impulses; no renderer physics. */
 export function pushDoor(d:Door,force:number):boolean{
  if(d.wedged||d.heldBy||(!d.open&&(d.openFraction??0)<.08))return false;
- // Extra body pressure requests a wider swing without teleporting the leaf.
- // The hinge motor validates each additional angle against its surroundings.
- if((d.openFraction??0)>=.68)
-   d.pushTarget=Math.min(PUSHED_OPEN_LIMIT,Math.max(1,d.pushTarget??1)+
-     Math.min(.028,Math.max(0,force)*.007));
+ // Body contact should request the full physically attainable opening,
+ // not inch the desired stop upward 0.028 per frame while the operator
+ // stands still. The motor still sweeps against walls, cover, and actors.
+ if((d.openFraction??0)>=.55&&force>0)
+   d.pushTarget=PUSHED_OPEN_LIMIT;
  d.angularVelocity=Math.max(-5.5,Math.min(5.5,
    (d.angularVelocity??0)+force/Math.max(.35,d.resistance??1)));
  d.open=true;

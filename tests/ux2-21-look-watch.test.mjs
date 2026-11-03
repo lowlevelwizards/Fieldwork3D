@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newSession,team,planMove,planWatch,planLook,releaseWatch,
+import {newSession,team,planMove,planWatch,planLook,
   stepSession,toggling,setStartPace,undoPlan} from '../src/breach-game.ts';
 import {contextActionChoices} from '../src/ui/context-actions.ts';
 
@@ -35,28 +35,29 @@ test('UX2-21: WATCH is tracked world point, not an authored strafe segment',()=>
  assert.equal(a.plan[0].aimLabel,'watch');
  assert.notEqual(a.plan[0].moveMode,'strafe');
 });
-test('UX2-21: releasing WATCH is explicit, undoable AUTO transition',()=>{
+test('WATCH is replaced by LOOK without a separate RELEASE control; undo restores it',()=>{
  const s=newSession(),a=team(s)[0];
  assert.ok(planMove(s,'rook',{x:302,y:491}));
  const id=a.plan[0].id;
  assert.ok(planWatch(s,'rook',point,id));
- assert.ok(releaseWatch(s,'rook',id));
+ assert.ok(planLook(s,'rook',{x:345,y:485},id));
  assert.equal(a.plan[0].aimMode,'free');
+ assert.equal(a.plan[0].aimLabel,'look');
  assert.equal(a.plan[0].aimPoint,undefined);
- assert.equal(a.plan[0].facing,undefined);
  assert.ok(undoPlan(s,'rook'));
  assert.equal(a.plan[0].aimMode,'track');
  assert.deepEqual(a.plan[0].aimPoint,point);
+ assert.ok(!contextActionChoices({...context,watchActive:true})
+   .some(c=>c.id==='ctxReleaseWatch'));
 });
-test('UX2-21: running does not silently delete the WATCH instruction',()=>{
+test('RUN terminates sustained WATCH instead of resuming it later',()=>{
  const s=newSession(),a=team(s)[0];
  assert.ok(planWatch(s,'rook',point,undefined,'here'));
  assert.ok(planMove(s,'rook',{x:302,y:491}));
  assert.ok(setStartPace(s,'rook','run'));
  toggling(s);
  for(let i=0;i<24;i++)stepSession(s,1/60);
- assert.equal(a.aimInstruction?.mode,'track');
- assert.deepEqual(a.aimInstruction?.point,point);
+ assert.equal(a.aimInstruction,null);
 });
 test('UX2-21: WATCH and LOOK are separate editable instructions',()=>{
  const s=newSession(),a=team(s)[0];

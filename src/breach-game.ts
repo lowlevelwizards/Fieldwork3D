@@ -14,7 +14,7 @@ import {
   type AimMode,type AimInstruction,
   makeHistory,copyNodes,record,undo,redo,modifyNode,lastPoint,
   type FirePolicy,
-  length,targetAngle,angleDifference,type PieSide,
+  length,targetAngle,angleDifference,type PieSide,interruptsWatch,
 } from './breach-plan.ts';
 import {validPieArc} from './breach-maneuvers.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
@@ -64,7 +64,7 @@ import {doorContactImpulse,passageWait,type PassageActor,type PassageLease}
 import {diagnoseMovement,projectReachableGoal,type Blocker}
   from './breach-nav-diagnostics.ts';
 import {bodyClear,sweptBodyClear,squeezeFacing,
-  sweptProfileClear} from './breach-navigation.ts';
+  sweptProfileClear,SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
   from './breach-squeeze-route.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
@@ -417,7 +417,7 @@ function edit(s:Session,a:TeamActor,fn:()=>void){
 export function addNode(s:Session,id:string,kind:PlanKind,p:Pt,
   extra:Partial<PlanNode>={}):boolean{
   const a=party(s,id);if(!a||!canEdit(s))return false;
-  if(kind==='move'&&!intelPassable(p,s.intel,5.4))return false;
+  if(kind==='move'&&!intelPassable(p,s.intel,SQUEEZE_RADIUS))return false;
   if(kind==='move'&&!routeWithSqueezeIntel(s.intel,finalPoint(a),p).length)return false;
   if(kind==='door'&&(!passable(p)||!route(finalPoint(a),p).length))return false;
   return edit(s,a,()=>{
@@ -452,7 +452,7 @@ export function planMove(s:Session,id:string,p:Pt,strafe=false){
   const extra=strafe?{moveMode:'strafe' as const,
     facing:[...a.plan].reverse().find(n=>n.facing!==undefined)?.facing??a.heading}:{};
   const target=projectReachableGoal(finalPoint(a),p,{
-    canStand:at=>intelPassable(at,s.intel,5.4),
+    canStand:at=>intelPassable(at,s.intel,SQUEEZE_RADIUS),
     routeTo:(from,to)=>routeWithSqueezeIntel(s.intel,from,to),
   });
   if(!target)return false;
@@ -466,7 +466,7 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
   let from=finalPoint(a);
   const facing=[...a.plan].reverse().find(n=>n.facing!==undefined)?.facing??a.heading;
   for(const point of points.slice(0,60)){
-    if(d(from,point)<20||!intelPassable(point,s.intel,5.4)||
+    if(d(from,point)<20||!intelPassable(point,s.intel,SQUEEZE_RADIUS)||
       !routeWithSqueezeIntel(s.intel,from,point).length)continue;
     proposed.push({id:s.nextId+proposed.length,kind:'move',p:clone(point),
       ...(strafe?{moveMode:'strafe' as const,facing}:{})});
@@ -593,7 +593,7 @@ function validEditedPlan(s:Session,start:Pt,proposed:PlanNode[]){
       if(!arc.length)return false;
       n.arc=arc;n.p=clone(arc[arc.length-1]);from=n.p;
     }else if(n.kind==='move'||n.kind==='door'){
-      if(n.kind==='move'?!intelPassable(n.p,s.intel,5.4)||
+      if(n.kind==='move'?!intelPassable(n.p,s.intel,SQUEEZE_RADIUS)||
         !routeWithSqueezeIntel(s.intel,from,n.p).length:
         !passable(n.p)||!route(from,n.p).length)return false;
       from=n.p;
@@ -612,7 +612,7 @@ export function movePlanNode(s:Session,id:string,nodeId:number,p:Pt){
   if(changed.kind==='move'){
     const from=index>0?proposed[index-1].p:a.p;
     const target=projectReachableGoal(from,p,{
-      canStand:at=>intelPassable(at,s.intel,5.4),
+      canStand:at=>intelPassable(at,s.intel,SQUEEZE_RADIUS),
       routeTo:(origin,goal)=>routeWithSqueezeIntel(s.intel,origin,goal),
     });
     if(!target)return false;
@@ -1348,6 +1348,18 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   if(a.routeGoalKey!==goalKey){
     a.routeGoalKey=goalKey;a.retryRouteAt=0;a.recoveryAttempts=0;
   }
+  // Push a nearby already-open leaf toward its wall stop even if a temporary
+  // route failure left the operator without a navigation node. Otherwise
+  // the actor never contacts the leaf again, so its hinge cannot finish.
+  for(const leaf of s.doors){
+    if(!leaf.open||leaf.kind==='sliding'||leaf.kind==='shutter'||
+       leaf.wedged||leaf.heldBy||
+       (leaf.openFraction??0)>=PUSHED_OPEN_LIMIT)continue;
+    const gapToLeaf=pointToSegment(a.p,doorLeafSegment(leaf));
+    if(gapToLeaf>28)continue;
+    if(doorBlocksSegment(leaf,{a:a.p,b:p})||gapToLeaf<17)
+      pushDoor(leaf,3);
+  }
   if(!a.nav.length){
     // Never execute expensive route searches every fixed tick for a proven
     // unreachable destination. Changes of goal or recovered progress reset.
@@ -1395,7 +1407,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   // Resolve nearest actual leaf first: adjacent/paired doors must not
   // steal contact from the panel the operator is physically approaching.
   const closedDoor=s.doors.filter(door=>
-    pointToSegment(move,doorLeafSegment(door))<18||
+    pointToSegment(move,doorLeafSegment(door))<24||
     doorBlocksSegment(door,{a:a.p,b:move}))
     .sort((u,v)=>pointToSegment(move,doorLeafSegment(u))-
       pointToSegment(move,doorLeafSegment(v)))[0];
@@ -1617,6 +1629,9 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   }
   if(a.activeNode!==n.id){
     a.activeNode=n.id;a.nav=[];a.waitRemaining=0;a.actionTimer=0;
+    // Physical interactions and running terminate sustained WATCH, never
+    // silently resume it when the operator returns to walking.
+    if(interruptsWatch(n,a.pace))a.aimInstruction=null;
     // A waypoint inside a pinch is not permission to expand the torso.
     if(bodyClear(a.p,s.doors)){
       a.squeeze=false;a.squeezeTime=0;
@@ -1837,6 +1852,8 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       s.operators.filter(b=>b!==a&&b.health>0&&b.side===a.side)
         .map(b=>b.p),(from,to)=>sweptBodyClear(from,to,s.doors)));
   if(!at&&(n.kind==='move'||n.kind==='door'||n.kind==='sync')){
+    // Running cancels WATCH rather than merely suspending it.
+    if(interruptsWatch(n,a.pace))a.aimInstruction=null;
     // A persistent tracking/PIE stance stays cautious on every segment,
     // not only on explicitly marked strafe nodes.
     const running=n.moveMode==='sprint'||a.pace==='run';
@@ -1863,6 +1880,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   if(at){
     if(n.postureState)a.posture=n.postureState;
     if(n.paceState)a.pace=n.paceState;
+    if(interruptsWatch(n,a.pace))a.aimInstruction=null;
     if(n.firePolicyState){
       a.firePolicy=n.firePolicyState;
       a.suppressPoint=n.firePoint?clone(n.firePoint):null;
@@ -1872,7 +1890,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   // Apply an authored look/pie/strafe instruction once we actually arrive
   // at its waypoint, then keep it active through every later movement.
   if(n.kind==='move'||n.kind==='look'){
-    applyAimNode(a,n);
+    if(!interruptsWatch(n,a.pace))applyAimNode(a,n);
     if(n.aimMode==='free'&&n.facing!==undefined){
       // LOOK deliberately orients at this node, then releases any tracking
       // or fixed strafe constraint. The next move faces the travel direction.
