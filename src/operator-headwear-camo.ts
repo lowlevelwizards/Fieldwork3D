@@ -146,7 +146,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'FLECKTARN',
   description:'Broad woodland green and tan masses carrying dense clustered rust and ink droplets',
   colors:[[119,134,86],[54,83,55],[161,137,91],[129,77,53],[42,48,37]],
-  targetCoverage:[0.242,0.197,0.196,0.177,0.188],
+  targetCoverage:[0.144,0.244,0.248,0.177,0.188],
   motifs:[
    // Four generous underlying masses establish the pattern from a distance.
    // The 1-2px droplet clusters below survive on top of these long sweeps.
