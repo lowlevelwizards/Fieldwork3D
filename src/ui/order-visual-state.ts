@@ -1,4 +1,4 @@
-import type {PlanNode,FirePolicy} from '../breach-plan.ts';
+import {interruptsWatch,type PlanNode,type FirePolicy} from '../breach-plan.ts';
 /** Pure, ordered state transitions for route overlays and previews.
  * The segment LEADING TO a waypoint uses 'before'; the waypoint applies
  * its new state AFTER arrival, on subsequent segments. This mirrors the
@@ -19,9 +19,10 @@ export function orderVisualScopes(
   let scope={...initial};
   return plan.map(node=>{
     const before={...scope};
-    if(node.aimMode==='track')scope.watch=true;
-    else if(node.aimMode==='free'||node.aimMode==='fixed')scope.watch=false;
     if(node.paceState)scope.pace=node.paceState;
+    if(interruptsWatch(node,scope.pace))scope.watch=false;
+    else if(node.aimMode==='track')scope.watch=true;
+    else if(node.aimMode==='free'||node.aimMode==='fixed')scope.watch=false;
     if(node.postureState)scope.posture=node.postureState;
     if(node.firePolicyState)scope.fire=node.firePolicyState;
     const after={...scope};
