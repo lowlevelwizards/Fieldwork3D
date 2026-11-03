@@ -37,9 +37,7 @@ test('eighteen deliberate 32/64px camo families use fixed opaque canonical color
   assert.ok(Math.abs(coverage.reduce((a,b)=>a+b,0)-1)<1e-10,id);
   assert.equal(recipe.targetCoverage.length,coverage.length,id);
   for(let tone=0;tone<coverage.length;tone++)
-   assert.ok(['erdl-lowland','finnish-m05','polish-pantera','russian-flora',
-    'rhodesian-brushstroke','desert-tropentarn'].includes(id)||
-    Math.abs(coverage[tone]-recipe.targetCoverage[tone])<=.04,
+   assert.ok(Math.abs(coverage[tone]-recipe.targetCoverage[tone])<=.04,
     id+' color '+tone+' must keep authored color proportions');
   assert.ok(coverage.every(n=>n>.01&&n<.80),id+' every authored color must appear');
   assert.ok(recipe.colors.length>=3&&recipe.colors.length<=7,id);
@@ -419,10 +417,4 @@ test('4B Finnish M05 prints genuinely smaller, with distinct patterns/pigments',
  assert.match(src,/apply4BDetail/);
  assert.match(src,/camoGrain/);
  assert.match(src,/camoNearPoint/);
-});
-test('4B calibration coverage report',()=>{
- for(const id of HEADWEAR_CAMO_IDS.slice(12)){
-  console.log('4B COVERAGE '+id+': '+JSON.stringify(
-   headwearCamoCoverage(id).map(x=>Number(x.toFixed(4)))));
- }
 });
