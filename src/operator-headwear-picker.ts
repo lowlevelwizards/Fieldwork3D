@@ -56,7 +56,8 @@ export function createHeadwearAppearancePicker(kit:EquipmentLoadout,
  panel.dataset.headwearAppearancePicker=model;
  panel.open=options.expanded===true;
  panel.addEventListener('toggle',()=>options.onExpandedChange?.(panel.open));
- panel.append(make('summary')).lastChild!.textContent='HEADGEAR COLOR / CAMOUFLAGE';
+ const heading=make('summary');heading.textContent='HEADGEAR COLOR / CAMOUFLAGE';
+ panel.append(heading);
  if(!solids.length&&!camos.length){
   const message=make('p','fw-headwear-hint');
   message.textContent='This headgear has no separate swatches. Choose a supported cap or helmet for material colors.';
