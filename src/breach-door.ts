@@ -7,7 +7,9 @@ export {doorYaw,doorLeafSegment};
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export const DOOR_REACH=39;
 /** A body can extend the opening leaf's sweep without manual PUSH orders. */
-export const PUSHED_OPEN_LIMIT=1.27;
+// Fraction * 1.54 radians. 2.02 is just under 180 degrees; actual
+// swing stops sooner if the swept panel meets a wall, furnishing, or actor.
+export const PUSHED_OPEN_LIMIT=2.02;
 /** The actor must approach the leaf or already be in sustained contact. */
 export function approachingDoorLeaf(from:Pt,next:Pt,d:Door):boolean{
  if(!d.open||d.kind==='shutter'||d.kind==='sliding'||d.wedged||d.heldBy)return false;
@@ -83,7 +85,7 @@ export function pushDoor(d:Door,force:number):boolean{
  // Body contact should request the full physically attainable opening,
  // not inch the desired stop upward 0.028 per frame while the operator
  // stands still. The motor still sweeps against walls, cover, and actors.
- if((d.openFraction??0)>=.55&&force>0)
+ if((d.openFraction??0)>=.08&&force>0)
    d.pushTarget=PUSHED_OPEN_LIMIT;
  d.angularVelocity=Math.max(-5.5,Math.min(5.5,
    (d.angularVelocity??0)+force/Math.max(.35,d.resistance??1)));
@@ -182,5 +184,50 @@ export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[]){
     if(!d.open&&next<=.02)d.pushTarget=1;
     remaining-=h;
   }
+}
+
+/** Coupled contact resolution: the *attempted body sweep*, not mere proximity,
+ * creates pressure. Move the hinge one deterministic substep before the
+ * operator's own clearance test, so it can yield instead of deadlocking with
+ * the operator. A blocked hinge never enables ghosting through the leaf.
+ */
+export type BodyDoorContact={doorId:string;advanced:boolean};
+export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
+  dt:number,actors:readonly Pt[]):BodyDoorContact|null{
+  const length=dist(from,to);
+  if(length<.0001)return null;
+  const steps=Math.max(1,Math.ceil(length/2));
+  const nearby:{door:Door;distance:number}[]=[];
+  for(const door of doors){
+    if(!door.open||door.kind==='shutter'||door.kind==='sliding'||
+       door.wedged||door.heldBy||
+       (door.openFraction??0)<.08||
+       (door.openFraction??0)>=PUSHED_OPEN_LIMIT-.001)continue;
+    const panel=doorLeafSegment(door);
+    const before=pointToSegment(from,panel);
+    // The capsule must be near the *actual rotating leaf*.
+    if(before>OPERATOR_RADIUS+7)continue;
+    let minimum=before;
+    for(let i=1;i<=steps;i++){
+      const t=i/steps;
+      const point={x:from.x+(to.x-from.x)*t,
+        y:from.y+(to.y-from.y)*t};
+      minimum=Math.min(minimum,pointToSegment(point,panel));
+    }
+    if(minimum>OPERATOR_RADIUS+1.5||
+       minimum>before-.015&&before>OPERATOR_RADIUS+1)continue;
+    nearby.push({door,distance:minimum});
+  }
+  nearby.sort((a,b)=>a.distance-b.distance||
+    a.door.id.localeCompare(b.door.id));
+  const contact=nearby[0];
+  if(!contact)return null;
+  const door=contact.door;
+  const initial=door.openFraction??0;
+  pushDoor(door,2.5);
+  // Door motion gets a small share of this very simulation tick. The main
+  // global motor subsequently handles normal animation and swept obstacles.
+  advanceDoor(door,Math.min(Math.max(0,dt),1/60),actors);
+  return {doorId:door.id,advanced:(door.openFraction??0)>initial+.0001};
 }
 export const doorClear=(d:Door)=>!!d.open&&(d.openFraction??1)>=.72;
