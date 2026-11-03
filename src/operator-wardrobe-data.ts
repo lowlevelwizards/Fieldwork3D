@@ -28,18 +28,15 @@ function add(slot:WardrobeSlot,family:string,records:readonly (readonly [string,
  for(const [id,name] of records)ITEMS.push({id,slot,name,family,style:id,onlyWith});
 }
 add('headwear','bare',[['bare','Uncovered']]);
+// Only the seven reviewed headwear silhouettes are selectable in Studio.
+// Older placeholder variants remain loadout-safe internally but do not
+// pollute the approved art catalog.
 add('headwear','soft',[
- ['patrol-cap','Patrol cap'],['baseball-cap','Baseball cap'],
- ['backwards-cap','Backwards baseball cap'],['beanie','Beanie'],
- ['boonie','Boonie hat'],['field-cap','Field cap']
-]);
-add('headwear','bump',[
- ['skate-helmet','Skate helmet'],['bump-helmet','Bump helmet']
+ ['patrol-cap','Patrol cap'],['beanie','Beanie'],['boonie','Boonie hat']
 ]);
 add('headwear','ballistic',[
  ['soviet-steel','Steel helmet'],['pasgt','PASGT-style helmet'],
- ['ach','ACH / MICH-style helmet'],['high-cut','High-cut helmet'],
- ['high-cut-rails','High-cut helmet with rails']
+ ['ach','ACH / MICH-style helmet'],['high-cut','High-cut helmet']
 ]);
 add('facewear','face',[
  ['face-none','Uncovered'],['balaclava-one','One-opening balaclava'],
