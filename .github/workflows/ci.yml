@@ -174,7 +174,7 @@ jobs:
       # Release checkpoint: verify that public Pages actually serves the
       # latest main commit, not merely that a deployment workflow reported green.
       - name: Verify previous Pages build is publicly served
-        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'ux/interaction2-') || startsWith(github.head_ref, 'appearance/stage4-') || startsWith(github.head_ref, 'fix/attention-doors-') || startsWith(github.head_ref, 'fix/doorway-right-of-way-') || startsWith(github.head_ref, 'fix/coupled-door-contact-')) }}
+        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'ux/interaction2-') || startsWith(github.head_ref, 'appearance/stage4-') || startsWith(github.head_ref, 'fix/attention-doors-') || startsWith(github.head_ref, 'fix/doorway-right-of-way-') || startsWith(github.head_ref, 'fix/coupled-door-contact-') || startsWith(github.head_ref, 'fix/door-leaf-overlap-')) }}
         run: |
           expected="$(git ls-remote origin refs/heads/main | cut -c1-12)"
           for attempt in 1 2 3 4 5 6 7 8; do
@@ -201,6 +201,9 @@ jobs:
       - name: Coupled door body pressure, hinge stops and real movement regressions
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/coupled-door-contact-') }}
         run: node --experimental-strip-types --test tests/coupled-door-contact.test.mjs tests/coupled-door-session.test.mjs tests/doorway-right-of-way-session.test.mjs tests/physicality-08-door-contact.test.mjs tests/lw-door-contact.test.mjs tests/physicality-door-aware-routing.test.mjs tests/physicality-vestibules.test.mjs
+      - name: Door leaf overlap and wrong-side collision regression tests
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/door-leaf-overlap-') }}
+        run: node --experimental-strip-types --test tests/door-leaf-overlap-recovery.test.mjs tests/door-leaf-overlap-session.test.mjs tests/coupled-door-contact.test.mjs tests/coupled-door-session.test.mjs tests/lw-door-contact.test.mjs tests/physicality-08-door-contact.test.mjs tests/doorway-right-of-way-session.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}
