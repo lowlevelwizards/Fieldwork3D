@@ -14,7 +14,7 @@ test('minimal face has two soft eye marks, no protruding cube nose',()=>{
  assert.ok(r.visualKit.eyeMarks.every(m=>m.geometry.boundingBox===null));
  let kit=setEquipmentChoice(initialEquipmentLoadout(),'head','head-none');
  poseOperator(r,pose(kit),0);
- assert.equal(r.visualKit.hair.visible,false);
+ assert.equal(r.visualKit.hair.visible,true); // bare head shows a selectable seeded haircut
  assert.ok(Object.values(r.visualKit.wardrobeHead.headwear).every(g=>!g.visible));
  assert.equal(r.visualKit.helmet.visible,false);
  kit=setEquipmentChoice(kit,'head','head-cap');
