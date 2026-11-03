@@ -17,7 +17,8 @@ test('WATCH begins after the node, persists along following movement, then ends'
   assert.equal(steps[1].before.watch,true);
   assert.equal(steps[1].before.pace,'walk');
   assert.equal(steps[2].before.pace,'run');
-  assert.equal(steps[2].watchEnds,true);
+  assert.equal(steps[1].watchEnds,true);
+  assert.equal(steps[2].watchEnds,false);
   assert.equal(steps[3].before.watch,false);
 });
 test('suppression targets and stance changes are represented without game state mutation',()=>{
