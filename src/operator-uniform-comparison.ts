@@ -34,9 +34,9 @@ export function uniformCompareWardrobe(cut:UniformCompareCut,
  const safePrint=uniformCutCamoChoices(cut).includes(print)?
   print:UNIFORM_COMPARE_DEFAULT_PRINTS[cut];
  return {...initialWardrobe(),
-  styles:{top:cut,trousers:'field-trousers',
+  styles:{top:cut,trousers:cut==='bdu-shirt'?'bdu-trousers':'acu-trousers',
    headwear:'bare',armorStyle:'armor-bare',
    rigStyle:'no-rig',beltStyle:'no-belt',packStyle:'no-pack',
    gloves:'gloves-none'},
-  fabricCamo:{top:safePrint}};
+  fabricCamo:{top:safePrint,trousers:safePrint}};
 }
