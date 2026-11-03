@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import type {CarryLocation} from './equipment-carry-placement.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
+import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {createCanonicalAttachment} from './operator-axis-convention.ts';
@@ -43,7 +44,7 @@ export type OperatorVisualKit={
 };
 const part=(parent:THREE.Object3D,m:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number)=>{
- const mesh=new THREE.Mesh(mapBoxPixelUV(new THREE.BoxGeometry(w,h,d),w,h,d),m);
+ const mesh=new THREE.Mesh(garmentBoxUV(new THREE.BoxGeometry(w,h,d),w,h,d,m,x,y,z),m);
  mesh.position.set(x,y,z);
  mesh.castShadow=true;mesh.receiveShadow=true;
  parent.add(mesh);return mesh;
