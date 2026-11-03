@@ -74,7 +74,25 @@ try{
     });
    }
   }
+  // R2: all forty distinct armor/uniform pairings, deliberately without a
+  // rig hiding bad connections. Includes thick smock/Gorka and light combat.
+  const tops=['combat-shirt','bdu-shirt','acu-shirt','smock-jacket','gorka-jacket'];
+  const armors=['soft-slick','soft-vest','soft-flak','plate-slick',
+   'plate-jpc','plate-standard','plate-heavy','plate-legacy'];
+  await page.locator('#rigChoice').selectOption('no-rig');
+  await page.locator('button[data-view="fit"]').click();
+  for(const top of tops)for(const armor of armors){
+   await page.locator('#topChoice').selectOption(top);
+   await page.locator('#armorChoice').selectOption(armor);
+   await page.waitForFunction(([a,t])=>{
+    const c=document.getElementById('armorCanvas');
+    return c?.dataset.armor===a&&c?.dataset.top===t&&c?.dataset.rig==='no-rig';
+   },[armor,top]);
+   await page.locator('#armorCanvas').screenshot({
+    path:'operator-armor-rig-captures/r2-'+top+'-'+armor+'-fit.png'
+   });
+  }
   if(errors.length)throw Error('Lab runtime: '+errors.join('; '));
-  console.log('Captured 46 normal-game-zoom armor/rig previews on phone viewport.');
+  console.log('Captured 86 normal-game-zoom armor/rig and uniform-fit previews on phone viewport.');
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}
