@@ -518,17 +518,29 @@ function syncWardrobe(){
  (document.getElementById('wardrobeMagazineOrder') as HTMLSelectElement).value=
   wardrobeOptions.mounts.magazineOrder;
  appearanceGrid?.refresh(labKit,wardrobeOptions);
- (document.getElementById('rolledSleeves') as HTMLInputElement).checked=
-  wardrobeOptions.rolledSleeves;
+ const sleeveSelect=document.getElementById('wardrobeSleeveState') as HTMLSelectElement;
+ sleeveSelect.value=wardrobeOptions.sleeveState;
+ sleeveSelect.disabled=compatible.top!=='bdu-shirt'&&compatible.top!=='acu-shirt';
+ const hemSelect=document.getElementById('wardrobeTrouserHem') as HTMLSelectElement;
+ hemSelect.value=wardrobeOptions.trouserHem;
+ hemSelect.disabled=!['bdu-trousers','acu-trousers'].includes(compatible.trousers)
+  ||compatible.footwear==='bare-feet';
  const incompatible=wardrobeConflicts(wardrobeOptions,labKit);
  document.getElementById('wardrobeCompatibility')!.textContent=incompatible.length?
   'Style unavailable for current kit: '+incompatible.join(', '):
   'Compatible visual styles. Gameplay equipment is unchanged.';
 }
-document.getElementById('rolledSleeves')?.addEventListener('change',e=>{
- checkpointAppearance();wardrobeOptions={...wardrobeOptions,
-  rolledSleeves:(e.target as HTMLInputElement).checked};
-});
+for(const [id,field] of [
+ ['wardrobeSleeveState','sleeveState'],
+ ['wardrobeTrouserHem','trouserHem']
+] as const){
+ document.getElementById(id)?.addEventListener('change',e=>{
+  checkpointAppearance();
+  const value=(e.target as HTMLSelectElement).value;
+  wardrobeOptions={...wardrobeOptions,[field]:value};
+  syncWardrobe();
+ });
+}
 const fabricPickerState:{expanded:boolean;openChannel:null|import('./operator-fabric-camo-policy.ts').FabricCamoChannel;filter:string}={
  expanded:false,openChannel:null,filter:''
 };
