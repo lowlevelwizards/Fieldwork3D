@@ -18,9 +18,6 @@ const INCIDENTAL=new Set([
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const middle=(door:Door):Pt=>({x:(door.a.x+door.b.x)/2,
  y:(door.a.y+door.b.y)/2});
-const boxGap=(p:Pt,o:Obstacle)=>Math.hypot(
- Math.max(0,Math.abs(p.x-o.x)-o.w/2),
- Math.max(0,Math.abs(p.y-o.y)-o.h/2));
 function roomFor(site:Site,o:Obstacle){
  return site.rooms.find(r=>r.kind==='room'&&
    o.x>=r.x&&o.x<=r.x+r.w&&o.y>=r.y&&o.y<=r.y+r.h);
