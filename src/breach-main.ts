@@ -20,7 +20,7 @@ import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import type {TacticalOrderPreview} from './ui/tactical-feedback.ts';
 import {ExecutionNoticeFeed} from './ui/execution-feedback.ts';
 import {currentSiteIdentity} from './ui/current-site-identity.ts';
-import {tacticalHitProfile} from './ui/touch-hit-targets.ts';
+import {tacticalHitProfile,preferSelectedHit,shouldAppendStrokePoint} from './ui/touch-hit-targets.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
  rangeTrialLabel,type RangeTrial} from './equipment-training-diagnostics.ts';
@@ -3316,9 +3316,9 @@ const hitNode=(cursor:Pt,pointerKind:string):{id:number;index:number;owner:strin
       }
     }
   }
-  candidates.sort((a,b)=>a.gap-b.gap||
-    Number(b.owner===selected)-Number(a.owner===selected));
-  return candidates[0]??null;
+  // Keep the selected operator's node when it is essentially as close as
+  // a competing marker. Avoid unpredictable swaps in crowded four-unit stacks.
+  return preferSelectedHit(candidates.map(c=>({...c,distancePx:c.gap})),selected);
 };
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 canvas.addEventListener('pointerenter',e=>{
@@ -3354,10 +3354,12 @@ canvas.addEventListener('pointerdown',e=>{
     const hit=contextual?undefined:team(state).find(a=>{
       if(a.health<=0)return false;
       const direct=overSelectedLine&&a.id!==selected;
-      if(viewMode==='plan2d'||!stage)
-        return distance(a.p,pt)<(direct?12:22);
-      return distance(worldToScreen(a.p,24),
-        {x:e.clientX,y:e.clientY})<(direct?15:25);
+      // All camera modes use the same CSS-pixel finger target; world-space
+      // distances would make Floor Plan selection scale with zoom.
+      const hitRadius=direct?(e.pointerType==='touch'?18:15):
+        (e.pointerType==='touch'?31:25);
+      return distance(worldToScreen(a.p,viewMode==='plan2d'?0:24),
+        {x:e.clientX,y:e.clientY})<hitRadius;
     });
     // Tapping the operator always selects HERE, even if a waypoint
     // happens to overlap its icon.
@@ -3453,7 +3455,8 @@ canvas.addEventListener('pointermove',e=>{
   if(state.phase==='planning'&&p.wasUnit&&p.moved){
     p.mode='route';
     if(!trace)trace=[{...uid(selected)!.p}];
-    if(distance(trace.at(-1)!,cursor)>8)trace.push({...cursor});
+    if(shouldAppendStrokePoint(worldToScreen(trace.at(-1)!,8),
+       {x:e.clientX,y:e.clientY}))trace.push({...cursor});
   }else if(p.moved&&e.pointerType==='mouse'&&(e.buttons&4)){
     panX+=dx;panY+=dy;layout();
   }
