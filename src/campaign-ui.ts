@@ -27,6 +27,8 @@ import './campaign-style.css';
 import './operator-headwear-picker.css';
 import {createHeadwearAppearancePicker} from './operator-headwear-picker.ts';
 import {createWardrobeFabricCamoPicker} from './operator-fabric-camo-picker.ts';
+import {topColorwayChoices,resolvedTopColorway} from './operator-upper-colorways.ts';
+import {sleeveStateOptions} from './operator-wardrobe-data.ts';
 import './operator-fabric-camo-picker.css';
 
 export type CampaignHandlers={
@@ -641,6 +643,21 @@ export class CampaignScreen{
    row.append(select);cosmeticExtras.append(row);
   }
   wardrobePanel.append(cosmeticExtras);
+  const colors=topColorwayChoices(looks.top);
+  if(colors.length){
+   const row=node('label','campaign-kit-row');
+   row.append(node('span','','GARMENT MATERIAL'));
+   const select=node('select','campaign-select');
+   select.setAttribute('aria-label','Garment material for '+person.callsign);
+   for(const [value,name] of colors){
+    const option=node('option','',name);option.value=value;select.append(option);
+   }
+   select.value=resolvedTopColorway(looks.top,wardrobe.topColorway);
+   select.disabled=locked;
+   select.addEventListener('change',()=>this.handlers.setWardrobe(id,{
+    ...wardrobe,topColorway:select.value}));
+   row.append(select);wardrobePanel.append(row);
+  }
   for(const [field,label,options] of [
    ['sleeveState','SLEEVE FINISH',SLEEVE_STATES],
    ['trouserHem','TROUSER HEM',TROUSER_HEMS]
@@ -655,8 +672,8 @@ export class CampaignScreen{
    }
    select.value=wardrobe[field];
    select.disabled=locked||(field==='sleeveState'?
-    !['bdu-shirt','acu-shirt'].includes(looks.top):
-    !['bdu-trousers','acu-trousers'].includes(looks.trousers)||
+    sleeveStateOptions(looks.top).length===1:
+    !['bdu-trousers','acu-trousers','gorka-trousers'].includes(looks.trousers)||
     looks.footwear==='bare-feet');
    select.addEventListener('change',()=>{
     if(field==='sleeveState')

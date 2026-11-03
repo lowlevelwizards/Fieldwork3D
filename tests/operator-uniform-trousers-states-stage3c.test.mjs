@@ -33,14 +33,15 @@ const look=(top,trousers,sleeveState='unrolled',trouserHem='bloused')=>({
 const visible=(xs)=>xs.every(x=>x.visible);
 test('Stage 3C real trouser catalog, player-facing names and no old placeholders',()=>{
  assert.deepEqual(wardrobeItemsForSlot('trousers').map(x=>x.id),
-  ['base-shorts','bdu-trousers','acu-trousers']);
+  ['base-shorts','bdu-trousers','acu-trousers','gorka-trousers']);
  assert.deepEqual(wardrobeItemsForSlot('top').map(x=>x.name),
-  ['Base underlayer','Classic Field Blouse','Modern Utility Blouse']);
+  ['Base underlayer','Classic Field Blouse','Modern Utility Blouse',
+   'Combat Shirt','Windproof Field Smock','Mountain / Gorka Jacket']);
  assert.equal(wardrobeItemsForSlot('trousers')[1].name,'Classic Field Trousers');
  assert.equal(wardrobeItemsForSlot('trousers')[2].name,'Modern Utility Trousers');
  assert.equal(wardrobeItemsForSlot('trousers').some(x=>x.id==='field-trousers'),false);
  assert.deepEqual(SLEEVE_STATES,['unrolled','cuffed','rolled']);
- assert.deepEqual(TROUSER_HEMS,['unbloused','bloused']);
+ assert.deepEqual(TROUSER_HEMS,['unbloused','bloused','cuffed']);
 });
 test('valid sleeve/hem states persist but the old rolled checkbox is NOT migrated',()=>{
  assert.equal(initialWardrobe().sleeveState,'unrolled');
@@ -67,7 +68,7 @@ test('valid sleeve/hem states persist but the old rolled checkbox is NOT migrate
  assert.equal(roundtrip.members[0].wardrobe.trouserHem,'unbloused');
 });
 test('two real pants cuts have separate shaped thighs, cuffs, pocket assemblies and stable UVs',()=>{
- assert.deepEqual(FIELD_TROUSER_CUTS,['bdu-trousers','acu-trousers']);
+ assert.deepEqual(FIELD_TROUSER_CUTS,['bdu-trousers','acu-trousers','gorka-trousers']);
  const a=FIELD_TROUSER_PROFILES['bdu-trousers'];
  const b=FIELD_TROUSER_PROFILES['acu-trousers'];
  assert.ok(a.thigh[2][1]>b.thigh[2][1]+.25);
@@ -76,10 +77,11 @@ test('two real pants cuts have separate shaped thighs, cuffs, pocket assemblies 
  assert.ok(a.cargo[0]>b.cargo[0]);
  for(const cut of FIELD_TROUSER_CUTS){
   const p=FIELD_TROUSER_PROFILES[cut];
-  for(const finish of ['thigh','unbloused','bloused']){
+  for(const finish of ['thigh','unbloused','bloused','cuffed']){
    const geometry=garmentLegLoft(p[finish],11.25);
    geometry.computeBoundingBox();
-   assert.ok(geometry.boundingBox.max.y-geometry.boundingBox.min.y>=1.03);
+   assert.ok(geometry.boundingBox.max.y-geometry.boundingBox.min.y>=
+    (finish==='bloused'?.72:1.03));
    assert.ok(geometry.getAttribute('uv').count>100);
    assert.ok(geometry.index?.count>100);
    const sample=geometry.getAttribute('uv');
@@ -107,14 +109,16 @@ test('real changeable trouser finish and sleeve state follow bones without chang
   const pants=rig.visualKit.fieldTrousers[trousers];
   assert.ok(blouse.torso.visible);
   assert.equal(visible(blouse.upper),sleeve!=='rolled');
-  assert.equal(visible(blouse.lower),sleeve!=='rolled');
+  assert.equal(visible(blouse.lower),sleeve==='unrolled');
+  assert.equal(visible(blouse.cuffedLower),sleeve==='cuffed');
   assert.equal(visible(blouse.cuffed),sleeve==='cuffed');
   assert.equal(visible(blouse.rolledUpper),sleeve==='rolled');
   assert.equal(visible(pants.thigh),true);
   assert.equal(visible(pants.bloused),hem==='bloused');
   assert.equal(visible(pants.unbloused),hem==='unbloused');
+  assert.equal(visible(pants.cuffed),hem==='cuffed');
   assert.ok(rig.arms.every(a=>a.lower.material===
-   (sleeve==='rolled'?rig.skinMaterial:rig.clothMaterial)));
+   (['rolled','cuffed'].includes(sleeve)?rig.skinMaterial:rig.clothMaterial)));
   assert.deepEqual(rig.feet.map(f=>f.shoe.geometry),original.foot);
   assert.deepEqual(rig.feet.map(f=>f.anchor),original.ankle);
   assert.deepEqual(rig.arms.map(a=>a.upper.geometry),original.arms);

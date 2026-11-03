@@ -51,7 +51,7 @@ export function createHeadwearAppearancePicker(kit:EquipmentLoadout,
  options:PickerOptions={}):HTMLDetailsElement{
  const model=resolvedWardrobe(wardrobe,kit).headwear;
  const canon=headwearAppearanceModel(model);
- const solids=headwearColorChoices(canon),camos=headwearCamoChoices(model);
+ const solids=headwearColorChoices(canon),camos:readonly HeadwearCamoId[]=headwearCamoChoices(model).filter(id=>id!=='splittertarn-31');
  const panel=make('details','fw-headwear-picker');
  panel.dataset.headwearAppearancePicker=model;
  panel.open=options.expanded===true;
@@ -123,7 +123,7 @@ export function createHeadwearAppearancePicker(kit:EquipmentLoadout,
   grid.replaceChildren();painted=true;
   const filter=terrain.value as CamoTerrain|'all';
   const query=search.value.trim().toLowerCase();
-  for(const id of HEADWEAR_CAMO_IDS){
+  for(const id of HEADWEAR_CAMO_IDS.filter(id=>id!=='splittertarn-31')){
    if(!camos.includes(id))continue;
    const meta=CAMO_CATALOG[id],recipe=HEADWEAR_CAMO_RECIPES[id];
    if(filter!=='all'&&meta.terrain!==filter)continue;

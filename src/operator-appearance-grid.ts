@@ -166,13 +166,15 @@ export class OperatorAppearanceGrid{
   }
   // Pair matching structural families in thumbnails, so the new pants
   // show honestly instead of beneath an unrelated uniform blouse.
-  if(item.slot==='top'&&(item.id==='bdu-shirt'||item.id==='acu-shirt')){
-   const t=item.id==='bdu-shirt'?'bdu-trousers':'acu-trousers';
+  if(item.slot==='top'&&(item.id==='bdu-shirt'||item.id==='acu-shirt'||item.id==='gorka-jacket')){
+   const t=item.id==='bdu-shirt'?'bdu-trousers':
+    item.id==='gorka-jacket'?'gorka-trousers':'acu-trousers';
    const next=selectWardrobeItem(kit,w,'trousers',t);
    kit=next.kit;w=next.wardrobe;
   }
-  if(item.slot==='trousers'&&(item.id==='bdu-trousers'||item.id==='acu-trousers')){
-   const top=item.id==='bdu-trousers'?'bdu-shirt':'acu-shirt';
+  if(item.slot==='trousers'&&(item.id==='bdu-trousers'||item.id==='acu-trousers'||item.id==='gorka-trousers')){
+   const top=item.id==='bdu-trousers'?'bdu-shirt':
+    item.id==='gorka-trousers'?'gorka-jacket':'acu-shirt';
    const next=selectWardrobeItem(kit,w,'top',top);
    kit=next.kit;w=next.wardrobe;
   }
@@ -180,7 +182,9 @@ export class OperatorAppearanceGrid{
   kit=choice.kit;w=choice.wardrobe;
   if(item.slot==='top'){
    const print=item.id==='bdu-shirt'?'m81-woodland':
-    item.id==='acu-shirt'?'scorpion-w2':null;
+    item.id==='acu-shirt'?'scorpion-w2':
+     item.id==='combat-shirt'?'multicam':
+     item.id==='smock-jacket'?'woodland-dpm':null;
    if(print)w=setWardrobeFabricCamo(w,'top',print,resolvedWardrobe(w,kit));
   }
   const rig=createOperatorRig('rook','blue');

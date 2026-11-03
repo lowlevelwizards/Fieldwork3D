@@ -4,6 +4,7 @@
  */
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {wardrobeMount} from './operator-wardrobe-mounts.ts';
+import {isGarmentColorway} from './operator-upper-colorways.ts';
 import {initialWardrobeAccessories,readWardrobeAccessories,
  type WardrobeAccessoryConfiguration} from './operator-wardrobe-accessories.ts';
 import {isHeadwearSolidColorId,type HeadwearSolidColorId} from './operator-headwear-colors.ts';
@@ -57,13 +58,16 @@ add('headset','headset',[
 add('top','underlayer',[['base-layer','Base underlayer']]);
 // Stage 3B: only the two approved prototype families remain in the active catalog.
 add('top','uniform',[
- ['bdu-shirt','Classic Field Blouse'],['acu-shirt','Modern Utility Blouse']
+ ['bdu-shirt','Classic Field Blouse'],['acu-shirt','Modern Utility Blouse'],
+ ['combat-shirt','Combat Shirt'],['smock-jacket','Windproof Field Smock'],
+ ['gorka-jacket','Mountain / Gorka Jacket']
 ]);
 add('trousers','underlayer',[['base-shorts','Base shorts']]);
 // Unremodeled lower-body pieces are represented by one honest foundation.
 add('trousers','uniform',[
  ['bdu-trousers','Classic Field Trousers'],
- ['acu-trousers','Modern Utility Trousers']
+ ['acu-trousers','Modern Utility Trousers'],
+ ['gorka-trousers','Mountain / Gorka Trousers']
 ]);
 add('footwear','unshod',[['bare-feet','Bare feet']]);
 add('footwear','boots',[['field-boots','Field boots (foundation)']]);
@@ -120,12 +124,12 @@ export const wardrobeItem=(slot:WardrobeSlot,id:string)=>
  WARDROBE_ITEMS.find(x=>x.slot===slot&&x.id===id);
 export const SLEEVE_STATES=['unrolled','cuffed','rolled'] as const;
 export type SleeveState=typeof SLEEVE_STATES[number];
-export const TROUSER_HEMS=['unbloused','bloused'] as const;
+export const TROUSER_HEMS=['unbloused','bloused','cuffed'] as const;
 export type TrouserHem=typeof TROUSER_HEMS[number];
-export const sleeveStateOptions=(top:string)=>top==='bdu-shirt'||top==='acu-shirt'?
+export const sleeveStateOptions=(top:string)=>top==='bdu-shirt'||top==='acu-shirt'||top==='combat-shirt'?
  SLEEVE_STATES:['unrolled'] as const;
 export const trouserHemOptions=(trousers:string)=>trousers==='bdu-trousers'||
- trousers==='acu-trousers'?TROUSER_HEMS:['unbloused'] as const;
+ trousers==='acu-trousers'||trousers==='gorka-trousers'?TROUSER_HEMS:['unbloused'] as const;
 export type WardrobeOptions={
  version:1;styles:Partial<Record<WardrobeSlot,string>>;
  headwearColor?:HeadwearSolidColorId;headwearCamo?:HeadwearCamoId;
@@ -135,6 +139,8 @@ export type WardrobeOptions={
  /** Saved individual fabric-cut seeds; never regenerated during animation. */
  fabricCamoRoll?:Partial<Record<FabricCamoChannel,number>>;
  sleeveState:SleeveState;trouserHem:TrouserHem;
+ /** Contextual new-garment materials, never the abolished global palette. */
+ topColorway:string;
  accessories:WardrobeAccessoryConfiguration;
  mounts:{medical?:string;utility?:string;magazineOrder:'left-right'|'right-left'};
 };
@@ -147,6 +153,7 @@ const DEFAULTS:Record<WardrobeSlot,string>={
 };
 export const initialWardrobe=():WardrobeOptions=>({
  version:1,styles:{},sleeveState:'unrolled',trouserHem:'bloused',
+ topColorway:'standard',
  accessories:initialWardrobeAccessories(),
  mounts:{magazineOrder:'left-right'}
 });
@@ -164,7 +171,7 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(v.fabricCamo&&typeof v.fabricCamo==='object'&&!Array.isArray(v.fabricCamo)){
   for(const channel of FABRIC_CAMO_CHANNELS){
    const id=v.fabricCamo[channel];
-   if(isHeadwearCamoId(id)){
+   if(isHeadwearCamoId(id)&&id!=='splittertarn-31'){
     (result.fabricCamo??={})[channel]=id;
    }
   }
@@ -177,13 +184,14 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
   }
  }
  if(isHeadwearSolidColorId(v.headwearColor))result.headwearColor=v.headwearColor;
- if(isHeadwearCamoId(v.headwearCamo))result.headwearCamo=v.headwearCamo;
+ if(isHeadwearCamoId(v.headwearCamo)&&v.headwearCamo!=='splittertarn-31')result.headwearCamo=v.headwearCamo;
  if(Number.isInteger(v.headwearCamoRoll)&&v.headwearCamoRoll!>=0&&v.headwearCamoRoll!<4096)
   result.headwearCamoRoll=v.headwearCamoRoll;
  if(SLEEVE_STATES.includes(v.sleeveState as SleeveState))
   result.sleeveState=v.sleeveState as SleeveState;
  if(TROUSER_HEMS.includes(v.trouserHem as TrouserHem))
   result.trouserHem=v.trouserHem as TrouserHem;
+ if(isGarmentColorway(v.topColorway))result.topColorway=v.topColorway;
  result.accessories=readWardrobeAccessories(v.accessories);
  if(v.mounts&&typeof v.mounts==='object'){
   const incoming=v.mounts;
@@ -291,7 +299,7 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
   ['no-pack'],slots.backpack==='backpack-day'?'day-pack':
   slots.backpack==='backpack-field'?'field-pack':'no-pack');
  choose('trousers',slots.legs==='legs-none'?['base-shorts']:
-  ['bdu-trousers','acu-trousers'],
+  ['bdu-trousers','acu-trousers','gorka-trousers'],
   slots.legs==='legs-none'?'base-shorts':'bdu-trousers');
  choose('footwear',slots.feet==='feet-none'?['bare-feet']:['field-boots'],
   slots.feet==='feet-none'?'bare-feet':'field-boots');

@@ -53,7 +53,7 @@ export const FABRIC_CAMO_POLICY:Readonly<Record<HeadwearCamoId,FabricCamoPolicy>
  'belgian-jigsaw':policy(withKit,'transition','issued-or-commercial','Belgian uniform and matching fabric bags/load gear; avoid unverified plate covers'),
  'east-german-strichtarn':policy(withKit,'historic','issued','East German uniform, rain-pattern field pack and textile field pouches'),
  'mitchell-leaf':policy([],'historic','headwear-only','Historically issued as reversible helmet cover/shelter half, not standard fatigues'),
- 'splittertarn-31':policy(uniform,'historic','limited','German poncho/smock and limited winter suit trousers; no issued modern tactical nylon'),
+ 'splittertarn-31':policy([],'historic','limited','Deferred entirely: archived master retained; not offered on any active garment or kit'),
  'australian-dpcu':policy(all,'modern','issued','DPCU fatigues and matching manufactured pouches, vest covers and packs'),
  'italian-vegetato':policy(all,'modern','issued-or-commercial','Italian uniforms and available Italian-pattern field equipment'),
  'scorpion-w2':policy(all,'modern','issued','Army OCP uniform and matching organizational equipment'),
@@ -75,9 +75,23 @@ export function fabricCamoCompatible(id:HeadwearCamoId,
  if(!entry.channels.includes(channel))return false;
  switch(channel){
   case 'top':
+   if(outfit.top==='combat-shirt')
+    return ['ucp','multicam','scorpion-w2','woodland-marpat',
+     'desert-marpat','cadpat-tw','british-mtp','finnish-m05',
+     'italian-vegetato','russian-emr','pla-xingkong','indian-digital-2022',
+     'polish-pantera','m81-woodland','flecktarn'].includes(id);
+   if(outfit.top==='smock-jacket')
+    return ['woodland-dpm','british-mtp','multicam','m81-woodland',
+     'flecktarn','swedish-m90','finnish-m05','desert-tropentarn',
+     'three-color-desert','polish-pantera','russian-flora','russian-emr',
+     'alpenflage','six-color-desert'].includes(id);
+   if(outfit.top==='gorka-jacket')
+    return ['russian-flora','russian-emr','multicam','polish-pantera'].includes(id);
    return (outfit.top==='bdu-shirt'||outfit.top==='acu-shirt')&&
     uniformCutCamoCompatible(outfit.top,id);
   case 'trousers':
+   if(outfit.trousers==='gorka-trousers')
+    return ['russian-flora','russian-emr','multicam','polish-pantera'].includes(id);
    return (outfit.trousers==='bdu-trousers'||
     outfit.trousers==='acu-trousers')&&
     uniformCutCamoCompatible(outfit.trousers,id);
