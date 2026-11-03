@@ -30,8 +30,8 @@ import {coverImpactFraction,aimHeight} from './breach-cover-height.ts';
 import {MICRO_KEYS,MICRO_COLS} from './breach-fog-memory.ts';
 import {assessFireLane,type FireBlock} from './breach-fire-safety.ts';
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
-import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor,
-  pressDoorOnBodyAttempt} from './breach-door.ts';
+import {initDoor,advanceDoor,doorReachable,doorApproach,kickDoor,
+  initialOpeningYieldCandidate,pressDoorOnBodyAttempt} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool,issuedWedges} from './equipment-entry-tools.ts';
@@ -64,7 +64,8 @@ import {passageWait,type PassageActor,type PassageLease}
 import {diagnoseMovement,projectReachableGoal,type Blocker}
   from './breach-nav-diagnostics.ts';
 import {bodyClear,sweptBodyClear,squeezeFacing,
-  sweptProfileClear,SQUEEZE_RADIUS,escapeOpenDoorOverlap}
+  sweptProfileClear,SQUEEZE_RADIUS,escapeOpenDoorOverlap,
+  slideAroundStaticCorner}
   from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
   from './breach-squeeze-route.ts';
@@ -466,8 +467,13 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
   const proposed:PlanNode[]=[];
   let from=finalPoint(a);
   const facing=[...a.plan].reverse().find(n=>n.facing!==undefined)?.facing??a.heading;
-  for(const point of points.slice(0,60)){
-    if(d(from,point)<20||!intelPassable(point,s.intel,SQUEEZE_RADIUS)||
+  // Input strokes may still contain many meaningful bends; keep the
+  // actual release position even if the safety cap clips the middle.
+  const stroke=points.length>60?[...points.slice(0,59),points.at(-1)!]:points;
+  for(let i=0;i<stroke.length;i++){
+    const point=stroke[i],last=i===stroke.length-1;
+    if(d(from,point)<(last?3:20)||
+      !intelPassable(point,s.intel,SQUEEZE_RADIUS)||
       !routeWithSqueezeIntel(s.intel,from,point).length)continue;
     proposed.push({id:s.nextId+proposed.length,kind:'move',p:clone(point),
       ...(strafe?{moveMode:'strafe' as const,facing}:{})});
@@ -1539,6 +1545,17 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       a.nav=[];a.retryRouteAt=0;return true;
     }
   }
+  // Furniture corners should be brushed around, not treated as hard jams.
+  // Every candidate remains a real swept, full-size body movement.
+  if(!traversable&&!a.squeeze&&!blocking&&!closed&&
+     diagnoseMovement(a.p,desiredMove,s.doors).blocker==='furniture'){
+    const slide=slideAroundStaticCorner(a.p,desiredMove,next,s.doors);
+    if(slide){
+      a.priorP=clone(a.p);a.p=slide;
+      a.blockedTime=0;a.lastBlocker='clear';a.retryRouteAt=0;
+      return true;
+    }
+  }
   // Try nearby route repair for actor jams, furniture, and door leaves.
   if((!traversable||blocking)&&
     recoveryAction(blocking?'actor':a.lastBlocker,a.blockedTime,
@@ -2069,7 +2086,9 @@ function runOrders(s:Session,a:TeamActor,dt:number){
         }
         for(const leaf of pairedLeaves(s,door)){
           leaf.open=true;leaf.openedAt=s.seconds;
-          pushDoor(leaf,.45);
+          // A deliberate OPEN uses the normal ~90-degree stop.
+          // Only actual sustained shoulder contact requests extra swing.
+          leaf.pushTarget=1;leaf.angularVelocity=0;
         }
         hear(s,doorCenter(door),145,'door');
         notify(s,door.id+' OPENED');
@@ -3073,6 +3092,21 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
       if(!holder||holder.health<=0||holder.plan.length>0||
          holder.nav.length>0||!doorReachable(holder.p,door))
         door.heldBy=null;
+    }
+    // An operator just inside the initial sweep may yield a small REAL
+    // step before the leaf advances. This is not an actor-collision bypass:
+    // static geometry, other leaves and opposing bodies must all remain solid.
+    if(door.open&&(door.openFraction??0)<.36&&
+       (door.pushTarget??1)<=1.01){
+      for(const actor of s.operators){
+        if(actor.health<=0)continue;
+        const candidate=initialOpeningYieldCandidate(door,actor.p);
+        if(!candidate||!sweptBodyClear(actor.p,candidate,s.doors)||
+           s.operators.some(other=>other!==actor&&other.health>0&&
+             other.side!==actor.side&&d(other.p,candidate)<11))continue;
+        actor.priorP=clone(actor.p);
+        actor.p=candidate;
+      }
     }
     advanceDoor(door,h,s.operators.filter(a=>a.health>0).map(a=>a.p));
   }
