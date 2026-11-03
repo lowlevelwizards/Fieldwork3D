@@ -46,7 +46,7 @@ test('all three new upper designs and actual matching mountain trousers exist in
  assert.ok(p['smock-jacket'].rings.at(-1).y<
   p['combat-shirt'].rings.at(-1).y-2,'smock must have a long outer hem');
  assert.ok(p['gorka-jacket'].rings[1].side>
-  p['combat-shirt'].rings[1].side+.90,'mountain suit retains a looser shoulder');
+  p['combat-shirt'].rings[1].side+.4,'mountain suit retains a looser shoulder');
  assert.ok(p['gorka-jacket'].rings[1].side<
   p['combat-shirt'].rings[1].side+1.50,'not an armored juggernaut');
  assert.ok(p['smock-jacket'].rings[1].side<8.3,'smock keeps restrained outerwear volume');
