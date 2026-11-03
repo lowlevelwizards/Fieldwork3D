@@ -191,6 +191,13 @@ export function createChestRigSilhouettes(chest:THREE.Group,
    pouch(g,fabric,trim,8.74,-2.20,z,3.48,2.45,1.08);
   for(const s of [-1,1])
    box(g,dark,7.95,1.2,s*3.65,.40,2.65,.90);
+  // Standalone harness is present ONLY without an outer carrier.
+  // A nested group remains toggleable after consolidating the placard body.
+  const harness=new THREE.Group();harness.name='standalone-harness';
+  g.add(harness);
+  shoulderHarness(harness,dark,4.0);
+  box(harness,dark,-6.15,-1.0,0,.48,1.0,9.15);
+  consolidateVisualGroup(harness);
  }
  {
   const g=make('micro-rig');
