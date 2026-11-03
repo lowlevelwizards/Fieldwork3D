@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 import {HEADWEAR_CAMO_IDS,HEADWEAR_CAMO_RECIPES,HEADWEAR_CAMO_SIZE,HEADWEAR_CAMO_DENSITY,headwearCamoSize,
  headwearCamoChoices,headwearCamoIndices,headwearCamoCoverage,
  headwearCamoPixels,resolvedHeadwearCamo,headwearCamoPlacement,
- headwearCamoFrontBrownFraction,nextHeadwearCamoRoll} from '../src/operator-headwear-camo.ts';
+ headwearCamoFrontBrownFraction,headwearCamoM81CrownCoverage,nextHeadwearCamoRoll} from '../src/operator-headwear-camo.ts';
 import {headwearCamoTexture,headwearDetailTexture,headwearFinishTexture}
  from '../src/operator-headwear-materials.ts';
 import {initialWardrobe,readWardrobe} from '../src/operator-wardrobe-data.ts';
@@ -205,7 +205,7 @@ test('the Lab exposes a dedicated accessible reroll without changing the canonic
  const coverage=headwearCamoCoverage('m81-woodland');
  assert.ok(coverage[0]>.38,'M81 needs a substantial olive background');
  assert.ok(coverage[2]>.20,'M81 must include a visible tan fourth color');
- assert.ok(coverage[3]>.07&&coverage[3]<.16,'M81 dark branches remain sparse');
+ assert.ok(coverage[3]>.14&&coverage[3]<.25,'M81 dark branches are readable but not dominant');
  assert.ok(coverage[1]<.28,'M81 brown secondary only');
 });
 
@@ -235,14 +235,13 @@ test('3C palettes give M81 and DPM distinct identities without recoloring woodla
  const marpat=HEADWEAR_CAMO_RECIPES['woodland-marpat'].colors;
  assert.deepEqual(marpat,[[94,111,77],[138,121,90],[64,83,66],[46,54,44]],
   'MARPAT retains the earthy green/brown palette that already read well');
- assert.deepEqual(m81,[[87,118,73],[118,85,60],[175,155,105],[48,55,39]],
-  'M81 returns to DPM-family muted woodland greens instead of lime');
+ assert.deepEqual(m81,[[75,96,74],[100,82,70],[147,137,115],[37,43,40]],
+  'M81 must be muted, with brown/green/tan separated by dark ink');
  assert.deepEqual(dpm,[[175,155,105],[87,118,73],[118,85,60],[48,55,39]],
   'DPM warm khaki/green/earth-brown does not borrow MARPAT wash');
- assert.deepEqual(m81[0],dpm[1],'M81 and DPM share the approved olive fabric ink');
- assert.deepEqual(m81[1],dpm[2],'M81 and DPM share the approved brown fabric ink');
- assert.deepEqual(m81[2],dpm[0],'M81 now uses DPM tan as its true fourth field color');
- assert.deepEqual(m81[3],dpm[3],'M81 and DPM share the approved dark fabric ink');
+ assert.ok(m81[0][1]<dpm[1][1],'M81 olive should be more subdued than DPM');
+ assert.ok(m81[2][0]<dpm[0][0],'M81 tan should be more muted than DPM');
+ assert.ok(m81[3][0]<dpm[3][0],'M81 charcoal should read as black-branch ink');
  assert.notDeepEqual(m81,dpm);
  assert.notDeepEqual(dpm,marpat);
  const dpmCoverage=headwearCamoCoverage('woodland-dpm');
@@ -346,7 +345,9 @@ test('4A expanded library preserves native tile scale, print compatibility and p
   'rhodesian-brushstroke','desert-tropentarn'];
  assert.deepEqual(HEADWEAR_CAMO_IDS.slice(12),six);
  assert.equal(headwearCamoSize('m81-woodland'),64);
- for(const id of HEADWEAR_CAMO_IDS.slice(1))assert.equal(headwearCamoSize(id),32,id);
+ for(const id of HEADWEAR_CAMO_IDS.filter(id=>!['m81-woodland','desert-tropentarn'].includes(id)))
+  assert.equal(headwearCamoSize(id),32,id);
+ assert.equal(headwearCamoSize('desert-tropentarn'),64);
  const oldColors=new Set(HEADWEAR_CAMO_IDS.slice(0,12).flatMap(id=>
   HEADWEAR_CAMO_RECIPES[id].colors.map(c=>c.join(','))));
  const uniqueSignatures=new Set();
@@ -416,5 +417,57 @@ test('4B Finnish M05 prints genuinely smaller, with distinct patterns/pigments',
  const src=readFileSync(new URL('../src/operator-headwear-camo.ts',import.meta.url),'utf8');
  assert.match(src,/apply4BDetail/);
  assert.match(src,/camoGrain/);
- assert.match(src,/camoNearPoint/);
+ assert.match(src,/camoLattice/);
+});
+
+test('4C M81 crown and forward wall remain four-tone across seeded rerolls',()=>{
+ const phases=[];
+ for(let i=0;i<15;i++){
+  const p=headwearCamoPlacement('rook','headwear:boonie','m81-woodland',i);
+  phases.push(p);
+  const cover=headwearCamoM81CrownCoverage(p);
+  assert.ok(cover[3]>=.085,'dark forks must be visible on crown, reroll '+i);
+  assert.ok(cover[0]<=.54,'green cannot become a solid panel, reroll '+i);
+  assert.ok(cover[2]>=.13,'tan must break up the face of the crown, reroll '+i);
+  assert.ok(cover[1]>=.10,'brown must appear somewhere in crown, reroll '+i);
+  assert.ok(headwearCamoFrontBrownFraction(p)<=.34,'brown-front limit reroll '+i);
+ }
+ assert.ok(new Set(phases.map(p=>p.offsetX+':'+p.offsetY)).size>=6);
+});
+test('4C desert German spot pattern is 64px, three colors and real Flecktarn-family micro rosettes',()=>{
+ const id='desert-tropentarn';
+ const recipe=HEADWEAR_CAMO_RECIPES[id];
+ assert.equal(headwearCamoSize(id),64);
+ assert.equal(recipe.colors.length,3,'German desert flecks use sand, brown and green');
+ assert.ok(headwearCamoCoverage(id)[0]>.50,'sand must remain negative space');
+ assert.ok(headwearCamoCoverage(id)[1]>.12,'brown droplet clusters must register');
+ assert.ok(headwearCamoCoverage(id)[2]>.08,'dark olive groupings must register');
+ const placement={offsetX:41,offsetY:50},texture=headwearCamoTexture('boonie',id,placement);
+ const art=headwearCamoPixels(id);
+ for(const [x,y] of [[0,0],[12,12],[32,47],[63,63]]){
+  const src=((y+50)%64*64+(x+41)%64)*4;
+  const dst=(y*128+x)*4;
+  assert.deepEqual(Array.from(texture.image.data.slice(dst,dst+3)),
+   Array.from(art.slice(src,src+3)));
+ }
+ const code=readFileSync(new URL('../src/operator-headwear-camo.ts',import.meta.url),'utf8');
+ assert.match(code,/Wüstentarn inherits Flecktarn rosettes/);
+});
+test('4C audited motif families remain distinctive and reference anchored',()=>{
+ const recipes=HEADWEAR_CAMO_RECIPES;
+ const palettes=HEADWEAR_CAMO_IDS.map(id=>recipes[id].colors.map(c=>c.join(',')).join('/'));
+ assert.ok(new Set(palettes).size>=17,'only intentional color similarities may recur');
+ assert.equal(HEADWEAR_CAMO_DENSITY['finnish-m05'],3);
+ assert.equal(HEADWEAR_CAMO_DENSITY['swedish-m90'],1);
+ assert.equal(HEADWEAR_CAMO_DENSITY['woodland-dpm'],1);
+ assert.equal(HEADWEAR_CAMO_DENSITY['russian-flora'],1);
+ assert.ok(recipes.alpenflage.colors.some(c=>c[0]>140&&c[1]<90),
+  'Alpenflage retains its distinct red');
+ assert.ok(recipes['woodland-marpat'].colors.length>=4);
+ assert.ok(recipes['desert-marpat'].colors.length>=4);
+ assert.ok(recipes['six-color-desert'].colors.length>=6);
+ const dpmMotifs=recipes['woodland-dpm'].motifs.length;
+ assert.ok(dpmMotifs>=20,'British DPM maintains fine branching brushes');
+ assert.ok(recipes['m81-woodland'].motifs.length>=30,
+  'M81 four-tone connected artwork needs multiple black forks');
 });
