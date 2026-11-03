@@ -1,0 +1,164 @@
+/** Traversal Stage 3a: deterministic, collision-truth crossing contract.
+ * A vault is a timed physical transition over ONE explicitly eligible
+ * obstacle, not permission to ignore all cover or slide through a wall.
+ *
+ * This module defines the action and checks. The live motor and rendering
+ * integration are a separate stage: never bypass cover collision merely
+ * because probeCrossing returns an opportunity.
+ */
+import {type Obstacle,type Door,type Pt,type Segment,
+ OPERATOR_RADIUS,pointToSegment,doorLeafSegment} from './breach-core.ts';
+import {coverHeight} from './breach-cover-height.ts';
+import {isFootstepObstacle,traversalSurface} from './breach-traversal-surfaces.ts';
+import type {WindowState} from './breach-windows.ts';
+
+export type TraverseKind='step'|'hop'|'vault'|'mantle'|'climb-window';
+export type TraversePace='walk'|'run';
+export type TraverseFitness={
+ pace?:TraversePace;injury?:0|1|2|3;loadFactor?:number;
+};
+export type TraverseOpportunity={
+ kind:TraverseKind;obstacleIndex:number;fixture:string;
+ from:Pt;approach:Pt;landing:Pt;destination:Pt;
+ height:number;duration:number;lift:number;
+};
+export type TraverseFrame={
+ p:Pt;elevation:number;progress:number;done:boolean;phase:
+ 'takeoff'|'over'|'landing'|'complete';
+};
+const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
+const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
+const pointBetween=(a:Pt,b:Pt,t:number):Pt=>({
+ x:mix(a.x,b.x,t),y:mix(a.y,b.y,t)
+});
+export const traversalDuration=(kind:TraverseKind,
+ fit:TraverseFitness={}):number=>{
+ const base:Record<TraverseKind,number>={
+  step:.14,hop:.38,vault:.76,mantle:1.42,'climb-window':1.18
+ };
+ const pace=fit.pace==='run'&&kind!=='mantle'&&kind!=='climb-window'?.83:1;
+ const injury=fit.injury===1?1.12:fit.injury===2?1.35:
+   fit.injury===3?Infinity:1;
+ const load=Math.max(.9,Math.min(1.5,fit.loadFactor??1));
+ return base[kind]*pace*injury*load;
+};
+export function traversalKind(obstacle:Obstacle):TraverseKind|null{
+ const surface=traversalSurface(obstacle);
+ const height=coverHeight(obstacle);
+ if(surface==='step-over')return 'step';
+ if(surface!=='vault'&&surface!=='mantle')return null;
+ if(height<=0||height>44)return null;
+ // Structural walls require more deliberate hand-supported climbing.
+ if(surface==='mantle')return 'mantle';
+ if(height<=16)return 'hop';
+ if(height<=28)return 'vault';
+ return 'mantle';
+}
+/** Exact intersection interval of a 2D segment with an axis-aligned prop,
+ * used only to locate a potential crossing, never to waive wall collision. */
+export function crossingInterval(from:Pt,to:Pt,o:Obstacle):
+ [number,number]|null{
+ let low=0,high=1;
+ for(const [p,v,min,max] of [
+  [from.x,to.x-from.x,o.x-o.w/2,o.x+o.w/2],
+  [from.y,to.y-from.y,o.y-o.h/2,o.y+o.h/2]
+ ]){
+  if(Math.abs(v)<1e-8){if(p<min||p>max)return null;continue;}
+  let enter=(min-p)/v,leave=(max-p)/v;
+  if(enter>leave){const swap=enter;enter=leave;leave=swap;}
+  low=Math.max(low,enter);high=Math.min(high,leave);
+  if(low>=high)return null;
+ }
+ return low>0&&high<1?[low,high]:null;
+}
+function outsideTarget(p:Pt,o:Obstacle,r:number){
+ return Math.abs(p.x-o.x)>=o.w/2+r||
+   Math.abs(p.y-o.y)>=o.h/2+r;
+}
+/** Every sample of the proposed path must be clear of walls, door leaves,
+ * and all cover EXCEPT the one obstacle being traversed at height.
+ * This is independent of map-intel authoring and cannot reveal hidden props.
+ */
+function sweptApartFromTarget(from:Pt,to:Pt,target:number,
+ cover:readonly Obstacle[],walls:readonly Segment[],
+ doors:readonly Door[],r=OPERATOR_RADIUS){
+ const length=distance(from,to);
+ const steps=Math.max(1,Math.ceil(length/2.5));
+ for(let i=0;i<=steps;i++){
+  const p=pointBetween(from,to,i/steps);
+  if(walls.some(w=>pointToSegment(p,w)<r+1))return false;
+  if(doors.some(d=>pointToSegment(p,doorLeafSegment(d))<r+1))
+   return false;
+  if(cover.some((o,index)=>index!==target&&isFootstepObstacle(o)&&
+   Math.abs(p.x-o.x)<o.w/2+r&&Math.abs(p.y-o.y)<o.h/2+r))
+   return false;
+ }
+ return true;
+}
+export type CrossingWorld={
+ cover:readonly Obstacle[];walls:readonly Segment[];doors:readonly Door[];
+ actors?:readonly Pt[];canStand?:(p:Pt)=>boolean;
+};
+/** Find a *single* useful obstacle crossing along a user-intended segment.
+ * We require both a full-body takeoff and landing, a verified swept path
+ * against all OTHER obstacles, and no person occupying the landing.
+ */
+export function probeObstacleCrossing(from:Pt,to:Pt,world:CrossingWorld,
+ fit:TraverseFitness={}):TraverseOpportunity|null{
+ if(fit.injury===3)return null;
+ const length=distance(from,to);
+ if(length<20||length>180)return null;
+ const options=world.cover.map((o,index)=>({
+   o,index,interval:crossingInterval(from,to,o),
+   kind:traversalKind(o)
+ })).filter(x=>x.interval&&x.kind&&x.kind!=='step')
+   .sort((a,b)=>a.interval![0]-b.interval![0]);
+ if(options.length!==1)return null;
+ const {o,index,interval,kind}=options[0];
+ const [enter,exit]=interval!;
+ // A very broad object is not a hop or vault, even if it is short.
+ const width=(exit-enter)*length;
+ if(width>(kind==='hop'?30:kind==='vault'?52:34))return null;
+ const lead=(OPERATOR_RADIUS+3)/length;
+ const trail=(OPERATOR_RADIUS+5)/length;
+ const takeoff=pointBetween(from,to,Math.max(0,enter-lead));
+ const landing=pointBetween(from,to,Math.min(1,exit+trail));
+ if(!outsideTarget(takeoff,o,OPERATOR_RADIUS+1)||
+    !outsideTarget(landing,o,OPERATOR_RADIUS+1))return null;
+ if(world.canStand&&(!world.canStand(takeoff)||
+    !world.canStand(landing)))return null;
+ if(world.actors?.some(p=>distance(p,landing)<OPERATOR_RADIUS*2+3))
+    return null;
+ if(!sweptApartFromTarget(takeoff,landing,index,
+   world.cover,world.walls,world.doors))return null;
+ const duration=traversalDuration(kind!,fit);
+ if(!Number.isFinite(duration))return null;
+ return {kind:kind!,obstacleIndex:index,fixture:o.fixture??'cover',
+  from:{...from},approach:takeoff,landing,destination:{...to},
+  height:coverHeight(o),duration,lift:coverHeight(o)+5};
+}
+export function canClimbWindow(window:WindowState):boolean{
+ if(!window.open&&!window.shattered)return false;
+ if(window.treatment==='bars'||window.treatment==='boarded')return false;
+ if(window.width<25)return false;
+ const sill=window.sillHeight??14,head=window.headHeight??38;
+ return sill<=30&&head-sill>=18;
+}
+/** A window is never auto-passable just because its sill is low. This
+ * clearance gate is shared by future window orders and auto-climb paths. */
+export function windowCrossingKind(window:WindowState):
+ TraverseKind|null{
+ return canClimbWindow(window)?'climb-window':null;
+}
+/** Animate the body between validated takeoff and landing. The live motor
+ * still has to check clearance as it commits each frame; this is a
+ * deterministic pose/trajectory sampler, not a collision override.
+ */
+export function sampleTraversal(action:TraverseOpportunity,
+ elapsed:number):TraverseFrame{
+ const t=Math.max(0,Math.min(1,elapsed/Math.max(.001,action.duration)));
+ const smooth=t*t*(3-2*t),p=pointBetween(action.approach,action.landing,smooth);
+ const lift=Math.sin(Math.PI*t)*action.lift;
+ return {p,elevation:lift,progress:t,done:t>=1,
+  phase:t>=1?'complete':t<.25?'takeoff':t<.78?'over':'landing'};
+}
