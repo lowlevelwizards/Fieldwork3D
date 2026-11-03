@@ -44,7 +44,7 @@ try{
     return c?.dataset.armor===a&&c?.dataset.rig===b;
    },[armor,rig]);
    for(const view of ['fit','front']){
-    await page.locator('[data-view="'+view+'"]').click();
+    await page.locator('button[data-view="'+view+'"]').click();
     await page.waitForFunction(v=>
      document.getElementById('armorCanvas')?.dataset.view===v,view);
     await page.locator('#armorCanvas').screenshot({
