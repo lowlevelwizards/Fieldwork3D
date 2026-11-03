@@ -140,8 +140,11 @@ export function doorWouldStrikeActors(d:Door,next:number,actors:readonly Pt[],
 export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[], actorRadius=OPERATOR_RADIUS){
  if(d.kind==='shutter')return false;
  if(d.kind==='sliding')return doorWouldStrikeActors(d,next,actors);
- // Standalone door fixtures have no registered architecture; do not
- // collide them with an unrelated active level's walls or cover.
+ // Physical bodies always stop the leaf, including dynamic or lab doors
+ // without registered architectural walls. Never skip actor collision as
+ // a side effect of the standalone-fixture optimization.
+ if(doorWouldStrikeActors(d,next,actors,actorRadius))return true;
+ // Standalone doors only skip unrelated *architectural* wall/cover checks.
  const registered=activeSite()?.doors??initialDoors();
  if(!registered.some(real=>real.id===d.id))return false;
  const leaf=doorLeafSegment({...d,openFraction:next});
@@ -152,7 +155,6 @@ export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[], act
    if(COVER.some(o=>Math.abs(o.x-p.x)<o.w/2+1.25&&
      Math.abs(o.y-p.y)<o.h/2+1.25))return true;
  }
- if(doorWouldStrikeActors(d,next,actors,actorRadius))return true;
  return false;
 }
 export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[]){
