@@ -23,24 +23,24 @@ type Ring={y:number;front:number;back:number;side:number};
 export const BLOUSE_CUT_PROFILE={
  'bdu-shirt':{
   rings:[
-   {y:6.1,front:5.20,back:-5.25,side:7.05},
-   {y:4.5,front:5.65,back:-5.45,side:7.88},
-   {y:-1.5,front:5.72,back:-5.48,side:7.73},
-   {y:-6.72,front:5.72,back:-5.45,side:7.48}
+   {y:6.15,front:5.22,back:-5.28,side:7.18},
+   {y:4.5,front:5.80,back:-5.65,side:8.63},
+   {y:-1.5,front:5.88,back:-5.67,side:8.18},
+   {y:-7.30,front:5.83,back:-5.62,side:7.98}
   ],
   collar:'traditional-fold',pockets:'four-front',hem:'loose-untucked',
-  upperRadius:[2.97,2.80],lowerRadius:[2.65,2.46]
+  upperRadius:[3.35,3.08],lowerRadius:[2.91,2.66]
  },
  'acu-shirt':{
   rings:[
-   {y:6.05,front:5.23,back:-5.22,side:7.03},
-   {y:4.4,front:5.47,back:-5.32,side:7.45},
-   {y:-1.5,front:5.49,back:-5.38,side:7.20},
-   {y:-5.70,front:5.37,back:-5.28,side:7.03}
+   {y:6.12,front:5.25,back:-5.23,side:7.16},
+   {y:4.4,front:5.58,back:-5.47,side:7.84},
+   {y:-1.5,front:5.56,back:-5.43,side:7.28},
+   {y:-5.98,front:5.42,back:-5.33,side:7.03}
   ],
   collar:'modern-fold-or-mandarin',pockets:'slanted-chest-and-upper-arm',
   hem:'tidy-straight',
-  upperRadius:[2.84,2.56],lowerRadius:[2.52,2.35]
+  upperRadius:[3.13,2.77],lowerRadius:[2.72,2.49]
  }
 } as const;
 
@@ -134,40 +134,41 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
  const models={} as FieldBlousePrototypes;
  for(const cut of FIELD_BLOUSE_CUTS){
   const historic=cut==='bdu-shirt',profile=BLOUSE_CUT_PROFILE[cut];
+  // Exaggerated primary masses remain cosmetic; shoulder sockets and IK stay fixed.
   const torso=group(chest,'field-blouse:'+cut);
   const shell=new THREE.Mesh(fieldBlouseShellGeometry(cut),cloth);
   shell.castShadow=true;shell.receiveShadow=true;torso.add(shell);
   if(historic){
    // Open conventional collar with two broad turned-down lapels.
-   box(torso,cloth,-1.4,6.45,0,6.7,1.15,8.0);
+   box(torso,cloth,-1.5,6.60,0,7.2,1.38,8.6);
    for(const sign of [-1,1]){
-    box(torso,cloth,3.5,6.55,sign*3.0,3.5,.76,2.95,
+    box(torso,cloth,3.55,6.66,sign*3.18,3.9,1.02,3.40,
      sign*.24);
     // Four distinct BDU cargo pockets, two chest and two lower.
-    for(const y of [2.0,-3.55]){
-     box(torso,cloth,5.92,y,sign*3.65,.46,2.40,4.05);
-     box(torso,cloth,6.18,y+1.16,sign*3.65,.30,.62,4.48);
+    for(const y of [2.1,-4.05]){
+     box(torso,cloth,6.14,y,sign*3.66,.58,3.04,4.68);
+     box(torso,cloth,6.46,y+1.43,sign*3.66,.36,.88,4.92);
     }
    }
    // Concealed button placket: visible only at close Lab zoom.
-   box(torso,trim,5.78,-.20,0,.11,8.55,.28);
-   box(torso,cloth,5.64,-6.50,0,.24,.48,14.30);
+   box(torso,trim,5.99,-.20,0,.15,9.05,.40);
+   box(torso,cloth,5.91,-7.05,0,.42,.68,15.20);
   }else{
    // Fold-down modern ACU collar. Earlier UCP versions may stand higher;
    // keep the low folded silhouette for the OCP reference in this pass.
-   box(torso,cloth,-1.25,6.35,0,6.8,1.15,7.4);
+   box(torso,cloth,-1.25,6.50,0,7.0,1.32,7.6);
    for(const sign of [-1,1]){
-    box(torso,cloth,3.25,6.14,sign*2.5,3.3,.62,2.65,
+    box(torso,cloth,3.35,6.27,sign*2.6,3.60,.82,2.90,
      sign*.17);
     // Diagonal chest cargo pockets, slimmer and higher than BDU.
-    box(torso,cloth,5.76,1.15,sign*3.55,.36,3.05,3.80,
+    box(torso,cloth,5.86,1.15,sign*3.60,.46,3.40,4.20,
      -sign*.27);
-    box(torso,cloth,6.01,2.60,sign*3.75,.22,.58,3.9,
+    box(torso,cloth,6.12,2.76,sign*3.75,.28,.78,4.25,
      -sign*.27);
    }
    // Hidden zipper/placket and short hem, rather than BDU four-pocket apron.
-   box(torso,trim,5.58,-.14,0,.11,9.80,.26);
-   box(torso,cloth,5.41,-5.60,0,.24,.45,13.30);
+   box(torso,trim,5.66,-.14,0,.16,9.85,.35);
+   box(torso,cloth,5.52,-5.81,0,.37,.62,13.60);
   }
   const upper:THREE.Group[]=[],lower:THREE.Group[]=[];
   for(const [index,arm] of arms.entries()){
@@ -180,9 +181,9 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
     box(b,cloth,0,-.38,2.55,2.2,.115,.44);
    }else{
     // ACU upper-arm utility pocket and loop surface follow the moving bone.
-    box(a,cloth,0,.13,2.81,2.35,.23,.70);
-    box(a,trim,.02,.255,2.85,2.14,.055,.74);
-    box(b,cloth,0,-.36,2.42,1.95,.085,.35);
+    box(a,cloth,0,.13,3.10,3.05,.30,.95);
+    box(a,trim,.02,.290,3.15,2.80,.08,1.00);
+    box(b,cloth,0,-.36,2.62,2.25,.10,.48);
    }
    consolidateVisualGroup(a);consolidateVisualGroup(b);
    upper.push(a);lower.push(b);
