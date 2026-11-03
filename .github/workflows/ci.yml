@@ -27,6 +27,9 @@ jobs:
       - name: Focused garment metric UVs, cuff/hem state and independent materials
         if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feat/garment-readability-') || startsWith(github.head_ref, 'feat/wardrobe-cuff-roll-elbow-') || startsWith(github.head_ref, 'feat/wardrobe-auto-knit-fold-')) }}
         run: node --experimental-strip-types --test tests/operator-garment-readability-20261103.test.mjs
+      - name: Traversal recovery Stage 4a landing and replay regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-traversal-recovery-') }}
+        run: node --experimental-strip-types --test tests/breach-traversal-recovery.test.mjs tests/breach-mantle-session.test.mjs tests/breach-mantle-contract.test.mjs
       - name: Mantle Stage 3a crossing contract and window eligibility
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-vault-mantle-') }}
         run: node --experimental-strip-types --test tests/breach-mantle-contract.test.mjs tests/breach-mantle-session.test.mjs
