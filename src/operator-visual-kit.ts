@@ -287,7 +287,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  const heavyTop=['field-jacket','softshell',
   'softshell-hood','pcu-shell','tactical-sweater'].includes(looks.top);
  v.jacket.visible=usingWardrobe?heavyTop:s.top==='top-uniform';
- v.lightShirt.visible=usingWardrobe?!heavyTop&&!bareTop:s.top==='top-light';
+ v.lightShirt.visible=usingWardrobe?!heavyTop&&!bareTop&&
+  !['bdu-shirt','acu-shirt'].includes(looks.top):s.top==='top-light';
  v.jacket.scale.set(looks.top==='pcu-shell'?1.12:1,1,1);
  updateFieldBlousePrototypes(v.fieldBlouses,looks.top);
  updateWardrobeBodyLayers(v.wardrobeBody,looks.top,looks.trousers,
