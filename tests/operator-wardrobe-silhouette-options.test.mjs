@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
-import {initialEquipmentLoadout} from '../src/equipment-loadouts.ts';
+import {initialEquipmentLoadout,setEquipmentChoice} from '../src/equipment-loadouts.ts';
 import {initialWardrobe,setWardrobeStyle} from '../src/operator-wardrobe-data.ts';
 const base={x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
  posture:'stand',injury:0,weapon:'carbine',reload:0,reloadDuration:0,
@@ -13,7 +13,9 @@ test('base mannequin, BDU and ACU show correct body coverage without skeleton ed
  let w=initialWardrobe();
  w=setWardrobeStyle(w,'top','base-layer');
  w=setWardrobeStyle(w,'trousers','base-shorts');
- poseOperator(rig,{...base,wardrobe:w},0);
+ const bareKit=setEquipmentChoice(setEquipmentChoice(base.equipment,'top','top-none'),
+  'legs','legs-none');
+ poseOperator(rig,{...base,equipment:bareKit,wardrobe:w},0);
  assert.ok(rig.arms.every(a=>a.lower.material===rig.skinMaterial));
  assert.ok(rig.feet.every(f=>f.lower.material===rig.skinMaterial));
  w=setWardrobeStyle(w,'top','bdu-shirt');
