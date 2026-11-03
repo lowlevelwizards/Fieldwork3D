@@ -66,7 +66,8 @@ add('trousers','underlayer',[['base-shorts','Base shorts']]);
 // Unremodeled lower-body pieces are represented by one honest foundation.
 add('trousers','uniform',[
  ['bdu-trousers','Classic Field Trousers'],
- ['acu-trousers','Modern Utility Trousers']
+ ['acu-trousers','Modern Utility Trousers'],
+ ['gorka-trousers','Mountain / Gorka Trousers']
 ]);
 add('footwear','unshod',[['bare-feet','Bare feet']]);
 add('footwear','boots',[['field-boots','Field boots (foundation)']]);
@@ -128,7 +129,7 @@ export type TrouserHem=typeof TROUSER_HEMS[number];
 export const sleeveStateOptions=(top:string)=>top==='bdu-shirt'||top==='acu-shirt'||top==='combat-shirt'?
  SLEEVE_STATES:['unrolled'] as const;
 export const trouserHemOptions=(trousers:string)=>trousers==='bdu-trousers'||
- trousers==='acu-trousers'?TROUSER_HEMS:['unbloused'] as const;
+ trousers==='acu-trousers'||trousers==='gorka-trousers'?TROUSER_HEMS:['unbloused'] as const;
 export type WardrobeOptions={
  version:1;styles:Partial<Record<WardrobeSlot,string>>;
  headwearColor?:HeadwearSolidColorId;headwearCamo?:HeadwearCamoId;
@@ -298,7 +299,7 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
   ['no-pack'],slots.backpack==='backpack-day'?'day-pack':
   slots.backpack==='backpack-field'?'field-pack':'no-pack');
  choose('trousers',slots.legs==='legs-none'?['base-shorts']:
-  ['bdu-trousers','acu-trousers'],
+  ['bdu-trousers','acu-trousers','gorka-trousers'],
   slots.legs==='legs-none'?'base-shorts':'bdu-trousers');
  choose('footwear',slots.feet==='feet-none'?['bare-feet']:['field-boots'],
   slots.feet==='feet-none'?'bare-feet':'field-boots');
