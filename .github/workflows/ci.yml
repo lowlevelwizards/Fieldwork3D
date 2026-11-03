@@ -19,7 +19,7 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Focused garment metric UVs, cuff/hem state and independent materials
-        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feat/garment-readability-') || startsWith(github.head_ref, 'feat/wardrobe-cuff-roll-elbow-')) }}
+        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feat/garment-readability-') || startsWith(github.head_ref, 'feat/wardrobe-cuff-roll-elbow-') || startsWith(github.head_ref, 'feat/wardrobe-auto-knit-fold-')) }}
         run: node --experimental-strip-types --test tests/operator-garment-readability-20261103.test.mjs
       - name: Focused active WATCH marker lifecycle and mobile editing
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'ux/watch-active-marker-') }}
