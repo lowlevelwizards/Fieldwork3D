@@ -452,8 +452,8 @@ function renderPresetMenu(){
  presetDelete.disabled=readOnly||comparingSaved||!selectedName;
  presetSave.disabled=readOnly||comparingSaved||
   studioPresets.length>=STUDIO_PRESET_LIMIT;
- const pair=pairedUniformFor(activeCategory,current(),member()?.loadout??{
-  version:1,slots:{} as EquipmentLoadout['slots']});
+ const p=member();
+ const pair=p?pairedUniformFor(activeCategory,current(),p.loadout):null;
  matchSetButton.hidden=!pair;
  matchSetButton.disabled=readOnly||comparingSaved||!pair||
   !canEquip(pair.slot,pair.id)||
