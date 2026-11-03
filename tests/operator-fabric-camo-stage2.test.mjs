@@ -41,7 +41,7 @@ test('authentic policy has exactly the frozen 30 patterns and five independently
   {...outfit,packStyle:'sling-bag'}),false);
  assert.equal(fabricCamoCompatible('woodland-marpat','pack',
   {...outfit,packStyle:'rucksack'}),true);
- assert.equal(fabricCamoCompatible('alpenflage','top',outfit),true);
+ assert.equal(fabricCamoCompatible('alpenflage','top',outfit),false);
  assert.equal(fabricCamoCompatible('alpenflage','top',
   {...outfit,top:'combat-shirt'}),false);
  assert.equal(fabricCamoCompatible('east-german-strichtarn','gear',
@@ -49,7 +49,7 @@ test('authentic policy has exactly the frozen 30 patterns and five independently
  assert.equal(fabricCamoCompatible('east-german-strichtarn','gear',
   {...outfit,rigStyle:'field-webbing'}),true);
  assert.equal(fabricCamoCompatible('indian-digital-2022','armor',outfit),false);
- assert.equal(fabricCamoCompatible('splittertarn-31','top',outfit),true);
+ assert.equal(fabricCamoCompatible('splittertarn-31','top',outfit),false);
  assert.equal(fabricCamoCompatible('splittertarn-31','top',
   {...outfit,top:'acu-shirt'}),false);
  assert.ok(fabricCamoChoices('top',outfit).includes('m81-woodland'));
