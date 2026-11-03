@@ -233,12 +233,35 @@ export function probeWindowCrossing(from:Pt,to:Pt,world:CrossingWorld,
  // No ambiguous automatic choice across multiple apertures.
  return valid.length===1?valid[0]:null;
 }
-export function canClimbWindow(window:WindowState):boolean{
- if(!window.open&&!window.shattered)return false;
+/** Shared shape/clearance contract for an openable or broken pane.
+ * Bars, boards, overhead glazing and narrow/high apertures aren't shortcuts.
+ */
+export function hasClimbableWindowOpening(window:WindowState):boolean{
  if(window.treatment==='bars'||window.treatment==='boarded')return false;
  if(window.width<25)return false;
  const sill=window.sillHeight??14,head=window.headHeight??38;
  return sill<=30&&head-sill>=18;
+}
+export function canClimbWindow(window:WindowState):boolean{
+ return (window.open||window.shattered)&&hasClimbableWindowOpening(window);
+}
+/** Movement can open a standard exterior sash as part of a climb, just like
+ * a move through a known closed door can issue OPEN automatically. Never
+ * silently break picture glass or bypass bars, boards and fixed panes.
+ */
+export function canOpenWindowForClimb(window:WindowState):boolean{
+ return !window.open&&!window.shattered&&window.operable&&
+   hasClimbableWindowOpening(window);
+}
+/** Distinguish intentionally restricted windows from an ordinary sash
+ * that merely needs to be opened before the operator can use it.
+ */
+export function windowClimbAvailability(window:WindowState):
+ 'ready'|'open-first'|'break-first'|'blocked'{
+ if(!hasClimbableWindowOpening(window))return 'blocked';
+ if(canClimbWindow(window))return 'ready';
+ if(canOpenWindowForClimb(window))return 'open-first';
+ return 'break-first';
 }
 /** A window is never auto-passable just because its sill is low. This
  * clearance gate is shared by future window orders and auto-climb paths. */
