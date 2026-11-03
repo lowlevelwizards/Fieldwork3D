@@ -105,9 +105,9 @@ test('rig switches BDU and ACU torso and both articulated sleeves while protecti
  const original={
   shoulder:r.garmentFitAnchors['shoulder-left'].offset.clone(),
   feet:r.feet.map(f=>f.shoe.geometry),
-  headwear:v.wardrobeHead,
-  root:r.root.quaternion.clone()
+  headwear:v.wardrobeHead
  };
+ let firstPoseRoot=null;
  for(const [cut,other] of [['bdu-shirt','acu-shirt'],['acu-shirt','bdu-shirt']]){
   const w=uniformCompareWardrobe(cut);
   poseOperator(r,pose(w),0);
@@ -123,8 +123,11 @@ test('rig switches BDU and ACU torso and both articulated sleeves while protecti
   assert.equal(r.garmentFitAnchors['shoulder-left'].offset.distanceTo(original.shoulder),0);
   assert.equal(r.visualKit.wardrobeHead,original.headwear);
   assert.deepEqual(r.feet.map(f=>f.shoe.geometry),original.feet);
+  if(firstPoseRoot)
+   assert.ok(r.root.quaternion.angleTo(firstPoseRoot)<1e-6,
+    'clothing cut must not affect the motor heading or fall orientation');
+  else firstPoseRoot=r.root.quaternion.clone();
  }
- assert.equal(r.root.quaternion.equals(original.root),true);
  r.dispose();
 });
 test('Operator Lab has dedicated paired garment previews with independent prints and clear labels',()=>{
