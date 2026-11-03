@@ -12,7 +12,7 @@ import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH} from './breach-leg-geometry.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import type {TrouserHem} from './operator-wardrobe-data.ts';
 
-export const FIELD_TROUSER_CUTS=['bdu-trousers','acu-trousers'] as const;
+export const FIELD_TROUSER_CUTS=['bdu-trousers','acu-trousers','gorka-trousers'] as const;
 export type FieldTrouserCut=typeof FIELD_TROUSER_CUTS[number];
 type Limb={upper:THREE.Mesh;lower:THREE.Mesh};
 type Ring=readonly [y:number,radiusX:number,radiusZ:number];
@@ -40,6 +40,18 @@ export const FIELD_TROUSER_PROFILES={
    [.21,2.87,2.93],[.35,3.21,3.27],[.53,3.29,3.34]] as readonly Ring[],
   cargo:[3.65,.42,1.28] as const,flap:[3.90,.16,1.44] as const,
   character:'Cleaner tapered thigh with angled cargo flaps and calf pouch'
+ },
+ 'gorka-trousers':{
+  thigh:[[-.52,3.10,3.22],[-.31,3.43,3.54],
+   [.14,3.54,3.71],[.52,3.38,3.52]] as readonly Ring[],
+  unbloused:[[-.52,2.90,3.01],[-.26,3.07,3.13],
+   [.20,2.97,3.12],[.53,2.98,3.08]] as readonly Ring[],
+  bloused:[[-.52,2.90,3.01],[-.22,3.18,3.24],
+   [.09,3.42,3.49],[.18,3.38,3.43],[.265,2.08,2.14]] as readonly Ring[],
+  cuffed:[[-.52,2.90,3.01],[-.20,3.06,3.12],
+   [.18,3.06,3.13],[.34,3.40,3.46],[.53,3.46,3.55]] as readonly Ring[],
+  cargo:[4.32,.49,1.50] as const,flap:[4.53,.16,1.74] as const,
+  character:'Voluminous overtrousers with reinforced knees and gaiter hems'
  }
 } as const;
 
@@ -117,22 +129,25 @@ function hemFinishBand(g:THREE.Group,material:THREE.Material,ring:Ring){
  mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);
 }
 export function createFieldTrouserPrototypes(legs:readonly Limb[],
- cloth:THREE.Material,trim:THREE.Material):FieldTrouserPrototypes{
+ cloth:THREE.Material,trim:THREE.Material,
+ mountainCanvas:THREE.Material=cloth,mountainPanel:THREE.Material=trim):FieldTrouserPrototypes{
  const results={} as FieldTrouserPrototypes;
  for(const cut of FIELD_TROUSER_CUTS){
-  const p=FIELD_TROUSER_PROFILES[cut],classic=cut==='bdu-trousers';
+  const p=FIELD_TROUSER_PROFILES[cut],classic=cut==='bdu-trousers',
+   gorka=cut==='gorka-trousers';
+  const textile=gorka?mountainCanvas:cloth,wear=gorka?mountainPanel:cloth;
   const thigh:THREE.Group[]=[],unbloused:THREE.Group[]=[],bloused:THREE.Group[]=[],cuffed:THREE.Group[]=[];
   for(const [i,leg] of legs.entries()){
    const side=i===0?-1:1;
    const upper=group(leg.upper,cut+':thigh:'+i);
-   clothShell(upper,cloth,p.thigh,LEG_UPPER_LENGTH);
+   clothShell(upper,textile,p.thigh,LEG_UPPER_LENGTH);
    // Bellows cargo pockets sit on the outer thigh, not the knee pivot.
    // +X is forward, +/-Z is the operator's flank: outer SIDE seam.
-    const lateral=side*(classic?4.35:4.02);
+    const lateral=side*(classic?4.35:gorka?4.51:4.02);
    const [w,h,d]=p.cargo;
-   part(upper,cloth,-.62,-.06,lateral,w,h,d);
+   part(upper,textile,-.62,-.06,lateral,w,h,d);
    const [fw,fh,fd]=p.flap;
-   part(upper,cloth,-.62,.19,lateral+side*.12,fw,fh,fd,
+   part(upper,wear,-.62,.19,lateral+side*.12,fw,fh,fd,
     classic?0:side*.19);
    if(!classic){
     // Modern trouser reinforced knee panel rides the LOWER segment,
