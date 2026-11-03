@@ -19,7 +19,7 @@ test('all obsolete garment options are actually gone from the authoritative cata
  assert.deepEqual(wardrobeItemsForSlot('top').map(x=>x.id),
   ['base-layer','bdu-shirt','acu-shirt','combat-shirt','smock-jacket','gorka-jacket']);
  assert.deepEqual(wardrobeItemsForSlot('trousers').map(x=>x.id),
-  ['base-shorts','bdu-trousers','acu-trousers']);
+  ['base-shorts','bdu-trousers','acu-trousers','gorka-trousers']);
  assert.deepEqual(wardrobeItemsForSlot('footwear').map(x=>x.id),
   ['bare-feet','field-boots']);
  assert.deepEqual(wardrobeItemsForSlot('gloves').map(x=>x.id),
@@ -63,7 +63,7 @@ test('new presets use exclusively existing cuts and original approved prints',()
    assert.ok(wardrobeItemsForSlot(slot).some(x=>x.id===id),
     recipe.id+' references deleted '+slot+':'+id);
   const applied=applyWardrobeRecipe(recipe);
-  assert.ok(['bdu-shirt','acu-shirt'].includes(
+  assert.ok(['bdu-shirt','acu-shirt','combat-shirt','smock-jacket','gorka-jacket'].includes(
    resolvedWardrobe(applied.wardrobe,applied.kit).top),recipe.id);
   if(recipe.topCamo)assert.equal(applied.wardrobe.fabricCamo?.top,recipe.topCamo);
   assert.ok(!('patterns' in recipe));
