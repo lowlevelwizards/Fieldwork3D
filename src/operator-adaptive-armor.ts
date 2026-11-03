@@ -72,7 +72,7 @@ function buildAuthoredPanels(entry:ArmorEntry){
    .25,zipperTop-zipperBottom,.30);
  }else if(spec.family==='fragmentation'){
   // PASGT-like long central closure and two legible lower pockets.
-  makeBox(front,utility,outer,-.85,0,.24,7.1,.78);
+  makeBox(front,utility,outer,-.42,0,.24,10.55,.78);
   for(const sign of [-1,1])
    makeBox(front,cloth,outer+.15,-2.60,sign*3.15,
     .42,2.40,3.20);
