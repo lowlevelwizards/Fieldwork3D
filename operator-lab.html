@@ -227,7 +227,7 @@ button{font-family:"Work Sans",system-ui,sans-serif;font-weight:600;letter-spaci
 }
 </style></head>
 <body><canvas id="preview"></canvas><div id="compareLabels" hidden></div>
-<div id="uniformCutLabels" hidden aria-hidden="true"><span id="blouseLabelA">A · HISTORICAL BDU</span><span id="blouseLabelB">B · MODERN ACU</span></div>
+<div id="uniformCutLabels" hidden aria-hidden="true"><span id="blouseLabelA">A · CLASSIC FIELD</span><span id="blouseLabelB">B · MODERN UTILITY</span></div>
 <aside id="labStatus" role="status" aria-live="polite">
   <strong id="labStatusTitle">INITIALIZING OPERATOR LAB</strong>
   <p id="labStatusMessage">Loading the 3D operator preview…</p>
@@ -273,10 +273,10 @@ button{font-family:"Work Sans",system-ui,sans-serif;font-weight:600;letter-spaci
 <details id="blouseComparePanel" open><summary>CLASSIC / MODERN · FIELD UNIFORM COMPARISON</summary>
 <p class="kit-help">Two original garment silhouettes, one shared anatomy. The dropdowns show only documented prints for each cut. Headgear, saved looks and campaign gear are not modified.</p>
 <div class="kit-grid">
-<label>A · HISTORICAL BDU PRINT<select id="bduComparisonPrint" aria-label="Historical field blouse camouflage"></select></label>
-<label>B · MODERN ACU PRINT<select id="acuComparisonPrint" aria-label="Modern ACU field blouse camouflage"></select></label>
+<label>A · CLASSIC FIELD PRINT<select id="bduComparisonPrint" aria-label="Historical field blouse camouflage"></select></label>
+<label>B · MODERN UTILITY PRINT<select id="acuComparisonPrint" aria-label="Modern utility field blouse camouflage"></select></label>
 </div>
-<div class="row"><button id="compareBlouses" type="button" aria-pressed="false">COMPARE BDU + ACU</button>
+<div class="row"><button id="compareBlouses" type="button" aria-pressed="false">COMPARE CLASSIC + MODERN</button>
 <output id="blouseCompareStatus" aria-live="polite">Open two matching-scale previews with distinct uniforms</output></div>
 </details>
 <div class="kit-grid">
@@ -301,7 +301,7 @@ button{font-family:"Work Sans",system-ui,sans-serif;font-weight:600;letter-spaci
 </div><details id="wardrobePanel" open><summary>3D APPEARANCE · ITEM BROWSER</summary>
 <div class="row"><label>STYLE / ROLE RECIPE<select id="wardrobeRecipe"></select></label>
 <button id="wardrobeApply">APPLY LOOK</button></div>
-<p class="kit-help">Every tile is rendered from the real soldier model. Select a category, then tap an item. Approved BDU and ACU cuts are available; other unfinished garments have been removed.</p>
+<p class="kit-help">Every tile is rendered from the real soldier model. Select a category, then tap an item. Approved Classic Field and Modern Utility cuts are available; other unfinished garments have been removed.</p>
 <details id="outfitLibrary"><summary>SAVED LOOKS / SHARE</summary>
 <div class="row"><label>OUTFIT NAME<input id="outfitName" type="text" maxlength="44" placeholder="My outfit"></label>
 <button id="outfitSave">SAVE</button></div>
