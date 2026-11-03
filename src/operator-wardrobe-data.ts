@@ -153,6 +153,8 @@ export type WardrobeOptions={
  /** Optional manual knitted/rolled cuff and combat-shirt body colors. */
  cuffSolid?:GarmentSolidId;
  knitSolid?:GarmentSolidId;
+ /** Advanced pouch-only solid override; absent means inherit rig textile. */
+ pouchSolid?:GarmentSolidId;
  sleeveState:SleeveState;trouserHem:TrouserHem;
  /** Contextual new-garment materials, never the abolished global palette. */
  topColorway:string;
@@ -218,6 +220,7 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  }
  if(isGarmentSolidId(v.cuffSolid))result.cuffSolid=v.cuffSolid;
  if(isGarmentSolidId(v.knitSolid))result.knitSolid=v.knitSolid;
+ if(isGarmentSolidId(v.pouchSolid))result.pouchSolid=v.pouchSolid;
  if(isHeadwearSolidColorId(v.headwearColor))result.headwearColor=v.headwearColor;
  if(isHeadwearCamoId(v.headwearCamo)&&v.headwearCamo!=='splittertarn-31')result.headwearCamo=v.headwearCamo;
  if(Number.isInteger(v.headwearCamoRoll)&&v.headwearCamoRoll!>=0&&v.headwearCamoRoll!<4096)
