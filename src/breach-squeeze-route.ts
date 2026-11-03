@@ -3,11 +3,11 @@
 import {type Pt,route,passable,type Door,OPERATOR_RADIUS,
   pointToSegment,doorLeafSegment} from './breach-core.ts';
 import {type IntelState,intelPassable,routeWithIntel} from './breach-intel.ts';
-import {profileSamples,squeezeFacing,sweptProfileClear}
+import {profileSamples,squeezeFacing,sweptProfileClear,SQUEEZE_RADIUS}
   from './breach-navigation.ts';
 
 const narrowPassable=(at:Pt,canStand:(p:Pt,r:number)=>boolean)=>
-  canStand(at,5.4);
+  canStand(at,SQUEEZE_RADIUS);
 
 function narrowRoute(from:Pt,to:Pt,
   canStand:(p:Pt,r:number)=>boolean):Pt[]{
