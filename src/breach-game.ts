@@ -2020,6 +2020,12 @@ function runOrders(s:Session,a:TeamActor,dt:number){
         a.name+' PUSHED '+(o.fixture??'OBJECT'):
         a.name+' OBJECT OBSTRUCTED');
     }else if(kind==='window'){
+      // A pane cannot swing shut through somebody currently occupying the
+      // opening. Preserve this CLOSE order until their landing completes.
+      if(n.interaction==='close-window'&&s.operators.some(o=>o.health>0&&
+         o.traversal?.windowId===id)){
+        a.velocity=0;a.actionTimer=0;return;
+      }
       const window=s.windows.find(w=>w.id===id);
       if(window&&d(a.p,{x:window.x,y:window.y})<54&&
          manipulateWindow(window,n.interaction==='open-window'?'open':'close')){
