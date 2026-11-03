@@ -1194,6 +1194,32 @@ function camoHash(value:string):number{
 }
 const m81BrownIndices=headwearCamoIndices('m81-woodland');
 const placementCache=new Map<string,HeadwearCamoPlacement>();
+/** The crown is a 64px UV1 panel. At 1x the hat shows a 32px crop
+ * of a 64px source; at 2x it sees the full 64px pattern. Measure the
+ * material that is ACTUALLY worn instead of evaluating the gallery tile.
+ */
+export function headwearCamoAppliedCoverage(id:HeadwearCamoId,
+ phase:HeadwearCamoPlacement):number[]{
+ const indices=headwearCamoIndices(id),size=headwearCamoSize(id);
+ const density=HEADWEAR_CAMO_DENSITY[id],counts=HEADWEAR_CAMO_RECIPES[id].colors.map(()=>0);
+ for(let y=0;y<64;y++)for(let x=0;x<64;x++){
+  const ix=(Math.floor(x*density/2)+phase.offsetX)%size;
+  const iy=(Math.floor(y*density/2)+phase.offsetY)%size;
+  counts[indices[iy*size+ix]]++;
+ }
+ return counts.map(v=>v/4096);
+}
+/** Puzzle-style cloth needs multiple interlocking red/yellow/green sections
+ * and charcoal outlines in every 32px crown crop. For two-or-more-x fabric,
+ * the larger atlas already exposes a full authored tile, so no guard needed.
+ */
+function belgianJigsawCutScore(phase:HeadwearCamoPlacement):number{
+ const c=headwearCamoAppliedCoverage('belgian-jigsaw',phase);
+ return Math.max(0,.13-c[0])*5+Math.max(0,.10-c[1])*5+
+  Math.max(0,.12-c[2])*5+Math.max(0,.06-c[3])*6+
+  Math.max(0,.025-c[4])*3+
+  Math.max(0,Math.max(...c)-.54)*8;
+}
 /** The 64px source is seen through a ~32px square crown UV1 cut on
  * 1x M81 fabric. Evaluate the actual visible crop rather than only
  * checking the tiny forward wall. Rerolls should never make a solid-color hat.
@@ -1247,6 +1273,17 @@ export function headwearCamoPlacement(operatorId:string,slot:string,
   placementCache.set(key,value);return value;
  };
  let best:HeadwearCamoPlacement={offsetX:hash&mask,offsetY:(hash>>>8)&mask};
+ if(camo==='belgian-jigsaw'){
+  let winner=best,lowest=Infinity;
+  for(let i=0;i<128;i++){
+   const phase={offsetX:((hash&mask)+i*17)&mask,
+    offsetY:(((hash>>>8)&mask)+i*11+Math.floor(i/8))&mask};
+   const score=belgianJigsawCutScore(phase);
+   if(score<lowest){lowest=score;winner=phase;}
+   if(score<.005)return remember(phase);
+  }
+  return remember(winner);
+ }
  if(camo!=='m81-woodland')return remember(best);
  let bestScore=Infinity;
  // Check the *visible crown* and forward wall, not simply brown on
