@@ -2104,7 +2104,7 @@ function architecture(){
       line(a,b,'#b5a17a',8);
       circle(a.x,a.y,3,'#ead0a0');circle(b.x,b.y,3,'#ead0a0');
       draw.save();draw.translate(center.x,center.y);
-      draw.fillStyle='#e4d1a2';draw.font='bold 9px monospace';
+      draw.fillStyle='#e4d1a2';draw.font='700 11px "Saira Condensed",sans-serif';
       draw.textAlign='center';draw.fillText('Ⅱ',0,3);draw.restore();
     }else{
       // Remember only the last witnessed angle, never offscreen changes.
@@ -2235,7 +2235,7 @@ function paths(){
         selectedNow?'#ecd29f':n.kind==='move'?c:'#c8ae7f');
       circle(point.x,point.y,3,'#263836');
       draw.textAlign='center';draw.fillStyle='#111e20';
-      draw.font='bold 10px monospace';
+      draw.font='700 12px "Saira Condensed",sans-serif';
       draw.fillText(String(i+1),point.x,point.y+3.1);
       if(n.facing!==undefined){
         const end={x:point.x+Math.cos(n.facing)*40,
@@ -2248,11 +2248,11 @@ function paths(){
         line(point,watched,c,1.8);
         circle(watched.x,watched.y,selectedNow?9:7,c);
         circle(watched.x,watched.y,3,'#203732');
-        draw.textAlign='left';draw.font='bold 10px monospace';
+        draw.textAlign='left';draw.font='700 12px "Saira Condensed",sans-serif';
         draw.fillStyle='#e8cba2';
         draw.fillText('WATCH',point.x+12,point.y-12);
       }else if(n.aimMode==='fixed'||(n.aimMode==='free'&&n.facing!==undefined)){
-        draw.textAlign='left';draw.font='bold 10px monospace';
+        draw.textAlign='left';draw.font='700 12px "Saira Condensed",sans-serif';
         draw.fillStyle='#d5e8de';
         draw.fillText(n.aimLabel==='strafe'?'HOLD DIR':'LOOK',
           point.x+12,point.y-12);
@@ -2283,11 +2283,11 @@ function paths(){
         draw.strokeStyle='#f0af55';draw.lineWidth=2;
         draw.beginPath();draw.arc(landing.x,landing.y,26,0,Math.PI*2);draw.stroke();
         circle(landing.x,landing.y,selectedNow?11:9,'#dca053');
-        draw.fillStyle='#1d2624';draw.font='bold 12px monospace';
+        draw.fillStyle='#1d2624';draw.font='600 12px "Work Sans",sans-serif';
         draw.textAlign='center';draw.fillText('F',landing.x,landing.y+4);
       }
       if(n.kind==='move'&&n.moveMode==='strafe'){
-        draw.textAlign='left';draw.font='bold 10px monospace';
+        draw.textAlign='left';draw.font='700 12px "Saira Condensed",sans-serif';
         draw.fillStyle='#b8e7dd';
         draw.fillText('HOLD DIR',point.x+12,point.y-11);
       }
@@ -2300,12 +2300,12 @@ function paths(){
         for(const step of n.arc)draw.lineTo(step.x,step.y);
         draw.stroke();draw.setLineDash([]);
         line(point,n.pivot,'#d6b18b83',1.1);
-        draw.fillStyle='#eacda0';draw.font='bold 10px monospace';
+        draw.fillStyle='#eacda0';draw.font='700 12px "Saira Condensed",sans-serif';
         draw.fillText(n.pieSide==='cw'?'PIE ↷':'PIE ↶',point.x+12,point.y-11);
         draw.restore();
       }
       if(n.kind==='door'||n.kind==='wait'||n.kind==='holdClear'||n.kind==='sync'){
-        draw.textAlign='left';draw.font='bold 10px monospace';
+        draw.textAlign='left';draw.font='700 12px "Saira Condensed",sans-serif';
         draw.fillStyle='#e7c797';
         draw.fillText(n.kind==='door'?(n.method??'open').toUpperCase():
           n.kind==='wait'||n.kind==='holdClear'?'◷ WAIT':n.kind.toUpperCase(),
@@ -2384,7 +2384,7 @@ function renderProjectedPlans(){
       circle(point.x,point.y,selectedNow?11:7,
         invalidDrag?'#df8070':selectedNow?'#ecd29f':color);
       circle(point.x,point.y,3,'#233b39');
-      draw.fillStyle='#142829';draw.font='bold 11px monospace';
+      draw.fillStyle='#142829';draw.font='700 12px "Saira Condensed",sans-serif';
       draw.textAlign='center';draw.fillText(String(a.plan.indexOf(n)+1),
         point.x,point.y+3);
       if(n.facing!==undefined){
@@ -2401,17 +2401,17 @@ function renderProjectedPlans(){
         circle(target.x,target.y,8,color);
         circle(target.x,target.y,3,'#264039');
         draw.fillStyle='#f1d7a4';draw.textAlign='left';
-        draw.font='bold 10px monospace';
+        draw.font='700 12px "Saira Condensed",sans-serif';
         draw.fillText('WATCH',point.x+12,point.y-13);
       }else if(n.aimMode==='fixed'||(n.aimMode==='free'&&n.facing!==undefined)){
         draw.fillStyle='#d2eee4';draw.textAlign='left';
-        draw.font='bold 10px monospace';
+        draw.font='700 12px "Saira Condensed",sans-serif';
         draw.fillText(n.aimLabel==='strafe'?'HOLD DIR':'LOOK',
           point.x+12,point.y-13);
       }
       if(n.kind==='move'&&n.moveMode==='strafe'){
         draw.fillStyle='#e0f7e9';draw.textAlign='left';
-        draw.font='bold 10px monospace';
+        draw.font='700 12px "Saira Condensed",sans-serif';
         draw.fillText('HOLD DIR',point.x+13,point.y-12);
       }
       if(semantics.watchEnds&&n.facing===undefined){
@@ -2447,11 +2447,11 @@ function renderProjectedPlans(){
         draw.arc(screen.x,screen.y,16,0,Math.PI*2);draw.stroke();
         circle(screen.x,screen.y,selectedNow?11:9,'#c88d4e');
         draw.fillStyle='#182b2c';draw.textAlign='center';
-        draw.font='bold 11px monospace';draw.fillText('F',screen.x,screen.y+3);
+        draw.font='700 12px "Saira Condensed",sans-serif';draw.fillText('F',screen.x,screen.y+3);
       }
       if(n.kind==='door'){
         draw.fillStyle='#e2ca9f';draw.textAlign='left';
-        draw.font='bold 10px monospace';
+        draw.font='700 12px "Saira Condensed",sans-serif';
         const door=state.doors.find(d=>d.id===n.doorId);
         draw.fillText((n.method??'open').toUpperCase()+
           ((n.method??'open')==='open'?(door?.swing===1?' ↷':' ↶'):''),
@@ -2462,7 +2462,7 @@ function renderProjectedPlans(){
         circle(pivot.x,pivot.y,7,'#e2b476');
         circle(pivot.x,pivot.y,3,'#24322f');
         line(point,pivot,'#e3b37c8a',1.5);
-        draw.textAlign='left';draw.font='bold 10px monospace';
+        draw.textAlign='left';draw.font='700 12px "Saira Condensed",sans-serif';
         draw.fillStyle='#e3bb87';
         draw.fillText('PIVOT '+Math.round(n.pieDegrees??54)+'°',
           pivot.x+10,pivot.y-12);
@@ -2473,7 +2473,7 @@ function renderProjectedPlans(){
         draw.strokeRect(finish.x-8,finish.y-8,16,16);
       }
       if(n.kind==='wait'||n.kind==='holdClear'){
-        draw.fillStyle='#e5c58e';draw.font='bold 12px monospace';
+        draw.fillStyle='#e5c58e';draw.font='600 12px "Work Sans",sans-serif';
         draw.fillText('◷ WAIT',point.x+12,point.y-14);
       }
       if(n.postureState||n.paceState||n.firePolicyState){
@@ -2492,7 +2492,7 @@ function renderProjectedPlans(){
       {x:-27,y:-17},{x:27,y:-17},
       {x:-27,y:-36},{x:27,y:-36},
     ][squadIndex]??{x:0,y:-9}:{x:0,y:-9};
-    draw.textAlign='center';draw.font='bold 11px monospace';
+    draw.textAlign='center';draw.font='700 12px "Saira Condensed",sans-serif';
     draw.fillStyle=color;
     if(a.id===selected||a.injuryStage>0||replayFollow&&
       replayFollowId===a.id)
@@ -2502,7 +2502,7 @@ function renderProjectedPlans(){
       draw.beginPath();draw.arc(ground.x,ground.y,14,0,Math.PI*2);draw.stroke();
     }
     if(a.suppression>.53){
-      draw.font='bold 9px monospace';draw.fillStyle='#e5bc92';
+      draw.font='700 11px "Saira Condensed",sans-serif';draw.fillStyle='#e5bc92';
       draw.fillText('SUPPRESSED',pawn.x,pawn.y-23);
     }
   }
@@ -2572,7 +2572,7 @@ function renderProjectedPlans(){
     const memory=lastKnown(state,hostile.id);
     if(!memory||state.seconds-memory.at>25)continue;
     const where=worldToScreen(memory.p,12);
-    draw.font='bold 17px monospace';draw.textAlign='center';
+    draw.font='700 17px "Saira Condensed",sans-serif';draw.textAlign='center';
     draw.fillStyle='#e6bb9d';
     draw.fillText(memory.status==='heard'?'~':'?',where.x,where.y);
   }
@@ -2591,7 +2591,7 @@ function renderProjectedPlans(){
       state.scenario.objective:state.scenario.extract,9);
     draw.strokeStyle='#e8d5a6';draw.lineWidth=2;
     draw.beginPath();draw.arc(target.x,target.y,17,0,2*Math.PI);draw.stroke();
-    draw.fillStyle='#e8d5a6';draw.font='bold 10px monospace';
+    draw.fillStyle='#e8d5a6';draw.font='700 12px "Saira Condensed",sans-serif';
     draw.fillText(state.mission.toUpperCase(),target.x,target.y-23);
   }
 }
@@ -2610,14 +2610,14 @@ function missionMarkers(){
     draw.strokeStyle='#eed9ad';draw.lineWidth=2.2;
     draw.beginPath();draw.arc(p.x,p.y,13,0,Math.PI*2);draw.stroke();
     draw.fillStyle='#ebdfc0';draw.textAlign='center';
-    draw.font='bold 10px monospace';draw.fillText('CIV',p.x,p.y-18);
+    draw.font='700 12px "Saira Condensed",sans-serif';draw.fillText('CIV',p.x,p.y-18);
   }
   const p=state.mission==='extract'?state.scenario.extract:state.scenario.objective;
   if(state.mission==='clear'||state.mission==='done'||
     !liveVisibility(state,p))return;
   draw.strokeStyle='#d8cc98';draw.lineWidth=2;
   draw.beginPath();draw.arc(p.x,p.y,33,0,Math.PI*2);draw.stroke();
-  draw.fillStyle='#e1d1a2';draw.font='bold 12px monospace';
+  draw.fillStyle='#e1d1a2';draw.font='600 12px "Work Sans",sans-serif';
   draw.textAlign='center';
   draw.fillText(state.mission==='secure'?'SECURE':'EXTRACT',p.x,p.y-39);
 }
@@ -2628,7 +2628,7 @@ function sprite(a:TeamActor){
       const memory=lastKnown(state,a.id);
       if(memory&&a.health>0&&state.seconds-memory.at<25){
         draw.fillStyle=memory.status==='heard'?'#e6bb828e':'#d19d837e';
-        draw.font='bold 16px monospace';draw.textAlign='center';
+        draw.font='700 16px "Saira Condensed",sans-serif';draw.textAlign='center';
         draw.fillText(memory.status==='heard'?'~':'?',memory.p.x,memory.p.y);
         if(memory.status==='heard'){
           draw.strokeStyle='#c9af7c4b';draw.lineWidth=1;
@@ -2676,14 +2676,14 @@ function sprite(a:TeamActor){
   rect(firing?17:20,-1,6,2,'#a2a9a1');
   draw.restore();
   if(friendly){
-    draw.textAlign='center';draw.font='bold 10px monospace';
+    draw.textAlign='center';draw.font='700 12px "Saira Condensed",sans-serif';
     draw.fillStyle=c;draw.fillText(a.name,a.p.x,a.p.y-21);
     if(a.aimInstruction?.mode==='track'&&a.pace!=='run'){
-      draw.fillStyle='#f0cd96';draw.font='bold 9px monospace';
+      draw.fillStyle='#f0cd96';draw.font='700 11px "Saira Condensed",sans-serif';
       draw.fillText('PIE ACTIVE',a.p.x,a.p.y-33);
     }
     if(a.suppression>.53){
-      draw.fillStyle='#eac69d';draw.font='bold 9px monospace';
+      draw.fillStyle='#eac69d';draw.font='700 11px "Saira Condensed",sans-serif';
       draw.fillText('SUPP',a.p.x,a.p.y-43);
     }
     if(a.health===1){draw.fillStyle='#e7a886';
@@ -2738,7 +2738,7 @@ function contacts(){
         shot.surface==='wood'?'#e9ba7e':'#dfc8a4';
       circle(shot.end.x,shot.end.y,shot.hit?5:3.7,color);
       if(shot.hit){
-        draw.fillStyle='#efb19c';draw.font='bold 11px monospace';
+        draw.fillStyle='#efb19c';draw.font='700 12px "Saira Condensed",sans-serif';
         draw.textAlign='center';
         // Physical impacts carry the outcome without a floating DOWN label.
       }
