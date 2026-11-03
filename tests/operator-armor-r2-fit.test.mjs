@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {uniformFitEnvelope,ARMOR_FIT_TOPS,fittedArmorSurfaces}
+import {uniformFitEnvelope,ARMOR_FIT_TOPS,fittedArmorSurfaces,
+ ARMOR_PANEL_DEPTHS}
  from '../src/operator-uniform-fit-envelope.ts';
 import {ARMOR_PROFILES} from '../src/operator-armor-rig-silhouettes.ts';
 import {armorAttachmentFrame,armorMountedMagazineSocket}
@@ -64,12 +65,12 @@ test('all 40 armor/uniform combinations clear the garment and preserve authored 
    assert.ok(f.front<=5.17,'concealed armor remains under clothes');
    continue;
   }
-  assert.ok(f.front>outside.front+.20,
-   style+' over '+top+' front bag clears torso');
+  assert.ok(f.front-ARMOR_PANEL_DEPTHS[style]>outside.front+.19,
+   style+' over '+top+' inner plate face clears torso');
   assert.ok(f.side>outside.side,
    style+' over '+top+' side closure clears torso');
-  assert.ok(f.back<outside.back-.15,
-   style+' over '+top+' rear panel clears torso');
+  assert.ok(f.back+ARMOR_PANEL_DEPTHS[style]<outside.back-.15,
+   style+' over '+top+' rear inner face clears torso');
  }
 });
 test('bag geometry is invariant, and connector geometry regenerates only when top changes',()=>{
