@@ -129,7 +129,7 @@ test('slick vs skeletal vs standard vs heavy retain readable side profile',()=>{
 });
 
 
-test('flank closures bend around the torso instead of projecting full-depth beams',()=>{
+test('R5 flank closures stay torso-parallel without projecting loose rails',()=>{
  const r=createOperatorRig('rook','blue');
  for(const top of ARMOR_FIT_TOPS){
   for(const style of ['soft-vest','soft-flak','plate-slick',
@@ -138,7 +138,7 @@ test('flank closures bend around the torso instead of projecting full-depth beam
    const armor=r.visualKit.wardrobeGear.armor[style];
    const joins=armor.getObjectByName('uniform-fitted-connectors');
    const fit=fittedArmorSurfaces(style,top,ARMOR_PROFILES[style]);
-   assert.ok(joins,style+' has fitted connections');
+   assert.ok(joins,style+' has fitted side connections');
    let inspected=0;
    for(const mesh of joins.children){
     if(!(mesh instanceof THREE.Mesh))continue;
@@ -147,17 +147,15 @@ test('flank closures bend around the torso instead of projecting full-depth beam
     for(let i=0;i<p.count;i++){
      const v=new THREE.Vector3().fromBufferAttribute(p,i)
       .applyMatrix4(mesh.matrix);
-     // Shoulder straps are deliberately nearer the body's center.
-     // Out at the actual flank, only the short wrap may be present.
-     if(Math.abs(v.z)<fit.side-.40)continue;
-     if(Math.abs(v.y)>5.6)continue;
+     if(Math.abs(v.z)<fit.side-.65||Math.abs(v.y)>5.55)continue;
      inspected++;
-     assert.ok(Math.abs(v.x)<3.65,
-      style+' on '+top+' side closure has a projecting end at x='+
-      v.x.toFixed(2));
+     assert.ok(Math.abs(v.x)<fit.front+1.0,
+      style+' '+top+' has longitudinal rail outside plate front '+v.x);
+     assert.ok(Math.abs(v.z)<fit.side+2.15,
+      style+' '+top+' has lateral beam outside torso flank '+v.z);
     }
    }
-   assert.ok(inspected>0,style+' on '+top+' has flank coverage');
+   assert.ok(inspected>0,style+' '+top+' has flank coverage');
   }
  }
  r.dispose();

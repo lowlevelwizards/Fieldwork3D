@@ -6,6 +6,7 @@ on:
       - 'src/operator-uniform-fit-envelope.ts'
       - 'src/operator-adaptive-armor.ts'
       - 'src/operator-armor-proportions.ts'
+      - 'src/operator-armor-side-layout.ts'
       - 'src/operator-armor-shapes.ts'
       - 'src/operator-armor-rig-silhouettes.ts'
       - 'src/operator-armor-rig-lab.ts'

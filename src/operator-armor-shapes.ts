@@ -110,16 +110,22 @@ export function fittedSideWrap(group:THREE.Group,m:THREE.Material,
  */
 export function fittedArmorBag(group:THREE.Group,m:THREE.Material,
  outerFace:number,sign:number,top:number,bottom:number,
- width:number,upperInset:number,depth:number,split=false){
+ width:number,upperInset:number,depth:number,split=false,vDepth=0){
  const yBreak=Math.max(bottom+1.6,top-2.25);
  const halves=split?[-1,1]:[0];
  for(const half of halves){
   const w=width*.5,u=Math.max(1.1,w-upperInset);
+  // A genuine V neck is CUT from the upper fabric, not drawn as thin
+  // decoration on a solid rectangle. Police only; flak/legacy stay closed.
+  const innerTop=vDepth>0?Math.min(w-1.35,2.12):.10;
+  const innerY=top-vDepth;
   const points=half===0?
    [[-w,bottom],[w,bottom],[w,yBreak],[u,top],[-u,top],[-w,yBreak]]:
    half<0?
-   [[-w,bottom],[-.10,bottom],[-.10,top],[-u,top],[-w,yBreak]]:
-   [[.10,bottom],[w,bottom],[w,yBreak],[u,top],[.10,top]];
+   [[-w,bottom],[-.13,bottom],[-.13,innerY],
+    [-innerTop,top],[-u,top],[-w,yBreak]]:
+   [[.13,bottom],[w,bottom],[w,yBreak],
+    [u,top],[innerTop,top],[.13,innerY]];
   const shape=new THREE.Shape();
   shape.moveTo(points[0][0],points[0][1]);
   for(const [z,y] of points.slice(1))shape.lineTo(z,y);

@@ -11,9 +11,10 @@ import * as THREE from 'three';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {ARMOR_PROPORTIONS,type ArmorProportion}
  from './operator-armor-proportions.ts';
-import {fittedArmorBag,fittedShoulderBridge,fittedSideWrap,fittedArmorCollar}
+import {fittedArmorBag,fittedShoulderBridge,fittedArmorCollar}
  from './operator-armor-shapes.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
+import {armorSideLayout} from './operator-armor-side-layout.ts';
 import {uniformFitEnvelope,fittedArmorSurfaces,ARMOR_PANEL_DEPTHS,
  type ArmorFitSurfaces} from './operator-uniform-fit-envelope.ts';
 
@@ -57,16 +58,21 @@ function buildAuthoredPanels(entry:ArmorEntry){
  // The broad front is one iconic profile. Soft vests have two joined
  // closure halves; plate bags are single clipped-corner shapes.
  fittedArmorBag(front,cloth,nominal.front,1,spec.top,spec.bottom,
-  spec.width,spec.upperInset,thickness,soft);
+  spec.width,spec.upperInset,thickness,soft,
+  spec.collarStyle==='vest_v'?1.95:0);
  fittedArmorBag(back,cloth,nominal.front,-1,spec.top-.2,
-  spec.bottom+.20,spec.width+.10,spec.upperInset,thickness,false);
+  spec.bottom+.20,spec.rearWidth,spec.upperInset,thickness,false);
  const outer=nominal.front+.14;
  if(spec.family==='police'){
-  // Identification rectangle, not three narrow floating rails.
-  makeBox(front,dark,outer,1.8,-2.85,.23,.85,4.35);
+  // A vest-like V collar opens into a visible center zipper. Its two
+  // sides remain independent: no black slit painted onto a solid plate.
+  makeBox(front,dark,outer,1.65,-3.05,.22,.84,3.95);
+  const zipperTop=spec.top-2.05,zipperBottom=spec.bottom+.48;
+  makeBox(front,dark,outer+.02,(zipperTop+zipperBottom)*.5,0,
+   .25,zipperTop-zipperBottom,.30);
  }else if(spec.family==='fragmentation'){
   // PASGT-like long central closure and two legible lower pockets.
-  makeBox(front,utility,outer,-.85,0,.24,7.1,.78);
+  makeBox(front,trim,outer,-.42,0,.24,10.55,.78);
   for(const sign of [-1,1])
    makeBox(front,cloth,outer+.15,-2.60,sign*3.15,
     .42,2.40,3.20);
@@ -95,8 +101,9 @@ function clearConnectors(entry:ArmorEntry){
  });
  g.clear();
 }
-/** Broad shoulder surface: one swept, fitted slab per side.
- * Fit follows the selected garment crown without tiny compound links.
+/** Broad fitted shoulder yokes; modern skeletal uses an intentional
+ * JPC-like open triangle at each front attachment (two stout legs joining
+ * one shared crown). All pieces meet the plate bag below its top edge.
  */
 function shoulders(g:THREE.Group,m:THREE.Material,
  fit:ArmorFitSurfaces,spec:ArmorProportion){
@@ -105,36 +112,60 @@ function shoulders(g:THREE.Group,m:THREE.Material,
  const bagZ=Math.min(spec.width*.5-.75,Math.max(2.6,
   spec.width*.5-spec.upperInset*.60));
  const crownZ=Math.min(5.15,Math.max(3.65,fit.shoulderZ));
+ const lowerY=spec.top-spec.strapDrop;
+ const frontX=fit.front-.18;
  for(const side of [-1,1]){
+  if(spec.family==='skeleton'){
+   // Two thick front diagonals form a visible triangular negative space.
+   // One substantial back strap continues over the shoulder crown.
+   for(const d of [-.95,.95]){
+    fittedShoulderBridge(g,m,[
+     [frontX,lowerY,bagZ+d],
+     [shoulder.front+.20,fit.shoulderY-.36,crownZ+d*.30],
+     [1.85,fit.shoulderY+.03,crownZ]
+    ],1.00,spec.strapThickness,side);
+   }
+   fittedShoulderBridge(g,m,[
+    [1.85,fit.shoulderY+.03,crownZ],
+    [-1.85,fit.shoulderY+.03,crownZ],
+    [shoulder.back-.20,fit.shoulderY-.30,crownZ],
+    [fit.back+.28,lowerY+.07,bagZ]
+   ],spec.shoulderWidth,spec.strapThickness,side);
+   continue;
+  }
   const path:readonly (readonly [number,number,number])[]=[
-   [fit.front-.36,spec.top-.56,bagZ],
-   [shoulder.front+.22,fit.shoulderY-.23,crownZ],
-   [1.85,fit.shoulderY+.04,crownZ],
-   [-1.85,fit.shoulderY+.04,crownZ],
-   [shoulder.back-.22,fit.shoulderY-.23,crownZ],
-   [fit.back+.36,spec.top-.58,bagZ]
+   [frontX,lowerY,bagZ],
+   [shoulder.front+.20,fit.shoulderY-.24,crownZ],
+   [1.85,fit.shoulderY+.03,crownZ],
+   [-1.85,fit.shoulderY+.03,crownZ],
+   [shoulder.back-.20,fit.shoulderY-.24,crownZ],
+   [fit.back+.22,lowerY+.06,bagZ]
   ];
   fittedShoulderBridge(g,m,path,spec.shoulderWidth,
-   spec.family==='fragmentation'||spec.family==='legacy'?.85:.59,side);
+   spec.strapThickness,side);
  }
 }
-/** Three purposeful bend points form one continuous wrap per side.
- * Plate and flank faces overlap under the bag so there are no free tabs.
+/** The R5 wrap is exactly three axis-aligned cuboids per side.
+ * Each is either parallel to the torso flank (XY) or plate bag (YZ).
+ * The front/rear return overlaps the plate-bag edge, with no diagonals.
  */
 function attachedSide(g:THREE.Group,m:THREE.Material,
  fit:ArmorFitSurfaces,spec:ArmorProportion,
- y:number,height:number,thickness=spec.sideThickness){
- const depth=ARMOR_PANEL_DEPTHS[fit.style]??1.2;
- const frontX=fit.front-depth*.58,backX=fit.back+depth*.58;
- const sideX=spec.family==='fragmentation'||spec.family==='legacy'?
-  2.12:1.67;
+ y=spec.sideY,height=spec.sideHeight){
+ const p=armorSideLayout(fit,spec,y,height);
+ const lengthX=p.frontX-p.backX;
+ const returnLen=p.frontReturnLength+.34;
+ const joinZ=(p.centerZ+p.plateEdgeZ)*.5-.05;
  for(const side of [-1,1]){
-  const edge=spec.width*.5-.55;
-  const path:readonly (readonly [number,number])[]=[
-   [frontX,side*edge],[sideX,side*fit.side],
-   [-sideX,side*fit.side],[backX,side*edge]
-  ];
-  fittedSideWrap(g,m,path,y,height,thickness,side);
+  const flank=makeBox(g,m,(p.frontX+p.backX)*.5,y,
+   side*p.centerZ,lengthX+.16,height,spec.sideThickness);
+  flank.name='r5-flat-torso-side';
+  const front=makeBox(g,m,p.frontX,y,
+   side*joinZ,p.returnThickness,height,returnLen);
+  front.name='r5-straight-front-return';
+  const back=makeBox(g,m,p.backX,y,
+   side*joinZ,p.returnThickness,height,returnLen);
+  back.name='r5-straight-rear-return';
  }
 }
 function regenerateConnections(entry:ArmorEntry,top:string){
@@ -150,27 +181,32 @@ function regenerateConnections(entry:ArmorEntry,top:string){
  }
  const {cloth,utility}=materials;
  shoulders(connectors,spec.family==='assault'?cloth:utility,fit,spec);
- if(spec.family==='skeleton'){
-  // Two *connected*, conspicuous but open bands. No little free prongs.
-  for(const y of [-2.28,.76])
+ if(spec.sideStyle==='open_two_band'){
+  // JPC-style negative-space cummerbund: two full-width planar bands.
+  for(const y of [-2.45,1.05])
    attachedSide(connectors,utility,fit,spec,y,spec.sideHeight);
- }else{
-  const sideY=(spec.top+spec.bottom)*.5;
-  attachedSide(connectors,cloth,fit,spec,sideY,spec.sideHeight);
+ }else if(spec.sideStyle!=='none'){
+  attachedSide(connectors,
+   spec.family==='skeleton'?utility:cloth,fit,spec);
  }
- if(spec.family==='assault'){
-  // Exactly one secondary side armor plate per flank, integrated with
-  // the carrier band rather than a stack of overlapping blocky ribs.
+ if(spec.sideStyle==='side_plate'){
+  const p=armorSideLayout(fit,spec);
+  // A single unmistakable side plate per flank. Its inner face overlaps
+  // the continuous side slab instead of hovering outside a strip frame.
+  const depth=.86;
   for(const side of [-1,1])
-   makeBox(connectors,cloth,.05,-1.20,
-    side*(fit.side+.19),4.10,4.45,.92);
+   makeBox(connectors,cloth,.05,spec.sideY-.18,
+    side*(p.centerZ+spec.sideThickness*.5+depth*.5-.10),
+    3.75,spec.sidePlateHeight,depth);
  }
- if(spec.family==='fragmentation'||spec.family==='legacy'){
+ if(spec.collarStyle==='high_flak'||spec.collarStyle==='legacy_wrap'){
+  const flak=spec.collarStyle==='high_flak';
   const hood=fit.top==='smock-jacket'||fit.top==='gorka-jacket';
-  const z=hood?5.25:spec.family==='legacy'?4.15:3.90;
-  fittedArmorCollar(connectors,cloth,fit.back+.50,
-   fit.front-2.5,z+1.10,z,
-   fit.shoulderY+.46,spec.family==='legacy'?2.25:1.95);
+  const innerZ=hood?5.10:flak?2.90:3.75;
+  const outerZ=innerZ+(flak?1.60:1.38);
+  fittedArmorCollar(connectors,cloth,fit.back+.54,
+   fit.front-(flak?2.15:2.80),outerZ,innerZ,
+   fit.shoulderY+(flak?.89:.17),flak?2.85:1.70);
  }
  consolidateVisualGroup(connectors);
 }
