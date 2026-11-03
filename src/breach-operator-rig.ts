@@ -507,6 +507,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const additional=r.visualKit.newUpper;
   r.colors.set(additional.combatKnit,new THREE.Color(finish.combat));
   r.colors.set(additional.mountainCanvas,new THREE.Color(finish.gorkaBase));
+  r.colors.set(additional.mountainLegCanvas,new THREE.Color(finish.gorkaBase));
   const selectedTop=p.wardrobe?.fabricCamo?.top;
   const hasAuthoredTop=!!selectedTop&&
      fabricCamoCompatible(selectedTop,'top',clothing);
@@ -519,6 +520,18 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }
   r.colors.set(additional.mountainPanel,new THREE.Color(
     finish.specialty||hasAuthoredTop?0xffffff:finish.gorkaPanel));
+  const selectedLeg=p.wardrobe?.fabricCamo?.trousers;
+  const hasAuthoredLeg=!!selectedLeg&&
+    fabricCamoCompatible(selectedLeg,'trousers',clothing);
+  const legMap=finish.specialty?
+    gorkaSpecialtyTexture(finish.specialty):
+    hasAuthoredLeg?r.trouserMaterial.map:operatorPixelTextures.get('fabric');
+  if(additional.mountainLegPanel.map!==legMap){
+   additional.mountainLegPanel.map=legMap;
+   additional.mountainLegPanel.needsUpdate=true;
+  }
+  r.colors.set(additional.mountainLegPanel,new THREE.Color(
+    finish.specialty||hasAuthoredLeg?0xffffff:finish.gorkaPanel));
   if(clothing.top==='smock-jacket'&&!hasAuthoredTop)
     r.colors.set(r.clothMaterial,new THREE.Color(finish.smock));
   for(const [id,material] of Object.entries(r.visualKit.wardrobeHead.headwearMaterials)){
