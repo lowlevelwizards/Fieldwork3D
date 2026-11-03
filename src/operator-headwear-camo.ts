@@ -43,7 +43,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'M81 WOODLAND',
   description:'Low-saturation M81 woodland: winding dark forked branches among olive, umber and subdued khaki fields',
   colors:[[75,96,74],[100,82,70],[147,137,115],[37,43,40]],
-  targetCoverage:[.37,.21,.23,.19],
+  targetCoverage:[.41,.19,.22,.19],
   motifs:[
    p(1,-9,-4,8,-4,19,4,23,13,19,19,7,23,-4,18,-9,12),
    p(1,29,-5,43,-3,53,3,63,10,69,15,63,22,53,17,44,14,34,9),
@@ -74,18 +74,10 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
    p(3,57,7,60,5,64,8,67,12,63,13,59,10),
    // Fine black forks thread through every quadrant so seeded 32px
    // crown crops do not become monotonous green, brown or khaki.
-   p(3,5,14,10,12,15,15,20,19,25,20,28,24,25,25,20,22,16,21,11,17,6,17),
    p(3,23,10,29,8,34,11,38,16,44,18,47,22,44,23,39,19,34,18,29,12,24,13),
-   p(3,44,4,48,2,53,5,58,11,65,14,67,17,63,17,57,13,52,10,47,8,43,10),
    p(3,1,34,8,32,15,35,19,40,26,42,29,45,25,47,20,43,14,42,9,37,2,38),
-   p(3,29,33,34,31,40,33,45,38,53,40,55,43,52,44,46,41,41,40,34,35,30,37),
-   p(3,47,55,53,52,59,55,65,60,68,63,64,64,58,60,53,59,48,58,45,61),
    p(3,9,51,15,49,21,52,25,56,30,58,32,62,28,62,22,59,17,56,11,55,7,57),
-   p(3,35,4,37,8,40,10,45,9,47,13,46,15,42,13,38,12,34,8),
    p(3,54,28,58,26,63,28,66,32,63,34,59,31,54,32,50,36,49,33),
-   p(3,16,29,19,27,23,30,24,34,28,36,24,37,20,33,17,33),
-   p(3,39,52,41,49,45,50,47,54,49,57,46,56,43,53,39,55),
-   p(3,4,2,9,0,14,2,17,5,13,5,10,3,4,5),
    p(3,59,45,62,42,67,43,67,46,63,45,61,48,56,50,55,48)
   ]
  },
@@ -474,7 +466,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'DESERT FLECKTARN',
   description:'German Wüstentarn: warm sand beneath small clustered brown spots and irregular forest-olive fleck islands; 64px master',
   colors:[[215,201,170],[116,94,74],[67,91,78]],
-  targetCoverage:[.68,.21,.11],
+  targetCoverage:[.58,.21,.21],
   motifs:[
    // Sparse jagged olive bases; avoid MultiCam-style broad tan swathes.
    p(2,6,7,10,5,15,7,19,11,22,17,20,24,15,25,12,22,8,23,5,18,2,17,4,12),
