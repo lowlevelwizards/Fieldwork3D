@@ -163,7 +163,7 @@ export const RIG_FRONT_PROFILES:Readonly<Record<string,{front:number;low:number}
  'belt-harness':{front:8.35,low:-4.5},
  'chicom-rig':{front:9.00,low:-2.0},
  'bandolier':{front:8.90,low:-2.0},
- 'sadm-webbing':{front:8.65,low:-4.0}
+ 'sadf-webbing':{front:8.65,low:-4.0}
 };
 const pouch=(g:THREE.Group,m:THREE.Material,fold:THREE.Material,
  x:number,y:number,z:number,h:number,d:number,depth=1.10)=>{
@@ -275,7 +275,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   }
  }
  {
-  const g=make('sadm-webbing');
+  const g=make('sadf-webbing');
   shoulderHarness(g,fabric,5.35);
   for(const s of [-1,1]){
    for(const z of [3.25,6.05])
