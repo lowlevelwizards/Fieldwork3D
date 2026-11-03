@@ -81,3 +81,41 @@ export function resolvedCuffSolid(options:{
  return options.override??(options.print?CAMO_CUFF_DEFAULTS[options.print]:null)??
   options.solid??options.fallback??'olive-drab';
 }
+
+/** Automatically selected knit undershirt color for combat shirts.
+ * Reference-driven family pairing: woodland -> muted olive, arid -> khaki
+ * or coyote, transitional -> neutral tan, urban -> foliage/slate.
+ * No random sampling of the preserved camouflage masters. */
+export const CAMO_COMBAT_KNIT_DEFAULTS:Readonly<Record<HeadwearCamoId,GarmentSolidId>>={
+ ...CAMO_CUFF_DEFAULTS,
+ multicam:'khaki',
+ 'scorpion-w2':'khaki',
+ 'british-mtp':'khaki',
+ 'three-color-desert':'khaki',
+ 'six-color-desert':'tan',
+ 'desert-marpat':'coyote',
+ 'desert-tropentarn':'sand',
+ 'australian-dpcu':'khaki',
+ 'indian-digital-2022':'khaki',
+ 'rhodesian-brushstroke':'khaki',
+ 'woodland-marpat':'olive-drab',
+ 'russian-emr':'olive-drab',
+ 'cadpat-tw':'olive-drab',
+ 'polish-pantera':'ranger-green',
+ 'pla-xingkong':'sage'
+};
+export const SOLID_COMBAT_KNIT_DEFAULTS:Readonly<Record<GarmentSolidId,GarmentSolidId>>={
+ 'olive-drab':'olive-drab','ranger-green':'ranger-green',
+ 'forest-green':'ranger-green','field-green':'olive-drab',
+ sage:'foliage',foliage:'foliage',khaki:'khaki',sand:'sand',tan:'khaki',
+ coyote:'coyote',brown:'coyote',slate:'slate',
+ charcoal:'charcoal',black:'black','off-white':'off-white'
+};
+export function resolvedCombatKnitSolid(options:{
+ print?:HeadwearCamoId|null;solid?:GarmentSolidId|null;
+ override?:GarmentSolidId|null;fallback?:GarmentSolidId
+}):GarmentSolidId{
+ return options.override??(options.print?CAMO_COMBAT_KNIT_DEFAULTS[options.print]:null)??
+  (options.solid?SOLID_COMBAT_KNIT_DEFAULTS[options.solid]:null)??
+  options.fallback??'khaki';
+}
