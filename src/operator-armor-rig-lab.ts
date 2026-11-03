@@ -5,12 +5,16 @@ import * as THREE from 'three';
 import {createOperatorRig,poseOperator} from './breach-operator-rig.ts';
 import {setEquipmentChoice,initialEquipmentLoadout} from './equipment-loadouts.ts';
 import {initialWardrobe,wardrobeItemsForSlot} from './operator-wardrobe-data.ts';
+import {createArmorFitDebug,disposeArmorFitDebug}
+ from './operator-armor-fit-debug.ts';
 
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const armorSelect=el<HTMLSelectElement>('armorChoice'),
  rigSelect=el<HTMLSelectElement>('rigChoice'),
  topSelect=el<HTMLSelectElement>('topChoice'),
  zoomSelect=el<HTMLSelectElement>('zoomChoice'),
+ debugChoice=el<HTMLInputElement>('fitDebugChoice'),
+ status=el<HTMLElement>('fitStatus'),
  canvas=el<HTMLCanvasElement>('armorCanvas');
 const params=new URLSearchParams(location.search);
 for(const [select,slot] of [
@@ -43,6 +47,18 @@ sunlight.position.set(40,80,-38);scene.add(sunlight);
 const camera=new THREE.OrthographicCamera(-35,35,35,-35,.1,600);
 const operator=createOperatorRig('rook','blue');
 scene.add(operator.root);
+let debugGroup:THREE.Group|null=null;
+function updateFitDebug(){
+ if(debugGroup){disposeArmorFitDebug(debugGroup);debugGroup=null;}
+ if(!debugChoice.checked){
+  status.textContent='Enable debug to inspect front, shoulder and side clearances.';
+  return;
+ }
+ const check=createArmorFitDebug(armorSelect.value,topSelect.value);
+ debugGroup=check.group;
+ operator.chest.add(debugGroup);
+ status.textContent=check.status;
+}
 function updateView(){
  const target=new THREE.Vector3(0,27,0),distance=100;
  const dirs={
@@ -91,12 +107,17 @@ function refresh(){
   aiming:false,firing:false,turning:0,deterministic:true,
   unarmedPreview:true,equipment:kit,wardrobe
  },0);
+ updateFitDebug();
  updateView();
 }
 for(const select of [armorSelect,rigSelect,topSelect,zoomSelect])
  select.addEventListener('change',refresh);
+debugChoice.addEventListener('change',()=>{updateFitDebug();updateView();});
 document.querySelectorAll<HTMLButtonElement>('button[data-view]').forEach(button=>
  button.addEventListener('click',()=>{view=button.dataset.view??'fit';updateView();}));
 new ResizeObserver(updateView).observe(canvas);
 refresh();
-window.addEventListener('pagehide',()=>{operator.dispose();renderer.dispose();},{once:true});
+window.addEventListener('pagehide',()=>{
+ if(debugGroup)disposeArmorFitDebug(debugGroup);
+ operator.dispose();renderer.dispose();
+},{once:true});
