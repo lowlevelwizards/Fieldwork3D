@@ -86,7 +86,8 @@ import './operator-fabric-camo-picker.css';
 import {WARDROBE_ACCESSORY_SLOTS,WARDROBE_ACCESSORY_OPTIONS}
  from './operator-wardrobe-accessories.ts';
 import {readWardrobe,resolvedWardrobe,setWardrobeStyle,
- wardrobeItemsForSlot,WARDROBE_SLOTS}
+ wardrobeItemsForSlot,WARDROBE_SLOTS,SLEEVE_STATES,TROUSER_HEMS,
+ type WardrobeOptions}
  from './operator-wardrobe-data.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {exportCampaign,importCampaign} from './campaign-persistence.ts';
@@ -661,6 +662,33 @@ function renderOperationsBoard(){
    }));
   wardrobeEditor.append(createWardrobeFabricCamoPicker(member.loadout,
    currentWardrobe,writeCosmetics,quickFabricPickerState));
+  for(const [field,label,options] of [
+   ['sleeveState','SLEEVE FINISH',SLEEVE_STATES],
+   ['trouserHem','TROUSER HEM',TROUSER_HEMS]
+  ] as const){
+   const row=document.createElement('label');
+   row.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0';
+   const caption=document.createElement('span');caption.textContent=label;
+   const select=document.createElement('select');
+   select.setAttribute('aria-label',label+' for '+member.callsign);
+   select.style.cssText='min-height:40px;max-width:66%;background:#243530;color:#e5e9d8';
+   for(const id of options){
+    const option=document.createElement('option');option.value=id;
+    option.textContent=id.toUpperCase();select.append(option);
+   }
+   select.value=currentWardrobe[field];
+   select.disabled=field==='sleeveState'?
+    !['bdu-shirt','acu-shirt'].includes(effective.top):
+    !['bdu-trousers','acu-trousers'].includes(effective.trousers)||
+    effective.footwear==='bare-feet';
+   select.addEventListener('change',()=>{
+    if(field==='sleeveState')writeCosmetics({...currentWardrobe,
+     sleeveState:select.value as WardrobeOptions['sleeveState']});
+    else writeCosmetics({...currentWardrobe,
+     trouserHem:select.value as WardrobeOptions['trouserHem']});
+   });
+   row.append(caption,select);wardrobeEditor.append(row);
+  }
   const randomize=document.createElement('button');
   randomize.type='button';randomize.textContent='RANDOMIZE FACE / LOOK';
   randomize.setAttribute('aria-label','Choose another appearance for '+member.callsign);
