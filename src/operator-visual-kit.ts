@@ -8,6 +8,8 @@ import type {CarryLocation} from './equipment-carry-placement.ts';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
+import {createFieldBlousePrototypes,updateFieldBlousePrototypes,
+ type FieldBlousePrototypes} from './operator-field-blouse-prototypes.ts';
 import {createCanonicalAttachment} from './operator-axis-convention.ts';
 import {createWardrobeHeadLayers,updateWardrobeHeadLayers,
  type WardrobeHeadLayers} from './operator-wardrobe-head-visuals.ts';
@@ -28,6 +30,8 @@ type Limb={upper:THREE.Mesh;lower:THREE.Mesh;shoe?:THREE.Mesh};
 export type OperatorVisualKit={
  wardrobeHead:WardrobeHeadLayers;wardrobeBody:WardrobeBodyLayers;
  wardrobeGear:WardrobeGearLayers;accessories:WardrobeAccessoryVisuals;
+ /** Stage 3B two distinct upper-body field blouse cuts. */
+ fieldBlouses:FieldBlousePrototypes;
  helmet:THREE.Group;cap:THREE.Group;hair:THREE.Group;
  haircuts:THREE.Group[];graphicMarks:THREE.Group;
  jacket:THREE.Group;lightShirt:THREE.Group;
@@ -105,6 +109,7 @@ export function createOperatorVisualKit(
   headCloth,headArmor,dark,skin);
  const wardrobeBody=createWardrobeBodyLayers(chest,legs,arms,
   cloth,trousers,trim,dark);
+ const fieldBlouses=createFieldBlousePrototypes(chest,arms,cloth,trim);
  // Separate clothing profiles: jacket has a heavier collar, flap and
  // squared hem; the shirt exposes a narrow collar instead of extra panels.
  const jacket=bundle(chest);
@@ -233,7 +238,7 @@ export function createOperatorVisualKit(
  for(const surface of [helmet,cap,hair,jacket,lightShirt,softArmor,
   plateCarrier,chestRig,fieldWebbing,belt,dayPack,fieldPack,packHarness])
    consolidateVisualGroup(surface);
- return {wardrobeHead,wardrobeBody,wardrobeGear,accessories,
+ return {wardrobeHead,wardrobeBody,wardrobeGear,accessories,fieldBlouses,
   helmet,cap,hair,jacket,lightShirt,
   softArmor,plateCarrier,chestRig,
   fieldWebbing,belt,dayPack,fieldPack,packHarness,cargoPockets,bootCuffs,
@@ -279,11 +284,12 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   looks.armorStyle==='plate-jpc'?.92:
   looks.armorStyle==='plate-heavy'?1.15:1,1,1);
  const bareTop=looks.top==='base-layer';
- const heavyTop=['field-jacket','bdu-shirt','acu-shirt','softshell',
+ const heavyTop=['field-jacket','softshell',
   'softshell-hood','pcu-shell','tactical-sweater'].includes(looks.top);
  v.jacket.visible=usingWardrobe?heavyTop:s.top==='top-uniform';
  v.lightShirt.visible=usingWardrobe?!heavyTop&&!bareTop:s.top==='top-light';
  v.jacket.scale.set(looks.top==='pcu-shell'?1.12:1,1,1);
+ updateFieldBlousePrototypes(v.fieldBlouses,looks.top);
  updateWardrobeBodyLayers(v.wardrobeBody,looks.top,looks.trousers,
   looks.knees,looks.wrist);
  updateWardrobeGearLayers(v.wardrobeGear,looks.armorStyle,looks.rigStyle,
