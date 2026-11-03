@@ -1432,9 +1432,7 @@ function draw(){
     hitYaw:motion.heading+Math.PI/2,
     hitAge:track==='wounded'?Math.max(0,clock-.7):undefined,
     hitSeverity:2},0);
-  if(weapon.value==='none'&&!comparing){
-    rig.visualKit.hair.visible=false; // clean neutral mannequin baseline
-  }
+  // The shared wardrobe layer controls hair visibility even in unarmed preview.
   if(variantComparing&&rig.lastPose&&pinnedLook){
    for(let i=0;i<variantBodies.length;i++){
     const body=variantBodies[i],reference=i===0;
