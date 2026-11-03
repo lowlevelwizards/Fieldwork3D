@@ -104,6 +104,10 @@ test('open window climbs exempt only their matching sill, never walls or barred 
    {...world,windows:[{...open,treatment:'bars'}]}),null);
  assert.equal(probeWindowCrossing(from,to,
    {...world,walls:[{a:{x:101,y:85},b:{x:101,y:155}}]}),null);
- assert.equal(probeWindowCrossing(from,{x:145,y:150},world),null,
-   'crossing beyond the aperture must not become a wall shortcut');
+ const angled=probeWindowCrossing(from,{x:145,y:150},world);
+ assert.ok(angled,'a reasonable angled approach should use the opening');
+ assert.equal(angled.approach.y,open.y);
+ assert.equal(angled.landing.y,open.y);
+ assert.equal(probeWindowCrossing(from,{x:145,y:210},world),null,
+   'a route crossing well beyond the aperture must not become a wall shortcut');
 });
