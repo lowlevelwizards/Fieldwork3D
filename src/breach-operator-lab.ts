@@ -31,6 +31,8 @@ import {operatorAttachmentPoint,type OperatorAttachmentZone}
 import {garmentFitWorldPoint,sampleGarmentFit,garmentFitDiagnosticLines,
  type GarmentFitAnchorId} from './operator-garment-fit.ts';
 import {selectWardrobeItem} from './operator-wardrobe-unified.ts';
+import {OperatorAppearanceGrid} from './operator-appearance-grid.ts';
+import './operator-appearance-grid.css';
 import {createWardrobeFabricCamoPicker} from './operator-fabric-camo-picker.ts';
 import {uniformCutCamoChoices,type UniformCompareCut}
  from './operator-uniform-cut-eligibility.ts';
@@ -52,14 +54,14 @@ import {HEADWEAR_CAMO_IDS,headwearCamoChoices,resolvedHeadwearCamo,headwearCamoP
  type HeadwearCamoId} from './operator-headwear-camo.ts';
 import {CAMO_ORIGINS,filterCamoCatalog,type CamoFilter,type CamoOrigin}
  from './operator-headwear-camo-catalog.ts';
-import {initialWardrobe,readWardrobe,setWardrobePattern,resolvedWardrobe,
- WARDROBE_PATTERNS,wardrobeConflicts,wardrobeItemsForSlot,wardrobeItem,
- type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
+import {initialWardrobe,readWardrobe,resolvedWardrobe,wardrobeConflicts,
+ type WardrobeOptions} from './operator-wardrobe-data.ts';
 
 
 let labKit:EquipmentLoadout=bareLabEquipment();
 let labPalette=1;
 let wardrobeOptions:WardrobeOptions=initialWardrobe();
+let appearanceGrid:OperatorAppearanceGrid|null=null;
 /** One-step Lab-only undo: snapshot display choices, never owned inventory. */
 type AppearanceSnapshot={kit:EquipmentLoadout;wardrobe:WardrobeOptions;
  weapon:string;magazines:string;face:string;seed:number};
@@ -84,13 +86,8 @@ function undoAppearance(){
  (document.getElementById('kitMagazines') as HTMLSelectElement).value=restore.magazines;
  (document.getElementById('faceTreatment') as HTMLSelectElement).value=restore.face;
  syncKit();updateMagazineState();
- for(const select of patternSelects){
-  const channel=select.dataset.wardrobePattern as keyof WardrobeOptions['patterns'];
-  select.value=wardrobeOptions.patterns[channel]??'solid';
- }
+
  const active=resolvedWardrobe(wardrobeOptions,labKit).headwear;
- for(const button of document.querySelectorAll<HTMLButtonElement>('[data-head-silhouette]'))
-  button.setAttribute('aria-pressed',String(button.dataset.headSilhouette===active));
 }
 wardrobeUndoButton.addEventListener('click',undoAppearance);
 
@@ -158,10 +155,7 @@ document.getElementById('wardrobeApply')?.addEventListener('click',()=>{
  // Archived color wheels are retired; headwear receives its own swatch.
  labPalette=1;
  syncKit();updateMagazineState();
- for(const select of patternSelects){
-  const channel=select.dataset.wardrobePattern as keyof WardrobeOptions['patterns'];
-  select.value=wardrobeOptions.patterns[channel]??'solid';
- }
+
 });
 const cosmeticMountSelects=Array.from(
  document.querySelectorAll<HTMLSelectElement>('[data-wardrobe-accessory]'));
@@ -235,10 +229,7 @@ function applyLook(look:WardrobeLook){
   look.weaponVisible===false?'none':look.kit.slots.primary.replace(/^primary-/,'');
  labPalette=1;
  syncKit();updateMagazineState();
- for(const select of patternSelects){
-  const slot=select.dataset.wardrobePattern as keyof WardrobeOptions['patterns'];
-  select.value=wardrobeOptions.patterns[slot]??'solid';
- }
+
 }
 document.getElementById('outfitSave')?.addEventListener('click',()=>{
  const look=makeWardrobeLook(outfitName.value,labKit,wardrobeOptions,
@@ -273,8 +264,7 @@ document.getElementById('outfitImport')?.addEventListener('click',()=>{
  checkpointAppearance();applyLook(look);outfitStatus.textContent='Outfit imported';
 });
 updateSavedLooks();
-const wardrobeSelects=Array.from(document.querySelectorAll<HTMLSelectElement>(
- '[data-wardrobe-slot]'));
+// Legacy item dropdowns are gone; the 3D grid is authoritative.
 /** Visual color picker: no universal palette, no color dropdown and no
  * visually repetitive named options. Names are accessible labels and the
  * selected-color confirmation only; the controls themselves are swatches.
@@ -528,35 +518,13 @@ function syncWardrobe(){
  }
  (document.getElementById('wardrobeMagazineOrder') as HTMLSelectElement).value=
   wardrobeOptions.mounts.magazineOrder;
- for(const select of wardrobeSelects){
-  const slot=select.dataset.wardrobeSlot as WardrobeSlot;
-  select.value=compatible[slot];
-  for(const option of Array.from(select.options)){
-   const candidate=selectWardrobeItem(labKit,wardrobeOptions,slot,option.value);
-   option.disabled=resolvedWardrobe(candidate.wardrobe,candidate.kit)[slot]!==option.value;
-  }
- }
+ appearanceGrid?.refresh(labKit,wardrobeOptions);
  (document.getElementById('rolledSleeves') as HTMLInputElement).checked=
   wardrobeOptions.rolledSleeves;
  const incompatible=wardrobeConflicts(wardrobeOptions,labKit);
  document.getElementById('wardrobeCompatibility')!.textContent=incompatible.length?
   'Style unavailable for current kit: '+incompatible.join(', '):
   'Compatible visual styles. Gameplay equipment is unchanged.';
-}
-for(const select of wardrobeSelects){
- const slot=select.dataset.wardrobeSlot as WardrobeSlot;
- for(const item of wardrobeItemsForSlot(slot)){
-  const option=document.createElement('option');
-  option.value=item.id;option.textContent=item.name;select.append(option);
- }
- select.addEventListener('change',()=>{
-  if(!wardrobeItem(slot,select.value))return;
-  const selected=selectWardrobeItem(labKit,wardrobeOptions,slot,select.value);
-  if(resolvedWardrobe(selected.wardrobe,selected.kit)[slot]===select.value){
-   checkpointAppearance();labKit=selected.kit;wardrobeOptions=selected.wardrobe;
-  }
-  syncKit();
- });
 }
 document.getElementById('rolledSleeves')?.addEventListener('change',e=>{
  checkpointAppearance();wardrobeOptions={...wardrobeOptions,
@@ -573,24 +541,8 @@ function renderFabricPicker(){
   wardrobeOptions=next;syncWardrobe();
  },fabricPickerState));
 }
-const patternSelects=Array.from(document.querySelectorAll<HTMLSelectElement>(
- '[data-wardrobe-pattern]'));
-for(const select of patternSelects){
- const slot=select.dataset.wardrobePattern as keyof WardrobeOptions['patterns'];
- for(const id of WARDROBE_PATTERNS){
-  const option=document.createElement('option');option.value=id;
-  option.textContent=id.replaceAll('-',' ').toUpperCase();
-  select.append(option);
- }
- select.addEventListener('change',()=>{
-  checkpointAppearance();wardrobeOptions=setWardrobePattern(wardrobeOptions,slot,
-    select.value as typeof WARDROBE_PATTERNS[number]);
-  syncWardrobe();
- });
-}
 document.getElementById('wardrobeReset')?.addEventListener('click',()=>{
  checkpointAppearance();wardrobeOptions=initialWardrobe();syncWardrobe();
- for(const select of patternSelects)select.value='solid';
 });
 for(const button of document.querySelectorAll<HTMLButtonElement>('[data-kit-preset]'))
  button.addEventListener('click',()=>{
@@ -678,7 +630,6 @@ choose<HTMLButtonElement>('unequipAll').addEventListener('click',()=>{
  weapon.value='none';injury.value='0';
  magazineSelector.value='0';
  choose<HTMLSelectElement>('faceTreatment').value='blank';
- for(const select of patternSelects)select.value='solid';
  labPalette=1;
  showAllGroups();updateMagazineState();syncKit();
  if(kitComparing)endKitComparison();
