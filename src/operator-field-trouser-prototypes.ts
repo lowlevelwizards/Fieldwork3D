@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {TILE_WORLD_SIZE} from './rendering/pixel-materials.ts';
-import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH} from './breach-leg-geometry.ts';
+import {LEG_UPPER_LENGTH} from './breach-leg-geometry.ts';
 import {outwardLimbPocket,outwardLimbPatch} from './operator-garment-mount-frame.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import type {TrouserHem} from './operator-wardrobe-data.ts';
