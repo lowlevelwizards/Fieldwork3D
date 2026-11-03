@@ -205,13 +205,13 @@ export function createArmorSilhouettes(chest:THREE.Group,
  // raised throat collar. Full coverage rather than giant plate carrier.
  {
   const g=make('plate-legacy');
-  splitFront(g,armor,7.48,-1.26,10.55,6.18,1.76,.20);
-  box(g,armor,-6.88,-1.18,0,1.63,10.4,13.45);
-  wrapPanels(g,armor,7.46,-1.35,10.0,1.48);
+  splitFront(g,armor,7.48,-1.70,11.50,6.18,1.76,.20);
+  box(g,armor,-6.88,-1.57,0,1.63,11.18,13.45);
+  wrapPanels(g,armor,7.46,-1.80,10.82,1.48);
   for(const sign of [-1,1])
    box(g,armor,.15,4.89,sign*5.06,11.3,2.05,2.85);
   collarPieces(g,armor,6.05,2.97);
-  box(g,utility,7.55,-1.20,0,.22,8.72,1.18);
+  box(g,utility,7.55,-1.65,0,.22,9.48,1.18);
   for(const sign of [-1,1])
    box(g,utility,7.57,-3.35,sign*4.55,.18,1.68,3.10);
  }
