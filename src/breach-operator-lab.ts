@@ -32,6 +32,10 @@ import {garmentFitWorldPoint,sampleGarmentFit,garmentFitDiagnosticLines,
  type GarmentFitAnchorId} from './operator-garment-fit.ts';
 import {selectWardrobeItem} from './operator-wardrobe-unified.ts';
 import {createWardrobeFabricCamoPicker} from './operator-fabric-camo-picker.ts';
+import {uniformCutCamoChoices,type UniformCompareCut}
+ from './operator-uniform-cut-eligibility.ts';
+import {uniformCompareKit,uniformCompareWardrobe,UNIFORM_COMPARE_LABELS,
+ UNIFORM_COMPARE_DEFAULT_PRINTS} from './operator-uniform-comparison.ts';
 import './operator-fabric-camo-picker.css';
 import {MAX_WARDROBE_LOOKS,makeWardrobeLook,readWardrobeLooks,
  exportWardrobeLook,importWardrobeLook,type WardrobeLook}
@@ -731,6 +735,45 @@ let variantComparing=false;
 let pinnedLook:null|{kit:EquipmentLoadout;wardrobe:WardrobeOptions;
  weapon:WeaponId;weaponVisible:boolean}=null;
 const variantBodies:OperatorRig[]=[];
+let uniformComparing=false;
+const uniformPreviewKit=uniformCompareKit();
+const uniformPreviewWardrobes:Record<UniformCompareCut,WardrobeOptions>={
+ 'bdu-shirt':uniformCompareWardrobe('bdu-shirt'),
+ 'acu-shirt':uniformCompareWardrobe('acu-shirt')
+};
+const uniformCompareButton=choose<HTMLButtonElement>('compareBlouses');
+const uniformCompareStatus=choose<HTMLOutputElement>('blouseCompareStatus');
+const uniformLabels=choose<HTMLElement>('uniformCutLabels');
+const uniformLabelA=choose<HTMLElement>('blouseLabelA');
+const uniformLabelB=choose<HTMLElement>('blouseLabelB');
+for(const [cut,id] of [
+ ['bdu-shirt','bduComparisonPrint'],['acu-shirt','acuComparisonPrint']
+] as const){
+ const select=choose<HTMLSelectElement>(id);
+ for(const print of uniformCutCamoChoices(cut)){
+  const option=document.createElement('option');
+  option.value=print;
+  option.textContent=HEADWEAR_CAMO_RECIPES[print].label;
+  select.append(option);
+ }
+ select.value=UNIFORM_COMPARE_DEFAULT_PRINTS[cut];
+ select.addEventListener('change',()=>{
+  uniformPreviewWardrobes[cut]=uniformCompareWardrobe(cut,
+   select.value as HeadwearCamoId);
+  refreshUniformCompareLabels();
+ });
+}
+function refreshUniformCompareLabels(){
+ const label=(cut:UniformCompareCut)=>{
+  const camo=uniformPreviewWardrobes[cut].fabricCamo?.top;
+  return UNIFORM_COMPARE_LABELS[cut]+' · '+(camo?
+   HEADWEAR_CAMO_RECIPES[camo].label:'SOLID');
+ };
+ uniformLabelA.textContent=label('bdu-shirt');
+ uniformLabelB.textContent=label('acu-shirt');
+ if(uniformComparing)uniformCompareStatus.textContent=
+  'LEFT: BDU / JUNGLE · RIGHT: ACU · matching scale';
+}
 const comparePinnedButton=choose<HTMLButtonElement>('comparePinned');
 const variantCompareStatus=choose<HTMLOutputElement>('variantCompareStatus');
 function endVariantComparison(){
@@ -738,6 +781,10 @@ function endVariantComparison(){
   const body=variantBodies.pop()!;scene.remove(body.root);body.dispose();
  }
  variantComparing=false;
+ uniformComparing=false;uniformLabels.hidden=true;
+ uniformCompareButton.setAttribute('aria-pressed','false');
+ uniformCompareButton.textContent='COMPARE BDU + ACU';
+ uniformCompareStatus.textContent='Open two matching-scale previews with distinct uniforms';
  comparePinnedButton.setAttribute('aria-pressed','false');
  comparePinnedButton.textContent='COMPARE A / B';
  variantCompareStatus.textContent=pinnedLook?'Reference pinned':'';
@@ -749,9 +796,7 @@ document.getElementById('pinLook')?.addEventListener('click',()=>{
  comparePinnedButton.disabled=false;
  variantCompareStatus.textContent='Reference pinned. Edit the right-hand outfit.';
 });
-comparePinnedButton.addEventListener('click',()=>{
- if(variantComparing){endVariantComparison();fit();return;}
- if(!pinnedLook)return;
+function beginTwoLookComparison(){
  if(kitComparing)endKitComparison();
  if(comparing){
   comparing=false;clearComparison();labelLayer.hidden=true;
@@ -769,10 +814,25 @@ comparePinnedButton.addEventListener('click',()=>{
    operator.value==='hostile'?'red':'blue');
   variantBodies.push(body);scene.add(body.root);
  }
+ fit();
+}
+comparePinnedButton.addEventListener('click',()=>{
+ if(variantComparing){endVariantComparison();fit();return;}
+ if(!pinnedLook)return;
+ beginTwoLookComparison();
  comparePinnedButton.setAttribute('aria-pressed','true');
  comparePinnedButton.textContent='EXIT A / B';
  variantCompareStatus.textContent='LEFT: PINNED REFERENCE · RIGHT: CURRENT';
- fit();
+});
+uniformCompareButton.addEventListener('click',()=>{
+ if(uniformComparing){endVariantComparison();fit();return;}
+ if(variantComparing)endVariantComparison();
+ beginTwoLookComparison();
+ uniformComparing=true;
+ uniformLabels.hidden=false;
+ uniformCompareButton.setAttribute('aria-pressed','true');
+ uniformCompareButton.textContent='EXIT BLOUSE COMPARISON';
+ refreshUniformCompareLabels();
 });
 
 function endKitComparison(){
@@ -816,7 +876,9 @@ function isolateKit(body:OperatorRig){
  }
  hide('pack',body.pack,v.dayPack,v.fieldPack,v.packHarness,
   ...all(v.wardrobeGear.pack),...all(v.accessories.pack));
- hide('clothes',v.jacket,v.lightShirt,...all(v.wardrobeBody.tops),
+ hide('clothes',v.jacket,v.lightShirt,
+  ...Object.values(v.fieldBlouses).flatMap(b=>[b.torso,...b.upper,...b.lower]),
+  ...all(v.wardrobeBody.tops),
   ...Object.values(v.wardrobeBody.trousers).flat(),
   ...v.cargoPockets,...v.sleeveCuffs,...v.rolledForearms,...v.rolledCuffs,
   ...v.patches);
@@ -1465,10 +1527,14 @@ function draw(){
     hitAge:track==='wounded'?Math.max(0,clock-.7):undefined,
     hitSeverity:2},0);
   // The shared wardrobe layer controls hair visibility even in unarmed preview.
-  if(variantComparing&&rig.lastPose&&pinnedLook){
+  if(variantComparing&&rig.lastPose&&(pinnedLook||uniformComparing)){
    for(let i=0;i<variantBodies.length;i++){
     const body=variantBodies[i],reference=i===0;
-    const chosen=reference?pinnedLook:{
+    const chosen=uniformComparing?{
+      kit:uniformPreviewKit,
+      wardrobe:uniformPreviewWardrobes[reference?'bdu-shirt':'acu-shirt'],
+      weapon:'carbine' as WeaponId,weaponVisible:false
+    }:reference?pinnedLook!:{
       kit:labKit,wardrobe:wardrobeOptions,
       weapon:labWeapon(),weaponVisible:weapon.value!=='none'
     };
@@ -1561,7 +1627,8 @@ function draw(){
   timeOutput.textContent=clock.toFixed(2)+'s';
   if(comparing||kitComparing||variantComparing){
     debug.visible=false;
-    diagnosticText.textContent=variantComparing?
+    diagnosticText.textContent=uniformComparing?
+      'LEFT: BDU · RIGHT: ACU · PROPORTIONS LOCKED':variantComparing?
       'LEFT: PINNED · RIGHT: CURRENT · PROPORTIONS LOCKED':kitComparing?
       'LIGHT / STANDARD / HEAVY · PROPORTIONS LOCKED':
       'SIX STANCES · ORBIT / ZOOM TO COMPARE';

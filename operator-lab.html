@@ -207,8 +207,17 @@ body.kit-compare main>.row[data-lab-group="view"]:has(#comparePose){display:flex
 .camo-study-density{display:block;font:500 9px "IBM Plex Mono",monospace;color:#c5d1c0;margin-top:5px}
 @media(min-width:680px){#headwearCamoCompareGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
+#blouseComparePanel{margin:7px 0 10px;padding:6px 8px;border:1px solid #83998c;border-radius:6px;background:#23372f;color:#e8e9d7}
+#blouseComparePanel summary{font-weight:700;letter-spacing:.03em;font-size:12px}
+#blouseComparePanel button{min-height:42px;background:#456653;color:#fff4da;border:1px solid #a2b99a;border-radius:5px}
+#blouseComparePanel select{min-height:40px;background:#1c302c;color:#e6e6dc}
+#blouseCompareStatus{font:11px/1.4 "IBM Plex Sans",sans-serif;color:#dbc49a}
+#uniformCutLabels{position:fixed;top:calc(80px + env(safe-area-inset-top));inset-inline:0;z-index:3;display:flex;justify-content:space-around;gap:6px;pointer-events:none;padding:0 8px}
+#uniformCutLabels[hidden]{display:none}
+#uniformCutLabels span{max-width:47%;font:700 10px/1.35 "IBM Plex Sans",sans-serif;text-align:center;letter-spacing:.025em;background:#182923e8;color:#f5e2b7;padding:6px 8px;border:1px solid #748d7e;border-radius:5px}
 </style></head>
 <body><canvas id="preview"></canvas><div id="compareLabels" hidden></div>
+<div id="uniformCutLabels" hidden aria-hidden="true"><span id="blouseLabelA">A · HISTORICAL BDU</span><span id="blouseLabelB">B · MODERN ACU</span></div>
 <aside id="labStatus" role="status" aria-live="polite">
   <strong id="labStatusTitle">INITIALIZING OPERATOR LAB</strong>
   <p id="labStatusMessage">Loading the 3D operator preview…</p>
@@ -251,6 +260,15 @@ body.kit-compare main>.row[data-lab-group="view"]:has(#comparePose){display:flex
 </div>
 <small>Start bare. Choose one actual item per category below. The Lab does not change saved campaign inventory.</small>
 <output id="variantCompareStatus" aria-live="polite"></output>
+<details id="blouseComparePanel" open><summary>STAGE 3B · FIELD BLOUSE A / B STUDY</summary>
+<p class="kit-help">Two original garment silhouettes, one shared anatomy. The dropdowns show only documented prints for each cut. Headgear, saved looks and campaign gear are not modified.</p>
+<div class="kit-grid">
+<label>A · HISTORICAL BDU PRINT<select id="bduComparisonPrint" aria-label="Historical field blouse camouflage"></select></label>
+<label>B · MODERN ACU PRINT<select id="acuComparisonPrint" aria-label="Modern ACU field blouse camouflage"></select></label>
+</div>
+<div class="row"><button id="compareBlouses" type="button" aria-pressed="false">COMPARE BDU + ACU</button>
+<output id="blouseCompareStatus" aria-live="polite">Open two matching-scale previews with distinct uniforms</output></div>
+</details>
 <details id="headwearSilhouetteReview" open>
 <summary>HEADGEAR / SOLIDS & CAMOUFLAGE</summary>
 <p class="kit-help">Choose headgear, then select a solid-color square. Only realistic options for that particular item appear. The underlying cloth, composite or painted-steel finish stays intact. Approved camouflages are available below for compatible hats and covered helmets.</p>
