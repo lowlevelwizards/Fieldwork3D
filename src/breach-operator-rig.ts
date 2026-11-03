@@ -452,9 +452,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     (['bdu-shirt','acu-shirt','combat-shirt'].includes(clothing.top)&&
      (p.wardrobe?.sleeveState==='rolled'||p.wardrobe?.sleeveState==='cuffed'));
   for(const arm of r.arms){
-   arm.lower.material=bareForearm?r.skinMaterial:r.clothMaterial;
+   const sleeveMaterial=clothing.top==='gorka-jacket'?
+    r.visualKit.newUpper.mountainCanvas:r.clothMaterial;
+   arm.lower.material=bareForearm?r.skinMaterial:sleeveMaterial;
    arm.upper.material=clothing.top==='base-layer'?
-    r.skinMaterial:r.clothMaterial;
+    r.skinMaterial:sleeveMaterial;
   }
   for(const leg of r.feet){
    leg.lower.material=clothing.trousers==='base-shorts'?
