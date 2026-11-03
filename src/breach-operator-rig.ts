@@ -169,7 +169,7 @@ function block(group:THREE.Object3D,x:number,y:number,z:number,
   mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;
   group.add(mesh);return mesh;
 }
-type GarmentSegmentCut='full'|'bloused'|'cuffed'|'rolled';
+type GarmentSegmentCut='full'|'bloused'|'cuffed';
 /** IK bones retain their normalized [-.5,+.5] coordinates. Fabric UVs,
  * however, must measure the ACTUAL stretched 10/11.25-world-unit limb.
  * Otherwise a 64px master becomes a gigantic stretched patch on each arm. */
@@ -190,8 +190,7 @@ function bone(parent:THREE.Group,w:number,depth:number,m:THREE.Material,
  const shapes:Record<GarmentSegmentCut,THREE.BoxGeometry>={
   full:metricSegmentGeometry(w,depth,m,length),
   bloused:metricSegmentGeometry(w,depth,m,length,.30),
-  cuffed:metricSegmentGeometry(w,depth,m,length,.26),
-  rolled:metricSegmentGeometry(w,depth,m,length,.35)
+  cuffed:metricSegmentGeometry(w,depth,m,length,.26)
  };
  old.dispose();
  mesh.geometry=shapes.full;
@@ -496,9 +495,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const bareForearm=clothing.top==='base-layer'||
     (sleeveState==='rolled'||sleeveState==='cuffed');
   for(const arm of r.arms){
-   // The visible upper sleeve ends before the elbow when rolled. Keep
-   // the solveTwoBone joint / animation position untouched.
-   setSegmentCut(arm.upper,sleeveState==='rolled'?'rolled':'full');
+   // Rolled sleeves retain the FULL shoulder-to-elbow cuboid. Only the
+   // forearm becomes bare skin and a fabric roll wraps the elbow end.
+   // Never shorten the upper-arm mesh: that erased the visible elbow.
+   setSegmentCut(arm.upper,'full');
    const sleeveMaterial=clothing.top==='gorka-jacket'?
     r.visualKit.newUpper.mountainCanvas:r.clothMaterial;
    arm.lower.material=bareForearm?r.skinMaterial:sleeveMaterial;
