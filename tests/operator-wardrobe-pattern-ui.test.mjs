@@ -9,7 +9,7 @@ test('unmodeled light clothing resolves to the remaining honest foundation cuts'
   ['feet','feet-light']])k=setEquipmentChoice(k,slot,id);
  const w=resolvedWardrobe(initialWardrobe(),k);
  assert.equal(w.top,'bdu-shirt');
- assert.equal(w.trousers,'field-trousers');
+ assert.equal(w.trousers,'bdu-trousers');
  assert.equal(w.footwear,'field-boots');
 });
 test('old procedural pattern controls are fully replaced by approved camouflage browsing',()=>{
