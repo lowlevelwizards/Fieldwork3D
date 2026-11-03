@@ -750,7 +750,7 @@ function refreshUniformCompareLabels(){
  uniformLabelA.textContent=label('bdu-shirt');
  uniformLabelB.textContent=label('acu-shirt');
  if(uniformComparing)uniformCompareStatus.textContent=
-  'LEFT: BDU / JUNGLE · RIGHT: ACU · matching scale';
+  'LEFT: CLASSIC FIELD · RIGHT: MODERN UTILITY · matching scale';
 }
 const comparePinnedButton=choose<HTMLButtonElement>('comparePinned');
 const variantCompareStatus=choose<HTMLOutputElement>('variantCompareStatus');
@@ -761,7 +761,7 @@ function endVariantComparison(){
  variantComparing=false;
  uniformComparing=false;uniformLabels.hidden=true;
  uniformCompareButton.setAttribute('aria-pressed','false');
- uniformCompareButton.textContent='COMPARE BDU + ACU';
+ uniformCompareButton.textContent='COMPARE CLASSIC + MODERN';
  uniformCompareStatus.textContent='Open two matching-scale previews with distinct uniforms';
  comparePinnedButton.setAttribute('aria-pressed','false');
  comparePinnedButton.textContent='COMPARE A / B';
@@ -1580,7 +1580,7 @@ function draw(){
   if(comparing||kitComparing||variantComparing){
     debug.visible=false;
     diagnosticText.textContent=uniformComparing?
-      'LEFT: BDU · RIGHT: ACU · PROPORTIONS LOCKED':variantComparing?
+      'LEFT: CLASSIC · RIGHT: MODERN · PROPORTIONS LOCKED':variantComparing?
       'LEFT: PINNED · RIGHT: CURRENT · PROPORTIONS LOCKED':kitComparing?
       'LIGHT / STANDARD / HEAVY · PROPORTIONS LOCKED':
       'SIX STANCES · ORBIT / ZOOM TO COMPARE';
