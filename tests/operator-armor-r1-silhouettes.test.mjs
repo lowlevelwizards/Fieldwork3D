@@ -26,8 +26,11 @@ const bounds=(group)=>{
 };
 const rayHits=(group,x,y,z,direction)=>{
  group.updateMatrixWorld(true);
- const ray=new THREE.Raycaster(new THREE.Vector3(x,y,z),
-  new THREE.Vector3(...direction),0,80);
+ // Ray positions are authored in the chest local frame, then rotated
+ // through the rig's canonical orientation before testing world meshes.
+ const origin=group.localToWorld(new THREE.Vector3(x,y,z));
+ const toward=new THREE.Vector3(...direction).transformDirection(group.matrixWorld);
+ const ray=new THREE.Raycaster(origin,toward,0,80);
  return ray.intersectObject(group,true).length>0;
 };
 test('R1 armor is layered over or under the actual body, never a full chest cube',()=>{
