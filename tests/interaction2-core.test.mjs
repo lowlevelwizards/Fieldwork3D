@@ -27,6 +27,9 @@ test('only one command long-press controller remains; failed targeting can retry
   assert.match(main,/installTouchCommandHelp\(button\)/);
   assert.match(main,/if\(accepted\)tacticalFeedback\.emit\(p\.moved\?'command':'select'/);
   assert.match(main,/if\(committed\)looking=false/);
+  assert.match(main,/p.mode==='targetPreview'\|\|p.mode==='undecided'/);
+  assert.match(main,/if\(looking\|\|flashMode\|\|firePlacement\|\|evacMode\)/);
+  assert.doesNotMatch(main,/case 'ctxReleaseWatch'/);
   assert.match(main,/if\(\!accepted\)rejectAt\(pt,'INVALID SUPPRESSION POINT'\)/);
 });
 test('unchanged palette keeps its position; existing pocket is an explicit candidate',()=>{
