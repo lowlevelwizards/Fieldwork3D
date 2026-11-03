@@ -88,6 +88,54 @@ const shoulderHarness=(g:THREE.Group,m:THREE.Material,spread=4.8)=>{
    [-6.0,2.30,sign*4.15],1.17,.90);
  }
 };
+/** The named rig harness uses the same fitted garment/armor frame as
+ * the plate carrier shoulder connections. Only the currently selected
+ * rig is rebuilt, and only when the uniform or armor fit changes.
+ */
+export type FittedRigFrame={
+ front:{x:number};back:{x:number};sideRight:{z:number};
+ shoulderRight:{z:number};shoulderY:number;rigShiftX:number;
+};
+export function updateFittedRigHarness(
+ groups:ShapeGroups,rig:string,top:string,frame:FittedRigFrame):void{
+ const outer=groups[rig];if(!outer)return;
+ const harness=outer.getObjectByName('uniform-fitted-rig-harness');
+ if(!(harness instanceof THREE.Group))return;
+ const key=top+'|'+frame.front.x.toFixed(3)+'|'+
+  frame.back.x.toFixed(3)+'|'+frame.shoulderY.toFixed(3);
+ if(harness.userData.fitKey===key)return;
+ const material=harness.userData.fitMaterial as THREE.Material;
+ const spread=harness.userData.spread as number;
+ // Only geometry from the previous deterministic fit is replaced; do not
+ // dispose shared material maps, camouflage textures, or any pouch mesh.
+ harness.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
+ harness.clear();
+ const waistRig=rig==='field-webbing'||rig==='belt-harness';
+ const localFront=frame.front.x-frame.rigShiftX;
+ const localBack=frame.back.x-frame.rigShiftX;
+ const y=frame.shoulderY+.25;
+ const shoulder=frame.shoulderRight.z;
+ const attachY=waistRig?-5.12:2.22;
+ const backY=waistRig?-5.28:2.28;
+ const attachZ=waistRig?Math.max(5.75,spread):Math.min(5.25,spread);
+ const routeZ=Math.max(shoulder,waistRig?5.65:4.12);
+ for(const sign of [-1,1]){
+  const nodes:readonly [number,number,number][]=[
+   [localFront+.45,attachY,sign*attachZ],
+   [localFront+.18,y-.83,sign*routeZ],
+   [1.82-frame.rigShiftX,y,sign*routeZ],
+   [-1.87-frame.rigShiftX,y,sign*routeZ],
+   [localBack-.20,y-.83,sign*routeZ],
+   [localBack-.35,backY,sign*attachZ]
+  ];
+  for(let i=0;i<nodes.length-1;i++)
+   strap(harness,material,nodes[i],nodes[i+1],
+    waistRig?1.26:1.16,waistRig?.94:.82);
+ }
+ consolidateVisualGroup(harness);
+ harness.userData.fitKey=key;
+}
+
 export function createChestRigSilhouettes(chest:THREE.Group,
  fabric:THREE.Material,pocketFabric:THREE.Material,
  dark:THREE.Material,trim:THREE.Material):ShapeGroups{
