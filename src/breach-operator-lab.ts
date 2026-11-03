@@ -876,7 +876,9 @@ function isolateKit(body:OperatorRig){
  }
  hide('pack',body.pack,v.dayPack,v.fieldPack,v.packHarness,
   ...all(v.wardrobeGear.pack),...all(v.accessories.pack));
- hide('clothes',v.jacket,v.lightShirt,...all(v.wardrobeBody.tops),
+ hide('clothes',v.jacket,v.lightShirt,
+  ...Object.values(v.fieldBlouses).flatMap(b=>[b.torso,...b.upper,...b.lower]),
+  ...all(v.wardrobeBody.tops),
   ...Object.values(v.wardrobeBody.trousers).flat(),
   ...v.cargoPockets,...v.sleeveCuffs,...v.rolledForearms,...v.rolledCuffs,
   ...v.patches);
@@ -1525,10 +1527,14 @@ function draw(){
     hitAge:track==='wounded'?Math.max(0,clock-.7):undefined,
     hitSeverity:2},0);
   // The shared wardrobe layer controls hair visibility even in unarmed preview.
-  if(variantComparing&&rig.lastPose&&pinnedLook){
+  if(variantComparing&&rig.lastPose&&(pinnedLook||uniformComparing)){
    for(let i=0;i<variantBodies.length;i++){
     const body=variantBodies[i],reference=i===0;
-    const chosen=reference?pinnedLook:{
+    const chosen=uniformComparing?{
+      kit:uniformPreviewKit,
+      wardrobe:uniformPreviewWardrobes[reference?'bdu-shirt':'acu-shirt'],
+      weapon:'carbine' as WeaponId,weaponVisible:false
+    }:reference?pinnedLook!:{
       kit:labKit,wardrobe:wardrobeOptions,
       weapon:labWeapon(),weaponVisible:weapon.value!=='none'
     };
@@ -1621,7 +1627,8 @@ function draw(){
   timeOutput.textContent=clock.toFixed(2)+'s';
   if(comparing||kitComparing||variantComparing){
     debug.visible=false;
-    diagnosticText.textContent=variantComparing?
+    diagnosticText.textContent=uniformComparing?
+      'LEFT: BDU · RIGHT: ACU · PROPORTIONS LOCKED':variantComparing?
       'LEFT: PINNED · RIGHT: CURRENT · PROPORTIONS LOCKED':kitComparing?
       'LIGHT / STANDARD / HEAVY · PROPORTIONS LOCKED':
       'SIX STANCES · ORBIT / ZOOM TO COMPARE';
