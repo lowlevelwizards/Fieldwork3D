@@ -71,6 +71,9 @@ function refresh(){
   armor.startsWith('soft-')?'armor-soft':'armor-carrier');
  kit=setEquipmentChoice(kit,'rig',rig==='no-rig'?'rig-none':
   ['micro-rig','light-rig','chest-placard'].includes(rig)?'rig-light':'rig-full');
+ for(const [slot,id] of [
+  ['belt','belt-none'],['backpack','backpack-none'],['head','head-none']
+ ] as const)kit=setEquipmentChoice(kit,slot,id);
  const wardrobe={...initialWardrobe(),
   styles:{top:'bdu-shirt',trousers:'bdu-trousers',headwear:'bare',
    armorStyle:armor,rigStyle:rig,beltStyle:'no-belt',packStyle:'no-pack'},
