@@ -446,7 +446,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // The bones, solved knee/elbow positions and planted feet stay identical.
   const clothing=resolvedWardrobe(p.wardrobe,p.equipment);
   const bareForearm=clothing.top==='base-layer'||
-     p.wardrobe?.sleeveState==='rolled';
+     (p.wardrobe?.sleeveState==='rolled'||p.wardrobe?.sleeveState==='cuffed');
   for(const arm of r.arms){
    arm.lower.material=bareForearm?r.skinMaterial:r.clothMaterial;
    arm.upper.material=clothing.top==='base-layer'?
@@ -454,7 +454,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }
   for(const leg of r.feet){
    leg.lower.material=clothing.trousers==='base-shorts'?
-    r.skinMaterial:r.trouserMaterial;
+    r.skinMaterial:p.wardrobe?.trouserHem==='bloused'?
+    r.bootMaterial:r.trouserMaterial;
    const barefoot=clothing.footwear==='bare-feet';
    leg.shoe.material=barefoot?r.skinMaterial:r.bootMaterial;
    leg.shoe.scale.set(1,barefoot?.7:1,barefoot?.88:1);
