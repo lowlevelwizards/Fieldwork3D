@@ -55,41 +55,15 @@ add('headset','headset',[
  ['helmet-ears','Helmet-integrated hearing protection']
 ]);
 add('top','underlayer',[['base-layer','Base underlayer']]);
+// Stage 3B: only the two approved prototype families remain in the active catalog.
 add('top','uniform',[
- ['field-jacket','Field jacket'],['bdu-shirt','BDU field blouse'],
- ['acu-shirt','ACU field blouse'],['combat-shirt','Combat shirt'],
- ['light-shirt','Light field shirt']
-]);
-add('top','civilian',[
- ['t-shirt','T-shirt'],['tank-top','Tank top'],['longsleeve','Long sleeve'],
- ['turtleneck','Turtleneck'],['flannel','Flannel shirt'],
- ['button-short','Short-sleeve button-up'],
- ['button-long','Long-sleeve button-up']
-]);
-add('top','outerwear',[
- ['tactical-sweater','Tactical sweater'],['softshell','Softshell jacket'],
- ['softshell-hood','Hooded softshell'],['pcu-shell','Insulated field shell']
+ ['bdu-shirt','BDU / Field blouse'],['acu-shirt','ACU / Modern blouse']
 ]);
 add('trousers','underlayer',[['base-shorts','Base shorts']]);
-add('trousers','uniform',[
- ['field-trousers','Field trousers'],['bdu-trousers','BDU trousers'],
- ['acu-trousers','ACU trousers'],['combat-trousers','Combat trousers'],
- ['softshell-trousers','Softshell trousers']
-]);
-add('trousers','civilian',[
- ['work-pants','Work trousers'],['jeans','Jeans'],['track-pants','Track pants'],
- ['shorts','Shorts']
-]);
+// Unremodeled lower-body pieces are represented by one honest foundation.
+add('trousers','uniform',[['field-trousers','Field trousers (foundation)']]);
 add('footwear','unshod',[['bare-feet','Bare feet']]);
-add('footwear','boots',[
- ['field-boots','Field boots'],['combat-boots','Combat boots'],
- ['tall-boots','Tall field boots'],['hiking-boots','Hiking boots'],
- ['light-boots','Light boots']
-]);
-add('footwear','shoes',[
- ['hiking-shoes','Hiking shoes'],['trail-shoes','Trail shoes'],
- ['sneakers','Sneakers']
-]);
+add('footwear','boots',[['field-boots','Field boots (foundation)']]);
 add('armorStyle','none',[['armor-bare','No armor']]);
 add('armorStyle','soft',[
  ['soft-slick','Slick soft armor'],['soft-paca','PACA-style soft armor'],
@@ -128,14 +102,10 @@ add('packStyle','field',[
  ['medic-pack','Medic pack'],['comms-pack','Communications pack'],
  ['duffel','Duffel bag']
 ]);
-add('gloves','gloves',[
- ['gloves-none','Bare hands'],['gloves-light','Light gloves'],
- ['gloves-field','Field gloves'],['gloves-heavy','Heavy gloves']
-]);
-add('knees','knees',[
- ['knee-none','None'],['knee-integrated','Integrated knee panels'],
- ['knee-soft','Soft knee pads'],['knee-hard','Hard knee pads']
-]);
+add('gloves','gloves',[['gloves-none','Bare hands'],
+ ['gloves-field','Field gloves (foundation)']]);
+add('knees','knees',[['knee-none','None'],
+ ['knee-hard','Hard knee pads (foundation)']]);
 add('wrist','wrist',[
  ['wrist-none','None'],['watch','Field watch'],
  ['wrist-nav','Wrist navigation device']
@@ -145,17 +115,9 @@ export const wardrobeItemsForSlot=(slot:WardrobeSlot)=>
  WARDROBE_ITEMS.filter(x=>x.slot===slot);
 export const wardrobeItem=(slot:WardrobeSlot,id:string)=>
  WARDROBE_ITEMS.find(x=>x.slot===slot&&x.id===id);
-export const WARDROBE_PATTERNS=[
- 'solid','woodland','desert','multi-terrain','digital-woodland',
- 'digital-arid','digital-maritime','flecktarn','flora','emr',
- 'brushstroke','tiger','swedish-geometric','atacs-inspired',
- 'winter','flannel','denim'
-] as const;
-export type WardrobePattern=typeof WARDROBE_PATTERNS[number];
 export type WardrobeOptions={
  version:1;styles:Partial<Record<WardrobeSlot,string>>;
- patterns:Partial<Record<'top'|'trousers'|'armor'|'gear'|'pack'|'head',WardrobePattern>>;
- palette:number;headwearColor?:HeadwearSolidColorId;headwearCamo?:HeadwearCamoId;
+ headwearColor?:HeadwearSolidColorId;headwearCamo?:HeadwearCamoId;
  headwearCamoRoll?:number;
  /** Authored garment prints supersede legacy procedurals only on this channel. */
  fabricCamo?:Partial<Record<FabricCamoChannel,HeadwearCamoId>>;
@@ -167,13 +129,13 @@ export type WardrobeOptions={
 };
 const DEFAULTS:Record<WardrobeSlot,string>={
  headwear:'ach',facewear:'face-none',eyewear:'eyes-none',headset:'comms-none',
- top:'field-jacket',trousers:'field-trousers',footwear:'field-boots',
+ top:'bdu-shirt',trousers:'field-trousers',footwear:'field-boots',
  armorStyle:'soft-vest',rigStyle:'light-rig',beltStyle:'duty-belt',
  packStyle:'day-pack',gloves:'gloves-field',knees:'knee-none',
  wrist:'wrist-none'
 };
 export const initialWardrobe=():WardrobeOptions=>({
- version:1,styles:{},patterns:{},palette:0,rolledSleeves:false,
+ version:1,styles:{},rolledSleeves:false,
  accessories:initialWardrobeAccessories(),
  mounts:{magazineOrder:'left-right'}
 });
@@ -186,13 +148,6 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
   for(const slot of WARDROBE_SLOTS){
    const id=v.styles[slot];
    if(typeof id==='string'&&wardrobeItem(slot,id))result.styles[slot]=id;
-  }
- }
- if(v.patterns&&typeof v.patterns==='object'&&!Array.isArray(v.patterns)){
-  for(const slot of ['top','trousers','armor','gear','pack','head'] as const){
-   const p=v.patterns[slot];
-   if(typeof p==='string'&&(WARDROBE_PATTERNS as readonly string[]).includes(p))
-    result.patterns[slot]=p as WardrobePattern;
   }
  }
  if(v.fabricCamo&&typeof v.fabricCamo==='object'&&!Array.isArray(v.fabricCamo)){
@@ -210,8 +165,6 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
     (result.fabricCamoRoll??={})[channel]=roll;
   }
  }
- if(Number.isInteger(v.palette)&&v.palette!>=0&&v.palette!<=15)
-  result.palette=v.palette!;
  if(isHeadwearSolidColorId(v.headwearColor))result.headwearColor=v.headwearColor;
  if(isHeadwearCamoId(v.headwearCamo))result.headwearCamo=v.headwearCamo;
  if(Number.isInteger(v.headwearCamoRoll)&&v.headwearCamoRoll!>=0&&v.headwearCamoRoll!<4096)
@@ -232,13 +185,6 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
 }
 export const setWardrobeStyle=(wardrobe:WardrobeOptions,slot:WardrobeSlot,id:string)=>
  wardrobeItem(slot,id)?{...wardrobe,styles:{...wardrobe.styles,[slot]:id}}:wardrobe;
-export const setWardrobePattern=(wardrobe:WardrobeOptions,
- slot:keyof WardrobeOptions['patterns'],pattern:WardrobePattern):WardrobeOptions=>
- (WARDROBE_PATTERNS as readonly string[]).includes(pattern)?
- {...wardrobe,patterns:{...wardrobe.patterns,[slot]:pattern},
-   fabricCamo:slot==='head'?wardrobe.fabricCamo:
-    {...wardrobe.fabricCamo,[slot]:undefined}}:wardrobe;
-
 export function setWardrobeFabricCamo(wardrobe:WardrobeOptions,
  channel:FabricCamoChannel,id:HeadwearCamoId|null,
  outfit:CamoOutfit):WardrobeOptions{
@@ -281,11 +227,11 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
  // explicitly chosen a style. Choosing light boots must never show field
  // boots merely because an empty WardrobeOptions object exists.
  if(!wardrobe?.styles.top)
-  desired.top=kit.slots.top==='top-none'?'base-layer':kit.slots.top==='top-light'?'light-shirt':'field-jacket';
+  desired.top=kit.slots.top==='top-none'?'base-layer':'bdu-shirt';
  if(!wardrobe?.styles.trousers)
-  desired.trousers=kit.slots.legs==='legs-none'?'base-shorts':kit.slots.legs==='legs-light'?'work-pants':'field-trousers';
+  desired.trousers=kit.slots.legs==='legs-none'?'base-shorts':'field-trousers';
  if(!wardrobe?.styles.footwear)
-  desired.footwear=kit.slots.feet==='feet-none'?'bare-feet':kit.slots.feet==='feet-light'?'light-boots':'field-boots';
+  desired.footwear=kit.slots.feet==='feet-none'?'bare-feet':'field-boots';
  if(!wardrobe?.styles.gloves)
   desired.gloves=kit.slots.hands==='hands-none'?'gloves-none':'gloves-field';
  const slots=kit.slots;
@@ -330,12 +276,10 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
   ['field-pack','rucksack','medic-pack','comms-pack','duffel']:
   ['no-pack'],slots.backpack==='backpack-day'?'day-pack':
   slots.backpack==='backpack-field'?'field-pack':'no-pack');
- choose('footwear',slots.feet==='feet-none'?['bare-feet']:
-  slots.feet==='feet-light'?['hiking-shoes','trail-shoes','sneakers','light-boots']:
-  ['field-boots','combat-boots','tall-boots','hiking-boots'],
-  slots.feet==='feet-none'?'bare-feet':slots.feet==='feet-light'?'light-boots':'field-boots');
+ choose('footwear',slots.feet==='feet-none'?['bare-feet']:['field-boots'],
+  slots.feet==='feet-none'?'bare-feet':'field-boots');
  choose('gloves',slots.hands==='hands-none'?
-  ['gloves-none']:['gloves-light','gloves-field','gloves-heavy'],
+  ['gloves-none']:['gloves-field'],
   slots.hands==='hands-none'?'gloves-none':'gloves-field');
  return desired;
 }
