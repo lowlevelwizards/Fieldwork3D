@@ -5,8 +5,9 @@ import * as THREE from 'three';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {wardrobeItemsForSlot} from './operator-wardrobe-data.ts';
-import {createArmorSilhouettes,createChestRigSilhouettes,
- ARMOR_PROFILES} from './operator-armor-rig-silhouettes.ts';
+import {createArmorSilhouettes,createChestRigSilhouettes}
+ from './operator-armor-rig-silhouettes.ts';
+import {armorAttachmentFrame} from './operator-armor-attachment-frame.ts';
 type StyleGroups=Record<string,THREE.Group>;
 export type WardrobeGearLayers={
  armor:StyleGroups;rig:StyleGroups;belt:StyleGroups;pack:StyleGroups;
@@ -88,9 +89,12 @@ export function updateWardrobeGearLayers(v:WardrobeGearLayers,
   for(const [style,g] of Object.entries(target))g.visible=style===id;
  // One consistent bearing surface: fit the complete rig slightly outside
  // the selected plate/soft-armor shell without scaling straps/pouches.
- const armorSurface=(ARMOR_PROFILES[armor]??ARMOR_PROFILES['armor-bare']).front;
- const mountDelta=armorSurface-ARMOR_PROFILES['plate-standard'].front;
- for(const group of Object.values(v.rig))group.position.x=mountDelta;
+ const exterior=armorAttachmentFrame(armor);
+ for(const group of Object.values(v.rig)){
+  group.position.x=exterior.rigShiftX;
+  group.position.y=0;
+  group.position.z=0;
+ }
  // Placards can use a minimal standalone harness when no external carrier
  // provides attachment loops; never leave an unsupported slab floating.
  const placard=v.rig['chest-placard'];
