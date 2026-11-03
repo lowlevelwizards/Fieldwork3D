@@ -8,6 +8,10 @@ on:
       - 'src/operator-wardrobe-gear-visuals.ts'
       - 'src/operator-visual-kit.ts'
       - 'src/operator-wardrobe-data.ts'
+      - 'operator-lab.html'
+      - 'src/operator-appearance-grid.css'
+      - 'src/operator-armor-attachment-frame.ts'
+      - 'scripts/smoke-armor-r1-ui.mjs'
       - 'scripts/capture-operator-armor-rig.mjs'
       - '.github/workflows/operator-armor-rig-visual.yml'
   workflow_dispatch:
@@ -27,6 +31,8 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Existing mobile Operator Studio smoke
         run: node scripts/smoke-operator-studio.mjs
+      - name: Phone Operator Lab appearance cards and playback navigation
+        run: node scripts/smoke-armor-r1-ui.mjs
       - name: Gameplay-zoom armor and chest rig silhouette captures
         run: node scripts/capture-operator-armor-rig.mjs
       - uses: actions/upload-artifact@v4
