@@ -74,10 +74,18 @@ const pouch=(g:THREE.Group,m:THREE.Material,fold:THREE.Material,
  box(g,m,x,y,z,depth,h,d);
  box(g,fold,x+depth*.51+.035,y+h*.39,z,.19,.40,d+.12);
 };
+/** Nested strap groups must NOT be baked into the rig's static mesh.
+ * They are deterministically refitted when either uniform or armor changes.
+ */
 const shoulderHarness=(g:THREE.Group,m:THREE.Material,spread=4.8)=>{
- for(const s of [-1,1]){
-  strap(g,m,[7.30,2.15,s*spread],[1.15,5.52,s*5.2],1.18,.90);
-  strap(g,m,[1.15,5.52,s*5.2],[-6.0,2.30,s*4.15],1.17,.90);
+ const harness=new THREE.Group();harness.name='uniform-fitted-rig-harness';
+ harness.userData.fitMaterial=m;harness.userData.spread=spread;
+ g.add(harness);
+ for(const sign of [-1,1]){
+  strap(harness,m,[7.30,2.15,sign*spread],
+   [1.15,5.52,sign*5.2],1.18,.90);
+  strap(harness,m,[1.15,5.52,sign*5.2],
+   [-6.0,2.30,sign*4.15],1.17,.90);
  }
 };
 export function createChestRigSilhouettes(chest:THREE.Group,
@@ -153,19 +161,27 @@ export function createChestRigSilhouettes(chest:THREE.Group,
  }
  {
   const g=make('field-webbing');
-  for(const s of [-1,1]){
-   strap(g,trim,[6.40,-5.24,s*5.95],[1.0,5.45,s*4.60],1.10,.90);
-   strap(g,trim,[1.0,5.45,s*4.60],[-5.5,-5.4,s*5.95],1.10,.90);
-   pouch(g,pocketFabric,trim,3.90,-5.42,s*7.45,4.55,3.12,1.30);
+  const h=new THREE.Group();h.name='uniform-fitted-rig-harness';
+  h.userData.fitMaterial=trim;h.userData.spread=5.95;g.add(h);
+  for(const sign of [-1,1]){
+   strap(h,trim,[6.40,-5.24,sign*5.95],
+    [1.0,5.45,sign*4.60],1.10,.90);
+   strap(h,trim,[1.0,5.45,sign*4.60],
+    [-5.5,-5.4,sign*5.95],1.10,.90);
+   pouch(g,pocketFabric,trim,3.90,-5.42,sign*7.45,4.55,3.12,1.30);
   }
   box(g,trim,3.80,-5.90,0,1.30,1.20,13.40);
  }
  {
   const g=make('belt-harness');
-  for(const s of [-1,1]){
-   strap(g,dark,[3.75,-5.05,s*6.3],[.05,5.70,s*5.20],1.45,1.04);
-   strap(g,dark,[.05,5.70,s*5.20],[-5.10,-4.7,s*6.3],1.36,1.04);
-   pouch(g,pocketFabric,trim,3.1,-5.30,s*7.65,5.30,3.40,1.49);
+  const h=new THREE.Group();h.name='uniform-fitted-rig-harness';
+  h.userData.fitMaterial=dark;h.userData.spread=6.3;g.add(h);
+  for(const sign of [-1,1]){
+   strap(h,dark,[3.75,-5.05,sign*6.3],
+    [.05,5.70,sign*5.20],1.45,1.04);
+   strap(h,dark,[.05,5.70,sign*5.20],
+    [-5.10,-4.7,sign*6.3],1.36,1.04);
+   pouch(g,pocketFabric,trim,3.1,-5.30,sign*7.65,5.30,3.40,1.49);
   }
   box(g,dark,3.55,-5.7,0,1.35,1.45,14.15);
  }
