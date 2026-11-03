@@ -1117,6 +1117,8 @@ function installTouchCommandHelp(button:HTMLButtonElement){
  });
  button.addEventListener('pointerup',clear);
  button.addEventListener('pointercancel',()=>{clear();consumed=false;});
+ button.addEventListener('lostpointercapture',clear);
+ button.addEventListener('pointerleave',clear);
  button.addEventListener('click',event=>{
   if(!consumed)return;
   consumed=false;event.preventDefault();event.stopImmediatePropagation();
@@ -1379,28 +1381,9 @@ function updateContext(){
   // Keep the actual menu hit target in its visually interpolated position.
   // Geometry measurement uses offsetWidth/Height (unaffected by transforms).
 }
-// Pointer-held explanations do not also dispatch the underlying tactical order.
-let contextHoldTimer:ReturnType<typeof setTimeout>|null=null;
-let contextHeldAt=-Infinity;
-const cancelContextHold=()=>{
-  if(contextHoldTimer!==null){clearTimeout(contextHoldTimer);contextHoldTimer=null;}
-};
-ui.context.addEventListener('pointerdown',event=>{
-  cancelContextHold();
-  if(event.pointerType==='mouse'&&event.button!==0)return;
-  const button=(event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]');
-  if(!button||button.disabled)return;
-  contextHoldTimer=setTimeout(()=>{
-    contextHoldTimer=null;contextHeldAt=performance.now();
-    showUiHelp(button.title||button.getAttribute('aria-label')||'',5500);
-    updateHud();
-  },450);
-});
-ui.context.addEventListener('pointerup',cancelContextHold);
-ui.context.addEventListener('pointercancel',cancelContextHold);
-ui.context.addEventListener('pointerleave',cancelContextHold);
+// One shared long-press handler is installed on each actual command button.
+// Duplicating a second timer on the palette caused conflicting 450/540ms holds.
 const handleContextAction=(event:MouseEvent)=>{
-  if(performance.now()-contextHeldAt<400){event.preventDefault();return;}
   const button=(event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]');
   if(!button||state.phase!=='planning')return;
   const action=button.dataset.action;
@@ -2690,18 +2673,22 @@ function useSelectedGround(pt:Pt){
   }
   if(firePlacement){
     const nodeId=selectedNode??undefined;
-    if(!setFirePolicy(state,selected,'suppress',nodeId,pt))
-      rejectAt(pt,'INVALID SUPPRESSION POINT');
-    firePlacement=null;updateHud();return;
+    const accepted=setFirePolicy(state,selected,'suppress',nodeId,pt);
+    if(!accepted)rejectAt(pt,'INVALID SUPPRESSION POINT');
+    else firePlacement=null;
+    updateHud();return;
   }
   if(flashMode){
     const id=state.nextId;
-    if(!(flashDoorId?
+    const accepted=flashDoorId?
       planDoorFlash(state,selected,flashDoorId,pt):
-      planFlash(state,selected,pt)))
-      rejectAt(pt,'FLASH TARGET BLOCKED / OUT OF RANGE');
-    else selectedNode=flashDoorId?state.nextId-1:id;
-    flashMode=false;flashDoorId=null;updateHud();return;
+      planFlash(state,selected,pt);
+    if(!accepted)rejectAt(pt,'FLASH TARGET BLOCKED / OUT OF RANGE');
+    else{
+      selectedNode=flashDoorId?state.nextId-1:id;
+      flashMode=false;flashDoorId=null;
+    }
+    updateHud();return;
   }
   if(looking){
     const placedId=state.nextId;
@@ -2716,7 +2703,8 @@ function useSelectedGround(pt:Pt){
           'WATCH stays on that point while moving. Drag its ring to adjust.':
           'LOOK checks that direction briefly, then returns to the route.',4100);
     }
-    looking=false;updateHud();return;
+    if(committed)looking=false;
+    updateHud();return;
   }
   const beforeRoute=uid(selected)?finalPoint(uid(selected)!):pt;
   lastAuthoringAt=performance.now();
@@ -3505,10 +3493,10 @@ function releasePointer(e:PointerEvent,cancelled=false){
          pt.x>=0&&pt.y>=0&&pt.x<=W&&pt.y<=H)
         useSelectedGround(pt);
     }else if(p.mode==='watchTarget'&&p.nodeId!==null){
-      if(p.moved&&!planWatch(state,selected,pt,p.nodeId))
-        rejectAt(pt,'WATCH TARGET UNAVAILABLE');
+      const accepted=!p.moved||planWatch(state,selected,pt,p.nodeId);
+      if(!accepted)rejectAt(pt,'WATCH TARGET UNAVAILABLE');
       selectedNode=p.nodeId;doorFocusId=null;
-      tacticalFeedback.emit(p.moved?'command':'select',pt,
+      if(accepted)tacticalFeedback.emit(p.moved?'command':'select',pt,
         p.moved?'WATCH UPDATED':undefined);
     }else if(p.mode==='node'&&p.nodeId!==null){
       if(p.moved){
