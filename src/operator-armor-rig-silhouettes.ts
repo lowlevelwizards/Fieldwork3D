@@ -113,9 +113,9 @@ export function createArmorSilhouettes(chest:THREE.Group,
  // fabric and continuous sides. Unlike plate bags the front is split.
  {
   const g=make('soft-vest');
-  splitFront(g,armor,6.48,-.78,9.45,5.95,1.14,.26);
-  box(g,armor,-5.86,-.75,0,1.05,9.35,12.6);
-  wrapPanels(g,armor,7.15,-1.16,8.55,.95);
+  splitFront(g,armor,6.48,-.45,8.70,5.27,1.14,.54);
+  box(g,armor,-5.86,-.43,0,1.05,8.70,11.7);
+  wrapPanels(g,armor,6.98,-.90,7.95,.89);
   for(const sign of [-1,1]){
    box(g,armor,.30,4.65,sign*4.55,10.85,1.24,2.18);
    box(g,armor,5.90,3.45,sign*4.05,1.03,1.25,3.25);
@@ -129,12 +129,12 @@ export function createArmorSilhouettes(chest:THREE.Group,
  // long continuous lower hem. Do not re-use the police neckline.
  {
   const g=make('soft-flak');
-  splitFront(g,armor,6.82,-1.25,10.05,6.45,1.42,.18);
-  box(g,armor,-6.05,-1.26,0,1.35,10.0,13.55);
-  wrapPanels(g,armor,7.57,-1.52,9.55,1.27);
+  splitFront(g,armor,6.82,-1.62,11.08,6.50,1.42,.18);
+  box(g,armor,-6.05,-1.62,0,1.35,11.0,13.55);
+  wrapPanels(g,armor,7.57,-1.78,10.45,1.27);
   for(const sign of [-1,1])
-   box(g,armor,.20,4.73,sign*5.05,10.9,1.70,2.78);
-  collarPieces(g,armor,5.95,2.80);
+   box(g,armor,.20,5.12,sign*5.10,11.15,2.10,3.00);
+  collarPieces(g,armor,6.84,3.24);
   box(g,utility,6.87,-1.2,0,.18,7.05,.56);
   for(const sign of [-1,1]){
    // Plain padded pocket flaps, quite unlike modern magazine cells.
@@ -146,25 +146,25 @@ export function createArmorSilhouettes(chest:THREE.Group,
  // Slick: two small, short bags with minimal shoulder/elastic sides.
  {
   const g=make('plate-slick');
-  frontBag(g,armor,6.74,-4.0,5.50,8.35,2.20,6.75,1.0);
+  frontBag(g,armor,6.74,-3.70,5.05,7.05,1.93,5.35,1.0);
   // Back same stepped shape (reverse face) with compact clean profile.
-  frontBag(g,armor,-6.70,-4.0,5.50,8.55,2.20,6.95,1.0);
-  shoulderStraps(g,utility,3.25,.92,.62,5.95,-5.95,5.55);
+  frontBag(g,armor,-6.70,-3.70,5.05,7.20,1.93,5.45,1.0);
+  shoulderStraps(g,utility,2.93,.86,.61,5.95,-5.95,5.55);
   for(const sign of [-1,1])
-   box(g,utility,-.05,-.85,sign*6.72,10.5,1.35,.55);
-  box(g,trim,6.84,-3.91,0,.14,.18,6.80);
+   box(g,utility,-.05,-.72,sign*6.54,10.5,.98,.55);
+  box(g,trim,6.84,-3.60,0,.14,.18,6.65);
  }
 
  // Light: truly OPEN sides; three narrow bands are not a full slab.
  // The separated rails and much stronger shoulder shape do the work.
  {
   const g=make('plate-jpc');
-  frontBag(g,armor,6.95,-4.05,5.65,8.7,2.45,6.90,1.1);
+  frontBag(g,armor,6.95,-4.05,5.65,9.10,2.45,7.25,1.1);
   frontBag(g,armor,-6.85,-4.05,5.65,8.8,2.45,6.95,1.0);
   shoulderStraps(g,utility,3.72,1.28,.72,6.10,-6.08,5.96);
   for(const sign of [-1,1]){
-   for(const y of [-2.70,-.70,1.32])
-    box(g,utility,-.02,y,sign*6.88,10.7,.39,.72);
+   for(const y of [-2.58,-.90,1.27])
+    box(g,utility,-.02,y,sign*6.93,10.7,.54,.72);
    box(g,dark,6.99,4.42,sign*3.5,.13,.50,1.4);
   }
   box(g,trim,7.00,-3.95,0,.14,.2,8.24);
@@ -210,7 +210,7 @@ export function createArmorSilhouettes(chest:THREE.Group,
   wrapPanels(g,armor,7.46,-1.80,10.82,1.48);
   for(const sign of [-1,1])
    box(g,armor,.15,4.89,sign*5.06,11.3,2.05,2.85);
-  collarPieces(g,armor,6.05,2.97);
+  collarPieces(g,armor,6.72,3.12);
   box(g,utility,7.55,-1.65,0,.22,9.48,1.18);
   for(const sign of [-1,1])
    box(g,utility,7.57,-3.35,sign*4.55,.18,1.68,3.10);
