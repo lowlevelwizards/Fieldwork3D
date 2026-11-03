@@ -92,8 +92,17 @@ export function fittedArmorSurfaces(style:string,top:string,
   baseline.front,faceClear);
  const back=isConcealed?-baseline.front:-Math.max(
   baseline.front,rearClear);
+ // Different side construction deliberately gets distinct clearance.
+ // Slick elastic is close to the fabric; skeleton rails sit farther out;
+ // standard cummerbund is broader, and assault modules project most.
+ const sideClear=style==='plate-slick'?.15:
+  style==='plate-jpc'?.66:
+  style==='plate-standard'?.98:
+  style==='plate-heavy'?1.25:
+  style==='plate-legacy'?1.05:
+  style==='soft-flak'?.84:style==='soft-vest'?.52:.35;
  const side=isConcealed?baseline.side:Math.max(
-  baseline.side,Math.max(chest.side,lower.side)+.35);
+  baseline.side,Math.max(chest.side,lower.side)+sideClear);
  const shoulderY=uniform.shoulderCrown+.46+uniform.shoulderOverhang;
  return {style,top:uniform.top,front,back,side,shoulderY,
   shoulderZ:Math.min(5.1,Math.max(3.15,uniform.outer(5.0).side-3.0)),
