@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="theme-color" content="#192c27"/>
+<title>FIELDWORK / OPERATOR STUDIO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@400;500;600;700;800&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="./src/operator-studio.css"/>
+</head><body>
+<div id="studioRoot">
+<header class="studio-top">
+<button id="studioBack" type="button" aria-label="Return to game">‹ BACK</button>
+<label class="studio-operator-label">OPERATOR
+<select id="studioOperator" aria-label="Choose operator"></select></label>
+<button id="studioApply" class="studio-primary" type="button">APPLY</button>
+</header>
+<main>
+<section class="studio-stage" aria-label="3D operator preview">
+<canvas id="studioCanvas" role="img" aria-label="3D operator model, rotate with one finger and pinch to zoom"></canvas>
+<div class="studio-stage-actions" role="group" aria-label="Operator viewing angles">
+<button data-studio-view="front" type="button">FRONT</button>
+<button data-studio-view="side" type="button">SIDE</button>
+<button data-studio-view="back" type="button">BACK</button>
+<button data-studio-view="fit" type="button">FIT</button>
+</div>
+</section>
+<section class="studio-sheet" aria-label="Appearance editor">
+<div class="studio-sheet-grip" aria-hidden="true"></div>
+<div class="studio-sheet-title"><div><strong id="studioTitle">UPPER BODY</strong>
+<small id="studioSubheading">Select a garment, then its fabric and finish</small></div>
+<div class="studio-history">
+<button id="studioUndo" type="button" disabled>↶ UNDO</button>
+</div></div>
+<nav id="studioCategories" class="studio-categories" aria-label="Appearance categories"></nav>
+<div id="studioItemBrowser" aria-label="3D appearance items"></div>
+<section id="studioMaterials" class="studio-materials" aria-label="Selected item materials and finishes"></section>
+<output id="studioStatus" role="status" aria-live="polite"></output>
+</section>
+</main>
+</div>
+<script type="module" src="./src/operator-studio.ts"></script>
+</body></html>

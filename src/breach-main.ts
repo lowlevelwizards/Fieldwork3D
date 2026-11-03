@@ -284,6 +284,78 @@ function saveCampaign(){
  try{localStorage.setItem(CAMPAIGN_KEY,JSON.stringify(campaign));}
  catch{console.warn('Campaign save unavailable');}
 }
+/** Embedded Studio keeps the live mission mounted. The game remains the
+ * sole authority for campaign/Quick Play writes; the iframe edits a draft. */
+let studioMode:'quick'|'campaign'='quick';
+let studioSelected='rook';
+let studioOverlay:HTMLDivElement|null=null;
+let studioFrame:HTMLIFrameElement|null=null;
+function sendStudioInit(){
+ if(!studioFrame?.contentWindow)return;
+ const people=studioMode==='campaign'?
+  campaign?.operators.filter(o=>o.status!=='retired'&&o.status!=='lost')??[]:
+  persistentRoster.members;
+ studioFrame.contentWindow.postMessage({
+  type:'fw-studio-init',mode:studioMode,selected:studioSelected,
+  members:people.map(p=>({
+   id:p.id,callsign:p.callsign,appearanceSeed:p.appearanceSeed,
+   loadout:p.loadout,wardrobe:p.wardrobe
+  })),
+  readonly:studioMode==='campaign'?!!campaign?.activeContractId:
+   state.phase!=='planning'||replaying
+ },location.origin);
+}
+function closeOperatorStudio(){
+ if(studioOverlay)studioOverlay.hidden=true;
+ if(studioFrame)studioFrame.src='about:blank';
+}
+function openOperatorStudio(id?:string,requestedMode?:'quick'|'campaign'){
+ studioMode=requestedMode??(campaignMode==='home'||campaignMode==='mission'?
+  'campaign':'quick');
+ if(studioMode==='campaign'&&!campaign)return;
+ if(!studioOverlay){
+  studioOverlay=document.createElement('div');
+  studioOverlay.id='operatorStudioOverlay';studioOverlay.hidden=true;
+  studioFrame=document.createElement('iframe');
+  studioFrame.title='Fieldwork Operator Studio';
+  studioOverlay.append(studioFrame);document.body.append(studioOverlay);
+ }
+ studioSelected=id??(studioMode==='campaign'?campaign?.operators[0]?.id:'rook')??'rook';
+ studioOverlay.hidden=false;
+ const url=new URL('./operator-studio.html',location.href);
+ url.searchParams.set('embedded','1');url.searchParams.set('mode',studioMode);
+ url.searchParams.set('operator',studioSelected);
+ studioFrame!.src=url.href;
+ studioFrame!.onload=sendStudioInit;
+}
+document.getElementById('openOperatorStudio')?.addEventListener('click',()=>
+ openOperatorStudio(selected,'quick'));
+window.addEventListener('message',event=>{
+ if(!studioFrame?.contentWindow||event.source!==studioFrame.contentWindow||
+    event.origin!==location.origin||!event.data||typeof event.data!=='object')return;
+ const msg=event.data as {type?:string;id?:unknown;wardrobe?:unknown};
+ if(msg.type==='fw-studio-ready'){sendStudioInit();return;}
+ if(msg.type==='fw-studio-close'){closeOperatorStudio();return;}
+ if(msg.type!=='fw-studio-commit'||typeof msg.id!=='string')return;
+ let ok=false;
+ if(studioMode==='quick'&&state.phase==='planning'&&!replaying&&
+    persistentRoster.members.some(m=>m.id===msg.id)){
+  persistentRoster=setRosterWardrobe(persistentRoster,msg.id,msg.wardrobe);
+  saveRoster();applyRosterIdentity(state,persistentRoster);
+  renderOperationsBoard();updateHud();ok=true;
+ }else if(studioMode==='campaign'&&campaign&&!campaign.activeContractId&&
+    campaign.operators.some(o=>o.id===msg.id&&
+     o.status!=='retired'&&o.status!=='lost')){
+  const changed=setCampaignWardrobe(campaign,msg.id,msg.wardrobe);
+  if(changed!==campaign){
+   campaign=changed;saveCampaign();showCampaignHome();ok=true;
+  }
+ }
+ studioSelected=msg.id;
+ studioFrame.contentWindow.postMessage({
+  type:'fw-studio-saved',id:msg.id,ok
+ },location.origin);
+});
 function applyCampaignSkills(){
  if(campaignMode!=='mission'||!campaign)return;
  for(const a of team(state)){
@@ -512,6 +584,10 @@ function renderOperationsBoard(){
  close.type='button';close.textContent='CLOSE';
  close.addEventListener('click',()=>{operationsBoard.hidden=true;});
  heading.append(close);
+ const customize=document.createElement('button');
+ customize.type='button';customize.textContent='CUSTOMIZE SQUAD';
+ customize.addEventListener('click',()=>openOperatorStudio(selected,'quick'));
+ heading.append(customize);
  const range=document.createElement('button');range.type='button';
  range.textContent='TEST RANGE';range.title='Nonpersistent equipment range';
  range.addEventListener('click',()=>{
@@ -3188,6 +3264,7 @@ const campaignScreen=new CampaignScreen({
  setWardrobe:(id,look)=>{if(campaign){
   campaign=setCampaignWardrobe(campaign,id,look);
   saveCampaign();showCampaignHome();}},
+ openStudio:(id)=>openOperatorStudio(id,'campaign'),
  exportSave:()=>{
   if(!campaign)return;
   const blob=new Blob([exportCampaign(campaign)],{type:'application/json'});

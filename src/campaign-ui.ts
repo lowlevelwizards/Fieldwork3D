@@ -42,6 +42,7 @@ export type CampaignHandlers={
  equipWeapon:(id:string,weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipGear:(id:string,slot:LoadoutSlot,itemId:string)=>void;
  setWardrobe:(id:string,look:WardrobeOptions)=>void;
+ openStudio:(id:string)=>void;
  equipAttachment:(id:string,slot:WeaponAttachmentSlot,partId:string,acquire:boolean)=>void;
  moveMagazine:(id:string,magazineId:string,location:MagazineLocation)=>void;
  repairArmor:(id:string)=>void;serviceWeapon:(id:string)=>void;
@@ -432,10 +433,7 @@ export class CampaignScreen{
    });
    if(name!==null&&name!==person.callsign)this.handlers.renameOperator(id,name);
   });
-  const appearance=button('EDIT APPEARANCE',()=>{
-   wardrobePanel.open=true;
-   wardrobePanel.scrollIntoView({block:'start',behavior:'smooth'});
-  });
+  const appearance=button('CUSTOMIZE APPEARANCE',()=>this.handlers.openStudio(id));
   rename.disabled=!!c.activeContractId;appearance.disabled=!!c.activeContractId;
   identityActions.append(rename,appearance);summary.append(identityActions);
   const carrying=carryCapacityReport(person.loadout,person.magazines);
