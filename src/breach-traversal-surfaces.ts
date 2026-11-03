@@ -48,3 +48,6 @@ export const isFootstepObstacle=(o:Obstacle)=>
  traversalSurface(o)!=='step-over';
 export const canAutoShove=(o:Obstacle)=>
  traversalSurface(o)==='shove';
+export const canToppleLightCover=(o:Obstacle)=>
+ !o.toppled&&!o.destroyed&&TOPPLEABLE.has(o.fixture??'')&&
+ o.w<=42&&o.h<=42;
