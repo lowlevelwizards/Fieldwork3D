@@ -23,14 +23,24 @@ test('door responds to repeated pressure beyond its standard stopping angle',()=
  for(let i=0;i<120;i++)advanceDoor(d,1/60);
  assert.ok(d.openFraction>1.08);
 });
-test('slightly nearby actor does not jam an opening leaf',()=>{
+test('hinge may swing away from a body but cannot swing deeper into one',()=>{
  const d=sample();d.openFraction=.4;
- const leaf=doorLeafSegment({...d,openFraction:.41});
- const center={x:(leaf.a.x+leaf.b.x)/2,y:(leaf.a.y+leaf.b.y)/2};
- // A character offset from the thin leaf is a navigation obstacle,
- // not necessarily a solid obstruction to every additional degree.
- const actor={x:center.x+5,y:center.y+5};
- advanceDoor(d,1/30,[actor]);
- assert.ok(d.openFraction>.4);
- assert.ok(pointToSegment(actor,doorLeafSegment(d))>=0);
+ const leaf=doorLeafSegment(d);
+ const future=doorLeafSegment({...d,openFraction:.42});
+ const mid={x:(leaf.a.x+leaf.b.x)/2,y:(leaf.a.y+leaf.b.y)/2};
+ const newMid={x:(future.a.x+future.b.x)/2,
+   y:(future.a.y+future.b.y)/2};
+ const length=Math.hypot(newMid.x-mid.x,newMid.y-mid.y);
+ const normal={x:(newMid.x-mid.x)/length,y:(newMid.y-mid.y)/length};
+ // On the receding side the panel rotates away, so opening remains possible.
+ const retreat={x:mid.x-normal.x*7,y:mid.y-normal.y*7};
+ advanceDoor(d,1/30,[retreat]);
+ assert.ok(d.openFraction>.4,'door should swing AWAY from body');
+ // On the approaching side, penetration cannot become deeper.
+ const pushing=sample();pushing.openFraction=.4;
+ const blocker={x:mid.x+normal.x*7,y:mid.y+normal.y*7};
+ const before=pointToSegment(blocker,doorLeafSegment(pushing));
+ advanceDoor(pushing,1/30,[blocker]);
+ const after=pointToSegment(blocker,doorLeafSegment(pushing));
+ assert.ok(after>=before-.06,'door rotated INTO full-size body');
 });

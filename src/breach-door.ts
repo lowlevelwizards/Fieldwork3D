@@ -140,8 +140,11 @@ export function doorWouldStrikeActors(d:Door,next:number,actors:readonly Pt[],
 export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[], actorRadius=OPERATOR_RADIUS){
  if(d.kind==='shutter')return false;
  if(d.kind==='sliding')return doorWouldStrikeActors(d,next,actors);
- // Standalone door fixtures have no registered architecture; do not
- // collide them with an unrelated active level's walls or cover.
+ // Physical bodies always stop the leaf, including dynamic or lab doors
+ // without registered architectural walls. Never skip actor collision as
+ // a side effect of the standalone-fixture optimization.
+ if(doorWouldStrikeActors(d,next,actors,actorRadius))return true;
+ // Standalone doors only skip unrelated *architectural* wall/cover checks.
  const registered=activeSite()?.doors??initialDoors();
  if(!registered.some(real=>real.id===d.id))return false;
  const leaf=doorLeafSegment({...d,openFraction:next});
@@ -152,7 +155,6 @@ export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[], act
    if(COVER.some(o=>Math.abs(o.x-p.x)<o.w/2+1.25&&
      Math.abs(o.y-p.y)<o.h/2+1.25))return true;
  }
- if(doorWouldStrikeActors(d,next,actors,actorRadius))return true;
  return false;
 }
 export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[]){
@@ -174,10 +176,12 @@ export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[]){
     const next=Math.max(0,Math.min(d.open?target:PUSHED_OPEN_LIMIT,current+velocity*h));
     const blocked=Math.abs(next-current)>.0001&&
       (d.open?next>.12:next<current)&&doorSwingBlocked(d,next,
-        // Opening leaves may harmlessly brush a body. A full navigational
-        // radius here made even slightly nearby actors jam the hinge.
-        d.open?actors.filter(p=>pointToSegment(p,doorLeafSegment({
-          ...d,openFraction:next}))<2.5):actors, d.open?1.5:OPERATOR_RADIUS);
+        // Use the SAME full operator capsule as movement. A reduced hinge
+        // radius previously let the moving leaf rotate inside operators,
+        // leaving them overlapping an otherwise solid collision panel.
+        // doorWouldStrikeActors already allows rotation AWAY from a
+        // touched/overlapping body, but never deeper into its capsule.
+        actors,OPERATOR_RADIUS);
     d.openFraction=blocked?current:next;
     d.angularVelocity=blocked||next===0||(d.open&&next>=target)?0:velocity;
     if(blocked||next>=.98)d.kickImpulse=0;
@@ -204,6 +208,15 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
        (door.openFraction??0)<.08||
        (door.openFraction??0)>=PUSHED_OPEN_LIMIT-.001)continue;
     const panel=doorLeafSegment(door);
+    // A hinged door can only be pushed farther OPEN in the direction its
+    // leaf is actually rotating. Opposite-side contact must not drive the
+    // hinge into (or through) the operator.
+    const vx=to.x-from.x,vy=to.y-from.y;
+    const lx=panel.b.x-panel.a.x,ly=panel.b.y-panel.a.y;
+    const leafLength=Math.hypot(lx,ly)||1;
+    const openingX=(door.swing??-1)*ly/leafLength;
+    const openingY=-(door.swing??-1)*lx/leafLength;
+    if(vx*openingX+vy*openingY<Math.hypot(vx,vy)*.12)continue;
     const before=pointToSegment(from,panel);
     // The capsule must be near the *actual rotating leaf*.
     if(before>OPERATOR_RADIUS+7)continue;
