@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {TILE_WORLD_SIZE} from './rendering/pixel-materials.ts';
 import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH} from './breach-leg-geometry.ts';
+import {outwardLimbPocket,outwardLimbPatch} from './operator-garment-mount-frame.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import type {TrouserHem} from './operator-wardrobe-data.ts';
 
@@ -26,7 +27,7 @@ export const FIELD_TROUSER_PROFILES={
    [.05,3.34,3.40],[.18,3.48,3.54],[.265,2.14,2.18]] as readonly Ring[],
   cuffed:[[-.60,2.85,2.90],[-.24,2.98,3.06],
    [.20,3.05,3.12],[.34,3.36,3.41],[.48,3.50,3.55]] as readonly Ring[],
-  cargo:[2.90,.39,.55] as const,flap:[3.02,.095,.58] as const,
+  cargo:[.52,.39,2.90] as const,flap:[.16,.095,3.02] as const,
   character:'Loose thigh, prominent box cargo pocket, fuller straight leg'
  },
  'acu-trousers':{
@@ -38,7 +39,7 @@ export const FIELD_TROUSER_PROFILES={
    [.05,3.06,3.12],[.16,3.19,3.25],[.275,1.98,2.08]] as readonly Ring[],
   cuffed:[[-.60,2.65,2.77],[-.25,2.83,2.90],
    [.21,2.87,2.93],[.35,3.21,3.27],[.48,3.29,3.34]] as readonly Ring[],
-  cargo:[2.72,.36,.52] as const,flap:[2.85,.090,.56] as const,
+  cargo:[.42,.36,2.72] as const,flap:[.15,.090,2.85] as const,
   character:'Cleaner tapered thigh with angled cargo flaps and calf pouch'
  },
  'gorka-trousers':{
@@ -50,7 +51,7 @@ export const FIELD_TROUSER_PROFILES={
    [.09,3.42,3.49],[.18,3.38,3.43],[.265,2.08,2.14]] as readonly Ring[],
   cuffed:[[-.60,2.90,3.01],[-.20,3.06,3.12],
    [.18,3.06,3.13],[.34,3.40,3.46],[.48,3.46,3.55]] as readonly Ring[],
-  cargo:[3.00,.42,.61] as const,flap:[3.12,.105,.64] as const,
+  cargo:[.55,.42,3.00] as const,flap:[.16,.105,3.12] as const,
   character:'Voluminous overtrousers with reinforced knees and gaiter hems'
  }
 } as const;
@@ -138,27 +139,33 @@ export function createFieldTrouserPrototypes(legs:readonly Limb[],
   const textile=gorka?mountainCanvas:cloth,wear=gorka?mountainPanel:cloth;
   const thigh:THREE.Group[]=[],unbloused:THREE.Group[]=[],bloused:THREE.Group[]=[],cuffed:THREE.Group[]=[];
   for(const [i,leg] of legs.entries()){
-   const side=i===0?-1:1;
+   // The exterior of each IK leg segment is local +X, independent of side.
    const upper=group(leg.upper,cut+':thigh:'+i);
    clothShell(upper,textile,p.thigh,LEG_UPPER_LENGTH);
-   // Outer thigh pouch: width follows fore/aft X, height follows the
-   // normalized leg Y, and DEPTH is only a shallow extrusion in +/-Z.
-   // This keeps it upright, leg-mounted and genuinely on the side seam.
-    const lateral=side*(classic?3.62:gorka?3.88:3.46);
-   const [w,h,d]=p.cargo;
-   part(upper,textile,-.30,-.095,lateral,w,h,d);
+   // A genuine OUTER thigh pouch: shallow thickness along local +X,
+   // broad front-to-back Z panel, and a readable upright Y dimension.
+   // The old ±Z placement was forward/backward relative to the actual IK.
+   const [thickness,height,span]=p.cargo;
+   const pocket=outwardLimbPocket(p.thigh[2][1],-.095,height,span,thickness);
+   part(upper,textile,pocket.x,pocket.y,pocket.z,
+    pocket.width,pocket.height,pocket.depth);
    const [fw,fh,fd]=p.flap;
-   part(upper,wear,-.30,.145,lateral+side*.12,fw,fh,fd);
+   part(upper,wear,pocket.x+thickness*.59,.145,0,fw,fh,fd);
    if(!classic&&!gorka){
-    // Modern-utility reinforcement follows the existing knee joint.
-    part(upper,cloth,2.90,.37,0,.18,.19,4.38);
-    part(upper,trim,-.30,.24,lateral+side*.12,2.62,.075,.18);
+    const knee=outwardLimbPatch(p.thigh.at(-1)![1],.37,.22,3.60,.20);
+    part(upper,cloth,knee.x,knee.y,knee.z,
+     knee.width,knee.height,knee.depth);
    }else if(classic){
-    part(upper,cloth,-.30,-.09,lateral+side*.34,2.71,.25,.17);
+    const fold=outwardLimbPatch(p.thigh[2][1],-.09,.23,2.80,.13);
+    part(upper,cloth,fold.x+.13,fold.y,fold.z,
+     fold.width,fold.height,fold.depth);
    }else{
-    // Broad wear patches on the outer thigh and above the knee.
-    part(upper,wear,2.89,.34,0,.24,.25,5.50);
-    part(upper,wear,-1.20,-.28,lateral*.79,2.65,.17,.54);
+    const knee=outwardLimbPatch(p.thigh.at(-1)![1],.34,.25,4.40,.22);
+    const wearSide=outwardLimbPatch(p.thigh[2][1],-.28,.18,2.70,.14);
+    part(upper,wear,knee.x,knee.y,knee.z,
+     knee.width,knee.height,knee.depth);
+    part(upper,wear,wearSide.x,wearSide.y,wearSide.z,
+     wearSide.width,wearSide.height,wearSide.depth);
    }
    thigh.push(upper);
    for(const hem of ['unbloused','bloused','cuffed'] as const){
@@ -167,14 +174,19 @@ export function createFieldTrouserPrototypes(legs:readonly Limb[],
     if(!classic&&!gorka){
      // ACU-family calf cargo pocket: a separate physical feature,
      // with an angled flap; older BDU trousers deliberately omit it.
-     part(lower,cloth,-.26,-.10,side*3.07,2.40,.30,.51);
-     part(lower,cloth,-.26,.07,side*3.18,2.48,.09,.55);
+     const calf=outwardLimbPocket(p[hem][1][1],-.10,.30,2.34,.30);
+     part(lower,cloth,calf.x,calf.y,calf.z,
+      calf.width,calf.height,calf.depth);
+     part(lower,cloth,calf.x+.19,.075,0,.12,.10,2.45);
     }
     if(gorka){
      // Strong reinforced outer knee and weather-tight ankle band.
-     part(lower,wear,2.79,-.38,0,.23,.26,5.58);
-     part(lower,wear,0,.20,side*3.11,2.65,.18,.45);
-     part(lower,wear,0,.36,0,5.24,.10,5.36);
+     const patch=outwardLimbPatch(p[hem][1][1],-.35,.26,4.65,.20);
+     part(lower,wear,patch.x,patch.y,patch.z,
+      patch.width,patch.height,patch.depth);
+     // A single low band wraps the weather-tight gaiter; don't emit
+     // offset slivers perpendicular to the leg's physical outside.
+     part(lower,wear,p[hem][3][1]+.16,.30,0,.20,.10,3.70);
     }
     // The bloused outline narrows at the boot collar; the straight hem
     // stays wider and overlaps its shaft. Both have a visible textile fold.
