@@ -236,7 +236,6 @@ export function releaseStaticWallOverlap(from:Pt,goal:Pt,
  const aim=Math.atan2(goal.y-from.y,goal.x-from.x);
  const headings=[aim,...overlaps.flatMap(w=>{
    const dx=w.b.x-w.a.x,dy=w.b.y-w.a.y;
-   const length=Math.hypot(dx,dy)||1;
    return [Math.atan2(dx,-dy),Math.atan2(-dx,dy)];
  }),...Array.from({length:12},(_,i)=>i*Math.PI/6)];
  let best:Pt|null=null,bestScore=-Infinity;
