@@ -39,11 +39,8 @@ test('thirty independently authored 32/64px camo families use fixed opaque canon
   assert.ok(Math.abs(coverage.reduce((a,b)=>a+b,0)-1)<1e-10,id);
   assert.equal(recipe.targetCoverage.length,coverage.length,id);
   for(let tone=0;tone<coverage.length;tone++)
-   if(!HEADWEAR_CAMO_IDS.slice(18).includes(id))
-    assert.ok(Math.abs(coverage[tone]-recipe.targetCoverage[tone])<=.04,
-     id+' color '+tone+' must keep authored color proportions');
-   else if(tone===0)console.log('5A COVERAGE '+id+' '+JSON.stringify(
-    coverage.map(v=>Number(v.toFixed(4)))));
+   assert.ok(Math.abs(coverage[tone]-recipe.targetCoverage[tone])<=.04,
+    id+' color '+tone+' must keep authored color proportions');
   assert.ok(coverage.every(n=>n>.01&&n<.80),id+' every authored color must appear');
   assert.ok(recipe.colors.length>=3&&recipe.colors.length<=7,id);
   for(let i=0;i<indices.length;i++){
@@ -489,7 +486,8 @@ test('5A adds twelve recognizable global pattern families and authentic print de
  for(const id of newIds){
   const entry=CAMO_CATALOG[id],recipe=HEADWEAR_CAMO_RECIPES[id];
   assert.ok(entry?.terrain&&entry?.style&&entry?.origin,id);
-  assert.ok(recipe.motifs.length>=3,id+' has independently authored large motifs');
+  assert.ok(recipe.motifs.length>=3||id==='east-german-strichtarn',
+   id+' must have independent macro fields or an intentional sparse raincloth base');
   assert.ok(recipe.description.length>35);
   assert.ok(headwearCamoChoices('patrol-cap').includes(id));
   assert.ok(headwearCamoChoices('boonie').includes(id));
