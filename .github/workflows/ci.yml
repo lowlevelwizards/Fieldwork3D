@@ -174,7 +174,7 @@ jobs:
       # Release checkpoint: verify that public Pages actually serves the
       # latest main commit, not merely that a deployment workflow reported green.
       - name: Verify previous Pages build is publicly served
-        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'ux/interaction2-') || startsWith(github.head_ref, 'appearance/stage4-') || startsWith(github.head_ref, 'fix/attention-doors-')) }}
+        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'ux/interaction2-') || startsWith(github.head_ref, 'appearance/stage4-') || startsWith(github.head_ref, 'fix/attention-doors-') || startsWith(github.head_ref, 'fix/doorway-right-of-way-')) }}
         run: |
           expected="$(git ls-remote origin refs/heads/main | cut -c1-12)"
           for attempt in 1 2 3 4 5 6 7 8; do
@@ -195,6 +195,9 @@ jobs:
       - name: Focused attention targeting, door contact and squeeze regressions
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/attention-doors-') }}
         run: node --experimental-strip-types --test tests/attention-door-clearance-regression.test.mjs tests/ux2-21-look-watch.test.mjs tests/interaction2-core.test.mjs tests/interaction2-visual.test.mjs tests/physicality-08-door-contact.test.mjs tests/lw-door-contact.test.mjs tests/physicality-door-aware-routing.test.mjs tests/physicality-13-doorway-widths.test.mjs tests/physicality-09-recovery.test.mjs
+      - name: Doorway right-of-way and four-operator traffic regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/doorway-right-of-way-') }}
+        run: node --experimental-strip-types --test tests/doorway-right-of-way.test.mjs tests/physicality-vestibules.test.mjs tests/physicality-friendly-traffic.test.mjs tests/physicality-lab-real-playthrough.test.mjs tests/physicality-08-door-contact.test.mjs tests/physicality-door-aware-routing.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}
