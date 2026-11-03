@@ -71,7 +71,7 @@ import {bodyClear,sweptBodyClear,squeezeFacing,
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
   from './breach-squeeze-route.ts';
 import {probeObstacleCrossing,probeWindowCrossing,
-  preferTraversal,sampleTraversal,
+  canOpenWindowForClimb,preferTraversal,sampleTraversal,
   traversalStepClear,type TraverseOpportunity}
   from './breach-mantle.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
@@ -419,9 +419,13 @@ function knownTraversal(s:Session,from:Pt,to:Pt):boolean{
  const world={
    cover:visible,walls:WALLS.filter((_,i)=>s.intel.walls.has(i)),
    doors:s.doors.filter(door=>doorKnown(s.intel,door.id)),
+   // Planning is allowed to expect the operator to OPEN a known standard
+   // sash on arrival, not reject the entire move because it starts closed.
+   // Nothing hidden becomes eligible; the authoritative motor rechecks it.
    windows:s.windows.filter(w=>s.intel.cover.has(s.coverState.findIndex(o=>
       (o.fixture==='window-sill'||o.fixture==='glass-barrier')&&
-      Math.hypot(o.x-w.x,o.y-w.y)<1))),
+      Math.hypot(o.x-w.x,o.y-w.y)<1))).map(w=>
+        canOpenWindowForClimb(w)?{...w,open:true}:w),
    canStand:(at:Pt)=>intelPassable(at,s.intel)
  };
  return !!(probeObstacleCrossing(from,to,world)||
@@ -1438,7 +1442,11 @@ function desiredTraverse(s:Session,a:TeamActor,goal:Pt){
  const world=traversalWorld(s,a);
  const fit=traversalFitness(a);
  const op=probeObstacleCrossing(a.p,goal,world,fit)||
-   probeWindowCrossing(a.p,goal,world,fit);
+   probeWindowCrossing(a.p,goal,{
+     ...world,
+     windows:world.windows.map(w=>
+       canOpenWindowForClimb(w)?{...w,open:true}:w)
+   },fit);
  if(!op||!s.intel.cover.has(op.obstacleIndex))return null;
  const ordinary=routeWithSqueezeIntel(s.intel,a.p,goal);
  if(!preferTraversal(a.p,goal,op,ordinary))return null;
@@ -1491,6 +1499,28 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   if(tickTraversal(a,s,dt))return true;
   if(a.traversalPending&&d(a.p,a.traversalPending.approach)<3.3){
     const planned=a.traversalPending;
+    if(planned.windowId){
+      const pane=s.windows.find(w=>w.id===planned.windowId);
+      if(!pane){a.traversalPending=null;a.nav=[];return true;}
+      if(canOpenWindowForClimb(pane)){
+        // A closed standard sash is an interaction, not an impossible
+        // crossing. Pause at full-body clearance before opening it.
+        a.velocity=0;a.actionTimer+=dt;
+        if(a.actionTimer<.36)return true;
+        a.actionTimer=0;
+        if(manipulateWindow(pane,'open')){
+          s.objectRevision++;
+          hear(s,{x:pane.x,y:pane.y},85,'window');
+          notify(s,a.name+' OPENED WINDOW');
+          battleEvent(s,'interaction',a,a.p,a.name+' OPENED WINDOW');
+        }
+        return true;
+      }
+      if(!pane.open&&!pane.shattered){
+        a.traversalPending=null;a.nav=[];a.actionTimer=0;
+        a.lastTraversalAt=s.seconds;return true;
+      }
+    }
     const world=traversalWorld(s,a),fit=traversalFitness(a);
     const validated=probeObstacleCrossing(a.p,p,world,fit)||
       probeWindowCrossing(a.p,p,world,fit);
