@@ -9,11 +9,12 @@ import {initialWardrobe,wardrobeItemsForSlot} from './operator-wardrobe-data.ts'
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const armorSelect=el<HTMLSelectElement>('armorChoice'),
  rigSelect=el<HTMLSelectElement>('rigChoice'),
+ topSelect=el<HTMLSelectElement>('topChoice'),
  zoomSelect=el<HTMLSelectElement>('zoomChoice'),
  canvas=el<HTMLCanvasElement>('armorCanvas');
 const params=new URLSearchParams(location.search);
 for(const [select,slot] of [
- [armorSelect,'armorStyle'],[rigSelect,'rigStyle']
+ [armorSelect,'armorStyle'],[rigSelect,'rigStyle'],[topSelect,'top']
 ] as const)
  for(const item of wardrobeItemsForSlot(slot)){
   const option=document.createElement('option');
@@ -25,6 +26,9 @@ armorSelect.value=armorIds.has(params.get('armor')??'')?
  params.get('armor')!:'plate-standard';
 rigSelect.value=rigIds.has(params.get('rig')??'')?
  params.get('rig')!:'chest-placard';
+const topIds=new Set(Array.from(topSelect.options,x=>x.value));
+topSelect.value=topIds.has(params.get('top')??'')?
+ params.get('top')!:'combat-shirt';
 zoomSelect.value=params.get('zoom')==='detail'?'detail':'gameplay';
 let view=params.get('view')??'fit';
 if(!['fit','front','side','back'].includes(view))view='fit';
@@ -62,6 +66,7 @@ function updateView(){
  canvas.dataset.ready='true';
  canvas.dataset.armor=armorSelect.value;
  canvas.dataset.rig=rigSelect.value;
+ canvas.dataset.top=topSelect.value;
  canvas.dataset.view=view;
 }
 function refresh(){
@@ -75,7 +80,7 @@ function refresh(){
   ['belt','belt-none'],['backpack','backpack-none'],['head','head-none']
  ] as const)kit=setEquipmentChoice(kit,slot,id);
  const wardrobe={...initialWardrobe(),
-  styles:{top:'bdu-shirt',trousers:'bdu-trousers',headwear:'bare',
+  styles:{top:topSelect.value,trousers:'bdu-trousers',headwear:'bare',
    armorStyle:armor,rigStyle:rig,beltStyle:'no-belt',packStyle:'no-pack'},
   fabricSolids:{top:'slate',trousers:'slate',armor:'slate',gear:'slate',pack:'slate'}
  } as const;
@@ -88,7 +93,7 @@ function refresh(){
  },0);
  updateView();
 }
-for(const select of [armorSelect,rigSelect,zoomSelect])
+for(const select of [armorSelect,rigSelect,topSelect,zoomSelect])
  select.addEventListener('change',refresh);
 document.querySelectorAll<HTMLButtonElement>('button[data-view]').forEach(button=>
  button.addEventListener('click',()=>{view=button.dataset.view??'fit';updateView();}));
