@@ -120,7 +120,7 @@ export const wardrobeItem=(slot:WardrobeSlot,id:string)=>
  WARDROBE_ITEMS.find(x=>x.slot===slot&&x.id===id);
 export const SLEEVE_STATES=['unrolled','cuffed','rolled'] as const;
 export type SleeveState=typeof SLEEVE_STATES[number];
-export const TROUSER_HEMS=['unbloused','bloused'] as const;
+export const TROUSER_HEMS=['unbloused','bloused','cuffed'] as const;
 export type TrouserHem=typeof TROUSER_HEMS[number];
 export const sleeveStateOptions=(top:string)=>top==='bdu-shirt'||top==='acu-shirt'?
  SLEEVE_STATES:['unrolled'] as const;
