@@ -862,8 +862,7 @@ const paletteMotion=new PaletteMotion();
 const reducedMotionMedia=matchMedia('(prefers-reduced-motion: reduce)');
 let paletteWidth=0,paletteHeight=0;
 let lastPlacementKey='';
-let contextPointerCount=0;
-let placementRecalculations=0;
+const contextPointerIds=new Set<number>();
 let tetherBrightUntil=0;
 let paletteExit:Animation|null=null;
 const contextTether=document.createElement('div');
@@ -1335,9 +1334,8 @@ function updateContext(){
     Math.round(anchor.y/6),Math.round(cssW),Math.round(cssH),
     Math.round(minY/3),Math.round(maxY/3),w,h,unitKey].join('|');
   if(paletteMotion.active&&!contextChanged&&!actionChanged&&
-     (contextPointerCount>0||placementKey===lastPlacementKey))return;
+     (contextPointerIds.size>0||placementKey===lastPlacementKey))return;
   lastPlacementKey=placementKey;
-  placementRecalculations++;
   const avoid:AvoidRect[]=[{x:anchor.x-38,y:anchor.y-38,
     w:76,h:76,weight:3}];
   for(const unit of team(state)){
@@ -1416,13 +1414,14 @@ function updateContext(){
 // While a command finger is down, freeze the palette's pocket so it cannot
 // slip out from under the touch. This does not block camera or map rendering.
 ui.context.addEventListener('pointerdown',event=>{
-  if((event.target as HTMLElement).closest('button'))contextPointerCount++;
+  if((event.target as HTMLElement).closest('button'))
+    contextPointerIds.add(event.pointerId);
 });
-for(const type of ['pointerup','pointercancel','lostpointercapture'] as const)
-  ui.context.addEventListener(type,()=>{
-    contextPointerCount=Math.max(0,contextPointerCount-1);
-  });
-window.addEventListener('blur',()=>{contextPointerCount=0;});
+for(const type of ['pointerup','pointercancel'] as const)
+  window.addEventListener(type,event=>{
+    contextPointerIds.delete(event.pointerId);
+  },{capture:true});
+window.addEventListener('blur',()=>contextPointerIds.clear());
 // One shared long-press handler is installed on each actual command button.
 // Duplicating a second timer on the palette caused conflicting 450/540ms holds.
 const handleContextAction=(event:MouseEvent)=>{
