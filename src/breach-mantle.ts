@@ -199,19 +199,24 @@ export function probeWindowCrossing(from:Pt,to:Pt,world:CrossingWorld,
    if(fraction<=0||fraction>=1)continue;
    const center=pointBetween(from,to,fraction);
    const lateral=Math.abs(w.vertical?center.y-w.y:center.x-w.x);
-   if(lateral>w.width/2-OPERATOR_RADIUS-1)continue;
+   // A diagonally authored destination may meet the facade beside a
+   // perfectly usable window. Approach the CENTER of the opening instead
+   // of requiring a pixel-perfect perpendicular drag through the sill.
+   // The route to takeoff and from landing are checked independently.
+   if(lateral>w.width/2+18)continue;
    const index=world.cover.findIndex(o=>
      (o.fixture==='window-sill'||o.fixture==='glass-barrier')&&
      Math.hypot(o.x-w.x,o.y-w.y)<1&&
      Math.abs((w.vertical?o.h:o.w)-w.width)<2);
    if(index<0)continue;
    const obstacle=world.cover[index];
-   const interval=crossingInterval(from,to,obstacle);
-   if(!interval)continue;
-   const lead=(OPERATOR_RADIUS+3)/length;
-   const trail=(OPERATOR_RADIUS+5)/length;
-   const approach=pointBetween(from,to,Math.max(0,interval[0]-lead));
-   const landing=pointBetween(from,to,Math.min(1,interval[1]+trail));
+   const fromSign=fromSide>=0?1:-1;
+   const thickness=w.vertical?obstacle.w:obstacle.h;
+   const distanceToCenter=thickness/2+OPERATOR_RADIUS+4;
+   const approach={x:w.x+normal.x*fromSign*distanceToCenter,
+     y:w.y+normal.y*fromSign*distanceToCenter};
+   const landing={x:w.x-normal.x*fromSign*distanceToCenter,
+     y:w.y-normal.y*fromSign*distanceToCenter};
    if(!outsideTarget(approach,obstacle,OPERATOR_RADIUS+1)||
       !outsideTarget(landing,obstacle,OPERATOR_RADIUS+1))continue;
    if(world.canStand&&(!world.canStand(approach)||
