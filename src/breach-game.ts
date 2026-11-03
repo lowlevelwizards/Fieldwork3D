@@ -150,6 +150,8 @@ export type TeamActor=Operator & {
   traversalPending:TraverseOpportunity|null;
   traversal:TraverseOpportunity|null;traversalElapsed:number;
   traversalElevation:number;lastTraversalAt:number;
+  /** Reverses an interrupted climb along the verified approach trajectory. */
+  traversalRetreating:boolean;
   lastBlocker:Blocker;
   /** Last executed facing command; survives across movement waypoints. */
   aimInstruction:AimInstruction|null;
@@ -258,6 +260,7 @@ const withActions=(a:Operator):TeamActor=>({
   squeeze:false,squeezeYaw:a.heading,squeezeTime:0,
   traversalPending:null,traversal:null,traversalElapsed:0,
   traversalElevation:0,lastTraversalAt:-100,
+  traversalRetreating:false,
   lastBlocker:'clear',
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
   lastHitRegion:'torso',lastHitYaw:0,lastHitSeverity:0,
@@ -1439,6 +1442,7 @@ function tickTraversal(a:TeamActor,s:Session,dt:number):boolean{
  if(a.traversalElapsed>=op.duration){
    // The final full-body landing was committed on the preceding tick.
    a.traversal=null;a.traversalElevation=0;a.nav=[];
+   a.traversalRetreating=false;
    a.retryRouteAt=0;a.blockedTime=0;return true;
  }
  const frame=sampleTraversal(op,Math.min(op.duration,
@@ -1472,6 +1476,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
        d(validated.approach,a.p)<4){
       a.traversal={...validated,approach:clone(a.p)};
       a.traversalElapsed=0;a.traversalElevation=0;
+      a.traversalRetreating=false;
       a.traversalPending=null;a.nav=[];a.velocity=0;
       a.blockedTime=0;a.lastTraversalAt=s.seconds;
       return true;
@@ -3370,7 +3375,8 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     if(a.traversal){
       // Motion authority may reject a tick because of an opposing actor.
       // Roll back its motor clock too; never "jump" the rejected frame.
-      a.traversalElapsed=Math.max(0,a.traversalElapsed-h);
+      a.traversalElapsed=Math.min(a.traversal.duration,Math.max(0,
+        a.traversalElapsed+(a.traversalRetreating?h*1.15:-h)));
       a.traversalElevation=sampleTraversal(a.traversal,
         a.traversalElapsed).elevation;
     }
