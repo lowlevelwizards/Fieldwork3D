@@ -23,16 +23,18 @@ export const UPPER_CUT_PROFILES={
  },
  'smock-jacket':{
   rings:[{y:6.55,front:5.60,back:-5.75,side:7.35},
-   {y:4.5,front:6.02,back:-5.97,side:8.12},
-   {y:-2.0,front:6.06,back:-6.00,side:7.83},
-   {y:-8.55,front:6.17,back:-6.10,side:8.00}] as readonly Ring[],
+   {y:4.5,front:5.94,back:-5.95,side:8.08},
+   {y:-2.0,front:6.00,back:-5.98,side:7.85},
+   {y:-6.55,front:6.07,back:-6.01,side:7.88},
+   {y:-9.05,front:6.20,back:-6.09,side:8.13}] as readonly Ring[],
   collar:'folded hood with tall storm neck',pockets:'four large front and map',outer:true
  },
  'gorka-jacket':{
   rings:[{y:6.58,front:5.58,back:-5.77,side:7.38},
-   {y:4.4,front:6.10,back:-6.10,side:8.10},
-   {y:-1.9,front:6.14,back:-6.11,side:7.72},
-   {y:-7.90,front:6.27,back:-6.20,side:7.84}] as readonly Ring[],
+   {y:4.4,front:6.10,back:-6.10,side:8.07},
+   {y:-1.9,front:6.10,back:-6.09,side:7.68},
+   {y:-5.75,front:5.86,back:-5.86,side:7.35},
+   {y:-7.75,front:5.94,back:-5.94,side:7.52}] as readonly Ring[],
   collar:'deep mountain hood',pockets:'large kangaroo or reinforced cargo',outer:true
  }
 } as const;
@@ -110,7 +112,9 @@ function foldedHood(g:THREE.Group,body:THREE.Material,
  wide=false){
  // Folded hood is ONE solid collapsed roll behind the neck. The old
  // separate side boxes looked like disconnected shoulder antennas.
- box(g,body,-5.34,6.93,0,1.74,1.36,wide?11.65:10.85);
+ // A narrow, low roll stays behind the actual neck instead of exposing
+ // two shoulder-level ends in the three-quarter garment silhouette.
+ box(g,body,-5.25,6.56,0,1.38,1.18,wide?8.25:9.20);
 }
 export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
  cloth:THREE.MeshStandardMaterial,trim:THREE.MeshStandardMaterial):NewUpperGarments{
@@ -150,30 +154,37 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
    box(torso,body,5.58,-5.79,0,.16,.33,13.95);
   }else if(smock){
    foldedHood(torso,cloth);
-   // Four discrete patch pockets, shallow enough to read as cloth, not
-   // armor blocks. Hem stays below the blouse, but the torso stays stubby.
+   // Signature four-pocket field smock: larger rectangular cloth masses,
+   // two on the chest and two below the waist. Flaps are narrow, visibly
+   // separate folds, rather than a duplicate armor-looking front plate.
    for(const sign of [-1,1]){
-    for(const y of [1.92,-4.77]){
-     box(torso,cloth,6.21,y,sign*3.66,.42,2.96,4.65);
-     box(torso,cloth,6.47,y+1.31,sign*3.66,.20,.61,4.88);
+    for(const y of [2.18,-5.34]){
+     const z=sign*3.62;
+     box(torso,cloth,6.32,y,z,.46,2.66,4.46);
+     box(torso,smockCuff,6.59,y+1.19,z,.13,.46,4.62);
     }
-    box(torso,trim,6.26,4.18,sign*3.65,.13,1.32,.14);
+    // Waist gather hugs the long field hem; both shoulder edges remain
+    // lower than a ballistic shoulder fin.
+    box(torso,smockCuff,6.30,-2.52,sign*3.72,.12,.20,6.10);
    }
-   box(torso,cloth,6.22,-.60,0,.35,13.6,.34);
-   box(torso,smockCuff,6.26,-7.97,0,.17,.29,14.25);
+   box(torso,cloth,6.26,-.66,0,.18,12.30,.25);
+   box(torso,smockCuff,6.28,-8.65,0,.17,.26,14.50);
   }else{
    foldedHood(torso,mountainCanvas,true);
-   // Gorka is mountain CLOTH, not an armor vest: broad contrasting
-   // shoulder wear, simple central anorak placket, one shallow lower
-   // cargo pouch and a plain cinched hem. No armor-looking vents or
-   // stacked rectangular torso plates.
+   // Iconic mountain suit: contrasting shoulder yokes return just onto
+   // the chest, cloth gathers at the waist and simple reinforced forearms.
+   // The short panels remain thin sewn fabric, NOT plate-like armor.
    for(const sign of [-1,1]){
-    box(torso,body,.90,6.87,sign*3.20,5.00,.82,1.65);
-    box(torso,wear,.18,4.58,sign*7.88,6.05,.85,.34);
+    // One shoulder reinforcement per side is enough; the two extra
+    // raised fabric bars above the neckline looked like floating handles.
+    box(torso,wear,.20,4.64,sign*7.91,5.96,.86,.31);
+    box(torso,wear,6.18,4.56,sign*5.77,.16,1.22,2.08);
    }
-   box(torso,wear,6.30,1.22,0,.11,5.04,.18);
-   box(torso,body,6.38,-4.56,0,.17,1.90,8.56);
-   box(torso,gorkaCuff,6.36,-6.55,0,.18,.39,13.54);
+   box(torso,wear,6.22,1.13,0,.11,4.70,.17);
+   box(torso,body,6.17,-4.82,0,.19,1.45,8.10);
+   // Drawstring hem reads as a small dark band around a genuinely
+   // tapered lower silhouette, not an overhanging jacket plate.
+   box(torso,gorkaCuff,6.04,-7.34,0,.15,.33,13.45);
   }
   const upper:THREE.Group[]=[],lower:THREE.Group[]=[],
    cuffedLower:THREE.Group[]=[],rolledUpper:THREE.Group[]=[];
