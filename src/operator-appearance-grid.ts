@@ -179,7 +179,9 @@ export class OperatorAppearanceGrid{
    if(item.slot==='top'||item.slot==='trousers'){
     for(const [slot,id] of [
      ['head','head-none'],['armor','armor-none'],['rig','rig-none'],
-     ['belt','belt-none'],['backpack','backpack-none']
+     ['belt','belt-none'],['backpack','backpack-none'],
+  ['medical','medical-none'],['tactical','tactical-none'],
+  ['utility','utility-none']
     ] as const)kit=setEquipmentChoice(kit,slot,id);
     w={...w,styles:{...w.styles,headwear:'bare',
      armorStyle:'armor-bare',rigStyle:'no-rig',beltStyle:'no-belt',
