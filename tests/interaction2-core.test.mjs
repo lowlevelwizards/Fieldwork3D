@@ -25,7 +25,7 @@ test('only one command long-press controller remains; failed targeting can retry
   assert.match(main,/installTouchCommandHelp\(button\)/);
   assert.match(main,/if\(accepted\)tacticalFeedback\.emit\(p\.moved\?'command':'select'/);
   assert.match(main,/if\(committed\)looking=false/);
-  assert.match(main,/else firePlacement=null/);
+  assert.match(main,/if\(\!accepted\)rejectAt\(pt,'INVALID SUPPRESSION POINT'\)/);
 });
 test('unchanged palette keeps its position; existing pocket is an explicit candidate',()=>{
   const source=readFileSync(new URL('../src/breach-context-placement.ts',import.meta.url),'utf8');
