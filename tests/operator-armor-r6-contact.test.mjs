@@ -58,9 +58,9 @@ test('R6 whole strap width attaches inside angled plate bags, including both JPC
    const fit=fittedArmorSurfaces(style,top,ARMOR_PROFILES[style]);
    const land=armorStrapLanding(fit,spec);
    assert.ok(land.frontMargin>=.17,
-    style+' '+top+' strap's outer edge misses front plate');
+    style+' '+top+' strap outer edge misses front plate');
    assert.ok(land.rearMargin>=.17,
-    style+' '+top+' strap's outer edge misses rear plate');
+    style+' '+top+' strap outer edge misses rear plate');
    assert.ok(land.frontY<=spec.top&&land.frontY>=spec.bottom);
    assert.ok(land.rearY<=spec.top&&land.rearY>=spec.bottom);
    assert.ok(land.frontZ>1.5&&land.rearZ>1.5);

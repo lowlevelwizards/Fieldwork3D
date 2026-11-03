@@ -180,9 +180,9 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
      mesh.userData.armorCoverY=1.20;
     }
     // Small modern utility pockets deliberately remain flatter than BDU.
-    const pocket=box(torso,cloth,5.53,-3.80,sign*3.60,1.20,2.53,4.33);
-    const flap=box(torso,cloth,6.14,-2.67,sign*3.60,.27,.66,4.50);
-    for(const mesh of [pocket,flap]){
+    const utilityPocket=box(torso,cloth,5.53,-3.80,sign*3.60,1.20,2.53,4.33);
+    const utilityFlap=box(torso,cloth,6.14,-2.67,sign*3.60,.27,.66,4.50);
+    for(const mesh of [utilityPocket,utilityFlap]){
      mesh.userData.armorCompressible=true;
      mesh.userData.armorCoverY=-3.80;
     }
