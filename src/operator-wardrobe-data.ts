@@ -72,8 +72,9 @@ add('footwear','unshod',[['bare-feet','Bare feet']]);
 add('footwear','boots',[['field-boots','Field boots (foundation)']]);
 add('armorStyle','none',[['armor-bare','No armor']]);
 add('armorStyle','soft',[
- ['soft-slick','Slick soft armor'],['soft-paca','PACA-style soft armor'],
- ['soft-vest','External Police / Tactical Vest']
+ ['soft-slick','Concealable Soft Armor'],
+ ['soft-vest','External Police / Tactical Vest'],
+ ['soft-flak','Traditional Fragmentation Vest']
 ]);
 add('armorStyle','plates',[
  ['plate-slick','Slick plate carrier'],
@@ -86,13 +87,15 @@ add('rigStyle','none',[['no-rig','None']]);
 add('rigStyle','light',[
  ['micro-rig','Micro Chest Rig'],
  ['light-rig','Classic X-Harness Chest Rig'],
- ['chest-placard','Triple Magazine Placard']
+ ['chest-placard','Triple Magazine Placard'],
+ ['chicom-rig','Classic Three-Cell Canvas Rig'],
+ ['bandolier','Minimal Bandolier']
 ]);
 add('rigStyle','full',[
  ['field-webbing','Field Webbing'],['lbv','Load-Bearing Vest'],
  ['full-chest','Full Bib / Patrol Rig'],
  ['split-front','Split-Front Chest Rig'],
- ['belt-harness','Belt-and-Suspender Webbing']
+ ['sadf-webbing','Bush / SADF-Style Webbing']
 ]);
 add('beltStyle','none',[['no-belt','No belt']]);
 add('beltStyle','light',[
@@ -177,7 +180,11 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(v.styles&&typeof v.styles==='object'&&!Array.isArray(v.styles)){
   for(const slot of WARDROBE_SLOTS){
    const id=v.styles[slot];
-   if(typeof id==='string'&&wardrobeItem(slot,id))result.styles[slot]=id;
+   // Retired near-duplicates migrate to their closest approved silhouette.
+   const upgraded=id==='soft-paca'?'soft-slick':
+    id==='belt-harness'?'field-webbing':id;
+   if(typeof upgraded==='string'&&wardrobeItem(slot,upgraded))
+    result.styles[slot]=upgraded;
   }
  }
  if(v.fabricCamo&&typeof v.fabricCamo==='object'&&!Array.isArray(v.fabricCamo)){
@@ -322,12 +329,13 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
  choose('armorStyle',slots.armor==='armor-carrier'?
   ['plate-slick','plate-jpc','plate-standard','plate-heavy','plate-legacy']:
   slots.armor==='armor-soft'?
-  ['soft-slick','soft-paca','soft-vest']:['armor-bare'],
+  ['soft-slick','soft-vest','soft-flak']:['armor-bare'],
   slots.armor==='armor-carrier'?'plate-standard':
   slots.armor==='armor-soft'?'soft-vest':'armor-bare');
  choose('rigStyle',slots.rig==='rig-full'?
-  ['field-webbing','lbv','full-chest','split-front','belt-harness']:
-  slots.rig==='rig-light'?['micro-rig','light-rig','chest-placard']:
+  ['field-webbing','lbv','full-chest','split-front','sadf-webbing']:
+  slots.rig==='rig-light'?['micro-rig','light-rig','chest-placard',
+   'chicom-rig','bandolier']:
   ['no-rig'],slots.rig==='rig-full'?'field-webbing':
     slots.rig==='rig-light'?'light-rig':'no-rig');
  choose('beltStyle',slots.belt==='belt-none'?['no-belt']:
