@@ -21,7 +21,7 @@ export class TacticalFeedback{
     this.events=this.events.filter(e=>now-e.born<e.duration);
     for(const e of this.events){
       const t=Math.min(1,Math.max(0,(now-e.born)/e.duration));
-      const motionT=reducedMotion?.45:t;
+      const motionT=reducedMotion?0.45:t;
       const p=project(e.point);
       const fade=reducedMotion?Math.min(1,(1-t)*2):Math.pow(1-t,1.4);
       g.save();g.globalAlpha=fade;
