@@ -506,6 +506,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     p.wardrobe?.topColorway??'standard');
   const additional=r.visualKit.newUpper;
   r.colors.set(additional.combatKnit,new THREE.Color(finish.combat));
+  r.colors.set(additional.smockCuff,new THREE.Color(finish.smock));
+  r.colors.set(additional.gorkaCuff,new THREE.Color(finish.gorkaBase));
   r.colors.set(additional.mountainCanvas,new THREE.Color(finish.gorkaBase));
   r.colors.set(additional.mountainLegCanvas,new THREE.Color(finish.gorkaBase));
   const selectedTop=p.wardrobe?.fabricCamo?.top;

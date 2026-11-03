@@ -15,6 +15,9 @@ export const TOP_COLORWAYS={
  'gorka-jacket':[
   ['standard','Khaki / brown'],['olive-brown','Olive / dark brown'],
   ['sand-olive','Sand / olive'],['olive','Solid mountain olive'],
+  ['khaki-olive','Khaki / forest olive'],
+  ['gray-black','Slate gray / charcoal'],
+  ['desert-brown','Desert sand / umber'],
   ['ss-leto','SS-Leto summer inserts (new)'],
   ['ss-autumn','SS-Autumn inserts (new)']
  ]
@@ -36,6 +39,9 @@ const gorkaColors:Readonly<Record<string,ColorPair>>={
  'olive-brown':{base:0x757654,panel:0x433f33},
  'sand-olive':{base:0xb6a481,panel:0x697456},
  olive:{base:0x72785d,panel:0x67704f},
+ 'khaki-olive':{base:0xa69d7b,panel:0x536246},
+ 'gray-black':{base:0x747770,panel:0x363e3a},
+ 'desert-brown':{base:0xc1ac86,panel:0x76523e},
  'ss-leto':{base:0xa79970,panel:0xffffff},
  'ss-autumn':{base:0x9b8a6e,panel:0xffffff}
 };
@@ -119,7 +125,9 @@ export function gorkaSpecialtyTexture(id:'ss-leto'|'ss-autumn'):
  t.magFilter=THREE.NearestFilter;
  t.minFilter=THREE.NearestMipmapNearestFilter;
  t.generateMipmaps=true;
- t.repeat.set(.64,.64);
+ // The authored 64px specialty tile follows the identical one-pixel-per-
+ // world-unit grid as the other uniforms (32-world-unit UV geometry).
+ t.repeat.set(32/64,32/64);
  t.name='Fieldwork Gorka-only '+id;
  t.needsUpdate=true;cache.set(id,t);return t;
 }
