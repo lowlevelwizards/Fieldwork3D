@@ -1795,6 +1795,9 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   // Player-authored positions are sacred. Traffic steering only moves the
   // actor who requested movement, never a stationary friend or held stack.
   const n=a.plan[0];
+  // An airborne crossing must reach a verified landing before combat pause,
+  // waypoint completion, or fresh orders can resume.
+  if(a.traversal){tickTraversal(a,s,dt);return;}
   // A confirmed visible threat can temporarily interrupt authored attention.
   // This is reactive execution only; it never modifies the player's plan.
   const visibleThreat=enemies(s).filter(e=>e.health>0&&inSight(a,e,s))
@@ -3331,14 +3334,23 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     carried:!!a.carriedById}));
   const decisions=resolveMovementFrame(proposals,p=>{
     const a=s.operators.find(unit=>unit.id===p.id)!;
-    return a.squeeze?sweptProfileClear(p.from,p.to,s.doors,
-      a.squeezeYaw,'squeeze'):sweptBodyClear(p.from,p.to,s.doors);
+    return a.traversal?
+      traversalStepClear(p.from,p.to,a.traversal,traversalWorld(s,a)):
+      a.squeeze?sweptProfileClear(p.from,p.to,s.doors,
+        a.squeezeYaw,'squeeze'):sweptBodyClear(p.from,p.to,s.doors);
   });
   for(const decision of decisions){
     if(!decision.blocked)continue;
     const a=s.operators.find(unit=>unit.id===decision.id)!;
     a.p=clone(decision.point);
     a.priorP=clone(decision.point);a.velocity=0;
+    if(a.traversal){
+      // Motion authority may reject a tick because of an opposing actor.
+      // Roll back its motor clock too; never "jump" the rejected frame.
+      a.traversalElapsed=Math.max(0,a.traversalElapsed-h);
+      a.traversalElevation=sampleTraversal(a.traversal,
+        a.traversalElapsed).elevation;
+    }
     a.blockedTime+=h;a.lastBlocker=decision.blocked==='actor'?'actor':'route';
   }
   for(const a of s.operators)a.stride+=d(a.p,a.priorP);
