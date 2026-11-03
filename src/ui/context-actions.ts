@@ -31,8 +31,6 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
       pressed:o.nodeKind==='wait'||o.nodeKind==='holdClear',title:'Wait at this position'},
     ...(o.nearDoor?[{id:'ctxDoor',label:'DOOR',group:'primary' as const,
       title:'Show actions for a reachable door'}]:[]),
-    ...(o.watchActive?[{id:'ctxReleaseWatch',label:'RELEASE',group:'primary' as const,
-      title:'End WATCH here and return to automatic movement-facing'}]:[]),
     {id:'ctxFlash',label:'FLASH ×'+o.flashRemaining,group:'advanced',
       disabled:o.flashRemaining<=0,title:o.flashRemaining>0?'Choose a flash target':'No flash grenades remaining'},
     {id:'ctxSuppress',label:'SUPPRESS',group:'advanced',
