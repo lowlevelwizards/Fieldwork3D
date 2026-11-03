@@ -189,6 +189,9 @@ jobs:
           done
           echo "Pages did not serve expected main build" >&2
           exit 1
+      - name: Focused Stage 4 field garment expansion and rig safety
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'appearance/stage4-') }}
+        run: node --experimental-strip-types --test tests/operator-outerwear-stage4.test.mjs tests/operator-uniform-trousers-states-stage3c.test.mjs tests/operator-uniform-blouse-stage3b.test.mjs tests/operator-appearance-grid-purge-stage3b1.test.mjs tests/operator-fabric-camo-stage2.test.mjs tests/operator-wardrobe-data.test.mjs tests/operator-wardrobe-recipes.test.mjs tests/operator-wardrobe-persistence.test.mjs tests/operator-visual-merge.test.mjs tests/operator-headwear-fit-metrics.test.mjs tests/operator-mannequin-neutral.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}
