@@ -43,6 +43,8 @@ import {resolveWardrobeDisplayMount} from './operator-wardrobe-mounts.ts';
 import type {CarryLocation} from './equipment-carry-placement.ts';
 import {createOperatorVisualKit,applyOperatorVisualKit,
  type OperatorVisualKit} from './operator-visual-kit.ts';
+import {createGarmentFitAnchors,type GarmentFitAnchors}
+ from './operator-garment-fit.ts';
 import {createOperatorEquipmentDetails,updateOperatorEquipmentDetails,
  type OperatorEquipmentDetails} from './operator-equipment-details.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geometry.ts';
@@ -127,6 +129,8 @@ export type OperatorRig={
   medicalPouch:THREE.Mesh;radioUnit:THREE.Mesh;
   flashCanister:THREE.Mesh;utilityTool:THREE.Mesh;
   gloveCovers:THREE.Mesh[];visualKit:OperatorVisualKit;
+  /** No-render/zero-collider attachment references for future garments. */
+  garmentFitAnchors:GarmentFitAnchors;
   equipmentDetails:OperatorEquipmentDetails;
   lastTime:number;lastPose:OperatorPose|null;
   personality:ReturnType<typeof operatorMotionTraits>;
@@ -288,6 +292,9 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   const visualKit=createOperatorVisualKit(chest,hip,head,pack,feet,arms,
     {cloth,vest,trousers,packFabric,gearFabric,headCloth,headArmor,
       dark:boot,skin,steel},headCanonicalFrame);
+  // Stage 3A reference nodes only: attached after existing geometry is built.
+  // They add no triangles, affect no merging, and change no IK/weapon sockets.
+  const garmentFitAnchors=createGarmentFitAnchors({chest,hip,arms,legs:feet});
   // Include costume, face and accessory materials as well as the core skin,
   // cloth and steel. This keeps silhouette inspection and downed desaturation
   // honest instead of leaving floating colored eye marks and gear details.
@@ -302,7 +309,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     hip,chest,head,weapon,droppedGun,feet,arms,pack,
     helmetShell,armorPanels,capBill,rigPouches,beltPouch,
     medicalPouch,radioUnit,flashCanister,utilityTool,gloveCovers,
-    visualKit,equipmentDetails,colors,
+    visualKit,equipmentDetails,colors,garmentFitAnchors,
     clothMaterial:cloth,vestMaterial:vest,trouserMaterial:trousers,
     packMaterial:packFabric,gearMaterial:gearFabric,
     headClothMaterial:headCloth,headArmorMaterial:headArmor,

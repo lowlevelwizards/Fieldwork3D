@@ -156,6 +156,9 @@ jobs:
       - name: Focused operator camouflage Stage 2 authenticity and material regressions
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'appearance/stage2-') }}
         run: node --experimental-strip-types --test tests/operator-fabric-camo-stage2.test.mjs tests/operator-appearance-stage1.test.mjs tests/operator-headwear-camo.test.mjs tests/operator-wardrobe-persistence.test.mjs tests/operator-wardrobe-storage.test.mjs tests/operator-wardrobe-campaign-ui.test.mjs tests/operator-wardrobe-quickplay-ui.test.mjs tests/operator-wardrobe-patterns.test.mjs tests/operator-wardrobe-six-channels.test.mjs tests/operator-visual-kit.test.mjs tests/operator-wardrobe-body.test.mjs tests/operator-wardrobe-gear-visuals.test.mjs
+      - name: Focused garment fit Stage 3A anatomy and motion protection
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'appearance/stage3a-') }}
+        run: node --experimental-strip-types --test tests/operator-garment-fit-stage3a.test.mjs tests/operator-visual-fit.test.mjs tests/operator-visual-silhouette-matrix.test.mjs tests/operator-mannequin-neutral.test.mjs tests/operator-wardrobe-tool-clearance.test.mjs tests/operator-visual-kit.test.mjs tests/operator-fabric-camo-stage2.test.mjs tests/operator-headwear-fit-metrics.test.mjs tests/operator-wardrobe-persistence.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}
