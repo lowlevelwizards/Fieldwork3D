@@ -364,7 +364,11 @@ function renderCategories(){
  categories.replaceChildren();
  for(const [slot,label] of categoryRows){
   const button=makeButton(label,slot===activeCategory,()=>{
-   activeCategory=slot;refresh();
+   activeCategory=slot;
+   // Inspect the cloth unobscured for TOPS/LEGS; display equipment for
+   // HEAD, ARMOR and other gear so selecting items remains intuitive.
+   clothesOnly=slot==='top'||slot==='trousers';
+   syncGearToggle();refresh();
   });
   button.setAttribute('aria-label','Customize '+APPEARANCE_GROUP_LABELS[slot]);
   categories.append(button);
