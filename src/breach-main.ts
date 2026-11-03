@@ -699,7 +699,7 @@ function renderOperationsBoard(){
    select.value=currentWardrobe[field];
    select.disabled=field==='sleeveState'?
     sleeveStateOptions(effective.top).length===1:
-    !['bdu-trousers','acu-trousers'].includes(effective.trousers)||
+    !['bdu-trousers','acu-trousers','gorka-trousers'].includes(effective.trousers)||
     effective.footwear==='bare-feet';
    select.addEventListener('change',()=>{
     if(field==='sleeveState')writeCosmetics({...currentWardrobe,
