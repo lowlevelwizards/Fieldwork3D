@@ -984,119 +984,133 @@ function camo5Near(x:number,y:number,cx:number,cy:number,size:number,rx:number,r
 }
 function apply5APrint(id:HeadwearCamoId,x:number,y:number,ink:number):number{
  if(id==='east-german-strichtarn'){
-  // Nearly monochrome; staggered 1px red-brown vertical raindrops.
-  for(let k=0;k<66;k++){
-   const cx=(k*23+Math.floor(k/4)*7+3)&31;
-   const cy=(k*11+Math.floor(k/7)*13+5)&31;
+  // Strichtarn: extremely narrow 1px vertical red-brown rain dashes over
+  // near-monochrome gray-olive cloth. Avoid chunky horizontal flecks.
+  for(let k=0;k<178;k++){
+   const cx=(k*37+Math.floor(k/11)*13+3)&63;
+   const cy=(k*19+Math.floor(k/5)*7+5)&63;
    const len=2+(k%4);
-   if(x===cx&&((y-cy+32)&31)<len)return k%9===0?2:1;
+   if(x===cx&&((y-cy+64)&63)<len)return k%17===0?2:1;
   }
   return ink;
  }
  if(id==='splittertarn-31'){
-  // Distinct fine, VERTICAL raindrop overprint on sharp angular shards.
-  for(let k=0;k<96;k++){
-   const cx=(k*23+Math.floor(k/5)*9+5)&63;
-   const cy=(k*19+Math.floor(k/6)*7+11)&63;
-   if(x===cx&&((y-cy+64)&63)<2+(k%5))return 3;
+  // Very thin 1px straight vertical rain-stria overprint across hard
+  // shards (raindrops are not a third macro patch family).
+  for(let k=0;k<152;k++){
+   const cx=(k*23+Math.floor(k/6)*9+5)&63;
+   const cy=(k*29+Math.floor(k/7)*11+11)&63;
+   if(x===cx&&((y-cy+64)&63)<1+(k%4))return 3;
   }
   return ink;
  }
  if(id==='belgian-jigsaw'){
-  // Tiny off-white edge nicks around huge interlocked red/green pieces.
+  // Fine border punctuation follows color transitions, not a uniform
+  // speckle/noise pass over the trademark huge puzzle pieces.
   const edge=camo5Grain(x,y,4,36,64);
-  if(ink===3&&edge>.80)return 4;
-  if((ink===1||ink===2)&&edge<.09)return 3;
+  if(ink===3&&edge>.86)return 4;
+  if((ink===1||ink===2)&&edge<.05)return 3;
   return ink;
  }
  if(id==='mitchell-leaf'){
-  // A few branching veins and distinctive separated leaf lobes.
-  const g=camo5Grain(x,y,4,7,64),stem=((x+2*y+64)%19);
-  if((ink===1||ink===2)&&stem===0&&g>.35)return 4;
-  if(ink===1&&g>.87)return 0;
-  if(ink===0&&g<.14)return 2;
+  // Continuous curved stems run through distinct lobed leaves; occasional
+  // fenestrations shape the leaf outline without becoming generic woodland.
+  const g=camo5Grain(x,y,4,7,64);
+  const stemA=Math.abs(y-(15+Math.round(.47*x+2*Math.sin(x/8))));
+  const stemB=Math.abs(y-(52-Math.round(.35*x+2*Math.sin((x+8)/7))));
+  if((ink===1||ink===2)&&(stemA<1||stemB<1))return 4;
+  if(ink===1&&g>.90)return 0;
+  if(ink===0&&g<.13)return 2;
   return ink;
  }
  if(id==='australian-dpcu'){
-  // Small rounded jellybeans reinforce the softer dots (not digital).
-  for(let k=0;k<34;k++){
+  // 85 staggered rounded/elongated Australian jellybeans, dense enough
+  // that a fabric cut never consists of a huge blank sand panel.
+  for(let k=0;k<85;k++){
    const cx=(k*29+Math.floor(k/5)*13+4)&63;
    const cy=(k*17+Math.floor(k/4)*11+7)&63;
-   if(camo5Near(x,y,cx,cy,64,2+(k%2),2+(k%3)))return [2,1,3,4][k%4];
+   const radiusX=2+(k%3),radiusY=2+((k+1)%3);
+   if(camo5Near(x,y,cx,cy,64,radiusX,radiusY))
+    return [2,1,3,4,1][k%5];
   }
   return ink;
  }
  if(id==='italian-vegetato'){
-  // Thin irregular broken leaf fringes. No rectangular MARPAT stairs.
-  const g=.7*camo5Grain(x,y,4,49,64)+.3*camo5Grain(x,y,2,17,64);
-  if(g>.77&&(ink===1||ink===3))return 4;
-  if(g<.16&&ink===1)return 2;
-  if(g>.72&&ink===0)return 3;
-  if(g<.24&&ink===2)return 1;
+  // Fine, oblique nested leafy edges, not horizontal MultiCam-style bars.
+  const g=.62*camo5Grain(x,y,4,49,64)+.38*camo5Grain(x,y,2,17,64);
+  const hook=((x+2*y+128)%19);
+  if(hook<2&&g>.58&&ink===1)return 4;
+  if(hook>13&&hook<16&&g>.62&&ink===0)return 3;
+  if(g>.76&&(ink===1||ink===3))return 4;
+  if(g<.18&&ink===1)return 2;
+  if(g>.69&&ink===0)return 3;
+  if(g<.26&&ink===2)return 1;
   return ink;
  }
  if(id==='scorpion-w2'){
-  // Horizontal rounded bark shapes, deliberately no upright dark twiglets.
+  // Broad mostly horizontal broken bars and muted OCP fields, preserving
+  // recognizable family resemblance but avoiding MTP's sharp DPM hooks.
   const g=camo5Grain(x,y,4,31,64);
-  const band=(y+Math.floor(x/11))%17;
-  if(band<2&&g>.69&&ink===3)return 5;
-  if(g>.86&&ink===1)return 4;
-  if(g<.12&&ink===2)return 6;
+  const band=(y+Math.floor(x/13))%19;
+  if(band<2&&g>.72&&ink===3)return 5;
+  if(g>.84&&ink===1)return 4;
+  if(g<.14&&ink===2)return 6;
   return ink;
  }
  if(id==='russian-emr'){
-  // Dense light-green "Tsifra" micro-square interruptions with brown/black
-  // specks: fine, unlike the larger, greener CADPAT fractal.
+  // Tsifra: very fine, foliage-green dominant stepped digital breakup.
+  // Brown is accent only, unlike warm Indian digital.
   const g=camo5Grain(x,y,2,61,32),noise=camoLattice(x,y,79);
   const cell=camo5Grain(x,y,4,28,32);
-  if(g<.25&&noise>.30)return 3;
-  if(g>.83&&noise>.44)return 2;
-  if(g>.61&&noise<.53)return 0;
-  if(cell>.61&&g>.47)return 1;
-  if(noise>.87)return 0;
+  if(ink===2&&g<.60)return 0;
+  if(g<.23&&noise>.30)return 3;
+  if(g>.86&&noise>.45)return 2;
+  if(g>.60&&noise<.65)return 0;
+  if(cell>.58&&g>.45)return 1;
+  if(noise>.88)return 0;
   return ink;
  }
  if(id==='pla-xingkong'){
-  // Starry Sky's extremely fine dusting on subdued near-neutral fields:
-  // many 1px pale "stars", no repeating MARPAT stair-step checkerboard.
-  const noise=camoLattice(x,y,71);
-  const g=camo5Grain(x,y,4,41,64);
-  if(noise>.94)return 3;
-  if(noise<.055&&g>.4)return 2;
-  if(g<.25&&noise<.36)return 4;
-  if(g>.78&&ink===1)return 0;
+  // Xingkong: dense micro-star dots over low-contrast diffuse gray/olive;
+  // not chunky EMR or CADPAT squares.
+  const noise=camoLattice(x,y,71),g=camo5Grain(x,y,4,41,64);
+  if(noise>.915)return 3;
+  if(noise<.035&&g>.4)return 2;
+  if(g<.24&&noise<.32)return 4;
+  if(g>.77&&ink===1)return 0;
+  if(g>.83&&ink===2)return 1;
   return ink;
  }
  if(id==='cadpat-tw'){
-  // Canadian TW: darkest of our digital woodland prints; dense black/
-  // yellow-green fractal pixels with broader connected forest masses.
+  // Very dark forest/black fractal mass with restrained lime-green breakup.
+  // Larger grouped pixels than tiny EMR, and colder than woodland MARPAT.
   const g=.65*camo5Grain(x,y,4,33,64)+.35*camo5Grain(x,y,2,13,64);
   const threshold=camoLattice(Math.floor(x/2),Math.floor(y/2),23);
   if(g<.34&&threshold>.33)return 3;
-  if(g>.71&&threshold>.25)return 1;
+  if(g>.77&&threshold>.38)return 1;
   if(g>.43&&g<.54&&threshold>.77)return 4;
-  if(g>.59&&ink===3)return 0;
+  if(g>.58&&ink===3)return 0;
   return ink;
  }
  if(id==='british-mtp'){
-  // MTP's DPM-like tapered pterodactyl twigs and peppered margins;
-  // these slant sideways rather than MultiCam's frequent vertical bits.
+  // Recognizable DPM-derived swept hooked strokes in otherwise muted
+  // MultiCam-family colors; stronger bends than Scorpion W2.
   const g=camo5Grain(x,y,4,55,64);
   const hook=((y-Math.floor(x/4)+128)%23);
-  if((hook===1||hook===2)&&g>.58&&ink===3)return 5;
-  if((hook===3||hook===4)&&g>.72&&ink===2)return 6;
-  if(g>.91&&ink===1)return 4;
+  if((hook===1||hook===2)&&g>.51&&ink===3)return 5;
+  if((hook>=3&&hook<=5)&&g>.67&&ink===2)return 6;
+  if(g>.92&&ink===1)return 4;
   return ink;
  }
  if(id==='indian-digital-2022'){
-  // Inspired by India's olive/earth digital family; original deterministic
-  // stepped motif, NOT an exact reproduction of the registered Indian design.
-  const g=.65*camo5Grain(x,y,4,61,64)+.35*camo5Grain(x,y,2,49,64);
+  // Original stepped olive/earth/buff artwork evocative of 2022 Indian
+  // digital uniforms, not a reproduction of the protected textile.
+  const g=.55*camo5Grain(x,y,4,61,64)+.45*camo5Grain(x,y,2,49,64);
   const digit=camoLattice(Math.floor(x/2),Math.floor(y/2),89);
-  if(g>.69&&digit>.3)return 3;
-  if(g<.24&&digit>.22)return 4;
-  if(g>.51&&g<.63&&digit>.72)return 2;
-  if(g<.39&&digit<.28)return 0;
+  if(g>.68&&digit>.27)return 3;
+  if(g<.24&&digit>.20)return 4;
+  if(g>.49&&g<.65&&digit>.67)return 2;
+  if(g<.38&&digit<.32)return 0;
   return ink;
  }
  return ink;
