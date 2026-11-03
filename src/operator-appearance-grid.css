@@ -1,0 +1,58 @@
+/* Fieldwork Appearance 3D grid: actual rig-rendered thumbnails,
+ * comfortable on iPhone, no nested legacy wardrobe selects. */
+#appearanceItemBrowser{margin:8px 0 12px}
+.appearance-item-tabs{
+ display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;
+ padding:3px 0 9px;scroll-snap-type:x proximity;
+ -webkit-overflow-scrolling:touch;touch-action:pan-x;
+}
+.appearance-item-tab{
+ flex:0 0 auto;scroll-snap-align:start;min-height:40px;
+ border-radius:5px;border:1px solid #65796b;background:#243b31;
+ padding:7px 11px;color:#d9e6d7;font:700 11px/1 "IBM Plex Sans",sans-serif;
+ letter-spacing:.03em;
+}
+.appearance-item-tab[aria-selected="true"]{
+ background:#a8b59a;color:#182b24;border-color:#f4dfaa;
+ box-shadow:inset 0 0 0 1px #e5dbb6;
+}
+.appearance-item-count{margin:0 0 8px;font:600 10px/1.4 "IBM Plex Mono",monospace;color:#c0d2be}
+.appearance-item-grid{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;
+ padding-bottom:8px;
+}
+.appearance-item-card{
+ display:flex;flex-direction:column;gap:4px;text-align:left;
+ padding:5px 5px 8px;min-width:0;min-height:155px;
+ border:1px solid #6d8274;border-radius:8px;background:#23352e;
+ color:#eee9d6;overflow:hidden;touch-action:manipulation;
+}
+.appearance-item-card[aria-pressed="true"]{
+ border:2px solid #f4dea3;background:#2a493a;
+ padding:4px 4px 7px;
+ box-shadow:inset 0 0 0 1px #bbcc9c;
+}
+.appearance-item-card:disabled{opacity:.4}
+.appearance-item-thumbnail{
+ display:block;aspect-ratio:1/1;width:100%;height:auto;min-height:0;
+ background:#23352e;border-radius:4px;object-fit:contain;
+ image-rendering:auto;contain:paint;
+}
+.appearance-item-thumbnail[data-preview-error="true"]{
+ background:repeating-linear-gradient(45deg,#273b33,#273b33 10px,#34453d 10px,#34453d 20px);
+}
+.appearance-item-name{
+ font:700 11px/1.25 "IBM Plex Sans",sans-serif;
+ overflow-wrap:anywhere;padding:0 3px;
+}
+.appearance-item-tag{
+ font:700 9px/1.1 "IBM Plex Mono",monospace;
+ letter-spacing:.035em;color:#bcccb9;padding:0 3px;
+}
+.appearance-item-card[aria-pressed="true"] .appearance-item-tag{color:#ffe6ae}
+@media(min-width:490px){
+ .appearance-item-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(min-width:840px){
+ .appearance-item-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
