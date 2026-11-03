@@ -5,7 +5,6 @@
 import * as THREE from 'three';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import type {CarryLocation} from './equipment-carry-placement.ts';
-import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
