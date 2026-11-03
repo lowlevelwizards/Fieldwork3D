@@ -2186,6 +2186,17 @@ function terrain(){
 function furniture(){
   for(const [i,c] of COVER.entries()){
     if(spatialSurfaceState(state,'cover',i,replaying&&replayOmniscient)==='unknown')continue;
+    if(c.toppled){
+      // Low, collapsed silhouette rather than a standing furniture block.
+      draw.save();draw.globalAlpha=.84;
+      rect(c.x-c.w/2,c.y-c.h/2,c.w,c.h,'#756f57');
+      draw.strokeStyle='#d5ae7d';draw.lineWidth=2.4;
+      draw.beginPath();
+      draw.moveTo(c.x-c.w/2+3,c.y+c.h/2-3);
+      draw.lineTo(c.x+c.w/2-3,c.y-c.h/2+3);
+      draw.stroke();draw.restore();
+      continue;
+    }
     draw.fillStyle='#0f1b1c66';
     draw.fillRect(c.x-c.w/2+6,c.y-c.h/2+7,c.w,c.h);
     rect(c.x-c.w/2,c.y-c.h/2,c.w,c.h,c.low?'#81725b':'#485552');
