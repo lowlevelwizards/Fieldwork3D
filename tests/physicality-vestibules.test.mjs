@@ -8,7 +8,8 @@ const actor=(id,y,goalY)=>({id,p:{x:64,y},goal:{x:64,y:goalY},
 test('aligned vestibule shares a single lease across both doorways',()=>{
  const arriving=actor('arriving',80,200),inside=actor('inside',135,195);
  const leases={};
- assert.equal(passageWait(arriving,[first,second],[arriving,inside],leases,1),true);
+ assert.equal(passageWait(arriving,[first,second],[arriving,inside],leases,1),false,
+  'a trailing operator may advance into a safe vestibule gap');
  assert.equal(passageWait(inside,[first,second],[arriving,inside],leases,1),false);
  assert.equal(leases['zone:A-DOOR+B-DOOR'].actorId,'inside');
 });
