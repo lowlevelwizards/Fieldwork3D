@@ -120,6 +120,10 @@ export function createArmorSilhouettes(chest:THREE.Group,
    box(g,armor,.30,4.65,sign*4.55,10.85,1.24,2.18);
    box(g,armor,5.90,3.45,sign*4.05,1.03,1.25,3.25);
   }
+  // Small authentic zip/identification features, never one fake plate.
+  box(g,dark,6.59,-.40,0,.18,7.32,.23);
+  box(g,dark,6.61,2.35,-3.53,.15,.92,4.52);
+  box(g,trim,6.58,-5.27,0,.16,.35,11.75);
  }
  // Flak: older padded cloth, raised stiff collar, large shoulders,
  // long continuous lower hem. Do not re-use the police neckline.
@@ -131,6 +135,12 @@ export function createArmorSilhouettes(chest:THREE.Group,
   for(const sign of [-1,1])
    box(g,armor,.20,4.73,sign*5.05,10.9,1.70,2.78);
   collarPieces(g,armor,5.95,2.80);
+  box(g,utility,6.87,-1.2,0,.18,7.05,.56);
+  for(const sign of [-1,1]){
+   // Plain padded pocket flaps, quite unlike modern magazine cells.
+   box(g,utility,6.89,1.15,sign*3.54,.17,.59,3.75);
+   box(g,armor,6.89,-.58,sign*3.54,.15,2.50,3.55);
+  }
  }
 
  // Slick: two small, short bags with minimal shoulder/elastic sides.
@@ -142,6 +152,7 @@ export function createArmorSilhouettes(chest:THREE.Group,
   shoulderStraps(g,utility,3.25,.92,.62,5.95,-5.95,5.55);
   for(const sign of [-1,1])
    box(g,utility,-.05,-.85,sign*6.72,10.5,1.35,.55);
+  box(g,trim,6.84,-3.91,0,.14,.18,6.80);
  }
 
  // Light: truly OPEN sides; three narrow bands are not a full slab.
@@ -154,8 +165,9 @@ export function createArmorSilhouettes(chest:THREE.Group,
   for(const sign of [-1,1]){
    for(const y of [-2.70,-.70,1.32])
     box(g,utility,-.02,y,sign*6.88,10.7,.39,.72);
-   box(g,dark,6.91,4.42,sign*3.5,.16,.50,1.4);
+   box(g,dark,6.99,4.42,sign*3.5,.13,.50,1.4);
   }
+  box(g,trim,7.00,-3.95,0,.14,.2,8.24);
  }
 
  // Standard: medium stepped carrier bag and substantial connected side
@@ -166,6 +178,10 @@ export function createArmorSilhouettes(chest:THREE.Group,
   frontBag(g,armor,-7.20,-4.58,6.55,9.70,2.70,7.75,1.25);
   shoulderStraps(g,utility,4.05,1.48,.92,6.60,-6.45,6.10);
   wrapPanels(g,utility,7.10,-1.15,2.78,1.42);
+  // Three decisive, wider MOLLE bands (not individual micro-holes).
+  for(const y of [-2.40,-1.04,.32])
+   box(g,utility,7.36,y,0,.13,.30,8.20);
+  box(g,trim,7.36,-4.42,0,.13,.30,9.20);
  }
 
  // Heavy: frontal carrier still stepped, but the side plates and
@@ -181,6 +197,8 @@ export function createArmorSilhouettes(chest:THREE.Group,
    box(g,armor,.3,-.95,sign*8.04,4.35,4.35,1.08);
    box(g,armor,1.20,5.26,sign*5.15,8.85,1.45,2.1);
   }
+  box(g,utility,7.74,-4.78,0,.26,1.04,6.00);
+  box(g,dark,7.73,3.68,0,.18,.46,5.35);
  }
 
  // Legacy: long, two-part wraparound body, large shoulder yoke and
@@ -193,6 +211,9 @@ export function createArmorSilhouettes(chest:THREE.Group,
   for(const sign of [-1,1])
    box(g,armor,.15,4.89,sign*5.06,11.3,2.05,2.85);
   collarPieces(g,armor,6.05,2.97);
+  box(g,utility,7.55,-1.20,0,.22,8.72,1.18);
+  for(const sign of [-1,1])
+   box(g,utility,7.57,-3.35,sign*4.55,.18,1.68,3.10);
  }
  for(const g of Object.values(groups))consolidateVisualGroup(g);
  return groups;
