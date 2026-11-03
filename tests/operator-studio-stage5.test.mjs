@@ -58,10 +58,10 @@ test('studio preserves the game page and separates the visual editor from animat
  const vite=read('../vite.config.ts');
  assert.match(index,/id="openOperatorStudio"/);
  assert.match(code,/function openOperatorStudio\(/);
- assert.match(code,/msg.type!=='fw-studio-commit'/);
- assert.match(studio,/type:'fw-studio-commit'/);
- assert.match(code,/setCampaignWardrobe\(campaign,msg.id,msg.wardrobe\)/);
- assert.match(code,/setRosterWardrobe\(persistentRoster,msg.id,msg.wardrobe\)/);
+ assert.match(code,/msg.type==='fw-studio-commit-batch'/);
+ assert.match(studio,/type:'fw-studio-commit-batch'/);
+ assert.match(code,/applyStudioCampaignEdits\(campaign,edits\)/);
+ assert.match(code,/applyStudioRosterEdits\(persistentRoster,edits\)/);
  assert.match(code,/event.origin!==location.origin/);
  assert.match(page,/id="studioCanvas"/);
  assert.match(page,/id="studioMaterials"/);
