@@ -110,19 +110,10 @@ export function createOperatorVisualKit(
  const wardrobeBody=createWardrobeBodyLayers(chest,legs,arms,
   cloth,trousers,trim,dark);
  const fieldBlouses=createFieldBlousePrototypes(chest,arms,cloth,trim);
- // Separate clothing profiles: jacket has a heavier collar, flap and
- // squared hem; the shirt exposes a narrow collar instead of extra panels.
- const jacket=bundle(chest);
- for(const sign of [-1,1]){
-  part(jacket,cloth,3.2,5.95,sign*4.0,3.0,1.55,4.0);
-  part(jacket,cloth,4.95,-2,sign*3.6,.44,3.8,2.55);
-  part(jacket,trim,5.22,3.0,sign*3.05,.38,1.45,3.15);
- }
- part(jacket,cloth,5.18,-5.55,0,.64,1.15,13.6);
- part(jacket,trim,5.51,-.5,0,.24,6,.6);
- const lightShirt=bundle(chest);
- part(lightShirt,trim,2.2,5.95,-2.35,2.5,.72,3.1);
- part(lightShirt,trim,2.2,5.95,2.35,2.5,.72,3.1);
+ // Retire the old shared cuboid jacket and light-shirt meshes altogether.
+ // Keep empty grouping handles for existing rig consumers and silhouette
+ // diagnostics; only the authored BDU and ACU shells have visible geometry.
+ const jacket=bundle(chest),lightShirt=bundle(chest);
  // Body armor remains enclosed rather than coplanar: a low-profile soft
  // vest and a larger, boxy pair of front/back ballistic plate bags.
  const softArmor=bundle(chest);
@@ -283,13 +274,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  v.plateCarrier.scale.set(looks.armorStyle==='plate-slick'?.87:
   looks.armorStyle==='plate-jpc'?.92:
   looks.armorStyle==='plate-heavy'?1.15:1,1,1);
- const bareTop=looks.top==='base-layer';
- const heavyTop=['field-jacket','softshell',
-  'softshell-hood','pcu-shell','tactical-sweater'].includes(looks.top);
- v.jacket.visible=usingWardrobe?heavyTop:s.top==='top-uniform';
- v.lightShirt.visible=usingWardrobe?!heavyTop&&!bareTop&&
-  !['bdu-shirt','acu-shirt'].includes(looks.top):s.top==='top-light';
- v.jacket.scale.set(looks.top==='pcu-shell'?1.12:1,1,1);
+ // No generic coat/shirt overlay is allowed under the reviewed garments.
+ v.jacket.visible=false;v.lightShirt.visible=false;
  updateFieldBlousePrototypes(v.fieldBlouses,looks.top);
  updateWardrobeBodyLayers(v.wardrobeBody,looks.top,looks.trousers,
   looks.knees,looks.wrist);
