@@ -17,16 +17,16 @@ import {HEADWEAR_CAMO_IDS} from '../src/operator-headwear-camo.ts';
 const source=path=>readFileSync(new URL(path,import.meta.url),'utf8');
 test('all obsolete garment options are actually gone from the authoritative catalog',()=>{
  assert.deepEqual(wardrobeItemsForSlot('top').map(x=>x.id),
-  ['base-layer','bdu-shirt','acu-shirt']);
+  ['base-layer','bdu-shirt','acu-shirt','combat-shirt','smock-jacket','gorka-jacket']);
  assert.deepEqual(wardrobeItemsForSlot('trousers').map(x=>x.id),
-  ['base-shorts','bdu-trousers','acu-trousers']);
+  ['base-shorts','bdu-trousers','acu-trousers','gorka-trousers']);
  assert.deepEqual(wardrobeItemsForSlot('footwear').map(x=>x.id),
   ['bare-feet','field-boots']);
  assert.deepEqual(wardrobeItemsForSlot('gloves').map(x=>x.id),
   ['gloves-none','gloves-field']);
  assert.deepEqual(wardrobeItemsForSlot('knees').map(x=>x.id),
   ['knee-none','knee-hard']);
- for(const id of ['field-jacket','t-shirt','combat-shirt','softshell',
+ for(const id of ['field-jacket','t-shirt','softshell',
   'pcu-shell','light-shirt','flannel','jeans','field-trousers',
   'softshell-trousers','sneakers','hiking-shoes']){
   assert.ok(!['top','trousers','footwear'].some(slot=>
@@ -63,7 +63,7 @@ test('new presets use exclusively existing cuts and original approved prints',()
    assert.ok(wardrobeItemsForSlot(slot).some(x=>x.id===id),
     recipe.id+' references deleted '+slot+':'+id);
   const applied=applyWardrobeRecipe(recipe);
-  assert.ok(['bdu-shirt','acu-shirt'].includes(
+  assert.ok(['bdu-shirt','acu-shirt','combat-shirt','smock-jacket','gorka-jacket'].includes(
    resolvedWardrobe(applied.wardrobe,applied.kit).top),recipe.id);
   if(recipe.topCamo)assert.equal(applied.wardrobe.fabricCamo?.top,recipe.topCamo);
   assert.ok(!('patterns' in recipe));

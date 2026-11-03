@@ -37,6 +37,7 @@ import {resolvedHeadwearCamo,headwearCamoPlacement} from './operator-headwear-ca
 import {headwearCamoTexture,headwearDetailTexture} from './operator-headwear-materials.ts';
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import {garmentBoxUV,wardrobeFabricCamoTexture} from './operator-fabric-camo-materials.ts';
+import {garmentColorValues,gorkaSpecialtyTexture} from './operator-upper-colorways.ts';
 import {fabricCamoCompatible,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {resolveWardrobeDisplayMount} from './operator-wardrobe-mounts.ts';
 import type {CarryLocation} from './equipment-carry-placement.ts';
@@ -446,7 +447,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // The bones, solved knee/elbow positions and planted feet stay identical.
   const clothing=resolvedWardrobe(p.wardrobe,p.equipment);
   const bareForearm=clothing.top==='base-layer'||
-     p.wardrobe?.sleeveState==='rolled';
+    (['bdu-shirt','acu-shirt','combat-shirt'].includes(clothing.top)&&
+     (p.wardrobe?.sleeveState==='rolled'||p.wardrobe?.sleeveState==='cuffed'));
   for(const arm of r.arms){
    arm.lower.material=bareForearm?r.skinMaterial:r.clothMaterial;
    arm.upper.material=clothing.top==='base-layer'?
@@ -454,7 +456,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }
   for(const leg of r.feet){
    leg.lower.material=clothing.trousers==='base-shorts'?
-    r.skinMaterial:r.trouserMaterial;
+    r.skinMaterial:p.wardrobe?.trouserHem==='bloused'?
+    r.bootMaterial:r.trouserMaterial;
    const barefoot=clothing.footwear==='bare-feet';
    leg.shoe.material=barefoot?r.skinMaterial:r.bootMaterial;
    leg.shoe.scale.set(1,barefoot?.7:1,barefoot?.88:1);
@@ -499,10 +502,43 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // pose-time restore and optional injury desaturation. In particular, do not
   // overwrite the selected headgear swatch with the old neutral blend.
   // Its grayscale construction atlas and physical finish stay independent.
+  const finish=garmentColorValues(clothing.top,
+    p.wardrobe?.topColorway??'standard');
+  const additional=r.visualKit.newUpper;
+  r.colors.set(additional.combatKnit,new THREE.Color(finish.combat));
+  r.colors.set(additional.mountainCanvas,new THREE.Color(finish.gorkaBase));
+  r.colors.set(additional.mountainLegCanvas,new THREE.Color(finish.gorkaBase));
+  const selectedTop=p.wardrobe?.fabricCamo?.top;
+  const hasAuthoredTop=!!selectedTop&&
+     fabricCamoCompatible(selectedTop,'top',clothing);
+  const panelMap=finish.specialty?
+     gorkaSpecialtyTexture(finish.specialty):
+     hasAuthoredTop?r.clothMaterial.map:operatorPixelTextures.get('fabric');
+  if(additional.mountainPanel.map!==panelMap){
+   additional.mountainPanel.map=panelMap;
+   additional.mountainPanel.needsUpdate=true;
+  }
+  r.colors.set(additional.mountainPanel,new THREE.Color(
+    finish.specialty||hasAuthoredTop?0xffffff:finish.gorkaPanel));
+  const selectedLeg=p.wardrobe?.fabricCamo?.trousers;
+  const hasAuthoredLeg=!!selectedLeg&&
+    fabricCamoCompatible(selectedLeg,'trousers',clothing);
+  const legMap=finish.specialty?
+    gorkaSpecialtyTexture(finish.specialty):
+    hasAuthoredLeg?r.trouserMaterial.map:operatorPixelTextures.get('fabric');
+  if(additional.mountainLegPanel.map!==legMap){
+   additional.mountainLegPanel.map=legMap;
+   additional.mountainLegPanel.needsUpdate=true;
+  }
+  r.colors.set(additional.mountainLegPanel,new THREE.Color(
+    finish.specialty||hasAuthoredLeg?0xffffff:finish.gorkaPanel));
+  if(clothing.top==='smock-jacket'&&!hasAuthoredTop)
+    r.colors.set(r.clothMaterial,new THREE.Color(finish.smock));
   for(const [id,material] of Object.entries(r.visualKit.wardrobeHead.headwearMaterials)){
    const selected=id===clothing.headwear;
    const modelId=(id==='high-cut-rails'?'high-cut':id) as HeadSilhouetteId;
-   const camo=selected?resolvedHeadwearCamo(modelId,p.wardrobe?.headwearCamo):null;
+   const camo=selected&&p.wardrobe?.headwearCamo!=='splittertarn-31'?
+     resolvedHeadwearCamo(modelId,p.wardrobe?.headwearCamo):null;
    const map=camo?headwearCamoTexture(modelId,camo,
      headwearCamoPlacement(r.camoIdentity,'headwear:'+modelId,camo,
       p.wardrobe?.headwearCamoRoll??0)):headwearDetailTexture(modelId);

@@ -83,6 +83,8 @@ import {initialArmorIntegrity} from './equipment-armor.ts';
 import {allocateFlashSupply} from './equipment-supply.ts';
 import {createHeadwearAppearancePicker} from './operator-headwear-picker.ts';
 import {createWardrobeFabricCamoPicker} from './operator-fabric-camo-picker.ts';
+import {topColorwayChoices,resolvedTopColorway} from './operator-upper-colorways.ts';
+import {sleeveStateOptions} from './operator-wardrobe-data.ts';
 import './operator-fabric-camo-picker.css';
 import {WARDROBE_ACCESSORY_SLOTS,WARDROBE_ACCESSORY_OPTIONS}
  from './operator-wardrobe-accessories.ts';
@@ -663,6 +665,23 @@ function renderOperationsBoard(){
    }));
   wardrobeEditor.append(createWardrobeFabricCamoPicker(member.loadout,
    currentWardrobe,writeCosmetics,quickFabricPickerState));
+  const colors=topColorwayChoices(effective.top);
+  if(colors.length){
+   const row=document.createElement('label');
+   row.style.cssText='display:flex;justify-content:space-between;gap:8px;margin:8px 0';
+   const text=document.createElement('span');text.textContent='GARMENT MATERIAL';
+   const select=document.createElement('select');
+   select.setAttribute('aria-label','Garment material for '+member.callsign);
+   select.style.cssText='min-height:40px;max-width:66%';
+   for(const [value,name] of colors){
+    const option=document.createElement('option');option.value=value;
+    option.textContent=name;select.append(option);
+   }
+   select.value=resolvedTopColorway(effective.top,currentWardrobe.topColorway);
+   select.addEventListener('change',()=>writeCosmetics({...currentWardrobe,
+    topColorway:select.value}));
+   row.append(text,select);wardrobeEditor.append(row);
+  }
   for(const [field,label,options] of [
    ['sleeveState','SLEEVE FINISH',SLEEVE_STATES],
    ['trouserHem','TROUSER HEM',TROUSER_HEMS]
@@ -679,8 +698,8 @@ function renderOperationsBoard(){
    }
    select.value=currentWardrobe[field];
    select.disabled=field==='sleeveState'?
-    !['bdu-shirt','acu-shirt'].includes(effective.top):
-    !['bdu-trousers','acu-trousers'].includes(effective.trousers)||
+    sleeveStateOptions(effective.top).length===1:
+    !['bdu-trousers','acu-trousers','gorka-trousers'].includes(effective.trousers)||
     effective.footwear==='bare-feet';
    select.addEventListener('change',()=>{
     if(field==='sleeveState')writeCosmetics({...currentWardrobe,

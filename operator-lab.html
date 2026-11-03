@@ -381,14 +381,17 @@ button{font-family:"Work Sans",system-ui,sans-serif;font-weight:600;letter-spaci
 These are display positions of actual carried items, not extra inventory.</p>
 </details>
 <div class="kit-grid" id="garmentFinishControls">
+<label id="wardrobeColorwayRow" hidden>GARMENT MATERIAL
+<select id="wardrobeTopColorway" aria-label="Contextual top garment material and mountain-pattern inserts"></select></label>
 <label>SLEEVE FINISH<select id="wardrobeSleeveState" aria-label="Sleeve construction and position">
 <option value="unrolled">UNROLLED · FULL LENGTH</option>
-<option value="cuffed">CUFFED · WRIST FOLD</option>
+<option value="cuffed">CUFFED · HIGH WRIST / SKIN GAP</option>
 <option value="rolled">ROLLED · ABOVE ELBOW</option>
 </select></label>
 <label>TROUSER HEM<select id="wardrobeTrouserHem" aria-label="Bloused or unbloused trouser hem">
 <option value="bloused">BLOUSED · OVER BOOTS</option>
 <option value="unbloused">UNBLOUSED · STRAIGHT</option>
+<option value="cuffed">CUFFED · BULKY DOUBLE FOLD</option>
 </select></label>
 </div><div class="row"><button id="wardrobeReset">RESET STYLES</button></div>
 <output id="wardrobeCompatibility" role="status"></output></details>
