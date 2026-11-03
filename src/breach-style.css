@@ -1249,3 +1249,22 @@ body[data-hud-phase="replay"] .guidance{display:none!important}
 @media(prefers-reduced-motion:reduce){
  .guidance:not([hidden]),.feed:not([hidden]){animation:none!important}
 }
+
+/* UI ICON FAMILY / 35 selected vectors — optical-size harmonization.
+ * Match the 24px audition while keeping >=44px touch surfaces. */
+.ui-icon{width:24px;height:24px;flex:0 0 auto;vertical-align:middle;
+  pointer-events:none;overflow:visible}
+.context-primary .ui-icon,.context-tools .context-primary button .ui-icon,
+.quick-states button .ui-icon,.context-danger .ui-icon{width:23px;height:23px}
+.context-primary button,.quick-states button{min-height:46px}
+@media(max-width:600px){
+ .context-primary .ui-icon,.quick-states button .ui-icon{width:23px;height:23px}
+ .quick-states button{min-height:48px;padding:4px 2px;gap:3px}
+}
+.orders button .ui-icon,.site-settings button .ui-icon,
+.debrief button .ui-icon,.cancel-target .ui-icon{
+ width:20px;height:20px;margin-right:6px;vertical-align:middle}
+.replay-actions button .ui-icon{width:24px;height:24px;flex-shrink:0}
+.replay-actions button{display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:2px}
+.replay-actions #replayPlay .ui-icon{width:24px;height:24px}
