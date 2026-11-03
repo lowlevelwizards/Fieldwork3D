@@ -8,6 +8,7 @@
  */
 import {HEADWEAR_CAMO_IDS,type HeadwearCamoId}
  from './operator-headwear-camo.ts';
+import {uniformCutCamoCompatible} from './operator-uniform-cut-eligibility.ts';
 
 export const FABRIC_CAMO_CHANNELS=['top','trousers','armor','gear','pack'] as const;
 export type FabricCamoChannel=typeof FABRIC_CAMO_CHANNELS[number];
@@ -83,6 +84,11 @@ export function fabricCamoCompatible(id:HeadwearCamoId,
  if(!entry.channels.includes(channel))return false;
  switch(channel){
   case 'top':{
+   // Only documented historical / ACU-family uniform prints are offered
+   // for these distinctly modeled cuts; other garment families retain
+   // the broader Stage 2 civilian/field-equipment evidence policy.
+   if(outfit.top==='bdu-shirt'||outfit.top==='acu-shirt')
+    return uniformCutCamoCompatible(outfit.top,id);
    const allowed=entry.period==='historic'?HISTORIC_TOP:
     entry.period==='transition'?TRANSITION_TOP:MODERN_TOP;
    // Splinter 31 was issued as a smock/winter jacket, not a BDU field blouse.
