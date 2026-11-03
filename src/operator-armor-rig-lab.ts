@@ -56,7 +56,7 @@ function updateView(){
  camera.left=-scale*aspect;camera.right=scale*aspect;
  camera.top=scale;camera.bottom=-scale;
  camera.updateProjectionMatrix();
- document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(button=>
+ document.querySelectorAll<HTMLButtonElement>('button[data-view]').forEach(button=>
   button.setAttribute('aria-pressed',String(button.dataset.view===view)));
  renderer.render(scene,camera);
  canvas.dataset.ready='true';
@@ -90,7 +90,7 @@ function refresh(){
 }
 for(const select of [armorSelect,rigSelect,zoomSelect])
  select.addEventListener('change',refresh);
-document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(button=>
+document.querySelectorAll<HTMLButtonElement>('button[data-view]').forEach(button=>
  button.addEventListener('click',()=>{view=button.dataset.view??'fit';updateView();}));
 new ResizeObserver(updateView).observe(canvas);
 refresh();
