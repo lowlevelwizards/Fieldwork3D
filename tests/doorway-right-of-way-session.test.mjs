@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newSession,team,planMove,stepSession,toggling}
+import {newSession,team,planMove,planWaitAt,stepSession,toggling}
  from '../src/breach-game.ts';
 import {activateSite} from '../src/breach-core.ts';
 
@@ -61,4 +61,33 @@ test('real game motor: four overlapping routes cross same hinged doorway',()=>{
    '4-person queue failed to complete routes: '+JSON.stringify(result));
  assert.ok(result.minFriendlyGap>=14,
    '4-person queue ended overlapping: '+JSON.stringify(result));
+});
+
+test('opener WAIT yields: second enters first and opener follows afterward',()=>{
+ const s=newSession(0,undefined,'full-view','standard','hold',site);
+ const [opener,second]=team(s);
+ const openerInitial={...opener.p};
+ const openerGoal={x:297,y:377},secondGoal={x:317,y:382};
+ try{
+  assert.ok(planWaitAt(s,opener.id,6,'here'));
+  assert.ok(planMove(s,opener.id,openerGoal));
+  assert.ok(planMove(s,second.id,secondGoal));
+  toggling(s);
+  let secondCrossedFirst=false;
+  for(let i=0;i<1080&&s.phase==='running';i++){
+   stepSession(s,1/30);
+   if(second.p.y>280&&!secondCrossedFirst){
+    secondCrossedFirst=true;
+    assert.ok(gap(opener.p,openerInitial)<5,
+      'opener moved through while its WAIT should have held position');
+   }
+  }
+  assert.ok(secondCrossedFirst,'second operator never crossed first');
+  assert.ok(second.p.y>280&&opener.p.y>280,
+    'both operators should eventually enter the room');
+  assert.equal(second.plan.length,0);
+  assert.equal(opener.plan.length,0);
+  assert.ok(gap(opener.p,openerGoal)<20);
+  assert.ok(gap(second.p,secondGoal)<20);
+ }finally{activateSite(null);}
 });
