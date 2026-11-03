@@ -4,7 +4,7 @@
  */
 import {initialEquipmentLoadout,setEquipmentChoice,
  type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
-import {initialWardrobe,setWardrobeStyle,setWardrobeFabricCamo,resolvedWardrobe,
+import {initialWardrobe,setWardrobeStyle,matchWardrobeUniformCamo,resolvedWardrobe,
  type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
 import type {HeadwearCamoId} from './operator-headwear-camo.ts';
 import type {WeaponId} from './breach-combat.ts';
@@ -21,42 +21,42 @@ const recipe=(id:string,name:string,category:WardrobeRecipe['category'],
   id,name,category,weapon,gear,styles,topCamo,description
 });
 export const WARDROBE_RECIPES:readonly WardrobeRecipe[]=[
- recipe('bdu-field','BDU / Field patrol','role','rifle',
+ recipe('bdu-field','Classic Field Patrol','role','rifle',
   {head:'head-helmet',top:'top-uniform',legs:'legs-field',
    feet:'feet-boots',armor:'armor-soft',rig:'rig-full',
    backpack:'backpack-field'},
-  {headwear:'pasgt',top:'bdu-shirt',trousers:'field-trousers',
+  {headwear:'pasgt',top:'bdu-shirt',trousers:'bdu-trousers',
    footwear:'field-boots',rigStyle:'field-webbing',
    packStyle:'field-pack'},'m81-woodland'),
- recipe('acu-patrol','ACU / Modern patrol','role','carbine',
+ recipe('acu-patrol','Modern Utility Patrol','role','carbine',
   {head:'head-helmet',top:'top-uniform',legs:'legs-field',
    feet:'feet-boots',armor:'armor-carrier',rig:'rig-light',
    backpack:'backpack-day'},
-  {headwear:'ach',top:'acu-shirt',trousers:'field-trousers',
+  {headwear:'ach',top:'acu-shirt',trousers:'acu-trousers',
    armorStyle:'plate-standard',rigStyle:'light-rig',
    packStyle:'day-pack'},'scorpion-w2'),
  recipe('modern-entry','Modern entry team','role','carbine',
   {head:'head-helmet',top:'top-uniform',legs:'legs-field',
    feet:'feet-boots',armor:'armor-carrier',rig:'rig-full',
    backpack:'backpack-none'},
-  {headwear:'high-cut-rails',top:'acu-shirt',
+  {headwear:'high-cut-rails',top:'acu-shirt',trousers:'acu-trousers',
    armorStyle:'plate-jpc',rigStyle:'full-chest',
    headset:'boom-headset'},'multicam'),
  recipe('field-medic','Field medic','role','carbine',
   {head:'head-cap',top:'top-uniform',legs:'legs-field',
    feet:'feet-boots',armor:'armor-soft',rig:'rig-light',
    backpack:'backpack-field',medical:'medical-trauma'},
-  {headwear:'boonie',top:'bdu-shirt',trousers:'field-trousers',
+  {headwear:'boonie',top:'bdu-shirt',trousers:'bdu-trousers',
    packStyle:'medic-pack',wrist:'watch'},'m81-woodland'),
  recipe('desert-field','Desert field blouse','setting','rifle',
   {head:'head-helmet',top:'top-uniform',legs:'legs-field',
    feet:'feet-boots',armor:'armor-soft',rig:'rig-full'},
-  {headwear:'pasgt',top:'bdu-shirt',trousers:'field-trousers',
+  {headwear:'pasgt',top:'bdu-shirt',trousers:'bdu-trousers',
    rigStyle:'field-webbing'},'three-color-desert'),
- recipe('ucp-era','UCP-era ACU','setting','carbine',
+ recipe('ucp-era','UCP-era Utility Uniform','setting','carbine',
   {head:'head-helmet',top:'top-uniform',legs:'legs-field',
    feet:'feet-boots',armor:'armor-carrier',rig:'rig-full'},
-  {headwear:'ach',top:'acu-shirt',trousers:'field-trousers',
+  {headwear:'ach',top:'acu-shirt',trousers:'acu-trousers',
    armorStyle:'plate-standard'},'ucp')
 ];
 export function applyWardrobeRecipe(selected:WardrobeRecipe):{
@@ -68,9 +68,10 @@ export function applyWardrobeRecipe(selected:WardrobeRecipe):{
  let wardrobe=initialWardrobe();
  for(const [slot,id] of Object.entries(selected.styles))
   wardrobe=setWardrobeStyle(wardrobe,slot as WardrobeSlot,id);
- if(selected.topCamo)
-  wardrobe=setWardrobeFabricCamo(wardrobe,'top',
-   selected.topCamo,resolvedWardrobe(wardrobe,kit));
+ if(selected.topCamo){
+  const outfit=resolvedWardrobe(wardrobe,kit);
+  wardrobe=matchWardrobeUniformCamo(wardrobe,outfit,selected.topCamo);
+ }
  return {kit,wardrobe};
 }
 export const wardrobeRecipe=(id:string)=>WARDROBE_RECIPES.find(x=>x.id===id);

@@ -10,7 +10,7 @@ import {CampaignKitPreview} from './equipment-preview.ts';
 import {WARDROBE_ACCESSORY_SLOTS,WARDROBE_ACCESSORY_OPTIONS}
  from './operator-wardrobe-accessories.ts';
 import {readWardrobe,resolvedWardrobe,
- setWardrobeStyle,WARDROBE_SLOTS,
+ setWardrobeStyle,WARDROBE_SLOTS,SLEEVE_STATES,TROUSER_HEMS,
  wardrobeItemsForSlot,type WardrobeOptions,type WardrobeSlot}
  from './operator-wardrobe-data.ts';
 import {carryCapacityReport} from './equipment-carry-placement.ts';
@@ -641,13 +641,32 @@ export class CampaignScreen{
    row.append(select);cosmeticExtras.append(row);
   }
   wardrobePanel.append(cosmeticExtras);
-  const sleeveRow=node('label','campaign-kit-row');
-  sleeveRow.append(node('span','','ROLLED SLEEVES'));
-  const sleeveToggle=node('input');sleeveToggle.type='checkbox';
-  sleeveToggle.checked=wardrobe.rolledSleeves;sleeveToggle.disabled=locked;
-  sleeveToggle.addEventListener('change',()=>this.handlers.setWardrobe(id,
-   {...wardrobe,rolledSleeves:sleeveToggle.checked}));
-  sleeveRow.append(sleeveToggle);wardrobePanel.append(sleeveRow);
+  for(const [field,label,options] of [
+   ['sleeveState','SLEEVE FINISH',SLEEVE_STATES],
+   ['trouserHem','TROUSER HEM',TROUSER_HEMS]
+  ] as const){
+   const row=node('label','campaign-kit-row');
+   row.append(node('span','',label));
+   const select=node('select','campaign-select');
+   select.setAttribute('aria-label',label+' for '+person.callsign);
+   for(const optionId of options){
+    const option=node('option','',optionId.toUpperCase());
+    option.value=optionId;select.append(option);
+   }
+   select.value=wardrobe[field];
+   select.disabled=locked||(field==='sleeveState'?
+    !['bdu-shirt','acu-shirt'].includes(looks.top):
+    !['bdu-trousers','acu-trousers'].includes(looks.trousers)||
+    looks.footwear==='bare-feet');
+   select.addEventListener('change',()=>{
+    if(field==='sleeveState')
+     this.handlers.setWardrobe(id,{...wardrobe,
+      sleeveState:select.value as WardrobeOptions['sleeveState']});
+    else this.handlers.setWardrobe(id,{...wardrobe,
+      trouserHem:select.value as WardrobeOptions['trouserHem']});
+   });
+   row.append(select);wardrobePanel.append(row);
+  }
   editor.append(wardrobePanel);
   const mountSelectors=new Map<WeaponAttachmentSlot,HTMLSelectElement>();
   editor.append(node('h2','','WEAPON ATTACHMENTS'));

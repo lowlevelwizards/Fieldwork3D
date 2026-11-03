@@ -64,17 +64,8 @@ export const FABRIC_CAMO_POLICY:Readonly<Record<HeadwearCamoId,FabricCamoPolicy>
  'indian-digital-2022':policy(uniform,'modern','issued','2022 Indian Army protected print: issue combat uniforms verified, not all third-party equipment')
 };
 
-/** Fabric cut restrictions prevent period-incompatible garment constructions.
- * No use on plain civilian tees, flannel, jeans, boots, buckles or weapons.
- */
-const HISTORIC_TOP=['field-jacket','bdu-shirt','light-shirt'] as const;
-const TRANSITION_TOP=['field-jacket','bdu-shirt','acu-shirt','combat-shirt',
- 'light-shirt','softshell','softshell-hood','pcu-shell'] as const;
-const MODERN_TOP=['field-jacket','bdu-shirt','acu-shirt','combat-shirt',
- 'light-shirt','softshell','softshell-hood','pcu-shell'] as const;
-const HISTORIC_TROUSERS=['field-trousers','bdu-trousers'] as const;
-const MODERN_TROUSERS=['field-trousers','bdu-trousers','acu-trousers',
- 'combat-trousers','softshell-trousers'] as const;
+/** Only active garment silhouettes qualify for camouflage prints.
+ * Distinct Swiss and historic smock cuts remain reserved for later models. */
 export type CamoOutfit={
  top:string;trousers:string;armorStyle:string;rigStyle:string;packStyle:string
 };
@@ -83,21 +74,13 @@ export function fabricCamoCompatible(id:HeadwearCamoId,
  const entry=FABRIC_CAMO_POLICY[id];
  if(!entry.channels.includes(channel))return false;
  switch(channel){
-  case 'top':{
-   // Only documented historical / ACU-family uniform prints are offered
-   // for these distinctly modeled cuts; other garment families retain
-   // the broader Stage 2 civilian/field-equipment evidence policy.
-   if(outfit.top==='bdu-shirt'||outfit.top==='acu-shirt')
-    return uniformCutCamoCompatible(outfit.top,id);
-   const allowed=entry.period==='historic'?HISTORIC_TOP:
-    entry.period==='transition'?TRANSITION_TOP:MODERN_TOP;
-   // Splinter 31 was issued as a smock/winter jacket, not a BDU field blouse.
-   if(id==='splittertarn-31'||id==='alpenflage')return outfit.top==='field-jacket';
-   return (allowed as readonly string[]).includes(outfit.top);
-  }
+  case 'top':
+   return (outfit.top==='bdu-shirt'||outfit.top==='acu-shirt')&&
+    uniformCutCamoCompatible(outfit.top,id);
   case 'trousers':
-   return ((entry.period==='historic'?HISTORIC_TROUSERS:
-    MODERN_TROUSERS) as readonly string[]).includes(outfit.trousers);
+   return (outfit.trousers==='bdu-trousers'||
+    outfit.trousers==='acu-trousers')&&
+    uniformCutCamoCompatible(outfit.trousers,id);
   case 'armor':
    return outfit.armorStyle!=='armor-bare';
   case 'gear':

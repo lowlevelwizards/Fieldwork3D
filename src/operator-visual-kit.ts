@@ -10,6 +10,8 @@ import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {createFieldBlousePrototypes,updateFieldBlousePrototypes,
  type FieldBlousePrototypes} from './operator-field-blouse-prototypes.ts';
+import {createFieldTrouserPrototypes,updateFieldTrouserPrototypes,
+ type FieldTrouserPrototypes} from './operator-field-trouser-prototypes.ts';
 import {createCanonicalAttachment} from './operator-axis-convention.ts';
 import {createWardrobeHeadLayers,updateWardrobeHeadLayers,
  type WardrobeHeadLayers} from './operator-wardrobe-head-visuals.ts';
@@ -32,6 +34,8 @@ export type OperatorVisualKit={
  wardrobeGear:WardrobeGearLayers;accessories:WardrobeAccessoryVisuals;
  /** Stage 3B two distinct upper-body field blouse cuts. */
  fieldBlouses:FieldBlousePrototypes;
+ /** Stage 3C two distinct fitted trouser families and real hem finishes. */
+ fieldTrousers:FieldTrouserPrototypes;
  helmet:THREE.Group;cap:THREE.Group;hair:THREE.Group;
  haircuts:THREE.Group[];graphicMarks:THREE.Group;
  jacket:THREE.Group;lightShirt:THREE.Group;
@@ -110,6 +114,7 @@ export function createOperatorVisualKit(
  const wardrobeBody=createWardrobeBodyLayers(chest,legs,arms,
   cloth,trousers,trim,dark);
  const fieldBlouses=createFieldBlousePrototypes(chest,arms,cloth,trim);
+ const fieldTrousers=createFieldTrouserPrototypes(legs,trousers,trim);
  // Retire the old shared cuboid jacket and light-shirt meshes altogether.
  // Keep empty grouping handles for existing rig consumers and silhouette
  // diagnostics; only the authored BDU and ACU shells have visible geometry.
@@ -181,7 +186,7 @@ export function createOperatorVisualKit(
  const patches:THREE.Mesh[]=[];
  for(const leg of legs){
   // Thin, leg-mounted pieces follow the solved IK. No additional leg length.
-  cargoPockets.push(part(leg.upper,trousers,0,0.08,3.0,3.3,.29,1.45));
+  // Cargo pockets are integrated in the two real trouser cut groups.
   kneePanels.push(part(leg.lower,trim,0,.36,2.25,3.7,.22,1.2));
   if(leg.shoe){
    // The shoe's ankle pivot and geometry translation remain unmodified.
@@ -196,11 +201,8 @@ export function createOperatorVisualKit(
   // Low-contrast cloth identifier sewn onto the upper arm's outward face.
   // Its parent is the articulated limb, not an independently floating mesh.
   patches.push(part(arm.upper,patchMaterial,0,.09,2.12,1.5,.15,1.05));
-  sleeveCuffs.push(part(arm.lower,trim,0,-.36,0,3.65,.13,3.75));
-  // A rolled sleeve exposes the outer forearm as geometry above its cloth
-  // bone. The shared IK still positions both arms exactly as before.
-  rolledForearms.push(part(arm.lower,skin,0,.22,0,3.55,.52,3.65));
-  rolledCuffs.push(part(arm.lower,cloth,0,-.13,0,3.9,.12,3.9));
+  // Sleeve cuff and exposed forearm are now physical blouse-state meshes;
+  // no duplicate generic overlay geometry is allocated.
  }
  const magazines:{rig:THREE.Mesh[];belt:THREE.Mesh[];pocket:THREE.Mesh[]}={
   rig:[],belt:[],pocket:[]};
@@ -229,7 +231,7 @@ export function createOperatorVisualKit(
  for(const surface of [helmet,cap,hair,jacket,lightShirt,softArmor,
   plateCarrier,chestRig,fieldWebbing,belt,dayPack,fieldPack,packHarness])
    consolidateVisualGroup(surface);
- return {wardrobeHead,wardrobeBody,wardrobeGear,accessories,fieldBlouses,
+ return {wardrobeHead,wardrobeBody,wardrobeGear,accessories,fieldBlouses,fieldTrousers,
   helmet,cap,hair,jacket,lightShirt,
   softArmor,plateCarrier,chestRig,
   fieldWebbing,belt,dayPack,fieldPack,packHarness,cargoPockets,bootCuffs,
@@ -276,7 +278,10 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   looks.armorStyle==='plate-heavy'?1.15:1,1,1);
  // No generic coat/shirt overlay is allowed under the reviewed garments.
  v.jacket.visible=false;v.lightShirt.visible=false;
- updateFieldBlousePrototypes(v.fieldBlouses,looks.top);
+ updateFieldBlousePrototypes(v.fieldBlouses,looks.top,
+  wardrobe?.sleeveState??'unrolled');
+ updateFieldTrouserPrototypes(v.fieldTrousers,looks.trousers,
+  wardrobe?.trouserHem??'bloused',looks.footwear==='bare-feet');
  updateWardrobeBodyLayers(v.wardrobeBody,looks.top,looks.trousers,
   looks.knees,looks.wrist);
  updateWardrobeGearLayers(v.wardrobeGear,looks.armorStyle,looks.rigStyle,
@@ -326,13 +331,10 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   tallBoot:s.feet==='feet-boots';
  for(const instep of v.lightInstepPanels)instep.visible=usingWardrobe?
   !tallBoot&&looks.footwear!=='bare-feet':s.feet==='feet-light';
- const shortSleeves=['tank-top','t-shirt','button-short'].includes(looks.top);
- const rolled=usingWardrobe?!!wardrobe?.rolledSleeves&&!shortSleeves:
-  s.top==='top-light';
- for(const cuff of v.sleeveCuffs)cuff.visible=usingWardrobe?
-  !shortSleeves&&!rolled:s.top==='top-uniform';
- for(const mesh of v.rolledForearms)mesh.visible=rolled;
- for(const mesh of v.rolledCuffs)mesh.visible=rolled;
+ // Old generic sleeve/roll overlays are no longer modeled.
+ for(const mesh of v.sleeveCuffs)mesh.visible=false;
+ for(const mesh of v.rolledForearms)mesh.visible=false;
+ for(const mesh of v.rolledCuffs)mesh.visible=false;
  for(const mesh of v.kneePanels)
   mesh.visible=!usingWardrobe&&s.legs==='legs-field';
  // A curated cloth/hair palette, not fluorescent operator identifiers.

@@ -445,16 +445,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Clothing coverage changes materials on existing articulated limbs only.
   // The bones, solved knee/elbow positions and planted feet stay identical.
   const clothing=resolvedWardrobe(p.wardrobe,p.equipment);
-  const bareForearm=['tank-top','t-shirt','button-short','base-layer'].includes(clothing.top)||
-    (p.wardrobe?.rolledSleeves??
-      (p.equipment?.slots.top==='top-light'));
+  const bareForearm=clothing.top==='base-layer'||
+     p.wardrobe?.sleeveState==='rolled';
   for(const arm of r.arms){
    arm.lower.material=bareForearm?r.skinMaterial:r.clothMaterial;
-   arm.upper.material=['tank-top','base-layer'].includes(clothing.top)?
+   arm.upper.material=clothing.top==='base-layer'?
     r.skinMaterial:r.clothMaterial;
   }
   for(const leg of r.feet){
-   leg.lower.material=['shorts','base-shorts'].includes(clothing.trousers)?
+   leg.lower.material=clothing.trousers==='base-shorts'?
     r.skinMaterial:r.trouserMaterial;
    const barefoot=clothing.footwear==='bare-feet';
    leg.shoe.material=barefoot?r.skinMaterial:r.bootMaterial;
