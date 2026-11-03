@@ -535,7 +535,7 @@ function syncWardrobe(){
  colorSelect.value=resolvedTopColorway(compatible.top,wardrobeOptions.topColorway);
  const hemSelect=document.getElementById('wardrobeTrouserHem') as HTMLSelectElement;
  hemSelect.value=wardrobeOptions.trouserHem;
- hemSelect.disabled=!['bdu-trousers','acu-trousers'].includes(compatible.trousers)
+ hemSelect.disabled=!['bdu-trousers','acu-trousers','gorka-trousers'].includes(compatible.trousers)
   ||compatible.footwear==='bare-feet';
  const incompatible=wardrobeConflicts(wardrobeOptions,labKit);
  document.getElementById('wardrobeCompatibility')!.textContent=incompatible.length?
