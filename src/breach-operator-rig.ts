@@ -490,6 +490,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
      headwearCamoPlacement(r.camoIdentity,'headwear:'+modelId,camo,
       p.wardrobe?.headwearCamoRoll??0)):headwearDetailTexture(modelId);
    if(material.map!==map){material.map=map;material.needsUpdate=true;}
+   // The material's vertex colors carry silhouette construction darkening
+   // (bands, brims, brows). Those are desirable for solid colors, but they
+   // multiply printed RGB and turn dark ink into accidental black overlays.
+   // Leave the geometry's vertex data intact and only switch the shader
+   // path when toggling camo versus solid. Physical roughness is unaffected.
+   const useConstructionVertexColors=!camo;
+   if(material.vertexColors!==useConstructionVertexColors){
+    material.vertexColors=useConstructionVertexColors;
+    material.needsUpdate=true;
+   }
    if(camo){
     // Chromatic artwork lives in the map; white avoids a second tint.
     // The pose-time ledger still owns desaturation and replay.
