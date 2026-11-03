@@ -1,25 +1,42 @@
 /** Build 147: deterministic narrow-aperture right-of-way. The player's
  * queued orders never change: only execution can temporarily defer. */
 import {doorCenter,doorLeafSegment,pointToSegment,
-  type Door,type Pt} from './breach-core.ts';
+  type Door,type Pt,type Side} from './breach-core.ts';
 export type PassageActor={id:string;p:Pt;goal:Pt|null;health:number;
-  blockedTime:number;active:boolean};
+  blockedTime:number;active:boolean;side?:Side};
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const side=(p:Pt,d:Door)=>{
   const m=doorCenter(d),dx=d.b.x-d.a.x,dy=d.b.y-d.a.y;
-  return (p.x-m.x)*-dy+(p.y-m.y)*dx;
+  const width=Math.max(1,Math.hypot(dx,dy));
+  return ((p.x-m.x)*-dy+(p.y-m.y)*dx)/width;
+};
+/** The center is on the actual passage plane, not necessarily centered on
+ * the swing leaf. A crossing actor must finish with their body behind it. */
+const inDoorway=(actor:PassageActor,d:Door)=>{
+  const width=distance(d.a,d.b)||1;
+  const along=((actor.p.x-d.a.x)*(d.b.x-d.a.x)+
+    (actor.p.y-d.a.y)*(d.b.y-d.a.y))/width;
+  return along>=-6&&along<=width+6&&Math.abs(side(actor.p,d))<14;
 };
 export function crossingDoor(a:PassageActor,d:Door){
   if(!a.active||a.health<=0||!a.goal)return false;
-  if(distance(a.p,doorCenter(d))>42)return false;
-  const s=side(a.p,d),g=side(a.goal,d);
-  return Math.abs(s)<9||s*g<0;
+  // Acquire the lane while approaching, but don't reserve a far-away door.
+  if(distance(a.p,doorCenter(d))>66)return false;
+  const from=side(a.p,d),goal=side(a.goal,d);
+  // Both endpoints on the same side are not a doorway crossing.
+  // Once actually inside, retain priority until the body has exited.
+  return from*goal<0||
+    (inDoorway(a,d)&&Math.abs(goal)>Math.abs(from)+5);
 }
+/** Nearest *active* approach wins the first claim. Queue order stays stable
+ * while the lease is owned, so who is first in the squad array is irrelevant. */
 export function passageOwner(d:Door,actors:readonly PassageActor[]){
   const eligible=actors.filter(a=>crossingDoor(a,d)&&a.blockedTime<1.5);
-  // Stable actor order breaks symmetry. Never use render time or random
-  // scores here: the order remains deterministic through pause/replay.
-  return eligible[0]?.id??null;
+  const inside=eligible.filter(a=>inDoorway(a,d));
+  const pool=inside.length?inside:eligible;
+  return [...pool].sort((a,b)=>
+    distance(a.p,doorCenter(d))-distance(b.p,doorCenter(d))||
+    a.id.localeCompare(b.id))[0]?.id??null;
 }
 /** A real threshold is occupied until its owner clears, not until the
  * opposite actor happens to become one step closer. Author orders are intact.
@@ -69,17 +86,43 @@ export function passageWait(actor:PassageActor,doors:readonly Door[],
   // Wide shutters permit several independent lanes.
   if(distance(door.a,door.b)>60)continue;
   const cluster=passageCluster(door,doors);
-  const key=cluster.length===1?door.id:
+  const passageKey=cluster.length===1?door.id:
     'zone:'+cluster.map(d=>d.id).join('+');
+  const key=actor.side?actor.side+':'+passageKey:passageKey;
   if(seen.has(key))continue;seen.add(key);
   if(!seeksPassage(actor,cluster))continue;
-  const relevant=actors.filter(a=>seeksPassage(a,cluster)&&a.blockedTime<1.5);
-  if(!relevant.length)continue;
-  const occupant=relevant.find(a=>insidePassage(a,cluster));
+  // Opposing sides are handled by combat and solid enemy collision, not
+  // the friendly traffic queue. A hostile must not reserve our squad lane.
+  const relevant=actors.filter(a=>
+    (!actor.side||!a.side||actor.side===a.side)&&
+    seeksPassage(a,cluster)&&a.blockedTime<1.5);
+  if(!relevant.length){
+    if(leases)delete leases[key];
+    continue;
+  }
+  // Physically inside beats someone approaching from either direction.
+  // Once past the 14-unit shoulder-clearance plane, the next queued unit
+  // may enter even though the previous unit is still near the doorway.
+  const occupant=relevant.filter(a=>insidePassage(a,cluster)||
+    cluster.some(d=>inDoorway(a,d))).sort((a,b)=>
+      Math.min(...cluster.map(d=>distance(a.p,doorCenter(d))))-
+      Math.min(...cluster.map(d=>distance(b.p,doorCenter(d))))||
+      a.id.localeCompare(b.id))[0];
   const current=leases?.[key];
-  const leased=current&&now<current.until&&relevant.some(a=>a.id===current.actorId);
-  // A person between two leaves must leave before an outsider enters.
-  const owner=occupant?.id??(leased?current!.actorId:relevant[0].id);
+  const leased=current&&now<current.until&&
+    relevant.some(a=>a.id===current.actorId);
+  const nearest=[...relevant].sort((a,b)=>
+    Math.min(...cluster.map(d=>distance(a.p,doorCenter(d))))-
+    Math.min(...cluster.map(d=>distance(b.p,doorCenter(d))))||
+    a.id.localeCompare(b.id))[0];
+  // A prior, still-active claimant keeps its turn even if a later actor
+  // becomes geometrically closer at the doorway while finishing a WAIT.
+  // Only someone already trapped *between two doors* can override that lease
+  // to escape a vestibule; ordinary near-threshold positions cannot steal it.
+  const insideVestibule=cluster.length>1?
+    relevant.find(a=>insidePassage(a,cluster)):undefined;
+  const owner=insideVestibule?.id??
+    (leased?current!.actorId:occupant?.id??nearest.id);
   if(leases)leases[key]={actorId:owner,until:now+.38};
   if(owner!==actor.id)return true;
  }

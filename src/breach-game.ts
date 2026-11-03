@@ -1402,6 +1402,31 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const advance=Math.min(gap,a.velocity*dt);
   const move={x:a.p.x+Math.cos(direction)*advance,
     y:a.p.y+Math.sin(direction)*advance};
+  // Resolve right-of-way BEFORE automatic door-opening, hinge pressure or
+  // movement. Otherwise every teammate can start a competing OPEN action
+  // and the planned squad sequence becomes unpredictable.
+  // Only one operator owns a narrow threshold at a time. This is a
+  // transient execution pause, not a new waypoint or permanent yield.
+  const traffic:PassageActor[]=s.operators.map(unit=>{
+    const order=unit.plan[0];
+    const traveling=!!order&&
+      (order.kind==='move'||order.kind==='door'||
+       order.kind==='pie'||order.kind==='sync')&&
+      (unit.nav.length>0||d(unit.p,order.p)>7);
+    return {
+      id:unit.id,side:unit.side,p:unit.p,
+      // Only the action happening NOW competes for a doorway. A future
+      // movement after WAIT/RELOAD/etc. must not hold the reservation.
+      goal:unit===a?p:traveling?(unit.nav.at(-1)??order!.p):null,
+      health:unit.health,blockedTime:unit.blockedTime,
+      active:unit===a||traveling,
+    };
+  });
+  if(passageWait(traffic.find(unit=>unit.id===a.id)!,s.doors,
+     traffic,s.passageLeases,s.seconds)){
+    a.velocity=0;a.blockedTime=0;
+    return true;
+  }
   // Push an open leaf as soon as the body touches it, not only when
   // the centre line crosses it (which was too late to escape collision).
   // Resolve nearest actual leaf first: adjacent/paired doors must not
@@ -1455,20 +1480,6 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     if((doorAhead.openFraction??0)<.72)return true;
     a.actionTimer=0;
   }else if(a.side==='red')a.actionTimer=0;
-  // Only one operator owns a narrow threshold at a time. This is a
-  // transient execution pause, not a new waypoint or permanent yield.
-  const traffic:PassageActor[]=s.operators.map(unit=>({
-    id:unit.id,p:unit.p,goal:unit===a?p:
-      unit.nav.at(-1)??unit.plan[0]?.p??null,
-    health:unit.health,blockedTime:unit.blockedTime,
-    active:unit===a||unit.nav.length>0||
-      unit.plan.some(n=>n.kind==='move'||n.kind==='door'||n.kind==='pie'),
-  }));
-  if(passageWait(traffic.find(unit=>unit.id===a.id)!,s.doors,
-     traffic,s.passageLeases,s.seconds)){
-    a.velocity=0;a.blockedTime=0;
-    return true;
-  }
   const closed=!!closedDoor&&!closedDoor.open&&
     pointToSegment(move,doorLeafSegment(closedDoor))<9.5&&
     pointToSegment(move,doorLeafSegment(closedDoor))<
