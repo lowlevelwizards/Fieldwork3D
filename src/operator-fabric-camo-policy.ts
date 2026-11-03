@@ -57,7 +57,7 @@ export const FABRIC_CAMO_POLICY:Readonly<Record<HeadwearCamoId,FabricCamoPolicy>
  'italian-vegetato':policy(all,'modern','issued-or-commercial','Italian uniforms and available Italian-pattern field equipment'),
  'scorpion-w2':policy(all,'modern','issued','Army OCP uniform and matching organizational equipment'),
  'russian-emr':policy(all,'modern','issued','Russian EMR uniform and matching textile field equipment'),
- 'pla-xingkong':policy(withKit,'modern','issued','Chinese digital uniform and matching issued load-bearing equipment, not universal plates'),
+ 'pla-xingkong':policy(all,'modern','issued','Chinese Type 19 patterned uniform, vest/load carriage and rucksacks'),
  'cadpat-tw':policy(all,'modern','issued','Canadian camouflage uniforms and matching textured combat web gear'),
  'british-mtp':policy(all,'modern','issued','UK MTP uniform, plate carriers, web gear and Bergen packs'),
  'indian-digital-2022':policy(uniform,'modern','issued','2022 Indian Army protected print: issue combat uniforms verified, not all third-party equipment')
@@ -86,7 +86,7 @@ export function fabricCamoCompatible(id:HeadwearCamoId,
    const allowed=entry.period==='historic'?HISTORIC_TOP:
     entry.period==='transition'?TRANSITION_TOP:MODERN_TOP;
    // Splinter 31 was issued as a smock/winter jacket, not a BDU field blouse.
-   if(id==='splittertarn-31')return outfit.top==='field-jacket';
+   if(id==='splittertarn-31'||id==='alpenflage')return outfit.top==='field-jacket';
    return (allowed as readonly string[]).includes(outfit.top);
   }
   case 'trousers':
@@ -95,8 +95,15 @@ export function fabricCamoCompatible(id:HeadwearCamoId,
   case 'armor':
    return outfit.armorStyle!=='armor-bare';
   case 'gear':
+   if(id==='east-german-strichtarn')
+    return ['field-webbing','belt-harness'].includes(outfit.rigStyle);
+   if(id==='woodland-dpm')
+    return ['field-webbing','lbv','belt-harness','full-chest'].includes(outfit.rigStyle);
    return outfit.rigStyle!=='no-rig';
   case 'pack':
+   if(id==='alpenflage'||id==='east-german-strichtarn'||
+    id==='woodland-marpat')
+    return ['field-pack','rucksack'].includes(outfit.packStyle);
    return outfit.packStyle!=='no-pack';
  }
 }
