@@ -23,6 +23,7 @@ import {currentSiteIdentity} from './ui/current-site-identity.ts';
 import {tacticalHitProfile,preferSelectedHit,shouldAppendStrokePoint} from './ui/touch-hit-targets.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
 import {interruptsWatch} from './breach-plan.ts';
+import {SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
  rangeTrialLabel,type RangeTrial} from './equipment-training-diagnostics.ts';
@@ -1228,9 +1229,11 @@ function updateContext(){
     distance(at,{x:w.x,y:w.y})<54);
   // WATCH remains active through later waypoints until LOOK or RELEASE.
   // Read the authored history, not merely this node's local modifier.
-  let watchActive=a.aimInstruction?.mode==='track';
+  let watchActive=a.aimInstruction?.mode==='track'&&a.pace!=='run';
+  let planPace=a.pace;
   if(node)for(const order of a.plan){
-    if(interruptsWatch(order,current.pace))watchActive=false;
+    if(order.paceState)planPace=order.paceState;
+    if(interruptsWatch(order,planPace))watchActive=false;
     else if(order.aimMode==='track')watchActive=true;
     else if(order.aimMode==='free'||order.aimMode==='fixed')
       watchActive=false;
@@ -2209,9 +2212,10 @@ function paths(){
     // Selected WATCH instructions remain readable throughout the route they
     // govern, without cluttering unselected operators' plans.
     if(a.id===selected){
-      let watching=false,previous=a.p;
-      for(const node of plan){
-        if((node.kind==='move'||node.kind==='door')&&watching){
+      let previous=a.p;
+      for(let i=0;i<plan.length;i++){
+        const node=plan[i];
+        if((node.kind==='move'||node.kind==='door')&&visual[i].before.watch){
           const course=displayRouteCache.get(previous,node.p,state.intel,
             state.phase==='planning').points;
           draw.save();draw.strokeStyle='#e6c990';draw.globalAlpha=.73;
@@ -2222,8 +2226,6 @@ function paths(){
         }
         if(node.kind==='move'||node.kind==='door'||node.kind==='pie')
           previous=node.p;
-        if(node.aimMode==='track')watching=true;
-        else if(node.aimMode==='free'||node.aimMode==='fixed')watching=false;
       }
     }
     for(let i=0;i<plan.length;i++){
@@ -2356,7 +2358,7 @@ function renderProjectedPlans(){
   for(const a of team(state)){
     if(a.health<=0)continue;
     const color=colorFor(a.id);
-    let previous=a.p,watching=false;
+    let previous=a.p;
     const visual=orderVisualScopes(a.plan,{
       watch:a.aimInstruction?.mode==='track',pace:a.pace,
       posture:a.posture,fire:a.firePolicy
@@ -2377,11 +2379,12 @@ function renderProjectedPlans(){
         }
         draw.strokeStyle=color;
         draw.globalAlpha=a.id===selected?.94:.50;
-        draw.lineWidth=n.kind==='pie'?3:watching&&a.id===selected?3.6:2.4;
+        draw.lineWidth=n.kind==='pie'?3:
+          semantics.before.watch&&a.id===selected?3.6:2.4;
         const narrowOnly=n.kind==='move'&&!!cachedRoute?.narrowOnly;
         // Narrow routes use a finer dash without another overlay.
         draw.setLineDash(n.kind==='pie'?[3,3]:
-          watching&&a.id===selected?[3,5]:
+          semantics.before.watch&&a.id===selected?[3,5]:
           semantics.before.pace==='run'?[12,3]:
           narrowOnly?[2,4]:[7,4]);
         draw.stroke();draw.setLineDash([]);draw.globalAlpha=1;
@@ -2390,7 +2393,7 @@ function renderProjectedPlans(){
       const point=worldToScreen(selectedNow&&draggingNode&&!draggingWatchTarget&&n.kind!=='flash'?
         draggingNode:n.p,8);
       const invalidDrag=selectedNow&&draggingNode&&!draggingWatchTarget&&
-        !intelPassable(draggingNode,state.intel,5.4);
+        !intelPassable(draggingNode,state.intel,SQUEEZE_RADIUS);
       circle(point.x,point.y,selectedNow?11:7,
         invalidDrag?'#df8070':selectedNow?'#ecd29f':color);
       circle(point.x,point.y,3,'#233b39');
@@ -2493,8 +2496,6 @@ function renderProjectedPlans(){
           .filter(Boolean).join(' · '),point.x+12,point.y+18);
       }
       if(n.kind==='move'||n.kind==='door'||n.kind==='pie')previous=n.p;
-      if(n.aimMode==='track')watching=true;
-      else if(n.aimMode==='free'||n.aimMode==='fixed')watching=false;
     }
     const pawn=worldToScreen(a.p,32),ground=worldToScreen(a.p,1);
     const squadIndex=team(state).findIndex(member=>member.id===a.id);
