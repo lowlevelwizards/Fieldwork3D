@@ -126,8 +126,10 @@ export function headwearDetailTexture(id:HeadSilhouetteId):THREE.DataTexture{
 
 /** Camo cloth is printed at pattern-specific density, NOT the construction
  * pixel grid. The union's uv1 follows the sewn fabric's top and perimeter.
- * The original 64px UV0 atlas and physical roughness UVs stay untouched,
- * so switching to a solid restores every 1:1 material feature exactly.
+ * The original 64px UV0 atlas and physical roughness UVs stay untouched.
+ * Grayscale construction shading is reserved for solid-color headwear;
+ * camouflage pixels are copied exactly, and switching to a solid restores
+ * every original 1:1 material feature.
  *
  * Each 64px region samples the same authored periodic 32px master artwork.
  * Large M81/DCU fields use 1px per world unit; Tiger, UCP and MultiCam
@@ -151,10 +153,12 @@ export function headwearCamoTexture(id:HeadSilhouetteId,camo:HeadwearCamoId,
   if(camo==='tiger-stripe'&&region===1)
    artX+=Math.floor(y/3); // modest diagonal direction on wrapped walls
   const source=((((artY+offsetY)%32)*32+((artX+offsetX)%32))*4);
-  const tone=headwearRegionPixel(id,region as 0|1|2|3,
-   Math.floor(x/2),Math.floor(y/2))/255;
+  // Camo is fabric-dyed artwork, not a grayscale construction decal.
+  // The solid-only 64px structural atlas already owns seams and dark joins;
+  // multiplying those over the colored print creates unintended black
+  // silhouettes and changes the carefully authored camo palette.
   const dest=((Math.floor(region/2)*64+y)*128+(region%2)*64+x)*4;
-  for(let n=0;n<3;n++)px[dest+n]=Math.round(artwork[source+n]*tone);
+  for(let n=0;n<3;n++)px[dest+n]=artwork[source+n];
   px[dest+3]=255;
  }
  const tex=new THREE.DataTexture(px,128,128,THREE.RGBAFormat,THREE.UnsignedByteType);

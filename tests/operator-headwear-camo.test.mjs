@@ -98,6 +98,8 @@ test('live pose swaps camo and solid without animation restoring gray or mutatin
    assert.equal(material.map,headwearCamoTexture(model,id,
     headwearCamoPlacement('rook','headwear:'+model,id,0)));
    assert.equal(material.color.getHex(),0xffffff,model+':'+id);
+   assert.equal(material.vertexColors,false,
+    'camo must not be darkened a second time by construction vertex shading');
    poseOperator(rig,pose(kit,selection),0);
    assert.equal(material.map,headwearCamoTexture(model,id,
     headwearCamoPlacement('rook','headwear:'+model,id,0)),'repeated pose reuses atlas');
@@ -109,6 +111,7 @@ test('live pose swaps camo and solid without animation restoring gray or mutatin
   const solid={...wardrobe,headwearCamo:undefined,headwearColor:solidId};
   poseOperator(rig,pose(kit,solid),0);
   assert.equal(material.map,headwearDetailTexture(model),'solid construction atlas restored');
+  assert.equal(material.vertexColors,true,'solid headwear restores structural vertex shading');
   assert.equal(material.color.getHex(),HEADWEAR_SOLID_COLORS[solidId].hex);
  }
  rig.dispose();
@@ -225,10 +228,13 @@ test('3C palettes give M81 and DPM distinct identities without recoloring woodla
  const marpat=HEADWEAR_CAMO_RECIPES['woodland-marpat'].colors;
  assert.deepEqual(marpat,[[94,111,77],[138,121,90],[64,83,66],[46,54,44]],
   'MARPAT retains the earthy green/brown palette that already read well');
- assert.deepEqual(m81,[[104,131,69],[146,126,79],[47,88,57],[43,51,36]],
-  'M81 has visibly stronger classic saturated woodland greens');
+ assert.deepEqual(m81,[[87,118,73],[118,85,60],[64,83,66],[48,55,39]],
+  'M81 returns to DPM-family muted woodland greens instead of lime');
  assert.deepEqual(dpm,[[175,155,105],[87,118,73],[118,85,60],[48,55,39]],
   'DPM warm khaki/green/earth-brown does not borrow MARPAT wash');
+ assert.deepEqual(m81[0],dpm[1],'M81 and DPM share the approved olive fabric ink');
+ assert.deepEqual(m81[1],dpm[2],'M81 and DPM share the approved brown fabric ink');
+ assert.deepEqual(m81[3],dpm[3],'M81 and DPM share the approved dark fabric ink');
  assert.notDeepEqual(m81,dpm);
  assert.notDeepEqual(dpm,marpat);
  const dpmCoverage=headwearCamoCoverage('woodland-dpm');
@@ -237,8 +243,8 @@ test('3C palettes give M81 and DPM distinct identities without recoloring woodla
  assert.ok(HEADWEAR_CAMO_RECIPES['woodland-dpm'].motifs.length>=20,
   'DPM requires distinct thin brushes, khaki negative space and green fingers');
  const chips=HEADWEAR_CAMO_RECIPES['six-color-desert'].colors;
- assert.deepEqual(chips[5],[79,72,55],
-  'chocolate-chip dark outlines must be soft olive charcoal, not stark black');
+ assert.deepEqual(chips[5],[46,54,44],
+  'restore original six-color desert ink; fix darkening in material rather than repainting');
  assert.ok(headwearCamoCoverage('six-color-desert')[4]>.01);
  assert.ok(headwearCamoCoverage('six-color-desert')[5]>.01);
  assert.ok(headwearCamoCoverage('alpenflage')[4]>=.10);
@@ -285,4 +291,41 @@ test('3B fabric cut and material channels are consistent for all new prints',()=
  const code=readFileSync(new URL('../src/operator-headwear-materials.ts',import.meta.url),'utf8');
  assert.match(code,/MAX_CACHED_CAMO_CUTS=192/);
  assert.match(code,/evicted\?\.dispose\(\)/);
+});
+
+test('3D camo atlas contains authored RGB verbatim while solid structural maps stay intact',()=>{
+ for(const camo of ['m81-woodland','woodland-dpm','flecktarn','six-color-desert']){
+  const tex=headwearCamoTexture('boonie',camo),rgba=tex.image.data;
+  const art=headwearCamoPixels(camo),density=HEADWEAR_CAMO_DENSITY[camo];
+  for(let region=0;region<4;region++)for(const y of [0,12,24,40,63])
+   for(const x of [0,8,20,36,63]){
+    const px=density===1?Math.floor(x/2):x;
+    const py=density===1?Math.floor(y/2):y;
+    const source=((py%32)*32+(px%32))*4;
+    const dest=((Math.floor(region/2)*64+y)*128+(region%2)*64+x)*4;
+    assert.deepEqual(Array.from(rgba.slice(dest,dest+3)),
+     Array.from(art.slice(source,source+3)),camo+' material may not darken ink');
+   }
+ }
+ const solid=headwearDetailTexture('boonie');
+ assert.equal(solid.image.width,64);
+ assert.ok(solid.image.data.some((n,i)=>i%4===0&&n<250),
+  'solids retain their construction-tinted material atlas');
+});
+test('Flecktarn emphasizes fewer broader base fields with overlaid fine droplets',()=>{
+ const r=HEADWEAR_CAMO_RECIPES.flecktarn;
+ const macro=r.motifs.slice(0,4);
+ assert.equal(macro.length,4);
+ assert.deepEqual(macro.map(([ink])=>ink),[1,1,2,2]);
+ for(const [tone,polygon] of macro){
+  assert.ok(tone===1||tone===2);
+  const xs=polygon.filter((_,i)=>i%2===0),ys=polygon.filter((_,i)=>i%2===1);
+  assert.ok(Math.max(...xs)-Math.min(...xs)>=18,'wide base fleck field');
+  assert.ok(Math.max(...ys)-Math.min(...ys)>=11,'tall base fleck field');
+ }
+ const coverage=headwearCamoCoverage('flecktarn');
+ assert.ok(coverage[0]>.1,'visible base olive field');
+ assert.ok(coverage[1]>.2,'deep forest mass still legible');
+ assert.ok(coverage[2]>.2,'underlying tan fields remain recognizable');
+ assert.ok(coverage[3]+coverage[4]>.34,'retain dense Flecktarn rust and ink droplets');
 });
