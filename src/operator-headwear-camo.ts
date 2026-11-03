@@ -526,7 +526,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  'mitchell-leaf':{
   label:'MITCHELL LEAF',
   description:'US reversible Mitchell cover leaf side: bold overlapping lobed foliage and dark ink twigs on spring green',
-  colors:[[112,125,71],[74,95,61],[178,161,103],[112,88,67],[47,63,43]],
+  colors:[[112,125,71],[75,96,74],[178,161,103],[112,88,67],[47,63,43]],
   targetCoverage:[.30,.25,.18,.17,.10],
   motifs:[
    p(1,-5,3,6,-3,17,1,19,8,13,12,21,19,15,24,6,19,0,24,-5,19),
@@ -563,6 +563,9 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
    p(0,12,8,18,6,23,11,20,18,14,18,10,14),
    p(0,32,28,41,27,46,33,43,40,35,40),
    p(0,52,44,59,42,65,48,63,55,55,55),
+   p(0,24,20,34,18,41,25,40,35,31,34),
+   p(0,45,48,54,45,63,49,63,59,55,60),
+   p(0,-3,22,7,19,14,24,14,32,4,35,-3,30),
    p(3,23,13,26,9,31,12,29,15,24,18),
    p(3,4,40,9,37,15,41,12,44,6,45),
    p(3,48,8,54,5,57,8,53,12),
@@ -619,7 +622,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  'scorpion-w2':{
   label:'OCP / SCORPION W2',
   description:'US Army OCP: broad horizontal muted sage and umber fields with sparse bark chips; fewer vertical twiglets than MultiCam',
-  colors:[[161,153,119],[123,128,100],[89,105,84],[138,110,88],[199,188,157],[73,73,60],[171,144,119]],
+  colors:[[171,158,117],[109,126,88],[89,105,84],[129,102,74],[206,189,149],[73,73,60],[171,144,119]],
   targetCoverage:[.19,.24,.18,.19,.09,.05,.06],
   motifs:[
    p(1,-6,1,15,-2,34,1,49,7,67,6,68,14,45,12,28,9,10,10,-6,9),
@@ -697,7 +700,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  'british-mtp':{
   label:'BRITISH MTP',
   description:'British Multi-Terrain Pattern: pale MultiCam-like ground with distinctive sweeping DPM-hook/pterodactyl brown outlines and speckle edges',
-  colors:[[185,179,143],[126,133,107],[95,109,85],[126,102,78],[217,202,165],[67,72,59],[158,143,111]],
+  colors:[[185,179,143],[126,133,107],[109,126,88],[129,102,74],[206,189,149],[67,72,59],[158,143,111]],
   targetCoverage:[.19,.25,.18,.19,.10,.05,.04],
   motifs:[
    p(1,-4,1,10,-3,25,1,37,6,50,6,69,13,64,19,48,15,35,16,23,11,8,12,-4,8),
