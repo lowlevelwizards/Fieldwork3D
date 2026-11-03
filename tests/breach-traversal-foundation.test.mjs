@@ -83,3 +83,21 @@ test('surrounded or fixed clutter stays solid rather than ghosting away',()=>{
    barriers,[],[]),null);
  assert.equal(obstacles[0].x,120);
 });
+
+test('a true impossibly narrow gap remains an obstacle, not a ghost shortcut',()=>{
+ const savedWalls=[...WALLS],savedCover=[...COVER];
+ try{
+  WALLS.splice(0,WALLS.length,
+   {a:{x:95,y:85},b:{x:95,y:210}},
+   {a:{x:105,y:85},b:{x:105,y:210}});
+  COVER.splice(0,COVER.length);
+  const a={x:100,y:100},b={x:100,y:180};
+  const sideways=squeezeFacing(Math.PI/2);
+  assert.equal(sweptProfileClear(a,b,[],sideways,'squeeze'),false);
+  assert.equal(routeWithSqueezeIntel(visibleIntel(),a,b).length,0,
+   'route planner must not invent a path through solid walls');
+ }finally{
+  WALLS.splice(0,WALLS.length,...savedWalls);
+  COVER.splice(0,COVER.length,...savedCover);
+ }
+});
