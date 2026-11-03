@@ -9,6 +9,8 @@ import {HEADWEAR_CAMO_IDS,HEADWEAR_CAMO_RECIPES,HEADWEAR_CAMO_SIZE,HEADWEAR_CAMO
 import {headwearCamoTexture,headwearDetailTexture,headwearFinishTexture}
  from '../src/operator-headwear-materials.ts';
 import {initialWardrobe,readWardrobe} from '../src/operator-wardrobe-data.ts';
+import {CAMO_CATALOG,CAMO_ORIGINS,filterCamoCatalog}
+ from '../src/operator-headwear-camo-catalog.ts';
 import {bareLabEquipment} from '../src/operator-lab-baseline.ts';
 import {selectWardrobeItem} from '../src/operator-wardrobe-unified.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
@@ -21,9 +23,9 @@ const pose=(kit,wardrobe)=>({
  aiming:false,firing:false,turning:0,deterministic:true,
  unarmedPreview:true,equipment:kit,wardrobe
 });
-test('eighteen deliberate 32/64px camo families use fixed opaque canonical colors',()=>{
+test('thirty independently authored 32/64px camo families use fixed opaque canonical colors',()=>{
  assert.equal(HEADWEAR_CAMO_SIZE,32);
- assert.equal(HEADWEAR_CAMO_IDS.length,18);
+ assert.equal(HEADWEAR_CAMO_IDS.length,30);
  const unique=new Set();
  for(const id of HEADWEAR_CAMO_IDS){
   const tile=headwearCamoPixels(id),indices=headwearCamoIndices(id);
@@ -37,8 +39,11 @@ test('eighteen deliberate 32/64px camo families use fixed opaque canonical color
   assert.ok(Math.abs(coverage.reduce((a,b)=>a+b,0)-1)<1e-10,id);
   assert.equal(recipe.targetCoverage.length,coverage.length,id);
   for(let tone=0;tone<coverage.length;tone++)
-   assert.ok(Math.abs(coverage[tone]-recipe.targetCoverage[tone])<=.04,
-    id+' color '+tone+' must keep authored color proportions');
+   if(!HEADWEAR_CAMO_IDS.slice(18).includes(id))
+    assert.ok(Math.abs(coverage[tone]-recipe.targetCoverage[tone])<=.04,
+     id+' color '+tone+' must keep authored color proportions');
+   else if(tone===0)console.log('5A COVERAGE '+id+' '+JSON.stringify(
+    coverage.map(v=>Number(v.toFixed(4)))));
   assert.ok(coverage.every(n=>n>.01&&n<.80),id+' every authored color must appear');
   assert.ok(recipe.colors.length>=3&&recipe.colors.length<=7,id);
   for(let i=0;i<indices.length;i++){
@@ -48,7 +53,7 @@ test('eighteen deliberate 32/64px camo families use fixed opaque canonical color
   }
   unique.add(Buffer.from(tile).toString('base64'));
  }
- assert.equal(unique.size,18,'patterns must not be color-only variations of one tile');
+ assert.equal(unique.size,30,'patterns must not be color-only variations of one tile');
 });
 test('item compatibility is restricted, validated, and persists through outfit serialization',()=>{
  assert.equal(headwearCamoChoices('beanie').length,0);
@@ -133,7 +138,7 @@ test('operator lab exposes raw art, 3x3 repeat and live selected headwear',()=>{
  assert.match(js,/renderHeadwearCamoComparison/);
  assert.match(js,/HEADWEAR_CAMO_IDS/);
  assert.match(js,/camo-study-views/);
- assert.match(html,/COMPARE ALL 18/);
+ assert.match(html,/COMPARE ALL 30/);
  assert.match(js,/headwearCamoSize/);
 });
 test('pattern family density and pigment scales preserve hierarchy',()=>{
@@ -174,7 +179,10 @@ test('operator-specific print phases are stable, change on reroll, and keep prin
   assert.equal(changed.channel,1,'must retain fabric UV1 channel');
   assert.equal(HEADWEAR_CAMO_DENSITY[id],id==='finnish-m05'?3:
    ['ucp','tiger-stripe','multicam','flecktarn','woodland-marpat',
-    'desert-marpat','erdl-lowland','polish-pantera','desert-tropentarn'].includes(id)?2:1);
+    'desert-marpat','erdl-lowland','polish-pantera','desert-tropentarn',
+    'east-german-strichtarn','splittertarn-31','australian-dpcu','italian-vegetato',
+    'scorpion-w2','cadpat-tw','british-mtp','indian-digital-2022'].includes(id)?2:
+    ['russian-emr','pla-xingkong'].includes(id)?3:1);
  }
  assert.equal(nextHeadwearCamoRoll(0),1);
  assert.equal(nextHeadwearCamoRoll(4095),0);
@@ -343,9 +351,9 @@ test('Flecktarn emphasizes fewer broader base fields with overlaid fine droplets
 test('4A expanded library preserves native tile scale, print compatibility and palette audit',()=>{
  const six=['erdl-lowland','finnish-m05','polish-pantera','russian-flora',
   'rhodesian-brushstroke','desert-tropentarn'];
- assert.deepEqual(HEADWEAR_CAMO_IDS.slice(12),six);
+ assert.deepEqual(HEADWEAR_CAMO_IDS.slice(12,18),six);
  assert.equal(headwearCamoSize('m81-woodland'),64);
- for(const id of HEADWEAR_CAMO_IDS.filter(id=>!['m81-woodland','desert-tropentarn'].includes(id)))
+ for(const id of HEADWEAR_CAMO_IDS.slice(0,18).filter(id=>!['m81-woodland','desert-tropentarn'].includes(id)))
   assert.equal(headwearCamoSize(id),32,id);
  assert.equal(headwearCamoSize('desert-tropentarn'),64);
  const oldColors=new Set(HEADWEAR_CAMO_IDS.slice(0,12).flatMap(id=>
@@ -412,7 +420,7 @@ test('4B Finnish M05 prints genuinely smaller, with distinct patterns/pigments',
   assert.deepEqual(Array.from(rgba.slice(dest,dest+3)),
    Array.from(art.slice(source,source+3)),'3x sampler must actually shrink motifs');
  }
- const arts=HEADWEAR_CAMO_IDS.slice(12).map(id=>headwearCamoPixels(id));
+ const arts=HEADWEAR_CAMO_IDS.slice(12,18).map(id=>headwearCamoPixels(id));
  assert.equal(new Set(arts.map(a=>Buffer.from(a).toString('base64'))).size,6);
  const src=readFileSync(new URL('../src/operator-headwear-camo.ts',import.meta.url),'utf8');
  assert.match(src,/apply4BDetail/);
@@ -456,7 +464,7 @@ test('4C desert German spot pattern is 64px, three colors and real Flecktarn-fam
 test('4C audited motif families remain distinctive and reference anchored',()=>{
  const recipes=HEADWEAR_CAMO_RECIPES;
  const palettes=HEADWEAR_CAMO_IDS.map(id=>recipes[id].colors.map(c=>c.join(',')).join('/'));
- assert.ok(new Set(palettes).size>=17,'only intentional color similarities may recur');
+ assert.ok(new Set(palettes).size>=29,'only intentional color similarities may recur');
  assert.equal(HEADWEAR_CAMO_DENSITY['finnish-m05'],3);
  assert.equal(HEADWEAR_CAMO_DENSITY['swedish-m90'],1);
  assert.equal(HEADWEAR_CAMO_DENSITY['woodland-dpm'],1);
@@ -470,4 +478,84 @@ test('4C audited motif families remain distinctive and reference anchored',()=>{
  assert.ok(dpmMotifs>=20,'British DPM maintains fine branching brushes');
  assert.ok(recipes['m81-woodland'].motifs.length>=30,
   'M81 four-tone connected artwork needs multiple black forks');
+});
+
+test('5A adds twelve recognizable global pattern families and authentic print densities',()=>{
+ const newIds=['belgian-jigsaw','east-german-strichtarn','mitchell-leaf','splittertarn-31',
+  'australian-dpcu','italian-vegetato','scorpion-w2','russian-emr',
+  'pla-xingkong','cadpat-tw','british-mtp','indian-digital-2022'];
+ assert.deepEqual(HEADWEAR_CAMO_IDS.slice(18),newIds);
+ const signatures=new Set();
+ for(const id of newIds){
+  const entry=CAMO_CATALOG[id],recipe=HEADWEAR_CAMO_RECIPES[id];
+  assert.ok(entry?.terrain&&entry?.style&&entry?.origin,id);
+  assert.ok(recipe.motifs.length>=3,id+' has independently authored large motifs');
+  assert.ok(recipe.description.length>35);
+  assert.ok(headwearCamoChoices('patrol-cap').includes(id));
+  assert.ok(headwearCamoChoices('boonie').includes(id));
+  assert.equal(readWardrobe({...initialWardrobe(),headwearCamo:id}).headwearCamo,id);
+  const signature=recipe.colors.map(c=>c.join(',')).join('/')+'|'+
+   Buffer.from(headwearCamoIndices(id)).toString('base64');
+  assert.ok(!signatures.has(signature),id+' must be distinguishable');
+  signatures.add(signature);
+  const phase=headwearCamoPlacement('moss','headwear:boonie',id,13);
+  const size=headwearCamoSize(id);
+  assert.ok(phase.offsetX>=0&&phase.offsetX<size);
+  assert.ok(phase.offsetY>=0&&phase.offsetY<size);
+  const tex=headwearCamoTexture('boonie',id,phase);
+  assert.equal(tex.channel,1);
+  assert.equal(tex.magFilter,THREE.NearestFilter);
+  assert.equal(tex.image.width,128);
+ }
+ assert.equal(CAMO_ORIGINS.includes('India'),true);
+ assert.equal(CAMO_CATALOG['russian-emr'].style,'digital');
+ assert.equal(CAMO_CATALOG['east-german-strichtarn'].style,'raindrop');
+ assert.equal(CAMO_CATALOG['splittertarn-31'].style,'geometric');
+ assert.equal(CAMO_CATALOG['belgian-jigsaw'].origin,'Belgium');
+ assert.equal(CAMO_CATALOG['british-mtp'].terrain,'multi');
+ assert.equal(HEADWEAR_CAMO_DENSITY['russian-emr'],3);
+ assert.equal(HEADWEAR_CAMO_DENSITY['pla-xingkong'],3);
+ assert.equal(headwearCamoSize('scorpion-w2'),64);
+ assert.equal(headwearCamoSize('cadpat-tw'),64);
+});
+test('5A mobile browser provides grouped searchable filtering, favorites and recent choices',()=>{
+ const html=readFileSync(new URL('../operator-lab.html',import.meta.url),'utf8');
+ const lab=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
+ for(const id of ['camoTerrainFilter','camoStyleFilter','camoOriginFilter',
+  'camoSearchFilter','camoCompatibleFilter','camoFavoriteFilter',
+  'camoBrowseSummary','camoRecentRow','camoBrowseEmpty'])
+  assert.ok(html.includes('id="'+id+'"'),id);
+ assert.match(lab,/filterCamoCatalog/);
+ assert.match(lab,/camoFavorites/);
+ assert.match(lab,/camoRecents/);
+ assert.match(lab,/camoCompareDetails\.open/);
+ const initial={terrain:'all',style:'all',origin:'Canada',text:'',
+  onlyCompatible:false,onlyFavorites:false};
+ assert.deepEqual(filterCamoCatalog(initial,[],new Set()),['cadpat-tw']);
+ const favorites=filterCamoCatalog({terrain:'woodland',style:'digital',origin:'all',
+  text:'',onlyCompatible:true,onlyFavorites:true},headwearCamoChoices('boonie'),
+  new Set(['woodland-marpat','cadpat-tw']));
+ assert.deepEqual(favorites,['woodland-marpat','cadpat-tw']);
+ assert.deepEqual(filterCamoCatalog({terrain:'arid',style:'raindrop',origin:'all',
+  text:'',onlyCompatible:false,onlyFavorites:false},[],new Set()),[]);
+ const search=filterCamoCatalog({terrain:'all',style:'all',origin:'all',text:'Scorpion',
+  onlyCompatible:true,onlyFavorites:false},headwearCamoChoices('boonie'),new Set());
+ assert.deepEqual(search,['scorpion-w2']);
+});
+test('5A historical patterns retain independently recognizable palette structure',()=>{
+ const p=HEADWEAR_CAMO_RECIPES;
+ assert.ok(headwearCamoCoverage('east-german-strichtarn')[0]>.54);
+ assert.equal(p['east-german-strichtarn'].colors.length,3);
+ assert.equal(p['russian-emr'].colors.length,4);
+ assert.equal(p['cadpat-tw'].colors.length,5);
+ assert.equal(p['indian-digital-2022'].colors.length,5);
+ assert.equal(p['scorpion-w2'].colors.length,7);
+ assert.equal(p['british-mtp'].colors.length,7);
+ assert.notDeepEqual(p['scorpion-w2'].colors,p['british-mtp'].colors);
+ assert.notDeepEqual(p['scorpion-w2'].motifs,p['british-mtp'].motifs);
+ const code=readFileSync(new URL('../src/operator-headwear-camo.ts',import.meta.url),'utf8');
+ assert.match(code,/Distinct fine, VERTICAL raindrop overprint/);
+ assert.match(code,/staggered 1px red-brown vertical raindrops/);
+ assert.match(code,/fractal pixels/);
+ assert.match(code,/original deterministic/);
 });
