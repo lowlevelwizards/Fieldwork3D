@@ -1332,3 +1332,13 @@ html,body{font-family:var(--fw-font-menu)}
 /* Secondary mission readouts share the condensed numeric scale. */
 .site-identity{font-family:var(--fw-font-data);font-size:14px;font-variant-numeric:tabular-nums}
 .feed .fw-notice-label{font-family:var(--fw-font-display)}
+
+/* Stage 5.1 — genuine in-game Studio overlay: the encounter remains mounted
+ * and its in-progress planning state is never discarded by page navigation. */
+#operatorStudioOverlay[hidden]{display:none}
+#operatorStudioOverlay{position:fixed;inset:0;z-index:10000;
+ background:#192b26}
+#operatorStudioOverlay iframe{display:block;width:100%;height:100%;border:0;
+ background:#c4c7bd;touch-action:auto}
+#openOperatorStudio{background:#a7b899;border-color:#dae2b6;color:#182923;
+ font-weight:800}
