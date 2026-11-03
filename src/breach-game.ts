@@ -14,7 +14,7 @@ import {
   type AimMode,type AimInstruction,
   makeHistory,copyNodes,record,undo,redo,modifyNode,lastPoint,
   type FirePolicy,
-  length,targetAngle,angleDifference,type PieSide,
+  length,targetAngle,angleDifference,type PieSide,interruptsWatch,
 } from './breach-plan.ts';
 import {validPieArc} from './breach-maneuvers.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
@@ -1617,6 +1617,9 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   }
   if(a.activeNode!==n.id){
     a.activeNode=n.id;a.nav=[];a.waitRemaining=0;a.actionTimer=0;
+    // Physical interactions and running terminate sustained WATCH, never
+    // silently resume it when the operator returns to walking.
+    if(interruptsWatch(n,a.pace))a.aimInstruction=null;
     // A waypoint inside a pinch is not permission to expand the torso.
     if(bodyClear(a.p,s.doors)){
       a.squeeze=false;a.squeezeTime=0;
@@ -1837,6 +1840,8 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       s.operators.filter(b=>b!==a&&b.health>0&&b.side===a.side)
         .map(b=>b.p),(from,to)=>sweptBodyClear(from,to,s.doors)));
   if(!at&&(n.kind==='move'||n.kind==='door'||n.kind==='sync')){
+    // Running cancels WATCH rather than merely suspending it.
+    if(interruptsWatch(n,a.pace))a.aimInstruction=null;
     // A persistent tracking/PIE stance stays cautious on every segment,
     // not only on explicitly marked strafe nodes.
     const running=n.moveMode==='sprint'||a.pace==='run';
@@ -1863,6 +1868,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   if(at){
     if(n.postureState)a.posture=n.postureState;
     if(n.paceState)a.pace=n.paceState;
+    if(interruptsWatch(n,a.pace))a.aimInstruction=null;
     if(n.firePolicyState){
       a.firePolicy=n.firePolicyState;
       a.suppressPoint=n.firePoint?clone(n.firePoint):null;
@@ -1872,7 +1878,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   // Apply an authored look/pie/strafe instruction once we actually arrive
   // at its waypoint, then keep it active through every later movement.
   if(n.kind==='move'||n.kind==='look'){
-    applyAimNode(a,n);
+    if(!interruptsWatch(n,a.pace))applyAimNode(a,n);
     if(n.aimMode==='free'&&n.facing!==undefined){
       // LOOK deliberately orients at this node, then releases any tracking
       // or fixed strafe constraint. The next move faces the travel direction.
