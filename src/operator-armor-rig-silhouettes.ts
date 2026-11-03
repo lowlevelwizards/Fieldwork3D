@@ -146,3 +146,144 @@ export function createArmorSilhouettes(chest:THREE.Group,
  for(const g of Object.values(groups))consolidateVisualGroup(g);
  return groups;
 }
+
+/** Rig archetypes attach over the selected armor surface via an independent
+ * front mount offset. Strap geometry remains blocky, not a decal. Pockets
+ * are EMPTY visual carriers; the equipment ledger owns actual magazines.
+ */
+export const RIG_FRONT_PROFILES:Readonly<Record<string,{front:number;low:number}>>={
+ 'no-rig':{front:0,low:0},
+ 'chest-placard':{front:9.25,low:-2.0},
+ 'micro-rig':{front:9.16,low:-2.0},
+ 'light-rig':{front:9.12,low:-1.8},
+ 'split-front':{front:9.25,low:-2.0},
+ 'field-webbing':{front:8.45,low:-4.35},
+ 'lbv':{front:8.95,low:-2.35},
+ 'full-chest':{front:9.16,low:-2.25},
+ 'belt-harness':{front:8.35,low:-4.5},
+ 'chicom-rig':{front:9.00,low:-2.0},
+ 'bandolier':{front:8.90,low:-2.0},
+ 'sadm-webbing':{front:8.65,low:-4.0}
+};
+const pouch=(g:THREE.Group,m:THREE.Material,fold:THREE.Material,
+ x:number,y:number,z:number,h:number,d:number,depth=1.10)=>{
+ box(g,m,x,y,z,depth,h,d);
+ box(g,fold,x+depth*.51+.035,y+h*.39,z,.19,.40,d+.12);
+};
+const shoulderHarness=(g:THREE.Group,m:THREE.Material,spread=4.8)=>{
+ for(const s of [-1,1]){
+  strap(g,m,[7.30,2.15,s*spread],[1.15,5.52,s*5.2],1.18,.90);
+  strap(g,m,[1.15,5.52,s*5.2],[-6.0,2.30,s*4.15],1.17,.90);
+ }
+};
+export function createChestRigSilhouettes(chest:THREE.Group,
+ fabric:THREE.Material,dark:THREE.Material,trim:THREE.Material):ShapeGroups{
+ const groups:ShapeGroups={};
+ const make=(id:string)=>{
+  const g=new THREE.Group();g.name='authored-rig-'+id;
+  g.visible=false;chest.add(g);groups[id]=g;return g;
+ };
+ make('no-rig');
+ {
+  const g=make('chest-placard');
+  box(g,fabric,8.14,-2.05,0,.70,4.75,8.45);
+  for(const z of [-2.73,0,2.73])
+   pouch(g,fabric,trim,8.74,-2.20,z,3.48,2.45,1.08);
+  for(const s of [-1,1])
+   box(g,dark,7.95,1.2,s*3.65,.40,2.65,.90);
+ }
+ {
+  const g=make('micro-rig');
+  shoulderHarness(g,dark,3.75);
+  box(g,fabric,7.90,-2.65,0,.76,3.55,7.30);
+  for(const z of [-1.65,1.65])
+   pouch(g,fabric,trim,8.54,-2.58,z,2.42,2.86,.91);
+  for(const s of [-1,1])
+   pouch(g,fabric,trim,7.75,-2.62,s*4.55,2.40,1.62,.72);
+ }
+ {
+  const g=make('light-rig');
+  // Classic X-harness: crossed rear straps and 2+2 broad front pouch banks.
+  shoulderHarness(g,dark,4.7);
+  strap(g,dark,[-5.90,3.75,-4.5],[-5.9,-3.10,4.50],1.10,.70);
+  strap(g,dark,[-5.90,3.75,4.5],[-5.9,-3.10,-4.50],1.10,.70);
+  for(const z of [-4.6,-1.5,1.5,4.6])
+   pouch(g,fabric,trim,8.38,-2.20,z,4.23,2.85,1.07);
+  box(g,dark,7.94,-4.65,0,.48,.70,13.25);
+ }
+ {
+  const g=make('split-front');
+  shoulderHarness(g,dark,5.00);
+  // Two independent banks with a large, entirely unobstructed center seam.
+  for(const s of [-1,1]){
+   box(g,fabric,8.12,-1.90,s*4.3,.75,5.85,5.45);
+   for(const p of [2.92,5.64])
+    pouch(g,fabric,trim,8.77,-2.18,s*p,3.98,2.34,1.08);
+   box(g,trim,8.64,-1.95,s*1.35,.37,4.72,.44);
+  }
+ }
+ {
+  const g=make('lbv');
+  shoulderHarness(g,fabric,5.20);
+  for(const s of [-1,1]){
+   box(g,fabric,6.75,-1.55,s*5.35,1.14,9.25,3.15);
+   for(const y of [1.28,-2.56,-5.35])
+    pouch(g,fabric,trim,7.95,y,s*5.05,2.88,3.33,.99);
+  }
+ }
+ {
+  const g=make('full-chest');
+  shoulderHarness(g,trim,5.02);
+  box(g,fabric,8.0,-1.72,0,.78,9.65,12.25);
+  for(const z of [-4.60,-1.5,1.5,4.60])
+   pouch(g,fabric,trim,8.65,-2.75,z,4.45,2.65,1.07);
+  box(g,dark,8.48,2.68,0,.23,1.22,9.25);
+ }
+ {
+  const g=make('field-webbing');
+  for(const s of [-1,1]){
+   strap(g,trim,[6.40,-5.24,s*5.95],[1.0,5.45,s*4.60],1.10,.90);
+   strap(g,trim,[1.0,5.45,s*4.60],[-5.5,-5.4,s*5.95],1.10,.90);
+   pouch(g,fabric,trim,3.90,-5.42,s*7.45,4.55,3.12,1.30);
+  }
+  box(g,trim,3.80,-5.90,0,1.30,1.20,13.40);
+ }
+ {
+  const g=make('belt-harness');
+  for(const s of [-1,1]){
+   strap(g,dark,[3.75,-5.05,s*6.3],[.05,5.70,s*5.20],1.45,1.04);
+   strap(g,dark,[.05,5.70,s*5.20],[-5.10,-4.7,s*6.3],1.36,1.04);
+   pouch(g,fabric,trim,3.1,-5.30,s*7.65,5.30,3.40,1.49);
+  }
+  box(g,dark,3.55,-5.7,0,1.35,1.45,14.15);
+ }
+ {
+  const g=make('chicom-rig');
+  shoulderHarness(g,fabric,4.55);
+  box(g,fabric,7.95,-2.35,0,.60,5.75,11.65);
+  for(const z of [-3.12,0,3.12])
+   pouch(g,fabric,trim,8.52,-2.32,z,4.30,2.82,.99);
+  for(const s of [-1,1])
+   pouch(g,fabric,trim,8.42,-3.38,s*5.65,2.55,1.65,.75);
+ }
+ {
+  const g=make('bandolier');
+  strap(g,fabric,[7.0,4.85,5.1],[8.0,-5.05,-5.4],2.25,1.05);
+  for(let i=0;i<5;i++){
+   const t=i/4,z=3.85-t*7.7,y=3.6-t*7.4;
+   pouch(g,fabric,trim,8.20,y,z,2.28,1.42,.72);
+  }
+ }
+ {
+  const g=make('sadm-webbing');
+  shoulderHarness(g,fabric,5.35);
+  for(const s of [-1,1]){
+   for(const z of [3.25,6.05])
+    pouch(g,fabric,trim,7.78,-2.75,s*z,5.80,2.50,1.35);
+   pouch(g,fabric,trim,2.55,-5.72,s*7.8,4.70,2.85,1.65);
+  }
+  box(g,dark,7.20,-5.65,0,.72,1.15,12.15);
+ }
+ for(const g of Object.values(groups))consolidateVisualGroup(g);
+ return groups;
+}
