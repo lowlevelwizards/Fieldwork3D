@@ -37,6 +37,7 @@ import {resolvedHeadwearCamo,headwearCamoPlacement} from './operator-headwear-ca
 import {headwearCamoTexture,headwearDetailTexture} from './operator-headwear-materials.ts';
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import {garmentBoxUV,wardrobeFabricCamoTexture} from './operator-fabric-camo-materials.ts';
+import {resolveAutomaticGearColors} from './operator-gear-color-policy.ts';
 import {garmentColorValues,gorkaSpecialtyTexture} from './operator-upper-colorways.ts';
 import {garmentSolidHex,isGarmentSolidId,resolvedCuffSolid,resolvedCombatKnitSolid}
  from './operator-garment-color-policy.ts';
@@ -546,6 +547,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.colors.set(r.gearMaterial,defaultVest.clone());
   r.colors.set(r.headArmorMaterial,defaultVest.clone());
   r.colors.set(r.headClothMaterial,defaultCloth.clone());
+  const selectedTopPrint=p.wardrobe?.fabricCamo?.top;
+  const outfitTopPrint=selectedTopPrint&&
+   fabricCamoCompatible(selectedTopPrint,'top',clothing)?selectedTopPrint:null;
+  const automaticGear=resolveAutomaticGearColors({
+   print:outfitTopPrint,solid:p.wardrobe?.fabricSolids?.top
+  });
   for(const [channel,material] of fabricChannels){
    const authored=channel==='head'?null:
     p.wardrobe?.fabricCamo?.[channel as FabricCamoChannel];
@@ -563,8 +570,30 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const solid=p.wardrobe?.fabricSolids?.[channel as FabricCamoChannel];
     if(isGarmentSolidId(solid))
      r.colors.set(material,new THREE.Color(garmentSolidHex(solid)));
+    else if(p.wardrobe&&(
+      channel==='armor'||channel==='gear'||channel==='pack')){
+     // No manual swatch: use terrain-coherent neutral nylon colors.
+     // Do not touch user-selected print artwork or another channel's tint.
+     const id=automaticGear[channel];
+     r.colors.set(material,new THREE.Color(garmentSolidHex(id)));
+    }
    }
   }
+  // A rig's empty pouch geometry is its own textile. By default it
+  // inherits the rig's entire chosen solid/print and deterministic camo cut.
+  // Advanced single-color pouch overrides change nothing about rig backing,
+  // armor, functional magazines or carrying capacity.
+  const pouchMaterial=r.visualKit.wardrobeGear.pouchMaterial;
+  const pouchOverride=p.wardrobe?.pouchSolid;
+  const pouchHasOverride=isGarmentSolidId(pouchOverride);
+  const pouchMap=pouchHasOverride?operatorPixelTextures.get('fabric'):
+   r.gearMaterial.map;
+  if(pouchMaterial.map!==pouchMap){
+   pouchMaterial.map=pouchMap;pouchMaterial.needsUpdate=true;
+  }
+  r.colors.set(pouchMaterial,pouchHasOverride?
+   new THREE.Color(garmentSolidHex(pouchOverride)):
+   (r.colors.get(r.gearMaterial)??r.gearMaterial.color).clone());
   // One authoritative color ledger owns *every* material before the final
   // pose-time restore and optional injury desaturation. In particular, do not
   // overwrite the selected headgear swatch with the old neutral blend.

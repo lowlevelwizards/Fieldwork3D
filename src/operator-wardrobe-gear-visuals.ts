@@ -10,6 +10,7 @@ import {createArmorSilhouettes,createChestRigSilhouettes,
 type StyleGroups=Record<string,THREE.Group>;
 export type WardrobeGearLayers={
  armor:StyleGroups;rig:StyleGroups;belt:StyleGroups;pack:StyleGroups;
+ pouchMaterial:THREE.MeshStandardMaterial;
 };
 const box=(g:THREE.Group,m:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number)=>{
@@ -30,7 +31,10 @@ export function createWardrobeGearLayers(
  // Cummerbunds, shoulder pads and secondary protective panels inherit the
  // ARMOR channel, never the rig's independent fabric swatch.
  const armor=createArmorSilhouettes(chest,armorFabric,armorFabric,dark,trim);
- const rig=createChestRigSilhouettes(chest,gearFabric,dark,trim);
+ const pouchMaterial=(gearFabric as THREE.MeshStandardMaterial).clone();
+ pouchMaterial.name='Fieldwork authored rig pouch fabric';
+ pouchMaterial.userData.fieldworkFabric=true;
+ const rig=createChestRigSilhouettes(chest,gearFabric,pouchMaterial,dark,trim);
  const belt:StyleGroups={},pack:StyleGroups={};
  for(const item of wardrobeItemsForSlot('beltStyle')){
   const g=make(hip);belt[item.id]=g;
@@ -74,7 +78,7 @@ export function createWardrobeGearLayers(
  }
  for(const section of [belt,pack])
   for(const g of Object.values(section))consolidateVisualGroup(g);
- return {armor,rig,belt,pack};
+ return {armor,rig,belt,pack,pouchMaterial};
 }
 export function updateWardrobeGearLayers(v:WardrobeGearLayers,
  armor:string,rig:string,belt:string,pack:string){

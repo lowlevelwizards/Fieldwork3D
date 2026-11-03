@@ -17,6 +17,7 @@ import {readWardrobe,initialWardrobe,resolvedWardrobe,setWardrobeStyle,
  sleeveStateOptions,trouserHemOptions,
  type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
 import {fabricCamoChoices,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
+import {resolveAutomaticGearColors} from './operator-gear-color-policy.ts';
 import {GARMENT_SOLID_COLORS,solidChoicesFor,resolvedCuffSolid,
  resolvedCombatKnitSolid,type GarmentSolidId} from './operator-garment-color-policy.ts';
 import {headwearColorChoices,HEADWEAR_SOLID_COLORS} from './operator-headwear-colors.ts';
@@ -44,6 +45,7 @@ let readOnly=false;
 let people:StudioPerson[]=[];
 let activeCategory:WardrobeSlot='top';
 let advancedFabricColorsOpen=false;
+let advancedPouchOpen=false;
 let clothesOnly=true;
 let comparingSaved=false;
 let saveInFlight=false;
@@ -319,6 +321,22 @@ function renderMaterials(){
   const choices=fabricCamoChoices(channel,outfit);
   const pattern=w.fabricCamo?.[channel]??null;
   const group=row('FABRIC MATERIAL','Select a solid or an approved print. Printed material never changes its original artwork.');
+  if(channel==='armor'||channel==='gear'||channel==='pack'){
+   const automatic=resolveAutomaticGearColors({print:w.fabricCamo?.top,
+    solid:w.fabricSolids?.top})[channel];
+   const hint=document.createElement('small');
+   hint.textContent='AUTO MATCH: '+GARMENT_SOLID_COLORS[automatic].label+
+    ' · Based on uniform family. Manual armor, rig and pack choices remain independent.';
+   group.append(hint);
+   const auto=document.createElement('div');auto.className='material-row';
+   auto.append(makeButton('USE AUTO MATCH',!pattern&&!w.fabricSolids?.[channel],()=>{
+    const now=current();
+    changeWardrobe({...now,
+     fabricCamo:{...now.fabricCamo,[channel]:undefined},
+     fabricSolids:{...now.fabricSolids,[channel]:undefined}});
+   }));
+   group.append(auto);
+  }
   const tabs=document.createElement('div');tabs.className='material-tabs';
   const solidSelected=!pattern;
   tabs.append(makeButton('SOLID',solidSelected,()=>{
@@ -394,6 +412,23 @@ function renderMaterials(){
     changeWardrobe({...current(),headwearCamo:id,headwearCamoRoll:
       w.headwearCamo===id?nextHeadwearCamoRoll(w.headwearCamoRoll):0}));
   }
+ }
+ if(activeCategory==='rigStyle'&&item!=='no-rig'){
+  row('POUCH FABRIC',w.pouchSolid?
+   'Advanced pouch-only fabric override: '+GARMENT_SOLID_COLORS[w.pouchSolid].label:
+   'AUTO · Match rig material, including original camouflage and cut position.');
+  const advanced=document.createElement('details');
+  advanced.className='material-group';advanced.open=advancedPouchOpen;
+  const summary=document.createElement('summary');
+  summary.textContent='ADVANCED POUCH COLOR';advanced.append(summary);
+  advanced.addEventListener('toggle',()=>{advancedPouchOpen=advanced.open;});
+  const actions=document.createElement('div');actions.className='material-row';
+  actions.append(makeButton('AUTO · MATCH RIG',!w.pouchSolid,()=>
+   changeWardrobe({...current(),pouchSolid:undefined})));
+  advanced.append(actions);
+  addSolidSwatches(advanced,solidChoicesFor('gear'),w.pouchSolid??null,
+   id=>changeWardrobe({...current(),pouchSolid:id}));
+  materialRoot.append(advanced);
  }
  if(activeCategory==='top'){
   // Combat knit and smock solids are controlled by their actual material
