@@ -21,6 +21,9 @@ jobs:
       - name: Focused garment metric UVs, cuff/hem state and independent materials
         if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feat/garment-readability-') || startsWith(github.head_ref, 'feat/wardrobe-cuff-roll-elbow-') || startsWith(github.head_ref, 'feat/wardrobe-auto-knit-fold-')) }}
         run: node --experimental-strip-types --test tests/operator-garment-readability-20261103.test.mjs
+      - name: Mantle Stage 3a crossing contract and window eligibility
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-vault-mantle-') }}
+        run: node --experimental-strip-types --test tests/breach-mantle-contract.test.mjs
       - name: Doorway circulation and clutter clearance regression
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-map-clearance-') }}
         run: node --experimental-strip-types --test tests/breach-doorway-map-clearance.test.mjs tests/worldgen-27c-threshold-traffic.test.mjs
