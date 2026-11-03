@@ -2,7 +2,7 @@
  * approved headwear artwork bytes but never changes headwear selection.
  */
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
-import {readWardrobe,resolvedWardrobe,setWardrobeFabricCamo,
+import {resolvedWardrobe,setWardrobeFabricCamo,
  rerollWardrobeFabricCamo,matchWardrobeUniformCamo,type WardrobeOptions}
  from './operator-wardrobe-data.ts';
 import {fabricCamoChoices,FABRIC_CAMO_CHANNELS,FABRIC_CAMO_POLICY,
