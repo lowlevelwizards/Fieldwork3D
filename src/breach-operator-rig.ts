@@ -577,6 +577,21 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }
    }
   }
+  // A rig's empty pouch geometry is its own textile. By default it
+  // inherits the rig's entire chosen solid/print and deterministic camo cut.
+  // Advanced single-color pouch overrides change nothing about rig backing,
+  // armor, functional magazines or carrying capacity.
+  const pouchMaterial=r.visualKit.wardrobeGear.pouchMaterial;
+  const pouchOverride=p.wardrobe?.pouchSolid;
+  const pouchHasOverride=isGarmentSolidId(pouchOverride);
+  const pouchMap=pouchHasOverride?operatorPixelTextures.get('fabric'):
+   r.gearMaterial.map;
+  if(pouchMaterial.map!==pouchMap){
+   pouchMaterial.map=pouchMap;pouchMaterial.needsUpdate=true;
+  }
+  r.colors.set(pouchMaterial,pouchHasOverride?
+   new THREE.Color(garmentSolidHex(pouchOverride)):
+   (r.colors.get(r.gearMaterial)??r.gearMaterial.color).clone());
   // One authoritative color ledger owns *every* material before the final
   // pose-time restore and optional injury desaturation. In particular, do not
   // overwrite the selected headgear swatch with the old neutral blend.
