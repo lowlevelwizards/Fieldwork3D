@@ -2780,6 +2780,10 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(a.plan[0]?.kind==='treat'||a.treatmentActive){
     a.aim=Math.max(0,a.aim-dt*3);return;
   }
+  // Hands are supporting a vault or window climb. Suppress firing until
+  // the verified landing; otherwise muzzle traces would originate at floor
+  // height while the body is airborne.
+  if(a.traversal){a.aim=Math.max(0,a.aim-dt*3);return;}
   // Shoulder-first passage keeps the long weapon tucked until clear.
   if(a.squeeze){a.aim=Math.max(0,a.aim-dt*2);return;}
   // Sprinting is a traversal decision, not free accurate fire on the move.
