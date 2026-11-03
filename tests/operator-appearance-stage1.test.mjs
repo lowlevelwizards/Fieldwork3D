@@ -11,8 +11,8 @@ import {headwearAppearanceModel,selectHeadwearSolid,selectHeadwearCamo,
  rerollHeadwearCamo} from '../src/operator-headwear-picker.ts';
 import {headwearCamoChoices} from '../src/operator-headwear-camo.ts';
 
-test('headgear picker respects material eligibility without touching kit or palette',()=>{
- const initial={...initialWardrobe(),palette:7};
+test('headgear picker respects material eligibility without changing kit or approved headwear materials',()=>{
+ const initial=initialWardrobe();
  const blocked=selectHeadwearCamo(initial,'soviet-steel','m81-woodland');
  assert.equal(blocked,initial,'painted steel cannot receive a cloth camouflage');
  assert.equal(headwearAppearanceModel('high-cut-rails'),'high-cut');
@@ -20,12 +20,12 @@ test('headgear picker respects material eligibility without touching kit or pale
  const solid=selectHeadwearSolid(initial,'ach','black');
  assert.equal(solid.headwearColor,'black');
  assert.equal(solid.headwearCamo,undefined);
- assert.equal(solid.palette,7);
+ assert.ok(!('palette' in solid));
  assert.equal(selectHeadwearSolid(solid,'ach','soviet-4bo'),solid);
  const applied=selectHeadwearCamo(solid,'ach','m81-woodland');
  assert.equal(applied.headwearCamo,'m81-woodland');
  assert.equal(applied.headwearCamoRoll,0);
- assert.equal(applied.palette,7);
+ assert.ok(!('palette' in applied));
  const rerolled=selectHeadwearCamo(applied,'ach','m81-woodland');
  assert.equal(rerolled.headwearCamoRoll,1);
  assert.equal(rerollHeadwearCamo(rerolled,'ach').headwearCamoRoll,2);
@@ -35,18 +35,18 @@ test('headgear picker respects material eligibility without touching kit or pale
 });
 
 test('approved headwear identity survives saved outfits and Quick Play reset',()=>{
- const wardrobe=selectHeadwearCamo({...initialWardrobe(),palette:5},
+ const wardrobe=selectHeadwearCamo(initialWardrobe(),
   'ach','m81-woodland');
  const look=makeWardrobeLook('Rook M81',initialEquipmentLoadout(),wardrobe);
  const imported=importWardrobeLook(exportWardrobeLook(look));
  assert.equal(imported.wardrobe.headwearCamo,'m81-woodland');
- assert.equal(imported.wardrobe.palette,5);
+ assert.ok(!('palette' in imported.wardrobe));
  let roster=initialRoster();
  roster.members[0].wardrobe=readWardrobe(wardrobe);
  roster.members[0].reserve=0;roster.members[0].injuries=2;
  roster=freshQuickPlayRoster(roster);
  assert.equal(roster.members[0].wardrobe.headwearCamo,'m81-woodland');
- assert.equal(roster.members[0].wardrobe.palette,5);
+ assert.ok(!('palette' in roster.members[0].wardrobe));
  assert.equal(roster.members[0].injuries,0);
  assert.ok(roster.members[0].reserve>0);
  const restored=readRoster(serializeQuickPlayCosmetics(roster));
@@ -70,7 +70,7 @@ test('both game editors expose one shared approved swatch UI without inventory g
  assert.doesNotMatch(picker,/setEquipmentChoice|equipCampaignGear|equipRosterGear/);
 });
 
-test('Lab restores saved palette, exposes one-step undo and never hides all bare hair',()=>{
+test('Lab preserves approved styling, exposes one-step undo and never hides all bare hair',()=>{
  const lab=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
  const kit=readFileSync(new URL('../src/operator-visual-kit.ts',import.meta.url),'utf8');
  const html=readFileSync(new URL('../operator-lab.html',import.meta.url),'utf8');
