@@ -1705,8 +1705,10 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       // physical cover after its swept displacement.
       s.objectRevision++;
       COVER.splice(0,COVER.length,...s.coverState);
-      hear(s,{x:s.coverState[moved].x,y:s.coverState[moved].y},
-        40,'furniture');
+      const prop=s.coverState[moved],where={x:prop.x,y:prop.y};
+      hear(s,where,prop.toppled?95:40,'furniture');
+      if(prop.toppled)battleEvent(s,'interaction',a,where,
+        a.name+' KNOCKED OVER '+(prop.fixture??'CLUTTER').toUpperCase());
       return true;
     }
   }
