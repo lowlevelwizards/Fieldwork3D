@@ -7,7 +7,9 @@ import {wardrobeMount} from './operator-wardrobe-mounts.ts';
 import {initialWardrobeAccessories,readWardrobeAccessories,
  type WardrobeAccessoryConfiguration} from './operator-wardrobe-accessories.ts';
 import {isHeadwearSolidColorId,type HeadwearSolidColorId} from './operator-headwear-colors.ts';
-import {isHeadwearCamoId,type HeadwearCamoId} from './operator-headwear-camo.ts';
+import {isHeadwearCamoId,type HeadwearCamoId,nextHeadwearCamoRoll} from './operator-headwear-camo.ts';
+import {FABRIC_CAMO_CHANNELS,fabricCamoCompatible,type FabricCamoChannel,type CamoOutfit}
+ from './operator-fabric-camo-policy.ts';
 export const WARDROBE_SLOTS=[
  'headwear','facewear','eyewear','headset','top','trousers','footwear',
  'armorStyle','rigStyle','beltStyle','packStyle','gloves','knees','wrist'
@@ -154,7 +156,12 @@ export type WardrobeOptions={
  version:1;styles:Partial<Record<WardrobeSlot,string>>;
  patterns:Partial<Record<'top'|'trousers'|'armor'|'gear'|'pack'|'head',WardrobePattern>>;
  palette:number;headwearColor?:HeadwearSolidColorId;headwearCamo?:HeadwearCamoId;
- headwearCamoRoll?:number;rolledSleeves:boolean;
+ headwearCamoRoll?:number;
+ /** Authored garment prints supersede legacy procedurals only on this channel. */
+ fabricCamo?:Partial<Record<FabricCamoChannel,HeadwearCamoId>>;
+ /** Saved individual fabric-cut seeds; never regenerated during animation. */
+ fabricCamoRoll?:Partial<Record<FabricCamoChannel,number>>;
+ rolledSleeves:boolean;
  accessories:WardrobeAccessoryConfiguration;
  mounts:{medical?:string;utility?:string;magazineOrder:'left-right'|'right-left'};
 };
@@ -188,6 +195,21 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
     result.patterns[slot]=p as WardrobePattern;
   }
  }
+ if(v.fabricCamo&&typeof v.fabricCamo==='object'&&!Array.isArray(v.fabricCamo)){
+  for(const channel of FABRIC_CAMO_CHANNELS){
+   const id=v.fabricCamo[channel];
+   if(isHeadwearCamoId(id)){
+    (result.fabricCamo??={})[channel]=id;
+   }
+  }
+ }
+ if(v.fabricCamoRoll&&typeof v.fabricCamoRoll==='object'&&!Array.isArray(v.fabricCamoRoll)){
+  for(const channel of FABRIC_CAMO_CHANNELS){
+   const roll=v.fabricCamoRoll[channel];
+   if(Number.isInteger(roll)&&roll!>=0&&roll!<4096)
+    (result.fabricCamoRoll??={})[channel]=roll;
+  }
+ }
  if(Number.isInteger(v.palette)&&v.palette!>=0&&v.palette!<=15)
   result.palette=v.palette!;
  if(isHeadwearSolidColorId(v.headwearColor))result.headwearColor=v.headwearColor;
@@ -213,7 +235,40 @@ export const setWardrobeStyle=(wardrobe:WardrobeOptions,slot:WardrobeSlot,id:str
 export const setWardrobePattern=(wardrobe:WardrobeOptions,
  slot:keyof WardrobeOptions['patterns'],pattern:WardrobePattern):WardrobeOptions=>
  (WARDROBE_PATTERNS as readonly string[]).includes(pattern)?
- {...wardrobe,patterns:{...wardrobe.patterns,[slot]:pattern}}:wardrobe;
+ {...wardrobe,patterns:{...wardrobe.patterns,[slot]:pattern},
+   fabricCamo:slot==='head'?wardrobe.fabricCamo:
+    {...wardrobe.fabricCamo,[slot]:undefined}}:wardrobe;
+
+export function setWardrobeFabricCamo(wardrobe:WardrobeOptions,
+ channel:FabricCamoChannel,id:HeadwearCamoId|null,
+ outfit:CamoOutfit):WardrobeOptions{
+ if(id===null){
+  if(!wardrobe.fabricCamo?.[channel])return wardrobe;
+  return {...wardrobe,fabricCamo:{...wardrobe.fabricCamo,[channel]:undefined}};
+ }
+ if(!isHeadwearCamoId(id)||!fabricCamoCompatible(id,channel,outfit))
+  return wardrobe;
+ return {...wardrobe,
+  fabricCamo:{...wardrobe.fabricCamo,[channel]:id},
+  fabricCamoRoll:{...wardrobe.fabricCamoRoll,
+   [channel]:wardrobe.fabricCamo?.[channel]===id?
+    nextHeadwearCamoRoll(wardrobe.fabricCamoRoll?.[channel]):0}};
+}
+export function rerollWardrobeFabricCamo(wardrobe:WardrobeOptions,
+ channel:FabricCamoChannel,outfit:CamoOutfit):WardrobeOptions{
+ const id=wardrobe.fabricCamo?.[channel];
+ if(!id||!fabricCamoCompatible(id,channel,outfit))return wardrobe;
+ return setWardrobeFabricCamo(wardrobe,channel,id,outfit);
+}
+export function matchWardrobeUniformCamo(wardrobe:WardrobeOptions,
+ outfit:CamoOutfit,selected:HeadwearCamoId):WardrobeOptions{
+ let next=wardrobe;
+ for(const channel of ['top','trousers'] as const)
+  if(fabricCamoCompatible(selected,channel,outfit)&&
+   next.fabricCamo?.[channel]!==selected)
+   next=setWardrobeFabricCamo(next,channel,selected,outfit);
+ return next;
+}
 
 /** Keep combat truth authoritative: styles incompatible with a real equipped
  * item are replaced by a representative look, never by a magical item swap.
