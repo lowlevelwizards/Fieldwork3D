@@ -208,6 +208,28 @@ function regenerateConnections(entry:ArmorEntry,top:string){
  }
  consolidateVisualGroup(connectors);
 }
+/** Covered uniform pockets lie pressed beneath a close-fitting vest.
+ * The actual authored pocket mesh is hidden only when the selected vest
+ * overlaps its height. This avoids forcing the entire plate bag outward
+ * to clear a detail that is visually occluded by armor.
+ * Cached per chest + selected look: NO per-frame scene traversal.
+ */
+const pocketFitKeys=new WeakMap<THREE.Object3D,string>();
+function updateCoveredGarmentPockets(chest:THREE.Object3D,
+ style:string,top:string){
+ const key=style+'|'+top;
+ if(pocketFitKeys.get(chest)===key)return;
+ pocketFitKeys.set(chest,key);
+ const spec=ARMOR_PROPORTIONS[style];
+ const external=!!spec&&spec.family!=='concealed';
+ chest.traverse(node=>{
+  if(!(node instanceof THREE.Mesh)||!node.userData.armorCompressible)
+   return;
+  const y=node.userData.armorCoverY as number;
+  node.visible=!(external&&y<spec.top-.35&&
+   y>spec.bottom+.70);
+ });
+}
 /** Only regenerate connectors when the top selection changes. The active
  * group is the sole visible armor; hidden styles can retain their previous
  * fit until the user selects them again.
@@ -217,6 +239,7 @@ export function updateAdaptiveArmorFit(
  const group=groups[style],entry=group&&entries.get(group);
  if(!entry)return;
  const key=uniformFitEnvelope(top).top;
+ if(group.parent)updateCoveredGarmentPockets(group.parent,style,key);
  if(entry.key===key)return;
  regenerateConnections(entry,key);
  entry.key=key;
