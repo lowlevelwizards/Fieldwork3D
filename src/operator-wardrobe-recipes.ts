@@ -13,12 +13,12 @@ type Gear=Partial<Record<LoadoutSlot,string>>;
 export type WardrobeRecipe={
  id:string;name:string;category:'role'|'organization'|'setting';
  description:string;weapon:WeaponId;gear:Gear;
- styles:Style;topCamo?:HeadwearCamoId;
+ styles:Style;topCamo?:HeadwearCamoId;topColorway?:string;
 };
 const recipe=(id:string,name:string,category:WardrobeRecipe['category'],
  weapon:WeaponId,gear:Gear,styles:Style,topCamo?:HeadwearCamoId,
- description=''):WardrobeRecipe=>({
-  id,name,category,weapon,gear,styles,topCamo,description
+ description='',topColorway?:string):WardrobeRecipe=>({
+  id,name,category,weapon,gear,styles,topCamo,description,topColorway
 });
 export const WARDROBE_RECIPES:readonly WardrobeRecipe[]=[
  recipe('bdu-field','Classic Field Patrol','role','rifle',
@@ -57,7 +57,32 @@ export const WARDROBE_RECIPES:readonly WardrobeRecipe[]=[
   {head:'head-helmet',top:'top-uniform',legs:'legs-field',
    feet:'feet-boots',armor:'armor-carrier',rig:'rig-full'},
   {headwear:'ach',top:'acu-shirt',trousers:'acu-trousers',
-   armorStyle:'plate-standard'},'ucp')
+   armorStyle:'plate-standard'},'ucp'),
+ recipe('combat-shirt','Modern Combat Shirt','role','carbine',
+  {top:'top-uniform',legs:'legs-field',feet:'feet-boots',
+   armor:'armor-carrier',rig:'rig-light'},
+  {top:'combat-shirt',trousers:'acu-trousers',armorStyle:'plate-jpc'},
+  'multicam','Solid sand torso with real camouflage sleeves','standard'),
+ recipe('windproof-smock','Windproof Field Smock','setting','rifle',
+  {top:'top-uniform',legs:'legs-field',feet:'feet-boots',
+   head:'head-cap',armor:'armor-none',rig:'rig-full'},
+  {top:'smock-jacket',trousers:'bdu-trousers',headwear:'boonie'},
+  'woodland-dpm','Hooded multi-pocket fieldcraft outer layer','standard'),
+ recipe('mountain-gorka','Mountain Gorka Suit','setting','rifle',
+  {top:'top-uniform',legs:'legs-field',feet:'feet-boots',
+   head:'head-cap',armor:'armor-none',rig:'rig-full'},
+  {top:'gorka-jacket',trousers:'gorka-trousers',headwear:'field-cap'},
+  undefined,'Full khaki/brown reinforced mountain suit','standard'),
+ recipe('gorka-ss-leto','Gorka Summer Inserts','setting','carbine',
+  {top:'top-uniform',legs:'legs-field',feet:'feet-boots',
+   head:'head-cap',armor:'armor-none',rig:'rig-light'},
+  {top:'gorka-jacket',trousers:'gorka-trousers',headwear:'field-cap'},
+  undefined,'Original SS-Leto-style summer panel study','ss-leto'),
+ recipe('gorka-ss-autumn','Gorka Autumn Inserts','setting','carbine',
+  {top:'top-uniform',legs:'legs-field',feet:'feet-boots',
+   head:'head-cap',armor:'armor-none',rig:'rig-light'},
+  {top:'gorka-jacket',trousers:'gorka-trousers',headwear:'field-cap'},
+  undefined,'Original SS-Autumn-style panel study','ss-autumn')
 ];
 export function applyWardrobeRecipe(selected:WardrobeRecipe):{
  kit:EquipmentLoadout;wardrobe:WardrobeOptions
@@ -68,6 +93,7 @@ export function applyWardrobeRecipe(selected:WardrobeRecipe):{
  let wardrobe=initialWardrobe();
  for(const [slot,id] of Object.entries(selected.styles))
   wardrobe=setWardrobeStyle(wardrobe,slot as WardrobeSlot,id);
+ if(selected.topColorway)wardrobe={...wardrobe,topColorway:selected.topColorway};
  if(selected.topCamo){
   const outfit=resolvedWardrobe(wardrobe,kit);
   wardrobe=matchWardrobeUniformCamo(wardrobe,outfit,selected.topCamo);
