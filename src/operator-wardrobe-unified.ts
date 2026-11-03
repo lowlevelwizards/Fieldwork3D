@@ -25,11 +25,11 @@ export function equipmentSlotForAppearance(slot:WardrobeSlot,id:string):
   case 'packStyle':return {slot:'backpack',id:family==='none'?'backpack-none':
    family==='day'?'backpack-day':'backpack-field'};
   case 'top':return {slot:'top',id:family==='underlayer'?'top-none':
-   family==='civilian'?'top-light':'top-uniform'};
+   'top-uniform'};
   case 'trousers':return {slot:'legs',id:family==='underlayer'?'legs-none':
-   family==='civilian'?'legs-light':'legs-field'};
+   'legs-field'};
   case 'footwear':return {slot:'feet',id:family==='unshod'?'feet-none':
-   family==='shoes'||id==='light-boots'?'feet-light':'feet-boots'};
+   'feet-boots'};
   case 'gloves':return {slot:'hands',id:id==='gloves-none'?'hands-none':'hands-gloves'};
   default:return null;
  }
