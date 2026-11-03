@@ -26,57 +26,18 @@ export function createWardrobeBodyLayers(chest:THREE.Group,
  legs:readonly Limb[],arms:readonly Limb[],
  cloth:THREE.Material,trousersMaterial:THREE.Material,
  accent:THREE.Material,dark:THREE.Material):WardrobeBodyLayers{
+ // Legacy cuboid upper-body accents are deleted, not hidden.
+ // Approved BDU / ACU actual torso and sleeves live in field-blouse-prototypes.
+ void cloth;
  const tops:Record<string,THREE.Group>={};
- for(const item of wardrobeItemsForSlot('top')){
-  const g=group(chest);tops[item.id]=g;
-  switch(item.id){
-   case 'field-jacket':
-    for(const side of [-1,1])
-     part(g,cloth,5.6,1.45,side*3.35,.6,2.1,2.9);
-    break;
-   // BDU and ACU use Stage 3B's independently constructed torso and sleeves,
-   // not these old shared floating chest-pocket accent cubes.
-   case 'bdu-shirt':case 'acu-shirt':break;
-   case 'combat-shirt':
-    part(g,accent,5.65,2.0,0,.30,4.1,6.3);
-    break;
-   case 'flannel':case 'button-short':case 'button-long':
-    part(g,dark,5.6,.2,0,.22,8.2,.35);
-    for(let y=-3.5;y<3;y+=2)
-     part(g,accent,5.76,y,0,.19,.27,.31);
-    break;
-   case 'turtleneck':
-    part(g,cloth,0,6.35,0,4.8,2.0,6.2);break;
-   case 'tactical-sweater':
-    part(g,accent,5.5,-4.5,0,.34,1.15,12.6);break;
-   case 'softshell':case 'softshell-hood':case 'pcu-shell':
-    part(g,dark,5.6,-.3,0,.3,8.1,.4);
-    part(g,cloth,-2.9,6.3,0,5.6,1.45,9.2);
-    if(item.id==='softshell-hood')
-     part(g,cloth,-4.6,6.7,0,3.2,2.2,8.3);
-    if(item.id==='pcu-shell')
-     part(g,cloth,5.5,-4.9,0,.65,1.1,13.4);
-    break;
-   case 'longsleeve':
-    part(g,accent,5.45,-5.1,0,.32,.5,11.5);break;
-   case 'tank-top':
-    for(const side of [-1,1])
-     part(g,cloth,0,6.0,side*4.6,2.0,.7,1.1);
-    break;
-   default:break;
-  }
- }
+ for(const item of wardrobeItemsForSlot('top'))
+  tops[item.id]=group(chest);
  const legAccents:Groups={},kneePads:Groups={};
  for(const item of wardrobeItemsForSlot('trousers')){
   legAccents[item.id]=legs.map(leg=>{
    const g=group(leg.upper);
-   if(['bdu-trousers','acu-trousers','combat-trousers','field-trousers',
-    'work-pants'].includes(item.id))
+   if(item.id==='field-trousers')
     part(g,trousersMaterial,0,.1,3.05,3.4,.35,1.7);
-   if(item.id==='jeans'||item.id==='track-pants')
-    part(g,accent,0,0,2.93,3.5,.16,.22);
-   if(item.id==='shorts')
-    part(g,accent,0,-.5,2.9,4.15,.5,.25);
    return g;
   });
  }
@@ -84,9 +45,7 @@ export function createWardrobeBodyLayers(chest:THREE.Group,
   kneePads[item.id]=legs.map(leg=>{
    const g=group(leg.lower);
    if(item.id!=='knee-none'){
-    const w=item.id==='knee-hard'?4.5:3.8;
-    part(g,item.id==='knee-hard'?dark:accent,0,.1,2.65,w,
-     item.id==='knee-integrated'?.26:.58,item.id==='knee-hard'?2.6:1.9);
+    part(g,dark,0,.1,2.65,4.5,.58,2.6);
    }
    return g;
   });

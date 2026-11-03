@@ -279,20 +279,45 @@ button{font-family:"Work Sans",system-ui,sans-serif;font-weight:600;letter-spaci
 <div class="row"><button id="compareBlouses" type="button" aria-pressed="false">COMPARE BDU + ACU</button>
 <output id="blouseCompareStatus" aria-live="polite">Open two matching-scale previews with distinct uniforms</output></div>
 </details>
-<details id="headwearSilhouetteReview" open>
+<div class="kit-grid">
+<label>MEDICAL<select data-kit-slot="medical"></select></label>
+<label>TACTICAL<select data-kit-slot="tactical"></select></label>
+<label>UTILITY<select data-kit-slot="utility"></select></label>
+<label>FACE STYLE<select id="faceTreatment">
+<option value="quiet">QUIET EYES</option>
+<option value="blank" selected>BLANK FACE</option>
+<option value="graphic">GRAPHIC EYES</option>
+</select></label>
+
+<label>MAGAZINE COUNT<select id="kitMagazines">
+<option value="0" selected>0 SPARE</option><option value="1" >1 SPARE</option><option value="2" >2 SPARE</option><option value="3">3 SPARE</option><option value="4" >4 SPARE</option><option value="5" >5 SPARE</option><option value="6" >6 SPARE</option>
+</select></label>
+<label>ISOLATE<select id="kitIsolation">
+<option value="all">FULL OPERATOR</option><option value="head">HEAD / FACE</option>
+<option value="armor">ARMOR</option><option value="carry">RIG / BELT / TOOLS</option>
+<option value="pack">BACKPACK</option><option value="clothes">CLOTHING</option>
+<option value="hands">HANDS / GLOVES</option>
+<option value="knees">KNEES</option><option value="feet">FEET / FOOTWEAR</option></select></label>
+</div><details id="wardrobePanel" open><summary>3D APPEARANCE · ITEM BROWSER</summary>
+<div class="row"><label>STYLE / ROLE RECIPE<select id="wardrobeRecipe"></select></label>
+<button id="wardrobeApply">APPLY LOOK</button></div>
+<p class="kit-help">Every tile is rendered from the real soldier model. Select a category, then tap an item. Approved BDU and ACU cuts are available; other unfinished garments have been removed.</p>
+<details id="outfitLibrary"><summary>SAVED LOOKS / SHARE</summary>
+<div class="row"><label>OUTFIT NAME<input id="outfitName" type="text" maxlength="44" placeholder="My outfit"></label>
+<button id="outfitSave">SAVE</button></div>
+<div class="row"><label>SAVED OUTFITS<select id="outfitSelect"></select></label>
+<button id="outfitLoad">LOAD</button><button id="outfitExport">EXPORT</button></div>
+<textarea id="outfitTransfer" rows="3" placeholder="Paste exported outfit JSON to import"
+ style="width:100%;font-size:11px"></textarea>
+<div class="row"><button id="outfitImport">IMPORT FROM TEXT</button>
+<output id="outfitStatus" role="status"></output></div>
+<p class="kit-help">Outfits save locally on this device. Recipes do not grant campaign items.</p>
+</details>
+<div id="appearanceItemBrowser" aria-label="3D rendered appearance item browser"></div>
+<details id="headwearSilhouetteReview">
 <summary>HEADGEAR / SOLIDS & CAMOUFLAGE</summary>
 <p class="kit-help">Choose headgear, then select a solid-color square. Only realistic options for that particular item appear. The underlying cloth, composite or painted-steel finish stays intact. Approved camouflages are available below for compatible hats and covered helmets.</p>
-<div class="row" id="headwearReviewButtons">
-<button type="button" data-head-silhouette="bare">BARE</button>
-<button type="button" data-head-silhouette="patrol-cap">PATROL CAP</button>
-<button type="button" data-head-silhouette="boonie">BOONIE</button>
-<button type="button" data-head-silhouette="beanie">BEANIE</button>
-<button type="button" data-head-silhouette="ach">ACH / MICH</button>
-<button type="button" data-head-silhouette="high-cut">HIGH-CUT</button>
-<button type="button" data-head-silhouette="pasgt">PASGT</button>
-<button type="button" data-head-silhouette="soviet-steel">STEEL HELMET</button>
-</div>
-<output id="headwearReviewStatus" aria-live="polite">Choose a headwear silhouette to inspect. The camera focuses on the head automatically.</output>
+<output id="headwearReviewStatus" aria-live="polite">Select headgear in the 3D grid above to inspect its approved solid and camouflage finishes.</output>
 <div id="headwearSolidChooser" role="group" aria-label="Solid headgear colors" hidden>
 <div class="swatch-heading">SOLID COLOR · SELECT A SWATCH</div>
 <div id="headwearColorGrid" role="group" aria-label="Available colors for selected headgear"></div>
@@ -335,61 +360,6 @@ button{font-family:"Work Sans",system-ui,sans-serif;font-weight:600;letter-spaci
 </div>
 </div>
 </details>
-<div class="kit-grid">
-<label>MEDICAL<select data-kit-slot="medical"></select></label>
-<label>TACTICAL<select data-kit-slot="tactical"></select></label>
-<label>UTILITY<select data-kit-slot="utility"></select></label>
-<label>FACE STYLE<select id="faceTreatment">
-<option value="quiet">QUIET EYES</option>
-<option value="blank" selected>BLANK FACE</option>
-<option value="graphic">GRAPHIC EYES</option>
-</select></label>
-
-<label>MAGAZINE COUNT<select id="kitMagazines">
-<option value="0" selected>0 SPARE</option><option value="1" >1 SPARE</option><option value="2" >2 SPARE</option><option value="3">3 SPARE</option><option value="4" >4 SPARE</option><option value="5" >5 SPARE</option><option value="6" >6 SPARE</option>
-</select></label>
-<label>ISOLATE<select id="kitIsolation">
-<option value="all">FULL OPERATOR</option><option value="head">HEAD / FACE</option>
-<option value="armor">ARMOR</option><option value="carry">RIG / BELT / TOOLS</option>
-<option value="pack">BACKPACK</option><option value="clothes">CLOTHING</option>
-<option value="hands">HANDS / GLOVES</option>
-<option value="knees">KNEES</option><option value="feet">FEET / FOOTWEAR</option></select></label>
-</div><details id="wardrobePanel" open><summary>EQUIP INDIVIDUAL ITEMS</summary>
-<div class="row"><label>STYLE / ROLE RECIPE<select id="wardrobeRecipe"></select></label>
-<button id="wardrobeApply">APPLY LOOK</button></div>
-<p class="kit-help">One item per category. Selecting a helmet, carrier, garment or pack also sets its real equipment class automatically. Detailed models are being refined one category at a time.</p>
-<details id="outfitLibrary"><summary>SAVED LOOKS / SHARE</summary>
-<div class="row"><label>OUTFIT NAME<input id="outfitName" type="text" maxlength="44" placeholder="My outfit"></label>
-<button id="outfitSave">SAVE</button></div>
-<div class="row"><label>SAVED OUTFITS<select id="outfitSelect"></select></label>
-<button id="outfitLoad">LOAD</button><button id="outfitExport">EXPORT</button></div>
-<textarea id="outfitTransfer" rows="3" placeholder="Paste exported outfit JSON to import"
- style="width:100%;font-size:11px"></textarea>
-<div class="row"><button id="outfitImport">IMPORT FROM TEXT</button>
-<output id="outfitStatus" role="status"></output></div>
-<p class="kit-help">Outfits save locally on this device. Recipes do not grant campaign items.</p>
-</details>
-<div class="kit-grid"><label>HEADWEAR<select data-wardrobe-slot="headwear"></select></label>
-<label>FACE COVERING<select data-wardrobe-slot="facewear"></select></label>
-<label>EYEWEAR<select data-wardrobe-slot="eyewear"></select></label>
-<label>HEADSET<select data-wardrobe-slot="headset"></select></label>
-<label>UPPER GARMENT<select data-wardrobe-slot="top"></select></label>
-<label>PANTS<select data-wardrobe-slot="trousers"></select></label>
-<label>FOOTWEAR<select data-wardrobe-slot="footwear"></select></label>
-<label>ARMOR CUT<select data-wardrobe-slot="armorStyle"></select></label>
-<label>RIG STYLE<select data-wardrobe-slot="rigStyle"></select></label>
-<label>BELT STYLE<select data-wardrobe-slot="beltStyle"></select></label>
-<label>PACK STYLE<select data-wardrobe-slot="packStyle"></select></label>
-<label>GLOVES<select data-wardrobe-slot="gloves"></select></label>
-<label>KNEE PADS<select data-wardrobe-slot="knees"></select></label>
-<label>WRISTWEAR<select data-wardrobe-slot="wrist"></select></label></div>
-<details id="wardrobePatterns"><summary>COLOR / CAMOUFLAGE CHANNELS</summary>
-<div class="kit-grid"><label>TOP PATTERN<select data-wardrobe-pattern="top"></select></label>
-<label>TROUSERS PATTERN<select data-wardrobe-pattern="trousers"></select></label>
-<label>ARMOR PATTERN<select data-wardrobe-pattern="armor"></select></label>
-<label>GEAR PATTERN<select data-wardrobe-pattern="gear"></select></label>
-<label>PACK PATTERN<select data-wardrobe-pattern="pack"></select></label>
-<label>HEAD PATTERN<select data-wardrobe-pattern="head"></select></label></div></details>
 <div id="wardrobeFabricCamo" aria-label="Historically verified camouflage fabric picker"></div>
 <details id="wardrobeAccessories"><summary>EMPTY / COSMETIC ACCESSORY MOUNTS</summary>
 <p class="kit-help">Extra empty holsters and pouches are cosmetic-only; real ammunition, medical items and tools use the mission equipment ledger.</p>

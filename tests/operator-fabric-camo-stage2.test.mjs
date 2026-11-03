@@ -8,7 +8,7 @@ import {HEADWEAR_CAMO_ELIGIBILITY} from '../src/operator-headwear-camo.ts';
 import {FABRIC_CAMO_POLICY,fabricCamoCompatible,fabricCamoChoices,
  FABRIC_CAMO_CHANNELS} from '../src/operator-fabric-camo-policy.ts';
 import {initialWardrobe,readWardrobe,matchWardrobeUniformCamo,
- setWardrobeFabricCamo,rerollWardrobeFabricCamo,setWardrobePattern,
+ setWardrobeFabricCamo,rerollWardrobeFabricCamo,
  resolvedWardrobe} from '../src/operator-wardrobe-data.ts';
 import {initialEquipmentLoadout} from '../src/equipment-loadouts.ts';
 import {wardrobeFabricCamoTexture,mapGarmentBoxUV}
@@ -41,7 +41,7 @@ test('authentic policy has exactly the frozen 30 patterns and five independently
   {...outfit,packStyle:'sling-bag'}),false);
  assert.equal(fabricCamoCompatible('woodland-marpat','pack',
   {...outfit,packStyle:'rucksack'}),true);
- assert.equal(fabricCamoCompatible('alpenflage','top',outfit),true);
+ assert.equal(fabricCamoCompatible('alpenflage','top',outfit),false);
  assert.equal(fabricCamoCompatible('alpenflage','top',
   {...outfit,top:'combat-shirt'}),false);
  assert.equal(fabricCamoCompatible('east-german-strichtarn','gear',
@@ -49,7 +49,7 @@ test('authentic policy has exactly the frozen 30 patterns and five independently
  assert.equal(fabricCamoCompatible('east-german-strichtarn','gear',
   {...outfit,rigStyle:'field-webbing'}),true);
  assert.equal(fabricCamoCompatible('indian-digital-2022','armor',outfit),false);
- assert.equal(fabricCamoCompatible('splittertarn-31','top',outfit),true);
+ assert.equal(fabricCamoCompatible('splittertarn-31','top',outfit),false);
  assert.equal(fabricCamoCompatible('splittertarn-31','top',
   {...outfit,top:'acu-shirt'}),false);
  assert.ok(fabricCamoChoices('top',outfit).includes('m81-woodland'));
@@ -75,7 +75,7 @@ test('authored fabric cuts use immutable approved pixels and physically scaled n
  geometry.dispose();
 });
 test('separately seeded garment rolls survive wardrobe v1, Lab looks and Quick Play reset',()=>{
- let look={...initialWardrobe(),palette:5};
+ let look=initialWardrobe();
  look=setWardrobeFabricCamo(look,'top','m81-woodland',outfit);
  look=setWardrobeFabricCamo(look,'trousers','m81-woodland',outfit);
  assert.equal(look.fabricCamoRoll.top,0);
@@ -84,7 +84,7 @@ test('separately seeded garment rolls survive wardrobe v1, Lab looks and Quick P
  assert.equal(look.fabricCamoRoll.top,1);
  assert.equal(look.fabricCamoRoll.trousers,0);
  assert.equal(readWardrobe(JSON.parse(JSON.stringify(look))).fabricCamoRoll.top,1);
- assert.equal(readWardrobe(JSON.parse(JSON.stringify(look))).palette,5);
+ assert.ok(!('palette' in readWardrobe(JSON.parse(JSON.stringify(look)))));
  const stored=makeWardrobeLook('Woodland',kit,look);
  assert.equal(importWardrobeLook(exportWardrobeLook(stored)).wardrobe.fabricCamo.top,'m81-woodland');
  let roster=initialRoster();
@@ -95,14 +95,11 @@ test('separately seeded garment rolls survive wardrobe v1, Lab looks and Quick P
  assert.ok(fresh.members[0].reserve>0);
  const roundtrip=readRoster(serializeQuickPlayCosmetics(fresh));
  assert.equal(roundtrip.members[0].wardrobe.fabricCamo.trousers,'m81-woodland');
- const leg=setWardrobePattern(look,'top','flannel');
- assert.equal(leg.fabricCamo.top,undefined,'legacy choice clears only top override');
- assert.equal(leg.fabricCamo.trousers,'m81-woodland');
- assert.equal(leg.patterns.top,'flannel');
+ assert.ok(!('patterns' in look),'legacy texture channels are deleted');
  assert.equal(setWardrobeFabricCamo(look,'armor','mitchell-leaf',outfit),look);
- const matching=matchWardrobeUniformCamo(initialWardrobe(),outfit,'flecktarn');
- assert.equal(matching.fabricCamo.top,'flecktarn');
- assert.equal(matching.fabricCamo.trousers,'flecktarn');
+ const matching=matchWardrobeUniformCamo(initialWardrobe(),outfit,'m81-woodland');
+ assert.equal(matching.fabricCamo.top,'m81-woodland');
+ assert.equal(matching.fabricCamo.trousers,'m81-woodland');
 });
 test('actual operator renders cloth/armor/gear/pack in selected authored maps, not rubber or headgear',()=>{
  const rig=createOperatorRig('rook','blue');

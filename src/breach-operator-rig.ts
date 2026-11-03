@@ -36,7 +36,6 @@ import {headwearSolidHex} from './operator-headwear-colors.ts';
 import {resolvedHeadwearCamo,headwearCamoPlacement} from './operator-headwear-camo.ts';
 import {headwearCamoTexture,headwearDetailTexture} from './operator-headwear-materials.ts';
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
-import {wardrobePatternTexture} from './operator-wardrobe-patterns.ts';
 import {garmentBoxUV,wardrobeFabricCamoTexture} from './operator-fabric-camo-materials.ts';
 import {fabricCamoCompatible,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {resolveWardrobeDisplayMount} from './operator-wardrobe-mounts.ts';
@@ -483,7 +482,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.colors.set(r.headClothMaterial,
     (r.colors.get(r.clothMaterial)??r.baseCloth).clone());
   for(const [channel,material] of fabricChannels){
-   const pattern=p.wardrobe?.patterns[channel];
    const authored=channel==='head'?null:
     p.wardrobe?.fabricCamo?.[channel as FabricCamoChannel];
    const print=authored&&channel!=='head'&&
@@ -493,11 +491,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     wardrobeFabricCamoTexture(print,channel as FabricCamoChannel,
      headwearCamoPlacement(r.camoIdentity,'garment:'+channel,print,
       p.wardrobe?.fabricCamoRoll?.[channel as FabricCamoChannel]??0)):
-    pattern&&pattern!=='solid'?
-     wardrobePatternTexture(pattern,p.wardrobe?.palette??0):
-     operatorPixelTextures.get('fabric');
+    operatorPixelTextures.get('fabric');
    if(material.map!==map){material.map=map;material.needsUpdate=true;}
-   if(print||(pattern&&pattern!=='solid'))
+   if(print)
     r.colors.set(material,new THREE.Color(0xffffff));
   }
   // One authoritative color ledger owns *every* material before the final

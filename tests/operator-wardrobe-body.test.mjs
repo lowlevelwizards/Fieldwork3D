@@ -10,15 +10,15 @@ const base={x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
 test('wardrobe choices switch authored garment details, knee pads and watch',()=>{
  const rig=createOperatorRig('rook','blue');
  let wardrobe=initialWardrobe();
- wardrobe=setWardrobeStyle(wardrobe,'top','flannel');
- wardrobe=setWardrobeStyle(wardrobe,'trousers','jeans');
+ wardrobe=setWardrobeStyle(wardrobe,'top','bdu-shirt');
+ wardrobe=setWardrobeStyle(wardrobe,'trousers','field-trousers');
  wardrobe=setWardrobeStyle(wardrobe,'knees','knee-hard');
  wardrobe=setWardrobeStyle(wardrobe,'wrist','wrist-nav');
  poseOperator(rig,{...base,wardrobe},0);
  const visual=rig.visualKit.wardrobeBody;
- assert.equal(visual.tops['flannel'].visible,true);
+ assert.equal(rig.visualKit.fieldBlouses['bdu-shirt'].torso.visible,true);
  assert.equal(visual.tops['acu-shirt'].visible,false);
- assert.equal(visual.trousers['jeans'].every(x=>x.visible),true);
+ assert.equal(visual.trousers['field-trousers'].every(x=>x.visible),true);
  assert.equal(visual.knees['knee-hard'].every(x=>x.visible),true);
  assert.equal(visual.wrist['wrist-nav'].visible,true);
  assert.equal(rig.visualKit.jacket.visible,false);

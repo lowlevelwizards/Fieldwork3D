@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {bareLabEquipment} from '../src/operator-lab-baseline.ts';
 import {initialWardrobe,resolvedWardrobe} from '../src/operator-wardrobe-data.ts';
 import {selectWardrobeItem} from '../src/operator-wardrobe-unified.ts';
-test('one headgear selection equips and displays that exact class',()=>{
+test('one real headgear selection equips and displays its exact class',()=>{
  const bare=bareLabEquipment();
  let result=selectWardrobeItem(bare,initialWardrobe(),'headwear','high-cut-rails');
  assert.equal(result.kit.slots.head,'head-helmet');
@@ -14,16 +14,17 @@ test('one headgear selection equips and displays that exact class',()=>{
  result=selectWardrobeItem(result.kit,result.wardrobe,'headwear','bare');
  assert.equal(result.kit.slots.head,'head-none');
 });
-test('clothing, protection, carry and gloves are chosen with one control',()=>{
+test('clothing, equipment and gloves are selected with one item card',()=>{
  let kit=bareLabEquipment(),wardrobe=initialWardrobe();
  const choices=[['armorStyle','plate-jpc','armor','armor-carrier'],
   ['rigStyle','full-chest','rig','rig-full'],
   ['beltStyle','battle-belt','belt','belt-standard'],
   ['packStyle','medic-pack','backpack','backpack-field'],
-  ['top','combat-shirt','top','top-uniform'],
-  ['trousers','jeans','legs','legs-light'],
-  ['footwear','sneakers','feet','feet-light'],
-  ['gloves','gloves-heavy','hands','hands-gloves'],
+  ['top','bdu-shirt','top','top-uniform'],
+  ['top','acu-shirt','top','top-uniform'],
+  ['trousers','field-trousers','legs','legs-field'],
+  ['footwear','field-boots','feet','feet-boots'],
+  ['gloves','gloves-field','hands','hands-gloves'],
   ['armorStyle','armor-bare','armor','armor-none'],
   ['beltStyle','no-belt','belt','belt-none']];
  for(const [category,id,slot,value] of choices){
@@ -33,4 +34,5 @@ test('clothing, protection, carry and gloves are chosen with one control',()=>{
  }
  const result=selectWardrobeItem(kit,wardrobe,'armorStyle','does-not-exist');
  assert.equal(result.kit,kit);
+ assert.equal(selectWardrobeItem(kit,wardrobe,'top','t-shirt').kit,kit);
 });
