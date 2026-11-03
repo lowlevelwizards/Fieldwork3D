@@ -46,6 +46,8 @@ export type NewUpperGarments={
  /** Gorka's heavy base cloth is separate from patterned wear panels. */
  mountainCanvas:THREE.MeshStandardMaterial;
  mountainPanel:THREE.MeshStandardMaterial;
+ mountainLegCanvas:THREE.MeshStandardMaterial;
+ mountainLegPanel:THREE.MeshStandardMaterial;
 };
 const group=(parent:THREE.Object3D,name:string)=>{
  const g=new THREE.Group();g.name=name;g.visible=false;parent.add(g);return g;
@@ -114,8 +116,9 @@ function foldedHood(g:THREE.Group,body:THREE.Material,
 export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
  cloth:THREE.MeshStandardMaterial,trim:THREE.MeshStandardMaterial):NewUpperGarments{
  const combatKnit=cloth.clone(),mountainCanvas=cloth.clone(),
-  mountainPanel=cloth.clone();
- for(const m of [combatKnit,mountainCanvas,mountainPanel])
+  mountainPanel=cloth.clone(),mountainLegCanvas=cloth.clone(),
+  mountainLegPanel=cloth.clone();
+ for(const m of [combatKnit,mountainCanvas,mountainPanel,mountainLegCanvas,mountainLegPanel])
   m.userData.fieldworkFabric=true;
  const cuts={} as Record<NewUpperCut,NewUpperPrototype>;
  for(const cut of NEW_UPPER_CUTS){
@@ -200,7 +203,7 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
   consolidateVisualGroup(torso);
   cuts[cut]={torso,upper,lower,cuffedLower,rolledUpper};
  }
- return {cuts,combatKnit,mountainCanvas,mountainPanel};
+ return {cuts,combatKnit,mountainCanvas,mountainPanel,mountainLegCanvas,mountainLegPanel};
 }
 export function updateNewUpperGarments(
  models:NewUpperGarments,top:string,sleeve:SleeveState){
