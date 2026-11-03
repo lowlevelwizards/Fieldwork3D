@@ -73,3 +73,10 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 @media(max-height:600px) and (max-width:739px){
  .studio-sheet{flex-basis:49%}.studio-stage-actions button{min-height:30px;padding:3px 6px}
 }
+/* Review-only gear visibility does not change roster equipment. */
+#studioGearToggle{background:#d2bc8e;color:#24332b;font-weight:800;
+ border-color:#eadbb0;white-space:nowrap}
+#studioGearToggle[aria-pressed="false"]{background:#253a33dd;
+ color:#e9efdf;border-color:#739085}
+@media(max-width:420px){.studio-stage-actions{gap:3px;right:5px}
+ .studio-stage-actions button{font-size:10px;padding:5px 7px}}
