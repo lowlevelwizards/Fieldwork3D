@@ -3,7 +3,6 @@
  * family; the true hitbox, inventory and IK contacts are untouched.
  */
 import * as THREE from 'three';
-import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {wardrobeItemsForSlot} from './operator-wardrobe-data.ts';
