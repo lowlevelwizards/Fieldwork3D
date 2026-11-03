@@ -435,9 +435,9 @@ body.replaying .foot,body.replaying .guidance,body.replaying .feed{display:none!
  --ui-text:var(--fw-text);--ui-muted:var(--fw-text-muted);--ui-active:var(--fw-sage);
  --ui-action:var(--fw-brass);--ui-danger:var(--fw-warning);
  --ui-line:var(--fw-panel-border);--ui-radius:var(--fw-radius-sm);
- --ui-font:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
- --ui-display:"Barlow Condensed","Arial Narrow",sans-serif;
- --ui-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
+ --ui-font:var(--fw-font-menu);
+ --ui-display:var(--fw-font-display);
+ --ui-mono:var(--fw-font-data);
  color:var(--ui-text);font:13px/1.35 var(--ui-font);
 }
 button{font:500 13px/1.15 var(--ui-font);border-radius:var(--ui-radius);
@@ -588,8 +588,8 @@ button:disabled{opacity:.48;cursor:default}
 }
 
 /* UI 2.0 / 01: quieter field-instrument typography */
-:root{--ui-display:"Archivo","IBM Plex Sans",system-ui,sans-serif;
- --ui-font:"IBM Plex Sans",system-ui,sans-serif}
+:root{--ui-display:var(--fw-font-display);
+ --ui-font:var(--fw-font-menu)}
 .top .ident strong{font:600 15px/1.2 var(--ui-display);letter-spacing:.025em}
 .mode strong{font:600 11px/1.2 var(--ui-display);letter-spacing:.075em}
 .bar .unit strong{font:600 12px/1.1 var(--ui-display);letter-spacing:.025em}
@@ -735,7 +735,7 @@ body.replaying #tacticalFeedback{display:none}
 @media(prefers-reduced-motion:reduce){.quick-states button{transition:none}}
 
 /* UI 3 / 03 — distinctive instrument lettering and decisive phase response */
-:root{--ui-display:"Chakra Petch","IBM Plex Sans",system-ui,sans-serif}
+:root{--ui-display:var(--fw-font-display)}
 .ident strong{font:600 16px/1.15 var(--ui-display);letter-spacing:.018em}
 .mode strong{font:600 12px/1.15 var(--ui-display);letter-spacing:.09em}
 .bar .unit strong{font:600 13px/1.1 var(--ui-display);letter-spacing:.045em}
@@ -1258,3 +1258,73 @@ body[data-hud-phase="replay"] .guidance{display:none!important}
 .replay-actions button{display:flex;align-items:center;justify-content:center;
   flex-direction:column;gap:2px}
 .replay-actions #replayPlay .ui-icon{width:24px;height:24px}
+/* FIELDWORK TYPOGRAPHY / approved two-family system.
+ * Saira Condensed: identity, menus and tabular readouts.
+ * Work Sans: tactical actions and readable human narrative.
+ * Keep the existing 40–46px touch targets and compact palette geometry. */
+:root{
+ --ui-display:var(--fw-font-display);
+ --ui-font:var(--fw-font-menu);
+ --ui-mono:var(--fw-font-data);
+}
+html,body{font-family:var(--fw-font-menu)}
+/* Display hierarchy: condensed but generously sized to offset narrow glyphs. */
+.top .ident strong{font-family:var(--fw-font-display);font-weight:800;letter-spacing:.02em}
+.mode strong,.bar .unit strong,.replay-head strong,
+.fw-mission-dossier #briefingTitle,.debrief #debriefTitle,
+.site-settings-heading strong,.fw-context-heading,
+.fw-weapon-chooser-title{font-family:var(--fw-font-display);letter-spacing:.025em}
+.mode strong{font-size:16px}
+.bar .unit strong{font-size:16px}
+.fw-context-heading{font-size:15px;letter-spacing:.025em}
+/* Menu content, navigation and labels: Saira reads as a designed field instrument. */
+.site-settings,.site-settings button,.site-settings a,.site-settings select,
+.site-settings-group h3,.site-settings-tools summary,.orders:not(.compact) h3,
+.fw-dossier-eyebrow,.fw-dossier-block h3,.fw-after-action-stats span,
+.fw-after-action-detail summary,.replay-extra button,#replayMore,
+.fw-site-choice-option strong,.fw-choice-label,.fw-choice-select{
+ font-family:var(--fw-font-menu);
+}
+.site-settings button,.site-settings a{font-size:15px;font-weight:600;letter-spacing:.015em}
+.site-settings-group h3,.site-settings-tools summary{font-size:14px;letter-spacing:.05em}
+/* Immediate commands always use the friendly, legible Work Sans shapes. */
+.context-tools button,.context-tools .command-label,
+.quick-states button,.quick-states .command-label,
+.orders button,.bar .actions button,.bar .actions #play,
+.bar .actions #play .go-label,.replay-actions button,
+#cancelTarget,.debrief>button,.briefing-panel>button,
+.fw-weapon-chooser button,.fw-button,.fw-icon-button,.fw-segment{
+ font-family:var(--fw-font-action);
+ letter-spacing:0;
+}
+.context-primary .command-label{font-size:12px;font-weight:600}
+.context-state .command-label,.quick-states .command-label{font-weight:600}
+.bar .actions #play .go-label{font-weight:700}
+/* Human text and operational narratives are distinct from UI labels. */
+.guidance,.feed,.fw-notice-body,.fw-notice-content,.fw-notice-recovery,
+.fw-mission-dossier .fw-dossier-block p,.briefing-panel p,
+.debrief p,.fw-after-action-detail p,.fw-after-action-objective,
+.replay-event,.site-settings .fw-site-choice-option small,
+.fw-confirm-dialog p{font-family:var(--fw-font-narrative)}
+/* Condensed numerals stay stationary while the display clock counts. */
+.mode output,.bar .unit em,.bar .unit-code,
+#replayClock,.replay-head output,.quick-scope,
+.fw-after-action-stats strong,.replay-head output{
+ font-family:var(--fw-font-data);
+ font-variant-numeric:tabular-nums;
+ font-feature-settings:"tnum" 1;
+ letter-spacing:.02em;
+}
+.mode output{font-size:20px}
+.bar .unit em{font-size:12px}
+.bar .unit-code{font-size:11px}
+@media(max-width:600px){
+ .top .ident strong{font-size:17px}
+ .mode strong{font-size:14px}
+ .bar .unit strong{font-size:14px}
+ .bar .unit em{font-size:11px}
+ .fw-context-heading{font-size:13px}
+ .context-primary .command-label{font-size:11px}
+ .quick-states .command-label{font-size:10px}
+ .site-settings button,.site-settings a{font-size:14px}
+}
