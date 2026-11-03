@@ -59,9 +59,11 @@ export class OperatorAppearanceGrid{
  private kit:EquipmentLoadout=bareLabEquipment();
  private wardrobe:WardrobeOptions=initialWardrobe();
  private readonly onSelect:OnSelect;
+ private readonly canEquip?: (slot:WardrobeSlot,id:string)=>boolean;
  private readonly renderer:THREE.WebGLRenderer;
- constructor(root:HTMLElement,renderer:THREE.WebGLRenderer,onSelect:OnSelect){
-  this.renderer=renderer;this.onSelect=onSelect;
+ constructor(root:HTMLElement,renderer:THREE.WebGLRenderer,onSelect:OnSelect,
+  canEquip?: (slot:WardrobeSlot,id:string)=>boolean){
+  this.renderer=renderer;this.onSelect=onSelect;this.canEquip=canEquip;
   this.scene.background=new THREE.Color(0x23352e);
   this.scene.add(new THREE.AmbientLight(0xffffff,1.5));
   const key=new THREE.DirectionalLight(0xffeed4,2.0);
@@ -115,7 +117,8 @@ export class OperatorAppearanceGrid{
    const button=document.createElement('button');button.type='button';
    button.className='appearance-item-card';
    const active=chosen===item.id;
-   const available=appearanceItemAvailable(this.kit,this.wardrobe,item.slot,item.id);
+   const available=this.canEquip?this.canEquip(item.slot,item.id):
+    appearanceItemAvailable(this.kit,this.wardrobe,item.slot,item.id);
    button.dataset.appearanceItem=item.id;
    button.dataset.appearanceSlot=item.slot;
    button.setAttribute('aria-pressed',String(active));

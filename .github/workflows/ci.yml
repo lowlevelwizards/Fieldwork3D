@@ -201,6 +201,9 @@ jobs:
       - name: Coupled door body pressure, hinge stops and real movement regressions
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/coupled-door-contact-') }}
         run: node --experimental-strip-types --test tests/coupled-door-contact.test.mjs tests/coupled-door-session.test.mjs tests/doorway-right-of-way-session.test.mjs tests/physicality-08-door-contact.test.mjs tests/lw-door-contact.test.mjs tests/physicality-door-aware-routing.test.mjs tests/physicality-vestibules.test.mjs
+      - name: Focused Operator Studio, solids and garment regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'operator/studio-') }}
+        run: node --experimental-strip-types --test tests/operator-studio-stage5.test.mjs tests/operator-outerwear-stage4.test.mjs tests/operator-wardrobe-persistence.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}

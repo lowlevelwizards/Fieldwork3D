@@ -5,6 +5,8 @@
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {wardrobeMount} from './operator-wardrobe-mounts.ts';
 import {isGarmentColorway} from './operator-upper-colorways.ts';
+import {isGarmentSolidId,FABRIC_SOLID_CHOICES,type GarmentSolidId}
+ from './operator-garment-color-policy.ts';
 import {initialWardrobeAccessories,readWardrobeAccessories,
  type WardrobeAccessoryConfiguration} from './operator-wardrobe-accessories.ts';
 import {isHeadwearSolidColorId,type HeadwearSolidColorId} from './operator-headwear-colors.ts';
@@ -138,6 +140,12 @@ export type WardrobeOptions={
  fabricCamo?:Partial<Record<FabricCamoChannel,HeadwearCamoId>>;
  /** Saved individual fabric-cut seeds; never regenerated during animation. */
  fabricCamoRoll?:Partial<Record<FabricCamoChannel,number>>;
+ /** Contextual solid fabric per physical channel; hidden when that channel
+  * has an active approved camouflage, but retained for later restoring. */
+ fabricSolids?:Partial<Record<FabricCamoChannel,GarmentSolidId>>;
+ /** Optional manual knitted/rolled cuff and combat-shirt body colors. */
+ cuffSolid?:GarmentSolidId;
+ knitSolid?:GarmentSolidId;
  sleeveState:SleeveState;trouserHem:TrouserHem;
  /** Contextual new-garment materials, never the abolished global palette. */
  topColorway:string;
@@ -183,6 +191,15 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
     (result.fabricCamoRoll??={})[channel]=roll;
   }
  }
+ if(v.fabricSolids&&typeof v.fabricSolids==='object'&&!Array.isArray(v.fabricSolids)){
+  for(const channel of FABRIC_CAMO_CHANNELS){
+   const color=v.fabricSolids[channel];
+   if(isGarmentSolidId(color)&&FABRIC_SOLID_CHOICES[channel].includes(color))
+    (result.fabricSolids??={})[channel]=color;
+  }
+ }
+ if(isGarmentSolidId(v.cuffSolid))result.cuffSolid=v.cuffSolid;
+ if(isGarmentSolidId(v.knitSolid))result.knitSolid=v.knitSolid;
  if(isHeadwearSolidColorId(v.headwearColor))result.headwearColor=v.headwearColor;
  if(isHeadwearCamoId(v.headwearCamo)&&v.headwearCamo!=='splittertarn-31')result.headwearCamo=v.headwearCamo;
  if(Number.isInteger(v.headwearCamoRoll)&&v.headwearCamoRoll!>=0&&v.headwearCamoRoll!<4096)
@@ -207,6 +224,15 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
 }
 export const setWardrobeStyle=(wardrobe:WardrobeOptions,slot:WardrobeSlot,id:string)=>
  wardrobeItem(slot,id)?{...wardrobe,styles:{...wardrobe.styles,[slot]:id}}:wardrobe;
+/** Set solid fabric and remove only that channel's active print. Do not
+ * erase the prior material selection in any other channel. */
+export function setWardrobeFabricSolid(wardrobe:WardrobeOptions,
+ channel:FabricCamoChannel,id:GarmentSolidId):WardrobeOptions{
+ if(!FABRIC_SOLID_CHOICES[channel].includes(id))return wardrobe;
+ return {...wardrobe,
+  fabricSolids:{...wardrobe.fabricSolids,[channel]:id},
+  fabricCamo:{...wardrobe.fabricCamo,[channel]:undefined}};
+}
 export function setWardrobeFabricCamo(wardrobe:WardrobeOptions,
  channel:FabricCamoChannel,id:HeadwearCamoId|null,
  outfit:CamoOutfit):WardrobeOptions{
