@@ -94,6 +94,23 @@ function clothShell(g:THREE.Group,material:THREE.Material,
  const mesh=new THREE.Mesh(garmentLegLoft(rings,length),material);
  mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);
 }
+/** Visible wrap around the hem at the correct local ankle point.
+ * Ring remains cosmetic and its UV repeats the approved material pixels at
+ * the same world density as the actual lower-leg garment shell. */
+function hemFinishBand(g:THREE.Group,material:THREE.Material,ring:Ring){
+ const rx=ring[1]+.13,rz=ring[2]+.13;
+ const geometry=new THREE.CylinderGeometry(rx,rx,.105,10,1,true);
+ geometry.scale(1,1,rz/rx);
+ geometry.translate(0,.517,0);
+ const uv=geometry.getAttribute('uv') as THREE.BufferAttribute;
+ const averageRadius=(rx+rz)*.5;
+ for(let i=0;i<uv.count;i++)
+  uv.setXY(i,uv.getX(i)*2*Math.PI*averageRadius/TILE_WORLD_SIZE,
+   uv.getY(i)*.105*LEG_LOWER_LENGTH/TILE_WORLD_SIZE);
+ uv.needsUpdate=true;
+ const mesh=new THREE.Mesh(geometry,material);
+ mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);
+}
 export function createFieldTrouserPrototypes(legs:readonly Limb[],
  cloth:THREE.Material,trim:THREE.Material):FieldTrouserPrototypes{
  const results={} as FieldTrouserPrototypes;
@@ -130,14 +147,9 @@ export function createFieldTrouserPrototypes(legs:readonly Limb[],
      part(lower,cloth,.03,-.08,side*2.89,3.30,.27,.85);
      part(lower,cloth,.05,.055,side*3.00,3.56,.085,1.05,side*.12);
     }
-    if(hem==='bloused'){
-     // The gathering band is higher up on the combat boot rather than
-     // stretching the trouser bone or relocating the planted shoe.
-     part(lower,trim,0,.486,0,3.55,.06,3.63);
-    }else{
-     // Wide straight hem hides part of the boot shaft without pegging.
-     part(lower,cloth,0,.497,0,5.65,.085,5.71);
-    }
+    // The bloused outline narrows at the boot collar; the straight hem
+    // stays wider and overlaps its shaft. Both have a visible textile fold.
+    hemFinishBand(lower,cloth,p[hem][p[hem].length-1]);
     consolidateVisualGroup(lower);
     (hem==='bloused'?bloused:unbloused).push(lower);
    }
