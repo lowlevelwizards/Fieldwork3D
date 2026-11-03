@@ -121,8 +121,9 @@ export function fittedArmorSurfaces(style:string,top:string,
  const clearance=.13;
  const front=isConcealed?baseline.front:Math.max(
   baseline.front,chest.front+thickness+clearance);
+ const rearBaseline=baseline.front-(style==='plate-heavy'?.30:0);
  const back=isConcealed?-baseline.front:-Math.max(
-  baseline.front,-chest.back+thickness+clearance);
+  rearBaseline,-chest.back+thickness+clearance);
  // Distinct fit tiers describe outboard material thickness and/or plates,
  // NOT huge arbitrary margins that leave air between fabric and vest.
  const sideAllowance=style==='plate-slick'?.29:
