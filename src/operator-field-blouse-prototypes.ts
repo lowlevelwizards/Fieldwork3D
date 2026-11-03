@@ -115,26 +115,6 @@ function box(parent:THREE.Object3D,m:THREE.Material,
  mesh.castShadow=true;mesh.receiveShadow=true;
  parent.add(mesh);return mesh;
 }
-function sleeve(parent:THREE.Group,cloth:THREE.Material,
- topRadius:number,bottomRadius:number,nominalLength:number,
- height=.96,offsetY=-.02){
- // Segment bone.scale.y is actual solved IK length, so a 1.07 high
- // sleeve follows it without ever changing its foot/hand transforms.
- const g=new THREE.CylinderGeometry(topRadius,bottomRadius,height,8,1,false);
- if(offsetY)g.translate(0,offsetY,0);
- const uv=g.getAttribute('uv') as THREE.BufferAttribute;
- const circumference=2*Math.PI*(topRadius+bottomRadius)*.5;
- for(let i=0;i<uv.count;i++){
-  const u=uv.getX(i),v=uv.getY(i);
-  uv.setXY(i,u*circumference/TILE_WORLD_SIZE,
-   v*nominalLength*height/TILE_WORLD_SIZE);
- }
- uv.needsUpdate=true;
- const mesh=new THREE.Mesh(g,cloth);
- mesh.castShadow=true;mesh.receiveShadow=true;
- parent.add(mesh);
- return mesh;
-}
 function seamBand(parent:THREE.Group,cloth:THREE.Material,
  radius:number,y:number,height:number){
  // One inset-free rectangular fold rather than an oversize ring.
@@ -150,7 +130,7 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
   color:0x90866d,roughness:1,metalness:0
  });
  for(const cut of FIELD_BLOUSE_CUTS){
-  const historic=cut==='bdu-shirt',profile=BLOUSE_CUT_PROFILE[cut];
+  const historic=cut==='bdu-shirt';
   // Exaggerated primary masses remain cosmetic; shoulder sockets and IK stay fixed.
   const torso=group(chest,'field-blouse:'+cut);
   // The base torso is already a complete clothed box. Garments contribute
