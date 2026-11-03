@@ -508,7 +508,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   for(const leg of r.feet){
    const hem=p.wardrobe?.trouserHem??'bloused';
    const shortHem=hem==='bloused'||hem==='cuffed';
-   setSegmentCut(leg.lower,clothing.trousers==='base-shorts'?'full':hem);
+   setSegmentCut(leg.lower,clothing.trousers==='base-shorts'||hem==='unbloused'?'full':hem);
    const shaft=leg.lower.userData.garmentBootShaft as THREE.Mesh|undefined;
    if(shaft)shaft.visible=shortHem&&clothing.footwear!=='bare-feet';
    leg.lower.material=clothing.trousers==='base-shorts'?
