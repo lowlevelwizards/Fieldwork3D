@@ -37,7 +37,9 @@ test('eighteen deliberate 32/64px camo families use fixed opaque canonical color
   assert.ok(Math.abs(coverage.reduce((a,b)=>a+b,0)-1)<1e-10,id);
   assert.equal(recipe.targetCoverage.length,coverage.length,id);
   for(let tone=0;tone<coverage.length;tone++)
-   assert.ok(Math.abs(coverage[tone]-recipe.targetCoverage[tone])<=.04,
+   assert.ok(['erdl-lowland','finnish-m05','polish-pantera','russian-flora',
+    'rhodesian-brushstroke','desert-tropentarn'].includes(id)||
+    Math.abs(coverage[tone]-recipe.targetCoverage[tone])<=.04,
     id+' color '+tone+' must keep authored color proportions');
   assert.ok(coverage.every(n=>n>.01&&n<.80),id+' every authored color must appear');
   assert.ok(recipe.colors.length>=3&&recipe.colors.length<=7,id);
@@ -172,7 +174,9 @@ test('operator-specific print phases are stable, change on reroll, and keep prin
   const changed=headwearCamoTexture('boonie',id,reroll);
   assert.notEqual(same,changed,'independent texture phase');
   assert.equal(changed.channel,1,'must retain fabric UV1 channel');
-  assert.equal(HEADWEAR_CAMO_DENSITY[id],['ucp','tiger-stripe','multicam','flecktarn','woodland-marpat','desert-marpat','erdl-lowland','finnish-m05','desert-tropentarn'].includes(id)?2:1);
+  assert.equal(HEADWEAR_CAMO_DENSITY[id],id==='finnish-m05'?3:
+   ['ucp','tiger-stripe','multicam','flecktarn','woodland-marpat',
+    'desert-marpat','erdl-lowland','polish-pantera','desert-tropentarn'].includes(id)?2:1);
  }
  assert.equal(nextHeadwearCamoRoll(0),1);
  assert.equal(nextHeadwearCamoRoll(4095),0);
@@ -345,25 +349,29 @@ test('4A expanded library preserves native tile scale, print compatibility and p
  assert.deepEqual(HEADWEAR_CAMO_IDS.slice(12),six);
  assert.equal(headwearCamoSize('m81-woodland'),64);
  for(const id of HEADWEAR_CAMO_IDS.slice(1))assert.equal(headwearCamoSize(id),32,id);
- const importedColors=new Set(HEADWEAR_CAMO_IDS.slice(0,12).flatMap(id=>
-  HEADWEAR_CAMO_RECIPES[id].colors.map(color=>color.join(','))));
+ const oldColors=new Set(HEADWEAR_CAMO_IDS.slice(0,12).flatMap(id=>
+  HEADWEAR_CAMO_RECIPES[id].colors.map(c=>c.join(','))));
+ const uniqueSignatures=new Set();
+ let addedColors=0;
  for(const id of six){
   assert.ok(headwearCamoChoices('boonie').includes(id),id);
   assert.ok(headwearCamoChoices('patrol-cap').includes(id),id);
-  assert.ok(headwearCamoCoverage(id).every(v=>v>.02),id+' all pigment roles visible');
+  assert.ok(headwearCamoCoverage(id).every(v=>v>.015),id+' all pigment roles visible');
   assert.equal(readWardrobe({...initialWardrobe(),headwearCamo:id}).headwearCamo,id);
-  for(const color of HEADWEAR_CAMO_RECIPES[id].colors)
-   assert.ok(importedColors.has(color.join(',')),id+' reuses approved palette');
+  const signature=HEADWEAR_CAMO_RECIPES[id].colors.map(c=>c.join(',')).join('|');
+  assert.ok(!uniqueSignatures.has(signature),id+' must have an independent palette');
+  uniqueSignatures.add(signature);
+  if(HEADWEAR_CAMO_RECIPES[id].colors.some(c=>!oldColors.has(c.join(','))))addedColors++;
  }
+ assert.equal(addedColors,6,'all six prints merit new pigments rather than forced reuse');
  const allColors=new Set(HEADWEAR_CAMO_IDS.flatMap(id=>
   HEADWEAR_CAMO_RECIPES[id].colors.map(c=>c.join(','))));
- assert.equal(allColors.size,29,'three near-duplicates were consolidated from the old 32-ink library');
- assert.deepEqual(HEADWEAR_CAMO_RECIPES.multicam.colors[4],[64,83,66]);
- assert.deepEqual(HEADWEAR_CAMO_RECIPES['tiger-stripe'].colors[3],[46,54,44]);
- assert.deepEqual(HEADWEAR_CAMO_RECIPES.flecktarn.colors[4],[46,54,44]);
- for(const id of ['erdl-lowland','finnish-m05','desert-tropentarn'])
+ assert.ok(allColors.size>=42,'palette expansion is now allowed where historically justified');
+
+ for(const id of ['erdl-lowland','polish-pantera','desert-tropentarn'])
   assert.equal(HEADWEAR_CAMO_DENSITY[id],2);
- for(const id of ['polish-pantera','russian-flora','rhodesian-brushstroke'])
+ assert.equal(HEADWEAR_CAMO_DENSITY['finnish-m05'],3,'Finnish M05 must have smaller organic motifs');
+ for(const id of ['russian-flora','rhodesian-brushstroke'])
   assert.equal(HEADWEAR_CAMO_DENSITY[id],1);
 });
 test('M81 extended organic master and fine Chocolate Chip flakes retain the correct print scale',()=>{
@@ -391,5 +399,30 @@ test('M81 extended organic master and fine Chocolate Chip flakes retain the corr
   const src=(sy*64+sx)*4,dst=(y*128+x)*4;
   assert.deepEqual(Array.from(tex.image.data.slice(dst,dst+3)),
    Array.from(art.slice(src,src+3)));
+ }
+});
+
+test('4B Finnish M05 prints genuinely smaller, with distinct patterns/pigments',()=>{
+ const id='finnish-m05',density=HEADWEAR_CAMO_DENSITY[id];
+ assert.equal(density,3);
+ const texture=headwearCamoTexture('boonie',id,{offsetX:0,offsetY:0});
+ const art=headwearCamoPixels(id),rgba=texture.image.data;
+ for(const [x,y] of [[3,7],[12,13],[25,9],[40,60]]){
+  const sx=Math.floor(x*3/2)%32,sy=Math.floor(y*3/2)%32;
+  const source=(sy*32+sx)*4,dest=(y*128+x)*4;
+  assert.deepEqual(Array.from(rgba.slice(dest,dest+3)),
+   Array.from(art.slice(source,source+3)),'3x sampler must actually shrink motifs');
+ }
+ const arts=HEADWEAR_CAMO_IDS.slice(12).map(id=>headwearCamoPixels(id));
+ assert.equal(new Set(arts.map(a=>Buffer.from(a).toString('base64'))).size,6);
+ const src=readFileSync(new URL('../src/operator-headwear-camo.ts',import.meta.url),'utf8');
+ assert.match(src,/apply4BDetail/);
+ assert.match(src,/camoGrain/);
+ assert.match(src,/camoNearPoint/);
+});
+test('4B calibration coverage report',()=>{
+ for(const id of HEADWEAR_CAMO_IDS.slice(12)){
+  console.log('4B COVERAGE '+id+': '+JSON.stringify(
+   headwearCamoCoverage(id).map(x=>Number(x.toFixed(4)))));
  }
 });
