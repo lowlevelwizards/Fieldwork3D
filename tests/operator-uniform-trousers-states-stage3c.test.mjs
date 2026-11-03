@@ -183,7 +183,9 @@ test('Operator Lab, Campaign and Quick Play offer contextual states and no rolle
  assert.ok(campaign.includes("'trouserHem','TROUSER HEM'"));
  assert.ok(quick.includes("'sleeveState','SLEEVE FINISH'"));
  assert.ok(grid.includes("['top','bdu-shirt'],['trousers','bdu-trousers']"));
- assert.ok(grid.includes("'acu-trousers'"));
+ assert.ok(grid.includes('this.liveContext'));
+ assert.ok(grid.includes('selectWardrobeItem(this.kit,this.wardrobe,item.slot,item.id)'),
+  'Studio cards must inherit actual selected trousers instead of auto-pairing ACU');
  const data=src('../src/operator-wardrobe-data.ts');
  assert.ok(!data.includes('rolledSleeves'));
 });
