@@ -990,7 +990,7 @@ function apply5APrint(id:HeadwearCamoId,x:number,y:number,ink:number):number{
    const cx=(k*37+Math.floor(k/11)*13+3)&63;
    const cy=(k*19+Math.floor(k/5)*7+5)&63;
    const len=2+(k%4);
-   if(x===cx&&((y-cy+64)&63)<len)return k%17===0?2:1;
+   if(x===cx&&((y-cy+64)&63)<len)return k%11===0?2:1;
   }
   return ink;
  }
