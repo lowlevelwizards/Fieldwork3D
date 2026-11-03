@@ -74,12 +74,68 @@ const pouch=(g:THREE.Group,m:THREE.Material,fold:THREE.Material,
  box(g,m,x,y,z,depth,h,d);
  box(g,fold,x+depth*.51+.035,y+h*.39,z,.19,.40,d+.12);
 };
+/** Nested strap groups must NOT be baked into the rig's static mesh.
+ * They are deterministically refitted when either uniform or armor changes.
+ */
 const shoulderHarness=(g:THREE.Group,m:THREE.Material,spread=4.8)=>{
- for(const s of [-1,1]){
-  strap(g,m,[7.30,2.15,s*spread],[1.15,5.52,s*5.2],1.18,.90);
-  strap(g,m,[1.15,5.52,s*5.2],[-6.0,2.30,s*4.15],1.17,.90);
+ const harness=new THREE.Group();harness.name='uniform-fitted-rig-harness';
+ harness.userData.fitMaterial=m;harness.userData.spread=spread;
+ g.add(harness);
+ for(const sign of [-1,1]){
+  strap(harness,m,[7.30,2.15,sign*spread],
+   [1.15,5.52,sign*5.2],1.18,.90);
+  strap(harness,m,[1.15,5.52,sign*5.2],
+   [-6.0,2.30,sign*4.15],1.17,.90);
  }
 };
+/** The named rig harness uses the same fitted garment/armor frame as
+ * the plate carrier shoulder connections. Only the currently selected
+ * rig is rebuilt, and only when the uniform or armor fit changes.
+ */
+export type FittedRigFrame={
+ front:{x:number};back:{x:number};sideRight:{z:number};
+ shoulderRight:{z:number};shoulderY:number;rigShiftX:number;
+};
+export function updateFittedRigHarness(
+ groups:ShapeGroups,rig:string,top:string,frame:FittedRigFrame):void{
+ const outer=groups[rig];if(!outer)return;
+ const harness=outer.getObjectByName('uniform-fitted-rig-harness');
+ if(!(harness instanceof THREE.Group))return;
+ const key=top+'|'+frame.front.x.toFixed(3)+'|'+
+  frame.back.x.toFixed(3)+'|'+frame.shoulderY.toFixed(3);
+ if(harness.userData.fitKey===key)return;
+ const material=harness.userData.fitMaterial as THREE.Material;
+ const spread=harness.userData.spread as number;
+ // Only geometry from the previous deterministic fit is replaced; do not
+ // dispose shared material maps, camouflage textures, or any pouch mesh.
+ harness.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
+ harness.clear();
+ const waistRig=rig==='field-webbing'||rig==='belt-harness';
+ const localFront=frame.front.x-frame.rigShiftX;
+ const localBack=frame.back.x-frame.rigShiftX;
+ const y=frame.shoulderY+.25;
+ const shoulder=frame.shoulderRight.z;
+ const attachY=waistRig?-5.12:2.22;
+ const backY=waistRig?-5.28:2.28;
+ const attachZ=waistRig?Math.max(5.75,spread):Math.min(5.25,spread);
+ const routeZ=Math.max(shoulder,waistRig?5.65:4.12);
+ for(const sign of [-1,1]){
+  const nodes:readonly [number,number,number][]=[
+   [localFront+.45,attachY,sign*attachZ],
+   [localFront+.18,y-.83,sign*routeZ],
+   [1.82-frame.rigShiftX,y,sign*routeZ],
+   [-1.87-frame.rigShiftX,y,sign*routeZ],
+   [localBack-.20,y-.83,sign*routeZ],
+   [localBack-.35,backY,sign*attachZ]
+  ];
+  for(let i=0;i<nodes.length-1;i++)
+   strap(harness,material,nodes[i],nodes[i+1],
+    waistRig?1.26:1.16,waistRig?.94:.82);
+ }
+ consolidateVisualGroup(harness);
+ harness.userData.fitKey=key;
+}
+
 export function createChestRigSilhouettes(chest:THREE.Group,
  fabric:THREE.Material,pocketFabric:THREE.Material,
  dark:THREE.Material,trim:THREE.Material):ShapeGroups{
@@ -153,19 +209,27 @@ export function createChestRigSilhouettes(chest:THREE.Group,
  }
  {
   const g=make('field-webbing');
-  for(const s of [-1,1]){
-   strap(g,trim,[6.40,-5.24,s*5.95],[1.0,5.45,s*4.60],1.10,.90);
-   strap(g,trim,[1.0,5.45,s*4.60],[-5.5,-5.4,s*5.95],1.10,.90);
-   pouch(g,pocketFabric,trim,3.90,-5.42,s*7.45,4.55,3.12,1.30);
+  const h=new THREE.Group();h.name='uniform-fitted-rig-harness';
+  h.userData.fitMaterial=trim;h.userData.spread=5.95;g.add(h);
+  for(const sign of [-1,1]){
+   strap(h,trim,[6.40,-5.24,sign*5.95],
+    [1.0,5.45,sign*4.60],1.10,.90);
+   strap(h,trim,[1.0,5.45,sign*4.60],
+    [-5.5,-5.4,sign*5.95],1.10,.90);
+   pouch(g,pocketFabric,trim,3.90,-5.42,sign*7.45,4.55,3.12,1.30);
   }
   box(g,trim,3.80,-5.90,0,1.30,1.20,13.40);
  }
  {
   const g=make('belt-harness');
-  for(const s of [-1,1]){
-   strap(g,dark,[3.75,-5.05,s*6.3],[.05,5.70,s*5.20],1.45,1.04);
-   strap(g,dark,[.05,5.70,s*5.20],[-5.10,-4.7,s*6.3],1.36,1.04);
-   pouch(g,pocketFabric,trim,3.1,-5.30,s*7.65,5.30,3.40,1.49);
+  const h=new THREE.Group();h.name='uniform-fitted-rig-harness';
+  h.userData.fitMaterial=dark;h.userData.spread=6.3;g.add(h);
+  for(const sign of [-1,1]){
+   strap(h,dark,[3.75,-5.05,sign*6.3],
+    [.05,5.70,sign*5.20],1.45,1.04);
+   strap(h,dark,[.05,5.70,sign*5.20],
+    [-5.10,-4.7,sign*6.3],1.36,1.04);
+   pouch(g,pocketFabric,trim,3.1,-5.30,sign*7.65,5.30,3.40,1.49);
   }
   box(g,dark,3.55,-5.7,0,1.35,1.45,14.15);
  }

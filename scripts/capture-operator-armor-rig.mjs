@@ -92,7 +92,28 @@ try{
     path:'operator-armor-rig-captures/r2-'+top+'-'+armor+'-fit.png'
    });
   }
+  // Five real phone-size debug views expose shoulder/contact points and
+  // assert that the envelope fitter found no major collisions.
+  await page.locator('#fitDebugChoice').check();
+  for(const [top,armor] of [
+   ['combat-shirt','plate-jpc'],['bdu-shirt','plate-standard'],
+   ['acu-shirt','soft-vest'],['smock-jacket','plate-heavy'],
+   ['gorka-jacket','plate-legacy']
+  ]){
+   await page.locator('#topChoice').selectOption(top);
+   await page.locator('#armorChoice').selectOption(armor);
+   await page.waitForFunction(([a,t])=>{
+    const c=document.getElementById('armorCanvas');
+    return c?.dataset.armor===a&&c?.dataset.top===t;
+   },[armor,top]);
+   const status=await page.locator('#fitStatus').innerText();
+   if(status.includes('WARNINGS'))throw Error(top+' '+armor+': '+status);
+   await page.locator('button[data-view="fit"]').click();
+   await page.locator('#armorCanvas').screenshot({
+    path:'operator-armor-rig-captures/r2-debug-'+top+'-'+armor+'.png'
+   });
+  }
   if(errors.length)throw Error('Lab runtime: '+errors.join('; '));
-  console.log('Captured 86 normal-game-zoom armor/rig and uniform-fit previews on phone viewport.');
+  console.log('Captured 91 normal-game-zoom armor/rig, fit and overlay previews on phone viewport.');
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}

@@ -11,6 +11,12 @@ h1{font-size:1.25rem;letter-spacing:.04em;margin:6px 0}p{font-size:.83rem;color:
 label{font-size:.75rem;color:#c5d2bf;display:grid;gap:5px}
 select,button{background:#31483d;color:#f1f3e6;border:1px solid #6a8575;border-radius:6px;padding:11px;min-height:42px;font:inherit}
 .views{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}.views button{flex:1}
+.fit-debug{display:flex;align-items:center;gap:9px;margin-top:10px;
+ padding:8px 10px;border:1px solid #52695d;border-radius:7px;
+ background:#263a31;color:#e1e8d9;font-size:.82rem;font-weight:650}
+.fit-debug input{width:19px;height:19px;accent-color:#d9bd82}
+#fitStatus{font-size:.73rem;letter-spacing:.015em;color:#b8cfbf;
+ min-height:21px;margin-top:6px;line-height:1.4}
 button[aria-pressed=true]{background:#647d55;color:#fff}
 #armorCanvas{display:block;width:100%;height:clamp(300px,55vh,650px);
 background:#b9c0b9;border-radius:9px;margin-top:10px}
@@ -27,6 +33,9 @@ a{color:#bbd7c3} .hint{font-variant:small-caps;letter-spacing:.09em}
 <option value="gameplay">Game distance</option><option value="detail">Close inspection</option></select></label>
 <label class="hint">FIT SYSTEM · Authored bags and fitted connectors</label>
 </div>
+<label class="fit-debug"><input id="fitDebugChoice" type="checkbox"/>
+ SHOW GARMENT ENVELOPE & ARMOR ATTACHMENTS</label>
+<div id="fitStatus" role="status">Enable debug to inspect front, shoulder and side clearances.</div>
 <div class="views" role="group" aria-label="View direction">
 <button data-view="front" aria-pressed="false">FRONT</button>
 <button data-view="side" aria-pressed="false">SIDE</button>
