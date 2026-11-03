@@ -31,7 +31,7 @@ export function createWardrobeFabricCamoPicker(
  const heading=document.createElement('summary');heading.textContent='AUTHENTIC UNIFORM / FABRIC PRINTS';
  panel.append(heading);
  const hint=document.createElement('p');hint.className='fw-headwear-hint';
- hint.textContent='Approved 30 prints · only verified garment types. Original legacy fabrics remain in the separate pattern controls. Prints never grant equipment.';
+ hint.textContent='Approved original prints only · verified garment categories. No procedural palette or placeholder patterns.';
  panel.append(hint);
  const match=document.createElement('div');match.className='fw-fabric-match';
  const pair=HEADWEAR_CAMO_IDS.filter(id=>
@@ -64,7 +64,7 @@ export function createWardrobeFabricCamoPicker(
   });
   const title=document.createElement('summary');
   title.textContent=label[channel]+' · '+(selected?
-   HEADWEAR_CAMO_RECIPES[selected].label:'LEGACY / SOLID');
+   HEADWEAR_CAMO_RECIPES[selected].label :'BASE FABRIC');
   row.append(title);
   if(!options.length){
    const reason=document.createElement('p');reason.className='fw-headwear-hint';
@@ -74,7 +74,7 @@ export function createWardrobeFabricCamoPicker(
    row.append(reason);panel.append(row);continue;
   }
   const control=document.createElement('div');control.className='fw-fabric-actions';
-  const clear=document.createElement('button');clear.type='button';clear.textContent='USE LEGACY / SOLID';
+  const clear=document.createElement('button');clear.type='button';clear.textContent='REMOVE PRINT';
   clear.disabled=disabled||!selected;
   clear.addEventListener('click',()=>onChange(setWardrobeFabricCamo(
    wardrobe,channel,null,outfit)));
