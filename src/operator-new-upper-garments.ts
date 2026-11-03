@@ -112,7 +112,9 @@ function foldedHood(g:THREE.Group,body:THREE.Material,
  wide=false){
  // Folded hood is ONE solid collapsed roll behind the neck. The old
  // separate side boxes looked like disconnected shoulder antennas.
- box(g,body,-5.34,6.93,0,1.74,1.36,wide?11.65:10.85);
+ // A narrow, low roll stays behind the actual neck instead of exposing
+ // two shoulder-level ends in the three-quarter garment silhouette.
+ box(g,body,-5.25,6.56,0,1.38,1.18,wide?8.25:9.20);
 }
 export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
  cloth:THREE.MeshStandardMaterial,trim:THREE.MeshStandardMaterial):NewUpperGarments{
