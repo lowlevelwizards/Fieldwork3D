@@ -15,7 +15,7 @@ const room={id:'LIVING',kind:'room',purpose:'living',x:0,y:100,
 const blocked=(fixture,x=88)=>({
  seed:24,name:'clearance regression',layout:'corridor',
  doors:[{...door}],walls:structuredClone(walls),
- rooms:[room],cover:[{x,y:132,w:24,h:24,fixture,low:true}],
+ rooms:[room],cover:[{x,y:144,w:24,h:24,fixture,low:true}],
  entrance:{x:88,y:100},spawn:[],enemies:[],
  objective:{x:88,y:240},extract:{x:88,y:240},
  bounds:{minX:0,minY:0,maxX:200,maxY:280},roomCount:1
