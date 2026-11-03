@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {TILE_WORLD_SIZE} from './rendering/pixel-materials.ts';
+import {outwardLimbPocket,outwardLimbPatch} from './operator-garment-mount-frame.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import type {SleeveState} from './operator-wardrobe-data.ts';
 
@@ -14,10 +15,10 @@ type Ring={y:number;front:number;back:number;side:number};
 type Arm={upper:THREE.Mesh;lower:THREE.Mesh};
 export const UPPER_CUT_PROFILES={
  'combat-shirt':{
-  rings:[{y:6.5,front:5.10,back:-5.10,side:6.65},
-   {y:4.3,front:5.20,back:-5.10,side:6.89},
-   {y:-1.5,front:5.06,back:-4.98,side:6.40},
-   {y:-6.1,front:4.80,back:-4.78,side:6.36}] as readonly Ring[],
+  rings:[{y:6.5,front:5.56,back:-5.56,side:7.28},
+   {y:4.3,front:5.68,back:-5.61,side:7.48},
+   {y:-1.5,front:5.65,back:-5.60,side:7.32},
+   {y:-6.1,front:5.55,back:-5.55,side:7.26}] as readonly Ring[],
   collar:'high zip',pockets:'upper sleeve',outer:false
  },
  'smock-jacket':{
@@ -92,10 +93,12 @@ function shell(parent:THREE.Group,m:THREE.Material,rings:readonly Ring[]){
 }
 function tube(g:THREE.Group,m:THREE.Material,
  rTop:number,rBottom:number,height=1.05,shift=0){
- const geom=new THREE.CylinderGeometry(rTop,rBottom,height,8,1,false);
+ // Four broad planes read as cut-and-sewn rectangular sleeves at combat zoom.
+ const geom=new THREE.CylinderGeometry(rTop,rBottom,height,4,1,false);
+ geom.rotateY(Math.PI/4);
  if(shift)geom.translate(0,shift,0);
  const uv=geom.getAttribute('uv') as THREE.BufferAttribute;
- const w=Math.PI*(rTop+rBottom);
+ const w=2*Math.SQRT2*(rTop+rBottom);
  for(let i=0;i<uv.count;i++)
   uv.setXY(i,uv.getX(i)*w/TILE_WORLD_SIZE,
    uv.getY(i)*height*10/TILE_WORLD_SIZE);
@@ -130,14 +133,19 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
   const torso=group(chest,'upper-garment:'+cut);
   shell(torso,body,UPPER_CUT_PROFILES[cut].rings);
   if(combat){
-   // The solid knit runs uninterrupted from collar to hem, including the
-   // entire front. Patterned material is confined to the shoulders/arms.
-   box(torso,body,5.19,-.05,0,.24,11.68,10.88);
-   box(torso,body,0,6.48,0,7.70,1.02,7.20);
-   box(torso,trim,5.38,4.78,0,.14,2.18,.28);
-   for(const side of [-1,1])
-    box(torso,wear,.15,4.95,side*5.78,4.65,.68,2.02);
-   box(torso,body,5.12,-5.79,0,.17,.34,10.85);
+   // A SINGLE knit shell covers the torso front, sides and back. No
+   // overlapping tan chest slab; the shell now encloses the hidden 10×12×14
+   // base body so it cannot leak a second garment color at the waist.
+   // The standing 1/4-zip collar is an OPEN centered ring around the neck.
+   box(torso,body,-4.18,7.08,0,2.25,2.22,7.72);
+   for(const sign of [-1,1]){
+    box(torso,body,.35,7.08,sign*3.54,7.08,2.22,1.24);
+    box(torso,body,4.61,7.04,sign*1.88,1.52,2.14,2.05);
+   }
+   // Quarter-zip front edge and narrow knitted waist hem. The zipper
+   // does not extend the entire torso like an outerwear placket.
+   box(torso,trim,5.44,6.20,0,.14,2.18,.22);
+   box(torso,body,5.58,-5.79,0,.16,.33,13.95);
   }else if(smock){
    foldedHood(torso,cloth,smockCuff);
    // Four discrete patch pockets, shallow enough to read as cloth, not
@@ -167,7 +175,7 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
   const upper:THREE.Group[]=[],lower:THREE.Group[]=[],
    cuffedLower:THREE.Group[]=[],rolledUpper:THREE.Group[]=[];
   for(const [index,arm] of arms.entries()){
-   const outside=index===0?-1:1;
+   // Both arms' local +X is outward after the IK segment alignment.
    const u=group(arm.upper,cut+':upper:'+index),
     l=group(arm.lower,cut+':lower:'+index),
     c=group(arm.lower,cut+':cuff:'+index),
@@ -183,21 +191,29 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
     tube(c,combatKnit,rl+.27,rl+.27,.17,.16);
     tube(rolled,cloth,ru,ru-.12,.76,-.11);
     tube(rolled,combatKnit,ru+.25,ru+.25,.18,.23);
-    // Bicep pocket and padded elbow are large enough for the Lab zoom.
+    // Bicep pouch is thin along the outward (+X) normal and broad
+    // front-to-back; no lateral shard hangs off the front of the sleeve.
+    const pouch=outwardLimbPocket(ru,.08,.34,2.35,.37);
     for(const part of [u,rolled]){
-     box(part,wear,0,.14,outside*(ru+.09),2.45,.29,.52);
-     box(part,trim,0,.29,outside*(ru+.14),2.40,.08,.54);
+     box(part,wear,pouch.x,pouch.y,pouch.z,
+      pouch.width,pouch.height,pouch.depth);
+     box(part,trim,pouch.x+.24,pouch.y+.17,0,.10,.08,pouch.depth+.1);
     }
-    box(l,wear,2.38,-.03,0,.18,.33,2.78);
+    const elbow=outwardLimbPatch(rl,-.02,.32,2.46,.13);
+    box(l,wear,elbow.x,elbow.y,elbow.z,
+     elbow.width,elbow.height,elbow.depth);
    }else if(smock){
-    box(u,cloth,0,.13,outside*(ru+.08),2.67,.29,.48);
-    box(u,trim,0,.28,outside*(ru+.14),2.61,.08,.48);
+    const armPatch=outwardLimbPatch(ru,.10,.29,2.26,.14);
+    box(u,cloth,armPatch.x,armPatch.y,armPatch.z,
+     armPatch.width,armPatch.height,armPatch.depth);
     tube(l,smockCuff,rl+.15,rl+.15,.15,.375);
    }else{
-    // Flush contrast patches at each actual limb side: no free-standing
-    // box extending 2+ units past the sleeve silhouette.
-    box(u,wear,0,.07,outside*(ru+.08),2.48,.42,.28);
-    box(l,wear,0,-.22,outside*(rl+.08),2.29,.39,.27);
+    const upperPatch=outwardLimbPatch(ru,.07,.40,2.60,.18);
+    const elbowPatch=outwardLimbPatch(rl,-.22,.37,2.44,.16);
+    box(u,wear,upperPatch.x,upperPatch.y,upperPatch.z,
+     upperPatch.width,upperPatch.height,upperPatch.depth);
+    box(l,wear,elbowPatch.x,elbowPatch.y,elbowPatch.z,
+     elbowPatch.width,elbowPatch.height,elbowPatch.depth);
     tube(l,gorkaCuff,rl+.16,rl+.16,.17,.36);
    }
    for(const part of [u,l,c,rolled])consolidateVisualGroup(part);
