@@ -5,7 +5,8 @@ import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
 import {initialEquipmentLoadout} from '../src/equipment-loadouts.ts';
 import {initialWardrobe} from '../src/operator-wardrobe-data.ts';
 import {TILE_WORLD_SIZE} from '../src/rendering/pixel-materials.ts';
-import {garmentSolidHex} from '../src/operator-garment-color-policy.ts';
+import {garmentSolidHex,resolvedCombatKnitSolid,CAMO_CUFF_DEFAULTS,
+ CAMO_COMBAT_KNIT_DEFAULTS} from '../src/operator-garment-color-policy.ts';
 import {FIELD_TROUSER_PROFILES} from '../src/operator-field-trouser-prototypes.ts';
 
 const kit=initialEquipmentLoadout();
@@ -102,7 +103,7 @@ test('rolled sleeves preserve the full elbow and hide every shoulder pocket',()=
  r.dispose();
 });
 
-test('changing jacket solid does not change trouser material or knit body swatch',()=>{
+test('changing jacket solid leaves trousers unchanged but updates the automatically matched knit',()=>{
  const r=createOperatorRig('rook','blue');
  pose(r,'combat-shirt','acu-trousers','unrolled','cuffed',
   {top:'olive-drab',trousers:'khaki'});
@@ -111,7 +112,9 @@ test('changing jacket solid does not change trouser material or knit body swatch
  pose(r,'combat-shirt','acu-trousers','unrolled','cuffed',
   {top:'coyote',trousers:'khaki'});
  assert.ok(r.trouserMaterial.color.equals(originalLeg));
- assert.ok(r.visualKit.newUpper.combatKnit.color.equals(originalKnit));
+ assert.equal(originalKnit.getHex(),garmentSolidHex('olive-drab'));
+ assert.equal(r.visualKit.newUpper.combatKnit.color.getHex(),garmentSolidHex('coyote'));
+ assert.ok(!r.visualKit.newUpper.combatKnit.color.equals(originalKnit));
  r.dispose();
 });
 
@@ -137,6 +140,34 @@ test('leg cuff color follows trouser/roll swatch, not top, with fatter cargo poc
  for(const p of Object.values(FIELD_TROUSER_PROFILES)){
   assert.ok(p.cargo[0]>1.05,'bulky thigh cargo projection');
   assert.ok(p.flap[0]>=.32,'readable thick pocket flap');
+ }
+ r.dispose();
+});
+
+test('all approved camouflage patterns choose stable, authored knit pairings',()=>{
+ const ids=Object.keys(CAMO_CUFF_DEFAULTS);
+ assert.equal(ids.length,30);
+ assert.deepEqual(Object.keys(CAMO_COMBAT_KNIT_DEFAULTS).sort(),ids.sort());
+ assert.equal(resolvedCombatKnitSolid({print:'m81-woodland'}),'olive-drab');
+ assert.equal(resolvedCombatKnitSolid({print:'multicam'}),'khaki');
+ assert.equal(resolvedCombatKnitSolid({print:'desert-marpat'}),'coyote');
+ assert.equal(resolvedCombatKnitSolid({print:'ucp'}),'foliage');
+ assert.equal(resolvedCombatKnitSolid({solid:'forest-green'}),'ranger-green');
+ assert.equal(resolvedCombatKnitSolid({solid:'sand'}),'sand');
+ assert.equal(resolvedCombatKnitSolid({print:'multicam',override:'black'}),'black');
+});
+
+test('bloused ankle folds inherit their garment, while actual cuff folds use a solid accent',()=>{
+ const r=createOperatorRig('rook','blue');
+ const fold=r.visualKit.fieldTrousers['bdu-trousers'].cuffMaterial;
+ for(const cut of ['bdu-trousers','acu-trousers','gorka-trousers']){
+  const model=r.visualKit.fieldTrousers[cut];
+  for(const g of model.bloused)
+   assert.ok(!g.children.some(m=>m instanceof THREE.Mesh&&m.material===fold),
+    cut+' gathered hem must not use contrasting rolled fabric');
+  for(const g of model.cuffed)
+   assert.ok(g.children.some(m=>m instanceof THREE.Mesh&&m.material===fold),
+    cut+' true turned cuff must use contrasting roll fabric');
  }
  r.dispose();
 });
