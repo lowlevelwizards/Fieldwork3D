@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
-import {uniformFitEnvelope,fittedArmorSurfaces,
+import {uniformFitEnvelope,fittedArmorSurfaces,ARMOR_PANEL_DEPTHS,
  type ArmorFitSurfaces} from './operator-uniform-fit-envelope.ts';
 
 export type AdaptiveArmorGroups=Record<string,THREE.Group>;
@@ -63,23 +63,23 @@ const RECIPES:Readonly<Record<string,{
  style:'concealed'|'soft'|'flak'|'slick'|'skeleton'|'standard'|'heavy'|'legacy';
 }>>={
  'soft-slick':{bottom:-4.8,low:9,wide:11.2,upper:0,neck:0,
-  depth:.38,shoulder:0,straps:0,sideHeight:0,style:'concealed'},
+  depth:ARMOR_PANEL_DEPTHS['soft-slick'],shoulder:0,straps:0,sideHeight:0,style:'concealed'},
  'soft-paca':{bottom:-4.8,low:9,wide:11.3,upper:0,neck:0,
-  depth:.38,shoulder:0,straps:0,sideHeight:0,style:'concealed'},
+  depth:ARMOR_PANEL_DEPTHS['soft-paca'],shoulder:0,straps:0,sideHeight:0,style:'concealed'},
  'soft-vest':{bottom:-4.78,low:8.7,wide:5.3,upper:0,neck:0,
-  depth:1.12,shoulder:2.40,straps:0,sideHeight:8.4,style:'soft'},
+  depth:ARMOR_PANEL_DEPTHS['soft-vest'],shoulder:2.40,straps:0,sideHeight:8.4,style:'soft'},
  'soft-flak':{bottom:-7.0,low:11.05,wide:6.48,upper:0,neck:0,
-  depth:1.40,shoulder:3.20,straps:0,sideHeight:10.6,style:'flak'},
+  depth:ARMOR_PANEL_DEPTHS['soft-flak'],shoulder:3.20,straps:0,sideHeight:10.6,style:'flak'},
  'plate-slick':{bottom:-3.7,low:5.25,wide:7.9,upper:2.20,neck:6.00,
-  depth:1.02,shoulder:1.05,straps:1,sideHeight:1.10,style:'slick'},
+  depth:ARMOR_PANEL_DEPTHS['plate-slick'],shoulder:1.05,straps:1,sideHeight:1.10,style:'slick'},
  'plate-jpc':{bottom:-4.12,low:5.90,wide:9.2,upper:2.42,neck:7.30,
-  depth:1.18,shoulder:1.40,straps:3,sideHeight:.64,style:'skeleton'},
+  depth:ARMOR_PANEL_DEPTHS['plate-jpc'],shoulder:1.40,straps:3,sideHeight:.64,style:'skeleton'},
  'plate-standard':{bottom:-4.60,low:6.50,wide:9.65,upper:2.70,neck:7.60,
-  depth:1.45,shoulder:1.60,straps:1,sideHeight:2.75,style:'standard'},
+  depth:ARMOR_PANEL_DEPTHS['plate-standard'],shoulder:1.60,straps:1,sideHeight:2.75,style:'standard'},
  'plate-heavy':{bottom:-4.96,low:6.90,wide:10.15,upper:2.82,neck:8.10,
-  depth:1.77,shoulder:2.25,straps:1,sideHeight:3.55,style:'heavy'},
+  depth:ARMOR_PANEL_DEPTHS['plate-heavy'],shoulder:2.25,straps:1,sideHeight:3.55,style:'heavy'},
  'plate-legacy':{bottom:-7.38,low:11.38,wide:6.20,upper:0,neck:0,
-  depth:1.70,shoulder:3.06,straps:1,sideHeight:10.5,style:'legacy'}
+  depth:ARMOR_PANEL_DEPTHS['plate-legacy'],shoulder:3.06,straps:1,sideHeight:10.5,style:'legacy'}
 };
 function buildAuthoredPanels(entry:ArmorEntry){
  const {front,back,model,nominal,materials}=entry;
@@ -183,7 +183,10 @@ function neckProtection(g:THREE.Group,m:THREE.Material,
  const extra=style==='legacy'?.28:0;
  const y=Math.max(fit.shoulderY+.50,
   env.shoulderCrown+env.neckGuard*.35+.30+extra);
- const z=style==='legacy'?3.55:3.15;
+ // Bulky Gorka/smock hoods sit behind the neck: collar returns must
+ // sit OUTSIDE their side rims, not intersect the folded hood meshes.
+ const hood=fit.top==='smock-jacket'||fit.top==='gorka-jacket';
+ const z=hood?5.15:style==='legacy'?3.55:3.15;
  // U-shaped collar, readable as one connected form rather than four
  // floating spikes. Hood can live inside the protected opening.
  makeBox(g,m,fit.back+.55,y-.32,0,1.45,1.66,z*2+.9);
