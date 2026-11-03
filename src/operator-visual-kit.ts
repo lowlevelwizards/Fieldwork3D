@@ -299,7 +299,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  updateWardrobeGearLayers(v.wardrobeGear,
   usingWardrobe?looks.armorStyle:'armor-bare',
   usingWardrobe?looks.rigStyle:'no-rig',
-  looks.beltStyle,looks.packStyle);
+  looks.beltStyle,looks.packStyle,looks.top);
  updateWardrobeAccessories(v.accessories,
   wardrobe?.accessories??initialWardrobeAccessories());
  v.chestRig.visible=!usingWardrobe&&s.rig==='rig-light';
@@ -371,7 +371,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  const order=wardrobe?.mounts?.magazineOrder==='right-left'?-1:1;
  v.magazines.rig.forEach((mag,i)=>{
   if(usingWardrobe){
-   const socket=armorMountedMagazineSocket(looks.rigStyle,i,looks.armorStyle,order);
+   const socket=armorMountedMagazineSocket(looks.rigStyle,i,looks.armorStyle,order,looks.top);
    mag.position.set(socket.x,socket.y,socket.z);
    mag.rotation.y=socket.rotation;
   }else if(i<4){

@@ -27,7 +27,9 @@ test('real carried magazine sockets follow exactly the same armor surface',()=>{
    const frame=armorAttachmentFrame(armor);
    const base=rigMagazineMount(rig,0,armor,1);
    const mounted=armorMountedMagazineSocket(rig,0,armor,1);
-   assert.equal(mounted.x,base.x+frame.standOff,rig+' '+armor+' front');
+   assert.equal(mounted.x,base.x+
+    (frame.front.x-ARMOR_PROFILES[armor].front)+frame.standOff,
+    rig+' '+armor+' shares the fitted front surface');
    assert.equal(mounted.y,base.y,'same rig pouch row');
    assert.equal(mounted.z,base.z,'same pouch bank');
    const side=armorMountedMagazineSocket(rig,6,armor);
@@ -53,11 +55,11 @@ test('changing armor silhouette moves rig and issued magazines without changing 
     trousers:'bdu-trousers'
    }}
   },0);
-  const frame=armorAttachmentFrame(armor);
+  const frame=armorAttachmentFrame(armor,'bdu-shirt');
   assert.equal(r.visualKit.wardrobeGear.rig['micro-rig'].position.x,
    frame.rigShiftX);
   assert.equal(r.visualKit.magazines.rig[0].position.x,
-   armorMountedMagazineSocket('micro-rig',0,armor).x);
+   armorMountedMagazineSocket('micro-rig',0,armor,1,'bdu-shirt').x);
   assert.equal(kit.slots.armor,'armor-carrier');
   assert.equal(kit.slots.rig,'rig-light');
  }

@@ -5,8 +5,8 @@ import * as THREE from 'three';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {wardrobeItemsForSlot} from './operator-wardrobe-data.ts';
-import {createArmorSilhouettes,createChestRigSilhouettes}
- from './operator-armor-rig-silhouettes.ts';
+import {createArmorSilhouettes,createChestRigSilhouettes,
+ updateAdaptiveArmorFit} from './operator-armor-rig-silhouettes.ts';
 import {armorAttachmentFrame} from './operator-armor-attachment-frame.ts';
 type StyleGroups=Record<string,THREE.Group>;
 export type WardrobeGearLayers={
@@ -82,14 +82,15 @@ export function createWardrobeGearLayers(
  return {armor,rig,belt,pack,pouchMaterial};
 }
 export function updateWardrobeGearLayers(v:WardrobeGearLayers,
- armor:string,rig:string,belt:string,pack:string){
+ armor:string,rig:string,belt:string,pack:string,top='combat-shirt'){
  for(const [target,id] of [
   [v.armor,armor],[v.rig,rig],[v.belt,belt],[v.pack,pack]
  ] as const)
   for(const [style,g] of Object.entries(target))g.visible=style===id;
- // One consistent bearing surface: fit the complete rig slightly outside
- // the selected plate/soft-armor shell without scaling straps/pouches.
- const exterior=armorAttachmentFrame(armor);
+ // Changes to the selected garment rebuild the connectors once, not per pose.
+ updateAdaptiveArmorFit(v.armor,armor,top);
+ // The rig follows exactly the same fitted exterior as the plate bag.
+ const exterior=armorAttachmentFrame(armor,top);
  for(const group of Object.values(v.rig)){
   group.position.x=exterior.rigShiftX;
   group.position.y=0;
