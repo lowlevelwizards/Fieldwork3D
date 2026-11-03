@@ -20,6 +20,10 @@ export const ARMOR_ANATOMY={
 } as const;
 export type ArmorFamily='concealed'|'police'|'fragmentation'|
  'slick'|'skeleton'|'standard'|'assault'|'legacy';
+export type ArmorSideStyle='none'|'flat_slab'|'open_two_band'|
+ 'soft_wrap'|'side_plate';
+export type ArmorCollarStyle='none'|'vest_v'|'high_flak'|
+ 'minimal_plate'|'standard_plate'|'heavy_plate'|'legacy_wrap';
 export type ArmorProportion={
  family:ArmorFamily;
  /** Visible frontal width and upper/lower envelope of the armor's body. */
@@ -32,26 +36,40 @@ export type ArmorProportion={
  upperInset:number;
  /** Wrap's visible thickness away from the fabric. */
  sideThickness:number;
+ /** Orthogonal, box-like garment-side construction. */
+ sideStyle:ArmorSideStyle;
+ /** The collar carries each design's specific identity. */
+ collarStyle:ArmorCollarStyle;
+ /** Center of the body-side band in chest-local Y. */
+ sideY:number;
+ /** How far down the shaped bag the front strap is seated. */
+ strapDrop:number;
+ /** Visible padded strap thickness. */
+ strapThickness:number;
+ /** Rear armor width is authored independently of front. */
+ rearWidth:number;
+ /** External side plate height, only for heavy assault. */
+ sidePlateHeight:number;
 };
 export const ARMOR_PROPORTIONS:Readonly<Record<string,ArmorProportion>>={
  'soft-slick':{family:'concealed',width:11.0,top:4.2,bottom:-4.8,
-  shoulderWidth:0,sideHeight:0,upperInset:0,sideThickness:0},
+  shoulderWidth:0,sideHeight:0,upperInset:0,sideThickness:0,sideStyle:'none',collarStyle:'none',sideY:0,strapDrop:0,strapThickness:0,rearWidth:11,sidePlateHeight:0},
  'soft-paca':{family:'concealed',width:11.2,top:4.2,bottom:-4.8,
-  shoulderWidth:0,sideHeight:0,upperInset:0,sideThickness:0},
+  shoulderWidth:0,sideHeight:0,upperInset:0,sideThickness:0,sideStyle:'none',collarStyle:'none',sideY:0,strapDrop:0,strapThickness:0,rearWidth:11.2,sidePlateHeight:0},
  'soft-vest':{family:'police',width:11.35,top:4.8,bottom:-5.2,
-  shoulderWidth:2.85,sideHeight:8.8,upperInset:.60,sideThickness:.76},
+  shoulderWidth:2.85,sideHeight:8.8,upperInset:.60,sideThickness:.76,sideStyle:'soft_wrap',collarStyle:'vest_v',sideY:-0.48,strapDrop:0.66,strapThickness:0.62,rearWidth:11.35,sidePlateHeight:0},
  'soft-flak':{family:'fragmentation',width:12.4,top:5.5,bottom:-6.5,
-  shoulderWidth:3.0,sideHeight:10.1,upperInset:1.35,sideThickness:.89},
+  shoulderWidth:3.0,sideHeight:10.1,upperInset:1.35,sideThickness:.89,sideStyle:'soft_wrap',collarStyle:'high_flak',sideY:-0.72,strapDrop:0.72,strapThickness:0.94,rearWidth:12.4,sidePlateHeight:0},
  'plate-slick':{family:'slick',width:8.95,top:4.45,bottom:-3.90,
-  shoulderWidth:1.55,sideHeight:1.42,upperInset:1.05,sideThickness:.63},
+  shoulderWidth:1.55,sideHeight:1.42,upperInset:1.05,sideThickness:.63,sideStyle:'flat_slab',collarStyle:'minimal_plate',sideY:-1.6,strapDrop:1.15,strapThickness:0.52,rearWidth:8.95,sidePlateHeight:0},
  'plate-jpc':{family:'skeleton',width:9.5,top:4.72,bottom:-4.12,
-  shoulderWidth:1.92,sideHeight:.75,upperInset:1.30,sideThickness:.62},
+  shoulderWidth:1.92,sideHeight:.75,upperInset:1.30,sideThickness:.62,sideStyle:'open_two_band',collarStyle:'minimal_plate',sideY:-1.1,strapDrop:1.05,strapThickness:0.52,rearWidth:9.5,sidePlateHeight:0},
  'plate-standard':{family:'standard',width:10.1,top:4.86,bottom:-4.52,
-  shoulderWidth:1.97,sideHeight:2.65,upperInset:1.05,sideThickness:.90},
+  shoulderWidth:1.97,sideHeight:2.65,upperInset:1.05,sideThickness:.90,sideStyle:'flat_slab',collarStyle:'standard_plate',sideY:-1.08,strapDrop:0.77,strapThickness:0.68,rearWidth:10.1,sidePlateHeight:0},
  'plate-heavy':{family:'assault',width:10.85,top:5.08,bottom:-5.08,
-  shoulderWidth:2.65,sideHeight:3.62,upperInset:.92,sideThickness:1.03},
+  shoulderWidth:2.65,sideHeight:3.62,upperInset:.92,sideThickness:1.03,sideStyle:'side_plate',collarStyle:'heavy_plate',sideY:-1.6,strapDrop:0.79,strapThickness:0.84,rearWidth:10.85,sidePlateHeight:3.85},
  'plate-legacy':{family:'legacy',width:12.15,top:5.45,bottom:-6.77,
-  shoulderWidth:3.10,sideHeight:10.8,upperInset:1.1,sideThickness:1.15}
+  shoulderWidth:3.10,sideHeight:10.8,upperInset:1.1,sideThickness:1.15,sideStyle:'soft_wrap',collarStyle:'legacy_wrap',sideY:-0.65,strapDrop:0.65,strapThickness:0.96,rearWidth:12.25,sidePlateHeight:0}
 };
 export const ARMOR_VISIBLE_STYLES=[
  'soft-vest','soft-flak','plate-slick','plate-jpc',
