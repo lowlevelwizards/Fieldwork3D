@@ -10,7 +10,7 @@ import {CampaignKitPreview} from './equipment-preview.ts';
 import {WARDROBE_ACCESSORY_SLOTS,WARDROBE_ACCESSORY_OPTIONS}
  from './operator-wardrobe-accessories.ts';
 import {readWardrobe,resolvedWardrobe,
- setWardrobeStyle,setWardrobePattern,WARDROBE_SLOTS,WARDROBE_PATTERNS,
+ setWardrobeStyle,WARDROBE_SLOTS,
  wardrobeItemsForSlot,type WardrobeOptions,type WardrobeSlot}
  from './operator-wardrobe-data.ts';
 import {carryCapacityReport} from './equipment-carry-placement.ts';
@@ -621,21 +621,6 @@ export class CampaignScreen{
     }));
    wardrobePanel.append(createWardrobeFabricCamoPicker(person.loadout,wardrobe,
     next=>this.handlers.setWardrobe(id,next),this.fabricPickerState,locked));
-   for(const channel of ['top','trousers','armor','gear','pack','head'] as const){
-   const row=node('label','campaign-kit-row');
-   row.append(node('span','',channel.toUpperCase()+' CAMOUFLAGE'));
-   const select=node('select','campaign-select');
-   for(const pattern of WARDROBE_PATTERNS){
-    const option=node('option','',pattern.replace(/-/g,' ').toUpperCase());
-    option.value=pattern;select.append(option);
-   }
-   select.value=wardrobe.patterns[channel]??'solid';
-   select.disabled=locked;
-   select.addEventListener('change',()=>this.handlers.setWardrobe(id,
-    setWardrobePattern(wardrobe,channel,
-     select.value as typeof WARDROBE_PATTERNS[number])));
-   row.append(select);wardrobePanel.append(row);
-  }
   const cosmeticExtras=node('details','campaign-wardrobe-extras');
   cosmeticExtras.append(node('summary','','COSMETIC EMPTY POUCHES / ACCESSORIES'));
   cosmeticExtras.append(node('p','campaign-note',
