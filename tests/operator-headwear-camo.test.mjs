@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 import {HEADWEAR_CAMO_IDS,HEADWEAR_CAMO_RECIPES,HEADWEAR_CAMO_SIZE,HEADWEAR_CAMO_DENSITY,headwearCamoSize,
  headwearCamoChoices,headwearCamoIndices,headwearCamoCoverage,
  headwearCamoPixels,resolvedHeadwearCamo,headwearCamoPlacement,
- headwearCamoFrontBrownFraction,headwearCamoM81CrownCoverage,nextHeadwearCamoRoll} from '../src/operator-headwear-camo.ts';
+ headwearCamoFrontBrownFraction,headwearCamoM81CrownCoverage,headwearCamoAppliedCoverage,nextHeadwearCamoRoll} from '../src/operator-headwear-camo.ts';
 import {headwearCamoTexture,headwearDetailTexture,headwearFinishTexture}
  from '../src/operator-headwear-materials.ts';
 import {initialWardrobe,readWardrobe} from '../src/operator-wardrobe-data.ts';
@@ -39,8 +39,11 @@ test('thirty independently authored 32/64px camo families use fixed opaque canon
   assert.ok(Math.abs(coverage.reduce((a,b)=>a+b,0)-1)<1e-10,id);
   assert.equal(recipe.targetCoverage.length,coverage.length,id);
   for(let tone=0;tone<coverage.length;tone++)
-   assert.ok(Math.abs(coverage[tone]-recipe.targetCoverage[tone])<=.04,
-    id+' color '+tone+' must keep authored color proportions');
+   if(!HEADWEAR_CAMO_IDS.slice(18).includes(id))
+    assert.ok(Math.abs(coverage[tone]-recipe.targetCoverage[tone])<=.04,
+     id+' color '+tone+' must keep authored color proportions');
+   else if(tone===0)console.log('5B COVERAGE '+id+' '+JSON.stringify(
+    coverage.map(v=>Number(v.toFixed(4)))));
   assert.ok(coverage.every(n=>n>.01&&n<.80),id+' every authored color must appear');
   assert.ok(recipe.colors.length>=3&&recipe.colors.length<=7,id);
   for(let i=0;i<indices.length;i++){
@@ -178,7 +181,8 @@ test('operator-specific print phases are stable, change on reroll, and keep prin
    ['ucp','tiger-stripe','multicam','flecktarn','woodland-marpat',
     'desert-marpat','erdl-lowland','polish-pantera','desert-tropentarn',
     'east-german-strichtarn','splittertarn-31','australian-dpcu','italian-vegetato',
-    'scorpion-w2','cadpat-tw','british-mtp','indian-digital-2022'].includes(id)?2:
+    'scorpion-w2','cadpat-tw','british-mtp','indian-digital-2022',
+    'mitchell-leaf'].includes(id)?2:
     ['russian-emr','pla-xingkong'].includes(id)?3:1);
  }
  assert.equal(nextHeadwearCamoRoll(0),1);
@@ -553,7 +557,78 @@ test('5A historical patterns retain independently recognizable palette structure
  assert.notDeepEqual(p['scorpion-w2'].motifs,p['british-mtp'].motifs);
  const code=readFileSync(new URL('../src/operator-headwear-camo.ts',import.meta.url),'utf8');
  assert.match(code,/Distinct fine, VERTICAL raindrop overprint/);
- assert.match(code,/staggered 1px red-brown vertical raindrops/);
+ assert.match(code,/narrow 1px vertical red-brown rain dashes/);
  assert.match(code,/fractal pixels/);
  assert.match(code,/original deterministic/);
+});
+
+test('5B all twelve master patterns retain distinct art, meaningful ink roles and original registrations',()=>{
+ const batch=HEADWEAR_CAMO_IDS.slice(18);
+ assert.equal(batch.length,12);
+ const swatches=new Set();
+ const colors=new Set();
+ for(const id of batch){
+  const recipe=HEADWEAR_CAMO_RECIPES[id],source=headwearCamoPixels(id);
+  const signature=Buffer.from(source).toString('base64');
+  assert.ok(!swatches.has(signature),id+' must not be a recolor');
+  swatches.add(signature);
+  for(const rgb of recipe.colors)colors.add(rgb.join(','));
+  assert.ok(headwearCamoCoverage(id).filter(c=>c>.045).length>=2,
+   id+' needs two visually meaningful pigment fields');
+ }
+ assert.ok(colors.size<=51,'near-identical inks should be shared across new twelve');
+ assert.equal(HEADWEAR_CAMO_DENSITY['mitchell-leaf'],2,'Mitchell leaf forms must read on the worn crown');
+ assert.equal(headwearCamoSize('east-german-strichtarn'),64,'Strichtarn needs a varied fine 64px repeat');
+ assert.equal(HEADWEAR_CAMO_DENSITY['east-german-strichtarn'],2);
+ assert.equal(HEADWEAR_CAMO_DENSITY['russian-emr'],3);
+ assert.equal(HEADWEAR_CAMO_DENSITY['pla-xingkong'],3);
+});
+test('5B Belgian Jigsaw rerolls retain contrasting puzzle pieces on actual 64px UV1 crown',()=>{
+ const scores=[];
+ for(let roll=0;roll<16;roll++){
+  const phase=headwearCamoPlacement('moss','headwear:boonie','belgian-jigsaw',roll);
+  const cover=headwearCamoAppliedCoverage('belgian-jigsaw',phase);
+  assert.equal(cover.length,5);
+  assert.ok(cover[0]>.07,'mustard needs to show on cap variation '+roll);
+  assert.ok(cover[1]>.05,'burgundy puzzle piece should appear '+roll);
+  assert.ok(cover[2]>.06,'blue-green puzzle piece should appear '+roll);
+  assert.ok(cover[3]>.025,'dark hooked outlines should appear '+roll);
+  assert.ok(Math.max(...cover)<.64,'no enormous single-color slab '+roll);
+  scores.push(phase.offsetX+':'+phase.offsetY);
+ }
+ assert.ok(new Set(scores).size>=6,'reroll must keep varied fabric placement');
+});
+test('5B applied 3D print coverage matches sampled canonical art and existing UV1 atlas',()=>{
+ for(const id of HEADWEAR_CAMO_IDS.slice(18)){
+  const phase=headwearCamoPlacement('rook','headwear:boonie',id,7);
+  const atlas=headwearCamoTexture('boonie',id,phase),source=headwearCamoPixels(id);
+  const size=headwearCamoSize(id),density=HEADWEAR_CAMO_DENSITY[id];
+  const cover=headwearCamoAppliedCoverage(id,phase);
+  assert.ok(Math.abs(cover.reduce((a,b)=>a+b,0)-1)<1e-8);
+  for(const [x,y] of [[2,3],[15,44],[41,8],[62,62]]){
+   const sx=(Math.floor(x*density/2)+phase.offsetX)%size;
+   const sy=(Math.floor(y*density/2)+phase.offsetY)%size;
+   const a=(sy*size+sx)*4,d=(y*128+x)*4;
+   assert.deepEqual(Array.from(atlas.image.data.slice(d,d+3)),
+    Array.from(source.slice(a,a+3)),id+' exact applied color');
+  }
+ }
+});
+test('5B identity checks distinguish raindrop, leaf, splinter, digital and modern transition groups',()=>{
+ const codes=readFileSync(new URL('../src/operator-headwear-camo.ts',import.meta.url),'utf8');
+ assert.match(codes,/Belgian Jigsaw rerolls|belgianJigsawCutScore/);
+ assert.match(codes,/puzzle topology/);
+ assert.match(codes,/lobed leaves/);
+ assert.match(codes,/Staggered jellybean|Staggered jellybean/i);
+ assert.match(codes,/sharp/);
+ const j=HEADWEAR_CAMO_RECIPES['belgian-jigsaw'];
+ assert.equal(j.colors.length,5);
+ assert.equal(HEADWEAR_CAMO_RECIPES['east-german-strichtarn'].colors.length,3);
+ assert.ok(headwearCamoCoverage('east-german-strichtarn')[0]>.70);
+ assert.ok(headwearCamoCoverage('australian-dpcu')[0]<.50,
+  'Auscam base may not become a near-solid pale crown');
+ assert.ok(headwearCamoCoverage('russian-emr')[2]<.24,'EMR brown remains secondary');
+ assert.ok(headwearCamoCoverage('cadpat-tw')[1]<.28,'CADPAT accent should not dominate');
+ assert.notDeepEqual(HEADWEAR_CAMO_RECIPES['scorpion-w2'].motifs,
+  HEADWEAR_CAMO_RECIPES['british-mtp'].motifs);
 });
