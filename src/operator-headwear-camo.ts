@@ -578,11 +578,6 @@ function camoGrain(x:number,y:number,cell:number,seed:number):number{
  const bottom=v(ax,ay+1)*(1-tx)+v(ax+1,ay+1)*tx;
  return top*(1-ty)+bottom*ty;
 }
-function camoNearPoint(x:number,y:number,cx:number,cy:number,r:number):boolean{
- const dx=Math.min(Math.abs(x-cx),32-Math.abs(x-cx));
- const dy=Math.min(Math.abs(y-cy),32-Math.abs(y-cy));
- return dx*dx+dy*dy<=r*r;
-}
 /** Fine-scale pattern language is authored separately for all six 4B prints.
  * The large geometric paint shapes remain as the macro underpainting.
  */
@@ -758,13 +753,21 @@ export function headwearCamoM81CrownCoverage(phase:HeadwearCamoPlacement):number
 }
 function m81CutScore(phase:HeadwearCamoPlacement):number{
  const c=headwearCamoM81CrownCoverage(phase);
+ // Small headwear front-facing print region should show at least a trace
+ // of charcoal too; brown remains bounded by the original front safeguard.
+ const size=headwearCamoSize('m81-woodland');
+ let frontInk=0;
+ for(let y=15;y<25;y++)for(let x=0;x<8;x++)
+  if(m81BrownIndices[(((y+phase.offsetY)&(size-1))*size)+
+   ((x+phase.offsetX)&(size-1))]===3)frontInk++;
  // Prioritize recognizably dark branches throughout the crown, followed
  // by non-monolithic olive/brown/tan. Warm brown still cannot dominate front.
  return Math.max(0,.10-c[3])*7+Math.max(0,c[3]-.26)*2+
   Math.max(0,.17-c[2])*4+Math.max(0,.13-c[1])*3+
   Math.max(0,.22-c[0])*2+Math.max(0,c[0]-.50)*4+
   Math.max(0,c[1]-.36)*3+Math.max(0,c[2]-.38)*3+
-  Math.max(0,headwearCamoFrontBrownFraction(phase)-.34)*7;
+  Math.max(0,headwearCamoFrontBrownFraction(phase)-.34)*7+
+  Math.max(0,.04-frontInk/80)*5;
 }
 export function headwearCamoFrontBrownFraction(phase:HeadwearCamoPlacement):number{
  const indices=m81BrownIndices,size=headwearCamoSize('m81-woodland');
