@@ -34,7 +34,10 @@ try{
    ['armor-bare','light-rig'],
    ['plate-standard','split-front'],
    ['plate-legacy','no-rig'],
-   ['plate-jpc','chest-placard']
+   ['plate-jpc','chest-placard'],
+   ['soft-flak','chicom-rig'],
+   ['plate-legacy','sadf-webbing'],
+   ['soft-slick','bandolier']
   ];
   for(const [armor,rig] of samples){
    await page.locator('#armorChoice').selectOption(armor);
@@ -53,6 +56,6 @@ try{
    }
   }
   if(errors.length)throw Error('Lab runtime: '+errors.join('; '));
-  console.log('Captured 16 normal-game-zoom silhouette previews on phone viewport.');
+  console.log('Captured 22 normal-game-zoom silhouette previews on phone viewport.');
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}
