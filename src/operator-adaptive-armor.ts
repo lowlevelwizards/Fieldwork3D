@@ -15,6 +15,7 @@ import {fittedArmorBag,fittedShoulderBridge,fittedArmorCollar}
  from './operator-armor-shapes.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {armorSideLayout} from './operator-armor-side-layout.ts';
+import {armorStrapLanding} from './operator-armor-straps.ts';
 import {uniformFitEnvelope,fittedArmorSurfaces,ARMOR_PANEL_DEPTHS,
  type ArmorFitSurfaces} from './operator-uniform-fit-envelope.ts';
 
@@ -109,37 +110,34 @@ function shoulders(g:THREE.Group,m:THREE.Material,
  fit:ArmorFitSurfaces,spec:ArmorProportion){
  const env=uniformFitEnvelope(fit.top);
  const shoulder=env.outer(5.30);
- const bagZ=Math.min(spec.width*.5-.75,Math.max(2.6,
-  spec.width*.5-spec.upperInset*.60));
- const crownZ=Math.min(5.15,Math.max(3.65,fit.shoulderZ));
- const lowerY=spec.top-spec.strapDrop;
- const frontX=fit.front-.18;
+ const land=armorStrapLanding(fit,spec);
  for(const side of [-1,1]){
   if(spec.family==='skeleton'){
-   // Two thick front diagonals form a visible triangular negative space.
-   // One substantial back strap continues over the shoulder crown.
-   for(const d of [-.95,.95]){
+   // One recognizable triangular JPC opening with two *complete*
+   // front landings in the plate-bag polygon, not dangling tab ends.
+   for(const d of [-.63,.63]){
     fittedShoulderBridge(g,m,[
-     [frontX,lowerY,bagZ+d],
-     [shoulder.front+.20,fit.shoulderY-.36,crownZ+d*.30],
-     [1.85,fit.shoulderY+.03,crownZ]
-    ],1.00,spec.strapThickness,side);
+     [land.frontX,land.frontY,land.frontZ+d],
+     [shoulder.front+.14,land.shoulderY-.36,
+      land.shoulderZ+d*.33],
+     [1.78,land.shoulderY+.01,land.shoulderZ]
+    ],.96,spec.strapThickness,side);
    }
    fittedShoulderBridge(g,m,[
-    [1.85,fit.shoulderY+.03,crownZ],
-    [-1.85,fit.shoulderY+.03,crownZ],
-    [shoulder.back-.20,fit.shoulderY-.30,crownZ],
-    [fit.back+.28,lowerY+.07,bagZ]
+    [1.78,land.shoulderY+.01,land.shoulderZ],
+    [-1.75,land.shoulderY+.01,land.shoulderZ],
+    [shoulder.back-.16,land.shoulderY-.28,land.shoulderZ],
+    [land.rearX,land.rearY,land.rearZ]
    ],spec.shoulderWidth,spec.strapThickness,side);
    continue;
   }
   const path:readonly (readonly [number,number,number])[]=[
-   [frontX,lowerY,bagZ],
-   [shoulder.front+.20,fit.shoulderY-.24,crownZ],
-   [1.85,fit.shoulderY+.03,crownZ],
-   [-1.85,fit.shoulderY+.03,crownZ],
-   [shoulder.back-.20,fit.shoulderY-.24,crownZ],
-   [fit.back+.22,lowerY+.06,bagZ]
+   [land.frontX,land.frontY,land.frontZ],
+   [shoulder.front+.14,land.shoulderY-.25,land.shoulderZ],
+   [1.75,land.shoulderY+.02,land.shoulderZ],
+   [-1.75,land.shoulderY+.02,land.shoulderZ],
+   [shoulder.back-.16,land.shoulderY-.25,land.shoulderZ],
+   [land.rearX,land.rearY,land.rearZ]
   ];
   fittedShoulderBridge(g,m,path,spec.shoulderWidth,
    spec.strapThickness,side);
