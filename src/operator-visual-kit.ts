@@ -289,7 +289,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  updateNewUpperGarments(v.newUpper,looks.top,
   wardrobe?.sleeveState??'unrolled');
  updateFieldTrouserPrototypes(v.fieldTrousers,looks.trousers,
-  wardrobe?.trouserHem??'bloused',looks.footwear==='bare-feet');
+  wardrobe?.trouserHem??'bloused',looks.footwear==='bare-feet',looks.top);
  updateWardrobeBodyLayers(v.wardrobeBody,looks.top,looks.trousers,
   looks.knees,looks.wrist);
  updateWardrobeGearLayers(v.wardrobeGear,looks.armorStyle,looks.rigStyle,
@@ -350,7 +350,10 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  const patchColors=[0x88735b,0x52655b,0x8d8474,0x61717b,0x786f50,0x847265];
  v.hairMaterial.color.setHex(hairs[key%hairs.length]);
  v.patchMaterial.color.setHex(patchColors[key%patchColors.length]);
- for(const patch of v.patches)patch.visible=s.top==='top-uniform';
+ // Legacy shoulder swatches were placed on local +Z, not the outer
+ // fabric face; in Wardrobe Studio they rendered as orange floating boxes.
+ // Authentic garment-mounted patches/pockets replace these placeholders.
+ for(const patch of v.patches)patch.visible=!usingWardrobe&&s.top==='top-uniform';
  const magShape=s.primary==='primary-smg'?
   {x:.73,y:1.17,z:.86}:s.primary==='primary-rifle'?
   {x:1.1,y:1.06,z:1.04}:
