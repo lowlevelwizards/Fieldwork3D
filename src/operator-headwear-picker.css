@@ -1,22 +1,26 @@
 /* Compact shared headwear swatches for Campaign and Quick Play on phone. */
 .fw-headwear-picker{margin:10px 0;padding:8px;border:1px solid #617e70;border-radius:7px;background:#1a3029;color:#e5e7d7;min-width:0}
-.fw-headwear-picker>summary,.fw-headwear-camos>summary{font:700 11px/1.5 "IBM Plex Sans",sans-serif;cursor:pointer;padding:6px 3px;min-height:35px;touch-action:manipulation}
+.fw-headwear-picker>summary,.fw-headwear-camos>summary{font:700 14px/1.5 "Saira Condensed","Arial Narrow",sans-serif;cursor:pointer;padding:6px 3px;min-height:35px;touch-action:manipulation}
 .fw-headwear-picker>summary{color:#ead9b1}
 .fw-headwear-camos{margin-top:10px;border-top:1px solid #587364;padding-top:6px}
 .fw-headwear-camos>summary{color:#d7e3d2}
-.fw-headwear-hint{font:500 11px/1.4 "IBM Plex Sans",sans-serif;color:#c4d2c4;margin:5px 0 9px}
-.fw-headwear-section-title{font:700 10px "IBM Plex Mono",monospace;letter-spacing:.04em;color:#d1dec9;margin:8px 0}
+.fw-headwear-hint{font:500 11px/1.4 "Saira Condensed","Arial Narrow",sans-serif;color:#c4d2c4;margin:5px 0 9px}
+.fw-headwear-section-title{font:700 13px "Saira Condensed","Arial Narrow",sans-serif;letter-spacing:.04em;color:#d1dec9;margin:8px 0}
 .fw-headwear-solids{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}
 .fw-headwear-solid{width:100%;min-height:44px;height:44px;border-radius:5px;border:2px solid #b2bbad;padding:0;position:relative;touch-action:manipulation}
 .fw-headwear-solid[aria-pressed="true"]{border:3px solid #fff1bf;outline:2px solid #182923;outline-offset:-6px}
 .fw-headwear-solid[aria-pressed="true"]::after{content:"✓";position:absolute;right:5px;top:2px;font-weight:900;color:white;text-shadow:0 1px 3px #000,0 -1px 3px #000}
 .fw-headwear-filter{display:grid;grid-template-columns:1fr;gap:7px;margin:10px 0}
-.fw-headwear-filter select,.fw-headwear-filter input{width:100%;box-sizing:border-box;min-height:42px;border-radius:5px;border:1px solid #849e8a;background:#344e40;color:#f5eee0;padding:7px;font:12px "IBM Plex Sans",sans-serif}
+.fw-headwear-filter select,.fw-headwear-filter input{width:100%;box-sizing:border-box;min-height:42px;border-radius:5px;border:1px solid #849e8a;background:#344e40;color:#f5eee0;padding:7px;font:12px "Saira Condensed","Arial Narrow",sans-serif}
 .fw-headwear-camo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-height:250px;overflow-y:auto;overscroll-behavior:contain;padding:3px}
 .fw-headwear-camo-choice{display:flex;flex-direction:column;align-items:stretch;gap:5px;text-align:left;min-width:0;padding:5px;border-radius:5px;border:1px solid #84998b;background:#354e42;color:#f5edda;min-height:88px;touch-action:manipulation}
 .fw-headwear-camo-choice[aria-pressed="true"]{border:3px solid #eddaa5;background:#4e6b55}
 .fw-headwear-camo-choice canvas{width:100%;height:57px;object-fit:cover;image-rendering:pixelated;border-radius:2px}
-.fw-headwear-camo-choice span{font:600 10px/1.3 "IBM Plex Sans",sans-serif;overflow-wrap:anywhere}
-.fw-headwear-reroll{width:100%;min-height:43px;border:1px solid #abc6a7;background:#476957;color:#f7f0dc;border-radius:6px;font:700 11px "IBM Plex Sans",sans-serif}
+.fw-headwear-camo-choice span{font:600 10px/1.3 "Saira Condensed","Arial Narrow",sans-serif;overflow-wrap:anywhere}
+.fw-headwear-reroll{width:100%;min-height:43px;border:1px solid #abc6a7;background:#476957;color:#f7f0dc;border-radius:6px;font:700 11px "Saira Condensed","Arial Narrow",sans-serif}
 .fw-headwear-picker button:disabled{opacity:.55}
 @media(max-width:360px){.fw-headwear-solids{grid-template-columns:repeat(5,minmax(0,1fr))}}
+
+/* Fieldwork command labels and supporting explanations. */
+.fw-headwear-reroll,.fw-headwear-camo-choice span{font-family:"Work Sans",system-ui,sans-serif}
+.fw-headwear-hint{font-family:"Work Sans",system-ui,sans-serif}

@@ -2,7 +2,7 @@
 /* Campaign management never alters the tactical canvas or render pipeline. */
 .campaign-screen{position:fixed;z-index:120;inset:0;overflow-y:auto;
  overscroll-behavior:contain;touch-action:pan-y;background:var(--fw-bg);
- color:var(--fw-text);font-family:Oxanium,system-ui,sans-serif;
+ color:var(--fw-text);font-family:var(--fw-font-menu);
  padding:calc(env(safe-area-inset-top) + 20px) max(14px,env(safe-area-inset-right))
  calc(env(safe-area-inset-bottom) + 28px) max(14px,env(safe-area-inset-left));
  box-sizing:border-box}
@@ -15,13 +15,13 @@
 .campaign-lede{line-height:1.6;color:#c5d1c3;margin-bottom:26px}
 .campaign-shell button{touch-action:manipulation;display:block;cursor:pointer;
  width:100%;min-height:46px;margin:9px 0;border:1px solid var(--fw-panel-border);
- border-radius:var(--fw-radius-sm);background:var(--fw-panel-raised);color:var(--fw-text);font:600 13px Oxanium,system-ui,sans-serif;
+ border-radius:var(--fw-radius-sm);background:var(--fw-panel-raised);color:var(--fw-text);font:600 13px var(--fw-font-menu);
  padding:10px 14px;text-align:center}
 .campaign-shell button.campaign-primary{background:var(--fw-sage);color:var(--fw-bg);border-color:#bbc9ab}
 .campaign-shell button:focus-visible{outline:3px solid #e8cd86;outline-offset:2px}
 .campaign-note{font-size:12px;color:#a9baad;line-height:1.55}
 .campaign-head{display:flex;align-items:start;justify-content:space-between;gap:12px}
-.campaign-funds{white-space:nowrap;color:#d8cba2;font:600 12px Oxanium,system-ui,sans-serif;margin-top:3px}
+.campaign-funds{white-space:nowrap;color:#d8cba2;font:600 12px var(--fw-font-menu);margin-top:3px}
 .campaign-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}
 .campaign-section{padding:15px;background:#20302e;border:1px solid #425751;border-radius:12px;min-width:0}
 .campaign-roster{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
@@ -63,7 +63,7 @@
  gap:9px;margin:6px 0;font-size:11px}
 .campaign-select{touch-action:manipulation;min-height:36px;max-width:65%;
  background:#2c4039;border:1px solid #748f7d;color:#f0f1e4;border-radius:7px;
- font:600 12px Oxanium,system-ui,sans-serif;padding:6px}
+ font:600 12px var(--fw-font-menu);padding:6px}
 .campaign-select:focus-visible{outline:3px solid #e9cf8b}
 
 .campaign-armory{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px}
@@ -76,9 +76,9 @@
 
 .campaign-import{display:block;width:100%;box-sizing:border-box;padding:10px;
  color:#d7e3d5;background:#293b37;border:1px solid #5c7869;border-radius:8px;
- font:12px Oxanium,system-ui,sans-serif;touch-action:manipulation}
+ font:12px var(--fw-font-menu);touch-action:manipulation}
 .campaign-import::file-selector-button{background:#a8b99a;color:#182523;border:0;
- border-radius:6px;padding:8px 10px;margin-right:8px;font:600 11px Oxanium,system-ui,sans-serif}
+ border-radius:6px;padding:8px 10px;margin-right:8px;font:600 11px var(--fw-font-menu)}
 
 /* Equipment 03: touch-first armory. All selectors remain usable on narrow phones. */
 .campaign-kit-nav{display:flex;gap:7px;overflow-x:auto;margin:0 0 14px;scrollbar-width:thin}
@@ -137,7 +137,7 @@
  border:1px solid var(--fw-panel-border);background:var(--fw-panel-deep)}
 .campaign-save-management summary{cursor:pointer;min-height:28px;
  touch-action:manipulation;color:var(--fw-text-muted);
- font:650 12px "IBM Plex Sans",system-ui,sans-serif;letter-spacing:.06em}
+ font:650 12px var(--fw-font-menu);letter-spacing:.06em}
 .campaign-save-management[open] summary{color:var(--fw-brass)}
 
 /* UX2-07: improve touch readability for personnel and equipment management. */
@@ -166,7 +166,7 @@
  text-align:left;font-size:12px;line-height:1.45;
  min-height:44px;margin:5px 0;background:#493c30;
  border-color:var(--fw-brass);color:#f1dfc3}
-.campaign-readiness-ok{font:650 12px/1.5 "IBM Plex Sans",system-ui,sans-serif;
+.campaign-readiness-ok{font:650 12px/1.5 var(--fw-font-menu);
  color:var(--fw-sage);margin:8px 0 0}
 
 /* UX2 10: contract decision happens after a readable, cancellable preflight. */
@@ -176,7 +176,7 @@
  background:#04110fe8;touch-action:pan-y}
 .campaign-preflight{width:min(100%,510px);max-height:88dvh;overflow-y:auto;
  overscroll-behavior:contain;padding:20px;color:var(--fw-text);
- font:13px/1.5 Oxanium,system-ui,sans-serif}
+ font:13px/1.5 var(--fw-font-menu)}
 .campaign-preflight h2{font-size:21px;line-height:1.2;margin:8px 0 16px}
 .campaign-preflight h3{font-size:12px;letter-spacing:.08em;color:var(--fw-brass)}
 .campaign-preflight-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
@@ -196,9 +196,48 @@
 .campaign-preflight-actions{display:flex;gap:8px;margin-top:18px}
 .campaign-preflight-actions button{flex:1;min-height:46px;
  border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm);
- background:var(--fw-panel-raised);color:var(--fw-text);font:700 12px Oxanium,system-ui,sans-serif;
+ background:var(--fw-panel-raised);color:var(--fw-text);font:700 12px var(--fw-font-menu);
  padding:10px;touch-action:manipulation}
 .campaign-preflight-actions .campaign-primary{background:var(--fw-sage);
  color:var(--fw-bg)}
 @media(max-width:390px){.campaign-preflight-fields{grid-template-columns:1fr}
  .campaign-preflight-actions{flex-direction:column}}
+/* FIELDWORK / campaign typography. Keeps personnel records readable while
+ * the surrounding operational controls retain their condensed identity. */
+.campaign-screen,.campaign-preflight,
+.campaign-shell h1,.campaign-shell h2,.campaign-eyebrow,
+.campaign-person strong,.campaign-contract strong,
+.campaign-kit-name,.campaign-preflight h2,.campaign-preflight h3{
+ font-family:var(--fw-font-display);
+}
+.campaign-shell h1,.campaign-preflight h2{font-weight:800;letter-spacing:.015em}
+.campaign-shell h2,.campaign-person strong,.campaign-contract strong{font-weight:700;letter-spacing:.025em}
+.campaign-shell button,.campaign-shell select,.campaign-shell label,
+.campaign-shell summary,.campaign-tab,.campaign-kit-row span,
+.campaign-preflight-field span,.campaign-preflight-member span{
+ font-family:var(--fw-font-menu);
+}
+.campaign-shell button{font-size:15px}
+.campaign-shell .campaign-primary,.campaign-entry-actions button,
+.campaign-preflight-actions button,.campaign-readiness-warning{
+ font-family:var(--fw-font-action);font-weight:600;letter-spacing:0;
+}
+.campaign-lede,.campaign-note,.campaign-muted,
+.campaign-contract p,.campaign-report,.campaign-person span,
+.campaign-person small,.campaign-dossier p,.campaign-kit-description,
+.campaign-distinction,.campaign-readiness-label,.campaign-readiness-ok,
+.campaign-preflight-field p,.campaign-preflight-warning p,
+.campaign-preflight-member p{
+ font-family:var(--fw-font-narrative);line-height:1.5;
+}
+.campaign-funds,.campaign-stat strong,.campaign-kit-metrics,
+.campaign-skill-track+.campaign-skill,.campaign-kit-summary output{
+ font-family:var(--fw-font-data);font-variant-numeric:tabular-nums;
+ font-feature-settings:"tnum" 1;
+}
+.campaign-funds{font-size:16px}
+.campaign-stat strong{font-size:28px}
+@media(max-width:420px){
+ .campaign-shell button{font-size:14px}
+ .campaign-stat strong{font-size:26px}
+}
