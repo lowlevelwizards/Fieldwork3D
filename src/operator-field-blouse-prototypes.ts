@@ -193,33 +193,32 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
    // Sleeve ends substantially above the wrist when cuffed; the original
    // lower-arm bone becomes bare skin under this shortened cloth shell.
    box(short,cloth,0,-.14,0,3.89,.77,3.97);
-   // Double-layer rolled fabric, with sleeve shortened to ABOVE elbow.
-   // No manipulation of either IK limb transform or hand contact.
-   // A rolled cuff is enough to identify the shortening.
-   // Two bold folded layers identify a true rolled sleeve at game zoom.
-   seamBand(rolled,solidCuff,2.17,.135,.34);
-   seamBand(rolled,solidCuff,1.98,-.055,.19);
+   // Full shoulder-to-elbow upper arm remains visible. The roll wraps its
+   // distal (+Y) elbow end; the articulated lower arm is exposed skin.
+   // Shorter vertically, wider/deeper across the limb at gameplay zoom.
+   seamBand(rolled,solidCuff,2.43,.405,.22);
+   seamBand(rolled,solidCuff,2.16,.267,.115);
    if(historic){
     const elbow=outwardLimbPocket(1.77,-.12,.37,2.56,.27);
     box(b,cloth,elbow.x,elbow.y,elbow.z,
      elbow.width,elbow.height,elbow.depth);
-    seamBand(c,solidCuff,1.98,.20,.35);
-    seamBand(c,solidCuff,1.76,.005,.19);
+    seamBand(c,solidCuff,2.26,.214,.235);
+    seamBand(c,solidCuff,2.05,.078,.105);
    }else{
     // A true +X bicep pocket on BOTH articulated arms. Nominal +X is
     // anatomical outside in the actual alignSegment limb basis.
     const pouch=outwardLimbPocket(2.06,.08,.51,2.87,.83);
-    for(const g of [a,rolled]){
-     box(g,cloth,pouch.x,pouch.y,pouch.z,
-      pouch.width,pouch.height,pouch.depth);
-     box(g,cloth,pouch.x+.46,pouch.y+.22,0,
-      .23,.17,pouch.depth+.17);
-    }
+    // Pocket exists only on normal/cuffed upper sleeves. Never add it to
+    // rolledUpper: that state is a cuff-only group with no clipping cargo.
+    box(a,cloth,pouch.x,pouch.y,pouch.z,
+     pouch.width,pouch.height,pouch.depth);
+    box(a,cloth,pouch.x+.46,pouch.y+.22,0,
+     .23,.17,pouch.depth+.17);
     const elbow=outwardLimbPocket(1.80,.18,.25,2.00,.18);
     box(b,cloth,elbow.x,elbow.y,elbow.z,
      elbow.width,elbow.height,elbow.depth);
-    seamBand(c,solidCuff,1.97,.20,.35);
-    seamBand(c,solidCuff,1.76,.005,.19);
+    seamBand(c,solidCuff,2.26,.214,.235);
+    seamBand(c,solidCuff,2.05,.078,.105);
    }
    for(const g of [a,b,c,short,rolled])consolidateVisualGroup(g);
    upper.push(a);lower.push(b);cuffed.push(c);cuffedLower.push(short);rolledUpper.push(rolled);
@@ -235,6 +234,8 @@ export function updateFieldBlousePrototypes(
  for(const cut of FIELD_BLOUSE_CUTS){
   const show=cut===top,model=models[cut];
   model.torso.visible=show;
+  // Upper-sleeve pockets are hidden while rolled; the full anatomical
+  // upper-arm base remains, with the roll at the elbow end instead.
   for(const g of model.upper)g.visible=show&&state!=='rolled';
   for(const g of model.lower)g.visible=show&&state==='unrolled';
   for(const g of model.cuffedLower)g.visible=show&&state==='cuffed';

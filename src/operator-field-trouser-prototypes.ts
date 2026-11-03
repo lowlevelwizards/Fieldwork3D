@@ -26,7 +26,7 @@ export const FIELD_TROUSER_PROFILES={
    [.05,3.34,3.40],[.18,3.48,3.54],[.265,2.14,2.18]] as readonly Ring[],
   cuffed:[[-.60,2.85,2.90],[-.24,2.98,3.06],
    [.20,3.05,3.12],[.34,3.36,3.41],[.48,3.50,3.55]] as readonly Ring[],
-  cargo:[1.02,.48,3.23] as const,flap:[.27,.17,3.40] as const,
+  cargo:[1.19,.49,3.34] as const,flap:[.34,.20,3.54] as const,
   character:'Loose thigh, prominent box cargo pocket, fuller straight leg'
  },
  'acu-trousers':{
@@ -38,7 +38,7 @@ export const FIELD_TROUSER_PROFILES={
    [.05,3.06,3.12],[.16,3.19,3.25],[.275,1.98,2.08]] as readonly Ring[],
   cuffed:[[-.60,2.65,2.77],[-.25,2.83,2.90],
    [.21,2.87,2.93],[.35,3.21,3.27],[.48,3.29,3.34]] as readonly Ring[],
-  cargo:[.93,.46,3.10] as const,flap:[.25,.16,3.27] as const,
+  cargo:[1.08,.48,3.22] as const,flap:[.32,.19,3.41] as const,
   character:'Cleaner tapered thigh with angled cargo flaps and calf pouch'
  },
  'gorka-trousers':{
@@ -50,7 +50,7 @@ export const FIELD_TROUSER_PROFILES={
    [.09,3.42,3.49],[.18,3.38,3.43],[.265,2.08,2.14]] as readonly Ring[],
   cuffed:[[-.60,2.90,3.01],[-.20,3.06,3.12],
    [.18,3.06,3.13],[.34,3.40,3.46],[.48,3.46,3.55]] as readonly Ring[],
-  cargo:[1.08,.52,3.36] as const,flap:[.28,.17,3.49] as const,
+  cargo:[1.26,.54,3.48] as const,flap:[.35,.20,3.65] as const,
   character:'Voluminous overtrousers with reinforced knees and gaiter hems'
  }
 } as const;
@@ -61,6 +61,8 @@ export type TrouserCutPrototype={
  bloused:THREE.Group[];
  cuffed:THREE.Group[];
  suspenders?:THREE.Group;
+ /** Per-trouser-channel fold material shared by cuffed/bloused hems. */
+ cuffMaterial:THREE.MeshStandardMaterial;
 };
 export type FieldTrouserPrototypes=Record<FieldTrouserCut,TrouserCutPrototype>;
 
@@ -117,6 +119,11 @@ export function createFieldTrouserPrototypes(legs:readonly Limb[],
  mountainCanvas:THREE.Material=cloth,mountainPanel:THREE.Material=trim,
  chest?:THREE.Group):FieldTrouserPrototypes{
  const results={} as FieldTrouserPrototypes;
+ // Cuffs are rolled fabric, not another camouflage sample. They receive
+ // the independently resolved TROUSER solid/print companion swatch in pose.
+ const cuffMaterial=new THREE.MeshStandardMaterial({
+  color:0x646c49,roughness:1,metalness:0,flatShading:true
+ });
  for(const cut of FIELD_TROUSER_CUTS){
   const p=FIELD_TROUSER_PROFILES[cut],classic=cut==='bdu-trousers',
    gorka=cut==='gorka-trousers';
@@ -180,18 +187,20 @@ export function createFieldTrouserPrototypes(legs:readonly Limb[],
       patch.width,patch.height,patch.depth);
      // A single low band wraps the weather-tight gaiter; don't emit
      // offset slivers perpendicular to the leg's physical outside.
-     part(lower,wear,shinW/2+.11,.30,0,.24,.16,3.85);
+     part(lower,cuffMaterial,shinW/2+.13,.30,0,.26,.12,4.01);
     }
     // The bloused outline narrows at the boot collar; the straight hem
     // stays wider and overlaps its shaft. Both have a visible textile fold.
     // Three genuinely different hem silhouettes; bloused finishes
     // narrow just above the boot shaft, cuffed finishes stack thick.
     if(hem==='bloused'){
-     part(lower,textile,0,end-.145,0,shinW*.99,.25,shinD*.99);
-     part(lower,textile,0,end-.040,0,shinW*.83,.18,shinD*.83);
+     // Keep the shortened trouser length/taper, but fold mass projects
+     // SIDEWAYS instead of stacking tall vertical rings above the boot.
+     part(lower,cuffMaterial,0,end-.116,0,shinW*1.12,.19,shinD*1.12);
+     part(lower,cuffMaterial,0,end-.013,0,shinW*.90,.11,shinD*.90);
     }else if(hem==='cuffed'){
-     part(lower,textile,0,end-.175,0,shinW+.69,.29,shinD+.71);
-     part(lower,textile,0,end-.036,0,shinW+.39,.16,shinD+.42);
+     part(lower,cuffMaterial,0,end-.133,0,shinW+1.27,.205,shinD+1.29);
+     part(lower,cuffMaterial,0,end-.016,0,shinW+.88,.108,shinD+.91);
     }else{
      part(lower,textile,0,.44,0,shinW+.25,.17,shinD+.25);
     }
@@ -213,7 +222,7 @@ export function createFieldTrouserPrototypes(legs:readonly Limb[],
    }
    consolidateVisualGroup(suspenders);
   }
-  results[cut]={thigh,bloused,unbloused,cuffed,suspenders};
+  results[cut]={thigh,bloused,unbloused,cuffed,suspenders,cuffMaterial};
  }
  return results;
 }
