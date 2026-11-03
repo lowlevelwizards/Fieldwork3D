@@ -13,7 +13,7 @@ export const FIELD_BLOUSE_CUTS=['bdu-shirt','acu-shirt'] as const;
 export type FieldBlouseCut=typeof FIELD_BLOUSE_CUTS[number];
 type Arm={upper:THREE.Mesh;lower:THREE.Mesh};
 export type FieldBlousePrototype={torso:THREE.Group;upper:THREE.Group[];lower:THREE.Group[];
- cuffed:THREE.Group[];rolledUpper:THREE.Group[]};
+ cuffed:THREE.Group[];cuffedLower:THREE.Group[];rolledUpper:THREE.Group[]};
 export type FieldBlousePrototypes=Record<FieldBlouseCut,FieldBlousePrototype>;
 type Ring={y:number;front:number;back:number;side:number};
 
@@ -189,14 +189,19 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
    box(torso,cloth,5.52,-5.81,0,.37,.62,13.60);
   }
   const upper:THREE.Group[]=[],lower:THREE.Group[]=[],
-  cuffed:THREE.Group[]=[],rolledUpper:THREE.Group[]=[];
+  cuffed:THREE.Group[]=[],cuffedLower:THREE.Group[]=[],rolledUpper:THREE.Group[]=[];
   for(const [index,arm] of arms.entries()){
    const a=group(arm.upper,cut+':upper-sleeve:'+index);
    const b=group(arm.lower,cut+':forearm-sleeve:'+index);
    const c=group(arm.lower,cut+':cuffed-wrist:'+index);
+   const short=group(arm.lower,cut+':short-cuffed-forearm:'+index);
    const rolled=group(arm.upper,cut+':rolled-upper:'+index);
    sleeve(a,cloth,profile.upperRadius[0],profile.upperRadius[1],10.0);
    sleeve(b,cloth,profile.lowerRadius[0],profile.lowerRadius[1],9.6);
+   // Sleeve ends substantially above the wrist when cuffed; the original
+   // lower-arm bone becomes bare skin under this shortened cloth shell.
+   sleeve(short,cloth,profile.lowerRadius[0]+.07,
+    profile.lowerRadius[1]+.17,9.6,.77,-.135);
    // Double-layer rolled fabric, with sleeve shortened to ABOVE elbow.
    // No manipulation of either IK limb transform or hand contact.
    sleeve(rolled,cloth,profile.upperRadius[0],profile.upperRadius[1],
@@ -204,8 +209,8 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
    seamBand(rolled,cloth,profile.upperRadius[1]+.36,.285,.12);
    if(historic){
     box(b,cloth,0,.38,2.65,2.45,.12,.56);
-    seamBand(c,cloth,profile.lowerRadius[0]+.26,.425,.16);
-    seamBand(c,cloth,profile.lowerRadius[0]+.11,.305,.11);
+    seamBand(c,cloth,profile.lowerRadius[0]+.42,.235,.24);
+    seamBand(c,cloth,profile.lowerRadius[0]+.30,.125,.21);
    }else{
     // Upper-arm sleeve pockets survive in either regular or rolled fit.
     for(const g of [a,rolled]){
@@ -213,13 +218,14 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
      box(g,trim,.02,.290,3.15,2.80,.08,1.00);
     }
     box(b,cloth,0,.40,2.62,2.25,.10,.48);
-    seamBand(c,cloth,profile.lowerRadius[0]+.18,.420,.135);
+    seamBand(c,cloth,profile.lowerRadius[0]+.33,.235,.24);
+    seamBand(c,cloth,profile.lowerRadius[0]+.21,.125,.18);
    }
-   for(const g of [a,b,c,rolled])consolidateVisualGroup(g);
-   upper.push(a);lower.push(b);cuffed.push(c);rolledUpper.push(rolled);
+   for(const g of [a,b,c,short,rolled])consolidateVisualGroup(g);
+   upper.push(a);lower.push(b);cuffed.push(c);cuffedLower.push(short);rolledUpper.push(rolled);
   }
   consolidateVisualGroup(torso);
-  models[cut]={torso,upper,lower,cuffed,rolledUpper};
+  models[cut]={torso,upper,lower,cuffed,cuffedLower,rolledUpper};
  }
  return models;
 }
@@ -229,7 +235,8 @@ export function updateFieldBlousePrototypes(
   const show=cut===top,model=models[cut];
   model.torso.visible=show;
   for(const g of model.upper)g.visible=show&&state!=='rolled';
-  for(const g of model.lower)g.visible=show&&state!=='rolled';
+  for(const g of model.lower)g.visible=show&&state==='unrolled';
+  for(const g of model.cuffedLower)g.visible=show&&state==='cuffed';
   for(const g of model.cuffed)g.visible=show&&state==='cuffed';
   for(const g of model.rolledUpper)g.visible=show&&state==='rolled';
  }
