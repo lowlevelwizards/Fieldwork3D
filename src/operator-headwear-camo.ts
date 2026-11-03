@@ -15,7 +15,7 @@ export const HEADWEAR_CAMO_DENSITY:Readonly<Record<HeadwearCamoId,number>>={
  'm81-woodland':1,'three-color-desert':1,'tiger-stripe':2,ucp:2,multicam:2,
  flecktarn:2,'woodland-dpm':1,'swedish-m90':1,'six-color-desert':1,
  'woodland-marpat':2,alpenflage:1,'desert-marpat':2,
- 'erdl-lowland':2,'finnish-m05':2,'polish-pantera':1,
+ 'erdl-lowland':2,'finnish-m05':3,'polish-pantera':2,
  'russian-flora':1,'rhodesian-brushstroke':1,'desert-tropentarn':2
 };
 export const HEADWEAR_CAMO_IDS=[
@@ -347,8 +347,8 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  },
  // 4A: six separate historical pattern families. All motifs are independently authored.
  'erdl-lowland':{
-  label:'ERDL LOWLAND',description:'Fine leaf-and-branch woodland with thin ink trails, green ground and small khaki breaks',
-  colors:[[87,118,73],[119,134,86],[118,85,60],[175,155,105],[48,55,39]],
+  label:'ERDL LOWLAND',description:'Compact interleaving leaf lobes, dark branching twigs, rust and pale-green openings',
+  colors:[[87,118,73],[146,159,108],[127,93,71],[183,169,120],[44,50,37]],
   targetCoverage:[.167,.170,.273,.179,.211],
   motifs:[
    p(1,-4,0,4,-2,12,2,16,7,11,11,4,9,-3,12),
@@ -373,8 +373,8 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   ]
  },
  'finnish-m05':{
-  label:'FINNISH M05',description:'Strong blocky Finnish forest bands with stepped woodland boundaries and high-contrast dark fractures',
-  colors:[[94,111,77],[143,159,101],[64,83,66],[46,54,44]],
+  label:'FINNISH M05',description:'Dense tiny organic lichen islands: muted earth, apple-green moss, deep spruce and charcoal shadows',
+  colors:[[136,130,101],[163,178,100],[64,91,72],[42,49,46]],
   targetCoverage:[.20,.244,.346,.210],
   motifs:[
    p(1,-4,1,5,1,5,4,9,4,9,9,13,9,13,13,7,13,7,10,2,10,2,7,-4,7),
@@ -393,8 +393,8 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   ]
  },
  'polish-pantera':{
-  label:'POLISH WZ.93',description:'Broad Polish woodland amoeba lobes with irregular inward notches and warm khaki breaks',
-  colors:[[87,118,73],[118,85,60],[175,155,105],[48,55,39]],
+  label:'POLISH WZ.93',description:'Closely packed curled amoebas, dark hooked twigs and brown interruptions in light olive',
+  colors:[[101,126,82],[118,85,60],[157,155,111],[35,46,36]],
   targetCoverage:[.414,.209,.207,.170],
   motifs:[
    p(1,-5,0,4,-2,12,1,14,4,10,6,12,10,6,13,-2,11,-5,8),
@@ -418,8 +418,8 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   ]
  },
  'russian-flora':{
-  label:'VSR-98 FLORA',description:'Horizontal Russian Flora brush bands, broken wavy reeds and olive-to-brown alternating corridors',
-  colors:[[77,101,70],[124,135,91],[138,121,90],[46,54,44]],
+  label:'VSR-98 FLORA',description:'Fine layered horizontal wavering reeds: blue-green, straw olive, rust brown and dark evergreen',
+  colors:[[72,107,88],[157,149,93],[135,97,62],[45,65,54]],
   targetCoverage:[.192,.276,.273,.258],
   motifs:[
    p(1,-4,0,6,1,13,3,21,3,28,6,35,5,35,9,26,8,19,7,12,8,4,5,-4,5),
@@ -437,8 +437,8 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   ]
  },
  'rhodesian-brushstroke':{
-  label:'RHODESIAN BRUSH',description:'Oversized slashing brush strokes with feathered spear tips across a dry khaki field',
-  colors:[[193,173,133],[87,118,73],[118,85,60],[48,55,39]],
+  label:'RHODESIAN BRUSH',description:'Long high-contrast diagonally swept ochre, forest and russet paint strokes with feathered ends',
+  colors:[[202,188,133],[89,111,78],[128,78,60],[50,62,45]],
   targetCoverage:[.261,.295,.251,.193],
   motifs:[
    p(1,-5,1,2,-2,10,2,18,8,25,13,27,17,20,14,14,12,5,7,-5,7),
@@ -456,8 +456,8 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   ]
  },
  'desert-tropentarn':{
-  label:'GERMAN TROPENTARN',description:'Pale sand islands interrupted by compact rust-brown and restrained olive droplet clusters',
-  colors:[[221,201,162],[193,173,133],[145,105,73],[109,126,88],[46,54,44]],
+  label:'GERMAN TROPENTARN',description:'Pale wheat sand covered by thousands of visually clustered tiny brown and olive flecks',
+  colors:[[230,214,178],[206,182,138],[118,87,64],[99,115,84],[53,65,53]],
   targetCoverage:[.255,.447,.211,.062,.025],
   motifs:[
    p(1,-5,0,4,-2,12,2,17,6,13,11,5,11,-4,7),
@@ -565,6 +565,110 @@ function applyMarpatFragments(x:number,y:number,ink:number,desert:boolean):numbe
  return ink;
 }
 
+/** Periodic coherent woodland grain. Deliberately different motif rules per
+ * historical print; this is a static 32px source tile, not render-time noise.
+ * All noise-cell boundaries wrap with the source artwork.
+ */
+function camoLattice(x:number,y:number,seed:number):number{
+ let n=Math.imul(x+Math.imul(y,71)+seed*131,0x45d9f3b);
+ n=Math.imul(n^(n>>>16),0x119de1f3);n^=n>>>15;
+ return (n>>>0)/4294967295;
+}
+function camoGrain(x:number,y:number,cell:number,seed:number):number{
+ const cols=32/cell;
+ const ax=Math.floor(x/cell),ay=Math.floor(y/cell);
+ const fx=(x%cell)/cell,fy=(y%cell)/cell;
+ const tx=fx*fx*(3-2*fx),ty=fy*fy*(3-2*fy);
+ const v=(xx:number,yy:number)=>camoLattice(((xx%cols)+cols)%cols,((yy%cols)+cols)%cols,seed);
+ const top=v(ax,ay)*(1-tx)+v(ax+1,ay)*tx;
+ const bottom=v(ax,ay+1)*(1-tx)+v(ax+1,ay+1)*tx;
+ return top*(1-ty)+bottom*ty;
+}
+function camoNearPoint(x:number,y:number,cx:number,cy:number,r:number):boolean{
+ const dx=Math.min(Math.abs(x-cx),32-Math.abs(x-cx));
+ const dy=Math.min(Math.abs(y-cy),32-Math.abs(y-cy));
+ return dx*dx+dy*dy<=r*r;
+}
+/** Fine-scale pattern language is authored separately for all six 4B prints.
+ * The large geometric paint shapes remain as the macro underpainting.
+ */
+function apply4BDetail(id:HeadwearCamoId,x:number,y:number,ink:number):number{
+ if(id==='finnish-m05'){
+  // Forest-photo lichen — small asymmetrical islands, NOT MARPAT pixels.
+  // Two bands of coherent grain create tiny crenellated organic boundaries.
+  const moss=.62*camoGrain(x,y,4,5)+.38*camoGrain(x,y,2,31);
+  const accent=camoGrain((x+13)%32,(y+3)%32,4,17);
+  if(moss<.225)return 3;
+  if(moss<.415)return accent>.47?2:0;
+  if(moss>.705)return 1;
+  if(accent>.77)return 1;
+  if(accent<.28)return 2;
+  return ink===3?2:ink;
+ }
+ if(id==='erdl-lowland'){
+  // Little forked leaflets on thin, connected black/tan branchlets.
+  const grain=camoGrain(x,y,4,19)*.68+camoGrain(x,y,2,7)*.32;
+  const branch=(y+Math.round(2*Math.sin(x*.5))+(x>17?2:0)+32)%13;
+  if(branch===0&&grain>.31)return 4;
+  if((branch===1||branch===12)&&grain>.55)return 2;
+  if(grain>.68)return 1;
+  if(grain<.19)return 3;
+  if(grain>.54&&ink===4)return 0;
+  return ink;
+ }
+ if(id==='polish-pantera'){
+  // Compact irregular amoebae with multiple hooked dark tips and thin
+  // green corridors. Dark ink follows edges, not uniform speckles.
+  const grain=.6*camoGrain(x,y,4,23)+.4*camoGrain(x,y,2,19);
+  const swirl=Math.abs((x-2*y+64)%13-6);
+  if(grain>.72&&swirl<4)return 3;
+  if(grain>.59&&ink===2)return 1;
+  if(grain<.31&&ink===1)return 2;
+  if(grain>.60&&ink===0)return 2;
+  return ink;
+ }
+ if(id==='russian-flora'){
+  // Long uneven horizontal stripes of *different width*, with staggered
+  // cuts and narrower contrasting reeds. Never digital/pixel confetti.
+  const wave=1.45*Math.sin((x+2)*Math.PI/14)+.75*Math.sin((x+5)*Math.PI/6);
+  const lane=((y+wave+32)%11+11)%11;
+  const cut=camoGrain(x,y,4,13);
+  if(lane<1.05&&cut>.27)return 3;
+  if(lane>=1.05&&lane<2.4)return cut>.34?2:0;
+  if(lane>=5.0&&lane<6.4)return cut>.34?1:0;
+  if(lane>=8.2&&lane<9.0&&cut>.42)return 2;
+  return cut<.22?1:ink;
+ }
+ if(id==='rhodesian-brushstroke'){
+  // Long angled feather/spear-tip strokes. Numerous narrow paint shreds
+  // flank the broad slashes; their gaps create unmistakable brush fibers.
+  const slash=((y-.78*x+96)%17+17)%17;
+  const fiber=camoGrain(x,y,4,39);
+  if(slash<.8&&fiber>.25)return 3;
+  if(slash>=.8&&slash<2.1&&fiber>.4)return 2;
+  if(slash>8.3&&slash<9.1&&fiber>.42)return 1;
+  if(slash>13.0&&slash<13.7&&fiber>.56)return 2;
+  return ink;
+ }
+ if(id==='desert-tropentarn'){
+  // A sparse light ground with many *grouped* 1–2px droplets. Each
+  // non-lattice center has satellite spots; little green centers vary the
+  // brown constellations without large woodland-looking green fields.
+  for(let k=0;k<27;k++){
+   const cx=(k*19+Math.floor(k/3)*7+3)&31;
+   const cy=(k*11+Math.floor(k/5)*9+1)&31;
+   if(camoNearPoint(x,y,cx,cy,(k%5===0)?2:1))return k%7===0?3:2;
+   if(camoNearPoint(x,y,(cx+3)&31,(cy+1)&31,1))return k%4===0?3:2;
+   if(k%3===0&&camoNearPoint(x,y,(cx+1)&31,(cy+4)&31,1))return 3;
+  }
+  const grain=camoGrain(x,y,4,53);
+  if(grain>.72&&ink===1)return 0;
+  if(grain<.18&&ink===0)return 1;
+  return ink===4?3:ink;
+ }
+ return ink;
+}
+
 function inPolygon(x:number,y:number,coords:readonly number[]):boolean{
  let inside=false;
  for(let i=0,j=coords.length-2;i<coords.length;j=i,i+=2){
@@ -601,6 +705,7 @@ export function headwearCamoIndices(id:HeadwearCamoId):Uint8Array{
   if(id==='flecktarn')ink=applyFlecktarnSpeckle(x,y,ink);
   if(id==='woodland-marpat'||id==='desert-marpat')
    ink=applyMarpatFragments(x,y,ink,id==='desert-marpat');
+  ink=apply4BDetail(id,x,y,ink);
   data[y*size+x]=ink;
  }
  return data;
