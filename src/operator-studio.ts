@@ -480,14 +480,14 @@ function renderPresetMenu(){
  }
  if(studioPresets.some(x=>x.name===selectedPreset))presetSelect.value=selectedPreset;
  const selectedName=presetSelect.value;
- presetApply.disabled=readOnly||comparingSaved||!selectedName;
- presetDelete.disabled=readOnly||comparingSaved||!selectedName;
- presetSave.disabled=readOnly||comparingSaved||
+ presetApply.disabled=readOnly||comparingSaved||saveInFlight||!selectedName;
+ presetDelete.disabled=readOnly||comparingSaved||saveInFlight||!selectedName;
+ presetSave.disabled=readOnly||comparingSaved||saveInFlight||
   studioPresets.length>=STUDIO_PRESET_LIMIT;
  const p=member();
  const pair=p?pairedUniformFor(activeCategory,current(),p.loadout):null;
  matchSetButton.hidden=!pair;
- matchSetButton.disabled=readOnly||comparingSaved||!pair||
+ matchSetButton.disabled=readOnly||comparingSaved||saveInFlight||!pair||
   !canEquip(pair.slot,pair.id)||
   resolvedWardrobe(current(),member()!.loadout)[pair.slot]===pair.id;
  if(pair)matchSetButton.textContent='MATCH '+(pair.slot==='top'?'TOP':'TROUSERS')+
@@ -565,14 +565,14 @@ function refresh(){
   if(person)option.textContent=person.callsign.toUpperCase()+
    (dirty.has(person.id)?' · UNSAVED':'');
  }
- compareButton.disabled=!dirty.has(selected);
+ compareButton.disabled=saveInFlight||!dirty.has(selected);
  compareButton.setAttribute('aria-pressed',String(comparingSaved));
  compareButton.textContent=comparingSaved?'EDITING ↔':'COMPARE';
  studioRoot.dataset.comparing=String(comparingSaved);
  modeLabel.textContent=(mode==='campaign'?'CAMPAIGN · PERSISTENT':
   'QUICK PLAY · APPEARANCE')+
   (dirty.size?' · '+dirty.size+' UNSAVED':'');
- undoButton.disabled=readOnly||!(history.get(selected)?.length);
+ undoButton.disabled=readOnly||saveInFlight||!(history.get(selected)?.length);
  renderCategories();
  thumbBrowser.setCategory(activeCategory);
  thumbBrowser.refresh(p.loadout,previewWardrobe(),p.id);
