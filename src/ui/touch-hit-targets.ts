@@ -17,3 +17,20 @@ const TOUCH_PROFILE:TacticalHitProfile=Object.freeze({
 export function tacticalHitProfile(kind:TacticalPointerKind):TacticalHitProfile{
   return kind==='touch'?TOUCH_PROFILE:kind==='pen'?PEN_PROFILE:MOUSE_PROFILE;
 }
+
+/** Use the same finger-sized screen-space tolerance regardless of map zoom. */
+export type ScreenHitCandidate={owner:string;distancePx:number};
+export function preferSelectedHit<T extends ScreenHitCandidate>(
+  hits:readonly T[],selectedOwner:string,selectionSlackPx=7):T|null{
+  if(!hits.length)return null;
+  const ordered=[...hits].sort((a,b)=>a.distancePx-b.distancePx);
+  const closest=ordered[0];
+  const selected=ordered.find(hit=>hit.owner===selectedOwner);
+  return selected&&selected.distancePx<=closest.distancePx+selectionSlackPx?
+    selected:closest;
+}
+/** Sampling gesture points in screen pixels prevents zoom from changing stroke density. */
+export function shouldAppendStrokePoint(
+  last:{x:number;y:number},current:{x:number;y:number},stepPx=12):boolean{
+  return Math.hypot(last.x-current.x,last.y-current.y)>=stepPx;
+}
