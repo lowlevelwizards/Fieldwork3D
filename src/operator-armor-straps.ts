@@ -9,9 +9,12 @@ import type {ArmorFitSurfaces} from './operator-uniform-fit-envelope.ts';
 export function plateHalfWidthAt(spec:ArmorProportion,y:number,rear=false){
  const width=rear?spec.rearWidth:spec.width;
  const half=width*.5;
- const breakY=Math.max(spec.bottom+1.6,spec.top-2.25);
+ // Rear plate is authored .2 lower and slightly shorter than the front.
+ const top=rear?spec.top-.2:spec.top;
+ const bottom=rear?spec.bottom+.2:spec.bottom;
+ const breakY=Math.max(bottom+1.6,top-2.25);
  if(y<=breakY)return half;
- const t=Math.min(1,Math.max(0,(y-breakY)/(spec.top-breakY)));
+ const t=Math.min(1,Math.max(0,(y-breakY)/(top-breakY)));
  return half-spec.upperInset*t;
 }
 export type ArmorStrapLanding={
