@@ -107,14 +107,12 @@ function tube(g:THREE.Group,m:THREE.Material,
  mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);return mesh;
 }
 function foldedHood(g:THREE.Group,body:THREE.Material,
- trim:THREE.Material,wide=false){
- // Three low sewn masses tucked BEHIND the neck, not a second helmet and
- // not a pair of unattached upright spikes. Keep the headwear volume clear.
- box(g,body,-5.28,7.30,0,1.45,2.45,wide?11.8:11.1);
- for(const sign of [-1,1]){
-  box(g,body,-4.66,7.25,sign*4.55,1.72,1.80,2.32);
-  box(g,trim,-4.56,8.08,sign*4.56,.22,.24,2.13);
- }
+ wide=false){
+ // Low, CLOSED folded hood profile, not two little floating antennas.
+ // One rear fold and two shoulder folds remain seated on the neckline.
+ box(g,body,-5.60,7.02,0,1.25,1.55,wide?11.90:11.10);
+ for(const sign of [-1,1])
+  box(g,body,-4.67,6.93,sign*4.48,1.32,1.42,2.36);
 }
 export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
  cloth:THREE.MeshStandardMaterial,trim:THREE.MeshStandardMaterial):NewUpperGarments{
@@ -147,7 +145,7 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
    box(torso,trim,5.44,6.20,0,.14,2.18,.22);
    box(torso,body,5.58,-5.79,0,.16,.33,13.95);
   }else if(smock){
-   foldedHood(torso,cloth,smockCuff);
+   foldedHood(torso,cloth);
    // Four discrete patch pockets, shallow enough to read as cloth, not
    // armor blocks. Hem stays below the blouse, but the torso stays stubby.
    for(const sign of [-1,1]){
@@ -160,17 +158,19 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
    box(torso,cloth,6.22,-.60,0,.35,13.6,.34);
    box(torso,smockCuff,6.26,-7.97,0,.17,.29,14.25);
   }else{
-   foldedHood(torso,mountainCanvas,gorkaCuff,true);
-   // The Gorka reads by two broad reinforcement fields and a snug anorak
-   // waist, not plates, fins, or a shoulder-spanning stack of boxes.
+   foldedHood(torso,mountainCanvas,true);
+   // Four deliberate large shape cues: side shoulder fields, simple
+   // standing storm collar, two lower pouch masses, cinched waist.
+   // Wear overlays follow shell faces instead of building a second vest.
    for(const sign of [-1,1]){
-    box(torso,wear,.35,4.12,sign*8.12,7.00,1.30,.25);
-    box(torso,wear,6.30,2.42,sign*5.38,.22,2.45,3.56);
-    box(torso,body,6.39,-4.50,sign*3.72,.37,3.14,4.35);
-    box(torso,wear,6.64,-3.11,sign*3.72,.17,.59,4.47);
+    box(torso,body,1.50,7.01,sign*3.56,5.0,1.12,1.62);
+    box(torso,wear,.18,4.62,sign*8.03,6.10,.82,.22);
+    box(torso,wear,6.28,3.58,sign*5.62,.15,1.85,2.40);
+    box(torso,body,6.35,-4.48,sign*3.56,.28,2.87,4.25);
+    box(torso,wear,6.57,-3.18,sign*3.56,.12,.45,4.30);
    }
-   box(torso,wear,6.34,1.8,0,.18,.65,7.80);
-   box(torso,gorkaCuff,6.35,-7.43,0,.23,.40,14.20);
+   box(torso,gorkaCuff,6.36,-6.55,0,.18,.39,13.54);
+   box(torso,wear,6.31,1.05,0,.10,5.70,.20);
   }
   const upper:THREE.Group[]=[],lower:THREE.Group[]=[],
    cuffedLower:THREE.Group[]=[],rolledUpper:THREE.Group[]=[];
