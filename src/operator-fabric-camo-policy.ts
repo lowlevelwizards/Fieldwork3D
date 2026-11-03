@@ -23,7 +23,6 @@ const uniform=['top','trousers'] as const;
 const withPack=['top','trousers','pack'] as const;
 const withKit=['top','trousers','gear','pack'] as const;
 const withArmor=['top','trousers','armor'] as const;
-const withArmorAndGear=['top','trousers','armor','gear'] as const;
 const policy=(channels:readonly FabricCamoChannel[],
  period:FabricCamoPolicy['period'],evidence:CamouflageEvidence,
  note:string):FabricCamoPolicy=>({channels,period,evidence,note});
