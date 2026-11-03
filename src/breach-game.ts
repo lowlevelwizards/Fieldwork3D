@@ -696,6 +696,25 @@ export function planWatch(s:Session,id:string,p:Pt,nodeId?:number,
   origin:'here'|'end'='end'){
   return planAim(s,id,'track',p,nodeId,'watch',origin);
 }
+/** Edit the active, already-executed WATCH while paused. Its original
+ * order has left the route, so this changes persistent aim state directly
+ * without inventing an extra movement waypoint or changing future orders.
+ */
+export function retargetActiveWatch(s:Session,id:string,target:Pt):boolean{
+  const a=party(s,id);
+  if(!a||!canEdit(s)||a.aimInstruction?.mode!=='track'||
+     !Number.isFinite(target.x)||!Number.isFinite(target.y)||
+     d(a.p,target)<2)return false;
+  a.aimInstruction={mode:'track',point:clone(target)};
+  return true;
+}
+/** DELETE on an active WATCH releases tracking; the path stays untouched. */
+export function removeActiveWatch(s:Session,id:string):boolean{
+  const a=party(s,id);
+  if(!a||!canEdit(s)||a.aimInstruction?.mode!=='track')return false;
+  a.aimInstruction=null;
+  return true;
+}
 /** Release an existing WATCH using an explicit AUTO transition. */
 export function releaseWatch(s:Session,id:string,nodeId?:number,
   origin:'here'|'end'='here'):boolean{

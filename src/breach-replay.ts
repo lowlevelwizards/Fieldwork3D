@@ -20,7 +20,7 @@ export type ActorFrame=Pick<TeamActor,
   'lastHitSeverity'|'downPose'|'flashUntil'|'suppression'|
   'wedgeRemaining'|'carryingId'|'carriedById'|
   'lastTreatmentAt'|'lastTreatmentTargetId'|'treatmentActive'|'treatmentProgress'|
-  'medical'|'medicalSupplies'|'weapon'|'weaponConfiguration'|'weaponLightOn'|'injuryStage'|'armorIntegrity'|'helmetIntegrity'|'flashCharges'|'morale'|'surrendered'|'defense'|'watch'|
+  'medical'|'medicalSupplies'|'weapon'|'weaponConfiguration'|'weaponLightOn'|'injuryStage'|'armorIntegrity'|'helmetIntegrity'|'flashCharges'|'morale'|'surrendered'|'defense'|'watch'|'aimInstruction'|
   'lastThrowAt'|'lastDoorAt'|'lastDoorId'|'lastDoorMethod'|'stride'|
   'weaponYaw'|'stability'|'recoil'|'lastShotAt'|'fireMode'|'burstCount'|'skills'|
   'squeeze'|'squeezeYaw'|'squeezeTime'>;
@@ -87,6 +87,8 @@ export function snapshot(s:Session,seenGround?:string[]):ReplayFrame{
       skills:{...a.skills},
       surrendered:a.surrendered,defense:a.defense?position(a.defense):null,
       watch:a.watch?position(a.watch):null,
+      aimInstruction:a.aimInstruction?{...a.aimInstruction,
+        point:a.aimInstruction.point?position(a.aimInstruction.point):undefined}:null,
       intentKind:a.intent?.kind,awarenessCount:Object.keys(a.awareness.contacts).length})),
     doors:s.doors.map(d=>({...d,a:position(d.a),b:position(d.b)})),
     objectRevision:s.objectRevision,
@@ -214,6 +216,8 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   for(const copy of f.actors){
     const a=s.operators.find(actor=>actor.id===copy.id);
     if(a)Object.assign(a,copy,{p:position(copy.p),
+      aimInstruction:copy.aimInstruction?{...copy.aimInstruction,
+        point:copy.aimInstruction.point?position(copy.aimInstruction.point):undefined}:null,
       spareMagazines:copy.spareMagazines.map(m=>({...m})),
       medical:copy.medical?copyMedicalCondition(copy.medical):newMedicalCondition(),
       medicalSupplies:normalizedMedicalSupplies(copy.medicalSupplies,
