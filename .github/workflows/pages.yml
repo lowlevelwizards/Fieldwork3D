@@ -36,3 +36,23 @@ jobs:
           path: dist
       - id: deployment
         uses: actions/deploy-pages@v4
+      # Deployment is complete only after the public site serves this exact
+      # stamped artifact. Detect stuck Pages publishing and stale build caches.
+      - name: Verify public Pages serves expected build
+        env:
+          SITE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          expected="$(node -p "JSON.parse(require('fs').readFileSync('dist/fieldwork-build.json','utf8')).id")"
+          endpoint="${SITE_URL%/}/fieldwork-build.json"
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            payload="$(curl -fsSL --max-time 10 -H 'Cache-Control: no-cache' "${endpoint}?release=${GITHUB_RUN_ID}-${attempt}" || true)"
+            served="$(printf '%s' "$payload" | node -e "let s='';process.stdin.on('data',x=>s+=x).on('end',()=>{try{console.log(JSON.parse(s).id||'')}catch{console.log('')}})")"
+            if [[ "$served" == "$expected" ]]; then
+              echo "Pages verified: $served"
+              exit 0
+            fi
+            echo "Expected $expected; public Pages returned ${served:-unavailable}"
+            sleep 5
+          done
+          echo "Deployment published but served build did not match release artifact" >&2
+          exit 1
