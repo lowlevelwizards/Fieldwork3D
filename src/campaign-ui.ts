@@ -26,6 +26,8 @@ import {promptFieldworkText,confirmFieldworkAction,showFieldworkNotice}
 import './campaign-style.css';
 import './operator-headwear-picker.css';
 import {createHeadwearAppearancePicker} from './operator-headwear-picker.ts';
+import {createWardrobeFabricCamoPicker} from './operator-fabric-camo-picker.ts';
+import './operator-fabric-camo-picker.css';
 
 export type CampaignHandlers={
  newCampaign:()=>void;continueCampaign:()=>void;quickPlay:()=>void;
@@ -68,6 +70,7 @@ export class CampaignScreen{
  private wardrobeExpanded=false;
  private headwearExpanded=false;
  private headwearCamoExpanded=false;
+ private fabricPickerState:{expanded:boolean;openChannel:null|import('./operator-fabric-camo-policy.ts').FabricCamoChannel;filter:string}={expanded:false,openChannel:null,filter:''};
  private readonly operatorViewAngles=new Map<string,number>();
  private disposePreview(){
   if(this.preview&&this.lastArmoryRenderedId)
@@ -383,6 +386,7 @@ export class CampaignScreen{
   if(!sameOperator){
    this.wardrobeExpanded=false;
    this.headwearExpanded=false;this.headwearCamoExpanded=false;
+   this.fabricPickerState={expanded:false,openChannel:null,filter:''};
   }
   this.lastArmoryRenderedId=id;
   const person=c.operators.find(o=>o.id===id);
@@ -615,6 +619,8 @@ export class CampaignScreen{
      onExpandedChange:open=>{this.headwearExpanded=open;},
      onCamoExpandedChange:open=>{this.headwearCamoExpanded=open;}
     }));
+   wardrobePanel.append(createWardrobeFabricCamoPicker(person.loadout,wardrobe,
+    next=>this.handlers.setWardrobe(id,next),this.fabricPickerState,locked));
    for(const channel of ['top','trousers','armor','gear','pack','head'] as const){
    const row=node('label','campaign-kit-row');
    row.append(node('span','',channel.toUpperCase()+' CAMOUFLAGE'));
