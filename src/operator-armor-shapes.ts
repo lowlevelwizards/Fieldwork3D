@@ -18,9 +18,13 @@ function rawStrip(rings:readonly (readonly [XYZ,XYZ,XYZ,XYZ])[],
  material:THREE.Material,group:THREE.Group,name:string):THREE.Mesh{
  const points:number[]=[],uv:number[]=[];
  const add=(a:XYZ,b:XYZ,c:XYZ,u1:number,u2:number)=>{
-  points.push(...a,...b,...c);
-  uv.push(u1/TILE_WORLD_SIZE,0,u2/TILE_WORLD_SIZE,0,
-   u2/TILE_WORLD_SIZE,1/TILE_WORLD_SIZE);
+  // Winding varies with the flank and back/front attachment direction.
+  // Emit both oriented faces so one generated wrapper can be used on each
+  // side without accidentally hiding its top or outer wall in Three.js.
+  points.push(...a,...b,...c,...c,...b,...a);
+  const u=u1/TILE_WORLD_SIZE,v=u2/TILE_WORLD_SIZE;
+  uv.push(u,0,v,0,v,1/TILE_WORLD_SIZE,
+   v,1/TILE_WORLD_SIZE,v,0,u,0);
  };
  for(let i=0;i<rings.length-1;i++){
   const a=rings[i],b=rings[i+1];
