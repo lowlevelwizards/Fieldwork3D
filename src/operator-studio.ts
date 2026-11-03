@@ -141,7 +141,9 @@ function inspectKit(kit:EquipmentLoadout):EquipmentLoadout{
  let preview=kit;
  for(const [slot,id] of [
   ['head','head-none'],['armor','armor-none'],['rig','rig-none'],
-  ['belt','belt-none'],['backpack','backpack-none']
+  ['belt','belt-none'],['backpack','backpack-none'],
+  ['medical','medical-none'],['tactical','tactical-none'],
+  ['utility','utility-none']
  ] as const)preview=setEquipmentChoice(preview,slot,id);
  return preview;
 }
