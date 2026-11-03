@@ -17,7 +17,7 @@ test('base mannequin, BDU and ACU show correct body coverage without skeleton ed
  assert.ok(rig.arms.every(a=>a.lower.material===rig.skinMaterial));
  assert.ok(rig.feet.every(f=>f.lower.material===rig.skinMaterial));
  w=setWardrobeStyle(w,'top','bdu-shirt');
- w=setWardrobeStyle(w,'trousers','field-trousers');
+ w=setWardrobeStyle(w,'trousers','bdu-trousers');
  poseOperator(rig,{...base,wardrobe:w},0);
  assert.ok(rig.arms.every(a=>a.lower.material===rig.clothMaterial));
  assert.ok(rig.feet.every(f=>f.lower.material===rig.trouserMaterial));
