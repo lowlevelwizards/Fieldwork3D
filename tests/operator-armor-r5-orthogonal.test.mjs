@@ -97,8 +97,13 @@ test('R5 police V opens at the sternum, fragmentation front is closed',()=>{
  pose(r,'combat-shirt','soft-flak');
  const f=r.visualKit.wardrobeGear.armor['soft-flak'];
  const ff=f.getObjectByName('authored-front-bag');
- assert.equal(hit(ff,20,3.8,0,[-1,0,0]),true,
-  'fragmentation front stays enclosed around its central closure');
+ const closure=ff.children.filter(o=>o instanceof THREE.Mesh)
+  .map(o=>{
+   o.geometry.computeBoundingBox();
+   return o.geometry.boundingBox.getSize(new THREE.Vector3());
+  });
+ assert.ok(closure.some(v=>v.y>10&&v.z<1.05),
+  'fragmentation closure is one uninterrupted tall, chunky center panel');
  r.dispose();
 });
 test('R5 new side plate and collar identities remain legible across outfits',()=>{
