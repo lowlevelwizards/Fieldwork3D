@@ -24,7 +24,7 @@ export function selectHeadwearSolid(w:WardrobeOptions,model:string,
 }
 export function selectHeadwearCamo(w:WardrobeOptions,model:string,
  requested:unknown):WardrobeOptions{
- if(typeof requested!=='string'||!headwearCamoChoices(model).filter(id=>id!=='splittertarn-31').includes(
+ if(typeof requested!=='string'||!headwearCamoChoices(model).includes(
   requested as HeadwearCamoId))return w;
  const id=requested as HeadwearCamoId;
  return {...w,headwearCamo:id,
@@ -51,7 +51,7 @@ export function createHeadwearAppearancePicker(kit:EquipmentLoadout,
  options:PickerOptions={}):HTMLDetailsElement{
  const model=resolvedWardrobe(wardrobe,kit).headwear;
  const canon=headwearAppearanceModel(model);
- const solids=headwearColorChoices(canon),camos=headwearCamoChoices(model).filter(id=>id!=='splittertarn-31');
+ const solids=headwearColorChoices(canon),camos:readonly HeadwearCamoId[]=headwearCamoChoices(model).filter(id=>id!=='splittertarn-31');
  const panel=make('details','fw-headwear-picker');
  panel.dataset.headwearAppearancePicker=model;
  panel.open=options.expanded===true;
