@@ -273,9 +273,12 @@ function renderMaterials(){
    const id=w.fabricSolids?.[channel]??'olive-drab';
    changeWardrobe(setWardrobeFabricSolid(current(),channel,id));
   }));
-  tabs.append(makeButton('CAMOUFLAGE',!!pattern,()=>{
-   if(choices.length&&!pattern)changeWardrobe(setWardrobeFabricCamo(current(),
-    channel,choices[0],outfit));
+  if(choices.length)tabs.append(makeButton('CAMOUFLAGE',!!pattern,()=>{
+   if(!pattern){
+    const previous=w.lastFabricCamo?.[channel];
+    const restored=previous&&choices.includes(previous)?previous:choices[0];
+    changeWardrobe(setWardrobeFabricCamo(current(),channel,restored,outfit));
+   }
   }));
   group.append(tabs);
   if(pattern&&choices.length){
@@ -316,19 +319,22 @@ function renderMaterials(){
   }
  }
  if(activeCategory==='top'){
-  const special=topColorwayChoices(item);
+  // Combat knit and smock solids are controlled by their actual material
+  // swatches above, never a second competing color dropdown. Keep the
+  // Gorka's purpose-built TWO-TONE family options as its one exception.
+  const special=item==='gorka-jacket'?topColorwayChoices(item):[];
   if(special.length){
-   const section=row(item==='combat-shirt'?'KNIT TORSO COLOR':'GARMENT COLORWAY');
+   const section=row('GORKA TWO-TONE / REINFORCEMENTS');
    addSelect(section,special,resolvedTopColorway(item,w.topColorway),
     value=>changeWardrobe({...current(),topColorway:value}));
   }
   if(item==='combat-shirt'){
-   const section=row('KNITTED BODY / COLLAR COLOR');
+   const section=row('COMBAT-SHIRT KNIT · TORSO + COLLAR');
    addSolidSwatches(section,solidChoicesFor('top').filter(x=>
     ['olive-drab','ranger-green','foliage','khaki','sand','coyote','brown','charcoal','black'].includes(x)),
     w.knitSolid??null,id=>changeWardrobe({...current(),knitSolid:id}));
    const reset=document.createElement('div');reset.className='material-row';
-   reset.append(makeButton('FOLLOW STANDARD KNIT',!w.knitSolid,()=>
+   reset.append(makeButton('USE SAVED KNIT COLOR',!w.knitSolid,()=>
     changeWardrobe({...current(),knitSolid:undefined})));section.append(reset);
   }
   if(['bdu-shirt','acu-shirt','combat-shirt','smock-jacket','gorka-jacket'].includes(item))

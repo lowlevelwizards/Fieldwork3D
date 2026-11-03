@@ -19,7 +19,13 @@ test('solid finish choices are independently saved and old wardrobe v1 still loa
  const solid=setWardrobeFabricSolid(camouflaged,'top','olive-drab');
  assert.equal(solid.fabricCamo.top,undefined);
  assert.equal(solid.fabricSolids.top,'olive-drab');
+ assert.equal(solid.lastFabricCamo.top,'m81-woodland',
+  'turning off a print must not lose the last selected pattern');
+ const printRestored=setWardrobeFabricCamo(solid,'top',solid.lastFabricCamo.top,outfit);
+ assert.equal(printRestored.fabricCamo.top,'m81-woodland');
  assert.equal(readWardrobe(JSON.parse(JSON.stringify(solid))).fabricSolids.top,'olive-drab');
+ assert.equal(readWardrobe(JSON.parse(JSON.stringify(solid))).lastFabricCamo.top,
+  'm81-woodland');
  assert.equal(setWardrobeFabricSolid(solid,'armor','off-white'),solid,
   'invalid armor solid must not override fabric');
  const withManual=readWardrobe({...solid,cuffSolid:'ranger-green',knitSolid:'coyote'});
@@ -61,6 +67,9 @@ test('studio preserves the game page and separates the visual editor from animat
  assert.match(page,/id="studioMaterials"/);
  assert.match(studio,/solidChoicesFor/);
  assert.match(studio,/setWardrobeFabricSolid/);
+ assert.match(studio,/w.lastFabricCamo\?\.\[channel\]/);
+ assert.ok(!studio.includes("item==='combat-shirt'?'KNIT TORSO COLOR'"),
+  'do not present competing knit controls');
  assert.match(studio,/new OperatorAppearanceGrid/);
  assert.match(studio,/dirty.has\(selected\)/);
  assert.match(studio,/CAMOUFLAGE/);

@@ -140,6 +140,8 @@ export type WardrobeOptions={
  fabricCamo?:Partial<Record<FabricCamoChannel,HeadwearCamoId>>;
  /** Saved individual fabric-cut seeds; never regenerated during animation. */
  fabricCamoRoll?:Partial<Record<FabricCamoChannel,number>>;
+ /** Last selected approved print, remembered even when a solid is active. */
+ lastFabricCamo?:Partial<Record<FabricCamoChannel,HeadwearCamoId>>;
  /** Contextual solid fabric per physical channel; hidden when that channel
   * has an active approved camouflage, but retained for later restoring. */
  fabricSolids?:Partial<Record<FabricCamoChannel,GarmentSolidId>>;
@@ -182,6 +184,13 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
    if(isHeadwearCamoId(id)&&id!=='splittertarn-31'){
     (result.fabricCamo??={})[channel]=id;
    }
+  }
+ }
+ if(v.lastFabricCamo&&typeof v.lastFabricCamo==='object'&&!Array.isArray(v.lastFabricCamo)){
+  for(const channel of FABRIC_CAMO_CHANNELS){
+   const id=v.lastFabricCamo[channel];
+   if(isHeadwearCamoId(id)&&id!=='splittertarn-31')
+    (result.lastFabricCamo??={})[channel]=id;
   }
  }
  if(v.fabricCamoRoll&&typeof v.fabricCamoRoll==='object'&&!Array.isArray(v.fabricCamoRoll)){
@@ -231,6 +240,8 @@ export function setWardrobeFabricSolid(wardrobe:WardrobeOptions,
  if(!FABRIC_SOLID_CHOICES[channel].includes(id))return wardrobe;
  return {...wardrobe,
   fabricSolids:{...wardrobe.fabricSolids,[channel]:id},
+  lastFabricCamo:{...wardrobe.lastFabricCamo,
+   [channel]:wardrobe.fabricCamo?.[channel]??wardrobe.lastFabricCamo?.[channel]},
   fabricCamo:{...wardrobe.fabricCamo,[channel]:undefined}};
 }
 export function setWardrobeFabricCamo(wardrobe:WardrobeOptions,
@@ -243,6 +254,7 @@ export function setWardrobeFabricCamo(wardrobe:WardrobeOptions,
  if(!isHeadwearCamoId(id)||!fabricCamoCompatible(id,channel,outfit))
   return wardrobe;
  return {...wardrobe,
+  lastFabricCamo:{...wardrobe.lastFabricCamo,[channel]:id},
   fabricCamo:{...wardrobe.fabricCamo,[channel]:id},
   fabricCamoRoll:{...wardrobe.fabricCamoRoll,
    [channel]:wardrobe.fabricCamo?.[channel]===id?
