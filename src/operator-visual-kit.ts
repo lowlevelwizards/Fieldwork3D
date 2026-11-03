@@ -12,6 +12,8 @@ import {createFieldBlousePrototypes,updateFieldBlousePrototypes,
  type FieldBlousePrototypes} from './operator-field-blouse-prototypes.ts';
 import {createFieldTrouserPrototypes,updateFieldTrouserPrototypes,
  type FieldTrouserPrototypes} from './operator-field-trouser-prototypes.ts';
+import {createNewUpperGarments,updateNewUpperGarments,
+ type NewUpperGarments} from './operator-new-upper-garments.ts';
 import {createCanonicalAttachment} from './operator-axis-convention.ts';
 import {createWardrobeHeadLayers,updateWardrobeHeadLayers,
  type WardrobeHeadLayers} from './operator-wardrobe-head-visuals.ts';
@@ -36,6 +38,8 @@ export type OperatorVisualKit={
  fieldBlouses:FieldBlousePrototypes;
  /** Stage 3C two distinct fitted trouser families and real hem finishes. */
  fieldTrousers:FieldTrouserPrototypes;
+ /** Real combat-shirt, outer smock and mountain/Gorka geometry. */
+ newUpper:NewUpperGarments;
  helmet:THREE.Group;cap:THREE.Group;hair:THREE.Group;
  haircuts:THREE.Group[];graphicMarks:THREE.Group;
  jacket:THREE.Group;lightShirt:THREE.Group;
@@ -115,6 +119,7 @@ export function createOperatorVisualKit(
   cloth,trousers,trim,dark);
  const fieldBlouses=createFieldBlousePrototypes(chest,arms,cloth,trim);
  const fieldTrousers=createFieldTrouserPrototypes(legs,trousers,trim);
+ const newUpper=createNewUpperGarments(chest,arms,cloth,trim);
  // Retire the old shared cuboid jacket and light-shirt meshes altogether.
  // Keep empty grouping handles for existing rig consumers and silhouette
  // diagnostics; only the authored BDU and ACU shells have visible geometry.
@@ -231,7 +236,7 @@ export function createOperatorVisualKit(
  for(const surface of [helmet,cap,hair,jacket,lightShirt,softArmor,
   plateCarrier,chestRig,fieldWebbing,belt,dayPack,fieldPack,packHarness])
    consolidateVisualGroup(surface);
- return {wardrobeHead,wardrobeBody,wardrobeGear,accessories,fieldBlouses,fieldTrousers,
+ return {wardrobeHead,wardrobeBody,wardrobeGear,accessories,fieldBlouses,fieldTrousers,newUpper,
   helmet,cap,hair,jacket,lightShirt,
   softArmor,plateCarrier,chestRig,
   fieldWebbing,belt,dayPack,fieldPack,packHarness,cargoPockets,bootCuffs,
@@ -279,6 +284,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  // No generic coat/shirt overlay is allowed under the reviewed garments.
  v.jacket.visible=false;v.lightShirt.visible=false;
  updateFieldBlousePrototypes(v.fieldBlouses,looks.top,
+  wardrobe?.sleeveState??'unrolled');
+ updateNewUpperGarments(v.newUpper,looks.top,
   wardrobe?.sleeveState??'unrolled');
  updateFieldTrouserPrototypes(v.fieldTrousers,looks.trousers,
   wardrobe?.trouserHem??'bloused',looks.footwear==='bare-feet');
