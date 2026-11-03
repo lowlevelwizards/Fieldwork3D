@@ -39,11 +39,8 @@ test('thirty independently authored 32/64px camo families use fixed opaque canon
   assert.ok(Math.abs(coverage.reduce((a,b)=>a+b,0)-1)<1e-10,id);
   assert.equal(recipe.targetCoverage.length,coverage.length,id);
   for(let tone=0;tone<coverage.length;tone++)
-   if(!HEADWEAR_CAMO_IDS.slice(18).includes(id))
-    assert.ok(Math.abs(coverage[tone]-recipe.targetCoverage[tone])<=.04,
-     id+' color '+tone+' must keep authored color proportions');
-   else if(tone===0)console.log('5B COVERAGE '+id+' '+JSON.stringify(
-    coverage.map(v=>Number(v.toFixed(4)))));
+   assert.ok(Math.abs(coverage[tone]-recipe.targetCoverage[tone])<=.035,
+    id+' color '+tone+' must keep measured authored color proportions');
   assert.ok(coverage.every(n=>n>.01&&n<(id==='east-german-strichtarn'?.90:.80)),
    id+' all ink tones must appear (raincloth may be mostly neutral)');
   assert.ok(recipe.colors.length>=3&&recipe.colors.length<=7,id);
@@ -577,7 +574,7 @@ test('5B all twelve master patterns retain distinct art, meaningful ink roles an
   assert.ok(headwearCamoCoverage(id).filter(c=>c>.045).length>=2,
    id+' needs two visually meaningful pigment fields');
  }
- assert.ok(colors.size<=51,'near-identical inks should be shared across new twelve');
+ assert.equal(colors.size,49,'5B must preserve consolidated 49-color twelve-print palette');
  assert.equal(HEADWEAR_CAMO_DENSITY['mitchell-leaf'],2,'Mitchell leaf forms must read on the worn crown');
  assert.equal(headwearCamoSize('east-german-strichtarn'),64,'Strichtarn needs a varied fine 64px repeat');
  assert.equal(HEADWEAR_CAMO_DENSITY['east-german-strichtarn'],2);
