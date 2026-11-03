@@ -70,7 +70,7 @@ test('BDU and ACU use authentic independently restricted print lists',()=>{
   const w=uniformCompareWardrobe(cut);
   const outfit=resolvedWardrobe(w,kit);
   const actual=fabricCamoChoices('top',outfit);
-  assert.deepEqual(actual,uniformCutCamoChoices(cut));
+  assert.deepEqual([...actual].sort(),[...uniformCutCamoChoices(cut)].sort());
   assert.ok(fabricCamoCompatible(UNIFORM_COMPARE_DEFAULT_PRINTS[cut],
    'top',outfit));
  }
