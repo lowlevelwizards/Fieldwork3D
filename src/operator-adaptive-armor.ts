@@ -29,7 +29,10 @@ type ArmorEntry={
 const entries=new WeakMap<THREE.Group,ArmorEntry>();
 const makeBox=(parent:THREE.Group,m:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number)=>{
- const geo=garmentBoxUV(new THREE.BoxGeometry(w,h,d),w,h,d,m,x,y,z);
+ const mapped=garmentBoxUV(new THREE.BoxGeometry(w,h,d),w,h,d,m,x,y,z);
+ // Polygonal bags and swept fabric are non-indexed. Match that topology
+ // before one-time consolidation, avoiding three.js mergeGeometries skips.
+ const geo=mapped.toNonIndexed();mapped.dispose();
  const mesh=new THREE.Mesh(geo,m);mesh.position.set(x,y,z);
  mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);
  return mesh;
