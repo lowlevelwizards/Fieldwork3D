@@ -169,9 +169,40 @@ function block(group:THREE.Object3D,x:number,y:number,z:number,
   mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;
   group.add(mesh);return mesh;
 }
-function bone(parent:THREE.Group,w:number,depth:number,m:THREE.Material){
-  const mesh=block(parent,0,0,0,w,1,depth,m);
-  return mesh;
+type GarmentSegmentCut='full'|'bloused'|'cuffed'|'rolled';
+/** IK bones retain their normalized [-.5,+.5] coordinates. Fabric UVs,
+ * however, must measure the ACTUAL stretched 10/11.25-world-unit limb.
+ * Otherwise a 64px master becomes a gigantic stretched patch on each arm. */
+function metricSegmentGeometry(w:number,d:number,m:THREE.Material,
+ length:number,shorten=0):THREE.BoxGeometry{
+ const height=1-shorten;
+ const geo=garmentBoxUV(new THREE.BoxGeometry(w,height,d),
+  w,height*length,d,m);
+ // The proximal joint always remains at -.5. Shrink the distal fabric
+ // only; don't alter the IK segment transform or the boot/hand position.
+ geo.translate(0,-shorten*.5,0);
+ return geo;
+}
+function bone(parent:THREE.Group,w:number,depth:number,m:THREE.Material,
+ length:number){
+ const mesh=block(parent,0,0,0,w,1,depth,m);
+ const old=mesh.geometry;
+ const shapes:Record<GarmentSegmentCut,THREE.BoxGeometry>={
+  full:metricSegmentGeometry(w,depth,m,length),
+  bloused:metricSegmentGeometry(w,depth,m,length,.30),
+  cuffed:metricSegmentGeometry(w,depth,m,length,.26),
+  rolled:metricSegmentGeometry(w,depth,m,length,.35)
+ };
+ old.dispose();
+ mesh.geometry=shapes.full;
+ mesh.userData.garmentMetricLength=length;
+ mesh.userData.garmentSegmentGeometries=shapes;
+ return mesh;
+}
+function setSegmentCut(mesh:THREE.Mesh,cut:GarmentSegmentCut){
+ const shapes=mesh.userData.garmentSegmentGeometries as
+  Record<GarmentSegmentCut,THREE.BoxGeometry>|undefined;
+ if(shapes&&mesh.geometry!==shapes[cut])mesh.geometry=shapes[cut];
 }
 export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   // One compatibility seam: new public model root is -Z forward, while all
@@ -237,21 +268,26 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   helmetBadge.visible=false;
   const feet:Foot[]=[],arms:Arm[]=[],gloveCovers:THREE.Mesh[]=[];
   for(const sideSign of [-1,1]){
-    const upper=bone(legacyFrame,4.7,5.3,trousers),
-      lower=bone(legacyFrame,4,4.3,trousers);
+    const upper=bone(legacyFrame,4.7,5.3,trousers,LEG_UPPER_LENGTH),
+      lower=bone(legacyFrame,4,4.3,trousers,LEG_LOWER_LENGTH);
+    // Boots continue up into the shortened hem. Unlike repainting the
+    // entire shin as rubber, this is a small, joint-following shaft.
+    const shaft=block(lower,0,.35,0,3.84,.32,4.05,boot);
+    shaft.visible=false;
+    lower.userData.garmentBootShaft=shaft;
     const shoe=block(legacyFrame,0,0,0,8,2.9,5.8,boot);
     // The mesh transform must remain at the scheduled ankle anchor.
     // Translate *vertices in local toe-forward +X* instead: the toe box
     // now extends 5.6 units forward, the heel only 2.4 units behind.
     // This avoids changing foot IK, grounded contact, yaw or replay.
     shoe.geometry.translate(BOOT_FOREFOOT_OFFSET,0,0);
-    const ankleLink=bone(legacyFrame,3.8,3.8,boot);
+    const ankleLink=bone(legacyFrame,3.8,3.8,boot,2.0);
     ankleLink.visible=false;
     feet.push({upper,lower,shoe,ankleLink,
       anchor:new THREE.Vector3(),
       swinging:false,bend:new THREE.Vector3(1,0,0),outOfReach:false});
-    const armUpper=bone(chest,3.9,4.0,cloth);
-    const armLower=bone(chest,3.4,3.5,cloth);
+    const armUpper=bone(chest,3.9,4.0,cloth,10);
+    const armLower=bone(chest,3.4,3.5,cloth,10);
     const hand=block(chest,0,0,0,3.6,3.2,3.9,skin);
     const glove=block(hand,.12,0,0,3.9,3.5,4.1,vest);
     glove.visible=false;gloveCovers.push(glove);
@@ -332,12 +368,19 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
     gripError:0,stockError:0,eyeError:0,handlingProfile:null,
     lastHandling:null,lastHandlingAt:-100,autoHandling:null,
     elbowSpread:[0,0],legGap:[0,0],
-    dispose:()=>{root.traverse(obj=>{if(obj instanceof THREE.Mesh){
-      obj.geometry.dispose();
-      const m=obj.material as THREE.Material;m.dispose();
-    }});
-    // The lens material exists even when no light is mounted.
-    weaponLensMaterial.dispose();}};
+    dispose:()=>{
+      // All shortened variants must be released, even if not selected at
+      // the moment of disposal. They are not scene children themselves.
+      const geometries=new Set<THREE.BufferGeometry>();
+      root.traverse(obj=>{if(obj instanceof THREE.Mesh){
+        geometries.add(obj.geometry);
+        const variants=obj.userData.garmentSegmentGeometries as
+          Record<string,THREE.BufferGeometry>|undefined;
+        if(variants)for(const g of Object.values(variants))geometries.add(g);
+        const m=obj.material as THREE.Material;m.dispose();
+      }});
+      for(const geo of geometries)geo.dispose();
+      weaponLensMaterial.dispose();}};
 }
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 const diff=(a:number,b:number)=>Math.atan2(Math.sin(b-a),Math.cos(b-a));
@@ -449,10 +492,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Clothing coverage changes materials on existing articulated limbs only.
   // The bones, solved knee/elbow positions and planted feet stay identical.
   const clothing=resolvedWardrobe(p.wardrobe,p.equipment);
+  const sleeveState=p.wardrobe?.sleeveState??'unrolled';
   const bareForearm=clothing.top==='base-layer'||
-    (['bdu-shirt','acu-shirt','combat-shirt'].includes(clothing.top)&&
-     (p.wardrobe?.sleeveState==='rolled'||p.wardrobe?.sleeveState==='cuffed'));
+    (sleeveState==='rolled'||sleeveState==='cuffed');
   for(const arm of r.arms){
+   // The visible upper sleeve ends before the elbow when rolled. Keep
+   // the solveTwoBone joint / animation position untouched.
+   setSegmentCut(arm.upper,sleeveState==='rolled'?'rolled':'full');
    const sleeveMaterial=clothing.top==='gorka-jacket'?
     r.visualKit.newUpper.mountainCanvas:r.clothMaterial;
    arm.lower.material=bareForearm?r.skinMaterial:sleeveMaterial;
@@ -460,9 +506,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.skinMaterial:sleeveMaterial;
   }
   for(const leg of r.feet){
+   const hem=p.wardrobe?.trouserHem??'bloused';
+   const shortHem=hem==='bloused'||hem==='cuffed';
+   setSegmentCut(leg.lower,clothing.trousers==='base-shorts'||hem==='unbloused'?'full':hem);
+   const shaft=leg.lower.userData.garmentBootShaft as THREE.Mesh|undefined;
+   if(shaft)shaft.visible=shortHem&&clothing.footwear!=='bare-feet';
    leg.lower.material=clothing.trousers==='base-shorts'?
-    r.skinMaterial:p.wardrobe?.trouserHem==='bloused'?
-    r.bootMaterial:r.trouserMaterial;
+    r.skinMaterial:r.trouserMaterial;
    const barefoot=clothing.footwear==='bare-feet';
    leg.shoe.material=barefoot?r.skinMaterial:r.bootMaterial;
    leg.shoe.scale.set(1,barefoot?.7:1,barefoot?.88:1);

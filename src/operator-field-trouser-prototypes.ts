@@ -26,7 +26,7 @@ export const FIELD_TROUSER_PROFILES={
    [.05,3.34,3.40],[.18,3.48,3.54],[.265,2.14,2.18]] as readonly Ring[],
   cuffed:[[-.60,2.85,2.90],[-.24,2.98,3.06],
    [.20,3.05,3.12],[.34,3.36,3.41],[.48,3.50,3.55]] as readonly Ring[],
-  cargo:[.74,.45,3.10] as const,flap:[.20,.13,3.23] as const,
+  cargo:[1.02,.48,3.23] as const,flap:[.27,.17,3.40] as const,
   character:'Loose thigh, prominent box cargo pocket, fuller straight leg'
  },
  'acu-trousers':{
@@ -38,7 +38,7 @@ export const FIELD_TROUSER_PROFILES={
    [.05,3.06,3.12],[.16,3.19,3.25],[.275,1.98,2.08]] as readonly Ring[],
   cuffed:[[-.60,2.65,2.77],[-.25,2.83,2.90],
    [.21,2.87,2.93],[.35,3.21,3.27],[.48,3.29,3.34]] as readonly Ring[],
-  cargo:[.66,.42,2.95] as const,flap:[.18,.12,3.05] as const,
+  cargo:[.93,.46,3.10] as const,flap:[.25,.16,3.27] as const,
   character:'Cleaner tapered thigh with angled cargo flaps and calf pouch'
  },
  'gorka-trousers':{
@@ -50,7 +50,7 @@ export const FIELD_TROUSER_PROFILES={
    [.09,3.42,3.49],[.18,3.38,3.43],[.265,2.08,2.14]] as readonly Ring[],
   cuffed:[[-.60,2.90,3.01],[-.20,3.06,3.12],
    [.18,3.06,3.13],[.34,3.40,3.46],[.48,3.46,3.55]] as readonly Ring[],
-  cargo:[.77,.49,3.17] as const,flap:[.20,.13,3.28] as const,
+  cargo:[1.08,.52,3.36] as const,flap:[.28,.17,3.49] as const,
   character:'Voluminous overtrousers with reinforced knees and gaiter hems'
  }
 } as const;
@@ -96,12 +96,17 @@ export function garmentLegLoft(rings:readonly Ring[],length:number):
  return g;
 }
 const group=(parent:THREE.Object3D,name:string)=>{
- const g=new THREE.Group();g.name=name;g.visible=false;parent.add(g);return g;
+ const g=new THREE.Group();g.name=name;g.visible=false;parent.add(g);
+ // Articulated leg groups are parented beneath a normalized y=1 IK bone.
+ // Its world-height belongs in fabric UVs, not in the vertex transform.
+ g.userData.garmentMetricLength=parent.userData.garmentMetricLength??1;
+ return g;
 };
 function part(g:THREE.Group,material:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number,flapTilt=0){
+ const metric=g.userData.garmentMetricLength as number||1;
  const mesh=new THREE.Mesh(garmentBoxUV(
-  new THREE.BoxGeometry(w,h,d),w,h,d,material,x,y,z),material);
+  new THREE.BoxGeometry(w,h,d),w,h*metric,d,material,x,y*metric,z),material);
  mesh.position.set(x,y,z);
  if(flapTilt)mesh.rotation.x=flapTilt;
  mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);
@@ -145,8 +150,8 @@ export function createFieldTrouserPrototypes(legs:readonly Limb[],
     part(upper,cloth,fold.x+.13,fold.y,fold.z,
      fold.width,fold.height,fold.depth);
    }else{
-    const knee=outwardLimbPatch(thighW/2,.27,.40,4.68,.24);
-    const wearSide=outwardLimbPatch(thighW/2,-.25,.27,3.10,.19);
+    const knee=outwardLimbPatch(thighW/2,.27,.43,4.73,.29);
+    const wearSide=outwardLimbPatch(thighW/2,-.25,.29,3.22,.24);
     part(upper,wear,knee.x,knee.y,knee.z,
      knee.width,knee.height,knee.depth);
     part(upper,wear,wearSide.x,wearSide.y,wearSide.z,
@@ -155,32 +160,40 @@ export function createFieldTrouserPrototypes(legs:readonly Limb[],
    thigh.push(upper);
    for(const hem of ['unbloused','bloused','cuffed'] as const){
     const lower=group(leg.lower,cut+':'+hem+':shin:'+i);
-    part(lower,textile,0,0,0,shinW,1.07,shinD);
+    // Change the actual visual length, not only the ankle band. The
+    // anatomical IK bone still spans knee-to-ankle at exactly the same pose.
+    const shorten=hem==='bloused'?.30:hem==='cuffed'?.26:0;
+    const end=.5-shorten;
+    part(lower,textile,0,-shorten*.5,0,shinW,1-shorten+.022,shinD);
     if(!classic&&!gorka){
      // ACU-family calf cargo pocket: a separate physical feature,
      // with an angled flap; older BDU trousers deliberately omit it.
-     const calf=outwardLimbPocket(shinW/2,-.10,.30,2.34,.30);
+     const calf=outwardLimbPocket(shinW/2,-.10,.36,2.56,.43);
      part(lower,cloth,calf.x,calf.y,calf.z,
       calf.width,calf.height,calf.depth);
-     part(lower,cloth,calf.x+.19,.075,0,.12,.10,2.45);
+     part(lower,cloth,calf.x+.28,.075,0,.17,.14,2.64);
     }
     if(gorka){
      // Strong reinforced outer knee and weather-tight ankle band.
-     const patch=outwardLimbPatch(shinW/2,-.30,.37,4.78,.23);
+     const patch=outwardLimbPatch(shinW/2,-.30,.39,4.82,.28);
      part(lower,wear,patch.x,patch.y,patch.z,
       patch.width,patch.height,patch.depth);
      // A single low band wraps the weather-tight gaiter; don't emit
      // offset slivers perpendicular to the leg's physical outside.
-     part(lower,wear,shinW/2+.09,.30,0,.20,.13,3.70);
+     part(lower,wear,shinW/2+.11,.30,0,.24,.16,3.85);
     }
     // The bloused outline narrows at the boot collar; the straight hem
     // stays wider and overlaps its shaft. Both have a visible textile fold.
-    const cuffW=hem==='bloused'?shinW*.94:shinW+.32;
-    const cuffD=hem==='bloused'?shinD*.94:shinD+.32;
-    part(lower,textile,0,.39,0,cuffW,.24,cuffD);
-    if(hem==='cuffed'){
-     part(lower,textile,0,.24,0,shinW+.54,.30,shinD+.54);
-     part(lower,textile,0,.08,0,shinW+.33,.13,shinD+.33);
+    // Three genuinely different hem silhouettes; bloused finishes
+    // narrow just above the boot shaft, cuffed finishes stack thick.
+    if(hem==='bloused'){
+     part(lower,textile,0,end-.145,0,shinW*.99,.25,shinD*.99);
+     part(lower,textile,0,end-.040,0,shinW*.83,.18,shinD*.83);
+    }else if(hem==='cuffed'){
+     part(lower,textile,0,end-.175,0,shinW+.69,.29,shinD+.71);
+     part(lower,textile,0,end-.036,0,shinW+.39,.16,shinD+.42);
+    }else{
+     part(lower,textile,0,.44,0,shinW+.25,.17,shinD+.25);
     }
     consolidateVisualGroup(lower);
     (hem==='bloused'?bloused:hem==='cuffed'?cuffed:unbloused).push(lower);
@@ -212,8 +225,9 @@ export function updateFieldTrouserPrototypes(
   // Braces belong to trousers but are physically concealed beneath every
   // outer blouse/jacket. Only expose them with a fitted combat shirt or
   // foundation, never draw them on top of the mountain jacket.
-  if(model.suspenders)model.suspenders.visible=active&&
-   !['bdu-shirt','acu-shirt','smock-jacket','gorka-jacket'].includes(top);
+  // Detachable trouser braces are under ALL tops, including the combat
+  // shirt; exposed only in a base-layer/undershirt diagnostic outfit.
+  if(model.suspenders)model.suspenders.visible=active&&top==='base-layer';
   for(const g of model.thigh)g.visible=active;
   for(const g of model.bloused)g.visible=active&&hem==='bloused'&&!barefoot;
   for(const g of model.unbloused)
