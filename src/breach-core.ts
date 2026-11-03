@@ -5,6 +5,7 @@
  */
 import {type Site} from './breach-site.ts';
 import {DOOR_PANEL_END_RECESS} from './breach-door-proportions.ts';
+import {isFootstepObstacle} from './breach-traversal-surfaces.ts';
 export type Pt={x:number;y:number};
 export type Segment={a:Pt;b:Pt};
 export type DoorStyle='wood'|'steel'|'reinforced'|'exit'|'glazed'|'mesh-gate'|'french'|'louvered'|'screen'|'barn'|'pocket'|'fire';
@@ -101,7 +102,7 @@ export function passable(p:Pt,clearance=OPERATOR_RADIUS):boolean{
   if(p.x<bounds.minX+13||p.y<bounds.minY+20||
     p.x>bounds.maxX-13||p.y>bounds.maxY-13)return false;
   if(WALLS.some(s=>pointToSegment(p,s)<clearance+1))return false;
-  if(COVER.some(o=>pointInCover(p,o,clearance)))return false;
+  if(COVER.some(o=>isFootstepObstacle(o)&&pointInCover(p,o,clearance)))return false;
   return true;
 }
 /** The rotated leaf is the single collision/sightline surface. A hinge on

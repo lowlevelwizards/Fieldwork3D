@@ -8,6 +8,29 @@ import {profileSamples,squeezeFacing,sweptProfileClear,SQUEEZE_RADIUS}
 
 const narrowPassable=(at:Pt,canStand:(p:Pt,r:number)=>boolean)=>
   canStand(at,SQUEEZE_RADIUS);
+/** Preview a real, oriented continuous squeeze through a visible gap.
+ * A shorter squeeze can beat a long normal detour; it isn't only a fallback
+ * after every other path has failed. Still checks every torso sample.
+ */
+function directSqueeze(from:Pt,to:Pt,
+  canStand:(p:Pt,r:number)=>boolean):boolean{
+ const length=Math.hypot(to.x-from.x,to.y-from.y);
+ if(length<20||length>310||!canStand(to,SQUEEZE_RADIUS))return false;
+ const angle=squeezeFacing(Math.atan2(to.y-from.y,to.x-from.x));
+ const steps=Math.max(1,Math.ceil(length/2.4));
+ for(let i=0;i<=steps;i++){
+   const t=i/steps,at={x:from.x+(to.x-from.x)*t,
+     y:from.y+(to.y-from.y)*t};
+   if(!profileSamples(at,angle,'squeeze').every(sample=>
+     canStand(sample.position,sample.radius)))return false;
+ }
+ return true;
+}
+const courseLength=(from:Pt,points:readonly Pt[])=>{
+ let length=0,prev=from;
+ for(const p of points){length+=Math.hypot(p.x-prev.x,p.y-prev.y);prev=p;}
+ return length;
+};
 
 function narrowRoute(from:Pt,to:Pt,
   canStand:(p:Pt,r:number)=>boolean):Pt[]{
@@ -31,9 +54,15 @@ function narrowRoute(from:Pt,to:Pt,
   return course;
 }
 export function routeWithSqueezeIntel(intel:IntelState,from:Pt,to:Pt):Pt[]{
-  const standard=routeWithIntel(intel,from,to);
-  return standard.length?standard:
-    narrowRoute(from,to,(p,r)=>intelPassable(p,intel,r));
+ const canStand=(p:Pt,r:number)=>intelPassable(p,intel,r);
+ const standard=routeWithIntel(intel,from,to);
+ // Prefer ordinary walking if it is nearly as direct, but do not walk
+ // all the way around a room when the operator can squeeze straight through.
+ const direct=directSqueeze(from,to,canStand);
+ if(direct&&(!standard.length||
+   courseLength(from,standard)>Math.hypot(to.x-from.x,to.y-from.y)*1.22+10))
+   return [{...to}];
+ return standard.length?standard:narrowRoute(from,to,canStand);
 }
 /** Collision-truth replan after contact or a known obstruction.
  * Open door leaves use the same rule as the ordinary motor. */

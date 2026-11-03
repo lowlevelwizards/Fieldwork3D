@@ -5,8 +5,9 @@
  */
 import {pointToSegment,type Door,type Obstacle,type Pt,type Segment}
  from './breach-core.ts';
+import {canAutoShove} from './breach-traversal-surfaces.ts';
 export type CoverMass='light'|'medium'|'heavy'|'fixed';
-const light=new Set(['box','chair','small-table','side-table',
+const light=new Set(['box','chair','stool','lamp','patio-chair','small-table','side-table',
  'nightstand','storage-tote','tipped-trash-bin','trash-bag','mop-bucket']);
 const medium=new Set(['crate','cart','office-chair','coffee-table',
  'supply-cart','linen-cart','step-ladder','recycling-bin']);
@@ -50,4 +51,39 @@ export function relocateCover(cover:Obstacle[],index:number,to:Pt,
  }
  cover[index]={...old,x:to.x,y:to.y};
  return true;
+}
+
+/** Yield harmless loose clutter to the operator's body. This deliberately
+ * does not shove a whole table, a fixed prop, a window or an obstacle with no
+ * room to move. The object's entire swept footprint is checked first.
+ * Called only at physical contact, never just because a path runs nearby.
+ * @returns The moved obstacle's index, or null when it must remain solid.
+ */
+export function autoShoveLightCover(cover:Obstacle[],from:Pt,to:Pt,
+ walls:readonly Segment[],doors:readonly Door[],others:readonly Pt[]):number|null{
+ const delta={x:to.x-from.x,y:to.y-from.y};
+ const step=Math.hypot(delta.x,delta.y);
+ if(step<.001)return null;
+ const dir={x:delta.x/step,y:delta.y/step};
+ const candidates=cover.map((o,i)=>({o,i,
+   distance:Math.hypot(from.x-o.x,from.y-o.y)}))
+  .filter(({o})=>canAutoShove(o)&&canRelocateCover(o)&&
+     Math.abs(to.x-o.x)<o.w/2+9&&Math.abs(to.y-o.y)<o.h/2+9&&
+     (o.x-from.x)*dir.x+(o.y-from.y)*dir.y>0)
+  .sort((a,b)=>a.distance-b.distance);
+ for(const {o,i} of candidates){
+   const amount=coverPushDistance(o);
+   // Prefer a small forward nudge; try glancing shoulder deflections only
+   // when the forward path is physically blocked by something else.
+   for(const distance of [Math.min(14,amount),Math.min(9,amount),
+                          Math.min(5,amount)]){
+     for(const turn of [0,.55,-.55,1.1,-1.1]){
+       const a=Math.atan2(dir.y,dir.x)+turn;
+       const destination={x:o.x+Math.cos(a)*distance,
+         y:o.y+Math.sin(a)*distance};
+       if(relocateCover(cover,i,destination,walls,doors,others))return i;
+     }
+   }
+ }
+ return null;
 }

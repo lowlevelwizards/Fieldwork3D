@@ -95,7 +95,7 @@ export function footAnchorReachable(from:Pt,p:Pt,
 export type BodyProfile='normal'|'squeeze';
 // A deliberate sideways profile remains a real three-point body sweep,
 // with just enough give for the clearance of a jacket/soft gear.
-export const SQUEEZE_RADIUS=4.8;
+export const SQUEEZE_RADIUS=3.8;
 export const squeezeFacing=(travelYaw:number)=>travelYaw-Math.PI/2;
 export function profileSamples(p:Pt,heading:number,
   profile:BodyProfile){
