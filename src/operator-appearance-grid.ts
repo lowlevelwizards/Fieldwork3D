@@ -180,7 +180,9 @@ export class OperatorAppearanceGrid{
   kit=choice.kit;w=choice.wardrobe;
   if(item.slot==='top'){
    const print=item.id==='bdu-shirt'?'m81-woodland':
-    item.id==='acu-shirt'?'scorpion-w2':null;
+    item.id==='acu-shirt'?'scorpion-w2':
+     item.id==='combat-shirt'?'multicam':
+     item.id==='smock-jacket'?'woodland-dpm':null;
    if(print)w=setWardrobeFabricCamo(w,'top',print,resolvedWardrobe(w,kit));
   }
   const rig=createOperatorRig('rook','blue');
