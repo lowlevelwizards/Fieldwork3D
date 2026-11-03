@@ -13,7 +13,8 @@ export const FIELD_BLOUSE_CUTS=['bdu-shirt','acu-shirt'] as const;
 export type FieldBlouseCut=typeof FIELD_BLOUSE_CUTS[number];
 type Arm={upper:THREE.Mesh;lower:THREE.Mesh};
 export type FieldBlousePrototype={torso:THREE.Group;upper:THREE.Group[];lower:THREE.Group[];
- cuffed:THREE.Group[];cuffedLower:THREE.Group[];rolledUpper:THREE.Group[]};
+ cuffed:THREE.Group[];cuffedLower:THREE.Group[];rolledUpper:THREE.Group[];
+ cuffMaterial:THREE.MeshStandardMaterial};
 export type FieldBlousePrototypes=Record<FieldBlouseCut,FieldBlousePrototype>;
 type Ring={y:number;front:number;back:number;side:number};
 
@@ -231,7 +232,8 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
    upper.push(a);lower.push(b);cuffed.push(c);cuffedLower.push(short);rolledUpper.push(rolled);
   }
   consolidateVisualGroup(torso);
-  models[cut]={torso,upper,lower,cuffed,cuffedLower,rolledUpper};
+  models[cut]={torso,upper,lower,cuffed,cuffedLower,rolledUpper,
+   cuffMaterial:solidCuff};
  }
  return models;
 }
