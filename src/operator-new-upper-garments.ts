@@ -150,9 +150,13 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
     for(const lower of [false,true]){
      const y=lower?-7.55:2.06,face=lower?5.82:5.59;
      const depth=lower?1.20:1.13,height=lower?3.32:3.02;
-     box(torso,cloth,face+.42,y,z,depth,height,4.46);
-     box(torso,smockCuff,face+depth*.92,y+height*.43,z,
+     const pocket=box(torso,cloth,face+.42,y,z,depth,height,4.46);
+     const flap=box(torso,smockCuff,face+depth*.92,y+height*.43,z,
       .26,.62,4.60);
+     for(const mesh of [pocket,flap]){
+      mesh.userData.armorCompressible=true;
+      mesh.userData.armorCoverY=y;
+     }
     }
     box(torso,smockCuff,5.72,-2.64,sign*3.65,.18,.28,6.48);
    }
@@ -169,8 +173,12 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
     box(torso,wear,5.79,4.73,sign*4.60,.19,2.00,5.20);
     // Gorka's pair of slanted flap-covered waist pockets.
     const z=sign*3.82;
-    box(torso,body,6.12,-3.85,z,1.02,2.78,4.56);
-    box(torso,wear,6.66,-2.55,z,.24,.62,4.73,sign*.19);
+    const pocket=box(torso,body,6.12,-3.85,z,1.02,2.78,4.56);
+    const flap=box(torso,wear,6.66,-2.55,z,.24,.62,4.73,sign*.19);
+    for(const mesh of [pocket,flap]){
+     mesh.userData.armorCompressible=true;
+     mesh.userData.armorCoverY=-3.85;
+    }
    }
    box(torso,wear,5.79,4.71,0,.17,1.88,3.15);
    box(torso,gorkaCuff,5.80,-1.55,0,.20,10.70,.26);
