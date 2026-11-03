@@ -155,6 +155,10 @@ export type OperatorRig={
   appearanceSeed:number;
   dispose:()=>void;
 };
+const OPERATOR_CLOTH_PALETTE=[0x6f9185,0x80826b,0x8e846e,0x687c8d,
+ 0x798a79,0x92816a,0x65867c,0x8a8872] as const;
+const OPERATOR_VEST_PALETTE=[0x43504b,0x545a47,0x535550,0x46595a,
+ 0x5a5544,0x415a51,0x636056,0x465354] as const;
 const mat=(hex:number,surface?:PixelSurface)=>new THREE.MeshStandardMaterial({color:hex,
   map:surface?operatorPixelTextures.get(surface):null,
   flatShading:true,roughness:.86});
@@ -351,15 +355,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   if(identity!==r.appearanceSeed){
     r.appearanceSeed=identity;
     const colorKey=identity>>>0;
-    const clothPalette=[0x6f9185,0x80826b,0x8e846e,0x687c8d,
-      0x798a79,0x92816a,0x65867c,0x8a8872];
-    const vestPalette=[0x43504b,0x545a47,0x535550,0x46595a,
-      0x5a5544,0x415a51,0x636056,0x465354];
+
     r.colors.set(r.clothMaterial,identity===0?r.baseCloth.clone():
-      new THREE.Color(clothPalette[colorKey%clothPalette.length]));
+      new THREE.Color(OPERATOR_CLOTH_PALETTE[colorKey%OPERATOR_CLOTH_PALETTE.length]));
     r.colors.set(r.vestMaterial,identity===0?r.baseVest.clone():
-      new THREE.Color(vestPalette[(colorKey-1+vestPalette.length)%
-        vestPalette.length]));
+      new THREE.Color(OPERATOR_VEST_PALETTE[(colorKey-1+OPERATOR_VEST_PALETTE.length)%
+        OPERATOR_VEST_PALETTE.length]));
     // Individual complexion variation affects appearance only.
     const complexion=[0xb29b83,0x8b6754,0xc4aa86,0x6e4938,
       0xaa7c63,0xd3b698,0x98765c,0x533a32];
@@ -452,9 +453,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     (['bdu-shirt','acu-shirt','combat-shirt'].includes(clothing.top)&&
      (p.wardrobe?.sleeveState==='rolled'||p.wardrobe?.sleeveState==='cuffed'));
   for(const arm of r.arms){
-   arm.lower.material=bareForearm?r.skinMaterial:r.clothMaterial;
+   const sleeveMaterial=clothing.top==='gorka-jacket'?
+    r.visualKit.newUpper.mountainCanvas:r.clothMaterial;
+   arm.lower.material=bareForearm?r.skinMaterial:sleeveMaterial;
    arm.upper.material=clothing.top==='base-layer'?
-    r.skinMaterial:r.clothMaterial;
+    r.skinMaterial:sleeveMaterial;
   }
   for(const leg of r.feet){
    leg.lower.material=clothing.trousers==='base-shorts'?
@@ -475,16 +478,22 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
    ['head',r.headClothMaterial],
    ['head',r.headArmorMaterial]
   ] as const;
-  r.colors.set(r.trouserMaterial,
-    (r.colors.get(r.clothMaterial)??r.baseCloth).clone());
-  r.colors.set(r.packMaterial,
-    (r.colors.get(r.vestMaterial)??r.baseVest).clone());
-  r.colors.set(r.gearMaterial,
-    (r.colors.get(r.vestMaterial)??r.baseVest).clone());
-  r.colors.set(r.headArmorMaterial,
-    (r.colors.get(r.vestMaterial)??r.baseVest).clone());
-  r.colors.set(r.headClothMaterial,
-    (r.colors.get(r.clothMaterial)??r.baseCloth).clone());
+  // Reset each textile to its own actor-identity neutral color on EVERY pose.
+  // Previously trousers inherited the last color stored for the torso, so
+  // changing only the jacket could recolor pants on the next Studio refresh.
+  const colorKey=identity>>>0;
+  const defaultCloth=identity===0?r.baseCloth.clone():
+   new THREE.Color(OPERATOR_CLOTH_PALETTE[colorKey%OPERATOR_CLOTH_PALETTE.length]);
+  const defaultVest=identity===0?r.baseVest.clone():
+   new THREE.Color(OPERATOR_VEST_PALETTE[
+    (colorKey-1+OPERATOR_VEST_PALETTE.length)%OPERATOR_VEST_PALETTE.length]);
+  r.colors.set(r.clothMaterial,defaultCloth.clone());
+  r.colors.set(r.trouserMaterial,defaultCloth.clone());
+  r.colors.set(r.vestMaterial,defaultVest.clone());
+  r.colors.set(r.packMaterial,defaultVest.clone());
+  r.colors.set(r.gearMaterial,defaultVest.clone());
+  r.colors.set(r.headArmorMaterial,defaultVest.clone());
+  r.colors.set(r.headClothMaterial,defaultCloth.clone());
   for(const [channel,material] of fabricChannels){
    const authored=channel==='head'?null:
     p.wardrobe?.fabricCamo?.[channel as FabricCamoChannel];
@@ -526,11 +535,21 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.colors.set(additional.gorkaCuff,new THREE.Color(cuffHex));
   r.colors.set(r.visualKit.fieldBlouses['bdu-shirt'].cuffMaterial,
    new THREE.Color(cuffHex));
-  r.colors.set(additional.mountainCanvas,new THREE.Color(finish.gorkaBase));
-  r.colors.set(additional.mountainLegCanvas,new THREE.Color(finish.gorkaBase));
+  // The upper and lower Gorka pieces are separate clothing channels. In
+  // particular a jacket two-tone choice must never recolor the trousers.
   const selectedTop=p.wardrobe?.fabricCamo?.top;
   const hasAuthoredTop=!!selectedTop&&
-     fabricCamoCompatible(selectedTop,'top',clothing);
+    fabricCamoCompatible(selectedTop,'top',clothing);
+  const topSolid=p.wardrobe?.fabricSolids?.top;
+  const topBaseColor=hasAuthoredTop?0xffffff:
+    isGarmentSolidId(topSolid)?garmentSolidHex(topSolid):finish.gorkaBase;
+  r.colors.set(additional.mountainCanvas,new THREE.Color(topBaseColor));
+  const topCanvasMap=hasAuthoredTop?r.clothMaterial.map:
+    operatorPixelTextures.get('fabric');
+  if(additional.mountainCanvas.map!==topCanvasMap){
+   additional.mountainCanvas.map=topCanvasMap;
+   additional.mountainCanvas.needsUpdate=true;
+  }
   const panelMap=finish.specialty?
      gorkaSpecialtyTexture(finish.specialty):
      hasAuthoredTop?r.clothMaterial.map:operatorPixelTextures.get('fabric');
@@ -543,15 +562,23 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const selectedLeg=p.wardrobe?.fabricCamo?.trousers;
   const hasAuthoredLeg=!!selectedLeg&&
     fabricCamoCompatible(selectedLeg,'trousers',clothing);
-  const legMap=finish.specialty?
-    gorkaSpecialtyTexture(finish.specialty):
-    hasAuthoredLeg?r.trouserMaterial.map:operatorPixelTextures.get('fabric');
+  const legSolid=p.wardrobe?.fabricSolids?.trousers;
+  const legDefaults=garmentColorValues('gorka-jacket','standard');
+  const legBaseColor=hasAuthoredLeg?0xffffff:
+    isGarmentSolidId(legSolid)?garmentSolidHex(legSolid):legDefaults.gorkaBase;
+  r.colors.set(additional.mountainLegCanvas,new THREE.Color(legBaseColor));
+  const legMap=hasAuthoredLeg?r.trouserMaterial.map:operatorPixelTextures.get('fabric');
+  if(additional.mountainLegCanvas.map!==legMap){
+   additional.mountainLegCanvas.map=legMap;
+   additional.mountainLegCanvas.needsUpdate=true;
+  }
   if(additional.mountainLegPanel.map!==legMap){
    additional.mountainLegPanel.map=legMap;
    additional.mountainLegPanel.needsUpdate=true;
   }
   r.colors.set(additional.mountainLegPanel,new THREE.Color(
-    finish.specialty||hasAuthoredLeg?0xffffff:finish.gorkaPanel));
+    hasAuthoredLeg?0xffffff:
+     isGarmentSolidId(legSolid)?garmentSolidHex(legSolid):legDefaults.gorkaPanel));
   if(clothing.top==='smock-jacket'&&!hasAuthoredTop&&
      !p.wardrobe?.fabricSolids?.top)
     r.colors.set(r.clothMaterial,new THREE.Color(finish.smock));

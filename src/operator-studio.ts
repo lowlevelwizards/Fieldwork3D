@@ -350,6 +350,8 @@ function renderMaterials(){
   }
  }
  if(activeCategory==='headwear'){
+  row('HEADWEAR APPEARANCE',
+   'All approved hats and helmets are selectable. Appearance does not alter head protection or inventory; the equipped kit controls those.');
   const solids=headwearColorChoices(item==='high-cut-rails'?'high-cut':item);
   const prints=headwearCamoChoices(item);
   const group=row('HEADGEAR FINISH','Select an appropriate solid shell/fabric or approved cover print.');
