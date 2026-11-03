@@ -556,10 +556,10 @@ test('5A historical patterns retain independently recognizable palette structure
  assert.notDeepEqual(p['scorpion-w2'].colors,p['british-mtp'].colors);
  assert.notDeepEqual(p['scorpion-w2'].motifs,p['british-mtp'].motifs);
  const code=readFileSync(new URL('../src/operator-headwear-camo.ts',import.meta.url),'utf8');
- assert.match(code,/Distinct fine, VERTICAL raindrop overprint/);
+ assert.match(code,/Very thin 1px straight vertical rain-stria overprint/);
  assert.match(code,/narrow 1px vertical red-brown rain dashes/);
  assert.match(code,/fractal pixels/);
- assert.match(code,/original deterministic/);
+ assert.match(code,/Original stepped olive\/earth\/buff artwork/);
 });
 
 test('5B all twelve master patterns retain distinct art, meaningful ink roles and original registrations',()=>{
