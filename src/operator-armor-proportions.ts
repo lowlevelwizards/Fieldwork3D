@@ -59,7 +59,7 @@ export const ARMOR_PROPORTIONS:Readonly<Record<string,ArmorProportion>>={
  'soft-vest':{family:'police',width:11.35,top:4.8,bottom:-5.2,
   shoulderWidth:2.85,sideHeight:8.8,upperInset:.95,sideThickness:.76,sideStyle:'soft_wrap',collarStyle:'vest_v',sideY:-0.48,strapDrop:0.66,strapThickness:0.62,rearWidth:11.35,sidePlateHeight:0},
  'soft-flak':{family:'fragmentation',width:12.4,top:5.5,bottom:-6.5,
-  shoulderWidth:3.0,sideHeight:10.1,upperInset:1.60,sideThickness:.89,sideStyle:'soft_wrap',collarStyle:'high_flak',sideY:-0.72,strapDrop:0.72,strapThickness:0.94,rearWidth:12.4,sidePlateHeight:0},
+  shoulderWidth:3.45,sideHeight:10.1,upperInset:1.60,sideThickness:.89,sideStyle:'soft_wrap',collarStyle:'high_flak',sideY:-0.72,strapDrop:0.72,strapThickness:0.94,rearWidth:12.4,sidePlateHeight:0},
  'plate-slick':{family:'slick',width:8.95,top:4.54,bottom:-4.56,
   shoulderWidth:1.55,sideHeight:1.42,upperInset:1.05,sideThickness:.63,sideStyle:'flat_slab',collarStyle:'minimal_plate',sideY:-1.6,strapDrop:1.30,strapThickness:0.52,rearWidth:8.95,sidePlateHeight:0},
  'plate-jpc':{family:'skeleton',width:9.20,top:4.78,bottom:-4.90,
@@ -69,7 +69,7 @@ export const ARMOR_PROPORTIONS:Readonly<Record<string,ArmorProportion>>={
  'plate-heavy':{family:'assault',width:10.15,top:5.10,bottom:-5.65,
   shoulderWidth:2.65,sideHeight:3.62,upperInset:.92,sideThickness:1.03,sideStyle:'side_plate',collarStyle:'heavy_plate',sideY:-1.6,strapDrop:1.12,strapThickness:0.84,rearWidth:10.15,sidePlateHeight:3.85},
  'plate-legacy':{family:'legacy',width:12.15,top:5.45,bottom:-6.77,
-  shoulderWidth:3.10,sideHeight:10.8,upperInset:1.40,sideThickness:1.15,sideStyle:'soft_wrap',collarStyle:'legacy_wrap',sideY:-0.65,strapDrop:0.65,strapThickness:0.96,rearWidth:12.25,sidePlateHeight:0}
+  shoulderWidth:3.55,sideHeight:10.8,upperInset:1.40,sideThickness:1.15,sideStyle:'soft_wrap',collarStyle:'legacy_wrap',sideY:-0.65,strapDrop:0.65,strapThickness:0.96,rearWidth:12.25,sidePlateHeight:0}
 };
 export const ARMOR_VISIBLE_STYLES=[
  'soft-vest','soft-flak','plate-slick','plate-jpc',
