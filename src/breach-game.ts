@@ -428,8 +428,14 @@ function knownTraversal(s:Session,from:Pt,to:Pt):boolean{
         canOpenWindowForClimb(w)?{...w,open:true}:w),
    canStand:(at:Pt)=>intelPassable(at,s.intel)
  };
- return !!(probeObstacleCrossing(from,to,world)||
-   probeWindowCrossing(from,to,world));
+ const ordinaryCrossing=probeObstacleCrossing(from,to,world);
+ if(ordinaryCrossing)return true;
+ const windowCrossing=probeWindowCrossing(from,to,world);
+ if(!windowCrossing)return false;
+ // A crossable pane alone is not a route. Both feet-on-ground connectors
+ // must also be reachable under the player's known world geometry.
+ return !!routeWithSqueezeIntel(s.intel,from,windowCrossing.approach).length&&
+   !!routeWithSqueezeIntel(s.intel,windowCrossing.landing,to).length;
 }
 const legalMoveRoute=(s:Session,from:Pt,to:Pt):Pt[]=>{
  const ordinary=routeWithSqueezeIntel(s.intel,from,to);
@@ -1448,6 +1454,8 @@ function desiredTraverse(s:Session,a:TeamActor,goal:Pt){
        canOpenWindowForClimb(w)?{...w,open:true}:w)
    },fit);
  if(!op||!s.intel.cover.has(op.obstacleIndex))return null;
+ if(op.windowId&&!routeWithSqueezeWorld(op.landing,goal,s.doors).length)
+   return null;
  const ordinary=routeWithSqueezeIntel(s.intel,a.p,goal);
  if(!preferTraversal(a.p,goal,op,ordinary))return null;
  const approachPath=routeWithSqueezeWorld(a.p,op.approach,s.doors);
