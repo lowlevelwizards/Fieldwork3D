@@ -270,7 +270,7 @@ button{font-family:"Work Sans",system-ui,sans-serif;font-weight:600;letter-spaci
 </div>
 <small>Start bare. Choose one actual item per category below. The Lab does not change saved campaign inventory.</small>
 <output id="variantCompareStatus" aria-live="polite"></output>
-<details id="blouseComparePanel" open><summary>STAGE 3B · FIELD BLOUSE A / B STUDY</summary>
+<details id="blouseComparePanel" open><summary>CLASSIC / MODERN · FIELD UNIFORM COMPARISON</summary>
 <p class="kit-help">Two original garment silhouettes, one shared anatomy. The dropdowns show only documented prints for each cut. Headgear, saved looks and campaign gear are not modified.</p>
 <div class="kit-grid">
 <label>A · HISTORICAL BDU PRINT<select id="bduComparisonPrint" aria-label="Historical field blouse camouflage"></select></label>
@@ -380,8 +380,17 @@ button{font-family:"Work Sans",system-ui,sans-serif;font-weight:600;letter-spaci
 </div><p class="kit-help">Only compatible positions are selectable.
 These are display positions of actual carried items, not extra inventory.</p>
 </details>
-<div class="row"><label><input id="rolledSleeves" type="checkbox"> ROLLED SLEEVES</label>
-<button id="wardrobeReset">RESET STYLES</button></div>
+<div class="kit-grid" id="garmentFinishControls">
+<label>SLEEVE FINISH<select id="wardrobeSleeveState" aria-label="Sleeve construction and position">
+<option value="unrolled">UNROLLED · FULL LENGTH</option>
+<option value="cuffed">CUFFED · WRIST FOLD</option>
+<option value="rolled">ROLLED · ABOVE ELBOW</option>
+</select></label>
+<label>TROUSER HEM<select id="wardrobeTrouserHem" aria-label="Bloused or unbloused trouser hem">
+<option value="bloused">BLOUSED · OVER BOOTS</option>
+<option value="unbloused">UNBLOUSED · STRAIGHT</option>
+</select></label>
+</div><div class="row"><button id="wardrobeReset">RESET STYLES</button></div>
 <output id="wardrobeCompatibility" role="status"></output></details>
 <div class="row"><label>PRESETS</label>
 <button data-kit-preset="light">LIGHT</button>
