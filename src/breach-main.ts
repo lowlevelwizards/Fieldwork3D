@@ -933,8 +933,13 @@ let doorFocusId:string|null=null;
 let draggingNode:Pt|null=null;
 let draggingWatchTarget=false;
 function cancelTargeting(){
+  const hadTarget=looking||flashMode||!!firePlacement||!!evacMode;
+  if(hadTarget){
+    const actor=uid(selected);
+    if(actor)tacticalFeedback.emit('cancel',actor.p,'CANCELLED');
+  }
   looking=false;flashMode=false;firePlacement=null;flashDoorId=null;
-  contextSignature='';updateHud();
+  evacMode=null;contextSignature='';updateHud();
 }
 const fogCanvas=document.createElement('canvas');
 fogCanvas.width=FOG_WIDTH;fogCanvas.height=FOG_HEIGHT;
@@ -1455,15 +1460,15 @@ const handleContextAction=(event:MouseEvent)=>{
     }
     case 'ctxSuppress':
       firePlacement='suppress';looking=false;flashMode=false;
-      tacticalFeedback.emit('command',node?.p??a.p,'SUPPRESS');
-      uiClickTone('command');updateHud();return;
+      tacticalFeedback.emit('armed',node?.p??a.p,'SUPPRESS READY');
+      uiClickTone('select');updateHud();return;
     case 'ctxFlash':
       if(state.flashRemaining>0){flashMode=true;flashDoorId=null;
         looking=false;firePlacement=null;}
       break;
     case 'ctxLook':
-      tacticalFeedback.emit('command',node?.p??a.p,'LOOK');
-      uiClickTone('command');armFacing('look');return;
+      tacticalFeedback.emit('armed',node?.p??a.p,'LOOK READY');
+      uiClickTone('select');armFacing('look');return;
     case 'ctxDoor':{
       const available=focusedDoor(a,node);
       if(!available){state.events.push('NO KNOWN DOOR IN REACH');break;}
@@ -1472,8 +1477,8 @@ const handleContextAction=(event:MouseEvent)=>{
       updateHud();return;
     }
     case 'ctxWatch':
-      tacticalFeedback.emit('command',node?.p??a.p,'WATCH');
-      uiClickTone('command');armFacing('watch');return;
+      tacticalFeedback.emit('armed',node?.p??a.p,'WATCH READY');
+      uiClickTone('select');armFacing('watch');return;
     case 'ctxReleaseWatch':
       if(!releaseWatch(state,selected,node?.id,'here'))
         state.events.push('CANNOT RELEASE WATCH HERE');
@@ -2820,7 +2825,10 @@ function useSelectedGround(pt:Pt){
     const nodeId=selectedNode??undefined;
     const accepted=setFirePolicy(state,selected,'suppress',nodeId,pt);
     if(!accepted)rejectAt(pt,'INVALID SUPPRESSION POINT');
-    else firePlacement=null;
+    else{
+      tacticalFeedback.emit('command',pt,'SUPPRESS');
+      uiClickTone('command');firePlacement=null;
+    }
     updateHud();return;
   }
   if(flashMode){
@@ -2830,6 +2838,8 @@ function useSelectedGround(pt:Pt){
       planFlash(state,selected,pt);
     if(!accepted)rejectAt(pt,'FLASH TARGET BLOCKED / OUT OF RANGE');
     else{
+      tacticalFeedback.emit('command',pt,'FLASH');
+      uiClickTone('command');
       selectedNode=flashDoorId?state.nextId-1:id;
       flashMode=false;flashDoorId=null;
     }
@@ -2842,6 +2852,8 @@ function useSelectedGround(pt:Pt){
       planAim(state,selected,'free',pt,selectedNode??undefined,'look',armedOrigin);
     if(!committed)rejectAt(pt,'SELECT A DIFFERENT AIM POINT');
     else{
+      tacticalFeedback.emit('command',pt,lookMode==='watch'?'WATCH':'LOOK');
+      uiClickTone('command');
       if(selectedNode===null)selectedNode=placedId;
       teach(lookMode==='watch'?'watch-placed':'look-placed',
         lookMode==='watch'?
@@ -3939,7 +3951,7 @@ function tick(now:number){
     const preview:TacticalOrderPreview|undefined=canPreview&&actor&&origin&&
       orderMode?{origin,direction:cursor!,mode:orderMode}:undefined;
     tacticalFeedback.draw(feedbackDraw,p=>worldToScreen(p,7),
-      performance.now(),preview);
+      performance.now(),preview,reducedMotionMedia.matches);
   }
   updateContext();advanceContextPalette(dt);
   if(frameMeter&&perfOverlay){
