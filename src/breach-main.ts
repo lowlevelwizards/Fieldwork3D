@@ -1157,7 +1157,7 @@ let previewHover=false;
 let trace:Pt[]|null=null;
 const activePointers=new Map<number,{x:number;y:number;startX:number;startY:number;
   wasUnit:boolean;nodeId:number|null;
-  mode:'undecided'|'route'|'pan'|'node'|'watchTarget'|'pivot'|'sweep'|'cameraOrbit'|'cameraPan'|'cameraMulti'|'targetPreview';moved:boolean}>();
+  mode:'undecided'|'route'|'pan'|'node'|'watchTarget'|'activeWatch'|'pivot'|'sweep'|'cameraOrbit'|'cameraPan'|'cameraMulti'|'targetPreview';moved:boolean}>();
 let pinchDistance=0,panMid:Pt|null=null;
 const colors:Record<string,string>={
   rook:'#a2d4ca',moss:'#b9c6a0',ash:'#dfb992',vale:'#b7b1d9',
@@ -3092,6 +3092,7 @@ function useSelectedGround(pt:Pt){
       'DESTINATION BLOCKED · CHOOSE NEARBY FLOOR':
       'NO WALKABLE ROUTE · CHECK DOOR OR PATH');
   else{
+    selectedActiveWatch=false;
     selectedNode=uid(selected)?.plan.at(-1)?.id??null;
     tacticalFeedback.emit('route',pt,undefined,beforeRoute);
     teach('waypoint-created',
@@ -3686,10 +3687,16 @@ window.addEventListener('keydown',e=>{
   if(e.code==='Digit0'&&!e.repeat)ui.cameraFit.click();
 });
 function pointerWorld(e:PointerEvent){return toWorld(e.clientX,e.clientY);}
-const hitNode=(cursor:Pt,pointerKind:string):{id:number;index:number;owner:string;marker:'node'|'watch'|'flash'}|null=>{
+const hitNode=(cursor:Pt,pointerKind:string):{id:number;index:number;owner:string;marker:'node'|'watch'|'flash'|'activeWatch'}|null=>{
   const radius=tacticalHitProfile(pointerKind).waypoint;
-  const candidates:{id:number;index:number;owner:string;gap:number;marker:'node'|'watch'|'flash'}[]=[];
+  const candidates:{id:number;index:number;owner:string;gap:number;marker:'node'|'watch'|'flash'|'activeWatch'}[]=[];
   for(const unit of team(state))if(unit.health>0){
+    const activeTarget=activeWatchTarget(unit);
+    if(activeTarget){
+      const gap=distance(worldToScreen(activeTarget,12),cursor);
+      if(gap<radius)candidates.push({id:-1,index:-1,
+        owner:unit.id,gap,marker:'activeWatch'});
+    }
     for(let i=unit.plan.length-1;i>=0;i--){
       const n=unit.plan[i];
       const targets:[Pt,'node'|'watch'|'flash'][]=[[n.p,'node']];
@@ -3749,19 +3756,31 @@ canvas.addEventListener('pointerdown',e=>{
     });
     // Tapping the operator always selects HERE, even if a waypoint
     // happens to overlap its icon.
-    const node=state.phase==='planning'&&!contextual&&!hit?
-      hitNode({x:e.clientX,y:e.clientY},e.pointerType):null;
+    const touch={x:e.clientX,y:e.clientY};
+    const candidate=state.phase==='planning'&&!contextual?
+      hitNode(touch,e.pointerType):null;
+    // Preserve actor-first selection, except when the finger is directly
+    // on a WATCH ring even if its screen footprint overlaps the operator.
+    const activeRingHit=candidate?.marker==='activeWatch'&&
+      distance(worldToScreen(activeWatchTarget(uid(candidate.owner)!)!,12),
+        touch)<=Math.min(22,tacticalHitProfile(e.pointerType).waypoint);
+    const node=candidate&&(!hit||activeRingHit)?candidate:null;
     if(node){
       lastAuthoringAt=performance.now();
       if(node.owner!==selected)selectUnit(node.owner);
-      selectedNode=node.id;doorFocusId=null;
-      teach('waypoint-selected',
-        'Drag this waypoint to move it. LOOK checks briefly; WATCH persists.',4200);
+      selectedActiveWatch=node.marker==='activeWatch';
+      selectedNode=selectedActiveWatch?null:node.id;
+      doorFocusId=null;
+      teach(selectedActiveWatch?'watch-active-selected':'waypoint-selected',
+        selectedActiveWatch?
+          'Active WATCH: drag this ring to retarget; DELETE WATCH releases it.':
+          'Drag this waypoint to move it. LOOK checks briefly; WATCH persists.',4200);
     }else if(hit)selectUnit(hit.id);
     activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
       startX:e.clientX,startY:e.clientY,wasUnit:!!hit&&!node,
       nodeId:node?.id??null,
-      mode:node?.marker==='watch'?'watchTarget':node?'node':'undecided',moved:false});
+      mode:node?.marker==='activeWatch'?'activeWatch':
+        node?.marker==='watch'?'watchTarget':node?'node':'undecided',moved:false});
   }
   if(activePointers.size>=2){
     // Cancel any tentative route gesture when a second finger arrives.
@@ -3834,6 +3853,10 @@ canvas.addEventListener('pointermove',e=>{
     }
     return;
   }
+  if(p.mode==='activeWatch'){
+    if(p.moved){draggingNode=cursor;draggingWatchTarget=true;}
+    return;
+  }
   if(p.mode==='watchTarget'){
     if(p.moved&&p.nodeId!==null){
       draggingNode=cursor;draggingWatchTarget=true;
@@ -3887,6 +3910,12 @@ function releasePointer(e:PointerEvent,cancelled=false){
       // CameraMulti/cancelled pointers remain excluded.
       if(pt.x>=0&&pt.y>=0&&pt.x<=W&&pt.y<=H)useSelectedGround(pt);
       else showUiHelp('TAP INSIDE THE MAP TO PLACE THE TARGET',2700);
+    }else if(p.mode==='activeWatch'){
+      const accepted=!p.moved||retargetActiveWatch(state,selected,pt);
+      if(!accepted)rejectAt(pt,'WATCH TARGET TOO CLOSE OR INVALID');
+      selectedNode=null;selectedActiveWatch=true;doorFocusId=null;
+      if(accepted)tacticalFeedback.emit(p.moved?'command':'select',pt,
+        p.moved?'WATCH RETARGETED':undefined);
     }else if(p.mode==='watchTarget'&&p.nodeId!==null){
       const accepted=!p.moved||planWatch(state,selected,pt,p.nodeId);
       if(!accepted)rejectAt(pt,'WATCH TARGET UNAVAILABLE');
