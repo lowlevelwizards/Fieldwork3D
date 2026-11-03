@@ -855,7 +855,10 @@ function isolateKit(body:OperatorRig){
  hide('pack',body.pack,v.dayPack,v.fieldPack,v.packHarness,
   ...all(v.wardrobeGear.pack),...all(v.accessories.pack));
  hide('clothes',v.jacket,v.lightShirt,
-  ...Object.values(v.fieldBlouses).flatMap(b=>[b.torso,...b.upper,...b.lower]),
+  ...Object.values(v.fieldBlouses).flatMap(b=>[
+    b.torso,...b.upper,...b.lower,...b.cuffed,...b.rolledUpper]),
+   ...Object.values(v.fieldTrousers).flatMap(t=>[
+    ...t.thigh,...t.bloused,...t.unbloused]),
   ...all(v.wardrobeBody.tops),
   ...Object.values(v.wardrobeBody.trousers).flat(),
   ...v.cargoPockets,...v.sleeveCuffs,...v.rolledForearms,...v.rolledCuffs,
