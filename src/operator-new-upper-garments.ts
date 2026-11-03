@@ -55,12 +55,15 @@ export type NewUpperGarments={
  mountainLegPanel:THREE.MeshStandardMaterial;
 };
 const group=(parent:THREE.Object3D,name:string)=>{
- const g=new THREE.Group();g.name=name;g.visible=false;parent.add(g);return g;
+ const g=new THREE.Group();g.name=name;g.visible=false;parent.add(g);
+ g.userData.garmentMetricLength=parent.userData.garmentMetricLength??1;
+ return g;
 };
 function box(g:THREE.Group,m:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number,rot=0){
+ const metric=g.userData.garmentMetricLength as number||1;
  const mesh=new THREE.Mesh(garmentBoxUV(new THREE.BoxGeometry(w,h,d),
-  w,h,d,m,x,y,z),m);
+  w,h*metric,d,m,x,y*metric,z),m);
  mesh.position.set(x,y,z);mesh.rotation.x=rot;
  mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);
  return mesh;
