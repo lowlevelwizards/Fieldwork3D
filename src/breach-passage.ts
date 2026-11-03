@@ -115,9 +115,14 @@ export function passageWait(actor:PassageActor,doors:readonly Door[],
     Math.min(...cluster.map(d=>distance(a.p,doorCenter(d))))-
     Math.min(...cluster.map(d=>distance(b.p,doorCenter(d))))||
     a.id.localeCompare(b.id))[0];
-  // Active owner keeps priority, except an actor physically inside has
-  // priority to exit. A WAIT or stopped task is not a crossing contender.
-  const owner=occupant?.id??(leased?current!.actorId:nearest.id);
+  // A prior, still-active claimant keeps its turn even if a later actor
+  // becomes geometrically closer at the doorway while finishing a WAIT.
+  // Only someone already trapped *between two doors* can override that lease
+  // to escape a vestibule; ordinary near-threshold positions cannot steal it.
+  const insideVestibule=cluster.length>1?
+    relevant.find(a=>insidePassage(a,cluster)):undefined;
+  const owner=insideVestibule?.id??
+    (leased?current!.actorId:occupant?.id??nearest.id);
   if(leases)leases[key]={actorId:owner,until:now+.38};
   if(owner!==actor.id)return true;
  }
