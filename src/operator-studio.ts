@@ -45,6 +45,7 @@ let readOnly=false;
 let people:StudioPerson[]=[];
 let activeCategory:WardrobeSlot='top';
 let advancedFabricColorsOpen=false;
+let advancedPouchOpen=false;
 let clothesOnly=true;
 let comparingSaved=false;
 let saveInFlight=false;
@@ -411,6 +412,23 @@ function renderMaterials(){
     changeWardrobe({...current(),headwearCamo:id,headwearCamoRoll:
       w.headwearCamo===id?nextHeadwearCamoRoll(w.headwearCamoRoll):0}));
   }
+ }
+ if(activeCategory==='rigStyle'&&item!=='no-rig'){
+  row('POUCH FABRIC',w.pouchSolid?
+   'Advanced pouch-only fabric override: '+GARMENT_SOLID_COLORS[w.pouchSolid].label:
+   'AUTO · Match rig material, including original camouflage and cut position.');
+  const advanced=document.createElement('details');
+  advanced.className='material-group';advanced.open=advancedPouchOpen;
+  const summary=document.createElement('summary');
+  summary.textContent='ADVANCED POUCH COLOR';advanced.append(summary);
+  advanced.addEventListener('toggle',()=>{advancedPouchOpen=advanced.open;});
+  const actions=document.createElement('div');actions.className='material-row';
+  actions.append(makeButton('AUTO · MATCH RIG',!w.pouchSolid,()=>
+   changeWardrobe({...current(),pouchSolid:undefined})));
+  advanced.append(actions);
+  addSolidSwatches(advanced,solidChoicesFor('gear'),w.pouchSolid??null,
+   id=>changeWardrobe({...current(),pouchSolid:id}));
+  materialRoot.append(advanced);
  }
  if(activeCategory==='top'){
   // Combat knit and smock solids are controlled by their actual material
