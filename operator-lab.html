@@ -157,7 +157,7 @@ body.kit-compare .lab-category-nav{display:none}
 body.kit-compare main #kitPanel{display:block!important}
 body.kit-compare main>.row[data-lab-group="view"]:has(#comparePose){display:flex!important}
 
-/* Camo 3A: canonical 32px pixel art, repeat inspector and selected live 3D. */
+/* Camo 4A: native 32/64px pixel art, repeat inspector and selected live 3D. */
 #headwearCamoChooser{margin:9px 0 7px;padding:9px 8px;background:#1b3028;border:1px solid #667f70;border-radius:6px}
 #headwearCamoChooser[hidden],#headwearCamoInspector[hidden]{display:none}
 #headwearCamoChooser .swatch-heading{font-weight:700;color:#d9d5b5;font-size:11px;letter-spacing:.055em;margin-bottom:7px}
@@ -255,18 +255,18 @@ body.kit-compare main>.row[data-lab-group="view"]:has(#comparePose){display:flex
 <div class="swatch-heading">CAMOUFLAGE · PANEL-WRAPPED FABRIC PRINT</div>
 <div id="headwearCamoGrid" aria-label="Choose compatible camouflage"></div>
 <details id="headwearCamoCompareDetails">
-<summary>COMPARE ALL 12 · UNIFORM SCALE</summary>
+<summary>COMPARE ALL 18 · UNIFORM SCALE</summary>
 <small>Same artwork scale on every card. RAW shows the canonical tile; TILED shows the repeated print at a smaller display size. Unavailable patterns remain visible for comparison, but cannot be applied to this headgear. Select an available print to inspect the actual 3D model above at the current fixed pose, zoom and lighting.</small>
-<div id="headwearCamoCompareGrid" role="group" aria-label="All twelve camouflage patterns compared at identical artwork size"></div>
+<div id="headwearCamoCompareGrid" role="group" aria-label="All eighteen camouflage patterns compared at a uniform display size"></div>
 </details>
 <div id="headwearCamoInspector" hidden>
 <div class="camo-inspect-row">
-<figure><canvas id="headwearCamoArt" width="32" height="32" aria-label="Original 32 by 32 camouflage pixel art"></canvas><figcaption>ORIGINAL · 32×32 PIXELS</figcaption></figure>
+<figure><canvas id="headwearCamoArt" width="32" height="32" aria-label="Original camouflage pixel art at native resolution"></canvas><figcaption id="headwearCamoOriginalCaption">ORIGINAL · 32×32 PIXELS</figcaption></figure>
 <figure><canvas id="headwearCamoTiled" width="96" height="96" aria-label="Camouflage repeated three times across both axes"></canvas><figcaption>TILED · 3×3 REPEAT</figcaption></figure>
 </div>
 <button id="headwearCamoReroll" type="button" hidden aria-label="Reroll this headgear's camouflage placement">↻ REROLL PATTERN PLACEMENT</button>
 <output id="headwearCamoChoice" aria-live="polite"></output>
-<small>The 32×32 previews show canonical artwork; the live model applies fabric-specific print density (1× or 2×) with separate UVs for crown tops and wrapped sides. Tap a pattern to apply it; tap the active pattern again or use REROLL to change only its print placement, preserving the same fabric scale. Saved looks remember the reroll. Solid swatches restore solid fabric or shell colors. Patterns are restricted by item and period plausibility.</small>
+<small>The original previews show native 32×32 or 64×64 canonical artwork; the live model applies fabric-specific print density (1× or 2×) with separate UVs for crown tops and wrapped sides. Tap a pattern to apply it; tap the active pattern again or use REROLL to change only its print placement, preserving the same fabric scale. Saved looks remember the reroll. Solid swatches restore solid fabric or shell colors. Patterns are restricted by item and period plausibility.</small>
 </div>
 </div>
 </details>
