@@ -1,58 +1,247 @@
-/** Compact 24px outlined instrument icon family, matched to Tabler's stroke language.
- * Custom tactical glyphs (pie, suppress, door flash) share the same canvas. */
-const glyphs:Record<string,string>={
-  ctxOpen:'<path d="M5 21V4l12-2v19H5Z"/><path d="M11 12h2"/>',
-  ctxDoor:'<path d="M5 21V4l12-2v19H5Z"/><path d="M11 12h2"/><path d="M19 12h4m-2-2 2 2-2 2"/>',
-  ctxClose:'<path d="M19 21V4L7 2v19h12Z"/><path d="M13 12h2M3 12l4 0m-2-2 2 2-2 2"/>',
-  ctxKick:'<path d="M4 19h14M7 15l4-8 5 5-3 4-6-1Z"/><path d="m16 12 4-2"/>',
-  ctxDoorFlash:'<circle cx="12" cy="12" r="3"/><path d="M12 2v5m0 10v5M2 12h5m10 0h5M5 5l3 3m8 8 3 3m0-14-3 3M8 16l-3 3"/>',
-  ctxHold:'<rect x="5" y="4" width="14" height="17" rx="1"/><path d="M10 12h5m-3-3v6"/>',
-  ctxLook:'<path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/>',
-  ctxWatch:'<circle cx="12" cy="12" r="7"/><path d="M2 12h3m14 0h3M12 2v3m0 14v3"/><circle cx="12" cy="12" r="2"/>',
-  ctxReleaseWatch:'<path d="M4 12h12m-4-4 4 4-4 4M4 5l16 14"/>',
-  ctxPie:'<circle cx="5" cy="19" r="2"/><path d="M5 19V8M5 19h11M5 19A14 14 0 0 1 19 5"/><path d="M15 4h4v4"/>',
-  ctxStrafe:'<path d="M4 12h16m-4-4 4 4-4 4"/><path d="M12 5v14"/><circle cx="12" cy="12" r="2"/>',
-  ctxStrafeMove:'<path d="M4 12h16m-4-4-4 4 4 4m12-8 4 4-4 4"/><path d="M12 4v16" stroke-dasharray="2 3"/>',
-  ctxFlash:'<circle cx="12" cy="12" r="3"/><path d="M12 2v5m0 10v5M2 12h5m10 0h5M5 5l3 3m8 8 3 3m0-14-3 3M8 16l-3 3"/>',
-  ctxWait:'<path d="M8 5v14m8-14v14"/>',
-  ctxFocus:'<circle cx="12" cy="12" r="4"/><path d="M12 2v5m0 10v5M2 12h5m10 0h5"/>',
-  ctxSuppress:'<path d="M4 17 10 14 10 10 4 7Z"/><path d="M11 7 21 3M11 12 22 12M11 17 21 21"/><path d="M14 9l3-1m-3 8 3 1" stroke-dasharray="2 2"/>',
-  ctxFire:'<path d="M3 8h9l3-2h5v6h-6l-3 3H7l-3 4"/><path d="m14 15 3 5"/><circle cx="19" cy="9" r="1"/>',
-  ctxStance:'<circle cx="12" cy="4.5" r="2"/><path d="M12 7v8m0-5-5 3m5-3 5 2m-5 3-5 6m5-6 6 6"/>',
-  ctxPace:'<circle cx="15" cy="4" r="2"/><path d="m14 7-5 4 4 3 7 1m-7-1-4 7m0-10-5 3m12 0 5-5"/>',
-  ctxReload:'<path d="M6 5h12v5H6zM8 10v9l4 3 4-3v-9"/><path d="M12 12v6M4 13H2m20 0h-2"/>',
-  ctxStanceCrouch:'<circle cx="13" cy="5" r="2"/><path d="m13 7-4 5 4 3m-4-3-5 3m9 0 5 1 3 4m-8-5-4 6"/>',
-  ctxPaceWalk:'<circle cx="13" cy="4.5" r="2"/><path d="m13 7-2 7-4 6m4-6 7 6m-7-10-5 4m7-5 4 4"/>',
-  ctxFireHold:'<path d="M3 9h10l3-2h5v5h-7l-3 3H6l-3 4"/><path d="M5 4l15 16" stroke-width="2.3"/>',
-  ctxFireReturn:'<path d="M3 10h10l3-3h5v5h-7l-3 3H6l-3 4"/><path d="M14 19h7m-3-3 3 3-3 3"/>',
-  ctxDelete:'<path d="M4 7h16M9 7v12m6-12v12M6 7l1 14h10l1-14M9 4h6"/>',
-  back:'<path d="m15 5-7 7 7 7"/>',undo:'<path d="M9 8 4 12l5 4M4 12h9a6 6 0 0 1 0 12"/>',
-  redo:'<path d="m15 8 5 4-5 4M20 12H11a6 6 0 0 0-6 6"/>',
-  moreOrders:'<path d="M4 7h16M4 12h16M4 17h16"/>',
-  siteSettingsToggle:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2m0-14-2 2M7 17l-2 2"/>',
-  cancelTarget:'<path d="M5 5l14 14M19 5 5 19"/>',
-  go:'<path d="M8 5 19 12 8 19Z"/>',
-  pause:'<path d="M8 5v14m8-14v14"/>',
-  reset:'<path d="M5 7a8 8 0 1 1-1 10"/><path d="M5 2v5H1"/>'
+/** Fieldwork's approved mobile HUD icon family (35 semantic actions).
+ * SVG path geometry is stored in its original audition viewBox and rendered
+ * at 24 CSS px. It inherits currentColor/operator accents in every theme.
+ * Icon ids are stable; state variants remain driven by gameplay labels.
+ */
+type Glyph={markup:string;viewBox:string;strokeWidth:number};
+export const FIELDWORK_ICON_FAMILY:Record<string,Glyph>={
+  "go": {
+    "markup": "<path d=\"M9 11L18 24L9 37M25 11L34 24L25 37\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  },
+  "pause": {
+    "markup": "<path d=\"M16 10V38M32 10V38\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  },
+  "engage": {
+    "markup": "<path d=\"M12 26V20c0-2.8 1.8-4.5 4.2-4.5 1.6 0 2.8.7 3.6 2v-1.8c0-2.8 1.7-4.3 4.1-4.3 2.3 0 3.8 1.6 3.8 4v.2c.6-2.1 2-3.3 4.1-3.3 2.5 0 4.1 1.8 4.1 4.2v2c.7-1.7 2-2.6 3.8-2.6 2.7 0 4.3 1.8 4.3 4.6v10.6c0 7.7-4.9 12.4-12.3 12.4H22c-6.8 0-10.7-3.9-10.7-10.3v-4.5c0-3.1 1.6-4.9 4-4.9h3.4l4 5.6H34\"/><path d=\"M19.8 17.5v6.5M27.7 16v8M35.9 18.5V24\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.6
+  },
+  "holdFire": {
+    "markup": "<path d=\"M14 27V17.5a3.3 3.3 0 0 1 6.6 0V25 13a3.3 3.3 0 0 1 6.6 0v12-9a3.3 3.3 0 0 1 6.6 0v9-5.5a3.3 3.3 0 0 1 6.6 0v13.3c0 8.8-5.8 13.2-13.8 13.2h-5.3c-5.1 0-8.1-2-11-6.2l-5.2-7.4c-1.3-2.1-.8-4.2 1-5.3 1.9-1.1 4-.5 5.3 1.3L14 32\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.6
+  },
+  "returnFire": {
+    "markup": "<path d=\"M16 6L29 11V23C29 32 23 38 16 41C9 37 4 31 4 23V11Z\"/><path d=\"M34 17L42 13M34 24H45M34 31L42 35\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  },
+  "suppress": {
+    "markup": "<path d=\"M4 14L22 21M4 24H22M4 34L22 27\"/><path d=\"M29 17V12H41V17M29 31V36H41V31\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  },
+  "flash": {
+    "markup": "<g transform=\"rotate(-26 19 25)\"><path d=\"M12 16H26V39H12Z M16 16V10H22V16M15 22H23\"/></g><path d=\"M38 16L45 9M39 25H49M38 33L45 40\"/>",
+    "viewBox": "0 0 54 50",
+    "strokeWidth": 2.4
+  },
+  "reload": {
+    "markup": "<path d=\"M17 8H30V25L34 39H21L17 25Z M23.5 11V25L27.5 36\"/><path d=\"M10 12C2 17 2 31 10 36M5 32L10 36L11 30M41 36C49 31 49 17 41 12M46 16L41 12L40 18\"/>",
+    "viewBox": "0 0 50 48",
+    "strokeWidth": 2.3
+  },
+  "wait": {
+    "markup": "<path d=\"M13 7H35M13 41H35M15 9C15 18 20 21 24 24C20 27 15 31 15 39M33 9C33 18 28 21 24 24C28 27 33 31 33 39M20 34H28\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  },
+  "cancelTarget": {
+    "markup": "<path d=\"M11 11L37 37M37 11L11 37\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  },
+  "walk": {
+    "markup": "<g transform=\"rotate(180 24 24)\"><path d=\"M11 19Q11 16 15 16H19Q22 16 22 21L24 37Q24 43 19 43H16Q12 43 12 38Z M27 8Q27 4 31 4H35Q39 4 39 9L40 25Q40 31 35 31H32Q28 31 28 26Z M12 25H22M13 30H23M28 13H39M28 18H39\"/></g>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.6
+  },
+  "run": {
+    "markup": "<g transform=\"translate(35 33) rotate(13) scale(1.7) translate(-28 -31.5)\"><path d=\"M18 24H30V29L32 31H35Q38 31 38 34V39H18Z\"/></g><path d=\"M6 20L14 23M3 30H12M6 40L13 38\"/>",
+    "viewBox": "0 0 64 64",
+    "strokeWidth": 3.4
+  },
+  "stand": {
+    "markup": "<path d=\"M8 31V11M3 16L8 11L13 16\"/><circle cx=\"30\" cy=\"9\" r=\"4.5\"/><path d=\"M24 18H36L35 29H25Z\"/><path d=\"M24 20L20 29M36 20L40 29\"/><path d=\"M27 29L26 40H23M33 29L34 40H37\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  },
+  "crouch": {
+    "markup": "<path d=\"M8 11V37M3 32L8 37L13 32\"/><circle cx=\"30\" cy=\"13\" r=\"4.5\"/><path d=\"M24 21H36L35 30H25Z\"/><path d=\"M24 23L20 30M36 23L40 30\"/><path d=\"M27 30L19 34L24 41H19M33 30L41 34L36 41H42\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  },
+  "look": {
+    "markup": "<path d=\"M5 24Q24 7 43 24Q24 41 5 24Z\"/><circle cx=\"24\" cy=\"24\" r=\"6\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  },
+  "watch": {
+    "markup": "<path d=\"M5 15V5H15M33 5H43V15M43 33V43H33M15 43H5V33 M9 24Q24 12 39 24Q24 36 9 24Z\"/><circle cx=\"24\" cy=\"24\" r=\"5\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  },
+  "releaseWatch": {
+    "markup": "<path d=\"M5 15V5H15M33 5H43V15M43 33V43H33M15 43H5V33 M9 24Q24 12 39 24Q24 36 9 24Z M7 41L41 7\"/><circle cx=\"24\" cy=\"24\" r=\"5\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  },
+  "deletePoint": {
+    "markup": "<path d=\"M8 13H40M17 13V8H31V13M12 13L15 42H33L36 13 M20 20V35M28 20V35\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  },
+  "clearPlan": {
+    "markup": "<path d=\"M4 38L15 12L26 29L42 8 M30 33L41 44M41 33L30 44\"/><circle cx=\"4\" cy=\"38\" r=\"2\"/><circle cx=\"15\" cy=\"12\" r=\"2\"/><circle cx=\"26\" cy=\"29\" r=\"2\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  },
+  "undo": {
+    "markup": "<path d=\"M15 8L6 17L15 26 M6 17H21C29 17 33 22 32 29\"/>",
+    "viewBox": "0 0 40 40",
+    "strokeWidth": 2.65
+  },
+  "redo": {
+    "markup": "<path d=\"M25 8L34 17L25 26 M34 17H19C11 17 7 22 8 29\"/>",
+    "viewBox": "0 0 40 40",
+    "strokeWidth": 2.65
+  },
+  "openDoor": {
+    "markup": "<path d=\"M9 7H39V41H9Z\"/><path d=\"M12 10L28 16V38L12 40Z\"/><circle cx=\"25\" cy=\"28\" r=\"1\"/><path d=\"M33 15Q43 22 35 31M34 25L35 31L41 29\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  },
+  "closeDoor": {
+    "markup": "<path d=\"M9 7H39V41H9Z\"/><path d=\"M12 10H36V39H12Z\"/><circle cx=\"32\" cy=\"26\" r=\"1\"/><path d=\"M3 24H10M7 20L11 24L7 28\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  },
+  "kick": {
+    "markup": "<g transform=\"translate(28 34) rotate(-33) scale(1.68) translate(-28 -31.5)\"><path d=\"M18 24H30V29L32 31H35Q38 31 38 34V39H18Z\"/></g><path d=\"M53 24V43\"/><path stroke-width=\"2.9\" d=\"M57 28L61 25M58 35H62M57 42L61 45\"/>",
+    "viewBox": "0 0 64 64",
+    "strokeWidth": 3.4
+  },
+  "push": {
+    "markup": "<rect x=\"32\" y=\"9\" width=\"12\" height=\"30\"/><path d=\"M32 24H28L24 20L21 21V17Q21 15 18 15Q15 15 15 18V26L11 21Q8 19 6 21Q4 23 6 26L13 36Q15 39 19 39H32\"/><path d=\"M21 23H28\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  },
+  "window": {
+    "markup": "<path d=\"M6 8H36V41H6Z\"/><path d=\"M21 8V41M6 24H36\"/><path d=\"M32 15L43 4M36 4H43V11\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  },
+  "settings": {
+    "markup": "<path d=\"M7 10H41M7 24H41M7 38H41\"/><circle cx=\"18\" cy=\"10\" r=\"4\"/><circle cx=\"32\" cy=\"24\" r=\"4\"/><circle cx=\"18\" cy=\"38\" r=\"4\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  },
+  "fitView": {
+    "markup": "<path d=\"M18 6H6V18M30 6H42V18M42 30V42H30M18 42H6V30 M15 15L6 6M33 15L42 6M33 33L42 42M15 33L6 42\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  },
+  "briefing": {
+    "markup": "<path d=\"M4 10L17 5L30 10L44 5V38L30 43L17 38L4 43Z M17 5V38M30 10V43 M20 19L25 24L20 29\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  },
+  "restart": {
+    "markup": "<g transform=\"translate(40 0) scale(-1 1)\"><path d=\"M8 22A13 13 0 1 1 33 18 M33 10V18H24\"/></g>",
+    "viewBox": "0 0 40 40",
+    "strokeWidth": 2.5
+  },
+  "watchReplay": {
+    "markup": "<path d=\"M4 6H36V34H4Z M11 6V34M29 6V34 M4 13H11M4 27H11M29 13H36M29 27H36 M16 14L26 20L16 26Z\"/>",
+    "viewBox": "0 0 40 40",
+    "strokeWidth": 2.2
+  },
+  "previousEvent": {
+    "markup": "<path d=\"M10 8V32 M31 9L13 20L31 31Z\"/>",
+    "viewBox": "0 0 40 40",
+    "strokeWidth": 2.65
+  },
+  "rewind": {
+    "markup": "<path d=\"M20 9L7 20L20 31Z M34 9L21 20L34 31Z\"/>",
+    "viewBox": "0 0 40 40",
+    "strokeWidth": 2.65
+  },
+  "fastForward": {
+    "markup": "<path d=\"M7 9L20 20L7 31Z M21 9L34 20L21 31Z\"/>",
+    "viewBox": "0 0 40 40",
+    "strokeWidth": 2.65
+  },
+  "nextEvent": {
+    "markup": "<path d=\"M30 8V32 M9 9L27 20L9 31Z\"/>",
+    "viewBox": "0 0 40 40",
+    "strokeWidth": 2.65
+  },
+  "replayPlay": {
+    "markup": "<path d=\"M13 8L33 20L13 32Z\"/>",
+    "viewBox": "0 0 40 40",
+    "strokeWidth": 2.4
+  },
+  "focus": {
+    "markup": "<circle cx=\"24\" cy=\"24\" r=\"8\"/><path d=\"M24 4V12M24 36V44M4 24H12M36 24H44\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  }
 };
-/** Resolve real state variants without changing action identifiers or handlers. */
+const aliases:Record<string,string>={
+  "ctxOpen": "openDoor",
+  "ctxDoor": "openDoor",
+  "ctxClose": "closeDoor",
+  "ctxKick": "kick",
+  "ctxDoorFlash": "flash",
+  "ctxLook": "look",
+  "ctxWatch": "watch",
+  "ctxReleaseWatch": "releaseWatch",
+  "ctxWait": "wait",
+  "ctxFlash": "flash",
+  "ctxSuppress": "suppress",
+  "ctxFire": "engage",
+  "ctxFireHold": "holdFire",
+  "ctxFireReturn": "returnFire",
+  "ctxStance": "stand",
+  "ctxStanceCrouch": "crouch",
+  "ctxPace": "run",
+  "ctxPaceWalk": "walk",
+  "ctxReload": "reload",
+  "ctxDelete": "deletePoint",
+  "ctxPush": "push",
+  "ctxWindow": "window",
+  "siteSettingsToggle": "settings",
+  "reset": "restart",
+  "cancelTarget": "cancelTarget",
+  "back": "undo",
+  "moreOrders": "settings"
+};
+
+/** Resolve the four persistent quick-strip states without mutating actions. */
 export function tacticalIconForState(id:string,label:string){
-  if(id==='ctxStance'&&label==='CROUCH')return 'ctxStanceCrouch';
-  if(id==='ctxPace'&&label==='WALK')return 'ctxPaceWalk';
-  if(id==='ctxFire'&&label==='HOLD')return 'ctxFireHold';
-  if(id==='ctxFire'&&label==='RETURN')return 'ctxFireReturn';
+  const state=label.trim().toUpperCase();
+  if(id==='ctxStance')return state==='CROUCH'?'ctxStanceCrouch':'ctxStance';
+  if(id==='ctxPace')return state==='WALK'?'ctxPaceWalk':'ctxPace';
+  if(id==='ctxFire')return state.startsWith('HOLD')?'ctxFireHold':
+    state.startsWith('RETURN')?'ctxFireReturn':'ctxFire';
   return id;
 }
 export function tacticalIcon(key:string):SVGSVGElement{
+  const id=aliases[key]??key;
+  const g=FIELDWORK_ICON_FAMILY[id]??FIELDWORK_ICON_FAMILY.focus;
   const s=document.createElementNS('http://www.w3.org/2000/svg','svg');
-  s.setAttribute('viewBox','0 0 24 24');
-  s.setAttribute('width','19');s.setAttribute('height','19');
+  s.setAttribute('viewBox',g.viewBox);
+  s.setAttribute('width','24');s.setAttribute('height','24');
   s.setAttribute('fill','none');s.setAttribute('stroke','currentColor');
-  s.setAttribute('stroke-width','1.9');
+  s.setAttribute('stroke-width',String(g.strokeWidth));
   s.setAttribute('stroke-linecap','round');
   s.setAttribute('stroke-linejoin','round');
   s.setAttribute('aria-hidden','true');s.classList.add('ui-icon');
-  s.innerHTML=glyphs[key]??glyphs.ctxFocus;
+  s.innerHTML=g.markup;
   return s;
 }
 export function decorateIconButton(button:HTMLButtonElement,key:string){
