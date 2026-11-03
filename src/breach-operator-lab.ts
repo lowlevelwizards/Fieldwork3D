@@ -575,6 +575,22 @@ const renderer=new THREE.WebGLRenderer({
 });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio,compact?1.5:2));
 renderer.shadowMap.enabled=true;renderer.setClearColor(0xc4c5bd);
+appearanceGrid=new OperatorAppearanceGrid(
+ document.getElementById('appearanceItemBrowser')!,renderer,(slot,id)=>{
+  const choice=selectWardrobeItem(labKit,wardrobeOptions,slot,id);
+  if(resolvedWardrobe(choice.wardrobe,choice.kit)[slot]!==id)return;
+  checkpointAppearance();
+  labKit=choice.kit;wardrobeOptions=choice.wardrobe;
+  syncKit();
+  // Actual 3D thumbnails already expose silhouettes for every item. The
+  // chosen model itself continues to use the unmodified Lab camera/IK.
+  const status=document.getElementById('headwearReviewStatus');
+  if(slot==='headwear'&&status)
+   status.textContent=id==='bare'?'UNCOVERED HEAD':
+    'SELECTED '+id.replaceAll('-',' ').toUpperCase()+
+    ' · original approved headwear model';
+ });
+appearanceGrid.refresh(labKit,wardrobeOptions);
 const scene=new THREE.Scene();
 const camera=new THREE.OrthographicCamera(-28,28,34,-34,.1,600);
 camera.position.set(65,48,68);
@@ -1076,35 +1092,6 @@ function frameWardrobeSelection(){
  cameraFitZoom(mode);control.update();
  cameraFollow={x,z};
 }
-// A quick matched setup for the first artistic review. This only changes
-// the Lab's cosmetic pose; Campaign and Quick Play kit stay untouched.
-const headReviewStatus=choose<HTMLOutputElement>('headwearReviewStatus');
-const reviewButtons=Array.from(document.querySelectorAll<HTMLButtonElement>(
- '[data-head-silhouette]'));
-function selectReviewSilhouette(id:string){
- const available=['bare','patrol-cap','boonie','beanie',
-  'pasgt','soviet-steel','ach','high-cut'];
- if(!available.includes(id))return;
- checkpointAppearance();const selected=selectWardrobeItem(bareLabEquipment(),
-  initialWardrobe(),'headwear',id);
- labKit=selected.kit;wardrobeOptions=selected.wardrobe;
- weapon.value='none';magazineSelector.value='0';
- choose<HTMLSelectElement>('faceTreatment').value='blank';
- isolation.value='head';hideSelectedGroup=false;
- hideSelectedButton.disabled=false;
- hideSelectedButton.textContent='HIDE GROUP';
- hideSelectedButton.setAttribute('aria-pressed','false');
- updateMagazineState();syncKit();
- chooseTrack('idle');frameWardrobeSelection();
- for(const button of reviewButtons)
-  button.setAttribute('aria-pressed',String(button.dataset.headSilhouette===id));
- headReviewStatus.textContent=id==='bare'?
-  'BARE · no headwear meshes':
-  id.toUpperCase().replaceAll('-',' ')+' · rectilinear cuboid silhouette; details pending approval';
-}
-for(const button of reviewButtons)
- button.addEventListener('click',()=>selectReviewSilhouette(
-  button.dataset.headSilhouette??'bare'));
 focusSelectedButton.addEventListener('click',frameWardrobeSelection);
 isolation.addEventListener('change',frameWardrobeSelection);
 gaitCompareButton.addEventListener('click',()=>{
