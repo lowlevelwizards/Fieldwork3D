@@ -146,9 +146,13 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
      sign*.24);
     // Four distinct BDU cargo pockets, two chest and two lower.
     for(const y of [2.1,-4.05]){
-     // A box bellows pouch sunk into the existing chest surface.
-     box(torso,cloth,5.45,y,sign*3.66,1.08,3.12,4.70);
-     box(torso,cloth,6.01,y+1.41,sign*3.66,.24,.66,4.94);
+     // Four deeply bellows-shaped pockets, with the lower row slightly
+     // larger. Their backs intersect the base torso; no floating panels.
+     const lower=y<0,projection=lower?1.52:1.40;
+     box(torso,cloth,5.61,y,sign*3.66,projection,
+      lower?3.32:3.18,lower?4.90:4.72);
+     box(torso,cloth,6.32,y+(lower?1.46:1.40),sign*3.66,
+      .30,.78,lower?5.05:4.92);
     }
    }
    // Concealed button placket: visible only at close Lab zoom.
@@ -157,18 +161,19 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
   }else{
    // Fold-down modern ACU collar. Earlier UCP versions may stand higher;
    // keep the low folded silhouette for the OCP reference in this pass.
-   box(torso,cloth,-1.25,6.50,0,7.0,1.32,7.6);
+   box(torso,cloth,-1.25,6.61,0,7.0,1.67,7.6);
    for(const sign of [-1,1]){
     box(torso,cloth,3.35,6.27,sign*2.6,3.60,.82,2.90,
      sign*.17);
     // Angled chest pouches and recognizable lower utility pockets.
     // Both pairs are attached to the already-clothed torso, not floating.
-    box(torso,cloth,5.43,1.22,sign*3.60,1.03,3.07,4.22,
-     -sign*.18);
-    box(torso,cloth,5.96,2.60,sign*3.60,.23,.68,4.35,
-     -sign*.18);
-    box(torso,cloth,5.42,-3.78,sign*3.62,1.02,2.46,4.32);
-    box(torso,cloth,5.94,-2.66,sign*3.62,.25,.61,4.47);
+    box(torso,cloth,5.61,1.20,sign*3.60,1.33,3.13,4.36,
+     -sign*.23);
+    box(torso,cloth,6.29,2.64,sign*3.60,.30,.76,4.51,
+     -sign*.23);
+    // Small modern utility pockets deliberately remain flatter than BDU.
+    box(torso,cloth,5.53,-3.80,sign*3.60,1.20,2.53,4.33);
+    box(torso,cloth,6.14,-2.67,sign*3.60,.27,.66,4.50);
    }
    // Hidden zipper/placket and short hem, rather than BDU four-pocket apron.
    box(torso,trim,5.10,-.14,0,.16,9.85,.35);
@@ -187,32 +192,34 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
    // Extra full-length cylinder sleeves were oversized and disconnected.
    // Sleeve ends substantially above the wrist when cuffed; the original
    // lower-arm bone becomes bare skin under this shortened cloth shell.
-   box(short,cloth,0,-.14,0,3.78,.74,3.87);
+   box(short,cloth,0,-.14,0,3.89,.77,3.97);
    // Double-layer rolled fabric, with sleeve shortened to ABOVE elbow.
    // No manipulation of either IK limb transform or hand contact.
    // A rolled cuff is enough to identify the shortening.
    // Two bold folded layers identify a true rolled sleeve at game zoom.
-   seamBand(rolled,solidCuff,2.05,.29,.30);
-   seamBand(rolled,solidCuff,1.97,.10,.16);
+   seamBand(rolled,solidCuff,2.17,.135,.34);
+   seamBand(rolled,solidCuff,1.98,-.055,.19);
    if(historic){
-    box(b,cloth,0,.37,1.77,2.45,.12,.56);
-    seamBand(c,solidCuff,1.83,.31,.31);
-    seamBand(c,solidCuff,1.72,.13,.16);
+    const elbow=outwardLimbPocket(1.77,-.12,.37,2.56,.27);
+    box(b,cloth,elbow.x,elbow.y,elbow.z,
+     elbow.width,elbow.height,elbow.depth);
+    seamBand(c,solidCuff,1.98,.20,.35);
+    seamBand(c,solidCuff,1.76,.005,.19);
    }else{
     // A true +X bicep pocket on BOTH articulated arms. Nominal +X is
     // anatomical outside in the actual alignSegment limb basis.
-    const pouch=outwardLimbPocket(2.06,.08,.41,2.54,.58);
+    const pouch=outwardLimbPocket(2.06,.08,.51,2.87,.83);
     for(const g of [a,rolled]){
      box(g,cloth,pouch.x,pouch.y,pouch.z,
       pouch.width,pouch.height,pouch.depth);
-     box(g,cloth,pouch.x+.35,pouch.y+.17,0,
-      .18,.15,pouch.depth+.10);
+     box(g,cloth,pouch.x+.46,pouch.y+.22,0,
+      .23,.17,pouch.depth+.17);
     }
     const elbow=outwardLimbPocket(1.80,.18,.25,2.00,.18);
     box(b,cloth,elbow.x,elbow.y,elbow.z,
      elbow.width,elbow.height,elbow.depth);
-    seamBand(c,solidCuff,1.83,.31,.31);
-    seamBand(c,solidCuff,1.72,.13,.16);
+    seamBand(c,solidCuff,1.97,.20,.35);
+    seamBand(c,solidCuff,1.76,.005,.19);
    }
    for(const g of [a,b,c,short,rolled])consolidateVisualGroup(g);
    upper.push(a);lower.push(b);cuffed.push(c);cuffedLower.push(short);rolledUpper.push(rolled);
