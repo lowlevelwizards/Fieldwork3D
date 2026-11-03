@@ -394,7 +394,7 @@ function applyHeadwearCamoChoice(id:HeadwearCamoId,selected:HeadwearCamoId|null,
  * lighting and pose. This study does not substitute a mock helmet render.
  */
 function renderHeadwearCamoComparison(model:string,selected:HeadwearCamoId|null){
- const allowed=headwearCamoChoices(model).filter(id=>id!=='splittertarn-31');
+ const allowed:readonly HeadwearCamoId[]=headwearCamoChoices(model).filter(id=>id!=='splittertarn-31');
  camoCompareGrid.replaceChildren();
  if(!camoCompareDetails.open)return; // Avoid 60 large canvases on every mobile swatch.
  for(const id of HEADWEAR_CAMO_IDS.filter(id=>id!=='splittertarn-31')){
@@ -424,7 +424,7 @@ function renderHeadwearCamoComparison(model:string,selected:HeadwearCamoId|null)
  }
 }
 function renderHeadwearCamoSwatches(model:string){
- const choices=headwearCamoChoices(model).filter(id=>id!=='splittertarn-31');
+ const choices:readonly HeadwearCamoId[]=headwearCamoChoices(model).filter(id=>id!=='splittertarn-31');
  const compatible=new Set(choices);
  camoChooser.hidden=choices.length===0;camoGrid.replaceChildren();
  camoInspector.hidden=choices.length===0;
