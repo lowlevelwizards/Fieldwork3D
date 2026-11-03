@@ -23,8 +23,8 @@ test('smock and Gorka silhouettes have distinct but restrained volumes',()=>{
  const src=source('../src/operator-new-upper-garments.ts');
  assert.ok(src.includes('shell(torso,body,UPPER_CUT_PROFILES[cut].rings)'),
   'single knit shell must wrap front AND back');
- assert.ok(src.includes('The standing 1/4-zip collar'),
-  'combat shirt must have a real collar');
+ assert.ok(src.includes('box(torso,trim,3.02,7.20,0'),
+  'combat shirt must include the central collar zipper');
  assert.ok(!src.includes('9.2,1.20,3.40'),
   'remove oversized high-shoulder slabs');
 });
