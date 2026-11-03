@@ -247,7 +247,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'6-COLOR DESERT',
   description:'Chocolate-chip desert: large pale dunes, khaki islands and scattered dark-rimmed light pebbles',
   colors:[[193,173,133],[221,201,162],[145,105,73],[138,121,90],[228,213,177],[46,54,44]],
-  targetCoverage:[0.228,0.305,0.277,0.1,0.022,0.068],
+  targetCoverage:[.228,.335,.262,.098,.011,.067],
   motifs:[
    p(1,-4,1,5,-2,13,1,13,7,7,11,-4,9),
    p(1,16,13,23,9,35,12,35,19,28,22,21,20),
@@ -349,7 +349,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  'erdl-lowland':{
   label:'ERDL LOWLAND',description:'Fine leaf-and-branch woodland with thin ink trails, green ground and small khaki breaks',
   colors:[[87,118,73],[119,134,86],[118,85,60],[175,155,105],[48,55,39]],
-  targetCoverage:[.31,.22,.18,.18,.11],
+  targetCoverage:[.167,.170,.273,.179,.211],
   motifs:[
    p(1,-4,0,4,-2,12,2,16,7,11,11,4,9,-3,12),
    p(1,18,13,24,10,32,13,35,19,30,23,21,21,17,17),
@@ -375,7 +375,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  'finnish-m05':{
   label:'FINNISH M05',description:'Strong blocky Finnish forest bands with stepped woodland boundaries and high-contrast dark fractures',
   colors:[[94,111,77],[143,159,101],[64,83,66],[46,54,44]],
-  targetCoverage:[.25,.22,.28,.25],
+  targetCoverage:[.20,.244,.346,.210],
   motifs:[
    p(1,-4,1,5,1,5,4,9,4,9,9,13,9,13,13,7,13,7,10,2,10,2,7,-4,7),
    p(1,18,20,23,20,23,17,28,17,28,21,34,21,34,27,30,27,30,31,23,31,23,28,18,28),
@@ -395,7 +395,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  'polish-pantera':{
   label:'POLISH WZ.93',description:'Broad Polish woodland amoeba lobes with irregular inward notches and warm khaki breaks',
   colors:[[87,118,73],[118,85,60],[175,155,105],[48,55,39]],
-  targetCoverage:[.3,.29,.25,.16],
+  targetCoverage:[.414,.209,.207,.170],
   motifs:[
    p(1,-5,0,4,-2,12,1,14,4,10,6,12,10,6,13,-2,11,-5,8),
    p(1,14,16,21,13,27,15,31,20,29,25,24,26,22,29,15,28,10,22),
@@ -420,7 +420,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  'russian-flora':{
   label:'VSR-98 FLORA',description:'Horizontal Russian Flora brush bands, broken wavy reeds and olive-to-brown alternating corridors',
   colors:[[77,101,70],[124,135,91],[138,121,90],[46,54,44]],
-  targetCoverage:[.28,.24,.25,.23],
+  targetCoverage:[.192,.276,.273,.258],
   motifs:[
    p(1,-4,0,6,1,13,3,21,3,28,6,35,5,35,9,26,8,19,7,12,8,4,5,-4,5),
    p(1,-4,16,5,14,12,17,19,17,26,20,34,19,34,23,26,23,18,21,11,22,3,19,-4,20),
@@ -439,7 +439,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  'rhodesian-brushstroke':{
   label:'RHODESIAN BRUSH',description:'Oversized slashing brush strokes with feathered spear tips across a dry khaki field',
   colors:[[193,173,133],[87,118,73],[118,85,60],[48,55,39]],
-  targetCoverage:[.32,.29,.27,.12],
+  targetCoverage:[.261,.295,.251,.193],
   motifs:[
    p(1,-5,1,2,-2,10,2,18,8,25,13,27,17,20,14,14,12,5,7,-5,7),
    p(1,14,20,18,16,25,17,33,25,36,31,29,28,23,25,17,24,10,21),
@@ -458,7 +458,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  'desert-tropentarn':{
   label:'GERMAN TROPENTARN',description:'Pale sand islands interrupted by compact rust-brown and restrained olive droplet clusters',
   colors:[[221,201,162],[193,173,133],[145,105,73],[109,126,88],[46,54,44]],
-  targetCoverage:[.36,.31,.19,.11,.03],
+  targetCoverage:[.255,.447,.211,.062,.025],
   motifs:[
    p(1,-5,0,4,-2,12,2,17,6,13,11,5,11,-4,7),
    p(1,15,14,21,11,29,14,35,19,32,25,23,25,17,21),
