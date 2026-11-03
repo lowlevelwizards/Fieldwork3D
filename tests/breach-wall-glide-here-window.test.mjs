@@ -112,7 +112,9 @@ test('window classification distinguishes standard sash from fixed and unsafe gl
   {id:'upper',x:260,y:120,width:52,vertical:true,style:'clerestory',
    sillHeight:28,headHeight:39},
   {id:'bars',x:300,y:120,width:50,vertical:true,style:'standard',
-   sillHeight:14,headHeight:38,treatment:'bars'}
+   sillHeight:14,headHeight:38,treatment:'bars'},
+  {id:'wire',x:320,y:120,width:50,vertical:true,style:'wire',
+   sillHeight:14,headHeight:38}
  ]);
  assert.equal(windowClimbAvailability(fresh[0]),'open-first');
  assert.equal(canOpenWindowForClimb(fresh[0]),true);
@@ -120,6 +122,8 @@ test('window classification distinguishes standard sash from fixed and unsafe gl
  assert.equal(canOpenWindowForClimb(fresh[1]),false);
  assert.equal(windowClimbAvailability(fresh[2]),'blocked');
  assert.equal(windowClimbAvailability(fresh[3]),'blocked');
+ assert.equal(windowClimbAvailability({...fresh[4],
+   shattered:true,open:true}),'blocked','reinforcement persists');
 });
 const windowSite={
  ...stage,seed:759,
