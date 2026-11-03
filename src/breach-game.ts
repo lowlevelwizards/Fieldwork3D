@@ -70,7 +70,8 @@ import {bodyClear,sweptBodyClear,squeezeFacing,
   from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
   from './breach-squeeze-route.ts';
-import {probeObstacleCrossing,preferTraversal,sampleTraversal,
+import {probeObstacleCrossing,probeWindowCrossing,
+  preferTraversal,sampleTraversal,
   traversalStepClear,type TraverseOpportunity}
   from './breach-mantle.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
@@ -412,11 +413,16 @@ export const canEdit=(s:Session)=>s.phase==='planning';
  */
 function knownTraversal(s:Session,from:Pt,to:Pt):boolean{
  const visible=s.coverState.filter((_,i)=>s.intel.cover.has(i));
- return !!probeObstacleCrossing(from,to,{
+ const world={
    cover:visible,walls:WALLS.filter((_,i)=>s.intel.walls.has(i)),
    doors:s.doors.filter(door=>doorKnown(s.intel,door.id)),
-   canStand:at=>intelPassable(at,s.intel)
- });
+   windows:s.windows.filter(w=>s.intel.cover.has(s.coverState.findIndex(o=>
+      (o.fixture==='window-sill'||o.fixture==='glass-barrier')&&
+      Math.hypot(o.x-w.x,o.y-w.y)<1))),
+   canStand:(at:Pt)=>intelPassable(at,s.intel)
+ };
+ return !!(probeObstacleCrossing(from,to,world)||
+   probeWindowCrossing(from,to,world));
 }
 const legalMoveRoute=(s:Session,from:Pt,to:Pt):Pt[]=>{
  const ordinary=routeWithSqueezeIntel(s.intel,from,to);
@@ -1401,7 +1407,7 @@ function observe(s:Session){
   }
 }
 const traversalWorld=(s:Session,a:TeamActor)=>({
- cover:s.coverState,walls:WALLS,doors:s.doors,
+ cover:s.coverState,walls:WALLS,doors:s.doors,windows:s.windows,
  actors:s.operators.filter(other=>other!==a&&other.health>0).map(o=>o.p),
  canStand:(p:Pt)=>passable(p)
 });
@@ -1413,8 +1419,10 @@ const traversalFitness=(a:TeamActor)=>({
  * Only a known, individually climbable obstacle can win over a longer walk.
  */
 function desiredTraverse(s:Session,a:TeamActor,goal:Pt){
- const op=probeObstacleCrossing(a.p,goal,traversalWorld(s,a),
-   traversalFitness(a));
+ const world=traversalWorld(s,a);
+ const fit=traversalFitness(a);
+ const op=probeObstacleCrossing(a.p,goal,world,fit)||
+   probeWindowCrossing(a.p,goal,world,fit);
  if(!op||!s.intel.cover.has(op.obstacleIndex))return null;
  const ordinary=routeWithSqueezeIntel(s.intel,a.p,goal);
  if(!preferTraversal(a.p,goal,op,ordinary))return null;
@@ -1452,8 +1460,9 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   if(tickTraversal(a,s,dt))return true;
   if(a.traversalPending&&d(a.p,a.traversalPending.approach)<3.3){
     const planned=a.traversalPending;
-    const validated=probeObstacleCrossing(a.p,p,traversalWorld(s,a),
-      traversalFitness(a));
+    const world=traversalWorld(s,a),fit=traversalFitness(a);
+    const validated=probeObstacleCrossing(a.p,p,world,fit)||
+      probeWindowCrossing(a.p,p,world,fit);
     if(validated&&validated.obstacleIndex===planned.obstacleIndex&&
        d(validated.landing,planned.landing)<5&&
        d(validated.approach,a.p)<4){
