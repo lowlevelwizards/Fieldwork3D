@@ -187,7 +187,10 @@ export function createFieldTrouserPrototypes(legs:readonly Limb[],
       patch.width,patch.height,patch.depth);
      // A single low band wraps the weather-tight gaiter; don't emit
      // offset slivers perpendicular to the leg's physical outside.
-     part(lower,cuffMaterial,shinW/2+.13,.30,0,.26,.12,4.01);
+     // Gorka gathered gaiter is outerwear textile too; only an actual
+     // turned-up cuff receives the contrast rolled-fabric color.
+     part(lower,hem==='cuffed'?cuffMaterial:textile,
+      shinW/2+.13,.30,0,.26,.12,4.01);
     }
     // The bloused outline narrows at the boot collar; the straight hem
     // stays wider and overlaps its shaft. Both have a visible textile fold.
