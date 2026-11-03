@@ -28,7 +28,7 @@
  color:#eee9d6;overflow:hidden;touch-action:manipulation;
 }
 .appearance-item-card[aria-pressed="true"]{
- border:2px solid #f4dea3;background:#2a493a;
+ border:2px solid #f4dea3;background:#2a493a;color:#f4ecda;
  padding:4px 4px 7px;
  box-shadow:inset 0 0 0 1px #bbcc9c;
 }
@@ -55,4 +55,13 @@
 }
 @media(min-width:840px){
  .appearance-item-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+
+/* R1: global Lab button[aria-pressed] text styling was overriding the
+   selected card's light label. Restore readable contrast on all themes. */
+.appearance-item-card[aria-pressed="true"] .appearance-item-name{
+ color:#f4ecda;
+}
+.appearance-item-card[aria-pressed="true"] .appearance-item-tag{
+ color:#ffdf9a;
 }
