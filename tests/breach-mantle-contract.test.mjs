@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {traversalKind,traversalDuration,probeObstacleCrossing,
- canClimbWindow,windowCrossingKind,sampleTraversal,crossingInterval}
+ canClimbWindow,windowCrossingKind,probeWindowCrossing,
+ traversalStepClear,sampleTraversal,crossingInterval}
  from '../src/breach-mantle.ts';
 
 const obstacle=(fixture,x=100,y=120,w=20,h=14)=>({
@@ -80,4 +81,29 @@ test('windows require open or broken, sufficiently large, non-barred openings',(
  assert.equal(canClimbWindow({...open,treatment:'boarded'}),false);
  assert.equal(canClimbWindow({...open,width:20}),false);
  assert.equal(canClimbWindow({...open,sillHeight:35}),false);
+});
+
+test('open window climbs exempt only their matching sill, never walls or barred glass',()=>{
+ const open={id:'W0',x:100,y:120,width:42,vertical:true,
+   open:true,shattered:false,operable:true,integrity:2,
+   sillHeight:14,headHeight:38,treatment:'none'};
+ const sill=obstacle('window-sill',100,120,10,42);
+ const from={x:55,y:120},to={x:145,y:120};
+ const world={cover:[sill],walls:[],doors:[],windows:[open],
+   canStand:p=>Math.abs(p.x-100)>sill.w/2+8};
+ const op=probeWindowCrossing(from,to,world);
+ assert.ok(op);
+ assert.equal(op.kind,'climb-window');
+ assert.equal(op.windowId,'W0');
+ assert.equal(traversalStepClear(op.approach,op.landing,op,world),true);
+ assert.equal(probeWindowCrossing(from,to,
+   {...world,windows:[{...open,open:false}]}),null);
+ assert.equal(traversalStepClear(op.approach,op.landing,op,
+   {...world,windows:[{...open,open:false}]}),false);
+ assert.equal(probeWindowCrossing(from,to,
+   {...world,windows:[{...open,treatment:'bars'}]}),null);
+ assert.equal(probeWindowCrossing(from,to,
+   {...world,walls:[{a:{x:101,y:85},b:{x:101,y:155}}]}),null);
+ assert.equal(probeWindowCrossing(from,{x:145,y:150},world),null,
+   'crossing beyond the aperture must not become a wall shortcut');
 });
