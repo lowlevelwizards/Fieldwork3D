@@ -70,7 +70,7 @@ function refresh(){
  kit=setEquipmentChoice(kit,'armor',armor==='armor-bare'?'armor-none':
   armor.startsWith('soft-')?'armor-soft':'armor-carrier');
  kit=setEquipmentChoice(kit,'rig',rig==='no-rig'?'rig-none':
-  ['micro-rig','light-rig','chest-placard'].includes(rig)?'rig-light':'rig-full');
+  ['micro-rig','light-rig','chest-placard','chicom-rig','bandolier'].includes(rig)?'rig-light':'rig-full');
  for(const [slot,id] of [
   ['belt','belt-none'],['backpack','backpack-none'],['head','head-none']
  ] as const)kit=setEquipmentChoice(kit,slot,id);
