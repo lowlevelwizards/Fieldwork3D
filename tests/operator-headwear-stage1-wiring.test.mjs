@@ -27,7 +27,7 @@ test('one selectable shape at a time, including bare head, across headings',()=>
    assert.equal(r.visualKit.helmet.visible,false);
    assert.equal(r.visualKit.cap.visible,false);
    assert.equal(r.helmetShell.some(x=>x.visible),false);
-   assert.equal(r.visualKit.hair.visible,false);
+   assert.equal(r.visualKit.hair.visible,id==='bare');
    const chosen=r.visualKit.wardrobeHead.headwear[id];
    if(expected){
     assert.equal(chosen.parent,r.headCanonicalFrame);
