@@ -502,11 +502,13 @@ export function planMove(s:Session,id:string,p:Pt,strafe=false){
   return addNode(s,id,'move',target.point,extra);
 }
 /** A finger-drawn path is one undoable gesture, while BACK removes one node. */
-export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
+export function planMoveStroke(s:Session,id:string,points:Pt[],
+ strafe=false,replaceExisting=false){
   const a=party(s,id);if(!a||!canEdit(s))return false;
   const proposed:PlanNode[]=[];
-  let from=finalPoint(a);
-  const facing=[...a.plan].reverse().find(n=>n.facing!==undefined)?.facing??a.heading;
+  let from=replaceExisting?a.p:finalPoint(a);
+  const facing=replaceExisting?a.heading:
+    [...a.plan].reverse().find(n=>n.facing!==undefined)?.facing??a.heading;
   // Input strokes may still contain many meaningful bends; keep the
   // actual release position even if the safety cap clips the middle.
   const stroke=points.length>60?[...points.slice(0,59),points.at(-1)!]:points;
@@ -521,8 +523,9 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
   }
   if(!proposed.length)return false;
   // Door actions inserted during one stroke remain one undoable edit.
-  const expanded:PlanNode[]=[];let prior=finalPoint(a);
-  const opened=new Set(a.plan.filter(n=>n.kind==='door'&&(n.method==='open'||n.method==='kick'))
+  const expanded:PlanNode[]=[];let prior=replaceExisting?a.p:finalPoint(a);
+  const opened=new Set((replaceExisting?[]:a.plan).filter(n=>
+    n.kind==='door'&&(n.method==='open'||n.method==='kick'))
     .map(n=>n.doorId??''));
   for(const node of proposed){
     const points=[prior,...routeWithIntel(s.intel,prior,node.p)];
@@ -545,7 +548,13 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
     expanded.push({...node,id:s.nextId+expanded.length});
     prior=node.p;
   }
-  return edit(s,a,()=>{a.plan.push(...expanded);s.nextId+=expanded.length;});
+  // The entire replacement stroke (including implicit door actions) is
+  // ONE undoable transaction. A rejected stroke leaves the old route intact.
+  return edit(s,a,()=>{
+    if(replaceExisting)a.plan=expanded;
+    else a.plan.push(...expanded);
+    s.nextId+=expanded.length;
+  });
 }
 export function setStrafe(s:Session,id:string,nodeId:number):boolean{
   const a=party(s,id);if(!a||!canEdit(s))return false;
