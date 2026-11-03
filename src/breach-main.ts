@@ -2288,7 +2288,13 @@ function renderProjectedPlans(){
     if(a.health<=0)continue;
     const color=colorFor(a.id);
     let previous=a.p,watching=false;
+    const visual=orderVisualScopes(a.plan,{
+      watch:a.aimInstruction?.mode==='track',pace:a.pace,
+      posture:a.posture,fire:a.firePolicy
+    });
+    let visualIndex=0;
     for(const n of a.plan){
+      const semantics=visual[visualIndex++];
       const cachedRoute=n.kind==='move'||n.kind==='door'?
         displayRouteCache.get(previous,n.p,state.intel,state.phase==='planning'):null;
       const steps=n.kind==='pie'?n.arc??[]:cachedRoute?.points??[];
@@ -2307,6 +2313,7 @@ function renderProjectedPlans(){
         // Narrow routes use a finer dash without another overlay.
         draw.setLineDash(n.kind==='pie'?[3,3]:
           watching&&a.id===selected?[3,5]:
+          semantics.before.pace==='run'?[12,3]:
           narrowOnly?[2,4]:[7,4]);
         draw.stroke();draw.setLineDash([]);draw.globalAlpha=1;
       }
@@ -2347,6 +2354,23 @@ function renderProjectedPlans(){
         draw.fillStyle='#e0f7e9';draw.textAlign='left';
         draw.font='bold 10px monospace';
         draw.fillText('HOLD DIR',point.x+13,point.y-12);
+      }
+      if(semantics.watchEnds&&n.facing===undefined){
+        draw.fillStyle='#ead5ad';draw.textAlign='left';
+        draw.font='700 12px "Saira Condensed",sans-serif';
+        draw.fillText('AUTO',point.x+12,point.y-14);
+      }
+      if(semantics.suppressionPoint){
+        const target=worldToScreen(semantics.suppressionPoint,7);
+        draw.save();draw.strokeStyle='#e9a883';draw.lineWidth=1.8;
+        draw.setLineDash([4,4]);draw.beginPath();
+        draw.moveTo(point.x,point.y);draw.lineTo(target.x,target.y);draw.stroke();
+        draw.setLineDash([]);draw.beginPath();
+        draw.arc(target.x,target.y,20,0,Math.PI*2);draw.stroke();
+        draw.fillStyle='#e9a883';draw.textAlign='center';
+        draw.font='700 11px "Work Sans",sans-serif';
+        draw.fillText('SUP',target.x,target.y-24);
+        draw.restore();
       }
       if(n.kind==='flash'&&n.aimPoint){
         const path=flashTrajectory(state,a,n);
@@ -2393,11 +2417,11 @@ function renderProjectedPlans(){
         draw.fillStyle='#e5c58e';draw.font='bold 12px monospace';
         draw.fillText('◷ WAIT',point.x+12,point.y-14);
       }
-      if(n.postureState||n.paceState){
-        draw.font='bold 10px monospace';draw.fillStyle='#a2d7c9';
+      if(n.postureState||n.paceState||n.firePolicyState){
+        draw.font='600 11px "Work Sans",sans-serif';draw.fillStyle='#a2d7c9';
         draw.fillText([n.postureState?.toUpperCase(),
-          n.paceState?.toUpperCase()].filter(Boolean).join(' · '),
-          point.x+12,point.y+18);
+          n.paceState?.toUpperCase(),n.firePolicyState?.toUpperCase()]
+          .filter(Boolean).join(' · '),point.x+12,point.y+18);
       }
       if(n.kind==='move'||n.kind==='door'||n.kind==='pie')previous=n.p;
       if(n.aimMode==='track')watching=true;
