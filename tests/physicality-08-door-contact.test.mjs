@@ -6,10 +6,15 @@ import {pointToSegment,doorLeafSegment} from '../src/breach-core.ts';
 const sample=()=>initDoor({id:'PUSH',a:{x:300,y:230},
  b:{x:352,y:230},open:true,openedAt:0,hinge:'a',swing:-1},0);
 test('approaching open hinged leaf triggers assisted pressure, not sliding or held leaves',()=>{
- const d=sample(),mid={x:326,y:230};
- assert.equal(approachingDoorLeaf({x:326,y:207},mid,d),true);
- assert.equal(approachingDoorLeaf({x:326,y:207},mid,{...d,heldBy:'x'}),false);
- assert.equal(approachingDoorLeaf({x:326,y:207},mid,{...d,kind:'sliding'}),false);
+ const d=sample(),leaf=doorLeafSegment(d);
+ const mid={x:(leaf.a.x+leaf.b.x)/2,y:(leaf.a.y+leaf.b.y)/2};
+ const nx=leaf.b.y-leaf.a.y,ny=-(leaf.b.x-leaf.a.x);
+ const len=Math.hypot(nx,ny);
+ const from={x:mid.x+nx/len*22,y:mid.y+ny/len*22};
+ const toward={x:mid.x+nx/len*15,y:mid.y+ny/len*15};
+ assert.equal(approachingDoorLeaf(from,toward,d),true);
+ assert.equal(approachingDoorLeaf(from,toward,{...d,heldBy:'x'}),false);
+ assert.equal(approachingDoorLeaf(from,toward,{...d,kind:'sliding'}),false);
 });
 test('door responds to repeated pressure beyond its standard stopping angle',()=>{
  const d=sample();d.openFraction=.99;
