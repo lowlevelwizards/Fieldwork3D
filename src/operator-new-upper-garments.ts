@@ -65,13 +65,21 @@ function box(g:THREE.Group,m:THREE.Material,
  mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);
  return mesh;
 }
+/** A recognisable, folded mountain hood. All parts intersect the jacket
+ * neck/back; no floating rolls or thin antenna-like shoulder pieces. */
 function foldedHood(g:THREE.Group,body:THREE.Material,
- wide=false){
- // Folded hood is ONE solid collapsed roll behind the neck. The old
- // separate side boxes looked like disconnected shoulder antennas.
- // A narrow, low roll stays behind the actual neck instead of exposing
- // two shoulder-level ends in the three-quarter garment silhouette.
- box(g,body,-5.25,6.56,0,1.38,1.18,wide?8.25:9.20);
+ reinforcement:THREE.Material,wide=false){
+ const spread=wide?1.08:1;
+ // Neck attachment and substantial collapsed crown behind the head.
+ box(g,body,-5.18,6.35,0,2.35,2.05,8.75*spread);
+ box(g,body,-6.20,8.05,0,2.90,3.15,7.30*spread);
+ // Turned-in hood sides frame the collar without covering the face.
+ for(const sign of [-1,1])
+  box(g,body,-4.70,8.02,sign*3.10*spread,2.25,2.70,1.68);
+ // Thick folded rim, and characteristic Gorka reinforced hood back.
+ box(g,body,-5.82,9.66,0,2.80,.52,8.55*spread);
+ if(reinforcement!==body)
+  box(g,reinforcement,-7.63,8.18,0,.26,2.60,6.70*spread);
 }
 export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
  cloth:THREE.MeshStandardMaterial,trim:THREE.MeshStandardMaterial):NewUpperGarments{
@@ -93,9 +101,13 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
   // over the belt line rather than widening every body part.
   if(combat)box(torso,body,0,0,0,10.22,12.22,14.22);
   else if(smock){
-   box(torso,body,0,0,0,10.92,12.34,14.75);
-   box(torso,body,0,-7.10,0,11.18,3.15,14.95);
-  }else box(torso,body,0,-.48,0,11.32,13.65,14.95);
+   // Looser outer layer; the real smock skirt reaches well below the belt.
+   box(torso,body,0,0,0,11.18,12.52,15.05);
+   box(torso,body,0,-8.05,0,11.64,4.28,15.35);
+  }else{
+   // One long, modestly oversized canvas shell: not a second armor plate.
+   box(torso,body,0,-.98,0,11.45,15.70,15.10);
+  }
   if(combat){
    // A SINGLE knit shell covers the torso front, sides and back. No
    // overlapping tan chest slab; the shell now encloses the hidden 10×12×14
@@ -103,13 +115,19 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
    // Neck in this actual rig lives at chest-local (0,7,0), and is
    // 3.6 × 3.8 in plan. The collar hugs that neck rather than floating
    // at the extreme edges of the torso: compact, boxy, open on top.
-   box(torso,body,-1.65,7.24,0,.95,1.75,5.60);
+   // Combat woven sleeves continue onto the upper shoulders and collar.
+   // The knit body stays independently colored below this contrast yoke.
+   box(torso,cloth,-1.65,7.24,0,.95,1.75,5.60);
    for(const sign of [-1,1]){
-    box(torso,body,0,7.24,sign*2.48,4.80,1.75,.95);
-    box(torso,body,2.25,7.19,sign*1.28,.93,1.75,2.10);
+    box(torso,cloth,0,7.24,sign*2.48,4.80,1.75,.95);
+    box(torso,cloth,2.25,7.19,sign*1.28,.93,1.75,2.10);
+    // Continuous fabric caps across the top of each shoulder.
+    box(torso,cloth,.10,6.23,sign*5.28,9.72,.44,3.36);
+    // Compact visible raglan return down the front near the arm socket.
+    box(torso,cloth,5.19,4.93,sign*6.00,.28,1.74,2.20);
     // Raglan fabric wraps the top shoulder and returns slightly onto
     // the upper torso; no floating metal-like shoulder wedge.
-    box(torso,wear,1.22,5.36,sign*6.12,2.85,.45,2.12);
+    box(torso,wear,1.22,5.36,sign*6.12,2.85,.42,2.12);
    }
    // Quarter-zip front edge and narrow knitted waist hem. The zipper
    // does not extend the entire torso like an outerwear placket.
@@ -117,38 +135,39 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
    box(torso,trim,5.19,3.10,0,.10,2.40,.16);
    box(torso,body,5.16,-5.79,0,.15,.30,13.90);
   }else if(smock){
-   foldedHood(torso,cloth);
-   // Signature four-pocket field smock: larger rectangular cloth masses,
-   // two on the chest and two below the waist. Flaps are narrow, visibly
-   // separate folds, rather than a duplicate armor-looking front plate.
+   foldedHood(torso,cloth,cloth);
+   // Deep, attached box-bellows pockets. Bottom pair belongs to the
+   // extended skirt, not to the base mannequin's chest cuboid.
    for(const sign of [-1,1]){
-    for(const y of [2.18,-7.02]){
-     const z=sign*3.62;
-     box(torso,cloth,5.59,y,z,.57,2.66,4.46);
-     box(torso,smockCuff,5.88,y+1.16,z,.16,.44,4.62);
+    const z=sign*3.65;
+    for(const lower of [false,true]){
+     const y=lower?-7.55:2.06,face=lower?5.82:5.59;
+     const depth=lower?1.20:1.13,height=lower?3.32:3.02;
+     box(torso,cloth,face+.42,y,z,depth,height,4.46);
+     box(torso,smockCuff,face+depth*.92,y+height*.43,z,
+      .26,.62,4.60);
     }
-    // Waist gather hugs the long field hem; both shoulder edges remain
-    // lower than a ballistic shoulder fin.
-    box(torso,smockCuff,5.55,-2.52,sign*3.72,.12,.20,6.10);
+    box(torso,smockCuff,5.72,-2.64,sign*3.65,.18,.28,6.48);
    }
-   box(torso,cloth,5.52,-.66,0,.15,12.20,.25);
-   box(torso,smockCuff,5.60,-8.43,0,.17,.26,14.50);
+   box(torso,cloth,5.66,-.75,0,.18,12.50,.30);
+   box(torso,smockCuff,5.91,-9.95,0,.22,.42,14.86);
   }else{
-   foldedHood(torso,mountainCanvas,true);
-   // Iconic mountain suit: contrasting shoulder yokes return just onto
-   // the chest, cloth gathers at the waist and simple reinforced forearms.
-   // The short panels remain thin sewn fabric, NOT plate-like armor.
+   foldedHood(torso,mountainCanvas,mountainPanel,true);
+   // Gorka-3 signature: dark shoulder yoke, broad reinforced sleeves,
+   // buttoned storm placket, slanted low pockets and gathered hem.
+   // The patches sit on the canvas; none is a free-floating armor plate.
    for(const sign of [-1,1]){
-    // One shoulder reinforcement per side is enough; the two extra
-    // raised fabric bars above the neckline looked like floating handles.
-    box(torso,wear,.20,4.64,sign*7.38,5.50,.65,.38);
-    box(torso,wear,5.64,4.56,sign*5.77,.20,1.10,2.08);
+    // Continuous shoulder panel, plus the visible yoke down the chest.
+    box(torso,wear,.08,6.67,sign*5.04,10.85,.35,4.66);
+    box(torso,wear,5.79,4.73,sign*4.60,.19,2.00,5.20);
+    // Gorka's pair of slanted flap-covered waist pockets.
+    const z=sign*3.82;
+    box(torso,body,6.12,-3.85,z,1.02,2.78,4.56);
+    box(torso,wear,6.66,-2.55,z,.24,.62,4.73,sign*.19);
    }
-   box(torso,wear,5.70,1.13,0,.12,4.70,.17);
-   box(torso,body,5.68,-4.82,0,.20,1.10,8.10);
-   // Drawstring hem reads as a small dark band around a genuinely
-   // tapered lower silhouette, not an overhanging jacket plate.
-   box(torso,gorkaCuff,5.65,-7.05,0,.16,.30,13.45);
+   box(torso,wear,5.79,4.71,0,.17,1.88,3.15);
+   box(torso,gorkaCuff,5.80,-1.55,0,.20,10.70,.26);
+   box(torso,gorkaCuff,5.83,-8.45,0,.17,.40,13.75);
   }
   const upper:THREE.Group[]=[],lower:THREE.Group[]=[],
    cuffedLower:THREE.Group[]=[],rolledUpper:THREE.Group[]=[];
@@ -162,33 +181,37 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
    // Existing articulated block arms are the fabric. Do not cover them
    // with oversized cylindrical sleeves or move the IK / contact bones.
    if(combat){
-    box(c,cloth,0,-.16,0,3.65,.68,3.78);
-    box(c,combatKnit,0,.20,0,3.85,.17,3.94);
-    box(rolled,combatKnit,0,.23,0,4.12,.18,4.24);
+    box(c,cloth,0,-.15,0,3.73,.67,3.88);
+    box(c,combatKnit,0,.25,0,4.13,.29,4.25);
+    box(c,combatKnit,0,.07,0,3.96,.15,4.09);
+    box(rolled,combatKnit,0,.27,0,4.39,.31,4.49);
+    box(rolled,combatKnit,0,.09,0,4.15,.16,4.25);
     // Bicep pouch is thin along the outward (+X) normal and broad
     // front-to-back; no lateral shard hangs off the front of the sleeve.
-    const pouch=outwardLimbPocket(ru,.08,.34,2.35,.37);
+    const pouch=outwardLimbPocket(ru,.08,.38,2.52,.53);
     for(const part of [u,rolled]){
      box(part,wear,pouch.x,pouch.y,pouch.z,
       pouch.width,pouch.height,pouch.depth);
-     box(part,trim,pouch.x+.24,pouch.y+.17,0,.10,.08,pouch.depth+.1);
+     box(part,cloth,pouch.x+.29,pouch.y+.15,0,.19,.13,pouch.depth+.12);
     }
     const elbow=outwardLimbPatch(rl,-.02,.32,2.46,.13);
     box(l,wear,elbow.x,elbow.y,elbow.z,
      elbow.width,elbow.height,elbow.depth);
    }else if(smock){
-    const armPatch=outwardLimbPatch(ru,.10,.29,2.26,.14);
+    const armPatch=outwardLimbPatch(ru,.10,.42,2.65,.22);
     box(u,cloth,armPatch.x,armPatch.y,armPatch.z,
      armPatch.width,armPatch.height,armPatch.depth);
-    box(l,smockCuff,0,.38,0,3.64,.16,3.76);
+    box(l,smockCuff,0,.34,0,4.12,.29,4.23);
+    box(l,smockCuff,0,.16,0,3.91,.16,4.05);
    }else{
-    const upperPatch=outwardLimbPatch(ru,.07,.40,2.60,.18);
-    const elbowPatch=outwardLimbPatch(rl,-.22,.37,2.44,.16);
+    const upperPatch=outwardLimbPatch(ru,.07,.48,3.08,.23);
+    const elbowPatch=outwardLimbPatch(rl,-.13,.60,3.16,.25);
     box(u,wear,upperPatch.x,upperPatch.y,upperPatch.z,
      upperPatch.width,upperPatch.height,upperPatch.depth);
     box(l,wear,elbowPatch.x,elbowPatch.y,elbowPatch.z,
      elbowPatch.width,elbowPatch.height,elbowPatch.depth);
-    box(l,gorkaCuff,0,.38,0,3.64,.18,3.76);
+    box(l,gorkaCuff,0,.34,0,4.14,.33,4.28);
+    box(l,gorkaCuff,0,.14,0,3.91,.18,4.04);
    }
    for(const part of [u,l,c,rolled])consolidateVisualGroup(part);
    upper.push(u);lower.push(l);cuffedLower.push(c);rolledUpper.push(rolled);

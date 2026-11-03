@@ -118,7 +118,7 @@ function box(parent:THREE.Object3D,m:THREE.Material,
 function seamBand(parent:THREE.Group,cloth:THREE.Material,
  radius:number,y:number,height:number){
  // One inset-free rectangular fold rather than an oversize ring.
- const width=radius*2+.10,depth=width+.12;
+ const width=radius*2+.48,depth=width+.12;
  return box(parent,cloth,0,y,0,width,height,depth);
 }
 export function createFieldBlousePrototypes(chest:THREE.Group,
@@ -143,8 +143,9 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
      sign*.24);
     // Four distinct BDU cargo pockets, two chest and two lower.
     for(const y of [2.1,-4.05]){
-     box(torso,cloth,5.19,y,sign*3.66,.67,3.04,4.68);
-     box(torso,cloth,5.56,y+1.43,sign*3.66,.28,.75,4.92);
+     // A box bellows pouch sunk into the existing chest surface.
+     box(torso,cloth,5.45,y,sign*3.66,1.08,3.12,4.70);
+     box(torso,cloth,6.01,y+1.41,sign*3.66,.24,.66,4.94);
     }
    }
    // Concealed button placket: visible only at close Lab zoom.
@@ -157,11 +158,14 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
    for(const sign of [-1,1]){
     box(torso,cloth,3.35,6.27,sign*2.6,3.60,.82,2.90,
      sign*.17);
-    // Diagonal chest cargo pockets, slimmer and higher than BDU.
-    box(torso,cloth,5.19,1.15,sign*3.60,.57,3.05,4.20,
-     -sign*.27);
-    box(torso,cloth,5.50,2.54,sign*3.75,.24,.66,4.25,
-     -sign*.27);
+    // Angled chest pouches and recognizable lower utility pockets.
+    // Both pairs are attached to the already-clothed torso, not floating.
+    box(torso,cloth,5.43,1.22,sign*3.60,1.03,3.07,4.22,
+     -sign*.18);
+    box(torso,cloth,5.96,2.60,sign*3.60,.23,.68,4.35,
+     -sign*.18);
+    box(torso,cloth,5.42,-3.78,sign*3.62,1.02,2.46,4.32);
+    box(torso,cloth,5.94,-2.66,sign*3.62,.25,.61,4.47);
    }
    // Hidden zipper/placket and short hem, rather than BDU four-pocket apron.
    box(torso,trim,5.10,-.14,0,.16,9.85,.35);
@@ -180,28 +184,32 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
    // Extra full-length cylinder sleeves were oversized and disconnected.
    // Sleeve ends substantially above the wrist when cuffed; the original
    // lower-arm bone becomes bare skin under this shortened cloth shell.
-   box(short,cloth,0,-.12,0,3.66,.72,3.76);
+   box(short,cloth,0,-.14,0,3.78,.74,3.87);
    // Double-layer rolled fabric, with sleeve shortened to ABOVE elbow.
    // No manipulation of either IK limb transform or hand contact.
    // A rolled cuff is enough to identify the shortening.
-   seamBand(rolled,solidCuff,2.05,.235,.18);
+   // Two bold folded layers identify a true rolled sleeve at game zoom.
+   seamBand(rolled,solidCuff,2.05,.29,.30);
+   seamBand(rolled,solidCuff,1.97,.10,.16);
    if(historic){
     box(b,cloth,0,.37,1.77,2.45,.12,.56);
-    seamBand(c,solidCuff,1.83,.19,.21);
+    seamBand(c,solidCuff,1.83,.31,.31);
+    seamBand(c,solidCuff,1.72,.13,.16);
    }else{
     // A true +X bicep pocket on BOTH articulated arms. Nominal +X is
     // anatomical outside in the actual alignSegment limb basis.
-    const pouch=outwardLimbPocket(2.06,.08,.36,2.30,.47);
+    const pouch=outwardLimbPocket(2.06,.08,.41,2.54,.58);
     for(const g of [a,rolled]){
      box(g,cloth,pouch.x,pouch.y,pouch.z,
       pouch.width,pouch.height,pouch.depth);
-     box(g,trim,pouch.x+.25,pouch.y+.16,0,
-      .10,.09,pouch.depth+.12);
+     box(g,cloth,pouch.x+.35,pouch.y+.17,0,
+      .18,.15,pouch.depth+.10);
     }
     const elbow=outwardLimbPocket(1.80,.18,.25,2.00,.18);
     box(b,cloth,elbow.x,elbow.y,elbow.z,
      elbow.width,elbow.height,elbow.depth);
-    seamBand(c,solidCuff,1.83,.19,.19);
+    seamBand(c,solidCuff,1.83,.31,.31);
+    seamBand(c,solidCuff,1.72,.13,.16);
    }
    for(const g of [a,b,c,short,rolled])consolidateVisualGroup(g);
    upper.push(a);lower.push(b);cuffed.push(c);cuffedLower.push(short);rolledUpper.push(rolled);
