@@ -18,7 +18,6 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     {id:'ctxKick',label:'KICK',group:'primary',title:'Force this door'},
     {id:'ctxDoorFlash',label:'FLASH ×'+o.flashRemaining,group:'primary',
       disabled:o.flashRemaining<=0,title:'Flash through this door'},
-    {id:'ctxHold',label:'HOLD',group:'primary',title:'Brace this closed door'},
     ...(o.availableTools??[]).map(method=>({id:'ctxTool-'+method,
      label:method.toUpperCase(),group:'primary' as const,
      title:'Use equipped '+method+' tool at door'})), 
