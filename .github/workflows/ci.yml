@@ -150,6 +150,9 @@ jobs:
       - name: Focused UX2-22 contextual teaching and recovery tests
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'ux2/22-') }}
         run: node --experimental-strip-types --test tests/ux2-22-guidance-recovery-hud.test.mjs tests/ux2-execution-feedback.test.mjs
+      - name: Focused operator appearance Stage 1 regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'appearance/stage1-') }}
+        run: node --experimental-strip-types --test tests/operator-appearance-stage1.test.mjs tests/operator-headwear-solid-colors.test.mjs tests/operator-wardrobe-persistence.test.mjs tests/operator-wardrobe-storage.test.mjs tests/operator-wardrobe-campaign-ui.test.mjs tests/operator-wardrobe-quickplay-ui.test.mjs tests/operator-wardrobe-pattern-ui.test.mjs tests/operator-visual-kit.test.mjs tests/operator-face-options.test.mjs tests/operator-headwear-stage1-wiring.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}
