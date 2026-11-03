@@ -25,8 +25,8 @@ test('audits connected doorway approach rather than isolated clear points',()=>{
  const audit=auditTacticalMobility(site);
  assert.equal(audit.blockedApproaches,0,
   'single clear points alone should not be reported as the whole problem');
- assert.ok(audit.blockedFlow>=1,
-  'an occupied continuous approach should be explicitly reported');
+ assert.ok(audit.tightApproaches+audit.blockedFlow>=1,
+  'an occupied continuous approach should report squeeze-only or blocked flow');
 });
 test('loose incidental chair moves away from a door without changing the architecture',()=>{
  const site=blocked('chair');
@@ -39,9 +39,10 @@ test('loose incidental chair moves away from a door without changing the archite
  assert.deepEqual(repaired.site.walls,site.walls);
  assert.deepEqual(repaired.site.doors,site.doors);
  assert.deepEqual(site,baseline,'do not mutate the source map');
- assert.ok(auditTacticalMobility(repaired.site).blockedFlow<
-    original.blockedFlow,
-   'clearance pass must actually improve doorway traversal');
+ const after=auditTacticalMobility(repaired.site);
+ assert.ok(after.blockedFlow+after.tightApproaches<
+   original.blockedFlow+original.tightApproaches,
+   'clearance pass must improve normal doorway traversal');
 });
 test('large fixed furniture is never erased to make a doorway look passable',()=>{
  const site=blocked('fridge');
@@ -49,7 +50,9 @@ test('large fixed furniture is never erased to make a doorway look passable',()=
  const repaired=repairDoorwayClutter(site);
  assert.equal(repaired.moved,0);
  assert.deepEqual(repaired.site.cover,site.cover);
- assert.ok(auditTacticalMobility(repaired.site).blockedFlow>=before.blockedFlow);
+ const after=auditTacticalMobility(repaired.site);
+ assert.ok(after.blockedFlow+after.tightApproaches>=
+   before.blockedFlow+before.tightApproaches);
 });
 test('tiny step-over clutter never counts as a blocked operator corridor',()=>{
  const site=blocked('pallet');
@@ -61,4 +64,12 @@ test('generator remains deterministic after constrained furnishing adjustments',
  assert.deepEqual(first,second);
  assert.ok(first.doors.length>0);
  assert.ok(first.cover.every(o=>Number.isFinite(o.x)&&Number.isFinite(o.y)));
+});
+
+test('wide fixed obstruction is distinguished from a recoverable squeeze',()=>{
+ const site=blocked('fridge');
+ site.cover[0].w=49;
+ const audit=auditTacticalMobility(site);
+ assert.ok(audit.blockedFlow>=1,
+  'a wider fixed object must have no accidental body-sized escape channel');
 });
