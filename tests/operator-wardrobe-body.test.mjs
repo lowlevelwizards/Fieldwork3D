@@ -11,7 +11,7 @@ test('wardrobe choices switch authored garment details, knee pads and watch',()=
  const rig=createOperatorRig('rook','blue');
  let wardrobe=initialWardrobe();
  wardrobe=setWardrobeStyle(wardrobe,'top','bdu-shirt');
- wardrobe=setWardrobeStyle(wardrobe,'trousers','field-trousers');
+ wardrobe=setWardrobeStyle(wardrobe,'trousers','bdu-trousers');
  wardrobe=setWardrobeStyle(wardrobe,'knees','knee-hard');
  wardrobe=setWardrobeStyle(wardrobe,'wrist','wrist-nav');
  poseOperator(rig,{...base,wardrobe},0);
