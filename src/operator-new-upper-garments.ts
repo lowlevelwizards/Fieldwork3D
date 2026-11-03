@@ -189,19 +189,20 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
    // with oversized cylindrical sleeves or move the IK / contact bones.
    if(combat){
     box(c,cloth,0,-.14,0,3.87,.75,3.98);
-    box(c,combatKnit,0,.20,0,4.40,.32,4.49);
-    box(c,combatKnit,0,.025,0,4.17,.17,4.30);
-    // Rolled shirt ends above elbow; both rolls straddle the cut hem.
-    box(rolled,combatKnit,0,.135,0,4.62,.32,4.70);
-    box(rolled,combatKnit,0,-.040,0,4.32,.18,4.40);
+    box(c,combatKnit,0,.216,0,5.02,.225,5.12);
+    box(c,combatKnit,0,.079,0,4.73,.11,4.86);
+    // Keep the upper arm FULL LENGTH. A short, broad double roll wraps
+    // its elbow end at local +Y≈.5; skin-colored lower arm stays exposed.
+    box(rolled,combatKnit,0,.405,0,5.29,.215,5.39);
+    box(rolled,combatKnit,0,.267,0,4.91,.108,5.03);
     // Bicep pouch is thin along the outward (+X) normal and broad
     // front-to-back; no lateral shard hangs off the front of the sleeve.
     const pouch=outwardLimbPocket(ru,.07,.47,2.83,.73);
-    for(const part of [u,rolled]){
-     box(part,wear,pouch.x,pouch.y,pouch.z,
-      pouch.width,pouch.height,pouch.depth);
-     box(part,cloth,pouch.x+.40,pouch.y+.22,0,.22,.17,pouch.depth+.16);
-    }
+    // The rolled-sleeve group contains folds ONLY. No shoulder pocket
+    // geometry may poke through the elbow roll at any pose.
+    box(u,wear,pouch.x,pouch.y,pouch.z,
+     pouch.width,pouch.height,pouch.depth);
+    box(u,cloth,pouch.x+.40,pouch.y+.22,0,.22,.17,pouch.depth+.16);
     const elbow=outwardLimbPatch(rl,-.02,.32,2.46,.13);
     box(l,wear,elbow.x,elbow.y,elbow.z,
      elbow.width,elbow.height,elbow.depth);
@@ -211,14 +212,14 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
     box(u,cloth,pouch.x,pouch.y,pouch.z,
      pouch.width,pouch.height,pouch.depth);
     box(u,cloth,pouch.x+.45,pouch.y+.23,0,.24,.20,pouch.depth+.17);
-    box(l,smockCuff,0,.32,0,4.31,.38,4.43);
-    box(l,smockCuff,0,.105,0,4.04,.19,4.18);
+    box(l,smockCuff,0,.350,0,4.82,.245,4.96);
+    box(l,smockCuff,0,.204,0,4.53,.112,4.69);
     // Use the same abbreviated sleeve convention across all garments.
     box(c,cloth,0,-.14,0,3.95,.75,4.02);
-    box(c,smockCuff,0,.19,0,4.52,.35,4.61);
-    box(c,smockCuff,0,.015,0,4.22,.17,4.33);
-    box(rolled,smockCuff,0,.135,0,4.72,.34,4.80);
-    box(rolled,smockCuff,0,-.045,0,4.39,.18,4.47);
+    box(c,smockCuff,0,.215,0,5.14,.23,5.24);
+    box(c,smockCuff,0,.077,0,4.78,.10,4.90);
+    box(rolled,smockCuff,0,.405,0,5.37,.215,5.48);
+    box(rolled,smockCuff,0,.267,0,5.00,.105,5.10);
    }else{
     const upperPatch=outwardLimbPocket(ru,.05,.54,3.14,.77);
     const elbowPatch=outwardLimbPatch(rl,-.13,.62,3.20,.30);
@@ -228,13 +229,13 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
      .21,.19,upperPatch.depth+.15);
     box(l,wear,elbowPatch.x,elbowPatch.y,elbowPatch.z,
      elbowPatch.width,elbowPatch.height,elbowPatch.depth);
-    box(l,gorkaCuff,0,.31,0,4.35,.39,4.48);
-    box(l,gorkaCuff,0,.11,0,4.05,.18,4.15);
+    box(l,gorkaCuff,0,.35,0,4.88,.245,5.02);
+    box(l,gorkaCuff,0,.204,0,4.55,.11,4.70);
     box(c,mountainCanvas,0,-.14,0,3.98,.75,4.06);
-    box(c,gorkaCuff,0,.19,0,4.56,.36,4.64);
-    box(c,gorkaCuff,0,.015,0,4.26,.18,4.35);
-    box(rolled,gorkaCuff,0,.135,0,4.75,.36,4.83);
-    box(rolled,gorkaCuff,0,-.045,0,4.42,.18,4.52);
+    box(c,gorkaCuff,0,.215,0,5.18,.23,5.28);
+    box(c,gorkaCuff,0,.077,0,4.84,.105,4.94);
+    box(rolled,gorkaCuff,0,.405,0,5.43,.22,5.55);
+    box(rolled,gorkaCuff,0,.267,0,5.04,.11,5.16);
    }
    for(const part of [u,l,c,rolled])consolidateVisualGroup(part);
    upper.push(u);lower.push(l);cuffedLower.push(c);rolledUpper.push(rolled);
