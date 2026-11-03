@@ -56,16 +56,19 @@ test('garment anchors belong to actual body and IK segments, never headgear, col
  assert.equal(anchors['shin-right'].parent,rig.feet[1].lower);
  assert.equal(anchors['boot-right'].parent,rig.feet[1].shoe);
  assert.ok(!Object.values(anchors).some(a=>a.parent===rig.head));
+ let extraSceneNodes=0;
+ rig.root.traverse(node=>{if(node.name.startsWith('garment-fit:'))extraSceneNodes++;});
+ assert.equal(extraSceneNodes,0,'all 19 garment references are virtual: no per-frame scene work');
  for(const key of GARMENT_FIT_ANCHOR_IDS){
   const item=anchors[key];
-  assert.ok(item instanceof THREE.Group,key);
-  assert.equal(item.children.length,0,key+' must not add geometry');
-  assert.equal(item.name,'garment-fit:'+key);
-  assert.equal(item.userData.garmentFitAnchor,key);
-  assert.ok(!item.getObjectByProperty('type','Mesh'));
+  assert.equal(item.id,key);
+  assert.ok(item.parent instanceof THREE.Object3D,key);
+  assert.ok(item.offset instanceof THREE.Vector3,key);
+  assert.ok(item.offset.toArray().every(Number.isFinite),key);
+  assert.ok(!('children' in item),'virtual reference must not be a scene node');
  }
- assert.equal(anchors['knee-left'].position.y,-.5);
- assert.equal(anchors['knee-right'].position.y,-.5);
+ assert.equal(anchors['knee-left'].offset.y,-.5);
+ assert.equal(anchors['knee-right'].offset.y,-.5);
  rig.root.updateMatrixWorld(true);
  near(garmentFitWorldPoint(anchors,'shoulder-left'),
   rig.chest.localToWorld(vec(ANATOMY.shoulderLeft)));
@@ -83,7 +86,7 @@ test('optional fit diagnostics track authentic animation poses without touching 
  const before={
   chestGeometry:rig.chest.children.filter(c=>c instanceof THREE.Mesh).map(m=>m.geometry),
   bootGeo:rig.feet.map(f=>f.shoe.geometry),
-  shoulder:rig.garmentFitAnchors['shoulder-left'].position.clone(),
+  shoulder:rig.garmentFitAnchors['shoulder-left'].offset.clone(),
   headwear:rig.visualKit.wardrobeHead
  };
  const kit=setEquipmentChoice(initialEquipmentLoadout(),'armor','armor-carrier');
@@ -118,7 +121,7 @@ test('optional fit diagnostics track authentic animation poses without touching 
  assert.deepEqual(before.chestGeometry,
   rig.chest.children.filter(c=>c instanceof THREE.Mesh).map(m=>m.geometry));
  assert.deepEqual(before.bootGeo,rig.feet.map(f=>f.shoe.geometry));
- near(before.shoulder,rig.garmentFitAnchors['shoulder-left'].position);
+ near(before.shoulder,rig.garmentFitAnchors['shoulder-left'].offset);
  assert.equal(rig.visualKit.wardrobeHead,before.headwear);
  rig.dispose();
 });
