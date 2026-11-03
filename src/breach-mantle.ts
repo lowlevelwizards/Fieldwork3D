@@ -19,6 +19,8 @@ export type TraverseFitness={
 };
 export type TraverseOpportunity={
  kind:TraverseKind;obstacleIndex:number;fixture:string;
+ /** Window climbs require their pane to remain legally open or broken. */
+ windowId?:string;
  from:Pt;approach:Pt;landing:Pt;destination:Pt;
  height:number;duration:number;lift:number;
 };
@@ -103,8 +105,12 @@ function sweptApartFromTarget(from:Pt,to:Pt,target:number,
 export function traversalStepClear(from:Pt,to:Pt,
  action:TraverseOpportunity,world:CrossingWorld):boolean{
  const target=world.cover[action.obstacleIndex];
- if(!target||target.fixture!==action.fixture||
-    traversalKind(target)!==action.kind)return false;
+ if(!target||target.fixture!==action.fixture)return false;
+ if(action.kind==='climb-window'){
+   const w=world.windows?.find(w=>w.id===action.windowId);
+   if(!w||!canClimbWindow(w)||
+      distance({x:target.x,y:target.y},{x:w.x,y:w.y})>1)return false;
+ }else if(traversalKind(target)!==action.kind)return false;
  if(!sweptApartFromTarget(from,to,action.obstacleIndex,
    world.cover,world.walls,world.doors))return false;
  // Never land in furniture after a world mutation, including the target.
@@ -133,6 +139,7 @@ export function preferTraversal(from:Pt,goal:Pt,op:TraverseOpportunity,
 export type CrossingWorld={
  cover:readonly Obstacle[];walls:readonly Segment[];doors:readonly Door[];
  actors?:readonly Pt[];canStand?:(p:Pt)=>boolean;
+ windows?:readonly WindowState[];
 };
 /** Find a *single* useful obstacle crossing along a user-intended segment.
  * We require both a full-body takeoff and landing, a verified swept path
@@ -171,6 +178,60 @@ export function probeObstacleCrossing(from:Pt,to:Pt,world:CrossingWorld,
  return {kind:kind!,obstacleIndex:index,fixture:o.fixture??'cover',
   from:{...from},approach:takeoff,landing,destination:{...to},
   height:coverHeight(o),duration,lift:coverHeight(o)+5};
+}
+/** A real map window is a cut wall opening with its own physical sill.
+ * Only the specific open/broken pane and its matching collider are exempted
+ * during an explicitly timed climb. Never ignore an arbitrary nearby wall.
+ */
+export function probeWindowCrossing(from:Pt,to:Pt,world:CrossingWorld,
+ fit:TraverseFitness={}):TraverseOpportunity|null{
+ if(fit.injury===3||!world.windows?.length)return null;
+ const length=distance(from,to);
+ if(length<20||length>180)return null;
+ const valid:TraverseOpportunity[]=[];
+ for(const w of world.windows){
+   if(!canClimbWindow(w))continue;
+   const normal=w.vertical?{x:1,y:0}:{x:0,y:1};
+   const fromSide=(from.x-w.x)*normal.x+(from.y-w.y)*normal.y;
+   const toSide=(to.x-w.x)*normal.x+(to.y-w.y)*normal.y;
+   if(fromSide*toSide>=0)continue;
+   const fraction=fromSide/(fromSide-toSide);
+   if(fraction<=0||fraction>=1)continue;
+   const center=pointBetween(from,to,fraction);
+   const lateral=Math.abs(w.vertical?center.y-w.y:center.x-w.x);
+   if(lateral>w.width/2-OPERATOR_RADIUS-1)continue;
+   const index=world.cover.findIndex(o=>
+     (o.fixture==='window-sill'||o.fixture==='glass-barrier')&&
+     Math.hypot(o.x-w.x,o.y-w.y)<1&&
+     Math.abs((w.vertical?o.h:o.w)-w.width)<2);
+   if(index<0)continue;
+   const obstacle=world.cover[index];
+   const interval=crossingInterval(from,to,obstacle);
+   if(!interval)continue;
+   const lead=(OPERATOR_RADIUS+3)/length;
+   const trail=(OPERATOR_RADIUS+5)/length;
+   const approach=pointBetween(from,to,Math.max(0,interval[0]-lead));
+   const landing=pointBetween(from,to,Math.min(1,interval[1]+trail));
+   if(!outsideTarget(approach,obstacle,OPERATOR_RADIUS+1)||
+      !outsideTarget(landing,obstacle,OPERATOR_RADIUS+1))continue;
+   if(world.canStand&&(!world.canStand(approach)||
+      !world.canStand(landing)))continue;
+   if(world.actors?.some(p=>distance(p,landing)<OPERATOR_RADIUS*2+3))
+      continue;
+   if(!sweptApartFromTarget(approach,landing,index,world.cover,
+      world.walls,world.doors))continue;
+   const duration=traversalDuration('climb-window',fit);
+   if(!Number.isFinite(duration))continue;
+   valid.push({
+      kind:'climb-window',windowId:w.id,
+      obstacleIndex:index,fixture:obstacle.fixture??'window-sill',
+      from:{...from},approach,landing,destination:{...to},
+      height:w.sillHeight??14,duration,
+      lift:Math.max(13,(w.sillHeight??14)+5)
+   });
+ }
+ // No ambiguous automatic choice across multiple apertures.
+ return valid.length===1?valid[0]:null;
 }
 export function canClimbWindow(window:WindowState):boolean{
  if(!window.open&&!window.shattered)return false;
