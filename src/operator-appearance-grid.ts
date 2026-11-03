@@ -188,7 +188,7 @@ export class OperatorAppearanceGrid{
    const view=focus(item.slot),span=view.span;
    this.camera.left=-span;this.camera.right=span;
    this.camera.top=span;this.camera.bottom=-span;
-   this.camera.position.set(...view.angle);
+   this.camera.position.set(view.angle[0],view.angle[1],view.angle[2]);
    this.camera.position.y+=view.height;
    this.camera.lookAt(0,view.height,0);
    this.camera.updateProjectionMatrix();
