@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {ARMOR_PROPORTIONS,type ArmorProportion}
  from './operator-armor-proportions.ts';
-import {fittedArmorBag,fittedShoulderBridge,fittedArmorCollar}
+import {fittedArmorBag,fittedShoulderBridge,fittedSideWrap,fittedArmorCollar}
  from './operator-armor-shapes.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {armorSideLayout} from './operator-armor-side-layout.ts';
@@ -154,16 +154,33 @@ function attachedSide(g:THREE.Group,m:THREE.Material,
  const lengthX=p.frontX-p.backX;
  const returnLen=p.frontReturnLength+.34;
  const joinZ=(p.centerZ+p.plateEdgeZ)*.5-.05;
+ const chamfered=spec.sideStyle==='soft_wrap'||
+  spec.sideStyle==='side_plate'||spec.family==='standard';
  for(const side of [-1,1]){
+  if(chamfered){
+   // Three legible planes: front return, flank, rear return.
+   // A SINGLE low-poly bend per corner follows the torso instead of
+   // forcing square plate-sized corners out around the shoulders.
+   const run=Math.min(1.50,Math.max(.88,p.frontReturnLength*.43));
+   const path:readonly (readonly [number,number])[]=[
+    [p.frontX+.12,side*(p.plateEdgeZ-.13)],
+    [p.frontX-run,side*p.centerZ],
+    [p.backX+run,side*p.centerZ],
+    [p.backX-.12,side*(p.plateEdgeZ-.13)]
+   ];
+   fittedSideWrap(g,m,path,y,height,spec.sideThickness,side);
+   continue;
+  }
+  // Minimalist slick/JPC: perfectly flat elastic and skeletal bands.
   const flank=makeBox(g,m,(p.frontX+p.backX)*.5,y,
    side*p.centerZ,lengthX+.16,height,spec.sideThickness);
-  flank.name='r5-flat-torso-side';
+  flank.name='r6-flush-side-band';
   const front=makeBox(g,m,p.frontX,y,
    side*joinZ,p.returnThickness,height,returnLen);
-  front.name='r5-straight-front-return';
+  front.name='r6-front-return';
   const back=makeBox(g,m,p.backX,y,
    side*joinZ,p.returnThickness,height,returnLen);
-  back.name='r5-straight-rear-return';
+  back.name='r6-rear-return';
  }
 }
 function regenerateConnections(entry:ArmorEntry,top:string){
