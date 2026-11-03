@@ -78,6 +78,59 @@ function insidePassage(actor:PassageActor,cluster:readonly Door[]):boolean{
 function seeksPassage(actor:PassageActor,cluster:readonly Door[]):boolean{
  return cluster.some(d=>crossingDoor(actor,d))||insidePassage(actor,cluster);
 }
+/** Body-diameter spacing (16 units) plus a small visual buffer.
+ * Followers can enter the throat as soon as the person ahead has advanced,
+ * rather than waiting for that person to finish their room-side movement. */
+export const PASSAGE_FOLLOW_GAP=20;
+/** The waiting point is just outside the door, not at the start of the plan. */
+export const PASSAGE_STACK_DEPTH=22;
+const travelSign=(actor:PassageActor,door:Door):number=>{
+ if(!actor.goal)return 0;
+ const from=side(actor.p,door),toward=side(actor.goal,door);
+ return Math.sign(toward-from);
+};
+const sameQueueLane=(a:PassageActor,b:PassageActor,door:Door):boolean=>{
+ const dx=door.b.x-door.a.x,dy=door.b.y-door.a.y;
+ const width=Math.hypot(dx,dy)||1;
+ const lateral=Math.abs(((b.p.x-a.p.x)*dx+(b.p.y-a.p.y)*dy)/width);
+ return lateral<Math.max(18,width*.58);
+};
+/** Dynamic convoy spacing: only a teammate physically ahead in the same
+ * travel direction can hold the follower. This affects both single doors
+ * and the middle of a long aligned two-door vestibule.
+ * No authored route or friendly collision footprint is modified.
+ */
+function tooCloseToLeader(actor:PassageActor,others:readonly PassageActor[],
+ cluster:readonly Door[]):boolean{
+ for(const door of cluster){
+  const heading=travelSign(actor,door);
+  if(!heading)continue;
+  for(const other of others){
+   if(other.id===actor.id||!sameQueueLane(actor,other,door)||
+      travelSign(other,door)!==heading)continue;
+   const ahead=(side(other.p,door)-side(actor.p,door))*heading;
+   if(ahead>.01&&ahead<PASSAGE_FOLLOW_GAP)return true;
+  }
+ }
+ return false;
+}
+/** The exclusive lease is still meaningful for *opposing* streams. Let
+ * everyone approach the threshold first, then stop the non-owner just
+ * outside the mouth. People already moving out of the aperture must never
+ * be frozen in it.
+ */
+function atOpposingEntry(actor:PassageActor,cluster:readonly Door[]):boolean{
+ return cluster.some(door=>{
+  const heading=travelSign(actor,door);
+  if(!heading)return false;
+  const approach=side(actor.p,door)*heading;
+  if(approach>0||approach<-PASSAGE_STACK_DEPTH)return false;
+  const dx=door.b.x-door.a.x,dy=door.b.y-door.a.y;
+  const length=Math.hypot(dx,dy)||1;
+  const along=((actor.p.x-door.a.x)*dx+(actor.p.y-door.a.y)*dy)/length;
+  return along>=-10&&along<=length+10;
+ });
+}
 export function passageWait(actor:PassageActor,doors:readonly Door[],
   actors:readonly PassageActor[],
   leases?:Record<string,PassageLease>,now=0):boolean{
@@ -124,7 +177,20 @@ export function passageWait(actor:PassageActor,doors:readonly Door[],
   const owner=insideVestibule?.id??
     (leased?current!.actorId:occupant?.id??nearest.id);
   if(leases)leases[key]={actorId:owner,until:now+.38};
-  if(owner!==actor.id)return true;
+  // Same-direction squad members form a moving queue. The second operator
+  // advances immediately behind the first, and the third behind the second.
+  // No one waits for a teammate to reach a distant interior waypoint.
+  if(tooCloseToLeader(actor,relevant,cluster))return true;
+  if(owner===actor.id)continue;
+  const leader=relevant.find(a=>a.id===owner);
+  const sameDirection=leader&&cluster.some(door=>{
+    const direction=travelSign(actor,door);
+    return direction!==0&&travelSign(leader,door)===direction;
+  });
+  if(sameDirection)continue;
+  // A counterflow or unaligned claimant gets a short staging queue instead
+  // of racing against the existing occupant. Do not stop them far outside.
+  if(atOpposingEntry(actor,cluster))return true;
  }
  return false;
 }
