@@ -95,6 +95,41 @@ function sweptApartFromTarget(from:Pt,to:Pt,target:number,
  }
  return true;
 }
+/** The only legal collision exception while airborne is the SAME
+ * obstacle that was verified at takeoff. Recheck world geometry every tick;
+ * moving furniture, closing doors, or a newly placed blocker may invalidate
+ * a crossing. The landing remains full-size body clear.
+ */
+export function traversalStepClear(from:Pt,to:Pt,
+ action:TraverseOpportunity,world:CrossingWorld):boolean{
+ const target=world.cover[action.obstacleIndex];
+ if(!target||target.fixture!==action.fixture||
+    traversalKind(target)!==action.kind)return false;
+ if(!sweptApartFromTarget(from,to,action.obstacleIndex,
+   world.cover,world.walls,world.doors))return false;
+ // Never land in furniture after a world mutation, including the target.
+ if(distance(to,action.landing)<.15&&world.canStand&&
+    !world.canStand(to))return false;
+ return true;
+}
+export const traversalRouteLength=(from:Pt,path:readonly Pt[]):number=>{
+ let total=0,previous=from;
+ for(const point of path){total+=distance(previous,point);previous=point;}
+ return total;
+};
+/** Compare seconds, not just metres: a 1.4 s mantle should not interrupt
+ * an ordinary walk that is almost as direct. The explicit landing geometry
+ * is still validated separately by probeObstacleCrossing.
+ */
+export function preferTraversal(from:Pt,goal:Pt,op:TraverseOpportunity,
+ ordinary:readonly Pt[],speed=53):boolean{
+ if(!ordinary.length)return true;
+ const safeSpeed=Math.max(15,speed);
+ const ordinarySeconds=traversalRouteLength(from,ordinary)/safeSpeed;
+ const crossSeconds=(distance(from,op.approach)+
+   distance(op.landing,goal))/safeSpeed+op.duration;
+ return ordinarySeconds>crossSeconds+.12;
+}
 export type CrossingWorld={
  cover:readonly Obstacle[];walls:readonly Segment[];doors:readonly Door[];
  actors?:readonly Pt[];canStand?:(p:Pt)=>boolean;
