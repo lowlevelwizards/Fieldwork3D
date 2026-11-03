@@ -17,6 +17,8 @@ test('stroke sampling and hit sizes are screen-space, not world zoom dependent',
   assert.equal(shouldAppendStrokePoint({x:10,y:10},{x:20,y:10}),false);
   assert.equal(shouldAppendStrokePoint({x:10,y:10},{x:23,y:10}),true);
   assert.ok(tacticalHitProfile('touch').waypoint>tacticalHitProfile('mouse').waypoint);
+  assert.match(main,/!\(state.phase==='planning'&&p.wasUnit\)/);
+  assert.match(main,/p.mode='cameraPan';panX\+=dx;panY\+=dy;layout\(\)/);
   assert.match(main,/worldToScreen\(a\.p,viewMode==='plan2d'\?0:24\)/);
   assert.match(main,/shouldAppendStrokePoint\(worldToScreen/);
 });
