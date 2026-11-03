@@ -1,120 +1,63 @@
-/** Wardrobe recipes, not owned equipment or campaign loot.
- * Intentionally setting-neutral so these presets can serve Verdigris factions,
- * a grounded CQB ruleset, or either game's Quick Play sandbox.
+/** Curated wardrobe presets built only from active, modeled silhouettes.
+ * The obsolete universal palette, procedural prints, unmodeled shirts and
+ * commercial/period mismatch variants are intentionally not supported.
  */
 import {initialEquipmentLoadout,setEquipmentChoice,
  type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
-import {initialWardrobe,setWardrobeStyle,setWardrobePattern,
- type WardrobeOptions,type WardrobeSlot,type WardrobePattern}
- from './operator-wardrobe-data.ts';
+import {initialWardrobe,setWardrobeStyle,setWardrobeFabricCamo,resolvedWardrobe,
+ type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
+import type {HeadwearCamoId} from './operator-headwear-camo.ts';
 import type {WeaponId} from './breach-combat.ts';
-type Style = Partial<Record<WardrobeSlot,string>>;
-type Pattern = Partial<Record<keyof WardrobeOptions['patterns'],WardrobePattern>>;
+type Style=Partial<Record<WardrobeSlot,string>>;
 type Gear=Partial<Record<LoadoutSlot,string>>;
 export type WardrobeRecipe={
- id:string;name:string;category:'role'|'organization'|'civilian'|'setting';
+ id:string;name:string;category:'role'|'organization'|'setting';
  description:string;weapon:WeaponId;gear:Gear;
- styles:Style;patterns:Pattern;palette:number;
+ styles:Style;topCamo?:HeadwearCamoId;
 };
 const recipe=(id:string,name:string,category:WardrobeRecipe['category'],
- weapon:WeaponId,gear:Gear,styles:Style,patterns:Pattern={},palette=0,
+ weapon:WeaponId,gear:Gear,styles:Style,topCamo?:HeadwearCamoId,
  description=''):WardrobeRecipe=>({
-  id,name,category,weapon,gear,styles,patterns,palette,description
- });
+  id,name,category,weapon,gear,styles,topCamo,description
+});
 export const WARDROBE_RECIPES:readonly WardrobeRecipe[]=[
- recipe('assault','Urban assaulter','role','carbine',
-  {head:'head-helmet',armor:'armor-carrier',rig:'rig-full',
-   belt:'belt-standard',backpack:'backpack-day'},
-  {headwear:'high-cut-rails',armorStyle:'plate-jpc',rigStyle:'full-chest',
-   packStyle:'assault-pack',top:'combat-shirt',knees:'knee-integrated',
-   eyewear:'safety-glasses',headset:'boom-headset'}, {},2),
- recipe('light-scout','Light scout','role','smg',
-  {head:'head-cap',armor:'armor-none',rig:'rig-light',
-   belt:'belt-light',backpack:'backpack-none',top:'top-light'},
-  {headwear:'boonie',top:'light-shirt',trousers:'softshell-trousers',
-   footwear:'hiking-shoes',rigStyle:'micro-rig',gloves:'gloves-light'}, {},4),
- recipe('breacher','Heavy entry','role','shotgun',
-  {head:'head-helmet',armor:'armor-carrier',rig:'rig-full',
-   utility:'utility-breach',backpack:'backpack-field'},
-  {headwear:'ach',armorStyle:'plate-heavy',rigStyle:'lbv',
-   packStyle:'field-pack',top:'softshell',knees:'knee-hard'}, {},3),
- recipe('medic','Field medic','role','carbine',
-  {armor:'armor-soft',rig:'rig-light',backpack:'backpack-field',
-   medical:'medical-trauma'},
-  {armorStyle:'soft-vest',rigStyle:'light-rig',
-   packStyle:'medic-pack',wrist:'watch'}, {},0),
- recipe('recon','Reconnaissance','role','rifle',
-  {head:'head-bump',armor:'armor-soft',rig:'rig-light',
-   backpack:'backpack-day'},
-  {headwear:'bump-helmet',armorStyle:'soft-slick',
-   rigStyle:'micro-rig',packStyle:'hydration',top:'combat-shirt'},
-  {top:'multi-terrain',trousers:'multi-terrain'},4),
- recipe('support','Patrol support','role','rifle',
-  {head:'head-helmet',armor:'armor-carrier',rig:'rig-full',
+ recipe('bdu-field','BDU / Field patrol','role','rifle',
+  {head:'head-helmet',top:'top-uniform',legs:'legs-field',
+   feet:'feet-boots',armor:'armor-soft',rig:'rig-full',
    backpack:'backpack-field'},
-  {headwear:'pasgt',rigStyle:'field-webbing',
-   packStyle:'rucksack',top:'bdu-shirt',trousers:'bdu-trousers'},
-  {top:'woodland',trousers:'woodland'},0),
- recipe('gendarme','Gendarmerie patrol','organization','smg',
-  {head:'head-helmet',armor:'armor-soft',rig:'rig-light',
+  {headwear:'pasgt',top:'bdu-shirt',trousers:'field-trousers',
+   footwear:'field-boots',rigStyle:'field-webbing',
+   packStyle:'field-pack'},'m81-woodland'),
+ recipe('acu-patrol','ACU / Modern patrol','role','carbine',
+  {head:'head-helmet',top:'top-uniform',legs:'legs-field',
+   feet:'feet-boots',armor:'armor-carrier',rig:'rig-light',
+   backpack:'backpack-day'},
+  {headwear:'ach',top:'acu-shirt',trousers:'field-trousers',
+   armorStyle:'plate-standard',rigStyle:'light-rig',
+   packStyle:'day-pack'},'scorpion-w2'),
+ recipe('modern-entry','Modern entry team','role','carbine',
+  {head:'head-helmet',top:'top-uniform',legs:'legs-field',
+   feet:'feet-boots',armor:'armor-carrier',rig:'rig-full',
    backpack:'backpack-none'},
-  {headwear:'ach',armorStyle:'soft-vest',rigStyle:'light-rig',
-   top:'acu-shirt',trousers:'field-trousers'}, {},3),
- recipe('contractor','Contractor field kit','organization','carbine',
-  {head:'head-cap',armor:'armor-carrier',rig:'rig-light',
-   backpack:'backpack-day'},
-  {headwear:'baseball-cap',armorStyle:'plate-slick',rigStyle:'micro-rig',
-   top:'softshell',trousers:'work-pants',footwear:'hiking-boots'}, {},1),
- recipe('old-webbing','Traditional field kit','organization','rifle',
-  {head:'head-helmet',armor:'armor-soft',rig:'rig-full',
-   backpack:'backpack-field'},
-  {headwear:'soviet-steel',rigStyle:'belt-harness',
-   packStyle:'field-pack',top:'bdu-shirt'},
-  {top:'flora',trousers:'flora'},0),
- recipe('irregular','Irregular rifleman','organization','rifle',
-  {head:'head-cap',armor:'armor-none',rig:'rig-light',
-   belt:'belt-light',backpack:'backpack-day'},
-  {headwear:'beanie',rigStyle:'micro-rig',
-   top:'flannel',trousers:'work-pants',footwear:'hiking-shoes'},
-  {top:'flannel'},1),
- recipe('lowvis','Low visibility','civilian','smg',
-  {head:'head-none',armor:'armor-none',rig:'rig-none',
-   belt:'belt-light',backpack:'backpack-none',top:'top-light'},
-  {top:'t-shirt',trousers:'jeans',footwear:'sneakers',
-   wrist:'watch'}, {trousers:'denim'},2),
- recipe('winter','Cold weather patrol','setting','carbine',
-  {head:'head-cap',armor:'armor-soft',rig:'rig-light',
-   backpack:'backpack-field'},
-  {headwear:'beanie',facewear:'gaiter',top:'pcu-shell',
-   trousers:'softshell-trousers',packStyle:'field-pack'},
-  {top:'winter',trousers:'winter'},3),
- // Verdigris' original three organizations are visual/role templates,
- // not player allegiances or permanent restrictions on freeform kits.
- recipe('northline','Northline stabilization patrol','setting','carbine',
-  {head:'head-helmet',armor:'armor-carrier',rig:'rig-full',
-   backpack:'backpack-field',belt:'belt-standard'},
-  {headwear:'ach',armorStyle:'plate-standard',rigStyle:'full-chest',
-   packStyle:'field-pack',top:'acu-shirt',trousers:'acu-trousers',
-   headset:'helmet-ears',footwear:'combat-boots'},
-  {top:'multi-terrain',trousers:'multi-terrain'},1,
-  'Standardized coalition protection, communications and supply-line kit'),
- recipe('commune','Commune valley defender','setting','rifle',
-  {head:'head-cap',armor:'armor-soft',rig:'rig-full',
-   backpack:'backpack-day',belt:'belt-standard'},
-  {headwear:'beanie',facewear:'gaiter',armorStyle:'soft-paca',
-   rigStyle:'belt-harness',packStyle:'assault-pack',
-   top:'flannel',trousers:'work-pants',footwear:'hiking-boots'},
-  {top:'flannel',trousers:'woodland'},0,
-  'Locally sourced mixed civilian workwear and refurbished field gear'),
- recipe('freelancers','Freelancer port contractor','setting','smg',
-  {head:'head-helmet',armor:'armor-carrier',rig:'rig-light',
-   backpack:'backpack-day',belt:'belt-standard'},
-  {headwear:'high-cut-rails',eyewear:'sunglasses',
-   headset:'boom-headset',armorStyle:'plate-jpc',
-   rigStyle:'micro-rig',packStyle:'admin-pack',
-   top:'softshell',trousers:'combat-trousers',footwear:'trail-shoes'},
-  {top:'atacs-inspired',trousers:'solid'},3,
-  'Modular boutique contractor kit emphasizing mobile communications')
+  {headwear:'high-cut-rails',top:'acu-shirt',
+   armorStyle:'plate-jpc',rigStyle:'full-chest',
+   headset:'boom-headset'},'multicam'),
+ recipe('field-medic','Field medic','role','carbine',
+  {head:'head-cap',top:'top-uniform',legs:'legs-field',
+   feet:'feet-boots',armor:'armor-soft',rig:'rig-light',
+   backpack:'backpack-field',medical:'medical-trauma'},
+  {headwear:'boonie',top:'bdu-shirt',trousers:'field-trousers',
+   packStyle:'medic-pack',wrist:'watch'},'m81-woodland'),
+ recipe('desert-field','Desert field blouse','setting','rifle',
+  {head:'head-helmet',top:'top-uniform',legs:'legs-field',
+   feet:'feet-boots',armor:'armor-soft',rig:'rig-full'},
+  {headwear:'pasgt',top:'bdu-shirt',trousers:'field-trousers',
+   rigStyle:'field-webbing'},'three-color-desert'),
+ recipe('ucp-era','UCP-era ACU','setting','carbine',
+  {head:'head-helmet',top:'top-uniform',legs:'legs-field',
+   feet:'feet-boots',armor:'armor-carrier',rig:'rig-full'},
+  {headwear:'ach',top:'acu-shirt',trousers:'field-trousers',
+   armorStyle:'plate-standard'},'ucp')
 ];
 export function applyWardrobeRecipe(selected:WardrobeRecipe):{
  kit:EquipmentLoadout;wardrobe:WardrobeOptions
@@ -125,11 +68,9 @@ export function applyWardrobeRecipe(selected:WardrobeRecipe):{
  let wardrobe=initialWardrobe();
  for(const [slot,id] of Object.entries(selected.styles))
   wardrobe=setWardrobeStyle(wardrobe,slot as WardrobeSlot,id);
- for(const [slot,id] of Object.entries(selected.patterns))
-  wardrobe=setWardrobePattern(wardrobe,
-   slot as keyof WardrobeOptions['patterns'],id as WardrobePattern);
- return {kit,wardrobe:{...wardrobe,palette:selected.palette}};
+ if(selected.topCamo)
+  wardrobe=setWardrobeFabricCamo(wardrobe,'top',
+   selected.topCamo,resolvedWardrobe(wardrobe,kit));
+ return {kit,wardrobe};
 }
-export function wardrobeRecipe(id:string){
- return WARDROBE_RECIPES.find(x=>x.id===id);
-}
+export const wardrobeRecipe=(id:string)=>WARDROBE_RECIPES.find(x=>x.id===id);
