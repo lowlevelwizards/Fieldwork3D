@@ -2,6 +2,8 @@ name: Armor & Rig — Critical Mobile Silhouettes
 on:
   pull_request:
     paths:
+      - 'src/operator-uniform-fit-envelope.ts'
+      - 'src/operator-adaptive-armor.ts'
       - 'src/operator-armor-rig-silhouettes.ts'
       - 'src/operator-armor-rig-lab.ts'
       - 'operator-armor-rig-lab.html'
