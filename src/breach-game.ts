@@ -66,7 +66,7 @@ import {diagnoseMovement,projectReachableGoal,type Blocker}
   from './breach-nav-diagnostics.ts';
 import {bodyClear,sweptBodyClear,squeezeFacing,
   sweptProfileClear,SQUEEZE_RADIUS,escapeOpenDoorOverlap,
-  slideAroundStaticCorner,glideAlongStaticWall}
+  slideAroundStaticCorner,glideAlongStaticWall,releaseStaticWallOverlap}
   from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
   from './breach-squeeze-route.ts';
@@ -1505,6 +1505,17 @@ function tickTraversal(a:TeamActor,s:Session,dt:number):boolean{
 function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   // The simulation frame, not rendering, advances and validates traversal.
   if(tickTraversal(a,s,dt))return true;
+  // If an operator became fractionally embedded in plain wall clearance,
+  // move outward through actual swept samples BEFORE any route/squeeze
+  // decisions. This never deletes the authored route or forces a pivot
+  // toward the wall to begin reversing.
+  const wallRelease=releaseStaticWallOverlap(a.p,p,s.doors,dt*50);
+  if(wallRelease){
+    a.priorP=clone(a.p);a.p=wallRelease;
+    a.velocity=0;a.squeeze=false;a.squeezeTime=0;
+    a.blockedTime=0;a.lastBlocker='clear';
+    a.nav=[];a.retryRouteAt=0;return true;
+  }
   if(a.traversalPending&&d(a.p,a.traversalPending.approach)<3.3){
     const planned=a.traversalPending;
     if(planned.windowId){
@@ -1724,7 +1735,12 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   if(!normalClear&&!blocking&&!closed){
     const glide=glideAlongStaticWall(a.p,desiredMove,s.doors);
     if(glide){
-      a.priorP=clone(a.p);a.p=glide;
+      const old=clone(a.p);
+      a.priorP=old;a.p=glide;
+      // Point the body along its real sliding movement, not at the
+      // obstructed grid waypoint. Explicit WATCH remains authoritative.
+      if(a.aimInstruction?.mode!=='track')
+        a.heading=angle(old,glide);
       a.blockedTime=0;a.lastBlocker='clear';a.retryRouteAt=0;
       a.recoveryAttempts=0;
       if(a.squeeze&&bodyClear(a.p,s.doors)){
