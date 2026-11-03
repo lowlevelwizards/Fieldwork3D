@@ -31,7 +31,7 @@ import {MICRO_KEYS,MICRO_COLS} from './breach-fog-memory.ts';
 import {assessFireLane,type FireBlock} from './breach-fire-safety.ts';
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,pushDoor,kickDoor,
-  approachingDoorLeaf,PUSHED_OPEN_LIMIT} from './breach-door.ts';
+  pressDoorOnBodyAttempt,PUSHED_OPEN_LIMIT} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool,issuedWedges} from './equipment-entry-tools.ts';
@@ -1348,21 +1348,20 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   if(a.routeGoalKey!==goalKey){
     a.routeGoalKey=goalKey;a.retryRouteAt=0;a.recoveryAttempts=0;
   }
-  // Push a nearby already-open leaf toward its wall stop even if a temporary
-  // route failure left the operator without a navigation node. Otherwise
-  // the actor never contacts the leaf again, so its hinge cannot finish.
-  for(const leaf of s.doors){
-    if(!leaf.open||leaf.kind==='sliding'||leaf.kind==='shutter'||
-       leaf.wedged||leaf.heldBy||
-       (leaf.openFraction??0)>=PUSHED_OPEN_LIMIT)continue;
-    const gapToLeaf=pointToSegment(a.p,doorLeafSegment(leaf));
-    if(gapToLeaf>28)continue;
-    if(doorBlocksSegment(leaf,{a:a.p,b:p})||gapToLeaf<17)
-      pushDoor(leaf,3);
-  }
   if(!a.nav.length){
     // Never execute expensive route searches every fixed tick for a proven
     // unreachable destination. Changes of goal or recovered progress reset.
+    // A route may be temporarily unavailable solely because a swung leaf
+    // crosses its doorway. Keep attempting *physical* pressure along the
+    // player's actual goal, even during backoff. No invented path or teleport.
+    const goalDistance=d(a.p,p);
+    if(goalDistance>2){
+      const probeLength=Math.min(4,goalDistance);
+      const probe={x:a.p.x+(p.x-a.p.x)/goalDistance*probeLength,
+        y:a.p.y+(p.y-a.p.y)/goalDistance*probeLength};
+      pressDoorOnBodyAttempt(a.p,probe,s.doors,dt,
+        s.operators.filter(o=>o.health>0).map(o=>o.p));
+    }
     if(s.seconds<a.retryRouteAt){a.velocity=0;return false;}
     a.nav=a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
       routeWithSqueezeWorld(a.p,p,s.doors);
@@ -1427,24 +1426,14 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     a.velocity=0;a.blockedTime=0;
     return true;
   }
-  // Push an open leaf as soon as the body touches it, not only when
-  // the centre line crosses it (which was too late to escape collision).
-  // Resolve nearest actual leaf first: adjacent/paired doors must not
-  // steal contact from the panel the operator is physically approaching.
+  // Identify the leaf for closed-door authored handling; open hinged
+  // leaves are pushed by the coupled swept-body solver below, not by
+  // standing nearby or crossing a broad radius trigger.
   const closedDoor=s.doors.filter(door=>
     pointToSegment(move,doorLeafSegment(door))<24||
     doorBlocksSegment(door,{a:a.p,b:move}))
     .sort((u,v)=>pointToSegment(move,doorLeafSegment(u))-
       pointToSegment(move,doorLeafSegment(v)))[0];
-  // Keep applying contact pressure beyond the normal open stop, right up
-  // to the wider swept limit. Previously .99 cut off the new overswing.
-  if(closedDoor&&(closedDoor.openFraction??0)<PUSHED_OPEN_LIMIT&&
-     approachingDoorLeaf(a.p,move,closedDoor)){
-    // Sustained contact at the latch generates more torque than at the
-    // hinge; an already open door can always be pushed toward its stop.
-    const impulse=doorContactImpulse(closedDoor,move);
-    if(impulse>0)pushDoor(closedDoor,2.5*impulse);
-  }
   // Look ahead to the route's next node, stopping to open a door before
   // the actor's capsule contacts the physical leaf.
   // Crossing a physical closed door during a move implicitly attempts to
@@ -1495,6 +1484,11 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const desiredMove=friendlyPassingStep(a.p,move,next,friendlyPositions,
     (from,to)=>a.squeeze?sweptProfileClear(from,to,s.doors,
       a.squeezeYaw,'squeeze'):sweptBodyClear(from,to,s.doors));
+  // Resolve the physical body's intended step against the actual leaf
+  // BEFORE evaluating movement clearance. The hinge may yield right now;
+  // when it cannot (wall/actor), existing collision and recovery remain.
+  const doorContact=pressDoorOnBodyAttempt(a.p,desiredMove,s.doors,dt,
+    s.operators.filter(o=>o.health>0).map(o=>o.p));
   // The physical transition requires a valid oriented three-point torso
   // sweep; normal clearance remains the preference whenever it fits.
   const normalClear=sweptBodyClear(a.p,desiredMove,s.doors);
@@ -1546,6 +1540,13 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       s.movementNoiseAt=s.seconds;
     }
   }else{
+    // A genuinely swinging leaf is actively clearing the path. Preserve
+    // the authored route; don't misdiagnose pressure as a stuck waypoint
+    // or start detour/replan churn while the door is actually yielding.
+    if(!blocking&&!closed&&doorContact?.advanced){
+      a.velocity=0;a.blockedTime=0;a.lastBlocker='door';
+      return true;
+    }
     a.velocity=Math.max(0,a.velocity-dt*130);
     a.blockedTime+=dt;
     a.lastBlocker=diagnoseMovement(a.p,desiredMove,s.doors,
