@@ -14,8 +14,8 @@ test('solid finish choices are independently saved and old wardrobe v1 still loa
  assert.deepEqual(readWardrobe(old),old);
  const outfit=resolvedWardrobe(old,kit);
  const camos=fabricCamoChoices('top',outfit);
- assert.ok(camos.includes('multicam'));
- const camouflaged=setWardrobeFabricCamo(old,'top','multicam',outfit);
+ assert.ok(camos.includes('m81-woodland'));
+ const camouflaged=setWardrobeFabricCamo(old,'top','m81-woodland',outfit);
  const solid=setWardrobeFabricSolid(camouflaged,'top','olive-drab');
  assert.equal(solid.fabricCamo.top,undefined);
  assert.equal(solid.fabricSolids.top,'olive-drab');
@@ -52,7 +52,8 @@ test('studio preserves the game page and separates the visual editor from animat
  const vite=read('../vite.config.ts');
  assert.match(index,/id="openOperatorStudio"/);
  assert.match(code,/function openOperatorStudio\(/);
- assert.match(code,/type:'fw-studio-commit'/);
+ assert.match(code,/msg.type!=='fw-studio-commit'/);
+ assert.match(studio,/type:'fw-studio-commit'/);
  assert.match(code,/setCampaignWardrobe\(campaign,msg.id,msg.wardrobe\)/);
  assert.match(code,/setRosterWardrobe\(persistentRoster,msg.id,msg.wardrobe\)/);
  assert.match(code,/event.origin!==location.origin/);
