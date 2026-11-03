@@ -2,6 +2,8 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#1b302b"><title>FIELDWORK — MAP LAB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@400;500;600;700;800&amp;family=Work+Sans:wght@400;500;600;700&amp;display=swap"/>
 <style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#202d2b;color:#e8e8dd;font:12px/1.45 system-ui,sans-serif;touch-action:none}
 header{position:fixed;top:env(safe-area-inset-top);left:0;right:0;z-index:12;background:#1c302ded;border-bottom:1px solid #678278;padding:10px 13px;display:flex;align-items:center;justify-content:space-between}
@@ -46,6 +48,15 @@ button:disabled{opacity:.47;cursor:default}
 .map-lab-inspector>.row label{padding:5px 7px;border-radius:6px;
  background:#2b443a;font-size:12px;min-height:36px}
 .map-lab-inspector>details{margin:8px 0}
+/* Fieldwork typography role assignments for map tools. */
+html,body,header,label,select,input,#labels{font-family:"Saira Condensed","Arial Narrow",sans-serif}
+header strong{font-weight:800;letter-spacing:.025em}
+button,#playSite,#cancelGeneration{font-family:"Work Sans",system-ui,sans-serif;font-weight:600}
+#progressPercent,#progressClock,#info,#encounterDetails{
+ font-family:"Saira Condensed","Arial Narrow",sans-serif;
+ font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;
+}
+#progressDetail{font-family:"Work Sans",system-ui,sans-serif}
 </style></head>
 <body><header><strong>FIELDWORK / MAP LAB</strong><span><a href="./physicality-lab.html">PHYSICALITY LAB</a> · <a href="./breach.html">BACK TO GAME</a></span></header>
 <div id="labels"></div>
