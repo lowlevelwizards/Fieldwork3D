@@ -1,5 +1,6 @@
 /** Stage 3A: read-only garment-fit anatomy and attachment contract.
- * This module creates NON-RENDERING attachment groups. It never alters mesh
+ * This module uses VIRTUAL attachment references, with no added scene nodes.
+ * It never alters mesh
  * proportions, IK, footsteps, headgear, stock/grip alignment or hitboxes.
  *
  * Legacy operator-space: +X forward, +Y up, +/-Z shoulders. Do not mix with
@@ -52,7 +53,10 @@ export const GARMENT_FIT_ANCHOR_IDS=[
  'boot-left','boot-right'
 ] as const;
 export type GarmentFitAnchorId=typeof GARMENT_FIT_ANCHOR_IDS[number];
-export type GarmentFitAnchors=Readonly<Record<GarmentFitAnchorId,THREE.Group>>;
+export type GarmentFitAnchor=Readonly<{
+ id:GarmentFitAnchorId;parent:THREE.Object3D;offset:THREE.Vector3
+}>;
+export type GarmentFitAnchors=Readonly<Record<GarmentFitAnchorId,GarmentFitAnchor>>;
 type ArticulatedLimb={upper:THREE.Mesh;lower:THREE.Mesh};
 type ArticulatedFoot=ArticulatedLimb&{shoe:THREE.Mesh};
 export type GarmentFitParents={
@@ -61,17 +65,13 @@ export type GarmentFitParents={
  legs:readonly ArticulatedFoot[];
 };
 const place=(parent:THREE.Object3D,id:GarmentFitAnchorId,
- x=0,y=0,z=0):THREE.Group=>{
- const anchor=new THREE.Group();
- anchor.name='garment-fit:'+id;
- anchor.position.set(x,y,z);
- anchor.userData.garmentFitAnchor=id;
- // The node is transform-only and adds zero draw calls or triangles.
- parent.add(anchor);return anchor;
-};
+ x=0,y=0,z=0):GarmentFitAnchor=>
+ ({id,parent,offset:new THREE.Vector3(x,y,z)});
+// Virtual anchors do not add Object3D children or matrix updates in battle.
+// Stage 3B may create garment-specific geometry attached to these parents.
 
 /** Bind one-time sewing and fit references to the real articulated parts.
- * Upper/lower bone anchors are at normalized mesh centers or joint ends:
+ * Upper/lower bone offsets are normalized mesh centers or joint ends:
  * bone.scale.y is the animated segment LENGTH (not a constant unit).
  */
 export function createGarmentFitAnchors(p:GarmentFitParents):GarmentFitAnchors{
@@ -103,8 +103,8 @@ export function createGarmentFitAnchors(p:GarmentFitParents):GarmentFitAnchors{
 }
 export function garmentFitWorldPoint(anchors:GarmentFitAnchors,
  id:GarmentFitAnchorId,out=new THREE.Vector3()):THREE.Vector3{
- // getWorldPosition updates the object's world matrix before sampling.
- return anchors[id].getWorldPosition(out);
+ const anchor=anchors[id];
+ return anchor.parent.localToWorld(out.copy(anchor.offset));
 }
 /** Small diagnostic snapshot, opt-in from Operator Lab. Values report pose
  * clearance/spacing, not automatic failures: overlapping hidden layers and
