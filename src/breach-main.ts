@@ -3066,9 +3066,12 @@ function useSelectedGround(pt:Pt){
   }
   if(looking){
     const placedId=state.nextId;
-    const committed=lookMode==='watch'?
-      planWatch(state,selected,pt,selectedNode??undefined,armedOrigin):
-      planAim(state,selected,'free',pt,selectedNode??undefined,'look',armedOrigin);
+    const retargetingActive=lookMode==='watch'&&selectedActiveWatch;
+    const committed=retargetingActive?
+      retargetActiveWatch(state,selected,pt):
+      lookMode==='watch'?
+        planWatch(state,selected,pt,selectedNode??undefined,armedOrigin):
+        planAim(state,selected,'free',pt,selectedNode??undefined,'look',armedOrigin);
     if(!committed){
       rejectAt(pt,'AIM TOO CLOSE · TAP FARTHER FROM THE OPERATOR OR WAYPOINT');
       showUiHelp('AIM TOO CLOSE · TAP FARTHER AWAY, OR CANCEL',3200);
@@ -3076,7 +3079,9 @@ function useSelectedGround(pt:Pt){
     else{
       tacticalFeedback.emit('command',pt,lookMode==='watch'?'WATCH':'LOOK');
       uiClickTone('command');
-      if(selectedNode===null)selectedNode=placedId;
+      if(!retargetingActive&&selectedNode===null){
+        selectedNode=placedId;selectedActiveWatch=false;
+      }
       teach(lookMode==='watch'?'watch-placed':'look-placed',
         lookMode==='watch'?
           'WATCH stays on that point while moving. Drag its ring to adjust.':
