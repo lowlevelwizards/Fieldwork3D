@@ -18,7 +18,7 @@ test('wardrobe choices switch authored garment details, knee pads and watch',()=
  const visual=rig.visualKit.wardrobeBody;
  assert.equal(rig.visualKit.fieldBlouses['bdu-shirt'].torso.visible,true);
  assert.equal(visual.tops['acu-shirt'].visible,false);
- assert.equal(visual.trousers['field-trousers'].every(x=>x.visible),true);
+ assert.equal(rig.visualKit.fieldTrousers['bdu-trousers'].thigh.every(x=>x.visible),true);
  assert.equal(visual.knees['knee-hard'].every(x=>x.visible),true);
  assert.equal(visual.wrist['wrist-nav'].visible,true);
  assert.equal(rig.visualKit.jacket.visible,false);
