@@ -35,8 +35,9 @@ const p=(index:number,...coords:number[]):Motif=>[index,coords];
 export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  'm81-woodland':{
   label:'M81 WOODLAND',
-  description:'Saturated mid-green woodland, warm khaki-brown islands and slender charcoal hooks',
-  colors:[[104,131,69],[146,126,79],[47,88,57],[43,51,36]],
+  description:'Muted temperate woodland olive and deep forest with rounded brown fields and slim dark hooks',
+  // Share the DPM green, brown and dark ink; silhouette, not saturation, defines M81.
+  colors:[[87,118,73],[118,85,60],[64,83,66],[48,55,39]],
   targetCoverage:[.35,.23,.32,.10],
   motifs:[
    p(1,-3,0,6,0,10,3,7,8,1,9,-3,7),
@@ -143,16 +144,16 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  // RGB values are reused from the established five prints wherever possible.
  'flecktarn':{
   label:'FLECKTARN',
-  description:'Dense micro-speckled five-color fleck clusters over moss, forest and rust-brown fields',
+  description:'Broad woodland green and tan masses carrying dense clustered rust and ink droplets',
   colors:[[119,134,86],[54,83,55],[161,137,91],[129,77,53],[42,48,37]],
   targetCoverage:[0.242,0.197,0.196,0.177,0.188],
   motifs:[
-   p(1,-5,1,2,-2,10,0,13,4,9,8,4,9,-3,7),
-   p(1,14,12,19,9,25,11,28,16,25,22,19,21,14,18),
-   p(1,1,25,7,22,13,25,14,31,7,35,0,32),
-   p(2,17,-3,25,0,31,4,30,9,24,10,18,5),
-   p(2,-3,12,4,10,11,15,10,19,4,21,-4,18),
-   p(2,26,25,31,23,35,27,35,33,27,35,23,30),
+   // Four generous underlying masses establish the pattern from a distance.
+   // The 1-2px droplet clusters below survive on top of these long sweeps.
+   p(1,-9,-5,5,-4,18,2,21,9,17,16,7,21,-5,17,-9,12),
+   p(1,12,17,21,11,31,13,40,21,37,30,28,37,16,32),
+   p(2,15,-6,27,-4,39,3,38,12,30,18,22,17,13,9),
+   p(2,-9,14,1,9,12,12,20,20,23,29,13,39,-8,36),
    p(3,3,2,6,1,8,3,7,5,3,5),p(3,9,4,11,3,13,5,12,7,10,7),
    p(3,19,3,23,2,25,5,23,7,20,6),p(3,28,12,31,11,33,13,32,16,29,16),
    p(3,3,17,6,15,9,17,8,20,5,21),p(3,13,23,17,22,19,24,18,27,14,27),
@@ -225,7 +226,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  'six-color-desert':{
   label:'6-COLOR DESERT',
   description:'Chocolate-chip desert: large pale dunes, khaki islands and scattered dark-rimmed light pebbles',
-  colors:[[193,173,133],[221,201,162],[145,105,73],[138,121,90],[228,213,177],[79,72,55]],
+  colors:[[193,173,133],[221,201,162],[145,105,73],[138,121,90],[228,213,177],[46,54,44]],
   targetCoverage:[0.228,0.305,0.277,0.1,0.022,0.068],
   motifs:[
    p(1,-4,1,5,-2,13,1,13,7,7,11,-4,9),
