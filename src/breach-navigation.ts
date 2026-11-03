@@ -26,8 +26,12 @@ export function sweptBodyClear(from:Pt,to:Pt,doors:Door[],
       if(gap>=radius+1)continue;
       // A leaf can close into an actor. Permit movement away from it;
       // never allow a new intrusion or movement deeper into overlap.
-      if(!trapped.includes(door)||
-        gap+1e-5<leafGap(from,door))return false;
+      const initial=leafGap(from,door);
+      if(!trapped.includes(door)||gap+1e-5<initial)return false;
+      // An embedded body must actually move OUT of the leaf, not travel
+      // parallel through its interior at the same penetration depth.
+      if(i===steps&&gap<radius+1&&
+         gap<initial+Math.min(.04,distance(from,to)*.04))return false;
     }
   }
   return true;
@@ -126,7 +130,9 @@ export function sweptProfileClear(from:Pt,to:Pt,doors:Door[],
       for(const door of doors){
         const gap=leafGap(sample.position,door),before=leafGap(startSample.position,door);
         if(gap<sample.radius+1&&
-           (before>=sample.radius+1||gap+1e-5<before))return false;
+           (before>=sample.radius+1||gap+1e-5<before||
+            i===steps&&gap<before+Math.min(.04,distance(from,to)*.04)))
+          return false;
       }
     }
   }
