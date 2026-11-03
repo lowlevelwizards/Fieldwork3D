@@ -56,8 +56,8 @@ export const WARDROBE_RECIPES:readonly WardrobeRecipe[]=[
  recipe('ucp-era','UCP-era Utility Uniform','setting','carbine',
   {head:'head-helmet',top:'top-uniform',legs:'legs-field',
    feet:'feet-boots',armor:'armor-carrier',rig:'rig-full'},
-  {headwear:'ach',top:'acu-shirt',trousers:'bdu-trousers',
-   armorStyle:'plate-standard',trousers:'acu-trousers'},'ucp')
+  {headwear:'ach',top:'acu-shirt',trousers:'acu-trousers',
+   armorStyle:'plate-standard'},'ucp')
 ];
 export function applyWardrobeRecipe(selected:WardrobeRecipe):{
  kit:EquipmentLoadout;wardrobe:WardrobeOptions
