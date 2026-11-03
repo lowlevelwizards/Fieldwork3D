@@ -90,7 +90,7 @@ controls.minZoom=.7;controls.maxZoom=2.8;
 controls.target.set(0,23,0);controls.update();
 const thumbBrowser=new OperatorAppearanceGrid(
  $('studioItemBrowser'),renderer,(slot,id)=>chooseStyle(slot,id),
- (slot,id)=>canEquip(slot,id));
+ (slot,id)=>canEquip(slot,id),true);
 const member=()=>people.find(p=>p.id===selected);
 const current=()=>edits.get(selected)??member()?.wardrobe??initialWardrobe();
 const previewWardrobe=()=>comparingSaved?member()?.wardrobe??initialWardrobe():current();
@@ -534,7 +534,7 @@ function refresh(){
  undoButton.disabled=readOnly||!(history.get(selected)?.length);
  renderCategories();
  thumbBrowser.setCategory(activeCategory);
- thumbBrowser.refresh(p.loadout,previewWardrobe());
+ thumbBrowser.refresh(p.loadout,previewWardrobe(),p.id);
  renderPresetMenu();renderMaterials();posePreview();
 }
 function populate(){
