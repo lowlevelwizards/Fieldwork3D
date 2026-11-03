@@ -71,17 +71,17 @@ export const WARDROBE_RECIPES:readonly WardrobeRecipe[]=[
  recipe('mountain-gorka','Mountain Gorka Suit','setting','rifle',
   {top:'top-uniform',legs:'legs-field',feet:'feet-boots',
    head:'head-cap',armor:'armor-none',rig:'rig-full'},
-  {top:'gorka-jacket',trousers:'gorka-trousers',headwear:'field-cap'},
+  {top:'gorka-jacket',trousers:'gorka-trousers',headwear:'patrol-cap'},
   undefined,'Full khaki/brown reinforced mountain suit','standard'),
  recipe('gorka-ss-leto','Gorka Summer Inserts','setting','carbine',
   {top:'top-uniform',legs:'legs-field',feet:'feet-boots',
    head:'head-cap',armor:'armor-none',rig:'rig-light'},
-  {top:'gorka-jacket',trousers:'gorka-trousers',headwear:'field-cap'},
+  {top:'gorka-jacket',trousers:'gorka-trousers',headwear:'patrol-cap'},
   undefined,'Original SS-Leto-style summer panel study','ss-leto'),
  recipe('gorka-ss-autumn','Gorka Autumn Inserts','setting','carbine',
   {top:'top-uniform',legs:'legs-field',feet:'feet-boots',
    head:'head-cap',armor:'armor-none',rig:'rig-light'},
-  {top:'gorka-jacket',trousers:'gorka-trousers',headwear:'field-cap'},
+  {top:'gorka-jacket',trousers:'gorka-trousers',headwear:'patrol-cap'},
   undefined,'Original SS-Autumn-style panel study','ss-autumn')
 ];
 export function applyWardrobeRecipe(selected:WardrobeRecipe):{
