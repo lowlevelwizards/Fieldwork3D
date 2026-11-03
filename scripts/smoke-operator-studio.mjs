@@ -55,9 +55,17 @@ try{
   if(!await page.locator('#studioPresetApply').isEnabled())
    throw Error('Appearance-only preset not available for application');
   await page.locator('#studioPresetApply').click();
+  // The first look stays a draft when switching to another squad member.
+  // One Save All transaction must persist both, rather than just the
+  // currently selected operator and silently discarding the first.
+  await page.locator('#studioOperator').selectOption({index:1});
+  await page.locator('[data-appearance-item="combat-shirt"]').click();
+  await page.locator('#studioMaterials .solid-swatches button').first().click();
+  if((await page.locator('#studioApply').textContent())?.trim()!=='SAVE 2 LOOKS')
+   throw Error('Save All did not count multiple operator drafts');
   await page.locator('#studioApply').click();
   await page.waitForFunction(()=>
-   document.getElementById('studioStatus')?.textContent?.includes('SAVED'),
+   document.getElementById('studioStatus')?.textContent?.includes('SAVED 2 LOOKS'),
    null,{timeout:12000});
   if(errors.length)throw Error('Uncaught Studio errors: '+errors.join('; '));
   await mkdir('operator-studio-captures',{recursive:true});
