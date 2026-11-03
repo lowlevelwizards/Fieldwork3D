@@ -34,7 +34,10 @@ test('new shirt shell fully covers the core torso and includes a standing collar
   assert.ok(ring.side>7.1,'side fabric must enclose 14-unit base torso');
  }
  const code=src('../src/operator-new-upper-garments.ts');
- assert.ok(code.includes('The standing 1/4-zip collar'));
+ assert.ok(code.includes('box(torso,body,-2.18,7.34,0'),
+  'collar is centered around the actual neck');
+ assert.ok(code.includes('box(torso,trim,3.02,7.20,0'),
+  'a short central zipper sits at the collar');
  assert.ok(code.includes('box(torso,body,-2.18,7.34,0'));
  assert.doesNotMatch(code,/box\(torso,body,5\.19,-\.05,0,\.24,11\.68,10\.88\)/,
   'old floating front slab must not return');
