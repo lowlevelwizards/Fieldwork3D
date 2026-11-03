@@ -980,7 +980,7 @@ body.replaying #tacticalFeedback{display:none}
 
 /* UX2 02 — selected action scope is explicit, not inferred from a tiny HERE label. */
 .fw-context-heading{flex:1 1 100%;width:100%;min-width:0;
- font:700 11px/1.3 "IBM Plex Sans",system-ui,sans-serif;
+ font:700 11px/1.3 var(--fw-font-menu),system-ui,sans-serif;
  letter-spacing:.045em;color:var(--fw-brass);
  border-bottom:1px solid #687d7055;padding:3px 4px 7px;
  overflow-wrap:anywhere}
@@ -993,7 +993,7 @@ body.replaying #tacticalFeedback{display:none}
 .fw-site-choice{flex:1 1 100%;width:100%;display:grid;gap:5px;
  border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm);
  background:var(--fw-panel-deep);padding:9px;min-width:0}
-.fw-site-choice>strong{font:700 11px/1.3 "IBM Plex Sans",system-ui,sans-serif;
+.fw-site-choice>strong{font:700 11px/1.3 var(--fw-font-menu),system-ui,sans-serif;
  letter-spacing:.06em;color:var(--fw-brass);padding:3px}
 .site-settings .fw-site-choice-option{display:flex;flex-direction:column;
  align-items:flex-start;gap:3px;text-align:left;width:100%;min-height:44px;
@@ -1047,7 +1047,7 @@ body.replaying #tacticalFeedback{display:none}
  min-height:44px;min-width:70px;padding:7px 10px;margin:2px 0 0;
  background:#33493e;border:1px solid var(--fw-panel-border);
  border-radius:var(--fw-radius-sm);color:var(--fw-text);
- font:700 12px/1.2 "IBM Plex Sans",system-ui,sans-serif;
+ font:700 12px/1.2 var(--fw-font-menu),system-ui,sans-serif;
  letter-spacing:.045em;text-align:center;text-shadow:none;
  box-shadow:0 3px 10px #04131188}
 .top .mode #operationsBoardToggle[hidden]{display:none}
@@ -1099,11 +1099,11 @@ body.replaying #tacticalFeedback{display:none}
  background:#1c302aeF;border:1px solid #71877a;
  border-radius:7px;box-shadow:0 5px 18px #07120e99;
  color:#e4e7d8;text-shadow:none;
- font:500 12px/1.35 "IBM Plex Sans",system-ui,sans-serif;
+ font:500 12px/1.35 var(--fw-font-narrative);
  letter-spacing:0;pointer-events:none;z-index:8;
 }
 .feed .fw-notice-label{
- color:#b8c8b6;font:800 10px/1.5 "IBM Plex Sans",system-ui,sans-serif;
+ color:#b8c8b6;font:800 12px/1.5 var(--fw-font-display);
  letter-spacing:.07em;flex:none;white-space:nowrap
 }
 .feed .fw-notice-content{min-width:0;max-height:3.9em;overflow:hidden}
@@ -1129,17 +1129,17 @@ body.replaying #tacticalFeedback{display:none}
 .site-identity{display:block;width:100%;margin:4px 0 10px;
   padding:8px 10px;border:1px solid var(--fw-panel-border,#6b8777);
   border-radius:6px;background:#182c27dd;color:#d5d8bd;
-  font:700 11px/1.4 "IBM Plex Mono",monospace;
+  font:700 11px/1.4 var(--fw-font-data),monospace;
   letter-spacing:.025em;overflow-wrap:anywhere}
 
 /* UX2-19: a self-contained mission sheet; no hidden Tools button required. */
 .site-settings-heading{display:flex;align-items:center;justify-content:space-between;
   flex:1 1 100%;gap:12px;min-width:0;padding:2px 3px 7px;
   border-bottom:1px solid var(--fw-panel-border,#597666)}
-.site-settings-heading strong{font:700 12px/1.2 var(--ui-font,"IBM Plex Sans",sans-serif);
+.site-settings-heading strong{font:700 12px/1.2 var(--ui-font,var(--fw-font-menu),sans-serif);
   letter-spacing:.08em;color:#d8e2d4}
 .site-settings #closeSiteSettings{min-height:44px;min-width:92px;
-  font:700 11px/1.3 var(--ui-font,"IBM Plex Sans",sans-serif);
+  font:700 11px/1.3 var(--ui-font,var(--fw-font-menu),sans-serif);
   background:#4c5042;border-color:#9e9f82}
 .site-settings #closeSiteSettings:focus-visible{outline:2px solid #ead09c;
   outline-offset:2px}
@@ -1328,3 +1328,7 @@ html,body{font-family:var(--fw-font-menu)}
  .quick-states .command-label{font-size:10px}
  .site-settings button,.site-settings a{font-size:14px}
 }
+
+/* Secondary mission readouts share the condensed numeric scale. */
+.site-identity{font-family:var(--fw-font-data);font-size:14px;font-variant-numeric:tabular-nums}
+.feed .fw-notice-label{font-family:var(--fw-font-display)}
