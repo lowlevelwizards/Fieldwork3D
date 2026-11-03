@@ -28,6 +28,8 @@ import {safeLabWindow,safeLabZoom,safeLabProjectionShift,
  type LabCameraFraming} from './operator-lab-camera-framing.ts';
 import {operatorAttachmentPoint,type OperatorAttachmentZone}
  from './operator-attachment-zones.ts';
+import {garmentFitWorldPoint,sampleGarmentFit,garmentFitDiagnosticLines,
+ type GarmentFitAnchorId} from './operator-garment-fit.ts';
 import {selectWardrobeItem} from './operator-wardrobe-unified.ts';
 import {createWardrobeFabricCamoPicker} from './operator-fabric-camo-picker.ts';
 import './operator-fabric-camo-picker.css';
@@ -1210,6 +1212,21 @@ function showDiagnostics(){
   for(const marker of markers)marker.visible=false;
   for(const box of supportBoxes)box.visible=false;
   guide.visible=false;lanes.visible=false;
+  if(layer==='garment-fit'){
+    // Opt-in reference markers only: do not transform any body part or
+    // interfere with headgear, weapon contact or locomotion previews.
+    const sewingMarks:readonly GarmentFitAnchorId[]=[
+      'collar','shoulder-left','shoulder-right','front-hem',
+      'back-hem','waist','knee-left','knee-right'
+    ];
+    sewingMarks.forEach((id,i)=>{
+      markers[i].visible=true;
+      garmentFitWorldPoint(rig!.garmentFitAnchors,id,markers[i].position);
+    });
+    diagnosticText.textContent=garmentFitDiagnosticLines(
+      sampleGarmentFit(rig.garmentFitAnchors)).join('\n');
+    return;
+  }
   const put=(i:number,x:number,y:number,z:number)=>{
     markers[i].visible=true;markers[i].position.set(x,y,z);
   };
