@@ -524,7 +524,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   for(const [id,material] of Object.entries(r.visualKit.wardrobeHead.headwearMaterials)){
    const selected=id===clothing.headwear;
    const modelId=(id==='high-cut-rails'?'high-cut':id) as HeadSilhouetteId;
-   const camo=selected?resolvedHeadwearCamo(modelId,p.wardrobe?.headwearCamo):null;
+   const camo=selected&&p.wardrobe?.headwearCamo!=='splittertarn-31'?
+     resolvedHeadwearCamo(modelId,p.wardrobe?.headwearCamo):null;
    const map=camo?headwearCamoTexture(modelId,camo,
      headwearCamoPlacement(r.camoIdentity,'headwear:'+modelId,camo,
       p.wardrobe?.headwearCamoRoll??0)):headwearDetailTexture(modelId);
