@@ -546,10 +546,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.colors.set(r.headArmorMaterial,defaultVest.clone());
   r.colors.set(r.headClothMaterial,defaultCloth.clone());
   const selectedTopPrint=p.wardrobe?.fabricCamo?.top;
-  const topPrint=selectedTopPrint&&
+  const outfitTopPrint=selectedTopPrint&&
    fabricCamoCompatible(selectedTopPrint,'top',clothing)?selectedTopPrint:null;
   const automaticGear=resolveAutomaticGearColors({
-   print:topPrint,solid:p.wardrobe?.fabricSolids?.top
+   print:outfitTopPrint,solid:p.wardrobe?.fabricSolids?.top
   });
   for(const [channel,material] of fabricChannels){
    const authored=channel==='head'?null:
