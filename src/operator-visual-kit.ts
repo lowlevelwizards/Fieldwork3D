@@ -118,8 +118,9 @@ export function createOperatorVisualKit(
  const wardrobeBody=createWardrobeBodyLayers(chest,legs,arms,
   cloth,trousers,trim,dark);
  const fieldBlouses=createFieldBlousePrototypes(chest,arms,cloth,trim);
- const fieldTrousers=createFieldTrouserPrototypes(legs,trousers,trim);
  const newUpper=createNewUpperGarments(chest,arms,cloth,trim);
+ const fieldTrousers=createFieldTrouserPrototypes(legs,trousers,trim,
+  newUpper.mountainLegCanvas,newUpper.mountainLegPanel);
  // Retire the old shared cuboid jacket and light-shirt meshes altogether.
  // Keep empty grouping handles for existing rig consumers and silhouette
  // diagnostics; only the authored BDU and ACU shells have visible geometry.
