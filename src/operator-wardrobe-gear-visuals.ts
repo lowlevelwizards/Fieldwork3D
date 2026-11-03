@@ -6,7 +6,8 @@ import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {wardrobeItemsForSlot} from './operator-wardrobe-data.ts';
 import {createArmorSilhouettes,createChestRigSilhouettes,
- updateAdaptiveArmorFit} from './operator-armor-rig-silhouettes.ts';
+ updateAdaptiveArmorFit,updateFittedRigHarness}
+ from './operator-armor-rig-silhouettes.ts';
 import {armorAttachmentFrame} from './operator-armor-attachment-frame.ts';
 type StyleGroups=Record<string,THREE.Group>;
 export type WardrobeGearLayers={
@@ -96,6 +97,9 @@ export function updateWardrobeGearLayers(v:WardrobeGearLayers,
   group.position.y=0;
   group.position.z=0;
  }
+ // Harness straps remain distinct from pouch geometry and reach ABOVE the
+ // selected uniform shoulder cap, including BDU collar and bulky Gorka hood.
+ updateFittedRigHarness(v.rig,rig,top,exterior);
  // Placards can use a minimal standalone harness when no external carrier
  // provides attachment loops; never leave an unsupported slab floating.
  const placard=v.rig['chest-placard'];
