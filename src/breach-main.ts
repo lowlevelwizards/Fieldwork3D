@@ -197,6 +197,18 @@ const ui={
 for(const key of ['back','undo','redo','moreOrders','siteSettingsToggle','cancelTarget'] as const){
   decorateIconButton(ui[key],key);
 }
+// Match the approved art across the stationary tools and replay strip.
+for(const [key,glyph] of [
+  ['wait','wait'],['reload','reload'],['flash','flash'],
+  ['stance','crouch'],['briefingToggle','briefing'],
+  ['cameraFit','fitView'],['restart','restart'],
+  ['watchReplay','watchReplay'],['clear','clearPlan'],
+  ['replayMore','settings']
+] as const)decorateIconButton(ui[key],glyph);
+for(const [key,glyph] of [
+  ['replayPrevEvent','previousEvent'],['replayBack','rewind'],
+  ['replayForward','fastForward'],['replayNextEvent','nextEvent']
+] as const)ui[key].replaceChildren(tacticalIcon(glyph));
 const randomSiteSeed=()=>{
   const bytes=new Uint32Array(1);
   if(typeof crypto!=='undefined'&&crypto.getRandomValues)crypto.getRandomValues(bytes);
@@ -1508,10 +1520,8 @@ const handleContextAction=(event:MouseEvent)=>{
     case 'ctxOpen':
     case 'ctxClose':
     case 'ctxKick':
-    case 'ctxHold':
       if(door&&!doorAtNode(state,selected,door.id,
-        action==='ctxOpen'?'open':action==='ctxClose'?'close':
-        action==='ctxKick'?'kick':'hold',
+        action==='ctxOpen'?'open':action==='ctxClose'?'close':'kick',
         node&&distance(node.p,doorCenter(door))<=43?node.id:undefined))
         state.events.push('DOOR NOT REACHABLE FROM THAT POINT');
       doorFocusId=null;doorMenuDismissedId=door?.id??null;break;
@@ -1767,7 +1777,10 @@ function updateHud(){
     candidates.sort((a,b)=>b.clearance-a.clearance);
     canvas.dataset.auditRoutePoints=JSON.stringify(candidates.slice(0,40));
   }
-  ui.stance.textContent=active?.posture==='crouch'?'STAND':'CROUCH';
+  const stanceLabel=active?.posture==='crouch'?'STAND':'CROUCH';
+  if(ui.stance.textContent!==stanceLabel)
+    ui.stance.replaceChildren(tacticalIcon(stanceLabel==='STAND'?'stand':'crouch'),
+      document.createTextNode(stanceLabel));
   ui.stance.setAttribute('aria-pressed',String(active?.posture==='crouch'));
   ui.contact.setAttribute('aria-pressed',String(active?.haltOnContact));
   ui.variant.textContent='NEW SITE';
@@ -1786,7 +1799,9 @@ function updateHud(){
     'Applies to your next new site; current mission stays unchanged';
   ui.siteSize.textContent='NEXT SITE SIZE · '+requestedSiteScale.toUpperCase();
   ui.siteSize.disabled=campaignMode==='mission'||replaying;
-  ui.flash.textContent='FLASH ×'+state.flashRemaining;
+  const flashLabel='FLASH ×'+state.flashRemaining;
+  if(ui.flash.textContent!==flashLabel)
+    ui.flash.replaceChildren(tacticalIcon('flash'),document.createTextNode(flashLabel));
   const activeTargetMode=state.phase!=='planning'||replaying?'':looking?
     lookMode.toUpperCase():flashMode?'FLASH':firePlacement?
     firePlacement.toUpperCase():'';
@@ -2764,7 +2779,7 @@ function updateReplayHud(){
   ui.replaySeek.setAttribute('aria-valuetext',
     clockText(replayTime)+' of '+clockText(recorder.duration));
   ui.replayPlay.dataset.caption=replayPlaying?'PAUSE':'PLAY';
-  const playbackIcon=replayPlaying?'pause':'go';
+  const playbackIcon=replayPlaying?'pause':'replayPlay';
   if(ui.replayPlay.dataset.mode!==playbackIcon){
     ui.replayPlay.dataset.mode=playbackIcon;
     ui.replayPlay.replaceChildren(tacticalIcon(playbackIcon));
