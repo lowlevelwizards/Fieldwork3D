@@ -18,6 +18,9 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Focused armor / chest-rig silhouette, kit truth and mount regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/armor-rig-') }}
+        run: node --experimental-strip-types --test tests/operator-armor-rig-release-a.test.mjs
       - name: Focused garment metric UVs, cuff/hem state and independent materials
         if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feat/garment-readability-') || startsWith(github.head_ref, 'feat/wardrobe-cuff-roll-elbow-') || startsWith(github.head_ref, 'feat/wardrobe-auto-knit-fold-')) }}
         run: node --experimental-strip-types --test tests/operator-garment-readability-20261103.test.mjs
