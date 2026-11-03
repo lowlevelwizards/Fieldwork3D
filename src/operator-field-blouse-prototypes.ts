@@ -135,9 +135,15 @@ function sleeve(parent:THREE.Group,cloth:THREE.Material,
 }
 function seamBand(parent:THREE.Group,cloth:THREE.Material,
  radius:number,y:number,height:number){
- // Open cylindrical band makes a distinctive cuff without hiding fingers.
- const mesh=new THREE.Mesh(
-  new THREE.CylinderGeometry(radius,radius,height,10,1,true),cloth);
+ // Real cylindrical fold with physical fabric density. The original pixel
+ // atlas must not stretch to fill the entire cuff circumference.
+ const geometry=new THREE.CylinderGeometry(radius,radius,height,10,1,true);
+ const uv=geometry.getAttribute('uv') as THREE.BufferAttribute;
+ for(let i=0;i<uv.count;i++)
+  uv.setXY(i,uv.getX(i)*2*Math.PI*radius/TILE_WORLD_SIZE,
+   uv.getY(i)*height*10/TILE_WORLD_SIZE);
+ uv.needsUpdate=true;
+ const mesh=new THREE.Mesh(geometry,cloth);
  mesh.position.y=y;mesh.castShadow=true;mesh.receiveShadow=true;
  parent.add(mesh);return mesh;
 }
