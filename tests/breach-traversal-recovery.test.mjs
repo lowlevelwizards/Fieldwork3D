@@ -5,6 +5,9 @@ import {newSession,planMove,team,toggling,stepSession}
 import {COVER,activateSite,passable}
  from '../src/breach-core.ts';
 import {snapshot,applyReplayFrame} from '../src/breach-replay.ts';
+import {autoShoveLightCover} from '../src/breach-movable-cover.ts';
+import {traversalSurface} from '../src/breach-traversal-surfaces.ts';
+import {coverHeight} from '../src/breach-cover-height.ts';
 const site={
  seed:651,name:'TRAVERSAL RECOVERY LAB',layout:'corridor',training:true,
  rooms:[],roomCount:0,
@@ -73,4 +76,37 @@ test('replay retains the reverse flag and owns its own actor state',()=>{
   applyReplayFrame(s,frame);
   assert.equal(a.traversalRetreating,true);
  }finally{activateSite(null);}
+});
+
+test('unshoveable loose chair topples physically, then becomes foot-passable debris',()=>{
+ const o={x:200,y:190,w:24,h:24,fixture:'chair',low:true};
+ const cover=[o];
+ const barriers=[
+  {a:{x:212,y:150},b:{x:212,y:235}},
+  {a:{x:158,y:178},b:{x:240,y:178}},
+  {a:{x:158,y:202},b:{x:240,y:202}}
+ ];
+ const index=autoShoveLightCover(cover,{x:180,y:190},
+   {x:183,y:190},barriers,[],[]);
+ assert.equal(index,0);
+ assert.equal(cover[0].toppled,true);
+ assert.equal(cover[0].x,200,'topple must not teleport the fixture');
+ assert.equal(traversalSurface(cover[0]),'step-over');
+ assert.equal(coverHeight(cover[0]),7);
+ const saved=[...COVER];
+ try{
+  COVER.splice(0,COVER.length,...cover);
+  assert.ok(passable({x:200,y:190}),
+   'authoritative movement must recognize the fallen object');
+ }finally{COVER.splice(0,COVER.length,...saved);}
+});
+test('a solid refrigerator or window sill never topples as a navigation shortcut',()=>{
+ for(const fixture of ['fridge','window-sill','glass-barrier']){
+  const c={x:200,y:190,w:24,h:24,fixture,low:true};
+  const cover=[c];
+  assert.equal(autoShoveLightCover(cover,{x:180,y:190},
+     {x:183,y:190},[],[],[]),null);
+  assert.equal(cover[0].toppled,undefined);
+  assert.notEqual(traversalSurface({...c,toppled:true}),'step-over');
+ }
 });
