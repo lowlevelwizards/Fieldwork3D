@@ -219,3 +219,57 @@ export function glideAlongStaticWall(from:Pt,intended:Pt,
  }
  return best;
 }
+
+/** A generated corner, small numerical drift or a previous body resolution
+ * can leave an operator a fraction INSIDE static wall clearance. Ordinary
+ * swept checks then reject even an outward step forever. Search one tiny
+ * physical release along wall normals (with swept samples), never deeper
+ * through the wall, a door leaf, or a solid prop.
+ */
+export function releaseStaticWallOverlap(from:Pt,goal:Pt,
+ doors:Door[],maxStep=1.3):Pt|null{
+ const r=OPERATOR_RADIUS+1;
+ const overlaps=WALLS.filter(w=>pointToSegment(from,w)<r-.01);
+ if(!overlaps.length)return null;
+ const step=Math.max(.15,Math.min(1.4,maxStep));
+ const aim=Math.atan2(goal.y-from.y,goal.x-from.x);
+ const headings=[aim,...overlaps.flatMap(w=>{
+   const dx=w.b.x-w.a.x,dy=w.b.y-w.a.y;
+   const length=Math.hypot(dx,dy)||1;
+   return [Math.atan2(dx,-dy),Math.atan2(-dx,dy)];
+ }),...Array.from({length:12},(_,i)=>i*Math.PI/6)];
+ let best:Pt|null=null,bestScore=-Infinity;
+ for(const heading of headings){
+   const candidate={x:from.x+Math.cos(heading)*step,
+     y:from.y+Math.sin(heading)*step};
+   let valid=true;
+   for(let i=1;i<=4;i++){
+     const t=i/4,at={x:from.x+(candidate.x-from.x)*t,
+       y:from.y+(candidate.y-from.y)*t};
+     // Near-zero-radius check maintains bounds and furniture identity.
+     if(!passable(at,0)){valid=false;break;}
+     // Check furniture at the same full operator radius.
+     // A temporarily overlapping wall must never grant cover ghosting.
+     const coverBlocked=!(WALLS.every(w=>
+       overlaps.includes(w)||
+       pointToSegment(at,w)>=r-.001));
+     if(coverBlocked){valid=false;break;}
+     for(const wall of overlaps){
+       const before=pointToSegment(from,wall);
+       if(pointToSegment(at,wall)<before+.02*t){valid=false;break;}
+     }
+     if(!valid)break;
+     if(doors.some(door=>leafGap(at,door)<r)){valid=false;break;}
+   }
+   if(!valid)continue;
+   const gains=overlaps.map(w=>
+     pointToSegment(candidate,w)-pointToSegment(from,w));
+   if(gains.some(g=>g<.08))continue;
+   const toward=(candidate.x-from.x)*(goal.x-from.x)+
+     (candidate.y-from.y)*(goal.y-from.y);
+   const score=Math.min(...gains)*10+
+     toward/(Math.max(1,distance(from,goal))*step);
+   if(score>bestScore){bestScore=score;best=candidate;}
+ }
+ return best;
+}
