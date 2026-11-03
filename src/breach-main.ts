@@ -85,8 +85,8 @@ import {createWardrobeFabricCamoPicker} from './operator-fabric-camo-picker.ts';
 import './operator-fabric-camo-picker.css';
 import {WARDROBE_ACCESSORY_SLOTS,WARDROBE_ACCESSORY_OPTIONS}
  from './operator-wardrobe-accessories.ts';
-import {readWardrobe,resolvedWardrobe,setWardrobeStyle,setWardrobePattern,
- wardrobeItemsForSlot,WARDROBE_SLOTS,WARDROBE_PATTERNS}
+import {readWardrobe,resolvedWardrobe,setWardrobeStyle,
+ wardrobeItemsForSlot,WARDROBE_SLOTS}
  from './operator-wardrobe-data.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {exportCampaign,importCampaign} from './campaign-persistence.ts';
@@ -661,29 +661,6 @@ function renderOperationsBoard(){
    }));
   wardrobeEditor.append(createWardrobeFabricCamoPicker(member.loadout,
    currentWardrobe,writeCosmetics,quickFabricPickerState));
-  const patterns=document.createElement('details');
-  const patternTitle=document.createElement('summary');
-  patternTitle.textContent='FABRIC / CAMOUFLAGE';
-  patterns.append(patternTitle);
-  for(const channel of ['top','trousers','armor','gear','pack','head'] as const){
-   const row=document.createElement('label');
-   row.style.cssText='display:flex;justify-content:space-between;gap:8px;margin:7px 0';
-   const label=document.createElement('span');
-   label.textContent=channel.toUpperCase();
-   const picker=document.createElement('select');
-   picker.style.cssText='max-width:65%;min-height:40px;background:#243530;color:#e5e9d8';
-   for(const pattern of WARDROBE_PATTERNS){
-    const option=document.createElement('option');
-    option.value=pattern;option.textContent=pattern.replaceAll('-',' ');
-    picker.append(option);
-   }
-   picker.value=currentWardrobe.patterns[channel]??'solid';
-   picker.addEventListener('change',()=>writeCosmetics(
-    setWardrobePattern(currentWardrobe,channel,
-     picker.value as typeof WARDROBE_PATTERNS[number])));
-   row.append(label,picker);patterns.append(row);
-  }
-  wardrobeEditor.append(patterns);
   const randomize=document.createElement('button');
   randomize.type='button';randomize.textContent='RANDOMIZE FACE / LOOK';
   randomize.setAttribute('aria-label','Choose another appearance for '+member.callsign);
