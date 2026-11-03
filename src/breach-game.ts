@@ -70,6 +70,10 @@ import {bodyClear,sweptBodyClear,squeezeFacing,
   from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
   from './breach-squeeze-route.ts';
+import {probeObstacleCrossing,probeWindowCrossing,
+  preferTraversal,sampleTraversal,
+  traversalStepClear,type TraverseOpportunity}
+  from './breach-mantle.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import {kitMedicalSupplies,spendMedicalSupply,transferMedicalSupply,
@@ -142,6 +146,10 @@ export type TeamActor=Operator & {
   lastAutoShoveAt:number;
   /** Motor-authoritative traversal state. The normal body never shrinks. */
   squeeze:boolean;squeezeYaw:number;squeezeTime:number;
+  /** Transit is transient motor intent, not an authored waypoint. */
+  traversalPending:TraverseOpportunity|null;
+  traversal:TraverseOpportunity|null;traversalElapsed:number;
+  traversalElevation:number;lastTraversalAt:number;
   lastBlocker:Blocker;
   /** Last executed facing command; survives across movement waypoints. */
   aimInstruction:AimInstruction|null;
@@ -248,6 +256,8 @@ const withActions=(a:Operator):TeamActor=>({
   recoveryAttempts:0,retryRouteAt:0,routeGoalKey:'',
   lastAutoShoveAt:-100,
   squeeze:false,squeezeYaw:a.heading,squeezeTime:0,
+  traversalPending:null,traversal:null,traversalElapsed:0,
+  traversalElevation:0,lastTraversalAt:-100,
   lastBlocker:'clear',
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
   lastHitRegion:'torso',lastHitYaw:0,lastHitSeverity:0,
@@ -397,6 +407,29 @@ export const enemies=(s:Session)=>s.operators.filter(a=>a.side==='red');
 export const actor=(s:Session,id:string)=>s.operators.find(a=>a.id===id);
 const party=(s:Session,id:string)=>team(s).find(a=>a.id===id&&a.health>0);
 export const canEdit=(s:Session)=>s.phase==='planning';
+/** Plan authoring can see only briefed/discovered surfaces. World-truth
+ * validation runs again at execution; hidden furniture isn't exposed by
+ * an unexplained path preview or a shortcut through a closed window.
+ */
+function knownTraversal(s:Session,from:Pt,to:Pt):boolean{
+ const visible=s.coverState.filter((_,i)=>s.intel.cover.has(i));
+ const world={
+   cover:visible,walls:WALLS.filter((_,i)=>s.intel.walls.has(i)),
+   doors:s.doors.filter(door=>doorKnown(s.intel,door.id)),
+   windows:s.windows.filter(w=>s.intel.cover.has(s.coverState.findIndex(o=>
+      (o.fixture==='window-sill'||o.fixture==='glass-barrier')&&
+      Math.hypot(o.x-w.x,o.y-w.y)<1))),
+   canStand:(at:Pt)=>intelPassable(at,s.intel)
+ };
+ return !!(probeObstacleCrossing(from,to,world)||
+   probeWindowCrossing(from,to,world));
+}
+const legalMoveRoute=(s:Session,from:Pt,to:Pt):Pt[]=>{
+ const ordinary=routeWithSqueezeIntel(s.intel,from,to);
+ return ordinary.length?ordinary:
+   knownTraversal(s,from,to)?[to]:[];
+};
+
 export const finalPoint=(a:TeamActor)=>lastPoint(a.p,a.plan);
 function pathFor(a:TeamActor){
   const points:Pt[]=[];let from=a.p;
@@ -424,7 +457,7 @@ export function addNode(s:Session,id:string,kind:PlanKind,p:Pt,
   extra:Partial<PlanNode>={}):boolean{
   const a=party(s,id);if(!a||!canEdit(s))return false;
   if(kind==='move'&&!intelPassable(p,s.intel,SQUEEZE_RADIUS))return false;
-  if(kind==='move'&&!routeWithSqueezeIntel(s.intel,finalPoint(a),p).length)return false;
+  if(kind==='move'&&!legalMoveRoute(s,finalPoint(a),p).length)return false;
   if(kind==='door'&&(!passable(p)||!route(finalPoint(a),p).length))return false;
   return edit(s,a,()=>{
     a.plan.push({id:s.nextId++,kind,p:clone(p),...extra});
@@ -459,7 +492,7 @@ export function planMove(s:Session,id:string,p:Pt,strafe=false){
     facing:[...a.plan].reverse().find(n=>n.facing!==undefined)?.facing??a.heading}:{};
   const target=projectReachableGoal(finalPoint(a),p,{
     canStand:at=>intelPassable(at,s.intel,SQUEEZE_RADIUS),
-    routeTo:(from,to)=>routeWithSqueezeIntel(s.intel,from,to),
+    routeTo:(from,to)=>legalMoveRoute(s,from,to),
   });
   if(!target)return false;
   if(target.adjusted)notify(s,'POSITION ADJUSTED TO WALKABLE GROUND');
@@ -478,7 +511,7 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
     const point=stroke[i],last=i===stroke.length-1;
     if(d(from,point)<(last?3:20)||
       !intelPassable(point,s.intel,SQUEEZE_RADIUS)||
-      !routeWithSqueezeIntel(s.intel,from,point).length)continue;
+      !legalMoveRoute(s,from,point).length)continue;
     proposed.push({id:s.nextId+proposed.length,kind:'move',p:clone(point),
       ...(strafe?{moveMode:'strafe' as const,facing}:{})});
     from=point;
@@ -1373,7 +1406,90 @@ function observe(s:Session){
     }
   }
 }
+const traversalWorld=(s:Session,a:TeamActor)=>({
+ cover:s.coverState,walls:WALLS,doors:s.doors,windows:s.windows,
+ // A teammate in the air already owns their landing. The next member of
+ // the stack may approach, but must not launch into that reserved spot.
+ actors:s.operators.filter(other=>other!==a&&other.health>0)
+   .flatMap(o=>[o.p,...(o.traversal?[o.traversal.landing]:
+     o.traversalPending?[o.traversalPending.landing]:[])]),
+ canStand:(p:Pt)=>passable(p)
+});
+const traversalFitness=(a:TeamActor)=>({
+ pace:a.pace,injury:Math.min(3,Math.max(0,a.injuryStage)) as 0|1|2|3,
+ loadFactor:1/Math.max(.55,a.loadMovementScale??1)
+});
+/** This is a transient motor decision; it does not alter an authored order.
+ * Only a known, individually climbable obstacle can win over a longer walk.
+ */
+function desiredTraverse(s:Session,a:TeamActor,goal:Pt){
+ const world=traversalWorld(s,a);
+ const fit=traversalFitness(a);
+ const op=probeObstacleCrossing(a.p,goal,world,fit)||
+   probeWindowCrossing(a.p,goal,world,fit);
+ if(!op||!s.intel.cover.has(op.obstacleIndex))return null;
+ const ordinary=routeWithSqueezeIntel(s.intel,a.p,goal);
+ if(!preferTraversal(a.p,goal,op,ordinary))return null;
+ const approachPath=routeWithSqueezeWorld(a.p,op.approach,s.doors);
+ return approachPath.length?{op,approachPath}:null;
+}
+function tickTraversal(a:TeamActor,s:Session,dt:number):boolean{
+ const op=a.traversal;
+ if(!op)return false;
+ if(a.traversalElapsed>=op.duration){
+   // The final full-body landing was committed on the preceding tick.
+   a.traversal=null;a.traversalElevation=0;a.nav=[];
+   a.retryRouteAt=0;a.blockedTime=0;return true;
+ }
+ const frame=sampleTraversal(op,Math.min(op.duration,
+   a.traversalElapsed+dt));
+ if(!traversalStepClear(a.p,frame.p,op,traversalWorld(s,a))){
+   a.velocity=0;a.blockedTime+=dt;
+   a.lastBlocker='furniture';
+   // Do not advance the trajectory into changing geometry. A moving prop
+   // or closed door can clear; the same verified crossing can then resume.
+   return true;
+ }
+ const old=clone(a.p);a.priorP=old;
+ a.p=clone(frame.p);a.traversalElapsed=Math.min(op.duration,
+   a.traversalElapsed+dt);a.traversalElevation=frame.elevation;
+ a.velocity=d(old,a.p)/Math.max(dt,.0001);
+ a.blockedTime=0;a.lastBlocker='clear';a.squeeze=false;
+ // The weapon follows the actor during a vault, not a separate aim order.
+ a.heading=angle(op.approach,op.landing);
+ return true;
+}
 function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
+  // The simulation frame, not rendering, advances and validates traversal.
+  if(tickTraversal(a,s,dt))return true;
+  if(a.traversalPending&&d(a.p,a.traversalPending.approach)<3.3){
+    const planned=a.traversalPending;
+    const world=traversalWorld(s,a),fit=traversalFitness(a);
+    const validated=probeObstacleCrossing(a.p,p,world,fit)||
+      probeWindowCrossing(a.p,p,world,fit);
+    if(validated&&validated.obstacleIndex===planned.obstacleIndex&&
+       d(validated.landing,planned.landing)<5&&
+       d(validated.approach,a.p)<4){
+      a.traversal={...validated,approach:clone(a.p)};
+      a.traversalElapsed=0;a.traversalElevation=0;
+      a.traversalPending=null;a.nav=[];a.velocity=0;
+      a.blockedTime=0;a.lastTraversalAt=s.seconds;
+      return true;
+    }
+    a.traversalPending=null;a.nav=[];a.lastTraversalAt=s.seconds;
+    a.retryRouteAt=s.seconds+.30;
+    return true;
+  }
+  if(!a.nav.length&&!a.traversalPending&&a.side==='blue'&&
+     a.plan[0]?.kind==='move'&&
+     s.seconds-a.lastTraversalAt>.55){
+    const candidate=desiredTraverse(s,a,p);
+    if(candidate){
+      a.traversalPending=candidate.op;
+      a.nav=candidate.approachPath;
+      a.retryRouteAt=0;a.recoveryAttempts=0;
+    }
+  }
   const goalKey=Math.round(p.x*2)+':'+Math.round(p.y*2);
   if(a.routeGoalKey!==goalKey){
     a.routeGoalKey=goalKey;a.retryRouteAt=0;a.recoveryAttempts=0;
@@ -1692,6 +1808,9 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   // Player-authored positions are sacred. Traffic steering only moves the
   // actor who requested movement, never a stationary friend or held stack.
   const n=a.plan[0];
+  // An airborne crossing must reach a verified landing before combat pause,
+  // waypoint completion, or fresh orders can resume.
+  if(a.traversal){tickTraversal(a,s,dt);return;}
   // A confirmed visible threat can temporarily interrupt authored attention.
   // This is reactive execution only; it never modifies the player's plan.
   const visibleThreat=enemies(s).filter(e=>e.health>0&&inSight(a,e,s))
@@ -1901,6 +2020,12 @@ function runOrders(s:Session,a:TeamActor,dt:number){
         a.name+' PUSHED '+(o.fixture??'OBJECT'):
         a.name+' OBJECT OBSTRUCTED');
     }else if(kind==='window'){
+      // A pane cannot swing shut through somebody currently occupying the
+      // opening. Preserve this CLOSE order until their landing completes.
+      if(n.interaction==='close-window'&&s.operators.some(o=>o.health>0&&
+         o.traversal?.windowId===id)){
+        a.velocity=0;a.actionTimer=0;return;
+      }
       const window=s.windows.find(w=>w.id===id);
       if(window&&d(a.p,{x:window.x,y:window.y})<54&&
          manipulateWindow(window,n.interaction==='open-window'?'open':'close')){
@@ -2661,6 +2786,10 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(a.plan[0]?.kind==='treat'||a.treatmentActive){
     a.aim=Math.max(0,a.aim-dt*3);return;
   }
+  // Hands are supporting a vault or window climb. Suppress firing until
+  // the verified landing; otherwise muzzle traces would originate at floor
+  // height while the body is airborne.
+  if(a.traversal){a.aim=Math.max(0,a.aim-dt*3);return;}
   // Shoulder-first passage keeps the long weapon tucked until clear.
   if(a.squeeze){a.aim=Math.max(0,a.aim-dt*2);return;}
   // Sprinting is a traversal decision, not free accurate fire on the move.
@@ -3228,14 +3357,23 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     carried:!!a.carriedById}));
   const decisions=resolveMovementFrame(proposals,p=>{
     const a=s.operators.find(unit=>unit.id===p.id)!;
-    return a.squeeze?sweptProfileClear(p.from,p.to,s.doors,
-      a.squeezeYaw,'squeeze'):sweptBodyClear(p.from,p.to,s.doors);
+    return a.traversal?
+      traversalStepClear(p.from,p.to,a.traversal,traversalWorld(s,a)):
+      a.squeeze?sweptProfileClear(p.from,p.to,s.doors,
+        a.squeezeYaw,'squeeze'):sweptBodyClear(p.from,p.to,s.doors);
   });
   for(const decision of decisions){
     if(!decision.blocked)continue;
     const a=s.operators.find(unit=>unit.id===decision.id)!;
     a.p=clone(decision.point);
     a.priorP=clone(decision.point);a.velocity=0;
+    if(a.traversal){
+      // Motion authority may reject a tick because of an opposing actor.
+      // Roll back its motor clock too; never "jump" the rejected frame.
+      a.traversalElapsed=Math.max(0,a.traversalElapsed-h);
+      a.traversalElevation=sampleTraversal(a.traversal,
+        a.traversalElapsed).elevation;
+    }
     a.blockedTime+=h;a.lastBlocker=decision.blocked==='actor'?'actor':'route';
   }
   for(const a of s.operators)a.stride+=d(a.p,a.priorP);

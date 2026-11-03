@@ -1716,7 +1716,10 @@ export class TacticalScene3D{
       if(!object.root.visible)continue;
       // Presentation samples do not alter authoritative collision or shot state.
       const drawActor=interpolatedActor(actor,renderFrame);
-      object.root.position.set(drawActor.x,0,drawActor.z);
+      // Airborne body is a fixed-tick simulation outcome. Keep the 3D
+      // miniature at its authored horizontal position, lifted only by the
+      // recorded traversal arc (never by render-time speculative physics).
+      object.root.position.set(drawActor.x,actor.traversalElevation,drawActor.z);
       // Build 120: the pose solver is the only writer of actor anatomical,
       // firearm and hit-reaction transforms; the scene owns world placement.
       const downProgress=actor.health<=0?
@@ -1796,7 +1799,10 @@ export class TacticalScene3D{
        carryPlacementLedger(actor.equipment,actor.spareMagazines):[];
       poseOperator(object.physical,{
         x:drawActor.x,z:drawActor.z,heading:drawActor.heading,
-        velocity:actor.velocity,seconds:poseSeconds,stride:actor.stride,
+        velocity:actor.traversal?0:actor.velocity,
+        seconds:poseSeconds,stride:actor.traversal?0:actor.stride,
+        traversalProgress:actor.traversal?
+          actor.traversalElapsed/Math.max(.001,actor.traversal.duration):0,
         appearanceSeed:actor.appearanceSeed,
         equipment:actor.equipment,wardrobe:actor.wardrobe,
         magazineCarryLocations:carried.filter(p=>p.kind==='magazine').map(p=>p.location),
@@ -1811,7 +1817,7 @@ export class TacticalScene3D{
         flashCharges:actor.flashCharges,
         // A path collision may leave residual motor velocity while position
         // is stationary: feet should brace, not march in place.
-        blocked:actor.blockedTime>.14&&
+        blocked:!actor.traversal&&actor.blockedTime>.14&&
           (actor.nav.length>0||actor.plan.some(n=>
             n.kind==='move'||n.kind==='door'||n.kind==='pie')),
         // Moving teammates are not static terrain. They may influence
@@ -1842,7 +1848,8 @@ export class TacticalScene3D{
         doorMethod:actor.lastDoorMethod,
         doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
         down:actor.health<=0,surrender:actor.surrendered,
-        aiming:actor.aim>.20,turning:actor.turning,firing:!!firing,
+        aiming:!actor.traversal&&actor.aim>.20,
+        turning:actor.turning,firing:!!firing&&!actor.traversal,
         aimBlend:actor.aim,recoil:actor.recoil*6,
         shotHeading:drawActor.weaponYaw,hitAge,hitFade,downProgress,
         handlingIntent:actor.squeeze?'squeeze':

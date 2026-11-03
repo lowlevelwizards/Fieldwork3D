@@ -9,6 +9,7 @@ import type {BattleEvent} from './breach-combat.ts';
 import {copyMedicalCondition,newMedicalCondition} from './breach-medical-wounds.ts';
 import {normalizedMedicalSupplies,kitMedicalSupplies} from './equipment-medical-supplies.ts';
 import {ReplayMotionRecorder,type ReplayPresentation} from './breach-replay-motion.ts';
+import type {TraverseOpportunity} from './breach-mantle.ts';
 
 export type ActorFrame=Pick<TeamActor,
   'id'|'p'|'heading'|'health'|'velocity'|'turning'|'posture'|'pace'|'alert'|
@@ -23,7 +24,8 @@ export type ActorFrame=Pick<TeamActor,
   'medical'|'medicalSupplies'|'weapon'|'weaponConfiguration'|'weaponLightOn'|'injuryStage'|'armorIntegrity'|'helmetIntegrity'|'flashCharges'|'morale'|'surrendered'|'defense'|'watch'|'aimInstruction'|
   'lastThrowAt'|'lastDoorAt'|'lastDoorId'|'lastDoorMethod'|'stride'|
   'weaponYaw'|'stability'|'recoil'|'lastShotAt'|'fireMode'|'burstCount'|'skills'|
-  'squeeze'|'squeezeYaw'|'squeezeTime'>;
+  'squeeze'|'squeezeYaw'|'squeezeTime'|
+  'traversal'|'traversalElapsed'|'traversalElevation'>;
 export type ReplayActorFrame=ActorFrame & {
  travelYaw?:number;intentKind?:string;awarenessCount?:number;
 };
@@ -42,6 +44,9 @@ export type ReplayFrame={
   known:[string,{p:Pt;at:number;status:'seen'|'heard'}][];
 };
 const position=(p:Pt):Pt=>({x:p.x,y:p.y});
+const traversalCopy=(op:TraverseOpportunity|null):TraverseOpportunity|null=>
+ op?{...op,from:position(op.from),approach:position(op.approach),
+    landing:position(op.landing),destination:position(op.destination)}:null;
 const shotCopy=(shot:ShotEvent):ShotEvent=>({...shot,
   start:position(shot.start),end:position(shot.end)});
 export function snapshot(s:Session,seenGround?:string[]):ReplayFrame{
@@ -50,6 +55,9 @@ export function snapshot(s:Session,seenGround?:string[]):ReplayFrame{
     actors:s.operators.map(a=>({id:a.id,p:position(a.p),
       heading:a.heading,health:a.health,velocity:a.velocity,
       squeeze:a.squeeze,squeezeYaw:a.squeezeYaw,squeezeTime:a.squeezeTime,
+      traversal:traversalCopy(a.traversal),
+      traversalElapsed:a.traversalElapsed,
+      traversalElevation:a.traversalElevation,
       turning:a.turning,posture:a.posture,pace:a.pace,alert:a.alert,
       magazine:a.magazine,reserve:a.reserve,reload:a.reload,
       insertedMagazineId:a.insertedMagazineId,
@@ -187,7 +195,15 @@ export class MissionRecorder{
         reload:mix(a.reload,b.reload,alpha),
         recoil:mix(a.recoil,b.recoil,alpha),
         stability:mix(a.stability,b.stability,alpha),
-        stride:mix(a.stride,b.stride,alpha)};
+        stride:mix(a.stride,b.stride,alpha),
+        traversalElevation:a.traversal&&b.traversal&&
+          a.traversal.obstacleIndex===b.traversal.obstacleIndex?
+          mix(a.traversalElevation,b.traversalElevation,alpha):
+          a.traversalElevation,
+        traversalElapsed:a.traversal&&b.traversal&&
+          a.traversal.obstacleIndex===b.traversal.obstacleIndex?
+          mix(a.traversalElapsed,b.traversalElapsed,alpha):
+          a.traversalElapsed};
     });
     const presentation=this.motion.presentation(t,actors.map(a=>a.id));
     for(const actor of actors)
@@ -216,6 +232,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   for(const copy of f.actors){
     const a=s.operators.find(actor=>actor.id===copy.id);
     if(a)Object.assign(a,copy,{p:position(copy.p),
+      traversal:traversalCopy(copy.traversal),traversalPending:null,
       aimInstruction:copy.aimInstruction?{...copy.aimInstruction,
         point:copy.aimInstruction.point?position(copy.aimInstruction.point):undefined}:null,
       spareMagazines:copy.spareMagazines.map(m=>({...m})),
