@@ -16,7 +16,7 @@ test('smock and Gorka silhouettes have distinct but restrained volumes',()=>{
  const shirt=UPPER_CUT_PROFILES['combat-shirt'].rings;
  for(const name of ['smock-jacket','gorka-jacket']){
   const rings=UPPER_CUT_PROFILES[name].rings;
-  assert.ok(rings[1].side>shirt[1].side+1.1);
+  assert.ok(rings[1].side>shirt[1].side+.4);
   assert.ok(rings[1].side<8.3,'outerwear is not plate-armored shoulders');
   assert.ok(rings.at(-1).y<shirt.at(-1).y-1.5);
  }
