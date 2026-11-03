@@ -526,11 +526,21 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.colors.set(additional.gorkaCuff,new THREE.Color(cuffHex));
   r.colors.set(r.visualKit.fieldBlouses['bdu-shirt'].cuffMaterial,
    new THREE.Color(cuffHex));
-  r.colors.set(additional.mountainCanvas,new THREE.Color(finish.gorkaBase));
-  r.colors.set(additional.mountainLegCanvas,new THREE.Color(finish.gorkaBase));
+  // The upper and lower Gorka pieces are separate clothing channels. In
+  // particular a jacket two-tone choice must never recolor the trousers.
   const selectedTop=p.wardrobe?.fabricCamo?.top;
   const hasAuthoredTop=!!selectedTop&&
-     fabricCamoCompatible(selectedTop,'top',clothing);
+    fabricCamoCompatible(selectedTop,'top',clothing);
+  const topSolid=p.wardrobe?.fabricSolids?.top;
+  const topBaseColor=hasAuthoredTop?0xffffff:
+    isGarmentSolidId(topSolid)?garmentSolidHex(topSolid):finish.gorkaBase;
+  r.colors.set(additional.mountainCanvas,new THREE.Color(topBaseColor));
+  const topCanvasMap=hasAuthoredTop?r.clothMaterial.map:
+    operatorPixelTextures.get('fabric');
+  if(additional.mountainCanvas.map!==topCanvasMap){
+   additional.mountainCanvas.map=topCanvasMap;
+   additional.mountainCanvas.needsUpdate=true;
+  }
   const panelMap=finish.specialty?
      gorkaSpecialtyTexture(finish.specialty):
      hasAuthoredTop?r.clothMaterial.map:operatorPixelTextures.get('fabric');
@@ -543,15 +553,23 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const selectedLeg=p.wardrobe?.fabricCamo?.trousers;
   const hasAuthoredLeg=!!selectedLeg&&
     fabricCamoCompatible(selectedLeg,'trousers',clothing);
-  const legMap=finish.specialty?
-    gorkaSpecialtyTexture(finish.specialty):
-    hasAuthoredLeg?r.trouserMaterial.map:operatorPixelTextures.get('fabric');
+  const legSolid=p.wardrobe?.fabricSolids?.trousers;
+  const legDefaults=garmentColorValues('gorka-jacket','standard');
+  const legBaseColor=hasAuthoredLeg?0xffffff:
+    isGarmentSolidId(legSolid)?garmentSolidHex(legSolid):legDefaults.gorkaBase;
+  r.colors.set(additional.mountainLegCanvas,new THREE.Color(legBaseColor));
+  const legMap=hasAuthoredLeg?r.trouserMaterial.map:operatorPixelTextures.get('fabric');
+  if(additional.mountainLegCanvas.map!==legMap){
+   additional.mountainLegCanvas.map=legMap;
+   additional.mountainLegCanvas.needsUpdate=true;
+  }
   if(additional.mountainLegPanel.map!==legMap){
    additional.mountainLegPanel.map=legMap;
    additional.mountainLegPanel.needsUpdate=true;
   }
   r.colors.set(additional.mountainLegPanel,new THREE.Color(
-    finish.specialty||hasAuthoredLeg?0xffffff:finish.gorkaPanel));
+    hasAuthoredLeg?0xffffff:
+     isGarmentSolidId(legSolid)?garmentSolidHex(legSolid):legDefaults.gorkaPanel));
   if(clothing.top==='smock-jacket'&&!hasAuthoredTop&&
      !p.wardrobe?.fabricSolids?.top)
     r.colors.set(r.clothMaterial,new THREE.Color(finish.smock));
