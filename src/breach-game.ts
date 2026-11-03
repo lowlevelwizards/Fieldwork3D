@@ -66,7 +66,7 @@ import {diagnoseMovement,projectReachableGoal,type Blocker}
   from './breach-nav-diagnostics.ts';
 import {bodyClear,sweptBodyClear,squeezeFacing,
   sweptProfileClear,SQUEEZE_RADIUS,escapeOpenDoorOverlap,
-  slideAroundStaticCorner}
+  slideAroundStaticCorner,glideAlongStaticWall}
   from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
   from './breach-squeeze-route.ts';
@@ -1670,6 +1670,22 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const sidewaysYaw=squeezeFacing(travelHeading);
   const narrowClear=sweptProfileClear(a.p,desiredMove,s.doors,
     sidewaysYaw,'squeeze');
+  // A grazing wall is not a narrow corridor. Glide the legal tangential
+  // component at the full body radius, even when the proposed step points
+  // slightly INTO the wall. Avoid rotating into a squeeze facing while
+  // simply walking parallel to a solid wall or reversing alongside it.
+  if(!normalClear&&!blocking&&!closed){
+    const glide=glideAlongStaticWall(a.p,desiredMove,s.doors);
+    if(glide){
+      a.priorP=clone(a.p);a.p=glide;
+      a.blockedTime=0;a.lastBlocker='clear';a.retryRouteAt=0;
+      a.recoveryAttempts=0;
+      if(a.squeeze&&bodyClear(a.p,s.doors)){
+        a.squeeze=false;a.squeezeTime=0;
+      }
+      return true;
+    }
+  }
   if(!normalClear&&narrowClear&&!a.squeeze){
     a.squeeze=true;a.squeezeYaw=sidewaysYaw;a.squeezeTime=0;
     a.velocity=0;
