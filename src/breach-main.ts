@@ -80,6 +80,7 @@ import {newCampaign,readCampaign,acceptContract,resolveOperation,
 import {loadMovementScale,equippedFlashCharges} from './equipment-loadouts.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {allocateFlashSupply} from './equipment-supply.ts';
+import {createHeadwearAppearancePicker} from './operator-headwear-picker.ts';
 import {WARDROBE_ACCESSORY_SLOTS,WARDROBE_ACCESSORY_OPTIONS}
  from './operator-wardrobe-accessories.ts';
 import {readWardrobe,resolvedWardrobe,setWardrobeStyle,setWardrobePattern,
@@ -472,6 +473,9 @@ weaponChooser.addEventListener('keydown',event=>{
 // One operator expanded at a time in the mobile preparation sheet.
 let expandedQuickOperator:string|null='rook';
 let expandedQuickKit:string|null=null;
+let expandedQuickWardrobe:string|null=null;
+let expandedQuickHeadwear:string|null=null;
+let expandedQuickHeadwearCamo:string|null=null;
 let expandedQuickWeapon:string|null=null;
 let quickWorkbench:WeaponWorkbenchPreview|null=null;
 let quickWorkbenchId:string|null=null;
@@ -548,6 +552,7 @@ function renderOperationsBoard(){
   look.type='button';look.textContent='EDIT APPEARANCE';
   look.setAttribute('aria-label','Open wardrobe for '+member.callsign);
   look.addEventListener('click',()=>{
+   expandedQuickKit=member.id;expandedQuickWardrobe=member.id;
    kit.open=true;wardrobeEditor.open=true;
    wardrobeEditor.scrollIntoView({block:'nearest',behavior:'smooth'});
   });
@@ -595,7 +600,11 @@ function renderOperationsBoard(){
    row.append(label,select);kit.append(row);
   }
   const wardrobeEditor=document.createElement('details');
-  wardrobeEditor.open=false;
+  wardrobeEditor.open=expandedQuickWardrobe===member.id;
+  wardrobeEditor.addEventListener('toggle',()=>{
+   if(wardrobeEditor.open)expandedQuickWardrobe=member.id;
+   else if(expandedQuickWardrobe===member.id)expandedQuickWardrobe=null;
+  });
   const wardrobeTitle=document.createElement('summary');
   wardrobeTitle.textContent='WARDROBE / COSMETIC APPEARANCE';
   wardrobeTitle.style.cssText='min-height:40px;cursor:pointer;padding:11px 0;font-weight:700';
@@ -606,7 +615,8 @@ function renderOperationsBoard(){
    if(state.phase!=='planning'||replaying)return;
    persistentRoster=setRosterWardrobe(persistentRoster,member.id,next);
    saveRoster();applyRosterIdentity(state,persistentRoster);
-   expandedQuickKit=member.id;renderOperationsBoard();updateHud();
+   expandedQuickKit=member.id;expandedQuickWardrobe=member.id;
+   renderOperationsBoard();updateHud();
   };
   for(const slot of WARDROBE_SLOTS){
    const row=document.createElement('label');
@@ -627,6 +637,13 @@ function renderOperationsBoard(){
     setWardrobeStyle(currentWardrobe,slot,select.value)));
    row.append(label,select);wardrobeEditor.append(row);
   }
+  wardrobeEditor.append(createHeadwearAppearancePicker(member.loadout,
+   currentWardrobe,writeCosmetics,{
+    expanded:expandedQuickHeadwear===member.id,
+    camoExpanded:expandedQuickHeadwearCamo===member.id,
+    onExpandedChange:open=>{expandedQuickHeadwear=open?member.id:null;},
+    onCamoExpandedChange:open=>{expandedQuickHeadwearCamo=open?member.id:null;}
+   }));
   const patterns=document.createElement('details');
   const patternTitle=document.createElement('summary');
   patternTitle.textContent='FABRIC / CAMOUFLAGE';
