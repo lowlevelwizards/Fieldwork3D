@@ -104,5 +104,22 @@ test('real operator climbs a suitable opened window; closed pane stays impassabl
    cover:closed.coverState,walls:facade.walls,doors:[],
    windows:closed.windows,canStand:p=>true
   }),null);
+  w.open=true;
+  const lead=team(closed)[0],goal={x:223,y:120};
+  assert.ok(planMove(closed,lead.id,goal),
+   'open window should make an authored landing feasible');
+  toggling(closed);
+  let climbed=false,completed=false;
+  for(let i=0;i<1100;i++){
+   stepSession(closed,1/60);
+   climbed ||=lead.traversal?.kind==='climb-window';
+   if(lead.plan.length===0&&distance(lead.p,goal)<7){
+    completed=true;break;
+   }
+  }
+  assert.ok(climbed,'operator did not begin the approved window climb');
+  assert.ok(completed,'window climb did not reach a safe landing '+JSON.stringify({
+    p:lead.p,goal,blocked:lead.lastBlocker,nav:lead.nav
+  }));
  }finally{activateSite(null);}
 });
