@@ -1549,7 +1549,11 @@ export class TacticalScene3D{
       if(before&&current){
         const transform=fixtureFrameTransform(before,current);
         group.scale.set(transform.scaleX,transform.scaleY,transform.scaleZ);
-        group.position.set(transform.x,0,transform.y);
+        group.position.set(transform.x,
+          current.toppled?Math.min(10,current.h*.4):0,transform.y);
+        // Tip the actual fixture mesh, not a visual clone. The physical
+        // toppled flag also changes movement/cover clearance and replay.
+        group.rotation.x=current.toppled?Math.PI*.48:0;
       }
     }
     for(const [id,glass] of this.windowGlass){
