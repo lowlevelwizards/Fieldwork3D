@@ -138,3 +138,31 @@ export function sweptProfileClear(from:Pt,to:Pt,doors:Door[],
   }
   return true;
 }
+
+
+/** Safe micro-steering at a furniture corner. A straight diagonal into a
+ * rectangular table can fail even while one tangent is open. Try a small
+ * real swept step along that tangent before declaring a stuck waypoint.
+ * No route nodes are edited and no collision radius is relaxed.
+ */
+export function slideAroundStaticCorner(from:Pt,intended:Pt,toward:Pt,
+  doors:Door[]):Pt|null{
+ const speed=distance(from,intended);
+ if(speed<.05)return null;
+ const aim=Math.atan2(intended.y-from.y,intended.x-from.x);
+ const goalBefore=distance(from,toward);
+ let best:Pt|null=null,bestScore=-Infinity;
+ for(const turn of [-Math.PI/4,Math.PI/4,-Math.PI/2,Math.PI/2,
+                    -Math.PI*3/4,Math.PI*3/4]){
+   const theta=aim+turn;
+   const candidate={x:from.x+Math.cos(theta)*speed,
+     y:from.y+Math.sin(theta)*speed};
+   const gain=goalBefore-distance(candidate,toward);
+   // Never choose an arbitrary away-then-back oscillation. The ordinary
+   // world-truth replan still handles paths requiring a larger detour.
+   if(gain<=.07||!sweptBodyClear(from,candidate,doors))continue;
+   const score=gain-Math.abs(turn)*.015;
+   if(score>bestScore){best=candidate;bestScore=score;}
+ }
+ return best;
+}
