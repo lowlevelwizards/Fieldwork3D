@@ -5,7 +5,7 @@
  */
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 export const HEADWEAR_CAMO_SIZE=32;
-export const HEADWEAR_CAMO_TILE_SIZE:Readonly<Partial<Record<HeadwearCamoId,32|64>>>={'m81-woodland':64};
+export const HEADWEAR_CAMO_TILE_SIZE:Readonly<Partial<Record<HeadwearCamoId,32|64>>>={'m81-woodland':64,'desert-tropentarn':64};
 export function headwearCamoSize(id:HeadwearCamoId):32|64{return HEADWEAR_CAMO_TILE_SIZE[id]??HEADWEAR_CAMO_SIZE;}
 /** Print detail is independent from the one-texel-per-unit structural stitching atlas.
  * 1x for large historic fields; 2x for directional, digital and multiscale cloth.
@@ -41,9 +41,9 @@ const p=(index:number,...coords:number[]):Motif=>[index,coords];
 export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  'm81-woodland':{
   label:'M81 WOODLAND',
-  description:'Interlocking tan, green and brown with long dark branching strokes; extended 64px repeat',
-  colors:[[87,118,73],[118,85,60],[175,155,105],[48,55,39]],
-  targetCoverage:[.44,.19,.26,.11],
+  description:'Low-saturation M81 woodland: winding dark forked branches among olive, umber and subdued khaki fields',
+  colors:[[75,96,74],[100,82,70],[147,137,115],[37,43,40]],
+  targetCoverage:[.37,.21,.23,.19],
   motifs:[
    p(1,-9,-4,8,-4,19,4,23,13,19,19,7,23,-4,18,-9,12),
    p(1,29,-5,43,-3,53,3,63,10,69,15,63,22,53,17,44,14,34,9),
@@ -71,7 +71,22 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
    p(0,38,48,41,44,46,45,51,49,56,50,60,54,58,55,52,53,46,52,41,55,37,58),
    p(0,10,60,17,57,23,62,30,68,26,69,19,65,14,63,8,64),
    p(3,-4,28,1,26,4,28,7,31,4,33,1,30,-5,33),
-   p(3,57,7,60,5,64,8,67,12,63,13,59,10)
+   p(3,57,7,60,5,64,8,67,12,63,13,59,10),
+   // Fine black forks thread through every quadrant so seeded 32px
+   // crown crops do not become monotonous green, brown or khaki.
+   p(3,5,14,10,12,15,15,20,19,25,20,28,24,25,25,20,22,16,21,11,17,6,17),
+   p(3,23,10,29,8,34,11,38,16,44,18,47,22,44,23,39,19,34,18,29,12,24,13),
+   p(3,44,4,48,2,53,5,58,11,65,14,67,17,63,17,57,13,52,10,47,8,43,10),
+   p(3,1,34,8,32,15,35,19,40,26,42,29,45,25,47,20,43,14,42,9,37,2,38),
+   p(3,29,33,34,31,40,33,45,38,53,40,55,43,52,44,46,41,41,40,34,35,30,37),
+   p(3,47,55,53,52,59,55,65,60,68,63,64,64,58,60,53,59,48,58,45,61),
+   p(3,9,51,15,49,21,52,25,56,30,58,32,62,28,62,22,59,17,56,11,55,7,57),
+   p(3,35,4,37,8,40,10,45,9,47,13,46,15,42,13,38,12,34,8),
+   p(3,54,28,58,26,63,28,66,32,63,34,59,31,54,32,50,36,49,33),
+   p(3,16,29,19,27,23,30,24,34,28,36,24,37,20,33,17,33),
+   p(3,39,52,41,49,45,50,47,54,49,57,46,56,43,53,39,55),
+   p(3,4,2,9,0,14,2,17,5,13,5,10,3,4,5),
+   p(3,59,45,62,42,67,43,67,46,63,45,61,48,56,50,55,48)
   ]
  },
  'three-color-desert':{
@@ -347,8 +362,8 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  },
  // 4A: six separate historical pattern families. All motifs are independently authored.
  'erdl-lowland':{
-  label:'ERDL LOWLAND',description:'Compact interleaving leaf lobes, dark branching twigs, rust and pale-green openings',
-  colors:[[87,118,73],[146,159,108],[127,93,71],[183,169,120],[44,50,37]],
+  label:'ERDL LOWLAND',description:'Lower-contrast ERDL lowland leaf blotches: fine dark twigs over olive, moss, earth and soft khaki',
+  colors:[[91,113,87],[119,135,101],[111,93,77],[150,145,115],[45,52,47]],
   targetCoverage:[.143,.229,.284,.142,.203],
   motifs:[
    p(1,-4,0,4,-2,12,2,16,7,11,11,4,9,-3,12),
@@ -456,31 +471,18 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   ]
  },
  'desert-tropentarn':{
-  label:'DESERT FLECKTARN',description:'German Wüstentarn: pale wheat sand filled with fine brown and dark-olive fleck clusters',
-  colors:[[230,214,178],[206,182,138],[118,87,64],[99,115,84]],
-  targetCoverage:[.293,.292,.285,.130],
+  label:'DESERT FLECKTARN',
+  description:'German Wüstentarn: warm sand beneath small clustered brown spots and irregular forest-olive fleck islands; 64px master',
+  colors:[[215,201,170],[116,94,74],[67,91,78]],
+  targetCoverage:[.68,.21,.11],
   motifs:[
-   p(1,-5,0,4,-2,12,2,17,6,13,11,5,11,-4,7),
-   p(1,15,14,21,11,29,14,35,19,32,25,23,25,17,21),
-   p(1,-4,24,3,21,11,25,16,31,12,35,3,34,-4,31),
-   p(1,21,-4,29,-2,35,3,33,10,25,12,19,7),
-   p(2,3,4,6,3,8,5,7,7,4,7),
-   p(2,12,2,15,1,17,3,16,6,13,6),
-   p(2,24,4,27,3,29,6,27,9,24,8),
-   p(2,30,13,33,12,35,15,33,18,30,17),
-   p(2,4,17,7,15,10,18,9,21,5,22),
-   p(2,14,18,17,16,20,19,19,22,15,23),
-   p(2,23,21,26,19,29,22,28,25,24,25),
-   p(2,2,28,5,27,8,29,6,32,3,32),
-   p(2,13,29,16,27,19,30,17,33,14,33),
-   p(2,28,28,31,26,34,29,32,32,29,33),
-   p(3,8,9,11,8,13,10,12,12,9,12),
-   p(3,19,7,22,6,24,9,22,11,19,10),
-   p(3,27,17,30,16,32,19,30,21,28,20),
-   p(3,9,24,12,23,14,25,12,28,9,27),
-   p(4,5,13,7,12,9,14,8,16,5,15),
-   p(4,20,27,22,26,24,28,23,30,21,29),
-   p(4,30,2,32,1,34,3,33,5,31,4)
+   // Sparse jagged olive bases; avoid MultiCam-style broad tan swathes.
+   p(2,6,7,10,5,15,7,19,11,22,17,20,24,15,25,12,22,8,23,5,18,2,17,4,12),
+   p(2,42,30,47,27,53,29,57,34,60,38,58,43,54,45,50,43,46,44,43,39,39,37),
+   p(2,20,47,24,44,29,46,32,50,34,56,32,61,28,63,24,60,19,62,18,55),
+   p(2,55,4,58,3,61,5,63,9,60,11,56,9),
+   p(2,35,15,38,13,42,15,44,19,41,22,37,20),
+   p(2,-3,38,2,35,6,37,7,41,4,44,-2,43)
   ]
  }
 };
@@ -651,20 +653,24 @@ function apply4BDetail(id:HeadwearCamoId,x:number,y:number,ink:number):number{
   return ink;
  }
  if(id==='desert-tropentarn'){
-  // A sparse light ground with many *grouped* 1–2px droplets. Each
-  // non-lattice center has satellite spots; little green centers vary the
-  // brown constellations without large woodland-looking green fields.
-  for(let k=0;k<27;k++){
-   const cx=(k*19+Math.floor(k/3)*7+3)&31;
-   const cy=(k*11+Math.floor(k/5)*9+1)&31;
-   if(camoNearPoint(x,y,cx,cy,(k%5===0)?2:1))return k%7===0?3:2;
-   if(camoNearPoint(x,y,(cx+3)&31,(cy+1)&31,1))return k%4===0?3:2;
-   if(k%3===0&&camoNearPoint(x,y,(cx+1)&31,(cy+4)&31,1))return 3;
+  // Wüstentarn inherits Flecktarn rosettes, not broad Multicam washes.
+  // A 64px master preserves varied constellations across one headwear cut.
+  const size=64;
+  const near=(cx:number,cy:number,r:number)=>{
+   const dx=Math.min(Math.abs(x-cx),size-Math.abs(x-cx));
+   const dy=Math.min(Math.abs(y-cy),size-Math.abs(y-cy));
+   return dx*dx+dy*dy<=r*r;
+  };
+  for(let k=0;k<85;k++){
+   const cx=(k*37+Math.floor(k/4)*11+3)&63;
+   const cy=(k*19+Math.floor(k/7)*13+5)&63;
+   const green=k%11===0||k%13===0,tone=green?2:1;
+   if(near(cx,cy,k%9===0?2:1))ink=tone;
+   if(near((cx+3)&63,(cy+(k%3)+1)&63,1))ink=tone;
+   if(k%3===0&&near((cx+1)&63,(cy+4)&63,1))ink=tone;
+   if(k%6===0&&near((cx+5)&63,(cy+2)&63,1))ink=green?1:2;
   }
-  const grain=camoGrain(x,y,4,53);
-  if(grain>.72&&ink===1)return 0;
-  if(grain<.18&&ink===0)return 1;
-  return ink===4?3:ink;
+  return ink;
  }
  return ink;
 }
