@@ -2866,6 +2866,21 @@ function sprite(a:TeamActor){
     a.weapon==='shotgun'?5:4,'#1a2527');
   rect(firing?17:20,-1,6,2,'#a2a9a1');
   draw.restore();
+  if(a.traversal){
+    // Floor Plan has no vertical axis; retain a small physical crossing
+    // indicator instead of making the operator vanish behind low furniture.
+    const t=a.traversalElapsed/Math.max(.001,a.traversal.duration);
+    draw.save();
+    draw.strokeStyle='#e8cc8e';draw.lineWidth=2.2;
+    draw.globalAlpha=.75;
+    draw.beginPath();draw.arc(a.p.x,a.p.y,15,-Math.PI/2,
+      -Math.PI/2+Math.PI*2*Math.max(0,Math.min(1,t)));draw.stroke();
+    draw.globalAlpha=1;draw.textAlign='center';
+    draw.fillStyle='#f5dca0';
+    draw.font='700 10px "Saira Condensed",sans-serif';
+    draw.fillText(a.traversal.kind.toUpperCase(),a.p.x,a.p.y-36);
+    draw.restore();
+  }
   if(friendly){
     draw.textAlign='center';draw.font='700 12px "Saira Condensed",sans-serif';
     draw.fillStyle=c;draw.fillText(a.name,a.p.x,a.p.y-21);
