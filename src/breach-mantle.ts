@@ -158,7 +158,7 @@ export function sampleTraversal(action:TraverseOpportunity,
  elapsed:number):TraverseFrame{
  const t=Math.max(0,Math.min(1,elapsed/Math.max(.001,action.duration)));
  const smooth=t*t*(3-2*t),p=pointBetween(action.approach,action.landing,smooth);
- const lift=Math.sin(Math.PI*t)*action.lift;
+ const lift=t>=1?0:Math.sin(Math.PI*t)*action.lift;
  return {p,elevation:lift,progress:t,done:t>=1,
   phase:t>=1?'complete':t<.25?'takeoff':t<.78?'over':'landing'};
 }
