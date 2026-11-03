@@ -5,7 +5,7 @@ import {newSession,planMove,team,stepSession,toggling}
 import {activateSite} from '../src/breach-core.ts';
 import {snapshot,applyReplayFrame,MissionRecorder}
  from '../src/breach-replay.ts';
-import {traversalStepClear}
+import {traversalStepClear,probeWindowCrossing}
  from '../src/breach-mantle.ts';
 
 const site={
@@ -79,5 +79,30 @@ test('snapshot, scrubbing and apply replay preserve the active vault trajectory'
   applyReplayFrame(s,frame);
   assert.equal(lead.traversalElevation,recorded.traversalElevation);
   assert.equal(lead.traversal.approach.x,original);
+ }finally{activateSite(null);}
+});
+
+test('real operator climbs a suitable opened window; closed pane stays impassable',()=>{
+ const facade={
+  ...site,
+  seed:454,
+  cover:[{x:170,y:120,w:10,h:48,fixture:'window-sill',low:true}],
+  walls:[
+   {a:{x:170,y:35},b:{x:170,y:96}},
+   {a:{x:170,y:144},b:{x:170,y:260}}
+  ],
+  windows:[{id:'W0',x:170,y:120,width:48,vertical:true,
+   sillHeight:14,headHeight:38,style:'standard',treatment:'none'}]
+ };
+ const closed=newSession(0,undefined,'full-view','standard','hold',facade);
+ try{
+  const w=closed.windows[0],start={...team(closed)[0].p};
+  assert.equal(w.open,false);
+  // Test the pane state independently of reaching it: closed means no
+  // physically permitted climb even if route planner sees the sill.
+  assert.equal(probeWindowCrossing(start,{x:223,y:120},{
+   cover:closed.coverState,walls:facade.walls,doors:[],
+   windows:closed.windows,canStand:p=>true
+  }),null);
  }finally{activateSite(null);}
 });
