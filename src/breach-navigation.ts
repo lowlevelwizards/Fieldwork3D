@@ -33,6 +33,41 @@ export function sweptBodyClear(from:Pt,to:Pt,doors:Door[],
   return true;
 }
 
+/** Slowly free a body if a previously moving leaf left it intersecting
+ * the panel. Search only short, physically swept movements *away* from the
+ * overlap. No teleportation, new wall penetration, or opposing-actor push.
+ * Normal navigation remains responsible for continuing the original order.
+ */
+export function escapeOpenDoorOverlap(from:Pt,goal:Pt,doors:Door[],
+  maxStep=1.5):Pt|null{
+  const trapped=doors.filter(door=>door.open&&
+    door.kind!=='sliding'&&door.kind!=='shutter'&&
+    leafGap(from,door)<OPERATOR_RADIUS+1-.01);
+  if(!trapped.length)return null;
+  const goalDirection=Math.atan2(goal.y-from.y,goal.x-from.x);
+  // Prefer moving toward the authored goal if it can also CLEAR the panel.
+  // Fall back to either normal, an edgeward slide, or a backward step when
+  // the direct move would deepen the overlap.
+  const angles=[goalDirection,...Array.from({length:16},(_,i)=>i*Math.PI/8)];
+  let best:Pt|null=null,bestScore=-Infinity;
+  const step=Math.max(.1,Math.min(1.5,maxStep));
+  for(const heading of angles){
+    const candidate={x:from.x+Math.cos(heading)*step,
+      y:from.y+Math.sin(heading)*step};
+    if(!sweptBodyClear(from,candidate,doors))continue;
+    const gains=trapped.map(door=>leafGap(candidate,door)-leafGap(from,door));
+    if(gains.some(gain=>gain<-.001))continue;
+    const gain=Math.min(...gains);
+    if(gain<.04)continue;
+    const towardGoal=(goal.x-from.x)*(candidate.x-from.x)+
+      (goal.y-from.y)*(candidate.y-from.y);
+    const score=gain*10+
+      towardGoal/(Math.max(1,distance(from,goal))*step)*.85;
+    if(score>bestScore){bestScore=score;best=candidate;}
+  }
+  return best;
+}
+
 /** Foot contacts have independent geometry from actor capsule traffic.
  * Even a pushable open door cannot accept a planted foot inside its leaf.
  * This is presentation only; it never changes the authoritative route. */
