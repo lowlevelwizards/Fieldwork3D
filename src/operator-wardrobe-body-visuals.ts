@@ -30,15 +30,13 @@ export function createWardrobeBodyLayers(chest:THREE.Group,
  for(const item of wardrobeItemsForSlot('top')){
   const g=group(chest);tops[item.id]=g;
   switch(item.id){
-   case 'field-jacket':case 'bdu-shirt':case 'acu-shirt':
+   case 'field-jacket':
     for(const side of [-1,1])
      part(g,cloth,5.6,1.45,side*3.35,.6,2.1,2.9);
-    if(item.id==='bdu-shirt')
-     part(g,dark,5.94,2.65,0,.26,.4,9.2);
-    if(item.id==='acu-shirt')
-     for(const side of [-1,1])
-      part(g,accent,5.96,2.4,side*3.35,.22,.5,2.2);
     break;
+   // BDU and ACU use Stage 3B's independently constructed torso and sleeves,
+   // not these old shared floating chest-pocket accent cubes.
+   case 'bdu-shirt':case 'acu-shirt':break;
    case 'combat-shirt':
     part(g,accent,5.65,2.0,0,.30,4.1,6.3);
     break;
