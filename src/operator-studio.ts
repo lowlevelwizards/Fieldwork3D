@@ -18,7 +18,7 @@ import {readWardrobe,initialWardrobe,resolvedWardrobe,setWardrobeStyle,
  type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
 import {fabricCamoChoices,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {GARMENT_SOLID_COLORS,solidChoicesFor,resolvedCuffSolid,
- type GarmentSolidId} from './operator-garment-color-policy.ts';
+ resolvedCombatKnitSolid,type GarmentSolidId} from './operator-garment-color-policy.ts';
 import {headwearColorChoices,HEADWEAR_SOLID_COLORS} from './operator-headwear-colors.ts';
 import {headwearCamoChoices,headwearCamoPixels,headwearCamoSize,
  HEADWEAR_CAMO_RECIPES,
@@ -43,6 +43,7 @@ let selected=params.get('operator')??'rook';
 let readOnly=false;
 let people:StudioPerson[]=[];
 let activeCategory:WardrobeSlot='top';
+let advancedFabricColorsOpen=false;
 let clothesOnly=true;
 let comparingSaved=false;
 let saveInFlight=false;
@@ -262,19 +263,20 @@ function addCamoSwatches(target:HTMLElement,ids:readonly HeadwearCamoId[],
  };
  search.addEventListener('input',paint);paint();
 }
-function renderCuff(){
+function renderCuff(host:HTMLElement){
  const w=current(),printed=w.fabricCamo?.top;
- const fallback:GarmentSolidId='olive-drab';
  const resolved=resolvedCuffSolid({
   print:printed??null,solid:w.fabricSolids?.top??null,
-  override:w.cuffSolid??null,fallback});
- const section=row('CUFF / ROLLED FABRIC','AUTO follows the selected print family (woodland → green, arid → tan).');
+  override:w.cuffSolid??null,fallback:'olive-drab'});
+ const section=row('CUFF / ROLLED FABRIC',
+  'AUTO follows the top print or solid. Explicit overrides also affect actual trouser cuffs, not bloused fabric.');
+ host.append(section);
  const actions=document.createElement('div');actions.className='material-row';
  actions.append(makeButton('AUTO · '+GARMENT_SOLID_COLORS[resolved].label,
-  !w.cuffSolid,()=>changeWardrobe({...w,cuffSolid:undefined})));
+  !w.cuffSolid,()=>changeWardrobe({...current(),cuffSolid:undefined})));
  section.append(actions);
  addSolidSwatches(section,solidChoicesFor('top').filter(x=>x!=='off-white'),
-  w.cuffSolid??null,(id)=>changeWardrobe({...current(),cuffSolid:id}));
+  w.cuffSolid??null,id=>changeWardrobe({...current(),cuffSolid:id}));
 }
 function addSelect(section:HTMLElement,options:readonly (readonly [string,string])[],
  active:string,onChange:(value:string)=>void){
@@ -385,17 +387,47 @@ function renderMaterials(){
    addSelect(section,special,resolvedTopColorway(item,w.topColorway),
     value=>changeWardrobe({...current(),topColorway:value}));
   }
-  if(item==='combat-shirt'){
-   const section=row('COMBAT-SHIRT KNIT · TORSO + COLLAR');
-   addSolidSwatches(section,solidChoicesFor('top').filter(x=>
-    ['olive-drab','ranger-green','foliage','khaki','sand','coyote','brown','charcoal','black'].includes(x)),
-    w.knitSolid??null,id=>changeWardrobe({...current(),knitSolid:id}));
-   const reset=document.createElement('div');reset.className='material-row';
-   reset.append(makeButton('USE SAVED KNIT COLOR',!w.knitSolid,()=>
-    changeWardrobe({...current(),knitSolid:undefined})));section.append(reset);
+  const editableUpper=['bdu-shirt','acu-shirt','combat-shirt','smock-jacket','gorka-jacket'].includes(item);
+  if(editableUpper){
+   const autoFold=resolvedCuffSolid({print:w.fabricCamo?.top,
+    solid:w.fabricSolids?.top,override:w.cuffSolid,fallback:'olive-drab'});
+   row('ROLLED / CUFF FABRIC',
+    (w.cuffSolid?'Advanced override: ':'Automatically matched: ')+
+     GARMENT_SOLID_COLORS[autoFold].label);
   }
-  if(['bdu-shirt','acu-shirt','combat-shirt','smock-jacket','gorka-jacket'].includes(item))
-   renderCuff();
+  if(item==='combat-shirt'){
+   const autoKnit=resolvedCombatKnitSolid({print:w.fabricCamo?.top,
+    solid:w.fabricSolids?.top,override:w.knitSolid,fallback:'khaki'});
+   row('COMBAT-SHIRT KNIT · TORSO + COLLAR',
+    (w.knitSolid?'Advanced override: ':'Automatically matched: ')+
+     GARMENT_SOLID_COLORS[autoKnit].label);
+  }
+  // Auto pairing is the normal experience. Keep manual swatches available
+  // to specialists without putting a second color picker in the main flow.
+  if(editableUpper){
+   const advanced=document.createElement('details');
+   advanced.className='material-group';
+   advanced.open=advancedFabricColorsOpen;
+   const summary=document.createElement('summary');
+   summary.textContent='ADVANCED COLOR OVERRIDES';
+   advanced.append(summary);
+   advanced.addEventListener('toggle',()=>{
+    advancedFabricColorsOpen=advanced.open;
+   });
+   materialRoot.append(advanced);
+   if(item==='combat-shirt'){
+    const section=row('COMBAT-SHIRT KNIT OVERRIDE');
+    advanced.append(section);
+    const actions=document.createElement('div');
+    actions.className='material-row';
+    actions.append(makeButton('AUTO',!w.knitSolid,()=>
+     changeWardrobe({...current(),knitSolid:undefined})));
+    section.append(actions);
+    addSolidSwatches(section,solidChoicesFor('top'),w.knitSolid??null,
+     id=>changeWardrobe({...current(),knitSolid:id}));
+   }
+   renderCuff(advanced);
+  }
   const sleeves=sleeveStateOptions(item);
   if(sleeves.length>1){
    const section=row('SLEEVE FINISH');
