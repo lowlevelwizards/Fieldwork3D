@@ -163,7 +163,7 @@ export const RIG_FRONT_PROFILES:Readonly<Record<string,{front:number;low:number}
  'belt-harness':{front:8.35,low:-4.5},
  'chicom-rig':{front:9.00,low:-2.0},
  'bandolier':{front:8.90,low:-2.0},
- 'sadm-webbing':{front:8.65,low:-4.0}
+ 'sadf-webbing':{front:8.65,low:-4.0}
 };
 const pouch=(g:THREE.Group,m:THREE.Material,fold:THREE.Material,
  x:number,y:number,z:number,h:number,d:number,depth=1.10)=>{
@@ -191,6 +191,13 @@ export function createChestRigSilhouettes(chest:THREE.Group,
    pouch(g,fabric,trim,8.74,-2.20,z,3.48,2.45,1.08);
   for(const s of [-1,1])
    box(g,dark,7.95,1.2,s*3.65,.40,2.65,.90);
+  // Standalone harness is present ONLY without an outer carrier.
+  // A nested group remains toggleable after consolidating the placard body.
+  const harness=new THREE.Group();harness.name='standalone-harness';
+  g.add(harness);
+  shoulderHarness(harness,dark,4.0);
+  box(harness,dark,-6.15,-1.0,0,.48,1.0,9.15);
+  consolidateVisualGroup(harness);
  }
  {
   const g=make('micro-rig');
@@ -275,7 +282,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   }
  }
  {
-  const g=make('sadm-webbing');
+  const g=make('sadf-webbing');
   shoulderHarness(g,fabric,5.35);
   for(const s of [-1,1]){
    for(const z of [3.25,6.05])
@@ -286,4 +293,42 @@ export function createChestRigSilhouettes(chest:THREE.Group,
  }
  for(const g of Object.values(groups))consolidateVisualGroup(g);
  return groups;
+}
+
+/** Grounded visual sockets for real magazine instances. Indices are the
+ * authoritative magazines carried by the equipment ledger; these sockets
+ * do not create magazines, capacity or physical protection.
+ */
+export type RigMagazineSocket={x:number;y:number;z:number;rotation:number};
+type FrontCell=readonly [number,number]; // lateral offset, vertical center
+const RIG_CELLS:Readonly<Record<string,readonly FrontCell[]>>={
+ 'chest-placard':[[-2.73,-2.18],[0,-2.18],[2.73,-2.18]],
+ 'micro-rig':[[-1.65,-2.58],[1.65,-2.58]],
+ 'light-rig':[[-4.60,-2.20],[-1.50,-2.20],[1.50,-2.20],[4.60,-2.20]],
+ 'split-front':[[-5.64,-2.18],[-2.92,-2.18],[2.92,-2.18],[5.64,-2.18]],
+ 'chicom-rig':[[-3.12,-2.32],[0,-2.32],[3.12,-2.32]],
+ 'bandolier':[[3.85,3.6],[1.93,1.75],[0,-.1],[-1.93,-1.95]],
+ 'full-chest':[[-4.60,-2.75],[-1.50,-2.75],[1.50,-2.75],[4.60,-2.75]],
+ 'lbv':[[-5.10,1.28],[-5.10,-2.56],[5.10,1.28],[5.10,-2.56]],
+ 'field-webbing':[[-6.8,-5.40],[6.8,-5.40]],
+ 'belt-harness':[[-6.6,-5.3],[6.6,-5.3]],
+ 'sadf-webbing':[[-5.85,-2.75],[-3.25,-2.75],[3.25,-2.75],[5.85,-2.75]]
+};
+export function rigMagazineMount(style:string,index:number,armor:string,
+ mirror=1):RigMagazineSocket{
+ const profile=ARMOR_PROFILES[armor]??ARMOR_PROFILES['armor-bare'];
+ const rig=RIG_FRONT_PROFILES[style]??RIG_FRONT_PROFILES['light-rig'];
+ const delta=profile.front-ARMOR_PROFILES['plate-standard'].front;
+ const cells=RIG_CELLS[style]??RIG_CELLS['light-rig'];
+ if(index<cells.length){
+  const [z,y]=cells[index];
+  return {x:rig.front+delta,y,z:mirror*z,rotation:0};
+ }
+ // Any remaining actual carried magazines use a distinct side socket
+ // instead of projecting an imaginary second row across the front plate.
+ const sideIndex=index-cells.length;
+ const sign=(sideIndex%2===0?1:-1)*mirror;
+ return {x:sideIndex>=2?-2.35:1.25,
+  y:rig.low-.3, z:sign*(profile.side+.35),
+  rotation:sign*Math.PI/2};
 }

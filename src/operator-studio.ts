@@ -201,7 +201,11 @@ function changeWardrobe(next:WardrobeOptions){
 }
 function chooseStyle(slot:WardrobeSlot,id:string){
  if(comparingSaved){comparingSaved=false;refresh();}
- if(!canEquip(slot,id)){say('This item requires a different equipped kit');return;}
+ if(!canEquip(slot,id)){
+  say(slot==='armorStyle'?'THIS ARMOR LOOK NEEDS A MATCHING EQUIPPED PROTECTION CLASS':
+   slot==='rigStyle'?'THIS RIG LOOK NEEDS A MATCHING EQUIPPED LOAD-BEARING CLASS':
+   'This item requires a different equipped kit');return;
+ }
  changeWardrobe(setWardrobeStyle(current(),slot,id));
 }
 function undo(){
@@ -292,6 +296,20 @@ function renderMaterials(){
  const p=member();if(!p)return;
  const w=current(),outfit=resolvedWardrobe(w,p.loadout);
  const item=outfit[activeCategory];
+ if(activeCategory==='armorStyle'||activeCategory==='rigStyle'){
+  const category=activeCategory==='armorStyle'?'ARMOR SHELL':'LOAD-BEARING RIG';
+  row(category+' · APPEARANCE',
+   activeCategory==='armorStyle'?
+    'Visible armor shapes do not alter protection. Equip soft or plated armor in the loadout to unlock that family.':
+    'Rig variants only change silhouette and where carried magazines appear. Actual capacity stays in the equipment loadout.');
+  const labLink=document.createElement('a');
+  labLink.href='./operator-armor-rig-lab.html';
+  labLink.textContent='OPEN ARMOR & RIG SILHOUETTE LAB';
+  labLink.target='_blank';labLink.rel='noopener noreferrer';
+  labLink.className='material-heading';
+  materialRoot.append(labLink);
+ }
+
  const channel:FabricCamoChannel|null=
   activeCategory==='top'?'top':activeCategory==='trousers'?'trousers':
   activeCategory==='armorStyle'?'armor':

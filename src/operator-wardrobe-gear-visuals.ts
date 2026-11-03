@@ -27,7 +27,9 @@ export function createWardrobeGearLayers(
  trim:THREE.Material):WardrobeGearLayers{
  // Complete authored silhouettes replace all superficial generic shell
  // scale variants. The same outfit can be rendered over any armor or rig.
- const armor=createArmorSilhouettes(chest,armorFabric,gearFabric,dark,trim);
+ // Cummerbunds, shoulder pads and secondary protective panels inherit the
+ // ARMOR channel, never the rig's independent fabric swatch.
+ const armor=createArmorSilhouettes(chest,armorFabric,armorFabric,dark,trim);
  const rig=createChestRigSilhouettes(chest,gearFabric,dark,trim);
  const belt:StyleGroups={},pack:StyleGroups={};
  for(const item of wardrobeItemsForSlot('beltStyle')){
@@ -85,4 +87,10 @@ export function updateWardrobeGearLayers(v:WardrobeGearLayers,
  const armorSurface=(ARMOR_PROFILES[armor]??ARMOR_PROFILES['armor-bare']).front;
  const mountDelta=armorSurface-ARMOR_PROFILES['plate-standard'].front;
  for(const group of Object.values(v.rig))group.position.x=mountDelta;
+ // Placards can use a minimal standalone harness when no external carrier
+ // provides attachment loops; never leave an unsupported slab floating.
+ const placard=v.rig['chest-placard'];
+ if(placard)for(const child of placard.children)
+  if(child.name==='standalone-harness')
+   child.visible=['armor-bare','soft-slick','soft-paca'].includes(armor);
 }

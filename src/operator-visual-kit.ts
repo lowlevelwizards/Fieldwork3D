@@ -21,7 +21,7 @@ import {createWardrobeBodyLayers,updateWardrobeBodyLayers,
  type WardrobeBodyLayers} from './operator-wardrobe-body-visuals.ts';
 import {createWardrobeGearLayers,updateWardrobeGearLayers,
  type WardrobeGearLayers} from './operator-wardrobe-gear-visuals.ts';
-import {ARMOR_PROFILES,RIG_FRONT_PROFILES}
+import {rigMagazineMount}
  from './operator-armor-rig-silhouettes.ts';
 import {createWardrobeAccessoryVisuals,updateWardrobeAccessories,
  initialWardrobeAccessories,type WardrobeAccessoryVisuals}
@@ -364,31 +364,24 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   {x:.73,y:1.17,z:.86}:s.primary==='primary-rifle'?
   {x:1.1,y:1.06,z:1.04}:
   {x:1,y:1,z:1};
- // Four front pouches and three side-webbing pouches. This keeps the full
- // seven-space rig around the torso rather than hanging a second row below
- // the waist. All mount faces sit beyond the selected armor shell.
- const armorProfile=ARMOR_PROFILES[looks.armorStyle]??
-  ARMOR_PROFILES['armor-bare'];
- const rigProfile=RIG_FRONT_PROFILES[looks.rigStyle]??
-  RIG_FRONT_PROFILES['light-rig'];
- const mountDelta=armorProfile.front-ARMOR_PROFILES['plate-standard'].front;
- const surfaceX=usingWardrobe&&rigProfile.front>0?
-  rigProfile.front+mountDelta:
-  s.armor==='armor-carrier'?9.15:
-  s.armor==='armor-soft'?8.25:6.65;
- const surfaceZ=usingWardrobe?armorProfile.side:
-  s.armor==='armor-carrier'?9.0:
-  s.armor==='armor-soft'?8.65:8.1;
+ // The equipment ledger defines how MANY magazines exist; the selected
+ // harness defines WHERE they are displayed. Don't invent a generic four-
+ // cell row over a micro/three-cell rig, nor put the side magazines inside
+ // bulky legacy armor. The old locations remain for non-wardrobe callers.
  const order=wardrobe?.mounts?.magazineOrder==='right-left'?-1:1;
  v.magazines.rig.forEach((mag,i)=>{
-  if(i<4){
-   mag.position.set(surfaceX,usingWardrobe?rigProfile.low:-1.6,
-    order*(i-1.5)*3.1);
+  if(usingWardrobe){
+   const socket=rigMagazineMount(looks.rigStyle,i,looks.armorStyle,order);
+   mag.position.set(socket.x,socket.y,socket.z);
+   mag.rotation.y=socket.rotation;
+  }else if(i<4){
+   mag.position.set(s.armor==='armor-carrier'?9.15:
+    s.armor==='armor-soft'?8.25:6.65,-1.6,order*(i-1.5)*3.1);
    mag.rotation.y=0;
   }else{
    const side=order*(i===4?1:-1);
    mag.position.set(i===6?1.7:-2.8,-1.55,
-     side*surfaceZ);
+    side*(s.armor==='armor-carrier'?9.0:s.armor==='armor-soft'?8.65:8.1));
    mag.rotation.y=side*Math.PI/2;
   }
  });
