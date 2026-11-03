@@ -83,6 +83,29 @@ export type ArmorFitSurfaces={
  shoulderY:number;shoulderZ:number;
  frontBagBottom:number;standOff:number;
 };
+/** Local, compressed outer garment surface beneath protective equipment.
+ * Front pockets are pressed flat by the vest rather than increasing the
+ * entire vest stand-off. Other uncovered garment details stay unchanged.
+ * The torso loft is always the authoritative underlying cloth envelope.
+ */
+export type ArmorContactSurface={
+ y:number;front:number;back:number;side:number;
+};
+export function armorContactSurface(top:string,y:number):ArmorContactSurface{
+ const ring=uniformFitEnvelope(top).outer(y);
+ return {y:ring.y,front:ring.front,back:ring.back,side:ring.side};
+}
+/** Contact at only the heights the fitted part actually occupies; it avoids
+ * using the widest shoulder or waist to displace the entire armor.
+ */
+export function armorContactSpan(top:string,low:number,high:number){
+ const sample=[low,(low+high)*.5,high].map(y=>armorContactSurface(top,y));
+ return {
+  front:Math.max(...sample.map(x=>x.front)),
+  back:Math.min(...sample.map(x=>x.back)),
+  side:Math.max(...sample.map(x=>x.side))
+ };
+}
 /** The bag is an authored *size* but its position follows the outer shirt.
  * Outer fabric shapes must be outside of uniform face + clearance.
  * Concealed armor remains underneath the uniform and is not translated.
@@ -90,35 +113,34 @@ export type ArmorFitSurfaces={
 export function fittedArmorSurfaces(style:string,top:string,
  baseline:{front:number;side:number}):ArmorFitSurfaces{
  const uniform=uniformFitEnvelope(top);
- const chest=uniform.outer(.10),lower=uniform.outer(-3.0),
-  upper=uniform.outer(3.6);
  const isConcealed=style==='soft-slick'||style==='soft-paca';
- const standOff=style==='soft-vest'||style==='soft-flak'?.20:
-  style==='plate-heavy'||style==='plate-legacy'?.30:.24;
  const thickness=ARMOR_PANEL_DEPTHS[style]??0;
- const faceClear=Math.max(chest.front,lower.front,upper.front)+
-  uniform.frontOverhang+standOff+thickness;
- const rearClear=-Math.min(chest.back,lower.back,upper.back)+
-  standOff+thickness;
+ // Body panels cover the upper sternum down to the lower ribs. Pockets
+ // underneath can be compressed, so never add global pocket overhang.
+ const chest=armorContactSpan(top,-3.8,4.0);
+ const clearance=.13;
  const front=isConcealed?baseline.front:Math.max(
-  baseline.front,faceClear);
+  baseline.front,chest.front+thickness+clearance);
  const back=isConcealed?-baseline.front:-Math.max(
-  baseline.front,rearClear);
- // Different side construction deliberately gets distinct clearance.
- // Slick elastic is close to the fabric; skeleton rails sit farther out;
- // standard cummerbund is broader, and assault modules project most.
- const sideClear=style==='plate-slick'?.46:
-  style==='plate-jpc'?.88:
-  style==='plate-standard'?1.19:
-  style==='plate-heavy'?1.54:
-  style==='plate-legacy'?1.24:
-  style==='soft-flak'?1.02:style==='soft-vest'?.70:.44;
+  baseline.front,-chest.back+thickness+clearance);
+ // Distinct fit tiers describe outboard material thickness and/or plates,
+ // NOT huge arbitrary margins that leave air between fabric and vest.
+ const sideAllowance=style==='plate-slick'?.29:
+  style==='plate-jpc'?.37:
+  style==='plate-standard'?.53:
+  style==='plate-heavy'?.68:
+  style==='plate-legacy'?.60:
+  style==='soft-flak'?.50:style==='soft-vest'?.43:.29;
+ const sideCloth=armorContactSpan(top,-3.0,1.0).side;
  const side=isConcealed?baseline.side:Math.max(
-  baseline.side,Math.max(chest.side,lower.side)+sideClear);
- const shoulderY=uniform.shoulderCrown+.46+uniform.shoulderOverhang;
+  baseline.side,sideCloth+sideAllowance);
+ // Crown is the midpoint of broad webbing sitting directly on cloth.
+ // The same height is shared with the mounted rig and fit diagnostics.
+ const shoulderY=uniform.shoulderCrown+
+  uniform.shoulderOverhang+.50;
  return {style,top:uniform.top,front,back,side,shoulderY,
   shoulderZ:(top==='smock-jacket'||top==='gorka-jacket')?
    5.78:Math.min(5.1,Math.max(3.15,uniform.outer(5.0).side-3.0)),
   frontBagBottom:style==='plate-slick'?-3.45:-4.35,
-  standOff};
+  standOff:clearance};
 }
