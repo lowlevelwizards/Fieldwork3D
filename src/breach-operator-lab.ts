@@ -39,7 +39,7 @@ import {WARDROBE_RECIPES,wardrobeRecipe,applyWardrobeRecipe}
  from './operator-wardrobe-recipes.ts';
 import {HEADWEAR_SOLID_COLORS,headwearColorChoices,resolvedHeadwearSolid}
  from './operator-headwear-colors.ts';
-import {HEADWEAR_CAMO_IDS,headwearCamoChoices,resolvedHeadwearCamo,headwearCamoPixels,
+import {HEADWEAR_CAMO_IDS,headwearCamoChoices,resolvedHeadwearCamo,headwearCamoPixels,headwearCamoSize,
  HEADWEAR_CAMO_RECIPES,HEADWEAR_CAMO_DENSITY,nextHeadwearCamoRoll,
  type HeadwearCamoId} from './operator-headwear-camo.ts';
 import {initialWardrobe,readWardrobe,setWardrobePattern,resolvedWardrobe,
@@ -279,17 +279,17 @@ camoReroll.addEventListener('click',()=>{
   headwearCamoRoll:nextHeadwearCamoRoll(wardrobeOptions.headwearCamoRoll)};
  renderHeadwearCamoSwatches(resolvedWardrobe(wardrobeOptions,labKit).headwear);
 });
-/** Nearest-neighbor previews use the EXACT same 32x32 RGBA artwork as the
- * live material atlas. The right panel is a literal 3x3 repetition.
+/** Nearest-neighbor previews use the exact native 32px/64px RGBA artwork
+ * as live material atlas. The right panel is a literal 3x3 repetition.
  * No canvas noise, gradients, bilinear resampling or preview-only art.
  */
 function paintHeadwearCamo(canvas:HTMLCanvasElement,id:HeadwearCamoId,repeats:number){
- const size=32*repeats,ctx=canvas.getContext('2d');
+ const tileSize=headwearCamoSize(id),size=tileSize*repeats,ctx=canvas.getContext('2d');
  if(!ctx)return;
  canvas.width=canvas.height=size;
  const pixels=headwearCamoPixels(id),image=ctx.createImageData(size,size);
  for(let y=0;y<size;y++)for(let x=0;x<size;x++){
-  const from=((y%32)*32+(x%32))*4,to=(y*size+x)*4;
+  const from=((y%tileSize)*tileSize+(x%tileSize))*4,to=(y*size+x)*4;
   for(let channel=0;channel<4;channel++)image.data[to+channel]=pixels[from+channel];
  }
  ctx.imageSmoothingEnabled=false;ctx.putImageData(image,0,0);
@@ -326,7 +326,8 @@ function renderHeadwearCamoComparison(model:string,selected:HeadwearCamoId|null)
    figure.append(canvas,caption);views.append(figure);
   }
   const density=document.createElement('span');density.className='camo-study-density';
-  density.textContent=HEADWEAR_CAMO_DENSITY[id]+'× PRINT'+(canApply?'':' · INCOMPATIBLE');
+  density.textContent=headwearCamoSize(id)+'px MASTER · '+HEADWEAR_CAMO_DENSITY[id]+
+   '× PRINT'+(canApply?'':' · INCOMPATIBLE');
   button.append(heading,views,density);
   if(canApply)button.addEventListener('click',()=>applyHeadwearCamoChoice(id,selected,model));
   camoCompareGrid.append(button);
@@ -355,12 +356,16 @@ function renderHeadwearCamoSwatches(model:string){
  }
  camoReroll.hidden=!selected;
  const preview=selected??choices[0];
+ const origCaption=document.getElementById('headwearCamoOriginalCaption');
+ if(origCaption)origCaption.textContent='ORIGINAL · '+headwearCamoSize(preview)+'×'+
+  headwearCamoSize(preview)+' PIXELS';
  paintHeadwearCamo(document.getElementById('headwearCamoArt') as HTMLCanvasElement,preview,1);
  paintHeadwearCamo(document.getElementById('headwearCamoTiled') as HTMLCanvasElement,preview,3);
  camoStatus.textContent=HEADWEAR_CAMO_RECIPES[preview].label+
   (selected?' · APPLIED TO LIVE MODEL':' · PREVIEW ONLY — TAP TO APPLY')+
   (selected?' · VARIATION '+((wardrobeOptions.headwearCamoRoll??0)+1):'')+
-  ' · '+HEADWEAR_CAMO_DENSITY[preview]+'× PRINT PIXELS / UNIT · '+
+  ' · '+headwearCamoSize(preview)+'px MASTER · '+
+  HEADWEAR_CAMO_DENSITY[preview]+'× PRINT PIXELS / UNIT · '+
   HEADWEAR_CAMO_RECIPES[preview].description;
 }
 
