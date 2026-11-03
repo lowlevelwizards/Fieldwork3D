@@ -406,6 +406,24 @@ export const enemies=(s:Session)=>s.operators.filter(a=>a.side==='red');
 export const actor=(s:Session,id:string)=>s.operators.find(a=>a.id===id);
 const party=(s:Session,id:string)=>team(s).find(a=>a.id===id&&a.health>0);
 export const canEdit=(s:Session)=>s.phase==='planning';
+/** Plan authoring can see only briefed/discovered surfaces. World-truth
+ * validation runs again at execution; hidden furniture isn't exposed by
+ * an unexplained path preview or a shortcut through a closed window.
+ */
+function knownTraversal(s:Session,from:Pt,to:Pt):boolean{
+ const visible=s.coverState.filter((_,i)=>s.intel.cover.has(i));
+ return !!probeObstacleCrossing(from,to,{
+   cover:visible,walls:WALLS.filter((_,i)=>s.intel.walls.has(i)),
+   doors:s.doors.filter(door=>doorKnown(s.intel,door.id)),
+   canStand:at=>intelPassable(at,s.intel)
+ });
+}
+const legalMoveRoute=(s:Session,from:Pt,to:Pt):Pt[]=>{
+ const ordinary=routeWithSqueezeIntel(s.intel,from,to);
+ return ordinary.length?ordinary:
+   knownTraversal(s,from,to)?[to]:[];
+};
+
 export const finalPoint=(a:TeamActor)=>lastPoint(a.p,a.plan);
 function pathFor(a:TeamActor){
   const points:Pt[]=[];let from=a.p;
@@ -433,7 +451,7 @@ export function addNode(s:Session,id:string,kind:PlanKind,p:Pt,
   extra:Partial<PlanNode>={}):boolean{
   const a=party(s,id);if(!a||!canEdit(s))return false;
   if(kind==='move'&&!intelPassable(p,s.intel,SQUEEZE_RADIUS))return false;
-  if(kind==='move'&&!routeWithSqueezeIntel(s.intel,finalPoint(a),p).length)return false;
+  if(kind==='move'&&!legalMoveRoute(s,finalPoint(a),p).length)return false;
   if(kind==='door'&&(!passable(p)||!route(finalPoint(a),p).length))return false;
   return edit(s,a,()=>{
     a.plan.push({id:s.nextId++,kind,p:clone(p),...extra});
@@ -468,7 +486,7 @@ export function planMove(s:Session,id:string,p:Pt,strafe=false){
     facing:[...a.plan].reverse().find(n=>n.facing!==undefined)?.facing??a.heading}:{};
   const target=projectReachableGoal(finalPoint(a),p,{
     canStand:at=>intelPassable(at,s.intel,SQUEEZE_RADIUS),
-    routeTo:(from,to)=>routeWithSqueezeIntel(s.intel,from,to),
+    routeTo:(from,to)=>legalMoveRoute(s,from,to),
   });
   if(!target)return false;
   if(target.adjusted)notify(s,'POSITION ADJUSTED TO WALKABLE GROUND');
@@ -487,7 +505,7 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],strafe=false){
     const point=stroke[i],last=i===stroke.length-1;
     if(d(from,point)<(last?3:20)||
       !intelPassable(point,s.intel,SQUEEZE_RADIUS)||
-      !routeWithSqueezeIntel(s.intel,from,point).length)continue;
+      !legalMoveRoute(s,from,point).length)continue;
     proposed.push({id:s.nextId+proposed.length,kind:'move',p:clone(point),
       ...(strafe?{moveMode:'strafe' as const,facing}:{})});
     from=point;
