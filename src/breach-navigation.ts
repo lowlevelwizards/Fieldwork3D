@@ -166,3 +166,56 @@ export function slideAroundStaticCorner(from:Pt,intended:Pt,toward:Pt,
  }
  return best;
 }
+
+/** Retain the *tangential* part of an attempted step when the shoulder
+ * grazes an ordinary wall. Without this, a route almost parallel to a wall
+ * may reject every step (and get stuck in the recovery loop). All candidates
+ * are swept with the unchanged full-size collision radius.
+ *
+ * Wall direction is irrelevant to actor facing: walking back along the wall
+ * does not require first rotating the shoulders INTO the wall.
+ */
+export function glideAlongStaticWall(from:Pt,intended:Pt,
+  doors:Door[]):Pt|null{
+ const dx=intended.x-from.x,dy=intended.y-from.y;
+ const step=Math.hypot(dx,dy);
+ if(step<.04)return null;
+ let best:Pt|null=null,bestMovement=-Infinity;
+ for(const wall of WALLS){
+   const vx=wall.b.x-wall.a.x,vy=wall.b.y-wall.a.y;
+   const len=Math.hypot(vx,vy);
+   if(len<.001)continue;
+   const tx=vx/len,ty=vy/len;
+   const near=pointToSegment(from,wall);
+   if(near>OPERATOR_RADIUS+6||
+      pointToSegment(intended,wall)>OPERATOR_RADIUS+6)continue;
+   // Only attempt a gliding correction if this wall is actually in
+   // contact with the attempted motion; distant parallel walls do nothing.
+   const normalX=-ty,normalY=tx;
+   const signed=(from.x-wall.a.x)*normalX+
+     (from.y-wall.a.y)*normalY;
+   const sign=signed>=0?1:-1;
+   const outwardX=normalX*sign,outwardY=normalY*sign;
+   const tangent=dx*tx+dy*ty;
+   const outward=dx*outwardX+dy*outwardY;
+   if(outward>0&&near>=OPERATOR_RADIUS+1)continue;
+   const correction=Math.min(step,
+     Math.max(0,OPERATOR_RADIUS+1.2-near));
+   const allowedTangent=Math.sqrt(Math.max(0,step*step-
+     correction*correction));
+   const glide=Math.max(-allowedTangent,
+     Math.min(allowedTangent,tangent));
+   // Never creep sideways without an intended tangential component. A
+   // nearly embedded shoulder may still take a small outward recovery step.
+   if(Math.abs(glide)<.035&&correction<.035)continue;
+   const candidate={
+     x:from.x+tx*glide+outwardX*correction,
+     y:from.y+ty*glide+outwardY*correction
+   };
+   if(!sweptBodyClear(from,candidate,doors))continue;
+   const movement=Math.hypot(candidate.x-from.x,candidate.y-from.y);
+   const score=movement+Math.abs(glide)*.25-correction*.08;
+   if(score>bestMovement){bestMovement=score;best=candidate;}
+ }
+ return best;
+}
