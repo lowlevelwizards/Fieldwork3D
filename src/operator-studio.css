@@ -124,3 +124,14 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
  .studio-more>summary{padding:10px 7px;font-size:10px}
  .studio-sheet{padding-left:9px;padding-right:9px}
 }
+
+/* Keep body-part choices accessible while scrolling the garments and swatches. */
+.studio-pinned-categories{position:sticky;top:-4px;z-index:5;display:grid;gap:5px;
+ padding:5px 0 7px;background:#1e342c;border-bottom:1px solid #456358;
+ box-shadow:0 5px 9px #14251c33}
+.studio-pinned-categories .studio-categories,.studio-pinned-categories .studio-subcategories{
+ min-width:0;flex-shrink:0}
+/* Global pressed-button color is dark; selected cards must remain legible. */
+#studioItemBrowser .appearance-item-card[aria-pressed="true"]{color:#f3efdc}
+#studioItemBrowser .appearance-item-card[aria-pressed="true"] .appearance-item-name{color:#f3efdc}
+#studioItemBrowser .appearance-item-card[aria-pressed="true"] .appearance-item-tag{color:#ffdfa3}
