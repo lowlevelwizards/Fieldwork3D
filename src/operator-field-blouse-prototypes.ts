@@ -104,12 +104,15 @@ export function fieldBlouseShellGeometry(cut:FieldBlouseCut):THREE.BufferGeometr
  return g;
 }
 const group=(parent:THREE.Object3D,name:string)=>{
- const g=new THREE.Group();g.name=name;parent.add(g);g.visible=false;return g;
+ const g=new THREE.Group();g.name=name;parent.add(g);g.visible=false;
+ g.userData.garmentMetricLength=parent.userData.garmentMetricLength??1;
+ return g;
 };
 function box(parent:THREE.Object3D,m:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number,tilt=0){
+ const metric=parent.userData.garmentMetricLength as number||1;
  const mesh=new THREE.Mesh(garmentBoxUV(new THREE.BoxGeometry(w,h,d),
-  w,h,d,m,x,y,z),m);
+  w,h*metric,d,m,x,y*metric,z),m);
  mesh.position.set(x,y,z);
  if(tilt)mesh.rotation.x=tilt;
  mesh.castShadow=true;mesh.receiveShadow=true;
