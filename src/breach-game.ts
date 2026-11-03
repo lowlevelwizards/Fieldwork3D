@@ -1400,7 +1400,83 @@ function observe(s:Session){
     }
   }
 }
+const traversalWorld=(s:Session,a:TeamActor)=>({
+ cover:s.coverState,walls:WALLS,doors:s.doors,
+ actors:s.operators.filter(other=>other!==a&&other.health>0).map(o=>o.p),
+ canStand:(p:Pt)=>passable(p)
+});
+const traversalFitness=(a:TeamActor)=>({
+ pace:a.pace,injury:Math.min(3,Math.max(0,a.injuryStage)) as 0|1|2|3,
+ loadFactor:1/Math.max(.55,a.loadMovementScale??1)
+});
+/** This is a transient motor decision; it does not alter an authored order.
+ * Only a known, individually climbable obstacle can win over a longer walk.
+ */
+function desiredTraverse(s:Session,a:TeamActor,goal:Pt){
+ const op=probeObstacleCrossing(a.p,goal,traversalWorld(s,a),
+   traversalFitness(a));
+ if(!op||!s.intel.cover.has(op.obstacleIndex))return null;
+ const ordinary=routeWithSqueezeIntel(s.intel,a.p,goal);
+ if(!preferTraversal(a.p,goal,op,ordinary))return null;
+ const approachPath=routeWithSqueezeWorld(a.p,op.approach,s.doors);
+ return approachPath.length?{op,approachPath}:null;
+}
+function tickTraversal(a:TeamActor,s:Session,dt:number):boolean{
+ const op=a.traversal;
+ if(!op)return false;
+ if(a.traversalElapsed>=op.duration){
+   // The final full-body landing was committed on the preceding tick.
+   a.traversal=null;a.traversalElevation=0;a.nav=[];
+   a.retryRouteAt=0;a.blockedTime=0;return true;
+ }
+ const frame=sampleTraversal(op,Math.min(op.duration,
+   a.traversalElapsed+dt));
+ if(!traversalStepClear(a.p,frame.p,op,traversalWorld(s,a))){
+   a.velocity=0;a.blockedTime+=dt;
+   a.lastBlocker='furniture';
+   // Do not advance the trajectory into changing geometry. A moving prop
+   // or closed door can clear; the same verified crossing can then resume.
+   return true;
+ }
+ const old=clone(a.p);a.priorP=old;
+ a.p=clone(frame.p);a.traversalElapsed=Math.min(op.duration,
+   a.traversalElapsed+dt);a.traversalElevation=frame.elevation;
+ a.velocity=d(old,a.p)/Math.max(dt,.0001);
+ a.blockedTime=0;a.lastBlocker='clear';a.squeeze=false;
+ // The weapon follows the actor during a vault, not a separate aim order.
+ a.heading=angle(op.approach,op.landing);
+ return true;
+}
 function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
+  // The simulation frame, not rendering, advances and validates traversal.
+  if(tickTraversal(a,s,dt))return true;
+  if(a.traversalPending&&d(a.p,a.traversalPending.approach)<3.3){
+    const planned=a.traversalPending;
+    const validated=probeObstacleCrossing(a.p,p,traversalWorld(s,a),
+      traversalFitness(a));
+    if(validated&&validated.obstacleIndex===planned.obstacleIndex&&
+       d(validated.landing,planned.landing)<5&&
+       d(validated.approach,a.p)<4){
+      a.traversal={...validated,approach:clone(a.p)};
+      a.traversalElapsed=0;a.traversalElevation=0;
+      a.traversalPending=null;a.nav=[];a.velocity=0;
+      a.blockedTime=0;a.lastTraversalAt=s.seconds;
+      return true;
+    }
+    a.traversalPending=null;a.nav=[];a.lastTraversalAt=s.seconds;
+    a.retryRouteAt=s.seconds+.30;
+    return true;
+  }
+  if(!a.nav.length&&!a.traversalPending&&a.side==='blue'&&
+     a.plan[0]?.kind==='move'&&
+     s.seconds-a.lastTraversalAt>.55){
+    const candidate=desiredTraverse(s,a,p);
+    if(candidate){
+      a.traversalPending=candidate.op;
+      a.nav=candidate.approachPath;
+      a.retryRouteAt=0;a.recoveryAttempts=0;
+    }
+  }
   const goalKey=Math.round(p.x*2)+':'+Math.round(p.y*2);
   if(a.routeGoalKey!==goalKey){
     a.routeGoalKey=goalKey;a.retryRouteAt=0;a.recoveryAttempts=0;
