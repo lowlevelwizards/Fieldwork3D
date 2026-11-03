@@ -61,6 +61,7 @@ export type TrouserCutPrototype={
  unbloused:THREE.Group[];
  bloused:THREE.Group[];
  cuffed:THREE.Group[];
+ suspenders?:THREE.Group;
 };
 export type FieldTrouserPrototypes=Record<FieldTrouserCut,TrouserCutPrototype>;
 
@@ -107,61 +108,46 @@ function part(g:THREE.Group,material:THREE.Material,
  mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);
  return mesh;
 }
-function clothShell(g:THREE.Group,material:THREE.Material,
- rings:readonly Ring[],length:number){
- const mesh=new THREE.Mesh(garmentLegLoft(rings,length),material);
- mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);
-}
-/** Visible wrap around the hem at the correct local ankle point.
- * Ring remains cosmetic and its UV repeats the approved material pixels at
- * the same world density as the actual lower-leg garment shell. */
-function hemFinishBand(g:THREE.Group,material:THREE.Material,ring:Ring){
- const rx=ring[1]+.13,rz=ring[2]+.13;
- const geometry=new THREE.CylinderGeometry(rx,rx,.105,10,1,true);
- geometry.scale(1,1,rz/rx);
- geometry.translate(0,ring[0],0);
- const uv=geometry.getAttribute('uv') as THREE.BufferAttribute;
- const averageRadius=(rx+rz)*.5;
- for(let i=0;i<uv.count;i++)
-  uv.setXY(i,uv.getX(i)*2*Math.PI*averageRadius/TILE_WORLD_SIZE,
-   uv.getY(i)*.105*LEG_LOWER_LENGTH/TILE_WORLD_SIZE);
- uv.needsUpdate=true;
- const mesh=new THREE.Mesh(geometry,material);
- mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);
-}
 export function createFieldTrouserPrototypes(legs:readonly Limb[],
  cloth:THREE.Material,trim:THREE.Material,
- mountainCanvas:THREE.Material=cloth,mountainPanel:THREE.Material=trim):FieldTrouserPrototypes{
+ mountainCanvas:THREE.Material=cloth,mountainPanel:THREE.Material=trim,
+ chest?:THREE.Group):FieldTrouserPrototypes{
  const results={} as FieldTrouserPrototypes;
  for(const cut of FIELD_TROUSER_CUTS){
   const p=FIELD_TROUSER_PROFILES[cut],classic=cut==='bdu-trousers',
    gorka=cut==='gorka-trousers';
   const textile=gorka?mountainCanvas:cloth,wear=gorka?mountainPanel:cloth;
+  // Base legs are already solid clothing. A single snug block adds the
+  // modest extra fabric thickness and receives the original pixel UVs.
+  const thighW=gorka?5.25:classic?5.03:4.91;
+  const thighD=gorka?5.79:classic?5.58:5.43;
+  const shinW=gorka?4.54:classic?4.39:4.28;
+  const shinD=gorka?4.84:classic?4.69:4.56;
   const thigh:THREE.Group[]=[],unbloused:THREE.Group[]=[],bloused:THREE.Group[]=[],cuffed:THREE.Group[]=[];
   for(const [i,leg] of legs.entries()){
    // The exterior of each IK leg segment is local +X, independent of side.
    const upper=group(leg.upper,cut+':thigh:'+i);
-   clothShell(upper,textile,p.thigh,LEG_UPPER_LENGTH);
+   part(upper,textile,0,0,0,thighW,1.07,thighD);
    // A genuine OUTER thigh pouch: shallow thickness along local +X,
    // broad front-to-back Z panel, and a readable upright Y dimension.
    // The old ±Z placement was forward/backward relative to the actual IK.
    const [thickness,height,span]=p.cargo;
-   const pocket=outwardLimbPocket(p.thigh[2][1],-.095,height,span,thickness);
+   const pocket=outwardLimbPocket(thighW/2,-.095,height,span,thickness);
    part(upper,textile,pocket.x,pocket.y,pocket.z,
     pocket.width,pocket.height,pocket.depth);
    const [fw,fh,fd]=p.flap;
    part(upper,wear,pocket.x+thickness*.59,.145,0,fw,fh,fd);
    if(!classic&&!gorka){
-    const knee=outwardLimbPatch(p.thigh.at(-1)![1],.37,.22,3.60,.20);
+    const knee=outwardLimbPatch(thighW/2,.37,.22,3.60,.20);
     part(upper,cloth,knee.x,knee.y,knee.z,
      knee.width,knee.height,knee.depth);
    }else if(classic){
-    const fold=outwardLimbPatch(p.thigh[2][1],-.09,.23,2.80,.13);
+    const fold=outwardLimbPatch(thighW/2,-.09,.23,2.80,.13);
     part(upper,cloth,fold.x+.13,fold.y,fold.z,
      fold.width,fold.height,fold.depth);
    }else{
-    const knee=outwardLimbPatch(p.thigh.at(-1)![1],.34,.25,4.40,.22);
-    const wearSide=outwardLimbPatch(p.thigh[2][1],-.28,.18,2.70,.14);
+    const knee=outwardLimbPatch(thighW/2,.34,.25,4.40,.22);
+    const wearSide=outwardLimbPatch(thighW/2,-.28,.18,2.70,.14);
     part(upper,wear,knee.x,knee.y,knee.z,
      knee.width,knee.height,knee.depth);
     part(upper,wear,wearSide.x,wearSide.y,wearSide.z,
@@ -170,36 +156,48 @@ export function createFieldTrouserPrototypes(legs:readonly Limb[],
    thigh.push(upper);
    for(const hem of ['unbloused','bloused','cuffed'] as const){
     const lower=group(leg.lower,cut+':'+hem+':shin:'+i);
-    clothShell(lower,textile,p[hem],LEG_LOWER_LENGTH);
+    part(lower,textile,0,0,0,shinW,1.07,shinD);
     if(!classic&&!gorka){
      // ACU-family calf cargo pocket: a separate physical feature,
      // with an angled flap; older BDU trousers deliberately omit it.
-     const calf=outwardLimbPocket(p[hem][1][1],-.10,.30,2.34,.30);
+     const calf=outwardLimbPocket(shinW/2,-.10,.30,2.34,.30);
      part(lower,cloth,calf.x,calf.y,calf.z,
       calf.width,calf.height,calf.depth);
      part(lower,cloth,calf.x+.19,.075,0,.12,.10,2.45);
     }
     if(gorka){
      // Strong reinforced outer knee and weather-tight ankle band.
-     const patch=outwardLimbPatch(p[hem][1][1],-.35,.26,4.65,.20);
+     const patch=outwardLimbPatch(shinW/2,-.35,.26,4.65,.20);
      part(lower,wear,patch.x,patch.y,patch.z,
       patch.width,patch.height,patch.depth);
      // A single low band wraps the weather-tight gaiter; don't emit
      // offset slivers perpendicular to the leg's physical outside.
-     part(lower,wear,p[hem][3][1]+.16,.30,0,.20,.10,3.70);
+     part(lower,wear,shinW/2+.09,.30,0,.20,.13,3.70);
     }
     // The bloused outline narrows at the boot collar; the straight hem
     // stays wider and overlaps its shaft. Both have a visible textile fold.
-    hemFinishBand(lower,textile,p[hem][p[hem].length-1]);
-    if(hem==='cuffed')
-     hemFinishBand(lower,textile,[.39,
-      p.cuffed[3][1]+.22,p.cuffed[3][2]+.22]);
+    const cuffW=hem==='bloused'?4.20:shinW+.15;
+    const cuffD=hem==='bloused'?4.36:shinD+.15;
+    part(lower,textile,0,.43,0,cuffW,.13,cuffD);
+    if(hem==='cuffed')part(lower,textile,0,.34,0,
+      shinW+.24,.23,shinD+.24);
     consolidateVisualGroup(lower);
     (hem==='bloused'?bloused:hem==='cuffed'?cuffed:unbloused).push(lower);
    }
    consolidateVisualGroup(upper);
   }
-  results[cut]={thigh,bloused,unbloused,cuffed};
+  // Gorka suspenders follow the torso and the real articulated legs;
+  // they do not create duplicate legs, joints or collision shapes.
+  const suspenders=gorka&&chest?group(chest,'gorka-trouser-suspenders'):undefined;
+  if(suspenders){
+   for(const sign of [-1,1]){
+    part(suspenders,textile,5.50,-.15,sign*4.45,1.55,11.5,1.00);
+    part(suspenders,textile,-5.50,-.15,sign*4.45,1.55,11.5,1.00);
+    part(suspenders,textile,0,5.72,sign*4.45,11.6,.55,1.00);
+   }
+   consolidateVisualGroup(suspenders);
+  }
+  results[cut]={thigh,bloused,unbloused,cuffed,suspenders};
  }
  return results;
 }
@@ -208,6 +206,7 @@ export function updateFieldTrouserPrototypes(
  barefoot=false){
  for(const cut of FIELD_TROUSER_CUTS){
   const model=models[cut],active=cut===trousers;
+  if(model.suspenders)model.suspenders.visible=active;
   for(const g of model.thigh)g.visible=active;
   for(const g of model.bloused)g.visible=active&&hem==='bloused'&&!barefoot;
   for(const g of model.unbloused)
