@@ -42,7 +42,7 @@ import {HEADWEAR_SOLID_COLORS,headwearColorChoices,resolvedHeadwearSolid}
 import {HEADWEAR_CAMO_IDS,headwearCamoChoices,resolvedHeadwearCamo,headwearCamoPixels,headwearCamoSize,
  HEADWEAR_CAMO_RECIPES,HEADWEAR_CAMO_DENSITY,nextHeadwearCamoRoll,
  type HeadwearCamoId} from './operator-headwear-camo.ts';
-import {CAMO_CATALOG,CAMO_ORIGINS,filterCamoCatalog,type CamoFilter,type CamoOrigin}
+import {CAMO_ORIGINS,filterCamoCatalog,type CamoFilter,type CamoOrigin}
  from './operator-headwear-camo-catalog.ts';
 import {initialWardrobe,readWardrobe,setWardrobePattern,resolvedWardrobe,
  WARDROBE_PATTERNS,wardrobeConflicts,wardrobeItemsForSlot,wardrobeItem,
