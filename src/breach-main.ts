@@ -3993,9 +3993,18 @@ function releasePointer(e:PointerEvent,cancelled=false){
           }
           return true;
         });
-      if(!planMoveStroke(state,selected,points.slice(1)))
-        rejectAt(pt,'NO WALKABLE STROKE');
-      else selectedNode=uid(selected)?.plan.filter(n=>n.kind==='move').at(-1)?.id??null;
+      // A stroke that starts on the operator's HERE marker REPLACES the
+      // queued plan, even when it contains several waypoints. Appending
+      // still happens via taps and gestures on the existing route end.
+      // planMoveStroke records the entire replacement as one undoable edit.
+      if(!planMoveStroke(state,selected,points.slice(1),false,true))
+        rejectAt(pt,'NO WALKABLE STROKE · PREVIOUS ROUTE KEPT');
+      else{
+        selectedActiveWatch=false;
+        selectedNode=uid(selected)?.plan.filter(n=>n.kind==='move')
+          .at(-1)?.id??null;
+        showUiHelp('ROUTE REPLACED FROM HERE · UNDO TO RESTORE',3200);
+      }
       doorFocusId=null;
     }else if(!p.moved&&!p.wasUnit&&pt.x>=0&&pt.y>=0&&
       pt.x<=W&&pt.y<=H){
