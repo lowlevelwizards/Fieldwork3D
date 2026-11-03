@@ -93,6 +93,6 @@ export function doorContactImpulse(d:Door,point:Pt){
   const progress=Math.max(0,Math.min(1,(
     (point.x-leaf.a.x)*dx+(point.y-leaf.a.y)*dy)/(length*length)));
   const clearance=pointToSegment(point,leaf);
-  if(clearance>18)return 0;
+  if(clearance>24)return 0;
   return (0.5+progress*1.2)*(1-clearance/22);
 }
