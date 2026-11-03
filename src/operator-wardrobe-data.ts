@@ -73,21 +73,26 @@ add('footwear','boots',[['field-boots','Field boots (foundation)']]);
 add('armorStyle','none',[['armor-bare','No armor']]);
 add('armorStyle','soft',[
  ['soft-slick','Slick soft armor'],['soft-paca','PACA-style soft armor'],
- ['soft-vest','Conventional soft armor vest']
+ ['soft-vest','External Police / Tactical Vest']
 ]);
 add('armorStyle','plates',[
- ['plate-slick','Slick plate carrier'],['plate-jpc','Light plate carrier'],
- ['plate-standard','Standard plate carrier'],
- ['plate-heavy','Heavy plate carrier']
+ ['plate-slick','Slick plate carrier'],
+ ['plate-jpc','Light / Skeletonized Plate Carrier'],
+ ['plate-standard','Standard Plate Carrier'],
+ ['plate-heavy','Heavy Assault Plate Carrier'],
+ ['plate-legacy','Legacy Full-Coverage Military Armor']
 ]);
 add('rigStyle','none',[['no-rig','None']]);
 add('rigStyle','light',[
- ['micro-rig','Micro rig'],['light-rig','Light chest rig'],
- ['chest-placard','Chest placard']
+ ['micro-rig','Micro Chest Rig'],
+ ['light-rig','Classic X-Harness Chest Rig'],
+ ['chest-placard','Triple Magazine Placard']
 ]);
 add('rigStyle','full',[
- ['field-webbing','Field webbing'],['lbv','Load-bearing vest'],
- ['full-chest','Full chest rig'],['belt-harness','Belt-and-suspender webbing']
+ ['field-webbing','Field Webbing'],['lbv','Load-Bearing Vest'],
+ ['full-chest','Full Bib / Patrol Rig'],
+ ['split-front','Split-Front Chest Rig'],
+ ['belt-harness','Belt-and-Suspender Webbing']
 ]);
 add('beltStyle','none',[['no-belt','No belt']]);
 add('beltStyle','light',[
@@ -315,13 +320,13 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
      'pasgt'].includes(desired.headwear))
   desired.headset='comms-none';
  choose('armorStyle',slots.armor==='armor-carrier'?
-  ['plate-slick','plate-jpc','plate-standard','plate-heavy']:
+  ['plate-slick','plate-jpc','plate-standard','plate-heavy','plate-legacy']:
   slots.armor==='armor-soft'?
   ['soft-slick','soft-paca','soft-vest']:['armor-bare'],
   slots.armor==='armor-carrier'?'plate-standard':
   slots.armor==='armor-soft'?'soft-vest':'armor-bare');
  choose('rigStyle',slots.rig==='rig-full'?
-  ['field-webbing','lbv','full-chest','belt-harness']:
+  ['field-webbing','lbv','full-chest','split-front','belt-harness']:
   slots.rig==='rig-light'?['micro-rig','light-rig','chest-placard']:
   ['no-rig'],slots.rig==='rig-full'?'field-webbing':
     slots.rig==='rig-light'?'light-rig':'no-rig');

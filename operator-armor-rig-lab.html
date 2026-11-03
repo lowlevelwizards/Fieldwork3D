@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Fieldwork · Armor & Rig Lab</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,Arial,sans-serif;background:#18241f;color:#edf1df}
+*{box-sizing:border-box}body{max-width:900px;margin:auto;padding:14px}
+h1{font-size:1.25rem;letter-spacing:.04em;margin:6px 0}p{font-size:.83rem;color:#b9c4b5;margin:5px 0 12px}
+.controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+label{font-size:.75rem;color:#c5d2bf;display:grid;gap:5px}
+select,button{background:#31483d;color:#f1f3e6;border:1px solid #6a8575;border-radius:6px;padding:11px;min-height:42px;font:inherit}
+.views{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}.views button{flex:1}
+button[aria-pressed=true]{background:#647d55;color:#fff}
+#armorCanvas{display:block;width:100%;height:clamp(300px,55vh,650px);
+background:#b9c0b9;border-radius:9px;margin-top:10px}
+footer{font-size:.72rem;color:#c2cbbf;line-height:1.5}
+a{color:#bbd7c3} .hint{font-variant:small-caps;letter-spacing:.09em}
+</style></head><body>
+<h1>ARMOR & CHEST RIG LAB</h1>
+<p>Actual operator geometry · neutral solids · no gameplay equipment changes. Compare silhouette, bulk, straps, front surfaces and camera-distance readability.</p>
+<div class="controls">
+<label>ARMOR SHELL<select id="armorChoice" aria-label="Armor silhouette"></select></label>
+<label>LOAD-BEARING RIG<select id="rigChoice" aria-label="Chest rig silhouette"></select></label>
+<label>CAMERA DISTANCE<select id="zoomChoice" aria-label="Camera distance">
+<option value="gameplay">Game distance</option><option value="detail">Close inspection</option></select></label>
+<label>REFERENCE<label class="hint">Front = positive X · original soldier scale</label></label>
+</div>
+<div class="views" role="group" aria-label="View direction">
+<button data-view="front" aria-pressed="false">FRONT</button>
+<button data-view="side" aria-pressed="false">SIDE</button>
+<button data-view="back" aria-pressed="false">BACK</button>
+<button data-view="fit" aria-pressed="true">3/4</button>
+</div>
+<canvas id="armorCanvas" aria-label="3D Fieldwork armor and chest rig comparison"></canvas>
+<footer>The wardrobe appearance is illustrative. Ballistic protection, weight and inventory remain set by the equipped loadout. <a href="./operator-studio.html">Operator Studio</a></footer>
+<script type="module" src="./src/operator-armor-rig-lab.ts"></script></body></html>

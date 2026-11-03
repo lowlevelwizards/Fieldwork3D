@@ -1,0 +1,37 @@
+name: Armor & Rig — Critical Mobile Silhouettes
+on:
+  pull_request:
+    paths:
+      - 'src/operator-armor-rig-silhouettes.ts'
+      - 'src/operator-armor-rig-lab.ts'
+      - 'operator-armor-rig-lab.html'
+      - 'src/operator-wardrobe-gear-visuals.ts'
+      - 'src/operator-visual-kit.ts'
+      - 'src/operator-wardrobe-data.ts'
+      - 'scripts/capture-operator-armor-rig.mjs'
+      - '.github/workflows/operator-armor-rig-visual.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  armor-rig:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Existing mobile Operator Studio smoke
+        run: node scripts/smoke-operator-studio.mjs
+      - name: Gameplay-zoom armor and chest rig silhouette captures
+        run: node scripts/capture-operator-armor-rig.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: operator-armor-rig-phone-silhouettes
+          path: operator-armor-rig-captures/
+          if-no-files-found: ignore

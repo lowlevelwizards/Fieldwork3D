@@ -21,6 +21,8 @@ import {createWardrobeBodyLayers,updateWardrobeBodyLayers,
  type WardrobeBodyLayers} from './operator-wardrobe-body-visuals.ts';
 import {createWardrobeGearLayers,updateWardrobeGearLayers,
  type WardrobeGearLayers} from './operator-wardrobe-gear-visuals.ts';
+import {ARMOR_PROFILES,RIG_FRONT_PROFILES}
+ from './operator-armor-rig-silhouettes.ts';
 import {createWardrobeAccessoryVisuals,updateWardrobeAccessories,
  initialWardrobeAccessories,type WardrobeAccessoryVisuals}
  from './operator-wardrobe-accessories.ts';
@@ -275,8 +277,10 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  v.haircuts.forEach((h,i)=>{h.visible=i===key%3;});
  v.eyeMarks.forEach(m=>{m.visible=faceStyle==='quiet';});
  v.graphicMarks.visible=faceStyle==='graphic';
- v.softArmor.visible=s.armor==='armor-soft';
- v.plateCarrier.visible=s.armor==='armor-carrier';
+ // Never draw legacy universal armor underneath an authored wardrobe shell.
+ // Keep the original fallbacks only for old callers without wardrobe state.
+ v.softArmor.visible=!usingWardrobe&&s.armor==='armor-soft';
+ v.plateCarrier.visible=!usingWardrobe&&s.armor==='armor-carrier';
  v.softArmor.scale.set(looks.armorStyle==='soft-slick'?.85:
   looks.armorStyle==='soft-paca'?.93:1,1,1);
  v.plateCarrier.scale.set(looks.armorStyle==='plate-slick'?.87:
@@ -292,12 +296,14 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   wardrobe?.trouserHem??'bloused',looks.footwear==='bare-feet',looks.top);
  updateWardrobeBodyLayers(v.wardrobeBody,looks.top,looks.trousers,
   looks.knees,looks.wrist);
- updateWardrobeGearLayers(v.wardrobeGear,looks.armorStyle,looks.rigStyle,
+ updateWardrobeGearLayers(v.wardrobeGear,
+  usingWardrobe?looks.armorStyle:'armor-bare',
+  usingWardrobe?looks.rigStyle:'no-rig',
   looks.beltStyle,looks.packStyle);
  updateWardrobeAccessories(v.accessories,
   wardrobe?.accessories??initialWardrobeAccessories());
- v.chestRig.visible=s.rig==='rig-light';
- v.fieldWebbing.visible=s.rig==='rig-full';
+ v.chestRig.visible=!usingWardrobe&&s.rig==='rig-light';
+ v.fieldWebbing.visible=!usingWardrobe&&s.rig==='rig-full';
  v.chestRig.scale.set(looks.rigStyle==='micro-rig'?.76:1,1,1);
  v.fieldWebbing.scale.set(looks.rigStyle==='lbv'?1.12:
   looks.rigStyle==='belt-harness'?.92:1,1,1);
@@ -361,14 +367,23 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  // Four front pouches and three side-webbing pouches. This keeps the full
  // seven-space rig around the torso rather than hanging a second row below
  // the waist. All mount faces sit beyond the selected armor shell.
- const surfaceX=s.armor==='armor-carrier'?9.15:
-   s.armor==='armor-soft'?8.25:6.65;
- const surfaceZ=s.armor==='armor-carrier'?9.0:
-   s.armor==='armor-soft'?8.65:8.1;
+ const armorProfile=ARMOR_PROFILES[looks.armorStyle]??
+  ARMOR_PROFILES['armor-bare'];
+ const rigProfile=RIG_FRONT_PROFILES[looks.rigStyle]??
+  RIG_FRONT_PROFILES['light-rig'];
+ const mountDelta=armorProfile.front-ARMOR_PROFILES['plate-standard'].front;
+ const surfaceX=usingWardrobe&&rigProfile.front>0?
+  rigProfile.front+mountDelta:
+  s.armor==='armor-carrier'?9.15:
+  s.armor==='armor-soft'?8.25:6.65;
+ const surfaceZ=usingWardrobe?armorProfile.side:
+  s.armor==='armor-carrier'?9.0:
+  s.armor==='armor-soft'?8.65:8.1;
  const order=wardrobe?.mounts?.magazineOrder==='right-left'?-1:1;
  v.magazines.rig.forEach((mag,i)=>{
   if(i<4){
-   mag.position.set(surfaceX,-1.6,order*(i-1.5)*3.1);
+   mag.position.set(surfaceX,usingWardrobe?rigProfile.low:-1.6,
+    order*(i-1.5)*3.1);
    mag.rotation.y=0;
   }else{
    const side=order*(i===4?1:-1);
