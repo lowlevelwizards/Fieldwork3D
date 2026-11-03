@@ -8,11 +8,11 @@
 import * as THREE from 'three';
 import {createOperatorRig,poseOperator} from './breach-operator-rig.ts';
 import {bareLabEquipment} from './operator-lab-baseline.ts';
-import {initialWardrobe,setWardrobeFabricCamo,resolvedWardrobe,
+import {initialWardrobe,resolvedWardrobe,
  wardrobeItemsForSlot,WARDROBE_SLOTS,type WardrobeSlot,
  type WardrobeOptions,type WardrobeItem} from './operator-wardrobe-data.ts';
 import {selectWardrobeItem} from './operator-wardrobe-unified.ts';
-import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {setEquipmentChoice,type EquipmentLoadout} from './equipment-loadouts.ts';
 
 export const APPEARANCE_GROUP_LABELS:Readonly<Record<WardrobeSlot,string>>={
  headwear:'HEAD',facewear:'FACE',eyewear:'EYES',headset:'COMMS',
@@ -60,10 +60,14 @@ export class OperatorAppearanceGrid{
  private wardrobe:WardrobeOptions=initialWardrobe();
  private readonly onSelect:OnSelect;
  private readonly canEquip?: (slot:WardrobeSlot,id:string)=>boolean;
+ private readonly liveContext:boolean;
+ private previewIdentity='rook';
  private readonly renderer:THREE.WebGLRenderer;
  constructor(root:HTMLElement,renderer:THREE.WebGLRenderer,onSelect:OnSelect,
-  canEquip?: (slot:WardrobeSlot,id:string)=>boolean){
+  canEquip?: (slot:WardrobeSlot,id:string)=>boolean,
+  liveContext=false){
   this.renderer=renderer;this.onSelect=onSelect;this.canEquip=canEquip;
+  this.liveContext=liveContext;
   this.scene.background=new THREE.Color(0x23352e);
   this.scene.add(new THREE.AmbientLight(0xffffff,1.5));
   const key=new THREE.DirectionalLight(0xffeed4,2.0);
@@ -90,8 +94,10 @@ export class OperatorAppearanceGrid{
    this.nav.append(button);
   }
  }
- refresh(kit:EquipmentLoadout,wardrobe:WardrobeOptions){
+ refresh(kit:EquipmentLoadout,wardrobe:WardrobeOptions,
+  previewIdentity='rook'){
   this.kit=kit;this.wardrobe=wardrobe;
+  this.previewIdentity=previewIdentity;
   this.paint();
  }
  setCategory(slot:WardrobeSlot){
@@ -139,7 +145,12 @@ export class OperatorAppearanceGrid{
    button.append(thumb,text,caption);
    button.addEventListener('click',()=>this.onSelect(item.slot,item.id));
    this.grid.append(button);
-   const key=item.slot+':'+item.id;
+   // Live Studio cards must reflect THIS operator's material and pants.
+   // Legacy Lab can keep its isolated demonstration presets unchanged.
+   const key=this.liveContext?
+    item.slot+':'+item.id+':'+this.previewIdentity+':'+
+    JSON.stringify(this.kit.slots)+':'+JSON.stringify(this.wardrobe):
+    item.slot+':'+item.id;
    const cached=this.cache.get(key);
    if(cached)thumb.getContext('2d')?.putImageData(cached,0,0);
    else this.queue.push({item,canvas:thumb,button,key});
@@ -157,40 +168,38 @@ export class OperatorAppearanceGrid{
  }
  private renderThumbnail(entry:Entry){
   const {item,key,canvas}=entry;
-  let kit=bareLabEquipment();
-  let w=initialWardrobe();
-  // Dress a neutral mannequin in a real baseline uniform, not a hollow
-  // isolated prop. The selected item's own equipment class always wins.
-  for(const [slot,id] of [
-   ['top','bdu-shirt'],['trousers','bdu-trousers'],
-   ['footwear','field-boots'],['headwear','bare']
-  ] as const){
-   const next=selectWardrobeItem(kit,w,slot,id);kit=next.kit;w=next.wardrobe;
-  }
-  // Pair matching structural families in thumbnails, so the new pants
-  // show honestly instead of beneath an unrelated uniform blouse.
-  if(item.slot==='top'&&(item.id==='bdu-shirt'||item.id==='acu-shirt'||item.id==='gorka-jacket')){
-   const t=item.id==='bdu-shirt'?'bdu-trousers':
-    item.id==='gorka-jacket'?'gorka-trousers':'acu-trousers';
-   const next=selectWardrobeItem(kit,w,'trousers',t);
+  let kit:EquipmentLoadout;
+  let w:WardrobeOptions;
+  if(this.liveContext){
+   // A real operator and their real currently chosen look. Do not quietly
+   // pair different pants, insert demonstration prints, or hide the last
+   // selected solid finish behind a hardcoded thumbnail outfit.
+   const choice=selectWardrobeItem(this.kit,this.wardrobe,item.slot,item.id);
+   kit=choice.kit;w=choice.wardrobe;
+   if(item.slot==='top'||item.slot==='trousers'){
+    for(const [slot,id] of [
+     ['head','head-none'],['armor','armor-none'],['rig','rig-none'],
+     ['belt','belt-none'],['backpack','backpack-none']
+    ] as const)kit=setEquipmentChoice(kit,slot,id);
+    w={...w,styles:{...w.styles,headwear:'bare',
+     armorStyle:'armor-bare',rigStyle:'no-rig',beltStyle:'no-belt',
+     packStyle:'no-pack'}};
+   }
+  }else{
+   // The separate technical Lab deliberately presents its old neutral
+   // individual cut demos; only Operator Studio uses exact live context.
+   kit=bareLabEquipment();w=initialWardrobe();
+   for(const [slot,id] of [
+    ['top','bdu-shirt'],['trousers','bdu-trousers'],
+    ['footwear','field-boots'],['headwear','bare']
+   ] as const){
+    const next=selectWardrobeItem(kit,w,slot,id);
+    kit=next.kit;w=next.wardrobe;
+   }
+   const next=selectWardrobeItem(kit,w,item.slot,item.id);
    kit=next.kit;w=next.wardrobe;
   }
-  if(item.slot==='trousers'&&(item.id==='bdu-trousers'||item.id==='acu-trousers'||item.id==='gorka-trousers')){
-   const top=item.id==='bdu-trousers'?'bdu-shirt':
-    item.id==='gorka-trousers'?'gorka-jacket':'acu-shirt';
-   const next=selectWardrobeItem(kit,w,'top',top);
-   kit=next.kit;w=next.wardrobe;
-  }
-  const choice=selectWardrobeItem(kit,w,item.slot,item.id);
-  kit=choice.kit;w=choice.wardrobe;
-  if(item.slot==='top'){
-   const print=item.id==='bdu-shirt'?'m81-woodland':
-    item.id==='acu-shirt'?'scorpion-w2':
-     item.id==='combat-shirt'?'multicam':
-     item.id==='smock-jacket'?'woodland-dpm':null;
-   if(print)w=setWardrobeFabricCamo(w,'top',print,resolvedWardrobe(w,kit));
-  }
-  const rig=createOperatorRig('rook','blue');
+  const rig=createOperatorRig(this.liveContext?this.previewIdentity:'rook','blue');
   const oldTarget=this.renderer.getRenderTarget();
   const oldClear=this.renderer.getClearColor(new THREE.Color()).clone();
   const oldAlpha=this.renderer.getClearAlpha();

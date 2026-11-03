@@ -11,7 +11,7 @@
 <div id="studioRoot">
 <header class="studio-top">
 <button id="studioBack" type="button" aria-label="Return to game">‹ BACK</button>
-<label class="studio-operator-label">OPERATOR
+<label class="studio-operator-label"><span id="studioModeLabel">QUICK PLAY · OPERATOR</span>
 <select id="studioOperator" aria-label="Choose operator"></select></label>
 <button id="studioApply" class="studio-primary" type="button">APPLY</button>
 </header>
@@ -31,9 +31,25 @@
 <div class="studio-sheet-title"><div><strong id="studioTitle">UPPER BODY</strong>
 <small id="studioSubheading">Select a garment, then its fabric and finish</small></div>
 <div class="studio-history">
+<button id="studioCompare" type="button" aria-pressed="false" disabled>COMPARE</button>
 <button id="studioUndo" type="button" disabled>↶ UNDO</button>
+<details id="studioMore" class="studio-more">
+<summary aria-label="More appearance actions">MORE</summary>
+<div class="studio-more-panel">
+<button id="studioMatchSet" type="button">MATCH UNIFORM SET</button>
+<button id="studioReset" type="button">RESET TO SAVED LOOK</button>
+<label class="studio-preset-picker">SAVED LOOKS
+<select id="studioPresetSelect" aria-label="Saved appearance presets"></select></label>
+<div class="studio-more-actions">
+<button id="studioPresetApply" type="button">USE PRESET</button>
+<button id="studioPresetSave" type="button">SAVE PRESET</button>
+<button id="studioPresetDelete" type="button">DELETE</button>
+</div>
+<small>Presets store appearance only, never campaign inventory.</small>
+</div></details>
 </div></div>
 <nav id="studioCategories" class="studio-categories" aria-label="Appearance categories"></nav>
+<nav id="studioSubcategories" class="studio-subcategories" aria-label="Appearance subcategories"></nav>
 <div id="studioItemBrowser" aria-label="3D appearance items"></div>
 <section id="studioMaterials" class="studio-materials" aria-label="Selected item materials and finishes"></section>
 <output id="studioStatus" role="status" aria-live="polite"></output>

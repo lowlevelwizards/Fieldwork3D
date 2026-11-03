@@ -44,6 +44,17 @@ try{
   await page.locator('#studioMaterials .solid-swatches button').first().click();
   if(!await page.locator('#studioApply').isEnabled())
    throw Error('Solid color change did not mark wardrobe dirty');
+  await page.locator('#studioCompare').click();
+  if(await page.locator('#studioCompare').getAttribute('aria-pressed')!=='true')
+   throw Error('Compare did not show the original saved look');
+  await page.locator('#studioCompare').click();
+  await page.locator('#studioMore > summary').click();
+  page.once('dialog',dialog=>dialog.accept('Mobile QA Uniform'));
+  await page.locator('#studioPresetSave').click();
+  await page.locator('#studioPresetSelect').selectOption('Mobile QA Uniform');
+  if(!await page.locator('#studioPresetApply').isEnabled())
+   throw Error('Appearance-only preset not available for application');
+  await page.locator('#studioPresetApply').click();
   await page.locator('#studioApply').click();
   await page.waitForFunction(()=>
    document.getElementById('studioStatus')?.textContent?.includes('SAVED'),

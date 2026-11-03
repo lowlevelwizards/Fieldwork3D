@@ -22,6 +22,10 @@ import {headwearCamoChoices,headwearCamoPixels,headwearCamoSize,
  HEADWEAR_CAMO_RECIPES,
  nextHeadwearCamoRoll,type HeadwearCamoId} from './operator-headwear-camo.ts';
 import {topColorwayChoices,resolvedTopColorway} from './operator-upper-colorways.ts';
+import {STUDIO_PRESET_STORAGE_KEY,STUDIO_PRESET_LIMIT,
+ readStudioPresets,saveStudioPreset,deleteStudioPreset,
+ serializeStudioPresets,outfitPresetForKit,
+ type StudioPreset} from './operator-studio-presets.ts';
 import './operator-appearance-grid.css';
 
 type StudioMode='quick'|'campaign';
@@ -38,6 +42,10 @@ let readOnly=false;
 let people:StudioPerson[]=[];
 let activeCategory:WardrobeSlot='top';
 let clothesOnly=true;
+let comparingSaved=false;
+let studioPresets:StudioPreset[]=[];
+try{studioPresets=readStudioPresets(localStorage.getItem(STUDIO_PRESET_STORAGE_KEY));}
+catch{/* Appearance presets are optional when storage is blocked. */}
 let rig:OperatorRig|null=null;
 const history=new Map<string,WardrobeOptions[]>();
 const edits=new Map<string,WardrobeOptions>();
@@ -51,6 +59,17 @@ const modelSelector=$<HTMLSelectElement>('studioOperator');
 const gearToggle=$<HTMLButtonElement>('studioGearToggle');
 const undoButton=$<HTMLButtonElement>('studioUndo');
 const categories=$<HTMLElement>('studioCategories');
+const subcategories=$<HTMLElement>('studioSubcategories');
+const compareButton=$<HTMLButtonElement>('studioCompare');
+const resetButton=$<HTMLButtonElement>('studioReset');
+const matchSetButton=$<HTMLButtonElement>('studioMatchSet');
+const presetSelect=$<HTMLSelectElement>('studioPresetSelect');
+const presetSave=$<HTMLButtonElement>('studioPresetSave');
+const presetApply=$<HTMLButtonElement>('studioPresetApply');
+const presetDelete=$<HTMLButtonElement>('studioPresetDelete');
+const moreDetails=$<HTMLDetailsElement>('studioMore');
+const modeLabel=$<HTMLElement>('studioModeLabel');
+const studioRoot=$<HTMLElement>('studioRoot');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:'low-power'});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
 renderer.setClearColor(0xc4c7bd);
@@ -71,9 +90,10 @@ controls.minZoom=.7;controls.maxZoom=2.8;
 controls.target.set(0,23,0);controls.update();
 const thumbBrowser=new OperatorAppearanceGrid(
  $('studioItemBrowser'),renderer,(slot,id)=>chooseStyle(slot,id),
- (slot,id)=>canEquip(slot,id));
+ (slot,id)=>canEquip(slot,id),true);
 const member=()=>people.find(p=>p.id===selected);
 const current=()=>edits.get(selected)??member()?.wardrobe??initialWardrobe();
+const previewWardrobe=()=>comparingSaved?member()?.wardrobe??initialWardrobe():current();
 const say=(message:string)=>{status.textContent=message;};
 function resize(){
  const rect=stage.getBoundingClientRect();
@@ -152,7 +172,7 @@ function posePreview(){
   lastDoorAt:-100,lastThrowAt:-100,down:false,surrender:false,
   aiming:false,firing:false,turning:0,deterministic:true,
   unarmedPreview:true,equipment:inspectKit(p.loadout),
-  wardrobe:inspectWardrobe(current())
+  wardrobe:inspectWardrobe(previewWardrobe())
  },0);
  renderScene();
 }
@@ -161,6 +181,7 @@ function canEquip(slot:WardrobeSlot,id:string){
  return !!p&&resolvedWardrobe(setWardrobeStyle(current(),slot,id),p.loadout)[slot]===id;
 }
 function changeWardrobe(next:WardrobeOptions){
+ if(comparingSaved)comparingSaved=false;
  if(readOnly){say('Appearance is locked during an active campaign operation');return;}
  if(JSON.stringify(next)===JSON.stringify(current()))return;
  history.set(selected,[...(history.get(selected)??[]).slice(-24),readWardrobe(current())]);
@@ -169,10 +190,12 @@ function changeWardrobe(next:WardrobeOptions){
  refresh();
 }
 function chooseStyle(slot:WardrobeSlot,id:string){
+ if(comparingSaved){comparingSaved=false;refresh();}
  if(!canEquip(slot,id)){say('This item requires a different equipped kit');return;}
  changeWardrobe(setWardrobeStyle(current(),slot,id));
 }
 function undo(){
+ comparingSaved=false;
  const stack=history.get(selected)??[],last=stack.pop();
  if(!last)return;
  history.set(selected,stack);edits.set(selected,last);dirty.add(selected);
@@ -188,7 +211,7 @@ function row(label:string,help?:string){
 }
 function makeButton(text:string,active:boolean,action:()=>void){
  const b=document.createElement('button');b.type='button';b.textContent=text;
- b.setAttribute('aria-pressed',String(active));b.disabled=readOnly;
+ b.setAttribute('aria-pressed',String(active));b.disabled=readOnly||comparingSaved;
  b.addEventListener('click',action);return b;
 }
 function addSolidSwatches(target:HTMLElement,values:readonly GarmentSolidId[],
@@ -293,6 +316,29 @@ function renderMaterials(){
     w.fabricSolids?.[channel]??null,id=>
      changeWardrobe(setWardrobeFabricSolid(current(),channel,id)));
   }
+  // A matching set is explicitly opt-in: one tap copies only a compatible
+  // print or solid, never an item or equipment slot.
+  if(channel==='top'||channel==='trousers'){
+   const source=channel==='top'?'trousers':'top';
+   const sourcePrint=w.fabricCamo?.[source];
+   const sourceSolid=w.fabricSolids?.[source];
+   const canCopyPrint=!!sourcePrint&&choices.includes(sourcePrint)&&
+    pattern!==sourcePrint;
+   const canCopySolid=!sourcePrint&&!!sourceSolid&&
+    solidChoicesFor(channel).includes(sourceSolid)&&
+    (pattern!==null||w.fabricSolids?.[channel]!==sourceSolid);
+   if(canCopyPrint||canCopySolid){
+    const match=document.createElement('div');match.className='material-row';
+    match.append(makeButton('MATCH '+(source==='top'?'TOP':'TROUSER')+
+      ' '+(canCopyPrint?'CAMOUFLAGE':'SOLID'),false,()=>{
+     if(canCopyPrint&&sourcePrint)
+      changeWardrobe(setWardrobeFabricCamo(current(),channel,sourcePrint,outfit));
+     else if(canCopySolid&&sourceSolid)
+      changeWardrobe(setWardrobeFabricSolid(current(),channel,sourceSolid));
+    }));
+    group.append(match);
+   }
+  }
  }
  if(activeCategory==='headwear'){
   const solids=headwearColorChoices(item==='high-cut-rails'?'high-cut':item);
@@ -360,26 +406,142 @@ function renderMaterials(){
    'This item has no additional appearance material controls.';materialRoot.append(hint);
  }
 }
-const categoryRows:readonly (readonly [WardrobeSlot,string])[]=[
- ['headwear','HEAD'],['top','TOPS'],['trousers','LEGS'],
- ['armorStyle','ARMOR'],['rigStyle','RIG'],['beltStyle','BELT'],
- ['packStyle','PACK'],['footwear','BOOTS'],['facewear','FACE'],
- ['eyewear','EYES'],['headset','COMMS'],['gloves','GLOVES'],
- ['knees','KNEES'],['wrist','EXTRAS']];
+/** Six primary categories replace the old fourteen-tab strip.
+ * Subslots are an intentional second step only where needed. */
+const categoryGroups:readonly {label:string;slots:readonly WardrobeSlot[]}[]=[
+ {label:'HEAD',slots:['headwear','facewear','eyewear','headset']},
+ {label:'TOPS',slots:['top']},
+ {label:'LEGS',slots:['trousers','footwear']},
+ {label:'ARMOR',slots:['armorStyle']},
+ {label:'GEAR',slots:['rigStyle','beltStyle','packStyle']},
+ {label:'DETAILS',slots:['gloves','knees','wrist']}
+];
+const categoryGroup=()=>categoryGroups.find(group=>
+ group.slots.includes(activeCategory))??categoryGroups[1];
+function selectCategory(slot:WardrobeSlot){
+ activeCategory=slot;
+ // Look at the cloth unobscured for garments, but show all available
+ // headgear/armor/gear when browsing those categories.
+ clothesOnly=slot==='top'||slot==='trousers';
+ comparingSaved=false;syncGearToggle();refresh();
+}
 function renderCategories(){
- categories.replaceChildren();
- for(const [slot,label] of categoryRows){
-  const button=makeButton(label,slot===activeCategory,()=>{
-   activeCategory=slot;
-   // Inspect the cloth unobscured for TOPS/LEGS; display equipment for
-   // HEAD, ARMOR and other gear so selecting items remains intuitive.
-   clothesOnly=slot==='top'||slot==='trousers';
-   syncGearToggle();refresh();
-  });
-  button.setAttribute('aria-label','Customize '+APPEARANCE_GROUP_LABELS[slot]);
+ categories.replaceChildren();subcategories.replaceChildren();
+ for(const group of categoryGroups){
+  const button=makeButton(group.label,group.slots.includes(activeCategory),()=>
+   selectCategory(group.slots[0]));
+  button.setAttribute('aria-label','Customize '+group.label.toLowerCase());
   categories.append(button);
  }
+ const group=categoryGroup();
+ if(group.slots.length>1)for(const slot of group.slots){
+  const button=makeButton(APPEARANCE_GROUP_LABELS[slot],slot===activeCategory,
+   ()=>selectCategory(slot));
+  subcategories.append(button);
+ }
 }
+function pairedUniformFor(slot:WardrobeSlot,look:WardrobeOptions,kit:EquipmentLoadout):
+ {slot:WardrobeSlot;id:string}|null{
+ const outfit=resolvedWardrobe(look,kit);
+ if(slot==='top'){
+  const pairs:Record<string,string>={
+   'bdu-shirt':'bdu-trousers','acu-shirt':'acu-trousers',
+   'combat-shirt':'acu-trousers','smock-jacket':'bdu-trousers',
+   'gorka-jacket':'gorka-trousers'};
+  const id=pairs[outfit.top];return id?{slot:'trousers',id}:null;
+ }
+ if(slot==='trousers'){
+  const pairs:Record<string,string>={
+   'bdu-trousers':'bdu-shirt','acu-trousers':'acu-shirt',
+   'gorka-trousers':'gorka-jacket'};
+  const id=pairs[outfit.trousers];return id?{slot:'top',id}:null;
+ }
+ return null;
+}
+function renderPresetMenu(){
+ const selectedPreset=presetSelect.value;
+ presetSelect.replaceChildren();
+ const none=document.createElement('option');
+ none.value='';none.textContent=studioPresets.length?
+  'SELECT SAVED APPEARANCE':'NO SAVED APPEARANCES';
+ presetSelect.append(none);
+ for(const preset of studioPresets){
+  const option=document.createElement('option');option.value=preset.name;
+  option.textContent=preset.name; presetSelect.append(option);
+ }
+ if(studioPresets.some(x=>x.name===selectedPreset))presetSelect.value=selectedPreset;
+ const selectedName=presetSelect.value;
+ presetApply.disabled=readOnly||comparingSaved||!selectedName;
+ presetDelete.disabled=readOnly||comparingSaved||!selectedName;
+ presetSave.disabled=readOnly||comparingSaved||
+  studioPresets.length>=STUDIO_PRESET_LIMIT;
+ const p=member();
+ const pair=p?pairedUniformFor(activeCategory,current(),p.loadout):null;
+ matchSetButton.hidden=!pair;
+ matchSetButton.disabled=readOnly||comparingSaved||!pair||
+  !canEquip(pair.slot,pair.id)||
+  resolvedWardrobe(current(),member()!.loadout)[pair.slot]===pair.id;
+ if(pair)matchSetButton.textContent='MATCH '+(pair.slot==='top'?'TOP':'TROUSERS')+
+  ' · '+(pair.id==='gorka-trousers'?'GORKA':pair.id.includes('acu')?'ACU':'BDU');
+}
+function persistStudioPresets(){
+ try{localStorage.setItem(STUDIO_PRESET_STORAGE_KEY,
+  serializeStudioPresets(studioPresets));return true;}
+ catch{say('PRESET SAVE BLOCKED BY BROWSER STORAGE');return false;}
+}
+compareButton.addEventListener('click',()=>{
+ if(!dirty.has(selected))return;
+ comparingSaved=!comparingSaved;refresh();
+ say(comparingSaved?'PREVIEWING LAST SAVED LOOK · NO CHANGES APPLIED':
+  'PREVIEWING YOUR UNSAVED CHANGES');
+});
+resetButton.addEventListener('click',()=>{
+ if(readOnly||!dirty.has(selected))return;
+ if(!window.confirm('Discard unsaved changes for this operator and restore the last saved look?'))return;
+ edits.delete(selected);dirty.delete(selected);history.delete(selected);
+ comparingSaved=false;refresh();say('RESTORED LAST SAVED LOOK');
+ moreDetails.open=false;
+});
+presetSelect.addEventListener('change',renderPresetMenu);
+presetSave.addEventListener('click',()=>{
+ if(readOnly||comparingSaved)return;
+ const name=window.prompt('Name this appearance-only preset (up to 32 characters):');
+ if(name===null||!name.trim())return;
+ const next=saveStudioPreset(studioPresets,name,current());
+ if(next.length===studioPresets.length&&
+  !studioPresets.some(x=>x.name.toLowerCase()===name.trim().toLowerCase())){
+  say('MAXIMUM OF '+STUDIO_PRESET_LIMIT+' APPEARANCE PRESETS');return;
+ }
+ studioPresets=next;
+ if(!persistStudioPresets())return;
+ renderPresetMenu();presetSelect.value=name.trim().replace(/\s+/g,' ').slice(0,32);
+ renderPresetMenu();say('APPEARANCE PRESET SAVED · NO EQUIPMENT');
+});
+presetApply.addEventListener('click',()=>{
+ if(readOnly||comparingSaved)return;
+ const item=studioPresets.find(x=>x.name===presetSelect.value);
+ if(!item)return;
+ changeWardrobe(outfitPresetForKit(item.wardrobe,member()!.loadout));
+ say('PRESET APPLIED TO DRAFT · SAVE LOOK TO KEEP IT');
+ moreDetails.open=false;
+});
+presetDelete.addEventListener('click',()=>{
+ if(readOnly||comparingSaved||!presetSelect.value)return;
+ const name=presetSelect.value;
+ if(!window.confirm('Delete appearance preset "'+name+'"?'))return;
+ studioPresets=deleteStudioPreset(studioPresets,name);
+ if(!persistStudioPresets())return;
+ renderPresetMenu();say('PRESET DELETED');
+});
+matchSetButton.addEventListener('click',()=>{
+ const p=member();if(!p||readOnly||comparingSaved)return;
+ const pair=pairedUniformFor(activeCategory,current(),p.loadout);
+ if(!pair||!canEquip(pair.slot,pair.id))return;
+ changeWardrobe(setWardrobeStyle(current(),pair.slot,pair.id));
+ say('MATCHED '+(pair.slot==='top'?'TOP':'TROUSERS')+
+  ' · FABRIC UNCHANGED · SAVE LOOK TO KEEP IT');
+ moreDetails.open=false;
+});
 function refresh(){
  const p=member();if(!p)return;
  $('studioTitle').textContent=APPEARANCE_GROUP_LABELS[activeCategory]+' / '+p.callsign;
@@ -387,11 +549,16 @@ function refresh(){
   'Select a 3D item, then edit materials and details';
  applyButton.disabled=readOnly||!dirty.has(selected);
  applyButton.textContent=dirty.has(selected)?'SAVE LOOK':'SAVED';
+ compareButton.disabled=!dirty.has(selected);
+ compareButton.setAttribute('aria-pressed',String(comparingSaved));
+ compareButton.textContent=comparingSaved?'EDITING ↔':'COMPARE';
+ studioRoot.dataset.comparing=String(comparingSaved);
+ modeLabel.textContent=mode==='campaign'?'CAMPAIGN · PERSISTENT':'QUICK PLAY · APPEARANCE';
  undoButton.disabled=readOnly||!(history.get(selected)?.length);
  renderCategories();
  thumbBrowser.setCategory(activeCategory);
- thumbBrowser.refresh(p.loadout,current());
- renderMaterials();posePreview();
+ thumbBrowser.refresh(p.loadout,previewWardrobe(),p.id);
+ renderPresetMenu();renderMaterials();posePreview();
 }
 function populate(){
  modelSelector.replaceChildren();
@@ -403,7 +570,7 @@ function populate(){
  modelSelector.value=selected;refresh();
 }
 function start(data:{mode:StudioMode;selected:string;members:StudioPerson[];readonly:boolean}){
- mode=data.mode;selected=data.selected;readOnly=data.readonly;
+ mode=data.mode;selected=data.selected;readOnly=data.readonly;comparingSaved=false;
  people=data.members.map(p=>({...p,wardrobe:readWardrobe(p.wardrobe)}));
  history.clear();edits.clear();dirty.clear();
  populate();
