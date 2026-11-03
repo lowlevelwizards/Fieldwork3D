@@ -394,7 +394,7 @@ applyButton.addEventListener('click',apply);
 function close(){
  if(dirty.size&&!window.confirm('Discard unsaved appearance changes?'))return;
  if(embedded)window.parent.postMessage({type:'fw-studio-close'},location.origin);
- else if(history.length>1)window.history.back();
+ else if(window.history.length>1)window.history.back();
  else location.href='./index.html';
 }
 $('studioBack').addEventListener('click',close);
