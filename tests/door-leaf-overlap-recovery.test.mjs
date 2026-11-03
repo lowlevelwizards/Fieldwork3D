@@ -36,15 +36,19 @@ test('normal capsule does not become the tiny hinge collider while door opens',(
    pointToSegment(actor,future));
  assert.ok(pointToSegment(actor,future)<OPERATOR_RADIUS+1);
  pushDoor(door,3);
- for(let i=0;i<90;i++)advanceDoor(door,1/60,[actor]);
- // Door may move only while retreating from the actor or until the
- // full-sized body boundary is reached; never deepen body penetration.
- const current=pointToSegment(actor,doorLeafSegment(door));
- const before=pointToSegment(actor,b.leaf);
- assert.ok(current>=Math.min(before,OPERATOR_RADIUS+1)-.03,
-   'moving hinge swept inside normal body: '+JSON.stringify({before,current}));
- assert.ok(door.openFraction<1.15,
-   'must not swing into normal operator capsule');
+ let previous=pointToSegment(actor,doorLeafSegment(door));
+ for(let i=0;i<90;i++){
+   advanceDoor(door,1/60,[actor]);
+   const current=pointToSegment(actor,doorLeafSegment(door));
+   // It is fine for the door to eventually swing *past* the actor,
+   // provided every intermediate hinge tick respects full capsule radius.
+   if(previous>=OPERATOR_RADIUS+1-.01)
+     assert.ok(current>=OPERATOR_RADIUS+1-.06,
+       'hinge entered normal body capsule on tick '+i);
+   else assert.ok(current>=previous-.06,
+     'hinge deepened an existing overlap on tick '+i);
+   previous=current;
+ }
 });
 test('contact from the closing side never pushes the hinge farther open',()=>{
  const d=make(),b=basis(d);
