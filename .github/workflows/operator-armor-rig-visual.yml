@@ -5,6 +5,8 @@ on:
       - 'src/operator-armor-fit-debug.ts'
       - 'src/operator-uniform-fit-envelope.ts'
       - 'src/operator-adaptive-armor.ts'
+      - 'src/operator-armor-proportions.ts'
+      - 'src/operator-armor-shapes.ts'
       - 'src/operator-armor-rig-silhouettes.ts'
       - 'src/operator-armor-rig-lab.ts'
       - 'operator-armor-rig-lab.html'

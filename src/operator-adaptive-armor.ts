@@ -9,6 +9,10 @@
  */
 import * as THREE from 'three';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
+import {ARMOR_PROPORTIONS,type ArmorProportion}
+ from './operator-armor-proportions.ts';
+import {fittedArmorBag,fittedShoulderBridge,fittedSideWrap,fittedArmorCollar}
+ from './operator-armor-shapes.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {uniformFitEnvelope,fittedArmorSurfaces,ARMOR_PANEL_DEPTHS,
  type ArmorFitSurfaces} from './operator-uniform-fit-envelope.ts';
@@ -25,109 +29,62 @@ type ArmorEntry={
 const entries=new WeakMap<THREE.Group,ArmorEntry>();
 const makeBox=(parent:THREE.Group,m:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number)=>{
- const geo=garmentBoxUV(new THREE.BoxGeometry(w,h,d),w,h,d,m,x,y,z);
+ const mapped=garmentBoxUV(new THREE.BoxGeometry(w,h,d),w,h,d,m,x,y,z);
+ // Polygonal bags and swept fabric are non-indexed. Match that topology
+ // before one-time consolidation, avoiding three.js mergeGeometries skips.
+ const geo=mapped.toNonIndexed();mapped.dispose();
  const mesh=new THREE.Mesh(geo,m);mesh.position.set(x,y,z);
  mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);
  return mesh;
 };
-const link=(g:THREE.Group,m:THREE.Material,
- a:readonly [number,number,number],b:readonly [number,number,number],
- width:number,depth:number)=>{
- const start=new THREE.Vector3(...a),end=new THREE.Vector3(...b);
- const delta=end.clone().sub(start),length=delta.length()+.16;
- if(length<.001)return;
- const geo=garmentBoxUV(new THREE.BoxGeometry(width,length,depth),
-  width,length,depth,m);
- const mesh=new THREE.Mesh(geo,m);
- mesh.position.copy(start.add(end).multiplyScalar(.5));
- mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),delta.normalize());
- mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);
-};
-function plateBag(g:THREE.Group,m:THREE.Material,front:number,
- bottom:number,lowH:number,lowW:number,upperH:number,upperW:number,
- depth:number,sign:number){
- const x=sign*(front-depth*.50);
- makeBox(g,m,x,bottom+lowH*.50,0,depth,lowH,lowW);
- makeBox(g,m,x,bottom+lowH+upperH*.50,0,depth,upperH,upperW);
-}
-function splitVest(g:THREE.Group,m:THREE.Material,
- face:number,y:number,h:number,halfW:number,depth:number,
- gap:number,sign:number){
- const z=halfW*.50+gap*.50;
- for(const side of [-1,1])
-  makeBox(g,m,sign*(face-depth*.50),y,side*z,depth,h,halfW);
-}
-const RECIPES:Readonly<Record<string,{
- bottom:number;low:number;wide:number;upper:number;neck:number;
- depth:number;shoulder:number;straps:number;sideHeight:number;
- style:'concealed'|'soft'|'flak'|'slick'|'skeleton'|'standard'|'heavy'|'legacy';
-}>>={
- 'soft-slick':{bottom:-4.8,low:9,wide:11.2,upper:0,neck:0,
-  depth:ARMOR_PANEL_DEPTHS['soft-slick'],shoulder:0,straps:0,sideHeight:0,style:'concealed'},
- 'soft-paca':{bottom:-4.8,low:9,wide:11.3,upper:0,neck:0,
-  depth:ARMOR_PANEL_DEPTHS['soft-paca'],shoulder:0,straps:0,sideHeight:0,style:'concealed'},
- 'soft-vest':{bottom:-4.78,low:8.7,wide:5.3,upper:0,neck:0,
-  depth:ARMOR_PANEL_DEPTHS['soft-vest'],shoulder:2.40,straps:0,sideHeight:8.4,style:'soft'},
- 'soft-flak':{bottom:-7.0,low:11.05,wide:6.48,upper:0,neck:0,
-  depth:ARMOR_PANEL_DEPTHS['soft-flak'],shoulder:3.20,straps:0,sideHeight:10.6,style:'flak'},
- 'plate-slick':{bottom:-3.7,low:5.25,wide:7.9,upper:2.20,neck:6.00,
-  depth:ARMOR_PANEL_DEPTHS['plate-slick'],shoulder:1.05,straps:1,sideHeight:1.10,style:'slick'},
- 'plate-jpc':{bottom:-4.12,low:5.90,wide:9.2,upper:2.42,neck:7.30,
-  depth:ARMOR_PANEL_DEPTHS['plate-jpc'],shoulder:1.40,straps:3,sideHeight:.64,style:'skeleton'},
- 'plate-standard':{bottom:-4.60,low:6.50,wide:9.65,upper:2.70,neck:7.60,
-  depth:ARMOR_PANEL_DEPTHS['plate-standard'],shoulder:1.60,straps:1,sideHeight:2.75,style:'standard'},
- 'plate-heavy':{bottom:-4.96,low:6.90,wide:10.15,upper:2.82,neck:8.10,
-  depth:ARMOR_PANEL_DEPTHS['plate-heavy'],shoulder:2.25,straps:1,sideHeight:3.55,style:'heavy'},
- 'plate-legacy':{bottom:-7.38,low:11.38,wide:6.20,upper:0,neck:0,
-  depth:ARMOR_PANEL_DEPTHS['plate-legacy'],shoulder:3.06,straps:1,sideHeight:10.5,style:'legacy'}
-};
+/** Authored front/rear silhouettes never stretch when changing garments.
+ * Only the attachment groups are recomputed for each selected top.
+ */
 function buildAuthoredPanels(entry:ArmorEntry){
  const {front,back,model,nominal,materials}=entry;
- const r=RECIPES[model];if(!r)return;
+ const spec=ARMOR_PROPORTIONS[model];
+ if(!spec)return;
  const {cloth,utility,dark,trim}=materials;
- if(r.style==='concealed'){
-  // Buried below the actual shirt surface, intentionally not a tactical vest.
+ if(spec.family==='concealed'){
+  // Internal panels do not show through the selected top.
   makeBox(front,cloth,4.82,-.25,0,.34,9.0,11.0);
   makeBox(back,cloth,-4.82,-.25,0,.34,9.0,11.0);
   return;
  }
- if(r.style==='soft'||r.style==='flak'||r.style==='legacy'){
-  const face=nominal.front;
-  splitVest(front,cloth,face,r.bottom+r.low*.5,r.low,r.wide,
-   r.depth,r.style==='soft'?.48:.20,1);
-  makeBox(back,cloth,-face+r.depth*.5,r.bottom+r.low*.5,0,
-   r.depth,r.low,(r.wide*2)+.55);
-  if(r.style==='soft'){
-   // Police: broad upper identification panel, clear center opening.
-   makeBox(front,dark,face+.10,2.15,-3.15,.19,.86,4.05);
-   makeBox(front,trim,face+.13,-.45,0,.18,6.7,.22);
-  }else{
-   makeBox(front,utility,face+.12,-.35,0,.22,7.4,.55);
-   if(r.style==='flak')for(const sign of [-1,1]){
-    makeBox(front,cloth,face+.17,-.55,sign*3.35,.28,2.5,3.50);
-    makeBox(front,utility,face+.23,1.0,sign*3.35,.24,.60,3.65);
-   }
-   if(r.style==='legacy')for(const sign of [-1,1])
-    makeBox(front,utility,face+.16,-3.75,sign*4.48,.22,1.6,3.00);
-  }
- }else{
-  const zWidth=r.neck;
-  plateBag(front,cloth,nominal.front,r.bottom,r.low,r.wide,
-   r.upper,zWidth,r.depth,1);
-  plateBag(back,cloth,nominal.front,r.bottom,r.low,r.wide+.1,
-   r.upper,zWidth+.1,r.depth,-1);
-  if(r.style==='standard'||r.style==='heavy'){
-   for(const y of [-2.45,-1.11,.27])
-    makeBox(front,utility,nominal.front+.11,y,0,.13,.33,r.wide-.9);
-  }else if(r.style==='skeleton'){
-   makeBox(front,trim,nominal.front+.12,-4.01,0,.14,.30,8.1);
-  }else{
-   makeBox(front,trim,nominal.front+.12,-3.54,0,.14,.25,7.0);
-  }
-  if(r.style==='heavy'){
-   // Side protection is fitted separately: no monolithic oversized bag.
-   makeBox(front,dark,nominal.front+.14,3.64,0,.18,.42,5.65);
-  }
+ const thickness=ARMOR_PANEL_DEPTHS[model]??1.2;
+ const soft=spec.family==='police'||spec.family==='fragmentation'||
+  spec.family==='legacy';
+ // The broad front is one iconic profile. Soft vests have two joined
+ // closure halves; plate bags are single clipped-corner shapes.
+ fittedArmorBag(front,cloth,nominal.front,1,spec.top,spec.bottom,
+  spec.width,spec.upperInset,thickness,soft);
+ fittedArmorBag(back,cloth,nominal.front,-1,spec.top-.2,
+  spec.bottom+.20,spec.width+.10,spec.upperInset,thickness,false);
+ const outer=nominal.front+.14;
+ if(spec.family==='police'){
+  // Identification rectangle, not three narrow floating rails.
+  makeBox(front,dark,outer,1.8,-2.85,.23,.85,4.35);
+ }else if(spec.family==='fragmentation'){
+  // PASGT-like long central closure and two legible lower pockets.
+  makeBox(front,utility,outer,-.85,0,.24,7.1,.78);
+  for(const sign of [-1,1])
+   makeBox(front,cloth,outer+.15,-2.60,sign*3.15,
+    .42,2.40,3.20);
+ }else if(spec.family==='legacy'){
+  // Structured two-band legacy OTV rather than a blank chest cylinder.
+  makeBox(front,utility,outer,-1.05,0,.23,8.0,.82);
+  for(const y of [-2.90,-.55])
+   makeBox(front,trim,outer+.15,y,0,.18,.46,spec.width-1.6);
+ }else if(spec.family==='standard'){
+  for(const y of [-2.55,-.80])
+   makeBox(front,utility,outer,y,0,.21,.43,spec.width-1.0);
+ }else if(spec.family==='assault'){
+  // One strong modular chest band, leaving the wider yoke and flank
+  // armor to communicate the heavyweight identity.
+  makeBox(front,dark,outer,2.92,0,.24,.55,spec.width-2.3);
+  makeBox(front,utility,outer,-2.75,0,.20,.65,spec.width-1.0);
+ }else if(spec.family==='skeleton'){
+  makeBox(front,trim,outer,spec.bottom+.28,0,.18,.40,spec.width-.8);
  }
  consolidateVisualGroup(front);consolidateVisualGroup(back);
 }
@@ -138,129 +95,82 @@ function clearConnectors(entry:ArmorEntry){
  });
  g.clear();
 }
+/** Broad shoulder surface: one swept, fitted slab per side.
+ * Fit follows the selected garment crown without tiny compound links.
+ */
 function shoulders(g:THREE.Group,m:THREE.Material,
- fit:ArmorFitSurfaces,width:number,frontAnchor:number,backAnchor:number,
- upperZ:number){
- const env=uniformFitEnvelope(fit.top),outer=env.outer(4.65);
- const shoulderZ=fit.shoulderZ;
- const crown=fit.shoulderY;
- const frontX=outer.front+.44;
- const backX=outer.back-.46;
- for(const sign of [-1,1]){
-  const startZ=sign*upperZ;
-  const ridgeZ=sign*shoulderZ;
-  const nodes:readonly [number,number,number][]=[
-   [fit.front-.18,frontAnchor,startZ],
-   [frontX,crown-.70,ridgeZ],
-   [2.00,crown,ridgeZ],
-   [-1.90,crown,ridgeZ],
-   [backX,crown-.70,ridgeZ],
-   [fit.back+.18,backAnchor,startZ]
+ fit:ArmorFitSurfaces,spec:ArmorProportion){
+ const env=uniformFitEnvelope(fit.top);
+ const shoulder=env.outer(5.30);
+ const bagZ=Math.min(spec.width*.5-.75,Math.max(2.6,
+  spec.width*.5-spec.upperInset*.60));
+ const crownZ=Math.min(5.15,Math.max(3.65,fit.shoulderZ));
+ for(const side of [-1,1]){
+  const path:readonly (readonly [number,number,number])[]=[
+   [fit.front-.36,spec.top-.56,bagZ],
+   [shoulder.front+.22,fit.shoulderY-.23,crownZ],
+   [1.85,fit.shoulderY+.04,crownZ],
+   [-1.85,fit.shoulderY+.04,crownZ],
+   [shoulder.back-.22,fit.shoulderY-.23,crownZ],
+   [fit.back+.36,spec.top-.58,bagZ]
   ];
-  for(let i=0;i<nodes.length-1;i++)
-   link(g,m,nodes[i],nodes[i+1],width,.74);
+  fittedShoulderBridge(g,m,path,spec.shoulderWidth,
+   spec.family==='fragmentation'||spec.family==='legacy'?.85:.59,side);
  }
 }
-/** An upright armor panel between two X/Z points. Unlike the old generic
- * link, this keeps the full panel height vertical while turning corners.
- * Its short overlapped ends prevent cracks without producing free rails.
- */
-function wrapPanel(g:THREE.Group,m:THREE.Material,
- ax:number,az:number,bx:number,bz:number,
- y:number,height:number,thickness:number){
- const dx=bx-ax,dz=bz-az,length=Math.hypot(dx,dz);
- if(length<.01)return;
- const mesh=makeBox(g,m,(ax+bx)*.5,y,(az+bz)*.5,
-  length+.20,height,thickness);
- mesh.rotation.y=-Math.atan2(dz,dx);
-}
-/** Side closures are narrow three-piece *wraps*, NOT bars running across
- * the entire front/back depth at the outside of the operator. Each return
- * starts within the physical plate-bag edge and bends around the garment.
- * The middle flank panel is short, so nothing sticks past the front plate.
+/** Three purposeful bend points form one continuous wrap per side.
+ * Plate and flank faces overlap under the bag so there are no free tabs.
  */
 function attachedSide(g:THREE.Group,m:THREE.Material,
- fit:ArmorFitSurfaces,span:number,thickness:number,
- frontW:number,rearW:number,y:number){
+ fit:ArmorFitSurfaces,spec:ArmorProportion,
+ y:number,height:number,thickness=spec.sideThickness){
  const depth=ARMOR_PANEL_DEPTHS[fit.style]??1.2;
- const frontX=fit.front-depth*.50,backX=fit.back+depth*.50;
- const flankHalf=(fit.style==='soft-vest'||fit.style==='soft-flak'||
-  fit.style==='plate-legacy')?2.16:1.75;
- // Side geometry stays close to the fabric, retaining a readable
- // silhouette without placing full-length beams out by the arms.
- const sideX=Math.min(flankHalf,(frontX-backX)*.20);
- for(const sign of [-1,1]){
-  const sideZ=sign*fit.side;
-  const frontZ=sign*(frontW*.50-.35);
-  const backZ=sign*(rearW*.50-.35);
-  wrapPanel(g,m,frontX,frontZ,sideX,sideZ,
-   y,span,thickness);
-  wrapPanel(g,m,sideX,sideZ,-sideX,sideZ,
-   y,span,thickness);
-  wrapPanel(g,m,-sideX,sideZ,backX,backZ,
-   y,span,thickness);
- }
-}
-function neckProtection(g:THREE.Group,m:THREE.Material,
- fit:ArmorFitSurfaces,style:'flak'|'legacy'){
- const env=uniformFitEnvelope(fit.top);
- const extra=style==='legacy'?.28:0;
- const y=Math.max(fit.shoulderY+.50,
-  env.shoulderCrown+env.neckGuard*.35+.30+extra);
- // Bulky Gorka/smock hoods sit behind the neck: collar returns must
- // sit OUTSIDE their side rims, not intersect the folded hood meshes.
- const hood=fit.top==='smock-jacket'||fit.top==='gorka-jacket';
- const z=hood?5.15:style==='legacy'?3.55:3.15;
- // U-shaped collar, readable as one connected form rather than four
- // floating spikes. Hood can live inside the protected opening.
- makeBox(g,m,fit.back+.55,y-.32,0,1.45,1.66,z*2+.9);
+ const frontX=fit.front-depth*.58,backX=fit.back+depth*.58;
+ const sideX=spec.family==='fragmentation'||spec.family==='legacy'?
+  2.12:1.67;
  for(const side of [-1,1]){
-  makeBox(g,m,(fit.front+fit.back)*.50,y-.52,side*z,
-   fit.front-fit.back-1.0,1.45,1.38);
+  const edge=spec.width*.5-.55;
+  const path:readonly (readonly [number,number])[]=[
+   [frontX,side*edge],[sideX,side*fit.side],
+   [-sideX,side*fit.side],[backX,side*edge]
+  ];
+  fittedSideWrap(g,m,path,y,height,thickness,side);
  }
 }
 function regenerateConnections(entry:ArmorEntry,top:string){
  const {model,nominal,materials,front,back,connectors}=entry;
- const r=RECIPES[model];if(!r||model==='armor-bare')return;
+ const spec=ARMOR_PROPORTIONS[model];if(!spec)return;
  const fit=fittedArmorSurfaces(model,top,nominal);
- // Fixed authored bags translate only outward; dimensions are invariant.
  front.position.x=fit.front-nominal.front;
  back.position.x=fit.back+nominal.front;
  clearConnectors(entry);
- const {cloth,utility}=materials;
- if(r.style==='concealed'){
-  // This armor stays under the uniform, even on the bulkier jackets.
+ if(spec.family==='concealed'){
   front.position.x=0;back.position.x=0;
   return;
  }
- const frontW=r.style==='soft'||r.style==='flak'||r.style==='legacy'?
-  r.wide*2+(.2):r.wide;
- if(r.style==='soft'||r.style==='flak'||r.style==='legacy'){
-  // Soft carriers use continuous broad shoulder yokes, fitted side wrap.
-  shoulders(connectors,cloth,fit,r.shoulder,3.55,3.65,
-   Math.min(5.0,r.wide*.65));
-  attachedSide(connectors,cloth,fit,r.sideHeight,
-   r.style==='legacy'?1.32:.95,frontW,frontW,
-   r.style==='soft'?-1.03:-1.64);
-  if(r.style==='flak'||r.style==='legacy')
-   neckProtection(connectors,cloth,fit,r.style);
+ const {cloth,utility}=materials;
+ shoulders(connectors,spec.family==='assault'?cloth:utility,fit,spec);
+ if(spec.family==='skeleton'){
+  // Two *connected*, conspicuous but open bands. No little free prongs.
+  for(const y of [-2.28,.76])
+   attachedSide(connectors,utility,fit,spec,y,spec.sideHeight);
  }else{
-  shoulders(connectors,r.style==='heavy'?cloth:utility,fit,
-   r.shoulder,3.72,3.65,Math.min(r.neck*.45,4.10));
-  if(r.style==='skeleton'){
-   // Two open but substantial skeleton rails; not three projecting ribs.
-   for(const y of [-2.20,.60])
-    attachedSide(connectors,utility,fit,.78,.66,r.wide,r.wide+.1,y);
-  }else{
-   attachedSide(connectors,r.style==='heavy'?cloth:utility,fit,
-    r.sideHeight,r.style==='slick'?.68:1.05,
-    r.wide,r.wide+.1,-1.12);
-  }
-  if(r.style==='heavy')for(const sign of [-1,1]){
-   // Side armor always moves with the cummerbund, not with the front bag.
-   makeBox(connectors,cloth,.10,-1.12,sign*(fit.side+.58),
-    4.35,4.42,1.18);
-  }
+  const sideY=(spec.top+spec.bottom)*.5;
+  attachedSide(connectors,cloth,fit,spec,sideY,spec.sideHeight);
+ }
+ if(spec.family==='assault'){
+  // Exactly one secondary side armor plate per flank, integrated with
+  // the carrier band rather than a stack of overlapping blocky ribs.
+  for(const side of [-1,1])
+   makeBox(connectors,cloth,.05,-1.20,
+    side*(fit.side+.19),4.10,4.45,.92);
+ }
+ if(spec.family==='fragmentation'||spec.family==='legacy'){
+  const hood=fit.top==='smock-jacket'||fit.top==='gorka-jacket';
+  const z=hood?5.25:spec.family==='legacy'?4.15:3.90;
+  fittedArmorCollar(connectors,cloth,fit.back+.50,
+   fit.front-2.5,z+1.10,z,
+   fit.shoulderY+.46,spec.family==='legacy'?2.25:1.95);
  }
  consolidateVisualGroup(connectors);
 }
@@ -293,10 +203,10 @@ export function createAdaptiveArmorSilhouettes(
   const entry:ArmorEntry={
    group,front,back,connectors,key:'',model,nominal:profile,
    materials:{cloth,utility,dark,trim},
-   shoulderWidth:RECIPES[model]?.shoulder??0
+   shoulderWidth:ARMOR_PROPORTIONS[model]?.shoulderWidth??0
   };
   entries.set(group,entry);
-  if(RECIPES[model])buildAuthoredPanels(entry);
+  if(ARMOR_PROPORTIONS[model])buildAuthoredPanels(entry);
   if(model!=='armor-bare'){
    regenerateConnections(entry,'combat-shirt');
    entry.key='combat-shirt';

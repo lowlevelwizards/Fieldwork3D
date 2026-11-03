@@ -7,6 +7,7 @@ import {uniformFitEnvelope,fittedArmorSurfaces,ARMOR_PANEL_DEPTHS}
  from './operator-uniform-fit-envelope.ts';
 import {ARMOR_PROFILES} from './operator-armor-rig-silhouettes.ts';
 import {armorAttachmentFrame} from './operator-armor-attachment-frame.ts';
+import {ARMOR_ANATOMY,ARMOR_PROPORTIONS} from './operator-armor-proportions.ts';
 
 export type ArmorFitDebug={
  group:THREE.Group;status:string;warnings:string[];
@@ -62,6 +63,21 @@ export function createArmorFitDebug(style:string,top:string):ArmorFitDebug{
   new THREE.LineBasicMaterial({color:0xa8d2b9,depthTest:false,
    transparent:true,opacity:.86}));
  wire.renderOrder=999;group.add(wire);
+ // Three anatomical rails make vest placement auditable against the
+ // mannequin instead of relying on an all-green clearance status.
+ const landmarkPts:THREE.Vector3[]=[];
+ for(const y of [ARMOR_ANATOMY.upperSternum,
+  ARMOR_ANATOMY.lowerRibs,ARMOR_ANATOMY.waist]){
+  landmarkPts.push(
+   new THREE.Vector3(fit.front+.75,y,-3.8),
+   new THREE.Vector3(fit.front+.75,y,3.8));
+ }
+ const anatomyRails=new THREE.LineSegments(
+  new THREE.BufferGeometry().setFromPoints(landmarkPts),
+  new THREE.LineBasicMaterial({color:0xe4c08c,depthTest:false,
+   transparent:true,opacity:.82}));
+ anatomyRails.name='r4-anatomical-reference-rails';
+ anatomyRails.renderOrder=999;group.add(anatomyRails);
  const markerColor=warnings.length?0xe78c6e:0xe6c88a;
  for(const z of [-3.15,3.15]){
   marker(group,frame.front.x,1.4,z,markerColor);
@@ -76,7 +92,9 @@ export function createArmorFitDebug(style:string,top:string):ArmorFitDebug{
    'FIT OK · front '+clearance.front.toFixed(2)+
    ' · side '+clearance.side.toFixed(2)+
    ' · shoulder '+clearance.shoulder.toFixed(2);
- return {group,status,warnings,clearance};
+ const target=ARMOR_PROPORTIONS[style];
+ return {group,status:status+(target?
+  ' · authored width '+target.width.toFixed(1):''),warnings,clearance};
 }
 export function disposeArmorFitDebug(group:THREE.Group):void{
  group.traverse(obj=>{
