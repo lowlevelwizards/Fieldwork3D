@@ -2113,6 +2113,20 @@ function conical(a:TeamActor,radius=110){
   draw.fillStyle=a.id===selected?'rgba(172,217,206,.075)':'rgba(178,199,168,.035)';
   draw.fill();
 }
+/** Show the provisional segment neighbors while dragging an existing move
+ * waypoint. It is deliberately a neutral DRAFT, not a promised walkable path.
+ * It never probes hidden navigation state or mutates the authored plan. */
+function draftRouteNeighbors(){
+  const actor=uid(selected);
+  if(!actor||selectedNode===null||!draggingNode||draggingWatchTarget)return null;
+  const index=actor.plan.findIndex(n=>n.id===selectedNode);
+  if(index<0||!['move','door'].includes(actor.plan[index].kind))return null;
+  const prior=actor.plan.slice(0,index).reverse().find(n=>
+    n.kind==='move'||n.kind==='door')?.p??actor.p;
+  const next=actor.plan.slice(index+1).find(n=>
+    n.kind==='move'||n.kind==='door')?.p??null;
+  return {prior,point:draggingNode,next};
+}
 function paths(){
   for(const a of team(state)){
     if(a.health<=0)continue;
@@ -2265,6 +2279,18 @@ function paths(){
           point.x+11,point.y-9);
       }
     }
+  }
+  const draft=draftRouteNeighbors();
+  if(draft){
+    draw.save();draw.strokeStyle='#d5cb9d';draw.globalAlpha=.75;
+    draw.lineWidth=2;draw.setLineDash([5,5]);
+    draw.beginPath();draw.moveTo(draft.prior.x,draft.prior.y);
+    draw.lineTo(draft.point.x,draft.point.y);
+    if(draft.next)draw.lineTo(draft.next.x,draft.next.y);
+    draw.stroke();draw.setLineDash([]);draw.fillStyle='#d5cb9d';
+    draw.font='700 11px "Saira Condensed",sans-serif';
+    draw.fillText('DRAFT',draft.point.x+13,draft.point.y-14);
+    draw.restore();
   }
   if(trace&&trace.length>=1&&cursor){
     draw.beginPath();draw.moveTo(trace[0].x,trace[0].y);
@@ -2489,6 +2515,21 @@ function renderProjectedPlans(){
     if(!physicallyReachable)draw.setLineDash([2,3]);
     draw.beginPath();draw.arc(p.x,p.y,chosen?10:6,0,Math.PI*2);draw.stroke();
     draw.restore();
+  }
+  const draft=draftRouteNeighbors();
+  if(draft){
+    const p=worldToScreen(draft.prior,8);
+    const q=worldToScreen(draft.point,8);
+    draw.save();draw.strokeStyle='#d5cb9d';draw.globalAlpha=.8;
+    draw.lineWidth=2;draw.setLineDash([5,5]);
+    draw.beginPath();draw.moveTo(p.x,p.y);draw.lineTo(q.x,q.y);
+    if(draft.next){
+      const next=worldToScreen(draft.next,8);
+      draw.lineTo(next.x,next.y);
+    }
+    draw.stroke();draw.setLineDash([]);draw.fillStyle='#d5cb9d';
+    draw.font='700 12px "Saira Condensed",sans-serif';
+    draw.fillText('DRAFT',q.x+13,q.y-14);draw.restore();
   }
   // Physical muzzle flashes, tracers and impacts are rendered exclusively
   // by Three.js in 3D modes so depth testing never draws them over actors.
