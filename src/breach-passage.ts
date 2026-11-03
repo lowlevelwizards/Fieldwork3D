@@ -1,9 +1,9 @@
 /** Build 147: deterministic narrow-aperture right-of-way. The player's
  * queued orders never change: only execution can temporarily defer. */
 import {doorCenter,doorLeafSegment,pointToSegment,
-  type Door,type Pt} from './breach-core.ts';
+  type Door,type Pt,type Side} from './breach-core.ts';
 export type PassageActor={id:string;p:Pt;goal:Pt|null;health:number;
-  blockedTime:number;active:boolean};
+  blockedTime:number;active:boolean;side?:Side};
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const side=(p:Pt,d:Door)=>{
   const m=doorCenter(d),dx=d.b.x-d.a.x,dy=d.b.y-d.a.y;
@@ -90,7 +90,11 @@ export function passageWait(actor:PassageActor,doors:readonly Door[],
     'zone:'+cluster.map(d=>d.id).join('+');
   if(seen.has(key))continue;seen.add(key);
   if(!seeksPassage(actor,cluster))continue;
-  const relevant=actors.filter(a=>seeksPassage(a,cluster)&&a.blockedTime<1.5);
+  // Opposing sides are handled by combat and solid enemy collision, not
+  // the friendly traffic queue. A hostile must not reserve our squad lane.
+  const relevant=actors.filter(a=>
+    (!actor.side||!a.side||actor.side===a.side)&&
+    seeksPassage(a,cluster)&&a.blockedTime<1.5);
   if(!relevant.length){
     if(leases)delete leases[key];
     continue;
