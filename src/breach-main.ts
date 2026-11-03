@@ -2297,11 +2297,43 @@ function draftRouteNeighbors(){
     n.kind==='move'||n.kind==='door')?.p??null;
   return {prior,point:draggingNode,next};
 }
+/** Persistent active WATCH cue, independent of consumed route nodes.
+ * Both Floor Plan and 3D overlay call this with coordinates in their own
+ * projection. Every teammate's active target is visible, selected is bright.
+ */
+function drawActiveWatchMarker(from:Pt,to:Pt,color:string,highlight:boolean,
+  callsign:string){
+  draw.save();
+  draw.globalAlpha=highlight?.94:.67;
+  draw.strokeStyle=color;draw.fillStyle=color;
+  draw.lineWidth=highlight?2.4:1.6;
+  draw.setLineDash([4,6]);draw.beginPath();
+  draw.moveTo(from.x,from.y);draw.lineTo(to.x,to.y);draw.stroke();
+  draw.setLineDash([]);
+  const radius=highlight?12:10;
+  draw.beginPath();draw.arc(to.x,to.y,radius,0,Math.PI*2);draw.stroke();
+  draw.beginPath();draw.moveTo(to.x-radius-5,to.y);
+  draw.lineTo(to.x-radius+2,to.y);draw.moveTo(to.x+radius-2,to.y);
+  draw.lineTo(to.x+radius+5,to.y);
+  draw.moveTo(to.x,to.y-radius-5);draw.lineTo(to.x,to.y-radius+2);
+  draw.moveTo(to.x,to.y+radius-2);draw.lineTo(to.x,to.y+radius+5);
+  draw.stroke();
+  draw.beginPath();draw.arc(to.x,to.y,2.8,0,Math.PI*2);draw.fill();
+  draw.font='700 12px "Saira Condensed",sans-serif';
+  draw.textAlign='left';
+  draw.fillText(highlight?'WATCH · '+callsign:'WATCH',
+    to.x+radius+8,to.y-radius-4);
+  draw.restore();
+}
 function paths(){
   for(const a of team(state)){
     if(a.health<=0)continue;
     const c=colorFor(a.id);
     const plan=a.plan;
+    const activeTarget=activeWatchTarget(a);
+    if(activeTarget)drawActiveWatchMarker(a.p,
+      a.id===selected&&selectedActiveWatch&&draggingNode?
+        draggingNode:activeTarget,c,a.id===selected,a.name);
     const visual=orderVisualScopes(plan,{
       watch:a.aimInstruction?.mode==='track',pace:a.pace,
       posture:a.posture,fire:a.firePolicy
@@ -2492,6 +2524,12 @@ function renderProjectedPlans(){
   for(const a of team(state)){
     if(a.health<=0)continue;
     const color=colorFor(a.id);
+    const activeTarget=activeWatchTarget(a);
+    if(activeTarget)drawActiveWatchMarker(
+      worldToScreen(a.p,8),
+      worldToScreen(a.id===selected&&selectedActiveWatch&&draggingNode?
+        draggingNode:activeTarget,12),
+      color,a.id===selected,a.name);
     let previous=a.p;
     const visual=orderVisualScopes(a.plan,{
       watch:a.aimInstruction?.mode==='track',pace:a.pace,
