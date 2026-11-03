@@ -161,7 +161,25 @@ body.kit-compare main>.row[data-lab-group="view"]:has(#comparePose){display:flex
 #headwearCamoChooser{margin:9px 0 7px;padding:9px 8px;background:#1b3028;border:1px solid #667f70;border-radius:6px}
 #headwearCamoChooser[hidden],#headwearCamoInspector[hidden]{display:none}
 #headwearCamoChooser .swatch-heading{font-weight:700;color:#d9d5b5;font-size:11px;letter-spacing:.055em;margin-bottom:7px}
+
+#camoBrowseControls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:8px 0;padding:7px;background:#243b32;border:1px solid #597568;border-radius:6px}
+#camoBrowseControls label{min-width:0;font:600 10px "IBM Plex Mono",monospace;color:#d8d9c0}
+#camoBrowseControls select,#camoBrowseControls input[type="search"]{box-sizing:border-box;width:100%;min-width:0;height:34px;padding:5px;color:#f3f0dc;background:#344d43;border:1px solid #718578;border-radius:4px}
+#camoBrowseControls .camo-search{grid-column:1/-1}
+#camoBrowseControls .camo-filter-check{display:flex;align-items:center;gap:6px;min-height:36px;font-size:10px}
+#camoBrowseControls .camo-filter-check input{width:17px;height:17px;accent-color:#c9bd8e}
+#camoBrowseSummary{display:block;grid-column:1/-1;font:500 10px "IBM Plex Mono",monospace;color:#d2d6c7;line-height:1.5}
+#camoRecentRow{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0 9px}
+#camoRecentRow[hidden]{display:none}
+#camoRecentRow button{padding:5px 7px;min-height:32px;font:600 10px "IBM Plex Mono",monospace;background:#465d51;color:#e5e6d5;border:1px solid #8e9f83}
 #headwearCamoGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.camo-card{position:relative;min-width:0}
+.camo-card .camo-entry{width:100%;height:100%;padding-right:29px}
+.camo-favorite{position:absolute;top:5px;right:5px;z-index:2;border:1px solid #819483;border-radius:4px;min-width:28px;height:28px;padding:0;background:#20392f;color:#cbd0bc;font-size:17px}
+.camo-favorite[aria-pressed="true"]{color:#eac87e;border-color:#eac87e}
+#camoBrowseEmpty{padding:10px;color:#dde1d1;text-align:center;border:1px dashed #758978;border-radius:5px}
+#camoBrowseEmpty[hidden]{display:none}
+
 #headwearCamoGrid .camo-entry{display:flex;flex-direction:column;gap:4px;align-items:stretch;padding:5px;min-width:0;min-height:88px;text-align:left;background:#344d44;color:#e9eadf}
 #headwearCamoGrid .camo-entry[aria-pressed="true"]{border:3px solid #f3dba7;background:#506b59}
 #headwearCamoGrid canvas{width:100%;height:53px;image-rendering:pixelated;image-rendering:crisp-edges;border-radius:2px}
@@ -253,11 +271,29 @@ body.kit-compare main>.row[data-lab-group="view"]:has(#comparePose){display:flex
 </div>
 <div id="headwearCamoChooser" role="group" aria-label="Available headgear camouflage patterns" hidden>
 <div class="swatch-heading">CAMOUFLAGE · PANEL-WRAPPED FABRIC PRINT</div>
+<div id="camoBrowseControls" role="group" aria-label="Browse camouflage patterns">
+<label>ENVIRONMENT<select id="camoTerrainFilter">
+<option value="woodland" selected>WOODLAND</option><option value="arid">ARID / DESERT</option>
+<option value="multi">MULTI-TERRAIN</option><option value="universal">UNIVERSAL</option>
+<option value="all">ALL 30</option></select></label>
+<label>STYLE<select id="camoStyleFilter">
+<option value="all">ALL STYLES</option><option value="organic">ORGANIC</option>
+<option value="brushstroke">BRUSHSTROKE</option><option value="fleck">FLECK</option>
+<option value="digital">DIGITAL</option><option value="geometric">GEOMETRIC</option>
+<option value="raindrop">RAINDROP</option></select></label>
+<label>ORIGIN<select id="camoOriginFilter"><option value="all">ALL COUNTRIES</option></select></label>
+<label class="camo-search">FIND PATTERN<input type="search" id="camoSearchFilter" placeholder="Search pattern or country" autocomplete="off"/></label>
+<label class="camo-filter-check"><input type="checkbox" id="camoCompatibleFilter" checked/> COMPATIBLE ONLY</label>
+<label class="camo-filter-check"><input type="checkbox" id="camoFavoriteFilter"/> FAVORITES ONLY</label>
+<output id="camoBrowseSummary" aria-live="polite">Choose a category to browse</output>
+</div>
+<div id="camoRecentRow" aria-label="Recently used camouflage" hidden></div>
 <div id="headwearCamoGrid" aria-label="Choose compatible camouflage"></div>
+<p id="camoBrowseEmpty" hidden>No camouflages match these filters. Change environment, style or search.</p>
 <details id="headwearCamoCompareDetails">
-<summary>COMPARE ALL 18 · UNIFORM SCALE</summary>
-<small>Same artwork scale on every card. RAW shows the canonical tile; TILED shows the repeated print at a smaller display size. Unavailable patterns remain visible for comparison, but cannot be applied to this headgear. Select an available print to inspect the actual 3D model above at the current fixed pose, zoom and lighting.</small>
-<div id="headwearCamoCompareGrid" role="group" aria-label="All eighteen camouflage patterns compared at a uniform display size"></div>
+<summary>COMPARE ALL 30 · UNIFORM SCALE</summary>
+<small>Same visual display dimensions on every card (master tile resolutions may differ). RAW shows the canonical tile; TILED shows the repeated print at a smaller display size. Unavailable patterns remain visible for comparison, but cannot be applied to this headgear. Select an available print to inspect the actual 3D model above at the current fixed pose, zoom and lighting.</small>
+<div id="headwearCamoCompareGrid" role="group" aria-label="All thirty camouflage patterns compared at a uniform display size"></div>
 </details>
 <div id="headwearCamoInspector" hidden>
 <div class="camo-inspect-row">

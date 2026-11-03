@@ -5,7 +5,11 @@
  */
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 export const HEADWEAR_CAMO_SIZE=32;
-export const HEADWEAR_CAMO_TILE_SIZE:Readonly<Partial<Record<HeadwearCamoId,32|64>>>={'m81-woodland':64,'desert-tropentarn':64};
+export const HEADWEAR_CAMO_TILE_SIZE:Readonly<Partial<Record<HeadwearCamoId,32|64>>>={'m81-woodland':64,'desert-tropentarn':64,
+ 'belgian-jigsaw':64,'mitchell-leaf':64,'splittertarn-31':64,
+ 'australian-dpcu':64,'italian-vegetato':64,'scorpion-w2':64,
+ 'pla-xingkong':64,'cadpat-tw':64,'british-mtp':64,
+ 'indian-digital-2022':64};
 export function headwearCamoSize(id:HeadwearCamoId):32|64{return HEADWEAR_CAMO_TILE_SIZE[id]??HEADWEAR_CAMO_SIZE;}
 /** Print detail is independent from the one-texel-per-unit structural stitching atlas.
  * 1x for large historic fields; 2x for directional, digital and multiscale cloth.
@@ -16,14 +20,19 @@ export const HEADWEAR_CAMO_DENSITY:Readonly<Record<HeadwearCamoId,number>>={
  flecktarn:2,'woodland-dpm':1,'swedish-m90':1,'six-color-desert':1,
  'woodland-marpat':2,alpenflage:1,'desert-marpat':2,
  'erdl-lowland':2,'finnish-m05':3,'polish-pantera':2,
- 'russian-flora':1,'rhodesian-brushstroke':1,'desert-tropentarn':2
+ 'russian-flora':1,'rhodesian-brushstroke':1,'desert-tropentarn':2,
+ 'belgian-jigsaw':1,'east-german-strichtarn':2,'mitchell-leaf':1,
+ 'splittertarn-31':2,'australian-dpcu':2,'italian-vegetato':2,
+ 'scorpion-w2':2,'russian-emr':3,'pla-xingkong':3,
+ 'cadpat-tw':2,'british-mtp':2,'indian-digital-2022':2
 };
 export const HEADWEAR_CAMO_IDS=[
  'm81-woodland','three-color-desert','tiger-stripe','ucp','multicam',
  'flecktarn','woodland-dpm','swedish-m90','six-color-desert',
  'woodland-marpat','alpenflage','desert-marpat',
  'erdl-lowland','finnish-m05','polish-pantera','russian-flora',
- 'rhodesian-brushstroke','desert-tropentarn'
+ 'rhodesian-brushstroke','desert-tropentarn',
+ 'belgian-jigsaw','east-german-strichtarn','mitchell-leaf','splittertarn-31','australian-dpcu','italian-vegetato','scorpion-w2','russian-emr','pla-xingkong','cadpat-tw','british-mtp','indian-digital-2022'
 ] as const;
 export type HeadwearCamoId=typeof HEADWEAR_CAMO_IDS[number];
 type RGB=readonly [number,number,number];
@@ -476,7 +485,264 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
    p(2,35,15,38,13,42,15,44,19,41,22,37,20),
    p(2,-3,38,2,35,6,37,7,41,4,44,-2,43)
   ]
+ },
+ 'belgian-jigsaw':{
+  label:'BELGIAN JIGSAW',
+  description:'Belgian puzzle-scale ochre, rusty red and blue-green interlocking lobes with slim charcoal outlines',
+  colors:[[156,139,58],[129,79,81],[77,109,96],[61,67,65],[208,188,144]],
+  targetCoverage:[0.2573,0.207,0.3066,0.1497,0.0793],
+  motifs:[
+   p(1,-9,-5,12,-6,18,0,32,1,33,9,24,8,21,15,12,16,11,26,1,28,-6,21),
+   p(1,31,27,45,23,55,28,69,30,70,42,61,40,57,48,42,46,38,57,28,56),
+   p(1,3,49,16,45,30,49,34,59,25,69,10,69,-6,63),
+   p(2,18,-5,32,-3,36,7,45,10,42,20,32,18,25,26,19,23,15,13),
+   p(2,-8,33,8,29,17,31,19,39,30,43,28,50,15,49,9,58,-7,56),
+   p(2,46,17,61,12,70,18,70,29,62,27,57,36,46,34,43,26),
+   p(2,39,52,50,50,61,53,68,61,62,68,46,68,41,62),
+   // Bright mustard loops between green and rust jigsaw arms.
+   p(0,32,2,42,0,47,6,43,15,36,17,28,13,29,7),
+   p(0,8,36,15,32,22,34,25,41,22,46,14,47,8,43),
+   p(0,52,52,59,48,66,53,67,61,59,64,52,61),
+   p(3,5,10,16,8,19,12,29,14,30,16,17,15,14,21,7,22,3,18),
+   p(3,38,19,45,18,48,22,53,20,61,22,64,25,57,25,53,30,45,28,42,32),
+   p(3,19,39,28,38,31,42,40,46,47,46,46,49,37,48,31,54,22,51),
+   p(3,-5,61,9,59,19,61,22,64,8,63,-5,66),
+   p(4,51,1,61,0,66,4,60,7,52,8,49,5),
+   p(4,22,23,28,20,32,21,31,26,26,29,21,27),
+   p(4,42,40,50,38,53,42,50,47,44,46)
+  ]
+ },
+ 'east-german-strichtarn':{
+  label:'E. GERMAN STRICHTARN',
+  description:'Grey-taupe olive fabric bearing hundreds of fine irregular vertical reddish-brown rain strokes, not broad camo spots',
+  colors:[[146,143,124],[101,84,69],[120,116,95]],
+  targetCoverage:[0.7236,0.1953,0.0811],
+  motifs:[
+
+   p(2,16,21,21,19,25,22,24,29,18,30),
+
+  ]
+ },
+ 'mitchell-leaf':{
+  label:'MITCHELL LEAF',
+  description:'US reversible Mitchell cover leaf side: bold overlapping lobed foliage and dark ink twigs on spring green',
+  colors:[[112,125,71],[75,96,74],[178,161,103],[112,88,67],[47,63,43]],
+  targetCoverage:[0.2515,0.2573,0.2695,0.1514,0.0703],
+  motifs:[
+   p(1,-5,3,6,-3,17,1,19,8,13,12,21,19,15,24,6,19,0,24,-5,19),
+   p(1,33,4,42,-4,50,1,57,8,53,14,62,17,59,22,49,19,43,25,34,18),
+   p(1,15,39,26,32,33,37,39,43,33,47,40,54,32,61,24,55,18,59,15,49),
+   p(1,47,45,56,39,65,44,71,55,63,61,52,60,46,66,39,59),
+   p(2,14,-5,23,0,26,7,21,11,29,16,23,21,15,19,12,13,8,10),
+   p(2,47,19,56,15,63,20,68,29,60,31,57,40,48,37,44,29),
+   p(2,-4,37,6,30,12,37,18,41,15,48,7,52,3,60,-4,55),
+   p(2,27,56,34,51,43,54,47,62,44,68,35,68),
+   p(3,0,12,11,9,17,12,22,20,17,26,10,28,6,22),
+   p(3,30,26,38,22,45,29,45,39,39,43,30,37),
+   p(3,48,51,56,48,65,52,69,57,62,62,51,59),
+   p(4,4,8,12,5,18,9,18,12,13,11,10,16,5,15),
+   p(4,33,46,37,44,42,46,40,49,36,50),
+   p(4,21,24,25,20,29,23,30,29,26,30),
+   p(4,55,14,58,12,62,14,61,17,57,19)
+  ]
+ },
+ 'splittertarn-31':{
+  label:'SPLITTERTARN 31',
+  description:'WWII German Buntfarbendruck 31 angular shards with vertical gray-green rain-strait overprint',
+  colors:[[166,157,130],[95,108,81],[137,89,66],[84,91,72]],
+  targetCoverage:[0.2944,0.2629,0.3115,0.1311],
+  motifs:[
+   p(1,-9,-5,9,1,12,12,22,8,34,17,27,26,14,22,8,29,-5,23),
+   p(1,33,3,48,-3,60,8,70,6,68,19,57,24,44,18,35,22),
+   p(1,15,45,29,35,40,48,52,44,52,58,36,64,23,58,10,65),
+   p(2,13,-6,25,0,32,10,30,19,43,19,37,30,24,24,18,33,10,20),
+   p(2,-9,34,6,28,19,38,13,49,28,48,22,59,8,54,-4,65),
+   p(2,49,25,62,21,69,36,61,44,67,56,55,53,43,37),
+   p(2,38,59,47,54,58,63,66,64,65,70,44,70),
+   // Negative-space shards prevent brown splinters swallowing pale field.
+   p(0,12,8,18,6,23,11,20,18,14,18,10,14),
+   p(0,32,28,41,27,46,33,43,40,35,40),
+   p(0,52,44,59,42,65,48,63,55,55,55),
+   p(0,24,20,34,18,41,25,40,35,31,34),
+   p(0,45,48,54,45,63,49,63,59,55,60),
+   p(0,-3,22,7,19,14,24,14,32,4,35,-3,30),
+   p(3,23,13,26,9,31,12,29,15,24,18),
+   p(3,4,40,9,37,15,41,12,44,6,45),
+   p(3,48,8,54,5,57,8,53,12),
+   p(3,39,32,44,28,49,34,44,39)
+  ]
+ },
+ 'australian-dpcu':{
+  label:'AUSCAM / DPCU',
+  description:'Australian DPCU pale khaki with scattered rounded orange-brown, olive, moss and charcoal jellybean marks',
+  colors:[[199,188,146],[152,113,66],[117,140,76],[82,99,83],[177,148,96]],
+  targetCoverage:[0.5039,0.1704,0.137,0.0979,0.0908],
+  motifs:[
+   p(1,1,3,7,0,13,4,12,11,8,15,1,11,-2,7),
+   p(1,26,17,32,13,39,17,40,23,35,28,28,27,24,22),
+   p(1,49,45,55,42,62,45,65,52,61,58,54,57,50,53),
+   p(1,11,49,18,45,24,50,22,56,16,61,10,57),
+   p(2,14,13,20,10,24,13,26,18,21,23,15,21),
+   p(2,41,0,49,-2,53,3,51,9,44,12,40,6),
+   p(2,35,37,42,34,46,39,44,45,38,48,34,43),
+   p(2,5,29,10,26,17,32,17,38,10,40,5,36),
+   p(3,3,53,8,50,11,54,12,60,8,63,2,61),
+   p(3,55,20,61,16,66,22,66,28,60,31,54,28),
+   p(3,24,2,28,0,32,5,30,11,26,12,21,8),
+   p(3,28,48,32,47,36,52,34,58,29,58,26,53),
+   p(4,45,27,50,25,55,30,54,35,49,36,45,32),
+   p(4,-3,17,2,15,7,20,5,25,0,26,-3,23),
+   p(4,17,32,23,29,28,34,26,40,20,41,16,37)
+  ]
+ },
+ 'italian-vegetato':{
+  label:'ITALIAN VEGETATO',
+  description:'Italian broken leafy digital-organic mottling: warm russet, beige, olive and very dark ink islands',
+  colors:[[158,151,105],[119,82,69],[174,144,104],[83,102,70],[54,48,47]],
+  targetCoverage:[0.2117,0.2778,0.1787,0.2476,0.0842],
+  motifs:[
+   p(1,-6,-4,8,-3,18,4,21,12,15,16,5,14,-6,18),
+   p(1,31,15,43,11,56,14,67,21,63,30,50,31,42,38,31,30),
+   p(1,1,42,14,35,28,39,33,49,24,57,10,61,-4,56),
+   p(1,39,56,52,51,66,57,70,66,54,70,43,66),
+   p(2,19,-6,34,-3,39,6,33,15,27,14,20,9),
+   p(2,-5,21,9,17,20,24,18,30,6,33,-5,31),
+   p(2,27,40,37,34,48,42,47,49,35,53,26,47),
+   p(2,53,28,63,26,68,35,62,41,53,38),
+   p(3,10,5,18,1,27,7,23,15,13,19,8,13),
+   p(3,38,20,48,17,54,22,54,33,43,35,36,29),
+   p(3,-4,51,9,47,18,51,22,59,13,68,-4,65),
+   p(3,21,30,27,26,34,31,35,37,26,39),
+   p(4,3,18,9,16,13,20,11,26,4,26),
+   p(4,33,48,39,45,45,49,43,54,36,55),
+   p(4,57,8,61,6,65,10,62,15,58,13),
+   p(4,16,58,21,55,26,59,24,65,18,64)
+  ]
+ },
+ 'scorpion-w2':{
+  label:'OCP / SCORPION W2',
+  description:'US Army OCP: broad horizontal muted sage and umber fields with sparse bark chips; fewer vertical twiglets than MultiCam',
+  colors:[[171,158,117],[109,126,88],[89,105,84],[129,102,74],[206,189,149],[73,73,60],[171,144,119]],
+  targetCoverage:[0.2363,0.2051,0.1719,0.2473,0.0659,0.0344,0.0391],
+  motifs:[
+   p(1,-6,1,15,-2,34,1,49,7,67,6,68,14,45,12,28,9,10,10,-6,9),
+   p(1,-6,30,14,27,27,30,43,35,68,32,68,41,44,41,24,38,8,40,-6,37),
+   p(2,10,14,24,11,38,16,51,18,62,21,69,27,50,25,33,22,18,22,6,19),
+   p(2,-5,46,11,44,27,49,41,52,57,50,69,57,69,63,45,58,27,55,8,57,-5,54),
+   p(3,0,20,14,17,31,21,46,24,66,23,67,32,49,29,32,27,15,28,-4,26),
+   p(3,20,-4,34,-3,50,1,62,3,68,8,61,10,46,7,32,6,18,2),
+   p(3,25,42,38,40,53,45,65,47,70,52,55,51,39,48,25,49),
+   p(4,4,8,13,7,19,9,17,12,10,13,3,11),
+   p(4,42,37,51,34,56,36,57,41,47,42,40,40),
+   p(4,30,57,40,54,49,57,43,60,34,62),
+   p(5,18,26,26,25,30,27,27,29,20,29),
+   p(5,53,6,60,5,65,8,61,10,54,10),
+   p(5,2,53,10,52,15,56,10,59,4,58),
+   p(6,28,13,39,12,44,15,41,18,32,18),
+   p(6,52,51,61,49,66,51,63,55,55,56)
+  ]
+ },
+ 'russian-emr':{
+  label:'RUSSIAN EMR',
+  description:'Russian Digital Flora/Tsifra: high-frequency pale foliage-green micro-square pixels with dark near-black, rusty and green pixels',
+  colors:[[119,140,105],[72,103,74],[111,80,63],[40,56,43]],
+  targetCoverage:[0.3447,0.2715,0.21,0.1738],
+  motifs:[
+   p(1,-3,1,8,0,11,5,17,6,17,10,9,11,4,16,-3,12),
+   p(1,19,17,27,13,34,18,34,26,27,27,22,30,16,24),
+   p(2,15,-3,23,-3,30,2,29,8,21,10,16,7),
+   p(2,-4,21,4,18,12,23,15,28,9,35,-3,33),
+   p(3,7,9,13,7,18,11,18,15,13,17,8,14),
+   p(3,24,25,30,22,35,27,35,35,27,35,22,29)
+  ]
+ },
+ 'pla-xingkong':{
+  label:'PLA XINGKONG',
+  description:'PLA Starry Sky woodland: softly connected taupe-olive and dark green terrain with extremely fine pale digital stars',
+  colors:[[114,120,98],[90,101,79],[62,75,63],[151,140,112],[101,85,74]],
+  targetCoverage:[0.1479,0.1609,0.2974,0.2605,0.1333],
+  motifs:[
+   p(1,-4,0,11,-4,21,2,29,11,24,18,11,19,-4,15),
+   p(1,32,30,45,25,59,28,70,37,63,46,47,45,35,42),
+   p(1,4,47,15,41,27,47,33,57,27,68,10,68,-4,60),
+   p(2,29,-6,44,-2,59,3,67,12,60,21,47,17,38,12,29,9),
+   p(2,-7,23,8,20,22,27,30,37,26,41,12,37,-4,34),
+   p(2,44,46,55,41,67,46,70,58,56,66,42,58),
+   p(3,18,11,31,8,41,17,38,26,27,29,17,23),
+   p(3,-5,42,7,36,19,41,26,50,17,55,1,54),
+   p(3,47,57,58,54,68,58,68,67,52,68),
+   p(4,7,4,13,2,19,6,16,11,9,12),
+   p(4,43,24,51,21,58,26,55,33,47,34),
+   p(4,23,51,29,49,36,54,33,60,27,61),
+   p(4,2,61,10,58,14,62,9,67)
+  ]
+ },
+ 'cadpat-tw':{
+  label:'CADPAT TEMPERATE',
+  description:'Canadian temperate woodland: extremely dark forest green and black with chartreuse-green fractal pixels; greener than MARPAT',
+  colors:[[68,98,57],[116,139,63],[39,63,40],[36,43,34],[103,101,67]],
+  targetCoverage:[0.2141,0.2615,0.2375,0.1914,0.0955],
+  motifs:[
+   p(1,-4,3,9,0,22,7,24,17,15,21,6,18,-4,19),
+   p(1,30,24,41,21,51,27,62,30,69,41,63,49,49,47,40,39,28,36),
+   p(1,-4,47,7,41,17,46,26,56,21,66,5,66,-4,59),
+   p(2,29,-3,46,2,55,9,66,7,70,18,58,22,45,15,34,13),
+   p(2,-6,26,7,25,23,30,29,38,22,43,7,39,-3,38),
+   p(2,30,51,44,45,59,51,66,64,51,69,36,64),
+   p(3,5,10,15,8,21,12,19,18,10,19,3,15),
+   p(3,40,22,50,20,57,26,54,35,45,36,38,29),
+   p(3,13,48,20,44,27,48,28,56,20,59,13,54),
+   p(3,54,4,62,1,68,9,64,15,56,14),
+   p(4,23,19,30,17,36,22,34,29,27,28),
+   p(4,3,58,10,56,16,61,12,65,5,65)
+  ]
+ },
+ 'british-mtp':{
+  label:'BRITISH MTP',
+  description:'British Multi-Terrain Pattern: pale MultiCam-like ground with distinctive sweeping DPM-hook/pterodactyl brown outlines and speckle edges',
+  colors:[[185,179,143],[126,133,107],[109,126,88],[129,102,74],[206,189,149],[67,72,59],[158,143,111]],
+  targetCoverage:[0.2222,0.2285,0.1904,0.1924,0.0535,0.0679,0.0452],
+  motifs:[
+   p(1,-4,1,10,-3,25,1,37,6,50,6,69,13,64,19,48,15,35,16,23,11,8,12,-4,8),
+   p(1,-7,40,8,34,19,36,36,41,50,44,64,43,69,51,51,52,30,48,16,50,-6,48),
+   p(2,11,15,27,11,37,19,51,24,65,26,67,32,52,29,43,34,30,29,17,27),
+   p(2,-7,57,8,54,23,59,41,60,54,62,67,66,56,69,31,67,14,66,-6,65),
+   p(3,18,-4,30,-3,38,1,46,4,57,4,64,7,69,13,60,11,52,10,43,6,31,6,23,1),
+   p(3,-4,25,9,19,20,22,33,28,40,31,49,29,58,34,65,38,60,39,48,33,40,37,30,31,17,29,5,28,-4,33),
+   p(3,25,46,35,43,45,48,54,51,64,50,69,56,54,55,46,53,35,50,22,52),
+   p(4,1,10,11,9,16,11,13,15,4,16),
+   p(4,41,38,49,37,55,40,51,45,43,44),
+   p(4,27,58,35,56,40,60,33,63),
+   p(5,8,24,15,23,23,29,31,32,37,36,33,38,22,31,15,28,7,28),
+   p(5,44,9,51,7,57,11,65,15,62,18,56,14,49,12,43,14),
+   p(5,34,52,41,49,46,55,44,59,37,58),
+   p(6,18,12,28,10,35,13,32,17,24,17),
+   p(6,52,46,60,44,66,49,62,52,54,51)
+  ]
+ },
+ 'indian-digital-2022':{
+  label:'INDIAN ARMY DIGITAL',
+  description:'Stylized Indian 2022 digital woodland: olive, buff and umber interlocking pixels with a warm earthen balance',
+  colors:[[129,133,97],[79,101,75],[153,128,88],[105,78,62],[48,58,44]],
+  targetCoverage:[0.166,0.1821,0.3064,0.2427,0.1028],
+  motifs:[
+   p(1,-4,1,12,-3,24,2,31,13,27,23,14,25,-3,20),
+   p(1,37,28,52,25,65,32,70,46,59,54,44,49,35,41),
+   p(1,6,46,18,40,28,50,29,62,16,70,1,64),
+   p(2,24,-4,35,-3,49,5,57,12,56,22,44,26,34,17,25,13),
+   p(2,-4,27,11,24,27,31,32,41,25,48,10,43,-3,38),
+   p(2,34,52,46,48,61,54,69,64,61,69,46,66),
+   p(3,3,10,13,7,21,14,22,20,14,25,3,20),
+   p(3,45,18,54,15,63,20,67,29,56,34,47,27),
+   p(3,20,44,27,41,35,47,33,57,25,58,19,51),
+   p(3,57,48,64,46,69,54,64,60,58,56),
+   p(4,12,26,20,23,27,29,24,35,15,34),
+   p(4,39,38,47,35,53,41,50,47,42,46),
+   p(4,0,58,8,55,13,60,9,66,1,65),
+   p(4,35,6,40,4,44,9,41,13,36,12)
+  ]
  }
+
 };
 export const HEADWEAR_CAMO_ELIGIBILITY:Readonly<Record<HeadSilhouetteId,readonly HeadwearCamoId[]>>={
  'patrol-cap':[...HEADWEAR_CAMO_IDS],
@@ -484,11 +750,16 @@ export const HEADWEAR_CAMO_ELIGIBILITY:Readonly<Record<HeadSilhouetteId,readonly
  beanie:[],
  ach:['m81-woodland','three-color-desert','ucp','multicam','flecktarn',
   'woodland-dpm','swedish-m90','six-color-desert','woodland-marpat','desert-marpat',
-  'erdl-lowland','finnish-m05','polish-pantera','russian-flora','rhodesian-brushstroke','desert-tropentarn'],
+  'erdl-lowland','finnish-m05','polish-pantera','russian-flora','rhodesian-brushstroke','desert-tropentarn',
+  ...HEADWEAR_CAMO_IDS.slice(18)],
  'high-cut':['m81-woodland','ucp','multicam','flecktarn','swedish-m90',
-  'woodland-marpat','desert-marpat','finnish-m05','polish-pantera','desert-tropentarn'],
+  'woodland-marpat','desert-marpat','finnish-m05','polish-pantera','desert-tropentarn',
+  'scorpion-w2','russian-emr','pla-xingkong','cadpat-tw','british-mtp','indian-digital-2022',
+  'australian-dpcu','italian-vegetato'],
  pasgt:['m81-woodland','three-color-desert','woodland-dpm','six-color-desert',
-  'erdl-lowland','polish-pantera','russian-flora','rhodesian-brushstroke'],
+  'erdl-lowland','polish-pantera','russian-flora','rhodesian-brushstroke',
+  'belgian-jigsaw','east-german-strichtarn','mitchell-leaf','splittertarn-31',
+  'australian-dpcu','italian-vegetato','cadpat-tw'],
  'soviet-steel':[]
 };
 export function headwearCamoChoices(model:string):readonly HeadwearCamoId[]{
@@ -662,6 +933,143 @@ function apply4BDetail(id:HeadwearCamoId,x:number,y:number,ink:number):number{
  return ink;
 }
 
+/** Twelve distinct authored micro-print treatments, executed once while
+ * producing native RGBA artwork (not per frame). The layouts and colors
+ * are stylized approximations: no scan, traced mask or copied textile.
+ */
+function camo5Grain(x:number,y:number,cell:number,seed:number,size:number):number{
+ const cells=size/cell,x0=Math.floor(x/cell),y0=Math.floor(y/cell);
+ const fx=x%cell/cell,fy=y%cell/cell;
+ const u=fx*fx*(3-2*fx),v=fy*fy*(3-2*fy);
+ const a=(xx:number,yy:number)=>camoLattice((xx+cells)%cells,(yy+cells)%cells,seed);
+ return (a(x0,y0)*(1-u)+a((x0+1)%cells,y0)*u)*(1-v)+
+  (a(x0,(y0+1)%cells)*(1-u)+a((x0+1)%cells,(y0+1)%cells)*u)*v;
+}
+function camo5Near(x:number,y:number,cx:number,cy:number,size:number,rx:number,ry:number):boolean{
+ const dx=Math.min(Math.abs(x-cx),size-Math.abs(x-cx));
+ const dy=Math.min(Math.abs(y-cy),size-Math.abs(y-cy));
+ return dx*dx/(rx*rx)+dy*dy/(ry*ry)<=1;
+}
+function apply5APrint(id:HeadwearCamoId,x:number,y:number,ink:number):number{
+ if(id==='east-german-strichtarn'){
+  // Nearly monochrome; staggered 1px red-brown vertical raindrops.
+  for(let k=0;k<66;k++){
+   const cx=(k*23+Math.floor(k/4)*7+3)&31;
+   const cy=(k*11+Math.floor(k/7)*13+5)&31;
+   const len=2+(k%4);
+   if(x===cx&&((y-cy+32)&31)<len)return k%9===0?2:1;
+  }
+  return ink;
+ }
+ if(id==='splittertarn-31'){
+  // Distinct fine, VERTICAL raindrop overprint on sharp angular shards.
+  for(let k=0;k<96;k++){
+   const cx=(k*23+Math.floor(k/5)*9+5)&63;
+   const cy=(k*19+Math.floor(k/6)*7+11)&63;
+   if(x===cx&&((y-cy+64)&63)<2+(k%5))return 3;
+  }
+  return ink;
+ }
+ if(id==='belgian-jigsaw'){
+  // Tiny off-white edge nicks around huge interlocked red/green pieces.
+  const edge=camo5Grain(x,y,4,36,64);
+  if(ink===3&&edge>.80)return 4;
+  if((ink===1||ink===2)&&edge<.09)return 3;
+  return ink;
+ }
+ if(id==='mitchell-leaf'){
+  // A few branching veins and distinctive separated leaf lobes.
+  const g=camo5Grain(x,y,4,7,64),stem=((x+2*y+64)%19);
+  if((ink===1||ink===2)&&stem===0&&g>.35)return 4;
+  if(ink===1&&g>.87)return 0;
+  if(ink===0&&g<.14)return 2;
+  return ink;
+ }
+ if(id==='australian-dpcu'){
+  // Small rounded jellybeans reinforce the softer dots (not digital).
+  for(let k=0;k<34;k++){
+   const cx=(k*29+Math.floor(k/5)*13+4)&63;
+   const cy=(k*17+Math.floor(k/4)*11+7)&63;
+   if(camo5Near(x,y,cx,cy,64,2+(k%2),2+(k%3)))return [2,1,3,4][k%4];
+  }
+  return ink;
+ }
+ if(id==='italian-vegetato'){
+  // Thin irregular broken leaf fringes. No rectangular MARPAT stairs.
+  const g=.7*camo5Grain(x,y,4,49,64)+.3*camo5Grain(x,y,2,17,64);
+  if(g>.77&&(ink===1||ink===3))return 4;
+  if(g<.16&&ink===1)return 2;
+  if(g>.72&&ink===0)return 3;
+  if(g<.24&&ink===2)return 1;
+  return ink;
+ }
+ if(id==='scorpion-w2'){
+  // Horizontal rounded bark shapes, deliberately no upright dark twiglets.
+  const g=camo5Grain(x,y,4,31,64);
+  const band=(y+Math.floor(x/11))%17;
+  if(band<2&&g>.69&&ink===3)return 5;
+  if(g>.86&&ink===1)return 4;
+  if(g<.12&&ink===2)return 6;
+  return ink;
+ }
+ if(id==='russian-emr'){
+  // Dense light-green "Tsifra" micro-square interruptions with brown/black
+  // specks: fine, unlike the larger, greener CADPAT fractal.
+  const g=camo5Grain(x,y,2,61,32),noise=camoLattice(x,y,79);
+  const cell=camo5Grain(x,y,4,28,32);
+  if(g<.25&&noise>.30)return 3;
+  if(g>.83&&noise>.44)return 2;
+  if(g>.61&&noise<.53)return 0;
+  if(cell>.61&&g>.47)return 1;
+  if(noise>.87)return 0;
+  return ink;
+ }
+ if(id==='pla-xingkong'){
+  // Starry Sky's extremely fine dusting on subdued near-neutral fields:
+  // many 1px pale "stars", no repeating MARPAT stair-step checkerboard.
+  const noise=camoLattice(x,y,71);
+  const g=camo5Grain(x,y,4,41,64);
+  if(noise>.94)return 3;
+  if(noise<.055&&g>.4)return 2;
+  if(g<.25&&noise<.36)return 4;
+  if(g>.78&&ink===1)return 0;
+  return ink;
+ }
+ if(id==='cadpat-tw'){
+  // Canadian TW: darkest of our digital woodland prints; dense black/
+  // yellow-green fractal pixels with broader connected forest masses.
+  const g=.65*camo5Grain(x,y,4,33,64)+.35*camo5Grain(x,y,2,13,64);
+  const threshold=camoLattice(Math.floor(x/2),Math.floor(y/2),23);
+  if(g<.34&&threshold>.33)return 3;
+  if(g>.71&&threshold>.25)return 1;
+  if(g>.43&&g<.54&&threshold>.77)return 4;
+  if(g>.59&&ink===3)return 0;
+  return ink;
+ }
+ if(id==='british-mtp'){
+  // MTP's DPM-like tapered pterodactyl twigs and peppered margins;
+  // these slant sideways rather than MultiCam's frequent vertical bits.
+  const g=camo5Grain(x,y,4,55,64);
+  const hook=((y-Math.floor(x/4)+128)%23);
+  if((hook===1||hook===2)&&g>.58&&ink===3)return 5;
+  if((hook===3||hook===4)&&g>.72&&ink===2)return 6;
+  if(g>.91&&ink===1)return 4;
+  return ink;
+ }
+ if(id==='indian-digital-2022'){
+  // Inspired by India's olive/earth digital family; original deterministic
+  // stepped motif, NOT an exact reproduction of the registered Indian design.
+  const g=.65*camo5Grain(x,y,4,61,64)+.35*camo5Grain(x,y,2,49,64);
+  const digit=camoLattice(Math.floor(x/2),Math.floor(y/2),89);
+  if(g>.69&&digit>.3)return 3;
+  if(g<.24&&digit>.22)return 4;
+  if(g>.51&&g<.63&&digit>.72)return 2;
+  if(g<.39&&digit<.28)return 0;
+  return ink;
+ }
+ return ink;
+}
+
 function inPolygon(x:number,y:number,coords:readonly number[]):boolean{
  let inside=false;
  for(let i=0,j=coords.length-2;i<coords.length;j=i,i+=2){
@@ -699,6 +1107,7 @@ export function headwearCamoIndices(id:HeadwearCamoId):Uint8Array{
   if(id==='woodland-marpat'||id==='desert-marpat')
    ink=applyMarpatFragments(x,y,ink,id==='desert-marpat');
   ink=apply4BDetail(id,x,y,ink);
+  ink=apply5APrint(id,x,y,ink);
   data[y*size+x]=ink;
  }
  return data;
