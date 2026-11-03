@@ -57,8 +57,8 @@ type ArticulatedLimb={upper:THREE.Mesh;lower:THREE.Mesh};
 type ArticulatedFoot=ArticulatedLimb&{shoe:THREE.Mesh};
 export type GarmentFitParents={
  chest:THREE.Group;hip:THREE.Group;
- arms:readonly [ArticulatedLimb,ArticulatedLimb];
- legs:readonly [ArticulatedFoot,ArticulatedFoot];
+ arms:readonly ArticulatedLimb[];
+ legs:readonly ArticulatedFoot[];
 };
 const place=(parent:THREE.Object3D,id:GarmentFitAnchorId,
  x=0,y=0,z=0):THREE.Group=>{
