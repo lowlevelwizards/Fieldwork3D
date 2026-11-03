@@ -50,7 +50,7 @@ export const BLOUSE_CUT_PROFILE={
  */
 export function fieldBlouseShellGeometry(cut:FieldBlouseCut):THREE.BufferGeometry{
  const rings=BLOUSE_CUT_PROFILE[cut].rings as readonly Ring[];
- const positions:number[]=[],uvs:number[]=[],normals:number[]=[];
+ const positions:number[]=[],uvs:number[]=[];
  const surface=(a:THREE.Vector3,b:THREE.Vector3,c:THREE.Vector3,d:THREE.Vector3,
   uWidth:number)=>{
   const triangles=[a,b,c,a,c,d];
@@ -64,7 +64,7 @@ export function fieldBlouseShellGeometry(cut:FieldBlouseCut):THREE.BufferGeometr
    [width,(c.y-yBase)/TILE_WORLD_SIZE],[0,(d.y-yBase)/TILE_WORLD_SIZE]];
   for(let i=0;i<6;i++){
    const p=triangles[i];positions.push(p.x,p.y,p.z);
-   uvs.push(...coords[i]);normals.push(0,0,0);
+   uvs.push(...coords[i]);
   }
  };
  for(let i=0;i<rings.length-1;i++){
@@ -93,6 +93,9 @@ export function fieldBlouseShellGeometry(cut:FieldBlouseCut):THREE.BufferGeometr
  const g=new THREE.BufferGeometry();
  g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
  g.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
+ // Matching indexed formats let the existing mesh consolidation combine
+ // collar, pocket, hem and shell into very few mobile draw calls.
+ g.setIndex(Array.from({length:positions.length/3},(_,i)=>i));
  g.computeVertexNormals();
  return g;
 }
