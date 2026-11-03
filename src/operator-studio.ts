@@ -316,6 +316,29 @@ function renderMaterials(){
     w.fabricSolids?.[channel]??null,id=>
      changeWardrobe(setWardrobeFabricSolid(current(),channel,id)));
   }
+  // A matching set is explicitly opt-in: one tap copies only a compatible
+  // print or solid, never an item or equipment slot.
+  if(channel==='top'||channel==='trousers'){
+   const source=channel==='top'?'trousers':'top';
+   const sourcePrint=w.fabricCamo?.[source];
+   const sourceSolid=w.fabricSolids?.[source];
+   const canCopyPrint=!!sourcePrint&&choices.includes(sourcePrint)&&
+    pattern!==sourcePrint;
+   const canCopySolid=!sourcePrint&&!!sourceSolid&&
+    solidChoicesFor(channel).includes(sourceSolid)&&
+    (pattern!==null||w.fabricSolids?.[channel]!==sourceSolid);
+   if(canCopyPrint||canCopySolid){
+    const match=document.createElement('div');match.className='material-row';
+    match.append(makeButton('MATCH '+(source==='top'?'TOP':'TROUSER')+
+      ' '+(canCopyPrint?'CAMOUFLAGE':'SOLID'),false,()=>{
+     if(canCopyPrint&&sourcePrint)
+      changeWardrobe(setWardrobeFabricCamo(current(),channel,sourcePrint,outfit));
+     else if(canCopySolid&&sourceSolid)
+      changeWardrobe(setWardrobeFabricSolid(current(),channel,sourceSolid));
+    }));
+    group.append(match);
+   }
+  }
  }
  if(activeCategory==='headwear'){
   const solids=headwearColorChoices(item==='high-cut-rails'?'high-cut':item);
