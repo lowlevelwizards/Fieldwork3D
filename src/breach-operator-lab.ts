@@ -796,9 +796,7 @@ document.getElementById('pinLook')?.addEventListener('click',()=>{
  comparePinnedButton.disabled=false;
  variantCompareStatus.textContent='Reference pinned. Edit the right-hand outfit.';
 });
-comparePinnedButton.addEventListener('click',()=>{
- if(variantComparing){endVariantComparison();fit();return;}
- if(!pinnedLook)return;
+function beginTwoLookComparison(){
  if(kitComparing)endKitComparison();
  if(comparing){
   comparing=false;clearComparison();labelLayer.hidden=true;
@@ -816,10 +814,25 @@ comparePinnedButton.addEventListener('click',()=>{
    operator.value==='hostile'?'red':'blue');
   variantBodies.push(body);scene.add(body.root);
  }
+ fit();
+}
+comparePinnedButton.addEventListener('click',()=>{
+ if(variantComparing){endVariantComparison();fit();return;}
+ if(!pinnedLook)return;
+ beginTwoLookComparison();
  comparePinnedButton.setAttribute('aria-pressed','true');
  comparePinnedButton.textContent='EXIT A / B';
  variantCompareStatus.textContent='LEFT: PINNED REFERENCE · RIGHT: CURRENT';
- fit();
+});
+uniformCompareButton.addEventListener('click',()=>{
+ if(uniformComparing){endVariantComparison();fit();return;}
+ if(variantComparing)endVariantComparison();
+ beginTwoLookComparison();
+ uniformComparing=true;
+ uniformLabels.hidden=false;
+ uniformCompareButton.setAttribute('aria-pressed','true');
+ uniformCompareButton.textContent='EXIT BLOUSE COMPARISON';
+ refreshUniformCompareLabels();
 });
 
 function endKitComparison(){
