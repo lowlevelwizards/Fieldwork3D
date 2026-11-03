@@ -1,11 +1,11 @@
 /* Compact shared headwear swatches for Campaign and Quick Play on phone. */
 .fw-headwear-picker{margin:10px 0;padding:8px;border:1px solid #617e70;border-radius:7px;background:#1a3029;color:#e5e7d7;min-width:0}
-.fw-headwear-picker>summary,.fw-headwear-camos>summary{font:700 11px/1.5 "Saira Condensed","Arial Narrow",sans-serif;cursor:pointer;padding:6px 3px;min-height:35px;touch-action:manipulation}
+.fw-headwear-picker>summary,.fw-headwear-camos>summary{font:700 14px/1.5 "Saira Condensed","Arial Narrow",sans-serif;cursor:pointer;padding:6px 3px;min-height:35px;touch-action:manipulation}
 .fw-headwear-picker>summary{color:#ead9b1}
 .fw-headwear-camos{margin-top:10px;border-top:1px solid #587364;padding-top:6px}
 .fw-headwear-camos>summary{color:#d7e3d2}
 .fw-headwear-hint{font:500 11px/1.4 "Saira Condensed","Arial Narrow",sans-serif;color:#c4d2c4;margin:5px 0 9px}
-.fw-headwear-section-title{font:700 10px "Saira Condensed","Arial Narrow",sans-serif;letter-spacing:.04em;color:#d1dec9;margin:8px 0}
+.fw-headwear-section-title{font:700 13px "Saira Condensed","Arial Narrow",sans-serif;letter-spacing:.04em;color:#d1dec9;margin:8px 0}
 .fw-headwear-solids{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}
 .fw-headwear-solid{width:100%;min-height:44px;height:44px;border-radius:5px;border:2px solid #b2bbad;padding:0;position:relative;touch-action:manipulation}
 .fw-headwear-solid[aria-pressed="true"]{border:3px solid #fff1bf;outline:2px solid #182923;outline-offset:-6px}
