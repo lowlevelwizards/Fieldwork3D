@@ -42,6 +42,8 @@ import {HEADWEAR_SOLID_COLORS,headwearColorChoices,resolvedHeadwearSolid}
 import {HEADWEAR_CAMO_IDS,headwearCamoChoices,resolvedHeadwearCamo,headwearCamoPixels,headwearCamoSize,
  HEADWEAR_CAMO_RECIPES,HEADWEAR_CAMO_DENSITY,nextHeadwearCamoRoll,
  type HeadwearCamoId} from './operator-headwear-camo.ts';
+import {CAMO_CATALOG,CAMO_ORIGINS,filterCamoCatalog,type CamoFilter,type CamoOrigin}
+ from './operator-headwear-camo-catalog.ts';
 import {initialWardrobe,readWardrobe,setWardrobePattern,resolvedWardrobe,
  WARDROBE_PATTERNS,wardrobeConflicts,wardrobeItemsForSlot,wardrobeItem,
  type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
@@ -270,6 +272,58 @@ function renderHeadwearSolidSwatches(id:string){
 const camoChooser=document.getElementById('headwearCamoChooser') as HTMLElement;
 const camoGrid=document.getElementById('headwearCamoGrid') as HTMLElement;
 const camoCompareGrid=document.getElementById('headwearCamoCompareGrid') as HTMLElement;
+const camoCompareDetails=document.getElementById('headwearCamoCompareDetails') as HTMLDetailsElement;
+const camoTerrainFilter=document.getElementById('camoTerrainFilter') as HTMLSelectElement;
+const camoStyleFilter=document.getElementById('camoStyleFilter') as HTMLSelectElement;
+const camoOriginFilter=document.getElementById('camoOriginFilter') as HTMLSelectElement;
+const camoSearchFilter=document.getElementById('camoSearchFilter') as HTMLInputElement;
+const camoCompatibleFilter=document.getElementById('camoCompatibleFilter') as HTMLInputElement;
+const camoFavoriteFilter=document.getElementById('camoFavoriteFilter') as HTMLInputElement;
+const camoBrowseSummary=document.getElementById('camoBrowseSummary') as HTMLOutputElement;
+const camoBrowseEmpty=document.getElementById('camoBrowseEmpty') as HTMLElement;
+const camoRecentRow=document.getElementById('camoRecentRow') as HTMLElement;
+const CAMO_BROWSER_STORAGE_KEY='fieldwork.headwear.camo.browser.v1';
+let camoFavorites=new Set<HeadwearCamoId>();
+let camoRecents:HeadwearCamoId[]=[];
+try{
+ const parsed=JSON.parse(localStorage.getItem(CAMO_BROWSER_STORAGE_KEY)??'{}');
+ if(Array.isArray(parsed.favorites))
+  camoFavorites=new Set(parsed.favorites.filter((id:unknown)=>HEADWEAR_CAMO_IDS.includes(id as HeadwearCamoId)));
+ if(Array.isArray(parsed.recents))
+  camoRecents=parsed.recents.filter((id:unknown)=>HEADWEAR_CAMO_IDS.includes(id as HeadwearCamoId)).slice(0,5);
+}catch{ /* Private browsing/storage access can fail: filters still work. */ }
+function storeCamoBrowser(){
+ try{localStorage.setItem(CAMO_BROWSER_STORAGE_KEY,JSON.stringify({
+  favorites:[...camoFavorites],recents:camoRecents
+ }));}catch{ /* User may have disabled local storage. */ }
+}
+for(const origin of CAMO_ORIGINS){
+ const o=document.createElement('option');o.value=origin;o.textContent=origin.toUpperCase();
+ camoOriginFilter.append(o);
+}
+function currentCamoFilter():CamoFilter{
+ return {
+  terrain:camoTerrainFilter.value as CamoFilter['terrain'],
+  style:camoStyleFilter.value as CamoFilter['style'],
+  origin:camoOriginFilter.value as CamoOrigin|'all',
+  text:camoSearchFilter.value,
+  onlyCompatible:camoCompatibleFilter.checked,
+  onlyFavorites:camoFavoriteFilter.checked
+ };
+}
+for(const control of [camoTerrainFilter,camoStyleFilter,camoOriginFilter,
+ camoCompatibleFilter,camoFavoriteFilter]){
+ control.addEventListener('change',()=>renderHeadwearCamoSwatches(
+  resolvedWardrobe(wardrobeOptions,labKit).headwear));
+}
+camoSearchFilter.addEventListener('input',()=>renderHeadwearCamoSwatches(
+ resolvedWardrobe(wardrobeOptions,labKit).headwear));
+camoCompareDetails.addEventListener('toggle',()=>{
+ if(camoCompareDetails.open)renderHeadwearCamoSwatches(
+  resolvedWardrobe(wardrobeOptions,labKit).headwear);
+ else camoCompareGrid.replaceChildren();
+});
+
 const camoInspector=document.getElementById('headwearCamoInspector') as HTMLElement;
 const camoStatus=document.getElementById('headwearCamoChoice') as HTMLOutputElement;
 const camoReroll=document.getElementById('headwearCamoReroll') as HTMLButtonElement;
@@ -295,6 +349,8 @@ function paintHeadwearCamo(canvas:HTMLCanvasElement,id:HeadwearCamoId,repeats:nu
  ctx.imageSmoothingEnabled=false;ctx.putImageData(image,0,0);
 }
 function applyHeadwearCamoChoice(id:HeadwearCamoId,selected:HeadwearCamoId|null,model:string){
+ camoRecents=[id,...camoRecents.filter(c=>c!==id)].slice(0,5);
+ storeCamoBrowser();
  wardrobeOptions={...wardrobeOptions,headwearCamo:id,
   headwearCamoRoll:selected===id?
    nextHeadwearCamoRoll(wardrobeOptions.headwearCamoRoll):0};
@@ -307,6 +363,7 @@ function applyHeadwearCamoChoice(id:HeadwearCamoId,selected:HeadwearCamoId|null,
 function renderHeadwearCamoComparison(model:string,selected:HeadwearCamoId|null){
  const allowed=headwearCamoChoices(model);
  camoCompareGrid.replaceChildren();
+ if(!camoCompareDetails.open)return; // Avoid 60 large canvases on every mobile swatch.
  for(const id of HEADWEAR_CAMO_IDS){
   const recipe=HEADWEAR_CAMO_RECIPES[id],canApply=allowed.includes(id);
   const button=document.createElement('button');
@@ -335,24 +392,54 @@ function renderHeadwearCamoComparison(model:string,selected:HeadwearCamoId|null)
 }
 function renderHeadwearCamoSwatches(model:string){
  const choices=headwearCamoChoices(model);
+ const compatible=new Set(choices);
  camoChooser.hidden=choices.length===0;camoGrid.replaceChildren();
  camoInspector.hidden=choices.length===0;
- if(!choices.length){camoStatus.textContent='';camoReroll.hidden=true;camoCompareGrid.replaceChildren();return;}
+ if(!choices.length){
+  camoStatus.textContent='';camoReroll.hidden=true;
+  camoRecentRow.replaceChildren();camoRecentRow.hidden=true;
+  camoCompareGrid.replaceChildren();return;
+ }
  const selected=resolvedHeadwearCamo(model,wardrobeOptions.headwearCamo);
  renderHeadwearCamoComparison(model,selected);
- for(const id of choices){
-  const recipe=HEADWEAR_CAMO_RECIPES[id];
+ const visible=filterCamoCatalog(currentCamoFilter(),choices,camoFavorites);
+ camoBrowseSummary.textContent=visible.length+' OF '+HEADWEAR_CAMO_IDS.length+
+  ' PATTERNS · '+choices.length+' COMPATIBLE'+
+  (selected?' · EQUIPPED: '+HEADWEAR_CAMO_RECIPES[selected].label:'');
+ camoBrowseEmpty.hidden=visible.length!==0;
+ camoRecentRow.replaceChildren();
+ for(const id of camoRecents.filter(c=>compatible.has(c)).slice(0,4)){
+  const button=document.createElement('button');button.type='button';
+  button.textContent=HEADWEAR_CAMO_RECIPES[id].label;
+  button.setAttribute('aria-label','Apply recently used '+HEADWEAR_CAMO_RECIPES[id].label);
+  button.addEventListener('click',()=>applyHeadwearCamoChoice(id,selected,model));
+  camoRecentRow.append(button);
+ }
+ camoRecentRow.hidden=camoRecentRow.children.length===0;
+ for(const id of visible){
+  const recipe=HEADWEAR_CAMO_RECIPES[id],canApply=compatible.has(id);
+  const wrapper=document.createElement('div');wrapper.className='camo-card';
   const button=document.createElement('button');button.type='button';
   button.className='camo-entry';button.dataset.headwearCamo=id;
+  button.disabled=!canApply;
   button.title=recipe.label+' · '+recipe.description;
-  button.setAttribute('aria-label','Apply '+recipe.label+' to headgear');
+  button.setAttribute('aria-label',(canApply?'Apply ':'Unavailable for current headwear: ')+recipe.label);
   button.setAttribute('aria-pressed',String(selected===id));
   const image=document.createElement('canvas');image.width=32;image.height=32;
   image.setAttribute('aria-hidden','true');paintHeadwearCamo(image,id,1);
   const caption=document.createElement('span');caption.textContent=recipe.label;
   button.append(image,caption);
-  button.addEventListener('click',()=>applyHeadwearCamoChoice(id,selected,model));
-  camoGrid.append(button);
+  if(canApply)button.addEventListener('click',()=>applyHeadwearCamoChoice(id,selected,model));
+  const favorite=document.createElement('button');
+  favorite.type='button';favorite.className='camo-favorite';
+  favorite.textContent=camoFavorites.has(id)?'★':'☆';
+  favorite.setAttribute('aria-label',(camoFavorites.has(id)?'Unfavorite ':'Favorite ')+recipe.label);
+  favorite.setAttribute('aria-pressed',String(camoFavorites.has(id)));
+  favorite.addEventListener('click',()=>{
+   if(camoFavorites.has(id))camoFavorites.delete(id);else camoFavorites.add(id);
+   storeCamoBrowser();renderHeadwearCamoSwatches(model);
+  });
+  wrapper.append(button,favorite);camoGrid.append(wrapper);
  }
  camoReroll.hidden=!selected;
  const preview=selected??choices[0];
