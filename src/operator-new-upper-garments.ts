@@ -108,11 +108,9 @@ function tube(g:THREE.Group,m:THREE.Material,
 }
 function foldedHood(g:THREE.Group,body:THREE.Material,
  wide=false){
- // Low, CLOSED folded hood profile, not two little floating antennas.
- // One rear fold and two shoulder folds remain seated on the neckline.
- box(g,body,-5.60,7.02,0,1.25,1.55,wide?11.90:11.10);
- for(const sign of [-1,1])
-  box(g,body,-4.67,6.93,sign*4.48,1.32,1.42,2.36);
+ // Folded hood is ONE solid collapsed roll behind the neck. The old
+ // separate side boxes looked like disconnected shoulder antennas.
+ box(g,body,-5.34,6.93,0,1.74,1.36,wide?11.65:10.85);
 }
 export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
  cloth:THREE.MeshStandardMaterial,trim:THREE.MeshStandardMaterial):NewUpperGarments{
@@ -165,18 +163,17 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
    box(torso,smockCuff,6.26,-7.97,0,.17,.29,14.25);
   }else{
    foldedHood(torso,mountainCanvas,true);
-   // Four deliberate large shape cues: side shoulder fields, simple
-   // standing storm collar, two lower pouch masses, cinched waist.
-   // Wear overlays follow shell faces instead of building a second vest.
+   // Gorka is mountain CLOTH, not an armor vest: broad contrasting
+   // shoulder wear, simple central anorak placket, one shallow lower
+   // cargo pouch and a plain cinched hem. No armor-looking vents or
+   // stacked rectangular torso plates.
    for(const sign of [-1,1]){
-    box(torso,body,1.50,7.01,sign*3.56,5.0,1.12,1.62);
-    box(torso,wear,.18,4.62,sign*8.03,6.10,.82,.22);
-    box(torso,wear,6.28,3.58,sign*5.62,.15,1.85,2.40);
-    box(torso,body,6.35,-4.48,sign*3.56,.28,2.87,4.25);
-    box(torso,wear,6.57,-3.18,sign*3.56,.12,.45,4.30);
+    box(torso,body,.90,6.87,sign*3.20,5.00,.82,1.65);
+    box(torso,wear,.18,4.58,sign*7.88,6.05,.85,.34);
    }
+   box(torso,wear,6.30,1.22,0,.11,5.04,.18);
+   box(torso,body,6.38,-4.56,0,.17,1.90,8.56);
    box(torso,gorkaCuff,6.36,-6.55,0,.18,.39,13.54);
-   box(torso,wear,6.31,1.05,0,.10,5.70,.20);
   }
   const upper:THREE.Group[]=[],lower:THREE.Group[]=[],
    cuffedLower:THREE.Group[]=[],rolledUpper:THREE.Group[]=[];
