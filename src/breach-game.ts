@@ -1457,13 +1457,21 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   }else if(a.side==='red')a.actionTimer=0;
   // Only one operator owns a narrow threshold at a time. This is a
   // transient execution pause, not a new waypoint or permanent yield.
-  const traffic:PassageActor[]=s.operators.map(unit=>({
-    id:unit.id,p:unit.p,goal:unit===a?p:
-      unit.nav.at(-1)??unit.plan[0]?.p??null,
-    health:unit.health,blockedTime:unit.blockedTime,
-    active:unit===a||unit.nav.length>0||
-      unit.plan.some(n=>n.kind==='move'||n.kind==='door'||n.kind==='pie'),
-  }));
+  const traffic:PassageActor[]=s.operators.map(unit=>{
+    const order=unit.plan[0];
+    const traveling=!!order&&
+      (order.kind==='move'||order.kind==='door'||
+       order.kind==='pie'||order.kind==='sync')&&
+      (unit.nav.length>0||d(unit.p,order.p)>7);
+    return {
+      id:unit.id,side:unit.side,p:unit.p,
+      // Only the action happening NOW competes for a doorway. A future
+      // movement after WAIT/RELOAD/etc. must not hold the reservation.
+      goal:unit===a?p:traveling?(unit.nav.at(-1)??order!.p):null,
+      health:unit.health,blockedTime:unit.blockedTime,
+      active:unit===a||traveling,
+    };
+  });
   if(passageWait(traffic.find(unit=>unit.id===a.id)!,s.doors,
      traffic,s.passageLeases,s.seconds)){
     a.velocity=0;a.blockedTime=0;
