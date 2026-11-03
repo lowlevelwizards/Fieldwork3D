@@ -20,7 +20,8 @@ import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import type {TacticalOrderPreview} from './ui/tactical-feedback.ts';
 import {ExecutionNoticeFeed} from './ui/execution-feedback.ts';
 import {currentSiteIdentity} from './ui/current-site-identity.ts';
-import {tacticalHitProfile} from './ui/touch-hit-targets.ts';
+import {tacticalHitProfile,preferSelectedHit,shouldAppendStrokePoint} from './ui/touch-hit-targets.ts';
+import {orderVisualScopes} from './ui/order-visual-state.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
  rangeTrialLabel,type RangeTrial} from './equipment-training-diagnostics.ts';
@@ -889,6 +890,8 @@ let lastAuthoringAt=0;
 const paletteMotion=new PaletteMotion();
 const reducedMotionMedia=matchMedia('(prefers-reduced-motion: reduce)');
 let paletteWidth=0,paletteHeight=0;
+let lastPlacementKey='';
+const contextPointerIds=new Set<number>();
 let tetherBrightUntil=0;
 let paletteExit:Animation|null=null;
 const contextTether=document.createElement('div');
@@ -896,6 +899,7 @@ contextTether.id='contextTether';
 contextTether.setAttribute('aria-hidden','true');
 document.body.append(contextTether);
 function hideContextPalette(){
+  lastPlacementKey='';
   // Mutually exclusive sheets must take over immediately. A fading palette
   // still counts as visible/hit-testable and can obscure the TOOLS drawer.
   const exclusive=!ui.orders.classList.contains('compact')||
@@ -957,8 +961,13 @@ let doorFocusId:string|null=null;
 let draggingNode:Pt|null=null;
 let draggingWatchTarget=false;
 function cancelTargeting(){
+  const hadTarget=looking||flashMode||!!firePlacement||!!evacMode;
+  if(hadTarget){
+    const actor=uid(selected);
+    if(actor)tacticalFeedback.emit('cancel',actor.p,'CANCELLED');
+  }
   looking=false;flashMode=false;firePlacement=null;flashDoorId=null;
-  contextSignature='';updateHud();
+  evacMode=null;contextSignature='';updateHud();
 }
 const fogCanvas=document.createElement('canvas');
 fogCanvas.width=FOG_WIDTH;fogCanvas.height=FOG_HEIGHT;
@@ -1145,6 +1154,8 @@ function installTouchCommandHelp(button:HTMLButtonElement){
  });
  button.addEventListener('pointerup',clear);
  button.addEventListener('pointercancel',()=>{clear();consumed=false;});
+ button.addEventListener('lostpointercapture',clear);
+ button.addEventListener('pointerleave',clear);
  button.addEventListener('click',event=>{
   if(!consumed)return;
   consumed=false;event.preventDefault();event.stopImmediatePropagation();
@@ -1270,7 +1281,8 @@ function updateContext(){
   }
   const actionSignature=identity+'/'+paletteChoices.map(c=>
     c.id+':'+c.label+':'+c.group+':'+!!c.disabled+':'+!!c.pressed).join('|');
-  if(contextActionsSignature!==actionSignature){
+  const actionChanged=contextActionsSignature!==actionSignature;
+  if(actionChanged){
   contextActionsSignature=actionSignature;
   const buckets:Record<string,HTMLElement>={
     primary:ui.context.querySelector<HTMLElement>('.context-primary')!,
@@ -1331,8 +1343,11 @@ function updateContext(){
   // Don't inspect concealed enemies: context placement must not leak intel.
   const target=door?doorCenter(door):node?.p??a.p;
   const anchor=worldToScreen(target,door?15:node?8:24);
-  const w=ui.context.offsetWidth,h=ui.context.offsetHeight;
-  paletteWidth=w;paletteHeight=h;
+  // Re-measure DOM only when contents change; reading offset dimensions every
+  // animation frame forces avoidable synchronous layout on mobile browsers.
+  const measure=contextChanged||actionChanged||paletteWidth<=0||paletteHeight<=0;
+  if(measure){paletteWidth=ui.context.offsetWidth;paletteHeight=ui.context.offsetHeight;}
+  const w=paletteWidth,h=paletteHeight;
   const header=document.querySelector<HTMLElement>('.top');
   const nav=document.querySelector<HTMLElement>('.bar');
   const minY=Math.max(8,(header?.getBoundingClientRect().bottom??62)+8);
@@ -1340,6 +1355,21 @@ function updateContext(){
     ui.quickStates.getBoundingClientRect().top:
     (nav?.getBoundingClientRect().top??ui.play.getBoundingClientRect().top);
   const maxY=Math.max(minY+h,hudTop-10);
+  // Lightweight dirty key: only meaningfully changed screen geometry may
+  // trigger the expensive avoid-zone and candidate placement calculations.
+  // The existing palette holds its pocket through incidental frame updates.
+  const unitKey=team(state).map(unit=>{
+    const point=worldToScreen(unit.p,8);
+    return unit.id+':'+Math.round(point.x/6)+','+Math.round(point.y/6)+
+      ':'+unit.plan.map(n=>Math.round(n.p.x/3)+','+
+      Math.round(n.p.y/3)+','+n.kind).join(';');
+  }).join('|');
+  const placementKey=[identity,actionSignature,Math.round(anchor.x/6),
+    Math.round(anchor.y/6),Math.round(cssW),Math.round(cssH),
+    Math.round(minY/3),Math.round(maxY/3),w,h,unitKey].join('|');
+  if(paletteMotion.active&&!contextChanged&&!actionChanged&&
+     (contextPointerIds.size>0||placementKey===lastPlacementKey))return;
+  lastPlacementKey=placementKey;
   const avoid:AvoidRect[]=[{x:anchor.x-38,y:anchor.y-38,
     w:76,h:76,weight:3}];
   for(const unit of team(state)){
@@ -1363,8 +1393,16 @@ function updateContext(){
     let previous=friendly.p;
     for(const waypoint of friendly.plan){
       if(waypoint.kind==='move'||waypoint.kind==='door'){
-        paths.push({a:worldToScreen(previous,8),
-          b:worldToScreen(waypoint.p,8)});
+        // Match the actual visible navigated polyline, not a straight
+        // authored-endpoint chord that may cut across walls and doors.
+        const routed=displayRouteCache.get(previous,waypoint.p,
+          state.intel,true).points;
+        let segmentStart=previous;
+        for(const point of routed){
+          paths.push({a:worldToScreen(segmentStart,8),
+            b:worldToScreen(point,8)});
+          segmentStart=point;
+        }
         previous=waypoint.p;
       }
       const p=worldToScreen(waypoint.p,8);
@@ -1407,28 +1445,20 @@ function updateContext(){
   // Keep the actual menu hit target in its visually interpolated position.
   // Geometry measurement uses offsetWidth/Height (unaffected by transforms).
 }
-// Pointer-held explanations do not also dispatch the underlying tactical order.
-let contextHoldTimer:ReturnType<typeof setTimeout>|null=null;
-let contextHeldAt=-Infinity;
-const cancelContextHold=()=>{
-  if(contextHoldTimer!==null){clearTimeout(contextHoldTimer);contextHoldTimer=null;}
-};
+// While a command finger is down, freeze the palette's pocket so it cannot
+// slip out from under the touch. This does not block camera or map rendering.
 ui.context.addEventListener('pointerdown',event=>{
-  cancelContextHold();
-  if(event.pointerType==='mouse'&&event.button!==0)return;
-  const button=(event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]');
-  if(!button||button.disabled)return;
-  contextHoldTimer=setTimeout(()=>{
-    contextHoldTimer=null;contextHeldAt=performance.now();
-    showUiHelp(button.title||button.getAttribute('aria-label')||'',5500);
-    updateHud();
-  },450);
+  if((event.target as HTMLElement).closest('button'))
+    contextPointerIds.add(event.pointerId);
 });
-ui.context.addEventListener('pointerup',cancelContextHold);
-ui.context.addEventListener('pointercancel',cancelContextHold);
-ui.context.addEventListener('pointerleave',cancelContextHold);
+for(const type of ['pointerup','pointercancel'] as const)
+  window.addEventListener(type,event=>{
+    contextPointerIds.delete(event.pointerId);
+  },{capture:true});
+window.addEventListener('blur',()=>contextPointerIds.clear());
+// One shared long-press handler is installed on each actual command button.
+// Duplicating a second timer on the palette caused conflicting 450/540ms holds.
 const handleContextAction=(event:MouseEvent)=>{
-  if(performance.now()-contextHeldAt<400){event.preventDefault();return;}
   const button=(event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]');
   if(!button||state.phase!=='planning')return;
   const action=button.dataset.action;
@@ -1458,15 +1488,15 @@ const handleContextAction=(event:MouseEvent)=>{
     }
     case 'ctxSuppress':
       firePlacement='suppress';looking=false;flashMode=false;
-      tacticalFeedback.emit('command',node?.p??a.p,'SUPPRESS');
-      uiClickTone('command');updateHud();return;
+      tacticalFeedback.emit('armed',node?.p??a.p,'SUPPRESS READY');
+      uiClickTone('select');updateHud();return;
     case 'ctxFlash':
       if(state.flashRemaining>0){flashMode=true;flashDoorId=null;
         looking=false;firePlacement=null;}
       break;
     case 'ctxLook':
-      tacticalFeedback.emit('command',node?.p??a.p,'LOOK');
-      uiClickTone('command');armFacing('look');return;
+      tacticalFeedback.emit('armed',node?.p??a.p,'LOOK READY');
+      uiClickTone('select');armFacing('look');return;
     case 'ctxDoor':{
       const available=focusedDoor(a,node);
       if(!available){state.events.push('NO KNOWN DOOR IN REACH');break;}
@@ -1475,8 +1505,8 @@ const handleContextAction=(event:MouseEvent)=>{
       updateHud();return;
     }
     case 'ctxWatch':
-      tacticalFeedback.emit('command',node?.p??a.p,'WATCH');
-      uiClickTone('command');armFacing('watch');return;
+      tacticalFeedback.emit('armed',node?.p??a.p,'WATCH READY');
+      uiClickTone('select');armFacing('watch');return;
     case 'ctxReleaseWatch':
       if(!releaseWatch(state,selected,node?.id,'here'))
         state.events.push('CANNOT RELEASE WATCH HERE');
@@ -2074,7 +2104,7 @@ function architecture(){
       line(a,b,'#b5a17a',8);
       circle(a.x,a.y,3,'#ead0a0');circle(b.x,b.y,3,'#ead0a0');
       draw.save();draw.translate(center.x,center.y);
-      draw.fillStyle='#e4d1a2';draw.font='bold 9px monospace';
+      draw.fillStyle='#e4d1a2';draw.font='700 11px "Saira Condensed",sans-serif';
       draw.textAlign='center';draw.fillText('Ⅱ',0,3);draw.restore();
     }else{
       // Remember only the last witnessed angle, never offscreen changes.
@@ -2116,11 +2146,29 @@ function conical(a:TeamActor,radius=110){
   draw.fillStyle=a.id===selected?'rgba(172,217,206,.075)':'rgba(178,199,168,.035)';
   draw.fill();
 }
+/** Show the provisional segment neighbors while dragging an existing move
+ * waypoint. It is deliberately a neutral DRAFT, not a promised walkable path.
+ * It never probes hidden navigation state or mutates the authored plan. */
+function draftRouteNeighbors(){
+  const actor=uid(selected);
+  if(!actor||selectedNode===null||!draggingNode||draggingWatchTarget)return null;
+  const index=actor.plan.findIndex(n=>n.id===selectedNode);
+  if(index<0||!['move','door'].includes(actor.plan[index].kind))return null;
+  const prior=actor.plan.slice(0,index).reverse().find(n=>
+    n.kind==='move'||n.kind==='door')?.p??actor.p;
+  const next=actor.plan.slice(index+1).find(n=>
+    n.kind==='move'||n.kind==='door')?.p??null;
+  return {prior,point:draggingNode,next};
+}
 function paths(){
   for(const a of team(state)){
     if(a.health<=0)continue;
     const c=colorFor(a.id);
     const plan=a.plan;
+    const visual=orderVisualScopes(plan,{
+      watch:a.aimInstruction?.mode==='track',pace:a.pace,
+      posture:a.posture,fire:a.firePolicy
+    });
     if(plan.length){
       draw.beginPath();draw.moveTo(a.p.x,a.p.y);
       let from=a.p;
@@ -2138,6 +2186,25 @@ function paths(){
       draw.lineWidth=a.id===selected?2.6:1.6;
       draw.setLineDash([8,4]);draw.stroke();draw.setLineDash([]);
       draw.globalAlpha=1;
+    }
+    if(a.id===selected){
+      let previous=a.p;
+      for(let i=0;i<plan.length;i++){
+        const node=plan[i];
+        if(node.kind==='move'||node.kind==='door'){
+          // A longer, amber dash reads as RUN without needing another label.
+          if(visual[i].before.pace==='run'){
+            const steps=displayRouteCache.get(previous,node.p,state.intel,
+              state.phase==='planning').points;
+            draw.save();draw.strokeStyle='#f0ce8e';draw.globalAlpha=.68;
+            draw.lineWidth=2.2;draw.setLineDash([11,3]);draw.beginPath();
+            draw.moveTo(previous.x,previous.y);
+            for(const p of steps)draw.lineTo(p.x,p.y);
+            draw.stroke();draw.restore();
+          }
+          previous=node.p;
+        }else if(node.kind==='pie')previous=node.p;
+      }
     }
     // Selected WATCH instructions remain readable throughout the route they
     // govern, without cluttering unselected operators' plans.
@@ -2161,13 +2228,14 @@ function paths(){
     }
     for(let i=0;i<plan.length;i++){
       const n=plan[i],selectedNow=a.id===selected&&selectedNode===n.id;
+      const semantics=visual[i];
       const point=selectedNow&&draggingNode&&!draggingWatchTarget&&n.kind!=='flash'?
         draggingNode:n.p;
       circle(point.x,point.y,selectedNow?10:7,
         selectedNow?'#ecd29f':n.kind==='move'?c:'#c8ae7f');
       circle(point.x,point.y,3,'#263836');
       draw.textAlign='center';draw.fillStyle='#111e20';
-      draw.font='bold 10px monospace';
+      draw.font='700 12px "Saira Condensed",sans-serif';
       draw.fillText(String(i+1),point.x,point.y+3.1);
       if(n.facing!==undefined){
         const end={x:point.x+Math.cos(n.facing)*40,
@@ -2180,14 +2248,28 @@ function paths(){
         line(point,watched,c,1.8);
         circle(watched.x,watched.y,selectedNow?9:7,c);
         circle(watched.x,watched.y,3,'#203732');
-        draw.textAlign='left';draw.font='bold 10px monospace';
+        draw.textAlign='left';draw.font='700 12px "Saira Condensed",sans-serif';
         draw.fillStyle='#e8cba2';
         draw.fillText('WATCH',point.x+12,point.y-12);
       }else if(n.aimMode==='fixed'||(n.aimMode==='free'&&n.facing!==undefined)){
-        draw.textAlign='left';draw.font='bold 10px monospace';
+        draw.textAlign='left';draw.font='700 12px "Saira Condensed",sans-serif';
         draw.fillStyle='#d5e8de';
         draw.fillText(n.aimLabel==='strafe'?'HOLD DIR':'LOOK',
           point.x+12,point.y-12);
+      }
+      if(semantics.watchEnds&&n.facing===undefined){
+        draw.textAlign='left';draw.font='bold 11px "Saira Condensed",sans-serif';
+        draw.fillStyle='#ead5ad';
+        draw.fillText('AUTO',point.x+12,point.y-12);
+      }
+      if(semantics.suppressionPoint){
+        const target=semantics.suppressionPoint;
+        draw.save();draw.strokeStyle='#e9a883';draw.lineWidth=1.8;
+        draw.setLineDash([4,4]);draw.beginPath();
+        draw.moveTo(point.x,point.y);draw.lineTo(target.x,target.y);draw.stroke();
+        draw.setLineDash([]);draw.beginPath();
+        draw.arc(target.x,target.y,20,0,Math.PI*2);draw.stroke();
+        draw.restore();
       }
       if(n.kind==='flash'&&n.aimPoint){
         const path=flashTrajectory(state,a,n);
@@ -2201,11 +2283,11 @@ function paths(){
         draw.strokeStyle='#f0af55';draw.lineWidth=2;
         draw.beginPath();draw.arc(landing.x,landing.y,26,0,Math.PI*2);draw.stroke();
         circle(landing.x,landing.y,selectedNow?11:9,'#dca053');
-        draw.fillStyle='#1d2624';draw.font='bold 12px monospace';
+        draw.fillStyle='#1d2624';draw.font='600 12px "Work Sans",sans-serif';
         draw.textAlign='center';draw.fillText('F',landing.x,landing.y+4);
       }
       if(n.kind==='move'&&n.moveMode==='strafe'){
-        draw.textAlign='left';draw.font='bold 10px monospace';
+        draw.textAlign='left';draw.font='700 12px "Saira Condensed",sans-serif';
         draw.fillStyle='#b8e7dd';
         draw.fillText('HOLD DIR',point.x+12,point.y-11);
       }
@@ -2218,18 +2300,40 @@ function paths(){
         for(const step of n.arc)draw.lineTo(step.x,step.y);
         draw.stroke();draw.setLineDash([]);
         line(point,n.pivot,'#d6b18b83',1.1);
-        draw.fillStyle='#eacda0';draw.font='bold 10px monospace';
+        draw.fillStyle='#eacda0';draw.font='700 12px "Saira Condensed",sans-serif';
         draw.fillText(n.pieSide==='cw'?'PIE ↷':'PIE ↶',point.x+12,point.y-11);
         draw.restore();
       }
       if(n.kind==='door'||n.kind==='wait'||n.kind==='holdClear'||n.kind==='sync'){
-        draw.textAlign='left';draw.font='bold 10px monospace';
+        draw.textAlign='left';draw.font='700 12px "Saira Condensed",sans-serif';
         draw.fillStyle='#e7c797';
         draw.fillText(n.kind==='door'?(n.method??'open').toUpperCase():
           n.kind==='wait'||n.kind==='holdClear'?'◷ WAIT':n.kind.toUpperCase(),
           point.x+11,point.y-9);
       }
     }
+    // A suppression order issued HERE belongs to the operator, not a node.
+    if(a.id===selected&&a.firePolicy==='suppress'&&a.suppressPoint){
+      draw.save();draw.strokeStyle='#e9a883';draw.lineWidth=1.8;
+      draw.setLineDash([4,4]);draw.beginPath();
+      draw.moveTo(a.p.x,a.p.y);
+      draw.lineTo(a.suppressPoint.x,a.suppressPoint.y);draw.stroke();
+      draw.setLineDash([]);draw.beginPath();
+      draw.arc(a.suppressPoint.x,a.suppressPoint.y,20,0,Math.PI*2);
+      draw.stroke();draw.restore();
+    }
+  }
+  const draft=draftRouteNeighbors();
+  if(draft){
+    draw.save();draw.strokeStyle='#d5cb9d';draw.globalAlpha=.75;
+    draw.lineWidth=2;draw.setLineDash([5,5]);
+    draw.beginPath();draw.moveTo(draft.prior.x,draft.prior.y);
+    draw.lineTo(draft.point.x,draft.point.y);
+    if(draft.next)draw.lineTo(draft.next.x,draft.next.y);
+    draw.stroke();draw.setLineDash([]);draw.fillStyle='#d5cb9d';
+    draw.font='700 11px "Saira Condensed",sans-serif';
+    draw.fillText('DRAFT',draft.point.x+13,draft.point.y-14);
+    draw.restore();
   }
   if(trace&&trace.length>=1&&cursor){
     draw.beginPath();draw.moveTo(trace[0].x,trace[0].y);
@@ -2253,7 +2357,13 @@ function renderProjectedPlans(){
     if(a.health<=0)continue;
     const color=colorFor(a.id);
     let previous=a.p,watching=false;
+    const visual=orderVisualScopes(a.plan,{
+      watch:a.aimInstruction?.mode==='track',pace:a.pace,
+      posture:a.posture,fire:a.firePolicy
+    });
+    let visualIndex=0;
     for(const n of a.plan){
+      const semantics=visual[visualIndex++];
       const cachedRoute=n.kind==='move'||n.kind==='door'?
         displayRouteCache.get(previous,n.p,state.intel,state.phase==='planning'):null;
       const steps=n.kind==='pie'?n.arc??[]:cachedRoute?.points??[];
@@ -2272,6 +2382,7 @@ function renderProjectedPlans(){
         // Narrow routes use a finer dash without another overlay.
         draw.setLineDash(n.kind==='pie'?[3,3]:
           watching&&a.id===selected?[3,5]:
+          semantics.before.pace==='run'?[12,3]:
           narrowOnly?[2,4]:[7,4]);
         draw.stroke();draw.setLineDash([]);draw.globalAlpha=1;
       }
@@ -2283,7 +2394,7 @@ function renderProjectedPlans(){
       circle(point.x,point.y,selectedNow?11:7,
         invalidDrag?'#df8070':selectedNow?'#ecd29f':color);
       circle(point.x,point.y,3,'#233b39');
-      draw.fillStyle='#142829';draw.font='bold 11px monospace';
+      draw.fillStyle='#142829';draw.font='700 12px "Saira Condensed",sans-serif';
       draw.textAlign='center';draw.fillText(String(a.plan.indexOf(n)+1),
         point.x,point.y+3);
       if(n.facing!==undefined){
@@ -2300,18 +2411,35 @@ function renderProjectedPlans(){
         circle(target.x,target.y,8,color);
         circle(target.x,target.y,3,'#264039');
         draw.fillStyle='#f1d7a4';draw.textAlign='left';
-        draw.font='bold 10px monospace';
+        draw.font='700 12px "Saira Condensed",sans-serif';
         draw.fillText('WATCH',point.x+12,point.y-13);
       }else if(n.aimMode==='fixed'||(n.aimMode==='free'&&n.facing!==undefined)){
         draw.fillStyle='#d2eee4';draw.textAlign='left';
-        draw.font='bold 10px monospace';
+        draw.font='700 12px "Saira Condensed",sans-serif';
         draw.fillText(n.aimLabel==='strafe'?'HOLD DIR':'LOOK',
           point.x+12,point.y-13);
       }
       if(n.kind==='move'&&n.moveMode==='strafe'){
         draw.fillStyle='#e0f7e9';draw.textAlign='left';
-        draw.font='bold 10px monospace';
+        draw.font='700 12px "Saira Condensed",sans-serif';
         draw.fillText('HOLD DIR',point.x+13,point.y-12);
+      }
+      if(semantics.watchEnds&&n.facing===undefined){
+        draw.fillStyle='#ead5ad';draw.textAlign='left';
+        draw.font='700 12px "Saira Condensed",sans-serif';
+        draw.fillText('AUTO',point.x+12,point.y-14);
+      }
+      if(semantics.suppressionPoint){
+        const target=worldToScreen(semantics.suppressionPoint,7);
+        draw.save();draw.strokeStyle='#e9a883';draw.lineWidth=1.8;
+        draw.setLineDash([4,4]);draw.beginPath();
+        draw.moveTo(point.x,point.y);draw.lineTo(target.x,target.y);draw.stroke();
+        draw.setLineDash([]);draw.beginPath();
+        draw.arc(target.x,target.y,20,0,Math.PI*2);draw.stroke();
+        draw.fillStyle='#e9a883';draw.textAlign='center';
+        draw.font='700 11px "Work Sans",sans-serif';
+        draw.fillText('SUP',target.x,target.y-24);
+        draw.restore();
       }
       if(n.kind==='flash'&&n.aimPoint){
         const path=flashTrajectory(state,a,n);
@@ -2329,11 +2457,11 @@ function renderProjectedPlans(){
         draw.arc(screen.x,screen.y,16,0,Math.PI*2);draw.stroke();
         circle(screen.x,screen.y,selectedNow?11:9,'#c88d4e');
         draw.fillStyle='#182b2c';draw.textAlign='center';
-        draw.font='bold 11px monospace';draw.fillText('F',screen.x,screen.y+3);
+        draw.font='700 12px "Saira Condensed",sans-serif';draw.fillText('F',screen.x,screen.y+3);
       }
       if(n.kind==='door'){
         draw.fillStyle='#e2ca9f';draw.textAlign='left';
-        draw.font='bold 10px monospace';
+        draw.font='700 12px "Saira Condensed",sans-serif';
         const door=state.doors.find(d=>d.id===n.doorId);
         draw.fillText((n.method??'open').toUpperCase()+
           ((n.method??'open')==='open'?(door?.swing===1?' ↷':' ↶'):''),
@@ -2344,7 +2472,7 @@ function renderProjectedPlans(){
         circle(pivot.x,pivot.y,7,'#e2b476');
         circle(pivot.x,pivot.y,3,'#24322f');
         line(point,pivot,'#e3b37c8a',1.5);
-        draw.textAlign='left';draw.font='bold 10px monospace';
+        draw.textAlign='left';draw.font='700 12px "Saira Condensed",sans-serif';
         draw.fillStyle='#e3bb87';
         draw.fillText('PIVOT '+Math.round(n.pieDegrees??54)+'°',
           pivot.x+10,pivot.y-12);
@@ -2355,14 +2483,14 @@ function renderProjectedPlans(){
         draw.strokeRect(finish.x-8,finish.y-8,16,16);
       }
       if(n.kind==='wait'||n.kind==='holdClear'){
-        draw.fillStyle='#e5c58e';draw.font='bold 12px monospace';
+        draw.fillStyle='#e5c58e';draw.font='600 12px "Work Sans",sans-serif';
         draw.fillText('◷ WAIT',point.x+12,point.y-14);
       }
-      if(n.postureState||n.paceState){
-        draw.font='bold 10px monospace';draw.fillStyle='#a2d7c9';
+      if(n.postureState||n.paceState||n.firePolicyState){
+        draw.font='600 11px "Work Sans",sans-serif';draw.fillStyle='#a2d7c9';
         draw.fillText([n.postureState?.toUpperCase(),
-          n.paceState?.toUpperCase()].filter(Boolean).join(' · '),
-          point.x+12,point.y+18);
+          n.paceState?.toUpperCase(),n.firePolicyState?.toUpperCase()]
+          .filter(Boolean).join(' · '),point.x+12,point.y+18);
       }
       if(n.kind==='move'||n.kind==='door'||n.kind==='pie')previous=n.p;
       if(n.aimMode==='track')watching=true;
@@ -2374,7 +2502,7 @@ function renderProjectedPlans(){
       {x:-27,y:-17},{x:27,y:-17},
       {x:-27,y:-36},{x:27,y:-36},
     ][squadIndex]??{x:0,y:-9}:{x:0,y:-9};
-    draw.textAlign='center';draw.font='bold 11px monospace';
+    draw.textAlign='center';draw.font='700 12px "Saira Condensed",sans-serif';
     draw.fillStyle=color;
     if(a.id===selected||a.injuryStage>0||replayFollow&&
       replayFollowId===a.id)
@@ -2384,8 +2512,16 @@ function renderProjectedPlans(){
       draw.beginPath();draw.arc(ground.x,ground.y,14,0,Math.PI*2);draw.stroke();
     }
     if(a.suppression>.53){
-      draw.font='bold 9px monospace';draw.fillStyle='#e5bc92';
+      draw.font='700 11px "Saira Condensed",sans-serif';draw.fillStyle='#e5bc92';
       draw.fillText('SUPPRESSED',pawn.x,pawn.y-23);
+    }
+    if(a.id===selected&&a.firePolicy==='suppress'&&a.suppressPoint){
+      const target=worldToScreen(a.suppressPoint,7);
+      draw.save();draw.strokeStyle='#e9a883';draw.lineWidth=1.8;
+      draw.setLineDash([4,4]);draw.beginPath();
+      draw.moveTo(ground.x,ground.y);draw.lineTo(target.x,target.y);
+      draw.stroke();draw.setLineDash([]);draw.beginPath();
+      draw.arc(target.x,target.y,20,0,Math.PI*2);draw.stroke();draw.restore();
     }
   }
   // Screen-space icons stay readable regardless of ortho pitch or zoom.
@@ -2431,6 +2567,21 @@ function renderProjectedPlans(){
     draw.beginPath();draw.arc(p.x,p.y,chosen?10:6,0,Math.PI*2);draw.stroke();
     draw.restore();
   }
+  const draft=draftRouteNeighbors();
+  if(draft){
+    const p=worldToScreen(draft.prior,8);
+    const q=worldToScreen(draft.point,8);
+    draw.save();draw.strokeStyle='#d5cb9d';draw.globalAlpha=.8;
+    draw.lineWidth=2;draw.setLineDash([5,5]);
+    draw.beginPath();draw.moveTo(p.x,p.y);draw.lineTo(q.x,q.y);
+    if(draft.next){
+      const next=worldToScreen(draft.next,8);
+      draw.lineTo(next.x,next.y);
+    }
+    draw.stroke();draw.setLineDash([]);draw.fillStyle='#d5cb9d';
+    draw.font='700 12px "Saira Condensed",sans-serif';
+    draw.fillText('DRAFT',q.x+13,q.y-14);draw.restore();
+  }
   // Physical muzzle flashes, tracers and impacts are rendered exclusively
   // by Three.js in 3D modes so depth testing never draws them over actors.
   // Unknown enemies stay unrendered; only grounded last-known reports show.
@@ -2439,7 +2590,7 @@ function renderProjectedPlans(){
     const memory=lastKnown(state,hostile.id);
     if(!memory||state.seconds-memory.at>25)continue;
     const where=worldToScreen(memory.p,12);
-    draw.font='bold 17px monospace';draw.textAlign='center';
+    draw.font='700 17px "Saira Condensed",sans-serif';draw.textAlign='center';
     draw.fillStyle='#e6bb9d';
     draw.fillText(memory.status==='heard'?'~':'?',where.x,where.y);
   }
@@ -2458,7 +2609,7 @@ function renderProjectedPlans(){
       state.scenario.objective:state.scenario.extract,9);
     draw.strokeStyle='#e8d5a6';draw.lineWidth=2;
     draw.beginPath();draw.arc(target.x,target.y,17,0,2*Math.PI);draw.stroke();
-    draw.fillStyle='#e8d5a6';draw.font='bold 10px monospace';
+    draw.fillStyle='#e8d5a6';draw.font='700 12px "Saira Condensed",sans-serif';
     draw.fillText(state.mission.toUpperCase(),target.x,target.y-23);
   }
 }
@@ -2477,14 +2628,14 @@ function missionMarkers(){
     draw.strokeStyle='#eed9ad';draw.lineWidth=2.2;
     draw.beginPath();draw.arc(p.x,p.y,13,0,Math.PI*2);draw.stroke();
     draw.fillStyle='#ebdfc0';draw.textAlign='center';
-    draw.font='bold 10px monospace';draw.fillText('CIV',p.x,p.y-18);
+    draw.font='700 12px "Saira Condensed",sans-serif';draw.fillText('CIV',p.x,p.y-18);
   }
   const p=state.mission==='extract'?state.scenario.extract:state.scenario.objective;
   if(state.mission==='clear'||state.mission==='done'||
     !liveVisibility(state,p))return;
   draw.strokeStyle='#d8cc98';draw.lineWidth=2;
   draw.beginPath();draw.arc(p.x,p.y,33,0,Math.PI*2);draw.stroke();
-  draw.fillStyle='#e1d1a2';draw.font='bold 12px monospace';
+  draw.fillStyle='#e1d1a2';draw.font='600 12px "Work Sans",sans-serif';
   draw.textAlign='center';
   draw.fillText(state.mission==='secure'?'SECURE':'EXTRACT',p.x,p.y-39);
 }
@@ -2495,7 +2646,7 @@ function sprite(a:TeamActor){
       const memory=lastKnown(state,a.id);
       if(memory&&a.health>0&&state.seconds-memory.at<25){
         draw.fillStyle=memory.status==='heard'?'#e6bb828e':'#d19d837e';
-        draw.font='bold 16px monospace';draw.textAlign='center';
+        draw.font='700 16px "Saira Condensed",sans-serif';draw.textAlign='center';
         draw.fillText(memory.status==='heard'?'~':'?',memory.p.x,memory.p.y);
         if(memory.status==='heard'){
           draw.strokeStyle='#c9af7c4b';draw.lineWidth=1;
@@ -2543,14 +2694,14 @@ function sprite(a:TeamActor){
   rect(firing?17:20,-1,6,2,'#a2a9a1');
   draw.restore();
   if(friendly){
-    draw.textAlign='center';draw.font='bold 10px monospace';
+    draw.textAlign='center';draw.font='700 12px "Saira Condensed",sans-serif';
     draw.fillStyle=c;draw.fillText(a.name,a.p.x,a.p.y-21);
     if(a.aimInstruction?.mode==='track'&&a.pace!=='run'){
-      draw.fillStyle='#f0cd96';draw.font='bold 9px monospace';
+      draw.fillStyle='#f0cd96';draw.font='700 11px "Saira Condensed",sans-serif';
       draw.fillText('PIE ACTIVE',a.p.x,a.p.y-33);
     }
     if(a.suppression>.53){
-      draw.fillStyle='#eac69d';draw.font='bold 9px monospace';
+      draw.fillStyle='#eac69d';draw.font='700 11px "Saira Condensed",sans-serif';
       draw.fillText('SUPP',a.p.x,a.p.y-43);
     }
     if(a.health===1){draw.fillStyle='#e7a886';
@@ -2605,7 +2756,7 @@ function contacts(){
         shot.surface==='wood'?'#e9ba7e':'#dfc8a4';
       circle(shot.end.x,shot.end.y,shot.hit?5:3.7,color);
       if(shot.hit){
-        draw.fillStyle='#efb19c';draw.font='bold 11px monospace';
+        draw.fillStyle='#efb19c';draw.font='700 12px "Saira Condensed",sans-serif';
         draw.textAlign='center';
         // Physical impacts carry the outcome without a floating DOWN label.
       }
@@ -2718,18 +2869,27 @@ function useSelectedGround(pt:Pt){
   }
   if(firePlacement){
     const nodeId=selectedNode??undefined;
-    if(!setFirePolicy(state,selected,'suppress',nodeId,pt))
-      rejectAt(pt,'INVALID SUPPRESSION POINT');
-    firePlacement=null;updateHud();return;
+    const accepted=setFirePolicy(state,selected,'suppress',nodeId,pt);
+    if(!accepted)rejectAt(pt,'INVALID SUPPRESSION POINT');
+    else{
+      tacticalFeedback.emit('command',pt,'SUPPRESS');
+      uiClickTone('command');firePlacement=null;
+    }
+    updateHud();return;
   }
   if(flashMode){
     const id=state.nextId;
-    if(!(flashDoorId?
+    const accepted=flashDoorId?
       planDoorFlash(state,selected,flashDoorId,pt):
-      planFlash(state,selected,pt)))
-      rejectAt(pt,'FLASH TARGET BLOCKED / OUT OF RANGE');
-    else selectedNode=flashDoorId?state.nextId-1:id;
-    flashMode=false;flashDoorId=null;updateHud();return;
+      planFlash(state,selected,pt);
+    if(!accepted)rejectAt(pt,'FLASH TARGET BLOCKED / OUT OF RANGE');
+    else{
+      tacticalFeedback.emit('command',pt,'FLASH');
+      uiClickTone('command');
+      selectedNode=flashDoorId?state.nextId-1:id;
+      flashMode=false;flashDoorId=null;
+    }
+    updateHud();return;
   }
   if(looking){
     const placedId=state.nextId;
@@ -2738,13 +2898,16 @@ function useSelectedGround(pt:Pt){
       planAim(state,selected,'free',pt,selectedNode??undefined,'look',armedOrigin);
     if(!committed)rejectAt(pt,'SELECT A DIFFERENT AIM POINT');
     else{
+      tacticalFeedback.emit('command',pt,lookMode==='watch'?'WATCH':'LOOK');
+      uiClickTone('command');
       if(selectedNode===null)selectedNode=placedId;
       teach(lookMode==='watch'?'watch-placed':'look-placed',
         lookMode==='watch'?
           'WATCH stays on that point while moving. Drag its ring to adjust.':
           'LOOK checks that direction briefly, then returns to the route.',4100);
     }
-    looking=false;updateHud();return;
+    if(committed)looking=false;
+    updateHud();return;
   }
   const beforeRoute=uid(selected)?finalPoint(uid(selected)!):pt;
   lastAuthoringAt=performance.now();
@@ -3356,9 +3519,9 @@ const hitNode=(cursor:Pt,pointerKind:string):{id:number;index:number;owner:strin
       }
     }
   }
-  candidates.sort((a,b)=>a.gap-b.gap||
-    Number(b.owner===selected)-Number(a.owner===selected));
-  return candidates[0]??null;
+  // Keep the selected operator's node when it is essentially as close as
+  // a competing marker. Avoid unpredictable swaps in crowded four-unit stacks.
+  return preferSelectedHit(candidates.map(c=>({...c,distancePx:c.gap})),selected);
 };
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 canvas.addEventListener('pointerenter',e=>{
@@ -3394,10 +3557,12 @@ canvas.addEventListener('pointerdown',e=>{
     const hit=contextual?undefined:team(state).find(a=>{
       if(a.health<=0)return false;
       const direct=overSelectedLine&&a.id!==selected;
-      if(viewMode==='plan2d'||!stage)
-        return distance(a.p,pt)<(direct?12:22);
-      return distance(worldToScreen(a.p,24),
-        {x:e.clientX,y:e.clientY})<(direct?15:25);
+      // All camera modes use the same CSS-pixel finger target; world-space
+      // distances would make Floor Plan selection scale with zoom.
+      const hitRadius=direct?(e.pointerType==='touch'?18:15):
+        (e.pointerType==='touch'?31:25);
+      return distance(worldToScreen(a.p,viewMode==='plan2d'?0:24),
+        {x:e.clientX,y:e.clientY})<hitRadius;
     });
     // Tapping the operator always selects HERE, even if a waypoint
     // happens to overlap its icon.
@@ -3476,9 +3641,14 @@ canvas.addEventListener('pointermove',e=>{
   // Tapping that same spot still creates a waypoint; dragging from a
   // selected operator or node keeps its deliberate tactical editing semantics.
   if(p.mode==='undecided'&&e.pointerType==='touch'&&p.moved&&
-     viewMode!=='plan2d'&&stage){
-    p.mode='cameraOrbit';
-    stage.orbit(dx,dy);
+     !(state.phase==='planning'&&p.wasUnit)){
+    if(viewMode==='plan2d'||!stage){
+      // Empty-ground drags pan Floor Plan rather than becoming dead input.
+      // A drag starting on a unit remains owned by route authoring.
+      p.mode='cameraPan';panX+=dx;panY+=dy;layout();
+    }else{
+      p.mode='cameraOrbit';stage.orbit(dx,dy);
+    }
     return;
   }
   if(p.mode==='watchTarget'){
@@ -3493,7 +3663,8 @@ canvas.addEventListener('pointermove',e=>{
   if(state.phase==='planning'&&p.wasUnit&&p.moved){
     p.mode='route';
     if(!trace)trace=[{...uid(selected)!.p}];
-    if(distance(trace.at(-1)!,cursor)>8)trace.push({...cursor});
+    if(shouldAppendStrokePoint(worldToScreen(trace.at(-1)!,8),
+       {x:e.clientX,y:e.clientY}))trace.push({...cursor});
   }else if(p.moved&&e.pointerType==='mouse'&&(e.buttons&4)){
     panX+=dx;panY+=dy;layout();
   }
@@ -3533,10 +3704,10 @@ function releasePointer(e:PointerEvent,cancelled=false){
          pt.x>=0&&pt.y>=0&&pt.x<=W&&pt.y<=H)
         useSelectedGround(pt);
     }else if(p.mode==='watchTarget'&&p.nodeId!==null){
-      if(p.moved&&!planWatch(state,selected,pt,p.nodeId))
-        rejectAt(pt,'WATCH TARGET UNAVAILABLE');
+      const accepted=!p.moved||planWatch(state,selected,pt,p.nodeId);
+      if(!accepted)rejectAt(pt,'WATCH TARGET UNAVAILABLE');
       selectedNode=p.nodeId;doorFocusId=null;
-      tacticalFeedback.emit(p.moved?'command':'select',pt,
+      if(accepted)tacticalFeedback.emit(p.moved?'command':'select',pt,
         p.moved?'WATCH UPDATED':undefined);
     }else if(p.mode==='node'&&p.nodeId!==null){
       if(p.moved){
@@ -3831,7 +4002,7 @@ function tick(now:number){
     const preview:TacticalOrderPreview|undefined=canPreview&&actor&&origin&&
       orderMode?{origin,direction:cursor!,mode:orderMode}:undefined;
     tacticalFeedback.draw(feedbackDraw,p=>worldToScreen(p,7),
-      performance.now(),preview);
+      performance.now(),preview,reducedMotionMedia.matches);
   }
   updateContext();advanceContextPalette(dt);
   if(frameMeter&&perfOverlay){
