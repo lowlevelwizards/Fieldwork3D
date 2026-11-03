@@ -83,7 +83,11 @@ function resize(){
  camera.updateProjectionMatrix();
  renderScene();
 }
-function renderScene(){renderer.setRenderTarget(null);renderer.render(scene,camera);}
+function renderScene(){
+ renderer.setRenderTarget(null);renderer.render(scene,camera);
+ canvas.dataset.ready='true';
+ canvas.dataset.drawCalls=String(renderer.info.render.calls);
+}
 controls.addEventListener('change',renderScene);
 new ResizeObserver(resize).observe(stage);
 function frameView(view:'front'|'side'|'back'|'fit'){
