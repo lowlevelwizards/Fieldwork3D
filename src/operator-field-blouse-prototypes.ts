@@ -7,11 +7,13 @@ import * as THREE from 'three';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {TILE_WORLD_SIZE} from './rendering/pixel-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
+import type {SleeveState} from './operator-wardrobe-data.ts';
 
 export const FIELD_BLOUSE_CUTS=['bdu-shirt','acu-shirt'] as const;
 export type FieldBlouseCut=typeof FIELD_BLOUSE_CUTS[number];
 type Arm={upper:THREE.Mesh;lower:THREE.Mesh};
-export type FieldBlousePrototype={torso:THREE.Group;upper:THREE.Group[];lower:THREE.Group[]};
+export type FieldBlousePrototype={torso:THREE.Group;upper:THREE.Group[];lower:THREE.Group[];
+ cuffed:THREE.Group[];rolledUpper:THREE.Group[]};
 export type FieldBlousePrototypes=Record<FieldBlouseCut,FieldBlousePrototype>;
 type Ring={y:number;front:number;back:number;side:number};
 
@@ -112,22 +114,32 @@ function box(parent:THREE.Object3D,m:THREE.Material,
  parent.add(mesh);return mesh;
 }
 function sleeve(parent:THREE.Group,cloth:THREE.Material,
- topRadius:number,bottomRadius:number,nominalLength:number){
+ topRadius:number,bottomRadius:number,nominalLength:number,
+ height=1.07,offsetY=0){
  // Segment bone.scale.y is actual solved IK length, so a 1.07 high
  // sleeve follows it without ever changing its foot/hand transforms.
- const g=new THREE.CylinderGeometry(topRadius,bottomRadius,1.07,8,1,false);
+ const g=new THREE.CylinderGeometry(topRadius,bottomRadius,height,8,1,false);
+ if(offsetY)g.translate(0,offsetY,0);
  const uv=g.getAttribute('uv') as THREE.BufferAttribute;
  const circumference=2*Math.PI*(topRadius+bottomRadius)*.5;
  for(let i=0;i<uv.count;i++){
   const u=uv.getX(i),v=uv.getY(i);
   uv.setXY(i,u*circumference/TILE_WORLD_SIZE,
-   v*nominalLength/TILE_WORLD_SIZE);
+   v*nominalLength*height/TILE_WORLD_SIZE);
  }
  uv.needsUpdate=true;
  const mesh=new THREE.Mesh(g,cloth);
  mesh.castShadow=true;mesh.receiveShadow=true;
  parent.add(mesh);
  return mesh;
+}
+function seamBand(parent:THREE.Group,cloth:THREE.Material,
+ radius:number,y:number,height:number){
+ // Open cylindrical band makes a distinctive cuff without hiding fingers.
+ const mesh=new THREE.Mesh(
+  new THREE.CylinderGeometry(radius,radius,height,10,1,true),cloth);
+ mesh.position.y=y;mesh.castShadow=true;mesh.receiveShadow=true;
+ parent.add(mesh);return mesh;
 }
 export function createFieldBlousePrototypes(chest:THREE.Group,
  arms:readonly Arm[],cloth:THREE.Material,trim:THREE.Material):FieldBlousePrototypes{
@@ -170,33 +182,49 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
    box(torso,trim,5.66,-.14,0,.16,9.85,.35);
    box(torso,cloth,5.52,-5.81,0,.37,.62,13.60);
   }
-  const upper:THREE.Group[]=[],lower:THREE.Group[]=[];
+  const upper:THREE.Group[]=[],lower:THREE.Group[]=[],
+  cuffed:THREE.Group[]=[],rolledUpper:THREE.Group[]=[];
   for(const [index,arm] of arms.entries()){
    const a=group(arm.upper,cut+':upper-sleeve:'+index);
    const b=group(arm.lower,cut+':forearm-sleeve:'+index);
+   const c=group(arm.lower,cut+':cuffed-wrist:'+index);
+   const rolled=group(arm.upper,cut+':rolled-upper:'+index);
    sleeve(a,cloth,profile.upperRadius[0],profile.upperRadius[1],10.0);
    sleeve(b,cloth,profile.lowerRadius[0],profile.lowerRadius[1],9.6);
+   // Double-layer rolled fabric, with sleeve shortened to ABOVE elbow.
+   // No manipulation of either IK limb transform or hand contact.
+   sleeve(rolled,cloth,profile.upperRadius[0],profile.upperRadius[1],
+    10.0,.80,-.135);
+   seamBand(rolled,cloth,profile.upperRadius[1]+.36,.285,.12);
    if(historic){
-    // Button-adjustable fabric cuff; no invented upper-arm cargo pocket.
-    box(b,cloth,0,-.38,2.55,2.2,.115,.44);
+    box(b,cloth,0,.38,2.65,2.45,.12,.56);
+    seamBand(c,cloth,profile.lowerRadius[0]+.26,.425,.16);
+    seamBand(c,cloth,profile.lowerRadius[0]+.11,.305,.11);
    }else{
-    // ACU upper-arm utility pocket and loop surface follow the moving bone.
-    box(a,cloth,0,.13,3.10,3.05,.30,.95);
-    box(a,trim,.02,.290,3.15,2.80,.08,1.00);
-    box(b,cloth,0,-.36,2.62,2.25,.10,.48);
+    // Upper-arm sleeve pockets survive in either regular or rolled fit.
+    for(const g of [a,rolled]){
+     box(g,cloth,0,.10,3.10,3.05,.30,.95);
+     box(g,trim,.02,.290,3.15,2.80,.08,1.00);
+    }
+    box(b,cloth,0,.40,2.62,2.25,.10,.48);
+    seamBand(c,cloth,profile.lowerRadius[0]+.18,.420,.135);
    }
-   consolidateVisualGroup(a);consolidateVisualGroup(b);
-   upper.push(a);lower.push(b);
+   for(const g of [a,b,c,rolled])consolidateVisualGroup(g);
+   upper.push(a);lower.push(b);cuffed.push(c);rolledUpper.push(rolled);
   }
   consolidateVisualGroup(torso);
-  models[cut]={torso,upper,lower};
+  models[cut]={torso,upper,lower,cuffed,rolledUpper};
  }
  return models;
 }
-export function updateFieldBlousePrototypes(models:FieldBlousePrototypes,top:string){
+export function updateFieldBlousePrototypes(
+ models:FieldBlousePrototypes,top:string,state:SleeveState='unrolled'){
  for(const cut of FIELD_BLOUSE_CUTS){
   const show=cut===top,model=models[cut];
   model.torso.visible=show;
-  for(const g of [...model.upper,...model.lower])g.visible=show;
+  for(const g of model.upper)g.visible=show&&state!=='rolled';
+  for(const g of model.lower)g.visible=show&&state!=='rolled';
+  for(const g of model.cuffed)g.visible=show&&state==='cuffed';
+  for(const g of model.rolledUpper)g.visible=show&&state==='rolled';
  }
 }
