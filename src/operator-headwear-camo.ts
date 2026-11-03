@@ -490,7 +490,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'BELGIAN JIGSAW',
   description:'Belgian puzzle-scale ochre, rusty red and blue-green interlocking lobes with slim charcoal outlines',
   colors:[[156,139,58],[129,79,81],[77,109,96],[61,67,65],[208,188,144]],
-  targetCoverage:[.28,.25,.24,.15,.08],
+  targetCoverage:[0.2573,0.207,0.3066,0.1497,0.0793],
   motifs:[
    p(1,-9,-5,12,-6,18,0,32,1,33,9,24,8,21,15,12,16,11,26,1,28,-6,21),
    p(1,31,27,45,23,55,28,69,30,70,42,61,40,57,48,42,46,38,57,28,56),
@@ -516,7 +516,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'E. GERMAN STRICHTARN',
   description:'Grey-taupe olive fabric bearing hundreds of fine irregular vertical reddish-brown rain strokes, not broad camo spots',
   colors:[[146,143,124],[101,84,69],[120,116,95]],
-  targetCoverage:[.76,.20,.04],
+  targetCoverage:[0.7236,0.1953,0.0811],
   motifs:[
 
    p(2,16,21,21,19,25,22,24,29,18,30),
@@ -527,7 +527,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'MITCHELL LEAF',
   description:'US reversible Mitchell cover leaf side: bold overlapping lobed foliage and dark ink twigs on spring green',
   colors:[[112,125,71],[75,96,74],[178,161,103],[112,88,67],[47,63,43]],
-  targetCoverage:[.30,.25,.18,.17,.10],
+  targetCoverage:[0.2515,0.2573,0.2695,0.1514,0.0703],
   motifs:[
    p(1,-5,3,6,-3,17,1,19,8,13,12,21,19,15,24,6,19,0,24,-5,19),
    p(1,33,4,42,-4,50,1,57,8,53,14,62,17,59,22,49,19,43,25,34,18),
@@ -550,7 +550,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'SPLITTERTARN 31',
   description:'WWII German Buntfarbendruck 31 angular shards with vertical gray-green rain-strait overprint',
   colors:[[166,157,130],[95,108,81],[137,89,66],[84,91,72]],
-  targetCoverage:[.42,.24,.25,.09],
+  targetCoverage:[0.2944,0.2629,0.3115,0.1311],
   motifs:[
    p(1,-9,-5,9,1,12,12,22,8,34,17,27,26,14,22,8,29,-5,23),
    p(1,33,3,48,-3,60,8,70,6,68,19,57,24,44,18,35,22),
@@ -576,7 +576,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'AUSCAM / DPCU',
   description:'Australian DPCU pale khaki with scattered rounded orange-brown, olive, moss and charcoal jellybean marks',
   colors:[[199,188,146],[152,113,66],[117,140,76],[82,99,83],[177,148,96]],
-  targetCoverage:[.46,.18,.15,.13,.08],
+  targetCoverage:[0.5039,0.1704,0.137,0.0979,0.0908],
   motifs:[
    p(1,1,3,7,0,13,4,12,11,8,15,1,11,-2,7),
    p(1,26,17,32,13,39,17,40,23,35,28,28,27,24,22),
@@ -599,7 +599,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'ITALIAN VEGETATO',
   description:'Italian broken leafy digital-organic mottling: warm russet, beige, olive and very dark ink islands',
   colors:[[158,151,105],[119,82,69],[174,144,104],[83,102,70],[54,48,47]],
-  targetCoverage:[.25,.23,.18,.23,.11],
+  targetCoverage:[0.2117,0.2778,0.1787,0.2476,0.0842],
   motifs:[
    p(1,-6,-4,8,-3,18,4,21,12,15,16,5,14,-6,18),
    p(1,31,15,43,11,56,14,67,21,63,30,50,31,42,38,31,30),
@@ -623,7 +623,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'OCP / SCORPION W2',
   description:'US Army OCP: broad horizontal muted sage and umber fields with sparse bark chips; fewer vertical twiglets than MultiCam',
   colors:[[171,158,117],[109,126,88],[89,105,84],[129,102,74],[206,189,149],[73,73,60],[171,144,119]],
-  targetCoverage:[.19,.24,.18,.19,.09,.05,.06],
+  targetCoverage:[0.2363,0.2051,0.1719,0.2473,0.0659,0.0344,0.0391],
   motifs:[
    p(1,-6,1,15,-2,34,1,49,7,67,6,68,14,45,12,28,9,10,10,-6,9),
    p(1,-6,30,14,27,27,30,43,35,68,32,68,41,44,41,24,38,8,40,-6,37),
@@ -646,7 +646,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'RUSSIAN EMR',
   description:'Russian Digital Flora/Tsifra: high-frequency pale foliage-green micro-square pixels with dark near-black, rusty and green pixels',
   colors:[[119,140,105],[72,103,74],[111,80,63],[40,56,43]],
-  targetCoverage:[.29,.34,.18,.19],
+  targetCoverage:[0.3447,0.2715,0.21,0.1738],
   motifs:[
    p(1,-3,1,8,0,11,5,17,6,17,10,9,11,4,16,-3,12),
    p(1,19,17,27,13,34,18,34,26,27,27,22,30,16,24),
@@ -660,7 +660,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'PLA XINGKONG',
   description:'PLA Starry Sky woodland: softly connected taupe-olive and dark green terrain with extremely fine pale digital stars',
   colors:[[114,120,98],[90,101,79],[62,75,63],[151,140,112],[101,85,74]],
-  targetCoverage:[.19,.19,.26,.23,.13],
+  targetCoverage:[0.1479,0.1609,0.2974,0.2605,0.1333],
   motifs:[
    p(1,-4,0,11,-4,21,2,29,11,24,18,11,19,-4,15),
    p(1,32,30,45,25,59,28,70,37,63,46,47,45,35,42),
@@ -681,7 +681,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'CADPAT TEMPERATE',
   description:'Canadian temperate woodland: extremely dark forest green and black with chartreuse-green fractal pixels; greener than MARPAT',
   colors:[[68,98,57],[116,139,63],[39,63,40],[36,43,34],[103,101,67]],
-  targetCoverage:[.24,.27,.23,.16,.10],
+  targetCoverage:[0.2141,0.2615,0.2375,0.1914,0.0955],
   motifs:[
    p(1,-4,3,9,0,22,7,24,17,15,21,6,18,-4,19),
    p(1,30,24,41,21,51,27,62,30,69,41,63,49,49,47,40,39,28,36),
@@ -701,7 +701,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'BRITISH MTP',
   description:'British Multi-Terrain Pattern: pale MultiCam-like ground with distinctive sweeping DPM-hook/pterodactyl brown outlines and speckle edges',
   colors:[[185,179,143],[126,133,107],[109,126,88],[129,102,74],[206,189,149],[67,72,59],[158,143,111]],
-  targetCoverage:[.19,.25,.18,.19,.10,.05,.04],
+  targetCoverage:[0.2222,0.2285,0.1904,0.1924,0.0535,0.0679,0.0452],
   motifs:[
    p(1,-4,1,10,-3,25,1,37,6,50,6,69,13,64,19,48,15,35,16,23,11,8,12,-4,8),
    p(1,-7,40,8,34,19,36,36,41,50,44,64,43,69,51,51,52,30,48,16,50,-6,48),
@@ -724,7 +724,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'INDIAN ARMY DIGITAL',
   description:'Stylized Indian 2022 digital woodland: olive, buff and umber interlocking pixels with a warm earthen balance',
   colors:[[129,133,97],[79,101,75],[153,128,88],[105,78,62],[48,58,44]],
-  targetCoverage:[.23,.28,.21,.18,.10],
+  targetCoverage:[0.166,0.1821,0.3064,0.2427,0.1028],
   motifs:[
    p(1,-4,1,12,-3,24,2,31,13,27,23,14,25,-3,20),
    p(1,37,28,52,25,65,32,70,46,59,54,44,49,35,41),
