@@ -137,17 +137,9 @@ function sleeve(parent:THREE.Group,cloth:THREE.Material,
 }
 function seamBand(parent:THREE.Group,cloth:THREE.Material,
  radius:number,y:number,height:number){
- // Real cylindrical fold with physical fabric density. The original pixel
- // atlas must not stretch to fill the entire cuff circumference.
- const geometry=new THREE.CylinderGeometry(radius,radius,height,10,1,true);
- const uv=geometry.getAttribute('uv') as THREE.BufferAttribute;
- for(let i=0;i<uv.count;i++)
-  uv.setXY(i,uv.getX(i)*2*Math.PI*radius/TILE_WORLD_SIZE,
-   uv.getY(i)*height*10/TILE_WORLD_SIZE);
- uv.needsUpdate=true;
- const mesh=new THREE.Mesh(geometry,cloth);
- mesh.position.y=y;mesh.castShadow=true;mesh.receiveShadow=true;
- parent.add(mesh);return mesh;
+ // One inset-free rectangular fold rather than an oversize ring.
+ const width=radius*2+.10,depth=width+.12;
+ return box(parent,cloth,0,y,0,width,height,depth);
 }
 export function createFieldBlousePrototypes(chest:THREE.Group,
  arms:readonly Arm[],cloth:THREE.Material,trim:THREE.Material):FieldBlousePrototypes{
@@ -161,8 +153,8 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
   const historic=cut==='bdu-shirt',profile=BLOUSE_CUT_PROFILE[cut];
   // Exaggerated primary masses remain cosmetic; shoulder sockets and IK stay fixed.
   const torso=group(chest,'field-blouse:'+cut);
-  const shell=new THREE.Mesh(fieldBlouseShellGeometry(cut),cloth);
-  shell.castShadow=true;shell.receiveShadow=true;torso.add(shell);
+  // The base torso is already a complete clothed box. Garments contribute
+  // attached details only, not a second thick cuboid shell around it.
   if(historic){
    // Open conventional collar with two broad turned-down lapels.
    box(torso,cloth,-1.5,6.60,0,7.2,1.38,8.6);
@@ -171,13 +163,13 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
      sign*.24);
     // Four distinct BDU cargo pockets, two chest and two lower.
     for(const y of [2.1,-4.05]){
-     box(torso,cloth,6.14,y,sign*3.66,.58,3.04,4.68);
-     box(torso,cloth,6.46,y+1.43,sign*3.66,.36,.88,4.92);
+     box(torso,cloth,5.19,y,sign*3.66,.67,3.04,4.68);
+     box(torso,cloth,5.56,y+1.43,sign*3.66,.28,.75,4.92);
     }
    }
    // Concealed button placket: visible only at close Lab zoom.
-   box(torso,trim,5.99,-.20,0,.15,9.05,.40);
-   box(torso,cloth,5.91,-7.05,0,.42,.68,15.20);
+   box(torso,trim,5.08,-.20,0,.15,9.05,.40);
+   box(torso,cloth,5.05,-5.88,0,.25,.48,13.9);
   }else{
    // Fold-down modern ACU collar. Earlier UCP versions may stand higher;
    // keep the low folded silhouette for the OCP reference in this pass.
@@ -186,14 +178,14 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
     box(torso,cloth,3.35,6.27,sign*2.6,3.60,.82,2.90,
      sign*.17);
     // Diagonal chest cargo pockets, slimmer and higher than BDU.
-    box(torso,cloth,5.86,1.15,sign*3.60,.46,3.40,4.20,
+    box(torso,cloth,5.19,1.15,sign*3.60,.57,3.05,4.20,
      -sign*.27);
-    box(torso,cloth,6.12,2.76,sign*3.75,.28,.78,4.25,
+    box(torso,cloth,5.50,2.54,sign*3.75,.24,.66,4.25,
      -sign*.27);
    }
    // Hidden zipper/placket and short hem, rather than BDU four-pocket apron.
-   box(torso,trim,5.66,-.14,0,.16,9.85,.35);
-   box(torso,cloth,5.52,-5.81,0,.37,.62,13.60);
+   box(torso,trim,5.10,-.14,0,.16,9.85,.35);
+   box(torso,cloth,5.04,-5.78,0,.22,.42,13.60);
   }
   const upper:THREE.Group[]=[],lower:THREE.Group[]=[],
   cuffed:THREE.Group[]=[],cuffedLower:THREE.Group[]=[],rolledUpper:THREE.Group[]=[];
@@ -204,34 +196,32 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
    const c=group(arm.lower,cut+':cuffed-wrist:'+index);
    const short=group(arm.lower,cut+':short-cuffed-forearm:'+index);
    const rolled=group(arm.upper,cut+':rolled-upper:'+index);
-   sleeve(a,cloth,profile.upperRadius[0],profile.upperRadius[1],10.0);
-   sleeve(b,cloth,profile.lowerRadius[0],profile.lowerRadius[1],9.6,.92,-.035);
+   // The existing articulated upper and lower arm cuboids ARE the sleeves.
+   // Extra full-length cylinder sleeves were oversized and disconnected.
    // Sleeve ends substantially above the wrist when cuffed; the original
    // lower-arm bone becomes bare skin under this shortened cloth shell.
-   sleeve(short,cloth,profile.lowerRadius[0]+.07,
-    profile.lowerRadius[1]+.13,9.6,.72,-.14);
+   box(short,cloth,0,-.12,0,3.66,.72,3.76);
    // Double-layer rolled fabric, with sleeve shortened to ABOVE elbow.
    // No manipulation of either IK limb transform or hand contact.
-   sleeve(rolled,cloth,profile.upperRadius[0],profile.upperRadius[1],
-    10.0,.74,-.11);
-   seamBand(rolled,solidCuff,profile.upperRadius[1]+.22,.235,.18);
+   // A rolled cuff is enough to identify the shortening.
+   seamBand(rolled,solidCuff,2.05,.235,.18);
    if(historic){
-    box(b,cloth,0,.38,2.65,2.45,.12,.56);
-    seamBand(c,solidCuff,profile.lowerRadius[0]+.24,.19,.21);
+    box(b,cloth,0,.37,1.77,2.45,.12,.56);
+    seamBand(c,solidCuff,1.83,.19,.21);
    }else{
     // A true +X bicep pocket on BOTH articulated arms. Nominal +X is
     // anatomical outside in the actual alignSegment limb basis.
-    const pouch=outwardLimbPocket(profile.upperRadius[0],.08,.32,2.28,.40);
+    const pouch=outwardLimbPocket(2.06,.08,.36,2.30,.47);
     for(const g of [a,rolled]){
      box(g,cloth,pouch.x,pouch.y,pouch.z,
       pouch.width,pouch.height,pouch.depth);
      box(g,trim,pouch.x+.25,pouch.y+.16,0,
       .10,.09,pouch.depth+.12);
     }
-    const elbow=outwardLimbPocket(profile.lowerRadius[0],.18,.25,2.00,.13);
+    const elbow=outwardLimbPocket(1.80,.18,.25,2.00,.18);
     box(b,cloth,elbow.x,elbow.y,elbow.z,
      elbow.width,elbow.height,elbow.depth);
-    seamBand(c,solidCuff,profile.lowerRadius[0]+.23,.19,.19);
+    seamBand(c,solidCuff,1.83,.19,.19);
    }
    for(const g of [a,b,c,short,rolled])consolidateVisualGroup(g);
    upper.push(a);lower.push(b);cuffed.push(c);cuffedLower.push(short);rolledUpper.push(rolled);
