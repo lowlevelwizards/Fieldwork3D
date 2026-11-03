@@ -499,6 +499,10 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
    p(2,-8,33,8,29,17,31,19,39,30,43,28,50,15,49,9,58,-7,56),
    p(2,46,17,61,12,70,18,70,29,62,27,57,36,46,34,43,26),
    p(2,39,52,50,50,61,53,68,61,62,68,46,68,41,62),
+   // Bright mustard loops between green and rust jigsaw arms.
+   p(0,32,2,42,0,47,6,43,15,36,17,28,13,29,7),
+   p(0,8,36,15,32,22,34,25,41,22,46,14,47,8,43),
+   p(0,52,52,59,48,66,53,67,61,59,64,52,61),
    p(3,5,10,16,8,19,12,29,14,30,16,17,15,14,21,7,22,3,18),
    p(3,38,19,45,18,48,22,53,20,61,22,64,25,57,25,53,30,45,28,42,32),
    p(3,19,39,28,38,31,42,40,46,47,46,46,49,37,48,31,54,22,51),
@@ -512,11 +516,11 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'E. GERMAN STRICHTARN',
   description:'Grey-taupe olive fabric bearing hundreds of fine irregular vertical reddish-brown rain strokes, not broad camo spots',
   colors:[[146,143,124],[101,84,69],[120,116,95]],
-  targetCoverage:[.79,.16,.05],
+  targetCoverage:[.76,.20,.04],
   motifs:[
-   p(2,-3,4,5,2,7,8,3,12,-3,10),
+
    p(2,16,21,21,19,25,22,24,29,18,30),
-   p(2,27,-4,31,-4,35,2,31,7,28,5)
+
   ]
  },
  'mitchell-leaf':{
@@ -555,6 +559,10 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
    p(2,-9,34,6,28,19,38,13,49,28,48,22,59,8,54,-4,65),
    p(2,49,25,62,21,69,36,61,44,67,56,55,53,43,37),
    p(2,38,59,47,54,58,63,66,64,65,70,44,70),
+   // Negative-space shards prevent brown splinters swallowing pale field.
+   p(0,12,8,18,6,23,11,20,18,14,18,10,14),
+   p(0,32,28,41,27,46,33,43,40,35,40),
+   p(0,52,44,59,42,65,48,63,55,55,55),
    p(3,23,13,26,9,31,12,29,15,24,18),
    p(3,4,40,9,37,15,41,12,44,6,45),
    p(3,48,8,54,5,57,8,53,12),
@@ -635,7 +643,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'RUSSIAN EMR',
   description:'Russian Digital Flora/Tsifra: high-frequency pale foliage-green micro-square pixels with dark near-black, rusty and green pixels',
   colors:[[119,140,105],[72,103,74],[111,80,63],[40,56,43]],
-  targetCoverage:[.34,.29,.17,.20],
+  targetCoverage:[.29,.34,.18,.19],
   motifs:[
    p(1,-3,1,8,0,11,5,17,6,17,10,9,11,4,16,-3,12),
    p(1,19,17,27,13,34,18,34,26,27,27,22,30,16,24),
@@ -649,7 +657,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'PLA XINGKONG',
   description:'PLA Starry Sky woodland: softly connected taupe-olive and dark green terrain with extremely fine pale digital stars',
   colors:[[114,120,98],[90,101,79],[62,75,63],[151,140,112],[101,85,74]],
-  targetCoverage:[.21,.25,.23,.19,.12],
+  targetCoverage:[.19,.19,.26,.23,.13],
   motifs:[
    p(1,-4,0,11,-4,21,2,29,11,24,18,11,19,-4,15),
    p(1,32,30,45,25,59,28,70,37,63,46,47,45,35,42),
@@ -670,7 +678,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   label:'CADPAT TEMPERATE',
   description:'Canadian temperate woodland: extremely dark forest green and black with chartreuse-green fractal pixels; greener than MARPAT',
   colors:[[68,98,57],[116,139,63],[39,63,40],[36,43,34],[103,101,67]],
-  targetCoverage:[.26,.24,.22,.20,.08],
+  targetCoverage:[.24,.27,.23,.16,.10],
   motifs:[
    p(1,-4,3,9,0,22,7,24,17,15,21,6,18,-4,19),
    p(1,30,24,41,21,51,27,62,30,69,41,63,49,49,47,40,39,28,36),
@@ -940,7 +948,6 @@ function camo5Near(x:number,y:number,cx:number,cy:number,size:number,rx:number,r
  return dx*dx/(rx*rx)+dy*dy/(ry*ry)<=1;
 }
 function apply5APrint(id:HeadwearCamoId,x:number,y:number,ink:number):number{
- const size=headwearCamoSize(id);
  if(id==='east-german-strichtarn'){
   // Nearly monochrome; staggered 1px red-brown vertical raindrops.
   for(let k=0;k<66;k++){
@@ -1008,7 +1015,8 @@ function apply5APrint(id:HeadwearCamoId,x:number,y:number,ink:number):number{
   const g=camo5Grain(x,y,2,61,32),noise=camoLattice(x,y,79);
   const cell=camo5Grain(x,y,4,28,32);
   if(g<.25&&noise>.30)return 3;
-  if(g>.75&&noise>.37)return 2;
+  if(g>.83&&noise>.44)return 2;
+  if(g>.61&&noise<.53)return 0;
   if(cell>.61&&g>.47)return 1;
   if(noise>.87)return 0;
   return ink;
@@ -1029,7 +1037,7 @@ function apply5APrint(id:HeadwearCamoId,x:number,y:number,ink:number):number{
   // yellow-green fractal pixels with broader connected forest masses.
   const g=.65*camo5Grain(x,y,4,33,64)+.35*camo5Grain(x,y,2,13,64);
   const threshold=camoLattice(Math.floor(x/2),Math.floor(y/2),23);
-  if(g<.27&&threshold>.36)return 3;
+  if(g<.34&&threshold>.33)return 3;
   if(g>.71&&threshold>.25)return 1;
   if(g>.43&&g<.54&&threshold>.77)return 4;
   if(g>.59&&ink===3)return 0;
