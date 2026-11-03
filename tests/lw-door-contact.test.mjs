@@ -3,6 +3,9 @@ import {doorWouldStrikeActors,initDoor} from '../src/breach-door.ts';
 import {bodyClear,sweptBodyClear} from '../src/breach-navigation.ts';
 const d=initDoor({id:'CHECK',a:{x:302,y:250},b:{x:350,y:250},
  open:true,openedAt:0,hinge:'a',swing:-1,openFraction:.1},0);
+ // initDoor starts open doors at their standard 90-degree stop; this
+ // fixture specifically tests a barely opened physical leaf.
+ d.openFraction=.1;
 test('moving leaves stop when they would deepen occupant overlap',()=>{
  const near={x:332,y:262};
  const hit=doorWouldStrikeActors(d,.3,[near]);
