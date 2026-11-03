@@ -156,7 +156,7 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
    // The Gorka reads by two broad reinforcement fields and a snug anorak
    // waist, not plates, fins, or a shoulder-spanning stack of boxes.
    for(const sign of [-1,1]){
-    box(torso,wear,.35,4.12,sign*7.94,7.00,1.30,.25);
+    box(torso,wear,.35,4.12,sign*8.12,7.00,1.30,.25);
     box(torso,wear,6.30,2.42,sign*5.38,.22,2.45,3.56);
     box(torso,body,6.39,-4.50,sign*3.72,.37,3.14,4.35);
     box(torso,wear,6.64,-3.11,sign*3.72,.17,.59,4.47);
@@ -167,6 +167,7 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
   const upper:THREE.Group[]=[],lower:THREE.Group[]=[],
    cuffedLower:THREE.Group[]=[],rolledUpper:THREE.Group[]=[];
   for(const [index,arm] of arms.entries()){
+   const outside=index===0?-1:1;
    const u=group(arm.upper,cut+':upper:'+index),
     l=group(arm.lower,cut+':lower:'+index),
     c=group(arm.lower,cut+':cuff:'+index),
@@ -184,17 +185,19 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
     tube(rolled,combatKnit,ru+.25,ru+.25,.18,.23);
     // Bicep pocket and padded elbow are large enough for the Lab zoom.
     for(const part of [u,rolled]){
-     box(part,wear,0,.18,ru+.18,2.84,.35,1.17);
-     box(part,trim,0,.33,ru+.26,2.75,.09,1.17);
+     box(part,wear,0,.14,outside*(ru+.09),2.45,.29,.52);
+     box(part,trim,0,.29,outside*(ru+.14),2.40,.08,.54);
     }
     box(l,wear,2.38,-.03,0,.18,.33,2.78);
    }else if(smock){
-    box(u,cloth,0,.23,ru+.15,3.48,.28,1.15);
-    box(u,trim,0,.33,ru+.28,3.34,.075,1.25);
+    box(u,cloth,0,.13,outside*(ru+.08),2.67,.29,.48);
+    box(u,trim,0,.28,outside*(ru+.14),2.61,.08,.48);
     tube(l,smockCuff,rl+.15,rl+.15,.15,.375);
    }else{
-    box(u,wear,1.95,.07,ru-.55,.35,.60,5.55);
-    box(l,wear,2.27,-.04,0,.27,.70,5.95);
+    // Flush contrast patches at each actual limb side: no free-standing
+    // box extending 2+ units past the sleeve silhouette.
+    box(u,wear,0,.07,outside*(ru+.08),2.48,.42,.28);
+    box(l,wear,0,-.22,outside*(rl+.08),2.29,.39,.27);
     tube(l,gorkaCuff,rl+.16,rl+.16,.17,.36);
    }
    for(const part of [u,l,c,rolled])consolidateVisualGroup(part);
