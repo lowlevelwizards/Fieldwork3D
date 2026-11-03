@@ -7,9 +7,10 @@ export {doorYaw,doorLeafSegment};
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export const DOOR_REACH=39;
 /** A body can extend the opening leaf's sweep without manual PUSH orders. */
-// Fraction * 1.54 radians. 2.02 is just under 180 degrees; actual
-// swing stops sooner if the swept panel meets a wall, furnishing, or actor.
-export const PUSHED_OPEN_LIMIT=2.02;
+// Fraction * 1.54 radians: a normal OPEN is about 88 degrees,
+// while sustained body pressure may extend it to about 118 degrees.
+// A door should never fold back almost 180 degrees through the room.
+export const PUSHED_OPEN_LIMIT=1.34;
 /** The actor must approach the leaf or already be in sustained contact. */
 export function approachingDoorLeaf(from:Pt,next:Pt,d:Door):boolean{
  if(!d.open||d.kind==='shutter'||d.kind==='sliding'||d.wedged||d.heldBy)return false;
@@ -244,3 +245,36 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
   return {doorId:door.id,advanced:(door.openFraction??0)>initial+.0001};
 }
 export const doorClear=(d:Door)=>!!d.open&&(d.openFraction??1)>=.72;
+
+
+/** Tiny, strictly physical shoulder-yield when a door FIRST starts opening.
+ * Return a possible actor step away from its next leaf position, never a
+ * teleport, a collision override, or a change in hinge direction. The game
+ * must validate this step against ALL walls, doors, furniture, and actors.
+ * A blocked sidestep leaves the door blocked as usual.
+ */
+export function initialOpeningYieldCandidate(d:Door,actor:Pt,
+  maxStep=1.4):Pt|null{
+ const fraction=d.openFraction??0;
+ if(!d.open||d.kind==='sliding'||d.kind==='shutter'||d.wedged||
+    fraction>=.36||(d.pushTarget??1)>1.01)return null;
+ const leaf=doorLeafSegment(d);
+ const future=doorLeafSegment({...d,openFraction:Math.min(.50,fraction+.065)});
+ const before=pointToSegment(actor,leaf),after=pointToSegment(actor,future);
+ const clearance=OPERATOR_RADIUS+1;
+ // Only a shoulder near the sweep's edge may yield. Never displace an
+ // already-embedded body, someone far away, or someone the door misses.
+ if(before<clearance-.6||before>clearance+4||
+    after>=before-.015||after>=clearance+1.7)return null;
+ const vx=future.b.x-future.a.x,vy=future.b.y-future.a.y;
+ const square=vx*vx+vy*vy;
+ const along=square>1e-6?Math.max(0,Math.min(1,
+   ((actor.x-future.a.x)*vx+(actor.y-future.a.y)*vy)/square)):0;
+ const near={x:future.a.x+vx*along,y:future.a.y+vy*along};
+ const dx=actor.x-near.x,dy=actor.y-near.y;
+ const length=Math.hypot(dx,dy);
+ if(length<.001)return null;
+ const step=Math.max(0,Math.min(maxStep,clearance+1.8-after));
+ return step>.025?{x:actor.x+dx/length*step,
+   y:actor.y+dy/length*step}:null;
+}
