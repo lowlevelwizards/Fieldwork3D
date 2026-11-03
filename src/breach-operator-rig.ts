@@ -38,7 +38,7 @@ import {headwearCamoTexture,headwearDetailTexture} from './operator-headwear-mat
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import {garmentBoxUV,wardrobeFabricCamoTexture} from './operator-fabric-camo-materials.ts';
 import {garmentColorValues,gorkaSpecialtyTexture} from './operator-upper-colorways.ts';
-import {garmentSolidHex,isGarmentSolidId,resolvedCuffSolid}
+import {garmentSolidHex,isGarmentSolidId,resolvedCuffSolid,resolvedCombatKnitSolid}
  from './operator-garment-color-policy.ts';
 import {fabricCamoCompatible,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {resolveWardrobeDisplayMount} from './operator-wardrobe-mounts.ts';
@@ -570,12 +570,17 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const finish=garmentColorValues(clothing.top,
     p.wardrobe?.topColorway??'standard');
   const additional=r.visualKit.newUpper;
-  const chosenKnit=p.wardrobe?.knitSolid;
-  r.colors.set(additional.combatKnit,new THREE.Color(
-   isGarmentSolidId(chosenKnit)?garmentSolidHex(chosenKnit):finish.combat));
   const topPrint=p.wardrobe?.fabricCamo?.top;
+  const validTopPrint=topPrint&&fabricCamoCompatible(topPrint,'top',clothing)?topPrint:null;
+  // Combat knit is derived from the actual outer fabric family unless an
+  // explicitly retained advanced override was selected.
+  const knit=resolvedCombatKnitSolid({
+   print:validTopPrint,solid:p.wardrobe?.fabricSolids?.top,
+   override:p.wardrobe?.knitSolid,fallback:'khaki'
+  });
+  r.colors.set(additional.combatKnit,new THREE.Color(garmentSolidHex(knit)));
   const cuff=resolvedCuffSolid({
-   print:topPrint&&fabricCamoCompatible(topPrint,'top',clothing)?topPrint:null,
+   print:validTopPrint,
    solid:p.wardrobe?.fabricSolids?.top,
    override:p.wardrobe?.cuffSolid,
    fallback:clothing.top==='gorka-jacket'?'khaki':'olive-drab'
