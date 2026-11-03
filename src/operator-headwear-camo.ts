@@ -940,7 +940,7 @@ function camo5Near(x:number,y:number,cx:number,cy:number,size:number,rx:number,r
  return dx*dx/(rx*rx)+dy*dy/(ry*ry)<=1;
 }
 function apply5APrint(id:HeadwearCamoId,x:number,y:number,ink:number):number{
- const size=headwearCamoSize(id),fine=camo5Grain(x,y,2,17,size);
+ const size=headwearCamoSize(id);
  if(id==='east-german-strichtarn'){
   // Nearly monochrome; staggered 1px red-brown vertical raindrops.
   for(let k=0;k<66;k++){
@@ -986,7 +986,7 @@ function apply5APrint(id:HeadwearCamoId,x:number,y:number,ink:number):number{
  }
  if(id==='italian-vegetato'){
   // Thin irregular broken leaf fringes. No rectangular MARPAT stairs.
-  const g=.7*camo5Grain(x,y,4,49,64)+.3*fine;
+  const g=.7*camo5Grain(x,y,4,49,64)+.3*camo5Grain(x,y,2,17,64);
   if(g>.77&&(ink===1||ink===3))return 4;
   if(g<.16&&ink===1)return 2;
   if(g>.72&&ink===0)return 3;
