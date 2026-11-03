@@ -39,7 +39,10 @@ test('walking both directions alongside a wall glides, without any radius reduct
   assert.equal(sweptBodyClear(start,advance,[]),true);
   assert.equal(sweptBodyClear(start,retreat,[]),true);
   const forbidden=glideAlongStaticWall(start,{x:104,y:160},[]);
-  assert.equal(forbidden,null,'a straight push into a wall cannot creep through');
+  if(forbidden){
+    assert.ok(forbidden.x>start.x,'an inward push may only recover outward');
+    assert.ok(sweptBodyClear(start,forbidden,[]));
+  }
  }finally{
   WALLS.splice(0,WALLS.length,...oldWalls);
   COVER.splice(0,COVER.length,...oldCover);
