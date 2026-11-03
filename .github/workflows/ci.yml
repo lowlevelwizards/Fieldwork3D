@@ -165,6 +165,9 @@ jobs:
       - name: Focused Stage 3B.1 3D appearance browser, no-legacy wardrobe, authentic material and motion
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'appearance/stage3b1-') }}
         run: node --experimental-strip-types --test tests/operator-appearance-grid-purge-stage3b1.test.mjs tests/operator-uniform-blouse-stage3b.test.mjs tests/operator-garment-fit-stage3a.test.mjs tests/operator-fabric-camo-stage2.test.mjs tests/operator-appearance-stage1.test.mjs tests/operator-wardrobe-data.test.mjs tests/operator-wardrobe-ui.test.mjs tests/operator-wardrobe-pattern-ui.test.mjs tests/operator-wardrobe-silhouette-options.test.mjs tests/operator-wardrobe-unified.test.mjs tests/operator-wardrobe-fabrics.test.mjs tests/operator-wardrobe-six-channels.test.mjs tests/operator-wardrobe-recipes.test.mjs tests/operator-wardrobe-quickplay-ui.test.mjs tests/operator-wardrobe-body.test.mjs tests/operator-headwear-fit-metrics.test.mjs tests/operator-mannequin-neutral.test.mjs tests/operator-visual-merge.test.mjs
+      - name: Interaction 2.0 focused gesture, palette, order and feedback regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'ux/interaction2-') }}
+        run: node --experimental-strip-types --test tests/interaction2-*.test.mjs tests/ux2-pointer-hit-targets.test.mjs tests/breach-context-placement.test.mjs tests/ux2-order-previews.test.mjs tests/ux2-21-look-watch.test.mjs tests/ux2-execution-feedback.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}
