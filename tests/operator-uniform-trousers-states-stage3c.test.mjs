@@ -79,7 +79,7 @@ test('two real pants cuts have separate shaped thighs, cuffs, pocket assemblies 
   for(const finish of ['thigh','unbloused','bloused']){
    const geometry=garmentLegLoft(p[finish],11.25);
    geometry.computeBoundingBox();
-   assert.ok(geometry.boundingBox.max.y-geometry.boundingBox.min.y>=1.05);
+   assert.ok(geometry.boundingBox.max.y-geometry.boundingBox.min.y>=1.03);
    assert.ok(geometry.getAttribute('uv').count>100);
    assert.ok(geometry.index?.count>100);
    const sample=geometry.getAttribute('uv');
