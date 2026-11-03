@@ -44,7 +44,8 @@ test('thirty independently authored 32/64px camo families use fixed opaque canon
      id+' color '+tone+' must keep authored color proportions');
    else if(tone===0)console.log('5B COVERAGE '+id+' '+JSON.stringify(
     coverage.map(v=>Number(v.toFixed(4)))));
-  assert.ok(coverage.every(n=>n>.01&&n<.80),id+' every authored color must appear');
+  assert.ok(coverage.every(n=>n>.01&&n<(id==='east-german-strichtarn'?.90:.80)),
+   id+' all ink tones must appear (raincloth may be mostly neutral)');
   assert.ok(recipe.colors.length>=3&&recipe.colors.length<=7,id);
   for(let i=0;i<indices.length;i++){
    assert.equal(tile[i*4+3],255,id);
