@@ -134,15 +134,21 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
    // A SINGLE knit shell covers the torso front, sides and back. No
    // overlapping tan chest slab; the shell now encloses the hidden 10×12×14
    // base body so it cannot leak a second garment color at the waist.
-   // The standing 1/4-zip collar is an OPEN centered ring around the neck.
-   box(torso,body,-4.18,7.08,0,2.25,2.22,7.72);
+   // Neck in this actual rig lives at chest-local (0,7,0), and is
+   // 3.6 × 3.8 in plan. The collar hugs that neck rather than floating
+   // at the extreme edges of the torso: compact, boxy, open on top.
+   box(torso,body,-2.18,7.34,0,1.16,2.14,5.92);
    for(const sign of [-1,1]){
-    box(torso,body,.35,7.08,sign*3.54,7.08,2.22,1.24);
-    box(torso,body,4.61,7.04,sign*1.88,1.52,2.14,2.05);
+    box(torso,body,0,7.34,sign*2.48,5.20,2.14,1.16);
+    box(torso,body,2.37,7.29,sign*1.28,1.18,2.06,2.25);
+    // Raglan fabric wraps the top shoulder and returns slightly onto
+    // the upper torso; no floating metal-like shoulder wedge.
+    box(torso,wear,1.22,5.37,sign*5.80,3.70,1.13,2.65);
    }
    // Quarter-zip front edge and narrow knitted waist hem. The zipper
    // does not extend the entire torso like an outerwear placket.
-   box(torso,trim,5.44,6.20,0,.14,2.18,.22);
+   box(torso,trim,3.02,7.20,0,.13,1.82,.20);
+   box(torso,trim,5.72,3.10,0,.10,2.40,.16);
    box(torso,body,5.58,-5.79,0,.16,.33,13.95);
   }else if(smock){
    foldedHood(torso,cloth);
