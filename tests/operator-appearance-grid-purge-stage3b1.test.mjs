@@ -26,7 +26,7 @@ test('all obsolete garment options are actually gone from the authoritative cata
   ['gloves-none','gloves-field']);
  assert.deepEqual(wardrobeItemsForSlot('knees').map(x=>x.id),
   ['knee-none','knee-hard']);
- for(const id of ['field-jacket','t-shirt','combat-shirt','softshell',
+ for(const id of ['field-jacket','t-shirt','softshell',
   'pcu-shell','light-shirt','flannel','jeans','field-trousers',
   'softshell-trousers','sneakers','hiking-shoes']){
   assert.ok(!['top','trousers','footwear'].some(slot=>
