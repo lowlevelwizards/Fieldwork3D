@@ -3623,9 +3623,14 @@ canvas.addEventListener('pointermove',e=>{
   // Tapping that same spot still creates a waypoint; dragging from a
   // selected operator or node keeps its deliberate tactical editing semantics.
   if(p.mode==='undecided'&&e.pointerType==='touch'&&p.moved&&
-     viewMode!=='plan2d'&&stage){
-    p.mode='cameraOrbit';
-    stage.orbit(dx,dy);
+     !(state.phase==='planning'&&p.wasUnit)){
+    if(viewMode==='plan2d'||!stage){
+      // Empty-ground drags pan Floor Plan rather than becoming dead input.
+      // A drag starting on a unit remains owned by route authoring.
+      p.mode='cameraPan';panX+=dx;panY+=dy;layout();
+    }else{
+      p.mode='cameraOrbit';stage.orbit(dx,dy);
+    }
     return;
   }
   if(p.mode==='watchTarget'){
