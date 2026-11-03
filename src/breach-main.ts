@@ -6,7 +6,8 @@ import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   operationBriefing,
-  planMove,planMoveStroke,planNearbyInteraction,planAim,planWatch,setFirePolicy,planWait,planWaitAt,setWaitDuration,
+  planMove,planMoveStroke,planNearbyInteraction,planAim,planWatch,
+  retargetActiveWatch,removeActiveWatch,setFirePolicy,planWait,planWaitAt,setWaitDuration,
   plannedControl,setNodeControl,setStartPace,planReloadAt,planDoorFlash,
   planSync,movePlanNode,
   finalPoint,doorAtNode,backOne,
@@ -23,6 +24,7 @@ import {currentSiteIdentity} from './ui/current-site-identity.ts';
 import {tacticalHitProfile,preferSelectedHit,shouldAppendStrokePoint,
   simplifyStrokePoints} from './ui/touch-hit-targets.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
+import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {interruptsWatch} from './breach-plan.ts';
 import {SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';
@@ -1070,6 +1072,8 @@ function advanceContextPalette(dt:number){
 }
 const auditRouteMode=new URLSearchParams(location.search).has('audit');
 let selectedNode:number|null=null;
+// Executed WATCH has no queued waypoint, but its targeting handle is selectable.
+let selectedActiveWatch=false;
 let doorMenuDismissedId:string|null=null;
 let flashDoorId:string|null=null;
 let armedOrigin:'here'|'end'='end';
@@ -1221,7 +1225,7 @@ function selectUnit(id:string){
   const actor=uid(id);if(!actor||actor.health<=0)return;
   hideWeaponChooser();
   uiClickTone('select');selected=id;looking=false;evacMode=null;
-  selectedNode=null;doorFocusId=null;
+  selectedNode=null;selectedActiveWatch=false;doorFocusId=null;
   doorMenuDismissedId=null;updateHud();
 }
 // Progressive tips stay out of the player's way and never inspect game intel.
@@ -1289,6 +1293,7 @@ function message(){
     if(looking)return lookMode==='watch'?
       'WATCH ARMED · TAP A POINT · CANCEL/BACK TO EXIT. Replaces prior WATCH; RUN or interactions end tracking.':
       'LOOK ARMED · TAP ANY DIRECTION · CANCEL/BACK TO EXIT. Replaces prior WATCH.';
+    if(selectedActiveWatch)return 'WATCH TARGET · DRAG THE RING TO RETARGET · DELETE WATCH TO RELEASE.';
     if(selectedNode!==null)return 'Waypoint: LOOK changes direction · WATCH tracks a point · choose another to replace · UNDO reverses it.';
     return 'Tap a route line to insert a waypoint · tap a node to edit or delete.';
   }
