@@ -19,7 +19,7 @@ test('all obsolete garment options are actually gone from the authoritative cata
  assert.deepEqual(wardrobeItemsForSlot('top').map(x=>x.id),
   ['base-layer','bdu-shirt','acu-shirt']);
  assert.deepEqual(wardrobeItemsForSlot('trousers').map(x=>x.id),
-  ['base-shorts','field-trousers']);
+  ['base-shorts','bdu-trousers','acu-trousers']);
  assert.deepEqual(wardrobeItemsForSlot('footwear').map(x=>x.id),
   ['bare-feet','field-boots']);
  assert.deepEqual(wardrobeItemsForSlot('gloves').map(x=>x.id),
@@ -27,8 +27,8 @@ test('all obsolete garment options are actually gone from the authoritative cata
  assert.deepEqual(wardrobeItemsForSlot('knees').map(x=>x.id),
   ['knee-none','knee-hard']);
  for(const id of ['field-jacket','t-shirt','combat-shirt','softshell',
-  'pcu-shell','light-shirt','flannel','jeans','acu-trousers',
-  'bdu-trousers','softshell-trousers','sneakers','hiking-shoes']){
+  'pcu-shell','light-shirt','flannel','jeans','field-trousers',
+  'softshell-trousers','sneakers','hiking-shoes']){
   assert.ok(!['top','trousers','footwear'].some(slot=>
    wardrobeItemsForSlot(slot).some(x=>x.id===id)),id);
  }
