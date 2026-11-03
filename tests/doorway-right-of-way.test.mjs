@@ -25,7 +25,9 @@ test('owner exits, next advances; a third and fourth can follow',()=>{
  const allowed=()=>units.filter(a=>!passageWait(a,[door],units,leases,2)).map(a=>a.id);
  assert.deepEqual(allowed(),['one']);
  units[0].p.y=113;
- assert.deepEqual(allowed(),['one']);
+ // The follower can now advance with a full body gap, even while the lead
+ // operator is still at the threshold rather than deep inside the room.
+ assert.deepEqual(allowed(),['one','two']);
  // Beyond the 14-unit body-clearance plane, the old owner releases.
  units[0].p.y=120;
  assert.deepEqual(allowed(),['one','two']); // one no longer seeks crossing
