@@ -40,7 +40,8 @@ import {friendlyPassingStep,nearOccupiedFriendlyGoal} from './breach-friendly-tr
 import {resolveMovementFrame} from './breach-movement-authority.ts';
 import {recoveryAction,routeRetrySeconds} from './breach-movement-recovery.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
-import {relocateCover,canRelocateCover,coverPushDistance} from './breach-movable-cover.ts';
+import {relocateCover,canRelocateCover,coverPushDistance,
+  autoShoveLightCover} from './breach-movable-cover.ts';
 import {materialForFixture,MATERIALS,type MaterialId} from './breach-materials.ts';
 import {resolvePenetration,type BarrierHit} from './breach-penetration.ts';
 import {damageCover} from './breach-reactive-cover.ts';
@@ -137,6 +138,8 @@ export type TeamActor=Operator & {
   alertUntil:number;waitRemaining:number;syncReady:string|null;
   actionTimer:number;blockedTime:number;lastNavRepairAt:number;priorP:Pt;pieIndex:number;
   recoveryAttempts:number;retryRouteAt:number;routeGoalKey:string;
+  /** Rate-limit physical clutter nudges and scene rebuilds. */
+  lastAutoShoveAt:number;
   /** Motor-authoritative traversal state. The normal body never shrinks. */
   squeeze:boolean;squeezeYaw:number;squeezeTime:number;
   lastBlocker:Blocker;
@@ -243,6 +246,7 @@ const withActions=(a:Operator):TeamActor=>({
   alertUntil:0,waitRemaining:0,syncReady:null,actionTimer:0,
   blockedTime:0,lastNavRepairAt:-10,priorP:clone(a.p),haltOnContact:false,retreatPoint:null,
   recoveryAttempts:0,retryRouteAt:0,routeGoalKey:'',
+  lastAutoShoveAt:-100,
   squeeze:false,squeezeYaw:a.heading,squeezeTime:0,
   lastBlocker:'clear',
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
@@ -1554,6 +1558,23 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     }
   }
   const traversable=a.squeeze?narrowClear:normalClear;
+  if(!traversable&&!blocking&&a.side==='blue'&&
+     s.seconds-a.lastAutoShoveAt>.38){
+    const moved=autoShoveLightCover(s.coverState,a.p,desiredMove,
+      WALLS,s.doors,s.operators.filter(other=>other!==a&&
+        other.health>0).map(other=>other.p));
+    if(moved!==null){
+      a.lastAutoShoveAt=s.seconds;a.velocity=0;
+      a.nav=[];a.retryRouteAt=0;a.blockedTime=0;
+      // All movement, visibility and rendering systems see the SAME
+      // physical cover after its swept displacement.
+      s.objectRevision++;
+      COVER.splice(0,COVER.length,...s.coverState);
+      hear(s,{x:s.coverState[moved].x,y:s.coverState[moved].y},
+        40,'furniture');
+      return true;
+    }
+  }
   if(!traversable&&!blocking){
     const escape=escapeOpenDoorOverlap(a.p,p,s.doors,dt*45);
     if(escape){
