@@ -3,7 +3,7 @@
  * plate-parallel return; no bent mesh strip, free prongs, or pipe-like rails.
  * Exposes pure measurable placement data for the Lab's fit regression tests.
  */
-import {uniformFitEnvelope,ARMOR_PANEL_DEPTHS,
+import {armorContactSpan,ARMOR_PANEL_DEPTHS,
  type ArmorFitSurfaces} from './operator-uniform-fit-envelope.ts';
 import type {ArmorProportion} from './operator-armor-proportions.ts';
 
@@ -22,16 +22,16 @@ export type ArmorSideLayout={
 export function armorSideLayout(fit:ArmorFitSurfaces,
  spec:ArmorProportion,sideY=spec.sideY,
  bandHeight=spec.sideHeight):ArmorSideLayout{
- const env=uniformFitEnvelope(fit.top);
  const lowY=sideY-bandHeight*.5,highY=sideY+bandHeight*.5;
- const garmentSide=Math.max(...[lowY,sideY,highY].map(y=>env.outer(y).side));
+ const garmentSide=armorContactSpan(fit.top,lowY,highY).side;
  const sideHalfThickness=spec.sideThickness*.5;
- const centerZ=Math.max(garmentSide+sideHalfThickness+.16,
-  fit.side-.55);
+ // Reference the actual local garment surface, NOT an oversized
+ // fit.side floor. The inner face rides .12 away from compressed cloth.
+ const centerZ=garmentSide+sideHalfThickness+.12;
  const depth=ARMOR_PANEL_DEPTHS[fit.style]??1.2;
- const frontX=fit.front-depth*.50;
- const backX=fit.back+depth*.50;
- const plateEdgeZ=spec.width*.50-.48;
+ const frontX=fit.front-depth*.47;
+ const backX=fit.back+depth*.47;
+ const plateEdgeZ=spec.width*.50-.34;
  const returnThickness=Math.max(.48,Math.min(.76,spec.sideThickness*.84));
  return {
   centerZ,frontX,backX,plateEdgeZ,sideHalfThickness,
