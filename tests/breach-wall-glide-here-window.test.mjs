@@ -74,7 +74,7 @@ test('HERE replacement rejection never destroys existing orders',()=>{
  try{
   const a=team(s)[0];
   assert.ok(planMove(s,a.id,{x:180,y:180}));
-  const before=copyNodes(a.plan);
+  const before=structuredClone(a.plan);
   assert.equal(planMoveStroke(s,a.id,[{x:-60,y:-60}],false,true),false);
   assert.deepEqual(a.plan,before);
  }finally{activateSite(null);}
