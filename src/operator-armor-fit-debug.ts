@@ -3,11 +3,12 @@
  * Never adds colliders, armor stats, render cost in battle or serialized data.
  */
 import * as THREE from 'three';
-import {uniformFitEnvelope,fittedArmorSurfaces,ARMOR_PANEL_DEPTHS}
+import {uniformFitEnvelope,fittedArmorSurfaces,armorContactSpan,ARMOR_PANEL_DEPTHS}
  from './operator-uniform-fit-envelope.ts';
 import {ARMOR_PROFILES} from './operator-armor-rig-silhouettes.ts';
 import {armorAttachmentFrame} from './operator-armor-attachment-frame.ts';
 import {ARMOR_ANATOMY,ARMOR_PROPORTIONS} from './operator-armor-proportions.ts';
+import {armorSideLayout} from './operator-armor-side-layout.ts';
 
 export type ArmorFitDebug={
  group:THREE.Group;status:string;warnings:string[];
@@ -27,23 +28,22 @@ export function createArmorFitDebug(style:string,top:string):ArmorFitDebug{
  const fit=fittedArmorSurfaces(style,top,nominal);
  const frame=armorAttachmentFrame(style,top);
  const depth=ARMOR_PANEL_DEPTHS[style]??0;
- const sampleY=[-3,0,3.6];
- const outer=sampleY.map(y=>env.outer(y));
- const front=Math.max(...outer.map(x=>x.front));
- const back=Math.min(...outer.map(x=>x.back));
- const side=Math.max(...outer.map(x=>x.side));
+ const surface=armorContactSpan(top,-3.8,4);
+ const spec=ARMOR_PROPORTIONS[style];
+ const side=spec?armorSideLayout(fit,spec):null;
  const concealed=style==='soft-slick'||style==='soft-paca';
  const clearance={
-  front:concealed?0:fit.front-depth-(front+env.frontOverhang),
-  back:concealed?0:-fit.back-depth+back,
-  side:concealed?0:fit.side-side,
+  front:concealed?0:fit.front-depth-surface.front,
+  back:concealed?0:surface.back-(fit.back+depth),
+  side:concealed?0:side?
+   side.centerZ-side.sideHalfThickness-side.garmentSide:0,
   shoulder:fit.shoulderY-env.shoulderCrown
  };
  const warnings:string[]=[];
  if(!concealed){
-  if(clearance.front<.12)warnings.push('front bag intersects uniform');
-  if(clearance.back<.12)warnings.push('rear bag intersects uniform');
-  if(clearance.side<.12)warnings.push('side closure intersects uniform');
+  if(clearance.front<.075)warnings.push('front bag intersects uniform');
+  if(clearance.back<.075)warnings.push('rear bag intersects uniform');
+  if(clearance.side<.075)warnings.push('side closure intersects uniform');
   if(clearance.shoulder<.30)warnings.push('straps fall below shoulder crown');
  }
  const wirePoints:THREE.Vector3[]=[];

@@ -24,6 +24,9 @@ jobs:
       - name: Focused Release C automatic fabric and pouch material regressions
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/armor-rig-release-c-') }}
         run: node --experimental-strip-types --test tests/operator-armor-rig-release-c.test.mjs
+      - name: Focused R6 local armor contact, true strap landings and legacy fit gates
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/armor-r6-') }}
+        run: node --experimental-strip-types --test tests/operator-armor-r6-contact.test.mjs tests/operator-armor-r5-orthogonal.test.mjs tests/operator-armor-r4-silhouette.test.mjs tests/operator-armor-r2-fit.test.mjs tests/operator-armor-r1-integration.test.mjs
       - name: Focused R5 orthogonal cummerbunds, collar identity and 35 uniform fits
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/armor-r5-') }}
         run: node --experimental-strip-types --test tests/operator-armor-r5-orthogonal.test.mjs tests/operator-armor-r4-silhouette.test.mjs tests/operator-armor-r2-fit.test.mjs tests/operator-armor-r1-silhouettes.test.mjs tests/operator-armor-r1-integration.test.mjs

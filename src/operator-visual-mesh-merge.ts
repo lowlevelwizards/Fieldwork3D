@@ -9,7 +9,7 @@ export function consolidateVisualGroup(group:THREE.Group):void{
  const buckets=new Map<THREE.Material,THREE.Mesh[]>();
  for(const item of group.children){
   if(!(item instanceof THREE.Mesh)||item.children.length||
-    Array.isArray(item.material))continue;
+    Array.isArray(item.material)||item.userData.armorCompressible)continue;
   const bucket=buckets.get(item.material)??[];
   bucket.push(item);buckets.set(item.material,bucket);
  }

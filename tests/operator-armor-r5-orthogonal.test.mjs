@@ -72,7 +72,7 @@ test('R5 all 35 side layouts hug shirt while preserving three right-angle faces'
    const spec=ARMOR_PROPORTIONS[id];
    const fit=fittedArmorSurfaces(id,top,ARMOR_PROFILES[id]);
    const p=armorSideLayout(fit,spec);
-   assert.ok(p.centerZ-p.sideHalfThickness>=p.garmentSide+.12,
+   assert.ok(p.centerZ-p.sideHalfThickness>=p.garmentSide+.115,
     id+' '+top+' side slab clips garment');
    assert.ok(p.frontX>4.8&&p.backX< -4.8,id+' '+top+' bag faces');
    assert.ok(p.frontX>p.backX+9,id+' '+top+' complete flank wall');

@@ -149,10 +149,14 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
      // Four deeply bellows-shaped pockets, with the lower row slightly
      // larger. Their backs intersect the base torso; no floating panels.
      const lower=y<0,projection=lower?1.52:1.40;
-     box(torso,cloth,5.61,y,sign*3.66,projection,
+     const pocket=box(torso,cloth,5.61,y,sign*3.66,projection,
       lower?3.32:3.18,lower?4.90:4.72);
-     box(torso,cloth,6.32,y+(lower?1.46:1.40),sign*3.66,
+     const flap=box(torso,cloth,6.32,y+(lower?1.46:1.40),sign*3.66,
       .30,.78,lower?5.05:4.92);
+     for(const mesh of [pocket,flap]){
+      mesh.userData.armorCompressible=true;
+      mesh.userData.armorCoverY=y;
+     }
     }
    }
    // Concealed button placket: visible only at close Lab zoom.
@@ -167,13 +171,21 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
      sign*.17);
     // Angled chest pouches and recognizable lower utility pockets.
     // Both pairs are attached to the already-clothed torso, not floating.
-    box(torso,cloth,5.61,1.20,sign*3.60,1.33,3.13,4.36,
+    const pocket=box(torso,cloth,5.61,1.20,sign*3.60,1.33,3.13,4.36,
      -sign*.23);
-    box(torso,cloth,6.29,2.64,sign*3.60,.30,.76,4.51,
+    const flap=box(torso,cloth,6.29,2.64,sign*3.60,.30,.76,4.51,
      -sign*.23);
+    for(const mesh of [pocket,flap]){
+     mesh.userData.armorCompressible=true;
+     mesh.userData.armorCoverY=1.20;
+    }
     // Small modern utility pockets deliberately remain flatter than BDU.
-    box(torso,cloth,5.53,-3.80,sign*3.60,1.20,2.53,4.33);
-    box(torso,cloth,6.14,-2.67,sign*3.60,.27,.66,4.50);
+    const utilityPocket=box(torso,cloth,5.53,-3.80,sign*3.60,1.20,2.53,4.33);
+    const utilityFlap=box(torso,cloth,6.14,-2.67,sign*3.60,.27,.66,4.50);
+    for(const mesh of [utilityPocket,utilityFlap]){
+     mesh.userData.armorCompressible=true;
+     mesh.userData.armorCoverY=-3.80;
+    }
    }
    // Hidden zipper/placket and short hem, rather than BDU four-pocket apron.
    box(torso,trim,5.10,-.14,0,.16,9.85,.35);

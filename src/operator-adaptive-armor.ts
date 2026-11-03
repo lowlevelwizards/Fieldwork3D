@@ -11,10 +11,11 @@ import * as THREE from 'three';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {ARMOR_PROPORTIONS,type ArmorProportion}
  from './operator-armor-proportions.ts';
-import {fittedArmorBag,fittedShoulderBridge,fittedArmorCollar}
+import {fittedArmorBag,fittedShoulderBridge,fittedSideWrap,fittedArmorCollar}
  from './operator-armor-shapes.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {armorSideLayout} from './operator-armor-side-layout.ts';
+import {armorStrapLanding} from './operator-armor-straps.ts';
 import {uniformFitEnvelope,fittedArmorSurfaces,ARMOR_PANEL_DEPTHS,
  type ArmorFitSurfaces} from './operator-uniform-fit-envelope.ts';
 
@@ -109,37 +110,34 @@ function shoulders(g:THREE.Group,m:THREE.Material,
  fit:ArmorFitSurfaces,spec:ArmorProportion){
  const env=uniformFitEnvelope(fit.top);
  const shoulder=env.outer(5.30);
- const bagZ=Math.min(spec.width*.5-.75,Math.max(2.6,
-  spec.width*.5-spec.upperInset*.60));
- const crownZ=Math.min(5.15,Math.max(3.65,fit.shoulderZ));
- const lowerY=spec.top-spec.strapDrop;
- const frontX=fit.front-.18;
+ const land=armorStrapLanding(fit,spec);
  for(const side of [-1,1]){
   if(spec.family==='skeleton'){
-   // Two thick front diagonals form a visible triangular negative space.
-   // One substantial back strap continues over the shoulder crown.
-   for(const d of [-.95,.95]){
+   // One recognizable triangular JPC opening with two *complete*
+   // front landings in the plate-bag polygon, not dangling tab ends.
+   for(const d of [-.63,.63]){
     fittedShoulderBridge(g,m,[
-     [frontX,lowerY,bagZ+d],
-     [shoulder.front+.20,fit.shoulderY-.36,crownZ+d*.30],
-     [1.85,fit.shoulderY+.03,crownZ]
-    ],1.00,spec.strapThickness,side);
+     [land.frontX,land.frontY,land.frontZ+d],
+     [shoulder.front+.14,land.shoulderY-.36,
+      land.shoulderZ+d*.33],
+     [1.78,land.shoulderY+.01,land.shoulderZ]
+    ],.96,spec.strapThickness,side);
    }
    fittedShoulderBridge(g,m,[
-    [1.85,fit.shoulderY+.03,crownZ],
-    [-1.85,fit.shoulderY+.03,crownZ],
-    [shoulder.back-.20,fit.shoulderY-.30,crownZ],
-    [fit.back+.28,lowerY+.07,bagZ]
+    [1.78,land.shoulderY+.01,land.shoulderZ],
+    [-1.75,land.shoulderY+.01,land.shoulderZ],
+    [shoulder.back-.16,land.shoulderY-.28,land.shoulderZ],
+    [land.rearX,land.rearY,land.rearZ]
    ],spec.shoulderWidth,spec.strapThickness,side);
    continue;
   }
   const path:readonly (readonly [number,number,number])[]=[
-   [frontX,lowerY,bagZ],
-   [shoulder.front+.20,fit.shoulderY-.24,crownZ],
-   [1.85,fit.shoulderY+.03,crownZ],
-   [-1.85,fit.shoulderY+.03,crownZ],
-   [shoulder.back-.20,fit.shoulderY-.24,crownZ],
-   [fit.back+.22,lowerY+.06,bagZ]
+   [land.frontX,land.frontY,land.frontZ],
+   [shoulder.front+.14,land.shoulderY-.25,land.shoulderZ],
+   [1.75,land.shoulderY+.02,land.shoulderZ],
+   [-1.75,land.shoulderY+.02,land.shoulderZ],
+   [shoulder.back-.16,land.shoulderY-.25,land.shoulderZ],
+   [land.rearX,land.rearY,land.rearZ]
   ];
   fittedShoulderBridge(g,m,path,spec.shoulderWidth,
    spec.strapThickness,side);
@@ -156,16 +154,33 @@ function attachedSide(g:THREE.Group,m:THREE.Material,
  const lengthX=p.frontX-p.backX;
  const returnLen=p.frontReturnLength+.34;
  const joinZ=(p.centerZ+p.plateEdgeZ)*.5-.05;
+ const chamfered=spec.sideStyle==='soft_wrap'||
+  spec.sideStyle==='side_plate'||spec.family==='standard';
  for(const side of [-1,1]){
+  if(chamfered){
+   // Three legible planes: front return, flank, rear return.
+   // A SINGLE low-poly bend per corner follows the torso instead of
+   // forcing square plate-sized corners out around the shoulders.
+   const run=Math.min(1.50,Math.max(.88,p.frontReturnLength*.43));
+   const path:readonly (readonly [number,number])[]=[
+    [p.frontX+.12,side*(p.plateEdgeZ-.13)],
+    [p.frontX-run,side*p.centerZ],
+    [p.backX+run,side*p.centerZ],
+    [p.backX-.12,side*(p.plateEdgeZ-.13)]
+   ];
+   fittedSideWrap(g,m,path,y,height,spec.sideThickness,side);
+   continue;
+  }
+  // Minimalist slick/JPC: perfectly flat elastic and skeletal bands.
   const flank=makeBox(g,m,(p.frontX+p.backX)*.5,y,
    side*p.centerZ,lengthX+.16,height,spec.sideThickness);
-  flank.name='r5-flat-torso-side';
+  flank.name='r6-flush-side-band';
   const front=makeBox(g,m,p.frontX,y,
    side*joinZ,p.returnThickness,height,returnLen);
-  front.name='r5-straight-front-return';
+  front.name='r6-front-return';
   const back=makeBox(g,m,p.backX,y,
    side*joinZ,p.returnThickness,height,returnLen);
-  back.name='r5-straight-rear-return';
+  back.name='r6-rear-return';
  }
 }
 function regenerateConnections(entry:ArmorEntry,top:string){
@@ -210,6 +225,28 @@ function regenerateConnections(entry:ArmorEntry,top:string){
  }
  consolidateVisualGroup(connectors);
 }
+/** Covered uniform pockets lie pressed beneath a close-fitting vest.
+ * The actual authored pocket mesh is hidden only when the selected vest
+ * overlaps its height. This avoids forcing the entire plate bag outward
+ * to clear a detail that is visually occluded by armor.
+ * Cached per chest + selected look: NO per-frame scene traversal.
+ */
+const pocketFitKeys=new WeakMap<THREE.Object3D,string>();
+function updateCoveredGarmentPockets(chest:THREE.Object3D,
+ style:string,top:string){
+ const key=style+'|'+top;
+ if(pocketFitKeys.get(chest)===key)return;
+ pocketFitKeys.set(chest,key);
+ const spec=ARMOR_PROPORTIONS[style];
+ const external=!!spec&&spec.family!=='concealed';
+ chest.traverse(node=>{
+  if(!(node instanceof THREE.Mesh)||!node.userData.armorCompressible)
+   return;
+  const y=node.userData.armorCoverY as number;
+  node.visible=!(external&&y<spec.top-.35&&
+   y>spec.bottom+.70);
+ });
+}
 /** Only regenerate connectors when the top selection changes. The active
  * group is the sole visible armor; hidden styles can retain their previous
  * fit until the user selects them again.
@@ -219,6 +256,7 @@ export function updateAdaptiveArmorFit(
  const group=groups[style],entry=group&&entries.get(group);
  if(!entry)return;
  const key=uniformFitEnvelope(top).top;
+ if(group.parent)updateCoveredGarmentPockets(group.parent,style,key);
  if(entry.key===key)return;
  regenerateConnections(entry,key);
  entry.key=key;
