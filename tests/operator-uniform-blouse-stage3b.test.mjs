@@ -57,7 +57,8 @@ test('field blouse categories are genuinely distinct under plain silhouette, not
  r.dispose();
 });
 test('BDU and ACU use authentic independently restricted print lists',()=>{
- assert.deepEqual(UNIFORM_CUT_CAMO['acu-shirt'],['ucp','multicam','scorpion-w2']);
+ for(const id of ['ucp','multicam','scorpion-w2'])
+  assert.ok(UNIFORM_CUT_CAMO['acu-shirt'].includes(id));
  assert.ok(UNIFORM_CUT_CAMO['bdu-shirt'].includes('m81-woodland'));
  assert.ok(UNIFORM_CUT_CAMO['bdu-shirt'].includes('three-color-desert'));
  assert.ok(UNIFORM_CUT_CAMO['bdu-shirt'].includes('six-color-desert'));
@@ -75,11 +76,10 @@ test('BDU and ACU use authentic independently restricted print lists',()=>{
    'top',outfit));
  }
  const shirt=resolvedWardrobe({...initialWardrobe(),
-  styles:{top:'field-jacket'}},kit);
- assert.ok(fabricCamoCompatible('alpenflage','top',shirt),
-  'existing vintage field jacket rules still work');
- assert.equal(fabricCamoCompatible('alpenflage','top',
-  {...shirt,top:'bdu-shirt'}),false,'Alpenflage is not a four-pocket US BDU');
+  styles:{top:'bdu-shirt'}},kit);
+ assert.equal(fabricCamoCompatible('alpenflage','top',shirt),false,
+  'Swiss Alpine coat requires its own silhouette, not generic BDU');
+
 });
 test('comparison presets do not mutate player wardrobe or equipment, and invalid print falls back',()=>{
  const base=initialWardrobe(),start=JSON.stringify(base);

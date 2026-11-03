@@ -14,8 +14,8 @@ export const UNIFORM_COMPARE_DEFAULT_PRINTS={
  'acu-shirt':'scorpion-w2'
 } as const satisfies Record<UniformCompareCut,HeadwearCamoId>;
 export const UNIFORM_COMPARE_LABELS={
- 'bdu-shirt':'A · HISTORICAL BDU / FIELD',
- 'acu-shirt':'B · MODERN ACU'
+ 'bdu-shirt':'A · CLASSIC FIELD',
+ 'acu-shirt':'B · MODERN UTILITY'
 } as const;
 export function uniformCompareKit():EquipmentLoadout{
  let kit=initialEquipmentLoadout();
@@ -34,9 +34,9 @@ export function uniformCompareWardrobe(cut:UniformCompareCut,
  const safePrint=uniformCutCamoChoices(cut).includes(print)?
   print:UNIFORM_COMPARE_DEFAULT_PRINTS[cut];
  return {...initialWardrobe(),
-  styles:{top:cut,trousers:'field-trousers',
+  styles:{top:cut,trousers:cut==='bdu-shirt'?'bdu-trousers':'acu-trousers',
    headwear:'bare',armorStyle:'armor-bare',
    rigStyle:'no-rig',beltStyle:'no-belt',packStyle:'no-pack',
    gloves:'gloves-none'},
-  fabricCamo:{top:safePrint}};
+  fabricCamo:{top:safePrint,trousers:safePrint}};
 }

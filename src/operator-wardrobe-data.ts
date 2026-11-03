@@ -57,11 +57,14 @@ add('headset','headset',[
 add('top','underlayer',[['base-layer','Base underlayer']]);
 // Stage 3B: only the two approved prototype families remain in the active catalog.
 add('top','uniform',[
- ['bdu-shirt','BDU / Field blouse'],['acu-shirt','ACU / Modern blouse']
+ ['bdu-shirt','Classic Field Blouse'],['acu-shirt','Modern Utility Blouse']
 ]);
 add('trousers','underlayer',[['base-shorts','Base shorts']]);
 // Unremodeled lower-body pieces are represented by one honest foundation.
-add('trousers','uniform',[['field-trousers','Field trousers (foundation)']]);
+add('trousers','uniform',[
+ ['bdu-trousers','Classic Field Trousers'],
+ ['acu-trousers','Modern Utility Trousers']
+]);
 add('footwear','unshod',[['bare-feet','Bare feet']]);
 add('footwear','boots',[['field-boots','Field boots (foundation)']]);
 add('armorStyle','none',[['armor-bare','No armor']]);
@@ -115,27 +118,35 @@ export const wardrobeItemsForSlot=(slot:WardrobeSlot)=>
  WARDROBE_ITEMS.filter(x=>x.slot===slot);
 export const wardrobeItem=(slot:WardrobeSlot,id:string)=>
  WARDROBE_ITEMS.find(x=>x.slot===slot&&x.id===id);
+export const SLEEVE_STATES=['unrolled','cuffed','rolled'] as const;
+export type SleeveState=typeof SLEEVE_STATES[number];
+export const TROUSER_HEMS=['unbloused','bloused'] as const;
+export type TrouserHem=typeof TROUSER_HEMS[number];
+export const sleeveStateOptions=(top:string)=>top==='bdu-shirt'||top==='acu-shirt'?
+ SLEEVE_STATES:['unrolled'] as const;
+export const trouserHemOptions=(trousers:string)=>trousers==='bdu-trousers'||
+ trousers==='acu-trousers'?TROUSER_HEMS:['unbloused'] as const;
 export type WardrobeOptions={
  version:1;styles:Partial<Record<WardrobeSlot,string>>;
  headwearColor?:HeadwearSolidColorId;headwearCamo?:HeadwearCamoId;
  headwearCamoRoll?:number;
- /** Authored garment prints supersede legacy procedurals only on this channel. */
+ /** Approved original prints on verified textile channels. */
  fabricCamo?:Partial<Record<FabricCamoChannel,HeadwearCamoId>>;
  /** Saved individual fabric-cut seeds; never regenerated during animation. */
  fabricCamoRoll?:Partial<Record<FabricCamoChannel,number>>;
- rolledSleeves:boolean;
+ sleeveState:SleeveState;trouserHem:TrouserHem;
  accessories:WardrobeAccessoryConfiguration;
  mounts:{medical?:string;utility?:string;magazineOrder:'left-right'|'right-left'};
 };
 const DEFAULTS:Record<WardrobeSlot,string>={
  headwear:'ach',facewear:'face-none',eyewear:'eyes-none',headset:'comms-none',
- top:'bdu-shirt',trousers:'field-trousers',footwear:'field-boots',
+ top:'bdu-shirt',trousers:'bdu-trousers',footwear:'field-boots',
  armorStyle:'soft-vest',rigStyle:'light-rig',beltStyle:'duty-belt',
  packStyle:'day-pack',gloves:'gloves-field',knees:'knee-none',
  wrist:'wrist-none'
 };
 export const initialWardrobe=():WardrobeOptions=>({
- version:1,styles:{},rolledSleeves:false,
+ version:1,styles:{},sleeveState:'unrolled',trouserHem:'bloused',
  accessories:initialWardrobeAccessories(),
  mounts:{magazineOrder:'left-right'}
 });
@@ -169,7 +180,10 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(isHeadwearCamoId(v.headwearCamo))result.headwearCamo=v.headwearCamo;
  if(Number.isInteger(v.headwearCamoRoll)&&v.headwearCamoRoll!>=0&&v.headwearCamoRoll!<4096)
   result.headwearCamoRoll=v.headwearCamoRoll;
- result.rolledSleeves=v.rolledSleeves===true;
+ if(SLEEVE_STATES.includes(v.sleeveState as SleeveState))
+  result.sleeveState=v.sleeveState as SleeveState;
+ if(TROUSER_HEMS.includes(v.trouserHem as TrouserHem))
+  result.trouserHem=v.trouserHem as TrouserHem;
  result.accessories=readWardrobeAccessories(v.accessories);
  if(v.mounts&&typeof v.mounts==='object'){
   const incoming=v.mounts;
@@ -229,7 +243,7 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
  if(!wardrobe?.styles.top)
   desired.top=kit.slots.top==='top-none'?'base-layer':'bdu-shirt';
  if(!wardrobe?.styles.trousers)
-  desired.trousers=kit.slots.legs==='legs-none'?'base-shorts':'field-trousers';
+  desired.trousers=kit.slots.legs==='legs-none'?'base-shorts':'bdu-trousers';
  if(!wardrobe?.styles.footwear)
   desired.footwear=kit.slots.feet==='feet-none'?'bare-feet':'field-boots';
  if(!wardrobe?.styles.gloves)
@@ -276,6 +290,9 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
   ['field-pack','rucksack','medic-pack','comms-pack','duffel']:
   ['no-pack'],slots.backpack==='backpack-day'?'day-pack':
   slots.backpack==='backpack-field'?'field-pack':'no-pack');
+ choose('trousers',slots.legs==='legs-none'?['base-shorts']:
+  ['bdu-trousers','acu-trousers'],
+  slots.legs==='legs-none'?'base-shorts':'bdu-trousers');
  choose('footwear',slots.feet==='feet-none'?['bare-feet']:['field-boots'],
   slots.feet==='feet-none'?'bare-feet':'field-boots');
  choose('gloves',slots.hands==='hands-none'?

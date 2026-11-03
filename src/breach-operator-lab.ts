@@ -518,17 +518,29 @@ function syncWardrobe(){
  (document.getElementById('wardrobeMagazineOrder') as HTMLSelectElement).value=
   wardrobeOptions.mounts.magazineOrder;
  appearanceGrid?.refresh(labKit,wardrobeOptions);
- (document.getElementById('rolledSleeves') as HTMLInputElement).checked=
-  wardrobeOptions.rolledSleeves;
+ const sleeveSelect=document.getElementById('wardrobeSleeveState') as HTMLSelectElement;
+ sleeveSelect.value=wardrobeOptions.sleeveState;
+ sleeveSelect.disabled=compatible.top!=='bdu-shirt'&&compatible.top!=='acu-shirt';
+ const hemSelect=document.getElementById('wardrobeTrouserHem') as HTMLSelectElement;
+ hemSelect.value=wardrobeOptions.trouserHem;
+ hemSelect.disabled=!['bdu-trousers','acu-trousers'].includes(compatible.trousers)
+  ||compatible.footwear==='bare-feet';
  const incompatible=wardrobeConflicts(wardrobeOptions,labKit);
  document.getElementById('wardrobeCompatibility')!.textContent=incompatible.length?
   'Style unavailable for current kit: '+incompatible.join(', '):
   'Compatible visual styles. Gameplay equipment is unchanged.';
 }
-document.getElementById('rolledSleeves')?.addEventListener('change',e=>{
- checkpointAppearance();wardrobeOptions={...wardrobeOptions,
-  rolledSleeves:(e.target as HTMLInputElement).checked};
-});
+for(const [id,field] of [
+ ['wardrobeSleeveState','sleeveState'],
+ ['wardrobeTrouserHem','trouserHem']
+] as const){
+ document.getElementById(id)?.addEventListener('change',e=>{
+  checkpointAppearance();
+  const value=(e.target as HTMLSelectElement).value;
+  wardrobeOptions={...wardrobeOptions,[field]:value};
+  syncWardrobe();
+ });
+}
 const fabricPickerState:{expanded:boolean;openChannel:null|import('./operator-fabric-camo-policy.ts').FabricCamoChannel;filter:string}={
  expanded:false,openChannel:null,filter:''
 };
@@ -738,7 +750,7 @@ function refreshUniformCompareLabels(){
  uniformLabelA.textContent=label('bdu-shirt');
  uniformLabelB.textContent=label('acu-shirt');
  if(uniformComparing)uniformCompareStatus.textContent=
-  'LEFT: BDU / JUNGLE · RIGHT: ACU · matching scale';
+  'LEFT: CLASSIC FIELD · RIGHT: MODERN UTILITY · matching scale';
 }
 const comparePinnedButton=choose<HTMLButtonElement>('comparePinned');
 const variantCompareStatus=choose<HTMLOutputElement>('variantCompareStatus');
@@ -749,7 +761,7 @@ function endVariantComparison(){
  variantComparing=false;
  uniformComparing=false;uniformLabels.hidden=true;
  uniformCompareButton.setAttribute('aria-pressed','false');
- uniformCompareButton.textContent='COMPARE BDU + ACU';
+ uniformCompareButton.textContent='COMPARE CLASSIC + MODERN';
  uniformCompareStatus.textContent='Open two matching-scale previews with distinct uniforms';
  comparePinnedButton.setAttribute('aria-pressed','false');
  comparePinnedButton.textContent='COMPARE A / B';
@@ -843,7 +855,10 @@ function isolateKit(body:OperatorRig){
  hide('pack',body.pack,v.dayPack,v.fieldPack,v.packHarness,
   ...all(v.wardrobeGear.pack),...all(v.accessories.pack));
  hide('clothes',v.jacket,v.lightShirt,
-  ...Object.values(v.fieldBlouses).flatMap(b=>[b.torso,...b.upper,...b.lower]),
+  ...Object.values(v.fieldBlouses).flatMap(b=>[
+    b.torso,...b.upper,...b.lower,...b.cuffed,...b.rolledUpper]),
+   ...Object.values(v.fieldTrousers).flatMap(t=>[
+    ...t.thigh,...t.bloused,...t.unbloused]),
   ...all(v.wardrobeBody.tops),
   ...Object.values(v.wardrobeBody.trousers).flat(),
   ...v.cargoPockets,...v.sleeveCuffs,...v.rolledForearms,...v.rolledCuffs,
@@ -1565,7 +1580,7 @@ function draw(){
   if(comparing||kitComparing||variantComparing){
     debug.visible=false;
     diagnosticText.textContent=uniformComparing?
-      'LEFT: BDU · RIGHT: ACU · PROPORTIONS LOCKED':variantComparing?
+      'LEFT: CLASSIC · RIGHT: MODERN · PROPORTIONS LOCKED':variantComparing?
       'LEFT: PINNED · RIGHT: CURRENT · PROPORTIONS LOCKED':kitComparing?
       'LIGHT / STANDARD / HEAVY · PROPORTIONS LOCKED':
       'SIX STANCES · ORBIT / ZOOM TO COMPARE';
