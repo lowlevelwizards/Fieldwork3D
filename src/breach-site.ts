@@ -9,6 +9,7 @@ import {partitionMotelGuestUnits} from './worldgen/motel-suites.ts';
 import {orientArchitecturalSite,type EntrySide} from './worldgen/site-orientation.ts';
 import {buildingIdentity} from './worldgen/building-identity.ts';
 import {measureSiteCompleteness,shouldTryAnotherLayout,preferCompleteCandidate} from './worldgen/site-completeness.ts';
+import {repairDoorwayClutter} from './worldgen/doorway-clutter-repair.ts';
 import {attachEncounterPlan} from './worldgen/encounter-director.ts';
 import type {EncounterContext,EncounterPlan} from './worldgen/encounter-types.ts';
 export type Room={id:string;zoneId?:string;unitId?:string;x:number;y:number;w:number;h:number;
@@ -95,8 +96,12 @@ export function generateSite(seed:number,scale:SiteScale='standard',
    geometry.seed=seed;
    geometry.identity=buildingIdentity(kind,seed,scale,geometry.roomCount);
    onProgress?.('furnishing',attempt);
-   const candidate=attachEncounterPlan(
-     applyArchetype(orientArchitecturalSite(geometry,seed),seed),encounterContext);
+   // Unintentional loose furniture must not block the approach to a real
+   // door. Keep this deterministic, conservative and pre-spawn: essential
+   // fixtures are never deleted to manufacture a route.
+   const furnished=applyArchetype(orientArchitecturalSite(geometry,seed),seed);
+   const accessible=repairDoorwayClutter(furnished).site;
+   const candidate=attachEncounterPlan(accessible,encounterContext);
    onProgress?.('scoring',attempt);
    const grade=measureSiteCompleteness(candidate);
    if(!bestGrade||preferCompleteCandidate(grade,bestGrade)){
