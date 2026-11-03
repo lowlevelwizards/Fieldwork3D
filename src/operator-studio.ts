@@ -9,17 +9,17 @@ import {OperatorAppearanceGrid,APPEARANCE_GROUP_LABELS} from './operator-appeara
 import {readRoster,initialRoster,setRosterWardrobe,
  freshQuickPlayRoster,serializeQuickPlayCosmetics} from './breach-roster.ts';
 import {readCampaign,setCampaignWardrobe} from './campaign-state.ts';
-import {initialEquipmentLoadout,type EquipmentLoadout} from './equipment-loadouts.ts';
+import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {readWardrobe,initialWardrobe,resolvedWardrobe,setWardrobeStyle,
  setWardrobeFabricSolid,setWardrobeFabricCamo,rerollWardrobeFabricCamo,
- sleeveStateOptions,trouserHemOptions,wardrobeItemsForSlot,
+ sleeveStateOptions,trouserHemOptions,
  type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
 import {fabricCamoChoices,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {GARMENT_SOLID_COLORS,solidChoicesFor,resolvedCuffSolid,
  type GarmentSolidId} from './operator-garment-color-policy.ts';
 import {headwearColorChoices,HEADWEAR_SOLID_COLORS} from './operator-headwear-colors.ts';
 import {headwearCamoChoices,headwearCamoPixels,headwearCamoSize,
- HEADWEAR_CAMO_RECIPES,HEADWEAR_CAMO_IDS,
+ HEADWEAR_CAMO_RECIPES,
  nextHeadwearCamoRoll,type HeadwearCamoId} from './operator-headwear-camo.ts';
 import {topColorwayChoices,resolvedTopColorway} from './operator-upper-colorways.ts';
 import './operator-appearance-grid.css';
@@ -72,7 +72,6 @@ const thumbBrowser=new OperatorAppearanceGrid(
  (slot,id)=>canEquip(slot,id));
 const member=()=>people.find(p=>p.id===selected);
 const current=()=>edits.get(selected)??member()?.wardrobe??initialWardrobe();
-const currentKit=()=>member()?.loadout??initialEquipmentLoadout();
 const say=(message:string)=>{status.textContent=message;};
 function resize(){
  const rect=stage.getBoundingClientRect();
@@ -424,7 +423,7 @@ if(embedded){
    start({mode,selected,readonly:!!campaign.activeContractId,
     members:campaign.operators.filter(x=>x.status!=='retired'&&x.status!=='lost')
      .map(x=>({id:x.id,callsign:x.callsign,appearanceSeed:x.appearanceSeed,
-       wardrobe:x.wardrobe,loadout:x.loadout}))});
+       wardrobe:readWardrobe(x.wardrobe),loadout:x.loadout}))});
   }else{
    const roster=freshQuickPlayRoster(readRoster(
     localStorage.getItem('fieldwork3d.quickplay-cosmetics.v1')));
