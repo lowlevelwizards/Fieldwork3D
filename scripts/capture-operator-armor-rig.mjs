@@ -39,6 +39,25 @@ try{
    ['plate-legacy','sadf-webbing'],
    ['soft-slick','bandolier']
   ];
+  // R1 grayscale cut review: no pouch layout can conceal a bad armor silhouette.
+  // Capture each wearable with no rig from the canonical 3/4, front and side.
+  for(const armor of ['soft-slick','soft-vest','soft-flak','plate-slick',
+   'plate-jpc','plate-standard','plate-heavy','plate-legacy']){
+   await page.locator('#armorChoice').selectOption(armor);
+   await page.locator('#rigChoice').selectOption('no-rig');
+   await page.waitForFunction(id=>{
+    const c=document.getElementById('armorCanvas');
+    return c?.dataset.armor===id&&c?.dataset.rig==='no-rig';
+   },armor);
+   for(const view of ['fit','front','side']){
+    await page.locator('button[data-view="'+view+'"]').click();
+    await page.waitForFunction(v=>
+     document.getElementById('armorCanvas')?.dataset.view===v,view);
+    await page.locator('#armorCanvas').screenshot({
+     path:'operator-armor-rig-captures/r1-'+armor+'-'+view+'.png'
+    });
+   }
+  }
   for(const [armor,rig] of samples){
    await page.locator('#armorChoice').selectOption(armor);
    await page.locator('#rigChoice').selectOption(rig);
@@ -56,6 +75,6 @@ try{
    }
   }
   if(errors.length)throw Error('Lab runtime: '+errors.join('; '));
-  console.log('Captured 22 normal-game-zoom silhouette previews on phone viewport.');
+  console.log('Captured 46 normal-game-zoom armor/rig previews on phone viewport.');
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}
