@@ -105,3 +105,27 @@ test('R4 all 35 visible armor combinations retain authored bags and closed fitte
  }
  r.dispose();
 });
+
+test('R4 shoulder/side joins use metric UVs and finite normals',()=>{
+ const r=createOperatorRig('rook','blue');
+ for(const armor of ARMOR_VISIBLE_STYLES){
+  pose(r,'bdu-shirt',armor);
+  const group=r.visualKit.wardrobeGear.armor[armor];
+  group.traverse(o=>{
+   if(!(o instanceof THREE.Mesh))return;
+   const g=o.geometry,p=g.getAttribute('position'),
+    uv=g.getAttribute('uv'),normal=g.getAttribute('normal');
+   assert.ok(uv&&normal,armor+' has complete face shading and UVs');
+   for(let i=0;i<p.count;i++){
+    assert.ok(Number.isFinite(p.getX(i))&&
+     Number.isFinite(p.getY(i))&&Number.isFinite(p.getZ(i)),
+     armor+' finite position');
+    assert.ok(Number.isFinite(uv.getX(i))&&
+     Number.isFinite(uv.getY(i)),armor+' finite metric UV');
+    assert.ok(Number.isFinite(normal.getX(i)),
+     armor+' finite face normal');
+   }
+  });
+ }
+ r.dispose();
+});

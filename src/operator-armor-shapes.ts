@@ -17,29 +17,40 @@ const pixelUV=(g:THREE.BufferGeometry)=>{
 function rawStrip(rings:readonly (readonly [XYZ,XYZ,XYZ,XYZ])[],
  material:THREE.Material,group:THREE.Group,name:string):THREE.Mesh{
  const points:number[]=[],uv:number[]=[];
- const add=(a:XYZ,b:XYZ,c:XYZ,u1:number,u2:number)=>{
-  // Winding varies with the flank and back/front attachment direction.
-  // Emit both oriented faces so one generated wrapper can be used on each
-  // side without accidentally hiding its top or outer wall in Three.js.
+ const metric=(a:XYZ,b:XYZ)=>Math.hypot(
+  a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+ const center=(r:readonly [XYZ,XYZ,XYZ,XYZ]):XYZ=>[
+  (r[0][0]+r[1][0]+r[2][0]+r[3][0])*.25,
+  (r[0][1]+r[1][1]+r[2][1]+r[3][1])*.25,
+  (r[0][2]+r[1][2]+r[2][2]+r[3][2])*.25
+ ];
+ const distances=[0];
+ for(let i=1;i<rings.length;i++)
+  distances.push(distances[i-1]+metric(center(rings[i-1]),center(rings[i])));
+ const tri=(a:XYZ,b:XYZ,c:XYZ,
+  ta:readonly [number,number],tb:readonly [number,number],
+  tc:readonly [number,number])=>{
+  // Two winding orientations permit the same low-poly mesh to serve
+  // mirrored sides and undersurfaces without global DoubleSide materials.
   points.push(...a,...b,...c,...c,...b,...a);
-  const u=u1/TILE_WORLD_SIZE,v=u2/TILE_WORLD_SIZE;
-  uv.push(u,0,v,0,v,1/TILE_WORLD_SIZE,
-   v,1/TILE_WORLD_SIZE,v,0,u,0);
+  uv.push(...ta,...tb,...tc,...tc,...tb,...ta);
  };
  for(let i=0;i<rings.length-1;i++){
-  const a=rings[i],b=rings[i+1];
-  const faces:readonly (readonly [number,number,number,number])[]=[
-   [0,1,1,0],[2,3,3,2],[0,2,2,0],[1,3,3,1]
-  ];
-  for(const [a0,a1,b1,b0] of faces){
-   add(a[a0],a[a1],b[b1],i,i+1);
-   add(a[a0],b[b1],b[b0],i,i+1);
+  const a=rings[i],b=rings[i+1],
+   u0=distances[i]/TILE_WORLD_SIZE,
+   u1=distances[i+1]/TILE_WORLD_SIZE;
+  // Metric UVs: no enlarged pixels when a shoulder bend gets longer.
+  for(const [l,r] of [[0,1],[2,3],[0,2],[1,3]] as const){
+   const width=metric(a[l],a[r])/TILE_WORLD_SIZE;
+   tri(a[l],a[r],b[r],[u0,0],[u0,width],[u1,width]);
+   tri(a[l],b[r],b[l],[u0,0],[u1,width],[u1,0]);
   }
  }
- const first=rings[0],last=rings[rings.length-1];
- for(const cap of [first,last]){
-  add(cap[0],cap[2],cap[3],0,1);
-  add(cap[0],cap[3],cap[1],0,1);
+ for(const cap of [rings[0],rings[rings.length-1]]){
+  const u=metric(cap[0],cap[1])/TILE_WORLD_SIZE;
+  const v=metric(cap[0],cap[2])/TILE_WORLD_SIZE;
+  tri(cap[0],cap[2],cap[3],[0,0],[0,v],[u,v]);
+  tri(cap[0],cap[3],cap[1],[0,0],[u,v],[u,0]);
  }
  const geo=new THREE.BufferGeometry();
  geo.setAttribute('position',new THREE.Float32BufferAttribute(points,3));
