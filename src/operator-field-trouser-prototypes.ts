@@ -196,8 +196,10 @@ export function createFieldTrouserPrototypes(legs:readonly Limb[],
     if(hem==='bloused'){
      // Keep the shortened trouser length/taper, but fold mass projects
      // SIDEWAYS instead of stacking tall vertical rings above the boot.
-     part(lower,cuffMaterial,0,end-.116,0,shinW*1.12,.19,shinD*1.12);
-     part(lower,cuffMaterial,0,end-.013,0,shinW*.90,.11,shinD*.90);
+     // Blousing is bunched-up ORIGINAL trouser cloth, not a reversed cuff.
+     // Preserve the exact per-trouser camo cut, seeded UV and color.
+     part(lower,textile,0,end-.116,0,shinW*1.12,.19,shinD*1.12);
+     part(lower,textile,0,end-.013,0,shinW*.90,.11,shinD*.90);
     }else if(hem==='cuffed'){
      part(lower,cuffMaterial,0,end-.133,0,shinW+1.27,.205,shinD+1.29);
      part(lower,cuffMaterial,0,end-.016,0,shinW+.88,.108,shinD+.91);
