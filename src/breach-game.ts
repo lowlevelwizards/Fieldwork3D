@@ -64,7 +64,8 @@ import {passageWait,type PassageActor,type PassageLease}
 import {diagnoseMovement,projectReachableGoal,type Blocker}
   from './breach-nav-diagnostics.ts';
 import {bodyClear,sweptBodyClear,squeezeFacing,
-  sweptProfileClear,SQUEEZE_RADIUS} from './breach-navigation.ts';
+  sweptProfileClear,SQUEEZE_RADIUS,escapeOpenDoorOverlap}
+  from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
   from './breach-squeeze-route.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
@@ -1349,6 +1350,15 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     a.routeGoalKey=goalKey;a.retryRouteAt=0;a.recoveryAttempts=0;
   }
   if(!a.nav.length){
+    // A hinge from an earlier state can leave the operator embedded in its
+    // collision capsule. Take a bounded real swept step out before route
+    // backoff; do not demand a new waypoint or let the route fail forever.
+    const escape=escapeOpenDoorOverlap(a.p,p,s.doors,dt*45);
+    if(escape){
+      a.priorP=clone(a.p);a.p=escape;a.velocity=0;
+      a.blockedTime=0;a.lastBlocker='door';
+      a.retryRouteAt=0;return true;
+    }
     // Never execute expensive route searches every fixed tick for a proven
     // unreachable destination. Changes of goal or recovered progress reset.
     // A route may be temporarily unavailable solely because a swung leaf
@@ -1519,6 +1529,16 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     }
   }
   const traversable=a.squeeze?narrowClear:normalClear;
+  if(!traversable&&!blocking){
+    const escape=escapeOpenDoorOverlap(a.p,p,s.doors,dt*45);
+    if(escape){
+      a.priorP=clone(a.p);a.p=escape;a.velocity=0;
+      a.blockedTime=0;a.lastBlocker='door';
+      // The current route is still authored and remains active. Replan
+      // its transient motor path only after physically leaving the leaf.
+      a.nav=[];a.retryRouteAt=0;return true;
+    }
+  }
   // Try nearby route repair for actor jams, furniture, and door leaves.
   if((!traversable||blocking)&&
     recoveryAction(blocking?'actor':a.lastBlocker,a.blockedTime,
