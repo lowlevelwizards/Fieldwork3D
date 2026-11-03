@@ -257,7 +257,10 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  // visible model. Never draw a legacy generic shell under headwear.
  v.helmet.visible=false;
  v.cap.visible=false;
- v.hair.visible=false; // Stage 1 bare reference is intentionally clean.
+ v.hair.visible=looks.headwear==='bare'&&
+  !['balaclava-one','balaclava-three'].includes(looks.facewear);
+ // Hair sits on the scalp only when uncovered; helmets, caps and full
+ // balaclavas suppress it to avoid clipping without changing headgear fit.
  updateWardrobeHeadLayers(v.wardrobeHead,
   looks.headwear,looks.facewear,looks.eyewear,looks.headset);
  // Rig pose color ledger owns final headwear tint (and reversible injury

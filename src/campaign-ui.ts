@@ -24,6 +24,8 @@ import {kitMedicalSupplies,medicalSupplyCount} from './equipment-medical-supplie
 import {promptFieldworkText,confirmFieldworkAction,showFieldworkNotice}
  from './ui/fieldwork-controls.ts';
 import './campaign-style.css';
+import './operator-headwear-picker.css';
+import {createHeadwearAppearancePicker} from './operator-headwear-picker.ts';
 
 export type CampaignHandlers={
  newCampaign:()=>void;continueCampaign:()=>void;quickPlay:()=>void;
@@ -64,6 +66,8 @@ export class CampaignScreen{
  private selectedMount:WeaponAttachmentSlot='optic';
  private lastArmoryRenderedId:string|null=null;
  private wardrobeExpanded=false;
+ private headwearExpanded=false;
+ private headwearCamoExpanded=false;
  private readonly operatorViewAngles=new Map<string,number>();
  private disposePreview(){
   if(this.preview&&this.lastArmoryRenderedId)
@@ -376,7 +380,10 @@ export class CampaignScreen{
   const previousFocus=this.root.contains(document.activeElement)?
     document.activeElement?.getAttribute('aria-label'):null;
   this.disposePreview();
-  if(!sameOperator)this.wardrobeExpanded=false;
+  if(!sameOperator){
+   this.wardrobeExpanded=false;
+   this.headwearExpanded=false;this.headwearCamoExpanded=false;
+  }
   this.lastArmoryRenderedId=id;
   const person=c.operators.find(o=>o.id===id);
   if(!person){this.armoryOperatorId=null;this.home(c);return;}
@@ -601,7 +608,14 @@ export class CampaignScreen{
     id,setWardrobeStyle(wardrobe,slot as WardrobeSlot,select.value)));
    row.append(select);wardrobePanel.append(row);
   }
-  for(const channel of ['top','trousers','armor','gear','pack','head'] as const){
+  wardrobePanel.append(createHeadwearAppearancePicker(person.loadout,wardrobe,
+    next=>this.handlers.setWardrobe(id,next),{
+     disabled:locked,expanded:this.headwearExpanded,
+     camoExpanded:this.headwearCamoExpanded,
+     onExpandedChange:open=>{this.headwearExpanded=open;},
+     onCamoExpandedChange:open=>{this.headwearCamoExpanded=open;}
+    }));
+   for(const channel of ['top','trousers','armor','gear','pack','head'] as const){
    const row=node('label','campaign-kit-row');
    row.append(node('span','',channel.toUpperCase()+' CAMOUFLAGE'));
    const select=node('select','campaign-select');

@@ -19,5 +19,5 @@ test('all texture channels are wired in Wardrobe Lab',()=>{
  for(const slot of ['top','trousers','armor','gear','pack','head'])
   assert.ok(h.includes('data-wardrobe-pattern="'+slot+'"'));
  assert.match(js,/setWardrobePattern/);
- assert.match(js,/wardrobeOptions=.*palette:/);
+ assert.doesNotMatch(js,/labPalette=1;wardrobeOptions=\{\.\.\.wardrobeOptions,palette:0\}/);
 });
