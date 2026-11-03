@@ -1149,20 +1149,10 @@ body.replaying #tacticalFeedback{display:none}
  .site-settings{max-height:calc(100dvh - var(--tactical-hud-height,85px) - 44px)}
 }
 
-/* UX2-21: uncommon actions remain available without cluttering LOOK/WATCH. */
-.context-more{width:100%;border-top:1px solid #8ea99b44;padding-top:3px}
-.context-more[hidden]{display:none}
-.context-more>summary{list-style:none;cursor:pointer;min-height:36px;
- display:flex;align-items:center;justify-content:center;color:#c5d4c5;
- font:600 11px/1.2 var(--ui-font);letter-spacing:.06em}
-.context-more>summary::-webkit-details-marker{display:none}
-.context-more>summary::before{content:"+";margin-right:8px;font-size:16px}
-.context-more[open]>summary::before{content:"−"}
-.context-advanced{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:5px 0}
-.context-advanced button{min-width:0;min-height:44px;font-size:11px}
-.context-more>summary:focus-visible{outline:2px solid #e9d19d;outline-offset:-2px}
-@media (max-width:640px){.context-primary button{min-height:44px}
- .context-more>summary{min-height:40px}}
+/* UX2-21 follow-up: all contextual commands share the compact grid.
+ * No expandable section: opening a menu must not grow its map hitbox. */
+.context-primary{align-content:start}
+@media (max-width:640px){.context-primary button{min-height:44px}}
 
 /* UX2-22 / unified priority ladder: battlefield > critical notice >
    selected operator and relevant orders > mission > secondary tools. */
