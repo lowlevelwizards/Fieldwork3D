@@ -150,8 +150,11 @@ export function headwearCamoTexture(id:HeadSilhouetteId,camo:HeadwearCamoId,
  for(let region=0;region<4;region++)for(let y=0;y<64;y++)for(let x=0;x<64;x++){
   // The band/cuff and brim are independently sewn panels, but their print
   // remains equally scaled and does not repeat separately on every box face.
-  let artX=density===1?Math.floor(x/2):x;
-  const artY=density===1?Math.floor(y/2):y;
+  // Native print density: 1x -> half-speed UV1 sample, 2x -> 1:1,
+  // Finnish M05 3x -> 1.5 source pixels per UV1 pixel. The source
+  // remains 32px and nearest-neighbor filtering keeps pixel steps crisp.
+  let artX=Math.floor(x*density/2);
+  const artY=Math.floor(y*density/2);
   if(camo==='tiger-stripe'&&region===1)
    artX+=Math.floor(y/3); // modest diagonal direction on wrapped walls
   const source=((((artY+offsetY)%tileSize)*tileSize+
