@@ -86,8 +86,9 @@ export function passageWait(actor:PassageActor,doors:readonly Door[],
   // Wide shutters permit several independent lanes.
   if(distance(door.a,door.b)>60)continue;
   const cluster=passageCluster(door,doors);
-  const key=cluster.length===1?door.id:
+  const passageKey=cluster.length===1?door.id:
     'zone:'+cluster.map(d=>d.id).join('+');
+  const key=actor.side?actor.side+':'+passageKey:passageKey;
   if(seen.has(key))continue;seen.add(key);
   if(!seeksPassage(actor,cluster))continue;
   // Opposing sides are handled by combat and solid enemy collision, not
