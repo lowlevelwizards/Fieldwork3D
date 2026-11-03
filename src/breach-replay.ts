@@ -25,7 +25,8 @@ export type ActorFrame=Pick<TeamActor,
   'lastThrowAt'|'lastDoorAt'|'lastDoorId'|'lastDoorMethod'|'stride'|
   'weaponYaw'|'stability'|'recoil'|'lastShotAt'|'fireMode'|'burstCount'|'skills'|
   'squeeze'|'squeezeYaw'|'squeezeTime'|
-  'traversal'|'traversalElapsed'|'traversalElevation'>;
+  'traversal'|'traversalElapsed'|'traversalElevation'|
+  'traversalRetreating'>;
 export type ReplayActorFrame=ActorFrame & {
  travelYaw?:number;intentKind?:string;awarenessCount?:number;
 };
@@ -58,6 +59,7 @@ export function snapshot(s:Session,seenGround?:string[]):ReplayFrame{
       traversal:traversalCopy(a.traversal),
       traversalElapsed:a.traversalElapsed,
       traversalElevation:a.traversalElevation,
+      traversalRetreating:a.traversalRetreating,
       turning:a.turning,posture:a.posture,pace:a.pace,alert:a.alert,
       magazine:a.magazine,reserve:a.reserve,reload:a.reload,
       insertedMagazineId:a.insertedMagazineId,
