@@ -514,7 +514,7 @@ presetSave.addEventListener('click',()=>{
  }
  studioPresets=next;
  if(!persistStudioPresets())return;
- renderPresetMenu();presetSelect.value=name.trim().replace(/\\s+/g,' ').slice(0,32);
+ renderPresetMenu();presetSelect.value=name.trim().replace(/\s+/g,' ').slice(0,32);
  renderPresetMenu();say('APPEARANCE PRESET SAVED · NO EQUIPMENT');
 });
 presetApply.addEventListener('click',()=>{
