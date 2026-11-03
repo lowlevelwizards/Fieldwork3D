@@ -68,6 +68,8 @@ import {readRoster,applyRosterIdentity,freshQuickPlayRoster,
   resupplyRoster,equipRoster,equipRosterGear,moveRosterMagazine,
  configureRosterWeapon,
  renameRosterMember,cycleRosterAppearance,setRosterWardrobe} from './breach-roster.ts';
+import {validateStudioAppearanceEdits,applyStudioRosterEdits,
+ applyStudioCampaignEdits} from './operator-studio-batch-save.ts';
 import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
  sameWeaponConfiguration,type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
@@ -268,10 +270,10 @@ try{
   localStorage.removeItem(LEGACY_ROSTER_KEY);
  }
 }catch{/* Private browser storage may be unavailable. */}
-function saveRoster(){
+function saveRoster():boolean{
  try{localStorage.setItem(QUICK_COSMETICS_KEY,
-   serializeQuickPlayCosmetics(persistentRoster));}
- catch{/* Private browser storage may be unavailable. */}
+   serializeQuickPlayCosmetics(persistentRoster));return true;}
+ catch{return false;}
 }
 const CAMPAIGN_KEY='fieldwork3d.campaign.v1';
 let campaign:CampaignState|null=(()=>{
@@ -279,10 +281,10 @@ let campaign:CampaignState|null=(()=>{
 })();
 let campaignMode:'menu'|'home'|'mission'|'quick'=
  legacyStudy||startupParams.has('quick')?'quick':'menu';
-function saveCampaign(){
- if(!campaign)return;
- try{localStorage.setItem(CAMPAIGN_KEY,JSON.stringify(campaign));}
- catch{console.warn('Campaign save unavailable');}
+function saveCampaign():boolean{
+ if(!campaign)return false;
+ try{localStorage.setItem(CAMPAIGN_KEY,JSON.stringify(campaign));return true;}
+ catch{console.warn('Campaign save unavailable');return false;}
 }
 /** Embedded Studio keeps the live mission mounted. The game remains the
  * sole authority for campaign/Quick Play writes; the iframe edits a draft. */
@@ -333,28 +335,43 @@ document.getElementById('openOperatorStudio')?.addEventListener('click',()=>
 window.addEventListener('message',event=>{
  if(!studioFrame?.contentWindow||event.source!==studioFrame.contentWindow||
     event.origin!==location.origin||!event.data||typeof event.data!=='object')return;
- const msg=event.data as {type?:string;id?:unknown;wardrobe?:unknown};
+ const msg=event.data as {type?:string;id?:unknown;
+  wardrobe?:unknown;entries?:unknown};
  if(msg.type==='fw-studio-ready'){sendStudioInit();return;}
  if(msg.type==='fw-studio-close'){closeOperatorStudio();return;}
- if(msg.type!=='fw-studio-commit'||typeof msg.id!=='string')return;
+ const batch=msg.type==='fw-studio-commit-batch';
+ if(!batch&&msg.type!=='fw-studio-commit')return;
+ const edits=validateStudioAppearanceEdits(batch?msg.entries:
+  [{id:msg.id,wardrobe:msg.wardrobe}]);
  let ok=false;
- if(studioMode==='quick'&&state.phase==='planning'&&!replaying&&
-    persistentRoster.members.some(m=>m.id===msg.id)){
-  persistentRoster=setRosterWardrobe(persistentRoster,msg.id,msg.wardrobe);
-  saveRoster();applyRosterIdentity(state,persistentRoster);
-  renderOperationsBoard();updateHud();ok=true;
- }else if(studioMode==='campaign'&&campaign&&!campaign.activeContractId&&
-    campaign.operators.some(o=>o.id===msg.id&&
-     o.status!=='retired'&&o.status!=='lost')){
-  const changed=setCampaignWardrobe(campaign,msg.id,msg.wardrobe);
-  if(changed!==campaign){
-   campaign=changed;saveCampaign();showCampaignHome();ok=true;
+ if(edits&&studioMode==='quick'&&state.phase==='planning'&&!replaying){
+  const next=applyStudioRosterEdits(persistentRoster,edits);
+  if(next){
+   const previous=persistentRoster;persistentRoster=next;
+   ok=saveRoster();
+   if(ok){applyRosterIdentity(state,persistentRoster);
+    renderOperationsBoard();updateHud();}
+   else persistentRoster=previous;
+  }
+ }else if(edits&&studioMode==='campaign'&&campaign&&!campaign.activeContractId){
+  const next=applyStudioCampaignEdits(campaign,edits);
+  if(next){
+   const previous=campaign;campaign=next;
+   ok=saveCampaign();
+   if(ok)showCampaignHome();
+   else campaign=previous;
   }
  }
- studioSelected=msg.id;
- studioFrame.contentWindow.postMessage({
-  type:'fw-studio-saved',id:msg.id,ok
- },location.origin);
+ if(edits?.length)studioSelected=edits[0].id;
+ if(batch){
+  studioFrame.contentWindow.postMessage({
+   type:'fw-studio-batch-saved',ids:edits?.map(e=>e.id)??[],ok
+  },location.origin);
+ }else{
+  studioFrame.contentWindow.postMessage({
+   type:'fw-studio-saved',id:msg.id,ok
+  },location.origin);
+ }
 });
 function applyCampaignSkills(){
  if(campaignMode!=='mission'||!campaign)return;

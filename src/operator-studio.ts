@@ -6,9 +6,11 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {OperatorAppearanceGrid,APPEARANCE_GROUP_LABELS} from './operator-appearance-grid.ts';
-import {readRoster,initialRoster,setRosterWardrobe,
+import {readRoster,initialRoster,
  freshQuickPlayRoster,serializeQuickPlayCosmetics} from './breach-roster.ts';
-import {readCampaign,setCampaignWardrobe} from './campaign-state.ts';
+import {readCampaign} from './campaign-state.ts';
+import {applyStudioRosterEdits,applyStudioCampaignEdits,
+ type StudioAppearanceEdit} from './operator-studio-batch-save.ts';
 import {setEquipmentChoice,type EquipmentLoadout} from './equipment-loadouts.ts';
 import {readWardrobe,initialWardrobe,resolvedWardrobe,setWardrobeStyle,
  setWardrobeFabricSolid,setWardrobeFabricCamo,rerollWardrobeFabricCamo,
@@ -43,6 +45,7 @@ let people:StudioPerson[]=[];
 let activeCategory:WardrobeSlot='top';
 let clothesOnly=true;
 let comparingSaved=false;
+let saveInFlight=false;
 let studioPresets:StudioPreset[]=[];
 try{studioPresets=readStudioPresets(localStorage.getItem(STUDIO_PRESET_STORAGE_KEY));}
 catch{/* Appearance presets are optional when storage is blocked. */}
@@ -183,12 +186,16 @@ function canEquip(slot:WardrobeSlot,id:string){
  return !!p&&resolvedWardrobe(setWardrobeStyle(current(),slot,id),p.loadout)[slot]===id;
 }
 function changeWardrobe(next:WardrobeOptions){
+ if(saveInFlight)return;
  if(comparingSaved)comparingSaved=false;
  if(readOnly){say('Appearance is locked during an active campaign operation');return;}
  if(JSON.stringify(next)===JSON.stringify(current()))return;
  history.set(selected,[...(history.get(selected)??[]).slice(-24),readWardrobe(current())]);
- edits.set(selected,readWardrobe(next));dirty.add(selected);
- say('UNSAVED APPEARANCE');
+ const parsed=readWardrobe(next);
+ if(JSON.stringify(parsed)===JSON.stringify(member()?.wardrobe)){
+  edits.delete(selected);dirty.delete(selected);
+ }else{edits.set(selected,parsed);dirty.add(selected);}
+ say(dirty.size+' UNSAVED OPERATOR LOOK'+(dirty.size===1?'':'S'));
  refresh();
 }
 function chooseStyle(slot:WardrobeSlot,id:string){
@@ -213,7 +220,7 @@ function row(label:string,help?:string){
 }
 function makeButton(text:string,active:boolean,action:()=>void){
  const b=document.createElement('button');b.type='button';b.textContent=text;
- b.setAttribute('aria-pressed',String(active));b.disabled=readOnly||comparingSaved;
+ b.setAttribute('aria-pressed',String(active));b.disabled=readOnly||comparingSaved||saveInFlight;
  b.addEventListener('click',action);return b;
 }
 function addSolidSwatches(target:HTMLElement,values:readonly GarmentSolidId[],
@@ -473,14 +480,14 @@ function renderPresetMenu(){
  }
  if(studioPresets.some(x=>x.name===selectedPreset))presetSelect.value=selectedPreset;
  const selectedName=presetSelect.value;
- presetApply.disabled=readOnly||comparingSaved||!selectedName;
- presetDelete.disabled=readOnly||comparingSaved||!selectedName;
- presetSave.disabled=readOnly||comparingSaved||
+ presetApply.disabled=readOnly||comparingSaved||saveInFlight||!selectedName;
+ presetDelete.disabled=readOnly||comparingSaved||saveInFlight||!selectedName;
+ presetSave.disabled=readOnly||comparingSaved||saveInFlight||
   studioPresets.length>=STUDIO_PRESET_LIMIT;
  const p=member();
  const pair=p?pairedUniformFor(activeCategory,current(),p.loadout):null;
  matchSetButton.hidden=!pair;
- matchSetButton.disabled=readOnly||comparingSaved||!pair||
+ matchSetButton.disabled=readOnly||comparingSaved||saveInFlight||!pair||
   !canEquip(pair.slot,pair.id)||
   resolvedWardrobe(current(),member()!.loadout)[pair.slot]===pair.id;
  if(pair)matchSetButton.textContent='MATCH '+(pair.slot==='top'?'TOP':'TROUSERS')+
@@ -549,14 +556,23 @@ function refresh(){
  $('studioTitle').textContent=APPEARANCE_GROUP_LABELS[activeCategory]+' / '+p.callsign;
  $('studioSubheading').textContent=readOnly?'LOCKED DURING ACTIVE OPERATION':
   'Select a 3D item, then edit materials and details';
- applyButton.disabled=readOnly||!dirty.has(selected);
- applyButton.textContent=dirty.has(selected)?'SAVE LOOK':'SAVED';
- compareButton.disabled=!dirty.has(selected);
+ applyButton.disabled=readOnly||!dirty.size||saveInFlight;
+ applyButton.textContent=saveInFlight?'SAVING…':dirty.size>1?
+  'SAVE '+dirty.size+' LOOKS':dirty.size===1?'SAVE LOOK':'SAVED';
+ modelSelector.disabled=saveInFlight;
+ for(const option of Array.from(modelSelector.options)){
+  const person=people.find(p=>p.id===option.value);
+  if(person)option.textContent=person.callsign.toUpperCase()+
+   (dirty.has(person.id)?' · UNSAVED':'');
+ }
+ compareButton.disabled=saveInFlight||!dirty.has(selected);
  compareButton.setAttribute('aria-pressed',String(comparingSaved));
  compareButton.textContent=comparingSaved?'EDITING ↔':'COMPARE';
  studioRoot.dataset.comparing=String(comparingSaved);
- modeLabel.textContent=mode==='campaign'?'CAMPAIGN · PERSISTENT':'QUICK PLAY · APPEARANCE';
- undoButton.disabled=readOnly||!(history.get(selected)?.length);
+ modeLabel.textContent=(mode==='campaign'?'CAMPAIGN · PERSISTENT':
+  'QUICK PLAY · APPEARANCE')+
+  (dirty.size?' · '+dirty.size+' UNSAVED':'');
+ undoButton.disabled=readOnly||saveInFlight||!(history.get(selected)?.length);
  renderCategories();
  thumbBrowser.setCategory(activeCategory);
  thumbBrowser.refresh(p.loadout,previewWardrobe(),p.id);
@@ -572,7 +588,8 @@ function populate(){
  modelSelector.value=selected;refresh();
 }
 function start(data:{mode:StudioMode;selected:string;members:StudioPerson[];readonly:boolean}){
- mode=data.mode;selected=data.selected;readOnly=data.readonly;comparingSaved=false;
+ mode=data.mode;selected=data.selected;readOnly=data.readonly;
+ comparingSaved=false;saveInFlight=false;
  people=data.members.map(p=>({...p,wardrobe:readWardrobe(p.wardrobe)}));
  history.clear();edits.clear();dirty.clear();
  populate();
@@ -582,34 +599,61 @@ function start(data:{mode:StudioMode;selected:string;members:StudioPerson[];read
  resize();
 }
 modelSelector.addEventListener('change',()=>{selected=modelSelector.value;refresh();});
+/** Save every operator draft as one transaction, not merely the selected
+ * character. Switching operators never loses unsaved work. */
+function pendingStudioEdits():StudioAppearanceEdit[]{
+ return people.filter(p=>dirty.has(p.id)).map(p=>({
+  id:p.id,wardrobe:readWardrobe(edits.get(p.id)??p.wardrobe)
+ }));
+}
+function acknowledgeSave(ids:readonly string[]){
+ for(const id of ids){
+  const person=people.find(p=>p.id===id);
+  if(person)person.wardrobe=readWardrobe(edits.get(id)??person.wardrobe);
+  dirty.delete(id);edits.delete(id);history.delete(id);
+ }
+ comparingSaved=false;saveInFlight=false;
+ refresh();
+ say('SAVED '+ids.length+' LOOK'+(ids.length===1?'':'S')+
+  ' · '+(mode==='campaign'?'CAMPAIGN':'QUICK PLAY')+' APPEARANCE ONLY');
+}
 function apply(){
- const p=member();if(!p||readOnly||!dirty.has(selected))return;
+ if(readOnly||saveInFlight||!dirty.size)return;
+ const entries=pendingStudioEdits();
+ if(!entries.length)return;
+ saveInFlight=true;refresh();
  if(embedded){
-  window.parent.postMessage({type:'fw-studio-commit',id:p.id,
-   wardrobe:readWardrobe(current())},location.origin);
-  say('SAVING APPEARANCE…');
+  window.parent.postMessage({type:'fw-studio-commit-batch',entries},
+   location.origin);
+  say('SAVING '+entries.length+' OPERATOR LOOK'+
+   (entries.length===1?'':'S')+'…');
   return;
  }
  try{
   if(mode==='quick'){
-   const raw=localStorage.getItem('fieldwork3d.quickplay-cosmetics.v1');
-   const saved=freshQuickPlayRoster(readRoster(raw));
-   const next=setRosterWardrobe(saved,p.id,current());
+   const saved=freshQuickPlayRoster(readRoster(
+    localStorage.getItem('fieldwork3d.quickplay-cosmetics.v1')));
+   const next=applyStudioRosterEdits(saved,entries);
+   if(!next)throw Error('Missing Quick Play operator');
    localStorage.setItem('fieldwork3d.quickplay-cosmetics.v1',
     serializeQuickPlayCosmetics(next));
   }else{
    const campaign=readCampaign(localStorage.getItem('fieldwork3d.campaign.v1'));
-   if(!campaign||campaign.activeContractId){say('CAMPAIGN APPEARANCE LOCKED');return;}
-   const updated=setCampaignWardrobe(campaign,p.id,current());
+   if(!campaign)throw Error('No saved campaign');
+   const updated=applyStudioCampaignEdits(campaign,entries);
+   if(!updated)throw Error('Campaign operator or active mission is locked');
    localStorage.setItem('fieldwork3d.campaign.v1',JSON.stringify(updated));
   }
-  p.wardrobe=readWardrobe(current());dirty.delete(p.id);history.delete(p.id);
-  say('SAVED · RETURN TO GAME');refresh();
- }catch{say('COULD NOT SAVE · STORAGE UNAVAILABLE');}
+  acknowledgeSave(entries.map(e=>e.id));
+ }catch{
+  saveInFlight=false;refresh();
+  say('SAVE REJECTED · RETAINED '+entries.length+' UNSAVED LOOKS');
+ }
 }
 applyButton.addEventListener('click',apply);
 function close(){
- if(dirty.size&&!window.confirm('Discard unsaved appearance changes?'))return;
+ if(dirty.size&&!window.confirm('Discard unsaved changes for '+
+  dirty.size+' operator'+(dirty.size===1?'':'s')+'?'))return;
  if(embedded)window.parent.postMessage({type:'fw-studio-close'},location.origin);
  else if(window.history.length>1)window.history.back();
  else location.href='./index.html';
@@ -623,6 +667,16 @@ if(embedded){
    const init=data as StudioInit;
    start({mode:init.mode,selected:init.selected,
     members:init.members,readonly:init.readonly});
+  }else if(data?.type==='fw-studio-batch-saved'){
+   const response=data as {type:string;ids?:unknown;ok?:boolean};
+   saveInFlight=false;
+   if(response.ok&&Array.isArray(response.ids)&&
+      response.ids.every(id=>typeof id==='string')){
+    acknowledgeSave(response.ids as string[]);
+   }else{
+    refresh();
+    say('SAVE REJECTED · ALL UNSAVED DRAFTS PRESERVED');
+   }
   }else if(data?.type==='fw-studio-saved'&&data.id){
    if(data.ok){
     const p=people.find(x=>x.id===data.id);
