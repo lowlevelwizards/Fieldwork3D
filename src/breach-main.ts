@@ -1245,14 +1245,12 @@ function updateContext(){
     heading.className='fw-context-heading';
     heading.setAttribute('aria-live','off');
     ui.context.append(heading);
+    // Keep the complete small command set visible in one predictable grid.
+    // An expanding MORE ACTIONS drawer changed the menu's hitbox mid-plan.
     const primary=document.createElement('div');primary.className='context-primary';
-    const more=document.createElement('details');more.className='context-more';
-    const summary=document.createElement('summary');summary.textContent='MORE ACTIONS';
-    const advanced=document.createElement('div');advanced.className='context-advanced';
-    more.append(summary,advanced);
     const secondary=document.createElement('div');secondary.className='context-state';
     const destructive=document.createElement('div');destructive.className='context-danger';
-    ui.context.append(primary,more,secondary,destructive);
+    ui.context.append(primary,secondary,destructive);
   }
   const contextHeading=ui.context.querySelector<HTMLElement>('.fw-context-heading');
   if(contextHeading){
@@ -1271,7 +1269,6 @@ function updateContext(){
   contextActionsSignature=actionSignature;
   const buckets:Record<string,HTMLElement>={
     primary:ui.context.querySelector<HTMLElement>('.context-primary')!,
-    advanced:ui.context.querySelector<HTMLElement>('.context-advanced')!,
     state:ui.context.querySelector<HTMLElement>('.context-state')!,
     destructive:ui.context.querySelector<HTMLElement>('.context-danger')!
   };
@@ -1305,13 +1302,13 @@ function updateContext(){
     button.classList.toggle('danger',choice.group==='destructive');
     // Reconcile DOM order as well as membership: a newly available
     // contextual action must never reorder the fixed command slots.
-    buckets[choice.group].append(button);
+    // 'advanced' is only a semantic group now: render those commands
+    // alongside primary orders instead of inside a height-changing drawer.
+    buckets[choice.group==='advanced'?'primary':choice.group].append(button);
   }
   for(const btn of ui.context.querySelectorAll<HTMLButtonElement>('button[data-action]')){
     if(!wanted.has(btn.dataset.action??''))btn.remove();
   }
-  ui.context.querySelector<HTMLElement>('.context-more')!.hidden=
-    !buckets.advanced.childElementCount;
   buckets.state.hidden=!buckets.state.childElementCount;
   buckets.destructive.hidden=!buckets.destructive.childElementCount;
   ui.context.classList.toggle('door-menu',!!door);
