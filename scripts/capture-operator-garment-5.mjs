@@ -25,6 +25,10 @@ try{
   await page.waitForFunction(()=>document.getElementById('studioCanvas')?.dataset.ready==='true',
    null,{timeout:25000});
   await mkdir('operator-garment-captures',{recursive:true});
+  // The garment silhouette has to be visible without an overlaid carrier
+  // or helmet. The editor starts in clothing-only preview by default.
+  if(await page.locator('#studioGearToggle').getAttribute('aria-pressed')!=='true')
+   throw Error('Garment sheet must default to clothing-only inspection');
   const cuts=['combat-shirt','acu-shirt','smock-jacket','gorka-jacket'];
   for(const cut of cuts){
    const item=page.locator('[data-appearance-item="'+cut+'"]');
