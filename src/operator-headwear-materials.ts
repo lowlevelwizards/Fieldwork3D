@@ -14,7 +14,7 @@
 import * as THREE from 'three';
 import {PIXEL_WORLD_SIZE} from './rendering/pixel-recipes.ts';
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
-import {headwearCamoPixels,HEADWEAR_CAMO_DENSITY,type HeadwearCamoId,type HeadwearCamoPlacement} from './operator-headwear-camo.ts';
+import {headwearCamoPixels,headwearCamoSize,HEADWEAR_CAMO_DENSITY,type HeadwearCamoId,type HeadwearCamoPlacement} from './operator-headwear-camo.ts';
 export type HeadwearMaterialKind='cotton'|'knit'|'composite'|'steel';
 export const HEADWEAR_DETAIL_PIXEL_WORLD_SIZE=PIXEL_WORLD_SIZE;
 export const HEADWEAR_ATLAS_PIXELS=64;
@@ -131,15 +131,17 @@ export function headwearDetailTexture(id:HeadSilhouetteId):THREE.DataTexture{
  * camouflage pixels are copied exactly, and switching to a solid restores
  * every original 1:1 material feature.
  *
- * Each 64px region samples the same authored periodic 32px master artwork.
- * Large M81/DCU fields use 1px per world unit; Tiger, UCP and MultiCam
+ * Each 64px region samples the chosen 32px or 64px periodic master artwork.
+ * Large M81/DCU fields use 1px per world unit even for 64px masters; Tiger, UCP and MultiCam
  * use 2px per world unit. Regions are contextual fabric panels, not new
  * geometry or arbitrary stickers. Pixel filtering is nearest throughout.
  */
 export function headwearCamoTexture(id:HeadSilhouetteId,camo:HeadwearCamoId,
  placement:HeadwearCamoPlacement={offsetX:0,offsetY:0}):THREE.DataTexture{
- const offsetX=((placement.offsetX%32)+32)%32,offsetY=((placement.offsetY%32)+32)%32;
- const key=id+':'+camo+':'+offsetX+':'+offsetY;
+ const tileSize=headwearCamoSize(camo);
+ const offsetX=((placement.offsetX%tileSize)+tileSize)%tileSize;
+ const offsetY=((placement.offsetY%tileSize)+tileSize)%tileSize;
+ const key=id+':'+camo+':'+tileSize+':'+offsetX+':'+offsetY;
  // Refresh the active entry so visible operator textures are not evicted on reroll.
  const existing=camoCache.get(key);
  if(existing){camoCache.delete(key);camoCache.set(key,existing);return existing;}
@@ -152,7 +154,8 @@ export function headwearCamoTexture(id:HeadSilhouetteId,camo:HeadwearCamoId,
   const artY=density===1?Math.floor(y/2):y;
   if(camo==='tiger-stripe'&&region===1)
    artX+=Math.floor(y/3); // modest diagonal direction on wrapped walls
-  const source=((((artY+offsetY)%32)*32+((artX+offsetX)%32))*4);
+  const source=((((artY+offsetY)%tileSize)*tileSize+
+   ((artX+offsetX)%tileSize))*4);
   // Camo is fabric-dyed artwork, not a grayscale construction decal.
   // The solid-only 64px structural atlas already owns seams and dark joins;
   // multiplying those over the colored print creates unintended black
