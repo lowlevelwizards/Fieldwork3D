@@ -33,23 +33,32 @@ function run(units){
   toggling(s);
   for(let tick=0;tick<1050&&s.phase==='running';tick++){
    stepSession(s,1/30);
-   if(squad.every((a,i)=>gap(a.p,destinations[i])<8))break;
+   if(squad.every((a,i)=>!a.plan.length&&
+     gap(a.p,destinations[i])<20))break;
   }
-  return {positions:squad.map((a,i)=>({
+  const minFriendlyGap=Math.min(...squad.flatMap((a,i)=>
+    squad.slice(i+1).map(b=>gap(a.p,b.p))));
+  return {minFriendlyGap,positions:squad.map((a,i)=>({
     id:a.id,remaining:gap(a.p,destinations[i]).toFixed(2),
     p:a.p,blockedTime:a.blockedTime,blocker:a.lastBlocker,
-    next:a.plan[0]?.kind,nav:a.nav.length
+    remainingOrders:a.plan.length,nav:a.nav.length
   })),phase:s.phase,leases:s.passageLeases,
   door:s.doors.map(d=>({open:d.open,angle:d.openFraction}))};
  }finally{activateSite(null);}
 }
 test('real game motor: two overlapping routes cross same hinged doorway',()=>{
  const result=run(2);
- assert.ok(result.positions.every(x=>Number(x.remaining)<8),
-   '2-person queue stalled: '+JSON.stringify(result));
+ assert.ok(result.positions.every(x=>
+   x.remainingOrders===0&&Number(x.remaining)<20),
+   '2-person queue failed to complete routes: '+JSON.stringify(result));
+ assert.ok(result.minFriendlyGap>=14,
+   '2-person queue ended overlapping: '+JSON.stringify(result));
 });
 test('real game motor: four overlapping routes cross same hinged doorway',()=>{
  const result=run(4);
- assert.ok(result.positions.every(x=>Number(x.remaining)<8),
-   '4-person queue stalled: '+JSON.stringify(result));
+ assert.ok(result.positions.every(x=>
+   x.remainingOrders===0&&Number(x.remaining)<20),
+   '4-person queue failed to complete routes: '+JSON.stringify(result));
+ assert.ok(result.minFriendlyGap>=14,
+   '4-person queue ended overlapping: '+JSON.stringify(result));
 });
