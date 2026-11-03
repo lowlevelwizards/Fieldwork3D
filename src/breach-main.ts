@@ -2312,6 +2312,16 @@ function paths(){
           point.x+11,point.y-9);
       }
     }
+    // A suppression order issued HERE belongs to the operator, not a node.
+    if(a.id===selected&&a.firePolicy==='suppress'&&a.suppressPoint){
+      draw.save();draw.strokeStyle='#e9a883';draw.lineWidth=1.8;
+      draw.setLineDash([4,4]);draw.beginPath();
+      draw.moveTo(a.p.x,a.p.y);
+      draw.lineTo(a.suppressPoint.x,a.suppressPoint.y);draw.stroke();
+      draw.setLineDash([]);draw.beginPath();
+      draw.arc(a.suppressPoint.x,a.suppressPoint.y,20,0,Math.PI*2);
+      draw.stroke();draw.restore();
+    }
   }
   const draft=draftRouteNeighbors();
   if(draft){
@@ -2504,6 +2514,14 @@ function renderProjectedPlans(){
     if(a.suppression>.53){
       draw.font='700 11px "Saira Condensed",sans-serif';draw.fillStyle='#e5bc92';
       draw.fillText('SUPPRESSED',pawn.x,pawn.y-23);
+    }
+    if(a.id===selected&&a.firePolicy==='suppress'&&a.suppressPoint){
+      const target=worldToScreen(a.suppressPoint,7);
+      draw.save();draw.strokeStyle='#e9a883';draw.lineWidth=1.8;
+      draw.setLineDash([4,4]);draw.beginPath();
+      draw.moveTo(ground.x,ground.y);draw.lineTo(target.x,target.y);
+      draw.stroke();draw.setLineDash([]);draw.beginPath();
+      draw.arc(target.x,target.y,20,0,Math.PI*2);draw.stroke();draw.restore();
     }
   }
   // Screen-space icons stay readable regardless of ortho pitch or zoom.
