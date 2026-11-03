@@ -2,8 +2,9 @@
  * An OPENING door is a pushable obstacle, not a rigid wall. A closed leaf
  * still blocks entry, but an actor already inside its capsule may escape.
  * Static walls and cover remain unconditionally solid. */
-import {passable,pointToSegment,doorLeafSegment,WALLS,segmentsCross,
+import {passable,pointToSegment,doorLeafSegment,WALLS,COVER,segmentsCross,
   OPERATOR_RADIUS,type Door,type Pt} from './breach-core.ts';
+import {isFootstepObstacle} from './breach-traversal-surfaces.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const leafGap=(p:Pt,d:Door)=>pointToSegment(p,doorLeafSegment(d));
 /** Open leaves are still solid. The door motor can swing them out of the
@@ -250,10 +251,12 @@ export function releaseStaticWallOverlap(from:Pt,goal:Pt,
      if(!passable(at,0)){valid=false;break;}
      // Check furniture at the same full operator radius.
      // A temporarily overlapping wall must never grant cover ghosting.
-     const coverBlocked=!(WALLS.every(w=>
-       overlaps.includes(w)||
-       pointToSegment(at,w)>=r-.001));
-     if(coverBlocked){valid=false;break;}
+     const wallBlocked=WALLS.some(w=>
+       !overlaps.includes(w)&&pointToSegment(at,w)<r-.001);
+     const coverBlocked=COVER.some(o=>isFootstepObstacle(o)&&
+       Math.abs(at.x-o.x)<o.w/2+OPERATOR_RADIUS&&
+       Math.abs(at.y-o.y)<o.h/2+OPERATOR_RADIUS);
+     if(wallBlocked||coverBlocked){valid=false;break;}
      for(const wall of overlaps){
        const before=pointToSegment(from,wall);
        if(pointToSegment(at,wall)<before+.02*t){valid=false;break;}
