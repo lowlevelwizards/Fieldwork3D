@@ -35,7 +35,7 @@ test('new shirt shell fully covers the core torso and includes a standing collar
  }
  const code=src('../src/operator-new-upper-garments.ts');
  assert.ok(code.includes('The standing 1/4-zip collar'));
- assert.ok(code.includes('box(torso,body,-4.18,7.08,0'));
+ assert.ok(code.includes('box(torso,body,-2.18,7.34,0'));
  assert.doesNotMatch(code,/box\(torso,body,5\.19,-\.05,0,\.24,11\.68,10\.88\)/,
   'old floating front slab must not return');
 });
