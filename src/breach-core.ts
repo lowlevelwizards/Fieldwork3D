@@ -32,7 +32,9 @@ export type Obstacle={x:number;y:number;w:number;h:number;low?:boolean;
   /** Preview-only finish overrides; never used by tactical logic. */
   artCondition?:'clean'|'used'|'neglected'|'vacant';
   artSurface?:import('./rendering/pixel-recipes.ts').PixelSurface;
-  integrity?:number;destroyed?:boolean};
+  integrity?:number;destroyed?:boolean;
+  /** Runtime topple state shared across collision, visuals and replay. */
+  toppled?:boolean;};
 export type Side='blue'|'red';
 export type Operator={id:string;name:string;side:Side;p:Pt;heading:number;
   path:Pt[];health:number;shots:number;fireCd:number;aimLock:boolean;

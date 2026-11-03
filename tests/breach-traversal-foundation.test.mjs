@@ -72,7 +72,7 @@ test('auto-shove moves only eligible light furniture using a real clear sweep',(
    {x:95,y:120},{x:99,y:120},[],[],[]),null,
    'ankle-high stepping is not a furniture shoving action');
 });
-test('surrounded or fixed clutter stays solid rather than ghosting away',()=>{
+test('surrounded loose clutter topples in place; fixed furniture stays solid',()=>{
  const barriers=[
   {a:{x:132,y:85},b:{x:132,y:155}},
   {a:{x:85,y:108},b:{x:155,y:108}},
@@ -80,8 +80,13 @@ test('surrounded or fixed clutter stays solid rather than ghosting away',()=>{
  ];
  const obstacles=[box(120,120,24,24,'chair')];
  assert.equal(autoShoveLightCover(obstacles,{x:99,y:120},{x:102,y:120},
-   barriers,[],[]),null);
+   barriers,[],[]),0);
  assert.equal(obstacles[0].x,120);
+ assert.equal(obstacles[0].toppled,true);
+ const fixed=[box(120,120,24,24,'fridge')];
+ assert.equal(autoShoveLightCover(fixed,{x:99,y:120},{x:102,y:120},
+   barriers,[],[]),null);
+ assert.equal(fixed[0].toppled,undefined);
 });
 
 test('a true impossibly narrow gap remains an obstacle, not a ghost shortcut',()=>{

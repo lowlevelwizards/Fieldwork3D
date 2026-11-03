@@ -6,6 +6,7 @@ import {propDefinition} from './worldgen/asset-catalog.ts';
 /** Glass panes are physically full height, not knee-high furniture.
  * Raised masonry sills remain low cover and still stop crouched fire. */
 export const coverHeight=(c:Obstacle)=>
+  c.toppled?7:
   c.fixture==='glass-barrier'?39:
   c.fixture==='window-sill'?14:
   (c.fixture&&propDefinition(c.fixture)?.height)||(c.low?12:27);

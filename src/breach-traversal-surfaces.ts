@@ -22,14 +22,20 @@ const VAULTABLE=new Set([
 const MANTLEABLE=new Set(['fence','low-wall','security-barrier','barricade']);
 /** Clutter small enough to move by contacting it; larger furniture and
  * fragile fixed fixtures do not become auto-pushable by having low cover. */
+const TOPPLEABLE=new Set([
+ 'chair','patio-chair','office-chair','stool','lamp',
+ 'storage-tote','tipped-trash-bin','mop-bucket'
+]);
 const SHOVEABLE=new Set([
- 'chair','patio-chair','office-chair','stool',
+ 'chair','patio-chair','office-chair','stool','lamp',
  'storage-tote','tipped-trash-bin','trash-bag','mop-bucket',
  'small-table','side-table',
 ]);
 export function traversalSurface(o:Obstacle):TraversalSurface{
  if(o.destroyed)return 'solid';
  const id=o.fixture??'';
+ // Collapsed light clutter is a low obstacle, not an impassable footprint.
+ if(o.toppled&&TOPPLEABLE.has(id))return 'step-over';
  if(STEP_OVER.has(id))return 'step-over';
  // Windows remain a gated animation/interactable, never a free shortcut.
  if(id==='glass-barrier'||id==='window-sill')return 'solid';
@@ -42,3 +48,6 @@ export const isFootstepObstacle=(o:Obstacle)=>
  traversalSurface(o)!=='step-over';
 export const canAutoShove=(o:Obstacle)=>
  traversalSurface(o)==='shove';
+export const canToppleLightCover=(o:Obstacle)=>
+ !o.toppled&&!o.destroyed&&TOPPLEABLE.has(o.fixture??'')&&
+ o.w<=42&&o.h<=42;

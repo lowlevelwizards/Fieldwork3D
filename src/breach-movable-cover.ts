@@ -5,7 +5,7 @@
  */
 import {pointToSegment,type Door,type Obstacle,type Pt,type Segment}
  from './breach-core.ts';
-import {canAutoShove} from './breach-traversal-surfaces.ts';
+import {canAutoShove,canToppleLightCover} from './breach-traversal-surfaces.ts';
 export type CoverMass='light'|'medium'|'heavy'|'fixed';
 const light=new Set(['box','chair','stool','lamp','patio-chair','small-table','side-table',
  'nightstand','storage-tote','tipped-trash-bin','trash-bag','mop-bucket']);
@@ -83,6 +83,13 @@ export function autoShoveLightCover(cover:Obstacle[],from:Pt,to:Pt,
          y:o.y+Math.sin(a)*distance};
        if(relocateCover(cover,i,destination,walls,doors,others))return i;
      }
+   }
+   // When a chair/stool/lamp has no free displacement, a body strike
+   // can still tip it onto the floor. Keep its real location and material;
+   // the toppling state (not a removed collider) makes it step-over debris.
+   if(canToppleLightCover(o)){
+     cover[i]={...o,toppled:true,low:true};
+     return i;
    }
  }
  return null;

@@ -150,6 +150,8 @@ export type TeamActor=Operator & {
   traversalPending:TraverseOpportunity|null;
   traversal:TraverseOpportunity|null;traversalElapsed:number;
   traversalElevation:number;lastTraversalAt:number;
+  /** Reverses an interrupted climb along the verified approach trajectory. */
+  traversalRetreating:boolean;
   lastBlocker:Blocker;
   /** Last executed facing command; survives across movement waypoints. */
   aimInstruction:AimInstruction|null;
@@ -258,6 +260,7 @@ const withActions=(a:Operator):TeamActor=>({
   squeeze:false,squeezeYaw:a.heading,squeezeTime:0,
   traversalPending:null,traversal:null,traversalElapsed:0,
   traversalElevation:0,lastTraversalAt:-100,
+  traversalRetreating:false,
   lastBlocker:'clear',
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
   lastHitRegion:'torso',lastHitYaw:0,lastHitSeverity:0,
@@ -1436,23 +1439,38 @@ function desiredTraverse(s:Session,a:TeamActor,goal:Pt){
 function tickTraversal(a:TeamActor,s:Session,dt:number):boolean{
  const op=a.traversal;
  if(!op)return false;
- if(a.traversalElapsed>=op.duration){
+ if(a.traversalRetreating&&a.traversalElapsed<=0){
+   // Back on verified ground: keep the original MOVE order, then replan.
+   a.traversal=null;a.traversalRetreating=false;
+   a.traversalElevation=0;a.nav=[];a.velocity=0;
+   a.lastTraversalAt=s.seconds;
+   a.retryRouteAt=s.seconds+.65;
+   a.blockedTime=0;
+   if(a.side==='blue')notify(s,a.name+' TRAVERSAL BLOCKED · REPLANNING');
+   return true;
+ }
+ if(!a.traversalRetreating&&a.traversalElapsed>=op.duration){
    // The final full-body landing was committed on the preceding tick.
    a.traversal=null;a.traversalElevation=0;a.nav=[];
+   a.traversalRetreating=false;
    a.retryRouteAt=0;a.blockedTime=0;return true;
  }
- const frame=sampleTraversal(op,Math.min(op.duration,
-   a.traversalElapsed+dt));
+ // An occupied landing or a changed door/obstacle stops the climb. After
+ // half a second without forward progress, retrace the *same continuous
+ // trajectory* instead of hanging in place or teleporting to the floor.
+ if(a.blockedTime>.48)a.traversalRetreating=true;
+ const nextElapsed=a.traversalRetreating?
+   Math.max(0,a.traversalElapsed-dt*1.15):
+   Math.min(op.duration,a.traversalElapsed+dt);
+ const frame=sampleTraversal(op,nextElapsed);
  if(!traversalStepClear(a.p,frame.p,op,traversalWorld(s,a))){
    a.velocity=0;a.blockedTime+=dt;
    a.lastBlocker='furniture';
-   // Do not advance the trajectory into changing geometry. A moving prop
-   // or closed door can clear; the same verified crossing can then resume.
    return true;
  }
  const old=clone(a.p);a.priorP=old;
- a.p=clone(frame.p);a.traversalElapsed=Math.min(op.duration,
-   a.traversalElapsed+dt);a.traversalElevation=frame.elevation;
+ a.p=clone(frame.p);a.traversalElapsed=nextElapsed;
+ a.traversalElevation=frame.elevation;
  a.velocity=d(old,a.p)/Math.max(dt,.0001);
  a.blockedTime=0;a.lastBlocker='clear';a.squeeze=false;
  // The weapon follows the actor during a vault, not a separate aim order.
@@ -1472,6 +1490,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
        d(validated.approach,a.p)<4){
       a.traversal={...validated,approach:clone(a.p)};
       a.traversalElapsed=0;a.traversalElevation=0;
+      a.traversalRetreating=false;
       a.traversalPending=null;a.nav=[];a.velocity=0;
       a.blockedTime=0;a.lastTraversalAt=s.seconds;
       return true;
@@ -1686,8 +1705,10 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       // physical cover after its swept displacement.
       s.objectRevision++;
       COVER.splice(0,COVER.length,...s.coverState);
-      hear(s,{x:s.coverState[moved].x,y:s.coverState[moved].y},
-        40,'furniture');
+      const prop=s.coverState[moved],where={x:prop.x,y:prop.y};
+      hear(s,where,prop.toppled?95:40,'furniture');
+      if(prop.toppled)battleEvent(s,'interaction',a,where,
+        a.name+' KNOCKED OVER '+(prop.fixture??'CLUTTER').toUpperCase());
       return true;
     }
   }
@@ -3370,7 +3391,8 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     if(a.traversal){
       // Motion authority may reject a tick because of an opposing actor.
       // Roll back its motor clock too; never "jump" the rejected frame.
-      a.traversalElapsed=Math.max(0,a.traversalElapsed-h);
+      a.traversalElapsed=Math.min(a.traversal.duration,Math.max(0,
+        a.traversalElapsed+(a.traversalRetreating?h*1.15:-h)));
       a.traversalElevation=sampleTraversal(a.traversal,
         a.traversalElapsed).elevation;
     }
