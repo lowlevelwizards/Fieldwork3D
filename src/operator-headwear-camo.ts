@@ -1,10 +1,12 @@
 /** Phase 3A: authored 1:1 camouflage motifs for approved Fieldwork headgear.
- * Twelve 32px seamless canonical tiles. Each polygon is hand placed, with no
+ * Canonical 32px and 64px seamless tiles with individual print scaling. Each polygon is hand placed, with no
  * RNG/noise pixels or filtering. Palette colors are art-directed adaptations
  * of reference fabric, not claims of measured military color standards.
  */
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 export const HEADWEAR_CAMO_SIZE=32;
+export const HEADWEAR_CAMO_TILE_SIZE:Readonly<Partial<Record<HeadwearCamoId,32|64>>>={'m81-woodland':64};
+export function headwearCamoSize(id:HeadwearCamoId):32|64{return HEADWEAR_CAMO_TILE_SIZE[id]??HEADWEAR_CAMO_SIZE;}
 /** Print detail is independent from the one-texel-per-unit structural stitching atlas.
  * 1x for large historic fields; 2x for directional, digital and multiscale cloth.
  * These are fabric pixels per model unit, not a global model-geometry rescale.
@@ -35,23 +37,32 @@ const p=(index:number,...coords:number[]):Motif=>[index,coords];
 export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  'm81-woodland':{
   label:'M81 WOODLAND',
-  description:'Muted temperate woodland olive and deep forest with rounded brown fields and slim dark hooks',
-  // Share the DPM green, brown and dark ink; silhouette, not saturation, defines M81.
-  colors:[[87,118,73],[118,85,60],[64,83,66],[48,55,39]],
-  targetCoverage:[.35,.23,.32,.10],
+  description:'Interlocking tan, green and brown with long dark branching strokes; extended 64px repeat',
+  colors:[[87,118,73],[118,85,60],[175,155,105],[48,55,39]],
+  targetCoverage:[.42,.23,.25,.10],
   motifs:[
-   p(1,-3,0,6,0,10,3,7,8,1,9,-3,7),
-   p(1,16,2,23,0,29,3,27,8,21,10,16,7),
-   p(1,1,16,7,13,13,17,11,23,6,26,0,23),
-   p(0,18,18,24,14,31,17,34,22,29,25,23,24,18,28),
-   p(2,6,3,12,1,16,5,13,11,9,12,5,9),
-   p(2,26,8,33,7,36,13,31,17,25,14,23,11),
-   p(2,8,23,13,20,19,23,20,29,15,34,9,32),
-   p(2,-4,28,2,25,6,30,4,35,-3,35),
-   p(3,13,3,15,3,17,7,16,10,19,13,17,15,14,12,13,8),
-   p(3,27,17,29,16,30,20,33,23,32,25,28,23),
-   p(3,4,25,6,24,8,28,7,31,4,30),
-   p(3,2,7,3,5,5,6,4,11,1,14,0,11)
+   p(1,-9,-4,8,-4,19,4,23,13,19,19,7,23,-4,18,-9,12),
+   p(1,29,-5,43,-3,53,3,63,10,69,15,63,22,53,17,44,14,34,9),
+   p(1,8,28,17,24,29,26,36,33,33,41,23,47,12,44,5,38),
+   p(1,44,38,53,33,66,35,70,47,63,57,54,61,42,56,39,48),
+   p(1,-9,51,1,48,12,53,18,61,12,71,-9,68),
+   p(1,32,21,41,17,50,20,59,27,65,30,59,36,49,32,39,35,29,28),
+   p(2,12,-8,20,-5,31,2,34,7,28,12,18,11,14,18,7,17,11,9),
+   p(2,44,11,51,8,63,13,70,22,69,28,59,25,55,30,49,24,40,22),
+   p(2,-8,21,1,18,11,22,18,26,21,33,15,36,8,32,1,34,-8,31),
+   p(2,25,40,32,35,41,39,49,45,53,53,45,56,36,51,31,57,23,53),
+   p(2,-7,43,1,39,10,44,20,49,23,56,17,61,7,58,-7,62),
+   p(2,18,58,27,54,36,59,43,65,37,70,23,70,14,65),
+   p(2,52,-5,59,-8,67,0,65,7,58,9,51,5),
+   p(3,-6,6,3,5,11,8,16,11,20,14,17,16,10,12,4,11,-6,12),
+   p(3,16,18,20,16,25,19,30,24,38,27,43,30,40,32,34,29,29,28,24,22,18,23),
+   p(3,31,-5,34,2,39,6,44,11,48,15,45,16,40,12,36,9,31,6,28,1),
+   p(3,52,23,58,20,64,25,69,29,67,33,61,29,56,29,52,33,46,35,43,39,45,34),
+   p(3,3,36,10,34,17,37,24,42,29,44,27,47,22,45,15,41,8,40,1,42),
+   p(3,38,48,41,44,46,45,51,49,56,50,60,54,58,55,52,53,46,52,41,55,37,58),
+   p(3,10,60,17,57,23,62,30,68,26,69,19,65,14,63,8,64),
+   p(3,-4,28,1,26,4,28,7,31,4,33,1,30,-5,33),
+   p(3,57,7,60,5,64,8,67,12,63,13,59,10)
   ]
  },
  'three-color-desert':{
@@ -73,7 +84,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  'tiger-stripe':{
   label:'TIGER STRIPE',
   description:'Broken dark tapered directional streaks over green, olive and tan fields',
-  colors:[[124,135,91],[77,101,70],[147,122,84],[42,55,43]],
+  colors:[[124,135,91],[77,101,70],[147,122,84],[46,54,44]],
   targetCoverage:[.32,.16,.16,.36],
     motifs:[
    // Broken tapered strokes are NOT equally spaced horizontal bands. Each
@@ -111,7 +122,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  multicam:{
   label:'MULTICAM',
   description:'Large muted fields, medium brown/green islands, dark hooks and tiny pale cream chips',
-  colors:[[171,158,117],[206,189,149],[109,126,88],[129,102,74],[67,84,64],[228,213,177],[151,142,107]],
+  colors:[[171,158,117],[206,189,149],[109,126,88],[129,102,74],[64,83,66],[228,213,177],[151,142,107]],
   targetCoverage:[.22,.23,.25,.17,.05,.04,.04],
   motifs:[
    p(1,-4,1,7,-2,13,1,10,5,4,8,-4,6),
@@ -145,7 +156,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  'flecktarn':{
   label:'FLECKTARN',
   description:'Broad woodland green and tan masses carrying dense clustered rust and ink droplets',
-  colors:[[119,134,86],[54,83,55],[161,137,91],[129,77,53],[42,48,37]],
+  colors:[[119,134,86],[54,83,55],[161,137,91],[129,77,53],[46,54,44]],
   targetCoverage:[0.144,0.244,0.248,0.177,0.188],
   motifs:[
    // Four generous underlying masses establish the pattern from a distance.
@@ -238,15 +249,18 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
    p(3,0,9,4,8,7,12,5,15,1,14),
    p(3,12,22,17,20,20,24,16,27,13,26),
    p(3,27,2,32,1,35,5,32,8,29,7),
-   // The dark outlines and pale insets form little clustered pebbles.
-   p(5,8,5,11,4,14,6,13,9,10,10,7,8),
-   p(4,9,6,12,6,12,8,9,8),
-   p(5,24,16,27,14,30,17,29,20,25,20),
-   p(4,26,16,29,17,28,19,26,19),
-   p(5,1,27,4,25,7,27,6,30,2,31),
-   p(4,2,27,5,27,5,29,2,29),
-   p(5,18,28,20,26,23,28,22,31,19,32),
-   p(4,19,28,22,28,21,30,19,30)
+   // Small broken pebble crescents: rare dark chips nested beside pale flecks.
+   p(5,7,4,9,4,10,6,9,7,8,6,7,7),p(4,8,5,9,5,9,6,8,6),
+   p(5,12,7,14,6,15,8,14,9,13,8),p(4,13,7,14,7,14,8,13,8),
+   p(5,24,13,26,12,28,14,27,16,26,15,25,16),p(4,26,14,27,14,27,15,26,15),
+   p(5,28,20,30,19,31,21,30,22,29,21),p(4,29,20,30,20,30,21,29,21),
+   p(5,1,26,3,25,5,27,4,29,3,28,2,29),p(4,3,27,4,27,4,28,3,28),
+   p(5,8,29,10,28,12,30,11,31,9,31),p(4,10,29,11,29,11,30,10,30),
+   p(5,17,26,19,25,21,27,20,29,19,28,18,29),p(4,19,27,20,27,20,28,19,28),
+   p(5,19,4,21,3,23,5,22,7,21,6),p(4,21,5,22,5,22,6,21,6),
+   p(5,2,15,4,14,6,16,5,18,4,17),p(4,4,16,5,16,5,17,4,17),
+   p(5,14,18,16,17,18,19,17,21,16,20),p(4,16,19,17,19,17,20,16,20),
+   p(5,30,30,32,29,33,31,32,33,31,32),p(4,31,31,32,31,32,32,31,32)
   ]
  },
  'woodland-marpat':{
