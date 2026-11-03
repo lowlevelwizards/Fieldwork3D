@@ -1,0 +1,83 @@
+/** Authored solid fabric and cuff colors. No runtime sampling of printed
+ * camouflage pixels: folds are chosen deliberately for each fabric family.
+ * Stored material IDs are cosmetic and never alter equipment eligibility. */
+import type {HeadwearCamoId} from './operator-headwear-camo.ts';
+import type {FabricCamoChannel} from './operator-fabric-camo-policy.ts';
+export const GARMENT_SOLID_COLORS={
+ 'olive-drab':{label:'OD Green',hex:0x646c49},
+ 'ranger-green':{label:'Ranger Green',hex:0x566a57},
+ 'forest-green':{label:'Forest Green',hex:0x43563e},
+ 'field-green':{label:'Field Green',hex:0x737b59},
+ 'sage':{label:'Sage',hex:0x87907d},
+ 'foliage':{label:'Foliage Gray',hex:0x8a9388},
+ 'khaki':{label:'Khaki',hex:0xaa9978},
+ 'sand':{label:'Sand',hex:0xc5b38d},
+ 'tan':{label:'Tan',hex:0xb59d77},
+ 'coyote':{label:'Coyote Brown',hex:0x927557},
+ 'brown':{label:'Earth Brown',hex:0x66513d},
+ 'slate':{label:'Slate',hex:0x727b7a},
+ 'charcoal':{label:'Charcoal',hex:0x383e3b},
+ 'black':{label:'Black',hex:0x292f2d},
+ 'off-white':{label:'Off-white',hex:0xd6d3bc}
+} as const;
+export type GarmentSolidId=keyof typeof GARMENT_SOLID_COLORS;
+const all:readonly GarmentSolidId[]=[
+ 'olive-drab','ranger-green','forest-green','field-green','sage',
+ 'foliage','khaki','sand','tan','coyote','brown','slate',
+ 'charcoal','black','off-white'];
+const kit:readonly GarmentSolidId[]=[
+ 'olive-drab','ranger-green','forest-green','foliage','khaki',
+ 'sand','tan','coyote','brown','slate','charcoal','black'];
+export const FABRIC_SOLID_CHOICES:Readonly<Record<FabricCamoChannel,readonly GarmentSolidId[]>>={
+ top:all,trousers:all,armor:kit,gear:kit,pack:kit
+};
+export function isGarmentSolidId(value:unknown):value is GarmentSolidId{
+ return typeof value==='string'&&Object.prototype.hasOwnProperty.call(GARMENT_SOLID_COLORS,value);
+}
+export function solidChoicesFor(channel:FabricCamoChannel):readonly GarmentSolidId[]{
+ return FABRIC_SOLID_CHOICES[channel];
+}
+/** Artist-selected functional trim tones, not the average sampled map RGB.
+ * Special cases can depart from terrain grouping where real fabric does. */
+export const CAMO_CUFF_DEFAULTS:Readonly<Record<HeadwearCamoId,GarmentSolidId>>={
+ 'm81-woodland':'olive-drab',
+ 'three-color-desert':'sand',
+ 'tiger-stripe':'olive-drab',
+ ucp:'foliage',
+ multicam:'coyote',
+ flecktarn:'field-green',
+ 'woodland-dpm':'olive-drab',
+ 'swedish-m90':'olive-drab',
+ 'six-color-desert':'tan',
+ 'woodland-marpat':'forest-green',
+ alpenflage:'field-green',
+ 'desert-marpat':'coyote',
+ 'erdl-lowland':'olive-drab',
+ 'finnish-m05':'forest-green',
+ 'polish-pantera':'olive-drab',
+ 'russian-flora':'olive-drab',
+ 'rhodesian-brushstroke':'khaki',
+ 'desert-tropentarn':'sand',
+ 'belgian-jigsaw':'field-green',
+ 'east-german-strichtarn':'field-green',
+ 'mitchell-leaf':'olive-drab',
+ 'splittertarn-31':'field-green',
+ 'australian-dpcu':'khaki',
+ 'italian-vegetato':'olive-drab',
+ 'scorpion-w2':'coyote',
+ 'russian-emr':'forest-green',
+ 'pla-xingkong':'field-green',
+ 'cadpat-tw':'forest-green',
+ 'british-mtp':'khaki',
+ 'indian-digital-2022':'khaki'
+};
+export function garmentSolidHex(id:GarmentSolidId):number{
+ return GARMENT_SOLID_COLORS[id].hex;
+}
+export function resolvedCuffSolid(options:{
+ print?:HeadwearCamoId|null;solid?:GarmentSolidId|null;
+ override?:GarmentSolidId|null;fallback?:GarmentSolidId
+}):GarmentSolidId{
+ return options.override??(options.print?CAMO_CUFF_DEFAULTS[options.print]:null)??
+  options.solid??options.fallback??'olive-drab';
+}
