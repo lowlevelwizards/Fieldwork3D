@@ -26,7 +26,7 @@ export const FIELD_TROUSER_PROFILES={
    [.05,3.34,3.40],[.18,3.48,3.54],[.265,2.14,2.18]] as readonly Ring[],
   cuffed:[[-.60,2.85,2.90],[-.24,2.98,3.06],
    [.20,3.05,3.12],[.34,3.36,3.41],[.48,3.50,3.55]] as readonly Ring[],
-  cargo:[.74,.45,3.10] as const,flap:[.20,.13,3.23] as const,
+  cargo:[1.02,.48,3.23] as const,flap:[.27,.17,3.40] as const,
   character:'Loose thigh, prominent box cargo pocket, fuller straight leg'
  },
  'acu-trousers':{
@@ -38,7 +38,7 @@ export const FIELD_TROUSER_PROFILES={
    [.05,3.06,3.12],[.16,3.19,3.25],[.275,1.98,2.08]] as readonly Ring[],
   cuffed:[[-.60,2.65,2.77],[-.25,2.83,2.90],
    [.21,2.87,2.93],[.35,3.21,3.27],[.48,3.29,3.34]] as readonly Ring[],
-  cargo:[.66,.42,2.95] as const,flap:[.18,.12,3.05] as const,
+  cargo:[.93,.46,3.10] as const,flap:[.25,.16,3.27] as const,
   character:'Cleaner tapered thigh with angled cargo flaps and calf pouch'
  },
  'gorka-trousers':{
@@ -50,7 +50,7 @@ export const FIELD_TROUSER_PROFILES={
    [.09,3.42,3.49],[.18,3.38,3.43],[.265,2.08,2.14]] as readonly Ring[],
   cuffed:[[-.60,2.90,3.01],[-.20,3.06,3.12],
    [.18,3.06,3.13],[.34,3.40,3.46],[.48,3.46,3.55]] as readonly Ring[],
-  cargo:[.77,.49,3.17] as const,flap:[.20,.13,3.28] as const,
+  cargo:[1.08,.52,3.36] as const,flap:[.28,.17,3.49] as const,
   character:'Voluminous overtrousers with reinforced knees and gaiter hems'
  }
 } as const;
@@ -150,8 +150,8 @@ export function createFieldTrouserPrototypes(legs:readonly Limb[],
     part(upper,cloth,fold.x+.13,fold.y,fold.z,
      fold.width,fold.height,fold.depth);
    }else{
-    const knee=outwardLimbPatch(thighW/2,.27,.40,4.68,.24);
-    const wearSide=outwardLimbPatch(thighW/2,-.25,.27,3.10,.19);
+    const knee=outwardLimbPatch(thighW/2,.27,.43,4.73,.29);
+    const wearSide=outwardLimbPatch(thighW/2,-.25,.29,3.22,.24);
     part(upper,wear,knee.x,knee.y,knee.z,
      knee.width,knee.height,knee.depth);
     part(upper,wear,wearSide.x,wearSide.y,wearSide.z,
@@ -168,19 +168,19 @@ export function createFieldTrouserPrototypes(legs:readonly Limb[],
     if(!classic&&!gorka){
      // ACU-family calf cargo pocket: a separate physical feature,
      // with an angled flap; older BDU trousers deliberately omit it.
-     const calf=outwardLimbPocket(shinW/2,-.10,.30,2.34,.30);
+     const calf=outwardLimbPocket(shinW/2,-.10,.36,2.56,.43);
      part(lower,cloth,calf.x,calf.y,calf.z,
       calf.width,calf.height,calf.depth);
-     part(lower,cloth,calf.x+.19,.075,0,.12,.10,2.45);
+     part(lower,cloth,calf.x+.28,.075,0,.17,.14,2.64);
     }
     if(gorka){
      // Strong reinforced outer knee and weather-tight ankle band.
-     const patch=outwardLimbPatch(shinW/2,-.30,.37,4.78,.23);
+     const patch=outwardLimbPatch(shinW/2,-.30,.39,4.82,.28);
      part(lower,wear,patch.x,patch.y,patch.z,
       patch.width,patch.height,patch.depth);
      // A single low band wraps the weather-tight gaiter; don't emit
      // offset slivers perpendicular to the leg's physical outside.
-     part(lower,wear,shinW/2+.09,.30,0,.20,.13,3.70);
+     part(lower,wear,shinW/2+.11,.30,0,.24,.16,3.85);
     }
     // The bloused outline narrows at the boot collar; the straight hem
     // stays wider and overlaps its shaft. Both have a visible textile fold.
