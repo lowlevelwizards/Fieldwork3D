@@ -67,6 +67,16 @@ export const ARMOR_FIT_TOPS=[
  'combat-shirt','bdu-shirt','acu-shirt','smock-jacket','gorka-jacket'
 ] as const;
 
+/** Single source for the authored panel depth. Front and back bags must
+ * clear by their entire thickness, not merely put an outside face beyond
+ * the garment. Adaptive model recipes import these same values.
+ */
+export const ARMOR_PANEL_DEPTHS:Readonly<Record<string,number>>={
+ 'armor-bare':0,'soft-slick':.38,'soft-paca':.38,
+ 'soft-vest':1.12,'soft-flak':1.40,
+ 'plate-slick':1.02,'plate-jpc':1.18,'plate-standard':1.45,
+ 'plate-heavy':1.77,'plate-legacy':1.70
+};
 export type ArmorFitSurfaces={
  top:string;style:string;
  front:number;back:number;side:number;
@@ -85,9 +95,11 @@ export function fittedArmorSurfaces(style:string,top:string,
  const isConcealed=style==='soft-slick'||style==='soft-paca';
  const standOff=style==='soft-vest'||style==='soft-flak'?.20:
   style==='plate-heavy'||style==='plate-legacy'?.30:.24;
- const faceClear= Math.max(chest.front,lower.front,upper.front)+
-  uniform.frontOverhang+standOff;
- const rearClear=-Math.min(chest.back,lower.back,upper.back)+standOff;
+ const thickness=ARMOR_PANEL_DEPTHS[style]??0;
+ const faceClear=Math.max(chest.front,lower.front,upper.front)+
+  uniform.frontOverhang+standOff+thickness;
+ const rearClear=-Math.min(chest.back,lower.back,upper.back)+
+  standOff+thickness;
  const front=isConcealed?baseline.front:Math.max(
   baseline.front,faceClear);
  const back=isConcealed?-baseline.front:-Math.max(
@@ -95,17 +107,18 @@ export function fittedArmorSurfaces(style:string,top:string,
  // Different side construction deliberately gets distinct clearance.
  // Slick elastic is close to the fabric; skeleton rails sit farther out;
  // standard cummerbund is broader, and assault modules project most.
- const sideClear=style==='plate-slick'?.15:
-  style==='plate-jpc'?.66:
-  style==='plate-standard'?.98:
-  style==='plate-heavy'?1.25:
-  style==='plate-legacy'?1.05:
-  style==='soft-flak'?.84:style==='soft-vest'?.52:.35;
+ const sideClear=style==='plate-slick'?.46:
+  style==='plate-jpc'?.88:
+  style==='plate-standard'?1.19:
+  style==='plate-heavy'?1.54:
+  style==='plate-legacy'?1.24:
+  style==='soft-flak'?1.02:style==='soft-vest'?.70:.44;
  const side=isConcealed?baseline.side:Math.max(
   baseline.side,Math.max(chest.side,lower.side)+sideClear);
  const shoulderY=uniform.shoulderCrown+.46+uniform.shoulderOverhang;
  return {style,top:uniform.top,front,back,side,shoulderY,
-  shoulderZ:Math.min(5.1,Math.max(3.15,uniform.outer(5.0).side-3.0)),
+  shoulderZ:(top==='smock-jacket'||top==='gorka-jacket')?
+   5.78:Math.min(5.1,Math.max(3.15,uniform.outer(5.0).side-3.0)),
   frontBagBottom:style==='plate-slick'?-3.45:-4.35,
   standOff};
 }
