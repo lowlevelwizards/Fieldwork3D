@@ -30,7 +30,7 @@ test('real motor: an operator starting embedded in an open leaf exits instead of
  try{
    assert.ok(planMove(s,actor.id,goal),'failed to author recovery route');
    toggling(s);
-   let firstStep:null|{at:{x:number;y:number};clearance:number}=null;
+   let firstStep=null;
    let foundFree=false;
    for(let i=0;i<950;i++){
      stepSession(s,1/30);
