@@ -1747,7 +1747,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     };
   });
   if(passageWait(traffic.find(unit=>unit.id===a.id)!,s.doors,
-     traffic,s.passageLeases,s.seconds)){
+     traffic,s.passageLeases,s.seconds,move)){
     a.velocity=0;a.blockedTime=0;
     return true;
   }
