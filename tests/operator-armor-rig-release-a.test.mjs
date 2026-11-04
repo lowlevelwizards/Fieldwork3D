@@ -9,6 +9,7 @@ import {ARMOR_PROFILES,RIG_FRONT_PROFILES}
  from '../src/operator-armor-rig-silhouettes.ts';
 import {armorAttachmentFrame,armorMountedMagazineSocket}
  from '../src/operator-armor-attachment-frame.ts';
+import {rigContactFrame} from '../src/operator-rig-contact-frame.ts';
 
 const kit=(armor='armor-carrier',rig='rig-light')=>{
  let k=initialEquipmentLoadout();
@@ -79,9 +80,9 @@ test('wardrobe uses exactly one armored shell and one rig, no legacy double mode
  assert.equal(Object.values(v.wardrobeGear.armor).filter(g=>g.visible).length,1);
  assert.equal(Object.values(v.wardrobeGear.rig).filter(g=>g.visible).length,1);
  assert.equal(v.wardrobeGear.rig['split-front'].position.x,
-  armorAttachmentFrame('plate-legacy').rigShiftX);
+  rigContactFrame('plate-legacy','bdu-shirt','split-front').rigShiftX);
  assert.ok(Math.abs(v.magazines.rig[0].position.x-
-  armorMountedMagazineSocket('split-front',0,'plate-legacy').x)<1e-6,
+  armorMountedMagazineSocket('split-front',0,'plate-legacy',1,'bdu-shirt').x)<1e-6,
   'issued magazine and split-front rig share the same exterior attachment');
  pose(r,kit('armor-soft','rig-light'),'soft-vest','micro-rig');
  assert.equal(v.wardrobeGear.armor['soft-vest'].visible,true);
