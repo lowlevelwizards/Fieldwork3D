@@ -6,7 +6,7 @@ import {team,type Session} from './breach-game.ts';
 import {intelFogLevel} from './breach-intel.ts';
 import {exteriorBriefedAt,accessibleExteriorWall} from './breach-site-footprint.ts';
 import {visionPolygon} from './breach-vision-polygon.ts';
-import {MICRO_KEYS,MICRO_COLS} from './breach-fog-memory.ts';
+import {microKeyAt} from './breach-fog-memory.ts';
 export const FOG_WIDTH=320,FOG_HEIGHT=370;
 /** Display-only supersampling. Cap expanded sites to protect mobile VRAM. */
 export const MAX_FOG_TEXTURE_EDGE=1280;
@@ -131,8 +131,7 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
   let microCount=0;
   for(let row=Math.floor(bounds.minY/10);row<Math.ceil(bounds.maxY/10);row++)
     for(let col=Math.floor(bounds.minX/10);col<Math.ceil(bounds.maxX/10);col++)
-      if(s.seenGround.has(MICRO_KEYS[row*MICRO_COLS+col]??
-        'micro:'+col+','+row)){
+      if(s.seenGround.has(microKeyAt(col,row))){
         ctx.rect(col*10,row*10,10,10);microCount++;
       }
   if(microCount)ctx.fill();
