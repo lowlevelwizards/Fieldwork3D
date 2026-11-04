@@ -16,8 +16,8 @@ test('RIG-R6 front shoulder joins angle inward and finish on visible top surface
    for(const rig of rigs){
     const f=rigContactFrame(armor,top,rig);
     const real=garmentContactAnchor(top,5.2).topY;
-    assert.ok(Math.abs(f.shoulderY-real-.16)<.001,
-     top+'/'+rig+' supported crown, no empty clearance');
+    assert.ok(f.shoulderY>=real+.159&&f.shoulderY<=real+1.8,
+     top+'/'+rig+' supported crown and shoulder armor');
     for(const sign of [-1,1]){
      const front=[7.95,1.0,sign*3.75];
      const back=[f.back.x-f.rigShiftX,-1.0,sign*3.75];
@@ -29,8 +29,8 @@ test('RIG-R6 front shoulder joins angle inward and finish on visible top surface
       rig+' top front moves back instead of floating straight up');
      assert.ok(p[2][1]>p[1][1]&&p[3][1]>p[2][1],
       rig+' short upward diagonal shoulder joining pieces');
-     assert.ok(p[4][1]<=real+.17&&p[4][1]>=real-.04,
-      rig+' upper bridge actually rides near garment top');
+     assert.ok(p[4][1]<=real+1.8&&p[4][1]>=real-.04,
+      rig+' upper bridge follows real uniform or armored top');
      for(const point of p)for(const number of point)
       assert.ok(Number.isFinite(number));
     }

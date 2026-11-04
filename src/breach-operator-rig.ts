@@ -39,6 +39,8 @@ import {headwearCamoTexture,headwearDetailTexture} from './operator-headwear-mat
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import {garmentBoxUV,wardrobeFabricCamoTexture} from './operator-fabric-camo-materials.ts';
 import {resolveAutomaticGearColors} from './operator-gear-color-policy.ts';
+import {rigSignature,validRigSolid,validArmorSolid}
+ from './operator-rig-authenticity-policy.ts';
 import {garmentColorValues,gorkaSpecialtyTexture} from './operator-upper-colorways.ts';
 import {garmentSolidHex,isGarmentSolidId,resolvedCuffSolid,resolvedCombatKnitSolid}
  from './operator-garment-color-policy.ts';
@@ -558,12 +560,27 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const automaticGear=resolveAutomaticGearColors({
    print:outfitTopPrint,solid:p.wardrobe?.fabricSolids?.top
   });
+  const signature=rigSignature(clothing.rigStyle);
   for(const [channel,material] of fabricChannels){
    const authored=channel==='head'?null:
     p.wardrobe?.fabricCamo?.[channel as FabricCamoChannel];
-   const print=authored&&channel!=='head'&&
+   const approvedManual=authored&&channel!=='head'&&
     fabricCamoCompatible(authored,channel as FabricCamoChannel,clothing)?
      authored:null;
+   const storedSolid=channel==='head'?null:
+    p.wardrobe?.fabricSolids?.[channel as FabricCamoChannel];
+   const validManualSolid=isGarmentSolidId(storedSolid)&&(
+    channel==='gear'?(clothing.rigStyle==='no-rig'||
+     validRigSolid(clothing.rigStyle,storedSolid)):
+    channel==='armor'?validArmorSolid(clothing.armorStyle,storedSolid):true
+   )?storedSolid:null;
+   // Authentic rig signature is a fallback, NOT an override of a
+   // deliberate manually selected fabric, color or pattern.
+   const defaultRigPrint=channel==='gear'&&p.wardrobe&&
+    !approvedManual&&!validManualSolid?signature.print:null;
+   const print=approvedManual??(defaultRigPrint&&
+    fabricCamoCompatible(defaultRigPrint,'gear',clothing)?
+     defaultRigPrint:null);
    const map=print?
     wardrobeFabricCamoTexture(print,channel as FabricCamoChannel,
      headwearCamoPlacement(r.camoIdentity,'garment:'+channel,print,
@@ -572,14 +589,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
    if(material.map!==map){material.map=map;material.needsUpdate=true;}
    if(print)r.colors.set(material,new THREE.Color(0xffffff));
    else if(channel!=='head'){
-    const solid=p.wardrobe?.fabricSolids?.[channel as FabricCamoChannel];
-    if(isGarmentSolidId(solid))
-     r.colors.set(material,new THREE.Color(garmentSolidHex(solid)));
+    if(validManualSolid)
+     r.colors.set(material,new THREE.Color(garmentSolidHex(validManualSolid)));
     else if(p.wardrobe&&(
       channel==='armor'||channel==='gear'||channel==='pack')){
-     // No manual swatch: use terrain-coherent neutral nylon colors.
-     // Do not touch user-selected print artwork or another channel's tint.
-     const id=automaticGear[channel];
+     // Each named rig gets one recognizably authentic reference fabric.
+     // Armor and pack remain auto-matched to the uniform family.
+     const id=channel==='gear'?signature.solid:automaticGear[channel];
      r.colors.set(material,new THREE.Color(garmentSolidHex(id)));
     }
    }

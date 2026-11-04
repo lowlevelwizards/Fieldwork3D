@@ -12,6 +12,8 @@ import {fittedArmorSurfaces,armorContactSurface}
 import {armorSideLayout} from './operator-armor-side-layout.ts';
 import {garmentContactAnchor} from './operator-garment-contact-surface.ts';
 import {rigGarmentFrontClearance} from './operator-rig-garment-relief.ts';
+import {PLACARD_RECEIVERS,CONVERTIBLE_RIGS}
+ from './operator-rig-authenticity-policy.ts';
 
 export type RigMountMode='external-harness'|'carrier-placard';
 export type RigContactFrame={
@@ -25,9 +27,7 @@ export type RigContactFrame={
  * A generic flak, tactical vest, slick carrier or legacy shell does NOT
  * magically turn into a MOLLE placard mounting platform.
  */
-export const RIG_MODULAR_ARMORS=new Set([
- 'plate-jpc','plate-standard','plate-heavy'
-]);
+export const RIG_MODULAR_ARMORS=PLACARD_RECEIVERS;
 export const RIG_PANEL_INNER_FACES:Readonly<Record<string,number>>={
  'chest-placard':8.14-.70*.5,
  'micro-rig':7.90-.76*.5,
@@ -69,7 +69,7 @@ export function rigContactFrame(armor:string,top:string,rig:string):RigContactFr
  const panelInnerX=RIG_PANEL_INNER_FACES[rig]??7.80;
  return {
   armor,top:fit.top,rig,
-  mode:rig==='chest-placard'&&RIG_MODULAR_ARMORS.has(armor)?
+  mode:CONVERTIBLE_RIGS.has(rig)&&RIG_MODULAR_ARMORS.has(armor)?
    'carrier-placard':'external-harness',
   front:{x:outerFront,y},back:{x:outerBack,y},
   // Side-wrap thickness is ~.58: its CENTER must sit beyond the fabric,
@@ -79,7 +79,10 @@ export function rigContactFrame(armor:string,top:string,rig:string):RigContactFr
   // RIG-R6: shoulder webbing rests on the actually rendered torso TOP,
   // not on a generous imaginary collar/hood clearance above it.
   // A little penetration into the fabric/collar is intentional.
-  shoulderY:garmentContactAnchor(top,5.2).topY+.16,
+  shoulderY:exposed&&spec?
+   Math.max(garmentContactAnchor(top,5.2).topY+.16,
+    fit.shoulderY+spec.strapThickness*.52+.08):
+   garmentContactAnchor(top,5.2).topY+.16,
   // Pelvis-mounted webbing retains a stationary chest suspension origin.
   rigShiftX:rig==='field-webbing'?0:outerFront+clearance-panelInnerX,
   standOff:clearance,panelInnerX,sideContact:side

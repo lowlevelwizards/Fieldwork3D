@@ -15,6 +15,7 @@ export const GARMENT_SOLID_COLORS={
  'tan':{label:'Tan',hex:0xb59d77},
  'coyote':{label:'Coyote Brown',hex:0x927557},
  'brown':{label:'Earth Brown',hex:0x66513d},
+ 'nutria-brown':{label:'Nutria Brown',hex:0x937b58},
  'slate':{label:'Slate',hex:0x727b7a},
  'charcoal':{label:'Charcoal',hex:0x383e3b},
  'black':{label:'Black',hex:0x292f2d},
@@ -24,10 +25,10 @@ export type GarmentSolidId=keyof typeof GARMENT_SOLID_COLORS;
 const all:readonly GarmentSolidId[]=[
  'olive-drab','ranger-green','forest-green','field-green','sage',
  'foliage','khaki','sand','tan','coyote','brown','slate',
- 'charcoal','black','off-white'];
+ 'charcoal','black','off-white','nutria-brown'];
 const kit:readonly GarmentSolidId[]=[
  'olive-drab','ranger-green','forest-green','foliage','khaki',
- 'sand','tan','coyote','brown','slate','charcoal','black'];
+ 'sand','tan','coyote','brown','nutria-brown','slate','charcoal','black'];
 export const FABRIC_SOLID_CHOICES:Readonly<Record<FabricCamoChannel,readonly GarmentSolidId[]>>={
  top:all,trousers:all,armor:kit,gear:kit,pack:kit
 };
@@ -108,7 +109,7 @@ export const SOLID_COMBAT_KNIT_DEFAULTS:Readonly<Record<GarmentSolidId,GarmentSo
  'olive-drab':'olive-drab','ranger-green':'ranger-green',
  'forest-green':'ranger-green','field-green':'olive-drab',
  sage:'foliage',foliage:'foliage',khaki:'khaki',sand:'sand',tan:'khaki',
- coyote:'coyote',brown:'coyote',slate:'slate',
+ coyote:'coyote',brown:'coyote','nutria-brown':'khaki',slate:'slate',
  charcoal:'charcoal',black:'black','off-white':'off-white'
 };
 export function resolvedCombatKnitSolid(options:{

@@ -388,7 +388,10 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
    if(mag.parent!==waist)waist.add(mag);
    const tier=Math.floor(i/2),sign=(i%2===0?-1:1)*order;
    if(i===6){
-    mag.position.set(4.64,.38,0);mag.rotation.y=0;
+    // A seventh carried magazine shares a REAL large utility pouch,
+    // not an unsupported imaginary front-of-belt magazine.
+    mag.position.set(1.78,.42,order*-7.20);
+    mag.rotation.y=order*-Math.PI/2;
    }else{
     mag.position.set(tier===0?2.30:tier===1?-.65:-3.60,
      .10,sign*7.20);

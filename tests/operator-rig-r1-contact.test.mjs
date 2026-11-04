@@ -36,7 +36,7 @@ test('RIG-A micro and placard inner faces mount to the real selected underlayer'
      rig+'/'+armor+'/'+top+' actual rig inner face must land on exterior');
     assert.ok(f.sideRight.z>0&&f.shoulderRight.z>0);
     assert.ok(f.back.x<f.front.x);
-    assert.equal(f.mode,rig==='chest-placard'&&
+    assert.equal(f.mode,['micro-rig','chest-placard'].includes(rig)&&
      ['plate-jpc','plate-standard','plate-heavy'].includes(armor)?
      'carrier-placard':'external-harness');
    }
