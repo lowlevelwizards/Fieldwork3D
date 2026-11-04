@@ -10,8 +10,9 @@ import {createD2Balaclava} from './operator-d2-fabric-visuals.ts';
 import {createD2FabricWrap} from './operator-d2-fabric-wraps.ts';
 import {createD2Glasses} from './operator-d2-eyewear-visuals.ts';
 import {createD2Goggles} from './operator-d2-goggle-visuals.ts';
-import {D2_FACE_SOLID_COLORS,D2_FRAME_COLORS,D2_LENS_MATERIALS,
- resolveD2HeadAssembly,type D2FaceSolid,type D2AccessoryOptions} from './operator-head-accessory-catalog.ts';
+import {createD2Mask} from './operator-d2-mask-visuals.ts';
+import {D2_FACE_SOLID_COLORS,D2_FRAME_COLORS,D2_LENS_MATERIALS,D2_MASK_COLORS,
+ resolveD2HeadAssembly,type D2FaceSolid,type D2AccessoryOptions,type D2MaskSolid} from './operator-head-accessory-catalog.ts';
 import {createHeadwearDetailMaterial} from './operator-headwear-materials.ts';
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import type {WardrobeSlot} from './operator-wardrobe-data.ts';
@@ -24,6 +25,7 @@ export type WardrobeHeadLayers={
  eyewearFrame:THREE.MeshStandardMaterial;
  eyewearLens:THREE.MeshStandardMaterial;
  eyewearStrap:THREE.MeshStandardMaterial;
+ maskRubber:THREE.MeshStandardMaterial;
  twoHoleMouthCover?:THREE.Group;
 };
 const cube=(g:THREE.Group,m:THREE.Material,
@@ -49,6 +51,17 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   roughness:.20,metalness:.02,side:THREE.DoubleSide});
  const eyewearStrap=new THREE.MeshStandardMaterial({color:0x323936,
   roughness:.90,flatShading:true});
+ const maskRubber=new THREE.MeshStandardMaterial({color:0x23282a,
+  roughness:.93,flatShading:true});
+ const maskHardware=new THREE.MeshStandardMaterial({color:0x242c2b,
+  roughness:.74,flatShading:true});
+ const maskFilters=new THREE.MeshStandardMaterial({color:0x52574e,
+  roughness:.84,flatShading:true});
+ const maskLens=new THREE.MeshStandardMaterial({color:0x344247,
+  transparent:true,opacity:.88,depthWrite:false,roughness:.16,
+  side:THREE.DoubleSide});
+ const maskMaterials={rubber:maskRubber,hardware:maskHardware,
+  filters:maskFilters,lens:maskLens};
  // Each approved silhouette keeps its geometry, but now owns a neutral
  // recolorable material. Material detail never produces coplanar geometry.
  const headwearMaterials:Record<string,THREE.MeshStandardMaterial>={};
@@ -110,8 +123,9 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   g(facewear,id,true).add(createD2FabricWrap(id,faceFabric));
  }
  // The retired scarf ID is migrated in readWardrobe; never show a duplicate.
- const halfMask=g(facewear,'half-mask');
- cube(halfMask,vest,4.55,1.55,0,1.0,2.3,6.5);
+ // D2-C1: replace the old flat lower-face placeholder with two real shells.
+ for(const id of ['half-mask','respirator-half'] as const)
+  g(facewear,id,true).add(createD2Mask(id,maskMaterials));
  const gasMask=g(facewear,'gas-mask');
  cube(gasMask,vest,4.55,2.2,0,1.15,4.5,7.6);
  cube(gasMask,dark,5.35,1.45,0,1.9,2.05,2.5);
@@ -144,14 +158,16 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   for(const model of Object.values(set))consolidateVisualGroup(model);
  return {headwear,facewear,eyewear,headset,headwearMaterials,
   faceFabric,faceFabricDefaultHex,eyewearFrame,eyewearLens,
-  eyewearStrap,twoHoleMouthCover};
+  eyewearStrap,maskRubber,twoHoleMouthCover};
 }
 export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  headwear:string,facewear:string,eyewear:string,headset:string,
- d2FaceMode?:string,faceSolid?:D2FaceSolid,d2Eye?:D2AccessoryOptions){
+ d2FaceMode?:string,faceSolid?:D2FaceSolid,d2Eye?:D2AccessoryOptions,
+ maskColor?:D2MaskSolid){
  // Update the already allocated material; do not recreate meshes or geometry.
  layers.faceFabric.color.setHex(faceSolid?
   D2_FACE_SOLID_COLORS[faceSolid].hex:layers.faceFabricDefaultHex);
+ layers.maskRubber.color.setHex(D2_MASK_COLORS[maskColor??'black'].hex);
  const frame=D2_FRAME_COLORS[d2Eye?.eyeFrame??'black'];
  const tint=D2_LENS_MATERIALS[d2Eye?.eyeTint??'clear'];
  layers.eyewearFrame.color.setHex(frame.hex);
@@ -175,6 +191,17 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
   const wanted=d2Eye?.eyeMode??'rectangular';
   for(const shape of standard.children)
    shape.visible=shape.userData.d2EyeVariant===wanted;
+ }
+ // Variant meshes stay allocated and mutually exclusive while the mask changes.
+ for(const id of ['half-mask','respirator-half'] as const){
+  const model=layers.facewear[id]?.children.find(x=>x.userData.modelAxes);
+  if(!model)continue;
+  const defaultMode=id==='half-mask'?'solid':'twin-filter';
+  const valid=id==='half-mask'?['solid','mesh']:['twin-filter','compact-filter'];
+  const mode=facewear===id&&d2FaceMode&&valid.includes(d2FaceMode)?
+   d2FaceMode:defaultMode;
+  for(const state of model.children)
+   state.visible=state.userData.d2MaskMode===mode;
  }
  for(const id of ['goggles-low','goggles-field','goggles-retro'] as const){
   const model=layers.eyewear[id]?.children.find(x=>x.userData.modelAxes);

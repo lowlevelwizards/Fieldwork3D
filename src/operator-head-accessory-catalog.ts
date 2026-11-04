@@ -33,6 +33,17 @@ export type D2EyeMode=typeof D2_EYEWEAR[number]['modes'][number];
 export const D2_FACE_SOLIDS=[
  'black','charcoal','olive','foliage','coyote','brown','off-white','winter-white'
 ] as const;
+export const D2_MASK_SOLIDS=['black','charcoal','olive','foliage','coyote'] as const;
+export type D2MaskSolid=typeof D2_MASK_SOLIDS[number];
+export const D2_MASK_COLORS:Record<D2MaskSolid,{label:string;hex:number}>={
+ black:{label:'Black rubber',hex:0x23282a},
+ charcoal:{label:'Charcoal rubber',hex:0x3c4140},
+ olive:{label:'Olive rubber',hex:0x454d3e},
+ foliage:{label:'Foliage rubber',hex:0x58645b},
+ coyote:{label:'Coyote shell',hex:0x776b58}
+};
+export const isD2MaskSolid=(v:unknown):v is D2MaskSolid=>
+ typeof v==='string'&&(D2_MASK_SOLIDS as readonly string[]).includes(v);
 export const D2_FRAME_SOLIDS=['black','gray','olive','tan','silver'] as const;
 export const D2_LENS_TINTS=['clear','smoke','dark-smoke','amber','yellow','bronze','green','mirrored'] as const;
 export const D2_GOGGLE_POSITIONS=['eyes','raised','neck'] as const;

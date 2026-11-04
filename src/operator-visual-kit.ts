@@ -286,7 +286,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  const looks=resolvedWardrobe(wardrobe,slots?{version:1,slots:s}:undefined);
  // Single source of truth: the actual equipped head item resolves its
  // visible model. Never draw a legacy generic shell under headwear.
- const effectiveFaceMode=effectiveD2FabricMode(looks.facewear,wardrobe?.d2FaceMode,looks.headwear);
+ const requestedMode=wardrobe?.d2Accessories?.faceMode??wardrobe?.d2FaceMode;
+ const effectiveFaceMode=effectiveD2FabricMode(looks.facewear,requestedMode,looks.headwear);
  v.helmet.visible=false;
  v.cap.visible=false;
  v.hair.visible=looks.headwear==='bare'&&
@@ -296,7 +297,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  // balaclavas suppress it to avoid clipping without changing headgear fit.
  updateWardrobeHeadLayers(v.wardrobeHead,
   looks.headwear,looks.facewear,looks.eyewear,looks.headset,
-  effectiveFaceMode,wardrobe?.d2FaceSolid,wardrobe?.d2Accessories);
+  effectiveFaceMode,wardrobe?.d2FaceSolid,wardrobe?.d2Accessories,
+  wardrobe?.d2MaskColor);
  // Rig pose color ledger owns final headwear tint (and reversible injury
  // desaturation). Setting it here was overwritten later in poseOperator.
 

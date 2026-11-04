@@ -14,8 +14,8 @@ import {isGarmentSolidId,FABRIC_SOLID_CHOICES,type GarmentSolidId}
 import {initialWardrobeAccessories,readWardrobeAccessories,
  type WardrobeAccessoryConfiguration} from './operator-wardrobe-accessories.ts';
 import {isHeadwearSolidColorId,type HeadwearSolidColorId} from './operator-headwear-colors.ts';
-import {isD2FaceSolid,migrateD2Eyewear,readD2AccessoryOptions,
- type D2FaceSolid,type D2AccessoryOptions} from './operator-head-accessory-catalog.ts';
+import {isD2FaceSolid,isD2MaskSolid,migrateD2Eyewear,readD2AccessoryOptions,
+ type D2FaceSolid,type D2MaskSolid,type D2AccessoryOptions} from './operator-head-accessory-catalog.ts';
 import {isHeadwearCamoId,type HeadwearCamoId,nextHeadwearCamoRoll} from './operator-headwear-camo.ts';
 import {FABRIC_CAMO_CHANNELS,fabricCamoCompatible,type FabricCamoChannel,type CamoOutfit}
  from './operator-fabric-camo-policy.ts';
@@ -49,7 +49,8 @@ add('facewear','face',[
  ['balaclava-three','Three-hole balaclava'],
  ['balaclava-open','Open-face balaclava'],['gaiter','Neck gaiter'],
  ['shemagh','Shemagh / field scarf'],['bandana','Bandana'],
- ['half-mask','Half mask'],
+ ['half-mask','Tactical half-mask'],
+ ['respirator-half','Half-face respirator'],
  ['gas-mask','Protective gas mask']
 ]);
 add('eyewear','eyewear',[
@@ -157,6 +158,7 @@ export type WardrobeOptions={
  d2FaceMode?:'three-hole'|'two-hole'|'lowered'|'mouth'|'nose'|
   'draped'|'face-wrap'|'head-wrap'|'raised';
  d2FaceSolid?:D2FaceSolid;
+ d2MaskColor?:D2MaskSolid;
  /** Eyewear frame, lens and subtype stay independent of the physical model. */
  d2Accessories?:D2AccessoryOptions;
  headwearColor?:HeadwearSolidColorId;headwearCamo?:HeadwearCamoId;
@@ -208,6 +210,7 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
      'draped','face-wrap','head-wrap','raised'].includes(v.d2FaceMode??''))
   result.d2FaceMode=v.d2FaceMode;
  if(isD2FaceSolid(v.d2FaceSolid))result.d2FaceSolid=v.d2FaceSolid;
+ if(isD2MaskSolid(v.d2MaskColor))result.d2MaskColor=v.d2MaskColor;
  if(v.styles&&typeof v.styles==='object'&&!Array.isArray(v.styles)){
   for(const slot of WARDROBE_SLOTS){
    const id=v.styles[slot];
