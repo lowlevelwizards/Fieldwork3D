@@ -31,6 +31,7 @@ import {segmentHitsBox} from './breach-ray.ts';
 import {coverImpactFraction,aimHeight} from './breach-cover-height.ts';
 import {MICRO_KEYS,MICRO_COLS} from './breach-fog-memory.ts';
 import {assessFireLane,type FireBlock} from './breach-fire-safety.ts';
+import {selectFireableContact} from './breach-target-selection.ts';
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,kickDoor,
   initialOpeningYieldCandidate,pressDoorOnBodyAttempt} from './breach-door.ts';
@@ -3232,7 +3233,14 @@ function fire(s:Session,a:TeamActor,dt:number){
   const visible=enemiesOf.filter(e=>inSight(a,e,s));
   // Legacy FOCUS saves use ordinary acquisition rather than an
   // inaccessible exclusive lock after FOCUS is removed from the interface.
-  const target=visible.sort((x,y)=>d(a.p,x.p)-d(a.p,y.p))[0];
+  const target=selectFireableContact(a.p,visible,a.targetId,candidate=>{
+    const friends=s.operators.filter(other=>other!==a&&other.health>0&&
+      other.side===a.side).map(other=>other.p);
+    const lane=assessFireLane(a.p,a.posture==='crouch'?18:26,
+      candidate.p,aimHeight(candidate.posture==='crouch'),
+      COVER,WALLS,s.doors,friends);
+    return lane.blocker==='clear';
+  });
   if(!target){
     a.targetId=null;a.aim=Math.max(0,a.aim-dt*.6);
     a.weaponYaw=approachAngle(a.weaponYaw,a.heading,dt*profile.turnSpeed*mods.turn);
@@ -3305,7 +3313,9 @@ function fire(s:Session,a:TeamActor,dt:number){
   const shotClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
     weaponYaw:proposedYaw,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,aim:a.aim,posture:a.posture,
     velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors);
-  if(shotClearance.blocked)return;
+  if(shotClearance.blocked){
+    a.lastFireBlock=shotClearance.blocker;return;
+  }
   const muzzle=shotClearance.muzzle;
   const yaw=muzzle.yaw; // fire exactly along the physically cleared barrel
   const muzzlePoint={x:muzzle.x,y:muzzle.z};
@@ -3315,7 +3325,9 @@ function fire(s:Session,a:TeamActor,dt:number){
   const shotLane=assessFireLane(muzzlePoint,muzzle.y,
     shotTarget,aimHeight(target.posture==='crouch'),
     COVER,WALLS,s.doors,friends);
-  if(shotLane.blocker==='friendly')return;
+  if(shotLane.blocker==='friendly'){
+    a.lastFireBlock='friendly';return;
+  }
   const muzzleReach=strikeSurface(a.p,muzzlePoint,s,
     muzzle.y,muzzle.y);
   if(d(a.p,muzzleReach.end)+.7<d(a.p,muzzlePoint)){
