@@ -4,6 +4,7 @@
  */
 import * as THREE from 'three';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
+import {garmentContactAnchor} from './operator-garment-contact-surface.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {fittedShoulderBridge,fittedFlatSurfaceBand,fittedArmorBag,fittedSideWrap} from './operator-armor-shapes.ts';
 import {rigVisualBudget} from './operator-rig-visual-standards.ts';
@@ -102,6 +103,34 @@ export type FittedRigFrame={
  shoulderRight:{z:number};shoulderY:number;rigShiftX:number;
  sideContact?:number;mode?:'carrier-placard'|'external-harness';
 };
+/** The front harness rises up the bib, then turns diagonally over the
+ * shoulder before running across the shirt crown. A previous nearly
+ * vertical front-to-crown step left an open air gap at the shoulder.
+ * This path shares the REAL garment contact frame and deliberately
+ * intersects the cloth a little; all segments are contiguous.
+ */
+export function rigShoulderRoute(top:string,frame:FittedRigFrame,
+ front:readonly [number,number,number],
+ back:readonly [number,number,number],sign:number):
+ readonly (readonly [number,number,number])[]{
+ const sy=frame.shoulderY-.10;
+ const sh=Math.max(3.35,Math.min(5.15,frame.shoulderRight.z));
+ const crownZ=sign*sh;
+ const rearX=frame.back.x-frame.rigShiftX;
+ const realFront=garmentContactAnchor(top,4.7).front+.10-frame.rigShiftX;
+ const entryX=Math.min(front[0]-.45,realFront);
+ const diagonalZ=front[2]*.60+crownZ*.40;
+ return [
+  front,
+  [front[0]-.18,sy-1.68,front[2]],
+  [front[0]-.68,sy-.90,diagonalZ],
+  [entryX,sy-.16,crownZ],
+  [entryX-.35,sy,crownZ],
+  [rearX+.48,sy,crownZ],
+  [rearX,sy-.40,crownZ],
+  back
+ ];
+}
 /** One topology per family: suspension geometry has to explain the load,
  * including in the unarmored rear view. All endpoints use the fitted
  * exterior of the currently equipped garment or armor.
@@ -149,15 +178,7 @@ export function updateFittedRigHarness(
  const across=(x:number,y:number,halfZ:number,width=.75,depth=.38)=>
   line([[x,y,-halfZ],[x,y,halfZ]],width,depth);
  const shoulder=(sign:number,front:Pt,back:Pt,width:number)=>{
-  // Front, crown and back are nearly orthogonal runs; only the
-  // short entry/exit corners are diagonal, so nothing knifes inward.
-  const crownZ=sign*sh;
-  const route:readonly Pt[]=[front,
-   [front[0],sy-.55,crownZ],
-   [front[0],sy,crownZ],
-   [bx,sy,crownZ],
-   [bx,sy-.55,crownZ],
-   back];
+  const route=rigShoulderRoute(top,frame,front,back,sign);
   fittedShoulderBridge(harness,material,route,
     Math.max(width,budget.shoulder),.68,1);
  };

@@ -4,8 +4,9 @@ import {rigContactFrame,RIG_PANEL_INNER_FACES}
  from '../src/operator-rig-contact-frame.ts';
 import {rigGarmentFrontClearance,RIG_FRONT_SPANS}
  from '../src/operator-rig-garment-relief.ts';
-import {ARMOR_FIT_TOPS,uniformFitEnvelope}
- from '../src/operator-uniform-fit-envelope.ts';
+import {ARMOR_FIT_TOPS} from '../src/operator-uniform-fit-envelope.ts';
+import {garmentContactAnchor}
+ from '../src/operator-garment-contact-surface.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
 import {initialWardrobe} from '../src/operator-wardrobe-data.ts';
 import {initialEquipmentLoadout,setEquipmentChoice}
@@ -30,9 +31,9 @@ test('R4-A: all exterior harnesses clear garment pockets, shoulders and sides',(
   for(const rig of RIGS){
    for(const armor of ['armor-bare','soft-slick','plate-jpc','plate-heavy']){
     const f=rigContactFrame(armor,top,rig);
-    const jacket=uniformFitEnvelope(top);
-    assert.ok(f.shoulderY>=jacket.shoulderCrown+.39,
-     rig+'/'+top+'/'+armor+' shoulder cap');
+    const crown=garmentContactAnchor(top,5.2).topY;
+    assert.ok(f.shoulderY>=crown+.10&&f.shoulderY<=crown+.25,
+     rig+'/'+top+'/'+armor+' shoulder rests on actual cloth');
     assert.ok(f.sideRight.z-f.sideContact>=.49,
      rig+'/'+top+'/'+armor+' whole flank strap thickness');
     if(armor==='armor-bare'||armor==='soft-slick')

@@ -10,7 +10,7 @@ import {ARMOR_PROPORTIONS} from './operator-armor-proportions.ts';
 import {fittedArmorSurfaces,armorContactSurface}
  from './operator-uniform-fit-envelope.ts';
 import {armorSideLayout} from './operator-armor-side-layout.ts';
-import {uniformFitEnvelope} from './operator-uniform-fit-envelope.ts';
+import {garmentContactAnchor} from './operator-garment-contact-surface.ts';
 import {rigGarmentFrontClearance} from './operator-rig-garment-relief.ts';
 
 export type RigMountMode='external-harness'|'carrier-placard';
@@ -76,10 +76,10 @@ export function rigContactFrame(armor:string,top:string,rig:string):RigContactFr
   // not bury half its depth in the torso at oblique angles.
   sideRight:{z:side+.50},
   shoulderRight:{z:fit.shoulderZ},
-  // Clear real garment shoulder caps (especially BDU/ACU), without
-  // raising the entire torso rig to the height of a neck/hood guard.
-  shoulderY:Math.max(fit.shoulderY+.12,
-   uniformFitEnvelope(top).shoulderCrown+.40),
+  // RIG-R6: shoulder webbing rests on the actually rendered torso TOP,
+  // not on a generous imaginary collar/hood clearance above it.
+  // A little penetration into the fabric/collar is intentional.
+  shoulderY:garmentContactAnchor(top,5.2).topY+.16,
   // Pelvis-mounted webbing retains a stationary chest suspension origin.
   rigShiftX:rig==='field-webbing'?0:outerFront+clearance-panelInnerX,
   standOff:clearance,panelInnerX,sideContact:side
