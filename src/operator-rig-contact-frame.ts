@@ -10,6 +10,8 @@ import {ARMOR_PROPORTIONS} from './operator-armor-proportions.ts';
 import {fittedArmorSurfaces,armorContactSurface}
  from './operator-uniform-fit-envelope.ts';
 import {armorSideLayout} from './operator-armor-side-layout.ts';
+import {uniformFitEnvelope} from './operator-uniform-fit-envelope.ts';
+import {rigGarmentFrontClearance} from './operator-rig-garment-relief.ts';
 
 export type RigMountMode='external-harness'|'carrier-placard';
 export type RigContactFrame={
@@ -55,7 +57,10 @@ export function rigContactFrame(armor:string,top:string,rig:string):RigContactFr
  const exposed=armor!=='armor-bare'&&armor!=='soft-slick'&&
   armor!=='soft-paca'&&!!spec&&
   y>spec.bottom+.4&&y<spec.top-.4;
- const outerFront=exposed?fit.front:cloth.front;
+ // Unarmored rigs must clear sewn-on front pockets that sit ABOVE the
+ // garment shell; covered pockets compress under genuine external armor.
+ const outerFront=exposed?fit.front:
+  rigGarmentFrontClearance(top,rig,cloth.front);
  const outerBack=exposed?fit.back:cloth.back;
  const side=exposed&&spec?armorSideLayout(fit,spec).centerZ+
   spec.sideThickness*.5+(armor==='plate-heavy'?.63:.08):
@@ -67,9 +72,14 @@ export function rigContactFrame(armor:string,top:string,rig:string):RigContactFr
   mode:rig==='chest-placard'&&RIG_MODULAR_ARMORS.has(armor)?
    'carrier-placard':'external-harness',
   front:{x:outerFront,y},back:{x:outerBack,y},
-  sideRight:{z:side+.14},
+  // Side-wrap thickness is ~.58: its CENTER must sit beyond the fabric,
+  // not bury half its depth in the torso at oblique angles.
+  sideRight:{z:side+.50},
   shoulderRight:{z:fit.shoulderZ},
-  shoulderY:fit.shoulderY+.12,
+  // Clear real garment shoulder caps (especially BDU/ACU), without
+  // raising the entire torso rig to the height of a neck/hood guard.
+  shoulderY:Math.max(fit.shoulderY+.12,
+   uniformFitEnvelope(top).shoulderCrown+.40),
   // Pelvis-mounted webbing retains a stationary chest suspension origin.
   rigShiftX:rig==='field-webbing'?0:outerFront+clearance-panelInnerX,
   standOff:clearance,panelInnerX,sideContact:side
