@@ -381,6 +381,10 @@ jobs:
             tests/worldgen-encounter-routines.test.mjs \
             tests/worldgen-encounter-activities.test.mjs \
             tests/breach-encounter-readiness.test.mjs
+      - name: D2-F fabric fitting — true openings, wearing modes, preview parity
+        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/d2-fabric-fit-v2-') || startsWith(github.head_ref, 'release/d2-fabric-fit-')) }}
+        run: |
+          node --experimental-strip-types --test tests/operator-d2-fabric-preview-parity-v2.test.mjs tests/operator-d2-balaclava-stage-a1.test.mjs tests/operator-d2-wraps-stage-a2.test.mjs tests/operator-d2-fabric-integration-stage-a3.test.mjs tests/operator-studio-camera-focus-stage-f1.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}
