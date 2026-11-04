@@ -15,6 +15,7 @@ import {initialWardrobe,resolvedWardrobe,
  type WardrobeOptions,type WardrobeItem} from './operator-wardrobe-data.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {studioUsesVisibleFace} from './operator-studio-preview-policy.ts';
+import {selectWardrobeItem} from './operator-wardrobe-unified.ts';
 
 export const APPEARANCE_GROUP_LABELS:Readonly<Record<WardrobeSlot,string>>={
  headwear:'HEAD',facewear:'FACE',eyewear:'EYES',headset:'COMMS',

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {initialWardrobe,setWardrobeStyle}
  from '../src/operator-wardrobe-data.ts';
 import {bareLabEquipment} from '../src/operator-lab-baseline.ts';
-import {appearanceThumbnailContext,appearanceThumbnailKey}
+import {appearanceThumbnailContext,appearanceThumbnailKey,stableThumbnailJSON}
  from '../src/operator-appearance-thumbnail-context.ts';
 const kit=bareLabEquipment();
 const wardrobe=initialWardrobe();
@@ -41,4 +41,12 @@ test('non-Studio thumbnails use stable neutral rig independent of editor context
   setWardrobeStyle(wardrobe,'facewear','shemagh'),'facewear','gaiter',false);
  assert.equal(appearanceThumbnailKey(a,'facewear','gaiter','rook',false),
   appearanceThumbnailKey(b,'facewear','gaiter','rook',false));
+});
+
+test('equivalent wardrobe data serializes identically regardless of object key order',()=>{
+ const a={styles:{headwear:'bare',facewear:'gaiter'},
+  mounts:{magazineOrder:'left-right',utility:'belt'}};
+ const b={mounts:{utility:'belt',magazineOrder:'left-right'},
+  styles:{facewear:'gaiter',headwear:'bare'}};
+ assert.equal(stableThumbnailJSON(a),stableThumbnailJSON(b));
 });

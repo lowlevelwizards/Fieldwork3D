@@ -42,6 +42,15 @@ export function appearanceThumbnailContext(
  }
  return {kit:nextKit,wardrobe:nextWardrobe};
 }
+/** Key order is an implementation detail of save/choice construction and
+ * must not invalidate semantically identical looks. Sort keys recursively. */
+export function stableThumbnailJSON(value:unknown):string{
+ return JSON.stringify(value,(_key,item)=>{
+  if(item===null||typeof item!=='object'||Array.isArray(item))return item;
+  const record=item as Record<string,unknown>;
+  return Object.fromEntries(Object.keys(record).sort().map(k=>[k,record[k]]));
+ });
+}
 /** A content key rather than an editing-session key: cache entries remain
  * reusable when switching back to the same look or between item cards.
  * Context contains exactly what the operator thumbnail renderer receives.
@@ -53,7 +62,7 @@ export function appearanceThumbnailKey(
  return [
   liveContext?'studio':'lab',slot,id,
   liveContext?previewIdentity:'rook',
-  JSON.stringify(context.kit.slots),
-  JSON.stringify(context.wardrobe)
+  stableThumbnailJSON(context.kit.slots),
+  stableThumbnailJSON(context.wardrobe)
  ].join(':');
 }
