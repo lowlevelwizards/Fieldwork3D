@@ -14,6 +14,7 @@ type Model=Record<string,THREE.Group>;
 export type WardrobeHeadLayers={
  headwear:Model;facewear:Model;eyewear:Model;headset:Model;
  headwearMaterials:Record<string,THREE.MeshStandardMaterial>;
+ twoHoleMouthCover?:THREE.Group;
 };
 const cube=(g:THREE.Group,m:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number)=>{
@@ -74,9 +75,13 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  helmet('skate-helmet',9.65,2,false);
  helmet('bump-helmet',9.1,2,true);
  // D2-A1: fitted canonical -Z fabric shells with real skin-revealing apertures.
+ let twoHoleMouthCover:THREE.Group|undefined;
  for(const id of ['balaclava-one','balaclava-three','balaclava-open'] as const){
   const model=g(facewear,id,true);
-  model.add(createD2Balaclava(id,cloth));
+  const fabricModel=createD2Balaclava(id,cloth);
+  model.add(fabricModel);
+  if(id==='balaclava-three')
+   twoHoleMouthCover=fabricModel.getObjectByName('d2-two-hole-mouth-cover') as THREE.Group;
  }
  const neck=(id:string,high:number)=>{
   const model=g(facewear,id);
@@ -123,10 +128,11 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  // Consolidate only static meshes; hidden families still incur no draw calls.
  for(const set of [headwear,facewear,eyewear,headset])
   for(const model of Object.values(set))consolidateVisualGroup(model);
- return {headwear,facewear,eyewear,headset,headwearMaterials};
+ return {headwear,facewear,eyewear,headset,headwearMaterials,twoHoleMouthCover};
 }
 export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
- headwear:string,facewear:string,eyewear:string,headset:string){
+ headwear:string,facewear:string,eyewear:string,headset:string,
+ d2FaceMode?:'three-hole'|'two-hole'){
  const choices:{slot:WardrobeSlot;map:Model;id:string}[]=[
   {slot:'headwear',map:layers.headwear,id:headwear},
   {slot:'facewear',map:layers.facewear,id:facewear},
@@ -135,4 +141,7 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  ];
  for(const {map,id} of choices)
   for(const [style,model] of Object.entries(map))model.visible=style===id;
+ // A persistent option of the same balaclava, never a separate wardrobe card.
+ if(layers.twoHoleMouthCover)
+  layers.twoHoleMouthCover.visible=facewear==='balaclava-three'&&d2FaceMode==='two-hole';
 }

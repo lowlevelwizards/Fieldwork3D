@@ -146,6 +146,8 @@ export type WardrobeOptions={
  version:1;styles:Partial<Record<WardrobeSlot,string>>;
  /** Optional explicit identity; missing values retain the historical seeded look. */
  skinTone?:SkinToneId;hairStyle?:HairStyleId;hairTone?:HairToneId;
+ /** D2 balaclava topology variant: mouth shown (three-hole) or covered (two-hole). */
+ d2FaceMode?:'three-hole'|'two-hole';
  headwearColor?:HeadwearSolidColorId;headwearCamo?:HeadwearCamoId;
  headwearCamoRoll?:number;
  /** Approved original prints on verified textile channels. */
@@ -191,6 +193,8 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(isSkinToneId(v.skinTone))result.skinTone=v.skinTone;
  if(isHairStyleId(v.hairStyle))result.hairStyle=v.hairStyle;
  if(isHairToneId(v.hairTone))result.hairTone=v.hairTone;
+ if(v.d2FaceMode==='three-hole'||v.d2FaceMode==='two-hole')
+  result.d2FaceMode=v.d2FaceMode;
  if(v.styles&&typeof v.styles==='object'&&!Array.isArray(v.styles)){
   for(const slot of WARDROBE_SLOTS){
    const id=v.styles[slot];

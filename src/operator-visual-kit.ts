@@ -292,7 +292,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  // Hair sits on the scalp only when uncovered; helmets, caps and full
  // balaclavas suppress it to avoid clipping without changing headgear fit.
  updateWardrobeHeadLayers(v.wardrobeHead,
-  looks.headwear,looks.facewear,looks.eyewear,looks.headset);
+  looks.headwear,looks.facewear,looks.eyewear,looks.headset,wardrobe?.d2FaceMode);
  // Rig pose color ledger owns final headwear tint (and reversible injury
  // desaturation). Setting it here was overwritten later in poseOperator.
 

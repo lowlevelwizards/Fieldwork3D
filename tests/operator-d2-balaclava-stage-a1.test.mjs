@@ -2,12 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createD2Balaclava} from '../src/operator-d2-fabric-visuals.ts';
-import {wardrobeItem} from '../src/operator-wardrobe-data.ts';
+import {wardrobeItem,readWardrobe} from '../src/operator-wardrobe-data.ts';
 const cloth=new THREE.MeshStandardMaterial({color:0x343f3a});
 function frontHit(g,x,y){
  let hit=false;
  g.traverse(o=>{
   if(!o.isMesh||!o.userData.d2FrontPanel||!o.visible)return;
+  // Respect hidden group parents, including the unselected two-hole mouth panel.
+  let parent=o.parent;
+  while(parent&&parent!==g){if(!parent.visible)return;parent=parent.parent;}
   const geo=o.geometry;
   if(!geo.boundingBox)geo.computeBoundingBox();
   const min=geo.boundingBox.min,max=geo.boundingBox.max;
@@ -42,4 +45,11 @@ test('two-hole balaclava is an option, not a separate Studio model',()=>{
  const cover=three.getObjectByName('d2-two-hole-mouth-cover');
  assert.ok(cover);
  assert.equal(cover.visible,false);
+});
+
+test('two-hole configuration survives v1 appearance persistence',()=>{
+ const saved=readWardrobe({version:1,d2FaceMode:'two-hole',
+  styles:{facewear:'balaclava-three'}});
+ assert.equal(saved.d2FaceMode,'two-hole');
+ assert.equal(readWardrobe({...saved,d2FaceMode:'broken'}).d2FaceMode,undefined);
 });

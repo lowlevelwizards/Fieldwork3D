@@ -331,6 +331,13 @@ function renderMaterials(){
    id=>HAIR_TONES[id as keyof typeof HAIR_TONES],
    w.hairTone??seededHairTone(p.appearanceSeed),
    id=>changeWardrobe({...current(),hairTone:id as keyof typeof HAIR_TONES}));
+  if(item==='balaclava-three'){
+   const mouth=row('MOUTH OPENING',
+    'Two-eye version is a wearing option, not a second mask model.');
+   addSelect(mouth,[['three-hole','Three openings'],['two-hole','Eyes only']] as const,
+    w.d2FaceMode??'three-hole',
+    value=>changeWardrobe({...current(),d2FaceMode:value as 'three-hole'|'two-hole'}));
+  }
  }
  if(activeCategory==='armorStyle'||activeCategory==='rigStyle'){
   const category=activeCategory==='armorStyle'?'ARMOR SHELL':'LOAD-BEARING RIG';
