@@ -9,6 +9,7 @@ import {createArmorSilhouettes,createChestRigSilhouettes,
  updateAdaptiveArmorFit,updateFittedRigHarness}
  from './operator-armor-rig-silhouettes.ts';
 import {armorAttachmentFrame} from './operator-armor-attachment-frame.ts';
+import {rigContactFrame} from './operator-rig-contact-frame.ts';
 type StyleGroups=Record<string,THREE.Group>;
 export type WardrobeGearLayers={
  armor:StyleGroups;rig:StyleGroups;belt:StyleGroups;pack:StyleGroups;
@@ -91,7 +92,8 @@ export function updateWardrobeGearLayers(v:WardrobeGearLayers,
  // Changes to the selected garment rebuild the connectors once, not per pose.
  updateAdaptiveArmorFit(v.armor,armor,top);
  // The rig follows exactly the same fitted exterior as the plate bag.
- const exterior=armorAttachmentFrame(armor,top);
+ const exterior=(rig==='micro-rig'||rig==='chest-placard')?
+  rigContactFrame(armor,top,rig):armorAttachmentFrame(armor,top);
  for(const group of Object.values(v.rig)){
   group.position.x=exterior.rigShiftX;
   group.position.y=0;
@@ -105,5 +107,6 @@ export function updateWardrobeGearLayers(v:WardrobeGearLayers,
  const placard=v.rig['chest-placard'];
  if(placard)for(const child of placard.children)
   if(child.name==='standalone-harness')
-   child.visible=['armor-bare','soft-slick','soft-paca'].includes(armor);
+   child.visible=rig==='chest-placard'&&
+    (!('mode' in exterior)||exterior.mode!=='carrier-placard');
 }
