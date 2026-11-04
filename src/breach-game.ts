@@ -536,9 +536,15 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
   const stroke=points.length>60?[...points.slice(0,59),points.at(-1)!]:points;
   for(let i=0;i<stroke.length;i++){
     const point=stroke[i],last=i===stroke.length-1;
-    if(d(from,point)<(last?3:20)||
-      !intelPassable(point,s.intel,SQUEEZE_RADIUS)||
-      !legalMoveRoute(s,from,point).length)continue;
+    // Intermediate touch samples may be noisy, but the point where the
+    // finger LIFTS is the actual player decision. Never quietly commit a
+    // shorter, different plan when the requested endpoint is unwalkable.
+    if(d(from,point)<(last?3:20))continue;
+    if(!intelPassable(point,s.intel,SQUEEZE_RADIUS)||
+       !legalMoveRoute(s,from,point).length){
+      if(last)return false;
+      continue;
+    }
     proposed.push({id:s.nextId+proposed.length,kind:'move',p:clone(point),
       ...(strafe?{moveMode:'strafe' as const,facing}:{})});
     from=point;

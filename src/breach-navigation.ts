@@ -38,14 +38,14 @@ export function sweptBodyClear(from:Pt,to:Pt,doors:Door[],
   return true;
 }
 
-/** Slowly free a body if a previously moving leaf left it intersecting
- * the panel. Search only short, physically swept movements *away* from the
- * overlap. No teleportation, new wall penetration, or opposing-actor push.
- * Normal navigation remains responsible for continuing the original order.
+/** Slowly free a body if a hinged leaf left it intersecting the
+ * panel, including after it has CLOSED. Search only short, physically swept
+ * movements *away* from the overlap. No teleportation, new wall
+ * penetration, or opposing-actor push. Authored orders remain intact.
  */
 export function escapeOpenDoorOverlap(from:Pt,goal:Pt,doors:Door[],
   maxStep=1.5):Pt|null{
-  const trapped=doors.filter(door=>door.open&&
+  const trapped=doors.filter(door=>
     door.kind!=='sliding'&&door.kind!=='shutter'&&
     leafGap(from,door)<OPERATOR_RADIUS+1-.01);
   if(!trapped.length)return null;
@@ -220,8 +220,14 @@ export function glideAlongStaticWall(from:Pt,intended:Pt,
      y:from.y+ty*glide+outwardY*correction
    };
    if(!sweptBodyClear(from,candidate,doors))continue;
-   const movement=Math.hypot(candidate.x-from.x,candidate.y-from.y);
-   const score=movement+Math.abs(glide)*.25-correction*.08;
+   // The chosen tangent must still make meaningful progress in the
+   // direction of the CURRENT navigation step. At a corner, a long but
+   // nearly perpendicular slide can otherwise appear as successful
+   // movement forever and suppress route recovery.
+   const progress=((candidate.x-from.x)*dx+
+     (candidate.y-from.y)*dy)/step;
+   if(progress<Math.max(.04,step*.18))continue;
+   const score=progress+Math.abs(glide)*.15-correction*.08;
    if(score>bestMovement){bestMovement=score;best=candidate;}
  }
  return best;
