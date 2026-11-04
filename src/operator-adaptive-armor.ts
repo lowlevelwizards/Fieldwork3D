@@ -15,7 +15,8 @@ import {fittedArmorBag,fittedShoulderBridge,fittedSideWrap,fittedArmorCollar}
  from './operator-armor-shapes.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {armorSideLayout} from './operator-armor-side-layout.ts';
-import {armorStrapLanding} from './operator-armor-straps.ts';
+import {armorStrapLanding,JPC_BRANCH_HALF_SPREAD,JPC_BRANCH_WIDTH}
+ from './operator-armor-straps.ts';
 import {uniformFitEnvelope,armorContactSurface,fittedArmorSurfaces,ARMOR_PANEL_DEPTHS,
  type ArmorFitSurfaces} from './operator-uniform-fit-envelope.ts';
 
@@ -112,18 +113,20 @@ function shoulders(g:THREE.Group,m:THREE.Material,
  const land=armorStrapLanding(fit,spec);
  for(const side of [-1,1]){
   if(spec.family==='skeleton'){
-   // One recognizable triangular JPC opening with two *complete*
-   // front landings in the plate-bag polygon, not dangling tab ends.
-   for(const d of [-.63,.63]){
+   // Two strong, broad hypalon-style branches create an unmistakable
+   // triangular opening, rather than two overlapping generic straps.
+   // Both feet are constrained by armorStrapLanding to the actual plate.
+   for(const d of [-JPC_BRANCH_HALF_SPREAD,JPC_BRANCH_HALF_SPREAD]){
     fittedShoulderBridge(g,m,[
      [land.frontX,land.frontY,land.frontZ+d],
      [shoulder.front+.14,land.shoulderY-.36,
-      land.shoulderZ+d*.33],
-     [1.78,land.shoulderY+.01,land.shoulderZ]
-    ],.96,spec.strapThickness,side);
+      land.shoulderZ+d*.66],
+     [2.50,land.shoulderY+.01,land.shoulderZ+d*.34],
+     [1.35,land.shoulderY+.01,land.shoulderZ]
+    ],JPC_BRANCH_WIDTH,spec.strapThickness,side);
    }
    fittedShoulderBridge(g,m,[
-    [1.78,land.shoulderY+.01,land.shoulderZ],
+    [1.35,land.shoulderY+.01,land.shoulderZ],
     [-1.75,land.shoulderY+.01,land.shoulderZ],
     [shoulder.back-.16,land.shoulderY-.28,land.shoulderZ],
     [land.rearX,land.rearY,land.rearZ]

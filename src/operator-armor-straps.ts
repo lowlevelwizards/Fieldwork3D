@@ -5,6 +5,12 @@
  */
 import type {ArmorProportion} from './operator-armor-proportions.ts';
 import type {ArmorFitSurfaces} from './operator-uniform-fit-envelope.ts';
+/** JPC's two broad shoulder limbs deliberately leave a legible opening.
+ * Shared with the actual landing solver so the outside branch cannot
+ * detach beyond the chamfered front plate.
+ */
+export const JPC_BRANCH_HALF_SPREAD=.85;
+export const JPC_BRANCH_WIDTH=.82;
 
 export function plateHalfWidthAt(spec:ArmorProportion,y:number,rear=false){
  const width=rear?spec.rearWidth:spec.width;
@@ -32,8 +38,8 @@ export function armorStrapLanding(fit:ArmorFitSurfaces,
  spec:ArmorProportion):ArmorStrapLanding{
  const frontY=spec.top-spec.strapDrop;
  const rearY=spec.top-.2-spec.strapDrop;
- const branch=spec.family==='skeleton'?.63:0;
- const branchWidth=spec.family==='skeleton'?.96:spec.shoulderWidth;
+ const branch=spec.family==='skeleton'?JPC_BRANCH_HALF_SPREAD:0;
+ const branchWidth=spec.family==='skeleton'?JPC_BRANCH_WIDTH:spec.shoulderWidth;
  const maxFront=plateHalfWidthAt(spec,frontY)-branchWidth*.5-branch-.22;
  const maxRear=plateHalfWidthAt(spec,rearY,true)-spec.shoulderWidth*.5-.20;
  const frontZ=Math.max(1.8,Math.min(3.15,maxFront));
