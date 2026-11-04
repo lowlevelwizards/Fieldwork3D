@@ -15,7 +15,7 @@ import {initialWardrobeAccessories,readWardrobeAccessories,
  type WardrobeAccessoryConfiguration} from './operator-wardrobe-accessories.ts';
 import {isHeadwearSolidColorId,type HeadwearSolidColorId} from './operator-headwear-colors.ts';
 import {isD2FaceSolid,isD2MaskSolid,migrateD2Eyewear,readD2AccessoryOptions,
- type D2FaceSolid,type D2MaskSolid,type D2AccessoryOptions} from './operator-head-accessory-catalog.ts';
+ isFullFaceMask,type D2FaceSolid,type D2MaskSolid,type D2AccessoryOptions} from './operator-head-accessory-catalog.ts';
 import {isHeadwearCamoId,type HeadwearCamoId,nextHeadwearCamoRoll} from './operator-headwear-camo.ts';
 import {FABRIC_CAMO_CHANNELS,fabricCamoCompatible,type FabricCamoChannel,type CamoOutfit}
  from './operator-fabric-camo-policy.ts';
@@ -51,6 +51,7 @@ add('facewear','face',[
  ['shemagh','Shemagh / field scarf'],['bandana','Bandana'],
  ['half-mask','Tactical half-mask'],
  ['respirator-half','Half-face respirator'],
+ ['gas-gp5','Hood gas mask'],['gas-m17','Cheek-filter gas mask'],
  ['gas-mask','Protective gas mask']
 ]);
 add('eyewear','eyewear',[
@@ -373,7 +374,7 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
  }
  // Face/helmet assembly constraints: one eyewear layer, one face cover and
  // only mounted hearing protection on a shell that can actually mount it.
- if(desired.facewear==='gas-mask'){
+ if(desired.facewear==='gas-mask'||isFullFaceMask(desired.facewear)){
   desired.eyewear='eyes-none';
   if(desired.headset==='helmet-ears')desired.headset='comms-none';
  }
