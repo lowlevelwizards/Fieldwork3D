@@ -18,6 +18,8 @@ import {circulationFor,circulationScore,loopChance,type CirculationStyle} from '
 import {type Site,type Room,type BuildingArchetype,type SiteScale,seeded} from '../breach-site.ts';
 import {type Pt,type Door,type Segment} from '../breach-core.ts';
 import {ordinaryDoorOpeningWidth} from '../breach-door-proportions.ts';
+import {chooseMissionObjective} from './mission-objective-placement.ts';
+import type {OperationKind} from '../breach-operations.ts';
 type Cell={col:number;row:number;role:string;room:Room};
 type Edge={a:number;b:number;wall:Segment;length:number;
   orientation:'horizontal'|'vertical';score:number;free:boolean;selected:boolean};
@@ -85,7 +87,7 @@ function cutPaired(wall:Segment,id:string,walls:Segment[],doors:Door[]):boolean{
  return true;
 }
 export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
- scale:SiteScale='expanded',subtype=''):Site{
+ scale:SiteScale='expanded',subtype='',mission?:OperationKind):Site{
  const baseline=architecturalBlueprint(kind,seed);
  const selected:Blueprint=kind==='apartment'?apartmentUnitBlueprint(seed,scale):
    scale==='small'||scale==='large'?sizedBlueprint(kind,seed,scale,baseline):baseline;
@@ -222,9 +224,16 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  const spawn=[point(frontX-18,frontY+45),point(frontX+18,frontY+45),
   point(frontX-18,frontY+74),point(frontX+18,frontY+74)];
  const habitable=cells.filter(c=>c.room.kind==='room');
- const far=habitable.filter(c=>!publicRoles.has(c.role))
-   .sort((a,b)=>center(a.room).y-center(b.room).y);
- const target=far[0]??habitable[0],objective=center(target.room);
+ // Legacy selection always chose the northernmost non-public room. Seeded,
+ // mission-specific scoring creates different approaches and routes without
+ // manufacturing impossible geometry or late-arriving objective markers.
+ const operation=mission??
+   (['clear','intel','rescue','hold','capture'] as const)[(seed>>>0)%5];
+ const selectedObjective=chooseMissionObjective(
+   habitable.map(c=>c.room),entrance,seed,operation);
+ if(!selectedObjective)throw Error('No habitable objective room');
+ const target=habitable.find(c=>c.room.id===selectedObjective.roomId)!;
+ const objective=center(target.room);
  const candidates=habitable.filter(c=>c!==target&&
    Math.hypot(center(c.room).x-entrance.x,center(c.room).y-entrance.y)>100);
  const enemies:Pt[]=[];
