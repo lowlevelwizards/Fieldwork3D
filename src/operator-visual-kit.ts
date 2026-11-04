@@ -11,6 +11,7 @@ import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {fitRigCoveredPockets} from './operator-rig-pocket-fit.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
+import {effectiveD2FabricMode} from './operator-head-accessory-catalog.ts';
 import {createFieldBlousePrototypes,updateFieldBlousePrototypes,
  type FieldBlousePrototypes} from './operator-field-blouse-prototypes.ts';
 import {createFieldTrouserPrototypes,updateFieldTrouserPrototypes,
@@ -285,14 +286,17 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  const looks=resolvedWardrobe(wardrobe,slots?{version:1,slots:s}:undefined);
  // Single source of truth: the actual equipped head item resolves its
  // visible model. Never draw a legacy generic shell under headwear.
+ const effectiveFaceMode=effectiveD2FabricMode(looks.facewear,wardrobe?.d2FaceMode,looks.headwear);
  v.helmet.visible=false;
  v.cap.visible=false;
  v.hair.visible=looks.headwear==='bare'&&
-  !['balaclava-one','balaclava-three'].includes(looks.facewear);
+  !['balaclava-one','balaclava-three','balaclava-open'].includes(looks.facewear)&&
+  !(looks.facewear==='shemagh'&&effectiveFaceMode==='head-wrap');
  // Hair sits on the scalp only when uncovered; helmets, caps and full
  // balaclavas suppress it to avoid clipping without changing headgear fit.
  updateWardrobeHeadLayers(v.wardrobeHead,
-  looks.headwear,looks.facewear,looks.eyewear,looks.headset);
+  looks.headwear,looks.facewear,looks.eyewear,looks.headset,
+  effectiveFaceMode,wardrobe?.d2FaceSolid);
  // Rig pose color ledger owns final headwear tint (and reversible injury
  // desaturation). Setting it here was overwritten later in poseOperator.
 
