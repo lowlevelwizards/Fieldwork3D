@@ -57,8 +57,9 @@ add('eyewear','eyewear',[
  ['glasses-aviator','Aviator sunglasses'],
  ['glasses-wrap','Wraparound tactical glasses'],
  ['glasses-shield','Ballistic eyeshield'],
- // Existing goggle SKUs remain until D2-B2 replaces them with one model per frame.
- ['goggles-down','Goggles over eyes'],['goggles-up','Goggles raised']
+ ['goggles-low','Low-profile tactical goggles'],
+ ['goggles-field','Bulky field goggles'],
+ ['goggles-retro','Vintage round goggles']
 ]);
 add('headset','headset',[
  ['comms-none','None'],['earpiece','Single earpiece'],
@@ -214,7 +215,8 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
    const upgraded=id==='soft-paca'?'soft-slick':
     id==='belt-harness'?'field-webbing':
     slot==='facewear'&&id==='scarf'?'shemagh':
-    slot==='eyewear'&&['clear-glasses','sunglasses','safety-glasses'].includes(id??'')?
+    slot==='eyewear'&&['clear-glasses','sunglasses','safety-glasses',
+     'goggles-down','goggles-up'].includes(id??'')?
      migrateD2Eyewear(id).style:id;
    if(typeof upgraded==='string'&&wardrobeItem(slot,upgraded))
     result.styles[slot]=upgraded;
@@ -227,6 +229,9 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(oldEye&&['clear-glasses','sunglasses','safety-glasses'].includes(oldEye)&&
     !d2Options.eyeTint)
   d2Options.eyeTint=migrateD2Eyewear(oldEye).eyeTint;
+ if(oldEye&&['goggles-up','goggles-down'].includes(oldEye)&&
+    !d2Options.eyePosition)
+  d2Options.eyePosition=migrateD2Eyewear(oldEye).eyePosition;
  if(Object.keys(d2Options).length)result.d2Accessories=d2Options;
  if(v.fabricCamo&&typeof v.fabricCamo==='object'&&!Array.isArray(v.fabricCamo)){
   for(const channel of FABRIC_CAMO_CHANNELS){

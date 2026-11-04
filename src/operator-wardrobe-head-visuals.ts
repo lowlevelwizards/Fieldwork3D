@@ -9,8 +9,9 @@ import {createHeadwearSilhouette} from './operator-headwear-silhouettes.ts';
 import {createD2Balaclava} from './operator-d2-fabric-visuals.ts';
 import {createD2FabricWrap} from './operator-d2-fabric-wraps.ts';
 import {createD2Glasses} from './operator-d2-eyewear-visuals.ts';
+import {createD2Goggles} from './operator-d2-goggle-visuals.ts';
 import {D2_FACE_SOLID_COLORS,D2_FRAME_COLORS,D2_LENS_MATERIALS,
- type D2FaceSolid,type D2AccessoryOptions} from './operator-head-accessory-catalog.ts';
+ resolveD2HeadAssembly,type D2FaceSolid,type D2AccessoryOptions} from './operator-head-accessory-catalog.ts';
 import {createHeadwearDetailMaterial} from './operator-headwear-materials.ts';
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import type {WardrobeSlot} from './operator-wardrobe-data.ts';
@@ -22,6 +23,7 @@ export type WardrobeHeadLayers={
  faceFabricDefaultHex:number;
  eyewearFrame:THREE.MeshStandardMaterial;
  eyewearLens:THREE.MeshStandardMaterial;
+ eyewearStrap:THREE.MeshStandardMaterial;
  twoHoleMouthCover?:THREE.Group;
 };
 const cube=(g:THREE.Group,m:THREE.Material,
@@ -45,6 +47,8 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  const eyewearLens=new THREE.MeshStandardMaterial({color:0xd9eceb,
   opacity:.19,transparent:true,depthWrite:false,
   roughness:.20,metalness:.02,side:THREE.DoubleSide});
+ const eyewearStrap=new THREE.MeshStandardMaterial({color:0x323936,
+  roughness:.90,flatShading:true});
  // Each approved silhouette keeps its geometry, but now owns a neutral
  // recolorable material. Material detail never produces coplanar geometry.
  const headwearMaterials:Record<string,THREE.MeshStandardMaterial>={};
@@ -123,15 +127,16 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   for(const sign of [-1,1])
    cube(model,dark,-.3,y+.1,sign*4.15,8.0,.34,.35);
  };
- eye('clear-glasses');
- eye('safety-glasses',false,false,true);
- eye('sunglasses',false,true);
- eye('goggles-down',false,true,true);
- eye('goggles-up',true,true,true);
+ // Legacy display-only glasses/goggles are superseded by the fitted D2 models.
+ // Their saved IDs are converted at readWardrobe before runtime selection.
  // D2-B1 real low-poly frames, separate bridges and lens sheets.
  for(const id of ['glasses-standard','glasses-aviator',
                    'glasses-wrap','glasses-shield'] as const)
   g(eyewear,id,true).add(createD2Glasses(id,eyewearFrame,eyewearLens));
+ // D2-B2: low-profile, deep-frame and twin-cup goggles share tint and frame
+ // materials but have independent, recognizably different actual geometry.
+ for(const id of ['goggles-low','goggles-field','goggles-retro'] as const)
+  g(eyewear,id,true).add(createD2Goggles(id,eyewearFrame,eyewearLens,eyewearStrap));
  const ear=(id:string,microphone=false,large=false)=>{
   const model=g(headset,id);
   for(const side of [-1,1])
@@ -151,7 +156,8 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  for(const set of [headwear,facewear,eyewear,headset])
   for(const model of Object.values(set))consolidateVisualGroup(model);
  return {headwear,facewear,eyewear,headset,headwearMaterials,
-  faceFabric,faceFabricDefaultHex,eyewearFrame,eyewearLens,twoHoleMouthCover};
+  faceFabric,faceFabricDefaultHex,eyewearFrame,eyewearLens,
+  eyewearStrap,twoHoleMouthCover};
 }
 export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  headwear:string,facewear:string,eyewear:string,headset:string,
@@ -164,11 +170,13 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  layers.eyewearFrame.color.setHex(frame.hex);
  layers.eyewearLens.color.setHex(tint.hex);
  layers.eyewearLens.opacity=tint.opacity;
+ const assembly=resolveD2HeadAssembly({facewear,eyewear,headwear,headset,
+  options:d2Eye});
  const choices:{slot:WardrobeSlot;map:Model;id:string}[]=[
   {slot:'headwear',map:layers.headwear,id:headwear},
   {slot:'facewear',map:layers.facewear,id:facewear},
-  {slot:'eyewear',map:layers.eyewear,id:eyewear},
-  {slot:'headset',map:layers.headset,id:headset}
+  {slot:'eyewear',map:layers.eyewear,id:assembly.eyewear},
+  {slot:'headset',map:layers.headset,id:assembly.headset}
  ];
  for(const {map,id} of choices)
   for(const [style,model] of Object.entries(map))model.visible=style===id;
@@ -180,6 +188,12 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
   const wanted=d2Eye?.eyeMode??'rectangular';
   for(const shape of standard.children)
    shape.visible=shape.userData.d2EyeVariant===wanted;
+ }
+ for(const id of ['goggles-low','goggles-field','goggles-retro'] as const){
+  const model=layers.eyewear[id]?.children.find(x=>x.userData.modelAxes);
+  if(!model)continue;
+  for(const pose of model.children)
+   pose.visible=pose.userData.d2GogglePlacement===assembly.eyewearPlacement;
  }
  // Only one wear state of each wrap is visible. Inactive models stay hidden.
  for(const id of ['gaiter','shemagh','bandana'] as const){

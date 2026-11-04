@@ -366,10 +366,17 @@ function renderMaterials(){
    section.append(swatches);
   }
  }
- if(activeCategory==='eyewear'&&isD2Eyewear(item)&&item.startsWith('glasses-')){
+ if(activeCategory==='eyewear'&&isD2Eyewear(item)){
   const selected=w.d2Accessories??{};
   const save=(patch:Partial<NonNullable<WardrobeOptions['d2Accessories']>>)=>
    changeWardrobe({...current(),d2Accessories:{...current().d2Accessories,...patch}});
+  if(item.startsWith('goggles-')){
+   const worn=row('GOGGLE POSITION',
+    'Raised goggles rest on the helmet or forehead when the selected headwear permits it.');
+   addSelect(worn,[['eyes','Over eyes'],['raised','Raised'],['neck','Around neck']] as const,
+    selected.eyePosition??'eyes',
+    eyePosition=>save({eyePosition:eyePosition as NonNullable<NonNullable<WardrobeOptions['d2Accessories']>['eyePosition']>}));
+  }
   if(item==='glasses-standard'){
    const shape=row('FRAME SHAPE','One core model with recognizable frame subtypes.');
    addSelect(shape,[['rectangular','Rectangular'],['round','Round'],
