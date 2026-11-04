@@ -28,13 +28,20 @@ export const RIG_MODULAR_ARMORS=new Set([
 ]);
 export const RIG_PANEL_INNER_FACES:Readonly<Record<string,number>>={
  'chest-placard':8.14-.70*.5,
- 'micro-rig':7.90-.76*.5
+ 'micro-rig':7.90-.76*.5,
+ // Historic chest rigs: backing panel or foremost pouch rear surface.
+ 'light-rig':8.38-1.07*.5,
+ 'chicom-rig':7.95-.60*.5,
+ 'bandolier':8.20-.72*.5
 };
 export function rigContactFrame(armor:string,top:string,rig:string):RigContactFrame{
  const baseline=ARMOR_PROFILES[armor]??ARMOR_PROFILES['armor-bare'];
  const spec=ARMOR_PROPORTIONS[armor];
  const fit=fittedArmorSurfaces(armor,top,baseline);
- const y=rig==='micro-rig'?-2.65:-2.05;
+ const y=rig==='micro-rig'?-2.65:
+  rig==='light-rig'?-2.20:
+  rig==='chicom-rig'?-2.35:
+  rig==='bandolier'?-2.00:-2.05;
  const cloth=armorContactSurface(top,y);
  const exposed=armor!=='armor-bare'&&armor!=='soft-slick'&&
   armor!=='soft-paca'&&!!spec&&
