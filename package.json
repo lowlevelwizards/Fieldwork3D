@@ -11,6 +11,7 @@
     "audit:breach-sites": "node --experimental-strip-types scripts/audit-breach-sites.mjs",
     "audit:mission-quality": "node --experimental-strip-types scripts/audit-mission-quality.mjs",
     "audit:g4-diversity": "node --experimental-strip-types scripts/audit-g4-diversity.mjs",
+    "audit:g4-flow": "node --experimental-strip-types scripts/audit-g4-flow.mjs",
     "audit:r7-firefights": "node --experimental-strip-types scripts/audit-r7-firefights.mjs",
     "audit:r8-contacts": "node --experimental-strip-types scripts/audit-r8-contacts.mjs",
     "audit:r8-modes": "node --experimental-strip-types scripts/audit-r8-modes.mjs",
