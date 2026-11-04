@@ -165,3 +165,32 @@ export function fittedArmorCollar(group:THREE.Group,m:THREE.Material,
  mesh.castShadow=true;mesh.receiveShadow=true;
  group.add(mesh);
 }
+
+/** One clipped-corner, weight-bearing side armor insert.
+ * The inset face is a second broad polygon rather than surface noise;
+ * it reads clearly at game zoom and remains seated on the cummerbund.
+ */
+export function fittedArmoredSidePlate(group:THREE.Group,m:THREE.Material,
+ x:number,y:number,innerZ:number,side:number,
+ width=4.4,height=4.35,depth=.72){
+ const hw=width*.5,hh=height*.5,chamfer=Math.min(.48,hw*.2);
+ const path:readonly [number,number][]=[
+  [-hw+chamfer,-hh],[hw-chamfer,-hh],
+  [hw,-hh+chamfer],[hw,hh-chamfer],
+  [hw-chamfer,hh],[-hw+chamfer,hh],
+  [-hw,hh-chamfer],[-hw,-hh+chamfer]
+ ];
+ const shape=new THREE.Shape();
+ shape.moveTo(path[0][0],path[0][1]);
+ for(const [px,py] of path.slice(1))shape.lineTo(px,py);
+ shape.closePath();
+ const geo=pixelUV(new THREE.ExtrudeGeometry(shape,{
+  depth,steps:1,bevelEnabled:false,curveSegments:1
+ }));
+ const mesh=new THREE.Mesh(geo,m);
+ mesh.position.set(x,y,side*innerZ);
+ mesh.scale.z=side;
+ mesh.name='heavy-protective-side-plate';
+ mesh.castShadow=true;mesh.receiveShadow=true;group.add(mesh);
+ return mesh;
+}
