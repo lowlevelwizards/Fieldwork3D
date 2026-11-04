@@ -37,7 +37,10 @@ function score(p:Pt,goal:Pt,peers:readonly Pt[]):number{
  * occupied goal to within one body diameter counts as a practical arrival. */
 export function nearOccupiedFriendlyGoal(at:Pt,goal:Pt,
  peers:readonly Pt[],canConnect:(a:Pt,b:Pt)=>boolean):boolean{
- return dist(at,goal)<=19&&dist(at,goal)>5&&
+ // Avoid completing an authored MOVE while visibly short of the
+ // selected position. Soft friendly separation may finish a near-occupied
+ // goal, but only within ordinary arrival tolerance.
+ return dist(at,goal)<=15.5&&dist(at,goal)>5&&
    peers.some(p=>dist(p,goal)<11&&dist(p,at)>=14)&&
    canConnect(at,goal);
 }
