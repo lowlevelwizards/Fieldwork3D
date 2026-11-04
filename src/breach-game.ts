@@ -2610,7 +2610,8 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     laneClear:false,suppression:a.suppression,morale:a.morale,temperament:a.personality});
   a.intent=chooseAiIntent(a.intent,{
     visible:visible.length>0,hasBelief:!!belief,recentSound:recentNoise,
-    suppression:a.suppression,morale:a.morale},s.seconds);
+    suppression:a.suppression,morale:a.morale,
+    temperament:a.personality},s.seconds);
   if(!visible.length){
     if(belief&&belief.lastAt>=s.seconds-24)
       a.contact=clone(belief.estimate);
