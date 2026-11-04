@@ -2467,7 +2467,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   const recentNoise=s.seconds-a.lastNoiseAt<6;
   if(!visible.length)a.combatChoice=chooseCombatAction({
     visible:false,remembered:!!belief,ammunition:a.magazine,
-    laneClear:false,suppression:a.suppression,morale:a.morale});
+    laneClear:false,suppression:a.suppression,morale:a.morale,temperament:a.personality});
   a.intent=chooseAiIntent(a.intent,{
     visible:visible.length>0,hasBelief:!!belief,recentSound:recentNoise,
     suppression:a.suppression,morale:a.morale},s.seconds);
@@ -2504,7 +2504,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       b.p,aimHeight(b.posture==='crouch'),COVER,WALLS,s.doors,friends);
     a.combatChoice=chooseCombatAction({visible:true,remembered:true,
       laneClear:lane.blocker==='clear',ammunition:a.magazine,
-      suppression:a.suppression,morale:a.morale});
+      suppression:a.suppression,morale:a.morale,temperament:a.personality});
     if(a.combatChoice==='reposition'&&a.alert!=='retreat'&&
       s.seconds-a.lastFireRepositionAt>2.6){
       const candidate=defensivePosition(a,b.p,s);
