@@ -3,6 +3,8 @@
 **Branch:** feature/operator-visual-details-2026-11-04
 **Status:** design and reference audit only; model implementation pending.
 
+> **Scope update (November 4):** This is the wider 58-candidate reference/expansion catalog, not the approved first wave. The approved first wave is the **19 distinct models** and grouped options specified in [D2 First-Wave Implementation Plan](./operator-d2-first-wave-implementation-plan-2026-11-04.md). Build that focused plan first; review expansion candidates only when they justify a distinct chunky silhouette.
+
 ## Goal & art contract
 Upgrade existing `facewear` and `eyewear` categories without building a duplicate wardrobe system. Count a silhouette as a **distinct model** only when its form reads differently at normal gameplay zoom. Colors, approved camouflage patterns, lens tints and wearable positions are orthogonal variants. A broad 50–60-candidate reference catalog can collapse into ~25–30 first-wave game models.
 
