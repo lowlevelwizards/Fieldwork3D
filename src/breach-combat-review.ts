@@ -36,7 +36,7 @@ export function summarizeCombatReview(frames:readonly ReplayFrame[],
   shotEvents:events.filter(e=>e.kind==='shot').length,
   contactToFireSeconds,peakSuppression:rounded(peakSuppression),
   pointShots:all.filter(s=>s.mode==='point').length,
-  aimedShots:all.filter(s=>s.mode==='aimed').length};
+  aimedShots:all.filter(s=>s.mode==='ads').length};
 }
 export function formatCombatReview(frames:readonly ReplayFrame[],
  events:readonly BattleEvent[]):string{

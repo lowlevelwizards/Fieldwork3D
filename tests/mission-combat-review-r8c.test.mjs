@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {formatCombatReview,summarizeCombatReview}
  from '../src/breach-combat-review.ts';
-const shot=(id,hit=false,mode='aimed')=>({id,hit,mode,surface:hit?'blood':'metal'});
+const shot=(id,hit=false,mode='ads')=>({id,hit,mode,surface:hit?'blood':'metal'});
 const actor=(suppression)=>({id:'rook',health:4,suppression});
 test('R8C: replay shot identities dedupe across repeated frames',()=>{
  const frames=[{shots:[shot(1)],actors:[actor(.1)]},
