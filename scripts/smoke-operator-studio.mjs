@@ -35,6 +35,36 @@ try{
   const [box,control]=await Promise.all([stage.boundingBox(),editor.boundingBox()]);
   if(!box||!control||box.height<190||control.height<190)
    throw Error('3D model or editor collapsed on phone');
+  // Performance smoke: change a FACE selection after its thumbnails are
+  // present. The card canvases, already-rendered previews and operator rig
+  // must survive this purely cosmetic selection change.
+  await page.getByRole('button',{name:'Customize head'}).click();
+  await page.locator('#studioSubcategories button').filter({hasText:'FACE'}).click();
+  const one=page.locator('[data-appearance-item="balaclava-one"] canvas');
+  const three=page.locator('[data-appearance-item="balaclava-three"]');
+  await one.scrollIntoViewIfNeeded();
+  await three.scrollIntoViewIfNeeded();
+  await page.waitForFunction(()=>{
+   const a=document.querySelector('[data-appearance-item="balaclava-one"] canvas');
+   const b=document.querySelector('[data-appearance-item="balaclava-three"] canvas');
+   return a?.dataset.thumbnailReady==='true'&&b?.dataset.thumbnailReady==='true';
+  },null,{timeout:30000});
+  const beforeFace=await page.evaluate(()=>{
+   window.__studioPerfCanvas=document.querySelector(
+    '[data-appearance-item="balaclava-one"] canvas');
+   return Number(document.querySelector('.appearance-item-grid')?.
+    dataset.thumbnailRigBuilds||0);
+  });
+  await three.click();
+  const afterFace=await page.evaluate(()=>({
+   rigBuilds:Number(document.querySelector('.appearance-item-grid')?.
+    dataset.thumbnailRigBuilds||0),
+   stableCanvas:document.querySelector(
+    '[data-appearance-item="balaclava-one"] canvas')===window.__studioPerfCanvas
+  }));
+  if(afterFace.rigBuilds!==beforeFace||!afterFace.stableCanvas)
+   throw Error('Selecting FACE rebuilt the thumbnail rig or DOM canvases');
+  await page.getByRole('button',{name:'Customize tops'}).click();
   const combat=page.locator('[data-appearance-item="combat-shirt"]');
   if(await combat.isDisabled())throw Error('Combat shirt disabled in default kit');
   await combat.click();
