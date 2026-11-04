@@ -93,7 +93,9 @@ test('R7 solids validate the specific model without silently deleting saved look
 function pose(r,rig){
  let equipment=initialEquipmentLoadout();
  equipment=setEquipmentChoice(equipment,'armor','armor-none');
- equipment=setEquipmentChoice(equipment,'rig','rig-light');
+ equipment=setEquipmentChoice(equipment,'rig',
+  ['field-webbing','sadf-webbing','lbv','split-front','full-chest'].includes(rig)?
+   'rig-full':'rig-light');
  poseOperator(r,{x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
   posture:'stand',injury:0,weapon:'carbine',reload:0,reloadDuration:0,
   lastDoorAt:-100,lastThrowAt:-100,down:false,surrender:false,

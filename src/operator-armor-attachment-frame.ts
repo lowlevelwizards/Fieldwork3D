@@ -62,7 +62,19 @@ export function armorMountedMagazineSocket(style:string,index:number,
     style==='split-front'?9.21:
     style==='full-chest'?9.10:
     style==='sadf-webbing'?8.36:8.51;
-   return {...socket,x:mouth+contact.rigShiftX};
+   // Existing historical first-cell front measurements remain stable.
+   // Expose the real magazine ABOVE the slit instead of through the pouch
+   // wall; extra double-pouch magazines sit slightly behind the first.
+   const reveal=style==='light-rig'?.65:
+    style==='chicom-rig'?1.30:
+    style==='split-front'?.55:
+    style==='full-chest'?.30:
+    style==='sadf-webbing'?1.55:
+    style==='chest-placard'?.35:0;
+   const double=['lbv','sadf-webbing'].includes(style)&&index>=4;
+   const wing=style==='micro-rig'&&index>=2;
+   return {...socket,x:(wing?8.32:mouth)+(double?-.38:0)+
+    contact.rigShiftX,y:socket.y+reveal};
   }
   return {...socket,z:Math.sign(socket.z)*(contact.sideRight.z+.12)};
  }

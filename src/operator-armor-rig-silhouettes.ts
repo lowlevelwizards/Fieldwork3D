@@ -80,6 +80,38 @@ const pouch=(g:THREE.Group,m:THREE.Material,fold:THREE.Material,
  box(g,m,x+extra*.5,y,z,depth+extra,h,span);
  box(g,fold,x+depth*.51+extra+.07,y+h*.38,z,.27,.57,span+.14);
 };
+/** One dark, thick magazine mouth per real physical pouch, NOT one
+ * additional fake magazine. Existing actual-mag instances come from the
+ * equipment ledger and sit just below/above these openings.
+ * X is the outer pouch-front lip, Y its upper opening, Z lateral.
+ */
+export type RigMagazineMouth=readonly [number,number,number,number];
+export const RIG_MAGAZINE_MOUTHS:Readonly<
+ Record<string,readonly RigMagazineMouth[]>>={
+ 'no-rig':[],
+ 'chest-placard':[
+  [9.48,-.28,-2.73,2.12],[9.48,-.28,0,2.12],[9.48,-.28,2.73,2.12]
+ ],
+ 'micro-rig':[
+  [9.15,-1.10,-1.65,2.36],[9.15,-1.10,1.65,2.36],
+  [8.42,-1.57,-4.55,1.36],[8.42,-1.57,4.55,1.36]
+ ],
+ 'light-rig':[-4.6,-1.5,1.5,4.6].map(z=>[9.20,.09,z,2.38] as const),
+ 'chicom-rig':[-3.12,0,3.12].map(z=>[9.37,.45,z,2.34] as const),
+ 'bandolier':[0,1,2,3].map(i=>
+  [8.94,5.01-i*1.85,3.85-i*1.925,1.65] as const),
+ 'split-front':[-5.64,-2.92,2.92,5.64].map(z=>
+  [9.43,-.19,z,1.93] as const),
+ 'full-chest':[-4.60,-1.5,1.5,4.60].map(z=>
+  [9.30,-.92,z,2.18] as const),
+ 'lbv':[-1,1].flatMap(s=>[1.28,-2.56].map(y=>
+  [8.87,y+1.51,s*4.20,2.75] as const)),
+ 'chicom-utility':[],
+ 'sadf-webbing':[-5.85,-3.25,3.25,5.85].map(z=>
+  [8.66,.31,z,2.17] as const),
+ 'field-webbing':[],
+ 'belt-harness':[]
+};
 /** Nested strap groups must NOT be baked into the rig's static mesh.
  * They are deterministically refitted when either uniform or armor changes.
  */
@@ -461,8 +493,12 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   box(g,fabric,7.99,-2.35,0,.68,6.48,12.15);
   // Chicom canvas reads by three TALL independent flap pouches and
   // two abbreviated flank pockets, not a modern flat MOLLE array.
-  for(const z of [-3.12,0,3.12])
+  for(const z of [-3.12,0,3.12]){
    pouch(g,pocketFabric,trim,8.52,-2.32,z,5.54,2.84,.99);
+   // Oversized Type 56 toggle closures are visually recognizable,
+   // rather than three anonymous modern nylon zipper pouches.
+   box(g,trim,9.46,-.20,z,.36,.55,.64);
+  }
   for(const s of [-1,1])
    pouch(g,pocketFabric,trim,8.42,-3.46,s*5.65,2.38,1.65,.75);
  }
@@ -493,6 +529,14 @@ export function createChestRigSilhouettes(chest:THREE.Group,
    // Broad P83 waist pockets and belt live on the hip.
   }
  }
+ // Exposed, solid-dark mouth slits make magazine positions readable at
+ // phone zoom. These are holes in the rig design language, not ammunition.
+ for(const [style,mouths] of Object.entries(RIG_MAGAZINE_MOUTHS)){
+  const g=groups[style];if(!g)continue;
+  g.userData.magazineMouthCount=mouths.length;
+  for(const [x,y,z,width] of mouths)
+   box(g,dark,x,y,z,.20,.32,width);
+ }
  for(const g of Object.values(groups))consolidateVisualGroup(g);
  return groups;
 }
@@ -505,17 +549,23 @@ export type RigMagazineSocket={x:number;y:number;z:number;rotation:number};
 type FrontCell=readonly [number,number]; // lateral offset, vertical center
 const RIG_CELLS:Readonly<Record<string,readonly FrontCell[]>>={
  'chest-placard':[[-2.73,-2.18],[0,-2.18],[2.73,-2.18]],
- 'micro-rig':[[-1.65,-2.58],[1.65,-2.58]],
+ 'micro-rig':[[-1.65,-2.58],[1.65,-2.58],
+  [-4.55,-2.62],[4.55,-2.62]],
  'light-rig':[[-4.60,-2.20],[-1.50,-2.20],[1.50,-2.20],[4.60,-2.20]],
  'split-front':[[-5.64,-2.18],[-2.92,-2.18],[2.92,-2.18],[5.64,-2.18]],
  'chicom-rig':[[-3.12,-2.32],[0,-2.32],[3.12,-2.32]],
  'bandolier':[[3.85,3.6],[1.93,1.75],[0,-.1],[-1.93,-1.95]],
  'full-chest':[[-4.60,-2.75],[-1.50,-2.75],[1.50,-2.75],[4.60,-2.75]],
- 'lbv':[[-4.20,1.28],[-4.20,-2.56],[4.20,1.28],[4.20,-2.56]],
+ 'lbv':[[-4.20,1.28],[-4.20,-2.56],[4.20,1.28],[4.20,-2.56],
+  [-4.52,.78],[-4.52,-3.06],[4.52,.78],[4.52,-3.06]],
  'field-webbing':[[-6.8,-5.40],[6.8,-5.40]],
  'belt-harness':[[-6.6,-5.3],[6.6,-5.3]],
- 'sadf-webbing':[[-5.85,-2.75],[-3.25,-2.75],[3.25,-2.75],[5.85,-2.75]]
+ 'sadf-webbing':[[-5.85,-2.75],[-3.25,-2.75],[3.25,-2.75],[5.85,-2.75],
+  [-5.48,-3.25],[-2.88,-3.25],[3.62,-3.25],[6.22,-3.25]]
 };
+export function rigMagazineCellCount(style:string):number{
+ return (RIG_CELLS[style]??[]).length;
+}
 export function rigMagazineMount(style:string,index:number,armor:string,
  mirror=1):RigMagazineSocket{
  const profile=ARMOR_PROFILES[armor]??ARMOR_PROFILES['armor-bare'];
