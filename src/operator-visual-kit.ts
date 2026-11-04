@@ -296,7 +296,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  // balaclavas suppress it to avoid clipping without changing headgear fit.
  updateWardrobeHeadLayers(v.wardrobeHead,
   looks.headwear,looks.facewear,looks.eyewear,looks.headset,
-  effectiveFaceMode,wardrobe?.d2FaceSolid);
+  effectiveFaceMode,wardrobe?.d2FaceSolid,wardrobe?.d2Accessories);
  // Rig pose color ledger owns final headwear tint (and reversible injury
  // desaturation). Setting it here was overwritten later in poseOperator.
 

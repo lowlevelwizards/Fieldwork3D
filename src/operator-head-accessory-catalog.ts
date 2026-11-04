@@ -60,6 +60,21 @@ export function effectiveD2FabricMode(facewear:string,mode:string|undefined,head
 }
 export type D2FrameSolid=typeof D2_FRAME_SOLIDS[number];
 export type D2LensTint=typeof D2_LENS_TINTS[number];
+export const D2_FRAME_COLORS:Record<D2FrameSolid,{hex:number;label:string}>={
+ black:{hex:0x24282b,label:'Black'},gray:{hex:0x5b6062,label:'Gray'},
+ olive:{hex:0x596151,label:'Olive'},tan:{hex:0x937b59,label:'Tan'},
+ silver:{hex:0x9ba2a2,label:'Silver'}
+};
+export const D2_LENS_MATERIALS:Record<D2LensTint,{hex:number;opacity:number;label:string}>={
+ clear:{hex:0xd9eceb,opacity:.19,label:'Clear'},
+ smoke:{hex:0x3a4449,opacity:.70,label:'Smoke'},
+ 'dark-smoke':{hex:0x222c32,opacity:.86,label:'Dark smoke'},
+ amber:{hex:0xb2883a,opacity:.59,label:'Amber'},
+ yellow:{hex:0xb5a157,opacity:.43,label:'Yellow'},
+ bronze:{hex:0x7d6140,opacity:.65,label:'Bronze'},
+ green:{hex:0x516e5f,opacity:.58,label:'Green'},
+ mirrored:{hex:0x9baead,opacity:.82,label:'Muted mirror'}
+};
 export type D2GogglePosition=typeof D2_GOGGLE_POSITIONS[number];
 export type D2AccessoryOptions={
  faceMode?:string;

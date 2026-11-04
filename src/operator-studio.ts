@@ -18,7 +18,9 @@ import {readWardrobe,initialWardrobe,resolvedWardrobe,setWardrobeStyle,
  type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
 import {fabricCamoChoices,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {resolveAutomaticGearColors} from './operator-gear-color-policy.ts';
-import {D2_FACE_SOLIDS,D2_FACE_SOLID_COLORS,isD2Facewear} from './operator-head-accessory-catalog.ts';
+import {D2_FACE_SOLIDS,D2_FACE_SOLID_COLORS,isD2Facewear,
+ D2_FRAME_SOLIDS,D2_FRAME_COLORS,D2_LENS_TINTS,D2_LENS_MATERIALS,
+ isD2Eyewear} from './operator-head-accessory-catalog.ts';
 import {RIG_VISUAL_TEXTILES,ARMOR_VISUAL_TEXTILES,rigSignature,armorSignature,rigColorAssembly}
  from './operator-rig-authenticity-policy.ts';
 import {GARMENT_SOLID_COLORS,solidChoicesFor,resolvedCuffSolid,
@@ -363,6 +365,43 @@ function renderMaterials(){
    }
    section.append(swatches);
   }
+ }
+ if(activeCategory==='eyewear'&&isD2Eyewear(item)){
+  const selected=w.d2Accessories??{};
+  const save=(patch:Partial<NonNullable<WardrobeOptions['d2Accessories']>>)=>
+   changeWardrobe({...current(),d2Accessories:{...current().d2Accessories,...patch}});
+  if(item.startsWith('goggles-')){
+   if((w.d2Accessories?.eyePosition??'eyes')==='raised'&&
+      ['patrol-cap','boonie'].includes(outfit.headwear))
+    row('HEADWEAR CLEARANCE',
+     'This brim prevents raised placement. Goggles remain over the eyes until compatible headwear is selected.');
+   const worn=row('GOGGLE POSITION',
+    'Raised goggles rest on the helmet or forehead when the selected headwear permits it.');
+   addSelect(worn,[['eyes','Over eyes'],['raised','Raised'],['neck','Around neck']] as const,
+    selected.eyePosition??'eyes',
+    eyePosition=>save({eyePosition:eyePosition as NonNullable<NonNullable<WardrobeOptions['d2Accessories']>['eyePosition']>}));
+  }
+  if(item==='glasses-standard'){
+   const shape=row('FRAME SHAPE','One core model with recognizable frame subtypes.');
+   addSelect(shape,[['rectangular','Rectangular'],['round','Round'],
+     ['heavy-square','Heavy square']] as const,
+    selected.eyeMode??'rectangular',eyeMode=>save({eyeMode}));
+  }
+  const frame=row('FRAME COLOR','Independent plastic or metal finish.');
+  const swatches=document.createElement('div');swatches.className='solid-swatches';
+  for(const id of D2_FRAME_SOLIDS){
+   const info=D2_FRAME_COLORS[id];
+   const b=makeButton(info.label,(selected.eyeFrame??'black')===id,
+    ()=>save({eyeFrame:id}));
+   b.className='swatch';b.title=info.label;
+   const chip=document.createElement('span');chip.className='swatch-chip';
+   chip.style.backgroundColor='#'+info.hex.toString(16).padStart(6,'0');
+   b.prepend(chip);swatches.append(b);
+  }
+  frame.append(swatches);
+  const lens=row('LENS TINT','Tint is a material option, not another glasses model.');
+  addSelect(lens,D2_LENS_TINTS.map(id=>[id,D2_LENS_MATERIALS[id].label] as const),
+   selected.eyeTint??'clear',eyeTint=>save({eyeTint:eyeTint as NonNullable<NonNullable<WardrobeOptions['d2Accessories']>['eyeTint']>}));
  }
  if(activeCategory==='armorStyle'||activeCategory==='rigStyle'){
   const category=activeCategory==='armorStyle'?'ARMOR SHELL':'LOAD-BEARING RIG';

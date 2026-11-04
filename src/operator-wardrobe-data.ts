@@ -14,7 +14,8 @@ import {isGarmentSolidId,FABRIC_SOLID_CHOICES,type GarmentSolidId}
 import {initialWardrobeAccessories,readWardrobeAccessories,
  type WardrobeAccessoryConfiguration} from './operator-wardrobe-accessories.ts';
 import {isHeadwearSolidColorId,type HeadwearSolidColorId} from './operator-headwear-colors.ts';
-import {isD2FaceSolid,type D2FaceSolid} from './operator-head-accessory-catalog.ts';
+import {isD2FaceSolid,migrateD2Eyewear,readD2AccessoryOptions,
+ type D2FaceSolid,type D2AccessoryOptions} from './operator-head-accessory-catalog.ts';
 import {isHeadwearCamoId,type HeadwearCamoId,nextHeadwearCamoRoll} from './operator-headwear-camo.ts';
 import {FABRIC_CAMO_CHANNELS,fabricCamoCompatible,type FabricCamoChannel,type CamoOutfit}
  from './operator-fabric-camo-policy.ts';
@@ -52,9 +53,13 @@ add('facewear','face',[
  ['gas-mask','Protective gas mask']
 ]);
 add('eyewear','eyewear',[
- ['eyes-none','None'],['clear-glasses','Clear glasses'],
- ['sunglasses','Sunglasses'],['safety-glasses','Protective glasses'],
- ['goggles-down','Goggles over eyes'],['goggles-up','Goggles raised']
+ ['eyes-none','None'],['glasses-standard','Standard glasses'],
+ ['glasses-aviator','Aviator sunglasses'],
+ ['glasses-wrap','Wraparound tactical glasses'],
+ ['glasses-shield','Ballistic eyeshield'],
+ ['goggles-low','Low-profile tactical goggles'],
+ ['goggles-field','Bulky field goggles'],
+ ['goggles-retro','Vintage round goggles']
 ]);
 add('headset','headset',[
  ['comms-none','None'],['earpiece','Single earpiece'],
@@ -152,6 +157,8 @@ export type WardrobeOptions={
  d2FaceMode?:'three-hole'|'two-hole'|'lowered'|'mouth'|'nose'|
   'draped'|'face-wrap'|'head-wrap'|'raised';
  d2FaceSolid?:D2FaceSolid;
+ /** Eyewear frame, lens and subtype stay independent of the physical model. */
+ d2Accessories?:D2AccessoryOptions;
  headwearColor?:HeadwearSolidColorId;headwearCamo?:HeadwearCamoId;
  headwearCamoRoll?:number;
  /** Approved original prints on verified textile channels. */
@@ -207,11 +214,25 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
    // Retired near-duplicates migrate to their closest approved silhouette.
    const upgraded=id==='soft-paca'?'soft-slick':
     id==='belt-harness'?'field-webbing':
-    slot==='facewear'&&id==='scarf'?'shemagh':id;
+    slot==='facewear'&&id==='scarf'?'shemagh':
+    slot==='eyewear'&&['clear-glasses','sunglasses','safety-glasses',
+     'goggles-down','goggles-up'].includes(id??'')?
+     migrateD2Eyewear(id).style:id;
    if(typeof upgraded==='string'&&wardrobeItem(slot,upgraded))
     result.styles[slot]=upgraded;
   }
  }
+ // Additive version-1 config. Unknown/incorrect eyewear options are discarded.
+ const d2Options=readD2AccessoryOptions(v.d2Accessories,
+  result.styles.facewear??'face-none',result.styles.eyewear??'eyes-none');
+ const oldEye=v.styles?.eyewear;
+ if(oldEye&&['clear-glasses','sunglasses','safety-glasses'].includes(oldEye)&&
+    !d2Options.eyeTint)
+  d2Options.eyeTint=migrateD2Eyewear(oldEye).eyeTint;
+ if(oldEye&&['goggles-up','goggles-down'].includes(oldEye)&&
+    !d2Options.eyePosition)
+  d2Options.eyePosition=migrateD2Eyewear(oldEye).eyePosition;
+ if(Object.keys(d2Options).length)result.d2Accessories=d2Options;
  if(v.fabricCamo&&typeof v.fabricCamo==='object'&&!Array.isArray(v.fabricCamo)){
   for(const channel of FABRIC_CAMO_CHANNELS){
    const id=v.fabricCamo[channel];
