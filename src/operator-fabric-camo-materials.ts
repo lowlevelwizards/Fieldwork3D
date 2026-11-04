@@ -9,6 +9,31 @@ import {headwearCamoPixels,headwearCamoSize,HEADWEAR_CAMO_DENSITY,
 import type {FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {mapBoxPixelUV,TILE_WORLD_SIZE} from './rendering/pixel-materials.ts';
 
+/** R9 metric textile pattern scale. Master pixels and approved headwear
+ * crown density stay unchanged. 64px organic masters were spanning as much
+ * as 64 world units, so the torso appeared to have one enormous color field.
+ * All 3D garment, armor, rig, and pack channels share these repeat factors.
+ */
+export const FABRIC_CAMO_DENSITY:Readonly<Record<HeadwearCamoId,number>>={
+ ...HEADWEAR_CAMO_DENSITY,
+ 'm81-woodland':3.0,      // 21.3 world units per complete 64px print
+ 'woodland-dpm':1.85,     // 17.3 units, retains large recognizable strokes
+ 'scorpion-w2':3.0,       // 21.3 units
+ 'british-mtp':2.85,      // 22.5 units
+ 'three-color-desert':1.45,
+ 'six-color-desert':1.50,
+ 'swedish-m90':1.40,
+ alpenflage:1.45,
+ 'russian-flora':1.50,
+ 'rhodesian-brushstroke':1.25,
+ 'belgian-jigsaw':2.60,
+ 'australian-dpcu':2.45,
+ 'italian-vegetato':2.55,
+ 'splittertarn-31':2.35
+};
+export function fabricCamoWorldPeriod(id:HeadwearCamoId):number{
+ return headwearCamoSize(id)/FABRIC_CAMO_DENSITY[id];
+}
 const cache=new Map<string,THREE.DataTexture>();
 const CAPACITY=256;
 export function wardrobeFabricCamoTexture(
@@ -26,9 +51,9 @@ export function wardrobeFabricCamoTexture(
  texture.magFilter=THREE.NearestFilter;
  texture.minFilter=THREE.NearestMipmapNearestFilter;
  texture.generateMipmaps=true;
- // Imported geometry uses 32-world-unit UV repeats. A one-density, 64px
- // print must occupy 64 world units, not shrink to a 32-unit box face.
- const repeat=TILE_WORLD_SIZE*HEADWEAR_CAMO_DENSITY[id]/size;
+ // UVs remain metric (32 world units = 1 UV). Texture repeats, rather
+ // than individually scaled mesh vertices, preserve texel size across cuts.
+ const repeat=TILE_WORLD_SIZE*FABRIC_CAMO_DENSITY[id]/size;
  texture.repeat.set(repeat,repeat);
  texture.offset.set(x/size,y/size);
  texture.name='Fieldwork cloth '+channel+' / '+id+' / '+x+','+y;
