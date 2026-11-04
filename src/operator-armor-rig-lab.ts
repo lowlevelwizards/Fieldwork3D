@@ -21,7 +21,8 @@ const armorSelect=el<HTMLSelectElement>('armorChoice'),
  canvas=el<HTMLCanvasElement>('armorCanvas');
 const params=new URLSearchParams(location.search);
 // R9 optional read-only reference preview, never written to roster saves.
-const previewCamo=HEADWEAR_CAMO_IDS.find(id=>id===params.get('camo'));
+const previewCamo:HeadwearCamoId|undefined=
+ HEADWEAR_CAMO_IDS.find(id=>id===params.get('camo'));
 const previewChannel: 'top'|'armor'|'gear'|null=
  ['top','armor','gear'].includes(params.get('camoChannel')??'')?
  params.get('camoChannel') as 'top'|'armor'|'gear':null;

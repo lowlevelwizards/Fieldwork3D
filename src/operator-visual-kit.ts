@@ -307,8 +307,12 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  const hideCollar=usingWardrobe&&
   (looks.armorStyle==='soft-flak'||looks.armorStyle==='plate-legacy');
  const hideChestPockets=usingWardrobe&&looks.armorStyle==='plate-slick';
- const clothTorso=(looks.top==='bdu-shirt'||looks.top==='acu-shirt')?
-  v.fieldBlouses[looks.top].torso:v.newUpper.cuts[looks.top]?.torso;
+ let clothTorso:THREE.Group|undefined;
+ if(looks.top==='bdu-shirt'||looks.top==='acu-shirt')
+  clothTorso=v.fieldBlouses[looks.top].torso;
+ else if(looks.top==='combat-shirt'||looks.top==='smock-jacket'||
+  looks.top==='gorka-jacket')
+  clothTorso=v.newUpper.cuts[looks.top].torso;
  clothTorso?.traverse(object=>{
   if(!(object instanceof THREE.Mesh))return;
   if(object.userData.armorCollarPiece)object.visible=!hideCollar;
