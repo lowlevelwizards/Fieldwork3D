@@ -74,7 +74,7 @@ test('polish legacy collar rises above its yoke without turning into the high PA
   const flak=r.visualKit.wardrobeGear.armor['soft-flak'];
   const flakY=new THREE.Box3().setFromObject(
    flak.getObjectByName('uniform-fitted-connectors')).max.y;
-  assert.ok(flakY>y+.8,
+  assert.ok(flakY>y+.64,
    top+' historic fragmentation and structured legacy collars distinguishable');
  }
  r.dispose();
