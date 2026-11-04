@@ -12,3 +12,30 @@ export function encounterReactionDelay(readiness:EncounterReadiness,actorId:stri
  const jitter=(hash>>>0)%13/100;
  return base[readiness]+jitter;
 }
+
+/** Readiness affects how quickly an already geometrically visible shape is
+ * recognized, never who is visible or the location of an unseen target.
+ * Keep the range modest: first-shot latency still has its own reaction gate.
+ */
+export function perceptualReadiness(readiness:EncounterReadiness):number{
+ switch(readiness){
+  case 'unaware':return .78;
+  case 'relaxed':return .88;
+  case 'attentive':return 1;
+  case 'suspicious':return 1.10;
+  case 'alerted':return 1.18;
+  case 'prepared':return 1.25;
+ }
+}
+/** Fixed-step contact response: orientation before tactical action.
+ * Never accelerates shooting or target recognition based on unseen truth.
+ */
+export type ReactionPhase='orient'|'ready'|'act';
+export function encounterReactionPhase(now:number,startedAt:number|undefined,
+ until:number|undefined):ReactionPhase{
+ if(startedAt===undefined||until===undefined||!Number.isFinite(until))
+  return 'act';
+ if(now>=until)return 'act';
+ const length=Math.max(.001,until-startedAt);
+ return now-startedAt<Math.min(.38,length*.42)?'orient':'ready';
+}
