@@ -393,6 +393,10 @@ jobs:
             tests/breach-encounter-readiness.test.mjs \
             tests/worldgen-encounter-integration.test.mjs \
             tests/worldgen-encounter-missions.test.mjs
+      - name: D2 fabric fit R1 — identical previews and true balaclava apertures
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/d2-fabric-fit-r1-') }}
+        run: |
+          node --experimental-strip-types --test tests/operator-d2-fabric-preview-parity-v2.test.mjs tests/operator-d2-balaclava-stage-a1.test.mjs tests/operator-d2-fabric-integration-stage-a3.test.mjs tests/operator-wardrobe-data.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}

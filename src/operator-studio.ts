@@ -4,6 +4,7 @@
  */
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {studioUsesClothesOnly,studioUsesVisibleFace} from './operator-studio-preview-policy.ts';
 import {studioCameraFocus,studioFocusEasing,clampStudioCameraZoom,
  STUDIO_FULL_FIT,STUDIO_MIN_ZOOM,STUDIO_MAX_ZOOM}
  from './operator-studio-camera-focus.ts';
@@ -236,6 +237,7 @@ function posePreview(){
   posture:'stand',injury:0,weapon:'carbine',reload:0,reloadDuration:0,
   lastDoorAt:-100,lastThrowAt:-100,down:false,surrender:false,
   aiming:false,firing:false,turning:0,deterministic:true,
+  faceStyle:studioUsesVisibleFace(activeCategory)?'quiet':'blank',
   unarmedPreview:true,equipment:inspectKit(p.loadout),
   wardrobe:inspectWardrobe(previewWardrobe())
  },0);
@@ -753,7 +755,7 @@ function selectCategory(slot:WardrobeSlot){
  activeCategory=slot;
  // Look at the cloth unobscured for garments, but show all available
  // headgear/armor/gear when browsing those categories.
- clothesOnly=slot==='top'||slot==='trousers'||slot==='facewear';
+ clothesOnly=studioUsesClothesOnly(slot);
  comparingSaved=false;syncGearToggle();refresh();
  focusCameraOnCategory(slot);
 }
