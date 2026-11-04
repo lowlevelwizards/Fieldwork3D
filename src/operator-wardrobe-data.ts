@@ -14,6 +14,7 @@ import {isGarmentSolidId,FABRIC_SOLID_CHOICES,type GarmentSolidId}
 import {initialWardrobeAccessories,readWardrobeAccessories,
  type WardrobeAccessoryConfiguration} from './operator-wardrobe-accessories.ts';
 import {isHeadwearSolidColorId,type HeadwearSolidColorId} from './operator-headwear-colors.ts';
+import {isD2FaceSolid,type D2FaceSolid} from './operator-head-accessory-catalog.ts';
 import {isHeadwearCamoId,type HeadwearCamoId,nextHeadwearCamoRoll} from './operator-headwear-camo.ts';
 import {FABRIC_CAMO_CHANNELS,fabricCamoCompatible,type FabricCamoChannel,type CamoOutfit}
  from './operator-fabric-camo-policy.ts';
@@ -44,8 +45,10 @@ add('headwear','ballistic',[
 ]);
 add('facewear','face',[
  ['face-none','Uncovered'],['balaclava-one','One-opening balaclava'],
- ['balaclava-three','Three-hole balaclava'],['gaiter','Neck gaiter'],
- ['shemagh','Shemagh'],['scarf','Scarf'],['half-mask','Half mask'],
+ ['balaclava-three','Three-hole balaclava'],
+ ['balaclava-open','Open-face balaclava'],['gaiter','Neck gaiter'],
+ ['shemagh','Shemagh / field scarf'],['bandana','Bandana'],
+ ['half-mask','Half mask'],
  ['gas-mask','Protective gas mask']
 ]);
 add('eyewear','eyewear',[
@@ -145,6 +148,10 @@ export type WardrobeOptions={
  version:1;styles:Partial<Record<WardrobeSlot,string>>;
  /** Optional explicit identity; missing values retain the historical seeded look. */
  skinTone?:SkinToneId;hairStyle?:HairStyleId;hairTone?:HairToneId;
+ /** D2 balaclava topology variant: mouth shown (three-hole) or covered (two-hole). */
+ d2FaceMode?:'three-hole'|'two-hole'|'lowered'|'mouth'|'nose'|
+  'draped'|'face-wrap'|'head-wrap'|'raised';
+ d2FaceSolid?:D2FaceSolid;
  headwearColor?:HeadwearSolidColorId;headwearCamo?:HeadwearCamoId;
  headwearCamoRoll?:number;
  /** Approved original prints on verified textile channels. */
@@ -190,12 +197,17 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(isSkinToneId(v.skinTone))result.skinTone=v.skinTone;
  if(isHairStyleId(v.hairStyle))result.hairStyle=v.hairStyle;
  if(isHairToneId(v.hairTone))result.hairTone=v.hairTone;
+ if(['three-hole','two-hole','lowered','mouth','nose',
+     'draped','face-wrap','head-wrap','raised'].includes(v.d2FaceMode??''))
+  result.d2FaceMode=v.d2FaceMode;
+ if(isD2FaceSolid(v.d2FaceSolid))result.d2FaceSolid=v.d2FaceSolid;
  if(v.styles&&typeof v.styles==='object'&&!Array.isArray(v.styles)){
   for(const slot of WARDROBE_SLOTS){
    const id=v.styles[slot];
    // Retired near-duplicates migrate to their closest approved silhouette.
    const upgraded=id==='soft-paca'?'soft-slick':
-    id==='belt-harness'?'field-webbing':id;
+    id==='belt-harness'?'field-webbing':
+    slot==='facewear'&&id==='scarf'?'shemagh':id;
    if(typeof upgraded==='string'&&wardrobeItem(slot,upgraded))
     result.styles[slot]=upgraded;
   }
