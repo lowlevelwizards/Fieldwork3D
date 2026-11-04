@@ -17,7 +17,8 @@ test('new appearance layers honor protection and clothes while preserving rig an
  assert.equal(rig.visualKit.helmet.visible,false);
  assert.equal(rig.visualKit.wardrobeHead.headwear.ach.visible,true);
  assert.equal(rig.visualKit.plateCarrier.visible,false);
- assert.equal(rig.visualKit.jacket.visible,true);
+ assert.equal(rig.visualKit.jacket.visible,false, // retired generic garment overlay
+  'authored wardrobe top replaces the old universal jacket mesh');
  gear=setEquipmentChoice(gear,'head','head-none');
  gear=setEquipmentChoice(gear,'armor','armor-carrier');
  gear=setEquipmentChoice(gear,'top','top-light');

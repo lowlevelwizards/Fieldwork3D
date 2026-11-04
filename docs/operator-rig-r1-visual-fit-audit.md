@@ -80,3 +80,7 @@ Add an explicit visual mounting capability field in the wardrobe style metadata 
 ### Guardrail
 
 The armor contact solver passed the user's visual review. Treat it as stable. Rig geometry may attach to its real surfaces but **must not change** armor front/back placement, global mesh dimensions, gameplay hitboxes, stats or the existing armors' silhouettes.
+
+## RIG-A through RIG-E implementation checkpoint
+
+Work is staged on feature branch `feat/rig-r1-surface-mounting-20261103` (PR #785). RIG-A uses inner panel faces and true rendered garment/armor contact. RIG-B fits classic and historic harnesses, RIG-C builds tapered split/bib/LBV fronts, RIG-D connects pelvis-specific field webbing and Pattern 83 Battle Jacket waist loads with the existing real magazine instances. RIG-E checks every nominated rig style against each named uniform and armor, preserving the unchanged equipment ledger and R7 armor solver. A successful CI build is not alone sufficient: the dedicated rig test step must complete, the mobile capture must pass, and the previous Pages deployment must be verified before one batch merge.

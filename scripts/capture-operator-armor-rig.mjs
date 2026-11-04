@@ -37,7 +37,12 @@ try{
    ['plate-jpc','chest-placard'],
    ['soft-flak','chicom-rig'],
    ['plate-legacy','sadf-webbing'],
-   ['soft-slick','bandolier']
+   ['soft-slick','bandolier'],
+   ['armor-bare','micro-rig'],
+   ['plate-standard','field-webbing'],
+   ['plate-standard','lbv'],
+   ['plate-heavy','full-chest'],
+   ['soft-vest','split-front']
   ];
   // R1 grayscale cut review: no pouch layout can conceal a bad armor silhouette.
   // Capture each wearable with no rig from the canonical 3/4, front and side.
@@ -73,6 +78,26 @@ try{
      path:'operator-armor-rig-captures/'+armor+'-'+rig+'-'+view+'.png'
     });
    }
+  }
+  // Worst-case SIDE silhouettes catch belts that would appear seated
+  // from the front while floating behind the arm or beside the pelvis.
+  for(const [armor,rig] of [
+   ['plate-standard','field-webbing'],
+   ['plate-legacy','sadf-webbing'],
+   ['soft-vest','split-front']
+  ]){
+   await page.locator('#armorChoice').selectOption(armor);
+   await page.locator('#rigChoice').selectOption(rig);
+   await page.waitForFunction(([a,b])=>{
+    const c=document.getElementById('armorCanvas');
+    return c?.dataset.armor===a&&c?.dataset.rig===b;
+   },[armor,rig]);
+   await page.locator('button[data-view="side"]').click();
+   await page.waitForFunction(()=>
+    document.getElementById('armorCanvas')?.dataset.view==='side');
+   await page.locator('#armorCanvas').screenshot({
+    path:'operator-armor-rig-captures/r5-'+armor+'-'+rig+'-side.png'
+   });
   }
   // R2: all forty distinct armor/uniform pairings, deliberately without a
   // rig hiding bad connections. Includes thick smock/Gorka and light combat.
@@ -114,6 +139,6 @@ try{
    });
   }
   if(errors.length)throw Error('Lab runtime: '+errors.join('; '));
-  console.log('Captured 91 normal-game-zoom armor/rig, fit and overlay previews on phone viewport.');
+  console.log('Captured targeted normal-game-zoom armor/rig, fit and overlay previews on phone viewport.');
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}

@@ -54,6 +54,7 @@ export type OperatorVisualKit={
  rolledForearms:THREE.Mesh[];rolledCuffs:THREE.Mesh[];kneePanels:THREE.Mesh[];
  eyeMarks:THREE.Mesh[];hairMaterial:Material;patchMaterial:Material;patches:THREE.Mesh[];
  magazines:Record<'rig'|'belt'|'pocket',THREE.Mesh[]>;
+ rigMagazineHome:THREE.Group;
 };
 const part=(parent:THREE.Object3D,m:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number)=>{
@@ -245,7 +246,8 @@ export function createOperatorVisualKit(
   fieldWebbing,belt,dayPack,fieldPack,packHarness,cargoPockets,bootCuffs,
   fieldToeCaps,lightInstepPanels,sleeveCuffs,
   rolledForearms,rolledCuffs,kneePanels,eyeMarks,hairMaterial,magazines,
-  haircuts,graphicMarks,patchMaterial,patches};
+  haircuts,graphicMarks,patchMaterial,patches,
+  rigMagazineHome:chest};
 }
 const DEFAULT:Slots={
  primary:'primary-carbine',head:'head-helmet',armor:'armor-soft',
@@ -370,6 +372,21 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  // bulky legacy armor. The old locations remain for non-wardrobe callers.
  const order=wardrobe?.mounts?.magazineOrder==='right-left'?-1:1;
  v.magazines.rig.forEach((mag,i)=>{
+  // Maintain the exact same real magazine instances and carry count.
+  const waist=usingWardrobe&&looks.rigStyle==='field-webbing'?
+   v.wardrobeGear.waistRig['field-webbing']:undefined;
+  if(waist){
+   if(mag.parent!==waist)waist.add(mag);
+   const tier=Math.floor(i/2),sign=(i%2===0?-1:1)*order;
+   if(i===6){
+    mag.position.set(4.64,.38,0);mag.rotation.y=0;
+   }else{
+    mag.position.set(tier===0?2.30:tier===1?-.65:-3.60,
+     .10,sign*7.20);
+    mag.rotation.y=sign*Math.PI/2;
+   }
+  }else{
+   if(mag.parent!==v.rigMagazineHome)v.rigMagazineHome.add(mag);
   if(usingWardrobe){
    const socket=armorMountedMagazineSocket(looks.rigStyle,i,looks.armorStyle,order,looks.top);
    mag.position.set(socket.x,socket.y,socket.z);
@@ -383,6 +400,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
    mag.position.set(i===6?1.7:-2.8,-1.55,
     side*(s.armor==='armor-carrier'?9.0:s.armor==='armor-soft'?8.65:8.1));
    mag.rotation.y=side*Math.PI/2;
+  }
   }
  });
  for(const loc of ['rig','belt','pocket'] as const){
