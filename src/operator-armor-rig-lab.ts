@@ -120,6 +120,16 @@ function refresh(){
   aiming:false,firing:false,turning:0,deterministic:true,
   unarmedPreview:true,equipment:kit,wardrobe
  },0);
+ // Comparison previews must fail fast if the chosen cut disallows this
+ // textile; otherwise a gray mannequin can masquerade as a camo audit.
+ if(previewCamo&&previewChannel){
+  const material=previewChannel==='top'?operator.clothMaterial:
+   previewChannel==='armor'?operator.vestMaterial:operator.gearMaterial;
+  const expected='Fieldwork cloth '+previewChannel+' / '+previewCamo;
+  if(!material.map?.name.startsWith(expected))
+   throw new Error('Incompatible camouflage preview: '+expected+
+    ' on '+topSelect.value+' / '+armor+' / '+rig);
+ }
  updateFitDebug();
  updateView();
 }
