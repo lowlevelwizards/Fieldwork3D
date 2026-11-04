@@ -12,6 +12,7 @@ import {orientFurnishings} from './prop-orientation.ts';
 import {ROOM_CONTRACTS} from './room-contracts.ts';
 import {recoverRoomEssentials} from './room-essential-recovery.ts';
 import {retainsTacticalSightline,engagementRoomRelevant,tacticalFurnishingValue} from './room-sightline-audit.ts';
+import {ballisticFurnishingValue,tacticalFurnitureFamily} from './room-ballistic-furnishing.ts';
 import {placeServiceQueues} from './service-queue-layout.ts';
 import {planKitchenWorklines} from './kitchen-workline.ts';
 import {circulationReservations,overlapsCirculationReservation} from './circulation-reservations.ts';
@@ -392,11 +393,11 @@ export function furnishRooms(site:Site,seed:number):Site{
      ...perimeterPositions(room,w,h),
    ];
    let chosen:Obstacle|undefined;
-   // Real functional furnishings retain priority. For optional tall props
-   // in a larger engagement space, compare at most five legally validated
-   // alternatives, favoring a useful mix of open and concealed sightlines.
-   const rankTactical=i>=essential.length&&asset.cover!=='low'&&
-    engagementRoomRelevant(room);
+   // Never relocate mandatory furnishings for a combat metric. Existing
+   // optional room-appropriate furniture gets up to five legal candidates.
+   // This reuses circulation, density, overlap and doorway safety gates.
+   const rankTactical=i>=essential.length&&engagementRoomRelevant(room)&&
+    tacticalFurnitureFamily(item.id);
    let bestTacticalValue=-Infinity,validOptions=0;
    for(const p of candidates){
     if(p.x-w/2<room.x+9||p.x+w/2>room.x+room.w-9||
@@ -420,8 +421,10 @@ export function furnishRooms(site:Site,seed:number):Site{
     if(i>=essential.length&&!retainsTacticalSightline(
       {...site,cover:output},room,candidate,placed))continue;
     if(!rankTactical){chosen=candidate;break;}
-    const score=tacticalFurnishingValue({...site,cover:output},
-      room,candidate,placed);
+    const physical={...site,cover:output};
+    const ballistic=ballisticFurnishingValue(physical,room,candidate,placed);
+    const score=ballistic===-Infinity?-Infinity:
+      ballistic+tacticalFurnishingValue(physical,room,candidate,placed);
     if(score>bestTacticalValue&&score!==-Infinity){
       bestTacticalValue=score;chosen=candidate;
     }

@@ -12,8 +12,8 @@ test('R7A: genuine room openings, not fictitious exterior points',()=>{
  assert.equal(roomThreatPoints({...base,doors:[]},room).length,0);
 });
 test('R7A: real height intersection distinguishes standing and crouched cover',()=>{
- const desk={x:118,y:80,w:16,h:45,low:false};
- const p={x:137,y:80};
+ const desk={x:92,y:80,w:66,h:22,fixture:'bar-counter',low:false};
+ const p={x:147,y:80};
  const noCover=assessBallisticPosition(base,room,p);
  const protectedAtDesk=assessBallisticPosition({...base,cover:[desk]},room,p);
  assert.equal(noCover.attackAngles,1);
