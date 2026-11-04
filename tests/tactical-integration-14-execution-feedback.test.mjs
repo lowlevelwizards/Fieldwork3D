@@ -50,7 +50,7 @@ test('failed flash, reload, furniture and missing door orders are retained',()=>
     },'FLASH UNAVAILABLE'],
    [{id:212,kind:'reload',p:{...a.p}},()=>{
       a.flashCharges=2;a.magazine=1;a.reserve=0;
-    },'RELOAD UNAVAILABLE'],
+    },'RELOAD UNAVAILABLE · CHECK AMMO'],
    [{id:213,kind:'door',p:{...a.p},doorId:'MISSING',method:'open'},()=>{
       a.reserve=20;
     },'DOOR MISSING'],
@@ -93,7 +93,7 @@ test('transition log is sparse, typed, friendly-only and replay captures it',()=
 test('both 2D and projected views draw persistent issue markers; replay uses the same log',()=>{
  const c=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
  assert.match(c,/drawExecutionProblem\(a,true\)/);
- assert.match(c,/drawExecutionProblem\(actor,false\)/);
+ assert.match(c,/drawExecutionProblem\(a,false\)/);
  assert.match(c,/executionMarkerPoint\(unit,viewMode!=='plan2d'\)/);
  assert.match(c,/recorder\.executionEvents\.filter/);
  assert.match(c,/executionProblemStatus\(unit\)\?\.orderId===candidate\.id/);
