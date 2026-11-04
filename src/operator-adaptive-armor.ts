@@ -84,13 +84,19 @@ function buildAuthoredPanels(entry:ArmorEntry){
   for(const y of [-2.90,-.55])
    makeBox(front,trim,outer+.15,y,0,.18,.46,spec.width-1.6);
  }else if(spec.family==='standard'){
-  for(const y of [-2.55,-.80])
-   makeBox(front,utility,outer,y,0,.21,.43,spec.width-1.0);
+  // Three horizontal rows on a substantially larger, full-use front bag.
+  // These are broad seams rather than fine MOLLE loops at phone scale.
+  for(const y of [-3.34,-1.32,.72])
+   makeBox(front,utility,outer,y,0,.23,.41,spec.width-1.34);
  }else if(spec.family==='assault'){
-  // One strong modular chest band, leaving the wider yoke and flank
-  // armor to communicate the heavyweight identity.
-  makeBox(front,dark,outer,2.92,0,.24,.55,spec.width-2.3);
-  makeBox(front,utility,outer,-2.75,0,.20,.65,spec.width-1.0);
+  // Heavy assault must read as the WHOLE protective envelope, not merely
+  // a scaled standard plate. Thick raised chest cap, deep lower shelf,
+  // extra-wide yoke and real side plates give four separate big shapes.
+  makeBox(front,cloth,outer+.12,1.20,0,.48,2.75,spec.width-1.08);
+  makeBox(front,dark,outer+.43,2.65,0,.25,.68,spec.width-2.18);
+  makeBox(front,utility,outer+.16,-3.47,0,.28,.83,spec.width-1.10);
+  makeBox(front,cloth,outer+.12,spec.bottom+.61,0,.48,1.04,
+   spec.width-1.22);
  }else if(spec.family==='skeleton'){
   makeBox(front,trim,outer,spec.bottom+.28,0,.18,.40,spec.width-.8);
  }

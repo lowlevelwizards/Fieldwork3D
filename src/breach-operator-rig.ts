@@ -39,7 +39,7 @@ import {headwearCamoTexture,headwearDetailTexture} from './operator-headwear-mat
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import {garmentBoxUV,wardrobeFabricCamoTexture} from './operator-fabric-camo-materials.ts';
 import {resolveAutomaticGearColors} from './operator-gear-color-policy.ts';
-import {rigSignature,armorSignature,validRigSolid,validArmorSolid}
+import {rigSignature,armorSignature,rigColorAssembly,validRigSolid,validArmorSolid}
  from './operator-rig-authenticity-policy.ts';
 import {garmentColorValues,gorkaSpecialtyTexture} from './operator-upper-colorways.ts';
 import {garmentSolidHex,isGarmentSolidId,resolvedCuffSolid,resolvedCombatKnitSolid}
@@ -611,9 +611,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // inherits the rig's entire chosen solid/print and deterministic camo cut.
   // Advanced single-color pouch overrides change nothing about rig backing,
   // armor, functional magazines or carrying capacity.
+  const assembly=rigColorAssembly(clothing.rigStyle);
+  const printForRig=p.wardrobe?.fabricCamo?.gear&&
+   fabricCamoCompatible(p.wardrobe.fabricCamo.gear,'gear',clothing)?
+   p.wardrobe.fabricCamo.gear:
+   p.wardrobe&&!p.wardrobe.fabricSolids?.gear?signature.print:null;
   const pouchMaterial=r.visualKit.wardrobeGear.pouchMaterial;
   const pouchOverride=p.wardrobe?.pouchSolid;
-  const pouchHasOverride=isGarmentSolidId(pouchOverride);
+  const pouchHasOverride=assembly.detachablePouches&&
+   isGarmentSolidId(pouchOverride)&&validRigSolid(clothing.rigStyle,pouchOverride);
   const pouchMap=pouchHasOverride?operatorPixelTextures.get('fabric'):
    r.gearMaterial.map;
   if(pouchMaterial.map!==pouchMap){
@@ -622,6 +628,24 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.colors.set(pouchMaterial,pouchHasOverride?
    new THREE.Color(garmentSolidHex(pouchOverride)):
    (r.colors.get(r.gearMaterial)??r.gearMaterial.color).clone());
+  // Structural straps are textile, not permanent OD or fixed gray trim.
+  // Only replaceable harnesses offer an additional manual material.
+  const strapMaterial=r.visualKit.wardrobeGear.strapMaterial;
+  const strapOverride=p.wardrobe?.strapSolid;
+  const strapHasOverride=assembly.replaceableHarness&&
+   isGarmentSolidId(strapOverride)&&validRigSolid(clothing.rigStyle,strapOverride);
+  const plainWebbing=assembly.webbing==='solid-when-printed'&&!!printForRig;
+  const strapMap=strapHasOverride||plainWebbing?
+   operatorPixelTextures.get('fabric'):r.gearMaterial.map;
+  if(strapMaterial.map!==strapMap){
+   strapMaterial.map=strapMap;strapMaterial.needsUpdate=true;
+  }
+  const strapHex=strapHasOverride?garmentSolidHex(strapOverride):
+   plainWebbing?garmentSolidHex(
+    resolveAutomaticGearColors({print:printForRig}).gear):null;
+  r.colors.set(strapMaterial,strapHex===null?
+   (r.colors.get(r.gearMaterial)??r.gearMaterial.color).clone():
+   new THREE.Color(strapHex));
   // One authoritative color ledger owns *every* material before the final
   // pose-time restore and optional injury desaturation. In particular, do not
   // overwrite the selected headgear swatch with the old neutral blend.

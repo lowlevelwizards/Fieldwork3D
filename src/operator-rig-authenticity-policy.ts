@@ -159,6 +159,29 @@ export const ARMOR_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
   rationale:'Legacy broad cover carrier: woodland/DCU and early universal-cover variants'
  }
 };
+/** R10 material ownership: sewn components match, detachable pieces may
+ * be given distinct swatches. A printed LBV/field webbing can retain
+ * plain nylon supports without fixing arbitrary hardware to OD forever.
+ */
+export type RigColorAssembly={detachablePouches:boolean;
+ replaceableHarness:boolean;webbing:'match'|'solid-when-printed'};
+export const RIG_COLOR_ASSEMBLY:Readonly<Record<string,RigColorAssembly>>={
+ 'no-rig':{detachablePouches:false,replaceableHarness:false,webbing:'match'},
+ 'micro-rig':{detachablePouches:true,replaceableHarness:true,webbing:'match'},
+ 'chest-placard':{detachablePouches:true,replaceableHarness:true,webbing:'match'},
+ 'light-rig':{detachablePouches:false,replaceableHarness:false,webbing:'solid-when-printed'},
+ 'chicom-rig':{detachablePouches:false,replaceableHarness:false,webbing:'match'},
+ bandolier:{detachablePouches:false,replaceableHarness:false,webbing:'match'},
+ 'split-front':{detachablePouches:true,replaceableHarness:true,webbing:'match'},
+ 'full-chest':{detachablePouches:true,replaceableHarness:true,webbing:'match'},
+ lbv:{detachablePouches:false,replaceableHarness:false,webbing:'solid-when-printed'},
+ 'field-webbing':{detachablePouches:true,replaceableHarness:true,webbing:'solid-when-printed'},
+ 'sadf-webbing':{detachablePouches:false,replaceableHarness:false,webbing:'solid-when-printed'},
+ 'belt-harness':{detachablePouches:true,replaceableHarness:true,webbing:'solid-when-printed'}
+};
+export function rigColorAssembly(style:string):RigColorAssembly{
+ return RIG_COLOR_ASSEMBLY[style]??RIG_COLOR_ASSEMBLY['no-rig'];
+}
 export function rigSignature(style:string):VisualTextile['signature']{
  return RIG_VISUAL_TEXTILES[style]?.signature??{solid:'olive-drab'};
 }

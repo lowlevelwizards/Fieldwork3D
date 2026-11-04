@@ -15,6 +15,7 @@ export type WardrobeGearLayers={
  armor:StyleGroups;rig:StyleGroups;belt:StyleGroups;pack:StyleGroups;
  waistRig:StyleGroups;
  pouchMaterial:THREE.MeshStandardMaterial;
+ strapMaterial:THREE.MeshStandardMaterial;
 };
 const box=(g:THREE.Group,m:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number)=>{
@@ -38,27 +39,38 @@ export function createWardrobeGearLayers(
  const pouchMaterial=(gearFabric as THREE.MeshStandardMaterial).clone();
  pouchMaterial.name='Fieldwork authored rig pouch fabric';
  pouchMaterial.userData.fieldworkFabric=true;
- const rig=createChestRigSilhouettes(chest,gearFabric,pouchMaterial,dark,trim);
+ const strapMaterial=(gearFabric as THREE.MeshStandardMaterial).clone();
+ strapMaterial.name='Fieldwork authored rig structural webbing';
+ strapMaterial.userData.fieldworkFabric=true;
+ const rig=createChestRigSilhouettes(chest,gearFabric,pouchMaterial,
+  dark,trim,strapMaterial);
  // Two historically inspired belt and jacket loads follow the pelvis
  // while their independent shoulder suspenders follow the chest.
  const waistRig:StyleGroups={};
  const webbing=make(hip);waistRig['field-webbing']=webbing;
- box(webbing,gearFabric,4.35,.18,0,1.12,1.36,13.35);
- box(webbing,gearFabric,-4.15,.18,0,1.06,1.34,12.20);
+ box(webbing,strapMaterial,4.35,.18,0,1.12,1.36,13.35);
+ box(webbing,strapMaterial,-4.15,.18,0,1.06,1.34,12.20);
  for(const side of [-1,1])
   for(const x of [2.30,-.65,-3.60]){
    box(webbing,pouchMaterial,x,.10,side*7.20,2.69,3.66,2.36);
-   box(webbing,trim,x+1.37,1.49,side*7.20,.29,.57,2.49);
+   // Field webbing/PLCE: broad cloth weather flap with one short
+   // centrally placed retention strap, all textile swatches inherited.
+   box(webbing,pouchMaterial,x+1.40,1.50,side*7.20,.36,1.07,2.61);
+   box(webbing,strapMaterial,x+1.65,.75,side*7.20,.26,1.10,.65);
    // A clear, dark top opening shows where carried belt magazines sit.
    box(webbing,dark,x,1.88,side*8.42,2.02,.28,.19);
   }
  const battle=make(hip);waistRig['sadf-webbing']=battle;
- box(battle,gearFabric,4.26,.13,0,1.18,1.50,13.55);
- box(battle,gearFabric,-4.24,.13,0,1.10,1.48,12.55);
+ box(battle,strapMaterial,4.26,.13,0,1.18,1.50,13.55);
+ box(battle,strapMaterial,-4.24,.13,0,1.10,1.48,12.55);
  for(const side of [-1,1]){
-  for(const x of [2.1,-1.30])
+  for(const x of [2.1,-1.30]){
+   // P83: large two-tier projecting cargo bag with a broad deep cap.
    box(battle,pouchMaterial,x,.16,side*7.32,3.25,4.38,2.84);
-  box(battle,gearFabric,-3.75,.12,side*5.4,1.16,4.15,5.15);
+   box(battle,pouchMaterial,x+1.72,1.77,side*7.32,.42,1.05,3.06);
+   box(battle,strapMaterial,x+2.02,.29,side*7.32,.28,1.30,.64);
+  }
+  box(battle,strapMaterial,-3.75,.12,side*5.4,1.16,4.15,5.15);
  }
  const belt:StyleGroups={},pack:StyleGroups={};
  for(const item of wardrobeItemsForSlot('beltStyle')){
@@ -103,7 +115,7 @@ export function createWardrobeGearLayers(
  }
  for(const section of [waistRig,belt,pack])
   for(const g of Object.values(section))consolidateVisualGroup(g);
- return {armor,rig,waistRig,belt,pack,pouchMaterial};
+ return {armor,rig,waistRig,belt,pack,pouchMaterial,strapMaterial};
 }
 export function updateWardrobeGearLayers(v:WardrobeGearLayers,
  armor:string,rig:string,belt:string,pack:string,top='combat-shirt'){
