@@ -9,6 +9,7 @@
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "audit:physicality": "node --experimental-strip-types scripts/stress-physicality.mjs",
     "audit:breach-sites": "node --experimental-strip-types scripts/audit-breach-sites.mjs",
+    "audit:mission-quality": "node --experimental-strip-types scripts/audit-mission-quality.mjs",
     "audit:realism": "node --experimental-strip-types scripts/audit-realism-release.mjs",
     "build": "tsc --noEmit && vite build && node scripts/stamp-pages.mjs",
     "preview": "vite preview --host 0.0.0.0"

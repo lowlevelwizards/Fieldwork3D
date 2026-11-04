@@ -21,6 +21,7 @@ import {auditEncounter,type EncounterSpatialAudit} from './worldgen/encounter-di
 import {verifiedDeploymentChoices,type DeploymentChoice} from './breach-deployment.ts';
 import {auditTacticalOpportunities,type TacticalOpportunityAudit}
   from './worldgen/tactical-opportunity-audit.ts';
+import {assessRoomSightlines,type RoomSightlineQuality} from './worldgen/room-sightline-audit.ts';
 import {scoreCompositeQuality,type CompositeQuality} from './worldgen/composite-quality.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type SiteAudit={seed:number;archetype:string;layout:string;
@@ -39,7 +40,8 @@ export type SiteAudit={seed:number;archetype:string;layout:string;
   mobilityQuality:MobilityAudit;
   accessibilityQuality:AccessibilityQuality;humanJourneys:JourneyAudit;
   routeFriction:RouteFriction;encounterAudit:EncounterSpatialAudit;
-  tacticalOpportunities:TacticalOpportunityAudit;errors:string[];
+  tacticalOpportunities:TacticalOpportunityAudit;
+  sightlineQuality:RoomSightlineQuality[];errors:string[];
   compositeQuality:CompositeQuality};
 export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteAudit{
   return auditSite(generateSite(seed,scale));
@@ -159,6 +161,7 @@ export function auditSite(site:Site):SiteAudit{
     mobilityQuality:auditTacticalMobility(site),
     accessibilityQuality:assessAccessibilityClearance(site),humanJourneys,
     routeFriction,encounterAudit:auditEncounter(site),
-    tacticalOpportunities:auditTacticalOpportunities(site,verifiedEntries),errors};
+    tacticalOpportunities:auditTacticalOpportunities(site,verifiedEntries),
+    sightlineQuality:site.rooms.filter(r=>r.kind==='room').map(r=>assessRoomSightlines(site,r)),errors};
   return {...base,compositeQuality:scoreCompositeQuality(base)};
 }

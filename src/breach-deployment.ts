@@ -7,7 +7,7 @@ import type {Site} from './breach-site.ts';
 import {insideSiteFootprint,exteriorBriefedAt,accessibleExteriorWall}
  from './breach-site-footprint.ts';
 import {initializeWindows} from './breach-windows.ts';
-import {windowClimbAvailability} from './breach-mantle.ts';
+import {windowClimbAvailability,probeWindowCrossing} from './breach-mantle.ts';
 export type DeploymentChoice={
  id:string;kind:'primary'|'secondary'|'shutter'|'window';
  status:'door'|'open-first'|'break-first';approach:Pt;spots:[Pt,Pt,Pt,Pt];
@@ -69,7 +69,15 @@ export function verifiedDeploymentChoices(site:Site):DeploymentChoice[]{
    {a:{x:w.x,y:w.y-h},b:{x:w.x,y:w.y+h}}:
    {a:{x:w.x-h,y:w.y},b:{x:w.x+h,y:w.y}};
   const entry=verify(site,w.id,'window',status,segment);
-  if(entry)result.push(entry);
+  if(!entry)continue;
+  // A reachable exterior staging mat is NOT sufficient: this particular
+  // sill also has to satisfy the authoritative motor's climb contract.
+  const inside={x:w.x+(w.x-entry.approach.x)*27/37,
+    y:w.y+(w.y-entry.approach.y)*27/37};
+  const crossing=probeWindowCrossing(entry.approach,inside,{
+    cover:site.cover,walls:site.walls,doors:site.doors,
+    windows:[{...w,open:true}],canStand:p=>passable(p,8)});
+  if(crossing)result.push(entry);
  }
  return result;
 }

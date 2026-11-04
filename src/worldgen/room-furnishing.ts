@@ -11,6 +11,7 @@ import {optionalOperationalFixtures} from './archetype-operational-variants.ts';
 import {orientFurnishings} from './prop-orientation.ts';
 import {ROOM_CONTRACTS} from './room-contracts.ts';
 import {recoverRoomEssentials} from './room-essential-recovery.ts';
+import {retainsTacticalSightline} from './room-sightline-audit.ts';
 import {placeServiceQueues} from './service-queue-layout.ts';
 import {planKitchenWorklines} from './kitchen-workline.ts';
 import {circulationReservations,overlapsCirculationReservation} from './circulation-reservations.ts';
@@ -408,6 +409,10 @@ export function furnishRooms(site:Site,seed:number):Site{
       p.y-(o.a.y+o.b.y)/2)<Math.max(65,Math.max(w,h)/2+32)))continue;
     if(reserved.some(q=>Math.abs(q.x-p.x)<w/2+24&&Math.abs(q.y-p.y)<h/2+24))continue;
     if([...output,...placed].some(o=>overlap(o,candidate)))continue;
+    // Additional tall clutter should create choices without completely
+    // erasing sightlines at the REAL room doors. Essentials are exempt.
+    if(i>=essential.length&&!retainsTacticalSightline(
+      {...site,cover:output},room,candidate,placed))continue;
     chosen=candidate;break;
    }
    if(chosen)placed.push(chosen);

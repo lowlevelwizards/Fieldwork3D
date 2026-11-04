@@ -5,11 +5,13 @@
  */
 import type {Room,Site} from '../breach-site.ts';
 import type {EncounterProfile} from './encounter-types.ts';
+import {assessRoomSightlines} from './room-sightline-audit.ts';
 const near=(a:{x:number;y:number},b:{x:number;y:number})=>
  Math.hypot(a.x-b.x,a.y-b.y);
 export function tacticalDefenderRoomScore(
  room:Room,cover:Readonly<Site['cover']>,
- doors:Readonly<Site['doors']>,profile:EncounterProfile
+ doors:Readonly<Site['doors']>,profile:EncounterProfile,
+ site?:Site
 ):number{
  const center={x:room.x+room.w/2,y:room.y+room.h/2};
  const inside=(p:{x:number;y:number})=>p.x>=room.x&&
@@ -26,7 +28,12 @@ export function tacticalDefenderRoomScore(
  const sensitive=['bathroom','restroom','closet','utility-closet'];
  const cramped=sensitive.includes(room.purpose??'')?-24:0;
  const coverValue=Math.min(24,furnished*8);
- if(profile==='prepared')return cramped+coverValue+
+ const lanes=site?assessRoomSightlines(site,room):null;
+ const tactical=lanes&&lanes.samples>0&&lanes.thresholds>0?
+   Math.min(14,Math.min(lanes.exposedSamples,lanes.concealedSamples)*3)+
+   (lanes.longLanes>0?4:0)-
+   (lanes.exposedFraction<.14?10:0):0;
+ if(profile==='prepared')return tactical+cramped+coverValue+
    (thresholds>0?Math.min(18,thresholds*9):-8);
  if(profile==='active')return cramped+Math.min(22,furnished*7);
  if(profile==='clustered')return cramped+Math.min(12,furnished*4);

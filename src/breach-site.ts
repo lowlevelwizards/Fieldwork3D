@@ -11,6 +11,8 @@ import {buildingIdentity} from './worldgen/building-identity.ts';
 import {measureSiteCompleteness,shouldTryAnotherLayout,preferCompleteCandidate} from './worldgen/site-completeness.ts';
 import {repairDoorwayClutter} from './worldgen/doorway-clutter-repair.ts';
 import {attachEncounterPlan} from './worldgen/encounter-director.ts';
+import {describeSiteTopology,preferTopologyCandidate,
+ shouldSampleTopologyAlternative} from './worldgen/topology-diversity.ts';
 import type {EncounterContext,EncounterPlan} from './worldgen/encounter-types.ts';
 export type Room={id:string;zoneId?:string;unitId?:string;x:number;y:number;w:number;h:number;
   kind:'room'|'hall';tone:number;purpose?:string};
@@ -85,6 +87,7 @@ export function generateSite(seed:number,scale:SiteScale='standard',
  let best:Site|undefined;
  let bestGrade:ReturnType<typeof measureSiteCompleteness>|undefined;
  let firstSuccess=-1;
+ const sampleDiversity=shouldSampleTopologyAlternative(seed,scale);
  for(let attempt=0;attempt<6;attempt++){
   // One optional alternate after the first navigable map; do not multiply
   // full scene generation on every mobile load.
@@ -106,14 +109,22 @@ export function generateSite(seed:number,scale:SiteScale='standard',
    const candidate=attachEncounterPlan(accessible,encounterContext);
    onProgress?.('scoring',attempt);
    const grade=measureSiteCompleteness(candidate);
-   if(!bestGrade||preferCompleteCandidate(grade,bestGrade)){
+   if(!bestGrade||preferCompleteCandidate(grade,bestGrade)||
+     (sampleDiversity&&best&&preferTopologyCandidate(
+       describeSiteTopology(candidate),describeSiteTopology(best),
+       grade.score,bestGrade.score,seed))){
     best=candidate;bestGrade=grade;
    }
    if(firstSuccess<0){
     firstSuccess=attempt;
-    if(!shouldTryAnotherLayout(grade,scale))return candidate;
+    if(!sampleDiversity&&!shouldTryAnotherLayout(grade,scale))
+      return candidate;
    }
-   if(grade.score===0)return candidate;
+   // Only the first eligible complete site earns ONE extra comparison.
+   // Once selected, never run an unbounded search for a desired shape.
+   if(grade.score===0&&!sampleDiversity)return candidate;
+   if(sampleDiversity&&firstSuccess>=0&&attempt===firstSuccess+1)
+     return best!;
   }catch{/* Retry a different authored physical grammar when disconnected. */}
  }
  if(best)return best;
