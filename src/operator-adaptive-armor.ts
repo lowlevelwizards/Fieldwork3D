@@ -11,11 +11,12 @@ import * as THREE from 'three';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {ARMOR_PROPORTIONS,type ArmorProportion}
  from './operator-armor-proportions.ts';
-import {fittedArmorBag,fittedShoulderBridge,fittedSideWrap,fittedArmorCollar}
- from './operator-armor-shapes.ts';
+import {fittedArmorBag,fittedShoulderBridge,fittedSideWrap,fittedArmorCollar,
+ fittedArmoredSidePlate} from './operator-armor-shapes.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {armorSideLayout} from './operator-armor-side-layout.ts';
-import {armorStrapLanding} from './operator-armor-straps.ts';
+import {armorStrapLanding,JPC_BRANCH_HALF_SPREAD,JPC_BRANCH_WIDTH}
+ from './operator-armor-straps.ts';
 import {uniformFitEnvelope,armorContactSurface,fittedArmorSurfaces,ARMOR_PANEL_DEPTHS,
  type ArmorFitSurfaces} from './operator-uniform-fit-envelope.ts';
 
@@ -112,18 +113,20 @@ function shoulders(g:THREE.Group,m:THREE.Material,
  const land=armorStrapLanding(fit,spec);
  for(const side of [-1,1]){
   if(spec.family==='skeleton'){
-   // One recognizable triangular JPC opening with two *complete*
-   // front landings in the plate-bag polygon, not dangling tab ends.
-   for(const d of [-.63,.63]){
+   // Two strong, broad hypalon-style branches create an unmistakable
+   // triangular opening, rather than two overlapping generic straps.
+   // Both feet are constrained by armorStrapLanding to the actual plate.
+   for(const d of [-JPC_BRANCH_HALF_SPREAD,JPC_BRANCH_HALF_SPREAD]){
     fittedShoulderBridge(g,m,[
      [land.frontX,land.frontY,land.frontZ+d],
      [shoulder.front+.14,land.shoulderY-.36,
-      land.shoulderZ+d*.33],
-     [1.78,land.shoulderY+.01,land.shoulderZ]
-    ],.96,spec.strapThickness,side);
+      land.shoulderZ+d*.66],
+     [2.50,land.shoulderY+.01,land.shoulderZ+d*.34],
+     [1.35,land.shoulderY+.01,land.shoulderZ]
+    ],JPC_BRANCH_WIDTH,spec.strapThickness,side);
    }
    fittedShoulderBridge(g,m,[
-    [1.78,land.shoulderY+.01,land.shoulderZ],
+    [1.35,land.shoulderY+.01,land.shoulderZ],
     [-1.75,land.shoulderY+.01,land.shoulderZ],
     [shoulder.back-.16,land.shoulderY-.28,land.shoulderZ],
     [land.rearX,land.rearY,land.rearZ]
@@ -210,22 +213,37 @@ function regenerateConnections(entry:ArmorEntry,top:string){
  }
  if(spec.sideStyle==='side_plate'){
   const p=armorSideLayout(fit,spec);
-  // A single unmistakable side plate per flank. Its inner face overlaps
-  // the continuous side slab instead of hovering outside a strip frame.
-  const depth=.86;
-  for(const side of [-1,1])
-   makeBox(connectors,cloth,.05,spec.sideY-.18,
-    side*(p.centerZ+spec.sideThickness*.5+depth*.5-.10),
-    3.75,spec.sidePlateHeight,depth);
+  // Substantial ballistic plate seated directly onto the outer face of
+  // the close-fitting cummerbund. The insert has one clipped-corner shell
+  // plus one large contrasting face — not extra straps or hollow rails.
+  const inner=p.centerZ+spec.sideThickness*.5-.15;
+  for(const side of [-1,1]){
+   fittedArmoredSidePlate(connectors,cloth,.05,spec.sideY-.15,
+    inner,side,4.4,spec.sidePlateHeight+.43,.72);
+   fittedArmoredSidePlate(connectors,utility,.05,spec.sideY-.15,
+    inner+.69,side,3.48,spec.sidePlateHeight-.36,.14);
+  }
  }
- if(spec.collarStyle==='high_flak'||spec.collarStyle==='legacy_wrap'){
-  const flak=spec.collarStyle==='high_flak';
+ if(spec.collarStyle==='high_flak'){
+  // PASGT keeps its familiar bulky three-quarter cloth collar.
   const hood=fit.top==='smock-jacket'||fit.top==='gorka-jacket';
-  const innerZ=hood?5.10:flak?2.90:3.75;
-  const outerZ=innerZ+(flak?1.60:1.38);
+  const innerZ=hood?5.10:2.90;
   fittedArmorCollar(connectors,cloth,fit.back+.54,
-   fit.front-(flak?2.15:2.80),outerZ,innerZ,
-   fit.shoulderY+(flak?.89:.17),flak?2.85:1.70);
+   fit.front-2.15,innerZ+1.60,innerZ,fit.shoulderY+.89,2.85);
+ }else if(spec.collarStyle==='legacy_wrap'){
+  // Legacy OTV/6B-style wrap: lower at the throat but a visibly
+  // reinforced nape and two bold front collar returns.
+  const hood=fit.top==='smock-jacket'||fit.top==='gorka-jacket';
+  const innerZ=hood?4.65:3.15;
+  const frontX=fit.front-2.30,backX=fit.back+.52;
+  fittedArmorCollar(connectors,cloth,backX,frontX,
+   innerZ+1.55,innerZ,fit.shoulderY+.45,2.05);
+  // One continuous rear protective block, seated within the back yoke.
+  makeBox(connectors,utility,backX+1.10,fit.shoulderY+.91,0,
+   .62,1.24,innerZ*2+1.30);
+  for(const side of [-1,1])
+   makeBox(connectors,utility,frontX-.06,fit.shoulderY+.22,
+    side*(innerZ+.76),.72,1.33,1.36);
  }
  consolidateVisualGroup(connectors);
 }
