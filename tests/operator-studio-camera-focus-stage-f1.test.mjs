@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {WARDROBE_SLOTS} from '../src/operator-wardrobe-data.ts';
-import {studioCameraFocus,studioFocusEasing,clampStudioCameraZoom,
+import {studioCameraFocus,studioCameraFocusForWardrobe,studioFocusEasing,clampStudioCameraZoom,
  STUDIO_FULL_FIT,STUDIO_MIN_ZOOM,STUDIO_MAX_ZOOM}
  from '../src/operator-studio-camera-focus.ts';
 
@@ -44,4 +44,24 @@ test('animated transitions are bounded; touch/pinch zoom clamps without altering
  assert.equal(clampStudioCameraZoom(999),STUDIO_MAX_ZOOM);
  assert.equal(clampStudioCameraZoom(NaN),1);
  assert.equal(clampStudioCameraZoom(2.15),2.15);
+});
+
+test('draped scarf, raised wrap and lowered bandana have readable viewport profiles',()=>{
+ const face=studioCameraFocus('facewear');
+ const draped=studioCameraFocusForWardrobe('facewear','shemagh','draped');
+ const wrapped=studioCameraFocusForWardrobe('facewear','shemagh','face-wrap');
+ const hood=studioCameraFocusForWardrobe('facewear','shemagh','head-wrap');
+ assert.ok(draped.zoom<wrapped.zoom&&wrapped.zoom<hood.zoom);
+ assert.ok(draped.zoom<face.zoom&&draped.targetY<face.targetY);
+ assert.ok(studioCameraFocusForWardrobe('facewear','bandana','lowered').zoom<face.zoom);
+ assert.ok(studioCameraFocusForWardrobe('facewear','gaiter','lowered').zoom<face.zoom);
+ assert.deepEqual(studioCameraFocusForWardrobe('armorStyle','shemagh','draped'),
+  studioCameraFocus('armorStyle'));
+});
+
+test('unrecognized previous facewear wearing mode falls back to shemagh draped framing',()=>{
+ assert.deepEqual(studioCameraFocusForWardrobe('facewear','shemagh','raised'),
+  studioCameraFocusForWardrobe('facewear','shemagh','draped'));
+ assert.deepEqual(studioCameraFocusForWardrobe('facewear','shemagh'),
+  studioCameraFocusForWardrobe('facewear','shemagh','draped'));
 });

@@ -217,7 +217,16 @@ export class OperatorAppearanceGrid{
    },0);
    rig.root.position.set(0,0,0);
    this.scene.add(rig.root);
-   const view=focus(item.slot),span=view.span;
+   const clothingMode=w.d2FaceMode;
+   const view=item.slot==='facewear'&&item.id==='shemagh'?
+    (clothingMode==='head-wrap'?
+     {height:41.9,span:18,angle:[27,25,-43] as const}:
+     clothingMode==='face-wrap'?
+     {height:40.7,span:21,angle:[27,25,-43] as const}:
+     {height:38.7,span:25,angle:[27,25,-43] as const}):
+    item.slot==='facewear'&&item.id==='bandana'&&clothingMode==='lowered'?
+     {height:40.4,span:19,angle:[27,25,-43] as const}:focus(item.slot);
+   const span=view.span;
    this.camera.left=-span;this.camera.right=span;
    this.camera.top=span;this.camera.bottom=-span;
    this.camera.position.set(view.angle[0],view.angle[1],view.angle[2]);

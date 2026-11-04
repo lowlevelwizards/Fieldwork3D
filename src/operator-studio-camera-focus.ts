@@ -29,6 +29,22 @@ export const STUDIO_FULL_FIT={targetY:23,zoom:1} as const;
 export const STUDIO_MIN_ZOOM=.7;
 export const STUDIO_MAX_ZOOM=3.2;
 export const studioCameraFocus=(slot:WardrobeSlot):StudioCameraFocus=>FOCUS[slot];
+/** Long wraps extend onto the upper chest; frame the complete actual garment. */
+export function studioCameraFocusForWardrobe(
+ slot:WardrobeSlot,facewear?:string,mode?:string
+):StudioCameraFocus{
+ if(slot!=='facewear')return FOCUS[slot];
+ if(facewear==='shemagh'){
+  if(mode==='head-wrap')return {targetY:41.9,zoom:2.17,side:'retain'};
+  if(mode==='face-wrap')return {targetY:40.9,zoom:1.99,side:'retain'};
+  return {targetY:39.4,zoom:1.76,side:'retain'};
+ }
+ if(facewear==='bandana'&&mode==='lowered')
+  return {targetY:40.8,zoom:2.14,side:'retain'};
+ if(facewear==='gaiter'&&mode==='lowered')
+  return {targetY:40.7,zoom:2.18,side:'retain'};
+ return FOCUS[slot];
+}
 export const clampStudioCameraZoom=(z:number)=>
  Math.min(STUDIO_MAX_ZOOM,Math.max(STUDIO_MIN_ZOOM,Number.isFinite(z)?z:1));
 /** Smoothstep with a bounded normalized input, to keep category changes calm. */
