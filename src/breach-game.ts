@@ -50,6 +50,7 @@ import {manipulateWindow,damageWindow,windowPaneSegment} from './breach-windows.
 import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {chooseAiIntent,type AIIntent} from './breach-ai-policy.ts';
 import {searchCandidates} from './breach-ai-search.ts';
+import {investigationTempo} from './breach-ai-investigation.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
 import {reportToListener,type TacticalReport} from './breach-communication.ts';
 import {groupResponse,type GroupRole} from './breach-ai-coordination.ts';
@@ -127,7 +128,7 @@ export type TeamActor=Operator & {
   intent:AIIntent|null;combatChoice:CombatAction|null;lastReportAt:number;
   coordinationRole:GroupRole|null;coordinationUntil:number;
   lastMoraleEventAt:number;
-  searchOrigin:Pt|null;searchQueue:Pt[];
+  searchOrigin:Pt|null;searchQueue:Pt[];searchPauseUntil:number;
   plan:PlanNode[];history:PlanHistory;nav:Pt[];activeNode:number;
   posture:Posture;pace:'walk'|'run';alert:Alert;velocity:number;turning:number;
   aim: number;targetId:string|null;suppression:number;stamina:number;
@@ -252,7 +253,7 @@ const withActions=(a:Operator):TeamActor=>({
   treatmentActive:false,treatmentProgress:0,
   carryingId:null,carriedById:null,wedgeRemaining:0,
   awareness:newAwareness(),intent:null,combatChoice:null,lastReportAt:-100,
-  coordinationRole:null,coordinationUntil:0,lastMoraleEventAt:-100,searchOrigin:null,searchQueue:[],plan:[],history:makeHistory(),nav:[],activeNode:-1,
+  coordinationRole:null,coordinationUntil:0,lastMoraleEventAt:-100,searchOrigin:null,searchQueue:[],searchPauseUntil:0,plan:[],history:makeHistory(),nav:[],activeNode:-1,
   posture:'stand',pace:'walk',alert:'idle',velocity:0,turning:0,aim:0,
   targetId:null,suppression:0,stamina:1,magazine:12,reserve:36,
   reload:0,hits:0,kills:0,pointShots:0,aimedShots:0,longHits:0,
@@ -2479,7 +2480,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
   }
   if(visible.length){
-    a.searchOrigin=null;a.searchQueue=[];
+    a.searchOrigin=null;a.searchQueue=[];a.searchPauseUntil=0;
     const b=visible.sort((x,y)=>d(x.p,a.p)-d(y.p,a.p))[0];
     a.contact=clone(b.p);a.alertUntil=s.seconds+3;a.contacted=true;
     if(s.seconds-a.lastReportAt>5){
@@ -2567,7 +2568,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.lastNoiseAt=strongest.at;
     const heard=strongest.estimate;
     a.heard=heard;a.contact=heard;a.watch=clone(heard);
-    a.searchOrigin=null;a.searchQueue=[];
+    a.searchOrigin=null;a.searchQueue=[];a.searchPauseUntil=0;
     a.defense=null;
     a.alertUntil=s.seconds+(a.personality==='aggressor'?.5:1.4);
     a.contacted=true;
@@ -2581,6 +2582,17 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   }
   if(a.flashUntil>s.seconds){
     a.velocity=0;a.aim=0;a.alert='cover';return;
+  }
+  // An anonymous sound or secondhand report isn't an instantaneous
+  // navigation command. First orient toward the uncertain estimate; direct
+  // visual contact or retreat preempts this brief assessment.
+  if(!visible.length&&a.alert==='investigating'&&a.contact&&
+     a.lastNoiseAt>=0){
+    const tempo=investigationTempo(a.personality,
+      bestBelief(a.awareness)?.uncertainty??65);
+    if(s.seconds-a.lastNoiseAt<tempo.orientSeconds){
+      a.velocity=0;rotate(a,angle(a.p,a.contact),dt);return;
+    }
   }
   // Quiet functional activities use bounded, collision-checked local journeys.
   // Combat reports, seen contacts, or sounds immediately interrupt the routine.
@@ -2651,27 +2663,43 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         else{a.alert='cover';a.contact=null;a.defense=null;}
       }
       if(a.nav.length&&a.contact)approach(a,a.nav.at(-1)??a.contact,dt,s,
-        a.personality==='aggressor'?1.1:.82);
+        investigationTempo(a.personality,
+          bestBelief(a.awareness)?.uncertainty??65).approachScale);
     }
     if(a.alert==='investigating'&&a.contact&&d(a.p,a.contact)<35){
+      const belief=bestBelief(a.awareness);
+      const tempo=investigationTempo(a.personality,
+        belief?.uncertainty??65);
       if(!a.searchOrigin){
         a.searchOrigin=clone(a.contact);
-        const belief=bestBelief(a.awareness);
         a.searchQueue=searchCandidates(a.searchOrigin,
           belief?.uncertainty??65,s.site?.rooms??[]);
+        a.searchPauseUntil=s.seconds+tempo.inspectSeconds;
       }
-      let next:Pt|null=null;
-      while(a.searchQueue.length&&!next){
+      // Examine this location before selecting another. Strictly bound
+      // reachability checks to avoid a pathfinding spike on contact.
+      if(s.seconds<a.searchPauseUntil){
+        a.velocity=0;rotate(a,angle(a.p,a.contact),dt);return;
+      }
+      let next:Pt|null=null,checks=0;
+      while(a.searchQueue.length&&!next&&checks++<2){
         const candidate=a.searchQueue.shift()!;
         if(d(candidate,a.p)<24)continue;
         next=reachableInvestigation(a.p,candidate);
       }
       a.nav=[];
-      if(next)a.contact=clone(next);
-      else{
+      if(next){
+        a.contact=clone(next);
+        a.searchPauseUntil=s.seconds+tempo.inspectSeconds;
+      }else if(!a.searchQueue.length){
         a.alert='cover';a.contact=null;a.searchOrigin=null;
+        a.searchPauseUntil=0;
         a.defense=defensivePosition(a,a.heard??a.p,s);
         a.defenseUntil=s.seconds+6;
+      }else{
+        // Keep the current estimate; inspect the remaining candidates on
+        // another fixed simulation tick instead of looping through all.
+        a.velocity=0;
       }
     }
   }
