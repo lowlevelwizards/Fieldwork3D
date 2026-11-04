@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
+import {fittedShoulderBridge} from './operator-armor-shapes.ts';
 import {createAdaptiveArmorSilhouettes,updateAdaptiveArmorFit}
  from './operator-adaptive-armor.ts';
 export {updateAdaptiveArmorFit};
@@ -95,14 +96,16 @@ const shoulderHarness=(g:THREE.Group,m:THREE.Material,spread=4.8)=>{
 export type FittedRigFrame={
  front:{x:number};back:{x:number};sideRight:{z:number};
  shoulderRight:{z:number};shoulderY:number;rigShiftX:number;
+ sideContact?:number;mode?:'carrier-placard'|'external-harness';
 };
 export function updateFittedRigHarness(
  groups:ShapeGroups,rig:string,top:string,frame:FittedRigFrame):void{
  const outer=groups[rig];if(!outer)return;
  const harness=outer.getObjectByName('uniform-fitted-rig-harness');
  if(!(harness instanceof THREE.Group))return;
- const key=top+'|'+frame.front.x.toFixed(3)+'|'+
-  frame.back.x.toFixed(3)+'|'+frame.shoulderY.toFixed(3);
+ const key=rig+'|'+top+'|'+(frame.mode??'legacy')+'|'+
+  [frame.front.x,frame.back.x,frame.shoulderY,frame.rigShiftX,
+   frame.sideRight.z,frame.shoulderRight.z].map(x=>x.toFixed(3)).join('|');
  if(harness.userData.fitKey===key)return;
  const material=harness.userData.fitMaterial as THREE.Material;
  const spread=harness.userData.spread as number;
@@ -115,6 +118,31 @@ export function updateFittedRigHarness(
  const localBack=frame.back.x-frame.rigShiftX;
  const y=frame.shoulderY+.25;
  const shoulder=frame.shoulderRight.z;
+ // The first stage has its own actual front panel anchoring. Other rig
+ // families preserve their existing geometry until their design stage.
+ if(rig==='micro-rig'||rig==='chest-placard'){
+  const micro=rig==='micro-rig';
+  const panelX=micro?7.90:8.14;
+  const panelTop=micro?-.82:.25;
+  const z=micro?2.75:3.20;
+  const crownZ=Math.max(3.3,Math.min(5.0,shoulder));
+  for(const side of [-1,1]){
+   const path:readonly (readonly [number,number,number])[]=[
+    [panelX-.21,panelTop-.24,z],
+    [localFront+.27,y-.95,crownZ],
+    [1.60-frame.rigShiftX,y+.02,crownZ],
+    [-1.70-frame.rigShiftX,y+.02,crownZ],
+    [localBack-.16,y-.85,crownZ],
+    [localBack-.21,-1.70,z+1.05]
+   ];
+   fittedShoulderBridge(harness,material,path,
+    micro?1.11:1.08,.57,side);
+  }
+  // One broad, garment-parallel rear connector. No detached floating
+  // generic bar at the old -6.15 X position.
+  box(harness,material,localBack-.16,-1.66,0,
+   .44,1.10,micro?8.35:9.0);
+ }else{
  const attachY=waistRig?-5.12:2.22;
  const backY=waistRig?-5.28:2.28;
  const attachZ=waistRig?Math.max(5.75,spread):Math.min(5.25,spread);
@@ -131,6 +159,8 @@ export function updateFittedRigHarness(
   for(let i=0;i<nodes.length-1;i++)
    strap(harness,material,nodes[i],nodes[i+1],
     waistRig?1.26:1.16,waistRig?.94:.82);
+ }
+
  }
  consolidateVisualGroup(harness);
  harness.userData.fitKey=key;
@@ -157,8 +187,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   const harness=new THREE.Group();harness.name='standalone-harness';
   g.add(harness);
   shoulderHarness(harness,dark,4.0);
-  box(harness,dark,-6.15,-1.0,0,.48,1.0,9.15);
-  consolidateVisualGroup(harness);
+  // The rear belt is rebuilt against the actual selected body surface.
  }
  {
   const g=make('micro-rig');
