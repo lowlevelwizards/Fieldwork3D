@@ -401,6 +401,22 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/d2-fabric-fit-r2-') }}
         run: |
           node --experimental-strip-types --test tests/operator-d2-wraps-stage-a2.test.mjs tests/operator-d2-fabric-integration-stage-a3.test.mjs tests/operator-studio-camera-focus-stage-f1.test.mjs tests/operator-wardrobe-data.test.mjs
+      - name: G4d critical encounter audit, replay and objective safety
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-gameplay-quality-g4d-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/gameplay-g4d-replay-validity.test.mjs \
+            tests/gameplay-g4d-objective-post-placement.test.mjs \
+            tests/gameplay-g4d-diversity-matrix.test.mjs \
+            tests/gameplay-g4d-flow-summary.test.mjs \
+            tests/gameplay-g4-objective-security.test.mjs \
+            tests/worldgen-encounter-roles.test.mjs \
+            tests/worldgen-encounter-integration.test.mjs
+      - name: G4d small deterministic production-mission audit
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-gameplay-quality-g4d-') }}
+        run: |
+          npm run audit:g4-diversity -- --smoke
+          npm run audit:g4-flow -- --smoke
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}
