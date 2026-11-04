@@ -35,7 +35,8 @@ export const RIG_PANEL_INNER_FACES:Readonly<Record<string,number>>={
  'bandolier':8.20-.72*.5,
  'split-front':8.12-.75*.5,
  'full-chest':8.39-.78,
- 'lbv':7.82-.72
+ 'lbv':7.82-.72,
+ 'sadf-webbing':7.78-1.35*.5
 };
 export function rigContactFrame(armor:string,top:string,rig:string):RigContactFrame{
  const baseline=ARMOR_PROFILES[armor]??ARMOR_PROFILES['armor-bare'];
@@ -47,7 +48,9 @@ export function rigContactFrame(armor:string,top:string,rig:string):RigContactFr
   rig==='bandolier'?-2.00:
   rig==='split-front'?-1.90:
   rig==='full-chest'?-1.72:
-  rig==='lbv'?-1.55:-2.05;
+  rig==='lbv'?-1.55:
+  rig==='sadf-webbing'?-2.75:
+  rig==='field-webbing'?-3.80:-2.05;
  const cloth=armorContactSurface(top,y);
  const exposed=armor!=='armor-bare'&&armor!=='soft-slick'&&
   armor!=='soft-paca'&&!!spec&&
@@ -67,7 +70,8 @@ export function rigContactFrame(armor:string,top:string,rig:string):RigContactFr
   sideRight:{z:side+.14},
   shoulderRight:{z:fit.shoulderZ},
   shoulderY:fit.shoulderY+.12,
-  rigShiftX:outerFront+clearance-panelInnerX,
+  // Pelvis-mounted webbing retains a stationary chest suspension origin.
+  rigShiftX:rig==='field-webbing'?0:outerFront+clearance-panelInnerX,
   standOff:clearance,panelInnerX,sideContact:side
  };
 }

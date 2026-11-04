@@ -194,6 +194,14 @@ export function updateFittedRigHarness(
  }
 
  }
+ if(rig==='sadf-webbing'){
+  // Real wraparound torso and back: not another flat three-cell vest.
+  const sideZ=frame.sideRight.z-.05;
+  for(const side of [-1,1])
+   box(harness,material,(localFront+localBack)*.5,-2.72,
+    side*sideZ,5.10,5.80,.62);
+  box(harness,material,localBack-.20,-2.30,0,.56,5.95,9.35);
+ }
  consolidateVisualGroup(harness);
  harness.userData.fitKey=key;
 }
@@ -286,9 +294,8 @@ export function createChestRigSilhouettes(chest:THREE.Group,
     [1.0,5.45,sign*4.60],1.10,.90);
    strap(h,trim,[1.0,5.45,sign*4.60],
     [-5.5,-5.4,sign*5.95],1.10,.90);
-   pouch(g,pocketFabric,trim,3.90,-5.42,sign*7.45,4.55,3.12,1.30);
+   // The lower belt and magazine pockets now live on the hip.
   }
-  box(g,trim,3.80,-5.90,0,1.30,1.20,13.40);
  }
  {
   const g=make('belt-harness');
@@ -327,9 +334,8 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   for(const s of [-1,1]){
    for(const z of [3.25,6.05])
     pouch(g,pocketFabric,trim,7.78,-2.75,s*z,5.80,2.50,1.35);
-   pouch(g,pocketFabric,trim,2.55,-5.72,s*7.8,4.70,2.85,1.65);
+   // Broad P83 waist pockets and belt now live on the hip.
   }
-  box(g,dark,7.20,-5.65,0,.72,1.15,12.15);
  }
  for(const g of Object.values(groups))consolidateVisualGroup(g);
  return groups;
@@ -349,7 +355,7 @@ const RIG_CELLS:Readonly<Record<string,readonly FrontCell[]>>={
  'chicom-rig':[[-3.12,-2.32],[0,-2.32],[3.12,-2.32]],
  'bandolier':[[3.85,3.6],[1.93,1.75],[0,-.1],[-1.93,-1.95]],
  'full-chest':[[-4.60,-2.75],[-1.50,-2.75],[1.50,-2.75],[4.60,-2.75]],
- 'lbv':[[-5.10,1.28],[-5.10,-2.56],[5.10,1.28],[5.10,-2.56]],
+ 'lbv':[[-4.20,1.28],[-4.20,-2.56],[4.20,1.28],[4.20,-2.56]],
  'field-webbing':[[-6.8,-5.40],[6.8,-5.40]],
  'belt-harness':[[-6.6,-5.3],[6.6,-5.3]],
  'sadf-webbing':[[-5.85,-2.75],[-3.25,-2.75],[3.25,-2.75],[5.85,-2.75]]

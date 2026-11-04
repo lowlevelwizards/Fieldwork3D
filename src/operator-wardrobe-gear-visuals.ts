@@ -13,6 +13,7 @@ import {rigContactFrame} from './operator-rig-contact-frame.ts';
 type StyleGroups=Record<string,THREE.Group>;
 export type WardrobeGearLayers={
  armor:StyleGroups;rig:StyleGroups;belt:StyleGroups;pack:StyleGroups;
+ waistRig:StyleGroups;
  pouchMaterial:THREE.MeshStandardMaterial;
 };
 const box=(g:THREE.Group,m:THREE.Material,
@@ -38,6 +39,23 @@ export function createWardrobeGearLayers(
  pouchMaterial.name='Fieldwork authored rig pouch fabric';
  pouchMaterial.userData.fieldworkFabric=true;
  const rig=createChestRigSilhouettes(chest,gearFabric,pouchMaterial,dark,trim);
+ // Two historically inspired belt and jacket loads follow the pelvis
+ // while their independent shoulder suspenders follow the chest.
+ const waistRig:StyleGroups={};
+ const webbing=make(hip);waistRig['field-webbing']=webbing;
+ box(webbing,gearFabric,4.35,.18,0,1.12,1.22,13.1);
+ for(const side of [-1,1])
+  for(const x of [2.30,-.65,-3.60]){
+   box(webbing,pouchMaterial,x,.10,side*7.20,2.45,3.35,2.15);
+   box(webbing,trim,x+1.24,1.35,side*7.20,.21,.40,2.29);
+  }
+ const battle=make(hip);waistRig['sadf-webbing']=battle;
+ box(battle,gearFabric,4.26,.13,0,1.12,1.36,13.25);
+ for(const side of [-1,1]){
+  for(const x of [2.1,-1.30])
+   box(battle,pouchMaterial,x,.16,side*7.32,3.02,4.05,2.60);
+  box(battle,gearFabric,-3.75,.12,side*5.4,.85,3.85,4.7);
+ }
  const belt:StyleGroups={},pack:StyleGroups={};
  for(const item of wardrobeItemsForSlot('beltStyle')){
   const g=make(hip);belt[item.id]=g;
@@ -79,9 +97,9 @@ export function createWardrobeGearLayers(
    default:break;
   }
  }
- for(const section of [belt,pack])
+ for(const section of [waistRig,belt,pack])
   for(const g of Object.values(section))consolidateVisualGroup(g);
- return {armor,rig,belt,pack,pouchMaterial};
+ return {armor,rig,waistRig,belt,pack,pouchMaterial};
 }
 export function updateWardrobeGearLayers(v:WardrobeGearLayers,
  armor:string,rig:string,belt:string,pack:string,top='combat-shirt'){
@@ -89,11 +107,13 @@ export function updateWardrobeGearLayers(v:WardrobeGearLayers,
   [v.armor,armor],[v.rig,rig],[v.belt,belt],[v.pack,pack]
  ] as const)
   for(const [style,g] of Object.entries(target))g.visible=style===id;
+ for(const [style,g] of Object.entries(v.waistRig))g.visible=style===rig;
  // Changes to the selected garment rebuild the connectors once, not per pose.
  updateAdaptiveArmorFit(v.armor,armor,top);
  // The rig follows exactly the same fitted exterior as the plate bag.
  const exterior=(['micro-rig','chest-placard','light-rig','chicom-rig',
-   'bandolier','split-front','full-chest','lbv'].includes(rig))?
+   'bandolier','split-front','full-chest','lbv',
+   'field-webbing','sadf-webbing'].includes(rig))?
   rigContactFrame(armor,top,rig):armorAttachmentFrame(armor,top);
  for(const group of Object.values(v.rig)){
   group.position.x=exterior.rigShiftX;
