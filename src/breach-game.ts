@@ -250,7 +250,8 @@ export type Session=Omit<TacticalState,'operators'> & {
   executionEvents:ExecutionEvent[];nextExecutionId:number;
   missionType:'clear'|'intel'|'rescue'|'hold'|'capture';holdTime:number;
   rescue:{p:Pt;following:string|null}|null;
-  captureTarget:string|null;captureSecured:boolean;};
+  captureTarget:string|null;captureSecured:boolean;
+  intelCarrierId:string|null;};
 const d=(a:Pt,b:Pt)=>length(a,b);
 const clone=(p:Pt):Pt=>({...p});
 const near=(a:Pt,b:Pt,range:number)=>d(a,b)<=range;
@@ -420,9 +421,14 @@ export function newSession(index=0,siteSeed?:number,
     impactMarks:[],battleEvents:[],nextBattleId:1,
     executionEvents:[],nextExecutionId:1,
     missionType:missionOverride??(site?(['clear','intel','rescue','hold','capture'] as const)[site.seed%5]:'clear'),
-    holdTime:0,rescue:null,captureTarget:null,captureSecured:false};
+    holdTime:0,rescue:null,captureTarget:null,captureSecured:false,
+    intelCarrierId:null};
   if(state.missionType==='capture'){
-    const target=operators.find(a=>a.side==='red');
+    // Respect the mission-specific target role from the actual encounter.
+    // Fallback to the legacy first defender for older saved/practice maps.
+    const targetIndex=site?.encounter?.actors.findIndex(a=>a.role==='target')??-1;
+    const fighters=operators.filter(a=>a.side==='red');
+    const target=targetIndex>=0?fighters[targetIndex]:fighters[0];
     state.captureTarget=target?.id??null;
     if(target)state.scenario.objective=clone(target.p);
   }
@@ -3483,6 +3489,19 @@ function mission(s:Session,dt:number){
   // The equipment range is an intentionally open-ended live simulation.
   // It cannot accidentally complete a Campaign mission or generate a debrief.
   if(s.site?.training)return;
+  // Intel is an actual carried mission item. An incapacitated courier
+  // drops it at their final observed location for another operator to
+  // recover; a different teammate cannot magically extract it.
+  if(s.missionType==='intel'&&s.mission==='extract'&&s.intelCarrierId){
+    const courier=team(s).find(a=>a.id===s.intelCarrierId);
+    if(!courier||courier.health<=0){
+      if(courier)s.scenario.objective=clone(courier.p);
+      s.intelCarrierId=null;s.mission='secure';s.holdTime=0;
+      notify(s,'INTEL DROPPED — RECOVER AT CASUALTY');
+      battleEvent(s,'objective',courier??null,s.scenario.objective,
+        'INTEL DROPPED');
+    }
+  }
   if(s.rescue){
     if(s.rescue.following){
       const escort=team(s).find(a=>a.id===s.rescue!.following&&a.health>0);
@@ -3531,10 +3550,14 @@ function mission(s:Session,dt:number){
       if(s.holdTime<7)return;
     }
     if(s.missionType==='intel'){
-      // Retrieving physical documents is a deliberate interaction,
-      // interruptible by leaving the cache, not an instantaneous tap.
+      // Deliberate timed pickup. The operator who physically did the
+      // collection becomes the item carrier, not the whole squad.
       s.holdTime+=dt;
       if(s.holdTime<1.2)return;
+      const collector=team(s).find(a=>a.health>0&&
+        near(a.p,s.scenario.objective,36));
+      if(!collector)return;
+      s.intelCarrierId=collector.id;
     }
     if(s.missionType==='capture'){
       const target=enemies(s).find(e=>e.id===s.captureTarget);
@@ -3559,7 +3582,10 @@ function mission(s:Session,dt:number){
   }
   if(s.mission==='extract'&&team(s).some(a=>a.health>0&&
     near(a.p,s.scenario.extract,37)&&
-    (!s.rescue||near(s.rescue.p,s.scenario.extract,45)))){
+    (s.missionType!=='intel'||s.intelCarrierId===a.id)&&
+    (!s.rescue||(s.rescue.following!==null&&
+      team(s).some(escort=>escort.id===s.rescue!.following&&
+        escort.health>0)&&near(s.rescue.p,s.scenario.extract,45))))){
     s.mission='done';s.phase='won';
     s.report=['OPERATION COMPLETE',s.missionType.toUpperCase(),
       'EXTRACTION COMPLETE'];
@@ -3852,7 +3878,11 @@ export function missionText(s:Session){
       s.holdTime.toFixed(1)+'/1.2s':
     s.missionType==='capture'?'SECURE NEUTRALIZED TARGET':
     'SECURE OBJECTIVE';
-  return 'RETURN TO EXTRACTION OUTSIDE';
+  return s.missionType==='intel'?
+    'RETURN TO EXTRACTION · INTEL CARRIER MUST EXIT':
+    s.missionType==='rescue'?
+    'ESCORT PERSON AND OPERATOR TO EXTRACTION':
+    'RETURN TO EXTRACTION OUTSIDE';
 }
 export function debrief(s:Session){
   const own=team(s);
@@ -3887,7 +3917,8 @@ export function debrief(s:Session){
       survived:a.health>0,injury:a.injuryStage,
       fired:a.shots,hits:a.hits})),
     captureSecured:s.captureSecured,
-    rescueExtracted:!!s.rescue&&s.phase==='won'};
+    rescueExtracted:!!s.rescue&&s.phase==='won',
+    intelCarrier:s.intelCarrierId};
 }
 export function knownAt(s:Session,x:number,y:number){
   if(s.intel.mode==='full-view')return true;

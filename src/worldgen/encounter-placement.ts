@@ -9,6 +9,7 @@ import type {EncounterActorSpec,EncounterGroup,EncounterProfile}
   from './encounter-types.ts';
 import {encounterRng} from './encounter-rng.ts';
 import {clearOfInsertion,roomOccupancyCapacity} from './encounter-spawn-safety.ts';
+import {tacticalDefenderRoomScore} from './tactical-room-suitability.ts';
 
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const roomOf=(site:Site,p:Pt)=>site.rooms.find(r=>r.kind==='room'&&
@@ -142,7 +143,9 @@ export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
      profile==='prepared'?(nearestDoor>48&&nearestDoor<130?42:0):0;
    const score=(count===0?110:-90)+
      (anchor.capacity-count)*12-Math.min(32,originalDist*.065)+
-     profileBonus+rng()*32;
+     profileBonus+
+     tacticalDefenderRoomScore(anchor.room,site.cover,site.doors,profile)+
+     rng()*32;
    return {anchor,score};
   }).filter(x=>(used.get(x.anchor.room.id)??0)<x.anchor.capacity)
    .sort((a,b)=>b.score-a.score);

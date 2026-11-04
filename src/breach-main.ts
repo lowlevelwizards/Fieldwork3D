@@ -68,6 +68,7 @@ import {routeWithSqueezeIntel} from './breach-squeeze-route.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {FrameMeter} from './breach-perf.ts';
 import {formatAfterAction} from './breach-after-action.ts';
+import {formatMissionPacing} from './breach-mission-pacing.ts';
 import {readRoster,applyRosterIdentity,freshQuickPlayRoster,
   serializeQuickPlayCosmetics,
   resupplyRoster,equipRoster,equipRosterGear,moveRosterMagazine,
@@ -2018,6 +2019,7 @@ function updateHud(){
       '\n'+stats.squad.map(o=>o.name+' '+(o.survived?
         o.injury?'WOUNDED':'ACTIVE':'DOWN')+' · '+o.fired+' RDS').join('\n')+
       '\nOPERATIONS LOGGED: '+operationHistory().length+
+      '\n\nMISSION PACING\n'+formatMissionPacing(recorder.events)+
       '\n\nTACTICAL TIMELINE\n'+formatAfterAction(recorder.events,10);
     if(campaignMode==='mission'&&campaign?.history.length){
      const recent=campaign.history[campaign.history.length-1];

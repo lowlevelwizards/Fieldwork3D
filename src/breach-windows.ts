@@ -68,9 +68,23 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
     .sort((a,b)=>b.daylightPriority-a.daylightPriority||
       Number(b.frontFacing)-Number(a.frontFacing)||b.length-a.length||a.index-b.index);
   const chosen=new Set<number>(),windows:WindowOpening[]=[];
-  const litRooms=new Set<string>();
-  for(const item of eligible){
-    if(windows.length>=desired)break;
+  const litRooms=new Set<string>(),usedFacades=new Set<string>();
+  const facade=(p:Pt)=>{
+    const distances=[['west',Math.abs(p.x-minX)],
+      ['east',Math.abs(p.x-maxX)],['north',Math.abs(p.y-minY)],
+      ['south',Math.abs(p.y-maxY)]] as const;
+    return [...distances].sort((a,b)=>a[1]-b[1])[0][0];
+  };
+  // One window per functional room is still preferred, but we no longer
+  // saturate the same frontage before considering a real rear/side facade.
+  const queue=[...eligible];
+  while(queue.length&&windows.length<desired){
+    queue.sort((a,b)=>b.daylightPriority-a.daylightPriority||
+      Number(!usedFacades.has(facade(b.p)))-
+      Number(!usedFacades.has(facade(a.p)))||
+      Number(b.frontFacing)-Number(a.frontFacing)||
+      b.length-a.length||a.index-b.index);
+    const item=queue.shift()!;
     // A connected room wing may have several facade segments; favor daylight
     // in different rooms rather than a string of identical windows in one.
     if(litRooms.has(item.room!.id))continue;
@@ -91,6 +105,7 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
       width:half*2,vertical:item.vertical,style,
       sillHeight:fullHeight?0:clerestory?28:style==='awning'?19:undefined,
       headHeight:fullHeight||clerestory?39:style==='awning'?35:undefined});
+    usedFacades.add(facade(item.p));
   }
   const walls:Segment[]=[];
   site.walls.forEach((wall,index)=>{
