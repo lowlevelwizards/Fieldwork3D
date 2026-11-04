@@ -268,18 +268,24 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   const g=make('micro-rig');
   shoulderHarness(g,dark,3.75);
   box(g,fabric,7.90,-2.65,0,.76,3.55,7.30);
+  // Two substantial front cells and a small high organizer distinguish
+  // the complete micro harness from the flat three-cell carrier placard.
   for(const z of [-1.65,1.65])
-   pouch(g,pocketFabric,trim,8.54,-2.58,z,2.42,2.86,.91);
+   pouch(g,pocketFabric,trim,8.54,-2.58,z,2.62,2.86,.91);
+  box(g,trim,8.35,-.70,0,.29,.68,5.20);
   for(const s of [-1,1])
-   pouch(g,pocketFabric,trim,7.75,-2.62,s*4.55,2.40,1.62,.72);
+   pouch(g,pocketFabric,trim,7.75,-2.62,s*4.55,2.10,1.62,.72);
  }
  {
   const g=make('light-rig');
   // Classic X-harness: crossed rear straps and 2+2 broad front pouch banks.
   shoulderHarness(g,dark,4.7);
   // The rear X is regenerated at actual armor contact in the fitted harness.
-  for(const z of [-4.6,-1.5,1.5,4.6])
-   pouch(g,pocketFabric,trim,8.38,-2.20,z,4.23,2.85,1.07);
+  for(const z of [-4.6,-1.5,1.5,4.6]){
+   pouch(g,pocketFabric,trim,8.38,-2.20,z,4.33,2.75,1.07);
+   // Four independent closure flaps; never read as one continuous panel.
+   box(g,trim,9.02,-.57,z,.23,.51,2.92);
+  }
   box(g,dark,7.94,-4.65,0,.48,.70,13.25);
  }
  {
@@ -308,6 +314,9 @@ export function createChestRigSilhouettes(chest:THREE.Group,
    fittedArmorBag(half,fabric,7.82,1,3.55,-5.80,3.70,.72,.72);
    for(const y of [1.28,-2.56,-5.35])
     pouch(g,pocketFabric,trim,8.12,y,s*4.20,2.88,3.22,.99);
+   // Recognizable upper yoke joins the tapered vest panel, without
+   // closing the open central sternum.
+   box(g,fabric,7.86,2.76,s*3.98,.56,.76,3.18);
   }
  }
  {
@@ -316,9 +325,14 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   // One broad polygon with clipped high shoulders; avoids a square slab
   // intersecting raised protective collars on bulkier armor.
   fittedArmorBag(g,fabric,8.39,1,3.10,-6.55,12.25,1.30,.78);
+  // A full-bib patrol platform: high admin shelf and lower four-cell
+  // storage. The broken horizontal cargo hierarchy reads as fabric,
+  // not another monolithic armor plate.
+  box(g,trim,8.56,1.22,0,.38,1.40,8.18);
   for(const z of [-4.60,-1.5,1.5,4.60])
-   pouch(g,pocketFabric,trim,8.65,-2.75,z,4.45,2.65,1.07);
-  box(g,dark,8.48,2.68,0,.23,1.22,9.25);
+   pouch(g,pocketFabric,trim,8.65,-3.05,z,4.25,2.65,1.07);
+  for(const sign of [-1,1])
+   box(g,pocketFabric,8.55,-.45,sign*5.10,.49,1.28,1.28);
  }
  {
   const g=make('field-webbing');
@@ -348,11 +362,13 @@ export function createChestRigSilhouettes(chest:THREE.Group,
  {
   const g=make('chicom-rig');
   shoulderHarness(g,fabric,4.55);
-  box(g,fabric,7.95,-2.35,0,.60,5.75,11.65);
+  box(g,fabric,7.95,-2.35,0,.60,6.12,11.65);
+  // Chicom canvas reads by three TALL independent flap pouches and
+  // two abbreviated flank pockets, not a modern flat MOLLE array.
   for(const z of [-3.12,0,3.12])
-   pouch(g,pocketFabric,trim,8.52,-2.32,z,4.30,2.82,.99);
+   pouch(g,pocketFabric,trim,8.52,-2.32,z,5.18,2.82,.99);
   for(const s of [-1,1])
-   pouch(g,pocketFabric,trim,8.42,-3.38,s*5.65,2.55,1.65,.75);
+   pouch(g,pocketFabric,trim,8.42,-3.46,s*5.65,2.38,1.65,.75);
  }
  {
   const g=make('bandolier');
@@ -360,7 +376,8 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   h.userData.fitMaterial=fabric;h.userData.spread=4.8;g.add(h);
   for(let i=0;i<5;i++){
    const t=i/4,z=3.85-t*7.7,y=3.6-t*7.4;
-   pouch(g,pocketFabric,trim,8.20,y,z,2.28,1.42,.72);
+   // Four magazine positions plus a deliberate fifth utility cell.
+   pouch(g,pocketFabric,trim,8.20,y,z,2.46,1.64,.72);
   }
  }
  {
@@ -369,7 +386,10 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   for(const s of [-1,1]){
    for(const z of [3.25,6.05])
     pouch(g,pocketFabric,trim,7.78,-2.75,s*z,5.80,2.50,1.35);
-   // Broad P83 waist pockets and belt now live on the hip.
+   // Differentiate front and flank cargo from the Chicom three-cell
+   // apron. Separate rear compartment shapes follow the fitted frame.
+   box(g,trim,7.97,.70,s*5.40,.52,1.42,2.34);
+   // Broad P83 waist pockets and belt live on the hip.
   }
  }
  for(const g of Object.values(groups))consolidateVisualGroup(g);
