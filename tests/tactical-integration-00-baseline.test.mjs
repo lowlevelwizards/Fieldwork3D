@@ -34,6 +34,15 @@ test('baseline: four reachable team routes clear a narrow physical threshold',()
   toggling(s);
   for(let tick=0;tick<1080;tick++){
    stepSession(s,1/30);
+   if(tick%30===0&&tick<=300){
+    console.log('TACTICAL TRACE '+tick,JSON.stringify(members.map(a=>({
+     id:a.id,x:Math.round(a.p.x),y:Math.round(a.p.y),
+     vx:Math.round(a.velocity),block:a.lastBlocker,
+     stalled:+a.blockedTime.toFixed(2),nav:a.nav[0],
+     squeeze:a.squeeze,turn:+a.turning.toFixed(2),
+     lease:s.passageLeases['blue:ENTRY']?.actorId
+    }))));
+   }
    members.forEach((member,i)=>{
     assert.ok(Number.isFinite(member.p.x)&&Number.isFinite(member.p.y));
     if(member.p.y>278&&!crossed.has(member.id))crossed.set(member.id,s.seconds);
