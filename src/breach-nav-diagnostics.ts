@@ -89,3 +89,13 @@ export function orderFailureText(from:Pt,to:Pt,options:{
     return 'MOVE WOULD INVALIDATE A LATER WAYPOINT';
   return 'INVALID ORDER DESTINATION';
 }
+
+/** Once an authoritative step has been rejected, a 'clear' diagnostic is
+ * contradictory. Honor actual opposing bodies and closed leaves, then keep
+ * detailed geometry when known; fall back to route recovery, not success. */
+export function blockedStepCause(diagnosed:Blocker,
+ opposingActor:boolean,closedLeaf:boolean):Blocker{
+ if(opposingActor)return 'actor';
+ if(closedLeaf)return 'door';
+ return diagnosed==='clear'?'route':diagnosed;
+}

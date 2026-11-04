@@ -409,6 +409,7 @@ jobs:
             tests/gameplay-g4d-objective-post-placement.test.mjs \
             tests/gameplay-g4d-diversity-matrix.test.mjs \
             tests/gameplay-g4d-flow-summary.test.mjs \
+            tests/gameplay-g4d-blocked-cause.test.mjs \
             tests/gameplay-g4-objective-security.test.mjs \
             tests/worldgen-encounter-roles.test.mjs \
             tests/worldgen-encounter-integration.test.mjs

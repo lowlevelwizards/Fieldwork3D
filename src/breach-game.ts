@@ -75,7 +75,7 @@ import type {LightingMode} from './equipment-site-lighting.ts';
 import {passageWait,approachingNarrowThreshold,
   type PassageActor,type PassageLease}
   from './breach-passage.ts';
-import {diagnoseMovement,projectReachableGoal,type Blocker}
+import {diagnoseMovement,blockedStepCause,projectReachableGoal,type Blocker}
   from './breach-nav-diagnostics.ts';
 import {bodyClear,sweptBodyClear,squeezeFacing,
   sweptProfileClear,SQUEEZE_RADIUS,escapeOpenDoorOverlap,
@@ -2026,9 +2026,10 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     }
     a.velocity=Math.max(0,a.velocity-dt*130);
     a.blockedTime+=dt;
-    a.lastBlocker=diagnoseMovement(a.p,desiredMove,s.doors,
-      s.operators.filter(b=>b!==a&&b.side!==a.side&&b.health>0)
-      .map(b=>b.p)).blocker;
+    a.lastBlocker=blockedStepCause(
+      diagnoseMovement(a.p,desiredMove,s.doors,
+        s.operators.filter(b=>b!==a&&b.side!==a.side&&b.health>0)
+        .map(b=>b.p)).blocker,!!blocking,closed);
     if(a.side==='blue'&&a.lastBlocker==='furniture'){
       const newlyKnown=discoverContactCover(s.intel,a.p,13);
       if(newlyKnown.length){
