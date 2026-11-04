@@ -6,6 +6,6 @@ test('one nearby listener investigates while others cover',()=>{
  const roles=groupResponse(allies,{x:0,y:0});
  assert.equal(roles.C,'investigate');
  assert.equal(roles.B,'watch');
- assert.equal(roles.D,'watch');
+ assert.equal(roles.D,'support');
  assert.deepEqual(roles,groupResponse([...allies].reverse(),{x:0,y:0}));
 });

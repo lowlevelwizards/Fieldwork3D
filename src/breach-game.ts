@@ -95,7 +95,8 @@ import {weaponHandlingModifiers,sightAcquisitionScale,sightSpreadScale}
 import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
   rayHitsActor,muzzleEndpoint,recoverWeapon,handlingInstability,type FiringMode} from './breach-ballistics.ts';
-import {chooseDefense,watchPoint,reachableInvestigation} from './breach-defense.ts';
+import {chooseDefense,chooseFiringDefense,watchPoint,
+  reachableInvestigation} from './breach-defense.ts';
 import {operationBrief,assessOperation,
   type OperationKind} from './breach-operations.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
@@ -2455,6 +2456,14 @@ function defensivePosition(a:TeamActor,from:Pt,s:Session):Pt|null{
     health:other.health,defense:other.defense}));
   return chooseDefense(a.p,from,s.doors,others,a.id);
 }
+/** Firing reposition differs from a safe withdrawal. It must actually
+ * expose a legal muzzle lane to the confirmed visible opponent. */
+function firingPosition(a:TeamActor,target:TeamActor,s:Session):Pt|null{
+  const others=enemies(s).map(other=>({id:other.id,p:other.p,
+    health:other.health,defense:other.defense}));
+  return chooseFiringDefense(a.p,target.p,s.doors,others,a.id,
+    aimHeight(target.posture==='crouch'));
+}
 function enemyDecisions(s:Session,a:TeamActor,dt:number){
   if(a.health<=0||a.surrendered)return;
   if(!a.watch)a.watch=watchPoint(a.p,s.doors);
@@ -2507,7 +2516,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       suppression:a.suppression,morale:a.morale,temperament:a.personality});
     if(a.combatChoice==='reposition'&&a.alert!=='retreat'&&
       s.seconds-a.lastFireRepositionAt>2.6){
-      const candidate=defensivePosition(a,b.p,s);
+      const candidate=firingPosition(a,b,s);
       a.lastFireRepositionAt=s.seconds;
       if(candidate&&d(candidate,a.p)>15){
         a.defense=candidate;a.alert='cover';a.nav=[];
@@ -2645,11 +2654,14 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
     return;
   }
-  if(a.coordinationRole==='watch'&&s.seconds<a.coordinationUntil&&
-     !visible.length&&a.suppression<.65){
+  // WATCH anchors a firing sector; SUPPORT moves into its nearby
+  // complementary defensive position. Both know only the reported estimate.
+  // Direct vision or severe suppression always overrides the role.
+  if((a.coordinationRole==='watch'||a.coordinationRole==='support')&&
+     s.seconds<a.coordinationUntil&&!visible.length&&a.suppression<.65){
     a.alert='cover';
     if(a.defense&&d(a.p,a.defense)>10)
-      approach(a,a.defense,dt,s,.65);
+      approach(a,a.defense,dt,s,a.coordinationRole==='support'?.82:.65);
     else if(a.watch)rotate(a,angle(a.p,a.watch),dt);
     return;
   }
@@ -2716,12 +2728,14 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
 function distributeReports(s:Session){
  for(const report of s.reports){
   if(s.seconds-report.at>1.5)continue;
+  const newlyInformed:string[]=[];
   for(const recipient of enemies(s)){
    if(recipient.health<=0||report.deliveredTo.includes(recipient.id))continue;
    const observation=reportToListener(report,recipient.id,recipient.p,
      s.doors,WALLS,s.seconds);
    if(!observation)continue;
    report.deliveredTo.push(recipient.id);
+   newlyInformed.push(recipient.id);
    addObservation(recipient.awareness,observation);
    if(recipient.intent?.kind!=='engage'){
     recipient.heard=clone(observation.estimate);
@@ -2732,24 +2746,28 @@ function distributeReports(s:Session){
     recipient.nav=[];
    }
   }
-  // Only genuinely informed listeners are eligible for group roles.
-  if(!report.coordinated&&report.deliveredTo.length){
-    report.coordinated=true;
-    const listeners=enemies(s).filter(a=>a.health>0&&
-      report.deliveredTo.includes(a.id));
-    const roles=groupResponse(listeners.map(a=>({id:a.id,p:a.p})),
-      report.estimate);
-    for(const a of listeners){
-      a.coordinationRole=roles[a.id];
-      a.coordinationUntil=s.seconds+5;
-      if(roles[a.id]==='watch'&&a.intent?.kind!=='engage'){
-        a.watch=clone(report.estimate);
-        a.defense=defensivePosition(a,report.estimate,s);
-        a.defenseUntil=s.seconds+5;
-        a.alert='cover';
-        a.nav=[];
-      }
-    }
+  // A report may reach another ally on a later tick. The earlier
+  // investigator keeps their role; only newcomers receive fresh orders.
+  // Never coordinate an actor who did not actually hear the report.
+  if(!newlyInformed.length)continue;
+  const listeners=enemies(s).filter(a=>a.health>0&&
+    report.deliveredTo.includes(a.id));
+  const roles=groupResponse(listeners.map(a=>({id:a.id,p:a.p})),
+    report.estimate,report.assignedRoles??{});
+  report.assignedRoles=roles;report.coordinated=true;
+  for(const a of listeners){
+   if(!newlyInformed.includes(a.id))continue;
+   a.coordinationRole=roles[a.id];
+   a.coordinationUntil=s.seconds+5;
+   const covering=roles[a.id]==='watch'||roles[a.id]==='support';
+   if(covering&&a.intent?.kind!=='engage'){
+     a.watch=clone(report.estimate);
+     // Existing cover selection considers friendly defender occupancy;
+     // this avoids assigning everyone to the same local cover spot.
+     a.defense=defensivePosition(a,report.estimate,s);
+     a.defenseUntil=s.seconds+5;
+     a.alert='cover';a.nav=[];
+   }
   }
  }
 }

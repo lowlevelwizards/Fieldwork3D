@@ -52,8 +52,9 @@ export function defenseCandidates(origin:Pt,threat:Pt,doors:Door[]):Pt[]{
   if(passable(origin))consider(origin);
   return options;
 }
+export type DefenseOptions={requireFiringLane?:boolean;targetHeight?:number};
 export function chooseDefense(origin:Pt,threat:Pt,doors:Door[],
-  others:Defender[],selfId:string):Pt|null{
+  others:Defender[],selfId:string,policy:DefenseOptions={}):Pt|null{
   const options=defenseCandidates(origin,threat,doors);
   let best:Pt|null=null,score=-Infinity;
   for(const p of options){
@@ -62,9 +63,14 @@ export function chooseDefense(origin:Pt,threat:Pt,doors:Door[],
     const protectedSpot=nearCover(p,threat);
     // Cover is only useful if the defender can still bring the muzzle
     // above or around it. Eye-level sight does not guarantee a firing lane.
-    const lane=assessFireLane(p,26,threat,32,COVER,WALLS,doors,
+    const lane=assessFireLane(p,26,threat,
+      policy.targetHeight??32,COVER,WALLS,doors,
       others.filter(o=>o.id!==selfId&&o.health>0).map(o=>o.p));
     const firingValue=lane.blocker==='clear';
+    // When actually repositioning to shoot a visible opponent, a point
+    // with no real muzzle lane is not a valid destination, even if it
+    // scores well as passive cover. Defensive holds still accept cover.
+    if(policy.requireFiringLane&&!firingValue)continue;
     const span=others.filter(a=>a.id!==selfId&&a.health>0)
       .reduce((n,a)=>n+(dist(p,a.p)>55&&dist(p,a.p)<160?15:0),0);
     const doorHazard=doors.reduce((penalty,door)=>{
@@ -82,6 +88,15 @@ export function chooseDefense(origin:Pt,threat:Pt,doors:Door[],
     if(value>score){score=value;best=p;}
   }
   return best;
+}
+/** A defender relocating to fire must have a physically legal shot
+ * from the selected position, otherwise retain the present stance and
+ * retry after the existing cooldown instead of pacing between blind spots.
+ */
+export function chooseFiringDefense(origin:Pt,threat:Pt,doors:Door[],
+ others:Defender[],selfId:string,targetHeight=32):Pt|null{
+ return chooseDefense(origin,threat,doors,others,selfId,
+  {requireFiringLane:true,targetHeight});
 }
 export function watchPoint(p:Pt,doors:Door[]):Pt|null{
   const room=activeSite()?.rooms.find(r=>
