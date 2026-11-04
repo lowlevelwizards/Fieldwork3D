@@ -43,6 +43,7 @@ for(let i=0;i<trials;i++){
    recorder.capture(session,true);
    session.phase='running';session.started=true;
    let blockedFrames=0,invalidPositions=0;
+   const blockedReasons={};
    const elapsed=[];
    for(let tick=0;tick<seconds*30&&session.phase==='running';tick++){
     const before=performance.now();
@@ -54,7 +55,11 @@ for(let i=0;i<trials;i++){
       invalidPositions++;
     }
     for(const actor of team(session))
-     if(actor.health>0&&actor.blockedTime>.35)blockedFrames++;
+     if(actor.health>0&&actor.blockedTime>.35){
+      blockedFrames++;
+      const reason=actor.lastBlocker??'unknown';
+      blockedReasons[reason]=(blockedReasons[reason]??0)+1;
+     }
    }
    recorder.capture(session,true);
    const film=assessMissionFilm(recorder.frames,recorder.events,
@@ -62,13 +67,23 @@ for(let i=0;i<trials;i++){
    const contact=analyzeContactPacing(recorder.frames,recorder.events,
     hostileIds,accepted,site.encounter?.profile==='quiet-approach');
    elapsed.sort((a,b)=>a-b);
+   // A short True Blind route to the only briefed entrance is not a
+   // motor stall merely because the distance travelled was 15–20 units.
+   const briefedEntryOnly=intelMode==='true-blind'&&
+    actors.every(a=>{
+     const current=session.operators.find(o=>o.id===a.id);
+     return !!current&&Math.hypot(current.p.x-site.entrance.x,
+       current.p.y-site.entrance.y)<27;
+    });
+   const reason=briefedEntryOnly&&contact.reason==='movement-stalled'?
+     'briefed-entry-only':contact.reason;
    rows.push({seed,mission,mode:intelMode,orders:accepted,
     duration:recorder.duration,
     friendlyTravel:contact.friendlyTravel,
     hostileTravel:contact.hostileTravel,
     firstContactAt:contact.firstContactAt,
     firstShotAt:contact.firstShotAt,
-    reason:contact.reason,blockedFrames,invalidPositions,
+    reason,blockedFrames,blockedReasons,invalidPositions,
     replayIssues:film.issues,
     p95HostSimMs:Math.round((elapsed[Math.min(elapsed.length-1,
       Math.floor(elapsed.length*.95))]??0)*100)/100});
@@ -86,6 +101,7 @@ console.log(JSON.stringify({method:'actual motor, AI, visibility and replay; no 
   seed:r.seed,mission:r.mission,mode:r.mode,orders:r.orders,
   reason:r.reason,travel:r.friendlyTravel,
   firstContactAt:r.firstContactAt,blockedFrames:r.blockedFrames,
+  blockedReasons:r.blockedReasons,
   p95HostSimMs:r.p95HostSimMs
  }))},null,2));
 if(exceptions.length||summary.invalid)process.exitCode=1;

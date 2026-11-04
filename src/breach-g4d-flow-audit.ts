@@ -4,7 +4,8 @@ export type G4DFlowRow={
  seed:number;mission:string;mode:string;orders:number;
  duration:number;friendlyTravel:number;hostileTravel:number;
  firstContactAt:number|null;firstShotAt:number|null;
- reason:string;blockedFrames:number;invalidPositions:number;
+ reason:string;blockedFrames:number;blockedReasons?:Record<string,number>;
+ invalidPositions:number;
  replayIssues:string[];p95HostSimMs:number;
 };
 export function summarizeG4DFlows(rows:readonly G4DFlowRow[]){
@@ -17,7 +18,7 @@ export function summarizeG4DFlows(rows:readonly G4DFlowRow[]){
   entry.trials++;
   entry.contact+=Number(row.firstContactAt!==null);
   entry.shots+=Number(row.firstShotAt!==null);
-  entry.stalled+=Number(row.orders>0&&row.friendlyTravel<15);
+  entry.stalled+=Number(row.orders>0&&row.reason==='movement-stalled');
   entry.invalid+=Number(row.invalidPositions>0||row.replayIssues.length>0);
   entry.meanTravel+=row.friendlyTravel;
  }
@@ -27,7 +28,9 @@ export function summarizeG4DFlows(rows:readonly G4DFlowRow[]){
   modes:[...new Set(rows.map(r=>r.mode))].sort(),
   invalid:rows.filter(r=>r.invalidPositions>0||r.replayIssues.length).length,
   unaccepted:rows.filter(r=>r.orders===0).length,
-  lowMovement:rows.filter(r=>r.orders>0&&r.friendlyTravel<15).length,
+  lowMovement:rows.filter(r=>r.orders>0&&
+   r.reason==='movement-stalled').length,
+  blockedFrames:rows.reduce((sum,r)=>sum+r.blockedFrames,0),
   noContact:rows.filter(r=>r.firstContactAt===null).length,
   byMission};
 }
