@@ -24,3 +24,34 @@ test('R8C: no contact or shot leaves readable zero/unknown outcome',()=>{
  assert.equal(result.contactToFireSeconds,null);
  assert.match(formatCombatReview([],[]),/NO CONFIRMED CONTACT/);
 });
+
+test('G3: hostile fire before observation is not a zero-second contact response',()=>{
+ const frames=[{shots:[shot(9)],actors:[actor(.3)]}];
+ const events=[
+  {id:1,t:1,kind:'shot',text:'GUARD FIRED'},
+  {id:2,t:3,kind:'intel',text:'ROOK SPOTTED GUARD'},
+  {id:3,t:5.1,kind:'shot',text:'ROOK FIRED'}
+ ];
+ const r=summarizeCombatReview(frames,events);
+ assert.equal(r.preContactShots,1);
+ assert.equal(r.contactToFireSeconds,2.1);
+ assert.match(formatCombatReview(frames,events),/PRE-CONTACT GUNFIRE 1/);
+ assert.match(formatCombatReview(frames,events),/2\.1s CONTACT→NEXT SHOT/);
+});
+test('G3: only pre-contact shots yield unknown response, never false zero',()=>{
+ const events=[
+  {id:1,t:1,kind:'shot',text:'GUARD FIRED'},
+  {id:2,t:3,kind:'intel',text:'ROOK SPOTTED GUARD'}
+ ];
+ const r=summarizeCombatReview([],events);
+ assert.equal(r.preContactShots,1);
+ assert.equal(r.contactToFireSeconds,null);
+ assert.match(formatCombatReview([],events),/NO RECORDED POST-CONTACT SHOT/);
+});
+test('G3: simultaneous observed shot legitimately has zero response delay',()=>{
+ const events=[{id:1,t:4,kind:'intel',text:'ROOK SPOTTED GUARD'},
+   {id:2,t:4,kind:'shot',text:'ROOK FIRED'}];
+ const r=summarizeCombatReview([],events);
+ assert.equal(r.contactToFireSeconds,0);
+ assert.equal(r.preContactShots,0);
+});
