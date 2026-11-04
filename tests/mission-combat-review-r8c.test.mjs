@@ -55,3 +55,11 @@ test('G3: simultaneous observed shot legitimately has zero response delay',()=>{
  assert.equal(r.contactToFireSeconds,0);
  assert.equal(r.preContactShots,0);
 });
+
+test('G3: no contact in an active firefight never claims a post-contact response',()=>{
+ const events=[{id:1,t:2,kind:'shot',text:'GUARD FIRED'}];
+ const r=summarizeCombatReview([],events);
+ assert.equal(r.contactToFireSeconds,null);
+ assert.equal(r.preContactShots,0);
+ assert.match(formatCombatReview([],events),/NO CONFIRMED CONTACT/);
+});

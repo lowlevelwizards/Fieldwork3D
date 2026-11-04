@@ -51,11 +51,11 @@ export function summarizeCombatReview(frames:readonly ReplayFrame[],
 export function formatCombatReview(frames:readonly ReplayFrame[],
  events:readonly BattleEvent[]):string{
  const r=summarizeCombatReview(frames,events);
- const delay=r.contactToFireSeconds===null?
-   'NO RECORDED POST-CONTACT SHOT':
+ const hasContact=summarizeMissionPacing(events).firstContactAt!==null;
+ const delay=!hasContact?'NO CONFIRMED CONTACT':
+   r.contactToFireSeconds===null?'NO RECORDED POST-CONTACT SHOT':
    r.contactToFireSeconds.toFixed(1)+'s CONTACT→NEXT SHOT';
- return 'CONTACT RESPONSE '+(r.contactToFireSeconds===null&&
-   !frames.length&&!events.length?'NO CONFIRMED CONTACT · ':'')+delay+
+ return 'CONTACT RESPONSE '+delay+
   (r.preContactShots?' · PRE-CONTACT GUNFIRE '+r.preContactShots:'')+
   '\nRECORDED SHOT EVENTS '+r.shotEvents+
   ' · OBSERVED PROJECTILES '+r.observedProjectiles+
