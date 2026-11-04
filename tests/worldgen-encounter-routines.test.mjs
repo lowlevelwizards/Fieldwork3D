@@ -16,3 +16,25 @@ test('routines are reproducible, local and limited to relaxed actors',()=>{
  const guarded=assignEncounterRoutines(site,[{...actors[0],readiness:'prepared'}],23);
  assert.ok(!guarded[0].routine);
 });
+
+test('G4: a working occupant can actually visit a second furnished station',()=>{
+ const site={rooms:[{id:'work',kind:'room',x:0,y:0,w:250,h:190}],
+  walls:[],doors:[],cover:[
+    {x:55,y:75,w:20,h:20,fixture:'desk'},
+    {x:140,y:42,w:20,h:20,fixture:'workbench'}
+  ]};
+ const workers=Array.from({length:24},(_,i)=>({
+  id:'worker-'+i,role:'occupant',activity:'working',
+  readiness:'relaxed',position:{x:55,y:40},heading:0
+ }));
+ const assigned=assignEncounterRoutines(site,workers,23);
+ assert.deepEqual(assigned,assignEncounterRoutines(site,workers,23));
+ assert.ok(assigned.some(a=>a.routine?.[1]?.x>98),
+  'real second workbench creates a reachable furniture-aware route');
+ for(const actor of assigned.filter(a=>a.routine)){
+  const p=actor.routine[1];
+  assert.ok(p.x>20&&p.y>20&&p.x<230&&p.y<170);
+  assert.ok(site.cover.every(c=>Math.abs(p.x-c.x)>=c.w/2+10||
+    Math.abs(p.y-c.y)>=c.h/2+10));
+ }
+});
