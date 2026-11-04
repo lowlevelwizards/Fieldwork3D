@@ -401,6 +401,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/d2-fabric-fit-r2-') }}
         run: |
           node --experimental-strip-types --test tests/operator-d2-wraps-stage-a2.test.mjs tests/operator-d2-fabric-integration-stage-a3.test.mjs tests/operator-studio-camera-focus-stage-f1.test.mjs tests/operator-wardrobe-data.test.mjs
+      - name: Studio thumbnail performance — normalized cache and legacy visual contracts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/studio-thumbnail-performance-') }}
+        run: |
+          node --experimental-strip-types --test tests/operator-studio-thumbnail-context-perf.test.mjs tests/operator-studio-thumbnail-pipeline-perf.test.mjs tests/operator-studio-camera-focus-stage-f1.test.mjs
       - name: G4d critical encounter audit, replay and objective safety
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-gameplay-quality-g4d-') }}
         run: |
