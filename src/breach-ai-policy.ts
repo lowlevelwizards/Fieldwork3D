@@ -2,7 +2,8 @@
 export type AIIntentKind='watch'|'investigate'|'engage'|'defend'|'withdraw';
 export type AIIntent={kind:AIIntentKind;chosenAt:number;commitUntil:number;reason:string};
 export type AIContext={visible:boolean;hasBelief:boolean;recentSound:boolean;
- suppression:number;morale:number};
+ suppression:number;morale:number;
+ temperament?:'guard'|'aggressor'|'cautious'};
 const priority:Record<AIIntentKind,number>=
  {watch:0,investigate:1,defend:2,engage:3,withdraw:4};
 export function chooseAiIntent(previous:AIIntent|null,context:AIContext,
@@ -11,9 +12,15 @@ export function chooseAiIntent(previous:AIIntent|null,context:AIContext,
  if(context.hasBelief||context.recentSound){
   kind='investigate';reason='unresolved contact or sound';
  }
- if(context.suppression>.35){kind='defend';reason='under suppressive fire';}
+ const caution=context.temperament==='cautious',bold=context.temperament==='aggressor';
+ const defendAt=caution?.27:bold?.48:.35;
+ const withdrawAt=caution?.56:bold?.79:.67;
+ const moraleAt=caution?.70:bold?.43:.62;
+ if(context.suppression>defendAt){
+  kind='defend';reason='under suppressive fire';
+ }
  if(context.visible){kind='engage';reason='confirmed direct visual contact';}
- if(context.suppression>.67&&context.morale<.62){
+ if(context.suppression>withdrawAt&&context.morale<moraleAt){
   kind='withdraw';reason='untenable exposed position';
  }
  if(previous&&now<previous.commitUntil&&

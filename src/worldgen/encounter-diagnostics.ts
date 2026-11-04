@@ -4,6 +4,7 @@ import type {Site} from '../breach-site.ts';
 export type EncounterSpatialAudit={
   hostiles:number;groups:number;occupiedZones:number;emptyZones:number;
   meanEntryDistance:number;closestPair:number;roles:Record<string,number>;
+  nearInsertionCount:number;largestGroup:number;profile:string;
 };
 export function auditEncounter(site:Site):EncounterSpatialAudit{
  const actors=site.encounter?.actors??site.enemies.map((p,i)=>({
@@ -24,8 +25,14 @@ export function auditEncounter(site:Site):EncounterSpatialAudit{
      closest=Math.min(closest,Math.hypot(actor.position.x-actors[j].position.x,
        actor.position.y-actors[j].position.y));
  }
+ const groupCounts:Record<string,number>={};
+ for(const a of actors)groupCounts[a.groupId]=(groupCounts[a.groupId]??0)+1;
  return {hostiles:actors.length,groups:new Set(actors.map(a=>a.groupId)).size,
    occupiedZones:occupied.size,emptyZones:Math.max(0,zones.size-occupied.size),
    meanEntryDistance:actors.length?Math.round(entry/actors.length):0,
-   closestPair:Number.isFinite(closest)?Math.round(closest):0,roles};
+   closestPair:Number.isFinite(closest)?Math.round(closest):0,roles,
+   nearInsertionCount:actors.filter(a=>Math.hypot(
+      a.position.x-site.entrance.x,a.position.y-site.entrance.y)<175).length,
+   largestGroup:Math.max(0,...Object.values(groupCounts)),
+   profile:site.encounter?.profile??'legacy'};
 }

@@ -5,7 +5,8 @@
 import type {Site,Room} from '../breach-site.ts';
 import {activeSite,activateSite,passable,route,pointToSegment,type Pt}
  from '../breach-core.ts';
-import type {EncounterActorSpec,EncounterGroup} from './encounter-types.ts';
+import type {EncounterActorSpec,EncounterGroup,EncounterProfile}
+  from './encounter-types.ts';
 import {encounterRng} from './encounter-rng.ts';
 import {clearOfInsertion,roomOccupancyCapacity} from './encounter-spawn-safety.ts';
 
@@ -20,7 +21,8 @@ export type PlacementResult={actors:EncounterActorSpec[];
 type Anchor={room:Room;p:Pt;capacity:number;choices:Pt[]};
 
 export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
- groups:EncounterGroup[],seed:number):PlacementResult{
+ groups:EncounterGroup[],seed:number,
+ profile:EncounterProfile='scattered'):PlacementResult{
  const rng=encounterRng(seed,5);
  const bounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
  let rejected=0,fallbacks=0;
@@ -122,8 +124,25 @@ export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
      y:anchor.room.y+anchor.room.h/2};
    const originalDist=dist(roomCenter,members[0].position);
    // Empty rooms win over repeated group stacks; location still varies by seed.
+   // Distinct encounter shapes, but capacity, route checks, safe insertion
+   // and physical body clearance below remain completely authoritative.
+   const zone=anchor.room.zoneId??anchor.room.id;
+   const zoneOccupied=anchors.some(other=>
+     (other.room.zoneId??other.room.id)===zone&&
+     (used.get(other.room.id)??0)>0);
+   const entryDist=dist(anchor.p,site.entrance);
+   const nearestDoor=Math.min(Infinity,...site.doors.map(d=>dist(anchor.p,{
+     x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2})));
+   const nearActivity=site.cover.some(o=>o.fixture&&
+     dist(anchor.p,{x:o.x,y:o.y})<85);
+   const profileBonus=
+     profile==='quiet-approach'?Math.min(90,entryDist*.24)-40:
+     profile==='clustered'?(zoneOccupied?90:-20):
+     profile==='active'?(nearActivity?35:-10):
+     profile==='prepared'?(nearestDoor>48&&nearestDoor<130?42:0):0;
    const score=(count===0?110:-90)+
-     (anchor.capacity-count)*12-Math.min(32,originalDist*.065)+rng()*32;
+     (anchor.capacity-count)*12-Math.min(32,originalDist*.065)+
+     profileBonus+rng()*32;
    return {anchor,score};
   }).filter(x=>(used.get(x.anchor.room.id)??0)<x.anchor.capacity)
    .sort((a,b)=>b.score-a.score);

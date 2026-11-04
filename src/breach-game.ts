@@ -55,6 +55,7 @@ import {materialResponse} from './breach-impact-responses.ts';
 import {manipulateWindow,damageWindow,windowPaneSegment} from './breach-windows.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {chooseAiIntent,type AIIntent} from './breach-ai-policy.ts';
+import {settledEnemyPosture} from './breach-ai-posture.ts';
 import {searchCandidates} from './breach-ai-search.ts';
 import {investigationTempo} from './breach-ai-investigation.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
@@ -175,6 +176,7 @@ export type TeamActor=Operator & {
   /** Temporary cooperative sidestep, independent of authored orders. */
   yieldTarget:Pt|null;yieldFor:string|null;yieldUntil:number;
   personality:Personality;morale:number;lastNoiseAt:number;
+  postureChangedAt?:number;
   encounterActivity?:EncounterActivity;encounterReadiness?:EncounterReadiness;
   encounterRole?:EncounterRole;encounterGroupId?:string;
   encounterRoutine?:Pt[];routineIndex?:number;routinePauseUntil?:number;
@@ -2610,7 +2612,8 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     laneClear:false,suppression:a.suppression,morale:a.morale,temperament:a.personality});
   a.intent=chooseAiIntent(a.intent,{
     visible:visible.length>0,hasBelief:!!belief,recentSound:recentNoise,
-    suppression:a.suppression,morale:a.morale},s.seconds);
+    suppression:a.suppression,morale:a.morale,
+    temperament:a.personality},s.seconds);
   if(!visible.length){
     if(belief&&belief.lastAt>=s.seconds-24)
       a.contact=clone(belief.estimate);
@@ -2676,18 +2679,28 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   // property. Cautious or suppressed defenders duck behind real cover;
   // advancing or unsuppressed engaging enemies stand back up to fire.
   const threat=visible[0]?.p??a.heard??a.contact??a.watch;
+  let desiredPosture=a.posture;
   if(threat&&a.velocity<15&&nearCover(a.p,threat)&&
-    (a.suppression>.26||a.personality==='cautious'||a.alert==='cover'))
-    a.posture='crouch';
+    (a.suppression>.26||a.personality==='cautious'||
+     a.alert==='cover'||a.combatChoice==='hold'))
+    desiredPosture='crouch';
   else if(a.velocity>20||a.suppression<.12||a.alert==='engaging')
-    a.posture='stand';
+    desiredPosture='stand';
+  const settled=settledEnemyPosture(a.posture,desiredPosture,
+    s.seconds,a.postureChangedAt??-100);
+  if(settled!==a.posture){a.posture=settled;a.postureChangedAt=s.seconds;}
   // Crouching behind chest-high furniture can make a visible contact
   // impossible to shoot. Stand up when that alone restores the muzzle lane.
   if(a.posture==='crouch'&&visible.length){
     const b=visible[0],height=aimHeight(b.posture==='crouch');
     const low=assessFireLane(a.p,18,b.p,height,COVER,WALLS,s.doors);
     const high=assessFireLane(a.p,26,b.p,height,COVER,WALLS,s.doors);
-    if(low.blocker==='cover'&&high.blocker==='clear')a.posture='stand';
+    if(low.blocker==='cover'&&high.blocker==='clear'){
+      // The only exception to pose dwell: a verified clear higher muzzle.
+      a.posture=settledEnemyPosture(a.posture,'stand',s.seconds,
+        a.postureChangedAt??-100,true);
+      a.postureChangedAt=s.seconds;
+    }
   }
   // Every unheard event is considered once. Multiple same-tick sounds survive.
   let strongest:ReturnType<typeof interpretSound>=null;
