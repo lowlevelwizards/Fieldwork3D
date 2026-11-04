@@ -134,8 +134,13 @@ export class OperatorAppearanceGrid{
  private scheduleThumb(){
   if(this.scheduled||!this.queue.length)return;
   this.scheduled=true;
+  const token=this.token;
   requestAnimationFrame(()=>{
    this.scheduled=false;
+   if(this.token!==token){
+    // A category change replaced the queue while a frame was pending.
+    this.scheduleThumb();return;
+   }
    if(!this.grid.isConnected)return;
    const entry=this.queue.shift();
    if(entry&&this.cards.get(entry.item.id)===entry&&
@@ -229,6 +234,8 @@ export class OperatorAppearanceGrid{
    this.thumbnailRig.dispose();
   }
   this.thumbnailRig=createOperatorRig(id,'blue');
+  this.grid.dataset.thumbnailRigBuilds=String(
+   Number(this.grid.dataset.thumbnailRigBuilds||0)+1);
   this.rigIdentity=id;
   return this.thumbnailRig;
  }
@@ -284,6 +291,8 @@ export class OperatorAppearanceGrid{
     // Bounded thumbnail cache: only a couple of active categories retained.
     if(this.cache.size>=90)this.cache.delete(this.cache.keys().next().value!);
     this.cache.set(key,image);
+    this.grid.dataset.thumbnailRenders=String(
+     Number(this.grid.dataset.thumbnailRenders||0)+1);
     entry.readyKey=key;
     canvas.dataset.previewError='false';
    }
