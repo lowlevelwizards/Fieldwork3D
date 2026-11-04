@@ -10,6 +10,7 @@ import type {EncounterActorSpec,EncounterGroup,EncounterProfile}
 import {encounterRng} from './encounter-rng.ts';
 import {clearOfInsertion,roomOccupancyCapacity} from './encounter-spawn-safety.ts';
 import {tacticalDefenderRoomScore} from './tactical-room-suitability.ts';
+import {rankPreparedPositions,preparedWatchHeading} from './defender-cover-positions.ts';
 
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const roomOf=(site:Site,p:Pt)=>site.rooms.find(r=>r.kind==='room'&&
@@ -70,7 +71,10 @@ export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
  activateSite(site);
  try{
   for(const room of rooms){
-   const points=sample(room);
+   // Only the prepared encounter profile ranks cover-bearing positions.
+   // All other profiles retain ordinary everyday activity placement.
+   const points=profile==='prepared'?
+     rankPreparedPositions(site,room,sample(room)):sample(room);
    let anchor:Pt|undefined;
    for(const p of points){
     if(!staticLegal(p,room))continue;
@@ -81,7 +85,7 @@ export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
    if(!anchor)continue;
    const confirmed=anchor;
    const choices=[confirmed,...points.filter(p=>dist(p,confirmed)>18&&
-     staticLegal(p,room)&&localClear(confirmed,p,room))];
+     staticLegal(p,room)&&passable(p)&&localClear(confirmed,p,room))];
    anchors.push({room,p:anchor,capacity:roomOccupancyCapacity(room,site.cover),
      choices});
   }
@@ -167,6 +171,9 @@ export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
     for(const p of anchor.choices){
      if(!eligible(p,anchor,group.id)){rejected++;continue;}
      placed.set(member.id,{...member,position:{...p},
+       heading:profile==='prepared'?
+         preparedWatchHeading(site,anchor.room,p,member.heading):
+         member.heading,
        roomId:anchor.room.id,zoneId:anchor.room.zoneId??anchor.room.id});
      occupied.push({p,roomId:anchor.room.id,groupId:group.id});
      used.set(anchor.room.id,(used.get(anchor.room.id)??0)+1);
