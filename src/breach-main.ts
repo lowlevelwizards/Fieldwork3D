@@ -5,7 +5,7 @@ import {
 import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
-  operationBriefing,
+  operationBriefing,availableDeployments,selectDeployment,
   planMove,planMoveStroke,planNearbyInteraction,planAim,planWatch,
   retargetActiveWatch,removeActiveWatch,setFirePolicy,planWait,planWaitAt,setWaitDuration,
   plannedControl,setNodeControl,setStartPace,planReloadAt,planDoorFlash,
@@ -421,6 +421,41 @@ applyRequestedCondition(state);
 applyRosterIdentity(state,persistentRoster);
 applyCampaignSkills();
 let recorder=new MissionRecorder();recorder.capture(state,true);
+const deploymentButton=document.createElement('button');
+deploymentButton.type='button';deploymentButton.id='deploymentChoice';
+deploymentButton.style.cssText='display:block;margin:10px 0;padding:8px 12px;'+
+ 'font:inherit;letter-spacing:.06em;background:#222b2b;color:#e5e2ce;'+
+ 'border:1px solid #7b8475;border-radius:3px;cursor:pointer';
+ui.briefingRoster.insertAdjacentElement('afterend',deploymentButton);
+let deploymentState:Session|null=null;
+let deployOptions:ReturnType<typeof availableDeployments>=[];
+let selectedEntry='FRONT';
+function refreshDeployment(){
+ if(deploymentState!==state){
+  deploymentState=state;selectedEntry='FRONT';
+  deployOptions=availableDeployments(state).filter(c=>c.id!=='FRONT');
+ }
+ const editable=state.phase==='planning'&&!state.started&&!replaying&&
+  team(state).every(a=>a.plan.length===0);
+ deploymentButton.hidden=!state.site||state.started||deployOptions.length===0;
+ deploymentButton.disabled=!editable;
+ deploymentButton.textContent='ENTRY · '+
+  (selectedEntry==='FRONT'?'FRONT (DEFAULT)':selectedEntry.toUpperCase())+
+  ' · CHANGE';
+ deploymentButton.title=editable?'Cycle physically verified exterior entry points':
+  'Select the insertion before plotting routes or starting GO';
+}
+deploymentButton.addEventListener('click',()=>{
+ refreshDeployment();
+ if(deploymentButton.disabled)return;
+ const ids=['FRONT',...deployOptions.map(c=>c.id)];
+ const next=ids[(ids.indexOf(selectedEntry)+1)%ids.length];
+ if(selectDeployment(state,next)){
+  selectedEntry=next;
+  recorder=new MissionRecorder();recorder.capture(state,true);
+  refreshDeployment();
+ }
+});
 const OPERATION_HISTORY_KEY='fieldwork3d.operation-history.v1';
 let recordedOperation:Session|null=null;
 function operationHistory():OperationRecord[]{
@@ -1864,6 +1899,7 @@ function updateHud(){
    fieldLightButton.style.borderColor=light.pressed?colorFor(selected):'';
   }
   recordCompletedOperation();
+  refreshDeployment();
   const brief=operationBriefing(state);
   ui.briefingTitle.textContent=brief.code+' / '+brief.name;
   ui.briefingBody.textContent=brief.objective;

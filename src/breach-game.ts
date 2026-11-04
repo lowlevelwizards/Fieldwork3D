@@ -107,6 +107,7 @@ import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
 import {chooseDefense,chooseFiringDefense,watchPoint,
   reachableInvestigation} from './breach-defense.ts';
 import {advanceRescueEscort,type RescueEscort} from './breach-rescue-escort.ts';
+import {verifiedDeploymentChoices,type DeploymentChoice} from './breach-deployment.ts';
 import {operationBrief,assessOperation,
   type OperationKind} from './breach-operations.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
@@ -440,6 +441,33 @@ export function newSession(index=0,siteSeed?:number,
   COVER.splice(0,COVER.length,...state.coverState);
   observe(state);
   return state;
+}
+/** Changes starting position only before gameplay and before authored routes.
+ * Reset remembered fog: the default front must not remain pre-revealed.
+ */
+export function availableDeployments(s:Session):DeploymentChoice[]{
+ return s.site?verifiedDeploymentChoices(s.site):[];
+}
+export function selectDeployment(s:Session,id:string):boolean{
+ if(!s.site||s.started||s.phase!=='planning'||team(s).some(a=>a.plan.length))
+  return false;
+ const choice=id==='FRONT'?null:availableDeployments(s).find(c=>c.id===id);
+ if(id!=='FRONT'&&!choice)return false;
+ const positions=choice?.spots??s.site.spawn;
+ if(positions.length<team(s).length||!team(s).every((_,i)=>passable(positions[i],8)))
+  return false;
+ team(s).forEach((a,i)=>{
+  a.p=clone(positions[i]);a.priorP=clone(positions[i]);
+  a.plan=[];a.history=makeHistory();a.nav=[];a.path=[];
+  a.heading=angle(a.p,choice?.approach??s.site!.entrance);
+  a.weaponYaw=a.heading;
+ });
+ s.intel=initialIntel(s.intel.mode,s.site,s.doors);
+ s.seenGround.clear();s.known.clear();
+ s.squadEntryUndo=null;s.squadEntryRedo=null;
+ observe(s);
+ notify(s,'DEPLOYMENT SET — '+(choice?.id??'FRONT'));
+ return true;
 }
 export const team=(s:Session)=>s.operators.filter(a=>a.side==='blue');
 export const enemies=(s:Session)=>s.operators.filter(a=>a.side==='red');
