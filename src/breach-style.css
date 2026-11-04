@@ -1342,3 +1342,29 @@ html,body{font-family:var(--fw-font-menu)}
  background:#c4c7bd;touch-action:auto}
 #openOperatorStudio{background:#a7b899;border-color:#dae2b6;color:#182923;
  font-weight:800}
+
+/* Execution resilience — no separate panel: the existing four cards show
+   only the operator's current physical/order state. */
+.bar .unit{grid-template-rows:13px 13px 10px 10px}
+.bar .unit .unit-code{grid-row:1/5}
+.bar .unit .unit-execution{
+  position:relative;grid-column:2;grid-row:4;min-width:0;
+  color:#acc4b8;font:700 8px/10px "Saira Condensed",sans-serif;
+  letter-spacing:.035em;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;pointer-events:none;text-align:left;
+}
+.bar .unit .unit-execution[data-kind="blocked"]{color:#e5a288}
+.bar .unit .unit-execution[data-kind="recovering"]{color:#edc58b}
+.bar .unit .unit-execution[data-kind="waiting"]{color:#d2c39b}
+.bar .unit .unit-execution[data-kind="complete"]{color:#a6c6ab}
+.bar .unit .unit-execution[data-progress="true"]:after{
+  content:"";position:absolute;bottom:0;left:0;height:1px;
+  width:var(--execution-progress,0%);background:currentColor;
+}
+@media(max-width:650px){
+  .bar .unit{grid-template-rows:12px 12px 10px 10px;min-height:49px}
+  .bar .unit .unit-execution{font-size:8px;line-height:10px}
+}
+@media(max-height:470px) and (max-width:650px){
+  .bar .unit{min-height:43px}
+}
