@@ -30,3 +30,25 @@ export function interpretSound(event:AcousticEvent,observerId:string,at:Pt,
    y:event.p.y+Math.sin(theta)*offset},
   uncertainty,intensity,at:event.time};
 }
+
+/** Interpret intensity AND cause. Hearing is evidence, not a direct target
+ * coordinate or an automatic global alert. A faint footstep isn't gunfire.
+ */
+export type SoundResponse='ignore'|'orient'|'investigate'|'alarm';
+export function soundResponse(kind:string,intensity:number):SoundResponse{
+ if(intensity<=0)return 'ignore';
+ const violent=kind==='gunshot'||kind==='flashbang'||kind==='kick'||
+   kind==='glass'||kind.startsWith('impact-spark')||
+   kind.startsWith('impact-splinter');
+ if(violent)return intensity>=.10?'alarm':'investigate';
+ if(kind==='footstep')
+   return intensity<.16?'ignore':intensity<.58?'orient':'investigate';
+ if(kind==='warning')return intensity>=.18?'investigate':'orient';
+ if(kind==='door'||kind==='window'||kind==='furniture')
+   return intensity<.24?'orient':'investigate';
+ if(kind.startsWith('impact-'))
+   return intensity<.25?'orient':'investigate';
+ return intensity<.20?'orient':'investigate';
+}
+export const soundPriority=(response:SoundResponse):number=>
+ response==='alarm'?3:response==='investigate'?2:response==='orient'?1:0;
