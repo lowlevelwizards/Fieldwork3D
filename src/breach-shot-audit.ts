@@ -11,13 +11,13 @@ export type ShotAuditRow={
 };
 export function auditShots(shots:readonly ShotEvent[]):ShotAuditRow[]{
  return shots.map(shot=>({
-  id:shot.id,at:shot.firedAt,shooter:shot.shooterId,
+  id:shot.id,at:shot.firedAt??-1,shooter:shot.shooterId,
   target:shot.targetId??null,
   muzzleX:shot.start.x,muzzleY:shot.start.y,
-  muzzleHeight:shot.muzzleHeight??0,yaw:shot.shotYaw,
+  muzzleHeight:shot.muzzleHeight??0,yaw:shot.shotYaw??Number.NaN,
   distance:Math.hypot(shot.end.x-shot.start.x,shot.end.y-shot.start.y),
   hit:shot.hit,down:!!shot.down,
-  surface:shot.surface??'dust',mode:shot.mode
+  surface:shot.surface??'dust',mode:shot.mode??'legacy'
  }));
 }
 export function summarizeShots(rows:readonly ShotAuditRow[]){
