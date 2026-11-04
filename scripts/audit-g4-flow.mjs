@@ -43,7 +43,7 @@ for(let i=0;i<trials;i++){
    recorder.capture(session,true);
    session.phase='running';session.started=true;
    let blockedFrames=0,invalidPositions=0;
-   const blockedReasons={};
+   const blockedReasons={},blockedMotorPauses={};
    const elapsed=[];
    for(let tick=0;tick<seconds*30&&session.phase==='running';tick++){
     const before=performance.now();
@@ -59,6 +59,8 @@ for(let i=0;i<trials;i++){
       blockedFrames++;
       const reason=actor.lastBlocker??'unknown';
       blockedReasons[reason]=(blockedReasons[reason]??0)+1;
+      const pause=actor.motorPause??'none';
+      blockedMotorPauses[pause]=(blockedMotorPauses[pause]??0)+1;
      }
    }
    recorder.capture(session,true);
@@ -83,7 +85,7 @@ for(let i=0;i<trials;i++){
     hostileTravel:contact.hostileTravel,
     firstContactAt:contact.firstContactAt,
     firstShotAt:contact.firstShotAt,
-    reason,blockedFrames,blockedReasons,invalidPositions,
+    reason,blockedFrames,blockedReasons,blockedMotorPauses,invalidPositions,
     replayIssues:film.issues,
     p95HostSimMs:Math.round((elapsed[Math.min(elapsed.length-1,
       Math.floor(elapsed.length*.95))]??0)*100)/100});
@@ -102,6 +104,7 @@ console.log(JSON.stringify({method:'actual motor, AI, visibility and replay; no 
   reason:r.reason,travel:r.friendlyTravel,
   firstContactAt:r.firstContactAt,blockedFrames:r.blockedFrames,
   blockedReasons:r.blockedReasons,
+  blockedMotorPauses:r.blockedMotorPauses,
   p95HostSimMs:r.p95HostSimMs
  }))},null,2));
 if(exceptions.length||summary.invalid)process.exitCode=1;

@@ -5,6 +5,7 @@ export type G4DFlowRow={
  duration:number;friendlyTravel:number;hostileTravel:number;
  firstContactAt:number|null;firstShotAt:number|null;
  reason:string;blockedFrames:number;blockedReasons?:Record<string,number>;
+ blockedMotorPauses?:Record<string,number>;
  invalidPositions:number;
  replayIssues:string[];p95HostSimMs:number;
 };
