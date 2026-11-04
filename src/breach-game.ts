@@ -18,6 +18,7 @@ import {
 } from './breach-plan.ts';
 import {validPieArc} from './breach-maneuvers.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
+import {entryDoorState} from './breach-entry-coordination.ts';
 import {generateSite,type Site,type SiteScale,seeded} from './breach-site.ts';
 import type {EncounterContext,EncounterActivity,EncounterReadiness,EncounterRole} from './worldgen/encounter-types.ts';
 import {encounterReactionDelay} from './breach-encounter-readiness.ts';
@@ -947,7 +948,15 @@ export function planSquadEntry(s:Session,doorId:string){
   if(!planDoor(s,lead.id,doorId,'open'))return rollback();
   for(let i=0;i<alive.length;i++){
     const a=alive[i],slot=slots[i];
-    if(i>0&&!planWait(s,a.id,.3+i*.24))return rollback();
+    if(i>0){
+      // This is an entry gate, not a blind time delay. The lead must
+      // actually open a physical passage; existing passage leases handle
+      // moving-queue spacing after the gate becomes ready.
+      if(!planWait(s,a.id,.3))return rollback();
+      const gate=a.plan.at(-1);
+      if(gate?.kind!=='wait')return rollback();
+      gate.doorId=doorId;
+    }
     if(!planMove(s,a.id,slot.point)){
       notify(s,a.name+' ENTRY ROUTE UNAVAILABLE');
       return rollback();
@@ -2312,8 +2321,24 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   const held=aimHeading(a);
   if(held!==null)rotate(a,held,dt);
   if(n.kind==='holdClear'||n.kind==='wait'){
-    // One WAIT: stay at least .5s and keep waiting while a live,
-    // physically seen contact is present. Clear timer resets on sight.
+    // A squad-entry WAIT is released only after the assigned doorway is
+    // physically open enough for real passage. Ordinary authored WAIT
+    // retains its previous contact-hold semantics.
+    if(n.kind==='wait'&&n.doorId){
+      const doorway=s.doors.find(d=>d.id===n.doorId);
+      const gate=entryDoorState(doorway);
+      if(gate!=='ready'){
+        a.velocity=0;a.waitRemaining=0;a.actionTimer+=dt;
+        // A genuinely blocked entry is not silently abandoned. Alert once,
+        // retain editable orders, and never force the squad through geometry.
+        if(a.actionTimer>=2.5&&a.actionTimer-dt<2.5)
+          notify(s,a.name+' ENTRY WAIT · '+
+            (gate==='missing'?'DOOR MISSING':'DOOR NOT CLEAR'));
+        return;
+      }
+      a.actionTimer=0;
+    }
+    // Remain briefly settled and hold on any live visual contact.
     const contact=enemies(s).some(e=>e.health>0&&inSight(a,e,s));
     a.waitRemaining=contact?0:a.waitRemaining+dt;
     a.velocity=0;
