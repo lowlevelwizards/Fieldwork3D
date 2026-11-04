@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import {muzzleFlashCue,impactPulse} from '../src/breach-combat-cues.ts';
 import {weaponAudioCue,audibleImpact} from '../src/breach-combat-audio.ts';
 import {impactProfile} from '../src/breach-effects.ts';
+import {hasRecentSound} from '../src/breach-ai-policy.ts';
 
 test('B3 muzzle flashes are anchored in shot age and real weapon/muzzle state',()=>{
  const naked=muzzleFlashCue('carbine',0);
@@ -49,4 +50,13 @@ test('B6 presentation consumes shot IDs and visibility, never chooses hit result
  assert.match(main,/audibleImpact\(shotVisibility\(state,shot\)\.impact/);
  assert.match(main,/weaponAudioCue\(weapon,/);
  assert.match(main,/fresh\.slice\(-3\)/,'audio voices remain bounded');
+});
+
+test('encounter regression: no false initial audio suspicion; real gunfire interrupts',()=>{
+ assert.equal(hasRecentSound(2,-1),false);
+ assert.equal(hasRecentSound(2,1.5),true);
+ assert.equal(hasRecentSound(9,1.5),false);
+ const game=readFileSync(new URL('../src/breach-game.ts',import.meta.url),'utf8');
+ assert.match(game,/const recentNoise=hasRecentSound\(s\.seconds,a\.lastNoiseAt\)/);
+ assert.match(game,/const newAlarm=s\.noise\.some/);
 });
