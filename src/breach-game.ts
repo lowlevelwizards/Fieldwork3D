@@ -160,7 +160,7 @@ export type TeamActor=Operator & {
   lastBlocker:Blocker;
   /** Execution diagnostics are transient; never rewrite authored PlanNode[]. */
   motorPause:MotorPause;orderIssue:ExecutionIssue|null;
-  completedOrders:number;
+  completedOrders:number;passageWaitSeconds:number;passageStallReported:boolean;
   /** Last executed facing command; survives across movement waypoints. */
   aimInstruction:AimInstruction|null;
   /** Simulation-timed cues, not new combat rules. */
@@ -278,6 +278,7 @@ const withActions=(a:Operator):TeamActor=>({
   traversalElevation:0,lastTraversalAt:-100,
   traversalRetreating:false,
   lastBlocker:'clear',motorPause:null,orderIssue:null,completedOrders:0,
+  passageWaitSeconds:0,passageStallReported:false,
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
   lastHitRegion:'torso',lastHitYaw:0,lastHitSeverity:0,
   downPose:'forward',
@@ -1764,8 +1765,21 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   if(passageWait(traffic.find(unit=>unit.id===a.id)!,s.doors,
      traffic,s.passageLeases,s.seconds,move)){
     a.motorPause='passage';a.velocity=0;a.blockedTime=0;
+    a.passageWaitSeconds+=dt;
+    // A normal stack is allowed to wait. Warn only when two or more
+    // friendly operators have remained stalled in the same passage for
+    // several seconds. Never reorder their independently authored plans.
+    if(a.side==='blue'&&a.passageWaitSeconds>5.5&&
+       !a.passageStallReported&&
+       s.operators.some(other=>other!==a&&other.side===a.side&&
+         other.health>0&&other.motorPause==='passage'&&
+         other.passageWaitSeconds>3)){
+      a.passageStallReported=true;
+      notify(s,a.name+' PASSAGE STALLED · CHECK ROUTES');
+    }
     return true;
   }
+  a.passageWaitSeconds=0;a.passageStallReported=false;
   // Identify the leaf for closed-door authored handling; open hinged
   // leaves are pushed by the coupled swept-body solver below, not by
   // standing nearby or crossing a broad radius trigger.
@@ -2020,7 +2034,8 @@ function pop(a:TeamActor){
   if(a.plan.length)a.completedOrders++;
   a.plan.shift();a.activeNode=-1;a.nav=[];a.waitRemaining=0;
   a.actionTimer=0;a.syncReady=null;a.pieIndex=0;
-  a.orderIssue=null;a.motorPause=null;pathFor(a);
+  a.orderIssue=null;a.motorPause=null;
+  a.passageWaitSeconds=0;a.passageStallReported=false;pathFor(a);
 }
 /** Explicitly report failure without silently consuming the player's order.
  * Re-evaluate the precondition each tick; changing world state can clear
