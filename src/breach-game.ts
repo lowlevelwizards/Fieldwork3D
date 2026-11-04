@@ -2645,11 +2645,14 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
     return;
   }
-  if(a.coordinationRole==='watch'&&s.seconds<a.coordinationUntil&&
-     !visible.length&&a.suppression<.65){
+  // WATCH anchors a firing sector; SUPPORT moves into its nearby
+  // complementary defensive position. Both know only the reported estimate.
+  // Direct vision or severe suppression always overrides the role.
+  if((a.coordinationRole==='watch'||a.coordinationRole==='support')&&
+     s.seconds<a.coordinationUntil&&!visible.length&&a.suppression<.65){
     a.alert='cover';
     if(a.defense&&d(a.p,a.defense)>10)
-      approach(a,a.defense,dt,s,.65);
+      approach(a,a.defense,dt,s,a.coordinationRole==='support'?.82:.65);
     else if(a.watch)rotate(a,angle(a.p,a.watch),dt);
     return;
   }
@@ -2716,12 +2719,14 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
 function distributeReports(s:Session){
  for(const report of s.reports){
   if(s.seconds-report.at>1.5)continue;
+  const newlyInformed:string[]=[];
   for(const recipient of enemies(s)){
    if(recipient.health<=0||report.deliveredTo.includes(recipient.id))continue;
    const observation=reportToListener(report,recipient.id,recipient.p,
      s.doors,WALLS,s.seconds);
    if(!observation)continue;
    report.deliveredTo.push(recipient.id);
+   newlyInformed.push(recipient.id);
    addObservation(recipient.awareness,observation);
    if(recipient.intent?.kind!=='engage'){
     recipient.heard=clone(observation.estimate);
@@ -2732,24 +2737,28 @@ function distributeReports(s:Session){
     recipient.nav=[];
    }
   }
-  // Only genuinely informed listeners are eligible for group roles.
-  if(!report.coordinated&&report.deliveredTo.length){
-    report.coordinated=true;
-    const listeners=enemies(s).filter(a=>a.health>0&&
-      report.deliveredTo.includes(a.id));
-    const roles=groupResponse(listeners.map(a=>({id:a.id,p:a.p})),
-      report.estimate);
-    for(const a of listeners){
-      a.coordinationRole=roles[a.id];
-      a.coordinationUntil=s.seconds+5;
-      if(roles[a.id]==='watch'&&a.intent?.kind!=='engage'){
-        a.watch=clone(report.estimate);
-        a.defense=defensivePosition(a,report.estimate,s);
-        a.defenseUntil=s.seconds+5;
-        a.alert='cover';
-        a.nav=[];
-      }
-    }
+  // A report may reach another ally on a later tick. The earlier
+  // investigator keeps their role; only newcomers receive fresh orders.
+  // Never coordinate an actor who did not actually hear the report.
+  if(!newlyInformed.length)continue;
+  const listeners=enemies(s).filter(a=>a.health>0&&
+    report.deliveredTo.includes(a.id));
+  const roles=groupResponse(listeners.map(a=>({id:a.id,p:a.p})),
+    report.estimate,report.assignedRoles);
+  report.assignedRoles=roles;report.coordinated=true;
+  for(const a of listeners){
+   if(!newlyInformed.includes(a.id))continue;
+   a.coordinationRole=roles[a.id];
+   a.coordinationUntil=s.seconds+5;
+   const covering=roles[a.id]==='watch'||roles[a.id]==='support';
+   if(covering&&a.intent?.kind!=='engage'){
+     a.watch=clone(report.estimate);
+     // Existing cover selection considers friendly defender occupancy;
+     // this avoids assigning everyone to the same local cover spot.
+     a.defense=defensivePosition(a,report.estimate,s);
+     a.defenseUntil=s.seconds+5;
+     a.alert='cover';a.nav=[];
+   }
   }
  }
 }

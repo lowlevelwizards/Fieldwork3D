@@ -2,9 +2,11 @@
 import type {Pt,Door,Segment} from './breach-core.ts';
 import {heardIntensity} from './breach-acoustics.ts';
 import type {AwarenessObservation} from './breach-awareness.ts';
+import type {GroupRole} from './breach-ai-coordination.ts';
 export type TacticalReport={
  id:number;senderId:string;at:number;origin:Pt;estimate:Pt;
  uncertainty:number;deliveredTo:string[];coordinated?:boolean;
+ assignedRoles?:Record<string,GroupRole>;
 };
 export function reportToListener(report:TacticalReport,listenerId:string,
  listenerPosition:Pt,doors:readonly Door[],walls:readonly Segment[],
