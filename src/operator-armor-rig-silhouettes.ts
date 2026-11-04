@@ -98,109 +98,154 @@ export type FittedRigFrame={
  shoulderRight:{z:number};shoulderY:number;rigShiftX:number;
  sideContact?:number;mode?:'carrier-placard'|'external-harness';
 };
+/** One topology per family: suspension geometry has to explain the load,
+ * including in the unarmored rear view. All endpoints use the fitted
+ * exterior of the currently equipped garment or armor.
+ *
+ * RIG-R2: keep these connectors separate from pouch/bag meshes; geometry
+ * changes only on an outfit change, never on the animation tick.
+ */
 export function updateFittedRigHarness(
  groups:ShapeGroups,rig:string,top:string,frame:FittedRigFrame):void{
  const outer=groups[rig];if(!outer)return;
  const harness=outer.getObjectByName('uniform-fitted-rig-harness');
  if(!(harness instanceof THREE.Group))return;
- const key=rig+'|'+top+'|'+(frame.mode??'legacy')+'|'+
-  [frame.front.x,frame.back.x,frame.shoulderY,frame.rigShiftX,
-   frame.sideRight.z,frame.shoulderRight.z].map(x=>x.toFixed(3)).join('|');
+ const key=[rig,top,frame.mode??'legacy',
+  frame.front.x,frame.back.x,frame.shoulderY,frame.rigShiftX,
+  frame.sideRight.z,frame.shoulderRight.z,frame.sideContact??0]
+  .map(x=>typeof x==='number'?x.toFixed(3):x).join('|');
  if(harness.userData.fitKey===key)return;
  const material=harness.userData.fitMaterial as THREE.Material;
- const spread=harness.userData.spread as number;
- // Only geometry from the previous deterministic fit is replaced; do not
- // dispose shared material maps, camouflage textures, or any pouch mesh.
  harness.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
  harness.clear();
- const waistRig=rig==='field-webbing'||rig==='belt-harness';
- const localFront=frame.front.x-frame.rigShiftX;
- const localBack=frame.back.x-frame.rigShiftX;
- const y=frame.shoulderY+.25;
- const shoulder=frame.shoulderRight.z;
- // The first stage has its own actual front panel anchoring. Other rig
- // families preserve their existing geometry until their design stage.
- if(['micro-rig','chest-placard','light-rig','chicom-rig',
-   'split-front','full-chest','lbv'].includes(rig)){
-  const micro=rig==='micro-rig',placard=rig==='chest-placard',
-   classic=rig==='light-rig',canvas=rig==='chicom-rig',
-   split=rig==='split-front',full=rig==='full-chest',lbv=rig==='lbv';
-  const panelX=micro?7.90:placard?8.14:classic?8.18:canvas?7.95:
-   split?8.12:full?8.10:7.78;
-  const panelTop=micro?-.82:placard?.25:classic?-.02:canvas?.44:
-   split?.85:full?2.40:3.13;
-  const z=micro?2.75:placard?3.20:classic?4.1:canvas?3.65:
-   split?4.55:full?4.60:3.22;
-  const crownZ=Math.max(3.3,Math.min(5.0,shoulder));
-  for(const side of [-1,1]){
-   const path:readonly (readonly [number,number,number])[]=[
-    [panelX-.21,panelTop-.24,z],
-    [localFront+.27,y-.95,crownZ],
-    [1.60-frame.rigShiftX,y+.02,crownZ],
-    [-1.70-frame.rigShiftX,y+.02,crownZ],
-    [localBack-.16,y-.85,crownZ],
-    [localBack-.21,classic?1.15:-1.70,z+(.95)]
-   ];
-   fittedShoulderBridge(harness,material,path,
-    canvas ? .92 : classic ? 1.17 : lbv ? 1.28 :
-    full ? 1.28 : split ? 1.22 : micro ? 1.11 : 1.08,.57,side);
-  }
-  if(classic){
-   // The defining traditional X is on the BACK, directly over the
-   // selected external carrier rather than at hardcoded -5.90 X.
-   strap(harness,material,[localBack-.27,1.68,-4.05],
-    [localBack-.27,-3.18,4.05],1.12,.51);
-   strap(harness,material,[localBack-.27,1.68,4.05],
-    [localBack-.27,-3.18,-4.05],1.12,.51);
-  }else{
-   // Rear connector is shallow and material-parallel. The large rigs
-   // get wider back coverage but still have clear waist and shoulder gaps.
-   box(harness,material,localBack-.16,
-    lbv?-2.15:full?-2.05:-1.66,0,
-    .44,lbv?1.45:canvas?.82:1.10,
-    lbv?10.8:full?11.5:split?10.2:micro?8.35:placard?9.0:9.4);
+
+ // Positive X faces forward. These coordinates are local to the rig
+ // group, which itself receives the fitted X translation. Rear/side
+ // anchors are transformed into the same space as the front panel.
+ const fx=frame.front.x-frame.rigShiftX;
+ const bx=frame.back.x-frame.rigShiftX-.18;
+ const sx=1.65-frame.rigShiftX;
+ const rx=-1.65-frame.rigShiftX;
+ const sy=frame.shoulderY+.18;
+ const sh=Math.max(3.35,Math.min(5.15,frame.shoulderRight.z));
+ const sideZ=frame.sideRight.z+.04;
+ type Pt=readonly [number,number,number];
+ const line=(points:readonly Pt[],width:number,depth=.44)=>{
+  for(let i=0;i<points.length-1;i++)
+   strap(harness,material,points[i],points[i+1],width,depth);
+ };
+ const across=(x:number,y:number,halfZ:number,width=.75,depth=.38)=>
+  line([[x,y,-halfZ],[x,y,halfZ]],width,depth);
+ const shoulder=(sign:number,front:Pt,back:Pt,width:number)=>{
+  const route:readonly Pt[]=[front,
+   [fx+.25,sy-.92,sign*sh],
+   [sx,sy,sign*sh],
+   [rx,sy,sign*sh],
+   back];
+  fittedShoulderBridge(harness,material,route,width,.48,1);
+ };
+ const sideTie=(sign:number,y:number,fromX:number,toX:number,width=.56)=>{
+  line([[fromX,y,sign*sideZ],[toX,y,sign*sideZ]],width,.42);
+ };
+
+ if(rig==='chest-placard'&&frame.mode==='carrier-placard'){
+  // This is a carrier attachment, NOT another standalone chest harness.
+  // Two short tabs join the top of the placard to its own upper corners.
+  for(const sign of [-1,1])
+   line([[8.14,1.0,sign*3.25],[fx+.21,2.05,sign*3.25]],
+    .82,.40);
+ }else if(rig==='micro-rig'||rig==='chest-placard'){
+  const micro=rig==='micro-rig';
+  const x=micro?7.90:8.14,z=micro?2.85:3.30;
+  const topY=micro?-.84:.35;
+  for(const sign of [-1,1])
+   shoulder(sign,[x,topY,sign*z],[bx,-.84,sign*3.75],
+    micro?.82:.72);
+  // Short upper H bridge plus one lower, narrow stabilizing back strap.
+  across(bx,-.86,3.75,.78);
+  across(bx,-3.24,Math.min(sideZ,4.65),.50);
+ }else if(rig==='light-rig'||rig==='chicom-rig'){
+  // Real crossed shoulder suspension: shoulders CONTINUE into opposing
+  // lower rear attachment points instead of receiving a decorative X.
+  const classic=rig==='light-rig',x=classic?8.38:7.95;
+  const z=classic?4.42:4.13;
+  for(const sign of [-1,1]){
+   const topY=classic?.10:.62;
+   shoulder(sign,[x,topY,sign*z],[bx,1.13,sign*3.78],
+    classic?1.04:.77);
+   line([[bx,1.13,sign*3.78],[bx,-3.35,-sign*4.22]],
+    classic?1.02:.74,.43);
+   sideTie(sign,-3.30,fx+.04,bx,classic?.62:.48);
   }
  }else if(rig==='bandolier'){
-  // Cross-body canvas is one broad diagonal band, draped over a real
-  // shoulder crown and then directly across the external chest surface.
-  const points:readonly (readonly [number,number,number])[]=[
-   [localBack-.23,-3.55,-3.55],
-   [-1.75-frame.rigShiftX,y+.02,4.08],
-   [1.70-frame.rigShiftX,y+.02,4.08],
-   [localFront+.27,3.85,3.70],
-   [localFront+.27,1.55,1.48],
-   [localFront+.27,-.92,-1.30],
-   [localFront+.27,-3.80,-4.50]
-  ];
-  for(let i=0;i<points.length-1;i++)
-   strap(harness,material,points[i],points[i+1],2.05,.54);
- }else{
- const attachY=waistRig?-5.12:2.22;
- const backY=waistRig?-5.28:2.28;
- const attachZ=waistRig?Math.max(5.75,spread):Math.min(5.25,spread);
- const routeZ=Math.max(shoulder,waistRig?5.65:4.12);
- for(const sign of [-1,1]){
-  const nodes:readonly [number,number,number][]=[
-   [localFront+.45,attachY,sign*attachZ],
-   [localFront+.18,y-.83,sign*routeZ],
-   [1.82-frame.rigShiftX,y,sign*routeZ],
-   [-1.87-frame.rigShiftX,y,sign*routeZ],
-   [localBack-.20,y-.83,sign*routeZ],
-   [localBack-.35,backY,sign*attachZ]
-  ];
-  for(let i=0;i<nodes.length-1;i++)
-   strap(harness,material,nodes[i],nodes[i+1],
-    waistRig?1.26:1.16,waistRig?.94:.82);
- }
-
- }
- if(rig==='sadf-webbing'){
-  // Real wraparound torso and back: not another flat three-cell vest.
-  const sideZ=frame.sideRight.z-.05;
-  for(const side of [-1,1])
-   box(harness,material,(localFront+localBack)*.5,-2.72,
-    side*sideZ,5.10,5.80,.62);
-  box(harness,material,localBack-.20,-2.30,0,.56,5.95,9.35);
+  // Unbroken front-right / rear-left diagonal with a shoulder turn and
+  // lower flank connection; no second shoulder strap or rear H bridge.
+  line([[bx,-4.42,-4.52],[bx,1.12,4.02],
+   [rx,sy,4.12],[sx,sy,4.12],
+   [fx+.20,2.85,3.18],[fx+.20,-4.25,-4.16],
+   [(fx+bx)*.5,-4.37,-sideZ],[bx,-4.42,-4.52]],1.72,.48);
+ }else if(rig==='field-webbing'||rig==='belt-harness'){
+  // Belt-first: twin front braces, one true rear Y and no chest slab.
+  const wide=rig==='belt-harness';
+  for(const sign of [-1,1]){
+   line([[fx+.08,-5.18,sign*5.70],
+    [fx+.12,.90,sign*4.67],[sx,sy,sign*sh],
+    [rx,sy,sign*sh],[bx,1.16,sign*3.65],
+    [bx,-2.15,0]],wide?1.22:1.02,.54);
+  }
+  line([[bx,-2.15,0],[bx,-5.22,0]],wide?1.20:1.03,.53);
+ }else if(rig==='split-front'){
+  // Independent wings joined by an H harness; no continuous back shell.
+  for(const sign of [-1,1])
+   shoulder(sign,[8.12,1.01,sign*4.75],
+    [bx,-1.05,sign*4.55],1.08);
+  across(bx,-.58,4.55,1.02);
+  across(bx,-3.58,Math.min(sideZ,5.30),.62);
+  for(const sign of [-1,1])sideTie(sign,-3.58,fx+.2,bx,.48);
+ }else if(rig==='full-chest'){
+  // A substantial patrol bib gets a strong rear support yoke, not the
+  // split-front's narrow H and not the plate carrier's flat bag.
+  for(const sign of [-1,1])
+   shoulder(sign,[8.39,2.62,sign*4.65],
+    [bx,.46,sign*4.82],1.28);
+  box(harness,material,bx-.07,-.76,0,.47,2.05,9.82);
+  across(bx,-3.70,Math.min(sideZ,5.36),.69);
+ }else if(rig==='lbv'){
+  // The rear of a real LBV carries a broad shoulder yoke, two descending
+  // panels, and a waist support; the sternum remains open.
+  for(const sign of [-1,1]){
+   shoulder(sign,[7.82,3.05,sign*3.52],
+    [bx,.76,sign*4.85],1.43);
+   line([[bx,.72,sign*4.82],[bx,-3.86,sign*5.26]],1.25,.49);
+   sideTie(sign,-4.04,fx+.05,bx,.72);
+  }
+  box(harness,material,bx-.05,.32,0,.48,1.26,10.02);
+  across(bx,-4.03,5.26,.92);
+ }else if(rig==='sadf-webbing'){
+  // Pattern-83 Battle Jacket: broad shoulder support, physical side wrap
+  // and TWO visible rear cargo compartments instead of a blank back slab.
+  for(const sign of [-1,1]){
+   shoulder(sign,[7.78,.88,sign*4.72],
+    [bx,.85,sign*4.93],1.20);
+   box(harness,material,(fx+bx)*.5,-2.82,
+    sign*(sideZ-.18),Math.max(1.1,fx-bx-.18),5.35,.78);
+   sideTie(sign,-5.12,fx,bx,.72);
+  }
+  box(harness,material,bx-.12,-.92,0,.55,1.32,9.74);
+  // Two independent, projecting back compartments with deliberately
+  // staggered depth and contrasting closure flaps; NOT one dark slab.
+  const rearCargo=(harness.userData.rearCargoMaterial as
+   THREE.Material|undefined)??material;
+  const rearTrim=(harness.userData.rearTrimMaterial as
+   THREE.Material|undefined)??material;
+  for(const [y,h,w,center,depth] of [
+   [-1.96,2.08,8.44,bx-.94,1.50],
+   [-4.34,1.92,9.28,bx-1.09,1.78]
+  ] as const){
+   box(harness,rearCargo,center,y,0,depth,h,w);
+   box(harness,rearTrim,center-depth*.53-.09,y+h*.38,0,
+    .23,.47,w+.10);
+  }
  }
  consolidateVisualGroup(harness);
  harness.userData.fitKey=key;
@@ -222,29 +267,36 @@ export function createChestRigSilhouettes(chest:THREE.Group,
    pouch(g,pocketFabric,trim,8.74,-2.20,z,3.48,2.45,1.08);
   for(const s of [-1,1])
    box(g,dark,7.95,1.2,s*3.65,.40,2.65,.90);
-  // Standalone harness is present ONLY without an outer carrier.
-  // A nested group remains toggleable after consolidating the placard body.
-  const harness=new THREE.Group();harness.name='standalone-harness';
-  g.add(harness);
-  shoulderHarness(harness,dark,4.0);
-  // The rear belt is rebuilt against the actual selected body surface.
+  // Keep the legacy mode marker for existing wardrobe/UI consumers,
+  // but mount the REBUILT fitted harness directly to the rig. Otherwise
+  // the placard's carrier tabs would disappear when standalone is hidden.
+  const standalone=new THREE.Group();standalone.name='standalone-harness';
+  g.add(standalone);
+  shoulderHarness(g,dark,4.0);
+  // The fitted mesh chooses carrier tabs OR independent shoulder runs.
  }
  {
   const g=make('micro-rig');
   shoulderHarness(g,dark,3.75);
   box(g,fabric,7.90,-2.65,0,.76,3.55,7.30);
+  // Two substantial front cells and a small high organizer distinguish
+  // the complete micro harness from the flat three-cell carrier placard.
   for(const z of [-1.65,1.65])
-   pouch(g,pocketFabric,trim,8.54,-2.58,z,2.42,2.86,.91);
+   pouch(g,pocketFabric,trim,8.54,-2.58,z,2.62,2.86,.91);
+  box(g,trim,8.35,-.70,0,.29,.68,5.20);
   for(const s of [-1,1])
-   pouch(g,pocketFabric,trim,7.75,-2.62,s*4.55,2.40,1.62,.72);
+   pouch(g,pocketFabric,trim,7.75,-2.62,s*4.55,2.10,1.62,.72);
  }
  {
   const g=make('light-rig');
   // Classic X-harness: crossed rear straps and 2+2 broad front pouch banks.
   shoulderHarness(g,dark,4.7);
   // The rear X is regenerated at actual armor contact in the fitted harness.
-  for(const z of [-4.6,-1.5,1.5,4.6])
-   pouch(g,pocketFabric,trim,8.38,-2.20,z,4.23,2.85,1.07);
+  for(const z of [-4.6,-1.5,1.5,4.6]){
+   pouch(g,pocketFabric,trim,8.38,-2.20,z,4.33,2.75,1.07);
+   // Four independent closure flaps; never read as one continuous panel.
+   box(g,trim,9.02,-.57,z,.23,.51,2.92);
+  }
   box(g,dark,7.94,-4.65,0,.48,.70,13.25);
  }
  {
@@ -273,6 +325,9 @@ export function createChestRigSilhouettes(chest:THREE.Group,
    fittedArmorBag(half,fabric,7.82,1,3.55,-5.80,3.70,.72,.72);
    for(const y of [1.28,-2.56,-5.35])
     pouch(g,pocketFabric,trim,8.12,y,s*4.20,2.88,3.22,.99);
+   // Recognizable upper yoke joins the tapered vest panel, without
+   // closing the open central sternum.
+   box(g,fabric,7.86,2.76,s*3.98,.56,.76,3.18);
   }
  }
  {
@@ -281,9 +336,14 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   // One broad polygon with clipped high shoulders; avoids a square slab
   // intersecting raised protective collars on bulkier armor.
   fittedArmorBag(g,fabric,8.39,1,3.10,-6.55,12.25,1.30,.78);
+  // A full-bib patrol platform: high admin shelf and lower four-cell
+  // storage. The broken horizontal cargo hierarchy reads as fabric,
+  // not another monolithic armor plate.
+  box(g,trim,8.56,1.22,0,.38,1.40,8.18);
   for(const z of [-4.60,-1.5,1.5,4.60])
-   pouch(g,pocketFabric,trim,8.65,-2.75,z,4.45,2.65,1.07);
-  box(g,dark,8.48,2.68,0,.23,1.22,9.25);
+   pouch(g,pocketFabric,trim,8.65,-3.05,z,4.25,2.65,1.07);
+  for(const sign of [-1,1])
+   box(g,pocketFabric,8.55,-.45,sign*5.10,.49,1.28,1.28);
  }
  {
   const g=make('field-webbing');
@@ -313,11 +373,13 @@ export function createChestRigSilhouettes(chest:THREE.Group,
  {
   const g=make('chicom-rig');
   shoulderHarness(g,fabric,4.55);
-  box(g,fabric,7.95,-2.35,0,.60,5.75,11.65);
+  box(g,fabric,7.95,-2.35,0,.60,6.12,11.65);
+  // Chicom canvas reads by three TALL independent flap pouches and
+  // two abbreviated flank pockets, not a modern flat MOLLE array.
   for(const z of [-3.12,0,3.12])
-   pouch(g,pocketFabric,trim,8.52,-2.32,z,4.30,2.82,.99);
+   pouch(g,pocketFabric,trim,8.52,-2.32,z,5.18,2.82,.99);
   for(const s of [-1,1])
-   pouch(g,pocketFabric,trim,8.42,-3.38,s*5.65,2.55,1.65,.75);
+   pouch(g,pocketFabric,trim,8.42,-3.46,s*5.65,2.38,1.65,.75);
  }
  {
   const g=make('bandolier');
@@ -325,16 +387,25 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   h.userData.fitMaterial=fabric;h.userData.spread=4.8;g.add(h);
   for(let i=0;i<5;i++){
    const t=i/4,z=3.85-t*7.7,y=3.6-t*7.4;
-   pouch(g,pocketFabric,trim,8.20,y,z,2.28,1.42,.72);
+   // Four magazine positions plus a deliberate fifth utility cell.
+   pouch(g,pocketFabric,trim,8.20,y,z,2.46,1.64,.72);
   }
  }
  {
   const g=make('sadf-webbing');
   shoulderHarness(g,fabric,5.35);
+  const rearHarness=g.getObjectByName('uniform-fitted-rig-harness');
+  if(rearHarness instanceof THREE.Group){
+   rearHarness.userData.rearCargoMaterial=pocketFabric;
+   rearHarness.userData.rearTrimMaterial=trim;
+  }
   for(const s of [-1,1]){
    for(const z of [3.25,6.05])
     pouch(g,pocketFabric,trim,7.78,-2.75,s*z,5.80,2.50,1.35);
-   // Broad P83 waist pockets and belt now live on the hip.
+   // Differentiate front and flank cargo from the Chicom three-cell
+   // apron. Separate rear compartment shapes follow the fitted frame.
+   box(g,trim,7.97,.70,s*5.40,.52,1.42,2.34);
+   // Broad P83 waist pockets and belt live on the hip.
   }
  }
  for(const g of Object.values(groups))consolidateVisualGroup(g);

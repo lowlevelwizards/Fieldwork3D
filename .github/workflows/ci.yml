@@ -24,6 +24,9 @@ jobs:
       - name: Focused Release C automatic fabric and pouch material regressions
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/armor-rig-release-c-') }}
         run: node --experimental-strip-types --test tests/operator-armor-rig-release-c.test.mjs
+      - name: Focused RIG R2 identity, mounting, rear geometry and hip contact
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/rig-r2-') }}
+        run: node --experimental-strip-types --test tests/operator-rig-r2-identity.test.mjs tests/operator-rig-r1-contact.test.mjs tests/operator-rig-r4-webbing.test.mjs tests/operator-rig-r5-matrix.test.mjs tests/operator-harness-magazine.test.mjs
       - name: Focused RIG A-D true mounting, magazine hierarchy and armor contact regressions
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/rig-r1-') }}
         run: node --experimental-strip-types --test tests/operator-rig-r1-contact.test.mjs tests/operator-rig-r2-light.test.mjs tests/operator-rig-r3-full.test.mjs tests/operator-rig-r4-webbing.test.mjs tests/operator-rig-r5-matrix.test.mjs tests/operator-visual-kit.test.mjs tests/operator-harness-magazine.test.mjs tests/operator-armor-rig-release-a.test.mjs tests/operator-armor-rig-release-b.test.mjs tests/operator-armor-r7-surface-contact.test.mjs
