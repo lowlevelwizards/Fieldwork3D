@@ -11,6 +11,6 @@ test('Map Lab audits authoritative generated sites off-thread and shows physical
  assert.match(worker,/const audit=auditSite\(site\)/);
  assert.match(worker,/post\(\{kind:'done',site,audit/);
  assert.match(audit,/activateSite\(site\)/);
- assert.match(audit,/finally\{activateSite\(null\)\}/);
+ assert.match(audit,/finally\s*\{\s*activateSite\(null\);?\s*\}/);
  assert.match(lab,/result\.errors\.length/);
 });
