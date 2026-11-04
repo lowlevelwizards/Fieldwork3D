@@ -61,6 +61,8 @@ import {settledEnemyPosture} from './breach-ai-posture.ts';
 import {searchCandidates} from './breach-ai-search.ts';
 import {investigationTempo} from './breach-ai-investigation.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
+import {contactTactic} from './breach-ai-tactical-response.ts';
+import {directionalCoverFrom} from './breach-cover-direction.ts';
 import {reportToListener,type TacticalReport} from './breach-communication.ts';
 import {groupResponse,type GroupRole} from './breach-ai-coordination.ts';
 import {moraleResponse,witnessShock} from './breach-ai-morale.ts';
@@ -2687,10 +2689,9 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       battleEvent(s,'intel',a,a.p,a.name+' WARNED NEARBY DEFENDERS');
     }
     a.watch=clone(b.p);
-    if(a.suppression>.65&&a.alert!=='retreat'){
-      a.retreatPoint=defensivePosition(a,b.p,s);
-      if(a.retreatPoint){a.alert='retreat';a.nav=[];}
-    }
+    // Reaction to direct fire follows actual suppression/morale thresholds;
+    // high pressure alone no longer forces every personality to sprint.
+    // Any cover movement remains physically verified by the motor below.
     // An eye-level contact may be behind solid cover at muzzle height.
     // Reposition to an actual firing lane instead of staring at it while
     // repeatedly attempting blocked shots. Reposition has a cooldown.
@@ -2700,6 +2701,21 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.combatChoice=chooseCombatAction({visible:true,remembered:true,
       laneClear:lane.blocker==='clear',ammunition:a.magazine,
       suppression:a.suppression,morale:a.morale,temperament:a.personality});
+    if(a.combatChoice==='withdraw'&&a.alert!=='retreat'){
+      const safe=defensivePosition(a,b.p,s);
+      const tactic=contactTactic(a.combatChoice,!!safe&&d(safe,a.p)>11);
+      if(tactic.withdraw&&safe){
+        a.retreatPoint=safe;a.alert='retreat';a.nav=[];
+        a.defenseUntil=s.seconds+3;
+      }else{
+        // No physically reachable retreat: stop advancing and keep
+        // watch instead of attempting an impossible escape.
+        a.alert='cover';a.nav=[];a.defense=null;
+      }
+    }
+    if(a.combatChoice==='hold'&&a.alert!=='retreat'){
+      a.alert='cover';a.nav=[];a.defense=null;
+    }
     if(a.combatChoice==='reposition'&&a.alert!=='retreat'&&
       s.seconds-a.lastFireRepositionAt>2.6){
       const candidate=firingPosition(a,b,s);
@@ -2711,7 +2727,8 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
     const maneuvering=a.alert==='cover'&&a.defense&&
       d(a.p,a.defense)>10&&s.seconds<a.defenseUntil;
-    if(a.alert!=='retreat'&&!maneuvering){
+    if(a.alert!=='retreat'&&!maneuvering&&
+       a.combatChoice!=='hold'&&a.combatChoice!=='withdraw'){
       a.alert='engaging';a.nav=[];
     }
   }else if(s.seconds>a.alertUntil&&a.alert!=='idle'&&
@@ -2723,7 +2740,8 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   // advancing or unsuppressed engaging enemies stand back up to fire.
   const threat=visible[0]?.p??a.heard??a.contact??a.watch;
   let desiredPosture=a.posture;
-  if(threat&&a.velocity<15&&nearCover(a.p,threat)&&
+  if(threat&&a.velocity<15&&
+    directionalCoverFrom(threat,a.p,COVER).crouched&&
     (a.suppression>.26||a.personality==='cautious'||
      a.alert==='cover'||a.combatChoice==='hold'))
     desiredPosture='crouch';
@@ -3259,6 +3277,11 @@ function fire(s:Session,a:TeamActor,dt:number){
   }
   if(!a.magazine){beginReload(s,a);return;}
   if(a.flashUntil>s.seconds){a.aim=0;return;}
+  // R8B: tactical HOLD/WITHDRAW must actually cease shooting. These
+  // decisions originate in direct observations, not remembered targets.
+  if(a.side==='red'&&contactTactic(a.combatChoice,false).holdFire){
+    a.aim=Math.max(0,a.aim-dt*.25);return;
+  }
   if(a.side==='blue'){
     if(a.firePolicy==='hold'){
       a.aim=Math.max(0,a.aim-dt*.35);return;
