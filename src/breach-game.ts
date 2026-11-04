@@ -35,7 +35,8 @@ import {selectFireableContact} from './breach-target-selection.ts';
 import {acquisitionSeconds} from './breach-firing-cadence.ts';
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,kickDoor,
-  initialOpeningYieldCandidate,pressDoorOnBodyAttempt} from './breach-door.ts';
+  initialOpeningYieldCandidate,pressDoorOnBodyAttempt,
+  autoDoorAtBodyContact} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool,issuedWedges} from './equipment-entry-tools.ts';
@@ -1846,12 +1847,12 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   // be preempted by this convenience interaction.
   const autoDoor=a.side==='red'||a.plan[0]?.kind==='move'||
     a.plan[0]?.kind==='pie';
-  const doorAhead=autoDoor?s.doors.find(door=>{
+  const doorAhead=autoDoor?(s.doors.find(door=>{
     if(door.open&&(door.openFraction??0)>=.72)return false;
     if(!doorReachable(a.p,door))return false;
     return doorBlocksSegment(door,{a:a.p,b:next})||
       doorBlocksSegment(door,{a:a.p,b:p});
-  }):undefined;
+  })??autoDoorAtBodyContact(a.p,move,s.doors)):undefined;
   if(doorAhead){
     a.motorPause='door-opening';
     const opening=doorInteraction({target:doorAhead,actorId:a.id,

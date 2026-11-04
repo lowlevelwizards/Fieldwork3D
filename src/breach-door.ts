@@ -40,6 +40,22 @@ export function doorReachable(p:Pt,d:Door):boolean{
   return (dist(p,handlePoint(d))<DOOR_REACH||pointToSegment(p,d)<31)&&
     dist(p,doorCenter(d))<DOOR_REACH+16;
 }
+/** When a moving body actually meets a reachable closed or still-opening
+ * leaf, attempt the SAME lawful OPEN interaction even if an almost tangent
+ * route segment misses the door-crossing detector. Never force locks,
+ * skip hinge collision, or auto-open fully traversable leaves.
+ */
+export function autoDoorAtBodyContact(from:Pt,to:Pt,
+ doors:readonly Door[]):Door|undefined{
+ const touching=doors.filter(d=>
+   (!d.open||(d.openFraction??0)<.72)&&doorReachable(from,d)&&
+   pointToSegment(to,doorLeafSegment(d))<OPERATOR_RADIUS+1.5&&
+   pointToSegment(to,doorLeafSegment(d))<=
+     pointToSegment(from,doorLeafSegment(d))+.001);
+ return touching.sort((a,b)=>
+   pointToSegment(to,doorLeafSegment(a))-
+   pointToSegment(to,doorLeafSegment(b))||a.id.localeCompare(b.id))[0];
+}
 export function doorApproach(from:Pt,d:Door):Pt|null{
   const m=doorCenter(d),len=dist(d.a,d.b)||1;
   const t={x:(d.b.x-d.a.x)/len,y:(d.b.y-d.a.y)/len};
