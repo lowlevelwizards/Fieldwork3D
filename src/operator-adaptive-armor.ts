@@ -224,14 +224,26 @@ function regenerateConnections(entry:ArmorEntry,top:string){
     inner+.69,side,3.48,spec.sidePlateHeight-.36,.14);
   }
  }
- if(spec.collarStyle==='high_flak'||spec.collarStyle==='legacy_wrap'){
-  const flak=spec.collarStyle==='high_flak';
+ if(spec.collarStyle==='high_flak'){
+  // PASGT keeps its familiar bulky three-quarter cloth collar.
   const hood=fit.top==='smock-jacket'||fit.top==='gorka-jacket';
-  const innerZ=hood?5.10:flak?2.90:3.75;
-  const outerZ=innerZ+(flak?1.60:1.38);
+  const innerZ=hood?5.10:2.90;
   fittedArmorCollar(connectors,cloth,fit.back+.54,
-   fit.front-(flak?2.15:2.80),outerZ,innerZ,
-   fit.shoulderY+(flak?.89:.17),flak?2.85:1.70);
+   fit.front-2.15,innerZ+1.60,innerZ,fit.shoulderY+.89,2.85);
+ }else if(spec.collarStyle==='legacy_wrap'){
+  // Legacy OTV/6B-style wrap: lower at the throat but a visibly
+  // reinforced nape and two bold front collar returns.
+  const hood=fit.top==='smock-jacket'||fit.top==='gorka-jacket';
+  const innerZ=hood?4.65:3.15;
+  const frontX=fit.front-2.30,backX=fit.back+.52;
+  fittedArmorCollar(connectors,cloth,backX,frontX,
+   innerZ+1.55,innerZ,fit.shoulderY+.45,2.05);
+  // One continuous rear protective block, seated within the back yoke.
+  makeBox(connectors,utility,backX+1.10,fit.shoulderY+.91,0,
+   .62,1.24,innerZ*2+1.30);
+  for(const side of [-1,1])
+   makeBox(connectors,utility,frontX-.06,fit.shoulderY+.22,
+    side*(innerZ+.76),.72,1.33,1.36);
  }
  consolidateVisualGroup(connectors);
 }
