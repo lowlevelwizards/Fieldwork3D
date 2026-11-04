@@ -5,6 +5,9 @@ import type {BuildingArchetype,SiteScale} from '../breach-site.ts';
 import type {OperationKind} from '../breach-operations.ts';
 export type EncounterPremise =
   'routine'|'after-hours'|'hideout'|'guarded'|'disturbance'|'defensive'|'vacant'|'incident';
+/** Seeded encounter distribution, independent of architectural identity. */
+export type EncounterProfile='quiet-approach'|'scattered'|'clustered'|
+  'active'|'prepared';
 export type EncounterRole =
   'occupant'|'sentry'|'lookout'|'patrol'|'investigator'|'reserve'|'leader'|'target';
 export type EncounterActivity =
@@ -35,7 +38,8 @@ export type EncounterDiagnostics = {
 };
 export type EncounterPlan = {
   version:1;seed:number;building:BuildingArchetype;scale:SiteScale;
-  premise:EncounterPremise;mission:OperationKind;risk:1|2|3;
+  premise:EncounterPremise;profile?:EncounterProfile;
+  mission:OperationKind;risk:1|2|3;
   expectedOccupancy:number;hostileBudget:number;
   groups:EncounterGroup[];actors:EncounterActorSpec[];
   diagnostics:EncounterDiagnostics;
