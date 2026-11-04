@@ -33,6 +33,7 @@ import {fallAngles,hitStagger,type FallPose,type WoundRegion}
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {equipmentCarrySocket,utilityDisplaySocket} from './equipment-carry-visuals.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
+import {SKIN_TONES,seededSkinTone} from './operator-identity-palette.ts';
 import {headwearSolidHex} from './operator-headwear-colors.ts';
 import {resolvedHeadwearCamo,headwearCamoPlacement} from './operator-headwear-camo.ts';
 import {headwearCamoTexture,headwearDetailTexture} from './operator-headwear-materials.ts';
@@ -413,15 +414,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.colors.set(r.vestMaterial,identity===0?r.baseVest.clone():
       new THREE.Color(OPERATOR_VEST_PALETTE[(colorKey-1+OPERATOR_VEST_PALETTE.length)%
         OPERATOR_VEST_PALETTE.length]));
-    // Individual complexion variation affects appearance only.
-    const complexion=[0xb29b83,0x8b6754,0xc4aa86,0x6e4938,
-      0xaa7c63,0xd3b698,0x98765c,0x533a32];
-    r.colors.set(r.skinMaterial,
-      new THREE.Color(complexion[(identity>>>6)%complexion.length]));
     r.helmetBadge.visible=false;
     r.pack.scale.set(1,identity===0?1:.90+(identity%5)*.05,
       identity===0?1:.93+((identity>>>5)%4)*.04);
   }
+  // Explicit identity overrides are cosmetic; legacy rosters retain their
+  // exact seeded complexion. Updating each pose also keeps preview edits,
+  // replay/seek and reversible downed desaturation consistent.
+  const complexion=p.wardrobe?.skinTone??seededSkinTone(identity);
+  r.colors.set(r.skinMaterial,new THREE.Color(SKIN_TONES[complexion].hex));
   // Kit presentation reuses the live rig without altering shot transforms.
   const gear=p.equipment?.slots;
   // Legacy rectangles are retained for compatibility but superseded by

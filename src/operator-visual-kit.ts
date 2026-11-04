@@ -4,6 +4,8 @@
  */
 import * as THREE from 'three';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {HAIR_STYLE_IDS,HAIR_TONES,seededHairStyle,seededHairTone}
+ from './operator-identity-palette.ts';
 import type {CarryLocation} from './equipment-carry-placement.ts';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
@@ -80,13 +82,32 @@ export function createOperatorVisualKit(
  // The head stays chunky; no anatomical joint
  // translations or scale changes occur in this visual pass.
  const hair=bundle(head);
- const haircuts=[bundle(hair),bundle(hair),bundle(hair)];
- // Compact hair hugging the existing head. The head top is y=7.
- // No floating block cap, and no hair protrudes through headwear.
- part(haircuts[0],hairMaterial,-.2,7.16,0,7.6,.38,7.65);
- part(haircuts[1],hairMaterial,-.7,7.22,0,7.1,.5,7.55);
- part(haircuts[1],hairMaterial,-3.2,5.2,0,.48,2.0,6.45);
- part(haircuts[2],hairMaterial,-.15,7.13,0,7.3,.30,7.45);
+ const haircuts=Array.from({length:HAIR_STYLE_IDS.length},()=>bundle(hair));
+ // Fixed skull top is y=7. Hair is a small set of decisive shapes,
+ // not miniature strands, and only renders when headwear permits it.
+ // 0: almost-flush buzz; the previous seeded zero identity remains subtle.
+ part(haircuts[0],hairMaterial,-.20,7.14,0,7.50,.32,7.52);
+ // 1: short crop with a compact forward fringe and tapered nape.
+ part(haircuts[1],hairMaterial,-.66,7.20,0,7.10,.46,7.45);
+ part(haircuts[1],hairMaterial,3.35,6.70,0,.52,.72,6.25);
+ part(haircuts[1],hairMaterial,-3.24,5.25,0,.48,1.65,6.35);
+ // 2: parted sweep, asymmetry visible from front and quarter views.
+ part(haircuts[2],hairMaterial,-.20,7.19,0,7.40,.42,7.50);
+ part(haircuts[2],hairMaterial,3.10,6.61,-1.90,.78,.88,3.65);
+ part(haircuts[2],hairMaterial,-1.30,5.90,3.58,3.75,1.35,.55);
+ // 3: textured crop made of four large sculpted clumps.
+ for(const [x,z,w,d] of [[-2.3,-2.15,3.1,3.2],
+   [1.8,-2.1,3.5,3.1],[-2.3,1.9,3.0,3.3],[1.8,2.0,3.4,3.2]]){
+  part(haircuts[3],hairMaterial,x,7.40,z,w,1.02,d);
+ }
+ // 4: pulled back, low nape and an unmistakable small tied section.
+ part(haircuts[4],hairMaterial,-.40,7.16,0,7.20,.34,7.50);
+ part(haircuts[4],hairMaterial,-3.35,4.9,0,.75,3.6,6.25);
+ part(haircuts[4],hairMaterial,-4.25,3.75,0,1.40,1.7,2.3);
+ // 5: rounded, dense close natural hairstyle, intentionally blocky.
+ part(haircuts[5],hairMaterial,-.2,7.52,0,7.80,1.20,7.80);
+ for(const side of [-1,1])
+  part(haircuts[5],hairMaterial,-.6,5.66,side*3.78,6.35,2.75,.65);
  // Small low-contrast eye slashes, no attached cube nose or floating mouth.
  // At gameplay distance the face reads as a quiet plane beneath the brow.
  const face=bundle(head);
@@ -277,7 +298,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
 
  const usingWardrobe=!!wardrobe||s.head==='head-bump';
  const key=seed>>>0;
- v.haircuts.forEach((h,i)=>{h.visible=i===key%3;});
+ const hairStyle=wardrobe?.hairStyle??seededHairStyle(key);
+ v.haircuts.forEach((h,i)=>{h.visible=HAIR_STYLE_IDS[i]===hairStyle;});
  v.eyeMarks.forEach(m=>{m.visible=faceStyle==='quiet';});
  v.graphicMarks.visible=faceStyle==='graphic';
  // Never draw legacy universal armor underneath an authored wardrobe shell.
@@ -363,9 +385,9 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  for(const mesh of v.kneePanels)
   mesh.visible=!usingWardrobe&&s.legs==='legs-field';
  // A curated cloth/hair palette, not fluorescent operator identifiers.
- const hairs=[0x332e29,0x635244,0x2f3530,0x9b8060,0x4d4136,0x6c6255];
+ const hairTone=wardrobe?.hairTone??seededHairTone(key);
  const patchColors=[0x88735b,0x52655b,0x8d8474,0x61717b,0x786f50,0x847265];
- v.hairMaterial.color.setHex(hairs[key%hairs.length]);
+ v.hairMaterial.color.setHex(HAIR_TONES[hairTone].hex);
  v.patchMaterial.color.setHex(patchColors[key%patchColors.length]);
  // Legacy shoulder swatches were placed on local +Z, not the outer
  // fabric face; in Wardrobe Studio they rendered as orange floating boxes.
