@@ -441,9 +441,12 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  clothTorso?.traverse(object=>{
   if(!(object instanceof THREE.Mesh))return;
   if(object.userData.armorCollarPiece)object.visible=!hideCollar;
-  if(object.userData.armorCompressible&&
+  // The adaptive armor overlap solver owns ordinary pocket compression.
+  // R9's slick-only suppression may hide MORE, but must never revive
+  // pockets hidden by an ordinary standard/heavy carrier.
+  if(hideChestPockets&&object.userData.armorCompressible&&
    (looks.top==='bdu-shirt'||looks.top==='acu-shirt'))
-   object.visible=!hideChestPockets;
+   object.visible=false;
  });
 
 }
