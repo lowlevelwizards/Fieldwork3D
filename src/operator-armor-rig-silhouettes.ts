@@ -72,13 +72,52 @@ export const RIG_FRONT_PROFILES:Readonly<Record<string,{front:number;low:number}
  'bandolier':{front:8.90,low:-2.0},
  'sadf-webbing':{front:8.65,low:-4.0}
 };
+/** Construction profiles use a handful of BIG symbolic parts, not generic
+ * anonymous gray-green boxes. Actual magazine instances remain inventory-owned.
+ */
+export type RigPocketConstruction='open-elastic'|'bungee'|'canvas-toggle'|
+ 'flap-snap'|'utility-buckle'|'double-stack'|'diagonal'|'plce-cover';
+export const RIG_POCKET_CONSTRUCTION:Readonly<Record<string,RigPocketConstruction>>={
+ 'chest-placard':'open-elastic','micro-rig':'bungee',
+ 'light-rig':'flap-snap','chicom-rig':'canvas-toggle',
+ bandolier:'diagonal','split-front':'utility-buckle',
+ 'full-chest':'utility-buckle',lbv:'double-stack',
+ 'sadf-webbing':'plce-cover','field-webbing':'plce-cover',
+ 'belt-harness':'plce-cover','no-rig':'open-elastic'
+};
 const pouch=(g:THREE.Group,m:THREE.Material,fold:THREE.Material,
  x:number,y:number,z:number,h:number,d:number,depth=1.10)=>{
- // Keep the underlayer-facing surface fixed and bulk each pouch OUTWARD.
- const extra=rigVisualBudget(g.name.replace('authored-rig-','')).projection;
+ const style=g.name.replace('authored-rig-','');
+ const construction=RIG_POCKET_CONSTRUCTION[style]??'flap-snap';
+ const extra=rigVisualBudget(style).projection;
  const span=d+(d>=2.3?.17:.11);
+ const front=x+depth*.5+extra;
  box(g,m,x+extra*.5,y,z,depth+extra,h,span);
- box(g,fold,x+depth*.51+extra+.07,y+h*.38,z,.27,.57,span+.14);
+ const lip=(cy:number,height:number,thickness:number,width=span+.14)=>
+  box(g,fold,front+.08+thickness*.50,cy,z,thickness,height,width);
+ if(construction==='open-elastic'){
+  lip(y+h*.46,.19,.23);
+ }else if(construction==='bungee'){
+  lip(y+h*.42,.24,.28);
+  box(g,fold,front+.19,y+.20,z,.33,h*.48,.40);
+ }else if(construction==='canvas-toggle'){
+  lip(y+h*.28,h*.34,.37);
+ }else if(construction==='flap-snap'){
+  lip(y+h*.29,h*.35,.39);
+  box(g,fold,front+.38,y+h*.07,z,.22,h*.17,.57);
+ }else if(construction==='utility-buckle'){
+  lip(y+h*.36,h*.21,.34);
+  box(g,fold,front+.32,y+.12,z,.25,h*.25,.54);
+ }else if(construction==='double-stack'){
+  lip(y+h*.33,h*.23,.35);
+  box(g,m,front+.17,y-h*.16,z,.30,h*.29,span-.20);
+  lip(y-h*.04,.36,.29);
+ }else if(construction==='diagonal'){
+  lip(y+h*.39,.32,.24);
+ }else{
+  lip(y+h*.31,h*.34,.45,span+.28);
+  box(g,fold,front+.39,y+.02,z,.23,h*.30,.58);
+ }
 };
 /** One dark, thick magazine mouth per real physical pouch, NOT one
  * additional fake magazine. Existing actual-mag instances come from the
