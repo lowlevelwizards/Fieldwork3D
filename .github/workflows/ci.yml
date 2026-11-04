@@ -347,6 +347,16 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/operator-d2-eyewear-b-') }}
         run: |
           node --experimental-strip-types --test tests/operator-d2-catalog-stage-00.test.mjs tests/operator-d2-balaclava-stage-a1.test.mjs tests/operator-d2-wraps-stage-a2.test.mjs tests/operator-d2-fabric-integration-stage-a3.test.mjs tests/operator-d2-glasses-stage-b1.test.mjs tests/operator-d2-goggles-stage-b2.test.mjs tests/operator-wardrobe-data.test.mjs tests/operator-visual-kit.test.mjs
+      - name: G1-G2 critical physical-movement and fog-integrity regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-gameplay-quality-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/breach-wall-glide-here-window.test.mjs \
+            tests/physicality-friendly-traffic.test.mjs \
+            tests/door-leaf-overlap-recovery.test.mjs \
+            tests/breach-fog-visibility.test.mjs \
+            tests/visibility-11-fog-domain.test.mjs \
+            tests/visibility-12-micro-cache.test.mjs
       - name: G3 critical target acquisition, cover safety and firefight review
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-gameplay-quality-g3-') }}
         run: |

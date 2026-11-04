@@ -29,7 +29,7 @@ import {WEAPONS,injuryOf,injurySpeed,injuryReload,
 import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
 import {segmentHitsBox} from './breach-ray.ts';
 import {coverImpactFraction,aimHeight} from './breach-cover-height.ts';
-import {MICRO_KEYS,MICRO_COLS} from './breach-fog-memory.ts';
+import {microKeyAt} from './breach-fog-memory.ts';
 import {assessFireLane,fireLaneReachable,type FireBlock} from './breach-fire-safety.ts';
 import {selectFireableContact} from './breach-target-selection.ts';
 import {acquisitionSeconds} from './breach-firing-cadence.ts';
@@ -1566,8 +1566,7 @@ function observe(s:Session){
         if(d(blue.p,p)>=240||
           Math.abs(angleDifference(blue.heading,angle(blue.p,p)))>=1.15||
           !unobstructed(blue.p,p,s,blue.posture==='crouch'))continue;
-        s.seenGround.add(MICRO_KEYS[row*MICRO_COLS+col]??
-          'micro:'+col+','+row);
+        s.seenGround.add(microKeyAt(col,row));
       }
     }
     for(const e of enemies(s)){
@@ -1918,6 +1917,8 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     if(glide){
       const old=clone(a.p);
       a.priorP=old;a.p=glide;
+      // Footwork and motion cues follow resolved, not rejected movement.
+      a.velocity=d(old,glide)/Math.max(dt,.0001);
       // Point the body along its real sliding movement, not at the
       // obstructed grid waypoint. Explicit WATCH remains authoritative.
       if(a.aimInstruction?.mode!=='track')
@@ -1988,7 +1989,9 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
      diagnoseMovement(a.p,desiredMove,s.doors).blocker==='furniture'){
     const slide=slideAroundStaticCorner(a.p,desiredMove,next,s.doors);
     if(slide){
-      a.priorP=clone(a.p);a.p=slide;
+      const old=clone(a.p);
+      a.priorP=old;a.p=slide;
+      a.velocity=d(old,slide)/Math.max(dt,.0001);
       a.blockedTime=0;a.lastBlocker='clear';a.retryRouteAt=0;
       return true;
     }
