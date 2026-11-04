@@ -45,6 +45,26 @@ export function assignEncounterRoutines(site:Site,actors:EncounterActorSpec[],
       y:a.position.y+(p.y-a.position.y)*t};
    }).every(valid);
   };
+  // A patrol checks a real accessible interior doorway from a standoff
+  // position, never the center of a physical door leaf. No contact is
+  // invented and the runtime motor retains the right to reject the route.
+  if(patrol){
+   const posts=site.doors.map(door=>({
+    x:(door.a.x+door.b.x)/2,y:(door.a.y+door.b.y)/2
+   })).filter(p=>p.x>=room.x-7&&p.y>=room.y-7&&
+     p.x<=room.x+room.w+7&&p.y<=room.y+room.h+7&&
+     near(a.position,p)>50&&near(a.position,p)<170)
+    .sort((u,v)=>near(a.position,u)-near(a.position,v));
+   const offset=posts.length?Math.floor(rng()*posts.length):0;
+   for(let i=0;i<posts.length;i++){
+    const door=posts[(i+offset)%posts.length];
+    const len=near(a.position,door);
+    const p={x:door.x+(a.position.x-door.x)/len*48,
+      y:door.y+(a.position.y-door.y)/len*48};
+    if(near(a.position,p)>20&&valid(p)&&swept(p))
+     return {...a,routine:[{...a.position},p]};
+   }
+  }
   // Ordinary work/inspection actors can make a local journey to an
   // ACTUAL work surface or display. Keep it within the existing room and
   // physically sample the complete segment; reject furniture/wall clips.
