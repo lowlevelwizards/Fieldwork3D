@@ -44,6 +44,29 @@ try{
    ['plate-heavy','full-chest'],
    ['soft-vest','split-front']
   ];
+  // RIG-R2: dedicated front / 3-4 / BACK detail audit for all ten
+  // unarmored rigs. The rear harness is part of each rig's identity.
+  await page.locator('#armorChoice').selectOption('armor-bare');
+  await page.locator('#topChoice').selectOption('bdu-shirt');
+  await page.locator('#zoomChoice').selectOption('detail');
+  for(const rig of ['micro-rig','chest-placard','light-rig',
+   'chicom-rig','bandolier','field-webbing','lbv','full-chest',
+   'split-front','sadf-webbing']){
+   await page.locator('#rigChoice').selectOption(rig);
+   await page.waitForFunction(id=>{
+    const c=document.getElementById('armorCanvas');
+    return c?.dataset.rig===id&&c?.dataset.armor==='armor-bare';
+   },rig);
+   for(const view of ['front','fit','back']){
+    await page.locator('button[data-view="'+view+'"]').click();
+    await page.waitForFunction(v=>
+     document.getElementById('armorCanvas')?.dataset.view===v,view);
+    await page.locator('#armorCanvas').screenshot({
+     path:'operator-armor-rig-captures/r2-rig-'+rig+'-'+view+'.png'
+    });
+   }
+  }
+  await page.locator('#zoomChoice').selectOption('gameplay');
   // R1 grayscale cut review: no pouch layout can conceal a bad armor silhouette.
   // Capture each wearable with no rig from the canonical 3/4, front and side.
   for(const armor of ['soft-slick','soft-vest','soft-flak','plate-slick',
