@@ -216,10 +216,12 @@ export class OperatorAppearanceGrid{
    // A different selected item does NOT require new renders of the
    // entire inventory. The existing canvas and scroll position survive.
    if(entry.readyKey===key)continue;
+   entry.canvas.dataset.thumbnailReady='false';
    const cached=this.cache.get(key);
    if(cached){
     entry.canvas.getContext('2d')?.putImageData(cached,0,0);
     entry.readyKey=key;
+    entry.canvas.dataset.thumbnailReady='true';
    }else if(this.observer){
     this.pending.set(entry.canvas,entry);
     this.observer.observe(entry.canvas);
@@ -295,9 +297,11 @@ export class OperatorAppearanceGrid{
      Number(this.grid.dataset.thumbnailRenders||0)+1);
     entry.readyKey=key;
     canvas.dataset.previewError='false';
+    canvas.dataset.thumbnailReady='true';
    }
   }catch{
    canvas.dataset.previewError='true';
+   canvas.dataset.thumbnailReady='false';
   }finally{
    this.scene.remove(rig.root);
    this.renderer.setRenderTarget(oldTarget);
