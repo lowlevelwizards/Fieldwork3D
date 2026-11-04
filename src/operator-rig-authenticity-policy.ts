@@ -128,7 +128,7 @@ export const ARMOR_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
   rationale:'Low-profile plate bags; limited commercially available cover prints'
  },
  'plate-jpc':{
-  signature:{solid:'ranger-green',print:'multicam'}
+  signature:{solid:'ranger-green',print:'multicam'},
   solids:['ranger-green','coyote','black','olive-drab','khaki','tan'],
   prints:['multicam','scorpion-w2','m81-woodland','ucp','british-mtp',
    'woodland-dpm','australian-dpcu'],
