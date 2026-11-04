@@ -908,7 +908,8 @@ function refresh(){
   (dirty.size?' · '+dirty.size+' UNSAVED':'');
  undoButton.disabled=readOnly||saveInFlight||!(history.get(selected)?.length);
  renderCategories();
- thumbBrowser.setCategory(activeCategory);
+ // Refresh below owns the paint; changing tab alone should not render twice.
+ thumbBrowser.setCategory(activeCategory,true);
  thumbBrowser.refresh(p.loadout,previewWardrobe(),p.id);
  renderPresetMenu();renderMaterials();posePreview();
 }
