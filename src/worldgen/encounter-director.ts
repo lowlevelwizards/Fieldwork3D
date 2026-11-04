@@ -21,7 +21,7 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
  const mission=context.mission??missions[(site.seed>>>0)%missions.length];
  const resolved={...context,mission};
  const premise:EncounterPremise=chooseEncounterPremise(site,resolved);
- const profile=chooseEncounterProfile(premise,seed);
+ const profile=chooseEncounterProfile(premise,seed,mission);
  const target=chooseHostileBudget(site,resolved,premise);
  const anchors=site.enemies;
  // All anchors were checked by the architectural circulation audit.

@@ -16,3 +16,44 @@ test('initial activities face appropriate furniture and sentries remain alert',(
   'defensive',42)[0];
  assert.equal(guard.readiness,'prepared');assert.equal(guard.activity,'watching');
 });
+
+test('G4b: lookouts observe local exterior windows, sentries observe doors',()=>{
+ const site={rooms:[{kind:'room',id:'front',x:0,y:0,w:200,h:160}],
+  cover:[],doors:[
+    {a:{x:200,y:70},b:{x:200,y:90}},
+    {a:{x:400,y:70},b:{x:400,y:90}}
+  ],windows:[{x:0,y:80,interior:false}]};
+ const actor={id:'a',role:'sentry',position:{x:100,y:80},
+  heading:1,activity:'idle',readiness:'relaxed'};
+ const sentry=assignEncounterActivities(site,[actor],'guarded',5)[0];
+ const lookout=assignEncounterActivities(site,[{...actor,role:'lookout'}],
+  'guarded',5)[0];
+ assert.equal(sentry.activity,'watching');
+ assert.ok(Math.abs(sentry.heading)<.02,
+  'sentry aims at the actual local east doorway');
+ assert.ok(Math.abs(Math.abs(lookout.heading)-Math.PI)<.02,
+  'lookout prefers the real west facade window');
+ assert.equal(sentry.readiness,'prepared');
+});
+test('G4b: investigators and reserves have distinct pre-contact readiness',()=>{
+ const site={rooms:[{kind:'room',id:'r',x:0,y:0,w:160,h:160}],
+  cover:[],doors:[{a:{x:150,y:0},b:{x:160,y:0}}]};
+ const actor={id:'q',role:'investigator',position:{x:65,y:65},
+  heading:.9,activity:'idle',readiness:'relaxed'};
+ const investigator=assignEncounterActivities(site,[actor],'routine',15)[0];
+ const reserve=assignEncounterActivities(site,[{...actor,role:'reserve'}],
+   'defensive',15)[0];
+ assert.equal(investigator.activity,'watching');
+ assert.equal(investigator.readiness,'suspicious');
+ assert.equal(reserve.activity,'watching');
+ assert.equal(reserve.readiness,'prepared');
+});
+test('G4b: remote openings never redirect a sentry in a different wing',()=>{
+ const site={rooms:[{kind:'room',id:'r',x:0,y:0,w:180,h:180}],
+  cover:[],doors:[{a:{x:220,y:20},b:{x:220,y:30}}],
+  windows:[{x:250,y:80,interior:false}]};
+ const actor={id:'s',role:'sentry',position:{x:100,y:100},
+  heading:.72,activity:'idle',readiness:'prepared'};
+ const result=assignEncounterActivities(site,[actor],'guarded',9)[0];
+ assert.equal(result.heading,.72);
+});

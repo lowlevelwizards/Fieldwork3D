@@ -23,6 +23,20 @@ export function assignEncounterActivities(site:Site,actors:EncounterActorSpec[],
    .sort((b,c)=>dist(p,b)-dist(p,c));
   const near=furniture.find(x=>dist(p,x)<90);
   const fixture=near?.fixture??'';
+  // An observation post faces a real nearby opening, never the nearest
+  // unrelated facade/door across an unseen wing of the generated building.
+  const local=(q:{x:number;y:number})=>!!room&&
+    q.x>=room.x-7&&q.y>=room.y-7&&
+    q.x<=room.x+room.w+7&&q.y<=room.y+room.h+7;
+  const closeDoor=site.doors.map(d=>({
+    x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2
+  })).filter(q=>local(q)&&dist(p,q)<155)
+    .sort((u,v)=>dist(p,u)-dist(p,v))[0];
+  const closeWindow=site.windows?.filter(w=>!w.interior&&
+    local(w)&&dist(p,w)<155)
+    .sort((u,v)=>dist(p,u)-dist(p,v))[0];
+  const observation=(preferWindow:boolean)=>preferWindow?
+    closeWindow??closeDoor:closeDoor??closeWindow;
   let activity:EncounterActivity='idle';
   let readiness:EncounterReadiness=prepared?'prepared':alert?'suspicious':'relaxed';
   let heading=a.heading;
@@ -30,13 +44,16 @@ export function assignEncounterActivities(site:Site,actors:EncounterActorSpec[],
    activity='patrolling';readiness=prepared?'prepared':'attentive';
   }else if(a.role==='sentry'||a.role==='lookout'){
    activity='watching';readiness=prepared?'prepared':'attentive';
-   const door=site.doors.slice().sort((b,c)=>{
-    const pb={x:(b.a.x+b.b.x)/2,y:(b.a.y+b.b.y)/2};
-    const pc={x:(c.a.x+c.b.x)/2,y:(c.a.y+c.b.y)/2};
-    return dist(p,pb)-dist(p,pc);
-   })[0];
-   if(door)heading=facing(p,{x:(door.a.x+door.b.x)/2,
-     y:(door.a.y+door.b.y)/2},heading);
+   const post=observation(a.role==='lookout');
+   if(post)heading=facing(p,post,heading);
+  }else if(a.role==='investigator'||a.role==='reserve'||a.role==='leader'){
+   // Investigators are wary of their OWN site; reserves and leaders anchor
+   // security positions without acquiring unexplored operator coordinates.
+   activity='watching';
+   readiness=prepared?'prepared':
+     a.role==='investigator'||alert?'suspicious':'attentive';
+   const post=observation(false);
+   if(post)heading=facing(p,post,heading);
   }else{
    if(desk.has(fixture)||work.has(fixture))activity='working';
    else if(rest.has(fixture))activity=fixture==='bed'?'resting':'seated';

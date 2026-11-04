@@ -381,6 +381,18 @@ jobs:
             tests/worldgen-encounter-routines.test.mjs \
             tests/worldgen-encounter-activities.test.mjs \
             tests/breach-encounter-readiness.test.mjs
+      - name: G4b-c critical encounter personality and mission situation contracts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-gameplay-quality-g4bc-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/worldgen-encounter-routines.test.mjs \
+            tests/worldgen-encounter-activities.test.mjs \
+            tests/worldgen-encounter-roles.test.mjs \
+            tests/gameplay-g4-mission-profiles.test.mjs \
+            tests/gameplay-g4-objective-security.test.mjs \
+            tests/breach-encounter-readiness.test.mjs \
+            tests/worldgen-encounter-integration.test.mjs \
+            tests/worldgen-encounter-missions.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}

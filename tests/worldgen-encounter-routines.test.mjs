@@ -38,3 +38,31 @@ test('G4: a working occupant can actually visit a second furnished station',()=>
     Math.abs(p.y-c.y)>=c.h/2+10));
  }
 });
+
+test('G4b: patrols inspect a real safe doorway observation post',()=>{
+ const site={rooms:[{id:'r',kind:'room',x:0,y:0,w:240,h:200}],
+  walls:[],cover:[],doors:[
+   {a:{x:240,y:90},b:{x:240,y:110}},
+   {a:{x:550,y:90},b:{x:550,y:110}}
+  ]};
+ const actor={id:'p',role:'patrol',activity:'patrolling',
+  readiness:'attentive',position:{x:80,y:100},heading:0};
+ const [out]=assignEncounterRoutines(site,[actor],27);
+ assert.deepEqual(out,assignEncounterRoutines(site,[actor],27)[0]);
+ assert.equal(out.routine?.length,2);
+ const stop=out.routine[1];
+ assert.ok(stop.x>145&&stop.x<215);
+ assert.ok(stop.y>40&&stop.y<160);
+ assert.ok(Math.hypot(stop.x-240,stop.y-100)>35,
+  'no waypoint is placed inside the door swing');
+});
+test('G4b: no accessible door post falls back to local safe patrol path',()=>{
+ const site={rooms:[{id:'r',kind:'room',x:0,y:0,w:220,h:220}],
+  walls:[],cover:[],doors:[{a:{x:700,y:0},b:{x:700,y:20}}]};
+ const actor={id:'p',role:'patrol',activity:'patrolling',
+  readiness:'attentive',position:{x:95,y:95},heading:0};
+ const [out]=assignEncounterRoutines(site,[actor],27);
+ assert.ok(out.routine?.length===2);
+ const end=out.routine[1];
+ assert.ok(end.x>20&&end.x<200&&end.y>20&&end.y<200);
+});
