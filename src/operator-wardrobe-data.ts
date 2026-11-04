@@ -255,8 +255,8 @@ export function setWardrobeFabricSolid(wardrobe:WardrobeOptions,
  if(!FABRIC_SOLID_CHOICES[channel].includes(id))return wardrobe;
  if(outfit&&channel==='armor'&&!validArmorSolid(outfit.armorStyle,id))
   return wardrobe;
- if(outfit&&channel==='gear'&&!validRigSolid(outfit.rigStyle,id))
-  return wardrobe;
+ if(outfit&&channel==='gear'&&outfit.rigStyle!=='no-rig'&&
+  !validRigSolid(outfit.rigStyle,id))return wardrobe;
  return {...wardrobe,
   fabricSolids:{...wardrobe.fabricSolids,[channel]:id},
   lastFabricCamo:{...wardrobe.lastFabricCamo,

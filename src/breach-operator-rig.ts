@@ -570,7 +570,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
    const storedSolid=channel==='head'?null:
     p.wardrobe?.fabricSolids?.[channel as FabricCamoChannel];
    const validManualSolid=isGarmentSolidId(storedSolid)&&(
-    channel==='gear'?validRigSolid(clothing.rigStyle,storedSolid):
+    channel==='gear'?(clothing.rigStyle==='no-rig'||
+     validRigSolid(clothing.rigStyle,storedSolid)):
     channel==='armor'?validArmorSolid(clothing.armorStyle,storedSolid):true
    )?storedSolid:null;
    // Authentic rig signature is a fallback, NOT an override of a

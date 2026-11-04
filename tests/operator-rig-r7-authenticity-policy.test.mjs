@@ -89,6 +89,10 @@ test('R7 solids validate the specific model without silently deleting saved look
   outfit('micro-rig','armor-bare'));
  assert.equal(modern.fabricSolids.gear,'black');
  assert.ok(validRigSolid('micro-rig','black'));
+ // The shared gear channel also covers belts when NO chest rig is present.
+ const belt=setWardrobeFabricSolid(w,'gear','black',
+  outfit('no-rig','armor-bare'));
+ assert.equal(belt.fabricSolids.gear,'black','no-rig belt swatches remain usable');
 });
 function pose(r,rig){
  let equipment=initialEquipmentLoadout();

@@ -323,7 +323,8 @@ function renderMaterials(){
   const choices=fabricCamoChoices(channel,outfit);
   const pattern=w.fabricCamo?.[channel]??null;
   const eligibleSolids=channel==='gear'?
-   (RIG_VISUAL_TEXTILES[outfit.rigStyle]?.solids??[]):
+   (outfit.rigStyle==='no-rig'?solidChoicesFor('gear'):
+    RIG_VISUAL_TEXTILES[outfit.rigStyle]?.solids??[]):
    channel==='armor'?
    (ARMOR_VISUAL_TEXTILES[outfit.armorStyle]?.solids??[]):
    solidChoicesFor(channel);
@@ -351,7 +352,16 @@ function renderMaterials(){
    group.append(auto);
   }
   const tabs=document.createElement('div');tabs.className='material-tabs';
-  const solidSelected=!pattern;
+  const iconic=channel==='gear'&&!pattern&&!w.fabricSolids?.gear&&
+   outfit.rigStyle!=='no-rig';
+  const solidSelected=!pattern&&!iconic;
+  if(channel==='gear'&&outfit.rigStyle!=='no-rig')
+   tabs.append(makeButton('ICONIC DEFAULT',iconic,()=>{
+    const now=current();
+    changeWardrobe({...now,
+     fabricCamo:{...now.fabricCamo,gear:undefined},
+     fabricSolids:{...now.fabricSolids,gear:undefined}});
+   }));
   tabs.append(makeButton('SOLID',solidSelected,()=>{
    const id=w.fabricSolids?.[channel]??
     eligibleSolids[0]??'olive-drab';
