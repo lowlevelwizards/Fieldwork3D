@@ -32,6 +32,7 @@ import {coverImpactFraction,aimHeight} from './breach-cover-height.ts';
 import {MICRO_KEYS,MICRO_COLS} from './breach-fog-memory.ts';
 import {assessFireLane,type FireBlock} from './breach-fire-safety.ts';
 import {selectFireableContact} from './breach-target-selection.ts';
+import {acquisitionSeconds} from './breach-firing-cadence.ts';
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,kickDoor,
   initialOpeningYieldCandidate,pressDoorOnBodyAttempt} from './breach-door.ts';
@@ -3251,10 +3252,12 @@ function fire(s:Session,a:TeamActor,dt:number){
   const moving=a.velocity>10;
   const weapon=WEAPONS[a.weapon];
   const range=d(a.p,target.p);
-  const acquisition=(moving?weapon.acquisition*1.8:weapon.acquisition)*
-    (2-skillMultiplier(a.skills.handling,.4))*
-    (a.side==='red'?1.65:1)*sightAcquisitionScale(mods,range)+
-    (a.personality==='cautious'?.12:0);
+  const acquisition=acquisitionSeconds({
+    base:weapon.acquisition,moving,
+    skillFactor:2-skillMultiplier(a.skills.handling,.4),
+    enemy:a.side==='red',attachmentFactor:sightAcquisitionScale(mods,range),
+    cautious:a.personality==='cautious'
+  });
   a.aim=Math.min(1,a.aim+dt/acquisition);
   const desiredYaw=angle(a.p,target.p);
   a.weaponYaw=approachAngle(a.weaponYaw,desiredYaw,dt*profile.turnSpeed*mods.turn*
