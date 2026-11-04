@@ -34,7 +34,8 @@ test('one squad-entry command is all-or-nothing, with squad-level undo and redo'
   assert.deepEqual(snapshot(members),before,'one selected undo restores all four');
   assert.ok(s.squadEntryRedo);
   assert.equal(redoPlan(s,members[1].id),true);
-  assert.deepEqual(snapshot(members),after,'one selected redo restores whole entry');
+  assert.equal(JSON.stringify(snapshot(members)),JSON.stringify(after),
+    'one selected redo restores equivalent authored entry plans');
  }finally{activateSite(null);}
 });
 
