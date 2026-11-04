@@ -93,7 +93,10 @@ const sameQueueLane=(a:PassageActor,b:PassageActor,door:Door):boolean=>{
  const dx=door.b.x-door.a.x,dy=door.b.y-door.a.y;
  const width=Math.hypot(dx,dy)||1;
  const lateral=Math.abs(((b.p.x-a.p.x)*dx+(b.p.y-a.p.y)*dy)/width);
- return lateral<Math.max(18,width*.58);
+ // Two independently authored lanes should not be serialized simply
+ // because they share a relatively wide door. Body-width proximity, not
+ // a percentage of door width, determines a shared moving queue.
+ return lateral<19.5;
 };
 /** Dynamic convoy spacing: only a teammate physically ahead in the same
  * travel direction can hold the follower. This affects both single doors
@@ -101,7 +104,7 @@ const sameQueueLane=(a:PassageActor,b:PassageActor,door:Door):boolean=>{
  * No authored route or friendly collision footprint is modified.
  */
 function tooCloseToLeader(actor:PassageActor,others:readonly PassageActor[],
- cluster:readonly Door[]):boolean{
+ cluster:readonly Door[],intendedStep?:Pt):boolean{
  for(const door of cluster){
   const heading=travelSign(actor,door);
   if(!heading)continue;
@@ -109,7 +112,16 @@ function tooCloseToLeader(actor:PassageActor,others:readonly PassageActor[],
    if(other.id===actor.id||!sameQueueLane(actor,other,door)||
       travelSign(other,door)!==heading)continue;
    const ahead=(side(other.p,door)-side(actor.p,door))*heading;
-   if(ahead>.01&&ahead<PASSAGE_FOLLOW_GAP)return true;
+   if(ahead>.01&&ahead<PASSAGE_FOLLOW_GAP){
+    // Right-of-way never forbids the player from steering laterally or
+    // backing out of a queue. Only an immediate step that actually
+    // advances into a leader's body gap should be deferred.
+    if(intendedStep){
+      const advance=(side(intendedStep,door)-side(actor.p,door))*heading;
+      if(advance<=.025)continue;
+    }
+    return true;
+   }
   }
  }
  return false;
@@ -133,7 +145,7 @@ function atOpposingEntry(actor:PassageActor,cluster:readonly Door[]):boolean{
 }
 export function passageWait(actor:PassageActor,doors:readonly Door[],
   actors:readonly PassageActor[],
-  leases?:Record<string,PassageLease>,now=0):boolean{
+  leases?:Record<string,PassageLease>,now=0,intendedStep?:Pt):boolean{
  const seen=new Set<string>();
  for(const door of doors){
   // Wide shutters permit several independent lanes.
@@ -180,7 +192,7 @@ export function passageWait(actor:PassageActor,doors:readonly Door[],
   // Same-direction squad members form a moving queue. The second operator
   // advances immediately behind the first, and the third behind the second.
   // No one waits for a teammate to reach a distant interior waypoint.
-  if(tooCloseToLeader(actor,relevant,cluster))return true;
+  if(tooCloseToLeader(actor,relevant,cluster,intendedStep))return true;
   if(owner===actor.id)continue;
   const leader=relevant.find(a=>a.id===owner);
   const sameDirection=leader&&cluster.some(door=>{

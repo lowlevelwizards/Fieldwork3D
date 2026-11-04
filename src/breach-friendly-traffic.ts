@@ -11,6 +11,7 @@ export function friendlyPassingStep(from:Pt,desired:Pt,goal:Pt,
  if(step<1e-6||!peers.some(p=>dist(p,desired)<21))return desired;
  const dx=(desired.x-from.x)/step,dy=(desired.y-from.y)/step;
  const gap=minGap(desired,peers);
+ const expectedProgress=dist(from,goal)-dist(desired,goal);
  // Try short angled steps. A small per-tick sidestep accumulated over time
  // looks natural; it must not require one enormous impossible jump.
  let best=desired,bestScore=score(desired,goal,peers);
@@ -20,10 +21,17 @@ export function friendlyPassingStep(from:Pt,desired:Pt,goal:Pt,
    const vy=(dy+dx*side*strength)/len;
    const candidate={x:from.x+vx*step,y:from.y+vy*step};
    if(!sweep(from,candidate))continue;
+   // Steering around a friend is cosmetic; do not turn an authored
+   // forward route into a mostly sideways, stop-start wandering motion.
+   const progress=dist(from,goal)-dist(candidate,goal);
+   if(progress<Math.max(0,expectedProgress*.42)-.03)continue;
    const separation=minGap(candidate,peers);
    if(separation<gap+.01)continue;
    const rating=score(candidate,goal,peers);
-   if(rating<bestScore-1e-5){best=candidate;bestScore=rating;}
+   // Minor numerical score changes should not create visual oscillation.
+   if(rating<bestScore-Math.max(.10,step*.06)){
+     best=candidate;bestScore=rating;
+   }
   }
  }
  return best;
