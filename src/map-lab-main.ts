@@ -289,6 +289,10 @@ function report(site:Site,result:SiteAudit):string{
   ' empty threshold rooms · '+result.tacticalOpportunities.objectivePurpose+
   ' objective room ('+result.tacticalOpportunities.objectiveEntryDistance+
   ' from entry)\n'+
+  'TACTICAL SIGHTLINES: '+result.sightlineQuality.filter(r=>r.thresholds>0).length+
+  ' threshold rooms · '+result.sightlineQuality.filter(r=>r.warnings.includes('overexposed room')).length+
+  ' overexposed · '+result.sightlineQuality.filter(r=>r.warnings.includes('no useful threshold sightline')).length+
+  ' without useful lines\\n'+
   'ENCOUNTER PACING: first hostile '+result.tacticalOpportunities.closestHostileToEntry+
   ' from entry · '+result.tacticalOpportunities.hostilesNearObjective+
   ' hostile(s) near objective'+

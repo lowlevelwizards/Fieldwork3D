@@ -144,7 +144,7 @@ export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
    const score=(count===0?110:-90)+
      (anchor.capacity-count)*12-Math.min(32,originalDist*.065)+
      profileBonus+
-     tacticalDefenderRoomScore(anchor.room,site.cover,site.doors,profile)+
+     tacticalDefenderRoomScore(anchor.room,site.cover,site.doors,profile,site)+
      rng()*32;
    return {anchor,score};
   }).filter(x=>(used.get(x.anchor.room.id)??0)<x.anchor.capacity)
