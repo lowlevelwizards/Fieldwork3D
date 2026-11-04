@@ -92,7 +92,8 @@ export function updateWardrobeGearLayers(v:WardrobeGearLayers,
  // Changes to the selected garment rebuild the connectors once, not per pose.
  updateAdaptiveArmorFit(v.armor,armor,top);
  // The rig follows exactly the same fitted exterior as the plate bag.
- const exterior=(['micro-rig','chest-placard','light-rig','chicom-rig','bandolier'].includes(rig))?
+ const exterior=(['micro-rig','chest-placard','light-rig','chicom-rig',
+   'bandolier','split-front','full-chest','lbv'].includes(rig))?
   rigContactFrame(armor,top,rig):armorAttachmentFrame(armor,top);
  for(const group of Object.values(v.rig)){
   group.position.x=exterior.rigShiftX;

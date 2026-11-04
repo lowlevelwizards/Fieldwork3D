@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
-import {fittedShoulderBridge} from './operator-armor-shapes.ts';
+import {fittedShoulderBridge,fittedArmorBag} from './operator-armor-shapes.ts';
 import {createAdaptiveArmorSilhouettes,updateAdaptiveArmorFit}
  from './operator-adaptive-armor.ts';
 export {updateAdaptiveArmorFit};
@@ -120,12 +120,17 @@ export function updateFittedRigHarness(
  const shoulder=frame.shoulderRight.z;
  // The first stage has its own actual front panel anchoring. Other rig
  // families preserve their existing geometry until their design stage.
- if(['micro-rig','chest-placard','light-rig','chicom-rig'].includes(rig)){
+ if(['micro-rig','chest-placard','light-rig','chicom-rig',
+   'split-front','full-chest','lbv'].includes(rig)){
   const micro=rig==='micro-rig',placard=rig==='chest-placard',
-   classic=rig==='light-rig',canvas=rig==='chicom-rig';
-  const panelX=micro?7.90:placard?8.14:classic?8.18:7.95;
-  const panelTop=micro ? -.82 : placard ? .25 : classic ? -.02 : .44;
-  const z=micro?2.75:placard?3.20:classic?4.1:3.65;
+   classic=rig==='light-rig',canvas=rig==='chicom-rig',
+   split=rig==='split-front',full=rig==='full-chest',lbv=rig==='lbv';
+  const panelX=micro?7.90:placard?8.14:classic?8.18:canvas?7.95:
+   split?8.12:full?8.10:7.78;
+  const panelTop=micro?-.82:placard?.25:classic?-.02:canvas?.44:
+   split?.85:full?2.40:3.13;
+  const z=micro?2.75:placard?3.20:classic?4.1:canvas?3.65:
+   split?4.55:full?4.60:3.22;
   const crownZ=Math.max(3.3,Math.min(5.0,shoulder));
   for(const side of [-1,1]){
    const path:readonly (readonly [number,number,number])[]=[
@@ -137,7 +142,8 @@ export function updateFittedRigHarness(
     [localBack-.21,classic?1.15:-1.70,z+(.95)]
    ];
    fittedShoulderBridge(harness,material,path,
-    canvas ? .92 : classic ? 1.17 : micro ? 1.11 : 1.08,.57,side);
+    canvas ? .92 : classic ? 1.17 : lbv ? 1.28 :
+    full ? 1.28 : split ? 1.22 : micro ? 1.11 : 1.08,.57,side);
   }
   if(classic){
    // The defining traditional X is on the BACK, directly over the
@@ -147,9 +153,12 @@ export function updateFittedRigHarness(
    strap(harness,material,[localBack-.27,1.68,4.05],
     [localBack-.27,-3.18,-4.05],1.12,.51);
   }else{
-   // One broad garment-parallel rear connector at the fitted back.
-   box(harness,material,localBack-.16,-1.66,0,
-    .44,canvas?.82:1.10,micro?8.35:placard?9.0:9.4);
+   // Rear connector is shallow and material-parallel. The large rigs
+   // get wider back coverage but still have clear waist and shoulder gaps.
+   box(harness,material,localBack-.16,
+    lbv?-2.15:full?-2.05:-1.66,0,
+    .44,lbv?1.45:canvas?.82:1.10,
+    lbv?10.8:full?11.5:split?10.2:micro?8.35:placard?9.0:9.4);
   }
  }else if(rig==='bandolier'){
   // Cross-body canvas is one broad diagonal band, draped over a real
@@ -240,20 +249,30 @@ export function createChestRigSilhouettes(chest:THREE.Group,
     pouch(g,pocketFabric,trim,8.77,-2.18,s*p,3.98,2.34,1.08);
    box(g,trim,8.64,-1.95,s*1.35,.37,4.72,.44);
   }
+  // Only two chunky closure tabs bridge toward the opening. The deep
+  // vertical separation and independent banks remain the major silhouette.
+  for(const y of [.15,-2.85])
+   for(const s of [-1,1])
+    box(g,dark,8.66,y,s*1.03,.26,.56,.62);
  }
  {
   const g=make('lbv');
   shoulderHarness(g,fabric,5.20);
   for(const s of [-1,1]){
-   box(g,fabric,6.75,-1.55,s*5.35,1.14,9.25,3.15);
+   // Two real tapered load-bearing vest halves, not side-on slabs.
+   // Open sternum stays readable; the broad hems carry the pockets.
+   const half=new THREE.Group();half.position.z=s*3.25;g.add(half);
+   fittedArmorBag(half,fabric,7.82,1,3.55,-5.80,3.70,.72,.72);
    for(const y of [1.28,-2.56,-5.35])
-    pouch(g,pocketFabric,trim,7.95,y,s*5.05,2.88,3.33,.99);
+    pouch(g,pocketFabric,trim,8.12,y,s*4.20,2.88,3.22,.99);
   }
  }
  {
   const g=make('full-chest');
   shoulderHarness(g,trim,5.02);
-  box(g,fabric,8.0,-1.72,0,.78,9.65,12.25);
+  // One broad polygon with clipped high shoulders; avoids a square slab
+  // intersecting raised protective collars on bulkier armor.
+  fittedArmorBag(g,fabric,8.39,1,3.10,-6.55,12.25,1.30,.78);
   for(const z of [-4.60,-1.5,1.5,4.60])
    pouch(g,pocketFabric,trim,8.65,-2.75,z,4.45,2.65,1.07);
   box(g,dark,8.48,2.68,0,.23,1.22,9.25);

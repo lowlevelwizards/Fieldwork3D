@@ -32,7 +32,10 @@ export const RIG_PANEL_INNER_FACES:Readonly<Record<string,number>>={
  // Historic chest rigs: backing panel or foremost pouch rear surface.
  'light-rig':8.38-1.07*.5,
  'chicom-rig':7.95-.60*.5,
- 'bandolier':8.20-.72*.5
+ 'bandolier':8.20-.72*.5,
+ 'split-front':8.12-.75*.5,
+ 'full-chest':8.39-.78,
+ 'lbv':7.82-.72
 };
 export function rigContactFrame(armor:string,top:string,rig:string):RigContactFrame{
  const baseline=ARMOR_PROFILES[armor]??ARMOR_PROFILES['armor-bare'];
@@ -41,7 +44,10 @@ export function rigContactFrame(armor:string,top:string,rig:string):RigContactFr
  const y=rig==='micro-rig'?-2.65:
   rig==='light-rig'?-2.20:
   rig==='chicom-rig'?-2.35:
-  rig==='bandolier'?-2.00:-2.05;
+  rig==='bandolier'?-2.00:
+  rig==='split-front'?-1.90:
+  rig==='full-chest'?-1.72:
+  rig==='lbv'?-1.55:-2.05;
  const cloth=armorContactSurface(top,y);
  const exposed=armor!=='armor-bare'&&armor!=='soft-slick'&&
   armor!=='soft-paca'&&!!spec&&

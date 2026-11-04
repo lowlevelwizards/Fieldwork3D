@@ -26,7 +26,7 @@ jobs:
         run: node --experimental-strip-types --test tests/operator-armor-rig-release-c.test.mjs
       - name: Focused R7 real rendered-shell anchors, 35 armor contacts and critical legacy regressions
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/armor-r7-') }}
-        run: node --experimental-strip-types --test tests/operator-rig-r1-contact.test.mjs tests/operator-rig-r2-light.test.mjs tests/operator-armor-r7-polish.test.mjs tests/operator-armor-r7-surface-contact.test.mjs tests/operator-armor-r6-contact.test.mjs tests/operator-armor-r5-orthogonal.test.mjs tests/operator-armor-r4-silhouette.test.mjs tests/operator-armor-r2-fit.test.mjs tests/operator-armor-r1-integration.test.mjs
+        run: node --experimental-strip-types --test tests/operator-rig-r1-contact.test.mjs tests/operator-rig-r2-light.test.mjs tests/operator-rig-r3-full.test.mjs tests/operator-armor-r7-polish.test.mjs tests/operator-armor-r7-surface-contact.test.mjs tests/operator-armor-r6-contact.test.mjs tests/operator-armor-r5-orthogonal.test.mjs tests/operator-armor-r4-silhouette.test.mjs tests/operator-armor-r2-fit.test.mjs tests/operator-armor-r1-integration.test.mjs
       - name: Focused R6 local armor contact, true strap landings and legacy fit gates
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/armor-r6-') }}
         run: node --experimental-strip-types --test tests/operator-armor-r6-contact.test.mjs tests/operator-armor-r5-orthogonal.test.mjs tests/operator-armor-r4-silhouette.test.mjs tests/operator-armor-r2-fit.test.mjs tests/operator-armor-r1-integration.test.mjs
