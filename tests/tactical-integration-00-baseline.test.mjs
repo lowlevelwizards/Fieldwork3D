@@ -42,6 +42,12 @@ test('baseline: four reachable team routes clear a narrow physical threshold',()
    });
    if(arrived.size===members.length)break;
   }
+  console.log('TACTICAL END STATE',JSON.stringify(members.map((a,i)=>({
+   id:a.id,p:a.p,goal:goals[i],nav:a.nav.slice(0,3),
+   active:a.plan[0]?.kind,blockedTime:a.blockedTime,
+   lastBlocker:a.lastBlocker,recoveryAttempts:a.recoveryAttempts,
+   velocity:a.velocity,squeeze:a.squeeze,doorState:s.doors[0]?.openFraction
+  }))));
   assert.equal(crossed.size,members.length,'all four must pass through');
   assert.equal(arrived.size,members.length,'all four must finish');
   assert.ok(members.every((member,i)=>
