@@ -11,8 +11,8 @@ import * as THREE from 'three';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {ARMOR_PROPORTIONS,type ArmorProportion}
  from './operator-armor-proportions.ts';
-import {fittedArmorBag,fittedShoulderBridge,fittedSideWrap,fittedArmorCollar}
- from './operator-armor-shapes.ts';
+import {fittedArmorBag,fittedShoulderBridge,fittedSideWrap,fittedArmorCollar,
+ fittedArmoredSidePlate} from './operator-armor-shapes.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {armorSideLayout} from './operator-armor-side-layout.ts';
 import {armorStrapLanding,JPC_BRANCH_HALF_SPREAD,JPC_BRANCH_WIDTH}
@@ -213,13 +213,16 @@ function regenerateConnections(entry:ArmorEntry,top:string){
  }
  if(spec.sideStyle==='side_plate'){
   const p=armorSideLayout(fit,spec);
-  // A single unmistakable side plate per flank. Its inner face overlaps
-  // the continuous side slab instead of hovering outside a strip frame.
-  const depth=.86;
-  for(const side of [-1,1])
-   makeBox(connectors,cloth,.05,spec.sideY-.18,
-    side*(p.centerZ+spec.sideThickness*.5+depth*.5-.10),
-    3.75,spec.sidePlateHeight,depth);
+  // Substantial ballistic plate seated directly onto the outer face of
+  // the close-fitting cummerbund. The insert has one clipped-corner shell
+  // plus one large contrasting face — not extra straps or hollow rails.
+  const inner=p.centerZ+spec.sideThickness*.5-.15;
+  for(const side of [-1,1]){
+   fittedArmoredSidePlate(connectors,cloth,.05,spec.sideY-.15,
+    inner,side,4.4,spec.sidePlateHeight+.43,.72);
+   fittedArmoredSidePlate(connectors,utility,.05,spec.sideY-.15,
+    inner+.69,side,3.48,spec.sidePlateHeight-.36,.14);
+  }
  }
  if(spec.collarStyle==='high_flak'||spec.collarStyle==='legacy_wrap'){
   const flak=spec.collarStyle==='high_flak';
