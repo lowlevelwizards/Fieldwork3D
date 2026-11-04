@@ -97,13 +97,13 @@ export const ARMOR_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
  'armor-bare':{signature:{solid:'olive-drab'},solids:[],prints:[],
   rationale:'No external armor textile'},
  'soft-slick':{
-  signature:{solid:'black'},
+  signature:{solid:'khaki'},
   solids:['black','charcoal','slate','khaki','tan','off-white'],
   prints:[],
   rationale:'Concealed armor kept under garments; no patterned exterior'
  },
  'soft-paca':{
-  signature:{solid:'black'},
+  signature:{solid:'khaki'},
   solids:['black','charcoal','slate','khaki','tan','off-white'],
   prints:[],
   rationale:'Concealed armor has no visible military patterned cover'
@@ -145,7 +145,7 @@ export const ARMOR_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
   rationale:'Modern overt textile carrier with genuine national/commercial covers'
  },
  'plate-heavy':{
-  signature:{solid:'coyote'},
+  signature:{solid:'black'},
   solids:['coyote','ranger-green','black','olive-drab','khaki','tan',
    'forest-green','foliage'],
   prints:['multicam','scorpion-w2','m81-woodland','ucp','british-mtp',
@@ -153,7 +153,7 @@ export const ARMOR_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
   rationale:'Heavy overt contemporary carrier, mostly coherent modern issue prints'
  },
  'plate-legacy':{
-  signature:{solid:'olive-drab'},
+  signature:{solid:'olive-drab',print:'m81-woodland'},
   solids:['olive-drab','forest-green','khaki','tan','coyote','black'],
   prints:['m81-woodland','three-color-desert','ucp'],
   rationale:'Legacy broad cover carrier: woodland/DCU and early universal-cover variants'
@@ -161,6 +161,13 @@ export const ARMOR_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
 };
 export function rigSignature(style:string):VisualTextile['signature']{
  return RIG_VISUAL_TEXTILES[style]?.signature??{solid:'olive-drab'};
+}
+/** Every armor has a distinct, reference-guided default separate from
+ * terrain matching. Manual compatible solid/print selections always win.
+ * 'armor-bare' is only a sentinel and never paints visible shell geometry.
+ */
+export function armorSignature(style:string):VisualTextile['signature']{
+ return ARMOR_VISUAL_TEXTILES[style]?.signature??{solid:'olive-drab'};
 }
 export function validRigSolid(style:string,id:GarmentSolidId):boolean{
  return !!RIG_VISUAL_TEXTILES[style]?.solids.includes(id);

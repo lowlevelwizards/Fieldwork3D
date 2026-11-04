@@ -18,7 +18,7 @@ import {readWardrobe,initialWardrobe,resolvedWardrobe,setWardrobeStyle,
  type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
 import {fabricCamoChoices,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {resolveAutomaticGearColors} from './operator-gear-color-policy.ts';
-import {RIG_VISUAL_TEXTILES,ARMOR_VISUAL_TEXTILES,rigSignature}
+import {RIG_VISUAL_TEXTILES,ARMOR_VISUAL_TEXTILES,rigSignature,armorSignature}
  from './operator-rig-authenticity-policy.ts';
 import {GARMENT_SOLID_COLORS,solidChoicesFor,resolvedCuffSolid,
  resolvedCombatKnitSolid,type GarmentSolidId} from './operator-garment-color-policy.ts';
@@ -321,29 +321,42 @@ function renderMaterials(){
   activeCategory==='packStyle'?'pack':null;
  if(channel){
   const choices=fabricCamoChoices(channel,outfit);
-  const pattern=w.fabricCamo?.[channel]??null;
+  // A saved swatch may belong to a DIFFERENT armor or rig. Preserve it,
+  // but display the active cut's iconic color instead of a stale choice.
+  const rawPattern=w.fabricCamo?.[channel]??null;
+  const pattern=rawPattern&&
+   (channel!=='armor'&&channel!=='gear'||choices.includes(rawPattern))?
+    rawPattern:null;
   const eligibleSolids=channel==='gear'?
    (outfit.rigStyle==='no-rig'?solidChoicesFor('gear'):
     RIG_VISUAL_TEXTILES[outfit.rigStyle]?.solids??[]):
    channel==='armor'?
    (ARMOR_VISUAL_TEXTILES[outfit.armorStyle]?.solids??[]):
    solidChoicesFor(channel);
+  const rawSolid=w.fabricSolids?.[channel];
+  const manualSolid=rawSolid&&
+   (channel!=='armor'&&channel!=='gear'||eligibleSolids.includes(rawSolid))?
+    rawSolid:null;
+  const iconicSignature=channel==='gear'&&outfit.rigStyle!=='no-rig'?
+   rigSignature(outfit.rigStyle):
+   channel==='armor'&&outfit.armorStyle!=='armor-bare'?
+    armorSignature(outfit.armorStyle):null;
   const group=row('FABRIC MATERIAL','Select a solid or an approved print. Printed material never changes its original artwork.');
   if(channel==='armor'||channel==='gear'||channel==='pack'){
    const automatic=resolveAutomaticGearColors({print:w.fabricCamo?.top,
     solid:w.fabricSolids?.top})[channel];
    const hint=document.createElement('small');
-   const signature=channel==='gear'?rigSignature(outfit.rigStyle):null;
-   hint.textContent=signature?
-    'ICONIC DEFAULT: '+(signature.print??
-     GARMENT_SOLID_COLORS[signature.solid].label)+
+   hint.textContent=iconicSignature?
+    'ICONIC DEFAULT: '+(iconicSignature.print?
+     HEADWEAR_CAMO_RECIPES[iconicSignature.print].label:
+     GARMENT_SOLID_COLORS[iconicSignature.solid].label)+
     ' · Select an available solid or print to override this reference appearance.':
     'AUTO MATCH: '+GARMENT_SOLID_COLORS[automatic].label+
     ' · Based on uniform family. Manual armor, rig and pack choices remain independent.';
    group.append(hint);
    const auto=document.createElement('div');auto.className='material-row';
-   auto.append(makeButton(channel==='gear'?'RESTORE ICONIC DEFAULT':'USE AUTO MATCH',
-    !pattern&&!w.fabricSolids?.[channel],()=>{
+   auto.append(makeButton(iconicSignature?'RESTORE ICONIC DEFAULT':'USE AUTO MATCH',
+    !pattern&&!manualSolid,()=>{
     const now=current();
     changeWardrobe({...now,
      fabricCamo:{...now.fabricCamo,[channel]:undefined},
@@ -352,18 +365,17 @@ function renderMaterials(){
    group.append(auto);
   }
   const tabs=document.createElement('div');tabs.className='material-tabs';
-  const iconic=channel==='gear'&&!pattern&&!w.fabricSolids?.gear&&
-   outfit.rigStyle!=='no-rig';
+  const iconic=!!iconicSignature&&!pattern&&!manualSolid;
   const solidSelected=!pattern&&!iconic;
-  if(channel==='gear'&&outfit.rigStyle!=='no-rig')
+  if(iconicSignature)
    tabs.append(makeButton('ICONIC DEFAULT',iconic,()=>{
     const now=current();
     changeWardrobe({...now,
-     fabricCamo:{...now.fabricCamo,gear:undefined},
-     fabricSolids:{...now.fabricSolids,gear:undefined}});
+     fabricCamo:{...now.fabricCamo,[channel]:undefined},
+     fabricSolids:{...now.fabricSolids,[channel]:undefined}});
    }));
   tabs.append(makeButton('SOLID',solidSelected,()=>{
-   const id=w.fabricSolids?.[channel]??
+   const id=manualSolid??iconicSignature?.solid??
     eligibleSolids[0]??'olive-drab';
    changeWardrobe(setWardrobeFabricSolid(current(),channel,id,outfit));
   }));
@@ -384,7 +396,7 @@ function renderMaterials(){
    group.append(actions);
   }else{
    addSolidSwatches(group,eligibleSolids,
-    w.fabricSolids?.[channel]??null,id=>
+    manualSolid??null,id=>
      changeWardrobe(setWardrobeFabricSolid(current(),channel,id,outfit)));
   }
   // A matching set is explicitly opt-in: one tap copies only a compatible
