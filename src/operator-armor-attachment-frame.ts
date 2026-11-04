@@ -8,6 +8,7 @@
 import {ARMOR_PROFILES,rigMagazineMount,
  type RigMagazineSocket} from './operator-armor-rig-silhouettes.ts';
 import {fittedArmorSurfaces} from './operator-uniform-fit-envelope.ts';
+import {rigContactFrame} from './operator-rig-contact-frame.ts';
 
 export type ArmorAttachmentFrame={
  front:{x:number;y:number};
@@ -46,6 +47,17 @@ export function armorAttachmentFrame(style:string,
 export function armorMountedMagazineSocket(style:string,index:number,
  armor:string,mirror=1,top='combat-shirt'):RigMagazineSocket{
  const socket=rigMagazineMount(style,index,armor,mirror);
+ // The first two RIG-A panel silhouettes have their own precisely known
+ // pouch faces. A real magazine sits JUST under the pocket's outer flap,
+ // not ahead of the old nominal 9.25 offset.
+ if(style==='micro-rig'||style==='chest-placard'){
+  const contact=rigContactFrame(armor,top,style);
+  if(Math.abs(socket.rotation)<.01){
+   const mouth=style==='micro-rig'?8.93:9.20;
+   return {...socket,x:mouth+contact.rigShiftX};
+  }
+  return {...socket,z:Math.sign(socket.z)*(contact.sideRight.z+.12)};
+ }
  const frame=armorAttachmentFrame(armor,top);
  const baseline=ARMOR_PROFILES[armor]??ARMOR_PROFILES['armor-bare'];
  if(Math.abs(socket.rotation)<.01)
