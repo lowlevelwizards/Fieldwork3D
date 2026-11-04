@@ -329,6 +329,16 @@ jobs:
       - name: D0-D1 identity palette, save and wardrobe visual contracts
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/operator-d0-d1-') }}
         run: node --experimental-strip-types --test tests/operator-identity-stage-d1.test.mjs tests/operator-wardrobe-data.test.mjs tests/operator-wardrobe-persistence.test.mjs tests/operator-visual-kit.test.mjs
+      - name: Focused R8A–B contact pacing and reactive defender regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-r8-contact-reactivity-a-') }}
+        run: |
+          node --experimental-strip-types --test tests/mission-contact-r8a.test.mjs tests/mission-reactivity-r8b.test.mjs tests/awareness-ai-policy.test.mjs tests/awareness-combat.test.mjs tests/breach-defense-performance.test.mjs
+          npm run audit:r8-contacts -- 11
+      - name: Focused R8C–D readability and mode-equivalent active combat probes
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-r8-readability-validation-b-') }}
+        run: |
+          node --experimental-strip-types --test tests/mission-combat-review-r8c.test.mjs tests/mission-mode-probe-r8d.test.mjs tests/mission-firefight-r7d.test.mjs tests/awareness-combat.test.mjs
+          npm run audit:r8-modes -- 6
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}

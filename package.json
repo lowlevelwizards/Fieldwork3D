@@ -11,6 +11,8 @@
     "audit:breach-sites": "node --experimental-strip-types scripts/audit-breach-sites.mjs",
     "audit:mission-quality": "node --experimental-strip-types scripts/audit-mission-quality.mjs",
     "audit:r7-firefights": "node --experimental-strip-types scripts/audit-r7-firefights.mjs",
+    "audit:r8-contacts": "node --experimental-strip-types scripts/audit-r8-contacts.mjs",
+    "audit:r8-modes": "node --experimental-strip-types scripts/audit-r8-modes.mjs",
     "audit:realism": "node --experimental-strip-types scripts/audit-realism-release.mjs",
     "build": "tsc --noEmit && vite build && node scripts/stamp-pages.mjs",
     "preview": "vite preview --host 0.0.0.0"
