@@ -293,6 +293,11 @@ function report(site:Site,result:SiteAudit):string{
   ' threshold rooms · '+result.sightlineQuality.filter(r=>r.warnings.includes('overexposed room')).length+
   ' overexposed · '+result.sightlineQuality.filter(r=>r.warnings.includes('no useful threshold sightline')).length+
   ' without useful lines\n'+
+  'R7 BALLISTIC COVER: '+result.ballisticQuality.filter(r=>r.approaches>0).length+
+  ' threshold rooms · '+result.ballisticQuality.reduce((n,r)=>n+r.protectedCrouched,0)+
+  ' crouch-protected samples · '+result.ballisticQuality.reduce((n,r)=>n+r.crouchOnlyPositions,0)+
+  ' crouch-only · '+result.ballisticQuality.reduce((n,r)=>n+r.usableFiringCoverPositions,0)+
+  ' protected firing positions (2.5D, worst-case open thresholds)\n'+
   'ENCOUNTER PACING: first hostile '+result.tacticalOpportunities.closestHostileToEntry+
   ' from entry · '+result.tacticalOpportunities.hostilesNearObjective+
   ' hostile(s) near objective'+
