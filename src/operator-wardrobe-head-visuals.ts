@@ -8,7 +8,7 @@ import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {createHeadwearSilhouette} from './operator-headwear-silhouettes.ts';
 import {createD2Balaclava} from './operator-d2-fabric-visuals.ts';
 import {createD2FabricWrap} from './operator-d2-fabric-wraps.ts';
-import {D2_FACE_SOLID_COLORS,effectiveD2FabricMode,type D2FaceSolid} from './operator-head-accessory-catalog.ts';
+import {D2_FACE_SOLID_COLORS,type D2FaceSolid} from './operator-head-accessory-catalog.ts';
 import {createHeadwearDetailMaterial} from './operator-headwear-materials.ts';
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import type {WardrobeSlot} from './operator-wardrobe-data.ts';
