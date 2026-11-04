@@ -374,6 +374,13 @@ jobs:
             tests/tactical-integration-17-firefight-b1.test.mjs \
             tests/tactical-integration-18-firefight-b2.test.mjs \
             tests/mission-mode-probe-r8d.test.mjs
+      - name: G4 mission personality critical actor routines and scenario contracts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-gameplay-quality-g4-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/worldgen-encounter-routines.test.mjs \
+            tests/worldgen-encounter-activities.test.mjs \
+            tests/breach-encounter-readiness.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}
