@@ -273,6 +273,18 @@ jobs:
       - name: Focused Stage 5 garment frame, uniform and rig checks
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'operator/garments-') }}
         run: node --experimental-strip-types --test tests/operator-garment-qa-stage510.test.mjs tests/operator-garment-frame-stage5.test.mjs tests/operator-outerwear-stage4.test.mjs tests/operator-garment-silhouette-polish.test.mjs tests/operator-uniform-blouse-stage3b.test.mjs tests/operator-uniform-trousers-states-stage3c.test.mjs
+      - name: Tactical integration — focused movement, traffic, planning and awareness regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-tactical-integration-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/tactical-integration-*.test.mjs \
+            tests/breach-wall-glide-here-window.test.mjs \
+            tests/doorway-convoy-flow.test.mjs \
+            tests/breach-149.test.mjs \
+            tests/breach-150.test.mjs \
+            tests/awareness-ai-policy.test.mjs \
+            tests/awareness-communication.test.mjs \
+            tests/awareness-coordination.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}
