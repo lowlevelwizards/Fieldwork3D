@@ -38,14 +38,14 @@ export function sweptBodyClear(from:Pt,to:Pt,doors:Door[],
   return true;
 }
 
-/** Slowly free a body if a previously moving leaf left it intersecting
- * the panel. Search only short, physically swept movements *away* from the
- * overlap. No teleportation, new wall penetration, or opposing-actor push.
- * Normal navigation remains responsible for continuing the original order.
+/** Slowly free a body if a hinged leaf left it intersecting the
+ * panel, including after it has CLOSED. Search only short, physically swept
+ * movements *away* from the overlap. No teleportation, new wall
+ * penetration, or opposing-actor push. Authored orders remain intact.
  */
 export function escapeOpenDoorOverlap(from:Pt,goal:Pt,doors:Door[],
   maxStep=1.5):Pt|null{
-  const trapped=doors.filter(door=>door.open&&
+  const trapped=doors.filter(door=>
     door.kind!=='sliding'&&door.kind!=='shutter'&&
     leafGap(from,door)<OPERATOR_RADIUS+1-.01);
   if(!trapped.length)return null;
