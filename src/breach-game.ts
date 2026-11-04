@@ -106,6 +106,7 @@ import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
   rayHitsActor,muzzleEndpoint,recoverWeapon,handlingInstability,type FiringMode} from './breach-ballistics.ts';
 import {chooseDefense,chooseFiringDefense,watchPoint,
   reachableInvestigation} from './breach-defense.ts';
+import {advanceRescueEscort,type RescueEscort} from './breach-rescue-escort.ts';
 import {operationBrief,assessOperation,
   type OperationKind} from './breach-operations.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
@@ -249,7 +250,7 @@ export type Session=Omit<TacticalState,'operators'> & {
   battleEvents:BattleEvent[];nextBattleId:number;
   executionEvents:ExecutionEvent[];nextExecutionId:number;
   missionType:'clear'|'intel'|'rescue'|'hold'|'capture';holdTime:number;
-  rescue:{p:Pt;following:string|null}|null;
+  rescue:RescueEscort|null;
   captureTarget:string|null;captureSecured:boolean;
   intelCarrierId:string|null;};
 const d=(a:Pt,b:Pt)=>length(a,b);
@@ -433,7 +434,7 @@ export function newSession(index=0,siteSeed?:number,
     if(target)state.scenario.objective=clone(target.p);
   }
   if(state.missionType==='rescue')
-    state.rescue={p:clone(state.scenario.objective),following:null};
+    state.rescue={p:clone(state.scenario.objective),following:null,trail:[]};
   if(state.missionType==='intel'||state.missionType==='rescue'||
      state.missionType==='hold')state.mission='secure';
   COVER.splice(0,COVER.length,...state.coverState);
@@ -3502,18 +3503,25 @@ function mission(s:Session,dt:number){
         'INTEL DROPPED');
     }
   }
-  if(s.rescue){
-    if(s.rescue.following){
-      const escort=team(s).find(a=>a.id===s.rescue!.following&&a.health>0);
-      if(escort){
-        s.rescue.p={x:escort.p.x+Math.cos(escort.heading+Math.PI)*15,
-          y:escort.p.y+Math.sin(escort.heading+Math.PI)*15};
-      }else s.rescue.following=null;
+  if(s.rescue&&s.mission==='extract'){
+    const prior=s.rescue.following;
+    const escort=team(s).find(a=>a.id===prior&&a.health>0);
+    if(prior&&escort){
+      s.rescue=advanceRescueEscort(s.rescue,escort.p,dt,
+        (from,to)=>sweptBodyClear(from,to,s.doors,5.5));
+      if(!s.rescue.following)notify(s,'ESCORT SEPARATED — RETURN TO PERSON');
+    }else if(prior){
+      s.rescue={...s.rescue,following:null,trail:[]};
+      notify(s,'ESCORT DOWN — PERSON WAITING');
     }
-    if(s.mission==='extract'&&!s.rescue.following){
-      const rescuer=team(s).find(a=>a.health>0&&near(a.p,s.rescue!.p,27));
+    if(!s.rescue.following){
+      // Distance across a wall or shut doorway cannot transfer custody.
+      const rescuer=team(s).find(a=>a.health>0&&
+        near(a.p,s.rescue!.p,26)&&
+        sweptBodyClear(a.p,s.rescue!.p,s.doors,5.5));
       if(rescuer){
-        s.rescue.following=rescuer.id;
+        s.rescue={...s.rescue,following:rescuer.id,
+          trail:[clone(s.rescue.p),clone(rescuer.p)]};
         notify(s,'PERSON JOINED '+rescuer.name);
       }
     }
@@ -3534,8 +3542,11 @@ function mission(s:Session,dt:number){
       'CLEAR — SECURE OBJECTIVE');
     battleEvent(s,'objective',null,s.scenario.objective,'HOSTILES SECURED');
   }
-  const objectiveReached=team(s).some(a=>a.health>0&&
-    near(a.p,s.scenario.objective,36));
+  // Wall-adjacent proximity alone does not permit a remote interaction.
+  const atObjective=team(s).filter(a=>a.health>0&&
+    near(a.p,s.scenario.objective,36)&&
+    sweptBodyClear(a.p,s.scenario.objective,s.doors,4));
+  const objectiveReached=atObjective.length>0;
   if(s.mission==='secure'&&objectiveReached){
     if(s.missionType==='hold'){
       // A contested position is not secured merely by standing on its
@@ -3554,8 +3565,7 @@ function mission(s:Session,dt:number){
       // collection becomes the item carrier, not the whole squad.
       s.holdTime+=dt;
       if(s.holdTime<1.2)return;
-      const collector=team(s).find(a=>a.health>0&&
-        near(a.p,s.scenario.objective,36));
+      const collector=atObjective[0];
       if(!collector)return;
       s.intelCarrierId=collector.id;
     }
@@ -3566,9 +3576,10 @@ function mission(s:Session,dt:number){
     }
     s.mission='extract';
     if(s.rescue){
-      const escort=team(s).filter(a=>a.health>0).sort((a,b)=>
+      const escort=atObjective.sort((a,b)=>
         d(a.p,s.rescue!.p)-d(b.p,s.rescue!.p))[0];
-      s.rescue.following=escort?.id??null;
+      s.rescue={...s.rescue,following:escort?.id??null,
+        trail:escort?[clone(s.rescue.p),clone(escort.p)]:[]};
     }
     const verb=s.missionType==='rescue'?'PERSON FOUND':
       s.missionType==='hold'?'POSITION HELD':
@@ -3583,9 +3594,8 @@ function mission(s:Session,dt:number){
   if(s.mission==='extract'&&team(s).some(a=>a.health>0&&
     near(a.p,s.scenario.extract,37)&&
     (s.missionType!=='intel'||s.intelCarrierId===a.id)&&
-    (!s.rescue||(s.rescue.following!==null&&
-      team(s).some(escort=>escort.id===s.rescue!.following&&
-        escort.health>0)&&near(s.rescue.p,s.scenario.extract,45))))){
+    (!s.rescue||(s.rescue.following===a.id&&
+      near(s.rescue.p,s.scenario.extract,37))))){
     s.mission='done';s.phase='won';
     s.report=['OPERATION COMPLETE',s.missionType.toUpperCase(),
       'EXTRACTION COMPLETE'];
