@@ -4,6 +4,9 @@
  */
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {studioCameraFocus,studioFocusEasing,clampStudioCameraZoom,
+ STUDIO_FULL_FIT,STUDIO_MIN_ZOOM,STUDIO_MAX_ZOOM}
+ from './operator-studio-camera-focus.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {OperatorAppearanceGrid,APPEARANCE_GROUP_LABELS} from './operator-appearance-grid.ts';
 import {readRoster,initialRoster,
@@ -100,7 +103,7 @@ const camera=new THREE.OrthographicCamera(-22,22,30,-30,.1,600);
 camera.position.set(65,53,-68);
 const controls=new OrbitControls(camera,canvas);
 controls.enablePan=false;controls.enableDamping=false;
-controls.minZoom=.7;controls.maxZoom=2.8;
+controls.minZoom=STUDIO_MIN_ZOOM;controls.maxZoom=STUDIO_MAX_ZOOM;
 controls.target.set(0,23,0);controls.update();
 const thumbBrowser=new OperatorAppearanceGrid(
  $('studioItemBrowser'),renderer,(slot,id)=>chooseStyle(slot,id),
@@ -126,12 +129,56 @@ function renderScene(){
 }
 controls.addEventListener('change',renderScene);
 new ResizeObserver(resize).observe(stage);
-/** The current pose uses the preserved legacy +X forward axis. The
- * public rig name is canonical -Z, but its root -90°/legacy +90°
- * adapters cancel at neutral heading. These are actual rendered views. */
+
+/** Damped target+zoom changes, canceled immediately by touch orbit/pinch,
+ * wheel or a manual view button. Never changes the rig pose or wardrobe. */
+let focusAnimation=0;
+const cancelCameraFocus=()=>{
+ if(focusAnimation)cancelAnimationFrame(focusAnimation);
+ focusAnimation=0;
+};
+controls.addEventListener('start',cancelCameraFocus);
+function focusCameraOnCategory(slot:WardrobeSlot,immediate=false){
+ cancelCameraFocus();
+ const focus=studioCameraFocus(slot);
+ const startTarget=controls.target.clone();
+ const nextTarget=new THREE.Vector3(0,focus.targetY,0);
+ const startCamera=camera.position.clone();
+ const offset=camera.position.clone().sub(controls.target);
+ // Rear 3/4 frames the backpack when browsing PACK. Other categories
+ // preserve the player's manually chosen azimuth and elevation.
+ const nextOffset=focus.side==='back'?
+  new THREE.Vector3(-69,29,44):offset;
+ const nextCamera=nextTarget.clone().add(nextOffset);
+ const startZoom=camera.zoom,nextZoom=clampStudioCameraZoom(focus.zoom);
+ const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+ const renderAt=(t:number)=>{
+  const ease=studioFocusEasing(t);
+  controls.target.lerpVectors(startTarget,nextTarget,ease);
+  camera.position.lerpVectors(startCamera,nextCamera,ease);
+  camera.zoom=startZoom+(nextZoom-startZoom)*ease;
+  camera.updateProjectionMatrix();
+  controls.update();
+  renderScene();
+ };
+ if(immediate||reducedMotion){renderAt(1);return;}
+ const start=performance.now(),duration=300;
+ const step=(now:number)=>{
+  const t=Math.max(0,Math.min(1,(now-start)/duration));
+  renderAt(t);
+  if(t<1)focusAnimation=requestAnimationFrame(step);
+  else focusAnimation=0;
+ };
+ focusAnimation=requestAnimationFrame(step);
+}
+/** The neutral rig's historical +X-forward adapters cancel; these are
+ * actual rendered views, not a rotated placeholder. FRONT/SIDE/BACK retain
+ * the focused part's framing, while FIT restores the complete character. */
 function frameView(view:'front'|'side'|'back'|'fit'){
- const center=new THREE.Vector3(0,23,0);
- controls.target.copy(center);
+ cancelCameraFocus();
+ const center=view==='fit'?
+  new THREE.Vector3(0,STUDIO_FULL_FIT.targetY,0):
+  new THREE.Vector3(0,studioCameraFocus(activeCategory).targetY,0);
  const distance=82;
  const directions={
   front:new THREE.Vector3(distance,18,0),
@@ -139,8 +186,10 @@ function frameView(view:'front'|'side'|'back'|'fit'){
   back:new THREE.Vector3(-distance,18,0),
   fit:new THREE.Vector3(distance*.75,35,distance*.68)
  } as const;
+ controls.target.copy(center);
  camera.position.copy(center).add(directions[view]);
- if(view==='fit')camera.zoom=1;
+ camera.zoom=clampStudioCameraZoom(
+  view==='fit'?STUDIO_FULL_FIT.zoom:camera.zoom);
  camera.updateProjectionMatrix();
  controls.update();renderScene();
 }
@@ -680,6 +729,7 @@ function selectCategory(slot:WardrobeSlot){
  // headgear/armor/gear when browsing those categories.
  clothesOnly=slot==='top'||slot==='trousers'||slot==='facewear';
  comparingSaved=false;syncGearToggle();refresh();
+ focusCameraOnCategory(slot);
 }
 function renderCategories(){
  categories.replaceChildren();subcategories.replaceChildren();
@@ -844,6 +894,7 @@ function start(data:{mode:StudioMode;selected:string;members:StudioPerson[];read
   mode==='campaign'?'CAMPAIGN · SAVE PERSISTENT APPEARANCE':
    'QUICK PLAY · COSMETICS PERSIST / COMBAT GEAR DOES NOT');
  resize();
+ focusCameraOnCategory(activeCategory,true);
 }
 modelSelector.addEventListener('change',()=>{selected=modelSelector.value;refresh();});
 /** Save every operator draft as one transaction, not merely the selected
