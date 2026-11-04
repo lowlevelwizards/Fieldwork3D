@@ -21,6 +21,10 @@ on:
       - 'tests/operator-rig-r7-front-mounts.test.mjs'
       - 'tests/operator-rig-r7-magazine-readability.test.mjs'
       - 'tests/operator-armor-r8-default-color.test.mjs'
+      - 'src/operator-fabric-camo-materials.ts'
+      - 'tests/operator-r9-armor-visibility.test.mjs'
+      - 'tests/operator-r9-lower-front-straps.test.mjs'
+      - 'tests/operator-r9-camo-density.test.mjs'
       - 'operator-armor-rig-lab.html'
       - 'src/operator-wardrobe-gear-visuals.ts'
       - 'src/operator-visual-kit.ts'
@@ -50,6 +54,8 @@ jobs:
         run: node --experimental-strip-types --test tests/operator-rig-r7-authenticity-policy.test.mjs tests/operator-rig-r7-front-mounts.test.mjs tests/operator-rig-r7-magazine-readability.test.mjs tests/operator-rig-r6-pocket-pressure.test.mjs tests/operator-rig-r6-shoulder-joins.test.mjs tests/operator-rig-r5-matrix.test.mjs
       - name: Armor R8 default fabrics, material changes and override regressions
         run: node --experimental-strip-types --test tests/operator-armor-r8-default-color.test.mjs
+      - name: R9 armor occlusion, real lower strap joins and world-scale camo
+        run: node --experimental-strip-types --test tests/operator-r9-armor-visibility.test.mjs tests/operator-r9-lower-front-straps.test.mjs tests/operator-r9-camo-density.test.mjs tests/operator-fabric-camo-stage2.test.mjs
       - run: npm install --no-save --package-lock=false playwright@1.56.1
       - run: npx playwright install --with-deps chromium
       - name: Existing mobile Operator Studio smoke

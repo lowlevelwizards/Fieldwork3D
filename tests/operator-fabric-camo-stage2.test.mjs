@@ -11,7 +11,7 @@ import {initialWardrobe,readWardrobe,matchWardrobeUniformCamo,
  setWardrobeFabricCamo,rerollWardrobeFabricCamo,
  resolvedWardrobe} from '../src/operator-wardrobe-data.ts';
 import {initialEquipmentLoadout} from '../src/equipment-loadouts.ts';
-import {wardrobeFabricCamoTexture,mapGarmentBoxUV}
+import {wardrobeFabricCamoTexture,mapGarmentBoxUV,FABRIC_CAMO_DENSITY}
  from '../src/operator-fabric-camo-materials.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
 import {makeWardrobeLook,exportWardrobeLook,importWardrobeLook}
@@ -61,7 +61,7 @@ test('authored fabric cuts use immutable approved pixels and physically scaled n
  assert.equal(tex.image.width,headwearCamoSize('m81-woodland'));
  assert.deepEqual(tex.image.data,headwearCamoPixels('m81-woodland'));
  assert.deepEqual(headwearCamoPixels('m81-woodland'),before);
- assert.equal(tex.repeat.x,32*HEADWEAR_CAMO_DENSITY['m81-woodland']/headwearCamoSize('m81-woodland'));
+ assert.equal(tex.repeat.x,32*FABRIC_CAMO_DENSITY['m81-woodland']/headwearCamoSize('m81-woodland'));
  assert.equal(tex.magFilter,THREE.NearestFilter);
  assert.equal(tex.colorSpace,THREE.SRGBColorSpace);
  assert.equal(tex.offset.x,3/headwearCamoSize('m81-woodland'));
