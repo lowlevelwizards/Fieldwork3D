@@ -3,6 +3,8 @@
  * equipment-catalog / equipment-loadouts / campaign-state.
  */
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {isSkinToneId,isHairStyleId,isHairToneId,
+ type SkinToneId,type HairStyleId,type HairToneId} from './operator-identity-palette.ts';
 import {wardrobeMount} from './operator-wardrobe-mounts.ts';
 import {validArmorSolid,validRigSolid}
  from './operator-rig-authenticity-policy.ts';
@@ -141,6 +143,8 @@ export const trouserHemOptions=(trousers:string)=>trousers==='bdu-trousers'||
  trousers==='acu-trousers'||trousers==='gorka-trousers'?TROUSER_HEMS:['unbloused'] as const;
 export type WardrobeOptions={
  version:1;styles:Partial<Record<WardrobeSlot,string>>;
+ /** Optional explicit identity; missing values retain the historical seeded look. */
+ skinTone?:SkinToneId;hairStyle?:HairStyleId;hairTone?:HairToneId;
  headwearColor?:HeadwearSolidColorId;headwearCamo?:HeadwearCamoId;
  headwearCamoRoll?:number;
  /** Approved original prints on verified textile channels. */
@@ -183,6 +187,9 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(!raw||typeof raw!=='object')return result;
  const v=raw as Partial<WardrobeOptions>;
  if(v.version!==1)return result;
+ if(isSkinToneId(v.skinTone))result.skinTone=v.skinTone;
+ if(isHairStyleId(v.hairStyle))result.hairStyle=v.hairStyle;
+ if(isHairToneId(v.hairTone))result.hairTone=v.hairTone;
  if(v.styles&&typeof v.styles==='object'&&!Array.isArray(v.styles)){
   for(const slot of WARDROBE_SLOTS){
    const id=v.styles[slot];
