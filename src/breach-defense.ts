@@ -54,7 +54,7 @@ export function defenseCandidates(origin:Pt,threat:Pt,doors:Door[]):Pt[]{
 }
 export type DefenseOptions={requireFiringLane?:boolean;targetHeight?:number};
 export function chooseDefense(origin:Pt,threat:Pt,doors:Door[],
-  others:Defender[],selfId:string,options:DefenseOptions={}):Pt|null{
+  others:Defender[],selfId:string,policy:DefenseOptions={}):Pt|null{
   const options=defenseCandidates(origin,threat,doors);
   let best:Pt|null=null,score=-Infinity;
   for(const p of options){
@@ -64,13 +64,13 @@ export function chooseDefense(origin:Pt,threat:Pt,doors:Door[],
     // Cover is only useful if the defender can still bring the muzzle
     // above or around it. Eye-level sight does not guarantee a firing lane.
     const lane=assessFireLane(p,26,threat,
-      options.targetHeight??32,COVER,WALLS,doors,
+      policy.targetHeight??32,COVER,WALLS,doors,
       others.filter(o=>o.id!==selfId&&o.health>0).map(o=>o.p));
     const firingValue=lane.blocker==='clear';
     // When actually repositioning to shoot a visible opponent, a point
     // with no real muzzle lane is not a valid destination, even if it
     // scores well as passive cover. Defensive holds still accept cover.
-    if(options.requireFiringLane&&!firingValue)continue;
+    if(policy.requireFiringLane&&!firingValue)continue;
     const span=others.filter(a=>a.id!==selfId&&a.health>0)
       .reduce((n,a)=>n+(dist(p,a.p)>55&&dist(p,a.p)<160?15:0),0);
     const doorHazard=doors.reduce((penalty,door)=>{
