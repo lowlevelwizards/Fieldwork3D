@@ -3,12 +3,13 @@
  * Never adds colliders, armor stats, render cost in battle or serialized data.
  */
 import * as THREE from 'three';
-import {uniformFitEnvelope,fittedArmorSurfaces,armorContactSpan,ARMOR_PANEL_DEPTHS}
+import {armorContactSurface,fittedArmorSurfaces,armorContactSpan,ARMOR_PANEL_DEPTHS}
  from './operator-uniform-fit-envelope.ts';
 import {ARMOR_PROFILES} from './operator-armor-rig-silhouettes.ts';
 import {armorAttachmentFrame} from './operator-armor-attachment-frame.ts';
 import {ARMOR_ANATOMY,ARMOR_PROPORTIONS} from './operator-armor-proportions.ts';
 import {armorSideLayout} from './operator-armor-side-layout.ts';
+import {garmentContactAnchor} from './operator-garment-contact-surface.ts';
 
 export type ArmorFitDebug={
  group:THREE.Group;status:string;warnings:string[];
@@ -23,7 +24,7 @@ const marker=(g:THREE.Group,x:number,y:number,z:number,color:number,size=.58)=>{
 export function createArmorFitDebug(style:string,top:string):ArmorFitDebug{
  const group=new THREE.Group();
  group.name='lab-armor-fit-debug';
- const env=uniformFitEnvelope(top);
+ const shoulderContact=garmentContactAnchor(top,5.2);
  const nominal=ARMOR_PROFILES[style]??ARMOR_PROFILES['armor-bare'];
  const fit=fittedArmorSurfaces(style,top,nominal);
  const frame=armorAttachmentFrame(style,top);
@@ -37,17 +38,20 @@ export function createArmorFitDebug(style:string,top:string):ArmorFitDebug{
   back:concealed?0:surface.back-(fit.back+depth),
   side:concealed?0:side?
    side.centerZ-side.sideHalfThickness-side.garmentSide:0,
-  shoulder:fit.shoulderY-env.shoulderCrown
+  shoulder:fit.shoulderY-shoulderContact.topY-
+   (spec?.strapThickness??.6)*.5
  };
  const warnings:string[]=[];
  if(!concealed){
   if(clearance.front<.075)warnings.push('front bag intersects uniform');
   if(clearance.back<.075)warnings.push('rear bag intersects uniform');
   if(clearance.side<.075)warnings.push('side closure intersects uniform');
-  if(clearance.shoulder<.30)warnings.push('straps fall below shoulder crown');
+  if(clearance.shoulder<-.16||clearance.shoulder>.35)
+   warnings.push('shoulder contact gap outside acceptable overlap');
  }
  const wirePoints:THREE.Vector3[]=[];
- for(const r of env.rings){
+ for(const y of [-5,-2,1,4,5.2]){
+  const r=armorContactSurface(top,y);
   const rect=[
    new THREE.Vector3(r.front,r.y,-r.side),
    new THREE.Vector3(r.front,r.y,r.side),
@@ -78,6 +82,39 @@ export function createArmorFitDebug(style:string,top:string):ArmorFitDebug{
    transparent:true,opacity:.82}));
  anatomyRails.name='r4-anatomical-reference-rails';
  anatomyRails.renderOrder=999;group.add(anatomyRails);
+ // Actual matching contact pairs: cyan = SHIRT SURFACE, yellow =
+ // inner armor face. These points derive from the rendered garment model,
+ // not the old aspirational blouse fit envelope. A connector shows the gap.
+ if(!concealed&&spec){
+  const contacts:readonly (readonly [THREE.Vector3,THREE.Vector3])[]=[
+   ...[-2.75,2.75].flatMap(z=>[
+    [new THREE.Vector3(surface.front,0,z),
+     new THREE.Vector3(fit.front-depth,0,z)],
+    [new THREE.Vector3(surface.back,0,z),
+     new THREE.Vector3(fit.back+depth,0,z)]
+   ] as [THREE.Vector3,THREE.Vector3][]),
+   ...[-1,1].flatMap(sign=>[
+    [new THREE.Vector3(0,spec.sideY,sign*(side?.garmentSide??0)),
+     new THREE.Vector3(0,spec.sideY,sign*
+      ((side?.centerZ??0)-(side?.sideHalfThickness??0)))],
+    [new THREE.Vector3(0,shoulderContact.topY,sign*fit.shoulderZ),
+     new THREE.Vector3(0,fit.shoulderY-spec.strapThickness*.5,
+      sign*fit.shoulderZ)]
+   ] as [THREE.Vector3,THREE.Vector3][])
+  ];
+  const segments:THREE.Vector3[]=[];
+  for(const [garment,armor] of contacts){
+   marker(group,garment.x,garment.y,garment.z,0x6eddd0,.24);
+   marker(group,armor.x,armor.y,armor.z,0xebc68b,.24);
+   segments.push(garment,armor);
+  }
+  const matching=new THREE.LineSegments(
+   new THREE.BufferGeometry().setFromPoints(segments),
+   new THREE.LineBasicMaterial({color:warnings.length?0xe78c6e:
+    0xb2da9c,depthTest:false}));
+  matching.name='r7-real-garment-to-armor-contact-pairs';
+  matching.renderOrder=1001;group.add(matching);
+ }
  const markerColor=warnings.length?0xe78c6e:0xe6c88a;
  for(const z of [-3.15,3.15]){
   marker(group,frame.front.x,1.4,z,markerColor);

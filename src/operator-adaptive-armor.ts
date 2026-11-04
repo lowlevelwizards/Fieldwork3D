@@ -16,7 +16,7 @@ import {fittedArmorBag,fittedShoulderBridge,fittedSideWrap,fittedArmorCollar}
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {armorSideLayout} from './operator-armor-side-layout.ts';
 import {armorStrapLanding} from './operator-armor-straps.ts';
-import {uniformFitEnvelope,fittedArmorSurfaces,ARMOR_PANEL_DEPTHS,
+import {uniformFitEnvelope,armorContactSurface,fittedArmorSurfaces,ARMOR_PANEL_DEPTHS,
  type ArmorFitSurfaces} from './operator-uniform-fit-envelope.ts';
 
 export type AdaptiveArmorGroups=Record<string,THREE.Group>;
@@ -108,8 +108,7 @@ function clearConnectors(entry:ArmorEntry){
  */
 function shoulders(g:THREE.Group,m:THREE.Material,
  fit:ArmorFitSurfaces,spec:ArmorProportion){
- const env=uniformFitEnvelope(fit.top);
- const shoulder=env.outer(5.30);
+ const shoulder=armorContactSurface(fit.top,5.30);
  const land=armorStrapLanding(fit,spec);
  for(const side of [-1,1]){
   if(spec.family==='skeleton'){
@@ -161,11 +160,16 @@ function attachedSide(g:THREE.Group,m:THREE.Material,
    // Three legible planes: front return, flank, rear return.
    // A SINGLE low-poly bend per corner follows the torso instead of
    // forcing square plate-sized corners out around the shoulders.
-   const run=Math.min(1.50,Math.max(.88,p.frontReturnLength*.43));
+   // Both diagonal corners remain OUTSIDE the visible rectangular
+   // garment: only one short facet, not a diagonal cut through the shirt.
+   const fabric=armorContactSurface(fit.top,y);
+   const turnZ=p.garmentSide+.29;
    const path:readonly (readonly [number,number])[]=[
     [p.frontX+.12,side*(p.plateEdgeZ-.13)],
-    [p.frontX-run,side*p.centerZ],
-    [p.backX+run,side*p.centerZ],
+    [p.frontX+.12,side*turnZ],
+    [fabric.front-.42,side*p.centerZ],
+    [fabric.back+.42,side*p.centerZ],
+    [p.backX-.12,side*turnZ],
     [p.backX-.12,side*(p.plateEdgeZ-.13)]
    ];
    fittedSideWrap(g,m,path,y,height,spec.sideThickness,side);

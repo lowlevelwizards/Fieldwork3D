@@ -3,6 +3,7 @@
  * No headgear geometry, IK transform, collision or weapon grip is modified.
  */
 import * as THREE from 'three';
+import {VISIBLE_UPPER_CONTACT} from './operator-garment-contact-surface.ts';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {outwardLimbPocket,outwardLimbPatch} from './operator-garment-mount-frame.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
@@ -102,14 +103,12 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
   // The base chest is already a complete clothed 10x12x14 block.
   // Outerwear gets at most one modest cover; the smock alone extends
   // over the belt line rather than widening every body part.
-  if(combat)box(torso,body,0,0,0,10.22,12.22,14.22);
-  else if(smock){
-   // Looser outer layer; the real smock skirt reaches well below the belt.
-   box(torso,body,0,0,0,11.18,12.52,15.05);
-   box(torso,body,0,-8.05,0,11.64,4.28,15.35);
-  }else{
-   // One long, modestly oversized canvas shell: not a second armor plate.
-   box(torso,body,0,-.98,0,11.45,15.70,15.10);
+  // The visible fabric shell and armor contact sockets share authored
+  // dimensions, not a decorative fitting profile around an absent mesh.
+  for(const [i,b] of VISIBLE_UPPER_CONTACT[cut].entries()){
+   const shell=box(torso,body,b.x,b.y,b.z,b.width,b.height,b.depth);
+   shell.name='fieldwork-contact-shell-'+cut+'-'+i;
+   shell.userData.armorContactShell=true;
   }
   if(combat){
    // A SINGLE knit shell covers the torso front, sides and back. No

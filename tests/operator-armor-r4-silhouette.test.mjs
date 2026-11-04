@@ -67,9 +67,9 @@ test('R4 anatomy is stable and width/height hierarchy is intentional',()=>{
 test('R4 uses actual uniform landmarks across all five upper garments',()=>{
  for(const top of ARMOR_FIT_TOPS){
   const a=armorGarmentLandmarks(top);
-  assert.ok(a.shoulderY>6.3);
-  assert.ok(a.sternum.front>5);
-  assert.ok(a.ribs.side>7);
+  assert.ok(a.shoulderY>=6.0);
+  assert.ok(a.sternum.front>=5);
+  assert.ok(a.ribs.side>=7);
   assert.ok(a.waist.y<=ARMOR_ANATOMY.waist+.01);
  }
 });

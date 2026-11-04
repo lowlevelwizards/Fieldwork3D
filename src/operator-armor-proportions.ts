@@ -7,7 +7,7 @@
  * armor statistics, or automatic real-world dimension conversion.
  * Visual seams and straps must remain readable at game camera distance.
  */
-import {uniformFitEnvelope} from './operator-uniform-fit-envelope.ts';
+import {garmentContactAnchor} from './operator-garment-contact-surface.ts';
 
 export const ARMOR_ANATOMY={
  neckBase:7.0,
@@ -79,12 +79,12 @@ export const ARMOR_VISIBLE_STYLES=[
  * The fit layer may lift a shoulder but never silently rescale its bag.
  */
 export function armorGarmentLandmarks(top:string){
- const garment=uniformFitEnvelope(top);
+ const shoulder=garmentContactAnchor(top,5.3);
  return {
-  shoulderY:garment.shoulderCrown,
-  sternum:garment.outer(ARMOR_ANATOMY.upperSternum),
-  ribs:garment.outer(ARMOR_ANATOMY.lowerRibs),
-  waist:garment.outer(ARMOR_ANATOMY.waist),
-  shoulder:garment.outer(5.3)
+  shoulderY:shoulder.topY,
+  sternum:garmentContactAnchor(top,ARMOR_ANATOMY.upperSternum),
+  ribs:garmentContactAnchor(top,ARMOR_ANATOMY.lowerRibs),
+  waist:garmentContactAnchor(top,ARMOR_ANATOMY.waist),
+  shoulder
  };
 }

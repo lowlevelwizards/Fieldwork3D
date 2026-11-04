@@ -5,6 +5,7 @@ import {uniformFitEnvelope,ARMOR_FIT_TOPS,fittedArmorSurfaces,
  ARMOR_PANEL_DEPTHS}
  from '../src/operator-uniform-fit-envelope.ts';
 import {ARMOR_PROFILES} from '../src/operator-armor-rig-silhouettes.ts';
+import {garmentContactAnchor} from '../src/operator-garment-contact-surface.ts';
 import {armorAttachmentFrame,armorMountedMagazineSocket}
  from '../src/operator-armor-attachment-frame.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
@@ -56,10 +57,10 @@ test('all five authored uniforms supply deterministic monotonic fit envelopes',(
 });
 test('all 40 armor/uniform combinations clear the garment and preserve authored size',()=>{
  for(const top of ARMOR_FIT_TOPS)for(const style of armorStyles){
-  const e=uniformFitEnvelope(top);
   const f=fittedArmorSurfaces(style,top,ARMOR_PROFILES[style]);
-  const outside=e.outer(-1.0);
-  assert.ok(f.shoulderY>=e.shoulderCrown+.46,
+  const outside=garmentContactAnchor(top,-1.0);
+  const shoulder=garmentContactAnchor(top,5.2);
+  assert.ok(f.shoulderY>=shoulder.topY+.43,
    style+' over '+top+' shoulder crown is above fabric');
   if(style==='soft-slick'){
    assert.ok(f.front<=5.17,'concealed armor remains under clothes');
