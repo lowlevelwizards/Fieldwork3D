@@ -1,6 +1,7 @@
 /** 109–113. Deliberately simple box anatomy and independently articulated limbs.
  * The battle motor remains authoritative. IK is presentation-only. */
 import * as THREE from 'three';
+import {CORE_TORSO_CONTACT} from './operator-garment-contact-surface.ts';
 import {operatorPixelTextures,type PixelSurface} from './rendering/pixel-materials.ts';
 import {canonicalRootOrientation,LEGACY_FRAME_YAW,
   createCanonicalAttachment} from './operator-axis-convention.ts';
@@ -236,7 +237,11 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   hip.position.y=20.2;
   block(hip,0,0,0,8,5,12,trousers);
   chest.position.y=26;
-  block(chest,0,0,0,10,12,14,cloth);
+  const c=CORE_TORSO_CONTACT;
+  const baseTorso=block(chest,c.x,c.y,c.z,
+   c.width,c.height,c.depth,cloth);
+  baseTorso.name='fieldwork-contact-base-torso';
+  baseTorso.userData.armorContactShell=true;
   const armorPanels=[block(chest,3,0,0,2.8,9,13,vest),
     block(chest,-3,1,0,2,8,11,vest)];
   // Low-poly padded upper-pec/shoulder contour is the visible buttplate
