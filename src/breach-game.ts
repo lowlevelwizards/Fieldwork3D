@@ -2674,8 +2674,9 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         a.searchOrigin=clone(a.contact);
         a.searchQueue=searchCandidates(a.searchOrigin,
           belief?.uncertainty??65,s.site?.rooms??[]);
-        a.searchPauseUntil=s.seconds+tempo.inspectSeconds;
       }
+      if(a.searchPauseUntil===0)
+        a.searchPauseUntil=s.seconds+tempo.inspectSeconds;
       // Examine this location before selecting another. Strictly bound
       // reachability checks to avoid a pathfinding spike on contact.
       if(s.seconds<a.searchPauseUntil){
@@ -2690,7 +2691,8 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       a.nav=[];
       if(next){
         a.contact=clone(next);
-        a.searchPauseUntil=s.seconds+tempo.inspectSeconds;
+        // Inspect only after arriving at the next search point.
+        a.searchPauseUntil=0;
       }else if(!a.searchQueue.length){
         a.alert='cover';a.contact=null;a.searchOrigin=null;
         a.searchPauseUntil=0;
