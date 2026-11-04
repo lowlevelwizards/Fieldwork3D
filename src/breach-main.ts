@@ -69,6 +69,7 @@ import {DisplayRouteCache} from './breach-route-cache.ts';
 import {FrameMeter} from './breach-perf.ts';
 import {formatAfterAction} from './breach-after-action.ts';
 import {formatMissionPacing} from './breach-mission-pacing.ts';
+import {formatCombatReview} from './breach-combat-review.ts';
 import {readRoster,applyRosterIdentity,freshQuickPlayRoster,
   serializeQuickPlayCosmetics,
   resupplyRoster,equipRoster,equipRosterGear,moveRosterMagazine,
@@ -2056,6 +2057,7 @@ function updateHud(){
         o.injury?'WOUNDED':'ACTIVE':'DOWN')+' · '+o.fired+' RDS').join('\n')+
       '\nOPERATIONS LOGGED: '+operationHistory().length+
       '\n\nMISSION PACING\n'+formatMissionPacing(recorder.events)+
+      '\n\nCOMBAT REVIEW\n'+formatCombatReview(recorder.frames,recorder.events)+
       '\n\nTACTICAL TIMELINE\n'+formatAfterAction(recorder.events,10);
     if(campaignMode==='mission'&&campaign?.history.length){
      const recent=campaign.history[campaign.history.length-1];
