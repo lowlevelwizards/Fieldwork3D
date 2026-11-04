@@ -3242,7 +3242,10 @@ function updateReplayHud(){
   ui.replayView.textContent=viewMode.toUpperCase();
   ui.replayFollow.textContent=replayFollow?'FOLLOW '+replayFollowId.toUpperCase():'FOLLOW';
   ui.replayAnalysis.textContent=replayAnalysis?'ANALYSIS ON':'ANALYSIS';
-  const event=recorder.events.filter(e=>e.t<=replayTime+.14).at(-1);
+  const execution=recorder.executionEvents.filter(e=>
+    e.kind==='blocked'||e.kind==='resumed'||e.kind==='completed');
+  const event=[...recorder.events,...execution]
+    .filter(e=>e.t<=replayTime+.14).sort((a,b)=>a.t-b.t).at(-1);
   ui.replayEventText.textContent=event&&replayTime-event.t<4.5?
     clockText(event.t)+' · '+event.text:'';
 }
@@ -3252,7 +3255,9 @@ function renderReplayEventMarkers(){
   if(duration<=0)return;
   const friendlyIds=new Set(team(state).map(a=>a.id));
   let lastShot=-Infinity,count=0;
-  for(const event of recorder.events){
+  const significant=recorder.executionEvents.filter(e=>
+    e.kind==='blocked'||e.kind==='resumed'||e.kind==='completed');
+  for(const event of [...recorder.events,...significant].sort((a,b)=>a.t-b.t)){
     if(count>=85)break;
     if(event.kind==='shot'){
       if(event.t-lastShot<3)continue;
@@ -3332,7 +3337,9 @@ ui.replayView.addEventListener('click',()=>{
   updateReplayHud();
 });
 const jumpReplayEvent=(forward:boolean)=>{
-  const events=recorder.events.filter(e=>e.kind!=='shot');
+  const events=[...recorder.events.filter(e=>e.kind!=='shot'),
+    ...recorder.executionEvents.filter(e=>e.kind==='blocked'||
+      e.kind==='resumed'||e.kind==='completed')].sort((a,b)=>a.t-b.t);
   const item=forward?events.find(e=>e.t>replayTime+.15):
     events.slice().reverse().find(e=>e.t<replayTime-.15);
   if(item){replayPlaying=false;seekReplay(item.t);}
