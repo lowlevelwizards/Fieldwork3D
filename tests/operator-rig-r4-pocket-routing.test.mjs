@@ -49,7 +49,9 @@ function equip(r,top,armor,rig){
  let equipment=initialEquipmentLoadout();
  equipment=setEquipmentChoice(equipment,'armor',armor==='armor-bare'?
   'armor-none':armor.startsWith('soft-')?'armor-soft':'armor-carrier');
- equipment=setEquipmentChoice(equipment,'rig','rig-full');
+ equipment=setEquipmentChoice(equipment,'rig',
+  ['chest-placard','micro-rig','light-rig','chicom-rig',
+   'bandolier'].includes(rig)?'rig-light':'rig-full');
  poseOperator(r,{x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
   posture:'stand',injury:0,weapon:'carbine',reload:0,reloadDuration:0,
   lastDoorAt:-100,lastThrowAt:-100,down:false,surrender:false,
