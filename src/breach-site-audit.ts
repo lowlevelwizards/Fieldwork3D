@@ -18,6 +18,7 @@ import {assessAccessibilityClearance,type AccessibilityQuality} from './worldgen
 import {inspectHumanJourneys,type JourneyAudit} from './worldgen/human-journeys.ts';
 import {measureRouteFriction,type RouteFriction} from './worldgen/route-friction.ts';
 import {auditEncounter,type EncounterSpatialAudit} from './worldgen/encounter-diagnostics.ts';
+import {verifiedDeploymentChoices,type DeploymentChoice} from './breach-deployment.ts';
 import {auditTacticalOpportunities,type TacticalOpportunityAudit}
   from './worldgen/tactical-opportunity-audit.ts';
 import {scoreCompositeQuality,type CompositeQuality} from './worldgen/composite-quality.ts';
@@ -50,6 +51,7 @@ export function auditSite(site:Site):SiteAudit{
   const errors:string[]=[];
   const operationalRouteIssues:OperationalRouteIssue[]=[];
   let humanJourneys:JourneyAudit={checkedLegs:0,issues:[],inspected:[]};
+  let verifiedEntries:DeploymentChoice[]=[];
   let routeFriction:RouteFriction=measureRouteFriction(site.spawn[0]??{x:0,y:0},
     site.objective,[],()=>false);
   try{
@@ -65,6 +67,7 @@ export function auditSite(site:Site):SiteAudit{
         !passable(p))errors.push(label+' is invalid');
     }
     const from=site.spawn[0];
+    if(from)verifiedEntries=verifiedDeploymentChoices(site);
     let objectivePath:Pt[]=[];
     for(const [label,p] of [
       ['objective',site.objective] as const,
@@ -156,6 +159,6 @@ export function auditSite(site:Site):SiteAudit{
     mobilityQuality:auditTacticalMobility(site),
     accessibilityQuality:assessAccessibilityClearance(site),humanJourneys,
     routeFriction,encounterAudit:auditEncounter(site),
-    tacticalOpportunities:auditTacticalOpportunities(site),errors};
+    tacticalOpportunities:auditTacticalOpportunities(site,verifiedEntries),errors};
   return {...base,compositeQuality:scoreCompositeQuality(base)};
 }
