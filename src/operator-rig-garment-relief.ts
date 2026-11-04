@@ -1,9 +1,16 @@
-/** R4: accessory contact is not the same thing as protective-armor contact.
- * Plate carriers compress sewn-on front pockets; an unarmored chest rig
- * must instead rest OUTSIDE their actual rendered outer faces.
+/** RIG-R6: a fitted external rig may mildly compress sewn-on pockets,
+ * rather than hovering beyond the untouched bellows and flaps.
  * Measurements mirror the box/flap authors in operator-field-blouse-prototypes
  * and operator-new-upper-garments. Chest local: +X front, +Y up.
  */
+/** Chest-local pressure in game units. Keep the garment source boxes:
+ * the pocket flaps remain behind the outer visible rig face despite a
+ * small, intentional intersection with the webbing's inner face.
+ */
+export const RIG_POCKET_PRESSURE={
+ inset:.25,depthScale:.80,drop:.18,lateralScale:.94,
+ rearOverlap:.20,minFlapHalfDepth:.15
+} as const;
 export type RigFrontObstruction=Readonly<{
  low:number;high:number;front:number;label:string
 }>;
@@ -60,6 +67,11 @@ export function rigGarmentFrontClearance(
  let front=baseFront;
  for(const obstacle of RIG_GARMENT_OBSTRUCTIONS[top]??[])
   if(obstacle.high>=range[0]&&obstacle.low<=range[1])
-   front=Math.max(front,obstacle.front);
+   // Match the real rendered pocket compression at equip time.
+   // Conservatively use the thinnest flap's half-depth.
+   front=Math.max(front,obstacle.front-RIG_POCKET_PRESSURE.inset-
+    RIG_POCKET_PRESSURE.minFlapHalfDepth*
+     (1-RIG_POCKET_PRESSURE.depthScale)-
+    RIG_POCKET_PRESSURE.rearOverlap);
  return front;
 }

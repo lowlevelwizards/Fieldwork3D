@@ -4,8 +4,9 @@ import {rigContactFrame,RIG_PANEL_INNER_FACES}
  from '../src/operator-rig-contact-frame.ts';
 import {rigGarmentFrontClearance,RIG_FRONT_SPANS}
  from '../src/operator-rig-garment-relief.ts';
-import {ARMOR_FIT_TOPS,uniformFitEnvelope}
- from '../src/operator-uniform-fit-envelope.ts';
+import {ARMOR_FIT_TOPS} from '../src/operator-uniform-fit-envelope.ts';
+import {garmentContactAnchor}
+ from '../src/operator-garment-contact-surface.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
 import {initialWardrobe} from '../src/operator-wardrobe-data.ts';
 import {initialEquipmentLoadout,setEquipmentChoice}
@@ -14,11 +15,12 @@ import {initialEquipmentLoadout,setEquipmentChoice}
 const RIGS=['chest-placard','micro-rig','light-rig','chicom-rig',
  'bandolier','split-front','full-chest','lbv','field-webbing',
  'sadf-webbing'];
-test('R4-A: pocket protrusions are measured at their real authored outer faces',()=>{
- assert.ok(rigGarmentFrontClearance('bdu-shirt','micro-rig',5)>6.46);
- assert.ok(rigGarmentFrontClearance('acu-shirt','micro-rig',5)>6.26);
- assert.ok(rigGarmentFrontClearance('smock-jacket','full-chest',5.59)>6.74);
- assert.ok(rigGarmentFrontClearance('gorka-jacket','full-chest',5.72)>6.76);
+test('RIG-R6: raised pockets permit mild rear overlap after compression',()=>{
+ assert.ok(rigGarmentFrontClearance('bdu-shirt','micro-rig',5)>5.95);
+ assert.ok(rigGarmentFrontClearance('bdu-shirt','micro-rig',5)<6.20);
+ assert.ok(rigGarmentFrontClearance('acu-shirt','micro-rig',5)>5.70);
+ assert.ok(rigGarmentFrontClearance('smock-jacket','full-chest',5.59)>6.20);
+ assert.ok(rigGarmentFrontClearance('gorka-jacket','full-chest',5.72)>6.25);
  assert.equal(rigGarmentFrontClearance('combat-shirt','micro-rig',5.11),5.11);
  // A pocket outside the actual rig footprint must NOT push all designs out.
  assert.equal(rigGarmentFrontClearance('smock-jacket','micro-rig',5.59),5.59);
@@ -29,9 +31,9 @@ test('R4-A: all exterior harnesses clear garment pockets, shoulders and sides',(
   for(const rig of RIGS){
    for(const armor of ['armor-bare','soft-slick','plate-jpc','plate-heavy']){
     const f=rigContactFrame(armor,top,rig);
-    const jacket=uniformFitEnvelope(top);
-    assert.ok(f.shoulderY>=jacket.shoulderCrown+.39,
-     rig+'/'+top+'/'+armor+' shoulder cap');
+    const crown=garmentContactAnchor(top,5.2).topY;
+    assert.ok(f.shoulderY>=crown+.10&&f.shoulderY<=crown+.25,
+     rig+'/'+top+'/'+armor+' shoulder rests on actual cloth');
     assert.ok(f.sideRight.z-f.sideContact>=.49,
      rig+'/'+top+'/'+armor+' whole flank strap thickness');
     if(armor==='armor-bare'||armor==='soft-slick')

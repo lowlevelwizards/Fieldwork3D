@@ -7,6 +7,7 @@ import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import type {CarryLocation} from './equipment-carry-placement.ts';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
+import {fitRigCoveredPockets} from './operator-rig-pocket-fit.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {createFieldBlousePrototypes,updateFieldBlousePrototypes,
  type FieldBlousePrototypes} from './operator-field-blouse-prototypes.ts';
@@ -294,6 +295,14 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   wardrobe?.sleeveState??'unrolled');
  updateNewUpperGarments(v.newUpper,looks.top,
   wardrobe?.sleeveState??'unrolled');
+ // Deform the REAL compressible pocket meshes only while rig webbing is
+ // equipped. Cached transforms prevent incremental pose-time distortion.
+ const pressRig=usingWardrobe?looks.rigStyle:'no-rig';
+ if(looks.top==='bdu-shirt'||looks.top==='acu-shirt')
+  fitRigCoveredPockets(v.fieldBlouses[looks.top].torso,pressRig);
+ else if(looks.top==='combat-shirt'||looks.top==='smock-jacket'||
+  looks.top==='gorka-jacket')
+  fitRigCoveredPockets(v.newUpper.cuts[looks.top].torso,pressRig);
  updateFieldTrouserPrototypes(v.fieldTrousers,looks.trousers,
   wardrobe?.trouserHem??'bloused',looks.footwear==='bare-feet',looks.top);
  updateWardrobeBodyLayers(v.wardrobeBody,looks.top,looks.trousers,
