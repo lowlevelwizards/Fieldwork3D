@@ -364,6 +364,16 @@ jobs:
       - name: Studio camera focus — slot geometry and bounds
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-studio-context-camera-') }}
         run: node --experimental-strip-types --test tests/operator-studio-camera-focus-stage-f1.test.mjs
+      - name: G3 critical target acquisition, cover safety and firefight review
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-gameplay-quality-g3-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/gameplay-g3-target-stability.test.mjs \
+            tests/gameplay-g3-fire-lanes.test.mjs \
+            tests/mission-combat-review-r8c.test.mjs \
+            tests/tactical-integration-17-firefight-b1.test.mjs \
+            tests/tactical-integration-18-firefight-b2.test.mjs \
+            tests/mission-mode-probe-r8d.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}

@@ -16,5 +16,9 @@ export function selectFireableContact<T extends ObservableTarget>(
  });
  if(near.length===1)return near[0];
  const valid=near.filter(clearLane);
- return valid.find(t=>t.id===currentId)??valid[0]??near[0];
+ // If every known lane is obstructed, keep tracking the already observed
+ // contact instead of snapping to a closer, equally unshootable target.
+ // Actual muzzle/friendly fire gates remain the only fire authority.
+ return valid.find(t=>t.id===currentId)??valid[0]??
+   near.find(t=>t.id===currentId)??near[0];
 }

@@ -30,7 +30,7 @@ import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
 import {segmentHitsBox} from './breach-ray.ts';
 import {coverImpactFraction,aimHeight} from './breach-cover-height.ts';
 import {microKeyAt} from './breach-fog-memory.ts';
-import {assessFireLane,type FireBlock} from './breach-fire-safety.ts';
+import {assessFireLane,fireLaneReachable,type FireBlock} from './breach-fire-safety.ts';
 import {selectFireableContact} from './breach-target-selection.ts';
 import {acquisitionSeconds} from './breach-firing-cadence.ts';
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
@@ -3307,7 +3307,15 @@ function fire(s:Session,a:TeamActor,dt:number){
     const lane=assessFireLane(a.p,a.posture==='crouch'?18:26,
       candidate.p,aimHeight(candidate.posture==='crouch'),
       COVER,WALLS,s.doors,friends);
-    return lane.blocker==='clear';
+    if(lane.blocker==='clear')return true;
+    if(lane.blocker!=='cover')return false;
+    // Candidate selection uses the SAME physical penetration model as
+    // ignition, instead of rejecting every covered contact regardless of
+    // caliber. A confirmed contact is still required for acquisition.
+    const preview=strikeSurface(a.p,candidate.p,s,
+      a.posture==='crouch'?18:26,aimHeight(candidate.posture==='crouch'),
+      WEAPONS[a.weapon].penetration);
+    return fireLaneReachable(lane,preview,candidate.p);
   });
   if(!target){
     a.targetId=null;a.aim=Math.max(0,a.aim-dt*.6);
@@ -3359,10 +3367,7 @@ function fire(s:Session,a:TeamActor,dt:number){
     {x:sightMuzzle.x,y:sightMuzzle.z},target.p,s,
     sightMuzzle.y,aimHeight(target.posture==='crouch'),
     weapon.penetration);
-  const penetrableLane=lane.blocker==='cover'&&
-    laneTrace.remaining>.015&&
-    d(laneTrace.end,target.p)<.5;
-  if(lane.blocker!=='clear'&&!penetrableLane){
+  if(!fireLaneReachable(lane,laneTrace,target.p)){
     if(a.side==='blue'&&s.seconds-a.lastLaneWarnAt>2){
       notify(s,a.name+' FIRE BLOCKED · '+lane.blocker.toUpperCase());
       a.lastLaneWarnAt=s.seconds;

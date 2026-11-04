@@ -34,3 +34,15 @@ export function assessFireLane(from:Pt,muzzleHeight:number,to:Pt,
   }
   return {blocker:'clear'};
 }
+
+/** Acquisition and ignition must agree on whether actual cover can be
+ * defeated by the current projectile. Only COVER can be penetrated by this
+ * decision; walls, doors and teammates remain hard target-selection vetoes.
+ * The caller supplies an immutable preview from authoritative ballistics.
+ */
+export function fireLaneReachable(lane:FireLane,
+ preview:{end:Pt;remaining:number}|null,target:Pt):boolean{
+ if(lane.blocker==='clear')return true;
+ if(lane.blocker!=='cover'||!preview)return false;
+ return preview.remaining>.015&&distance(preview.end,target)<.5;
+}

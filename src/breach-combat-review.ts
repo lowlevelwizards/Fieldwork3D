@@ -10,7 +10,7 @@ import {summarizeMissionPacing} from './breach-mission-pacing.ts';
 export type CombatReview={
  observedProjectiles:number;verifiedHits:number;armorOrCoverImpacts:number;
  hitRate:number;woundEvents:number;downEvents:number;shotEvents:number;
- contactToFireSeconds:number|null;peakSuppression:number;
+ contactToFireSeconds:number|null;preContactShots:number;peakSuppression:number;
  pointShots:number;aimedShots:number;
 };
 const rounded=(n:number)=>Math.round(n*10)/10;
@@ -26,24 +26,37 @@ export function summarizeCombatReview(frames:readonly ReplayFrame[],
  const all=[...shots.values()];
  const hits=all.filter(shot=>shot.hit).length;
  const pace=summarizeMissionPacing(events);
- const contactToFireSeconds=pace.firstContactAt===null||pace.firstShotAt===null?
-  null:rounded(Math.max(0,pace.firstShotAt-pace.firstContactAt));
+ // The first shot in the encounter can precede any visual contact (e.g.
+ // a concealed defender fires). That cannot be described as a zero-second
+ // response. Find the first *subsequent* shot from immutable battle events.
+ const contactAt=pace.firstContactAt;
+ const timedShots=events.filter(e=>e.kind==='shot');
+ const preContactShots=contactAt===null?0:
+   timedShots.filter(e=>e.t<contactAt).length;
+ const subsequent=contactAt===null?[]:
+   timedShots.filter(e=>e.t>=contactAt).map(e=>e.t);
+ const firstAfter=subsequent.length?Math.min(...subsequent):null;
+ const contactToFireSeconds=contactAt===null||firstAfter===null?
+   null:rounded(firstAfter-contactAt);
  return {observedProjectiles:all.length,verifiedHits:hits,
   armorOrCoverImpacts:all.filter(s=>s.surface==='metal'||s.surface==='wood').length,
   hitRate:all.length?rounded(hits/all.length*100):0,
   woundEvents:events.filter(e=>e.kind==='wound').length,
   downEvents:events.filter(e=>e.kind==='down').length,
   shotEvents:events.filter(e=>e.kind==='shot').length,
-  contactToFireSeconds,peakSuppression:rounded(peakSuppression),
+  contactToFireSeconds,preContactShots,peakSuppression:rounded(peakSuppression),
   pointShots:all.filter(s=>s.mode==='point').length,
   aimedShots:all.filter(s=>s.mode==='ads').length};
 }
 export function formatCombatReview(frames:readonly ReplayFrame[],
  events:readonly BattleEvent[]):string{
  const r=summarizeCombatReview(frames,events);
- const delay=r.contactToFireSeconds===null?'NO CONFIRMED CONTACT→SHOT':
-  r.contactToFireSeconds.toFixed(1)+'s CONTACT→FIRST SHOT';
+ const hasContact=summarizeMissionPacing(events).firstContactAt!==null;
+ const delay=!hasContact?'NO CONFIRMED CONTACT':
+   r.contactToFireSeconds===null?'NO RECORDED POST-CONTACT SHOT':
+   r.contactToFireSeconds.toFixed(1)+'s CONTACT→NEXT SHOT';
  return 'CONTACT RESPONSE '+delay+
+  (r.preContactShots?' · PRE-CONTACT GUNFIRE '+r.preContactShots:'')+
   '\nRECORDED SHOT EVENTS '+r.shotEvents+
   ' · OBSERVED PROJECTILES '+r.observedProjectiles+
   '\nVERIFIED HITS '+r.verifiedHits+' / '+r.observedProjectiles+
