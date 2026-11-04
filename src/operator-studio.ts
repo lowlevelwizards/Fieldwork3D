@@ -18,7 +18,7 @@ import {readWardrobe,initialWardrobe,resolvedWardrobe,setWardrobeStyle,
  type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
 import {fabricCamoChoices,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {resolveAutomaticGearColors} from './operator-gear-color-policy.ts';
-import {RIG_VISUAL_TEXTILES,ARMOR_VISUAL_TEXTILES,rigSignature,armorSignature}
+import {RIG_VISUAL_TEXTILES,ARMOR_VISUAL_TEXTILES,rigSignature,armorSignature,rigColorAssembly}
  from './operator-rig-authenticity-policy.ts';
 import {GARMENT_SOLID_COLORS,solidChoicesFor,resolvedCuffSolid,
  resolvedCombatKnitSolid,type GarmentSolidId} from './operator-garment-color-policy.ts';
@@ -449,7 +449,8 @@ function renderMaterials(){
       w.headwearCamo===id?nextHeadwearCamoRoll(w.headwearCamoRoll):0}));
   }
  }
- if(activeCategory==='rigStyle'&&item!=='no-rig'){
+ if(activeCategory==='rigStyle'&&item!=='no-rig'&&
+  rigColorAssembly(item).detachablePouches){
   row('POUCH FABRIC',w.pouchSolid?
    'Advanced pouch-only fabric override: '+GARMENT_SOLID_COLORS[w.pouchSolid].label:
    'AUTO · Match rig material, including original camouflage and cut position.');
@@ -466,6 +467,24 @@ function renderMaterials(){
    RIG_VISUAL_TEXTILES[item]?.solids??solidChoicesFor('gear'),
    w.pouchSolid??null,
    id=>changeWardrobe({...current(),pouchSolid:id}));
+  materialRoot.append(advanced);
+ }
+ if(activeCategory==='rigStyle'&&item!=='no-rig'&&
+  rigColorAssembly(item).replaceableHarness){
+  row('HARNESS / WEBBING',w.strapSolid?
+   'REPLACEABLE HARNESS: '+GARMENT_SOLID_COLORS[w.strapSolid].label:
+   'AUTO · Match rig, with plain webbing when historically appropriate.');
+  const advanced=document.createElement('details');
+  advanced.className='material-group';
+  const summary=document.createElement('summary');
+  summary.textContent='ADVANCED HARNESS COLOR';advanced.append(summary);
+  const actions=document.createElement('div');actions.className='material-row';
+  actions.append(makeButton('AUTO · MATCH RIG',!w.strapSolid,()=>
+   changeWardrobe({...current(),strapSolid:undefined})));
+  advanced.append(actions);
+  addSolidSwatches(advanced,
+   RIG_VISUAL_TEXTILES[item]?.solids??solidChoicesFor('gear'),
+   w.strapSolid??null,id=>changeWardrobe({...current(),strapSolid:id}));
   materialRoot.append(advanced);
  }
  if(activeCategory==='top'){

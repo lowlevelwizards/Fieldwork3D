@@ -551,7 +551,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   const rearHarness=g.getObjectByName('uniform-fitted-rig-harness');
   if(rearHarness instanceof THREE.Group){
    rearHarness.userData.rearCargoMaterial=pocketFabric;
-   rearHarness.userData.rearTrimMaterial=trim;
+   rearHarness.userData.rearTrimMaterial=webbing;
   }
   for(const s of [-1,1]){
    for(const z of [3.25,6.05])

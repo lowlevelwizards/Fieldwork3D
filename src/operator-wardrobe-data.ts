@@ -157,6 +157,8 @@ export type WardrobeOptions={
  knitSolid?:GarmentSolidId;
  /** Advanced pouch-only solid override; absent means inherit rig textile. */
  pouchSolid?:GarmentSolidId;
+ /** Replaceable harness material; ignored on sewn/integrated rigs. */
+ strapSolid?:GarmentSolidId;
  sleeveState:SleeveState;trouserHem:TrouserHem;
  /** Contextual new-garment materials, never the abolished global palette. */
  topColorway:string;
