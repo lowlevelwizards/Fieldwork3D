@@ -50,10 +50,14 @@ export function armorMountedMagazineSocket(style:string,index:number,
  // The first two RIG-A panel silhouettes have their own precisely known
  // pouch faces. A real magazine sits JUST under the pocket's outer flap,
  // not ahead of the old nominal 9.25 offset.
- if(style==='micro-rig'||style==='chest-placard'){
+ if(['micro-rig','chest-placard','light-rig',
+   'chicom-rig','bandolier'].includes(style)){
   const contact=rigContactFrame(armor,top,style);
   if(Math.abs(socket.rotation)<.01){
-   const mouth=style==='micro-rig'?8.93:9.20;
+   const mouth=style==='micro-rig'?8.93:
+    style==='chest-placard'?9.20:
+    style==='light-rig'?8.84:
+    style==='chicom-rig'?8.94:8.50;
    return {...socket,x:mouth+contact.rigShiftX};
   }
   return {...socket,z:Math.sign(socket.z)*(contact.sideRight.z+.12)};
