@@ -7,6 +7,7 @@ import type {Door,Pt} from '../breach-core.ts';
 import {accessibleExteriorWall} from '../breach-site-footprint.ts';
 import {initializeWindows} from '../breach-windows.ts';
 import {windowClimbAvailability} from '../breach-mantle.ts';
+import type {DeploymentChoice} from '../breach-deployment.ts';
 
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const middle=(d:{a:Pt;b:Pt}):Pt=>({x:(d.a.x+d.b.x)/2,
@@ -25,7 +26,8 @@ const windowSegment=(w:WindowOpening)=>{
   {a:{x:w.x-h,y:w.y},b:{x:w.x+h,y:w.y}};
 };
 export type EntryOpportunity={id:string;kind:'primary'|'secondary'|'shutter'|'window';
- at:Pt;distanceFromFront:number;status:'door'|'open-first'|'break-first'};
+ at:Pt;distanceFromFront:number;status:'door'|'open-first'|'break-first';
+ verified:boolean};
 export type TacticalRoomOpportunity={
  roomId:string;purpose:string;doorways:number;windows:number;
  coverPieces:number;solidFraction:number;entryPressure:number;
@@ -33,6 +35,7 @@ export type TacticalRoomOpportunity={
 export type TacticalOpportunityAudit={
  entryOptions:EntryOpportunity[];exteriorDoors:number;alternativeDoors:number;
  potentialWindowEntries:number;distinctApproachSides:number;
+ verifiedApproaches:number;verifiedAlternateDoors:number;verifiedWindows:number;
  objectiveRoom:string;objectivePurpose:string;objectiveEntryDistance:number;
  closestHostileToEntry:number;hostilesNearObjective:number;
  roomOpportunities:TacticalRoomOpportunity[];
@@ -41,7 +44,9 @@ export type TacticalOpportunityAudit={
 };
 const uniqueDoor=(a:Door,b:Door)=>a.pairedWith===b.id&&
  b.pairedWith===a.id;
-export function auditTacticalOpportunities(site:Site):TacticalOpportunityAudit{
+export function auditTacticalOpportunities(site:Site,
+ verified:readonly DeploymentChoice[]=[]):TacticalOpportunityAudit{
+ const verifiedIds=new Set(verified.map(c=>c.id));
  const front=site.doors.find(d=>d.id==='FRONT');
  const frontP=front?middle(front):site.entrance;
  const entries:EntryOpportunity[]=[];
@@ -57,7 +62,8 @@ export function auditTacticalOpportunities(site:Site):TacticalOpportunityAudit{
   const at=middle(door);
   entries.push({id:door.id,kind:door.id==='FRONT'?'primary':
     door.kind==='shutter'?'shutter':'secondary',
-    at,distanceFromFront:Math.round(dist(at,frontP)),status:'door'});
+    at,distanceFromFront:Math.round(dist(at,frontP)),status:'door',
+    verified:verifiedIds.has(door.id)});
  }
  for(const window of initializeWindows(site.windows??[])){
   const segment=windowSegment(window);
@@ -66,7 +72,8 @@ export function auditTacticalOpportunities(site:Site):TacticalOpportunityAudit{
   if(status!=='open-first'&&status!=='break-first')continue;
   const at={x:window.x,y:window.y};
   entries.push({id:window.id,kind:'window',at,
-    distanceFromFront:Math.round(dist(at,frontP)),status});
+    distanceFromFront:Math.round(dist(at,frontP)),status,
+    verified:verifiedIds.has(window.id)});
  }
  const sides=new Set<string>();
  const bounds=site.rooms.length?{
@@ -115,6 +122,9 @@ export function auditTacticalOpportunities(site:Site):TacticalOpportunityAudit{
   warnings.push('no furnished room with a tactical threshold');
  return {entryOptions:entries,exteriorDoors:entries.filter(e=>e.kind!=='window').length,
   alternativeDoors,potentialWindowEntries:windowEntries,
+  verifiedApproaches:verified.length,
+  verifiedAlternateDoors:verified.filter(e=>e.kind==='secondary'||e.kind==='shutter').length,
+  verifiedWindows:verified.filter(e=>e.kind==='window').length,
   distinctApproachSides:sides.size,
   objectiveRoom:objective?.id??'outside',
   objectivePurpose:objective?.purpose??'unknown',

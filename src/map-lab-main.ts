@@ -280,7 +280,10 @@ function report(site:Site,result:SiteAudit):string{
   ' exterior doors · '+result.tacticalOpportunities.alternativeDoors+
   ' secondary thresholds · '+result.tacticalOpportunities.potentialWindowEntries+
   ' potential window approaches · '+result.tacticalOpportunities.distinctApproachSides+
-  ' approach sides (candidate openings, not guaranteed routes)\n'+
+  ' approach sides · VERIFIED: '+result.tacticalOpportunities.verifiedApproaches+
+  ' reachable outside ('+result.tacticalOpportunities.verifiedAlternateDoors+
+  ' alternate doors, '+result.tacticalOpportunities.verifiedWindows+
+  ' window approaches). Candidate apertures alone are not verified.\n'+
   'ENGAGEMENT SPACES: '+result.tacticalOpportunities.roomsWithCoverAndDoor+
   ' furnished threshold rooms · '+result.tacticalOpportunities.emptyEngagementRooms+
   ' empty threshold rooms · '+result.tacticalOpportunities.objectivePurpose+
