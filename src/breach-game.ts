@@ -40,6 +40,7 @@ import {localDetour} from './breach-cooperation.ts';
 import {friendlyPassingStep,nearOccupiedFriendlyGoal} from './breach-friendly-traffic.ts';
 import {resolveMovementFrame} from './breach-movement-authority.ts';
 import {recoveryAction,routeRetrySeconds} from './breach-movement-recovery.ts';
+import type {MotorPause,ExecutionIssue} from './breach-execution-state.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
 import {relocateCover,canRelocateCover,coverPushDistance,
   autoShoveLightCover} from './breach-movable-cover.ts';
@@ -157,6 +158,9 @@ export type TeamActor=Operator & {
   /** Reverses an interrupted climb along the verified approach trajectory. */
   traversalRetreating:boolean;
   lastBlocker:Blocker;
+  /** Execution diagnostics are transient; never rewrite authored PlanNode[]. */
+  motorPause:MotorPause;orderIssue:ExecutionIssue|null;
+  completedOrders:number;
   /** Last executed facing command; survives across movement waypoints. */
   aimInstruction:AimInstruction|null;
   /** Simulation-timed cues, not new combat rules. */
@@ -273,7 +277,7 @@ const withActions=(a:Operator):TeamActor=>({
   traversalPending:null,traversal:null,traversalElapsed:0,
   traversalElevation:0,lastTraversalAt:-100,
   traversalRetreating:false,
-  lastBlocker:'clear',
+  lastBlocker:'clear',motorPause:null,orderIssue:null,completedOrders:0,
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
   lastHitRegion:'torso',lastHitYaw:0,lastHitSeverity:0,
   downPose:'forward',
@@ -1754,7 +1758,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   });
   if(passageWait(traffic.find(unit=>unit.id===a.id)!,s.doors,
      traffic,s.passageLeases,s.seconds,move)){
-    a.velocity=0;a.blockedTime=0;
+    a.motorPause='passage';a.velocity=0;a.blockedTime=0;
     return true;
   }
   // Identify the leaf for closed-door authored handling; open hinged
@@ -1780,10 +1784,14 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       doorBlocksSegment(door,{a:a.p,b:p});
   }):undefined;
   if(doorAhead){
+    a.motorPause='door-opening';
     const opening=doorInteraction({target:doorAhead,actorId:a.id,
       actorPosition:a.p,action:'open'});
     if(opening.reason==='held'||opening.reason==='locked'||
        opening.reason==='obstructed'){
+      a.motorPause=opening.reason==='held'?'door-held':
+        opening.reason==='locked'?'door-locked':'door-obstructed';
+      a.lastBlocker='door';
       a.velocity=0;a.blockedTime+=dt;
       // A blocked door remains physically closed; no AI magic opening.
       if(a.side==='red'&&a.blockedTime>1.2){
@@ -2004,13 +2012,16 @@ function applyAimNode(a:TeamActor,n:PlanNode){
     a.aimInstruction={mode:'fixed',angle:n.facing};
 }
 function pop(a:TeamActor){
+  if(a.plan.length)a.completedOrders++;
   a.plan.shift();a.activeNode=-1;a.nav=[];a.waitRemaining=0;
-  a.actionTimer=0;a.syncReady=null;a.pieIndex=0;pathFor(a);
+  a.actionTimer=0;a.syncReady=null;a.pieIndex=0;
+  a.orderIssue=null;a.motorPause=null;pathFor(a);
 }
 function runOrders(s:Session,a:TeamActor,dt:number){
   // Player-authored positions are sacred. Traffic steering only moves the
   // actor who requested movement, never a stationary friend or held stack.
   const n=a.plan[0];
+  a.motorPause=null;
   // An airborne crossing must reach a verified landing before combat pause,
   // waypoint completion, or fresh orders can resume.
   if(a.traversal){tickTraversal(a,s,dt);return;}
@@ -2040,6 +2051,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   }
   if(a.activeNode!==n.id){
     a.activeNode=n.id;a.nav=[];a.waitRemaining=0;a.actionTimer=0;
+    a.orderIssue=null;
     // Physical interactions and running terminate sustained WATCH, never
     // silently resume it when the operator returns to walking.
     if(interruptsWatch(n,a.pace))a.aimInstruction=null;
@@ -2227,7 +2239,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       // opening. Preserve this CLOSE order until their landing completes.
       if(n.interaction==='close-window'&&s.operators.some(o=>o.health>0&&
          o.traversal?.windowId===id)){
-        a.velocity=0;a.actionTimer=0;return;
+        a.motorPause='window-clearance';a.velocity=0;a.actionTimer=0;return;
       }
       const window=s.windows.find(w=>w.id===id);
       if(window&&d(a.p,{x:window.x,y:window.y})<54&&
