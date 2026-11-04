@@ -276,6 +276,21 @@ function report(site:Site,result:SiteAudit):string{
   '% mean solid footprint · '+result.spaceQuality.crowdedRoomIds.length+
   ' crowded rooms · '+result.spaceQuality.doorApproachIssues.length+
   ' doorway proximity warnings\n'+
+  'TACTICAL ENTRY: '+result.tacticalOpportunities.exteriorDoors+
+  ' exterior doors · '+result.tacticalOpportunities.alternativeDoors+
+  ' secondary thresholds · '+result.tacticalOpportunities.potentialWindowEntries+
+  ' potential window approaches · '+result.tacticalOpportunities.distinctApproachSides+
+  ' approach sides (candidate openings, not guaranteed routes)\n'+
+  'ENGAGEMENT SPACES: '+result.tacticalOpportunities.roomsWithCoverAndDoor+
+  ' furnished threshold rooms · '+result.tacticalOpportunities.emptyEngagementRooms+
+  ' empty threshold rooms · '+result.tacticalOpportunities.objectivePurpose+
+  ' objective room ('+result.tacticalOpportunities.objectiveEntryDistance+
+  ' from entry)\n'+
+  'ENCOUNTER PACING: first hostile '+result.tacticalOpportunities.closestHostileToEntry+
+  ' from entry · '+result.tacticalOpportunities.hostilesNearObjective+
+  ' hostile(s) near objective'+
+  (result.tacticalOpportunities.warnings.length?' · REVIEW: '+
+    result.tacticalOpportunities.warnings.slice(0,3).join('; '):'')+'\n'+
   'FUNCTIONAL QUALITY: '+result.designQuality.score+' penalty points'+
   ' · '+result.designQuality.criticalMissing+' critical fixtures missing'+
   ' · '+result.designQuality.incompleteUnits+' incomplete units'+
