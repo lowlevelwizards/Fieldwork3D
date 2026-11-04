@@ -365,6 +365,8 @@ function renderMaterials(){
    }
    section.append(swatches);
   }
+  if(item==='gas-gp5'&&outfit.headwear!=='bare')
+   row('HOOD CLEARANCE','The hood hides the hat/helmet model without changing saved headwear or actual protection.');
   if(item==='half-mask'||item==='respirator-half'){
    const variants:readonly (readonly [string,string])[]=item==='half-mask'?
     [['solid','Hard shell'],['mesh','Mesh-faced']]:

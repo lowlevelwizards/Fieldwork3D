@@ -153,7 +153,7 @@ export function readD2AccessoryOptions(
  return out;
 }
 export type D2HeadAssembly={
- facewear:string;eyewear:string;headset:string;
+ facewear:string;headwear:string;eyewear:string;headset:string;
  eyewearHiddenReason?:string;
  headsetHiddenReason?:string;
  eyewearPlacement:'eyes'|'forehead'|'helmet'|'neck'|'hidden';
@@ -167,6 +167,9 @@ export function resolveD2HeadAssembly(input:{
  const {facewear,eyewear,headwear,headset}=input;
  const hood=['balaclava-one','balaclava-three','balaclava-open','gas-gp5']
   .includes(facewear)||facewear==='shemagh'&&input.options?.faceMode==='head-wrap';
+ // GP-5 rubber covers the entire scalp and ears. Hide intersecting gear
+ // visually without erasing actual equipment or saved style preferences.
+ const shownHeadwear=facewear==='gas-gp5'?'bare':headwear;
  let eye=eyewear,headsetVisible=headset;
  let placement:D2HeadAssembly['eyewearPlacement']='eyes';
  let eyewearHiddenReason:string|undefined;
@@ -174,7 +177,8 @@ export function resolveD2HeadAssembly(input:{
  if(isFullFaceMask(facewear)){
   eye='eyes-none';placement='hidden';
   eyewearHiddenReason='External glasses and goggles are covered by a full-face mask.';
-  if(headset==='boom-headset'||headset==='helmet-ears'){
+  if(headset==='boom-headset'||headset==='helmet-ears'||
+     facewear==='gas-gp5'&&headset!=='comms-none'){
    headsetVisible='comms-none';
    headsetHiddenReason='Headset geometry conflicts with this full-face mask.';
   }
@@ -189,7 +193,7 @@ export function resolveD2HeadAssembly(input:{
   }
  }
  return {
-  facewear,eyewear:eye,headset:headsetVisible,
+  facewear,headwear:shownHeadwear,eyewear:eye,headset:headsetVisible,
   eyewearHiddenReason,headsetHiddenReason,eyewearPlacement:placement,
   hairCovered:hood
  };

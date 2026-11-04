@@ -21,6 +21,10 @@ test('D2-C3 four full masks each retain their structurally distinct filter and v
  assert.equal(cheek.length,2,'M50 has twin close-fitting cheek cartridges');
  const m40Filters=[];m40.traverse(x=>{if(x.name==='m40-projecting-side-canister')m40Filters.push(x);});
  assert.equal(m40Filters.length,1);
+ const m40Windows=[];
+ m40.traverse(x=>{if(x.name==='m40-angular-eyepiece-lens')m40Windows.push(x);});
+ assert.equal(m40Windows.length,2,'M40 angular eyepieces contrast with GP-5 rounds');
+ assert.equal(m40.getObjectByName('m40-round-eye-lens'),undefined);
 });
 test('D2 launch catalog includes exactly six fabric, six masks, seven eyewear models',()=>{
  assert.equal(D2_FACEWEAR.length,12);

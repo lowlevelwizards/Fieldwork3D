@@ -173,7 +173,7 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  const assembly=resolveD2HeadAssembly({facewear,eyewear,headwear,headset,
   options:d2Eye});
  const choices:{slot:WardrobeSlot;map:Model;id:string}[]=[
-  {slot:'headwear',map:layers.headwear,id:headwear},
+  {slot:'headwear',map:layers.headwear,id:assembly.headwear},
   {slot:'facewear',map:layers.facewear,id:facewear},
   {slot:'eyewear',map:layers.eyewear,id:assembly.eyewear},
   {slot:'headset',map:layers.headset,id:assembly.headset}

@@ -38,4 +38,9 @@ test('full gas mask cosmetics suppress eye and boom visuals without changing rea
  assert.equal(effective.eyewear,'eyes-none');
  assert.equal(effective.headset,'comms-none');
  assert.equal(effective.hairCovered,true);
+ assert.equal(effective.headwear,'bare','GP-5 hood hides helmet without altering saves');
+ const hoodWithHeadset=resolveD2HeadAssembly({
+  headwear:'ach',facewear:'gas-gp5',eyewear:'eyes-none',headset:'over-ear'
+ });
+ assert.equal(hoodWithHeadset.headset,'comms-none');
 });

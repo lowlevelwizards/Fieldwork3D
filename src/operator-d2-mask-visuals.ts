@@ -125,8 +125,15 @@ function m17(g:THREE.Group,m:D2MaskMaterials){
 function m40(g:THREE.Group,m:D2MaskMaterials){
  box(g,m.rubber,'m40-full-facepiece',0,2.46,-4.62,7.62,5.95,1.27);
  box(g,m.rubber,'m40-chin',0,-.67,-4.62,6.20,.67,1.06);
- for(const side of [-1,1])
-  roundEye(g,m,'m40-round-eye',side*2.07,4.03,-5.34,1.22,1.14);
+ // Enlarged angular spectacles distinguish the M40 from GP-5/M17 round eyes.
+ for(const side of [-1,1]){
+  const cx=side*2.07;
+  const pane:XY[]=[
+   [cx-1.39,4.78],[cx+1.39,4.78],[cx+1.52,3.93],
+   [cx+1.17,2.93],[cx-1.17,2.93],[cx-1.52,3.93]
+  ];
+  window(g,m,'m40-angular-eyepiece',pane,-5.34,.29);
+ }
  box(g,m.hardware,'m40-exhalation-front',0,.90,-5.42,2.23,1.73,.62);
  // Correct asymmetric external cheek cartridge, NOT integrated M17 pouches.
  box(g,m.hardware,'m40-single-side-port',3.11,1.55,-5.39,1.66,1.63,.69);
