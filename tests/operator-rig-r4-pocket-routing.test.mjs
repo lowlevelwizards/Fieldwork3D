@@ -14,11 +14,12 @@ import {initialEquipmentLoadout,setEquipmentChoice}
 const RIGS=['chest-placard','micro-rig','light-rig','chicom-rig',
  'bandolier','split-front','full-chest','lbv','field-webbing',
  'sadf-webbing'];
-test('R4-A: pocket protrusions are measured at their real authored outer faces',()=>{
- assert.ok(rigGarmentFrontClearance('bdu-shirt','micro-rig',5)>6.46);
- assert.ok(rigGarmentFrontClearance('acu-shirt','micro-rig',5)>6.26);
- assert.ok(rigGarmentFrontClearance('smock-jacket','full-chest',5.59)>6.74);
- assert.ok(rigGarmentFrontClearance('gorka-jacket','full-chest',5.72)>6.76);
+test('RIG-R6: raised pockets permit mild rear overlap after compression',()=>{
+ assert.ok(rigGarmentFrontClearance('bdu-shirt','micro-rig',5)>5.95);
+ assert.ok(rigGarmentFrontClearance('bdu-shirt','micro-rig',5)<6.20);
+ assert.ok(rigGarmentFrontClearance('acu-shirt','micro-rig',5)>5.85);
+ assert.ok(rigGarmentFrontClearance('smock-jacket','full-chest',5.59)>6.20);
+ assert.ok(rigGarmentFrontClearance('gorka-jacket','full-chest',5.72)>6.25);
  assert.equal(rigGarmentFrontClearance('combat-shirt','micro-rig',5.11),5.11);
  // A pocket outside the actual rig footprint must NOT push all designs out.
  assert.equal(rigGarmentFrontClearance('smock-jacket','micro-rig',5.59),5.59);
