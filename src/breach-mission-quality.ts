@@ -41,6 +41,7 @@ export type MissionSampleObservation={
  seed:number;mission:string;topology:string;invalid:boolean;
  objectiveDistance:number;verifiedApproaches:number;
  verifiedWindows:number;verifiedDoors:number;overexposedRooms:number;
+ rawOverexposedRooms?:number;
  film:MissionFilmQuality;
 };
 export function summarizeMissionSamples(samples:readonly MissionSampleObservation[]){
@@ -55,6 +56,7 @@ export function summarizeMissionSamples(samples:readonly MissionSampleObservatio
   meanVerifiedWindows:avg(s=>s.verifiedWindows),
   meanVerifiedDoors:avg(s=>s.verifiedDoors),
   overexposedRooms:samples.reduce((n,s)=>n+s.overexposedRooms,0),
+  allRoomOverexposure:samples.reduce((n,s)=>n+(s.rawOverexposedRooms??s.overexposedRooms),0),
   observedContacts:samples.filter(s=>s.film.firstContactAt!==null).length,
   observedShots:samples.filter(s=>s.film.firstShotAt!==null).length,
   completed:samples.filter(s=>s.film.extractionAt!==null).length,

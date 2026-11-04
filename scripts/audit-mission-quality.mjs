@@ -39,7 +39,9 @@ for(let index=0;index<count;index++){
   verifiedDoors:entry.verifiedAlternateDoors,
   overexposedRooms:audit.sightlineQuality.filter(r=>
     r.warnings.includes('overexposed room')&&site.rooms.some(room=>
-      room.id===r.roomId&&engagementRoomRelevant(room))).length,film});
+      room.id===r.roomId&&engagementRoomRelevant(room))).length,
+  rawOverexposedRooms:audit.sightlineQuality.filter(r=>
+    r.warnings.includes('overexposed room')).length,film});
  if(invalid)issues.push({seed,mission,siteErrors:audit.errors,
   replayErrors:film.issues});
  activateSite(null);
