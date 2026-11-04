@@ -23,8 +23,9 @@ test('all active wardrobe categories are distinct and dropped legacy data stays 
 test('cosmetics never create armor or carrying capacity',()=>{
  let kit=initialEquipmentLoadout();
  let w=setWardrobeStyle(initialWardrobe(),'headwear','beanie');
- assert.equal(resolvedWardrobe(w,kit).headwear,'ach');
- assert.deepEqual(wardrobeConflicts(w,kit),['headwear']);
+ // Headwear style is cosmetic; only the equipped kit determines protection.
+ assert.equal(resolvedWardrobe(w,kit).headwear,'beanie');
+ assert.deepEqual(wardrobeConflicts(w,kit),[]);
  kit=setEquipmentChoice(kit,'head','head-cap');
  assert.equal(resolvedWardrobe(w,kit).headwear,'beanie');
  kit=setEquipmentChoice(kit,'armor','armor-none');
