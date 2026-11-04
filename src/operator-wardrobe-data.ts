@@ -44,7 +44,8 @@ add('headwear','ballistic',[
 ]);
 add('facewear','face',[
  ['face-none','Uncovered'],['balaclava-one','One-opening balaclava'],
- ['balaclava-three','Three-hole balaclava'],['gaiter','Neck gaiter'],
+ ['balaclava-three','Three-hole balaclava'],
+ ['balaclava-open','Open-face balaclava'],['gaiter','Neck gaiter'],
  ['shemagh','Shemagh'],['scarf','Scarf'],['half-mask','Half mask'],
  ['gas-mask','Protective gas mask']
 ]);

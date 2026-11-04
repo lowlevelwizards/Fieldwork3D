@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {createHeadwearSilhouette} from './operator-headwear-silhouettes.ts';
+import {createD2Balaclava} from './operator-d2-fabric-visuals.ts';
 import {createHeadwearDetailMaterial} from './operator-headwear-materials.ts';
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import type {WardrobeSlot} from './operator-wardrobe-data.ts';
@@ -72,17 +73,11 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  g(headwear,'high-cut-rails',true).add(createHeadwearSilhouette('high-cut',detail('high-cut','high-cut-rails')));
  helmet('skate-helmet',9.65,2,false);
  helmet('bump-helmet',9.1,2,true);
- // One-opening and three-opening balaclavas use a forehead and chin with
- // face-side wraps; skin at the openings remains the underlying head.
- const balaclava=(id:string,one:boolean)=>{
-  const model=g(facewear,id);
-  cube(model,dark,4.25,5.1,0,.6,2.6,8.4);
-  cube(model,dark,4.25,.1,0,.6,2.6,8.4);
-  for(const sign of [-1,1])cube(model,dark,3.65,2.5,sign*4.08,1.5,5.2,.5);
-  if(!one)cube(model,dark,4.36,3.18,0,.4,1.25,.66);
- };
- balaclava('balaclava-one',true);
- balaclava('balaclava-three',false);
+ // D2-A1: fitted canonical -Z fabric shells with real skin-revealing apertures.
+ for(const id of ['balaclava-one','balaclava-three','balaclava-open'] as const){
+  const model=g(facewear,id,true);
+  model.add(createD2Balaclava(id,cloth));
+ }
  const neck=(id:string,high:number)=>{
   const model=g(facewear,id);
   cube(model,cloth,1.75,-1.8,0,5.75,2.6+high,8.9);
