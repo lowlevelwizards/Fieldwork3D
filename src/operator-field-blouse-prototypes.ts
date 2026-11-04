@@ -140,10 +140,14 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
   // attached details only, not a second thick cuboid shell around it.
   if(historic){
    // Open conventional collar with two broad turned-down lapels.
-   box(torso,cloth,-1.5,6.60,0,7.2,1.38,8.6);
+   const neck=box(torso,cloth,-1.5,6.60,0,7.2,1.38,8.6);
+    neck.userData.armorCollarPiece=true;
+    neck.userData.keepSeparate=true;
    for(const sign of [-1,1]){
-    box(torso,cloth,3.55,6.66,sign*3.18,3.9,1.02,3.40,
+    const lapel=box(torso,cloth,3.55,6.66,sign*3.18,3.9,1.02,3.40,
      sign*.24);
+    lapel.userData.armorCollarPiece=true;
+    lapel.userData.keepSeparate=true;
     // Four distinct BDU cargo pockets, two chest and two lower.
     for(const y of [2.1,-4.05]){
      // Four deeply bellows-shaped pockets, with the lower row slightly
@@ -165,10 +169,14 @@ export function createFieldBlousePrototypes(chest:THREE.Group,
   }else{
    // Fold-down modern ACU collar. Earlier UCP versions may stand higher;
    // keep the low folded silhouette for the OCP reference in this pass.
-   box(torso,cloth,-1.25,6.61,0,7.0,1.67,7.6);
+   const neck=box(torso,cloth,-1.25,6.61,0,7.0,1.67,7.6);
+    neck.userData.armorCollarPiece=true;
+    neck.userData.keepSeparate=true;
    for(const sign of [-1,1]){
-    box(torso,cloth,3.35,6.27,sign*2.6,3.60,.82,2.90,
+    const lapel=box(torso,cloth,3.35,6.27,sign*2.6,3.60,.82,2.90,
      sign*.17);
+    lapel.userData.armorCollarPiece=true;
+    lapel.userData.keepSeparate=true;
     // Angled chest pouches and recognizable lower utility pockets.
     // Both pairs are attached to the already-clothed torso, not floating.
     const pocket=box(torso,cloth,5.61,1.20,sign*3.60,1.33,3.13,4.36,

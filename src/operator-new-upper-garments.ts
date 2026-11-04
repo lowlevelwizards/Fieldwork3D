@@ -128,10 +128,16 @@ export function createNewUpperGarments(chest:THREE.Group,arms:readonly Arm[],
     box(torso,cloth,5.19,5.30,side*5.06,.26,1.85,4.40);
    }
    box(torso,cloth,-5.20,5.48,0,.26,1.62,14.42);
-   box(torso,cloth,-1.65,7.24,0,.95,1.75,5.60);
+   const neck=box(torso,cloth,-1.65,7.24,0,.95,1.75,5.60);
+   neck.userData.armorCollarPiece=true;
+   neck.userData.keepSeparate=true;
    for(const sign of [-1,1]){
-    box(torso,cloth,0,7.24,sign*2.48,4.80,1.75,.95);
-    box(torso,cloth,2.25,7.19,sign*1.28,.93,1.75,2.10);
+    const sideNeck=box(torso,cloth,0,7.24,sign*2.48,4.80,1.75,.95);
+    const frontNeck=box(torso,cloth,2.25,7.19,sign*1.28,.93,1.75,2.10);
+    for(const piece of [sideNeck,frontNeck]){
+     piece.userData.armorCollarPiece=true;
+     piece.userData.keepSeparate=true;
+    }
     // Shallow stitched seam from the full yoke onto the upper sleeve.
     box(torso,cloth,1.22,5.34,sign*6.13,2.80,.27,2.25);
    }
