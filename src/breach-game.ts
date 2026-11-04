@@ -40,7 +40,9 @@ import {localDetour} from './breach-cooperation.ts';
 import {friendlyPassingStep,nearOccupiedFriendlyGoal} from './breach-friendly-traffic.ts';
 import {resolveMovementFrame} from './breach-movement-authority.ts';
 import {recoveryAction,routeRetrySeconds} from './breach-movement-recovery.ts';
-import type {MotorPause,ExecutionIssue} from './breach-execution-state.ts';
+import {executionStatus,type MotorPause,type ExecutionIssue,
+  type ExecutionStatus} from './breach-execution-state.ts';
+import {executionTransition,type ExecutionEvent} from './breach-execution-events.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
 import {relocateCover,canRelocateCover,coverPushDistance,
   autoShoveLightCover} from './breach-movable-cover.ts';
@@ -161,6 +163,7 @@ export type TeamActor=Operator & {
   /** Execution diagnostics are transient; never rewrite authored PlanNode[]. */
   motorPause:MotorPause;orderIssue:ExecutionIssue|null;
   completedOrders:number;passageWaitSeconds:number;passageStallReported:boolean;
+  executionLastStatus:ExecutionStatus|null;
   /** Last executed facing command; survives across movement waypoints. */
   aimInstruction:AimInstruction|null;
   /** Simulation-timed cues, not new combat rules. */
@@ -238,6 +241,7 @@ export type Session=Omit<TacticalState,'operators'> & {
   grenades:FlashGrenade[];flashBursts:FlashBurst[];flashRemaining:number;
   nextEffectId:number;impactMarks:ImpactMark[];
   battleEvents:BattleEvent[];nextBattleId:number;
+  executionEvents:ExecutionEvent[];nextExecutionId:number;
   missionType:'clear'|'intel'|'rescue'|'hold'|'capture';holdTime:number;
   rescue:{p:Pt;following:string|null}|null;
   captureTarget:string|null;captureSecured:boolean;};
@@ -279,6 +283,7 @@ const withActions=(a:Operator):TeamActor=>({
   traversalRetreating:false,
   lastBlocker:'clear',motorPause:null,orderIssue:null,completedOrders:0,
   passageWaitSeconds:0,passageStallReported:false,
+  executionLastStatus:null,
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
   lastHitRegion:'torso',lastHitYaw:0,lastHitSeverity:0,
   downPose:'forward',
@@ -407,6 +412,7 @@ export function newSession(index=0,siteSeed?:number,
     syncCode:0,report:[],movementNoiseAt:0,site,lightingMode:'day',
     dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1,
     impactMarks:[],battleEvents:[],nextBattleId:1,
+    executionEvents:[],nextExecutionId:1,
     missionType:missionOverride??(site?(['clear','intel','rescue','hold','capture'] as const)[site.seed%5]:'clear'),
     holdTime:0,rescue:null,captureTarget:null,captureSecured:false};
   if(state.missionType==='capture'){
@@ -3733,6 +3739,22 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   mark('fire');
   mission(s,h);
   mark('mission');
+  // Record only changed player-visible states after the authoritative tick.
+  // This is observational: no actor motion or tactical orders are changed.
+  const friendly=team(s);
+  for(const unit of friendly){
+    const status=executionStatus(unit,{
+      phase:s.phase,doors:s.doors,peers:friendly
+    });
+    const change=executionTransition(unit.executionLastStatus,status,unit.name);
+    unit.executionLastStatus=status;
+    if(!change)continue;
+    s.executionEvents.push({
+      id:s.nextExecutionId++,t:s.seconds,actor:unit.id,
+      p:clone(unit.p),...change
+    });
+    if(s.executionEvents.length>240)s.executionEvents.shift();
+  }
 }
 export function operationBriefing(s:Session){
   const brief=operationBrief(s.missionType);
