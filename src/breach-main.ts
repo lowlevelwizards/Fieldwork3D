@@ -20,6 +20,7 @@ import {
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import type {TacticalOrderPreview} from './ui/tactical-feedback.ts';
 import {ExecutionNoticeFeed} from './ui/execution-feedback.ts';
+import {executionStatus} from './breach-execution-state.ts';
 import {currentSiteIdentity} from './ui/current-site-identity.ts';
 import {tacticalHitProfile,preferSelectedHit,shouldAppendStrokePoint,
   simplifyStrokePoints} from './ui/touch-hit-targets.ts';
@@ -2060,9 +2061,35 @@ function updateHud(){
     button.style.setProperty('--health-color',
       condition==='heavy'?'#c77f68':condition==='hurt'?'#d0ad76':'#91b5a5');
     button.dataset.condition=condition;
+    // One quiet, persistent state line in each EXISTING operator card.
+    // Its data comes from the motor and authored orders only; there is no
+    // live enemy-intel lookup and no new permanent tactical control.
+    let stateLine=button.querySelector<HTMLElement>('.unit-execution');
+    if(!stateLine){
+      stateLine=document.createElement('span');
+      stateLine.className='unit-execution';button.append(stateLine);
+    }
+    const execution=a?executionStatus(a,{
+      phase:state.phase==='planning'&&state.started?'running':state.phase,
+      doors:state.doors,peers:team(state)
+    }):null;
+    stateLine.textContent=execution?execution.label+
+      (execution.kind==='moving'?'':execution.detail?
+        ' · '+execution.detail:''):'UNAVAILABLE';
+    stateLine.dataset.kind=execution?.kind??'idle';
+    stateLine.title=execution?.detail??'';
+    if(execution?.progress!==undefined){
+      stateLine.dataset.progress='true';
+      stateLine.style.setProperty('--execution-progress',
+        Math.round(execution.progress*100)+'%');
+    }else{
+      stateLine.removeAttribute('data-progress');
+      stateLine.style.removeProperty('--execution-progress');
+    }
     button.setAttribute('aria-label',a?
       a.name+', '+condition+', '+a.magazine+
-      ' rounds loaded, '+a.reserve+' reserve'+(a.reload>0?', reloading':''):
+      ' rounds loaded, '+a.reserve+' reserve'+(a.reload>0?', reloading':'')+
+      '. '+(execution?.label??'IDLE')+'. '+(execution?.detail??''):
       id+', unavailable');
   }
   // Show the site as a place, not as a raw procedural generation dump.
