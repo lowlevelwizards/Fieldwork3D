@@ -21,8 +21,10 @@ test('no available alternate step: movement never deadlocks against friendly',()
    ()=>false),to);
 });
 test('occupied goal may be settled next to, not directly atop, another operator',()=>{
- const goal={x:20,y:20},peer={x:20,y:20},actor={x:4,y:20};
+ const goal={x:20,y:20},peer={x:20,y:20},actor={x:5,y:20};
  assert.equal(nearOccupiedFriendlyGoal(actor,goal,[peer],()=>true),true);
+ assert.equal(nearOccupiedFriendlyGoal({x:4,y:20},goal,[peer],()=>true),false,
+   'an actor just outside the real 15.5 unit arrival tolerance must keep moving');
  assert.equal(nearOccupiedFriendlyGoal(goal,goal,[peer],()=>true),false);
  assert.equal(nearOccupiedFriendlyGoal(actor,goal,[peer],()=>false),false);
 });
