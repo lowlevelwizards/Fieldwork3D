@@ -8,8 +8,8 @@ import type {EncounterProfile} from './encounter-types.ts';
 const near=(a:{x:number;y:number},b:{x:number;y:number})=>
  Math.hypot(a.x-b.x,a.y-b.y);
 export function tacticalDefenderRoomScore(
- room:Room,cover:readonly Site['cover'][number][],
- doors:readonly Site['doors'][number][],profile:EncounterProfile
+ room:Room,cover:Readonly<Site['cover']>,
+ doors:Readonly<Site['doors']>,profile:EncounterProfile
 ):number{
  const center={x:room.x+room.w/2,y:room.y+room.h/2};
  const inside=(p:{x:number;y:number})=>p.x>=room.x&&
