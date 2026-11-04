@@ -357,6 +357,10 @@ jobs:
             tests/breach-fog-visibility.test.mjs \
             tests/visibility-11-fog-domain.test.mjs \
             tests/visibility-12-micro-cache.test.mjs
+      - name: D2 protective masks — six archetypes, filter silhouettes and reversible compatibility
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/operator-d2-masks-c-') }}
+        run: |
+          node --experimental-strip-types --test tests/operator-d2-catalog-stage-00.test.mjs tests/operator-d2-half-masks-stage-c1.test.mjs tests/operator-d2-gas-masks-stage-c2.test.mjs tests/operator-d2-gas-masks-stage-c3.test.mjs tests/operator-d2-glasses-stage-b1.test.mjs tests/operator-d2-goggles-stage-b2.test.mjs tests/operator-wardrobe-data.test.mjs tests/operator-visual-kit.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}

@@ -33,6 +33,17 @@ export type D2EyeMode=typeof D2_EYEWEAR[number]['modes'][number];
 export const D2_FACE_SOLIDS=[
  'black','charcoal','olive','foliage','coyote','brown','off-white','winter-white'
 ] as const;
+export const D2_MASK_SOLIDS=['black','charcoal','olive','foliage','coyote'] as const;
+export type D2MaskSolid=typeof D2_MASK_SOLIDS[number];
+export const D2_MASK_COLORS:Record<D2MaskSolid,{label:string;hex:number}>={
+ black:{label:'Black rubber',hex:0x23282a},
+ charcoal:{label:'Charcoal rubber',hex:0x3c4140},
+ olive:{label:'Olive rubber',hex:0x454d3e},
+ foliage:{label:'Foliage rubber',hex:0x58645b},
+ coyote:{label:'Coyote shell',hex:0x776b58}
+};
+export const isD2MaskSolid=(v:unknown):v is D2MaskSolid=>
+ typeof v==='string'&&(D2_MASK_SOLIDS as readonly string[]).includes(v);
 export const D2_FRAME_SOLIDS=['black','gray','olive','tan','silver'] as const;
 export const D2_LENS_TINTS=['clear','smoke','dark-smoke','amber','yellow','bronze','green','mirrored'] as const;
 export const D2_GOGGLE_POSITIONS=['eyes','raised','neck'] as const;
@@ -142,7 +153,7 @@ export function readD2AccessoryOptions(
  return out;
 }
 export type D2HeadAssembly={
- facewear:string;eyewear:string;headset:string;
+ facewear:string;headwear:string;eyewear:string;headset:string;
  eyewearHiddenReason?:string;
  headsetHiddenReason?:string;
  eyewearPlacement:'eyes'|'forehead'|'helmet'|'neck'|'hidden';
@@ -156,6 +167,9 @@ export function resolveD2HeadAssembly(input:{
  const {facewear,eyewear,headwear,headset}=input;
  const hood=['balaclava-one','balaclava-three','balaclava-open','gas-gp5']
   .includes(facewear)||facewear==='shemagh'&&input.options?.faceMode==='head-wrap';
+ // GP-5 rubber covers the entire scalp and ears. Hide intersecting gear
+ // visually without erasing actual equipment or saved style preferences.
+ const shownHeadwear=facewear==='gas-gp5'?'bare':headwear;
  let eye=eyewear,headsetVisible=headset;
  let placement:D2HeadAssembly['eyewearPlacement']='eyes';
  let eyewearHiddenReason:string|undefined;
@@ -163,7 +177,8 @@ export function resolveD2HeadAssembly(input:{
  if(isFullFaceMask(facewear)){
   eye='eyes-none';placement='hidden';
   eyewearHiddenReason='External glasses and goggles are covered by a full-face mask.';
-  if(headset==='boom-headset'||headset==='helmet-ears'){
+  if(headset==='boom-headset'||headset==='helmet-ears'||
+     facewear==='gas-gp5'&&headset!=='comms-none'){
    headsetVisible='comms-none';
    headsetHiddenReason='Headset geometry conflicts with this full-face mask.';
   }
@@ -178,7 +193,7 @@ export function resolveD2HeadAssembly(input:{
   }
  }
  return {
-  facewear,eyewear:eye,headset:headsetVisible,
+  facewear,headwear:shownHeadwear,eyewear:eye,headset:headsetVisible,
   eyewearHiddenReason,headsetHiddenReason,eyewearPlacement:placement,
   hairCovered:hood
  };
