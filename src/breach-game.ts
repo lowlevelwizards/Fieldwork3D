@@ -2069,6 +2069,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   if(a.haltOnContact){
     const threat=visibleThreat;
     if(threat){
+      a.motorPause='contact';
       a.velocity=0;rotate(a,angle(a.p,threat.p),dt);return;
     }
   }
@@ -2401,6 +2402,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     }
     // Remain briefly settled and hold on any live visual contact.
     const contact=enemies(s).some(e=>e.health>0&&inSight(a,e,s));
+    if(contact)a.motorPause='contact';
     a.waitRemaining=contact?0:a.waitRemaining+dt;
     a.velocity=0;
     if(a.waitRemaining>=(n.duration??.5))pop(a);
