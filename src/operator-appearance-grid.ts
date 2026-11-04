@@ -13,6 +13,7 @@ import {initialWardrobe,resolvedWardrobe,
  type WardrobeOptions,type WardrobeItem} from './operator-wardrobe-data.ts';
 import {selectWardrobeItem} from './operator-wardrobe-unified.ts';
 import {setEquipmentChoice,type EquipmentLoadout} from './equipment-loadouts.ts';
+import {studioUsesClothesOnly,studioUsesVisibleFace} from './operator-studio-preview-policy.ts';
 
 export const APPEARANCE_GROUP_LABELS:Readonly<Record<WardrobeSlot,string>>={
  headwear:'HEAD',facewear:'FACE',eyewear:'EYES',headset:'COMMS',
@@ -176,7 +177,7 @@ export class OperatorAppearanceGrid{
    // selected solid finish behind a hardcoded thumbnail outfit.
    const choice=selectWardrobeItem(this.kit,this.wardrobe,item.slot,item.id);
    kit=choice.kit;w=choice.wardrobe;
-   if(item.slot==='top'||item.slot==='trousers'){
+   if(studioUsesClothesOnly(item.slot)){
     for(const [slot,id] of [
      ['head','head-none'],['armor','armor-none'],['rig','rig-none'],
      ['belt','belt-none'],['backpack','backpack-none'],
@@ -211,6 +212,7 @@ export class OperatorAppearanceGrid{
     posture:'stand',injury:0,weapon:'carbine',reload:0,reloadDuration:0,
     lastDoorAt:-100,lastThrowAt:-100,down:false,surrender:false,
     aiming:false,firing:false,turning:0,deterministic:true,
+    faceStyle:studioUsesVisibleFace(item.slot)?'quiet':'blank',
     unarmedPreview:true,equipment:kit,wardrobe:w
    },0);
    rig.root.position.set(0,0,0);
