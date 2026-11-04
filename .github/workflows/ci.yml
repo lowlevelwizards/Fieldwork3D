@@ -303,6 +303,14 @@ jobs:
             tests/worldgen-encounter-safety.test.mjs \
             tests/worldgen-map-lab-diagnostics.test.mjs \
             tests/worldgen-29a-quality-matrix.test.mjs
+      - name: Focused map/mission R1–R2 — escort physics, insertion and objective recovery
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-map-mission-refinements-r1-r5-') }}
+        run: node --experimental-strip-types --test tests/mission-escort-physicality.test.mjs tests/mission-deployment-r2.test.mjs tests/tactical-mission-quality-operations.test.mjs
+      - name: Focused map/mission R3–R5 — sightlines, topology, deployment and replay
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-map-mission-refinements-r3-r5-') }}
+        run: |
+          node --experimental-strip-types --test tests/mission-room-sightlines-r3.test.mjs tests/mission-topology-r4.test.mjs tests/mission-quality-r5.test.mjs tests/mission-deployment-r2.test.mjs tests/tactical-mission-quality-audit.test.mjs
+          npm run audit:mission-quality -- 11
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}
