@@ -41,8 +41,13 @@ test('R9 flak and legacy shells replace blouse collars with their armor neckline
     assert.ok(collars.every(x=>!x.visible),top+'/'+armor+' no protruding cloth collar');
    }
    pose(r,top,'plate-standard');
-   assert.ok(collars.every(x=>x.visible),'normal plate restores original collar');
-   assert.deepEqual(collars.map(x=>x.uuid),ids,'no geometry recreation on swap');
+   assert.ok(pockets.some(x=>!x.visible),
+    'standard plates suppress pockets where the wider outer shell overlaps');
+   pose(r,top,'armor-bare');
+   assert.ok(pockets.every(x=>x.visible),
+    'bare outfit restores all original sewn pockets');
+   assert.deepEqual(pockets.map(x=>[x.uuid,x.position.x,x.position.y,x.scale.x]),
+    original,'garment pocket geometry exactly restored');
   }
  }finally{r.dispose();}
 });
