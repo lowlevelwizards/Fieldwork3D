@@ -316,6 +316,9 @@ jobs:
         run: |
           node --experimental-strip-types --test tests/mission-room-exposure-r6.test.mjs tests/mission-room-sightlines-r3.test.mjs tests/tactical-mission-quality-audit.test.mjs
           npm run audit:mission-quality -- 11
+      - name: Focused operator identity D1 save/seed and existing wardrobe visual contracts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-visual-details-') }}
+        run: node --experimental-strip-types --test tests/operator-identity-stage-d1.test.mjs tests/operator-wardrobe-data.test.mjs tests/operator-wardrobe-persistence.test.mjs tests/operator-visual-kit.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}
