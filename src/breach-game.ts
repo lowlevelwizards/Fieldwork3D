@@ -44,7 +44,8 @@ import {recoveryAction,routeRetrySeconds} from './breach-movement-recovery.ts';
 import {executionStatus,type MotorPause,type ExecutionIssue,
   type ExecutionStatus} from './breach-execution-state.ts';
 import {executionTransition,type ExecutionEvent} from './breach-execution-events.ts';
-import {interpretSound} from './breach-sound-evidence.ts';
+import {interpretSound,soundResponse,soundPriority}
+  from './breach-sound-evidence.ts';
 import {relocateCover,canRelocateCover,coverPushDistance,
   autoShoveLightCover} from './breach-movable-cover.ts';
 import {materialForFixture,MATERIALS,type MaterialId} from './breach-materials.ts';
@@ -2596,6 +2597,14 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   // Intention selection reads only acquired observations, not hidden positions.
   const belief=bestBelief(a.awareness);
   const recentNoise=s.seconds-a.lastNoiseAt<6;
+  // A faint noise can turn a head without becoming an indefinitely
+  // actionable contact. Do not replace it with a psychic search target.
+  if(!visible.length&&!a.contacted&&a.alert==='suspicious'&&a.heard){
+    if(s.seconds<a.alertUntil){
+      a.velocity=0;rotate(a,angle(a.p,a.heard),dt);return;
+    }
+    a.alert='idle';a.heard=null;
+  }
   if(!visible.length)a.combatChoice=chooseCombatAction({
     visible:false,remembered:!!belief,ammunition:a.magazine,
     laneClear:false,suppression:a.suppression,morale:a.morale,temperament:a.personality});
@@ -2692,7 +2701,12 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         observerId:a.id,source:'auditory',at:evidence.at,
         estimate:evidence.estimate,uncertainty:evidence.uncertainty,
         kind:evidence.kind});
-      if(!strongest||evidence.intensity>strongest.intensity)strongest=evidence;
+      const urgency=soundPriority(soundResponse(evidence.kind,evidence.intensity));
+      const prior=strongest?soundPriority(
+        soundResponse(strongest.kind,strongest.intensity)):-1;
+      if(urgency>0&&(urgency>prior||
+         urgency===prior&&evidence.intensity>strongest!.intensity))
+        strongest=evidence;
     }
   }
   const newestNoise=s.noise.at(-1);
@@ -2701,7 +2715,17 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       newestNoise.id??a.lastNoiseExaminedId);
     a.lastNoiseExaminedAt=Math.max(a.lastNoiseExaminedAt,newestNoise.time);
   }
-  if(strongest&&a.encounterReactionUntil===Number.POSITIVE_INFINITY){
+  const noiseDisposition=strongest?
+    soundResponse(strongest.kind,strongest.intensity):'ignore';
+  if(strongest&&noiseDisposition==='orient'&&!visible.length&&
+     !a.contacted&&a.alert!=='retreat'){
+    a.heard=clone(strongest.estimate);a.alert='suspicious';
+    a.alertUntil=s.seconds+1.15;a.velocity=0;
+    rotate(a,angle(a.p,a.heard),dt);
+    return;
+  }
+  if(strongest&&noiseDisposition!=='orient'&&
+     a.encounterReactionUntil===Number.POSITIVE_INFINITY){
     a.encounterReactionStartedAt=s.seconds;
     a.encounterReactionUntil=s.seconds+encounterReactionDelay(
       a.encounterReadiness??'attentive',a.id);
