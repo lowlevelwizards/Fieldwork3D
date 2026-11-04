@@ -27,8 +27,6 @@ const openRoles=new Set(['living','kitchen','dining','sales','stockroom','loadin
  'storage','waiting','reception','lobby','hallway','aisle','cubicles','bay',
  'equipment']);
 const protectedRoles=new Set(['exam','treatment','bathroom','bedroom','guest','restroom']);
-const publicRoles=new Set(['foyer','vestibule','waiting','reception','lobby','living','dining',
- 'sales','checkout','aisle','loading']);
 const center=(r:Room):Pt=>({x:r.x+r.w/2,y:r.y+r.h/2});
 const span=(w:Segment)=>Math.hypot(w.a.x-w.b.x,w.a.y-w.b.y);
 const side=(x:number,y:number,xx:number,yy:number):Segment=>
