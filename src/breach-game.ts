@@ -40,6 +40,7 @@ import {localDetour} from './breach-cooperation.ts';
 import {friendlyPassingStep,nearOccupiedFriendlyGoal} from './breach-friendly-traffic.ts';
 import {resolveMovementFrame} from './breach-movement-authority.ts';
 import {recoveryAction,routeRetrySeconds} from './breach-movement-recovery.ts';
+import type {MotorPause,ExecutionIssue} from './breach-execution-state.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
 import {relocateCover,canRelocateCover,coverPushDistance,
   autoShoveLightCover} from './breach-movable-cover.ts';
@@ -157,6 +158,9 @@ export type TeamActor=Operator & {
   /** Reverses an interrupted climb along the verified approach trajectory. */
   traversalRetreating:boolean;
   lastBlocker:Blocker;
+  /** Execution diagnostics are transient; never rewrite authored PlanNode[]. */
+  motorPause:MotorPause;orderIssue:ExecutionIssue|null;
+  completedOrders:number;
   /** Last executed facing command; survives across movement waypoints. */
   aimInstruction:AimInstruction|null;
   /** Simulation-timed cues, not new combat rules. */
@@ -273,7 +277,7 @@ const withActions=(a:Operator):TeamActor=>({
   traversalPending:null,traversal:null,traversalElapsed:0,
   traversalElevation:0,lastTraversalAt:-100,
   traversalRetreating:false,
-  lastBlocker:'clear',
+  lastBlocker:'clear',motorPause:null,orderIssue:null,completedOrders:0,
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
   lastHitRegion:'torso',lastHitYaw:0,lastHitSeverity:0,
   downPose:'forward',
@@ -1701,8 +1705,13 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
       a.recoveryAttempts++;
       a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);
-      if(s.seconds-a.lastNavRepairAt>1.2){
-        notify(s,a.name+' CANNOT REACH');
+      // Do not turn a failed route search into a new warning every
+      // cooldown. A bounded escalation stays visible in the operator card.
+      // The motor still probes periodically so a newly open path can heal.
+      if(a.side==='blue'&&(a.recoveryAttempts===1||
+         a.recoveryAttempts===5)){
+        notify(s,a.name+(a.recoveryAttempts>=5?
+          ' NO SAFE ROUTE · ORDERS RETAINED':' CANNOT REACH · RETRYING'));
         a.lastNavRepairAt=s.seconds;
       }
       return false;
@@ -1754,7 +1763,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   });
   if(passageWait(traffic.find(unit=>unit.id===a.id)!,s.doors,
      traffic,s.passageLeases,s.seconds,move)){
-    a.velocity=0;a.blockedTime=0;
+    a.motorPause='passage';a.velocity=0;a.blockedTime=0;
     return true;
   }
   // Identify the leaf for closed-door authored handling; open hinged
@@ -1780,10 +1789,14 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       doorBlocksSegment(door,{a:a.p,b:p});
   }):undefined;
   if(doorAhead){
+    a.motorPause='door-opening';
     const opening=doorInteraction({target:doorAhead,actorId:a.id,
       actorPosition:a.p,action:'open'});
     if(opening.reason==='held'||opening.reason==='locked'||
        opening.reason==='obstructed'){
+      a.motorPause=opening.reason==='held'?'door-held':
+        opening.reason==='locked'?'door-locked':'door-obstructed';
+      a.lastBlocker='door';
       a.velocity=0;a.blockedTime+=dt;
       // A blocked door remains physically closed; no AI magic opening.
       if(a.side==='red'&&a.blockedTime>1.2){
@@ -2004,13 +2017,28 @@ function applyAimNode(a:TeamActor,n:PlanNode){
     a.aimInstruction={mode:'fixed',angle:n.facing};
 }
 function pop(a:TeamActor){
+  if(a.plan.length)a.completedOrders++;
   a.plan.shift();a.activeNode=-1;a.nav=[];a.waitRemaining=0;
-  a.actionTimer=0;a.syncReady=null;a.pieIndex=0;pathFor(a);
+  a.actionTimer=0;a.syncReady=null;a.pieIndex=0;
+  a.orderIssue=null;a.motorPause=null;pathFor(a);
 }
+/** Explicitly report failure without silently consuming the player's order.
+ * Re-evaluate the precondition each tick; changing world state can clear
+ * the issue. Repeated identical failures never flood the event feed.
+ */
+function failCurrentOrder(s:Session,a:TeamActor,n:PlanNode,reason:string){
+  if(a.orderIssue?.nodeId!==n.id||a.orderIssue.reason!==reason){
+    notify(s,a.name+' '+reason);
+    a.orderIssue={nodeId:n.id,reason,since:s.seconds};
+  }
+  a.velocity=0;
+}
+function clearCurrentOrderIssue(a:TeamActor){a.orderIssue=null;}
 function runOrders(s:Session,a:TeamActor,dt:number){
   // Player-authored positions are sacred. Traffic steering only moves the
   // actor who requested movement, never a stationary friend or held stack.
   const n=a.plan[0];
+  a.motorPause=null;
   // An airborne crossing must reach a verified landing before combat pause,
   // waypoint completion, or fresh orders can resume.
   if(a.traversal){tickTraversal(a,s,dt);return;}
@@ -2040,6 +2068,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   }
   if(a.activeNode!==n.id){
     a.activeNode=n.id;a.nav=[];a.waitRemaining=0;a.actionTimer=0;
+    a.orderIssue=null;
     // Physical interactions and running terminate sustained WATCH, never
     // silently resume it when the operator returns to walking.
     if(interruptsWatch(n,a.pace))a.aimInstruction=null;
@@ -2053,16 +2082,20 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     const door=s.doors.find(door=>door.id===n.doorId);
     const method=n.toolMethod;
     if(!door||!method||!canUseEntryTool(a.equipment,method)||
-       (method==='wedge'&&a.wedgeRemaining<1)){pop(a);return;}
+       (method==='wedge'&&a.wedgeRemaining<1)){
+      failCurrentOrder(s,a,n,'ENTRY TOOL UNAVAILABLE');return;
+    }
     if(!doorReachable(a.p,door)){
       const approachPoint=doorApproach(a.p,door);
-      if(approachPoint)approach(a,approachPoint,dt,s,.66);
-      else{notify(s,a.name+' ENTRY TOOL CANNOT REACH');pop(a);}
+      if(approachPoint){clearCurrentOrderIssue(a);approach(a,approachPoint,dt,s,.66);}
+      else failCurrentOrder(s,a,n,'ENTRY TOOL CANNOT REACH');
       return;
     }
     const verdict=entryToolVerdict(door,method);
-    if(!verdict.allowed){notify(s,door.id+' '+verdict.reason);pop(a);return;}
-    a.velocity=0;rotate(a,angle(a.p,doorCenter(door)),dt);
+    if(!verdict.allowed){
+      failCurrentOrder(s,a,n,'ENTRY TOOL BLOCKED · '+verdict.reason);return;
+    }
+    clearCurrentOrderIssue(a);a.velocity=0;rotate(a,angle(a.p,doorCenter(door)),dt);
     if(a.actionTimer===0){a.lastDoorAt=s.seconds;a.lastDoorId=door.id;
       a.lastDoorMethod='open';}
     // Tool retrieval from a backpack or inaccessible overflow is slower
@@ -2114,9 +2147,9 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       a.equipment??initialEquipmentLoadout(a.weapon),
       a.spareMagazines,'medical');
     if(!Number.isFinite(fromTime)||!Number.isFinite(toTime)){
-      notify(s,a.name+' MEDICAL STORAGE UNAVAILABLE');pop(a);return;
+      failCurrentOrder(s,a,n,'MEDICAL STORAGE UNAVAILABLE');return;
     }
-    a.velocity=0;a.actionTimer+=dt;
+    clearCurrentOrderIssue(a);a.velocity=0;a.actionTimer+=dt;
     if(a.actionTimer>=1.35+fromTime+toTime){
       const transferred=transferMedicalSupply(patient.medicalSupplies,
         a.medicalSupplies,kitMedicalSupplies(a.equipment));
@@ -2176,7 +2209,10 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     const wound=patient?.medical.wounds.find(w=>w.id===n.woundId);
     if(!patient||!wound||wound.stabilized||wound.bleeding<=0){pop(a);return;}
     const supply=treatmentSupplyForWound(wound,a.medicalSupplies);
-    if(!supply){notify(s,a.name+' MEDICAL SUPPLY UNAVAILABLE');pop(a);return;}
+    if(!supply){
+      failCurrentOrder(s,a,n,'MEDICAL SUPPLY UNAVAILABLE');return;
+    }
+    clearCurrentOrderIssue(a);
     if(!near(a.p,patient.p,27)){
       const direction=angle(patient.p,a.p);
       const destination={x:patient.p.x+Math.cos(direction)*21,
@@ -2206,7 +2242,9 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     return;
   }
   if(n.kind==='interact'){
-    if(!n.objectId||!n.interaction){pop(a);return;}
+    if(!n.objectId||!n.interaction){
+      failCurrentOrder(s,a,n,'INTERACTION TARGET UNAVAILABLE');return;
+    }
     if(!near(a.p,n.p,7)){
       approach(a,n.p,dt,s,.65);return;
     }
@@ -2214,7 +2252,9 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     if(kind==='prop'&&n.interaction==='push'){
       const index=Number(id),o=s.coverState[index];
       if(!o||!canRelocateCover(o)||d(a.p,{x:o.x,y:o.y})>
-        Math.max(o.w,o.h)/2+43){pop(a);return;}
+        Math.max(o.w,o.h)/2+43){
+        failCurrentOrder(s,a,n,'OBJECT UNAVAILABLE');return;
+      }
       const dx=o.x-a.p.x,dy=o.y-a.p.y,
         length=Math.hypot(dx,dy)||1;
       const amount=coverPushDistance(o);
@@ -2227,7 +2267,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       // opening. Preserve this CLOSE order until their landing completes.
       if(n.interaction==='close-window'&&s.operators.some(o=>o.health>0&&
          o.traversal?.windowId===id)){
-        a.velocity=0;a.actionTimer=0;return;
+        a.motorPause='window-clearance';a.velocity=0;a.actionTimer=0;return;
       }
       const window=s.windows.find(w=>w.id===id);
       if(window&&d(a.p,{x:window.x,y:window.y})<54&&
@@ -2238,7 +2278,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
         battleEvent(s,'interaction',a,a.p,a.name+' MOVED WINDOW');
       }else notify(s,a.name+' WINDOW UNAVAILABLE');
     }
-    pop(a);return;
+    clearCurrentOrderIssue(a);pop(a);return;
   }
   if(n.kind==='pie'){
     // Running abandons the cautious corner sweep for ordinary fast travel.
@@ -2377,13 +2417,15 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     return;
   }
   if(n.kind==='flash'){
-    if(!n.aimPoint||s.flashRemaining<=0||a.flashCharges<=0){pop(a);return;}
+    if(!n.aimPoint||s.flashRemaining<=0||a.flashCharges<=0){
+      failCurrentOrder(s,a,n,'FLASH UNAVAILABLE');return;
+    }
     const trajectory=validateThrow(a.p,n.aimPoint,s.doors);
     if(!trajectory.valid){
-      notify(s,a.name+' FLASH BLOCKED — '+(trajectory.reason??'CHECK TRAJECTORY'));
-      a.velocity=0;return;
+      failCurrentOrder(s,a,n,'FLASH BLOCKED — '+
+        (trajectory.reason??'CHECK TRAJECTORY'));return;
     }
-    a.velocity=0;rotate(a,angle(a.p,n.aimPoint),dt);
+    clearCurrentOrderIssue(a);a.velocity=0;rotate(a,angle(a.p,n.aimPoint),dt);
     a.actionTimer+=dt;
     if(a.actionTimer>=.3){
       s.flashRemaining--;a.flashCharges--;a.lastThrowAt=s.seconds;
@@ -2398,25 +2440,28 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   }
   if(n.kind==='door'){
     const door=s.doors.find(d=>d.id===n.doorId);
-    if(!door||(n.method==='close'&&!door.open)||
+    if(!door){
+      failCurrentOrder(s,a,n,'DOOR MISSING');return;
+    }
+    if((n.method==='close'&&!door.open)||
        (n.method!=='close'&&n.method!=='kick'&&n.method!=='hold'&&door.open)){
+      // The requested state already exists: legitimate completion.
       pop(a);return;
     }
     const interaction=doorInteraction({target:door,actorId:a.id,
       actorPosition:a.p,action:n.method??'open'});
-    if(!interaction.allowed&&a.actionTimer===0){
-      if(interaction.reason==='out-of-reach'){
-        notify(s,a.name+' TOO FAR FROM DOOR');return;
-      }
-      if(interaction.reason==='locked'||interaction.reason==='obstructed'){
-        hear(s,doorCenter(door),65,'latch');
-        notify(s,door.id+(interaction.reason==='locked'?' LOCKED':' JAMMED'));
-      }
-      if(interaction.reason==='held')notify(s,door.id+' HELD SHUT');
-      else if(interaction.reason==='unsupported')
-        notify(s,door.id+' REQUIRES SHUTTER CONTROL');
-      pop(a);return;
+    // A deliberately exhausted kick sequence is terminal until its order
+    // is edited. Never replay the last kick every fixed update.
+    if(a.orderIssue?.nodeId===n.id&&n.method==='kick'&&
+       /KICK RESISTED|KICK BLOCKED/.test(a.orderIssue.reason)&&!door.open){
+      a.velocity=0;return;
     }
+    if(!interaction.allowed&&a.actionTimer===0){
+      failCurrentOrder(s,a,n,'DOOR BLOCKED · '+
+        (interaction.reason??'UNAVAILABLE').toUpperCase());
+      return;
+    }
+    clearCurrentOrderIssue(a);
     const required=n.method==='kick'?KICK_DURATION:
       n.method==='hold'?1.3:n.method==='close'?.75:.78;
     if(a.actionTimer===0){
@@ -2435,7 +2480,9 @@ function runOrders(s:Session,a:TeamActor,dt:number){
           outcome.opened?'FORCED OPEN':'KICK RESISTED';
         notify(s,door.id+' '+result);
         battleEvent(s,'door',a,doorCenter(door),door.id+' '+result);
-        if(!outcome.pushSide){pop(a);return;}
+        if(!outcome.pushSide){
+          failCurrentOrder(s,a,n,'KICK BLOCKED · WRONG SIDE');return;
+        }
       }
     }
     if(a.actionTimer>=required){
@@ -2445,12 +2492,15 @@ function runOrders(s:Session,a:TeamActor,dt:number){
         if(!door.open&&(door.kicks??0)<8){
           a.actionTimer=0;return;
         }
-        if(!door.open)notify(s,door.id+' RESISTED · CHECK ENTRY SIDE');
+        if(!door.open){
+          failCurrentOrder(s,a,n,'KICK RESISTED · CHECK ENTRY SIDE');return;
+        }
         pop(a);return;
       }
       if(n.method==='hold'){
-        if(door.open)notify(s,door.id+' MUST BE CLOSED TO HOLD');
-        else{
+        if(door.open){
+          failCurrentOrder(s,a,n,'DOOR MUST BE CLOSED TO HOLD');return;
+        }else{
           for(const leaf of pairedLeaves(s,door))leaf.heldBy=a.id;
           notify(s,door.id+' HELD CLOSED · BRACED');
           battleEvent(s,'door',a,doorCenter(door),door.id+' BRACED');
@@ -2466,7 +2516,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
         battleEvent(s,'door',a,doorCenter(door),door.id+' CLOSING');
       }else{
         if(pairedLeaves(s,door).some(leaf=>leaf.heldBy)){
-          notify(s,door.id+' BRACED SHUT');pop(a);return;
+          failCurrentOrder(s,a,n,'DOOR BRACED SHUT');return;
         }
         for(const leaf of pairedLeaves(s,door)){
           leaf.open=true;leaf.openedAt=s.seconds;
