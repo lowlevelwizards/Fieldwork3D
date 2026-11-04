@@ -5,7 +5,8 @@
 import * as THREE from 'three';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
-import {fittedShoulderBridge,fittedArmorBag} from './operator-armor-shapes.ts';
+import {fittedShoulderBridge,fittedArmorBag,fittedSideWrap} from './operator-armor-shapes.ts';
+import {rigVisualBudget} from './operator-rig-visual-standards.ts';
 import {createAdaptiveArmorSilhouettes,updateAdaptiveArmorFit}
  from './operator-adaptive-armor.ts';
 export {updateAdaptiveArmorFit};
@@ -129,10 +130,12 @@ export function updateFittedRigHarness(
  const sy=frame.shoulderY+.18;
  const sh=Math.max(3.35,Math.min(5.15,frame.shoulderRight.z));
  const sideZ=frame.sideRight.z+.04;
+ const budget=rigVisualBudget(rig);
  type Pt=readonly [number,number,number];
  const line=(points:readonly Pt[],width:number,depth=.44)=>{
   for(let i=0;i<points.length-1;i++)
-   strap(harness,material,points[i],points[i+1],width,depth);
+   strap(harness,material,points[i],points[i+1],
+    Math.max(width,budget.web),Math.max(depth,.56));
  };
  const across=(x:number,y:number,halfZ:number,width=.75,depth=.38)=>
   line([[x,y,-halfZ],[x,y,halfZ]],width,depth);
@@ -142,11 +145,17 @@ export function updateFittedRigHarness(
    [sx,sy,sign*sh],
    [rx,sy,sign*sh],
    back];
-  fittedShoulderBridge(harness,material,route,width,.48,1);
+  fittedShoulderBridge(harness,material,route,
+    Math.max(width,budget.shoulder),.68,1);
  };
  const sideTie=(sign:number,y:number,fromX:number,toX:number,width=.56)=>{
-  line([[fromX,y,sign*sideZ],[toX,y,sign*sideZ]],width,.42);
- };
+   // Front flank -> true lateral surface -> rear flank. An unsupported
+   // straight beam along maximum torso width reads as floating equipment.
+   const flank=Math.max(sh+.48,sideZ-1.02);
+   fittedSideWrap(harness,material,
+    [[fromX,sign*flank],[(fromX+toX)*.5,sign*sideZ],
+     [toX,sign*flank]],y,Math.max(width,budget.flank),.58,sign);
+  };
 
  if(rig==='chest-placard'&&frame.mode==='carrier-placard'){
   // This is a carrier attachment, NOT another standalone chest harness.
