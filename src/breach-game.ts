@@ -56,7 +56,7 @@ import {damageCover} from './breach-reactive-cover.ts';
 import {materialResponse} from './breach-impact-responses.ts';
 import {manipulateWindow,damageWindow,windowPaneSegment} from './breach-windows.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
-import {chooseAiIntent,type AIIntent} from './breach-ai-policy.ts';
+import {chooseAiIntent,hasRecentSound,type AIIntent} from './breach-ai-policy.ts';
 import {settledEnemyPosture} from './breach-ai-posture.ts';
 import {searchCandidates} from './breach-ai-search.ts';
 import {investigationTempo} from './breach-ai-investigation.ts';
@@ -2600,14 +2600,20 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   }
   // Intention selection reads only acquired observations, not hidden positions.
   const belief=bestBelief(a.awareness);
-  const recentNoise=s.seconds-a.lastNoiseAt<6;
+  const recentNoise=hasRecentSound(s.seconds,a.lastNoiseAt);
   // A faint noise can turn a head without becoming an indefinitely
   // actionable contact. Do not replace it with a psychic search target.
   if(!visible.length&&!a.contacted&&a.alert==='suspicious'&&a.heard){
-    if(s.seconds<a.alertUntil){
+    // A fresh violent event may interrupt a quiet head-turn. Do not wait
+    // until its one-second audio observation window has expired.
+    const newAlarm=s.noise.some(event=>
+      (event.id??0)>a.lastNoiseExaminedId&&
+      s.seconds-event.time<=1&&
+      ['gunshot','flashbang','kick','glass'].includes(event.kind));
+    if(s.seconds<a.alertUntil&&!newAlarm){
       a.velocity=0;rotate(a,angle(a.p,a.heard),dt);return;
     }
-    a.alert='idle';a.heard=null;
+    if(s.seconds>=a.alertUntil){a.alert='idle';a.heard=null;}
   }
   if(!visible.length)a.combatChoice=chooseCombatAction({
     visible:false,remembered:!!belief,ammunition:a.magazine,

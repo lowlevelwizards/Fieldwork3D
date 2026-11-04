@@ -32,3 +32,10 @@ export function chooseAiIntent(previous:AIIntent|null,context:AIContext,
  return {kind,chosenAt:now,commitUntil:now+
   (kind==='investigate'?1.8:kind==='watch'?1.2:.45),reason};
 }
+
+/** A never-heard sentinel (-1) is not a recent sound. Otherwise opening
+ * seconds of every mission falsely trigger INVESTIGATE before any evidence.
+ */
+export function hasRecentSound(now:number,lastHeardAt:number,horizon=6):boolean{
+ return lastHeardAt>=0&&now>=lastHeardAt&&now-lastHeardAt<horizon;
+}

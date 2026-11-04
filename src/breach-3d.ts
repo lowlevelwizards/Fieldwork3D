@@ -46,6 +46,7 @@ import {footAnchorReachable} from './breach-navigation.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {casingAt,CASING_LIMIT,IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
+import {muzzleFlashCue,impactPulse} from './breach-combat-cues.ts';
 import {sampleThrow} from './breach-flash.ts';
 import {doorProportions,DOOR_PANEL_END_RECESS,DOOR_FRAME_INSET} from './breach-door-proportions.ts';
 import {paintFogMask,occupiedFogRooms,FOG_WIDTH,FOG_HEIGHT,maskSize} from './breach-fog-mask.ts';
@@ -1734,17 +1735,16 @@ export class TacticalScene3D{
       const reloadDuration=actor.reloadDuration||
         WEAPONS[actor.weapon].reload*
         (actor.injuryStage===2?1.5:actor.injuryStage===1?1.1:1);
+      const muzzleAttachment=actor.weaponConfiguration?.slots.muzzle;
       const firing=s.shots.find(shot=>shot.shooterId===actor.id&&
-        shot.age<.115&&(omniscient||shotVisibility(s,shot).flash));
-      object.flash.visible=!!firing&&actor.health>0;
+        muzzleFlashCue(actor.weapon,shot.age,muzzleAttachment).active&&
+        (omniscient||shotVisibility(s,shot).flash));
+      const flashCue=muzzleFlashCue(actor.weapon,
+        firing?.age??Infinity,muzzleAttachment);
+      object.flash.visible=flashCue.active&&actor.health>0;
       object.flash.position.x=actor.weaponConfiguration?
        resolveWeaponAssembly(actor.weaponConfiguration).muzzleX:19.5;
-      if(firing){
-        const muzzle=actor.weaponConfiguration?.slots.muzzle;
-        const signature=muzzle==='muzzle-suppressor'?.25:
-         muzzle==='muzzle-hider'?.65:1;
-        object.flash.scale.setScalar((1.55*(1-firing.age/.115)+.3)*signature);
-      }
+      if(flashCue.active)object.flash.scale.setScalar(flashCue.scale);
       const plannedDoor=actor.plan[0]?.kind==='door'?
         s.doors.find(d=>d.id===actor.plan[0].doorId):undefined;
       const activeDoor=plannedDoor??(actor.lastDoorId?
@@ -1982,11 +1982,11 @@ export class TacticalScene3D{
       effect.material.opacity=Math.max(0,1-shot.age/.20);
       effect.impact.position.copy(end);
       const profile=impactProfile(shot.surface??'dust');
-      const pulse=shot.surface==='blood'?5.2:
-        shot.surface==='wood'?3.6:shot.surface==='metal'?3.1:2.5;
-      effect.impact.scale.setScalar(pulse*(1+.5*shot.age/.40));
-      effect.impactMaterial.opacity=Math.max(0,1-shot.age/profile.lifetime);
-      effect.impact.visible=visibility.impact&&shot.age<.40;
+      const impact=impactPulse(shot.surface??'dust',shot.age,
+        profile.lifetime);
+      effect.impact.scale.setScalar(impact.scale);
+      effect.impactMaterial.opacity=impact.opacity;
+      effect.impact.visible=visibility.impact&&impact.active;
       for(let i=0;i<effect.chips.length;i++){
         const chip=effect.chips[i];
         const theta=(shot.id*2.41+i*2.094);

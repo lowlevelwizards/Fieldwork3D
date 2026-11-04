@@ -51,6 +51,7 @@ import {routeLineHit} from './breach-route-edit.ts';
 import {placeContextMenu,type AvoidRect,type ScreenPath,type MenuSide} from './breach-context-placement.ts';
 import {spatialSurfaceState,shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
 import {heardIntensity} from './breach-acoustics.ts';
+import {weaponAudioCue,audibleImpact} from './breach-combat-audio.ts';
 import {parseOperationHistory,addOperationRecord,
   type OperationRecord} from './breach-operations.ts';
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
@@ -4276,11 +4277,18 @@ function tick(now:number){
       WEAPONS[weapon].noise,state.doors,WALLS):1;
     if(level<.01)continue; // Outside acoustic range is genuinely quiet.
     const pan=listener?(shot.start.x-listener.x)/210:0;
-    playTone(weapon==='shotgun'?82:weapon==='rifle'?112:
-      weapon==='smg'?177:135,weapon==='shotgun'?.19:.095,
-      true,level,pan);
-    if(shot.hit)playTone(shot.down?75:225,shot.down ? .25 : .10,
-      shot.down,level,pan);
+    const cue=weaponAudioCue(weapon,
+      firingActor?.weaponConfiguration?.slots.muzzle==='muzzle-suppressor');
+    playTone(cue.crackHz,cue.crackSeconds,true,level,pan);
+    playTone(cue.bodyHz,cue.bodySeconds,false,level*cue.bodyLevel,pan);
+    // Never play the exact-hit cue merely because a hidden shot hit.
+    // An operator must see the impact or be close enough to hear it.
+    const impactLevel=listener?heardIntensity(shot.end,listener,
+      88,state.doors,WALLS):0;
+    if(shot.hit&&audibleImpact(shotVisibility(state,shot).impact,
+        impactLevel))
+      playTone(shot.down?75:225,shot.down?.25:.10,
+        shot.down,level*Math.max(.22,impactLevel),pan);
   }
   if(fresh.length)lastSoundShotId=fresh.at(-1)!.id;
   // One restrained boot thud per recorded physical touchdown; never an
