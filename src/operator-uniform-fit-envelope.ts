@@ -124,7 +124,7 @@ export function fittedArmorSurfaces(style:string,top:string,
  const front=concealed?baseline.front:skin.front+thickness+clear;
  const back=concealed?-baseline.front:skin.back-thickness-clear;
  const materialSide=style==='plate-slick'?.63:
-  style==='plate-jpc'?.62:style==='plate-standard'?.90:
+  style==='plate-jpc'?.69:style==='plate-standard'?.90:
   style==='plate-heavy'?1.03:style==='plate-legacy'?1.15:
   style==='soft-flak'?.89:.76;
  const sideSurface=armorContactSpan(top,-2.5,1.0).side;
