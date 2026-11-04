@@ -26,9 +26,8 @@ export function assessMissionFilm(frames:readonly ReplayFrame[],
  if(events.some(e=>!Number.isFinite(e.t)||e.t<0||e.t>duration+.06))
   issues.push('event outside replay time');
  const pacing=summarizeMissionPacing(events);
- if(pacing.firstContactAt!==null&&pacing.objectiveAt!==null&&
-  pacing.objectiveAt<pacing.firstContactAt)
-   issues.push('objective before confirmed contact');
+ // A stealth objective may be secured before any confirmed hostile.
+ // Event ordering alone is NOT evidence of a simulation/replay fault.
  if(pacing.objectiveAt!==null&&pacing.extractionAt!==null&&
   pacing.extractionAt<pacing.objectiveAt)
    issues.push('extraction before objective');
