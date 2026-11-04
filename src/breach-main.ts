@@ -2363,6 +2363,47 @@ function drawActiveWatchMarker(from:Pt,to:Pt,color:string,highlight:boolean,
     to.x+radius+8,to.y-radius-4);
   draw.restore();
 }
+/** Persistent order failure anchors use only the operator's own observed
+ * motor and authored waypoint; they cannot reveal unseen map geometry.
+ */
+function executionProblemStatus(a:TeamActor){
+  if(replaying||!state.started||a.health<=0)return null;
+  const status=executionStatus(a,{
+    phase:'running',doors:state.doors,peers:team(state)
+  });
+  return status.kind==='blocked'&&status.orderId!==null?status:null;
+}
+function executionMarkerPoint(a:TeamActor,projected:boolean):Pt{
+  if(projected){
+    const ground=worldToScreen(a.p,24);
+    return {x:ground.x+15,y:ground.y-22};
+  }
+  return {x:a.p.x+15,y:a.p.y-25};
+}
+function drawExecutionProblem(a:TeamActor,projected:boolean){
+  const status=executionProblemStatus(a);
+  if(!status)return;
+  const at=executionMarkerPoint(a,projected);
+  draw.save();
+  if(a.id===selected){
+    const node=a.plan.find(n=>n.id===status.orderId);
+    if(node){
+      const target=projected?worldToScreen(node.p,8):node.p;
+      draw.strokeStyle='#e4ac88';draw.globalAlpha=.58;
+      draw.lineWidth=1.3;draw.setLineDash([3,5]);
+      draw.beginPath();draw.moveTo(at.x,at.y);
+      draw.lineTo(target.x,target.y);draw.stroke();draw.setLineDash([]);
+    }
+  }
+  draw.globalAlpha=.98;
+  draw.fillStyle='#a65b48';draw.strokeStyle='#e9b28f';draw.lineWidth=1.7;
+  draw.beginPath();draw.arc(at.x,at.y,9,0,Math.PI*2);
+  draw.fill();draw.stroke();
+  draw.fillStyle='#fff0d8';draw.font='800 12px "Saira Condensed",sans-serif';
+  draw.textAlign='center';draw.textBaseline='middle';
+  draw.fillText('!',at.x,at.y+.25);
+  draw.restore();
+}
 function paths(){
   for(const a of team(state)){
     if(a.health<=0)continue;
@@ -2823,6 +2864,7 @@ function renderProjectedPlans(){
     draw.fillStyle='#e8d5a6';draw.font='700 12px "Saira Condensed",sans-serif';
     draw.fillText(state.mission.toUpperCase(),target.x,target.y-23);
   }
+  for(const a of team(state))drawExecutionProblem(a,true);
 }
 function fog(){
   if(replaying&&replayOmniscient)return;
@@ -3074,6 +3116,7 @@ function render(){
   architecture();fog();missionMarkers();
   paths();
   for(const a of state.operators)sprite(a);
+  for(const a of team(state))drawExecutionProblem(a,false);
   contacts();endMessage();
   draw.strokeStyle='#d4dac64f';draw.lineWidth=2;
   draw.strokeRect(0,0,W,H);
@@ -3749,6 +3792,14 @@ const hitNode=(cursor:Pt,pointerKind:string):{id:number;index:number;owner:strin
   const radius=tacticalHitProfile(pointerKind).waypoint;
   const candidates:{id:number;index:number;owner:string;gap:number;marker:'node'|'watch'|'flash'|'activeWatch'}[]=[];
   for(const unit of team(state))if(unit.health>0){
+    const problem=executionProblemStatus(unit);
+    if(problem?.orderId!==null&&problem){
+      const marker=executionMarkerPoint(unit,viewMode!=='plan2d');
+      const gap=distance(marker,cursor);
+      if(gap<Math.min(radius,19))
+        candidates.push({id:problem.orderId!,index:0,owner:unit.id,
+          gap:Math.max(0,gap-2),marker:'node'});
+    }
     const activeTarget=activeWatchTarget(unit);
     if(activeTarget){
       const gap=distance(worldToScreen(activeTarget,12),cursor);
@@ -3822,7 +3873,14 @@ canvas.addEventListener('pointerdown',e=>{
     const activeRingHit=candidate?.marker==='activeWatch'&&
       distance(worldToScreen(activeWatchTarget(uid(candidate.owner)!)!,12),
         touch)<=Math.min(22,tacticalHitProfile(e.pointerType).waypoint);
-    const node=candidate&&(!hit||activeRingHit)?candidate:null;
+    // The small persistent problem marker takes precedence over the actor
+    // body hit. Its target is that existing, editable authored order.
+    const problemTap=!!candidate&&candidate.marker==='node'&&
+      !!team(state).find(unit=>unit.id===candidate.owner&&
+        executionProblemStatus(unit)?.orderId===candidate.id&&
+        distance(executionMarkerPoint(unit,viewMode!=='plan2d'),
+          touch)<=19);
+    const node=candidate&&(!hit||activeRingHit||problemTap)?candidate:null;
     if(node){
       lastAuthoringAt=performance.now();
       if(node.owner!==selected)selectUnit(node.owner);
