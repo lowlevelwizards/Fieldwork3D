@@ -126,14 +126,18 @@ export function updateFittedRigHarness(
  // Positive X faces forward. These coordinates are local to the rig
  // group, which itself receives the fitted X translation. Rear/side
  // anchors are transformed into the same space as the front panel.
+ const budget=rigVisualBudget(rig);
  const fx=frame.front.x-frame.rigShiftX;
- const bx=frame.back.x-frame.rigShiftX-.18;
+ // The rear band has real thickness. Keep its INNER face behind the
+ // garment's actual back surface, including the broad bandolier.
+ const rearHalfWidth=rig==='bandolier'?.86:budget.web*.5;
+ const bx=frame.back.x-frame.rigShiftX-
+  Math.max(.75,rearHalfWidth+.20);
  const sx=1.65-frame.rigShiftX;
  const rx=-1.65-frame.rigShiftX;
  const sy=frame.shoulderY+.18;
  const sh=Math.max(3.35,Math.min(5.15,frame.shoulderRight.z));
  const sideZ=frame.sideRight.z+.04;
- const budget=rigVisualBudget(rig);
  type Pt=readonly [number,number,number];
  const line=(points:readonly Pt[],width:number,depth=.44)=>{
   for(let i=0;i<points.length-1;i++)
@@ -143,10 +147,14 @@ export function updateFittedRigHarness(
  const across=(x:number,y:number,halfZ:number,width=.75,depth=.38)=>
   line([[x,y,-halfZ],[x,y,halfZ]],width,depth);
  const shoulder=(sign:number,front:Pt,back:Pt,width:number)=>{
+  // Front, crown and back are nearly orthogonal runs; only the
+  // short entry/exit corners are diagonal, so nothing knifes inward.
+  const crownZ=sign*sh;
   const route:readonly Pt[]=[front,
-   [fx+.25,sy-.92,sign*sh],
-   [sx,sy,sign*sh],
-   [rx,sy,sign*sh],
+   [front[0],sy-.55,crownZ],
+   [front[0],sy,crownZ],
+   [bx,sy,crownZ],
+   [bx,sy-.55,crownZ],
    back];
   fittedShoulderBridge(harness,material,route,
     Math.max(width,budget.shoulder),.68,1);
@@ -154,10 +162,13 @@ export function updateFittedRigHarness(
  const sideTie=(sign:number,y:number,fromX:number,toX:number,width=.56)=>{
    // Front flank -> true lateral surface -> rear flank. An unsupported
    // straight beam along maximum torso width reads as floating equipment.
-   const flank=Math.max(sh+.48,sideZ-1.02);
+   const flank=Math.max(sh+.56,sideZ-.55);
+   // A long straight side panel with only short chamfered end returns.
+   // Actual side thickness stays OUTSIDE the fitted garment.
    fittedSideWrap(harness,material,
-    [[fromX,sign*flank],[(fromX+toX)*.5,sign*sideZ],
-     [toX,sign*flank]],y,Math.max(width,budget.flank),.58,sign);
+    [[fromX,sign*flank],[fromX-.60,sign*sideZ],
+     [toX+.60,sign*sideZ],[toX,sign*flank]],
+    y,Math.max(width,budget.flank),.58,sign);
   };
 
  if(rig==='chest-placard'&&frame.mode==='carrier-placard'){
@@ -176,6 +187,8 @@ export function updateFittedRigHarness(
   // Short upper H bridge plus one lower, narrow stabilizing back strap.
   across(bx,-.86,3.75,.78);
   across(bx,-3.24,Math.min(sideZ,4.65),.50);
+  for(const sign of [-1,1])
+   sideTie(sign,-3.20,fx+.10,bx,micro?.66:.62);
  }else if(rig==='light-rig'||rig==='chicom-rig'){
   // Real crossed shoulder suspension: shoulders CONTINUE into opposing
   // lower rear attachment points instead of receiving a decorative X.
@@ -206,6 +219,8 @@ export function updateFittedRigHarness(
     [bx,-2.15,0]],wide?1.22:1.02,.54);
   }
   line([[bx,-2.15,0],[bx,-5.22,0]],wide?1.20:1.03,.53);
+  for(const sign of [-1,1])
+   sideTie(sign,-5.10,fx+.08,bx,wide?.72:.62);
  }else if(rig==='split-front'){
   // Independent wings joined by an H harness; no continuous back shell.
   for(const sign of [-1,1])
@@ -222,6 +237,8 @@ export function updateFittedRigHarness(
     [bx,.46,sign*4.82],1.28);
   box(harness,material,bx-.07,-.76,0,.47,2.05,9.82);
   across(bx,-3.70,Math.min(sideZ,5.36),.69);
+  for(const sign of [-1,1])
+   sideTie(sign,-3.70,fx+.10,bx,.75);
  }else if(rig==='lbv'){
   // The rear of a real LBV carries a broad shoulder yoke, two descending
   // panels, and a waist support; the sternum remains open.
