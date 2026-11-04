@@ -21,4 +21,8 @@ test('the real fog painter resolves each cell by its own world coordinates',()=>
  const code=readFileSync(new URL('../src/breach-fog-mask.ts',import.meta.url),'utf8');
  assert.match(code,/s\.seenGround\.has\(microKeyAt\(col,row\)\)/);
  assert.doesNotMatch(code,/MICRO_KEYS\[row\*MICRO_COLS\+col\]/);
+ const motor=readFileSync(new URL('../src/breach-game.ts',import.meta.url),'utf8');
+ assert.match(motor,/s\.seenGround\.add\(microKeyAt\(col,row\)\)/,
+   'the motor must record exactly the same cell that fog draws');
+ assert.doesNotMatch(motor,/MICRO_KEYS\[row\*MICRO_COLS\+col\]/);
 });
