@@ -45,7 +45,8 @@ test('RIG-E every named rig × real armor × uniform has finite actual exterior 
      assert.ok(Math.abs(RIG_PANEL_INNER_FACES[rig]+f.rigShiftX-
       f.front.x-.14)<.001,top+'/'+armor+'/'+rig+' panel inner face');
     }
-    const expected=rig==='chest-placard'&&RIG_MODULAR_ARMORS.has(armor)?
+    const expected=['micro-rig','chest-placard'].includes(rig)&&
+     RIG_MODULAR_ARMORS.has(armor)?
      'carrier-placard':'external-harness';
     assert.equal(f.mode,expected);
     count++;

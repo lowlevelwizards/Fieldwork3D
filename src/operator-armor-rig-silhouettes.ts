@@ -183,6 +183,14 @@ export function updateFittedRigHarness(
   const route=rigShoulderRoute(top,frame,front,back,sign);
   fittedShoulderBridge(harness,material,route,
     Math.max(width,budget.shoulder),.68,1);
+  // Front strap ends sink physically into an authored panel reinforcement.
+  // Do not add free-standing front blocks on belt suspension systems.
+  if(rig!=='field-webbing'&&rig!=='belt-harness'){
+   const landing=box(harness,material,front[0]-.04,front[1]-.38,
+    front[2],.60,1.06,Math.max(1.10,width));
+   landing.name='rig-front-reinforced-landing';
+   landing.userData.keepSeparate=true;
+  }
  };
  const sideTie=(sign:number,y:number,fromX:number,toX:number,width=.56)=>{
    // Front flank -> true lateral surface -> rear flank. An unsupported
@@ -196,12 +204,23 @@ export function updateFittedRigHarness(
     y,Math.max(width,budget.flank),.58,sign);
   };
 
- if(rig==='chest-placard'&&frame.mode==='carrier-placard'){
-  // This is a carrier attachment, NOT another standalone chest harness.
-  // Two short tabs join the top of the placard to its own upper corners.
-  for(const sign of [-1,1])
-   line([[8.14,1.0,sign*3.25],[fx+.21,2.05,sign*3.25]],
-    .82,.40,'front');
+ if((rig==='chest-placard'||rig==='micro-rig')&&
+    frame.mode==='carrier-placard'){
+  // Modern removable chassis: short visible carrier attachment tabs,
+  // absolutely no stand-alone shoulder/back harness on valid receivers.
+  const micro=rig==='micro-rig';
+  const panelX=micro?7.94:8.14;
+  const panelTop=micro?-.74:.35;
+  const tabZ=micro?2.86:3.30;
+  for(const sign of [-1,1]){
+   line([[panelX,panelTop,sign*tabZ],
+    [panelX,1.22,sign*tabZ],
+    [fx+.12,2.47,sign*tabZ]],.82,.42,'front');
+   const clip=box(harness,material,fx+.10,2.38,
+    sign*tabZ,.43,.70,1.10);
+   clip.name='carrier-front-direct-clip';
+   clip.userData.keepSeparate=true;
+  }
  }else if(rig==='micro-rig'||rig==='chest-placard'){
   const micro=rig==='micro-rig';
   const x=micro?7.90:8.14,z=micro?2.85:3.30;
