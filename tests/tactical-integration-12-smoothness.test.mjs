@@ -6,7 +6,6 @@ import {glideAlongStaticWall,sweptBodyClear,escapeOpenDoorOverlap,bodyClear}
  from '../src/breach-navigation.ts';
 import {newSession,team,planMove,planMoveStroke,undoPlan,redoPlan}
  from '../src/breach-game.ts';
-import {copyNodes} from '../src/breach-plan.ts';
 
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const level={
@@ -78,14 +77,14 @@ test('HERE stroke with valid middle and invalid final destination is atomic',()=
   const a=team(s)[0];
   assert.ok(planMove(s,a.id,{x:185,y:140}));
   assert.ok(planMove(s,a.id,{x:224,y:169}));
-  const before=copyNodes(a.plan),oldNext=s.nextId;
+  const before=JSON.parse(JSON.stringify(a.plan)),oldNext=s.nextId;
   assert.equal(planMoveStroke(s,a.id,
     [{x:146,y:148},{x:182,y:176},{x:-35,y:-60}],false,true),false);
-  assert.deepEqual(a.plan,before);
+  assert.deepEqual(JSON.parse(JSON.stringify(a.plan)),before);
   assert.equal(s.nextId,oldNext,'rejected gesture must not spend order IDs');
   assert.equal(undoPlan(s,a.id),true,'previous real edit remains undoable');
   assert.ok(redoPlan(s,a.id),'previous real edit remains redoable');
-  assert.deepEqual(a.plan,before);
+  assert.deepEqual(JSON.parse(JSON.stringify(a.plan)),before);
  }finally{activateSite(null);}
 });
 
@@ -94,15 +93,15 @@ test('appended stroke never silently stops at an earlier waypoint',()=>{
  try{
   const a=team(s)[0];
   assert.ok(planMove(s,a.id,{x:160,y:120}));
-  const before=copyNodes(a.plan);
+  const before=JSON.parse(JSON.stringify(a.plan));
   assert.equal(planMoveStroke(s,a.id,
     [{x:192,y:130},{x:235,y:146},{x:-30,y:400}],false,false),false);
-  assert.deepEqual(a.plan,before);
+  assert.deepEqual(JSON.parse(JSON.stringify(a.plan)),before);
   assert.ok(planMoveStroke(s,a.id,
     [{x:191,y:132},{x:234,y:149}],false,false));
   assert.ok(a.plan.at(-1).p.x>230,
     'valid release position must remain the actual authored destination');
   assert.ok(undoPlan(s,a.id),'one gesture should undo together');
-  assert.deepEqual(a.plan,before);
+  assert.deepEqual(JSON.parse(JSON.stringify(a.plan)),before);
  }finally{activateSite(null);}
 });
