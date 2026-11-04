@@ -9,6 +9,9 @@ export type QualityRow={
  averagePenalty:number;incompleteZones:number;
  blockedWorkFaces:number;unreachableWorkFaces:number;
  distinctPlans:number;distinctEntrySides:number;largestPlanShare:number;
+ meanAlternateDoorCount:number;meanPotentialWindowEntries:number;
+ meanObjectiveEntryDistance:number;meanFirstContactDistance:number;
+ meanFurnishedThresholdRooms:number;
 };
 export type QualityMatrix={
  sampled:number;invalidSites:number;averagePenalty:number;
@@ -32,6 +35,16 @@ export function summarizeSiteQuality(audits:readonly SiteAudit[]):QualityMatrix{
    r.operationalRouteIssues.filter(i=>i.reason==='unreachable').length,0),
   distinctPlans:new Set(rows.map(r=>r.planFamily??r.layout??'untyped')).size,
   distinctEntrySides:new Set(rows.map(r=>r.entrySide??'unknown')).size,
+  meanAlternateDoorCount:average(rows.map(r=>
+    r.tacticalOpportunities?.alternativeDoors??0)),
+  meanPotentialWindowEntries:average(rows.map(r=>
+    r.tacticalOpportunities?.potentialWindowEntries??0)),
+  meanObjectiveEntryDistance:average(rows.map(r=>
+    r.tacticalOpportunities?.objectiveEntryDistance??0)),
+  meanFirstContactDistance:average(rows.map(r=>
+    r.tacticalOpportunities?.closestHostileToEntry??0)),
+  meanFurnishedThresholdRooms:average(rows.map(r=>
+    r.tacticalOpportunities?.roomsWithCoverAndDoor??0)),
   largestPlanShare:Math.round(100*Math.max(0,...[...new Set(
     rows.map(r=>r.planFamily??r.layout??'untyped'))].map(f=>
       rows.filter(r=>(r.planFamily??r.layout??'untyped')===f).length))/rows.length)

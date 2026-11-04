@@ -92,7 +92,9 @@ export function generateSite(seed:number,scale:SiteScale='standard',
   try{
    onProgress?.('layout',attempt);
    const geometry=partitionMotelGuestUnits(
-     compileArchitecturalSite(kind,seed+attempt*9973,scale,subtype));
+     compileArchitecturalSite(kind,seed+attempt*9973,scale,subtype,
+       encounterContext.mission??
+         (['clear','intel','rescue','hold','capture'] as const)[(seed>>>0)%5]));
    geometry.seed=seed;
    geometry.identity=buildingIdentity(kind,seed,scale,geometry.roomCount);
    onProgress?.('furnishing',attempt);
