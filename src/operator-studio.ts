@@ -20,7 +20,7 @@ import {fabricCamoChoices,type FabricCamoChannel} from './operator-fabric-camo-p
 import {resolveAutomaticGearColors} from './operator-gear-color-policy.ts';
 import {D2_FACE_SOLIDS,D2_FACE_SOLID_COLORS,isD2Facewear,
  D2_FRAME_SOLIDS,D2_FRAME_COLORS,D2_LENS_TINTS,D2_LENS_MATERIALS,
- isD2Eyewear} from './operator-head-accessory-catalog.ts';
+ D2_MASK_SOLIDS,D2_MASK_COLORS,isD2Eyewear} from './operator-head-accessory-catalog.ts';
 import {RIG_VISUAL_TEXTILES,ARMOR_VISUAL_TEXTILES,rigSignature,armorSignature,rigColorAssembly}
  from './operator-rig-authenticity-policy.ts';
 import {GARMENT_SOLID_COLORS,solidChoicesFor,resolvedCuffSolid,
@@ -358,6 +358,32 @@ function renderMaterials(){
     const info=D2_FACE_SOLID_COLORS[id];
     const b=makeButton(info.label,w.d2FaceSolid===id,()=>
      changeWardrobe({...current(),d2FaceSolid:id}));
+    b.className='swatch';b.title=info.label;
+    const chip=document.createElement('span');chip.className='swatch-chip';
+    chip.style.backgroundColor='#'+info.hex.toString(16).padStart(6,'0');
+    b.prepend(chip);swatches.append(b);
+   }
+   section.append(swatches);
+  }
+  if(item==='gas-gp5'&&outfit.headwear!=='bare')
+   row('HOOD CLEARANCE','The hood hides the hat/helmet model without changing saved headwear or actual protection.');
+  if(item==='half-mask'||item==='respirator-half'){
+   const variants:readonly (readonly [string,string])[]=item==='half-mask'?
+    [['solid','Hard shell'],['mesh','Mesh-faced']]:
+    [['twin-filter','Twin cartridges'],['compact-filter','Compact filter']];
+   const wear=row('MASK CONSTRUCTION','Variants belong to the same physical mask family.');
+   addSelect(wear,variants,w.d2Accessories?.faceMode??variants[0][0],
+    faceMode=>changeWardrobe({...current(),d2Accessories:{
+     ...current().d2Accessories,faceMode}}));
+  }
+  if(['half-mask','respirator-half','gas-gp5','gas-m17',
+      'gas-m40','gas-m50'].includes(item)){
+   const section=row('MASK BODY','Cosmetic rubber or polymer finish. No in-game filtration bonus.');
+   const swatches=document.createElement('div');swatches.className='solid-swatches';
+   for(const id of D2_MASK_SOLIDS){
+    const info=D2_MASK_COLORS[id];
+    const b=makeButton(info.label,(w.d2MaskColor??'black')===id,
+     ()=>changeWardrobe({...current(),d2MaskColor:id}));
     b.className='swatch';b.title=info.label;
     const chip=document.createElement('span');chip.className='swatch-chip';
     chip.style.backgroundColor='#'+info.hex.toString(16).padStart(6,'0');
