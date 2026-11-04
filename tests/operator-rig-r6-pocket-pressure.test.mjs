@@ -6,6 +6,7 @@ import {initialWardrobe} from '../src/operator-wardrobe-data.ts';
 import {initialEquipmentLoadout,setEquipmentChoice}
  from '../src/equipment-loadouts.ts';
 import {rigContactFrame} from '../src/operator-rig-contact-frame.ts';
+import {RIG_FRONT_PROFILES} from '../src/operator-armor-rig-silhouettes.ts';
 import {RIG_POCKET_PRESSURE} from '../src/operator-rig-garment-relief.ts';
 
 function pose(r,top,rig){
@@ -51,11 +52,13 @@ test('RIG-R6 blouse pockets compress in/down and return to their authored pose',
     assert.ok(Math.abs(o.position.z-b.z*RIG_POCKET_PRESSURE.lateralScale)<1e-6);
     assert.ok(Math.abs(o.scale.x-b.sx*RIG_POCKET_PRESSURE.depthScale)<1e-6);
     o.geometry.computeBoundingBox();
-    // Covered fabric may meet the inner rear webbing, never exit its
-    // front silhouette. A small internal overlap is intentionally allowed.
+    // A compressed pocket may overlap the inner backing surface a little.
+    // It MUST NOT protrude through the visible FRONT face of the rig.
     const face=o.position.x+o.geometry.boundingBox.max.x*o.scale.x;
-    assert.ok(face<=frame.front.x+RIG_POCKET_PRESSURE.rearOverlap+.03,
-     top+'/'+rig+' covered fabric remains behind webbing');
+    const rigVisibleFront=RIG_FRONT_PROFILES[rig].front+frame.rigShiftX;
+    assert.ok(face<=rigVisibleFront-.10,
+     top+'/'+rig+' covered fabric must stay behind front webbing: '+
+     face.toFixed(2)+' > '+rigVisibleFront.toFixed(2));
    });
    const positions=pockets.map(o=>o.position.x);
    pose(r,top,rig);

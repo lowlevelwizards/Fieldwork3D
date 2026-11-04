@@ -18,7 +18,7 @@ const RIGS=['chest-placard','micro-rig','light-rig','chicom-rig',
 test('RIG-R6: raised pockets permit mild rear overlap after compression',()=>{
  assert.ok(rigGarmentFrontClearance('bdu-shirt','micro-rig',5)>5.95);
  assert.ok(rigGarmentFrontClearance('bdu-shirt','micro-rig',5)<6.20);
- assert.ok(rigGarmentFrontClearance('acu-shirt','micro-rig',5)>5.85);
+ assert.ok(rigGarmentFrontClearance('acu-shirt','micro-rig',5)>5.70);
  assert.ok(rigGarmentFrontClearance('smock-jacket','full-chest',5.59)>6.20);
  assert.ok(rigGarmentFrontClearance('gorka-jacket','full-chest',5.72)>6.25);
  assert.equal(rigGarmentFrontClearance('combat-shirt','micro-rig',5.11),5.11);

@@ -118,7 +118,9 @@ export function rigShoulderRoute(top:string,frame:FittedRigFrame,
  const crownZ=sign*sh;
  const rearX=frame.back.x-frame.rigShiftX;
  const realFront=garmentContactAnchor(top,4.7).front+.10-frame.rigShiftX;
- const entryX=Math.min(front[0]-.45,realFront);
+ // Every front join must slope inward even when the shirt is very thin:
+ // avoid a small outward reversal that leaves a hovering kink at the crown.
+ const entryX=Math.min(front[0]-.96,realFront);
  const diagonalZ=front[2]*.60+crownZ*.40;
  return [
   front,
