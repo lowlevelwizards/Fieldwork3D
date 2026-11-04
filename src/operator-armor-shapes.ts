@@ -104,6 +104,48 @@ export function fittedSideWrap(group:THREE.Group,m:THREE.Material,
  }
  return rawStrip(rings,m,group,'fitted-flat-side-wrap');
 }
+/** R5: a flat webbing strip whose WIDE face follows an explicit contact
+ * normal. Generic segment-to-segment quaternion alignment leaves the width
+ * axis arbitrary and makes diagonal/vertical straps stand edge-on.
+ * Caller supplies one OUTWARD contact normal per path point, including
+ * transitions from back to shoulder to side. No per-frame geometry updates.
+ */
+export function fittedFlatSurfaceBand(group:THREE.Group,m:THREE.Material,
+ path:readonly XYZ[],normals:readonly XYZ[],
+ width:number,thickness:number){
+ if(path.length<2||path.length!==normals.length)
+  throw new Error('surface webbing requires a normal at every route point');
+ const rings:[XYZ,XYZ,XYZ,XYZ][]=[];
+ let previousWidth:THREE.Vector3|undefined;
+ for(let i=0;i<path.length;i++){
+  const center=new THREE.Vector3(...path[i]);
+  const a=new THREE.Vector3(...path[Math.max(0,i-1)]);
+  const b=new THREE.Vector3(...path[Math.min(path.length-1,i+1)]);
+  const tangent=b.sub(a);
+  if(tangent.lengthSq()<1e-8)throw new Error('zero-length webbing route');
+  tangent.normalize();
+  const normal=new THREE.Vector3(...normals[i]);
+  // Eliminate any unintended component along the strap's travel direction.
+  normal.addScaledVector(tangent,-normal.dot(tangent));
+  if(normal.lengthSq()<1e-8){
+   normal.set(0,1,0).addScaledVector(tangent,-tangent.y);
+   if(normal.lengthSq()<1e-8)
+    normal.set(0,0,1).addScaledVector(tangent,-tangent.z);
+  }
+  normal.normalize();
+  const across=new THREE.Vector3().crossVectors(normal,tangent).normalize();
+  if(previousWidth&&across.dot(previousWidth)<0)across.negate();
+  previousWidth=across.clone();
+  const halfW=width*.5,halfT=thickness*.5;
+  const point=(sideW:number,sideT:number):XYZ=>{
+   const p=center.clone().addScaledVector(across,sideW*halfW)
+    .addScaledVector(normal,sideT*halfT);
+   return [p.x,p.y,p.z];
+  };
+  rings.push([point(1,1),point(-1,1),point(1,-1),point(-1,-1)]);
+ }
+ return rawStrip(rings,m,group,'fitted-flat-surface-band');
+}
 /** Six-vertex authored armor body with clipped shoulders, not several
  * coincident nested boxes. The frontal cap is at the supplied outer face.
  * Coordinates are deliberately kept in chest-local +X forward.
