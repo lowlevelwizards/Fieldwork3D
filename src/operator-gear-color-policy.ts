@@ -19,6 +19,7 @@ const PALETTE:Readonly<Record<GarmentSolidId,GearAutoColors>>={
  tan:{armor:'coyote',gear:'tan',pack:'coyote'},
  coyote:{armor:'coyote',gear:'coyote',pack:'coyote'},
  brown:{armor:'coyote',gear:'brown',pack:'brown'},
+ 'nutria-brown':{armor:'olive-drab',gear:'nutria-brown',pack:'nutria-brown'},
  slate:{armor:'slate',gear:'slate',pack:'charcoal'},
  charcoal:{armor:'charcoal',gear:'charcoal',pack:'charcoal'},
  black:{armor:'black',gear:'black',pack:'black'},

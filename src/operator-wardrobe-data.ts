@@ -4,6 +4,8 @@
  */
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {wardrobeMount} from './operator-wardrobe-mounts.ts';
+import {validArmorSolid,validRigSolid}
+ from './operator-rig-authenticity-policy.ts';
 import {isGarmentColorway} from './operator-upper-colorways.ts';
 import {isGarmentSolidId,FABRIC_SOLID_CHOICES,type GarmentSolidId}
  from './operator-garment-color-policy.ts';
@@ -248,8 +250,13 @@ export const setWardrobeStyle=(wardrobe:WardrobeOptions,slot:WardrobeSlot,id:str
 /** Set solid fabric and remove only that channel's active print. Do not
  * erase the prior material selection in any other channel. */
 export function setWardrobeFabricSolid(wardrobe:WardrobeOptions,
- channel:FabricCamoChannel,id:GarmentSolidId):WardrobeOptions{
+ channel:FabricCamoChannel,id:GarmentSolidId,
+ outfit?:CamoOutfit):WardrobeOptions{
  if(!FABRIC_SOLID_CHOICES[channel].includes(id))return wardrobe;
+ if(outfit&&channel==='armor'&&!validArmorSolid(outfit.armorStyle,id))
+  return wardrobe;
+ if(outfit&&channel==='gear'&&!validRigSolid(outfit.rigStyle,id))
+  return wardrobe;
  return {...wardrobe,
   fabricSolids:{...wardrobe.fabricSolids,[channel]:id},
   lastFabricCamo:{...wardrobe.lastFabricCamo,

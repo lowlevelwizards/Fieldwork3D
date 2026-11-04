@@ -18,6 +18,8 @@ import {readWardrobe,initialWardrobe,resolvedWardrobe,setWardrobeStyle,
  type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
 import {fabricCamoChoices,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {resolveAutomaticGearColors} from './operator-gear-color-policy.ts';
+import {RIG_VISUAL_TEXTILES,ARMOR_VISUAL_TEXTILES,rigSignature}
+ from './operator-rig-authenticity-policy.ts';
 import {GARMENT_SOLID_COLORS,solidChoicesFor,resolvedCuffSolid,
  resolvedCombatKnitSolid,type GarmentSolidId} from './operator-garment-color-policy.ts';
 import {headwearColorChoices,HEADWEAR_SOLID_COLORS} from './operator-headwear-colors.ts';
@@ -320,16 +322,27 @@ function renderMaterials(){
  if(channel){
   const choices=fabricCamoChoices(channel,outfit);
   const pattern=w.fabricCamo?.[channel]??null;
+  const eligibleSolids=channel==='gear'?
+   (RIG_VISUAL_TEXTILES[outfit.rigStyle]?.solids??[]):
+   channel==='armor'?
+   (ARMOR_VISUAL_TEXTILES[outfit.armorStyle]?.solids??[]):
+   solidChoicesFor(channel);
   const group=row('FABRIC MATERIAL','Select a solid or an approved print. Printed material never changes its original artwork.');
   if(channel==='armor'||channel==='gear'||channel==='pack'){
    const automatic=resolveAutomaticGearColors({print:w.fabricCamo?.top,
     solid:w.fabricSolids?.top})[channel];
    const hint=document.createElement('small');
-   hint.textContent='AUTO MATCH: '+GARMENT_SOLID_COLORS[automatic].label+
+   const signature=channel==='gear'?rigSignature(outfit.rigStyle):null;
+   hint.textContent=signature?
+    'ICONIC DEFAULT: '+(signature.print??
+     GARMENT_SOLID_COLORS[signature.solid].label)+
+    ' · Select an available solid or print to override this reference appearance.':
+    'AUTO MATCH: '+GARMENT_SOLID_COLORS[automatic].label+
     ' · Based on uniform family. Manual armor, rig and pack choices remain independent.';
    group.append(hint);
    const auto=document.createElement('div');auto.className='material-row';
-   auto.append(makeButton('USE AUTO MATCH',!pattern&&!w.fabricSolids?.[channel],()=>{
+   auto.append(makeButton(channel==='gear'?'RESTORE ICONIC DEFAULT':'USE AUTO MATCH',
+    !pattern&&!w.fabricSolids?.[channel],()=>{
     const now=current();
     changeWardrobe({...now,
      fabricCamo:{...now.fabricCamo,[channel]:undefined},
@@ -340,8 +353,9 @@ function renderMaterials(){
   const tabs=document.createElement('div');tabs.className='material-tabs';
   const solidSelected=!pattern;
   tabs.append(makeButton('SOLID',solidSelected,()=>{
-   const id=w.fabricSolids?.[channel]??'olive-drab';
-   changeWardrobe(setWardrobeFabricSolid(current(),channel,id));
+   const id=w.fabricSolids?.[channel]??
+    eligibleSolids[0]??'olive-drab';
+   changeWardrobe(setWardrobeFabricSolid(current(),channel,id,outfit));
   }));
   if(choices.length)tabs.append(makeButton('CAMOUFLAGE',!!pattern,()=>{
    if(!pattern){
@@ -359,9 +373,9 @@ function renderMaterials(){
     changeWardrobe(rerollWardrobeFabricCamo(current(),channel,outfit))));
    group.append(actions);
   }else{
-   addSolidSwatches(group,solidChoicesFor(channel),
+   addSolidSwatches(group,eligibleSolids,
     w.fabricSolids?.[channel]??null,id=>
-     changeWardrobe(setWardrobeFabricSolid(current(),channel,id)));
+     changeWardrobe(setWardrobeFabricSolid(current(),channel,id,outfit)));
   }
   // A matching set is explicitly opt-in: one tap copies only a compatible
   // print or solid, never an item or equipment slot.
@@ -426,7 +440,9 @@ function renderMaterials(){
   actions.append(makeButton('AUTO · MATCH RIG',!w.pouchSolid,()=>
    changeWardrobe({...current(),pouchSolid:undefined})));
   advanced.append(actions);
-  addSolidSwatches(advanced,solidChoicesFor('gear'),w.pouchSolid??null,
+  addSolidSwatches(advanced,
+   RIG_VISUAL_TEXTILES[item]?.solids??solidChoicesFor('gear'),
+   w.pouchSolid??null,
    id=>changeWardrobe({...current(),pouchSolid:id}));
   materialRoot.append(advanced);
  }

@@ -9,6 +9,8 @@
 import {HEADWEAR_CAMO_IDS,type HeadwearCamoId}
  from './operator-headwear-camo.ts';
 import {uniformCutCamoCompatible} from './operator-uniform-cut-eligibility.ts';
+import {validArmorPrint,validRigPrint}
+ from './operator-rig-authenticity-policy.ts';
 
 export const FABRIC_CAMO_CHANNELS=['top','trousers','armor','gear','pack'] as const;
 export type FabricCamoChannel=typeof FABRIC_CAMO_CHANNELS[number];
@@ -96,13 +98,9 @@ export function fabricCamoCompatible(id:HeadwearCamoId,
     outfit.trousers==='acu-trousers')&&
     uniformCutCamoCompatible(outfit.trousers,id);
   case 'armor':
-   return outfit.armorStyle!=='armor-bare';
+   return validArmorPrint(outfit.armorStyle,id);
   case 'gear':
-   if(id==='east-german-strichtarn')
-    return ['field-webbing','belt-harness'].includes(outfit.rigStyle);
-   if(id==='woodland-dpm')
-    return ['field-webbing','lbv','belt-harness','full-chest'].includes(outfit.rigStyle);
-   return outfit.rigStyle!=='no-rig';
+   return validRigPrint(outfit.rigStyle,id);
   case 'pack':
    if(id==='alpenflage'||id==='east-german-strichtarn'||
     id==='woodland-marpat')
