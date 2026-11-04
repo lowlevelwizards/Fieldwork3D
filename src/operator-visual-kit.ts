@@ -288,7 +288,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  v.helmet.visible=false;
  v.cap.visible=false;
  v.hair.visible=looks.headwear==='bare'&&
-  !['balaclava-one','balaclava-three','balaclava-open'].includes(looks.facewear);
+  !['balaclava-one','balaclava-three','balaclava-open'].includes(looks.facewear)&&
+  !(looks.facewear==='shemagh'&&wardrobe?.d2FaceMode==='head-wrap');
  // Hair sits on the scalp only when uncovered; helmets, caps and full
  // balaclavas suppress it to avoid clipping without changing headgear fit.
  updateWardrobeHeadLayers(v.wardrobeHead,

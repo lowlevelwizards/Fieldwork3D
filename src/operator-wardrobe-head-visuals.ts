@@ -7,6 +7,7 @@ import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {createHeadwearSilhouette} from './operator-headwear-silhouettes.ts';
 import {createD2Balaclava} from './operator-d2-fabric-visuals.ts';
+import {createD2FabricWrap} from './operator-d2-fabric-wraps.ts';
 import {createHeadwearDetailMaterial} from './operator-headwear-materials.ts';
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import type {WardrobeSlot} from './operator-wardrobe-data.ts';
@@ -83,11 +84,11 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   if(id==='balaclava-three')
    twoHoleMouthCover=fabricModel.getObjectByName('d2-two-hole-mouth-cover') as THREE.Group;
  }
- const neck=(id:string,high:number)=>{
-  const model=g(facewear,id);
-  cube(model,cloth,1.75,-1.8,0,5.75,2.6+high,8.9);
- };
- neck('gaiter',.9);neck('shemagh',2.1);neck('scarf',.65);
+ // D2-A2: one model per wrap family, with physically distinct prebuilt modes.
+ for(const id of ['gaiter','shemagh','bandana'] as const){
+  g(facewear,id,true).add(createD2FabricWrap(id,cloth));
+ }
+ // The retired scarf ID is migrated in readWardrobe; never show a duplicate.
  const halfMask=g(facewear,'half-mask');
  cube(halfMask,vest,4.55,1.55,0,1.0,2.3,6.5);
  const gasMask=g(facewear,'gas-mask');
@@ -132,7 +133,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
 }
 export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  headwear:string,facewear:string,eyewear:string,headset:string,
- d2FaceMode?:'three-hole'|'two-hole'){
+ d2FaceMode?:string){
  const choices:{slot:WardrobeSlot;map:Model;id:string}[]=[
   {slot:'headwear',map:layers.headwear,id:headwear},
   {slot:'facewear',map:layers.facewear,id:facewear},
@@ -144,4 +145,16 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  // A persistent option of the same balaclava, never a separate wardrobe card.
  if(layers.twoHoleMouthCover)
   layers.twoHoleMouthCover.visible=facewear==='balaclava-three'&&d2FaceMode==='two-hole';
+ // Only one wear state of each wrap is visible. Inactive models stay hidden.
+ for(const id of ['gaiter','shemagh','bandana'] as const){
+  const wrap=layers.facewear[id]?.children.find(child=>child.userData.modelAxes);
+  if(!wrap)continue;
+  const fallback=id==='gaiter'?'nose':id==='shemagh'?'draped':'raised';
+  const supported=id==='gaiter'?['lowered','mouth','nose']:
+   id==='shemagh'?['draped','face-wrap','head-wrap']:['raised','lowered'];
+  const desired=facewear===id&&d2FaceMode&&supported.includes(d2FaceMode)?
+   d2FaceMode:fallback;
+  for(const state of wrap.children)
+   state.visible=state.userData.d2WrapMode===desired;
+ }
 }
