@@ -60,7 +60,8 @@ import {newAwareness,addObservation,visibleObservation,
 import {visualGain,advanceSight,confirmedSight} from './breach-visual-perception.ts';
 import {actorLightingLevels,lightVisibilityGain} from './equipment-sight-lighting.ts';
 import type {LightingMode} from './equipment-site-lighting.ts';
-import {passageWait,type PassageActor,type PassageLease}
+import {passageWait,approachingNarrowThreshold,
+  type PassageActor,type PassageLease}
   from './breach-passage.ts';
 import {diagnoseMovement,projectReachableGoal,type Blocker}
   from './breach-nav-diagnostics.ts';
@@ -206,10 +207,18 @@ export type FlashBurst={id:number;p:Pt;age:number};
 export type KnownContact={p:Pt;at:number;status:'seen'|'heard'};
 export type MissionStage='clear'|'secure'|'extract'|'done';
 export type Scenario={index:number;name:string;objective:Pt;extract:Pt};
+/** One committed squad-entry command is one undoable team edit. */
+export type SquadPlanTransaction={
+ members:string[];
+ before:Record<string,PlanNode[]>;
+ after:Record<string,PlanNode[]>;
+};
 export type Session=Omit<TacticalState,'operators'> & {
   operators:TeamActor[];windows:WindowState[];objectRevision:number;
   coverState:typeof COVER;
   passageLeases:Record<string,PassageLease>;
+  squadEntryUndo:SquadPlanTransaction|null;
+  squadEntryRedo:SquadPlanTransaction|null;
   variant:number;scenario:Scenario;
   mission:MissionStage;nextId:number;noise:NoiseEvent[];nextNoiseId:number;
   reports:TacticalReport[];nextReportId:number;
@@ -377,7 +386,7 @@ export function newSession(index=0,siteSeed?:number,
     coverState:COVER.map(o=>({...o,material:materialForFixture(o.fixture),
       integrity:MATERIALS[materialForFixture(o.fixture)].integrity})),
     windows:initializeWindows(site?.windows??[]),
-    passageLeases:{},
+    passageLeases:{},squadEntryUndo:null,squadEntryRedo:null,
     doors:initialDoors().map((d,i)=>initDoor({
       ...d,locked:d.locked??!!(site&&i>2&&i%7===0&&
         d.kind!=='shutter'&&d.id!=='FRONT')},i)),variant,nextId:1,
@@ -887,39 +896,77 @@ export function planSquadEntry(s:Session,doorId:string){
   const alive=team(s).filter(a=>a.health>0);
   if(!alive.length)return false;
   const start=finalPoint(alive[0]);
-  // Only offer physically routable sectors; a narrow hall may have a
-  // wall-crossing candidate that is clear at its endpoint but unreachable.
+  // Planning may use only legitimately known geometry, never hidden enemies.
   const slots=entryLanes(door,start,alive.length,p=>
     passable(p)&&!!routeWithIntel(s.intel,start,p).length);
   if(slots.length!==alive.length){
     notify(s,'SQUAD ENTRY BLOCKED · NO DISTINCT INTERIOR LANES');
     return false;
   }
-  // Preflight all interior destinations before editing anyone's plan.
+  // The preview's destinations are preflighted before any actor is edited.
   for(let i=0;i<alive.length;i++){
     if(!routeWithIntel(s.intel,finalPoint(alive[i]),slots[i].point).length){
       notify(s,'SQUAD ENTRY BLOCKED · CHECK ROUTE');
       return false;
     }
   }
+  // PlanStack, Sync, Door, Wait and Move each validate independently. All
+  // those operations must commit together or restore the exact old plans,
+  // histories and temporary planning state. Earlier behavior could strand
+  // one or more teammates with partial ENTRY/SYNC instructions on failure.
+  const originals=alive.map(a=>({
+    actor:a,plan:copyNodes(a.plan),
+    history:{undo:a.history.undo.map(copyNodes),
+      redo:a.history.redo.map(copyNodes)},
+    path:a.path.map(clone),nav:a.nav.map(clone),
+    activeNode:a.activeNode,waitRemaining:a.waitRemaining,
+    actionTimer:a.actionTimer,syncReady:a.syncReady,pieIndex:a.pieIndex
+  }));
+  const initialId=s.nextId,initialSync=s.syncCode;
+  const rollback=()=>{
+    for(const before of originals){
+      const a=before.actor;
+      a.plan=before.plan;a.history=before.history;
+      a.path=before.path;a.nav=before.nav;
+      a.activeNode=before.activeNode;
+      a.waitRemaining=before.waitRemaining;
+      a.actionTimer=before.actionTimer;
+      a.syncReady=before.syncReady;a.pieIndex=before.pieIndex;
+    }
+    s.nextId=initialId;s.syncCode=initialSync;
+    return false;
+  };
   for(const a of alive){
     if(!a.plan.some(n=>n.stackDoorId===doorId)&&
-      !planStack(s,a.id,doorId))return false;
+       !planStack(s,a.id,doorId))return rollback();
   }
-  if(!planSync(s))return false;
+  if(!planSync(s,alive.map(a=>a.id)))return rollback();
   const lead=alive[0];
-  if(!planDoor(s,lead.id,doorId,'open'))return false;
+  if(!planDoor(s,lead.id,doorId,'open'))return rollback();
   for(let i=0;i<alive.length;i++){
     const a=alive[i],slot=slots[i];
-    if(i>0)planWait(s,a.id,.3+i*.24);
+    if(i>0&&!planWait(s,a.id,.3+i*.24))return rollback();
     if(!planMove(s,a.id,slot.point)){
       notify(s,a.name+' ENTRY ROUTE UNAVAILABLE');
-      return false;
+      return rollback();
     }
     const arrival=a.plan.at(-1);
-    if(arrival?.kind==='move')
-      planAim(s,a.id,'fixed',slot.look,arrival.id,'look');
+    if(arrival?.kind!=='move'||
+       !planAim(s,a.id,'fixed',slot.look,arrival.id,'look'))
+      return rollback();
   }
+  // Collapse the many internal authoring steps into ONE undo entry per
+  // participant. A single UNDO/REDO of any unchanged squad entry restores
+  // the entire original coordinated plan instead of orphaning a sync code.
+  const transaction:SquadPlanTransaction={members:alive.map(a=>a.id),
+    before:Object.fromEntries(originals.map(b=>[b.actor.id,copyNodes(b.plan)])),
+    after:Object.fromEntries(alive.map(a=>[a.id,copyNodes(a.plan)]))};
+  for(const original of originals){
+    const a=original.actor;
+    a.history.undo=[...original.history.undo,copyNodes(original.plan)].slice(-40);
+    a.history.redo=[];
+  }
+  s.squadEntryUndo=transaction;s.squadEntryRedo=null;
   notify(s,'SQUAD ENTRY READY · DISTINCT LANES · GO TO EXECUTE');
   return true;
 }
@@ -1060,22 +1107,57 @@ export function planWait(s:Session,id:string,seconds=.5){
   const a=party(s,id);return a?addNode(s,id,'wait',finalPoint(a),
     {duration:clamp(seconds,.3,6)}):false;
 }
-export function planSync(s:Session){
-  if(!canEdit(s)||team(s).some(a=>a.health<=0))return false;
+export function planSync(s:Session,participantIds?:readonly string[]){
+  if(!canEdit(s))return false;
+  const participants=team(s).filter(a=>a.health>0&&
+    (!participantIds||participantIds.includes(a.id)));
+  if(!participants.length)return false;
   const code='B'+(++s.syncCode);
-  return team(s).every(a=>addNode(s,a.id,'sync',finalPoint(a),
+  return participants.every(a=>addNode(s,a.id,'sync',finalPoint(a),
     {syncCode:code}));
 }
 export function clearPlan(s:Session,id:string){
   const a=party(s,id);return a?edit(s,a,()=>{a.plan=[];}):false;
 }
+/** Exact-match squad transactions only apply while no participant's
+ * authored orders have changed. Otherwise ordinary per-actor undo wins. */
+function squadPlansMatch(s:Session,group:SquadPlanTransaction,
+ key:'before'|'after',direction:'undo'|'redo'):boolean{
+ return group.members.every(id=>{
+   const a=party(s,id);
+   return !!a&&JSON.stringify(a.plan)===JSON.stringify(group[key][id])&&
+     (direction==='undo'?a.history.undo.length:a.history.redo.length)>0;
+ });
+}
 export function undoPlan(s:Session,id:string){
   const a=party(s,id);if(!a||!canEdit(s))return false;
+  const group=s.squadEntryUndo;
+  if(group&&group.members.includes(id)&&squadPlansMatch(s,group,'after','undo')){
+    for(const member of group.members){
+      const peer=party(s,member)!;
+      const previous=undo(peer.history,peer.plan)!;
+      peer.plan=previous;pathFor(peer);
+    }
+    s.squadEntryUndo=null;s.squadEntryRedo=group;
+    return true;
+  }
+  s.squadEntryUndo=null;s.squadEntryRedo=null;
   const previous=undo(a.history,a.plan);if(!previous)return false;
   a.plan=previous;pathFor(a);return true;
 }
 export function redoPlan(s:Session,id:string){
   const a=party(s,id);if(!a||!canEdit(s))return false;
+  const group=s.squadEntryRedo;
+  if(group&&group.members.includes(id)&&squadPlansMatch(s,group,'before','redo')){
+    for(const member of group.members){
+      const peer=party(s,member)!;
+      const next=redo(peer.history,peer.plan)!;
+      peer.plan=next;pathFor(peer);
+    }
+    s.squadEntryRedo=null;s.squadEntryUndo=group;
+    return true;
+  }
+  s.squadEntryUndo=null;s.squadEntryRedo=null;
   const next=redo(a.history,a.plan);if(!next)return false;
   a.plan=next;pathFor(a);return true;
 }
@@ -1713,9 +1795,13 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     b.side===a.side).map(b=>b.p);
   // Teammates are soft traffic, not rigid obstacles: preserve movement when
   // there is no safe sidestep, and never force the stationary teammate away.
-  const desiredMove=friendlyPassingStep(a.p,move,next,friendlyPositions,
-    (from,to)=>a.squeeze?sweptProfileClear(from,to,s.doors,
-      a.squeezeYaw,'squeeze'):sweptBodyClear(from,to,s.doors));
+  // Passage reservations supply queue spacing near narrow doors.
+  // Additional friendly steering here can put the last soldier against a
+  // jamb, causing false progress and a costly squeeze into the opening.
+  const desiredMove=approachingNarrowThreshold(a.p,p,s.doors)?move:
+    friendlyPassingStep(a.p,move,next,friendlyPositions,
+      (from,to)=>a.squeeze?sweptProfileClear(from,to,s.doors,
+        a.squeezeYaw,'squeeze'):sweptBodyClear(from,to,s.doors));
   // Resolve the physical body's intended step against the actual leaf
   // BEFORE evaluating movement clearance. The hinge may yield right now;
   // when it cannot (wall/actor), existing collision and recovery remain.

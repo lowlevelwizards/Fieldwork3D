@@ -208,7 +208,13 @@ export function glideAlongStaticWall(from:Pt,intended:Pt,
      Math.min(allowedTangent,tangent));
    // Never creep sideways without an intended tangential component. A
    // nearly embedded shoulder may still take a small outward recovery step.
-   if(Math.abs(glide)<.035&&correction<.035)continue;
+   // A near-perpendicular move into a doorjamb must NOT be counted as
+   // successful wall gliding just because a tiny outward adjustment exists.
+   // That produces a seconds-long apparent walk with almost no progress and
+   // prevents the motor from invoking its real route repair. True wall-parallel
+   // travel (including reverse) has a substantial tangential component.
+   // Genuine embedded-wall escapes are handled by releaseStaticWallOverlap.
+   if(Math.abs(glide)<Math.max(.035,step*.32))continue;
    const candidate={
      x:from.x+tx*glide+outwardX*correction,
      y:from.y+ty*glide+outwardY*correction
