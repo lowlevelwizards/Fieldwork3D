@@ -1918,6 +1918,8 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     if(glide){
       const old=clone(a.p);
       a.priorP=old;a.p=glide;
+      // Footwork and motion cues follow resolved, not rejected movement.
+      a.velocity=d(old,glide)/Math.max(dt,.0001);
       // Point the body along its real sliding movement, not at the
       // obstructed grid waypoint. Explicit WATCH remains authoritative.
       if(a.aimInstruction?.mode!=='track')
@@ -1988,7 +1990,9 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
      diagnoseMovement(a.p,desiredMove,s.doors).blocker==='furniture'){
     const slide=slideAroundStaticCorner(a.p,desiredMove,next,s.doors);
     if(slide){
-      a.priorP=clone(a.p);a.p=slide;
+      const old=clone(a.p);
+      a.priorP=old;a.p=slide;
+      a.velocity=d(old,slide)/Math.max(dt,.0001);
       a.blockedTime=0;a.lastBlocker='clear';a.retryRouteAt=0;
       return true;
     }

@@ -197,6 +197,12 @@ export function glideAlongStaticWall(from:Pt,intended:Pt,
      (from.y-wall.a.y)*normalY;
    const sign=signed>=0?1:-1;
    const outwardX=normalX*sign,outwardY=normalY*sign;
+   // A nearby wall alone does not justify a slide: if only furniture
+   // blocks the requested step, preserve furniture/replan recovery.
+   const midpoint={x:(from.x+intended.x)/2,y:(from.y+intended.y)/2};
+   const clearance=OPERATOR_RADIUS+1;
+   if(pointToSegment(intended,wall)>=clearance&&
+      pointToSegment(midpoint,wall)>=clearance)continue;
    const tangent=dx*tx+dy*ty;
    const outward=dx*outwardX+dy*outwardY;
    if(outward>0&&near>=OPERATOR_RADIUS+1)continue;
