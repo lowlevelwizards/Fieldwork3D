@@ -95,7 +95,8 @@ import {weaponHandlingModifiers,sightAcquisitionScale,sightSpreadScale}
 import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
   rayHitsActor,muzzleEndpoint,recoverWeapon,handlingInstability,type FiringMode} from './breach-ballistics.ts';
-import {chooseDefense,watchPoint,reachableInvestigation} from './breach-defense.ts';
+import {chooseDefense,chooseFiringDefense,watchPoint,
+  reachableInvestigation} from './breach-defense.ts';
 import {operationBrief,assessOperation,
   type OperationKind} from './breach-operations.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
@@ -2455,6 +2456,14 @@ function defensivePosition(a:TeamActor,from:Pt,s:Session):Pt|null{
     health:other.health,defense:other.defense}));
   return chooseDefense(a.p,from,s.doors,others,a.id);
 }
+/** Firing reposition differs from a safe withdrawal. It must actually
+ * expose a legal muzzle lane to the confirmed visible opponent. */
+function firingPosition(a:TeamActor,target:TeamActor,s:Session):Pt|null{
+  const others=enemies(s).map(other=>({id:other.id,p:other.p,
+    health:other.health,defense:other.defense}));
+  return chooseFiringDefense(a.p,target.p,s.doors,others,a.id,
+    aimHeight(target.posture==='crouch'));
+}
 function enemyDecisions(s:Session,a:TeamActor,dt:number){
   if(a.health<=0||a.surrendered)return;
   if(!a.watch)a.watch=watchPoint(a.p,s.doors);
@@ -2507,7 +2516,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       suppression:a.suppression,morale:a.morale,temperament:a.personality});
     if(a.combatChoice==='reposition'&&a.alert!=='retreat'&&
       s.seconds-a.lastFireRepositionAt>2.6){
-      const candidate=defensivePosition(a,b.p,s);
+      const candidate=firingPosition(a,b,s);
       a.lastFireRepositionAt=s.seconds;
       if(candidate&&d(candidate,a.p)>15){
         a.defense=candidate;a.alert='cover';a.nav=[];
