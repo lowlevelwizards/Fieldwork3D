@@ -48,6 +48,27 @@ test('walking both directions alongside a wall glides, without any radius reduct
   COVER.splice(0,COVER.length,...oldCover);
  }
 });
+test('nearby wall never disguises a furniture collision as a wall glide',()=>{
+ const oldWalls=[...WALLS],oldCover=[...COVER];
+ try{
+  WALLS.splice(0,WALLS.length,{a:{x:100,y:60},b:{x:100,y:250}});
+  COVER.splice(0,COVER.length,
+    {x:100,y:164,w:5,h:8,fixture:'shelf',low:false});
+  const from={x:110.8,y:160},intoFurniture={x:109.8,y:162.4};
+  assert.ok(passable(from));
+  assert.equal(sweptBodyClear(from,intoFurniture,[]),false);
+  // Neither end nor midpoint touches the full wall clearance.
+  assert.equal(glideAlongStaticWall(from,intoFurniture,[]),null);
+ }finally{
+  WALLS.splice(0,WALLS.length,...oldWalls);
+  COVER.splice(0,COVER.length,...oldCover);
+ }
+});
+test('the motor reports resolved, not imagined wall-glide and corner-slide speed',()=>{
+ const motor=readFileSync(new URL('../src/breach-game.ts',import.meta.url),'utf8');
+ assert.match(motor,/a\.velocity=d\(old,glide\)\/Math\.max\(dt,\.0001\)/);
+ assert.match(motor,/a\.velocity=d\(old,slide\)\/Math\.max\(dt,\.0001\)/);
+});
 test('a tiny static-wall overlap can escape outward without teleporting or rotating first',()=>{
  const oldWalls=[...WALLS],oldCover=[...COVER];
  try{
