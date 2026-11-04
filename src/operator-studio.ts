@@ -371,6 +371,10 @@ function renderMaterials(){
   const save=(patch:Partial<NonNullable<WardrobeOptions['d2Accessories']>>)=>
    changeWardrobe({...current(),d2Accessories:{...current().d2Accessories,...patch}});
   if(item.startsWith('goggles-')){
+   if((w.d2Accessories?.eyePosition??'eyes')==='raised'&&
+      ['patrol-cap','boonie'].includes(outfit.headwear))
+    row('HEADWEAR CLEARANCE',
+     'This brim prevents raised placement. Goggles remain over the eyes until compatible headwear is selected.');
    const worn=row('GOGGLE POSITION',
     'Raised goggles rest on the helmet or forehead when the selected headwear permits it.');
    addSelect(worn,[['eyes','Over eyes'],['raised','Raised'],['neck','Around neck']] as const,
