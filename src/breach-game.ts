@@ -21,7 +21,8 @@ import {entryLanes} from './breach-entry-lanes.ts';
 import {entryDoorState} from './breach-entry-coordination.ts';
 import {generateSite,type Site,type SiteScale,seeded} from './breach-site.ts';
 import type {EncounterContext,EncounterActivity,EncounterReadiness,EncounterRole} from './worldgen/encounter-types.ts';
-import {encounterReactionDelay} from './breach-encounter-readiness.ts';
+import {encounterReactionDelay,perceptualReadiness,
+  encounterReactionPhase} from './breach-encounter-readiness.ts';
 import {WEAPONS,injuryOf,injurySpeed,injuryReload,
   woundSeverity,exposure,nearCover,type WeaponId,type BattleEvent}
   from './breach-combat.ts';
@@ -176,7 +177,7 @@ export type TeamActor=Operator & {
   encounterActivity?:EncounterActivity;encounterReadiness?:EncounterReadiness;
   encounterRole?:EncounterRole;encounterGroupId?:string;
   encounterRoutine?:Pt[];routineIndex?:number;routinePauseUntil?:number;
-  encounterReactionUntil?:number;
+  encounterReactionUntil?:number;encounterReactionStartedAt?:number;
   lastNoiseExaminedAt:number;lastNoiseExaminedId:number;
   flashUntil:number;lastThrowAt:number;lastDoorAt:number;
   lastDoorId:string|null;lastDoorMethod:DoorMethod;
@@ -1456,7 +1457,9 @@ function advanceVisualAwareness(s:Session,dt:number){
     angleDifference(observer.heading,angle(observer.p,subject.p)),
     subject.velocity>10,subject.posture==='crouch')*
     lightVisibilityGain(lighting.get(subject.id)??1)*
-    (subject.weaponLightOn&&subject.weaponConfiguration?.slots.light==='light-compact'?1.18:1):0;
+    (subject.weaponLightOn&&subject.weaponConfiguration?.slots.light==='light-compact'?1.18:1)*
+    (observer.side==='red'?perceptualReadiness(
+      observer.encounterReadiness??'attentive'):1):0;
    const old=observer.awareness.visualProgress[subject.id]??0;
    observer.awareness.visualProgress[subject.id]=advanceSight(old,dt,signal,visible);
   }
@@ -2585,9 +2588,11 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   if(a.health<=0||a.surrendered)return;
   if(!a.watch)a.watch=watchPoint(a.p,s.doors);
   const visible=team(s).filter(b=>inSight(a,b,s));
-  if(visible.length&&a.encounterReactionUntil===Number.POSITIVE_INFINITY)
+  if(visible.length&&a.encounterReactionUntil===Number.POSITIVE_INFINITY){
+    a.encounterReactionStartedAt=s.seconds;
     a.encounterReactionUntil=s.seconds+encounterReactionDelay(
       a.encounterReadiness??'attentive',a.id);
+  }
   // Intention selection reads only acquired observations, not hidden positions.
   const belief=bestBelief(a.awareness);
   const recentNoise=s.seconds-a.lastNoiseAt<6;
@@ -2608,6 +2613,15 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   if(visible.length){
     a.searchOrigin=null;a.searchQueue=[];a.searchPauseUntil=0;
     const b=visible.sort((x,y)=>d(x.p,a.p)-d(y.p,a.p))[0];
+    // A fresh surprise first makes the defender orient. The observed target
+    // may update WATCH, but no cover sprint or radio report happens before
+    // they register contact. Firing remains gated through READY.
+    if(encounterReactionPhase(s.seconds,a.encounterReactionStartedAt,
+        a.encounterReactionUntil)==='orient'){
+      a.contact=clone(b.p);a.watch=clone(b.p);
+      a.contacted=true;a.alert='suspicious';a.velocity=0;
+      rotate(a,angle(a.p,b.p),dt);return;
+    }
     a.contact=clone(b.p);a.alertUntil=s.seconds+3;a.contacted=true;
     if(s.seconds-a.lastReportAt>5){
       s.reports.push({id:s.nextReportId++,senderId:a.id,at:s.seconds,
@@ -2687,9 +2701,11 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       newestNoise.id??a.lastNoiseExaminedId);
     a.lastNoiseExaminedAt=Math.max(a.lastNoiseExaminedAt,newestNoise.time);
   }
-  if(strongest&&a.encounterReactionUntil===Number.POSITIVE_INFINITY)
+  if(strongest&&a.encounterReactionUntil===Number.POSITIVE_INFINITY){
+    a.encounterReactionStartedAt=s.seconds;
     a.encounterReactionUntil=s.seconds+encounterReactionDelay(
       a.encounterReadiness??'attentive',a.id);
+  }
   if(strongest&&!visible.length&&a.alert!=='retreat'){
     a.lastNoiseAt=strongest.at;
     const heard=strongest.estimate;
