@@ -25,7 +25,9 @@ test('R9 both lower front corner straps reach authored panel anchors across armo
      }
      assert.equal(joins.length,2,rig+'/'+armor+'/'+top+
       ' lower left AND lower right connected');
-     for(const [i,o] of joins.entries()){
+     assert.deepEqual(joins.map(o=>Math.sign(o.userData.lowerFrontDestination[2])).sort(),
+      [-1,1],'both mirrored lower corner endpoints are present');
+     for(const o of joins){
       const [x,y,z]=o.userData.lowerFrontDestination;
       assert.ok([x,y,z].every(Number.isFinite));
       assert.ok(Math.abs(y-anchor[1])<1e-5,'endpoint on actual vertical panel');
@@ -33,7 +35,7 @@ test('R9 both lower front corner straps reach authored panel anchors across armo
        'strap enters authored right/left pane');
       if(rig!=='field-webbing'&&rig!=='belt-harness')
        assert.ok(x>=anchor[0]+.18,'strap penetrates backing to eliminate air gap');
-      assert.equal(Math.sign(z),i===0?-1:1,'correct mirrored side');
+      assert.ok(Math.abs(Math.sign(z))===1,'strap uses a signed lateral end');
       const uv=o.geometry.getAttribute('uv');
       const pos=o.geometry.getAttribute('position');
       assert.ok(uv&&pos&&pos.count>=12,'real thick authored strap, not dummy box');

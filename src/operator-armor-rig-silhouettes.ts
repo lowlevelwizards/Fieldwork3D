@@ -261,6 +261,9 @@ export function updateFittedRigHarness(
    ],[[1,0,0],[1,0,0],[1,0,0]],
     Math.max(width,budget.flank,.64),.60);
    join.name='rig-lower-front-return';
+   // It must remain individually inspectable rather than being merged with
+   // dozens of other same-material shoulder strips on every rebuild.
+   join.userData.keepSeparate=true;
    join.userData.lowerFrontDestination=[frontX,actualY,sign*actualZ];
   }
  };
