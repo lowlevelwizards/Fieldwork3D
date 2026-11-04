@@ -221,9 +221,9 @@ export function updateFittedRigHarness(
   // Belt-first: twin front braces, one true rear Y and no chest slab.
   const wide=rig==='belt-harness';
   for(const sign of [-1,1]){
-   line([[fx+.08,-5.18,sign*5.70],
-    [fx+.12,.90,sign*4.67]],wide?1.22:1.02,.54,'front');
-   shoulder(sign,[fx+.12,.90,sign*4.67],
+   line([[fx+.40,-5.18,sign*5.70],
+    [fx+.40,.90,sign*4.67]],wide?1.22:1.02,.54,'front');
+   shoulder(sign,[fx+.40,.90,sign*4.67],
     [bx,1.16,sign*3.65],wide?1.22:1.02);
    line([[bx,1.16,sign*3.65],[bx,-2.15,0]],
     wide?1.22:1.02,.54);
@@ -231,7 +231,7 @@ export function updateFittedRigHarness(
   line([[bx,-2.15,0],[bx,-5.10,0]],wide?1.20:1.03,.53);
   across(bx,-5.10,rearTieZ,wide?.82:.72);
   for(const sign of [-1,1])
-   sideTie(sign,-5.10,fx+.08,bx,wide?.72:.62);
+   sideTie(sign,-5.10,fx+.40,bx,wide?.72:.62);
  }else if(rig==='split-front'){
   // Independent wings joined by an H harness; no continuous back shell.
   for(const sign of [-1,1])
