@@ -417,6 +417,11 @@ jobs:
         run: |
           npm run audit:g4-diversity -- --smoke
           npm run audit:g4-flow -- --smoke
+      - name: G4d one-time release matrix across archetypes, missions and scales
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-gameplay-quality-g4d-') }}
+        run: |
+          npm run audit:g4-diversity -- --full
+          npm run audit:g4-flow -- --matrix
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}
