@@ -2744,7 +2744,7 @@ function distributeReports(s:Session){
   const listeners=enemies(s).filter(a=>a.health>0&&
     report.deliveredTo.includes(a.id));
   const roles=groupResponse(listeners.map(a=>({id:a.id,p:a.p})),
-    report.estimate,report.assignedRoles);
+    report.estimate,report.assignedRoles??{});
   report.assignedRoles=roles;report.coordinated=true;
   for(const a of listeners){
    if(!newlyInformed.includes(a.id))continue;
