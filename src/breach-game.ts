@@ -40,7 +40,9 @@ import {localDetour} from './breach-cooperation.ts';
 import {friendlyPassingStep,nearOccupiedFriendlyGoal} from './breach-friendly-traffic.ts';
 import {resolveMovementFrame} from './breach-movement-authority.ts';
 import {recoveryAction,routeRetrySeconds} from './breach-movement-recovery.ts';
-import type {MotorPause,ExecutionIssue} from './breach-execution-state.ts';
+import {executionStatus,type MotorPause,type ExecutionIssue,
+  type ExecutionStatus} from './breach-execution-state.ts';
+import {executionTransition,type ExecutionEvent} from './breach-execution-events.ts';
 import {interpretSound} from './breach-sound-evidence.ts';
 import {relocateCover,canRelocateCover,coverPushDistance,
   autoShoveLightCover} from './breach-movable-cover.ts';
@@ -160,7 +162,8 @@ export type TeamActor=Operator & {
   lastBlocker:Blocker;
   /** Execution diagnostics are transient; never rewrite authored PlanNode[]. */
   motorPause:MotorPause;orderIssue:ExecutionIssue|null;
-  completedOrders:number;
+  completedOrders:number;passageWaitSeconds:number;passageStallReported:boolean;
+  executionLastStatus:ExecutionStatus|null;
   /** Last executed facing command; survives across movement waypoints. */
   aimInstruction:AimInstruction|null;
   /** Simulation-timed cues, not new combat rules. */
@@ -238,6 +241,7 @@ export type Session=Omit<TacticalState,'operators'> & {
   grenades:FlashGrenade[];flashBursts:FlashBurst[];flashRemaining:number;
   nextEffectId:number;impactMarks:ImpactMark[];
   battleEvents:BattleEvent[];nextBattleId:number;
+  executionEvents:ExecutionEvent[];nextExecutionId:number;
   missionType:'clear'|'intel'|'rescue'|'hold'|'capture';holdTime:number;
   rescue:{p:Pt;following:string|null}|null;
   captureTarget:string|null;captureSecured:boolean;};
@@ -278,6 +282,8 @@ const withActions=(a:Operator):TeamActor=>({
   traversalElevation:0,lastTraversalAt:-100,
   traversalRetreating:false,
   lastBlocker:'clear',motorPause:null,orderIssue:null,completedOrders:0,
+  passageWaitSeconds:0,passageStallReported:false,
+  executionLastStatus:null,
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
   lastHitRegion:'torso',lastHitYaw:0,lastHitSeverity:0,
   downPose:'forward',
@@ -406,6 +412,7 @@ export function newSession(index=0,siteSeed?:number,
     syncCode:0,report:[],movementNoiseAt:0,site,lightingMode:'day',
     dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1,
     impactMarks:[],battleEvents:[],nextBattleId:1,
+    executionEvents:[],nextExecutionId:1,
     missionType:missionOverride??(site?(['clear','intel','rescue','hold','capture'] as const)[site.seed%5]:'clear'),
     holdTime:0,rescue:null,captureTarget:null,captureSecured:false};
   if(state.missionType==='capture'){
@@ -1764,8 +1771,21 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   if(passageWait(traffic.find(unit=>unit.id===a.id)!,s.doors,
      traffic,s.passageLeases,s.seconds,move)){
     a.motorPause='passage';a.velocity=0;a.blockedTime=0;
+    a.passageWaitSeconds+=dt;
+    // A normal stack is allowed to wait. Warn only when two or more
+    // friendly operators have remained stalled in the same passage for
+    // several seconds. Never reorder their independently authored plans.
+    if(a.side==='blue'&&a.passageWaitSeconds>5.5&&
+       !a.passageStallReported&&
+       s.operators.some(other=>other!==a&&other.side===a.side&&
+         other.health>0&&other.motorPause==='passage'&&
+         other.passageWaitSeconds>3)){
+      a.passageStallReported=true;
+      notify(s,a.name+' PASSAGE STALLED · CHECK ROUTES');
+    }
     return true;
   }
+  a.passageWaitSeconds=0;a.passageStallReported=false;
   // Identify the leaf for closed-door authored handling; open hinged
   // leaves are pushed by the coupled swept-body solver below, not by
   // standing nearby or crossing a broad radius trigger.
@@ -2020,7 +2040,8 @@ function pop(a:TeamActor){
   if(a.plan.length)a.completedOrders++;
   a.plan.shift();a.activeNode=-1;a.nav=[];a.waitRemaining=0;
   a.actionTimer=0;a.syncReady=null;a.pieIndex=0;
-  a.orderIssue=null;a.motorPause=null;pathFor(a);
+  a.orderIssue=null;a.motorPause=null;
+  a.passageWaitSeconds=0;a.passageStallReported=false;pathFor(a);
 }
 /** Explicitly report failure without silently consuming the player's order.
  * Re-evaluate the precondition each tick; changing world state can clear
@@ -2054,6 +2075,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   if(a.haltOnContact){
     const threat=visibleThreat;
     if(threat){
+      a.motorPause='contact';
       a.velocity=0;rotate(a,angle(a.p,threat.p),dt);return;
     }
   }
@@ -2259,9 +2281,10 @@ function runOrders(s:Session,a:TeamActor,dt:number){
         length=Math.hypot(dx,dy)||1;
       const amount=coverPushDistance(o);
       const pushed={x:o.x+dx/length*amount,y:o.y+dy/length*amount};
-      notify(s,movePhysicalProp(s,index,pushed)?
-        a.name+' PUSHED '+(o.fixture??'OBJECT'):
-        a.name+' OBJECT OBSTRUCTED');
+      if(!movePhysicalProp(s,index,pushed)){
+        failCurrentOrder(s,a,n,'OBJECT OBSTRUCTED');return;
+      }
+      notify(s,a.name+' PUSHED '+(o.fixture??'OBJECT'));
     }else if(kind==='window'){
       // A pane cannot swing shut through somebody currently occupying the
       // opening. Preserve this CLOSE order until their landing completes.
@@ -2270,13 +2293,20 @@ function runOrders(s:Session,a:TeamActor,dt:number){
         a.motorPause='window-clearance';a.velocity=0;a.actionTimer=0;return;
       }
       const window=s.windows.find(w=>w.id===id);
+      if(window&&
+         (n.interaction==='open-window'&&window.open||
+          n.interaction==='close-window'&&!window.open)){
+        pop(a);return; // Already in the state the player requested.
+      }
       if(window&&d(a.p,{x:window.x,y:window.y})<54&&
          manipulateWindow(window,n.interaction==='open-window'?'open':'close')){
         s.objectRevision++;
         hear(s,{x:window.x,y:window.y},85,'window');
         notify(s,a.name+' MOVED WINDOW');
         battleEvent(s,'interaction',a,a.p,a.name+' MOVED WINDOW');
-      }else notify(s,a.name+' WINDOW UNAVAILABLE');
+      }else{
+        failCurrentOrder(s,a,n,'WINDOW UNAVAILABLE');return;
+      }
     }
     clearCurrentOrderIssue(a);pop(a);return;
   }
@@ -2386,6 +2416,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     }
     // Remain briefly settled and hold on any live visual contact.
     const contact=enemies(s).some(e=>e.health>0&&inSight(a,e,s));
+    if(contact)a.motorPause='contact';
     a.waitRemaining=contact?0:a.waitRemaining+dt;
     a.velocity=0;
     if(a.waitRemaining>=(n.duration??.5))pop(a);
@@ -2411,7 +2442,12 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     // refills when the final available magazine isn't completely full.
     if(a.actionTimer>0&&a.reload===0){pop(a);return;}
     if(a.actionTimer===0){
-      if(!beginReload(s,a)){pop(a);return;}
+      if(a.magazine>=WEAPONS[a.weapon].capacity){pop(a);return;}
+      if(a.reload>0){a.velocity=0;return;}
+      if(!beginReload(s,a)){
+        failCurrentOrder(s,a,n,'RELOAD UNAVAILABLE · CHECK AMMO');return;
+      }
+      clearCurrentOrderIssue(a);
       a.actionTimer=dt;
     }
     return;
@@ -3703,6 +3739,22 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   mark('fire');
   mission(s,h);
   mark('mission');
+  // Record only changed player-visible states after the authoritative tick.
+  // This is observational: no actor motion or tactical orders are changed.
+  const friendly=team(s);
+  for(const unit of friendly){
+    const status=executionStatus(unit,{
+      phase:s.phase,doors:s.doors,peers:friendly
+    });
+    const change=executionTransition(unit.executionLastStatus,status,unit.name);
+    unit.executionLastStatus=status;
+    if(!change)continue;
+    s.executionEvents.push({
+      id:s.nextExecutionId++,t:s.seconds,actor:unit.id,
+      p:clone(unit.p),...change
+    });
+    if(s.executionEvents.length>240)s.executionEvents.shift();
+  }
 }
 export function operationBriefing(s:Session){
   const brief=operationBrief(s.missionType);

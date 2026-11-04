@@ -6,6 +6,7 @@ import type {Session,TeamActor,ShotEvent,DroppedMagazine,FlashGrenade,FlashBurst
 import {COVER,type Door,type Pt} from './breach-core.ts';
 import {intelSnapshot,intelRestore} from './breach-intel.ts';
 import type {BattleEvent} from './breach-combat.ts';
+import type {ExecutionEvent} from './breach-execution-events.ts';
 import {copyMedicalCondition,newMedicalCondition} from './breach-medical-wounds.ts';
 import {normalizedMedicalSupplies,kitMedicalSupplies} from './equipment-medical-supplies.ts';
 import {ReplayMotionRecorder,type ReplayPresentation} from './breach-replay-motion.ts';
@@ -123,7 +124,9 @@ export function snapshot(s:Session,seenGround?:string[]):ReplayFrame{
 export class MissionRecorder{
   readonly frames:ReplayFrame[]=[];
   readonly events:BattleEvent[]=[];
+  readonly executionEvents:ExecutionEvent[]=[];
   private lastEventId=0;
+  private lastExecutionEventId=0;
   readonly motion=new ReplayMotionRecorder();
   capture(s:Session,force=false):void{
     if(this.frames.length>=12000)return;
@@ -134,6 +137,14 @@ export class MissionRecorder{
       this.events.push({...e,p:e.p?position(e.p):undefined});
       this.lastEventId=e.id;
     }
+    for(const e of s.executionEvents)if(e.id>this.lastExecutionEventId){
+      // All execution events belong to friendly, already-known actors.
+      this.executionEvents.push({...e,p:position(e.p)});
+      this.lastExecutionEventId=e.id;
+    }
+    // Bounded replay metadata independent of existing 20Hz film frames.
+    if(this.executionEvents.length>900)
+      this.executionEvents.splice(0,this.executionEvents.length-900);
     const last=this.frames.at(-1);
     if(!force&&last&&s.seconds-last.t<.049)return;
     if(last&&Math.abs(last.t-s.seconds)<1e-6){

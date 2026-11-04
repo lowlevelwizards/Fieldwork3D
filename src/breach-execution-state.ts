@@ -7,7 +7,7 @@ import type {Blocker} from './breach-nav-diagnostics.ts';
 
 export type ExecutionKind='idle'|'complete'|'moving'|'working'|
  'waiting'|'recovering'|'blocked'|'holding'|'planned';
-export type MotorPause='passage'|'door-opening'|'door-held'|
+export type MotorPause='passage'|'contact'|'door-opening'|'door-held'|
  'door-locked'|'door-obstructed'|'window-clearance'|null;
 export type ExecutionIssue={nodeId:number;reason:string;since:number};
 export type ExecutionStatus={
@@ -22,7 +22,7 @@ export type ExecutionActor={
  traversal:{kind:string;duration:number}|null;
  traversalRetreating:boolean;traversalElapsed:number;
  motorPause:MotorPause;orderIssue:ExecutionIssue|null;
- completedOrders:number;
+ completedOrders:number;passageWaitSeconds?:number;
 };
 type Peer={health:number;syncReady:string|null;plan:readonly PlanNode[]};
 type DoorView={id:string;open:boolean;openFraction?:number};
@@ -38,17 +38,24 @@ const result=(kind:ExecutionKind,label:string,detail:string,
 export function executionStatus(a:ExecutionActor,ctx:ExecutionContext={}):ExecutionStatus{
  const n=a.plan[0],id=n?.id??null;
  if(a.health<=0)return result('idle','DOWN','INCAPACITATED',null,'down');
- if(ctx.phase==='planning'&&n)
-   return result('planned','PLANNED',n.kind.toUpperCase(),id,'planned');
  if(a.orderIssue&&n&&a.orderIssue.nodeId===n.id)
    return result('blocked','NEEDS ATTENTION',a.orderIssue.reason,id,'order-failed');
+ if(ctx.phase==='planning'&&n)
+   return result('planned','PLANNED',n.kind.toUpperCase(),id,'planned');
  if(a.traversalRetreating)
    return result('recovering','RECOVERING','TRAVERSAL RETREAT',id,'traversal');
  if(a.traversal)
    return result('working','TRAVERSING',a.traversal.kind.toUpperCase(),id,
      'traversal',a.traversalElapsed/Math.max(.001,a.traversal.duration));
- if(a.motorPause==='passage')
-   return result('waiting','YIELDING','TEAMMATE AT PASSAGE',id,'traffic');
+ if(a.motorPause==='contact')
+   return result('holding','CONTACT HOLD','CONFIRMED CONTACT',id,'contact');
+ if(a.motorPause==='passage'){
+   const prolonged=(a.passageWaitSeconds??0)>5.5;
+   return result(prolonged?'blocked':'waiting',
+     prolonged?'TRAFFIC STALLED':'YIELDING',
+     prolonged?'CHECK SQUAD ROUTES':'TEAMMATE AT PASSAGE',id,
+     prolonged?'traffic-stall':'traffic');
+ }
  if(a.motorPause==='door-opening')
    return result('waiting','WAITING','DOOR OPENING',id,'door-opening');
  if(a.motorPause==='door-held'||a.motorPause==='door-locked'||
@@ -96,12 +103,20 @@ export function executionStatus(a:ExecutionActor,ctx:ExecutionContext={}):Execut
    return result('moving','MOVING',n.kind==='move'?'TO WAYPOINT':'ALONG ARC',
      id,'move');
  }
- if(n.kind==='door'||n.kind==='tool'||n.kind==='interact'||
+ if(n.kind==='door'){
+   const door=ctx.doors?.find(d=>d.id===n.doorId);
+   if(n.method==='open'&&door?.open&&(door.openFraction??1)<.72)
+     return result('waiting','DOOR SWINGING','WAITING FOR CLEARANCE',
+       id,'door-swing',(door.openFraction??0)/.72);
+   return result('working','DOOR',(n.method??'open').toUpperCase(),
+     id,'door',n.method==='open'||n.method==='close'?
+       a.actionTimer/(n.method==='close'?.75:.78):undefined);
+ }
+ if(n.kind==='tool'||n.kind==='interact'||
     n.kind==='flash'||n.kind==='reload'||n.kind==='treat'||
     n.kind==='recover-medical'||n.kind==='evacuate')
-   return result('working',n.kind==='door'?'DOOR':n.kind==='tool'?'TOOL':
+   return result('working',n.kind==='tool'?'TOOL':
       n.kind==='recover-medical'?'RECOVERING KIT':n.kind.toUpperCase(),
-     n.kind==='door'?(n.method??'open').toUpperCase():
       n.kind==='tool'?(n.toolMethod??'USE TOOL').toUpperCase():
       'IN PROGRESS',id,n.kind);
  return result('working','EXECUTING',n.kind.toUpperCase(),id,n.kind);
