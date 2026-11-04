@@ -31,6 +31,12 @@ export function createD2GaiterMode(mode:D2GaiterMode,material:THREE.Material):TH
   ring(parts,'taut-face-tube',.22,top,4.08,-4.18,4.08);
   // Neck relaxes under the jaw instead of remaining a solid straight tube.
   ring(parts,'neck-gather',-2.84,.38,3.58,-3.69,3.55);
+  // Real connected transition from the taut 8-wide cheek fabric to
+  // the gathered 7-wide neck, rather than two concentric floating rings.
+  add(parts,'front-gather-join',0,.30,-3.94,7.89,.52,.71);
+  add(parts,'rear-gather-join',0,.30,3.84,7.89,.52,.73);
+  for(const side of [-1,1])
+   add(parts,'side-gather-join',side*3.83,.30,0,.74,.52,7.90);
   add(parts,'nose-or-mouth-rim',0,top-.17,-4.34,7.45,.37,.30);
   add(parts,'first-neck-fold',0,-.71,-3.88,7.30,.50,.39);
   add(parts,'lower-neck-fold',0,-2.30,-3.83,7.26,.42,.31);

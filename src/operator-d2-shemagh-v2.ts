@@ -17,7 +17,7 @@ function chestDrape(p:ClothCuboid[]){
   [-5.92,-6.55,2.35]
  ];
  for(const [i,[upper,lower,w]] of rows.entries())
-  add(p,'triangular-chest-drape-'+i,0,(upper+lower)/2,-4.40,
+  add(p,'triangular-chest-drape-'+i,0,(upper+lower)/2,-4.22,
    w,upper-lower,.48);
  // One deliberately uneven free end falls down the wearer's right.
  add(p,'right-shoulder-fold',3.80,-3.09,-3.73,1.10,2.55,1.12);
