@@ -22,6 +22,8 @@ on:
       - 'tests/operator-rig-r7-magazine-readability.test.mjs'
       - 'tests/operator-armor-r8-default-color.test.mjs'
       - 'src/operator-fabric-camo-materials.ts'
+      - 'src/operator-armor-rig-lab.ts'
+      - 'scripts/capture-operator-camo-r9.mjs'
       - 'tests/operator-r9-armor-visibility.test.mjs'
       - 'tests/operator-r9-lower-front-straps.test.mjs'
       - 'tests/operator-r9-camo-density.test.mjs'
@@ -64,6 +66,14 @@ jobs:
         run: node scripts/smoke-armor-r1-ui.mjs
       - name: Gameplay-zoom armor and chest rig silhouette captures
         run: node scripts/capture-operator-armor-rig.mjs
+      - name: R9 camo scale comparison at studio and gameplay zoom
+        run: node scripts/capture-operator-camo-r9.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: operator-r9-camo-comparison
+          path: operator-r9-camo-comparison/
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         if: always()
         with:
