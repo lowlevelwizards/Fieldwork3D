@@ -374,7 +374,8 @@ function renderMaterials(){
     faceMode=>changeWardrobe({...current(),d2Accessories:{
      ...current().d2Accessories,faceMode}}));
   }
-  if(['half-mask','respirator-half','gas-gp5','gas-m17'].includes(item)){
+  if(['half-mask','respirator-half','gas-gp5','gas-m17',
+      'gas-m40','gas-m50'].includes(item)){
    const section=row('MASK BODY','Cosmetic rubber or polymer finish. No in-game filtration bonus.');
    const swatches=document.createElement('div');swatches.className='solid-swatches';
    for(const id of D2_MASK_SOLIDS){

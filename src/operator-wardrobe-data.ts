@@ -15,7 +15,7 @@ import {initialWardrobeAccessories,readWardrobeAccessories,
  type WardrobeAccessoryConfiguration} from './operator-wardrobe-accessories.ts';
 import {isHeadwearSolidColorId,type HeadwearSolidColorId} from './operator-headwear-colors.ts';
 import {isD2FaceSolid,isD2MaskSolid,migrateD2Eyewear,readD2AccessoryOptions,
- isFullFaceMask,type D2FaceSolid,type D2MaskSolid,type D2AccessoryOptions} from './operator-head-accessory-catalog.ts';
+ isFullFaceMask,migrateD2Facewear,type D2FaceSolid,type D2MaskSolid,type D2AccessoryOptions} from './operator-head-accessory-catalog.ts';
 import {isHeadwearCamoId,type HeadwearCamoId,nextHeadwearCamoRoll} from './operator-headwear-camo.ts';
 import {FABRIC_CAMO_CHANNELS,fabricCamoCompatible,type FabricCamoChannel,type CamoOutfit}
  from './operator-fabric-camo-policy.ts';
@@ -52,7 +52,7 @@ add('facewear','face',[
  ['half-mask','Tactical half-mask'],
  ['respirator-half','Half-face respirator'],
  ['gas-gp5','Hood gas mask'],['gas-m17','Cheek-filter gas mask'],
- ['gas-mask','Protective gas mask']
+ ['gas-m40','Canister gas mask'],['gas-m50','Panoramic gas mask']
 ]);
 add('eyewear','eyewear',[
  ['eyes-none','None'],['glasses-standard','Standard glasses'],
@@ -218,7 +218,8 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
    // Retired near-duplicates migrate to their closest approved silhouette.
    const upgraded=id==='soft-paca'?'soft-slick':
     id==='belt-harness'?'field-webbing':
-    slot==='facewear'&&id==='scarf'?'shemagh':
+    slot==='facewear'&&['scarf','gas-mask'].includes(id??'')?
+     migrateD2Facewear(id).style:
     slot==='eyewear'&&['clear-glasses','sunglasses','safety-glasses',
      'goggles-down','goggles-up'].includes(id??'')?
      migrateD2Eyewear(id).style:id;

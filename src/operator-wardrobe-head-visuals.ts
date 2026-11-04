@@ -124,12 +124,9 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  }
  // The retired scarf ID is migrated in readWardrobe; never show a duplicate.
  // D2-C1: replace the old flat lower-face placeholder with two real shells.
- for(const id of ['half-mask','respirator-half','gas-gp5','gas-m17'] as const)
+ for(const id of ['half-mask','respirator-half','gas-gp5','gas-m17',
+                  'gas-m40','gas-m50'] as const)
   g(facewear,id,true).add(createD2Mask(id,maskMaterials));
- const gasMask=g(facewear,'gas-mask');
- cube(gasMask,vest,4.55,2.2,0,1.15,4.5,7.6);
- cube(gasMask,dark,5.35,1.45,0,1.9,2.05,2.5);
- for(const sign of [-1,1])cube(gasMask,dark,5.28,4.1,sign*2.15,.45,1.0,1.75);
  // D2-B1 real low-poly frames, separate bridges and lens sheets.
  for(const id of ['glasses-standard','glasses-aviator',
                    'glasses-wrap','glasses-shield'] as const)
