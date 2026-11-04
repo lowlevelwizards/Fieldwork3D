@@ -257,12 +257,13 @@ export function createChestRigSilhouettes(chest:THREE.Group,
    pouch(g,pocketFabric,trim,8.74,-2.20,z,3.48,2.45,1.08);
   for(const s of [-1,1])
    box(g,dark,7.95,1.2,s*3.65,.40,2.65,.90);
-  // Standalone harness is present ONLY without an outer carrier.
-  // A nested group remains toggleable after consolidating the placard body.
-  const harness=new THREE.Group();harness.name='standalone-harness';
-  g.add(harness);
-  shoulderHarness(harness,dark,4.0);
-  // The rear belt is rebuilt against the actual selected body surface.
+  // Keep the legacy mode marker for existing wardrobe/UI consumers,
+  // but mount the REBUILT fitted harness directly to the rig. Otherwise
+  // the placard's carrier tabs would disappear when standalone is hidden.
+  const standalone=new THREE.Group();standalone.name='standalone-harness';
+  g.add(standalone);
+  shoulderHarness(g,dark,4.0);
+  // The fitted mesh chooses carrier tabs OR independent shoulder runs.
  }
  {
   const g=make('micro-rig');
