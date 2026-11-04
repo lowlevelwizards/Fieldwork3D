@@ -5,6 +5,8 @@ import {activateSite,passable,route} from '../src/breach-core.ts';
 import {exteriorBriefedAt} from '../src/breach-site-footprint.ts';
 import {verifiedDeploymentChoices} from '../src/breach-deployment.ts';
 import {newSession,team,selectDeployment} from '../src/breach-game.ts';
+import {initializeWindows} from '../src/breach-windows.ts';
+import {probeWindowCrossing} from '../src/breach-mantle.ts';
 
 test('R2: every offered staging option is exterior-connected and body-clear',()=>{
  try{
@@ -17,6 +19,15 @@ test('R2: every offered staging option is exterior-connected and body-clear',()=
       site.windows?.some(w=>w.id===o.id));
     assert.equal(o.spots.length,4);
     assert.ok(o.spots.every(p=>passable(p,8)&&exteriorBriefedAt(site,p)));
+    if(o.kind==='window'){
+     const w=initializeWindows(site.windows).find(w=>w.id===o.id);
+     assert.ok(w);
+     const inside={x:w.x+(w.x-o.approach.x)*27/37,
+       y:w.y+(w.y-o.approach.y)*27/37};
+     assert.ok(probeWindowCrossing(o.approach,inside,{
+       cover:site.cover,walls:site.walls,doors:site.doors,
+       windows:[{...w,open:true}],canStand:p=>passable(p,8)}));
+    }
     assert.ok(route(site.spawn[0],o.approach,
       p=>passable(p,8)&&exteriorBriefedAt(site,p)).length>0);
    }
