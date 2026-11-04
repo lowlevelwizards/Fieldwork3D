@@ -124,7 +124,7 @@ export function updateFittedRigHarness(
   const micro=rig==='micro-rig',placard=rig==='chest-placard',
    classic=rig==='light-rig',canvas=rig==='chicom-rig';
   const panelX=micro?7.90:placard?8.14:classic?8.18:7.95;
-  const panelTop=micro?-.82:placard?.25:classic?-.02:.44;
+  const panelTop=micro ? -.82 : placard ? .25 : classic ? -.02 : .44;
   const z=micro?2.75:placard?3.20:classic?4.1:3.65;
   const crownZ=Math.max(3.3,Math.min(5.0,shoulder));
   for(const side of [-1,1]){
@@ -137,7 +137,7 @@ export function updateFittedRigHarness(
     [localBack-.21,classic?1.15:-1.70,z+(.95)]
    ];
    fittedShoulderBridge(harness,material,path,
-    canvas?.92:classic?1.17:micro?1.11:1.08,.57,side);
+    canvas ? .92 : classic ? 1.17 : micro ? 1.11 : 1.08,.57,side);
   }
   if(classic){
    // The defining traditional X is on the BACK, directly over the
