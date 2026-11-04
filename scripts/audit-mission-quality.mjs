@@ -4,6 +4,7 @@
 import {generateSite} from '../src/breach-site.ts';
 import {auditSite} from '../src/breach-site-audit.ts';
 import {describeSiteTopology} from '../src/worldgen/topology-diversity.ts';
+import {engagementRoomRelevant} from '../src/worldgen/room-sightline-audit.ts';
 import {newSession,stepSession} from '../src/breach-game.ts';
 import {MissionRecorder} from '../src/breach-replay.ts';
 import {assessMissionFilm,summarizeMissionSamples}
@@ -37,7 +38,8 @@ for(let index=0;index<count;index++){
   verifiedWindows:entry.verifiedWindows,
   verifiedDoors:entry.verifiedAlternateDoors,
   overexposedRooms:audit.sightlineQuality.filter(r=>
-    r.warnings.includes('overexposed room')).length,film});
+    r.warnings.includes('overexposed room')&&site.rooms.some(room=>
+      room.id===r.roomId&&engagementRoomRelevant(room))).length,film});
  if(invalid)issues.push({seed,mission,siteErrors:audit.errors,
   replayErrors:film.issues});
  activateSite(null);

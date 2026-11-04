@@ -70,3 +70,30 @@ export function retainsTacticalSightline(site:Site,room:Room,
  const after=assessRoomSightlines(world,room,[candidate]);
  return after.exposedSamples>=Math.min(2,before.exposedSamples);
 }
+
+/** R6: routine closets and cramped service rooms are audited for clearance,
+ * but are not expected to provide sophisticated tactical cover choices.
+ */
+const supportSpaces=new Set(['bathroom','restroom','half-bath','closet',
+ 'utility-closet','pantry','laundry','mudroom','vestibule','foyer',
+ 'equipment','utility']);
+export function engagementRoomRelevant(room:Room):boolean{
+ return room.kind==='room'&&room.w>=112&&room.h>=100&&
+  !supportSpaces.has(room.purpose??'');
+}
+/** Compare already legal locations for an existing optional tall fixture.
+ * Preserve standing room and at least two useful entrance sightlines.
+ */
+export function tacticalFurnishingValue(site:Site,room:Room,
+ candidate:Obstacle,current:readonly Obstacle[]):number{
+ if(candidate.low||!engagementRoomRelevant(room))return 0;
+ const world={...site,cover:[...site.cover,...current]};
+ const before=assessRoomSightlines(world,room);
+ if(!before.thresholds||before.samples<3)return 0;
+ const after=assessRoomSightlines(world,room,[candidate]);
+ if(after.samples<Math.max(3,before.samples-2)||
+  (before.exposedSamples>=2&&after.exposedSamples<2))return -Infinity;
+ const goal=.58;
+ return Math.round((Math.abs(before.exposedFraction-goal)-
+   Math.abs(after.exposedFraction-goal))*100);
+}

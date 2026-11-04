@@ -11,7 +11,7 @@ import {optionalOperationalFixtures} from './archetype-operational-variants.ts';
 import {orientFurnishings} from './prop-orientation.ts';
 import {ROOM_CONTRACTS} from './room-contracts.ts';
 import {recoverRoomEssentials} from './room-essential-recovery.ts';
-import {retainsTacticalSightline} from './room-sightline-audit.ts';
+import {retainsTacticalSightline,engagementRoomRelevant,tacticalFurnishingValue} from './room-sightline-audit.ts';
 import {placeServiceQueues} from './service-queue-layout.ts';
 import {planKitchenWorklines} from './kitchen-workline.ts';
 import {circulationReservations,overlapsCirculationReservation} from './circulation-reservations.ts';
@@ -392,6 +392,12 @@ export function furnishRooms(site:Site,seed:number):Site{
      ...perimeterPositions(room,w,h),
    ];
    let chosen:Obstacle|undefined;
+   // Real functional furnishings retain priority. For optional tall props
+   // in a larger engagement space, compare at most five legally validated
+   // alternatives, favoring a useful mix of open and concealed sightlines.
+   const rankTactical=i>=essential.length&&asset.cover!=='low'&&
+    engagementRoomRelevant(room);
+   let bestTacticalValue=-Infinity,validOptions=0;
    for(const p of candidates){
     if(p.x-w/2<room.x+9||p.x+w/2>room.x+room.w-9||
        p.y-h/2<room.y+9||p.y+h/2>room.y+room.h-9)continue;
@@ -413,7 +419,13 @@ export function furnishRooms(site:Site,seed:number):Site{
     // erasing sightlines at the REAL room doors. Essentials are exempt.
     if(i>=essential.length&&!retainsTacticalSightline(
       {...site,cover:output},room,candidate,placed))continue;
-    chosen=candidate;break;
+    if(!rankTactical){chosen=candidate;break;}
+    const score=tacticalFurnishingValue({...site,cover:output},
+      room,candidate,placed);
+    if(score>bestTacticalValue&&score!==-Infinity){
+      bestTacticalValue=score;chosen=candidate;
+    }
+    if(++validOptions>=5)break;
    }
    if(chosen)placed.push(chosen);
    else furnishingIssues.push({roomId:room.id,fixture:item.id,reason:'all-placements-blocked'});
