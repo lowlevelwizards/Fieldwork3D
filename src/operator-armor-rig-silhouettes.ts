@@ -73,8 +73,11 @@ export const RIG_FRONT_PROFILES:Readonly<Record<string,{front:number;low:number}
 };
 const pouch=(g:THREE.Group,m:THREE.Material,fold:THREE.Material,
  x:number,y:number,z:number,h:number,d:number,depth=1.10)=>{
- box(g,m,x,y,z,depth,h,d);
- box(g,fold,x+depth*.51+.035,y+h*.39,z,.19,.40,d+.12);
+ // Keep the underlayer-facing surface fixed and bulk each pouch OUTWARD.
+ const extra=rigVisualBudget(g.name.replace('authored-rig-','')).projection;
+ const span=d+(d>=2.3?.17:.11);
+ box(g,m,x+extra*.5,y,z,depth+extra,h,span);
+ box(g,fold,x+depth*.51+extra+.07,y+h*.38,z,.27,.57,span+.14);
 };
 /** Nested strap groups must NOT be baked into the rig's static mesh.
  * They are deterministically refitted when either uniform or armor changes.
@@ -271,9 +274,9 @@ export function createChestRigSilhouettes(chest:THREE.Group,
  make('no-rig');
  {
   const g=make('chest-placard');
-  box(g,fabric,8.14,-2.05,0,.70,4.75,8.45);
+  box(g,fabric,8.18,-2.05,0,.78,5.05,9.10);
   for(const z of [-2.73,0,2.73])
-   pouch(g,pocketFabric,trim,8.74,-2.20,z,3.48,2.45,1.08);
+   pouch(g,pocketFabric,trim,8.74,-2.20,z,3.85,2.45,1.08);
   for(const s of [-1,1])
    box(g,dark,7.95,1.2,s*3.65,.40,2.65,.90);
   // Keep the legacy mode marker for existing wardrobe/UI consumers,
@@ -287,11 +290,11 @@ export function createChestRigSilhouettes(chest:THREE.Group,
  {
   const g=make('micro-rig');
   shoulderHarness(g,dark,3.75);
-  box(g,fabric,7.90,-2.65,0,.76,3.55,7.30);
+  box(g,fabric,7.94,-2.65,0,.84,3.98,8.10);
   // Two substantial front cells and a small high organizer distinguish
   // the complete micro harness from the flat three-cell carrier placard.
   for(const z of [-1.65,1.65])
-   pouch(g,pocketFabric,trim,8.54,-2.58,z,2.62,2.86,.91);
+   pouch(g,pocketFabric,trim,8.54,-2.58,z,2.96,2.86,.91);
   box(g,trim,8.35,-.70,0,.29,.68,5.20);
   for(const s of [-1,1])
    pouch(g,pocketFabric,trim,7.75,-2.62,s*4.55,2.10,1.62,.72);
@@ -302,7 +305,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   shoulderHarness(g,dark,4.7);
   // The rear X is regenerated at actual armor contact in the fitted harness.
   for(const z of [-4.6,-1.5,1.5,4.6]){
-   pouch(g,pocketFabric,trim,8.38,-2.20,z,4.33,2.75,1.07);
+   pouch(g,pocketFabric,trim,8.38,-2.20,z,4.58,2.85,1.07);
    // Four independent closure flaps; never read as one continuous panel.
    box(g,trim,9.02,-.57,z,.23,.51,2.92);
   }
@@ -331,9 +334,9 @@ export function createChestRigSilhouettes(chest:THREE.Group,
    // Two real tapered load-bearing vest halves, not side-on slabs.
    // Open sternum stays readable; the broad hems carry the pockets.
    const half=new THREE.Group();half.position.z=s*3.25;g.add(half);
-   fittedArmorBag(half,fabric,7.82,1,3.55,-5.80,3.70,.72,.72);
+   fittedArmorBag(half,fabric,7.82,1,3.55,-5.80,4.02,.72,.72);
    for(const y of [1.28,-2.56,-5.35])
-    pouch(g,pocketFabric,trim,8.12,y,s*4.20,2.88,3.22,.99);
+    pouch(g,pocketFabric,trim,8.12,y,s*4.20,3.02,3.38,.99);
    // Recognizable upper yoke joins the tapered vest panel, without
    // closing the open central sternum.
    box(g,fabric,7.86,2.76,s*3.98,.56,.76,3.18);
@@ -382,11 +385,11 @@ export function createChestRigSilhouettes(chest:THREE.Group,
  {
   const g=make('chicom-rig');
   shoulderHarness(g,fabric,4.55);
-  box(g,fabric,7.95,-2.35,0,.60,6.12,11.65);
+  box(g,fabric,7.99,-2.35,0,.68,6.48,12.15);
   // Chicom canvas reads by three TALL independent flap pouches and
   // two abbreviated flank pockets, not a modern flat MOLLE array.
   for(const z of [-3.12,0,3.12])
-   pouch(g,pocketFabric,trim,8.52,-2.32,z,5.18,2.82,.99);
+   pouch(g,pocketFabric,trim,8.52,-2.32,z,5.54,2.84,.99);
   for(const s of [-1,1])
    pouch(g,pocketFabric,trim,8.42,-3.46,s*5.65,2.38,1.65,.75);
  }
@@ -397,7 +400,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   for(let i=0;i<5;i++){
    const t=i/4,z=3.85-t*7.7,y=3.6-t*7.4;
    // Four magazine positions plus a deliberate fifth utility cell.
-   pouch(g,pocketFabric,trim,8.20,y,z,2.46,1.64,.72);
+   pouch(g,pocketFabric,trim,8.20,y,z,2.82,1.93,.96);
   }
  }
  {
@@ -410,7 +413,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   }
   for(const s of [-1,1]){
    for(const z of [3.25,6.05])
-    pouch(g,pocketFabric,trim,7.78,-2.75,s*z,5.80,2.50,1.35);
+    pouch(g,pocketFabric,trim,7.78,-2.75,s*z,6.12,2.63,1.35);
    // Differentiate front and flank cargo from the Chicom three-cell
    // apron. Separate rear compartment shapes follow the fitted frame.
    box(g,trim,7.97,.70,s*5.40,.52,1.42,2.34);
