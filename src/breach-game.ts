@@ -2275,9 +2275,10 @@ function runOrders(s:Session,a:TeamActor,dt:number){
         length=Math.hypot(dx,dy)||1;
       const amount=coverPushDistance(o);
       const pushed={x:o.x+dx/length*amount,y:o.y+dy/length*amount};
-      notify(s,movePhysicalProp(s,index,pushed)?
-        a.name+' PUSHED '+(o.fixture??'OBJECT'):
-        a.name+' OBJECT OBSTRUCTED');
+      if(!movePhysicalProp(s,index,pushed)){
+        failCurrentOrder(s,a,n,'OBJECT OBSTRUCTED');return;
+      }
+      notify(s,a.name+' PUSHED '+(o.fixture??'OBJECT'));
     }else if(kind==='window'){
       // A pane cannot swing shut through somebody currently occupying the
       // opening. Preserve this CLOSE order until their landing completes.
@@ -2286,13 +2287,20 @@ function runOrders(s:Session,a:TeamActor,dt:number){
         a.motorPause='window-clearance';a.velocity=0;a.actionTimer=0;return;
       }
       const window=s.windows.find(w=>w.id===id);
+      if(window&&
+         (n.interaction==='open-window'&&window.open||
+          n.interaction==='close-window'&&!window.open)){
+        pop(a);return; // Already in the state the player requested.
+      }
       if(window&&d(a.p,{x:window.x,y:window.y})<54&&
          manipulateWindow(window,n.interaction==='open-window'?'open':'close')){
         s.objectRevision++;
         hear(s,{x:window.x,y:window.y},85,'window');
         notify(s,a.name+' MOVED WINDOW');
         battleEvent(s,'interaction',a,a.p,a.name+' MOVED WINDOW');
-      }else notify(s,a.name+' WINDOW UNAVAILABLE');
+      }else{
+        failCurrentOrder(s,a,n,'WINDOW UNAVAILABLE');return;
+      }
     }
     clearCurrentOrderIssue(a);pop(a);return;
   }
@@ -2428,7 +2436,12 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     // refills when the final available magazine isn't completely full.
     if(a.actionTimer>0&&a.reload===0){pop(a);return;}
     if(a.actionTimer===0){
-      if(!beginReload(s,a)){pop(a);return;}
+      if(a.magazine>=WEAPONS[a.weapon].capacity){pop(a);return;}
+      if(a.reload>0){a.velocity=0;return;}
+      if(!beginReload(s,a)){
+        failCurrentOrder(s,a,n,'RELOAD UNAVAILABLE · CHECK AMMO');return;
+      }
+      clearCurrentOrderIssue(a);
       a.actionTimer=dt;
     }
     return;
