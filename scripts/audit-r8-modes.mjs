@@ -17,8 +17,16 @@ for(let i=0;i<count;i++){
  const site=generateSite(seed,'small',undefined,{mission});
  for(const mode of ['floor-plan','true-blind']){
   const s=newSession(0,seed,mode,'small',mission,site);
-  const troop=team(s),order=troop.map(a=>Number(planMove(s,a.id,
-    site.entrance))).reduce((n,v)=>n+v,0);
+  // Plan toward the public objective in the informed view. In true-blind
+  // mode, an unknown interior endpoint may be rejected: fall back to the
+  // physically briefed approach instead of granting psychic route knowledge.
+  const troop=team(s);let order=0,objectiveOrders=0;
+  for(const a of troop){
+   const towardObjective=planMove(s,a.id,site.objective);
+   const approach=towardObjective?false:planMove(s,a.id,site.entrance);
+   if(towardObjective)objectiveOrders++;
+   if(towardObjective||approach)order++;
+  }
   const recorder=new MissionRecorder();recorder.capture(s,true);
   s.phase='running';s.started=true;
   const measurements=[];let invalidPositions=0;
@@ -41,7 +49,9 @@ for(let i=0;i<count;i++){
   const contact=analyzeContactPacing(recorder.frames,recorder.events,
     enemies(s).map(e=>e.id),order,site.encounter?.profile==='quiet-approach');
   const sorted=measurements.sort((a,b)=>a-b);
-  rows.push({seed,mission,mode,orders:order,reason:contact.reason,
+  rows.push({seed,mission,mode,orders:order,objectiveOrders,
+    travel:contact.friendlyTravel,nearestHostile:contact.nearestHostile,
+    reason:contact.reason,
     firstContactAt:contact.firstContactAt,
     shots:recorder.events.filter(e=>e.kind==='shot').length,
     p95SimulationMs:Math.round(sorted[Math.floor(sorted.length*.95)]*100)/100,
