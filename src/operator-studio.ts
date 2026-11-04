@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {studioUsesClothesOnly,studioUsesVisibleFace} from './operator-studio-preview-policy.ts';
-import {studioCameraFocus,studioFocusEasing,clampStudioCameraZoom,
+import {studioCameraFocusForWardrobe,studioFocusEasing,clampStudioCameraZoom,
  STUDIO_FULL_FIT,STUDIO_MIN_ZOOM,STUDIO_MAX_ZOOM}
  from './operator-studio-camera-focus.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
@@ -139,9 +139,14 @@ const cancelCameraFocus=()=>{
  focusAnimation=0;
 };
 controls.addEventListener('start',cancelCameraFocus);
+function activeStudioFocus(slot:WardrobeSlot){
+ const p=member(),look=previewWardrobe();
+ const facewear=p?resolvedWardrobe(look,p.loadout).facewear:look.styles.facewear;
+ return studioCameraFocusForWardrobe(slot,facewear,look.d2FaceMode);
+}
 function focusCameraOnCategory(slot:WardrobeSlot,immediate=false){
  cancelCameraFocus();
- const focus=studioCameraFocus(slot);
+ const focus=activeStudioFocus(slot);
  const startTarget=controls.target.clone();
  const nextTarget=new THREE.Vector3(0,focus.targetY,0);
  const startCamera=camera.position.clone();
@@ -179,7 +184,7 @@ function frameView(view:'front'|'side'|'back'|'fit'){
  cancelCameraFocus();
  const center=view==='fit'?
   new THREE.Vector3(0,STUDIO_FULL_FIT.targetY,0):
-  new THREE.Vector3(0,studioCameraFocus(activeCategory).targetY,0);
+  new THREE.Vector3(0,activeStudioFocus(activeCategory).targetY,0);
  const distance=82;
  const directions={
   front:new THREE.Vector3(distance,18,0),
@@ -249,6 +254,9 @@ function canEquip(slot:WardrobeSlot,id:string){
 }
 function changeWardrobe(next:WardrobeOptions){
  if(saveInFlight)return;
+ const oldLook=current();
+ const changedFacewear=next.styles.facewear!==oldLook.styles.facewear||
+  next.d2FaceMode!==oldLook.d2FaceMode;
  if(comparingSaved)comparingSaved=false;
  if(readOnly){say('Appearance is locked during an active campaign operation');return;}
  if(JSON.stringify(next)===JSON.stringify(current()))return;
@@ -259,6 +267,7 @@ function changeWardrobe(next:WardrobeOptions){
  }else{edits.set(selected,parsed);dirty.add(selected);}
  say(dirty.size+' UNSAVED OPERATOR LOOK'+(dirty.size===1?'':'S'));
  refresh();
+ if(changedFacewear&&activeCategory==='facewear')focusCameraOnCategory('facewear');
 }
 function chooseStyle(slot:WardrobeSlot,id:string){
  if(comparingSaved){comparingSaved=false;refresh();}
