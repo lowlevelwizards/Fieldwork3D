@@ -23,6 +23,9 @@ import {RIG_VISUAL_TEXTILES,ARMOR_VISUAL_TEXTILES,rigSignature,armorSignature,ri
 import {GARMENT_SOLID_COLORS,solidChoicesFor,resolvedCuffSolid,
  resolvedCombatKnitSolid,type GarmentSolidId} from './operator-garment-color-policy.ts';
 import {headwearColorChoices,HEADWEAR_SOLID_COLORS} from './operator-headwear-colors.ts';
+import {SKIN_TONES,SKIN_TONE_IDS,HAIR_STYLES,HAIR_STYLE_IDS,
+ HAIR_TONES,HAIR_TONE_IDS,seededSkinTone,seededHairStyle,seededHairTone,
+ type HairStyleId} from './operator-identity-palette.ts';
 import {headwearCamoChoices,headwearCamoPixels,headwearCamoSize,
  HEADWEAR_CAMO_RECIPES,
  nextHeadwearCamoRoll,type HeadwearCamoId} from './operator-headwear-camo.ts';
@@ -300,6 +303,35 @@ function renderMaterials(){
  const p=member();if(!p)return;
  const w=current(),outfit=resolvedWardrobe(w,p.loadout);
  const item=outfit[activeCategory];
+ if(activeCategory==='facewear'){
+  const identitySwatches=(heading:string,
+   values:readonly string[],colorFor:(id:string)=>{label:string;hex:number},
+   active:string,select:(id:string)=>void)=>{
+   const section=row(heading,'Appearance only; does not change protection, ancestry or gameplay.');
+   const grid=document.createElement('div');grid.className='solid-swatches';
+   for(const id of values){
+    const info=colorFor(id),button=makeButton(info.label,id===active,
+     ()=>select(id));
+    button.className='swatch';button.title=info.label;
+    const chip=document.createElement('span');chip.className='swatch-chip';
+    chip.style.backgroundColor='#'+info.hex.toString(16).padStart(6,'0');
+    button.prepend(chip);grid.append(button);
+   }
+   section.append(grid);
+  };
+  identitySwatches('SKIN TONE',SKIN_TONE_IDS,
+   id=>SKIN_TONES[id as keyof typeof SKIN_TONES],
+   w.skinTone??seededSkinTone(p.appearanceSeed),
+   id=>changeWardrobe({...current(),skinTone:id as keyof typeof SKIN_TONES}));
+  const hair=row('HAIRCUT','Hair fits the unchanged head and is hidden beneath incompatible helmets or full balaclavas.');
+  addSelect(hair,HAIR_STYLE_IDS.map(id=>[id,HAIR_STYLES[id].label] as const),
+   w.hairStyle??seededHairStyle(p.appearanceSeed),
+   value=>changeWardrobe({...current(),hairStyle:value as HairStyleId}));
+  identitySwatches('HAIR COLOR',HAIR_TONE_IDS,
+   id=>HAIR_TONES[id as keyof typeof HAIR_TONES],
+   w.hairTone??seededHairTone(p.appearanceSeed),
+   id=>changeWardrobe({...current(),hairTone:id as keyof typeof HAIR_TONES}));
+ }
  if(activeCategory==='armorStyle'||activeCategory==='rigStyle'){
   const category=activeCategory==='armorStyle'?'ARMOR SHELL':'LOAD-BEARING RIG';
   row(category+' · APPEARANCE',
@@ -575,7 +607,7 @@ function selectCategory(slot:WardrobeSlot){
  activeCategory=slot;
  // Look at the cloth unobscured for garments, but show all available
  // headgear/armor/gear when browsing those categories.
- clothesOnly=slot==='top'||slot==='trousers';
+ clothesOnly=slot==='top'||slot==='trousers'||slot==='facewear';
  comparingSaved=false;syncGearToggle();refresh();
 }
 function renderCategories(){
