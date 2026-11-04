@@ -41,13 +41,8 @@ test('R9 flak and legacy shells replace blouse collars with their armor neckline
     assert.ok(collars.every(x=>!x.visible),top+'/'+armor+' no protruding cloth collar');
    }
    pose(r,top,'plate-standard');
-   assert.ok(pockets.some(x=>!x.visible),
-    'standard plates suppress pockets where the wider outer shell overlaps');
-   pose(r,top,'armor-bare');
-   assert.ok(pockets.every(x=>x.visible),
-    'bare outfit restores all original sewn pockets');
-   assert.deepEqual(pockets.map(x=>[x.uuid,x.position.x,x.position.y,x.scale.x]),
-    original,'garment pocket geometry exactly restored');
+   assert.ok(collars.every(x=>x.visible),'normal plate restores original collar');
+   assert.deepEqual(collars.map(x=>x.uuid),ids,'no geometry recreation on swap');
   }
  }finally{r.dispose();}
 });
@@ -63,7 +58,11 @@ test('R9 slick plate hides BDU/ACU sewn-on front pockets and restores them',()=>
    pose(r,top,'plate-slick');
    assert.ok(pockets.every(x=>!x.visible),top+' pockets fully covered by slick plates');
    pose(r,top,'plate-standard');
-   assert.ok(pockets.every(x=>x.visible),'standard plates restore authored garment');
+   assert.ok(pockets.some(x=>!x.visible),
+    'standard plates also conceal pockets wherever their armor overlaps');
+   pose(r,top,'armor-bare');
+   assert.ok(pockets.every(x=>x.visible),
+    'all sewn pockets return when external armor is removed');
    assert.deepEqual(pockets.map(x=>[x.uuid,x.position.x,x.position.y,x.scale.x]),
     original,'garment pocket geometry exactly restored');
   }
