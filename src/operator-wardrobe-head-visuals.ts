@@ -35,7 +35,7 @@ const cube=(g:THREE.Group,m:THREE.Material,
 const group=(parent:THREE.Group)=>{const g=new THREE.Group();parent.add(g);return g;};
 export function createWardrobeHeadLayers(head:THREE.Group,
  canonicalHead:THREE.Group,cloth:THREE.Material,
- vest:THREE.Material,dark:THREE.Material,skin:THREE.Material):WardrobeHeadLayers{
+ vest:THREE.Material,dark:THREE.Material,_skin:THREE.Material):WardrobeHeadLayers{
  const headwear:Model={},facewear:Model={},eyewear:Model={},headset:Model={};
  // A dedicated face textile material ensures color edits never recolor helmets,
  // uniform sleeves, straps or unrelated body pieces.
@@ -116,19 +116,6 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  cube(gasMask,vest,4.55,2.2,0,1.15,4.5,7.6);
  cube(gasMask,dark,5.35,1.45,0,1.9,2.05,2.5);
  for(const sign of [-1,1])cube(gasMask,dark,5.28,4.1,sign*2.15,.45,1.0,1.75);
- const eye=(id:string,raised=false,darkLens=false,goggles=false)=>{
-  const model=g(eyewear,id),y=raised?6.35:3.85;
-  const rim=goggles?vest:dark;
-  for(const sign of [-1,1]){
-   cube(model,rim,4.45,y,sign*2.05,.45,goggles?1.45:.77,3.2);
-   cube(model,darkLens?dark:skin,4.7,y,sign*2.05,.19,goggles?1.05:.48,2.65);
-  }
-  cube(model,rim,4.48,y,0,.48,.39,1.5);
-  for(const sign of [-1,1])
-   cube(model,dark,-.3,y+.1,sign*4.15,8.0,.34,.35);
- };
- // Legacy display-only glasses/goggles are superseded by the fitted D2 models.
- // Their saved IDs are converted at readWardrobe before runtime selection.
  // D2-B1 real low-poly frames, separate bridges and lens sheets.
  for(const id of ['glasses-standard','glasses-aviator',
                    'glasses-wrap','glasses-shield'] as const)
