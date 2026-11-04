@@ -7,6 +7,8 @@ on:
       - 'src/operator-adaptive-armor.ts'
       - 'src/operator-armor-proportions.ts'
       - 'src/operator-armor-side-layout.ts'
+      - 'src/operator-garment-contact-surface.ts'
+      - 'src/breach-operator-rig.ts'
       - 'src/operator-armor-straps.ts'
       - 'src/operator-field-blouse-prototypes.ts'
       - 'src/operator-new-upper-garments.ts'
