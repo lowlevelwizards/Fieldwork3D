@@ -426,4 +426,24 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
    m.scale.set(magShape.x,magShape.y,magShape.z);
   });
  }
+ // Apply garment occlusion AFTER all armor, rig and magazine visibility
+ // updates so nothing can revive colliding collar or pocket meshes.
+ // R9 cosmetic occlusion: never delete source details or modify IK.
+ const hideCollar=usingWardrobe&&
+  (looks.armorStyle==='soft-flak'||looks.armorStyle==='plate-legacy');
+ const hideChestPockets=usingWardrobe&&looks.armorStyle==='plate-slick';
+ let clothTorso:THREE.Group|undefined;
+ if(looks.top==='bdu-shirt'||looks.top==='acu-shirt')
+  clothTorso=v.fieldBlouses[looks.top].torso;
+ else if(looks.top==='combat-shirt'||looks.top==='smock-jacket'||
+  looks.top==='gorka-jacket')
+  clothTorso=v.newUpper.cuts[looks.top].torso;
+ clothTorso?.traverse(object=>{
+  if(!(object instanceof THREE.Mesh))return;
+  if(object.userData.armorCollarPiece)object.visible=!hideCollar;
+  if(object.userData.armorCompressible&&
+   (looks.top==='bdu-shirt'||looks.top==='acu-shirt'))
+   object.visible=!hideChestPockets;
+ });
+
 }

@@ -135,6 +135,23 @@ export type FittedRigFrame={
  shoulderRight:{z:number};shoulderY:number;rigShiftX:number;
  sideContact?:number;mode?:'carrier-placard'|'external-harness';
 };
+/** Explicit RIGHT-HAND local anchors on real authored front rig geometry.
+ * Mirroring sign produces the matching left-hand point. These ends
+ * penetrate the actual bib/wing backing instead of hovering at the flank.
+ */
+export const RIG_LOWER_FRONT_ANCHORS:Readonly<
+ Record<string,readonly [number,number,number]>>={
+ 'micro-rig':[7.78,-2.90,4.55],
+ 'chest-placard':[8.16,-3.30,4.18],
+ 'light-rig':[8.41,-3.34,5.64],
+ 'chicom-rig':[8.02,-3.35,5.76],
+ 'split-front':[8.16,-3.58,6.40],
+ 'full-chest':[8.42,-3.70,5.85],
+ 'lbv':[7.95,-4.04,5.28],
+ 'sadf-webbing':[7.92,-5.12,6.95],
+ 'field-webbing':[6.40,-5.18,5.70],
+ 'belt-harness':[6.40,-5.18,5.70]
+};
 /** The front harness rises up the bib, then turns diagonally over the
  * shoulder before running across the shirt crown. A previous nearly
  * vertical front-to-crown step left an open air gap at the shoulder.
@@ -225,16 +242,31 @@ export function updateFittedRigHarness(
   }
  };
  const sideTie=(sign:number,y:number,fromX:number,toX:number,width=.56)=>{
-   // Front flank -> true lateral surface -> rear flank. An unsupported
-   // straight beam along maximum torso width reads as floating equipment.
-   const flank=rearTieZ;
-   // A long straight side panel with only short chamfered end returns.
-   // Actual side thickness stays OUTSIDE the fitted garment.
-   fittedSideWrap(harness,material,
-    [[fromX,sign*flank],[fromX-.60,sign*sideZ],
-     [toX+.60,sign*sideZ],[toX,sign*flank]],
-    y,Math.max(width,budget.flank),.58,sign);
-  };
+  // Wrap around real torso flank, then finish INSIDE the authored panel.
+  const flank=rearTieZ;
+  fittedSideWrap(harness,material,
+   [[fromX,sign*flank],[fromX-.60,sign*sideZ],
+    [toX+.60,sign*sideZ],[toX,sign*flank]],
+   y,Math.max(width,budget.flank),.58,sign);
+  const anchor=RIG_LOWER_FRONT_ANCHORS[rig];
+  if(anchor){
+   const [actualX,actualY,actualZ]=anchor;
+   // Belt webbing lands on its existing lower front brace.
+   const frontX=rig==='field-webbing'||rig==='belt-harness'?
+    fromX:actualX+.22;
+   const join=fittedFlatSurfaceBand(harness,material,[
+    [fromX,y,sign*flank],
+    [fromX+.12,y,sign*(sideZ+.30)],
+    [frontX,actualY,sign*actualZ]
+   ],[[1,0,0],[1,0,0],[1,0,0]],
+    Math.max(width,budget.flank,.64),.60);
+   join.name='rig-lower-front-return';
+   // It must remain individually inspectable rather than being merged with
+   // dozens of other same-material shoulder strips on every rebuild.
+   join.userData.keepSeparate=true;
+   join.userData.lowerFrontDestination=[frontX,actualY,sign*actualZ];
+  }
+ };
 
  if((rig==='chest-placard'||rig==='micro-rig')&&
     frame.mode==='carrier-placard'){

@@ -4,7 +4,10 @@
 import * as THREE from 'three';
 import {createOperatorRig,poseOperator} from './breach-operator-rig.ts';
 import {setEquipmentChoice,initialEquipmentLoadout} from './equipment-loadouts.ts';
-import {initialWardrobe,wardrobeItemsForSlot} from './operator-wardrobe-data.ts';
+import {initialWardrobe,wardrobeItemsForSlot,type WardrobeOptions}
+ from './operator-wardrobe-data.ts';
+import {HEADWEAR_CAMO_IDS,type HeadwearCamoId}
+ from './operator-headwear-camo.ts';
 import {createArmorFitDebug,disposeArmorFitDebug}
  from './operator-armor-fit-debug.ts';
 
@@ -17,6 +20,12 @@ const armorSelect=el<HTMLSelectElement>('armorChoice'),
  status=el<HTMLElement>('fitStatus'),
  canvas=el<HTMLCanvasElement>('armorCanvas');
 const params=new URLSearchParams(location.search);
+// R9 optional read-only reference preview, never written to roster saves.
+const previewCamo:HeadwearCamoId|undefined=
+ HEADWEAR_CAMO_IDS.find(id=>id===params.get('camo'));
+const previewChannel: 'top'|'armor'|'gear'|null=
+ ['top','armor','gear'].includes(params.get('camoChannel')??'')?
+ params.get('camoChannel') as 'top'|'armor'|'gear':null;
 for(const [select,slot] of [
  [armorSelect,'armorStyle'],[rigSelect,'rigStyle'],[topSelect,'top']
 ] as const)
@@ -84,6 +93,7 @@ function updateView(){
  canvas.dataset.rig=rigSelect.value;
  canvas.dataset.top=topSelect.value;
  canvas.dataset.view=view;
+ canvas.dataset.camo=previewCamo??'none';
 }
 function refresh(){
  let kit=initialEquipmentLoadout();
@@ -95,11 +105,14 @@ function refresh(){
  for(const [slot,id] of [
   ['belt','belt-none'],['backpack','backpack-none'],['head','head-none']
  ] as const)kit=setEquipmentChoice(kit,slot,id);
- const wardrobe={...initialWardrobe(),
+ const wardrobe:WardrobeOptions={...initialWardrobe(),
   styles:{top:topSelect.value,trousers:'bdu-trousers',headwear:'bare',
    armorStyle:armor,rigStyle:rig,beltStyle:'no-belt',packStyle:'no-pack'},
   fabricSolids:{top:'slate',trousers:'slate',armor:'slate',gear:'slate',pack:'slate'}
- } as const;
+ };
+ if(previewCamo&&previewChannel)
+  wardrobe.fabricCamo={...wardrobe.fabricCamo,[previewChannel]:previewCamo};
+
  poseOperator(operator,{
   x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,posture:'stand',
   injury:0,weapon:'carbine',reload:0,reloadDuration:0,
@@ -107,6 +120,16 @@ function refresh(){
   aiming:false,firing:false,turning:0,deterministic:true,
   unarmedPreview:true,equipment:kit,wardrobe
  },0);
+ // Comparison previews must fail fast if the chosen cut disallows this
+ // textile; otherwise a gray mannequin can masquerade as a camo audit.
+ if(previewCamo&&previewChannel){
+  const material=previewChannel==='top'?operator.clothMaterial:
+   previewChannel==='armor'?operator.vestMaterial:operator.gearMaterial;
+  const expected='Fieldwork cloth '+previewChannel+' / '+previewCamo;
+  if(!material.map?.name.startsWith(expected))
+   throw new Error('Incompatible camouflage preview: '+expected+
+    ' on '+topSelect.value+' / '+armor+' / '+rig);
+ }
  updateFitDebug();
  updateView();
 }
