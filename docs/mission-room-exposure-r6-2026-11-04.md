@@ -23,3 +23,16 @@ Do not interpret the refined overexposure count as a direct before/after
 reduction in room geometry without also comparing the raw metric. The metric
 classification changed intentionally, while spatial placement behavior may
 also change.
+
+## First 11-seed findings
+
+- Baseline R5: **72 raw overexposed rooms** (all purposes).
+- R6: **72 raw overexposed rooms** in the same deterministic sample;
+  **42** belong to larger engagement-relevant spaces.
+- No invalid site or replay chronology results.
+- Furniture-choice ranking did not yet reduce the *binary* raw
+  overexposure count. This is a diagnostic refinement and a conservative
+  placement pass, not a demonstrated tactical-quality breakthrough.
+- The survey now groups engagement exposure by room purpose to identify
+  defensible next changes based on specific functional spaces rather than
+  scattering arbitrary obstacles through every open area.
