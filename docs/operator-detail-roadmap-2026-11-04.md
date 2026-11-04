@@ -82,3 +82,7 @@ Status: D0 audit and roadmap; visual implementations pending.
 - Before every release, confirm prior GitHub Pages deployment completed and serves the expected commit. Do not queue multiple productions.
 - Critical tests only: TypeScript/Vite build, wardrobe save/load round trip, equipment-kit cosmetics compatibility, selector smoke tests, and targeted capture diff for affected body zone.
 - Manual acceptance: exposed skin continuity; face mask+goggles+headset compatibility; helmet/no-hair clipping; planted foot contacts; gloves on rifle/pistol; belts against every armor/rig silhouette; mobile default-zoom legibility.
+
+
+### D2 first-wave scope lock — Nov 4
+The broad D2 candidate exploration has been narrowed to **19 distinct base models** (6 fabric, 6 masks, 4 glasses and 3 goggles), plus grouped variants. Use the [D2 First-Wave Implementation Plan](./operator-d2-first-wave-implementation-plan-2026-11-04.md) as the authoritative D2 build order, migration matrix, compatibility contract and critical release gates; the earlier broad catalog is reference-only.
