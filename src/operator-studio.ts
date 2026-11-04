@@ -18,6 +18,7 @@ import {readWardrobe,initialWardrobe,resolvedWardrobe,setWardrobeStyle,
  type WardrobeOptions,type WardrobeSlot} from './operator-wardrobe-data.ts';
 import {fabricCamoChoices,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {resolveAutomaticGearColors} from './operator-gear-color-policy.ts';
+import {D2_FACE_SOLIDS,D2_FACE_SOLID_COLORS,isD2Facewear} from './operator-head-accessory-catalog.ts';
 import {RIG_VISUAL_TEXTILES,ARMOR_VISUAL_TEXTILES,rigSignature,armorSignature,rigColorAssembly}
  from './operator-rig-authenticity-policy.ts';
 import {GARMENT_SOLID_COLORS,solidChoicesFor,resolvedCuffSolid,
@@ -337,11 +338,30 @@ function renderMaterials(){
    item==='shemagh'?[['draped','Draped'],['face-wrap','Face wrapped'],
      ['head-wrap','Head wrapped']]:
    item==='bandana'?[['raised','Face covered'],['lowered','Neck']]:[];
+  if(item==='shemagh'&&outfit.headwear!=='bare'){
+   row('HEAD-WRAP FIT',
+    'Head-wrapped fabric needs an uncovered head. A helmet or hat uses face-wrapped fabric instead.');
+  }
   if(modes.length){
    const section=row('HOW WORN','One model, multiple fitted wearing positions.');
    addSelect(section,modes,w.d2FaceMode&&modes.some(([id])=>id===w.d2FaceMode)?
     w.d2FaceMode:modes[0][0],
     value=>changeWardrobe({...current(),d2FaceMode:value as NonNullable<WardrobeOptions['d2FaceMode']>}));
+  }
+  if(isD2Facewear(item)&&['balaclava-one','balaclava-three','balaclava-open',
+      'gaiter','shemagh','bandana'].includes(item)){
+   const section=row('FACEWEAR FABRIC','Independent textile colors; headwear and uniform colors stay unchanged.');
+   const swatches=document.createElement('div');swatches.className='solid-swatches';
+   for(const id of D2_FACE_SOLIDS){
+    const info=D2_FACE_SOLID_COLORS[id];
+    const b=makeButton(info.label,w.d2FaceSolid===id,()=>
+     changeWardrobe({...current(),d2FaceSolid:id}));
+    b.className='swatch';b.title=info.label;
+    const chip=document.createElement('span');chip.className='swatch-chip';
+    chip.style.backgroundColor='#'+info.hex.toString(16).padStart(6,'0');
+    b.prepend(chip);swatches.append(b);
+   }
+   section.append(swatches);
   }
  }
  if(activeCategory==='armorStyle'||activeCategory==='rigStyle'){

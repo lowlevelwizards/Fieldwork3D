@@ -14,6 +14,7 @@ import {isGarmentSolidId,FABRIC_SOLID_CHOICES,type GarmentSolidId}
 import {initialWardrobeAccessories,readWardrobeAccessories,
  type WardrobeAccessoryConfiguration} from './operator-wardrobe-accessories.ts';
 import {isHeadwearSolidColorId,type HeadwearSolidColorId} from './operator-headwear-colors.ts';
+import {isD2FaceSolid,type D2FaceSolid} from './operator-head-accessory-catalog.ts';
 import {isHeadwearCamoId,type HeadwearCamoId,nextHeadwearCamoRoll} from './operator-headwear-camo.ts';
 import {FABRIC_CAMO_CHANNELS,fabricCamoCompatible,type FabricCamoChannel,type CamoOutfit}
  from './operator-fabric-camo-policy.ts';
@@ -150,6 +151,7 @@ export type WardrobeOptions={
  /** D2 balaclava topology variant: mouth shown (three-hole) or covered (two-hole). */
  d2FaceMode?:'three-hole'|'two-hole'|'lowered'|'mouth'|'nose'|
   'draped'|'face-wrap'|'head-wrap'|'raised';
+ d2FaceSolid?:D2FaceSolid;
  headwearColor?:HeadwearSolidColorId;headwearCamo?:HeadwearCamoId;
  headwearCamoRoll?:number;
  /** Approved original prints on verified textile channels. */
@@ -198,6 +200,7 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(['three-hole','two-hole','lowered','mouth','nose',
      'draped','face-wrap','head-wrap','raised'].includes(v.d2FaceMode??''))
   result.d2FaceMode=v.d2FaceMode;
+ if(isD2FaceSolid(v.d2FaceSolid))result.d2FaceSolid=v.d2FaceSolid;
  if(v.styles&&typeof v.styles==='object'&&!Array.isArray(v.styles)){
   for(const slot of WARDROBE_SLOTS){
    const id=v.styles[slot];

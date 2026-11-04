@@ -8,6 +8,7 @@ import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {createHeadwearSilhouette} from './operator-headwear-silhouettes.ts';
 import {createD2Balaclava} from './operator-d2-fabric-visuals.ts';
 import {createD2FabricWrap} from './operator-d2-fabric-wraps.ts';
+import {D2_FACE_SOLID_COLORS,effectiveD2FabricMode,type D2FaceSolid} from './operator-head-accessory-catalog.ts';
 import {createHeadwearDetailMaterial} from './operator-headwear-materials.ts';
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import type {WardrobeSlot} from './operator-wardrobe-data.ts';
@@ -15,6 +16,8 @@ type Model=Record<string,THREE.Group>;
 export type WardrobeHeadLayers={
  headwear:Model;facewear:Model;eyewear:Model;headset:Model;
  headwearMaterials:Record<string,THREE.MeshStandardMaterial>;
+ faceFabric:THREE.MeshStandardMaterial;
+ faceFabricDefaultHex:number;
  twoHoleMouthCover?:THREE.Group;
 };
 const cube=(g:THREE.Group,m:THREE.Material,
@@ -28,6 +31,11 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  canonicalHead:THREE.Group,cloth:THREE.Material,
  vest:THREE.Material,dark:THREE.Material,skin:THREE.Material):WardrobeHeadLayers{
  const headwear:Model={},facewear:Model={},eyewear:Model={},headset:Model={};
+ // A dedicated face textile material ensures color edits never recolor helmets,
+ // uniform sleeves, straps or unrelated body pieces.
+ const faceFabric=cloth instanceof THREE.MeshStandardMaterial?
+  cloth.clone():new THREE.MeshStandardMaterial({color:0x515b50,roughness:1});
+ const faceFabricDefaultHex=faceFabric.color.getHex();
  // Each approved silhouette keeps its geometry, but now owns a neutral
  // recolorable material. Material detail never produces coplanar geometry.
  const headwearMaterials:Record<string,THREE.MeshStandardMaterial>={};
@@ -79,14 +87,14 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  let twoHoleMouthCover:THREE.Group|undefined;
  for(const id of ['balaclava-one','balaclava-three','balaclava-open'] as const){
   const model=g(facewear,id,true);
-  const fabricModel=createD2Balaclava(id,cloth);
+  const fabricModel=createD2Balaclava(id,faceFabric);
   model.add(fabricModel);
   if(id==='balaclava-three')
    twoHoleMouthCover=fabricModel.getObjectByName('d2-two-hole-mouth-cover') as THREE.Group;
  }
  // D2-A2: one model per wrap family, with physically distinct prebuilt modes.
  for(const id of ['gaiter','shemagh','bandana'] as const){
-  g(facewear,id,true).add(createD2FabricWrap(id,cloth));
+  g(facewear,id,true).add(createD2FabricWrap(id,faceFabric));
  }
  // The retired scarf ID is migrated in readWardrobe; never show a duplicate.
  const halfMask=g(facewear,'half-mask');
@@ -129,11 +137,15 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  // Consolidate only static meshes; hidden families still incur no draw calls.
  for(const set of [headwear,facewear,eyewear,headset])
   for(const model of Object.values(set))consolidateVisualGroup(model);
- return {headwear,facewear,eyewear,headset,headwearMaterials,twoHoleMouthCover};
+ return {headwear,facewear,eyewear,headset,headwearMaterials,
+  faceFabric,faceFabricDefaultHex,twoHoleMouthCover};
 }
 export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  headwear:string,facewear:string,eyewear:string,headset:string,
- d2FaceMode?:string){
+ d2FaceMode?:string,faceSolid?:D2FaceSolid){
+ // Update the already allocated material; do not recreate meshes or geometry.
+ layers.faceFabric.color.setHex(faceSolid?
+  D2_FACE_SOLID_COLORS[faceSolid].hex:layers.faceFabricDefaultHex);
  const choices:{slot:WardrobeSlot;map:Model;id:string}[]=[
   {slot:'headwear',map:layers.headwear,id:headwear},
   {slot:'facewear',map:layers.facewear,id:facewear},

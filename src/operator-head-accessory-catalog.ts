@@ -37,6 +37,27 @@ export const D2_FRAME_SOLIDS=['black','gray','olive','tan','silver'] as const;
 export const D2_LENS_TINTS=['clear','smoke','dark-smoke','amber','yellow','bronze','green','mirrored'] as const;
 export const D2_GOGGLE_POSITIONS=['eyes','raised','neck'] as const;
 export type D2FaceSolid=typeof D2_FACE_SOLIDS[number];
+/** Deliberately muted and independent of hat, uniform and armor finishes. */
+export const D2_FACE_SOLID_COLORS:Record<D2FaceSolid,{label:string;hex:number}>={
+ black:{label:'Black',hex:0x222527},
+ charcoal:{label:'Charcoal',hex:0x414447},
+ olive:{label:'Olive drab',hex:0x525b43},
+ foliage:{label:'Foliage green',hex:0x65736a},
+ coyote:{label:'Coyote brown',hex:0x8c775c},
+ brown:{label:'Field brown',hex:0x665343},
+ 'off-white':{label:'Off white',hex:0xb6b3a0},
+ 'winter-white':{label:'Winter white',hex:0xcbd0c9}
+};
+export const isD2FaceSolid=(v:unknown):v is D2FaceSolid=>
+ typeof v==='string'&&(D2_FACE_SOLIDS as readonly string[]).includes(v);
+/** Avoid a heavy head-wrap clipping through a ballistic helmet, hat or headset. */
+export function effectiveD2FabricMode(facewear:string,mode:string|undefined,headwear:string){
+ const entry=D2_FACEWEAR.find(x=>x.id===facewear);
+ if(!entry)return undefined;
+ const chosen=mode&&entry.modes.some(x=>x===mode)?mode:entry.modes[0];
+ if(facewear==='shemagh'&&chosen==='head-wrap'&&headwear!=='bare')return 'face-wrap';
+ return chosen;
+}
 export type D2FrameSolid=typeof D2_FRAME_SOLIDS[number];
 export type D2LensTint=typeof D2_LENS_TINTS[number];
 export type D2GogglePosition=typeof D2_GOGGLE_POSITIONS[number];
