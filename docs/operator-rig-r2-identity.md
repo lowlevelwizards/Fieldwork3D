@@ -54,3 +54,11 @@ The CI photo set is a geometry audit, not a claim of reference-perfect fit.
 Review side intersections, bandolier pouch orientation, the SADF rear pack
 bulk, fabric-specific strap thickness, and pose transitions in motion.
 Work remains on the feature branch until the release checkpoint is green.
+
+## R2 mobile image review correction
+A ten-rig unarmored back-view capture found the P83 rear pouches initially
+collapsed visually into one large monochrome slab. The checkpoint polish
+increases rear compartment depth, separates their vertical volumes and
+uses contrasting closure flaps. The diagonal bandolier was also widened
+slightly for gameplay-distance readability. No inventory or load values
+changed.

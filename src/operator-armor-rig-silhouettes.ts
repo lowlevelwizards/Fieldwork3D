@@ -183,7 +183,7 @@ export function updateFittedRigHarness(
   line([[bx,-4.42,-4.52],[bx,1.12,4.02],
    [rx,sy,4.12],[sx,sy,4.12],
    [fx+.20,2.85,3.18],[fx+.20,-4.25,-4.16],
-   [(fx+bx)*.5,-4.37,-sideZ],[bx,-4.42,-4.52]],1.38,.44);
+   [(fx+bx)*.5,-4.37,-sideZ],[bx,-4.42,-4.52]],1.72,.48);
  }else if(rig==='field-webbing'||rig==='belt-harness'){
   // Belt-first: twin front braces, one true rear Y and no chest slab.
   const wide=rig==='belt-harness';
@@ -232,9 +232,19 @@ export function updateFittedRigHarness(
    sideTie(sign,-5.12,fx,bx,.72);
   }
   box(harness,material,bx-.12,-.92,0,.55,1.32,9.74);
-  for(const [y,h,w] of [[-2.04,2.14,8.7],[-4.35,1.82,9.32]] as const){
-   box(harness,material,bx-.57,y,0,.82,h,w);
-   box(harness,material,bx-1.04,y+h*.39,0,.19,.40,w+.12);
+  // Two independent, projecting back compartments with deliberately
+  // staggered depth and contrasting closure flaps; NOT one dark slab.
+  const rearCargo=(harness.userData.rearCargoMaterial as
+   THREE.Material|undefined)??material;
+  const rearTrim=(harness.userData.rearTrimMaterial as
+   THREE.Material|undefined)??material;
+  for(const [y,h,w,center,depth] of [
+   [-1.96,2.08,8.44,bx-.94,1.50],
+   [-4.34,1.92,9.28,bx-1.09,1.78]
+  ] as const){
+   box(harness,rearCargo,center,y,0,depth,h,w);
+   box(harness,rearTrim,center-depth*.53-.09,y+h*.38,0,
+    .23,.47,w+.10);
   }
  }
  consolidateVisualGroup(harness);
@@ -384,6 +394,11 @@ export function createChestRigSilhouettes(chest:THREE.Group,
  {
   const g=make('sadf-webbing');
   shoulderHarness(g,fabric,5.35);
+  const rearHarness=g.getObjectByName('uniform-fitted-rig-harness');
+  if(rearHarness instanceof THREE.Group){
+   rearHarness.userData.rearCargoMaterial=pocketFabric;
+   rearHarness.userData.rearTrimMaterial=trim;
+  }
   for(const s of [-1,1]){
    for(const z of [3.25,6.05])
     pouch(g,pocketFabric,trim,7.78,-2.75,s*z,5.80,2.50,1.35);
