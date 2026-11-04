@@ -60,7 +60,8 @@ import {newAwareness,addObservation,visibleObservation,
 import {visualGain,advanceSight,confirmedSight} from './breach-visual-perception.ts';
 import {actorLightingLevels,lightVisibilityGain} from './equipment-sight-lighting.ts';
 import type {LightingMode} from './equipment-site-lighting.ts';
-import {passageWait,type PassageActor,type PassageLease}
+import {passageWait,approachingNarrowThreshold,
+  type PassageActor,type PassageLease}
   from './breach-passage.ts';
 import {diagnoseMovement,projectReachableGoal,type Blocker}
   from './breach-nav-diagnostics.ts';
@@ -1794,9 +1795,13 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     b.side===a.side).map(b=>b.p);
   // Teammates are soft traffic, not rigid obstacles: preserve movement when
   // there is no safe sidestep, and never force the stationary teammate away.
-  const desiredMove=friendlyPassingStep(a.p,move,next,friendlyPositions,
-    (from,to)=>a.squeeze?sweptProfileClear(from,to,s.doors,
-      a.squeezeYaw,'squeeze'):sweptBodyClear(from,to,s.doors));
+  // Passage reservations supply queue spacing near narrow doors.
+  // Additional friendly steering here can put the last soldier against a
+  // jamb, causing false progress and a costly squeeze into the opening.
+  const desiredMove=approachingNarrowThreshold(a.p,p,s.doors)?move:
+    friendlyPassingStep(a.p,move,next,friendlyPositions,
+      (from,to)=>a.squeeze?sweptProfileClear(from,to,s.doors,
+        a.squeezeYaw,'squeeze'):sweptBodyClear(from,to,s.doors));
   // Resolve the physical body's intended step against the actual leaf
   // BEFORE evaluating movement clearance. The hinge may yield right now;
   // when it cannot (wall/actor), existing collision and recovery remain.

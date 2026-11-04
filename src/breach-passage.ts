@@ -194,6 +194,24 @@ export function passageWait(actor:PassageActor,doors:readonly Door[],
  }
  return false;
 }
+/** Existing passage reservations manage spacing near narrow openings.
+ * Do not add cosmetic friendly sidestepping that drives a later follower
+ * into the jamb; neither geometry nor opposing-body collision is relaxed.
+ */
+export function approachingNarrowThreshold(from:Pt,goal:Pt,
+ doors:readonly Door[]):boolean{
+ return doors.some(door=>{
+  const width=distance(door.a,door.b);
+  if(width>60||distance(from,doorCenter(door))>102)return false;
+  const before=side(from,door),after=side(goal,door);
+  if(before*after>=0)return false;
+  const center=doorCenter(door);
+  const tx=(door.b.x-door.a.x)/Math.max(1,width);
+  const ty=(door.b.y-door.a.y)/Math.max(1,width);
+  const across=Math.abs((from.x-center.x)*tx+(from.y-center.y)*ty);
+  return across<width/2+35;
+ });
+}
 /** More leverage near a latch than a hinge; the hinge motor still owns its
  * actual acceleration and collision stops against walls or furniture. */
 export function doorContactImpulse(d:Door,point:Pt){
