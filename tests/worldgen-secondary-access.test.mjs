@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {compileArchitecturalSite} from '../src/worldgen/architectural-compiler.ts';
+import {ordinaryDoorOpeningWidth} from '../src/breach-door-proportions.ts';
 test('service and staff entrances are real exterior door cuts, not fake hotspots',()=>{
  let accessible=0;
  for(const kind of ['garage','warehouse','restaurant','motel','clinic','house']){
@@ -12,7 +13,7 @@ test('service and staff entrances are real exterior door cuts, not fake hotspots
    if(!service)continue;
    accessible++;
    assert.ok(Math.abs(Math.hypot(service.a.x-service.b.x,
-     service.a.y-service.b.y)-48)<.001);
+     service.a.y-service.b.y)-ordinaryDoorOpeningWidth('SERVICE'))<.001);
    assert.ok(Math.hypot((service.a.x+service.b.x)/2-
     (front.a.x+front.b.x)/2,(service.a.y+service.b.y)/2-
     (front.a.y+front.b.y)/2)>104);
