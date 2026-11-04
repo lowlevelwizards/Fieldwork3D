@@ -1705,8 +1705,13 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
       a.recoveryAttempts++;
       a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);
-      if(s.seconds-a.lastNavRepairAt>1.2){
-        notify(s,a.name+' CANNOT REACH');
+      // Do not turn a failed route search into a new warning every
+      // cooldown. A bounded escalation stays visible in the operator card.
+      // The motor still probes periodically so a newly open path can heal.
+      if(a.side==='blue'&&(a.recoveryAttempts===1||
+         a.recoveryAttempts===5)){
+        notify(s,a.name+(a.recoveryAttempts>=5?
+          ' NO SAFE ROUTE · ORDERS RETAINED':' CANNOT REACH · RETRYING'));
         a.lastNavRepairAt=s.seconds;
       }
       return false;
@@ -2445,6 +2450,12 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     }
     const interaction=doorInteraction({target:door,actorId:a.id,
       actorPosition:a.p,action:n.method??'open'});
+    // A deliberately exhausted kick sequence is terminal until its order
+    // is edited. Never replay the last kick every fixed update.
+    if(a.orderIssue?.nodeId===n.id&&n.method==='kick'&&
+       /KICK RESISTED|KICK BLOCKED/.test(a.orderIssue.reason)&&!door.open){
+      a.velocity=0;return;
+    }
     if(!interaction.allowed&&a.actionTimer===0){
       failCurrentOrder(s,a,n,'DOOR BLOCKED · '+
         (interaction.reason??'UNAVAILABLE').toUpperCase());
