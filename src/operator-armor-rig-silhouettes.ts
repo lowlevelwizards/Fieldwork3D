@@ -501,8 +501,11 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   // Only two chunky closure tabs bridge toward the opening. The deep
   // vertical separation and independent banks remain the major silhouette.
   for(const y of [.15,-2.85])
-   for(const s of [-1,1])
+   for(const s of [-1,1]){
     box(g,dark,8.66,y,s*1.03,.26,.56,.62);
+    // Short metal buckle catches stay neutral instead of copying cloth dye.
+    box(g,trim,8.86,y,s*1.03,.14,.30,.30);
+   }
  }
  {
   const g=make('lbv');
