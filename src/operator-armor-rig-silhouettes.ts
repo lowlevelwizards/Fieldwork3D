@@ -188,7 +188,7 @@ export function updateFittedRigHarness(
     micro?.82:.72);
   // Short upper H bridge plus one lower, narrow stabilizing back strap.
   across(bx,-.86,3.75,.78);
-  across(bx,-3.24,Math.min(sideZ,4.65),.50);
+  across(bx,-3.20,rearTieZ,.50);
   for(const sign of [-1,1])
    sideTie(sign,-3.20,fx+.10,bx,micro?.66:.62);
  }else if(rig==='light-rig'||rig==='chicom-rig'){
@@ -200,9 +200,9 @@ export function updateFittedRigHarness(
    const topY=classic?.10:.62;
    shoulder(sign,[x,topY,sign*z],[bx,1.13,sign*3.78],
     classic?1.04:.77);
-   line([[bx,1.13,sign*3.78],[bx,-3.35,-sign*4.22]],
+   line([[bx,1.13,sign*3.78],[bx,-3.35,-sign*rearTieZ]],
     classic?1.02:.74,.43);
-   sideTie(sign,-3.30,fx+.04,bx,classic?.62:.48);
+   sideTie(-sign,-3.35,fx+.04,bx,classic?.62:.48);
   }
  }else if(rig==='bandolier'){
   // Unbroken front-right / rear-left diagonal with a shoulder turn and
@@ -237,8 +237,8 @@ export function updateFittedRigHarness(
   for(const sign of [-1,1])
    shoulder(sign,[8.12,1.01,sign*4.75],
     [bx,-1.05,sign*4.55],1.08);
-  across(bx,-.58,4.55,1.02);
-  across(bx,-3.58,Math.min(sideZ,5.30),.62);
+  across(bx,-1.05,4.55,1.02);
+  across(bx,-3.58,rearTieZ,.62);
   for(const sign of [-1,1])sideTie(sign,-3.58,fx+.2,bx,.48);
  }else if(rig==='full-chest'){
   // A substantial patrol bib gets a strong rear support yoke, not the
@@ -247,7 +247,7 @@ export function updateFittedRigHarness(
    shoulder(sign,[8.39,2.62,sign*4.65],
     [bx,.46,sign*4.82],1.28);
   box(harness,material,bx-.07,-.76,0,.47,2.05,9.82);
-  across(bx,-3.70,Math.min(sideZ,5.36),.69);
+  across(bx,-3.70,rearTieZ,.69);
   for(const sign of [-1,1])
    sideTie(sign,-3.70,fx+.10,bx,.75);
  }else if(rig==='lbv'){
@@ -256,11 +256,12 @@ export function updateFittedRigHarness(
   for(const sign of [-1,1]){
    shoulder(sign,[7.82,3.05,sign*3.52],
     [bx,.76,sign*4.85],1.43);
-   line([[bx,.72,sign*4.82],[bx,-3.86,sign*5.26]],1.25,.49);
+   line([[bx,.76,sign*4.85],[bx,-3.86,sign*5.26],
+    [bx,-4.04,sign*rearTieZ]],1.25,.49);
    sideTie(sign,-4.04,fx+.05,bx,.72);
   }
   box(harness,material,bx-.05,.32,0,.48,1.26,10.02);
-  across(bx,-4.03,5.26,.92);
+  across(bx,-4.04,rearTieZ,.92);
  }else if(rig==='sadf-webbing'){
   // Pattern-83 Battle Jacket: broad shoulder support, physical side wrap
   // and TWO visible rear cargo compartments instead of a blank back slab.
@@ -272,6 +273,8 @@ export function updateFittedRigHarness(
    sideTie(sign,-5.12,fx,bx,.72);
   }
   box(harness,material,bx-.12,-.92,0,.55,1.32,9.74);
+  across(bx,.85,4.93,1.02);
+  across(bx,-5.12,rearTieZ,.80);
   // Two independent, projecting back compartments with deliberately
   // staggered depth and contrasting closure flaps; NOT one dark slab.
   const rearCargo=(harness.userData.rearCargoMaterial as
