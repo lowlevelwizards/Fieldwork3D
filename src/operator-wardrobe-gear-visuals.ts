@@ -43,18 +43,20 @@ export function createWardrobeGearLayers(
  // while their independent shoulder suspenders follow the chest.
  const waistRig:StyleGroups={};
  const webbing=make(hip);waistRig['field-webbing']=webbing;
- box(webbing,gearFabric,4.35,.18,0,1.12,1.22,13.1);
+ box(webbing,gearFabric,4.35,.18,0,1.12,1.36,13.35);
+ box(webbing,gearFabric,-4.15,.18,0,1.06,1.34,12.20);
  for(const side of [-1,1])
   for(const x of [2.30,-.65,-3.60]){
-   box(webbing,pouchMaterial,x,.10,side*7.20,2.45,3.35,2.15);
-   box(webbing,trim,x+1.24,1.35,side*7.20,.21,.40,2.29);
+   box(webbing,pouchMaterial,x,.10,side*7.20,2.69,3.66,2.36);
+   box(webbing,trim,x+1.37,1.49,side*7.20,.29,.57,2.49);
   }
  const battle=make(hip);waistRig['sadf-webbing']=battle;
- box(battle,gearFabric,4.26,.13,0,1.12,1.36,13.25);
+ box(battle,gearFabric,4.26,.13,0,1.18,1.50,13.55);
+ box(battle,gearFabric,-4.24,.13,0,1.10,1.48,12.55);
  for(const side of [-1,1]){
   for(const x of [2.1,-1.30])
-   box(battle,pouchMaterial,x,.16,side*7.32,3.02,4.05,2.60);
-  box(battle,gearFabric,-3.75,.12,side*5.4,.85,3.85,4.7);
+   box(battle,pouchMaterial,x,.16,side*7.32,3.25,4.38,2.84);
+  box(battle,gearFabric,-3.75,.12,side*5.4,1.16,4.15,5.15);
  }
  const belt:StyleGroups={},pack:StyleGroups={};
  for(const item of wardrobeItemsForSlot('beltStyle')){
