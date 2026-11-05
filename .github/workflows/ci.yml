@@ -736,7 +736,9 @@ jobs:
             tests/awareness-morale-support-e3c.test.mjs \
             tests/awareness-morale.test.mjs \
             tests/worldgen-encounter-activities.test.mjs \
-            tests/worldgen-encounter-integration.test.mjs
+            tests/worldgen-encounter-integration.test.mjs \
+            tests/mission-reactivity-r8b.test.mjs \
+            tests/tactical-integration-17-firefight-b1.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
