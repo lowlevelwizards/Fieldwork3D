@@ -788,6 +788,12 @@ function renderMaterials(){
     b.prepend(chip);grid.append(b);
    }group.append(grid);
   }
+  if(item==='beret'){
+   const drape=row('BERET DRAPE','One asymmetric wool silhouette, mirrored without adding a separate hat.');
+   addSelect(drape,[['right','RIGHT DRAPE'],['left','LEFT DRAPE']] as const,
+    w.beretDrape??'right',value=>changeWardrobe({...current(),
+     beretDrape:value as 'left'|'right'}));
+  }
   if(prints.length){
    const printRow=row('COMPATIBLE HEADGEAR PRINTS');
    addCamoSwatches(printRow,prints,w.headwearCamo??null,id=>
