@@ -3,6 +3,8 @@
  * equipment-catalog / equipment-loadouts / campaign-state.
  */
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {isAliceLc2Load,type AliceLc2Load} from './operator-alice-lc2-policy.ts';
+import {readHelmetCoverConfig,type HelmetCoverConfig} from './operator-helmet-cover-policy.ts';
 import {readIdentityMarkings,type IdentityMarkings} from './operator-identity-markings.ts';
 import {isSkinToneId,isHairStyleId,isHairToneId,
  type SkinToneId,type HairStyleId,type HairToneId} from './operator-identity-palette.ts';
@@ -44,7 +46,8 @@ add('headwear','soft',[
 ]);
 add('headwear','ballistic',[
  ['soviet-steel','Steel helmet'],['pasgt','PASGT-style helmet'],
- ['ach','ACH / MICH-style helmet'],['high-cut','High-cut helmet']
+ ['ach','ACH / MICH-style helmet'],['high-cut','High-cut helmet'],
+ ['m1-steel','US M1 steel helmet']
 ]);
 add('facewear','face',[
  ['face-none','Uncovered'],['balaclava-one','One-opening balaclava'],
@@ -108,7 +111,8 @@ add('rigStyle','light',[
  ['bandolier','Minimal Bandolier']
 ]);
 add('rigStyle','full',[
- ['field-webbing','Field Webbing'],['lbv','Load-Bearing Vest'],
+ ['field-webbing','Field Webbing'],['alice-lc2','US ALICE LC-2 Webbing'],
+ ['lbv','Load-Bearing Vest'],
  ['full-chest','Full Bib / Patrol Rig'],
  ['split-front','Split-Front Chest Rig'],
  ['sadf-webbing','Bush / SADF-Style Webbing']
@@ -153,7 +157,7 @@ export const sleeveStateOptions=(top:string)=>top==='bdu-shirt'||top==='acu-shir
  SLEEVE_STATES:['unrolled'] as const;
 export const trouserHemOptions=(trousers:string)=>trousers==='bdu-trousers'||
  trousers==='acu-trousers'||trousers==='gorka-trousers'?TROUSER_HEMS:['unbloused'] as const;
-export type WardrobeOptions={
+export type WardrobeOptions=HelmetCoverConfig&{
  version:1;styles:Partial<Record<WardrobeSlot,string>>;
  /** Optional explicit identity; missing values retain the historical seeded look. */
  skinTone?:SkinToneId;hairStyle?:HairStyleId;hairTone?:HairToneId;
@@ -185,6 +189,8 @@ export type WardrobeOptions={
  /** Replaceable harness material; ignored on sewn/integrated rigs. */
  strapSolid?:GarmentSolidId;
  sleeveState:SleeveState;trouserHem:TrouserHem;
+ /** Optional visual load size; actual supply and ammunition are unchanged. */
+ aliceLoad?:AliceLc2Load;
  /** Contextual new-garment materials, never the abolished global palette. */
  topColorway:string;
  accessories:WardrobeAccessoryConfiguration;
@@ -278,6 +284,8 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(isGarmentSolidId(v.pouchSolid))result.pouchSolid=v.pouchSolid;
  if(isHeadwearSolidColorId(v.headwearColor))result.headwearColor=v.headwearColor;
  if(v.beretDrape==='left'||v.beretDrape==='right')result.beretDrape=v.beretDrape;
+ if(isAliceLc2Load(v.aliceLoad))result.aliceLoad=v.aliceLoad;
+ Object.assign(result,readHelmetCoverConfig(v));
  if(isHeadwearCamoId(v.headwearCamo)&&v.headwearCamo!=='splittertarn-31')result.headwearCamo=v.headwearCamo;
  if(Number.isInteger(v.headwearCamoRoll)&&v.headwearCamoRoll!>=0&&v.headwearCamoRoll!<4096)
   result.headwearCamoRoll=v.headwearCamoRoll;
@@ -399,7 +407,7 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
   slots.armor==='armor-carrier'?'plate-standard':
   slots.armor==='armor-soft'?'soft-vest':'armor-bare');
  choose('rigStyle',slots.rig==='rig-full'?
-  ['field-webbing','lbv','full-chest','split-front','sadf-webbing']:
+  ['field-webbing','alice-lc2','lbv','full-chest','split-front','sadf-webbing']:
   slots.rig==='rig-light'?['micro-rig','light-rig','chest-placard',
    'chicom-rig','bandolier']:
   ['no-rig'],slots.rig==='rig-full'?'field-webbing':

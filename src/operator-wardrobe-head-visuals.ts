@@ -3,6 +3,9 @@
  * One group per model family, toggled at pose time and never reallocated.
  */
 import * as THREE from 'three';
+import {createM1HelmetCoverLayers,updateM1HelmetCoverLayers,
+ type M1HelmetCoverLayers} from './operator-helmet-cover-visuals.ts';
+import type {HelmetCoverConfig} from './operator-helmet-cover-policy.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {createHeadwearSilhouette} from './operator-headwear-silhouettes.ts';
@@ -33,6 +36,7 @@ export type WardrobeHeadLayers={
  deferredFacewear:Record<string,()=>void>;
  deferredHeadset:Record<string,()=>void>;
  twoHoleMouthCover?:THREE.Group;
+ m1Cover?:M1HelmetCoverLayers;
 };
 const cube=(g:THREE.Group,m:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number)=>{
@@ -50,6 +54,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  const deferredFacewear:Record<string,()=>void>={};
  const deferredHeadset:Record<string,()=>void>={};
  let layersRef:WardrobeHeadLayers|null=null;
+ let m1Cover:M1HelmetCoverLayers|undefined;
  // A dedicated face textile material ensures color edits never recolor helmets,
  // uniform sleeves, straps or unrelated body pieces.
  const faceFabric=cloth instanceof THREE.MeshStandardMaterial?
@@ -117,6 +122,11 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  // silhouette system as the approved ACH and high-cut.
  for(const id of ['boonie','beanie','pasgt','soviet-steel'] as const)
   headModel(id,true,cap=>cap.add(createHeadwearSilhouette(id,detail(id))));
+ headModel('m1-steel',true,model=>{
+  model.add(createHeadwearSilhouette('m1-steel',detail('m1-steel')));
+  m1Cover=createM1HelmetCoverLayers(model);
+  if(layersRef)layersRef.m1Cover=m1Cover;
+ });
  const helmet=(id:string,size:number,cut:number,rail:boolean)=>{
   headModel(id,false,model=>{
    cube(model,vest,-.5,6.85,0,size,2.45,size);
@@ -203,13 +213,14 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  const layers:WardrobeHeadLayers={headwear,facewear,eyewear,headset,headwearMaterials,
   faceFabric,faceFabricDefaultHex,eyewearFrame,eyewearLens,
   eyewearStrap,maskRubber,deferredEyewear,deferredHeadwear,
-  deferredFacewear,deferredHeadset,twoHoleMouthCover};
+  deferredFacewear,deferredHeadset,twoHoleMouthCover,m1Cover};
  layersRef=layers;return layers;
 }
 export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  headwear:string,facewear:string,eyewear:string,headset:string,
  d2FaceMode?:string,faceSolid?:D2FaceSolid,d2Eye?:D2AccessoryOptions,
- maskColor?:D2MaskSolid,beretDrape:'left'|'right'='right'){
+ maskColor?:D2MaskSolid,beretDrape:'left'|'right'='right',
+ helmetCover?:HelmetCoverConfig,camoIdentity='',coverRoll=0){
  // Update the already allocated material; do not recreate meshes or geometry.
  layers.faceFabric.color.setHex(faceSolid?
   D2_FACE_SOLID_COLORS[faceSolid].hex:layers.faceFabricDefaultHex);
@@ -231,6 +242,8 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  // Only the worn accessories are built on battlefield rigs. Studio and
  // operator labs remain eager; switching a style builds it just once.
  layers.deferredHeadwear[assembly.headwear]?.();
+ if(layers.m1Cover)updateM1HelmetCoverLayers(layers.m1Cover,
+  assembly.headwear==='m1-steel'?helmetCover:undefined,camoIdentity,coverRoll);
  layers.deferredFacewear[facewear]?.();
  layers.deferredHeadset[assembly.headset]?.();
  layers.deferredEyewear[assembly.eyewear]?.();

@@ -889,6 +889,14 @@ jobs:
         run: |
           node --experimental-strip-types --test tests/ux-r3-experience-flow.test.mjs tests/ux-r1-navigation-squad.test.mjs tests/ux2-overlay-coordination.test.mjs
           node --experimental-strip-types --test tests/lw-roster.test.mjs tests/equipment-19-06-quickplay-editor.test.mjs
+      - name: R5 D–F critical silhouette, cover and loadout contracts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r5-historical-release2-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/r5-historical-helmet-d.test.mjs \
+            tests/r5-m1-cover-stage-e.test.mjs \
+            tests/r5-alice-field-stage-f.test.mjs \
+            tests/faction-reference.test.mjs
       - name: E5-D civilian acceptance, real rescue lifecycle and legacy safety
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/e5d-civilian-') }}
         run: |
