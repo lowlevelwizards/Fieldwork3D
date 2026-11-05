@@ -106,9 +106,9 @@ function aviator(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
 }
 function shooting(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
  root.userData.d2EyeFitTop=4.94;
- root.userData.d2EyeDesign='R5-single-clean-shooting-brow';
- // True shooting-glasses identity: one continuous wraparound pane with
- // two swept outer cheeks and a tall, OPEN underside nasal cutout.
+ root.userData.d2EyeDesign='R6-clean-panoramic-shooting-glasses';
+ // Approved R5 lens shape is unchanged: the single sweeping pane, open
+ // underside and generous nasal relief define the shooting fantasy.
  const pane:EyePolygon=[
   [-4.18,4.52],[-4.42,4.15],[-3.92,3.16],
   [-2.89,2.61],[-1.04,2.66],[-.57,3.56],
@@ -117,14 +117,16 @@ function shooting(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
   [1.70,4.83],[-1.70,4.83]
  ];
  lensSurface(root,lens,'shooting-panoramic',pane,-5.18,1.02);
- // One eight-corner brow strip. Its front surface is 0.14 units in
- // front of the panoramic lens instead of 0.02: no near-coplanar layers.
- // The entire solid inherits the same lateral sweep as the lens.
+ // ONE eight-corner sculpted brow, no separate thin line or rear plate.
+ // The rear of the .22-deep strip remains .10 ahead of the front of the
+ // swept lens at every X: the previous deep band pierced the lens itself,
+ // causing double black lines and unintended transparent overlaps.
  const brow:EyePolygon=[
-  [-4.42,4.26],[-4.19,4.84],[0,5.00],[4.19,4.84],
-  [4.42,4.26],[3.85,4.50],[0,4.67],[-3.85,4.50]
+  [-4.42,4.26],[-4.19,4.81],[0,4.98],[4.19,4.81],
+  [4.42,4.26],[3.86,4.48],[0,4.70],[-3.86,4.48]
  ];
- sweptFrame(root,frame,'integrated-swept-frame',brow,[],-5.32,.34,1.02);
+ sweptFrame(root,frame,'integrated-swept-frame',brow,[],-5.50,.22,1.02);
+ // Two existing heavy, uninterrupted arms terminate into this brow.
  outsideTemples(root,frame,'continuous-swept-temple',{
   frontX:4.24,frontY:4.55,frontZ:-4.39,
   shoulderX:4.42,shoulderY:4.35,shoulderZ:-4.10,
