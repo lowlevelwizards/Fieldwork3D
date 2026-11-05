@@ -8,7 +8,7 @@ const minGap=(p:Pt,peers:readonly Pt[])=>
 export function friendlyPassingStep(from:Pt,desired:Pt,goal:Pt,
  peers:readonly Pt[],sweep:(a:Pt,b:Pt)=>boolean):Pt{
  const step=dist(from,desired);
- if(step<1e-6||!peers.some(p=>dist(p,desired)<21))return desired;
+ if(step<1e-6||!peers.some(p=>dist(p,desired)<25))return desired;
  const dx=(desired.x-from.x)/step,dy=(desired.y-from.y)/step;
  const gap=minGap(desired,peers);
  const expectedProgress=dist(from,goal)-dist(desired,goal);
@@ -39,7 +39,10 @@ export function friendlyPassingStep(from:Pt,desired:Pt,goal:Pt,
 function score(p:Pt,goal:Pt,peers:readonly Pt[]):number{
  const gap=minGap(p,peers);
  // Contact is a soft aesthetic cost, not a hard collision constraint.
- return dist(p,goal)+Math.max(0,17-gap)*2.2;
+ // Begin yielding before the next movement tick enters the teammate's
+ // personal space. The motor still demands meaningful forward progress,
+ // so this never forces sideward wandering or changes the authored goal.
+ return dist(p,goal)+Math.max(0,22-gap)*2.2;
 }
 /** Two teammates should not settle on the same exact spot. Approaching an
  * occupied goal to within one body diameter counts as a practical arrival. */
