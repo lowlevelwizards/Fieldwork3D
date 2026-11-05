@@ -1778,8 +1778,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     }
     if(s.seconds<a.retryRouteAt){a.velocity=0;return false;}
     a.nav=a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
-      (a.side==='red'?cachedEnemyRoute(s,a.p,p,true):
-        routeWithSqueezeWorld(a.p,p,s.doors));
+      cachedEnemyRoute(s,a.p,p,true);
     if(!a.nav.length){
       // A failed route is a stationary brace, not phantom walking speed.
       a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
@@ -2089,7 +2088,8 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       // Once actual collision is observed, repair against real geometry,
       // not only the incomplete player-intel route that may run through
       // an undiscovered door frame. The authored final goal is unchanged.
-      const repaired=routeWithSqueezeWorld(a.p,p,s.doors);
+      const repaired=a.side==='red'?cachedEnemyRoute(s,a.p,p,true):
+        routeWithSqueezeWorld(a.p,p,s.doors);
       if(repaired.length){a.nav=repaired;a.retryRouteAt=0;}
       else if(a.side==='blue'){
         a.nav=routeWithSqueezeIntel(s.intel,a.p,p);
@@ -2895,7 +2895,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       if(!electiveAiWork(s,a,'routine-route')){
         a.velocity=0;return;
       }
-      a.nav=route(a.p,target);
+      a.nav=cachedEnemyRoute(s,a.p,target);
     }
     if(!a.nav.length){
       a.routineIndex=(index+1)%a.encounterRoutine.length;
@@ -2920,7 +2920,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         if(!electiveAiWork(s,a,'idle-route')){
           a.velocity=0;rotate(a,angle(a.p,a.watch),dt);return;
         }
-        a.nav=route(a.p,a.defense);
+        a.nav=cachedEnemyRoute(s,a.p,a.defense);
       }
       if(!a.nav.length){
         a.defense=null;a.defenseUntil=s.seconds+.7;
@@ -2961,8 +2961,9 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         if(!electiveAiWork(s,a,'investigation-route')){
           a.velocity=0;return;
         }
-        const goal=reachableInvestigation(a.p,a.contact);
-        if(goal)a.nav=route(a.p,goal);
+        const goal=reachableInvestigation(a.p,a.contact,
+          (from,to)=>cachedEnemyRoute(s,from,to));
+        if(goal)a.nav=cachedEnemyRoute(s,a.p,goal);
         else{a.alert='cover';a.contact=null;a.defense=null;}
       }
       if(a.nav.length&&a.contact)approach(a,a.nav.at(-1)??a.contact,dt,s,
@@ -2992,7 +2993,8 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       while(a.searchQueue.length&&!next&&checks++<2){
         const candidate=a.searchQueue.shift()!;
         if(d(candidate,a.p)<24)continue;
-        next=reachableInvestigation(a.p,candidate);
+        next=reachableInvestigation(a.p,candidate,
+          (from,to)=>cachedEnemyRoute(s,from,to));
       }
       a.nav=[];
       if(next){
@@ -3012,7 +3014,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
   }
   if(a.alert==='cover'&&a.defense&&d(a.p,a.defense)>10){
-    if(!a.nav.length)a.nav=route(a.p,a.defense);
+    if(!a.nav.length)a.nav=cachedEnemyRoute(s,a.p,a.defense);
     if(a.nav.length)approach(a,a.defense,dt,s,.7);
     else{a.defense=null;a.defenseUntil=s.seconds+.8;}
   }
