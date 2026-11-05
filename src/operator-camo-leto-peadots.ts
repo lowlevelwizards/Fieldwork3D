@@ -44,7 +44,7 @@ export function letoPeaDotOverlay(source:Uint8Array,density:LetoPeaDotDensity='m
   if(point(source,x,y+1)===ink)interior++;
   if(interior<3)continue;
   const chance=hashCell(col,row,89);
-  const bias=ink===0?1.0:ink===1?.92:ink===2?.98:.63;
+  const bias=ink===0 ? 1.0 : ink===1 ? 0.92 : ink===2 ? 0.98 : 0.63;
   if(chance>LETO_PEADOT_DENSITIES[density]*bias)continue;
   const colorRoll=hashCell(col,row,109);
   // Contrast via palette-role cross-pollination (not random RGB noise):
