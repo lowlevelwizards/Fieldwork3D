@@ -132,10 +132,13 @@ export function simpleHood(g:THREE.Group,mat:THREE.Material,
  name:string,levels:readonly HoodRing[]):THREE.Group{
  const root=new THREE.Group();root.name=name;g.add(root);
  const pts=([y,w,front,rear]:HoodRing):V[]=>[
-  [0,y,front],[-w*.79,y,front+.14],[-w,y,-2.65],
-  [-w,y,2.50],[-w*.78,y,rear],[0,y,rear+.12],
-  [w*.78,y,rear],[w,y,2.50],[w,y,-2.65],
-  [w*.79,y,front+.14]
+  // Full width starts before the square skull's front and continues
+  // past its rear corners. Earlier chamfers crossed *inside* the skull,
+  // exposing two conspicuous vertical strips of skin on both sides.
+  [0,y,front],[-w*.96,y,front+.10],[-w,y,-4.10],
+  [-w,y,4.13],[-w*.96,y,rear-.06],[0,y,rear+.13],
+  [w*.96,y,rear-.06],[w,y,4.13],[w,y,-4.10],
+  [w*.96,y,front+.10]
  ];
  const pos:number[]=[],norm:number[]=[];
  for(let i=0;i<levels.length-1;i++){
