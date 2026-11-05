@@ -88,8 +88,12 @@ test('all armor/rig/pack archetypes bake on construction, including older period
   assertShadedTree(r.visualKit.wardrobeGear.armor[id],id);
  for(const id of ['full-chest','split-front','alice-lc2','m1956-lce','sadf-webbing'])
   assertShadedTree(r.visualKit.wardrobeGear.rig[id],id);
- for(const id of ['field-pack','rucksack','day-pack'])
+ // Default day/field packs use the established single-draw legacy groups.
+ // Optional rucksack/assault/admin are constructed in the newer style bank.
+ for(const id of ['rucksack','assault-pack','admin-pack'])
   assertShadedTree(r.visualKit.wardrobeGear.pack[id],id);
+ assertShadedTree(r.visualKit.fieldPack,'legacy field pack');
+ assertShadedTree(r.visualKit.dayPack,'legacy day pack');
  for(const id of ['alice-lc2','m1956-lce'])
   assertShadedTree(r.visualKit.wardrobeGear.waistRig[id],id+' waist');
  r.dispose();
