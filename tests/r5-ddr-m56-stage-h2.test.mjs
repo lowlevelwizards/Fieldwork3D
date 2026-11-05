@@ -7,6 +7,9 @@ test('R5H2: period net and liner details are independent switchable groups',()=>
  const parent=new THREE.Group(),v=createM56Extras(parent,new THREE.MeshStandardMaterial());
  assert.equal(v.rivets.visible,false);assert.equal(v.net.visible,false);
  assert.ok(v.net.children.length>0);
+ const rivetEdges=new THREE.Box3().setFromObject(v.rivets);
+ assert.ok(rivetEdges.max.x>6.45&&rivetEdges.min.x< -6.45,
+  'historic rivets must project outside the M56 steel shell');
  const edges=new THREE.Box3().setFromObject(v.net);
  assert.ok(edges.max.x>6.95&&edges.min.x< -6.95,
   'net reaches visible outside edges of flared M56 steel bowl');

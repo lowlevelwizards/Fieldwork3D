@@ -15,8 +15,8 @@ function part(g:THREE.Group,m:THREE.Material,x:number,y:number,z:number,
 export function createM56Extras(parent:THREE.Group,dark:THREE.Material):M56Extras{
  const rivets=new THREE.Group();rivets.name='m56-earlier-liner-rivets';parent.add(rivets);
  for(const side of [-1,1]){
-  part(rivets,dark,side*5.96,5.76,-1.95,.42,.42,.40,'m56-rivet-forward');
-  part(rivets,dark,side*6.06,5.48,3.25,.42,.42,.42,'m56-rivet-rear');
+  part(rivets,dark,side*6.39,5.76,-1.95,.42,.42,.40,'m56-rivet-forward');
+  part(rivets,dark,side*6.40,5.48,3.25,.42,.42,.42,'m56-rivet-rear');
  }
  const net=new THREE.Group();net.name='m56-period-coarse-net';parent.add(net);
  const cloth=new THREE.MeshStandardMaterial({
