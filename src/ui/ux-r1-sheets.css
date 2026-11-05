@@ -147,3 +147,39 @@ body[data-tactical-sheet="briefing"] #breachCanvas{pointer-events:none}
  body[data-tactical-sheet] .tactical-hud{transition:none}
  #tacticalSheetShield{backdrop-filter:none}
 }
+
+/* Weapon workbench R1: small-screen first; no viewport-width overflow. */
+.fw-loadout-fields>*{min-width:0;max-width:100%}
+.fw-weapon-section-label{display:block;font:800 13px/1.3 var(--fw-font-display);
+ color:#e3e8d6;letter-spacing:.04em;margin:7px 0 2px}
+.fw-weapon-helper{font:500 12px/1.4 var(--fw-font-narrative);
+ color:#b8cabe;overflow-wrap:anywhere;margin:0 0 5px}
+.fw-weapon-tile-grid,.fw-weapon-preset-grid{display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;width:100%;min-width:0}
+.fw-weapon-tile-grid button,.fw-weapon-preset-grid button{
+ min-width:0;min-height:46px;padding:8px 6px;border-radius:8px;
+ border:1px solid #758c7c;background:#263c33;color:#e4eadd;
+ font:700 12px/1.2 var(--fw-font-display);overflow-wrap:anywhere}
+.fw-weapon-tile-grid button[aria-pressed="true"],
+.fw-weapon-preset-grid button[aria-pressed="true"]{
+ background:#b1c4aa;border-color:#e2e8c5;color:#17251d}
+.fw-weapon-tile-grid button:disabled,.fw-weapon-preset-grid button:disabled{opacity:.55}
+.fw-weapon-editor{display:block;min-width:0;max-width:100%;
+ overflow-x:clip;border-top:1px solid #506c5c;margin-top:3px}
+.fw-weapon-editor>summary{list-style:none;display:flex;align-items:center;
+ min-height:48px;cursor:pointer;font:800 13px/1.3 var(--fw-font-display);
+ color:#ede3ce;padding:9px 3px;overflow-wrap:anywhere}
+.fw-weapon-editor>summary::-webkit-details-marker{display:none}
+.fw-weapon-editor>summary:after{content:'+';margin-left:auto;padding-left:9px}
+.fw-weapon-editor[open]>summary:after{content:'−'}
+.fw-weapon-socket-panel{min-width:0;max-width:100%;padding:7px;
+ border:1px solid #597366;border-radius:8px;background:#1b322b}
+.fw-weapon-socket-row{display:grid;grid-template-columns:minmax(0,1fr);
+ gap:6px;min-width:0;padding:4px 0 8px;color:#dbe9db;
+ font:700 12px var(--fw-font-display)}
+.fw-weapon-socket-row[hidden]{display:none!important}
+.fw-weapon-socket-row select{display:block;width:100%;max-width:100%;
+ min-width:0;min-height:48px;background:#324b40;color:#f1f3e6;
+ border:1px solid #8aab92;border-radius:8px;padding:8px 9px;
+ font:600 14px var(--fw-font-action)}
+.fw-weapon-editor .weapon-workbench-viewport{max-width:100%;min-width:0}
