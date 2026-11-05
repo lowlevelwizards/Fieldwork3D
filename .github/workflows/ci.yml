@@ -801,6 +801,18 @@ jobs:
             tests/civilian-b4-response.test.mjs \
             tests/tactical-integration-00-baseline.test.mjs \
             tests/tactical-integration-17-firefight-b1.test.mjs
+      - name: Living civilians N4 rescue and replay mission critical checks
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-e5b-civilians-n4-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/civilian-b7-rescue-mission.test.mjs \
+            tests/civilian-b7-rescue-session.test.mjs \
+            tests/civilian-b8-replay.test.mjs \
+            tests/civilian-b5b-ballistics.test.mjs \
+            tests/breach-097-106.test.mjs \
+            tests/mission-reactivity-r8b.test.mjs \
+            tests/tactical-mission-quality-operations.test.mjs \
+            tests/worldgen-encounter-missions.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
