@@ -79,6 +79,7 @@ import {canSecureRescuePerson,rescueEscortSeparated,rescueFollowGoal}
   from './breach-civilian-mission.ts';
 import {firstCivilianAlongRay,applyCivilianBulletHit}
   from './breach-civilian-ballistics.ts';
+import {knownCivilianInFireLane} from './breach-civilian-fire-safety.ts';
 import {recordCivilianHarm,attributableCivilianHarm,
   type CivilianHarmEvent} from './breach-civilian-harm.ts';
 import {retreatDoorClosureEligible} from './breach-ai-door-response.ts';
@@ -3454,6 +3455,24 @@ function shatterStruckWindows(s:Session,paneHits:readonly number[],force:number)
     {x:window.x,y:window.y},'GLASS SHATTERED');
  }
 }
+/** A known civilian can veto a shot without becoming a hidden contact.
+ * Physical impacts are still tested against every real neutral after firing. */
+function observedCivilianFireLane(s:Session,a:TeamActor,from:Pt,
+ muzzleHeight:number,to:Pt,targetHeight:number):CivilianActor|null{
+ if(a.side!=='blue'||!s.civilians.length)return null;
+ const observed=s.civilians.filter(c=>c.health>0&&
+   d(a.p,c.p)<260&&
+   Math.abs(angleDifference(a.heading,angle(a.p,c.p)))<1.2&&
+   liveVisibility(s,c.p)&&unobstructed(a.p,c.p,s,false));
+ return knownCivilianInFireLane(from,muzzleHeight,to,targetHeight,observed);
+}
+function civilianShotWithheld(s:Session,a:TeamActor):void{
+ a.lastFireBlock='friendly';
+ if(s.seconds-a.lastLaneWarnAt>2){
+   notify(s,a.name+' CIVILIAN IN FIRE LANE — SHOT WITHHELD');
+   a.lastLaneWarnAt=s.seconds;
+ }
+}
 /** Suppression is an authored area instruction: deliberate misses consume
  * real ammunition and can unsettle defenders, but never inflict an
  * omniscient hit on an unseen actor. */
@@ -3480,12 +3499,10 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   const yaw=muzzle.yaw;
   const from={x:muzzle.x,y:muzzle.z};
   const far=muzzleEndpoint(from,yaw,Math.max(40,d(from,point)));
-  const friends=[
-    ...team(s).filter(o=>o!==a&&o.health>0).map(o=>o.p),
-    ...s.civilians.filter(c=>c.health>0&&d(a.p,c.p)<200&&
-      Math.abs(angleDifference(a.heading,angle(a.p,c.p)))<.9&&
-      unobstructed(a.p,c.p,s,false)).map(c=>c.p)
-  ];
+  const friends=team(s).filter(o=>o!==a&&o.health>0).map(o=>o.p);
+  if(observedCivilianFireLane(s,a,from,muzzle.y,far,14)){
+    civilianShotWithheld(s,a);return;
+  }
   if(assessFireLane(from,muzzle.y,far,14,COVER,WALLS,s.doors,
     friends).blocker==='friendly')return;
   const impact=strikeSurface(from,far,s,muzzle.y,14,
@@ -3609,6 +3626,10 @@ function fire(s:Session,a:TeamActor,dt:number){
   // Legacy FOCUS saves use ordinary acquisition rather than an
   // inaccessible exclusive lock after FOCUS is removed from the interface.
   const target=selectFireableContact(a.p,visible,a.targetId,candidate=>{
+    if(observedCivilianFireLane(s,a,a.p,a.posture==='crouch'?18:26,
+       candidate.p,aimHeight(candidate.posture==='crouch'))){
+      civilianShotWithheld(s,a);return false;
+    }
     const friends=s.operators.filter(other=>other!==a&&other.health>0&&
       other.side===a.side).map(other=>other.p);
     const lane=assessFireLane(a.p,a.posture==='crouch'?18:26,
@@ -3664,13 +3685,13 @@ function fire(s:Session,a:TeamActor,dt:number){
     return;
   }
   const sightMuzzle=sightClearance.muzzle;
-  const friends=[
-    ...s.operators.filter(o=>o!==a&&o.health>0&&
-      o.side===a.side).map(o=>o.p),
-    ...s.civilians.filter(c=>c.health>0&&d(a.p,c.p)<200&&
-      Math.abs(angleDifference(a.heading,angle(a.p,c.p)))<.9&&
-      unobstructed(a.p,c.p,s,false)).map(c=>c.p)
-  ];
+  const friends=s.operators.filter(o=>o!==a&&o.health>0&&
+    o.side===a.side).map(o=>o.p);
+  if(observedCivilianFireLane(s,a,
+     {x:sightMuzzle.x,y:sightMuzzle.z},sightMuzzle.y,
+     target.p,aimHeight(target.posture==='crouch'))){
+    civilianShotWithheld(s,a);return;
+  }
   const lane=assessFireLane({x:sightMuzzle.x,y:sightMuzzle.z},
     sightMuzzle.y,target.p,aimHeight(target.posture==='crouch'),
     COVER,WALLS,s.doors,friends);
@@ -3709,6 +3730,10 @@ function fire(s:Session,a:TeamActor,dt:number){
   // Spread may put another teammate in the actual bullet corridor.
   const shotTarget=muzzleEndpoint(muzzlePoint,yaw,
     Math.max(1,d(muzzlePoint,target.p)));
+  if(observedCivilianFireLane(s,a,muzzlePoint,muzzle.y,
+     shotTarget,aimHeight(target.posture==='crouch'))){
+    civilianShotWithheld(s,a);return;
+  }
   const shotLane=assessFireLane(muzzlePoint,muzzle.y,
     shotTarget,aimHeight(target.posture==='crouch'),
     COVER,WALLS,s.doors,friends);
