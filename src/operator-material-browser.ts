@@ -7,6 +7,8 @@ import {HEADWEAR_CAMO_IDS,HEADWEAR_CAMO_RECIPES,type HeadwearCamoId}
  from './operator-headwear-camo.ts';
 import {GARMENT_SOLID_COLORS,type GarmentSolidId}
  from './operator-garment-color-policy.ts';
+import {HEADWEAR_SOLID_COLORS,type HeadwearSolidColorId}
+ from './operator-headwear-colors.ts';
 
 export type CamoEnvironment='all'|'woodland'|'jungle'|'arid'|'transitional'|'urban'|'winter';
 export type CamoSort='smart'|'alphabetical'|'family'|'origin'|'era'|'lightness'|'recent';
@@ -224,5 +226,25 @@ export function sortGarmentSolids(values:readonly GarmentSolidId[],
   return group||colorLightness(GARMENT_SOLID_COLORS[b].hex)-
    colorLightness(GARMENT_SOLID_COLORS[a].hex)||
    GARMENT_SOLID_COLORS[a].label.localeCompare(GARMENT_SOLID_COLORS[b].label);
+ });
+}
+
+/** Same perceptual ordering for the independent helmet/shell palette. */
+export function sortHeadwearSolids(values:readonly HeadwearSolidColorId[],
+ preferred?:HeadwearSolidColorId):HeadwearSolidColorId[]{
+ const groups=(id:HeadwearSolidColorId)=>{
+  if(/green|olive|soviet|postwar|foliage/.test(id))return 0;
+  if(/tan|coyote/.test(id))return 1;
+  if(/navy|urban|charcoal/.test(id))return 2;
+  if(id==='black')return 3;
+  return 4;
+ };
+ return [...new Set(values)].sort((a,b)=>{
+  if(preferred&&(a===preferred||b===preferred))
+   return a===preferred?-1:1;
+  return groups(a)-groups(b)||
+   colorLightness(HEADWEAR_SOLID_COLORS[b].hex)-
+    colorLightness(HEADWEAR_SOLID_COLORS[a].hex)||
+   HEADWEAR_SOLID_COLORS[a].label.localeCompare(HEADWEAR_SOLID_COLORS[b].label);
  });
 }
