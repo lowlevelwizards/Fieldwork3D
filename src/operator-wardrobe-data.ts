@@ -3,6 +3,7 @@
  * equipment-catalog / equipment-loadouts / campaign-state.
  */
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {readHelmetCoverConfig,type HelmetCoverConfig} from './operator-helmet-cover-policy.ts';
 import {readIdentityMarkings,type IdentityMarkings} from './operator-identity-markings.ts';
 import {isSkinToneId,isHairStyleId,isHairToneId,
  type SkinToneId,type HairStyleId,type HairToneId} from './operator-identity-palette.ts';
@@ -154,7 +155,7 @@ export const sleeveStateOptions=(top:string)=>top==='bdu-shirt'||top==='acu-shir
  SLEEVE_STATES:['unrolled'] as const;
 export const trouserHemOptions=(trousers:string)=>trousers==='bdu-trousers'||
  trousers==='acu-trousers'||trousers==='gorka-trousers'?TROUSER_HEMS:['unbloused'] as const;
-export type WardrobeOptions={
+export type WardrobeOptions=HelmetCoverConfig&{
  version:1;styles:Partial<Record<WardrobeSlot,string>>;
  /** Optional explicit identity; missing values retain the historical seeded look. */
  skinTone?:SkinToneId;hairStyle?:HairStyleId;hairTone?:HairToneId;
@@ -279,6 +280,7 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(isGarmentSolidId(v.pouchSolid))result.pouchSolid=v.pouchSolid;
  if(isHeadwearSolidColorId(v.headwearColor))result.headwearColor=v.headwearColor;
  if(v.beretDrape==='left'||v.beretDrape==='right')result.beretDrape=v.beretDrape;
+ Object.assign(result,readHelmetCoverConfig(v));
  if(isHeadwearCamoId(v.headwearCamo)&&v.headwearCamo!=='splittertarn-31')result.headwearCamo=v.headwearCamo;
  if(Number.isInteger(v.headwearCamoRoll)&&v.headwearCamoRoll!>=0&&v.headwearCamoRoll!<4096)
   result.headwearCamoRoll=v.headwearCamoRoll;
