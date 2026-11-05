@@ -739,6 +739,16 @@ jobs:
             tests/worldgen-encounter-integration.test.mjs \
             tests/mission-reactivity-r8b.test.mjs \
             tests/tactical-integration-17-firefight-b1.test.mjs
+      - name: Enemy AI E4 mission behavior critical tests
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-enemy-ai-e4-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/awareness-mission-response-e4a.test.mjs \
+            tests/awareness-retreat-door-e4b.test.mjs \
+            tests/worldgen-encounter-missions.test.mjs \
+            tests/gameplay-g4-objective-security.test.mjs \
+            tests/tactical-mission-quality-operations.test.mjs \
+            tests/mission-reactivity-r8b.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
