@@ -438,7 +438,8 @@ export function equipCampaignWeaponPreset(c:CampaignState,id:string,presetId:str
  if(!o)return c;
  const next=selectWeaponFamilyPreset(o.weaponConfiguration,presetId);
  if(sameWeaponConfiguration(next,o.weaponConfiguration))return c;
- return {...c,operators:c.operators.map(m=>m.id===id?
+ const attachments=returnAttachments(c.inventory.attachments,o.weaponConfiguration,next);
+ return {...c,inventory:{...c.inventory,attachments},operators:c.operators.map(m=>m.id===id?
   {...m,weaponConfiguration:next}:m)};
 }
 export function equipCampaignWeaponFamilyPart(c:CampaignState,id:string,
@@ -448,7 +449,8 @@ export function equipCampaignWeaponFamilyPart(c:CampaignState,id:string,
  if(!o)return c;
  const next=setConfiguredFamilyPart(o.weaponConfiguration,slot,partId);
  if(sameWeaponConfiguration(next,o.weaponConfiguration))return c;
- return {...c,operators:c.operators.map(m=>m.id===id?
+ const attachments=returnAttachments(c.inventory.attachments,o.weaponConfiguration,next);
+ return {...c,inventory:{...c.inventory,attachments},operators:c.operators.map(m=>m.id===id?
   {...m,weaponConfiguration:next}:m)};
 }
 /** Player-authorized buy-and-equip is all-or-nothing. */
