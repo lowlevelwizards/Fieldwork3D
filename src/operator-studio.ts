@@ -66,6 +66,7 @@ let activeCategory:WardrobeSlot='top';
 type StudioStep='items'|'materials'|'details';
 let activeStep:StudioStep='items';
 let advancedFabricColorsOpen=false;
+const openCamoLibraries=new Set<string>();
 let advancedPouchOpen=false;
 let clothesOnly=true;
 let comparingSaved=false;
@@ -375,12 +376,26 @@ function addSolidSwatches(target:HTMLElement,values:readonly GarmentSolidId[],
 function addCamoSwatches(target:HTMLElement,ids:readonly HeadwearCamoId[],
  active:HeadwearCamoId|null,choose:(id:HeadwearCamoId)=>void,
  context:string,reference?:HeadwearCamoId|null){
+ const picker=document.createElement('details');picker.className='studio-camo-picker';
+ picker.open=openCamoLibraries.has(context);
+ const summary=document.createElement('summary');summary.className='studio-camo-selected';
+ const currentSwatch=document.createElement('canvas');
+ if(active)paintCamoPreview(currentSwatch,active);
+ currentSwatch.setAttribute('aria-hidden','true');
+ if(!active)currentSwatch.className='studio-camo-none';
+ const name=document.createElement('span');
+ name.textContent=active?HEADWEAR_CAMO_RECIPES[active].label:'CHOOSE CAMOUFLAGE';
+ const change=document.createElement('strong');change.textContent='CHANGE';
+ summary.append(currentSwatch,name,change);picker.append(summary);
+ const library=document.createElement('div');library.className='studio-camo-library';
+ picker.append(library);target.append(picker);
  const grid=document.createElement('div');grid.className='camo-swatches';
  const cards=new Map<HeadwearCamoId,HTMLDivElement>();
- const state=createCamoBrowseControls(target,'studio:'+context,()=>paint());
- const showResults=createCamoResultSummary(target);
- target.append(grid);
+ const state=createCamoBrowseControls(library,'studio:'+context,()=>paint());
+ const showResults=createCamoResultSummary(library);
+ library.append(grid);
  const paint=()=>{
+  if(!picker.open)return;
   grid.replaceChildren();
   const prefs=readCamoBrowserPrefs();
   const ordered=browseCamos(ids,{state,active,reference,prefs});
@@ -406,10 +421,17 @@ function addCamoSwatches(target:HTMLElement,ids:readonly HeadwearCamoId[],
    if(star)syncCamoFavoriteButton(star,prefs.favorites.includes(id));
    grid.append(wrap);
   }
-  if(!ordered.length){const small=document.createElement('small');
-   small.textContent='No compatible print matches these filters';grid.append(small);}
+  if(!ordered.length){
+   const empty=document.createElement('small');
+   empty.textContent='No compatible print matches these filters';
+   grid.append(empty);
+  }
  };
- paint();
+ picker.addEventListener('toggle',()=>{
+  if(picker.open){openCamoLibraries.add(context);paint();}
+  else openCamoLibraries.delete(context);
+ });
+ if(picker.open)paint();
 }
 function renderCuff(host:HTMLElement){
  const w=current(),printed=w.fabricCamo?.top;
