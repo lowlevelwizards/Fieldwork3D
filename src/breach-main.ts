@@ -16,7 +16,7 @@ import {
   posture,toggleContactRule,toggling,stepSession,liveVisibility,
   planReload,reloadNow,planFlash,moveFlashTarget,flashTrajectory,
   equipWeaponChoice,toggleWeaponLight,planMedicalTreatment,planEntryTool,
-  planCasualtyTransport,planRecoverMedical,
+  planCasualtyTransport,planRecoverMedical,planCivilianRelease,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import type {TacticalOrderPreview} from './ui/tactical-feedback.ts';
@@ -1311,6 +1311,11 @@ function updateContext(){
     distance(finalPoint(a),c.p)<34)
     .sort((x,y)=>distance(finalPoint(a),x.p)-
       distance(finalPoint(a),y.p))[0]??null;
+  const casualtyAtPlan=state.civilians.filter(c=>c.health<=0&&
+      !c.carriedById&&
+      liveVisibility(state,c.p)&&distance(finalPoint(a),c.p)<34)
+    .sort((x,y)=>distance(finalPoint(a),x.p)-
+      distance(finalPoint(a),y.p))[0]??null;
   const choices:ReturnType<typeof contextActionChoices>=selectedWatch?[
     {id:'ctxWatch',label:'RETARGET',group:'primary',
       pressed:true,title:'Choose a new point for this active WATCH'},
@@ -1322,6 +1327,9 @@ function updateContext(){
     nearCivilian:!!civilianAtPlan&&civilianAtPlan.state!=='compliant',
     escortableCivilian:!!civilianAtPlan&&
       civilianAtPlan.rescueTarget&&state.mission==='extract',
+    nearCivilianCasualty:!!casualtyAtPlan,
+    carryingCivilian:!!a.carryingId&&state.civilians.some(c=>
+      c.id===a.carryingId&&c.carriedById===a.id),
     posture:current.posture,pace:current.pace,
     firePolicy:node?.firePolicyState??a.firePolicy,
     reserve:a.reserve,magazine:a.magazine,
@@ -1585,6 +1593,23 @@ const handleContextAction=(event:MouseEvent)=>{
       const mode=action==='ctxSecureCivilian'?'secure':'follow';
       if(!civ||!planCivilianInteraction(state,selected,civ.id,mode))
         state.events.push('CIVILIAN INTERACTION NOT REACHABLE');
+      break;
+    }
+    case 'ctxReleaseCivilian':
+      if(!planCivilianRelease(state,selected))
+        state.events.push('NO CIVILIAN TRANSPORT TO RELEASE');
+      break;
+    case 'ctxDragCivilian':
+    case 'ctxCarryCivilian':{
+      const civ=state.civilians.filter(c=>c.health<=0&&
+        (!c.carriedById||c.carriedById===a.id)&&
+        liveVisibility(state,c.p)&&distance(finalPoint(a),c.p)<34)
+        .sort((x,y)=>distance(finalPoint(a),x.p)-
+          distance(finalPoint(a),y.p))[0];
+      if(!civ||!planCasualtyTransport(state,selected,civ.id,
+         state.scenario.extract,
+         action==='ctxCarryCivilian'?'carry':'drag'))
+        state.events.push('CIVILIAN TRANSPORT ROUTE NOT AVAILABLE');
       break;
     }
     case 'ctxSuppress':
@@ -1986,6 +2011,9 @@ function updateHud(){
       '\n\nMISSION PACING\n'+formatMissionPacing(recorder.events)+
       '\n\nCOMBAT REVIEW\n'+formatCombatReview(recorder.frames,recorder.events)+
       '\n\nTACTICAL TIMELINE\n'+formatAfterAction(recorder.events,10);
+    if(stats.rescueStatus!=='none')
+      ui.debriefStats.textContent+='\nCIVILIAN RESCUE: '+
+        stats.rescueStatus.toUpperCase().replaceAll('-',' ');
     if(campaignMode==='mission'&&campaign?.history.length){
      const recent=campaign.history[campaign.history.length-1];
      const lines=recent.gains?.flatMap(person=>{
@@ -2886,8 +2914,8 @@ function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
   const pants=trousers[(c.appearanceSeed>>>4)%trousers.length];
   draw.save();draw.translate(c.p.x,c.p.y);draw.rotate(c.heading);
   const pose=civilianPose(c);
-  if(pose==='down'){
-    draw.globalAlpha=.83;
+  if(pose==='down'||pose==='carried'||pose==='dragged'){
+    draw.globalAlpha=pose==='carried'?.96:.83;
     rect(-10,-6,23,12,coat);rect(7,-5,8,10,'#ba9880');
   }else{
     rect(-12,-6,7,5,pants);rect(-12,1,7,5,pants);
@@ -2900,7 +2928,9 @@ function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
     }else{
       const swing=pose==='run'?
         Math.sin(state.seconds*13+c.appearanceSeed)*3:
-        pose==='walk'?Math.sin(state.seconds*8+c.appearanceSeed)*1.5:0;
+        pose==='walk'?Math.sin(state.seconds*8+c.appearanceSeed)*1.5:
+        pose==='injured-walk'?
+          Math.sin(state.seconds*5+c.appearanceSeed)*.9:0;
       rect(-5+swing,-12,8,4,'#b9997e');
       rect(-5-swing,8,8,4,'#b9997e');
     }

@@ -149,10 +149,16 @@ export function planCivilians(site:Site,
         const persona:CivilianSpec['persona']=
           (['cautious','steady','startled'] as const)[
             Math.floor(rng()*3)];
+        // Spend the same RNG sample whether or not a fixture exists.
+        const randomHeading=rng()*Math.PI*2;
+        const heading=fixture?
+          Math.atan2(fixture.c.y-p.y,fixture.c.x-p.x):randomHeading;
         neutrals.push({id:'civ:'+seed+':'+index,role,persona,
-          activity,position:{...p},heading:rng()*Math.PI*2,
+          activity,position:{...p},heading,
           roomId:room.id,zoneId:room.zoneId??room.id,
-          routine:activity==='seated'?undefined:
+          // Workstations need planted bodies; only browsing residents
+          // walk a locally verified short routine.
+          routine:activity==='seated'||activity==='working'?undefined:
             adjacent.length?[{...p},...adjacent]:undefined,
           appearanceSeed:Math.floor(rng()*0x7fffffff)});
         occupied.push(p);

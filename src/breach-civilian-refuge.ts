@@ -11,6 +11,7 @@ export type RefugeRouteWorld={
  canReach:(a:Pt,b:Pt)=>boolean;
  routeTo?:(a:Pt,b:Pt)=>Pt[];
  canSee?:(a:Pt,b:Pt)=>boolean;
+ isCrowded?:(p:Pt)=>boolean;
 };
 /** Called at session creation, never per-frame. A worker or resident can
  * know local room layout without knowing where armed people are. */
@@ -53,7 +54,8 @@ export function chooseCivilianRefuge(c:CivilianActor,
  if(!threat)return null;
  const current=dist(c.p,threat);
  const candidates=[...c.refugePoints,...c.routine].filter(p=>
-   dist(p,c.p)>20&&dist(p,threat)>=current+15)
+   dist(p,c.p)>20&&dist(p,threat)>=current+15&&
+   !world.isCrowded?.(p))
   .sort((a,b)=>{
    const grade=(p:Pt)=>
      Math.min(250,dist(p,threat))-
