@@ -342,7 +342,7 @@ export const CAMO6A_RECIPES:Readonly<Record<Camo6AId,Camo6ARecipe>>=
    }
   };
   return [id,result];
- })) as Record<Camo6AId,Camo6ARecipe>;
+ })) as unknown as Record<Camo6AId,Camo6ARecipe>;
 export function isCamo6AId(id:string):id is Camo6AId{
  return (CAMO6A_IDS as readonly string[]).includes(id);
 }
