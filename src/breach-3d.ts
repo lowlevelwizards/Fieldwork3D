@@ -215,6 +215,9 @@ export class TacticalScene3D{
   private readonly groundOverlays=new Map<PixelOverlay,THREE.MeshBasicMaterial>();
   private windowGlass=new Map<string,THREE.Mesh>();
   private coverGroups=new Map<number,THREE.Group>();
+  private readonly coverFrameValues=new Map<number,{
+    x:number;y:number;w:number;h:number;destroyed:boolean;toppled:boolean
+  }>();
   private solid=(hex:number,roughness=.9,surface?:PixelSurface)=>{
     const key=hex+':'+roughness+':'+(surface??'plain');
     let material=this.solidCache.get(key);
@@ -424,7 +427,7 @@ export class TacticalScene3D{
     this.observedDoorGlass.clear();
     this.currentWear=[];this.objectWear=[];
     this.roofGroups.clear();
-    this.coverGroups.clear();
+    this.coverGroups.clear();this.coverFrameValues.clear();
     this.intelSurfaces.length=0;this.observedDetails.length=0;
     this.architecturalOpenings.length=0;
     this.observedDoorOpen.clear();
@@ -1548,15 +1551,26 @@ export class TacticalScene3D{
     }
     for(const [index,group] of this.coverGroups){
       const before=s.site?.cover[index],current=s.coverState[index];
-      if(before&&current){
-        const transform=fixtureFrameTransform(before,current);
-        group.scale.set(transform.scaleX,transform.scaleY,transform.scaleZ);
-        group.position.set(transform.x,
-          current.toppled?Math.min(10,current.h*.4):0,transform.y);
-        // Tip the actual fixture mesh, not a visual clone. The physical
-        // toppled flag also changes movement/cover clearance and replay.
-        group.rotation.x=current.toppled?Math.PI*.48:0;
-      }
+      if(!before||!current)continue;
+      const last=this.coverFrameValues.get(index);
+      // Live pushes, damage and replay may replace cover objects without
+      // changing their array identity. Compare the actual visual inputs,
+      // not just objectRevision or a session pointer.
+      if(last&&last.x===current.x&&last.y===current.y&&
+         last.w===current.w&&last.h===current.h&&
+         last.destroyed===!!current.destroyed&&
+         last.toppled===!!current.toppled)continue;
+      const transform=fixtureFrameTransform(before,current);
+      group.scale.set(transform.scaleX,transform.scaleY,transform.scaleZ);
+      group.position.set(transform.x,
+        current.toppled?Math.min(10,current.h*.4):0,transform.y);
+      // Tip the actual fixture mesh, not a visual clone. The physical
+      // toppled flag also changes movement/cover clearance and replay.
+      group.rotation.x=current.toppled?Math.PI*.48:0;
+      this.coverFrameValues.set(index,{
+        x:current.x,y:current.y,w:current.w,h:current.h,
+        destroyed:!!current.destroyed,toppled:!!current.toppled
+      });
     }
     for(const [id,glass] of this.windowGlass){
       const state=s.windows.find(w=>w.id===id);
