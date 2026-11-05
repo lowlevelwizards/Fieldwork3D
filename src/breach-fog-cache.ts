@@ -19,3 +19,13 @@ export function fogFingerprint(state:FogFingerprintInput):string{
     ...state.doors.map(d=>d.id+':'+Math.round(d.fraction*100))
   ].join('|');
 }
+
+/** Persistent memories can change much less often than moving sight cones.
+ * Only scalar revisions and site identity enter this hot-path key. */
+export function fogMemoryFingerprint(state:{
+  mode:string;seed:number|null;seenRevision:number;
+  rooms:number;walls:number;doors:number;cover:number;
+}):string{
+  return [state.mode,state.seed??'none',state.seenRevision,
+    state.rooms,state.walls,state.doors,state.cover].join('|');
+}
