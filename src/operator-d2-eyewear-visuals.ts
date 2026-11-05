@@ -1,140 +1,154 @@
-/** Eyewear R3-2: four individually authored glasses archetypes.
- * Bare icon, pilot teardrop, swept sports wedge, and borderless shield.
- * Only 3–5 major structural masses each, no generic lens decoration.
+/** Eyewear R4.1: seven-family character pass, spectacles and shooting eyewear.
+ * All dimensions authored for the 8-unit cubic head, looking down -Z.
+ * Distinct silhouette first, no per-frame construction and no micro-geometries.
  */
 import * as THREE from 'three';
-import {frameRing,sweptFrame,lensSurface,templeArm,block,octagon,shifted,
+import {frameRing,sweptFrame,lensSurface,block,octagon,shifted,
+ fittedTempleArm,type EyewearTempleFit,
  type EyePoint,type EyePolygon} from './operator-d2-eyewear-shell.ts';
 export type D2GlassesId=
  'glasses-standard'|'glasses-aviator'|'glasses-wrap'|'glasses-shield';
 export type D2GlassesVariant='rectangular'|'round'|'heavy-square';
-const mirrored=(pts:EyePolygon):EyePoint[]=>
+const mirror=(pts:EyePolygon):EyePoint[]=>
  pts.map(([x,y])=>[-x,y]);
-function simpleTemples(group:THREE.Group,frame:THREE.Material,
- x:number,y:number,frontZ:number,
- startHeight:number,backHeight:number):void{
- for(const side of [-1,1] as const){
-  templeArm(group,frame,'one-piece-temple',side,
-   {x,y,z:frontZ,w:.56,h:startHeight},
-   {x:4.02,y:y+.10,z:3.36,w:.48,h:backHeight});
- }
+function outsideTemples(parent:THREE.Group,frame:THREE.Material,
+ name:string,partial:Partial<EyewearTempleFit>={}):void{
+ const fit:EyewearTempleFit={
+  frontX:4.14,frontY:3.84,frontZ:-4.92,
+  shoulderX:4.37,shoulderY:3.82,shoulderZ:-4.36,
+  rearX:4.32,rearY:3.80,rearZ:3.38,
+  frontHeight:.76,shoulderHeight:.72,rearHeight:.45,
+  frontWidth:.58,shoulderWidth:.66,rearWidth:.45,...partial
+ };
+ for(const side of [-1,1] as const)
+  fittedTempleArm(parent,frame,name,side,fit);
 }
-function standard(group:THREE.Group,frame:THREE.Material,
- lens:THREE.Material,variant:D2GlassesVariant):void{
- const model=new THREE.Group();
- model.name='standard-'+variant;
- model.userData.d2EyeVariant=variant;
- model.userData.d2EyeDesign='R3-acetate-square';
- model.userData.d2EyeFitTop=4.78;
+function standard(parent:THREE.Group,frame:THREE.Material,
+ lens:THREE.Material,variant:D2GlassesVariant){
+ const root=new THREE.Group();root.name='standard-'+variant;
+ root.userData.d2EyeVariant=variant;
+ root.userData.d2EyeDesign='R4-oversized-acetate-with-outside-temples';
+ root.userData.d2EyeFitTop=4.88;
  if(variant==='round'){
-  for(const side of [-1,1] as const){
-   const cx=side*1.81;
-   const outer=octagon(cx,3.48,1.67,1.35);
-   const hole=octagon(cx,3.48,1.14,.89);
-   frameRing(model,frame,'retro-civilian-round-frame',outer,[hole],
-    -4.86,.57,'open-frame');
-   lensSurface(model,lens,'civilian-round',hole,-4.90);
+  // The round subvariant is still a casual civilian frame, not motor goggles.
+  for(const sign of [-1,1] as const){
+   const cx=sign*2.05;
+   const outer=octagon(cx,3.53,1.72,1.39);
+   const inner=octagon(cx,3.53,1.19,.92);
+   frameRing(root,frame,'bold-civilian-round',outer,[inner],-4.98,.62,'open-frame');
+   lensSurface(root,lens,'civilian-round',inner,-5.03);
   }
-  block(model,frame,'rounded-acetate-bridge',0,3.78,-4.73,
-   .92,.52,.75);
+  block(root,frame,'thick-acetate-bridge',0,3.93,-4.80,.98,.55,.72);
  }else{
-  // A continuous silhouette: the bridge belongs to the acetate body.
   const heavy=variant==='heavy-square';
-  const outer:EyePolygon=heavy?
-   [[-3.84,4.78],[3.84,4.78],[3.84,2.05],[-3.84,2.05]]:
-   [[-3.69,4.70],[3.69,4.70],[3.69,2.15],[-3.69,2.15]];
-  const left:EyePolygon=heavy?
-   [[-3.10,4.13],[-.67,4.13],[-.67,2.65],[-3.10,2.65]]:
-   [[-3.13,4.22],[-.54,4.22],[-.54,2.60],[-3.13,2.60]];
-  const right=mirrored(left);
-  frameRing(model,frame,'single-acetate-front',outer,[left,right],
-   -4.86,heavy?.69:.56,'open-frame');
-  lensSurface(model,lens,'civilian-square-left',left,-4.90);
-  lensSurface(model,lens,'civilian-square-right',right,-4.90);
+  // Extend slightly OUTSIDE the skull; slightly chamfered lower corners
+  // distinguish an acetate frame from a rectangular protective goggle.
+  const outer:EyePolygon=heavy?[
+   [-4.32,4.91],[4.32,4.91],[4.32,2.27],[4.02,2.02],
+   [-4.02,2.02],[-4.32,2.27]
+  ]:[
+   [-4.23,4.82],[4.23,4.82],[4.23,2.34],[3.98,2.12],
+   [-3.98,2.12],[-4.23,2.34]
+  ];
+  const left:EyePolygon=heavy?[
+   [-3.70,4.24],[-.78,4.24],[-.78,2.73],[-3.47,2.73],[-3.70,2.90]
+  ]:[
+   [-3.66,4.25],[-.84,4.25],[-.84,2.69],[-3.42,2.69],[-3.66,2.87]
+  ];
+  const right=mirror(left);
+  frameRing(root,frame,'single-acetate-front',outer,[left,right],
+   -4.99,heavy?.71:.58,'open-frame');
+  lensSurface(root,lens,'civilian-square-left',left,-5.04);
+  lensSurface(root,lens,'civilian-square-right',right,-5.04);
  }
- simpleTemples(model,frame,3.67,3.76,-4.78,.74,.51);
- model.visible=variant==='rectangular';
- group.add(model);
+ outsideTemples(root,frame,'one-piece-temple',{
+  frontX:4.17,frontY:4.08,frontZ:-4.93,
+  shoulderY:4.00,rearY:3.78,frontHeight:.86
+ });
+ root.visible=variant==='rectangular';
+ parent.add(root);
 }
 function aviator(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
- root.userData.d2EyeFitTop=4.84;
- root.userData.d2EyeDesign='R3-faceted-pilot-teardrops';
- // Full cheek mass, bottom pulled IN towards nose, not dangling fangs.
- const outerLeft:EyePolygon=[
-  [-1.62,4.81],[1.39,4.81],[1.44,3.75],
-  [1.04,2.65],[.53,2.20],[-.38,2.20],
-  [-1.04,2.59],[-1.59,3.37]
+ root.userData.d2EyeFitTop=5.03;
+ root.userData.d2EyeDesign='R4-rounded-shoulder-pilot-teardrops';
+ // Wide rounded cap with two descending cheek shoulders and a fat teardrop
+ // foot. Two bottom vertices are kept for a soft, broad, no-fang landing.
+ const out:EyePolygon=[
+  [-1.74,3.98],[-1.66,4.55],[-1.30,4.90],
+  [-.65,5.03],[.40,5.00],[1.17,4.79],
+  [1.65,4.31],[1.67,3.73],[1.22,2.84],
+  [.49,2.20],[-.42,2.20],[-1.15,2.68]
  ];
- const holeLeft:EyePolygon=[
-  [-1.20,4.43],[.99,4.43],[1.01,3.76],
-  [.73,2.95],[.34,2.70],[-.32,2.70],
-  [-.76,2.96],[-1.14,3.47]
+ const hole:EyePolygon=[
+  [-1.30,3.99],[-1.22,4.41],[-.94,4.59],
+  [-.51,4.69],[.34,4.67],[.88,4.53],
+  [1.22,4.20],[1.21,3.76],[.87,3.03],
+  [.32,2.61],[-.33,2.61],[-.81,2.96]
  ];
  for(const side of [-1,1] as const){
-  const off=side*1.79;
-  const outer=shifted(side===-1?outerLeft:mirrored(outerLeft),off);
-  const hole=shifted(side===-1?holeLeft:mirrored(holeLeft),off);
-  frameRing(root,frame,'pilot-lens-collar',outer,[hole],
-   -4.83,.48,'pilot');
-  lensSurface(root,lens,'aviator-teardrop',hole,-4.89);
+  const x=side*2.08;
+  const outline=shifted(side===-1?out:mirror(out),x);
+  const aperture=shifted(side===-1?hole:mirror(hole),x);
+  frameRing(root,frame,'pilot-lens-collar',outline,[aperture],
+   -5.01,.38,'pilot');
+  lensSurface(root,lens,'pilot-full-teardrop',aperture,-5.06);
  }
- // Two broad purposeful pilot bridges; neither becomes a giant dark brow.
- block(root,frame,'pilot-upper-bridge',0,4.69,-4.78,1.16,.36,.56);
- block(root,frame,'pilot-lower-bridge',0,4.05,-4.77,.82,.30,.54);
- for(const side of [-1,1] as const){
-  templeArm(root,frame,'pilot-temple',side,
-   {x:3.30,y:4.48,z:-4.74,w:.44,h:.46},
-   {x:4.01,y:4.25,z:3.30,w:.41,h:.42});
- }
+ // Two small separate structural bars are iconic, not tiny decoration.
+ block(root,frame,'pilot-upper-bridge',0,4.72,-4.98,1.20,.34,.58);
+ block(root,frame,'pilot-lower-bridge',0,4.03,-4.98,.79,.29,.54);
+ outsideTemples(root,frame,'pilot-exterior-temple',{
+  frontX:4.10,frontY:4.48,frontZ:-4.96,
+  shoulderY:4.38,rearY:4.05,frontHeight:.47,
+  shoulderHeight:.55,rearHeight:.38,
+  frontWidth:.44,shoulderWidth:.54,rearWidth:.39
+ });
 }
-function wraparound(root:THREE.Group,
- frame:THREE.Material,lens:THREE.Material){
- root.userData.d2EyeFitTop=4.72;
- root.userData.d2EyeDesign='R3-continuous-swept-sport';
- // Front bar is one bent object, including the rearward-turning corners.
- const outer:EyePolygon=[
-  [-3.85,4.78],[0,4.58],[3.85,4.78],[3.68,2.75],
-  [0,2.53],[-3.68,2.75]
+function shooting(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
+ root.userData.d2EyeFitTop=4.94;
+ root.userData.d2EyeDesign='R4-panoramic-shooting-glasses';
+ // True shooting-glasses identity: one continuous wraparound pane with
+ // two swept outer cheeks and a tall, OPEN underside nasal cutout.
+ const pane:EyePolygon=[
+  [-4.18,4.52],[-4.42,4.15],[-3.92,3.16],
+  [-2.89,2.61],[-1.04,2.66],[-.57,3.56],
+  [.57,3.56],[1.04,2.66],[2.89,2.61],
+  [3.92,3.16],[4.42,4.15],[4.18,4.52],
+  [1.70,4.83],[-1.70,4.83]
  ];
- const left:EyePolygon=[
-  [-3.32,4.31],[-.55,4.18],[-.70,3.19],
-  [-1.62,2.92],[-3.27,3.11]
+ lensSurface(root,lens,'shooting-panoramic',pane,-5.18,1.02);
+ // Separate brow bar follows the same curve but does not frame the bottom.
+ const brow:EyePolygon=[
+  [-4.43,4.13],[-4.27,4.79],[-2.52,5.04],
+  [0,5.00],[2.52,5.04],[4.27,4.79],
+  [4.43,4.13],[3.82,4.42],[0,4.66],[-3.82,4.42]
  ];
- const right=mirrored(left);
- sweptFrame(root,frame,'integrated-swept-frame',outer,[left,right],
-  -5.07,.52,.87);
- lensSurface(root,lens,'sport-wedge-left',left,-5.12,.87);
- lensSurface(root,lens,'sport-wedge-right',right,-5.12,.87);
- for(const side of [-1,1] as const){
-  // The tapered arm begins at the swept frame's REAR-facing outside
-  // corner, sharing both Y extent and Z depth; no separate triangular fin.
-  templeArm(root,frame,'continuous-swept-temple',side,
-   {x:3.72,y:3.86,z:-4.36,w:.63,h:.93},
-   {x:4.01,y:3.89,z:3.30,w:.42,h:.43});
- }
+ sweptFrame(root,frame,'integrated-swept-frame',brow,[],-5.20,.57,1.02);
+ outsideTemples(root,frame,'continuous-swept-temple',{
+  frontX:4.24,frontY:4.55,frontZ:-4.39,
+  shoulderX:4.42,shoulderY:4.35,shoulderZ:-4.10,
+  rearX:4.36,rearY:3.92,rearZ:3.37,
+  frontHeight:.93,shoulderHeight:.79,rearHeight:.41
+ });
 }
 function shield(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
  root.userData.d2EyeFitTop=4.80;
- root.userData.d2EyeDesign='R3-borderless-shield';
+ root.userData.d2EyeDesign='R4-clean-borderless-eyeshield';
  const outline:EyePolygon=[
   [-4.26,4.73],[4.26,4.73],[4.15,2.26],
   [2.66,1.97],[1.03,2.17],[-1.03,2.17],
   [-2.66,1.97],[-4.15,2.26]
  ];
- // Lens is the large primary shape. NO enclosing lower perimeter frame.
- const pane=lensSurface(root,lens,'continuous-ballistic-shield',
-  outline,-5.11,.28);
+ const pane=lensSurface(root,lens,'continuous-ballistic-shield',outline,-5.11,.28);
  pane.userData.d2EyeProfile={
   family:'shield',topology:'single-shield',width:8.52,height:2.76,
   frontZ:-5.11,housingDepth:.18,lenses:1,version:3
  };
- block(root,frame,'single-mass-visor-brow',0,4.77,-4.99,
-  8.72,.55,.79);
- for(const side of [-1,1] as const){
-  templeArm(root,frame,'shield-support-temple',side,
-   {x:4.13,y:3.92,z:-4.75,w:.62,h:.83},
-   {x:4.02,y:3.91,z:3.34,w:.47,h:.48});
- }
+ block(root,frame,'single-mass-visor-brow',0,4.76,-4.99,8.70,.58,.79);
+ outsideTemples(root,frame,'shield-support-temple',{
+  frontX:4.15,frontY:4.03,frontZ:-4.93,
+  shoulderY:4.0,rearY:3.86,frontHeight:.81,
+  shoulderHeight:.76,rearHeight:.42
+ });
 }
 export function createD2Glasses(
  id:D2GlassesId,frame:THREE.Material,lens:THREE.Material
@@ -142,11 +156,11 @@ export function createD2Glasses(
  const root=new THREE.Group();root.name='d2-'+id;
  root.userData.modelAxes='-Z-forward,+X-right,+Y-up';
  if(id==='glasses-standard'){
-  root.userData.d2EyeFitTop=4.78;
+  root.userData.d2EyeFitTop=4.91;
   for(const variant of ['rectangular','round','heavy-square'] as const)
    standard(root,frame,lens,variant);
  }else if(id==='glasses-aviator')aviator(root,frame,lens);
- else if(id==='glasses-wrap')wraparound(root,frame,lens);
+ else if(id==='glasses-wrap')shooting(root,frame,lens);
  else shield(root,frame,lens);
  return root;
 }
