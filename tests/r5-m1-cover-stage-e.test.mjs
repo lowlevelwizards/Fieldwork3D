@@ -37,9 +37,10 @@ test('R5E: fitted and loose cloth have distinct meshes and optional field equipm
   assert.ok(group.children.length>0);
   assert.ok(group.children.every(x=>x instanceof THREE.Mesh));
  }
- const fittedGeo=(v.fitted.children[0] as THREE.Mesh).geometry;
- const looseGeo=(v.loose.children[0] as THREE.Mesh).geometry;
- assert.notDeepEqual(fittedGeo.boundingBox,looseGeo.boundingBox);
+ const fittedGeo=v.fitted.children[0].geometry;
+ const looseGeo=v.loose.children[0].geometry;
+ fittedGeo.computeBoundingBox();looseGeo.computeBoundingBox();
+ assert.ok(looseGeo.boundingBox.max.x>fittedGeo.boundingBox.max.x);
  updateM1HelmetCoverLayers(v,{helmetCover:'fitted',helmetCoverCamo:'mitchell-leaf',
   helmetNet:'coarse',helmetBand:'cloth',helmetScrim:'sparse'},'test-1');
  assert.equal(v.fitted.visible,true);
