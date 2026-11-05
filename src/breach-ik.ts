@@ -20,7 +20,7 @@ const clamp=(x:number,low:number,high:number)=>
 const localX=new THREE.Vector3(1,0,0);
 const localZ=new THREE.Vector3(0,0,1);
 const frame=new THREE.Matrix4();
-const axis=new THREE.Vector3(),bend=new THREE.Vector3();
+const axis=new THREE.Vector3();
 const right=new THREE.Vector3(),front=new THREE.Vector3();
 const previousRight=new THREE.Vector3();
 
@@ -42,7 +42,8 @@ export function bendDirection(direction:THREE.Vector3,
  * anchor to hide an unreachable leg; expose reached=false to diagnostics. */
 export function solveTwoBone(start:THREE.Vector3,end:THREE.Vector3,
   upper:number,lower:number,pole:THREE.Vector3,
-  limits:JointLimits=ARM_LIMITS,previousBend?:THREE.Vector3):LimbSolution{
+  limits:JointLimits=ARM_LIMITS,previousBend?:THREE.Vector3,
+  out?:LimbSolution):LimbSolution{
   const delta=axis.copy(end).sub(start);
   const raw=delta.length();
   if(raw<EPS)axis.set(0,-1,0);
@@ -55,17 +56,24 @@ export function solveTwoBone(start:THREE.Vector3,end:THREE.Vector3,
   const maxReach=Math.sqrt(Math.max(EPS,
     upper*upper+lower*lower+2*upper*lower*Math.cos(low)));
   const reach=clamp(raw,minReach,maxReach);
-  const effector=start.clone().addScaledVector(axis,reach);
+  const effector=(out?.effector??new THREE.Vector3())
+    .copy(start).addScaledVector(axis,reach);
   const along=(upper*upper+reach*reach-lower*lower)/(2*reach);
   const height=Math.sqrt(Math.max(0,upper*upper-along*along));
-  const plane=bendDirection(axis,pole,previousBend,bend).clone();
-  const joint=start.clone().addScaledVector(axis,along)
+  const plane=bendDirection(axis,pole,previousBend,
+    out?.bendPlane??new THREE.Vector3());
+  const joint=(out?.joint??new THREE.Vector3())
+    .copy(start).addScaledVector(axis,along)
     .addScaledVector(plane,height);
   const interior=Math.acos(clamp((upper*upper+lower*lower-reach*reach)/
     (2*upper*lower),-1,1));
+  const angle=Math.PI-interior,reached=Math.abs(raw-reach)<1e-4;
+  if(out){
+    out.angle=angle;out.requestedReach=raw;out.reached=reached;
+    return out;
+  }
   return {joint,effector,bendPlane:plane,
-    angle:Math.PI-interior,requestedReach:raw,
-    reached:Math.abs(raw-reach)<1e-4};
+    angle,requestedReach:raw,reached};
 }
 /** Historical helper kept for isolated lab callers. */
 export function twoBoneJoint(start:THREE.Vector3,end:THREE.Vector3,

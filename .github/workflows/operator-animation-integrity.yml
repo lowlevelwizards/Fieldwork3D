@@ -3,6 +3,10 @@ on:
   pull_request:
     paths:
       - 'src/breach-operator-rig.ts'
+      - 'src/breach-ik.ts'
+      - 'src/breach-operator-pose-scratch.ts'
+      - 'src/rendering/breach-static-batcher.ts'
+      - 'src/rendering/breach-shadow-controller.ts'
       - 'src/breach-muzzle.ts'
       - 'src/breach-weapon-pose.ts'
       - 'src/breach-weapon-clearance.ts'
@@ -10,6 +14,9 @@ on:
       - 'src/breach-3d.ts'
       - 'tests/breach-17*.test.mjs'
       - 'tests/breach-operator-static-render-performance.test.mjs'
+      - 'tests/breach-static-batching-performance.test.mjs'
+      - 'tests/breach-shadow-update-policy-performance.test.mjs'
+      - 'tests/breach-ik-scratch-performance.test.mjs'
       - '.github/workflows/operator-animation-integrity.yml'
   workflow_dispatch:
 jobs:
@@ -22,7 +29,7 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - name: Focused animation and barrel regressions
-        run: node --experimental-strip-types --test tests/breach-17*.test.mjs tests/breach-operator-static-render-performance.test.mjs tests/operator-visual-fit.test.mjs tests/operator-d2-facewear-pose-colors-r4.test.mjs
+        run: node --experimental-strip-types --test tests/breach-17*.test.mjs tests/breach-operator-static-render-performance.test.mjs tests/breach-static-batching-performance.test.mjs tests/breach-shadow-update-policy-performance.test.mjs tests/breach-ik-scratch-performance.test.mjs tests/operator-visual-fit.test.mjs tests/operator-d2-facewear-pose-colors-r4.test.mjs
       - name: Verify Vite runtime bundle
         run: npx vite build
       - name: Typecheck full repository (may expose unrelated main-branch regressions)
