@@ -198,6 +198,8 @@ export class WeaponWorkbenchPreview{
   this.draw();
  }
  private down=(e:PointerEvent)=>{
+  // Socket labels are real touch buttons: never steal their pointer capture.
+  if(e.target instanceof Element&&e.target.closest('button.weapon-workbench-socket'))return;
   this.pointerPositions.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(this.pointerPositions.size===1)this.dragDistance=0;
   if(this.pointerPositions.size===2)this.pinchDistance=0;
