@@ -1,6 +1,6 @@
-/**
- * D2-F4: a tied triangular bandana, not a square collar or parallel slabs.
- * Each front row progressively narrows into a central downward point.
+/** D2-V3-A3a: bandana = LIGHT TIED TRIANGLE, not a narrow neck tube.
+ * The rear knot, two unequal tails and pointed front remain readable
+ * from three-quarter and side views. Still one joined exterior mesh/mode.
  */
 import * as THREE from 'three';
 import {clothExterior,type ClothCuboid} from './operator-d2-fitted-cloth.ts';
@@ -13,31 +13,36 @@ export function createD2BandanaMode(mode:D2BandanaMode,material:THREE.Material):
  root.userData.d2WrapMode=mode;
  const p:ClothCuboid[]=[];
  const raised=mode==='raised';
- const top=raised?3.18:-.43;
- const frontZ=raised?-4.24:-3.72;
- // A wide upper hem and large triangular front: one cloth silhouette.
- const rows=[
-  [0,.54,7.82],[.54,1.24,7.22],[1.24,1.94,5.76],
-  [1.94,2.66,4.12],[2.66,3.32,2.64]
+ const top=raised?3.16:-.46;
+ const frontZ=raised?-4.24:-3.73;
+ // Five deliberately coarse steps create a triangular kerchief, not
+ // a flat face strap. Width halves toward the bottommost cloth point.
+ const steps=[
+  [0,.43,7.75],[.43,1.00,6.62],[1.00,1.61,5.16],
+  [1.61,2.23,3.43],[2.23,2.84,1.67]
  ] as const;
- for(const [i,[from,to,width]] of rows.entries()){
-  add(p,'triangle-'+i,0,top-(from+to)/2,frontZ-.02*i,
-   width,to-from,.44);
- }
- // Connected side tie bands are fitted around the uncovered head/neck.
- const half=raised?4.05:3.62;
- const rear=raised?4.07:3.49;
- const tieY=top-.32;
+ for(const [i,[from,to,width]] of steps.entries())
+  add(p,'tapered-triangle-'+i,0,top-(from+to)/2,
+   frontZ-.035*i,width,to-from,.32);
+ // A single bound hem at the top. Neither a thick scarf cowl
+ // nor the stack of parallel face stripes from the previous model.
+ add(p,'folded-upper-hem',0,top-.13,frontZ-.16,7.79,.28,.26);
+ const half=raised?3.97:3.59;
+ const rear=raised?4.04:3.56;
+ const tieY=top-.31;
  for(const side of [-1,1]){
-  add(p,'tied-cloth-side',side*half,tieY,
-   (frontZ+rear)/2,.37,.53,rear-frontZ);
-  add(p,'diagonal-cheek-fold',side*3.38,tieY-.23,frontZ-.08,
-   .84,.61,.45);
+  add(p,'tied-side',side*half,tieY,
+   (frontZ+rear)/2,.37,.54,rear-frontZ);
+  add(p,'corner-crease',side*3.41,tieY-.21,frontZ-.09,
+   .75,.55,.34);
  }
- add(p,'tied-cloth-rear',0,tieY,rear,half*2,.56,.42);
- add(p,'rear-knot',.25,tieY-.07,rear+.31,1.25,.95,.92);
- add(p,'short-rear-tail',1.02,tieY-.87,rear+.29,.76,1.35,.42);
- add(p,'long-rear-tail',-.36,tieY-1.24,rear+.35,.82,2.09,.40);
- root.add(clothExterior('joined-bandana-'+mode,p,material));
+ add(p,'rear-tie-band',0,tieY,rear,half*2,.52,.38);
+ // Strong three-quarter signature: knot, two bow wings and unequal tails.
+ add(p,'rear-knot',.10,tieY-.10,rear+.30,1.25,1.08,.94);
+ add(p,'knot-left-wing',-1.12,tieY+.05,rear+.32,1.41,.62,.46);
+ add(p,'knot-right-wing',1.31,tieY-.03,rear+.32,1.45,.65,.48);
+ add(p,'short-knot-tail',1.02,tieY-.94,rear+.29,.78,1.22,.36);
+ add(p,'long-knot-tail',-.47,tieY-1.22,rear+.28,.82,1.74,.40);
+ root.add(clothExterior('single-tied-bandana-'+mode,p,material));
  return root;
 }
