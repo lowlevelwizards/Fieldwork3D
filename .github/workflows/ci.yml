@@ -804,6 +804,13 @@ jobs:
             tests/ux-r2-studio-flow.test.mjs \
             tests/operator-material-browser-smart-sort.test.mjs \
             tests/operator-material-browser-r2.test.mjs
+      - name: Reference Kits R1–R3 critical contracts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/faction-reference-r1-r3-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/faction-reference.test.mjs \
+            tests/operator-wardrobe-verdigris-factions.test.mjs \
+            tests/ux-r2-studio-flow.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
