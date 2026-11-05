@@ -3,6 +3,7 @@
  * recorded openly; a generic substitute is never asserted to be authentic.
  */
 import type {HeadwearCamoId} from './operator-headwear-camo.ts';
+import {REFERENCE_GEAR_PROFILES,type ReferenceGearAppearance} from './faction-reference-gear-profiles.ts';
 import type {GarmentSolidId} from './operator-garment-color-policy.ts';
 import type {HeadwearSolidColorId} from './operator-headwear-colors.ts';
 import type {IdentityMarkings} from './operator-identity-markings.ts';
@@ -27,6 +28,7 @@ export type FactionReference={
  policeVisorFrame?:WardrobeOptions['policeVisorFrame'];
  markings?:IdentityMarkings;
  gearSolid?:GarmentSolidId;
+ gearAppearance?:ReferenceGearAppearance;gearFitNote?:string;
  sleeveState?:SleeveState;trouserHem?:TrouserHem;
  weaponFamily:string;sourceNotes:string;
  gaps:readonly ReferenceGap[];
@@ -35,7 +37,7 @@ const gap=(id:string,label:string,importance:ReferenceGap['importance']='signifi
  ({id,label,importance});
 const patch=gap('unit-insignia','National, unit and service identification','defining');
 const weapon=(id:string,label:string)=>gap(id,label);
-export const FACTION_REFERENCES:readonly FactionReference[]=[
+export const FACTION_REFERENCES:readonly FactionReference[]=([
  {id:'usmc-woodland-2005',name:'US Marine Corps · Woodland',country:'United States',
  organization:'military',environment:'woodland',era:{start:2004,end:2020,label:'2000s–2010s'},
  summary:'MARPAT utility uniform with predominantly coyote equipment.',
@@ -321,7 +323,15 @@ export const FACTION_REFERENCES:readonly FactionReference[]=[
  headwearColor:'black',markings:{chest:'label-swat'},weaponFamily:'MP5 / AR carbine / pump shotgun',
  gaps:[patch,weapon('mp5-family','MP5 SMG for period-specific appearance'),gap('police-marking','Clear POLICE/SWAT identification','defining'),gap('visor-police','Optional ballistic face shield')],
  sourceNotes:'General law-enforcement equipment category; actual SWAT kit differs widely by agency.'},
-] as const;
+] as FactionReference[]).map(reference=>{
+ const profile=REFERENCE_GEAR_PROFILES[reference.id];
+ if(!profile)throw Error('Missing equipment profile for '+reference.id);
+ return {...reference,
+  kit:{...reference.kit,...profile.kit},
+  styles:{...reference.styles,...profile.styles},
+  gearAppearance:profile.appearance,
+  gearFitNote:profile.note};
+});
 
 export const factionReference=(id:string):FactionReference|undefined=>
  FACTION_REFERENCES.find(x=>x.id===id);
