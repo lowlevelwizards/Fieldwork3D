@@ -20,6 +20,7 @@ export type CivilianActor={
   goal:Pt|null;nav:Pt[];blockedTime:number;retryAt:number;
   homeRoomId:string;homeZoneId:string|null;appearanceSeed:number;
   rescueTarget:boolean;following:string|null;
+  lastEscortRouteAt:number;
 };
 export function createCivilian(spec:CivilianSpec):CivilianActor{
   return {
@@ -34,6 +35,7 @@ export function createCivilian(spec:CivilianSpec):CivilianActor{
     routineIndex:0,dwellUntil:0,goal:null,nav:[],
     blockedTime:0,retryAt:0,homeRoomId:spec.roomId,
     homeZoneId:spec.zoneId??null,appearanceSeed:spec.appearanceSeed,
-    rescueTarget:!!spec.isRescueTarget,following:null
+    rescueTarget:!!spec.isRescueTarget,following:null,
+    lastEscortRouteAt:-100
   };
 }
