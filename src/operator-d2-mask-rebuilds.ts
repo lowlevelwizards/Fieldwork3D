@@ -181,43 +181,45 @@ function m40(g:THREE.Group,m:MaskMaterials){
   [3.97,.97,-6.15],[1.52,1.39,.99],[.72,-.08,-1]);
  compactHarness(g,m,2.12,5.08);
 }
+/** R13: one panoramic wraparound pane, carved nose and two jaw-hugging
+ * conformal filters. No separate rectangular side guards or visor rails.
+ */
 function m50(g:THREE.Group,m:MaskMaterials){
- const visor=poly([
-  [-3.73,5.20],[-2.39,5.29],[2.39,5.29],[3.73,5.20],
-  [3.66,2.58],[1.31,2.47],[.51,2.85],[-.51,2.85],
-  [-1.31,2.47],[-3.66,2.58]
- ]);
- plate(g,m.rubber,'m50-facepiece-rim-and-chin',{
+ const visor:readonly P[]=[
+  [-3.70,5.24],[-2.72,5.36],[2.72,5.36],[3.70,5.24],
+  [3.66,2.44],[1.34,2.43],[.45,2.93],
+  [-.45,2.93],[-1.34,2.43],[-3.66,2.44]
+ ];
+ sculptedShell(g,m.rubber,'m50-facepiece-rim-and-chin',{
   outline:[
-   [-3.82,5.63],[3.82,5.63],[4.26,4.91],
-   [4.29,1.02],[3.33,-.75],[2.23,-1.06],
-   [-2.23,-1.06],[-3.33,-.75],[-4.29,1.02],[-4.26,4.91]
-  ],holes:[visor],front:-4.89,depth:.53,edgeReturn:.46,nose:.52
+   [-3.78,5.71],[3.78,5.71],[4.22,5.03],
+   [4.20,1.20],[3.22,-.65],[2.05,-1.05],
+   [-2.05,-1.05],[-3.22,-.65],[-4.20,1.20],[-4.22,5.03]
+  ],holes:[visor],front:-4.89,halfWidth:4.22,
+  thickness:.46,sideReturn:.88,
+  nose:.56,cheek:.12,cheekAtY:1.4,
+  jawReturn:.22
  });
- lens(g,m.lens,'m50-one-piece-panoramic-visor-lens',visor,-5.38,.42);
- rim(g,m.hardware,'m50-one-piece-panoramic-visor-rim',visor,-5.44,.38,.42);
- extrudedProfile(g,m.rubber,'m50-raised-nasal-bridge',[
-  [-.48,2.92],[.48,2.92],[1.32,1.25],
-  [.86,.50],[-.86,.50],[-1.32,1.25]
- ],-5.49,.35);
+ // The same polygon is both the shell's cutout and the wide single visor.
+ fittedWindow(g,m,'m50-one-piece-panoramic-visor',visor,-5.34,.93);
+ // Two inlaid filters share the primary shell's cheek contour.
  for(const sign of [-1,1] as const){
-  extrudedProfile(g,m.filters,'m50-twin-low-cheek-filter',[
-   [sign*2.20,2.16],[sign*3.80,2.08],
-   [sign*4.04,1.35],[sign*3.65,-.38],
-   [sign*2.58,-.53],[sign*1.96,.45]
-  ],-5.49,.51,.28);
-  extrudedProfile(g,m.hardware,'m50-conformal-cheek-port',[
-   [sign*2.39,.21],[sign*3.54,.21],
-   [sign*3.54,-.28],[sign*2.45,-.32]
-  ],-5.68,.18);
+  sculptedShell(g,m.filters,'m50-twin-low-cheek-filter',{
+   outline:[
+    [sign*2.25,2.07],[sign*3.65,2.09],
+    [sign*4.00,1.26],[sign*3.57,-.30],
+    [sign*2.48,-.54],[sign*1.92,.45]
+   ],front:-5.41,halfWidth:4.10,thickness:.24,
+   sideReturn:.52,cheek:.12,cheekAtY:1.0,cheekAtX:3.0
+  });
  }
- outlet(g,m,'m50-low-exhale-module',0,-.05,-5.82,.98);
- for(const sign of [-1,1] as const)
-  sideProfile(g,m.rubber,'m50-streamlined-temple-seal',sign,[
-   [-4.67,5.37],[-2.30,5.25],[-1.12,4.41],
-   [-1.39,1.60],[-2.89,-.42],[-4.79,-.92]
-  ],4.03,.47);
- rearHarness(g,m,2.15);
+ // A single dramatic nose ridge bridges the visor into the low exhale valve.
+ extrudedProfile(g,m.rubber,'m50-raised-nasal-bridge',[
+  [-.52,2.96],[.52,2.96],[1.31,1.40],
+  [.85,.37],[-.85,.37],[-1.31,1.40]
+ ],-5.52,.35,.10);
+ outlet(g,m,'m50-low-exhale-module',0,-.08,-5.83,.96);
+ compactHarness(g,m,2.10,5.04);
 }
 export function createD2Mask(id:D2MaskId,m:D2MaskMaterials):THREE.Group{
  const root=new THREE.Group();root.name='d2-'+id;
