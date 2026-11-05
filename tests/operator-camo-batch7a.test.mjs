@@ -18,9 +18,9 @@ const kit={top:'acu-shirt',trousers:'acu-trousers',armorStyle:'plate-standard',
 
 test('7A is precisely eight appended identifiers, frozen old 38 and stable saves',()=>{
  assert.deepEqual(CAMO7A_IDS,eight);
- assert.equal(HEADWEAR_CAMO_IDS.length,54);
+ assert.equal(HEADWEAR_CAMO_IDS.length,62);
  assert.deepEqual(HEADWEAR_CAMO_IDS.slice(38,46),eight);
- assert.equal(new Set(HEADWEAR_CAMO_IDS).size,54);
+ assert.equal(new Set(HEADWEAR_CAMO_IDS).size,62);
  assert.deepEqual(Object.keys(FABRIC_CAMO_POLICY).sort(),[...HEADWEAR_CAMO_IDS].sort());
  for(const id of eight){
   assert.equal(readWardrobe({...initialWardrobe(),headwearCamo:id,headwearCamoRoll:11}).headwearCamo,id);
