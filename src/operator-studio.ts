@@ -68,6 +68,8 @@ let activeCategory:WardrobeSlot='top';
 let advancedFabricColorsOpen=false;
 let advancedPouchOpen=false;
 let clothesOnly=true;
+let referenceOpen=false;
+let previousClothesOnly=true;
 let comparingSaved=false;
 let saveInFlight=false;
 let studioPresets:StudioPreset[]=[];
@@ -122,6 +124,42 @@ const member=()=>people.find(p=>p.id===selected);
 const current=()=>edits.get(selected)??member()?.wardrobe??initialWardrobe();
 const previewWardrobe=()=>comparingSaved?member()?.wardrobe??initialWardrobe():current();
 const say=(message:string)=>{status.textContent=message;};
+const referenceBrowser=new FactionReferenceBrowser(
+ $<HTMLElement>('studioReferencesPanel'),{
+  onPreview:()=>{if(referenceOpen)posePreview();},
+  onApply:id=>{
+   const p=member();
+   if(!p||readOnly||saveInFlight)return;
+   const applied=referenceLookForKit(id,p.loadout,current());
+   changeWardrobe(applied.wardrobe);
+   closeReferenceBrowser();
+   say('REFERENCE APPLIED TO UNSAVED LOOK · '+
+    (applied.substituted.length+applied.lostPrints.length?
+     (applied.substituted.length+' STYLES / '+applied.lostPrints.length+
+      ' PRINTS ADAPTED TO ACTUAL KIT'):'NO KIT SUBSTITUTIONS')+
+    ' · SAVE LOOK TO KEEP IT');
+  },
+  onClose:()=>closeReferenceBrowser(),
+  compatibility:id=>{
+   const p=member();
+   if(!p)return {substituted:[],lostPrints:[]};
+   const result=referenceLookForKit(id,p.loadout,current());
+   return {substituted:result.substituted,lostPrints:result.lostPrints};
+  }
+ });
+function openReferenceBrowser(){
+ if(referenceOpen)return;
+ previousClothesOnly=clothesOnly;
+ referenceOpen=true;clothesOnly=false;syncGearToggle();
+ referenceBrowser.show(readOnly);
+ refresh();
+}
+function closeReferenceBrowser(){
+ if(!referenceOpen)return;
+ referenceOpen=false;referenceBrowser.hide();
+ clothesOnly=previousClothesOnly;syncGearToggle();
+ refresh();
+}
 function resize(){
  const rect=stage.getBoundingClientRect();
  const w=Math.max(1,Math.round(rect.width)),h=Math.max(1,Math.round(rect.height));
@@ -241,6 +279,7 @@ gearToggle.addEventListener('click',()=>{
 syncGearToggle();
 function posePreview(){
  const p=member();if(!p)return;
+ const reference=referenceOpen?resolveFactionReference(referenceBrowser.selectedId):null;
  if(!rig||rig.camoIdentity!==p.id){
   if(rig){scene.remove(rig.root);rig.dispose();}
   rig=createOperatorRig(p.id,'blue');
@@ -252,8 +291,8 @@ function posePreview(){
   lastDoorAt:-100,lastThrowAt:-100,down:false,surrender:false,
   aiming:false,firing:false,turning:0,deterministic:true,
   faceStyle:studioUsesVisibleFace(activeCategory)?'quiet':'blank',
-  unarmedPreview:true,equipment:inspectKit(p.loadout),
-  wardrobe:inspectWardrobe(previewWardrobe())
+  unarmedPreview:true,equipment:inspectKit(reference?.kit??p.loadout),
+  wardrobe:inspectWardrobe(reference?.wardrobe??previewWardrobe())
  },0);
  renderScene();
 }
