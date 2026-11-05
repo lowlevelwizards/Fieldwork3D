@@ -11,7 +11,8 @@ import {advanceSight,visualGain,confirmedSight}
  from './breach-visual-perception.ts';
 
 type ArmedPerson={id:string;p:Pt;heading:number;health:number;
- velocity:number;posture:'stand'|'crouch';side:'blue'|'red'};
+ velocity:number;posture:'stand'|'crouch';side:'blue'|'red';
+ lastShotAt?:number;};
 export type CivilianSensoryWorld={
  noise:readonly AcousticEvent[];
  people:readonly ArmedPerson[];
@@ -69,12 +70,18 @@ export function stepCivilianResponse(c:CivilianActor,now:number,dt:number,
     response==='investigate'?'investigate':'orient',
     heard.estimate,false);
  }
- // Seeing an armed intruder is not the same as being told magically that
- // a friendly site guard exists elsewhere; only confirmed blue arrivals
- // produce the initial visual threat cue in this phase.
+ // Being armed alone does not mark a resident guard dangerous. A red
+ // actor creates a *visual* alarm only when the observer has line of sight
+ // to that actor's RECENT real shot; distant/unseen firing is audio only.
  let sighted:string|null=null;
  for(const person of world.people){
-  if(person.side!=='blue'||person.health<=0)continue;
+  if(person.health<=0)continue;
+  const recentHostileShot=person.side==='red'&&
+    person.lastShotAt!==undefined&&person.lastShotAt>=0&&
+    now>=person.lastShotAt&&now-person.lastShotAt<=1.2;
+  if(person.side==='red'&&!recentHostileShot){
+    c.visualProgress[person.id]=0;continue;
+  }
   const range=dist(c.p,person.p);
   if(range>175) {c.visualProgress[person.id]=0;continue;}
   const yaw=Math.atan2(person.p.y-c.p.y,person.p.x-c.p.x);
