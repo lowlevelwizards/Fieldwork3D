@@ -71,7 +71,9 @@ export class WeaponWorkbenchPreview{
   backup.setAttribute('aria-label','Switch to simplified 2D weapon preview');
   backup.style.cssText='min-height:43px;padding:8px 10px;border:1px solid #728e80;'+
    'border-radius:7px;background:#263c34;color:#d4e1d8';
-  backup.addEventListener('click',()=>{this.enableFallback();this.draw();});
+  backup.addEventListener('click',()=>{
+   this.enableFallback();this.setActiveSlot(this.active);
+  });
   this.toolbar.append(backup);
   host.append(this.toolbar,this.canvasHost,this.caption);
   this.scene.background=new THREE.Color(0x162723);
