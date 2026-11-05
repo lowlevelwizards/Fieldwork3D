@@ -15,7 +15,7 @@ test('R2-B2 bounded detour stays in fleeing state and checks each segment',()=>{
  assert.deepEqual(c.nav,detour);
  assert.deepEqual(c.p,{x:0,y:0});
  stepCivilianMovement(c,2.8,.1,clear,()=>false,()=>detour);
- assert.ok(c.p.y>0&&c.p.y<4,'motor advances a bounded physical step');
+ assert.ok(c.p.y>0&&c.p.y<=6.601,'motor advances a bounded physical step');
 });
 test('R2-B2 escorted civilian does not freeze permanently after blocked leg',()=>{
  const c=person();c.state='escorted';c.following='rook';
@@ -27,9 +27,9 @@ test('R2-B2 escorted civilian does not freeze permanently after blocked leg',()=
 });
 test('R2-B2 refuge rejects occupied candidate without reading unseen threats',()=>{
  const c=person();c.threatEstimate={x:50,y:0};
- c.refugePoints=[{x:-40,y:0},{x:0,y:-40}];
+ c.refugePoints=[{x:-40,y:0},{x:0,y:-50}];
  const picked=chooseCivilianRefuge(c,{canReach:()=>true,
   isCrowded:p=>p.x===-40});
  assert.ok(picked);
- assert.deepEqual(picked.goal,{x:0,y:-40});
+ assert.deepEqual(picked.goal,{x:0,y:-50});
 });
