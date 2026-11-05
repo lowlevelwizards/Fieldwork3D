@@ -70,6 +70,7 @@ import {searchCandidates} from './breach-ai-search.ts';
 import {investigationTempo} from './breach-ai-investigation.ts';
 import {routineDwellSeconds} from './breach-ai-routine-dwell.ts';
 import {pressureAdvanceOpportunity} from './breach-ai-initiative.ts';
+import {captureTargetMayWithdraw} from './breach-ai-mission-response.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
 import {contactTactic} from './breach-ai-tactical-response.ts';
 import {directionalCoverFrom} from './breach-cover-direction.ts';
@@ -218,7 +219,7 @@ export type TeamActor=Operator & {
   flashCharges:number;
   firePolicy:FirePolicy;suppressPoint:Pt|null;focusTargetId:string|null;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
-  lastFireRepositionAt:number;
+  lastFireRepositionAt:number;lastMissionEvadeAt:number;
 };
 export type NoiseEvent={id?:number;p:Pt;radius:number;time:number;kind:string};
 export type ShotEvent={
@@ -354,6 +355,7 @@ const withActions=(a:Operator):TeamActor=>({
   firePolicy:'engage',suppressPoint:null,focusTargetId:null,
   weapon:'carbine',injuryStage:0,defense:null,watch:null,
   defenseUntil:0,surrendered:false,lastFireRepositionAt:-100,
+  lastMissionEvadeAt:-100,
 });
 /** Omitted seed keeps 052's historic static study for regression tests.
  * The actual game passes a unique seed on each newly loaded site.
@@ -2933,6 +2935,28 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       a.alert=a.retreatPoint?'retreat':'cover';a.nav=[];
     }else a.alert='investigating';
     rotate(a,angle(a.p,heard),dt);
+  }
+  // The designated capture target has a different *purpose*, not secret
+  // knowledge. Only real direct sight or its own recent audible warning
+  // can provoke a move toward an already physically validated safe point.
+  const threatEstimate=visible[0]?.p??(
+    a.suspicion.stage==='alerted'?(a.heard??a.contact):null);
+  const heardAlarm=a.lastNoiseAt>=0&&
+    s.seconds-a.lastNoiseAt<6&&a.suspicion.stage==='alerted';
+  if(captureTargetMayWithdraw({
+    mission:s.missionType,role:a.encounterRole,
+    confirmedSight:visible.length>0,heardAlarm,
+    hasEstimate:!!threatEstimate,
+    isAlreadyWithdrawing:a.alert==='retreat',
+    secondsSinceAttempt:s.seconds-a.lastMissionEvadeAt
+  })&&threatEstimate){
+    a.lastMissionEvadeAt=s.seconds;
+    const safe=defensivePosition(a,threatEstimate,s);
+    if(safe&&d(safe,a.p)>15&&
+       d(safe,threatEstimate)>d(a.p,threatEstimate)+15){
+      a.retreatPoint=safe;a.alert='retreat';a.nav=[];
+      a.combatChoice='withdraw';
+    }
   }
   if(a.flashUntil>s.seconds){
     a.velocity=0;a.aim=0;a.alert='cover';return;
