@@ -51,7 +51,7 @@ import {WARDROBE_RECIPES,wardrobeRecipe,applyWardrobeRecipe}
  from './operator-wardrobe-recipes.ts';
 import {HEADWEAR_SOLID_COLORS,headwearColorChoices,resolvedHeadwearSolid}
  from './operator-headwear-colors.ts';
-import {HEADWEAR_CAMO_IDS,headwearCamoChoices,resolvedHeadwearCamo,headwearCamoPixels,headwearCamoSize,
+import {HEADWEAR_CAMO_IDS,headwearCamoChoices,resolvedHeadwearCamo,headwearCamoSize,
  HEADWEAR_CAMO_RECIPES,HEADWEAR_CAMO_DENSITY,nextHeadwearCamoRoll,
  type HeadwearCamoId} from './operator-headwear-camo.ts';
 import {CAMO_ORIGINS,filterCamoCatalog,type CamoFilter,type CamoOrigin}
