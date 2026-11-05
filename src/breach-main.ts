@@ -563,16 +563,7 @@ const operationsBoard=document.createElement('section');
 operationsBoard.id='operationsBoard';
 operationsBoard.hidden=true;
 operationsBoard.setAttribute('aria-label','Squad operations board');
-Object.assign(operationsBoard.style,{
- position:'fixed',right:'12px',
- bottom:'calc(var(--tactical-hud-height,138px) + 14px + env(safe-area-inset-bottom))',
- zIndex:'95',boxSizing:'border-box',
- width:'min(420px, calc(100vw - 24px))',maxHeight:'min(52dvh, 530px)',
- overflowY:'auto',padding:'14px',borderRadius:'12px',
- background:'rgba(12,20,20,.96)',border:'1px solid #687973',
- color:'#e0e9de',font:'13px/1.45 Oxanium, sans-serif',
- boxShadow:'0 12px 35px #0008'
-});
+operationsBoard.className='fw-squad-sheet';
 document.body.append(operationsBoard);
 // Weapon choices are explicit: never change the selected weapon merely by opening a menu.
 const weaponChooser=document.createElement('section');
@@ -629,7 +620,7 @@ function renderOperationsBoard(){
  quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
  operationsBoard.replaceChildren();
  const heading=document.createElement('div');
- heading.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px';
+ heading.className='fw-squad-sheet-header';
  const title=document.createElement('strong');
  title.textContent='SQUAD';heading.append(title);
  const close=document.createElement('button');
@@ -661,6 +652,7 @@ function renderOperationsBoard(){
   const card=document.createElement('details');
   card.dataset.squadCard=member.id;
   card.className='fw-squad-card';
+  card.dataset.operatorId=member.id;
   card.open=expandedQuickOperator===member.id;
   card.addEventListener('toggle',()=>{
    if(card.open){
@@ -681,7 +673,7 @@ function renderOperationsBoard(){
    member.magazines.length+' SPARE MAGS · FULL HEALTH';
   card.append(details);
   const actions=document.createElement('div');
-  actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
+
   actions.className='fw-squad-actions';
   const loadoutAction=document.createElement('button');
   loadoutAction.type='button';loadoutAction.textContent='LOADOUT';
