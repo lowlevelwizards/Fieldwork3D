@@ -861,7 +861,7 @@ jobs:
       - name: Gear AO — critical geometry, helmet, merge and reference contracts
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/gear-baked-ao-all-') }}
         run: |
-          node --experimental-strip-types --test \
+          node --experimental-strip-types --test --test-concurrency=1 \
             tests/operator-baked-gear-ao.test.mjs \
             tests/operator-visual-merge.test.mjs \
             tests/operator-headwear-materials.test.mjs \
