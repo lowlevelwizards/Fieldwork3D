@@ -65,6 +65,7 @@ export const RIG_FRONT_PROFILES:Readonly<Record<string,{front:number;low:number}
  'light-rig':{front:9.12,low:-1.8},
  'split-front':{front:9.25,low:-2.0},
  'field-webbing':{front:8.45,low:-4.35},
+ 'alice-lc2':{front:7.30,low:-5.05},
  'lbv':{front:8.95,low:-2.35},
  'full-chest':{front:9.16,low:-2.25},
  'belt-harness':{front:8.35,low:-4.5},
@@ -83,6 +84,7 @@ export const RIG_POCKET_CONSTRUCTION:Readonly<Record<string,RigPocketConstructio
  bandolier:'diagonal','split-front':'utility-buckle',
  'full-chest':'utility-buckle',lbv:'double-stack',
  'sadf-webbing':'plce-cover','field-webbing':'plce-cover',
+ 'alice-lc2':'flap-snap',
  'belt-harness':'plce-cover','no-rig':'open-elastic'
 };
 const pouch=(g:THREE.Group,m:THREE.Material,fold:THREE.Material,
@@ -149,6 +151,7 @@ export const RIG_MAGAZINE_MOUTHS:Readonly<
  'sadf-webbing':[-5.85,-3.25,3.25,5.85].map(z=>
   [8.66,.31,z,2.17] as const),
  'field-webbing':[],
+ 'alice-lc2':[],
  'belt-harness':[]
 };
 /** Nested strap groups must NOT be baked into the rig's static mesh.
@@ -189,6 +192,7 @@ export const RIG_LOWER_FRONT_ANCHORS:Readonly<
  'lbv':[7.95,-4.04,5.28],
  'sadf-webbing':[7.92,-5.12,6.95],
  'field-webbing':[6.40,-5.18,5.70],
+ 'alice-lc2':[6.40,-5.18,5.70],
  'belt-harness':[6.40,-5.18,5.70]
 };
 /** The front harness rises up the bib, then turns diagonally over the
@@ -273,7 +277,7 @@ export function updateFittedRigHarness(
     Math.max(width,budget.shoulder),.68,1);
   // Front strap ends sink physically into an authored panel reinforcement.
   // Do not add free-standing front blocks on belt suspension systems.
-  if(rig!=='field-webbing'&&rig!=='belt-harness'){
+  if(rig!=='field-webbing'&&rig!=='alice-lc2'&&rig!=='belt-harness'){
    const landing=box(harness,material,front[0]-.04,front[1]-.38,
     front[2],.60,1.06,Math.max(1.10,width));
    landing.name='rig-front-reinforced-landing';
@@ -291,7 +295,7 @@ export function updateFittedRigHarness(
   if(anchor){
    const [actualX,actualY,actualZ]=anchor;
    // Belt webbing lands on its existing lower front brace.
-   const frontX=rig==='field-webbing'||rig==='belt-harness'?
+   const frontX=rig==='field-webbing'||rig==='alice-lc2'||rig==='belt-harness'?
     fromX:actualX+.22;
    const join=fittedFlatSurfaceBand(harness,material,[
     [fromX,y,sign*flank],
@@ -362,7 +366,7 @@ export function updateFittedRigHarness(
    [-1,0,0],[-1,0,0],[0,1,0],[0,1,0],
    [1,0,0],[1,0,0],[0,0,-1],[-1,0,0]
   ],Math.max(1.72,budget.web),.62);
- }else if(rig==='field-webbing'||rig==='belt-harness'){
+ }else if(rig==='field-webbing'||rig==='alice-lc2'||rig==='belt-harness'){
   // Belt-first: twin front braces, one true rear Y and no chest slab.
   const wide=rig==='belt-harness';
   for(const sign of [-1,1]){
@@ -550,6 +554,13 @@ export function createChestRigSilhouettes(chest:THREE.Group,
     [-5.5,-5.4,sign*5.95],1.10,.90);
    // The lower belt and magazine pockets now live on the hip.
   }
+ }
+ if(!onlyStyle||onlyStyle==='alice-lc2'){
+  // Belt-first silhouette: pouches live on hips; the garment-fitted Y
+  // suspenders are generated only when the selected rig is fitted.
+  const g=make('alice-lc2');
+  const h=new THREE.Group();h.name='uniform-fitted-rig-harness';
+  h.userData.fitMaterial=webbing;h.userData.spread=5.50;g.add(h);
  }
  if(!onlyStyle||onlyStyle==='belt-harness'){
   const g=make('belt-harness');
