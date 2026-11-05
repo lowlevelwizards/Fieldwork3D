@@ -14,8 +14,10 @@ import {stageMagazines,magazineSpace,type MagazineLocation}
 import {kitMedicalSupplies} from './equipment-medical-supplies.ts';
 import {issuedWedges} from './equipment-entry-tools.ts';
 import {initialWeaponConfiguration,readWeaponConfiguration,changeWeaponPlatform,
- setWeaponAttachment,type WeaponConfiguration,type WeaponAttachmentSlot}
+ setWeaponAttachment,selectWeaponFamilyPreset,setConfiguredFamilyPart,
+ type WeaponConfiguration,type WeaponAttachmentSlot}
  from './equipment-weapon-assemblies.ts';
+import type {FamilyPartSlot} from './equipment-weapon-families.ts';
 import {equippedFlashCharges,
  initialEquipmentLoadout,readEquipmentLoadout,syncPrimaryWeapon,setEquipmentChoice,
  loadMovementScale,type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
@@ -212,6 +214,26 @@ export function configureRosterWeapon(roster:RosterState,id:string,
  if(next===m.weaponConfiguration)return roster;
  return {...roster,members:roster.members.map(member=>member.id===id?
   {...member,weaponConfiguration:next}:member)};
+}
+/** Quick Play family presets are appearance variants of the owned weapon class. */
+export function configureRosterWeaponPreset(roster:RosterState,id:string,
+ presetId:string):RosterState{
+ const m=roster.members.find(member=>member.id===id);
+ if(!m)return roster;
+ const config=selectWeaponFamilyPreset(m.weaponConfiguration,presetId);
+ if(config===m.weaponConfiguration||config.build===m.weaponConfiguration.build)return roster;
+ return {...roster,members:roster.members.map(member=>member.id===id?
+  {...member,weaponConfiguration:config}:member)};
+}
+/** Changing model furniture never changes physical weapon ownership or ammunition. */
+export function configureRosterWeaponBodyPart(roster:RosterState,id:string,
+ slot:FamilyPartSlot,partId:string):RosterState{
+ const m=roster.members.find(member=>member.id===id);
+ if(!m)return roster;
+ const config=setConfiguredFamilyPart(m.weaponConfiguration,slot,partId);
+ if(config===m.weaponConfiguration)return roster;
+ return {...roster,members:roster.members.map(member=>member.id===id?
+  {...member,weaponConfiguration:config}:member)};
 }
 export function renameRosterMember(roster:RosterState,id:string,name:string):RosterState{
  const next=name.trim().slice(0,24);
