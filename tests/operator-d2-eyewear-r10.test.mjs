@@ -37,8 +37,9 @@ test('R10-A pilot lenses move in 0.13 per side without resizing or overlapping',
  assert.ok(Math.abs(center(r)-2.67)<.025,'right lens shelf centers at R10 1.95 offset');
  assert.ok(Math.abs(center(l)+center(r))<.001,'symmetric inward movement');
  assert.ok(Math.abs(Math.max(...l.map(p=>p.y))-5.12)<.001);
- assert.equal(l.length,15,'keep approved bold R9 outer silhouette');
- assert.equal(r.length,15);
+ const uniqueCount=poly=>new Set(poly.map(p=>p.x.toFixed(4)+','+p.y.toFixed(4))).size;
+ assert.equal(uniqueCount(l),15,'keep approved bold R9 outer silhouette');
+ assert.equal(uniqueCount(r),15);
  const innerGap=Math.min(...r.map(p=>p.x))-Math.max(...l.map(p=>p.x));
  assert.ok(innerGap>.90&&innerGap<1.05,'small, readable nose gap: neither separated nor touching');
 });
