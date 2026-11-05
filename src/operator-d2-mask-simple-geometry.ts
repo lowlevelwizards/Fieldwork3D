@@ -20,7 +20,7 @@ const make=(g:THREE.Group,mat:THREE.Material,name:string,
  g.add(mesh);return mesh;
 };
 function emitQuad(vertices:V[],faces:number[],normals:number[],out:THREE.Vector3){
- const [a,b,c,d]=vertices.map(x=>new THREE.Vector3(...x));
+ const [a,b,,d]=vertices.map(x=>new THREE.Vector3(...x));
  // All six vertices share one deliberately chosen planar-looking normal.
  // This eliminates the giant diagonal normal discontinuities in warped
  // Three.js polygon-hole extrusions.
