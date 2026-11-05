@@ -41,6 +41,8 @@ export type CivilianFrame=Pick<CivilianActor,
   'lastHitAt'|'following'|'rescueTarget'|'appearanceSeed'|
   'role'|'persona'|'activity'|'homeRoomId'> & {
     /** A recorded operator observation, never future knowledge. */
+    carriedById?:string|null;
+    transportMode?:CivilianActor['transportMode'];
     visibleAtCapture?:boolean;
   };
 export type ReplayFrame={
@@ -124,6 +126,7 @@ export function snapshot(s:Session,seenGround?:string[],
       id:c.id,p:position(c.p),heading:c.heading,health:c.health,
       injuryStage:c.injuryStage,state:c.state,velocity:c.velocity,
       lastHitAt:c.lastHitAt,following:c.following,
+      carriedById:c.carriedById,transportMode:c.transportMode,
       rescueTarget:c.rescueTarget,appearanceSeed:c.appearanceSeed,
       role:c.role,persona:c.persona,activity:c.activity,
       homeRoomId:c.homeRoomId,
@@ -320,6 +323,8 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       isRescueTarget:copy.rescueTarget
     });
     return {...actor,...copy,p:position(copy.p),
+      carriedById:copy.carriedById??null,
+      transportMode:copy.transportMode??null,
       priorP:position(copy.p),goal:null,nav:[],
       // Older films with no visibility channel keep a guarded
       // current-cone fallback rather than disclosing future information.

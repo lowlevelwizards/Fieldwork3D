@@ -2,6 +2,7 @@
  * enemy orders or hostile affiliation. Their physical movement is separately
  * validated against the same tactical world. */
 import type {Pt} from './breach-core.ts';
+import type {TransportMode} from './breach-casualty-transport.ts';
 import type {CivilianSpec} from './worldgen/encounter-types.ts';
 export type CivilianState=
   'routine'|'attentive'|'startled'|'frozen'|'fleeing'|'hiding'|
@@ -24,6 +25,8 @@ export type CivilianActor={
   rescueTarget:boolean;following:string|null;
   /** Operator physically carrying/dragging this body; exclusive custody. */
   carriedById:string|null;
+  /** Recorded rendering hint; the evacuation order remains authoritative. */
+  transportMode:TransportMode|null;
   lastEscortRouteAt:number;
   /** Set only when applying historical film; never queried by live AI. */
   replayVisible?:boolean;
@@ -41,7 +44,7 @@ export function createCivilian(spec:CivilianSpec):CivilianActor{
     refugePoints:[],routineIndex:0,dwellUntil:0,goal:null,nav:[],
     blockedTime:0,retryAt:0,homeRoomId:spec.roomId,
     homeZoneId:spec.zoneId??null,appearanceSeed:spec.appearanceSeed,
-    rescueTarget:!!spec.isRescueTarget,following:null,carriedById:null,
+    rescueTarget:!!spec.isRescueTarget,following:null,carriedById:null,transportMode:null,
     lastEscortRouteAt:-100
   };
 }

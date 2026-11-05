@@ -2005,6 +2005,9 @@ function updateHud(){
       '\n\nMISSION PACING\n'+formatMissionPacing(recorder.events)+
       '\n\nCOMBAT REVIEW\n'+formatCombatReview(recorder.frames,recorder.events)+
       '\n\nTACTICAL TIMELINE\n'+formatAfterAction(recorder.events,10);
+    if(stats.rescueStatus!=='none')
+      ui.debriefStats.textContent+='\nCIVILIAN RESCUE: '+
+        stats.rescueStatus.toUpperCase().replaceAll('-',' ');
     if(campaignMode==='mission'&&campaign?.history.length){
      const recent=campaign.history[campaign.history.length-1];
      const lines=recent.gains?.flatMap(person=>{

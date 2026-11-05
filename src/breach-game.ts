@@ -2403,7 +2403,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       a.velocity=0;a.actionTimer+=dt;
       if(a.actionTimer>=(mode==='drag'?.85:1.45)){
         if(civil){
-          if(!takeCivilianCustody(civil,a)){
+          if(!takeCivilianCustody(civil,a,mode)){
             failCurrentOrder(s,a,n,'CASUALTY TRANSPORT UNAVAILABLE');return;
           }
           if(civil.rescueTarget&&s.rescue){
@@ -4360,7 +4360,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
       ...s.civilians.filter(c=>c!==civil).map(c=>c.p)
     ];
     const next=proposedCivilianTransportStep(bodyFrom,from,carrier.p,
-      carrier.heading,carrier.plan[0]?.transportMode??'drag',
+      carrier.heading,civil.transportMode??carrier.plan[0]?.transportMode??'drag',
       (from,to)=>sweptBodyClear(from,to,s.doors),others);
     if(!next){
       carrier.p=clone(from);carrier.velocity=0;carrier.nav=[];
@@ -4495,6 +4495,11 @@ export function debrief(s:Session){
   const shots=own.reduce((t,a)=>t+a.shots,0);
   const hits=own.reduce((t,a)=>t+a.hits,0);
   const target=enemies(s).find(e=>e.id===s.captureTarget);
+  const rescuePerson=s.civilians.find(c=>c.rescueTarget);
+  const rescueStatus=!rescuePerson?'none':
+    s.mission!=='done'?'not-extracted':
+    rescuePerson.health<=0?'incapacitated':
+    rescuePerson.injuryStage>0?'injured':'healthy';
   const civilianInjured=s.civilians.filter(c=>c.health>0&&
     c.injuryStage>0).length;
   const civilianDown=s.civilians.filter(c=>c.health<=0).length;
@@ -4515,7 +4520,7 @@ export function debrief(s:Session){
     stabilizedCasualties:casualtyCare.stabilized,
     criticalCasualties:casualtyCare.critical,
     evacuatedCasualties:evacuated,
-    shots,hits,civilianInjured,civilianDown,
+    shots,hits,civilianInjured,civilianDown,rescueStatus,
     civilianPlayerInjured:attributable.injured,
     civilianPlayerDown:attributable.down,
     kills:own.reduce((t,a)=>t+a.kills,0),

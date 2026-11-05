@@ -15,16 +15,17 @@ export function civilianTransportEligible(c:CivilianActor,
 }
 /** Acquire exclusive ownership only after a real, timed, reachable pickup. */
 export function takeCivilianCustody(c:CivilianActor,
- carrier:CivilianCarrier):boolean{
+ carrier:CivilianCarrier,mode:TransportMode='drag'):boolean{
  if(!civilianTransportEligible(c,carrier))return false;
- c.carriedById=carrier.id;carrier.carryingId=c.id;
+ c.carriedById=carrier.id;c.transportMode=mode;
+ carrier.carryingId=c.id;
  c.following=null;c.goal=null;c.nav=[];c.velocity=0;
  return true;
 }
 export function dropCivilianCustody(c:CivilianActor,
  carrier:CivilianCarrier):boolean{
  if(c.carriedById!==carrier.id||carrier.carryingId!==c.id)return false;
- c.carriedById=null;carrier.carryingId=null;
+ c.carriedById=null;c.transportMode=null;carrier.carryingId=null;
  return true;
 }
 /** Bound each body displacement to the carrier's own fixed-tick step.
