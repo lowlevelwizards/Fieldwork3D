@@ -6,7 +6,7 @@ import {HEADWEAR_CAMO_IDS,type HeadwearCamoId} from './operator-headwear-camo.ts
 export type CamoTerrain='woodland'|'arid'|'multi'|'universal';
 export type CamoStyle='organic'|'brushstroke'|'fleck'|'digital'|'geometric'|'raindrop';
 export type CamoOrigin='USA'|'Germany'|'Britain'|'Canada'|'Russia'|'China'|'India'|
- 'Australia'|'Italy'|'Belgium'|'Sweden'|'Switzerland'|'Poland'|'Finland'|'Rhodesia';
+ 'Australia'|'Italy'|'Belgium'|'Sweden'|'Switzerland'|'Poland'|'Finland'|'Rhodesia'|'Ukraine';
 export type CamoCatalogEntry={terrain:CamoTerrain;style:CamoStyle;origin:CamoOrigin;era:'historic'|'modern'};
 const w=(terrain:CamoTerrain,style:CamoStyle,origin:CamoOrigin,era:'historic'|'modern'='modern'):CamoCatalogEntry=>
  ({terrain,style,origin,era});
@@ -40,14 +40,22 @@ export const CAMO_CATALOG:Readonly<Record<HeadwearCamoId,CamoCatalogEntry>>={
  'pla-xingkong':w('multi','digital','China'),
  'cadpat-tw':w('woodland','digital','Canada','historic'),
  'british-mtp':w('multi','organic','Britain'),
- 'indian-digital-2022':w('multi','digital','India')
+ 'indian-digital-2022':w('multi','digital','India'),
+ 'atacs-fg':w('woodland','organic','USA'),
+ 'ukrainian-mm14':w('multi','digital','Ukraine'),
+ aor2:w('woodland','digital','USA'),
+ 'multicam-tropic':w('woodland','organic','USA'),
+ 'atacs-au':w('arid','organic','USA'),
+ 'ss-leto':w('woodland','organic','Russia'),
+ aor1:w('arid','digital','USA'),
+ 'multicam-arid':w('arid','organic','USA')
 };
 export const CAMO_TERRAINS:ReadonlyArray<CamoTerrain>=['woodland','arid','multi','universal'];
 export const CAMO_STYLES:ReadonlyArray<CamoStyle>=
  ['organic','brushstroke','fleck','digital','geometric','raindrop'];
 export const CAMO_ORIGINS:readonly CamoOrigin[]=[
  'USA','Britain','Germany','Russia','Canada','China','India','Australia','Italy',
- 'Belgium','Sweden','Switzerland','Poland','Finland','Rhodesia'
+ 'Belgium','Sweden','Switzerland','Poland','Finland','Rhodesia','Ukraine'
 ];
 export const CAMO_CATALOG_IDS:readonly HeadwearCamoId[]=HEADWEAR_CAMO_IDS;
 export type CamoFilter={

@@ -30,13 +30,14 @@ export const FIELD_UNIFORM_FAMILY_CAMO:Readonly<Record<FieldUniformFamily,
   'woodland-dpm','swedish-m90','six-color-desert','erdl-lowland',
   'polish-pantera','russian-flora','rhodesian-brushstroke',
   'desert-tropentarn','belgian-jigsaw','east-german-strichtarn',
-  'australian-dpcu'
+  'australian-dpcu','ss-leto','atacs-fg','atacs-au'
  ],
  modern:[
   'ucp','multicam','woodland-marpat','desert-marpat',
   'finnish-m05','polish-pantera','italian-vegetato',
   'scorpion-w2','russian-emr','pla-xingkong','cadpat-tw',
-  'british-mtp','indian-digital-2022'
+  'british-mtp','indian-digital-2022',
+  'atacs-fg','ukrainian-mm14','aor2','multicam-tropic','atacs-au','aor1','multicam-arid'
  ]
 };
 export const UNIFORM_CUT_CAMO:Readonly<Record<UniformGarmentCut,
