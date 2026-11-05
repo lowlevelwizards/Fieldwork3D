@@ -1,26 +1,51 @@
-/** P5.3 — Shared geometric actor-pair visibility within a fixed sim tick.
- * Never caches recognition, awareness, sound, or a past remembered target.
- * Every changing ray input is checked; dynamic doors and cover invalidate.
+/** P5.3 — Exact actor-pair LOS caching for one authoritative tick.
+ * Every live door state is compared without constructing concatenated
+ * strings or arrays on every ray. This never shares recognition or intel.
  */
-import type {Pt} from './breach-core.ts';
-type Actor={
-  id:string;p:Pt;heading:number;posture:string;health:number;
-};
+import type {Door,Pt} from './breach-core.ts';
+type Actor={id:string;p:Pt;heading:number;posture:string;health:number};
 type SightEntry={
   ax:number;ay:number;ah:number;ap:string;aliveA:number;
   bx:number;by:number;bp:string;aliveB:number;visible:boolean;
 };
+type DoorSnapshot={
+  id:string;kind:Door['kind'];style:Door['style'];
+  open:boolean;fraction:number;hinge:Door['hinge'];
+  swing:Door['swing'];slideDirection:Door['slideDirection'];
+  ax:number;ay:number;bx:number;by:number;
+};
+const snapDoor=(d:Door):DoorSnapshot=>({
+  id:d.id,kind:d.kind,style:d.style,open:d.open,
+  fraction:d.openFraction??(d.open?1:0),hinge:d.hinge,
+  swing:d.swing,slideDirection:d.slideDirection,
+  ax:d.a.x,ay:d.a.y,bx:d.b.x,by:d.b.y
+});
 export class PerceptionPairCache{
   private time=NaN;
   private geometryKey='';
-  private doors='';
+  private lastDoors:DoorSnapshot[]=[];
   private entries=new Map<string,SightEntry>();
   hits=0;misses=0;invalidations=0;
-  get(a:Actor,b:Actor,time:number,geometryKey:string,doors:string,
-      compute:()=>boolean):boolean{
+  private sameDoors(doors:readonly Door[]):boolean{
+    if(doors.length!==this.lastDoors.length)return false;
+    for(let i=0;i<doors.length;i++){
+      const a=doors[i],b=this.lastDoors[i];
+      if(a.id!==b.id||a.kind!==b.kind||a.style!==b.style||
+         a.open!==b.open||
+         (a.openFraction??(a.open?1:0))!==b.fraction||
+         a.hinge!==b.hinge||a.swing!==b.swing||
+         a.slideDirection!==b.slideDirection||
+         a.a.x!==b.ax||a.a.y!==b.ay||
+         a.b.x!==b.bx||a.b.y!==b.by)return false;
+    }
+    return true;
+  }
+  get(a:Actor,b:Actor,time:number,geometryKey:string,
+      doors:readonly Door[],compute:()=>boolean):boolean{
     if(time!==this.time||geometryKey!==this.geometryKey||
-       doors!==this.doors){
-      this.time=time;this.geometryKey=geometryKey;this.doors=doors;
+       !this.sameDoors(doors)){
+      this.time=time;this.geometryKey=geometryKey;
+      this.lastDoors=doors.map(snapDoor);
       this.entries.clear();this.invalidations++;
     }
     const key=a.id+'>'+b.id;
