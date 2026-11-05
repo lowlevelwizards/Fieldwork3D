@@ -379,7 +379,13 @@ export function updateFittedRigHarness(
    line([[bx,1.15,sign*3.75],[bx,-4.90,sign*5.55]],1.14,.58);
    sideTie(sign,-5.10,fx+.40,bx,.76);
   }
-  across(bx,-1.0,3.75,1.05,.62);
+  // Keep the crossbar inspectable after static-mesh consolidation so the
+  // H can never quietly regress to ALICE's single rear Y junction.
+  const hCrossbar=fittedFlatSurfaceBand(harness,material,
+   [[bx,-1.0,-3.75],[bx,-1.0,3.75]],
+   [[-1,0,0],[-1,0,0]],Math.max(1.05,budget.web),.62);
+  hCrossbar.name='m1956-rear-H-crossbar';
+  hCrossbar.userData.keepSeparate=true;
  }else if(rig==='field-webbing'||rig==='alice-lc2'||rig==='belt-harness'){
   // Belt-first: twin front braces, one true rear Y and no chest slab.
   const wide=rig==='belt-harness';

@@ -42,5 +42,7 @@ test('R5G: fitted H suspension retains two rear legs and lower belt returns',()=
  const harness=groups['m1956-lce'].getObjectByName('uniform-fitted-rig-harness');
  assert.ok(harness);
  assert.equal(harness.children.filter(x=>x.name==='rig-lower-front-return').length,2);
- assert.ok(harness.children.length>=8);
+ const bar=harness.children.find(x=>x.name==='m1956-rear-H-crossbar');
+ assert.ok(bar instanceof THREE.Mesh,'physical transverse H strap');
+ assert.ok(bar.geometry.getAttribute('position').count>=12);
 });
