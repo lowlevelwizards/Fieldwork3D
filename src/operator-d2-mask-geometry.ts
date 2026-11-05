@@ -104,6 +104,22 @@ export function pairedEyes(g:THREE.Group,m:MaskMaterials,
   rim(g,m.hardware,name+'-rim',p,z-.10,t,wrap);
  }
 }
+/** Exterior anatomical cheek/temple return, authored in the Y/Z side plane.
+ * Unlike a faceplate extension this occupies the skull side and visibly turns
+ * toward the ear. Each sign has its own outward facing thickened panel.
+ */
+export function sideProfile(g:THREE.Group,mat:THREE.Material,name:string,
+ sign:-1|1,outline:readonly MaskPoint[],sideX=4.13,thick=.46):THREE.Mesh{
+ const section=asShape(outline.map(([z,y])=>[-z,y] as const));
+ const geometry=new THREE.ExtrudeGeometry(section,{
+  depth:thick,bevelEnabled:false,steps:1,curveSegments:1
+ });
+ geometry.rotateY(Math.PI/2);
+ geometry.computeVertexNormals();
+ const result=attach(g,name,geometry,mat);
+ result.position.x=sign>0?sideX:-sideX-thick;
+ return result;
+}
 /** Short eight-facet axial cartridge with broad end cap; optional outward cant. */
 export function canister(g:THREE.Group,m:THREE.Material,name:string,
  x:number,y:number,z:number,r:number,length:number,
