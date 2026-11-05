@@ -84,9 +84,12 @@ test('battlefield headgear, facewear and headsets build only when worn',()=>{
  assert.equal(groupStats(lazy.layers.headwear['pasgt']).vertices,0);
  assert.equal(groupStats(lazy.layers.facewear['gas-m50']).vertices,0);
  assert.equal(groupStats(lazy.layers.headset['boom-headset']).vertices,0);
- updateWardrobeHeadLayers(lazy.layers,'pasgt','gas-m50','eyes-none','boom-headset');
- for(const group of [lazy.layers.headwear['pasgt'],
-  lazy.layers.facewear['gas-m50'],lazy.layers.headset['boom-headset']])
+ // Full-face masks deliberately conceal a boom headset; build each only
+ // in a compatible presentation, as the existing compatibility policy requires.
+ updateWardrobeHeadLayers(lazy.layers,'pasgt','face-none','eyes-none','boom-headset');
+ assert.ok(groupStats(lazy.layers.headset['boom-headset']).vertices>0);
+ updateWardrobeHeadLayers(lazy.layers,'pasgt','gas-m50','eyes-none','comms-none');
+ for(const group of [lazy.layers.headwear['pasgt'],lazy.layers.facewear['gas-m50']])
   assert.ok(groupStats(group).vertices>0);
  assert.equal(groupStats(lazy.layers.headwear['boonie']).vertices,0,
   'other hats must stay deferred');
