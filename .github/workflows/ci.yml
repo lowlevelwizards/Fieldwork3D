@@ -858,6 +858,9 @@ jobs:
           node --experimental-strip-types --test \
             tests/faction-reference.test.mjs \
             tests/ux-r2-studio-flow.test.mjs
+      - name: Reference Gear Batch 1 — forty historical kit contracts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/reference-kit-gear-fidelity-') }}
+        run: node --experimental-strip-types --test tests/faction-reference.test.mjs
       - name: E5-C R1 civilian behavior and route-critical checks
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-e5c-r1-') }}
         run: |

@@ -59,3 +59,48 @@ test('reference catalog spans multiple eras, regions and organizations',()=>{
  assert.ok(new Set(FACTION_REFERENCES.map(x=>x.country)).size>=20);
  assert.ok(new Set(FACTION_REFERENCES.map(x=>x.organization)).size>=3);
 });
+
+test('all 40 reference kits apply cut-compatible independent equipment materials',()=>{
+ for(const ref of FACTION_REFERENCES){
+  const r=resolveFactionReference(ref),a=ref.gearAppearance;
+  assert.ok(a,ref.id+' missing equipment profile');
+  assert.ok(ref.gearFitNote,ref.id+' missing model-fit explanation');
+  assert.deepEqual(r.incompatibleChannels,ref.id==='swiss-alpenflage-1980'?['trousers']:[],ref.id);
+  assert.deepEqual(r.technicalIssues,[],ref.id);
+  for(const [field,channel] of [
+   ['armorCamo','armor'],['rigCamo','gear'],['packCamo','pack']
+  ])if(a[field])
+   assert.equal(r.wardrobe.fabricCamo?.[channel],a[field],ref.id+' '+field);
+  if(a.headwearCamo)
+   assert.equal(r.wardrobe.headwearCamo,a.headwearCamo,ref.id+' headwear');
+  if(a.helmetCoverCamo)
+   assert.equal(r.wardrobe.helmetCoverCamo,a.helmetCoverCamo,ref.id+' helmet cover');
+ }
+});
+test('the right existing legacy armor and mismatched period webbing survive',()=>{
+ const get=id=>resolveFactionReference(id);
+ const russian=get('russian-emr-2015');
+ assert.equal(russian.wardrobe.styles.armorStyle,'plate-legacy');
+ assert.equal(russian.wardrobe.styles.rigStyle,'split-front');
+ assert.equal(russian.wardrobe.fabricCamo?.armor,'russian-emr');
+ const ocp=get('us-army-ocp-2019');
+ assert.equal(ocp.wardrobe.styles.armorStyle,'plate-legacy');
+ assert.equal(ocp.wardrobe.fabricCamo?.armor,'scorpion-w2');
+ const usmc=get('usmc-desert-2010');
+ assert.equal(usmc.wardrobe.fabricCamo?.pack,'woodland-marpat');
+ assert.equal(usmc.wardrobe.fabricCamo?.armor,undefined);
+ assert.equal(usmc.wardrobe.fabricSolids?.armor,'coyote');
+ const m81=get('us-army-m81-1990');
+ assert.equal(m81.wardrobe.styles.armorStyle,'soft-flak');
+ assert.equal(m81.wardrobe.styles.rigStyle,'alice-lc2');
+ assert.equal(m81.wardrobe.fabricCamo?.gear,undefined);
+ const greek=get('greek-lizard-1990');
+ assert.equal(greek.wardrobe.styles.headwear,'m1-steel');
+ assert.equal(greek.wardrobe.helmetCoverCamo,'greek-lizard');
+ const swiss=get('swiss-alpenflage-1980');
+ assert.equal(swiss.kit.slots.rig,'rig-none');
+ assert.equal(swiss.wardrobe.styles.rigStyle,'no-rig');
+ const police=get('us-swat-2015');
+ assert.equal(police.wardrobe.headwearCamo,undefined);
+ assert.equal(police.wardrobe.fabricCamo?.gear,undefined);
+});

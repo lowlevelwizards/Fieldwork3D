@@ -123,7 +123,8 @@ export class FactionReferenceBrowser{
    el('p','reference-meta','RECOMMENDED WEAPON FAMILY · '+r.weaponFamily),
    el('p','reference-status',status==='missing-defining-assets'?
     'RECOGNIZABLE APPROXIMATION · DEFINING DETAILS MISSING':'RECOGNIZABLE APPROXIMATION'),
-   el('p','reference-sources',r.sourceNotes)
+   el('p','reference-sources',r.sourceNotes),
+   ...(r.gearFitNote?[el('p','reference-sources','GEAR MODEL FIT · '+r.gearFitNote)]:[])
   );
   const missing=unresolvedReferenceGaps(r);
   if(missing.length){

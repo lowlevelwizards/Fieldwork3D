@@ -6,6 +6,8 @@ import {readWardrobe,resolvedWardrobe,setWardrobeStyle,setWardrobeFabricSolid,
  setWardrobeFabricCamo,wardrobeConflicts,type WardrobeOptions,type WardrobeSlot}
  from './operator-wardrobe-data.ts';
 import {fabricCamoCompatible} from './operator-fabric-camo-policy.ts';
+import {headwearCamoChoices} from './operator-headwear-camo.ts';
+import {helmetCoverChoices} from './operator-helmet-cover-policy.ts';
 import {outfitPresetForKit} from './operator-studio-presets.ts';
 
 export type ReferenceResolution={
@@ -50,17 +52,40 @@ export function resolveFactionReference(input:FactionReference|string):Reference
    }
   }
  }
- if(reference.gearSolid){
-  for(const channel of ['gear','armor'] as const){
-   const previous=wardrobe;
-   wardrobe=setWardrobeFabricSolid(wardrobe,channel,reference.gearSolid,outfit);
-   if(previous===wardrobe&&outfit[channel==='gear'?'rigStyle':'armorStyle']!==
-       (channel==='gear'?'no-rig':'armor-bare'))
-    issues.push('Equipment textile unavailable on '+channel+': '+reference.gearSolid);
+ // Keep independent historical equipment finishes; a uniform print never
+ // implicitly prints a pack or vest. Empty cuts do not consume fabric channels.
+ const appearance=reference.gearAppearance;
+ for(const [channel,style,empty,solid,print] of [
+  ['armor',outfit.armorStyle,'armor-bare',appearance?.armorSolid??reference.gearSolid,appearance?.armorCamo],
+  ['gear',outfit.rigStyle,'no-rig',appearance?.rigSolid??reference.gearSolid,appearance?.rigCamo],
+  ['pack',outfit.packStyle,'no-pack',appearance?.packSolid??reference.gearSolid,appearance?.packCamo]
+ ] as const){
+  if(style===empty)continue;
+  wardrobe=setWardrobeFabricCamo(wardrobe,channel,null,outfit);
+  if(solid){
+   const updated=setWardrobeFabricSolid(wardrobe,channel,solid,outfit);
+   if(updated===wardrobe)issues.push('Equipment textile unavailable on '+channel+': '+solid);
+   wardrobe=updated;
+  }
+  if(print){
+   if(fabricCamoCompatible(print,channel,outfit))
+    wardrobe=setWardrobeFabricCamo(wardrobe,channel,print,outfit);
+   else incompatibleChannels.push(channel);
   }
  }
+ const headwearPrint=appearance?.headwearCamo;
+ if(headwearPrint&&!headwearCamoChoices(outfit.headwear).includes(headwearPrint))
+  incompatibleChannels.push('headwear');
+ const coverPrint=appearance?.helmetCoverCamo;
+ if(coverPrint&&!helmetCoverChoices(outfit.headwear).includes(coverPrint))
+  incompatibleChannels.push('helmetCover');
  wardrobe=readWardrobe({...wardrobe,
-  ...(reference.headwearColor?{headwearColor:reference.headwearColor}:{}),
+  ...(appearance?.headwearSolid||reference.headwearColor?
+    {headwearColor:appearance?.headwearSolid??reference.headwearColor}:{}),
+  ...(headwearPrint&&headwearCamoChoices(outfit.headwear).includes(headwearPrint)?
+    {headwearCamo:headwearPrint}:{}),
+  ...(coverPrint&&helmetCoverChoices(outfit.headwear).includes(coverPrint)?
+    {helmetCover:'fitted' as const,helmetCoverCamo:coverPrint}:{}),
   ...(reference.beretDrape?{beretDrape:reference.beretDrape}:{}),
   ...(reference.m1956Variant?{m1956Variant:reference.m1956Variant}:{}),
   ...(reference.m56Details?{m56Details:reference.m56Details}:{}),

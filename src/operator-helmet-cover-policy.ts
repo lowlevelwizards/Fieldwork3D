@@ -23,7 +23,7 @@ export type HelmetCoverConfig={
  */
 export const HELMET_COVER_PRINTS={
  'm1-steel':['mitchell-leaf','m81-woodland','six-color-desert',
-  'three-color-desert']
+  'three-color-desert','greek-lizard']
 } as const satisfies Record<string,readonly HeadwearCamoId[]>;
 export const helmetCoverChoices=(headwear:string):readonly HeadwearCamoId[] =>
  headwear==='m1-steel'?HELMET_COVER_PRINTS['m1-steel']:[];
