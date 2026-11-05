@@ -143,6 +143,13 @@ function tooCloseToLeader(actor:PassageActor,others:readonly PassageActor[],
     const advance=intendedStep?
       (side(intendedStep,door)-side(actor.p,door))*heading:0;
     if(intendedStep&&advance<=.025)continue;
+    // A real lateral lane change can free the moving follower from the
+    // single-file stack. Permit this ONLY once the proposed body footprint
+    // has at least a full friendly body gap; passage geometry is still
+    // checked separately by the authoritative movement sweep.
+    if(intendedStep&&
+       !sameQueueLane({...actor,p:intendedStep},other,door)&&
+       distance(intendedStep,other.p)>=PASSAGE_FOLLOW_GAP)continue;
     if(ahead-Math.max(0,advance)<PASSAGE_FOLLOW_GAP)return true;
    }
   }
