@@ -9,6 +9,7 @@ import type {AcousticEvent} from './breach-sound-evidence.ts';
 import {interpretSound,soundResponse} from './breach-sound-evidence.ts';
 import {advanceSight,visualGain,confirmedSight}
  from './breach-visual-perception.ts';
+import {chooseCivilianRefuge} from './breach-civilian-refuge.ts';
 
 type ArmedPerson={id:string;p:Pt;heading:number;health:number;
  velocity:number;posture:'stand'|'crouch';side:'blue'|'red';
@@ -19,6 +20,7 @@ export type CivilianSensoryWorld={
  doors:readonly Door[];walls:readonly Segment[];windows:readonly WindowState[];
  canSee:(from:Pt,to:Pt)=>boolean;
  canReach:(from:Pt,to:Pt)=>boolean;
+ routeTo?:(from:Pt,to:Pt)=>Pt[];
 };
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const offAxis=(from:number,to:number)=>
@@ -38,15 +40,6 @@ function addEvidence(c:CivilianActor,id:string,at:number,
  // The estimate is observer-derived for audio, observed for confirmed sight.
  // This field is never exposed to the player's current-fog display.
  if(kind!=='orient'||estimateReliable)c.threatEstimate={...point};
-}
-function refuge(c:CivilianActor,world:CivilianSensoryWorld):Pt|null{
- const threat=c.threatEstimate;
- if(!threat)return null;
- const current=dist(c.p,threat);
- return c.routine.filter(p=>
-   dist(p,c.p)>22&&dist(p,threat)>current+18&&
-   world.canReach(c.p,p))
-  .sort((a,b)=>dist(b,threat)-dist(a,threat))[0]??null;
 }
 export function stepCivilianResponse(c:CivilianActor,now:number,dt:number,
   world:CivilianSensoryWorld):void{
@@ -115,12 +108,12 @@ export function stepCivilianResponse(c:CivilianActor,now:number,dt:number,
   const delay=c.persona==='startled'?.35:
     c.persona==='cautious'?.60:.80;
   if(now-c.stateSince>=delay){
-   const safe=refuge(c,world);
+   const safe=chooseCivilianRefuge(c,world);
    if(safe&&c.persona!=='startled'){
-    c.goal={...safe};c.dwellUntil=now;
-    setState(c,'fleeing',now);
+    c.goal={...safe.goal};c.nav=safe.path.map(p=>({...p}));
+    c.dwellUntil=now;setState(c,'fleeing',now);
    }else{
-    c.goal=null;setState(c,'frozen',now);
+    c.goal=null;c.nav=[];setState(c,'frozen',now);
    }
   }
  }

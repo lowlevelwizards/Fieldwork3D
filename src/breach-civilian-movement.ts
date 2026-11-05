@@ -14,7 +14,7 @@ export function stepCivilianMovement(c:CivilianActor,now:number,dt:number,
    c.velocity=0;return;
  }
  if(now<c.dwellUntil||now<c.retryAt){c.velocity=0;return;}
- let goal:Pt|null=c.goal;
+ let goal:Pt|null=c.nav.length?c.nav[0]:c.goal;
  const routine=c.state==='routine';
  if(routine){
   if(c.routine.length<2){c.velocity=0;return;}
@@ -29,7 +29,16 @@ export function stepCivilianMovement(c:CivilianActor,now:number,dt:number,
  if(!goal){c.velocity=0;return;}
  const remaining=dist(c.p,goal);
  if(remaining<9){
-  c.p={...goal};c.goal=null;c.velocity=0;
+  // A route node never teleports the actor across a last closed door.
+  if(!clear(c.p,goal)||occupied(goal,c.id)){
+   c.velocity=0;c.blockedTime+=dt;return;
+  }
+  c.p={...goal};c.velocity=0;
+  if(c.nav.length){
+   c.nav.shift();
+   if(c.nav.length)return;
+  }
+  c.goal=null;
   if(c.state==='fleeing'){
    setCivilianState(c,'hiding',now);c.dwellUntil=now+3;
   }else if(c.state==='hiding')c.dwellUntil=now+3;
@@ -46,7 +55,7 @@ export function stepCivilianMovement(c:CivilianActor,now:number,dt:number,
    if(c.blockedTime>1.25){
     c.retryAt=now+1.2;c.blockedTime=0;
     if(routine)c.routineIndex++;
-    else {c.goal=null;setCivilianState(c,'frozen',now);}
+    else {c.goal=null;c.nav=[];setCivilianState(c,'frozen',now);}
    }
    return;
  }

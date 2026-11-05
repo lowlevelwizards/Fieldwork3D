@@ -17,6 +17,8 @@ export type CivilianActor={
   lastVisualId:string|null;visualProgress:Record<string,number>;
   threatEstimate:Pt|null;
   routine:Pt[];routineIndex:number;dwellUntil:number;
+  /** Known building options are authored from site geometry, not threats. */
+  refugePoints:Pt[];
   goal:Pt|null;nav:Pt[];blockedTime:number;retryAt:number;
   homeRoomId:string;homeZoneId:string|null;appearanceSeed:number;
   rescueTarget:boolean;following:string|null;
@@ -32,7 +34,7 @@ export function createCivilian(spec:CivilianSpec):CivilianActor{
     lastNoiseId:0,lastSenseAt:0,lastVisualId:null,
     visualProgress:{},threatEstimate:null,
     routine:(spec.routine??[]).map(p=>({...p})),
-    routineIndex:0,dwellUntil:0,goal:null,nav:[],
+    refugePoints:[],routineIndex:0,dwellUntil:0,goal:null,nav:[],
     blockedTime:0,retryAt:0,homeRoomId:spec.roomId,
     homeZoneId:spec.zoneId??null,appearanceSeed:spec.appearanceSeed,
     rescueTarget:!!spec.isRescueTarget,following:null,
