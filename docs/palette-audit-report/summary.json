@@ -1,8 +1,8 @@
 {
   "files": 528,
-  "reachableFiles": 431,
-  "coreOccurrences": 2007,
-  "coreDistinct": 1792,
+  "reachableFiles": 391,
+  "coreOccurrences": 1714,
+  "coreDistinct": 1564,
   "occurrences": 2603,
   "distinct": 2295,
   "singletons": 2109,
@@ -42,7 +42,7 @@
     {
       "hex": "#ffffff",
       "n": 40,
-      "coreUses": 19,
+      "coreUses": 16,
       "scope": [
         "UI / HUD",
         "Combat / mission",
@@ -63,7 +63,7 @@
     {
       "hex": "#000000",
       "n": 7,
-      "coreUses": 7,
+      "coreUses": 6,
       "scope": [
         "UI / HUD"
       ],
@@ -145,7 +145,7 @@
     {
       "hex": "#182c27",
       "n": 5,
-      "coreUses": 5,
+      "coreUses": 4,
       "scope": [
         "UI / HUD"
       ],
@@ -224,7 +224,7 @@
     {
       "hex": "#c8ac72",
       "n": 4,
-      "coreUses": 4,
+      "coreUses": 0,
       "scope": [
         "UI / HUD"
       ],
@@ -238,7 +238,7 @@
     {
       "hex": "#f3dba7",
       "n": 4,
-      "coreUses": 4,
+      "coreUses": 0,
       "scope": [
         "UI / HUD"
       ],
@@ -280,7 +280,7 @@
     {
       "hex": "#23352e",
       "n": 4,
-      "coreUses": 4,
+      "coreUses": 0,
       "scope": [
         "UI / HUD",
         "Operator / equipment"
@@ -341,7 +341,7 @@
     {
       "hex": "#a8ab96",
       "n": 3,
-      "coreUses": 3,
+      "coreUses": 0,
       "scope": [
         "UI / HUD"
       ],
@@ -392,7 +392,7 @@
     {
       "hex": "#202c2b",
       "n": 3,
-      "coreUses": 3,
+      "coreUses": 0,
       "scope": [
         "UI / HUD"
       ],
@@ -406,7 +406,7 @@
     {
       "hex": "#718b7e",
       "n": 3,
-      "coreUses": 3,
+      "coreUses": 1,
       "scope": [
         "UI / HUD"
       ],
@@ -424,7 +424,7 @@
     {
       "hex": "#192b29",
       "n": 3,
-      "coreUses": 3,
+      "coreUses": 1,
       "scope": [
         "UI / HUD"
       ],
@@ -442,7 +442,7 @@
     {
       "hex": "#182923",
       "n": 3,
-      "coreUses": 3,
+      "coreUses": 2,
       "scope": [
         "UI / HUD"
       ],

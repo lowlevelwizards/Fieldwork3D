@@ -11,7 +11,7 @@ Generated from the checked-out repository HEAD by `node scripts/audit-game-color
 
 ## Totals
 - Source files inspected: **528**
-- Core Breach reachable source modules (approximate static import graph): **431**; core authored occurrences: **2007**; core unique RGB: **1792**.
+- Core Breach reachable source modules (approximate static import graph): **391**; core authored occurrences: **1714**; core unique RGB: **1564**.
 - Literal color occurrences: **2603**
 - Distinct normalized RGB values: **2295**
 - Single-use RGB colors: **2109**
