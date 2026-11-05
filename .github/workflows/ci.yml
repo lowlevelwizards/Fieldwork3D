@@ -443,7 +443,7 @@ jobs:
           node --experimental-strip-types --test \
             tests/dnav-door-audit.test.mjs \
             tests/physicality-door-aware-routing.test.mjs \
-            tests/coupled-door-session.test.mjs \
+            tests/coupled-door-contact.test.mjs \
             tests/door-leaf-overlap-session.test.mjs \
             tests/doorway-convoy-flow.test.mjs \
             tests/gameplay-g4d-auto-door-contact.test.mjs

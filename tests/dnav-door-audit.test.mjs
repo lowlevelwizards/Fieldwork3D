@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {sampleDoorBlock} from '../src/breach-door-navigation-audit.ts';
+import {doorLeafSegment} from '../src/breach-core.ts';
 const door={id:'ENTRY',a:{x:120,y:100},b:{x:168,y:100},
  hinge:'a',swing:-1,open:true,openFraction:.83,locked:false};
 const actor={
@@ -9,7 +10,9 @@ const actor={
  lastBlocker:'door',motorPause:null,recoveryAttempts:3,velocity:0
 };
 test('DNav-A records an actual nearby leaf, its open fraction and intended order',()=>{
- const x=sampleDoorBlock(actor,[door]);
+ const leaf=doorLeafSegment(door);
+ const midpoint={x:(leaf.a.x+leaf.b.x)/2,y:(leaf.a.y+leaf.b.y)/2};
+ const x=sampleDoorBlock({...actor,p:midpoint},[door]);
  assert.equal(x.doorId,'ENTRY');
  assert.equal(x.fraction,.83);
  assert.equal(x.nearPhysicalContact,true);
@@ -27,7 +30,10 @@ test('DNav-A reports actual lock/hold and never changes door state',()=>{
  const d={...door,open:false,openFraction:0,locked:true,wedged:true,
  heldBy:'enemy'};
  const before=structuredClone(d);
- const x=sampleDoorBlock(actor,[d]);
+ const leaf=doorLeafSegment(d);
+ const x=sampleDoorBlock({...actor,p:{
+  x:(leaf.a.x+leaf.b.x)/2,y:(leaf.a.y+leaf.b.y)/2
+ }},[d]);
  assert.equal(x.locked,true);assert.equal(x.wedged,true);
  assert.equal(x.held,true);assert.deepEqual(d,before);
 });
