@@ -378,7 +378,7 @@ function jgsdf8C():Uint8Array{
 function soldier2000_8C():Uint8Array{
  // Keep the broad exposed earth-brown SANDF ground established in 8B.
  // Slightly grow lobes; restore their SMALL contrasting interior spores.
- const source=paint(S2000.map(m=>scaleMotif(m,.735)),0);
+ const source=paint(S2000.map(m=>scaleMotif(m,.725)),0);
  const out=source.slice();
  for(let row=0;row<21;row++)for(let col=0;col<21;col++){
   const r=hash(col,row,191);
