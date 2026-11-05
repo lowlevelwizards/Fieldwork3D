@@ -1,4 +1,6 @@
 # Fieldwork 3D / Breach — source color census
+[**Start with the curated assessment and implementation decisions**](CURATED-REVIEW.md) — material/semantic exceptions, specific merges and safeguards.
+
 Generated from the checked-out repository HEAD by `node scripts/audit-game-colors.mjs`. No game colors were modified.
 
 ## Scope and limitations
