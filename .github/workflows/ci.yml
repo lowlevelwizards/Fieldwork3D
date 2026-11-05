@@ -831,6 +831,12 @@ jobs:
           node --experimental-strip-types --test \
             tests/faction-reference.test.mjs \
             tests/ux-r2-studio-flow.test.mjs
+      - name: R5 visual identity critical contracts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r5-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/r5-identity-stage-a.test.mjs \
+            tests/faction-reference.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
