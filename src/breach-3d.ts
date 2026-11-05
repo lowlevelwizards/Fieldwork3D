@@ -52,9 +52,11 @@ import {casingAt,CASING_LIMIT,IMPACT_MARK_LIMIT,impactProfile} from './breach-ef
 import {muzzleFlashCue,impactPulse} from './breach-combat-cues.ts';
 import {sampleThrow} from './breach-flash.ts';
 import {doorProportions,DOOR_PANEL_END_RECESS,DOOR_FRAME_INSET} from './breach-door-proportions.ts';
-import {paintFogMask,occupiedFogRooms,FOG_WIDTH,FOG_HEIGHT,maskSize} from './breach-fog-mask.ts';
+import {paintFogMask,paintFogMemory,paintFogVisibility,occupiedFogRooms,
+  FOG_WIDTH,FOG_HEIGHT,maskSize,type FogDiagnostic}
+  from './breach-fog-mask.ts';
 import {exteriorKnownFogRects,fogUvAt} from './breach-fog-domain.ts';
-import {fogFingerprint} from './breach-fog-cache.ts';
+import {fogFingerprint,fogMemoryFingerprint} from './breach-fog-cache.ts';
 import {wallOccludesFriendly,transitionWallOpacity} from './breach-camera-occlusion.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {interpolatedActor,type RenderFrame}
@@ -102,6 +104,14 @@ export class TacticalScene3D{
     new URLSearchParams(location.search).get('quality'),
     navigator.maxTouchPoints>0);
   private lastFogSignature='';
+  private lastMemoryFogSignature='';
+  private lastMemoryFogSession:Session|null=null;
+  private readonly fogLegacy=new URLSearchParams(location.search).has('fogLegacy');
+  private readonly fogDiagnostic:FogDiagnostic=
+    new URLSearchParams(location.search).get('fogDebug')==='palette'?
+      'palette':'normal';
+  private fogMemoryPaints=0;
+  private fogSightPaints=0;
   private lastFogSession:Session|null=null;
   /** Counts submitted WebGL work; GPU timings require a separate timer. */
   performanceStats(){
@@ -109,7 +119,9 @@ export class TacticalScene3D{
     return {calls:info.calls,triangles:info.triangles,
       staticBatch:this.staticBatches.stats(),
       shadowRefreshes:this.shadowUpdates.refreshes,
-      shadowReuses:this.shadowUpdates.reuses};
+      shadowReuses:this.shadowUpdates.reuses,
+      fogMemoryPaints:this.fogMemoryPaints,
+      fogSightPaints:this.fogSightPaints};
   }
   readonly renderer:THREE.WebGLRenderer;
   readonly scene=new THREE.Scene();
@@ -125,6 +137,8 @@ export class TacticalScene3D{
   private fogExplored:THREE.InstancedMesh;
   private fogCanvas!:HTMLCanvasElement;
   private fogContext!:CanvasRenderingContext2D;
+  private fogMemoryCanvas!:HTMLCanvasElement;
+  private fogMemoryContext!:CanvasRenderingContext2D;
   private fogTexture!:THREE.CanvasTexture;
   private smoothFog!:THREE.Mesh;
   private exteriorKnownFog!:THREE.Mesh;
@@ -294,6 +308,12 @@ export class TacticalScene3D{
     const context=this.fogCanvas.getContext('2d');
     if(!context)throw Error('Fog canvas unavailable');
     this.fogContext=context;
+    this.fogMemoryCanvas=document.createElement('canvas');
+    this.fogMemoryCanvas.width=FOG_WIDTH;
+    this.fogMemoryCanvas.height=FOG_HEIGHT;
+    const memoryContext=this.fogMemoryCanvas.getContext('2d');
+    if(!memoryContext)throw Error('Fog memory canvas unavailable');
+    this.fogMemoryContext=memoryContext;
     this.fogTexture=new THREE.CanvasTexture(this.fogCanvas);
     this.fogTexture.minFilter=THREE.LinearFilter;
     this.fogTexture.magFilter=THREE.LinearFilter;
@@ -464,6 +484,10 @@ export class TacticalScene3D{
     const fogSize=maskSize(site);
     if(this.fogCanvas.width!==fogSize.width)this.fogCanvas.width=fogSize.width;
     if(this.fogCanvas.height!==fogSize.height)this.fogCanvas.height=fogSize.height;
+    if(this.fogMemoryCanvas.width!==fogSize.width)
+      this.fogMemoryCanvas.width=fogSize.width;
+    if(this.fogMemoryCanvas.height!==fogSize.height)
+      this.fogMemoryCanvas.height=fogSize.height;
     this.smoothFog.geometry.dispose();
     this.smoothFog.geometry=new THREE.PlaneGeometry(
       bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
@@ -499,6 +523,7 @@ export class TacticalScene3D{
     if(site)this.buildStaticBatches();
     this.root.add(this.fogUnknown,this.fogExplored);
     this.fogAt=-1;this.lastFogSignature='';this.lastFogSession=null;
+    this.lastMemoryFogSignature='';this.lastMemoryFogSession=null;
     this.resetCamera();
   }
   /** Only site-static boxes owned by independently revealed props and door
@@ -2158,6 +2183,12 @@ export class TacticalScene3D{
     // Do not repaint/re-upload an identical visibility texture every 55ms
     // while operators are stationary in planning. Quantized pose and intel
     // changes make the key; real LOS is still computed by the fog renderer.
+    const memorySignature=fogMemoryFingerprint({
+      mode:s.intel.mode,seed:s.site?.seed??null,
+      seenRevision:s.seenGroundRevision,
+      rooms:s.intel.rooms.size,walls:s.intel.walls.size,
+      doors:s.intel.doors.size,cover:s.intel.cover.size
+    });
     const fogSignature=omniscient?'omniscient':fogFingerprint({
       mode:s.intel.mode,seed:s.site?.seed??null,
       seenCount:s.seenGround.size,seenRevision:s.seenGroundRevision,
@@ -2175,7 +2206,25 @@ export class TacticalScene3D{
         (sessionChanged||fogSignature!==this.lastFogSignature)){
       this.fogAt=0;this.lastFogSignature=fogSignature;
       this.lastFogSession=s;
-      paintFogMask(this.fogContext,s);
+      if(this.fogLegacy){
+        paintFogMask(this.fogContext,s,this.fogDiagnostic);
+        this.fogMemoryPaints++;this.fogSightPaints++;
+      }else{
+        if(this.lastMemoryFogSession!==s||
+           this.lastMemoryFogSignature!==memorySignature){
+          paintFogMemory(this.fogMemoryContext,s,this.fogDiagnostic);
+          this.lastMemoryFogSignature=memorySignature;
+          this.lastMemoryFogSession=s;
+          this.fogMemoryPaints++;
+        }
+        this.fogContext.setTransform(1,0,0,1,0,0);
+        this.fogContext.globalCompositeOperation='source-over';
+        this.fogContext.clearRect(0,0,
+          this.fogCanvas.width,this.fogCanvas.height);
+        this.fogContext.drawImage(this.fogMemoryCanvas,0,0);
+        paintFogVisibility(this.fogContext,s);
+        this.fogSightPaints++;
+      }
       this.fogTexture.needsUpdate=true;
     }else if(omniscient)this.fogAt=-1;
     const dynamicShadows=s.phase==='running'||
