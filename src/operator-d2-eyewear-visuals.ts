@@ -106,7 +106,7 @@ function aviator(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
 }
 function shooting(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
  root.userData.d2EyeFitTop=4.94;
- root.userData.d2EyeDesign='R4-panoramic-shooting-glasses';
+ root.userData.d2EyeDesign='R5-single-clean-shooting-brow';
  // True shooting-glasses identity: one continuous wraparound pane with
  // two swept outer cheeks and a tall, OPEN underside nasal cutout.
  const pane:EyePolygon=[
@@ -117,13 +117,14 @@ function shooting(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
   [1.70,4.83],[-1.70,4.83]
  ];
  lensSurface(root,lens,'shooting-panoramic',pane,-5.18,1.02);
- // Separate brow bar follows the same curve but does not frame the bottom.
+ // One eight-corner brow strip. Its front surface is 0.14 units in
+ // front of the panoramic lens instead of 0.02: no near-coplanar layers.
+ // The entire solid inherits the same lateral sweep as the lens.
  const brow:EyePolygon=[
-  [-4.43,4.13],[-4.27,4.79],[-2.52,5.04],
-  [0,5.00],[2.52,5.04],[4.27,4.79],
-  [4.43,4.13],[3.82,4.42],[0,4.66],[-3.82,4.42]
+  [-4.42,4.26],[-4.19,4.84],[0,5.00],[4.19,4.84],
+  [4.42,4.26],[3.85,4.50],[0,4.67],[-3.85,4.50]
  ];
- sweptFrame(root,frame,'integrated-swept-frame',brow,[],-5.20,.57,1.02);
+ sweptFrame(root,frame,'integrated-swept-frame',brow,[],-5.32,.34,1.02);
  outsideTemples(root,frame,'continuous-swept-temple',{
   frontX:4.24,frontY:4.55,frontZ:-4.39,
   shoulderX:4.42,shoulderY:4.35,shoulderZ:-4.10,
