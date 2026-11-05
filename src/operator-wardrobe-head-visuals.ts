@@ -126,6 +126,8 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  // silhouette system as the approved ACH and high-cut.
  for(const id of ['boonie','beanie','pasgt','soviet-steel'] as const)
   headModel(id,true,cap=>cap.add(createHeadwearSilhouette(id,detail(id))));
+ headModel('police-helmet',true,model=>model.add(
+  createHeadwearSilhouette('police-helmet',detail('police-helmet'))));
  headModel('ddr-m56',true,model=>{
   model.add(createHeadwearSilhouette('ddr-m56',detail('ddr-m56')));
   m56Extras=createM56Extras(model,dark);
