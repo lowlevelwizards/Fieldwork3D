@@ -35,7 +35,16 @@ try{
    ['m81-woodland','armor','bdu-shirt','plate-legacy','no-rig'],
    ['multicam','armor','bdu-shirt','plate-jpc','no-rig'],
    ['m81-woodland','gear','bdu-shirt','armor-bare','lbv'],
-   ['multicam','gear','bdu-shirt','armor-bare','split-front']
+   ['multicam','gear','bdu-shirt','armor-bare','split-front'],
+   // Camouflage 6B: direct WebGL prints on worn cloth, with matching zooms.
+   ['atacs-fg','top','acu-shirt','armor-bare','no-rig'],
+   ['ukrainian-mm14','top','acu-shirt','armor-bare','no-rig'],
+   ['aor2','top','acu-shirt','armor-bare','no-rig'],
+   ['multicam-tropic','top','acu-shirt','armor-bare','no-rig'],
+   ['atacs-au','top','acu-shirt','armor-bare','no-rig'],
+   ['ss-leto','top','bdu-shirt','armor-bare','no-rig'],
+   ['aor1','top','acu-shirt','armor-bare','no-rig'],
+   ['multicam-arid','top','acu-shirt','armor-bare','no-rig']
   ];
   for(const [print,channel,top,armor,rig] of patterns){
    const query=new URLSearchParams({camo:print,camoChannel:channel,
@@ -54,6 +63,6 @@ try{
    }
   }
   if(errors.length)throw Error('Camo comparison Lab: '+errors.join('; '));
-  console.log('R9 phone comparisons: 24 consistent close/gameplay WebGL renders.');
+  console.log('R9/6B phone comparisons: '+(patterns.length*2)+' consistent close/gameplay WebGL renders.');
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}

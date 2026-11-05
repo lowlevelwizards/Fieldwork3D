@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import * as THREE from 'three';
 import {CAMO6A_IDS,camo6AIndices} from '../src/operator-camo-batch-6a.ts';
 import {HEADWEAR_CAMO_IDS,HEADWEAR_CAMO_RECIPES,
- HEADWEAR_CAMO_DENSITY,headwearCamoPixels,headwearCamoSize,headwearCamoCoverage,
+ HEADWEAR_CAMO_DENSITY,headwearCamoPixels,headwearCamoSize,headwearCamoCoverage,headwearCamoIndices,
  headwearCamoPlacement,headwearCamoChoices} from '../src/operator-headwear-camo.ts';
 import {CAMO_CATALOG,filterCamoCatalog} from '../src/operator-headwear-camo-catalog.ts';
 import {headwearCamoTexture} from '../src/operator-headwear-materials.ts';
@@ -28,7 +29,7 @@ test('6A appends precisely eight new masters without renaming historical 30 IDs'
 test('6A fabrics have distinct opaque canonical colors, periodic 64px masters and stable art',()=>{
  const seen=new Set();
  for(const id of CAMO6A_IDS){
-  const r=HEADWEAR_CAMO_RECIPES[id],indices=camo6AIndices(id);
+  const r=HEADWEAR_CAMO_RECIPES[id],indices=headwearCamoIndices(id);
   const headwear=headwearCamoPixels(id),coverage=headwearCamoCoverage(id);
   assert.equal(headwearCamoSize(id),64);
   assert.equal(indices.length,4096);
@@ -37,10 +38,13 @@ test('6A fabrics have distinct opaque canonical colors, periodic 64px masters an
   assert.ok(r.motifs.length>=4,id);
   assert.ok(r.colors.length>=4&&r.colors.length<=7,id);
   assert.ok(r.description.length>50,id);
-  assert.deepEqual(indices,camo6AIndices(id),'deterministic '+id);
+  assert.deepEqual(indices,camo6AIndices(id,
+   id==='multicam-tropic'||id==='multicam-arid'?headwearCamoIndices('multicam'):undefined),
+   'deterministic '+id);
   assert.ok(coverage.every(v=>v>.01&&v<.80),id+' distinct ink proportions');
   for(let n=0;n<coverage.length;n++)
-   assert.ok(Math.abs(coverage[n]-r.targetCoverage[n])<.002,id+' palette ratio '+n);
+   assert.ok(Math.abs(coverage[n]-r.targetCoverage[n])<
+    ((id==='multicam-tropic'||id==='multicam-arid')?.035:.002),id+' palette ratio '+n);
   for(let j=0;j<indices.length;j++){
    const o=j*4;
    assert.deepEqual(Array.from(headwear.slice(o,o+3)),r.colors[indices[j]],id);
@@ -59,9 +63,9 @@ test('6A look identities preserve digital vs organic, terrain and per-pattern de
  assert.equal(CAMO_CATALOG['ss-leto'].origin,'Russia');
  assert.equal(CAMO_CATALOG['atacs-fg'].style,'organic');
  assert.equal(CAMO_CATALOG['aor1'].style,'digital');
- assert.equal(HEADWEAR_CAMO_DENSITY.aor1,3);
- assert.equal(HEADWEAR_CAMO_DENSITY.aor2,3);
- assert.equal(FABRIC_CAMO_DENSITY['atacs-fg'],2.65);
+ assert.equal(HEADWEAR_CAMO_DENSITY.aor1,4);
+ assert.equal(HEADWEAR_CAMO_DENSITY.aor2,4);
+ assert.equal(FABRIC_CAMO_DENSITY['atacs-fg'],2.8);
  assert.equal(filterCamoCatalog({terrain:'all',style:'all',origin:'Ukraine',
   text:'',onlyCompatible:false,onlyFavorites:false},[],new Set())[0],'ukrainian-mm14');
 });
@@ -99,4 +103,45 @@ test('6A authentic garment and loadbearing restrictions remain independent',()=>
  assert.equal(validRigPrint('micro-rig','atacs-fg'),true);
  assert.equal(validRigPrint('chicom-rig','multicam-arid'),false);
  assert.equal(validRigPrint('field-webbing','ss-leto'),false);
+});
+
+test('6B MultiCam variants use the exact original ink topology and identical world scale',()=>{
+ const original=headwearCamoIndices('multicam');
+ const originalColors=HEADWEAR_CAMO_RECIPES.multicam.colors;
+ for(const id of ['multicam-tropic','multicam-arid']){
+  const indices=headwearCamoIndices(id);
+  assert.equal(headwearCamoSize(id),64);
+  assert.equal(indices.length,4096);
+  assert.equal(HEADWEAR_CAMO_DENSITY[id],4);
+  assert.equal(FABRIC_CAMO_DENSITY[id],4);
+  assert.equal(32/HEADWEAR_CAMO_DENSITY.multicam,64/HEADWEAR_CAMO_DENSITY[id]);
+  assert.equal(32/FABRIC_CAMO_DENSITY.multicam,64/FABRIC_CAMO_DENSITY[id]);
+  for(let y=0;y<64;y++)for(let x=0;x<64;x++)
+   assert.equal(indices[y*64+x],original[(y>>1)*32+(x>>1)],id+' pixel '+x+','+y);
+  assert.notDeepEqual(HEADWEAR_CAMO_RECIPES[id].colors,originalColors,
+   id+' is a distinct seasonal palette');
+ }
+});
+test('6B authored families preserve independent geometry and controlled micro/macro scale',()=>{
+ const idList=['atacs-fg','atacs-au','ukrainian-mm14','aor1','aor2','ss-leto'];
+ const tiles=idList.map(id=>headwearCamoIndices(id));
+ const signatures=tiles.map(b=>Buffer.from(b).toString('base64'));
+ assert.equal(new Set(signatures).size,idList.length);
+ const diff=(a,b)=>a.reduce((n,p,i)=>n+(p!==b[i]?1:0),0)/a.length;
+ assert.ok(diff(tiles[0],tiles[1])>.20,'A-TACS FG and AU have separately authored fields, not recolors');
+ assert.ok(diff(tiles[3],tiles[4])>.20,'AOR1/AOR2 are separate connected digital designs');
+ for(const id of ['ukrainian-mm14','aor1','aor2']){
+  const image=headwearCamoIndices(id);
+  const edges=[0,0];
+  for(let y=0;y<64;y++)for(let x=0;x<64;x++){
+   if(image[y*64+x]!==image[y*64+(x+1)%64])edges[0]++;
+   if(image[y*64+x]!==image[((y+1)%64)*64+x])edges[1]++;
+  }
+  assert.ok(edges[0]>160&&edges[1]>160,id+' requires digital breakup in both axes');
+  assert.ok(Math.max(...edges)/Math.min(...edges)<2.5,id+' no single-direction stripe dominance');
+ }
+ const raw=readFileSync(new URL('../src/operator-camo-batch-6a.ts',import.meta.url),'utf8');
+ assert.doesNotMatch(raw,/order\.sort\(/,'no percentile-sorted generic noise');
+ assert.doesNotMatch(raw,/function score\(/,'no shared score field');
+ assert.match(raw,/Multicam variants require the original 32px MultiCam ink master|MultiCam variants require the original 32px MultiCam ink master/i);
 });

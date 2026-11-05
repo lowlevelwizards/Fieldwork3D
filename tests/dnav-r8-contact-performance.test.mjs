@@ -58,7 +58,8 @@ test('R8b: sustained shoulder pressure does not stack impulsive kicks',()=>{
  const normal={x:-vy/length,y:vx/length};
  const one={x:mid.x+normal.x*14,y:mid.y+normal.y*14};
  const two={x:mid.x-normal.x*14,y:mid.y-normal.y*14};
- const from=pointToSegment(one,next)>pointToSegment(one,leaf)?one:two;
+ const gapDelta=p=>pointToSegment(p,next)-pointToSegment(p,leaf);
+ const from=gapDelta(one)>gapDelta(two)?one:two;
  const to={x:mid.x*2-from.x,y:mid.y*2-from.y};
  const first=pressDoorOnBodyAttempt(from,to,[d],1/60,[from]);
  assert.equal(first?.doorId,d.id);
