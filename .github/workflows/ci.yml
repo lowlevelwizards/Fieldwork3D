@@ -992,6 +992,10 @@ jobs:
             tests/civilian-b7-rescue-mission.test.mjs \
             tests/civilian-b8-replay.test.mjs \
             tests/mission-escort-physicality.test.mjs
+      - name: Weapon workbench — mobile sockets, AR/AK save integrity and Quick Play
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/weapon-workbench-mobile-sockets-') }}
+        run: |
+          node --experimental-strip-types --test tests/weapon-workbench-mobile-sockets.test.mjs tests/weapon-families-01.test.mjs tests/equipment-19-06-quickplay-editor.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

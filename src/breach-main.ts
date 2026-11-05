@@ -42,6 +42,7 @@ import {weaponClearance} from './breach-weapon-clearance.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter}
  from './equipment-weapon-light-beam.ts';
 import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
+import type {WorkbenchSocket} from './equipment-weapon-workbench-layout.ts';
 import {carryCapacityReport} from './equipment-carry-placement.ts';
 import {mostUrgentWound} from './breach-medical-wounds.ts';
 import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
@@ -78,13 +79,14 @@ import {formatCombatReview} from './breach-combat-review.ts';
 import {readRoster,applyRosterIdentity,freshQuickPlayRoster,
   serializeQuickPlayCosmetics,
   resupplyRoster,equipRoster,equipRosterGear,moveRosterMagazine,
- configureRosterWeapon,
+ configureRosterWeapon,configureRosterWeaponPreset,configureRosterWeaponBodyPart,
  renameRosterMember} from './breach-roster.ts';
 import {validateStudioAppearanceEdits,applyStudioRosterEdits,
  applyStudioCampaignEdits} from './operator-studio-batch-save.ts';
 import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
- sameWeaponConfiguration,type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
+ sameWeaponConfiguration,familyAccessoryAllowed} from './equipment-weapon-assemblies.ts';
+import {FAMILY_PRESETS,FAMILY_PART_SLOTS,FAMILY_PARTS,matchingFamilyPreset,compatibleFamilyPart,type FamilyPartSlot} from './equipment-weapon-families.ts';
 import {newCampaign,readCampaign,acceptContract,resolveOperation,
  purchaseAmmo,purchaseMedical,resupplyOperator,resupplyMedicalOperator,treatOperator,
  hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
@@ -109,7 +111,7 @@ import './ui/ux-r1-sheets.css';
 import './ui/ux-r3-hud.css';
 import './ui/fieldwork-action-toast.css';
 import {showFieldworkActionFeedback} from './ui/fieldwork-action-toast.ts';
-import {fieldworkSelectField,confirmFieldworkAction,promptFieldworkText} from './ui/fieldwork-controls.ts';
+import {confirmFieldworkAction,promptFieldworkText} from './ui/fieldwork-controls.ts';
 import {createTacticalSheetNavigation} from './ui/tactical-sheet-navigation.ts';
 import {buildQuickLoadoutGroups,loadoutGroupForSlot,
  type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
@@ -630,6 +632,7 @@ let expandedQuickWeapon:string|null=null;
 let quickWorkbench:WeaponWorkbenchPreview|null=null;
 let quickWorkbenchId:string|null=null;
 function renderOperationsBoard(){
+ const priorScroll=operationsBoard.scrollTop;
  quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
  operationsBoard.replaceChildren();
  const heading=document.createElement('div');
@@ -694,6 +697,7 @@ function renderOperationsBoard(){
   loadoutAction.addEventListener('click',()=>{
    const opening=!kit.open;kit.open=opening;
    expandedQuickKit=opening?member.id:null;
+   if(opening){expandedQuickWeapon=member.id;weaponEditor.open=true;}
    if(opening)kit.scrollIntoView({block:'nearest',behavior:'smooth'});
   });
   const look=document.createElement('button');
@@ -728,18 +732,59 @@ function renderOperationsBoard(){
   const loadout=buildQuickLoadoutGroups(kit,expandedQuickLoadoutGroup,group=>{
    expandedQuickLoadoutGroup=group;
   });
-  const weaponRow=fieldworkSelectField('PRIMARY WEAPON',
-   [{value:'carbine',label:'Carbine'},{value:'smg',label:'SMG'},
-    {value:'rifle',label:'Rifle'},{value:'shotgun',label:'Shotgun'}],
-   member.weapon,next=>{
-    if(state.phase!=='planning'||replaying)return;
-    persistentRoster=equipRoster(persistentRoster,member.id,next as typeof member.weapon);
+  // Visible buttons replace hard-to-read native selectors on iOS.
+  const typeHeading=document.createElement('strong');
+  typeHeading.className='fw-weapon-section-label';
+  typeHeading.textContent='PRIMARY WEAPON CLASS';
+  const typeChoices=document.createElement('div');
+  typeChoices.className='fw-weapon-tile-grid';
+  for(const [id,label] of [
+   ['carbine','CARBINE'],['rifle','RIFLE'],['smg','SMG'],['shotgun','SHOTGUN']
+  ] as const){
+   const button=document.createElement('button');
+   button.type='button';button.textContent=label;
+   button.setAttribute('aria-pressed',String(id===member.weapon));
+   button.disabled=state.phase!=='planning'||replaying;
+   button.addEventListener('click',()=>{
+    if(id===member.weapon||state.phase!=='planning'||replaying)return;
+    persistentRoster=equipRoster(persistentRoster,member.id,id);
     const saved=saveRoster();applyRosterIdentity(state,persistentRoster);
-    if(saved)showFieldworkActionFeedback(member.callsign+' · '+next.toUpperCase()+' EQUIPPED');
-    expandedQuickKit=member.id;expandedQuickLoadoutGroup='weapon';
-    renderOperationsBoard();updateHud();
+    if(saved)showFieldworkActionFeedback(member.callsign+' · '+label+' EQUIPPED');
+    expandedQuickKit=member.id;expandedQuickWeapon=member.id;
+    expandedQuickLoadoutGroup='weapon';renderOperationsBoard();updateHud();
    });
-  loadout.field('weapon').append(weaponRow);
+   typeChoices.append(button);
+  }
+  loadout.field('weapon').append(typeHeading,typeChoices);
+  const presets=FAMILY_PRESETS.filter(p=>p.weapon===member.weapon);
+  const presetHeading=document.createElement('strong');
+  presetHeading.className='fw-weapon-section-label';
+  presetHeading.textContent='3D WEAPON MODEL'+(presets.length?' · AR / AK':'');
+  const currentPreset=member.weaponConfiguration.build?
+   matchingFamilyPreset(member.weaponConfiguration.build):undefined;
+  const presetHint=document.createElement('p');
+  presetHint.className='fw-weapon-helper';
+  presetHint.textContent=presets.length?
+   'Choose a model to inspect and customize. Factory body pieces remain compatible with the selected receiver.':
+   'This class currently uses the original 3D model.';
+  const presetGrid=document.createElement('div');
+  presetGrid.className='fw-weapon-preset-grid';
+  for(const preset of presets){
+   const button=document.createElement('button');
+   button.type='button';button.textContent=preset.name;
+   button.title=preset.family.toUpperCase()+' family';
+   button.setAttribute('aria-pressed',String(currentPreset?.id===preset.id));
+   button.disabled=state.phase!=='planning'||replaying;
+   button.addEventListener('click',()=>{
+    if(state.phase!=='planning'||replaying)return;
+    persistentRoster=configureRosterWeaponPreset(persistentRoster,member.id,preset.id);
+    saveRoster();applyRosterIdentity(state,persistentRoster);
+    expandedQuickKit=member.id;expandedQuickWeapon=member.id;
+    expandedQuickLoadoutGroup='weapon';renderOperationsBoard();updateHud();
+   });
+   presetGrid.append(button);
+  }
+  loadout.field('weapon').append(presetHeading,presetHint,presetGrid);
   const resupply=document.createElement('button');resupply.type='button';
   resupply.className='fw-squad-resupply';resupply.textContent='RESUPPLY';
   resupply.addEventListener('click',()=>{
@@ -778,12 +823,30 @@ function renderOperationsBoard(){
    row.className='fw-equipment-choice';
    row.append(label,select);loadout.field(loadoutGroupForSlot(slot)).append(row);
   }
-  // Appearance is edited exclusively in Operator Studio; no duplicate wardrobe form.
+  // Factory body furniture and rail accessories share one spatial workbench.
   const weaponEditor=document.createElement('details');
+  weaponEditor.className='fw-weapon-editor';
   weaponEditor.open=expandedQuickWeapon===member.id;
-  const mountSelectors=new Map<WeaponAttachmentSlot,HTMLSelectElement>();
+  const socketRows=new Map<WorkbenchSocket,HTMLElement>();
   const workbenchHost=document.createElement('div');
-  workbenchHost.style.cssText='margin:10px 0 14px';
+  workbenchHost.style.cssText='min-width:0;max-width:100%;width:100%;margin:8px 0';
+  const socketPanel=document.createElement('div');
+  socketPanel.className='fw-weapon-socket-panel';
+  const socketHeading=document.createElement('strong');
+  socketHeading.className='fw-weapon-section-label';
+  const socketNote=document.createElement('p');
+  socketNote.className='fw-weapon-helper';
+  socketNote.textContent='Tap a labeled socket on the weapon to change this part.';
+  socketPanel.append(socketHeading,socketNote);
+  const initialSocket:WorkbenchSocket=member.weaponConfiguration.build?'body-receiver':'optic';
+  let selectedSocket:WorkbenchSocket=initialSocket;
+  const showSocket=(slot:WorkbenchSocket)=>{
+   if(!socketRows.has(slot))return;
+   selectedSocket=slot;
+   for(const [id,row] of socketRows)row.hidden=id!==slot;
+   socketHeading.textContent='SELECT PART · '+slot.replace('body-','').toUpperCase();
+   if(quickWorkbenchId===member.id)quickWorkbench?.setActiveSlot(slot);
+  };
   const syncWorkbench=()=>{
    const active=kit.open&&loadout.group.weapon.open&&weaponEditor.open;
    if(!active){if(quickWorkbenchId===member.id){
@@ -794,12 +857,13 @@ function renderOperationsBoard(){
    quickWorkbenchId=member.id;
    quickWorkbench=new WeaponWorkbenchPreview(workbenchHost,
     member.weaponConfiguration,slot=>{
-     const select=mountSelectors.get(slot);
+     showSocket(slot);
+     const select=socketRows.get(slot)?.querySelector('select');
      if(!select)return;
      select.focus({preventScroll:true});
-     select.scrollIntoView({block:'nearest',behavior:'smooth'});
-     try{select.showPicker();}catch{/* native picker unavailable */}
+     try{select.showPicker();}catch{/* mobile browser may require second tap */}
     });
+   quickWorkbench.setActiveSlot(selectedSocket);
   };
   weaponEditor.addEventListener('toggle',()=>{
    if(weaponEditor.open)expandedQuickWeapon=member.id;
@@ -807,26 +871,26 @@ function renderOperationsBoard(){
    syncWorkbench();
   });
   kit.addEventListener('toggle',syncWorkbench);
+  loadout.group.weapon.addEventListener('toggle',syncWorkbench);
   const weaponTitle=document.createElement('summary');
-  weaponTitle.textContent='WEAPON ATTACHMENTS';
-  weaponTitle.style.cssText='min-height:40px;cursor:pointer;padding:12px 0;font-weight:700;font-size:11px';
-  weaponEditor.append(weaponTitle,workbenchHost);
+  weaponTitle.textContent='3D WEAPON WORKBENCH · TAP SOCKETS';
+  weaponEditor.append(weaponTitle,workbenchHost,socketPanel);
   for(const slot of WEAPON_ATTACHMENT_SLOTS){
+   if(member.weaponConfiguration.build&&slot==='stock')continue;
    const row=document.createElement('label');
-   row.style.cssText='display:flex;justify-content:space-between;gap:8px;align-items:center;margin:8px 0';
+   row.className='fw-weapon-socket-row';
    const label=document.createElement('span');label.textContent=slot.toUpperCase();
-   label.style.fontSize='10px';
    const select=document.createElement('select');
    select.setAttribute('aria-label',slot+' attachment for '+member.callsign);
-   select.style.cssText='max-width:65%;min-height:44px;touch-action:manipulation;background:#243530;color:#e5e9d8;border-radius:7px;padding:6px';
-   for(const item of Object.values(WEAPON_ATTACHMENTS)){
-    if(item.slot!==slot||!item.compatible.includes(member.weapon))continue;
+   for(const part of Object.values(WEAPON_ATTACHMENTS)){
+    if(part.slot!==slot||!part.compatible.includes(member.weapon)||
+     (member.weaponConfiguration.build&&
+      !familyAccessoryAllowed(member.weaponConfiguration.build,slot,part.id)))continue;
     const option=document.createElement('option');
-    option.value=item.id;option.textContent=item.name;select.append(option);
+    option.value=part.id;option.textContent=part.name;select.append(option);
    }
    select.value=member.weaponConfiguration.slots[slot];
    select.disabled=state.phase!=='planning'||replaying;
-   mountSelectors.set(slot,select);
    select.addEventListener('focus',()=>quickWorkbenchId===member.id&&
     quickWorkbench?.setActiveSlot(slot));
    select.addEventListener('change',()=>{
@@ -836,8 +900,41 @@ function renderOperationsBoard(){
     expandedQuickKit=member.id;expandedQuickWeapon=member.id;
     expandedQuickLoadoutGroup='weapon';renderOperationsBoard();updateHud();
    });
-   row.append(label,select);weaponEditor.append(row);
+   row.append(label,select);row.hidden=slot!==initialSocket;
+   socketRows.set(slot,row);socketPanel.append(row);
   }
+  const build=member.weaponConfiguration.build;
+  if(build)for(const slot of FAMILY_PART_SLOTS){
+   const socket=('body-'+slot) as WorkbenchSocket;
+   const row=document.createElement('label');
+   row.className='fw-weapon-socket-row';
+   const label=document.createElement('span');label.textContent=slot.toUpperCase();
+   const select=document.createElement('select');
+   select.setAttribute('aria-label',slot+' body part for '+member.callsign);
+   const length=FAMILY_PARTS[build.parts.barrel]?.length;
+   for(const part of Object.values(FAMILY_PARTS)){
+    if(part.slot!==slot||part.family!==build.family)continue;
+    const receiver=slot==='receiver'?part.id:build.parts.receiver;
+    if(!compatibleFamilyPart(receiver,slot,part.id,member.weapon,length))continue;
+    const option=document.createElement('option');
+    option.value=part.id;option.textContent=part.name;select.append(option);
+   }
+   select.value=build.parts[slot];
+   select.disabled=state.phase!=='planning'||replaying;
+   select.addEventListener('focus',()=>quickWorkbenchId===member.id&&
+    quickWorkbench?.setActiveSlot(socket));
+   select.addEventListener('change',()=>{
+    if(state.phase!=='planning'||replaying)return;
+    persistentRoster=configureRosterWeaponBodyPart(persistentRoster,member.id,
+     slot as FamilyPartSlot,select.value);
+    saveRoster();applyRosterIdentity(state,persistentRoster);
+    expandedQuickKit=member.id;expandedQuickWeapon=member.id;
+    expandedQuickLoadoutGroup='weapon';renderOperationsBoard();updateHud();
+   });
+   row.append(label,select);row.hidden=socket!==initialSocket;
+   socketRows.set(socket,row);socketPanel.append(row);
+  }
+  showSocket(initialSocket);
   const measured=resolveWeaponAssembly(member.weaponConfiguration);
   const properties=document.createElement('p');
   properties.style.cssText='font-size:10px;opacity:.75;line-height:1.55';
@@ -900,10 +997,15 @@ function renderOperationsBoard(){
    loadout.field('carry').append(magSection);
   }
   card.append(kit);operationsBoard.append(card);
+  // A newly opened details subtree can report zero width on iOS until
+  // it is attached and laid out. Initialize after paint, not only on toggle.
+  if(kit.open&&loadout.group.weapon.open&&weaponEditor.open)
+   requestAnimationFrame(()=>{if(kit.isConnected)syncWorkbench();});
  }
  const hint=document.createElement('p');
  hint.textContent='Select an operator to edit. Close to resume planning.';
  operationsBoard.append(hint);
+ operationsBoard.scrollTop=priorScroll;
 }
 const tacticalSheetNavigation=createTacticalSheetNavigation({
  settings:ui.siteSettings,squad:operationsBoard,briefing:ui.briefingPanel
