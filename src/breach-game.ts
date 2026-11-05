@@ -3437,7 +3437,9 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   const impact=strikeSurface(from,far,s,muzzle.y,14,
     WEAPONS[a.weapon].penetration);
   const victim=firstCivilianAlongRay(from,yaw,
-    d(from,impact.end),s.civilians);
+    d(from,impact.end),s.civilians,{
+      muzzleHeight:muzzle.y,farHeight:14,farDistance:d(from,far)
+    });
   const fraction=victim?Math.min(1,victim.along/Math.max(1,d(from,far))):1;
   const reachedPanes=impact.paneHits.filter(index=>{
     const pane=s.windows[index];
@@ -3682,7 +3684,10 @@ function fire(s:Session,a:TeamActor,dt:number){
   // Only after firing do physical ray/body tests consider a civilian.
   // This cannot grant pre-shot target acquisition or hidden knowledge.
   const contact=firstCivilianAlongRay(muzzlePoint,yaw,
-    Math.min(d(muzzlePoint,far),blockerDist),s.civilians);
+    Math.min(d(muzzlePoint,far),blockerDist),s.civilians,{
+      muzzleHeight:muzzle.y,farHeight:strikeHeight,
+      farDistance:d(muzzlePoint,far)
+    });
   const civilianHit=contact&&(!wouldHitTarget||
     contact.along+5<muzzleRange)?contact:null;
   const hit=wouldHitTarget&&!civilianHit;
