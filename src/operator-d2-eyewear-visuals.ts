@@ -62,11 +62,13 @@ function aviator(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
  // Full cheek mass, bottom pulled IN towards nose, not dangling fangs.
  const outerLeft:EyePolygon=[
   [-1.62,4.81],[1.39,4.81],[1.44,3.75],
-  [.99,2.55],[.25,2.20],[-.64,2.36],[-1.59,3.37]
+  [1.04,2.65],[.53,2.20],[-.38,2.20],
+  [-1.04,2.59],[-1.59,3.37]
  ];
  const holeLeft:EyePolygon=[
   [-1.20,4.43],[.99,4.43],[1.01,3.76],
-  [.65,2.85],[.18,2.66],[-.48,2.78],[-1.14,3.47]
+  [.73,2.95],[.34,2.70],[-.32,2.70],
+  [-.76,2.96],[-1.14,3.47]
  ];
  for(const side of [-1,1] as const){
   const off=side*1.79;
