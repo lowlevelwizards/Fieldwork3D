@@ -449,6 +449,16 @@ jobs:
             tests/operator-d2-wraps-stage-a2.test.mjs \
             tests/operator-d2-fabric-integration-stage-a3.test.mjs \
             tests/operator-wardrobe-data.test.mjs
+      - name: Focused Camouflage 6A art and appearance compatibility gates
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-camouflage-batch-6a-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/operator-camo-batch6a.test.mjs \
+            tests/operator-headwear-camo.test.mjs \
+            tests/operator-fabric-camo-stage2.test.mjs \
+            tests/operator-r9-camo-density.test.mjs \
+            tests/operator-appearance-grid-purge-stage3b1.test.mjs \
+            tests/operator-rig-r7-authenticity-policy.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}
