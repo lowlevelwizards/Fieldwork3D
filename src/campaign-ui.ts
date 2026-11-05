@@ -725,11 +725,11 @@ export class CampaignScreen{
     if(!select)return;
     if(bodyPart)familyEditor.open=true;
     else{attachments.open=true;this.selectedMount=socket as WeaponAttachmentSlot;}
-    select.focus({preventScroll:true});
-    select.scrollIntoView({block:'nearest',behavior:'smooth'});
-    try{select.showPicker();}catch{/* mobile browser may require a second tap */}
+    // Mirror the existing options directly below the model. Keep
+    // Campaign purchase confirmation and stock rules on the select handler.
+    this.workbench?.showSocketChoices(socket,select);
    });
-   this.workbench.setActiveSlot(build?'body-receiver':this.selectedMount);
+   this.workbench.setActiveSlot(build?'body-receiver':this.selectedMount,false);
   }else{
    this.preview=new CampaignKitPreview(preview,person.id,person.weapon,
     person.appearanceSeed,person.loadout,person.weaponConfiguration,
