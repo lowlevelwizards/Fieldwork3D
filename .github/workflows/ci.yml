@@ -357,6 +357,17 @@ jobs:
             tests/breach-fog-visibility.test.mjs \
             tests/visibility-11-fog-domain.test.mjs \
             tests/visibility-12-micro-cache.test.mjs
+      - name: D2-R10–R15 minimal silhouettes, existing saves and facewear geometry
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-d2-r10-r15-') }}
+        run: >
+          node --experimental-strip-types --test
+          tests/operator-d2-r15-minimal-silhouettes.test.mjs
+          tests/operator-d2-r15-thumbnail-color.test.mjs
+          tests/operator-d2-r-mask-rebuild.test.mjs
+          tests/operator-d2-half-masks-stage-c1.test.mjs
+          tests/operator-d2-gas-masks-stage-c2.test.mjs
+          tests/operator-d2-gas-masks-stage-c3.test.mjs
+          tests/operator-d2-catalog-stage-00.test.mjs
       - name: D2-R sculpt rebuild — cutout apertures, six silhouettes, variants and saved looks
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-d2-mask-rebuild-r-') }}
         run: >
@@ -754,6 +765,16 @@ jobs:
             tests/gameplay-g4-objective-security.test.mjs \
             tests/tactical-mission-quality-operations.test.mjs \
             tests/mission-reactivity-r8b.test.mjs
+      - name: UX R1 mission, squad, navigation and loadout critical contracts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/ux-r1-navigation-squad-mission-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/ux-r1-navigation-squad.test.mjs \
+            tests/ux2-overlay-coordination.test.mjs \
+            tests/ux2-mobile-settings-camera.test.mjs \
+            tests/equipment-19-06-quickplay-editor.test.mjs \
+            tests/operator-wardrobe-quickplay-ui.test.mjs \
+            tests/lw-roster.test.mjs
       - name: Enemy AI E5 sparse population mission safety
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-enemy-ai-e5-') }}
         run: |
