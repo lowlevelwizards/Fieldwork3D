@@ -394,6 +394,7 @@ function soldier2000_8C():Uint8Array{
  return out;
 }
 
+const masters=new Map<Camo8AId,Uint8Array>();
 function ownTile(id:Camo8AId):Uint8Array{
  if(id==='russian-izlom')return izlom8B();
  if(id==='greek-lizard')return greekLizard8C();
