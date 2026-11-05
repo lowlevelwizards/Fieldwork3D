@@ -18,6 +18,11 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: R5 historical equipment — focused geometry, wardrobe, reference and rig contracts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r5i-historical-reference-') }}
+        run: |
+          node --experimental-strip-types --test tests/r5-m1956-stage-g.test.mjs tests/r5-ddr-m56-stage-h1.test.mjs tests/r5-ddr-m56-stage-h2.test.mjs tests/r5-police-helmet-stage-h3.test.mjs tests/r5-police-visor-stage-h4.test.mjs tests/r5-reference-historical-stage-i.test.mjs
+          node --experimental-strip-types --test tests/faction-reference.test.mjs tests/operator-rig-r7-authenticity-policy.test.mjs tests/operator-r9-lower-front-straps.test.mjs tests/operator-r10-silhouette-distinctions.test.mjs
       - name: Camouflage 9A–9B — focused registry, garments, protected masks and production build
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-camo-9a-9b-') }}
         run: |
