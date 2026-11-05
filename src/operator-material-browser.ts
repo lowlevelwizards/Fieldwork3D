@@ -78,7 +78,7 @@ export function camoBrowserState(key:string):CamoBrowserState{
 }
 export function saveCamoBrowserState(key:string){
  hydrateCamoBrowserStates();
- const state=camoBrowserState(key);
+ camoBrowserState(key);
  try{
   if(typeof localStorage==='undefined')return;
   const saved:Record<string,Partial<CamoBrowserState>>={};
