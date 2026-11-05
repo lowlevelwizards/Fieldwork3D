@@ -6,6 +6,8 @@
 import {type Site} from './breach-site.ts';
 import {DOOR_PANEL_END_RECESS} from './breach-door-proportions.ts';
 import {isFootstepObstacle} from './breach-traversal-surfaces.ts';
+import {RouteOpenHeap} from './breach-route-heap.ts';
+import {TacticalGeometryIndex,pointBounds,rayBounds} from './breach-spatial-index.ts';
 export type Pt={x:number;y:number};
 export type Segment={a:Pt;b:Pt};
 export type DoorStyle='wood'|'steel'|'reinforced'|'exit'|'glazed'|'mesh-gate'|'french'|'louvered'|'screen'|'barn'|'pocket'|'fire';
@@ -64,6 +66,32 @@ export const COVER:Obstacle[]=[
   {x:23,y:573,w:94,h:42,low:true},
   {x:505,y:594,w:82,h:46,low:true},
 ];
+// Mutable live cover and legacy geometry test fixtures edit these arrays in
+// place. Track all structural array mutators; rebuild lazily on the next query.
+// Non-enumerable own methods preserve array iteration and serialization.
+let geometryDirty=false;
+function watchGeometryMutations<T>(items:T[]){
+  for(const method of ['splice','push','pop','shift','unshift','sort',
+                       'reverse','copyWithin','fill'] as const){
+    const original=Array.prototype[method];
+    Object.defineProperty(items,method,{configurable:true,writable:true,
+      value:(...args:unknown[])=>{
+        const result=Reflect.apply(original,items,args);
+        geometryDirty=true;
+        return result;
+      }});
+  }
+}
+watchGeometryMutations(WALLS);
+watchGeometryMutations(COVER);
+let tacticalGeometry=new TacticalGeometryIndex(WALLS,COVER);
+const indexedGeometry=()=>{
+  if(geometryDirty){
+    tacticalGeometry=new TacticalGeometryIndex(WALLS,COVER);
+    geometryDirty=false;
+  }
+  return tacticalGeometry;
+}
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export const doorCenter=(d:Door):Pt=>({
   x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2});
@@ -75,6 +103,8 @@ export function activateSite(next:Site|null){
   site=next;
   WALLS.splice(0,WALLS.length,...(next?.walls??BASE_WALLS));
   COVER.splice(0,COVER.length,...(next?.cover??BASE_COVER).map(o=>({...o})));
+  tacticalGeometry=new TacticalGeometryIndex(WALLS,COVER);
+  geometryDirty=false;
   // Runtime displacements never mutate the seed-derived site data.
 }
 export const activeSite=()=>site;
@@ -99,12 +129,26 @@ export function segmentsCross(a:Segment,b:Segment):boolean{
 const pointInCover=(p:Pt,o:Obstacle,r=0)=>
   Math.abs(p.x-o.x)<o.w/2+r&&Math.abs(p.y-o.y)<o.h/2+r;
 export const OPERATOR_RADIUS=8;
+/** Broadphase queries never replace exact geometry or intel checks. */
+export const someWallNearPoint=(p:Pt,r:number,
+  matches:(wall:Segment,index:number)=>boolean)=>
+  indexedGeometry().someWall(pointBounds(p,r),matches);
+export const someCoverNearPoint=(p:Pt,r:number,
+  matches:(o:Obstacle,index:number)=>boolean)=>
+  indexedGeometry().someCover(pointBounds(p,r),matches);
+export const someCoverAlongRay=(a:Pt,b:Pt,
+  matches:(o:Obstacle,index:number)=>boolean)=>
+  indexedGeometry().someCover(rayBounds(a,b),matches);
+export const staticWallBlocksRay=(ray:Segment)=>
+  indexedGeometry().someWall(rayBounds(ray.a,ray.b),wall=>segmentsCross(ray,wall));
 export function passable(p:Pt,clearance=OPERATOR_RADIUS):boolean{
   const bounds=activeWorldBounds();
   if(p.x<bounds.minX+13||p.y<bounds.minY+20||
     p.x>bounds.maxX-13||p.y>bounds.maxY-13)return false;
-  if(WALLS.some(s=>pointToSegment(p,s)<clearance+1))return false;
-  if(COVER.some(o=>isFootstepObstacle(o)&&pointInCover(p,o,clearance)))return false;
+  if(someWallNearPoint(p,clearance+1,s=>
+      pointToSegment(p,s)<clearance+1))return false;
+  if(someCoverNearPoint(p,clearance,o=>
+      isFootstepObstacle(o)&&pointInCover(p,o,clearance)))return false;
   return true;
 }
 /** The rotated leaf is the single collision/sightline surface. A hinge on
@@ -161,7 +205,7 @@ export function doorBlocksSightRay(doors:Door[],ray:Segment):boolean{
 }
 export function isClear(a:Pt,b:Pt,doors:Door[],ignoreDoors=false):boolean{
   const shot={a,b};
-  if(WALLS.some(w=>segmentsCross(shot,w)))return false;
+  if(staticWallBlocksRay(shot))return false;
   if(!ignoreDoors&&doorBlocksRay(doors,shot))
     return false;
   // Furniture blocks bullets/visibility but can be bypassed through doors.
@@ -211,6 +255,16 @@ function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
     row:Math.round(p.y/grid)});
   const cellPoint=(col:number,row:number):Pt=>({x:col*grid,
     y:row*grid});
+  // A* visits nearby cells through many edges. Geometry does not change
+  // synchronously during one search, so test each grid vertex once.
+  const cellClear=new Map<string,boolean>();
+  const walkableCell=(col:number,row:number)=>{
+    const k=key(col,row),cached=cellClear.get(k);
+    if(cached!==undefined)return cached;
+    const clear=canStand(cellPoint(col,row));
+    cellClear.set(k,clear);
+    return clear;
+  };
   if(!canStand(to))return [];
   const st=cellAt(from),goal=cellAt(to);
   const startKey=key(st.col,st.row),goalKey=key(goal.col,goal.row);
@@ -222,20 +276,20 @@ function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
   if(alternateGoal){
     for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){
       const col=goal.col+dx,row=goal.row+dy,p=cellPoint(col,row);
-      if(canStand(p)&&sweepPassable(p,to,canStand))
+      if(walkableCell(col,row)&&sweepPassable(p,to,canStand))
         targets.add(key(col,row));
     }
     if(!targets.size)return [];
   }else targets.add(goalKey);
-  const open=[{col:st.col,row:st.row,g:0,f:0}];
+  const open=new RouteOpenHeap();
+  open.push({col:st.col,row:st.row,g:0,f:0});
   const best=new Map<string,number>([[startKey,0]]);
   const parents=new Map<string,string>();
   const visited=new Set<string>();
   let reachedKey:string|null=null;
   const dirs=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
   for(let iter=0;open.length&&iter<budget;iter++){
-    open.sort((a,b)=>a.f-b.f);
-    const at=open.shift()!,k=key(at.col,at.row);
+    const at=open.pop()!,k=key(at.col,at.row);
     if(visited.has(k))continue;visited.add(k);
     if(targets.has(k)){reachedKey=k;break;}
     for(const [dx,dy] of dirs){
@@ -245,7 +299,7 @@ function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
          p.x>Math.max(from.x,to.x)+padding||
          p.y<Math.min(from.y,to.y)-padding||
          p.y>Math.max(from.y,to.y)+padding))continue;
-      if(!canStand(p))continue;
+      if(!walkableCell(col,row))continue;
       // Grid centres alone can lie clear while the straight diagonal
       // between them clips a door-frame corner. Sample the actual travel
       // segment before accepting a nav edge; motor collision uses the
@@ -253,8 +307,8 @@ function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
       const atPoint=cellPoint(at.col,at.row);
       if(!sweepPassable(atPoint,p,canStand))continue;
       if(dx!==0&&dy!==0&&
-        (!canStand(cellPoint(at.col+dx,at.row))||
-         !canStand(cellPoint(at.col,at.row+dy))))continue;
+        (!walkableCell(at.col+dx,at.row)||
+         !walkableCell(at.col,at.row+dy)))continue;
       const next=key(col,row),cost=at.g+Math.hypot(dx,dy);
       if(cost>=(best.get(next)??Infinity))continue;
       best.set(next,cost);parents.set(next,k);

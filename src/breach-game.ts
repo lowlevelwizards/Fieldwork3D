@@ -7,7 +7,7 @@ import {
   type Pt,type Operator,type TacticalState,type Door,type Side,
   W,H,WALLS,COVER,OPERATOR_RADIUS,initialDoors,newTacticalState,route,passable,activateSite,
   segmentsCross,doorCenter,doorBlocksSegment,doorLeafSegment,doorBlocksRay,doorBlocksSightRay,
-  pointToSegment,
+  pointToSegment,staticWallBlocksRay,someCoverAlongRay,
 } from './breach-core.ts';
 import {
   type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,
@@ -1470,11 +1470,11 @@ function hear(s:Session,p:Pt,radius:number,kind:string){
 }
 function unobstructed(a:Pt,b:Pt,s:Session,lowBlocks:boolean){
   const ray={a,b};
-  if(WALLS.some(w=>segmentsCross(ray,w)))return false;
+  if(staticWallBlocksRay(ray))return false;
   if(doorBlocksSightRay(s.doors,ray))return false;
-  // Exact slab intersection replaces dozens of short ray samples per
-  // visibility query. Geometry remains authoritative at any framerate.
-  return !COVER.some(o=>coverBlocksOpticalSight(o,lowBlocks)&&
+  // The broadphase only excludes distant static obstacles; the final
+  // slab and optical tests remain authoritative at any framerate.
+  return !someCoverAlongRay(a,b,o=>coverBlocksOpticalSight(o,lowBlocks)&&
     segmentHitsBox(a,b,o));
 }
 /** Physical geometry visibility, independently of acquisition time. */
