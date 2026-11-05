@@ -239,7 +239,14 @@ export class MissionRecorder{
 const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
 export const mixAngle=(a:number,b:number,t:number)=>
   a+Math.atan2(Math.sin(b-a),Math.cos(b-a))*t;
+// Track replay identity as well as count. Seeking between equally populated
+// but differently explored moments must invalidate the rendered fog.
+const replayGroundFrames=new WeakMap<Session,readonly string[]>();
 export function applyReplayFrame(s:Session,f:ReplayFrame):void{
+  if(replayGroundFrames.get(s)!==f.seenGround){
+    s.seenGroundRevision++;
+    replayGroundFrames.set(s,f.seenGround);
+  }
   s.seconds=f.t;
   // Playback is not a live game phase. It can neither edit plans nor simulate.
   s.phase='running';s.mission=f.mission;
