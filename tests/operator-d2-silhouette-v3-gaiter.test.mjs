@@ -24,3 +24,19 @@ test('V3 gaiter: one tube identity, no unrelated scarf or tied features',()=>{
  assert.ok(mouth.min.y===nose.min.y,'same lower tube fit');
  assert.ok(nose.max.y-mouth.max.y>1,'distinct pulled-up position');
 });
+
+test('R4 raised gaiter covers the full cube jaw before its narrow neck return',()=>{
+ const [,mouth,nose]=createD2FabricWrap('gaiter',mat).children;
+ for(const mode of [mouth,nose]){
+  const parts=bits(mode);
+  const sleeve=parts.find(p=>p.name==='continuous-pulled-tube-front');
+  const landing=parts.find(p=>p.name==='tapered-neck-landing-front');
+  const lower=parts.find(p=>p.name==='gathered-neck-tube-front');
+  assert.ok(sleeve.y-sleeve.height/2< -1.30,
+   'outside sleeve must extend below canonical skull bottom -1');
+  assert.ok(sleeve.z-sleeve.depth/2< -4.30,'front must be visible outside skin face -4');
+  assert.ok(landing.y+landing.height/2>sleeve.y-sleeve.height/2);
+  assert.ok(lower.y+lower.height/2>landing.y-landing.height/2);
+  assert.ok(sleeve.width>landing.width&&landing.width>lower.width);
+ }
+});
