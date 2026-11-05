@@ -83,7 +83,7 @@ export const REFERENCE_GEAR_PROFILES:Readonly<Record<string,ReferenceGearProfile
   note:"Legacy vest approximates early 6B13; LBV approximates 6Sh92, not modern Ratnik."},
  'russian-omon-2002':{kit:{},styles:{headwear:'police-helmet',armorStyle:'soft-vest',rigStyle:'micro-rig',packStyle:'no-pack'},appearance:{headwearSolid:'black',armorSolid:'black',rigSolid:'black'},
   note:"Black visored helmet and external police armor are appropriate."},
- 'russian-gorka-leto-2010':{kit:{},styles:{headwear:'patrol-cap',armorStyle:'armor-bare',rigStyle:'light-rig',packStyle:'no-pack'},appearance:{headwearSolid:'olive-drab',rigSolid:'olive-drab'},
+ 'russian-gorka-leto-2010':{kit:{backpack:'backpack-none'},styles:{headwear:'patrol-cap',armorStyle:'armor-bare',rigStyle:'light-rig',packStyle:'no-pack'},appearance:{headwearSolid:'olive-drab',rigSolid:'olive-drab'},
   note:"Unarmored Gorka with subdued nylon; no invented printed SS-Leto carrier."},
  'jgsdf-type2-2010':{kit:{armor:'armor-carrier',rig:'rig-full',backpack:'backpack-field'},styles:{headwear:'ach',armorStyle:'plate-legacy',rigStyle:'full-chest',packStyle:'field-pack'},appearance:{headwearCamo:'jgsdf-type2',armorCamo:'jgsdf-type2',rigCamo:'jgsdf-type2',packCamo:'jgsdf-type2'},
   note:"Legacy armor and printed bib proxy Type II/III Japanese protection."},
