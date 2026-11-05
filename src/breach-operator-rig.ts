@@ -400,11 +400,27 @@ function approach(v:number,target:number,rate:number,dt:number){
 }
 const P=(x:number,y:number,z:number)=>new THREE.Vector3(x,y,z);
 const DOWNED_TINT=new THREE.Color(0x555c57);
+/** Outfit, headwear and material maps are static between kit changes.
+ * Keep a per-rig snapshot separate from motion/IK, which still runs on
+ * every frame. Weak keys release disposed operator preview rigs. */
+const appearanceState=new WeakMap<OperatorRig,{key:string;downed:boolean}>();
 export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   if(dt<0||r.lastTime>p.seconds+.03||p.seconds-r.lastTime>1.2){
     r.lastTime=p.seconds;dt=0;
   }
   dt=clamp(dt,0,.08);
+  // Fingerprint only presentation inputs; movement, time and dynamic posing
+  // are purposefully excluded. JSON captures in-place Studio edits and
+  // magazine / medical inventory changes without depending on object identity.
+  const appearanceKey=JSON.stringify([
+    p.appearanceSeed??0,p.equipment??null,p.wardrobe??null,
+    p.magazineCarryLocations??null,p.medicalCarryLocation??null,
+    p.utilityCarryLocation??null,p.faceStyle??null,
+    p.flashCharges??null,p.treatmentActive??null
+  ]);
+  const previousAppearance=appearanceState.get(r);
+  const appearanceChanged=previousAppearance?.key!==appearanceKey;
+  if(appearanceChanged){
   // Stable career-based presentation, never changing physical collision or IK.
   const identity=p.appearanceSeed??0;
   if(identity!==r.appearanceSeed){
@@ -788,12 +804,20 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.colors.set(r.visualKit.hairMaterial,r.visualKit.hairMaterial.color.clone());
   r.colors.set(r.visualKit.patchMaterial,r.visualKit.patchMaterial.color.clone());
   updateOperatorEquipmentDetails(r.equipmentDetails,gear);
-  // Retain costume identity, but subdued incapacitated bodies blend with
-  // grounded blood and don't need floating status text. Reversible on seek.
-  for(const [material,original] of r.colors){
-    material.color.copy(original);
-    if(p.down&&!p.surrender)material.color.lerp(DOWNED_TINT,.46);
   }
+  // Desaturation changes only at injury/surrender transitions, not each
+  // animation frame. Replayed appearance or kit changes refresh the palette.
+  const downed=p.down&&!p.surrender;
+  if(appearanceChanged||previousAppearance?.downed!==downed){
+    for(const [material,original] of r.colors){
+      material.color.copy(original);
+      if(downed)material.color.lerp(DOWNED_TINT,.46);
+    }
+  }
+  if(previousAppearance){
+    previousAppearance.key=appearanceKey;
+    previousAppearance.downed=downed;
+  }else appearanceState.set(r,{key:appearanceKey,downed});
   const downProgress=clamp(p.downProgress??(p.down?1:0),0,1);
   const smooth=(t:number)=>{const v=clamp(t,0,1);return v*v*(3-2*v)};
   const buckle=p.down&&!p.surrender?smooth(downProgress/.48):0;
