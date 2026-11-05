@@ -831,6 +831,18 @@ jobs:
           node --experimental-strip-types --test \
             tests/faction-reference.test.mjs \
             tests/ux-r2-studio-flow.test.mjs
+      - name: E5-C R1 civilian behavior and route-critical checks
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-e5c-r1-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/civilian-c1a-animation-reset.test.mjs \
+            tests/civilian-c1b-state-guard.test.mjs \
+            tests/civilian-c2a-witnessed-threat.test.mjs \
+            tests/civilian-c2-refuge-navigation.test.mjs \
+            tests/civilian-b4-response.test.mjs \
+            tests/civilian-b5a-shared-movement.test.mjs \
+            tests/civilian-release-field-smoke.test.mjs \
+            tests/mission-escort-physicality.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
