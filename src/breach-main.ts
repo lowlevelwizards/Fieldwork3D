@@ -4367,7 +4367,11 @@ function tick(now:number){
   if(event!==lastEventAudio&&event.includes('SURRENDERED'))
     playTone(210,.22);
   lastEventAudio=event;
-  if(now-hudAt>120){updateHud();if(replaying)updateReplayHud();hudAt=now;}
+  // Execution's full HUD reconciliation is DOM-heavy; explicit commands
+  // still call updateHud() immediately, while live status refreshes ~5.5Hz.
+  if(now-hudAt>(state.phase==='running'?180:120)){
+    updateHud();if(replaying)updateReplayHud();hudAt=now;
+  }
   const perfRenderStart=perfOverlay?performance.now():0;
   if(stage&&viewMode!=='plan2d')
     stage.update(state,selected,dt,doorFocusId,
@@ -4421,8 +4425,10 @@ function tick(now:number){
     frameMeter.add({frame:end-perfStart,cadence:frameGap,sim:perfRenderStart-perfStart,
       scene:overlayBegin-perfRenderStart,overlay:end-overlayBegin,
       steps:simSteps,draws:stats?.calls??0,triangles:stats?.triangles??0});
-    const m=frameMeter.summary();
-    if(Math.floor(now/750)!==Math.floor((now-dt*1000)/750))
+    // The optional diagnostics must not sort rolling samples every RAF:
+    // that would contaminate the very hitch measurements they report.
+    if(Math.floor(now/750)!==Math.floor((now-dt*1000)/750)){
+      const m=frameMeter.summary();
       perfOverlay.textContent='JS '+m.p50.toFixed(1)+'ms · P95 '+
         m.p95.toFixed(1)+' · MAX '+m.worst.toFixed(1)+
         '\\nRAF GAP P50 '+m.rafP50.toFixed(1)+'ms · P95 '+
@@ -4434,6 +4440,7 @@ function tick(now:number){
         (simPhaseCosts&&simPhaseCosts.size?'\\nHOT SIM '+
           [...simPhaseCosts].sort((a,b)=>b[1]-a[1]).slice(0,2)
             .map(([name,ms])=>name+' '+ms.toFixed(1)+'ms').join(' / '):'');
+    }
   }
   if(awarenessPanel&&Math.floor(now/500)!==
       Math.floor((now-dt*1000)/500)){
