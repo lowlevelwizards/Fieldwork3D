@@ -1,0 +1,27 @@
+/* Shared mobile-first material filters, not a second full-page catalog. */
+.fw-material-browser{display:grid;gap:6px;min-width:0;margin:8px 0}
+.fw-material-browser .fw-material-search{width:100%;min-width:0;min-height:40px;
+ background:#30493f;color:#f5eee0;border:1px solid #86998d;border-radius:6px;
+ padding:7px;font:12px "Work Sans",system-ui,sans-serif;box-sizing:border-box}
+.fw-material-filter-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.fw-material-filter{display:grid;gap:3px;min-width:0}
+.fw-material-filter span{color:#c7d6c4;font:700 10px/1.2 "Saira Condensed",sans-serif}
+.fw-material-filter select{width:100%;min-width:0;box-sizing:border-box;
+ background:#30493f;color:#f5eee0;border:1px solid #86998d;border-radius:6px;
+ min-height:40px;padding:5px;font:12px "Work Sans",system-ui,sans-serif}
+.fw-material-advanced{border-top:1px solid #7890836b;padding:4px 0}
+.fw-material-advanced>summary{min-height:30px;color:#dcc99f;
+ font:700 11px/1.4 "Work Sans",system-ui,sans-serif;cursor:pointer}
+.fw-material-advanced .fw-material-filter-row{margin-top:6px}
+.fw-material-favorites-only{display:flex;align-items:center;min-height:38px;
+ gap:5px;color:#d9e1d5;font:600 11px "Work Sans",system-ui,sans-serif}
+.fw-material-favorites-only input{width:18px;height:18px;accent-color:#e0c38a}
+.fw-camo-choice-wrap{position:relative;min-width:0}
+.fw-camo-choice-wrap>.fw-material-favorite{position:absolute;right:4px;top:4px;
+ min-height:29px;min-width:30px;padding:2px 4px;border:1px solid #8c9e87;
+ background:#22392e;color:#f0d48f;border-radius:5px;font-size:18px;z-index:1}
+.fw-camo-choice-wrap>.swatch,.fw-camo-choice-wrap>.fw-headwear-camo-choice{
+ width:100%;height:100%;padding-right:24px}
+.fw-material-browser select:focus-visible,.fw-material-browser input:focus-visible,
+.fw-material-favorite:focus-visible{outline:2px solid #eddaa5;outline-offset:1px}
+@media(max-width:350px){.fw-material-filter-row{grid-template-columns:minmax(0,1fr)}}
