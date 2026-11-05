@@ -1,0 +1,35 @@
+name: Camouflage 8E — Mobile Print Review
+on:
+  pull_request:
+    paths:
+      - 'src/operator-camo-batch-8a.ts'
+      - 'src/operator-armor-rig-lab.ts'
+      - 'src/operator-fabric-camo-materials.ts'
+      - 'scripts/capture-operator-camo-8e.mjs'
+      - 'tests/operator-camo-batch8e.test.mjs'
+      - '.github/workflows/operator-camo-8e-visual.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  print-captures:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Install lightweight Chromium capture tooling
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Fixed-light BDU jacket/trouser views and master thumbnails
+        run: node scripts/capture-operator-camo-8e.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: operator-8e-camo-comparison
+          path: operator-8e-camo-comparison/
+          if-no-files-found: warn

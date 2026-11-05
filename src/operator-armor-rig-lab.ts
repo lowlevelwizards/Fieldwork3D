@@ -111,7 +111,11 @@ function refresh(){
   fabricSolids:{top:'slate',trousers:'slate',armor:'slate',gear:'slate',pack:'slate'}
  };
  if(previewCamo&&previewChannel)
-  wardrobe.fabricCamo={...wardrobe.fabricCamo,[previewChannel]:previewCamo};
+  wardrobe.fabricCamo={...wardrobe.fabricCamo,[previewChannel]:previewCamo,
+   // Read-only comparison harness: print the same atlas on BDU trousers.
+   // No player save or normal Lab behavior is changed by this opt-in flag.
+   ...(previewChannel==='top'&&params.get('camoBoth')==='1'?
+    {trousers:previewCamo}:{} )};
 
  poseOperator(operator,{
   x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,posture:'stand',
