@@ -1512,13 +1512,8 @@ export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){
   if(!cache){cache=new PerceptionPairCache();perceptionBySession.set(s,cache);}
   // This remains exact through mid-tick door interactions, actor movement,
   // crouching and cover damage. Neither fog nor awareness is cached.
-  const doors=s.doors.map(door=>[
-    door.id,door.open,door.openFraction,door.kind,
-    door.hinge,door.swing,door.slideDirection,
-    door.a.x,door.a.y,door.b.x,door.b.y,door.style
-  ].join(':')).join(';');
   return cache.get(a,b,s.seconds,
-    s.objectRevision+'/'+activeGeometryRevision(),doors,()=>{
+    s.objectRevision+'/'+activeGeometryRevision(),s.doors,()=>{
       if(a.health<=0||b.health<=0||d(a.p,b.p)>240)return false;
       const delta=angleDifference(a.heading,angle(a.p,b.p));
       if(Math.abs(delta)>.94)return false;
