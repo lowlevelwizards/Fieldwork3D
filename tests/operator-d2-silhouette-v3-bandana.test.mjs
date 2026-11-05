@@ -31,11 +31,15 @@ test('R5 bandana wraps the full head and drops into a free-hanging triangle bene
   const band=bits.find(x=>x.name==='wrap-band-front');
   const tip=bits.find(x=>x.name==='triangle-tip');
   const front=bits.filter(x=>x.name.startsWith('triangle-'));
-  assert.equal(front.length,5,'a few bold steps rather than many tiny slices');
-  assert.ok(band&&tip&&tip.width<band.width*.30);
-  assert.ok(front.every(x=>x.depth>=.79),'thick hanging cloth, not planar decals');
+  assert.equal(front.length,6,'a few bold steps rather than many tiny slices');
+  assert.ok(band&&tip&&tip.width>=band.width*.29&&tip.width<band.width*.40,
+   'tip is pointed but not a tiny dangling goatee');
+  assert.ok(front.every(x=>x.depth>=.88),'thick hanging cloth, not planar decals');
   assert.ok(names.includes('left-wrap-band')&&names.includes('right-wrap-band'));
   assert.ok(names.includes('left-cheek-transition')&&names.includes('right-cheek-transition'));
+  assert.ok(names.includes('left-diagonal-kerchief-fold')&&names.includes('right-diagonal-kerchief-fold'));
+  assert.ok(names.includes('left-lower-fan-fold')&&names.includes('right-lower-fan-fold'));
+  assert.ok(front[3].width>tip.width*1.8,'broad triangle must span the lower jaw');
   assert.ok(names.includes('closed-rear-landing')&&names.includes('rear-knot'));
   assert.ok(names.includes('knot-left-wing')&&names.includes('knot-right-wing'));
   assert.equal(bits.filter(x=>x.name.endsWith('-knot-tail')).length,2);
@@ -45,7 +49,7 @@ test('R5 bandana wraps the full head and drops into a free-hanging triangle bene
   assert.ok(tip.z<band.z-.60,'free tip projects forward instead of hugging head');
  }
  const [raised,lowered]=wrap.children.map(x=>new THREE.Box3().setFromObject(x));
- assert.ok(raised.min.y< -3.25,'raised triangle must hang well below canonical chin -.65');
+ assert.ok(raised.min.y< -3.9,'raised triangle must hang well below canonical chin -.65');
  assert.ok(raised.max.y>3,'raised upper band still covers lower face');
  assert.ok(lowered.max.y<0,'lowered mode does not mask the face');
  assert.ok(lowered.min.y< -5,'lowered triangle still reads as a kerchief');

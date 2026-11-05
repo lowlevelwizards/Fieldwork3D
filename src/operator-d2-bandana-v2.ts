@@ -24,19 +24,23 @@ export function createD2BandanaMode(mode:D2BandanaMode,material:THREE.Material):
  // A distinct horizontal top fold anchors the fabric onto the cheeks.
  // It supports a broad hanging triangle rather than becoming the triangle.
  add(p,'wrap-band-front',0,top-.55,front,half*2+.08,1.18,.73);
- // Six large, vertically overlapping tiers create an actual lower kerchief
+ // Six broad, vertically overlapping tiers create an actual lower kerchief
  // point; the last 2+ units sit BELOW canonical chin Y=-.65 when raised.
  // Later tiers project farther forward, free of the cubic face's front plane.
+ // Deliberately BROAD below the jaw, rather than a narrow goatee.
+ // Broad upper and middle panels slope down from the cheek anchors, with
+ // only the final substantial tip narrowing. Folds overlap at every tier.
  const drop=[
-  ['triangle-upper-anchor',1.04,2.16,7.70,.16,.80],
-  ['triangle-upper-drop',2.05,3.22,6.48,.31,.87],
-  ['triangle-middle-drop',3.10,4.40,4.98,.47,.93],
-  ['triangle-lower-drop',4.27,5.61,3.43,.61,.96],
-  ['triangle-tip',5.48,6.78,1.76,.75,.91]
+  ['triangle-upper-anchor',1.03,2.16,8.03,.25,.90],
+  ['triangle-upper-drop',2.05,3.23,7.48,.42,.98],
+  ['triangle-middle-drop',3.10,4.43,6.48,.58,1.04],
+  ['triangle-lower-drop',4.30,5.66,5.34,.76,1.10],
+  ['triangle-bottom-shoulders',5.52,6.75,4.10,.90,1.10],
+  ['triangle-tip',6.62,7.19,2.77,1.04,1.03]
  ] as const;
  for(const [name,a,b,width,project,depth] of drop){
   add(p,name,0,top-vertical*(a+b)/2,front-project,
-   width*lateral,vertical*(b-a)+.16,depth);
+   width*lateral,vertical*(b-a)+.18,depth);
  }
  // A generous upper perimeter turns the cloth around the squared cheeks
  // and meets the existing tie band at the rear. Lower cheek returns attach
@@ -45,10 +49,16 @@ export function createD2BandanaMode(mode:D2BandanaMode,material:THREE.Material):
   const n=side<0?'left':'right';
   add(p,n+'-wrap-band',side*half,top-.63,(front+back)/2,
    .80,1.35,back-front+.34);
-  add(p,n+'-cheek-transition',side*(half-.17),top-1.34*vertical,
-   front+1.40,.90,2.28*vertical,3.75);
-  add(p,n+'-triangular-shoulder',side*(half-.48),
-   top-2.00*vertical,front-.13,1.17,1.78*vertical,1.22);
+  add(p,n+'-cheek-transition',side*(half-.17),top-1.38*vertical,
+   front+1.38,.96,2.54*vertical,3.80);
+  // A sloping, stepped fan carries the cheek cloth toward the center of
+  // the hanging sheet; it does not terminate at a horizontal headband.
+  add(p,n+'-triangular-shoulder',side*(half-.54),
+   top-2.02*vertical,front-.23,1.32,2.20*vertical,1.55);
+  add(p,n+'-diagonal-kerchief-fold',side*2.53,
+   top-3.43*vertical,front-.51,2.48,2.14*vertical,1.15);
+  add(p,n+'-lower-fan-fold',side*1.88,
+   top-4.69*vertical,front-.73,2.22,1.68*vertical,1.12);
  }
  add(p,'closed-rear-landing',0,top-.64,back,half*2+.48,1.37,.75);
  // Preserve the successful heavy tied back: folded wings and unequal ends.
