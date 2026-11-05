@@ -2,6 +2,7 @@ import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import * as THREE from 'three';
 import {createCivilianRig,updateCivilianRig,type CivilianRig}
  from './breach-civilian-visuals.ts';
+import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
 import {graphicsBudget} from './breach-graphics-budget.ts';
 import {PixelTextureLibrary,mapBoxPixelUV,mapPlanePixelUV,type PixelSurface} from './rendering/pixel-materials.ts';
 import {roomPixelSurface,zonePixelSurface,wallPixelSurface,fixturePixelSurface} from './worldgen/pixel-surface-selection.ts';
@@ -1777,7 +1778,9 @@ export class TacticalScene3D{
       this.scene.remove(rig.root);this.civilianRigs.delete(id);
     }
     for(const civil of s.civilians){
-      const visible=omniscient||liveVisibility(s,civil.p);
+      const visible=civilianPresentationVisible(civil,
+        civil.replayVisible!==undefined,omniscient,
+        liveVisibility(s,civil.p));
       let rig=this.civilianRigs.get(civil.id);
       if(!visible&&!rig)continue;
       if(!rig){

@@ -868,6 +868,15 @@ jobs:
             tests/civilian-release-field-smoke.test.mjs \
             tests/worldgen-encounter-safety.test.mjs \
             tests/worldgen-encounter-missions.test.mjs
+      - name: E5-C R4 historical civilian film and production safety
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-e5c-r4-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/civilian-c6-historical-visibility.test.mjs \
+            tests/civilian-b8-replay.test.mjs \
+            tests/civilian-c3c-harm-attribution.test.mjs \
+            tests/civilian-release-field-smoke.test.mjs \
+            tests/mission-escort-physicality.test.mjs
       - name: R5 identity A–C fast contracts
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r5-identity-') }}
         run: |
@@ -875,12 +884,14 @@ jobs:
             tests/r5-identity-stage-a.test.mjs \
             tests/r5-identity-stage-bc.test.mjs \
             tests/faction-reference.test.mjs
-      - name: R5D US M1 silhouette and headgear compatibility
-        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r5-historical-helmets-') }}
-        run: node --experimental-strip-types --test tests/r5-historical-helmet-d.test.mjs tests/r5-identity-stage-bc.test.mjs
-      - name: R5E M1 helmet cover fabrication and save compatibility
-        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r5-m1-covers-') }}
-        run: node --experimental-strip-types --test tests/r5-m1-cover-stage-e.test.mjs tests/r5-historical-helmet-d.test.mjs
+      - name: R5 D–F critical silhouette, cover and loadout contracts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r5-historical-release2-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/r5-historical-helmet-d.test.mjs \
+            tests/r5-m1-cover-stage-e.test.mjs \
+            tests/r5-alice-field-stage-f.test.mjs \
+            tests/faction-reference.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

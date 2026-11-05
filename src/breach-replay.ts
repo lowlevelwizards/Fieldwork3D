@@ -2,7 +2,7 @@
  * We capture authoritative simulation outcomes at 20 Hz and never re-simulate
  * past actions. Rewind, scrubbing and speed changes cannot alter an outcome.
  */
-import type {Session,TeamActor,ShotEvent,DroppedMagazine,FlashGrenade,FlashBurst,ImpactMark} from './breach-game.ts';
+import {liveVisibility,type Session,type TeamActor,type ShotEvent,type DroppedMagazine,type FlashGrenade,type FlashBurst,type ImpactMark} from './breach-game.ts';
 import {COVER,type Door,type Pt} from './breach-core.ts';
 import {intelSnapshot,intelRestore} from './breach-intel.ts';
 import type {BattleEvent} from './breach-combat.ts';
@@ -39,7 +39,10 @@ export type ReplayActorFrame=ActorFrame & {
 export type CivilianFrame=Pick<CivilianActor,
   'id'|'p'|'heading'|'health'|'injuryStage'|'state'|'velocity'|
   'lastHitAt'|'following'|'rescueTarget'|'appearanceSeed'|
-  'role'|'persona'|'activity'|'homeRoomId'>;
+  'role'|'persona'|'activity'|'homeRoomId'> & {
+    /** A recorded operator observation, never future knowledge. */
+    visibleAtCapture?:boolean;
+  };
 export type ReplayFrame={
   /** Presentation data is sampled on demand, never written to snapshots. */
   presentation?:ReplayPresentation;
@@ -123,7 +126,8 @@ export function snapshot(s:Session,seenGround?:string[],
       lastHitAt:c.lastHitAt,following:c.following,
       rescueTarget:c.rescueTarget,appearanceSeed:c.appearanceSeed,
       role:c.role,persona:c.persona,activity:c.activity,
-      homeRoomId:c.homeRoomId
+      homeRoomId:c.homeRoomId,
+      visibleAtCapture:liveVisibility(s,c.p)
     })),
     doors:s.doors.map(d=>({...d,a:position(d.a),b:position(d.b)})),
     objectRevision:s.objectRevision,
@@ -316,7 +320,11 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       isRescueTarget:copy.rescueTarget
     });
     return {...actor,...copy,p:position(copy.p),
-      priorP:position(copy.p),goal:null,nav:[]};
+      priorP:position(copy.p),goal:null,nav:[],
+      // Older films with no visibility channel keep a guarded
+      // current-cone fallback rather than disclosing future information.
+      replayVisible:copy.visibleAtCapture
+    };
   });
   s.doors=f.doors.map(d=>({...d,a:position(d.a),b:position(d.b)}));
   s.objectRevision=f.objectRevision??0;
