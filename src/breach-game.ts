@@ -3931,7 +3931,8 @@ function resolveCloseContact(s:Session){
 export function movePhysicalProp(s:Session,index:number,to:Pt):boolean{
  if(s.phase==='won'||s.phase==='lost')return false;
  const moved=relocateCover(s.coverState,index,to,WALLS,s.doors,
-   s.operators.filter(a=>a.health>0).map(a=>a.p));
+   [...s.operators.filter(a=>a.health>0).map(a=>a.p),
+    ...s.civilians.filter(c=>c.health>0).map(c=>c.p)]);
  if(!moved)return false;
  s.objectRevision++;
  COVER.splice(0,COVER.length,...s.coverState);
@@ -4002,7 +4003,10 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
         actor.p=candidate;
       }
     }
-    advanceDoor(door,h,s.operators.filter(a=>a.health>0).map(a=>a.p));
+    advanceDoor(door,h,[
+      ...s.operators.filter(a=>a.health>0).map(a=>a.p),
+      ...s.civilians.filter(c=>c.health>0).map(c=>c.p)
+    ]);
   }
   mark('doors');
   s.sparks=s.sparks.filter(a=>(a.age+=h)<.20);
@@ -4030,7 +4034,8 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   mark('belief-aging');
   // Capture immutable actor origins before any movement or enemy routine runs.
   // Final positions are reconciled together after the fixed-tick actor loop.
-  const motionStart=new Map(s.operators.map(a=>[a.id,clone(a.p)]));
+  const motionStart=new Map([...s.operators,...s.civilians]
+    .map(a=>[a.id,clone(a.p)]));
   for(const a of s.operators){
     if(a.health<=0&&a.reload>0){a.reload=0;a.reloadMode=null;}
     a.fireCd=Math.max(0,a.fireCd-h);
@@ -4083,10 +4088,32 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     if(probe)mark('operator-'+a.id);
   }
   mark('actor-loop');
-  const proposals=s.operators.map(a=>({id:a.id,side:a.side,
-    from:motionStart.get(a.id)??a.p,to:a.p,alive:a.health>0,
-    carried:!!a.carriedById}));
+  // Propose civilian motion before the shared fixed-tick authority pass.
+  // Both teams see the same original pre-motion positions for hard bodies.
+  if(s.civilians.length){
+    const nearby=[...s.operators.filter(a=>a.health>0),
+      ...s.civilians.filter(c=>c.health>0)];
+    for(const civil of s.civilians){
+      stepCivilianResponse(civil,s.seconds,h,{
+        noise:s.noise,people:s.operators,doors:s.doors,walls:WALLS,
+        windows:s.windows,
+        canSee:(from,to)=>unobstructed(from,to,s,false),
+        canReach:(from,to)=>sweptBodyClear(from,to,s.doors)
+      });
+      stepCivilianMovement(civil,s.seconds,h,
+        (from,to)=>sweptBodyClear(from,to,s.doors),
+        (p,id)=>nearby.some(a=>a.id!==id&&d(a.p,p)<20));
+    }
+  }
+  const proposals=[
+    ...s.operators.map(a=>({id:a.id,side:a.side,
+      from:motionStart.get(a.id)??a.p,to:a.p,alive:a.health>0,
+      carried:!!a.carriedById})),
+    ...s.civilians.map(c=>({id:c.id,side:'neutral' as const,
+      from:motionStart.get(c.id)??c.p,to:c.p,alive:c.health>0}))
+  ];
   const decisions=resolveMovementFrame(proposals,p=>{
+    if(p.side==='neutral')return sweptBodyClear(p.from,p.to,s.doors);
     const a=s.operators.find(unit=>unit.id===p.id)!;
     return a.traversal?
       traversalStepClear(p.from,p.to,a.traversal,traversalWorld(s,a)):
@@ -4095,12 +4122,16 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   });
   for(const decision of decisions){
     if(!decision.blocked)continue;
+    const civil=s.civilians.find(unit=>unit.id===decision.id);
+    if(civil){
+      civil.p=clone(decision.point);civil.priorP=clone(decision.point);
+      civil.velocity=0;civil.blockedTime+=h;
+      continue;
+    }
     const a=s.operators.find(unit=>unit.id===decision.id)!;
     a.p=clone(decision.point);
     a.priorP=clone(decision.point);a.velocity=0;
     if(a.traversal){
-      // Motion authority may reject a tick because of an opposing actor.
-      // Roll back its motor clock too; never "jump" the rejected frame.
       a.traversalElapsed=Math.min(a.traversal.duration,Math.max(0,
         a.traversalElapsed+(a.traversalRetreating?h*1.15:-h)));
       a.traversalElevation=sampleTraversal(a.traversal,
@@ -4110,24 +4141,6 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   }
   for(const a of s.operators)a.stride+=d(a.p,a.priorP);
   resolveCloseContact(s);
-  // Separate neutral actor motor. Runs only in explicit development
-  // scenarios; every position step obeys the same solid world and doors.
-  if(s.civilians.length){
-    const nearby=[...s.operators.filter(a=>a.health>0),...s.civilians.filter(c=>c.health>0)];
-    for(const civil of s.civilians){
-      stepCivilianResponse(civil,s.seconds,h,{
-        noise:s.noise,people:s.operators,doors:s.doors,walls:WALLS,
-        windows:s.windows,
-        // Perception is physically checked from the CIVILIAN perspective.
-        // This is not player fog and does not share hidden target positions.
-        canSee:(from,to)=>unobstructed(from,to,s,false),
-        canReach:(from,to)=>sweptBodyClear(from,to,s.doors)
-      });
-      stepCivilianMovement(civil,s.seconds,h,
-        (from,to)=>sweptBodyClear(from,to,s.doors),
-        (p,id)=>nearby.some(a=>a.id!==id&&d(a.p,p)<20));
-    }
-  }
   mark('civilian-motion');
   mark('contacts');
   distributeReports(s);
