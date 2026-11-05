@@ -10,6 +10,7 @@ import {CampaignKitPreview} from './equipment-preview.ts';
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import {carryCapacityReport} from './equipment-carry-placement.ts';
 import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
+import type {WorkbenchSocket} from './equipment-weapon-workbench-layout.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
  familyAccessoryAllowed,type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
 import {FAMILY_PART_SLOTS,FAMILY_PARTS,FAMILY_PRESETS,
@@ -64,6 +65,7 @@ export class CampaignScreen{
  private workbench:WeaponWorkbenchPreview|null=null;
  private weaponView=false;
  private selectedMount:WeaponAttachmentSlot='optic';
+ private selectedWorkbenchSocket:WorkbenchSocket|null=null;
  private lastArmoryRenderedId:string|null=null;
  private activeKitGroup:QuickLoadoutGroup='weapon';
  private readonly operatorViewAngles=new Map<string,number>();
@@ -381,7 +383,7 @@ export class CampaignScreen{
   const previousFocus=this.root.contains(document.activeElement)?
     document.activeElement?.getAttribute('aria-label'):null;
   this.disposePreview();
-  if(!sameOperator)this.activeKitGroup='weapon';
+  if(!sameOperator){this.activeKitGroup='weapon';this.selectedWorkbenchSocket=null;}
   this.lastArmoryRenderedId=id;
   const person=c.operators.find(o=>o.id===id);
   if(!person){this.armoryOperatorId=null;this.home(c);return;}
@@ -627,6 +629,11 @@ export class CampaignScreen{
      option.value=part.id;select.append(option);
     }
     select.value=build.parts[slot];select.disabled=locked;
+    select.addEventListener('focus',()=>{
+     const socket=('body-'+slot) as WorkbenchSocket;
+     this.selectedWorkbenchSocket=socket;
+     this.workbench?.showSocketChoices(socket,select);
+    });
     select.addEventListener('change',()=>this.handlers.equipWeaponFamilyPart(
      id,slot,select.value));
     familySelectors.set(slot,select);
@@ -660,7 +667,8 @@ export class CampaignScreen{
    select.value=current;select.disabled=locked;
    mountSelectors.set(slot,select);
    select.addEventListener('focus',()=>{this.selectedMount=slot;
-    this.workbench?.setActiveSlot(slot);});
+    this.selectedWorkbenchSocket=slot;
+    this.workbench?.showSocketChoices(slot,select);});
    select.addEventListener('change',async()=>{
     const partId=select.value,price=attachmentPrice(partId);
     const stock=c.inventory.attachments[partId]??0;
@@ -668,7 +676,7 @@ export class CampaignScreen{
     if(acquire&&c.funds<price){
      void showFieldworkNotice('Insufficient funds',
       'You do not have enough credits for this attachment.');
-     select.value=current;return;
+     select.value=current;this.workbench?.showSocketChoices(slot,select);return;
     }
     if(acquire&&!await confirmFieldworkAction({
      title:'Purchase and install attachment?',
@@ -676,7 +684,7 @@ export class CampaignScreen{
       ' costs '+price+' credits. Confirm this armory purchase.',
      confirmLabel:'BUY & INSTALL'
     })){
-     select.value=current;return;
+     select.value=current;this.workbench?.showSocketChoices(slot,select);return;
     }
     this.handlers.equipAttachment(id,slot,partId,acquire);
    });
@@ -723,13 +731,20 @@ export class CampaignScreen{
     const select=bodyPart?familySelectors.get(bodyPart):
      mountSelectors.get(socket as WeaponAttachmentSlot);
     if(!select)return;
+    this.selectedWorkbenchSocket=socket;
     if(bodyPart)familyEditor.open=true;
     else{attachments.open=true;this.selectedMount=socket as WeaponAttachmentSlot;}
     // Mirror the existing options directly below the model. Keep
     // Campaign purchase confirmation and stock rules on the select handler.
     this.workbench?.showSocketChoices(socket,select);
    });
-   this.workbench.setActiveSlot(build?'body-receiver':this.selectedMount,false);
+   const remembered=this.selectedWorkbenchSocket;
+   const savedSelect=remembered?.startsWith('body-')?
+    familySelectors.get(remembered.slice(5) as FamilyPartSlot):
+    remembered?mountSelectors.get(remembered as WeaponAttachmentSlot):undefined;
+   if(remembered&&savedSelect)
+    this.workbench.showSocketChoices(remembered,savedSelect);
+   else this.workbench.setActiveSlot(build?'body-receiver':this.selectedMount,false);
   }else{
    this.preview=new CampaignKitPreview(preview,person.id,person.weapon,
     person.appearanceSeed,person.loadout,person.weaponConfiguration,
