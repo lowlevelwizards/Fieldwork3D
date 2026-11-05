@@ -6,7 +6,8 @@ import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   operationBriefing,availableDeployments,selectDeployment,
-  planMove,planMoveStroke,planNearbyInteraction,planAim,planWatch,
+  planMove,planMoveStroke,planNearbyInteraction,
+  planCivilianInteraction,planAim,planWatch,
   retargetActiveWatch,removeActiveWatch,setFirePolicy,planWait,planWaitAt,setWaitDuration,
   plannedControl,setNodeControl,setStartPace,planReloadAt,planDoorFlash,
   planSync,movePlanNode,
@@ -1408,6 +1409,11 @@ function updateContext(){
       watchActive=false;
     if(order.id===node.id)break;
   }
+  const civilianAtPlan=state.civilians.filter(c=>
+    c.health>0&&liveVisibility(state,c.p)&&
+    distance(finalPoint(a),c.p)<34)
+    .sort((x,y)=>distance(finalPoint(a),x.p)-
+      distance(finalPoint(a),y.p))[0]??null;
   const choices:ReturnType<typeof contextActionChoices>=selectedWatch?[
     {id:'ctxWatch',label:'RETARGET',group:'primary',
       pressed:true,title:'Choose a new point for this active WATCH'},
@@ -1416,6 +1422,9 @@ function updateContext(){
   ]:contextActionChoices({
     door:!!door,node:!!node,flashRemaining:state.flashRemaining,
     nearMovable,nearWindow,nearDoor:!door&&!!nearbyDoor,
+    nearCivilian:!!civilianAtPlan&&civilianAtPlan.state!=='compliant',
+    escortableCivilian:!!civilianAtPlan&&
+      civilianAtPlan.rescueTarget&&state.mission==='extract',
     posture:current.posture,pace:current.pace,
     firePolicy:node?.firePolicyState??a.firePolicy,
     reserve:a.reserve,magazine:a.magazine,
@@ -1667,6 +1676,18 @@ const handleContextAction=(event:MouseEvent)=>{
       const policy=active==='engage'?'hold':
         active==='hold'?'return':'engage';
       setFirePolicy(state,selected,policy,node?.id);
+      break;
+    }
+    case 'ctxSecureCivilian':
+    case 'ctxFollowCivilian':{
+      const civ=state.civilians.filter(c=>c.health>0&&
+        liveVisibility(state,c.p)&&
+        distance(finalPoint(a),c.p)<34)
+        .sort((x,y)=>distance(finalPoint(a),x.p)-
+          distance(finalPoint(a),y.p))[0];
+      const mode=action==='ctxSecureCivilian'?'secure':'follow';
+      if(!civ||!planCivilianInteraction(state,selected,civ.id,mode))
+        state.events.push('CIVILIAN INTERACTION NOT REACHABLE');
       break;
     }
     case 'ctxSuppress':

@@ -843,6 +843,19 @@ jobs:
             tests/civilian-b5a-shared-movement.test.mjs \
             tests/civilian-release-field-smoke.test.mjs \
             tests/mission-escort-physicality.test.mjs
+      - name: E5-C R2 civilian ballistic, interaction and replay safety
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-e5c-r2-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/civilian-c3a-ray-height.test.mjs \
+            tests/civilian-c3c-harm-attribution.test.mjs \
+            tests/civilian-c4-contextual-contact.test.mjs \
+            tests/civilian-b5b-ballistics.test.mjs \
+            tests/civilian-b7-rescue-session.test.mjs \
+            tests/civilian-b8-replay.test.mjs \
+            tests/mission-escort-physicality.test.mjs \
+            tests/tactical-integration-17-firefight-b1.test.mjs \
+            tests/tactical-mission-quality-operations.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
