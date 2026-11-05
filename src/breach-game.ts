@@ -126,6 +126,9 @@ import {initialEquipmentLoadout} from './equipment-loadouts.ts';
 import {stabilizationSummary} from './breach-casualty-status.ts';
 import {casualtyTrailingPosition,transportIsClear,type TransportMode}
  from './breach-casualty-transport.ts';
+import {civilianTransportEligible,takeCivilianCustody,dropCivilianCustody,
+ proposedCivilianTransportStep,reconcileCivilianTransportFrame}
+ from './breach-civilian-transport.ts';
 import {changeWeaponPlatform,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {weaponHandlingModifiers,sightAcquisitionScale,sightSpreadScale}
  from './equipment-weapon-handling.ts';
@@ -1254,13 +1257,28 @@ export function planRecoverMedical(s:Session,id:string,patientId:string):boolean
 }
 export function planCasualtyTransport(s:Session,id:string,patientId:string,
  to:Pt,mode:TransportMode='drag'):boolean{
- const a=party(s,id),patient=s.operators.find(o=>o.id===patientId);
- if(!a||!patient||patient===a||patient.side!==a.side||patient.health>0||
-    patient.surrendered||!canEdit(s))return false;
+ const a=party(s,id),friendly=s.operators.find(o=>o.id===patientId);
+ const civil=s.civilians.find(c=>c.id===patientId),patient=friendly??civil;
+ if(!a||!patient||patient===a||!canEdit(s))return false;
+ if(friendly&&(friendly.side!==a.side||friendly.health>0||
+    friendly.surrendered))return false;
+ if(civil&&(!civilianTransportEligible(civil,a)||
+    !liveVisibility(s,civil.p)))return false;
  if(!intelPassable(to,s.intel,5.4)||
   !routeWithSqueezeIntel(s.intel,finalPoint(a),patient.p).length||
   !routeWithSqueezeIntel(s.intel,patient.p,to).length)return false;
  return addNode(s,id,'evacuate',to,{patientId,transportMode:mode});
+}
+/** Authored emergency release supersedes only this patient's transport.
+ * Other subsequent planned orders remain intact and the edit is undoable. */
+export function planCivilianRelease(s:Session,id:string):boolean{
+ const a=party(s,id),c=s.civilians.find(c=>c.id===a?.carryingId);
+ if(!a||!c||c.carriedById!==a.id||!canEdit(s))return false;
+ return edit(s,a,()=>{
+   a.plan=a.plan.filter(n=>n.kind!=='evacuate'||n.patientId!==c.id);
+   a.plan.unshift({id:s.nextId++,kind:'interact',p:clone(a.p),
+     objectId:c.id,interaction:'release-civilian'});
+ });
 }
 export function planMedicalTreatment(s:Session,id:string,patientId:string):boolean{
  const a=party(s,id),patient=s.operators.find(o=>o.id===patientId);
@@ -2248,10 +2266,16 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   // This is reactive execution only; it never modifies the player's plan.
   const visibleThreat=enemies(s).filter(e=>e.health>0&&inSight(a,e,s))
     .sort((x,y)=>d(a.p,x.p)-d(a.p,y.p))[0];
-  if(a.carryingId&&(n?.kind!=='evacuate'||n.patientId!==a.carryingId)){
-    const previous=s.operators.find(o=>o.id===a.carryingId);
-    if(previous)previous.carriedById=null;
-    a.carryingId=null;
+  if(a.carryingId&&
+     (n?.kind!=='evacuate'||n.patientId!==a.carryingId)&&
+     (n?.interaction!=='release-civilian'||n.objectId!==a.carryingId)){
+    const civil=s.civilians.find(c=>c.id===a.carryingId);
+    if(civil)dropCivilianCustody(civil,a);
+    else {
+      const prior=s.operators.find(o=>o.id===a.carryingId);
+      if(prior)prior.carriedById=null;
+      a.carryingId=null;
+    }
   }
   if(a.haltOnContact){
     const threat=visibleThreat;
@@ -2366,11 +2390,17 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     return;
   }
   if(n.kind==='evacuate'){
-    const patient=s.operators.find(o=>o.id===n.patientId&&o.side===a.side);
-    if(!patient||patient.health>0||patient.surrendered||
-       (patient.carriedById&&patient.carriedById!==a.id)){
-      if(patient)patient.carriedById=null;
+    const civil=s.civilians.find(c=>c.id===n.patientId);
+    const friendly=s.operators.find(o=>o.id===n.patientId&&o.side===a.side);
+    const patient=friendly??civil;
+    if(!patient||patient===a||patient.health>0||
+       (friendly&&friendly.surrendered)){
+      if(civil&&civil.carriedById===a.id)dropCivilianCustody(civil,a);
+      else if(friendly)friendly.carriedById=null;
       a.carryingId=null;pop(a);return;
+    }
+    if(patient.carriedById&&patient.carriedById!==a.id){
+      failCurrentOrder(s,a,n,'CASUALTY ALREADY IN TRANSPORT');return;
     }
     const mode=n.transportMode??'drag';
     if(a.carryingId!==patient.id){
@@ -2380,32 +2410,53 @@ function runOrders(s:Session,a:TeamActor,dt:number){
           y:patient.p.y+Math.sin(theta)*19};
         approach(a,goal,dt,s,.70);return;
       }
+      if(civil&&(!liveVisibility(s,civil.p)||
+         !sweptBodyClear(a.p,civil.p,s.doors,5.5))){
+        failCurrentOrder(s,a,n,'CASUALTY NOT IN PHYSICAL REACH');return;
+      }
       a.velocity=0;a.actionTimer+=dt;
       if(a.actionTimer>=(mode==='drag'?.85:1.45)){
-        a.carryingId=patient.id;patient.carriedById=a.id;
-        a.actionTimer=0;notify(s,a.name+' '+mode.toUpperCase()+
-          'ING '+patient.name);
+        if(civil){
+          if(!takeCivilianCustody(civil,a,mode)){
+            failCurrentOrder(s,a,n,'CASUALTY TRANSPORT UNAVAILABLE');return;
+          }
+          if(civil.rescueTarget&&s.rescue){
+            s.rescue.following=null;s.rescue.p=clone(civil.p);
+          }
+        }else{
+          a.carryingId=patient.id;patient.carriedById=a.id;
+        }
+        a.actionTimer=0;clearCurrentOrderIssue(a);
+        notify(s,a.name+' '+mode.toUpperCase()+'ING '+
+          ('name' in patient?patient.name:'CIVILIAN'));
       }
       return;
     }
     if(near(a.p,n.p,8)){
-      patient.carriedById=null;a.carryingId=null;
-      notify(s,patient.name+' RELEASED');pop(a);return;
+      // Keep valid custody until the objective can acknowledge extraction.
+      if(civil?.rescueTarget&&s.mission==='extract'&&
+         near(a.p,s.scenario.extract,37)){
+        // Keep custody until the physically trailing body enters extraction.
+        a.velocity=0;return;
+      }
+      if(civil)dropCivilianCustody(civil,a);
+      else patient.carriedById=null;
+      a.carryingId=null;
+      notify(s,('name' in patient?patient.name:'CIVILIAN')+' RELEASED');
+      pop(a);return;
     }
     const before=clone(a.p);
     approach(a,n.p,dt,s,mode==='drag'?.48:.38);
+    if(civil)return; // Neutral body motion commits with the carrier later.
     const attached=casualtyTrailingPosition(before,a.p,a.heading,mode);
     const people=s.operators.filter(o=>o!==a&&o!==patient&&o.health>0)
      .map(o=>o.p);
     if(!transportIsClear(patient.p,attached,
       (from,to)=>sweptBodyClear(from,to,s.doors),people)){
-      // Reject both movements rather than teleporting the body through a
-      // frame or displacing the next member of the stack.
       a.p=before;a.velocity=0;a.nav=[];return;
     }
     patient.priorP=clone(patient.p);patient.p=attached;
-    patient.velocity=0;
-    return;
+    patient.velocity=0;return;
   }
   if(n.kind==='treat'){
     const patient=s.operators.find(o=>o.id===n.patientId&&o.side===a.side);
@@ -2450,6 +2501,17 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     }
     if(!near(a.p,n.p,7)){
       approach(a,n.p,dt,s,.65);return;
+    }
+    if(n.interaction==='release-civilian'){
+      const person=s.civilians.find(c=>c.id===n.objectId);
+      if(!person||!dropCivilianCustody(person,a)){
+        failCurrentOrder(s,a,n,'CIVILIAN NOT IN CUSTODY');return;
+      }
+      if(person.rescueTarget&&s.rescue){
+        s.rescue.following=null;s.rescue.p=clone(person.p);
+      }
+      notify(s,'PERSON RELEASED — REASSIGN TO CONTINUE');
+      clearCurrentOrderIssue(a);pop(a);return;
     }
     if(n.objectId.startsWith('civ:')&&
        (n.interaction==='secure-civilian'||
@@ -3574,6 +3636,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(a.side==='red'&&(a.encounterReactionUntil??0)>s.seconds){
     a.aim=Math.max(0,a.aim-dt*2);return;
   }
+  if(a.carryingId){a.aim=Math.max(0,a.aim-dt*3);return;}
   // Medical intervention occupies both hands; no free shots while treating.
   if(a.plan[0]?.kind==='treat'||a.treatmentActive){
     a.aim=Math.max(0,a.aim-dt*3);return;
@@ -3930,13 +3993,6 @@ function mission(s:Session,dt:number){
     }
   }
   const rescuePerson=s.civilians.find(c=>c.rescueTarget);
-  if(rescuePerson&&rescuePerson.health<=0){
-    // The injured body remains in world/replay; with no tested casualty
-    // carrying for civilians yet, an incapacitated rescue target fails.
-    s.phase='lost';
-    s.report=['OPERATION FAILED','RESCUE TARGET INCAPACITATED'];
-    return;
-  }
   if(s.rescue&&rescuePerson){
     s.rescue.p=clone(rescuePerson.p);
   }
@@ -4013,7 +4069,7 @@ function mission(s:Session,dt:number){
   const objectiveReached=atObjective.length>0;
   if(s.mission==='secure'&&objectiveReached&&
      (s.missionType!=='rescue'||!rescuePerson||
-      rescuePerson.state==='compliant')){
+      (rescuePerson.state==='compliant'||!!rescuePerson.carriedById))){
     if(s.missionType==='hold'){
       // A contested position is not secured merely by standing on its
       // marker. Nearby active defenders arrest the actual hold clock.
@@ -4065,11 +4121,17 @@ function mission(s:Session,dt:number){
     s.mission==='secure'){
     s.holdTime=Math.max(0,s.holdTime-dt*.6);
   }
+  // Match each rescue person with the real owner of their current custody.
+  const validRescueCustody=(a:TeamActor)=>!s.rescue||
+    (rescuePerson?
+      (((rescuePerson.following===a.id&&s.rescue.following===a.id)||
+        (rescuePerson.carriedById===a.id&&a.carryingId===rescuePerson.id))&&
+        near(rescuePerson.p,s.scenario.extract,37)):
+      s.rescue.following===a.id&&near(s.rescue.p,s.scenario.extract,37));
   if(s.mission==='extract'&&team(s).some(a=>a.health>0&&
     near(a.p,s.scenario.extract,37)&&
     (s.missionType!=='intel'||s.intelCarrierId===a.id)&&
-    (!s.rescue||(s.rescue.following===a.id&&
-      near(s.rescue.p,s.scenario.extract,37))))){
+    validRescueCustody(a))){
     s.mission='done';s.phase='won';
     s.report=['OPERATION COMPLETE',s.missionType.toUpperCase(),
       'EXTRACTION COMPLETE'];
@@ -4174,9 +4236,13 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   // Medical state advances on the authoritative fixed tick only.
   for(const casualty of s.operators){
     if(casualty.carryingId&&casualty.health<=0){
-      const patient=s.operators.find(o=>o.id===casualty.carryingId);
-      if(patient)patient.carriedById=null;
-      casualty.carryingId=null;
+      const civil=s.civilians.find(c=>c.id===casualty.carryingId);
+      if(civil)dropCivilianCustody(civil,casualty);
+      else {
+        const patient=s.operators.find(o=>o.id===casualty.carryingId);
+        if(patient)patient.carriedById=null;
+        casualty.carryingId=null;
+      }
     }
     if(casualty.health<=0)continue;
     const loss=advanceMedicalCondition(casualty.medical,h);
@@ -4305,6 +4371,30 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     if(probe)mark('operator-'+a.id);
   }
   mark('actor-loop');
+  // Authoritative coupled body proposal, before hard-actor resolution.
+  const coupledBodyStarts=new Map<string,Pt>();
+  for(const carrier of s.operators){
+    if(!carrier.carryingId)continue;
+    const civil=s.civilians.find(c=>c.id===carrier.carryingId&&
+      c.carriedById===carrier.id);
+    if(!civil)continue;
+    const from=motionStart.get(carrier.id)??carrier.p;
+    const bodyFrom=motionStart.get(civil.id)??civil.p;
+    const others=[
+      ...s.operators.filter(o=>o!==carrier&&o.health>0).map(o=>o.p),
+      ...s.civilians.filter(c=>c!==civil).map(c=>c.p)
+    ];
+    const next=proposedCivilianTransportStep(bodyFrom,from,carrier.p,
+      carrier.heading,civil.transportMode??carrier.plan[0]?.transportMode??'drag',
+      (from,to)=>sweptBodyClear(from,to,s.doors),others,h*36);
+    if(!next){
+      carrier.p=clone(from);carrier.velocity=0;carrier.nav=[];
+      civil.p=clone(bodyFrom);civil.velocity=0;
+      continue;
+    }
+    coupledBodyStarts.set(carrier.id,clone(bodyFrom));
+    civil.priorP=clone(bodyFrom);civil.p=next;civil.velocity=0;
+  }
   // Propose civilian motion before the shared fixed-tick authority pass.
   // Both teams see the same original pre-motion positions for hard bodies.
   if(s.civilians.length){
@@ -4316,11 +4406,14 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
         windows:s.windows,
         canSee:(from,to)=>unobstructed(from,to,s,false),
         canReach:(from,to)=>sweptBodyClear(from,to,s.doors),
-        routeTo:(from,to)=>cachedEnemyRoute(s,from,to,true)
+        routeTo:(from,to)=>cachedEnemyRoute(s,from,to,true),
+        isCrowded:p=>s.operators.some(o=>o.health>0&&d(o.p,p)<22)||
+          s.civilians.some(c=>c.id!==civil.id&&d(c.p,p)<22)
       });
       stepCivilianMovement(civil,s.seconds,h,
         (from,to)=>sweptBodyClear(from,to,s.doors),
-        (p,id)=>nearby.some(a=>a.id!==id&&d(a.p,p)<20));
+        (p,id)=>nearby.some(a=>a.id!==id&&d(a.p,p)<20),
+        (from,to)=>cachedEnemyRoute(s,from,to,true));
     }
   }
   const proposals=[
@@ -4328,7 +4421,8 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
       from:motionStart.get(a.id)??a.p,to:a.p,alive:a.health>0,
       carried:!!a.carriedById})),
     ...s.civilians.map(c=>({id:c.id,side:'neutral' as const,
-      from:motionStart.get(c.id)??c.p,to:c.p,alive:c.health>0}))
+      from:motionStart.get(c.id)??c.p,to:c.p,
+      alive:c.health>0||!!c.carriedById,carried:!!c.carriedById}))
   ];
   const decisions=resolveMovementFrame(proposals,p=>{
     if(p.side==='neutral')return sweptBodyClear(p.from,p.to,s.doors);
@@ -4338,6 +4432,10 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
       a.squeeze?sweptProfileClear(p.from,p.to,s.doors,
         a.squeezeYaw,'squeeze'):sweptBodyClear(p.from,p.to,s.doors);
   });
+  reconcileCivilianTransportFrame(proposals,decisions,
+    s.civilians.filter(c=>!!c.carriedById).map(c=>({
+      carrierId:c.carriedById!,bodyId:c.id
+    })));
   for(const decision of decisions){
     if(!decision.blocked)continue;
     const civil=s.civilians.find(unit=>unit.id===decision.id);
@@ -4348,6 +4446,12 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     }
     const a=s.operators.find(unit=>unit.id===decision.id)!;
     a.p=clone(decision.point);
+    const start=coupledBodyStarts.get(a.id);
+    if(start&&a.carryingId){
+      const body=s.civilians.find(c=>c.id===a.carryingId&&
+        c.carriedById===a.id);
+      if(body){body.p=clone(start);body.priorP=clone(start);}
+    }
     a.priorP=clone(decision.point);a.velocity=0;
     if(a.traversal){
       a.traversalElapsed=Math.min(a.traversal.duration,Math.max(0,
@@ -4411,7 +4515,7 @@ export function missionText(s:Session){
   return s.missionType==='intel'?
     'RETURN TO EXTRACTION · INTEL CARRIER MUST EXIT':
     s.missionType==='rescue'?
-    'ESCORT PERSON AND OPERATOR TO EXTRACTION':
+    'ESCORT OR TRANSPORT PERSON TO EXTRACTION':
     'RETURN TO EXTRACTION OUTSIDE';
 }
 export function debrief(s:Session){
@@ -4423,6 +4527,11 @@ export function debrief(s:Session){
   const shots=own.reduce((t,a)=>t+a.shots,0);
   const hits=own.reduce((t,a)=>t+a.hits,0);
   const target=enemies(s).find(e=>e.id===s.captureTarget);
+  const rescuePerson=s.civilians.find(c=>c.rescueTarget);
+  const rescueStatus=!rescuePerson?'none':
+    s.mission!=='done'?'not-extracted':
+    rescuePerson.health<=0?'incapacitated':
+    rescuePerson.injuryStage>0?'injured':'healthy';
   const civilianInjured=s.civilians.filter(c=>c.health>0&&
     c.injuryStage>0).length;
   const civilianDown=s.civilians.filter(c=>c.health<=0).length;
@@ -4443,7 +4552,7 @@ export function debrief(s:Session){
     stabilizedCasualties:casualtyCare.stabilized,
     criticalCasualties:casualtyCare.critical,
     evacuatedCasualties:evacuated,
-    shots,hits,civilianInjured,civilianDown,
+    shots,hits,civilianInjured,civilianDown,rescueStatus,
     civilianPlayerInjured:attributable.injured,
     civilianPlayerDown:attributable.down,
     kills:own.reduce((t,a)=>t+a.kills,0),

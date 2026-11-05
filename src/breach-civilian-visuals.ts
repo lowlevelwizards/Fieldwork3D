@@ -9,7 +9,8 @@ const forms={
  head:new THREE.BoxGeometry(9,9,9),
  arm:new THREE.BoxGeometry(4,12,5),
  leg:new THREE.BoxGeometry(6,12,7),
- shoe:new THREE.BoxGeometry(7,4,9)
+ shoe:new THREE.BoxGeometry(7,4,9),
+ apron:new THREE.BoxGeometry(11,13,2)
 };
 const cloth=[0x837c70,0x677b70,0x8c736c,0x87816d,0x637584,0x947e69];
 const pants=[0x474c4e,0x5a544c,0x555c51,0x4b5962];
@@ -27,7 +28,8 @@ function box(geometry:THREE.BoxGeometry,color:number,
  mesh.position.set(x,y,z);parent.add(mesh);return mesh;
 }
 export type CivilianRig={
- root:THREE.Group;leftArm:THREE.Mesh;rightArm:THREE.Mesh;
+ root:THREE.Group;head:THREE.Mesh;
+ leftArm:THREE.Mesh;rightArm:THREE.Mesh;
  leftLeg:THREE.Mesh;rightLeg:THREE.Mesh;
 };
 export function createCivilianRig(c:CivilianActor):CivilianRig{
@@ -37,14 +39,16 @@ export function createCivilianRig(c:CivilianActor):CivilianRig{
  const face=skin[(seed>>>5)%skin.length];
  const outer=c.role==='employee'&&seed%3===0?forms.coat:forms.torso;
  box(outer,torso,0,20,0,root);
- box(forms.head,face,0,32,0,root);
+ if(c.role==='employee'&&seed%4===1)
+  box(forms.apron,pants[(seed>>>3)%pants.length],0,20,-5.5,root);
+ const head=box(forms.head,face,0,32,0,root);
  const leftArm=box(forms.arm,torso,-10,19,0,root);
  const rightArm=box(forms.arm,torso,10,19,0,root);
  const leftLeg=box(forms.leg,trousers,-4.2,7,0,root);
  const rightLeg=box(forms.leg,trousers,4.2,7,0,root);
  box(forms.shoe,0x363938,-4.2,2,2,root);
  box(forms.shoe,0x363938,4.2,2,2,root);
- return {root,leftArm,rightArm,leftLeg,rightLeg};
+ return {root,head,leftArm,rightArm,leftLeg,rightLeg};
 }
 export function updateCivilianRig(r:CivilianRig,
  c:CivilianActor,now:number):void{
@@ -58,7 +62,13 @@ export function updateCivilianRig(r:CivilianRig,
  r.leftArm.rotation.set(0,0,0);r.rightArm.rotation.set(0,0,0);
  r.leftLeg.rotation.set(0,0,0);r.rightLeg.rotation.set(0,0,0);
  r.leftLeg.position.set(-4.2,7,0);r.rightLeg.position.set(4.2,7,0);
+ r.head.rotation.set(0,0,0);
  const pose=civilianPose(c);
+ // Render-only, seed-derived micro-activity: no AI tick, no new meshes.
+ // Reset on every sample so scrubbing backwards is fully deterministic.
+ if(pose==='idle'||pose==='work'||pose==='seated'){
+  r.head.rotation.y=Math.sin(now*.55+c.appearanceSeed*.013)*.11;
+ }
  if(pose==='compliant'){
   r.leftArm.position.y=30;r.rightArm.position.y=30;
   r.leftArm.rotation.z=-.55;r.rightArm.rotation.z=.55;
@@ -66,9 +76,21 @@ export function updateCivilianRig(r:CivilianRig,
   r.leftArm.rotation.z=-.25;r.rightArm.rotation.z=.25;
  }else if(pose==='hide'||pose==='injured'){
   r.root.scale.y=.73;r.leftArm.rotation.z=-.28;
+ }else if(pose==='carried'){
+  r.root.rotation.z=.72;r.root.position.y=11;
+  r.root.scale.set(.88,.88,.88);
+  r.leftLeg.rotation.x=.50;r.rightLeg.rotation.x=.50;
+ }else if(pose==='dragged'){
+  r.root.rotation.z=Math.PI*.47;r.root.position.y=3;
+  r.root.scale.set(.88,.78,.88);
  }else if(pose==='down'){
   r.root.rotation.z=Math.PI*.48;
   r.root.position.y=3;r.root.scale.set(.88,.88,.88);
+ }else if(pose==='injured-walk'){
+  const step=Math.sin(now*5+c.appearanceSeed*.01)*.17;
+  r.root.scale.y=.82;
+  r.leftLeg.rotation.x=step;r.rightLeg.rotation.x=-step;
+  r.leftArm.rotation.z=-.20;r.rightArm.rotation.x=step*.45;
  }else if(pose==='seated'){
   // Small, blocky and grounded: legs point forward and the upper body
   // is lowered, with no extra joints at phone gameplay scale.
@@ -77,8 +99,8 @@ export function updateCivilianRig(r:CivilianRig,
   r.leftArm.rotation.x=-.18;r.rightArm.rotation.x=-.18;
  }else if(pose==='work'){
   const task=Math.sin(now*1.8+c.appearanceSeed*.01)*.13;
-  r.leftArm.rotation.x=task;
-  r.rightArm.rotation.x=-task;
+  r.leftArm.rotation.x=-.24+task;
+  r.rightArm.rotation.x=-.24-task;
  }else if(pose==='walk'||pose==='run'){
   const gait=Math.sin(now*(pose==='run'?14:8)+
     c.appearanceSeed*.01)*.32;
