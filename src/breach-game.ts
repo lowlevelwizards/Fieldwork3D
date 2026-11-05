@@ -59,6 +59,9 @@ import {materialResponse} from './breach-impact-responses.ts';
 import {manipulateWindow,damageWindow,windowPaneSegment} from './breach-windows.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {chooseAiIntent,hasRecentSound,type AIIntent} from './breach-ai-policy.ts';
+import {newSuspicion,observeSuspicion,advanceSuspicion,
+  maintainVisualContact,exhaustSuspicionSearch,type SuspicionMemory}
+  from './breach-ai-suspicion.ts';
 import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
 import {TacticalRouteCache} from './breach-tactical-route-cache.ts';
 import {PerceptionPairCache} from './breach-perception-cache.ts';
@@ -144,6 +147,7 @@ export type TeamActor=Operator & {
   carryingId:string|null;carriedById:string|null;
   wedgeRemaining:number;
   awareness:ActorAwareness;
+  suspicion:SuspicionMemory;lastVisualSuspicionId:string|null;
   intent:AIIntent|null;combatChoice:CombatAction|null;lastReportAt:number;
   coordinationRole:GroupRole|null;coordinationUntil:number;
   lastMoraleEventAt:number;
@@ -305,7 +309,8 @@ const withActions=(a:Operator):TeamActor=>({
   lastTreatmentAt:-100,lastTreatmentTargetId:null,
   treatmentActive:false,treatmentProgress:0,
   carryingId:null,carriedById:null,wedgeRemaining:0,
-  awareness:newAwareness(),intent:null,combatChoice:null,lastReportAt:-100,
+  awareness:newAwareness(),suspicion:newSuspicion(),lastVisualSuspicionId:null,
+  intent:null,combatChoice:null,lastReportAt:-100,
   coordinationRole:null,coordinationUntil:0,lastMoraleEventAt:-100,searchOrigin:null,searchQueue:[],searchPauseUntil:0,plan:[],history:makeHistory(),nav:[],activeNode:-1,
   posture:'stand',pace:'walk',alert:'idle',velocity:0,turning:0,aim:0,
   targetId:null,suppression:0,stamina:1,magazine:12,reserve:36,
@@ -2691,10 +2696,58 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   if(a.health<=0||a.surrendered)return;
   if(!a.watch)a.watch=watchPoint(a.p,s.doors);
   const visible=team(s).filter(b=>inSight(a,b,s));
+  // First acquisition is a real visual observation; seeing the same actor
+  // on subsequent ticks is not a fresh independent suspicion event.
+  const visualId=visible[0]?.id??null;
+  if(visualId!==a.lastVisualSuspicionId){
+    a.lastVisualSuspicionId=visualId;
+    if(visualId)observeSuspicion(a.suspicion,{
+      id:'visual/'+visualId+'/'+Math.round(s.seconds*60),
+      at:s.seconds,kind:'contact',cause:'confirmed-sight'
+    });
+  }
+  advanceSuspicion(a.suspicion,s.seconds,dt,
+    a.alert==='investigating'&&!!a.contact);
+  // Sustained *confirmed* sight is fresh information without extra contact
+  // events. Keep alarm current until vision really breaks.
+  if(visualId)maintainVisualContact(a.suspicion,s.seconds);
   if(visible.length&&a.encounterReactionUntil===Number.POSITIVE_INFINITY){
     a.encounterReactionStartedAt=s.seconds;
     a.encounterReactionUntil=s.seconds+encounterReactionDelay(
       a.encounterReadiness??'attentive',a.id);
+  }
+  // Every unheard event is considered once. Multiple same-tick sounds survive.
+  let strongest:ReturnType<typeof interpretSound>=null;
+  for(const sound of s.noise){
+    if(sound.id!==undefined?sound.id<=a.lastNoiseExaminedId:
+      sound.time<=a.lastNoiseExaminedAt)continue;
+    if(s.seconds-sound.time>1)continue;
+    const evidence=interpretSound(sound,a.id,a.p,s.doors,WALLS,s.windows);
+    if(evidence){
+      addObservation(a.awareness,{id:'audio/'+a.id+'/'+evidence.id,
+        observerId:a.id,source:'auditory',at:evidence.at,
+        estimate:evidence.estimate,uncertainty:evidence.uncertainty,
+        kind:evidence.kind});
+      const disposition=soundResponse(evidence.kind,evidence.intensity);
+      if(disposition!=='ignore')observeSuspicion(a.suspicion,{
+        id:'sound/'+evidence.id,at:evidence.at,
+        kind:disposition==='alarm'?'alarm':
+          disposition==='investigate'?'investigate':'orient',
+        intensity:evidence.intensity,cause:evidence.kind
+      });
+      const urgency=soundPriority(disposition);
+      const prior=strongest?soundPriority(
+        soundResponse(strongest.kind,strongest.intensity)):-1;
+      if(urgency>0&&(urgency>prior||
+         urgency===prior&&evidence.intensity>strongest!.intensity))
+        strongest=evidence;
+    }
+  }
+  const newestNoise=s.noise.at(-1);
+  if(newestNoise){
+    a.lastNoiseExaminedId=Math.max(a.lastNoiseExaminedId,
+      newestNoise.id??a.lastNoiseExaminedId);
+    a.lastNoiseExaminedAt=Math.max(a.lastNoiseExaminedAt,newestNoise.time);
   }
   // Intention selection reads only acquired observations, not hidden positions.
   const belief=bestBelief(a.awareness);
@@ -2702,13 +2755,10 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   // A faint noise can turn a head without becoming an indefinitely
   // actionable contact. Do not replace it with a psychic search target.
   if(!visible.length&&!a.contacted&&a.alert==='suspicious'&&a.heard){
-    // A fresh violent event may interrupt a quiet head-turn. Do not wait
-    // until its one-second audio observation window has expired.
-    const newAlarm=s.noise.some(event=>
-      (event.id??0)>a.lastNoiseExaminedId&&
-      s.seconds-event.time<=1&&
-      ['gunshot','flashbang','kick','glass'].includes(event.kind));
-    if(s.seconds<a.alertUntil&&!newAlarm){
+    // Continue collecting physical evidence while orienting. Only an
+    // actually heard NEW event interrupts this head-turn, not distant
+    // hidden gunfire or a globally visible noise event.
+    if(s.seconds<a.alertUntil&&!strongest){
       a.velocity=0;rotate(a,angle(a.p,a.heard),dt);return;
     }
     if(s.seconds>=a.alertUntil){a.alert='idle';a.heard=null;}
@@ -2726,6 +2776,12 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     else if(!recentNoise){
       a.contact=null;a.heard=null;a.contacted=false;
       if(a.alert==='investigating')a.alert='idle';
+      // Defensive postures may linger after contact, but cease indefinite
+      // armed-cover alert when the evidence and suppression have truly faded.
+      if(a.alert==='cover'&&a.suspicion.stage==='unaware'&&
+         a.suppression<.08&&!a.retreatPoint){
+        a.alert='idle';a.defense=null;
+      }
     }
   }
   if(visible.length){
@@ -2823,32 +2879,6 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         a.postureChangedAt??-100,true);
       a.postureChangedAt=s.seconds;
     }
-  }
-  // Every unheard event is considered once. Multiple same-tick sounds survive.
-  let strongest:ReturnType<typeof interpretSound>=null;
-  for(const sound of s.noise){
-    if(sound.id!==undefined?sound.id<=a.lastNoiseExaminedId:
-      sound.time<=a.lastNoiseExaminedAt)continue;
-    if(s.seconds-sound.time>1)continue;
-    const evidence=interpretSound(sound,a.id,a.p,s.doors,WALLS,s.windows);
-    if(evidence){
-      addObservation(a.awareness,{id:'audio/'+a.id+'/'+evidence.id,
-        observerId:a.id,source:'auditory',at:evidence.at,
-        estimate:evidence.estimate,uncertainty:evidence.uncertainty,
-        kind:evidence.kind});
-      const urgency=soundPriority(soundResponse(evidence.kind,evidence.intensity));
-      const prior=strongest?soundPriority(
-        soundResponse(strongest.kind,strongest.intensity)):-1;
-      if(urgency>0&&(urgency>prior||
-         urgency===prior&&evidence.intensity>strongest!.intensity))
-        strongest=evidence;
-    }
-  }
-  const newestNoise=s.noise.at(-1);
-  if(newestNoise){
-    a.lastNoiseExaminedId=Math.max(a.lastNoiseExaminedId,
-      newestNoise.id??a.lastNoiseExaminedId);
-    a.lastNoiseExaminedAt=Math.max(a.lastNoiseExaminedAt,newestNoise.time);
   }
   const noiseDisposition=strongest?
     soundResponse(strongest.kind,strongest.intensity):'ignore';
@@ -2992,7 +3022,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       if(!a.searchOrigin){
         a.searchOrigin=clone(a.contact);
         a.searchQueue=searchCandidates(a.searchOrigin,
-          belief?.uncertainty??65,s.site?.rooms??[]);
+          belief?.uncertainty??65,s.site?.rooms??[],s.doors,COVER);
       }
       if(a.searchPauseUntil===0)
         a.searchPauseUntil=s.seconds+tempo.inspectSeconds;
@@ -3018,6 +3048,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         a.searchPauseUntil=0;
       }else if(!a.searchQueue.length){
         a.alert='cover';a.contact=null;a.searchOrigin=null;
+        exhaustSuspicionSearch(a.suspicion,s.seconds);
         a.searchPauseUntil=0;
         a.defense=defensivePosition(a,a.heard??a.p,s);
         a.defenseUntil=s.seconds+6;
@@ -3048,6 +3079,10 @@ function distributeReports(s:Session){
    report.deliveredTo.push(recipient.id);
    newlyInformed.push(recipient.id);
    addObservation(recipient.awareness,observation);
+   observeSuspicion(recipient.suspicion,{
+     id:observation.id,at:s.seconds,kind:'report',
+     cause:'heard-verbal-warning'
+   });
    if(recipient.intent?.kind!=='engage'){
     recipient.heard=clone(observation.estimate);
     recipient.contact=clone(observation.estimate);

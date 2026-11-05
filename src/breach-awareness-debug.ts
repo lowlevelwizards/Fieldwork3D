@@ -12,6 +12,9 @@ export function awarenessDebugLine(actor:TeamActor):string{
   'COMBAT '+(actor.combatChoice??'none')+
    ' · ROLE '+(actor.coordinationRole??'none'),
   'ALERT '+actor.alert+' · MORALE '+actor.morale.toFixed(2),
+  'SUSPICION '+actor.suspicion.stage.toUpperCase()+
+   ' '+Math.round(actor.suspicion.pressure*100)+'%'+
+   (actor.suspicion.lastCause?' · '+actor.suspicion.lastCause:''),
   'CONTACTS '+active.length+(top?
    ' · '+top.source+' '+Math.round(top.confidence*100)+'% ±'+
    Math.round(top.uncertainty):''),
