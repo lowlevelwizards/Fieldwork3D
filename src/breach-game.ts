@@ -30,6 +30,7 @@ import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
 import {segmentHitsBox} from './breach-ray.ts';
 import {coverImpactFraction,aimHeight} from './breach-cover-height.ts';
 import {microKeyAt} from './breach-fog-memory.ts';
+import {groundView,groundViewCandidate} from './breach-ground-view.ts';
 import {assessFireLane,fireLaneReachable,type FireBlock} from './breach-fire-safety.ts';
 import {selectFireableContact} from './breach-target-selection.ts';
 import {acquisitionSeconds} from './breach-firing-cadence.ts';
@@ -1538,6 +1539,7 @@ function observe(s:Session){
     // fall between the old 40-unit sample points when pieing a room.
     // Do this at an intel cadence, not on every 60 Hz sim tick.
     if(updateGround){
+      const sight=groundView(blue.p.x,blue.p.y,blue.heading);
       const bounds=s.site?.bounds??{minX:0,minY:0,maxX:W,maxY:H};
       const minX=Math.max(Math.floor(bounds.minX/20),Math.floor((blue.p.x-240)/20));
       const maxX=Math.min(Math.ceil(bounds.maxX/20)-1,Math.floor((blue.p.x+240)/20));
@@ -1545,11 +1547,10 @@ function observe(s:Session){
       const maxY=Math.min(Math.ceil(bounds.maxY/20)-1,Math.floor((blue.p.y+240)/20));
       for(let row=minY;row<=maxY;row++)
         for(let col=minX;col<=maxX;col++){
-          const p={x:col*20+10,y:row*20+10};
-          const theta=angle(blue.p,p);
-          if(d(blue.p,p)>=240||
-            Math.abs(angleDifference(blue.heading,theta))>=1.15||
-            !unobstructed(blue.p,p,s,blue.posture==='crouch'))continue;
+          const x=col*20+10,y=row*20+10;
+          if(!groundViewCandidate(sight,x,y))continue;
+          const p={x,y};
+          if(!unobstructed(blue.p,p,s,blue.posture==='crouch'))continue;
           s.seenGround.add('fine:'+col+','+row);
           // Keep legacy coarse memories for knownAt and existing intel UI.
           s.seenGround.add(Math.floor(p.x/40)+','+
@@ -1563,10 +1564,9 @@ function observe(s:Session){
       const y0=Math.max(Math.floor(bounds.minY/10),Math.floor((blue.p.y-240)/10));
       const y1=Math.min(Math.ceil(bounds.maxY/10)-1,Math.floor((blue.p.y+240)/10));
       for(let row=y0;row<=y1;row++)for(let col=x0;col<=x1;col++){
-        const p={x:col*10+5,y:row*10+5};
-        if(d(blue.p,p)>=240||
-          Math.abs(angleDifference(blue.heading,angle(blue.p,p)))>=1.15||
-          !unobstructed(blue.p,p,s,blue.posture==='crouch'))continue;
+        const x=col*10+5,y=row*10+5;
+        if(!groundViewCandidate(sight,x,y))continue;
+        if(!unobstructed(blue.p,{x,y},s,blue.posture==='crouch'))continue;
         s.seenGround.add(microKeyAt(col,row));
       }
     }
