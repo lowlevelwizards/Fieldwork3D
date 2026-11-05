@@ -9,6 +9,7 @@ import {GARMENT_SOLID_COLORS,type GarmentSolidId}
  from './operator-garment-color-policy.ts';
 import {HEADWEAR_SOLID_COLORS,type HeadwearSolidColorId}
  from './operator-headwear-colors.ts';
+import {FABRIC_CAMO_POLICY} from './operator-fabric-camo-policy.ts';
 
 export type CamoEnvironment='all'|'woodland'|'jungle'|'arid'|'transitional'|'urban'|'winter';
 export type CamoSort='smart'|'alphabetical'|'family'|'origin'|'era'|'lightness'|'recent';
@@ -132,10 +133,7 @@ export function camoEnvironments(id:HeadwearCamoId):readonly CamoEnvironment[]{
 /** Historically categorized periods come from the existing material policy,
  * not guessed issue dates from a print's perceived appearance. */
 export function camoSortEra(id:HeadwearCamoId):CamoEra{
- const meta=CAMO_CATALOG[id];
- return meta.era==='historic'?'historic':
-  /m81|flecktarn|dpm|rhodesian|alpenflage|tiger|dpcu|strichtarn|flora|pantera|cadpat/.test(id)?
-  'transition':'modern';
+ return FABRIC_CAMO_POLICY[id].period;
 }
 const srgb=(v:number)=>{const x=v/255;return x<=.04045?x/12.92:((x+.055)/1.055)**2.4;};
 /** Perceptual OKLab lightness. Sorting never modifies swatches or camouflage. */
