@@ -37,6 +37,8 @@ import {headwearCamoChoices,headwearCamoPixels,headwearCamoSize,
  HEADWEAR_CAMO_RECIPES,
  nextHeadwearCamoRoll,type HeadwearCamoId} from './operator-headwear-camo.ts';
 import {topColorwayChoices,resolvedTopColorway} from './operator-upper-colorways.ts';
+import {coordinateOutfit,suggestOutfitEquipmentSolids}
+ from './operator-material-coordination.ts';
 import {browseCamos,sortGarmentSolids,sortHeadwearSolids,
  readCamoBrowserPrefs,recordCamoRecent} from './operator-material-browser.ts';
 import {createCamoBrowseControls,createCamoFavoriteButton}
@@ -699,6 +701,31 @@ function renderMaterials(){
   materialRoot.append(advanced);
  }
  if(activeCategory==='top'){
+  const suggested=suggestOutfitEquipmentSolids(w,outfit,'coordinated');
+  const section=row('OUTFIT COLOR COORDINATION',
+   'Optional equipment palettes · only manufactured, compatible colors. Manual choices remain untouched unless you explicitly replace them.');
+  if(suggested.length){
+   const detail=document.createElement('small');
+   detail.textContent=suggested.map(x=>x.channel.toUpperCase()+': '+
+    GARMENT_SOLID_COLORS[x.color].label).join(' · ');
+   section.append(detail);
+   const actions=document.createElement('div');actions.className='material-row';
+   actions.append(makeButton('FILL UNSET EQUIPMENT COLORS',false,()=>
+    changeWardrobe(coordinateOutfit(current(),outfit,{
+     profile:'coordinated',scope:'unset'}))));
+   actions.append(makeButton('APPLY COORDINATED PALETTE',false,()=>
+    changeWardrobe(coordinateOutfit(current(),outfit,{
+     profile:'coordinated',scope:'replace'}))));
+   actions.append(makeButton('AUTHENTIC EQUIPMENT FINISHES',false,()=>
+    changeWardrobe(coordinateOutfit(current(),outfit,{
+     profile:'authentic',scope:'replace'}))));
+   if(w.fabricCamo?.top&&headwearCamoChoices(outfit.headwear).includes(w.fabricCamo.top))
+    actions.append(makeButton('MATCH HELMET COVER',false,()=>
+     changeWardrobe(coordinateOutfit(current(),outfit,{
+      profile:'coordinated',scope:'replace',headwear:outfit.headwear,
+      matchHeadwearPrint:true}))));
+   section.append(actions);
+  }
   // Combat knit and smock solids are controlled by their actual material
   // swatches above, never a second competing color dropdown. Keep the
   // Gorka's purpose-built TWO-TONE family options as its one exception.
