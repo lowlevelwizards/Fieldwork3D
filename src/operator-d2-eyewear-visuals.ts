@@ -70,14 +70,14 @@ function standard(parent:THREE.Group,frame:THREE.Material,
 }
 function aviator(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
  root.userData.d2EyeFitTop=5.13;
- root.userData.d2EyeDesign='R9-rounded-pilot-teardrop';
+ root.userData.d2EyeDesign='R10-close-set-rounded-pilot';
  // Classic pilot aviators: broad upper shoulder, full lower cheek and a
  // softly faceted teardrop rather than an outer bottom corner / spider eye.
  // R8's global 15-degree shear pulled every lower station outward, making
  // the lower outer return kink sharply. Author the profile directly instead.
  // Fifteen deliberate facets per ring; no new mesh parts or lens detailing.
  //
- // LEFT lens relative to x=-2.08: travel clockwise from the outer cheek,
+ // LEFT lens relative to the eye-center X: travel clockwise from the outer cheek,
  // across the broad top, down the inner nose edge, around the full foot.
  // The low shelf stays wide, while the outer cheek returns inward smoothly.
  const out:EyePolygon=[
@@ -97,7 +97,10 @@ function aviator(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
   [-1.05,2.75],[-1.30,2.87],[-1.50,3.19]
  ];
  for(const side of [-1,1] as const){
-  const x=side*2.08;
+  // R10: move each complete lens ring and aperture 0.13 units toward
+  // the nose, narrowing the pair by 0.26 overall. Preserve all of R9's
+  // successful teardrop geometry, bridge masses and outside temple fit.
+  const x=side*1.95;
   const outline=shifted(side===-1?out:mirror(out),x);
   const aperture=shifted(side===-1?hole:mirror(hole),x);
   frameRing(root,frame,'pilot-lens-collar',outline,[aperture],
