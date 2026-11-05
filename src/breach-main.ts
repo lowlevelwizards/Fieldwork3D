@@ -32,6 +32,8 @@ import {equipmentTrainingSite} from './equipment-training-range.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
  rangeTrialLabel,type RangeTrial} from './equipment-training-diagnostics.ts';
 import type {Site} from './breach-site.ts';
+import type {QuickPlayGenerationRequest,QuickPlayGenerationResponse}
+ from './quick-play-generation.ts';
 import {equippedEntryMethods,issuedWedges} from './equipment-entry-tools.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
@@ -416,7 +418,8 @@ function applyCampaignSkills(){
   state.flashRemaining=issued.reduce((n,qty)=>n+qty,0);
  }
 }
-let state:Session=newSession(0,legacyStudy?undefined:initialSiteSeed,
+// The front menu needs no procedural site. Generate exactly once when a mode starts.
+let state:Session=newSession(0,legacyStudy||campaignMode==='menu'?undefined:initialSiteSeed,
   selectedIntelMode,requestedSiteScale);
 state.lightingMode=selectedLightingMode;
 applyRequestedCondition(state);
@@ -3411,7 +3414,7 @@ ui.replayAnalysis.addEventListener('click',()=>{
 ui.replayExit.addEventListener('click',exitReplay);
 function reset(next=state.variant,siteSeed?:number,
  missionOverride?:Session['missionType'],prebuiltSite?:Site,
- encounterRisk?:1|2|3){
+ encounterRisk?:1|2|3,deferScene=false){
   replaying=false;replayPlaying=false;finishedSession=null;
   operationsBoard.hidden=true;
   hideWeaponChooser();
@@ -3427,13 +3430,159 @@ function reset(next=state.variant,siteSeed?:number,
   applyRosterIdentity(state,persistentRoster);
   applyCampaignSkills();
   flashDoorId=null;
-  stage?.applySite(state.site??null);selected='rook';looking=false;
+  if(!deferScene)stage?.applySite(state.site??null);
+  selected='rook';looking=false;
   selectedNode=null;doorFocusId=null;draggingNode=null;
   cursor=null;trace=null;zoom=1;panX=panY=0;
   fogStamp=-1;lastSoundShotId=0;lastEventAudio='';
   lastFootstepSoundTime=0;
   recorder=new MissionRecorder();recorder.capture(state,true);
-  tacticalFeedback.clear();layout();updateHud();
+  tacticalFeedback.clear();
+  if(!deferScene){layout();updateHud();}
+}
+/* Quick Play uses Map Lab-style progress checkpoints. Percentages represent
+ * completed work, not predicted time; expensive 3D mesh creation remains
+ * synchronous, but the status is painted immediately before it begins. */
+let quickPlayBusy=false;
+let quickPlayRun=0;
+let quickPlayWorker:Worker|null=null;
+let quickPlayReject:((reason:Error)=>void)|null=null;
+let quickPlayClockTimer:ReturnType<typeof setInterval>|null=null;
+let quickPlayStarted=0,quickPlayLastUpdate=0,quickPlayPercent=0;
+const quickPlayPanel=el<HTMLElement>('quickPlayProgress');
+const quickPlayBar=el<HTMLProgressElement>('quickPlayBar');
+const quickPlayPercentText=el<HTMLOutputElement>('quickPlayPercent');
+const quickPlayStageText=el<HTMLElement>('quickPlayStage');
+const quickPlayDetailText=el<HTMLElement>('quickPlayDetail');
+const quickPlayClockText=el<HTMLElement>('quickPlayClock');
+const quickPlayCancelButton=el<HTMLButtonElement>('quickPlayCancel');
+function quickPlayCheckpoint(value:number,stageName:string,detail:string){
+  quickPlayPercent=Math.max(quickPlayPercent,Math.min(100,Math.round(value)));
+  quickPlayBar.value=quickPlayPercent;
+  quickPlayPercentText.textContent=quickPlayPercent+'%';
+  quickPlayStageText.textContent=stageName;
+  quickPlayDetailText.textContent=detail;
+  quickPlayLastUpdate=performance.now();
+}
+function quickPlayClockTick(){
+  const elapsed=Math.floor((performance.now()-quickPlayStarted)/1000);
+  const quiet=Math.floor((performance.now()-quickPlayLastUpdate)/1000);
+  quickPlayClockText.textContent=elapsed+'s elapsed'+
+    (quickPlayBusy&&quiet>10?' · Still working on this stage':'');
+}
+function finishQuickPlayClock(){
+  if(quickPlayClockTimer!==null){
+    clearInterval(quickPlayClockTimer);quickPlayClockTimer=null;
+  }
+}
+const allowQuickPlayPaint=()=>new Promise<void>(resolve=>
+  requestAnimationFrame(()=>setTimeout(resolve,0)));
+quickPlayCancelButton.addEventListener('click',()=>{
+  if(quickPlayPanel.dataset.state==='error'){
+    quickPlayPanel.hidden=true;return;
+  }
+  if(!quickPlayBusy||quickPlayCancelButton.hidden)return;
+  ++quickPlayRun;
+  quickPlayReject?.(new Error('Quick Play loading cancelled'));
+  quickPlayReject=null;
+  quickPlayWorker?.terminate();quickPlayWorker=null;
+  quickPlayBusy=false;finishQuickPlayClock();
+  quickPlayPanel.hidden=true;
+});
+async function launchQuickPlay(){
+  if(quickPlayBusy)return;
+  const id=++quickPlayRun,priorMode=campaignMode;
+  const seed=randomSiteSeed(),scale=requestedSiteScale;
+  quickPlayBusy=true;quickPlayPercent=0;
+  quickPlayPanel.hidden=false;quickPlayPanel.dataset.state='running';
+  quickPlayCancelButton.hidden=false;quickPlayCancelButton.textContent='CANCEL';
+  quickPlayStarted=performance.now();quickPlayLastUpdate=quickPlayStarted;
+  quickPlayCheckpoint(0,'Starting tactical sandbox',
+    'Preparing '+scale+' site · seed '+seed);
+  quickPlayClockTick();
+  finishQuickPlayClock();quickPlayClockTimer=setInterval(quickPlayClockTick,1000);
+  try{
+    await allowQuickPlayPaint();
+    if(id!==quickPlayRun)return;
+    const generated=await new Promise<Extract<QuickPlayGenerationResponse,
+       {kind:'done'}>>((resolve,reject)=>{
+      quickPlayReject=reject;
+      const worker=new Worker(new URL('./quick-play-worker.ts',import.meta.url),
+        {type:'module'});
+      quickPlayWorker=worker;
+      quickPlayCheckpoint(3,'Starting architecture worker',
+        'Planning a reproducible tactical environment');
+      worker.onmessage=(event:MessageEvent<QuickPlayGenerationResponse>)=>{
+        const message=event.data;
+        if(id!==quickPlayRun||message.id!==id)return;
+        if(message.kind==='progress'){
+          quickPlayCheckpoint(message.percent,message.stage,message.detail);
+          return;
+        }
+        worker.terminate();quickPlayWorker=null;quickPlayReject=null;
+        if(message.kind==='error')reject(new Error(message.message));
+        else resolve(message);
+      };
+      worker.onerror=event=>{
+        event.preventDefault();
+        worker.terminate();quickPlayWorker=null;quickPlayReject=null;
+        reject(new Error('Architecture worker stopped unexpectedly'));
+      };
+      const request:QuickPlayGenerationRequest={id,seed,scale};
+      worker.postMessage(request);
+    });
+    if(id!==quickPlayRun)return;
+    quickPlayCancelButton.hidden=true;
+    quickPlayCheckpoint(76,'Preparing tactical session',
+      'Creating squad, navigation, intel and encounter state');
+    await allowQuickPlayPaint();
+    if(id!==quickPlayRun)return;
+    const sessionStart=performance.now();
+    campaignMode='quick';
+    // Reuse the completed site rather than compiling the same map again.
+    reset(state.variant,seed,undefined,generated.site,undefined,true);
+    const sessionMs=Math.round(performance.now()-sessionStart);
+    quickPlayCheckpoint(86,'Building 3D environment',
+      'Generating room meshes, fixtures, materials and static batches');
+    await allowQuickPlayPaint();
+    const sceneStart=performance.now();
+    stage?.applySite(state.site??null);
+    const sceneMs=Math.round(performance.now()-sceneStart);
+    quickPlayCheckpoint(95,'Preparing first frame',
+      'Fitting the camera and updating tactical controls');
+    await allowQuickPlayPaint();
+    const hudStart=performance.now();
+    layout();updateHud();
+    const hudMs=Math.round(performance.now()-hudStart);
+    campaignScreen.hide();
+    quickPlayBusy=false;
+    await allowQuickPlayPaint();
+    if(id!==quickPlayRun)return;
+    const totalMs=Math.round(performance.now()-quickPlayStarted);
+    quickPlayCheckpoint(100,'TACTICAL SANDBOX READY',
+      (state.site?.name??'Site')+' · '+state.operators.length+' actors');
+    quickPlayPanel.dataset.state='ready';
+    quickPlayClockText.textContent=(totalMs/1000).toFixed(1)+'s total · map '+
+      (generated.generationMs/1000).toFixed(1)+'s · 3D '+
+      (sceneMs/1000).toFixed(1)+'s';
+    console.info('[Quick Play startup]',{
+      seed,scale,generationMs:generated.generationMs,sessionMs,sceneMs,hudMs,
+      totalMs
+    });
+    finishQuickPlayClock();
+    setTimeout(()=>{if(id===quickPlayRun&&!quickPlayBusy)
+      quickPlayPanel.hidden=true;},1400);
+  }catch(error){
+    if(id!==quickPlayRun)return;
+    quickPlayWorker?.terminate();quickPlayWorker=null;quickPlayReject=null;
+    campaignMode=priorMode;quickPlayBusy=false;finishQuickPlayClock();
+    quickPlayPanel.dataset.state='error';quickPlayCancelButton.hidden=false;
+    quickPlayCancelButton.textContent='BACK';
+    quickPlayStageText.textContent='TACTICAL SANDBOX FAILED';
+    quickPlayDetailText.textContent=error instanceof Error?error.message:String(error);
+    quickPlayClockText.textContent='Stopped · return to menu and retry';
+    console.error('[Quick Play startup]',error);
+  }
 }
 const campaignBackButton=document.createElement('button');
 campaignBackButton.type='button';campaignBackButton.id='campaignReturnButton';
@@ -3451,7 +3600,7 @@ const campaignScreen=new CampaignScreen({
   saveCampaign();showCampaignHome();
  },
  continueCampaign:()=>showCampaignHome(),
- quickPlay:()=>{campaignMode='quick';campaignScreen.hide();reset();},
+ quickPlay:()=>{void launchQuickPlay();},
  chooseContract:(id)=>{
   if(!campaign)return;
   const next=acceptContract(campaign,id);
@@ -4286,7 +4435,7 @@ function tick(now:number){
   const perfStart=perfOverlay?performance.now():0;
   const frameGap=Math.max(0,now-last);
   const dt=Math.min(.08,frameGap/1000);last=now;
-  if((campaignMode==='menu'||campaignMode==='home')&&!replaying){
+  if(quickPlayBusy||((campaignMode==='menu'||campaignMode==='home')&&!replaying)){
    accum=0;previousRenderActors=null;
    requestAnimationFrame(tick);return;
   }
