@@ -2,6 +2,7 @@
  * Shapes and colors are stylized, NOT copies of licensed print masters.
  * This produces fixed tile bytes once, not animated or per-frame noise.
  */
+import {letoPeaDotOverlay} from './operator-camo-leto-peadots.ts';
 export const CAMO6A_IDS=[
  'atacs-fg','ukrainian-mm14','aor2','multicam-tropic',
  'atacs-au','ss-leto','aor1','multicam-arid'
@@ -356,8 +357,12 @@ export function camo6AIndices(id:Camo6AId,multicamBase?:Uint8Array):Uint8Array{
  const result=new Uint8Array(SIZE*SIZE);
  for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++)
   result[y*SIZE+x]=finishInk(id,x,y,original);
- tileCache.set(id,result);
- return result.slice();
+ // 7C: restore SS-Leto's characteristic secondary pea-dot texture without
+ // touching the already approved 7B lobed leaf shapes or any sister print.
+ // The fixed 64px master is cached; only UV phase rerolls per operator.
+ const finalTile=id==='ss-leto'?letoPeaDotOverlay(result,'medium'):result;
+ tileCache.set(id,finalTile);
+ return finalTile.slice();
 }
 /** Artists' coverage is diagnostic, never a quota altering ink geometry.
  * Lazy evaluation keeps game startup and phone wardrobe opening responsive.
