@@ -27,8 +27,8 @@ function standard(parent:THREE.Group,frame:THREE.Material,
  lens:THREE.Material,variant:D2GlassesVariant){
  const root=new THREE.Group();root.name='standard-'+variant;
  root.userData.d2EyeVariant=variant;
- root.userData.d2EyeDesign='R4-oversized-acetate-with-outside-temples';
- root.userData.d2EyeFitTop=4.88;
+ root.userData.d2EyeDesign='R11-faceted-acetate-and-outside-temples';
+ root.userData.d2EyeFitTop=variant==='rectangular'?4.95:4.88;
  if(variant==='round'){
   // The round subvariant is still a casual civilian frame, not motor goggles.
   for(const sign of [-1,1] as const){
@@ -43,17 +43,26 @@ function standard(parent:THREE.Group,frame:THREE.Material,
   const heavy=variant==='heavy-square';
   // Extend slightly OUTSIDE the skull; slightly chamfered lower corners
   // distinguish an acetate frame from a rectangular protective goggle.
+  // R11: the default acetate frame has one sculpted outer contour with
+  // bold rounded-square apertures, an integrated saddle bridge and a
+  // readable nose opening. Heavy-square retains its approved proportions.
   const outer:EyePolygon=heavy?[
    [-4.32,4.91],[4.32,4.91],[4.32,2.27],[4.02,2.02],
    [-4.02,2.02],[-4.32,2.27]
   ]:[
-   [-4.23,4.82],[4.23,4.82],[4.23,2.34],[3.98,2.12],
-   [-3.98,2.12],[-4.23,2.34]
+   [-4.27,4.48],[-4.10,4.87],[-3.38,4.95],[-2.34,4.88],
+   [-1.15,4.78],[-.60,4.65],[.60,4.65],[1.15,4.78],
+   [2.34,4.88],[3.38,4.95],[4.10,4.87],[4.27,4.48],
+   [4.20,2.77],[3.95,2.40],[3.34,2.18],[1.60,2.18],
+   [.87,2.40],[.57,3.54],[-.57,3.54],[-.87,2.40],
+   [-1.60,2.18],[-3.34,2.18],[-3.95,2.40],[-4.20,2.77]
   ];
   const left:EyePolygon=heavy?[
    [-3.70,4.24],[-.78,4.24],[-.78,2.73],[-3.47,2.73],[-3.70,2.90]
   ]:[
-   [-3.66,4.25],[-.84,4.25],[-.84,2.69],[-3.42,2.69],[-3.66,2.87]
+   [-3.66,4.23],[-3.25,4.39],[-2.26,4.38],[-1.23,4.22],
+   [-.86,4.07],[-.83,3.75],[-1.02,3.15],[-1.37,2.78],
+   [-3.13,2.73],[-3.52,2.98],[-3.70,3.39]
   ];
   const right=mirror(left);
   frameRing(root,frame,'single-acetate-front',outer,[left,right],
@@ -61,7 +70,13 @@ function standard(parent:THREE.Group,frame:THREE.Material,
   lensSurface(root,lens,'civilian-square-left',left,-5.04);
   lensSurface(root,lens,'civilian-square-right',right,-5.04);
  }
- outsideTemples(root,frame,'one-piece-temple',{
+ outsideTemples(root,frame,'one-piece-temple',variant==='rectangular'?{
+  frontX:4.17,frontY:4.42,frontZ:-4.91,
+  shoulderX:4.40,shoulderY:4.19,shoulderZ:-4.28,
+  rearX:4.32,rearY:3.82,rearZ:3.60,
+  frontWidth:.75,shoulderWidth:.68,rearWidth:.50,
+  frontHeight:.85,shoulderHeight:.68,rearHeight:.45
+ }:{
   frontX:4.17,frontY:4.08,frontZ:-4.93,
   shoulderY:4.00,rearY:3.78,frontHeight:.86
  });
@@ -190,7 +205,7 @@ export function createD2Glasses(
  const root=new THREE.Group();root.name='d2-'+id;
  root.userData.modelAxes='-Z-forward,+X-right,+Y-up';
  if(id==='glasses-standard'){
-  root.userData.d2EyeFitTop=4.91;
+  root.userData.d2EyeFitTop=4.95;
   for(const variant of ['rectangular','round','heavy-square'] as const)
    standard(root,frame,lens,variant);
  }else if(id==='glasses-aviator')aviator(root,frame,lens);

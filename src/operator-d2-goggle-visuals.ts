@@ -9,48 +9,55 @@ export type D2GoggleId='goggles-low'|'goggles-field'|'goggles-retro';
 export type D2GogglePlacement='eyes'|'forehead'|'helmet'|'neck';
 function low(root:THREE.Group,frame:THREE.Material,
  lens:THREE.Material,elastic:THREE.Material):void{
- root.userData.d2EyeFitTop=4.82;
- root.userData.d2EyeDesign='R8-broad-continuous-sport-strap';
- // Sports-protective silhouette: a lightweight upper arch and ONE generous
- // wraparound pane, not a miniature of the tall bunker field goggles.
- // Increased vertical coverage comes principally from the cheek outline,
- // leaving the cap-adjacent upper edge tucked below the brim.
+ root.userData.d2EyeFitTop=4.88;
+ root.userData.d2EyeDesign='R11-contoured-compact-protection';
+ // R11: distinct from the deep field bunker AND from open shooting lenses.
+ // A continuous shallow shell uses a large W-shaped nose clearance and
+ // two full cheek bays. Keep this one sealed mesh, not assembled blocks.
  const outer:EyePolygon=[
-  [-3.80,4.38],[-2.73,4.70],[-1.11,4.82],
-  [1.11,4.82],[2.73,4.70],[3.80,4.38],
-  [3.75,3.19],[2.52,2.41],[.87,2.87],
-  [-.87,2.87],[-2.52,2.41],[-3.75,3.19]
+  [-3.85,4.10],[-3.62,4.60],[-2.75,4.84],[-1.25,4.88],
+  [1.25,4.88],[2.75,4.84],[3.62,4.60],[3.85,4.10],
+  [3.70,3.12],[2.85,2.48],[1.90,2.37],[1.32,2.57],
+  [.66,3.48],[-.66,3.48],[-1.32,2.57],[-1.90,2.37],
+  [-2.85,2.48],[-3.70,3.12]
  ];
+ // Upper aperture is intentionally lower than the rim (> .42 unit roof)
+ // for a protective seal, instead of reading like open shooting glasses.
  const inner:EyePolygon=[
-  [-3.43,4.05],[-2.52,4.32],[-1.04,4.36],
-  [1.04,4.36],[2.52,4.32],[3.43,4.05],
-  [3.37,3.40],[2.40,2.78],[.84,3.20],
-  [-.84,3.20],[-2.40,2.78],[-3.37,3.40]
+  [-3.47,4.04],[-3.29,4.28],[-2.53,4.38],[-1.24,4.40],
+  [1.24,4.40],[2.53,4.38],[3.29,4.28],[3.47,4.04],
+  [3.34,3.32],[2.67,2.86],[1.97,2.80],[1.66,3.03],
+  [.65,3.98],[-.65,3.98],[-1.66,3.03],[-1.97,2.80],
+  [-2.67,2.86],[-3.34,3.32]
  ];
  const rearOuter:EyePolygon=[
-  [-3.66,4.30],[-2.61,4.59],[-1.07,4.68],
-  [1.07,4.68],[2.61,4.59],[3.66,4.30],
-  [3.53,3.31],[2.47,2.57],[.81,3.01],
-  [-.81,3.01],[-2.47,2.57],[-3.53,3.31]
+  [-3.64,4.04],[-3.40,4.48],[-2.62,4.71],[-1.22,4.75],
+  [1.22,4.75],[2.62,4.71],[3.40,4.48],[3.64,4.04],
+  [3.52,3.20],[2.71,2.61],[1.83,2.54],[1.28,2.68],
+  [.65,3.55],[-.65,3.55],[-1.28,2.68],[-1.83,2.54],
+  [-2.71,2.61],[-3.52,3.20]
  ];
  const rearInner:EyePolygon=[
-  [-3.18,4.01],[-2.41,4.23],[-1.01,4.27],
-  [1.01,4.27],[2.41,4.23],[3.18,4.01],
-  [3.08,3.50],[2.31,2.94],[.78,3.32],
-  [-.78,3.32],[-2.31,2.94],[-3.08,3.50]
+  [-3.28,3.99],[-3.08,4.20],[-2.42,4.34],[-1.22,4.36],
+  [1.22,4.36],[2.42,4.34],[3.08,4.20],[3.28,3.99],
+  [3.14,3.39],[2.55,2.97],[1.91,2.90],[1.70,3.12],
+  [.67,4.00],[-.67,4.00],[-1.70,3.12],[-1.91,2.90],
+  [-2.55,2.97],[-3.14,3.39]
  ];
  sculptedHousing(root,frame,'single-mass-sport-seal',
-  outer,inner,rearOuter,rearInner,-5.04,-4.19,
+  outer,inner,rearOuter,rearInner,-5.04,-4.22,
   'compact-seal','single-sealed');
  lensSurface(root,lens,'sport-panoramic-pane',inner,-5.08);
- // Broad continuous flexible textile band; no boxes, vents or buckles.
+ // Broad joined textile strap wraps around the entire 8-unit head.
+ // The fitted three-station sides visibly intersect the housing and
+ // rear block, without adding any hinges, vents or micro-details.
  taperedGoggleStrap(root,elastic,'sport-strap',{
-  frontX:3.87,frontY:3.81,frontZ:-4.28,
-  shoulderX:4.37,shoulderY:3.80,shoulderZ:-3.73,
-  rearX:4.30,rearY:3.79,rearZ:4.12,
-  frontHeight:1.13,shoulderHeight:.98,rearHeight:.86,
-  frontWidth:.74,shoulderWidth:.64,rearWidth:.50
- },.94);
+  frontX:3.84,frontY:3.72,frontZ:-4.48,
+  shoulderX:4.44,shoulderY:3.72,shoulderZ:-3.76,
+  rearX:4.35,rearY:3.72,rearZ:4.12,
+  frontHeight:1.25,shoulderHeight:1.03,rearHeight:.91,
+  frontWidth:.80,shoulderWidth:.69,rearWidth:.58
+ },.98);
 }
 function field(root:THREE.Group,frame:THREE.Material,
  lens:THREE.Material,elastic:THREE.Material):void{
@@ -157,7 +164,7 @@ export function createD2Goggles(
  const root=new THREE.Group();root.name='d2-'+id;
  root.userData.modelAxes='-Z-forward,+X-right,+Y-up';
  root.userData.d2EyeFitTop=
-  id==='goggles-low'?4.82:id==='goggles-field'?5.34:5.06;
+  id==='goggles-low'?4.88:id==='goggles-field'?5.34:5.06;
  for(const placement of ['eyes','forehead','helmet','neck'] as const){
   const model=createOne(id,frame,lens,elastic);
   model.name=id+'-'+placement;
