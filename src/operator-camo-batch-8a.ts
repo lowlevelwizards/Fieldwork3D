@@ -330,46 +330,51 @@ function urbanKamysh8C():Uint8Array{
  }
  return tile;
 }
-function jgsdf8C():Uint8Array{
- // Each manual Jieitai parent is small and irregular, surrounded by
- // several related miniature flecks. 8B's lone circular islands read as
- // polka dots; an attached cluster reads as printed woodland again.
+function jgsdf8D():Uint8Array{
+ // 8D: compose each Jieitai color as a *connected family* of differently
+ // sized flecks. The 8C satellites sat too far from their parent and read
+ // as isolated dots; overlapping lobes restore an organic clustered print.
  const motifs:Motif[]=[];
  for(let i=0;i<JGSDF_SPOTS.length;i++){
   const [x,y,rx,ry,ink,phase]=JGSDF_SPOTS[i];
-  const mx=Math.max(3,Math.round(rx*.69));
-  const my=Math.max(2,Math.round(ry*.73));
+  const mx=Math.max(3,Math.round(rx*.59));
+  const my=Math.max(2,Math.round(ry*.69));
   motifs.push(fleck(x,y,mx,my,ink,phase));
-  for(let k=0;k<3;k++){
+  for(let k=0;k<4;k++){
    const a=hash(i,k,303),b=hash(i,k,311);
-   const angle=(k+(i%3)*.21)*Math.PI*2/3;
-   const dx=Math.round(Math.cos(angle)*(mx+1+a*2));
-   const dy=Math.round(Math.sin(angle)*(my+1+b*2));
-   const sx=Math.max(2,Math.min(4,Math.round(mx*.38)));
-   const sy=Math.max(2,Math.min(3,Math.round(my*.52)));
+   const angle=(k+(i%3)*.19)*Math.PI/2;
+   const sx=k%2===0?3:2,sy=k%3===0?3:2;
+   // Half the satellite overlaps the parent rather than floating beyond
+   // its perimeter. This makes broad 4-12px groups with 2-6px offshoots.
+   const dx=Math.round(Math.cos(angle)*(mx+sx*.25+a*.4));
+   const dy=Math.round(Math.sin(angle)*(my+sy*.22+b*.4));
    motifs.push(fleck(x+dx,y+dy,sx,sy,ink,phase+k+1));
+   if(k%2===0){
+    // Sparse third scale, anchored to a satellite (not random background).
+    const side=k===0?1:-1;
+    motifs.push(fleck(x+dx+side*2,y+dy+side*2,2,2,ink,phase+k+2));
+   }
   }
  }
  const tile=paint(motifs,0),original=tile.slice();
- // Dots are related to nearby clusters (not seeded across bare ground).
+ // Keep tight shared-color bridges and a few internal contrast punctures.
+ // All small details are conditional on the authored parent-family tile.
  for(let row=0;row<21;row++)for(let col=0;col<21;col++){
   const r=hash(col,row,317);
-  if(r<.50)continue;
+  if(r<.53)continue;
   const x=(col*3+Math.floor(hash(col,row,319)*3))&63;
   const y=(row*3+Math.floor(hash(col,row,331)*3))&63;
   const ink=indexAt(original,x,y);
-  const neighbors=[
+  const near=[
    indexAt(original,x+2,y),indexAt(original,x-2,y),
    indexAt(original,x,y+2),indexAt(original,x,y-2)
   ].filter(v=>v!==0);
-  if(ink===0&&neighbors.length>=2){
-   const nearest=neighbors[Math.floor(hash(col,row,337)*neighbors.length)];
-   tile[y*64+x]=nearest;
-   if(r>.85&&indexAt(original,x+1,y)===0)
-    tile[y*64+((x+1)&63)]=nearest;
-  } else if(ink===1&&r>.90){
+  if(ink===0&&near.length>=2&&r>.74){
+   const chosen=near[Math.floor(hash(col,row,337)*near.length)];
+   tile[y*64+x]=chosen;
+  }else if(ink===1&&r>.95){
    tile[y*64+x]=4;
-  } else if(ink===2&&r>.91){
+  }else if(ink===2&&r>.95){
    tile[y*64+x]=3;
   }
  }
@@ -406,7 +411,7 @@ function ownTile(id:Camo8AId):Uint8Array{
  if(id==='russian-izlom')return izlom8C();
  if(id==='greek-lizard')return greekLizard8C();
  if(id==='urban-kamysh')return urbanKamysh8C();
- if(id==='jgsdf-type2')return jgsdf8C();
+ if(id==='jgsdf-type2')return jgsdf8D();
  if(id==='south-african-s2000')return soldier2000_8C();
  if(id==='norwegian-m98'){
   // Minimize hard one-pixel polygon corners while retaining three flat
