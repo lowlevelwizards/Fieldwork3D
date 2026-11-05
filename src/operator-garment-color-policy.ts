@@ -78,7 +78,11 @@ export const CAMO_CUFF_DEFAULTS:Readonly<Record<HeadwearCamoId,GarmentSolidId>>=
  'atacs-au':'khaki',
  'ss-leto':'olive-drab',
  aor1:'coyote',
- 'multicam-arid':'sand'
+ 'multicam-arid':'sand',
+ 'multicam-black':'charcoal','multicam-alpine':'off-white',
+ 'pencott-greenzone':'forest-green','pencott-badlands':'khaki',
+ 'desert-night':'sage','kryptek-highlander':'coyote',
+ berezka:'olive-drab','spectre-skwo':'ranger-green'
 };
 export function garmentSolidHex(id:GarmentSolidId):number{
  return GARMENT_SOLID_COLORS[id].hex;

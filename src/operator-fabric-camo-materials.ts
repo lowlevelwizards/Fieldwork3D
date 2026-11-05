@@ -31,7 +31,10 @@ export const FABRIC_CAMO_DENSITY:Readonly<Record<HeadwearCamoId,number>>={
  'italian-vegetato':2.55,
  'splittertarn-31':2.35,
  'atacs-fg':2.8,'ukrainian-mm14':3.1,aor2:4.0,'multicam-tropic':4.0,
- 'atacs-au':2.8,'ss-leto':2.5,aor1:4.0,'multicam-arid':4.0
+ 'atacs-au':2.8,'ss-leto':2.5,aor1:4.0,'multicam-arid':4.0,
+ 'multicam-black':4.0,'multicam-alpine':4.0,
+ 'pencott-greenzone':3.2,'pencott-badlands':3.2,
+ 'desert-night':3.2,'kryptek-highlander':3.0,berezka:3.2,'spectre-skwo':3.0
 };
 export function fabricCamoWorldPeriod(id:HeadwearCamoId):number{
  return headwearCamoSize(id)/FABRIC_CAMO_DENSITY[id];

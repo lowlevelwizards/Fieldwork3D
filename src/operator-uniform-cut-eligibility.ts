@@ -30,14 +30,18 @@ export const FIELD_UNIFORM_FAMILY_CAMO:Readonly<Record<FieldUniformFamily,
   'woodland-dpm','swedish-m90','six-color-desert','erdl-lowland',
   'polish-pantera','russian-flora','rhodesian-brushstroke',
   'desert-tropentarn','belgian-jigsaw','east-german-strichtarn',
-  'australian-dpcu','ss-leto','atacs-fg','atacs-au'
+  'australian-dpcu','ss-leto','atacs-fg','atacs-au',
+  'desert-night','berezka','spectre-skwo','pencott-greenzone',
+  'pencott-badlands','kryptek-highlander'
  ],
  modern:[
   'ucp','multicam','woodland-marpat','desert-marpat',
   'finnish-m05','polish-pantera','italian-vegetato',
   'scorpion-w2','russian-emr','pla-xingkong','cadpat-tw',
   'british-mtp','indian-digital-2022',
-  'atacs-fg','ukrainian-mm14','aor2','multicam-tropic','atacs-au','aor1','multicam-arid'
+  'atacs-fg','ukrainian-mm14','aor2','multicam-tropic','atacs-au','aor1','multicam-arid',
+  'multicam-black','multicam-alpine','pencott-greenzone','pencott-badlands',
+  'kryptek-highlander','spectre-skwo'
  ]
 };
 export const UNIFORM_CUT_CAMO:Readonly<Record<UniformGarmentCut,
