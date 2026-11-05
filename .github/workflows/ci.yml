@@ -701,6 +701,15 @@ jobs:
             tests/awareness-integration.test.mjs \
             tests/tactical-integration-15-encounter-a1.test.mjs \
             tests/mission-reactivity-r8b.test.mjs
+      - name: Enemy AI E2 group commitment critical checks
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-enemy-ai-e2-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/awareness-team-commitment-e2a.test.mjs \
+            tests/awareness-coordination.test.mjs \
+            tests/awareness-communication.test.mjs \
+            tests/awareness-integration.test.mjs \
+            tests/mission-reactivity-r8b.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
