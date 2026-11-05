@@ -21,8 +21,8 @@ const armors=WARDROBE_ITEMS.filter(x=>x.slot==='armorStyle'&&x.id!=='armor-bare'
 const outfit=(rig,armor)=>({rigStyle:rig,armorStyle:armor,
  top:'bdu-shirt',trousers:'bdu-trousers',packStyle:'no-pack'});
 
-test('R7 all eleven rigs and eight wearable armor cuts define known unique defaults',()=>{
- assert.equal(rigs.length,11);assert.equal(armors.length,8);
+test('R7 all twelve rigs and eight wearable armor cuts define known unique defaults',()=>{
+ assert.equal(rigs.length,12);assert.equal(armors.length,8);
  for(const rig of rigs){
   const policy=RIG_VISUAL_TEXTILES[rig];
   assert.ok(policy,'missing policy: '+rig);
