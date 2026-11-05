@@ -3,6 +3,7 @@
  * uses the same validated roster persistence for previews and direct access.
  */
 import * as THREE from 'three';
+import {ALICE_LC2_LOADS,type AliceLc2Load} from './operator-alice-lc2-policy.ts';
 import {HELMET_COVER_STYLES,HELMET_BANDS,HELMET_NET_STYLES,
  HELMET_SCRIM_STYLES,helmetCoverChoices} from './operator-helmet-cover-policy.ts';
 import {identityMarkingChoices,setIdentityMarking,
@@ -832,6 +833,12 @@ function renderMaterials(){
       w.headwearCamo===id?nextHeadwearCamoRoll(w.headwearCamoRoll):0}),
     'headwear',w.fabricCamo?.top??null);
   }
+ }
+ if(activeCategory==='rigStyle'&&item==='alice-lc2'){
+  const load=row('ALICE FIELD LOAD',
+   'Visual pouch arrangement only. No extra ammunition, water or carrying capacity.');
+  addSelect(load,ALICE_LC2_LOADS.map(id=>[id,id.toUpperCase()] as const),
+   w.aliceLoad??'standard',id=>changeWardrobe({...current(),aliceLoad:id as AliceLc2Load}));
  }
  if(activeCategory==='rigStyle'&&item!=='no-rig'&&
   rigColorAssembly(item).detachablePouches){
