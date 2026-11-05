@@ -160,6 +160,7 @@ const referenceBrowser=new FactionReferenceBrowser(
 function openReferenceBrowser(){
  if(referenceOpen)return;
  previousClothesOnly=clothesOnly;
+ identityMode=false;
  referenceOpen=true;clothesOnly=false;syncGearToggle();
  referenceBrowser.show(readOnly);
  refresh();
