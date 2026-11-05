@@ -115,7 +115,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  // Stage 1G–1J: these already exist in the wardrobe catalog. Replace
  // their older multi-cube placeholders with the same canonical, unified
  // silhouette system as the approved ACH and high-cut.
- for(const id of ['boonie','beanie','pasgt','soviet-steel'] as const)
+ for(const id of ['boonie','beanie','pasgt','soviet-steel','m1-steel'] as const)
   headModel(id,true,cap=>cap.add(createHeadwearSilhouette(id,detail(id))));
  const helmet=(id:string,size:number,cut:number,rail:boolean)=>{
   headModel(id,false,model=>{
