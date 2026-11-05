@@ -16,6 +16,7 @@ export function resolvedReferenceGap(ref:FactionReference,gap:ReferenceGap):bool
  case 'police-marking':return ['label-police','label-swat'].includes(ref.markings?.chest??'');
  case 'ukraine-identification':return ref.markings?.rightShoulder==='flag-ukraine';
  case 'poland-insignia':return ref.markings?.rightShoulder==='flag-poland';
+ case 'alice-webbing':return ref.styles?.rigStyle==='alice-lc2'&&ref.kit?.rig==='rig-full';
  case 'red-beret':return ref.styles?.headwear==='beret'&&
   ref.kit?.head==='head-cap'&&ref.headwearColor==='beret-scarlet';
  default:return false;

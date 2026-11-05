@@ -52,7 +52,7 @@ export function rigContactFrame(armor:string,top:string,rig:string):RigContactFr
   rig==='full-chest'?-1.72:
   rig==='lbv'?-1.55:
   rig==='sadf-webbing'?-2.75:
-  rig==='field-webbing'?-3.80:-2.05;
+  rig==='field-webbing'||rig==='alice-lc2'?-3.80:-2.05;
  const cloth=armorContactSurface(top,y);
  const exposed=armor!=='armor-bare'&&armor!=='soft-slick'&&
   armor!=='soft-paca'&&!!spec&&
@@ -84,7 +84,7 @@ export function rigContactFrame(armor:string,top:string,rig:string):RigContactFr
     fit.shoulderY+spec.strapThickness*.52+.08):
    garmentContactAnchor(top,5.2).topY+.16,
   // Pelvis-mounted webbing retains a stationary chest suspension origin.
-  rigShiftX:rig==='field-webbing'?0:outerFront+clearance-panelInnerX,
+  rigShiftX:rig==='field-webbing'||rig==='alice-lc2'?0:outerFront+clearance-panelInnerX,
   standOff:clearance,panelInnerX,sideContact:side
  };
 }

@@ -33,12 +33,13 @@ export const HEADWEAR_ALLOWED_SOLIDS:Readonly<Record<HeadSilhouetteId,readonly H
  ach:['olive-drab','foliage-green','desert-tan','coyote-brown','black','navy'],
  'high-cut':['ranger-green','black','desert-tan','coyote-brown','urban-gray'],
  pasgt:['olive-drab','desert-tan','coyote-brown','black','navy'],
- 'soviet-steel':['soviet-4bo','postwar-green']
+ 'soviet-steel':['soviet-4bo','postwar-green'],
+ 'm1-steel':['olive-drab','postwar-green','desert-tan']
 };
 export const HEADWEAR_DEFAULT_SOLIDS:Readonly<Record<HeadSilhouetteId,HeadwearSolidColorId>>={
  'patrol-cap':'olive-drab',boonie:'olive-drab',beanie:'black',beret:'black',
  ach:'olive-drab','high-cut':'ranger-green',pasgt:'olive-drab',
- 'soviet-steel':'soviet-4bo'
+ 'soviet-steel':'soviet-4bo','m1-steel':'olive-drab'
 };
 export const HEADWEAR_COLOR_MODEL_IDS=Object.keys(HEADWEAR_ALLOWED_SOLIDS) as HeadSilhouetteId[];
 export function isHeadwearSolidColorId(value:unknown):value is HeadwearSolidColorId{
