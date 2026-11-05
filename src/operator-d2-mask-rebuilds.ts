@@ -4,7 +4,7 @@
  * Reference coordinate space: -Z forward, +X right, +Y up.
  */
 import * as THREE from 'three';
-import {sculptedShell,filterPod,compactHarness} from './operator-d2-mask-r10-geometry.ts';
+import {sculptedShell,filterPod,compactHarness,fittedHood,fittedWindow,hangingFilter} from './operator-d2-mask-r10-geometry.ts';
 import {
  type MaskMaterials,type MaskPoint,block,plate,extrudedProfile,
  eyePolygon,pairedEyes,lens,rim,strap,sideProfile,fittedHoodLoft,canister,outlet
@@ -90,36 +90,40 @@ function industrial(g:THREE.Group,m:MaskMaterials,compact:boolean){
  }
  compactHarness(g,m,1.60,3.12);
 }
+/** R11: GP-5 / ShM-62: wrapped one-piece rubber helmet-mask.
+ * No regular back straps, no scalp patch, no stacked cuboid crown.
+ */
 function hood(g:THREE.Group,m:MaskMaterials){
- const leftRight=pair(1.94,3.76,1.34,1.37);
- // Crown and rear wrap around the 8-unit skull; no regular head harness.
- fittedHoodLoft(g,m.rubber);
- for(const sign of [-1,1] as const){
-  extrudedProfile(g,m.rubber,'hood-neck-side',[
-   [sign*3.30,-.88],[sign*4.03,-.88],
-   [sign*3.82,-2.31],[sign*3.10,-2.31]
-  ],-4.1,.44);
- }
- const front=poly([
-  [-4.33,7.21],[4.33,7.21],[4.46,4.72],
-  [4.12,1.13],[3.37,-.85],[3.49,-2.24],
-  [-3.49,-2.24],[-3.37,-.85],[-4.12,1.13],[-4.46,4.72]
+ const eyeHoles=pair(1.91,3.75,1.32,1.34);
+ fittedHood(g,m.rubber,[
+  [-2.35,3.35,-4.05,3.58],
+  [-.62,3.80,-4.36,4.07],
+  [2.18,4.45,-4.46,4.48],
+  [5.59,4.48,-4.46,4.50],
+  [7.02,4.25,-4.29,4.31],
+  [7.63,3.34,-3.92,3.73]
  ]);
- plate(g,m.rubber,'gp5-hood-front',{
-  outline:front,holes:leftRight,front:-4.48,
-  depth:.40,edgeReturn:.22,nose:.78
+ sculptedShell(g,m.rubber,'gp5-hood-front',{
+  outline:[
+   [-3.34,7.63],[3.34,7.63],
+   [4.25,7.02],[4.48,5.59],
+   [4.45,2.18],[3.80,-.62],[3.35,-2.35],
+   [-3.35,-2.35],[-3.80,-.62],
+   [-4.45,2.18],[-4.48,5.59],[-4.25,7.02]
+  ],holes:eyeHoles,
+  front:-4.48,halfWidth:4.48,thickness:.37,
+  nose:.22,cheek:.14,cheekAtY:1.3,
+  sideReturn:.27,foreheadReturn:.38,jawReturn:.22
  });
- pairedEyes(g,m,'gp5-round-eye',leftRight,-4.75,.36,.12);
+ for(const eye of eyeHoles)
+  fittedWindow(g,m,'gp5-round-eye',eye,-4.85,.09);
+ // Just one shaped rubber mouth taper, no stacked nose boxes.
  extrudedProfile(g,m.rubber,'gp5-conical-mouth',[
-  [-2.63,2.12],[2.63,2.12],[2.01,.22],
-  [1.44,-.71],[-1.44,-.71],[-2.01,.22]
- ],-5.20,.47,.20);
- canister(g,m.hardware,'gp5-front-port',0,.15,-5.73,1.39,.68,0,-.30);
- canister(g,m.filters,'gp5-central-canister',
-  0,-1.38,-5.84,1.39,2.55,0,-4.0);
- canister(g,m.hardware,'gp5-filter-base',
-  0,-2.19,-6.07,1.46,.32,0,-4.0);
- block(g,m.rubber,'hood-neck-collar',0,-2.19,.20,7.35,.38,7.50);
+  [-2.42,2.05],[2.42,2.05],
+  [1.72,.20],[1.18,-.71],
+  [-1.18,-.71],[-1.72,.20]
+ ],-5.24,.34,.18);
+ hangingFilter(g,m);
 }
 function cheekFilter(g:THREE.Group,m:MaskMaterials,sign:-1|1){
  // Three deliberately connected wedge changes form one integrated M17 cheek.
