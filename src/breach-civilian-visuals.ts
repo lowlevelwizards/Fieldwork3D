@@ -52,8 +52,11 @@ export function updateCivilianRig(r:CivilianRig,
  r.root.scale.set(1,1,1);
  r.leftArm.position.set(-10,19,0);
  r.rightArm.position.set(10,19,0);
+ // Reset every animated transform on every sample. In particular a
+ // civilian must not retain a walking stride on replay rewind.
  r.leftArm.rotation.set(0,0,0);r.rightArm.rotation.set(0,0,0);
  r.leftLeg.rotation.set(0,0,0);r.rightLeg.rotation.set(0,0,0);
+ r.leftLeg.position.set(-4.2,7,0);r.rightLeg.position.set(4.2,7,0);
  if(c.state==='compliant'){
   // Raised arms form a clear Y silhouette even at distant phone scale.
   r.leftArm.position.y=30;r.rightArm.position.y=30;

@@ -2,7 +2,7 @@
  * acquire a target or discover civilians before a shot is released.
  * Ordered nearest along-ray hit takes precedence over farther actors. */
 import type {Pt} from './breach-core.ts';
-import type {CivilianActor} from './breach-civilian-types.ts';
+import {setCivilianState,type CivilianActor} from './breach-civilian-types.ts';
 export type CivilianRayHit={actor:CivilianActor;along:number};
 export function firstCivilianAlongRay(from:Pt,yaw:number,maxRange:number,
   civilians:readonly CivilianActor[]):CivilianRayHit|null{
@@ -29,8 +29,7 @@ export function applyCivilianBulletHit(actor:CivilianActor,now:number):{
  if(before<=0)return {before,after:before,down:true};
  actor.health=Math.max(0,before-1);
  actor.injuryStage=actor.health<=0?3:1;
- actor.state=actor.health<=0?'incapacitated':'wounded';
- actor.stateSince=now;actor.lastHitAt=now;
- actor.goal=null;actor.nav=[];actor.velocity=0;
+ setCivilianState(actor,actor.health<=0?'incapacitated':'wounded',now);
+ actor.lastHitAt=now;
  return {before,after:actor.health,down:actor.health<=0};
 }

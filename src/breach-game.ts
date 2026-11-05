@@ -74,6 +74,7 @@ import {captureTargetMayWithdraw} from './breach-ai-mission-response.ts';
 import {createCivilian,type CivilianActor} from './breach-civilian-types.ts';
 import {stepCivilianMovement} from './breach-civilian-movement.ts';
 import {stepCivilianResponse} from './breach-civilian-response.ts';
+import {civilianRefugePoints} from './breach-civilian-refuge.ts';
 import {canSecureRescuePerson,rescueEscortSeparated,rescueFollowGoal}
   from './breach-civilian-mission.ts';
 import {firstCivilianAlongRay,applyCivilianBulletHit}
@@ -471,6 +472,8 @@ export function newSession(index=0,siteSeed?:number,
   // mission semantics and replay have completed their separate stages.
   const civilians=encounterContext.enableCivilians?
     (site?.encounter?.neutrals??[]).map(createCivilian):[];
+  if(site)for(const person of civilians)
+    person.refugePoints=civilianRefugePoints(site,person);
   const state:Session={...seed,operators,civilians,objectRevision:0,
     coverState:COVER.map(o=>({...o,material:materialForFixture(o.fixture),
       integrity:MATERIALS[materialForFixture(o.fixture)].integrity})),
@@ -4214,7 +4217,8 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
         noise:s.noise,people:s.operators,doors:s.doors,walls:WALLS,
         windows:s.windows,
         canSee:(from,to)=>unobstructed(from,to,s,false),
-        canReach:(from,to)=>sweptBodyClear(from,to,s.doors)
+        canReach:(from,to)=>sweptBodyClear(from,to,s.doors),
+        routeTo:(from,to)=>cachedEnemyRoute(s,from,to,true)
       });
       stepCivilianMovement(civil,s.seconds,h,
         (from,to)=>sweptBodyClear(from,to,s.doors),
