@@ -28,7 +28,8 @@ export function forEachRememberedMicroCell(
   if(comma<0)continue;
   const col=Number(id.slice(6,comma)),row=Number(id.slice(comma+1));
   if(!Number.isInteger(col)||!Number.isInteger(row)||
-     col<x0||col>=x1||row<y0||row>=y1)continue;
+     col<x0||col>=x1||row<y0||row>=y1||
+     id!==microKeyAt(col,row))continue;
   visit(col,row);
   count++;
  }
