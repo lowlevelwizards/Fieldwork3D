@@ -71,3 +71,12 @@ test('first-frame handoff stages operator geometry and renders before READY',()=
  assert.ok(main.indexOf("quickPlayCheckpoint(100,'TACTICAL SANDBOX READY'") <
    main.indexOf('quickPlayBusy=false;\n    finishQuickPlayClock();'));
 });
+
+test('READY overlay does not hold the user for an arbitrary delay',()=>{
+ assert.doesNotMatch(main,/quickPlayPanel\.hidden=true;\},1400\)/);
+ assert.match(main,/requestAnimationFrame\(\(\)=>requestAnimationFrame\(\(\)=>\{/);
+ assert.match(main,/id===quickPlayRun&&!quickPlayBusy&&/);
+ assert.match(main,/quickPlayPanel\.dataset\.state==='ready'/);
+ assert.ok(main.indexOf('quickPlayBusy=false;\n    finishQuickPlayClock();') <
+   main.indexOf('requestAnimationFrame(()=>requestAnimationFrame(()=>{'));
+});
