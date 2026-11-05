@@ -18,7 +18,7 @@ try{
  const browser=await chromium.launch({headless:true});
  try{
   const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1.5,isMobile:true,hasTouch:true});
-  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const errors=[];page.on('pageerror',e=>{if(errors.length<2)console.error('9A/9B browser stack',e.stack||e.message);errors.push(e.message);});
   await mkdir(out,{recursive:true});
   const catalog=[
    ['french-cce','bdu'],['russian-vsr93','bdu'],['swiss-taz90','bdu'],
