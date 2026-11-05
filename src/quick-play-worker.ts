@@ -9,10 +9,8 @@ const scope=self as unknown as {
 };
 scope.onmessage=({data:req})=>{
   const started=performance.now();
-  const send=(message:Omit<QuickPlayGenerationResponse,'id'>)=>
-    scope.postMessage({...message,id:req.id} as QuickPlayGenerationResponse);
   const progress=(percent:number,stage:string,detail:string)=>
-    send({kind:'progress',percent,stage,detail});
+    scope.postMessage({id:req.id,kind:'progress',percent,stage,detail});
   try{
     progress(6,'Selecting building profile','Seed '+req.seed+' · '+req.scale);
     const site=generateSite(req.seed>>>0,req.scale,(phase,attempt)=>{
@@ -26,8 +24,10 @@ scope.onmessage=({data:req})=>{
     progress(70,'Finalizing site and encounter',
       site.rooms.length+' rooms · '+site.doors.length+
       ' doors · '+site.enemies.length+' contacts');
-    send({kind:'done',site,generationMs:Math.round(performance.now()-started)});
+    scope.postMessage({id:req.id,kind:'done',site,
+      generationMs:Math.round(performance.now()-started)});
   }catch(error){
-    send({kind:'error',message:error instanceof Error?error.message:String(error)});
+    scope.postMessage({id:req.id,kind:'error',
+      message:error instanceof Error?error.message:String(error)});
   }
 };
