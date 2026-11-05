@@ -778,6 +778,18 @@ jobs:
       - name: Palette cohesion critical solid-ID and UI role tests
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/palette-cohesion-') }}
         run: node --experimental-strip-types --test tests/palette-cohesion-critical.test.mjs
+      - name: Enemy AI E5 sparse population mission safety
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-enemy-ai-e5-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/worldgen-encounter-population-contract-e5a.test.mjs \
+            tests/worldgen-encounter-sparse-e5a.test.mjs \
+            tests/worldgen-encounter-population.test.mjs \
+            tests/worldgen-encounter-schema.test.mjs \
+            tests/worldgen-encounter-safety.test.mjs \
+            tests/worldgen-encounter-missions.test.mjs \
+            tests/worldgen-encounter-integration.test.mjs \
+            tests/tactical-mission-quality-operations.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

@@ -440,6 +440,13 @@ export function newSession(index=0,siteSeed?:number,
         (['guard','aggressor','cautious'] as const)[Math.floor(enemyRng()*3)];
       a.morale=.48+enemyRng()*.52;
     }
+    // Generated sites may legitimately have one or no armed occupants.
+    // Remove unused legacy defenders: no invisible off-map enemies.
+    if(site.enemies.length<old.length){
+      const unused=new Set(old.slice(site.enemies.length));
+      for(let i=operators.length-1;i>=0;i--)
+        if(unused.has(operators[i]))operators.splice(i,1);
+    }
   }else operators.filter(a=>a.side==='red').forEach((a,i)=>{
     const pos=sample.spots[i];a.p={x:pos.x,y:pos.y};a.heading=pos.h;
     a.health=2;a.magazine=10;a.reserve=30;a.weaponYaw=a.heading;

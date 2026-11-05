@@ -3,6 +3,7 @@
 import type {Site} from '../breach-site.ts';
 import type {EncounterContext,EncounterPremise} from './encounter-types.ts';
 import {encounterRng} from './encounter-rng.ts';
+import {hostileMinimumForContract} from './encounter-population-contract.ts';
 const modifiers:Record<EncounterPremise,number>={
  routine:0,'after-hours':-1.1,hideout:1.2,guarded:1.6,
  disturbance:.4,defensive:3.1,vacant:-1.9,incident:1.1
@@ -22,7 +23,17 @@ export function chooseHostileBudget(site:Site,context:EncounterContext,
  const rng=encounterRng(context.seed??site.seed,2);
  // Broad overlapping bands and occasional credible upper-tail incidents.
  const variation=(rng()+rng()-1)*3.2+(rng()<.045?2:0);
- // A 2-hostile floor is a migration guard for existing clear/AI audit logic;
- // mission-specific sparse and zero-threat sites arrive with Build 13.
- return Math.max(2,Math.min(12,Math.round(mean+variation)));
+ const minimum=hostileMinimumForContract({
+   mission:context.mission??'clear',premise,risk
+ });
+ // Only a small, seeded subset of genuinely quiet low-risk non-capture
+ // missions may have no armed defenders. Everyone else retains the existing
+ // encounter budget, bounded by the mission's explicit hard minimum.
+ if(minimum===0){
+   if(encounterRng(context.seed??site.seed,29)()<.34)return 0;
+   // Empty sites are a deliberate scenario, not an accidental consequence
+   // of a negative low-occupancy average and random round-to-zero.
+   return Math.max(1,Math.min(12,Math.round(mean+variation)));
+ }
+ return Math.max(minimum,Math.min(12,Math.round(mean+variation)));
 }
