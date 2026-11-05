@@ -41,8 +41,8 @@ const recipes={
  },
  'pencott-metropolis':{
   label:'PENCOTT METROPOLIS',
-  description:'Same PenCott GreenZone/BadLands three-scale fractal ink master in concrete ash, slate, graphite and mineral earth',
-  colors:[[169,167,152],[124,127,122],[88,94,94],[48,52,55],[126,107,91]],
+  description:'Identical PenCott macro/midi/micro geometry with concrete ash, slate, mineral charcoal and occasional low-chroma earth; distinctive industrial MetroPolis palette',
+  colors:[[161,160,151],[115,121,116],[82,94,93],[43,49,51],[112,96,86]],
   targetCoverage:[.25,.27,.23,.16,.09],motifs:[]
  },
  'south-african-s2000':{
@@ -53,14 +53,14 @@ const recipes={
  },
  'kryptek-typhon':{
   label:'KRYPTEK TYPHON',
-  description:'Exact Highlander angular underpainting and fractured reptilian mesh, recolored graphite, slate and smoky cool grey',
-  colors:[[132,136,139],[88,95,102],[64,70,79],[45,49,58],[26,29,37]],
+  description:'Exact Highlander fracture and outlined Kryptek reptile-net master in dark neutral graphite/charcoal; remove blue-purple cast and limit bright grayscale',
+  colors:[[119,123,125],[81,86,89],[58,65,69],[37,41,44],[21,24,27]],
   targetCoverage:[.29,.27,.22,.15,.07],motifs:[]
  },
  'norwegian-m98':{
   label:'NORWEGIAN M98',
-  description:'Bold Norwegian overscale olive, dark forest and warm tan; only three broad rounded contiguous fields',
-  colors:[[87,105,58],[38,54,43],[173,145,97]],
+  description:'Norwegian M98 big flowing rounded dark forest, yellow olive and warm tan disruption, strict three inks and no small chip noise',
+  colors:[[109,130,70],[40,55,43],[180,149,102]],
   targetCoverage:[.34,.37,.29],motifs:[]
  }
 } satisfies Record<Camo8AId,Camo8ARecipe>;
@@ -372,7 +372,25 @@ function ownTile(id:Camo8AId):Uint8Array{
  if(id==='urban-kamysh')return urbanKamysh8B();
  if(id==='jgsdf-type2')return jgsdf8B();
  if(id==='south-african-s2000')return soldier2000_8B();
- if(id==='norwegian-m98')return paint(NORWAY,0);
+ if(id==='norwegian-m98'){
+  // Minimize hard one-pixel polygon corners while retaining three flat
+  // inks and the huge M98 organic blotches. No additional fine texture.
+  let tile=paint(NORWAY,0);
+  for(let pass=0;pass<2;pass++){
+   const next=tile.slice();
+   for(let y=0;y<64;y++)for(let x=0;x<64;x++){
+    const idx=y*64+x,v=tile[idx];
+    const around=[
+     indexAt(tile,x-1,y),indexAt(tile,x+1,y),
+     indexAt(tile,x,y-1),indexAt(tile,x,y+1)
+    ];
+    for(let color=0;color<3;color++)
+     if(color!==v&&around.filter(c=>c===color).length>=3)next[idx]=color;
+   }
+   tile=next;
+  }
+  return tile;
+ }
  throw new Error('Only independent 8A pattern masters are authored');
 }
 export function camo8AIndices(id:Camo8AId,relatives?:{
