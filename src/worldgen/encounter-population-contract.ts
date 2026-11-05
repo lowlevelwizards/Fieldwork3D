@@ -11,8 +11,10 @@ export type PopulationContract={
  mission:OperationKind;premise:EncounterPremise;risk:1|2|3;
 };
 export function hostileMinimumForContract(c:PopulationContract):number{
- if(c.mission==='capture'||c.mission==='clear')return 1;
- if(c.risk!==1)return 1;
+ // Preserve legacy combat encounter floors while migrating noncombat
+ // contract handling; neither CLEAR nor CAPTURE silently loses defenders.
+ if(c.mission==='capture'||c.mission==='clear')return 2;
+ if(c.risk!==1)return 2;
  if(c.mission==='intel'||c.mission==='rescue'){
   if(c.premise==='vacant'||c.premise==='after-hours')return 0;
  }
