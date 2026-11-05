@@ -809,7 +809,7 @@ jobs:
             tests/civilian-b7-rescue-session.test.mjs \
             tests/civilian-b8-replay.test.mjs \
             tests/civilian-b5b-ballistics.test.mjs \
-            tests/breach-097-106.test.mjs \
+            tests/mission-escort-physicality.test.mjs \
             tests/mission-reactivity-r8b.test.mjs \
             tests/tactical-mission-quality-operations.test.mjs \
             tests/worldgen-encounter-missions.test.mjs
