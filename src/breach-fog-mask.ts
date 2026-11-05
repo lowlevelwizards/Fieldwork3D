@@ -31,7 +31,13 @@ const prepare=(ctx:CanvasRenderingContext2D,site?:Site|null)=>{
   const w=ctx.canvas?.width??size.width,h=ctx.canvas?.height??size.height;
   return {bounds,w,h};
 };
-export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
+/** A deep charcoal concealment field, not an accidental pitch-black hole.
+ * Fully unknown cells are still opaque and disclose no underlying floor. */
+export const UNKNOWN_FOG_COLOR='#122022';
+export type FogDiagnostic='normal'|'palette';
+export function paintFogMemory(ctx:CanvasRenderingContext2D,s:Session,
+  diagnostic:FogDiagnostic='normal'){
+
   const {bounds,w,h}=prepare(ctx,s.site);
   const sx=w/(bounds.maxX-bounds.minX),sy=h/(bounds.maxY-bounds.minY);
   ctx.save();
@@ -39,8 +45,9 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
   ctx.globalCompositeOperation='source-over';
   ctx.clearRect(bounds.minX,bounds.minY,
     bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
-  // Neutral-black blind space: no blue tint or translucent cyan wash.
-  ctx.fillStyle='#000';
+  // Fully unknown: visually distinct from missing level geometry, but
+  // opaque, so no floor or undiscovered furnishings leak through.
+  ctx.fillStyle=diagnostic==='palette'?'#b2226f':UNKNOWN_FOG_COLOR;
   ctx.fillRect(bounds.minX,bounds.minY,
     bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
   ctx.globalCompositeOperation='destination-out';
@@ -60,7 +67,7 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
     // All interior modules use source-over compositing, so overlaps stay
     // covered instead of turning into false exterior as parity flips.
     ctx.globalCompositeOperation='source-over';
-    ctx.fillStyle='#000';
+    ctx.fillStyle=diagnostic==='palette'?'#b2226f':UNKNOWN_FOG_COLOR;
     for(const room of s.site.rooms)
       ctx.fillRect(room.x,room.y,room.w,room.h);
     ctx.globalCompositeOperation='destination-out';
@@ -117,7 +124,8 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
     for(const p of fineVisible)ctx.rect(p.x,p.y,20,20);
     ctx.fill();
   }
-  ctx.fillStyle='rgba(255,255,255,.34)';
+  // Known floor-plan geometry remains legible without revealing hidden props.
+  ctx.fillStyle='rgba(255,255,255,.48)';
   if(blueprint.length){
     ctx.beginPath();
     for(const p of blueprint)ctx.rect(p.x,p.y,20,20);
@@ -131,6 +139,16 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
   const microCount=forEachRememberedMicroCell(s.seenGround,bounds,
     (col,row)=>ctx.rect(col*10,row*10,10,10));
   if(microCount)ctx.fill();
+  ctx.restore();
+}
+/** Live directional sight is the only high-frequency fog component. It
+ * subtracts opacity from an already prepared static memory canvas. */
+export function paintFogVisibility(ctx:CanvasRenderingContext2D,s:Session){
+  const {bounds,w,h}=prepare(ctx,s.site);
+  const sx=w/(bounds.maxX-bounds.minX),sy=h/(bounds.maxY-bounds.minY);
+  ctx.save();
+  ctx.setTransform(sx,0,0,sy,-bounds.minX*sx,-bounds.minY*sy);
+  ctx.globalCompositeOperation='destination-out';
   // Keep actual directional line-of-sight polygons exact; a light edge
   // feather is display-only and cannot grant tactical information.
   ctx.filter='blur(2px)';
@@ -148,6 +166,13 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
   }
   if(polygonCount)ctx.fill();
   ctx.restore();
+}
+/** Legacy one-shot path retained for deterministic visual comparison and
+ * as a safe fallback if incremental presentation fails on a device. */
+export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session,
+  diagnostic:FogDiagnostic='normal'){
+  paintFogMemory(ctx,s,diagnostic);
+  paintFogVisibility(ctx,s);
 }
 
 /** Room occupancy is used only to cut away camera roofs where appropriate.
