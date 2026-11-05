@@ -212,6 +212,16 @@ function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
     row:Math.round(p.y/grid)});
   const cellPoint=(col:number,row:number):Pt=>({x:col*grid,
     y:row*grid});
+  // A* visits nearby cells through many edges. Geometry does not change
+  // synchronously during one search, so test each grid vertex once.
+  const cellClear=new Map<string,boolean>();
+  const walkableCell=(col:number,row:number)=>{
+    const k=key(col,row),cached=cellClear.get(k);
+    if(cached!==undefined)return cached;
+    const clear=canStand(cellPoint(col,row));
+    cellClear.set(k,clear);
+    return clear;
+  };
   if(!canStand(to))return [];
   const st=cellAt(from),goal=cellAt(to);
   const startKey=key(st.col,st.row),goalKey=key(goal.col,goal.row);
@@ -223,7 +233,7 @@ function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
   if(alternateGoal){
     for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){
       const col=goal.col+dx,row=goal.row+dy,p=cellPoint(col,row);
-      if(canStand(p)&&sweepPassable(p,to,canStand))
+      if(walkableCell(col,row)&&sweepPassable(p,to,canStand))
         targets.add(key(col,row));
     }
     if(!targets.size)return [];
@@ -246,7 +256,7 @@ function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
          p.x>Math.max(from.x,to.x)+padding||
          p.y<Math.min(from.y,to.y)-padding||
          p.y>Math.max(from.y,to.y)+padding))continue;
-      if(!canStand(p))continue;
+      if(!walkableCell(col,row))continue;
       // Grid centres alone can lie clear while the straight diagonal
       // between them clips a door-frame corner. Sample the actual travel
       // segment before accepting a nav edge; motor collision uses the
@@ -254,8 +264,8 @@ function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
       const atPoint=cellPoint(at.col,at.row);
       if(!sweepPassable(atPoint,p,canStand))continue;
       if(dx!==0&&dy!==0&&
-        (!canStand(cellPoint(at.col+dx,at.row))||
-         !canStand(cellPoint(at.col,at.row+dy))))continue;
+        (!walkableCell(at.col+dx,at.row)||
+         !walkableCell(at.col,at.row+dy)))continue;
       const next=key(col,row),cost=at.g+Math.hypot(dx,dy);
       if(cost>=(best.get(next)??Infinity))continue;
       best.set(next,cost);parents.set(next,k);
