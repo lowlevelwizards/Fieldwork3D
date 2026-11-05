@@ -9,41 +9,41 @@ export type D2GoggleId='goggles-low'|'goggles-field'|'goggles-retro';
 export type D2GogglePlacement='eyes'|'forehead'|'helmet'|'neck';
 function low(root:THREE.Group,frame:THREE.Material,
  lens:THREE.Material,elastic:THREE.Material):void{
- root.userData.d2EyeFitTop=4.75;
- root.userData.d2EyeDesign='R5-low-profile-panoramic-flex-seal';
- // Close-fitting Smith Boogie-like single lens. The top rises gently over
- // the outer eye; the nose saddle is a soft notch, not a tiny field-goggle V.
- // A broad pane fills the frame and the shell never becomes a deep box.
+ root.userData.d2EyeFitTop=4.82;
+ root.userData.d2EyeDesign='R6-compact-contoured-sport-goggles';
+ // Sports-protective silhouette: a lightweight upper arch and ONE generous
+ // wraparound pane, not a miniature of the tall bunker field goggles.
+ // Increased vertical coverage comes principally from the cheek outline,
+ // leaving the cap-adjacent upper edge tucked below the brim.
  const outer:EyePolygon=[
-  [-3.82,4.36],[-2.62,4.73],[0,4.58],
-  [2.62,4.73],[3.82,4.36],[3.76,3.31],
-  [2.48,2.70],[.83,3.13],[-.83,3.13],
-  [-2.48,2.70],[-3.76,3.31]
+  [-3.80,4.38],[-2.73,4.70],[-1.11,4.82],
+  [1.11,4.82],[2.73,4.70],[3.80,4.38],
+  [3.75,3.19],[2.52,2.41],[.87,2.87],
+  [-.87,2.87],[-2.52,2.41],[-3.75,3.19]
  ];
  const inner:EyePolygon=[
-  [-3.45,4.13],[-2.45,4.43],[0,4.30],
-  [2.45,4.43],[3.45,4.13],[3.35,3.47],
-  [2.40,3.05],[.81,3.49],[-.81,3.49],
-  [-2.40,3.05],[-3.35,3.47]
+  [-3.43,4.11],[-2.52,4.40],[-1.04,4.47],
+  [1.04,4.47],[2.52,4.40],[3.43,4.11],
+  [3.37,3.40],[2.40,2.78],[.84,3.20],
+  [-.84,3.20],[-2.40,2.78],[-3.37,3.40]
  ];
  const rearOuter:EyePolygon=[
-  [-3.68,4.28],[-2.51,4.57],[0,4.44],
-  [2.51,4.57],[3.68,4.28],[3.58,3.41],
-  [2.43,2.84],[.81,3.30],[-.81,3.30],
-  [-2.43,2.84],[-3.58,3.41]
+  [-3.66,4.30],[-2.61,4.59],[-1.07,4.68],
+  [1.07,4.68],[2.61,4.59],[3.66,4.30],
+  [3.53,3.31],[2.47,2.57],[.81,3.01],
+  [-.81,3.01],[-2.47,2.57],[-3.53,3.31]
  ];
  const rearInner:EyePolygon=[
-  [-3.22,4.03],[-2.32,4.31],[0,4.18],
-  [2.32,4.31],[3.22,4.03],[3.11,3.56],
-  [2.31,3.18],[.77,3.58],[-.77,3.58],
-  [-2.31,3.18],[-3.11,3.56]
+  [-3.18,4.05],[-2.41,4.28],[-1.01,4.36],
+  [1.01,4.36],[2.41,4.28],[3.18,4.05],
+  [3.08,3.50],[2.31,2.94],[.78,3.32],
+  [-.78,3.32],[-2.31,2.94],[-3.08,3.50]
  ];
  sculptedHousing(root,frame,'single-mass-sport-seal',
   outer,inner,rearOuter,rearInner,-5.04,-4.19,
   'compact-seal','single-sealed');
  lensSurface(root,lens,'sport-panoramic-pane',inner,-5.08);
- // Flexible tapered fabric is a materially different construction from
- // the deep bunker gasket. No long rectangular strap-side boxes.
+ // Broad continuous flexible textile band; no boxes, vents or buckles.
  taperedGoggleStrap(root,elastic,'sport-strap',{
   frontX:3.87,frontY:3.81,frontZ:-4.28,
   shoulderX:4.37,shoulderY:3.80,shoulderZ:-3.73,
@@ -141,7 +141,7 @@ export function createD2Goggles(
  const root=new THREE.Group();root.name='d2-'+id;
  root.userData.modelAxes='-Z-forward,+X-right,+Y-up';
  root.userData.d2EyeFitTop=
-  id==='goggles-low'?4.75:id==='goggles-field'?5.23:5.06;
+  id==='goggles-low'?4.82:id==='goggles-field'?5.23:5.06;
  for(const placement of ['eyes','forehead','helmet','neck'] as const){
   const model=createOne(id,frame,lens,elastic);
   model.name=id+'-'+placement;
