@@ -849,6 +849,7 @@ const categoryGroups:readonly {label:string;slots:readonly WardrobeSlot[]}[]=[
 const categoryGroup=()=>categoryGroups.find(group=>
  group.slots.includes(activeCategory))??categoryGroups[1];
 function selectCategory(slot:WardrobeSlot){
+ if(referenceOpen){referenceOpen=false;referenceBrowser.hide();}
  activeCategory=slot;
  // Look at the cloth unobscured for garments, but show all available
  // headgear/armor/gear when browsing those categories.
