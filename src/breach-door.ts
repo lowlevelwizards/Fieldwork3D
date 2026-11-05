@@ -163,33 +163,53 @@ export function kickDoor(d:Door,from?:Pt):{opened:boolean;pushSide:boolean}{
 /** A swept leaf cannot move further into a living actor's body.
  * Existing overlap may resolve by moving away; it must never deepen.
  */
+/** Sample the COMPLETE moving panel arc, including between hinge motor
+ * endpoints. A short tick may have clear endpoints but sweep over a capsule,
+ * particularly at the tip of a wide leaf or on coarse simulation ticks.
+ * Bodies already touching the leaf may only be released, never penetrated.
+ */
+const doorSweepSteps=(d:Door,next:number)=>{
+ const current=d.openFraction??(d.open?1:0);
+ return Math.max(1,Math.ceil(dist(d.a,d.b)*Math.abs(next-current)*
+   (d.kind==='hinged'||!d.kind?1.54:1)/2));
+};
 export function doorWouldStrikeActors(d:Door,next:number,actors:readonly Pt[],
  radius=OPERATOR_RADIUS):boolean{
- const old=doorLeafSegment(d),candidate=doorLeafSegment({...d,openFraction:next});
- return actors.some(p=>{
-   const before=pointToSegment(p,old),after=pointToSegment(p,candidate);
-   return after<radius+1&&after<before-.01;
+ if(!actors.length)return false;
+ const current=d.openFraction??(d.open?1:0);
+ const origin=doorLeafSegment(d);
+ const steps=doorSweepSteps(d,next);
+ return actors.some(actor=>{
+  const initial=pointToSegment(actor,origin);
+  for(let i=1;i<=steps;i++){
+   const fraction=current+(next-current)*i/steps;
+   const gap=pointToSegment(actor,doorLeafSegment({...d,openFraction:fraction}));
+   if(gap<radius+1&&gap<initial-.01)return true;
+  }
+  return false;
  });
 }
-/** Door leaf stops against architecture and furniture, not an arbitrary
- * renderer-only angle; sample away from the hinge itself. */
+/** Test every segment of the hinge sweep against architecture, not merely
+ * the last frame; a leaf may not tunnel through a thin doorstop or fixture. */
 export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[], actorRadius=OPERATOR_RADIUS){
  if(d.kind==='shutter')return false;
- if(d.kind==='sliding')return doorWouldStrikeActors(d,next,actors);
- // Physical bodies always stop the leaf, including dynamic or lab doors
- // without registered architectural walls. Never skip actor collision as
- // a side effect of the standalone-fixture optimization.
  if(doorWouldStrikeActors(d,next,actors,actorRadius))return true;
- // Standalone doors only skip unrelated *architectural* wall/cover checks.
+ if(d.kind==='sliding')return false;
+ // Standalone lab fixtures have no corresponding architectural model.
  const registered=activeSite()?.doors??initialDoors();
  if(!registered.some(real=>real.id===d.id))return false;
- const leaf=doorLeafSegment({...d,openFraction:next});
- for(const t of [.35,.55,.75,.94,.99]){
+ const current=d.openFraction??(d.open?1:0);
+ const steps=doorSweepSteps(d,next);
+ for(let step=1;step<=steps;step++){
+  const fraction=current+(next-current)*step/steps;
+  const leaf=doorLeafSegment({...d,openFraction:fraction});
+  for(const t of [.35,.55,.75,.94,.99]){
    const p={x:leaf.a.x+(leaf.b.x-leaf.a.x)*t,
      y:leaf.a.y+(leaf.b.y-leaf.a.y)*t};
    if(WALLS.some(w=>distanceToWall(p,w)<1.25))return true;
    if(COVER.some(o=>Math.abs(o.x-p.x)<o.w/2+1.25&&
      Math.abs(o.y-p.y)<o.h/2+1.25))return true;
+  }
  }
  return false;
 }
