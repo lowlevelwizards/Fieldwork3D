@@ -46,7 +46,7 @@ export function markingBitmap(id:string):MarkingBitmap|null{
    S:['0111','1000','0110','0001','1110'],T:['11111','00100','00100','00100','00100'],
    U:['1001','1001','1001','1001','0110'],W:['10001','10001','10101','10101','01010'],
    Y:['10001','01010','00100','00100','00100']};
-  const text=mark.graphic.toUpperCase();const glyphWidth=c=>letters[c]?.[0].length??4;
+  const text=mark.graphic.toUpperCase();const glyphWidth=(c:string)=>letters[c]?.[0].length??4;
   const total=[...text].reduce((n,c)=>n+glyphWidth(c)+1,-1);
   let left=Math.max(1,Math.floor((width-total)/2));
   for(const ch of text){
