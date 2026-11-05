@@ -17,9 +17,9 @@ import {HEADWEAR_CAMO_IDS} from '../src/operator-headwear-camo.ts';
 const source=path=>readFileSync(new URL(path,import.meta.url),'utf8');
 test('all obsolete garment options are actually gone from the authoritative catalog',()=>{
  assert.deepEqual(wardrobeItemsForSlot('top').map(x=>x.id),
-  ['base-layer','bdu-shirt','acu-shirt','combat-shirt','smock-jacket','gorka-jacket']);
+  ['bdu-shirt','acu-shirt','combat-shirt','smock-jacket','gorka-jacket']);
  assert.deepEqual(wardrobeItemsForSlot('trousers').map(x=>x.id),
-  ['base-shorts','bdu-trousers','acu-trousers','gorka-trousers']);
+  ['bdu-trousers','acu-trousers','gorka-trousers']);
  assert.deepEqual(wardrobeItemsForSlot('footwear').map(x=>x.id),
   ['bare-feet','field-boots']);
  assert.deepEqual(wardrobeItemsForSlot('gloves').map(x=>x.id),
