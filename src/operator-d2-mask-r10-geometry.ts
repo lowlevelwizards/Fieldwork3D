@@ -150,6 +150,11 @@ export function fittedHood(g:THREE.Group,m:THREE.Material,
  for(let k=0;k<top.length-1;k++)
   push(2,[top[k],top[k+1],[0,stations[stations.length-1][0],0],
     [0,stations[stations.length-1][0],0]]);
+ // The U-shaped rear/side perimeter also needs its FRONT bridge.
+ // Without this triangular sector the underlying cubic scalp shows through.
+ push(2,[top[top.length-1],top[0],
+  [0,stations[stations.length-1][0],0],
+  [0,stations[stations.length-1][0],0]]);
  const groups=['hood-temple','hood-back','hood-crown'] as const;
  for(let j=0;j<3;j++){
   const coords:number[]=[];

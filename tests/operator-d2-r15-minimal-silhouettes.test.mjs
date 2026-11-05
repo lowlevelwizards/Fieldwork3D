@@ -19,6 +19,17 @@ test('R15: six categories retain original saved IDs, modes and distinct hero for
   m40=make('gas-m40'),m50=make('gas-m50');
  assert.ok(gp.getObjectByName('gp5-one-piece-rubber-hood'));
  assert.equal(items(gp,'head-harness-back').length,0);
+ const crown=gp.getObjectByName('hood-crown');
+ assert.ok(crown.geometry.getAttribute('position').count>=66,
+  'GP-5 loft crown seals front triangular sector');
+ const temple=gp.getObjectByName('hood-temple');
+ const pts=temple.geometry.getAttribute('position');
+ let lowerWidth=0;
+ for(let i=0;i<pts.count;i++)
+  if(Math.abs(pts.getY(i)+.62)<.001)
+   lowerWidth=Math.max(lowerWidth,Math.abs(pts.getX(i)));
+ assert.ok(lowerWidth>=4.35,
+  'GP-5 lower cheek/ear shell must cover 8-unit skull rather than expose skin');
  assert.equal(items(gp,'gp5-round-eye-lens').length,2);
  assert.equal(items(m17,'m17-integrated-cheek-filter').length,2);
  assert.equal(items(m40,'m40-projecting-side-canister').length,1);
