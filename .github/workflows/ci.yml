@@ -492,6 +492,11 @@ jobs:
       - name: DNav bounded real-simulation collision matrix
         if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/breach-door-navigation-dnav-') || startsWith(github.head_ref, 'feature/dnav-')) }}
         run: npm run audit:g4-flow -- --matrix --door-regression
+      - name: Camouflage 6B authored family, scale and fabric regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-camo-6b-') }}
+        run: |
+          node --experimental-strip-types --test tests/operator-camo-batch6a.test.mjs
+          node --experimental-strip-types --test tests/operator-fabric-camo-stage2.test.mjs tests/operator-r9-camo-density.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}
