@@ -47,11 +47,17 @@ export function doorReachable(p:Pt,d:Door):boolean{
  */
 export function autoDoorAtBodyContact(from:Pt,to:Pt,
  doors:readonly Door[]):Door|undefined{
- const touching=doors.filter(d=>
-   (!d.open||(d.openFraction??0)<.72)&&doorReachable(from,d)&&
-   pointToSegment(to,doorLeafSegment(d))<OPERATOR_RADIUS+1.5&&
-   pointToSegment(to,doorLeafSegment(d))<=
-     pointToSegment(from,doorLeafSegment(d))+.001);
+ const touching=doors.filter(d=>{
+   if((d.open&&(d.openFraction??0)>=.72)||!doorReachable(from,d))
+     return false;
+   const leaf=doorLeafSegment(d);
+   const before=pointToSegment(from,leaf),after=pointToSegment(to,leaf);
+   // A full-body motor stops at radius+1, BEFORE the center crosses
+   // the leaf. Engage within a bounded shoulder envelope instead of
+   // waiting until a planned step penetrates the solid door.
+   return before<OPERATOR_RADIUS+7&&after<OPERATOR_RADIUS+7&&
+     after<before-.015;
+ });
  return touching.sort((a,b)=>
    pointToSegment(to,doorLeafSegment(a))-
    pointToSegment(to,doorLeafSegment(b))||a.id.localeCompare(b.id))[0];

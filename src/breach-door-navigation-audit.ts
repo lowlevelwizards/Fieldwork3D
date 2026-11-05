@@ -5,7 +5,8 @@
 import {doorLeafSegment,doorCenter,pointToSegment,OPERATOR_RADIUS,
  type Pt,type Door} from './breach-core.ts';
 type ObserveActor={
- id:string;p:Pt;nav:readonly Pt[];plan:readonly {p:Pt}[];
+ id:string;p:Pt;nav:readonly Pt[];
+ plan:readonly {p:Pt;kind?:string;doorId?:string;method?:string}[];
  blockedTime:number;lastBlocker:string;motorPause:string|null;
  recoveryAttempts:number;velocity:number;
 };
@@ -13,6 +14,7 @@ const rounded=(n:number)=>Math.round(n*100)/100;
 const point=(p:Pt)=>({x:rounded(p.x),y:rounded(p.y)});
 export type DoorBlockSnapshot={
  actorId:string;blockedSeconds:number;cause:string;pause:string;
+ orderKind:string|null;orderDoorId:string|null;orderMethod:string|null;
  at:Pt;next:Pt|null;goal:Pt|null;velocity:number;repairs:number;
  doorId:string|null;leafGap:number|null;frameDistance:number|null;
  fraction:number|null;open:boolean|null;locked:boolean|null;
@@ -32,6 +34,9 @@ export function sampleDoorBlock(actor:ObserveActor,
  return {
   actorId:actor.id,blockedSeconds:rounded(actor.blockedTime),
   cause:actor.lastBlocker,pause:actor.motorPause??'none',
+  orderKind:actor.plan[0]?.kind??null,
+  orderDoorId:actor.plan[0]?.doorId??null,
+  orderMethod:actor.plan[0]?.method??null,
   at:point(actor.p),next:actor.nav.length?point(actor.nav[0]):null,
   goal:actor.plan.length?point(actor.plan[0].p):null,
   velocity:rounded(actor.velocity),repairs:actor.recoveryAttempts,

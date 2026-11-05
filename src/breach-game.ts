@@ -1845,14 +1845,23 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   // open it, even if a briefed doorway missed the drawn-path insertion.
   // Deliberate DOOR actions (including KICK) retain priority and must not
   // be preempted by this convenience interaction.
-  const autoDoor=a.side==='red'||a.plan[0]?.kind==='move'||
-    a.plan[0]?.kind==='pie';
+  const pendingDoor=a.plan[0];
+  const permittedExplicitDoor=pendingDoor?.kind==='door'&&
+    pendingDoor.method==='open'?pendingDoor.doorId:null;
+  const autoDoor=a.side==='red'||pendingDoor?.kind==='move'||
+    pendingDoor?.kind==='pie'||!!permittedExplicitDoor;
   const doorAhead=autoDoor?(s.doors.find(door=>{
+    // An authored OPEN order may activate before its staging waypoint if
+    // the body meets that SAME door. Never preempt a KICK/CLOSE/HOLD order
+    // or open a neighboring door opportunistically.
+    if(permittedExplicitDoor&&door.id!==permittedExplicitDoor)return false;
     if(door.open&&(door.openFraction??0)>=.72)return false;
     if(!doorReachable(a.p,door))return false;
     return doorBlocksSegment(door,{a:a.p,b:next})||
       doorBlocksSegment(door,{a:a.p,b:p});
-  })??autoDoorAtBodyContact(a.p,move,s.doors)):undefined;
+  })??autoDoorAtBodyContact(a.p,move,
+     permittedExplicitDoor?s.doors.filter(d=>d.id===permittedExplicitDoor):
+     s.doors)):undefined;
   if(doorAhead){
     a.motorPause='door-opening';
     const opening=doorInteraction({target:doorAhead,actorId:a.id,

@@ -37,3 +37,11 @@ test('DNav-A reports actual lock/hold and never changes door state',()=>{
  assert.equal(x.locked,true);assert.equal(x.wedged,true);
  assert.equal(x.held,true);assert.deepEqual(d,before);
 });
+
+test('DNav-A reports authored door order identity to distinguish premature crossing',()=>{
+ const x=sampleDoorBlock({...actor,plan:[{kind:'door',doorId:'ENTRY',
+  method:'open',p:{x:142,y:160}}]},[door]);
+ assert.equal(x.orderKind,'door');
+ assert.equal(x.orderDoorId,'ENTRY');
+ assert.equal(x.orderMethod,'open');
+});
