@@ -36,7 +36,7 @@ const recipes={
  'jgsdf-type2':{
   label:'JGSDF TYPE II',
   description:'Jieitai Dot: dense smaller rounded vegetation-data flecks in moss, rust brown, stone tan and restrained charcoal clusters, distinct from S2000 earth-ground spotting',
-  colors:[[108,139,92],[61,104,74],[136,83,74],[187,185,150],[44,52,50]],
+  colors:[[108,139,92],[61,104,74],[127,96,84],[179,181,149],[44,52,50]],
   targetCoverage:[.32,.25,.18,.12,.13],motifs:[]
  },
  'pencott-metropolis':{
@@ -355,7 +355,7 @@ function urbanKamysh8C():Uint8Array{
  }
  return tile;
 }
-function jgsdf8E():Uint8Array{
+function jgsdf8F():Uint8Array{
  // Full composition rebuild: Jieitai Type II uses many small vegetation
  // fleck *families*, never a few large red/charcoal woodland islands.
  // Jitter eliminates the obvious grid; all small marks attach to the same
@@ -363,7 +363,7 @@ function jgsdf8E():Uint8Array{
  const tile=new Uint8Array(SIZE*SIZE);
  for(let row=0;row<10;row++)for(let col=0;col<10;col++){
   const role=hash(col,row,877);
-  const ink=role<.43?1:role<.62?2:role<.81?3:4;
+  const ink=role<.47?1:role<.61?2:role<.81?3:4;
   const x=Math.floor((col+.5)*6.4+(hash(col,row,811)-.5)*5.6);
   const y=Math.floor((row+.5)*6.4+(hash(col,row,821)-.5)*5.6);
   const rx=2+Math.floor(hash(col,row,829)*2);
@@ -475,7 +475,7 @@ function ownTile(id:Camo8AId):Uint8Array{
  if(id==='russian-izlom')return izlom8C();
  if(id==='greek-lizard')return greekLizard8C();
  if(id==='urban-kamysh')return urbanKamysh8C();
- if(id==='jgsdf-type2')return jgsdf8E();
+ if(id==='jgsdf-type2')return jgsdf8F();
  if(id==='south-african-s2000')return soldier2000_8E();
  if(id==='norwegian-m98')return norwegianM98_8F();
  throw new Error('Only independent 8A pattern masters are authored');
