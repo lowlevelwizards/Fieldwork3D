@@ -10,7 +10,7 @@ export type D2GogglePlacement='eyes'|'forehead'|'helmet'|'neck';
 function low(root:THREE.Group,frame:THREE.Material,
  lens:THREE.Material,elastic:THREE.Material):void{
  root.userData.d2EyeFitTop=4.82;
- root.userData.d2EyeDesign='R6-compact-contoured-sport-goggles';
+ root.userData.d2EyeDesign='R7-bold-rim-compact-sport-goggles';
  // Sports-protective silhouette: a lightweight upper arch and ONE generous
  // wraparound pane, not a miniature of the tall bunker field goggles.
  // Increased vertical coverage comes principally from the cheek outline,
@@ -22,8 +22,8 @@ function low(root:THREE.Group,frame:THREE.Material,
   [-.87,2.87],[-2.52,2.41],[-3.75,3.19]
  ];
  const inner:EyePolygon=[
-  [-3.43,4.11],[-2.52,4.40],[-1.04,4.47],
-  [1.04,4.47],[2.52,4.40],[3.43,4.11],
+  [-3.43,4.05],[-2.52,4.32],[-1.04,4.36],
+  [1.04,4.36],[2.52,4.32],[3.43,4.05],
   [3.37,3.40],[2.40,2.78],[.84,3.20],
   [-.84,3.20],[-2.40,2.78],[-3.37,3.40]
  ];
@@ -34,8 +34,8 @@ function low(root:THREE.Group,frame:THREE.Material,
   [-.81,3.01],[-2.47,2.57],[-3.53,3.31]
  ];
  const rearInner:EyePolygon=[
-  [-3.18,4.05],[-2.41,4.28],[-1.01,4.36],
-  [1.01,4.36],[2.41,4.28],[3.18,4.05],
+  [-3.18,4.01],[-2.41,4.23],[-1.01,4.27],
+  [1.01,4.27],[2.41,4.23],[3.18,4.01],
   [3.08,3.50],[2.31,2.94],[.78,3.32],
   [-.78,3.32],[-2.31,2.94],[-3.08,3.50]
  ];
@@ -48,8 +48,8 @@ function low(root:THREE.Group,frame:THREE.Material,
   frontX:3.87,frontY:3.81,frontZ:-4.28,
   shoulderX:4.37,shoulderY:3.80,shoulderZ:-3.73,
   rearX:4.30,rearY:3.79,rearZ:3.46,
-  frontHeight:.70,shoulderHeight:.61,rearHeight:.51,
-  frontWidth:.58,shoulderWidth:.55,rearWidth:.46
+  frontHeight:.79,shoulderHeight:.63,rearHeight:.51,
+  frontWidth:.60,shoulderWidth:.55,rearWidth:.46
  },.54);
 }
 function field(root:THREE.Group,frame:THREE.Material,
