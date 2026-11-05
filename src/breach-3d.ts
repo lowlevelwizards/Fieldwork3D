@@ -1555,6 +1555,13 @@ export class TacticalScene3D{
     return {x:(world.x+1)*this.width/2,
       y:(1-world.y)*this.height/2};
   }
+  /** Stage initial visible operator geometry separately from the first
+   * tactical WebGL frame. Existing soldier models are reused without reset. */
+  prepareOperatorModel(a:TeamActor):boolean{
+    if(this.actors.has(a.id))return false;
+    this.soldier(a);
+    return true;
+  }
   private soldier(a:TeamActor){
     const physical=createOperatorRig(a.id,a.side,true);
     const {root,weapon,pack}=physical;

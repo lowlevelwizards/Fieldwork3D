@@ -3548,14 +3548,43 @@ async function launchQuickPlay(){
     const sceneStart=performance.now();
     stage?.applySite(state.site??null);
     const sceneMs=Math.round(performance.now()-sceneStart);
-    quickPlayCheckpoint(95,'Preparing first frame',
-      'Fitting the camera and updating tactical controls');
+    // First rendered scene would otherwise construct every friendly rig at
+    // once. Spread that expensive, reusable model allocation over paint turns.
+    const operatorStart=performance.now();
+    const initialTeam=team(state);
+    for(let i=0;i<initialTeam.length;i++){
+      quickPlayCheckpoint(88+Math.floor(6*i/initialTeam.length),
+        'Preparing operator models',
+        initialTeam[i].name+' · '+(i+1)+' / '+initialTeam.length);
+      await allowQuickPlayPaint();
+      if(id!==quickPlayRun)return;
+      stage?.prepareOperatorModel(initialTeam[i]);
+    }
+    const operatorMs=Math.round(performance.now()-operatorStart);
+    quickPlayCheckpoint(95,'Preparing tactical controls',
+      'Fitting the camera and updating the mission HUD');
     await allowQuickPlayPaint();
+    if(id!==quickPlayRun)return;
     const hudStart=performance.now();
     layout();updateHud();
     const hudMs=Math.round(performance.now()-hudStart);
+    // The first WebGL render is the last major synchronous initialization
+    // step (costume materials, visibility, fog, shadow atlas and shaders).
+    // Keep the loading mask up while it runs and measure its real duration.
+    quickPlayCheckpoint(97,'Rendering first 3D frame',
+      'Applying uniforms, fog, lighting and GPU materials');
+    await allowQuickPlayPaint();
+    if(id!==quickPlayRun)return;
+    const firstFrameStart=performance.now();
+    if(stage&&viewMode!=='plan2d'){
+      stage.update(state,selected,0,doorFocusId,false,null,null,
+        recorder.motion.presentation(0,state.operators.map(a=>a.id)));
+    }
+    render();
+    const firstFrameMs=Math.round(performance.now()-firstFrameStart);
+    quickPlayCheckpoint(99,'Revealing tactical scene',
+      'First render completed · preparing controls');
     campaignScreen.hide();
-    quickPlayBusy=false;
     await allowQuickPlayPaint();
     if(id!==quickPlayRun)return;
     const totalMs=Math.round(performance.now()-quickPlayStarted);
@@ -3564,11 +3593,15 @@ async function launchQuickPlay(){
     quickPlayPanel.dataset.state='ready';
     quickPlayClockText.textContent=(totalMs/1000).toFixed(1)+'s total · map '+
       (generated.generationMs/1000).toFixed(1)+'s · 3D '+
-      (sceneMs/1000).toFixed(1)+'s';
+      (sceneMs/1000).toFixed(1)+'s · first frame '+
+      (firstFrameMs/1000).toFixed(1)+'s';
     console.info('[Quick Play startup]',{
-      seed,scale,generationMs:generated.generationMs,sessionMs,sceneMs,hudMs,
-      totalMs
+      seed,scale,generationMs:generated.generationMs,sessionMs,sceneMs,
+      operatorMs,hudMs,firstFrameMs,totalMs
     });
+    // Now that an actual complete frame exists behind the overlay, allow
+    // live RAF updates. Never declare READY before the render has returned.
+    quickPlayBusy=false;
     finishQuickPlayClock();
     setTimeout(()=>{if(id===quickPlayRun&&!quickPlayBusy)
       quickPlayPanel.hidden=true;},1400);
