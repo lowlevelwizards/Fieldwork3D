@@ -54,13 +54,17 @@ function standardVariant(root:THREE.Group,frame:THREE.Material,
  group.visible=mode==='rectangular';root.add(group);
 }
 function aviator(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
+ // A broad, substantial low teardrop, not a narrow V/fang.
+ // Hold the tall pilot profile but give the lower tip a wide, flat facet.
  const outer:EyePolygon=[
-  [-1.58,5.18],[1.48,5.18],[1.43,3.61],
-  [.80,1.62],[-.10,1.73],[-1.50,2.85]
+  [-1.58,5.18],[1.48,5.18],[1.47,3.48],
+  [1.21,2.32],[.89,1.65],[.15,1.65],
+  [-.76,2.15],[-1.50,3.05]
  ];
  const opening:EyePolygon=[
-  [-1.07,4.61],[.98,4.61],[.93,3.58],
-  [.44,2.30],[-.09,2.36],[-1.04,3.04]
+  [-1.05,4.59],[.96,4.59],[.97,3.49],
+  [.76,2.49],[.56,2.25],[.20,2.25],
+  [-.62,2.58],[-1.01,3.25]
  ];
  for(const side of [-1,1]){
   const cx=side*1.83;
@@ -98,10 +102,14 @@ function wrap(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
    offsetPolygon(mirror(outer),side*1.85),
    [offsetPolygon(mirror(opening),side*1.85)],-5.04,.73,'wedge');
   // Distinct side profile: one coarse swept fin rather than plain temples.
+  // Front fan now overlaps the wedge's outer edge at the same height.
+  // Its upper and lower slopes resolve into a narrower, continuous temple
+  // rather than abruptly changing into a thick rectangular side block.
   sideFin(root,frame,'swept-back-tactical-wing',side as -1|1,
-   4.08,.83,[
-    [5.19,4.91],[3.87,4.80],[1.81,4.31],[-3.50,4.21],
-    [-3.50,3.47],[1.80,3.51],[4.27,2.85],[5.19,3.22]
+   3.98,.82,[
+    [5.28,4.95],[4.42,5.05],[3.08,4.74],[1.08,4.44],
+    [-3.50,4.20],[-3.50,3.68],[1.08,3.74],
+    [3.08,3.43],[4.42,2.88],[5.28,2.77]
    ]);
  }
  solidBlock(root,frame,'angular-center-bridge',0,4.11,-4.86,
