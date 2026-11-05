@@ -270,33 +270,35 @@ function izlom8B():Uint8Array{
  }
  return tile;
 }
-function greekLizard8B():Uint8Array{
- const motifs:Motif[]=[];
- // Two shorter, slightly skewed/tapered strokes instead of one solid
- // printed stripe. Some half-occluded patches intentionally overlap.
+function greekLizard8C():Uint8Array{
+ // Restore the continuous 8A horizontal painterly ribbons. The 8B
+ // wholesale split made this look like small generic woodland shards.
+ const shapes:Motif[]=GREEK_STROKES.map(([x,y,len,w,ink,phase])=>
+  brush(x,y,len,w,ink,phase));
  for(let i=0;i<GREEK_STROKES.length;i++){
-  const [x,y,len,w,ink,phase]=GREEK_STROKES[i];
-  const mid=Math.floor(len*(.42+hash(i,phase,223)*.13));
-  const offset=hash(i,phase,227)>.50?1:-1;
-  motifs.push(brush(x,y,mid,Math.max(2,w-1),ink,phase));
-  motifs.push(brush(x+mid+3,y+offset,len-mid-3,
-   Math.max(2,w-2+(i%3===0?1:0)),ink,phase+1));
-  if(i%3===0)motifs.push(brush(x+mid-5,y+offset+3,8,2,ink,phase+2));
+  if(i%5!==1)continue;
+  const [x,y,len,,ink,phase]=GREEK_STROKES[i];
+  // A few overlapping tapered sweeps, not a second full row of stripes.
+  shapes.push(brush(x+Math.floor(len*.3),y+3,
+    Math.max(8,Math.floor(len*.41)),2,ink,phase+2));
  }
- const tile=paint(motifs,0),original=tile.slice();
- // Greek Lizard's original screen has stippled, ragged paint ends; use
- // source-anchored single texel nibs, not uniform noise on the cloth base.
+ const base=paint(shapes,0);
+ const out=base.slice();
+ // Sparing 1px perimeter interruptions; never slice bands in half.
+ // Critically preserves the long horizontal runs missing in 8B.
  for(let row=0;row<16;row++)for(let col=0;col<16;col++){
-  const r=hash(col,row,239);if(r<.59)continue;
+  const r=hash(col,row,239);if(r<.86)continue;
   const x=(col*4+Math.floor(hash(col,row,241)*4))&63;
   const y=(row*4+Math.floor(hash(col,row,251)*4))&63;
-  const ink=indexAt(original,x,y);
+  const ink=indexAt(base,x,y);
   if(ink===0)continue;
-  const neighbor=indexAt(original,x,y+1);
-  if(neighbor===0)tile[((y+1)&63)*64+x]=ink;
-  else if(r>.93)tile[y*64+x]=0; // sparing gaps in brush ink
+  const above=indexAt(base,x,y-1),below=indexAt(base,x,y+1);
+  if(above===0 && below===ink && r>.93)
+   out[y*64+x]=0;
+  else if(below===0 && r>.91)
+   out[((y+1)&63)*64+x]=ink;
  }
- return tile;
+ return out;
 }
 function urbanKamysh8B():Uint8Array{
  // The older Russian blue Kamysh is an aggressive, irregular tiger/reed
@@ -321,66 +323,83 @@ function urbanKamysh8B():Uint8Array{
  }
  return tile;
 }
-function jgsdf8B():Uint8Array{
- // Flecktarn neighbor: denser but visibly rounder, shorter clusters than
- // Izlom or the oversized blobs in 8A. Satellites attach to parent clusters.
+function jgsdf8C():Uint8Array{
+ // Each manual Jieitai parent is small and irregular, surrounded by
+ // several related miniature flecks. 8B's lone circular islands read as
+ // polka dots; an attached cluster reads as printed woodland again.
  const motifs:Motif[]=[];
  for(let i=0;i<JGSDF_SPOTS.length;i++){
   const [x,y,rx,ry,ink,phase]=JGSDF_SPOTS[i];
-  const mx=Math.max(3,Math.round(rx*.64)),my=Math.max(2,Math.round(ry*.73));
+  const mx=Math.max(3,Math.round(rx*.69));
+  const my=Math.max(2,Math.round(ry*.73));
   motifs.push(fleck(x,y,mx,my,ink,phase));
-  const dx=hash(i,phase,19)>.5?mx+2:-mx-1;
-  const dy=hash(i,phase,27)>.5?my-2:-my+1;
-  motifs.push(fleck(x+dx,y+dy,Math.max(2,Math.floor(mx*.43)),
-   Math.max(2,Math.floor(my*.54)),ink,phase+1));
+  for(let k=0;k<3;k++){
+   const a=hash(i,k,303),b=hash(i,k,311);
+   const angle=(k+(i%3)*.21)*Math.PI*2/3;
+   const dx=Math.round(Math.cos(angle)*(mx+1+a*2));
+   const dy=Math.round(Math.sin(angle)*(my+1+b*2));
+   const sx=Math.max(2,Math.min(4,Math.round(mx*.38)));
+   const sy=Math.max(2,Math.min(3,Math.round(my*.52)));
+   motifs.push(fleck(x+dx,y+dy,sx,sy,ink,phase+k+1));
+  }
  }
  const tile=paint(motifs,0),original=tile.slice();
- // Rounded 1-2px correlated dots punctuate cluster outskirts; maintain
- // clear rust, tan and charcoal roles without a grid or digital blocks.
- for(let row=0;row<16;row++)for(let col=0;col<16;col++){
-  const a=hash(col,row,157);if(a<.39)continue;
-  const x=(col*4+Math.floor(hash(col,row,163)*4))&63;
-  const y=(row*4+Math.floor(hash(col,row,173)*4))&63;
+ // Dots are related to nearby clusters (not seeded across bare ground).
+ for(let row=0;row<21;row++)for(let col=0;col<21;col++){
+  const r=hash(col,row,317);
+  if(r<.50)continue;
+  const x=(col*3+Math.floor(hash(col,row,319)*3))&63;
+  const y=(row*3+Math.floor(hash(col,row,331)*3))&63;
   const ink=indexAt(original,x,y);
-  const neighbor=indexAt(original,x+1,y);
-  const diag=indexAt(original,x,y+1);
-  if(ink===0 && (neighbor!==0||diag!==0))tile[y*64+x]=neighbor!==0?neighbor:diag;
-  else if(ink===1&&a>.72)tile[y*64+x]=4;
-  else if(ink===2&&a>.80)tile[y*64+x]=3;
+  const neighbors=[
+   indexAt(original,x+2,y),indexAt(original,x-2,y),
+   indexAt(original,x,y+2),indexAt(original,x,y-2)
+  ].filter(v=>v!==0);
+  if(ink===0&&neighbors.length>=2){
+   const nearest=neighbors[Math.floor(hash(col,row,337)*neighbors.length)];
+   tile[y*64+x]=nearest;
+   if(r>.85&&indexAt(original,x+1,y)===0)
+    tile[y*64+((x+1)&63)]=nearest;
+  } else if(ink===1&&r>.90){
+   tile[y*64+x]=4;
+  } else if(ink===2&&r>.91){
+   tile[y*64+x]=3;
+  }
  }
  return tile;
 }
-function soldier2000_8B():Uint8Array{
- // The five-color Soldier 2000 print is an earth-brown *field* with
- // independently shaped pale/grass/dark-green islands; not a Flecktarn cloud.
- const source=paint(S2000.map(m=>scaleMotif(m,.72)),0);
+function soldier2000_8C():Uint8Array{
+ // Keep the broad exposed earth-brown SANDF ground established in 8B.
+ // Slightly grow lobes; restore their SMALL contrasting interior spores.
+ const source=paint(S2000.map(m=>scaleMotif(m,.735)),0);
  const out=source.slice();
- // Small contrasting 1-2px paired spores INSIDE the irregular islands,
- // deliberately more apparent than JGSDF's satellite flecks.
- for(let row=0;row<16;row++)for(let col=0;col<16;col++){
-  const r=hash(col,row,191);if(r<.30)continue;
-  const x=(col*4+Math.floor(hash(col,row,199)*4))&63;
-  const y=(row*4+Math.floor(hash(col,row,211)*4))&63;
+ for(let row=0;row<21;row++)for(let col=0;col<21;col++){
+  const r=hash(col,row,191);
+  if(r<.37)continue;
+  const x=(col*3+Math.floor(hash(col,row,199)*3))&63;
+  const y=(row*3+Math.floor(hash(col,row,211)*3))&63;
   const ink=indexAt(source,x,y);
-  if(ink===0||ink===4)continue; // Preserve visible Kalahari brown.
-  let interior=0;
+  if(ink===0||ink===4)continue; // Never seed across brown bare cloth.
+  let same=0;
   for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]])
-   if(indexAt(source,x+dx,y+dy)===ink)interior++;
-  if(interior<3)continue;
-  const dot=ink===3?4:(r>.76?3:4);
-  out[y*64+x]=dot;
-  if(r>.67&&indexAt(source,x+1,y)===ink)out[y*64+((x+1)&63)]=dot;
+   if(indexAt(source,x+dx,y+dy)===ink)same++;
+  if(same<3)continue;
+  const spot=ink===3?4:(r>.75?3:4);
+  out[y*64+x]=spot;
+  if(r>.68&&indexAt(source,x+1,y)===ink)
+   out[y*64+((x+1)&63)]=spot;
+  if(r>.95&&indexAt(source,x,y+1)===ink)
+   out[((y+1)&63)*64+x]=spot;
  }
  return out;
 }
 
-const masters=new Map<Camo8AId,Uint8Array>();
 function ownTile(id:Camo8AId):Uint8Array{
  if(id==='russian-izlom')return izlom8B();
- if(id==='greek-lizard')return greekLizard8B();
+ if(id==='greek-lizard')return greekLizard8C();
  if(id==='urban-kamysh')return urbanKamysh8B();
- if(id==='jgsdf-type2')return jgsdf8B();
- if(id==='south-african-s2000')return soldier2000_8B();
+ if(id==='jgsdf-type2')return jgsdf8C();
+ if(id==='south-african-s2000')return soldier2000_8C();
  if(id==='norwegian-m98'){
   // Minimize hard one-pixel polygon corners while retaining three flat
   // inks and the huge M98 organic blotches. No additional fine texture.
