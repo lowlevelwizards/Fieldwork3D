@@ -8,12 +8,14 @@ import {resolvedWardrobe,setWardrobeFabricCamo,
 import {fabricCamoChoices,FABRIC_CAMO_CHANNELS,FABRIC_CAMO_POLICY,
  type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {HEADWEAR_CAMO_IDS,HEADWEAR_CAMO_RECIPES,
- headwearCamoPixels,headwearCamoSize,type HeadwearCamoId}
+ type HeadwearCamoId}
  from './operator-headwear-camo.ts';
-import {browseCamos,camoBrowserState,readCamoBrowserPrefs,recordCamoRecent}
+import {browseCamos,camoBrowseSection,camoBrowserState,readCamoBrowserPrefs,recordCamoRecent}
  from './operator-material-browser.ts';
-import {createCamoBrowseControls,createCamoFavoriteButton}
+import {createCamoBrowseControls,createCamoFavoriteButton,
+ appendCamoSectionHeading,createCamoResultSummary,syncCamoFavoriteButton}
  from './operator-material-browser-ui.ts';
+import {paintCamoPreview} from './operator-camo-preview-cache.ts';
 
 type FabricPickerState={expanded:boolean;openChannel?:FabricCamoChannel|null;
  filter:string};
@@ -43,13 +45,14 @@ export function createWardrobeFabricCamoPicker(
   fabricCamoChoices('trousers',outfit).includes(id));
  const choose=document.createElement('select');
  choose.setAttribute('aria-label','Select a camouflage for matching uniform top and trousers');
- for(const id of browseCamos(pair,{active:wardrobe.fabricCamo?.top??null})){
+ const sortedPair=browseCamos(pair,{active:wardrobe.fabricCamo?.top??null});
+ for(const id of sortedPair){
   const option=document.createElement('option');
   option.value=id;option.textContent=HEADWEAR_CAMO_RECIPES[id].label;
   choose.append(option);
  }
  choose.value=pair.includes(wardrobe.fabricCamo?.top as HeadwearCamoId)?
-  wardrobe.fabricCamo!.top!:pair[0]??'';
+  wardrobe.fabricCamo!.top!:sortedPair[0]??'';
  const apply=document.createElement('button');apply.type='button';
  apply.textContent='MATCH UNIFORM';apply.disabled=disabled||!pair.length;
  apply.addEventListener('click',()=>onChange(matchWardrobeUniformCamo(
@@ -97,45 +100,53 @@ export function createWardrobeFabricCamoPicker(
   createCamoBrowseControls(row,key,()=>{
    state.filter=browser.search;draw();
   });
+  const showResults=createCamoResultSummary(row);
   const grid=document.createElement('div');grid.className='fw-headwear-camo-grid';
   row.append(grid);
+  const cards=new Map<HeadwearCamoId,HTMLDivElement>();
   const draw=()=>{
    if(!row.open)return;
+   const position=grid.scrollTop;
    grid.replaceChildren();
    const prefs=readCamoBrowserPrefs();
+   const reference=wardrobe.fabricCamo?.top??null;
    const visible=browseCamos(options,{state:browser,active:selected,
-    reference:wardrobe.fabricCamo?.top??null,prefs});
+    reference,prefs});
+   showResults(visible,options.filter(id=>id!=='splittertarn-31').length,selected);
+   let section='';
    for(const id of visible){
-    const definition=HEADWEAR_CAMO_RECIPES[id];
-    const profile=FABRIC_CAMO_POLICY[id];
-    const wrap=document.createElement('div');wrap.className='fw-camo-choice-wrap';
-    const button=document.createElement('button');button.type='button';
-    button.className='fw-headwear-camo-choice';
-    button.disabled=disabled;button.setAttribute('aria-pressed',String(selected===id));
-    button.setAttribute('aria-label','Apply '+definition.label+' to '+label[channel]);
-    button.title=profile.note;
-    const canvas=document.createElement('canvas');
-    const size=headwearCamoSize(id);canvas.width=size;canvas.height=size;
-    canvas.setAttribute('aria-hidden','true');
-    const context=canvas.getContext('2d');
-    if(context){
-     const image=context.createImageData(size,size);
-     image.data.set(headwearCamoPixels(id));
-     context.putImageData(image,0,0);
+    section=appendCamoSectionHeading(grid,
+     camoBrowseSection(id,{state:browser,active:selected,reference,prefs}),section);
+    let wrap=cards.get(id);
+    if(!wrap){
+     const definition=HEADWEAR_CAMO_RECIPES[id];
+     const profile=FABRIC_CAMO_POLICY[id];
+     wrap=document.createElement('div');wrap.className='fw-camo-choice-wrap';
+     const button=document.createElement('button');button.type='button';
+     button.className='fw-headwear-camo-choice';
+     button.disabled=disabled;button.setAttribute('aria-pressed',String(selected===id));
+     button.setAttribute('aria-label','Apply '+definition.label+' to '+label[channel]);
+     button.title=profile.note;
+     const canvas=document.createElement('canvas');
+     paintCamoPreview(canvas,id);canvas.setAttribute('aria-hidden','true');
+     const title=document.createElement('span');title.textContent=definition.label;
+     button.append(canvas,title);
+     button.addEventListener('click',()=>{
+      recordCamoRecent(id);
+      onChange(setWardrobeFabricCamo(wardrobe,channel,id,outfit));
+     });
+     wrap.append(button,createCamoFavoriteButton(id,prefs.favorites.includes(id),
+      ()=>draw(),disabled));
+     cards.set(id,wrap);
     }
-    const text=document.createElement('span');text.textContent=definition.label;
-    button.append(canvas,text);
-    button.addEventListener('click',()=>{
-     recordCamoRecent(id);
-     onChange(setWardrobeFabricCamo(wardrobe,channel,id,outfit));
-    });
-    wrap.append(button,createCamoFavoriteButton(id,prefs.favorites.includes(id),
-     ()=>draw(),disabled));
+    const star=wrap.querySelector<HTMLButtonElement>('.fw-material-favorite');
+    if(star)syncCamoFavoriteButton(star,prefs.favorites.includes(id));
     grid.append(wrap);
    }
-   if(!grid.children.length){const empty=document.createElement('p');
+   if(!visible.length){const empty=document.createElement('p');
     empty.className='fw-headwear-hint';empty.textContent='No verified match';
     grid.append(empty);}
+   grid.scrollTop=position;
   };
   panel.append(row);if(row.open)draw();
  }
