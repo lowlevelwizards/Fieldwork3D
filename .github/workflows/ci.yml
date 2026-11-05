@@ -764,6 +764,13 @@ jobs:
             tests/equipment-19-06-quickplay-editor.test.mjs \
             tests/operator-wardrobe-quickplay-ui.test.mjs \
             tests/lw-roster.test.mjs
+      - name: UX R2 Studio focused Item, Material and Details workflow
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/ux-r2-studio-material-flow-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/ux-r2-studio-flow.test.mjs \
+            tests/operator-material-browser-smart-sort.test.mjs \
+            tests/operator-material-browser-r2.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
