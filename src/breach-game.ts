@@ -5,7 +5,7 @@
  */
 import {
   type Pt,type Operator,type TacticalState,type Door,type Side,
-  W,H,WALLS,COVER,initialDoors,newTacticalState,route,passable,activateSite,
+  W,H,WALLS,COVER,OPERATOR_RADIUS,initialDoors,newTacticalState,route,passable,activateSite,
   segmentsCross,doorCenter,doorBlocksSegment,doorLeafSegment,doorBlocksRay,doorBlocksSightRay,
   pointToSegment,
 } from './breach-core.ts';
