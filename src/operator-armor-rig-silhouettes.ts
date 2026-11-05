@@ -559,8 +559,10 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   // Belt-first silhouette: pouches live on hips; the garment-fitted Y
   // suspenders are generated only when the selected rig is fitted.
   const g=make('alice-lc2');
-  const h=new THREE.Group();h.name='uniform-fitted-rig-harness';
-  h.userData.fitMaterial=webbing;h.userData.spread=5.50;g.add(h);
+  // Initialize tangible shoulder straps just like other authored rigs.
+  // updateFittedRigHarness refits these to the actual garment contact frame.
+  // The pelvis owns pouches and canteens; no fictitious front bib.
+  shoulderHarness(g,webbing,5.50);
  }
  if(!onlyStyle||onlyStyle==='belt-harness'){
   const g=make('belt-harness');
