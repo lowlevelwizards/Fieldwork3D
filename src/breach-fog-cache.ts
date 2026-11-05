@@ -4,12 +4,14 @@
  */
 export type FogFingerprintInput={
   mode:string;seed:number|null;seenCount:number;revision:number;
+  seenRevision?:number;
   actors:readonly {id:string;x:number;y:number;heading:number;
     posture:string;health:number}[];
   doors:readonly {id:string;fraction:number}[];
 };
 export function fogFingerprint(state:FogFingerprintInput):string{
-  return [state.mode,state.seed??'none',state.seenCount,state.revision,
+  return [state.mode,state.seed??'none',state.seenCount,
+    state.seenRevision??0,state.revision,
     ...state.actors.map(a=>[
       a.id,Math.round(a.x*10),Math.round(a.y*10),
       Math.round(a.heading*100),a.posture,a.health
