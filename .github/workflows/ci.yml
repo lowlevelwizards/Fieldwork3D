@@ -777,6 +777,18 @@ jobs:
             tests/worldgen-encounter-safety.test.mjs \
             tests/worldgen-encounter-missions.test.mjs \
             tests/mission-reactivity-r8b.test.mjs
+      - name: Living civilians B3–B4 critical movement and perception checks
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-e5b-civilians-n2-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/civilian-b1-schema.test.mjs \
+            tests/civilian-b2-placement.test.mjs \
+            tests/civilian-b3-movement.test.mjs \
+            tests/civilian-b4-response.test.mjs \
+            tests/awareness-sound.test.mjs \
+            tests/awareness-integration.test.mjs \
+            tests/tactical-integration-15-encounter-a1.test.mjs \
+            tests/mission-reactivity-r8b.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
