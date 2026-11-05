@@ -789,6 +789,16 @@ jobs:
             tests/awareness-integration.test.mjs \
             tests/tactical-integration-15-encounter-a1.test.mjs \
             tests/mission-reactivity-r8b.test.mjs
+      - name: Living civilians N3 hard-body collision checks
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-e5b-civilians-n3-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/civilian-b5a-shared-movement.test.mjs \
+            tests/physicality-07-authority.test.mjs \
+            tests/civilian-b3-movement.test.mjs \
+            tests/civilian-b4-response.test.mjs \
+            tests/tactical-integration-00-baseline.test.mjs \
+            tests/tactical-integration-17-firefight-b1.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
