@@ -437,6 +437,18 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/d2-silhouette-v3b-') }}
         run: |
           node --experimental-strip-types --test tests/operator-d2-silhouette-v3-balaclava.test.mjs tests/operator-d2-silhouette-v3-compatibility.test.mjs tests/operator-d2-balaclava-stage-a1.test.mjs tests/operator-d2-wraps-stage-a2.test.mjs tests/operator-d2-fabric-integration-stage-a3.test.mjs
+      - name: D2 R4 facewear — pose colors, bandana volume and wrap continuity
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/d2-facewear-r4-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/operator-d2-facewear-pose-colors-r4.test.mjs \
+            tests/operator-d2-silhouette-v3-bandana.test.mjs \
+            tests/operator-d2-silhouette-v3-gaiter.test.mjs \
+            tests/operator-d2-silhouette-v3-shemagh.test.mjs \
+            tests/operator-d2-silhouette-v3-compatibility.test.mjs \
+            tests/operator-d2-wraps-stage-a2.test.mjs \
+            tests/operator-d2-fabric-integration-stage-a3.test.mjs \
+            tests/operator-wardrobe-data.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}
