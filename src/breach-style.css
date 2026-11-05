@@ -1368,3 +1368,37 @@ html,body{font-family:var(--fw-font-menu)}
 @media(max-height:470px) and (max-width:650px){
   .bar .unit{min-height:43px}
 }
+
+/* Quick Play startup: Map Lab's measured-checkpoint progress language. */
+.quick-play-progress[hidden]{display:none}
+.quick-play-progress{position:fixed;inset:0;z-index:14000;
+ display:grid;place-items:center;padding:calc(16px + env(safe-area-inset-top))
+  12px calc(16px + env(safe-area-inset-bottom));
+ background:rgba(8,18,18,.84);touch-action:manipulation}
+.quick-play-progress-card{width:min(390px,100%);padding:14px;
+ border:1px solid #a9bd97;border-radius:10px;background:#1b2d28f5;
+ box-shadow:0 9px 35px #0b181ac9;color:#e8e8dd;
+ font:12px/1.45 var(--ui-font,"Work Sans",system-ui,sans-serif)}
+.quick-play-progress[data-state="ready"] .quick-play-progress-card{
+ border-color:#a7be9d;background:#19352cef}
+.quick-play-progress[data-state="error"] .quick-play-progress-card{
+ border-color:#cb907a}
+.quick-play-progress-heading{display:flex;align-items:center;gap:10px;
+ justify-content:space-between;font-weight:700;letter-spacing:.04em}
+.quick-play-progress-heading strong{font:700 14px/1.2 var(--ui-display,"Saira Condensed",sans-serif)}
+#quickPlayPercent{font:700 19px var(--ui-display,"Saira Condensed",monospace);
+ color:#e9c88f;font-variant-numeric:tabular-nums}
+#quickPlayBar{display:block;width:100%;height:12px;
+ accent-color:#afcdab;margin:8px 0 7px}
+#quickPlayStage{font-weight:700;color:#e8e5d5}
+.quick-play-progress[data-state="ready"] #quickPlayStage{color:#d5efcb}
+#quickPlayDetail{display:block;font-size:11px;color:#c4d0c6;min-height:17px}
+#quickPlayClock{font:11px var(--ui-display,"Saira Condensed",monospace);
+ color:#a6b9b0;font-variant-numeric:tabular-nums}
+.quick-play-progress-footer{display:flex;align-items:center;
+ justify-content:space-between;gap:12px;margin-top:6px}
+#quickPlayCancel{min-height:44px;padding:4px 12px;font:600 12px var(--ui-font,"Work Sans",sans-serif);
+ border:1px solid #718f80;border-radius:5px;background:#3b544a;color:#f5efdf;
+ touch-action:manipulation}
+#quickPlayCancel[hidden]{display:none}
+@media(max-width:450px){.quick-play-progress-card{padding:11px}}

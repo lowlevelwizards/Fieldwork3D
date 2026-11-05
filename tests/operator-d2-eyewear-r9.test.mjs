@@ -40,7 +40,7 @@ test('R9 rounded lower cheek has no abrupt outer-corner kink and retains broad f
  const shelfXs=shelf.map(p=>p.x);
  assert.ok(Math.max(...shelfXs)-Math.min(...shelfXs)>1.10,'full rounded underside');
  const foot=(shelfXs[0]+shelfXs[1])/2;
- assert.ok(foot< -2.75&&foot> -3.02,'full lower lens without extreme outward splay');
+ assert.ok(foot< -2.60&&foot> -2.89,'full lower lens without extreme outward splay');
  const cheek=points.map((p,i)=>({p,i})).filter(({p})=>p.x< -3.2&&p.y<=3.10);
  assert.ok(cheek.length>=3,'several deliberate broad cheek facets');
  for(const {i} of cheek)

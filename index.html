@@ -161,6 +161,20 @@
   <output id="replayEventText" class="replay-event" aria-live="off">Mission events</output>
 </section>
 <div class="foot"><span id="mission">CONTACTS UNKNOWN • SECURE THE STATION</span><span class="shortcut">TAP TO ORDER · DRAG TO ORBIT · 2 FINGERS PAN/PINCH</span></div>
+<section id="quickPlayProgress" class="quick-play-progress" role="status"
+ aria-live="polite" aria-label="Tactical sandbox startup" hidden>
+ <div class="quick-play-progress-card">
+  <div class="quick-play-progress-heading"><strong>PREPARING TACTICAL SANDBOX</strong>
+   <output id="quickPlayPercent">0%</output></div>
+  <progress id="quickPlayBar" max="100" value="0" aria-label="Quick Play load checkpoints"></progress>
+  <div id="quickPlayStage">Preparing mission…</div>
+  <span id="quickPlayDetail">Starting architecture generator</span>
+  <div class="quick-play-progress-footer">
+   <span id="quickPlayClock">0s elapsed</span>
+   <button id="quickPlayCancel" type="button">CANCEL</button>
+  </div>
+ </div>
+</section>
 <script type="module" src="./src/breach-main.ts"></script>
 </body>
 </html>
