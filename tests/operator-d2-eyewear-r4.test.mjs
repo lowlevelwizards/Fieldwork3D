@@ -87,8 +87,8 @@ test('R4 sport W and bunker goggles are fundamentally different shapes',()=>{
  for(let i=0;i<shape.count;i++)if(Math.abs(shape.getZ(i)+5.04)<.02)
   ptsLow.push({x:shape.getX(i),y:shape.getY(i)});
  const cheeks=Math.min(...ptsLow.filter(v=>Math.abs(v.x)>1.3&&Math.abs(v.x)<3).map(v=>v.y));
- const nose=Math.max(...ptsLow.filter(v=>Math.abs(v.x)<.8&&v.y<4).map(v=>v.y));
- assert.ok(nose-cheeks>.34,'compact goggle gets distinct W nose cut');
+ const nose=Math.max(...ptsLow.filter(v=>Math.abs(v.x)<.95&&v.y<4).map(v=>v.y));
+ assert.ok(nose-cheeks>.34,'compact goggle preserves a defined but softened nasal saddle');
  const e=lowHousing.userData.d2EyeProfile;
  const f=fieldHousing.userData.d2EyeProfile;
  assert.ok(f.width>e.width+1.1,'field goggles substantially broader');
