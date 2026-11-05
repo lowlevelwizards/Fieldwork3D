@@ -90,6 +90,7 @@ import {newCampaign,readCampaign,acceptContract,resolveOperation,
  hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
  retireOperator,equipCampaignGear,moveCampaignMagazine,
  equipCampaignWeaponAttachment,purchaseAndEquipWeaponAttachment,
+ equipCampaignWeaponPreset,equipCampaignWeaponFamilyPart,
  saveCampaignKitPreset,applyCampaignKitPreset,
  deleteCampaignKitPreset,renameCampaignOperator,cycleCampaignAppearance,
  setCampaignWardrobe,
@@ -3664,6 +3665,12 @@ const campaignScreen=new CampaignScreen({
   saveCampaign();showCampaignHome();}},
  equipGear:(id,slot,itemId)=>{if(campaign){
   campaign=equipCampaignGear(campaign,id,slot,itemId);
+  saveCampaign();showCampaignHome();}},
+ equipWeaponPreset:(id,presetId)=>{if(campaign){
+  campaign=equipCampaignWeaponPreset(campaign,id,presetId);
+  saveCampaign();showCampaignHome();}},
+ equipWeaponFamilyPart:(id,slot,partId)=>{if(campaign){
+  campaign=equipCampaignWeaponFamilyPart(campaign,id,slot,partId);
   saveCampaign();showCampaignHome();}},
  equipAttachment:(id,slot,partId,acquire)=>{if(campaign){
   campaign=acquire?
