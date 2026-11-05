@@ -706,6 +706,7 @@ jobs:
         run: |
           node --experimental-strip-types --test \
             tests/awareness-team-commitment-e2a.test.mjs \
+            tests/awareness-cover-commitment-e2b.test.mjs \
             tests/awareness-coordination.test.mjs \
             tests/awareness-communication.test.mjs \
             tests/awareness-integration.test.mjs \
