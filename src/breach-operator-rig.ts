@@ -9,6 +9,8 @@ import {neutralMannequinHipRise,neutralMannequinWrist,
  neutralMannequinElbowPole} from './operator-mannequin-pose.ts';
 import {alignSegment,solveTwoBone,ARM_LIMITS,LEG_LIMITS,
   intersectsTorso} from './breach-ik.ts';
+import {createOperatorPoseScratch,type OperatorPoseScratch}
+  from './breach-operator-pose-scratch.ts';
 import type {WeaponId} from './breach-combat.ts';
 import {advanceFootsteps,createFootstepScheduler,validatedReplayFeet,
   type FootstepScheduler,type FootTarget,type FootstepInput}
@@ -404,7 +406,10 @@ const DOWNED_TINT=new THREE.Color(0x555c57);
  * Keep a per-rig snapshot separate from motion/IK, which still runs on
  * every frame. Weak keys release disposed operator preview rigs. */
 const appearanceState=new WeakMap<OperatorRig,{key:string;downed:boolean}>();
+const poseMath=new WeakMap<OperatorRig,OperatorPoseScratch>();
 export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
+  let scratch=poseMath.get(r);
+  if(!scratch){scratch=createOperatorPoseScratch();poseMath.set(r,scratch);}
   if(dt<0||r.lastTime>p.seconds+.03||p.seconds-r.lastTime>1.2){
     r.lastTime=p.seconds;dt=0;
   }
@@ -1022,18 +1027,19 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // canonicalRoot * legacyFrame(+90 Y) = original Euler(pitch,yaw,roll).
   r.root.quaternion.copy(
     canonicalRootOrientation(r.legacyPitch,r.legacyYaw,r.legacyRoll));
-  const bodyInverse=new THREE.Quaternion().setFromEuler(
-    new THREE.Euler(r.legacyPitch,r.legacyYaw,r.legacyRoll,'XYZ')).invert();
+  const bodyInverse=scratch.bodyInverse.setFromEuler(
+    scratch.bodyEuler.set(r.legacyPitch,r.legacyYaw,r.legacyRoll,'XYZ')).invert();
   for(let i=0;i<2;i++){
     const foot=r.feet[i],sign=i===0?-1:1,target=targets[i];
-    const hipLocal=P(0,r.hip.position.y,r.hip.position.z+sign*LEG_HIP_SIDE);
+    const hipLocal=scratch.hips[i].set(0,r.hip.position.y,
+      r.hip.position.z+sign*LEG_HIP_SIDE);
     const anchor=target.position;
     foot.anchor.set(anchor.x,1.45,anchor.y);
     // Replay seeks must never inherit a pole fallback from another time.
     if(p.deterministic)foot.bend.set(1,0,0);
     foot.swinging=!target.contact;
-    const targetWorld=P(target.position.x,1.45+target.height,
-      target.position.y);
+    const targetWorld=scratch.targets[i].set(target.position.x,
+      1.45+target.height,target.position.y);
     if(i===1&&kick){
       const motion=smooth((kick.progress-.30)/.23)*
         (1-smooth((kick.progress-.67)/.25));
@@ -1042,7 +1048,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         const gap=Math.hypot(dx,dz)||1;
         // The boot IK solves toward the door's REAL leaf, not a generic
         // forward kick animation that can miss the panel entirely.
-        const contact=P(p.doorPoint.x+dx/gap*1.5,9,
+        const contact=scratch.kickContact.set(p.doorPoint.x+dx/gap*1.5,9,
           p.doorPoint.y+dz/gap*1.5);
         targetWorld.lerp(contact,motion);
       }else{
@@ -1052,10 +1058,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       }
       foot.swinging=true;
     }
-    let relative=targetWorld.sub(P(p.x,r.root.position.y,p.z))
+    const relative=scratch.relative[i].copy(targetWorld)
+      .sub(scratch.rootPoint.set(p.x,r.root.position.y,p.z))
       .applyQuaternion(bodyInverse);
-    let leg=solveTwoBone(hipLocal,relative,LEG_UPPER_LENGTH,LEG_LOWER_LENGTH,
-      P(4.5,0,sign*1.1),LEG_LIMITS,foot.bend);
+    const leg=solveTwoBone(hipLocal,relative,LEG_UPPER_LENGTH,LEG_LOWER_LENGTH,
+      scratch.legPoles[i],LEG_LIMITS,foot.bend,scratch.legs[i]);
     // An unreachable leg reports a gap. Never move the boot independently
     // of its contact schedule: recoveries are requested by the scheduler.
     foot.bend.copy(leg.bendPlane);
@@ -1065,14 +1072,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.legGap[i]=leg.effector.distanceTo(relative);
     // Contact remains in world space. Unreachable limbs report a constraint
     // violation instead of spinning the knee or teleporting their boot.
-    alignSegment(foot.upper,hipLocal,leg.joint,P(0,0,sign));
-    alignSegment(foot.lower,leg.joint,leg.effector,P(0,0,sign));
+    alignSegment(foot.upper,hipLocal,leg.joint,scratch.sides[i]);
+    alignSegment(foot.lower,leg.joint,leg.effector,scratch.sides[i]);
     // Final small reach extension is represented by a boot-colored
     // articulated ankle cuff, never a floating shoe or stretched shin.
     // The original two-bone segment lengths remain unchanged.
     foot.ankleLink.visible=r.legGap[i]>.10;
     if(foot.ankleLink.visible)
-      alignSegment(foot.ankleLink,leg.effector,relative,P(0,0,sign));
+      alignSegment(foot.ankleLink,leg.effector,relative,scratch.sides[i]);
     foot.shoe.position.copy(relative);
     const pitch=target.pitch??0;
     foot.shoe.rotation.z=pitch;
@@ -1302,17 +1309,18 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const wanted=neutralArms?neutralMannequinElbowPole(sign as -1|1):
       P(corridor.x,corridor.y,corridor.z).sub(shoulder);
     let solved=solveTwoBone(shoulder,wrist,10,10,
-      wanted,ARM_LIMITS,neutralArms?undefined:arm.bend);
+      wanted,ARM_LIMITS,neutralArms?undefined:arm.bend,scratch.arms[i]);
     if(!neutralArms&&intersectsTorso(solved.joint,.3)){
       // Try a low forward/down elbow before the wide elbow escape route.
       const compact=P(corridor.x+1.0,corridor.y-1.2,
         corridor.z+sign*.22).sub(shoulder);
       const retry=solveTwoBone(shoulder,wrist,10,10,
-        compact,ARM_LIMITS,arm.bend);
+        compact,ARM_LIMITS,arm.bend,scratch.armRetry[i]);
       if(!intersectsTorso(retry.joint,.25))solved=retry;
       else solved=solveTwoBone(shoulder,wrist,10,10,
         P(corridor.x+1.5,corridor.y-.5,
-          corridor.z+sign*.7).sub(shoulder),ARM_LIMITS,arm.bend);
+          corridor.z+sign*.7).sub(shoulder),ARM_LIMITS,arm.bend,
+        scratch.armFallback[i]);
     }
     r.elbowSpread[i]=Math.max(0,
       sign*(solved.joint.z-shoulder.z));
@@ -1323,8 +1331,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       desired.distanceTo(solved.effector));
     if(i===1&&!p.surrender)r.gripError=Math.max(r.gripError,
       desired.distanceTo(solved.effector));
-    alignSegment(arm.upper,shoulder,solved.joint,P(0,0,sign));
-    alignSegment(arm.lower,solved.joint,solved.effector,P(0,0,sign));
+    alignSegment(arm.upper,shoulder,solved.joint,scratch.sides[i]);
+    alignSegment(arm.lower,solved.joint,solved.effector,scratch.sides[i]);
     arm.hand.position.copy(solved.effector);
     arm.hand.rotation.set(0,p.unarmedPreview||p.surrender?0:
       clamp(fit.rotation.y,-1,1),0);
@@ -1359,9 +1367,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // The world-space gun begins exactly in the last held grip and travels
     // continuously to the ground, horizontal beside the operator.
     r.root.updateMatrixWorld(true);
-    const held=r.weapon.getWorldPosition(new THREE.Vector3());
-    const orientation=r.weapon.getWorldQuaternion(new THREE.Quaternion());
-    const origin=r.root.getWorldPosition(new THREE.Vector3());
+    const held=r.weapon.getWorldPosition(scratch.held);
+    const orientation=r.weapon.getWorldQuaternion(scratch.orientation);
+    const origin=r.root.getWorldPosition(scratch.origin);
     const side=p.downPose==='left'?-1:1;
     const sling=p.weaponConfiguration?.slots.sling==='sling-two-point'&&
      !p.surrender;
@@ -1371,10 +1379,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const t=smooth((downProgress-.30)/.70);
     const location=held.lerp(rest,t);
     r.droppedGun.position.copy(r.legacyFrame.worldToLocal(location));
-    const flat=new THREE.Quaternion().setFromAxisAngle(P(0,1,0),
+    const flat=scratch.flat.setFromAxisAngle(scratch.vertical,
       -p.heading+side*.18);
     orientation.slerp(flat,t);
-    const inverse=r.legacyFrame.getWorldQuaternion(new THREE.Quaternion()).invert();
+    const inverse=r.legacyFrame.getWorldQuaternion(scratch.inverse).invert();
     r.droppedGun.quaternion.copy(inverse.multiply(orientation));
   }
   // Fabric loop follows the exact solved weapon rather than floating as a
@@ -1396,10 +1404,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
    }
    const sway=Math.sin(p.stride*Math.PI*2)*Math.min(1,physicalSpeed/80)*.6;
    const points=[rear,P(-2.5,4.5,10.1),P(1.5+sway,-5.8,11.5),front];
-   const vertical=P(0,1,0);
+   const vertical=scratch.vertical;
    for(let i=0;i<r.slingStraps.length;i++){
     const start=points[i],end=points[i+1];
-    const delta=end.clone().sub(start),length=delta.length();
+    const delta=scratch.slingDelta.copy(end).sub(start),length=delta.length();
     const mesh=r.slingStraps[i];
     mesh.position.copy(start).addScaledVector(delta,.5);
     mesh.scale.set(1,Math.max(.1,length),1);
