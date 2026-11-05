@@ -65,7 +65,8 @@ test('all large sheets have one shield and preserve gameplay focus ownership',()
  assert.match(main,/tacticalSheetNavigation\.focusFirst\(\)/);
 });
 test('sheet focus trap, outside click and Escape dismiss only the active surface',()=>{
- const originalDocument=globalThis.document,originalRaf=globalThis.requestAnimationFrame;
+ const originalDocument=globalThis.document,originalRaf=globalThis.requestAnimationFrame,
+  originalHTMLElement=globalThis.HTMLElement;
  class FakeElement{
   hidden=true;listeners=new Map();attributes={};children=[];
   isConnected=true;
@@ -83,6 +84,8 @@ test('sheet focus trap, outside click and Escape dismiss only the active surface
   listeners:new Map(),addEventListener(type,fn){this.listeners.set(type,fn);}
  };
  globalThis.document=document;
+ globalThis.HTMLElement=FakeElement;
+ document.querySelector=()=>null;
  globalThis.requestAnimationFrame=(cb)=>{cb();return 1;};
  const regions={settings:new FakeElement(),squad:new FakeElement(),
   briefing:new FakeElement()};
@@ -118,6 +121,7 @@ test('sheet focus trap, outside click and Escape dismiss only the active surface
   nav.dismiss();assert.deepEqual(closes,['settings','squad']);
  }finally{
   globalThis.document=originalDocument;
+  globalThis.HTMLElement=originalHTMLElement;
   globalThis.requestAnimationFrame=originalRaf;
  }
 });
