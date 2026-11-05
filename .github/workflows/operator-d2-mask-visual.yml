@@ -5,6 +5,9 @@ on:
       - 'src/operator-d2-mask-visuals.ts'
       - 'src/operator-d2-mask-rebuilds.ts'
       - 'src/operator-d2-mask-geometry.ts'
+      - 'src/operator-d2-mask-r10-geometry.ts'
+      - 'src/operator-appearance-grid.ts'
+      - 'src/operator-wardrobe-head-visuals.ts'
       - 'scripts/capture-operator-d2-masks.mjs'
       - '.github/workflows/operator-d2-mask-visual.yml'
   workflow_dispatch:
