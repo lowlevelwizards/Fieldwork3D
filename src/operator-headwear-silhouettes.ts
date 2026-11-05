@@ -19,7 +19,7 @@ export type HeadSilhouetteMetrics={
  earEdge:number;foreheadEdge:number;billLength:number;
 };
 export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhouetteMetrics>>={
- 'beret':{id:'beret',frontExtent:-5.25,rearExtent:5.20,top:8.90,earEdge:4.55,foreheadEdge:4.55,billLength:0},
+ 'beret':{id:'beret',frontExtent:-5.10,rearExtent:5.10,top:8.56,earEdge:4.80,foreheadEdge:4.80,billLength:0},
  'patrol-cap':{id:'patrol-cap',frontExtent:-7.365,rearExtent:4.83,
   top:8.28,earEdge:4.64,foreheadEdge:4.64,billLength:2.85},
  'boonie':{id:'boonie',frontExtent:-6.725,rearExtent:6.725,
