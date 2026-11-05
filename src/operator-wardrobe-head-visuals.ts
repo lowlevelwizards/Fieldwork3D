@@ -110,6 +110,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  // Stage 1 silhouette prototypes live in -Z forward head space.
  headModel('patrol-cap',true,cap=>cap.add(
   createHeadwearSilhouette('patrol-cap',detail('patrol-cap'))));
+ headModel('beret',true,cap=>cap.add(createHeadwearSilhouette('beret',detail('beret'))));
  brimCap('field-cap',false,true);
  // Stage 1G–1J: these already exist in the wardrobe catalog. Replace
  // their older multi-cube placeholders with the same canonical, unified
@@ -208,7 +209,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
 export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  headwear:string,facewear:string,eyewear:string,headset:string,
  d2FaceMode?:string,faceSolid?:D2FaceSolid,d2Eye?:D2AccessoryOptions,
- maskColor?:D2MaskSolid){
+ maskColor?:D2MaskSolid,beretDrape:'left'|'right'='right'){
  // Update the already allocated material; do not recreate meshes or geometry.
  layers.faceFabric.color.setHex(faceSolid?
   D2_FACE_SOLID_COLORS[faceSolid].hex:layers.faceFabricDefaultHex);
@@ -223,6 +224,10 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  layers.eyewearLens.roughness=d2Eye?.eyeTint==='mirrored'?.33:.68;
  const assembly=resolveD2HeadAssembly({facewear,eyewear,headwear,headset,
   options:d2Eye});
+ // The beret's asymmetrical crown remains one approved model, mirrored at
+ // the whole-shape level. No mirrored badge glyph or spare geometry.
+ const beret=layers.headwear.beret;
+ if(beret)beret.scale.x=beretDrape==='left'?-1:1;
  // Only the worn accessories are built on battlefield rigs. Studio and
  // operator labs remain eager; switching a style builds it just once.
  layers.deferredHeadwear[assembly.headwear]?.();
