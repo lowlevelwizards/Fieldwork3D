@@ -36,3 +36,15 @@ test('E5-A: a single real encounter creates exactly one enemy',()=>{
  const s=newSession(0,35,'floor-plan','small','clear',single);
  assert.equal(enemies(s).length,1);
 });
+
+test('E5-A: a real generated vacant intel site and live session agree',()=>{
+ const site=generateSite(2,'small',undefined,
+   {seed:2,mission:'intel',risk:1,premise:'vacant'});
+ assert.equal(site.encounter.mission,'intel');
+ assert.equal(site.encounter.premise,'vacant');
+ assert.equal(site.enemies.length,0);
+ assert.equal(site.encounter.actors.length,0);
+ const session=newSession(0,2,'floor-plan','small','intel',site);
+ assert.equal(enemies(session).length,0);
+ assert.equal(session.mission,'secure');
+});
