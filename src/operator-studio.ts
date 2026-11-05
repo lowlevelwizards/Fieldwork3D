@@ -3,6 +3,8 @@
  * uses the same validated roster persistence for previews and direct access.
  */
 import * as THREE from 'three';
+import {identityMarkingChoices,setIdentityMarking,
+ type MarkingSlot} from './operator-identity-markings.ts';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {studioUsesClothesOnly,studioUsesVisibleFace} from './operator-studio-preview-policy.ts';
 import {studioCameraFocusForWardrobe,studioFocusEasing,clampStudioCameraZoom,
@@ -67,6 +69,7 @@ let people:StudioPerson[]=[];
 let activeCategory:WardrobeSlot='top';
 type StudioStep='items'|'materials'|'details';
 let activeStep:StudioStep='items';
+let identityMode=false;
 let advancedFabricColorsOpen=false;
 const openCamoLibraries=new Set<string>();
 let advancedPouchOpen=false;
@@ -157,6 +160,7 @@ const referenceBrowser=new FactionReferenceBrowser(
 function openReferenceBrowser(){
  if(referenceOpen)return;
  previousClothesOnly=clothesOnly;
+ identityMode=false;
  referenceOpen=true;clothesOnly=false;syncGearToggle();
  referenceBrowser.show(readOnly);
  refresh();
@@ -348,8 +352,8 @@ function studioSectionKind(node:HTMLElement):'materials'|'details'{
  return node.dataset.studioStep==='materials'?'materials':'details';
 }
 function applyStudioStep(){
- itemRoot.hidden=activeStep!=='items';
- materialRoot.hidden=activeStep==='items';
+ itemRoot.hidden=identityMode||activeStep!=='items';
+ materialRoot.hidden=!identityMode&&activeStep==='items';
  let count=0;
  const children=Array.from(materialRoot.children) as HTMLElement[];
  for(const child of children){
@@ -498,8 +502,24 @@ function addSelect(section:HTMLElement,options:readonly (readonly [string,string
  select.addEventListener('change',()=>onChange(select.value));
  section.append(select);
 }
+function renderIdentityControls(){
+ const choices=([['leftShoulder','LEFT SHOULDER'],['rightShoulder','RIGHT SHOULDER'],
+  ['chest','CHEST LABEL'],['armband','FIELD ARMBAND']] as const);
+ for(const [slot,title] of choices){
+  const help=slot==='chest'?
+   'Visible on a supported external tactical vest; concealed armor cannot show patches.':
+   'Personal customization only; national flags are not automatically authentic for every time and unit.';
+  const section=row(title,help);
+  const options:readonly (readonly [string,string])[]=[
+   ['', 'NONE'],...identityMarkingChoices(slot).map(x=>[x.id,x.label] as const)];
+  addSelect(section,options,current().markings?.[slot]??'',
+   id=>changeWardrobe({...current(),
+    markings:setIdentityMarking(current().markings??{},slot as MarkingSlot,id||null)}));
+ }
+}
 function renderMaterials(){
  materialRoot.replaceChildren();
+ if(identityMode){renderIdentityControls();applyStudioStep();return;}
  const p=member();if(!p)return;
  const w=current(),outfit=resolvedWardrobe(w,p.loadout);
  const item=outfit[activeCategory];
@@ -769,6 +789,12 @@ function renderMaterials(){
     b.prepend(chip);grid.append(b);
    }group.append(grid);
   }
+  if(item==='beret'){
+   const drape=row('BERET DRAPE','One asymmetric wool silhouette, mirrored without adding a separate hat.');
+   addSelect(drape,[['right','RIGHT DRAPE'],['left','LEFT DRAPE']] as const,
+    w.beretDrape??'right',value=>changeWardrobe({...current(),
+     beretDrape:value as 'left'|'right'}));
+  }
   if(prints.length){
    const printRow=row('COMPATIBLE HEADGEAR PRINTS');
    addCamoSwatches(printRow,prints,w.headwearCamo??null,id=>
@@ -926,6 +952,7 @@ const categoryGroups:readonly {label:string;slots:readonly WardrobeSlot[]}[]=[
 const categoryGroup=()=>categoryGroups.find(group=>
  group.slots.includes(activeCategory))??categoryGroups[1];
 function selectCategory(slot:WardrobeSlot){
+ identityMode=false;
  activeCategory=slot;activeStep='items';
  if(referenceOpen){referenceOpen=false;referenceBrowser.hide();}
  // Look at the cloth unobscured for garments, but show all available
@@ -949,6 +976,14 @@ function renderCategories(){
   categories.append(button);
  }
  const group=categoryGroup();
+ if(group.label==='DETAILS'){
+  const mark=makeButton('MARKINGS',identityMode,()=>{
+   if(referenceOpen){referenceOpen=false;referenceBrowser.hide();}
+   identityMode=true;activeStep='details';clothesOnly=false;
+   comparingSaved=false;syncGearToggle();refresh();
+  });
+  subcategories.append(mark);
+ }
  if(group.slots.length>1)for(const slot of group.slots){
   const button=makeButton(APPEARANCE_GROUP_LABELS[slot],slot===activeCategory,
    ()=>selectCategory(slot));
@@ -1060,7 +1095,8 @@ matchSetButton.addEventListener('click',()=>{
 function refresh(){
  const p=member();if(!p)return;
  studioRoot.dataset.referenceOpen=String(referenceOpen);
- $('studioTitle').textContent=referenceOpen?'REFERENCE KITS / '+p.callsign:APPEARANCE_GROUP_LABELS[activeCategory]+' / '+p.callsign;
+ studioRoot.dataset.identityMode=String(identityMode);
+ $('studioTitle').textContent=referenceOpen?'REFERENCE KITS / '+p.callsign:identityMode?'IDENTITY MARKINGS / '+p.callsign:APPEARANCE_GROUP_LABELS[activeCategory]+' / '+p.callsign;
  $('studioSubheading').textContent=readOnly?'LOCKED DURING ACTIVE OPERATION':
   'Select a 3D item, then edit materials and details';
  applyButton.disabled=readOnly||!dirty.size||saveInFlight;
@@ -1083,8 +1119,10 @@ function refresh(){
  renderCategories();
  // Reference catalog uses the shared 3D viewport, not the item thumbnail grid.
  if(!referenceOpen){
-  thumbBrowser.setCategory(activeCategory,true);
-  thumbBrowser.refresh(p.loadout,previewWardrobe(),p.id);
+  if(!identityMode){
+   thumbBrowser.setCategory(activeCategory,true);
+   thumbBrowser.refresh(p.loadout,previewWardrobe(),p.id);
+  }
   renderMaterials();
  }
  renderPresetMenu();referenceBrowser.refresh(readOnly);posePreview();
@@ -1099,7 +1137,7 @@ function populate(){
  modelSelector.value=selected;refresh();
 }
 function start(data:{mode:StudioMode;selected:string;members:StudioPerson[];readonly:boolean}){
- referenceOpen=false;referenceBrowser.hide();
+ identityMode=false;referenceOpen=false;referenceBrowser.hide();
  mode=data.mode;selected=data.selected;readOnly=data.readonly;
  comparingSaved=false;saveInFlight=false;
  people=data.members.map(p=>({...p,wardrobe:readWardrobe(p.wardrobe)}));

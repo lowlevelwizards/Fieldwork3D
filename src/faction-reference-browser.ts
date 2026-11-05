@@ -1,6 +1,7 @@
 /** Compact, lazy 2D reference browser. One shared 3D operator canvas remains above it. */
 import {FACTION_REFERENCES,type FactionReference} from './faction-reference-catalog.ts';
 import {referenceVisualStatus} from './faction-reference-audit.ts';
+import {unresolvedReferenceGaps} from './faction-reference-asset-registry.ts';
 import {paintCamoPreview} from './operator-camo-preview-cache.ts';
 export type ReferenceCompatibility={substituted:readonly string[];lostPrints:readonly string[]};
 export type ReferenceBrowserHooks={
@@ -124,10 +125,11 @@ export class FactionReferenceBrowser{
     'RECOGNIZABLE APPROXIMATION · DEFINING DETAILS MISSING':'RECOGNIZABLE APPROXIMATION'),
    el('p','reference-sources',r.sourceNotes)
   );
-  if(r.gaps.length){
+  const missing=unresolvedReferenceGaps(r);
+  if(missing.length){
    const block=el('div','reference-gap-list');
    block.append(el('strong','','MISSING VISUAL DETAILS'));
-   for(const gap of r.gaps)
+   for(const gap of missing)
     block.append(el('span','',gap.label+' · '+gap.importance));
    this.detail.append(block);
   }

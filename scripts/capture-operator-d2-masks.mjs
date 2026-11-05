@@ -62,6 +62,10 @@ try{
      path:'operator-d2-mask-review/'+id+'-'+view+'.png'
     });
    }
+   // Selecting a model moves UX R2 Studio into MATERIALS. Thumbnails are
+   // intentionally hidden there. Return to ITEM before capturing and before
+   // selecting the next model, without discarding the current visual look.
+   await page.locator('[data-studio-step="items"]').click();
    const thumbnail=card.locator('canvas').first();
    if(await thumbnail.count()){
     await thumbnail.screenshot({

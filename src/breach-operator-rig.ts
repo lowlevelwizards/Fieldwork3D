@@ -799,7 +799,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
    }
    // Unselected variants remain neutral; they cannot inherit the last
    // inspected item's swatch when another hat/helmet is equipped.
-   const soft=['patrol-cap','boonie','beanie'].includes(id);
+   const soft=['patrol-cap','boonie','beanie','beret'].includes(id);
    const source=r.colors.get(soft?r.headClothMaterial:r.headArmorMaterial);
    const chosen=(source??new THREE.Color(0x899089)).clone();
    r.colors.set(material,new THREE.Color(0x899089).lerp(chosen,.38));

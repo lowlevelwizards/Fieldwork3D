@@ -1,6 +1,7 @@
 /** Deterministic development report: identify reusable art bottlenecks. */
 import {FACTION_REFERENCES,type FactionReference} from './faction-reference-catalog.ts';
 import {resolveFactionReference} from './faction-reference-resolver.ts';
+import {unresolvedReferenceGaps} from './faction-reference-asset-registry.ts';
 export type CoverageIssue={referenceId:string;message:string};
 export type AssetDemand={id:string;label:string;referenceCount:number;
  definingCount:number;significantCount:number;referenceIds:string[]};
@@ -21,7 +22,7 @@ export function auditFactionReferences(references:readonly FactionReference[]=FA
    issues.push({referenceId:reference.id,message:String(error)});
   }
   const local=new Set<string>();
-  for(const gap of reference.gaps){
+  for(const gap of unresolvedReferenceGaps(reference)){
    if(local.has(gap.id)){
     issues.push({referenceId:reference.id,message:'Duplicate asset gap '+gap.id});
     continue;
@@ -43,6 +44,6 @@ export function auditFactionReferences(references:readonly FactionReference[]=FA
 }
 export function referenceVisualStatus(reference:FactionReference):
  'recognizable-approximation'|'missing-defining-assets'{
- return reference.gaps.some(g=>g.importance==='defining')?
+ return unresolvedReferenceGaps(reference).some(g=>g.importance==='defining')?
   'missing-defining-assets':'recognizable-approximation';
 }
