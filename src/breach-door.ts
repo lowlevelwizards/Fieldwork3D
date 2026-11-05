@@ -1,6 +1,6 @@
 /** Physical hinges, handles, and deterministic door clearance. */
 import {sweptBodyClear,bodyClear} from './breach-navigation.ts';
-import {doorCenter,passable,route,pointToSegment,
+import {doorCenter,route,pointToSegment,
   doorYaw,doorLeafSegment,WALLS,COVER,activeSite,initialDoors,
   pointToSegment as distanceToWall,
   OPERATOR_RADIUS,type Door,type Pt} from './breach-core.ts';
