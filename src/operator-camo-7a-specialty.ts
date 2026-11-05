@@ -108,23 +108,39 @@ export function specialty7AIndices(id:Specialty7AId):Uint8Array{
   for(let y=0;y<64;y++)for(let x=0;x<64;x++)
    out[y*64+x]=dark[y*64+x]===2?2:(x%8===0||y%8===0)?1:0;
  }else if(id==='berezka'){
+  // 7B: KLMK's repeated high-contrast stair-step sun-bunnies remain the
+  // dominant motif, but 8x8 rigid horizontal wallpaper rows are gone.
+  // Each 8px neighborhood gets a staggered / interrupted original leaflet.
   out=new Uint8Array(4096);
   for(let row=0;row<8;row++)for(let col=0;col<8;col++){
-   const cx=(col*8+(row%2)*4+(row*3)%5)&63;
-   const cy=(row*8+(col*5)%5)&63;
-   const tone=(row+col)%5===0?2:1;
+   const variant=(row*13+col*7)%5;
+   const jitter=((row*7+col*11)%5)-2;
+   const cx=(col*8+(row%2)*3+jitter+64)&63;
+   const cy=(row*8+((row*3+col*5)%5)-2+64)&63;
+   const tone=(row*2+col)%5===0?2:1;
    const put=(dx:number,dy:number,ink:number)=>{
-    out[((cy+dy+64)&63)*64+((cx+dx+64)&63)]=ink;
+    const x=(cx+dx+64)&63,y=(cy+dy+64)&63;
+    out[y*64+x]=ink;
    };
-   put(0,0,tone);put(1,0,tone);put(2,0,tone);put(0,1,tone);put(1,1,tone);
-   // Distinct wider forked sunrays: increase motif occupancy without
-   // dissolving the repeating KLMK dash/leaf rhythm into generic woodland.
-   put(-1,0,tone);put(-2,0,tone);put(2,1,tone);put(3,1,tone);
-   put(0,2,tone);put(1,2,tone);put(2,2,tone);put(3,2,tone);put(4,0,tone);
-   if((row+2*col)%3===0){put(-1,1,tone);put(-1,2,tone);}
-   else {put(2,-1,tone);put(3,-1,tone);}
-   if((row+col)%4===0)put(1,-2,2);
-   if((row*3+col)%3===0){put(3,3,3);put(3,4,3);put(4,3,3);}
+   // Angular, varying 3–5px horizontal frond, with a stepped side prong.
+   const width=3+(variant%3);
+   for(let dx=0;dx<width;dx++)put(dx,0,tone);
+   for(let dx=0;dx<width-1;dx++)put(dx,1,tone);
+   for(let dx=1;dx<width-1;dx++)put(dx,2,tone);
+   if(variant===0||variant===3){
+    put(-1,1,tone);put(-1,2,tone);put(-2,2,tone);
+   }else if(variant===1||variant===4){
+    put(width-1,-1,tone);put(width,-1,tone);
+   }else{
+    put(0,-1,tone);put(1,-1,tone);
+   }
+   // Occasional hairline breaks stop marks joining into an entire row.
+   if((row*5+col*3)%7===0)put(width-1,0,0);
+   if((row+2*col)%4===0)put(width-2,-2,2);
+   // Sparse olive undershadows remain subordinate to light sunrays.
+   if((row*3+col)%3===0){
+    put(width-1,3,3);put(width,3,3);put(width,4,3);
+   }
   }
  }else{
   const base=paint(id==='kryptek-highlander'?HIGHLANDER:SPECTRE,0);
