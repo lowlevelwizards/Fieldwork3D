@@ -21,7 +21,7 @@ export const HEADWEAR_ATLAS_PIXELS=64;
 export const HEADWEAR_REGION_PIXELS=32;
 export const HEADWEAR_MATERIAL_KIND:Readonly<Record<HeadSilhouetteId,HeadwearMaterialKind>>={
  'patrol-cap':'cotton','boonie':'cotton','beanie':'knit','beret':'cotton',
- 'ach':'composite','high-cut':'composite','pasgt':'composite','soviet-steel':'steel'
+ 'ach':'composite','high-cut':'composite','pasgt':'composite','soviet-steel':'steel','m1-steel':'steel'
 };
 /** Neutral surface-lighting finish independent of contextual color/camo. */
 export type HeadwearSurfaceProfile={
@@ -36,7 +36,8 @@ export const HEADWEAR_SURFACE_PROFILE:Readonly<Record<HeadSilhouetteId,HeadwearS
  'ach':{family:'matte-composite',roughness:.92,metalness:0},
  'high-cut':{family:'matte-composite',roughness:.91,metalness:0},
  'pasgt':{family:'matte-composite',roughness:.945,metalness:0},
- 'soviet-steel':{family:'painted-steel',roughness:.77,metalness:.12}
+ 'soviet-steel':{family:'painted-steel',roughness:.77,metalness:.12},
+ 'm1-steel':{family:'painted-steel',roughness:.84,metalness:.09}
 };
 const textureCache=new Map<HeadSilhouetteId,THREE.DataTexture>();
 const finishCache=new Map<HeadSilhouetteId,THREE.DataTexture>();
@@ -95,6 +96,8 @@ export function headwearRegionPixel(id:HeadSilhouetteId,region:0|1|2|3,
   case 'pasgt':
    // Monolithic older shell with distinctly weighty brow and lower skirt.
    return region===1?236:region===2?217:region===3?251:249;
+  case 'm1-steel':
+   return region===1?244:region===2?216:region===3?251:248;
   case 'soviet-steel':
    // Stamped painted bowl: absolutely clean roof, one purposeful dark rim.
    return region===1?245:region===2?221:region===3?251:249;
@@ -268,6 +271,11 @@ export function headwearFaceRegion(id:HeadSilhouetteId,name:string,
   if(name.includes('skirt')||name.includes('ear-lobe')||name.includes('temple'))return 1;
   return axis===1&&sign===1?3:0;
  }
+ if(id==='m1-steel'){
+  if(name.includes('rolled-rim'))return 2;
+  if(name.includes('bowl'))return 1;
+  return axis===1&&sign===1?3:0;
+ }
  if(id==='soviet-steel'){
   if(name.includes('edge'))return 2;
   if(name.includes('bowl'))return 1;
@@ -294,6 +302,7 @@ export function headwearFaceTone(id:HeadSilhouetteId,name:string,
   case 'pasgt':value=name.includes('peak')?.84:name.includes('skirt')?.89:
    name.includes('ear-lobe')?.90:1;break;
   case 'soviet-steel':value=name.includes('edge')?.80:name.includes('bowl')?.94:1;break;
+  case 'm1-steel':value=name.includes('rolled-rim')?.76:name.includes('bowl')?.94:1;break;
  }
  if(axis===1&&sign===-1&&(name.includes('bill')||name.includes('brim')))
   value*=.89;
