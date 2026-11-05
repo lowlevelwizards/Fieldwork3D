@@ -50,7 +50,8 @@ const receiverShapes=(build:WeaponFamilyBuild):Block[]=>{
   [.6,-1.6,0,5.7,1.0,3.6,0],
   [-2.1,.1,2.15,5.4,1.4,.4,1],
   [-1.4,.1,-2.15,4.8,.7,.4,1],
-  [2.25,2.6,0,1.4,.7,1.7,0]
+  [2.25,2.6,0,1.4,.7,1.7,0],
+  ...(id==='akcompact'?[[.1,3.2,0,3.3,.95,2.3,1] as Block]:[])
  ];
 };
 const stockShapes=(build:WeaponFamilyBuild):Block[]=>{
@@ -69,11 +70,16 @@ const stockShapes=(build:WeaponFamilyBuild):Block[]=>{
    [-9.6,-2.95,0,1.0,1.4,2.5,1]
   ];
  }
- if(id==='ak-sidefold')return [
+ if(id==='ak-skeleton')return [
   [-9.8,.0,1.35,6.0,1.05,1.0,0],
   [-9.8,-1.9,1.35,6.0,.9,1.0,0],
   [rear,-1.0,.3,1.2,3.8,3.6,1],
   [-7.9,-.95,1.2,1.0,2.2,.9,0]
+ ];
+ if(id==='ak-sidefold')return [
+  [-9.65,-.8,0,7.0,3.4,3.4,1],
+  [rear,-.8,0,1.2,4.2,4.1,1],
+  [-7.6,.35,1.85,2.2,.55,.6,0]
  ];
  const mat:Finish=id==='ak-wood'?2:1;
  return [
@@ -100,11 +106,13 @@ const magazineShapes=(build:WeaponFamilyBuild):Block[]=>{
    id==='ar-mag20'?2.6:3.9,2.65,1],
   [4.05,id==='ar-mag20'?-6.5:-7.7,0,3.5,.8,3.05,1]
  ];
+ const heavy=FAMILY_PARTS[id].feed==='ak762';
+ const finish:Finish=id==='ak-mag545'?2:1;
  return [
   [4.45,-3.5,0,3.45,2.65,3,0],
-  [5,-5.75,0,3.5,3.4,2.85,1],
-  [6.15,-7.3,0,3.6,1.35,2.9,1],
-  [7,-8,0,3.75,.7,3.05,1]
+  [heavy?5.3:4.85,-5.65,0,3.55,3.5,2.85,finish],
+  [heavy?7.1:5.55,-7.35,0,3.55,1.35,2.9,finish],
+  [heavy?8.15:6,-8.05,0,3.5,.72,3.05,finish]
  ];
 };
 const handguardShapes=(build:WeaponFamilyBuild):Block[]=>{
@@ -141,11 +149,13 @@ const barrelShapes=(build:WeaponFamilyBuild):Block[]=>{
   [18.95,0,0,1.1,1.85,1.9,1],
   ...(!short?[[16.3,2.25,0,1.05,4.1,1.5,0] as Block]:[])
  ];
+ const modernBrake=['ak74','ak74m','ak105'].includes(build.parts.receiver);
  return [
   [x,0,0,w,1.55,1.65,0],
-  [18.95,0,0,1.1,2.0,2.15,1],
+  [18.95,0,0,1.1,modernBrake?2.4:2.0,modernBrake?2.45:2.15,1],
   [short?17.1:16.3,1.95,0,1.15,3.6,2.1,0],
-  [short?14.1:13.4,1.05,0,2.3,1.6,2.2,1]
+  [short?14.1:13.4,1.05,0,2.3,1.6,2.2,1],
+  ...(modernBrake?[[18.4,0,0,.45,2.45,2.5,0] as Block]:[])
  ];
 };
 export function buildModularWeaponSilhouette(build:WeaponFamilyBuild,
