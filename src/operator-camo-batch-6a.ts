@@ -257,59 +257,44 @@ function inWrappedPolygon(x:number,y:number,points:readonly number[]):boolean{
   if(polygon(x+.5-dx,y+.5-dy,points))return true;
  return false;
 }
-function fields(id:Camo6AId,x:number,y:number):number{
- const isATACS=id==='atacs-fg'||id==='atacs-au';
- const isDigi=id==='aor1'||id==='aor2'||id==='ukrainian-mm14';
- const isLeaf=id==='ss-leto';
- // No fixed anisotropic noise frequencies. Shapes control shape scale.
- const px=isDigi?Math.floor(x/2)*2:x;
- const py=isDigi?Math.floor(y/2)*2:y;
- const base=id==='ukrainian-mm14'?0:id==='aor1'?1:1;
- let ink=base;
- const masks=ART[id]??[];
- for(const [tone,points] of masks)
-  if(inWrappedPolygon(px,py,points))ink=tone;
- if(isATACS){
-  // Fine organic edge erosion creates deliberately chipped micro/macro
-  // transitions, not global ranked noise or smooth hard-edged blotches.
+/** Original artist-placed flat masks, evaluated only once per texel per print.
+ * 2x2 alignment gives the digital prints a consistent minimum voxel step.
+ */
+function fieldsPlain(id:Camo6AId,x:number,y:number):number{
+ let ink=id==='ukrainian-mm14'?0:1;
+ for(const [tone,points] of ART[id]??[])
+  if(inWrappedPolygon(x,y,points))ink=tone;
+ return ink;
+}
+/** Secondary, family-specific passes operate on an already rasterized mask.
+ * Never run the expensive polygon solver repeatedly for edge sampling.
+ */
+function finishInk(id:Camo6AId,x:number,y:number,source:Uint8Array):number{
+ const at=(xx:number,yy:number)=>source[((yy+SIZE)%SIZE)*SIZE+((xx+SIZE)%SIZE)];
+ let ink=at(x,y);
+ if(id==='atacs-fg'||id==='atacs-au'){
   const seed=id==='atacs-fg'?61:117;
   const h=hash(Math.floor(x/2),Math.floor(y/2),seed);
-  const near=fieldsPlain(id,(x+2)%SIZE,y);
-  const below=fieldsPlain(id,x,(y+2)%SIZE);
-  const above=fieldsPlain(id,(x+SIZE-2)%SIZE,y);
-  if(h>.76&&near!==ink)ink=near;
-  else if(h<.18&&below!==ink)ink=below;
-  else if(h>.93&&above!==ink)ink=above;
-  // Sparse lichen/stone micro-grains, confined to matching macro inks.
+  const right=at(x+2,y),down=at(x,y+2),left=at(x-2,y);
+  if(h>.76&&right!==ink)ink=right;
+  else if(h<.18&&down!==ink)ink=down;
+  else if(h>.93&&left!==ink)ink=left;
   const dust=hash(x,y,seed+37);
   if(dust>.97&&ink===1)ink=0;
   if(dust<.035&&ink===2)ink=3;
- }
- if(isDigi){
-  // 2x2 squares dominate; 1-pixel "broken corner" steps give small-
-  // frequency detail like MARPAT and CADPAT without forming vertical bars.
+ }else if(id==='aor1'||id==='aor2'||id==='ukrainian-mm14'){
   const bx=Math.floor(x/2),by=Math.floor(y/2);
   const h=hash(bx,by,id==='aor2'?23:id==='aor1'?59:87);
   if(h>.935&&ink===1)ink=2;
   if(h<.065&&ink===2)ink=1;
   if(h>.983&&ink===2)ink=id==='ukrainian-mm14'?4:3;
-  if((x%2===0&&y%2===0)&&h<.14&&ink===3)ink=2;
- }
- if(isLeaf){
-  // Oak-leaf lobes are actual authored ink masses; small interior "holes"
-  // and paired edge notches break up the solids without generic flecks.
+  if(x%2===0&&y%2===0&&h<.14&&ink===3)ink=2;
+ }else if(id==='ss-leto'){
   const chip=hash(Math.floor(x/2),Math.floor(y/2),47);
   if(chip>.93&&ink===3)ink=1;
   if(chip<.08&&ink===2)ink=0;
   if(chip>.97&&ink===4)ink=5;
  }
- return ink;
-}
-/** Unmodified authored color masks, used to sample adjacent A-TACS ink fields. */
-function fieldsPlain(id:Camo6AId,x:number,y:number):number{
- let ink=1;
- for(const [tone,points] of ART[id]??[])
-  if(inWrappedPolygon(x,y,points))ink=tone;
  return ink;
 }
 const tileCache=new Map<Camo6AId,Uint8Array>();
@@ -324,24 +309,39 @@ export function camo6AIndices(id:Camo6AId,multicamBase?:Uint8Array):Uint8Array{
  }
  const cached=tileCache.get(id);
  if(cached)return cached.slice();
+ const original=new Uint8Array(SIZE*SIZE);
+ const digital=id==='aor1'||id==='aor2'||id==='ukrainian-mm14';
+ for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++)
+  original[y*SIZE+x]=fieldsPlain(id,digital?(x&~1):x,digital?(y&~1):y);
  const result=new Uint8Array(SIZE*SIZE);
  for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++)
-  result[y*SIZE+x]=fields(id,x,y);
+  result[y*SIZE+x]=finishInk(id,x,y,original);
  tileCache.set(id,result);
  return result.slice();
 }
-/** Measured authored percentages are diagnostic metadata, not a quota that
- * changes the geometry. MultiCam variants inherit the original ink ratios. */
+/** Artists' coverage is diagnostic, never a quota altering ink geometry.
+ * Lazy evaluation keeps game startup and phone wardrobe opening responsive.
+ */
+const coverageCache=new Map<Camo6AId,readonly number[]>();
 export const CAMO6A_RECIPES:Readonly<Record<Camo6AId,Camo6ARecipe>>=
  Object.fromEntries(CAMO6A_IDS.map(id=>{
   const recipe=MASTER[id];
-  const targetCoverage=(id==='multicam-tropic'||id==='multicam-arid')?
-   [.22,.23,.25,.17,.05,.04,.04]:(()=>{
+  const result={
+   ...recipe,
+   motifs:ART[id]??recipe.motifs,
+   get targetCoverage():readonly number[]{
+    if(id==='multicam-tropic'||id==='multicam-arid')
+     return [.22,.23,.25,.17,.05,.04,.04];
+    const old=coverageCache.get(id);
+    if(old)return old;
     const counts=recipe.colors.map(()=>0);
     for(const ink of camo6AIndices(id))counts[ink]++;
-    return counts.map(n=>n/(SIZE*SIZE));
-   })();
-  return [id,{...recipe,targetCoverage,motifs:ART[id]??recipe.motifs}];
+    const measured=counts.map(n=>n/(SIZE*SIZE));
+    coverageCache.set(id,measured);
+    return measured;
+   }
+  };
+  return [id,result];
  })) as Record<Camo6AId,Camo6ARecipe>;
 export function isCamo6AId(id:string):id is Camo6AId{
  return (CAMO6A_IDS as readonly string[]).includes(id);
