@@ -2,6 +2,8 @@
  * armor, rig, belt and pack classes. All cosmetic; no additional capacity.
  */
 import * as THREE from 'three';
+import {createM1956Waist,updateM1956Variant,type M1956Waist} from './operator-m1956-webbing.ts';
+import {type M1956Variant} from './operator-m1956-policy.ts';
 import {createAliceLc2Waist,updateAliceLc2Load,
  type AliceLc2Waist} from './operator-alice-lc2-webbing.ts';
 import type {AliceLc2Load} from './operator-alice-lc2-policy.ts';
@@ -22,6 +24,7 @@ export type WardrobeGearLayers={
  /** Battlefield-only factories: styles are constructed on first equip. */
  ensureArmor?:(style:string)=>void;ensureRig?:(style:string)=>void;
  aliceWaist?:AliceLc2Waist;ensureAliceWaist?:()=>void;
+ m1956Waist?:M1956Waist;ensureM1956Waist?:()=>void;
 };
 const box=(g:THREE.Group,m:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number)=>{
@@ -138,16 +141,25 @@ export function createWardrobeGearLayers(
   const alice=createAliceLc2Waist(hip,gearFabric,pouchMaterial,strapMaterial,trim);
   visual.aliceWaist=alice;waistRig['alice-lc2']=alice.root;
  };
- if(!lazyVariants)visual.ensureAliceWaist();
+ visual.ensureM1956Waist=()=>{
+  if(visual.m1956Waist)return;
+  const historic=createM1956Waist(hip,gearFabric,pouchMaterial,strapMaterial,trim);
+  visual.m1956Waist=historic;waistRig['m1956-lce']=historic.root;
+ };
+ if(!lazyVariants){visual.ensureAliceWaist();visual.ensureM1956Waist();}
  return visual;
 }
 export function updateWardrobeGearLayers(v:WardrobeGearLayers,
  armor:string,rig:string,belt:string,pack:string,top='combat-shirt',
- aliceLoad:AliceLc2Load='standard'){
+ aliceLoad:AliceLc2Load='standard',m1956Variant:M1956Variant='late'){
  v.ensureArmor?.(armor);v.ensureRig?.(rig);
  if(rig==='alice-lc2'){
   v.ensureAliceWaist?.();
   if(v.aliceWaist)updateAliceLc2Load(v.aliceWaist,aliceLoad);
+ }
+ if(rig==='m1956-lce'){
+  v.ensureM1956Waist?.();
+  if(v.m1956Waist)updateM1956Variant(v.m1956Waist,m1956Variant);
  }
  for(const [target,id] of [
   [v.armor,armor],[v.rig,rig],[v.belt,belt],[v.pack,pack]
@@ -159,7 +171,7 @@ export function updateWardrobeGearLayers(v:WardrobeGearLayers,
  // The rig follows exactly the same fitted exterior as the plate bag.
  const exterior=(['micro-rig','chest-placard','light-rig','chicom-rig',
    'bandolier','split-front','full-chest','lbv',
-   'field-webbing','sadf-webbing'].includes(rig))?
+   'field-webbing','sadf-webbing','m1956-lce','alice-lc2'].includes(rig))?
   rigContactFrame(armor,top,rig):armorAttachmentFrame(armor,top);
  for(const group of Object.values(v.rig)){
   group.position.x=exterior.rigShiftX;

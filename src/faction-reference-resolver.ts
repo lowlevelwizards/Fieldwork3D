@@ -62,6 +62,12 @@ export function resolveFactionReference(input:FactionReference|string):Reference
  wardrobe=readWardrobe({...wardrobe,
   ...(reference.headwearColor?{headwearColor:reference.headwearColor}:{}),
   ...(reference.beretDrape?{beretDrape:reference.beretDrape}:{}),
+  ...(reference.m1956Variant?{m1956Variant:reference.m1956Variant}:{}),
+  ...(reference.m56Details?{m56Details:reference.m56Details}:{}),
+  ...(reference.m56Net?{m56Net:reference.m56Net}:{}),
+  ...(reference.policeVisorPosition?{policeVisorPosition:reference.policeVisorPosition}:{}),
+  ...(reference.policeVisorTint?{policeVisorTint:reference.policeVisorTint}:{}),
+  ...(reference.policeVisorFrame?{policeVisorFrame:reference.policeVisorFrame}:{}),
   ...(reference.markings?{markings:reference.markings}:{}),
   ...(reference.sleeveState?{sleeveState:reference.sleeveState}:{}),
   ...(reference.trouserHem?{trouserHem:reference.trouserHem}:{})});

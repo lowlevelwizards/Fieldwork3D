@@ -836,7 +836,9 @@ export const HEADWEAR_CAMO_ELIGIBILITY:Readonly<Record<HeadSilhouetteId,readonly
   'french-cce','russian-vsr93','swiss-taz90','british-desert-dpm',
   'indonesian-kopassus-flowing-blood','usaf-abu'],
  'soviet-steel':[],
- 'm1-steel':[]
+ 'm1-steel':[],
+ 'ddr-m56':[],
+ 'police-helmet':[]
 };
 export function headwearCamoChoices(model:string):readonly HeadwearCamoId[]{
  const id=model==='high-cut-rails'?'high-cut':model as HeadSilhouetteId;

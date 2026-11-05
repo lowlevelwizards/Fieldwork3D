@@ -3,6 +3,9 @@
  * equipment-catalog / equipment-loadouts / campaign-state.
  */
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {isPoliceVisorPosition,isPoliceVisorTint,isPoliceVisorFrame,type PoliceVisorOptions} from './operator-police-visor-policy.ts';
+import {isM56Details,isM56Net,type M56Options} from './operator-ddr-m56-policy.ts';
+import {isM1956Variant,type M1956Variant} from './operator-m1956-policy.ts';
 import {isAliceLc2Load,type AliceLc2Load} from './operator-alice-lc2-policy.ts';
 import {readHelmetCoverConfig,type HelmetCoverConfig} from './operator-helmet-cover-policy.ts';
 import {readIdentityMarkings,type IdentityMarkings} from './operator-identity-markings.ts';
@@ -47,7 +50,8 @@ add('headwear','soft',[
 add('headwear','ballistic',[
  ['soviet-steel','Steel helmet'],['pasgt','PASGT-style helmet'],
  ['ach','ACH / MICH-style helmet'],['high-cut','High-cut helmet'],
- ['m1-steel','US M1 steel helmet']
+ ['m1-steel','US M1 steel helmet'],['ddr-m56','East German M56 steel helmet'],
+ ['police-helmet','Protective police helmet']
 ]);
 add('facewear','face',[
  ['face-none','Uncovered'],['balaclava-one','One-opening balaclava'],
@@ -112,6 +116,7 @@ add('rigStyle','light',[
 ]);
 add('rigStyle','full',[
  ['field-webbing','Field Webbing'],['alice-lc2','US ALICE LC-2 Webbing'],
+ ['m1956-lce','US M1956 Canvas Field Webbing'],
  ['lbv','Load-Bearing Vest'],
  ['full-chest','Full Bib / Patrol Rig'],
  ['split-front','Split-Front Chest Rig'],
@@ -159,6 +164,11 @@ export const trouserHemOptions=(trousers:string)=>trousers==='bdu-trousers'||
  trousers==='acu-trousers'||trousers==='gorka-trousers'?TROUSER_HEMS:['unbloused'] as const;
 export type WardrobeOptions=HelmetCoverConfig&{
  version:1;styles:Partial<Record<WardrobeSlot,string>>;
+ /** East German helmet details are appearance-only. */
+ m56Details?:M56Options['m56Details'];m56Net?:M56Options['m56Net'];
+ policeVisorPosition?:PoliceVisorOptions['policeVisorPosition'];
+ policeVisorTint?:PoliceVisorOptions['policeVisorTint'];
+ policeVisorFrame?:PoliceVisorOptions['policeVisorFrame'];
  /** Optional explicit identity; missing values retain the historical seeded look. */
  skinTone?:SkinToneId;hairStyle?:HairStyleId;hairTone?:HairToneId;
  /** D2 balaclava topology variant: mouth shown (three-hole) or covered (two-hole). */
@@ -191,6 +201,8 @@ export type WardrobeOptions=HelmetCoverConfig&{
  sleeveState:SleeveState;trouserHem:TrouserHem;
  /** Optional visual load size; actual supply and ammunition are unchanged. */
  aliceLoad?:AliceLc2Load;
+ /** Cotton-canvas H-suspender load, visual only. */
+ m1956Variant?:M1956Variant;
  /** Contextual new-garment materials, never the abolished global palette. */
  topColorway:string;
  accessories:WardrobeAccessoryConfiguration;
@@ -284,7 +296,13 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(isGarmentSolidId(v.pouchSolid))result.pouchSolid=v.pouchSolid;
  if(isHeadwearSolidColorId(v.headwearColor))result.headwearColor=v.headwearColor;
  if(v.beretDrape==='left'||v.beretDrape==='right')result.beretDrape=v.beretDrape;
+ if(isM56Details(v.m56Details))result.m56Details=v.m56Details;
+ if(isM56Net(v.m56Net))result.m56Net=v.m56Net;
+ if(isPoliceVisorPosition(v.policeVisorPosition))result.policeVisorPosition=v.policeVisorPosition;
+ if(isPoliceVisorTint(v.policeVisorTint))result.policeVisorTint=v.policeVisorTint;
+ if(isPoliceVisorFrame(v.policeVisorFrame))result.policeVisorFrame=v.policeVisorFrame;
  if(isAliceLc2Load(v.aliceLoad))result.aliceLoad=v.aliceLoad;
+ if(isM1956Variant(v.m1956Variant))result.m1956Variant=v.m1956Variant;
  Object.assign(result,readHelmetCoverConfig(v));
  if(isHeadwearCamoId(v.headwearCamo)&&v.headwearCamo!=='splittertarn-31')result.headwearCamo=v.headwearCamo;
  if(Number.isInteger(v.headwearCamoRoll)&&v.headwearCamoRoll!>=0&&v.headwearCamoRoll!<4096)
@@ -407,7 +425,7 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
   slots.armor==='armor-carrier'?'plate-standard':
   slots.armor==='armor-soft'?'soft-vest':'armor-bare');
  choose('rigStyle',slots.rig==='rig-full'?
-  ['field-webbing','alice-lc2','lbv','full-chest','split-front','sadf-webbing']:
+  ['field-webbing','alice-lc2','m1956-lce','lbv','full-chest','split-front','sadf-webbing']:
   slots.rig==='rig-light'?['micro-rig','light-rig','chest-placard',
    'chicom-rig','bandolier']:
   ['no-rig'],slots.rig==='rig-full'?'field-webbing':

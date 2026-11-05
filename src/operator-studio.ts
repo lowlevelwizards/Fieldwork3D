@@ -3,6 +3,9 @@
  * uses the same validated roster persistence for previews and direct access.
  */
 import * as THREE from 'three';
+import {POLICE_VISOR_POSITIONS,POLICE_VISOR_TINTS,POLICE_VISOR_FRAMES,policeVisorFit} from './operator-police-visor-policy.ts';
+import {M56_DETAILS,M56_NETS} from './operator-ddr-m56-policy.ts';
+import {M1956_VARIANTS,type M1956Variant} from './operator-m1956-policy.ts';
 import {ALICE_LC2_LOADS,type AliceLc2Load} from './operator-alice-lc2-policy.ts';
 import {HELMET_COVER_STYLES,HELMET_BANDS,HELMET_NET_STYLES,
  HELMET_SCRIM_STYLES,helmetCoverChoices} from './operator-helmet-cover-policy.ts';
@@ -792,6 +795,37 @@ function renderMaterials(){
     b.prepend(chip);grid.append(b);
    }group.append(grid);
   }
+  if(item==='police-helmet'){
+   const pos=row('POLICE PROTECTIVE VISOR',
+    'Optional head-mounted shield; appearance only, no added ballistic or impact protection.');
+   addSelect(pos,POLICE_VISOR_POSITIONS.map(id=>[id,id.toUpperCase()] as const),
+    w.policeVisorPosition??'none',id=>changeWardrobe({...current(),
+     policeVisorPosition:id as WardrobeOptions['policeVisorPosition']}));
+   if(w.policeVisorPosition&&w.policeVisorPosition!=='none'){
+    const tint=row('VISOR FINISH','Restrained transparent or smoke-tinted face panel.');
+    addSelect(tint,POLICE_VISOR_TINTS.map(id=>[id,id.toUpperCase()] as const),
+     w.policeVisorTint??'clear',id=>changeWardrobe({...current(),
+      policeVisorTint:id as WardrobeOptions['policeVisorTint']}));
+    const frame=row('VISOR FRAME','Standard or heavier reinforced silhouette.');
+    addSelect(frame,POLICE_VISOR_FRAMES.map(id=>[id,id.toUpperCase()] as const),
+     w.policeVisorFrame??'standard',id=>changeWardrobe({...current(),
+      policeVisorFrame:id as WardrobeOptions['policeVisorFrame']}));
+    const fit=policeVisorFit(item,w.styles.facewear??'face-none',
+     w.styles.eyewear??'eyes-none',w.styles.headset??'comms-none');
+    if(!fit.compatible)row('VISOR FIT RESTRICTED',
+     fit.reason+' — your stored selection is preserved, but the visor is hidden.');
+   }
+  }
+  if(item==='ddr-m56'){
+   const details=row('M56 STEEL SHELL','Historical exterior details on the same flared shell.');
+   addSelect(details,M56_DETAILS.map(id=>[id,id.toUpperCase()] as const),
+    w.m56Details??'late-smooth',id=>changeWardrobe({...current(),
+     m56Details:id as WardrobeOptions['m56Details']}));
+   const net=row('M56 HELMET NET','Coarse period textile overlay; does not recolor the painted steel.');
+   addSelect(net,M56_NETS.map(id=>[id,id.toUpperCase()] as const),
+    w.m56Net??'none',id=>changeWardrobe({...current(),
+     m56Net:id as WardrobeOptions['m56Net']}));
+  }
   if(item==='m1-steel'){
    const panel=row('M1 HELMET COVER',
     'A separate cloth layer over the steel shell. The rolled metal rim stays visible.');
@@ -833,6 +867,13 @@ function renderMaterials(){
       w.headwearCamo===id?nextHeadwearCamoRoll(w.headwearCamoRoll):0}),
     'headwear',w.fabricCamo?.top??null);
   }
+ }
+ if(activeCategory==='rigStyle'&&item==='m1956-lce'){
+  const load=row('M1956 CANVAS FIELD LOAD',
+   'H-suspenders and period canvas equipment. Appearance only; supplies and magazine counts remain authoritative.');
+  addSelect(load,M1956_VARIANTS.map(id=>[id,id.toUpperCase()] as const),
+   w.m1956Variant??'late',id=>
+    changeWardrobe({...current(),m1956Variant:id as M1956Variant}));
  }
  if(activeCategory==='rigStyle'&&item==='alice-lc2'){
   const load=row('ALICE FIELD LOAD',

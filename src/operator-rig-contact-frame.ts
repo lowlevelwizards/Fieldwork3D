@@ -52,7 +52,7 @@ export function rigContactFrame(armor:string,top:string,rig:string):RigContactFr
   rig==='full-chest'?-1.72:
   rig==='lbv'?-1.55:
   rig==='sadf-webbing'?-2.75:
-  rig==='field-webbing'||rig==='alice-lc2'?-3.80:-2.05;
+  rig==='field-webbing'||rig==='alice-lc2'||rig==='m1956-lce'?-3.80:-2.05;
  const cloth=armorContactSurface(top,y);
  const exposed=armor!=='armor-bare'&&armor!=='soft-slick'&&
   armor!=='soft-paca'&&!!spec&&

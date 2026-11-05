@@ -1,13 +1,14 @@
 /** Deterministic development report: identify reusable art bottlenecks. */
 import {FACTION_REFERENCES,type FactionReference} from './faction-reference-catalog.ts';
 import {resolveFactionReference} from './faction-reference-resolver.ts';
-import {unresolvedReferenceGaps} from './faction-reference-asset-registry.ts';
+import {unresolvedReferenceGaps,referenceGapFidelity} from './faction-reference-asset-registry.ts';
 export type CoverageIssue={referenceId:string;message:string};
 export type AssetDemand={id:string;label:string;referenceCount:number;
  definingCount:number;significantCount:number;referenceIds:string[]};
 export function auditFactionReferences(references:readonly FactionReference[]=FACTION_REFERENCES){
  const issues:CoverageIssue[]=[];
  const seen=new Set<string>(),demands=new Map<string,AssetDemand>();
+ const approximateAssets:{referenceId:string;assetId:string}[]=[];
  for(const reference of references){
   if(seen.has(reference.id))issues.push({referenceId:reference.id,message:'Duplicate reference ID'});
   seen.add(reference.id);
@@ -21,6 +22,9 @@ export function auditFactionReferences(references:readonly FactionReference[]=FA
   }catch(error){
    issues.push({referenceId:reference.id,message:String(error)});
   }
+  for(const gap of reference.gaps)
+   if(referenceGapFidelity(reference,gap)==='approximate')
+    approximateAssets.push({referenceId:reference.id,assetId:gap.id});
   const local=new Set<string>();
   for(const gap of unresolvedReferenceGaps(reference)){
    if(local.has(gap.id)){
@@ -40,7 +44,7 @@ export function auditFactionReferences(references:readonly FactionReference[]=FA
  const assetDemand=[...demands.values()].sort((a,b)=>
   b.definingCount-a.definingCount||b.referenceCount-a.referenceCount||
   b.significantCount-a.significantCount||a.id.localeCompare(b.id));
- return {referenceCount:references.length,issues,assetDemand};
+ return {referenceCount:references.length,issues,assetDemand,approximateAssets};
 }
 export function referenceVisualStatus(reference:FactionReference):
  'recognizable-approximation'|'missing-defining-assets'{

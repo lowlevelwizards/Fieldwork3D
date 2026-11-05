@@ -7,7 +7,7 @@ import type {GarmentSolidId} from './operator-garment-color-policy.ts';
 import type {HeadwearSolidColorId} from './operator-headwear-colors.ts';
 import type {IdentityMarkings} from './operator-identity-markings.ts';
 import type {LoadoutSlot} from './equipment-loadouts.ts';
-import type {WardrobeSlot,SleeveState,TrouserHem} from './operator-wardrobe-data.ts';
+import type {WardrobeSlot,SleeveState,TrouserHem,WardrobeOptions} from './operator-wardrobe-data.ts';
 
 export type ReferenceOrganization='military'|'special-operations'|'police'|'irregular';
 export type ReferenceEnvironment='woodland'|'desert'|'urban'|'mixed';
@@ -20,6 +20,11 @@ export type FactionReference={
  styles?:Partial<Record<WardrobeSlot,string>>;
  kit?:Partial<Record<LoadoutSlot,string>>;
  headwearColor?:HeadwearSolidColorId;beretDrape?:'left'|'right';
+ m1956Variant?:WardrobeOptions['m1956Variant'];
+ m56Details?:WardrobeOptions['m56Details'];m56Net?:WardrobeOptions['m56Net'];
+ policeVisorPosition?:WardrobeOptions['policeVisorPosition'];
+ policeVisorTint?:WardrobeOptions['policeVisorTint'];
+ policeVisorFrame?:WardrobeOptions['policeVisorFrame'];
  markings?:IdentityMarkings;
  gearSolid?:GarmentSolidId;
  sleeveState?:SleeveState;trouserHem?:TrouserHem;
@@ -65,10 +70,11 @@ export const FACTION_REFERENCES:readonly FactionReference[]=[
  organization:'military',environment:'woodland',era:{start:1965,end:1990,label:'1960s–1980s'},
  summary:'Raindrop-pattern field uniform, green steel helmet and canvas load carriage.',
  baseRecipeId:'bdu-field',uniformCamo:'east-german-strichtarn',
- kit:{armor:'armor-none'},styles:{headwear:'soviet-steel',armorStyle:'armor-bare',rigStyle:'field-webbing'},
+ kit:{armor:'armor-none'},styles:{headwear:'ddr-m56',armorStyle:'armor-bare',rigStyle:'field-webbing'},
+ m56Details:'late-smooth',m56Net:'none',
  gearSolid:'olive-drab',weaponFamily:'AKM / AK-74',
  gaps:[patch,weapon('ak-family','AK-family service rifle'),gap('helmet-m56','Characteristic East German M56 helmet','defining')],
- sourceNotes:'Current steel helmet is an admitted silhouette substitute for the NVA M56.'},
+ sourceNotes:'Independent DDR M56 steel helmet is modeled. Canvas load remains a generalized NVA approximation.'},
  {id:'sadf-nutria-1985',name:'South African SADF · Bush',country:'South Africa',
  organization:'military',environment:'mixed',era:{start:1983,end:1994,label:'1980s–early 1990s'},
  summary:'Plain Nutria-brown field clothing and characteristic P83 battle jacket.',
@@ -158,9 +164,11 @@ export const FACTION_REFERENCES:readonly FactionReference[]=[
  organization:'special-operations',environment:'woodland',era:{start:1967,end:1975,label:'Late 1960s–1970s'},
  summary:'ERDL tropical fatigues, boonie headwear and light webbing.',
  baseRecipeId:'irregular-canvas',uniformCamo:'erdl-lowland',
- kit:{rig:'rig-full'},styles:{headwear:'boonie',rigStyle:'field-webbing'},
- sleeveState:'rolled',gearSolid:'olive-drab',weaponFamily:'M16A1 / CAR-15',
- gaps:[patch,weapon('ar-family','M16A1/CAR-15 variants'),gap('tropical-shirt','Tropical fatigue cut')],
+ kit:{rig:'rig-full'},styles:{headwear:'boonie',rigStyle:'m1956-lce'},
+ m1956Variant:'late',sleeveState:'rolled',gearSolid:'olive-drab',weaponFamily:'M16A1 / CAR-15',
+ gaps:[patch,weapon('ar-family','M16A1/CAR-15 variants'),
+  gap('m1956-webbing','Cotton-canvas M1956 H-suspender field webbing'),
+  gap('tropical-shirt','Tropical fatigue cut')],
  sourceNotes:'Generic historical reconnaissance reference, not a named special unit.'},
  {id:'usmc-desert-2010',name:'US Marine Corps · Desert MARPAT',country:'United States',
  organization:'military',environment:'desert',era:{start:2003,end:2020,label:'2000s–2010s'},
@@ -247,10 +255,11 @@ export const FACTION_REFERENCES:readonly FactionReference[]=[
  organization:'police',environment:'urban',era:{start:1995,end:2010,label:'1990s–2000s'},
  summary:'Urban Kamysh uniform with black external tactical protection.',
  baseRecipeId:'police-entry',uniformCamo:'urban-kamysh',gearSolid:'black',
- styles:{top:'bdu-shirt',trousers:'bdu-trousers',headwear:'ach'},
- headwearColor:'black',markings:{chest:'label-police'},weaponFamily:'AK / MP5 equivalents',
+ styles:{top:'bdu-shirt',trousers:'bdu-trousers',headwear:'police-helmet'},
+ policeVisorPosition:'lowered',policeVisorTint:'clear',
+ policeVisorFrame:'standard',headwearColor:'black',markings:{chest:'label-police'},weaponFamily:'AK / MP5 equivalents',
  gaps:[patch,weapon('ak-family','AK-family rifle'),gap('visor-police','Visored law-enforcement helmet','defining')],
- sourceNotes:'Representative historical MVD-style uniform; agency and unit identifiers differ.'},
+ sourceNotes:'Generic visored protective police helmet is a representative approximation, not a confirmed period OMON model.'},
  {id:'russian-gorka-leto-2010',name:'Russian Reconnaissance · Gorka/SS-Leto',country:'Russia',
  organization:'special-operations',environment:'woodland',era:{start:2005,end:2018,label:'2000s–2010s'},
  summary:'Mountain suit with summer-pattern reinforcement and light webbing.',
@@ -307,6 +316,8 @@ export const FACTION_REFERENCES:readonly FactionReference[]=[
  organization:'police',environment:'urban',era:{start:2005,end:2026,label:'2000s–2020s'},
  summary:'Dark tactical uniform, external ballistic vest and protected helmet.',
  baseRecipeId:'police-entry',uniformSolid:'black',gearSolid:'black',
+ styles:{headwear:'police-helmet'},policeVisorPosition:'raised',
+ policeVisorTint:'clear',policeVisorFrame:'standard',
  headwearColor:'black',markings:{chest:'label-swat'},weaponFamily:'MP5 / AR carbine / pump shotgun',
  gaps:[patch,weapon('mp5-family','MP5 SMG for period-specific appearance'),gap('police-marking','Clear POLICE/SWAT identification','defining'),gap('visor-police','Optional ballistic face shield')],
  sourceNotes:'General law-enforcement equipment category; actual SWAT kit differs widely by agency.'},
