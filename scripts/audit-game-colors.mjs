@@ -38,7 +38,7 @@ async function audit(){
         const isBitwise=/math\.imul|>>>|(?:seed|hash|rng|crc)\s*[\(\[:=]|(?:&|\^)\s*0x[0-9a-f]{6}|0x[0-9a-f]{6}\s*(?:&|\^)/i.test(line);
         add(m[0],p,lineNo,'hex literal',line.trim(),isBitwise);
       }
-      for(const m of line.matchAll(/#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{4}|[0-9a-f]{3})(?![0-9a-f])/gi)){
+      for(const m of line.matchAll(/#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{4}|[0-9a-f]{3})(?![a-z0-9_-])/gi)){
         const cssSelector=/^\s*#[a-f0-9]{3,8}\s*[{,:.#[]/i.test(line);
         add(m[0],p,lineNo,'CSS hex',line.trim(),cssSelector);
       }
