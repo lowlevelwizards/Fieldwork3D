@@ -16,6 +16,8 @@ export type WardrobeGearLayers={
  waistRig:StyleGroups;
  pouchMaterial:THREE.MeshStandardMaterial;
  strapMaterial:THREE.MeshStandardMaterial;
+ /** Battlefield-only factories: styles are constructed on first equip. */
+ ensureArmor?:(style:string)=>void;ensureRig?:(style:string)=>void;
 };
 const box=(g:THREE.Group,m:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number)=>{
@@ -30,12 +32,17 @@ export function createWardrobeGearLayers(
  chest:THREE.Group,hip:THREE.Group,packParent:THREE.Mesh,
  armorFabric:THREE.Material,gearFabric:THREE.Material,
  packFabric:THREE.Material,dark:THREE.Material,
- trim:THREE.Material):WardrobeGearLayers{
+ trim:THREE.Material,lazyVariants=false):WardrobeGearLayers{
  // Complete authored silhouettes replace all superficial generic shell
  // scale variants. The same outfit can be rendered over any armor or rig.
  // Cummerbunds, shoulder pads and secondary protective panels inherit the
  // ARMOR channel, never the rig's independent fabric swatch.
- const armor=createArmorSilhouettes(chest,armorFabric,armorFabric,dark,trim);
+ const armor=createArmorSilhouettes(chest,armorFabric,armorFabric,dark,trim,
+  lazyVariants?'armor-bare':undefined);
+ const ensureArmor=lazyVariants?(style:string)=>{
+  if(!armor[style])Object.assign(armor,
+   createArmorSilhouettes(chest,armorFabric,armorFabric,dark,trim,style));
+ }:undefined;
  const pouchMaterial=(gearFabric as THREE.MeshStandardMaterial).clone();
  pouchMaterial.name='Fieldwork authored rig pouch fabric';
  pouchMaterial.userData.fieldworkFabric=true;
@@ -43,7 +50,12 @@ export function createWardrobeGearLayers(
  strapMaterial.name='Fieldwork authored rig structural webbing';
  strapMaterial.userData.fieldworkFabric=true;
  const rig=createChestRigSilhouettes(chest,gearFabric,pouchMaterial,
-  dark,trim,strapMaterial);
+  dark,trim,strapMaterial,lazyVariants?'no-rig':undefined);
+ const ensureRig=lazyVariants?(style:string)=>{
+  if(!rig[style])Object.assign(rig,
+   createChestRigSilhouettes(chest,gearFabric,pouchMaterial,
+    dark,trim,strapMaterial,style));
+ }:undefined;
  // Two historically inspired belt and jacket loads follow the pelvis
  // while their independent shoulder suspenders follow the chest.
  const waistRig:StyleGroups={};
@@ -115,10 +127,12 @@ export function createWardrobeGearLayers(
  }
  for(const section of [waistRig,belt,pack])
   for(const g of Object.values(section))consolidateVisualGroup(g);
- return {armor,rig,waistRig,belt,pack,pouchMaterial,strapMaterial};
+ return {armor,rig,waistRig,belt,pack,pouchMaterial,strapMaterial,
+  ensureArmor,ensureRig};
 }
 export function updateWardrobeGearLayers(v:WardrobeGearLayers,
  armor:string,rig:string,belt:string,pack:string,top='combat-shirt'){
+ v.ensureArmor?.(armor);v.ensureRig?.(rig);
  for(const [target,id] of [
   [v.armor,armor],[v.rig,rig],[v.belt,belt],[v.pack,pack]
  ] as const)
