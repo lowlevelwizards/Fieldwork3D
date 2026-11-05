@@ -28,7 +28,7 @@ test('E2 real geometry separates upright squares, descending pilots, swept wedge
  assert.ok(wedge.y>2.85&&wedge.y<pilot.y,'wedge remains sharp, not pilot drops');
  assert.deepEqual([lensCount(standard),lensCount(aviator),lensCount(wrap),lensCount(shield)],
   [2,2,2,1]);
- assert.equal(shells(visor).length,1);
+ assert.equal(shells(shield).length,1);
  assert.ok(meshes(wrap).filter(x=>x.name.startsWith('swept-back-tactical-wing')).length===2);
  assert.ok(meshes(shield).filter(x=>x.name.startsWith('visor-support-rail')).length===2);
  assert.ok(meshes(aviator).some(x=>x.name==='pilot-high-bridge')&&
