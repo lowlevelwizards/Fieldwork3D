@@ -249,7 +249,8 @@ export type Session=Omit<TacticalState,'operators'> & {
   reports:TacticalReport[];nextReportId:number;
   shots:ShotEvent[];casings:EjectedCasing[];nextShotId:number;
   known:Map<string,KnownContact>;
-  seenGround:Set<string>;intel:IntelState;intelObservedAt:number;
+  seenGround:Set<string>;seenGroundRevision:number;
+  intel:IntelState;intelObservedAt:number;
   timesPaused:number;deaths:number;
   started:boolean;syncCode:number;report:string[];
   movementNoiseAt:number;site?:Site;lightingMode:LightingMode;dropped:DroppedMagazine[];
@@ -449,7 +450,8 @@ export function newSession(index=0,siteSeed?:number,
       objective:clone(site?.objective??OBJECTIVE),
       extract:clone(site?.extract??EXTRACTION)},
     mission:'clear',noise:[],nextNoiseId:1,reports:[],nextReportId:1,shots:[],casings:[],nextShotId:1,known:new Map(),
-    seenGround:new Set(),intel:initialIntel(intelMode,site,initialDoors()),
+    seenGround:new Set(),seenGroundRevision:0,
+    intel:initialIntel(intelMode,site,initialDoors()),
     intelObservedAt:-1,timesPaused:0,deaths:0,started:false,
     syncCode:0,report:[],movementNoiseAt:0,site,lightingMode:'day',
     dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1,
@@ -496,7 +498,7 @@ export function selectDeployment(s:Session,id:string):boolean{
   a.weaponYaw=a.heading;
  });
  s.intel=initialIntel(s.intel.mode,s.site,s.doors);
- s.seenGround.clear();s.known.clear();
+ s.seenGround.clear();s.seenGroundRevision++;s.known.clear();
  s.squadEntryUndo=null;s.squadEntryRedo=null;
  observe(s);
  notify(s,'DEPLOYMENT SET — '+(choice?.id??'FRONT'));
@@ -1577,6 +1579,7 @@ function observe(s:Session){
     // fall between the old 40-unit sample points when pieing a room.
     // Do this at an intel cadence, not on every 60 Hz sim tick.
     if(updateGround){
+      const beforeGroundSize=s.seenGround.size;
       const sight=groundView(blue.p.x,blue.p.y,blue.heading);
       const bounds=s.site?.bounds??{minX:0,minY:0,maxX:W,maxY:H};
       const minX=Math.max(Math.floor(bounds.minX/20),Math.floor((blue.p.x-240)/20));
@@ -1607,6 +1610,7 @@ function observe(s:Session){
         if(!unobstructed(blue.p,{x,y},s,blue.posture==='crouch'))continue;
         s.seenGround.add(microKeyAt(col,row));
       }
+      if(s.seenGround.size!==beforeGroundSize)s.seenGroundRevision++;
     }
     for(const e of enemies(s)){
       if(inSight(blue,e,s)){
