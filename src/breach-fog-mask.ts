@@ -124,7 +124,8 @@ export function paintFogMemory(ctx:CanvasRenderingContext2D,s:Session,
     for(const p of fineVisible)ctx.rect(p.x,p.y,20,20);
     ctx.fill();
   }
-  ctx.fillStyle='rgba(255,255,255,.34)';
+  // Known floor-plan geometry remains legible without revealing hidden props.
+  ctx.fillStyle='rgba(255,255,255,.48)';
   if(blueprint.length){
     ctx.beginPath();
     for(const p of blueprint)ctx.rect(p.x,p.y,20,20);
