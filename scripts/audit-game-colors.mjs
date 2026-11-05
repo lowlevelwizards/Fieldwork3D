@@ -13,6 +13,25 @@ async function audit(){
     return out;
   }
   const files=[...allFiles('src'),...fs.readdirSync('.').filter(x=>/\.html$/.test(x))].sort();
+  // Reachability is an approximation of the production Breach bundle,
+  // separate from development labs and legacy landscapes in the same repo.
+  const reachable=new Set(),queue=['index.html','src/breach-main.ts','src/breach-style.css'];
+  while(queue.length){
+    const p=queue.shift();
+    if(reachable.has(p)||!fs.existsSync(p))continue;
+    reachable.add(p);
+    const source=fs.readFileSync(p,'utf8');
+    const refs=[];
+    for(const m of source.matchAll(/(?:from\s*|import\s*\(|import\s*|@import\s*)['"]([^'"]+)['"]/g))refs.push(m[1]);
+    if(p.endsWith('.html'))for(const m of source.matchAll(/(?:src|href)=['"]([^'"]+)['"]/g))refs.push(m[1]);
+    for(const ref of refs){
+      if(!ref.startsWith('.'))continue;
+      const base=path.posix.normalize(path.posix.join(path.posix.dirname(p),ref.split('?')[0]));
+      for(const candidate of [base,base+'.ts',base+'.tsx',base+'.js',base+'.css',base+'/index.ts']){
+        if(fs.existsSync(candidate)&&!reachable.has(candidate)){queue.push(candidate);break;}
+      }
+    }
+  }
   const records=[],nonColor=[],procedural=new Map();
   function scope(p){
     if(p.endsWith('.css')||p.endsWith('.html')||p.includes('/ui/'))return 'UI / HUD';
@@ -67,6 +86,10 @@ async function audit(){
       }
     }
   }
+  const coreRecords=records.filter(r=>reachable.has(r.file));
+  const coreUnique=new Set(coreRecords.map(r=>r.hex));
+  const coreUsesByColor=new Map();
+  for(const r of coreRecords)coreUsesByColor.set(r.hex,(coreUsesByColor.get(r.hex)||0)+1);
   const map=new Map();
   for(const r of records){
     if(!map.has(r.hex))map.set(r.hex,{hex:r.hex,n:0,files:new Set(),scopes:new Set(),examples:[],alpha:new Set()});
@@ -96,9 +119,9 @@ async function audit(){
     c.reviewable=!c.protected && c.nearest && c.nearest.dist<.022 && c.nearest.sharedScope;
   }
   function csv(x){return '"'+String(x??'').replaceAll('"','""').replaceAll('\n',' ')+'"';}
-  const usageRows=[['hex','alpha_suffix','scope','file','line','kind','source_context'],...records.map(r=>[r.hex,r.alpha,r.scope,r.file,r.line,r.kind,r.context])];
+  const usageRows=[['hex','alpha_suffix','scope','breach_core_reachable','file','line','kind','source_context'],...records.map(r=>[r.hex,r.alpha,r.scope,reachable.has(r.file),r.file,r.line,r.kind,r.context])];
   fs.writeFileSync(outDir+'/all-color-uses.csv',usageRows.map(r=>r.map(csv).join(',')).join('\n')+'\n');
-  const inventoryRows=[['hex','source_occurrences','distinct_files','domains','nearest_color','oklab_distance','same_domain','protected','rare','review_candidate','example_locations'],...colors.map(c=>[c.hex,c.n,c.files.length,c.scopes.join(' | '),c.nearest?.hex,c.nearest?.dist.toFixed(4),c.nearest?.sharedScope,c.protected,c.rare,c.reviewable,c.examples.map(z=>z.file+':'+z.line).join(' | ')])];
+  const inventoryRows=[['hex','source_occurrences','breach_core_occurrences','distinct_files','domains','nearest_color','oklab_distance','same_domain','protected','rare','review_candidate','provisional_disposition','existence_justification','example_locations'],...colors.map(c=>[c.hex,c.n,coreUsesByColor.get(c.hex)||0,c.files.length,c.scopes.join(' | '),c.nearest?.hex,c.nearest?.dist.toFixed(4),c.nearest?.sharedScope,c.protected,c.rare,c.reviewable,c.protected?'PRESERVE IDENTITY':c.reviewable?'MERGE REVIEW':c.rare?'OUTLIER REVIEW':'KEEP / TOKENIZE',c.scopes.includes('Camouflage inks')?'Ink in a named pattern; preserve pattern-specific color ratio/contrast':c.scopes.includes('Skin / hair')?'Appearance identity; keep distinct only for meaningful appearance':c.scopes.includes('UI / HUD')?'Interface surface or semantic feedback; consolidate if same role and contrast':c.scopes.includes('Architecture / props')?'Building scheme/prop surface; retain only if role, material, or mood differs':c.scopes.includes('Operator / equipment')?'Material or garment colorway; align identical nominal equipment colors':c.scopes.includes('Combat / mission')?'Tactical marker, effect, or scene object; preserve functional legibility':'Environment/rendering or supporting color; needs context check',c.examples.map(z=>z.file+':'+z.line).join(' | ')])];
   fs.writeFileSync(outDir+'/all-unique-colors.csv',inventoryRows.map(r=>r.map(csv).join(',')).join('\n')+'\n');
   const byScope={};
   for(const r of records){const a=byScope[r.scope]??={uses:0,set:new Set()};a.uses++;a.set.add(r.hex);}
@@ -110,6 +133,7 @@ async function audit(){
   md.push('');
   md.push('## Scope and limitations');
   md.push('- Includes active `src/` TypeScript, CSS, JS, shaders, and top-level HTML; excludes docs, tests, scripts, dependency bundles, and compiled output.');
+  md.push('- The **Breach core** reachability view follows statically resolvable imports from `index.html`, `src/breach-main.ts` and `src/breach-style.css`. Lab pages and separately loaded operator studio previews may be excluded unless imported; dynamic paths require manual inspection.');
   md.push('- Counts literal hex colors (`0xRRGGBB`, `#RGB`, `#RRGGBB`, alpha variants), literal integer `rgb/rgba()` calls, and `[R,G,B]` triplets explicitly defined in camouflage `colors` recipe arrays.');
   md.push('- A *source occurrence* is an authored literal, **not** pixel coverage, run-time screen area, or actual frequency of an item spawning. Multiple alpha values share the same RGB row, but are separately recorded in uses CSV.');
   md.push('- Generated color mixes, lighting, wear, camouflage sampling, gradients, HSL and runtime variants cannot be exhaustively enumerated statically. These require a subsequent runtime render/screenshot palette pass.');
@@ -117,6 +141,7 @@ async function audit(){
   md.push('');
   md.push('## Totals');
   md.push('- Source files inspected: **'+files.length+'**');
+  md.push('- Core Breach reachable source modules (approximate static import graph): **'+reachable.size+'**; core authored occurrences: **'+coreRecords.length+'**; core unique RGB: **'+coreUnique.size+'**.');
   md.push('- Literal color occurrences: **'+records.length+'**');
   md.push('- Distinct normalized RGB values: **'+colors.length+'**');
   md.push('- Single-use RGB colors: **'+colors.filter(c=>c.n===1).length+'**');
@@ -155,7 +180,7 @@ async function audit(){
   md.push('- [All source occurrences](all-color-uses.csv) — every detected literal location and alpha variant.');
   md.push('');
   fs.writeFileSync(outDir+'/README.md',md.join('\n')+'\n');
-  fs.writeFileSync(outDir+'/summary.json',JSON.stringify({files:files.length,occurrences:records.length,distinct:colors.length,singletons:colors.filter(c=>c.n===1).length,singleFile:colors.filter(c=>c.files.length===1).length,reviewable:likely.length,system:Object.fromEntries(Object.entries(byScope).map(([k,v])=>[k,{uses:v.uses,unique:v.set.size}])),top:colors.slice(0,35).map(c=>({hex:c.hex,n:c.n,scope:c.scopes,examples:c.examples.slice(0,2)})),near:likely.slice(0,70).map(c=>({hex:c.hex,n:c.n,closest:c.nearest.hex,delta:c.nearest.dist,scope:c.scopes,example:c.examples[0]})),rare:rare.slice(0,70).map(c=>({hex:c.hex,n:c.n,example:c.examples[0]})),suspectNoncolors:nonColor.slice(0,25)},null,2)+'\n');
+  fs.writeFileSync(outDir+'/summary.json',JSON.stringify({files:files.length,reachableFiles:reachable.size,coreOccurrences:coreRecords.length,coreDistinct:coreUnique.size,occurrences:records.length,distinct:colors.length,singletons:colors.filter(c=>c.n===1).length,singleFile:colors.filter(c=>c.files.length===1).length,reviewable:likely.length,system:Object.fromEntries(Object.entries(byScope).map(([k,v])=>[k,{uses:v.uses,unique:v.set.size}])),top:colors.slice(0,35).map(c=>({hex:c.hex,n:c.n,coreUses:coreUsesByColor.get(c.hex)||0,scope:c.scopes,examples:c.examples.slice(0,2)})),near:likely.slice(0,70).map(c=>({hex:c.hex,n:c.n,closest:c.nearest.hex,delta:c.nearest.dist,scope:c.scopes,example:c.examples[0]})),rare:rare.slice(0,70).map(c=>({hex:c.hex,n:c.n,example:c.examples[0]})),suspectNoncolors:nonColor.slice(0,25)},null,2)+'\n');
   console.log(JSON.stringify({files:files.length,colors:colors.length,occurrences:records.length,rare:rare.length,reviewable:likely.length}));
 }
 audit().catch(e=>{console.error(e);process.exitCode=1});
