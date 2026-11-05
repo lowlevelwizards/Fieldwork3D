@@ -115,6 +115,7 @@ import {careerEventsForOperation} from './campaign-history.ts';
 import {awarenessDebugLine} from './breach-awareness-debug.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
 import './breach-style.css';
+import './ui/ux-r3-hud.css';
 import {fieldworkSelectField,confirmFieldworkAction} from './ui/fieldwork-controls.ts';
 import {compactSiteTitle} from './ui/site-title.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
