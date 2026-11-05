@@ -29,6 +29,11 @@ export function chooseHostileBudget(site:Site,context:EncounterContext,
  // Only a small, seeded subset of genuinely quiet low-risk non-capture
  // missions may have no armed defenders. Everyone else retains the existing
  // encounter budget, bounded by the mission's explicit hard minimum.
- if(minimum===0&&encounterRng(context.seed??site.seed,29)()<.34)return 0;
+ if(minimum===0){
+   if(encounterRng(context.seed??site.seed,29)()<.34)return 0;
+   // Empty sites are a deliberate scenario, not an accidental consequence
+   // of a negative low-occupancy average and random round-to-zero.
+   return Math.max(1,Math.min(12,Math.round(mean+variation)));
+ }
  return Math.max(minimum,Math.min(12,Math.round(mean+variation)));
 }
