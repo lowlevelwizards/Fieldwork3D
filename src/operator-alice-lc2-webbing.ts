@@ -6,10 +6,7 @@
 import * as THREE from 'three';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
-export const ALICE_LC2_LOADS=['light','standard','patrol'] as const;
-export type AliceLc2Load=typeof ALICE_LC2_LOADS[number];
-export const isAliceLc2Load=(v:unknown):v is AliceLc2Load=>
- typeof v==='string'&&(ALICE_LC2_LOADS as readonly string[]).includes(v);
+import type {AliceLc2Load} from './operator-alice-lc2-policy.ts';
 export type AliceLc2Waist={
  root:THREE.Group;magazineCases:THREE.Group;
  canteens:THREE.Group;utility:THREE.Group;
