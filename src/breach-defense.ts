@@ -114,7 +114,8 @@ export function watchPoint(p:Pt,doors:Door[]):Pt|null{
 }
 /** Search a few legal points around a noisy estimate, never omniscient
  * access to the hidden source. Avoid pursuing a location inside cover. */
-export function reachableInvestigation(origin:Pt,target:Pt):Pt|null{
+export function reachableInvestigation(origin:Pt,target:Pt,
+  routeFor:(from:Pt,to:Pt)=>Pt[]=route):Pt|null{
   const options=[target];
   for(const distance of [17,35,55])
     for(let i=0;i<8;i++){
@@ -124,7 +125,7 @@ export function reachableInvestigation(origin:Pt,target:Pt):Pt|null{
     }
   for(const point of options){
     if(!passable(point))continue;
-    if(route(origin,point).length)return point;
+    if(routeFor(origin,point).length)return point;
   }
   return null;
 }
