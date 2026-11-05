@@ -1,13 +1,14 @@
+@import './ui/fieldwork-design.css';
 /* Shared mobile-first material filters, not a second full-page catalog. */
 .fw-material-browser{display:grid;gap:6px;min-width:0;margin:8px 0}
 .fw-material-browser .fw-material-search{width:100%;min-width:0;min-height:40px;
- background:#30493f;color:#f5eee0;border:1px solid #86998d;border-radius:6px;
+ background:var(--fw-interactive);color:#f5eee0;border:1px solid #86998d;border-radius:6px;
  padding:7px;font:12px "Work Sans",system-ui,sans-serif;box-sizing:border-box}
 .fw-material-filter-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 .fw-material-filter{display:grid;gap:3px;min-width:0}
 .fw-material-filter span{color:#c7d6c4;font:700 10px/1.2 "Saira Condensed",sans-serif}
 .fw-material-filter select{width:100%;min-width:0;box-sizing:border-box;
- background:#30493f;color:#f5eee0;border:1px solid #86998d;border-radius:6px;
+ background:var(--fw-interactive);color:#f5eee0;border:1px solid #86998d;border-radius:6px;
  min-height:40px;padding:5px;font:12px "Work Sans",system-ui,sans-serif}
 .fw-material-advanced{border-top:1px solid #7890836b;padding:4px 0}
 .fw-material-advanced>summary{min-height:30px;color:#dcc99f;
