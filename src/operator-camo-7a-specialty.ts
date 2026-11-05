@@ -123,10 +123,11 @@ export function specialty7AIndices(id:Specialty7AId):Uint8Array{
     out[y*64+x]=ink;
    };
    // Angular, varying 3–5px horizontal frond, with a stepped side prong.
-   const width=3+(variant%3);
+   const width=4+(variant%3);
    for(let dx=0;dx<width;dx++)put(dx,0,tone);
-   for(let dx=0;dx<width-1;dx++)put(dx,1,tone);
-   for(let dx=1;dx<width-1;dx++)put(dx,2,tone);
+   for(let dx=-1;dx<width;dx++)put(dx,1,tone);
+   for(let dx=0;dx<width-1;dx++)put(dx,2,tone);
+   for(let dx=1;dx<width-1;dx++)put(dx,3,tone);
    if(variant===0||variant===3){
     put(-1,1,tone);put(-1,2,tone);put(-2,2,tone);
    }else if(variant===1||variant===4){
@@ -140,7 +141,8 @@ export function specialty7AIndices(id:Specialty7AId):Uint8Array{
    // Sparse olive undershadows remain subordinate to light sunrays.
    if((row+col)%2===0){
     put(width-1,3,3);put(width,3,3);put(width,4,3);
-    put(width-1,4,3);
+    put(width-1,4,3);put(width-2,4,3);
+    put(width,5,3);put(width-1,5,3);
    }
   }
  }else{
