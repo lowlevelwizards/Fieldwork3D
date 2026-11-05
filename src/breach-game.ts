@@ -68,6 +68,8 @@ import {PerceptionPairCache} from './breach-perception-cache.ts';
 import {settledEnemyPosture} from './breach-ai-posture.ts';
 import {searchCandidates} from './breach-ai-search.ts';
 import {investigationTempo} from './breach-ai-investigation.ts';
+import {routineDwellSeconds} from './breach-ai-routine-dwell.ts';
+import {pressureAdvanceOpportunity} from './breach-ai-initiative.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
 import {contactTactic} from './breach-ai-tactical-response.ts';
 import {directionalCoverFrom} from './breach-cover-direction.ts';
@@ -2838,11 +2840,27 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
     const committed=coverMoveCommitted(a.alert==='cover'&&!!a.defense,
       a.defense?d(a.p,a.defense):0,s.seconds,a.defenseUntil);
-    if(a.combatChoice==='reposition'&&a.alert!=='retreat'&&
-      !committed&&s.seconds-a.lastFireRepositionAt>2.6){
+    const initiative=a.combatChoice==='engage'&&
+      pressureAdvanceOpportunity({
+        personality:a.personality,directSight:true,
+        clearFireLane:lane.blocker==='clear',range:d(a.p,b.p),
+        suppression:a.suppression,morale:a.morale,
+        nearbyAllies:enemies(s).filter(o=>o!==a&&o.health>0&&
+          o.encounterGroupId===a.encounterGroupId&&d(o.p,a.p)<150).length,
+        secondsSinceLastMove:s.seconds-a.lastFireRepositionAt
+      });
+    if((a.combatChoice==='reposition'||initiative)&&
+      a.alert!=='retreat'&&!committed&&
+      s.seconds-a.lastFireRepositionAt>(initiative?6:2.6)){
       const candidate=firingPosition(a,b,s);
       a.lastFireRepositionAt=s.seconds;
-      if(candidate&&d(candidate,a.p)>15){
+      // An aggressive advance must actually shorten the distance to a
+      // directly seen contact. The candidate's firearm lane and motor
+      // path have already passed the existing physical validation.
+      const closesDistance=candidate&&
+        d(candidate,b.p)<d(a.p,b.p)-18;
+      if(candidate&&d(candidate,a.p)>15&&
+         (!initiative||closesDistance)){
         a.defense=candidate;a.alert='cover';a.nav=[];
         a.defenseUntil=coverMoveDeadline(s.seconds,d(a.p,candidate));
       }
@@ -2934,11 +2952,14 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   // Combat reports, seen contacts, or sounds immediately interrupt the routine.
   if(!a.contacted&&!a.contact&&a.alert==='idle'&&a.encounterRoutine?.length){
     if(s.seconds<(a.routinePauseUntil??0)){a.velocity=0;return;}
-    const index=(a.routineIndex??0)%a.encounterRoutine.length;
+    const visit=a.routineIndex??0;
+    const index=visit%a.encounterRoutine.length;
     const target=a.encounterRoutine[index];
     if(d(a.p,target)<13){
-      a.routineIndex=(index+1)%a.encounterRoutine.length;
-      a.routinePauseUntil=s.seconds+2+(index%2);a.nav=[];a.velocity=0;
+      a.routineIndex=visit+1;
+      a.routinePauseUntil=s.seconds+routineDwellSeconds(a.id,
+        a.encounterActivity??'idle',index,visit);
+      a.nav=[];a.velocity=0;
       return;
     }
     if(!a.nav.length){
@@ -2948,7 +2969,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       a.nav=cachedEnemyRoute(s,a.p,target);
     }
     if(!a.nav.length){
-      a.routineIndex=(index+1)%a.encounterRoutine.length;
+      a.routineIndex=visit+1;
       a.routinePauseUntil=s.seconds+4;a.velocity=0;return;
     }
     approach(a,target,dt,s,.52);return;
@@ -3974,8 +3995,14 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
           a.lastMoraleEventAt=Math.max(a.lastMoraleEventAt,fallen.lastDownAt);
         }
       }
+      // Nearby members of the same encounter group can steady resolve.
+      // Do not pay an extra ally scan every tick for calm defenders.
+      const peerSupport=(a.suppression>.25||a.morale<.65)?
+        enemies(s).filter(other=>other!==a&&other.health>0&&
+          other.encounterGroupId===a.encounterGroupId&&
+          d(other.p,a.p)<130).length:0;
       const resolve=moraleResponse(a.morale,a.suppression,
-        a.injuryStage,a.personality);
+        a.injuryStage,a.personality,{nearbyAllies:peerSupport});
       if(resolve==='withdraw'&&a.alert!=='retreat'){
         const threat=a.contact??a.heard??a.watch;
         if(threat){
