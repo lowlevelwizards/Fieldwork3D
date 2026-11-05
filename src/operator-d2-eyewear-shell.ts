@@ -240,3 +240,17 @@ export function fittedTempleArm(parent:THREE.Group,material:THREE.Material,
  mesh.userData.d2TempleFit={...fit,side,version:4};
  return mesh;
 }
+
+/** R5 goggles use a single tapering fabric band on each side rather than
+ * long rigid boxes. Both sides join a broad rear band behind the skull.
+ * Kept as a separate helper so approved vintage goggles retain R4 straps.
+ */
+export function taperedGoggleStrap(parent:THREE.Group,material:THREE.Material,
+ name:string,fit:EyewearTempleFit,backHeight:number):void{
+ for(const side of [-1,1] as const){
+  const strap=fittedTempleArm(parent,material,name+'-side',side,fit);
+  strap.userData.d2StrapFamily=name;
+ }
+ block(parent,material,'strap-back',0,fit.rearY,4.20,
+  fit.rearX*2+.14,backHeight,.52);
+}
