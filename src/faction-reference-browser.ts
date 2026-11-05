@@ -26,7 +26,7 @@ export class FactionReferenceBrowser{
  private readonly summary:HTMLElement;
  private readonly apply:HTMLButtonElement;
  private chosen=FACTION_REFERENCES[0].id;
- private readonly=false;
+ private readOnly=false;
  constructor(root:HTMLElement,hooks:ReferenceBrowserHooks){
   this.root=root;this.hooks=hooks;
   root.classList.add('studio-reference-panel');
@@ -68,7 +68,7 @@ export class FactionReferenceBrowser{
  }
  get selectedId(){return this.chosen;}
  show(readonly=false){
-  this.readonly=readonly;
+  this.readOnly=readonly;
   this.root.hidden=false;
   this.renderList();this.renderDetail();
   this.hooks.onPreview(this.chosen);
@@ -80,7 +80,7 @@ export class FactionReferenceBrowser{
   if(!this.root.hidden)this.hooks.onPreview(id);
  }
  refresh(readonly=false){
-  this.readonly=readonly;
+  this.readOnly=readonly;
   if(!this.root.hidden)this.renderDetail();
  }
  private renderList(){
@@ -139,7 +139,7 @@ export class FactionReferenceBrowser{
    this.detail.append(warnings);
   }else this.detail.append(el('p','reference-compat-ok',
    'Selected operator kit supports this reference appearance.'));
-  this.apply.disabled=this.readonly;
-  this.apply.textContent=this.readonly?'ACTIVE OPERATION · VIEW ONLY':'USE COMPATIBLE LOOK';
+  this.apply.disabled=this.readOnly;
+  this.apply.textContent=this.readOnly?'ACTIVE OPERATION · VIEW ONLY':'USE COMPATIBLE LOOK';
  }
 }
