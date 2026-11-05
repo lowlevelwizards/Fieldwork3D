@@ -70,21 +70,24 @@ function standard(parent:THREE.Group,frame:THREE.Material,
 }
 function aviator(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
  root.userData.d2EyeFitTop=5.13;
- root.userData.d2EyeDesign='R5-outer-full-pilot-teardrops';
+ root.userData.d2EyeDesign='R6-broad-outer-pilot-teardrops';
  // Each left-lens polygon is intentionally fuller toward -X (the outside).
  // The mirrored right lens reverses that bias. Broad flat foot rather than
  // pointed fangs, with the topmost shoulder over the outer cheek.
+ // Deliberately retain thirteen meaningful facets per eye.
+ // Outboard cheeks have broad flat-bottom fullness; the inner edge
+ // tapers gently into the dual pilot bridge instead of ending in a fang.
  const out:EyePolygon=[
-  [-1.80,3.75],[-1.86,4.46],[-1.51,4.94],
-  [-.88,5.11],[-.17,5.10],[.73,4.90],
-  [1.40,4.50],[1.59,4.04],[1.32,3.43],
-  [.49,2.62],[-.20,2.27],[-1.10,2.27],[-1.62,2.77]
+  [-1.83,3.72],[-1.90,4.48],[-1.56,4.96],
+  [-.96,5.12],[-.10,5.12],[.75,4.89],
+  [1.38,4.48],[1.53,4.04],[1.22,3.40],
+  [.28,2.71],[-.30,2.39],[-1.33,2.39],[-1.74,2.84]
  ];
  const hole:EyePolygon=[
-  [-1.42,3.76],[-1.45,4.34],[-1.19,4.62],
-  [-.73,4.78],[-.11,4.77],[.57,4.62],
-  [1.06,4.29],[1.19,4.03],[.97,3.52],
-  [.23,2.91],[-.30,2.65],[-.91,2.65],[-1.28,2.96]
+  [-1.43,3.72],[-1.49,4.32],[-1.24,4.65],
+  [-.82,4.82],[-.12,4.82],[.58,4.61],
+  [1.03,4.27],[1.14,4.03],[.86,3.52],
+  [.08,2.98],[-.42,2.78],[-1.13,2.78],[-1.37,3.00]
  ];
  for(const side of [-1,1] as const){
   const x=side*2.08;
@@ -106,9 +109,9 @@ function aviator(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
 }
 function shooting(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
  root.userData.d2EyeFitTop=4.94;
- root.userData.d2EyeDesign='R5-single-clean-shooting-brow';
- // True shooting-glasses identity: one continuous wraparound pane with
- // two swept outer cheeks and a tall, OPEN underside nasal cutout.
+ root.userData.d2EyeDesign='R6-clean-panoramic-shooting-glasses';
+ // Approved R5 lens shape is unchanged: the single sweeping pane, open
+ // underside and generous nasal relief define the shooting fantasy.
  const pane:EyePolygon=[
   [-4.18,4.52],[-4.42,4.15],[-3.92,3.16],
   [-2.89,2.61],[-1.04,2.66],[-.57,3.56],
@@ -117,14 +120,16 @@ function shooting(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
   [1.70,4.83],[-1.70,4.83]
  ];
  lensSurface(root,lens,'shooting-panoramic',pane,-5.18,1.02);
- // One eight-corner brow strip. Its front surface is 0.14 units in
- // front of the panoramic lens instead of 0.02: no near-coplanar layers.
- // The entire solid inherits the same lateral sweep as the lens.
+ // ONE eight-corner sculpted brow, no separate thin line or rear plate.
+ // The rear of the .22-deep strip remains .10 ahead of the front of the
+ // swept lens at every X: the previous deep band pierced the lens itself,
+ // causing double black lines and unintended transparent overlaps.
  const brow:EyePolygon=[
-  [-4.42,4.26],[-4.19,4.84],[0,5.00],[4.19,4.84],
-  [4.42,4.26],[3.85,4.50],[0,4.67],[-3.85,4.50]
+  [-4.42,4.26],[-4.19,4.81],[0,4.98],[4.19,4.81],
+  [4.42,4.26],[3.86,4.48],[0,4.70],[-3.86,4.48]
  ];
- sweptFrame(root,frame,'integrated-swept-frame',brow,[],-5.32,.34,1.02);
+ sweptFrame(root,frame,'integrated-swept-frame',brow,[],-5.50,.22,1.02);
+ // Two existing heavy, uninterrupted arms terminate into this brow.
  outsideTemples(root,frame,'continuous-swept-temple',{
   frontX:4.24,frontY:4.55,frontZ:-4.39,
   shoulderX:4.42,shoulderY:4.35,shoulderZ:-4.10,
@@ -134,21 +139,21 @@ function shooting(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
 }
 function shield(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
  root.userData.d2EyeFitTop=4.80;
- root.userData.d2EyeDesign='R4-clean-borderless-eyeshield';
+ root.userData.d2EyeDesign='R6-clean-contoured-eyeshield';
  const outline:EyePolygon=[
   [-4.26,4.73],[4.26,4.73],[4.15,2.26],
   [2.66,1.97],[1.03,2.17],[-1.03,2.17],
   [-2.66,1.97],[-4.15,2.26]
  ];
- const pane=lensSurface(root,lens,'continuous-ballistic-shield',outline,-5.11,.28);
+ const pane=lensSurface(root,lens,'continuous-ballistic-shield',outline,-5.11,.34);
  pane.userData.d2EyeProfile={
   family:'shield',topology:'single-shield',width:8.52,height:2.76,
   frontZ:-5.11,housingDepth:.18,lenses:1,version:3
  };
  block(root,frame,'single-mass-visor-brow',0,4.76,-4.99,8.70,.58,.79);
  outsideTemples(root,frame,'shield-support-temple',{
-  frontX:4.15,frontY:4.03,frontZ:-4.93,
-  shoulderY:4.0,rearY:3.86,frontHeight:.81,
+  frontX:4.15,frontY:4.26,frontZ:-4.93,
+  shoulderY:4.11,rearY:3.91,frontHeight:.81,
   shoulderHeight:.76,rearHeight:.42
  });
 }

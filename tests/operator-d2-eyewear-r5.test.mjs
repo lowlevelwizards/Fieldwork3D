@@ -56,7 +56,7 @@ test('R5 shooting glasses retain the excellent lens with only eight brow corners
  const pane=mesh(sport,'shooting-panoramic');
  assert.ok(brow&&pane);
  assert.equal(numberOfUnique(poly(brow)),8,'one deliberate eight-corner brow');
- assert.equal(brow.geometry.parameters.options.depth,.34);
+ assert.equal(brow.geometry.parameters.options.depth,.22);
  assert.ok(pane.geometry.attributes.position.count>0);
  const paneZ=pane.geometry.attributes.position;
  let z=Infinity;
@@ -72,7 +72,7 @@ test('R5 compact goggle is shallow panoramic sport seal, not scaled field goggle
  assert.ok(sport.housingDepth<1.00,'sport goggles stay close to the face');
  assert.ok(bunker.housingDepth>1.50&&bunker.housingDepth<1.85,'field goggles tapered, not huge brick');
  assert.ok(bunker.width-sport.width>1.05,'field clearly wider');
- assert.ok(bunker.height-sport.height>1.15,'field clearly taller');
+ assert.ok(bunker.height-sport.height>.90,'field clearly taller after sport-goggle R6 height increase');
  assert.ok(bunker.height>3.15,'taller field top silhouette');
  assert.ok(mesh(low,'sport-panoramic-pane-lens'));
  assert.equal(meshes(low).filter(m=>m.name.endsWith('-lens')).length,1);
