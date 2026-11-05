@@ -9,7 +9,7 @@ import {createAliceLc2Waist,updateAliceLc2Load,
 import type {AliceLc2Load} from './operator-alice-lc2-policy.ts';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
-import {enableBakedGearAO} from './operator-baked-gear-ao.ts';
+import {enableBakedGearAO,bakeGearContactAO} from './operator-baked-gear-ao.ts';
 import {wardrobeItemsForSlot} from './operator-wardrobe-data.ts';
 import {createArmorSilhouettes,createChestRigSilhouettes,
  updateAdaptiveArmorFit,updateFittedRigHarness}
@@ -149,6 +149,11 @@ export function createWardrobeGearLayers(
  visual.ensureM1956Waist=()=>{
   if(visual.m1956Waist)return;
   const historic=createM1956Waist(hip,gearFabric,pouchMaterial,strapMaterial,trim);
+  // The historically separate pouches/canteens are retained as individual
+  // variant groups: bake within each one, not across hidden alternatives.
+  for(const child of historic.root.children)
+   if(child instanceof THREE.Group)bakeGearContactAO(child);
+  bakeGearContactAO(historic.root);
   visual.m1956Waist=historic;waistRig['m1956-lce']=historic.root;
  };
  if(!lazyVariants){visual.ensureAliceWaist();visual.ensureM1956Waist();}

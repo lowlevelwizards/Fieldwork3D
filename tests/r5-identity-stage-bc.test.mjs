@@ -39,6 +39,25 @@ test('R5B: patches follow limb parents and chest identifiers are external-armor-
  assert.equal(v.meshes.chest.visible,true);
  assert.ok(v.materials.chest.map);
 });
+test('national flags fit the outer sleeve without IK stretch or edge-on ribbons',()=>{
+ const chest=new THREE.Group();
+ const arms=[0,1].map(()=>({upper:new THREE.Mesh(new THREE.BoxGeometry(3.9,1,4),
+  new THREE.MeshBasicMaterial())}));
+ // alignSegment scales this source-height-one limb to a 10-unit arm.
+ for(const arm of arms)arm.upper.scale.y=10;
+ const visuals=createIdentityVisuals(chest,arms);
+ for(const slot of ['leftShoulder','rightShoulder','armband']){
+  const patch=visuals.meshes[slot];
+  assert.equal(patch.userData.mountSurface,'upper-arm-outward-X');
+  assert.ok(patch.position.x>2,'patch must sit outside the actual sleeve radius');
+  assert.equal(patch.position.z,0,'no +/-Z edge-on placement');
+  assert.ok(Math.abs(patch.rotation.y-Math.PI/2)<1e-8);
+  const size=new THREE.Box3().setFromObject(patch).getSize(new THREE.Vector3());
+  assert.ok(size.y<2.2,'flag must not inherit 10x arm stretch: '+size.y);
+  assert.ok(size.z>2.2&&size.z<4.2,'flag must remain readable across sleeve');
+ }
+ assert.equal(visuals.meshes.chest.parent,chest);
+});
 test('R5C: independent directional beret mass, not a scaled patrol cap',()=>{
  const volumes=headwearCuboidVolumes('beret');
  assert.ok(volumes.length>=8&&volumes.length<=16);

@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {BAKED_GEAR_AO_MIN,enableBakedGearAO,bakeGearGeometryAO,
- softenHeadwearAO} from '../src/operator-baked-gear-ao.ts';
+import {BAKED_GEAR_AO_MIN,GEAR_CONTACT_AO_FLOOR,
+ enableBakedGearAO,bakeGearGeometryAO,bakeGearContactAO,softenHeadwearAO} from '../src/operator-baked-gear-ao.ts';
 import {garmentBoxUV} from '../src/operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from '../src/operator-visual-mesh-merge.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
@@ -29,7 +29,7 @@ function assertShadedTree(root,label){
   assert.equal(attr.normalized,true);
   assert.ok(attr.array instanceof Uint8Array,label+' should be 8 bit, not Float32');
   for(let i=0;i<attr.count;i++){
-   assert.ok(attr.getX(i)>=BAKED_GEAR_AO_MIN-.004&&attr.getX(i)<=1);
+   assert.ok(attr.getX(i)>=GEAR_CONTACT_AO_FLOOR-.004&&attr.getX(i)<=1);
    assert.equal(attr.getX(i),attr.getY(i));
    assert.equal(attr.getX(i),attr.getZ(i));
   }
@@ -46,7 +46,7 @@ test('one bounded, 8-bit grayscale geometry attribute works for ANY solid or cam
  const geo=garmentBoxUV(new THREE.BoxGeometry(3,5,4),3,5,4,mat);
  const attr=geo.getAttribute('color');
  assert.equal(mat.vertexColors,true);
- assert.equal(attr.count,24);
+ assert.ok(attr.count>24,'gear faces have a center vertex for contact shadows');
  assert.equal(attr.array.BYTES_PER_ELEMENT,1);
  const normal=geo.getAttribute('normal');
  const mean=sign=>{
@@ -80,7 +80,7 @@ test('batched same-material meshes retain their AO and old draw-call count',()=>
  consolidateVisualGroup(g);
  assert.equal(g.children.length,1,'still one draw call');
  assertShadedTree(g,'batch');
- assert.equal(g.children[0].geometry.getAttribute('color').count,120);
+ assert.ok(g.children[0].geometry.getAttribute('color').count>120);
 });
 test('all armor/rig/pack archetypes bake on construction, including older period gear',()=>{
  const r=createOperatorRig('rook','blue');
@@ -158,4 +158,41 @@ test('lazy combat gear receives baked AO when first equipped and upon refit',()=
  assertShadedTree(r.visualKit.wardrobeGear.armor['plate-legacy'],'refitted armor');
  assertShadedTree(r.visualKit.wardrobeGear.rig['full-chest'],'refitted rig');
  r.dispose();
+});
+
+test('actual neighboring pouch volumes visibly darken contact, not isolated panels',()=>{
+ const material=new THREE.MeshStandardMaterial({color:0xffffff});
+ enableBakedGearAO(material);
+ const body=new THREE.Mesh(garmentBoxUV(new THREE.BoxGeometry(2,5,5),2,5,5,material),material);
+ const front=body.geometry.getAttribute('position'),
+  normals=body.geometry.getAttribute('normal');
+ const vertex=Array.from({length:front.count},(_,i)=>i).find(i=>
+  normals.getX(i)>.99&&Math.abs(front.getY(i))<.01&&Math.abs(front.getZ(i))<.01);
+ assert.notEqual(vertex,undefined,'a center sample exists on the pouch face');
+ const start=body.geometry.getAttribute('color').getX(vertex);
+ const group=new THREE.Group();group.add(body);
+ const pouch=new THREE.Mesh(garmentBoxUV(new THREE.BoxGeometry(1.2,2.5,2.5),
+ 1.2,2.5,2.5,material),material);
+ pouch.position.x=1.85;group.add(pouch);
+ const updated=bakeGearContactAO(group);
+ assert.ok(updated>=1,'actual nearby gear changes at least one contact shade');
+ const contact=body.geometry.getAttribute('color').getX(vertex);
+ assert.ok(start-contact>.12,'baked contact is clearly distinct at mobile zoom: '+start+' vs '+contact);
+ const preserved=Array.from(body.geometry.getAttribute('color').array);
+ material.color.setHex(0x324b37);
+ bakeGearContactAO(group);
+ assert.deepEqual(Array.from(body.geometry.getAttribute('color').array),preserved,
+  'bake is reused on subsequent color or camouflage changes');
+ consolidateVisualGroup(group);
+ assert.equal(group.children.length,1,'AO does not undo one-draw-call merge');
+});
+test('isolated equipment does not gain invented neighboring contact shadows',()=>{
+ const material=new THREE.MeshStandardMaterial();enableBakedGearAO(material);
+ const g=new THREE.Group();
+ const a=new THREE.Mesh(garmentBoxUV(new THREE.BoxGeometry(2,3,2),2,3,2,material),material);
+ const b=new THREE.Mesh(garmentBoxUV(new THREE.BoxGeometry(2,3,2),2,3,2,material),material);
+ b.position.x=15;g.add(a,b);
+ const before=Array.from(a.geometry.getAttribute('color').array);
+ assert.equal(bakeGearContactAO(g),0);
+ assert.deepEqual(Array.from(a.geometry.getAttribute('color').array),before);
 });

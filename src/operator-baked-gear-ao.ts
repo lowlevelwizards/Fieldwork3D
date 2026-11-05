@@ -51,6 +51,94 @@ export function bakeGearGeometryAO(
  geometry.userData[AO_FLAG]=true;
  return geometry;
 }
+/** Local-space contact AO for an assembly of rigid, unmerged equipment pieces.
+ *
+ * Unlike orientation-only shading, this compares the physical bounding
+ * volumes of neighboring plates, pouch bodies/flaps, straps and packs.
+ * It creates no texture, decal, new mesh, or frame-time work. A small
+ * normalized vertex-color multiplier remains identical for every camo/solid.
+ *
+ * Call BEFORE one-material mesh consolidation, and again only for newly
+ * regenerated fitted connectors. Once a geometry has been processed it
+ * carries a stable stamp so later wardrobe selections don't double-darken.
+ */
+export const GEAR_CONTACT_AO_RADIUS=2.40;
+export const GEAR_CONTACT_AO_STRENGTH=.38;
+export const GEAR_CONTACT_AO_FLOOR=.54;
+type ContactPart={
+ mesh:THREE.Mesh;local:THREE.Matrix4;normalMatrix:THREE.Matrix3;
+ box:THREE.Box3;center:THREE.Vector3;
+};
+export function bakeGearContactAO(group:THREE.Group):number{
+ const candidates=group.children.filter((node):node is THREE.Mesh=>
+  node instanceof THREE.Mesh&&!Array.isArray(node.material)&&
+  !!node.geometry.getAttribute('position')&&
+  node.geometry.getAttribute('position').count>0);
+ if(candidates.length<2)return 0;
+ // This happens only during geometry construction / a change of fitted top.
+ group.updateWorldMatrix(true,true);
+ const inverse=new THREE.Matrix4().copy(group.matrixWorld).invert();
+ const parts:ContactPart[]=candidates.map(mesh=>{
+  if(!mesh.geometry.boundingBox)mesh.geometry.computeBoundingBox();
+  const local=new THREE.Matrix4().multiplyMatrices(inverse,mesh.matrixWorld);
+  const box=mesh.geometry.boundingBox!.clone().applyMatrix4(local);
+  return {mesh,local,normalMatrix:new THREE.Matrix3().getNormalMatrix(local),
+   box,center:box.getCenter(new THREE.Vector3())};
+ });
+ const p=new THREE.Vector3(),n=new THREE.Vector3();
+ let touched=0;
+ for(const part of parts){
+  if(Array.isArray(part.mesh.material))continue;
+  const material=part.mesh.material;
+  if(material.userData[AO_FLAG]!==true)continue;
+  const geo=part.mesh.geometry;
+  if(geo.userData.fieldworkContactAO===true)continue;
+  bakeGearGeometryAO(geo,material);
+  const attr=geo.getAttribute('color'),positions=geo.getAttribute('position'),
+   normals=geo.getAttribute('normal');
+  if(!attr||!positions||!normals)continue;
+  const pixels=attr.array;
+  if(!(pixels instanceof Uint8Array))continue;
+  let altered=false;
+  for(let i=0;i<positions.count;i++){
+   p.fromBufferAttribute(positions,i).applyMatrix4(part.local);
+   n.fromBufferAttribute(normals,i).applyMatrix3(part.normalMatrix).normalize();
+   let occlusion=0;
+   for(const neighbor of parts){
+    if(neighbor===part)continue;
+    const box=neighbor.box;
+    // Broad phase: no interaction beyond this actual contact radius.
+    const dx=p.x<box.min.x?box.min.x-p.x:p.x>box.max.x?p.x-box.max.x:0;
+    const dy=p.y<box.min.y?box.min.y-p.y:p.y>box.max.y?p.y-box.max.y:0;
+    const dz=p.z<box.min.z?box.min.z-p.z:p.z>box.max.z?p.z-box.max.z:0;
+    const sq=dx*dx+dy*dy+dz*dz;
+    if(sq>=GEAR_CONTACT_AO_RADIUS*GEAR_CONTACT_AO_RADIUS)continue;
+    const cx=neighbor.center.x-p.x,cy=neighbor.center.y-p.y,
+     cz=neighbor.center.z-p.z;
+    // Never darken an exposed face because some gear is behind it.
+    const toward=n.x*cx+n.y*cy+n.z*cz;
+    if(toward<=.015)continue;
+    const length=Math.hypot(cx,cy,cz);
+    const facing=length>.001?Math.min(1,toward/length):0;
+    if(facing<.12)continue;
+    const proximity=1-Math.sqrt(sq)/GEAR_CONTACT_AO_RADIUS;
+    const strength=GEAR_CONTACT_AO_STRENGTH*proximity*
+     (.32+.68*facing);
+    if(strength>occlusion)occlusion=strength;
+   }
+   if(occlusion<.012)continue;
+   const old=pixels[i*3]/255;
+   const gray=Math.round(255*Math.max(GEAR_CONTACT_AO_FLOOR,
+    old*(1-occlusion)));
+   if(gray===pixels[i*3])continue;
+   pixels[i*3]=gray;pixels[i*3+1]=gray;pixels[i*3+2]=gray;
+   altered=true;
+  }
+  if(altered){attr.needsUpdate=true;touched++;}
+  geo.userData.fieldworkContactAO=true;
+ }
+ return touched;
+}
 /** Authored headwear already carries region construction tones in vertex
  * colors. Compress those darks into an AO-safe range so MARPAT/EMR etc.
  * remain legible when the vertex-color path is ON for both solids and prints.

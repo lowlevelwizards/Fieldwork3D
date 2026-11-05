@@ -864,6 +864,15 @@ jobs:
           node --experimental-strip-types --test \
             tests/faction-reference.test.mjs \
             tests/ux-r2-studio-flow.test.mjs
+      - name: Gear contact AO R2 — real overlap and sleeve insignia regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/contact-ao-identity-mounts-') }}
+        run: |
+          node --experimental-strip-types --test --test-concurrency=1 \
+            tests/operator-baked-gear-ao.test.mjs \
+            tests/r5-identity-stage-bc.test.mjs \
+            tests/operator-visual-merge.test.mjs \
+            tests/operator-r9-camo-density.test.mjs \
+            tests/faction-reference.test.mjs
       - name: Gear AO — critical geometry, batching and reference contracts
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/gear-baked-ao-all-') }}
         run: |
