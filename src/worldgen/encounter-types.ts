@@ -21,11 +21,22 @@ export type EncounterContext = {
   risk?:1|2|3;
   /** Future inspector override; the default always derives from identity. */
   premise?:EncounterPremise;
+  /** Developer opt-in until B5–B8 are physically and visually integrated. */
+  enableCivilians?:boolean;
 };
 export type EncounterActorSpec = {
   id:string;groupId:string;role:EncounterRole;activity:EncounterActivity;
   readiness:EncounterReadiness;zoneId?:string;roomId?:string;
   position:Pt;heading:number;routine?:Pt[];weaponProfile?:'ordinary'|'security'|'prepared';
+};
+/** Separate from EncounterActorSpec: an 'occupant' hostile remains armed.
+ * Neutrals have no weapon profile, AI firing authority or faction role. */
+export type CivilianSpec={
+  id:string;role:'resident'|'visitor'|'employee'|'customer'|'patient'|'guest'|'rescue';
+  persona:'cautious'|'steady'|'startled';
+  activity:'idle'|'working'|'inspecting'|'seated'|'waiting';
+  position:Pt;heading:number;roomId:string;zoneId?:string;
+  routine?:Pt[];appearanceSeed:number;isRescueTarget?:boolean;
 };
 export type EncounterGroup = {
   id:string;purpose:'occupants'|'security'|'organised'|'response'|'target';
@@ -42,5 +53,7 @@ export type EncounterPlan = {
   mission:OperationKind;risk:1|2|3;
   expectedOccupancy:number;hostileBudget:number;
   groups:EncounterGroup[];actors:EncounterActorSpec[];
+  /** Additive version-one extension. Absent on legacy saved encounters. */
+  neutrals?:CivilianSpec[];
   diagnostics:EncounterDiagnostics;
 };

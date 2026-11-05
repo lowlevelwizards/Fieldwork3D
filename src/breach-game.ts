@@ -71,6 +71,7 @@ import {investigationTempo} from './breach-ai-investigation.ts';
 import {routineDwellSeconds} from './breach-ai-routine-dwell.ts';
 import {pressureAdvanceOpportunity} from './breach-ai-initiative.ts';
 import {captureTargetMayWithdraw} from './breach-ai-mission-response.ts';
+import {createCivilian,type CivilianActor} from './breach-civilian-types.ts';
 import {retreatDoorClosureEligible} from './breach-ai-door-response.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
 import {contactTactic} from './breach-ai-tactical-response.ts';
@@ -251,7 +252,8 @@ export type SquadPlanTransaction={
  after:Record<string,PlanNode[]>;
 };
 export type Session=Omit<TacticalState,'operators'> & {
-  operators:TeamActor[];windows:WindowState[];objectRevision:number;
+  operators:TeamActor[];civilians:CivilianActor[];
+  windows:WindowState[];objectRevision:number;
   coverState:typeof COVER;
   passageLeases:Record<string,PassageLease>;
   squadEntryUndo:SquadPlanTransaction|null;
@@ -459,7 +461,11 @@ export function newSession(index=0,siteSeed?:number,
     for(let i=operators.length-1;i>=0;i--)
       if(operators[i].side==='red')operators.splice(i,1);
   }
-  const state:Session={...seed,operators,objectRevision:0,
+  // Neutrals are disabled in production until physical damage, models,
+  // mission semantics and replay have completed their separate stages.
+  const civilians=encounterContext.enableCivilians?
+    (site?.encounter?.neutrals??[]).map(createCivilian):[];
+  const state:Session={...seed,operators,civilians,objectRevision:0,
     coverState:COVER.map(o=>({...o,material:materialForFixture(o.fixture),
       integrity:MATERIALS[materialForFixture(o.fixture)].integrity})),
     windows:initializeWindows(site?.windows??[]),
