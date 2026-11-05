@@ -65,7 +65,10 @@ let selected=params.get('operator')??'rook';
 let readOnly=false;
 let people:StudioPerson[]=[];
 let activeCategory:WardrobeSlot='top';
+type StudioStep='items'|'materials'|'details';
+let activeStep:StudioStep='items';
 let advancedFabricColorsOpen=false;
+const openCamoLibraries=new Set<string>();
 let advancedPouchOpen=false;
 let clothesOnly=true;
 let referenceOpen=false;
@@ -83,6 +86,10 @@ const status=$<HTMLOutputElement>('studioStatus');
 const canvas=$<HTMLCanvasElement>('studioCanvas');
 const stage=canvas.parentElement!;
 const materialRoot=$<HTMLElement>('studioMaterials');
+const itemRoot=$<HTMLElement>('studioItemBrowser');
+const workflowHint=$<HTMLElement>('studioWorkflowHelp');
+const workflowButtons=Array.from(document.querySelectorAll<HTMLButtonElement>(
+ '[data-studio-step]'));
 const applyButton=$<HTMLButtonElement>('studioApply');
 const modelSelector=$<HTMLSelectElement>('studioOperator');
 const gearToggle=$<HTMLButtonElement>('studioGearToggle');
@@ -324,7 +331,9 @@ function chooseStyle(slot:WardrobeSlot,id:string){
    slot==='rigStyle'?'THIS RIG LOOK NEEDS A MATCHING EQUIPPED LOAD-BEARING CLASS':
    'This item requires a different equipped kit');return;
  }
+ activeStep='materials';
  changeWardrobe(setWardrobeStyle(current(),slot,id));
+ applyStudioStep();
 }
 function undo(){
  comparingSaved=false;
@@ -334,8 +343,54 @@ function undo(){
  say('RESTORED PREVIOUS APPEARANCE');refresh();
 }
 undoButton.addEventListener('click',undo);
+const MATERIAL_LABELS=/^(SKIN TONE|HAIR COLOR|FACEWEAR FABRIC|MASK BODY|FRAME COLOR|LENS TINT|FABRIC MATERIAL|HEADGEAR FINISH|COMPATIBLE HEADGEAR PRINTS|GORKA TWO-TONE)/;
+function studioSectionKind(node:HTMLElement):'materials'|'details'{
+ return node.dataset.studioStep==='materials'?'materials':'details';
+}
+function applyStudioStep(){
+ itemRoot.hidden=activeStep!=='items';
+ materialRoot.hidden=activeStep==='items';
+ let count=0;
+ const children=Array.from(materialRoot.children) as HTMLElement[];
+ for(const child of children){
+  if(child.id==='studioEmptyStep')continue;
+  const show=activeStep!=='items'&&studioSectionKind(child)===activeStep;
+  child.hidden=!show;if(show)count++;
+ }
+ let empty=materialRoot.querySelector<HTMLElement>('#studioEmptyStep');
+ if(activeStep!=='items'&&!count){
+  if(!empty){
+   empty=document.createElement('p');
+   empty.id='studioEmptyStep';empty.className='studio-empty-step';
+   materialRoot.append(empty);
+  }
+  empty.textContent=activeStep==='materials'?
+   'No additional material choices for this item. Open DETAILS to adjust fit or position.':
+   'This item has no additional detail adjustments.';
+  empty.hidden=false;
+ }else if(empty)empty.hidden=true;
+ for(const button of workflowButtons){
+  const pressed=button.dataset.studioStep===activeStep;
+  button.setAttribute('aria-pressed',String(pressed));
+ }
+ workflowHint.textContent=activeStep==='items'?
+  'Choose a 3D item to edit · select an equipped card to inspect its material':
+  activeStep==='materials'?'Choose a fabric, finish or color · changes preview immediately':
+  'Optional fit, wear, and equipment coordination settings';
+}
+function setStudioStep(step:StudioStep){
+ activeStep=step;applyStudioStep();
+ if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+  const sheet=materialRoot.closest('.studio-sheet');
+  if(sheet instanceof HTMLElement)sheet.scrollTo({top:0,behavior:'smooth'});
+ }
+}
+for(const button of workflowButtons)button.addEventListener('click',()=>{
+ setStudioStep(button.dataset.studioStep as StudioStep);
+});
 function row(label:string,help?:string){
  const g=document.createElement('div');g.className='material-group';
+ g.dataset.studioStep=MATERIAL_LABELS.test(label)?'materials':'details';
  const heading=document.createElement('div');heading.className='material-heading';
  const title=document.createElement('label');title.textContent=label;heading.append(title);
  g.append(heading);if(help){const small=document.createElement('small');small.textContent=help;g.append(small);}
@@ -362,12 +417,26 @@ function addSolidSwatches(target:HTMLElement,values:readonly GarmentSolidId[],
 function addCamoSwatches(target:HTMLElement,ids:readonly HeadwearCamoId[],
  active:HeadwearCamoId|null,choose:(id:HeadwearCamoId)=>void,
  context:string,reference?:HeadwearCamoId|null){
+ const picker=document.createElement('details');picker.className='studio-camo-picker';
+ picker.open=openCamoLibraries.has(context);
+ const summary=document.createElement('summary');summary.className='studio-camo-selected';
+ const currentSwatch=document.createElement('canvas');
+ if(active)paintCamoPreview(currentSwatch,active);
+ currentSwatch.setAttribute('aria-hidden','true');
+ if(!active)currentSwatch.className='studio-camo-none';
+ const name=document.createElement('span');
+ name.textContent=active?HEADWEAR_CAMO_RECIPES[active].label:'CHOOSE CAMOUFLAGE';
+ const change=document.createElement('strong');change.textContent='CHANGE';
+ summary.append(currentSwatch,name,change);picker.append(summary);
+ const library=document.createElement('div');library.className='studio-camo-library';
+ picker.append(library);target.append(picker);
  const grid=document.createElement('div');grid.className='camo-swatches';
  const cards=new Map<HeadwearCamoId,HTMLDivElement>();
- const state=createCamoBrowseControls(target,'studio:'+context,()=>paint());
- const showResults=createCamoResultSummary(target);
- target.append(grid);
+ const state=createCamoBrowseControls(library,'studio:'+context,()=>paint());
+ const showResults=createCamoResultSummary(library);
+ library.append(grid);
  const paint=()=>{
+  if(!picker.open)return;
   grid.replaceChildren();
   const prefs=readCamoBrowserPrefs();
   const ordered=browseCamos(ids,{state,active,reference,prefs});
@@ -393,10 +462,17 @@ function addCamoSwatches(target:HTMLElement,ids:readonly HeadwearCamoId[],
    if(star)syncCamoFavoriteButton(star,prefs.favorites.includes(id));
    grid.append(wrap);
   }
-  if(!ordered.length){const small=document.createElement('small');
-   small.textContent='No compatible print matches these filters';grid.append(small);}
+  if(!ordered.length){
+   const empty=document.createElement('small');
+   empty.textContent='No compatible print matches these filters';
+   grid.append(empty);
+  }
  };
- paint();
+ picker.addEventListener('toggle',()=>{
+  if(picker.open){openCamoLibraries.add(context);paint();}
+  else openCamoLibraries.delete(context);
+ });
+ if(picker.open)paint();
 }
 function renderCuff(host:HTMLElement){
  const w=current(),printed=w.fabricCamo?.top;
@@ -835,6 +911,7 @@ function renderMaterials(){
   const hint=document.createElement('small');hint.textContent=
    'This item has no additional appearance material controls.';materialRoot.append(hint);
  }
+ applyStudioStep();
 }
 /** Six primary categories replace the old fourteen-tab strip.
  * Subslots are an intentional second step only where needed. */
@@ -850,7 +927,7 @@ const categoryGroup=()=>categoryGroups.find(group=>
  group.slots.includes(activeCategory))??categoryGroups[1];
 function selectCategory(slot:WardrobeSlot){
  if(referenceOpen){referenceOpen=false;referenceBrowser.hide();}
- activeCategory=slot;
+ activeCategory=slot;activeStep='items';
  // Look at the cloth unobscured for garments, but show all available
  // headgear/armor/gear when browsing those categories.
  clothesOnly=studioUsesClothesOnly(slot);
@@ -1004,7 +1081,7 @@ function refresh(){
   (dirty.size?' · '+dirty.size+' UNSAVED':'');
  undoButton.disabled=readOnly||saveInFlight||!(history.get(selected)?.length);
  renderCategories();
- // Reference catalog uses one shared 3D preview; avoid extra thumbnail work.
+ // Reference catalog uses the shared 3D viewport, not the item thumbnail grid.
  if(!referenceOpen){
   thumbBrowser.setCategory(activeCategory,true);
   thumbBrowser.refresh(p.loadout,previewWardrobe(),p.id);
@@ -1034,7 +1111,10 @@ function start(data:{mode:StudioMode;selected:string;members:StudioPerson[];read
  resize();
  focusCameraOnCategory(activeCategory,true);
 }
-modelSelector.addEventListener('change',()=>{selected=modelSelector.value;refresh();});
+modelSelector.addEventListener('change',()=>{
+ selected=modelSelector.value;activeStep='items';
+ refresh();focusCameraOnCategory(activeCategory);
+});
 /** Save every operator draft as one transaction, not merely the selected
  * character. Switching operators never loses unsaved work. */
 function pendingStudioEdits():StudioAppearanceEdit[]{

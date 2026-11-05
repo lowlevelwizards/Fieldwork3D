@@ -69,9 +69,9 @@ test('8F Soldier 2000 is byte-identical to the approved 8E art and palette',()=>
   '8F must not quietly repaint or rerandomize Soldier 2000');
  assert.deepEqual(HEADWEAR_CAMO_RECIPES[id].colors[3],[167,184,159]);
 });
-test('8F retains the 54 catalog IDs, persisted cut identities and NearestFilter',()=>{
- assert.equal(HEADWEAR_CAMO_IDS.length,54);
- assert.equal(new Set(HEADWEAR_CAMO_IDS).size,54);
+test('8F retains the 62 catalog IDs, persisted cut identities and NearestFilter',()=>{
+ assert.equal(HEADWEAR_CAMO_IDS.length,62);
+ assert.equal(new Set(HEADWEAR_CAMO_IDS).size,62);
  for(const id of ['norwegian-m98','jgsdf-type2','south-african-s2000'])
   for(const seed of [0,5,17,73,401]){
    const cut=headwearCamoPlacement('rook','trousers',id,seed);

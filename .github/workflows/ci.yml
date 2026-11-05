@@ -18,6 +18,13 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Camouflage 9A–9B — focused registry, garments, protected masks and production build
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-camo-9a-9b-') }}
+        run: |
+          node --experimental-strip-types --test tests/operator-camo-batch9a9b.test.mjs tests/operator-fabric-camo-stage2.test.mjs tests/operator-r9-camo-density.test.mjs
+          node --experimental-strip-types --test tests/operator-camo-batch8h.test.mjs tests/operator-camo-batch8a.test.mjs tests/operator-camo-batch7a.test.mjs tests/operator-camo-batch6a.test.mjs
+          node --experimental-strip-types --test tests/operator-material-browser-smart-sort.test.mjs tests/operator-material-browser-r2.test.mjs
+          npm run build
       - name: Focused Release B load-bearing mounts, family migrations and material independence
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/armor-rig-release-b-') }}
         run: node --experimental-strip-types --test tests/operator-armor-rig-release-b.test.mjs
@@ -240,7 +247,7 @@ jobs:
       # Release checkpoint: verify that public Pages actually serves the
       # latest main commit, not merely that a deployment workflow reported green.
       - name: Verify previous Pages build is publicly served
-        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'ux/interaction2-') || startsWith(github.head_ref, 'feature/breach-traversal-') || startsWith(github.head_ref, 'feature/breach-map-clearance-') || startsWith(github.head_ref, 'feature/breach-vault-mantle-') || startsWith(github.head_ref, 'ux/watch-active-marker-') || startsWith(github.head_ref, 'appearance/stage4-') || startsWith(github.head_ref, 'fix/attention-doors-') || startsWith(github.head_ref, 'fix/doorway-right-of-way-') || startsWith(github.head_ref, 'fix/coupled-door-contact-') || startsWith(github.head_ref, 'fix/door-leaf-overlap-') || startsWith(github.head_ref, 'fix/breach-wall-glide-here-window-') || startsWith(github.head_ref, 'feat/rig-r3-') || startsWith(github.head_ref, 'feat/rig-r4-') || startsWith(github.head_ref, 'feature/operator-rig-r5-') || startsWith(github.head_ref, 'feature/d2-facewear-r4-') || startsWith(github.head_ref, 'feature/d2-facewear-r5-') || startsWith(github.head_ref, 'feature/d2-bandana-r6-eyewear-r1-') || startsWith(github.head_ref, 'feature/dnav-') || startsWith(github.head_ref, 'feature/d2-eyewear-r21-') || startsWith(github.head_ref, 'feature/d2-eyewear-r3-') || startsWith(github.head_ref, 'feature/d2-eyewear-r4-') || startsWith(github.head_ref, 'feature/d2-eyewear-r5-') || startsWith(github.head_ref, 'feature/d2-eyewear-r6-') || startsWith(github.head_ref, 'feature/eyewear-r7-') || startsWith(github.head_ref, 'feature/eyewear-r8-') || startsWith(github.head_ref, 'feature/eyewear-r9-') || startsWith(github.head_ref, 'feature/eyewear-r10-') || startsWith(github.head_ref, 'feature/eyewear-r11-') || startsWith(github.head_ref, 'feature/operator-camo-8d-') || startsWith(github.head_ref, 'feature/operator-camo-8e-') || startsWith(github.head_ref, 'feature/operator-camo-8f-') || startsWith(github.head_ref, 'feature/operator-camo-8g-') || startsWith(github.head_ref, 'feature/operator-camo-8h-')) }}
+        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'ux/interaction2-') || startsWith(github.head_ref, 'feature/breach-traversal-') || startsWith(github.head_ref, 'feature/breach-map-clearance-') || startsWith(github.head_ref, 'feature/breach-vault-mantle-') || startsWith(github.head_ref, 'ux/watch-active-marker-') || startsWith(github.head_ref, 'appearance/stage4-') || startsWith(github.head_ref, 'fix/attention-doors-') || startsWith(github.head_ref, 'fix/doorway-right-of-way-') || startsWith(github.head_ref, 'fix/coupled-door-contact-') || startsWith(github.head_ref, 'fix/door-leaf-overlap-') || startsWith(github.head_ref, 'fix/breach-wall-glide-here-window-') || startsWith(github.head_ref, 'feat/rig-r3-') || startsWith(github.head_ref, 'feat/rig-r4-') || startsWith(github.head_ref, 'feature/operator-rig-r5-') || startsWith(github.head_ref, 'feature/d2-facewear-r4-') || startsWith(github.head_ref, 'feature/d2-facewear-r5-') || startsWith(github.head_ref, 'feature/d2-bandana-r6-eyewear-r1-') || startsWith(github.head_ref, 'feature/dnav-') || startsWith(github.head_ref, 'feature/d2-eyewear-r21-') || startsWith(github.head_ref, 'feature/d2-eyewear-r3-') || startsWith(github.head_ref, 'feature/d2-eyewear-r4-') || startsWith(github.head_ref, 'feature/d2-eyewear-r5-') || startsWith(github.head_ref, 'feature/d2-eyewear-r6-') || startsWith(github.head_ref, 'feature/eyewear-r7-') || startsWith(github.head_ref, 'feature/eyewear-r8-') || startsWith(github.head_ref, 'feature/eyewear-r9-') || startsWith(github.head_ref, 'feature/eyewear-r10-') || startsWith(github.head_ref, 'feature/eyewear-r11-') || startsWith(github.head_ref, 'feature/operator-camo-8d-') || startsWith(github.head_ref, 'feature/operator-camo-8e-') || startsWith(github.head_ref, 'feature/operator-camo-8f-') || startsWith(github.head_ref, 'feature/operator-camo-8g-') || startsWith(github.head_ref, 'feature/operator-camo-8h-') || startsWith(github.head_ref, 'feature/operator-camo-9a-9b-')) }}
         run: |
           expected="$(git ls-remote origin refs/heads/main | cut -c1-12)"
           for attempt in 1 2 3 4 5 6 7 8; do
@@ -790,6 +797,13 @@ jobs:
             tests/worldgen-encounter-missions.test.mjs \
             tests/worldgen-encounter-integration.test.mjs \
             tests/tactical-mission-quality-operations.test.mjs
+      - name: UX R2 Studio focused Item, Material and Details workflow
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/ux-r2-studio-material-flow-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/ux-r2-studio-flow.test.mjs \
+            tests/operator-material-browser-smart-sort.test.mjs \
+            tests/operator-material-browser-r2.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

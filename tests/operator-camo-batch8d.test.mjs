@@ -24,9 +24,9 @@ const difference=(a,b)=>{
  let n=0;for(let i=0;i<a.length;i++)if(a[i]!==b[i])n++;
  return n/a.length;
 };
-test('8D retains the 54-camo registry, saved looks and unchanged relatives',()=>{
- assert.equal(HEADWEAR_CAMO_IDS.length,54);
- assert.equal(new Set(HEADWEAR_CAMO_IDS).size,54);
+test('8D retains the 62-camo registry, saved looks and unchanged relatives',()=>{
+ assert.equal(HEADWEAR_CAMO_IDS.length,62);
+ assert.equal(new Set(HEADWEAR_CAMO_IDS).size,62);
  for(const id of [...targets,...unchanged]){
   assert.ok(HEADWEAR_CAMO_IDS.includes(id));
   const tile=headwearCamoIndices(id),palette=HEADWEAR_CAMO_RECIPES[id].colors;

@@ -36,7 +36,10 @@ export const FABRIC_CAMO_DENSITY:Readonly<Record<HeadwearCamoId,number>>={
  'pencott-greenzone':3.2,'pencott-badlands':3.2,
  'desert-night':3.2,'kryptek-highlander':3.0,berezka:3.2,'spectre-skwo':3.25,
  'russian-izlom':3.1,'greek-lizard':3.2,'urban-kamysh':3.2,'jgsdf-type2':3.2,
- 'pencott-metropolis':3.2,'south-african-s2000':2.8,'kryptek-typhon':3.0,'norwegian-m98':3.0
+ 'pencott-metropolis':3.2,'south-african-s2000':2.8,'kryptek-typhon':3.0,'norwegian-m98':3.0,
+ 'french-cce':2.65,'russian-vsr93':2.65,'swiss-taz90':3.10,'british-desert-dpm':2.30,
+ 'south-korean-granite-b':3.70,'indonesian-kopassus-flowing-blood':2.70,
+ 'cadpat-ar':4.0,'usaf-abu':3.65
 };
 export function fabricCamoWorldPeriod(id:HeadwearCamoId):number{
  return headwearCamoSize(id)/FABRIC_CAMO_DENSITY[id];
