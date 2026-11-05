@@ -10,30 +10,33 @@ import {unionCuboids} from './operator-cuboid-union.ts';
 export type D2BalaclavaId='balaclava-one'|'balaclava-three'|'balaclava-open';
 type Cut=readonly ClothFrontRow[];
 const full=[[-4.18,4.18]] as const;
+// Deliberate stepped apertures (not texture-colored rectangles). The one
+// opening remains a horizontal visor, the three-hole keeps true small eyes,
+// and the open-face cut exposes most of the face from brow to chin.
 const one:Cut=[
- {bottom:-1.00,top:3.05,strips:full},
- {bottom:3.05,top:3.43,strips:[[-4.18,-2.62],[2.62,4.18]]},
- {bottom:3.43,top:4.50,strips:[[-4.18,-3.02],[3.02,4.18]]},
- {bottom:4.50,top:4.92,strips:[[-4.18,-2.66],[2.66,4.18]]},
- {bottom:4.92,top:7.30,strips:full}
+ {bottom:-1.00,top:3.08,strips:full},
+ {bottom:3.08,top:3.34,strips:[[-4.18,-2.72],[2.72,4.18]]},
+ {bottom:3.34,top:4.42,strips:[[-4.18,-3.28],[3.28,4.18]]},
+ {bottom:4.42,top:4.71,strips:[[-4.18,-2.89],[2.89,4.18]]},
+ {bottom:4.71,top:7.30,strips:full}
 ];
 const three:Cut=[
- {bottom:-1.00,top:.84,strips:full},
- {bottom:.84,top:1.08,strips:[[-4.18,-.82],[.82,4.18]]},
- {bottom:1.08,top:2.20,strips:[[-4.18,-1.08],[1.08,4.18]]},
- {bottom:2.20,top:2.48,strips:[[-4.18,-.88],[.88,4.18]]},
- {bottom:2.48,top:3.02,strips:full},
- {bottom:3.02,top:3.38,strips:[[-4.18,-2.78],[-1.22,1.22],[2.78,4.18]]},
- {bottom:3.38,top:4.46,strips:[[-4.18,-2.94],[-1.04,1.04],[2.94,4.18]]},
- {bottom:4.46,top:4.88,strips:[[-4.18,-2.76],[-1.20,1.20],[2.76,4.18]]},
- {bottom:4.88,top:7.30,strips:full}
+ {bottom:-1.00,top:.97,strips:full},
+ {bottom:.97,top:1.18,strips:[[-4.18,-.68],[.68,4.18]]},
+ {bottom:1.18,top:1.98,strips:[[-4.18,-1.06],[1.06,4.18]]},
+ {bottom:1.98,top:2.17,strips:[[-4.18,-.68],[.68,4.18]]},
+ {bottom:2.17,top:3.12,strips:full},
+ {bottom:3.12,top:3.32,strips:[[-4.18,-2.75],[-1.55,1.55],[2.75,4.18]]},
+ {bottom:3.32,top:4.38,strips:[[-4.18,-3.07],[-1.35,1.35],[3.07,4.18]]},
+ {bottom:4.38,top:4.64,strips:[[-4.18,-2.78],[-1.55,1.55],[2.78,4.18]]},
+ {bottom:4.64,top:7.30,strips:full}
 ];
 const open:Cut=[
- {bottom:-1.00,top:.25,strips:full},
- {bottom:.25,top:.75,strips:[[-4.18,-2.85],[2.85,4.18]]},
- {bottom:.75,top:5.18,strips:[[-4.18,-3.42],[3.42,4.18]]},
- {bottom:5.18,top:5.62,strips:[[-4.18,-2.98],[2.98,4.18]]},
- {bottom:5.62,top:7.30,strips:full}
+ {bottom:-1.00,top:.10,strips:full},
+ {bottom:.10,top:.52,strips:[[-4.18,-2.76],[2.76,4.18]]},
+ {bottom:.52,top:5.18,strips:[[-4.18,-3.58],[3.58,4.18]]},
+ {bottom:5.18,top:5.60,strips:[[-4.18,-2.95],[2.95,4.18]]},
+ {bottom:5.60,top:7.30,strips:full}
 ];
 const cuts:Readonly<Record<D2BalaclavaId,Cut>>={
  'balaclava-one':one,'balaclava-three':three,'balaclava-open':open

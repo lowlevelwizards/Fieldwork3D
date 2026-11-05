@@ -400,7 +400,7 @@ function renderMaterials(){
    item==='shemagh'?[['draped','Draped'],['face-wrap','Face wrapped'],
      ['head-wrap','Head wrapped']]:
    item==='bandana'?[['raised','Face covered'],['lowered','Neck']]:[];
-  if(item==='shemagh'&&outfit.headwear!=='bare'){
+  if(item==='shemagh'&&outfit.headwear!=='bare'&&w.d2FaceMode==='head-wrap'){
    row('HEAD-WRAP FIT',
     'Head-wrapped fabric needs an uncovered head. A helmet or hat uses face-wrapped fabric instead.');
   }

@@ -25,7 +25,12 @@ export function fittedClothHood(name:string):ClothCuboid[]{
   {name:name+'-neck-back',x:0,y:-1.77,z:3.60,width:7.25,height:1.54,depth:.38},
   {name:name+'-neck-left',x:-3.62,y:-1.77,z:0,width:.39,height:1.54,depth:7.3},
   {name:name+'-neck-right',x:3.62,y:-1.77,z:0,width:.39,height:1.54,depth:7.3},
-  {name:name+'-collar-fold',x:0,y:-2.30,z:-3.82,width:7.40,height:.48,depth:.38}
+  {name:name+'-collar-fold',x:0,y:-2.30,z:-3.82,width:7.40,height:.48,depth:.38},
+  {name:name+'-collar-fold-back',x:0,y:-2.30,z:3.75,width:7.40,height:.48,depth:.38},
+  {name:name+'-collar-fold-left',x:-3.65,y:-2.30,z:0,
+   width:.36,height:.48,depth:7.55},
+  {name:name+'-collar-fold-right',x:3.65,y:-2.30,z:0,
+   width:.36,height:.48,depth:7.55}
  ];
 }
 /** Each row is a continuous sheet except for its explicitly absent gaps.
