@@ -33,16 +33,17 @@ import {headwearColorChoices,HEADWEAR_SOLID_COLORS} from './operator-headwear-co
 import {SKIN_TONES,SKIN_TONE_IDS,HAIR_STYLES,HAIR_STYLE_IDS,
  HAIR_TONES,HAIR_TONE_IDS,seededSkinTone,seededHairStyle,seededHairTone,
  type HairStyleId} from './operator-identity-palette.ts';
-import {headwearCamoChoices,headwearCamoPixels,headwearCamoSize,
- HEADWEAR_CAMO_RECIPES,
+import {headwearCamoChoices,HEADWEAR_CAMO_RECIPES,
  nextHeadwearCamoRoll,type HeadwearCamoId} from './operator-headwear-camo.ts';
 import {topColorwayChoices,resolvedTopColorway} from './operator-upper-colorways.ts';
 import {coordinateOutfit,suggestOutfitEquipmentSolids}
  from './operator-material-coordination.ts';
-import {browseCamos,sortGarmentSolids,sortHeadwearSolids,
+import {browseCamos,camoBrowseSection,sortGarmentSolids,sortHeadwearSolids,
  readCamoBrowserPrefs,recordCamoRecent} from './operator-material-browser.ts';
-import {createCamoBrowseControls,createCamoFavoriteButton}
+import {createCamoBrowseControls,createCamoFavoriteButton,
+ appendCamoSectionHeading,createCamoResultSummary,syncCamoFavoriteButton}
  from './operator-material-browser-ui.ts';
+import {paintCamoPreview} from './operator-camo-preview-cache.ts';
 import {STUDIO_PRESET_STORAGE_KEY,STUDIO_PRESET_LIMIT,
  readStudioPresets,saveStudioPreset,deleteStudioPreset,
  serializeStudioPresets,outfitPresetForKit,
@@ -323,11 +324,17 @@ function addCamoSwatches(target:HTMLElement,ids:readonly HeadwearCamoId[],
  const grid=document.createElement('div');grid.className='camo-swatches';
  const cards=new Map<HeadwearCamoId,HTMLDivElement>();
  const state=createCamoBrowseControls(target,'studio:'+context,()=>paint());
+ const showResults=createCamoResultSummary(target);
  target.append(grid);
  const paint=()=>{
   grid.replaceChildren();
   const prefs=readCamoBrowserPrefs();
-  for(const id of browseCamos(ids,{state,active,reference,prefs})){
+  const ordered=browseCamos(ids,{state,active,reference,prefs});
+  showResults(ordered,ids.filter(id=>id!=='splittertarn-31').length,active);
+  let section='';
+  for(const id of ordered){
+   section=appendCamoSectionHeading(grid,
+    camoBrowseSection(id,{state,active,reference,prefs}),section);
    let wrap=cards.get(id);
    if(!wrap){
     wrap=document.createElement('div');wrap.className='fw-camo-choice-wrap';
@@ -335,26 +342,17 @@ function addCamoSwatches(target:HTMLElement,ids:readonly HeadwearCamoId[],
      recordCamoRecent(id);choose(id);
     });
     b.className='swatch';
-    const canvas=document.createElement('canvas'),size=headwearCamoSize(id);
-    canvas.width=canvas.height=size;
-    const ctx=canvas.getContext('2d');
-    if(ctx){const image=ctx.createImageData(size,size);
-     image.data.set(headwearCamoPixels(id));ctx.putImageData(image,0,0);}
+    const canvas=document.createElement('canvas');paintCamoPreview(canvas,id);
     b.prepend(canvas);
     wrap.append(b,createCamoFavoriteButton(id,prefs.favorites.includes(id),
      ()=>paint(),readOnly||comparingSaved||saveInFlight));
     cards.set(id,wrap);
    }
    const star=wrap.querySelector<HTMLButtonElement>('.fw-material-favorite');
-   if(star){
-    const favored=prefs.favorites.includes(id);
-    star.textContent=favored?'★':'☆';
-    star.setAttribute('aria-pressed',String(favored));
-    star.setAttribute('aria-label',favored?'Remove favorite':'Add favorite');
-   }
+   if(star)syncCamoFavoriteButton(star,prefs.favorites.includes(id));
    grid.append(wrap);
   }
-  if(!grid.children.length){const small=document.createElement('small');
+  if(!ordered.length){const small=document.createElement('small');
    small.textContent='No compatible print matches these filters';grid.append(small);}
  };
  paint();
