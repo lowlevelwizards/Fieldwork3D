@@ -6,6 +6,7 @@
  * accidentally return through an old selector. Category state is UI-only.
  */
 import * as THREE from 'three';
+import {THUMB_LINEAR_TO_SRGB} from './operator-thumbnail-color.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {appearanceThumbnailContext,appearanceThumbnailKey,
  type AppearanceThumbnailContext} from './operator-appearance-thumbnail-context.ts';
@@ -29,7 +30,9 @@ type Entry={item:WardrobeItem;canvas:HTMLCanvasElement;button:HTMLButtonElement;
  context:AppearanceThumbnailContext};
 type OnSelect=(slot:WardrobeSlot,id:string)=>void;
 const focus=(slot:WardrobeSlot)=>{
- if(['headwear','facewear','eyewear','headset'].includes(slot))
+ if(slot==='facewear')
+  return {height:43,span:13.3,angle:[52,21,-15] as const};
+ if(['headwear','eyewear','headset'].includes(slot))
   return {height:43,span:15,angle:[27,25,-43] as const};
  if(['top','armorStyle','rigStyle','beltStyle','gloves','wrist'].includes(slot))
   return {height:30,span:24,angle:[43,33,-52] as const};
@@ -249,6 +252,7 @@ export class OperatorAppearanceGrid{
   const oldTarget=this.renderer.getRenderTarget();
   const oldClear=this.renderer.getClearColor(new THREE.Color()).clone();
   const oldAlpha=this.renderer.getClearAlpha();
+  const oldSceneBackground=this.scene.background;
   try{
    poseOperator(rig,{
     x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
@@ -277,7 +281,10 @@ export class OperatorAppearanceGrid{
    this.camera.lookAt(0,view.height,0);
    this.camera.updateProjectionMatrix();
    this.renderer.setRenderTarget(this.target);
-   this.renderer.setClearColor(0x23352e,1);
+   // Pale industrial backdrop specifically for near-black protective masks.
+   // Clothing/armor thumbnails keep their established background and framing.
+   this.scene.background=new THREE.Color(item.slot==='facewear'?0x435448:0x23352e);
+   this.renderer.setClearColor(item.slot==='facewear'?0x435448:0x23352e,1);
    this.renderer.clear(true,true,true);
    this.renderer.render(this.scene,this.camera);
    this.renderer.readRenderTargetPixels(this.target,0,0,THUMB_SIZE,
@@ -288,7 +295,17 @@ export class OperatorAppearanceGrid{
     // WebGL framebuffer origin is bottom-left; Canvas is top-left.
     for(let y=0;y<THUMB_SIZE;y++){
      const from=(THUMB_SIZE-1-y)*THUMB_SIZE*4,to=y*THUMB_SIZE*4;
-     image.data.set(this.pixels.subarray(from,from+THUMB_SIZE*4),to);
+     if(item.slot==='facewear'){
+      // Raw WebGLRenderTarget bytes are LINEAR; ImageData expects sRGB.
+      // The missing conversion made black masks and their background vanish.
+      for(let x=0;x<THUMB_SIZE;x++){
+       const src=from+x*4,dst=to+x*4;
+       image.data[dst]=THUMB_LINEAR_TO_SRGB[this.pixels[src]];
+       image.data[dst+1]=THUMB_LINEAR_TO_SRGB[this.pixels[src+1]];
+       image.data[dst+2]=THUMB_LINEAR_TO_SRGB[this.pixels[src+2]];
+       image.data[dst+3]=this.pixels[src+3];
+      }
+     }else image.data.set(this.pixels.subarray(from,from+THUMB_SIZE*4),to);
     }
     context.putImageData(image,0,0);
     // Bounded thumbnail cache: only a couple of active categories retained.
@@ -305,6 +322,7 @@ export class OperatorAppearanceGrid{
    canvas.dataset.thumbnailReady='false';
   }finally{
    this.scene.remove(rig.root);
+   this.scene.background=oldSceneBackground;
    this.renderer.setRenderTarget(oldTarget);
    this.renderer.setClearColor(oldClear,oldAlpha);
    // Reuse the fully authored geometry and GPU resources for the next
