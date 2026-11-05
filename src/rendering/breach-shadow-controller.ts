@@ -31,7 +31,7 @@ export function stationaryShadowFingerprint(input:{
     equipment?:unknown;wardrobe?:unknown
   }[];
   doors:readonly {id:string;fraction:number;open:boolean}[];
-  poseTime:number;
+  poseTime:number;simulationTime:number;
 }):string{
   // JSON is confined to unchanged planning/terminal views rather than
   // called across all actors 60 times per second during active gameplay.
