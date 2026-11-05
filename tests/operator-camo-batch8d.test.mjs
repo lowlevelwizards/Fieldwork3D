@@ -82,14 +82,14 @@ test('8D Soldier 2000 keeps brown ground and spotted sage/grass islands',()=>{
  assert.ok(internal>12,'interior contrast spots are integrated into islands');
 });
 
-test('8D M98 tests 2.4 vs 2.55 vs 2.7 and selects restrained medium density',()=>{
+test('M98 8D identity survives later approved fabric-density revisions',()=>{
  const tile=headwearCamoIndices('norwegian-m98');
  assert.deepEqual([...new Set(tile)].sort(),[0,1,2],'strict Norwegian 3-ink art');
- assert.equal(FABRIC_CAMO_DENSITY['norwegian-m98'],2.55);
- const baselinePeriod=64/2.4,selectedPeriod=fabricCamoWorldPeriod('norwegian-m98');
- const highDensityPeriod=64/2.7;
+ assert.equal(FABRIC_CAMO_DENSITY['norwegian-m98'],3.0);
+ const baselinePeriod=64/2.55,selectedPeriod=fabricCamoWorldPeriod('norwegian-m98');
+ const highDensityPeriod=64/3.4;
  assert.ok(highDensityPeriod<selectedPeriod&&selectedPeriod<baselinePeriod);
- assert.ok(selectedPeriod>24.5&&selectedPeriod<25.5);
+ assert.ok(selectedPeriod>21.3&&selectedPeriod<21.4);
  const sections=[];
  for(let qy=0;qy<2;qy++)for(let qx=0;qx<2;qx++){
   const tones=new Set();
