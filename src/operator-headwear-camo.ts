@@ -829,6 +829,7 @@ export const HEADWEAR_CAMO_ELIGIBILITY:Readonly<Record<HeadSilhouetteId,readonly
   'russian-izlom','jgsdf-type2','pencott-metropolis','kryptek-typhon','norwegian-m98',
   'south-korean-granite-b','cadpat-ar'],
  pasgt:['m81-woodland','three-color-desert','woodland-dpm','six-color-desert',
+  'flecktarn','desert-tropentarn','woodland-marpat','desert-marpat','british-mtp',
   'erdl-lowland','polish-pantera','russian-flora','rhodesian-brushstroke',
   'belgian-jigsaw','east-german-strichtarn','mitchell-leaf','splittertarn-31',
   'australian-dpcu','italian-vegetato','cadpat-tw',
