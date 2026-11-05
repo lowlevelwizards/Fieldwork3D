@@ -19,7 +19,8 @@ export const RIG_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
   solids:['ranger-green','coyote','black','olive-drab','forest-green','foliage',
    'khaki','tan','charcoal'],
   prints:['multicam','scorpion-w2','m81-woodland','ucp','british-mtp',
-   'woodland-dpm','flecktarn','australian-dpcu'],
+   'woodland-dpm','flecktarn','australian-dpcu',
+   'atacs-fg','atacs-au','multicam-tropic','multicam-arid','ukrainian-mm14'],
   rationale:'Modern compact modular chest chassis, broad commercial color range'
  },
  'chest-placard':{
@@ -27,14 +28,16 @@ export const RIG_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
   solids:['coyote','ranger-green','black','olive-drab','khaki','tan',
    'forest-green','foliage','charcoal'],
   prints:['multicam','scorpion-w2','m81-woodland','ucp','british-mtp',
-   'woodland-dpm','flecktarn'],
+   'woodland-dpm','flecktarn',
+   'atacs-fg','atacs-au','multicam-tropic','multicam-arid'],
   rationale:'Modern detachable three-magazine front panel; nylon and commercial prints'
  },
  'light-rig':{
   signature:{solid:'olive-drab'},
   solids:['olive-drab','field-green','forest-green','ranger-green',
    'coyote','tan','black'],
-  prints:['m81-woodland','multicam','scorpion-w2','woodland-dpm','british-mtp'],
+  prints:['m81-woodland','multicam','scorpion-w2','woodland-dpm','british-mtp',
+   'atacs-fg','multicam-tropic','multicam-arid'],
   rationale:'Classic four-cell X harness with documented modern reproductions'
  },
  'chicom-rig':{
@@ -53,7 +56,7 @@ export const RIG_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
   signature:{solid:'ranger-green',print:'multicam'},
   solids:['ranger-green','coyote','black','olive-drab','tan','khaki'],
   prints:['multicam','scorpion-w2','m81-woodland','ucp','british-mtp',
-   'woodland-dpm'],
+   'woodland-dpm','atacs-fg','atacs-au','multicam-tropic','multicam-arid','ukrainian-mm14'],
   rationale:'Two MOLLE wings and central opening, current modular printed nylon'
  },
  'full-chest':{
@@ -61,7 +64,7 @@ export const RIG_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
   solids:['forest-green','ranger-green','olive-drab','coyote','tan',
    'black','khaki'],
   prints:['multicam','m81-woodland','scorpion-w2','british-mtp',
-   'woodland-dpm','ucp'],
+   'woodland-dpm','ucp','atacs-fg','multicam-tropic','multicam-arid'],
   rationale:'Large modern/surplus patrol bib with broad front admin face'
  },
  'lbv':{
@@ -77,7 +80,7 @@ export const RIG_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
    'ranger-green','coyote','black'],
   prints:['woodland-dpm','m81-woodland','british-mtp',
    'east-german-strichtarn','swedish-m90','australian-dpcu',
-   'russian-flora','multicam'],
+   'russian-flora','multicam','atacs-fg','atacs-au','ukrainian-mm14'],
   rationale:'PLCE-style DPM belt pouches and yoke, plus documented national load kits'
  },
  'sadf-webbing':{
@@ -124,14 +127,16 @@ export const ARMOR_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
   signature:{solid:'ranger-green'},
   solids:['ranger-green','black','charcoal','coyote','khaki','tan',
    'olive-drab','foliage'],
-  prints:['multicam','m81-woodland','scorpion-w2','ucp','british-mtp'],
+  prints:['multicam','m81-woodland','scorpion-w2','ucp','british-mtp',
+   'atacs-fg','atacs-au','multicam-tropic','multicam-arid'],
   rationale:'Low-profile plate bags; limited commercially available cover prints'
  },
  'plate-jpc':{
   signature:{solid:'ranger-green',print:'multicam'},
   solids:['ranger-green','coyote','black','olive-drab','khaki','tan'],
   prints:['multicam','scorpion-w2','m81-woodland','ucp','british-mtp',
-   'woodland-dpm','australian-dpcu'],
+   'woodland-dpm','australian-dpcu',
+   'atacs-fg','atacs-au','multicam-tropic','multicam-arid'],
   rationale:'Modern skeletonized MOLLE carrier, many fabric/print options'
  },
  'plate-standard':{
@@ -141,7 +146,8 @@ export const ARMOR_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
   prints:['multicam','scorpion-w2','m81-woodland','ucp','british-mtp',
    'flecktarn','woodland-dpm','finnish-m05','polish-pantera',
    'russian-emr','russian-flora','pla-xingkong','italian-vegetato',
-   'desert-tropentarn','cadpat-tw','australian-dpcu'],
+   'desert-tropentarn','cadpat-tw','australian-dpcu',
+   'atacs-fg','atacs-au','multicam-tropic','multicam-arid','ukrainian-mm14'],
   rationale:'Modern overt textile carrier with genuine national/commercial covers'
  },
  'plate-heavy':{
@@ -149,7 +155,8 @@ export const ARMOR_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
   solids:['coyote','ranger-green','black','olive-drab','khaki','tan',
    'forest-green','foliage'],
   prints:['multicam','scorpion-w2','m81-woodland','ucp','british-mtp',
-   'finnish-m05','russian-emr','pla-xingkong','australian-dpcu'],
+   'finnish-m05','russian-emr','pla-xingkong','australian-dpcu',
+   'multicam-tropic','multicam-arid','ukrainian-mm14'],
   rationale:'Heavy overt contemporary carrier, mostly coherent modern issue prints'
  },
  'plate-legacy':{

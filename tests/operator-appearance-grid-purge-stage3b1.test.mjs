@@ -17,9 +17,9 @@ import {HEADWEAR_CAMO_IDS} from '../src/operator-headwear-camo.ts';
 const source=path=>readFileSync(new URL(path,import.meta.url),'utf8');
 test('all obsolete garment options are actually gone from the authoritative catalog',()=>{
  assert.deepEqual(wardrobeItemsForSlot('top').map(x=>x.id),
-  ['base-layer','bdu-shirt','acu-shirt','combat-shirt','smock-jacket','gorka-jacket']);
+  ['bdu-shirt','acu-shirt','combat-shirt','smock-jacket','gorka-jacket']);
  assert.deepEqual(wardrobeItemsForSlot('trousers').map(x=>x.id),
-  ['base-shorts','bdu-trousers','acu-trousers','gorka-trousers']);
+  ['bdu-trousers','acu-trousers','gorka-trousers']);
  assert.deepEqual(wardrobeItemsForSlot('footwear').map(x=>x.id),
   ['bare-feet','field-boots']);
  assert.deepEqual(wardrobeItemsForSlot('gloves').map(x=>x.id),
@@ -35,7 +35,7 @@ test('all obsolete garment options are actually gone from the authoritative cata
  const w=setWardrobeStyle(initialWardrobe(),'top','t-shirt');
  assert.ok(!Object.hasOwn(w.styles,'top'),'deleted style cannot be selected');
  assert.equal(resolvedWardrobe(initialWardrobe(),initialEquipmentLoadout()).top,'bdu-shirt');
- assert.equal(HEADWEAR_CAMO_IDS.length,30,'approved camo untouched');
+ assert.equal(HEADWEAR_CAMO_IDS.length,38,'expanded approved camo catalog');
  assert.ok(wardrobeItemsForSlot('headwear').some(x=>x.id==='ach'),
   'approved headwear remains');
 });

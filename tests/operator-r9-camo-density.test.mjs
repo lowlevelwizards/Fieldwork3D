@@ -8,7 +8,7 @@ import {FABRIC_CAMO_DENSITY,fabricCamoWorldPeriod,
  from '../src/operator-fabric-camo-materials.ts';
 import {TILE_WORLD_SIZE} from '../src/rendering/pixel-materials.ts';
 test('R9 all thirty patterns use finite physical textile sizes across ALL 3D channels',()=>{
- assert.equal(Object.keys(FABRIC_CAMO_DENSITY).length,30);
+ assert.equal(Object.keys(FABRIC_CAMO_DENSITY).length,38);
  for(const id of HEADWEAR_CAMO_IDS){
   const size=headwearCamoSize(id),density=FABRIC_CAMO_DENSITY[id];
   assert.ok(density>=1&&density<=3.5,id+' plausible metric textile density');

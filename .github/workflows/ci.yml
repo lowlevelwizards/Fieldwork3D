@@ -484,3 +484,8 @@ jobs:
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
+      - name: Camouflage 6A focused art and fabric tests
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-camouflage-batch-6a-') }}
+        run: |
+          node --experimental-strip-types --test tests/operator-camo-batch6a.test.mjs
+          node --experimental-strip-types --test tests/operator-fabric-camo-stage2.test.mjs tests/operator-r9-camo-density.test.mjs

@@ -63,7 +63,15 @@ export const FABRIC_CAMO_POLICY:Readonly<Record<HeadwearCamoId,FabricCamoPolicy>
  'pla-xingkong':policy(all,'modern','issued','Chinese Type 19 patterned uniform, vest/load carriage and rucksacks'),
  'cadpat-tw':policy(all,'modern','issued','Canadian camouflage uniforms and matching textured combat web gear'),
  'british-mtp':policy(all,'modern','issued','UK MTP uniform, plate carriers, web gear and Bergen packs'),
- 'indian-digital-2022':policy(uniform,'modern','issued','2022 Indian Army protected print: issue combat uniforms verified, not all third-party equipment')
+ 'indian-digital-2022':policy(uniform,'modern','issued','2022 Indian Army protected print: issue combat uniforms verified, not all third-party equipment'),
+ 'atacs-fg':policy(all,'modern','issued-or-commercial','Commercial A-TACS FG uniforms, nylon equipment and plate covers; not universal military issue'),
+ 'ukrainian-mm14':policy(all,'modern','issued','Ukrainian MM-14 uniform and locally manufactured printed field kit; rig/plate cut restrictions still apply'),
+ aor2:policy(uniform,'modern','issued','Naval woodland digital uniform; standard equipment normally solid tan or green'),
+ 'multicam-tropic':policy(all,'modern','issued-or-commercial','Licensed MultiCam Tropic uniform textiles and available commercial nylon goods'),
+ 'atacs-au':policy(all,'modern','issued-or-commercial','A-TACS AU uniform fabrics and matching commercial equipment'),
+ 'ss-leto':policy(uniform,'transition','issued-or-commercial','Partizan SS-Leto field garments and commercial Gorka/overgarment variants; no default patterned armor'),
+ aor1:policy(uniform,'modern','issued','Naval desert digital uniform; typical protective equipment is coyote or tan'),
+ 'multicam-arid':policy(all,'modern','issued-or-commercial','MultiCam Arid uniforms and commercially available matching load carriage')
 };
 
 /** Only active garment silhouettes qualify for camouflage prints.
@@ -81,14 +89,17 @@ export function fabricCamoCompatible(id:HeadwearCamoId,
     return ['ucp','multicam','scorpion-w2','woodland-marpat',
      'desert-marpat','cadpat-tw','british-mtp','finnish-m05',
      'italian-vegetato','russian-emr','pla-xingkong','indian-digital-2022',
-     'polish-pantera','m81-woodland','flecktarn'].includes(id);
+     'polish-pantera','m81-woodland','flecktarn',
+     'atacs-fg','atacs-au','multicam-tropic','multicam-arid','aor1','aor2','ukrainian-mm14'].includes(id);
    if(outfit.top==='smock-jacket')
     return ['woodland-dpm','british-mtp','multicam','m81-woodland',
      'flecktarn','swedish-m90','finnish-m05','desert-tropentarn',
      'three-color-desert','polish-pantera','russian-flora','russian-emr',
-     'alpenflage','six-color-desert'].includes(id);
+     'alpenflage','six-color-desert',
+     'ss-leto','atacs-fg','atacs-au','multicam-tropic','multicam-arid','ukrainian-mm14'].includes(id);
    if(outfit.top==='gorka-jacket')
-    return ['russian-flora','russian-emr','multicam','polish-pantera'].includes(id);
+    return ['russian-flora','russian-emr','multicam','polish-pantera',
+      'atacs-fg','atacs-au','ss-leto'].includes(id);
    return (outfit.top==='bdu-shirt'||outfit.top==='acu-shirt')&&
     uniformCutCamoCompatible(outfit.top,id);
   case 'trousers':

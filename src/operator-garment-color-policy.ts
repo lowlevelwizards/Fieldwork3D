@@ -70,7 +70,15 @@ export const CAMO_CUFF_DEFAULTS:Readonly<Record<HeadwearCamoId,GarmentSolidId>>=
  'pla-xingkong':'field-green',
  'cadpat-tw':'forest-green',
  'british-mtp':'khaki',
- 'indian-digital-2022':'khaki'
+ 'indian-digital-2022':'khaki',
+ 'atacs-fg':'ranger-green',
+ 'ukrainian-mm14':'khaki',
+ aor2:'ranger-green',
+ 'multicam-tropic':'forest-green',
+ 'atacs-au':'khaki',
+ 'ss-leto':'olive-drab',
+ aor1:'coyote',
+ 'multicam-arid':'sand'
 };
 export function garmentSolidHex(id:GarmentSolidId):number{
  return GARMENT_SOLID_COLORS[id].hex;
