@@ -19,7 +19,7 @@ test('D2-B2 has three independent goggle silhouettes and four real fit states ea
    state.traverse(x=>{if(x.isMesh)names.push(x.name);});
    assert.ok(names.some(x=>x.includes('strap-back')),id+' must have rear strap');
    assert.ok(names.some(x=>x.endsWith('-lens')),id+' must contain true glass');
-   assert.ok(names.length>=10,id+' needs connected physical parts');
+   assert.ok(names.length>=5&&names.length<=10,id+' should be a simple continuous model');
   }
  }
  const retro=createD2Goggles('goggles-retro',frame,lens,frame);

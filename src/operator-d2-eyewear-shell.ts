@@ -1,137 +1,192 @@
-/** D2 Eyewear R2: solid, thick polygonal housings instead of tiny rim bars.
- * Coordinates: X across, Y vertical, -Z toward the camera. Shapes are created
- * exactly once and material references stay shared with Wardrobe Head Layers.
+/** D2 Eyewear R3: authored, low-piece-count three-dimensional primitives.
+ * Canonical head: 8 x 8 x 8; -Z is forward, +Y is up. All parts are
+ * allocated once, share rig-owned materials, and never affect hitboxes.
  */
 import * as THREE from 'three';
-import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
-
 export type EyePoint=readonly [number,number];
 export type EyePolygon=readonly EyePoint[];
 export type EyeFamily='open-frame'|'pilot'|'wedge'|'shield'|'compact-seal'|'field-seal'|'cups';
-export interface EyeProfile{
- family:EyeFamily;
- width:number;
- height:number;
- frontZ:number;
- housingDepth:number;
- lenses:number;
-}
-export function eyePolygon(points:EyePolygon):THREE.Shape{
- if(points.length<3)throw new Error('D2 eyewear polygon needs >=3 points');
+export type EyeTopology='twin'|'single-shield'|'single-sealed'|'twin-cups';
+export type EyeProfile={
+ family:EyeFamily;topology:EyeTopology;width:number;height:number;
+ frontZ:number;housingDepth:number;lenses:number;version:3;
+};
+const extent=(pts:EyePolygon)=>({
+ minX:Math.min(...pts.map(p=>p[0])),maxX:Math.max(...pts.map(p=>p[0])),
+ minY:Math.min(...pts.map(p=>p[1])),maxY:Math.max(...pts.map(p=>p[1]))
+});
+function path(pts:EyePolygon):THREE.Shape{
  const shape=new THREE.Shape();
- points.forEach(([x,y],i)=>i?shape.lineTo(x,y):shape.moveTo(x,y));
+ pts.forEach(([x,y],i)=>i?shape.lineTo(x,y):shape.moveTo(x,y));
  shape.closePath();return shape;
 }
-function dimension(points:EyePolygon){
- return {
-  minX:Math.min(...points.map(p=>p[0])),
-  maxX:Math.max(...points.map(p=>p[0])),
-  minY:Math.min(...points.map(p=>p[1])),
-  maxY:Math.max(...points.map(p=>p[1]))
- };
+function describe(
+ mesh:THREE.Mesh,outer:EyePolygon,
+ family:EyeFamily,topology:EyeTopology,z:number,depth:number,lenses:number
+):THREE.Mesh{
+ const e=extent(outer);
+ mesh.userData.d2EyeProfile={
+  family,topology,width:e.maxX-e.minX,height:e.maxY-e.minY,
+  frontZ:z,housingDepth:depth,lenses,version:3
+ } satisfies EyeProfile;
+ return mesh;
 }
-export function offsetPolygon(points:EyePolygon,dx:number,dy=0):EyePoint[]{
- return points.map(([x,y])=>[x+dx,y+dy]);
+function add(parent:THREE.Group,mesh:THREE.Mesh,name:string):THREE.Mesh{
+ mesh.name=name;mesh.castShadow=true;mesh.receiveShadow=true;
+ parent.add(mesh);return mesh;
 }
-export function solidBlock(parent:THREE.Group,material:THREE.Material,
- name:string,x:number,y:number,z:number,w:number,h:number,d:number):THREE.Mesh{
- const mesh=new THREE.Mesh(mapBoxPixelUV(new THREE.BoxGeometry(w,h,d),w,h,d),material);
- mesh.name=name;mesh.position.set(x,y,z);
- mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;
-}
-/** One shared highlight material per live lens material: no tiny specular
- * lines, no frame-colored fake lenses, and no pose-time mesh allocations.
- * A WeakMap ties its lifetime to that rig's original lens material.
+/** One piece of graphic acetate/metal with real empty openings.
+ * Only for actual open spectacles (not shield lenses or protective gaskets).
  */
-const lensFacetCache=new WeakMap<THREE.Material,THREE.MeshBasicMaterial>();
-export function lensFacetMaterial(lens:THREE.Material):THREE.MeshBasicMaterial{
- let facet=lensFacetCache.get(lens);
- if(!facet){
-  facet=new THREE.MeshBasicMaterial({color:0xf3f2df,opacity:.085,
-   transparent:true,depthWrite:false,side:THREE.DoubleSide});
-  lensFacetCache.set(lens,facet);
- }
- return facet;
-}
-/** One large diagonal glint per lens, deliberately inset into its opening.
- * Move top vertices toward the polygon center to avoid edge overshoot.
- * The broad four-sided facet uses only two triangles, never microdetail.
- */
-function lensFacet(opening:EyePolygon):THREE.ShapeGeometry{
- const ranked=[...opening].sort((a,b)=>b[1]-a[1]).slice(0,2).sort((a,b)=>a[0]-b[0]);
- const center:EyePoint=[
-  opening.reduce((total,p)=>total+p[0],0)/opening.length,
-  opening.reduce((total,p)=>total+p[1],0)/opening.length
- ];
- const mix=(p:EyePoint,f:number):EyePoint=>[
-  p[0]*(1-f)+center[0]*f,p[1]*(1-f)+center[1]*f
- ];
- const shape=eyePolygon([
-  mix(ranked[0],.18),mix(ranked[1],.18),
-  mix(ranked[1],.52),mix(ranked[0],.66)
- ]);
- return new THREE.ShapeGeometry(shape);
-}
-/** Front shape with real holes and *extruded* exterior walls. No segmented
- * hairline perimeter pieces; inset 2D lens fills do not change the silhouette.
- */
-export function solidFrame(parent:THREE.Group,
- frame:THREE.Material,lens:THREE.Material,name:string,
- outer:EyePolygon,openings:readonly EyePolygon[],
- frontZ:number,housingDepth:number,family:EyeFamily):THREE.Mesh{
- const shape=eyePolygon(outer);
- for(const opening of openings){
+export function frameRing(parent:THREE.Group,material:THREE.Material,
+ name:string,outer:EyePolygon,holes:readonly EyePolygon[],
+ frontZ:number,depth:number,family:EyeFamily):THREE.Mesh{
+ const shape=path(outer);
+ for(const points of holes){
   const hole=new THREE.Path();
-  opening.forEach(([x,y],i)=>i?hole.lineTo(x,y):hole.moveTo(x,y));
+  points.forEach(([x,y],i)=>i?hole.lineTo(x,y):hole.moveTo(x,y));
   hole.closePath();shape.holes.push(hole);
  }
- const geometry=new THREE.ExtrudeGeometry(shape,{
-  depth:housingDepth,steps:1,bevelEnabled:false,curveSegments:1
+ const geo=new THREE.ExtrudeGeometry(shape,{
+  depth,steps:1,bevelEnabled:false,curveSegments:1
  });
- const shell=new THREE.Mesh(geometry,frame);
- shell.name=name+'-housing';shell.position.z=frontZ;
- shell.castShadow=true;shell.receiveShadow=true;
- const extent=dimension(outer);
- const profile:EyeProfile={family,width:extent.maxX-extent.minX,
-  height:extent.maxY-extent.minY,frontZ,housingDepth,lenses:openings.length};
- shell.userData.d2EyeProfile=profile;
- parent.add(shell);
- openings.forEach((opening,i)=>{
-  const pane=new THREE.Mesh(new THREE.ShapeGeometry(eyePolygon(opening)),lens);
-  pane.name=name+'-'+i+'-lens';
-  pane.position.z=frontZ+Math.min(.12,housingDepth*.22);
-  pane.castShadow=false;pane.receiveShadow=false;
-  pane.renderOrder=2;
-  parent.add(pane);
-  // Single oversized graphic reflection, slightly in front of the lens.
-  // This gives even clear glass a material read at mobile thumbnail size.
-  const facet=new THREE.Mesh(lensFacet(opening),lensFacetMaterial(lens));
-  facet.name=name+'-'+i+'-lens-facet';
-  facet.position.z=pane.position.z-.055;
-  facet.castShadow=false;facet.receiveShadow=false;facet.renderOrder=3;
-  parent.add(facet);
- });
+ const mesh=add(parent,new THREE.Mesh(geo,material),name+'-housing');
+ mesh.position.z=frontZ;
+ return describe(mesh,outer,family,'twin',frontZ,depth,holes.length);
+}
+/** A frontal ring whose ENTIRE body follows one broad curve toward the
+ * temples. The underlying continuous shell replaces a separately bolted fin.
+ */
+export function sweptFrame(parent:THREE.Group,material:THREE.Material,
+ name:string,outer:EyePolygon,holes:readonly EyePolygon[],
+ frontZ:number,depth:number,sweep:number):THREE.Mesh{
+ const shell=frameRing(parent,material,name,outer,holes,
+  frontZ,depth,'wedge');
+ const pos=shell.geometry.attributes.position as THREE.BufferAttribute;
+ for(let i=0;i<pos.count;i++){
+  const x=pos.getX(i);
+  pos.setZ(i,pos.getZ(i)+sweep*Math.pow(Math.abs(x)/4,2));
+ }
+ pos.needsUpdate=true;
+ shell.geometry.computeVertexNormals();
  return shell;
 }
-/** Silhouette as a Y-Z wedge, given coordinates [negativeZ, Y]. A thick
- * extruded side slab makes wraparound/visor temples visible in profile.
+/** Single clean dyed pane. No generic glass highlights or microreflection
+ * strips; transparent material is the only lens surface.
  */
-export function sideFin(parent:THREE.Group,material:THREE.Material,
- name:string,side:-1|1,atX:number,width:number,yz:EyePolygon):THREE.Mesh{
- const geometry=new THREE.ExtrudeGeometry(eyePolygon(yz),{
-  depth:width,steps:1,bevelEnabled:false,curveSegments:1
- });
- geometry.rotateY(Math.PI/2);
- const mesh=new THREE.Mesh(geometry,material);
- mesh.name=name+(side<0?'-left':'-right');
- mesh.position.x=side*atX-width/2;
- mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;
+export function lensSurface(parent:THREE.Group,material:THREE.Material,
+ name:string,outline:EyePolygon,z:number,sweep=0):THREE.Mesh{
+ const geo=new THREE.ShapeGeometry(path(outline),1);
+ const positions=geo.attributes.position as THREE.BufferAttribute;
+ for(let i=0;i<positions.count;i++){
+  const x=positions.getX(i);
+  positions.setZ(i,z+sweep*Math.pow(Math.abs(x)/4,2));
+ }
+ positions.needsUpdate=true;
+ geo.computeVertexNormals();
+ const mesh=add(parent,new THREE.Mesh(geo,material),name+'-lens');
+ mesh.castShadow=false;mesh.receiveShadow=false;mesh.renderOrder=2;
+ return mesh;
+}
+/** A ring with DIFFERENT front and rear silhouettes, making depth and
+ * taper meaningful rather than simply extruding a front drawing.
+ * Four corresponding polygon loops have identical vertex counts.
+ * One mesh contains front rim, outer shell, back rim, and inner seal wall.
+ */
+export function sculptedHousing(parent:THREE.Group,material:THREE.Material,
+ name:string,frontOuter:EyePolygon,frontInner:EyePolygon,
+ rearOuter:EyePolygon,rearInner:EyePolygon,
+ frontZ:number,rearZ:number,family:EyeFamily,topology:EyeTopology):THREE.Mesh{
+ const n=frontOuter.length;
+ if(n<4||[frontInner,rearOuter,rearInner].some(p=>p.length!==n))
+  throw new Error(name+': housing loops require equal 4+ vertex counts');
+ if(!(rearZ>frontZ))throw new Error(name+': rear must be behind front');
+ // Normalize all corresponding profile loops to counterclockwise XY
+ // so the frontal cap faces the camera (-Z) on boxes and round eyecups.
+ const area=(p:EyePolygon)=>p.reduce((s,[x,y],i)=>{
+  const [nx,ny]=p[(i+1)%p.length];return s+x*ny-nx*y;
+ },0);
+ if(area(frontOuter)<0){
+  frontOuter=[...frontOuter].reverse();
+  frontInner=[...frontInner].reverse();
+  rearOuter=[...rearOuter].reverse();
+  rearInner=[...rearInner].reverse();
+ }
+ const positions:number[]=[];
+ const face=(a:readonly number[],b:readonly number[],c:readonly number[])=>{
+  positions.push(...a,...b,...c);
+ };
+ const v=(poly:EyePolygon,i:number,z:number):number[]=>[
+  poly[(i+n)%n][0],poly[(i+n)%n][1],z
+ ];
+ for(let i=0;i<n;i++){
+  const j=(i+1)%n;
+  const a=v(frontOuter,i,frontZ),b=v(frontOuter,j,frontZ);
+  const c=v(frontInner,i,frontZ),d=v(frontInner,j,frontZ);
+  const e=v(rearOuter,i,rearZ),f=v(rearOuter,j,rearZ);
+  const g=v(rearInner,i,rearZ),h=v(rearInner,j,rearZ);
+  // Front/back ring, outside wall, and inside wall. Non-indexed gives
+  // intentionally flat facet normals, no smoothing or microbevels.
+  face(a,c,d);face(a,d,b);
+  face(e,f,h);face(e,h,g);
+  face(a,b,f);face(a,f,e);
+  face(c,g,h);face(c,h,d);
+ }
+ const geo=new THREE.BufferGeometry();
+ geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+ geo.computeVertexNormals();
+ const mesh=add(parent,new THREE.Mesh(geo,material),name+'-housing');
+ return describe(mesh,frontOuter,family,topology,frontZ,rearZ-frontZ,
+  topology==='twin-cups'?2:1);
+}
+/** A single tapering solid arm, not a fin bolted onto a frontal plate.
+ * Full 3D stations make an intentional silhouette in side view.
+ */
+export function templeArm(parent:THREE.Group,material:THREE.Material,
+ name:string,side:-1|1,front:{x:number;y:number;z:number;w:number;h:number},
+ rear:{x:number;y:number;z:number;w:number;h:number}):THREE.Mesh{
+ const station=(s:typeof front):number[][]=>[
+  [side*s.x-s.w/2,s.y-s.h/2,s.z],
+  [side*s.x+s.w/2,s.y-s.h/2,s.z],
+  [side*s.x+s.w/2,s.y+s.h/2,s.z],
+  [side*s.x-s.w/2,s.y+s.h/2,s.z]
+ ];
+ const vertices=[...station(front),...station(rear)];
+ const tris:number[][]=[
+  [0,2,1],[0,3,2],[4,5,6],[4,6,7],
+  [0,1,5],[0,5,4],[1,2,6],[1,6,5],
+  [2,3,7],[2,7,6],[3,0,4],[3,4,7]
+ ];
+ const positions=tris.flatMap(t=>t.flatMap(i=>vertices[i]));
+ const geo=new THREE.BufferGeometry();
+ geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+ geo.computeVertexNormals();
+ return add(parent,new THREE.Mesh(geo,material),name+(side===-1?'-left':'-right'));
+}
+/** Single rectangular block, reserved for bold bridges and gasket anchors. */
+export function block(parent:THREE.Group,material:THREE.Material,
+ name:string,x:number,y:number,z:number,w:number,h:number,d:number):THREE.Mesh{
+ const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
+ mesh.position.set(x,y,z);
+ return add(parent,mesh,name);
 }
 export function octagon(cx:number,cy:number,rx:number,ry:number):EyePoint[]{
- const pts:EyePoint[]=[];
+ const points:EyePoint[]=[];
  for(let i=0;i<8;i++){
-  const a=Math.PI/4*i+Math.PI/8;
-  pts.push([cx+rx*Math.cos(a),cy+ry*Math.sin(a)]);
+  const a=i*Math.PI/4+Math.PI/8;
+  points.push([cx+rx*Math.cos(a),cy+ry*Math.sin(a)]);
  }
- return pts;
+ return points;
+}
+export function shifted(points:EyePolygon,dx:number,dy=0):EyePoint[]{
+ return points.map(([x,y])=>[x+dx,y+dy]);
+}
+/** Three deliberate large masses wrap behind an actual head. */
+export function strapBand(parent:THREE.Group,mat:THREE.Material,
+ halfWidth:number,y:number,thickness:number):void{
+ for(const side of [-1,1])
+  block(parent,mat,'strap-side',side*halfWidth,y,-.05,
+   thickness,thickness+.20,8.55);
+ block(parent,mat,'strap-back',0,y,4.22,
+  halfWidth*2+.25,thickness+.20,.55);
 }

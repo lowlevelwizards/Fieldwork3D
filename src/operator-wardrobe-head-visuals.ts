@@ -10,7 +10,7 @@ import {createD2Balaclava} from './operator-d2-fabric-visuals.ts';
 import {createD2FabricWrap} from './operator-d2-fabric-wraps.ts';
 import {createD2Glasses} from './operator-d2-eyewear-visuals.ts';
 import {createD2Goggles} from './operator-d2-goggle-visuals.ts';
-import {lensFacetMaterial} from './operator-d2-eyewear-shell.ts';
+import {fittedEyeOffset} from './operator-d2-eyewear-fit.ts';
 import {createD2Mask} from './operator-d2-mask-visuals.ts';
 import {D2_FACE_SOLID_COLORS,D2_FRAME_COLORS,D2_LENS_MATERIALS,D2_MASK_COLORS,
  resolveD2HeadAssembly,type D2FaceSolid,type D2AccessoryOptions,type D2MaskSolid} from './operator-head-accessory-catalog.ts';
@@ -184,10 +184,9 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  layers.eyewearFrame.color.setHex(frame.hex);
  layers.eyewearLens.color.setHex(tint.hex);
  layers.eyewearLens.opacity=tint.opacity;
- // Keep the one broad facet visually quieter on clear glass, and slightly
- // more legible on dyed/mirrored lenses; shared across preview and in-game.
- lensFacetMaterial(layers.eyewearLens).opacity=
-  (d2Eye?.eyeTint??'clear')==='clear'?.075:.115;
+ // Only the lens material makes the glass visible; no generic glint mesh.
+ layers.eyewearLens.metalness=d2Eye?.eyeTint==='mirrored'?.48:.04;
+ layers.eyewearLens.roughness=d2Eye?.eyeTint==='mirrored'?.33:.68;
  const assembly=resolveD2HeadAssembly({facewear,eyewear,headwear,headset,
   options:d2Eye});
  // One-time construction on selection; preserve variant/placement controls.
@@ -208,6 +207,26 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
   const wanted=d2Eye?.eyeMode??'rectangular';
   for(const shape of standard.children)
    shape.visible=shape.userData.d2EyeVariant===wanted;
+ }
+ // Fit the actual selected eyewear below the current headwear brow.
+ // Geometry, materials, pose children and saved styles remain unchanged.
+ const selectedEye=layers.eyewear[assembly.eyewear]?.children.find(
+  child=>child.userData.modelAxes);
+ if(selectedEye){
+  const fit=fittedEyeOffset(assembly.headwear,
+   Number(selectedEye.userData.d2EyeFitTop)||4.78);
+  if(assembly.eyewear.startsWith('goggles-')){
+   selectedEye.position.set(0,0,0);
+   for(const pose of selectedEye.children){
+    const base=pose.userData.d2DefaultPosition as THREE.Vector3|undefined;
+    if(!base)continue;
+    pose.position.copy(base);
+    if(pose.userData.d2GogglePlacement==='eyes'){
+     pose.position.y+=fit.y;
+     pose.position.z+=fit.z;
+    }
+   }
+  }else selectedEye.position.set(0,fit.y,fit.z);
  }
  // Variant meshes stay allocated and mutually exclusive while the mask changes.
  for(const id of ['half-mask','respirator-half'] as const){
