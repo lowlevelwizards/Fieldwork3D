@@ -233,8 +233,17 @@ function scaleMotif(motif:Motif,amount:number):Motif{
 }
 function paintOnto(tile:Uint8Array,motif:Motif):void{
  const [tone,shape]=motif;
- for(let y=0;y<64;y++)for(let x=0;x<64;x++)
-  if(wrapContains(x,y,shape))tile[y*64+x]=tone;
+ // Clip to each small lozenge's local bounding box rather than scanning
+ // the whole 64px atlas and all nine possible wrap copies per mark.
+ let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+ for(let i=0;i<shape.length;i+=2){
+  minX=Math.min(minX,shape[i]);maxX=Math.max(maxX,shape[i]);
+  minY=Math.min(minY,shape[i+1]);maxY=Math.max(maxY,shape[i+1]);
+ }
+ for(let y=Math.floor(minY);y<=Math.ceil(maxY);y++)
+  for(let x=Math.floor(minX);x<=Math.ceil(maxX);x++)
+   if(within(x+.5,y+.5,shape))
+    tile[((y+64)&63)*64+((x+64)&63)]=tone;
 }
 function indexAt(tile:Uint8Array,x:number,y:number):number{
  return tile[((y+64)&63)*64+((x+64)&63)];
