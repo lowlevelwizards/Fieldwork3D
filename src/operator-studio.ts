@@ -3,6 +3,7 @@
  * uses the same validated roster persistence for previews and direct access.
  */
 import * as THREE from 'three';
+import {M56_DETAILS,M56_NETS} from './operator-ddr-m56-policy.ts';
 import {ALICE_LC2_LOADS,type AliceLc2Load} from './operator-alice-lc2-policy.ts';
 import {HELMET_COVER_STYLES,HELMET_BANDS,HELMET_NET_STYLES,
  HELMET_SCRIM_STYLES,helmetCoverChoices} from './operator-helmet-cover-policy.ts';
@@ -791,6 +792,16 @@ function renderMaterials(){
     chip.style.backgroundColor='#'+info.hex.toString(16).padStart(6,'0');
     b.prepend(chip);grid.append(b);
    }group.append(grid);
+  }
+  if(item==='ddr-m56'){
+   const details=row('M56 STEEL SHELL','Historical exterior details on the same flared shell.');
+   addSelect(details,M56_DETAILS.map(id=>[id,id.toUpperCase()] as const),
+    w.m56Details??'late-smooth',id=>changeWardrobe({...current(),
+     m56Details:id as WardrobeOptions['m56Details']}));
+   const net=row('M56 HELMET NET','Coarse period textile overlay; does not recolor the painted steel.');
+   addSelect(net,M56_NETS.map(id=>[id,id.toUpperCase()] as const),
+    w.m56Net??'none',id=>changeWardrobe({...current(),
+     m56Net:id as WardrobeOptions['m56Net']}));
   }
   if(item==='m1-steel'){
    const panel=row('M1 HELMET COVER',
