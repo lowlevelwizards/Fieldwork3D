@@ -23,14 +23,14 @@ const recipes={
  },
  'greek-lizard':{
   label:'GREEK LIZARD',
-  description:'Classic Hellenic lizard, fine overlapping horizontal sage, olive-brown, dark green and russet tapered strokes',
-  colors:[[162,164,124],[72,91,61],[111,77,61],[42,62,55]],
+  description:'Classic Greek Lizard: warm khaki ground beneath overlapping torn, tapered olive/russet horizontal brushstrokes with occasional stipple gaps, not Kamysh bars',
+  colors:[[169,161,122],[67,88,62],[120,78,62],[42,58,49]],
   targetCoverage:[.36,.30,.21,.13],motifs:[]
  },
  'urban-kamysh':{
   label:'URBAN KAMYSH',
-  description:'Blue-grey urban Russian reed/tiger pattern, long ragged slate and navy-black bars against cold mist blue',
-  colors:[[128,145,158],[83,105,126],[61,79,100],[31,39,54]],
+  description:'Russian urban blue Kamysh: cool blue-grey and navy-black reed/tiger bands, linked wavy silhouettes with rough stepped torn tips and open mist-blue negative space',
+  colors:[[142,154,167],[91,111,136],[64,83,106],[27,36,51]],
   targetCoverage:[.29,.27,.23,.21],motifs:[]
  },
  'jgsdf-type2':{
@@ -261,6 +261,57 @@ function izlom8B():Uint8Array{
  }
  return tile;
 }
+function greekLizard8B():Uint8Array{
+ const motifs:Motif[]=[];
+ // Two shorter, slightly skewed/tapered strokes instead of one solid
+ // printed stripe. Some half-occluded patches intentionally overlap.
+ for(let i=0;i<GREEK_STROKES.length;i++){
+  const [x,y,len,w,ink,phase]=GREEK_STROKES[i];
+  const mid=Math.floor(len*(.42+hash(i,phase,223)*.13));
+  const offset=hash(i,phase,227)>.50?1:-1;
+  motifs.push(brush(x,y,mid,Math.max(2,w-1),ink,phase));
+  motifs.push(brush(x+mid+3,y+offset,len-mid-3,
+   Math.max(2,w-2+(i%3===0?1:0)),ink,phase+1));
+  if(i%3===0)motifs.push(brush(x+mid-5,y+offset+3,8,2,ink,phase+2));
+ }
+ const tile=paint(motifs,0),original=tile.slice();
+ // Greek Lizard's original screen has stippled, ragged paint ends; use
+ // source-anchored single texel nibs, not uniform noise on the cloth base.
+ for(let row=0;row<16;row++)for(let col=0;col<16;col++){
+  const r=hash(col,row,239);if(r<.59)continue;
+  const x=(col*4+Math.floor(hash(col,row,241)*4))&63;
+  const y=(row*4+Math.floor(hash(col,row,251)*4))&63;
+  const ink=indexAt(original,x,y);
+  if(ink===0)continue;
+  const neighbor=indexAt(original,x,y+1);
+  if(neighbor===0)tile[((y+1)&63)*64+x]=ink;
+  else if(r>.93)tile[y*64+x]=0; // sparing gaps in brush ink
+ }
+ return tile;
+}
+function urbanKamysh8B():Uint8Array{
+ // The older Russian blue Kamysh is an aggressive, irregular tiger/reed
+ // family, not the fine French/Greek Lizard strokes.
+ const motifs:Motif[]=KAMYSH_STROKES.map(([x,y,len,w,ink,phase])=>
+  brush(x,y,len,Math.min(9,w+1),ink,phase));
+ for(const [x,y,len] of [[-5,8,30],[25,19,31],[3,33,24],[39,46,30],[9,56,28]])
+  motifs.push(brush(x,y,len,2,3,3));
+ const tile=paint(motifs,0),original=tile.slice();
+ // Salt the band edges with teeth; never repaint the light negative
+ // space in flat blocks, preserving the familiar blue tiger identity.
+ for(let row=0;row<16;row++)for(let col=0;col<16;col++){
+  const r=hash(col,row,263);if(r<.41)continue;
+  const x=(col*4+Math.floor(hash(col,row,269)*4))&63;
+  const y=(row*4+Math.floor(hash(col,row,271)*4))&63;
+  const ink=indexAt(original,x,y);
+  if(ink===0)continue;
+  const up=indexAt(original,x,y-1),down=indexAt(original,x,y+1);
+  if(down===0 && r>.66)tile[((y+1)&63)*64+x]=ink;
+  if(up===0 && r>.84)tile[y*64+x]=0;
+  if(ink===2&&r>.92)tile[y*64+x]=3;
+ }
+ return tile;
+}
 function jgsdf8B():Uint8Array{
  // Flecktarn neighbor: denser but visibly rounder, shorter clusters than
  // Izlom or the oversized blobs in 8A. Satellites attach to parent clusters.
@@ -317,21 +368,8 @@ function soldier2000_8B():Uint8Array{
 const masters=new Map<Camo8AId,Uint8Array>();
 function ownTile(id:Camo8AId):Uint8Array{
  if(id==='russian-izlom')return izlom8B();
- if(id==='greek-lizard'||id==='urban-kamysh'){
-  const urban=id==='urban-kamysh';
-  const strokes=urban?KAMYSH_STROKES:GREEK_STROKES;
-  const shapes:Motif[]=strokes.map(([x,y,len,w,ink,phase])=>brush(x,y,len,w,ink,phase));
-  const tile=paint(shapes,0);
-  // Sparse edge stipple for Lizard, broken band tips for Kamysh:
-  // tiny edge strokes, never uniform random wallpaper.
-  for(let y=0;y<64;y++)for(let x=0;x<64;x++){
-   const i=y*64+x,ink=tile[i];
-   const right=tile[y*64+((x+1)&63)],r=hash(x>>1,y>>1,urban?71:19);
-   if(ink!==right && (urban?r>.80:r>.91))tile[i]=right;
-   else if(!urban&&ink===1&&r>.973)tile[i]=3;
-  }
-  return tile;
- }
+ if(id==='greek-lizard')return greekLizard8B();
+ if(id==='urban-kamysh')return urbanKamysh8B();
  if(id==='jgsdf-type2')return jgsdf8B();
  if(id==='south-african-s2000')return soldier2000_8B();
  if(id==='norwegian-m98')return paint(NORWAY,0);
