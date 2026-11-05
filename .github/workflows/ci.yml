@@ -240,7 +240,7 @@ jobs:
       # Release checkpoint: verify that public Pages actually serves the
       # latest main commit, not merely that a deployment workflow reported green.
       - name: Verify previous Pages build is publicly served
-        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'ux/interaction2-') || startsWith(github.head_ref, 'feature/breach-traversal-') || startsWith(github.head_ref, 'feature/breach-map-clearance-') || startsWith(github.head_ref, 'feature/breach-vault-mantle-') || startsWith(github.head_ref, 'ux/watch-active-marker-') || startsWith(github.head_ref, 'appearance/stage4-') || startsWith(github.head_ref, 'fix/attention-doors-') || startsWith(github.head_ref, 'fix/doorway-right-of-way-') || startsWith(github.head_ref, 'fix/coupled-door-contact-') || startsWith(github.head_ref, 'fix/door-leaf-overlap-') || startsWith(github.head_ref, 'fix/breach-wall-glide-here-window-') || startsWith(github.head_ref, 'feat/rig-r3-') || startsWith(github.head_ref, 'feat/rig-r4-') || startsWith(github.head_ref, 'feature/operator-rig-r5-') || startsWith(github.head_ref, 'feature/d2-facewear-r4-') || startsWith(github.head_ref, 'feature/d2-facewear-r5-') || startsWith(github.head_ref, 'feature/d2-bandana-r6-eyewear-r1-') || startsWith(github.head_ref, 'feature/dnav-') || startsWith(github.head_ref, 'feature/d2-eyewear-r21-') || startsWith(github.head_ref, 'feature/d2-eyewear-r3-') || startsWith(github.head_ref, 'feature/d2-eyewear-r4-')) }}
+        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'ux/interaction2-') || startsWith(github.head_ref, 'feature/breach-traversal-') || startsWith(github.head_ref, 'feature/breach-map-clearance-') || startsWith(github.head_ref, 'feature/breach-vault-mantle-') || startsWith(github.head_ref, 'ux/watch-active-marker-') || startsWith(github.head_ref, 'appearance/stage4-') || startsWith(github.head_ref, 'fix/attention-doors-') || startsWith(github.head_ref, 'fix/doorway-right-of-way-') || startsWith(github.head_ref, 'fix/coupled-door-contact-') || startsWith(github.head_ref, 'fix/door-leaf-overlap-') || startsWith(github.head_ref, 'fix/breach-wall-glide-here-window-') || startsWith(github.head_ref, 'feat/rig-r3-') || startsWith(github.head_ref, 'feat/rig-r4-') || startsWith(github.head_ref, 'feature/operator-rig-r5-') || startsWith(github.head_ref, 'feature/d2-facewear-r4-') || startsWith(github.head_ref, 'feature/d2-facewear-r5-') || startsWith(github.head_ref, 'feature/d2-bandana-r6-eyewear-r1-') || startsWith(github.head_ref, 'feature/dnav-') || startsWith(github.head_ref, 'feature/d2-eyewear-r21-') || startsWith(github.head_ref, 'feature/d2-eyewear-r3-') || startsWith(github.head_ref, 'feature/d2-eyewear-r4-') || startsWith(github.head_ref, 'feature/d2-eyewear-r5-')) }}
         run: |
           expected="$(git ls-remote origin refs/heads/main | cut -c1-12)"
           for attempt in 1 2 3 4 5 6 7 8; do
@@ -533,6 +533,18 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/d2-eyewear-r4-') }}
         run: |
           node --experimental-strip-types --test \
+            tests/operator-d2-eyewear-r4.test.mjs \
+            tests/operator-d2-eyewear-r3.test.mjs \
+            tests/operator-d2-eyewear-r2-silhouettes.test.mjs \
+            tests/operator-d2-glasses-stage-b1.test.mjs \
+            tests/operator-d2-goggles-stage-b2.test.mjs \
+            tests/quickplay-lazy-visuals.test.mjs \
+            tests/operator-wardrobe-data.test.mjs
+      - name: Eyewear R5 — silhouette, fit and existing wardrobe compatibility
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/d2-eyewear-r5-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/operator-d2-eyewear-r5.test.mjs \
             tests/operator-d2-eyewear-r4.test.mjs \
             tests/operator-d2-eyewear-r3.test.mjs \
             tests/operator-d2-eyewear-r2-silhouettes.test.mjs \

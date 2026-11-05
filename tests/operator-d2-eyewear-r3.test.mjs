@@ -82,7 +82,7 @@ test('R3 wrap is a continuous swept surface, eyeshield is an open borderless pan
 test('R4 preserved: three sculpted goggle families, plus only authored gasket masses',()=>{
  const [low,field,retro]=goggleNames.map(id=>
   createD2Goggles(id,frame,lens,strap).children[0]);
- const lowHousing=profiles(low).find(m=>m.name.includes('closefit'));
+ const lowHousing=profiles(low).find(m=>m.name.includes('sport-seal'));
  const fieldHousing=profiles(field).find(m=>m.name.includes('deep-field'));
  const cups=profiles(retro).filter(m=>m.name.includes('faceted-barrel'));
  assert.ok(lowHousing&&fieldHousing);
@@ -95,7 +95,7 @@ test('R4 preserved: three sculpted goggle families, plus only authored gasket ma
   assert.equal(housing.geometry.type,'BufferGeometry');
   const p=housing.userData.d2EyeProfile;
   assert.equal(p.version,3);
-  assert.ok(p.housingDepth>1.1);
+  assert.ok(p.housingDepth>.79);
   const nz=housing.geometry.attributes.normal;
   const normals=Array.from({length:nz.count},(_,i)=>nz.getZ(i));
   assert.ok(normals.some(z=>z<-.8),'front cap should face camera');
