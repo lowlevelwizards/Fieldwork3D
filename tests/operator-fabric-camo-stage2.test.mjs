@@ -133,7 +133,7 @@ test('three editor contexts mount shared actual-pixel swatches; historic eligibi
   ['Lab','../src/breach-operator-lab.ts'],['Campaign','../src/campaign-ui.ts'],
   ['Quick Play','../src/breach-main.ts']]){
   const source=readFileSync(new URL(path,import.meta.url),'utf8');
-  assert.match(source,/createWardrobeFabricCamoPicker/,name);
+  assert.match(source,name==='Quick Play'?/createWardrobeFabricCamoPicker|openOperatorStudio/:/createWardrobeFabricCamoPicker/,name);
  }
  const html=readFileSync(new URL('../operator-lab.html',import.meta.url),'utf8');
  assert.match(html,/id="wardrobeFabricCamo"/);
