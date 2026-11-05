@@ -877,6 +877,13 @@ jobs:
             tests/civilian-c3c-harm-attribution.test.mjs \
             tests/civilian-release-field-smoke.test.mjs \
             tests/mission-escort-physicality.test.mjs
+      - name: R5 identity A–C fast contracts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r5-identity-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/r5-identity-stage-a.test.mjs \
+            tests/r5-identity-stage-bc.test.mjs \
+            tests/faction-reference.test.mjs
       - name: UX R3 tactical HUD, squad and campaign critical flows
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/ux-r3-hud-campaign-polish-') }}
         run: |

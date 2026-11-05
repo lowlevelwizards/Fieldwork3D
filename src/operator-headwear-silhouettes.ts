@@ -13,12 +13,13 @@ import * as THREE from 'three';
 import {unionCuboids,type HeadwearCuboid} from './operator-cuboid-union.ts';
 import {CUBE_HEAD_ANATOMY} from './operator-head-anatomy.ts';
 import {headwearFaceTone,headwearFaceRegion} from './operator-headwear-materials.ts';
-export type HeadSilhouetteId='patrol-cap'|'boonie'|'beanie'|'pasgt'|'soviet-steel'|'ach'|'high-cut';
+export type HeadSilhouetteId='patrol-cap'|'boonie'|'beanie'|'beret'|'pasgt'|'soviet-steel'|'ach'|'high-cut';
 export type HeadSilhouetteMetrics={
  id:HeadSilhouetteId;frontExtent:number;rearExtent:number;top:number;
  earEdge:number;foreheadEdge:number;billLength:number;
 };
 export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhouetteMetrics>>={
+ 'beret':{id:'beret',frontExtent:-5.10,rearExtent:5.10,top:8.56,earEdge:4.80,foreheadEdge:4.80,billLength:0},
  'patrol-cap':{id:'patrol-cap',frontExtent:-7.365,rearExtent:4.83,
   top:8.28,earEdge:4.64,foreheadEdge:4.64,billLength:2.85},
  'boonie':{id:'boonie',frontExtent:-6.725,rearExtent:6.725,
@@ -40,6 +41,31 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
  * facial region and the space beneath the brim OPEN.
  * -Z is front; +Z is nape; X sides are symmetric unless stated otherwise.
  */
+
+/** R5C BERET: knitted/wool fabric broad asymmetry. Fitted hollow band wraps
+ * the unchanged 8x8 skull; one displaced crown and a strong drooped right lip
+ * give the profile. Right/left drape is a mirrored whole-model variant.
+ * No brim, floating disc, curved surface, or tiny ornamental staircases.
+ */
+const BERET_CUBOIDS:readonly HeadwearCuboid[]=[
+ {name:'beret-crown',x:.6,y:7.76,z:0,width:10.25,height:1.55,depth:10.2},
+ {name:'beret-oversized-shoulder',x:1.6,y:8.06,z:.15,
+  width:10.60,height:1.00,depth:10.0},
+ {name:'beret-right-drape',x:5.4,y:7.15,z:.10,
+  width:2.45,height:1.65,depth:8.65},
+ {name:'beret-dropped-lip',x:5.65,y:6.35,z:.50,
+  width:1.80,height:1.08,depth:7.85},
+ {name:'beret-front-band',x:0,y:5.55,z:-4.37,
+  width:9.25,height:1.50,depth:1.02},
+ {name:'beret-rear-band',x:0,y:5.55,z:4.37,
+  width:9.25,height:1.50,depth:1.02},
+ ...([-1,1] as const).map(sign=>({
+  name:sign===-1?'beret-left-band':'beret-right-band',
+  x:sign*4.16,y:5.55,z:0,width:.95,height:1.50,depth:9.50
+ })),
+ {name:'beret-badge-stiffener',x:-2.0,y:5.74,z:-4.96,
+  width:2.1,height:1.62,depth:.55}
+];
 
 /** Stage 1N PATROL: taller band, still THREE reads. A flat fitted crown, ONE lower
  * band, ONE bill. Each hollow four-wall structure deliberately shares its
@@ -246,6 +272,7 @@ export const HEADWEAR_FIT_TARGETS=Object.freeze({
  * by scaling another helmet or by swapping detail strips.
  */
 const HEADGEAR_VOLUMES:Readonly<Record<HeadSilhouetteId,readonly HeadwearCuboid[]>>={
+ 'beret':BERET_CUBOIDS,
  'patrol-cap':PATROL_CAP_CUBOIDS,
  'boonie':BOONIE_CUBOIDS,
  'beanie':BEANIE_CUBOIDS,
@@ -280,7 +307,7 @@ export function createHeadwearSilhouette(
  group.name='cuboid-'+id+'-minus-Z-forward';
  headwearFromVolumes(group,material,id);
  group.userData.stage=({
-  'patrol-cap':'1N','boonie':'1N','beanie':'1N',
+  'patrol-cap':'1N','boonie':'1N','beanie':'1N','beret':'R5C',
   'pasgt':'1N','soviet-steel':'1N',
   'ach':'1E','high-cut':'1E'
  } as const)[id];

@@ -5,6 +5,7 @@
 import type {HeadwearCamoId} from './operator-headwear-camo.ts';
 import type {GarmentSolidId} from './operator-garment-color-policy.ts';
 import type {HeadwearSolidColorId} from './operator-headwear-colors.ts';
+import type {IdentityMarkings} from './operator-identity-markings.ts';
 import type {LoadoutSlot} from './equipment-loadouts.ts';
 import type {WardrobeSlot,SleeveState,TrouserHem} from './operator-wardrobe-data.ts';
 
@@ -18,7 +19,8 @@ export type FactionReference={
  uniformSolid?:GarmentSolidId;
  styles?:Partial<Record<WardrobeSlot,string>>;
  kit?:Partial<Record<LoadoutSlot,string>>;
- headwearColor?:HeadwearSolidColorId;
+ headwearColor?:HeadwearSolidColorId;beretDrape?:'left'|'right';
+ markings?:IdentityMarkings;
  gearSolid?:GarmentSolidId;
  sleeveState?:SleeveState;trouserHem?:TrouserHem;
  weaponFamily:string;sourceNotes:string;
@@ -96,7 +98,7 @@ export const FACTION_REFERENCES:readonly FactionReference[]=[
  summary:'MM-14 field dress with plausible mixed olive and coyote tactical equipment.',
  baseRecipeId:'acu-patrol',uniformCamo:'ukrainian-mm14',
  styles:{headwear:'ach',armorStyle:'plate-standard',rigStyle:'light-rig'},gearSolid:'olive-drab',
- weaponFamily:'AK / AR families',
+ markings:{rightShoulder:'flag-ukraine'},weaponFamily:'AK / AR families',
  gaps:[patch,weapon('ak-family','AK-family service rifle'),gap('ukraine-identification','Ukrainian field identification')],
  sourceNotes:'Representative appearance, not a claim that every unit uses the same configuration.'},
  {id:'pla-xingkong-2021',name:'Chinese PLA · Xingkong',country:'China',
@@ -127,13 +129,15 @@ export const FACTION_REFERENCES:readonly FactionReference[]=[
  {id:'us-army-ocp-2019',name:'US Army · OCP Infantry',country:'United States',organization:'military',
  environment:'mixed',era:{start:2015,end:2026,label:'2015–2020s'},
  summary:'Scorpion W2 operational camouflage and modern issued armor.',
- baseRecipeId:'acu-patrol',uniformCamo:'scorpion-w2',gearSolid:'coyote',weaponFamily:'M4 / M4A1',
+ baseRecipeId:'acu-patrol',uniformCamo:'scorpion-w2',gearSolid:'coyote',
+ markings:{rightShoulder:'flag-us'},weaponFamily:'M4 / M4A1',
  gaps:[patch,weapon('ar-family','M4-family service carbine'),gap('iotv-armor','IOTV armor silhouette')],
  sourceNotes:'Broad OCP infantry reference, not an exact unit-issued packing list.'},
  {id:'us-army-ucp-2010',name:'US Army · UCP Era',country:'United States',organization:'military',
  environment:'mixed',era:{start:2005,end:2019,label:'2005–2019'},
  summary:'Universal Camouflage Pattern utility uniform with foliage-era protection.',
- baseRecipeId:'ucp-era',uniformCamo:'ucp',gearSolid:'olive-drab',weaponFamily:'M4 / M16A4',
+ baseRecipeId:'ucp-era',uniformCamo:'ucp',gearSolid:'olive-drab',
+ markings:{rightShoulder:'flag-us'},weaponFamily:'M4 / M16A4',
  gaps:[patch,weapon('ar-family','M4/M16-family service rifle'),gap('iotv-armor','IOTV armor silhouette')],
  sourceNotes:'Representative UCP-era field appearance; actual gear often foliage green.'},
  {id:'us-army-m81-1990',name:'US Army · Woodland BDU',country:'United States',organization:'military',
@@ -191,7 +195,8 @@ export const FACTION_REFERENCES:readonly FactionReference[]=[
  {id:'polish-pantera-2010',name:'Polish Armed Forces · Pantera',country:'Poland',
  organization:'military',environment:'woodland',era:{start:1995,end:2020,label:'1990s–2010s'},
  summary:'Wz.93 Pantera field uniform and olive tactical equipment.',
- baseRecipeId:'bdu-field',uniformCamo:'polish-pantera',gearSolid:'olive-drab',weaponFamily:'Beryl / AK',
+ baseRecipeId:'bdu-field',uniformCamo:'polish-pantera',gearSolid:'olive-drab',
+ markings:{rightShoulder:'flag-poland'},weaponFamily:'Beryl / AK',
  gaps:[patch,weapon('beryl-family','Polish Beryl service rifle'),gap('poland-insignia','Polish national service markings')],
  sourceNotes:'A general Wz.93 field appearance; exact equipment varies by era.'},
  {id:'italian-vegetato-2015',name:'Italian Army · Vegetato',country:'Italy',
@@ -242,7 +247,7 @@ export const FACTION_REFERENCES:readonly FactionReference[]=[
  summary:'Urban Kamysh uniform with black external tactical protection.',
  baseRecipeId:'police-entry',uniformCamo:'urban-kamysh',gearSolid:'black',
  styles:{top:'bdu-shirt',trousers:'bdu-trousers',headwear:'ach'},
- headwearColor:'black',weaponFamily:'AK / MP5 equivalents',
+ headwearColor:'black',markings:{chest:'label-police'},weaponFamily:'AK / MP5 equivalents',
  gaps:[patch,weapon('ak-family','AK-family rifle'),gap('visor-police','Visored law-enforcement helmet','defining')],
  sourceNotes:'Representative historical MVD-style uniform; agency and unit identifiers differ.'},
  {id:'russian-gorka-leto-2010',name:'Russian Reconnaissance · Gorka/SS-Leto',country:'Russia',
@@ -285,7 +290,9 @@ export const FACTION_REFERENCES:readonly FactionReference[]=[
  organization:'special-operations',environment:'woodland',era:{start:1980,end:2005,label:'1980s–2000s'},
  summary:'Distinctive flowing brushstroke field uniform and traditional service equipment.',
  baseRecipeId:'bdu-field',uniformCamo:'indonesian-kopassus-flowing-blood',gearSolid:'olive-drab',
- kit:{armor:'armor-none'},styles:{armorStyle:'armor-bare',headwear:'patrol-cap'},weaponFamily:'M16 / AK',
+ kit:{armor:'armor-none',head:'head-cap'},styles:{armorStyle:'armor-bare',headwear:'beret'},
+ headwearColor:'beret-scarlet',beretDrape:'right',
+ markings:{rightShoulder:'flag-indonesia'},weaponFamily:'M16 / AK',
  gaps:[patch,weapon('ar-family','M16-family rifle'),gap('red-beret','Distinctive red beret','defining')],
  sourceNotes:'Representative historical camouflaged outfit; the red beret is a major missing identifying item.'},
  {id:'sandf-s2000-2015',name:'South African SANDF · Soldier 2000',country:'South Africa',
@@ -299,7 +306,7 @@ export const FACTION_REFERENCES:readonly FactionReference[]=[
  organization:'police',environment:'urban',era:{start:2005,end:2026,label:'2000s–2020s'},
  summary:'Dark tactical uniform, external ballistic vest and protected helmet.',
  baseRecipeId:'police-entry',uniformSolid:'black',gearSolid:'black',
- headwearColor:'black',weaponFamily:'MP5 / AR carbine / pump shotgun',
+ headwearColor:'black',markings:{chest:'label-swat'},weaponFamily:'MP5 / AR carbine / pump shotgun',
  gaps:[patch,weapon('mp5-family','MP5 SMG for period-specific appearance'),gap('police-marking','Clear POLICE/SWAT identification','defining'),gap('visor-police','Optional ballistic face shield')],
  sourceNotes:'General law-enforcement equipment category; actual SWAT kit differs widely by agency.'},
 ] as const;

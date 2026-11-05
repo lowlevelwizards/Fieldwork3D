@@ -3,6 +3,7 @@
  * equipment-catalog / equipment-loadouts / campaign-state.
  */
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {readIdentityMarkings,type IdentityMarkings} from './operator-identity-markings.ts';
 import {isSkinToneId,isHairStyleId,isHairToneId,
  type SkinToneId,type HairStyleId,type HairToneId} from './operator-identity-palette.ts';
 import {wardrobeMount} from './operator-wardrobe-mounts.ts';
@@ -38,7 +39,8 @@ add('headwear','bare',[['bare','Uncovered']]);
 // Older placeholder variants remain loadout-safe internally but do not
 // pollute the approved art catalog.
 add('headwear','soft',[
- ['patrol-cap','Patrol cap'],['beanie','Beanie'],['boonie','Boonie hat']
+ ['patrol-cap','Patrol cap'],['beanie','Beanie'],['boonie','Boonie hat'],
+ ['beret','Military beret']
 ]);
 add('headwear','ballistic',[
  ['soviet-steel','Steel helmet'],['pasgt','PASGT-style helmet'],
@@ -164,6 +166,8 @@ export type WardrobeOptions={
  d2Accessories?:D2AccessoryOptions;
  headwearColor?:HeadwearSolidColorId;headwearCamo?:HeadwearCamoId;
  headwearCamoRoll?:number;
+ /** R5C visual drape, not a separate helmet or equipment class. */
+ beretDrape?:'left'|'right';
  /** Approved original prints on verified textile channels. */
  fabricCamo?:Partial<Record<FabricCamoChannel,HeadwearCamoId>>;
  /** Saved individual fabric-cut seeds; never regenerated during animation. */
@@ -184,6 +188,8 @@ export type WardrobeOptions={
  /** Contextual new-garment materials, never the abolished global palette. */
  topColorway:string;
  accessories:WardrobeAccessoryConfiguration;
+ /** R5 cosmetic-only, optional markings. Empty means no extra emblems. */
+ markings?:IdentityMarkings;
  mounts:{medical?:string;utility?:string;magazineOrder:'left-right'|'right-left'};
 };
 const DEFAULTS:Record<WardrobeSlot,string>={
@@ -271,6 +277,7 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(isGarmentSolidId(v.knitSolid))result.knitSolid=v.knitSolid;
  if(isGarmentSolidId(v.pouchSolid))result.pouchSolid=v.pouchSolid;
  if(isHeadwearSolidColorId(v.headwearColor))result.headwearColor=v.headwearColor;
+ if(v.beretDrape==='left'||v.beretDrape==='right')result.beretDrape=v.beretDrape;
  if(isHeadwearCamoId(v.headwearCamo)&&v.headwearCamo!=='splittertarn-31')result.headwearCamo=v.headwearCamo;
  if(Number.isInteger(v.headwearCamoRoll)&&v.headwearCamoRoll!>=0&&v.headwearCamoRoll!<4096)
   result.headwearCamoRoll=v.headwearCamoRoll;
@@ -280,6 +287,8 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
   result.trouserHem=v.trouserHem as TrouserHem;
  if(isGarmentColorway(v.topColorway))result.topColorway=v.topColorway;
  result.accessories=readWardrobeAccessories(v.accessories);
+ const markings=readIdentityMarkings(v.markings);
+ if(Object.keys(markings).length)result.markings=markings;
  if(v.mounts&&typeof v.mounts==='object'){
   const incoming=v.mounts;
   for(const kind of ['medical','utility'] as const){

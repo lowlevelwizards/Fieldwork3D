@@ -61,6 +61,8 @@ export function resolveFactionReference(input:FactionReference|string):Reference
  }
  wardrobe=readWardrobe({...wardrobe,
   ...(reference.headwearColor?{headwearColor:reference.headwearColor}:{}),
+  ...(reference.beretDrape?{beretDrape:reference.beretDrape}:{}),
+  ...(reference.markings?{markings:reference.markings}:{}),
   ...(reference.sleeveState?{sleeveState:reference.sleeveState}:{}),
   ...(reference.trouserHem?{trouserHem:reference.trouserHem}:{})});
  issues.push(...wardrobeConflicts(wardrobe,kit));

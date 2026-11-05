@@ -809,6 +809,7 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
  ...CAMO9B_RECIPES
 };
 export const HEADWEAR_CAMO_ELIGIBILITY:Readonly<Record<HeadSilhouetteId,readonly HeadwearCamoId[]>>={
+ beret:[],
  'patrol-cap':[...HEADWEAR_CAMO_IDS],
  boonie:[...HEADWEAR_CAMO_IDS],
  beanie:[],

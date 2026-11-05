@@ -241,3 +241,14 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 @media(min-width:740px){.reference-controls{grid-template-columns:2fr 1fr 1fr}
  .reference-controls .reference-search{grid-column:auto}
  .reference-card{flex-basis:170px}}
+
+/* R5B: identity markings stay in the existing Details flow, not a seventh main tab. */
+#studioRoot[data-identity-mode="true"] #studioItemBrowser,
+#studioRoot[data-identity-mode="true"] #studioWorkflow,
+#studioRoot[data-identity-mode="true"] #studioWorkflowHelp{display:none}
+#studioRoot[data-identity-mode="true"] #studioMaterials{display:grid}
+#studioRoot[data-identity-mode="true"] #studioMaterials .material-group{
+ padding:7px 3px;border-bottom:1px solid #69807377}
+#studioRoot[data-identity-mode="true"] #studioMaterials select{
+ width:100%;min-height:42px;padding:7px 10px;border:1px solid #71897c;
+ color:#e6e9df;background:#253e33;border-radius:6px}

@@ -20,7 +20,7 @@ export const HEADWEAR_DETAIL_PIXEL_WORLD_SIZE=PIXEL_WORLD_SIZE;
 export const HEADWEAR_ATLAS_PIXELS=64;
 export const HEADWEAR_REGION_PIXELS=32;
 export const HEADWEAR_MATERIAL_KIND:Readonly<Record<HeadSilhouetteId,HeadwearMaterialKind>>={
- 'patrol-cap':'cotton','boonie':'cotton','beanie':'knit',
+ 'patrol-cap':'cotton','boonie':'cotton','beanie':'knit','beret':'cotton',
  'ach':'composite','high-cut':'composite','pasgt':'composite','soviet-steel':'steel'
 };
 /** Neutral surface-lighting finish independent of contextual color/camo. */
@@ -32,6 +32,7 @@ export const HEADWEAR_SURFACE_PROFILE:Readonly<Record<HeadSilhouetteId,HeadwearS
  'patrol-cap':{family:'woven-twill',roughness:.96,metalness:0},
  'boonie':{family:'woven-canvas',roughness:.985,metalness:0},
  'beanie':{family:'ribbed-knit',roughness:.99,metalness:0},
+ 'beret':{family:'woven-twill',roughness:.995,metalness:0},
  'ach':{family:'matte-composite',roughness:.92,metalness:0},
  'high-cut':{family:'matte-composite',roughness:.91,metalness:0},
  'pasgt':{family:'matte-composite',roughness:.945,metalness:0},
@@ -69,6 +70,9 @@ export function headwearRegionPixel(id:HeadSilhouetteId,region:0|1|2|3,
     return edge===5&&along%3===0?236:248;
    }
    return 250; // blank fabric crown roof
+  case 'beret':
+   // Felted wool, deliberately quiet. Shape comes from the asymmetry.
+   return region===1?238:region===2?244:region===3?251:248;
   case 'beanie':
    if(region===0){
     // Wide, quiet knitted crown ribs; no dense alternating barcode.
@@ -250,6 +254,11 @@ export function headwearFaceRegion(id:HeadSilhouetteId,name:string,
    return axis===1&&sign===1?2:1;
   return axis===1&&sign===1?3:0;
  }
+ if(id==='beret'){
+  if(name.includes('band'))return 1;
+  if(name.includes('badge-stiffener'))return 2;
+  return axis===1&&sign===1?3:0;
+ }
  if(id==='beanie'){
   if(name.includes('cuff'))return 1;
   return axis===1&&sign===1?3:0;
@@ -277,6 +286,8 @@ export function headwearFaceTone(id:HeadSilhouetteId,name:string,
   case 'patrol-cap':value=name.includes('band')?.81:name.includes('bill')?.88:1;break;
   case 'boonie':value=name.includes('band')?.83:name.includes('brim')?.94:1;break;
   case 'beanie':value=name.includes('cuff')?.81:1;break;
+  case 'beret':value=name.includes('band')?.79:
+   name.includes('badge-stiffener')?.86:name.includes('drape')?.93:1;break;
   case 'ach':value=name.includes('ear-wrap')?.88:name.includes('nape')?.90:
    name.includes('brow')?.92:1;break;
   case 'high-cut':value=name.includes('nape')?.89:name.includes('brow')?.91:1;break;

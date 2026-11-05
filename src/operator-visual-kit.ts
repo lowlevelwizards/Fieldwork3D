@@ -3,6 +3,8 @@
  * low-poly silhouettes for the isometric camera.
  */
 import * as THREE from 'three';
+import {createIdentityVisuals,updateIdentityVisuals,type IdentityVisuals}
+ from './operator-identity-marking-visuals.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {HAIR_STYLE_IDS,HAIR_TONES,seededHairStyle,seededHairTone}
  from './operator-identity-palette.ts';
@@ -39,6 +41,7 @@ type VisualMaterials={cloth:Material;vest:Material;trousers:Material;
 type Limb={upper:THREE.Mesh;lower:THREE.Mesh;shoe?:THREE.Mesh};
 export type OperatorVisualKit={
  wardrobeHead:WardrobeHeadLayers;wardrobeBody:WardrobeBodyLayers;
+ identityVisuals:IdentityVisuals;
  wardrobeGear:WardrobeGearLayers;accessories:WardrobeAccessoryVisuals;
  /** Stage 3B two distinct upper-body field blouse cuts. */
  fieldBlouses:FieldBlousePrototypes;
@@ -141,6 +144,7 @@ export function createOperatorVisualKit(
  const wardrobeHead=createWardrobeHeadLayers(head,
   canonicalHead??createCanonicalAttachment(head),
   headCloth,headArmor,dark,skin,lazyAccessories);
+ const identityVisuals=createIdentityVisuals(chest,arms);
  const wardrobeBody=createWardrobeBodyLayers(chest,legs,arms,
   cloth,trousers,trim,dark);
  const fieldBlouses=createFieldBlousePrototypes(chest,arms,cloth,trim);
@@ -263,7 +267,7 @@ export function createOperatorVisualKit(
  for(const surface of [helmet,cap,hair,jacket,lightShirt,softArmor,
   plateCarrier,chestRig,fieldWebbing,belt,dayPack,fieldPack,packHarness])
    consolidateVisualGroup(surface);
- return {wardrobeHead,wardrobeBody,wardrobeGear,accessories,fieldBlouses,fieldTrousers,newUpper,
+ return {wardrobeHead,wardrobeBody,identityVisuals,wardrobeGear,accessories,fieldBlouses,fieldTrousers,newUpper,
   helmet,cap,hair,jacket,lightShirt,
   softArmor,plateCarrier,chestRig,
   fieldWebbing,belt,dayPack,fieldPack,packHarness,cargoPockets,bootCuffs,
@@ -299,7 +303,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  updateWardrobeHeadLayers(v.wardrobeHead,
   looks.headwear,looks.facewear,looks.eyewear,looks.headset,
   effectiveFaceMode,wardrobe?.d2FaceSolid,wardrobe?.d2Accessories,
-  wardrobe?.d2MaskColor);
+  wardrobe?.d2MaskColor,wardrobe?.beretDrape);
  // Rig pose color ledger owns final headwear tint (and reversible injury
  // desaturation). Setting it here was overwritten later in poseOperator.
 
@@ -342,6 +346,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   looks.beltStyle,looks.packStyle,looks.top);
  updateWardrobeAccessories(v.accessories,
   wardrobe?.accessories??initialWardrobeAccessories());
+ updateIdentityVisuals(v.identityVisuals,wardrobe?.markings,
+  looks.armorStyle,looks.top,looks.rigStyle);
  v.chestRig.visible=!usingWardrobe&&s.rig==='rig-light';
  v.fieldWebbing.visible=!usingWardrobe&&s.rig==='rig-full';
  v.chestRig.scale.set(looks.rigStyle==='micro-rig'?.76:1,1,1);
