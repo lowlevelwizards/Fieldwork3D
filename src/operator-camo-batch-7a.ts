@@ -2,10 +2,11 @@
  * MultiCam-family additions preserve the established 32px master exactly.
  * Later specialty families are constructed from their own authored shapes.
  */
+import {specialty7AIndices} from './operator-camo-7a-specialty.ts';
 export const CAMO7A_IDS=[
  'multicam-black','multicam-alpine',
- 'pencott-greenzone','pencott-badlands'
- // BATCH_7A_IDS
+ 'pencott-greenzone','pencott-badlands',
+ 'desert-night','kryptek-highlander','berezka','spectre-skwo'
 ] as const;
 export type Camo7AId=typeof CAMO7A_IDS[number];
 export type RGB7A=readonly [number,number,number];
@@ -37,8 +38,32 @@ const recipes={
   description:'Same PenCott three-scale hybrid index topology, recolored to muted sand, brown-khaki, sage and dark upland earth',
   colors:[[205,191,155],[176,155,116],[139,135,102],[96,99,81],[86,70,57]],
   targetCoverage:[.26,.27,.23,.16,.08],motifs:[]
- // BATCH_7A_RECIPES
-} satisfies Record<Camo7AId,Camo7ARecipe>;
+ },
+ 'desert-night':{
+  label:'DESERT NIGHT',
+  description:'Historical sage-green regular lattice under irregular low-profile dark blotches, not a pixelated woodland print',
+  colors:[[133,151,125],[84,105,83],[46,67,56]],
+  targetCoverage:[.65,.28,.07],motifs:[]
+ },
+ 'kryptek-highlander':{
+  label:'KRYPTEK HIGHLANDER',
+  description:'Layered rocky earth forms with crossing angular fracture lattice and dark ink fissures',
+  colors:[[195,178,140],[160,139,100],[121,111,82],[94,86,69],[49,58,49]],
+  targetCoverage:[.29,.27,.22,.15,.07],motifs:[]
+ },
+ berezka:{
+  label:'KLMK BEREZKA',
+  description:'Soviet sunray camouflage with rows of irregular bright leaflets on a deep olive ground',
+  colors:[[85,105,65],[182,184,113],[214,207,152],[55,72,52]],
+  targetCoverage:[.62,.24,.10,.04],motifs:[]
+ },
+ 'spectre-skwo':{
+  label:'SPECTRE SKWO',
+  description:'Post-Soviet forest-steppe transitional hybrid: layered earth and green strokes with stepped brown/charcoal interruption',
+  colors:[[146,144,107],[109,129,89],[85,106,72],[119,93,69],[51,69,52]],
+  targetCoverage:[.26,.28,.23,.16,.07],motifs:[]
+ }
+ } satisfies Record<Camo7AId,Camo7ARecipe>;
 export const CAMO7A_RECIPES:Readonly<Record<Camo7AId,Camo7ARecipe>>=recipes;
 export function isCamo7AId(value:string):value is Camo7AId{
  return (CAMO7A_IDS as readonly string[]).includes(value);
@@ -134,6 +159,8 @@ export function camo7AIndices(id:Camo7AId,multicamBase?:Uint8Array):Uint8Array{
  if(id==='pencott-greenzone'||id==='pencott-badlands'){
   const tile=pencottMaster();tileCache.set(id,tile);return tile.slice();
  }
- // BATCH_7A_RENDERER
+ if(id==='desert-night'||id==='kryptek-highlander'||id==='berezka'||id==='spectre-skwo'){
+  const tile=specialty7AIndices(id);tileCache.set(id,tile);return tile.slice();
+ }
  throw new Error('Missing 7A authored family raster for '+id);
 }
