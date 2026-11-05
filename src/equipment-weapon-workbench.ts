@@ -59,6 +59,15 @@ export class WeaponWorkbenchPreview{
   this.caption.style.cssText='margin:8px 0 4px;min-height:1em;font-size:11px;opacity:.72';
   host.classList.add('weapon-workbench');
   host.style.cssText='display:block;width:100%;min-width:0;max-width:100%;overflow:hidden';
+  // Campaign used a hard-coded 300px preview box; the replacement panel
+  // must grow with its contents instead of being cut off on phones.
+  if(host.classList.contains('campaign-kit-preview')){
+   host.style.height='auto';
+   host.style.minHeight='0';
+   host.style.overflow='visible';
+   host.style.touchAction='pan-y';
+   this.caption.style.padding='8px 2px';
+  }
   this.toolbar=document.createElement('div');
   this.toolbar.style.cssText='display:flex;flex-wrap:wrap;gap:7px;margin:5px 0 9px';
   for(const mode of ['body','attachments'] as const){
