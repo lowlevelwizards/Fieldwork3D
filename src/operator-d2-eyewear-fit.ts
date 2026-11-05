@@ -1,4 +1,4 @@
-/** Eyewear R3-4. Headwear brow clearances, never global arbitrary scaling.
+/** Eyewear R5. Headwear brow clearances, never global arbitrary scaling.
  * Based on the same real silhouette metrics used to construct each helmet.
  */
 import {HEAD_SILHOUETTE_METRICS} from './operator-headwear-silhouettes.ts';
@@ -17,8 +17,17 @@ export function fittedEyeOffset(headwear:string,top:number):EyewearFit{
  const h=COVER[headwear];
  if(!h||headwear==='bare')return {y:0,z:0,brow:Infinity,clearance:0};
  const clearance=.18;
+ const needed=Math.max(0,top-(h.brow-clearance));
+ // R5 taller field-goggle brow needs a little more downward room than
+ // spectacles. Stop before moving the lens entirely below the eyes.
+ // When an especially low helmet brow still conflicts, shift the goggle
+ // forward a small additional amount, instead of hiding its upper roof.
+ const maximumDown=top>5.15?1.16:.92;
+ const down=Math.min(needed,maximumDown);
+ const remaining=Math.max(0,needed-down);
  return {
-  y:Math.max(-.92,Math.min(0,h.brow-clearance-top)),
-  z:h.advance,brow:h.brow,clearance
+  y:-down,
+  z:h.advance-(remaining>.03?.15:0),
+  brow:h.brow,clearance
  };
 }

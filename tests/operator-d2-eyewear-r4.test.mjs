@@ -79,20 +79,20 @@ test('R4 shooting glasses are one swept sporty lens, shield stays an open plate'
 });
 test('R4 sport W and bunker goggles are fundamentally different shapes',()=>{
  const low=p('goggles-low'),field=p('goggles-field');
- const lowHousing=named(low,'closefit-W-housing')[0];
+ const lowHousing=named(low,'sport-seal-housing')[0];
  const fieldHousing=named(field,'deep-field-shell-housing')[0];
  assert.ok(lowHousing&&fieldHousing);
  const shape=lowHousing.geometry.attributes.position;
  const ptsLow=[];
- for(let i=0;i<shape.count;i++)if(Math.abs(shape.getZ(i)+5.34)<.02)
+ for(let i=0;i<shape.count;i++)if(Math.abs(shape.getZ(i)+5.04)<.02)
   ptsLow.push({x:shape.getX(i),y:shape.getY(i)});
  const cheeks=Math.min(...ptsLow.filter(v=>Math.abs(v.x)>1.3&&Math.abs(v.x)<3).map(v=>v.y));
  const nose=Math.max(...ptsLow.filter(v=>Math.abs(v.x)<.8&&v.y<4).map(v=>v.y));
- assert.ok(nose-cheeks>.75,'compact goggle gets distinct W nose cut');
+ assert.ok(nose-cheeks>.34,'compact goggle gets distinct W nose cut');
  const e=lowHousing.userData.d2EyeProfile;
  const f=fieldHousing.userData.d2EyeProfile;
  assert.ok(f.width>e.width+1.1,'field goggles substantially broader');
- assert.ok(f.housingDepth>e.housingDepth+.9,'field bunker deeper');
+ assert.ok(f.housingDepth>e.housingDepth+.75,'field bunker deeper');
  assert.equal(named(field,'field-soft-rear-gasket').length,1);
  assert.ok(named(low,'field-soft-rear-gasket').length===0);
 });

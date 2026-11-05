@@ -57,11 +57,11 @@ add('facewear','face',[
 add('eyewear','eyewear',[
  ['eyes-none','None'],['glasses-standard','Standard glasses'],
  ['glasses-aviator','Aviator sunglasses'],
- ['glasses-wrap','Wraparound tactical glasses'],
+ ['glasses-wrap','Shooting glasses'],
  ['glasses-shield','Ballistic eyeshield'],
  ['goggles-low','Low-profile tactical goggles'],
  ['goggles-field','Bulky field goggles'],
- ['goggles-retro','Vintage round goggles']
+ ['goggles-retro','Vintage motor goggles']
 ]);
 add('headset','headset',[
  ['comms-none','None'],['earpiece','Single earpiece'],
