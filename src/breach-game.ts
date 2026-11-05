@@ -69,6 +69,7 @@ import {settledEnemyPosture} from './breach-ai-posture.ts';
 import {searchCandidates} from './breach-ai-search.ts';
 import {investigationTempo} from './breach-ai-investigation.ts';
 import {routineDwellSeconds} from './breach-ai-routine-dwell.ts';
+import {pressureAdvanceOpportunity} from './breach-ai-initiative.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
 import {contactTactic} from './breach-ai-tactical-response.ts';
 import {directionalCoverFrom} from './breach-cover-direction.ts';
@@ -2839,11 +2840,27 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
     const committed=coverMoveCommitted(a.alert==='cover'&&!!a.defense,
       a.defense?d(a.p,a.defense):0,s.seconds,a.defenseUntil);
-    if(a.combatChoice==='reposition'&&a.alert!=='retreat'&&
-      !committed&&s.seconds-a.lastFireRepositionAt>2.6){
+    const initiative=a.combatChoice==='engage'&&
+      pressureAdvanceOpportunity({
+        personality:a.personality,directSight:true,
+        clearFireLane:lane.blocker==='clear',range:d(a.p,b.p),
+        suppression:a.suppression,morale:a.morale,
+        nearbyAllies:enemies(s).filter(o=>o!==a&&o.health>0&&
+          o.encounterGroupId===a.encounterGroupId&&d(o.p,a.p)<150).length,
+        secondsSinceLastMove:s.seconds-a.lastFireRepositionAt
+      });
+    if((a.combatChoice==='reposition'||initiative)&&
+      a.alert!=='retreat'&&!committed&&
+      s.seconds-a.lastFireRepositionAt>(initiative?6:2.6)){
       const candidate=firingPosition(a,b,s);
       a.lastFireRepositionAt=s.seconds;
-      if(candidate&&d(candidate,a.p)>15){
+      // An aggressive advance must actually shorten the distance to a
+      // directly seen contact. The candidate's firearm lane and motor
+      // path have already passed the existing physical validation.
+      const closesDistance=candidate&&
+        d(candidate,b.p)<d(a.p,b.p)-18;
+      if(candidate&&d(candidate,a.p)>15&&
+         (!initiative||closesDistance)){
         a.defense=candidate;a.alert='cover';a.nav=[];
         a.defenseUntil=coverMoveDeadline(s.seconds,d(a.p,candidate));
       }
