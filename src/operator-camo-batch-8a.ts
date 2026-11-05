@@ -242,6 +242,26 @@ function norwegianM98_8F():Uint8Array{
  return tile;
 }
 
+/** 8H: restrained authored contour finish on the approved 8G master.
+ * Removes only tiny concave one-pixel hooks where 3 of 4 direct neighboring
+ * pixels agree.  No color shifts, gradients, resampling, or fabric-UV changes.
+ * The original tile is sampled read-only, so raster order cannot bias edges.
+ */
+function norwegianM98_8H():Uint8Array{
+ const original=norwegianM98_8F();
+ const refined=original.slice();
+ for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++){
+  const ink=original[y*SIZE+x],votes=[0,0,0];
+  const offsets:[[number,number],[number,number],[number,number],[number,number]]=
+   [[1,0],[-1,0],[0,1],[0,-1]];
+  for(const [dx,dy] of offsets)
+   votes[original[((y+dy+SIZE)%SIZE)*SIZE+((x+dx+SIZE)%SIZE)]]++;
+  const winner=votes.indexOf(Math.max(...votes));
+  if(votes[winner]>=3&&votes[ink]<=1)refined[y*SIZE+x]=winner;
+ }
+ return refined;
+}
+
 /** 8B reference pass: reuses 8A index-space polygons/period/wrap while
  * rendering each real print's own motif language. No new catalog IDs.
  * All geometry is baked once into the original cached 64px master.
@@ -477,7 +497,7 @@ function ownTile(id:Camo8AId):Uint8Array{
  if(id==='urban-kamysh')return urbanKamysh8C();
  if(id==='jgsdf-type2')return jgsdf8F();
  if(id==='south-african-s2000')return soldier2000_8E();
- if(id==='norwegian-m98')return norwegianM98_8F();
+ if(id==='norwegian-m98')return norwegianM98_8H();
  throw new Error('Only independent 8A pattern masters are authored');
 }
 export function camo8AIndices(id:Camo8AId,relatives?:{

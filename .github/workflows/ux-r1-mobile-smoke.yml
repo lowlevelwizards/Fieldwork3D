@@ -1,0 +1,32 @@
+name: UX R1 — Critical iPhone Navigation
+on:
+  pull_request:
+    paths:
+      - 'src/breach-main.ts'
+      - 'src/ui/tactical-sheet-navigation.ts'
+      - 'src/ui/quick-loadout-groups.ts'
+      - 'src/ui/ux-r1-sheets.css'
+      - 'index.html'
+      - 'scripts/smoke-ux-r1.mjs'
+      - '.github/workflows/ux-r1-mobile-smoke.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: fieldwork-ux-r1-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  mobile-navigation:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'feature/ux-r1-navigation-squad-mission-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Phone Mission, Squad and Studio handoff
+        run: node scripts/smoke-ux-r1.mjs

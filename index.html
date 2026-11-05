@@ -31,45 +31,57 @@
   <button id="siteSettingsToggle" type="button" aria-expanded="false">SETTINGS</button>
   <button id="clear" type="button" title="Clear all remaining orders for selected operator">CLEAR PLAN</button>
 </section>
-<section id="siteSettings" class="site-settings" hidden role="region" aria-label="Mission and view options">
-  <div class="site-settings-heading"><strong>MISSION SETTINGS</strong>
-    <button id="closeSiteSettings" type="button" aria-label="Close mission settings and return to the map">✕ CLOSE</button>
+<section id="siteSettings" class="site-settings" hidden role="dialog" aria-modal="true" aria-label="Mission options">
+  <div class="site-settings-heading"><strong>MISSION</strong>
+    <button id="closeSiteSettings" type="button" aria-label="Close mission options and return to the map">✕ CLOSE</button>
   </div>
-  <div class="site-settings-group">
-    <h3>SQUAD</h3>
-    <div class="site-settings-row"><button id="openOperatorStudio" type="button">CUSTOMIZE SQUAD</button>
-    <small>Clothing, camouflage and saved appearance · no developer menus</small></div>
-  </div>
-  <div class="site-settings-group">
-    <h3>MISSION & SITE</h3>
-    <output id="siteIdentity" class="site-identity" aria-label="Current site identity" aria-live="off">CURRENT SITE · LOADING</output>
-    <div class="site-settings-row">
-      <button id="briefingToggle" type="button" aria-expanded="false">BRIEFING</button>
-      <button id="variant" type="button">NEW SITE</button>
-      <button id="siteSize" type="button" title="Set the size of the next generated site">NEXT SITE SIZE · MEDIUM</button>
-      <button id="intelMode" type="button" title="Set intelligence rules for the next site; does not reset this mission">NEXT SITE INTEL</button>
-      <button id="siteLighting" type="button" title="Choose lighting before deployment">LIGHTING · DAY</button>
-      <button id="restart" type="button">RESTART</button>
+  <nav class="site-settings-tabs" aria-label="Mission options sections">
+    <button type="button" data-site-tab="mission" aria-pressed="true">MISSION</button>
+    <button type="button" data-site-tab="environment" aria-pressed="false">ENVIRONMENT</button>
+    <button type="button" data-site-tab="preferences" aria-pressed="false">PREFERENCES</button>
+  </nav>
+  <div class="site-settings-content">
+    <div class="site-settings-group" data-site-panel="mission">
+      <h3>CURRENT OPERATION</h3>
+      <output id="siteIdentity" class="site-identity" aria-label="Current site identity" aria-live="off">CURRENT SITE · LOADING</output>
+      <div class="site-settings-row">
+        <button id="briefingToggle" type="button" aria-expanded="false">BRIEFING</button>
+        <button id="restart" type="button">RESTART MISSION</button>
+      </div>
+      <p class="site-settings-hint">BRIEFING reviews the objective. RESTART returns this mission to the beginning.</p>
+    </div>
+    <div class="site-settings-group" data-site-panel="environment" hidden>
+      <h3>NEXT SITE</h3>
+      <p class="site-settings-hint">These options apply to the next generated location, not the current encounter.</p>
+      <div class="site-settings-row">
+        <button id="variant" type="button">GENERATE NEW SITE</button>
+        <button id="siteSize" type="button" title="Set the size of the next generated site">NEXT SITE SIZE · MEDIUM</button>
+        <button id="intelMode" type="button" title="Set intelligence rules for the next site">NEXT SITE INTEL</button>
+        <button id="siteLighting" type="button" title="Choose lighting before deployment">LIGHTING · DAY</button>
+      </div>
+    </div>
+    <div class="site-settings-group" data-site-panel="preferences" hidden>
+      <h3>CAMERA & CONTROL</h3>
+      <div class="site-settings-row site-settings-view">
+        <div class="site-settings-view-switch" role="group" aria-label="Camera view mode">
+          <button id="viewIso" type="button" aria-pressed="true">ISO</button>
+          <button id="viewTop" type="button" aria-pressed="false">TOP</button>
+          <button id="view2d" type="button" aria-pressed="false">2D</button>
+        </div>
+        <button id="cameraFit" type="button">FIT VIEW</button>
+        <button id="uiHelp" type="button" aria-label="Show contextual help">? HELP</button>
+        <button id="uiSoundToggle" type="button" aria-pressed="true">UI SOUND ON</button>
+      </div>
+      <details class="site-settings-tools">
+        <summary>WORKBENCH · DEVELOPMENT LABS</summary>
+        <p class="site-settings-hint">Optional testing spaces. These do not change your mission.</p>
+        <div class="site-settings-row"><a class="operator-lab-link" href="./operator-lab.html">OPERATOR LAB</a>
+          <a class="operator-lab-link" href="./map-lab.html">MAP LAB</a>
+          <a class="operator-lab-link" href="./physicality-lab.html">PHYSICALITY LAB</a>
+          <a class="operator-lab-link" href="./asset-lab.html">ASSET LIBRARY</a></div>
+      </details>
     </div>
   </div>
-  <div class="site-settings-group">
-    <h3>VIEW & CONTROLS</h3>
-    <div class="site-settings-row">
-      <button id="viewIso" type="button" aria-pressed="true">ISO</button>
-      <button id="viewTop" type="button" aria-pressed="false">TOP</button>
-      <button id="view2d" type="button" aria-pressed="false">2D</button>
-      <button id="cameraFit" type="button">FIT VIEW</button>
-      <button id="uiHelp" type="button" aria-label="Show contextual help">? HELP</button>
-      <button id="uiSoundToggle" type="button" aria-pressed="true">UI SOUND ON</button>
-    </div>
-  </div>
-  <details class="site-settings-tools">
-    <summary>DEVELOPMENT TOOLS</summary>
-    <div class="site-settings-row"><a class="operator-lab-link" href="./operator-lab.html">OPERATOR LAB</a>
-      <a class="operator-lab-link" href="./map-lab.html">MAP LAB</a>
-      <a class="operator-lab-link" href="./physicality-lab.html">PHYSICALITY LAB</a>
-      <a class="operator-lab-link" href="./asset-lab.html">ASSET LIBRARY</a></div>
-  </details>
 </section>
 <section id="briefingPanel" class="briefing-panel fw-mission-dossier" hidden aria-label="Operation briefing">
   <div class="fw-dossier-eyebrow">FIELD OPERATIONS / MISSION DOSSIER</div>
