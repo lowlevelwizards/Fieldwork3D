@@ -13,8 +13,10 @@ function stats(v){const s=[...v].sort((a,b)=>a-b);
  p50:+percentile(s,.5).toFixed(3),p95:+percentile(s,.95).toFixed(3),
  max:+percentile(s,1).toFixed(3)};}
 function time(fn){const t=performance.now();fn();return performance.now()-t;}
-function profile({seed,scale,record=false,hold=false,ticks=120}){
- const s=newSession(0,seed,'floor-plan',scale),recorder=new MissionRecorder();
+function profile({seed,scale,record=false,hold=false,ticks=120,
+ civilians=false}){
+ const s=newSession(0,seed,'floor-plan',scale,undefined,undefined,
+   {enableCivilians:civilians}),recorder=new MissionRecorder();
  if(hold)for(const a of s.operators)a.firePolicy='hold';
  toggling(s);if(record)recorder.capture(s,true);
  const sim=[],recording=[],slowTicks=[];
@@ -32,6 +34,7 @@ function profile({seed,scale,record=false,hold=false,ticks=120}){
   if(record)recording.push(time(()=>recorder.capture(s)));
  }
  const out={seed,scale,record,hold,ticks,actors:s.operators.length,
+  civilianPreview:civilians,civilianActors:s.civilians.length,
   walls:WALLS.length,cover:COVER.length,rooms:s.site?.rooms.length,
   shots:s.nextShotId-1,groundCells:s.seenGround.size,
   sim:stats(sim),recording:record?stats(recording):undefined,
@@ -100,4 +103,8 @@ for(const seed of [3,17,61]){
 probes(17,'expanded');
 profile({seed:17,scale:'expanded',ticks:60});
 profile({seed:17,scale:'expanded',record:true,ticks:60});
+// Identical production-host timings for optional civilians. These numbers
+// are NOT on-device FPS and are never a substitute for phone acceptance.
+profile({seed:17,scale:'standard',record:true,ticks:90,civilians:true});
+profile({seed:17,scale:'expanded',record:true,ticks:60,civilians:true});
 activateSite(null);
