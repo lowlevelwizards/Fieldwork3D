@@ -682,6 +682,20 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/material-browser-smart-sort-') }}
         run: |
           node --experimental-strip-types --test tests/operator-material-browser-smart-sort.test.mjs tests/operator-headwear-solid-colors.test.mjs
+      - name: Living Encounter AI E1 critical awareness and simulation regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-enemy-ai-e1-e5-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/awareness-suspicion-e1a.test.mjs \
+            tests/awareness-search-e1c.test.mjs \
+            tests/awareness-search.test.mjs \
+            tests/awareness-decay.test.mjs \
+            tests/awareness-ai-policy.test.mjs \
+            tests/awareness-communication.test.mjs \
+            tests/awareness-coordination.test.mjs \
+            tests/awareness-integration.test.mjs \
+            tests/tactical-integration-15-encounter-a1.test.mjs \
+            tests/mission-reactivity-r8b.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
