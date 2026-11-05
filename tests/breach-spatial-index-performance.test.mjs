@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {TacticalGeometryIndex,pointBounds,rayBounds} from '../src/breach-spatial-index.ts';
-import {activateSite,activeSite,passable,segmentsCross} from '../src/breach-core.ts';
+import {activateSite,activeSite,passable,segmentsCross,WALLS,COVER,staticWallBlocksRay} from '../src/breach-core.ts';
 import {segmentHitsBox} from '../src/breach-ray.ts';
 
 test('spatial ray and point queries preserve brute-force collision truth',()=>{
@@ -46,5 +46,24 @@ test('site activation refreshes indexed geometry without stale walkability',()=>
   activateSite({walls:[nearWall],cover:[],doors:[],bounds});
   assert.equal(passable({x:0,y:0}),false);
   assert.equal(passable({x:120,y:0}),true);
+ }finally{activateSite(original);}
+});
+
+test('replay-style splices and same-count furniture moves invalidate the index',()=>{
+ const original=activeSite(),bounds={minX:-300,minY:-300,maxX:300,maxY:300};
+ const wallAt=x=>({a:{x,y:-50},b:{x,y:50}});
+ const crateAt=x=>({x,y:0,w:28,h:30,fixture:'crate'});
+ try{
+  activateSite({walls:[],cover:[],doors:[],bounds});
+  WALLS.splice(0,WALLS.length,wallAt(0));
+  assert.equal(staticWallBlocksRay({a:{x:-30,y:0},b:{x:30,y:0}}),true);
+  assert.equal(passable({x:0,y:0}),false);
+  // Exactly the same array length: length-only invalidation would miss this.
+  WALLS.splice(0,WALLS.length,wallAt(130));
+  assert.equal(staticWallBlocksRay({a:{x:-30,y:0},b:{x:30,y:0}}),false);
+  COVER.splice(0,COVER.length,crateAt(0));
+  assert.equal(passable({x:0,y:0}),false);
+  COVER.splice(0,COVER.length,crateAt(130));
+  assert.equal(passable({x:0,y:0}),true);
  }finally{activateSite(original);}
 });
