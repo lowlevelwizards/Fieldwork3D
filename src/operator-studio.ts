@@ -3,7 +3,7 @@
  * uses the same validated roster persistence for previews and direct access.
  */
 import * as THREE from 'three';
-import {MARKING_SLOTS,identityMarkingChoices,setIdentityMarking,
+import {identityMarkingChoices,setIdentityMarking,
  type MarkingSlot} from './operator-identity-markings.ts';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {studioUsesClothesOnly,studioUsesVisibleFace} from './operator-studio-preview-policy.ts';
