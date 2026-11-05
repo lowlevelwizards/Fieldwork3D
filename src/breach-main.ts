@@ -2914,7 +2914,9 @@ function fog(){
     state.seconds<fogStamp||state.seconds-fogStamp>.055){
     fogStamp=state.seconds;fogSession=state;fogIntelMode=state.intel.mode;
     fogSeenRevision=state.seenGroundRevision;
-    paintFogMask(fogContext!,state);
+    paintFogMask(fogContext!,state,
+      new URLSearchParams(location.search).get('fogDebug')==='palette'?
+        'palette':'normal');
   }
   draw.drawImage(fogCanvas,0,0,W,H);
 }
