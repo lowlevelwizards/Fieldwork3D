@@ -1134,7 +1134,7 @@ const fogContext=fogCanvas.getContext('2d');
 if(!fogContext)throw Error('Fog canvas unavailable');
 let fogStamp=-1;
 let fogSession:Session|null=null;
-let fogIntelMode='';
+let fogIntelMode='';let fogSeenRevision=-1;
 let audio:AudioContext|null=null;
 let lastSoundShotId=0,lastEventAudio='';
 let lastFootstepSoundTime=0;
@@ -2910,8 +2910,10 @@ function renderProjectedPlans(){
 function fog(){
   if(replaying&&replayOmniscient)return;
   if(fogStamp<0||fogSession!==state||fogIntelMode!==state.intel.mode||
+    fogSeenRevision!==state.seenGroundRevision||
     state.seconds<fogStamp||state.seconds-fogStamp>.055){
     fogStamp=state.seconds;fogSession=state;fogIntelMode=state.intel.mode;
+    fogSeenRevision=state.seenGroundRevision;
     paintFogMask(fogContext!,state);
   }
   draw.drawImage(fogCanvas,0,0,W,H);
