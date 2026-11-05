@@ -118,12 +118,14 @@ try{
   }
   async function chooseCamera(page,view){
     await openSettings(page);
+    await page.locator('[data-site-tab="preferences"]').click();
     await page.locator(view).click();
     if(await page.locator('#siteSettings').isVisible() ||
        await page.locator('#advancedOrders').isVisible())
       throw Error('Camera selection failed to return to the map');
   }
   await openSettings(live);
+  await live.locator('[data-site-tab="environment"]').click();
   await live.locator('#variant').click();
   await live.waitForFunction(previous=>
     document.getElementById('siteIdentity')?.dataset.siteSeed!==previous,
