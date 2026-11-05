@@ -68,6 +68,7 @@ import {PerceptionPairCache} from './breach-perception-cache.ts';
 import {settledEnemyPosture} from './breach-ai-posture.ts';
 import {searchCandidates} from './breach-ai-search.ts';
 import {investigationTempo} from './breach-ai-investigation.ts';
+import {routineDwellSeconds} from './breach-ai-routine-dwell.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
 import {contactTactic} from './breach-ai-tactical-response.ts';
 import {directionalCoverFrom} from './breach-cover-direction.ts';
@@ -2934,11 +2935,14 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   // Combat reports, seen contacts, or sounds immediately interrupt the routine.
   if(!a.contacted&&!a.contact&&a.alert==='idle'&&a.encounterRoutine?.length){
     if(s.seconds<(a.routinePauseUntil??0)){a.velocity=0;return;}
-    const index=(a.routineIndex??0)%a.encounterRoutine.length;
+    const visit=a.routineIndex??0;
+    const index=visit%a.encounterRoutine.length;
     const target=a.encounterRoutine[index];
     if(d(a.p,target)<13){
-      a.routineIndex=(index+1)%a.encounterRoutine.length;
-      a.routinePauseUntil=s.seconds+2+(index%2);a.nav=[];a.velocity=0;
+      a.routineIndex=visit+1;
+      a.routinePauseUntil=s.seconds+routineDwellSeconds(a.id,
+        a.encounterActivity??'idle',index,visit);
+      a.nav=[];a.velocity=0;
       return;
     }
     if(!a.nav.length){
@@ -2948,7 +2952,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       a.nav=cachedEnemyRoute(s,a.p,target);
     }
     if(!a.nav.length){
-      a.routineIndex=(index+1)%a.encounterRoutine.length;
+      a.routineIndex=visit+1;
       a.routinePauseUntil=s.seconds+4;a.velocity=0;return;
     }
     approach(a,target,dt,s,.52);return;
