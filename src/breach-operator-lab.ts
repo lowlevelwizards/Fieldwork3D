@@ -56,6 +56,7 @@ import {HEADWEAR_CAMO_IDS,headwearCamoChoices,resolvedHeadwearCamo,headwearCamoP
  type HeadwearCamoId} from './operator-headwear-camo.ts';
 import {CAMO_ORIGINS,filterCamoCatalog,type CamoFilter,type CamoOrigin}
  from './operator-headwear-camo-catalog.ts';
+import {browseCamos,camoSearchMatches} from './operator-material-browser.ts';
 import {initialWardrobe,readWardrobe,resolvedWardrobe,wardrobeConflicts,
  type WardrobeOptions} from './operator-wardrobe-data.ts';
 
@@ -435,7 +436,12 @@ function renderHeadwearCamoSwatches(model:string){
  }
  const selected=resolvedHeadwearCamo(model,wardrobeOptions.headwearCamo);
  renderHeadwearCamoComparison(model,selected);
- const visible=filterCamoCatalog(currentCamoFilter(),choices,camoFavorites);
+ const filter=currentCamoFilter();
+ const filtered=filterCamoCatalog({...filter,text:''},choices,camoFavorites)
+  .filter(id=>camoSearchMatches(id,filter.text));
+ const visible=browseCamos(filtered,{active:selected,
+  reference:wardrobeOptions.fabricCamo?.top??null,
+  prefs:{favorites:[...camoFavorites],recents:camoRecents}});
  camoBrowseSummary.textContent=visible.length+' OF '+HEADWEAR_CAMO_IDS.length+
   ' PATTERNS · '+choices.length+' COMPATIBLE'+
   (selected?' · EQUIPPED: '+HEADWEAR_CAMO_RECIPES[selected].label:'');

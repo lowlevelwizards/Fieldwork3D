@@ -673,6 +673,10 @@ jobs:
       - name: Quick Play READY handoff and loading regression
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/quickplay-ready-overlay-handoff-') }}
         run: node --experimental-strip-types --test tests/quick-play-startup-progress.test.mjs
+      - name: Material browser smart sorting and compatibility
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/material-browser-smart-sort-') }}
+        run: |
+          node --experimental-strip-types --test tests/operator-material-browser-smart-sort.test.mjs tests/operator-headwear-solid-colors.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
