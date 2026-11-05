@@ -25,8 +25,8 @@ jobs:
           node-version: '22'
       - name: Install dependencies for both code versions
         run: |
-          (cd baseline && npm ci --no-audit --no-fund)
-          (cd candidate && npm ci --no-audit --no-fund)
+          (cd baseline && npm install --no-audit --no-fund)
+          (cd candidate && npm install --no-audit --no-fund)
       - name: Compare identical P4/P5 workloads on the same host
         run: |
           (cd baseline && node --experimental-strip-types scripts/bench-breach-performance.mjs) > baseline.log
