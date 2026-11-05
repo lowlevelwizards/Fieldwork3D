@@ -883,6 +883,9 @@ jobs:
           node --experimental-strip-types --test \
             tests/civilian-d0-acceptance.test.mjs \
             tests/civilian-d1-rescue-lifecycle.test.mjs \
+            tests/civilian-d2-fire-safety.test.mjs \
+            tests/civilian-b5b-ballistics.test.mjs \
+            tests/civilian-c3c-harm-attribution.test.mjs \
             tests/civilian-c4-contextual-contact.test.mjs \
             tests/civilian-b7-rescue-mission.test.mjs \
             tests/civilian-b7-rescue-session.test.mjs \
