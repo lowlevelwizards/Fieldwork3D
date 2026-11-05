@@ -19,7 +19,10 @@ test('E5-C2 refuses blocked destination without viable physical route',()=>{
 test('E5-C2 uses verified route waypoints instead of walking through wall',()=>{
  const c=make();
  const path=[{x:70,y:30},{x:38,y:30},{x:38,y:70}];
- const clear=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y)<50;
+ // A solid wall blocks the straight same-row leg, but the three
+ // corridor turns remain individually physically passable.
+ const clear=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y)<50&&
+   !(Math.abs(a.y-70)<.01&&Math.abs(b.y-70)<.01);
  const picked=chooseCivilianRefuge(c,{canReach:clear,
   routeTo:()=>path});
  assert.ok(picked);
