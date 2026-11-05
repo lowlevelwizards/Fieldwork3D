@@ -3,6 +3,7 @@
  * Existing 30 approved camouflage masters and headwear never change.
  */
 import * as THREE from 'three';
+import {OPERATOR_SOLID_FAMILIES,tonedOperatorSolid} from './operator-solid-color-families.ts';
 export const TOP_COLORWAYS={
  'combat-shirt':[
   ['standard','Sand knit'],['olive','Olive knit'],['ranger','Ranger green knit'],
@@ -33,6 +34,8 @@ export function resolvedTopColorway(top:string,requested:string):
  const choices=topColorwayChoices(top);
  return choices.some(([id])=>id===requested)?requested:'standard';
 }
+// Gorka reinforced two-tone combinations are intentionally authored pairs;
+// align independent common knits and smocks without flattening these panels.
 type ColorPair={base:number;panel:number};
 const gorkaColors:Readonly<Record<string,ColorPair>>={
  standard:{base:0xae9872,panel:0x59483b},
@@ -46,12 +49,12 @@ const gorkaColors:Readonly<Record<string,ColorPair>>={
  'ss-autumn':{base:0x9b8a6e,panel:0xffffff}
 };
 const combatColors:Readonly<Record<string,number>>={
- standard:0xb7a27b,olive:0x7b8167,ranger:0x606c5c,
- coyote:0x8f7758,black:0x353c3c
+ standard:OPERATOR_SOLID_FAMILIES.tan,olive:OPERATOR_SOLID_FAMILIES['field-green'],ranger:OPERATOR_SOLID_FAMILIES['ranger-green'],
+ coyote:OPERATOR_SOLID_FAMILIES.coyote,black:tonedOperatorSolid('black',1.18)
 };
 const smockColors:Readonly<Record<string,number>>={
- standard:0x7d805f,ranger:0x657765,khaki:0xb0a07a,
- coyote:0x8f7a5b,black:0x383e3e
+ standard:tonedOperatorSolid('field-green',1.08),ranger:tonedOperatorSolid('ranger-green',1.10),khaki:OPERATOR_SOLID_FAMILIES.khaki,
+ coyote:OPERATOR_SOLID_FAMILIES.coyote,black:tonedOperatorSolid('black',1.25)
 };
 export function garmentColorValues(top:string,id:string){
  const chosen=resolvedTopColorway(top,id);
