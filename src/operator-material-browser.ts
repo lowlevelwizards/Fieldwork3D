@@ -31,10 +31,11 @@ export type CamoEra=typeof CAMO_ERA_OPTIONS[number];
 export type CamoBrowserState={
  sort:CamoSort;environment:CamoEnvironment;family:string;origin:CamoOrigin|'all';
  style:CamoStyle|'all';era:CamoEra;search:string;favoritesOnly:boolean;
+ advancedOpen:boolean;
 };
 export const defaultCamoBrowserState=():CamoBrowserState=>({
  sort:'smart',environment:'all',family:'all',origin:'all',style:'all',
- era:'all',search:'',favoritesOnly:false
+ era:'all',search:'',favoritesOnly:false,advancedOpen:false
 });
 /** Browsing preferences persist by surface/channel, without persisting temporary
  * search text that would reopen a picker with mysteriously hidden swatches.
@@ -64,6 +65,7 @@ function hydrateCamoBrowserStates(){
     state.style=record.style;
    if(validOption(record.era,CAMO_ERA_OPTIONS))state.era=record.era;
    state.favoritesOnly=record.favoritesOnly===true;
+   state.advancedOpen=record.advancedOpen===true;
    browserStates.set(key,state);
   }
  }catch{/* Local storage may be disabled, corrupt or unavailable. */}
@@ -81,8 +83,8 @@ export function saveCamoBrowserState(key:string){
   if(typeof localStorage==='undefined')return;
   const saved:Record<string,Partial<CamoBrowserState>>={};
   for(const [id,value] of browserStates){
-   const {sort,environment,family,origin,style,era,favoritesOnly}=value;
-   saved[id]={sort,environment,family,origin,style,era,favoritesOnly};
+   const {sort,environment,family,origin,style,era,favoritesOnly,advancedOpen}=value;
+   saved[id]={sort,environment,family,origin,style,era,favoritesOnly,advancedOpen};
   }
   // Protect against excessive picker/session keys.
   const entries=Object.entries(saved).slice(-32);
