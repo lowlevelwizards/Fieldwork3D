@@ -482,6 +482,7 @@ jobs:
             tests/dnav-r2-geometry-clearance.test.mjs \
             tests/dnav-r3-paired-traffic.test.mjs \
             tests/dnav-r4-capture-recovery.test.mjs \
+            tests/dnav-r5-contact-staging.test.mjs \
             tests/physicality-door-aware-routing.test.mjs \
             tests/physicality-08-door-contact.test.mjs \
             tests/physicality-09-recovery.test.mjs \
