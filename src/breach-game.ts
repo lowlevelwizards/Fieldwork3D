@@ -61,6 +61,7 @@ import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {chooseAiIntent,hasRecentSound,type AIIntent} from './breach-ai-policy.ts';
 import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
 import {TacticalRouteCache} from './breach-tactical-route-cache.ts';
+import {PerceptionPairCache} from './breach-perception-cache.ts';
 import {settledEnemyPosture} from './breach-ai-posture.ts';
 import {searchCandidates} from './breach-ai-search.ts';
 import {investigationTempo} from './breach-ai-investigation.ts';
@@ -263,6 +264,7 @@ export type Session=Omit<TacticalState,'operators'> & {
 // The elective enemy-planning budget is mission-local and never serialized.
 const aiSchedulers=new WeakMap<Session,AiWorkScheduler>();
 const tacticalRoutes=new WeakMap<Session,TacticalRouteCache>();
+const perceptionBySession=new WeakMap<Session,PerceptionPairCache>();
 /** Exact-authority cache: geometry epoch and precise leaf state fully
  * invalidate a physical route. No uncertain player intel is reused here. */
 function cachedEnemyRoute(s:Session,from:Pt,to:Pt,physicalDoors=false):Pt[]{
@@ -1506,11 +1508,23 @@ function unobstructed(a:Pt,b:Pt,s:Session,lowBlocks:boolean){
 }
 /** Physical geometry visibility, independently of acquisition time. */
 export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){
-  if(a.health<=0||b.health<=0||d(a.p,b.p)>240)return false;
-  const delta=angleDifference(a.heading,angle(a.p,b.p));
-  if(Math.abs(delta)>.94)return false;
-  return !exposure(a.p,b.p,s.doors,
-    b.posture==='crouch',a.posture==='crouch',true).blocked;
+  let cache=perceptionBySession.get(s);
+  if(!cache){cache=new PerceptionPairCache();perceptionBySession.set(s,cache);}
+  // This remains exact through mid-tick door interactions, actor movement,
+  // crouching and cover damage. Neither fog nor awareness is cached.
+  const doors=s.doors.map(door=>[
+    door.id,door.open,door.openFraction,door.kind,
+    door.hinge,door.swing,door.slideDirection,
+    door.a.x,door.a.y,door.b.x,door.b.y,door.style
+  ].join(':')).join(';');
+  return cache.get(a,b,s.seconds,
+    s.objectRevision+'/'+activeGeometryRevision(),doors,()=>{
+      if(a.health<=0||b.health<=0||d(a.p,b.p)>240)return false;
+      const delta=angleDifference(a.heading,angle(a.p,b.p));
+      if(Math.abs(delta)>.94)return false;
+      return !exposure(a.p,b.p,s.doors,
+        b.posture==='crouch',a.posture==='crouch',true).blocked;
+    });
 }
 /** Confirmed vision is acquired over simulated time; rendering never grants sight. */
 export function inSight(a:TeamActor,b:TeamActor,s:Session){
