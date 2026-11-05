@@ -116,22 +116,26 @@ function wrap(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
   1.04,.69,.82);
 }
 function shield(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
+ // The uninterrupted lens occupies almost the full lower outline:
+ // slim open bottom / side edges versus the enclosed low-profile goggles.
+ // The strong top canopy carries the silhouette, not a box-shaped seal.
  const outer:EyePolygon=[
-  [-4.23,5.24],[4.23,5.24],[4.23,2.19],[2.37,1.70],
-  [.87,1.96],[-.87,1.96],[-2.37,1.70],[-4.23,2.19]
+  [-4.30,5.34],[4.30,5.34],[4.26,2.00],[2.58,1.54],
+  [1.07,1.86],[-1.07,1.86],[-2.58,1.54],[-4.26,2.00]
  ];
  const hole:EyePolygon=[
-  [-3.56,4.62],[3.56,4.62],[3.56,2.68],
-  [2.27,2.36],[.87,2.62],[-.87,2.62],
-  [-2.27,2.36],[-3.56,2.68]
+  [-4.02,4.56],[4.02,4.56],[4.01,2.27],
+  [2.52,1.81],[1.06,2.11],[-1.06,2.11],
+  [-2.52,1.81],[-4.01,2.27]
  ];
  solidFrame(root,frame,lens,'one-piece-ballistic-visor',outer,
-  [hole],-5.33,.84,'shield');
- solidBlock(root,frame,'giant-visor-brow',0,5.22,-5.03,
-  8.43,.76,1.25);
+  [hole],-5.47,.84,'shield');
+ solidBlock(root,frame,'giant-visor-brow',0,5.31,-5.14,
+  8.72,.86,1.26);
  for(const side of [-1,1]){
-  solidBlock(root,frame,'large-visor-hinge',side*4.23,3.66,-4.65,
-   .98,1.62,2.09);
+  // Side locks support the canopy, without enclosing the shield like goggles.
+  solidBlock(root,frame,'large-visor-hinge',side*4.25,3.79,-4.67,
+   .90,1.30,1.86);
   sideFin(root,frame,'visor-support-rail',side as -1|1,
    4.27,.78,[
     [4.95,4.51],[2.90,4.24],[-3.60,4.17],
