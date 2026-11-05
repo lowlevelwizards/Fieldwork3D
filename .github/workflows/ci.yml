@@ -485,6 +485,9 @@ jobs:
             tests/dnav-r5-contact-staging.test.mjs \
             tests/dnav-r6-movement-quality.test.mjs \
             tests/dnav-r7-squad-intelligence.test.mjs \
+            tests/dnav-r8-contact-performance.test.mjs \
+            tests/coupled-door-contact.test.mjs \
+            tests/door-leaf-overlap-recovery.test.mjs \
             tests/doorway-right-of-way-session.test.mjs \
             tests/tactical-integration-11-traffic-autonomy.test.mjs \
             tests/physicality-friendly-traffic.test.mjs \
@@ -500,11 +503,9 @@ jobs:
       - name: DNav R6 four-operator hinge and traversal stress
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/dnav-r6-') }}
         run: node --experimental-strip-types scripts/audit-dnav-r6-four-operator.mjs
-      - name: Camouflage 6B authored family, scale and fabric regression
-        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-camo-6b-') }}
-        run: |
-          node --experimental-strip-types --test tests/operator-camo-batch6a.test.mjs
-          node --experimental-strip-types --test tests/operator-fabric-camo-stage2.test.mjs tests/operator-r9-camo-density.test.mjs
+      - name: DNav R8 real-operator doorway performance acceptance
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/dnav-r8-') }}
+        run: node --experimental-strip-types scripts/audit-dnav-r6-four-operator.mjs
       - name: Quick Play mobile visual allocation and eyewear compatibility
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/quickplay-mobile-lazy-actor-visuals-') }}
         run: |
