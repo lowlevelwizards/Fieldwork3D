@@ -102,6 +102,7 @@ import {careerEventsForOperation} from './campaign-history.ts';
 import {awarenessDebugLine} from './breach-awareness-debug.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
 import './breach-style.css';
+import './ui/ux-r1-sheets.css';
 import {fieldworkSelectField,confirmFieldworkAction,promptFieldworkText} from './ui/fieldwork-controls.ts';
 import {createTacticalSheetNavigation} from './ui/tactical-sheet-navigation.ts';
 import {buildQuickLoadoutGroups,loadoutGroupForSlot,
