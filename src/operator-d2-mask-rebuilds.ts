@@ -125,69 +125,61 @@ function hood(g:THREE.Group,m:MaskMaterials){
  ],-5.24,.34,.18);
  hangingFilter(g,m);
 }
+/** R12: M17's internal cheek filters exist as subtle cheek air intakes;
+ * the large bulbous cheek volumes are authored INSIDE the one-piece shell.
+ */
 function cheekFilter(g:THREE.Group,m:MaskMaterials,sign:-1|1){
- // Three deliberately connected wedge changes form one integrated M17 cheek.
- extrudedProfile(g,m.rubber,'m17-integrated-cheek-filter',[
-  [sign*1.24,2.54],[sign*3.56,2.45],
-  [sign*4.15,1.65],[sign*3.83,.08],
-  [sign*2.78,-.62],[sign*1.53,-.22]
- ],-5.33,.64,.22);
- extrudedProfile(g,m.hardware,'m17-cheek-filter-frame',[
-  [sign*2.65,.89],[sign*3.65,1.04],
-  [sign*3.63,.38],[sign*2.68,.20]
- ],-5.73,.19,.14);
+ extrudedProfile(g,m.filters,'m17-integrated-cheek-filter',[
+  [sign*2.80,1.34],[sign*3.33,1.27],
+  [sign*3.38,.69],[sign*2.87,.59]
+ ],-5.54,.12,.06);
 }
 function m17(g:THREE.Group,m:MaskMaterials){
- const eyes=pair(1.93,3.81,1.25,1.27);
- plate(g,m.rubber,'m17-full-facepiece',{
+ const eyes=pair(1.88,3.87,1.30,1.22);
+ sculptedShell(g,m.rubber,'m17-full-facepiece',{
   outline:[
-   [-3.75,5.50],[3.75,5.50],[4.30,4.81],
-   [4.26,1.26],[3.41,-.61],[2.26,-1.00],
-   [-2.26,-1.00],[-3.41,-.61],[-4.26,1.26],[-4.30,4.81]
-  ],holes:eyes,front:-4.78,depth:.60,edgeReturn:.40,nose:.46
+   [-3.42,5.70],[3.42,5.70],[4.00,5.10],
+   [4.32,3.30],[4.42,1.38],[3.52,-.28],
+   [2.22,-1.07],[-2.22,-1.07],
+   [-3.52,-.28],[-4.42,1.38],[-4.32,3.30],
+   [-4.00,5.10]
+  ],holes:eyes,front:-4.82,halfWidth:4.42,
+  thickness:.51,sideReturn:.71,
+  cheek:1.02,cheekAtY:1.33,cheekAtX:2.73,
+  nose:.22,jawReturn:.20
  });
- pairedEyes(g,m,'m17-round-eyepiece',eyes,-5.15,.40,.25);
+ for(const eye of eyes)
+  fittedWindow(g,m,'m17-round-eyepiece',eye,-5.19,.12);
  cheekFilter(g,m,-1);cheekFilter(g,m,1);
- outlet(g,m,'m17-center-exhale-speech',0,.45,-5.65,.91);
- for(const sign of [-1,1] as const)
-  sideProfile(g,m.rubber,'m17-wraparound-cheek',sign,[
-   [-4.66,5.32],[-2.60,5.31],[-1.21,4.47],
-   [-1.23,1.33],[-2.55,-.51],[-4.71,-1.01]
-  ],4.02,.57);
- rearHarness(g,m,2.30);
+ outlet(g,m,'m17-center-exhale-speech',0,.33,-5.69,1.02);
+ compactHarness(g,m,2.13,5.06);
 }
+/** R12: harder angular M40 shell, one cheek-mounted external filter. */
 function m40(g:THREE.Group,m:MaskMaterials){
  const left=poly([
-  [-3.38,4.88],[-1.27,4.91],[-.68,4.19],
-  [-.93,3.05],[-3.23,3.05],[-3.55,3.81]
+  [-3.44,4.96],[-1.13,5.00],[-.69,4.16],
+  [-1.13,2.98],[-3.21,3.03],[-3.58,3.88]
  ]);
  const right=left.map(([x,y])=>[-x,y] as const).reverse();
  const eyes:readonly [readonly P[],readonly P[]]=[left,right];
- plate(g,m.rubber,'m40-full-facepiece',{
+ sculptedShell(g,m.rubber,'m40-full-facepiece',{
   outline:[
-   [-3.71,5.64],[3.71,5.64],[4.16,4.83],
-   [4.12,1.06],[3.00,-.78],[1.88,-1.03],
-   [-1.88,-1.03],[-3.00,-.78],[-4.12,1.06],[-4.16,4.83]
-  ],holes:eyes,front:-4.87,depth:.55,edgeReturn:.45,nose:.67
+   [-3.68,5.70],[3.68,5.70],[4.19,4.96],
+   [4.14,1.14],[2.90,-.71],[1.88,-1.06],
+   [-1.88,-1.06],[-2.90,-.71],[-4.14,1.14],
+   [-4.19,4.96]
+  ],holes:eyes,front:-4.93,halfWidth:4.19,
+  thickness:.51,sideReturn:.77,
+  nose:.66,cheek:.15,cheekAtY:1.62,jawReturn:.25
  });
- pairedEyes(g,m,'m40-angular-eyepiece',eyes,-5.19,.40,.26);
- extrudedProfile(g,m.rubber,'m40-prominent-nose',[
-  [-.90,3.49],[.90,3.49],[1.31,1.62],
-  [-1.31,1.62]
- ],-5.40,.34);
- outlet(g,m,'m40-exhalation-front',0,.33,-5.80,1.03);
- canister(g,m.hardware,'m40-single-side-port',
-  3.30,1.28,-5.49,1.16,.61,.35);
- canister(g,m.filters,'m40-projecting-side-canister',
-  3.66,1.20,-6.89,1.55,2.0,.40);
- canister(g,m.hardware,'m40-filter-cap',
-  3.92,1.20,-7.76,1.51,.25,.40);
- for(const sign of [-1,1] as const)
-  sideProfile(g,m.rubber,'m40-side-seal',sign,[
-   [-4.72,5.34],[-2.66,5.36],[-1.22,4.54],
-   [-1.15,1.25],[-2.52,-.40],[-4.75,-.85]
-  ],4.02,.49);
- rearHarness(g,m,2.34);
+ for(const eye of eyes)
+  fittedWindow(g,m,'m40-angular-eyepiece',eye,-5.30,.13);
+ outlet(g,m,'m40-exhalation-front',0,.24,-5.77,1.02);
+ filterPod(g,m.hardware,'m40-single-side-port',
+  [3.12,1.05,-5.43],[1.14,.40,.98],[.63,0,-1]);
+ filterPod(g,m.filters,'m40-projecting-side-canister',
+  [3.97,.97,-6.15],[1.52,1.39,.99],[.72,-.08,-1]);
+ compactHarness(g,m,2.12,5.08);
 }
 function m50(g:THREE.Group,m:MaskMaterials){
  const visor=poly([
