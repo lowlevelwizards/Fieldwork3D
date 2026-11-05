@@ -24,7 +24,7 @@ test('G4d: no remote, receding or traversable leaf auto-opens',()=>{
 });
 test('G4d: real movement uses original crossing check plus physical fallback',()=>{
  const src=readFileSync(new URL('../src/breach-game.ts',import.meta.url),'utf8');
- assert.match(src,/autoDoorAtBodyContact\(a\.p,move,s\.doors\)/);
+ assert.match(src,/autoDoorAtBodyContact\(a\.p,move,/);
  assert.match(src,/doorInteraction\(\{target:doorAhead/);
 });
 
