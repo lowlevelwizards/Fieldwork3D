@@ -45,13 +45,32 @@ export function doorReachable(p:Pt,d:Door):boolean{
  * route segment misses the door-crossing detector. Never force locks,
  * skip hinge collision, or auto-open fully traversable leaves.
  */
+/** Walking to an authored door is still real navigation. Any other
+ * reachable ordinary closed leaf may be opened along that approach.
+ * Only the explicitly targeted door preserves KICK/CLOSE/HOLD priority.
+ * This never modifies the player's queued order or bypasses a lock.
+ */
+export function canAutoOpenEnRoute(plan:{
+ kind:string;doorId?:string;method?:string}|null|undefined,
+ candidateDoorId:string,ai=false):boolean{
+ if(ai)return true;
+ if(plan?.kind==='move'||plan?.kind==='pie')return true;
+ if(plan?.kind!=='door')return false;
+ return candidateDoorId!==plan.doorId||(plan.method??'open')==='open';
+}
 export function autoDoorAtBodyContact(from:Pt,to:Pt,
  doors:readonly Door[]):Door|undefined{
- const touching=doors.filter(d=>
-   (!d.open||(d.openFraction??0)<.72)&&doorReachable(from,d)&&
-   pointToSegment(to,doorLeafSegment(d))<OPERATOR_RADIUS+1.5&&
-   pointToSegment(to,doorLeafSegment(d))<=
-     pointToSegment(from,doorLeafSegment(d))+.001);
+ const touching=doors.filter(d=>{
+   if((d.open&&(d.openFraction??0)>=.72)||!doorReachable(from,d))
+     return false;
+   const leaf=doorLeafSegment(d);
+   const before=pointToSegment(from,leaf),after=pointToSegment(to,leaf);
+   // A full-body motor stops at radius+1, BEFORE the center crosses
+   // the leaf. Engage within a bounded shoulder envelope instead of
+   // waiting until a planned step penetrates the solid door.
+   return before<OPERATOR_RADIUS+7&&after<OPERATOR_RADIUS+7&&
+     after<before-.015;
+ });
  return touching.sort((a,b)=>
    pointToSegment(to,doorLeafSegment(a))-
    pointToSegment(to,doorLeafSegment(b))||a.id.localeCompare(b.id))[0];
