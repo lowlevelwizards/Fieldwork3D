@@ -1,0 +1,42 @@
+/** R5H2: separately selectable external steel details and sparse helmet net.
+ * Positioned in canonical -Z-forward head space. No shared M1 cover shape.
+ */
+import * as THREE from 'three';
+import type {M56Options} from './operator-ddr-m56-policy.ts';
+import {OPERATOR_SOLID_FAMILIES} from './operator-solid-color-families.ts';
+import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
+export type M56Extras={rivets:THREE.Group;net:THREE.Group};
+function part(g:THREE.Group,m:THREE.Material,x:number,y:number,z:number,
+ w:number,h:number,d:number,name:string){
+ const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);
+ mesh.position.set(x,y,z);mesh.name=name;mesh.castShadow=true;
+ g.add(mesh);
+}
+export function createM56Extras(parent:THREE.Group,dark:THREE.Material):M56Extras{
+ const rivets=new THREE.Group();rivets.name='m56-earlier-liner-rivets';parent.add(rivets);
+ for(const side of [-1,1]){
+  part(rivets,dark,side*5.96,5.76,-1.95,.42,.42,.40,'m56-rivet-forward');
+  part(rivets,dark,side*6.06,5.48,3.25,.42,.42,.42,'m56-rivet-rear');
+ }
+ const net=new THREE.Group();net.name='m56-period-coarse-net';parent.add(net);
+ const cloth=new THREE.MeshStandardMaterial({
+  color:OPERATOR_SOLID_FAMILIES['olive-drab'],roughness:.99,
+  metalness:0,flatShading:true});
+ // Legible open lattice instead of hundreds of coplanar pixel threads.
+ for(const x of [-3.2,-1.0,1.0,3.2])
+  part(net,cloth,x,8.86,.20,.35,.28,9.2,'m56-net-crown-longitudinal');
+ for(const z of [-3.2,-.35,2.6])
+  part(net,cloth,0,8.87,z,8.8,.28,.34,'m56-net-crown-transverse');
+ for(const side of [-1,1]){
+  part(net,cloth,side*5.48,6.0,.15,.38,2.95,10.8,'m56-net-flared-side');
+  part(net,cloth,side*6.53,5.05,.35,.38,.46,13.0,'m56-net-side-retainer');
+ }
+ for(const z of [-5.8,6.75])
+  part(net,cloth,0,5.42,z,11.8,.36,.38,'m56-net-front-rear-retainer');
+ consolidateVisualGroup(rivets);consolidateVisualGroup(net);
+ rivets.visible=false;net.visible=false;return {rivets,net};
+}
+export function updateM56Extras(v:M56Extras,options:M56Options|undefined){
+ v.rivets.visible=options?.m56Details==='early-rivets';
+ v.net.visible=options?.m56Net==='coarse';
+}

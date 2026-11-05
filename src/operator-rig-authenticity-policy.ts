@@ -87,6 +87,11 @@ export const RIG_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
    'russian-flora','multicam','atacs-fg','atacs-au','ukrainian-mm14'],
   rationale:'PLCE-style DPM belt pouches and yoke, plus documented national load kits'
  },
+ 'm1956-lce':{
+  signature:{solid:'olive-drab'},
+  solids:['olive-drab','field-green'],prints:[],
+  rationale:'US M1956 cotton canvas H suspenders and universal ammunition cases with period cloth field packs',
+ },
  'alice-lc2':{
   signature:{solid:'olive-drab'},
   solids:['olive-drab','field-green','forest-green'],
@@ -197,6 +202,7 @@ export const RIG_COLOR_ASSEMBLY:Readonly<Record<string,RigColorAssembly>>={
  lbv:{detachablePouches:false,replaceableHarness:false,webbing:'solid-when-printed'},
  'field-webbing':{detachablePouches:true,replaceableHarness:true,webbing:'solid-when-printed'},
  'alice-lc2':{detachablePouches:false,replaceableHarness:false,webbing:'match'},
+ 'm1956-lce':{detachablePouches:false,replaceableHarness:false,webbing:'match'},
  'sadf-webbing':{detachablePouches:false,replaceableHarness:false,webbing:'solid-when-printed'},
  'belt-harness':{detachablePouches:true,replaceableHarness:true,webbing:'solid-when-printed'}
 };

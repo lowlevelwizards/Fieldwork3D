@@ -13,7 +13,7 @@ import * as THREE from 'three';
 import {unionCuboids,type HeadwearCuboid} from './operator-cuboid-union.ts';
 import {CUBE_HEAD_ANATOMY} from './operator-head-anatomy.ts';
 import {headwearFaceTone,headwearFaceRegion} from './operator-headwear-materials.ts';
-export type HeadSilhouetteId='patrol-cap'|'boonie'|'beanie'|'beret'|'pasgt'|'soviet-steel'|'m1-steel'|'ach'|'high-cut';
+export type HeadSilhouetteId='patrol-cap'|'boonie'|'beanie'|'beret'|'pasgt'|'soviet-steel'|'m1-steel'|'ddr-m56'|'police-helmet'|'ach'|'high-cut';
 export type HeadSilhouetteMetrics={
  id:HeadSilhouetteId;frontExtent:number;rearExtent:number;top:number;
  earEdge:number;foreheadEdge:number;billLength:number;
@@ -28,6 +28,10 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
   top:8.65,earEdge:3.745,foreheadEdge:3.745,billLength:0},
  'm1-steel':{id:'m1-steel',frontExtent:-6.37,rearExtent:6.37,
   top:8.75,earEdge:4.40,foreheadEdge:4.40,billLength:0},
+ 'ddr-m56':{id:'ddr-m56',frontExtent:-6.80,rearExtent:8.10,
+  top:8.775,earEdge:4.43,foreheadEdge:4.65,billLength:0},
+ 'police-helmet':{id:'police-helmet',frontExtent:-5.70,rearExtent:5.80,
+  top:8.90,earEdge:2.20,foreheadEdge:4.90,billLength:0},
  'pasgt':{id:'pasgt',frontExtent:-6.34,rearExtent:5.68,
   top:8.78,earEdge:1.71,foreheadEdge:4.055,billLength:0},
  'soviet-steel':{id:'soviet-steel',frontExtent:-5.53,rearExtent:5.53,
@@ -211,6 +215,56 @@ const M1_CUBOIDS:readonly HeadwearCuboid[]=[
   x:sign*5.44,y:4.78,z:0,width:1.20,height:.76,depth:12.20
  }))
 ];
+/** R5H1 East German M56: wider shallow swept lower perimeter than M1.
+ * Authored ring has real overlap in every axis before cube-union.
+ */
+/** R5H3 protective police shell: reinforced brow, rounded-block crown and
+ * deep side ear guards. No modern ACH rails or detached square earcups.
+ */
+const POLICE_HELMET_CUBOIDS:readonly HeadwearCuboid[]=[
+ {name:'police-continuous-crown',x:0,y:7.62,z:0,
+  width:9.50,height:2.56,depth:10.10},
+ {name:'police-front-brow',x:0,y:5.25,z:-5.06,
+  width:10.60,height:1.20,depth:1.25},
+ {name:'police-rear-nape',x:0,y:4.33,z:4.93,
+  width:10.20,height:2.26,depth:1.56},
+ ...([-1,1] as const).flatMap(sign=>[
+  {name:sign<0?'police-left-side':'police-right-side',
+   x:sign*4.58,y:5.75,z:.05,width:1.35,height:2.90,depth:9.45},
+  {name:sign<0?'police-left-ear-guard':'police-right-ear-guard',
+   x:sign*4.80,y:3.35,z:.80,width:1.65,height:2.55,depth:3.15},
+  {name:sign<0?'police-left-hinge-base':'police-right-hinge-base',
+   x:sign*5.05,y:5.36,z:-1.25,width:.74,height:1.18,depth:1.25}
+ ])
+];
+const DDR_M56_CUBOIDS:readonly HeadwearCuboid[]=[
+ {name:'m56-high-crown',x:0,y:8.05,z:.25,
+  width:9.55,height:1.45,depth:10.70},
+ {name:'m56-upper-front',x:0,y:6.85,z:-4.85,
+  width:10.20,height:2.40,depth:1.40},
+ {name:'m56-upper-rear',x:0,y:6.85,z:5.15,
+  width:10.20,height:2.40,depth:1.40},
+ ...([-1,1] as const).map(sign=>({
+  name:sign<0?'m56-upper-left':'m56-upper-right',
+  x:sign*4.62,y:6.85,z:.15,width:1.35,height:2.40,depth:10.90
+ })),
+ {name:'m56-middle-front',x:0,y:5.60,z:-5.65,
+  width:11.80,height:1.75,depth:1.40},
+ {name:'m56-middle-rear',x:0,y:5.60,z:6.25,
+  width:11.80,height:1.75,depth:1.90},
+ ...([-1,1] as const).map(sign=>({
+  name:sign<0?'m56-middle-left':'m56-middle-right',
+  x:sign*5.42,y:5.60,z:.30,width:1.65,height:1.75,depth:13.0
+ })),
+ {name:'m56-front-flare',x:0,y:5.02,z:-6.20,
+  width:13.0,height:.72,depth:1.15},
+ {name:'m56-rear-flare',x:0,y:4.65,z:7.25,
+  width:13.15,height:.85,depth:1.70},
+ ...([-1,1] as const).map(sign=>({
+  name:sign<0?'m56-left-flare':'m56-right-flare',
+  x:sign*6.22,y:4.80,z:.65,width:1.30,height:.85,depth:14.90
+ }))
+];
 const STEEL_CUBOIDS:readonly HeadwearCuboid[]=[
  {name:'ssh40-main-dome',x:0,y:7.73,z:0,
   width:9.15,height:1.75,depth:9.25},
@@ -305,6 +359,8 @@ const HEADGEAR_VOLUMES:Readonly<Record<HeadSilhouetteId,readonly HeadwearCuboid[
  'pasgt':PASGT_CUBOIDS,
  'soviet-steel':STEEL_CUBOIDS,
  'm1-steel':M1_CUBOIDS,
+ 'ddr-m56':DDR_M56_CUBOIDS,
+ 'police-helmet':POLICE_HELMET_CUBOIDS,
  'ach':ACH_CUBOIDS,
  'high-cut':HIGH_CUT_CUBOIDS
 };
@@ -335,7 +391,7 @@ export function createHeadwearSilhouette(
  headwearFromVolumes(group,material,id);
  group.userData.stage=({
   'patrol-cap':'1N','boonie':'1N','beanie':'1N','beret':'R5C',
-  'pasgt':'1N','soviet-steel':'1N','m1-steel':'R5D',
+  'pasgt':'1N','soviet-steel':'1N','m1-steel':'R5D','ddr-m56':'R5H1','police-helmet':'R5H3',
   'ach':'1E','high-cut':'1E'
  } as const)[id];
  group.userData.modelAxes='-Z-forward,+X-right,+Y-up';

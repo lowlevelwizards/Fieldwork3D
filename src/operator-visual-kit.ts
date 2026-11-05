@@ -344,7 +344,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  updateWardrobeGearLayers(v.wardrobeGear,
   usingWardrobe?looks.armorStyle:'armor-bare',
   usingWardrobe?looks.rigStyle:'no-rig',
-  looks.beltStyle,looks.packStyle,looks.top,wardrobe?.aliceLoad??'standard');
+  looks.beltStyle,looks.packStyle,looks.top,
+  wardrobe?.aliceLoad??'standard',wardrobe?.m1956Variant??'late');
  updateWardrobeAccessories(v.accessories,
   wardrobe?.accessories??initialWardrobeAccessories());
  updateIdentityVisuals(v.identityVisuals,wardrobe?.markings,
@@ -418,12 +419,17 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  const order=wardrobe?.mounts?.magazineOrder==='right-left'?-1:1;
  v.magazines.rig.forEach((mag,i)=>{
   // Maintain the exact same real magazine instances and carry count.
-  const waist=usingWardrobe&&['field-webbing','alice-lc2'].includes(looks.rigStyle)?
+  const waist=usingWardrobe&&['field-webbing','alice-lc2','m1956-lce'].includes(looks.rigStyle)?
    v.wardrobeGear.waistRig[looks.rigStyle]:undefined;
   if(waist){
    if(mag.parent!==waist)waist.add(mag);
    const tier=Math.floor(i/2),sign=(i%2===0?-1:1)*order;
-   if(looks.rigStyle==='alice-lc2'){
+   if(looks.rigStyle==='m1956-lce'){
+    // Only existing ledger-owned magazines enter the front canvas cases.
+    mag.position.set(tier===0?2.1:tier===1?1.30:.45,
+     -.05-tier*.12,sign*7.04);
+    mag.rotation.y=sign*Math.PI/2;
+   }else if(looks.rigStyle==='alice-lc2'){
     // Only real magazines owned by the loadout are displayed. Two genuine
     // flap-covered magazine cases sit at front hips, not a fictitious bib.
     const sign=(i%2===0?-1:1)*order,tier=Math.floor(i/2);

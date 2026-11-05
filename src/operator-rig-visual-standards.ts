@@ -14,6 +14,7 @@ export const RIG_VISUAL_BUDGET:Readonly<Record<string,RigVisualBudget>>={
  'lbv':{web:1.46,shoulder:2.07,flank:1.68,projection:.32},
  'field-webbing':{web:1.40,shoulder:1.90,flank:1.59,projection:.30},
  'alice-lc2':{web:1.32,shoulder:1.85,flank:1.55,projection:.30},
+ 'm1956-lce':{web:1.24,shoulder:1.85,flank:1.55,projection:.30},
  'belt-harness':{web:1.48,shoulder:1.93,flank:1.62,projection:.30},
  'sadf-webbing':{web:1.50,shoulder:2.13,flank:1.70,projection:.36}
 };
