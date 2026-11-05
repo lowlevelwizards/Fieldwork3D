@@ -23,9 +23,9 @@ const pose=(kit,wardrobe)=>({
  aiming:false,firing:false,turning:0,deterministic:true,
  unarmedPreview:true,equipment:kit,wardrobe
 });
-test('thirty-eight independently authored 32/64px camo families use fixed opaque canonical colors',()=>{
+test('forty-six independently authored 32/64px camo families use fixed opaque canonical colors',()=>{
  assert.equal(HEADWEAR_CAMO_SIZE,32);
- assert.equal(HEADWEAR_CAMO_IDS.length,38);
+ assert.equal(HEADWEAR_CAMO_IDS.length,46);
  const unique=new Set();
  for(const id of HEADWEAR_CAMO_IDS){
   const tile=headwearCamoPixels(id),indices=headwearCamoIndices(id);
@@ -51,7 +51,7 @@ test('thirty-eight independently authored 32/64px camo families use fixed opaque
   }
   unique.add(Buffer.from(tile).toString('base64'));
  }
- assert.equal(unique.size,38,'patterns must not be color-only variations of one tile');
+ assert.equal(unique.size,46,'patterns must not be color-only variations of one tile');
 });
 test('item compatibility is restricted, validated, and persists through outfit serialization',()=>{
  assert.equal(headwearCamoChoices('beanie').length,0);
@@ -136,7 +136,7 @@ test('operator lab exposes raw art, 3x3 repeat and live selected headwear',()=>{
  assert.match(js,/renderHeadwearCamoComparison/);
  assert.match(js,/HEADWEAR_CAMO_IDS/);
  assert.match(js,/camo-study-views/);
- assert.match(html,/COMPARE ALL 38/);
+ assert.match(html,/COMPARE ALL 46/);
  assert.match(js,/headwearCamoSize/);
 });
 test('pattern family density and pigment scales preserve hierarchy',()=>{
@@ -483,7 +483,7 @@ test('5A adds twelve recognizable global pattern families and authentic print de
  const newIds=['belgian-jigsaw','east-german-strichtarn','mitchell-leaf','splittertarn-31',
   'australian-dpcu','italian-vegetato','scorpion-w2','russian-emr',
   'pla-xingkong','cadpat-tw','british-mtp','indian-digital-2022'];
- assert.deepEqual(HEADWEAR_CAMO_IDS.slice(18),newIds);
+ assert.deepEqual(HEADWEAR_CAMO_IDS.slice(18,30),newIds);
  const signatures=new Set();
  for(const id of newIds){
   const entry=CAMO_CATALOG[id],recipe=HEADWEAR_CAMO_RECIPES[id];
@@ -561,7 +561,7 @@ test('5A historical patterns retain independently recognizable palette structure
 });
 
 test('5B all twelve master patterns retain distinct art, meaningful ink roles and original registrations',()=>{
- const batch=HEADWEAR_CAMO_IDS.slice(18);
+ const batch=HEADWEAR_CAMO_IDS.slice(18,30);
  assert.equal(batch.length,12);
  const swatches=new Set();
  const colors=new Set();
@@ -597,7 +597,7 @@ test('5B Belgian Jigsaw rerolls retain contrasting puzzle pieces on actual 64px 
  assert.ok(new Set(scores).size>=6,'reroll must keep varied fabric placement');
 });
 test('5B applied 3D print coverage matches sampled canonical art and existing UV1 atlas',()=>{
- for(const id of HEADWEAR_CAMO_IDS.slice(18)){
+ for(const id of HEADWEAR_CAMO_IDS.slice(18,30)){
   const phase=headwearCamoPlacement('rook','headwear:boonie',id,7);
   const atlas=headwearCamoTexture('boonie',id,phase),source=headwearCamoPixels(id);
   const size=headwearCamoSize(id),density=HEADWEAR_CAMO_DENSITY[id];
