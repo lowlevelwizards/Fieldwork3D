@@ -1,0 +1,52 @@
+name: P5 same-runner CPU comparison
+on:
+  pull_request:
+    paths:
+      - 'src/breach-ai-work-scheduler.ts'
+      - 'src/breach-tactical-route-cache.ts'
+      - 'src/breach-perception-cache.ts'
+      - 'src/breach-game.ts'
+      - '.github/workflows/p5-performance-compare.yml'
+  workflow_dispatch:
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: candidate
+      - uses: actions/checkout@v4
+        with:
+          ref: 4fa4b85f29bb458ed8dbcf875a1bf0124e562d15
+          path: baseline
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies for both code versions
+        run: |
+          (cd baseline && npm ci --no-audit --no-fund)
+          (cd candidate && npm ci --no-audit --no-fund)
+      - name: Compare identical P4/P5 workloads on the same host
+        run: |
+          (cd baseline && node --experimental-strip-types scripts/bench-breach-performance.mjs) > baseline.log
+          (cd candidate && node --experimental-strip-types scripts/bench-breach-performance.mjs) > candidate.log
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const parse=file=>readFileSync(file,'utf8').split('\n')
+            .filter(line=>line.startsWith('COMBAT {')||line.startsWith('SIMULATION {'))
+            .map(line=>JSON.parse(line.slice(line.indexOf('{'))));
+          const base=parse('baseline.log'),next=parse('candidate.log');
+          if(base.length!==next.length||!base.length)throw Error('Benchmark cases mismatched');
+          for(let i=0;i<base.length;i++){
+            const a=base[i],b=next[i];
+            const name=a.seed??'combat';
+            const scale=a.scale??'legacy';
+            const ratio=(b.sim.avg/a.sim.avg).toFixed(2);
+            console.log(name+'/'+scale+' record='+!!a.record+
+              ' P4 avg='+a.sim.avg+'ms P5 avg='+b.sim.avg+
+              'ms ratio='+ratio+'x | P4 p95='+a.sim.p95+
+              ' P5 p95='+b.sim.p95+
+              ' | P4 max='+a.sim.max+' P5 max='+b.sim.max);
+          }
+          NODE
