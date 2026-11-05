@@ -57,34 +57,28 @@ export const RIG_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
  'split-front':{
   signature:{solid:'ranger-green',print:'multicam'},
   solids:['ranger-green','coyote','black','olive-drab','tan','khaki'],
-  prints:['multicam','scorpion-w2','m81-woodland','ucp','british-mtp',
-   'woodland-dpm','atacs-fg','atacs-au','multicam-tropic','multicam-arid','ukrainian-mm14',
-   'multicam-black','pencott-greenzone','pencott-badlands','pencott-metropolis','kryptek-highlander','kryptek-typhon'],
+  prints:['multicam','scorpion-w2','m81-woodland','ucp','british-mtp','woodland-dpm','atacs-fg','atacs-au','multicam-tropic','multicam-arid','ukrainian-mm14','multicam-black','pencott-greenzone','pencott-badlands','pencott-metropolis','kryptek-highlander','kryptek-typhon','russian-emr','polish-pantera','italian-vegetato' ],
   rationale:'Two MOLLE wings and central opening, current modular printed nylon'
  },
  'full-chest':{
   signature:{solid:'forest-green'},
   solids:['forest-green','ranger-green','olive-drab','coyote','tan',
    'black','khaki'],
-  prints:['multicam','m81-woodland','scorpion-w2','british-mtp',
-   'woodland-dpm','ucp','atacs-fg','multicam-tropic','multicam-arid',
-   'multicam-black','pencott-greenzone','pencott-badlands','pencott-metropolis','kryptek-highlander','kryptek-typhon'],
+  prints:['multicam','m81-woodland','scorpion-w2','british-mtp','woodland-dpm','ucp','atacs-fg','multicam-tropic','multicam-arid','multicam-black','pencott-greenzone','pencott-badlands','pencott-metropolis','kryptek-highlander','kryptek-typhon','pla-xingkong','finnish-m05','jgsdf-type2','cadpat-tw','south-korean-granite-b' ],
   rationale:'Large modern/surplus patrol bib with broad front admin face'
  },
  'lbv':{
   signature:{solid:'olive-drab',print:'m81-woodland'},
   solids:['olive-drab','forest-green','field-green','ranger-green','coyote',
    'black'],
-  prints:['m81-woodland','woodland-dpm','multicam'],
+  prints:['m81-woodland','woodland-dpm','multicam','russian-flora' ],
   rationale:'US LBV-88 woodland fabric and olive green nylon, padded twin yokes'
  },
  'field-webbing':{
   signature:{solid:'olive-drab',print:'woodland-dpm'},
   solids:['olive-drab','field-green','forest-green','khaki',
    'ranger-green','coyote','black'],
-  prints:['woodland-dpm','m81-woodland','british-mtp',
-   'east-german-strichtarn','swedish-m90','australian-dpcu',
-   'russian-flora','multicam','atacs-fg','atacs-au','ukrainian-mm14'],
+  prints:['woodland-dpm','m81-woodland','british-mtp','east-german-strichtarn','swedish-m90','australian-dpcu','russian-flora','multicam','atacs-fg','atacs-au','ukrainian-mm14','norwegian-m98' ],
   rationale:'PLCE-style DPM belt pouches and yoke, plus documented national load kits'
  },
  'm1956-lce':{
@@ -180,8 +174,8 @@ export const ARMOR_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
  'plate-legacy':{
   signature:{solid:'olive-drab',print:'m81-woodland'},
   solids:['olive-drab','forest-green','khaki','tan','coyote','black'],
-  prints:['m81-woodland','three-color-desert','ucp'],
-  rationale:'Legacy broad cover carrier: woodland/DCU and early universal-cover variants'
+  prints:['m81-woodland','three-color-desert','ucp','scorpion-w2','russian-emr','pla-xingkong','british-mtp','italian-vegetato','russian-flora','jgsdf-type2','cadpat-tw','south-korean-granite-b' ],
+  rationale:'Broad OTV/IOTV-like protective shell proxy for selected national full-coverage vests; approved prints do not assert identical models'
  }
 };
 /** R10 material ownership: sewn components match, detachable pieces may
