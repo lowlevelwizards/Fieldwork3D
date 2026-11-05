@@ -208,16 +208,28 @@ function camoLightness(id:HeadwearCamoId):number{
 }
 /** Display headings explain why a print is nearby rather than presenting one
  * long flat list. These headings are navigation-only, not eligibility rules. */
+export function camoRelatedTo(id:HeadwearCamoId,reference:HeadwearCamoId){
+ if(id===reference)return false;
+ const family=camoFamily(reference);
+ if(family!=='Other'&&family!=='Digital')
+  return camoFamily(id)===family;
+ const a=CAMO_CATALOG[reference],b=CAMO_CATALOG[id];
+ return a.origin===b.origin&&a.style===b.style;
+}
 export function camoBrowseSection(id:HeadwearCamoId,options:CamoBrowserOptions):string{
  const sort=options.state?.sort??'smart';
- if(sort==='family')return camoFamily(id)==='Other'?'OTHER PATTERNS':camoFamily(id).toUpperCase();
+ const family=camoFamily(id);
+ if(sort==='family')return family==='Other'?
+  'OTHER · '+CAMO_CATALOG[id].style.toUpperCase():family.toUpperCase();
  if(sort!=='smart')return '';
  if(id===options.active)return 'CURRENT SELECTION';
  const prefs=options.prefs??readCamoBrowserPrefs();
  if(prefs.favorites.includes(id))return 'FAVORITES';
  if(prefs.recents.includes(id))return 'RECENTLY USED';
- if(options.reference&&camoFamily(id)===camoFamily(options.reference))
-  return 'RELATED TO YOUR UNIFORM · '+camoFamily(id).toUpperCase();
+ const reference=options.reference??options.active;
+ if(reference&&camoRelatedTo(id,reference))
+  return 'RELATED TO '+(options.reference?'UNIFORM':'SELECTION')+
+   ' · '+(family==='Other'?CAMO_CATALOG[id].style.toUpperCase():family.toUpperCase());
  return 'OTHER COMPATIBLE PATTERNS';
 }
 export type CamoBrowserOptions={
@@ -247,7 +259,8 @@ export function browseCamos(compatible:readonly HeadwearCamoId[],
   if(id===options.active)return 0;
   if(favorites.has(id))return 1;
   if(recents.has(id))return 2;
-  if(options.reference&&camoFamily(id)===camoFamily(options.reference))return 3;
+  const reference=options.reference??options.active;
+  if(reference&&camoRelatedTo(id,reference))return 3;
   return 4;
  };
  return visible.sort((a,b)=>{
@@ -259,7 +272,10 @@ export function browseCamos(compatible:readonly HeadwearCamoId[],
     break;
    case 'recent':diff=(recents.get(a)??Infinity)-(recents.get(b)??Infinity);break;
    case 'origin':diff=CAMO_CATALOG[a].origin.localeCompare(CAMO_CATALOG[b].origin);break;
-   case 'family':diff=camoFamily(a).localeCompare(camoFamily(b));break;
+   case 'family':diff=camoFamily(a).localeCompare(camoFamily(b));
+    if(!diff&&camoFamily(a)==='Other')
+     diff=CAMO_CATALOG[a].style.localeCompare(CAMO_CATALOG[b].style);
+    break;
    case 'era':diff=camoSortEra(a).localeCompare(camoSortEra(b));break;
    case 'lightness':diff=camoLightness(b)-camoLightness(a);break;
   }
