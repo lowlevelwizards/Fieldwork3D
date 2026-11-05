@@ -8,7 +8,9 @@ const actor=(id,x=0,y=0)=>({
 test('geometric visibility shared for exact same actor-pair inputs only',()=>{
  const cache=new PerceptionPairCache();
  const a=actor('rook'),b=actor('guard',40,10);let rays=0;
- const check=()=>cache.get(a,b,1,'1:3','D1:closed',()=>{rays++;return true;});
+ const doors=[{id:'D1',open:false,openFraction:0,
+   a:{x:15,y:-8},b:{x:15,y:8},openedAt:0}];
+ const check=()=>cache.get(a,b,1,'1:3',doors,()=>{rays++;return true;});
  assert.equal(check(),true);
  assert.equal(check(),true);
  assert.equal(rays,1);
@@ -20,11 +22,12 @@ test('geometric visibility shared for exact same actor-pair inputs only',()=>{
  assert.equal(check(),true);assert.equal(rays,4,'target posture invalidation');
  a.health=0;
  assert.equal(check(),true);assert.equal(rays,5,'health invalidation');
- cache.get(a,b,1,'1:4','D1:closed',()=>{rays++;return false;});
+ cache.get(a,b,1,'1:4',doors,()=>{rays++;return false;});
  assert.equal(rays,6,'cover revision invalidation');
- cache.get(a,b,1,'1:4','D1:open',()=>{rays++;return false;});
+ doors[0].open=true;doors[0].openFraction=.9;
+ cache.get(a,b,1,'1:4',doors,()=>{rays++;return false;});
  assert.equal(rays,7,'door geometry invalidation');
- cache.get(a,b,2,'1:4','D1:open',()=>{rays++;return false;});
+ cache.get(a,b,2,'1:4',doors,()=>{rays++;return false;});
  assert.equal(rays,8,'tick invalidation');
  assert.ok(cache.hits>=1);
 });
@@ -32,7 +35,7 @@ test('geometric visibility shared for exact same actor-pair inputs only',()=>{
 test('visibility caches are directional and do not share opposing sight',()=>{
  const cache=new PerceptionPairCache();
  const a=actor('rook'),b=actor('guard',40,0);
- const forward=cache.get(a,b,1,'1','',()=>true);
- const reverse=cache.get(b,a,1,'1','',()=>false);
+ const forward=cache.get(a,b,1,'1',[],()=>true);
+ const reverse=cache.get(b,a,1,'1',[],()=>false);
  assert.equal(forward,true);assert.equal(reverse,false);
 });
