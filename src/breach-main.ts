@@ -236,6 +236,9 @@ const randomSiteSeed=()=>{
   return bytes[0]||((Date.now()^Math.floor(Math.random()*1e9))>>>0);
 };
 const startupParams=new URLSearchParams(location.search);
+// E5-B controlled field preview. Ordinary Quick Play/Campaign is unchanged
+// until rescue/ballistics/mobile acceptance and deliberate public enablement.
+const civilianPreview=startupParams.get('civilians')==='1';
 const legacyStudy=startupParams.has('fixedSite');
 const requestedSeed=Number(startupParams.get('seed'));
 const initialSiteSeed=startupParams.has('seed')&&Number.isSafeInteger(requestedSeed)&&
@@ -420,7 +423,8 @@ function applyCampaignSkills(){
 }
 // The front menu needs no procedural site. Generate exactly once when a mode starts.
 let state:Session=newSession(0,legacyStudy||campaignMode==='menu'?undefined:initialSiteSeed,
-  selectedIntelMode,requestedSiteScale);
+  selectedIntelMode,requestedSiteScale,undefined,undefined,
+  {enableCivilians:civilianPreview});
 state.lightingMode=selectedLightingMode;
 applyRequestedCondition(state);
 applyRosterIdentity(state,persistentRoster);
@@ -2930,7 +2934,8 @@ function fog(){
   draw.drawImage(fogCanvas,0,0,W,H);
 }
 function missionMarkers(){
-  if(state.rescue&&liveVisibility(state,state.rescue.p)){
+  if(state.rescue&&!state.civilians.some(c=>c.rescueTarget)&&
+     liveVisibility(state,state.rescue.p)){
     const p=state.rescue.p;
     draw.strokeStyle='#eed9ad';draw.lineWidth=2.2;
     draw.beginPath();draw.arc(p.x,p.y,13,0,Math.PI*2);draw.stroke();
@@ -3451,7 +3456,7 @@ function reset(next=state.variant,siteSeed?:number,
   ui.replayPanel.hidden=true;
   state=newSession(next,legacyStudy?undefined:
     siteSeed??randomSiteSeed(),selectedIntelMode,requestedSiteScale,missionOverride,
-    prebuiltSite,{risk:encounterRisk});
+    prebuiltSite,{risk:encounterRisk,enableCivilians:civilianPreview});
   executionNoticeFeed.reset();
   state.lightingMode=selectedLightingMode;
   if(campaignMode==='quick')persistentRoster=freshQuickPlayRoster(persistentRoster);
