@@ -135,3 +135,25 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 #studioItemBrowser .appearance-item-card[aria-pressed="true"]{color:#f3efdc}
 #studioItemBrowser .appearance-item-card[aria-pressed="true"] .appearance-item-name{color:#f3efdc}
 #studioItemBrowser .appearance-item-card[aria-pressed="true"] .appearance-item-tag{color:#ffdfa3}
+
+/* UX R2 — Three deliberate stages instead of a full stacked editor. */
+.studio-workflow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:5px;padding-top:6px;border-top:1px solid #4c685d}
+.studio-workflow button{min-width:0;min-height:46px;padding:7px 4px;
+ border:1px solid #648275;border-radius:8px;background:#2d493d;color:#dce4d5;
+ font:800 14px/1.15 "Saira Condensed","Arial Narrow",sans-serif;
+ letter-spacing:.03em;touch-action:manipulation}
+.studio-workflow button[aria-pressed="true"]{background:#bfcaaa;
+ color:#1c2d23;border-color:#e3d5ae}
+.studio-workflow-help{display:block;min-height:18px;
+ font:500 12px/1.4 "Work Sans",sans-serif;color:#bacfbc;padding:2px 1px 1px}
+#studioItemBrowser[hidden],#studioMaterials[hidden],
+#studioMaterials>[hidden]{display:none!important}
+.studio-empty-step{margin:10px 2px;padding:12px;color:#c6d1bc;
+ font:500 13px/1.5 "Work Sans",sans-serif;
+ border:1px dashed #6c8776;border-radius:7px}
+@media(max-width:390px){
+ .studio-workflow{gap:4px}
+ .studio-workflow button{font-size:13px;min-height:44px;padding:5px 2px}
+ .studio-workflow-help{font-size:11px}
+}
