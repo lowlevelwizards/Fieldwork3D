@@ -1,48 +1,57 @@
-/** D2-V3-A3a: bandana = LIGHT TIED TRIANGLE, not a narrow neck tube.
- * The rear knot, two unequal tails and pointed front remain readable
- * from three-quarter and side views. Still one joined exterior mesh/mode.
+/** D2-R4B: bandana as a joined, substantial three-dimensional tied kerchief.
+ * Broad, face-following cloth wraps the cheeks and closes at a heavy rear knot.
+ * Separate raised/lowered geometries are constructed once and toggled only.
  */
 import * as THREE from 'three';
 import {clothExterior,type ClothCuboid} from './operator-d2-fitted-cloth.ts';
 export type D2BandanaMode='raised'|'lowered';
-const add=(p:ClothCuboid[],name:string,x:number,y:number,z:number,w:number,h:number,d:number)=>{
- p.push({name,x,y,z,width:w,height:h,depth:d});
+const add=(parts:ClothCuboid[],name:string,x:number,y:number,z:number,
+ width:number,height:number,depth:number)=>{
+ parts.push({name,x,y,z,width,height,depth});
 };
 export function createD2BandanaMode(mode:D2BandanaMode,material:THREE.Material):THREE.Group{
  const root=new THREE.Group();root.name='d2-wrap-'+mode;
  root.userData.d2WrapMode=mode;
  const p:ClothCuboid[]=[];
  const raised=mode==='raised';
- const top=raised?3.16:-.46;
- const frontZ=raised?-4.24:-3.73;
- // Five deliberately coarse steps create a triangular kerchief, not
- // a flat face strap. Width halves toward the bottommost cloth point.
- const steps=[
-  [0,.43,7.75],[.43,1.00,6.62],[1.00,1.61,5.16],
-  [1.61,2.23,3.43],[2.23,3.48,1.67]
+ const top=raised?3.23:-.72;
+ const front=raised?-4.34:-3.78;
+ const back=raised?4.13:3.67;
+ const half=raised?4.12:3.65;
+ // Wide stepped hanging fabric, not an almost planar Dorito or a rigid cowl.
+ // Each adjacent band slightly overlaps so the union has no disconnected edges.
+ const bands=[
+  [0,.55,8.08],[.55,1.25,7.90],[1.25,2.03,7.12],
+  [2.03,2.76,5.86],[2.76,3.45,4.42],[3.45,3.98,3.24]
  ] as const;
- for(const [i,[from,to,width]] of steps.entries())
-  add(p,'tapered-triangle-'+i,0,top-(from+to)/2,
-   frontZ-.035*i,width,to-from,.32);
- // A single bound hem at the top. Neither a thick scarf cowl
- // nor the stack of parallel face stripes from the previous model.
- add(p,'folded-upper-hem',0,top-.13,frontZ-.16,7.79,.28,.26);
- const half=raised?3.97:3.59;
- const rear=raised?4.04:3.56;
- const tieY=top-.31;
- for(const side of [-1,1]){
-  add(p,'tied-side',side*half,tieY,
-   (frontZ+rear)/2,.37,.54,rear-frontZ);
-  add(p,'corner-crease',side*3.41,tieY-.21,frontZ-.09,
-   .75,.55,.34);
+ for(const [i,[from,to,width]] of bands.entries()){
+  add(p,'hanging-front-'+i,0,top-(from+to)/2,
+   front-.025*i,width,to-from+.12,.54);
  }
- add(p,'rear-tie-band',0,tieY,rear,half*2,.52,.38);
- // Strong three-quarter signature: knot, two bow wings and unequal tails.
- add(p,'rear-knot',.10,tieY-.10,rear+.30,1.25,1.08,.94);
- add(p,'knot-left-wing',-1.12,tieY+.05,rear+.32,1.41,.62,.46);
- add(p,'knot-right-wing',1.31,tieY-.03,rear+.32,1.45,.65,.48);
- add(p,'short-knot-tail',1.02,tieY-.94,rear+.29,.78,1.22,.36);
- add(p,'long-knot-tail',-.47,tieY-1.22,rear+.28,.82,1.74,.40);
- root.add(clothExterior('single-tied-bandana-'+mode,p,material));
+ // One thick upper fold reads as textile, with no extra strip hovering over it.
+ add(p,'wide-folded-top-edge',0,top-.22,front-.17,8.23,.47,.43);
+ // Upper wings wrap continuously from the cheeks to the back of the head.
+ // The middle/lower returns widen the side silhouette instead of exposing
+ // two skinny straps flanking a triangular sheet.
+ for(const side of [-1,1]){
+  const name=side<0?'left':'right',x=side*half;
+  add(p,name+'-upper-wrap',x,top-.56,(front+back)/2,
+   .63,1.19,back-front+.32);
+  add(p,name+'-cheek-wrap',x,top-1.48,-1.01,
+   .67,1.89,6.89);
+  add(p,name+'-lower-cheek-return',side*(half-.18),top-2.33,-2.47,
+   .73,1.79,3.82);
+  add(p,name+'-front-corner-fold',side*(half-.36),top-1.41,
+   front+.38,1.08,1.45,1.16);
+ }
+ // Rear band joins both side wings before the separate, oversized knot.
+ add(p,'closed-rear-landing',0,top-.59,back,half*2+.38,1.20,.56);
+ const knotZ=back+.48,knotY=top-.64;
+ add(p,'rear-knot',.05,knotY,knotZ,1.57,1.33,1.03);
+ add(p,'knot-left-wing',-1.21,knotY+.10,knotZ-.02,1.64,.85,.63);
+ add(p,'knot-right-wing',1.28,knotY+.02,knotZ-.04,1.71,.94,.67);
+ add(p,'short-knot-tail',.59,knotY-.85,knotZ,.91,1.45,.53);
+ add(p,'long-knot-tail',-.49,knotY-1.15,knotZ+.05,1.00,2.05,.59);
+ root.add(clothExterior('joined-tied-bandana-'+mode,p,material));
  return root;
 }
