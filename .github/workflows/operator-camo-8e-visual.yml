@@ -1,4 +1,4 @@
-name: Camouflage 8E–8F — Mobile Print Review
+name: Camouflage 8E–8G — Mobile Print Review
 on:
   pull_request:
     paths:
@@ -7,6 +7,8 @@ on:
       - 'src/operator-fabric-camo-materials.ts'
       - 'scripts/capture-operator-camo-8e.mjs'
       - 'scripts/capture-operator-camo-8f.mjs'
+      - 'scripts/capture-operator-camo-8g.mjs'
+      - 'tests/operator-camo-batch8g.test.mjs'
       - 'tests/operator-camo-batch8f.test.mjs'
       - 'tests/operator-camo-batch8e.test.mjs'
       - '.github/workflows/operator-camo-8e-visual.yml'
@@ -29,7 +31,9 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Fixed-light BDU jacket/trouser views and master thumbnails
         run: |
-          if [[ "$GITHUB_HEAD_REF" == feature/operator-camo-8f-* ]]; then
+          if [[ "$GITHUB_HEAD_REF" == feature/operator-camo-8g-* ]]; then
+            node scripts/capture-operator-camo-8g.mjs
+          elif [[ "$GITHUB_HEAD_REF" == feature/operator-camo-8f-* ]]; then
             node scripts/capture-operator-camo-8f.mjs
           else
             node scripts/capture-operator-camo-8e.mjs
@@ -41,4 +45,5 @@ jobs:
           path: |
             operator-8e-camo-comparison/
             operator-8f-camo-comparison/
+            operator-8g-m98-density-comparison/
           if-no-files-found: warn
