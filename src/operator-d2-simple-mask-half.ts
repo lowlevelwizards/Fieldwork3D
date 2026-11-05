@@ -76,6 +76,6 @@ export function buildSimpleIndustrial(root:THREE.Group,m:MaskMaterials,
  }
  fittedHarness(root,m.hardware,'respirator-harness',[
   {position:[2.72,1.64,-4.95],normal:[1,0,0]},
-  {position:[2.24,3.03,-4.93],normal:[1,0,0]}
+  {position:[1.20,3.03,-4.98],normal:[1,0,0]}
  ]);
 }

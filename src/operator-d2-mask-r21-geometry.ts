@@ -112,7 +112,7 @@ export function contouredPanorama(g:THREE.Group,m:MaskMaterials,
  const tops=[5.24,5.36,5.36,5.36,5.36,5.36,5.36,5.24];
  const bottoms=[2.44,2.43,2.43,2.93,2.93,2.43,2.43,2.44];
  const depth=(x:number)=>-5.50+
-  Math.max(0,Math.abs(x)-2.45)/1.25*.50;
+  Math.max(0,Math.abs(x)-2.45)/1.25*.62;
  const samples=xs.map((x,i)=>({x,top:tops[i],bottom:bottoms[i],
   z:depth(x)}));
  const frame=samples.map(p=>({
