@@ -17,6 +17,16 @@ export function visionPolygon(origin:Pt,heading:number,range=240,
   walls:Segment[]=WALLS,doors:Door[]=[],lowObstructs=false,
   cover= COVER):Pt[]{
   const blockers=opticalBlockerSegments(walls,doors,cover,lowObstructs);
+  // Preserve every original angle sample and resulting polygon vertex.
+  // Only the ray intersection loop is culled: segments outside the
+  // enclosing square cannot intersect a finite ray of this range.
+  const reach=Math.max(0,range),minX=origin.x-reach,maxX=origin.x+reach,
+    minY=origin.y-reach,maxY=origin.y+reach;
+  const rayBlockers=blockers.filter(edge=>
+    Math.max(edge.a.x,edge.b.x)>=minX&&
+    Math.min(edge.a.x,edge.b.x)<=maxX&&
+    Math.max(edge.a.y,edge.b.y)>=minY&&
+    Math.min(edge.a.y,edge.b.y)<=maxY);
   const angles:number[]=[];
   for(let i=0;i<=64;i++)
     angles.push(-VISION_HALF_ANGLE+2*VISION_HALF_ANGLE*i/64);
@@ -37,7 +47,7 @@ export function visionPolygon(origin:Pt,heading:number,range=240,
     last=delta;
     const angle=heading+delta,dx=Math.cos(angle),dy=Math.sin(angle);
     let hit=range;
-    for(const edge of blockers){
+    for(const edge of rayBlockers){
       hit=Math.min(hit,rayHit(origin,dx,dy,edge,hit));
       if(hit<=.05)break;
     }
