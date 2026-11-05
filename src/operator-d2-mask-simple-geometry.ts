@@ -169,7 +169,6 @@ export function panorama(g:THREE.Group,mat:THREE.Material,name:string,
  const strip=(a:number,b:number,za:number,zb:number)=>{
   const v:V[]=[[a,bottom,za],[b,bottom,zb],
    [b,top,zb],[a,top,za]];
-  const n=new THREE.Vector3(-(zb-za),0,b-a).normalize();
   emitQuad(v,pos,norm,new THREE.Vector3(0,0,-1));
  };
  strip(-outerW,-centerW,side,front);
