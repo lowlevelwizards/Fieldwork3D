@@ -1,5 +1,6 @@
 /** Physical hinges, handles, and deterministic door clearance. */
-import {doorCenter,passable,route,pointToSegment,
+import {sweptBodyClear,bodyClear} from './breach-navigation.ts';
+import {doorCenter,route,pointToSegment,
   doorYaw,doorLeafSegment,WALLS,COVER,activeSite,initialDoors,
   pointToSegment as distanceToWall,
   OPERATOR_RADIUS,type Door,type Pt} from './breach-core.ts';
@@ -61,7 +62,7 @@ export function canAutoOpenEnRoute(plan:{
 export function autoDoorAtBodyContact(from:Pt,to:Pt,
  doors:readonly Door[]):Door|undefined{
  const touching=doors.filter(d=>{
-   if((d.open&&(d.openFraction??0)>=.72)||!doorReachable(from,d))
+   if((d.open&&doorClear(d))||!doorReachable(from,d))
      return false;
    const leaf=doorLeafSegment(d);
    const before=pointToSegment(from,leaf),after=pointToSegment(to,leaf);
@@ -98,7 +99,7 @@ export function doorApproach(from:Pt,d:Door):Pt|null{
       for(const along of [0,-12,12])
         candidates.push({x:point.x+n.x*outward*side+t.x*along,
           y:point.y+n.y*outward*side+t.y*along});
-  return candidates.filter(p=>passable(p)&&doorReachable(p,d)&&
+  return candidates.filter(p=>bodyClear(p,[d])&&doorReachable(p,d)&&
     route(from,p).length).sort((a,b)=>dist(a,from)-dist(b,from))[0]??null;
 }
 export function initDoor(d:Door,i:number):Door{
@@ -163,33 +164,53 @@ export function kickDoor(d:Door,from?:Pt):{opened:boolean;pushSide:boolean}{
 /** A swept leaf cannot move further into a living actor's body.
  * Existing overlap may resolve by moving away; it must never deepen.
  */
+/** Sample the COMPLETE moving panel arc, including between hinge motor
+ * endpoints. A short tick may have clear endpoints but sweep over a capsule,
+ * particularly at the tip of a wide leaf or on coarse simulation ticks.
+ * Bodies already touching the leaf may only be released, never penetrated.
+ */
+const doorSweepSteps=(d:Door,next:number)=>{
+ const current=d.openFraction??(d.open?1:0);
+ return Math.max(1,Math.ceil(dist(d.a,d.b)*Math.abs(next-current)*
+   (d.kind==='hinged'||!d.kind?1.54:1)/2));
+};
 export function doorWouldStrikeActors(d:Door,next:number,actors:readonly Pt[],
  radius=OPERATOR_RADIUS):boolean{
- const old=doorLeafSegment(d),candidate=doorLeafSegment({...d,openFraction:next});
- return actors.some(p=>{
-   const before=pointToSegment(p,old),after=pointToSegment(p,candidate);
-   return after<radius+1&&after<before-.01;
+ if(!actors.length)return false;
+ const current=d.openFraction??(d.open?1:0);
+ const origin=doorLeafSegment(d);
+ const steps=doorSweepSteps(d,next);
+ return actors.some(actor=>{
+  const initial=pointToSegment(actor,origin);
+  for(let i=1;i<=steps;i++){
+   const fraction=current+(next-current)*i/steps;
+   const gap=pointToSegment(actor,doorLeafSegment({...d,openFraction:fraction}));
+   if(gap<radius+1&&gap<initial-.01)return true;
+  }
+  return false;
  });
 }
-/** Door leaf stops against architecture and furniture, not an arbitrary
- * renderer-only angle; sample away from the hinge itself. */
+/** Test every segment of the hinge sweep against architecture, not merely
+ * the last frame; a leaf may not tunnel through a thin doorstop or fixture. */
 export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[], actorRadius=OPERATOR_RADIUS){
  if(d.kind==='shutter')return false;
- if(d.kind==='sliding')return doorWouldStrikeActors(d,next,actors);
- // Physical bodies always stop the leaf, including dynamic or lab doors
- // without registered architectural walls. Never skip actor collision as
- // a side effect of the standalone-fixture optimization.
  if(doorWouldStrikeActors(d,next,actors,actorRadius))return true;
- // Standalone doors only skip unrelated *architectural* wall/cover checks.
+ if(d.kind==='sliding')return false;
+ // Standalone lab fixtures have no corresponding architectural model.
  const registered=activeSite()?.doors??initialDoors();
  if(!registered.some(real=>real.id===d.id))return false;
- const leaf=doorLeafSegment({...d,openFraction:next});
- for(const t of [.35,.55,.75,.94,.99]){
+ const current=d.openFraction??(d.open?1:0);
+ const steps=doorSweepSteps(d,next);
+ for(let step=1;step<=steps;step++){
+  const fraction=current+(next-current)*step/steps;
+  const leaf=doorLeafSegment({...d,openFraction:fraction});
+  for(const t of [.35,.55,.75,.94,.99]){
    const p={x:leaf.a.x+(leaf.b.x-leaf.a.x)*t,
      y:leaf.a.y+(leaf.b.y-leaf.a.y)*t};
    if(WALLS.some(w=>distanceToWall(p,w)<1.25))return true;
    if(COVER.some(o=>Math.abs(o.x-p.x)<o.w/2+1.25&&
      Math.abs(o.y-p.y)<o.h/2+1.25))return true;
+  }
  }
  return false;
 }
@@ -279,7 +300,35 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
   advanceDoor(door,Math.min(Math.max(0,dt),1/60),actors);
   return {doorId:door.id,advanced:(door.openFraction??0)>initial+.0001};
 }
-export const doorClear=(d:Door)=>!!d.open&&(d.openFraction??1)>=.72;
+/** An entry gate is clear only when an actual full-size operator capsule
+ * can traverse the threshold. Angle percentages are not aperture widths:
+ * they vary with hinge end, panel length, sliding direction and frame.
+ * Keep the lift height rule for shutters (vertical collision geometry).
+ */
+export function doorClear(d:Door):boolean{
+ if(!d.open)return false;
+ const fraction=d.openFraction??1;
+ if(d.kind==='shutter')return fraction>=.72;
+ if(fraction<.08)return false;
+ const width=dist(d.a,d.b);
+ if(width<OPERATOR_RADIUS*2+4)return false;
+ const m=doorCenter(d);
+ const tangent={x:(d.b.x-d.a.x)/width,y:(d.b.y-d.a.y)/width};
+ const normal={x:-tangent.y,y:tangent.x};
+ const depth=Math.max(OPERATOR_RADIUS+12,Math.min(28,width*.62));
+ // Probe the center and modest shoulder-safe offsets; do not mistake a
+ // tiny latch-side sliver for a passable body-width opening.
+ for(const lateral of [0,-.17,.17,-.3,.3]){
+  const along=lateral*width;
+  if(Math.abs(along)>width/2-OPERATOR_RADIUS-2)continue;
+  const center={x:m.x+tangent.x*along,y:m.y+tangent.y*along};
+  const from={x:center.x-normal.x*depth,y:center.y-normal.y*depth};
+  const to={x:center.x+normal.x*depth,y:center.y+normal.y*depth};
+  if(bodyClear(from,[d])&&bodyClear(to,[d])&&
+    sweptBodyClear(from,to,[d]))return true;
+ }
+ return false;
+}
 
 
 /** Tiny, strictly physical shoulder-yield when a door FIRST starts opening.
