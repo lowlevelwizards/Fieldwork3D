@@ -10,6 +10,8 @@ import {studioCameraFocusForWardrobe,studioFocusEasing,clampStudioCameraZoom,
  from './operator-studio-camera-focus.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {OperatorAppearanceGrid,APPEARANCE_GROUP_LABELS} from './operator-appearance-grid.ts';
+import {FactionReferenceBrowser} from './faction-reference-browser.ts';
+import {resolveFactionReference,referenceLookForKit} from './faction-reference-resolver.ts';
 import {readRoster,initialRoster,
  freshQuickPlayRoster,serializeQuickPlayCosmetics} from './breach-roster.ts';
 import {readCampaign} from './campaign-state.ts';
@@ -69,6 +71,8 @@ let advancedFabricColorsOpen=false;
 const openCamoLibraries=new Set<string>();
 let advancedPouchOpen=false;
 let clothesOnly=true;
+let referenceOpen=false;
+let previousClothesOnly=true;
 let comparingSaved=false;
 let saveInFlight=false;
 let studioPresets:StudioPreset[]=[];
@@ -127,6 +131,42 @@ const member=()=>people.find(p=>p.id===selected);
 const current=()=>edits.get(selected)??member()?.wardrobe??initialWardrobe();
 const previewWardrobe=()=>comparingSaved?member()?.wardrobe??initialWardrobe():current();
 const say=(message:string)=>{status.textContent=message;};
+const referenceBrowser=new FactionReferenceBrowser(
+ $<HTMLElement>('studioReferencesPanel'),{
+  onPreview:()=>{if(referenceOpen)posePreview();},
+  onApply:id=>{
+   const p=member();
+   if(!p||readOnly||saveInFlight)return;
+   const applied=referenceLookForKit(id,p.loadout,current());
+   changeWardrobe(applied.wardrobe);
+   closeReferenceBrowser();
+   say('REFERENCE APPLIED TO UNSAVED LOOK · '+
+    (applied.substituted.length+applied.lostPrints.length?
+     (applied.substituted.length+' STYLES / '+applied.lostPrints.length+
+      ' PRINTS ADAPTED TO ACTUAL KIT'):'NO KIT SUBSTITUTIONS')+
+    ' · SAVE LOOK TO KEEP IT');
+  },
+  onClose:()=>closeReferenceBrowser(),
+  compatibility:id=>{
+   const p=member();
+   if(!p)return {substituted:[],lostPrints:[]};
+   const result=referenceLookForKit(id,p.loadout,current());
+   return {substituted:result.substituted,lostPrints:result.lostPrints};
+  }
+ });
+function openReferenceBrowser(){
+ if(referenceOpen)return;
+ previousClothesOnly=clothesOnly;
+ referenceOpen=true;clothesOnly=false;syncGearToggle();
+ referenceBrowser.show(readOnly);
+ refresh();
+}
+function closeReferenceBrowser(){
+ if(!referenceOpen)return;
+ referenceOpen=false;referenceBrowser.hide();
+ clothesOnly=previousClothesOnly;syncGearToggle();
+ refresh();
+}
 function resize(){
  const rect=stage.getBoundingClientRect();
  const w=Math.max(1,Math.round(rect.width)),h=Math.max(1,Math.round(rect.height));
@@ -246,6 +286,7 @@ gearToggle.addEventListener('click',()=>{
 syncGearToggle();
 function posePreview(){
  const p=member();if(!p)return;
+ const reference=referenceOpen?resolveFactionReference(referenceBrowser.selectedId):null;
  if(!rig||rig.camoIdentity!==p.id){
   if(rig){scene.remove(rig.root);rig.dispose();}
   rig=createOperatorRig(p.id,'blue');
@@ -257,8 +298,8 @@ function posePreview(){
   lastDoorAt:-100,lastThrowAt:-100,down:false,surrender:false,
   aiming:false,firing:false,turning:0,deterministic:true,
   faceStyle:studioUsesVisibleFace(activeCategory)?'quiet':'blank',
-  unarmedPreview:true,equipment:inspectKit(p.loadout),
-  wardrobe:inspectWardrobe(previewWardrobe())
+  unarmedPreview:true,equipment:inspectKit(reference?.kit??p.loadout),
+  wardrobe:inspectWardrobe(reference?.wardrobe??previewWardrobe())
  },0);
  renderScene();
 }
@@ -886,6 +927,7 @@ const categoryGroup=()=>categoryGroups.find(group=>
  group.slots.includes(activeCategory))??categoryGroups[1];
 function selectCategory(slot:WardrobeSlot){
  activeCategory=slot;activeStep='items';
+ if(referenceOpen){referenceOpen=false;referenceBrowser.hide();}
  // Look at the cloth unobscured for garments, but show all available
  // headgear/armor/gear when browsing those categories.
  clothesOnly=studioUsesClothesOnly(slot);
@@ -894,6 +936,12 @@ function selectCategory(slot:WardrobeSlot){
 }
 function renderCategories(){
  categories.replaceChildren();subcategories.replaceChildren();
+ const referenceButton=document.createElement('button');
+ referenceButton.type='button';referenceButton.textContent='REFERENCES';
+ referenceButton.setAttribute('aria-pressed',String(referenceOpen));
+ referenceButton.disabled=saveInFlight;
+ referenceButton.addEventListener('click',()=>openReferenceBrowser());
+ categories.append(referenceButton);
  for(const group of categoryGroups){
   const button=makeButton(group.label,group.slots.includes(activeCategory),()=>
    selectCategory(group.slots[0]));
@@ -1011,7 +1059,8 @@ matchSetButton.addEventListener('click',()=>{
 });
 function refresh(){
  const p=member();if(!p)return;
- $('studioTitle').textContent=APPEARANCE_GROUP_LABELS[activeCategory]+' / '+p.callsign;
+ studioRoot.dataset.referenceOpen=String(referenceOpen);
+ $('studioTitle').textContent=referenceOpen?'REFERENCE KITS / '+p.callsign:APPEARANCE_GROUP_LABELS[activeCategory]+' / '+p.callsign;
  $('studioSubheading').textContent=readOnly?'LOCKED DURING ACTIVE OPERATION':
   'Select a 3D item, then edit materials and details';
  applyButton.disabled=readOnly||!dirty.size||saveInFlight;
@@ -1032,10 +1081,13 @@ function refresh(){
   (dirty.size?' · '+dirty.size+' UNSAVED':'');
  undoButton.disabled=readOnly||saveInFlight||!(history.get(selected)?.length);
  renderCategories();
- // Refresh below owns the paint; changing tab alone should not render twice.
- thumbBrowser.setCategory(activeCategory,true);
- thumbBrowser.refresh(p.loadout,previewWardrobe(),p.id);
- renderPresetMenu();renderMaterials();posePreview();
+ // Reference catalog uses the shared 3D viewport, not the item thumbnail grid.
+ if(!referenceOpen){
+  thumbBrowser.setCategory(activeCategory,true);
+  thumbBrowser.refresh(p.loadout,previewWardrobe(),p.id);
+  renderMaterials();
+ }
+ renderPresetMenu();referenceBrowser.refresh(readOnly);posePreview();
 }
 function populate(){
  modelSelector.replaceChildren();
@@ -1047,6 +1099,7 @@ function populate(){
  modelSelector.value=selected;refresh();
 }
 function start(data:{mode:StudioMode;selected:string;members:StudioPerson[];readonly:boolean}){
+ referenceOpen=false;referenceBrowser.hide();
  mode=data.mode;selected=data.selected;readOnly=data.readonly;
  comparingSaved=false;saveInFlight=false;
  people=data.members.map(p=>({...p,wardrobe:readWardrobe(p.wardrobe)}));

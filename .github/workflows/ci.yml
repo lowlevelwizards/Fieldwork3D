@@ -825,6 +825,12 @@ jobs:
             tests/mission-escort-physicality.test.mjs \
             tests/tactical-integration-17-firefight-b1.test.mjs \
             tests/tactical-mission-quality-operations.test.mjs
+      - name: Reference Kits R1–R4 critical contracts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/faction-reference-release-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/faction-reference.test.mjs \
+            tests/ux-r2-studio-flow.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
