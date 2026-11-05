@@ -85,7 +85,7 @@ Status: D0 audit and D1 complexion/hair implementation in this release. D2 and s
 
 
 ### D2 first-wave scope lock — Nov 4
-The broad D2 candidate exploration has been narrowed to **19 distinct base models** (6 fabric, 6 masks, 4 glasses and 3 goggles), plus grouped variants. Use the [D2 First-Wave Implementation Plan](https://github.com/lowlevelwizards/Fieldwork3D/blob/feature/operator-visual-details-2026-11-04/docs/operator-d2-first-wave-implementation-plan-2026-11-04.md) as the authoritative D2 build order, migration matrix, compatibility contract and critical release gates; the earlier broad catalog is reference-only.
+The broad D2 candidate exploration has been narrowed to **19 distinct base models** (6 fabric, 6 masks, 4 glasses and 3 goggles), plus grouped variants. Use the [D2 First-Wave Implementation Plan](./operator-d2-first-wave-implementation-plan-2026-11-04.md) as the historical first-wave D2 build specification, migration matrix, and fit/compatibility rationale; later D2 releases supersede its implementation checklist. The [broader reference catalog](./operator-d2-facewear-eyewear-catalog-2026-11-04.md) remains exploratory and reference-only.
 
 
 ### Release checkpoint — D0 + D1
