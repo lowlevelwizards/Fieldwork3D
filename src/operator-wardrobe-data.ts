@@ -3,6 +3,7 @@
  * equipment-catalog / equipment-loadouts / campaign-state.
  */
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {readIdentityMarkings,type IdentityMarkings} from './operator-identity-markings.ts';
 import {isSkinToneId,isHairStyleId,isHairToneId,
  type SkinToneId,type HairStyleId,type HairToneId} from './operator-identity-palette.ts';
 import {wardrobeMount} from './operator-wardrobe-mounts.ts';
@@ -184,6 +185,8 @@ export type WardrobeOptions={
  /** Contextual new-garment materials, never the abolished global palette. */
  topColorway:string;
  accessories:WardrobeAccessoryConfiguration;
+ /** R5 cosmetic-only, optional markings. Empty means no extra emblems. */
+ markings?:IdentityMarkings;
  mounts:{medical?:string;utility?:string;magazineOrder:'left-right'|'right-left'};
 };
 const DEFAULTS:Record<WardrobeSlot,string>={
@@ -280,6 +283,8 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
   result.trouserHem=v.trouserHem as TrouserHem;
  if(isGarmentColorway(v.topColorway))result.topColorway=v.topColorway;
  result.accessories=readWardrobeAccessories(v.accessories);
+ const markings=readIdentityMarkings(v.markings);
+ if(Object.keys(markings).length)result.markings=markings;
  if(v.mounts&&typeof v.mounts==='object'){
   const incoming=v.mounts;
   for(const kind of ['medical','utility'] as const){
