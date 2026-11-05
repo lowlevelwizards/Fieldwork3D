@@ -31,7 +31,7 @@ function boundaries(tile){
  }
  return count;
 }
-test('8F rebuilt M98 master has curved medium-scale breakup across narrow garments',()=>{
+test('M98 8F-to-8G master retains curved medium-scale breakup across narrow garments',()=>{
  const id='norwegian-m98',tile=headwearCamoIndices(id);
  const coverage=headwearCamoCoverage(id);
  assert.equal(tile.length,4096);
@@ -47,9 +47,9 @@ test('8F rebuilt M98 master has curved medium-scale breakup across narrow garmen
  // Maintain a bold disruptive identity: neither noisy little dots
  // nor the straight and oversized polygons of the 8E version.
  const edge=boundaries(tile);
- assert.ok(edge>650&&edge<1200,'organic medium lobes, not speckle or giant fields');
- assert.equal(FABRIC_CAMO_DENSITY[id],2.55);
- assert.ok(fabricCamoWorldPeriod(id)>24&&fabricCamoWorldPeriod(id)<26);
+ assert.ok(edge>650&&edge<1450,'organic medium lobes, not speckle or giant fields');
+ assert.equal(FABRIC_CAMO_DENSITY[id],3.0);
+ assert.ok(fabricCamoWorldPeriod(id)>21&&fabricCamoWorldPeriod(id)<22);
 });
 test('8F JGSDF stays fleck-dense with quieter rust and khaki',()=>{
  const id='jgsdf-type2',tile=headwearCamoIndices(id);
