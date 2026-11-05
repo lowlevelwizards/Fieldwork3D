@@ -983,7 +983,7 @@ matchSetButton.addEventListener('click',()=>{
 function refresh(){
  const p=member();if(!p)return;
  studioRoot.dataset.referenceOpen=String(referenceOpen);
- $('studioTitle').textContent=APPEARANCE_GROUP_LABELS[activeCategory]+' / '+p.callsign;
+ $('studioTitle').textContent=referenceOpen?'REFERENCE KITS / '+p.callsign:APPEARANCE_GROUP_LABELS[activeCategory]+' / '+p.callsign;
  $('studioSubheading').textContent=readOnly?'LOCKED DURING ACTIVE OPERATION':
   'Select a 3D item, then edit materials and details';
  applyButton.disabled=readOnly||!dirty.size||saveInFlight;
