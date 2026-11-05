@@ -4,10 +4,14 @@
  */
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+import {bakeGearGeometryAO} from './operator-baked-gear-ao.ts';
 
 export function consolidateVisualGroup(group:THREE.Group):void{
  const buckets=new Map<THREE.Material,THREE.Mesh[]>();
  for(const item of group.children){
+  // Preserve per-mesh attribute parity in the existing iOS draw-call merge.
+  if(item instanceof THREE.Mesh&&!Array.isArray(item.material))
+   bakeGearGeometryAO(item.geometry,item.material);
   if(!(item instanceof THREE.Mesh)||item.children.length||
     Array.isArray(item.material)||item.userData.armorCompressible||
     item.userData.armorContactShell||item.userData.keepSeparate)continue;
