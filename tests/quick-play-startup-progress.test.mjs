@@ -52,7 +52,7 @@ test('worker cancellation, errors and startup timings are surfaced',()=>{
  assert.match(main,/quickPlayPanel\.dataset\.state='error'/);
  assert.match(main,/console\.info\('\[Quick Play startup\]'/);
  assert.match(main,/generationMs:generated\.generationMs,sessionMs,sceneMs,/);
- assert.match(main,/operatorMs,hudMs,firstFrameMs,totalMs/);
+ assert.match(main,/operatorMs,operatorStageMs,hudMs,firstFrameMs,totalMs/);
  assert.match(main,/requestAnimationFrame\(\(\)=>setTimeout\(resolve,0\)\)/);
 });
 

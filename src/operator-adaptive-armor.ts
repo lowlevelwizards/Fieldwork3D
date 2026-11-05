@@ -292,9 +292,11 @@ export function updateAdaptiveArmorFit(
 export function createAdaptiveArmorSilhouettes(
  chest:THREE.Group,cloth:THREE.Material,utility:THREE.Material,
  dark:THREE.Material,trim:THREE.Material,
- baseline:Readonly<Record<string,Profile>>):AdaptiveArmorGroups{
+ baseline:Readonly<Record<string,Profile>>,
+ onlyStyle?:string):AdaptiveArmorGroups{
  const styles:AdaptiveArmorGroups={};
  for(const [model,profile] of Object.entries(baseline)){
+  if(onlyStyle&&model!==onlyStyle)continue;
   const group=new THREE.Group();group.name='authored-armor-'+model;
   group.visible=false;chest.add(group);styles[model]=group;
   const front=new THREE.Group(),back=new THREE.Group(),

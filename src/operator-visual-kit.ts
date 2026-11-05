@@ -255,7 +255,7 @@ export function createOperatorVisualKit(
  for(const mesh of [...magazines.rig,...magazines.belt,...magazines.pocket])
   mesh.visible=false;
  const wardrobeGear=createWardrobeGearLayers(chest,hip,pack,vest,
-  gearFabric,packFabric,dark,trim);
+  gearFabric,packFabric,dark,trim,lazyAccessories);
  const accessories=createWardrobeAccessoryVisuals(chest,hip,pack,
   gearFabric,dark,trim);
  // Static layered clothing/armor/pack geometry becomes a few multi-face

@@ -3551,14 +3551,19 @@ async function launchQuickPlay(){
     // First rendered scene would otherwise construct every friendly rig at
     // once. Spread that expensive, reusable model allocation over paint turns.
     const operatorStart=performance.now();
-    const initialTeam=team(state);
+    const initialTeam=team(state),operatorStageMs:number[]=[];
     for(let i=0;i<initialTeam.length;i++){
       quickPlayCheckpoint(88+Math.floor(6*i/initialTeam.length),
         'Preparing operator models',
         initialTeam[i].name+' · '+(i+1)+' / '+initialTeam.length);
       await allowQuickPlayPaint();
       if(id!==quickPlayRun)return;
+      const modelStart=performance.now();
       stage?.prepareOperatorModel(initialTeam[i]);
+      const modelMs=Math.round(performance.now()-modelStart);
+      operatorStageMs.push(modelMs);
+      quickPlayDetailText.textContent=initialTeam[i].name+' ready in '+
+        (modelMs/1000).toFixed(2)+'s · '+(i+1)+' / '+initialTeam.length;
     }
     const operatorMs=Math.round(performance.now()-operatorStart);
     quickPlayCheckpoint(95,'Preparing tactical controls',
@@ -3593,11 +3598,12 @@ async function launchQuickPlay(){
     quickPlayPanel.dataset.state='ready';
     quickPlayClockText.textContent=(totalMs/1000).toFixed(1)+'s total · map '+
       (generated.generationMs/1000).toFixed(1)+'s · 3D '+
-      (sceneMs/1000).toFixed(1)+'s · first frame '+
+      (sceneMs/1000).toFixed(1)+'s · operators '+
+      (operatorMs/1000).toFixed(1)+'s · frame '+
       (firstFrameMs/1000).toFixed(1)+'s';
     console.info('[Quick Play startup]',{
       seed,scale,generationMs:generated.generationMs,sessionMs,sceneMs,
-      operatorMs,hudMs,firstFrameMs,totalMs
+      operatorMs,operatorStageMs,hudMs,firstFrameMs,totalMs
     });
     // Now that an actual complete frame exists behind the overlay, allow
     // live RAF updates. Never declare READY before the render has returned.

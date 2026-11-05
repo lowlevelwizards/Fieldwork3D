@@ -29,6 +29,9 @@ export type WardrobeHeadLayers={
  maskRubber:THREE.MeshStandardMaterial;
  /** Deferred only in battlefield rigs; Studio and Labs remain eager. */
  deferredEyewear:Record<string,()=>void>;
+ deferredHeadwear:Record<string,()=>void>;
+ deferredFacewear:Record<string,()=>void>;
+ deferredHeadset:Record<string,()=>void>;
  twoHoleMouthCover?:THREE.Group;
 };
 const cube=(g:THREE.Group,m:THREE.Material,
@@ -43,6 +46,10 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  vest:THREE.Material,dark:THREE.Material,_skin:THREE.Material,
  lazyAccessories=false):WardrobeHeadLayers{
  const headwear:Model={},facewear:Model={},eyewear:Model={},headset:Model={};
+ const deferredHeadwear:Record<string,()=>void>={};
+ const deferredFacewear:Record<string,()=>void>={};
+ const deferredHeadset:Record<string,()=>void>={};
+ let layersRef:WardrobeHeadLayers|null=null;
  // A dedicated face textile material ensures color edits never recolor helmets,
  // uniform sleeves, straps or unrelated body pieces.
  const faceFabric=cloth instanceof THREE.MeshStandardMaterial?
@@ -79,59 +86,81 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   const model=group(canonical?canonicalHead:head);
   model.visible=false;set[id]=model;return model;
  };
+ const defer=(registry:Record<string,()=>void>,id:string,model:THREE.Group,
+  build:()=>void)=>{
+  if(lazyAccessories)registry[id]=()=>{
+   build();consolidateVisualGroup(model);delete registry[id];
+  };
+  else build();
+ };
+ const headModel=(id:string,canonical:boolean,build:(model:THREE.Group)=>void)=>{
+  const model=g(headwear,id,canonical);
+  defer(deferredHeadwear,id,model,()=>build(model));
+  return model;
+ };
  const brimCap=(id:string,backward=false,soft=false)=>{
-  const cap=g(headwear,id);
-  cube(cap,cloth,-.5,6.66,0,8.45,1.65,8.35);
-  cube(cap,soft?vest:cloth,-.9,7.55,0,7.05,.45,7.4);
-  cube(cap,cloth,backward?-4.5:4.5,5.95,0,4.0,.45,7.7);
-  return cap;
+  headModel(id,false,cap=>{
+   cube(cap,cloth,-.5,6.66,0,8.45,1.65,8.35);
+   cube(cap,soft?vest:cloth,-.9,7.55,0,7.05,.45,7.4);
+   cube(cap,cloth,backward?-4.5:4.5,5.95,0,4.0,.45,7.7);
+  });
  };
  brimCap('baseball-cap');
  brimCap('backwards-cap',true);
  // Stage 1 silhouette prototypes live in -Z forward head space.
- g(headwear,'patrol-cap',true).add(createHeadwearSilhouette('patrol-cap',detail('patrol-cap')));
+ headModel('patrol-cap',true,cap=>cap.add(
+  createHeadwearSilhouette('patrol-cap',detail('patrol-cap'))));
  brimCap('field-cap',false,true);
  // Stage 1G–1J: these already exist in the wardrobe catalog. Replace
  // their older multi-cube placeholders with the same canonical, unified
  // silhouette system as the approved ACH and high-cut.
  for(const id of ['boonie','beanie','pasgt','soviet-steel'] as const)
-  g(headwear,id,true).add(createHeadwearSilhouette(id,detail(id)));
+  headModel(id,true,cap=>cap.add(createHeadwearSilhouette(id,detail(id))));
  const helmet=(id:string,size:number,cut:number,rail:boolean)=>{
-  const model=g(headwear,id);
-  cube(model,vest,-.5,6.85,0,size,2.45,size);
-  cube(model,vest,-1.0,8.2,0,size-1.3,.3,size-1.1);
-  cube(model,dark,3.85,5.9,0,.55,.7,size-.2);
-  for(const side of [-1,1]){
-   if(cut<2)cube(model,vest,-2.4,4.45,side*(size/2-.15),3.7,2.6,.78);
-   if(rail)cube(model,dark,-1.1,6.0,side*(size/2+.22),4.1,.55,.35);
-  }
-  if(rail)cube(model,dark,2.0,8.52,0,1.4,.4,2.0);
+  headModel(id,false,model=>{
+   cube(model,vest,-.5,6.85,0,size,2.45,size);
+   cube(model,vest,-1.0,8.2,0,size-1.3,.3,size-1.1);
+   cube(model,dark,3.85,5.9,0,.55,.7,size-.2);
+   for(const side of [-1,1]){
+    if(cut<2)cube(model,vest,-2.4,4.45,side*(size/2-.15),3.7,2.6,.78);
+    if(rail)cube(model,dark,-1.1,6.0,side*(size/2+.22),4.1,.55,.35);
+   }
+   if(rail)cube(model,dark,2.0,8.52,0,1.4,.4,2.0);
+  });
  };
- g(headwear,'ach',true).add(createHeadwearSilhouette('ach',detail('ach')));
- g(headwear,'high-cut',true).add(createHeadwearSilhouette('high-cut',detail('high-cut')));
- // Existing saved rail layouts keep the correct base shell, with actual
- // rails explicitly deferred to the approved detailing phase.
- g(headwear,'high-cut-rails',true).add(createHeadwearSilhouette('high-cut',detail('high-cut','high-cut-rails')));
+ headModel('ach',true,model=>model.add(createHeadwearSilhouette('ach',detail('ach'))));
+ headModel('high-cut',true,model=>model.add(
+  createHeadwearSilhouette('high-cut',detail('high-cut'))));
+ // Rails inherit the approved shell without inventing a new silhouette.
+ headModel('high-cut-rails',true,model=>model.add(
+  createHeadwearSilhouette('high-cut',detail('high-cut','high-cut-rails'))));
  helmet('skate-helmet',9.65,2,false);
  helmet('bump-helmet',9.1,2,true);
  // D2-A1: fitted canonical -Z fabric shells with real skin-revealing apertures.
  let twoHoleMouthCover:THREE.Group|undefined;
  for(const id of ['balaclava-one','balaclava-three','balaclava-open'] as const){
   const model=g(facewear,id,true);
-  const fabricModel=createD2Balaclava(id,faceFabric);
-  model.add(fabricModel);
-  if(id==='balaclava-three')
-   twoHoleMouthCover=fabricModel.getObjectByName('d2-two-hole-mouth-cover') as THREE.Group;
+  defer(deferredFacewear,id,model,()=>{
+   const fabricModel=createD2Balaclava(id,faceFabric);
+   model.add(fabricModel);
+   if(id==='balaclava-three'){
+    twoHoleMouthCover=fabricModel.getObjectByName('d2-two-hole-mouth-cover') as THREE.Group;
+    if(layersRef)layersRef.twoHoleMouthCover=twoHoleMouthCover;
+   }
+  });
  }
  // D2-A2: one model per wrap family, with physically distinct prebuilt modes.
  for(const id of ['gaiter','shemagh','bandana'] as const){
-  g(facewear,id,true).add(createD2FabricWrap(id,faceFabric));
+  const model=g(facewear,id,true);
+  defer(deferredFacewear,id,model,()=>model.add(createD2FabricWrap(id,faceFabric)));
  }
  // The retired scarf ID is migrated in readWardrobe; never show a duplicate.
  // D2-C1: replace the old flat lower-face placeholder with two real shells.
  for(const id of ['half-mask','respirator-half','gas-gp5','gas-m17',
-                  'gas-m40','gas-m50'] as const)
-  g(facewear,id,true).add(createD2Mask(id,maskMaterials));
+                  'gas-m40','gas-m50'] as const){
+  const model=g(facewear,id,true);
+  defer(deferredFacewear,id,model,()=>model.add(createD2Mask(id,maskMaterials)));
+ }
  // All seven eyewear families were previously built for every soldier,
  // including bare-eyed soldiers and enemies nobody has ever observed.
  // Battlefield actors defer those solid housings until actually equipped;
@@ -151,25 +180,30 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   addEyewear(id,()=>createD2Goggles(id,eyewearFrame,eyewearLens,eyewearStrap));
  const ear=(id:string,microphone=false,large=false)=>{
   const model=g(headset,id);
-  for(const side of [-1,1])
-   cube(model,dark,-1.55,3.45,side*4.75,2.5,large?3.3:2.25,.95);
-  cube(model,vest,-1.0,6.1,0,3.4,.6,9.3);
-  if(microphone){
-   cube(model,dark,1.7,2.1,4.85,4.6,.34,.42);
-   cube(model,vest,4.02,2.1,4.65,.7,.75,1.05);
-  }
+  defer(deferredHeadset,id,model,()=>{
+   for(const side of [-1,1])
+    cube(model,dark,-1.55,3.45,side*4.75,2.5,large?3.3:2.25,.95);
+   cube(model,vest,-1.0,6.1,0,3.4,.6,9.3);
+   if(microphone){
+    cube(model,dark,1.7,2.1,4.85,4.6,.34,.42);
+    cube(model,vest,4.02,2.1,4.65,.7,.75,1.05);
+   }
+  });
  };
  ear('over-ear',false,true);
  ear('boom-headset',true,true);
  ear('helmet-ears',false,false);
  const earpiece=g(headset,'earpiece');
- cube(earpiece,dark,-1.8,3.55,4.5,1.1,1.7,.85);
+ defer(deferredHeadset,'earpiece',earpiece,()=>
+  cube(earpiece,dark,-1.8,3.55,4.5,1.1,1.7,.85));
  // Consolidate only static meshes; hidden families still incur no draw calls.
  for(const set of [headwear,facewear,eyewear,headset])
   for(const model of Object.values(set))consolidateVisualGroup(model);
- return {headwear,facewear,eyewear,headset,headwearMaterials,
+ const layers:WardrobeHeadLayers={headwear,facewear,eyewear,headset,headwearMaterials,
   faceFabric,faceFabricDefaultHex,eyewearFrame,eyewearLens,
-  eyewearStrap,maskRubber,deferredEyewear,twoHoleMouthCover};
+  eyewearStrap,maskRubber,deferredEyewear,deferredHeadwear,
+  deferredFacewear,deferredHeadset,twoHoleMouthCover};
+ layersRef=layers;return layers;
 }
 export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  headwear:string,facewear:string,eyewear:string,headset:string,
@@ -189,7 +223,11 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  layers.eyewearLens.roughness=d2Eye?.eyeTint==='mirrored'?.33:.68;
  const assembly=resolveD2HeadAssembly({facewear,eyewear,headwear,headset,
   options:d2Eye});
- // One-time construction on selection; preserve variant/placement controls.
+ // Only the worn accessories are built on battlefield rigs. Studio and
+ // operator labs remain eager; switching a style builds it just once.
+ layers.deferredHeadwear[assembly.headwear]?.();
+ layers.deferredFacewear[facewear]?.();
+ layers.deferredHeadset[assembly.headset]?.();
  layers.deferredEyewear[assembly.eyewear]?.();
  const choices:{slot:WardrobeSlot;map:Model;id:string}[]=[
   {slot:'headwear',map:layers.headwear,id:assembly.headwear},

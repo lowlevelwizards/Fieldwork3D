@@ -49,9 +49,9 @@ const strap=(g:THREE.Group,m:THREE.Material,
  */
 export function createArmorSilhouettes(chest:THREE.Group,
  armor:THREE.Material,utility:THREE.Material,dark:THREE.Material,
- trim:THREE.Material):ShapeGroups{
+ trim:THREE.Material,onlyStyle?:string):ShapeGroups{
  return createAdaptiveArmorSilhouettes(chest,armor,utility,dark,trim,
-  ARMOR_PROFILES);
+  ARMOR_PROFILES,onlyStyle);
 }
 
 /** Rig archetypes attach over the selected armor surface via an independent
@@ -442,14 +442,14 @@ export function updateFittedRigHarness(
 export function createChestRigSilhouettes(chest:THREE.Group,
  fabric:THREE.Material,pocketFabric:THREE.Material,
  dark:THREE.Material,trim:THREE.Material,
- webbing:THREE.Material=fabric):ShapeGroups{
+ webbing:THREE.Material=fabric,onlyStyle?:string):ShapeGroups{
  const groups:ShapeGroups={};
  const make=(id:string)=>{
   const g=new THREE.Group();g.name='authored-rig-'+id;
   g.visible=false;chest.add(g);groups[id]=g;return g;
  };
- make('no-rig');
- {
+ if(!onlyStyle||onlyStyle==='no-rig')make('no-rig');
+ if(!onlyStyle||onlyStyle==='chest-placard'){
   const g=make('chest-placard');
   box(g,fabric,8.18,-2.05,0,.78,5.05,9.10);
   for(const z of [-2.73,0,2.73])
@@ -464,7 +464,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   shoulderHarness(g,webbing,4.0);
   // The fitted mesh chooses carrier tabs OR independent shoulder runs.
  }
- {
+ if(!onlyStyle||onlyStyle==='micro-rig'){
   const g=make('micro-rig');
   shoulderHarness(g,webbing,3.62);
   box(g,fabric,7.94,-2.03,0,.82,3.02,7.92);
@@ -476,7 +476,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   for(const s of [-1,1])
    pouch(g,pocketFabric,pocketFabric,7.75,-2.62,s*4.60,2.26,1.52,.77);
  }
- {
+ if(!onlyStyle||onlyStyle==='light-rig'){
   const g=make('light-rig');
   // Classic X-harness: crossed rear straps and 2+2 broad front pouch banks.
   shoulderHarness(g,webbing,4.7);
@@ -488,7 +488,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   }
   box(g,dark,7.94,-4.65,0,.48,.70,13.25);
  }
- {
+ if(!onlyStyle||onlyStyle==='split-front'){
   const g=make('split-front');
   shoulderHarness(g,webbing,5.00);
   // Two independent banks with a large, entirely unobstructed center seam.
@@ -507,7 +507,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
     box(g,trim,8.86,y,s*1.03,.14,.30,.30);
    }
  }
- {
+ if(!onlyStyle||onlyStyle==='lbv'){
   const g=make('lbv');
   shoulderHarness(g,webbing,5.20);
   for(const s of [-1,1]){
@@ -522,7 +522,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
    box(g,webbing,7.86,2.76,s*3.98,.56,.76,3.18);
   }
  }
- {
+ if(!onlyStyle||onlyStyle==='full-chest'){
   const g=make('full-chest');
   shoulderHarness(g,webbing,5.32);
   // One broad polygon with clipped high shoulders; avoids a square slab
@@ -539,7 +539,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   for(const sign of [-1,1])
    box(g,pocketFabric,8.55,-.45,sign*5.10,.49,1.28,1.28);
  }
- {
+ if(!onlyStyle||onlyStyle==='field-webbing'){
   const g=make('field-webbing');
   const h=new THREE.Group();h.name='uniform-fitted-rig-harness';
   h.userData.fitMaterial=webbing;h.userData.spread=5.95;g.add(h);
@@ -551,7 +551,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
    // The lower belt and magazine pockets now live on the hip.
   }
  }
- {
+ if(!onlyStyle||onlyStyle==='belt-harness'){
   const g=make('belt-harness');
   const h=new THREE.Group();h.name='uniform-fitted-rig-harness';
   h.userData.fitMaterial=webbing;h.userData.spread=6.3;g.add(h);
@@ -564,7 +564,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   }
   box(g,webbing,3.55,-5.7,0,1.35,1.45,14.15);
  }
- {
+ if(!onlyStyle||onlyStyle==='chicom-rig'){
   const g=make('chicom-rig');
   shoulderHarness(g,webbing,4.55);
   box(g,fabric,7.99,-2.35,0,.68,6.48,12.15);
@@ -579,7 +579,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   for(const s of [-1,1])
    pouch(g,pocketFabric,pocketFabric,8.42,-3.46,s*5.65,2.38,1.65,.75);
  }
- {
+ if(!onlyStyle||onlyStyle==='bandolier'){
   const g=make('bandolier');
   const h=new THREE.Group();h.name='uniform-fitted-rig-harness';
   h.userData.fitMaterial=webbing;h.userData.spread=4.8;g.add(h);
@@ -589,7 +589,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
    pouch(g,pocketFabric,pocketFabric,8.20,y,z,2.65,1.76,.78);
   }
  }
- {
+ if(!onlyStyle||onlyStyle==='sadf-webbing'){
   const g=make('sadf-webbing');
   shoulderHarness(g,webbing,5.35);
   const rearHarness=g.getObjectByName('uniform-fitted-rig-harness');
