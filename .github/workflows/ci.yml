@@ -868,6 +868,15 @@ jobs:
             tests/civilian-release-field-smoke.test.mjs \
             tests/worldgen-encounter-safety.test.mjs \
             tests/worldgen-encounter-missions.test.mjs
+      - name: E5-C R4 historical civilian film and production safety
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-e5c-r4-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/civilian-c6-historical-visibility.test.mjs \
+            tests/civilian-b8-replay.test.mjs \
+            tests/civilian-c3c-harm-attribution.test.mjs \
+            tests/civilian-release-field-smoke.test.mjs \
+            tests/mission-escort-physicality.test.mjs
       - name: R5 identity A–C fast contracts
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r5-identity-') }}
         run: |
