@@ -437,6 +437,19 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/d2-silhouette-v3b-') }}
         run: |
           node --experimental-strip-types --test tests/operator-d2-silhouette-v3-balaclava.test.mjs tests/operator-d2-silhouette-v3-compatibility.test.mjs tests/operator-d2-balaclava-stage-a1.test.mjs tests/operator-d2-wraps-stage-a2.test.mjs tests/operator-d2-fabric-integration-stage-a3.test.mjs
+      - name: DNav critical seeded door diagnostics and physics
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-door-navigation-dnav-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/dnav-door-audit.test.mjs \
+            tests/physicality-door-aware-routing.test.mjs \
+            tests/coupled-door-session.test.mjs \
+            tests/door-leaf-overlap-session.test.mjs \
+            tests/doorway-convoy-flow.test.mjs \
+            tests/gameplay-g4d-auto-door-contact.test.mjs
+      - name: DNav bounded real-simulation collision matrix
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-door-navigation-dnav-') }}
+        run: npm run audit:g4-flow -- --matrix
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}

@@ -13,6 +13,7 @@ import {assessMissionFilm} from '../src/breach-mission-quality.ts';
 import {analyzeContactPacing} from '../src/breach-contact-pacing-audit.ts';
 import {summarizeG4DFlows} from '../src/breach-g4d-flow-audit.ts';
 import {activateSite} from '../src/breach-core.ts';
+import {sampleDoorBlock} from '../src/breach-door-navigation-audit.ts';
 const options=new Set(process.argv.slice(2));
 const mode=options.has('--full')?'full':options.has('--matrix')?'matrix':'smoke';
 const trials=mode==='full'?20:mode==='matrix'?10:5;
@@ -44,6 +45,7 @@ for(let i=0;i<trials;i++){
    session.phase='running';session.started=true;
    let blockedFrames=0,invalidPositions=0;
    const blockedReasons={},blockedMotorPauses={};
+   const doorCaseMap=new Map();
    const elapsed=[];
    for(let tick=0;tick<seconds*30&&session.phase==='running';tick++){
     const before=performance.now();
@@ -61,6 +63,18 @@ for(let i=0;i<trials;i++){
       blockedReasons[reason]=(blockedReasons[reason]??0)+1;
       const pause=actor.motorPause??'none';
       blockedMotorPauses[pause]=(blockedMotorPauses[pause]??0)+1;
+      if(tick%6===0&&reason==='door'){
+       const sample=sampleDoorBlock(actor,session.doors);
+       const key=sample.actorId+'|'+(sample.doorId??'unmatched');
+       const prior=doorCaseMap.get(key);
+       if(!prior)doorCaseMap.set(key,{firstAt:Math.round(session.seconds*100)/100,
+         lastAt:Math.round(session.seconds*100)/100,
+         samples:1,peak:sample});
+       else{
+        prior.lastAt=Math.round(session.seconds*100)/100;prior.samples++;
+        if(sample.blockedSeconds>=prior.peak.blockedSeconds)prior.peak=sample;
+       }
+      }
      }
    }
    recorder.capture(session,true);
@@ -85,7 +99,9 @@ for(let i=0;i<trials;i++){
     hostileTravel:contact.hostileTravel,
     firstContactAt:contact.firstContactAt,
     firstShotAt:contact.firstShotAt,
-    reason,blockedFrames,blockedReasons,blockedMotorPauses,invalidPositions,
+    reason,blockedFrames,blockedReasons,blockedMotorPauses,
+    doorCases:[...doorCaseMap.values()].sort((a,b)=>b.samples-a.samples).slice(0,8),
+    invalidPositions,
     replayIssues:film.issues,
     p95HostSimMs:Math.round((elapsed[Math.min(elapsed.length-1,
       Math.floor(elapsed.length*.95))]??0)*100)/100});
@@ -105,6 +121,7 @@ console.log(JSON.stringify({method:'actual motor, AI, visibility and replay; no 
   firstContactAt:r.firstContactAt,blockedFrames:r.blockedFrames,
   blockedReasons:r.blockedReasons,
   blockedMotorPauses:r.blockedMotorPauses,
+  doorCases:r.doorCases,
   p95HostSimMs:r.p95HostSimMs
  }))},null,2));
 if(exceptions.length||summary.invalid)process.exitCode=1;
