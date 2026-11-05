@@ -254,6 +254,11 @@ export function headwearFaceRegion(id:HeadSilhouetteId,name:string,
    return axis===1&&sign===1?2:1;
   return axis===1&&sign===1?3:0;
  }
+ if(id==='beret'){
+  if(name.includes('band'))return 1;
+  if(name.includes('badge-stiffener'))return 2;
+  return axis===1&&sign===1?3:0;
+ }
  if(id==='beanie'){
   if(name.includes('cuff'))return 1;
   return axis===1&&sign===1?3:0;
@@ -281,6 +286,8 @@ export function headwearFaceTone(id:HeadSilhouetteId,name:string,
   case 'patrol-cap':value=name.includes('band')?.81:name.includes('bill')?.88:1;break;
   case 'boonie':value=name.includes('band')?.83:name.includes('brim')?.94:1;break;
   case 'beanie':value=name.includes('cuff')?.81:1;break;
+  case 'beret':value=name.includes('band')?.79:
+   name.includes('badge-stiffener')?.86:name.includes('drape')?.93:1;break;
   case 'ach':value=name.includes('ear-wrap')?.88:name.includes('nape')?.90:
    name.includes('brow')?.92:1;break;
   case 'high-cut':value=name.includes('nape')?.89:name.includes('brow')?.91:1;break;
