@@ -3,11 +3,14 @@
  * goals remain untouched; only transient execution hints may change. */
 import type {Blocker} from './breach-nav-diagnostics.ts';
 export type RecoveryAction='wait'|'detour'|'replan'|'report';
+/** Observations from the real physics motor, not guessed route intent. */
+export type RecoveryContext={doorMoving?:boolean};
 export function routeRetrySeconds(failures:number):number{
  return Math.min(3.2,.45+Math.max(0,failures)*.42);
 }
 export function recoveryAction(blocker:Blocker,stalled:number,
- secondsSinceRepair:number,failedRepairs=0):RecoveryAction{
+ secondsSinceRepair:number,failedRepairs=0,
+ context:RecoveryContext={}):RecoveryAction{
  if(stalled<.30)return 'wait';
  // Once repeated world-truth repairs have failed, stop re-running path
  // search every cooldown. Escalate to a player-visible report only after a
@@ -21,7 +24,12 @@ export function recoveryAction(blocker:Blocker,stalled:number,
  // otherwise 'detour' repeats forever even when no sidestep is feasible.
  if(blocker==='actor')
    return stalled<.65?'wait':stalled<1.7?'detour':'replan';
- if(blocker==='door')return stalled<.85?'wait':'replan';
+ if(blocker==='door'){
+  // Do not repeatedly reroute while the real hinge is clearing the body.
+  // A fixed cap prevents a falsely moving leaf from hiding a lasting jam.
+  if(context.doorMoving&&stalled<1.8)return 'wait';
+  return stalled<.85?'wait':'replan';
+ }
  if(blocker==='furniture'||blocker==='wall'||blocker==='bounds')
    return 'replan';
  if(blocker==='route')return 'replan';

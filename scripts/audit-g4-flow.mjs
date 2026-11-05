@@ -11,7 +11,7 @@ import {newSession,team,enemies,planMove,planMoveStroke,stepSession}
 import {MissionRecorder} from '../src/breach-replay.ts';
 import {assessMissionFilm} from '../src/breach-mission-quality.ts';
 import {analyzeContactPacing} from '../src/breach-contact-pacing-audit.ts';
-import {summarizeG4DFlows} from '../src/breach-g4d-flow-audit.ts';
+import {summarizeG4DFlows,classifyG4DMovement} from '../src/breach-g4d-flow-audit.ts';
 import {activateSite} from '../src/breach-core.ts';
 import {sampleDoorBlock} from '../src/breach-door-navigation-audit.ts';
 const options=new Set(process.argv.slice(2));
@@ -94,8 +94,10 @@ for(let i=0;i<trials;i++){
      return !!current&&Math.hypot(current.p.x-site.entrance.x,
        current.p.y-site.entrance.y)<27;
     });
-   const reason=briefedEntryOnly&&contact.reason==='movement-stalled'?
-     'briefed-entry-only':contact.reason;
+   const reason=classifyG4DMovement({
+     reason:contact.reason,mode:intelMode,orders:accepted,
+     nearBriefedEntrance:briefedEntryOnly,blockedFrames,silentDoorFrames
+   });
    rows.push({seed,mission,mode:intelMode,orders:accepted,
     duration:recorder.duration,
     friendlyTravel:contact.friendlyTravel,
