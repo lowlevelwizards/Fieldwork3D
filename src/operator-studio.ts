@@ -1058,7 +1058,10 @@ function start(data:{mode:StudioMode;selected:string;members:StudioPerson[];read
  resize();
  focusCameraOnCategory(activeCategory,true);
 }
-modelSelector.addEventListener('change',()=>{selected=modelSelector.value;refresh();});
+modelSelector.addEventListener('change',()=>{
+ selected=modelSelector.value;activeStep='items';
+ refresh();focusCameraOnCategory(activeCategory);
+});
 /** Save every operator draft as one transaction, not merely the selected
  * character. Switching operators never loses unsaved work. */
 function pendingStudioEdits():StudioAppearanceEdit[]{
