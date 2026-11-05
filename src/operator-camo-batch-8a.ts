@@ -226,7 +226,7 @@ const NORWAY_8E:readonly Motif[]=[
  p(2,50,41,58,38,64,43,61,50,64,55,56,57,50,53,46,58,44,50),
  p(0,33,1,38,0,43,4,43,11,40,17,35,17,31,12),
  p(0,2,54,8,51,13,56,13,62,9,66,3,65,-1,61),
- // Four deliberately positioned dark lobes balance tan and green without crowding the print.
+ // Two deliberate dark medium lobes balance tan, with two final olive inlets.
  p(1,36,25,44,19,51,21,57,28,54,35,48,38,44,45,36,42,32,34),
  p(1,19,47,27,42,35,45,41,51,39,57,33,60,28,67,20,64,17,57),
  // A final few olive inlets ensure the dark never becomes a solid mass.
@@ -364,7 +364,7 @@ function jgsdf8E():Uint8Array{
   // family. Omitting one of the satellites in every other family restores
   // open leafy-green channels between dense groups.
   for(let k=0;k<3;k++){
-   if(k===2&&(row+col)%2===0)continue;
+   if(k===2&&(row+col)%3!==0)continue;
    const a=(hash(col*7+k,row,853)+k/3)*Math.PI*2;
    const sx=x+Math.round(Math.cos(a)*(rx+1));
    const sy=y+Math.round(Math.sin(a)*(ry+.5));
@@ -374,7 +374,7 @@ function jgsdf8E():Uint8Array{
   }
   // Tiny bounded 1–3px flecks at the edge of a real parent cluster, not
   // carpeted full-field noise. Local bounding-box painting is O(mark size).
-  if(hash(col,row,887)>.48){
+  if(hash(col,row,887)>.55){
    const a=hash(col,row,893)*Math.PI*2;
    const px=x+Math.round(Math.cos(a)*(rx+2));
    const py=y+Math.round(Math.sin(a)*(ry+1));
