@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   mobile-navigation:
-    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'feature/ux-r1-navigation-squad-mission-') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'feature/ux-r1-navigation-squad-mission-') || startsWith(github.head_ref, 'feature/ux-r3-hud-campaign-polish-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
