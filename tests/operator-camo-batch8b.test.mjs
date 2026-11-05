@@ -32,7 +32,7 @@ test('8B reference families achieve distinct palette roles and structural silhou
  }));
  assert.ok(izlom[2]<.23,'Izlom cannot be dominated by pale Leto-like tan');
  assert.ok(izlom[2]>.01,'Izlom still has warm tan fracture glints');
- assert.ok(s2k[0]>.32,'Soldier 2000 exposes brown Kalahari base, not Jieitai-green ground');
+ assert.ok(s2k[0]>.38,'Soldier 2000 must visibly retain a broad brown Kalahari ground, not Jieitai-green ground');
  assert.ok(jgsdf[0]>.15,'Jieitai Dot retains recognizable leafy green ground');
  assert.ok(palette('south-african-s2000')[0][0]>palette('south-african-s2000')[0][1],
   'Soldier 2000 base is warmer earth brown, not moss green');
