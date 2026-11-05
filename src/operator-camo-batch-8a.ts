@@ -18,7 +18,7 @@ const recipes={
  'russian-izlom':{
   label:'RUSSIAN IZLOM',
   description:'Skol/Izlom dark temperate print: tightly interlocked hard-edged short angular lozenges, tan sparks and rust fracture shards, without Leto leaf/pea-dot motifs',
-  colors:[[46,56,49],[72,106,68],[181,154,105],[106,67,58],[30,39,38]],
+  colors:[[46,56,49],[72,106,68],[181,154,105],[105,78,68],[30,39,38]],
   targetCoverage:[.26,.26,.16,.17,.15],motifs:[]
  },
  'greek-lizard':{
@@ -248,19 +248,20 @@ function paintOnto(tile:Uint8Array,motif:Motif):void{
 function indexAt(tile:Uint8Array,x:number,y:number):number{
  return tile[((y+64)&63)*64+((x+64)&63)];
 }
-function izlom8B():Uint8Array{
+function izlom8C():Uint8Array{
  // Reduce inherited overly large tan islands: Skol's light shapes are
  // *short fracture sparks* among dark moss and rust, not Leto-like leaves.
  const tile=paint(IZLOM.map(m=>m[0]===2?scaleMotif(m,.64):m),0);
- // Close-packed angular hooked lozenges, 7px spacing with independent
- // seeded stagger. Unlike Leto 7C, these are motifs, not 1px pea dots.
- for(let row=0;row<10;row++)for(let col=0;col<10;col++){
+ // Keep the larger 8B fracture skeleton, but fewer deliberate angular
+ // overlays so the terrain-shaped patches read at mobile size.
+ // 8x8 seeded cells replace 8B's near-wallpaper 10x10 field.
+ for(let row=0;row<8;row++)for(let col=0;col<8;col++){
   const a=hash(col,row,91),b=hash(col,row,109);
-  if(a<.15)continue;
-  const x=col*7-3+Math.floor(a*5);
-  const y=row*7-3+Math.floor(b*5);
-  const tone=a>.84?2:a>.60?4:a>.35?3:1;
-  const len=3+Math.floor(hash(col,row,131)*4);
+  if(a<.20)continue;
+  const x=col*8-3+Math.floor(a*5);
+  const y=row*8-3+Math.floor(b*5);
+  const tone=a>.86?2:a>.63?4:a>.37?3:1;
+  const len=4+Math.floor(hash(col,row,131)*3);
   const branch=b>.47?2:-2;
   paintOnto(tile,p(tone,
    x-2,y, x+1,y-2, x+len-1,y-1, x+len+1,y+1,
@@ -300,13 +301,19 @@ function greekLizard8C():Uint8Array{
  }
  return out;
 }
-function urbanKamysh8B():Uint8Array{
+function urbanKamysh8C():Uint8Array{
  // The older Russian blue Kamysh is an aggressive, irregular tiger/reed
  // family, not the fine French/Greek Lizard strokes.
  const motifs:Motif[]=KAMYSH_STROKES.map(([x,y,len,w,ink,phase])=>
   brush(x,y,len,Math.min(9,w+1),ink,phase));
  for(const [x,y,len] of [[-5,8,30],[25,19,31],[3,33,24],[39,46,30],[9,56,28]])
   motifs.push(brush(x,y,len,2,3,3));
+ // A few hairline offshoots on existing wide bands add reed tips while
+ // retaining the successful 8B blue-black macro rhythm.
+ for(const i of [1,4,7,10,16]){
+  const [x,y,len,,ink,phase]=KAMYSH_STROKES[i];
+  motifs.push(brush(x+len-11,y+2,12,1,ink,phase+3));
+ }
  const tile=paint(motifs,0),original=tile.slice();
  // Salt the band edges with teeth; never repaint the light negative
  // space in flat blocks, preserving the familiar blue tiger identity.
@@ -396,15 +403,22 @@ function soldier2000_8C():Uint8Array{
 
 const masters=new Map<Camo8AId,Uint8Array>();
 function ownTile(id:Camo8AId):Uint8Array{
- if(id==='russian-izlom')return izlom8B();
+ if(id==='russian-izlom')return izlom8C();
  if(id==='greek-lizard')return greekLizard8C();
- if(id==='urban-kamysh')return urbanKamysh8B();
+ if(id==='urban-kamysh')return urbanKamysh8C();
  if(id==='jgsdf-type2')return jgsdf8C();
  if(id==='south-african-s2000')return soldier2000_8C();
  if(id==='norwegian-m98'){
   // Minimize hard one-pixel polygon corners while retaining three flat
   // inks and the huge M98 organic blotches. No additional fine texture.
   let tile=paint(NORWAY,0);
+  // Three medium lobes interrupt the largest almost-solid garment panels,
+  // but retain huge contiguous 3-ink M98 shapes (no micro texture).
+  for(const motif of [
+   p(0,29,6,35,5,42,9,43,16,38,19,31,16,27,12),
+   p(2,8,29,14,26,20,29,22,36,18,41,11,39,6,35),
+   p(1,43,33,48,28,55,30,58,37,54,43,47,45,41,41)
+  ] as readonly Motif[])paintOnto(tile,motif);
   for(let pass=0;pass<2;pass++){
    const next=tile.slice();
    for(let y=0;y<64;y++)for(let x=0;x<64;x++){
