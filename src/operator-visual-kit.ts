@@ -71,7 +71,7 @@ const bundle=(parent:THREE.Object3D)=>{const g=new THREE.Group();parent.add(g);r
 export function createOperatorVisualKit(
  chest:THREE.Group,hip:THREE.Group,head:THREE.Group,pack:THREE.Mesh,
  legs:readonly Limb[],arms:readonly Limb[],m:VisualMaterials,
- canonicalHead?:THREE.Group):OperatorVisualKit{
+ canonicalHead?:THREE.Group,lazyAccessories=false):OperatorVisualKit{
  const {cloth,vest,trousers,packFabric,gearFabric,headCloth,
   headArmor,dark,skin,steel}=m;
  const trim=new THREE.MeshStandardMaterial({color:0x777d6d,roughness:.94,flatShading:true});
@@ -140,7 +140,7 @@ export function createOperatorVisualKit(
  part(cap,headCloth,4.05,5.92,0,4.3,.44,7.65);
  const wardrobeHead=createWardrobeHeadLayers(head,
   canonicalHead??createCanonicalAttachment(head),
-  headCloth,headArmor,dark,skin);
+  headCloth,headArmor,dark,skin,lazyAccessories);
  const wardrobeBody=createWardrobeBodyLayers(chest,legs,arms,
   cloth,trousers,trim,dark);
  const fieldBlouses=createFieldBlousePrototypes(chest,arms,cloth,trim);
