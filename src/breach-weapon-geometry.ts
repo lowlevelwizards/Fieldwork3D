@@ -5,6 +5,8 @@
 import * as THREE from 'three';
 import type {WeaponId} from './breach-combat.ts';
 import {resolveWeaponAssembly,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
+import {readWeaponFamilyBuild} from './equipment-weapon-families.ts';
+import {buildModularWeaponSilhouette} from './breach-modular-weapon-geometry.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
 type Part=readonly [number,number,number,number,number,number,0|1];
 /** x, y, z, width, height, depth, material (0=steel, 1=dark). */
@@ -106,6 +108,9 @@ export function weaponSilhouetteParts(id:WeaponId):readonly Part[]{return PARTS[
 export function buildWeaponSilhouette(id:WeaponId,
  steel:THREE.Material,dark:THREE.Material,
  config?:WeaponConfiguration):THREE.Group{
+ const familyBuild=config?.weapon===id?
+  readWeaponFamilyBuild(config.build,id):undefined;
+ if(familyBuild)return buildModularWeaponSilhouette(familyBuild,steel,dark);
  const g=new THREE.Group();
  const stockX=config&&config.weapon===id?resolveWeaponAssembly(config).stockX:-13.5;
  for(const [baseX,y,z,baseW,h,d,mat] of PARTS[id]){

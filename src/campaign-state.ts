@@ -17,8 +17,10 @@ import {initialArmorIntegrity,type ArmorIntegrity} from './equipment-armor.ts';
 import {clampFlashUse} from './equipment-supply.ts';
 import {initialWeaponConfiguration,readWeaponConfiguration,changeWeaponPlatform,
  setWeaponAttachment,WEAPON_ATTACHMENT_SLOTS,
+ selectWeaponFamilyPreset,setConfiguredFamilyPart,sameWeaponConfiguration,
  type WeaponConfiguration,type WeaponAttachmentSlot}
  from './equipment-weapon-assemblies.ts';
+import type {FamilyPartSlot} from './equipment-weapon-families.ts';
 import {attachmentPrice,readAttachmentStock,returnAttachments}
  from './equipment-weapon-inventory.ts';
 import {recordWeaponRounds,serviceSerializedWeapon,type SerializedWeapon} from './equipment-weapon-identity.ts';
@@ -425,6 +427,31 @@ export function equipCampaignWeaponAttachment(c:CampaignState,id:string,
  if(paid)attachments[partId]--;
  return {...c,inventory:{...c.inventory,attachments},operators:c.operators.map(m=>
   m.id===id?{...m,weaponConfiguration:next}:m)};
+}
+/** Family builds are an appearance-only prototype on owned gameplay classes.
+ * No fabricated magazines, ammunition, serialized guns or attachment stock.
+ * Named physical weapon ownership will be a separate campaign migration.
+ */
+export function equipCampaignWeaponPreset(c:CampaignState,id:string,presetId:string):CampaignState{
+ if(c.activeContractId)return c;
+ const o=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
+ if(!o)return c;
+ const next=selectWeaponFamilyPreset(o.weaponConfiguration,presetId);
+ if(sameWeaponConfiguration(next,o.weaponConfiguration))return c;
+ const attachments=returnAttachments(c.inventory.attachments,o.weaponConfiguration,next);
+ return {...c,inventory:{...c.inventory,attachments},operators:c.operators.map(m=>m.id===id?
+  {...m,weaponConfiguration:next}:m)};
+}
+export function equipCampaignWeaponFamilyPart(c:CampaignState,id:string,
+ slot:FamilyPartSlot,partId:string):CampaignState{
+ if(c.activeContractId)return c;
+ const o=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
+ if(!o)return c;
+ const next=setConfiguredFamilyPart(o.weaponConfiguration,slot,partId);
+ if(sameWeaponConfiguration(next,o.weaponConfiguration))return c;
+ const attachments=returnAttachments(c.inventory.attachments,o.weaponConfiguration,next);
+ return {...c,inventory:{...c.inventory,attachments},operators:c.operators.map(m=>m.id===id?
+  {...m,weaponConfiguration:next}:m)};
 }
 /** Player-authorized buy-and-equip is all-or-nothing. */
 export function purchaseAndEquipWeaponAttachment(c:CampaignState,id:string,

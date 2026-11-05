@@ -20,6 +20,10 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: W1 AK / AR modular families — critical saves, geometry and legacy weapon contracts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/weapon-families-ak-ar-') }}
+        run: |
+          node --experimental-strip-types --test tests/weapon-families-01.test.mjs tests/equipment-19-01-weapon-assemblies.test.mjs tests/equipment-19-02-weapon-silhouettes.test.mjs
       - name: R5 historical equipment — focused geometry, wardrobe, reference and rig contracts
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r5i-historical-reference-') }}
         run: |

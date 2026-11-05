@@ -6,12 +6,18 @@
  */
 import type {WeaponId} from './breach-combat.ts';
 import {EQUIPMENT_CATALOG} from './equipment-catalog.ts';
+import {FAMILY_PARTS,FAMILY_PART_SLOTS,familyPreset,initialWeaponFamilyBuild,
+ readWeaponFamilyBuild,setWeaponFamilyPart as changeFamilyPart,
+ type FamilyPartSlot,type WeaponFamilyBuild}
+ from './equipment-weapon-families.ts';
 
 export type WeaponAttachmentSlot='optic'|'muzzle'|'foregrip'|'stock'|'light'|'sling';
 export const WEAPON_ATTACHMENT_SLOTS:readonly WeaponAttachmentSlot[]=
  ['optic','muzzle','foregrip','stock','light','sling'];
 export type WeaponConfiguration={
  version:1;weapon:WeaponId;slots:Record<WeaponAttachmentSlot,string>;
+ /** Optional visual family. Old four-class saves keep their legacy models. */
+ build?:WeaponFamilyBuild;
 };
 export type WeaponAttachment={
  id:string;name:string;slot:WeaponAttachmentSlot;
@@ -98,6 +104,22 @@ export function initialWeaponConfiguration(weapon:WeaponId='carbine'):WeaponConf
 }
 export const compatibleWeaponAttachment=(weapon:WeaponId,slot:WeaponAttachmentSlot,id:string)=>
  WEAPON_ATTACHMENTS[id]?.slot===slot&&WEAPON_ATTACHMENTS[id].compatible.includes(weapon);
+/** Family guns use the established accessories without treating a generic
+ * stock or rail attachment as interchangeable physical factory furniture.
+ */
+export function familyAccessoryAllowed(build:WeaponFamilyBuild,
+ slot:WeaponAttachmentSlot,id:string):boolean{
+ if(slot==='stock')return id==='stock-standard';
+ if(slot==='optic'&&id!=='optic-irons'){
+  const r=build.parts.receiver;
+  return r==='ar-flat'||(build.family==='ak'&&
+   build.parts.handguard==='ak-rail-long');
+ }
+ if(slot==='foregrip'&&id!=='foregrip-none')
+  return ['ar-quad','ar-compact-rail','ak-rail-long']
+   .includes(build.parts.handguard);
+ return true;
+}
 export function readWeaponConfiguration(raw:unknown,weapon:WeaponId):WeaponConfiguration{
  const result=initialWeaponConfiguration(weapon);
  if(!raw||typeof raw!=='object'||Array.isArray(raw)||
@@ -110,14 +132,39 @@ export function readWeaponConfiguration(raw:unknown,weapon:WeaponId):WeaponConfi
   if(typeof id==='string'&&compatibleWeaponAttachment(weapon,slot,id))
    result.slots[slot]=id;
  }
+ const build=readWeaponFamilyBuild((raw as {build?:unknown}).build,weapon);
+ if(build){
+  result.build=build;
+  for(const slot of WEAPON_ATTACHMENT_SLOTS)
+   if(!familyAccessoryAllowed(build,slot,result.slots[slot]))
+    result.slots[slot]=DEFAULT_IDS[slot];
+ }
  return result;
 }
 export function setWeaponAttachment(config:WeaponConfiguration,slot:WeaponAttachmentSlot,
  id:string):WeaponConfiguration{
  if(!WEAPON_ATTACHMENT_SLOTS.includes(slot)||
-  !compatibleWeaponAttachment(config.weapon,slot,id))return config;
+  !compatibleWeaponAttachment(config.weapon,slot,id)||
+  (config.build&&!familyAccessoryAllowed(config.build,slot,id)))return config;
  if(config.slots[slot]===id)return config;
  return {...config,slots:{...config.slots,[slot]:id}};
+}
+/** Select an authored model using the currently owned gameplay class.
+ * It never buys or converts a physical Campaign gun behind the player's back.
+ */
+export function selectWeaponFamilyPreset(config:WeaponConfiguration,
+ presetId:string):WeaponConfiguration{
+ const preset=familyPreset(presetId);
+ const build=initialWeaponFamilyBuild(presetId);
+ if(!preset||!build||preset.weapon!==config.weapon)return config;
+ return readWeaponConfiguration({...config,build},config.weapon);
+}
+export function setConfiguredFamilyPart(config:WeaponConfiguration,
+ slot:FamilyPartSlot,id:string):WeaponConfiguration{
+ if(!config.build||!FAMILY_PART_SLOTS.includes(slot))return config;
+ const build=changeFamilyPart(config.build,config.weapon,slot,id);
+ if(build===config.build)return config;
+ return readWeaponConfiguration({...config,build},config.weapon);
 }
 export function changeWeaponPlatform(config:WeaponConfiguration,weapon:WeaponId):WeaponConfiguration{
  return readWeaponConfiguration(config,weapon);
@@ -129,6 +176,9 @@ export function sameWeaponConfiguration(a?:WeaponConfiguration,b?:WeaponConfigur
  if(!a||!b||a.weapon!==b.weapon||a.version!==b.version)return false;
  for(const slot of WEAPON_ATTACHMENT_SLOTS)
   if(a.slots[slot]!==b.slots[slot])return false;
+ if(a.build?.family!==b.build?.family)return false;
+ for(const slot of FAMILY_PART_SLOTS)
+  if(a.build?.parts[slot]!==b.build?.parts[slot])return false;
  return true;
 }
 export type ResolvedWeaponAssembly={
@@ -155,14 +205,26 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   inertia+=part.massKg*part.massX*part.massX;
  }
  const balance=weighted/mass;
- const resolved:ResolvedWeaponAssembly={weapon:config.weapon,configuration:config,lengthScale:p.lengthScale,
+ const build=config.build;
+ const familyBarrel=build?FAMILY_PARTS[build.parts.barrel]:undefined;
+ const familyHandguard=build?FAMILY_PARTS[build.parts.handguard]:undefined;
+ const lengthScale=familyBarrel?.length==='long'?.94:
+  familyBarrel?.length==='mid'?.86:
+  familyBarrel?.length==='short'?.73:p.lengthScale;
+ const stockX=build?(FAMILY_PARTS[build.parts.stock].stockX??p.stockX):p.stockX;
+ const primaryX=build?(build.family==='ar'?0:-1.35):p.primaryX;
+ const primaryY=build?-2.7:p.primaryY;
+ const supportX=build?(familyHandguard?.length==='long'?8.5:
+  familyHandguard?.length==='mid'?7.4:6.1):p.supportX;
+ const resolved:ResolvedWeaponAssembly={weapon:config.weapon,configuration:config,lengthScale,
   massKg:mass,balanceX:balance,rotationalInertia:Math.max(1,inertia),
   muzzleX:p.muzzleX+(mounted.muzzle.muzzleExtension??0),
-  stockX:p.stockX+(mounted.stock.stockShift??0),
-  primaryX:p.primaryX,primaryY:p.primaryY,
-  supportX:p.supportX+(mounted.foregrip.supportShift??0),
+  stockX:stockX+(build?0:(mounted.stock.stockShift??0)),
+  primaryX,primaryY,
+  supportX:supportX+(mounted.foregrip.supportShift??0),
   supportY:mounted.foregrip.id==='foregrip-vertical'?-3.65:
-   mounted.foregrip.id==='foregrip-handstop'?-2.3:p.supportY,
+   mounted.foregrip.id==='foregrip-handstop'?-2.3:
+   build?-1.65:p.supportY,
   sightHeight:mounted.optic.sightHeight??2.6,
   mounted};
  resolutionCache.set(raw,resolved);

@@ -11,7 +11,10 @@ import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import {carryCapacityReport} from './equipment-carry-placement.ts';
 import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
- type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
+ familyAccessoryAllowed,type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
+import {FAMILY_PART_SLOTS,FAMILY_PARTS,FAMILY_PRESETS,
+ compatibleFamilyPart,matchingFamilyPreset,type FamilyPartSlot}
+ from './equipment-weapon-families.ts';
 import {attachmentPrice} from './equipment-weapon-inventory.ts';
 import {stageMagazines,magazinePlacementSummary,magazineSpace,
  type MagazineLocation} from './equipment-magazine-placement.ts';
@@ -34,6 +37,8 @@ export type CampaignHandlers={
  setWardrobe:(id:string,look:WardrobeOptions)=>void;
  openStudio:(id:string)=>void;
  equipAttachment:(id:string,slot:WeaponAttachmentSlot,partId:string,acquire:boolean)=>void;
+ equipWeaponPreset:(id:string,presetId:string)=>void;
+ equipWeaponFamilyPart:(id:string,slot:FamilyPartSlot,partId:string)=>void;
  moveMagazine:(id:string,magazineId:string,location:MagazineLocation)=>void;
  repairArmor:(id:string)=>void;serviceWeapon:(id:string)=>void;
  saveKitPreset:(id:string,name:string)=>void;
@@ -578,19 +583,73 @@ export class CampaignScreen{
   }
   // Cosmetics have one authoritative editor: Operator Studio.
   // Campaign equipment stock, purchase costs and protection remain here.
+  // The family prototype sits above legacy accessory mounts: modular body
+  // pieces never masquerade as a purchased optic, light or suppressor.
+  const familySelectors=new Map<FamilyPartSlot,HTMLSelectElement>();
+  const familyEditor=node('details','campaign-weapon-attachments');
+  const build=person.weaponConfiguration.build;
+  familyEditor.open=!!build;
+  familyEditor.append(node('summary','','WEAPON FAMILY / MODULAR FURNITURE'));
+  familyEditor.append(node('p','campaign-note',
+   'Visual family prototype: swap compatible receiver, stock, grip, magazine profile, handguard and barrel. The owned carbine/rifle class, actual ammunition and weapon serial remain unchanged.'));
+  const presetRow=node('label','campaign-kit-row');
+  const presetSelect=node('select','campaign-select');
+  presetSelect.setAttribute('aria-label','Choose authored weapon family preset');
+  const selectedFamilyPreset=build?matchingFamilyPreset(build):undefined;
+  const placeholder=node('option','',build?'CUSTOM ASSEMBLY':'LEGACY GENERIC MODEL');
+  placeholder.value='';presetSelect.append(placeholder);
+  for(const familyPreset of FAMILY_PRESETS.filter(p=>p.weapon===person.weapon)){
+   const option=node('option','',familyPreset.name+' / '+familyPreset.family.toUpperCase());
+   option.value=familyPreset.id;presetSelect.append(option);
+  }
+  presetSelect.value=selectedFamilyPreset?.id??'';
+  presetSelect.disabled=locked;
+  presetSelect.addEventListener('change',()=>{
+   if(presetSelect.value)this.handlers.equipWeaponPreset(id,presetSelect.value);
+  });
+  presetRow.append(node('span','','PRESET'),presetSelect);
+  familyEditor.append(presetRow);
+  if(build){
+   familyEditor.append(node('p','campaign-kit-metrics',
+    'FAMILY · '+build.family.toUpperCase()+' · '+
+    (selectedFamilyPreset?.name??'CUSTOM COMBINATION')));
+   for(const slot of FAMILY_PART_SLOTS){
+    const row=node('label','campaign-kit-row');
+    const select=node('select','campaign-select');
+    select.setAttribute('aria-label','Choose '+slot+' for '+person.callsign);
+    const barrelLength=FAMILY_PARTS[build.parts.barrel]?.length;
+    for(const part of Object.values(FAMILY_PARTS)){
+     if(part.slot!==slot||part.family!==build.family)continue;
+     const receiverId=slot==='receiver'?part.id:build.parts.receiver;
+     if(!compatibleFamilyPart(receiverId,slot,part.id,person.weapon,
+       barrelLength))continue;
+     const option=node('option','',part.name);
+     option.value=part.id;select.append(option);
+    }
+    select.value=build.parts[slot];select.disabled=locked;
+    select.addEventListener('change',()=>this.handlers.equipWeaponFamilyPart(
+     id,slot,select.value));
+    familySelectors.set(slot,select);
+    row.append(node('span','',slot.toUpperCase()),select);
+    familyEditor.append(row);
+   }
+  }
+  grouped.field('weapon').append(familyEditor);
   const mountSelectors=new Map<WeaponAttachmentSlot,HTMLSelectElement>();
   const attachments=node('details','campaign-weapon-attachments');
   attachments.append(node('summary','','WEAPON ATTACHMENTS / MOUNTS'));
   attachments.append(node('p','campaign-note',
    'Factory parts are included. Additional modules are finite workshop stock; purchase and install before deployment.'));
   for(const slot of WEAPON_ATTACHMENT_SLOTS){
+   if(build&&slot==='stock')continue;
    const row=node('label','campaign-kit-row');
    const title=node('span','',slot.toUpperCase());
    const select=node('select','campaign-select');
    select.setAttribute('aria-label','Select '+slot+' for '+person.callsign);
    const current=person.weaponConfiguration.slots[slot];
    for(const part of Object.values(WEAPON_ATTACHMENTS)){
-    if(part.slot!==slot||!part.compatible.includes(person.weapon))continue;
+    if(part.slot!==slot||!part.compatible.includes(person.weapon)||
+      (build&&!familyAccessoryAllowed(build,slot,part.id)))continue;
     const price=attachmentPrice(part.id),stock=c.inventory.attachments[part.id]??0;
     const suffix=price===0?' · INCLUDED':
      part.id===current?' · EQUIPPED':
@@ -660,7 +719,8 @@ export class CampaignScreen{
   if(this.weaponView){
    this.workbench=new WeaponWorkbenchPreview(preview,person.weaponConfiguration,slot=>{
     this.selectedMount=slot;
-    const select=mountSelectors.get(slot);
+    const select=slot==='stock'&&build?
+     familySelectors.get('stock'):mountSelectors.get(slot);
     if(!select)return;
     select.focus({preventScroll:true});
     select.scrollIntoView({block:'nearest',behavior:'smooth'});
