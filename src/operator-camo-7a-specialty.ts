@@ -95,6 +95,10 @@ export function specialty7AIndices(id:Specialty7AId):Uint8Array{
     out[((cy+dy+64)&63)*64+((cx+dx+64)&63)]=ink;
    };
    put(0,0,tone);put(1,0,tone);put(2,0,tone);put(0,1,tone);put(1,1,tone);
+   // Distinct wider forked sunrays: increase motif occupancy without
+   // dissolving the repeating KLMK dash/leaf rhythm into generic woodland.
+   put(-1,0,tone);put(-2,0,tone);put(2,1,tone);put(3,1,tone);
+   put(0,2,tone);put(1,2,tone);put(2,2,tone);put(3,2,tone);put(4,0,tone);
    if((row+2*col)%3===0){put(-1,1,tone);put(-1,2,tone);}
    else {put(2,-1,tone);put(3,-1,tone);}
    if((row+col)%4===0)put(1,-2,2);
