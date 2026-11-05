@@ -7,6 +7,7 @@ import {type Site} from './breach-site.ts';
 import {DOOR_PANEL_END_RECESS} from './breach-door-proportions.ts';
 import {isFootstepObstacle} from './breach-traversal-surfaces.ts';
 import {RouteOpenHeap} from './breach-route-heap.ts';
+import {TacticalGeometryIndex,pointBounds,rayBounds} from './breach-spatial-index.ts';
 export type Pt={x:number;y:number};
 export type Segment={a:Pt;b:Pt};
 export type DoorStyle='wood'|'steel'|'reinforced'|'exit'|'glazed'|'mesh-gate'|'french'|'louvered'|'screen'|'barn'|'pocket'|'fire';
@@ -65,6 +66,8 @@ export const COVER:Obstacle[]=[
   {x:23,y:573,w:94,h:42,low:true},
   {x:505,y:594,w:82,h:46,low:true},
 ];
+// Static site geometry is indexed once, not once per actor/ray/sweep.
+let tacticalGeometry=new TacticalGeometryIndex(WALLS,COVER);
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export const doorCenter=(d:Door):Pt=>({
   x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2});
@@ -76,6 +79,7 @@ export function activateSite(next:Site|null){
   site=next;
   WALLS.splice(0,WALLS.length,...(next?.walls??BASE_WALLS));
   COVER.splice(0,COVER.length,...(next?.cover??BASE_COVER).map(o=>({...o})));
+  tacticalGeometry=new TacticalGeometryIndex(WALLS,COVER);
   // Runtime displacements never mutate the seed-derived site data.
 }
 export const activeSite=()=>site;
@@ -100,12 +104,26 @@ export function segmentsCross(a:Segment,b:Segment):boolean{
 const pointInCover=(p:Pt,o:Obstacle,r=0)=>
   Math.abs(p.x-o.x)<o.w/2+r&&Math.abs(p.y-o.y)<o.h/2+r;
 export const OPERATOR_RADIUS=8;
+/** Broadphase queries never replace exact geometry or intel checks. */
+export const someWallNearPoint=(p:Pt,r:number,
+  matches:(wall:Segment,index:number)=>boolean)=>
+  tacticalGeometry.someWall(pointBounds(p,r),matches);
+export const someCoverNearPoint=(p:Pt,r:number,
+  matches:(o:Obstacle,index:number)=>boolean)=>
+  tacticalGeometry.someCover(pointBounds(p,r),matches);
+export const someCoverAlongRay=(a:Pt,b:Pt,
+  matches:(o:Obstacle,index:number)=>boolean)=>
+  tacticalGeometry.someCover(rayBounds(a,b),matches);
+export const staticWallBlocksRay=(ray:Segment)=>
+  tacticalGeometry.someWall(rayBounds(ray.a,ray.b),wall=>segmentsCross(ray,wall));
 export function passable(p:Pt,clearance=OPERATOR_RADIUS):boolean{
   const bounds=activeWorldBounds();
   if(p.x<bounds.minX+13||p.y<bounds.minY+20||
     p.x>bounds.maxX-13||p.y>bounds.maxY-13)return false;
-  if(WALLS.some(s=>pointToSegment(p,s)<clearance+1))return false;
-  if(COVER.some(o=>isFootstepObstacle(o)&&pointInCover(p,o,clearance)))return false;
+  if(someWallNearPoint(p,clearance+1,s=>
+      pointToSegment(p,s)<clearance+1))return false;
+  if(someCoverNearPoint(p,clearance,o=>
+      isFootstepObstacle(o)&&pointInCover(p,o,clearance)))return false;
   return true;
 }
 /** The rotated leaf is the single collision/sightline surface. A hinge on
@@ -162,7 +180,7 @@ export function doorBlocksSightRay(doors:Door[],ray:Segment):boolean{
 }
 export function isClear(a:Pt,b:Pt,doors:Door[],ignoreDoors=false):boolean{
   const shot={a,b};
-  if(WALLS.some(w=>segmentsCross(shot,w)))return false;
+  if(staticWallBlocksRay(shot))return false;
   if(!ignoreDoors&&doorBlocksRay(doors,shot))
     return false;
   // Furniture blocks bullets/visibility but can be bypassed through doors.
