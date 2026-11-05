@@ -5,7 +5,7 @@ import {AiWorkScheduler} from '../src/breach-ai-work-scheduler.ts';
 test('enemy elective planning is deterministic, bounded and evenly staggered',()=>{
  const ids=Array.from({length:14},(_,i)=>'guard'+i);
  const run=()=>{
-  const scheduler=new AiWorkScheduler(2);
+  const scheduler=new AiWorkScheduler(2,ids);
   const allowances=[];
   for(let tick=1;tick<=30;tick++){
    let granted=0;
