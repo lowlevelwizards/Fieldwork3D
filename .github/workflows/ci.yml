@@ -649,6 +649,10 @@ jobs:
       - name: Quick Play first-frame staging and progress regression
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'perf/quick-play-first-frame-staging-') }}
         run: node --experimental-strip-types --test tests/quick-play-startup-progress.test.mjs tests/map-lab-progress.test.mjs tests/quickplay-lazy-visuals.test.mjs
+      - name: Quick Play lazy armor rig headwear and startup checks
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'perf/quickplay-lazy-wardrobe-geometry-') }}
+        run: |
+          node --experimental-strip-types --test tests/quickplay-lazy-wardrobe-geometry.test.mjs tests/quickplay-lazy-visuals.test.mjs tests/quick-play-startup-progress.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
