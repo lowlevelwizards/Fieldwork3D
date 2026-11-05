@@ -10,7 +10,7 @@ export type D2GogglePlacement='eyes'|'forehead'|'helmet'|'neck';
 function low(root:THREE.Group,frame:THREE.Material,
  lens:THREE.Material,elastic:THREE.Material):void{
  root.userData.d2EyeFitTop=4.82;
- root.userData.d2EyeDesign='R7-bold-rim-compact-sport-goggles';
+ root.userData.d2EyeDesign='R8-broad-continuous-sport-strap';
  // Sports-protective silhouette: a lightweight upper arch and ONE generous
  // wraparound pane, not a miniature of the tall bunker field goggles.
  // Increased vertical coverage comes principally from the cheek outline,
@@ -47,15 +47,15 @@ function low(root:THREE.Group,frame:THREE.Material,
  taperedGoggleStrap(root,elastic,'sport-strap',{
   frontX:3.87,frontY:3.81,frontZ:-4.28,
   shoulderX:4.37,shoulderY:3.80,shoulderZ:-3.73,
-  rearX:4.30,rearY:3.79,rearZ:3.46,
-  frontHeight:.79,shoulderHeight:.63,rearHeight:.51,
-  frontWidth:.60,shoulderWidth:.55,rearWidth:.46
- },.54);
+  rearX:4.30,rearY:3.79,rearZ:4.12,
+  frontHeight:1.13,shoulderHeight:.98,rearHeight:.86,
+  frontWidth:.74,shoulderWidth:.64,rearWidth:.50
+ },.94);
 }
 function field(root:THREE.Group,frame:THREE.Material,
  lens:THREE.Material,elastic:THREE.Material):void{
  root.userData.d2EyeFitTop=5.34;
- root.userData.d2EyeDesign='R7-tapered-bunker-dust-goggles';
+ root.userData.d2EyeDesign='R8-connected-field-strap';
  // A heavy field protection silhouette with broad elevated brow shoulders.
  // The two top angles and deep cheek stops replace the R5 brick-flat roof.
  // The rear flange tapers deliberately inward toward a fitted face gasket.
@@ -109,10 +109,10 @@ function field(root:THREE.Group,frame:THREE.Material,
  taperedGoggleStrap(root,elastic,'field-tapered-strap',{
   frontX:4.17,frontY:3.86,frontZ:-4.66,
   shoulderX:4.49,shoulderY:3.81,shoulderZ:-3.79,
-  rearX:4.33,rearY:3.79,rearZ:3.48,
-  frontHeight:1.12,shoulderHeight:.85,rearHeight:.64,
-  frontWidth:.64,shoulderWidth:.65,rearWidth:.51
- },.67);
+  rearX:4.33,rearY:3.79,rearZ:4.12,
+  frontHeight:1.48,shoulderHeight:1.20,rearHeight:1.04,
+  frontWidth:.80,shoulderWidth:.73,rearWidth:.58
+ },1.10);
 }
 function retro(root:THREE.Group,frame:THREE.Material,
  lens:THREE.Material,elastic:THREE.Material):void{
