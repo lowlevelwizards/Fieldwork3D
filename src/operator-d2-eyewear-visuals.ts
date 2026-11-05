@@ -139,21 +139,21 @@ function shooting(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
 }
 function shield(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
  root.userData.d2EyeFitTop=4.80;
- root.userData.d2EyeDesign='R4-clean-borderless-eyeshield';
+ root.userData.d2EyeDesign='R6-clean-contoured-eyeshield';
  const outline:EyePolygon=[
   [-4.26,4.73],[4.26,4.73],[4.15,2.26],
   [2.66,1.97],[1.03,2.17],[-1.03,2.17],
   [-2.66,1.97],[-4.15,2.26]
  ];
- const pane=lensSurface(root,lens,'continuous-ballistic-shield',outline,-5.11,.28);
+ const pane=lensSurface(root,lens,'continuous-ballistic-shield',outline,-5.11,.34);
  pane.userData.d2EyeProfile={
   family:'shield',topology:'single-shield',width:8.52,height:2.76,
   frontZ:-5.11,housingDepth:.18,lenses:1,version:3
  };
  block(root,frame,'single-mass-visor-brow',0,4.76,-4.99,8.70,.58,.79);
  outsideTemples(root,frame,'shield-support-temple',{
-  frontX:4.15,frontY:4.03,frontZ:-4.93,
-  shoulderY:4.0,rearY:3.86,frontHeight:.81,
+  frontX:4.15,frontY:4.26,frontZ:-4.93,
+  shoulderY:4.11,rearY:3.91,frontHeight:.81,
   shoulderHeight:.76,rearHeight:.42
  });
 }
