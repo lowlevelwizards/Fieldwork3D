@@ -407,7 +407,7 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
   slots.armor==='armor-carrier'?'plate-standard':
   slots.armor==='armor-soft'?'soft-vest':'armor-bare');
  choose('rigStyle',slots.rig==='rig-full'?
-  ['field-webbing','lbv','full-chest','split-front','sadf-webbing']:
+  ['field-webbing','alice-lc2','lbv','full-chest','split-front','sadf-webbing']:
   slots.rig==='rig-light'?['micro-rig','light-rig','chest-placard',
    'chicom-rig','bandolier']:
   ['no-rig'],slots.rig==='rig-full'?'field-webbing':
