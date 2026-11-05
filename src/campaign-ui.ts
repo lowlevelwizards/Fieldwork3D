@@ -7,12 +7,7 @@ import {LOADOUT_SLOTS,itemsForSlot,itemDefinition} from './equipment-catalog.ts'
 import {totalEquipmentMass,loadMobilityDescription,loadMovementScale,
  type LoadoutSlot} from './equipment-loadouts.ts';
 import {CampaignKitPreview} from './equipment-preview.ts';
-import {WARDROBE_ACCESSORY_SLOTS,WARDROBE_ACCESSORY_OPTIONS}
- from './operator-wardrobe-accessories.ts';
-import {readWardrobe,resolvedWardrobe,
- setWardrobeStyle,WARDROBE_SLOTS,SLEEVE_STATES,TROUSER_HEMS,
- wardrobeItemsForSlot,type WardrobeOptions,type WardrobeSlot}
- from './operator-wardrobe-data.ts';
+import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import {carryCapacityReport} from './equipment-carry-placement.ts';
 import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
@@ -24,13 +19,8 @@ import {kitMedicalSupplies,medicalSupplyCount} from './equipment-medical-supplie
 import {promptFieldworkText,confirmFieldworkAction,showFieldworkNotice}
  from './ui/fieldwork-controls.ts';
 import './campaign-style.css';
-import './operator-headwear-picker.css';
-import {createHeadwearAppearancePicker} from './operator-headwear-picker.ts';
-import {createWardrobeFabricCamoPicker} from './operator-fabric-camo-picker.ts';
-import {topColorwayChoices,resolvedTopColorway} from './operator-upper-colorways.ts';
-import {sleeveStateOptions} from './operator-wardrobe-data.ts';
-import './operator-fabric-camo-picker.css';
-
+import {buildQuickLoadoutGroups,loadoutGroupForSlot,
+ type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
 export type CampaignHandlers={
  newCampaign:()=>void;continueCampaign:()=>void;quickPlay:()=>void;
  chooseContract:(id:string)=>void;resumeContract:()=>void;
@@ -70,10 +60,7 @@ export class CampaignScreen{
  private weaponView=false;
  private selectedMount:WeaponAttachmentSlot='optic';
  private lastArmoryRenderedId:string|null=null;
- private wardrobeExpanded=false;
- private headwearExpanded=false;
- private headwearCamoExpanded=false;
- private fabricPickerState:{expanded:boolean;openChannel:null|import('./operator-fabric-camo-policy.ts').FabricCamoChannel;filter:string}={expanded:false,openChannel:null,filter:''};
+ private activeKitGroup:QuickLoadoutGroup='weapon';
  private readonly operatorViewAngles=new Map<string,number>();
  private disposePreview(){
   if(this.preview&&this.lastArmoryRenderedId)
@@ -197,10 +184,13 @@ export class CampaignScreen{
    weaponPick.value=p.weapon;weaponPick.disabled=!!c.activeContractId;
    weaponPick.addEventListener('change',()=>this.handlers.equipWeapon(p.id,
     weaponPick.value as 'carbine'|'smg'|'rifle'|'shotgun'));
-   actions.append(button('CUSTOMIZE KIT',()=>{
+   actions.append(button('LOADOUT',()=>{
     this.armoryOperatorId=p.id;this.home(c);
    },'campaign-primary'));
-   actions.append(weaponPick);
+   const look=button('APPEARANCE',()=>this.handlers.openStudio(p.id));
+   look.disabled=!!c.activeContractId;
+   look.setAttribute('aria-label','Edit '+p.callsign+' appearance in Operator Studio');
+   actions.append(look,weaponPick);
    actions.append(button('RESUPPLY',()=>this.handlers.resupply(p.id)));
    const med=kitMedicalSupplies(p.loadout);
    const replenish=button('REISSUE MEDICAL '+medicalSupplyCount(p.medicalSupplies)+
@@ -386,11 +376,7 @@ export class CampaignScreen{
   const previousFocus=this.root.contains(document.activeElement)?
     document.activeElement?.getAttribute('aria-label'):null;
   this.disposePreview();
-  if(!sameOperator){
-   this.wardrobeExpanded=false;
-   this.headwearExpanded=false;this.headwearCamoExpanded=false;
-   this.fabricPickerState={expanded:false,openChannel:null,filter:''};
-  }
+  if(!sameOperator)this.activeKitGroup='weapon';
   this.lastArmoryRenderedId=id;
   const person=c.operators.find(o=>o.id===id);
   if(!person){this.armoryOperatorId=null;this.home(c);return;}
@@ -433,20 +419,22 @@ export class CampaignScreen{
    });
    if(name!==null&&name!==person.callsign)this.handlers.renameOperator(id,name);
   });
-  const appearance=button('CUSTOMIZE APPEARANCE',()=>this.handlers.openStudio(id));
+  const appearance=button('APPEARANCE · OPEN STUDIO',()=>this.handlers.openStudio(id));
   rename.disabled=!!c.activeContractId;appearance.disabled=!!c.activeContractId;
   identityActions.append(rename,appearance);summary.append(identityActions);
+  const readiness=node('details','campaign-readiness-details');
+  readiness.append(node('summary','','READINESS DETAILS · ARMOR / AMMO / MOBILITY'));
   const carrying=carryCapacityReport(person.loadout,person.magazines);
   const carryItems=carrying.placements.filter(p=>p.kind!=='magazine');
-  if(carryItems.length)summary.append(node('p','campaign-note',
+  if(carryItems.length)readiness.append(node('p','campaign-note',
    'PHYSICAL CARRY · '+carryItems.map(p=>p.kind.toUpperCase()+' '+
     p.location.toUpperCase()+' / '+p.accessSeconds.toFixed(2)+'s ACCESS').join(' · ')));
-  summary.append(node('p','campaign-note',
+  readiness.append(node('p','campaign-note',
    person.background+' · '+person.trait+' · '+person.missions+' OPERATIONS'));
-  summary.append(node('p','campaign-kit-metrics','MOBILITY · '+
+  readiness.append(node('p','campaign-kit-metrics','MOBILITY · '+
    loadMobilityDescription(person.loadout,person.weaponConfiguration)+' · '+
    Math.round(loadMovementScale(person.loadout,person.weaponConfiguration)*100)+'% MOVEMENT SPEED'));
-  summary.append(node('div','campaign-kit-metrics',
+  readiness.append(node('div','campaign-kit-metrics',
    'PRIMARY · '+person.weapon.toUpperCase()+
    '    /    MAGAZINE · '+person.magazine+
    '    /    RESERVE · '+person.reserve));
@@ -456,51 +444,52 @@ export class CampaignScreen{
    const service=button('SERVICE WEAPON · '+serviceCost+' CR',
     ()=>this.handlers.serviceWeapon(person.id));
    service.disabled=!!c.activeContractId||serviceCost===0||c.funds<serviceCost;
-   summary.append(service);
-   summary.append(node('p','campaign-kit-metrics',
+   readiness.append(service);
+   readiness.append(node('p','campaign-kit-metrics',
     'SERIAL · '+firearm.id+' · CONDITION '+firearm.condition+'% · '+
     firearm.roundsFired+' ROUNDS FIRED'));
    const recent=firearm.history.slice(-3).map(e=>
     'DAY '+e.day+' '+e.kind.toUpperCase()+
     (e.rounds?' · '+e.rounds+' RDS':'')).join(' / ');
-   summary.append(node('p','campaign-note',
+   readiness.append(node('p','campaign-note',
     'WEAPON SERVICE LOG · '+(recent||'NO RECORDED EVENTS')));
   }
   const placed=person.weapon==='shotgun'?[]:
    stageMagazines(person.magazines,person.loadout);
   const magSlots=person.weapon==='shotgun'?null:
    magazinePlacementSummary(person.magazines,person.loadout);
-  if(magSlots)summary.append(node('p','campaign-kit-metrics',
+  if(magSlots)readiness.append(node('p','campaign-kit-metrics',
    'MAGAZINES · CHEST '+magSlots.rig+' · BELT '+magSlots.belt+
    ' · POCKET '+magSlots.pocket+' · PACK '+magSlots.backpack+
    ' · STOWED '+magSlots.overflow));
-  summary.append(node('p','campaign-note',
+  readiness.append(node('p','campaign-note',
    'Spare magazines can be individually placed below. Chest and belt magazines reload faster; backpack and overflow retrievals take longer.'));
   const maximum=initialArmorIntegrity(person.loadout);
   const repairCost=armorRepairCost(person);
-  summary.append(node('p','campaign-kit-metrics',
+  readiness.append(node('p','campaign-kit-metrics',
    'ARMOR · '+person.armorCondition.torso+'/'+maximum.torso+
    '     HELMET · '+person.armorCondition.head+'/'+maximum.head));
   const repair=button('REPAIR PROTECTION · '+repairCost+' CR',
    ()=>this.handlers.repairArmor(person.id));
   repair.disabled=!!c.activeContractId||repairCost===0||c.funds<repairCost;
-  summary.append(repair);
+  readiness.append(repair);
   const capacity=kitMedicalSupplies(person.loadout);
-  summary.append(node('p','campaign-kit-metrics',
+  readiness.append(node('p','campaign-kit-metrics',
    'FIELD MEDICAL · '+medicalSupplyCount(person.medicalSupplies)+' / '+
     medicalSupplyCount(capacity)+' · HQ RESERVE '+c.supplies.medical));
-  summary.append(node('p','campaign-kit-metrics',
+  readiness.append(node('p','campaign-kit-metrics',
    'WEAPON CONFIG · '+Object.values(person.weaponConfiguration.slots)
     .map(v=>v.replace(/^[^-]+-/,'')).join(' / ')));
-  summary.append(node('p','campaign-note',
+  readiness.append(node('p','campaign-note',
    'Equipment is issued as a saved preparation kit. Carried weight now influences movement speed. Coarse armor coverage and durability are now simulated; detailed ballistic hitboxes, retrieval times, tools and attachment handling are still in development.'));
-  summary.append(node('p','campaign-note',
+  readiness.append(node('p','campaign-note',
    'The preview uses the same 3D operator rig as the mission. Some equipment slots are metadata-only until their gameplay systems are implemented.'));
+  summary.append(readiness);
   grid.append(summary);
   const editor=node('section','campaign-section campaign-kit-editor');
   const locked=!!c.activeContractId;
-  const presetTitle=node('h2','','SAVED KIT PRESETS');
-  editor.append(presetTitle);
+  const presets=node('details','campaign-kit-presets');
+  presets.append(node('summary','','SAVED KIT PRESETS · '+c.kitPresets.length));
   const presetActions=node('div','campaign-kit-actions');
   const save=button('SAVE CURRENT KIT',async()=>{
    const name=await promptFieldworkText({
@@ -542,10 +531,14 @@ export class CampaignScreen{
   load.disabled=locked||c.kitPresets.length===0;
   remove.disabled=locked||c.kitPresets.length===0;
   presetActions.append(picker,load,remove);
-  editor.append(presetActions,node('p','campaign-note',
+  presets.append(presetActions,node('p','campaign-note',
    'Presets save a configuration, not copies of purchased equipment. Applying one requires an available primary weapon.'));
-  editor.append(node('h2','','EQUIPMENT SLOTS'));
+  editor.append(presets);
+  editor.append(node('h2','','LOADOUT'));
   if(locked)editor.append(node('p','campaign-note','ACTIVE DEPLOYMENT · KIT CHANGES LOCKED'));
+  const grouped=buildQuickLoadoutGroups(editor,this.activeKitGroup,group=>{
+   this.activeKitGroup=group;
+  });
   for(const slot of LOADOUT_SLOTS){
    const row=node('label','campaign-kit-row');
    const title=node('span','',slot.replace(/-/g,' ').toUpperCase());
@@ -581,112 +574,15 @@ export class CampaignScreen{
    const info=node('small','campaign-kit-description',selected?.description??'');
    const wrap=node('div','campaign-kit-choice');
    wrap.append(row,info);
-   editor.append(wrap);
+   grouped.field(loadoutGroupForSlot(slot)).append(wrap);
   }
-  // Wardrobe uses a separate cosmetic record and never edits purchased
-  // equipment. Incompatible helmet/carrier styles are disabled, not silently
-  // granted as gameplay items.
-  const wardrobePanel=node('details','campaign-wardrobe');
-  wardrobePanel.open=this.wardrobeExpanded;
-  wardrobePanel.addEventListener('toggle',()=>{
-   if(wardrobePanel.isConnected)this.wardrobeExpanded=wardrobePanel.open;
-  });
-  wardrobePanel.append(node('summary','','WARDROBE / APPEARANCE'));
-  wardrobePanel.append(node('p','campaign-note',
-   'Personal styling only. Armor protection, weight and carry capacity remain controlled by EQUIPMENT SLOTS.'));
-  const wardrobe=readWardrobe(person.wardrobe);
-  const looks=resolvedWardrobe(wardrobe,person.loadout);
-  for(const slot of WARDROBE_SLOTS){
-   const row=node('label','campaign-kit-row');
-   row.append(node('span','',slot.replace(/([A-Z])/g,' $1').toUpperCase()));
-   const select=node('select','campaign-select');
-   select.setAttribute('aria-label','Wardrobe '+slot+' for '+person.callsign);
-   for(const item of wardrobeItemsForSlot(slot)){
-    const option=node('option','',item.name);option.value=item.id;
-    const candidate=setWardrobeStyle(wardrobe,slot,item.id);
-    option.disabled=resolvedWardrobe(candidate,person.loadout)[slot]!==item.id;
-    select.append(option);
-   }
-   select.value=looks[slot];select.disabled=locked;
-   select.addEventListener('change',()=>this.handlers.setWardrobe(
-    id,setWardrobeStyle(wardrobe,slot as WardrobeSlot,select.value)));
-   row.append(select);wardrobePanel.append(row);
-  }
-  wardrobePanel.append(createHeadwearAppearancePicker(person.loadout,wardrobe,
-    next=>this.handlers.setWardrobe(id,next),{
-     disabled:locked,expanded:this.headwearExpanded,
-     camoExpanded:this.headwearCamoExpanded,
-     onExpandedChange:open=>{this.headwearExpanded=open;},
-     onCamoExpandedChange:open=>{this.headwearCamoExpanded=open;}
-    }));
-   wardrobePanel.append(createWardrobeFabricCamoPicker(person.loadout,wardrobe,
-    next=>this.handlers.setWardrobe(id,next),this.fabricPickerState,locked));
-  const cosmeticExtras=node('details','campaign-wardrobe-extras');
-  cosmeticExtras.append(node('summary','','COSMETIC EMPTY POUCHES / ACCESSORIES'));
-  cosmeticExtras.append(node('p','campaign-note',
-   'Appearance-only empty holders and fabric details. No additional mission equipment.'));
-  for(const slot of WARDROBE_ACCESSORY_SLOTS){
-   const row=node('label','campaign-kit-row');
-   row.append(node('span','',slot.replace(/([A-Z])/g,' $1').toUpperCase()));
-   const select=node('select','campaign-select');
-   select.setAttribute('aria-label','Wardrobe accessory '+slot);
-   for(const name of WARDROBE_ACCESSORY_OPTIONS[slot]){
-    const option=node('option','',name.replace(/-/g,' ').toUpperCase());
-    option.value=name;select.append(option);
-   }
-   select.value=wardrobe.accessories[slot];select.disabled=locked;
-   select.addEventListener('change',()=>this.handlers.setWardrobe(id,{
-    ...wardrobe,accessories:{...wardrobe.accessories,[slot]:select.value}
-   }));
-   row.append(select);cosmeticExtras.append(row);
-  }
-  wardrobePanel.append(cosmeticExtras);
-  const colors=topColorwayChoices(looks.top);
-  if(colors.length){
-   const row=node('label','campaign-kit-row');
-   row.append(node('span','','GARMENT MATERIAL'));
-   const select=node('select','campaign-select');
-   select.setAttribute('aria-label','Garment material for '+person.callsign);
-   for(const [value,name] of colors){
-    const option=node('option','',name);option.value=value;select.append(option);
-   }
-   select.value=resolvedTopColorway(looks.top,wardrobe.topColorway);
-   select.disabled=locked;
-   select.addEventListener('change',()=>this.handlers.setWardrobe(id,{
-    ...wardrobe,topColorway:select.value}));
-   row.append(select);wardrobePanel.append(row);
-  }
-  for(const [field,label,options] of [
-   ['sleeveState','SLEEVE FINISH',SLEEVE_STATES],
-   ['trouserHem','TROUSER HEM',TROUSER_HEMS]
-  ] as const){
-   const row=node('label','campaign-kit-row');
-   row.append(node('span','',label));
-   const select=node('select','campaign-select');
-   select.setAttribute('aria-label',label+' for '+person.callsign);
-   for(const optionId of options){
-    const option=node('option','',optionId.toUpperCase());
-    option.value=optionId;select.append(option);
-   }
-   select.value=wardrobe[field];
-   select.disabled=locked||(field==='sleeveState'?
-    sleeveStateOptions(looks.top).length===1:
-    !['bdu-trousers','acu-trousers','gorka-trousers'].includes(looks.trousers)||
-    looks.footwear==='bare-feet');
-   select.addEventListener('change',()=>{
-    if(field==='sleeveState')
-     this.handlers.setWardrobe(id,{...wardrobe,
-      sleeveState:select.value as WardrobeOptions['sleeveState']});
-    else this.handlers.setWardrobe(id,{...wardrobe,
-      trouserHem:select.value as WardrobeOptions['trouserHem']});
-   });
-   row.append(select);wardrobePanel.append(row);
-  }
-  editor.append(wardrobePanel);
+  // Cosmetics have one authoritative editor: Operator Studio.
+  // Campaign equipment stock, purchase costs and protection remain here.
   const mountSelectors=new Map<WeaponAttachmentSlot,HTMLSelectElement>();
-  editor.append(node('h2','','WEAPON ATTACHMENTS'));
-  editor.append(node('p','campaign-note',
-   'Factory parts are included. Additional modules are finite workshop stock; purchase and install before deployment. The preview uses your assembled firearm.'));
+  const attachments=node('details','campaign-weapon-attachments');
+  attachments.append(node('summary','','WEAPON ATTACHMENTS / MOUNTS'));
+  attachments.append(node('p','campaign-note',
+   'Factory parts are included. Additional modules are finite workshop stock; purchase and install before deployment.'));
   for(const slot of WEAPON_ATTACHMENT_SLOTS){
    const row=node('label','campaign-kit-row');
    const title=node('span','',slot.toUpperCase());
@@ -725,15 +621,17 @@ export class CampaignScreen{
     }
     this.handlers.equipAttachment(id,slot,partId,acquire);
    });
-   row.append(title,select);editor.append(row);
+   row.append(title,select);attachments.append(row);
   }
   const gun=resolveWeaponAssembly(person.weaponConfiguration);
-  editor.append(node('p','campaign-kit-metrics',
+  attachments.append(node('p','campaign-kit-metrics',
    'WEAPON MASS · '+gun.massKg.toFixed(2)+' KG · BALANCE '+gun.balanceX.toFixed(1)+
    ' · MUZZLE EXTENSION '+(gun.muzzleX-19.5).toFixed(1)));
+  grouped.field('weapon').append(attachments);
   if(placed.length){
-   editor.append(node('h2','','PHYSICAL MAGAZINE PLACEMENT'));
-   editor.append(node('p','campaign-note',
+   const magazines=node('details','campaign-magazines');
+   magazines.append(node('summary','','MAGAZINE LOCATIONS · '+placed.length));
+   magazines.append(node('p','campaign-note',
     'Each magazine is a real saved item. Change its location; the system will enforce available pouch capacity.'));
    const capacity=magazineSpace(person.loadout);
    const locations:MagazineLocation[]=['rig','belt','pocket','backpack','overflow'];
@@ -753,8 +651,9 @@ export class CampaignScreen{
     picker.disabled=locked;
     picker.addEventListener('change',()=>this.handlers.moveMagazine(
      id,mag.id,picker.value as MagazineLocation));
-    row.append(picker);editor.append(row);
+    row.append(picker);magazines.append(row);
    }
+   grouped.field('carry').append(magazines);
   }
   grid.append(editor);main.append(grid);
   this.root.append(main);
