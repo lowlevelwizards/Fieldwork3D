@@ -210,7 +210,8 @@ function setSegmentCut(mesh:THREE.Mesh,cut:GarmentSegmentCut){
   Record<GarmentSegmentCut,THREE.BoxGeometry>|undefined;
  if(shapes&&mesh.geometry!==shapes[cut])mesh.geometry=shapes[cut];
 }
-export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
+export function createOperatorRig(id:string,side:'blue'|'red',
+ lazyAccessories=false):OperatorRig{
   // One compatibility seam: new public model root is -Z forward, while all
   // existing limbs, muzzle, grip coordinates and IK remain legacy +X.
   // The +90° frame exactly cancels the root's -90° offset at zero heading.
@@ -343,7 +344,7 @@ export function createOperatorRig(id:string,side:'blue'|'red'):OperatorRig{
   flashCanister.geometry=new THREE.CylinderGeometry(1.25,1.25,5.8,8);
   const visualKit=createOperatorVisualKit(chest,hip,head,pack,feet,arms,
     {cloth,vest,trousers,packFabric,gearFabric,headCloth,headArmor,
-      dark:boot,skin,steel},headCanonicalFrame);
+      dark:boot,skin,steel},headCanonicalFrame,lazyAccessories);
   // Stage 3A reference nodes only: attached after existing geometry is built.
   // They add no triangles, affect no merging, and change no IK/weapon sockets.
   const garmentFitAnchors=createGarmentFitAnchors({chest,hip,arms,legs:feet});

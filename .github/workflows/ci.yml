@@ -506,6 +506,12 @@ jobs:
       - name: DNav R8 real-operator doorway performance acceptance
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/dnav-r8-') }}
         run: node --experimental-strip-types scripts/audit-dnav-r6-four-operator.mjs
+      - name: Quick Play mobile visual allocation and eyewear compatibility
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/quickplay-mobile-lazy-actor-visuals-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/quickplay-lazy-visuals.test.mjs \
+            tests/operator-d2-eyewear-r2-silhouettes.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}

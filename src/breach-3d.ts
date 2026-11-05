@@ -1499,7 +1499,7 @@ export class TacticalScene3D{
       y:(1-world.y)*this.height/2};
   }
   private soldier(a:TeamActor){
-    const physical=createOperatorRig(a.id,a.side);
+    const physical=createOperatorRig(a.id,a.side,true);
     const {root,weapon,pack}=physical;
     const flash=new THREE.Mesh(new THREE.OctahedronGeometry(3.5),
       new THREE.MeshBasicMaterial({color:0xffd59e,transparent:true,
@@ -1702,10 +1702,14 @@ export class TacticalScene3D{
       this.rescueFigure.position.set(s.rescue.p.x,0,s.rescue.p.y);
     }else if(this.rescueFigure)this.rescueFigure.visible=false;
     for(const actor of s.operators){
+      const visible=omniscient||actor.side==='blue'||
+        (actor.health>0?isSeen(s,actor):liveVisibility(s,actor.p));
+      // Spawn full 3D rigs only when needed. Enemy AI, LOS and simulation
+      // always exist; hidden actors incur no model construction on mobile.
+      if(!visible&&!this.actors.has(actor.id))continue;
       if(!this.actors.has(actor.id))this.soldier(actor);
       const object=this.actors.get(actor.id)!;
-      object.root.visible=omniscient||actor.side==='blue'||
-        (actor.health>0?isSeen(s,actor):liveVisibility(s,actor.p));
+      object.root.visible=visible;
       const hitTime=s.seconds-actor.lastHitAt;
       const down=actor.health<=0;
       object.status.visible=object.root.visible&&

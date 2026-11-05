@@ -53,6 +53,18 @@ try{
   if(!await home.locator('#play').count())
     throw Error('Pages root missing tactical GO control');
   await home.screenshot({path:resolve(folder,'00-pages-home-breach.png')});
+  // Exercise the actual main-menu button. The earlier smoke below enters
+  // via ?quick=1, bypassing the reset and first-frame path that can crash.
+  const menuSeed=await home.locator('#siteIdentity').getAttribute('data-site-seed');
+  await home.locator('.campaign-entry-actions button').filter({hasText:'QUICK PLAY'}).click();
+  await home.waitForFunction(previous=>{
+    const overlay=document.querySelector('.campaign-screen');
+    const seed=document.querySelector('#siteIdentity')?.getAttribute('data-site-seed');
+    return overlay?.hidden&&!!seed&&seed!==previous&&
+      document.querySelector('#phase')?.textContent==='PLANNING';
+  },menuSeed,{timeout:20000});
+  await home.waitForTimeout(350);
+  await home.screenshot({path:resolve(folder,'01-menu-quickplay-first-frame.png')});
   // Do not keep two software-WebGL battlefields alive concurrently in CI.
   await home.close();
   // Verify four-person tactical quickplay explicitly; the current root
