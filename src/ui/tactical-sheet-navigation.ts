@@ -30,7 +30,9 @@ export function createTacticalSheetNavigation(
    surfaces[now].setAttribute('role','dialog');
   }else if(priorFocus){
    const focus=priorFocus;priorFocus=null;
-   requestAnimationFrame(()=>{if(focus.isConnected)focus.focus({preventScroll:true});});
+   requestAnimationFrame(()=>{
+    if(!active&&focus.isConnected)focus.focus({preventScroll:true});
+   });
   }
  };
  const focusFirst=()=>{
@@ -41,7 +43,7 @@ export function createTacticalSheetNavigation(
  const dismiss=()=>{if(!active)return;onDismiss(active);sync();};
  shield.addEventListener('click',dismiss);
  document.addEventListener('keydown',event=>{
-  if(!active)return;
+  if(!active||document.querySelector('.fw-confirm-backdrop'))return;
   if(event.key==='Escape'){
    event.preventDefault();event.stopPropagation();dismiss();
   }else if(event.key==='Tab'){
