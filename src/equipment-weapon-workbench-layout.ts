@@ -29,5 +29,6 @@ export function workbenchMounts(config:WeaponConfiguration,
   light:{slot:'light',x:a.mounted.light.mountX,y:-1,z:7,name:'Accessory rail'},
   sling:{slot:'sling',x:-5,y:-5,z:8,name:'Sling anchors'}
  };
- return WEAPON_ATTACHMENT_SLOTS.map(slot=>mounts[slot]);
+ return WEAPON_ATTACHMENT_SLOTS.filter(slot=>!config.build||slot!=='stock')
+  .map(slot=>mounts[slot]);
 }
