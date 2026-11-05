@@ -63,6 +63,8 @@ let selected=params.get('operator')??'rook';
 let readOnly=false;
 let people:StudioPerson[]=[];
 let activeCategory:WardrobeSlot='top';
+type StudioStep='items'|'materials'|'details';
+let activeStep:StudioStep='items';
 let advancedFabricColorsOpen=false;
 let advancedPouchOpen=false;
 let clothesOnly=true;
@@ -79,6 +81,10 @@ const status=$<HTMLOutputElement>('studioStatus');
 const canvas=$<HTMLCanvasElement>('studioCanvas');
 const stage=canvas.parentElement!;
 const materialRoot=$<HTMLElement>('studioMaterials');
+const itemRoot=$<HTMLElement>('studioItemBrowser');
+const workflowHint=$<HTMLElement>('studioWorkflowHelp');
+const workflowButtons=Array.from(document.querySelectorAll<HTMLButtonElement>(
+ '[data-studio-step]'));
 const applyButton=$<HTMLButtonElement>('studioApply');
 const modelSelector=$<HTMLSelectElement>('studioOperator');
 const gearToggle=$<HTMLButtonElement>('studioGearToggle');
@@ -283,7 +289,9 @@ function chooseStyle(slot:WardrobeSlot,id:string){
    slot==='rigStyle'?'THIS RIG LOOK NEEDS A MATCHING EQUIPPED LOAD-BEARING CLASS':
    'This item requires a different equipped kit');return;
  }
+ activeStep='materials';
  changeWardrobe(setWardrobeStyle(current(),slot,id));
+ applyStudioStep();
 }
 function undo(){
  comparingSaved=false;
@@ -293,8 +301,54 @@ function undo(){
  say('RESTORED PREVIOUS APPEARANCE');refresh();
 }
 undoButton.addEventListener('click',undo);
+const MATERIAL_LABELS=/^(SKIN TONE|HAIR COLOR|FACEWEAR FABRIC|MASK BODY|FRAME COLOR|LENS TINT|FABRIC MATERIAL|HEADGEAR FINISH|COMPATIBLE HEADGEAR PRINTS|GORKA TWO-TONE)/;
+function studioSectionKind(node:HTMLElement):'materials'|'details'{
+ return node.dataset.studioStep==='materials'?'materials':'details';
+}
+function applyStudioStep(){
+ itemRoot.hidden=activeStep!=='items';
+ materialRoot.hidden=activeStep==='items';
+ let count=0;
+ const children=Array.from(materialRoot.children) as HTMLElement[];
+ for(const child of children){
+  if(child.id==='studioEmptyStep')continue;
+  const show=activeStep!=='items'&&studioSectionKind(child)===activeStep;
+  child.hidden=!show;if(show)count++;
+ }
+ let empty=materialRoot.querySelector<HTMLElement>('#studioEmptyStep');
+ if(activeStep!=='items'&&!count){
+  if(!empty){
+   empty=document.createElement('p');
+   empty.id='studioEmptyStep';empty.className='studio-empty-step';
+   materialRoot.append(empty);
+  }
+  empty.textContent=activeStep==='materials'?
+   'No additional material choices for this item. Open DETAILS to adjust fit or position.':
+   'This item has no additional detail adjustments.';
+  empty.hidden=false;
+ }else if(empty)empty.hidden=true;
+ for(const button of workflowButtons){
+  const pressed=button.dataset.studioStep===activeStep;
+  button.setAttribute('aria-pressed',String(pressed));
+ }
+ workflowHint.textContent=activeStep==='items'?
+  'Choose a 3D item to edit · select an equipped card to inspect its material':
+  activeStep==='materials'?'Choose a fabric, finish or color · changes preview immediately':
+  'Optional fit, wear, and equipment coordination settings';
+}
+function setStudioStep(step:StudioStep){
+ activeStep=step;applyStudioStep();
+ if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+  const sheet=materialRoot.closest('.studio-sheet');
+  if(sheet instanceof HTMLElement)sheet.scrollTo({top:0,behavior:'smooth'});
+ }
+}
+for(const button of workflowButtons)button.addEventListener('click',()=>{
+ setStudioStep(button.dataset.studioStep as StudioStep);
+});
 function row(label:string,help?:string){
  const g=document.createElement('div');g.className='material-group';
+ g.dataset.studioStep=MATERIAL_LABELS.test(label)?'materials':'details';
  const heading=document.createElement('div');heading.className='material-heading';
  const title=document.createElement('label');title.textContent=label;heading.append(title);
  g.append(heading);if(help){const small=document.createElement('small');small.textContent=help;g.append(small);}
@@ -794,6 +848,7 @@ function renderMaterials(){
   const hint=document.createElement('small');hint.textContent=
    'This item has no additional appearance material controls.';materialRoot.append(hint);
  }
+ applyStudioStep();
 }
 /** Six primary categories replace the old fourteen-tab strip.
  * Subslots are an intentional second step only where needed. */
@@ -808,7 +863,7 @@ const categoryGroups:readonly {label:string;slots:readonly WardrobeSlot[]}[]=[
 const categoryGroup=()=>categoryGroups.find(group=>
  group.slots.includes(activeCategory))??categoryGroups[1];
 function selectCategory(slot:WardrobeSlot){
- activeCategory=slot;
+ activeCategory=slot;activeStep='items';
  // Look at the cloth unobscured for garments, but show all available
  // headgear/armor/gear when browsing those categories.
  clothesOnly=studioUsesClothesOnly(slot);
