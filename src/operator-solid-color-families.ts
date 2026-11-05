@@ -33,8 +33,8 @@ export const OPERATOR_SOLID_FAMILIES={
 } as const;
 
 export type OperatorSolidFamilyId=keyof typeof OPERATOR_SOLID_FAMILIES;
-export const OPERATOR_SOLID_FAMILY_IDS=Object.keys(OPERATOR_SOLID_FAMILIES)
-  as OperatorSolidFamilyId[];
+export const OPERATOR_SOLID_FAMILY_IDS=
+  Object.keys(OPERATOR_SOLID_FAMILIES) as OperatorSolidFamilyId[];
 
 export function operatorSolidHex(id:OperatorSolidFamilyId):number{
   return OPERATOR_SOLID_FAMILIES[id];
