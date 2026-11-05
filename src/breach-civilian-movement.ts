@@ -35,7 +35,8 @@ export function stepCivilianMovement(c:CivilianActor,now:number,dt:number,
   }else if(c.state==='hiding')c.dwellUntil=now+3;
   return;
  }
- const speed=c.state==='fleeing'?66:c.state==='hiding'?37:29;
+ const speed=c.state==='fleeing'?66:
+   c.state==='escorted'?43:c.state==='hiding'?37:29;
  const step=Math.min(Math.max(0,dt)*speed,remaining);
  if(step<.0001){c.velocity=0;return;}
  const candidate={x:c.p.x+(goal.x-c.p.x)*step/remaining,

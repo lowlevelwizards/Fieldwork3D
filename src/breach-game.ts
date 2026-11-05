@@ -74,6 +74,8 @@ import {captureTargetMayWithdraw} from './breach-ai-mission-response.ts';
 import {createCivilian,type CivilianActor} from './breach-civilian-types.ts';
 import {stepCivilianMovement} from './breach-civilian-movement.ts';
 import {stepCivilianResponse} from './breach-civilian-response.ts';
+import {canSecureRescuePerson,rescueEscortSeparated,rescueFollowGoal}
+  from './breach-civilian-mission.ts';
 import {firstCivilianAlongRay,applyCivilianBulletHit}
   from './breach-civilian-ballistics.ts';
 import {retreatDoorClosureEligible} from './breach-ai-door-response.ts';
@@ -500,8 +502,25 @@ export function newSession(index=0,siteSeed?:number,
     state.captureTarget=target?.id??null;
     if(target)state.scenario.objective=clone(target.p);
   }
-  if(state.missionType==='rescue')
+  if(state.missionType==='rescue'){
+    // The developer-gated migration creates ONE authoritative rescued
+    // person. Ordinary gameplay keeps the legacy escort until N4 release.
+    if(encounterContext.enableCivilians&&site){
+      const point=state.scenario.objective;
+      const room=site.rooms.find(r=>r.kind==='room'&&
+        point.x>=r.x&&point.x<=r.x+r.w&&
+        point.y>=r.y&&point.y<=r.y+r.h);
+      state.civilians.push(createCivilian({
+        id:'civ:rescue:'+site.seed,role:'rescue',persona:'cautious',
+        activity:'waiting',position:clone(point),heading:0,
+        roomId:room?.id??'objective',
+        zoneId:room?.zoneId??room?.id,
+        appearanceSeed:site.seed^0x57eb,
+        isRescueTarget:true
+      }));
+    }
     state.rescue={p:clone(state.scenario.objective),following:null,trail:[]};
+  }
   if(state.missionType==='intel'||state.missionType==='rescue'||
      state.missionType==='hold')state.mission='secure';
   COVER.splice(0,COVER.length,...state.coverState);
@@ -3809,7 +3828,51 @@ function mission(s:Session,dt:number){
         'INTEL DROPPED');
     }
   }
-  if(s.rescue&&s.mission==='extract'){
+  const rescuePerson=s.civilians.find(c=>c.rescueTarget);
+  if(rescuePerson&&rescuePerson.health<=0){
+    // The injured body remains in world/replay; with no tested casualty
+    // carrying for civilians yet, an incapacitated rescue target fails.
+    s.phase='lost';
+    s.report=['OPERATION FAILED','RESCUE TARGET INCAPACITATED'];
+    return;
+  }
+  if(s.rescue&&rescuePerson){
+    s.rescue.p=clone(rescuePerson.p);
+  }
+  if(s.rescue&&s.mission==='extract'&&rescuePerson){
+    const prior=s.rescue.following;
+    let escort=team(s).find(a=>a.id===prior&&a.health>0)??null;
+    if(prior&&rescueEscortSeparated(rescuePerson,escort)){
+      s.rescue.following=null;rescuePerson.following=null;
+      rescuePerson.goal=null;rescuePerson.state='frozen';
+      escort=null;notify(s,'ESCORT SEPARATED — RETURN TO PERSON');
+    }
+    if(!s.rescue.following){
+      escort=team(s).find(a=>canSecureRescuePerson(rescuePerson,a,
+        (from,to)=>sweptBodyClear(from,to,s.doors,5.5)))??null;
+      if(escort){
+        s.rescue.following=escort.id;
+        rescuePerson.following=escort.id;
+        rescuePerson.state='escorted';rescuePerson.stateSince=s.seconds;
+        notify(s,'PERSON JOINED '+escort.name);
+      }
+    }
+    if(escort&&s.rescue.following===escort.id&&
+       s.seconds-rescuePerson.lastEscortRouteAt>=.55){
+      // Plan from actual civilian location to just behind the real escort.
+      // The existing geometry-aware route is bounded and never teleports.
+      const desired=rescueFollowGoal(escort);
+      const path=cachedEnemyRoute(s,rescuePerson.p,desired,true);
+      const next=path.find(p=>d(p,rescuePerson.p)>10);
+      if(next&&sweptBodyClear(rescuePerson.p,next,s.doors)){
+        rescuePerson.goal=clone(next);
+        rescuePerson.state='escorted';
+      }else rescuePerson.goal=null;
+      rescuePerson.lastEscortRouteAt=s.seconds;
+    }
+    s.rescue.p=clone(rescuePerson.p);
+  }else if(s.rescue&&s.mission==='extract'){
+    // Legacy rescue compatibility: no duplicate real civilian exists.
     const prior=s.rescue.following;
     const escort=team(s).find(a=>a.id===prior&&a.health>0);
     if(prior&&escort){
@@ -3821,7 +3884,6 @@ function mission(s:Session,dt:number){
       notify(s,'ESCORT DOWN — PERSON WAITING');
     }
     if(!s.rescue.following){
-      // Distance across a wall or shut doorway cannot transfer custody.
       const rescuer=team(s).find(a=>a.health>0&&
         near(a.p,s.rescue!.p,26)&&
         sweptBodyClear(a.p,s.rescue!.p,s.doors,5.5));
@@ -3849,9 +3911,10 @@ function mission(s:Session,dt:number){
     battleEvent(s,'objective',null,s.scenario.objective,'HOSTILES SECURED');
   }
   // Wall-adjacent proximity alone does not permit a remote interaction.
+  const objectivePoint=rescuePerson?rescuePerson.p:s.scenario.objective;
   const atObjective=team(s).filter(a=>a.health>0&&
-    near(a.p,s.scenario.objective,36)&&
-    sweptBodyClear(a.p,s.scenario.objective,s.doors,4));
+    near(a.p,objectivePoint,36)&&
+    sweptBodyClear(a.p,objectivePoint,s.doors,4));
   const objectiveReached=atObjective.length>0;
   if(s.mission==='secure'&&objectiveReached){
     if(s.missionType==='hold'){
@@ -3886,6 +3949,10 @@ function mission(s:Session,dt:number){
         d(a.p,s.rescue!.p)-d(b.p,s.rescue!.p))[0];
       s.rescue={...s.rescue,following:escort?.id??null,
         trail:escort?[clone(s.rescue.p),clone(escort.p)]:[]};
+      if(rescuePerson&&escort){
+        rescuePerson.following=escort.id;
+        rescuePerson.state='escorted';rescuePerson.stateSince=s.seconds;
+      }
     }
     const verb=s.missionType==='rescue'?'PERSON FOUND':
       s.missionType==='hold'?'POSITION HELD':

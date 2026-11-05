@@ -1788,7 +1788,7 @@ export class TacticalScene3D{
       updateCivilianRig(rig,civil,s.seconds);
       rig.root.visible=visible;
     }
-    if(s.rescue){
+    if(s.rescue&&!s.civilians.some(c=>c.rescueTarget)){
       if(!this.rescueFigure){
         this.rescueFigure=new THREE.Group();
         const civilian=new THREE.Mesh(new THREE.CapsuleGeometry(4.5,12,4,8),
