@@ -677,6 +677,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/material-browser-smart-sort-') }}
         run: |
           node --experimental-strip-types --test tests/operator-material-browser-smart-sort.test.mjs tests/operator-headwear-solid-colors.test.mjs
+      - name: Material Browser R2 persistent filters and mobile preview regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/material-browser-r2-polish-') }}
+        run: |
+          node --experimental-strip-types --test tests/operator-material-browser-r2.test.mjs tests/operator-material-browser-smart-sort.test.mjs tests/operator-headwear-solid-colors.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
