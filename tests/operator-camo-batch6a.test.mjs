@@ -21,7 +21,7 @@ test('6A appends precisely eight new masters without renaming historical 30 IDs'
  assert.deepEqual(CAMO6A_IDS,BATCH);
  assert.equal(HEADWEAR_CAMO_IDS.length,46);
  assert.deepEqual(HEADWEAR_CAMO_IDS.slice(30,38),BATCH);
- assert.equal(new Set(HEADWEAR_CAMO_IDS).size,38);
+ assert.equal(new Set(HEADWEAR_CAMO_IDS).size,46);
  assert.ok(headwearCamoChoices('boonie').every(id=>HEADWEAR_CAMO_IDS.includes(id)));
  assert.equal(headwearCamoChoices('soviet-steel').length,0);
  assert.ok(!headwearCamoChoices('high-cut').includes('ss-leto'));
