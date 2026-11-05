@@ -45,6 +45,19 @@ export function doorReachable(p:Pt,d:Door):boolean{
  * route segment misses the door-crossing detector. Never force locks,
  * skip hinge collision, or auto-open fully traversable leaves.
  */
+/** Walking to an authored door is still real navigation. Any other
+ * reachable ordinary closed leaf may be opened along that approach.
+ * Only the explicitly targeted door preserves KICK/CLOSE/HOLD priority.
+ * This never modifies the player's queued order or bypasses a lock.
+ */
+export function canAutoOpenEnRoute(plan:{
+ kind:string;doorId?:string;method?:string}|null|undefined,
+ candidateDoorId:string,ai=false):boolean{
+ if(ai)return true;
+ if(plan?.kind==='move'||plan?.kind==='pie')return true;
+ if(plan?.kind!=='door')return false;
+ return candidateDoorId!==plan.doorId||(plan.method??'open')==='open';
+}
 export function autoDoorAtBodyContact(from:Pt,to:Pt,
  doors:readonly Door[]):Door|undefined{
  const touching=doors.filter(d=>{

@@ -36,7 +36,7 @@ import {acquisitionSeconds} from './breach-firing-cadence.ts';
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,kickDoor,
   initialOpeningYieldCandidate,pressDoorOnBodyAttempt,
-  autoDoorAtBodyContact} from './breach-door.ts';
+  autoDoorAtBodyContact,canAutoOpenEnRoute} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool,issuedWedges} from './equipment-entry-tools.ts';
@@ -1846,22 +1846,20 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   // Deliberate DOOR actions (including KICK) retain priority and must not
   // be preempted by this convenience interaction.
   const pendingDoor=a.plan[0];
-  const permittedExplicitDoor=pendingDoor?.kind==='door'&&
-    pendingDoor.method==='open'?pendingDoor.doorId:null;
-  const autoDoor=a.side==='red'||pendingDoor?.kind==='move'||
-    pendingDoor?.kind==='pie'||!!permittedExplicitDoor;
-  const doorAhead=autoDoor?(s.doors.find(door=>{
-    // An authored OPEN order may activate before its staging waypoint if
-    // the body meets that SAME door. Never preempt a KICK/CLOSE/HOLD order
-    // or open a neighboring door opportunistically.
-    if(permittedExplicitDoor&&door.id!==permittedExplicitDoor)return false;
+  // A route toward an authored door may cross OTHER doors. Do not let
+  // the destination DOOR node disable ordinary collision-aware opening
+  // of an intervening closed leaf; this was the G4d seeded deadlock.
+  const automaticCandidates=s.doors.filter(door=>
+    canAutoOpenEnRoute(pendingDoor,door.id,a.side==='red')).sort((left,right)=>
+      pointToSegment(a.p,doorLeafSegment(left))-
+      pointToSegment(a.p,doorLeafSegment(right))||
+      left.id.localeCompare(right.id));
+  const doorAhead=automaticCandidates.find(door=>{
     if(door.open&&(door.openFraction??0)>=.72)return false;
     if(!doorReachable(a.p,door))return false;
     return doorBlocksSegment(door,{a:a.p,b:next})||
       doorBlocksSegment(door,{a:a.p,b:p});
-  })??autoDoorAtBodyContact(a.p,move,
-     permittedExplicitDoor?s.doors.filter(d=>d.id===permittedExplicitDoor):
-     s.doors)):undefined;
+  })??autoDoorAtBodyContact(a.p,move,automaticCandidates);
   if(doorAhead){
     a.motorPause='door-opening';
     const opening=doorInteraction({target:doorAhead,actorId:a.id,
