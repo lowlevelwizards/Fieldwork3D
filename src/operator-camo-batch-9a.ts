@@ -153,10 +153,38 @@ const KOPASSUS:readonly Motif[]=[
  p(3,-6,45,0,43,5,48,11,53,8,58,1,55,-7,56),
  p(3,22,57,29,53,33,60,40,63,36,69,28,66,22,73)
 ];
-function cce():Uint8Array{return paint(CCE);}
+// Light sand interruptions were swallowed by later CCE umber/black layers.
+// Paint substantial, rounded windows LAST instead of raising their brightness.
+const CCE_SAND_WINDOWS:readonly Motif[]=[
+ p(1,2,2,9,0,16,4,14,10,8,12,1,9),
+ p(1,36,9,43,7,50,11,46,17,38,18,32,15),
+ p(1,22,23,29,19,36,22,39,28,32,33,23,31,18,27),
+ p(1,51,34,58,30,66,35,64,42,57,45,49,41),
+ p(1,-6,43,2,41,10,45,12,51,5,54,-5,52),
+ p(1,12,54,21,51,28,56,26,63,17,65,10,61),
+ p(1,38,56,46,54,54,58,52,64,44,67,36,64),
+ p(1,1,17,8,15,15,18,16,23,9,26,2,23)
+];
+function cce():Uint8Array{
+ const tile=paint(CCE);
+ for(const motif of CCE_SAND_WINDOWS)paintOnto(tile,motif);
+ return tile;
+}
 function vsr():Uint8Array{return paint(VSR);}
+const TAZ_PALE_INLETS:readonly Motif[]=[
+ p(0,4,4,10,2,17,7,14,12,7,13,2,9),
+ p(0,30,-3,37,1,43,8,39,13,32,10,27,6),
+ p(0,47,17,55,15,60,20,57,27,49,28,44,23),
+ p(0,5,29,12,26,19,30,16,37,9,40,3,35),
+ p(0,24,37,31,35,37,40,35,47,28,49,22,44),
+ p(0,-4,48,3,46,11,51,9,58,1,60,-5,55),
+ p(0,45,53,52,50,59,54,60,62,52,67,45,63),
+ p(0,13,12,20,10,27,15,24,20,17,21,11,17),
+ p(0,40,27,47,25,52,30,49,35,42,37,37,31)
+];
 function taz():Uint8Array{
  const tile=paint(TAZ);
+ for(const inlet of TAZ_PALE_INLETS)paintOnto(tile,inlet);
  // Local leaflets, asymmetrical 2–4px extensions anchored to vegetation
  // or dark branches. This preserves broad color-block silhouette.
  for(let row=0;row<11;row++)for(let col=0;col<11;col++){
@@ -214,8 +242,20 @@ function granite():Uint8Array{
  }
  return tile;
 }
+function narrowVertical(motif:Motif,scale:number):Motif{
+ const [ink,coords]=motif;
+ let center=0;
+ for(let i=0;i<coords.length;i+=2)center+=coords[i];
+ center/=coords.length/2;
+ const next=coords.map((n,i)=>i%2===0?center+(n-center)*scale:n);
+ return [ink,next];
+}
 function kopassus():Uint8Array{
- const tile=paint(KOPASSUS);
+ // Earlier reds occupied 55% of the tile, swallowing cream and green.
+ // Narrow only the rust and charcoal ribbons horizontally: preserve
+ // flowing vertical silhouettes, expose broad pale/green gaps between.
+ const tile=paint(KOPASSUS.map(m=>m[0]===2?narrowVertical(m,.70):
+  m[0]===3?narrowVertical(m,.78):m));
  // Isolated thin trailing veins bend alongside the principal vertical ribbons.
  for(const [x,y,len,h,ink] of [
   [7,7,3,17,3],[36,31,3,19,3],[60,6,3,21,2],
