@@ -20,7 +20,8 @@ export const RIG_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
    'khaki','tan','charcoal'],
   prints:['multicam','scorpion-w2','m81-woodland','ucp','british-mtp',
    'woodland-dpm','flecktarn','australian-dpcu',
-   'atacs-fg','atacs-au','multicam-tropic','multicam-arid','ukrainian-mm14'],
+   'atacs-fg','atacs-au','multicam-tropic','multicam-arid','ukrainian-mm14',
+   'multicam-black','pencott-greenzone','pencott-badlands','kryptek-highlander'],
   rationale:'Modern compact modular chest chassis, broad commercial color range'
  },
  'chest-placard':{
@@ -29,7 +30,8 @@ export const RIG_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
    'forest-green','foliage','charcoal'],
   prints:['multicam','scorpion-w2','m81-woodland','ucp','british-mtp',
    'woodland-dpm','flecktarn',
-   'atacs-fg','atacs-au','multicam-tropic','multicam-arid'],
+   'atacs-fg','atacs-au','multicam-tropic','multicam-arid',
+   'multicam-black','pencott-greenzone','pencott-badlands','kryptek-highlander'],
   rationale:'Modern detachable three-magazine front panel; nylon and commercial prints'
  },
  'light-rig':{
@@ -56,7 +58,8 @@ export const RIG_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
   signature:{solid:'ranger-green',print:'multicam'},
   solids:['ranger-green','coyote','black','olive-drab','tan','khaki'],
   prints:['multicam','scorpion-w2','m81-woodland','ucp','british-mtp',
-   'woodland-dpm','atacs-fg','atacs-au','multicam-tropic','multicam-arid','ukrainian-mm14'],
+   'woodland-dpm','atacs-fg','atacs-au','multicam-tropic','multicam-arid','ukrainian-mm14',
+   'multicam-black','pencott-greenzone','pencott-badlands','kryptek-highlander'],
   rationale:'Two MOLLE wings and central opening, current modular printed nylon'
  },
  'full-chest':{
@@ -64,7 +67,8 @@ export const RIG_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
   solids:['forest-green','ranger-green','olive-drab','coyote','tan',
    'black','khaki'],
   prints:['multicam','m81-woodland','scorpion-w2','british-mtp',
-   'woodland-dpm','ucp','atacs-fg','multicam-tropic','multicam-arid'],
+   'woodland-dpm','ucp','atacs-fg','multicam-tropic','multicam-arid',
+   'multicam-black','pencott-greenzone','pencott-badlands','kryptek-highlander'],
   rationale:'Large modern/surplus patrol bib with broad front admin face'
  },
  'lbv':{
@@ -128,7 +132,8 @@ export const ARMOR_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
   solids:['ranger-green','black','charcoal','coyote','khaki','tan',
    'olive-drab','foliage'],
   prints:['multicam','m81-woodland','scorpion-w2','ucp','british-mtp',
-   'atacs-fg','atacs-au','multicam-tropic','multicam-arid'],
+   'atacs-fg','atacs-au','multicam-tropic','multicam-arid',
+   'multicam-black','pencott-greenzone','pencott-badlands','kryptek-highlander'],
   rationale:'Low-profile plate bags; limited commercially available cover prints'
  },
  'plate-jpc':{
@@ -136,7 +141,8 @@ export const ARMOR_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
   solids:['ranger-green','coyote','black','olive-drab','khaki','tan'],
   prints:['multicam','scorpion-w2','m81-woodland','ucp','british-mtp',
    'woodland-dpm','australian-dpcu',
-   'atacs-fg','atacs-au','multicam-tropic','multicam-arid'],
+   'atacs-fg','atacs-au','multicam-tropic','multicam-arid',
+   'multicam-black','pencott-greenzone','pencott-badlands','kryptek-highlander'],
   rationale:'Modern skeletonized MOLLE carrier, many fabric/print options'
  },
  'plate-standard':{
@@ -147,7 +153,8 @@ export const ARMOR_VISUAL_TEXTILES:Readonly<Record<string,VisualTextile>>={
    'flecktarn','woodland-dpm','finnish-m05','polish-pantera',
    'russian-emr','russian-flora','pla-xingkong','italian-vegetato',
    'desert-tropentarn','cadpat-tw','australian-dpcu',
-   'atacs-fg','atacs-au','multicam-tropic','multicam-arid','ukrainian-mm14'],
+   'atacs-fg','atacs-au','multicam-tropic','multicam-arid','ukrainian-mm14',
+   'multicam-black','pencott-greenzone','pencott-badlands','kryptek-highlander'],
   rationale:'Modern overt textile carrier with genuine national/commercial covers'
  },
  'plate-heavy':{

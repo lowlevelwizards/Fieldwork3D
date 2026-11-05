@@ -71,7 +71,15 @@ export const FABRIC_CAMO_POLICY:Readonly<Record<HeadwearCamoId,FabricCamoPolicy>
  'atacs-au':policy(all,'modern','issued-or-commercial','A-TACS AU uniform fabrics and matching commercial equipment'),
  'ss-leto':policy(uniform,'transition','issued-or-commercial','Partizan SS-Leto field garments and commercial Gorka/overgarment variants; no default patterned armor'),
  aor1:policy(uniform,'modern','issued','Naval desert digital uniform; typical protective equipment is coyote or tan'),
- 'multicam-arid':policy(all,'modern','issued-or-commercial','MultiCam Arid uniforms and commercially available matching load carriage')
+ 'multicam-arid':policy(all,'modern','issued-or-commercial','MultiCam Arid uniforms and commercially available matching load carriage'),
+ 'multicam-black':policy(all,'modern','issued-or-commercial','MultiCam Black is a commercial/LE textile sold as apparel, nylon gear and select plate covers; not universal military issue'),
+ 'multicam-alpine':policy(withPack,'modern','issued-or-commercial','MultiCam Alpine is chiefly snow overgarment and pack-cover material; do not assume patterned armor'),
+ 'pencott-greenzone':policy(all,'modern','issued-or-commercial','Commercial GreenZone shirts, BDUs, headwear, printed pouches, carriers and rucks'),
+ 'pencott-badlands':policy(all,'modern','issued-or-commercial','Commercial BadLands combat clothing and printed nylon with verified compatible cuts'),
+ 'desert-night':policy(uniform,'historic','issued','Historical DNC overgarment and trouser shell; armor, rig and rucksack stay conventional solid colors'),
+ 'kryptek-highlander':policy(all,'modern','issued-or-commercial','Commercial Kryptek Highlander clothing and selected patterned outdoor/tactical nylon'),
+ berezka:policy(uniform,'historic','issued-or-commercial','KLMK/Berezka Soviet-era cover suits and reproductions; not a standard plate-carrier fabric'),
+ 'spectre-skwo':policy(withKit,'modern','issued-or-commercial','SSO Spectre-SKWO field clothing and compatible tactical field webbing, not presumed universal plate covers')
 };
 
 /** Only active garment silhouettes qualify for camouflage prints.
@@ -90,21 +98,25 @@ export function fabricCamoCompatible(id:HeadwearCamoId,
      'desert-marpat','cadpat-tw','british-mtp','finnish-m05',
      'italian-vegetato','russian-emr','pla-xingkong','indian-digital-2022',
      'polish-pantera','m81-woodland','flecktarn',
-     'atacs-fg','atacs-au','multicam-tropic','multicam-arid','aor1','aor2','ukrainian-mm14'].includes(id);
+     'atacs-fg','atacs-au','multicam-tropic','multicam-arid','aor1','aor2','ukrainian-mm14',
+     'multicam-black','multicam-alpine','pencott-greenzone','pencott-badlands','kryptek-highlander','spectre-skwo'].includes(id);
    if(outfit.top==='smock-jacket')
     return ['woodland-dpm','british-mtp','multicam','m81-woodland',
      'flecktarn','swedish-m90','finnish-m05','desert-tropentarn',
      'three-color-desert','polish-pantera','russian-flora','russian-emr',
      'alpenflage','six-color-desert',
-     'ss-leto','atacs-fg','atacs-au','multicam-tropic','multicam-arid','ukrainian-mm14'].includes(id);
+     'ss-leto','atacs-fg','atacs-au','multicam-tropic','multicam-arid','ukrainian-mm14',
+     'multicam-black','multicam-alpine','pencott-greenzone','pencott-badlands',
+     'desert-night','kryptek-highlander','berezka','spectre-skwo'].includes(id);
    if(outfit.top==='gorka-jacket')
     return ['russian-flora','russian-emr','multicam','polish-pantera',
-      'atacs-fg','atacs-au','ss-leto'].includes(id);
+      'atacs-fg','atacs-au','ss-leto','berezka','spectre-skwo'].includes(id);
    return (outfit.top==='bdu-shirt'||outfit.top==='acu-shirt')&&
     uniformCutCamoCompatible(outfit.top,id);
   case 'trousers':
    if(outfit.trousers==='gorka-trousers')
-    return ['russian-flora','russian-emr','multicam','polish-pantera'].includes(id);
+    return ['russian-flora','russian-emr','multicam','polish-pantera',
+     'ss-leto','atacs-fg','atacs-au','berezka','spectre-skwo'].includes(id);
    return (outfit.trousers==='bdu-trousers'||
     outfit.trousers==='acu-trousers')&&
     uniformCutCamoCompatible(outfit.trousers,id);

@@ -535,6 +535,11 @@ jobs:
           node --experimental-strip-types --test \
             tests/quickplay-lazy-visuals.test.mjs \
             tests/operator-d2-eyewear-r2-silhouettes.test.mjs
+      - name: Camouflage 7A — MM-14 and eight new authored families
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-camo-7a-') }}
+        run: |
+          node --experimental-strip-types --test tests/operator-camo-batch7a.test.mjs
+          node --experimental-strip-types --test tests/operator-camo-batch6a.test.mjs tests/operator-fabric-camo-stage2.test.mjs tests/operator-r9-camo-density.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}

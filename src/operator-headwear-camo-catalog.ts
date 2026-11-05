@@ -48,7 +48,15 @@ export const CAMO_CATALOG:Readonly<Record<HeadwearCamoId,CamoCatalogEntry>>={
  'atacs-au':w('arid','organic','USA'),
  'ss-leto':w('woodland','organic','Russia'),
  aor1:w('arid','digital','USA'),
- 'multicam-arid':w('arid','organic','USA')
+ 'multicam-arid':w('arid','organic','USA'),
+ 'multicam-black':w('universal','organic','USA'),
+ 'multicam-alpine':w('universal','organic','USA'),
+ 'pencott-greenzone':w('woodland','digital','Britain'),
+ 'pencott-badlands':w('multi','digital','Britain'),
+ 'desert-night':w('arid','geometric','USA','historic'),
+ 'kryptek-highlander':w('multi','geometric','USA'),
+ berezka:w('woodland','geometric','Russia','historic'),
+ 'spectre-skwo':w('multi','digital','Russia')
 };
 export const CAMO_TERRAINS:ReadonlyArray<CamoTerrain>=['woodland','arid','multi','universal'];
 export const CAMO_STYLES:ReadonlyArray<CamoStyle>=
