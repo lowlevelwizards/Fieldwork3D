@@ -54,47 +54,48 @@ function low(root:THREE.Group,frame:THREE.Material,
 }
 function field(root:THREE.Group,frame:THREE.Material,
  lens:THREE.Material,elastic:THREE.Material):void{
- root.userData.d2EyeFitTop=5.23;
- root.userData.d2EyeDesign='R5-tall-tapered-ballistic-housing';
- // Tall brow roof / wide cheek protection, but REAR wall tapers inward
- // toward the face: no two-unit rectangular viewing box in side profile.
+ root.userData.d2EyeFitTop=5.34;
+ root.userData.d2EyeDesign='R6-sculpted-bunker-dust-goggles';
+ // A heavy field protection silhouette with broad elevated brow shoulders.
+ // The two top angles and deep cheek stops replace the R5 brick-flat roof.
+ // The rear flange tapers deliberately inward toward a fitted face gasket.
  const outer:EyePolygon=[
-  [-4.36,5.21],[4.36,5.21],[4.45,4.52],
-  [4.29,2.22],[3.02,1.91],[1.44,2.03],
-  [.71,2.82],[-.71,2.82],[-1.44,2.03],
-  [-3.02,1.91],[-4.29,2.22],[-4.45,4.52]
+  [-4.28,5.13],[-3.10,5.34],[3.10,5.34],[4.28,5.13],
+  [4.46,4.50],[4.26,2.24],[3.00,1.92],[1.44,2.06],
+  [.74,2.84],[-.74,2.84],[-1.44,2.06],[-3.00,1.92],
+  [-4.26,2.24],[-4.46,4.50]
  ];
  const inner:EyePolygon=[
-  [-3.72,4.60],[3.72,4.60],[3.90,4.30],
-  [3.60,2.83],[2.79,2.58],[1.40,2.62],
-  [.73,3.23],[-.73,3.23],[-1.40,2.62],
-  [-2.79,2.58],[-3.60,2.83],[-3.90,4.30]
+  [-3.73,4.64],[-2.82,4.83],[2.82,4.83],[3.73,4.64],
+  [3.88,4.25],[3.59,2.84],[2.76,2.61],[1.39,2.66],
+  [.73,3.23],[-.73,3.23],[-1.39,2.66],[-2.76,2.61],
+  [-3.59,2.84],[-3.88,4.25]
  ];
  const backOuter:EyePolygon=[
-  [-3.87,4.89],[3.87,4.89],[4.08,4.36],
-  [3.94,2.46],[2.94,2.25],[1.38,2.37],
-  [.70,2.99],[-.70,2.99],[-1.38,2.37],
-  [-2.94,2.25],[-3.94,2.46],[-4.08,4.36]
+  [-3.79,4.93],[-2.92,5.07],[2.92,5.07],[3.79,4.93],
+  [4.04,4.32],[3.78,2.53],[2.84,2.30],[1.37,2.40],
+  [.70,2.99],[-.70,2.99],[-1.37,2.40],[-2.84,2.30],
+  [-3.78,2.53],[-4.04,4.32]
  ];
  const backInner:EyePolygon=[
-  [-3.32,4.37],[3.32,4.37],[3.47,4.10],
-  [3.29,3.02],[2.65,2.78],[1.36,2.87],
-  [.67,3.38],[-.67,3.38],[-1.36,2.87],
-  [-2.65,2.78],[-3.29,3.02],[-3.47,4.10]
+  [-3.25,4.48],[-2.72,4.58],[2.72,4.58],[3.25,4.48],
+  [3.44,4.07],[3.21,3.06],[2.59,2.83],[1.34,2.90],
+  [.67,3.38],[-.67,3.38],[-1.34,2.90],[-2.59,2.83],
+  [-3.21,3.06],[-3.44,4.07]
  ];
  sculptedHousing(root,frame,'single-mass-deep-field-shell',
-  outer,inner,backOuter,backInner,-5.92,-4.22,
+  outer,inner,backOuter,backInner,-5.88,-4.22,
   'field-seal','single-sealed');
- lensSurface(root,lens,'deep-dust-pane',inner,-5.96);
- // Single continuous soft face gasket only. Deliberate separation from
- // the solid plastic front without extra layers, vents or clip boxes.
+ lensSurface(root,lens,'deep-dust-pane',inner,-5.92);
+ // One fitted, continuous rear cushion and one textile band; no vents
+ // or boxes. The natural angled side wall now provides the shell character.
  frameRing(root,elastic,'field-soft-rear-gasket',
   backOuter,[backInner],-4.18,.33,'field-seal');
  taperedGoggleStrap(root,elastic,'field-tapered-strap',{
-  frontX:4.08,frontY:3.77,frontZ:-4.38,
-  shoulderX:4.47,shoulderY:3.79,shoulderZ:-3.77,
+  frontX:4.09,frontY:3.82,frontZ:-4.36,
+  shoulderX:4.48,shoulderY:3.79,shoulderZ:-3.76,
   rearX:4.33,rearY:3.79,rearZ:3.48,
-  frontHeight:.98,shoulderHeight:.85,rearHeight:.64,
+  frontHeight:1.03,shoulderHeight:.85,rearHeight:.64,
   frontWidth:.58,shoulderWidth:.66,rearWidth:.51
  },.67);
 }
@@ -141,7 +142,7 @@ export function createD2Goggles(
  const root=new THREE.Group();root.name='d2-'+id;
  root.userData.modelAxes='-Z-forward,+X-right,+Y-up';
  root.userData.d2EyeFitTop=
-  id==='goggles-low'?4.82:id==='goggles-field'?5.23:5.06;
+  id==='goggles-low'?4.82:id==='goggles-field'?5.34:5.06;
  for(const placement of ['eyes','forehead','helmet','neck'] as const){
   const model=createOne(id,frame,lens,elastic);
   model.name=id+'-'+placement;
