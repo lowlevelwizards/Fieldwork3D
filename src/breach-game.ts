@@ -4321,12 +4321,16 @@ export function debrief(s:Session){
   const shots=own.reduce((t,a)=>t+a.shots,0);
   const hits=own.reduce((t,a)=>t+a.hits,0);
   const target=enemies(s).find(e=>e.id===s.captureTarget);
+  const civilianInjured=s.civilians.filter(c=>c.health>0&&
+    c.injuryStage>0).length;
+  const civilianDown=s.civilians.filter(c=>c.health<=0).length;
   const assessment=assessOperation({
     outcome:s.phase==='won'?'success':'failure',
     kind:s.missionType as OperationKind,
     elapsed:Math.floor(s.seconds),casualties,teamSize:own.length,
     shots,hits,objective:s.mission==='done',
     targetSurrendered:target?.surrendered??false,
+    civilianInjured,civilianDown,
     extracted:own.filter(a=>a.health>0&&
       near(a.p,s.scenario.extract,47)).length,
   });
@@ -4334,7 +4338,7 @@ export function debrief(s:Session){
     stabilizedCasualties:casualtyCare.stabilized,
     criticalCasualties:casualtyCare.critical,
     evacuatedCasualties:evacuated,
-    shots,hits,
+    shots,hits,civilianInjured,civilianDown,
     kills:own.reduce((t,a)=>t+a.kills,0),
     pauses:s.timesPaused,variant:s.scenario.name,
     objective:s.mission==='done',
