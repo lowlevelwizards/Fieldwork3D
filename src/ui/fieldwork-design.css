@@ -11,15 +11,22 @@
   --fw-panel:#223631;
   --fw-panel-raised:#2d423c;
   --fw-panel-deep:#172825;
+  /* Functional control tones: use these rather than inventing local greens. */
+  --fw-control-bg:#294239;
+  --fw-interactive:#30493f;
+  --fw-control-active:#466459;
   --fw-panel-border:#61796c;
   --fw-text:#e6e8da;
   --fw-text-muted:#afc0b1;
   --fw-text-faint:#8b9f93;
+  --fw-text-warm:#f1e8d3;
   --fw-sage:#a7b995;
   --fw-mint:#9fccc4;
   --fw-brass:#cfb184;
   --fw-warning:#cc907d;
   --fw-focus:#f1cd97;
+  /* These are semantic anchors, not a restriction on true-color swatches,
+     physical materials, camouflage masters or operator identity colors. */
   --fw-radius-xs:5px;
   --fw-radius-sm:8px;
   --fw-radius-md:12px;
@@ -54,9 +61,9 @@
 .fw-button{padding:9px 13px}
 .fw-icon-button{display:inline-grid;place-items:center;min-width:var(--fw-control-min);padding:8px}
 .fw-button[data-primary],.fw-button.is-primary {
-  background:var(--fw-sage);border-color:#c0ceb1;color:var(--fw-bg);
+  background:var(--fw-sage);border-color:var(--fw-sage);color:var(--fw-bg);
 }
-.fw-button[data-danger]{border-color:var(--fw-warning);color:#f0b7a6}
+.fw-button[data-danger]{border-color:var(--fw-warning);color:var(--fw-text-warm)}
 .fw-button:active,.fw-icon-button:active,.fw-segment:active{transform:scale(.97)}
 .fw-button:focus-visible,.fw-icon-button:focus-visible,.fw-segment:focus-visible {
   outline:2px solid var(--fw-focus);outline-offset:2px;
