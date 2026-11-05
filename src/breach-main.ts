@@ -125,6 +125,7 @@ import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
 import {recoveryAdviceFor} from './ui/recovery-guidance.ts';
 import {paintFogMask,FOG_WIDTH,FOG_HEIGHT} from './breach-fog-mask.ts';
 import {civilianPose} from './breach-civilian-pose.ts';
+import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
 
 const el=<T extends HTMLElement>(id:string)=>{
   const node=document.getElementById(id);
@@ -2974,7 +2975,8 @@ function missionMarkers(){
   draw.fillText(state.mission==='secure'?'SECURE':'EXTRACT',p.x,p.y-39);
 }
 function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
-  if(!liveVisibility(state,c.p))return;
+  if(!civilianPresentationVisible(c,replaying,replayOmniscient,
+       liveVisibility(state,c.p)))return;
   const coats=['#766e62','#637d75','#82726b','#667985'];
   const trousers=['#454c4b','#61574d','#4e5664'];
   const coat=coats[(c.appearanceSeed>>>0)%coats.length];

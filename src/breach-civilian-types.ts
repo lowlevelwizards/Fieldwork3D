@@ -23,6 +23,8 @@ export type CivilianActor={
   homeRoomId:string;homeZoneId:string|null;appearanceSeed:number;
   rescueTarget:boolean;following:string|null;
   lastEscortRouteAt:number;
+  /** Set only when applying historical film; never queried by live AI. */
+  replayVisible?:boolean;
 };
 export function createCivilian(spec:CivilianSpec):CivilianActor{
   return {
