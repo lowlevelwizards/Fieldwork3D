@@ -805,7 +805,7 @@ jobs:
             tests/operator-material-browser-smart-sort.test.mjs \
             tests/operator-material-browser-r2.test.mjs
       - name: Reference Kits R1–R3 critical contracts
-        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/faction-reference-r1-r3-') }}
+        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/faction-reference-r1-r3-') || startsWith(github.head_ref, 'feature/faction-reference-r4-')) }}
         run: |
           node --experimental-strip-types --test \
             tests/faction-reference.test.mjs \
