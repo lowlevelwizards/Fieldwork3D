@@ -10,6 +10,8 @@ import type {ExecutionEvent} from './breach-execution-events.ts';
 import {copyMedicalCondition,newMedicalCondition} from './breach-medical-wounds.ts';
 import {normalizedMedicalSupplies,kitMedicalSupplies} from './equipment-medical-supplies.ts';
 import {ReplayMotionRecorder,type ReplayPresentation} from './breach-replay-motion.ts';
+import {shareUnchangedReplayFrame,type ReplaySharingStats}
+  from './breach-replay-sharing.ts';
 import type {TraverseOpportunity} from './breach-mantle.ts';
 
 export type ActorFrame=Pick<TeamActor,
@@ -131,6 +133,10 @@ export class MissionRecorder{
   private lastEventId=0;
   private lastExecutionEventId=0;
   readonly motion=new ReplayMotionRecorder();
+  /** Optional benchmark counters only; gameplay never reads these. */
+  readonly sharingStats:ReplaySharingStats={
+    sharedActors:0,sharedFields:0,fullKeyframes:0
+  };
   capture(s:Session,force=false):void{
     if(this.frames.length>=12000)return;
     // This runs at 60Hz even though the outcome film is only 20Hz.
@@ -167,6 +173,8 @@ export class MissionRecorder{
     // allocating thousands of duplicate tile arrays during long missions.
     if(last&&last.seenGround.length===frame.seenGround.length)
       frame.seenGround=last.seenGround;
+    shareUnchangedReplayFrame(last,frame,this.frames.length,
+      this.sharingStats);
     this.frames.push(frame);
   }
   get duration(){return this.frames.at(-1)?.t??0;}
