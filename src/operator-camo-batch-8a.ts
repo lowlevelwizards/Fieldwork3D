@@ -48,7 +48,7 @@ const recipes={
  'south-african-s2000':{
   label:'SOLDIER 2000',
   description:'SANDF Soldier 2000: exposed Kalahari earth-brown ground, broad irregular green islands and distinctive internal mint/forest pea-spots, unlike dense JGSDF flecks',
-  colors:[[132,106,89],[61,101,86],[112,148,126],[183,198,171],[41,72,61]],
+  colors:[[132,106,89],[61,101,86],[112,148,126],[167,184,159],[41,72,61]],
   targetCoverage:[.42,.21,.14,.13,.10],motifs:[]
  },
  'kryptek-typhon':{
@@ -384,7 +384,7 @@ function jgsdf8E():Uint8Array{
  }
  return tile;
 }
-function soldier2000_8D():Uint8Array{
+function soldier2000_8E():Uint8Array{
  // 8D: keep 8C's exposed Kalahari-brown ground and its authored organic
  // islands. Sparse attached tips make the green silhouettes branch rather
  // than resemble a handful of unrelated smooth ovals.
@@ -447,7 +447,7 @@ function soldier2000_8D():Uint8Array{
  // significantly more texture than M98 but far less than JGSDF.
  for(let row=0;row<16;row++)for(let col=0;col<16;col++){
   const r=hash(col,row,457);
-  if(r<.63)continue;
+  if(r<.68)continue; // 8E: 14% fewer secondary pin marks, preserve island texture
   const x=(col*4+Math.floor(hash(col,row,461)*4))&63;
   const y=(row*4+Math.floor(hash(col,row,463)*4))&63;
   const ink=indexAt(source,x,y);
@@ -467,7 +467,7 @@ function ownTile(id:Camo8AId):Uint8Array{
  if(id==='greek-lizard')return greekLizard8C();
  if(id==='urban-kamysh')return urbanKamysh8C();
  if(id==='jgsdf-type2')return jgsdf8E();
- if(id==='south-african-s2000')return soldier2000_8D();
+ if(id==='south-african-s2000')return soldier2000_8E();
  if(id==='norwegian-m98'){
   // 8E: no random pixel noise or repeated filtering; every lobe is drawn
   // once into the tile. Artistic edit remains local to this master.
