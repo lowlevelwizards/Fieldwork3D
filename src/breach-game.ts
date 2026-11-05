@@ -73,6 +73,9 @@ import {contactTactic} from './breach-ai-tactical-response.ts';
 import {directionalCoverFrom} from './breach-cover-direction.ts';
 import {reportToListener,type TacticalReport} from './breach-communication.ts';
 import {groupResponse,type GroupRole} from './breach-ai-coordination.ts';
+import {stableCoordination,renewCoordinationUntil} from './breach-ai-team-commitment.ts';
+import {coverMoveDeadline,coverMoveCommitted}
+  from './breach-ai-position-commitment.ts';
 import {moraleResponse,witnessShock} from './breach-ai-morale.ts';
 import {newAwareness,addObservation,visibleObservation,
  ageAwareness,clearObservedPosition,bestBelief,
@@ -2833,17 +2836,19 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     if(a.combatChoice==='hold'&&a.alert!=='retreat'){
       a.alert='cover';a.nav=[];a.defense=null;
     }
+    const committed=coverMoveCommitted(a.alert==='cover'&&!!a.defense,
+      a.defense?d(a.p,a.defense):0,s.seconds,a.defenseUntil);
     if(a.combatChoice==='reposition'&&a.alert!=='retreat'&&
-      s.seconds-a.lastFireRepositionAt>2.6){
+      !committed&&s.seconds-a.lastFireRepositionAt>2.6){
       const candidate=firingPosition(a,b,s);
       a.lastFireRepositionAt=s.seconds;
       if(candidate&&d(candidate,a.p)>15){
         a.defense=candidate;a.alert='cover';a.nav=[];
-        a.defenseUntil=s.seconds+3.2;
+        a.defenseUntil=coverMoveDeadline(s.seconds,d(a.p,candidate));
       }
     }
-    const maneuvering=a.alert==='cover'&&a.defense&&
-      d(a.p,a.defense)>10&&s.seconds<a.defenseUntil;
+    const maneuvering=coverMoveCommitted(a.alert==='cover'&&!!a.defense,
+      a.defense?d(a.p,a.defense):0,s.seconds,a.defenseUntil);
     if(a.alert!=='retreat'&&!maneuvering&&
        a.combatChoice!=='hold'&&a.combatChoice!=='withdraw'){
       a.alert='engaging';a.nav=[];
@@ -3098,20 +3103,24 @@ function distributeReports(s:Session){
   if(!newlyInformed.length)continue;
   const listeners=enemies(s).filter(a=>a.health>0&&
     report.deliveredTo.includes(a.id));
+  const prior=stableCoordination(listeners,s.seconds);
   const roles=groupResponse(listeners.map(a=>({id:a.id,p:a.p})),
-    report.estimate,report.assignedRoles??{});
+    report.estimate,{...(report.assignedRoles??{}),...prior});
   report.assignedRoles=roles;report.coordinated=true;
   for(const a of listeners){
    if(!newlyInformed.includes(a.id))continue;
    a.coordinationRole=roles[a.id];
-   a.coordinationUntil=s.seconds+5;
+   const heard=a.awareness.observations.find(observation=>
+     observation.id==='report/'+report.id+'/'+a.id);
+   a.coordinationUntil=renewCoordinationUntil(s.seconds,a.coordinationUntil,
+     roles[a.id],heard?.uncertainty??report.uncertainty);
    const covering=roles[a.id]==='watch'||roles[a.id]==='support';
    if(covering&&a.intent?.kind!=='engage'){
      a.watch=clone(report.estimate);
      // Existing cover selection considers friendly defender occupancy;
      // this avoids assigning everyone to the same local cover spot.
      a.defense=defensivePosition(a,report.estimate,s);
-     a.defenseUntil=s.seconds+5;
+     a.defenseUntil=Math.min(a.coordinationUntil,s.seconds+7);
      a.alert='cover';a.nav=[];
    }
   }
