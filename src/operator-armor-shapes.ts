@@ -5,6 +5,7 @@
  */
 import * as THREE from 'three';
 import {TILE_WORLD_SIZE} from './rendering/pixel-materials.ts';
+import {bakeGearGeometryAO} from './operator-baked-gear-ao.ts';
 
 type XYZ=readonly [number,number,number];
 type XZ=readonly [number,number];
@@ -56,6 +57,7 @@ function rawStrip(rings:readonly (readonly [XYZ,XYZ,XYZ,XYZ])[],
  geo.setAttribute('position',new THREE.Float32BufferAttribute(points,3));
  geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
  geo.computeVertexNormals();
+ bakeGearGeometryAO(geo,material);
  const mesh=new THREE.Mesh(geo,material);
  mesh.name=name;mesh.castShadow=true;mesh.receiveShadow=true;
  group.add(mesh);return mesh;
