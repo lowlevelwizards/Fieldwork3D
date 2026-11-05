@@ -44,7 +44,7 @@ function arm(g:THREE.Group,frame:THREE.Material,
  }
 }
 const around=(cx:number,points:readonly XY[]):XY[] =>
- points.map(([x,y])=>[x+cx,y]);
+ points.map(([x,y])=>[x+cx,y] as XY);
 const rectangle:readonly XY[]=[
  [-1.65,4.55],[1.65,4.55],[1.65,2.79],[-1.65,2.79]
 ];
