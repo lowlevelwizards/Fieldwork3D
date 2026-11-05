@@ -31,16 +31,71 @@ export type CamoEra=typeof CAMO_ERA_OPTIONS[number];
 export type CamoBrowserState={
  sort:CamoSort;environment:CamoEnvironment;family:string;origin:CamoOrigin|'all';
  style:CamoStyle|'all';era:CamoEra;search:string;favoritesOnly:boolean;
+ advancedOpen:boolean;
 };
 export const defaultCamoBrowserState=():CamoBrowserState=>({
  sort:'smart',environment:'all',family:'all',origin:'all',style:'all',
- era:'all',search:'',favoritesOnly:false
+ era:'all',search:'',favoritesOnly:false,advancedOpen:false
 });
+/** Browsing preferences persist by surface/channel, without persisting temporary
+ * search text that would reopen a picker with mysteriously hidden swatches.
+ * The saved format is independent of wardrobe/campaign state. */
+export const CAMO_FILTER_STORAGE_KEY='fieldwork.material.browser.filters.v2';
 const browserStates=new Map<string,CamoBrowserState>();
+let hydrated=false;
+const validOption=<T extends string>(value:unknown,values:readonly T[]):value is T=>
+ typeof value==='string'&&values.includes(value as T);
+function hydrateCamoBrowserStates(){
+ if(hydrated)return;hydrated=true;
+ try{
+  if(typeof localStorage==='undefined')return;
+  const stored=JSON.parse(localStorage.getItem(CAMO_FILTER_STORAGE_KEY)??'{}') as
+   Record<string,Partial<CamoBrowserState>>;
+  if(!stored||typeof stored!=='object'||Array.isArray(stored))return;
+  for(const [key,record] of Object.entries(stored).slice(0,32)){
+   if(!record||typeof record!=='object'||Array.isArray(record))continue;
+   const state=defaultCamoBrowserState();
+   if(validOption(record.sort,CAMO_SORT_OPTIONS.map(x=>x[0])))state.sort=record.sort;
+   if(validOption(record.environment,CAMO_ENVIRONMENT_OPTIONS.map(x=>x[0])))
+    state.environment=record.environment;
+   if(validOption(record.family,CAMO_FAMILY_OPTIONS))state.family=record.family;
+   if(validOption(record.origin,['all',...Object.values(CAMO_CATALOG).map(x=>x.origin)]))
+    state.origin=record.origin;
+   if(validOption(record.style,['all',...Object.values(CAMO_CATALOG).map(x=>x.style)]))
+    state.style=record.style;
+   if(validOption(record.era,CAMO_ERA_OPTIONS))state.era=record.era;
+   state.favoritesOnly=record.favoritesOnly===true;
+   state.advancedOpen=record.advancedOpen===true;
+   browserStates.set(key,state);
+  }
+ }catch{/* Local storage may be disabled, corrupt or unavailable. */}
+}
 export function camoBrowserState(key:string):CamoBrowserState{
+ hydrateCamoBrowserStates();
  let state=browserStates.get(key);
  if(!state){state=defaultCamoBrowserState();browserStates.set(key,state);}
  return state;
+}
+export function saveCamoBrowserState(key:string){
+ hydrateCamoBrowserStates();
+ camoBrowserState(key);
+ try{
+  if(typeof localStorage==='undefined')return;
+  const saved:Record<string,Partial<CamoBrowserState>>={};
+  for(const [id,value] of browserStates){
+   const {sort,environment,family,origin,style,era,favoritesOnly,advancedOpen}=value;
+   saved[id]={sort,environment,family,origin,style,era,favoritesOnly,advancedOpen};
+  }
+  // Protect against excessive picker/session keys.
+  const entries=Object.entries(saved).slice(-32);
+  localStorage.setItem(CAMO_FILTER_STORAGE_KEY,
+   JSON.stringify(Object.fromEntries(entries)));
+ }catch{/* Browsing still works in private browsing. */}
+}
+export function resetCamoBrowserState(key:string){
+ const state=camoBrowserState(key);
+ Object.assign(state,defaultCamoBrowserState());
+ saveCamoBrowserState(key);
 }
 export const CAMO_BROWSER_STORAGE_KEY='fieldwork.headwear.camo.browser.v1';
 export type CamoBrowserPrefs={favorites:HeadwearCamoId[];recents:HeadwearCamoId[]};
@@ -151,6 +206,32 @@ function camoLightness(id:HeadwearCamoId):number{
  return recipe.colors.reduce((sum,c,i)=>sum+colorLightness(
   c[0]*65536+c[1]*256+c[2])*(recipe.targetCoverage[i]??0),0)/total;
 }
+/** Display headings explain why a print is nearby rather than presenting one
+ * long flat list. These headings are navigation-only, not eligibility rules. */
+export function camoRelatedTo(id:HeadwearCamoId,reference:HeadwearCamoId){
+ if(id===reference)return false;
+ const family=camoFamily(reference);
+ if(family!=='Other'&&family!=='Digital')
+  return camoFamily(id)===family;
+ const a=CAMO_CATALOG[reference],b=CAMO_CATALOG[id];
+ return a.origin===b.origin&&a.style===b.style;
+}
+export function camoBrowseSection(id:HeadwearCamoId,options:CamoBrowserOptions):string{
+ const sort=options.state?.sort??'smart';
+ const family=camoFamily(id);
+ if(sort==='family')return family==='Other'?
+  'OTHER · '+CAMO_CATALOG[id].style.toUpperCase():family.toUpperCase();
+ if(sort!=='smart')return '';
+ if(id===options.active)return 'CURRENT SELECTION';
+ const prefs=options.prefs??readCamoBrowserPrefs();
+ if(prefs.favorites.includes(id))return 'FAVORITES';
+ if(prefs.recents.includes(id))return 'RECENTLY USED';
+ const reference=options.reference??options.active;
+ if(reference&&camoRelatedTo(id,reference))
+  return 'RELATED TO '+(options.reference?'UNIFORM':'SELECTION')+
+   ' · '+(family==='Other'?CAMO_CATALOG[id].style.toUpperCase():family.toUpperCase());
+ return 'OTHER COMPATIBLE PATTERNS';
+}
 export type CamoBrowserOptions={
  state?:Partial<CamoBrowserState>;active?:HeadwearCamoId|null;
  reference?:HeadwearCamoId|null;prefs?:CamoBrowserPrefs;
@@ -178,7 +259,8 @@ export function browseCamos(compatible:readonly HeadwearCamoId[],
   if(id===options.active)return 0;
   if(favorites.has(id))return 1;
   if(recents.has(id))return 2;
-  if(options.reference&&camoFamily(id)===camoFamily(options.reference))return 3;
+  const reference=options.reference??options.active;
+  if(reference&&camoRelatedTo(id,reference))return 3;
   return 4;
  };
  return visible.sort((a,b)=>{
@@ -190,7 +272,10 @@ export function browseCamos(compatible:readonly HeadwearCamoId[],
     break;
    case 'recent':diff=(recents.get(a)??Infinity)-(recents.get(b)??Infinity);break;
    case 'origin':diff=CAMO_CATALOG[a].origin.localeCompare(CAMO_CATALOG[b].origin);break;
-   case 'family':diff=camoFamily(a).localeCompare(camoFamily(b));break;
+   case 'family':diff=camoFamily(a).localeCompare(camoFamily(b));
+    if(!diff&&camoFamily(a)==='Other')
+     diff=CAMO_CATALOG[a].style.localeCompare(CAMO_CATALOG[b].style);
+    break;
    case 'era':diff=camoSortEra(a).localeCompare(camoSortEra(b));break;
    case 'lightness':diff=camoLightness(b)-camoLightness(a);break;
   }
