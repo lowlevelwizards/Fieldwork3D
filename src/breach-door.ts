@@ -99,8 +99,22 @@ export function doorApproach(from:Pt,d:Door):Pt|null{
       for(const along of [0,-12,12])
         candidates.push({x:point.x+n.x*outward*side+t.x*along,
           y:point.y+n.y*outward*side+t.y*along});
-  return candidates.filter(p=>bodyClear(p,[d])&&doorReachable(p,d)&&
-    route(from,p).length).sort((a,b)=>dist(a,from)-dist(b,from))[0]??null;
+  // Staging remains a genuine world-truth route. Euclidean-nearest alone
+  // can choose a reachable handle position on the far side of the swung
+  // leaf, forcing a silly detour or wall scrape just to approach a door.
+  const staged=candidates.flatMap((point,index)=>{
+    if(!bodyClear(point,[d])||!doorReachable(point,d))return [];
+    const waypoints=route(from,point,p=>bodyClear(p,[d]));
+    if(!waypoints.length)return [];
+    let previous=from,pathLength=0;
+    for(const waypoint of waypoints){
+      pathLength+=dist(previous,waypoint);previous=waypoint;
+    }
+    return [{point,index,pathLength,straight:dist(from,point)}];
+  });
+  staged.sort((a,b)=>a.pathLength-b.pathLength||
+    a.straight-b.straight||a.index-b.index);
+  return staged[0]?.point??null;
 }
 export function initDoor(d:Door,i:number):Door{
  const prepared:Door={...d,pushTarget:1,hinge:d.hinge??(i%3===0?'b':'a'),
