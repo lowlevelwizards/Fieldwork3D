@@ -10,6 +10,8 @@ import {studioCameraFocusForWardrobe,studioFocusEasing,clampStudioCameraZoom,
  from './operator-studio-camera-focus.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {OperatorAppearanceGrid,APPEARANCE_GROUP_LABELS} from './operator-appearance-grid.ts';
+import {FactionReferenceBrowser} from './faction-reference-browser.ts';
+import {resolveFactionReference,referenceLookForKit} from './faction-reference-resolver.ts';
 import {readRoster,initialRoster,
  freshQuickPlayRoster,serializeQuickPlayCosmetics} from './breach-roster.ts';
 import {readCampaign} from './campaign-state.ts';
