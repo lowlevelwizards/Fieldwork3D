@@ -64,7 +64,27 @@ const recipes={
   targetCoverage:[.26,.28,.23,.16,.07],motifs:[]
  }
  } satisfies Record<Camo7AId,Camo7ARecipe>;
-export const CAMO7A_RECIPES:Readonly<Record<Camo7AId,Camo7ARecipe>>=recipes;
+/** Coverage is measured from the authored master, never forced through
+ * percentile thresholds that destroy characteristic structures. Memoized.
+ */
+const coverageCache=new Map<Camo7AId,readonly number[]>();
+export const CAMO7A_RECIPES:Readonly<Record<Camo7AId,Camo7ARecipe>>=
+ Object.fromEntries(CAMO7A_IDS.map(id=>{
+  const entry=recipes[id];
+  return [id,{
+   ...entry,
+   get targetCoverage():readonly number[]{
+    const previous=coverageCache.get(id);
+    if(previous)return previous;
+    if(id==='multicam-black'||id==='multicam-alpine')return entry.targetCoverage;
+    const counts=entry.colors.map(()=>0);
+    for(const ink of camo7AIndices(id))counts[ink]++;
+    const coverage=counts.map(n=>n/4096);
+    coverageCache.set(id,coverage);
+    return coverage;
+   }
+  }];
+ })) as unknown as Record<Camo7AId,Camo7ARecipe>;
 export function isCamo7AId(value:string):value is Camo7AId{
  return (CAMO7A_IDS as readonly string[]).includes(value);
 }
