@@ -6,7 +6,7 @@ import {team,type Session} from './breach-game.ts';
 import {intelFogLevel} from './breach-intel.ts';
 import {exteriorBriefedAt,accessibleExteriorWall} from './breach-site-footprint.ts';
 import {visionPolygon} from './breach-vision-polygon.ts';
-import {microKeyAt} from './breach-fog-memory.ts';
+import {forEachRememberedMicroCell} from './breach-fog-memory.ts';
 export const FOG_WIDTH=320,FOG_HEIGHT=370;
 /** Display-only supersampling. Cap expanded sites to protect mobile VRAM. */
 export const MAX_FOG_TEXTURE_EDGE=1280;
@@ -128,12 +128,8 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session){
   ctx.filter='blur(3px)';
   ctx.fillStyle='rgba(255,255,255,.76)';
   ctx.beginPath();
-  let microCount=0;
-  for(let row=Math.floor(bounds.minY/10);row<Math.ceil(bounds.maxY/10);row++)
-    for(let col=Math.floor(bounds.minX/10);col<Math.ceil(bounds.maxX/10);col++)
-      if(s.seenGround.has(microKeyAt(col,row))){
-        ctx.rect(col*10,row*10,10,10);microCount++;
-      }
+  const microCount=forEachRememberedMicroCell(s.seenGround,bounds,
+    (col,row)=>ctx.rect(col*10,row*10,10,10));
   if(microCount)ctx.fill();
   // Keep actual directional line-of-sight polygons exact; a light edge
   // feather is display-only and cannot grant tactical information.
