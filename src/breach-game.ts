@@ -2457,6 +2457,8 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       if(!person||person.health<=0||
          d(a.p,person.p)>32||
          !sweptBodyClear(a.p,person.p,s.doors,5.5)||
+         (person.rescueTarget&&!canSecureRescuePerson(person,a,
+           (from,to)=>sweptBodyClear(from,to,s.doors,5.5)))||
          !liveVisibility(s,person.p)){
         failCurrentOrder(s,a,n,'CIVILIAN NOT IN PHYSICAL REACH');return;
       }
@@ -3918,19 +3920,13 @@ function mission(s:Session,dt:number){
     let escort=team(s).find(a=>a.id===prior&&a.health>0)??null;
     if(prior&&rescueEscortSeparated(rescuePerson,escort)){
       s.rescue.following=null;rescuePerson.following=null;
-      rescuePerson.goal=null;rescuePerson.state='frozen';
+      rescuePerson.goal=null;rescuePerson.nav=[];
+      setCivilianState(rescuePerson,'frozen',s.seconds);
       escort=null;notify(s,'ESCORT SEPARATED — RETURN TO PERSON');
     }
-    if(!s.rescue.following){
-      escort=team(s).find(a=>canSecureRescuePerson(rescuePerson,a,
-        (from,to)=>sweptBodyClear(from,to,s.doors,5.5)))??null;
-      if(escort){
-        s.rescue.following=escort.id;
-        rescuePerson.following=escort.id;
-        rescuePerson.state='escorted';rescuePerson.stateSince=s.seconds;
-        notify(s,'PERSON JOINED '+escort.name);
-      }
-    }
+    // A real neutral requires an authored FOLLOW order. Nearness alone
+    // never re-attaches a separated escort. The legacy marker path
+    // below keeps its original auto-join for older missions.
     if(escort&&s.rescue.following===escort.id&&
        s.seconds-rescuePerson.lastEscortRouteAt>=.55){
       // Plan from actual civilian location to just behind the real escort.
@@ -3990,7 +3986,9 @@ function mission(s:Session,dt:number){
     near(a.p,objectivePoint,36)&&
     sweptBodyClear(a.p,objectivePoint,s.doors,4));
   const objectiveReached=atObjective.length>0;
-  if(s.mission==='secure'&&objectiveReached){
+  if(s.mission==='secure'&&objectiveReached&&
+     (s.missionType!=='rescue'||!rescuePerson||
+      rescuePerson.state==='compliant')){
     if(s.missionType==='hold'){
       // A contested position is not secured merely by standing on its
       // marker. Nearby active defenders arrest the actual hold clock.
@@ -4019,13 +4017,17 @@ function mission(s:Session,dt:number){
     }
     s.mission='extract';
     if(s.rescue){
-      const escort=atObjective.sort((a,b)=>
-        d(a.p,s.rescue!.p)-d(b.p,s.rescue!.p))[0];
-      s.rescue={...s.rescue,following:escort?.id??null,
-        trail:escort?[clone(s.rescue.p),clone(escort.p)]:[]};
-      if(rescuePerson&&escort){
-        rescuePerson.following=escort.id;
-        rescuePerson.state='escorted';rescuePerson.stateSince=s.seconds;
+      if(rescuePerson){
+        // SECURE reveals a real person; only a queued FOLLOW command
+        // grants their cooperation for the extraction.
+        s.rescue={...s.rescue,p:clone(rescuePerson.p),
+          following:null,trail:[]};
+        rescuePerson.following=null;
+      }else{
+        const escort=atObjective.sort((a,b)=>
+          d(a.p,s.rescue!.p)-d(b.p,s.rescue!.p))[0];
+        s.rescue={...s.rescue,following:escort?.id??null,
+          trail:escort?[clone(s.rescue.p),clone(escort.p)]:[]};
       }
     }
     const verb=s.missionType==='rescue'?'PERSON FOUND':
