@@ -66,6 +66,7 @@ import {INTEL_MODES,doorKnown,
 import {orderFailureText} from './breach-nav-diagnostics.ts';
 import {routeWithSqueezeIntel} from './breach-squeeze-route.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
+import {ProjectedRouteCache} from './breach-plan-projection-cache.ts';
 import {FrameMeter} from './breach-perf.ts';
 import {formatAfterAction} from './breach-after-action.ts';
 import {formatMissionPacing} from './breach-mission-pacing.ts';
@@ -1189,6 +1190,7 @@ function unlockAudio(){
 let last=performance.now(),accum=0,hudAt=0;
 let previousRenderActors:Record<string,RenderActor>|null=null;
 const displayRouteCache=new DisplayRouteCache();
+const projectedRouteCache=new ProjectedRouteCache();
 let cssW=innerWidth,cssH=innerHeight,dpr=1;
 let viewScale=1,ox=0,oy=0,zoom=1,panX=0,panY=0;
 let cursor:Pt|null=null;
@@ -2639,6 +2641,9 @@ function paths(){
 }
 function renderProjectedPlans(){
   if(!stage)return;
+  // Compare exact camera matrices; active zoom/orbit easing invalidates
+  // immediately, while unchanged path projections are reused.
+  projectedRouteCache.beginFrame(stage.camera,cssW,cssH);
   draw.setTransform(dpr,0,0,dpr,0,0);
   draw.clearRect(0,0,cssW,cssH);
   for(const a of team(state)){
@@ -2665,10 +2670,11 @@ function renderProjectedPlans(){
         draw.beginPath();
         const start=worldToScreen(previous,4);
         draw.moveTo(start.x,start.y);
-        for(const point of steps){
-          const projected=worldToScreen(point,4);
+        const projectedSteps=cachedRoute?
+          projectedRouteCache.get(steps,4,p=>worldToScreen(p,4)):
+          steps.map(p=>worldToScreen(p,4));
+        for(const projected of projectedSteps)
           draw.lineTo(projected.x,projected.y);
-        }
         draw.strokeStyle=color;
         draw.globalAlpha=a.id===selected?.94:.50;
         draw.lineWidth=n.kind==='pie'?3:
