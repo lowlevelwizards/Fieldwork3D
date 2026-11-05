@@ -98,7 +98,7 @@ export function specialty7AIndices(id:Specialty7AId):Uint8Array{
    if((row+2*col)%3===0){put(-1,1,tone);put(-1,2,tone);}
    else {put(2,-1,tone);put(3,-1,tone);}
    if((row+col)%4===0)put(1,-2,2);
-   if((row*3+col)%7===0){put(3,3,3);put(3,4,3);}
+   if((row*3+col)%3===0){put(3,3,3);put(3,4,3);put(4,3,3);}
   }
  }else{
   const base=paint(id==='kryptek-highlander'?HIGHLANDER:SPECTRE,0);
