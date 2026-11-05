@@ -11,6 +11,7 @@ import {createM1HelmetCoverLayers,updateM1HelmetCoverLayers,
  type M1HelmetCoverLayers} from './operator-helmet-cover-visuals.ts';
 import type {HelmetCoverConfig} from './operator-helmet-cover-policy.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
+import {bakeGearGeometryAO} from './operator-baked-gear-ao.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {createHeadwearSilhouette} from './operator-headwear-silhouettes.ts';
 import {createD2Balaclava} from './operator-d2-fabric-visuals.ts';
@@ -46,7 +47,9 @@ export type WardrobeHeadLayers={
 };
 const cube=(g:THREE.Group,m:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number)=>{
- const mesh=new THREE.Mesh(mapBoxPixelUV(new THREE.BoxGeometry(w,h,d),w,h,d),m);
+ const geometry=mapBoxPixelUV(new THREE.BoxGeometry(w,h,d),w,h,d);
+ bakeGearGeometryAO(geometry,m);
+ const mesh=new THREE.Mesh(geometry,m);
  mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;
  g.add(mesh);return mesh;
 };

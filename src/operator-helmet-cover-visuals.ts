@@ -4,6 +4,7 @@
  */
 import * as THREE from 'three';
 import {unionCuboids,type HeadwearCuboid} from './operator-cuboid-union.ts';
+import {enableBakedGearAO,bakeGearGeometryAO} from './operator-baked-gear-ao.ts';
 import {headwearCamoTexture} from './operator-headwear-materials.ts';
 import {headwearCamoPlacement} from './operator-headwear-camo.ts';
 import {OPERATOR_SOLID_FAMILIES} from './operator-solid-color-families.ts';
@@ -21,6 +22,7 @@ type Piece=HeadwearCuboid;
 const mesh=(g:THREE.Group,parts:readonly Piece[],m:THREE.Material,name:string)=>{
  const geometry=unionCuboids(parts,{faceTone:()=>1,faceRegion:(part,axis,sign)=>
   part.name.includes('crown')&&axis===1&&sign===1?3:0});
+ bakeGearGeometryAO(geometry,m);
  const result=new THREE.Mesh(geometry,m);result.name=name;
  result.castShadow=true;result.receiveShadow=false;g.add(result);
  return result;
@@ -72,13 +74,16 @@ function scrimPieces(field:boolean):readonly Piece[]{
 const hidden=(parent:THREE.Group)=>{const g=new THREE.Group();g.visible=false;parent.add(g);return g;};
 export function createM1HelmetCoverLayers(parent:THREE.Group):M1HelmetCoverLayers{
  const fabric=new THREE.MeshStandardMaterial({color:OPERATOR_SOLID_FAMILIES['olive-drab'],
-  roughness:.98,metalness:0,flatShading:true,vertexColors:false});
+  roughness:.98,metalness:0,flatShading:true,vertexColors:true});
  const support=new THREE.MeshStandardMaterial({color:OPERATOR_SOLID_FAMILIES['olive-drab'],
   roughness:.96,metalness:0,flatShading:true});
  const elastic=new THREE.MeshStandardMaterial({color:OPERATOR_SOLID_FAMILIES.charcoal,
   roughness:.96,metalness:0,flatShading:true});
  const field=new THREE.MeshStandardMaterial({color:OPERATOR_SOLID_FAMILIES['forest-green'],
   roughness:1,flatShading:true});
+ // All cover, net and scrim variants use the same pattern-neutral AO.
+ for(const material of [fabric,support,elastic,field])
+  enableBakedGearAO(material);
  const fitted=hidden(parent),loose=hidden(parent),clothBand=hidden(parent);
  const elasticBand=hidden(parent),net=hidden(parent);
  const sparseScrim=hidden(parent),fieldScrim=hidden(parent);

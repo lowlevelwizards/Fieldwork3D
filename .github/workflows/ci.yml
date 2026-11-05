@@ -5,8 +5,10 @@ on:
 permissions:
   contents: read
 # Each updated PR supersedes its own obsolete CI run; manual audits are independent.
+# The AO suffix isolates this focused release from a superseded, stuck broad
+# AO test run. Other PRs retain their existing concurrency grouping.
 concurrency:
-  group: fieldwork-ci-${{ github.event.pull_request.number || github.ref }}
+  group: fieldwork-ci-${{ github.event.pull_request.number || github.ref }}${{ startsWith(github.head_ref, 'feature/gear-baked-ao-all-') && '-ao-r1' || '' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   verify:
@@ -858,6 +860,14 @@ jobs:
           node --experimental-strip-types --test \
             tests/faction-reference.test.mjs \
             tests/ux-r2-studio-flow.test.mjs
+      - name: Gear AO — critical geometry, batching and reference contracts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/gear-baked-ao-all-') }}
+        run: |
+          node --experimental-strip-types --test --test-concurrency=1 \
+            tests/operator-baked-gear-ao.test.mjs \
+            tests/operator-visual-merge.test.mjs \
+            tests/operator-headwear-materials.test.mjs \
+            tests/faction-reference.test.mjs
       - name: Reference Gear Batch 1 — forty historical kit contracts
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/reference-kit-gear-fidelity-') }}
         run: node --experimental-strip-types --test tests/faction-reference.test.mjs

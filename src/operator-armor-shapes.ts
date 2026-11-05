@@ -5,6 +5,7 @@
  */
 import * as THREE from 'three';
 import {TILE_WORLD_SIZE} from './rendering/pixel-materials.ts';
+import {bakeGearGeometryAO} from './operator-baked-gear-ao.ts';
 
 type XYZ=readonly [number,number,number];
 type XZ=readonly [number,number];
@@ -56,6 +57,7 @@ function rawStrip(rings:readonly (readonly [XYZ,XYZ,XYZ,XYZ])[],
  geo.setAttribute('position',new THREE.Float32BufferAttribute(points,3));
  geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
  geo.computeVertexNormals();
+ bakeGearGeometryAO(geo,material);
  const mesh=new THREE.Mesh(geo,material);
  mesh.name=name;mesh.castShadow=true;mesh.receiveShadow=true;
  group.add(mesh);return mesh;
@@ -176,7 +178,8 @@ export function fittedArmorBag(group:THREE.Group,m:THREE.Material,
    depth,bevelEnabled:false,steps:1,curveSegments:1
   }));
   geo.rotateY(sign*Math.PI/2);
-  const mesh=new THREE.Mesh(geo,m);
+   bakeGearGeometryAO(geo,m);
+   const mesh=new THREE.Mesh(geo,m);
   mesh.position.x=sign*(outerFace-depth);
   mesh.name='authored-shaped-plate-bag';
   mesh.castShadow=true;mesh.receiveShadow=true;
@@ -201,7 +204,8 @@ export function fittedArmorCollar(group:THREE.Group,m:THREE.Material,
   depth:height,bevelEnabled:false,steps:1,curveSegments:1
  }));
  geo.rotateX(-Math.PI/2);
- const mesh=new THREE.Mesh(geo,m);
+  bakeGearGeometryAO(geo,m);
+  const mesh=new THREE.Mesh(geo,m);
  mesh.position.y=y-height*.5;
  mesh.name='integrated-protective-collar';
  mesh.castShadow=true;mesh.receiveShadow=true;
@@ -229,6 +233,7 @@ export function fittedArmoredSidePlate(group:THREE.Group,m:THREE.Material,
  const geo=pixelUV(new THREE.ExtrudeGeometry(shape,{
   depth,steps:1,bevelEnabled:false,curveSegments:1
  }));
+ bakeGearGeometryAO(geo,m);
  const mesh=new THREE.Mesh(geo,m);
  mesh.position.set(x,y,side*innerZ);
  mesh.scale.z=side;

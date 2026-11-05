@@ -13,6 +13,7 @@ import * as THREE from 'three';
 import {unionCuboids,type HeadwearCuboid} from './operator-cuboid-union.ts';
 import {CUBE_HEAD_ANATOMY} from './operator-head-anatomy.ts';
 import {headwearFaceTone,headwearFaceRegion} from './operator-headwear-materials.ts';
+import {softenHeadwearAO} from './operator-baked-gear-ao.ts';
 export type HeadSilhouetteId='patrol-cap'|'boonie'|'beanie'|'beret'|'pasgt'|'soviet-steel'|'m1-steel'|'ddr-m56'|'police-helmet'|'ach'|'high-cut';
 export type HeadSilhouetteMetrics={
  id:HeadSilhouetteId;frontExtent:number;rearExtent:number;top:number;
@@ -375,6 +376,8 @@ function headwearFromVolumes(g:THREE.Group,m:THREE.Material,id:HeadSilhouetteId)
  const geometry=unionCuboids(volume,{faceTone:(part,axis,sign)=>
   headwearFaceTone(id,part.name,axis,sign),
   faceRegion:(part,axis,sign)=>headwearFaceRegion(id,part.name,axis,sign)});
+ // Existing helmet construction tones are compressed for dark camo inks.
+ softenHeadwearAO(geometry);
  const mesh=new THREE.Mesh(geometry,m);
  mesh.name=id+'-continuous-cuboid-exterior';
  mesh.castShadow=true;

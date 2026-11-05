@@ -41,6 +41,7 @@ import {resolvedHeadwearCamo,headwearCamoPlacement} from './operator-headwear-ca
 import {headwearCamoTexture,headwearDetailTexture} from './operator-headwear-materials.ts';
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import {garmentBoxUV,wardrobeFabricCamoTexture} from './operator-fabric-camo-materials.ts';
+import {enableBakedGearAO} from './operator-baked-gear-ao.ts';
 import {resolveAutomaticGearColors} from './operator-gear-color-policy.ts';
 import {rigSignature,armorSignature,rigColorAssembly,validRigSolid,validArmorSolid}
  from './operator-rig-authenticity-policy.ts';
@@ -240,6 +241,9 @@ export function createOperatorRig(id:string,side:'blue'|'red',
    // skin and the approved, separately authored headwear atlas untouched.
    for(const material of [cloth,trousers,vest,packFabric,gearFabric])
     material.userData.fieldworkFabric=true;
+   // Fixed grayscale AO uses existing textile shaders and textures.
+   for(const kitMaterial of [vest,packFabric,gearFabric,headCloth,headArmor])
+    enableBakedGearAO(kitMaterial);
   hip.position.y=20.2;
   block(hip,0,0,0,8,5,12,trousers);
   chest.position.y=26;
@@ -775,16 +779,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
      headwearCamoPlacement(r.camoIdentity,'headwear:'+modelId,camo,
       p.wardrobe?.headwearCamoRoll??0)):headwearDetailTexture(modelId);
    if(material.map!==map){material.map=map;material.needsUpdate=true;}
-   // The material's vertex colors carry silhouette construction darkening
-   // (bands, brims, brows). Those are desirable for solid colors, but they
-   // multiply printed RGB and turn dark ink into accidental black overlays.
-   // Leave the geometry's vertex data intact and only switch the shader
-   // path when toggling camo versus solid. Physical roughness is unaffected.
-   const useConstructionVertexColors=!camo;
-   if(material.vertexColors!==useConstructionVertexColors){
-    material.vertexColors=useConstructionVertexColors;
-    material.needsUpdate=true;
-   }
+   // Subtle baked AO now remains enabled for solids and printed helmets.
+   // No vertex-color shader toggle or recompile on camo changes.
    if(camo){
     // Chromatic artwork lives in the map; white avoids a second tint.
     // The pose-time ledger still owns desaturation and replay.
