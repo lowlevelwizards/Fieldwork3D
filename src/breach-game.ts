@@ -71,7 +71,7 @@ import {investigationTempo} from './breach-ai-investigation.ts';
 import {routineDwellSeconds} from './breach-ai-routine-dwell.ts';
 import {pressureAdvanceOpportunity} from './breach-ai-initiative.ts';
 import {captureTargetMayWithdraw} from './breach-ai-mission-response.ts';
-import {createCivilian,type CivilianActor} from './breach-civilian-types.ts';
+import {createCivilian,setCivilianState,type CivilianActor} from './breach-civilian-types.ts';
 import {stepCivilianMovement} from './breach-civilian-movement.ts';
 import {stepCivilianResponse} from './breach-civilian-response.ts';
 import {civilianRefugePoints} from './breach-civilian-refuge.ts';
@@ -653,6 +653,23 @@ export function planNearbyInteraction(s:Session,id:string,
  if(!target)return false;
  return addNode(s,id,'interact',at,{
    objectId:'window:'+target.id,interaction:action});
+}
+/** Explicit authored civilian interaction: no distant or fog-granted
+ * command. The target's current physical position is rechecked on GO. */
+export function planCivilianInteraction(s:Session,id:string,
+ civilianId:string,action:'secure'|'follow'):boolean{
+ const a=party(s,id),civil=s.civilians.find(c=>c.id===civilianId);
+ if(!a||!civil||!canEdit(s)||civil.health<=0||
+    !liveVisibility(s,civil.p))return false;
+ const from=finalPoint(a);
+ if(d(from,civil.p)>34||
+    !sweptBodyClear(from,civil.p,s.doors,5.5))return false;
+ if(action==='follow'&&(!civil.rescueTarget||s.mission!=='extract'))
+   return false;
+ return addNode(s,id,'interact',from,{
+   objectId:civil.id,interaction:action==='secure'?
+     'secure-civilian':'follow-civilian'
+ });
 }
 export function planMove(s:Session,id:string,p:Pt,strafe=false){
   const a=party(s,id);
@@ -2432,6 +2449,37 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     }
     if(!near(a.p,n.p,7)){
       approach(a,n.p,dt,s,.65);return;
+    }
+    if(n.objectId.startsWith('civ:')&&
+       (n.interaction==='secure-civilian'||
+        n.interaction==='follow-civilian')){
+      const person=s.civilians.find(c=>c.id===n.objectId);
+      if(!person||person.health<=0||
+         d(a.p,person.p)>32||
+         !sweptBodyClear(a.p,person.p,s.doors,5.5)||
+         !liveVisibility(s,person.p)){
+        failCurrentOrder(s,a,n,'CIVILIAN NOT IN PHYSICAL REACH');return;
+      }
+      if(n.interaction==='follow-civilian'){
+        if(!person.rescueTarget||s.missionType!=='rescue'||
+           s.mission!=='extract'||!s.rescue){
+          failCurrentOrder(s,a,n,'ESCORT NOT AVAILABLE');return;
+        }
+        if(!setCivilianState(person,'escorted',s.seconds)){
+          failCurrentOrder(s,a,n,'PERSON CANNOT FOLLOW');return;
+        }
+        person.following=a.id;
+        s.rescue.following=a.id;s.rescue.p=clone(person.p);
+        notify(s,a.name+' ESCORTING PERSON');
+      }else{
+        if(!setCivilianState(person,'compliant',s.seconds)){
+          failCurrentOrder(s,a,n,'PERSON NEEDS ASSISTANCE');return;
+        }
+        person.following=null;
+        if(person.rescueTarget&&s.rescue)s.rescue.following=null;
+        notify(s,a.name+' SECURED CIVILIAN');
+      }
+      clearCurrentOrderIssue(a);pop(a);return;
     }
     const [kind,id]=n.objectId.split(':');
     if(kind==='prop'&&n.interaction==='push'){

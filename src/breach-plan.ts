@@ -10,7 +10,8 @@ export type PieSide='cw'|'ccw';
 export type DoorMethod='open'|'close'|'kick'|'hold';
 export type PlanNode={
   id:number;kind:PlanKind;p:Pt;facing?:number;doorId?:string;
-  objectId?:string;interaction?:'push'|'open-window'|'close-window';
+  objectId?:string;interaction?:'push'|'open-window'|'close-window'|
+    'secure-civilian'|'follow-civilian';
   method?:DoorMethod;duration?:number;syncCode?:string;holdOnContact?:boolean;
   postureState?:'stand'|'crouch';paceState?:'walk'|'run';
   moveMode?:MoveMode;pivot?:Pt;pieSide?:PieSide;pieDegrees?:number;arc?:Pt[];
