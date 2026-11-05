@@ -7,6 +7,11 @@ test('R5H2: period net and liner details are independent switchable groups',()=>
  const parent=new THREE.Group(),v=createM56Extras(parent,new THREE.MeshStandardMaterial());
  assert.equal(v.rivets.visible,false);assert.equal(v.net.visible,false);
  assert.ok(v.net.children.length>0);
+ const edges=new THREE.Box3().setFromObject(v.net);
+ assert.ok(edges.max.x>6.95&&edges.min.x< -6.95,
+  'net reaches visible outside edges of flared M56 steel bowl');
+ assert.ok(edges.max.z>8.15&&edges.min.z< -6.75,
+  'net border remains outside both swept lower lips');
  updateM56Extras(v,{m56Net:'coarse',m56Details:'early-rivets'});
  assert.equal(v.net.visible,true);assert.equal(v.rivets.visible,true);
  updateM56Extras(v,{m56Net:'none',m56Details:'late-smooth'});

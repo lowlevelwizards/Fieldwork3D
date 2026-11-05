@@ -28,11 +28,15 @@ export function createM56Extras(parent:THREE.Group,dark:THREE.Material):M56Extra
  for(const z of [-3.2,-.35,2.6])
   part(net,cloth,0,8.87,z,8.8,.28,.34,'m56-net-crown-transverse');
  for(const side of [-1,1]){
-  part(net,cloth,side*5.48,6.0,.15,.38,2.95,10.8,'m56-net-flared-side');
-  part(net,cloth,side*6.53,5.05,.35,.38,.46,13.0,'m56-net-side-retainer');
+  // Three width steps fit the authored crown/side/flare of DDR M56.
+  // The old single x=5.48 strip was buried inside its broad lower shell.
+  part(net,cloth,side*5.48,7.02,.15,.36,1.68,10.6,'m56-net-upper-side');
+  part(net,cloth,side*6.44,5.78,.35,.35,1.55,12.3,'m56-net-mid-side');
+  part(net,cloth,side*7.04,4.86,.65,.35,.43,14.70,'m56-net-flare-retainer');
  }
- for(const z of [-5.8,6.75])
-  part(net,cloth,0,5.42,z,11.8,.36,.38,'m56-net-front-rear-retainer');
+ // True forward/rearward shell extent, not hidden mid-bowl positions.
+ part(net,cloth,0,5.00,-6.94,12.4,.33,.34,'m56-net-front-retainer');
+ part(net,cloth,0,4.72,8.23,12.6,.33,.34,'m56-net-rear-retainer');
  consolidateVisualGroup(rivets);consolidateVisualGroup(net);
  rivets.visible=false;net.visible=false;return {rivets,net};
 }

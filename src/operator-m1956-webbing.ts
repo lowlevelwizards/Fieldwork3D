@@ -3,7 +3,6 @@
  */
 import * as THREE from 'three';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
-import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import type {M1956Variant} from './operator-m1956-policy.ts';
 export type M1956Waist={
  root:THREE.Group;casesEarly:THREE.Group;casesLate:THREE.Group;
@@ -59,8 +58,9 @@ export function createM1956Waist(hip:THREE.Group,canvas:THREE.Material,
  for(const g of [packEarly,packLate])
   for(const sign of [-1,1])
    box(g,webbing,-7.08,-.35,sign*2.0,.36,2.15,.43,'canvas-pack-closure');
- for(const g of [casesEarly,casesLate,canteenLeft,canteenRight,aid,packEarly,packLate])
-  consolidateVisualGroup(g);
+ // Keep the two or three source parts per section distinct: mixed clothing UV
+ // attributes can make BufferGeometryUtils refuse a merge on some variants.
+ // Each visibility group is small, built once, and never updated per frame.
  const v:M1956Waist={root,casesEarly,casesLate,canteenLeft,canteenRight,aid,
   packEarly,packLate,variant:'late'};
  updateM1956Variant(v,'late');return v;
