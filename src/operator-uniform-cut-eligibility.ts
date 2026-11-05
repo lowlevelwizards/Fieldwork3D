@@ -34,7 +34,9 @@ export const FIELD_UNIFORM_FAMILY_CAMO:Readonly<Record<FieldUniformFamily,
   'desert-night','berezka','spectre-skwo','pencott-greenzone',
   'pencott-badlands','kryptek-highlander',
   'russian-izlom','greek-lizard','urban-kamysh','jgsdf-type2',
-  'pencott-metropolis','south-african-s2000','kryptek-typhon','norwegian-m98'
+  'pencott-metropolis','south-african-s2000','kryptek-typhon','norwegian-m98',
+  'french-cce','russian-vsr93','swiss-taz90','british-desert-dpm',
+  'indonesian-kopassus-flowing-blood'
  ],
  modern:[
   'ucp','multicam','woodland-marpat','desert-marpat',
@@ -44,7 +46,8 @@ export const FIELD_UNIFORM_FAMILY_CAMO:Readonly<Record<FieldUniformFamily,
   'atacs-fg','ukrainian-mm14','aor2','multicam-tropic','atacs-au','aor1','multicam-arid',
   'multicam-black','multicam-alpine','pencott-greenzone','pencott-badlands',
   'kryptek-highlander','spectre-skwo',
-  'russian-izlom','jgsdf-type2','pencott-metropolis','kryptek-typhon','norwegian-m98'
+  'russian-izlom','jgsdf-type2','pencott-metropolis','kryptek-typhon','norwegian-m98',
+  'south-korean-granite-b','cadpat-ar','usaf-abu'
  ]
 };
 export const UNIFORM_CUT_CAMO:Readonly<Record<UniformGarmentCut,
