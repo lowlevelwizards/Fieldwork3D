@@ -3,7 +3,7 @@
  * equipment-catalog / equipment-loadouts / campaign-state.
  */
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
-import {isAliceLc2Load,type AliceLc2Load} from './operator-alice-lc2-webbing.ts';
+import {isAliceLc2Load,type AliceLc2Load} from './operator-alice-lc2-policy.ts';
 import {readHelmetCoverConfig,type HelmetCoverConfig} from './operator-helmet-cover-policy.ts';
 import {readIdentityMarkings,type IdentityMarkings} from './operator-identity-markings.ts';
 import {isSkinToneId,isHairStyleId,isHairToneId,
