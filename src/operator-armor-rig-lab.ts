@@ -115,7 +115,7 @@ function refresh(){
   ['belt','belt-none'],['backpack','backpack-none'],['head','head-none']
  ] as const)kit=setEquipmentChoice(kit,slot,id);
  const wardrobe:WardrobeOptions={...initialWardrobe(),
-  styles:{top:topSelect.value,trousers:'bdu-trousers',headwear:'bare',
+  styles:{top:topSelect.value,trousers:params.get('camoCut')==='acu'?'acu-trousers':'bdu-trousers',headwear:'bare',
    armorStyle:armor,rigStyle:rig,beltStyle:'no-belt',packStyle:'no-pack'},
   fabricSolids:{top:'slate',trousers:'slate',armor:'slate',gear:'slate',pack:'slate'}
  };

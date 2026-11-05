@@ -35,7 +35,7 @@ test('all obsolete garment options are actually gone from the authoritative cata
  const w=setWardrobeStyle(initialWardrobe(),'top','t-shirt');
  assert.ok(!Object.hasOwn(w.styles,'top'),'deleted style cannot be selected');
  assert.equal(resolvedWardrobe(initialWardrobe(),initialEquipmentLoadout()).top,'bdu-shirt');
- assert.equal(HEADWEAR_CAMO_IDS.length,54,'expanded approved camo catalog');
+ assert.equal(HEADWEAR_CAMO_IDS.length,62,'expanded approved camo catalog');
  assert.ok(wardrobeItemsForSlot('headwear').some(x=>x.id==='ach'),
   'approved headwear remains');
 });

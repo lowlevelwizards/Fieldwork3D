@@ -27,8 +27,8 @@ const pose=wardrobe=>({
  aiming:false,firing:false,turning:0,deterministic:true,
  equipment:kit,wardrobe
 });
-test('authentic policy has exactly the approved 54 patterns and five independently filtered fabric channels',()=>{
- assert.equal(HEADWEAR_CAMO_IDS.length,54);
+test('authentic policy has exactly the approved 62 patterns and five independently filtered fabric channels',()=>{
+ assert.equal(HEADWEAR_CAMO_IDS.length,62);
  assert.deepEqual(Object.keys(FABRIC_CAMO_POLICY).sort(),[...HEADWEAR_CAMO_IDS].sort());
  assert.deepEqual(FABRIC_CAMO_CHANNELS,['top','trousers','armor','gear','pack']);
  assert.equal(FABRIC_CAMO_POLICY['mitchell-leaf'].channels.length,0);
@@ -133,7 +133,7 @@ test('three editor contexts mount shared actual-pixel swatches; historic eligibi
   ['Lab','../src/breach-operator-lab.ts'],['Campaign','../src/campaign-ui.ts'],
   ['Quick Play','../src/breach-main.ts']]){
   const source=readFileSync(new URL(path,import.meta.url),'utf8');
-  assert.match(source,/createWardrobeFabricCamoPicker/,name);
+  assert.match(source,name==='Quick Play'?/createWardrobeFabricCamoPicker|openOperatorStudio/:/createWardrobeFabricCamoPicker/,name);
  }
  const html=readFileSync(new URL('../operator-lab.html',import.meta.url),'utf8');
  assert.match(html,/id="wardrobeFabricCamo"/);

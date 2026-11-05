@@ -6,7 +6,7 @@ import {HEADWEAR_CAMO_IDS,type HeadwearCamoId} from './operator-headwear-camo.ts
 export type CamoTerrain='woodland'|'arid'|'multi'|'universal';
 export type CamoStyle='organic'|'brushstroke'|'fleck'|'digital'|'geometric'|'raindrop';
 export type CamoOrigin='USA'|'Germany'|'Britain'|'Canada'|'Russia'|'China'|'India'|
- 'Australia'|'Italy'|'Belgium'|'Sweden'|'Switzerland'|'Poland'|'Finland'|'Rhodesia'|'Ukraine'|'Greece'|'Japan'|'South Africa'|'Norway';
+ 'Australia'|'Italy'|'Belgium'|'Sweden'|'Switzerland'|'Poland'|'Finland'|'Rhodesia'|'Ukraine'|'Greece'|'Japan'|'South Africa'|'Norway'|'France'|'South Korea'|'Indonesia';
 export type CamoCatalogEntry={terrain:CamoTerrain;style:CamoStyle;origin:CamoOrigin;era:'historic'|'modern'};
 const w=(terrain:CamoTerrain,style:CamoStyle,origin:CamoOrigin,era:'historic'|'modern'='modern'):CamoCatalogEntry=>
  ({terrain,style,origin,era});
@@ -64,7 +64,15 @@ export const CAMO_CATALOG:Readonly<Record<HeadwearCamoId,CamoCatalogEntry>>={
  'pencott-metropolis':w('universal','digital','Britain'),
  'south-african-s2000':w('multi','organic','South Africa'),
  'kryptek-typhon':w('universal','geometric','USA'),
- 'norwegian-m98':w('woodland','organic','Norway')
+ 'norwegian-m98':w('woodland','organic','Norway'),
+ 'french-cce':w('woodland','organic','France','historic'),
+ 'russian-vsr93':w('woodland','brushstroke','Russia','historic'),
+ 'swiss-taz90':w('woodland','organic','Switzerland'),
+ 'british-desert-dpm':w('arid','brushstroke','Britain','historic'),
+ 'south-korean-granite-b':w('woodland','digital','South Korea'),
+ 'indonesian-kopassus-flowing-blood':w('woodland','brushstroke','Indonesia','historic'),
+ 'cadpat-ar':w('arid','digital','Canada'),
+ 'usaf-abu':w('universal','digital','USA','historic')
 };
 export const CAMO_TERRAINS:ReadonlyArray<CamoTerrain>=['woodland','arid','multi','universal'];
 export const CAMO_STYLES:ReadonlyArray<CamoStyle>=
@@ -72,7 +80,7 @@ export const CAMO_STYLES:ReadonlyArray<CamoStyle>=
 export const CAMO_ORIGINS:readonly CamoOrigin[]=[
  'USA','Britain','Germany','Russia','Canada','China','India','Australia','Italy',
  'Belgium','Sweden','Switzerland','Poland','Finland','Rhodesia','Ukraine',
- 'Greece','Japan','South Africa','Norway'
+ 'Greece','Japan','South Africa','Norway','France','South Korea','Indonesia'
 ];
 export const CAMO_CATALOG_IDS:readonly HeadwearCamoId[]=HEADWEAR_CAMO_IDS;
 export type CamoFilter={

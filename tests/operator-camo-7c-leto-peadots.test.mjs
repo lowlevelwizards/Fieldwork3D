@@ -23,8 +23,8 @@ function syntheticLetoBase(){
  return src;
 }
 
-test('7C maintains 54 camouflage IDs and saves original SS-Leto selection',()=>{
- assert.equal(HEADWEAR_CAMO_IDS.length,54);
+test('7C maintains 62 camouflage IDs and saves original SS-Leto selection',()=>{
+ assert.equal(HEADWEAR_CAMO_IDS.length,62);
  assert.ok(HEADWEAR_CAMO_IDS.includes('ss-leto'));
  assert.ok(headwearCamoChoices('boonie').includes('ss-leto'));
  const saved=readWardrobe({...initialWardrobe(),

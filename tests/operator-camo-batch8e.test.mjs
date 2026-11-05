@@ -30,9 +30,9 @@ function coarseBlockCoverage(tile,blockSize=16){
  }
  return {max,min};
 }
-test('8E retains every one of the 54 IDs, deterministic masters, original saves and frozen relatives',()=>{
- assert.equal(HEADWEAR_CAMO_IDS.length,54);
- assert.equal(new Set(HEADWEAR_CAMO_IDS).size,54);
+test('8E retains every one of the 62 IDs, deterministic masters, original saves and frozen relatives',()=>{
+ assert.equal(HEADWEAR_CAMO_IDS.length,62);
+ assert.equal(new Set(HEADWEAR_CAMO_IDS).size,62);
  for(const id of [...targets,...frozen]){
   const a=headwearCamoIndices(id),b=headwearCamoIndices(id);
   assert.equal(headwearCamoSize(id),64);

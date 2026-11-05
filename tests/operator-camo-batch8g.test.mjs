@@ -65,9 +65,9 @@ test('8G freezes the exact approved JGSDF and Soldier 2000 RGBA pixels',()=>{
  assert.deepEqual(HEADWEAR_CAMO_RECIPES['jgsdf-type2'].colors[2],[127,96,84]);
  assert.deepEqual(HEADWEAR_CAMO_RECIPES['south-african-s2000'].colors[3],[167,184,159]);
 });
-test('8G retains 54 IDs, save semantics and stable original nearest-neighbor textile pixels',()=>{
- assert.equal(HEADWEAR_CAMO_IDS.length,54);
- assert.equal(new Set(HEADWEAR_CAMO_IDS).size,54);
+test('8G retains 62 IDs, save semantics and stable original nearest-neighbor textile pixels',()=>{
+ assert.equal(HEADWEAR_CAMO_IDS.length,62);
+ assert.equal(new Set(HEADWEAR_CAMO_IDS).size,62);
  const id='norwegian-m98';
  assert.equal(readWardrobe({...initialWardrobe(),headwearCamo:id}).headwearCamo,id);
  assert.equal(readWardrobe({...initialWardrobe(),fabricCamo:{trousers:id}}).fabricCamo.trousers,id);
