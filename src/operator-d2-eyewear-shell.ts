@@ -39,6 +39,39 @@ export function solidBlock(parent:THREE.Group,material:THREE.Material,
  mesh.name=name;mesh.position.set(x,y,z);
  mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;
 }
+/** One shared highlight material per live lens material: no tiny specular
+ * lines, no frame-colored fake lenses, and no pose-time mesh allocations.
+ * A WeakMap ties its lifetime to that rig's original lens material.
+ */
+const lensFacetCache=new WeakMap<THREE.Material,THREE.MeshBasicMaterial>();
+export function lensFacetMaterial(lens:THREE.Material):THREE.MeshBasicMaterial{
+ let facet=lensFacetCache.get(lens);
+ if(!facet){
+  facet=new THREE.MeshBasicMaterial({color:0xf3f2df,opacity:.085,
+   transparent:true,depthWrite:false,side:THREE.DoubleSide});
+  lensFacetCache.set(lens,facet);
+ }
+ return facet;
+}
+/** One large diagonal glint per lens, deliberately inset into its opening.
+ * Move top vertices toward the polygon center to avoid edge overshoot.
+ * The broad four-sided facet uses only two triangles, never microdetail.
+ */
+function lensFacet(opening:EyePolygon):THREE.ShapeGeometry{
+ const ranked=[...opening].sort((a,b)=>b[1]-a[1]).slice(0,2).sort((a,b)=>a[0]-b[0]);
+ const center:EyePoint=[
+  opening.reduce((total,p)=>total+p[0],0)/opening.length,
+  opening.reduce((total,p)=>total+p[1],0)/opening.length
+ ];
+ const mix=(p:EyePoint,f:number):EyePoint=>[
+  p[0]*(1-f)+center[0]*f,p[1]*(1-f)+center[1]*f
+ ];
+ const shape=eyePolygon([
+  mix(ranked[0],.18),mix(ranked[1],.18),
+  mix(ranked[1],.52),mix(ranked[0],.66)
+ ]);
+ return new THREE.ShapeGeometry(shape);
+}
 /** Front shape with real holes and *extruded* exterior walls. No segmented
  * hairline perimeter pieces; inset 2D lens fills do not change the silhouette.
  */
@@ -70,6 +103,13 @@ export function solidFrame(parent:THREE.Group,
   pane.castShadow=false;pane.receiveShadow=false;
   pane.renderOrder=2;
   parent.add(pane);
+  // Single oversized graphic reflection, slightly in front of the lens.
+  // This gives even clear glass a material read at mobile thumbnail size.
+  const facet=new THREE.Mesh(lensFacet(opening),lensFacetMaterial(lens));
+  facet.name=name+'-'+i+'-lens-facet';
+  facet.position.z=pane.position.z-.055;
+  facet.castShadow=false;facet.receiveShadow=false;facet.renderOrder=3;
+  parent.add(facet);
  });
  return shell;
 }

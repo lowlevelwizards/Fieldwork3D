@@ -9,26 +9,32 @@ export type D2GoggleId='goggles-low'|'goggles-field'|'goggles-retro';
 export type D2GogglePlacement='eyes'|'forehead'|'helmet'|'neck';
 function low(root:THREE.Group,frame:THREE.Material,
  lens:THREE.Material,elastic:THREE.Material){
+ // Compact lens with a *deep* central nose relief and a substantial
+ // enclosing bottom ring. Narrower than the shield; unlike that open plate,
+ // all four edges flow back into the soft rear cushion.
  const outer:EyePolygon=[
-  [-3.72,5.04],[3.72,5.04],[3.72,2.50],
-  [2.25,2.19],[.75,2.72],[-.75,2.72],
-  [-2.25,2.19],[-3.72,2.50]
+  [-3.28,5.02],[3.28,5.02],[3.28,2.55],
+  [1.92,2.22],[.68,3.15],[-.68,3.15],
+  [-1.92,2.22],[-3.28,2.55]
  ];
  const hole:EyePolygon=[
-  [-3.05,4.47],[3.05,4.47],[3.05,2.90],
-  [2.22,2.76],[.75,3.22],[-.75,3.22],
-  [-2.22,2.76],[-3.05,2.90]
+  [-2.59,4.42],[2.59,4.42],[2.59,3.01],
+  [1.77,2.83],[.68,3.63],[-.68,3.63],
+  [-1.77,2.83],[-2.59,3.01]
  ];
  solidFrame(root,frame,lens,'compact-sealed-tactical-goggle',
-  outer,[hole],-5.14,1.08,'compact-seal');
- // Thick rear cushion, but deliberately less depth and width than field.
- solidBlock(root,elastic,'compact-upper-cushion',0,4.88,-4.19,
-  7.22,.52,.67);
+  outer,[hole],-5.22,1.16,'compact-seal');
+ // Broad top and cheek pads read as a continuous close-fitting face gasket,
+ // not another open visor or tiny hinge details.
+ solidBlock(root,elastic,'compact-upper-cushion',0,4.89,-4.19,
+  6.45,.69,.90);
  for(const side of [-1,1]){
-  solidBlock(root,elastic,'compact-cheek-seal',side*3.58,3.54,-4.23,
-   .54,2.17,.72);
-  solidBlock(root,frame,'compact-strap-socket',side*3.85,3.73,-4.52,
-   .70,.99,.95);
+  solidBlock(root,elastic,'compact-cheek-seal',side*3.12,3.54,-4.21,
+   .69,2.17,.92);
+  solidBlock(root,elastic,'compact-lower-cheek-pad',side*2.32,2.76,-4.20,
+   1.40,.44,.84);
+  solidBlock(root,frame,'compact-strap-socket',side*3.46,3.73,-4.50,
+   .74,1.04,1.02);
  }
 }
 function field(root:THREE.Group,frame:THREE.Material,
@@ -76,7 +82,7 @@ function retro(root:THREE.Group,frame:THREE.Material,
 }
 function strap(root:THREE.Group,elastic:THREE.Material,
  frame:THREE.Material,id:D2GoggleId){
- const half=id==='goggles-field'?4.47:id==='goggles-low'?3.92:4.08;
+ const half=id==='goggles-field'?4.47:id==='goggles-low'?3.49:4.08;
  const height=id==='goggles-field'?.92:id==='goggles-low'?.68:.80;
  const y=id==='goggles-field'?3.80:id==='goggles-low'?3.78:3.74;
  for(const side of [-1,1]){
