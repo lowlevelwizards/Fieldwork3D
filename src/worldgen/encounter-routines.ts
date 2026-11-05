@@ -37,14 +37,15 @@ export function assignEncounterRoutines(site:Site,actors:EncounterActorSpec[],
     Math.abs(p.y-c.y)<c.h/2+10)&&
    !site.doors.some(d=>near(p,{x:(d.a.x+d.b.x)/2,
     y:(d.a.y+d.b.y)/2})<35);
-  const swept=(p:Pt)=>{
-   const count=Math.max(10,Math.ceil(near(a.position,p)/3));
+  const sweptFrom=(from:Pt,p:Pt)=>{
+   const count=Math.max(10,Math.ceil(near(from,p)/3));
    return Array.from({length:count},(_,i)=>{
     const t=(i+1)/count;
-    return {x:a.position.x+(p.x-a.position.x)*t,
-      y:a.position.y+(p.y-a.position.y)*t};
+    return {x:from.x+(p.x-from.x)*t,
+      y:from.y+(p.y-from.y)*t};
    }).every(valid);
   };
+  const swept=(p:Pt)=>sweptFrom(a.position,p);
   // A patrol checks a real accessible interior doorway from a standoff
   // position, never the center of a physical door leaf. No contact is
   // invented and the runtime motor retains the right to reject the route.
@@ -61,8 +62,20 @@ export function assignEncounterRoutines(site:Site,actors:EncounterActorSpec[],
     const len=near(a.position,door);
     const p={x:door.x+(a.position.x-door.x)/len*48,
       y:door.y+(a.position.y-door.y)/len*48};
-    if(near(a.position,p)>20&&valid(p)&&swept(p))
-     return {...a,routine:[{...a.position},p]};
+    if(near(a.position,p)>20&&valid(p)&&swept(p)){
+     const routine=[{...a.position},p];
+     // A second real observation point is optional; never jump across
+     // partition walls or through a door swing to manufacture variety.
+     for(let j=1;j<posts.length&&routine.length<3;j++){
+      const other=posts[(i+offset+j)%posts.length];
+      const len2=near(a.position,other);
+      const next={x:other.x+(a.position.x-other.x)/len2*48,
+        y:other.y+(a.position.y-other.y)/len2*48};
+      if(near(p,next)>32&&valid(next)&&sweptFrom(p,next))
+       routine.push(next);
+     }
+     return {...a,routine};
+    }
    }
   }
   // Ordinary work/inspection actors can make a local journey to an
@@ -84,8 +97,20 @@ export function assignEncounterRoutines(site:Site,actors:EncounterActorSpec[],
     for(let j=0;j<stops.length;j++){
      const p=stops[(j+turn)%stops.length];
      if(near(a.position,p)>20&&near(a.position,p)<150&&
-       valid(p)&&swept(p))
-       return {...a,routine:[{...a.position},p]};
+       valid(p)&&swept(p)){
+       const routine=[{...a.position},p];
+       // Only actual *different* workstations justify additional stops.
+       // Each consecutive leg is sampled for the same physical clearance.
+       for(let n=1;n<nearby.length&&routine.length<4&&n<4;n++){
+        const fixture=nearby[(i+begin+n)%nearby.length];
+        const current=routine[routine.length-1];
+        const next=fixtureStops(fixture).find(q=>
+          near(current,q)>30&&near(current,q)<180&&
+          valid(q)&&sweptFrom(current,q));
+        if(next)routine.push(next);
+       }
+       return {...a,routine};
+      }
     }
    }
   }
