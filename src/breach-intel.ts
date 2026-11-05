@@ -2,7 +2,7 @@
  * Architecture may be prebriefed; cover and moving objects are only known
  * after observation. All modes share the same discovered state. */
 import {WALLS,COVER,activeWorldBounds,pointToSegment,route,type Door,type Pt,
-  type Segment} from './breach-core.ts';
+  type Segment,someWallNearPoint,someCoverNearPoint} from './breach-core.ts';
 import type {Site} from './breach-site.ts';
 import {isFootstepObstacle} from './breach-traversal-surfaces.ts';
 import {insideSiteFootprint,exteriorBriefedAt,accessibleExteriorWall} from './breach-site-footprint.ts';
@@ -111,9 +111,9 @@ export function intelPassable(p:Pt,intel:IntelState,clearance=8):boolean{
  const bounds=activeWorldBounds();
  if(p.x<bounds.minX+13||p.y<bounds.minY+20||
    p.x>bounds.maxX-13||p.y>bounds.maxY-13)return false;
- if(WALLS.some((w,i)=>intel.walls.has(i)&&
+ if(someWallNearPoint(p,clearance+1,(w,i)=>intel.walls.has(i)&&
    pointToSegment(p,w)<clearance+1))return false;
- if(COVER.some((o,i)=>isFootstepObstacle(o)&&intel.cover.has(i)&&
+ if(someCoverNearPoint(p,clearance,(o,i)=>isFootstepObstacle(o)&&intel.cover.has(i)&&
    Math.abs(p.x-o.x)<o.w/2+clearance&&
    Math.abs(p.y-o.y)<o.h/2+clearance))return false;
  return true;
