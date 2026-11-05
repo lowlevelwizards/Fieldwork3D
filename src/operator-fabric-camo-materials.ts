@@ -8,6 +8,7 @@ import {headwearCamoPixels,headwearCamoSize,HEADWEAR_CAMO_DENSITY,
  type HeadwearCamoId,type HeadwearCamoPlacement} from './operator-headwear-camo.ts';
 import type {FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {mapBoxPixelUV,TILE_WORLD_SIZE} from './rendering/pixel-materials.ts';
+import {bakeGearGeometryAO} from './operator-baked-gear-ao.ts';
 
 /** R9 metric textile pattern scale. Master pixels and approved headwear
  * crown density stay unchanged. 64px organic masters were spanning as much
@@ -100,8 +101,10 @@ export function mapGarmentBoxUV(geometry:THREE.BoxGeometry,
 }
 export function garmentBoxUV(geometry:THREE.BoxGeometry,w:number,h:number,d:number,
  material:THREE.Material,x=0,y=0,z=0):THREE.BoxGeometry{
- return material.userData?.fieldworkFabric===true?
+ const mapped=material.userData?.fieldworkFabric===true?
   mapGarmentBoxUV(geometry,w,h,d,x,y,z):mapBoxPixelUV(geometry,w,h,d);
+ bakeGearGeometryAO(mapped,material);
+ return mapped;
 }
 export function isWardrobeFabricTexture(texture:THREE.Texture|null):boolean{
  return !!texture?.name.startsWith('Fieldwork cloth ');
