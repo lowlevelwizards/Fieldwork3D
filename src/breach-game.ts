@@ -1508,18 +1508,20 @@ function unobstructed(a:Pt,b:Pt,s:Session,lowBlocks:boolean){
 }
 /** Physical geometry visibility, independently of acquisition time. */
 export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){
+  // Most pairs are outside acquisition distance or facing. Reject them
+  // BEFORE touching the cache or checking any doors. Only genuinely
+  // possible LOS rays are expensive enough to merit memoization.
+  if(a.health<=0||b.health<=0||d(a.p,b.p)>240)return false;
+  const delta=angleDifference(a.heading,angle(a.p,b.p));
+  if(Math.abs(delta)>.94)return false;
   let cache=perceptionBySession.get(s);
   if(!cache){cache=new PerceptionPairCache();perceptionBySession.set(s,cache);}
   // This remains exact through mid-tick door interactions, actor movement,
   // crouching and cover damage. Neither fog nor awareness is cached.
   return cache.get(a,b,s.seconds,
-    s.objectRevision+'/'+activeGeometryRevision(),s.doors,()=>{
-      if(a.health<=0||b.health<=0||d(a.p,b.p)>240)return false;
-      const delta=angleDifference(a.heading,angle(a.p,b.p));
-      if(Math.abs(delta)>.94)return false;
-      return !exposure(a.p,b.p,s.doors,
-        b.posture==='crouch',a.posture==='crouch',true).blocked;
-    });
+    s.objectRevision+'/'+activeGeometryRevision(),s.doors,()=>
+      !exposure(a.p,b.p,s.doors,
+        b.posture==='crouch',a.posture==='crouch',true).blocked);
 }
 /** Confirmed vision is acquired over simulated time; rendering never grants sight. */
 export function inSight(a:TeamActor,b:TeamActor,s:Session){
