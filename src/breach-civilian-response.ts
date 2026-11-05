@@ -4,26 +4,29 @@
  * player positions to choose a refuge. Does not change the pause state. */
 import type {Pt,Door,Segment} from './breach-core.ts';
 import type {WindowState} from './breach-windows.ts';
-import type {CivilianActor,CivilianState} from './breach-civilian-types.ts';
+import {setCivilianState,civilianCondition,type CivilianActor,type CivilianState} from './breach-civilian-types.ts';
 import type {AcousticEvent} from './breach-sound-evidence.ts';
 import {interpretSound,soundResponse} from './breach-sound-evidence.ts';
 import {advanceSight,visualGain,confirmedSight}
  from './breach-visual-perception.ts';
+import {chooseCivilianRefuge} from './breach-civilian-refuge.ts';
 
 type ArmedPerson={id:string;p:Pt;heading:number;health:number;
- velocity:number;posture:'stand'|'crouch';side:'blue'|'red'};
+ velocity:number;posture:'stand'|'crouch';side:'blue'|'red';
+ lastShotAt?:number;};
 export type CivilianSensoryWorld={
  noise:readonly AcousticEvent[];
  people:readonly ArmedPerson[];
  doors:readonly Door[];walls:readonly Segment[];windows:readonly WindowState[];
  canSee:(from:Pt,to:Pt)=>boolean;
  canReach:(from:Pt,to:Pt)=>boolean;
+ routeTo?:(from:Pt,to:Pt)=>Pt[];
 };
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const offAxis=(from:number,to:number)=>
  Math.atan2(Math.sin(to-from),Math.cos(to-from));
 function setState(c:CivilianActor,state:CivilianState,now:number){
- if(c.state!==state){c.state=state;c.stateSince=now;c.velocity=0;}
+ setCivilianState(c,state,now);
 }
 function addEvidence(c:CivilianActor,id:string,at:number,
   kind:'orient'|'investigate'|'alarm'|'visual',
@@ -38,18 +41,9 @@ function addEvidence(c:CivilianActor,id:string,at:number,
  // This field is never exposed to the player's current-fog display.
  if(kind!=='orient'||estimateReliable)c.threatEstimate={...point};
 }
-function refuge(c:CivilianActor,world:CivilianSensoryWorld):Pt|null{
- const threat=c.threatEstimate;
- if(!threat)return null;
- const current=dist(c.p,threat);
- return c.routine.filter(p=>
-   dist(p,c.p)>22&&dist(p,threat)>current+18&&
-   world.canReach(c.p,p))
-  .sort((a,b)=>dist(b,threat)-dist(a,threat))[0]??null;
-}
 export function stepCivilianResponse(c:CivilianActor,now:number,dt:number,
   world:CivilianSensoryWorld):void{
- if(c.health<=0||c.state==='incapacitated'||c.state==='wounded')return;
+ if(civilianCondition(c)!=='healthy')return;
  // Use a low-frequency observer tick; actor movement still runs at 60 Hz.
  if(now-c.lastSenseAt<.12)return;
  const elapsed=Math.max(.12,dt,now-c.lastSenseAt);
@@ -69,12 +63,18 @@ export function stepCivilianResponse(c:CivilianActor,now:number,dt:number,
     response==='investigate'?'investigate':'orient',
     heard.estimate,false);
  }
- // Seeing an armed intruder is not the same as being told magically that
- // a friendly site guard exists elsewhere; only confirmed blue arrivals
- // produce the initial visual threat cue in this phase.
+ // Being armed alone does not mark a resident guard dangerous. A red
+ // actor creates a *visual* alarm only when the observer has line of sight
+ // to that actor's RECENT real shot; distant/unseen firing is audio only.
  let sighted:string|null=null;
  for(const person of world.people){
-  if(person.side!=='blue'||person.health<=0)continue;
+  if(person.health<=0)continue;
+  const recentHostileShot=person.side==='red'&&
+    person.lastShotAt!==undefined&&person.lastShotAt>=0&&
+    now>=person.lastShotAt&&now-person.lastShotAt<=1.2;
+  if(person.side==='red'&&!recentHostileShot){
+    c.visualProgress[person.id]=0;continue;
+  }
   const range=dist(c.p,person.p);
   if(range>175) {c.visualProgress[person.id]=0;continue;}
   const yaw=Math.atan2(person.p.y-c.p.y,person.p.x-c.p.x);
@@ -108,12 +108,12 @@ export function stepCivilianResponse(c:CivilianActor,now:number,dt:number,
   const delay=c.persona==='startled'?.35:
     c.persona==='cautious'?.60:.80;
   if(now-c.stateSince>=delay){
-   const safe=refuge(c,world);
+   const safe=chooseCivilianRefuge(c,world);
    if(safe&&c.persona!=='startled'){
-    c.goal={...safe};c.dwellUntil=now;
-    setState(c,'fleeing',now);
+    c.goal={...safe.goal};c.nav=safe.path.map(p=>({...p}));
+    c.dwellUntil=now;setState(c,'fleeing',now);
    }else{
-    c.goal=null;setState(c,'frozen',now);
+    c.goal=null;c.nav=[];setState(c,'frozen',now);
    }
   }
  }

@@ -17,6 +17,8 @@ export type CivilianActor={
   lastVisualId:string|null;visualProgress:Record<string,number>;
   threatEstimate:Pt|null;
   routine:Pt[];routineIndex:number;dwellUntil:number;
+  /** Known building options are authored from site geometry, not threats. */
+  refugePoints:Pt[];
   goal:Pt|null;nav:Pt[];blockedTime:number;retryAt:number;
   homeRoomId:string;homeZoneId:string|null;appearanceSeed:number;
   rescueTarget:boolean;following:string|null;
@@ -32,10 +34,33 @@ export function createCivilian(spec:CivilianSpec):CivilianActor{
     lastNoiseId:0,lastSenseAt:0,lastVisualId:null,
     visualProgress:{},threatEstimate:null,
     routine:(spec.routine??[]).map(p=>({...p})),
-    routineIndex:0,dwellUntil:0,goal:null,nav:[],
+    refugePoints:[],routineIndex:0,dwellUntil:0,goal:null,nav:[],
     blockedTime:0,retryAt:0,homeRoomId:spec.roomId,
     homeZoneId:spec.zoneId??null,appearanceSeed:spec.appearanceSeed,
     rescueTarget:!!spec.isRescueTarget,following:null,
     lastEscortRouteAt:-100
   };
+}
+
+/** Physical condition is separate from behavior for new decision logic.
+ * Retain legacy 'wounded' state for replay/save compatibility. */
+export type CivilianCondition='healthy'|'injured'|'incapacitated';
+export function civilianCondition(c:CivilianActor):CivilianCondition{
+ if(c.health<=0||c.injuryStage>=3)return 'incapacitated';
+ if(c.health<2||c.injuryStage>0)return 'injured';
+ return 'healthy';
+}
+/** Reject contradictory transitions before editing any actor state. */
+export function setCivilianState(c:CivilianActor,
+ state:CivilianState,now:number):boolean{
+ const condition=civilianCondition(c);
+ if(condition==='incapacitated'&&state!=='incapacitated')return false;
+ if(condition==='injured'&&state==='routine'&&
+    c.state==='wounded')return false;
+ if(c.state===state)return true;
+ c.state=state;c.stateSince=now;c.velocity=0;
+ if(state==='incapacitated'||state==='compliant'||state==='wounded'){
+  c.goal=null;c.nav=[];
+ }
+ return true;
 }

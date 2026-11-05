@@ -13,6 +13,7 @@ import {ReplayMotionRecorder,type ReplayPresentation} from './breach-replay-moti
 import {shareUnchangedReplayFrame,type ReplaySharingStats}
   from './breach-replay-sharing.ts';
 import type {TraverseOpportunity} from './breach-mantle.ts';
+import type {CivilianHarmEvent} from './breach-civilian-harm.ts';
 import {createCivilian,type CivilianActor} from './breach-civilian-types.ts';
 
 export type ActorFrame=Pick<TeamActor,
@@ -46,6 +47,7 @@ export type ReplayFrame={
   actors:ReplayActorFrame[];doors:Door[];shots:ShotEvent[];
   /** Optional for compatibility with all pre-civilian recordings. */
   civilians?:CivilianFrame[];
+  civilianHarmEvents?:CivilianHarmEvent[];
   objectRevision:number;windows:Session['windows'];coverState:Session['coverState'];
   casings:Session['casings'];
   dropped:DroppedMagazine[];impactMarks:ImpactMark[];grenades:FlashGrenade[];
@@ -112,6 +114,9 @@ export function snapshot(s:Session,seenGround?:string[],
       aimInstruction:a.aimInstruction?{...a.aimInstruction,
         point:a.aimInstruction.point?position(a.aimInstruction.point):undefined}:null,
       intentKind:a.intent?.kind,awarenessCount:Object.keys(a.awareness.contacts).length})),
+    civilianHarmEvents:s.civilianHarmEvents.map(e=>({
+      ...e,p:position(e.p)
+    })),
     civilians:s.civilians.map(c=>({
       id:c.id,p:position(c.p),heading:c.heading,health:c.health,
       injuryStage:c.injuryStage,state:c.state,velocity:c.velocity,
@@ -299,6 +304,9 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   // Rewind the real civilian state, not only the old rescue marker. No
   // AI tick is executed while scrubbing; old films simply have no neutrals.
   const byId=new Map(s.civilians.map(c=>[c.id,c]));
+  s.civilianHarmEvents=(f.civilianHarmEvents??[]).map(e=>({
+    ...e,p:position(e.p)
+  }));
   s.civilians=(f.civilians??[]).map(copy=>{
     const old=byId.get(copy.id);
     const actor=old??createCivilian({

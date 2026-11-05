@@ -6,7 +6,8 @@ import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   operationBriefing,availableDeployments,selectDeployment,
-  planMove,planMoveStroke,planNearbyInteraction,planAim,planWatch,
+  planMove,planMoveStroke,planNearbyInteraction,
+  planCivilianInteraction,planAim,planWatch,
   retargetActiveWatch,removeActiveWatch,setFirePolicy,planWait,planWaitAt,setWaitDuration,
   plannedControl,setNodeControl,setStartPace,planReloadAt,planDoorFlash,
   planSync,movePlanNode,
@@ -123,6 +124,7 @@ import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
   from './ui/contextual-teaching.ts';
 import {recoveryAdviceFor} from './ui/recovery-guidance.ts';
 import {paintFogMask,FOG_WIDTH,FOG_HEIGHT} from './breach-fog-mask.ts';
+import {civilianPose} from './breach-civilian-pose.ts';
 
 const el=<T extends HTMLElement>(id:string)=>{
   const node=document.getElementById(id);
@@ -1408,6 +1410,11 @@ function updateContext(){
       watchActive=false;
     if(order.id===node.id)break;
   }
+  const civilianAtPlan=state.civilians.filter(c=>
+    c.health>0&&liveVisibility(state,c.p)&&
+    distance(finalPoint(a),c.p)<34)
+    .sort((x,y)=>distance(finalPoint(a),x.p)-
+      distance(finalPoint(a),y.p))[0]??null;
   const choices:ReturnType<typeof contextActionChoices>=selectedWatch?[
     {id:'ctxWatch',label:'RETARGET',group:'primary',
       pressed:true,title:'Choose a new point for this active WATCH'},
@@ -1416,6 +1423,9 @@ function updateContext(){
   ]:contextActionChoices({
     door:!!door,node:!!node,flashRemaining:state.flashRemaining,
     nearMovable,nearWindow,nearDoor:!door&&!!nearbyDoor,
+    nearCivilian:!!civilianAtPlan&&civilianAtPlan.state!=='compliant',
+    escortableCivilian:!!civilianAtPlan&&
+      civilianAtPlan.rescueTarget&&state.mission==='extract',
     posture:current.posture,pace:current.pace,
     firePolicy:node?.firePolicyState??a.firePolicy,
     reserve:a.reserve,magazine:a.magazine,
@@ -1667,6 +1677,18 @@ const handleContextAction=(event:MouseEvent)=>{
       const policy=active==='engage'?'hold':
         active==='hold'?'return':'engage';
       setFirePolicy(state,selected,policy,node?.id);
+      break;
+    }
+    case 'ctxSecureCivilian':
+    case 'ctxFollowCivilian':{
+      const civ=state.civilians.filter(c=>c.health>0&&
+        liveVisibility(state,c.p)&&
+        distance(finalPoint(a),c.p)<34)
+        .sort((x,y)=>distance(finalPoint(a),x.p)-
+          distance(finalPoint(a),y.p))[0];
+      const mode=action==='ctxSecureCivilian'?'secure':'follow';
+      if(!civ||!planCivilianInteraction(state,selected,civ.id,mode))
+        state.events.push('CIVILIAN INTERACTION NOT REACHABLE');
       break;
     }
     case 'ctxSuppress':
@@ -2958,21 +2980,22 @@ function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
   const coat=coats[(c.appearanceSeed>>>0)%coats.length];
   const pants=trousers[(c.appearanceSeed>>>4)%trousers.length];
   draw.save();draw.translate(c.p.x,c.p.y);draw.rotate(c.heading);
-  const down=c.health<=0||c.state==='incapacitated';
-  if(down){
+  const pose=civilianPose(c);
+  if(pose==='down'){
     draw.globalAlpha=.83;
     rect(-10,-6,23,12,coat);rect(7,-5,8,10,'#ba9880');
   }else{
     rect(-12,-6,7,5,pants);rect(-12,1,7,5,pants);
     rect(-7,-8,16,16,coat);
     rect(7,-4.5,9,9,'#b9997e');
-    if(c.state==='compliant'){
+    if(pose==='compliant'){
       rect(2,-16,5,9,'#b9997e');rect(2,7,5,9,'#b9997e');
-    }else if(c.state==='hiding'||c.state==='wounded'){
+    }else if(pose==='hide'||pose==='injured'||pose==='seated'){
       rect(-5,-11,7,3,'#b9997e');rect(-5,8,7,3,'#b9997e');
     }else{
-      const swing=c.state==='fleeing'?
-        Math.sin(state.seconds*13+c.appearanceSeed)*3:0;
+      const swing=pose==='run'?
+        Math.sin(state.seconds*13+c.appearanceSeed)*3:
+        pose==='walk'?Math.sin(state.seconds*8+c.appearanceSeed)*1.5:0;
       rect(-5+swing,-12,8,4,'#b9997e');
       rect(-5-swing,8,8,4,'#b9997e');
     }

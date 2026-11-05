@@ -71,13 +71,16 @@ import {investigationTempo} from './breach-ai-investigation.ts';
 import {routineDwellSeconds} from './breach-ai-routine-dwell.ts';
 import {pressureAdvanceOpportunity} from './breach-ai-initiative.ts';
 import {captureTargetMayWithdraw} from './breach-ai-mission-response.ts';
-import {createCivilian,type CivilianActor} from './breach-civilian-types.ts';
+import {createCivilian,setCivilianState,type CivilianActor} from './breach-civilian-types.ts';
 import {stepCivilianMovement} from './breach-civilian-movement.ts';
 import {stepCivilianResponse} from './breach-civilian-response.ts';
+import {civilianRefugePoints} from './breach-civilian-refuge.ts';
 import {canSecureRescuePerson,rescueEscortSeparated,rescueFollowGoal}
   from './breach-civilian-mission.ts';
 import {firstCivilianAlongRay,applyCivilianBulletHit}
   from './breach-civilian-ballistics.ts';
+import {recordCivilianHarm,attributableCivilianHarm,
+  type CivilianHarmEvent} from './breach-civilian-harm.ts';
 import {retreatDoorClosureEligible} from './breach-ai-door-response.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
 import {contactTactic} from './breach-ai-tactical-response.ts';
@@ -259,6 +262,7 @@ export type SquadPlanTransaction={
 };
 export type Session=Omit<TacticalState,'operators'> & {
   operators:TeamActor[];civilians:CivilianActor[];
+  civilianHarmEvents:CivilianHarmEvent[];
   windows:WindowState[];objectRevision:number;
   coverState:typeof COVER;
   passageLeases:Record<string,PassageLease>;
@@ -471,7 +475,10 @@ export function newSession(index=0,siteSeed?:number,
   // mission semantics and replay have completed their separate stages.
   const civilians=encounterContext.enableCivilians?
     (site?.encounter?.neutrals??[]).map(createCivilian):[];
-  const state:Session={...seed,operators,civilians,objectRevision:0,
+  if(site)for(const person of civilians)
+    person.refugePoints=civilianRefugePoints(site,person);
+  const state:Session={...seed,operators,civilians,
+    civilianHarmEvents:[],objectRevision:0,
     coverState:COVER.map(o=>({...o,material:materialForFixture(o.fixture),
       integrity:MATERIALS[materialForFixture(o.fixture)].integrity})),
     windows:initializeWindows(site?.windows??[]),
@@ -646,6 +653,23 @@ export function planNearbyInteraction(s:Session,id:string,
  if(!target)return false;
  return addNode(s,id,'interact',at,{
    objectId:'window:'+target.id,interaction:action});
+}
+/** Explicit authored civilian interaction: no distant or fog-granted
+ * command. The target's current physical position is rechecked on GO. */
+export function planCivilianInteraction(s:Session,id:string,
+ civilianId:string,action:'secure'|'follow'):boolean{
+ const a=party(s,id),civil=s.civilians.find(c=>c.id===civilianId);
+ if(!a||!civil||!canEdit(s)||civil.health<=0||
+    !liveVisibility(s,civil.p))return false;
+ const from=finalPoint(a);
+ if(d(from,civil.p)>34||
+    !sweptBodyClear(from,civil.p,s.doors,5.5))return false;
+ if(action==='follow'&&(!civil.rescueTarget||s.mission!=='extract'))
+   return false;
+ return addNode(s,id,'interact',from,{
+   objectId:civil.id,interaction:action==='secure'?
+     'secure-civilian':'follow-civilian'
+ });
 }
 export function planMove(s:Session,id:string,p:Pt,strafe=false){
   const a=party(s,id);
@@ -2426,6 +2450,37 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     if(!near(a.p,n.p,7)){
       approach(a,n.p,dt,s,.65);return;
     }
+    if(n.objectId.startsWith('civ:')&&
+       (n.interaction==='secure-civilian'||
+        n.interaction==='follow-civilian')){
+      const person=s.civilians.find(c=>c.id===n.objectId);
+      if(!person||person.health<=0||
+         d(a.p,person.p)>32||
+         !sweptBodyClear(a.p,person.p,s.doors,5.5)||
+         !liveVisibility(s,person.p)){
+        failCurrentOrder(s,a,n,'CIVILIAN NOT IN PHYSICAL REACH');return;
+      }
+      if(n.interaction==='follow-civilian'){
+        if(!person.rescueTarget||s.missionType!=='rescue'||
+           s.mission!=='extract'||!s.rescue){
+          failCurrentOrder(s,a,n,'ESCORT NOT AVAILABLE');return;
+        }
+        if(!setCivilianState(person,'escorted',s.seconds)){
+          failCurrentOrder(s,a,n,'PERSON CANNOT FOLLOW');return;
+        }
+        person.following=a.id;
+        s.rescue.following=a.id;s.rescue.p=clone(person.p);
+        notify(s,a.name+' ESCORTING PERSON');
+      }else{
+        if(!setCivilianState(person,'compliant',s.seconds)){
+          failCurrentOrder(s,a,n,'PERSON NEEDS ASSISTANCE');return;
+        }
+        person.following=null;
+        if(person.rescueTarget&&s.rescue)s.rescue.following=null;
+        notify(s,a.name+' SECURED CIVILIAN');
+      }
+      clearCurrentOrderIssue(a);pop(a);return;
+    }
     const [kind,id]=n.objectId.split(':');
     if(kind==='prop'&&n.interaction==='push'){
       const index=Number(id),o=s.coverState[index];
@@ -3434,7 +3489,9 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   const impact=strikeSurface(from,far,s,muzzle.y,14,
     WEAPONS[a.weapon].penetration);
   const victim=firstCivilianAlongRay(from,yaw,
-    d(from,impact.end),s.civilians);
+    d(from,impact.end),s.civilians,{
+      muzzleHeight:muzzle.y,farHeight:14,farDistance:d(from,far)
+    });
   const fraction=victim?Math.min(1,victim.along/Math.max(1,d(from,far))):1;
   const reachedPanes=impact.paneHits.filter(index=>{
     const pane=s.windows[index];
@@ -3465,7 +3522,15 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     surface});
   retainImpactMark(s,{id:s.nextEffectId++,p:clone(end),
     surface,height,age:0});
-  if(victim)applyCivilianBulletHit(victim.actor,s.seconds);
+  if(victim){
+    const harm=applyCivilianBulletHit(victim.actor,s.seconds);
+    recordCivilianHarm(s.civilianHarmEvents,{
+      id:shotId,shotId,at:s.seconds,victimId:victim.actor.id,
+      actorId:a.id,sourceSide:a.side,before:harm.before,
+      after:harm.after,severity:harm.down?'incapacitated':'injured',
+      p:clone(victim.actor.p)
+    });
+  }
 
   s.casings.push({id:shotId,at:s.seconds,weapon:a.weapon,side:a.side,
     x:muzzle.x-4*Math.cos(yaw),z:muzzle.z-4*Math.sin(yaw),
@@ -3679,7 +3744,10 @@ function fire(s:Session,a:TeamActor,dt:number){
   // Only after firing do physical ray/body tests consider a civilian.
   // This cannot grant pre-shot target acquisition or hidden knowledge.
   const contact=firstCivilianAlongRay(muzzlePoint,yaw,
-    Math.min(d(muzzlePoint,far),blockerDist),s.civilians);
+    Math.min(d(muzzlePoint,far),blockerDist),s.civilians,{
+      muzzleHeight:muzzle.y,farHeight:strikeHeight,
+      farDistance:d(muzzlePoint,far)
+    });
   const civilianHit=contact&&(!wouldHitTarget||
     contact.along+5<muzzleRange)?contact:null;
   const hit=wouldHitTarget&&!civilianHit;
@@ -3771,7 +3839,13 @@ function fire(s:Session,a:TeamActor,dt:number){
     notify(s,'UNSEEN GUNFIRE');
   }
   if(civilianHit){
-    applyCivilianBulletHit(civilianHit.actor,s.seconds);
+    const harm=applyCivilianBulletHit(civilianHit.actor,s.seconds);
+    recordCivilianHarm(s.civilianHarmEvents,{
+      id:shotId,shotId,at:s.seconds,victimId:civilianHit.actor.id,
+      actorId:a.id,sourceSide:a.side,before:harm.before,
+      after:harm.after,severity:harm.down?'incapacitated':'injured',
+      p:clone(civilianHit.actor.p)
+    });
     // Casualty is NOT a hostile kill or accuracy bonus, and hidden
     // civilians do not generate a revealing live contact notification.
     if(liveVisibility(s,civilianHit.actor.p))
@@ -4214,7 +4288,8 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
         noise:s.noise,people:s.operators,doors:s.doors,walls:WALLS,
         windows:s.windows,
         canSee:(from,to)=>unobstructed(from,to,s,false),
-        canReach:(from,to)=>sweptBodyClear(from,to,s.doors)
+        canReach:(from,to)=>sweptBodyClear(from,to,s.doors),
+        routeTo:(from,to)=>cachedEnemyRoute(s,from,to,true)
       });
       stepCivilianMovement(civil,s.seconds,h,
         (from,to)=>sweptBodyClear(from,to,s.doors),
@@ -4324,6 +4399,7 @@ export function debrief(s:Session){
   const civilianInjured=s.civilians.filter(c=>c.health>0&&
     c.injuryStage>0).length;
   const civilianDown=s.civilians.filter(c=>c.health<=0).length;
+  const attributable=attributableCivilianHarm(s.civilianHarmEvents);
   const assessment=assessOperation({
     outcome:s.phase==='won'?'success':'failure',
     kind:s.missionType as OperationKind,
@@ -4331,6 +4407,8 @@ export function debrief(s:Session){
     shots,hits,objective:s.mission==='done',
     targetSurrendered:target?.surrendered??false,
     civilianInjured,civilianDown,
+    civilianPlayerInjured:attributable.injured,
+    civilianPlayerDown:attributable.down,
     extracted:own.filter(a=>a.health>0&&
       near(a.p,s.scenario.extract,47)).length,
   });
@@ -4339,6 +4417,8 @@ export function debrief(s:Session){
     criticalCasualties:casualtyCare.critical,
     evacuatedCasualties:evacuated,
     shots,hits,civilianInjured,civilianDown,
+    civilianPlayerInjured:attributable.injured,
+    civilianPlayerDown:attributable.down,
     kills:own.reduce((t,a)=>t+a.kills,0),
     pauses:s.timesPaused,variant:s.scenario.name,
     objective:s.mission==='done',

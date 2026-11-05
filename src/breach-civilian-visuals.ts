@@ -2,6 +2,7 @@
  * or second wardrobe/IK pipeline. Reuse shared box geometry and materials. */
 import * as THREE from 'three';
 import type {CivilianActor} from './breach-civilian-types.ts';
+import {civilianPose} from './breach-civilian-pose.ts';
 const forms={
  torso:new THREE.BoxGeometry(15,15,9),
  coat:new THREE.BoxGeometry(17,17,10),
@@ -52,23 +53,34 @@ export function updateCivilianRig(r:CivilianRig,
  r.root.scale.set(1,1,1);
  r.leftArm.position.set(-10,19,0);
  r.rightArm.position.set(10,19,0);
+ // Reset every animated transform on every sample. In particular a
+ // civilian must not retain a walking stride on replay rewind.
  r.leftArm.rotation.set(0,0,0);r.rightArm.rotation.set(0,0,0);
  r.leftLeg.rotation.set(0,0,0);r.rightLeg.rotation.set(0,0,0);
- if(c.state==='compliant'){
-  // Raised arms form a clear Y silhouette even at distant phone scale.
+ r.leftLeg.position.set(-4.2,7,0);r.rightLeg.position.set(4.2,7,0);
+ const pose=civilianPose(c);
+ if(pose==='compliant'){
   r.leftArm.position.y=30;r.rightArm.position.y=30;
   r.leftArm.rotation.z=-.55;r.rightArm.rotation.z=.55;
- }else if(c.state==='frozen'||c.state==='startled'){
+ }else if(pose==='startled'){
   r.leftArm.rotation.z=-.25;r.rightArm.rotation.z=.25;
- }else if(c.state==='hiding'||c.state==='wounded'){
-  r.root.scale.y=.73;
-  r.leftArm.rotation.z=-.28;
- }else if(c.state==='incapacitated'){
+ }else if(pose==='hide'||pose==='injured'){
+  r.root.scale.y=.73;r.leftArm.rotation.z=-.28;
+ }else if(pose==='down'){
   r.root.rotation.z=Math.PI*.48;
-  r.root.position.y=3;
-  r.root.scale.set(.88,.88,.88);
- }else if(c.velocity>5){
-  const gait=Math.sin(now*(c.state==='fleeing'?14:8)+
+  r.root.position.y=3;r.root.scale.set(.88,.88,.88);
+ }else if(pose==='seated'){
+  // Small, blocky and grounded: legs point forward and the upper body
+  // is lowered, with no extra joints at phone gameplay scale.
+  r.root.scale.y=.73;
+  r.leftLeg.rotation.x=.85;r.rightLeg.rotation.x=.85;
+  r.leftArm.rotation.x=-.18;r.rightArm.rotation.x=-.18;
+ }else if(pose==='work'){
+  const task=Math.sin(now*1.8+c.appearanceSeed*.01)*.13;
+  r.leftArm.rotation.x=task;
+  r.rightArm.rotation.x=-task;
+ }else if(pose==='walk'||pose==='run'){
+  const gait=Math.sin(now*(pose==='run'?14:8)+
     c.appearanceSeed*.01)*.32;
   r.leftLeg.rotation.x=gait;r.rightLeg.rotation.x=-gait;
   r.leftArm.rotation.x=-gait*.65;r.rightArm.rotation.x=gait*.65;

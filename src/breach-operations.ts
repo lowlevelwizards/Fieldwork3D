@@ -51,6 +51,7 @@ export type OperationAssessment={
   objective:boolean;targetSurrendered?:boolean;extracted:number;
   /** Separate from operator casualties and hostile kill credit. */
   civilianInjured?:number;civilianDown?:number;
+  civilianPlayerInjured?:number;civilianPlayerDown?:number;
 };
 export function assessOperation(data:OperationAssessment){
   const accuracy=data.shots?
@@ -63,8 +64,10 @@ export function assessOperation(data:OperationAssessment){
   if(data.elapsed>180)score-=Math.min(12,Math.floor((data.elapsed-180)/30));
   if(data.kind==='capture'&&data.targetSurrendered)score+=8;
   if(data.kind==='rescue'&&data.extracted===0)score-=20;
-  score-=Math.max(0,data.civilianInjured??0)*7+
-    Math.max(0,data.civilianDown??0)*18;
+  // Preserve the legacy assessment API. New live missions score only
+  // attributable blue-team harm, not casualties inflicted by hostiles.
+  score-=Math.max(0,data.civilianPlayerInjured??data.civilianInjured??0)*7+
+    Math.max(0,data.civilianPlayerDown??data.civilianDown??0)*18;
   score=Math.max(0,Math.min(100,score));
   const grade=data.outcome==='failure'?'F':
     score>=90?'A':score>=78?'B':score>=62?'C':'D';

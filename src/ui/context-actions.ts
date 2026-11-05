@@ -7,6 +7,7 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   nodeKind?:string;nodeMoveMode?:string;aimLabel?:string;nodeFirePolicy?:string;
   watchActive?:boolean;
   nearMovable?:boolean;nearWindow?:boolean;nearDoor?:boolean;
+  nearCivilian?:boolean;escortableCivilian?:boolean;
   availableTools?:readonly string[];doorWedged?:boolean;};
 export function contextActionChoices(o:ContextOptions):ContextAction[]{
   if(o.door)return o.doorOpen?[
@@ -31,6 +32,12 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
       pressed:o.nodeKind==='wait'||o.nodeKind==='holdClear',title:'Wait at this position'},
     ...(o.nearDoor?[{id:'ctxDoor',label:'DOOR',group:'primary' as const,
       title:'Show actions for a reachable door'}]:[]),
+    ...(o.nearCivilian?[{id:'ctxSecureCivilian',label:'SECURE',
+      group:'primary' as const,
+      title:'Queue a physical reassurance and stay command'}]:[]),
+    ...(o.escortableCivilian?[{id:'ctxFollowCivilian',label:'FOLLOW',
+      group:'primary' as const,
+      title:'Queue a physical rescue-person escort handoff'}]:[]),
     {id:'ctxFlash',label:'FLASH ×'+o.flashRemaining,group:'advanced',
       disabled:o.flashRemaining<=0,title:o.flashRemaining>0?'Choose a flash target':'No flash grenades remaining'},
     {id:'ctxSuppress',label:'SUPPRESS',group:'advanced',
