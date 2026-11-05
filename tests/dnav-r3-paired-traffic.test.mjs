@@ -42,3 +42,23 @@ test('R3c: an operator stalled inside the throat keeps exit priority',()=>{
  assert.equal(passageWait(counter,[left],[first,counter],leases,5.6),false,
   'the owner must release after actually clearing the opening');
 });
+
+test('R3d: reserve an upcoming follower body gap before stepping into it',()=>{
+ const lead=unit('lead',60,100),follower=unit('follower',60,78);
+ const leases={};
+ assert.equal(passageWait(follower,[left],[lead,follower],leases,1,
+   {x:60,y:82}),true,
+  '22 units of gap must not allow a 4-unit step into a 20-unit buffer');
+ assert.equal(passageWait(follower,[left],[lead,follower],leases,1.1,
+   {x:64,y:78}),false,
+  'lateral yielding must remain an available physical escape');
+});
+test('R3e: opposing claimant can sidestep or reverse without losing their plan',()=>{
+ const lead=unit('lead',60,95),counter=unit('counter',60,117,40);
+ const leases={};
+ passageWait(lead,[left],[lead,counter],leases,1);
+ assert.equal(passageWait(counter,[left],[lead,counter],leases,1.1,
+   {x:64,y:117}),false);
+ assert.equal(passageWait(counter,[left],[lead,counter],leases,1.2,
+   {x:60,y:114}),true);
+});
