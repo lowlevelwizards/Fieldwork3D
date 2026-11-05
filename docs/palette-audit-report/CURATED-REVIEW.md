@@ -4,11 +4,11 @@ This is a **review of real source colors**, not a palette redesign or a runtime 
 
 ## What the census actually says
 
-- All 528 production-source/HTML files inspected: **2,603** authored literal occurrences, **2,295** distinct normalized RGB colors.
-- Statically reachable primary tactical entry (index.html + imports): **431** files, **2,007** occurrences, **1,792** unique RGB.
-- Among Breach-reachable colors, **719** meet a broad same-domain visual-neighbor threshold (<0.022 OKLab), and **469** meet a much closer threshold (<0.006). **These are review queues, not safe automatic merges.**
-- **1,653** Breach RGB values occur once in the reachable code. Source rarity is not runtime visual rarity; a one-time building paint definition may cover an entire map.
-- Among core UI-only colors, **654** RGB values appear, **463** broadly similar to another source color and **329** extremely close. Local UI one-off hues are the clearest first consolidation target.
+- All 528 scanned source and page files: **2,603** authored literal occurrences, **2,295** distinct normalized RGB colors.
+- Statically reachable primary tactical entry (index.html + imports): **391** files, **1,714** occurrences, **1,564** unique RGB.
+- Among Breach-reachable colors, **577** meet a broad same-domain visual-neighbor threshold (<0.022 OKLab), and **364** meet a much closer threshold (<0.006). **These are review queues, not safe automatic merges.**
+- **1,474** Breach RGB values occur once in the reachable code. Source rarity is not runtime visual rarity; a one-time building paint definition may cover an entire map.
+- Among core UI-only colors, **460** RGB values appear, **324** broadly similar to another source color and **226** extremely close. Local UI one-off hues are the clearest first consolidation target.
 - The most concentrated source files: breach-style.css (303 distinct colors), building-palettes.ts (232), breach-main.ts (194), breach-3d.ts (153), operator-headwear-camo.ts (100). Not all of these should be consolidated.
 
 ## Criteria: each color needs a reason
