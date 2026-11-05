@@ -81,9 +81,9 @@ function retro(root:THREE.Group,
   const backOuter=octagon(cx,3.68,1.50,1.55);
   const backInner=octagon(cx,3.68,1.03,1.10);
   sculptedHousing(root,frame,'vintage-faceted-barrel',
-   outer,inner,backOuter,backInner,-6.13,-4.18,
+   outer,inner,backOuter,backInner,-6.40,-4.18,
    'cups','twin-cups');
-  lensSurface(root,lens,'vintage-round-pane',inner,-6.17);
+  lensSurface(root,lens,'vintage-round-pane',inner,-6.44);
  }
  block(root,frame,'single-bold-vintage-bridge',
   0,3.72,-5.16,.96,.65,1.78);
