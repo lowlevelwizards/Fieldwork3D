@@ -5,6 +5,7 @@ import type {EncounterContext,EncounterPlan,EncounterPremise,EncounterActorSpec}
 import {chooseEncounterPremise} from './encounter-premises.ts';
 import {chooseEncounterProfile} from './encounter-profiles.ts';
 import {chooseHostileBudget} from './encounter-population.ts';
+import {hostileMinimumForContract} from './encounter-population-contract.ts';
 import {composeEncounterGroups} from './encounter-groups.ts';
 import {placeEncounterActors} from './encounter-placement.ts';
 import {assignEncounterActivities} from './encounter-activities.ts';
@@ -42,7 +43,9 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
      placement.actors,placement.groups,premise,mission,seed,false),premise,seed));
  // Unsafe spawn fallback is worse than rejecting a seed. The outer
  // architectural generator can retry a different layout if necessary.
- if(spatial.actors.length<2||
+ if(spatial.actors.length<hostileMinimumForContract({
+    mission,premise,risk:context.risk??1
+   })||
    (mission==='capture'&&!spatial.actors.some(a=>a.role==='target')))
   throw new Error('no safe, mission-complete encounter population');
  const actors=assignEncounterRoutines(site,
