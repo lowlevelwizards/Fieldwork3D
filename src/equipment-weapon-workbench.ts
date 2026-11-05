@@ -9,7 +9,7 @@ import {WEAPON_ATTACHMENTS,resolveWeaponAssembly,
  type WeaponAttachmentSlot,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {workbenchMounts,type WorkbenchMode,type WorkbenchSocket}
  from './equipment-weapon-workbench-layout.ts';
-import {FAMILY_PARTS} from './equipment-weapon-families.ts';
+import {FAMILY_PARTS,type FamilyPartSlot} from './equipment-weapon-families.ts';
 
 export class WeaponWorkbenchPreview{
  private renderer:THREE.WebGLRenderer|null=null;
@@ -186,8 +186,7 @@ export class WeaponWorkbenchPreview{
   }
   const a=resolveWeaponAssembly(this.config);
   const chosen=bodySlot?
-   FAMILY_PARTS[this.config.build!.parts[slot.slice(5) as
-    keyof typeof this.config.build.parts]]?.name:
+   FAMILY_PARTS[this.config.build!.parts[slot.slice(5) as FamilyPartSlot]]?.name:
    WEAPON_ATTACHMENTS[this.config.slots[slot as WeaponAttachmentSlot]]?.name;
   this.caption.textContent=slot.replace('body-','').toUpperCase()+' · '+
    (chosen??'FACTORY PART')+' · '+a.massKg.toFixed(2)+' KG'+
