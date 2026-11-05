@@ -3,8 +3,8 @@
  */
 import {CAMO_ORIGINS,CAMO_STYLES} from './operator-headwear-camo-catalog.ts';
 import {CAMO_SORT_OPTIONS,CAMO_ENVIRONMENT_OPTIONS,CAMO_FAMILY_OPTIONS,
- CAMO_ERA_OPTIONS,camoBrowserState,toggleCamoFavorite,
- type CamoBrowserState} from './operator-material-browser.ts';
+ CAMO_ERA_OPTIONS,camoBrowserState,saveCamoBrowserState,
+ resetCamoBrowserState,toggleCamoFavorite,type CamoBrowserState} from './operator-material-browser.ts';
 import type {HeadwearCamoId} from './operator-headwear-camo.ts';
 import './operator-material-browser.css';
 
@@ -31,8 +31,9 @@ export function createCamoBrowseControls(target:HTMLElement,key:string,
   state.search=search.value;onChange();
  });
  const basic=document.createElement('div');basic.className='fw-material-filter-row';
- const change=(key:keyof CamoBrowserState,value:string)=>{
-  (state as unknown as Record<string,string>)[key]=value;onChange();
+ const change=(field:keyof CamoBrowserState,value:string)=>{
+  (state as unknown as Record<string,string>)[field]=value;
+  saveCamoBrowserState(key);onChange();
  };
  basic.append(
   select('SORT',CAMO_SORT_OPTIONS,state.sort,v=>change('sort',v)),
@@ -40,6 +41,11 @@ export function createCamoBrowseControls(target:HTMLElement,key:string,
    v=>change('environment',v))
  );
  const advanced=document.createElement('details');advanced.className='fw-material-advanced';
+ advanced.open=state.advancedOpen;
+ advanced.addEventListener('toggle',()=>{
+  if(state.advancedOpen===advanced.open)return;
+  state.advancedOpen=advanced.open;saveCamoBrowserState(key);
+ });
  const heading=document.createElement('summary');heading.textContent='MORE FILTERS';
  advanced.append(heading);
  const fields=document.createElement('div');fields.className='fw-material-filter-row';
@@ -56,10 +62,30 @@ export function createCamoBrowseControls(target:HTMLElement,key:string,
  const favorites=document.createElement('label');favorites.className='fw-material-favorites-only';
  const check=document.createElement('input');check.type='checkbox';
  check.checked=state.favoritesOnly;
- check.addEventListener('change',()=>{state.favoritesOnly=check.checked;onChange();});
+ check.addEventListener('change',()=>{
+  state.favoritesOnly=check.checked;saveCamoBrowserState(key);onChange();
+ });
  favorites.append(check,document.createTextNode(' FAVORITES ONLY'));
  advanced.append(fields,favorites);
- controls.append(search,basic,advanced);target.append(controls);
+ const reset=document.createElement('button');reset.type='button';
+ reset.className='fw-material-reset';reset.textContent='RESET FILTERS';
+ reset.setAttribute('aria-label','Reset camouflage browsing filters');
+ reset.addEventListener('click',()=>{
+  resetCamoBrowserState(key);
+  search.value=state.search;
+  for(const wrap of controls.querySelectorAll<HTMLLabelElement>('.fw-material-filter')){
+   const select=wrap.querySelector('select');
+   const label=wrap.querySelector('span')?.textContent;
+   if(!select||!label)continue;
+   const field=({SORT:'sort',ENVIRONMENT:'environment','PATTERN FAMILY':'family',
+    COUNTRY:'origin',CONSTRUCTION:'style',PERIOD:'era'} as const)[label as
+    'SORT'|'ENVIRONMENT'|'PATTERN FAMILY'|'COUNTRY'|'CONSTRUCTION'|'PERIOD'];
+   if(field)select.value=state[field];
+  }
+  check.checked=state.favoritesOnly;advanced.open=state.advancedOpen;
+  onChange();
+ });
+ controls.append(search,basic,advanced,reset);target.append(controls);
  return state;
 }
 export function createCamoFavoriteButton(id:HeadwearCamoId,isFavorite:boolean,
@@ -75,4 +101,30 @@ export function createCamoFavoriteButton(id:HeadwearCamoId,isFavorite:boolean,
   toggleCamoFavorite(id);onChange();
  });
  return button;
+}
+
+/** Reusable headings make family and smart ordering legible, rather than
+ * letting the selected/favorite/recent tiers look like a random shuffle. */
+export function appendCamoSectionHeading(grid:HTMLElement,section:string,
+ lastSection:string):string{
+ if(!section||section===lastSection)return lastSection;
+ const heading=document.createElement('div');heading.className='fw-camo-section-heading';
+ heading.textContent=section;heading.setAttribute('role','heading');
+ heading.setAttribute('aria-level','4');grid.append(heading);
+ return section;
+}
+export function createCamoResultSummary(target:HTMLElement){
+ const output=document.createElement('output');output.className='fw-camo-results';
+ output.setAttribute('aria-live','polite');target.append(output);
+ return (visible:readonly HeadwearCamoId[],total:number,
+  active?:HeadwearCamoId|null)=>{
+  output.textContent=visible.length+' / '+total+' compatible patterns'+
+   (active&&!visible.includes(active)?' · EQUIPPED PATTERN HIDDEN BY FILTERS':'');
+ };
+}
+export function syncCamoFavoriteButton(button:HTMLButtonElement,favored:boolean){
+ button.textContent=favored?'★':'☆';
+ button.title=favored?'Remove favorite':'Add favorite';
+ button.setAttribute('aria-label',button.title);
+ button.setAttribute('aria-pressed',String(favored));
 }
