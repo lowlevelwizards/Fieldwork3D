@@ -54,6 +54,23 @@ export function frameRing(parent:THREE.Group,material:THREE.Material,
  mesh.position.z=frontZ;
  return describe(mesh,outer,family,'twin',frontZ,depth,holes.length);
 }
+/** A frontal ring whose ENTIRE body follows one broad curve toward the
+ * temples. The underlying continuous shell replaces a separately bolted fin.
+ */
+export function sweptFrame(parent:THREE.Group,material:THREE.Material,
+ name:string,outer:EyePolygon,holes:readonly EyePolygon[],
+ frontZ:number,depth:number,sweep:number):THREE.Mesh{
+ const shell=frameRing(parent,material,name,outer,holes,
+  frontZ,depth,'wedge');
+ const pos=shell.geometry.attributes.position as THREE.BufferAttribute;
+ for(let i=0;i<pos.count;i++){
+  const x=pos.getX(i);
+  pos.setZ(i,pos.getZ(i)+sweep*Math.pow(Math.abs(x)/4,2));
+ }
+ pos.needsUpdate=true;
+ shell.geometry.computeVertexNormals();
+ return shell;
+}
 /** Single clean dyed pane. No generic glass highlights or microreflection
  * strips; transparent material is the only lens surface.
  */
