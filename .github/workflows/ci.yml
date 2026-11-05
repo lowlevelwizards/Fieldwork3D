@@ -836,6 +836,7 @@ jobs:
         run: |
           node --experimental-strip-types --test \
             tests/r5-identity-stage-a.test.mjs \
+            tests/r5-identity-stage-bc.test.mjs \
             tests/faction-reference.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
