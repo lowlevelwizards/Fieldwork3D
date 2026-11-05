@@ -631,6 +631,7 @@ let expandedQuickLoadoutGroup:QuickLoadoutGroup='weapon';
 let expandedQuickWeapon:string|null=null;
 let quickWorkbench:WeaponWorkbenchPreview|null=null;
 let quickWorkbenchId:string|null=null;
+const selectedQuickWeaponSockets=new Map<string,WorkbenchSocket>();
 function renderOperationsBoard(){
  const priorScroll=operationsBoard.scrollTop;
  quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
@@ -748,6 +749,7 @@ function renderOperationsBoard(){
    button.addEventListener('click',()=>{
     if(id===member.weapon||state.phase!=='planning'||replaying)return;
     persistentRoster=equipRoster(persistentRoster,member.id,id);
+    selectedQuickWeaponSockets.delete(member.id);
     const saved=saveRoster();applyRosterIdentity(state,persistentRoster);
     if(saved)showFieldworkActionFeedback(member.callsign+' · '+label+' EQUIPPED');
     expandedQuickKit=member.id;expandedQuickWeapon=member.id;
@@ -778,6 +780,7 @@ function renderOperationsBoard(){
    button.addEventListener('click',()=>{
     if(state.phase!=='planning'||replaying)return;
     persistentRoster=configureRosterWeaponPreset(persistentRoster,member.id,preset.id);
+    selectedQuickWeaponSockets.delete(member.id);
     saveRoster();applyRosterIdentity(state,persistentRoster);
     expandedQuickKit=member.id;expandedQuickWeapon=member.id;
     expandedQuickLoadoutGroup='weapon';renderOperationsBoard();updateHud();
@@ -836,16 +839,18 @@ function renderOperationsBoard(){
   socketHeading.className='fw-weapon-section-label';
   const socketNote=document.createElement('p');
   socketNote.className='fw-weapon-helper';
-  socketNote.textContent='Tap a labeled socket on the weapon to change this part.';
+  socketNote.textContent='Tap a white dot on the weapon to edit this part.';
   socketPanel.append(socketHeading,socketNote);
+  socketPanel.hidden=true; // Selects remain authoritative but choices live beside the model.
   const initialSocket:WorkbenchSocket=member.weaponConfiguration.build?'body-receiver':'optic';
-  let selectedSocket:WorkbenchSocket=initialSocket;
+  let selectedSocket:WorkbenchSocket=
+   selectedQuickWeaponSockets.get(member.id)??initialSocket;
   const showSocket=(slot:WorkbenchSocket)=>{
-   if(!socketRows.has(slot))return;
+   const select=socketRows.get(slot)?.querySelector<HTMLSelectElement>('select');
+   if(!select)return;
    selectedSocket=slot;
-   for(const [id,row] of socketRows)row.hidden=id!==slot;
-   socketHeading.textContent='SELECT PART · '+slot.replace('body-','').toUpperCase();
-   if(quickWorkbenchId===member.id)quickWorkbench?.setActiveSlot(slot);
+   selectedQuickWeaponSockets.set(member.id,slot);
+   quickWorkbench?.showSocketChoices(slot,select);
   };
   const syncWorkbench=()=>{
    const active=kit.open&&loadout.group.weapon.open&&weaponEditor.open;
@@ -856,14 +861,10 @@ function renderOperationsBoard(){
    quickWorkbench?.dispose();quickWorkbench=null;
    quickWorkbenchId=member.id;
    quickWorkbench=new WeaponWorkbenchPreview(workbenchHost,
-    member.weaponConfiguration,slot=>{
-     showSocket(slot);
-     const select=socketRows.get(slot)?.querySelector('select');
-     if(!select)return;
-     select.focus({preventScroll:true});
-     try{select.showPicker();}catch{/* mobile browser may require second tap */}
-    });
-   quickWorkbench.setActiveSlot(selectedSocket);
+    member.weaponConfiguration,slot=>showSocket(slot));
+   const saved=selectedQuickWeaponSockets.get(member.id);
+   if(saved&&socketRows.has(saved))showSocket(saved);
+   else quickWorkbench.setActiveSlot(initialSocket,false);
   };
   weaponEditor.addEventListener('toggle',()=>{
    if(weaponEditor.open)expandedQuickWeapon=member.id;
@@ -934,7 +935,10 @@ function renderOperationsBoard(){
    row.append(label,select);row.hidden=socket!==initialSocket;
    socketRows.set(socket,row);socketPanel.append(row);
   }
-  showSocket(initialSocket);
+  if(!socketRows.has(selectedSocket)){
+   selectedQuickWeaponSockets.delete(member.id);
+   selectedSocket=initialSocket;
+  }
   const measured=resolveWeaponAssembly(member.weaponConfiguration);
   const properties=document.createElement('p');
   properties.style.cssText='font-size:10px;opacity:.75;line-height:1.55';
