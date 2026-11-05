@@ -122,7 +122,7 @@ export const FACTION_REFERENCES:readonly FactionReference[]=[
  styles:{headwear:'pasgt',armorStyle:'soft-flak',rigStyle:'field-webbing'},
  gearSolid:'khaki',weaponFamily:'M16A2',
  gaps:[patch,weapon('ar-family','M16A2 service rifle'),gap('alice-webbing','ALICE-pattern load-bearing system')],
- sourceNotes:'Period approximation; clothing, helmet covers and armor varied by deployment.'}
+ sourceNotes:'Period approximation; clothing, helmet covers and armor varied by deployment.'},
 
  {id:'us-army-ocp-2019',name:'US Army · OCP Infantry',country:'United States',organization:'military',
  environment:'mixed',era:{start:2015,end:2026,label:'2015–2020s'},
