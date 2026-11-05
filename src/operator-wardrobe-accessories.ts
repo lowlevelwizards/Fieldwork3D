@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
+import {bakeGearGeometryAO} from './operator-baked-gear-ao.ts';
 export const WARDROBE_ACCESSORY_SLOTS=['beltLeft','beltRight','chest','pack'] as const;
 export type WardrobeAccessorySlot=typeof WARDROBE_ACCESSORY_SLOTS[number];
 export const WARDROBE_ACCESSORY_OPTIONS={
@@ -31,7 +32,9 @@ type GroupVariants=Record<string,THREE.Group>;
 export type WardrobeAccessoryVisuals=Record<WardrobeAccessorySlot,GroupVariants>;
 const part=(g:THREE.Group,m:THREE.Material,x:number,y:number,z:number,
  w:number,h:number,d:number)=>{
- const mesh=new THREE.Mesh(mapBoxPixelUV(new THREE.BoxGeometry(w,h,d),w,h,d),m);
+ const geometry=mapBoxPixelUV(new THREE.BoxGeometry(w,h,d),w,h,d);
+ bakeGearGeometryAO(geometry,m);
+ const mesh=new THREE.Mesh(geometry,m);
  mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);
 };
 export function createWardrobeAccessoryVisuals(
