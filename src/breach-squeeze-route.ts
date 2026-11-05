@@ -32,6 +32,39 @@ const courseLength=(from:Pt,points:readonly Pt[])=>{
  return length;
 };
 
+/** Eliminate short grid zigzags only when the entire skipped body sweep
+ * is lawful. Keep a tiny lookahead: this is motor smoothing, not a shortcut
+ * through hidden geometry, a new authored waypoint, or a search expansion.
+ */
+export function smoothTraversalRoute(from:Pt,path:readonly Pt[],
+ canTraverse:(a:Pt,b:Pt)=>boolean,maxSkip=4):Pt[]{
+ if(path.length<2)return path.map(p=>({...p}));
+ const result:Pt[]=[];
+ let current=from;
+ for(let i=0;i<path.length;){
+  let chosen=i;
+  for(let j=Math.min(path.length-1,i+Math.max(0,maxSkip));j>i;j--){
+   if(canTraverse(current,path[j])){chosen=j;break;}
+  }
+  result.push({...path[chosen]});
+  current=path[chosen];
+  i=chosen+1;
+ }
+ return result;
+}
+/** The briefed path may use only its own known collision geometry. */
+function intelSweep(from:Pt,to:Pt,
+ canStand:(p:Pt,r:number)=>boolean,radius=OPERATOR_RADIUS){
+ const length=Math.hypot(to.x-from.x,to.y-from.y);
+ const steps=Math.max(1,Math.ceil(length/2.5));
+ for(let i=1;i<=steps;i++){
+  const t=i/steps;
+  if(!canStand({x:from.x+(to.x-from.x)*t,
+    y:from.y+(to.y-from.y)*t},radius))return false;
+ }
+ return true;
+}
+
 function narrowRoute(from:Pt,to:Pt,
   canStand:(p:Pt,r:number)=>boolean):Pt[]{
   if(!narrowPassable(to,canStand))return [];
@@ -62,7 +95,9 @@ export function routeWithSqueezeIntel(intel:IntelState,from:Pt,to:Pt):Pt[]{
  if(direct&&(!standard.length||
    courseLength(from,standard)>Math.hypot(to.x-from.x,to.y-from.y)*1.22+10))
    return [{...to}];
- return standard.length?standard:narrowRoute(from,to,canStand);
+ return standard.length?
+   smoothTraversalRoute(from,standard,(a,b)=>intelSweep(a,b,canStand)):
+   narrowRoute(from,to,canStand);
 }
 /** Collision-truth replan after contact or a known obstruction.
  * Open door leaves use the same rule as the ordinary motor. */
@@ -83,7 +118,8 @@ export function routeWithSqueezeWorld(from:Pt,to:Pt,doors:Door[]):Pt[]{
      }
      previous=point;
    }
-   if(valid)return standard;
+   if(valid)return smoothTraversalRoute(from,standard,(a,b)=>
+     sweptProfileClear(a,b,doors,0,'normal'));
  }
  const narrow=narrowRoute(from,to,canStand);
  let previous=from;

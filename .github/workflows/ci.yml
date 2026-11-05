@@ -240,7 +240,7 @@ jobs:
       # Release checkpoint: verify that public Pages actually serves the
       # latest main commit, not merely that a deployment workflow reported green.
       - name: Verify previous Pages build is publicly served
-        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'ux/interaction2-') || startsWith(github.head_ref, 'feature/breach-traversal-') || startsWith(github.head_ref, 'feature/breach-map-clearance-') || startsWith(github.head_ref, 'feature/breach-vault-mantle-') || startsWith(github.head_ref, 'ux/watch-active-marker-') || startsWith(github.head_ref, 'appearance/stage4-') || startsWith(github.head_ref, 'fix/attention-doors-') || startsWith(github.head_ref, 'fix/doorway-right-of-way-') || startsWith(github.head_ref, 'fix/coupled-door-contact-') || startsWith(github.head_ref, 'fix/door-leaf-overlap-') || startsWith(github.head_ref, 'fix/breach-wall-glide-here-window-') || startsWith(github.head_ref, 'feat/rig-r3-') || startsWith(github.head_ref, 'feat/rig-r4-') || startsWith(github.head_ref, 'feature/operator-rig-r5-') || startsWith(github.head_ref, 'feature/d2-facewear-r4-') || startsWith(github.head_ref, 'feature/d2-facewear-r5-') || startsWith(github.head_ref, 'feature/d2-bandana-r6-eyewear-r1-') || startsWith(github.head_ref, 'feature/dnav-')) }}
+        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'ux/interaction2-') || startsWith(github.head_ref, 'feature/breach-traversal-') || startsWith(github.head_ref, 'feature/breach-map-clearance-') || startsWith(github.head_ref, 'feature/breach-vault-mantle-') || startsWith(github.head_ref, 'ux/watch-active-marker-') || startsWith(github.head_ref, 'appearance/stage4-') || startsWith(github.head_ref, 'fix/attention-doors-') || startsWith(github.head_ref, 'fix/doorway-right-of-way-') || startsWith(github.head_ref, 'fix/coupled-door-contact-') || startsWith(github.head_ref, 'fix/door-leaf-overlap-') || startsWith(github.head_ref, 'fix/breach-wall-glide-here-window-') || startsWith(github.head_ref, 'feat/rig-r3-') || startsWith(github.head_ref, 'feat/rig-r4-') || startsWith(github.head_ref, 'feature/operator-rig-r5-') || startsWith(github.head_ref, 'feature/d2-facewear-r4-') || startsWith(github.head_ref, 'feature/d2-facewear-r5-') || startsWith(github.head_ref, 'feature/d2-bandana-r6-eyewear-r1-') || startsWith(github.head_ref, 'feature/dnav-') || startsWith(github.head_ref, 'feature/d2-eyewear-r2-')) }}
         run: |
           expected="$(git ls-remote origin refs/heads/main | cut -c1-12)"
           for attempt in 1 2 3 4 5 6 7 8; do
@@ -347,6 +347,16 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/operator-d2-eyewear-b-') }}
         run: |
           node --experimental-strip-types --test tests/operator-d2-catalog-stage-00.test.mjs tests/operator-d2-balaclava-stage-a1.test.mjs tests/operator-d2-wraps-stage-a2.test.mjs tests/operator-d2-fabric-integration-stage-a3.test.mjs tests/operator-d2-glasses-stage-b1.test.mjs tests/operator-d2-goggles-stage-b2.test.mjs tests/operator-wardrobe-data.test.mjs tests/operator-visual-kit.test.mjs
+      - name: D2 Eyewear R2 — silhouette and materials critical tests
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/d2-eyewear-r2-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/operator-d2-eyewear-r2-silhouettes.test.mjs \
+            tests/operator-d2-eyewear-r1.test.mjs \
+            tests/operator-d2-glasses-stage-b1.test.mjs \
+            tests/operator-d2-goggles-stage-b2.test.mjs \
+            tests/operator-d2-silhouette-v3-compatibility.test.mjs \
+            tests/operator-wardrobe-data.test.mjs
       - name: G1-G2 critical physical-movement and fog-integrity regressions
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-gameplay-quality-') }}
         run: |
@@ -483,6 +493,7 @@ jobs:
             tests/dnav-r3-paired-traffic.test.mjs \
             tests/dnav-r4-capture-recovery.test.mjs \
             tests/dnav-r5-contact-staging.test.mjs \
+            tests/dnav-r6-movement-quality.test.mjs \
             tests/physicality-door-aware-routing.test.mjs \
             tests/physicality-08-door-contact.test.mjs \
             tests/physicality-09-recovery.test.mjs \
@@ -492,6 +503,9 @@ jobs:
       - name: DNav bounded real-simulation collision matrix
         if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/breach-door-navigation-dnav-') || startsWith(github.head_ref, 'feature/dnav-')) }}
         run: npm run audit:g4-flow -- --matrix --door-regression
+      - name: DNav R6 four-operator hinge and traversal stress
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/dnav-r6-') }}
+        run: node --experimental-strip-types scripts/audit-dnav-r6-four-operator.mjs
       - name: Camouflage 6B authored family, scale and fabric regression
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-camo-6b-') }}
         run: |
