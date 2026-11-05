@@ -106,6 +106,8 @@ import {fixedStepBudget} from './breach-fixed-clock.ts';
 import './breach-style.css';
 import './ui/ux-r1-sheets.css';
 import './ui/ux-r3-hud.css';
+import './ui/fieldwork-action-toast.css';
+import {showFieldworkActionFeedback} from './ui/fieldwork-action-toast.ts';
 import {fieldworkSelectField,confirmFieldworkAction,promptFieldworkText} from './ui/fieldwork-controls.ts';
 import {createTacticalSheetNavigation} from './ui/tactical-sheet-navigation.ts';
 import {buildQuickLoadoutGroups,loadoutGroupForSlot,
@@ -709,7 +711,8 @@ function renderOperationsBoard(){
     label:'CALLSIGN',maxLength:24,confirmLabel:'SAVE NAME'});
    if(next===null||state.phase!=='planning'||replaying)return;
    persistentRoster=renameRosterMember(persistentRoster,member.id,next);
-   saveRoster();applyRosterIdentity(state,persistentRoster);
+   const saved=saveRoster();applyRosterIdentity(state,persistentRoster);
+   if(saved)showFieldworkActionFeedback('CALLSIGN UPDATED · '+next.toUpperCase());
    renderOperationsBoard();updateHud();
   });
   actions.append(loadoutAction,look,rename);
@@ -730,7 +733,8 @@ function renderOperationsBoard(){
    member.weapon,next=>{
     if(state.phase!=='planning'||replaying)return;
     persistentRoster=equipRoster(persistentRoster,member.id,next as typeof member.weapon);
-    saveRoster();applyRosterIdentity(state,persistentRoster);
+    const saved=saveRoster();applyRosterIdentity(state,persistentRoster);
+    if(saved)showFieldworkActionFeedback(member.callsign+' · '+next.toUpperCase()+' EQUIPPED');
     expandedQuickKit=member.id;expandedQuickLoadoutGroup='weapon';
     renderOperationsBoard();updateHud();
    });
@@ -762,7 +766,12 @@ function renderOperationsBoard(){
    select.addEventListener('change',()=>{
     if(state.phase!=='planning'||replaying)return;
     persistentRoster=equipRosterGear(persistentRoster,member.id,slot,select.value);
-    saveRoster();applyRosterIdentity(state,persistentRoster);
+    const saved=saveRoster();applyRosterIdentity(state,persistentRoster);
+    if(saved){
+     const chosen=itemsForSlot(slot).find(item=>item.id===select.value);
+     showFieldworkActionFeedback(member.callsign+' · '+
+      (chosen?.name??slot.toUpperCase())+' EQUIPPED');
+    }
     expandedQuickKit=member.id;renderOperationsBoard();updateHud();
    });
    row.className='fw-equipment-choice';
