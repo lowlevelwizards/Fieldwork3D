@@ -70,7 +70,7 @@ function standard(parent:THREE.Group,frame:THREE.Material,
 }
 function aviator(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
  root.userData.d2EyeFitTop=5.13;
- root.userData.d2EyeDesign='R7-connected-pilot-double-bridge';
+ root.userData.d2EyeDesign='R8-outward-splayed-pilot-bridges';
  // Each left-lens polygon is intentionally fuller toward -X (the outside).
  // The mirrored right lens reverses that bias. Broad flat foot rather than
  // pointed fangs, with the topmost shoulder over the outer cheek.
@@ -89,10 +89,18 @@ function aviator(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
   [1.03,4.27],[1.14,4.03],[.86,3.52],
   [.08,2.98],[-.42,2.78],[-1.13,2.78],[-1.37,3.00]
  ];
+ // R8: a deliberate 15-degree outward optical splay, as if the two
+ // teardrops were rotated away from the nose. Shear their XY contours
+ // around eye height rather than rotating 3D objects: the high shoulders,
+ // lower foot shelf, lens heights, and both connected bridges survive.
+ // Bottom mass moves toward the cheek; the inner fang retreats outward.
+ const outwardSplay=(points:EyePolygon):EyePoint[]=>
+  points.map(([x,y])=>[x+Math.tan(Math.PI/12)*(y-4.07),y]);
+ const splayedOuter=outwardSplay(out),splayedAperture=outwardSplay(hole);
  for(const side of [-1,1] as const){
   const x=side*2.08;
-  const outline=shifted(side===-1?out:mirror(out),x);
-  const aperture=shifted(side===-1?hole:mirror(hole),x);
+  const outline=shifted(side===-1?splayedOuter:mirror(splayedOuter),x);
+  const aperture=shifted(side===-1?splayedAperture:mirror(splayedAperture),x);
   frameRing(root,frame,'pilot-lens-collar',outline,[aperture],
    -5.01,.38,'pilot');
   lensSurface(root,lens,'pilot-full-teardrop',aperture,-5.06);
