@@ -1,57 +1,63 @@
-/** D2-R4B: bandana as a joined, substantial three-dimensional tied kerchief.
- * Broad, face-following cloth wraps the cheeks and closes at a heavy rear knot.
- * Separate raised/lowered geometries are constructed once and toggled only.
+/** D2-R5A: tied kerchief with a genuinely free-hanging triangular bib.
+ * The band wraps the cheeks to the original rear knot; the triangle hangs
+ * BELOW the 8x8 skull rather than ending against the chin. Deliberately
+ * large stepped cloth masses, no little coplanar strips or cloth physics.
  */
 import * as THREE from 'three';
 import {clothExterior,type ClothCuboid} from './operator-d2-fitted-cloth.ts';
 export type D2BandanaMode='raised'|'lowered';
-const add=(parts:ClothCuboid[],name:string,x:number,y:number,z:number,
+const add=(p:ClothCuboid[],name:string,x:number,y:number,z:number,
  width:number,height:number,depth:number)=>{
- parts.push({name,x,y,z,width,height,depth});
+ p.push({name,x,y,z,width,height,depth});
 };
 export function createD2BandanaMode(mode:D2BandanaMode,material:THREE.Material):THREE.Group{
  const root=new THREE.Group();root.name='d2-wrap-'+mode;
  root.userData.d2WrapMode=mode;
  const p:ClothCuboid[]=[];
  const raised=mode==='raised';
- const top=raised?3.23:-.72;
- const front=raised?-4.34:-3.78;
- const back=raised?4.13:3.67;
- const half=raised?4.12:3.65;
- // Wide stepped hanging fabric, not an almost planar Dorito or a rigid cowl.
- // Each adjacent band slightly overlaps so the union has no disconnected edges.
- const bands=[
-  [0,.55,8.08],[.55,1.25,7.90],[1.25,2.03,7.12],
-  [2.03,2.76,5.86],[2.76,3.45,4.42],[3.45,3.98,3.24]
+ const top=raised?3.18:-.68;
+ const vertical=raised?1:.70;
+ const lateral=raised?1:.90;
+ const front=raised?-4.35:-3.80;
+ const back=raised?4.14:3.66;
+ const half=raised?4.10:3.69;
+ // A distinct horizontal top fold anchors the fabric onto the cheeks.
+ // It supports a broad hanging triangle rather than becoming the triangle.
+ add(p,'wrap-band-front',0,top-.55,front,half*2+.08,1.18,.73);
+ // Six large, vertically overlapping tiers create an actual lower kerchief
+ // point; the last 2+ units sit BELOW canonical chin Y=-.65 when raised.
+ // Later tiers project farther forward, free of the cubic face's front plane.
+ const drop=[
+  ['triangle-upper-anchor',1.04,2.16,7.70,.16,.80],
+  ['triangle-upper-drop',2.05,3.22,6.48,.31,.87],
+  ['triangle-middle-drop',3.10,4.40,4.98,.47,.93],
+  ['triangle-lower-drop',4.27,5.61,3.43,.61,.96],
+  ['triangle-tip',5.48,6.78,1.76,.75,.91]
  ] as const;
- for(const [i,[from,to,width]] of bands.entries()){
-  add(p,'hanging-front-'+i,0,top-(from+to)/2,
-   front-.025*i,width,to-from+.12,.54);
+ for(const [name,a,b,width,project,depth] of drop){
+  add(p,name,0,top-vertical*(a+b)/2,front-project,
+   width*lateral,vertical*(b-a)+.16,depth);
  }
- // One thick upper fold reads as textile, with no extra strip hovering over it.
- add(p,'wide-folded-top-edge',0,top-.22,front-.17,8.23,.47,.43);
- // Upper wings wrap continuously from the cheeks to the back of the head.
- // The middle/lower returns widen the side silhouette instead of exposing
- // two skinny straps flanking a triangular sheet.
+ // A generous upper perimeter turns the cloth around the squared cheeks
+ // and meets the existing tie band at the rear. Lower cheek returns attach
+ // to the *upper* triangle, then stop: no tube surrounds the free tip.
  for(const side of [-1,1]){
-  const name=side<0?'left':'right',x=side*half;
-  add(p,name+'-upper-wrap',x,top-.56,(front+back)/2,
-   .63,1.19,back-front+.32);
-  add(p,name+'-cheek-wrap',x,top-1.48,-1.01,
-   .67,1.89,6.89);
-  add(p,name+'-lower-cheek-return',side*(half-.18),top-2.33,-2.47,
-   .73,1.79,3.82);
-  add(p,name+'-front-corner-fold',side*(half-.36),top-1.41,
-   front+.38,1.08,1.45,1.16);
+  const n=side<0?'left':'right';
+  add(p,n+'-wrap-band',side*half,top-.63,(front+back)/2,
+   .80,1.35,back-front+.34);
+  add(p,n+'-cheek-transition',side*(half-.17),top-1.34*vertical,
+   front+1.40,.90,2.28*vertical,3.75);
+  add(p,n+'-triangular-shoulder',side*(half-.48),
+   top-2.00*vertical,front-.13,1.17,1.78*vertical,1.22);
  }
- // Rear band joins both side wings before the separate, oversized knot.
- add(p,'closed-rear-landing',0,top-.59,back,half*2+.38,1.20,.56);
- const knotZ=back+.48,knotY=top-.64;
+ add(p,'closed-rear-landing',0,top-.64,back,half*2+.48,1.37,.75);
+ // Preserve the successful heavy tied back: folded wings and unequal ends.
+ const knotZ=back+.48,knotY=top-.67;
  add(p,'rear-knot',.05,knotY,knotZ,1.57,1.33,1.03);
  add(p,'knot-left-wing',-1.21,knotY+.10,knotZ-.02,1.64,.85,.63);
  add(p,'knot-right-wing',1.28,knotY+.02,knotZ-.04,1.71,.94,.67);
  add(p,'short-knot-tail',.59,knotY-.85,knotZ,.91,1.45,.53);
  add(p,'long-knot-tail',-.49,knotY-1.15,knotZ+.05,1.00,2.05,.59);
- root.add(clothExterior('joined-tied-bandana-'+mode,p,material));
+ root.add(clothExterior('free-hanging-tied-bandana-'+mode,p,material));
  return root;
 }
