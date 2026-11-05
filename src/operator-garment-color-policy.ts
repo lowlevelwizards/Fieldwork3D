@@ -82,7 +82,10 @@ export const CAMO_CUFF_DEFAULTS:Readonly<Record<HeadwearCamoId,GarmentSolidId>>=
  'multicam-black':'charcoal','multicam-alpine':'off-white',
  'pencott-greenzone':'forest-green','pencott-badlands':'khaki',
  'desert-night':'sage','kryptek-highlander':'coyote',
- berezka:'olive-drab','spectre-skwo':'ranger-green'
+ berezka:'olive-drab','spectre-skwo':'ranger-green',
+ 'russian-izlom':'forest-green','greek-lizard':'olive-drab','urban-kamysh':'slate',
+ 'jgsdf-type2':'field-green','pencott-metropolis':'charcoal',
+ 'south-african-s2000':'nutria-brown','kryptek-typhon':'charcoal','norwegian-m98':'olive-drab'
 };
 export function garmentSolidHex(id:GarmentSolidId):number{
  return GARMENT_SOLID_COLORS[id].hex;

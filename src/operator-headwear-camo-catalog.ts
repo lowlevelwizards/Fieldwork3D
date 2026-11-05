@@ -6,7 +6,7 @@ import {HEADWEAR_CAMO_IDS,type HeadwearCamoId} from './operator-headwear-camo.ts
 export type CamoTerrain='woodland'|'arid'|'multi'|'universal';
 export type CamoStyle='organic'|'brushstroke'|'fleck'|'digital'|'geometric'|'raindrop';
 export type CamoOrigin='USA'|'Germany'|'Britain'|'Canada'|'Russia'|'China'|'India'|
- 'Australia'|'Italy'|'Belgium'|'Sweden'|'Switzerland'|'Poland'|'Finland'|'Rhodesia'|'Ukraine';
+ 'Australia'|'Italy'|'Belgium'|'Sweden'|'Switzerland'|'Poland'|'Finland'|'Rhodesia'|'Ukraine'|'Greece'|'Japan'|'South Africa'|'Norway';
 export type CamoCatalogEntry={terrain:CamoTerrain;style:CamoStyle;origin:CamoOrigin;era:'historic'|'modern'};
 const w=(terrain:CamoTerrain,style:CamoStyle,origin:CamoOrigin,era:'historic'|'modern'='modern'):CamoCatalogEntry=>
  ({terrain,style,origin,era});
@@ -56,14 +56,23 @@ export const CAMO_CATALOG:Readonly<Record<HeadwearCamoId,CamoCatalogEntry>>={
  'desert-night':w('arid','geometric','USA','historic'),
  'kryptek-highlander':w('multi','geometric','USA'),
  berezka:w('woodland','geometric','Russia','historic'),
- 'spectre-skwo':w('multi','digital','Russia')
+ 'spectre-skwo':w('multi','digital','Russia'),
+ 'russian-izlom':w('woodland','fleck','Russia'),
+ 'greek-lizard':w('woodland','brushstroke','Greece','historic'),
+ 'urban-kamysh':w('universal','brushstroke','Russia','historic'),
+ 'jgsdf-type2':w('woodland','fleck','Japan'),
+ 'pencott-metropolis':w('universal','digital','Britain'),
+ 'south-african-s2000':w('multi','organic','South Africa'),
+ 'kryptek-typhon':w('universal','geometric','USA'),
+ 'norwegian-m98':w('woodland','organic','Norway')
 };
 export const CAMO_TERRAINS:ReadonlyArray<CamoTerrain>=['woodland','arid','multi','universal'];
 export const CAMO_STYLES:ReadonlyArray<CamoStyle>=
  ['organic','brushstroke','fleck','digital','geometric','raindrop'];
 export const CAMO_ORIGINS:readonly CamoOrigin[]=[
  'USA','Britain','Germany','Russia','Canada','China','India','Australia','Italy',
- 'Belgium','Sweden','Switzerland','Poland','Finland','Rhodesia','Ukraine'
+ 'Belgium','Sweden','Switzerland','Poland','Finland','Rhodesia','Ukraine',
+ 'Greece','Japan','South Africa','Norway'
 ];
 export const CAMO_CATALOG_IDS:readonly HeadwearCamoId[]=HEADWEAR_CAMO_IDS;
 export type CamoFilter={

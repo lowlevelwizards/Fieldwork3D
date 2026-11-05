@@ -25,7 +25,7 @@ const pose=(kit,wardrobe)=>({
 });
 test('forty-six independently authored 32/64px camo families use fixed opaque canonical colors',()=>{
  assert.equal(HEADWEAR_CAMO_SIZE,32);
- assert.equal(HEADWEAR_CAMO_IDS.length,46);
+ assert.equal(HEADWEAR_CAMO_IDS.length,54);
  const unique=new Set();
  for(const id of HEADWEAR_CAMO_IDS){
   const tile=headwearCamoPixels(id),indices=headwearCamoIndices(id);
@@ -51,7 +51,7 @@ test('forty-six independently authored 32/64px camo families use fixed opaque ca
   }
   unique.add(Buffer.from(tile).toString('base64'));
  }
- assert.equal(unique.size,46,'patterns must not be color-only variations of one tile');
+ assert.equal(unique.size,54,'patterns must not be color-only variations of one tile');
 });
 test('item compatibility is restricted, validated, and persists through outfit serialization',()=>{
  assert.equal(headwearCamoChoices('beanie').length,0);
@@ -136,7 +136,7 @@ test('operator lab exposes raw art, 3x3 repeat and live selected headwear',()=>{
  assert.match(js,/renderHeadwearCamoComparison/);
  assert.match(js,/HEADWEAR_CAMO_IDS/);
  assert.match(js,/camo-study-views/);
- assert.match(html,/COMPARE ALL 46/);
+ assert.match(html,/COMPARE ALL 54/);
  assert.match(js,/headwearCamoSize/);
 });
 test('pattern family density and pigment scales preserve hierarchy',()=>{
