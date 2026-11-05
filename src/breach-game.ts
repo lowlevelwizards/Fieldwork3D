@@ -59,6 +59,7 @@ import {materialResponse} from './breach-impact-responses.ts';
 import {manipulateWindow,damageWindow,windowPaneSegment} from './breach-windows.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {chooseAiIntent,hasRecentSound,type AIIntent} from './breach-ai-policy.ts';
+import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
 import {settledEnemyPosture} from './breach-ai-posture.ts';
 import {searchCandidates} from './breach-ai-search.ts';
 import {investigationTempo} from './breach-ai-investigation.ts';
@@ -258,6 +259,16 @@ export type Session=Omit<TacticalState,'operators'> & {
   rescue:RescueEscort|null;
   captureTarget:string|null;captureSecured:boolean;
   intelCarrierId:string|null;};
+// The elective enemy-planning budget is mission-local and never serialized.
+const aiSchedulers=new WeakMap<Session,AiWorkScheduler>();
+function electiveAiWork(s:Session,a:TeamActor,kind:string):boolean{
+  let scheduler=aiSchedulers.get(s);
+  if(!scheduler){
+    scheduler=new AiWorkScheduler(2);
+    aiSchedulers.set(s,scheduler);
+  }
+  return scheduler.allow(a.id,kind,Math.round(s.seconds*60));
+}
 const d=(a:Pt,b:Pt)=>length(a,b);
 const clone=(p:Pt):Pt=>({...p});
 const near=(a:Pt,b:Pt,range:number)=>d(a,b)<=range;
@@ -2863,7 +2874,12 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       a.routinePauseUntil=s.seconds+2+(index%2);a.nav=[];a.velocity=0;
       return;
     }
-    if(!a.nav.length)a.nav=route(a.p,target);
+    if(!a.nav.length){
+      if(!electiveAiWork(s,a,'routine-route')){
+        a.velocity=0;return;
+      }
+      a.nav=route(a.p,target);
+    }
     if(!a.nav.length){
       a.routineIndex=(index+1)%a.encounterRoutine.length;
       a.routinePauseUntil=s.seconds+4;a.velocity=0;return;
@@ -2877,12 +2893,18 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.velocity=0;return;
   }
   if(!a.contacted&&!a.contact&&a.alert==='idle'&&a.watch){
-    if(a.defense===null&&s.seconds>=a.defenseUntil){
+    if(a.defense===null&&s.seconds>=a.defenseUntil&&
+       electiveAiWork(s,a,'idle-defense')){
       a.defense=defensivePosition(a,a.watch,s);
       a.defenseUntil=s.seconds+2;
     }
     if(a.defense&&d(a.p,a.defense)>11){
-      if(!a.nav.length)a.nav=route(a.p,a.defense);
+      if(!a.nav.length){
+        if(!electiveAiWork(s,a,'idle-route')){
+          a.velocity=0;rotate(a,angle(a.p,a.watch),dt);return;
+        }
+        a.nav=route(a.p,a.defense);
+      }
       if(!a.nav.length){
         a.defense=null;a.defenseUntil=s.seconds+.7;
       }else{
@@ -2919,6 +2941,9 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     if(a.alert==='investigating'&&d(a.p,a.contact)>40){
       // Noise gives a region to investigate, never a magic target.
       if(!a.nav.length){
+        if(!electiveAiWork(s,a,'investigation-route')){
+          a.velocity=0;return;
+        }
         const goal=reachableInvestigation(a.p,a.contact);
         if(goal)a.nav=route(a.p,goal);
         else{a.alert='cover';a.contact=null;a.defense=null;}
@@ -2942,6 +2967,9 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       // reachability checks to avoid a pathfinding spike on contact.
       if(s.seconds<a.searchPauseUntil){
         a.velocity=0;rotate(a,angle(a.p,a.contact),dt);return;
+      }
+      if(!electiveAiWork(s,a,'search-expand')){
+        a.velocity=0;return;
       }
       let next:Pt|null=null,checks=0;
       while(a.searchQueue.length&&!next&&checks++<2){
