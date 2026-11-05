@@ -148,6 +148,7 @@ export class TacticalScene3D{
   private thrown=new Map<number,THREE.Mesh>();
   private detonations=new Map<number,THREE.Mesh>();
   private tracerAxis=new THREE.Vector3(0,1,0);
+  private readonly shoeWorldPoint=new THREE.Vector3();
   private tracerGeometry=new THREE.CylinderGeometry(.65,.65,1,6);
   private impactGeometry=new THREE.IcosahedronGeometry(1,1);
   private walls:{mesh:THREE.Mesh;mid:Pt;segment:Segment}[]=[];
@@ -1621,6 +1622,10 @@ export class TacticalScene3D{
       if(patina)patina.opacity=Math.max(.24,1-(1-opacity)*1.226);
       wall.mesh.renderOrder=translucent?1001:0;
     }
+    // The selected endpoint is stable across this entire render. Do not
+    // rebuild team/plan arrays once per door on large generated sites.
+    const selectedActor=s.operators.find(a=>a.side==='blue'&&a.id===selected);
+    const selectedEndpoint=selectedActor?.plan.at(-1)?.p;
     for(const door of s.doors){
       const object=this.doors.get(door.id);
       if(!object)continue;
@@ -1658,10 +1663,9 @@ export class TacticalScene3D{
         // yaw remains authoritative for collision, LOS and navigation.
         object.leaf.rotation.y=(door.swing??-1)*shownFraction*1.54+wobble;
       }
-      const selectedActor=team(s).find(a=>a.id===selected);
       const reachable=selectedActor&&selectedActor.health>0&&
-        [selectedActor.p,...selectedActor.plan.filter(n=>n.id===selectedActor.plan.at(-1)?.id).map(n=>n.p)].some(p=>
-          doorReachable(p,door));
+        (doorReachable(selectedActor.p,door)||
+          (!!selectedEndpoint&&doorReachable(selectedEndpoint,door)));
       const focused=focusedDoorId===door.id;
       object.halo.visible=door.kind!=='shutter'&&door.kind!=='sliding'&&
         object.root.visible&&s.phase==='planning'&&
@@ -1885,9 +1889,8 @@ export class TacticalScene3D{
         const shadow=object.contactShadows[i];
         shadow.visible=actor.health>0&&object.root.visible;
         if(!shadow.visible)continue;
-        const shoe=new THREE.Vector3();
-        object.physical.feet[i].shoe.getWorldPosition(shoe);
-        shadow.position.set(shoe.x,.16,shoe.z);
+        object.physical.feet[i].shoe.getWorldPosition(this.shoeWorldPoint);
+        shadow.position.set(this.shoeWorldPoint.x,.16,this.shoeWorldPoint.z);
         const contact=replay?.feet[actor.id]?.[i]??
           liveMotion?.feet[actor.id]?.[i];
         const pulse=contact?.phase==='landing'?
@@ -2106,6 +2109,8 @@ export class TacticalScene3D{
       s.intel.mode==='exterior-known'&&!!s.site;
     this.smoothFog.visible=!omniscient&&!clippedExteriorFog;
     this.exteriorKnownFog.visible=clippedExteriorFog;
+    // Limit moving fog repaint/upload to 10Hz on balanced/performance.
+    // This changes presentation cadence only, not authored intel or LOS.
     // Do not repaint/re-upload an identical visibility texture every 55ms
     // while operators are stationary in planning. Quantized pose and intel
     // changes make the key; real LOS is still computed by the fog renderer.
@@ -2120,7 +2125,8 @@ export class TacticalScene3D{
     });
     // Two sessions may have identical knowledge counts but different sites.
     const sessionChanged=this.lastFogSession!==s;
-    if(!omniscient&&(sessionChanged||this.fogAt>=.055||this.fogAt<0)&&
+    if(!omniscient&&(sessionChanged||
+        this.fogAt>=(this.quality.mode==='quality'?.055:.10)||this.fogAt<0)&&
         (sessionChanged||fogSignature!==this.lastFogSignature)){
       this.fogAt=0;this.lastFogSignature=fogSignature;
       this.lastFogSession=s;
