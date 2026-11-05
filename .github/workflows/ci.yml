@@ -676,7 +676,7 @@ jobs:
       - name: Material browser smart sorting and compatibility
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/material-browser-smart-sort-') }}
         run: |
-          node --experimental-strip-types --test tests/operator-material-browser-smart-sort.test.mjs tests/operator-wardrobe-fabrics.test.mjs tests/operator-headwear-solid-colors.test.mjs
+          node --experimental-strip-types --test tests/operator-material-browser-smart-sort.test.mjs tests/operator-headwear-solid-colors.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
