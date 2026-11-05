@@ -853,7 +853,7 @@ jobs:
             tests/tactical-integration-17-firefight-b1.test.mjs \
             tests/tactical-mission-quality-operations.test.mjs
       - name: Reference Kits R1–R4 critical contracts
-        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/faction-reference-release-') }}
+        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/faction-reference-release-') || startsWith(github.head_ref, 'feature/reference-kit-gear-fidelity-')) }}
         run: |
           node --experimental-strip-types --test \
             tests/faction-reference.test.mjs \
