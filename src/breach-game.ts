@@ -78,7 +78,7 @@ import {passageWait,approachingNarrowThreshold,
   from './breach-passage.ts';
 import {diagnoseMovement,blockedStepCause,projectReachableGoal,type Blocker}
   from './breach-nav-diagnostics.ts';
-import {bodyClear,sweptBodyClear,squeezeFacing,
+import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
   sweptProfileClear,SQUEEZE_RADIUS,escapeOpenDoorOverlap,
   slideAroundStaticCorner,glideAlongStaticWall,releaseStaticWallOverlap}
   from './breach-navigation.ts';
@@ -1947,8 +1947,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   }
   if(a.squeeze){
     a.squeezeYaw=sidewaysYaw;
-    if(normalClear&&bodyClear(a.p,s.doors)&&
-      bodyClear(desiredMove,s.doors)){
+    if(normalClear&&squeezeExitClear(a.p,desiredMove,s.doors)){
       a.squeeze=false;a.squeezeTime=0;
     }else{
       // The body visibly turns to the SAME angle used by oriented collision
