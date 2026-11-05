@@ -13,10 +13,10 @@ const nDiff=(a,b)=>a.reduce((sum,value,i)=>sum+(value!==b[i]?1:0),0)/a.length;
 const coverage=(id)=>headwearCamoCoverage(id);
 const palette=(id)=>HEADWEAR_CAMO_RECIPES[id].colors;
 
-test('8B retains all 54 print IDs, legacy 7C Leto art, and saved looks',()=>{
- assert.equal(HEADWEAR_CAMO_IDS.length,54);
- assert.deepEqual(HEADWEAR_CAMO_IDS.slice(46),ids);
- assert.equal(new Set(HEADWEAR_CAMO_IDS).size,54);
+test('8B retains all 62 print IDs, legacy 7C Leto art, and saved looks',()=>{
+ assert.equal(HEADWEAR_CAMO_IDS.length,62);
+ assert.deepEqual(HEADWEAR_CAMO_IDS.slice(46,54),ids);
+ assert.equal(new Set(HEADWEAR_CAMO_IDS).size,62);
  for(const id of ids){
   assert.equal(readWardrobe({...initialWardrobe(),headwearCamo:id}).headwearCamo,id);
   assert.equal(readWardrobe({...initialWardrobe(),fabricCamo:{trousers:id}}).fabricCamo.trousers,id);
