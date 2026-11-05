@@ -9,6 +9,7 @@ on:
       - 'src/breach-game.ts'
       - 'src/breach-3d.ts'
       - 'tests/breach-17*.test.mjs'
+      - 'tests/breach-operator-static-render-performance.test.mjs'
       - '.github/workflows/operator-animation-integrity.yml'
   workflow_dispatch:
 jobs:
@@ -21,7 +22,7 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - name: Focused animation and barrel regressions
-        run: node --experimental-strip-types --test tests/breach-17*.test.mjs
+        run: node --experimental-strip-types --test tests/breach-17*.test.mjs tests/breach-operator-static-render-performance.test.mjs tests/operator-visual-fit.test.mjs tests/operator-d2-facewear-pose-colors-r4.test.mjs
       - name: Verify Vite runtime bundle
         run: npx vite build
       - name: Typecheck full repository (may expose unrelated main-branch regressions)
