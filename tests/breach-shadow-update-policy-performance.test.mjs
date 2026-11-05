@@ -9,7 +9,7 @@ test('active combat shadows never freeze, while identical paused scenes reuse ma
  assert.equal(controller.shouldRefresh(true,''),true);
  const state={site:3,phase:'planning',selected:'rook',focusX:23,focusY:47,
    objectRevision:1,known:12,intelMode:'floor-plan',lighting:'day',
-   poseTime:0,actors:[{id:'rook',x:23,y:47,heading:0,posture:'stand',
+   poseTime:0,simulationTime:1,actors:[{id:'rook',x:23,y:47,heading:0,posture:'stand',
      health:4,weaponYaw:0,recoil:0,reload:0,stride:0,weapon:'carbine'}],
    doors:[{id:'FRONT',fraction:0,open:false}]};
  let signature=stationaryShadowFingerprint(state);
