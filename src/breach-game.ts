@@ -7,7 +7,7 @@ import {
   type Pt,type Operator,type TacticalState,type Door,type Side,
   W,H,WALLS,COVER,OPERATOR_RADIUS,initialDoors,newTacticalState,route,passable,activateSite,
   segmentsCross,doorCenter,doorBlocksSegment,doorLeafSegment,doorBlocksRay,doorBlocksSightRay,
-  pointToSegment,staticWallBlocksRay,someCoverAlongRay,
+  pointToSegment,staticWallBlocksRay,someCoverAlongRay,activeGeometryRevision,
 } from './breach-core.ts';
 import {
   type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,
@@ -60,6 +60,7 @@ import {manipulateWindow,damageWindow,windowPaneSegment} from './breach-windows.
 import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {chooseAiIntent,hasRecentSound,type AIIntent} from './breach-ai-policy.ts';
 import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
+import {TacticalRouteCache} from './breach-tactical-route-cache.ts';
 import {settledEnemyPosture} from './breach-ai-posture.ts';
 import {searchCandidates} from './breach-ai-search.ts';
 import {investigationTempo} from './breach-ai-investigation.ts';
@@ -261,6 +262,20 @@ export type Session=Omit<TacticalState,'operators'> & {
   intelCarrierId:string|null;};
 // The elective enemy-planning budget is mission-local and never serialized.
 const aiSchedulers=new WeakMap<Session,AiWorkScheduler>();
+const tacticalRoutes=new WeakMap<Session,TacticalRouteCache>();
+/** Exact-authority cache: geometry epoch and precise leaf state fully
+ * invalidate a physical route. No uncertain player intel is reused here. */
+function cachedEnemyRoute(s:Session,from:Pt,to:Pt,physicalDoors=false):Pt[]{
+  let cache=tacticalRoutes.get(s);
+  if(!cache){cache=new TacticalRouteCache();tacticalRoutes.set(s,cache);}
+  const leafSignature=physicalDoors?s.doors.map(door=>[
+    door.id,door.kind,door.open,door.openFraction,
+    door.hinge,door.swing,door.slideDirection
+  ].join(':')).join(';'):'static';
+  return cache.get(from,to,activeGeometryRevision(),
+    Math.round(s.seconds*60),leafSignature,()=>
+      physicalDoors?routeWithSqueezeWorld(from,to,s.doors):route(from,to));
+}
 function electiveAiWork(s:Session,a:TeamActor,kind:string):boolean{
   let scheduler=aiSchedulers.get(s);
   if(!scheduler){
@@ -1763,7 +1778,8 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     }
     if(s.seconds<a.retryRouteAt){a.velocity=0;return false;}
     a.nav=a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
-      routeWithSqueezeWorld(a.p,p,s.doors);
+      (a.side==='red'?cachedEnemyRoute(s,a.p,p,true):
+        routeWithSqueezeWorld(a.p,p,s.doors));
     if(!a.nav.length){
       // A failed route is a stationary brace, not phantom walking speed.
       a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
