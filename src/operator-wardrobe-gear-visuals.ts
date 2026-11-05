@@ -9,6 +9,7 @@ import {createAliceLc2Waist,updateAliceLc2Load,
 import type {AliceLc2Load} from './operator-alice-lc2-policy.ts';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
+import {enableBakedGearAO} from './operator-baked-gear-ao.ts';
 import {wardrobeItemsForSlot} from './operator-wardrobe-data.ts';
 import {createArmorSilhouettes,createChestRigSilhouettes,
  updateAdaptiveArmorFit,updateFittedRigHarness}
@@ -40,6 +41,9 @@ export function createWardrobeGearLayers(
  armorFabric:THREE.Material,gearFabric:THREE.Material,
  packFabric:THREE.Material,dark:THREE.Material,
  trim:THREE.Material,lazyVariants=false):WardrobeGearLayers{
+ // Standalone Operator Labs receive identical baked AO to gameplay rigs.
+ for(const material of [armorFabric,gearFabric,packFabric])
+  if(material instanceof THREE.MeshStandardMaterial)enableBakedGearAO(material);
  // Complete authored silhouettes replace all superficial generic shell
  // scale variants. The same outfit can be rendered over any armor or rig.
  // Cummerbunds, shoulder pads and secondary protective panels inherit the
@@ -55,6 +59,7 @@ export function createWardrobeGearLayers(
  pouchMaterial.userData.fieldworkFabric=true;
  const strapMaterial=(gearFabric as THREE.MeshStandardMaterial).clone();
  strapMaterial.name='Fieldwork authored rig structural webbing';
+ enableBakedGearAO(pouchMaterial);enableBakedGearAO(strapMaterial);
  strapMaterial.userData.fieldworkFabric=true;
  const rig=createChestRigSilhouettes(chest,gearFabric,pouchMaterial,
   dark,trim,strapMaterial,lazyVariants?'no-rig':undefined);
