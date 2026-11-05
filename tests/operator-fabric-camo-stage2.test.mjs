@@ -128,13 +128,18 @@ test('actual operator renders cloth/armor/gear/pack in selected authored maps, n
  assert.ok(rig.clothMaterial.map?.name.includes('m81-woodland'));
  rig.dispose();
 });
-test('three editor contexts mount shared actual-pixel swatches; historic eligibility gates visible controls',()=>{
+test('Lab and Campaign retain shared material pickers; Quick Play uses canonical Studio',()=>{
  for(const [name,path] of [
-  ['Lab','../src/breach-operator-lab.ts'],['Campaign','../src/campaign-ui.ts'],
-  ['Quick Play','../src/breach-main.ts']]){
+  ['Lab','../src/breach-operator-lab.ts'],['Campaign','../src/campaign-ui.ts']]){
   const source=readFileSync(new URL(path,import.meta.url),'utf8');
   assert.match(source,/createWardrobeFabricCamoPicker/,name);
  }
+ const quick=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
+ const studio=readFileSync(new URL('../src/operator-studio.ts',import.meta.url),'utf8');
+ assert.match(quick,/openOperatorStudio\(member.id,'quick'\)/);
+ assert.doesNotMatch(quick,/createWardrobeFabricCamoPicker/);
+ assert.match(studio,/fabricCamoChoices\(channel,outfit\)/);
+ assert.match(studio,/addCamoSwatches\(group,choices,pattern/);
  const html=readFileSync(new URL('../operator-lab.html',import.meta.url),'utf8');
  assert.match(html,/id="wardrobeFabricCamo"/);
  const picker=readFileSync(new URL('../src/operator-fabric-camo-picker.ts',import.meta.url),'utf8');
