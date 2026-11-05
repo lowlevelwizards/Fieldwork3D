@@ -42,6 +42,19 @@ export class PixelTextureLibrary {
   this.textures.clear();
  }
 }
+/** Per-face BoxGeometry vertex ranges, including modest AO subdivisions.
+ * The default 1x1 box keeps the historical 4 vertices per face.
+ */
+export function boxFaceVertexRanges(geometry:THREE.BoxGeometry){
+ const {widthSegments=1,heightSegments=1,depthSegments=1}=geometry.parameters;
+ const x=(depthSegments+1)*(heightSegments+1);
+ const y=(widthSegments+1)*(depthSegments+1);
+ const z=(widthSegments+1)*(heightSegments+1);
+ let start=0;
+ return [x,x,y,y,z,z].map(count=>{
+  const range={start,count};start+=count;return range;
+ });
+}
 /** Set physical repeats in geometry (NOT on the shared texture). */
 export function mapBoxPixelUV(geometry:THREE.BoxGeometry,w:number,h:number,d:number){
  const uv=geometry.getAttribute('uv') as THREE.BufferAttribute;
@@ -51,10 +64,13 @@ export function mapBoxPixelUV(geometry:THREE.BoxGeometry,w:number,h:number,d:num
    pixelRepeats(w,d),pixelRepeats(w,d),
    pixelRepeats(w,h),pixelRepeats(w,h)
   ];
+ const ranges=boxFaceVertexRanges(geometry);
  for(let face=0;face<6;face++){
-  const [u,v]=faces[face],start=face*4;
-  uv.setXY(start,0,v);uv.setXY(start+1,u,v);
-  uv.setXY(start+2,0,0);uv.setXY(start+3,u,0);
+  const [u,v]=faces[face],{start,count}=ranges[face];
+  // Default box maps exactly as before; subdivided gear faces interpolate
+  // the SAME metric UVs rather than repeating/stretching the camouflage.
+  for(let j=start;j<start+count;j++)
+   uv.setXY(j,uv.getX(j)*u,uv.getY(j)*v);
  }
  uv.needsUpdate=true;
  return geometry;
