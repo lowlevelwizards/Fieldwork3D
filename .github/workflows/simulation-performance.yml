@@ -5,6 +5,12 @@ on:
       - 'scripts/bench-breach-performance.mjs'
       - '.github/workflows/simulation-performance.yml'
       - 'src/breach-game.ts'
+      - 'src/breach-ground-view.ts'
+      - 'src/breach-replay.ts'
+      - 'src/breach-3d.ts'
+      - 'src/breach-operator-rig.ts'
+      - 'tests/breach-ground-view-performance.test.mjs'
+      - 'tests/breach-intel-discovery-performance.test.mjs'
       - 'src/breach-defense.ts'
       - 'src/breach-intel.ts'
       - 'src/breach-core.ts'
@@ -22,6 +28,6 @@ jobs:
       - name: Simulation workload profiles (host CPU, not device FPS)
         run: node --experimental-strip-types scripts/bench-breach-performance.mjs
       - name: Critical AI, muzzle and effects regressions
-        run: node --experimental-strip-types --test tests/breach-120.test.mjs tests/breach-133.test.mjs tests/breach-defense-performance.test.mjs tests/breach-perf.test.mjs tests/perf-window-effects.test.mjs tests/breach-142c.test.mjs
+        run: node --experimental-strip-types --test tests/breach-120.test.mjs tests/breach-133.test.mjs tests/breach-defense-performance.test.mjs tests/breach-perf.test.mjs tests/perf-window-effects.test.mjs tests/breach-142c.test.mjs tests/breach-ground-view-performance.test.mjs tests/breach-intel-discovery-performance.test.mjs
       - name: Typecheck and production bundle
         run: npm run check && npx vite build
