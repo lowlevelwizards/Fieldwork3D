@@ -62,7 +62,11 @@ export function observeIntel(intel:IntelState,site:Site|undefined,
    }
    return false;
  };
- WALLS.forEach((w,i)=>{if(observesSegment(w))intel.walls.add(i)});
+ // Structural/fixture knowledge is monotonic. Once discovered, it cannot
+ // improve by re-running 3-9 LOS rays every observation interval.
+ WALLS.forEach((w,i)=>{
+   if(!intel.walls.has(i)&&observesSegment(w))intel.walls.add(i);
+ });
  doors.forEach(d=>{
    if(observesSegment(d)){
      intel.doors.add(d.id);
@@ -70,6 +74,7 @@ export function observeIntel(intel:IntelState,site:Site|undefined,
    }
  });
  COVER.forEach((o,i)=>{
+   if(intel.cover.has(i))return;
    // Exposed sample points are outside the collidable/occluding box.
    const x=o.w/2+2.5,y=o.h/2+2.5;
    const samples=[
@@ -81,6 +86,7 @@ export function observeIntel(intel:IntelState,site:Site|undefined,
    if(samples.some(visible))intel.cover.add(i);
  });
  site?.rooms.forEach(r=>{
+   if(intel.rooms.has(r.id))return;
    if(visible({x:r.x+r.w/2,y:r.y+r.h/2})||
       visible({x:r.x+12,y:r.y+12}))intel.rooms.add(r.id);
  });
