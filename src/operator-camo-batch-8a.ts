@@ -17,8 +17,8 @@ const p=(tone:number,...xy:number[]):Motif=>[tone,xy];
 const recipes={
  'russian-izlom':{
   label:'RUSSIAN IZLOM',
-  description:'Flecktarn-relative forest ground with hard angular olive, sandy, rusty and black-green lozenges, not rounded dots',
-  colors:[[44,54,47],[88,118,66],[167,141,91],[112,72,58],[38,45,44]],
+  description:'Skol/Izlom dark temperate print: tightly interlocked hard-edged short angular lozenges, tan sparks and rust fracture shards, without Leto leaf/pea-dot motifs',
+  colors:[[46,56,49],[72,106,68],[181,154,105],[106,67,58],[30,39,38]],
   targetCoverage:[.26,.26,.16,.17,.15],motifs:[]
  },
  'greek-lizard':{
@@ -35,8 +35,8 @@ const recipes={
  },
  'jgsdf-type2':{
   label:'JGSDF TYPE II',
-  description:'Japanese Jieitai-dot woodland, round dense moss flecks, red umber/tan islands and charcoal grouped spots',
-  colors:[[121,143,96],[57,94,69],[142,91,77],[194,190,147],[47,54,56]],
+  description:'Jieitai Dot: dense smaller rounded vegetation-data flecks in moss, rust brown, stone tan and restrained charcoal clusters, distinct from S2000 earth-ground spotting',
+  colors:[[108,139,92],[61,104,74],[136,83,74],[187,185,150],[44,52,50]],
   targetCoverage:[.32,.25,.18,.12,.13],motifs:[]
  },
  'pencott-metropolis':{
@@ -47,8 +47,8 @@ const recipes={
  },
  'south-african-s2000':{
   label:'SOLDIER 2000',
-  description:'Kalahari earth-brown field under grass, deep forest and pale sage organic patches, interior dark/light spot accents',
-  colors:[[127,101,83],[68,98,83],[116,144,120],[184,191,161],[46,76,64]],
+  description:'SANDF Soldier 2000: exposed Kalahari earth-brown ground, broad irregular green islands and distinctive internal mint/forest pea-spots, unlike dense JGSDF flecks',
+  colors:[[132,106,89],[61,101,86],[112,148,126],[183,198,171],[41,72,61]],
   targetCoverage:[.42,.21,.14,.13,.10],motifs:[]
  },
  'kryptek-typhon':{
@@ -216,19 +216,107 @@ const NORWAY:readonly Motif[]=[
  p(2,56,0,63,-3,70,3,65,10,58,14,52,10),
  p(1,56,53,62,48,70,52,68,61,62,65,55,62)
 ];
+
+/** 8B reference pass: reuses 8A index-space polygons/period/wrap while
+ * rendering each real print's own motif language. No new catalog IDs.
+ * All geometry is baked once into the original cached 64px master.
+ */
+function scaleMotif(motif:Motif,amount:number):Motif{
+ const [tone,coords]=motif;
+ let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+ for(let i=0;i<coords.length;i+=2){
+  minX=Math.min(minX,coords[i]);maxX=Math.max(maxX,coords[i]);
+  minY=Math.min(minY,coords[i+1]);maxY=Math.max(maxY,coords[i+1]);
+ }
+ const cx=(minX+maxX)/2,cy=(minY+maxY)/2;
+ return [tone,coords.map((n,i)=>Math.round((n-(i%2?cy:cx))*amount+(i%2?cy:cx)))];
+}
+function paintOnto(tile:Uint8Array,motif:Motif):void{
+ const [tone,shape]=motif;
+ for(let y=0;y<64;y++)for(let x=0;x<64;x++)
+  if(wrapContains(x,y,shape))tile[y*64+x]=tone;
+}
+function indexAt(tile:Uint8Array,x:number,y:number):number{
+ return tile[((y+64)&63)*64+((x+64)&63)];
+}
+function izlom8B():Uint8Array{
+ // Reduce inherited overly large tan islands: Skol's light shapes are
+ // *short fracture sparks* among dark moss and rust, not Leto-like leaves.
+ const tile=paint(IZLOM.map(m=>m[0]===2?scaleMotif(m,.64):m),0);
+ // Close-packed angular hooked lozenges, 7px spacing with independent
+ // seeded stagger. Unlike Leto 7C, these are motifs, not 1px pea dots.
+ for(let row=0;row<10;row++)for(let col=0;col<10;col++){
+  const a=hash(col,row,91),b=hash(col,row,109);
+  if(a<.15)continue;
+  const x=col*7-3+Math.floor(a*5);
+  const y=row*7-3+Math.floor(b*5);
+  const tone=a>.84?2:a>.60?4:a>.35?3:1;
+  const len=3+Math.floor(hash(col,row,131)*4);
+  const branch=b>.47?2:-2;
+  paintOnto(tile,p(tone,
+   x-2,y, x+1,y-2, x+len-1,y-1, x+len+1,y+1,
+   x+len-1,y+2, x+Math.floor(len/2),y+1,
+   x+Math.floor(len/2)-1,y+branch+2, x+Math.floor(len/2)-3,y+2,
+   x-3,y+2));
+ }
+ return tile;
+}
+function jgsdf8B():Uint8Array{
+ // Flecktarn neighbor: denser but visibly rounder, shorter clusters than
+ // Izlom or the oversized blobs in 8A. Satellites attach to parent clusters.
+ const motifs:Motif[]=[];
+ for(let i=0;i<JGSDF_SPOTS.length;i++){
+  const [x,y,rx,ry,ink,phase]=JGSDF_SPOTS[i];
+  const mx=Math.max(3,Math.round(rx*.64)),my=Math.max(2,Math.round(ry*.73));
+  motifs.push(fleck(x,y,mx,my,ink,phase));
+  const dx=hash(i,phase,19)>.5?mx+2:-mx-1;
+  const dy=hash(i,phase,27)>.5?my-2:-my+1;
+  motifs.push(fleck(x+dx,y+dy,Math.max(2,Math.floor(mx*.43)),
+   Math.max(2,Math.floor(my*.54)),ink,phase+1));
+ }
+ const tile=paint(motifs,0),original=tile.slice();
+ // Rounded 1-2px correlated dots punctuate cluster outskirts; maintain
+ // clear rust, tan and charcoal roles without a grid or digital blocks.
+ for(let row=0;row<16;row++)for(let col=0;col<16;col++){
+  const a=hash(col,row,157);if(a<.39)continue;
+  const x=(col*4+Math.floor(hash(col,row,163)*4))&63;
+  const y=(row*4+Math.floor(hash(col,row,173)*4))&63;
+  const ink=indexAt(original,x,y);
+  const neighbor=indexAt(original,x+1,y);
+  const diag=indexAt(original,x,y+1);
+  if(ink===0 && (neighbor!==0||diag!==0))tile[y*64+x]=neighbor!==0?neighbor:diag;
+  else if(ink===1&&a>.72)tile[y*64+x]=4;
+  else if(ink===2&&a>.80)tile[y*64+x]=3;
+ }
+ return tile;
+}
+function soldier2000_8B():Uint8Array{
+ // The five-color Soldier 2000 print is an earth-brown *field* with
+ // independently shaped pale/grass/dark-green islands; not a Flecktarn cloud.
+ const source=paint(S2000.map(m=>scaleMotif(m,.79)),0);
+ const out=source.slice();
+ // Small contrasting 1-2px paired spores INSIDE the irregular islands,
+ // deliberately more apparent than JGSDF's satellite flecks.
+ for(let row=0;row<16;row++)for(let col=0;col<16;col++){
+  const r=hash(col,row,191);if(r<.30)continue;
+  const x=(col*4+Math.floor(hash(col,row,199)*4))&63;
+  const y=(row*4+Math.floor(hash(col,row,211)*4))&63;
+  const ink=indexAt(source,x,y);
+  if(ink===0||ink===4)continue; // Preserve visible Kalahari brown.
+  let interior=0;
+  for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]])
+   if(indexAt(source,x+dx,y+dy)===ink)interior++;
+  if(interior<3)continue;
+  const dot=ink===3?4:(r>.76?3:4);
+  out[y*64+x]=dot;
+  if(r>.67&&indexAt(source,x+1,y)===ink)out[y*64+((x+1)&63)]=dot;
+ }
+ return out;
+}
+
 const masters=new Map<Camo8AId,Uint8Array>();
 function ownTile(id:Camo8AId):Uint8Array{
- if(id==='russian-izlom'){
-  const tile=paint(IZLOM,0);
-  // Tight flecktarn-like density, but chips are angular 2px lozenges.
-  for(let y=0;y<64;y++)for(let x=0;x<64;x++){
-   const i=y*64+x,c=tile[i],roll=hash(x>>1,y>>1,43);
-   if(c===1&&roll>.91)tile[i]=2;
-   else if(c===3&&roll>.88)tile[i]=4;
-   else if(c===0&&roll>.95)tile[i]=1;
-  }
-  return tile;
- }
+ if(id==='russian-izlom')return izlom8B();
  if(id==='greek-lizard'||id==='urban-kamysh'){
   const urban=id==='urban-kamysh';
   const strokes=urban?KAMYSH_STROKES:GREEK_STROKES;
@@ -244,33 +332,8 @@ function ownTile(id:Camo8AId):Uint8Array{
   }
   return tile;
  }
- if(id==='jgsdf-type2'){
-  const shapes:Motif[]=JGSDF_SPOTS.map(([x,y,rx,ry,ink,phase])=>
-    fleck(x,y,rx,ry,ink,phase));
-  const tile=paint(shapes,0);
-  // Cluster-attached tiny round flecks, not UCP squares/digital sorting.
-  for(let y=0;y<64;y++)for(let x=0;x<64;x++){
-   const i=y*64+x,ink=tile[i],r=hash(x>>1,y>>1,29);
-   const neighbor=tile[((y+2)&63)*64+x];
-   if(ink===1 && r>.77)tile[i]=4;
-   else if(ink===2&&r>.87)tile[i]=3;
-   else if(ink===0&&r>.91&&neighbor!==0)tile[i]=neighbor;
-   else if(ink===4&&r>.96)tile[i]=3;
-  }
-  return tile;
- }
- if(id==='south-african-s2000'){
-  const source=paint(S2000,0),tile=source.slice();
-  for(let y=0;y<64;y++)for(let x=0;x<64;x++){
-   const i=y*64+x,ink=source[i],r=hash(x>>1,y>>1,63);
-   const next=source[y*64+((x+1)&63)];
-   if(ink===3&&r>.82)tile[i]=4;
-   else if(ink===1&&r>.94)tile[i]=3;
-   else if(ink===2&&r>.88)tile[i]=4;
-   else if(ink===0&&r>.965&&next!==0)tile[i]=3;
-  }
-  return tile;
- }
+ if(id==='jgsdf-type2')return jgsdf8B();
+ if(id==='south-african-s2000')return soldier2000_8B();
  if(id==='norwegian-m98')return paint(NORWAY,0);
  throw new Error('Only independent 8A pattern masters are authored');
 }
