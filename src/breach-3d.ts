@@ -2193,7 +2193,7 @@ export class TacticalScene3D{
       })),
       doors:s.doors.map(d=>({id:d.id,
         fraction:d.openFraction??(d.open?1:0),open:d.open})),
-      poseTime:this.terminalPoseSeconds
+      poseTime:this.terminalPoseSeconds,simulationTime:s.seconds
     });
     if(this.shadowUpdates.shouldRefresh(dynamicShadows,shadowSignature))
       this.renderer.shadowMap.needsUpdate=true;
