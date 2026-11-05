@@ -399,6 +399,7 @@ function approach(v:number,target:number,rate:number,dt:number){
   return v+clamp(diff(v,target),-rate*dt,rate*dt);
 }
 const P=(x:number,y:number,z:number)=>new THREE.Vector3(x,y,z);
+const DOWNED_TINT=new THREE.Color(0x555c57);
 export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   if(dt<0||r.lastTime>p.seconds+.03||p.seconds-r.lastTime>1.2){
     r.lastTime=p.seconds;dt=0;
@@ -423,7 +424,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // exact seeded complexion. Updating each pose also keeps preview edits,
   // replay/seek and reversible downed desaturation consistent.
   const complexion=p.wardrobe?.skinTone??seededSkinTone(identity);
-  r.colors.set(r.skinMaterial,new THREE.Color(SKIN_TONES[complexion].hex));
+  const skinBaseline=r.colors.get(r.skinMaterial);
+  if(skinBaseline)skinBaseline.set(SKIN_TONES[complexion].hex);
+  else r.colors.set(r.skinMaterial,new THREE.Color(SKIN_TONES[complexion].hex));
   // Kit presentation reuses the live rig without altering shot transforms.
   const gear=p.equipment?.slots;
   // Legacy rectangles are retained for compatibility but superseded by
@@ -789,7 +792,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // grounded blood and don't need floating status text. Reversible on seek.
   for(const [material,original] of r.colors){
     material.color.copy(original);
-    if(p.down&&!p.surrender)material.color.lerp(new THREE.Color(0x555c57),.46);
+    if(p.down&&!p.surrender)material.color.lerp(DOWNED_TINT,.46);
   }
   const downProgress=clamp(p.downProgress??(p.down?1:0),0,1);
   const smooth=(t:number)=>{const v=clamp(t,0,1);return v*v*(3-2*v)};

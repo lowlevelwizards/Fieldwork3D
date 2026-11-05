@@ -51,7 +51,8 @@ const traversalCopy=(op:TraverseOpportunity|null):TraverseOpportunity|null=>
     landing:position(op.landing),destination:position(op.destination)}:null;
 const shotCopy=(shot:ShotEvent):ShotEvent=>({...shot,
   start:position(shot.start),end:position(shot.end)});
-export function snapshot(s:Session,seenGround?:string[]):ReplayFrame{
+export function snapshot(s:Session,seenGround?:string[],
+  unchangedWorld?:Pick<ReplayFrame,'windows'|'coverState'>):ReplayFrame{
   return {
     t:s.seconds,phase:s.phase,mission:s.mission,
     actors:s.operators.map(a=>({id:a.id,p:position(a.p),
@@ -103,8 +104,10 @@ export function snapshot(s:Session,seenGround?:string[]):ReplayFrame{
       intentKind:a.intent?.kind,awarenessCount:Object.keys(a.awareness.contacts).length})),
     doors:s.doors.map(d=>({...d,a:position(d.a),b:position(d.b)})),
     objectRevision:s.objectRevision,
-    windows:s.windows.map(w=>({...w})),
-    coverState:s.coverState.map(o=>({...o})),
+    // Replay already shares these immutable samples until objectRevision moves.
+    // Avoid allocating copies just to throw them away in capture().
+    windows:unchangedWorld?.windows??s.windows.map(w=>({...w})),
+    coverState:unchangedWorld?.coverState??s.coverState.map(o=>({...o})),
     shots:s.shots.map(shotCopy),
     casings:s.casings.map(x=>({...x})),
     dropped:s.dropped.map(m=>({...m,p:position(m.p)})),
@@ -155,17 +158,15 @@ export class MissionRecorder{
     if(this.frames.length>=12000)return;
     const remembered=last&&last.seenGround.length===s.seenGround.size?
       last.seenGround:undefined;
-    const frame=snapshot(s,remembered);
+    const unchangedWorld=last&&last.objectRevision===s.objectRevision?
+      last:undefined;
+    const frame=snapshot(s,remembered,unchangedWorld);
     for(const actor of frame.actors)
       actor.travelYaw=this.motion.direction(actor.id);
     // Explored ground only grows. Reuse identical history instead of
     // allocating thousands of duplicate tile arrays during long missions.
     if(last&&last.seenGround.length===frame.seenGround.length)
       frame.seenGround=last.seenGround;
-    if(last&&last.objectRevision===frame.objectRevision){
-      frame.windows=last.windows;
-      frame.coverState=last.coverState;
-    }
     this.frames.push(frame);
   }
   get duration(){return this.frames.at(-1)?.t??0;}
