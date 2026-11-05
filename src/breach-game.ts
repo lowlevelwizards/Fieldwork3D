@@ -59,6 +59,9 @@ import {materialResponse} from './breach-impact-responses.ts';
 import {manipulateWindow,damageWindow,windowPaneSegment} from './breach-windows.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {chooseAiIntent,hasRecentSound,type AIIntent} from './breach-ai-policy.ts';
+import {newSuspicion,observeSuspicion,advanceSuspicion,
+  exhaustSuspicionSearch,type SuspicionMemory}
+  from './breach-ai-suspicion.ts';
 import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
 import {TacticalRouteCache} from './breach-tactical-route-cache.ts';
 import {PerceptionPairCache} from './breach-perception-cache.ts';
@@ -144,6 +147,7 @@ export type TeamActor=Operator & {
   carryingId:string|null;carriedById:string|null;
   wedgeRemaining:number;
   awareness:ActorAwareness;
+  suspicion:SuspicionMemory;lastVisualSuspicionId:string|null;
   intent:AIIntent|null;combatChoice:CombatAction|null;lastReportAt:number;
   coordinationRole:GroupRole|null;coordinationUntil:number;
   lastMoraleEventAt:number;
@@ -305,7 +309,8 @@ const withActions=(a:Operator):TeamActor=>({
   lastTreatmentAt:-100,lastTreatmentTargetId:null,
   treatmentActive:false,treatmentProgress:0,
   carryingId:null,carriedById:null,wedgeRemaining:0,
-  awareness:newAwareness(),intent:null,combatChoice:null,lastReportAt:-100,
+  awareness:newAwareness(),suspicion:newSuspicion(),lastVisualSuspicionId:null,
+  intent:null,combatChoice:null,lastReportAt:-100,
   coordinationRole:null,coordinationUntil:0,lastMoraleEventAt:-100,searchOrigin:null,searchQueue:[],searchPauseUntil:0,plan:[],history:makeHistory(),nav:[],activeNode:-1,
   posture:'stand',pace:'walk',alert:'idle',velocity:0,turning:0,aim:0,
   targetId:null,suppression:0,stamina:1,magazine:12,reserve:36,
@@ -2691,6 +2696,18 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   if(a.health<=0||a.surrendered)return;
   if(!a.watch)a.watch=watchPoint(a.p,s.doors);
   const visible=team(s).filter(b=>inSight(a,b,s));
+  // First acquisition is a real visual observation; seeing the same actor
+  // on subsequent ticks is not a fresh independent suspicion event.
+  const visualId=visible[0]?.id??null;
+  if(visualId!==a.lastVisualSuspicionId){
+    a.lastVisualSuspicionId=visualId;
+    if(visualId)observeSuspicion(a.suspicion,{
+      id:'visual/'+visualId+'/'+Math.round(s.seconds*60),
+      at:s.seconds,kind:'contact',cause:'confirmed-sight'
+    });
+  }
+  advanceSuspicion(a.suspicion,s.seconds,dt,
+    a.alert==='investigating'&&!!a.contact);
   if(visible.length&&a.encounterReactionUntil===Number.POSITIVE_INFINITY){
     a.encounterReactionStartedAt=s.seconds;
     a.encounterReactionUntil=s.seconds+encounterReactionDelay(
@@ -2726,6 +2743,12 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     else if(!recentNoise){
       a.contact=null;a.heard=null;a.contacted=false;
       if(a.alert==='investigating')a.alert='idle';
+      // Defensive postures may linger after contact, but cease indefinite
+      // armed-cover alert when the evidence and suppression have truly faded.
+      if(a.alert==='cover'&&a.suspicion.stage==='unaware'&&
+         a.suppression<.08&&!a.retreatPoint){
+        a.alert='idle';a.defense=null;
+      }
     }
   }
   if(visible.length){
@@ -2836,7 +2859,14 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         observerId:a.id,source:'auditory',at:evidence.at,
         estimate:evidence.estimate,uncertainty:evidence.uncertainty,
         kind:evidence.kind});
-      const urgency=soundPriority(soundResponse(evidence.kind,evidence.intensity));
+      const disposition=soundResponse(evidence.kind,evidence.intensity);
+      if(disposition!=='ignore')observeSuspicion(a.suspicion,{
+        id:'sound/'+evidence.id,at:evidence.at,
+        kind:disposition==='alarm'?'alarm':
+          disposition==='investigate'?'investigate':'orient',
+        intensity:evidence.intensity,cause:evidence.kind
+      });
+      const urgency=soundPriority(disposition);
       const prior=strongest?soundPriority(
         soundResponse(strongest.kind,strongest.intensity)):-1;
       if(urgency>0&&(urgency>prior||
@@ -3018,6 +3048,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         a.searchPauseUntil=0;
       }else if(!a.searchQueue.length){
         a.alert='cover';a.contact=null;a.searchOrigin=null;
+        exhaustSuspicionSearch(a.suspicion,s.seconds);
         a.searchPauseUntil=0;
         a.defense=defensivePosition(a,a.heard??a.p,s);
         a.defenseUntil=s.seconds+6;
@@ -3048,6 +3079,10 @@ function distributeReports(s:Session){
    report.deliveredTo.push(recipient.id);
    newlyInformed.push(recipient.id);
    addObservation(recipient.awareness,observation);
+   observeSuspicion(recipient.suspicion,{
+     id:observation.id,at:s.seconds,kind:'report',
+     cause:'heard-verbal-warning'
+   });
    if(recipient.intent?.kind!=='engage'){
     recipient.heard=clone(observation.estimate);
     recipient.contact=clone(observation.estimate);
