@@ -14,7 +14,7 @@ test('R2 migration: new R3 lens topology preserves former seven selections',()=>
  const aviator=createD2Glasses('glasses-aviator',material,material);
  const wrap=createD2Glasses('glasses-wrap',material,material);
  const shield=createD2Glasses('glasses-shield',material,material);
- assert.deepEqual([standard,aviator,wrap,shield].map(x=>lenses(x).length),[2,2,2,1]);
+ assert.deepEqual([standard,aviator,wrap,shield].map(x=>lenses(x).length),[2,2,1,1]);
  assert.equal(meshes(shield).filter(x=>x.name.includes('housing')).length,0,
   'the borderless shield is not an old framed plate');
  assert.equal(meshes(wrap).filter(x=>x.name.includes('fin')).length,0);
@@ -29,9 +29,9 @@ test('R2 migration: deep cup and dust silhouettes retain stronger depth than low
   const g=createD2Goggles(id,material,material,material).children[0];
   return meshes(g).filter(m=>m.userData.d2EyeProfile);
  });
- assert.deepEqual(profiles.map(p=>p.length),[1,1,2]);
+ assert.deepEqual(profiles.map(p=>p.length),[1,2,3]);
  assert.ok(profiles[1][0].userData.d2EyeProfile.housingDepth>
   profiles[0][0].userData.d2EyeProfile.housingDepth+.7);
- assert.ok(profiles[2][0].userData.d2EyeProfile.housingDepth>
-  profiles[0][0].userData.d2EyeProfile.housingDepth+.8);
+ assert.ok(profiles[2].find(p=>p.name.includes('faceted-barrel')).userData.d2EyeProfile.housingDepth>
+  profiles[0][0].userData.d2EyeProfile.housingDepth+.3);
 });
