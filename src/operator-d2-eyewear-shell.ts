@@ -91,16 +91,23 @@ export function lensSurface(parent:THREE.Group,material:THREE.Material,
 /** A ring with DIFFERENT front and rear silhouettes, making depth and
  * taper meaningful rather than simply extruding a front drawing.
  * Four corresponding polygon loops have identical vertex counts.
+ * An optional intermediate station adds one broad side-wall bend while
+ * preserving a SINGLE mesh, rather than bolting extra boxes onto the shell.
  * One mesh contains front rim, outer shell, back rim, and inner seal wall.
  */
 export function sculptedHousing(parent:THREE.Group,material:THREE.Material,
  name:string,frontOuter:EyePolygon,frontInner:EyePolygon,
  rearOuter:EyePolygon,rearInner:EyePolygon,
- frontZ:number,rearZ:number,family:EyeFamily,topology:EyeTopology):THREE.Mesh{
+ frontZ:number,rearZ:number,family:EyeFamily,topology:EyeTopology,
+ mid?:{outer:EyePolygon;inner:EyePolygon;z:number}):THREE.Mesh{
  const n=frontOuter.length;
  if(n<4||[frontInner,rearOuter,rearInner].some(p=>p.length!==n))
   throw new Error(name+': housing loops require equal 4+ vertex counts');
  if(!(rearZ>frontZ))throw new Error(name+': rear must be behind front');
+ if(mid&&(
+  mid.outer.length!==n||mid.inner.length!==n||
+  !(frontZ<mid.z&&mid.z<rearZ)
+ ))throw new Error(name+': intermediate contours must align between front and rear');
  // Normalize all corresponding profile loops to counterclockwise XY
  // so the frontal cap faces the camera (-Z) on boxes and round eyecups.
  const area=(p:EyePolygon)=>p.reduce((s,[x,y],i)=>{
@@ -111,6 +118,8 @@ export function sculptedHousing(parent:THREE.Group,material:THREE.Material,
   frontInner=[...frontInner].reverse();
   rearOuter=[...rearOuter].reverse();
   rearInner=[...rearInner].reverse();
+  if(mid)mid={...mid,outer:[...mid.outer].reverse(),
+   inner:[...mid.inner].reverse()};
  }
  const positions:number[]=[];
  const face=(a:readonly number[],b:readonly number[],c:readonly number[])=>{
@@ -119,18 +128,29 @@ export function sculptedHousing(parent:THREE.Group,material:THREE.Material,
  const v=(poly:EyePolygon,i:number,z:number):number[]=>[
   poly[(i+n)%n][0],poly[(i+n)%n][1],z
  ];
+ const stations=[
+  {outer:frontOuter,inner:frontInner,z:frontZ},
+  ...(mid?[mid]:[]),
+  {outer:rearOuter,inner:rearInner,z:rearZ}
+ ];
  for(let i=0;i<n;i++){
   const j=(i+1)%n;
   const a=v(frontOuter,i,frontZ),b=v(frontOuter,j,frontZ);
   const c=v(frontInner,i,frontZ),d=v(frontInner,j,frontZ);
   const e=v(rearOuter,i,rearZ),f=v(rearOuter,j,rearZ);
   const g=v(rearInner,i,rearZ),h=v(rearInner,j,rearZ);
-  // Front/back ring, outside wall, and inside wall. Non-indexed gives
-  // intentionally flat facet normals, no smoothing or microbevels.
+  // Only the first and last stations receive end caps.
   face(a,c,d);face(a,d,b);
   face(e,f,h);face(e,h,g);
-  face(a,b,f);face(a,f,e);
-  face(c,g,h);face(c,h,d);
+  for(let k=0;k<stations.length-1;k++){
+   const near=stations[k],far=stations[k+1];
+   const oa=v(near.outer,i,near.z),ob=v(near.outer,j,near.z);
+   const oc=v(far.outer,i,far.z),od=v(far.outer,j,far.z);
+   const ia=v(near.inner,i,near.z),ib=v(near.inner,j,near.z);
+   const ic=v(far.inner,i,far.z),id=v(far.inner,j,far.z);
+   face(oa,ob,od);face(oa,od,oc);
+   face(ia,ic,id);face(ia,id,ib);
+  }
  }
  const geo=new THREE.BufferGeometry();
  geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));

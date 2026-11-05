@@ -70,7 +70,7 @@ function standard(parent:THREE.Group,frame:THREE.Material,
 }
 function aviator(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
  root.userData.d2EyeFitTop=5.13;
- root.userData.d2EyeDesign='R6-broad-outer-pilot-teardrops';
+ root.userData.d2EyeDesign='R7-connected-pilot-double-bridge';
  // Each left-lens polygon is intentionally fuller toward -X (the outside).
  // The mirrored right lens reverses that bias. Broad flat foot rather than
  // pointed fangs, with the topmost shoulder over the outer cheek.
@@ -97,19 +97,30 @@ function aviator(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
    -5.01,.38,'pilot');
   lensSurface(root,lens,'pilot-full-teardrop',aperture,-5.06);
  }
- // Two small separate structural bars are iconic, not tiny decoration.
- block(root,frame,'pilot-upper-bridge',0,4.72,-4.98,1.20,.34,.58);
- block(root,frame,'pilot-lower-bridge',0,4.03,-4.98,.79,.29,.54);
+ // Both bridges are deliberate solid extrusions, not floating bars.
+ // Their broad ends intersect the INNER rims at the heights where they meet
+ // the lens collars. The high bridge has a subtle arch; the lower connector
+ // forms a short saddle while preserving the open nose gap.
+ const upperBridge:EyePolygon=[
+  [-1.34,4.84],[-.62,5.00],[.62,5.00],[1.34,4.84],
+  [1.34,4.57],[.60,4.70],[-.60,4.70],[-1.34,4.57]
+ ];
+ const lowerBridge:EyePolygon=[
+  [-.88,4.20],[-.43,4.28],[.43,4.28],[.88,4.20],
+  [.78,3.85],[.35,3.90],[-.35,3.90],[-.78,3.85]
+ ];
+ frameRing(root,frame,'pilot-upper-bridge',upperBridge,[],-5.05,.42,'pilot');
+ frameRing(root,frame,'pilot-lower-bridge',lowerBridge,[],-5.04,.41,'pilot');
  outsideTemples(root,frame,'pilot-exterior-temple',{
-  frontX:3.88,frontY:4.48,frontZ:-4.96,
-  shoulderY:4.38,rearY:4.05,frontHeight:.47,
+  frontX:3.80,frontY:4.51,frontZ:-4.94,
+  shoulderY:4.34,rearY:4.04,frontHeight:.56,
   shoulderHeight:.55,rearHeight:.38,
-  frontWidth:.44,shoulderWidth:.54,rearWidth:.39
+  frontWidth:.56,shoulderWidth:.54,rearWidth:.39
  });
 }
 function shooting(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
  root.userData.d2EyeFitTop=4.94;
- root.userData.d2EyeDesign='R6-clean-panoramic-shooting-glasses';
+ root.userData.d2EyeDesign='R7-close-fitted-shooting-glasses';
  // Approved R5 lens shape is unchanged: the single sweeping pane, open
  // underside and generous nasal relief define the shooting fantasy.
  const pane:EyePolygon=[
@@ -119,22 +130,26 @@ function shooting(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
   [3.92,3.16],[4.42,4.15],[4.18,4.52],
   [1.70,4.83],[-1.70,4.83]
  ];
- lensSurface(root,lens,'shooting-panoramic',pane,-5.18,1.02);
- // ONE eight-corner sculpted brow, no separate thin line or rear plate.
- // The rear of the .22-deep strip remains .10 ahead of the front of the
- // swept lens at every X: the previous deep band pierced the lens itself,
- // causing double black lines and unintended transparent overlaps.
+ // The R6 front silhouette is preserved, while depth and sweep move the
+ // central lens closer to the face without penetrating the 8-unit head.
+ lensSurface(root,lens,'shooting-panoramic',pane,-4.94,.78);
+ // One sculpted brow at the same sweep as the lens. The back of its
+ // .22-deep band remains .09 ahead of the lens at every X, with no
+ // second rear plate or small overlapping brow strips.
  const brow:EyePolygon=[
   [-4.42,4.26],[-4.19,4.81],[0,4.98],[4.19,4.81],
   [4.42,4.26],[3.86,4.48],[0,4.70],[-3.86,4.48]
  ];
- sweptFrame(root,frame,'integrated-swept-frame',brow,[],-5.50,.22,1.02);
- // Two existing heavy, uninterrupted arms terminate into this brow.
+ sweptFrame(root,frame,'integrated-swept-frame',brow,[],-5.25,.22,.78);
+ // Roots now occupy the SAME volume as the outer swept brow.
+ // They transition once toward the side of the head, not into a
+ // parallel, floating horizontal headband.
  outsideTemples(root,frame,'continuous-swept-temple',{
-  frontX:4.24,frontY:4.55,frontZ:-4.39,
-  shoulderX:4.42,shoulderY:4.35,shoulderZ:-4.10,
-  rearX:4.36,rearY:3.92,rearZ:3.37,
-  frontHeight:.93,shoulderHeight:.79,rearHeight:.41
+  frontX:4.20,frontY:4.51,frontZ:-4.34,
+  shoulderX:4.40,shoulderY:4.31,shoulderZ:-3.90,
+  rearX:4.34,rearY:3.91,rearZ:3.37,
+  frontWidth:.68,shoulderWidth:.66,rearWidth:.43,
+  frontHeight:.83,shoulderHeight:.75,rearHeight:.41
  });
 }
 function shield(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){

@@ -10,7 +10,7 @@ export type D2GogglePlacement='eyes'|'forehead'|'helmet'|'neck';
 function low(root:THREE.Group,frame:THREE.Material,
  lens:THREE.Material,elastic:THREE.Material):void{
  root.userData.d2EyeFitTop=4.82;
- root.userData.d2EyeDesign='R6-compact-contoured-sport-goggles';
+ root.userData.d2EyeDesign='R7-bold-rim-compact-sport-goggles';
  // Sports-protective silhouette: a lightweight upper arch and ONE generous
  // wraparound pane, not a miniature of the tall bunker field goggles.
  // Increased vertical coverage comes principally from the cheek outline,
@@ -22,8 +22,8 @@ function low(root:THREE.Group,frame:THREE.Material,
   [-.87,2.87],[-2.52,2.41],[-3.75,3.19]
  ];
  const inner:EyePolygon=[
-  [-3.43,4.11],[-2.52,4.40],[-1.04,4.47],
-  [1.04,4.47],[2.52,4.40],[3.43,4.11],
+  [-3.43,4.05],[-2.52,4.32],[-1.04,4.36],
+  [1.04,4.36],[2.52,4.32],[3.43,4.05],
   [3.37,3.40],[2.40,2.78],[.84,3.20],
   [-.84,3.20],[-2.40,2.78],[-3.37,3.40]
  ];
@@ -34,8 +34,8 @@ function low(root:THREE.Group,frame:THREE.Material,
   [-.81,3.01],[-2.47,2.57],[-3.53,3.31]
  ];
  const rearInner:EyePolygon=[
-  [-3.18,4.05],[-2.41,4.28],[-1.01,4.36],
-  [1.01,4.36],[2.41,4.28],[3.18,4.05],
+  [-3.18,4.01],[-2.41,4.23],[-1.01,4.27],
+  [1.01,4.27],[2.41,4.23],[3.18,4.01],
   [3.08,3.50],[2.31,2.94],[.78,3.32],
   [-.78,3.32],[-2.31,2.94],[-3.08,3.50]
  ];
@@ -48,14 +48,14 @@ function low(root:THREE.Group,frame:THREE.Material,
   frontX:3.87,frontY:3.81,frontZ:-4.28,
   shoulderX:4.37,shoulderY:3.80,shoulderZ:-3.73,
   rearX:4.30,rearY:3.79,rearZ:3.46,
-  frontHeight:.70,shoulderHeight:.61,rearHeight:.51,
-  frontWidth:.58,shoulderWidth:.55,rearWidth:.46
+  frontHeight:.79,shoulderHeight:.63,rearHeight:.51,
+  frontWidth:.60,shoulderWidth:.55,rearWidth:.46
  },.54);
 }
 function field(root:THREE.Group,frame:THREE.Material,
  lens:THREE.Material,elastic:THREE.Material):void{
  root.userData.d2EyeFitTop=5.34;
- root.userData.d2EyeDesign='R6-sculpted-bunker-dust-goggles';
+ root.userData.d2EyeDesign='R7-tapered-bunker-dust-goggles';
  // A heavy field protection silhouette with broad elevated brow shoulders.
  // The two top angles and deep cheek stops replace the R5 brick-flat roof.
  // The rear flange tapers deliberately inward toward a fitted face gasket.
@@ -83,20 +83,35 @@ function field(root:THREE.Group,frame:THREE.Material,
   [.67,3.38],[-.67,3.38],[-1.34,2.90],[-2.59,2.83],
   [-3.21,3.06],[-3.44,4.07]
  ];
+ // One intermediate contour creates a deliberate shoulder-to-gasket
+ // taper without extra housing objects or fine decorative geometry.
+ const midOuter:EyePolygon=[
+  [-4.08,5.02],[-3.00,5.22],[3.00,5.22],[4.08,5.02],
+  [4.24,4.42],[4.01,2.37],[2.90,2.10],[1.41,2.25],
+  [.72,2.93],[-.72,2.93],[-1.41,2.25],[-2.90,2.10],
+  [-4.01,2.37],[-4.24,4.42]
+ ];
+ const midInner:EyePolygon=[
+  [-3.55,4.56],[-2.79,4.72],[2.79,4.72],[3.55,4.56],
+  [3.66,4.18],[3.43,2.91],[2.68,2.73],[1.38,2.78],
+  [.71,3.29],[-.71,3.29],[-1.38,2.78],[-2.68,2.73],
+  [-3.43,2.91],[-3.66,4.18]
+ ];
  sculptedHousing(root,frame,'single-mass-deep-field-shell',
   outer,inner,backOuter,backInner,-5.88,-4.22,
-  'field-seal','single-sealed');
+  'field-seal','single-sealed',
+  {outer:midOuter,inner:midInner,z:-4.77});
  lensSurface(root,lens,'deep-dust-pane',inner,-5.92);
  // One fitted, continuous rear cushion and one textile band; no vents
  // or boxes. The natural angled side wall now provides the shell character.
  frameRing(root,elastic,'field-soft-rear-gasket',
   backOuter,[backInner],-4.18,.33,'field-seal');
  taperedGoggleStrap(root,elastic,'field-tapered-strap',{
-  frontX:4.09,frontY:3.82,frontZ:-4.36,
-  shoulderX:4.48,shoulderY:3.79,shoulderZ:-3.76,
+  frontX:4.17,frontY:3.86,frontZ:-4.66,
+  shoulderX:4.49,shoulderY:3.81,shoulderZ:-3.79,
   rearX:4.33,rearY:3.79,rearZ:3.48,
-  frontHeight:1.03,shoulderHeight:.85,rearHeight:.64,
-  frontWidth:.58,shoulderWidth:.66,rearWidth:.51
+  frontHeight:1.12,shoulderHeight:.85,rearHeight:.64,
+  frontWidth:.64,shoulderWidth:.65,rearWidth:.51
  },.67);
 }
 function retro(root:THREE.Group,frame:THREE.Material,

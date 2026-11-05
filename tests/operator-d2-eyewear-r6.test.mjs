@@ -69,10 +69,21 @@ test('R6 shooting brow is in front of lens at all swept sections, not cutting th
  assert.equal(shapePts(brow).length>=8,true);
  assert.equal(brow.geometry.parameters.options.depth,.22);
  const arr=brow.geometry.attributes.position;
+ const lp=pane.geometry.attributes.position;
+ // Derive the actual lens sweep rather than pinning a previous release's
+ // Z offset. The invariant is front-to-back separation, not world position.
+ const q=x=>Math.pow(Math.abs(x)/4,2);
+ const sample=[lp.getX(0),lp.getZ(0)];
+ let other=-1;
+ for(let i=1;i<lp.count;i++)
+  if(Math.abs(q(lp.getX(i))-q(sample[0]))>.1){other=i;break;}
+ assert.ok(other>=0,'lens has a meaningful horizontal sweep');
+ const slope=(lp.getZ(other)-sample[1])/(q(lp.getX(other))-q(sample[0]));
+ const center=sample[1]-slope*q(sample[0]);
  for(let i=0;i<arr.count;i++){
   const x=arr.getX(i);
   const back=brow.position.z+arr.getZ(i);
-  const lensAt=-5.18+1.02*Math.pow(Math.abs(x)/4,2);
+  const lensAt=center+slope*q(x);
   assert.ok(back<lensAt-.08,'solid brow back should remain ahead of tinted lens');
  }
  assert.equal(meshes(s).filter(m=>m.name.endsWith('-lens')).length,1);
