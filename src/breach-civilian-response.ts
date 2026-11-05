@@ -52,7 +52,7 @@ export function stepCivilianResponse(c:CivilianActor,now:number,dt:number,
  if(c.health<=0||c.state==='incapacitated'||c.state==='wounded')return;
  // Use a low-frequency observer tick; actor movement still runs at 60 Hz.
  if(now-c.lastSenseAt<.12)return;
- const elapsed=Math.max(.12,now-c.lastSenseAt);
+ const elapsed=Math.max(.12,dt,now-c.lastSenseAt);
  c.lastSenseAt=now;
  if(c.lastEvidenceAt>=0&&now-c.lastEvidenceAt>2)
   c.fear=Math.max(0,c.fear-elapsed*.020);
