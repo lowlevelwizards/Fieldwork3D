@@ -20,11 +20,11 @@ export const D2_FACEWEAR=[
 export const D2_EYEWEAR=[
  {id:'glasses-standard',name:'Standard glasses',kind:'glasses',modes:['rectangular','round','heavy-square']},
  {id:'glasses-aviator',name:'Aviators',kind:'glasses',modes:['standard']},
- {id:'glasses-wrap',name:'Wraparound tactical glasses',kind:'glasses',modes:['standard']},
+ {id:'glasses-wrap',name:'Shooting glasses',kind:'glasses',modes:['standard']},
  {id:'glasses-shield',name:'Ballistic eyeshield',kind:'glasses',modes:['standard']},
  {id:'goggles-low',name:'Low-profile goggles',kind:'goggles',modes:['standard']},
  {id:'goggles-field',name:'Bulky field goggles',kind:'goggles',modes:['standard']},
- {id:'goggles-retro',name:'Vintage round goggles',kind:'goggles',modes:['standard']}
+ {id:'goggles-retro',name:'Vintage motor goggles',kind:'goggles',modes:['standard']}
 ] as const;
 export type D2FacewearId=typeof D2_FACEWEAR[number]['id'];
 export type D2EyewearId=typeof D2_EYEWEAR[number]['id'];

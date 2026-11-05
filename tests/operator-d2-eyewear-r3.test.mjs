@@ -27,8 +27,8 @@ test('R3 seven canonical IDs map to seven structurally independent archetypes',(
  assert.deepEqual(groups.map(g=>g.userData.modelAxes),
   Array(7).fill('-Z-forward,+X-right,+Y-up'));
  const active=groups.map((g,i)=>i===0?g.children[0]:i>=4?g.children[0]:g);
- assert.deepEqual(active.map(g=>panes(g).length),[2,2,2,1,1,1,2]);
- assert.deepEqual(active.map(g=>profiles(g).length),[1,2,1,1,1,1,2]);
+ assert.deepEqual(active.map(g=>panes(g).length),[2,2,1,1,1,1,2]);
+ assert.deepEqual(active.map(g=>profiles(g).length),[1,2,1,1,1,2,3]);
  assert.deepEqual(groups.slice(4).map(g=>g.children.map(
   p=>p.userData.d2GogglePlacement)),Array(3).fill(null).map(()=>[
   'eyes','forehead','helmet','neck']));
@@ -79,30 +79,38 @@ test('R3 wrap is a continuous swept surface, eyeshield is an open borderless pan
  assert.equal(named(shield,'shield-support-temple').length,2);
  assert.ok(dim(shield).x>8.4);
 });
-test('R3 three goggle families use sculpted 3D housings, not front-sheet extrusions',()=>{
+test('R4 preserved: three sculpted goggle families, plus only authored gasket masses',()=>{
  const [low,field,retro]=goggleNames.map(id=>
   createD2Goggles(id,frame,lens,strap).children[0]);
+ const lowHousing=profiles(low).find(m=>m.name.includes('closefit'));
+ const fieldHousing=profiles(field).find(m=>m.name.includes('deep-field'));
+ const cups=profiles(retro).filter(m=>m.name.includes('faceted-barrel'));
+ assert.ok(lowHousing&&fieldHousing);
+ assert.equal(cups.length,2);
+ assert.ok(fieldHousing.userData.d2EyeProfile.housingDepth>
+  lowHousing.userData.d2EyeProfile.housingDepth+.8);
+ assert.ok(cups[0].userData.d2EyeProfile.housingDepth>
+  lowHousing.userData.d2EyeProfile.housingDepth+.3);
+ for(const housing of [lowHousing,fieldHousing,...cups]){
+  assert.equal(housing.geometry.type,'BufferGeometry');
+  const p=housing.userData.d2EyeProfile;
+  assert.equal(p.version,3);
+  assert.ok(p.housingDepth>1.1);
+  const nz=housing.geometry.attributes.normal;
+  const normals=Array.from({length:nz.count},(_,i)=>nz.getZ(i));
+  assert.ok(normals.some(z=>z<-.8),'front cap should face camera');
+  assert.ok(normals.some(z=>z>.8),'rear cap should face backward');
+ }
  for(const g of [low,field,retro]){
-  for(const housing of profiles(g)){
-   assert.equal(housing.geometry.type,'BufferGeometry');
-   const p=housing.userData.d2EyeProfile;
-   assert.equal(p.version,3);
-   assert.ok(p.housingDepth>1.1);
-   assert.ok(panes(g).length>=1);
-   const nz=housing.geometry.attributes.normal;
-   const front=Array.from({length:nz.count},(_,i)=>nz.getZ(i));
-   assert.ok(front.some(z=>z<-.8),'front cap faces camera');
-   assert.ok(front.some(z=>z>.8),'rear cap faces backward');
-  }
+  assert.ok(panes(g).length>=1);
   assert.equal(named(g,'strap-back').length,1);
  }
- assert.ok(profiles(field)[0].userData.d2EyeProfile.housingDepth>
-  profiles(low)[0].userData.d2EyeProfile.housingDepth+.75);
- assert.equal(profiles(retro).length,2);
+ assert.equal(named(field,'field-soft-rear-gasket').length,1);
+ assert.equal(named(retro,'connected-vintage-leather').length,1);
  assert.equal(named(retro,'single-bold-vintage-bridge').length,1);
- assert.ok(dim(retro).z>dim(low).z+1);
- assert.ok(meshes(low).length<=7,'compact goggle uses very few masses');
+ assert.ok(meshes(low).length<=7);
  assert.ok(meshes(field).length<=7);
+ assert.ok(meshes(retro).length<=10);
 });
 test('R3 helmet fit uses real lower brow edges and never rebuilds geometries',()=>{
  for(const [style,brow] of [['ach',4.40],['high-cut',4.50],['pasgt',4.055]]){

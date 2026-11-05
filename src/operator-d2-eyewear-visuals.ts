@@ -97,7 +97,7 @@ function aviator(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
  block(root,frame,'pilot-upper-bridge',0,4.72,-4.98,1.20,.34,.58);
  block(root,frame,'pilot-lower-bridge',0,4.03,-4.98,.79,.29,.54);
  outsideTemples(root,frame,'pilot-exterior-temple',{
-  frontX:4.10,frontY:4.48,frontZ:-4.96,
+  frontX:3.88,frontY:4.48,frontZ:-4.96,
   shoulderY:4.38,rearY:4.05,frontHeight:.47,
   shoulderHeight:.55,rearHeight:.38,
   frontWidth:.44,shoulderWidth:.54,rearWidth:.39

@@ -41,7 +41,7 @@ function low(root:THREE.Group,frame:THREE.Material,
   outer,inner,rearOuter,rearInner,-5.34,-4.17,
   'compact-seal','single-sealed');
  lensSurface(root,lens,'W-shaped-sport-pane',inner,-5.38);
- strapBand(root,elastic,3.95,3.67,.48);
+ strapBand(root,elastic,4.14,3.67,.48);
 }
 function field(root:THREE.Group,frame:THREE.Material,
  lens:THREE.Material,elastic:THREE.Material):void{
@@ -80,7 +80,7 @@ function field(root:THREE.Group,frame:THREE.Material,
  // One continuous material gasket behind the outer polycarbonate housing.
  frameRing(root,elastic,'field-soft-rear-gasket',
   backOuter,[backInner],-4.17,.37,'field-seal');
- strapBand(root,elastic,4.42,3.74,.96);
+ strapBand(root,elastic,4.55,3.74,.96);
 }
 function retro(root:THREE.Group,frame:THREE.Material,
  lens:THREE.Material,elastic:THREE.Material):void{
@@ -108,7 +108,7 @@ function retro(root:THREE.Group,frame:THREE.Material,
   lensSurface(root,lens,'vintage-round-pane',inner,-5.85);
  }
  block(root,elastic,'single-bold-vintage-bridge',0,3.78,-4.97,.85,.69,.64);
- strapBand(root,elastic,4.17,3.82,.70);
+ strapBand(root,elastic,4.41,3.82,.70);
 }
 function createOne(id:D2GoggleId,frame:THREE.Material,
  lens:THREE.Material,elastic:THREE.Material):THREE.Group{
