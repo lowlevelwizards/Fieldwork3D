@@ -136,3 +136,56 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 #studioItemBrowser .appearance-item-card[aria-pressed="true"]{color:#f3efdc}
 #studioItemBrowser .appearance-item-card[aria-pressed="true"] .appearance-item-name{color:#f3efdc}
 #studioItemBrowser .appearance-item-card[aria-pressed="true"] .appearance-item-tag{color:#ffdfa3}
+
+
+/* Reference Kits: lightweight on-device catalog, shares the main 3D viewport. */
+#studioRoot[data-reference-open="true"] #studioItemBrowser,
+#studioRoot[data-reference-open="true"] #studioMaterials,
+#studioRoot[data-reference-open="true"] #studioSubcategories,
+#studioRoot[data-reference-open="true"] #studioCompare,
+#studioRoot[data-reference-open="true"] #studioUndo,
+#studioRoot[data-reference-open="true"] #studioMore{display:none}
+.studio-reference-panel{display:grid;gap:9px;min-width:0;padding:4px 0 12px}
+.studio-reference-panel[hidden]{display:none}
+.reference-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.reference-heading{display:block;font-size:19px;letter-spacing:.045em}
+.reference-intro{display:block;font:500 11px/1.3 "Work Sans",sans-serif;color:#b6cbb8}
+.reference-close{min-height:36px;white-space:nowrap;font-size:11px;padding:6px 8px}
+.reference-controls{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.reference-controls .reference-search{grid-column:1/-1}
+.reference-controls input,.reference-controls select{min-width:0;width:100%;min-height:39px;
+ border:1px solid #83998b;border-radius:7px;color:#e9eee5;background:#294339;
+ padding:6px 8px;font:700 12px "Saira Condensed",sans-serif}
+.reference-controls .reference-search{font:500 13px "Work Sans",sans-serif}
+.reference-count{font:700 11px "Saira Condensed",sans-serif;color:#bbcebc}
+.reference-list{display:flex;gap:7px;overflow-x:auto;touch-action:pan-x;
+ scroll-snap-type:x proximity;padding-bottom:5px}
+.reference-card{flex:0 0 158px;display:grid;grid-template-rows:56px auto;
+ gap:5px;padding:5px;min-height:111px;text-align:left;scroll-snap-align:start;
+ background:#263f35;border:1px solid #6e8a78}
+.reference-card[aria-pressed="true"]{border:2px solid #ddc38e}
+.reference-pattern{display:block;width:100%;overflow:hidden;border-radius:4px;background:#64714f}
+.reference-pattern canvas{width:100%;height:100%;object-fit:cover;image-rendering:pixelated}
+.reference-pattern-solid{background:#937b58}
+.reference-card-copy{display:grid;gap:2px;align-content:start;line-height:1.15}
+.reference-card-copy strong{font-size:12px;line-height:1.1}
+.reference-card-copy small{font-size:10px;opacity:.8}
+.reference-empty{font-size:12px;color:#ccd8c9}
+.reference-detail{display:grid;gap:7px;padding:10px;border:1px solid #637e6e;
+ border-radius:9px;background:#21382f}
+.reference-detail h3{margin:0;font-size:18px}
+.reference-detail p{margin:0;font:500 12px/1.4 "Work Sans",sans-serif}
+.reference-detail .reference-meta{font:700 11px "Saira Condensed",sans-serif;
+ letter-spacing:.04em;color:#c0cdbb}
+.reference-detail .reference-status{font-weight:700;color:#edd09a}
+.reference-detail .reference-sources{color:#b7c7b7}
+.reference-gap-list{display:grid;gap:3px;font:500 11px/1.3 "Work Sans",sans-serif}
+.reference-gap-list strong{font:700 12px "Saira Condensed",sans-serif;color:#d8dcce}
+.reference-gap-list span{color:#c1cfc0}
+.reference-detail .reference-compat-warning{padding:7px;border-left:3px solid #d9ae72;
+ background:#4a4433;color:#f1d9b3;font-size:11px}
+.reference-detail .reference-compat-ok{color:#b9d9b7;font-size:11px}
+.reference-apply{width:100%;background:#c6ad7b;border-color:#e7d2a3;color:#1b2a25}
+@media(min-width:740px){.reference-controls{grid-template-columns:2fr 1fr 1fr}
+ .reference-controls .reference-search{grid-column:auto}
+ .reference-card{flex-basis:170px}}
