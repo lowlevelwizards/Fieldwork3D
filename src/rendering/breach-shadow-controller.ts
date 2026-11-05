@@ -37,3 +37,8 @@ export function stationaryShadowFingerprint(input:{
   // called across all actors 60 times per second during active gameplay.
   return JSON.stringify(input);
 }
+
+/** Tiny cube accents cast no discernible tactical silhouette at normal zoom.
+ * Medium structural bars and all major fixtures keep their real shadows. */
+export const shadowEligibleBox=(w:number,h:number,d:number):boolean=>
+  Math.abs(w*h*d)>=64;
