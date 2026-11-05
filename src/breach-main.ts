@@ -113,7 +113,8 @@ import {careerEventsForOperation} from './campaign-history.ts';
 import {awarenessDebugLine} from './breach-awareness-debug.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
 import './breach-style.css';
-import {fieldworkSelectField,confirmFieldworkAction} from './ui/fieldwork-controls.ts';
+import {fieldworkSelectField,confirmFieldworkAction,promptFieldworkText} from './ui/fieldwork-controls.ts';
+import {createTacticalSheetNavigation} from './ui/tactical-sheet-navigation.ts';
 import {compactSiteTitle} from './ui/site-title.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {contextActionChoices} from './ui/context-actions.ts';
@@ -1005,9 +1006,9 @@ function renderOperationsBoard(){
  hint.textContent='Select an operator to edit. Close to resume planning.';
  operationsBoard.append(hint);
 }
-operationsBoard.addEventListener('keydown',event=>{
- if(event.key==='Escape'){operationsBoard.hidden=true;operationsToggle.focus();}
-});
+const tacticalSheetNavigation=createTacticalSheetNavigation({
+ settings:ui.siteSettings,squad:operationsBoard,briefing:ui.briefingPanel
+},()=>{collapseTacticalSheets(null);updateContext();});
 /** Only one major tactical sheet owns the viewport and touch focus at a time. */
 function collapseTacticalSheets(except:'squad'|'weapon'|'settings'|'tools'|'briefing'|null){
  if(except!=='squad')operationsBoard.hidden=true;
@@ -1027,6 +1028,7 @@ function collapseTacticalSheets(except:'squad'|'weapon'|'settings'|'tools'|'brie
   ui.briefingPanel.hidden=true;
   ui.briefingToggle.setAttribute('aria-expanded','false');
  }
+ tacticalSheetNavigation.sync();
 }
 operationsToggle.addEventListener('click',()=>{
  if(state.phase!=='planning'||replaying)return;
@@ -1037,6 +1039,8 @@ operationsToggle.addEventListener('click',()=>{
   hideContextPalette();
   renderOperationsBoard();
  }
+ tacticalSheetNavigation.sync();
+ if(opening)tacticalSheetNavigation.focusFirst();
  updateContext();
 });
 let selected='rook';
@@ -4399,7 +4403,25 @@ function closeMissionSettings(returnFocus=true){
   if(returnFocus)ui.moreOrders.focus();
   updateContext();
 }
-closeSiteSettingsButton.addEventListener('click',()=>closeMissionSettings());
+closeSiteSettingsButton.addEventListener('click',()=>{
+ closeMissionSettings();tacticalSheetNavigation.sync();
+});
+const missionSettingsTabs=Array.from(ui.siteSettings.querySelectorAll<HTMLButtonElement>(
+ '[data-site-tab]'));
+const missionSettingsPanels=Array.from(ui.siteSettings.querySelectorAll<HTMLElement>(
+ '[data-site-panel]'));
+function selectMissionSettingsTab(tab:string){
+ for(const button of missionSettingsTabs)
+  button.setAttribute('aria-pressed',String(button.dataset.siteTab===tab));
+ for(const panel of missionSettingsPanels)
+  panel.hidden=panel.dataset.sitePanel!==tab;
+ const title=ui.siteSettings.querySelector<HTMLElement>('.site-settings-heading strong');
+ if(title)title.textContent=tab==='environment'?'ENVIRONMENT':
+  tab==='preferences'?'PREFERENCES':'MISSION';
+}
+for(const button of missionSettingsTabs)button.addEventListener('click',()=>{
+ selectMissionSettingsTab(button.dataset.siteTab??'mission');
+});
 function chooseCameraView(mode:ViewMode){
   cameraMode(mode);
   closeMissionSettings();
@@ -4418,11 +4440,13 @@ ui.briefingToggle.addEventListener('click',()=>{
   collapseTacticalSheets('briefing');
   ui.briefingPanel.hidden=false;
   ui.briefingToggle.setAttribute('aria-expanded','true');
+  tacticalSheetNavigation.sync();tacticalSheetNavigation.focusFirst();
   updateContext();
 });
 ui.briefingClose.addEventListener('click',()=>{
   ui.briefingPanel.hidden=true;
   ui.briefingToggle.setAttribute('aria-expanded','false');
+  tacticalSheetNavigation.sync();
   updateContext();
 });
 ui.uiSoundToggle.textContent=uiSoundEnabled?'UI SOUND ON':'UI SOUND OFF';
@@ -4445,7 +4469,9 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
   collapseTacticalSheets(opening?'settings':null);
   ui.siteSettings.hidden=!opening;
   ui.siteSettingsToggle.setAttribute('aria-expanded',String(opening));
-  if(opening)closeSiteSettingsButton.focus();
+  if(opening)selectMissionSettingsTab('mission');
+  tacticalSheetNavigation.sync();
+  if(opening)tacticalSheetNavigation.focusFirst();
   else ui.moreOrders.focus();
   updateContext();
 });
