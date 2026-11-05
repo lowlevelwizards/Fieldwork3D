@@ -997,6 +997,10 @@ function renderOperationsBoard(){
    loadout.field('carry').append(magSection);
   }
   card.append(kit);operationsBoard.append(card);
+  // A newly opened details subtree can report zero width on iOS until
+  // it is attached and laid out. Initialize after paint, not only on toggle.
+  if(kit.open&&loadout.group.weapon.open&&weaponEditor.open)
+   requestAnimationFrame(()=>{if(kit.isConnected)syncWorkbench();});
  }
  const hint=document.createElement('p');
  hint.textContent='Select an operator to edit. Close to resume planning.';
