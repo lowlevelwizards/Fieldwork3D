@@ -1311,6 +1311,11 @@ function updateContext(){
     distance(finalPoint(a),c.p)<34)
     .sort((x,y)=>distance(finalPoint(a),x.p)-
       distance(finalPoint(a),y.p))[0]??null;
+  const casualtyAtPlan=state.civilians.filter(c=>c.health<=0&&
+      (!c.carriedById||c.carriedById===a.id)&&
+      liveVisibility(state,c.p)&&distance(finalPoint(a),c.p)<34)
+    .sort((x,y)=>distance(finalPoint(a),x.p)-
+      distance(finalPoint(a),y.p))[0]??null;
   const choices:ReturnType<typeof contextActionChoices>=selectedWatch?[
     {id:'ctxWatch',label:'RETARGET',group:'primary',
       pressed:true,title:'Choose a new point for this active WATCH'},
@@ -1322,6 +1327,7 @@ function updateContext(){
     nearCivilian:!!civilianAtPlan&&civilianAtPlan.state!=='compliant',
     escortableCivilian:!!civilianAtPlan&&
       civilianAtPlan.rescueTarget&&state.mission==='extract',
+    nearCivilianCasualty:!!casualtyAtPlan,
     posture:current.posture,pace:current.pace,
     firePolicy:node?.firePolicyState??a.firePolicy,
     reserve:a.reserve,magazine:a.magazine,
@@ -1585,6 +1591,19 @@ const handleContextAction=(event:MouseEvent)=>{
       const mode=action==='ctxSecureCivilian'?'secure':'follow';
       if(!civ||!planCivilianInteraction(state,selected,civ.id,mode))
         state.events.push('CIVILIAN INTERACTION NOT REACHABLE');
+      break;
+    }
+    case 'ctxDragCivilian':
+    case 'ctxCarryCivilian':{
+      const civ=state.civilians.filter(c=>c.health<=0&&
+        (!c.carriedById||c.carriedById===a.id)&&
+        liveVisibility(state,c.p)&&distance(finalPoint(a),c.p)<34)
+        .sort((x,y)=>distance(finalPoint(a),x.p)-
+          distance(finalPoint(a),y.p))[0];
+      if(!civ||!planCasualtyTransport(state,selected,civ.id,
+         state.scenario.extract,
+         action==='ctxCarryCivilian'?'carry':'drag'))
+        state.events.push('CIVILIAN TRANSPORT ROUTE NOT AVAILABLE');
       break;
     }
     case 'ctxSuppress':
