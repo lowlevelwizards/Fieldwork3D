@@ -20,9 +20,18 @@ export function consolidateVisualGroup(group:THREE.Group):void{
  }
  for(const [material,meshes] of buckets){
   if(meshes.length<2)continue;
+  // Armor uses both extruded (non-indexed) and box (indexed) faces.
+  // Normalize that *one-time* mismatch instead of silently forfeiting
+  // batching when both kinds share a material.
+  const mixedIndex=meshes.some(mesh=>mesh.geometry.index===null)&&
+   meshes.some(mesh=>mesh.geometry.index!==null);
   const geometryParts=meshes.map(item=>{
    item.updateMatrix();
-   return item.geometry.clone().applyMatrix4(item.matrix);
+   const source=item.geometry.clone().applyMatrix4(item.matrix);
+   if(!mixedIndex||source.index===null)return source;
+   const flat=source.toNonIndexed();
+   source.dispose();
+   return flat;
   });
   const combined=mergeGeometries(geometryParts,false);
   for(const source of geometryParts)source.dispose();
