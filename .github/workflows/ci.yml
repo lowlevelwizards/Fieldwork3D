@@ -429,6 +429,10 @@ jobs:
           npm run audit:g4-diversity -- --matrix
           npm run audit:g4-diversity -- --topology
           npm run audit:g4-flow -- --matrix
+      - name: D2 silhouette V3A — distinct gaiter bandana shemagh and legacy mode tests
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/d2-silhouette-v3a-') }}
+        run: |
+          node --experimental-strip-types --test tests/operator-d2-silhouette-v3-gaiter.test.mjs tests/operator-d2-silhouette-v3-bandana.test.mjs tests/operator-d2-silhouette-v3-shemagh.test.mjs tests/operator-d2-wraps-stage-a2.test.mjs tests/operator-d2-fabric-integration-stage-a3.test.mjs tests/operator-studio-thumbnail-context-perf.test.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}
