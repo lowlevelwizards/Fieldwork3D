@@ -9,7 +9,7 @@ Other 51 registry IDs, garment eligibility, density, save/load, seeded cutting a
 
 ## Stage A — M98 composition rebuild
 - Replace the old `NORWAY` primary shapes, three auxiliary medium lobes and two-pass single-pixel smoothing with `NORWAY_8E`: a deliberately layered three-color master with **27 authored, asymmetrically rounded polygons**.
-- Long trunks, warm tan inlets, olive negative-space sweeps and four final dark medium lobes break oversized single-color panels.
+- Long trunks, warm tan inlets, olive negative-space sweeps with two final dark medium lobes and two olive inlets break oversized single-color panels.
 - Fixed-color index master 64×64, exactly inks 0,1,2. Palette stays unchanged; density remains **2.55** (64/2.55≈25.10 world units).
 - Independently computed pre-integration canvas geometry coverage: **~32% olive, 32% forest, 36% tan**. All 32×32 sectors have all three inks; no quadrant over ~59% one color.
 
