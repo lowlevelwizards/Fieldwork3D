@@ -72,6 +72,7 @@ import {routineDwellSeconds} from './breach-ai-routine-dwell.ts';
 import {pressureAdvanceOpportunity} from './breach-ai-initiative.ts';
 import {captureTargetMayWithdraw} from './breach-ai-mission-response.ts';
 import {createCivilian,type CivilianActor} from './breach-civilian-types.ts';
+import {stepCivilianMovement} from './breach-civilian-movement.ts';
 import {retreatDoorClosureEligible} from './breach-ai-door-response.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
 import {contactTactic} from './breach-ai-tactical-response.ts';
@@ -4108,6 +4109,17 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   }
   for(const a of s.operators)a.stride+=d(a.p,a.priorP);
   resolveCloseContact(s);
+  // Separate neutral actor motor. Runs only in explicit development
+  // scenarios; every position step obeys the same solid world and doors.
+  if(s.civilians.length){
+    const nearby=[...s.operators.filter(a=>a.health>0),...s.civilians.filter(c=>c.health>0)];
+    for(const civil of s.civilians){
+      stepCivilianMovement(civil,s.seconds,h,
+        (from,to)=>sweptBodyClear(from,to,s.doors),
+        (p,id)=>nearby.some(a=>a.id!==id&&d(a.p,p)<20));
+    }
+  }
+  mark('civilian-motion');
   mark('contacts');
   distributeReports(s);
   mark('reports');
