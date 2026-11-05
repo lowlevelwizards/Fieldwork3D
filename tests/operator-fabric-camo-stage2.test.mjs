@@ -27,8 +27,8 @@ const pose=wardrobe=>({
  aiming:false,firing:false,turning:0,deterministic:true,
  equipment:kit,wardrobe
 });
-test('authentic policy has exactly the approved 46 patterns and five independently filtered fabric channels',()=>{
- assert.equal(HEADWEAR_CAMO_IDS.length,46);
+test('authentic policy has exactly the approved 54 patterns and five independently filtered fabric channels',()=>{
+ assert.equal(HEADWEAR_CAMO_IDS.length,54);
  assert.deepEqual(Object.keys(FABRIC_CAMO_POLICY).sort(),[...HEADWEAR_CAMO_IDS].sort());
  assert.deepEqual(FABRIC_CAMO_CHANNELS,['top','trousers','armor','gear','pack']);
  assert.equal(FABRIC_CAMO_POLICY['mitchell-leaf'].channels.length,0);
