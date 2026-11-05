@@ -627,6 +627,9 @@ jobs:
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}
         run: npm test
+      - name: Quick Play startup progress and worker contract
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'perf/quick-play-loading-checkpoints-') }}
+        run: node --experimental-strip-types --test tests/quick-play-startup-progress.test.mjs tests/map-lab-progress.test.mjs tests/quickplay-lazy-visuals.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
