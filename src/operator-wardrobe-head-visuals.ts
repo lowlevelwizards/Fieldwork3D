@@ -26,6 +26,8 @@ export type WardrobeHeadLayers={
  eyewearLens:THREE.MeshStandardMaterial;
  eyewearStrap:THREE.MeshStandardMaterial;
  maskRubber:THREE.MeshStandardMaterial;
+ /** Deferred only in battlefield rigs; Studio and Labs remain eager. */
+ deferredEyewear:Record<string,()=>void>;
  twoHoleMouthCover?:THREE.Group;
 };
 const cube=(g:THREE.Group,m:THREE.Material,
@@ -37,7 +39,8 @@ const cube=(g:THREE.Group,m:THREE.Material,
 const group=(parent:THREE.Group)=>{const g=new THREE.Group();parent.add(g);return g;};
 export function createWardrobeHeadLayers(head:THREE.Group,
  canonicalHead:THREE.Group,cloth:THREE.Material,
- vest:THREE.Material,dark:THREE.Material,_skin:THREE.Material):WardrobeHeadLayers{
+ vest:THREE.Material,dark:THREE.Material,_skin:THREE.Material,
+ lazyAccessories=false):WardrobeHeadLayers{
  const headwear:Model={},facewear:Model={},eyewear:Model={},headset:Model={};
  // A dedicated face textile material ensures color edits never recolor helmets,
  // uniform sleeves, straps or unrelated body pieces.
@@ -127,14 +130,23 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  for(const id of ['half-mask','respirator-half','gas-gp5','gas-m17',
                   'gas-m40','gas-m50'] as const)
   g(facewear,id,true).add(createD2Mask(id,maskMaterials));
- // D2-B1 real low-poly frames, separate bridges and lens sheets.
+ // All seven eyewear families were previously built for every soldier,
+ // including bare-eyed soldiers and enemies nobody has ever observed.
+ // Battlefield actors defer those solid housings until actually equipped;
+ // Studio, Lab and default callers keep fully eager previews.
+ const deferredEyewear:Record<string,()=>void>={};
+ const addEyewear=(id:string,build:()=>THREE.Group)=>{
+  const model=g(eyewear,id,true);
+  if(lazyAccessories)deferredEyewear[id]=()=>{
+   model.add(build());delete deferredEyewear[id];
+  };
+  else model.add(build());
+ };
  for(const id of ['glasses-standard','glasses-aviator',
                    'glasses-wrap','glasses-shield'] as const)
-  g(eyewear,id,true).add(createD2Glasses(id,eyewearFrame,eyewearLens));
- // D2-B2: low-profile, deep-frame and twin-cup goggles share tint and frame
- // materials but have independent, recognizably different actual geometry.
+  addEyewear(id,()=>createD2Glasses(id,eyewearFrame,eyewearLens));
  for(const id of ['goggles-low','goggles-field','goggles-retro'] as const)
-  g(eyewear,id,true).add(createD2Goggles(id,eyewearFrame,eyewearLens,eyewearStrap));
+  addEyewear(id,()=>createD2Goggles(id,eyewearFrame,eyewearLens,eyewearStrap));
  const ear=(id:string,microphone=false,large=false)=>{
   const model=g(headset,id);
   for(const side of [-1,1])
@@ -155,7 +167,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   for(const model of Object.values(set))consolidateVisualGroup(model);
  return {headwear,facewear,eyewear,headset,headwearMaterials,
   faceFabric,faceFabricDefaultHex,eyewearFrame,eyewearLens,
-  eyewearStrap,maskRubber,twoHoleMouthCover};
+  eyewearStrap,maskRubber,deferredEyewear,twoHoleMouthCover};
 }
 export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  headwear:string,facewear:string,eyewear:string,headset:string,
@@ -172,6 +184,8 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  layers.eyewearLens.opacity=tint.opacity;
  const assembly=resolveD2HeadAssembly({facewear,eyewear,headwear,headset,
   options:d2Eye});
+ // One-time construction on selection; preserve variant/placement controls.
+ layers.deferredEyewear[assembly.eyewear]?.();
  const choices:{slot:WardrobeSlot;map:Model;id:string}[]=[
   {slot:'headwear',map:layers.headwear,id:assembly.headwear},
   {slot:'facewear',map:layers.facewear,id:facewear},
