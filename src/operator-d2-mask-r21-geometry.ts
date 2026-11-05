@@ -72,11 +72,17 @@ function opacityPanel(g:THREE.Group,mat:THREE.Material,name:string,
  // All normals point forward; differences in vertex depth describe the wrap,
  // but must not generate the R15 accidental diagonal shading.
  const n:V=[0,0,-1];
+ const clockwise=polygon.reduce((sum,a,i)=>{
+  const b=polygon[(i+1)%polygon.length];
+  return sum+a[0]*b[1]-b[0]*a[1];
+ },0)<0;
  for(let i=0;i<polygon.length;i++){
   const a=polygon[i],b=polygon[(i+1)%polygon.length];
   const za=surfaceAt(rings,a[0],a[1]).position[2]-offset;
   const zb=surfaceAt(rings,b[0],b[1]).position[2]-offset;
-  tri(coords,normals,center,[b[0],b[1],zb],[a[0],a[1],za],n);
+  if(clockwise)
+   tri(coords,normals,center,[a[0],a[1],za],[b[0],b[1],zb],n);
+  else tri(coords,normals,center,[b[0],b[1],zb],[a[0],a[1],za],n);
  }
  return mesh(g,mat,name,coords,normals);
 }

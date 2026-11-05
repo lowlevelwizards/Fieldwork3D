@@ -70,9 +70,14 @@ export function opaquePolygon(g:THREE.Group,mat:THREE.Material,
  let cx=0,cy=0;
  for(const v of poly){cx+=v[0];cy+=v[1];}
  cx/=poly.length;cy/=poly.length;
+ const clockwise=poly.reduce((sum,a,i)=>{
+  const b=poly[(i+1)%poly.length];
+  return sum+a[0]*b[1]-b[0]*a[1];
+ },0)<0;
  for(let i=0;i<poly.length;i++){
   const a=poly[i],b=poly[(i+1)%poly.length];
-  for(const v of [[cx,cy],b,a] as const){
+  const near=clockwise?b:a,far=clockwise?a:b;
+  for(const v of [[cx,cy],far,near] as const){
    p.push(v[0],v[1],z);n.push(0,0,-1);
   }
  }
@@ -111,11 +116,16 @@ export function solidWedge(g:THREE.Group,mat:THREE.Material,name:string,
  let x=0,y=0;
  for(const p of points){x+=p[0];y+=p[1];}
  x/=points.length;y/=points.length;
+ const clockwise=points.reduce((sum,a,i)=>{
+  const b=points[(i+1)%points.length];
+  return sum+a[0]*b[1]-b[0]*a[1];
+ },0)<0;
  for(let i=0;i<points.length;i++){
   const a=points[i],b=points[(i+1)%points.length];
-  // One large flat front face plus thick cheek-side returns.
-  for(const q of [[x,y,zFront],[b[0],b[1],zFront],
-   [a[0],a[1],zFront]] as const){pos.push(...q);norm.push(0,0,-1);}
+  // Regardless of authoring order, face the front camera (-Z).
+  const p1=clockwise?a:b,p2=clockwise?b:a;
+  for(const q of [[x,y,zFront],[p1[0],p1[1],zFront],
+   [p2[0],p2[1],zFront]] as const){pos.push(...q);norm.push(0,0,-1);}
   const q1:V=[a[0],a[1],zFront],q2:V=[b[0],b[1],zFront],
    q3:V=[b[0],b[1],zBack],q4:V=[a[0],a[1],zBack];
   const out=new THREE.Vector3(

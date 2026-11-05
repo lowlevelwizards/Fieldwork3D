@@ -82,3 +82,22 @@ test('R21 GP5 stays enclosed and M17/M40 retain protected signatures',()=>{
   assert.ok(b.min.z>-10&&b.max.z<6,id+' z');
  }
 });
+
+test('R21 face overlays have correct front-facing winding, not culled backfaces',()=>{
+ const checkFront=(mesh,name)=>{
+  assert.ok(mesh?.isMesh,name+' exists');
+  const p=mesh.geometry.getAttribute('position');
+  const ax=p.getX(0),ay=p.getY(0),bx=p.getX(1),by=p.getY(1),
+   cx=p.getX(2),cy=p.getY(2);
+  const area=(bx-ax)*(cy-ay)-(by-ay)*(cx-ax);
+  assert.ok(area<-.001,name+' triangles face the -Z camera');
+ };
+ checkFront(create('half-mask').getObjectByName('hard-nose-panel'),
+  'tactical front inset');
+ checkFront(create('gas-m50').getObjectByName('m50-raised-nasal-bridge'),
+  'M50 nose panel');
+ checkFront(create('gas-m17').getObjectByName('m17-integrated-cheek-filter'),
+  'M17 swollen cheek');
+ checkFront(create('gas-m40').getObjectByName('m40-angular-eyepiece-frame'),
+  'M40 opaque frame');
+});
