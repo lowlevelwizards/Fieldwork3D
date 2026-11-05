@@ -76,9 +76,7 @@ export class WeaponWorkbenchPreview{
    button.style.cssText='min-height:43px;flex:1 1 auto;padding:8px;'+
     'border:1px solid #728e80;border-radius:7px;background:#263c34;'+
     'font:700 12px sans-serif;color:#e6ead9;touch-action:manipulation';
-   button.addEventListener('click',()=>{
-    this.setMode(mode);this.onSelect(this.active);
-   });
+   button.addEventListener('click',()=>this.setMode(mode));
    this.toolbar.append(button);
   }
   const backup=document.createElement('button');
@@ -210,15 +208,12 @@ export class WeaponWorkbenchPreview{
  }
  setMode(mode:WorkbenchMode){
   if(mode==='body'&&!this.config.build)return;
-  if(mode!==this.mode){
-   this.mode=mode;
-   this.rebuildMounts();
-   this.revealed=false;
-   this.choiceTitle.textContent='SELECT A '+(mode==='body'?'BODY':'MOUNT')+' SOCKET';
-   this.choiceSubtitle.textContent='Tap a white dot to see compatible replacements.';
-   this.choiceGrid.replaceChildren();
-  }
-  this.setActiveSlot(mode==='body'?'body-receiver':'optic');
+  if(mode!==this.mode){this.mode=mode;this.rebuildMounts();}
+  this.revealed=false;
+  this.choiceTitle.textContent='SELECT A '+(mode==='body'?'BODY':'MOUNT')+' SOCKET';
+  this.choiceSubtitle.textContent='Tap a white dot to see compatible replacements.';
+  this.choiceGrid.replaceChildren();
+  this.setActiveSlot(mode==='body'?'body-receiver':'optic',false);
  }
  setActiveSlot(slot:WorkbenchSocket,reveal=true){
   const bodySlot=slot.startsWith('body-');
