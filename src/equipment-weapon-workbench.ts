@@ -1,6 +1,7 @@
 /** Equipment 21.01: separate on-demand weapon-only workbench.
  * No duplicated procedural gun meshes, continuous animation or second operator rig.
- * On mobile, a drag rotates, pinch/wheel zooms, tap picks a physical mount.
+ * 3D rotates on drag; fixed-side 2D only zooms. Small accessible socket dots
+ * open a line-linked replacement panel without obscuring the model.
  */
 import * as THREE from 'three';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geometry.ts';
@@ -17,24 +18,29 @@ export class WeaponWorkbenchPreview{
  private readonly camera=new THREE.PerspectiveCamera(37,1,.1,300);
  private readonly model=new THREE.Group();
  private readonly pointerPositions=new Map<number,{x:number;y:number}>();
- private readonly raycaster=new THREE.Raycaster();
  private readonly steel=new THREE.MeshStandardMaterial({color:0x707875,roughness:.78,flatShading:true});
  private readonly dark=new THREE.MeshStandardMaterial({color:0x303a38,roughness:.84,flatShading:true});
- private readonly selectedMaterial=new THREE.MeshBasicMaterial({color:0xe9c88c});
- private readonly markerMaterial=new THREE.MeshBasicMaterial({color:0x82baae});
- private readonly markerGeometry=new THREE.OctahedronGeometry(1.65);
  private readonly host:HTMLElement;
  private readonly canvasHost:HTMLDivElement;
  private readonly caption:HTMLParagraphElement;
  private readonly toolbar:HTMLDivElement;
+ private readonly viewToggle:HTMLButtonElement;
  private readonly socketButtons=new Map<WorkbenchSocket,HTMLButtonElement>();
+ private readonly leader:SVGSVGElement;
+ private readonly leaderPath:SVGPathElement;
+ private readonly choicePanel:HTMLDivElement;
+ private readonly choiceTitle:HTMLElement;
+ private readonly choiceSubtitle:HTMLParagraphElement;
+ private readonly choiceGrid:HTMLDivElement;
  private fallbackCanvas:HTMLCanvasElement|null=null;
+ private in2D=false;
+ private revealed=false;
  private mode:WorkbenchMode='attachments';
  private readonly onSelect:(slot:WorkbenchSocket)=>void;
  private readonly resizeObserver:ResizeObserver;
  private yaw=.15;
  private pitch=.17;
- private distance=77;
+ private distance=62;
  private dragDistance=0;
  private pinchDistance=0;
  private active:WorkbenchSocket='optic';
@@ -49,7 +55,7 @@ export class WeaponWorkbenchPreview{
    'background:#162723;border:1px solid #566e61;border-radius:10px;'+
    'touch-action:none;overflow:hidden';
   this.caption=document.createElement('p');this.caption.className='campaign-note';
-  this.caption.style.cssText='margin:8px 0 4px;min-height:2em';
+  this.caption.style.cssText='margin:8px 0 4px;min-height:1em;font-size:11px;opacity:.72';
   host.classList.add('weapon-workbench');
   host.style.cssText='display:block;width:100%;min-width:0;max-width:100%;overflow:hidden';
   this.toolbar=document.createElement('div');
@@ -67,15 +73,44 @@ export class WeaponWorkbenchPreview{
    this.toolbar.append(button);
   }
   const backup=document.createElement('button');
+  this.viewToggle=backup;
   backup.type='button';backup.textContent='2D VIEW';
   backup.setAttribute('aria-label','Switch to simplified 2D weapon preview');
   backup.style.cssText='min-height:43px;padding:8px 10px;border:1px solid #728e80;'+
    'border-radius:7px;background:#263c34;color:#d4e1d8';
-  backup.addEventListener('click',()=>{
-   this.enableFallback();this.setActiveSlot(this.active);
-  });
+  backup.addEventListener('click',()=>this.switchView());
   this.toolbar.append(backup);
-  host.append(this.toolbar,this.canvasHost,this.caption);
+  this.leader=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  this.leader.setAttribute('aria-hidden','true');
+  this.leader.style.cssText='position:absolute;inset:0;width:100%;height:100%;'+
+   'z-index:2;overflow:visible;pointer-events:none';
+  this.leaderPath=document.createElementNS('http://www.w3.org/2000/svg','path');
+  this.leaderPath.setAttribute('fill','none');
+  this.leaderPath.setAttribute('stroke','#f4f9f0');
+  this.leaderPath.setAttribute('stroke-opacity','0.76');
+  this.leaderPath.setAttribute('stroke-width','1.4');
+  this.leaderPath.setAttribute('vector-effect','non-scaling-stroke');
+  this.leader.append(this.leaderPath);
+  this.canvasHost.append(this.leader);
+  this.choicePanel=document.createElement('div');
+  this.choicePanel.className='weapon-workbench-choices';
+  this.choicePanel.style.cssText='margin:0;padding:11px 8px 8px;'+
+   'border:1px solid #596f62;border-top:none;border-radius:0 0 9px 9px;'+
+   'background:#21362f;min-width:0;max-width:100%';
+  this.choiceTitle=document.createElement('strong');
+  this.choiceTitle.style.cssText='display:block;color:#f1f5e7;'+
+   'font:800 14px/1.25 sans-serif;letter-spacing:.05em';
+  this.choiceSubtitle=document.createElement('p');
+  this.choiceSubtitle.style.cssText='font:500 11px/1.4 sans-serif;'+
+   'color:#c0d3c7;margin:4px 0 8px';
+  this.choiceGrid=document.createElement('div');
+  this.choiceGrid.className='weapon-workbench-options';
+  this.choiceGrid.style.cssText='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));'+
+   'gap:7px;min-width:0';
+  this.choicePanel.append(this.choiceTitle,this.choiceSubtitle,this.choiceGrid);
+  this.choiceTitle.textContent='SELECT AN ATTACHMENT SOCKET';
+  this.choiceSubtitle.textContent='Tap a white dot on the weapon to see replacement options.';
+  host.append(this.toolbar,this.canvasHost,this.choicePanel,this.caption);
   this.scene.background=new THREE.Color(0x162723);
   this.scene.add(new THREE.HemisphereLight(0xe2e9d9,0x253c36,2.3));
   const light=new THREE.DirectionalLight(0xf8d8a8,2.6);
@@ -113,11 +148,13 @@ export class WeaponWorkbenchPreview{
   this.mode=config.build?'body':'attachments';
   this.active=config.build?'body-receiver':'optic';
   this.rebuildMounts();
-  this.setActiveSlot(this.active);
+  this.revealed=false;
+  this.choiceTitle.textContent='SELECT AN ATTACHMENT SOCKET';
+  this.choiceSubtitle.textContent='Tap a white dot on the weapon to see replacement options.';
+  this.choiceGrid.replaceChildren();
+  this.setActiveSlot(this.active,false);
  }
  private clearMounts(){
-  for(const child of [...this.model.children])
-   if(child.name.startsWith('mount-'))this.model.remove(child);
   for(const button of this.socketButtons.values())button.remove();
   this.socketButtons.clear();
  }
@@ -134,22 +171,24 @@ export class WeaponWorkbenchPreview{
  private rebuildMounts(){
   this.clearMounts();
   for(const anchor of workbenchMounts(this.config,this.mode)){
-   const marker=new THREE.Mesh(this.markerGeometry,this.markerMaterial);
-   marker.position.set(anchor.x,anchor.y,anchor.z);
-   marker.userData.slot=anchor.slot;
-   marker.name='mount-'+anchor.slot;
-   marker.scale.setScalar(1.05);
-   this.model.add(marker);
    const button=document.createElement('button');
    button.type='button';
    button.className='weapon-workbench-socket';
-   button.textContent=anchor.slot.replace('body-','').toUpperCase();
    button.setAttribute('aria-label','Edit '+anchor.name);
+   button.title=anchor.name;
+   // A generous invisible hit region, with only a tiny translucent dot visible.
    button.style.cssText='position:absolute;z-index:3;transform:translate(-50%,-50%);'+
-    'padding:5px 7px;min-width:43px;min-height:32px;max-width:95px;'+
-    'border-radius:16px;border:1px solid #b0cfac;background:#223b32eb;'+
-    'font:700 10px/1.1 sans-serif;color:#ecf6e4;'+
-    'touch-action:manipulation;white-space:normal;overflow-wrap:anywhere';
+    'width:44px;height:44px;padding:0;display:flex;align-items:center;'+
+    'justify-content:center;border:0;background:transparent;'+
+    'touch-action:manipulation;cursor:pointer;overflow:visible';
+   const dot=document.createElement('span');
+   dot.className='weapon-workbench-dot';
+   dot.setAttribute('aria-hidden','true');
+   dot.style.cssText='width:8px;height:8px;border-radius:50%;'+
+    'background:#f7fbf6ad;border:1px solid #ffffff80;'+
+    'box-shadow:0 0 0 1px #0a1b19aa,0 0 4px #effff34d;'+
+    'pointer-events:none;transition:background .12s,transform .12s';
+   button.append(dot);
    button.addEventListener('click',e=>{
     e.preventDefault();e.stopPropagation();
     this.setActiveSlot(anchor.slot);this.onSelect(anchor.slot);
@@ -164,38 +203,75 @@ export class WeaponWorkbenchPreview{
   if(mode!==this.mode){
    this.mode=mode;
    this.rebuildMounts();
+   this.revealed=false;
+   this.choiceTitle.textContent='SELECT A '+(mode==='body'?'BODY':'MOUNT')+' SOCKET';
+   this.choiceSubtitle.textContent='Tap a white dot to see compatible replacements.';
+   this.choiceGrid.replaceChildren();
   }
   this.setActiveSlot(mode==='body'?'body-receiver':'optic');
  }
- setActiveSlot(slot:WorkbenchSocket){
+ setActiveSlot(slot:WorkbenchSocket,reveal=true){
   const bodySlot=slot.startsWith('body-');
   if(bodySlot&&!this.config.build)return;
   const mode:WorkbenchMode=bodySlot?'body':'attachments';
   if(mode!==this.mode){this.mode=mode;this.rebuildMounts();}
   this.active=slot;
-  for(const child of this.model.children){
-   if(child.name.startsWith('mount-')&&child instanceof THREE.Mesh){
-    const selected=child.userData.slot===slot;
-    child.material=selected?this.selectedMaterial:this.markerMaterial;
-    child.scale.setScalar(selected?1.55:1.05);
+  this.revealed=reveal;
+  for(const [id,button] of this.socketButtons){
+   const selected=id===slot&&reveal;
+   button.setAttribute('aria-pressed',String(selected));
+   const dot=button.firstElementChild as HTMLElement|null;
+   if(dot){
+    dot.style.background=selected?'#ffffff':'#f7fbf6ad';
+    dot.style.transform=selected?'scale(1.25)':'scale(1)';
+    dot.style.boxShadow=selected?
+     '0 0 0 4px #ffffff3b,0 0 7px #ffffffcc':
+     '0 0 0 1px #0a1b19aa,0 0 4px #effff34d';
    }
   }
-  for(const [id,button] of this.socketButtons){
-   const selected=id===slot;
-   button.setAttribute('aria-pressed',String(selected));
-   button.style.background=selected?'#e7c68e':'#223b32eb';
-   button.style.color=selected?'#18241b':'#ecf6e4';
-  }
   const a=resolveWeaponAssembly(this.config);
-  const chosen=bodySlot?
-   FAMILY_PARTS[this.config.build!.parts[slot.slice(5) as FamilyPartSlot]]?.name:
-   WEAPON_ATTACHMENTS[this.config.slots[slot as WeaponAttachmentSlot]]?.name;
-  this.caption.textContent=slot.replace('body-','').toUpperCase()+' · '+
-   (chosen??'FACTORY PART')+' · '+a.massKg.toFixed(2)+' KG'+
-   (this.fallbackCanvas?' · 2D COMPATIBILITY VIEW':
-    ' · DRAG TO ROTATE / PINCH TO ZOOM');
+  this.caption.textContent=a.massKg.toFixed(2)+' KG · '+
+   (this.in2D?'2D FIXED SIDE VIEW · PINCH TO ZOOM':
+    '3D · DRAG TO ROTATE · PINCH TO ZOOM');
   this.renderModeControls();
   this.draw();
+ }
+ /** Use the existing authoritative select; changes still flow through
+  * Campaign purchases/validation or Quick Play's roster-save path.
+  */
+ showSocketChoices(slot:WorkbenchSocket,select:HTMLSelectElement){
+  this.setActiveSlot(slot);
+  this.choiceTitle.textContent=slot.replace('body-','').replace(/-/g,' ').toUpperCase();
+  const selected=select.selectedOptions[0];
+  this.choiceSubtitle.textContent=selected?
+   'EQUIPPED · '+selected.textContent:
+   'Choose a compatible replacement';
+  this.choiceGrid.replaceChildren();
+  for(const option of Array.from(select.options)){
+   if(!option.value)continue;
+   const button=document.createElement('button');
+   button.type='button';
+   const equipped=option.value===select.value;
+   button.textContent=option.textContent??option.value;
+   button.setAttribute('aria-pressed',String(equipped));
+   button.disabled=select.disabled||option.disabled;
+   button.style.cssText='min-width:0;min-height:44px;padding:9px 7px;'+
+    'border-radius:7px;border:1px solid '+
+    (equipped?'#e5e9c5':'#748e7d')+';'+
+    'background:'+(equipped?'#b8c9af':'#29463c')+';'+
+    'color:'+(equipped?'#14231c':'#ebf0e3')+';'+
+    'font:650 12px/1.25 sans-serif;overflow-wrap:anywhere;'+
+    'touch-action:manipulation';
+   button.addEventListener('click',()=>{
+    if(button.disabled||select.value===option.value)return;
+    select.value=option.value;
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+   });
+   this.choiceGrid.append(button);
+  }
+  if(!this.choiceGrid.childElementCount){
+   this.choiceSubtitle.textContent='No compatible replacement options';
+  }
  }
  private down=(e:PointerEvent)=>{
   // Socket labels are real touch buttons: never steal their pointer capture.
