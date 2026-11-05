@@ -120,7 +120,7 @@ function aviator(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
 }
 function shooting(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
  root.userData.d2EyeFitTop=4.94;
- root.userData.d2EyeDesign='R7-close-fitted-shooting-glasses';
+ root.userData.d2EyeDesign='R8-single-clean-shooting-bow';
  // Approved R5 lens shape is unchanged: the single sweeping pane, open
  // underside and generous nasal relief define the shooting fantasy.
  const pane:EyePolygon=[
@@ -137,19 +137,21 @@ function shooting(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
  // .22-deep band remains .09 ahead of the lens at every X, with no
  // second rear plate or small overlapping brow strips.
  const brow:EyePolygon=[
-  [-4.42,4.26],[-4.19,4.81],[0,4.98],[4.19,4.81],
-  [4.42,4.26],[3.86,4.48],[0,4.70],[-3.86,4.48]
+  [-4.30,4.38],[-4.16,4.79],[0,4.98],[4.16,4.79],
+  [4.30,4.38],[3.90,4.51],[0,4.70],[-3.90,4.51]
  ];
  sweptFrame(root,frame,'integrated-swept-frame',brow,[],-5.25,.22,.78);
  // Roots now occupy the SAME volume as the outer swept brow.
  // They transition once toward the side of the head, not into a
  // parallel, floating horizontal headband.
+ // R8: short rectangular root seated inside the raised outer brow;
+ // one clean shoulder replaces two overlapping triangular wedges.
  outsideTemples(root,frame,'continuous-swept-temple',{
-  frontX:4.20,frontY:4.51,frontZ:-4.34,
-  shoulderX:4.40,shoulderY:4.31,shoulderZ:-3.90,
-  rearX:4.34,rearY:3.91,rearZ:3.37,
-  frontWidth:.68,shoulderWidth:.66,rearWidth:.43,
-  frontHeight:.83,shoulderHeight:.75,rearHeight:.41
+  frontX:4.20,frontY:4.49,frontZ:-4.30,
+  shoulderX:4.34,shoulderY:4.46,shoulderZ:-3.80,
+  rearX:4.31,rearY:4.20,rearZ:3.58,
+  frontWidth:.54,shoulderWidth:.48,rearWidth:.43,
+  frontHeight:.58,shoulderHeight:.54,rearHeight:.43
  });
 }
 function shield(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
