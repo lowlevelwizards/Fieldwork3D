@@ -26,7 +26,9 @@ test('Quick Play preserves the Map Lab progress language and real checkpoints',(
  assert.match(css,/#quickPlayBar\{[^}]*accent-color:#afcdab/s);
  assert.match(main,/quickPlayCheckpoint\(76,'Preparing tactical session'/);
  assert.match(main,/quickPlayCheckpoint\(86,'Building 3D environment'/);
- assert.match(main,/quickPlayCheckpoint\(95,'Preparing first frame'/);
+ assert.match(main,/quickPlayCheckpoint\(95,'Preparing tactical controls'/);
+ assert.match(main,/quickPlayCheckpoint\(97,'Rendering first 3D frame'/);
+ assert.match(main,/quickPlayCheckpoint\(99,'Revealing tactical scene'/);
  assert.match(main,/quickPlayCheckpoint\(100,'TACTICAL SANDBOX READY'/);
  assert.match(main,/Math\.max\(quickPlayPercent,Math\.min\(100/);
 });
@@ -49,6 +51,23 @@ test('worker cancellation, errors and startup timings are surfaced',()=>{
  assert.match(main,/worker\.onerror=/);
  assert.match(main,/quickPlayPanel\.dataset\.state='error'/);
  assert.match(main,/console\.info\('\[Quick Play startup\]'/);
- assert.match(main,/generationMs:generated\.generationMs,sessionMs,sceneMs,hudMs/);
+ assert.match(main,/generationMs:generated\.generationMs,sessionMs,sceneMs,/);
+ assert.match(main,/operatorMs,hudMs,firstFrameMs,totalMs/);
  assert.match(main,/requestAnimationFrame\(\(\)=>setTimeout\(resolve,0\)\)/);
+});
+
+test('first-frame handoff stages operator geometry and renders before READY',()=>{
+ const scene=read('src/breach-3d.ts');
+ assert.match(scene,/prepareOperatorModel\(a:TeamActor\):boolean/);
+ assert.match(scene,/if\(this\.actors\.has\(a\.id\)\)return false/);
+ assert.match(main,/stage\?\.prepareOperatorModel\(initialTeam\[i\]\)/);
+ assert.match(main,/const firstFrameStart=performance\.now\(\)/);
+ assert.match(main,/stage\.update\(state,selected,0,doorFocusId/);
+ assert.match(main,/const firstFrameMs=Math\.round\(performance\.now\(\)-firstFrameStart\)/);
+ assert.ok(main.indexOf("quickPlayCheckpoint(97,'Rendering first 3D frame'") <
+   main.indexOf('const firstFrameStart=performance.now()'));
+ assert.ok(main.indexOf('const firstFrameMs=Math.round(') <
+   main.indexOf("quickPlayCheckpoint(100,'TACTICAL SANDBOX READY'"));
+ assert.ok(main.indexOf("quickPlayCheckpoint(100,'TACTICAL SANDBOX READY'") <
+   main.indexOf('quickPlayBusy=false;\n    finishQuickPlayClock();'));
 });
