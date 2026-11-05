@@ -1,0 +1,295 @@
+/** Camouflage 8A — eight original Fieldwork 64px prints.
+ * Same polygon-first and layered detail pipeline as 6A/7A. No imported
+ * fabric images. 7A relatives reuse the EXACT indexed family masters.
+ */
+export const CAMO8A_IDS=[
+ 'russian-izlom','greek-lizard','urban-kamysh','jgsdf-type2',
+ 'pencott-metropolis','south-african-s2000','kryptek-typhon','norwegian-m98'
+] as const;
+export type Camo8AId=typeof CAMO8A_IDS[number];
+type RGB=readonly [number,number,number];
+type Motif=readonly [number,readonly number[]];
+export type Camo8ARecipe={
+ label:string;description:string;colors:readonly RGB[];
+ targetCoverage:readonly number[];motifs:readonly Motif[];
+};
+const p=(tone:number,...xy:number[]):Motif=>[tone,xy];
+const recipes={
+ 'russian-izlom':{
+  label:'RUSSIAN IZLOM',
+  description:'Flecktarn-relative forest ground with hard angular olive, sandy, rusty and black-green lozenges, not rounded dots',
+  colors:[[44,54,47],[88,118,66],[167,141,91],[112,72,58],[38,45,44]],
+  targetCoverage:[.26,.26,.16,.17,.15],motifs:[]
+ },
+ 'greek-lizard':{
+  label:'GREEK LIZARD',
+  description:'Classic Hellenic lizard, fine overlapping horizontal sage, olive-brown, dark green and russet tapered strokes',
+  colors:[[162,164,124],[72,91,61],[111,77,61],[42,62,55]],
+  targetCoverage:[.36,.30,.21,.13],motifs:[]
+ },
+ 'urban-kamysh':{
+  label:'URBAN KAMYSH',
+  description:'Blue-grey urban Russian reed/tiger pattern, long ragged slate and navy-black bars against cold mist blue',
+  colors:[[128,145,158],[83,105,126],[61,79,100],[31,39,54]],
+  targetCoverage:[.29,.27,.23,.21],motifs:[]
+ },
+ 'jgsdf-type2':{
+  label:'JGSDF TYPE II',
+  description:'Japanese Jieitai-dot woodland, round dense moss flecks, red umber/tan islands and charcoal grouped spots',
+  colors:[[121,143,96],[57,94,69],[142,91,77],[194,190,147],[47,54,56]],
+  targetCoverage:[.32,.25,.18,.12,.13],motifs:[]
+ },
+ 'pencott-metropolis':{
+  label:'PENCOTT METROPOLIS',
+  description:'Same PenCott GreenZone/BadLands three-scale fractal ink master in concrete ash, slate, graphite and mineral earth',
+  colors:[[169,167,152],[124,127,122],[88,94,94],[48,52,55],[126,107,91]],
+  targetCoverage:[.25,.27,.23,.16,.09],motifs:[]
+ },
+ 'south-african-s2000':{
+  label:'SOLDIER 2000',
+  description:'Kalahari earth-brown field under grass, deep forest and pale sage organic patches, interior dark/light spot accents',
+  colors:[[127,101,83],[68,98,83],[116,144,120],[184,191,161],[46,76,64]],
+  targetCoverage:[.42,.21,.14,.13,.10],motifs:[]
+ },
+ 'kryptek-typhon':{
+  label:'KRYPTEK TYPHON',
+  description:'Exact Highlander angular underpainting and fractured reptilian mesh, recolored graphite, slate and smoky cool grey',
+  colors:[[132,136,139],[88,95,102],[64,70,79],[45,49,58],[26,29,37]],
+  targetCoverage:[.29,.27,.22,.15,.07],motifs:[]
+ },
+ 'norwegian-m98':{
+  label:'NORWEGIAN M98',
+  description:'Bold Norwegian overscale olive, dark forest and warm tan; only three broad rounded contiguous fields',
+  colors:[[87,105,58],[38,54,43],[173,145,97]],
+  targetCoverage:[.34,.37,.29],motifs:[]
+ }
+} satisfies Record<Camo8AId,Camo8ARecipe>;
+export const CAMO8A_RECIPES:Readonly<Record<Camo8AId,Camo8ARecipe>>=
+ Object.fromEntries(CAMO8A_IDS.map(id=>{
+  const recipe=recipes[id];
+  return [id,{...recipe,get targetCoverage():readonly number[]{
+   if(id==='pencott-metropolis'||id==='kryptek-typhon')return recipe.targetCoverage;
+   const counts=recipe.colors.map(()=>0);
+   for(const ink of camo8AIndices(id))counts[ink]++;
+   return counts.map(c=>c/4096);
+  }}];
+ })) as unknown as Record<Camo8AId,Camo8ARecipe>;
+export function isCamo8AId(id:string):id is Camo8AId{
+ return (CAMO8A_IDS as readonly string[]).includes(id);
+}
+const SIZE=64;
+function within(x:number,y:number,pts:readonly number[]):boolean{
+ let inside=false;
+ for(let i=0,j=pts.length-2;i<pts.length;j=i,i+=2){
+  const ax=pts[i],ay=pts[i+1],bx=pts[j],by=pts[j+1];
+  if((ay>y)!==(by>y)&&x<(bx-ax)*(y-ay)/(by-ay)+ax)inside=!inside;
+ }
+ return inside;
+}
+function wrapContains(x:number,y:number,pts:readonly number[]):boolean{
+ for(const dy of [-64,0,64])for(const dx of [-64,0,64])
+  if(within(x+.5-dx,y+.5-dy,pts))return true;
+ return false;
+}
+function paint(shapes:readonly Motif[],base:number):Uint8Array{
+ const pixels=new Uint8Array(SIZE*SIZE).fill(base);
+ for(const [tone,shape] of shapes)
+  for(let y=0;y<64;y++)for(let x=0;x<64;x++)
+   if(wrapContains(x,y,shape))pixels[y*64+x]=tone;
+ return pixels;
+}
+function hash(x:number,y:number,seed:number):number{
+ let n=Math.imul((x+seed*131)^(Math.imul(y+47,7357)),0x45d9f3b);
+ n=Math.imul(n^(n>>>16),0x119de1f3);
+ return ((n^(n>>>15))>>>0)/4294967295;
+}
+// Individually composed hooked/angular lozenges rather than Flecktarn circles.
+const IZLOM:readonly Motif[]=[
+ p(1,-8,0,5,-4,14,2,23,1,23,9,15,11,17,17,8,18,2,26,-7,24),
+ p(1,25,-4,39,-5,42,2,54,0,60,7,69,11,64,21,52,19,50,28,39,22,34,29,26,20),
+ p(1,-6,31,5,27,12,33,22,31,26,38,35,38,31,45,18,45,13,54,3,51,-7,61),
+ p(1,30,48,40,42,52,48,60,42,72,50,64,62,52,57,45,68,32,64),
+ p(2,2,4,9,1,14,5,10,9,17,12,12,17,6,15,3,20,-1,15),
+ p(2,31,6,36,2,43,5,40,11,49,13,44,19,37,16,33,23,28,17),
+ p(2,50,26,57,23,63,27,61,33,68,35,60,42,53,38,47,41,45,34),
+ p(2,7,40,14,36,21,41,18,46,27,47,22,54,14,52,9,57,4,49),
+ p(2,37,54,45,51,50,56,58,55,65,60,57,67,49,63,42,69,34,63),
+ p(3,15,0,23,-2,26,5,33,7,28,12,23,11,20,17,14,12),
+ p(3,49,2,55,0,59,5,67,6,64,13,57,12,54,18,47,13),
+ p(3,18,25,25,21,29,28,36,26,34,32,41,34,35,40,27,37,22,44,17,36),
+ p(3,-4,54,3,49,9,55,17,52,22,60,14,62,10,69,-5,65),
+ p(3,44,41,50,38,55,43,63,41,67,48,61,52,55,50,48,59,41,54),
+ p(4,5,15,12,12,16,18,22,19,18,25,10,23,6,29,1,23),
+ p(4,36,17,42,14,47,20,53,20,50,26,43,24,40,32,35,27),
+ p(4,25,36,32,33,37,38,43,37,47,43,39,47,35,45,31,53,24,47),
+ p(4,53,55,61,52,66,59,71,63,62,69,55,65,49,69,45,63),
+ p(4,0,0,4,0,5,3,9,4,6,7,1,6),
+ p(2,58,14,63,13,64,18,69,20,64,24,58,21),
+ p(3,0,29,6,26,8,32,14,34,10,38,3,36),
+ p(4,13,57,18,54,20,59,26,61,20,65,14,64),
+ p(2,27,55,32,51,35,57,39,58,33,64,26,61)
+];
+// Compose individualized thin ragged horizontal brushstroke polygons,
+// with manual rhythm and tapered ends — never rotate the existing Tiger tile.
+function brush(x:number,y:number,length:number,width:number,ink:number,shape:number):Motif{
+ const a=(shape%4),b=((shape>>1)%3);
+ return p(ink,x,y+Math.floor(width/2),
+  x+3,y-1,x+Math.floor(length*.25),y-1-a,
+  x+Math.floor(length*.52),y+(a%2),
+  x+length-4,y-1+b,x+length,y+1,
+  x+length-5,y+width-1,x+Math.floor(length*.73),y+width+a,
+  x+Math.floor(length*.42),y+width-1+b,
+  x+5,y+width+1,x-2,y+width-2);
+}
+const GREEK_STROKES:readonly [number,number,number,number,number,number][]=[
+ [-6,2,30,4,1,0],[23,1,32,5,2,1],[45,8,24,3,3,2],
+ [4,12,38,4,1,3],[29,15,33,3,3,1],[-9,21,33,4,2,0],
+ [25,23,44,4,1,2],[4,30,30,4,3,3],[31,32,35,5,2,0],
+ [-7,40,32,3,1,1],[21,43,35,4,3,2],[48,47,24,3,1,0],
+ [3,51,37,4,2,1],[34,55,39,3,1,2],[-4,61,29,4,3,3],
+ [14,8,19,2,3,0],[43,26,19,2,2,1],[11,37,18,2,2,2],
+ [19,58,19,2,3,1],[52,2,17,2,1,3],[1,25,18,2,3,2]
+];
+const KAMYSH_STROKES:readonly [number,number,number,number,number,number][]=[
+ [-10,0,39,6,2,1],[28,2,45,5,3,3],[1,10,34,5,1,0],
+ [28,14,42,7,3,2],[-9,21,41,6,2,1],[35,25,39,7,1,0],
+ [-7,34,39,6,3,3],[30,39,45,5,2,2],[-9,47,48,6,1,2],
+ [30,51,41,7,3,0],[5,58,39,5,2,1],
+ [2,5,19,3,3,1],[42,9,27,4,2,3],[16,20,20,3,3,2],
+ [0,29,23,3,1,3],[50,35,23,3,3,0],[11,46,25,3,3,1],
+ [48,61,21,4,1,2],[10,15,23,2,2,0],[20,57,26,3,1,1]
+];
+// Rounded JGSDF flecks. Flecktarn pipeline logic: lobe clusters at two
+// scales plus small correlated dots, but not a Flecktarn tile recolor.
+function fleck(cx:number,cy:number,rx:number,ry:number,ink:number,phase:number):Motif{
+ return p(ink,cx-rx,cy-1,
+  cx-rx+1,cy-ry+1,cx-2,cy-ry,cx+Math.floor(rx/3),cy-ry-1,
+  cx+rx-2,cy-ry+2,cx+rx+1,cy,
+  cx+rx-1,cy+ry-1,cx+Math.floor(rx/4),cy+ry+1,
+  cx-2,cy+ry,cx-rx-1,cy+ry-2,
+  cx-rx+(phase%2),cy+1);
+}
+const JGSDF_SPOTS:readonly [number,number,number,number,number,number][]=[
+ [5,4,11,7,1,0],[29,4,9,7,2,1],[52,4,11,7,1,2],
+ [13,18,10,6,4,2],[37,18,11,6,3,1],[59,19,9,7,2,0],
+ [1,30,9,7,2,0],[24,33,11,7,1,1],[46,31,8,7,4,2],
+ [63,38,11,6,1,1],[11,48,10,7,3,2],[34,48,11,8,2,0],
+ [54,53,11,7,4,1],[1,62,10,6,1,0],[22,62,8,7,4,2],
+ [42,62,9,6,1,1],
+ [9,10,5,4,3,1],[22,22,5,4,2,1],[50,19,6,4,1,0],
+ [30,44,5,4,4,1],[59,8,5,4,3,2],[6,55,5,3,4,2]
+];
+// Soldier 2000: undulating organic grass/sage forms on exposed brown ground.
+const S2000:readonly Motif[]=[
+ p(1,-6,1,6,-3,13,3,23,0,28,7,23,15,15,13,11,20,4,16,-5,23),
+ p(1,30,-5,41,0,51,-3,59,4,69,3,69,14,61,18,54,14,48,21,39,17,32,22,26,14),
+ p(1,-8,32,2,25,13,28,18,23,28,28,25,35,15,36,11,45,3,42,-7,52),
+ p(1,32,34,40,29,51,33,57,29,65,37,72,45,65,52,56,48,47,56,38,51,30,57),
+ p(1,1,56,10,49,21,56,28,54,34,61,25,67,12,64,1,71,-7,63),
+ p(2,4,7,13,3,20,8,18,14,25,18,17,21,12,19,5,24,-2,18),
+ p(2,37,4,44,0,52,7,59,5,64,12,59,19,49,17,43,25,35,18),
+ p(2,11,29,21,26,28,33,34,30,40,37,31,43,23,40,17,48,9,42),
+ p(2,44,48,53,43,64,48,69,56,57,60,51,66,41,59),
+ p(3,0,14,7,10,11,14,16,12,20,18,15,23,9,22,5,28,-3,24),
+ p(3,29,9,35,6,42,12,45,10,49,16,44,22,36,19,31,26,26,19),
+ p(3,4,39,11,36,17,40,22,37,26,43,20,48,13,46,9,54,2,49),
+ p(3,50,28,56,23,63,28,68,33,61,38,54,36,47,41,44,34),
+ p(3,25,56,33,51,40,55,45,53,49,60,42,65,35,62,30,68,23,64),
+ p(4,10,10,16,8,19,13,17,18,23,20,16,24,11,21,7,24,6,17),
+ p(4,49,5,54,1,60,7,57,12,64,16,58,20,50,17,45,19),
+ p(4,18,33,23,30,28,36,26,40,33,43,28,48,21,44,17,49,13,42),
+ p(4,56,49,63,46,69,54,63,58,65,64,58,67,52,62,48,63),
+ p(4,0,58,6,55,10,60,9,65,4,66,-3,64)
+];
+// Deliberately oversized lobe-only Norwegian 3-ink composition.
+// No fine-grain flecks. Same polygon geometry method, distinct frequency.
+const NORWAY:readonly Motif[]=[
+ p(1,-13,-5,2,-6,12,1,24,-4,34,5,30,14,20,19,17,28,8,30,0,22,-13,27),
+ p(1,34,-7,50,-7,58,1,70,-4,72,18,64,25,53,20,48,32,38,27,34,16),
+ p(1,-11,39,2,31,15,34,23,28,34,38,28,51,19,56,11,51,5,62,-10,66),
+ p(1,35,45,48,38,55,44,69,37,74,54,61,61,56,72,43,69,35,61),
+ p(2,8,-5,17,-5,25,2,34,-2,41,9,35,19,26,17,20,29,10,22,3,25,-4,15),
+ p(2,47,17,58,12,68,15,72,30,64,34,57,30,49,39,39,35,43,25),
+ p(2,-8,46,2,40,10,46,18,41,25,50,19,61,11,63,3,72,-8,66),
+ p(2,27,53,36,46,45,52,51,49,59,57,65,68,53,70,44,64,35,74,28,65),
+ p(1,16,16,23,14,29,20,27,28,20,32,12,29),
+ p(2,56,0,63,-3,70,3,65,10,58,14,52,10),
+ p(1,56,53,62,48,70,52,68,61,62,65,55,62)
+];
+const masters=new Map<Camo8AId,Uint8Array>();
+function ownTile(id:Camo8AId):Uint8Array{
+ if(id==='russian-izlom'){
+  const tile=paint(IZLOM,0);
+  // Tight flecktarn-like density, but chips are angular 2px lozenges.
+  for(let y=0;y<64;y++)for(let x=0;x<64;x++){
+   const i=y*64+x,c=tile[i],roll=hash(x>>1,y>>1,43);
+   if(c===1&&roll>.91)tile[i]=2;
+   else if(c===3&&roll>.88)tile[i]=4;
+   else if(c===0&&roll>.95)tile[i]=1;
+  }
+  return tile;
+ }
+ if(id==='greek-lizard'||id==='urban-kamysh'){
+  const urban=id==='urban-kamysh';
+  const strokes=urban?KAMYSH_STROKES:GREEK_STROKES;
+  const shapes:Motif[]=strokes.map(([x,y,len,w,ink,phase])=>brush(x,y,len,w,ink,phase));
+  const tile=paint(shapes,0);
+  // Sparse edge stipple for Lizard, broken band tips for Kamysh:
+  // tiny edge strokes, never uniform random wallpaper.
+  for(let y=0;y<64;y++)for(let x=0;x<64;x++){
+   const i=y*64+x,ink=tile[i];
+   const right=tile[y*64+((x+1)&63)],r=hash(x>>1,y>>1,urban?71:19);
+   if(ink!==right && (urban?r>.80:r>.91))tile[i]=right;
+   else if(!urban&&ink===1&&r>.973)tile[i]=3;
+  }
+  return tile;
+ }
+ if(id==='jgsdf-type2'){
+  const shapes:Motif[]=JGSDF_SPOTS.map(([x,y,rx,ry,ink,phase])=>
+    fleck(x,y,rx,ry,ink,phase));
+  const tile=paint(shapes,0);
+  // Cluster-attached tiny round flecks, not UCP squares/digital sorting.
+  for(let y=0;y<64;y++)for(let x=0;x<64;x++){
+   const i=y*64+x,ink=tile[i],r=hash(x>>1,y>>1,29);
+   const neighbor=tile[((y+2)&63)*64+x];
+   if(ink===1 && r>.77)tile[i]=4;
+   else if(ink===2&&r>.87)tile[i]=3;
+   else if(ink===0&&r>.91&&neighbor!==0)tile[i]=neighbor;
+   else if(ink===4&&r>.96)tile[i]=3;
+  }
+  return tile;
+ }
+ if(id==='south-african-s2000'){
+  const source=paint(S2000,0),tile=source.slice();
+  for(let y=0;y<64;y++)for(let x=0;x<64;x++){
+   const i=y*64+x,ink=source[i],r=hash(x>>1,y>>1,63);
+   const next=source[y*64+((x+1)&63)];
+   if(ink===3&&r>.82)tile[i]=4;
+   else if(ink===1&&r>.94)tile[i]=3;
+   else if(ink===2&&r>.88)tile[i]=4;
+   else if(ink===0&&r>.965&&next!==0)tile[i]=3;
+  }
+  return tile;
+ }
+ if(id==='norwegian-m98')return paint(NORWAY,0);
+ throw new Error('Only independent 8A pattern masters are authored');
+}
+export function camo8AIndices(id:Camo8AId,relatives?:{
+ pencott?:Uint8Array;highlander?:Uint8Array;
+}):Uint8Array{
+ if(id==='pencott-metropolis'){
+  if(!relatives?.pencott||relatives.pencott.length!==4096)
+   throw new Error('PenCott MetroPolis needs original PenCott 64px index master');
+  return relatives.pencott.slice();
+ }
+ if(id==='kryptek-typhon'){
+  if(!relatives?.highlander||relatives.highlander.length!==4096)
+   throw new Error('Kryptek Typhon needs original Highlander 64px index master');
+  return relatives.highlander.slice();
+ }
+ const cached=masters.get(id);
+ if(cached)return cached.slice();
+ const tile=ownTile(id);
+ masters.set(id,tile);
+ return tile.slice();
+}
