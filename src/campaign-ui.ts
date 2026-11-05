@@ -717,16 +717,19 @@ export class CampaignScreen{
   grid.append(editor);main.append(grid);
   this.root.append(main);
   if(this.weaponView){
-   this.workbench=new WeaponWorkbenchPreview(preview,person.weaponConfiguration,slot=>{
-    this.selectedMount=slot;
-    const select=slot==='stock'&&build?
-     familySelectors.get('stock'):mountSelectors.get(slot);
+   this.workbench=new WeaponWorkbenchPreview(preview,person.weaponConfiguration,socket=>{
+    const bodyPart=socket.startsWith('body-')?
+     socket.slice(5) as FamilyPartSlot:null;
+    const select=bodyPart?familySelectors.get(bodyPart):
+     mountSelectors.get(socket as WeaponAttachmentSlot);
     if(!select)return;
+    if(bodyPart)familyEditor.open=true;
+    else{attachments.open=true;this.selectedMount=socket as WeaponAttachmentSlot;}
     select.focus({preventScroll:true});
     select.scrollIntoView({block:'nearest',behavior:'smooth'});
     try{select.showPicker();}catch{/* mobile browser may require a second tap */}
    });
-   this.workbench.setActiveSlot(this.selectedMount);
+   this.workbench.setActiveSlot(build?'body-receiver':this.selectedMount);
   }else{
    this.preview=new CampaignKitPreview(preview,person.id,person.weapon,
     person.appearanceSeed,person.loadout,person.weaponConfiguration,
