@@ -25,7 +25,7 @@ test('Selected eyewear is constructed once and preserves subtypes and placement'
  const layers=layersFor(true);
  const goggles=layers.eyewear['goggles-retro'];
  updateWardrobeHeadLayers(layers,'ach','face-none','goggles-retro','comms-none',
-  undefined,undefined,{eyePosition:'helmet'});
+  undefined,undefined,{eyePosition:'raised'});
  const model=goggles.children.find(x=>x.userData.modelAxes);
  assert.ok(model,'selected eyewear should be constructed when first worn');
  assert.deepEqual(model.children.filter(x=>x.visible)
