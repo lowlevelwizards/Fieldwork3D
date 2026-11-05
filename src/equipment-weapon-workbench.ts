@@ -6,11 +6,10 @@
 import * as THREE from 'three';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geometry.ts';
 import {buildWeaponAccessories} from './breach-weapon-accessories.ts';
-import {WEAPON_ATTACHMENTS,resolveWeaponAssembly,
- type WeaponAttachmentSlot,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
+import {resolveWeaponAssembly,type WeaponConfiguration}
+ from './equipment-weapon-assemblies.ts';
 import {workbenchMounts,type WorkbenchMode,type WorkbenchSocket}
  from './equipment-weapon-workbench-layout.ts';
-import {FAMILY_PARTS,type FamilyPartSlot} from './equipment-weapon-families.ts';
 
 export class WeaponWorkbenchPreview{
  private renderer:THREE.WebGLRenderer|null=null;
