@@ -22,9 +22,9 @@ const mismatch=(a,b)=>a.reduce((n,c,i)=>n+(c!==b[i]?1:0),0)/a.length;
 
 test('8A appends exactly eight IDs to the frozen old 46, with no migrations',()=>{
  assert.deepEqual(CAMO8A_IDS,eight);
- assert.equal(HEADWEAR_CAMO_IDS.length,54);
- assert.deepEqual(HEADWEAR_CAMO_IDS.slice(46),eight);
- assert.equal(new Set(HEADWEAR_CAMO_IDS).size,54);
+ assert.equal(HEADWEAR_CAMO_IDS.length,62);
+ assert.deepEqual(HEADWEAR_CAMO_IDS.slice(46,54),eight);
+ assert.equal(new Set(HEADWEAR_CAMO_IDS).size,62);
  assert.deepEqual(Object.keys(FABRIC_CAMO_POLICY).sort(),[...HEADWEAR_CAMO_IDS].sort());
  for(const id of eight){
   assert.equal(readWardrobe({...initialWardrobe(),headwearCamo:id,headwearCamoRoll:12}).headwearCamo,id);
