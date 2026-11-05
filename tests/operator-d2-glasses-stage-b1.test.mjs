@@ -14,7 +14,7 @@ test('D2-B1 eyewear all four silhouettes use canonical front and nonempty lens/f
   let lenses=0,frames=0;
   g.traverse(o=>{if(o.isMesh){if(o.name.endsWith('-lens'))lenses++;else frames++;}});
   assert.ok(lenses>=1,id);
-  assert.ok(frames>=5,id);
+  assert.ok(frames>=2&&frames<=12,id+' should use few iconic parts');
   const bb=new THREE.Box3().setFromObject(g);
   assert.ok(bb.min.z< -4.3&&bb.max.z>1.5,id);
  }
