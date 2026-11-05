@@ -104,7 +104,7 @@ export const FACTION_REFERENCES:readonly FactionReference[]=[
  summary:'Modern digital Xingkong uniform with covered helmet and protective gear.',
  baseRecipeId:'acu-patrol',uniformCamo:'pla-xingkong',
  styles:{headwear:'ach',armorStyle:'plate-standard',rigStyle:'full-chest'},
- kit:{rig:'rig-full'},gearSolid:'field-green',weaponFamily:'QBZ-191',
+ kit:{rig:'rig-full'},gearSolid:'olive-drab',weaponFamily:'QBZ-191',
  gaps:[patch,weapon('qbz-family','QBZ-191 rifle'),gap('pla-helmet','PLA modern helmet profile')],
  sourceNotes:'Type 19-inspired woodland/transitional field interpretation.'},
  {id:'swiss-alpenflage-1980',name:'Swiss Army · Alpenflage',country:'Switzerland',
