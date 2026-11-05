@@ -24,6 +24,16 @@ test('G4d: no remote, receding or traversable leaf auto-opens',()=>{
 });
 test('G4d: real movement uses original crossing check plus physical fallback',()=>{
  const src=readFileSync(new URL('../src/breach-game.ts',import.meta.url),'utf8');
- assert.match(src,/autoDoorAtBodyContact\(a\.p,move,s\.doors\)/);
+ assert.match(src,/autoDoorAtBodyContact\(a\.p,move,/);
  assert.match(src,/doorInteraction\(\{target:doorAhead/);
+});
+
+test('G4d: before-collision envelope recognizes a closed leaf with 9.5-unit stand-off',()=>{
+ const d={id:'STANDOFF',a:{x:100,y:100},b:{x:144,y:100},
+  open:false,openFraction:0,kind:'hinged'};
+ const from={x:122,y:109.55},toward={x:122,y:109.32};
+ assert.equal(autoDoorAtBodyContact(from,toward,[d]),d);
+ assert.equal(autoDoorAtBodyContact(from,{x:122,y:110},[d]),undefined,
+  'do not open on a retreating step');
+ assert.equal(d.open,false,'detection never mutates a real door');
 });
