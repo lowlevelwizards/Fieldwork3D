@@ -7,7 +7,8 @@
  */
 import * as THREE from 'three';
 
-type Candidate={owner:THREE.Object3D;mesh:THREE.Mesh;
+type Candidate={owner:THREE.Object3D;
+  mesh:THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>;
   parent:THREE.Object3D;matrix:THREE.Matrix4};
 type Batch={mesh:THREE.InstancedMesh;active:number;total:number};
 type Instance={batch:Batch;index:number;matrix:THREE.Matrix4;visible:boolean};
@@ -32,7 +33,8 @@ export class StaticSceneBatches{
          child.customDepthMaterial||child.customDistanceMaterial||
          !(child.material instanceof THREE.MeshStandardMaterial)||
          child.material.transparent||!sharedGeometries.has(child.geometry))continue;
-      this.eligible.push({owner,parent,mesh:child,
+      this.eligible.push({owner,parent,
+        mesh:child as THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>,
         matrix:child.matrixWorld.clone()});
     }
   }
