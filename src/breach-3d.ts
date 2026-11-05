@@ -11,6 +11,8 @@ import {isArchitecturalSillCover} from './worldgen/architectural-cover-visuals.t
 import {planFacadeAwnings} from './worldgen/facade-awnings.ts';
 import {fixtureFrameTransform} from './rendering/fixture-frame-transform.ts';
 import {StaticSceneBatches} from './rendering/breach-static-batcher.ts';
+import {ShadowUpdateController,stationaryShadowFingerprint,shadowEligibleBox}
+  from './rendering/breach-shadow-controller.ts';
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surfaces.ts';
 import {planEnvironmentalWear,type WearKind,type WearMark} from './worldgen/environment-wear.ts';
@@ -105,7 +107,9 @@ export class TacticalScene3D{
   performanceStats(){
     const info=this.renderer.info.render;
     return {calls:info.calls,triangles:info.triangles,
-      staticBatch:this.staticBatches.stats()};
+      staticBatch:this.staticBatches.stats(),
+      shadowRefreshes:this.shadowUpdates.refreshes,
+      shadowReuses:this.shadowUpdates.reuses};
   }
   readonly renderer:THREE.WebGLRenderer;
   readonly scene=new THREE.Scene();
@@ -116,6 +120,7 @@ export class TacticalScene3D{
   readonly canvas:HTMLCanvasElement;
   private root=new THREE.Group();
   private readonly staticBatches=new StaticSceneBatches();
+  private readonly shadowUpdates=new ShadowUpdateController();
   private fogUnknown:THREE.InstancedMesh;
   private fogExplored:THREE.InstancedMesh;
   private fogCanvas!:HTMLCanvasElement;
@@ -247,6 +252,7 @@ export class TacticalScene3D{
     this.renderer.toneMapping=THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure=1.05;
     this.renderer.shadowMap.enabled=true;
+    this.renderer.shadowMap.autoUpdate=false;
     this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
     // Atmospheric distance fog was tinting every interior surface in ISO.
     // Visibility is handled separately by authoritative exploration tiles.
@@ -375,7 +381,9 @@ export class TacticalScene3D{
       }
     }
     const o=new THREE.Mesh(geometry,material);
-    o.position.set(x,y,z);o.castShadow=cast;o.receiveShadow=true;
+    o.position.set(x,y,z);
+    o.castShadow=cast&&shadowEligibleBox(w,h,d);
+    o.receiveShadow=true;
     parent.add(o);return o;
   }
   /** Lightweight surface-local visual layer; parents rotate/hide with architecture. */
@@ -414,6 +422,7 @@ export class TacticalScene3D{
    */
   applySite(site:Site|null){
     this.staticBatches.clear();
+    this.shadowUpdates.invalidate();
     for(const texture of this.sitePatinaTextures)texture.dispose();
     for(const material of this.sitePatinaMaterials)material.dispose();
     this.sitePatinaTextures.length=0;this.sitePatinaMaterials.length=0;
@@ -1386,6 +1395,7 @@ export class TacticalScene3D{
     this.width=Math.max(1,w);this.height=Math.max(1,h);
     this.renderer.setPixelRatio(Math.min(devicePixelRatio||1,this.quality.pixelRatio));
     this.renderer.setSize(this.width,this.height,false);
+    this.shadowUpdates.invalidate();
     this.updateCamera(1);
   }
   setMode(mode:ViewMode){
@@ -2167,6 +2177,26 @@ export class TacticalScene3D{
       paintFogMask(this.fogContext,s);
       this.fogTexture.needsUpdate=true;
     }else if(omniscient)this.fogAt=-1;
+    const dynamicShadows=s.phase==='running'||
+      ((s.phase==='won'||s.phase==='lost')&&
+        this.terminalPoseSeconds<1.0);
+    const shadowSignature=dynamicShadows?'':stationaryShadowFingerprint({
+      site:s.site?.seed??null,phase:s.phase,selected,
+      focusX:shadowPoint.x,focusY:shadowPoint.y,
+      objectRevision:s.objectRevision,known:s.seenGround.size,
+      intelMode:s.intel.mode,lighting:s.lightingMode,
+      actors:s.operators.map(a=>({
+        id:a.id,x:a.p.x,y:a.p.y,heading:a.heading,
+        posture:a.posture,health:a.health,weaponYaw:a.weaponYaw,
+        recoil:a.recoil,reload:a.reload,stride:a.stride,
+        weapon:a.weapon,equipment:a.equipment,wardrobe:a.wardrobe
+      })),
+      doors:s.doors.map(d=>({id:d.id,
+        fraction:d.openFraction??(d.open?1:0),open:d.open})),
+      poseTime:this.terminalPoseSeconds
+    });
+    if(this.shadowUpdates.shouldRefresh(dynamicShadows,shadowSignature))
+      this.renderer.shadowMap.needsUpdate=true;
     this.renderer.render(this.scene,this.camera);
     // Effects geometry is released before rebuilding the next frame; pooled
     // material instances are reused for every shot to reduce phone GC work.
