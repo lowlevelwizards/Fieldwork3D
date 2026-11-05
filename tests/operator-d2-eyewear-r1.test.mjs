@@ -13,53 +13,55 @@ const elastic=new THREE.MeshStandardMaterial({color:0x303a31});
 const meshes=root=>{const all=[];root.traverse(x=>{if(x.isMesh)all.push(x)});return all};
 const boxSize=root=>new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3());
 
-test('R1 eyewear uses bold frame thickness, broad lens shapes and real side temples',()=>{
- for(const id of ['glasses-standard','glasses-aviator','glasses-wrap','glasses-shield']){
-  const model=createD2Glasses(id,frame,lens);
-  const variant=id==='glasses-standard'?model.children[0]:model;
-  const visible=meshes(variant);
-  assert.ok(visible.some(x=>x.name.endsWith('-lens')));
-  const rims=visible.filter(x=>x.name.endsWith('-rim'));
-  assert.ok(rims.length>=4,id);
-  for(const rim of rims){
-   assert.ok(rim.geometry.parameters?.height>=.40,id+' rim needs chunky minimum thickness');
-   assert.ok(rim.geometry.parameters?.depth>=.40,id+' frame must project off face');
-  }
-  const size=boxSize(variant);
-  assert.ok(size.x>7.5,id+' must read boldly across 8-unit head');
-  assert.ok(size.y>1.9,id+' needs legible eye height');
-  assert.ok(size.z>7.1,id+' must have substantive side arms');
+const shellProfiles=root=>{
+ const out=[];root.traverse(o=>{
+  if(o.isMesh&&o.userData.d2EyeProfile)out.push(o.userData.d2EyeProfile);
+ });return out;
+};
+const lensCount=root=>{
+ let count=0;root.traverse(o=>{if(o.isMesh&&o.name.endsWith('-lens'))count++});
+ return count;
+};
+test('R2 solid eyewear housings are taller with distinct lens topology',()=>{
+ const expectations={
+  'glasses-standard':{lenses:2,minimumHeight:2.7},
+  'glasses-aviator':{lenses:2,minimumHeight:3.3},
+  'glasses-wrap':{lenses:2,minimumHeight:2.7},
+  'glasses-shield':{lenses:1,minimumHeight:3.4}
+ };
+ for(const [id,spec] of Object.entries(expectations)){
+  const root=createD2Glasses(id,frame,lens);
+  const visible=id==='glasses-standard'?root.children[0]:root;
+  assert.equal(lensCount(visible),spec.lenses);
+  const shells=shellProfiles(visible);
+  assert.equal(shells.length,spec.lenses);
+  assert.ok(shells.every(s=>s.height>spec.minimumHeight),id+' needs tall housings');
+  assert.ok(shells.every(s=>s.housingDepth>.60),id+' needs a real 3D shell');
+  assert.ok(!visible.getObjectByName('tiny-frame-detail'));
  }
  const standard=createD2Glasses('glasses-standard',frame,lens);
  assert.deepEqual(standard.children.map(x=>x.userData.d2EyeVariant),
   ['rectangular','round','heavy-square']);
- for(const variant of standard.children)
-  assert.ok(boxSize(variant).x>7.5);
- const shield=createD2Glasses('glasses-shield',frame,lens);
- assert.equal(meshes(shield).filter(x=>x.name.endsWith('-lens')).length,1);
- assert.equal(meshes(createD2Glasses('glasses-wrap',frame,lens))
-  .filter(x=>x.name.endsWith('-lens')).length,2);
+ assert.deepEqual(standard.children.filter(x=>x.visible).map(x=>x.userData.d2EyeVariant),
+  ['rectangular']);
+ assert.ok(shellProfiles(createD2Glasses('glasses-shield',frame,lens))[0].width>8.4);
 });
-
-test('R1 protective families have distinct one-piece low/deep and paired vintage lens silhouettes',()=>{
- const models=['goggles-low','goggles-field','goggles-retro']
-  .map(id=>createD2Goggles(id,frame,lens,elastic));
+test('R2 protective families feature a compact seal, deep enclosure and two projected cups',()=>{
+ const variants=['goggles-low','goggles-field','goggles-retro'];
+ const models=variants.map(id=>createD2Goggles(id,frame,lens,frame));
  for(const model of models){
   assert.deepEqual(model.children.map(x=>x.userData.d2GogglePlacement),
    ['eyes','forehead','helmet','neck']);
-  const eyes=model.children[0],rims=meshes(eyes).filter(x=>x.name.endsWith('-rim'));
-  assert.ok(rims.length>=8);
-  assert.ok(rims.every(x=>x.geometry.parameters?.height>=.48),
-   model.name+' needs consistently thick rim bars');
-  assert.ok(boxSize(eyes).x>8.2,model.name);
-  assert.ok(meshes(eyes).some(x=>x.name==='strap-back'));
+  const eyes=model.children[0];
+  assert.ok(eyes.getObjectByName('strap-back'));
+  assert.ok(shellProfiles(eyes).every(s=>s.height>2.7));
+  assert.ok(shellProfiles(eyes).every(s=>s.housingDepth>1));
  }
- const [low,field,retro]=models.map(x=>x.children[0]);
- const lensCount=g=>meshes(g).filter(x=>x.name.endsWith('-lens')).length;
- assert.deepEqual([lensCount(low),lensCount(field),lensCount(retro)],[1,1,2]);
- assert.ok(boxSize(field).z>boxSize(low).z+.30,
-  'field goggles should have a deeper dust housing than low-profile');
- assert.ok(meshes(retro).some(x=>x.name==='bold-cup-bridge'));
+ assert.deepEqual(models.map(m=>lensCount(m.children[0])),[1,1,2]);
+ const [low,field,retro]=models.map(m=>m.children[0]);
+ assert.ok(shellProfiles(field)[0].frontZ<shellProfiles(low)[0].frontZ-.9);
+ assert.equal(shellProfiles(retro).length,2);
+ assert.ok(retro.getObjectByName('bold-cup-bridge'));
 });
 test('R1 existing frame palettes, tint and placement survive live updates without rebuilding meshes',()=>{
  const original=new THREE.MeshStandardMaterial({color:0x7c8d7c});
