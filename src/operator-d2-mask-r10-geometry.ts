@@ -105,7 +105,7 @@ export function filterPod(g:THREE.Group,m:THREE.Material,name:string,
 /** Simple connected harness paths hugging the four sides of the skull.
  * Attachment ends at X +/−4, Z about −4; no triangular horns above scalp.
  */
-export function compactHarness(g:THREE.Group,m:MaskMaterials,low=1.9){
+export function compactHarness(g:THREE.Group,m:MaskMaterials,low=1.9,upper=4.76){
  for(const sign of [-1,1] as const){
   strap(g,m.hardware,'head-harness-side',[
    [sign*3.92,low,-4.12],
@@ -114,10 +114,10 @@ export function compactHarness(g:THREE.Group,m:MaskMaterials,low=1.9){
    [sign*3.58,low,4.32]
   ],.36);
   strap(g,m.hardware,'head-harness-upper',[
-   [sign*3.82,4.76,-3.99],
-   [sign*4.42,4.76,-1.5],
-   [sign*4.40,4.62,2.7],
-   [sign*3.48,4.55,4.31]
+   [sign*3.82,upper,-3.99],
+   [sign*4.42,upper,-1.5],
+   [sign*4.40,upper-.12,2.7],
+   [sign*3.48,upper-.18,4.31]
   ],.31);
  }
  strap(g,m.hardware,'head-harness-back',[

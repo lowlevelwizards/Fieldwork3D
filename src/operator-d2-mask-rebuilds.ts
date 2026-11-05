@@ -4,6 +4,7 @@
  * Reference coordinate space: -Z forward, +X right, +Y up.
  */
 import * as THREE from 'three';
+import {sculptedShell,filterPod,compactHarness} from './operator-d2-mask-r10-geometry.ts';
 import {
  type MaskMaterials,type MaskPoint,block,plate,extrudedProfile,
  eyePolygon,pairedEyes,lens,rim,strap,sideProfile,fittedHoodLoft,canister,outlet
@@ -33,83 +34,61 @@ function rearHarness(g:THREE.Group,m:MaskMaterials,low=1.9){
   [-3.48,low+.26,4.47],[0,low+.28,4.56],[3.48,low+.26,4.47]
  ],.44);
 }
+/** R10: all three sides of the guard are one low-poly object. */
 function tactical(g:THREE.Group,m:MaskMaterials,meshFront:boolean){
- const outline=poly([
-  [-1.14,3.11],[1.14,3.11],[2.15,2.73],[3.87,2.35],
-  [3.88,.67],[2.89,-.37],[1.9,-.72],[-1.9,-.72],
-  [-2.89,-.37],[-3.88,.67],[-3.87,2.35],[-2.15,2.73]
- ]);
- plate(g,m.rubber,'rigid-half-mask-face',{
-  outline,front:-4.95,depth:.56,edgeReturn:.38,nose:.54
+ sculptedShell(g,m.rubber,'rigid-half-mask-face',{
+  outline:[
+   [-1.00,3.18],[1.00,3.18],[1.82,2.65],
+   [3.82,2.23],[4.17,1.48],[3.45,-.18],
+   [2.00,-.70],[-2.00,-.70],[-3.45,-.18],
+   [-4.17,1.48],[-3.82,2.23],[-1.82,2.65]
+  ],
+  front:-4.94,halfWidth:4.17,thickness:.42,
+  nose:.62,sideReturn:.86,jawReturn:.14
  });
- extrudedProfile(g,m.rubber,'half-nasal-ridge',[
-  [-.88,3.08],[.88,3.08],[1.28,2.42],[-1.28,2.42]
- ],-5.47,.33);
- // Side cheeks turn toward the temple; they are not parallel front blocks.
+ // One inset is enough; the nose crest is part of the primary shell.
+ const insert:readonly P[]=[
+  [-2.58,1.91],[2.58,1.91],[2.70,.49],
+  [1.82,-.26],[-1.82,-.26],[-2.70,.49]
+ ];
+ extrudedProfile(g,m.filters,meshFront?'wide-mesh-grille':'hard-nose-panel',
+  insert,-5.34,.15,.15);
+ if(meshFront){
+  // Three broad reinforcement ridges, not a subpixel mesh texture.
+  for(const x of [-1.25,0,1.25])
+   block(g,m.hardware,'mesh-guard-rib',x,.89,-5.57,.21,1.18,.13);
+ }
  for(const sign of [-1,1] as const){
-  const cheek=poly([
-   [sign*3.0,2.48],[sign*4.24,2.25],
-   [sign*4.28,.84],[sign*3.37,-.24],[sign*2.93,.03]
-  ]);
-  extrudedProfile(g,m.rubber,'half-shell-cheek',cheek,-4.70,.52,.38);
-  sideProfile(g,m.rubber,'half-mask-cheek-return',sign,[
-   [-4.64,2.50],[-3.00,2.25],[-2.04,1.73],
-   [-2.08,.44],[-3.10,-.40],[-4.71,-.53]
-  ],4.04,.48);
   strap(g,m.hardware,'half-strap-side',[
-   [sign*4.05,2.12,-4.05],[sign*4.50,2.12,-1.5],
-   [sign*4.47,2.10,2.35],[sign*3.45,2.1,4.45]
-  ],.42);
-  block(g,m.hardware,'half-strap-buckle',
-   sign*4.36,2.09,-3.07,.61,.70,.57);
+   [sign*4.09,1.9,-3.86],[sign*4.42,1.9,-2.05],
+   [sign*4.40,1.9,2.47],[sign*3.52,1.9,4.29]
+  ],.37);
  }
  strap(g,m.hardware,'half-strap-back',[
-  [-3.46,2.10,4.43],[0,2.10,4.50],[3.46,2.10,4.43]
- ],.45);
- if(meshFront){
-  const grille=poly([
-   [-2.65,2.12],[2.65,2.12],[2.82,.28],
-   [1.71,-.32],[-1.71,-.32],[-2.82,.28]
-  ]);
-  extrudedProfile(g,m.filters,'wide-mesh-grille',grille,-5.62,.13,.15);
-  // Four legible broad gaps, not hundreds of aliased holes.
-  for(let i=-2;i<=2;i++)
-   block(g,m.hardware,'mesh-reinforcement',i*1.0,1.05,-5.79,.19,1.38,.12);
- }else{
-  extrudedProfile(g,m.filters,'hard-nose-panel',[
-   [-2.13,1.95],[2.13,1.95],[2.17,.41],[-2.17,.41]
-  ],-5.61,.14,.15);
-  block(g,m.hardware,'low-air-intake',0,.13,-5.77,3.64,.38,.18);
- }
+  [-3.52,1.9,4.29],[0,1.9,4.44],[3.52,1.9,4.29]
+ ],.37);
 }
+/** R10: tapered silicone facepiece + two *lateral* shallow pods. */
 function industrial(g:THREE.Group,m:MaskMaterials,compact:boolean){
- const seal=poly([
-  [-.88,3.51],[.88,3.51],[1.69,2.92],[2.82,1.98],
-  [2.98,.42],[1.93,-.50],[.90,-.84],[-.90,-.84],
-  [-1.93,-.50],[-2.98,.42],[-2.82,1.98],[-1.69,2.92]
- ]);
- plate(g,m.rubber,'respirator-triangular-seal',{
-  outline:seal,front:-4.87,depth:.68,edgeReturn:.45,nose:.76
+ sculptedShell(g,m.rubber,'respirator-triangular-seal',{
+  outline:[
+   [-.82,3.53],[.82,3.53],[1.48,3.04],
+   [2.63,1.94],[3.08,.51],[2.12,-.43],
+   [.92,-.85],[-.92,-.85],[-2.12,-.43],
+   [-3.08,.51],[-2.63,1.94],[-1.48,3.04]
+  ],front:-4.98,halfWidth:3.08,thickness:.49,
+  nose:.87,cheek:.16,cheekAtY:1.7,
+  sideReturn:.57,jawReturn:.26
  });
- extrudedProfile(g,m.rubber,'respirator-nose-peak',[
-  [-.88,3.45],[.88,3.45],[1.36,2.68],[-1.36,2.68]
- ],-5.43,.41);
- outlet(g,m,'respirator-valve',0,.10,-5.78,.84);
+ outlet(g,m,'respirator-valve',0,-.1,-5.44,.77);
  if(compact){
-  canister(g,m.hardware,'compact-filter-seat',0,1.23,-5.92,1.20,.47);
-  canister(g,m.filters,'compact-front-filter',0,1.24,-6.61,1.33,1.30);
+  filterPod(g,m.filters,'compact-front-filter',
+   [0,1.15,-6.02],[1.23,.86,.83],[0,0,-1]);
  }else for(const sign of [-1,1] as const){
-  canister(g,m.hardware,'dual-filter-port',
-   sign*2.82,1.24,-5.40,.91,.50,sign*.25);
-  canister(g,m.filters,'dual-filter-canister',
-   sign*3.33,1.22,-6.24,1.27,1.58,sign*.38);
+  filterPod(g,m.filters,'dual-filter-canister',
+   [sign*3.39,1.02,-5.65],[1.40,.96,.83],[sign*.78,0,-1]);
  }
- for(const sign of [-1,1] as const)
-  sideProfile(g,m.rubber,'respirator-cheek-seal',sign,[
-   [-4.61,3.20],[-3.05,2.73],[-2.28,1.84],
-   [-2.34,.02],[-3.53,-.64],[-4.66,-.71]
-  ],4.02,.48);
- rearHarness(g,m,1.92);
+ compactHarness(g,m,1.60,3.12);
 }
 function hood(g:THREE.Group,m:MaskMaterials){
  const leftRight=pair(1.94,3.76,1.34,1.37);
