@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import {headwearCamoPixels,headwearCamoSize,HEADWEAR_CAMO_DENSITY,
  type HeadwearCamoId,type HeadwearCamoPlacement} from './operator-headwear-camo.ts';
 import type {FabricCamoChannel} from './operator-fabric-camo-policy.ts';
-import {mapBoxPixelUV,TILE_WORLD_SIZE} from './rendering/pixel-materials.ts';
+import {mapBoxPixelUV,boxFaceVertexRanges,TILE_WORLD_SIZE} from './rendering/pixel-materials.ts';
 import {bakeGearGeometryAO} from './operator-baked-gear-ao.ts';
 
 /** R9 metric textile pattern scale. Master pixels and approved headwear
@@ -93,7 +93,8 @@ export function mapGarmentBoxUV(geometry:THREE.BoxGeometry,
   // Offsets compose with the shared cutting phase but do not stretch art.
   const u=(du+originZ+originX*.13)*scale;
   const v=(dv+originY+originX*.21)*scale;
-  for(let i=face*4;i<face*4+4;i++)
+  const {start,count}=boxFaceVertexRanges(geometry)[face];
+  for(let i=start;i<start+count;i++)
    uv.setXY(i,uv.getX(i)+u,uv.getY(i)+v);
  }
  uv.needsUpdate=true;
@@ -101,6 +102,15 @@ export function mapGarmentBoxUV(geometry:THREE.BoxGeometry,
 }
 export function garmentBoxUV(geometry:THREE.BoxGeometry,w:number,h:number,d:number,
  material:THREE.Material,x=0,y=0,z=0):THREE.BoxGeometry{
+ // Two in-face segments on gear only give contact shadow gradients a
+ // center sample without adding any silhouettes, draw calls or textures.
+ // Garments and non-AO assets retain their exact original topology.
+ const segmented=material.userData?.fieldworkBakedEquipmentAO===true&&
+  (w>1.4||h>1.4||d>1.4);
+ if(segmented){
+  geometry.dispose();
+  geometry=new THREE.BoxGeometry(w,h,d,2,2,2);
+ }
  const mapped=material.userData?.fieldworkFabric===true?
   mapGarmentBoxUV(geometry,w,h,d,x,y,z):mapBoxPixelUV(geometry,w,h,d);
  bakeGearGeometryAO(mapped,material);
