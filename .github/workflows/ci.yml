@@ -480,6 +480,7 @@ jobs:
             tests/dnav-door-intervening.test.mjs \
             tests/dnav-door-regression.test.mjs \
             tests/dnav-r2-geometry-clearance.test.mjs \
+            tests/dnav-r3-paired-traffic.test.mjs \
             tests/physicality-door-aware-routing.test.mjs \
             tests/physicality-08-door-contact.test.mjs \
             tests/physicality-09-recovery.test.mjs \
