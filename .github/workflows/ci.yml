@@ -804,8 +804,29 @@ jobs:
             tests/ux-r2-studio-flow.test.mjs \
             tests/operator-material-browser-smart-sort.test.mjs \
             tests/operator-material-browser-r2.test.mjs
-      - name: Reference Kits R1–R3 critical contracts
-        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/faction-reference-r1-r3-') || startsWith(github.head_ref, 'feature/faction-reference-r4-')) }}
+      - name: E5-B civilian release integration gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-e5b-civilian-release-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/civilian-b1-schema.test.mjs \
+            tests/civilian-b2-placement.test.mjs \
+            tests/civilian-b3-movement.test.mjs \
+            tests/civilian-b4-response.test.mjs \
+            tests/civilian-b5a-shared-movement.test.mjs \
+            tests/civilian-b5b-ballistics.test.mjs \
+            tests/civilian-b6-visuals.test.mjs \
+            tests/civilian-b7-rescue-mission.test.mjs \
+            tests/civilian-b7-rescue-session.test.mjs \
+            tests/civilian-b8-replay.test.mjs \
+            tests/civilian-release-field-smoke.test.mjs \
+            tests/worldgen-encounter-safety.test.mjs \
+            tests/worldgen-encounter-missions.test.mjs \
+            tests/physicality-07-authority.test.mjs \
+            tests/mission-escort-physicality.test.mjs \
+            tests/tactical-integration-17-firefight-b1.test.mjs \
+            tests/tactical-mission-quality-operations.test.mjs
+      - name: Reference Kits R1–R4 critical contracts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/faction-reference-release-') }}
         run: |
           node --experimental-strip-types --test \
             tests/faction-reference.test.mjs \
