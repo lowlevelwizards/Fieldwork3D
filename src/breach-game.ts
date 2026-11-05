@@ -2716,19 +2716,49 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.encounterReactionUntil=s.seconds+encounterReactionDelay(
       a.encounterReadiness??'attentive',a.id);
   }
+  // Every unheard event is considered once. Multiple same-tick sounds survive.
+  let strongest:ReturnType<typeof interpretSound>=null;
+  for(const sound of s.noise){
+    if(sound.id!==undefined?sound.id<=a.lastNoiseExaminedId:
+      sound.time<=a.lastNoiseExaminedAt)continue;
+    if(s.seconds-sound.time>1)continue;
+    const evidence=interpretSound(sound,a.id,a.p,s.doors,WALLS,s.windows);
+    if(evidence){
+      addObservation(a.awareness,{id:'audio/'+a.id+'/'+evidence.id,
+        observerId:a.id,source:'auditory',at:evidence.at,
+        estimate:evidence.estimate,uncertainty:evidence.uncertainty,
+        kind:evidence.kind});
+      const disposition=soundResponse(evidence.kind,evidence.intensity);
+      if(disposition!=='ignore')observeSuspicion(a.suspicion,{
+        id:'sound/'+evidence.id,at:evidence.at,
+        kind:disposition==='alarm'?'alarm':
+          disposition==='investigate'?'investigate':'orient',
+        intensity:evidence.intensity,cause:evidence.kind
+      });
+      const urgency=soundPriority(disposition);
+      const prior=strongest?soundPriority(
+        soundResponse(strongest.kind,strongest.intensity)):-1;
+      if(urgency>0&&(urgency>prior||
+         urgency===prior&&evidence.intensity>strongest!.intensity))
+        strongest=evidence;
+    }
+  }
+  const newestNoise=s.noise.at(-1);
+  if(newestNoise){
+    a.lastNoiseExaminedId=Math.max(a.lastNoiseExaminedId,
+      newestNoise.id??a.lastNoiseExaminedId);
+    a.lastNoiseExaminedAt=Math.max(a.lastNoiseExaminedAt,newestNoise.time);
+  }
   // Intention selection reads only acquired observations, not hidden positions.
   const belief=bestBelief(a.awareness);
   const recentNoise=hasRecentSound(s.seconds,a.lastNoiseAt);
   // A faint noise can turn a head without becoming an indefinitely
   // actionable contact. Do not replace it with a psychic search target.
   if(!visible.length&&!a.contacted&&a.alert==='suspicious'&&a.heard){
-    // A fresh violent event may interrupt a quiet head-turn. Do not wait
-    // until its one-second audio observation window has expired.
-    const newAlarm=s.noise.some(event=>
-      (event.id??0)>a.lastNoiseExaminedId&&
-      s.seconds-event.time<=1&&
-      ['gunshot','flashbang','kick','glass'].includes(event.kind));
-    if(s.seconds<a.alertUntil&&!newAlarm){
+    // Continue collecting physical evidence while orienting. Only an
+    // actually heard NEW event interrupts this head-turn, not distant
+    // hidden gunfire or a globally visible noise event.
+    if(s.seconds<a.alertUntil&&!strongest){
       a.velocity=0;rotate(a,angle(a.p,a.heard),dt);return;
     }
     if(s.seconds>=a.alertUntil){a.alert='idle';a.heard=null;}
@@ -2849,39 +2879,6 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         a.postureChangedAt??-100,true);
       a.postureChangedAt=s.seconds;
     }
-  }
-  // Every unheard event is considered once. Multiple same-tick sounds survive.
-  let strongest:ReturnType<typeof interpretSound>=null;
-  for(const sound of s.noise){
-    if(sound.id!==undefined?sound.id<=a.lastNoiseExaminedId:
-      sound.time<=a.lastNoiseExaminedAt)continue;
-    if(s.seconds-sound.time>1)continue;
-    const evidence=interpretSound(sound,a.id,a.p,s.doors,WALLS,s.windows);
-    if(evidence){
-      addObservation(a.awareness,{id:'audio/'+a.id+'/'+evidence.id,
-        observerId:a.id,source:'auditory',at:evidence.at,
-        estimate:evidence.estimate,uncertainty:evidence.uncertainty,
-        kind:evidence.kind});
-      const disposition=soundResponse(evidence.kind,evidence.intensity);
-      if(disposition!=='ignore')observeSuspicion(a.suspicion,{
-        id:'sound/'+evidence.id,at:evidence.at,
-        kind:disposition==='alarm'?'alarm':
-          disposition==='investigate'?'investigate':'orient',
-        intensity:evidence.intensity,cause:evidence.kind
-      });
-      const urgency=soundPriority(disposition);
-      const prior=strongest?soundPriority(
-        soundResponse(strongest.kind,strongest.intensity)):-1;
-      if(urgency>0&&(urgency>prior||
-         urgency===prior&&evidence.intensity>strongest!.intensity))
-        strongest=evidence;
-    }
-  }
-  const newestNoise=s.noise.at(-1);
-  if(newestNoise){
-    a.lastNoiseExaminedId=Math.max(a.lastNoiseExaminedId,
-      newestNoise.id??a.lastNoiseExaminedId);
-    a.lastNoiseExaminedAt=Math.max(a.lastNoiseExaminedAt,newestNoise.time);
   }
   const noiseDisposition=strongest?
     soundResponse(strongest.kind,strongest.intensity):'ignore';
