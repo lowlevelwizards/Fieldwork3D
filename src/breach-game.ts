@@ -264,7 +264,8 @@ const aiSchedulers=new WeakMap<Session,AiWorkScheduler>();
 function electiveAiWork(s:Session,a:TeamActor,kind:string):boolean{
   let scheduler=aiSchedulers.get(s);
   if(!scheduler){
-    scheduler=new AiWorkScheduler(2);
+    scheduler=new AiWorkScheduler(2,
+      s.operators.filter(actor=>actor.side==='red').map(actor=>actor.id));
     aiSchedulers.set(s,scheduler);
   }
   return scheduler.allow(a.id,kind,Math.round(s.seconds*60));
