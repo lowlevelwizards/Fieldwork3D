@@ -6,8 +6,8 @@
 import * as THREE from 'three';
 import {sculptedShell,filterPod,compactHarness,fittedHood,fittedWindow,hangingFilter} from './operator-d2-mask-r10-geometry.ts';
 import {
- type MaskMaterials,type MaskPoint,block,plate,extrudedProfile,
- eyePolygon,pairedEyes,lens,rim,strap,sideProfile,fittedHoodLoft,canister,outlet
+ type MaskMaterials,type MaskPoint,block,extrudedProfile,
+ eyePolygon,strap,outlet
 } from './operator-d2-mask-geometry.ts';
 export type D2MaskId=
  'half-mask'|'respirator-half'|'gas-gp5'|'gas-m17'|'gas-m40'|'gas-m50';
@@ -18,22 +18,6 @@ const pair=(cx:number,cy:number,rx:number,ry:number,sides=8):
  readonly [readonly P[],readonly P[]]=>[
  eyePolygon(-cx,cy,rx,ry,sides),eyePolygon(cx,cy,rx,ry,sides)
 ];
-function rearHarness(g:THREE.Group,m:MaskMaterials,low=1.9){
- for(const sign of [-1,1] as const){
-  strap(g,m.hardware,'head-harness-side',[
-   [sign*3.72,low,-4.30],[sign*4.56,low+.05,-2.4],
-   [sign*4.58,low+.10,1.4],[sign*3.45,low+.25,4.48]
-  ],.42);
-  block(g,m.filters,'harness-buckle',sign*4.40,low,-3.18,.68,.70,.60);
-  strap(g,m.hardware,'head-harness-upper',[
-   [sign*3.65,4.55,-3.75],[sign*4.55,5.00,-1.45],
-   [sign*3.14,6.58,2.05],[sign*1.15,6.89,3.75]
-  ],.36);
- }
- strap(g,m.hardware,'head-harness-back',[
-  [-3.48,low+.26,4.47],[0,low+.28,4.56],[3.48,low+.26,4.47]
- ],.44);
-}
 /** R10: all three sides of the guard are one low-poly object. */
 function tactical(g:THREE.Group,m:MaskMaterials,meshFront:boolean){
  sculptedShell(g,m.rubber,'rigid-half-mask-face',{
