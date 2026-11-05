@@ -23,7 +23,7 @@ Date: 2026-11-04. Scope: preserve the eight identifiers and all cosmetics saves 
 - All final texture bytes remain opaque RGB, nearest-filtered and physically scaled in the existing shared cloth / UV1 renderer.
 - Preserve original 30 camouflage masters, color tables, headwear eligibility and Gorka outfit eligibility. No gameplay mechanics or equipment changes.
 - MultiCam source has 32×32 original pixels. Each original ink pixel occupies 2×2 in its 64×64 6B variants; density 4 rather than 2 yields the *exact* physical motif dimensions of the source. Do not introduce new ink shapes into Tropic/Arid. Alter only their seven role-matched colors.
-- AOR and MM-14: retain coherent shapes as ink masks. Small pixel fragments can interrupt/extend the masks, not replace them with uniform noise.
+- AOR and MM-14: retain coherent shapes as ink masks. AOR masters use 4px/world-unit density so their 64px art spans 16 world units, matching MARPAT's 32px at 2px/world-unit; MM-14 keeps larger digital masses. Small pixel fragments can interrupt/extend the masks, not replace them with uniform noise.
 - A-TACS: represent a photographic micro-to-macro relationship through authored foliage/stone regions and **limited** deterministic boundary erosion. FG and AU should *not* share the exact print layout, unlike the MultiCam family.
 - SS-Leto: leaves must retain recognizable lobes at garment and gameplay zoom.
 - Avoid direct copying/scanning of proprietary fabric artwork; all non-MultiCam fields are original stylized approximations.

@@ -63,8 +63,8 @@ test('6A look identities preserve digital vs organic, terrain and per-pattern de
  assert.equal(CAMO_CATALOG['ss-leto'].origin,'Russia');
  assert.equal(CAMO_CATALOG['atacs-fg'].style,'organic');
  assert.equal(CAMO_CATALOG['aor1'].style,'digital');
- assert.equal(HEADWEAR_CAMO_DENSITY.aor1,3);
- assert.equal(HEADWEAR_CAMO_DENSITY.aor2,3);
+ assert.equal(HEADWEAR_CAMO_DENSITY.aor1,4);
+ assert.equal(HEADWEAR_CAMO_DENSITY.aor2,4);
  assert.equal(FABRIC_CAMO_DENSITY['atacs-fg'],2.8);
  assert.equal(filterCamoCatalog({terrain:'all',style:'all',origin:'Ukraine',
   text:'',onlyCompatible:false,onlyFavorites:false},[],new Set())[0],'ukrainian-mm14');

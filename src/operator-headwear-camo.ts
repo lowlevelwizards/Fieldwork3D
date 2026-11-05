@@ -28,8 +28,8 @@ export const HEADWEAR_CAMO_DENSITY:Readonly<Record<HeadwearCamoId,number>>={
  'splittertarn-31':2,'australian-dpcu':2,'italian-vegetato':2,
  'scorpion-w2':2,'russian-emr':3,'pla-xingkong':3,
  'cadpat-tw':2,'british-mtp':2,'indian-digital-2022':2,
- 'atacs-fg':2,'ukrainian-mm14':2,aor2:3,'multicam-tropic':4,
- 'atacs-au':2,'ss-leto':2,aor1:3,'multicam-arid':4
+ 'atacs-fg':2,'ukrainian-mm14':2,aor2:4,'multicam-tropic':4,
+ 'atacs-au':2,'ss-leto':2,aor1:4,'multicam-arid':4
 };
 export const HEADWEAR_CAMO_IDS=[
  'm81-woodland','three-color-desert','tiger-stripe','ucp','multicam',
