@@ -75,8 +75,8 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  const maskFilters=new THREE.MeshStandardMaterial({color:0x61685f,
   roughness:.84,flatShading:true});
  const maskLens=new THREE.MeshStandardMaterial({color:0x526760,
-  transparent:true,opacity:.83,depthWrite:false,roughness:.24,
-  side:THREE.DoubleSide});
+  transparent:false,opacity:1,depthWrite:true,roughness:.63,
+  flatShading:true,side:THREE.DoubleSide});
  const maskMaterials={rubber:maskRubber,hardware:maskHardware,
   filters:maskFilters,lens:maskLens};
  // Each approved silhouette keeps its geometry, but now owns a neutral

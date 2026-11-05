@@ -12,7 +12,8 @@ test('GP-5 has full rubber hood and real central canister; M17 has internal chee
  const m17=createD2Mask('gas-m17',materials);
  for(const g of [gp,m17])assert.equal(g.userData.modelAxes,'-Z-forward,+X-right,+Y-up');
  assert.ok(gp.getObjectByName('hood-crown'));
- assert.ok(gp.getObjectByName('hood-back'));
+ assert.ok(gp.getObjectByName('gp5-one-piece-rubber-hood'));
+ assert.ok(gp.getObjectByName('hood-crown'));
  assert.ok(gp.getObjectByName('gp5-central-canister'));
  assert.ok(!gp.getObjectByName('head-harness-back'));
  const eyes=[];gp.traverse(x=>{if(x.name==='gp5-round-eye-lens')eyes.push(x);});
