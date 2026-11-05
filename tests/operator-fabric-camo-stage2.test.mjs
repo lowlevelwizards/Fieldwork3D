@@ -138,7 +138,11 @@ test('three editor contexts mount shared actual-pixel swatches; historic eligibi
  const html=readFileSync(new URL('../operator-lab.html',import.meta.url),'utf8');
  assert.match(html,/id="wardrobeFabricCamo"/);
  const picker=readFileSync(new URL('../src/operator-fabric-camo-picker.ts',import.meta.url),'utf8');
- assert.match(picker,/headwearCamoPixels\(id\)/);
+ assert.match(picker,/paintCamoPreview\(canvas,id\)/);
+ const cache=readFileSync(new URL('../src/operator-camo-preview-cache.ts',
+  import.meta.url),'utf8');
+ assert.match(cache,/headwearCamoPixels\(id\)/,
+  'the shared preview cache must copy the original approved artwork');
  assert.match(picker,/fabricCamoChoices\(channel,outfit\)/);
  assert.match(picker,/matchWardrobeUniformCamo/);
  assert.match(picker,/rerollWardrobeFabricCamo/);

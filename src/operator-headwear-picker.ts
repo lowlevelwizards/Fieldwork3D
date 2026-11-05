@@ -6,13 +6,14 @@ import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {HEADWEAR_SOLID_COLORS,headwearColorChoices,resolvedHeadwearSolid,
  type HeadwearSolidColorId} from './operator-headwear-colors.ts';
-import {HEADWEAR_CAMO_RECIPES,headwearCamoChoices,
- headwearCamoPixels,headwearCamoSize,resolvedHeadwearCamo,
+import {HEADWEAR_CAMO_RECIPES,headwearCamoChoices,resolvedHeadwearCamo,
  nextHeadwearCamoRoll,type HeadwearCamoId} from './operator-headwear-camo.ts';
-import {browseCamos,readCamoBrowserPrefs,recordCamoRecent,
+import {browseCamos,camoBrowseSection,readCamoBrowserPrefs,recordCamoRecent,
  sortHeadwearSolids} from './operator-material-browser.ts';
-import {createCamoBrowseControls,createCamoFavoriteButton}
+import {createCamoBrowseControls,createCamoFavoriteButton,
+ appendCamoSectionHeading,createCamoResultSummary,syncCamoFavoriteButton}
  from './operator-material-browser-ui.ts';
+import {paintCamoPreview} from './operator-camo-preview-cache.ts';
 
 export const headwearAppearanceModel=(id:string)=>
  id==='high-cut-rails'?'high-cut':id;
@@ -107,41 +108,53 @@ export function createHeadwearAppearancePicker(kit:EquipmentLoadout,
   camoDetails.append(reroll);
  }
  const browser=createCamoBrowseControls(camoDetails,'headwear-picker',()=>render());
+ const showResults=createCamoResultSummary(camoDetails);
  const grid=make('div','fw-headwear-camo-grid');
  grid.setAttribute('role','group');grid.setAttribute('aria-label','Compatible camouflage prints');
  camoDetails.append(grid);
+ const cards=new Map<HeadwearCamoId,HTMLDivElement>();
  let painted=false;
  const render=()=>{
   if(!camoDetails.open)return;
+  const position=grid.scrollTop;
   grid.replaceChildren();painted=true;
   const prefs=readCamoBrowserPrefs();
-  for(const id of browseCamos(camos,{state:browser,active:selected,
-   reference:wardrobe.fabricCamo?.top??null,prefs})){
-   const recipe=HEADWEAR_CAMO_RECIPES[id];
-   const wrap=make('div','fw-camo-choice-wrap');
-   const button=make('button','fw-headwear-camo-choice');
-   button.type='button';button.disabled=options.disabled===true;
-   button.setAttribute('aria-label','Apply '+recipe.label);
-   button.setAttribute('aria-pressed',String(id===selected));
-   const canvas=make('canvas');const size=headwearCamoSize(id);
-   canvas.width=size;canvas.height=size;canvas.setAttribute('aria-hidden','true');
-   const context=canvas.getContext('2d');
-   if(context){
-    const pixels=context.createImageData(size,size);
-    pixels.data.set(headwearCamoPixels(id));context.putImageData(pixels,0,0);
+  const ordered=browseCamos(camos,{state:browser,active:selected,
+   reference:wardrobe.fabricCamo?.top??null,prefs});
+  showResults(ordered,camos.length,selected);
+  let section='';
+  for(const id of ordered){
+   section=appendCamoSectionHeading(grid,
+    camoBrowseSection(id,{state:browser,active:selected,
+     reference:wardrobe.fabricCamo?.top??null,prefs}),section);
+   let wrap=cards.get(id);
+   if(!wrap){
+    const recipe=HEADWEAR_CAMO_RECIPES[id];
+    wrap=make('div','fw-camo-choice-wrap');
+    const button=make('button','fw-headwear-camo-choice');
+    button.type='button';button.disabled=options.disabled===true;
+    button.setAttribute('aria-label','Apply '+recipe.label);
+    button.setAttribute('aria-pressed',String(id===selected));
+    const canvas=make('canvas');paintCamoPreview(canvas,id);
+    canvas.setAttribute('aria-hidden','true');
+    const title=make('span');title.textContent=recipe.label;
+    button.append(canvas,title);
+    button.addEventListener('click',()=>{
+     recordCamoRecent(id);onChange(selectHeadwearCamo(wardrobe,model,id));
+    });
+    wrap.append(button,createCamoFavoriteButton(id,prefs.favorites.includes(id),
+     ()=>render(),options.disabled===true));
+    cards.set(id,wrap);
    }
-   const title=make('span');title.textContent=recipe.label;
-   button.append(canvas,title);
-   button.addEventListener('click',()=>{
-    recordCamoRecent(id);onChange(selectHeadwearCamo(wardrobe,model,id));
-   });
-   wrap.append(button,createCamoFavoriteButton(id,prefs.favorites.includes(id),
-    ()=>render(),options.disabled===true));grid.append(wrap);
+   const star=wrap.querySelector<HTMLButtonElement>('.fw-material-favorite');
+   if(star)syncCamoFavoriteButton(star,prefs.favorites.includes(id));
+   grid.append(wrap);
   }
-  if(!grid.children.length){
+  if(!ordered.length){
    const empty=make('p','fw-headwear-hint');empty.textContent='No compatible prints match your filter.';
    grid.append(empty);
   }
+  grid.scrollTop=position;
  };
  camoDetails.addEventListener('toggle',()=>{
   options.onCamoExpandedChange?.(camoDetails.open);
