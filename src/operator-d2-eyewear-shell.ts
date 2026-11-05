@@ -267,10 +267,19 @@ export function fittedTempleArm(parent:THREE.Group,material:THREE.Material,
  */
 export function taperedGoggleStrap(parent:THREE.Group,material:THREE.Material,
  name:string,fit:EyewearTempleFit,backHeight:number):void{
+ // R8: side-band rear stations must penetrate the back band in depth.
+ // Previously the sides stopped short of the rear plate (visible gaps).
+ const backZ=4.20,backDepth=.64;
+ if(fit.rearZ<backZ-backDepth/2+.08||
+    fit.rearZ>backZ+backDepth/2-.08)
+  throw new Error(name+': rear station must overlap back band in Z');
+ if(backHeight<fit.rearHeight)
+  throw new Error(name+': rear fabric must cover side-band endpoint');
  for(const side of [-1,1] as const){
   const strap=fittedTempleArm(parent,material,name+'-side',side,fit);
   strap.userData.d2StrapFamily=name;
  }
- block(parent,material,'strap-back',0,fit.rearY,4.20,
-  fit.rearX*2+.14,backHeight,.52);
+ // Deliberate overlap at side/back corners conceals junction seams.
+ block(parent,material,'strap-back',0,fit.rearY,backZ,
+  fit.rearX*2+.30,backHeight,backDepth);
 }
