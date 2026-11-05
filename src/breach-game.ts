@@ -1268,6 +1268,17 @@ export function planCasualtyTransport(s:Session,id:string,patientId:string,
   !routeWithSqueezeIntel(s.intel,patient.p,to).length)return false;
  return addNode(s,id,'evacuate',to,{patientId,transportMode:mode});
 }
+/** Authored emergency release supersedes only this patient's transport.
+ * Other subsequent planned orders remain intact and the edit is undoable. */
+export function planCivilianRelease(s:Session,id:string):boolean{
+ const a=party(s,id),c=s.civilians.find(c=>c.id===a?.carryingId);
+ if(!a||!c||c.carriedById!==a.id||!canEdit(s))return false;
+ return edit(s,a,()=>{
+   a.plan=a.plan.filter(n=>n.kind!=='evacuate'||n.patientId!==c.id);
+   a.plan.unshift({id:s.nextId++,kind:'interact',p:clone(a.p),
+     objectId:c.id,interaction:'release-civilian'});
+ });
+}
 export function planMedicalTreatment(s:Session,id:string,patientId:string):boolean{
  const a=party(s,id),patient=s.operators.find(o=>o.id===patientId);
  if(!a||!patient||patient.side!==a.side||!canEdit(s))return false;
@@ -2254,7 +2265,9 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   // This is reactive execution only; it never modifies the player's plan.
   const visibleThreat=enemies(s).filter(e=>e.health>0&&inSight(a,e,s))
     .sort((x,y)=>d(a.p,x.p)-d(a.p,y.p))[0];
-  if(a.carryingId&&(n?.kind!=='evacuate'||n.patientId!==a.carryingId)){
+  if(a.carryingId&&
+     (n?.kind!=='evacuate'||n.patientId!==a.carryingId)&&
+     (n?.interaction!=='release-civilian'||n.objectId!==a.carryingId)){
     const civil=s.civilians.find(c=>c.id===a.carryingId);
     if(civil)dropCivilianCustody(civil,a);
     else {
@@ -2487,6 +2500,17 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     }
     if(!near(a.p,n.p,7)){
       approach(a,n.p,dt,s,.65);return;
+    }
+    if(n.interaction==='release-civilian'){
+      const person=s.civilians.find(c=>c.id===n.objectId);
+      if(!person||!dropCivilianCustody(person,a)){
+        failCurrentOrder(s,a,n,'CIVILIAN NOT IN CUSTODY');return;
+      }
+      if(person.rescueTarget&&s.rescue){
+        s.rescue.following=null;s.rescue.p=clone(person.p);
+      }
+      notify(s,'PERSON RELEASED — REASSIGN TO CONTINUE');
+      clearCurrentOrderIssue(a);pop(a);return;
     }
     if(n.objectId.startsWith('civ:')&&
        (n.interaction==='secure-civilian'||

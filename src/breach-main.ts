@@ -16,7 +16,7 @@ import {
   posture,toggleContactRule,toggling,stepSession,liveVisibility,
   planReload,reloadNow,planFlash,moveFlashTarget,flashTrajectory,
   equipWeaponChoice,toggleWeaponLight,planMedicalTreatment,planEntryTool,
-  planCasualtyTransport,planRecoverMedical,
+  planCasualtyTransport,planRecoverMedical,planCivilianRelease,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import type {TacticalOrderPreview} from './ui/tactical-feedback.ts';
@@ -1312,7 +1312,7 @@ function updateContext(){
     .sort((x,y)=>distance(finalPoint(a),x.p)-
       distance(finalPoint(a),y.p))[0]??null;
   const casualtyAtPlan=state.civilians.filter(c=>c.health<=0&&
-      (!c.carriedById||c.carriedById===a.id)&&
+      !c.carriedById&&
       liveVisibility(state,c.p)&&distance(finalPoint(a),c.p)<34)
     .sort((x,y)=>distance(finalPoint(a),x.p)-
       distance(finalPoint(a),y.p))[0]??null;
@@ -1328,6 +1328,8 @@ function updateContext(){
     escortableCivilian:!!civilianAtPlan&&
       civilianAtPlan.rescueTarget&&state.mission==='extract',
     nearCivilianCasualty:!!casualtyAtPlan,
+    carryingCivilian:!!a.carryingId&&state.civilians.some(c=>
+      c.id===a.carryingId&&c.carriedById===a.id),
     posture:current.posture,pace:current.pace,
     firePolicy:node?.firePolicyState??a.firePolicy,
     reserve:a.reserve,magazine:a.magazine,
@@ -1593,6 +1595,10 @@ const handleContextAction=(event:MouseEvent)=>{
         state.events.push('CIVILIAN INTERACTION NOT REACHABLE');
       break;
     }
+    case 'ctxReleaseCivilian':
+      if(!planCivilianRelease(state,selected))
+        state.events.push('NO CIVILIAN TRANSPORT TO RELEASE');
+      break;
     case 'ctxDragCivilian':
     case 'ctxCarryCivilian':{
       const civ=state.civilians.filter(c=>c.health<=0&&

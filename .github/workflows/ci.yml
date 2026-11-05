@@ -935,6 +935,7 @@ jobs:
             tests/civilian-r2-navigation.test.mjs \
             tests/civilian-r2-routines.test.mjs \
             tests/civilian-r2-presentation.test.mjs \
+            tests/civilian-r2-ux-release.test.mjs \
             tests/civilian-b6-visuals.test.mjs \
             tests/civilian-c5-site-occupation.test.mjs \
             tests/civilian-c5-unified-pose.test.mjs \
