@@ -62,7 +62,7 @@ export function canAutoOpenEnRoute(plan:{
 export function autoDoorAtBodyContact(from:Pt,to:Pt,
  doors:readonly Door[]):Door|undefined{
  const touching=doors.filter(d=>{
-   if((d.open&&(d.openFraction??0)>=.72)||!doorReachable(from,d))
+   if((d.open&&doorClear(d))||!doorReachable(from,d))
      return false;
    const leaf=doorLeafSegment(d);
    const before=pointToSegment(from,leaf),after=pointToSegment(to,leaf);
@@ -99,7 +99,7 @@ export function doorApproach(from:Pt,d:Door):Pt|null{
       for(const along of [0,-12,12])
         candidates.push({x:point.x+n.x*outward*side+t.x*along,
           y:point.y+n.y*outward*side+t.y*along});
-  return candidates.filter(p=>passable(p)&&doorReachable(p,d)&&
+  return candidates.filter(p=>bodyClear(p,[d])&&doorReachable(p,d)&&
     route(from,p).length).sort((a,b)=>dist(a,from)-dist(b,from))[0]??null;
 }
 export function initDoor(d:Door,i:number):Door{
