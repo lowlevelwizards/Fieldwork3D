@@ -54,7 +54,7 @@ const recipes={
  'kryptek-typhon':{
   label:'KRYPTEK TYPHON',
   description:'Exact Highlander fracture and outlined Kryptek reptile-net master in dark neutral graphite/charcoal; remove blue-purple cast and limit bright grayscale',
-  colors:[[119,123,125],[81,86,89],[58,65,69],[37,41,44],[21,24,27]],
+  colors:[[119,123,125],[81,86,89],[61,65,67],[37,41,44],[21,24,27]],
   targetCoverage:[.29,.27,.22,.15,.07],motifs:[]
  },
  'norwegian-m98':{
@@ -353,7 +353,7 @@ function jgsdf8B():Uint8Array{
 function soldier2000_8B():Uint8Array{
  // The five-color Soldier 2000 print is an earth-brown *field* with
  // independently shaped pale/grass/dark-green islands; not a Flecktarn cloud.
- const source=paint(S2000.map(m=>scaleMotif(m,.79)),0);
+ const source=paint(S2000.map(m=>scaleMotif(m,.72)),0);
  const out=source.slice();
  // Small contrasting 1-2px paired spores INSIDE the irregular islands,
  // deliberately more apparent than JGSDF's satellite flecks.
