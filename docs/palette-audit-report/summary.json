@@ -1,5 +1,8 @@
 {
   "files": 528,
+  "reachableFiles": 431,
+  "coreOccurrences": 2007,
+  "coreDistinct": 1792,
   "occurrences": 2603,
   "distinct": 2295,
   "singletons": 2109,
@@ -39,6 +42,7 @@
     {
       "hex": "#ffffff",
       "n": 40,
+      "coreUses": 19,
       "scope": [
         "UI / HUD",
         "Combat / mission",
@@ -59,6 +63,7 @@
     {
       "hex": "#000000",
       "n": 7,
+      "coreUses": 7,
       "scope": [
         "UI / HUD"
       ],
@@ -76,6 +81,7 @@
     {
       "hex": "#9fccc4",
       "n": 6,
+      "coreUses": 6,
       "scope": [
         "UI / HUD"
       ],
@@ -93,6 +99,7 @@
     {
       "hex": "#2e362c",
       "n": 6,
+      "coreUses": 6,
       "scope": [
         "Camouflage inks"
       ],
@@ -106,6 +113,7 @@
     {
       "hex": "#30493f",
       "n": 6,
+      "coreUses": 2,
       "scope": [
         "UI / HUD"
       ],
@@ -123,6 +131,7 @@
     {
       "hex": "#ecf0e2",
       "n": 6,
+      "coreUses": 0,
       "scope": [
         "UI / HUD"
       ],
@@ -136,6 +145,7 @@
     {
       "hex": "#182c27",
       "n": 5,
+      "coreUses": 5,
       "scope": [
         "UI / HUD"
       ],
@@ -153,6 +163,7 @@
     {
       "hex": "#a1c0af",
       "n": 5,
+      "coreUses": 5,
       "scope": [
         "Combat / mission"
       ],
@@ -166,6 +177,7 @@
     {
       "hex": "#e9a883",
       "n": 5,
+      "coreUses": 5,
       "scope": [
         "Combat / mission"
       ],
@@ -179,6 +191,7 @@
     {
       "hex": "#c4c7bd",
       "n": 5,
+      "coreUses": 1,
       "scope": [
         "UI / HUD",
         "Operator / equipment"
@@ -197,6 +210,7 @@
     {
       "hex": "#cebd95",
       "n": 5,
+      "coreUses": 5,
       "scope": [
         "Camouflage inks"
       ],
@@ -210,6 +224,7 @@
     {
       "hex": "#c8ac72",
       "n": 4,
+      "coreUses": 4,
       "scope": [
         "UI / HUD"
       ],
@@ -223,6 +238,7 @@
     {
       "hex": "#f3dba7",
       "n": 4,
+      "coreUses": 4,
       "scope": [
         "UI / HUD"
       ],
@@ -236,6 +252,7 @@
     {
       "hex": "#d5cb9d",
       "n": 4,
+      "coreUses": 4,
       "scope": [
         "Combat / mission"
       ],
@@ -249,6 +266,7 @@
     {
       "hex": "#102020",
       "n": 4,
+      "coreUses": 4,
       "scope": [
         "UI / HUD"
       ],
@@ -262,6 +280,7 @@
     {
       "hex": "#23352e",
       "n": 4,
+      "coreUses": 4,
       "scope": [
         "UI / HUD",
         "Operator / equipment"
@@ -280,6 +299,7 @@
     {
       "hex": "#405342",
       "n": 4,
+      "coreUses": 4,
       "scope": [
         "Camouflage inks"
       ],
@@ -293,6 +313,7 @@
     {
       "hex": "#d0b17e",
       "n": 4,
+      "coreUses": 0,
       "scope": [
         "UI / HUD"
       ],
@@ -306,6 +327,7 @@
     {
       "hex": "#203938",
       "n": 4,
+      "coreUses": 0,
       "scope": [
         "UI / HUD"
       ],
@@ -319,6 +341,7 @@
     {
       "hex": "#a8ab96",
       "n": 3,
+      "coreUses": 3,
       "scope": [
         "UI / HUD"
       ],
@@ -332,6 +355,7 @@
     {
       "hex": "#172825",
       "n": 3,
+      "coreUses": 2,
       "scope": [
         "UI / HUD"
       ],
@@ -349,6 +373,7 @@
     {
       "hex": "#b9c0b9",
       "n": 3,
+      "coreUses": 0,
       "scope": [
         "UI / HUD",
         "Operator / equipment"
@@ -367,6 +392,7 @@
     {
       "hex": "#202c2b",
       "n": 3,
+      "coreUses": 3,
       "scope": [
         "UI / HUD"
       ],
@@ -380,6 +406,7 @@
     {
       "hex": "#718b7e",
       "n": 3,
+      "coreUses": 3,
       "scope": [
         "UI / HUD"
       ],
@@ -397,6 +424,7 @@
     {
       "hex": "#192b29",
       "n": 3,
+      "coreUses": 3,
       "scope": [
         "UI / HUD"
       ],
@@ -414,6 +442,7 @@
     {
       "hex": "#182923",
       "n": 3,
+      "coreUses": 3,
       "scope": [
         "UI / HUD"
       ],
@@ -431,6 +460,7 @@
     {
       "hex": "#586665",
       "n": 3,
+      "coreUses": 3,
       "scope": [
         "Combat / mission"
       ],
@@ -444,6 +474,7 @@
     {
       "hex": "#243530",
       "n": 3,
+      "coreUses": 3,
       "scope": [
         "Combat / mission"
       ],
@@ -457,6 +488,7 @@
     {
       "hex": "#e5e9d8",
       "n": 3,
+      "coreUses": 3,
       "scope": [
         "Combat / mission"
       ],
@@ -470,6 +502,7 @@
     {
       "hex": "#899089",
       "n": 3,
+      "coreUses": 3,
       "scope": [
         "Operator / equipment"
       ],
@@ -487,6 +520,7 @@
     {
       "hex": "#172925",
       "n": 3,
+      "coreUses": 3,
       "scope": [
         "UI / HUD"
       ],
@@ -500,6 +534,7 @@
     {
       "hex": "#294239",
       "n": 3,
+      "coreUses": 3,
       "scope": [
         "UI / HUD"
       ],
@@ -513,6 +548,7 @@
     {
       "hex": "#d7e3d5",
       "n": 3,
+      "coreUses": 2,
       "scope": [
         "UI / HUD"
       ],
@@ -530,6 +566,7 @@
     {
       "hex": "#172333",
       "n": 3,
+      "coreUses": 0,
       "scope": [
         "Landscape / other",
         "UI / HUD"
@@ -548,6 +585,7 @@
     {
       "hex": "#28374a",
       "n": 3,
+      "coreUses": 0,
       "scope": [
         "Landscape / other",
         "UI / HUD"

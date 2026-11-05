@@ -3,6 +3,7 @@ Generated from the checked-out repository HEAD by `node scripts/audit-game-color
 
 ## Scope and limitations
 - Includes active `src/` TypeScript, CSS, JS, shaders, and top-level HTML; excludes docs, tests, scripts, dependency bundles, and compiled output.
+- The **Breach core** reachability view follows statically resolvable imports from `index.html`, `src/breach-main.ts` and `src/breach-style.css`. Lab pages and separately loaded operator studio previews may be excluded unless imported; dynamic paths require manual inspection.
 - Counts literal hex colors (`0xRRGGBB`, `#RGB`, `#RRGGBB`, alpha variants), literal integer `rgb/rgba()` calls, and `[R,G,B]` triplets explicitly defined in camouflage `colors` recipe arrays.
 - A *source occurrence* is an authored literal, **not** pixel coverage, run-time screen area, or actual frequency of an item spawning. Multiple alpha values share the same RGB row, but are separately recorded in uses CSV.
 - Generated color mixes, lighting, wear, camouflage sampling, gradients, HSL and runtime variants cannot be exhaustively enumerated statically. These require a subsequent runtime render/screenshot palette pass.
@@ -10,6 +11,7 @@ Generated from the checked-out repository HEAD by `node scripts/audit-game-color
 
 ## Totals
 - Source files inspected: **528**
+- Core Breach reachable source modules (approximate static import graph): **431**; core authored occurrences: **2007**; core unique RGB: **1792**.
 - Literal color occurrences: **2603**
 - Distinct normalized RGB values: **2295**
 - Single-use RGB colors: **2109**
