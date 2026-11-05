@@ -46,7 +46,7 @@
 .campaign-dossier summary{cursor:pointer;touch-action:manipulation;font-size:11px;color:#d1dfcc}
 .campaign-dossier[open]{grid-column:1/-1}
 .campaign-skill{display:flex;justify-content:space-between;gap:7px;margin-top:9px;font-size:10px;color:#bacabb}
-.campaign-skill-track{height:5px;border-radius:5px;background:#172724;overflow:hidden;margin-top:3px}
+.campaign-skill-track{height:5px;border-radius:5px;background:var(--fw-panel-deep);overflow:hidden;margin-top:3px}
 .campaign-skill-fill{height:100%;background:#a5bd99}
 
 .campaign-person-actions{display:flex;gap:5px;flex-wrap:wrap}
@@ -62,7 +62,7 @@
 .campaign-assignment-row{display:flex;align-items:center;justify-content:space-between;
  gap:9px;margin:6px 0;font-size:11px}
 .campaign-select{touch-action:manipulation;min-height:36px;max-width:65%;
- background:#2c4039;border:1px solid #748f7d;color:#f0f1e4;border-radius:7px;
+ background:var(--fw-control-bg);border:1px solid #748f7d;color:#f0f1e4;border-radius:7px;
  font:600 12px var(--fw-font-menu);padding:6px}
 .campaign-select:focus-visible{outline:3px solid #e9cf8b}
 
@@ -77,7 +77,7 @@
 .campaign-import{display:block;width:100%;box-sizing:border-box;padding:10px;
  color:#d7e3d5;background:#293b37;border:1px solid #5c7869;border-radius:8px;
  font:12px var(--fw-font-menu);touch-action:manipulation}
-.campaign-import::file-selector-button{background:#a8b99a;color:#182523;border:0;
+.campaign-import::file-selector-button{background:var(--fw-sage);color:#182523;border:0;
  border-radius:6px;padding:8px 10px;margin-right:8px;font:600 11px var(--fw-font-menu)}
 
 /* Equipment 03: touch-first armory. All selectors remain usable on narrow phones. */
