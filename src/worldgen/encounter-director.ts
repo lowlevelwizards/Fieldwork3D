@@ -5,6 +5,7 @@ import type {EncounterContext,EncounterPlan,EncounterPremise,EncounterActorSpec}
 import {chooseEncounterPremise} from './encounter-premises.ts';
 import {chooseEncounterProfile} from './encounter-profiles.ts';
 import {chooseHostileBudget} from './encounter-population.ts';
+import {planCivilians} from './encounter-civilians.ts';
 import {hostileMinimumForContract} from './encounter-population-contract.ts';
 import {composeEncounterGroups} from './encounter-groups.ts';
 import {placeEncounterActors} from './encounter-placement.ts';
@@ -51,6 +52,9 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
  const actors=assignEncounterRoutines(site,
    assignEncounterActivities(site,
      assignObjectiveSecurity(site,spatial.actors,mission),premise,seed),seed);
+ // Neutral placement is separate from armed encounter groups and never
+ // increases the hostileBudget or creates a red actor.
+ const neutrals=planCivilians(site,actors,seed,premise,mission);
  const rooms=site.rooms.filter(r=>r.kind==='room');
  const occupiedZones=new Set(actors.map(a=>a.zoneId).filter(Boolean)).size;
  const zones=new Set(rooms.map(r=>r.zoneId??r.id));
@@ -61,7 +65,7 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
   expectedOccupancy:site.identity?.capacity??actors.length,hostileBudget:target,
   groups:placement.groups.map(g=>({...g,
     members:g.members.filter(id=>actors.some(a=>a.id===id))}))
-    .filter(g=>g.members.length>0),actors,
+    .filter(g=>g.members.length>0),actors,neutrals,
   diagnostics:{targetHostiles:target,placedHostiles:actors.length,
    rejected:placement.rejected,fallbacks:placement.fallbacks+spatial.rehomed,
    occupiedZones,emptyZones:Math.max(0,zones.size-occupiedZones),

@@ -71,6 +71,13 @@ import {investigationTempo} from './breach-ai-investigation.ts';
 import {routineDwellSeconds} from './breach-ai-routine-dwell.ts';
 import {pressureAdvanceOpportunity} from './breach-ai-initiative.ts';
 import {captureTargetMayWithdraw} from './breach-ai-mission-response.ts';
+import {createCivilian,type CivilianActor} from './breach-civilian-types.ts';
+import {stepCivilianMovement} from './breach-civilian-movement.ts';
+import {stepCivilianResponse} from './breach-civilian-response.ts';
+import {canSecureRescuePerson,rescueEscortSeparated,rescueFollowGoal}
+  from './breach-civilian-mission.ts';
+import {firstCivilianAlongRay,applyCivilianBulletHit}
+  from './breach-civilian-ballistics.ts';
 import {retreatDoorClosureEligible} from './breach-ai-door-response.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
 import {contactTactic} from './breach-ai-tactical-response.ts';
@@ -251,7 +258,8 @@ export type SquadPlanTransaction={
  after:Record<string,PlanNode[]>;
 };
 export type Session=Omit<TacticalState,'operators'> & {
-  operators:TeamActor[];windows:WindowState[];objectRevision:number;
+  operators:TeamActor[];civilians:CivilianActor[];
+  windows:WindowState[];objectRevision:number;
   coverState:typeof COVER;
   passageLeases:Record<string,PassageLease>;
   squadEntryUndo:SquadPlanTransaction|null;
@@ -459,7 +467,11 @@ export function newSession(index=0,siteSeed?:number,
     for(let i=operators.length-1;i>=0;i--)
       if(operators[i].side==='red')operators.splice(i,1);
   }
-  const state:Session={...seed,operators,objectRevision:0,
+  // Neutrals are disabled in production until physical damage, models,
+  // mission semantics and replay have completed their separate stages.
+  const civilians=encounterContext.enableCivilians?
+    (site?.encounter?.neutrals??[]).map(createCivilian):[];
+  const state:Session={...seed,operators,civilians,objectRevision:0,
     coverState:COVER.map(o=>({...o,material:materialForFixture(o.fixture),
       integrity:MATERIALS[materialForFixture(o.fixture)].integrity})),
     windows:initializeWindows(site?.windows??[]),
@@ -490,8 +502,25 @@ export function newSession(index=0,siteSeed?:number,
     state.captureTarget=target?.id??null;
     if(target)state.scenario.objective=clone(target.p);
   }
-  if(state.missionType==='rescue')
+  if(state.missionType==='rescue'){
+    // The developer-gated migration creates ONE authoritative rescued
+    // person. Ordinary gameplay keeps the legacy escort until N4 release.
+    if(encounterContext.enableCivilians&&site){
+      const point=state.scenario.objective;
+      const room=site.rooms.find(r=>r.kind==='room'&&
+        point.x>=r.x&&point.x<=r.x+r.w&&
+        point.y>=r.y&&point.y<=r.y+r.h);
+      state.civilians.push(createCivilian({
+        id:'civ:rescue:'+site.seed,role:'rescue',persona:'cautious',
+        activity:'waiting',position:clone(point),heading:0,
+        roomId:room?.id??'objective',
+        zoneId:room?.zoneId??room?.id,
+        appearanceSeed:site.seed^0x57eb,
+        isRescueTarget:true
+      }));
+    }
     state.rescue={p:clone(state.scenario.objective),following:null,trail:[]};
+  }
   if(state.missionType==='intel'||state.missionType==='rescue'||
      state.missionType==='hold')state.mission='secure';
   COVER.splice(0,COVER.length,...state.coverState);
@@ -3394,28 +3423,49 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   const yaw=muzzle.yaw;
   const from={x:muzzle.x,y:muzzle.z};
   const far=muzzleEndpoint(from,yaw,Math.max(40,d(from,point)));
-  const friends=team(s).filter(o=>o!==a&&o.health>0).map(o=>o.p);
+  const friends=[
+    ...team(s).filter(o=>o!==a&&o.health>0).map(o=>o.p),
+    ...s.civilians.filter(c=>c.health>0&&d(a.p,c.p)<200&&
+      Math.abs(angleDifference(a.heading,angle(a.p,c.p)))<.9&&
+      unobstructed(a.p,c.p,s,false)).map(c=>c.p)
+  ];
   if(assessFireLane(from,muzzle.y,far,14,COVER,WALLS,s.doors,
     friends).blocker==='friendly')return;
   const impact=strikeSurface(from,far,s,muzzle.y,14,
     WEAPONS[a.weapon].penetration);
-  shatterStruckWindows(s,impact.paneHits,Math.max(1,WEAPONS[a.weapon].damage));
-  shatterStruckDoorGlass(s,impact.glassDoorHits);
-  damageStruckCover(s,impact.coverHits,WEAPONS[a.weapon].damage*.36);
-  emitMaterialEvents(s,from,far,impact.materialHits);
+  const victim=firstCivilianAlongRay(from,yaw,
+    d(from,impact.end),s.civilians);
+  const fraction=victim?Math.min(1,victim.along/Math.max(1,d(from,far))):1;
+  const reachedPanes=impact.paneHits.filter(index=>{
+    const pane=s.windows[index];
+    if(!pane)return false;
+    const at=segmentImpact(from,far,windowPaneSegment(pane));
+    return at!==null&&at<=fraction+.0001;
+  });
+  shatterStruckWindows(s,reachedPanes,Math.max(1,WEAPONS[a.weapon].damage));
+  shatterStruckDoorGlass(s,impact.glassDoorHits,fraction);
+  damageStruckCover(s,impact.coverHits,WEAPONS[a.weapon].damage*.36,fraction);
+  emitMaterialEvents(s,from,far,impact.materialHits,fraction);
   a.fireCd=WEAPONS[a.weapon].interval*1.6;
   a.magazine--;a.shots++;a.lastShotAt=s.seconds;
   a.recoil=Math.min(.9,a.recoil+BALLISTICS[a.weapon].recoilKick*mods.recoilKick);
   a.stability=Math.max(0,a.stability-.13);
   const shotId=s.nextShotId++;
-  const height=impact.surface==='dust'?1:14;
-  s.shots.push({id:shotId,shooterId:a.id,targetId:null,
-    start:from,end:impact.end,age:0,hit:false,side:a.side,
-    shotYaw:yaw,mode:'ads',spread,muzzleHeight:muzzle.y,
+  const hit=!!victim;
+  const end=victim?clone(victim.actor.p):impact.end;
+  const surface=hit?'blood' as const:impact.surface;
+  const height=hit?20:impact.surface==='dust'?1:14;
+  const before=victim?.actor.health??0;
+  const after=hit?Math.max(0,before-1):0;
+  s.shots.push({id:shotId,shooterId:a.id,
+    targetId:victim?.actor.id??null,start:from,end,age:0,hit,
+    side:a.side,shotYaw:yaw,mode:'ads',spread,muzzleHeight:muzzle.y,
     impactHeight:height,firedAt:s.seconds,
-    healthBefore:0,healthAfter:0,down:false,surface:impact.surface});
-  retainImpactMark(s,{id:s.nextEffectId++,p:clone(impact.end),
-    surface:impact.surface,height,age:0});
+    healthBefore:before,healthAfter:after,down:hit&&after<=0,
+    surface});
+  retainImpactMark(s,{id:s.nextEffectId++,p:clone(end),
+    surface,height,age:0});
+  if(victim)applyCivilianBulletHit(victim.actor,s.seconds);
 
   s.casings.push({id:shotId,at:s.seconds,weapon:a.weapon,side:a.side,
     x:muzzle.x-4*Math.cos(yaw),z:muzzle.z-4*Math.sin(yaw),
@@ -3547,8 +3597,13 @@ function fire(s:Session,a:TeamActor,dt:number){
     return;
   }
   const sightMuzzle=sightClearance.muzzle;
-  const friends=s.operators.filter(o=>o!==a&&o.health>0&&
-    o.side===a.side).map(o=>o.p);
+  const friends=[
+    ...s.operators.filter(o=>o!==a&&o.health>0&&
+      o.side===a.side).map(o=>o.p),
+    ...s.civilians.filter(c=>c.health>0&&d(a.p,c.p)<200&&
+      Math.abs(angleDifference(a.heading,angle(a.p,c.p)))<.9&&
+      unobstructed(a.p,c.p,s,false)).map(c=>c.p)
+  ];
   const lane=assessFireLane({x:sightMuzzle.x,y:sightMuzzle.z},
     sightMuzzle.y,target.p,aimHeight(target.posture==='crouch'),
     COVER,WALLS,s.doors,friends);
@@ -3619,23 +3674,32 @@ function fire(s:Session,a:TeamActor,dt:number){
     aimHeight(target.posture==='crouch'),weapon.penetration);
   // Obstruction before the target defeats a perfectly aligned barrel.
   const blockerDist=d(muzzlePoint,strike.end);
-  const hit=candidateHit&&blockerDist>=muzzleRange-hitRadius&&
+  const wouldHitTarget=candidateHit&&blockerDist>=muzzleRange-hitRadius&&
     d(targetTrace.end,target.p)<.5&&targetTrace.remaining>.015;
+  // Only after firing do physical ray/body tests consider a civilian.
+  // This cannot grant pre-shot target acquisition or hidden knowledge.
+  const contact=firstCivilianAlongRay(muzzlePoint,yaw,
+    Math.min(d(muzzlePoint,far),blockerDist),s.civilians);
+  const civilianHit=contact&&(!wouldHitTarget||
+    contact.along+5<muzzleRange)?contact:null;
+  const hit=wouldHitTarget&&!civilianHit;
   const fractionToTarget=d(muzzlePoint,target.p)/
     Math.max(1,d(muzzlePoint,far));
+  const stopFraction=civilianHit?
+    civilianHit.along/Math.max(1,d(muzzlePoint,far)):
+    hit?fractionToTarget:1;
   const actualRay=strike.paneHits.filter(index=>{
     const w=s.windows[index];
     if(!w)return false;
     const t=segmentImpact(muzzlePoint,far,windowPaneSegment(w));
-    return t!==null&&(!hit||t<=fractionToTarget+.0001);
+    return t!==null&&t<=stopFraction+.0001;
   });
   shatterStruckWindows(s,actualRay,Math.max(1,weapon.damage));
-  shatterStruckDoorGlass(s,strike.glassDoorHits,hit?fractionToTarget:1);
-  damageStruckCover(s,strike.coverHits,weapon.damage*.45,
-    hit?fractionToTarget:1);
-  emitMaterialEvents(s,muzzlePoint,far,strike.materialHits,
-    hit?fractionToTarget:1);
-  const end=hit?clone(target.p):strike.end;
+  shatterStruckDoorGlass(s,strike.glassDoorHits,stopFraction);
+  damageStruckCover(s,strike.coverHits,weapon.damage*.45,stopFraction);
+  emitMaterialEvents(s,muzzlePoint,far,strike.materialHits,stopFraction);
+  const end=civilianHit?clone(civilianHit.actor.p):
+    hit?clone(target.p):strike.end;
   a.recoil=Math.min(.9,a.recoil+profile.recoilKick*mods.recoilKick*
     (a.burstCount>2?1.20:1)*
     (2-skillMultiplier(a.skills.recoilControl,.42)));
@@ -3644,7 +3708,7 @@ function fire(s:Session,a:TeamActor,dt:number){
     (2-skillMultiplier(a.skills.composure,.38))-a.recoil*.10);
   const shotId=s.nextShotId++;
   const region=hitRegion(shotId);
-  const healthBefore=target.health;
+  const healthBefore=civilianHit?civilianHit.actor.health:target.health;
   const rawSeverity=hit&&s.site?woundSeverity(weapon,range,
     nearCover(target.p,a.p),random(s)):1;
   const protection=resolveArmorImpact({kit:target.equipment,region,
@@ -3653,15 +3717,17 @@ function fire(s:Session,a:TeamActor,dt:number){
     shotId,torso:target.armorIntegrity,head:target.helmetIntegrity});
   const severity=protection.severity;
   const nextStage=Math.min(3,target.injuryStage+(hit?severity:0));
-  const healthAfter=hit?
-    (s.site?nextStage>=3?0:4-nextStage:Math.max(0,healthBefore-1)):
+  const healthAfter=civilianHit?Math.max(0,healthBefore-1):
+    hit?(s.site?nextStage>=3?0:4-nextStage:Math.max(0,healthBefore-1)):
     healthBefore;
-  const impact=hit?{end,surface:protection.blocked&&severity===0?
-    'metal' as const:'blood' as const}:strike;
+  const impact=civilianHit?{end,surface:'blood' as const}:
+    hit?{end,surface:protection.blocked&&severity===0?
+      'metal' as const:'blood' as const}:strike;
   s.sparks.push({p:clone(a.p),side:a.side,age:0});
   // Immutable shot identity lets 2D/3D attach recoil and damage effects to
   // the correct actors without guessing from proximity or team color.
-  const impactHeight=hit?aimHeight(target.posture==='crouch'):
+  const impactHeight=civilianHit?20:
+    hit?aimHeight(target.posture==='crouch'):
     impact.surface==='dust'?1:14;
   retainImpactMark(s,{id:s.nextEffectId++,p:clone(end),
     surface:impact.surface,height:impactHeight,age:0});
@@ -3678,13 +3744,15 @@ function fire(s:Session,a:TeamActor,dt:number){
   });
   const fall=chooseFall(target.heading,yaw,nearSolid||nearWall);
   s.shots.push({
-    id:shotId,shooterId:a.id,targetId:target.id,
-    start:muzzlePoint,end,age:0,hit,side:a.side,
+    id:shotId,shooterId:a.id,
+    targetId:civilianHit?.actor.id??target.id,
+    start:muzzlePoint,end,age:0,hit:hit||!!civilianHit,side:a.side,
     shotYaw:yaw,mode,spread:cone,
     muzzleHeight:muzzle.y,firedAt:s.seconds,impactHeight,
-    hitRegion:hit?region:undefined,downPose:hit&&healthAfter<=0?
-      fall:undefined,
-    healthBefore,healthAfter,down:hit&&healthAfter<=0,
+    hitRegion:civilianHit?'torso':hit?region:undefined,
+    downPose:hit&&healthAfter<=0?fall:undefined,
+    healthBefore,healthAfter,
+    down:(hit||!!civilianHit)&&healthAfter<=0,
     surface:impact.surface,
   });
   s.casings.push({id:shotId,at:s.seconds,weapon:a.weapon,side:a.side,
@@ -3701,6 +3769,14 @@ function fire(s:Session,a:TeamActor,dt:number){
       x:a.p.x+(random(s)-.5)*58,y:a.p.y+(random(s)-.5)*58,
     },at:s.seconds,status:'heard'});
     notify(s,'UNSEEN GUNFIRE');
+  }
+  if(civilianHit){
+    applyCivilianBulletHit(civilianHit.actor,s.seconds);
+    // Casualty is NOT a hostile kill or accuracy bonus, and hidden
+    // civilians do not generate a revealing live contact notification.
+    if(liveVisibility(s,civilianHit.actor.p))
+      notify(s,'CIVILIAN HIT');
+    return;
   }
   target.suppression=Math.min(1,target.suppression+.31);
   if(target.side==='red')target.morale=Math.max(0,target.morale-.035);
@@ -3752,7 +3828,51 @@ function mission(s:Session,dt:number){
         'INTEL DROPPED');
     }
   }
-  if(s.rescue&&s.mission==='extract'){
+  const rescuePerson=s.civilians.find(c=>c.rescueTarget);
+  if(rescuePerson&&rescuePerson.health<=0){
+    // The injured body remains in world/replay; with no tested casualty
+    // carrying for civilians yet, an incapacitated rescue target fails.
+    s.phase='lost';
+    s.report=['OPERATION FAILED','RESCUE TARGET INCAPACITATED'];
+    return;
+  }
+  if(s.rescue&&rescuePerson){
+    s.rescue.p=clone(rescuePerson.p);
+  }
+  if(s.rescue&&s.mission==='extract'&&rescuePerson){
+    const prior=s.rescue.following;
+    let escort=team(s).find(a=>a.id===prior&&a.health>0)??null;
+    if(prior&&rescueEscortSeparated(rescuePerson,escort)){
+      s.rescue.following=null;rescuePerson.following=null;
+      rescuePerson.goal=null;rescuePerson.state='frozen';
+      escort=null;notify(s,'ESCORT SEPARATED — RETURN TO PERSON');
+    }
+    if(!s.rescue.following){
+      escort=team(s).find(a=>canSecureRescuePerson(rescuePerson,a,
+        (from,to)=>sweptBodyClear(from,to,s.doors,5.5)))??null;
+      if(escort){
+        s.rescue.following=escort.id;
+        rescuePerson.following=escort.id;
+        rescuePerson.state='escorted';rescuePerson.stateSince=s.seconds;
+        notify(s,'PERSON JOINED '+escort.name);
+      }
+    }
+    if(escort&&s.rescue.following===escort.id&&
+       s.seconds-rescuePerson.lastEscortRouteAt>=.55){
+      // Plan from actual civilian location to just behind the real escort.
+      // The existing geometry-aware route is bounded and never teleports.
+      const desired=rescueFollowGoal(escort);
+      const path=cachedEnemyRoute(s,rescuePerson.p,desired,true);
+      const next=path.find(p=>d(p,rescuePerson.p)>10);
+      if(next&&sweptBodyClear(rescuePerson.p,next,s.doors)){
+        rescuePerson.goal=clone(next);
+        rescuePerson.state='escorted';
+      }else rescuePerson.goal=null;
+      rescuePerson.lastEscortRouteAt=s.seconds;
+    }
+    s.rescue.p=clone(rescuePerson.p);
+  }else if(s.rescue&&s.mission==='extract'){
+    // Legacy rescue compatibility: no duplicate real civilian exists.
     const prior=s.rescue.following;
     const escort=team(s).find(a=>a.id===prior&&a.health>0);
     if(prior&&escort){
@@ -3764,7 +3884,6 @@ function mission(s:Session,dt:number){
       notify(s,'ESCORT DOWN — PERSON WAITING');
     }
     if(!s.rescue.following){
-      // Distance across a wall or shut doorway cannot transfer custody.
       const rescuer=team(s).find(a=>a.health>0&&
         near(a.p,s.rescue!.p,26)&&
         sweptBodyClear(a.p,s.rescue!.p,s.doors,5.5));
@@ -3792,9 +3911,10 @@ function mission(s:Session,dt:number){
     battleEvent(s,'objective',null,s.scenario.objective,'HOSTILES SECURED');
   }
   // Wall-adjacent proximity alone does not permit a remote interaction.
+  const objectivePoint=rescuePerson?rescuePerson.p:s.scenario.objective;
   const atObjective=team(s).filter(a=>a.health>0&&
-    near(a.p,s.scenario.objective,36)&&
-    sweptBodyClear(a.p,s.scenario.objective,s.doors,4));
+    near(a.p,objectivePoint,36)&&
+    sweptBodyClear(a.p,objectivePoint,s.doors,4));
   const objectiveReached=atObjective.length>0;
   if(s.mission==='secure'&&objectiveReached){
     if(s.missionType==='hold'){
@@ -3829,6 +3949,10 @@ function mission(s:Session,dt:number){
         d(a.p,s.rescue!.p)-d(b.p,s.rescue!.p))[0];
       s.rescue={...s.rescue,following:escort?.id??null,
         trail:escort?[clone(s.rescue.p),clone(escort.p)]:[]};
+      if(rescuePerson&&escort){
+        rescuePerson.following=escort.id;
+        rescuePerson.state='escorted';rescuePerson.stateSince=s.seconds;
+      }
     }
     const verb=s.missionType==='rescue'?'PERSON FOUND':
       s.missionType==='hold'?'POSITION HELD':
@@ -3923,7 +4047,8 @@ function resolveCloseContact(s:Session){
 export function movePhysicalProp(s:Session,index:number,to:Pt):boolean{
  if(s.phase==='won'||s.phase==='lost')return false;
  const moved=relocateCover(s.coverState,index,to,WALLS,s.doors,
-   s.operators.filter(a=>a.health>0).map(a=>a.p));
+   [...s.operators.filter(a=>a.health>0).map(a=>a.p),
+    ...s.civilians.filter(c=>c.health>0).map(c=>c.p)]);
  if(!moved)return false;
  s.objectRevision++;
  COVER.splice(0,COVER.length,...s.coverState);
@@ -3994,7 +4119,10 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
         actor.p=candidate;
       }
     }
-    advanceDoor(door,h,s.operators.filter(a=>a.health>0).map(a=>a.p));
+    advanceDoor(door,h,[
+      ...s.operators.filter(a=>a.health>0).map(a=>a.p),
+      ...s.civilians.filter(c=>c.health>0).map(c=>c.p)
+    ]);
   }
   mark('doors');
   s.sparks=s.sparks.filter(a=>(a.age+=h)<.20);
@@ -4022,7 +4150,8 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   mark('belief-aging');
   // Capture immutable actor origins before any movement or enemy routine runs.
   // Final positions are reconciled together after the fixed-tick actor loop.
-  const motionStart=new Map(s.operators.map(a=>[a.id,clone(a.p)]));
+  const motionStart=new Map([...s.operators,...s.civilians]
+    .map(a=>[a.id,clone(a.p)]));
   for(const a of s.operators){
     if(a.health<=0&&a.reload>0){a.reload=0;a.reloadMode=null;}
     a.fireCd=Math.max(0,a.fireCd-h);
@@ -4075,10 +4204,32 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     if(probe)mark('operator-'+a.id);
   }
   mark('actor-loop');
-  const proposals=s.operators.map(a=>({id:a.id,side:a.side,
-    from:motionStart.get(a.id)??a.p,to:a.p,alive:a.health>0,
-    carried:!!a.carriedById}));
+  // Propose civilian motion before the shared fixed-tick authority pass.
+  // Both teams see the same original pre-motion positions for hard bodies.
+  if(s.civilians.length){
+    const nearby=[...s.operators.filter(a=>a.health>0),
+      ...s.civilians.filter(c=>c.health>0)];
+    for(const civil of s.civilians){
+      stepCivilianResponse(civil,s.seconds,h,{
+        noise:s.noise,people:s.operators,doors:s.doors,walls:WALLS,
+        windows:s.windows,
+        canSee:(from,to)=>unobstructed(from,to,s,false),
+        canReach:(from,to)=>sweptBodyClear(from,to,s.doors)
+      });
+      stepCivilianMovement(civil,s.seconds,h,
+        (from,to)=>sweptBodyClear(from,to,s.doors),
+        (p,id)=>nearby.some(a=>a.id!==id&&d(a.p,p)<20));
+    }
+  }
+  const proposals=[
+    ...s.operators.map(a=>({id:a.id,side:a.side,
+      from:motionStart.get(a.id)??a.p,to:a.p,alive:a.health>0,
+      carried:!!a.carriedById})),
+    ...s.civilians.map(c=>({id:c.id,side:'neutral' as const,
+      from:motionStart.get(c.id)??c.p,to:c.p,alive:c.health>0}))
+  ];
   const decisions=resolveMovementFrame(proposals,p=>{
+    if(p.side==='neutral')return sweptBodyClear(p.from,p.to,s.doors);
     const a=s.operators.find(unit=>unit.id===p.id)!;
     return a.traversal?
       traversalStepClear(p.from,p.to,a.traversal,traversalWorld(s,a)):
@@ -4087,12 +4238,16 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   });
   for(const decision of decisions){
     if(!decision.blocked)continue;
+    const civil=s.civilians.find(unit=>unit.id===decision.id);
+    if(civil){
+      civil.p=clone(decision.point);civil.priorP=clone(decision.point);
+      civil.velocity=0;civil.blockedTime+=h;
+      continue;
+    }
     const a=s.operators.find(unit=>unit.id===decision.id)!;
     a.p=clone(decision.point);
     a.priorP=clone(decision.point);a.velocity=0;
     if(a.traversal){
-      // Motion authority may reject a tick because of an opposing actor.
-      // Roll back its motor clock too; never "jump" the rejected frame.
       a.traversalElapsed=Math.min(a.traversal.duration,Math.max(0,
         a.traversalElapsed+(a.traversalRetreating?h*1.15:-h)));
       a.traversalElevation=sampleTraversal(a.traversal,
@@ -4102,6 +4257,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   }
   for(const a of s.operators)a.stride+=d(a.p,a.priorP);
   resolveCloseContact(s);
+  mark('civilian-motion');
   mark('contacts');
   distributeReports(s);
   mark('reports');
@@ -4165,12 +4321,16 @@ export function debrief(s:Session){
   const shots=own.reduce((t,a)=>t+a.shots,0);
   const hits=own.reduce((t,a)=>t+a.hits,0);
   const target=enemies(s).find(e=>e.id===s.captureTarget);
+  const civilianInjured=s.civilians.filter(c=>c.health>0&&
+    c.injuryStage>0).length;
+  const civilianDown=s.civilians.filter(c=>c.health<=0).length;
   const assessment=assessOperation({
     outcome:s.phase==='won'?'success':'failure',
     kind:s.missionType as OperationKind,
     elapsed:Math.floor(s.seconds),casualties,teamSize:own.length,
     shots,hits,objective:s.mission==='done',
     targetSurrendered:target?.surrendered??false,
+    civilianInjured,civilianDown,
     extracted:own.filter(a=>a.health>0&&
       near(a.p,s.scenario.extract,47)).length,
   });
@@ -4178,7 +4338,7 @@ export function debrief(s:Session){
     stabilizedCasualties:casualtyCare.stabilized,
     criticalCasualties:casualtyCare.critical,
     evacuatedCasualties:evacuated,
-    shots,hits,
+    shots,hits,civilianInjured,civilianDown,
     kills:own.reduce((t,a)=>t+a.kills,0),
     pauses:s.timesPaused,variant:s.scenario.name,
     objective:s.mission==='done',

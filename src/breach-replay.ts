@@ -13,6 +13,7 @@ import {ReplayMotionRecorder,type ReplayPresentation} from './breach-replay-moti
 import {shareUnchangedReplayFrame,type ReplaySharingStats}
   from './breach-replay-sharing.ts';
 import type {TraverseOpportunity} from './breach-mantle.ts';
+import {createCivilian,type CivilianActor} from './breach-civilian-types.ts';
 
 export type ActorFrame=Pick<TeamActor,
   'id'|'p'|'heading'|'health'|'velocity'|'turning'|'posture'|'pace'|'alert'|
@@ -33,11 +34,18 @@ export type ActorFrame=Pick<TeamActor,
 export type ReplayActorFrame=ActorFrame & {
  travelYaw?:number;intentKind?:string;awarenessCount?:number;
 };
+/** Immutable neutral film sample. Missing on old saved films. */
+export type CivilianFrame=Pick<CivilianActor,
+  'id'|'p'|'heading'|'health'|'injuryStage'|'state'|'velocity'|
+  'lastHitAt'|'following'|'rescueTarget'|'appearanceSeed'|
+  'role'|'persona'|'activity'|'homeRoomId'>;
 export type ReplayFrame={
   /** Presentation data is sampled on demand, never written to snapshots. */
   presentation?:ReplayPresentation;
   t:number;phase:Session['phase'];mission:Session['mission'];
   actors:ReplayActorFrame[];doors:Door[];shots:ShotEvent[];
+  /** Optional for compatibility with all pre-civilian recordings. */
+  civilians?:CivilianFrame[];
   objectRevision:number;windows:Session['windows'];coverState:Session['coverState'];
   casings:Session['casings'];
   dropped:DroppedMagazine[];impactMarks:ImpactMark[];grenades:FlashGrenade[];
@@ -104,6 +112,14 @@ export function snapshot(s:Session,seenGround?:string[],
       aimInstruction:a.aimInstruction?{...a.aimInstruction,
         point:a.aimInstruction.point?position(a.aimInstruction.point):undefined}:null,
       intentKind:a.intent?.kind,awarenessCount:Object.keys(a.awareness.contacts).length})),
+    civilians:s.civilians.map(c=>({
+      id:c.id,p:position(c.p),heading:c.heading,health:c.health,
+      injuryStage:c.injuryStage,state:c.state,velocity:c.velocity,
+      lastHitAt:c.lastHitAt,following:c.following,
+      rescueTarget:c.rescueTarget,appearanceSeed:c.appearanceSeed,
+      role:c.role,persona:c.persona,activity:c.activity,
+      homeRoomId:c.homeRoomId
+    })),
     doors:s.doors.map(d=>({...d,a:position(d.a),b:position(d.b)})),
     objectRevision:s.objectRevision,
     // Replay already shares these immutable samples until objectRevision moves.
@@ -227,6 +243,16 @@ export class MissionRecorder{
           mix(a.traversalElapsed,b.traversalElapsed,alpha):
           a.traversalElapsed};
     });
+    const nextCivilians=new Map((next.civilians??[]).map(c=>[c.id,c]));
+    const civilians=(previous.civilians??[]).map(c=>{
+      const later=nextCivilians.get(c.id);
+      if(!later||!alpha)return {...c,p:position(c.p)};
+      return {...c,p:{
+        x:mix(c.p.x,later.p.x,alpha),
+        y:mix(c.p.y,later.p.y,alpha)
+      },heading:mixAngle(c.heading,later.heading,alpha),
+      velocity:mix(c.velocity,later.velocity,alpha)};
+    });
     const presentation=this.motion.presentation(t,actors.map(a=>a.id));
     for(const actor of actors)
       presentation.travelYaw[actor.id]=actor.travelYaw??actor.heading;
@@ -238,7 +264,7 @@ export class MissionRecorder{
         d.openFraction??(d.open?1:0),
         later.openFraction??(later.open?1:0),alpha):d.openFraction};
     });
-    return {...previous,t,actors,doors,presentation,
+    return {...previous,t,actors,civilians,doors,presentation,
       shots:previous.shots.map(s=>({...shotCopy(s),age:s.age+delta})),
       grenades:previous.grenades.map(g=>({...g,p:position(g.p),
         from:position(g.from),to:position(g.to)}))};
@@ -270,6 +296,20 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
        kitMedicalSupplies(a.equipment)),
       plan:[],nav:[]});
   }
+  // Rewind the real civilian state, not only the old rescue marker. No
+  // AI tick is executed while scrubbing; old films simply have no neutrals.
+  const byId=new Map(s.civilians.map(c=>[c.id,c]));
+  s.civilians=(f.civilians??[]).map(copy=>{
+    const old=byId.get(copy.id);
+    const actor=old??createCivilian({
+      id:copy.id,role:copy.role,persona:copy.persona,
+      activity:copy.activity,position:copy.p,heading:copy.heading,
+      roomId:copy.homeRoomId,appearanceSeed:copy.appearanceSeed,
+      isRescueTarget:copy.rescueTarget
+    });
+    return {...actor,...copy,p:position(copy.p),
+      priorP:position(copy.p),goal:null,nav:[]};
+  });
   s.doors=f.doors.map(d=>({...d,a:position(d.a),b:position(d.b)}));
   s.objectRevision=f.objectRevision??0;
   s.windows=(f.windows??[]).map(w=>({...w}));
