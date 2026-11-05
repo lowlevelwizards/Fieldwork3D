@@ -47,7 +47,7 @@ add('headwear','soft',[
 add('headwear','ballistic',[
  ['soviet-steel','Steel helmet'],['pasgt','PASGT-style helmet'],
  ['ach','ACH / MICH-style helmet'],['high-cut','High-cut helmet'],
- ['m1-steel','US M1 steel helmet']
+ ['m1-steel','US M1 steel helmet'],['ddr-m56','East German M56 steel helmet']
 ]);
 add('facewear','face',[
  ['face-none','Uncovered'],['balaclava-one','One-opening balaclava'],

@@ -21,7 +21,7 @@ export const HEADWEAR_ATLAS_PIXELS=64;
 export const HEADWEAR_REGION_PIXELS=32;
 export const HEADWEAR_MATERIAL_KIND:Readonly<Record<HeadSilhouetteId,HeadwearMaterialKind>>={
  'patrol-cap':'cotton','boonie':'cotton','beanie':'knit','beret':'cotton',
- 'ach':'composite','high-cut':'composite','pasgt':'composite','soviet-steel':'steel','m1-steel':'steel'
+ 'ach':'composite','high-cut':'composite','pasgt':'composite','soviet-steel':'steel','m1-steel':'steel','ddr-m56':'steel'
 };
 /** Neutral surface-lighting finish independent of contextual color/camo. */
 export type HeadwearSurfaceProfile={
@@ -37,7 +37,8 @@ export const HEADWEAR_SURFACE_PROFILE:Readonly<Record<HeadSilhouetteId,HeadwearS
  'high-cut':{family:'matte-composite',roughness:.91,metalness:0},
  'pasgt':{family:'matte-composite',roughness:.945,metalness:0},
  'soviet-steel':{family:'painted-steel',roughness:.77,metalness:.12},
- 'm1-steel':{family:'painted-steel',roughness:.84,metalness:.09}
+ 'm1-steel':{family:'painted-steel',roughness:.84,metalness:.09},
+ 'ddr-m56':{family:'painted-steel',roughness:.82,metalness:.08}
 };
 const textureCache=new Map<HeadSilhouetteId,THREE.DataTexture>();
 const finishCache=new Map<HeadSilhouetteId,THREE.DataTexture>();
@@ -303,6 +304,7 @@ export function headwearFaceTone(id:HeadSilhouetteId,name:string,
    name.includes('ear-lobe')?.90:1;break;
   case 'soviet-steel':value=name.includes('edge')?.80:name.includes('bowl')?.94:1;break;
   case 'm1-steel':value=name.includes('rolled-rim')?.76:name.includes('bowl')?.94:1;break;
+  case 'ddr-m56':value=name.includes('flare')?.83:name.includes('middle')?.92:1;break;
  }
  if(axis===1&&sign===-1&&(name.includes('bill')||name.includes('brim')))
   value*=.89;
