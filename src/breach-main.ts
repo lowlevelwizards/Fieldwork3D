@@ -42,6 +42,7 @@ import {weaponClearance} from './breach-weapon-clearance.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter}
  from './equipment-weapon-light-beam.ts';
 import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
+import type {WorkbenchSocket} from './equipment-weapon-workbench-layout.ts';
 import {carryCapacityReport} from './equipment-carry-placement.ts';
 import {mostUrgentWound} from './breach-medical-wounds.ts';
 import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
@@ -78,13 +79,14 @@ import {formatCombatReview} from './breach-combat-review.ts';
 import {readRoster,applyRosterIdentity,freshQuickPlayRoster,
   serializeQuickPlayCosmetics,
   resupplyRoster,equipRoster,equipRosterGear,moveRosterMagazine,
- configureRosterWeapon,
+ configureRosterWeapon,configureRosterWeaponPreset,configureRosterWeaponBodyPart,
  renameRosterMember} from './breach-roster.ts';
 import {validateStudioAppearanceEdits,applyStudioRosterEdits,
  applyStudioCampaignEdits} from './operator-studio-batch-save.ts';
 import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
- sameWeaponConfiguration,type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
+ sameWeaponConfiguration,familyAccessoryAllowed,type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
+import {FAMILY_PRESETS,FAMILY_PART_SLOTS,FAMILY_PARTS,matchingFamilyPreset,compatibleFamilyPart,type FamilyPartSlot} from './equipment-weapon-families.ts';
 import {newCampaign,readCampaign,acceptContract,resolveOperation,
  purchaseAmmo,purchaseMedical,resupplyOperator,resupplyMedicalOperator,treatOperator,
  hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
@@ -630,6 +632,7 @@ let expandedQuickWeapon:string|null=null;
 let quickWorkbench:WeaponWorkbenchPreview|null=null;
 let quickWorkbenchId:string|null=null;
 function renderOperationsBoard(){
+ const priorScroll=operationsBoard.scrollTop;
  quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
  operationsBoard.replaceChildren();
  const heading=document.createElement('div');
@@ -694,6 +697,7 @@ function renderOperationsBoard(){
   loadoutAction.addEventListener('click',()=>{
    const opening=!kit.open;kit.open=opening;
    expandedQuickKit=opening?member.id:null;
+   if(opening){expandedQuickWeapon=member.id;weaponEditor.open=true;}
    if(opening)kit.scrollIntoView({block:'nearest',behavior:'smooth'});
   });
   const look=document.createElement('button');
@@ -728,18 +732,59 @@ function renderOperationsBoard(){
   const loadout=buildQuickLoadoutGroups(kit,expandedQuickLoadoutGroup,group=>{
    expandedQuickLoadoutGroup=group;
   });
-  const weaponRow=fieldworkSelectField('PRIMARY WEAPON',
-   [{value:'carbine',label:'Carbine'},{value:'smg',label:'SMG'},
-    {value:'rifle',label:'Rifle'},{value:'shotgun',label:'Shotgun'}],
-   member.weapon,next=>{
-    if(state.phase!=='planning'||replaying)return;
-    persistentRoster=equipRoster(persistentRoster,member.id,next as typeof member.weapon);
+  // Visible buttons replace hard-to-read native selectors on iOS.
+  const typeHeading=document.createElement('strong');
+  typeHeading.className='fw-weapon-section-label';
+  typeHeading.textContent='PRIMARY WEAPON CLASS';
+  const typeChoices=document.createElement('div');
+  typeChoices.className='fw-weapon-tile-grid';
+  for(const [id,label] of [
+   ['carbine','CARBINE'],['rifle','RIFLE'],['smg','SMG'],['shotgun','SHOTGUN']
+  ] as const){
+   const button=document.createElement('button');
+   button.type='button';button.textContent=label;
+   button.setAttribute('aria-pressed',String(id===member.weapon));
+   button.disabled=state.phase!=='planning'||replaying;
+   button.addEventListener('click',()=>{
+    if(id===member.weapon||state.phase!=='planning'||replaying)return;
+    persistentRoster=equipRoster(persistentRoster,member.id,id);
     const saved=saveRoster();applyRosterIdentity(state,persistentRoster);
-    if(saved)showFieldworkActionFeedback(member.callsign+' · '+next.toUpperCase()+' EQUIPPED');
-    expandedQuickKit=member.id;expandedQuickLoadoutGroup='weapon';
-    renderOperationsBoard();updateHud();
+    if(saved)showFieldworkActionFeedback(member.callsign+' · '+label+' EQUIPPED');
+    expandedQuickKit=member.id;expandedQuickWeapon=member.id;
+    expandedQuickLoadoutGroup='weapon';renderOperationsBoard();updateHud();
    });
-  loadout.field('weapon').append(weaponRow);
+   typeChoices.append(button);
+  }
+  loadout.field('weapon').append(typeHeading,typeChoices);
+  const presets=FAMILY_PRESETS.filter(p=>p.weapon===member.weapon);
+  const presetHeading=document.createElement('strong');
+  presetHeading.className='fw-weapon-section-label';
+  presetHeading.textContent='3D WEAPON MODEL'+(presets.length?' · AR / AK':'');
+  const currentPreset=member.weaponConfiguration.build?
+   matchingFamilyPreset(member.weaponConfiguration.build):undefined;
+  const presetHint=document.createElement('p');
+  presetHint.className='fw-weapon-helper';
+  presetHint.textContent=presets.length?
+   'Choose a model to inspect and customize. Factory body pieces remain compatible with the selected receiver.':
+   'This class currently uses the original 3D model.';
+  const presetGrid=document.createElement('div');
+  presetGrid.className='fw-weapon-preset-grid';
+  for(const preset of presets){
+   const button=document.createElement('button');
+   button.type='button';button.textContent=preset.name;
+   button.title=preset.family.toUpperCase()+' family';
+   button.setAttribute('aria-pressed',String(currentPreset?.id===preset.id));
+   button.disabled=state.phase!=='planning'||replaying;
+   button.addEventListener('click',()=>{
+    if(state.phase!=='planning'||replaying)return;
+    persistentRoster=configureRosterWeaponPreset(persistentRoster,member.id,preset.id);
+    saveRoster();applyRosterIdentity(state,persistentRoster);
+    expandedQuickKit=member.id;expandedQuickWeapon=member.id;
+    expandedQuickLoadoutGroup='weapon';renderOperationsBoard();updateHud();
+   });
+   presetGrid.append(button);
+  }
+  loadout.field('weapon').append(presetHeading,presetHint,presetGrid);
   const resupply=document.createElement('button');resupply.type='button';
   resupply.className='fw-squad-resupply';resupply.textContent='RESUPPLY';
   resupply.addEventListener('click',()=>{
@@ -904,6 +949,7 @@ function renderOperationsBoard(){
  const hint=document.createElement('p');
  hint.textContent='Select an operator to edit. Close to resume planning.';
  operationsBoard.append(hint);
+ operationsBoard.scrollTop=priorScroll;
 }
 const tacticalSheetNavigation=createTacticalSheetNavigation({
  settings:ui.siteSettings,squad:operationsBoard,briefing:ui.briefingPanel
