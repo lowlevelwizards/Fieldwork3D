@@ -3807,8 +3807,15 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
         if(actor.health<=0)continue;
         const candidate=initialOpeningYieldCandidate(door,actor.p);
         if(!candidate||!sweptBodyClear(actor.p,candidate,s.doors)||
-           s.operators.some(other=>other!==actor&&other.health>0&&
-             other.side!==actor.side&&d(other.p,candidate)<11))continue;
+           s.operators.some(other=>{
+             if(other===actor||other.health<=0)return false;
+             const before=d(other.p,actor.p),after=d(other.p,candidate);
+             // Friendly passage allows shoulder contact, but auto-yield
+             // must never deepen an existing shared-body overlap.
+             if(other.side===actor.side)
+               return after<16&&after<before-.01;
+             return after<11;
+           }))continue;
         actor.priorP=clone(actor.p);
         actor.p=candidate;
       }
