@@ -10,6 +10,18 @@ export type G4DFlowRow={
  invalidPositions:number;
  replayIssues:string[];p95HostSimMs:number;
 };
+/** A quiet True Blind entrance briefing can be completed with a very short
+ * lawful route. Classify it separately ONLY if the physics motor also
+ * reports no blocked steps; never erase a real Capture doorway deadlock. */
+export function classifyG4DMovement(input:{
+ reason:string;mode:string;orders:number;nearBriefedEntrance:boolean;
+ blockedFrames:number;silentDoorFrames:number;
+}):string{
+ if(input.reason!=='movement-stalled')return input.reason;
+ return input.mode==='true-blind'&&input.orders>0&&
+  input.nearBriefedEntrance&&input.blockedFrames===0&&
+  input.silentDoorFrames===0?'briefed-entry-only':input.reason;
+}
 export function summarizeG4DFlows(rows:readonly G4DFlowRow[]){
  const byMission:Record<string,{trials:number;contact:number;shots:number;
   stalled:number;invalid:number;meanTravel:number}>={};
