@@ -108,6 +108,27 @@ try{
   await page.waitForFunction(()=>
    document.getElementById('studioStatus')?.textContent?.includes('SAVED 2 LOOKS'),
    null,{timeout:12000});
+  // References: selecting a dated appearance must not mutate Quick Play saves.
+  const storedBeforeReference=await page.evaluate(()=>
+   localStorage.getItem('fieldwork3d.quickplay-cosmetics.v1'));
+  await page.getByRole('button',{name:'REFERENCES',exact:true}).click();
+  if(!await page.locator('#studioReferencesPanel').isVisible())
+   throw Error('Reference browser did not open on mobile');
+  await page.locator('.reference-search').fill('flecktarn');
+  await page.locator('.reference-card').first().click();
+  if(!(await page.locator('.reference-detail h3').textContent())?.includes('Bundeswehr'))
+   throw Error('Reference search/selection showed wrong faction');
+  if(Number(await page.locator('#studioCanvas').getAttribute('data-draw-calls'))<=0)
+   throw Error('Reference selection lost shared 3D preview');
+  await page.locator('.reference-apply').click();
+  if(await page.locator('#studioReferencesPanel').isVisible())
+   throw Error('Compatible reference apply did not return to Studio');
+  if(!await page.locator('#studioApply').isEnabled())
+   throw Error('Reference apply did not create an unsaved wardrobe draft');
+  const storedAfterReference=await page.evaluate(()=>
+   localStorage.getItem('fieldwork3d.quickplay-cosmetics.v1'));
+  if(storedAfterReference!==storedBeforeReference)
+   throw Error('Reference preview/apply changed persisted Quick Play state without Save Look');
   if(errors.length)throw Error('Uncaught Studio errors: '+errors.join('; '));
   await mkdir('operator-studio-captures',{recursive:true});
   await page.screenshot({path:'operator-studio-captures/mobile-portrait.png'});
