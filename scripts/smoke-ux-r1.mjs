@@ -52,29 +52,33 @@ try{
   if(await page.locator('#operationsBoard details[data-squad-card]').count()!==4)
    throw Error('Squad no longer displays four operators');
   const rook=page.locator('#operationsBoard details[data-squad-card="rook"]');
-  await rook.locator('> summary').click();
-  if(!await rook.getByRole('button',{name:'APPEARANCE'}).isVisible())
+  await rook.locator(':scope > summary').click();
+  if(!await rook.locator('.fw-squad-actions button').filter({hasText:'APPEARANCE'}).isVisible())
    throw Error('Canonical Studio shortcut is missing');
   if(await rook.getByText('WARDROBE / COSMETIC APPEARANCE').count())
    throw Error('Duplicate legacy wardrobe editor is still present');
-  await rook.getByRole('button',{name:'LOADOUT'}).click();
+  await rook.locator('.fw-squad-actions button').filter({hasText:'LOADOUT'}).click();
   if(await rook.locator('.fw-loadout-group').count()!==5)
    throw Error('Purpose-grouped loadout incomplete');
   await rook.getByLabel('PRIMARY WEAPON').selectOption('smg');
   const nextRook=page.locator('#operationsBoard details[data-squad-card="rook"]');
-  await nextRook.locator('> summary').click();
-  await nextRook.getByRole('button',{name:'LOADOUT'}).click();
+  if(!await nextRook.evaluate(el=>el.open))
+   await nextRook.locator(':scope > summary').click();
+  const kit=nextRook.locator(':scope > details');
+  if(!await kit.evaluate(el=>el.open))
+   await nextRook.locator('.fw-squad-actions button').filter({hasText:'LOADOUT'}).click();
   const protection=nextRook.locator('[data-loadout-group="protection"]');
-  await protection.locator('> summary').click();
+  await protection.locator(':scope > summary').click();
   const armor=protection.getByLabel('armor for');
-  await armor.selectOption({index:1});
+  await armor.selectOption({index:2});
   await page.locator('#operationsBoard .fw-squad-sheet-header>button').click();
   if(await page.locator('#tacticalSheetShield').isVisible())
    throw Error('Closing Squad left an invisible touch shield');
   await page.locator('#operationsBoardToggle').click();
   const appearance=page.locator('#operationsBoard details[data-squad-card="rook"]');
-  await appearance.locator('> summary').click();
-  await appearance.getByRole('button',{name:'APPEARANCE'}).click();
+  if(!await appearance.evaluate(el=>el.open))
+   await appearance.locator(':scope > summary').click();
+  await appearance.locator('.fw-squad-actions button').filter({hasText:'APPEARANCE'}).click();
   if(!await page.locator('#operatorStudioOverlay').isVisible())
    throw Error('Squad Appearance did not open the authoritative Studio');
   const frame=await page.locator('#operatorStudioOverlay iframe').getAttribute('src');
