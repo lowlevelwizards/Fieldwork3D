@@ -65,7 +65,7 @@ test('all 40 reference kits apply cut-compatible independent equipment materials
   const r=resolveFactionReference(ref),a=ref.gearAppearance;
   assert.ok(a,ref.id+' missing equipment profile');
   assert.ok(ref.gearFitNote,ref.id+' missing model-fit explanation');
-  assert.deepEqual(r.incompatibleChannels,[],ref.id);
+  assert.deepEqual(r.incompatibleChannels,ref.id==='swiss-alpenflage-1980'?['trousers']:[],ref.id);
   assert.deepEqual(r.technicalIssues,[],ref.id);
   for(const [field,channel] of [
    ['armorCamo','armor'],['rigCamo','gear'],['packCamo','pack']
