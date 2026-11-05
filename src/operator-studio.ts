@@ -3,6 +3,7 @@
  * uses the same validated roster persistence for previews and direct access.
  */
 import * as THREE from 'three';
+import {M1956_VARIANTS,type M1956Variant} from './operator-m1956-policy.ts';
 import {ALICE_LC2_LOADS,type AliceLc2Load} from './operator-alice-lc2-policy.ts';
 import {HELMET_COVER_STYLES,HELMET_BANDS,HELMET_NET_STYLES,
  HELMET_SCRIM_STYLES,helmetCoverChoices} from './operator-helmet-cover-policy.ts';
@@ -833,6 +834,13 @@ function renderMaterials(){
       w.headwearCamo===id?nextHeadwearCamoRoll(w.headwearCamoRoll):0}),
     'headwear',w.fabricCamo?.top??null);
   }
+ }
+ if(activeCategory==='rigStyle'&&item==='m1956-lce'){
+  const load=row('M1956 CANVAS FIELD LOAD',
+   'H-suspenders and period canvas equipment. Appearance only; supplies and magazine counts remain authoritative.');
+  addSelect(load,M1956_VARIANTS.map(id=>[id,id.toUpperCase()] as const),
+   w.m1956Variant??'late',id=>
+    changeWardrobe({...current(),m1956Variant:id as M1956Variant}));
  }
  if(activeCategory==='rigStyle'&&item==='alice-lc2'){
   const load=row('ALICE FIELD LOAD',
