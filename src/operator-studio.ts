@@ -3,6 +3,8 @@
  * uses the same validated roster persistence for previews and direct access.
  */
 import * as THREE from 'three';
+import {HELMET_COVER_STYLES,HELMET_BANDS,HELMET_NET_STYLES,
+ HELMET_SCRIM_STYLES,helmetCoverChoices} from './operator-helmet-cover-policy.ts';
 import {identityMarkingChoices,setIdentityMarking,
  type MarkingSlot} from './operator-identity-markings.ts';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
@@ -788,6 +790,34 @@ function renderMaterials(){
     chip.style.backgroundColor='#'+info.hex.toString(16).padStart(6,'0');
     b.prepend(chip);grid.append(b);
    }group.append(grid);
+  }
+  if(item==='m1-steel'){
+   const panel=row('M1 HELMET COVER',
+    'A separate cloth layer over the steel shell. The rolled metal rim stays visible.');
+   addSelect(panel,HELMET_COVER_STYLES.map(id=>[id,
+    id==='none'?'BARE PAINTED STEEL':id==='fitted'?'FITTED COVER':'LOOSE COVER'] as const),
+    w.helmetCover??'none',value=>changeWardrobe({...current(),
+     helmetCover:value as WardrobeOptions['helmetCover']}));
+   if(w.helmetCover&&w.helmetCover!=='none'){
+    const available=helmetCoverChoices(item);
+    const fabric=row('M1 COVER CAMOUFLAGE',
+     'Historical selection, not a generic camouflage permission for the steel shell.');
+    addCamoSwatches(fabric,available,w.helmetCoverCamo??null,id=>
+     changeWardrobe({...current(),helmetCoverCamo:id}),
+     'm1-cover',w.fabricCamo?.top??null);
+    const band=row('HELMET RETAINING BAND');
+    addSelect(band,HELMET_BANDS.map(x=>[x,x.toUpperCase()] as const),
+     w.helmetBand??'none',value=>changeWardrobe({...current(),
+      helmetBand:value as WardrobeOptions['helmetBand']}));
+    const net=row('COARSE NETTING');
+    addSelect(net,HELMET_NET_STYLES.map(x=>[x,x.toUpperCase()] as const),
+     w.helmetNet??'none',value=>changeWardrobe({...current(),
+      helmetNet:value as WardrobeOptions['helmetNet']}));
+    const scrim=row('HELMET SCRIM');
+    addSelect(scrim,HELMET_SCRIM_STYLES.map(x=>[x,x.toUpperCase()] as const),
+     w.helmetScrim??'none',value=>changeWardrobe({...current(),
+      helmetScrim:value as WardrobeOptions['helmetScrim']}));
+   }
   }
   if(item==='beret'){
    const drape=row('BERET DRAPE','One asymmetric wool silhouette, mirrored without adding a separate hat.');
