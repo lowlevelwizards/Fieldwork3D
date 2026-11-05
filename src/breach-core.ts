@@ -6,6 +6,7 @@
 import {type Site} from './breach-site.ts';
 import {DOOR_PANEL_END_RECESS} from './breach-door-proportions.ts';
 import {isFootstepObstacle} from './breach-traversal-surfaces.ts';
+import {RouteOpenHeap} from './breach-route-heap.ts';
 export type Pt={x:number;y:number};
 export type Segment={a:Pt;b:Pt};
 export type DoorStyle='wood'|'steel'|'reinforced'|'exit'|'glazed'|'mesh-gate'|'french'|'louvered'|'screen'|'barn'|'pocket'|'fire';
@@ -227,15 +228,15 @@ function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
     }
     if(!targets.size)return [];
   }else targets.add(goalKey);
-  const open=[{col:st.col,row:st.row,g:0,f:0}];
+  const open=new RouteOpenHeap();
+  open.push({col:st.col,row:st.row,g:0,f:0});
   const best=new Map<string,number>([[startKey,0]]);
   const parents=new Map<string,string>();
   const visited=new Set<string>();
   let reachedKey:string|null=null;
   const dirs=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
   for(let iter=0;open.length&&iter<budget;iter++){
-    open.sort((a,b)=>a.f-b.f);
-    const at=open.shift()!,k=key(at.col,at.row);
+    const at=open.pop()!,k=key(at.col,at.row);
     if(visited.has(k))continue;visited.add(k);
     if(targets.has(k)){reachedKey=k;break;}
     for(const [dx,dy] of dirs){
