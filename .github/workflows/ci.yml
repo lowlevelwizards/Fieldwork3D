@@ -795,6 +795,7 @@ jobs:
           node --experimental-strip-types --test \
             tests/civilian-b5a-shared-movement.test.mjs \
             tests/civilian-b5b-ballistics.test.mjs \
+            tests/civilian-b6-visuals.test.mjs \
             tests/physicality-07-authority.test.mjs \
             tests/civilian-b3-movement.test.mjs \
             tests/civilian-b4-response.test.mjs \
