@@ -39,3 +39,26 @@ export function createCivilian(spec:CivilianSpec):CivilianActor{
     lastEscortRouteAt:-100
   };
 }
+
+/** Physical condition is separate from behavior for new decision logic.
+ * Retain legacy 'wounded' state for replay/save compatibility. */
+export type CivilianCondition='healthy'|'injured'|'incapacitated';
+export function civilianCondition(c:CivilianActor):CivilianCondition{
+ if(c.health<=0||c.injuryStage>=3)return 'incapacitated';
+ if(c.health<2||c.injuryStage>0)return 'injured';
+ return 'healthy';
+}
+/** Reject contradictory transitions before editing any actor state. */
+export function setCivilianState(c:CivilianActor,
+ state:CivilianState,now:number):boolean{
+ const condition=civilianCondition(c);
+ if(condition==='incapacitated'&&state!=='incapacitated')return false;
+ if(condition==='injured'&&state==='routine'&&
+    c.state==='wounded')return false;
+ if(c.state===state)return true;
+ c.state=state;c.stateSince=now;c.velocity=0;
+ if(state==='incapacitated'||state==='compliant'||state==='wounded'){
+  c.goal=null;c.nav=[];
+ }
+ return true;
+}

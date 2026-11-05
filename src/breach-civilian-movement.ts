@@ -2,13 +2,13 @@
  * generated with physical swept clearance; the live world/door gate is
  * rechecked on EVERY move. Never teleports, authors player orders or shoots. */
 import type {Pt} from './breach-core.ts';
-import type {CivilianActor} from './breach-civilian-types.ts';
+import {civilianCondition,setCivilianState,type CivilianActor} from './breach-civilian-types.ts';
 import {routineDwellSeconds} from './breach-ai-routine-dwell.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function stepCivilianMovement(c:CivilianActor,now:number,dt:number,
   clear:(from:Pt,to:Pt)=>boolean,occupied:(p:Pt,id:string)=>boolean):void{
  c.priorP={...c.p};
- if(c.health<=0||c.state==='incapacitated'||c.state==='frozen'||
+ if(civilianCondition(c)!=='healthy'||c.state==='frozen'||
     c.state==='compliant'||c.state==='wounded'||c.state==='attentive'||
     c.state==='startled'||(c.state==='hiding'&&!c.goal)){
    c.velocity=0;return;
@@ -31,7 +31,7 @@ export function stepCivilianMovement(c:CivilianActor,now:number,dt:number,
  if(remaining<9){
   c.p={...goal};c.goal=null;c.velocity=0;
   if(c.state==='fleeing'){
-   c.state='hiding';c.stateSince=now;c.dwellUntil=now+3;
+   setCivilianState(c,'hiding',now);c.dwellUntil=now+3;
   }else if(c.state==='hiding')c.dwellUntil=now+3;
   return;
  }
@@ -46,7 +46,7 @@ export function stepCivilianMovement(c:CivilianActor,now:number,dt:number,
    if(c.blockedTime>1.25){
     c.retryAt=now+1.2;c.blockedTime=0;
     if(routine)c.routineIndex++;
-    else {c.goal=null;c.state='frozen';c.stateSince=now;}
+    else {c.goal=null;setCivilianState(c,'frozen',now);}
    }
    return;
  }

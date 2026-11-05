@@ -4,7 +4,7 @@
  * player positions to choose a refuge. Does not change the pause state. */
 import type {Pt,Door,Segment} from './breach-core.ts';
 import type {WindowState} from './breach-windows.ts';
-import type {CivilianActor,CivilianState} from './breach-civilian-types.ts';
+import {setCivilianState,civilianCondition,type CivilianActor,type CivilianState} from './breach-civilian-types.ts';
 import type {AcousticEvent} from './breach-sound-evidence.ts';
 import {interpretSound,soundResponse} from './breach-sound-evidence.ts';
 import {advanceSight,visualGain,confirmedSight}
@@ -23,7 +23,7 @@ const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const offAxis=(from:number,to:number)=>
  Math.atan2(Math.sin(to-from),Math.cos(to-from));
 function setState(c:CivilianActor,state:CivilianState,now:number){
- if(c.state!==state){c.state=state;c.stateSince=now;c.velocity=0;}
+ setCivilianState(c,state,now);
 }
 function addEvidence(c:CivilianActor,id:string,at:number,
   kind:'orient'|'investigate'|'alarm'|'visual',
@@ -49,7 +49,7 @@ function refuge(c:CivilianActor,world:CivilianSensoryWorld):Pt|null{
 }
 export function stepCivilianResponse(c:CivilianActor,now:number,dt:number,
   world:CivilianSensoryWorld):void{
- if(c.health<=0||c.state==='incapacitated'||c.state==='wounded')return;
+ if(civilianCondition(c)!=='healthy')return;
  // Use a low-frequency observer tick; actor movement still runs at 60 Hz.
  if(now-c.lastSenseAt<.12)return;
  const elapsed=Math.max(.12,dt,now-c.lastSenseAt);
