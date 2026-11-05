@@ -190,3 +190,53 @@ export function strapBand(parent:THREE.Group,mat:THREE.Material,
  block(parent,mat,'strap-back',0,y,4.22,
   halfWidth*2+.25,thickness+.20,.55);
 }
+
+/** R4 explicit fit anchors. Front x is near a frame's outside corner, while
+ * the shoulder and rear stations are intentionally OUTSIDE the cube head
+ * (|x| >= 4). The forward-facing overlap hides the mechanical join instead
+ * of a tiny decorative hinge cube. One watertight 3-station mesh per side.
+ */
+export type EyewearTempleFit={
+ frontX:number;frontY:number;frontZ:number;
+ shoulderX:number;shoulderY:number;shoulderZ:number;
+ rearX:number;rearY:number;rearZ:number;
+ frontHeight:number;shoulderHeight:number;rearHeight:number;
+ frontWidth?:number;shoulderWidth?:number;rearWidth?:number;
+};
+export function fittedTempleArm(parent:THREE.Group,material:THREE.Material,
+ name:string,side:-1|1,fit:EyewearTempleFit):THREE.Mesh{
+ const stations=[
+  [fit.frontX,fit.frontY,fit.frontZ,fit.frontWidth??.58,fit.frontHeight],
+  [fit.shoulderX,fit.shoulderY,fit.shoulderZ,fit.shoulderWidth??.63,fit.shoulderHeight],
+  [fit.rearX,fit.rearY,fit.rearZ,fit.rearWidth??.40,fit.rearHeight]
+ ] as const;
+ if(fit.shoulderX-(fit.shoulderWidth??.63)/2<4.005 ||
+    fit.rearX-(fit.rearWidth??.40)/2<4.005)
+  throw new Error(name+': temples must clear the 8-unit head side');
+ if(!(fit.frontZ<fit.shoulderZ&&fit.shoulderZ<fit.rearZ))
+  throw new Error(name+': front, shoulder and rear should follow the face');
+ const v:number[][]=[];
+ for(const [x,y,z,w,h] of stations){
+  const cx=side*x;
+  v.push([cx-w/2,y-h/2,z],[cx+w/2,y-h/2,z],
+    [cx+w/2,y+h/2,z],[cx-w/2,y+h/2,z]);
+ }
+ const triangles:number[][]=[
+  [0,2,1],[0,3,2],[8,9,10],[8,10,11]
+ ];
+ for(let j=0;j<2;j++){
+  const a=4*j,b=4*(j+1);
+  for(let k=0;k<4;k++){
+   const next=(k+1)%4;
+   triangles.push([a+k,a+next,b+next],[a+k,b+next,b+k]);
+  }
+ }
+ const positions=triangles.flatMap(t=>t.flatMap(i=>v[i]));
+ const geo=new THREE.BufferGeometry();
+ geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+ geo.computeVertexNormals();
+ const mesh=add(parent,new THREE.Mesh(geo,material),
+  name+(side===-1?'-left':'-right'));
+ mesh.userData.d2TempleFit={...fit,side,version:4};
+ return mesh;
+}
