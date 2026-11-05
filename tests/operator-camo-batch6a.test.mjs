@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import * as THREE from 'three';
 import {CAMO6A_IDS,camo6AIndices} from '../src/operator-camo-batch-6a.ts';
 import {HEADWEAR_CAMO_IDS,HEADWEAR_CAMO_RECIPES,
