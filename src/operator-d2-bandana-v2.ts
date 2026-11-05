@@ -19,7 +19,7 @@ export function createD2BandanaMode(mode:D2BandanaMode,material:THREE.Material):
  // a flat face strap. Width halves toward the bottommost cloth point.
  const steps=[
   [0,.43,7.75],[.43,1.00,6.62],[1.00,1.61,5.16],
-  [1.61,2.23,3.43],[2.23,2.84,1.67]
+  [1.61,2.23,3.43],[2.23,3.48,1.67]
  ] as const;
  for(const [i,[from,to,width]] of steps.entries())
   add(p,'tapered-triangle-'+i,0,top-(from+to)/2,
