@@ -198,14 +198,14 @@ const S2000:readonly Motif[]=[
 // rounded three-color fields with deliberately interleaved *medium* lobes.
 // These are independently drawn contours, not reduced flecks or M90 shards.
 // The 64px atlas is cached by camo8AIndices and remains palette-indexed.
-// M98 8F: a tileable, deterministic three-ink *organic contour master*.
+// M98 8G: tileable, garment-crop-tested three-ink rounded organic lobes.
 // The old 27 polygon layers had balanced coverage globally but produced
-// giant solid cutouts on individual trousers. Competing smooth fields at
-// broad (5), medium (10), and edge (17) frequencies give interlocking curved
+// giant solid cutouts on individual trousers. The 8G octave weights were selected\n// against real M98 jacket/trouser references and exhaustive 12×18 crop stats. Competing smooth fields at
+// broad (8), medium (14), and edge (20) frequencies give interlocking curved
 // lobes at multiple meaningful garment scales without sprinkling pixels.
 // Locked seeds and smooth interpolation: no per-operator rerandomization.
 const M98_8F_OCTAVES:readonly (readonly [number,number])[]=[
- [5,.43],[10,.50],[17,.07]
+ [8,.35],[14,.55],[20,.10]
 ];
 function m98Lattice(freq:number,seed:number):Float64Array{
  const grid=new Float64Array(freq*freq);
