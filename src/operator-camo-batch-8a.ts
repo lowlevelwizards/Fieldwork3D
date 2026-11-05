@@ -169,16 +169,9 @@ function fleck(cx:number,cy:number,rx:number,ry:number,ink:number,phase:number):
   cx-2,cy+ry,cx-rx-1,cy+ry-2,
   cx-rx+(phase%2),cy+1);
 }
-const JGSDF_SPOTS:readonly [number,number,number,number,number,number][]=[
- [5,4,11,7,1,0],[29,4,9,7,2,1],[52,4,11,7,1,2],
- [13,18,10,6,4,2],[37,18,11,6,3,1],[59,19,9,7,2,0],
- [1,30,9,7,2,0],[24,33,11,7,1,1],[46,31,8,7,4,2],
- [63,38,11,6,1,1],[11,48,10,7,3,2],[34,48,11,8,2,0],
- [54,53,11,7,4,1],[1,62,10,6,1,0],[22,62,8,7,4,2],
- [42,62,9,6,1,1],
- [9,10,5,4,3,1],[22,22,5,4,2,1],[50,19,6,4,1,0],
- [30,44,5,4,4,1],[59,8,5,4,3,2],[6,55,5,3,4,2]
-];
+// The JGSDF 8E print no longer has 22 giant fixed parent circles. Its
+// 100 independent jittered families fill a periodic 64px master, with an
+// asymmetric medium fleck plus overlapping smaller chips and satellites.
 // Soldier 2000: undulating organic grass/sage forms on exposed brown ground.
 const S2000:readonly Motif[]=[
  p(1,-6,1,6,-3,13,3,23,0,28,7,23,15,15,13,11,20,4,16,-5,23),
@@ -353,52 +346,40 @@ function urbanKamysh8C():Uint8Array{
  }
  return tile;
 }
-function jgsdf8D():Uint8Array{
- // 8D: compose each Jieitai color as a *connected family* of differently
- // sized flecks. The 8C satellites sat too far from their parent and read
- // as isolated dots; overlapping lobes restore an organic clustered print.
- const motifs:Motif[]=[];
- for(let i=0;i<JGSDF_SPOTS.length;i++){
-  const [x,y,rx,ry,ink,phase]=JGSDF_SPOTS[i];
-  const mx=Math.max(3,Math.round(rx*.59));
-  const my=Math.max(2,Math.round(ry*.69));
-  motifs.push(fleck(x,y,mx,my,ink,phase));
-  for(let k=0;k<4;k++){
-   const a=hash(i,k,303),b=hash(i,k,311);
-   const angle=(k+(i%3)*.19)*Math.PI/2;
-   const sx=k%2===0?3:2,sy=k%3===0?3:2;
-   // Half the satellite overlaps the parent rather than floating beyond
-   // its perimeter. This makes broad 4-12px groups with 2-6px offshoots.
-   const dx=Math.round(Math.cos(angle)*(mx+sx*.25+a*.4));
-   const dy=Math.round(Math.sin(angle)*(my+sy*.22+b*.4));
-   motifs.push(fleck(x+dx,y+dy,sx,sy,ink,phase+k+1));
-   if(k%2===0){
-    // Sparse third scale, anchored to a satellite (not random background).
-    const side=k===0?1:-1;
-    motifs.push(fleck(x+dx+side*2,y+dy+side*2,2,2,ink,phase+k+2));
-   }
+function jgsdf8E():Uint8Array{
+ // Full composition rebuild: Jieitai Type II uses many small vegetation
+ // fleck *families*, never a few large red/charcoal woodland islands.
+ // Jitter eliminates the obvious grid; all small marks attach to the same
+ // ink family rather than scattering uncorrelated noise on bare ground.
+ const tile=new Uint8Array(SIZE*SIZE);
+ for(let row=0;row<10;row++)for(let col=0;col<10;col++){
+  const role=hash(col,row,877);
+  const ink=role<.43?1:role<.62?2:role<.81?3:4;
+  const x=Math.floor((col+.5)*6.4+(hash(col,row,811)-.5)*5.6);
+  const y=Math.floor((row+.5)*6.4+(hash(col,row,821)-.5)*5.6);
+  const rx=2+Math.floor(hash(col,row,829)*2);
+  const ry=2+Math.floor(hash(col,row,839)*2);
+  paintOnto(tile,fleck(x,y,rx,ry,ink,row+col));
+  // Narrow satellites overlap a 5–8px parent and sometimes an adjacent
+  // family. Omitting one of the satellites in every other family restores
+  // open leafy-green channels between dense groups.
+  for(let k=0;k<3;k++){
+   if(k===2&&(row+col)%2===0)continue;
+   const a=(hash(col*7+k,row,853)+k/3)*Math.PI*2;
+   const sx=x+Math.round(Math.cos(a)*(rx+1));
+   const sy=y+Math.round(Math.sin(a)*(ry+.5));
+   const frx=k===0?2:1+(hash(col,row*3+k,859)>.7?1:0);
+   const fry=k===2?1:2;
+   paintOnto(tile,fleck(sx,sy,frx,fry,ink,k+col));
   }
- }
- const tile=paint(motifs,0),original=tile.slice();
- // Keep tight shared-color bridges and a few internal contrast punctures.
- // All small details are conditional on the authored parent-family tile.
- for(let row=0;row<21;row++)for(let col=0;col<21;col++){
-  const r=hash(col,row,317);
-  if(r<.53)continue;
-  const x=(col*3+Math.floor(hash(col,row,319)*3))&63;
-  const y=(row*3+Math.floor(hash(col,row,331)*3))&63;
-  const ink=indexAt(original,x,y);
-  const near=[
-   indexAt(original,x+2,y),indexAt(original,x-2,y),
-   indexAt(original,x,y+2),indexAt(original,x,y-2)
-  ].filter(v=>v!==0);
-  if(ink===0&&near.length>=2&&r>.74){
-   const chosen=near[Math.floor(hash(col,row,337)*near.length)];
-   tile[y*64+x]=chosen;
-  }else if(ink===1&&r>.95){
-   tile[y*64+x]=4;
-  }else if(ink===2&&r>.95){
-   tile[y*64+x]=3;
+  // Tiny bounded 1–3px flecks at the edge of a real parent cluster, not
+  // carpeted full-field noise. Local bounding-box painting is O(mark size).
+  if(hash(col,row,887)>.48){
+   const a=hash(col,row,893)*Math.PI*2;
+   const px=x+Math.round(Math.cos(a)*(rx+2));
+   const py=y+Math.round(Math.sin(a)*(ry+1));
+   paintOnto(tile,p(ink,px-1,py,px,py-1,px+2,py,
+    px+1,py+2,px-1,py+1));
   }
  }
  return tile;
@@ -485,7 +466,7 @@ function ownTile(id:Camo8AId):Uint8Array{
  if(id==='russian-izlom')return izlom8C();
  if(id==='greek-lizard')return greekLizard8C();
  if(id==='urban-kamysh')return urbanKamysh8C();
- if(id==='jgsdf-type2')return jgsdf8D();
+ if(id==='jgsdf-type2')return jgsdf8E();
  if(id==='south-african-s2000')return soldier2000_8D();
  if(id==='norwegian-m98'){
   // 8E: no random pixel noise or repeated filtering; every lobe is drawn
