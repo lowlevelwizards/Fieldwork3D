@@ -3,6 +3,7 @@
  * equipment-catalog / equipment-loadouts / campaign-state.
  */
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {isAliceLc2Load,type AliceLc2Load} from './operator-alice-lc2-webbing.ts';
 import {readHelmetCoverConfig,type HelmetCoverConfig} from './operator-helmet-cover-policy.ts';
 import {readIdentityMarkings,type IdentityMarkings} from './operator-identity-markings.ts';
 import {isSkinToneId,isHairStyleId,isHairToneId,
@@ -110,7 +111,8 @@ add('rigStyle','light',[
  ['bandolier','Minimal Bandolier']
 ]);
 add('rigStyle','full',[
- ['field-webbing','Field Webbing'],['lbv','Load-Bearing Vest'],
+ ['field-webbing','Field Webbing'],['alice-lc2','US ALICE LC-2 Webbing'],
+ ['lbv','Load-Bearing Vest'],
  ['full-chest','Full Bib / Patrol Rig'],
  ['split-front','Split-Front Chest Rig'],
  ['sadf-webbing','Bush / SADF-Style Webbing']
@@ -187,6 +189,8 @@ export type WardrobeOptions=HelmetCoverConfig&{
  /** Replaceable harness material; ignored on sewn/integrated rigs. */
  strapSolid?:GarmentSolidId;
  sleeveState:SleeveState;trouserHem:TrouserHem;
+ /** Optional visual load size; actual supply and ammunition are unchanged. */
+ aliceLoad?:AliceLc2Load;
  /** Contextual new-garment materials, never the abolished global palette. */
  topColorway:string;
  accessories:WardrobeAccessoryConfiguration;
@@ -280,6 +284,7 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(isGarmentSolidId(v.pouchSolid))result.pouchSolid=v.pouchSolid;
  if(isHeadwearSolidColorId(v.headwearColor))result.headwearColor=v.headwearColor;
  if(v.beretDrape==='left'||v.beretDrape==='right')result.beretDrape=v.beretDrape;
+ if(isAliceLc2Load(v.aliceLoad))result.aliceLoad=v.aliceLoad;
  Object.assign(result,readHelmetCoverConfig(v));
  if(isHeadwearCamoId(v.headwearCamo)&&v.headwearCamo!=='splittertarn-31')result.headwearCamo=v.headwearCamo;
  if(Number.isInteger(v.headwearCamoRoll)&&v.headwearCamoRoll!>=0&&v.headwearCamoRoll!<4096)
