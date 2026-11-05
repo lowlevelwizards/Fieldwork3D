@@ -36,7 +36,7 @@ const recipes={
  'jgsdf-type2':{
   label:'JGSDF TYPE II',
   description:'Jieitai Dot: dense smaller rounded vegetation-data flecks in moss, rust brown, stone tan and restrained charcoal clusters, distinct from S2000 earth-ground spotting',
-  colors:[[108,139,92],[61,104,74],[136,83,74],[187,185,150],[44,52,50]],
+  colors:[[108,139,92],[61,104,74],[127,96,84],[179,181,149],[44,52,50]],
   targetCoverage:[.32,.25,.18,.12,.13],motifs:[]
  },
  'pencott-metropolis':{
@@ -198,41 +198,50 @@ const S2000:readonly Motif[]=[
 // rounded three-color fields with deliberately interleaved *medium* lobes.
 // These are independently drawn contours, not reduced flecks or M90 shards.
 // The 64px atlas is cached by camo8AIndices and remains palette-indexed.
-const NORWAY_8E:readonly Motif[]=[
- // Interlocked main dark-green trunks; long but no whole-panel solid fill.
- p(1,-13,-6,0,-8,13,-3,22,4,27,11,24,17,17,20,14,28,6,27,-2,34,-14,27),
- p(1,35,-8,49,-9,58,-2,72,0,75,11,66,19,62,28,52,26,46,31,37,25,34,15),
- p(1,12,19,23,16,34,20,39,27,36,37,29,43,28,51,18,55,9,48,6,37,11,28),
- p(1,44,35,53,30,62,32,72,29,76,47,68,56,64,69,55,67,50,59,42,58,39,47),
- p(1,-11,43,1,39,11,45,18,52,17,63,22,70,9,76,-1,68,-11,72),
- // Warm tan moving through the trunks, not enormous square islands.
- p(2,13,-8,28,-8,39,-3,42,5,38,13,32,18,26,15,23,24,17,22,10,14,7,6),
- p(2,-12,17,-2,12,9,16,17,21,24,25,21,34,13,38,8,46,-3,42,-13,48),
- p(2,35,14,47,10,57,14,64,18,76,14,77,30,65,35,60,43,49,41,42,46,34,38,30,27),
- p(2,13,43,27,39,36,43,44,40,52,47,52,56,61,64,51,73,37,69,28,76,17,72,8,61),
- p(2,-11,56,-1,53,10,58,16,65,12,74,-10,76),
- // Rounded olive negative-space sweeps; preserve curved junctions.
- p(0,3,1,11,-1,19,4,21,11,17,16,8,12,5,20,-3,16),
- p(0,46,0,55,-2,64,4,62,13,54,15,50,20,43,14),
- p(0,19,28,27,24,35,30,32,37,37,44,29,43,23,49,17,43),
- p(0,53,22,61,18,70,25,68,34,59,35,56,40,49,37),
- p(0,-4,45,5,44,12,49,10,57,16,60,7,64,-3,59),
- // Intermediate organic lobes are large enough to read on trousers.
- p(1,25,7,30,4,35,7,37,14,33,18,29,15,25,20,21,15),
- p(1,1,29,8,26,15,30,16,37,11,40,7,45,-1,41),
- p(1,37,51,43,47,49,51,51,58,47,63,40,61,35,68,32,62),
- p(2,3,5,10,2,17,6,16,13,10,13,8,20,3,16,-2,18),
- p(2,23,30,28,27,33,31,33,36,40,40,34,44,26,40,21,44,18,37),
- p(2,50,41,58,38,64,43,61,50,64,55,56,57,50,53,46,58,44,50),
- p(0,33,1,38,0,43,4,43,11,40,17,35,17,31,12),
- p(0,2,54,8,51,13,56,13,62,9,66,3,65,-1,61),
- // Two deliberate dark medium lobes balance tan, with two final olive inlets.
- p(1,36,25,44,19,51,21,57,28,54,35,48,38,44,45,36,42,32,34),
- p(1,19,47,27,42,35,45,41,51,39,57,33,60,28,67,20,64,17,57),
- // A final few olive inlets ensure the dark never becomes a solid mass.
- p(0,12,34,18,31,24,34,24,40,19,43,17,48,10,44),
- p(0,45,10,51,7,57,12,55,18,51,21,44,18)
+// M98 8F: a tileable, deterministic three-ink *organic contour master*.
+// The old 27 polygon layers had balanced coverage globally but produced
+// giant solid cutouts on individual trousers. Competing smooth fields at
+// broad (5), medium (10), and edge (17) frequencies give interlocking curved
+// lobes at multiple meaningful garment scales without sprinkling pixels.
+// Locked seeds and smooth interpolation: no per-operator rerandomization.
+const M98_8F_OCTAVES:readonly (readonly [number,number])[]=[
+ [5,.43],[10,.50],[17,.07]
 ];
+function m98Lattice(freq:number,seed:number):Float64Array{
+ const grid=new Float64Array(freq*freq);
+ for(let y=0;y<freq;y++)for(let x=0;x<freq;x++)
+  grid[y*freq+x]=hash(x,y,seed)*2-1;
+ return grid;
+}
+function m98GridValue(grid:Float64Array,freq:number,x:number,y:number):number{
+ const gx=x*freq/SIZE+.17,gy=y*freq/SIZE+.17;
+ const ix=Math.floor(gx),iy=Math.floor(gy);
+ const smooth=(t:number)=>t*t*(3-2*t);
+ const fx=smooth(gx-ix),fy=smooth(gy-iy);
+ const left=ix%freq,right=(ix+1)%freq,top=iy%freq,bottom=(iy+1)%freq;
+ const north=grid[top*freq+left]*(1-fx)+grid[top*freq+right]*fx;
+ const south=grid[bottom*freq+left]*(1-fx)+grid[bottom*freq+right]*fx;
+ return north*(1-fy)+south*fy;
+}
+function norwegianM98_8F():Uint8Array{
+ const tile=new Uint8Array(SIZE*SIZE);
+ const grids=Array.from({length:3},(_,ink)=>
+  M98_8F_OCTAVES.map(([freq])=>m98Lattice(freq,211+ink*271+freq*53)));
+ for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++){
+  let ink=0,peak=-Infinity;
+  for(let candidate=0;candidate<3;candidate++){
+   let field=0;
+   for(let octave=0;octave<M98_8F_OCTAVES.length;octave++){
+    const [freq,weight]=M98_8F_OCTAVES[octave];
+    field+=weight*m98GridValue(grids[candidate][octave],freq,x,y);
+   }
+   if(field>peak){peak=field;ink=candidate;}
+  }
+  tile[y*SIZE+x]=ink;
+ }
+ return tile;
+}
+
 /** 8B reference pass: reuses 8A index-space polygons/period/wrap while
  * rendering each real print's own motif language. No new catalog IDs.
  * All geometry is baked once into the original cached 64px master.
@@ -346,7 +355,7 @@ function urbanKamysh8C():Uint8Array{
  }
  return tile;
 }
-function jgsdf8E():Uint8Array{
+function jgsdf8F():Uint8Array{
  // Full composition rebuild: Jieitai Type II uses many small vegetation
  // fleck *families*, never a few large red/charcoal woodland islands.
  // Jitter eliminates the obvious grid; all small marks attach to the same
@@ -354,7 +363,7 @@ function jgsdf8E():Uint8Array{
  const tile=new Uint8Array(SIZE*SIZE);
  for(let row=0;row<10;row++)for(let col=0;col<10;col++){
   const role=hash(col,row,877);
-  const ink=role<.43?1:role<.62?2:role<.81?3:4;
+  const ink=role<.47?1:role<.61?2:role<.81?3:4;
   const x=Math.floor((col+.5)*6.4+(hash(col,row,811)-.5)*5.6);
   const y=Math.floor((row+.5)*6.4+(hash(col,row,821)-.5)*5.6);
   const rx=2+Math.floor(hash(col,row,829)*2);
@@ -466,13 +475,9 @@ function ownTile(id:Camo8AId):Uint8Array{
  if(id==='russian-izlom')return izlom8C();
  if(id==='greek-lizard')return greekLizard8C();
  if(id==='urban-kamysh')return urbanKamysh8C();
- if(id==='jgsdf-type2')return jgsdf8E();
+ if(id==='jgsdf-type2')return jgsdf8F();
  if(id==='south-african-s2000')return soldier2000_8E();
- if(id==='norwegian-m98'){
-  // 8E: no random pixel noise or repeated filtering; every lobe is drawn
-  // once into the tile. Artistic edit remains local to this master.
-  return paint(NORWAY_8E,0);
- }
+ if(id==='norwegian-m98')return norwegianM98_8F();
  throw new Error('Only independent 8A pattern masters are authored');
 }
 export function camo8AIndices(id:Camo8AId,relatives?:{

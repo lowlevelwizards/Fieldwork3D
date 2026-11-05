@@ -6,10 +6,13 @@ import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {HEADWEAR_SOLID_COLORS,headwearColorChoices,resolvedHeadwearSolid,
  type HeadwearSolidColorId} from './operator-headwear-colors.ts';
-import {HEADWEAR_CAMO_IDS,HEADWEAR_CAMO_RECIPES,headwearCamoChoices,
+import {HEADWEAR_CAMO_RECIPES,headwearCamoChoices,
  headwearCamoPixels,headwearCamoSize,resolvedHeadwearCamo,
  nextHeadwearCamoRoll,type HeadwearCamoId} from './operator-headwear-camo.ts';
-import {CAMO_CATALOG,type CamoTerrain} from './operator-headwear-camo-catalog.ts';
+import {browseCamos,readCamoBrowserPrefs,recordCamoRecent,
+ sortHeadwearSolids} from './operator-material-browser.ts';
+import {createCamoBrowseControls,createCamoFavoriteButton}
+ from './operator-material-browser-ui.ts';
 
 export const headwearAppearanceModel=(id:string)=>
  id==='high-cut-rails'?'high-cut':id;
@@ -71,7 +74,7 @@ export function createHeadwearAppearancePicker(kit:EquipmentLoadout,
   const caption=make('div','fw-headwear-section-title');
   caption.textContent='SOLID FINISH';
   const grid=make('div','fw-headwear-solids');
-  for(const id of solids){
+  for(const id of sortHeadwearSolids(solids,resolvedHeadwearSolid(canon,wardrobe.headwearColor)??undefined)){
    const definition=HEADWEAR_SOLID_COLORS[id];
    const button=make('button','fw-headwear-solid');
    button.type='button';button.disabled=options.disabled===true;
@@ -103,17 +106,7 @@ export function createHeadwearAppearancePicker(kit:EquipmentLoadout,
   reroll.addEventListener('click',()=>onChange(rerollHeadwearCamo(wardrobe,model)));
   camoDetails.append(reroll);
  }
- const controls=make('div','fw-headwear-filter');
- const terrain=make('select');
- terrain.setAttribute('aria-label','Filter camouflage by environment');
- for(const value of ['all','woodland','arid','multi','universal'] as const){
-  const option=make('option');option.value=value;
-  option.textContent=value==='all'?'ALL ENVIRONMENTS':value.toUpperCase();
-  terrain.append(option);
- }
- const search=make('input');search.type='search';search.placeholder='Find pattern or origin';
- search.setAttribute('aria-label','Find camouflage pattern');
- controls.append(terrain,search);camoDetails.append(controls);
+ const browser=createCamoBrowseControls(camoDetails,'headwear-picker',()=>render());
  const grid=make('div','fw-headwear-camo-grid');
  grid.setAttribute('role','group');grid.setAttribute('aria-label','Compatible camouflage prints');
  camoDetails.append(grid);
@@ -121,14 +114,11 @@ export function createHeadwearAppearancePicker(kit:EquipmentLoadout,
  const render=()=>{
   if(!camoDetails.open)return;
   grid.replaceChildren();painted=true;
-  const filter=terrain.value as CamoTerrain|'all';
-  const query=search.value.trim().toLowerCase();
-  for(const id of HEADWEAR_CAMO_IDS.filter(id=>id!=='splittertarn-31')){
-   if(!camos.includes(id))continue;
-   const meta=CAMO_CATALOG[id],recipe=HEADWEAR_CAMO_RECIPES[id];
-   if(filter!=='all'&&meta.terrain!==filter)continue;
-   if(query&&!([recipe.label,meta.origin,meta.style,meta.terrain].some(v=>
-    v.toLowerCase().includes(query))))continue;
+  const prefs=readCamoBrowserPrefs();
+  for(const id of browseCamos(camos,{state:browser,active:selected,
+   reference:wardrobe.fabricCamo?.top??null,prefs})){
+   const recipe=HEADWEAR_CAMO_RECIPES[id];
+   const wrap=make('div','fw-camo-choice-wrap');
    const button=make('button','fw-headwear-camo-choice');
    button.type='button';button.disabled=options.disabled===true;
    button.setAttribute('aria-label','Apply '+recipe.label);
@@ -142,8 +132,11 @@ export function createHeadwearAppearancePicker(kit:EquipmentLoadout,
    }
    const title=make('span');title.textContent=recipe.label;
    button.append(canvas,title);
-   button.addEventListener('click',()=>onChange(selectHeadwearCamo(wardrobe,model,id)));
-   grid.append(button);
+   button.addEventListener('click',()=>{
+    recordCamoRecent(id);onChange(selectHeadwearCamo(wardrobe,model,id));
+   });
+   wrap.append(button,createCamoFavoriteButton(id,prefs.favorites.includes(id),
+    ()=>render(),options.disabled===true));grid.append(wrap);
   }
   if(!grid.children.length){
    const empty=make('p','fw-headwear-hint');empty.textContent='No compatible prints match your filter.';
@@ -154,8 +147,6 @@ export function createHeadwearAppearancePicker(kit:EquipmentLoadout,
   options.onCamoExpandedChange?.(camoDetails.open);
   if(camoDetails.open&&!painted)render();
  });
- terrain.addEventListener('change',render);
- search.addEventListener('input',render);
  if(camoDetails.open)render();
  panel.append(camoDetails);
  return panel;
