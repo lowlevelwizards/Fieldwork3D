@@ -98,6 +98,18 @@ export type BodyProfile='normal'|'squeeze';
 // with just enough give for the clearance of a jacket/soft gear.
 export const SQUEEZE_RADIUS=3.8;
 export const squeezeFacing=(travelYaw:number)=>travelYaw-Math.PI/2;
+/** Once shoulders are turned, remain narrow until there is real full-body
+ * space both here and immediately ahead. Without a lookahead, the model
+ * flickers between normal and squeeze at consecutive narrow grid cells.
+ * This never grants movement: the next tick still checks its own sweep. */
+export function squeezeExitClear(from:Pt,to:Pt,doors:Door[],lead=12){
+ const dx=to.x-from.x,dy=to.y-from.y;
+ const length=Math.hypot(dx,dy);
+ if(length<.04)return false;
+ const ahead={x:to.x+dx/length*lead,y:to.y+dy/length*lead};
+ return bodyClear(from,doors)&&bodyClear(to,doors)&&
+   sweptBodyClear(from,ahead,doors);
+}
 export function profileSamples(p:Pt,heading:number,
   profile:BodyProfile){
   if(profile==='normal')return [{position:{...p},radius:OPERATOR_RADIUS}];
