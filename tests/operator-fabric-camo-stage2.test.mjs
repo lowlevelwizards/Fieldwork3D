@@ -136,7 +136,7 @@ test('Lab and Campaign retain shared material pickers; Quick Play uses canonical
  }
  const quick=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
  const studio=readFileSync(new URL('../src/operator-studio.ts',import.meta.url),'utf8');
- assert.match(quick,/openOperatorStudio\(member.id,'quick'\)/);
+ assert.match(quick,/openOperatorStudio\((?:member\.id|selected),'quick'\)/);
  assert.doesNotMatch(quick,/createWardrobeFabricCamoPicker/);
  assert.match(studio,/fabricCamoChoices\(channel,outfit\)/);
  assert.match(studio,/addCamoSwatches\(group,choices,pattern/);
