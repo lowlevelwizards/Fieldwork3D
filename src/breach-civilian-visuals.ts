@@ -27,7 +27,8 @@ function box(geometry:THREE.BoxGeometry,color:number,
  mesh.position.set(x,y,z);parent.add(mesh);return mesh;
 }
 export type CivilianRig={
- root:THREE.Group;leftArm:THREE.Mesh;rightArm:THREE.Mesh;
+ root:THREE.Group;head:THREE.Mesh;
+ leftArm:THREE.Mesh;rightArm:THREE.Mesh;
  leftLeg:THREE.Mesh;rightLeg:THREE.Mesh;
 };
 export function createCivilianRig(c:CivilianActor):CivilianRig{
@@ -37,14 +38,14 @@ export function createCivilianRig(c:CivilianActor):CivilianRig{
  const face=skin[(seed>>>5)%skin.length];
  const outer=c.role==='employee'&&seed%3===0?forms.coat:forms.torso;
  box(outer,torso,0,20,0,root);
- box(forms.head,face,0,32,0,root);
+ const head=box(forms.head,face,0,32,0,root);
  const leftArm=box(forms.arm,torso,-10,19,0,root);
  const rightArm=box(forms.arm,torso,10,19,0,root);
  const leftLeg=box(forms.leg,trousers,-4.2,7,0,root);
  const rightLeg=box(forms.leg,trousers,4.2,7,0,root);
  box(forms.shoe,0x363938,-4.2,2,2,root);
  box(forms.shoe,0x363938,4.2,2,2,root);
- return {root,leftArm,rightArm,leftLeg,rightLeg};
+ return {root,head,leftArm,rightArm,leftLeg,rightLeg};
 }
 export function updateCivilianRig(r:CivilianRig,
  c:CivilianActor,now:number):void{
@@ -58,7 +59,13 @@ export function updateCivilianRig(r:CivilianRig,
  r.leftArm.rotation.set(0,0,0);r.rightArm.rotation.set(0,0,0);
  r.leftLeg.rotation.set(0,0,0);r.rightLeg.rotation.set(0,0,0);
  r.leftLeg.position.set(-4.2,7,0);r.rightLeg.position.set(4.2,7,0);
+ r.head.rotation.set(0,0,0);
  const pose=civilianPose(c);
+ // Render-only, seed-derived micro-activity: no AI tick, no new meshes.
+ // Reset on every sample so scrubbing backwards is fully deterministic.
+ if(pose==='idle'||pose==='work'||pose==='seated'){
+  r.head.rotation.y=Math.sin(now*.55+c.appearanceSeed*.013)*.11;
+ }
  if(pose==='compliant'){
   r.leftArm.position.y=30;r.rightArm.position.y=30;
   r.leftArm.rotation.z=-.55;r.rightArm.rotation.z=.55;
@@ -77,8 +84,8 @@ export function updateCivilianRig(r:CivilianRig,
   r.leftArm.rotation.x=-.18;r.rightArm.rotation.x=-.18;
  }else if(pose==='work'){
   const task=Math.sin(now*1.8+c.appearanceSeed*.01)*.13;
-  r.leftArm.rotation.x=task;
-  r.rightArm.rotation.x=-task;
+  r.leftArm.rotation.x=-.24+task;
+  r.rightArm.rotation.x=-.24-task;
  }else if(pose==='walk'||pose==='run'){
   const gait=Math.sin(now*(pose==='run'?14:8)+
     c.appearanceSeed*.01)*.32;

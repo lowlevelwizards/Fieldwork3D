@@ -14,6 +14,7 @@ export function civilianPose(c:Pick<CivilianActor,
  if(c.state==='fleeing'&&c.velocity>5)return 'run';
  if(c.velocity>5)return 'walk';
  if(c.state==='routine'&&c.activity==='seated')return 'seated';
- if(c.state==='routine'&&c.activity==='working')return 'work';
+ if(c.state==='routine'&&
+   (c.activity==='working'||c.activity==='inspecting'))return 'work';
  return 'idle';
 }
