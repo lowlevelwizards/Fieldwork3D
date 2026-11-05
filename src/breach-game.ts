@@ -2047,8 +2047,15 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     }
     if(a.blockedTime>1&&a.blockedTime<1.1)
       notify(s,a.name+' BLOCKED · '+a.lastBlocker.toUpperCase());
+    // Observe actual hinge velocity and local leaf contact; waiting for an
+    // advancing panel is not a failed route, but a stalled panel still
+    // escalates through ordinary replan/report after the bounded grace.
+    const doorMoving=a.lastBlocker==='door'&&s.doors.some(door=>
+      door.open&&!door.wedged&&!door.heldBy&&
+      Math.abs(door.angularVelocity??0)>.08&&
+      pointToSegment(desiredMove,doorLeafSegment(door))<OPERATOR_RADIUS+12);
     const repair=recoveryAction(a.lastBlocker,a.blockedTime,
-      s.seconds-a.lastNavRepairAt,a.recoveryAttempts);
+      s.seconds-a.lastNavRepairAt,a.recoveryAttempts,{doorMoving});
     if(repair==='replan'||repair==='report'){
       a.lastNavRepairAt=s.seconds;
       a.recoveryAttempts++;
