@@ -77,8 +77,11 @@ test('R8-C aviators put lower lens weight outward without loosening dual bridges
   centers.push(foot.reduce((sum,p)=>sum+p.x,0)/foot.length);
   assert.ok(Math.max(...foot.map(p=>p.x))-Math.min(...foot.map(p=>p.x))>1);
  }
- assert.ok(centers.some(x=>x< -3.2)&&centers.some(x=>x>3.2),
-  'teardrop foot mass angles away from center');
+ // R9 retained the outward-weighted teardrop but removed the R8 global
+ // shear that overextended the corners. The foot is still outboard of
+ // the lens midpoint, without turning into a pointed superhero eye.
+ assert.ok(centers.some(x=>x< -2.75)&&centers.some(x=>x>2.75),
+  'round teardrop foot retains outward mass without extreme splay');
  assert.ok(Math.abs(centers[0]+centers[1])<.04,'mirror-symmetric pilot eyes');
  assert.equal(meshes(model).filter(m=>m.name.includes('pilot-')&&m.name.includes('-bridge')).length,2);
  assert.equal(meshes(model).filter(m=>m.name.endsWith('-lens')).length,2);
