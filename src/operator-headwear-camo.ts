@@ -6,6 +6,7 @@
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import {CAMO6A_IDS,CAMO6A_RECIPES,camo6AIndices,isCamo6AId} from './operator-camo-batch-6a.ts';
 import {CAMO7A_IDS,CAMO7A_RECIPES,camo7AIndices,isCamo7AId} from './operator-camo-batch-7a.ts';
+import {CAMO8A_IDS,CAMO8A_RECIPES,camo8AIndices,isCamo8AId} from './operator-camo-batch-8a.ts';
 export const HEADWEAR_CAMO_SIZE=32;
 export const HEADWEAR_CAMO_TILE_SIZE:Readonly<Partial<Record<HeadwearCamoId,32|64>>>={'m81-woodland':64,'desert-tropentarn':64,'east-german-strichtarn':64,
  'belgian-jigsaw':64,'mitchell-leaf':64,'splittertarn-31':64,
@@ -15,7 +16,9 @@ export const HEADWEAR_CAMO_TILE_SIZE:Readonly<Partial<Record<HeadwearCamoId,32|6
  'atacs-fg':64,'ukrainian-mm14':64,aor2:64,'multicam-tropic':64,
  'atacs-au':64,'ss-leto':64,aor1:64,'multicam-arid':64,
  'multicam-black':64,'multicam-alpine':64,'pencott-greenzone':64,'pencott-badlands':64,
- 'desert-night':64,'kryptek-highlander':64,berezka:64,'spectre-skwo':64};
+ 'desert-night':64,'kryptek-highlander':64,berezka:64,'spectre-skwo':64,
+ 'russian-izlom':64,'greek-lizard':64,'urban-kamysh':64,'jgsdf-type2':64,
+ 'pencott-metropolis':64,'south-african-s2000':64,'kryptek-typhon':64,'norwegian-m98':64};
 export function headwearCamoSize(id:HeadwearCamoId):32|64{return HEADWEAR_CAMO_TILE_SIZE[id]??HEADWEAR_CAMO_SIZE;}
 /** Print detail is independent from the one-texel-per-unit structural stitching atlas.
  * 1x for large historic fields; 2x for directional, digital and multiscale cloth.
@@ -34,7 +37,9 @@ export const HEADWEAR_CAMO_DENSITY:Readonly<Record<HeadwearCamoId,number>>={
  'atacs-fg':2,'ukrainian-mm14':2,aor2:4,'multicam-tropic':4,
  'atacs-au':2,'ss-leto':2,aor1:4,'multicam-arid':4,
  'multicam-black':4,'multicam-alpine':4,'pencott-greenzone':3.2,'pencott-badlands':3.2,
- 'desert-night':3.2,'kryptek-highlander':3.0,berezka:3.2,'spectre-skwo':3.25
+ 'desert-night':3.2,'kryptek-highlander':3.0,berezka:3.2,'spectre-skwo':3.25,
+ 'russian-izlom':3.1,'greek-lizard':3.2,'urban-kamysh':3.2,'jgsdf-type2':3.2,
+ 'pencott-metropolis':3.2,'south-african-s2000':2.8,'kryptek-typhon':3.0,'norwegian-m98':2.4
 };
 export const HEADWEAR_CAMO_IDS=[
  'm81-woodland','three-color-desert','tiger-stripe','ucp','multicam',
@@ -44,7 +49,8 @@ export const HEADWEAR_CAMO_IDS=[
  'rhodesian-brushstroke','desert-tropentarn',
  'belgian-jigsaw','east-german-strichtarn','mitchell-leaf','splittertarn-31','australian-dpcu','italian-vegetato','scorpion-w2','russian-emr','pla-xingkong','cadpat-tw','british-mtp','indian-digital-2022',
  ...CAMO6A_IDS,
- ...CAMO7A_IDS
+ ...CAMO7A_IDS,
+ ...CAMO8A_IDS
 ] as const;
 export type HeadwearCamoId=typeof HEADWEAR_CAMO_IDS[number];
 type RGB=readonly [number,number,number];
@@ -787,7 +793,8 @@ export const HEADWEAR_CAMO_RECIPES:Readonly<Record<HeadwearCamoId,CamoRecipe>>={
   ]
  },
  ...CAMO6A_RECIPES,
- ...CAMO7A_RECIPES
+ ...CAMO7A_RECIPES,
+ ...CAMO8A_RECIPES
 };
 export const HEADWEAR_CAMO_ELIGIBILITY:Readonly<Record<HeadSilhouetteId,readonly HeadwearCamoId[]>>={
  'patrol-cap':[...HEADWEAR_CAMO_IDS],
@@ -797,17 +804,20 @@ export const HEADWEAR_CAMO_ELIGIBILITY:Readonly<Record<HeadSilhouetteId,readonly
   'woodland-dpm','swedish-m90','six-color-desert','woodland-marpat','desert-marpat',
   'erdl-lowland','finnish-m05','polish-pantera','russian-flora','rhodesian-brushstroke','desert-tropentarn',
   ...HEADWEAR_CAMO_IDS.slice(18,38),
-  'multicam-black','multicam-alpine','pencott-greenzone','pencott-badlands','kryptek-highlander','spectre-skwo'],
+  'multicam-black','multicam-alpine','pencott-greenzone','pencott-badlands','kryptek-highlander','spectre-skwo',
+  'russian-izlom','jgsdf-type2','pencott-metropolis','south-african-s2000','kryptek-typhon','norwegian-m98'],
  'high-cut':['m81-woodland','ucp','multicam','flecktarn','swedish-m90',
   'woodland-marpat','desert-marpat','finnish-m05','polish-pantera','desert-tropentarn',
   'scorpion-w2','russian-emr','pla-xingkong','cadpat-tw','british-mtp','indian-digital-2022',
   'australian-dpcu','italian-vegetato',
   'atacs-fg','ukrainian-mm14','aor2','multicam-tropic','atacs-au','aor1','multicam-arid',
-  'multicam-black','multicam-alpine','pencott-greenzone','pencott-badlands','kryptek-highlander','spectre-skwo'],
+  'multicam-black','multicam-alpine','pencott-greenzone','pencott-badlands','kryptek-highlander','spectre-skwo',
+  'russian-izlom','jgsdf-type2','pencott-metropolis','kryptek-typhon','norwegian-m98'],
  pasgt:['m81-woodland','three-color-desert','woodland-dpm','six-color-desert',
   'erdl-lowland','polish-pantera','russian-flora','rhodesian-brushstroke',
   'belgian-jigsaw','east-german-strichtarn','mitchell-leaf','splittertarn-31',
-  'australian-dpcu','italian-vegetato','cadpat-tw'],
+  'australian-dpcu','italian-vegetato','cadpat-tw',
+  'greek-lizard','urban-kamysh','south-african-s2000','norwegian-m98'],
  'soviet-steel':[]
 };
 export function headwearCamoChoices(model:string):readonly HeadwearCamoId[]{
@@ -1144,6 +1154,10 @@ function inPolygon(x:number,y:number,coords:readonly number[]):boolean{
  * used for the actual garment map, rather than a separate fake preview.
  */
 export function headwearCamoIndices(id:HeadwearCamoId):Uint8Array{
+ if(isCamo8AId(id))return camo8AIndices(id,{
+  pencott:id==='pencott-metropolis'?headwearCamoIndices('pencott-greenzone'):undefined,
+  highlander:id==='kryptek-typhon'?headwearCamoIndices('kryptek-highlander'):undefined
+ });
  if(isCamo7AId(id))return camo7AIndices(id,
   id==='multicam-black'||id==='multicam-alpine'?headwearCamoIndices('multicam'):undefined);
  if(isCamo6AId(id))return camo6AIndices(id,

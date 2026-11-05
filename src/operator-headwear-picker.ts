@@ -1,5 +1,5 @@
 /** Shared, equipment-aware headgear color picker for Campaign and Quick Play.
- * Uses the approved 46-print artwork without changing any texture recipe.
+ * Uses the approved 54-print artwork without changing any texture recipe.
  * Styling never changes item ownership, protection or equipment classes.
  */
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
@@ -43,7 +43,7 @@ type PickerOptions={
 const make=<K extends keyof HTMLElementTagNameMap>(tag:K,cls='')=>{
  const element=document.createElement(tag);element.className=cls;return element;
 };
-/** Build swatches only on opening the pattern browser: no repeated 46-canvas
+/** Build swatches only on opening the pattern browser: no repeated 54-canvas
  * construction for every reserve operator while the armory is closed.
  */
 export function createHeadwearAppearancePicker(kit:EquipmentLoadout,
