@@ -59,8 +59,8 @@ test('8E rebuilt M98 has balanced large three-ink organic shapes across garment 
  const c=coarseBlockCoverage(tile,32);
  assert.ok(c.max<.70,'no single ink exceeds 70% of a 32px crop');
  assert.ok(c.min>=3,'all three inks present in 32px crops');
- assert.equal(FABRIC_CAMO_DENSITY[id],2.55,'world scale remains the 8D baseline');
- assert.ok(fabricCamoWorldPeriod(id)>24&&fabricCamoWorldPeriod(id)<26);
+ assert.equal(FABRIC_CAMO_DENSITY[id],3.0,'world scale was revised after 8F crop audits');
+ assert.ok(fabricCamoWorldPeriod(id)>21&&fabricCamoWorldPeriod(id)<22);
 });
 test('8E JGSDF is dense five-tone flecking, not oversized woodland regions',()=>{
  const id='jgsdf-type2',tile=headwearCamoIndices(id);

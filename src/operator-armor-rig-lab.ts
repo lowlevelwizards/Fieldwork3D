@@ -8,6 +8,7 @@ import {initialWardrobe,wardrobeItemsForSlot,type WardrobeOptions}
  from './operator-wardrobe-data.ts';
 import {HEADWEAR_CAMO_IDS,type HeadwearCamoId}
  from './operator-headwear-camo.ts';
+import {FABRIC_CAMO_DENSITY} from './operator-fabric-camo-materials.ts';
 import {createArmorFitDebug,disposeArmorFitDebug}
  from './operator-armor-fit-debug.ts';
 
@@ -20,6 +21,13 @@ const armorSelect=el<HTMLSelectElement>('armorChoice'),
  status=el<HTMLElement>('fitStatus'),
  canvas=el<HTMLCanvasElement>('armorCanvas');
 const params=new URLSearchParams(location.search);
+// Opt-in 8G reference comparison only. The lab is not a player route;
+// each Playwright density shot loads a fresh page with one metric repeat.
+// This never persists into operator looks or modifies the source atlas.
+const m98Scale=params.get('m98Scale');
+if(['2.55','3.0','3.4'].includes(m98Scale??'')&&
+ params.get('camo')==='norwegian-m98')
+ (FABRIC_CAMO_DENSITY as Record<string,number>)['norwegian-m98']=Number(m98Scale);
 // R9 optional read-only reference preview, never written to roster saves.
 const previewCamo:HeadwearCamoId|undefined=
  HEADWEAR_CAMO_IDS.find(id=>id===params.get('camo'));
@@ -94,6 +102,7 @@ function updateView(){
  canvas.dataset.top=topSelect.value;
  canvas.dataset.view=view;
  canvas.dataset.camo=previewCamo??'none';
+ canvas.dataset.camoScale=String(FABRIC_CAMO_DENSITY['norwegian-m98']);
 }
 function refresh(){
  let kit=initialEquipmentLoadout();
