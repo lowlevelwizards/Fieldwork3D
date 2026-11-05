@@ -99,6 +99,8 @@ export function headwearRegionPixel(id:HeadSilhouetteId,region:0|1|2|3,
    return region===1?236:region===2?217:region===3?251:249;
   case 'm1-steel':
    return region===1?244:region===2?216:region===3?251:248;
+  case 'ddr-m56':
+   return region===1?238:region===2?222:region===3?251:248;
   case 'soviet-steel':
    // Stamped painted bowl: absolutely clean roof, one purposeful dark rim.
    return region===1?245:region===2?221:region===3?251:249;
