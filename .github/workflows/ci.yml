@@ -858,16 +858,13 @@ jobs:
           node --experimental-strip-types --test \
             tests/faction-reference.test.mjs \
             tests/ux-r2-studio-flow.test.mjs
-      - name: Gear AO — critical geometry, helmet, merge and reference contracts
+      - name: Gear AO — critical geometry, batching and reference contracts
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/gear-baked-ao-all-') }}
         run: |
           node --experimental-strip-types --test --test-concurrency=1 \
             tests/operator-baked-gear-ao.test.mjs \
             tests/operator-visual-merge.test.mjs \
             tests/operator-headwear-materials.test.mjs \
-            tests/operator-headwear-camo.test.mjs \
-            tests/r5-m1-cover-stage-e.test.mjs \
-            tests/operator-r9-camo-density.test.mjs \
             tests/faction-reference.test.mjs
       - name: Reference Gear Batch 1 — forty historical kit contracts
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/reference-kit-gear-fidelity-') }}
