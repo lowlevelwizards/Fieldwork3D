@@ -79,7 +79,15 @@ export const FABRIC_CAMO_POLICY:Readonly<Record<HeadwearCamoId,FabricCamoPolicy>
  'desert-night':policy(uniform,'historic','issued','Historical DNC overgarment and trouser shell; armor, rig and rucksack stay conventional solid colors'),
  'kryptek-highlander':policy(all,'modern','issued-or-commercial','Commercial Kryptek Highlander clothing and selected patterned outdoor/tactical nylon'),
  berezka:policy(uniform,'historic','issued-or-commercial','KLMK/Berezka Soviet-era cover suits and reproductions; not a standard plate-carrier fabric'),
- 'spectre-skwo':policy(withKit,'modern','issued-or-commercial','SSO Spectre-SKWO field clothing and compatible tactical field webbing, not presumed universal plate covers')
+ 'spectre-skwo':policy(withKit,'modern','issued-or-commercial','SSO Spectre-SKWO field clothing and compatible tactical field webbing, not presumed universal plate covers'),
+ 'russian-izlom':policy(withPack,'modern','issued-or-commercial','Izlom field/Gorka/smock fatigues and purpose-made uniform bags; matching modern plate covers not assumed'),
+ 'greek-lizard':policy(uniform,'historic','issued','Classic Greek lizard field fatigue shirt/trousers and smocks; standard load-bearing equipment typically solid'),
+ 'urban-kamysh':policy(uniform,'transition','issued-or-commercial','Russian MVD urban blue Kamysh police field uniforms; do not add printed carrier or pack by default'),
+ 'jgsdf-type2':policy(withPack,'modern','issued','Japanese JGSDF Type II field uniforms and some issue textile packs; plate/rig print not presumed'),
+ 'pencott-metropolis':policy(all,'modern','issued-or-commercial','Commercial PenCott MetroPolis fabrics and selected patterned modular nylon'),
+ 'south-african-s2000':policy(withPack,'modern','issued','SANDF S2000 issue combat garments and matching textile field packs; Nutria webbing remains solid'),
+ 'kryptek-typhon':policy(all,'modern','issued-or-commercial','Commercial Kryptek Typhon patterned tactical clothing, packs and some nylon/carrier cuts'),
+ 'norwegian-m98':policy(withPack,'modern','issued','Norwegian M98 uniforms, covers and field bags; modern modular armor not universally matching')
 };
 
 /** Only active garment silhouettes qualify for camouflage prints.
@@ -99,7 +107,8 @@ export function fabricCamoCompatible(id:HeadwearCamoId,
      'italian-vegetato','russian-emr','pla-xingkong','indian-digital-2022',
      'polish-pantera','m81-woodland','flecktarn',
      'atacs-fg','atacs-au','multicam-tropic','multicam-arid','aor1','aor2','ukrainian-mm14',
-     'multicam-black','multicam-alpine','pencott-greenzone','pencott-badlands','kryptek-highlander','spectre-skwo'].includes(id);
+     'multicam-black','multicam-alpine','pencott-greenzone','pencott-badlands','kryptek-highlander','spectre-skwo',
+     'pencott-metropolis','kryptek-typhon'].includes(id);
    if(outfit.top==='smock-jacket')
     return ['woodland-dpm','british-mtp','multicam','m81-woodland',
      'flecktarn','swedish-m90','finnish-m05','desert-tropentarn',
@@ -107,16 +116,20 @@ export function fabricCamoCompatible(id:HeadwearCamoId,
      'alpenflage','six-color-desert',
      'ss-leto','atacs-fg','atacs-au','multicam-tropic','multicam-arid','ukrainian-mm14',
      'multicam-black','multicam-alpine','pencott-greenzone','pencott-badlands',
-     'desert-night','kryptek-highlander','berezka','spectre-skwo'].includes(id);
+     'desert-night','kryptek-highlander','berezka','spectre-skwo',
+     'russian-izlom','greek-lizard','urban-kamysh','jgsdf-type2','pencott-metropolis',
+     'south-african-s2000','kryptek-typhon','norwegian-m98'].includes(id);
    if(outfit.top==='gorka-jacket')
     return ['russian-flora','russian-emr','multicam','polish-pantera',
-      'atacs-fg','atacs-au','ss-leto','berezka','spectre-skwo'].includes(id);
+      'atacs-fg','atacs-au','ss-leto','berezka','spectre-skwo',
+      'russian-izlom','urban-kamysh'].includes(id);
    return (outfit.top==='bdu-shirt'||outfit.top==='acu-shirt')&&
     uniformCutCamoCompatible(outfit.top,id);
   case 'trousers':
    if(outfit.trousers==='gorka-trousers')
     return ['russian-flora','russian-emr','multicam','polish-pantera',
-     'ss-leto','atacs-fg','atacs-au','berezka','spectre-skwo'].includes(id);
+     'ss-leto','atacs-fg','atacs-au','berezka','spectre-skwo',
+     'russian-izlom','urban-kamysh'].includes(id);
    return (outfit.trousers==='bdu-trousers'||
     outfit.trousers==='acu-trousers')&&
     uniformCutCamoCompatible(outfit.trousers,id);
