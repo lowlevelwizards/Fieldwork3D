@@ -88,10 +88,12 @@ export function bakeGearContactAO(group:THREE.Group):number{
  const p=new THREE.Vector3(),n=new THREE.Vector3();
  let touched=0;
  for(const part of parts){
-  if(part.mesh.material.userData[AO_FLAG]!==true)continue;
+  if(Array.isArray(part.mesh.material))continue;
+  const material=part.mesh.material;
+  if(material.userData[AO_FLAG]!==true)continue;
   const geo=part.mesh.geometry;
   if(geo.userData.fieldworkContactAO===true)continue;
-  bakeGearGeometryAO(geo,part.mesh.material);
+  bakeGearGeometryAO(geo,material);
   const attr=geo.getAttribute('color'),positions=geo.getAttribute('position'),
    normals=geo.getAttribute('normal');
   if(!attr||!positions||!normals)continue;
