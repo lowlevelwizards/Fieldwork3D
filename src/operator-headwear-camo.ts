@@ -28,8 +28,8 @@ export const HEADWEAR_CAMO_DENSITY:Readonly<Record<HeadwearCamoId,number>>={
  'splittertarn-31':2,'australian-dpcu':2,'italian-vegetato':2,
  'scorpion-w2':2,'russian-emr':3,'pla-xingkong':3,
  'cadpat-tw':2,'british-mtp':2,'indian-digital-2022':2,
- 'atacs-fg':2,'ukrainian-mm14':2,aor2:3,'multicam-tropic':2,
- 'atacs-au':2,'ss-leto':2,aor1:3,'multicam-arid':2
+ 'atacs-fg':2,'ukrainian-mm14':2,aor2:3,'multicam-tropic':4,
+ 'atacs-au':2,'ss-leto':2,aor1:3,'multicam-arid':4
 };
 export const HEADWEAR_CAMO_IDS=[
  'm81-woodland','three-color-desert','tiger-stripe','ucp','multicam',
@@ -1135,7 +1135,8 @@ function inPolygon(x:number,y:number,coords:readonly number[]):boolean{
  * used for the actual garment map, rather than a separate fake preview.
  */
 export function headwearCamoIndices(id:HeadwearCamoId):Uint8Array{
- if(isCamo6AId(id))return camo6AIndices(id);
+ if(isCamo6AId(id))return camo6AIndices(id,
+  id==='multicam-tropic'||id==='multicam-arid'?headwearCamoIndices('multicam'):undefined);
  const size=headwearCamoSize(id),data=new Uint8Array(size**2);
  const shapes=HEADWEAR_CAMO_RECIPES[id].motifs;
  for(let y=0;y<size;y++)for(let x=0;x<size;x++){
