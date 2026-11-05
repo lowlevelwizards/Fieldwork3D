@@ -10,18 +10,18 @@ Generated from the checked-out repository HEAD by `node scripts/audit-game-color
 
 ## Totals
 - Source files inspected: **528**
-- Literal color occurrences: **2617**
-- Distinct normalized RGB values: **2297**
+- Literal color occurrences: **2603**
+- Distinct normalized RGB values: **2295**
 - Single-use RGB colors: **2109**
-- Colors appearing in only one file: **2222**
-- Near-neighbor non-protected same-domain colors flagged for human review (OKLab < 0.022): **948**
+- Colors appearing in only one file: **2221**
+- Near-neighbor non-protected same-domain colors flagged for human review (OKLab < 0.022): **944**
 
 | System | Source color mentions | Unique RGB values |
 |---|---:|---:|
-| UI / HUD | 1068 | 910 |
+| UI / HUD | 1055 | 908 |
 | Combat / mission | 389 | 354 |
 | Architecture / props | 333 | 331 |
-| Landscape / other | 329 | 302 |
+| Landscape / other | 328 | 301 |
 | Camouflage inks | 258 | 220 |
 | Operator / equipment | 222 | 195 |
 | Skin / hair | 18 | 18 |
