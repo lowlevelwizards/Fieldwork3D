@@ -77,7 +77,7 @@ import {readRoster,applyRosterIdentity,freshQuickPlayRoster,
   serializeQuickPlayCosmetics,
   resupplyRoster,equipRoster,equipRosterGear,moveRosterMagazine,
  configureRosterWeapon,
- renameRosterMember,cycleRosterAppearance,setRosterWardrobe} from './breach-roster.ts';
+ renameRosterMember} from './breach-roster.ts';
 import {validateStudioAppearanceEdits,applyStudioRosterEdits,
  applyStudioCampaignEdits} from './operator-studio-batch-save.ts';
 import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
@@ -96,24 +96,17 @@ import {newCampaign,readCampaign,acceptContract,resolveOperation,
 import {loadMovementScale,equippedFlashCharges} from './equipment-loadouts.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {allocateFlashSupply} from './equipment-supply.ts';
-import {createHeadwearAppearancePicker} from './operator-headwear-picker.ts';
-import {createWardrobeFabricCamoPicker} from './operator-fabric-camo-picker.ts';
-import {topColorwayChoices,resolvedTopColorway} from './operator-upper-colorways.ts';
-import {sleeveStateOptions} from './operator-wardrobe-data.ts';
-import './operator-fabric-camo-picker.css';
-import {WARDROBE_ACCESSORY_SLOTS,WARDROBE_ACCESSORY_OPTIONS}
- from './operator-wardrobe-accessories.ts';
-import {readWardrobe,resolvedWardrobe,setWardrobeStyle,
- wardrobeItemsForSlot,WARDROBE_SLOTS,SLEEVE_STATES,TROUSER_HEMS,
- type WardrobeOptions}
- from './operator-wardrobe-data.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {exportCampaign,importCampaign} from './campaign-persistence.ts';
 import {careerEventsForOperation} from './campaign-history.ts';
 import {awarenessDebugLine} from './breach-awareness-debug.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
 import './breach-style.css';
-import {fieldworkSelectField,confirmFieldworkAction} from './ui/fieldwork-controls.ts';
+import './ui/ux-r1-sheets.css';
+import {fieldworkSelectField,confirmFieldworkAction,promptFieldworkText} from './ui/fieldwork-controls.ts';
+import {createTacticalSheetNavigation} from './ui/tactical-sheet-navigation.ts';
+import {buildQuickLoadoutGroups,loadoutGroupForSlot,
+ type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
 import {compactSiteTitle} from './ui/site-title.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {contextActionChoices} from './ui/context-actions.ts';
@@ -571,16 +564,7 @@ const operationsBoard=document.createElement('section');
 operationsBoard.id='operationsBoard';
 operationsBoard.hidden=true;
 operationsBoard.setAttribute('aria-label','Squad operations board');
-Object.assign(operationsBoard.style,{
- position:'fixed',right:'12px',
- bottom:'calc(var(--tactical-hud-height,138px) + 14px + env(safe-area-inset-bottom))',
- zIndex:'95',boxSizing:'border-box',
- width:'min(420px, calc(100vw - 24px))',maxHeight:'min(52dvh, 530px)',
- overflowY:'auto',padding:'14px',borderRadius:'12px',
- background:'rgba(12,20,20,.96)',border:'1px solid #687973',
- color:'#e0e9de',font:'13px/1.45 Oxanium, sans-serif',
- boxShadow:'0 12px 35px #0008'
-});
+operationsBoard.className='fw-squad-sheet';
 document.body.append(operationsBoard);
 // Weapon choices are explicit: never change the selected weapon merely by opening a menu.
 const weaponChooser=document.createElement('section');
@@ -627,12 +611,9 @@ weaponChooser.addEventListener('keydown',event=>{
  if(event.key==='Escape'){event.preventDefault();hideWeaponChooser();ui.loadout.focus();}
 });
 // One operator expanded at a time in the mobile preparation sheet.
-let expandedQuickOperator:string|null='rook';
+let expandedQuickOperator:string|null=null;
 let expandedQuickKit:string|null=null;
-let expandedQuickWardrobe:string|null=null;
-let expandedQuickHeadwear:string|null=null;
-let expandedQuickHeadwearCamo:string|null=null;
-const quickFabricPickerState:{expanded:boolean;openChannel:null|import('./operator-fabric-camo-policy.ts').FabricCamoChannel;filter:string}={expanded:false,openChannel:null,filter:''};
+let expandedQuickLoadoutGroup:QuickLoadoutGroup='weapon';
 let expandedQuickWeapon:string|null=null;
 let quickWorkbench:WeaponWorkbenchPreview|null=null;
 let quickWorkbenchId:string|null=null;
@@ -640,37 +621,39 @@ function renderOperationsBoard(){
  quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
  operationsBoard.replaceChildren();
  const heading=document.createElement('div');
- heading.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px';
+ heading.className='fw-squad-sheet-header';
  const title=document.createElement('strong');
- title.textContent='SQUAD OPERATIONS';heading.append(title);
+ title.textContent='SQUAD';heading.append(title);
  const close=document.createElement('button');
  close.type='button';close.textContent='CLOSE';
- close.addEventListener('click',()=>{operationsBoard.hidden=true;});
+ close.addEventListener('click',()=>{
+ operationsBoard.hidden=true;tacticalSheetNavigation.sync();operationsToggle.focus();
+});
  heading.append(close);
- const customize=document.createElement('button');
- customize.type='button';customize.textContent='CUSTOMIZE SQUAD';
- customize.addEventListener('click',()=>openOperatorStudio(selected,'quick'));
- heading.append(customize);
+ const more=document.createElement('details');more.className='fw-squad-more';
+ const moreLabel=document.createElement('summary');moreLabel.textContent='MORE';
+ more.append(moreLabel);
  const range=document.createElement('button');range.type='button';
  range.textContent='TEST RANGE';range.title='Nonpersistent equipment range';
  range.addEventListener('click',()=>{
   if(state.phase!=='planning'||replaying)return;
-  campaignMode='quick';
-  lastRangeTrial=null;
+  operationsBoard.hidden=true;tacticalSheetNavigation.sync();
+  campaignMode='quick';lastRangeTrial=null;
   reset(state.variant,undefined,undefined,equipmentTrainingSite());
-  showUiHelp('TEST RANGE · USE SUPPRESS TO FIRE AT THE TARGET PLATES · RESTART OR LEAVE RANGE TO EXIT',9000);
+  showUiHelp('TEST RANGE · USE SUPPRESS TO FIRE AT TARGET PLATES',6500);
  });
- heading.append(range);operationsBoard.append(heading);
+ more.append(range);heading.append(more);operationsBoard.append(heading);
  const history=operationHistory();
  const intro=document.createElement('p');
- intro.textContent='OPERATIONS: '+history.length+
-  ' · LAST: '+(history.at(-1)?.grade??'NONE')+
-  ' · Fresh health and equipment every Quick Play round.';
+ intro.className='fw-squad-intro';
+ intro.textContent=persistentRoster.members.length+' OPERATORS · FRESH GEAR EACH ROUND'+
+  (history.length?' · LAST '+(history.at(-1)?.grade??'—'):'');
  operationsBoard.append(intro);
  for(const member of persistentRoster.members){
   const card=document.createElement('details');
   card.dataset.squadCard=member.id;
   card.className='fw-squad-card';
+  card.dataset.operatorId=member.id;
   card.open=expandedQuickOperator===member.id;
   card.addEventListener('toggle',()=>{
    if(card.open){
@@ -682,62 +665,77 @@ function renderOperationsBoard(){
    }else if(expandedQuickOperator===member.id)expandedQuickOperator=null;
   });
   const name=document.createElement('summary');
-  name.textContent=member.callsign+' · '+member.weapon.toUpperCase();
-  card.append(name);
+  const identity=document.createElement('strong');identity.textContent=member.callsign.toUpperCase();
+  const status=document.createElement('small');status.textContent=member.weapon.toUpperCase()+' · READY';
+  name.append(identity,status);card.append(name);
   const details=document.createElement('p');
-  details.textContent='FULL HEALTH · '+member.magazine+' / '+
-   member.reserve+' RDS · '+member.magazines.length+' SPARE MAGS · READY';
+  details.className='fw-squad-summary';
+  details.textContent=member.magazine+' / '+member.reserve+' RDS · '+
+   member.magazines.length+' SPARE MAGS · FULL HEALTH';
   card.append(details);
   const actions=document.createElement('div');
-  actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
-  const supply=document.createElement('button');
-  supply.type='button';supply.textContent='RESUPPLY';
-  supply.setAttribute('aria-label','Resupply '+member.callsign);
-  supply.addEventListener('click',()=>{
+
+  actions.className='fw-squad-actions';
+  const loadoutAction=document.createElement('button');
+  loadoutAction.type='button';loadoutAction.textContent='LOADOUT';
+  loadoutAction.setAttribute('aria-label','Edit equipment for '+member.callsign);
+  loadoutAction.addEventListener('click',()=>{
+   const opening=!kit.open;kit.open=opening;
+   expandedQuickKit=opening?member.id:null;
+   if(opening)kit.scrollIntoView({block:'nearest',behavior:'smooth'});
+  });
+  const look=document.createElement('button');
+  look.type='button';look.textContent='APPEARANCE';
+  look.setAttribute('aria-label','Customize '+member.callsign+' in Operator Studio');
+  look.addEventListener('click',()=>{
+   operationsBoard.hidden=true;tacticalSheetNavigation.sync();
+   openOperatorStudio(member.id,'quick');
+  });
+  const rename=document.createElement('button');
+  rename.type='button';rename.textContent='CALLSIGN';
+  rename.addEventListener('click',async()=>{
    if(state.phase!=='planning'||replaying)return;
-   persistentRoster=resupplyRoster(persistentRoster,member.id);
+   const next=await promptFieldworkText({
+    title:'EDIT CALLSIGN',value:member.callsign,
+    label:'CALLSIGN',maxLength:24,confirmLabel:'SAVE NAME'});
+   if(next===null||state.phase!=='planning'||replaying)return;
+   persistentRoster=renameRosterMember(persistentRoster,member.id,next);
    saveRoster();applyRosterIdentity(state,persistentRoster);
    renderOperationsBoard();updateHud();
   });
-  actions.append(supply);
-  const equip=fieldworkSelectField('WEAPON · '+member.callsign,
-   [{value:'carbine',label:'Carbine'},{value:'smg',label:'SMG'},
-    {value:'rifle',label:'Rifle'},{value:'shotgun',label:'Shotgun'}],
-   member.weapon,next=>{
-    if(state.phase!=='planning'||replaying)return;
-    persistentRoster=equipRoster(persistentRoster,member.id,next as typeof member.weapon);
-    saveRoster();applyRosterIdentity(state,persistentRoster);
-    expandedQuickKit=member.id;renderOperationsBoard();updateHud();
-   });
-  const look=document.createElement('button');
-  look.type='button';look.textContent='EDIT APPEARANCE';
-  look.setAttribute('aria-label','Open wardrobe for '+member.callsign);
-  look.addEventListener('click',()=>{
-   expandedQuickKit=member.id;expandedQuickWardrobe=member.id;
-   kit.open=true;wardrobeEditor.open=true;
-   wardrobeEditor.scrollIntoView({block:'nearest',behavior:'smooth'});
-  });
-  actions.append(equip,look);
-  const rename=document.createElement('button');
-  rename.type='button';rename.textContent='CALLSIGN';
-  rename.addEventListener('click',()=>{
-   if(state.phase!=='planning'||replaying)return;
-   const next=window.prompt('Operator callsign',member.callsign);
-   if(next===null)return;
-   persistentRoster=renameRosterMember(persistentRoster,member.id,next);
-   saveRoster();applyRosterIdentity(state,persistentRoster);
-   expandedQuickKit=member.id;renderOperationsBoard();updateHud();
-  });
-  actions.append(rename);
+  actions.append(loadoutAction,look,rename);
   card.append(actions);
   const kit=document.createElement('details');
   kit.open=expandedQuickKit===member.id;
   kit.addEventListener('toggle',()=>{if(kit.open)expandedQuickKit=member.id;
    else if(expandedQuickKit===member.id)expandedQuickKit=null;});
   const kitTitle=document.createElement('summary');
-  kitTitle.textContent='EQUIPMENT / LOADOUT';
-  kitTitle.style.cssText='min-height:40px;cursor:pointer;padding:11px 0;font-weight:700';
+  kitTitle.textContent='LOADOUT · '+member.weapon.toUpperCase();
   kit.append(kitTitle);
+  const loadout=buildQuickLoadoutGroups(kit,expandedQuickLoadoutGroup,group=>{
+   expandedQuickLoadoutGroup=group;
+  });
+  const weaponRow=fieldworkSelectField('PRIMARY WEAPON',
+   [{value:'carbine',label:'Carbine'},{value:'smg',label:'SMG'},
+    {value:'rifle',label:'Rifle'},{value:'shotgun',label:'Shotgun'}],
+   member.weapon,next=>{
+    if(state.phase!=='planning'||replaying)return;
+    persistentRoster=equipRoster(persistentRoster,member.id,next as typeof member.weapon);
+    saveRoster();applyRosterIdentity(state,persistentRoster);
+    expandedQuickKit=member.id;expandedQuickLoadoutGroup='weapon';
+    renderOperationsBoard();updateHud();
+   });
+  loadout.field('weapon').append(weaponRow);
+  const resupply=document.createElement('button');resupply.type='button';
+  resupply.className='fw-squad-resupply';resupply.textContent='RESUPPLY';
+  resupply.addEventListener('click',()=>{
+   if(state.phase!=='planning'||replaying)return;
+   persistentRoster=resupplyRoster(persistentRoster,member.id);
+   saveRoster();applyRosterIdentity(state,persistentRoster);
+   expandedQuickKit=member.id;expandedQuickLoadoutGroup='weapon';
+   renderOperationsBoard();updateHud();
+  });
+  loadout.field('weapon').append(resupply);
   for(const slot of LOADOUT_SLOTS){
    if(slot==='primary')continue; // Existing NEXT WEAPON action stays authoritative.
    const row=document.createElement('label');
@@ -758,142 +756,17 @@ function renderOperationsBoard(){
     saveRoster();applyRosterIdentity(state,persistentRoster);
     expandedQuickKit=member.id;renderOperationsBoard();updateHud();
    });
-   row.append(label,select);kit.append(row);
+   row.className='fw-equipment-choice';
+   row.append(label,select);loadout.field(loadoutGroupForSlot(slot)).append(row);
   }
-  const wardrobeEditor=document.createElement('details');
-  wardrobeEditor.open=expandedQuickWardrobe===member.id;
-  wardrobeEditor.addEventListener('toggle',()=>{
-   if(wardrobeEditor.open)expandedQuickWardrobe=member.id;
-   else if(expandedQuickWardrobe===member.id)expandedQuickWardrobe=null;
-  });
-  const wardrobeTitle=document.createElement('summary');
-  wardrobeTitle.textContent='WARDROBE / COSMETIC APPEARANCE';
-  wardrobeTitle.style.cssText='min-height:40px;cursor:pointer;padding:11px 0;font-weight:700';
-  wardrobeEditor.append(wardrobeTitle);
-  const currentWardrobe=readWardrobe(member.wardrobe);
-  const effective=resolvedWardrobe(currentWardrobe,member.loadout);
-  const writeCosmetics=(next:typeof currentWardrobe)=>{
-   if(state.phase!=='planning'||replaying)return;
-   persistentRoster=setRosterWardrobe(persistentRoster,member.id,next);
-   saveRoster();applyRosterIdentity(state,persistentRoster);
-   expandedQuickKit=member.id;expandedQuickWardrobe=member.id;
-   renderOperationsBoard();updateHud();
-  };
-  for(const slot of WARDROBE_SLOTS){
-   const row=document.createElement('label');
-   row.style.cssText='display:flex;justify-content:space-between;gap:8px;margin:7px 0';
-   const label=document.createElement('span');
-   label.textContent=slot.replace(/([A-Z])/g,' $1').toUpperCase();
-   const select=document.createElement('select');
-   select.style.cssText='max-width:65%;min-height:40px;background:#243530;color:#e5e9d8';
-   for(const item of wardrobeItemsForSlot(slot)){
-    const option=document.createElement('option');
-    option.value=item.id;option.textContent=item.name;
-    const next=setWardrobeStyle(currentWardrobe,slot,item.id);
-    option.disabled=resolvedWardrobe(next,member.loadout)[slot]!==item.id;
-    select.append(option);
-   }
-   select.value=effective[slot];
-   select.addEventListener('change',()=>writeCosmetics(
-    setWardrobeStyle(currentWardrobe,slot,select.value)));
-   row.append(label,select);wardrobeEditor.append(row);
-  }
-  wardrobeEditor.append(createHeadwearAppearancePicker(member.loadout,
-   currentWardrobe,writeCosmetics,{
-    expanded:expandedQuickHeadwear===member.id,
-    camoExpanded:expandedQuickHeadwearCamo===member.id,
-    onExpandedChange:open=>{expandedQuickHeadwear=open?member.id:null;},
-    onCamoExpandedChange:open=>{expandedQuickHeadwearCamo=open?member.id:null;}
-   }));
-  wardrobeEditor.append(createWardrobeFabricCamoPicker(member.loadout,
-   currentWardrobe,writeCosmetics,quickFabricPickerState));
-  const colors=topColorwayChoices(effective.top);
-  if(colors.length){
-   const row=document.createElement('label');
-   row.style.cssText='display:flex;justify-content:space-between;gap:8px;margin:8px 0';
-   const text=document.createElement('span');text.textContent='GARMENT MATERIAL';
-   const select=document.createElement('select');
-   select.setAttribute('aria-label','Garment material for '+member.callsign);
-   select.style.cssText='min-height:40px;max-width:66%';
-   for(const [value,name] of colors){
-    const option=document.createElement('option');option.value=value;
-    option.textContent=name;select.append(option);
-   }
-   select.value=resolvedTopColorway(effective.top,currentWardrobe.topColorway);
-   select.addEventListener('change',()=>writeCosmetics({...currentWardrobe,
-    topColorway:select.value}));
-   row.append(text,select);wardrobeEditor.append(row);
-  }
-  for(const [field,label,options] of [
-   ['sleeveState','SLEEVE FINISH',SLEEVE_STATES],
-   ['trouserHem','TROUSER HEM',TROUSER_HEMS]
-  ] as const){
-   const row=document.createElement('label');
-   row.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0';
-   const caption=document.createElement('span');caption.textContent=label;
-   const select=document.createElement('select');
-   select.setAttribute('aria-label',label+' for '+member.callsign);
-   select.style.cssText='min-height:40px;max-width:66%;background:#243530;color:#e5e9d8';
-   for(const id of options){
-    const option=document.createElement('option');option.value=id;
-    option.textContent=id.toUpperCase();select.append(option);
-   }
-   select.value=currentWardrobe[field];
-   select.disabled=field==='sleeveState'?
-    sleeveStateOptions(effective.top).length===1:
-    !['bdu-trousers','acu-trousers','gorka-trousers'].includes(effective.trousers)||
-    effective.footwear==='bare-feet';
-   select.addEventListener('change',()=>{
-    if(field==='sleeveState')writeCosmetics({...currentWardrobe,
-     sleeveState:select.value as WardrobeOptions['sleeveState']});
-    else writeCosmetics({...currentWardrobe,
-     trouserHem:select.value as WardrobeOptions['trouserHem']});
-   });
-   row.append(caption,select);wardrobeEditor.append(row);
-  }
-  const randomize=document.createElement('button');
-  randomize.type='button';randomize.textContent='RANDOMIZE FACE / LOOK';
-  randomize.setAttribute('aria-label','Choose another appearance for '+member.callsign);
-  randomize.addEventListener('click',()=>{
-   if(state.phase!=='planning'||replaying)return;
-   persistentRoster=cycleRosterAppearance(persistentRoster,member.id);
-   saveRoster();applyRosterIdentity(state,persistentRoster);
-   expandedQuickKit=member.id;renderOperationsBoard();updateHud();
-  });
-  wardrobeEditor.append(randomize);
-
-  const cosmeticExtras=document.createElement('details');
-  const extraTitle=document.createElement('summary');
-  extraTitle.textContent='EMPTY / COSMETIC ATTACHMENTS';
-  cosmeticExtras.append(extraTitle);
-  for(const slot of WARDROBE_ACCESSORY_SLOTS){
-   const row=document.createElement('label');
-   row.style.cssText='display:flex;justify-content:space-between;gap:8px;margin:7px 0';
-   const label=document.createElement('span');
-   label.textContent=slot.replace(/([A-Z])/g,' $1').toUpperCase();
-   const picker=document.createElement('select');
-   picker.style.cssText='max-width:65%;min-height:40px;background:#243530;color:#e5e9d8';
-   for(const name of WARDROBE_ACCESSORY_OPTIONS[slot]){
-    const option=document.createElement('option');
-    option.value=name;option.textContent=name.replaceAll('-',' ');
-    picker.append(option);
-   }
-   picker.value=currentWardrobe.accessories[slot];
-   picker.addEventListener('change',()=>writeCosmetics({
-    ...currentWardrobe,
-    accessories:{...currentWardrobe.accessories,[slot]:picker.value}
-   }));
-   row.append(label,picker);cosmeticExtras.append(row);
-  }
-  wardrobeEditor.append(cosmeticExtras);
-  kit.append(wardrobeEditor);
+  // Appearance is edited exclusively in Operator Studio; no duplicate wardrobe form.
   const weaponEditor=document.createElement('details');
   weaponEditor.open=expandedQuickWeapon===member.id;
   const mountSelectors=new Map<WeaponAttachmentSlot,HTMLSelectElement>();
   const workbenchHost=document.createElement('div');
   workbenchHost.style.cssText='margin:10px 0 14px';
   const syncWorkbench=()=>{
-   const active=kit.open&&weaponEditor.open;
+   const active=kit.open&&loadout.group.weapon.open&&weaponEditor.open;
    if(!active){if(quickWorkbenchId===member.id){
     quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
    }return;}
@@ -916,7 +789,7 @@ function renderOperationsBoard(){
   });
   kit.addEventListener('toggle',syncWorkbench);
   const weaponTitle=document.createElement('summary');
-  weaponTitle.textContent='PRIMARY WEAPON / ATTACHMENTS';
+  weaponTitle.textContent='WEAPON ATTACHMENTS';
   weaponTitle.style.cssText='min-height:40px;cursor:pointer;padding:12px 0;font-weight:700;font-size:11px';
   weaponEditor.append(weaponTitle,workbenchHost);
   for(const slot of WEAPON_ATTACHMENT_SLOTS){
@@ -942,7 +815,7 @@ function renderOperationsBoard(){
     persistentRoster=configureRosterWeapon(persistentRoster,member.id,slot,select.value);
     saveRoster();applyRosterIdentity(state,persistentRoster);
     expandedQuickKit=member.id;expandedQuickWeapon=member.id;
-    renderOperationsBoard();updateHud();
+    expandedQuickLoadoutGroup='weapon';renderOperationsBoard();updateHud();
    });
    row.append(label,select);weaponEditor.append(row);
   }
@@ -952,7 +825,10 @@ function renderOperationsBoard(){
   properties.textContent='ASSEMBLED MASS '+measured.massKg.toFixed(2)+' KG · BALANCE '+
    measured.balanceX.toFixed(1)+' · MUZZLE EXTENSION '+
    (measured.muzzleX-19.5).toFixed(1)+' UNITS';
-  weaponEditor.append(properties);kit.append(weaponEditor);
+  const diag=document.createElement('details');diag.className='fw-loadout-diagnostics';
+  const diagTitle=document.createElement('summary');diagTitle.textContent='WEAPON MEASUREMENTS';
+  diag.append(diagTitle,properties);weaponEditor.append(diag);
+  loadout.field('weapon').append(weaponEditor);
   const carrying=carryCapacityReport(member.loadout,member.magazines);
   const carryItems=carrying.placements.filter(p=>p.kind!=='magazine');
   if(carryItems.length){
@@ -961,7 +837,9 @@ function renderOperationsBoard(){
    note.textContent='PHYSICAL CARRY · '+carryItems.map(p=>
     p.kind.toUpperCase()+' '+p.location.toUpperCase()+' / '+
     p.accessSeconds.toFixed(2)+'s').join(' · ');
-   kit.append(note);
+   const carryDetails=document.createElement('details');carryDetails.className='fw-loadout-diagnostics';
+   const summary=document.createElement('summary');summary.textContent='CARRY TIMINGS';
+   carryDetails.append(summary,note);loadout.field('carry').append(carryDetails);
   }
   const carried=member.weapon==='shotgun'?[]:
    stageMagazines(member.magazines,member.loadout);
@@ -969,7 +847,9 @@ function renderOperationsBoard(){
    const heading=document.createElement('strong');
    heading.textContent='MAGAZINE LOCATIONS';
    heading.style.cssText='display:block;font-size:11px;margin:14px 0 6px';
-   kit.append(heading);
+   const magSection=document.createElement('details');magSection.className='fw-loadout-diagnostics';
+   const magTitle=document.createElement('summary');magTitle.textContent='MAGAZINE LOCATIONS';
+   magSection.append(magTitle);
    const capacity=magazineSpace(member.loadout);
    const where:MagazineLocation[]=['rig','belt','pocket','backpack','overflow'];
    for(const [index,mag] of carried.entries()){
@@ -996,8 +876,9 @@ function renderOperationsBoard(){
      saveRoster();applyRosterIdentity(state,persistentRoster);
      expandedQuickKit=member.id;renderOperationsBoard();updateHud();
     });
-    row.append(select);kit.append(row);
+    row.className='fw-equipment-choice';row.append(select);magSection.append(row);
    }
+   loadout.field('carry').append(magSection);
   }
   card.append(kit);operationsBoard.append(card);
  }
@@ -1005,9 +886,9 @@ function renderOperationsBoard(){
  hint.textContent='Select an operator to edit. Close to resume planning.';
  operationsBoard.append(hint);
 }
-operationsBoard.addEventListener('keydown',event=>{
- if(event.key==='Escape'){operationsBoard.hidden=true;operationsToggle.focus();}
-});
+const tacticalSheetNavigation=createTacticalSheetNavigation({
+ settings:ui.siteSettings,squad:operationsBoard,briefing:ui.briefingPanel
+},()=>{collapseTacticalSheets(null);updateContext();});
 /** Only one major tactical sheet owns the viewport and touch focus at a time. */
 function collapseTacticalSheets(except:'squad'|'weapon'|'settings'|'tools'|'briefing'|null){
  if(except!=='squad')operationsBoard.hidden=true;
@@ -1027,6 +908,7 @@ function collapseTacticalSheets(except:'squad'|'weapon'|'settings'|'tools'|'brie
   ui.briefingPanel.hidden=true;
   ui.briefingToggle.setAttribute('aria-expanded','false');
  }
+ tacticalSheetNavigation.sync();
 }
 operationsToggle.addEventListener('click',()=>{
  if(state.phase!=='planning'||replaying)return;
@@ -1037,6 +919,8 @@ operationsToggle.addEventListener('click',()=>{
   hideContextPalette();
   renderOperationsBoard();
  }
+ tacticalSheetNavigation.sync();
+ if(opening)tacticalSheetNavigation.focusFirst();
  updateContext();
 });
 let selected='rook';
@@ -4399,7 +4283,25 @@ function closeMissionSettings(returnFocus=true){
   if(returnFocus)ui.moreOrders.focus();
   updateContext();
 }
-closeSiteSettingsButton.addEventListener('click',()=>closeMissionSettings());
+closeSiteSettingsButton.addEventListener('click',()=>{
+ closeMissionSettings();tacticalSheetNavigation.sync();
+});
+const missionSettingsTabs=Array.from(ui.siteSettings.querySelectorAll<HTMLButtonElement>(
+ '[data-site-tab]'));
+const missionSettingsPanels=Array.from(ui.siteSettings.querySelectorAll<HTMLElement>(
+ '[data-site-panel]'));
+function selectMissionSettingsTab(tab:string){
+ for(const button of missionSettingsTabs)
+  button.setAttribute('aria-pressed',String(button.dataset.siteTab===tab));
+ for(const panel of missionSettingsPanels)
+  panel.hidden=panel.dataset.sitePanel!==tab;
+ const title=ui.siteSettings.querySelector<HTMLElement>('.site-settings-heading strong');
+ if(title)title.textContent=tab==='environment'?'ENVIRONMENT':
+  tab==='preferences'?'PREFERENCES':'MISSION';
+}
+for(const button of missionSettingsTabs)button.addEventListener('click',()=>{
+ selectMissionSettingsTab(button.dataset.siteTab??'mission');
+});
 function chooseCameraView(mode:ViewMode){
   cameraMode(mode);
   closeMissionSettings();
@@ -4418,11 +4320,13 @@ ui.briefingToggle.addEventListener('click',()=>{
   collapseTacticalSheets('briefing');
   ui.briefingPanel.hidden=false;
   ui.briefingToggle.setAttribute('aria-expanded','true');
+  tacticalSheetNavigation.sync();tacticalSheetNavigation.focusFirst();
   updateContext();
 });
 ui.briefingClose.addEventListener('click',()=>{
   ui.briefingPanel.hidden=true;
   ui.briefingToggle.setAttribute('aria-expanded','false');
+  tacticalSheetNavigation.sync();
   updateContext();
 });
 ui.uiSoundToggle.textContent=uiSoundEnabled?'UI SOUND ON':'UI SOUND OFF';
@@ -4445,7 +4349,9 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
   collapseTacticalSheets(opening?'settings':null);
   ui.siteSettings.hidden=!opening;
   ui.siteSettingsToggle.setAttribute('aria-expanded',String(opening));
-  if(opening)closeSiteSettingsButton.focus();
+  if(opening)selectMissionSettingsTab('mission');
+  tacticalSheetNavigation.sync();
+  if(opening)tacticalSheetNavigation.focusFirst();
   else ui.moreOrders.focus();
   updateContext();
 });
