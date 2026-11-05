@@ -136,7 +136,7 @@ test('operator lab exposes raw art, 3x3 repeat and live selected headwear',()=>{
  assert.match(js,/renderHeadwearCamoComparison/);
  assert.match(js,/HEADWEAR_CAMO_IDS/);
  assert.match(js,/camo-study-views/);
- assert.match(html,/COMPARE ALL 54/);
+ assert.match(html,/COMPARE ALL 62/);
  assert.match(js,/headwearCamoSize/);
 });
 test('pattern family density and pigment scales preserve hierarchy',()=>{
