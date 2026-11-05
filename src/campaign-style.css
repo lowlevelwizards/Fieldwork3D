@@ -241,3 +241,49 @@
  .campaign-shell button{font-size:14px}
  .campaign-stat strong{font-size:26px}
 }
+
+/* UX R3 / 08–09: Campaign uses the same purpose-first preparation hierarchy as
+ * Quick Play. Only functional equipment consumes Campaign inventory. */
+.campaign-person-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:7px;margin-top:8px}
+.campaign-person-actions button{width:100%;min-width:0;margin:0;
+ min-height:46px;font-size:13px}
+.campaign-person-actions button.campaign-primary{background:var(--fw-sage);
+ color:var(--fw-bg);border-color:var(--fw-sage)}
+.campaign-person-actions .campaign-select{grid-column:1/-1;max-width:none;
+ width:100%;min-height:44px;font-size:14px}
+.campaign-kit-summary .campaign-readiness-details,
+.campaign-kit-editor .campaign-kit-presets,
+.campaign-kit-editor .campaign-weapon-attachments,
+.campaign-kit-editor .campaign-magazines{border:1px solid var(--fw-panel-border);
+ background:var(--fw-panel-deep);border-radius:var(--fw-radius-sm);
+ padding:7px 10px;margin:9px 0;min-width:0}
+.campaign-kit-summary .campaign-readiness-details>summary,
+.campaign-kit-editor .campaign-kit-presets>summary,
+.campaign-kit-editor .campaign-weapon-attachments>summary,
+.campaign-kit-editor .campaign-magazines>summary{min-height:45px;display:flex;
+ align-items:center;color:var(--fw-text-warm);cursor:pointer;touch-action:manipulation;
+ font:700 14px/1.2 var(--fw-font-display);letter-spacing:.035em}
+.campaign-kit-editor .fw-loadout-group{min-width:0;margin:8px 0}
+.campaign-kit-editor .fw-loadout-group>summary{min-height:49px;display:flex;
+ gap:10px;align-items:center;padding:10px;background:var(--fw-panel-raised);
+ border-radius:var(--fw-radius-sm)}
+.campaign-kit-editor .fw-loadout-group>summary strong{font:700 16px var(--fw-font-display)}
+.campaign-kit-editor .fw-loadout-group>summary small{color:var(--fw-text-muted);
+ font:600 11px/1.25 var(--fw-font-action);flex:1;text-align:right}
+.campaign-kit-editor .fw-loadout-fields{padding:6px 8px 10px;display:grid;gap:6px}
+.campaign-kit-editor .fw-loadout-fields .campaign-kit-choice{border-bottom:1px solid #597065;
+ padding:9px 0}
+.campaign-kit-editor .fw-loadout-fields .campaign-kit-row select{min-height:45px;
+ max-width:65%;font:500 14px var(--fw-font-action)}
+.campaign-shell details>summary:focus-visible,.campaign-shell button:focus-visible,
+.campaign-shell select:focus-visible{outline:2px solid var(--fw-focus);
+ outline-offset:2px}
+@media(max-width:420px){
+ .campaign-person-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .campaign-person-actions button{font-size:12px;padding:8px 5px}
+ .campaign-kit-editor .fw-loadout-group>summary small{font-size:10px}
+}
+@media(prefers-reduced-motion:reduce){
+ .campaign-shell details{scroll-behavior:auto}
+}

@@ -9,6 +9,9 @@ import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 export const HEADWEAR_SOLID_COLORS={
  black:{label:'Black',hex:OPERATOR_SOLID_FAMILIES.black},
  navy:{label:'Navy Blue',hex:OPERATOR_SOLID_FAMILIES.navy},
+ 'beret-maroon':{label:'Maroon',hex:OPERATOR_SOLID_FAMILIES['beret-maroon']},
+ 'beret-scarlet':{label:'Scarlet Red',hex:OPERATOR_SOLID_FAMILIES['beret-scarlet']},
+ 'beret-airborne-blue':{label:'Airborne Blue',hex:OPERATOR_SOLID_FAMILIES['beret-airborne-blue']},
  charcoal:{label:'Charcoal',hex:OPERATOR_SOLID_FAMILIES.charcoal},
  'olive-drab':{label:'Olive Drab',hex:OPERATOR_SOLID_FAMILIES['olive-drab']},
  'ranger-green':{label:'Ranger Green',hex:OPERATOR_SOLID_FAMILIES['ranger-green']},
@@ -22,6 +25,8 @@ export const HEADWEAR_SOLID_COLORS={
 } as const;
 export type HeadwearSolidColorId=keyof typeof HEADWEAR_SOLID_COLORS;
 export const HEADWEAR_ALLOWED_SOLIDS:Readonly<Record<HeadSilhouetteId,readonly HeadwearSolidColorId[]>>={
+ beret:['black','navy','olive-drab','ranger-green','beret-maroon',
+  'beret-scarlet','beret-airborne-blue'],
  'patrol-cap':['olive-drab','ranger-green','desert-tan','black','navy'],
  boonie:['olive-drab','ranger-green','desert-tan','coyote-brown','black','navy'],
  beanie:['black','navy','charcoal','olive-drab','coyote-brown','desert-tan','winter-white'],
@@ -31,7 +36,7 @@ export const HEADWEAR_ALLOWED_SOLIDS:Readonly<Record<HeadSilhouetteId,readonly H
  'soviet-steel':['soviet-4bo','postwar-green']
 };
 export const HEADWEAR_DEFAULT_SOLIDS:Readonly<Record<HeadSilhouetteId,HeadwearSolidColorId>>={
- 'patrol-cap':'olive-drab',boonie:'olive-drab',beanie:'black',
+ 'patrol-cap':'olive-drab',boonie:'olive-drab',beanie:'black',beret:'black',
  ach:'olive-drab','high-cut':'ranger-green',pasgt:'olive-drab',
  'soviet-steel':'soviet-4bo'
 };
