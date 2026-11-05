@@ -22,6 +22,7 @@ import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import type {TacticalOrderPreview} from './ui/tactical-feedback.ts';
 import {ExecutionNoticeFeed} from './ui/execution-feedback.ts';
 import {executionStatus} from './breach-execution-state.ts';
+import {compactExecutionStatus} from './ui/tactical-hud-density.ts';
 import {currentSiteIdentity} from './ui/current-site-identity.ts';
 import {tacticalHitProfile,preferSelectedHit,shouldAppendStrokePoint,
   simplifyStrokePoints} from './ui/touch-hit-targets.ts';
@@ -2146,11 +2147,19 @@ function updateHud(){
       phase:state.phase==='planning'&&state.started?'running':state.phase,
       doors:state.doors,peers:team(state)
     }):null;
-    stateLine.textContent=execution?execution.label+
-      (execution.kind==='moving'?'':execution.detail?
-        ' · '+execution.detail:''):'UNAVAILABLE';
+    const status=compactExecutionStatus(execution,{
+      selected:id===selected,
+      phase:state.phase==='running'?'execution':
+        state.phase==='planning'?'planning':
+        replaying?'replay':'debrief',
+      down:!a||a.health<=0
+    });
+    stateLine.hidden=!status.visible;
+    stateLine.textContent=status.label;
     stateLine.dataset.kind=execution?.kind??'idle';
-    stateLine.title=execution?.detail??'';
+    stateLine.dataset.priority=status.priority;
+    button.dataset.executionVisible=String(status.visible);
+    stateLine.title=status.detail;
     if(execution?.progress!==undefined){
       stateLine.dataset.progress='true';
       stateLine.style.setProperty('--execution-progress',
