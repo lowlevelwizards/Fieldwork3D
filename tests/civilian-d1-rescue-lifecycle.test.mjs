@@ -13,6 +13,8 @@ const rescue=(p)=>createCivilian({
 });
 test('E5-D1 rescue requires SECURE then authored FOLLOW, not mere proximity',()=>{
  const s=newSession(),operator=team(s)[0];
+ // The interaction must be genuinely visible, not outside the operator's cone.
+ operator.heading=0;operator.weaponYaw=0;
  const civil=rescue({x:operator.p.x+14,y:operator.p.y});
  s.civilians.push(civil);
  s.missionType='rescue';s.mission='secure';
