@@ -7,6 +7,7 @@ import {MARKING_SLOTS,type MarkingSlot,type IdentityMarkings,
  identityMarking} from './operator-identity-markings.ts';
 import {markingBitmap} from './operator-identity-marking-art.ts';
 import {armorAttachmentFrame} from './operator-armor-attachment-frame.ts';
+import {outwardLimbPatch} from './operator-garment-mount-frame.ts';
 const textures=new Map<string,THREE.DataTexture>();
 function textureFor(id:string):THREE.DataTexture|null{
  const cached=textures.get(id);if(cached)return cached;
@@ -41,9 +42,18 @@ export function createIdentityVisuals(chest:THREE.Group,
    const arm=arms[slot==='leftShoulder'||isBand?0:1];
    if(arm){
     arm.upper.add(mesh);
-    const sign=slot==='rightShoulder'?1:-1;
-    mesh.position.set(0,isBand?-.35:.35,sign*2.75);
-    mesh.rotation.y=sign<0?Math.PI:0;
+    // alignSegment scales the *upper-arm mesh* by ten along local Y.
+    // Child decals must cancel that inherited scale or a 1.8-unit flag
+    // becomes an 18-unit banner hanging below the shoulder.
+    // The limb's anatomical exterior is local +X on BOTH arms, never +/-Z.
+    const limbLength=10;
+    const mount=outwardLimbPatch(2.16,isBand?-.18:.24,
+     height,width,.14);
+    mesh.position.set(mount.x+.08,mount.y,0);
+    mesh.scale.y=1/limbLength;
+    mesh.rotation.y=Math.PI/2;
+    mesh.userData.mountSurface='upper-arm-outward-X';
+    mesh.userData.referenceLimbLength=limbLength;
    }
   }
   meshes[slot]=mesh;materials[slot]=material;selected[slot]='';
