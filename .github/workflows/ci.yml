@@ -875,6 +875,9 @@ jobs:
             tests/r5-identity-stage-a.test.mjs \
             tests/r5-identity-stage-bc.test.mjs \
             tests/faction-reference.test.mjs
+      - name: R5D US M1 silhouette and headgear compatibility
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r5-historical-helmets-') }}
+        run: node --experimental-strip-types --test tests/r5-historical-helmet-d.test.mjs tests/r5-identity-stage-bc.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
