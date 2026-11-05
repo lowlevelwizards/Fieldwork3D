@@ -10,6 +10,7 @@ import {renderFixtureVisual,type FixtureVisualContext} from './worldgen/fixture-
 import {isArchitecturalSillCover} from './worldgen/architectural-cover-visuals.ts';
 import {planFacadeAwnings} from './worldgen/facade-awnings.ts';
 import {fixtureFrameTransform} from './rendering/fixture-frame-transform.ts';
+import {StaticSceneBatches} from './rendering/breach-static-batcher.ts';
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surfaces.ts';
 import {planEnvironmentalWear,type WearKind,type WearMark} from './worldgen/environment-wear.ts';
@@ -103,7 +104,8 @@ export class TacticalScene3D{
   /** Counts submitted WebGL work; GPU timings require a separate timer. */
   performanceStats(){
     const info=this.renderer.info.render;
-    return {calls:info.calls,triangles:info.triangles};
+    return {calls:info.calls,triangles:info.triangles,
+      staticBatch:this.staticBatches.stats()};
   }
   readonly renderer:THREE.WebGLRenderer;
   readonly scene=new THREE.Scene();
@@ -113,6 +115,7 @@ export class TacticalScene3D{
     focus:{x:W/2,y:H/2}};
   readonly canvas:HTMLCanvasElement;
   private root=new THREE.Group();
+  private readonly staticBatches=new StaticSceneBatches();
   private fogUnknown:THREE.InstancedMesh;
   private fogExplored:THREE.InstancedMesh;
   private fogCanvas!:HTMLCanvasElement;
@@ -410,6 +413,7 @@ export class TacticalScene3D{
    * camera remain alive, avoiding a WebGL context restart on each site.
    */
   applySite(site:Site|null){
+    this.staticBatches.clear();
     for(const texture of this.sitePatinaTextures)texture.dispose();
     for(const material of this.sitePatinaMaterials)material.dispose();
     this.sitePatinaTextures.length=0;this.sitePatinaMaterials.length=0;
@@ -483,9 +487,23 @@ export class TacticalScene3D{
     this.exteriorKnownFog.geometry=geometry;
     this.fogTexture.needsUpdate=true;
     this.buildWorld(site);
+    if(site)this.buildStaticBatches();
     this.root.add(this.fogUnknown,this.fogExplored);
     this.fogAt=-1;this.lastFogSignature='';this.lastFogSession=null;
     this.resetCamera();
+  }
+  /** Only site-static boxes owned by independently revealed props and door
+   * frame roots are instanced. Cutaway walls, thresholds, animated leaves,
+   * movable fixtures, glass and decals retain their existing meshes. */
+  private buildStaticBatches(){
+    this.root.updateWorldMatrix(true,true);
+    for(const detail of this.observedDetails)
+      this.staticBatches.collect(detail.obj,detail.obj,
+        this.sharedBoxGeometries);
+    for(const door of this.doors.values())
+      this.staticBatches.collect(door.root,door.frame,
+        this.sharedBoxGeometries,new Set([door.threshold,door.wedge]));
+    this.staticBatches.flush(this.root);
   }
   private buildMicroDebris(site:Site){
     const debris=planMicroDebris(site);
@@ -1614,6 +1632,7 @@ export class TacticalScene3D{
       const fine='fine:'+Math.floor(p.x/20)+','+Math.floor(p.y/20);
       detail.obj.visible=omniscient||s.seenGround.has(micro)||
         s.seenGround.has(fine)||liveVisibility(s,p);
+      this.staticBatches.setVisible(detail.obj,detail.obj.visible);
     }
     // Fade only physical walls obstructing the selected friendly from camera.
     const fromCamera=this.camera.position.clone().sub(this.target);
@@ -1644,6 +1663,7 @@ export class TacticalScene3D{
       const object=this.doors.get(door.id);
       if(!object)continue;
       object.root.visible=spatialSurfaceState(s,'door',door.id,omniscient)!=='unknown';
+      this.staticBatches.setVisible(object.root,object.root.visible);
       // Freeze the last observed door state when it drops out of view:
       // a guard opening an unseen door may not broadcast its exact state.
       if(omniscient||liveVisibility(s,doorCenter(door)))
