@@ -138,8 +138,9 @@ export function specialty7AIndices(id:Specialty7AId):Uint8Array{
    if((row*5+col*3)%7===0)put(width-1,0,0);
    if((row+2*col)%4===0)put(width-2,-2,2);
    // Sparse olive undershadows remain subordinate to light sunrays.
-   if((row*3+col)%3===0){
+   if((row+col)%2===0){
     put(width-1,3,3);put(width,3,3);put(width,4,3);
+    put(width-1,4,3);
    }
   }
  }else{
