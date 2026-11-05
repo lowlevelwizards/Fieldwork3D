@@ -5,8 +5,10 @@ on:
 permissions:
   contents: read
 # Each updated PR supersedes its own obsolete CI run; manual audits are independent.
+# The AO suffix isolates this focused release from a superseded, stuck broad
+# AO test run. Other PRs retain their existing concurrency grouping.
 concurrency:
-  group: fieldwork-ci-${{ github.event.pull_request.number || github.ref }}
+  group: fieldwork-ci-${{ github.event.pull_request.number || github.ref }}${{ startsWith(github.head_ref, 'feature/gear-baked-ao-all-') && '-ao-r1' || '' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   verify:
