@@ -3,7 +3,7 @@
  */
 export type Specialty7AId='desert-night'|'kryptek-highlander'|'berezka'|'spectre-skwo';
 type Shape=readonly [number,readonly number[]];
-const p=(n:number,...points:number[]):Shape=>[n,points],SIZE=64;
+const p=(n:number,...points:number[]):Shape=>[n,points];
 function inside(x:number,y:number,points:readonly number[]):boolean{
  let yes=false;
  for(let i=0,j=points.length-2;i<points.length;j=i,i+=2){
