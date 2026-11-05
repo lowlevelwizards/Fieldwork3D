@@ -69,21 +69,22 @@ function standard(parent:THREE.Group,frame:THREE.Material,
  parent.add(root);
 }
 function aviator(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
- root.userData.d2EyeFitTop=5.03;
- root.userData.d2EyeDesign='R4-rounded-shoulder-pilot-teardrops';
- // Wide rounded cap with two descending cheek shoulders and a fat teardrop
- // foot. Two bottom vertices are kept for a soft, broad, no-fang landing.
+ root.userData.d2EyeFitTop=5.13;
+ root.userData.d2EyeDesign='R5-outer-full-pilot-teardrops';
+ // Each left-lens polygon is intentionally fuller toward -X (the outside).
+ // The mirrored right lens reverses that bias. Broad flat foot rather than
+ // pointed fangs, with the topmost shoulder over the outer cheek.
  const out:EyePolygon=[
-  [-1.74,3.98],[-1.66,4.55],[-1.30,4.90],
-  [-.65,5.03],[.40,5.00],[1.17,4.79],
-  [1.65,4.31],[1.67,3.73],[1.22,2.84],
-  [.49,2.20],[-.42,2.20],[-1.15,2.68]
+  [-1.80,3.75],[-1.86,4.46],[-1.51,4.94],
+  [-.88,5.11],[-.17,5.10],[.73,4.90],
+  [1.40,4.50],[1.59,4.04],[1.32,3.43],
+  [.49,2.62],[-.20,2.27],[-1.10,2.27],[-1.62,2.77]
  ];
  const hole:EyePolygon=[
-  [-1.30,3.99],[-1.22,4.41],[-.94,4.59],
-  [-.51,4.69],[.34,4.67],[.88,4.53],
-  [1.22,4.20],[1.21,3.76],[.87,3.03],
-  [.32,2.61],[-.33,2.61],[-.81,2.96]
+  [-1.42,3.76],[-1.45,4.34],[-1.19,4.62],
+  [-.73,4.78],[-.11,4.77],[.57,4.62],
+  [1.06,4.29],[1.19,4.03],[.97,3.52],
+  [.23,2.91],[-.30,2.65],[-.91,2.65],[-1.28,2.96]
  ];
  for(const side of [-1,1] as const){
   const x=side*2.08;
@@ -105,7 +106,7 @@ function aviator(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
 }
 function shooting(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
  root.userData.d2EyeFitTop=4.94;
- root.userData.d2EyeDesign='R4-panoramic-shooting-glasses';
+ root.userData.d2EyeDesign='R5-single-clean-shooting-brow';
  // True shooting-glasses identity: one continuous wraparound pane with
  // two swept outer cheeks and a tall, OPEN underside nasal cutout.
  const pane:EyePolygon=[
@@ -116,13 +117,14 @@ function shooting(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
   [1.70,4.83],[-1.70,4.83]
  ];
  lensSurface(root,lens,'shooting-panoramic',pane,-5.18,1.02);
- // Separate brow bar follows the same curve but does not frame the bottom.
+ // One eight-corner brow strip. Its front surface is 0.14 units in
+ // front of the panoramic lens instead of 0.02: no near-coplanar layers.
+ // The entire solid inherits the same lateral sweep as the lens.
  const brow:EyePolygon=[
-  [-4.43,4.13],[-4.27,4.79],[-2.52,5.04],
-  [0,5.00],[2.52,5.04],[4.27,4.79],
-  [4.43,4.13],[3.82,4.42],[0,4.66],[-3.82,4.42]
+  [-4.42,4.26],[-4.19,4.84],[0,5.00],[4.19,4.84],
+  [4.42,4.26],[3.85,4.50],[0,4.67],[-3.85,4.50]
  ];
- sweptFrame(root,frame,'integrated-swept-frame',brow,[],-5.20,.57,1.02);
+ sweptFrame(root,frame,'integrated-swept-frame',brow,[],-5.32,.34,1.02);
  outsideTemples(root,frame,'continuous-swept-temple',{
   frontX:4.24,frontY:4.55,frontZ:-4.39,
   shoulderX:4.42,shoulderY:4.35,shoulderZ:-4.10,
