@@ -336,7 +336,14 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
   const squared=Math.max(1,vx*vx+vy*vy);
   const leverage=Math.max(0,Math.min(1,((from.x-panel.a.x)*vx+
     (from.y-panel.a.y)*vy)/squared));
-  pushDoor(door,1.3+2.1*leverage);
+  // Once the hinge is already moving under the same continuous body
+  // pressure, keep its requested opening without re-injecting a new impact
+  // every 30 Hz tick. The ordinary motor supplies sustained acceleration.
+  // A stopped/obstructed leaf can still accept a fresh real contact.
+  const alreadyOpening=(door.pushTarget??1)>1.01&&
+    (door.angularVelocity??0)>1.2;
+  if(!alreadyOpening)pushDoor(door,1.3+2.1*leverage);
+  else door.pushTarget=PUSHED_OPEN_LIMIT;
   // Door motion gets a small share of this very simulation tick. The main
   // global motor subsequently handles normal animation and swept obstacles.
   advanceDoor(door,Math.min(Math.max(0,dt),1/60),actors);
