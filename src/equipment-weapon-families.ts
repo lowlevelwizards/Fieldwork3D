@@ -21,7 +21,7 @@ export type WeaponFamilyPreset={id:string;name:string;weapon:'carbine'|'rifle';
  family:WeaponFamily;parts:Record<FamilyPartSlot,string>};
 const ar=['ar-a1','ar-a2','ar-retro','ar-flat'];
 const akClassic=['akm','ak74'];
-const akModern=['ak74m','ak103','ak105','akcompact'];
+const akModern=['ak74m','ak103','ak105'];
 const add=(id:string,name:string,family:WeaponFamily,slot:FamilyPartSlot,
  extra:Partial<WeaponFamilyPart>={}):WeaponFamilyPart=>({id,name,family,slot,...extra});
 export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
@@ -40,7 +40,8 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'ar-compact':add('ar-compact','Compact adjustable stock','ar','stock',{receivers:['ar-flat'],stockX:-11.7}),
  'ak-wood':add('ak-wood','Wood fixed stock','ak','stock',{receivers:akClassic,stockX:-13.5}),
  'ak-poly':add('ak-poly','Polymer fixed stock','ak','stock',{receivers:['akm','ak74','ak74m','ak103'],stockX:-13.5}),
- 'ak-sidefold':add('ak-sidefold','Side-folding skeleton/polymer stock','ak','stock',{receivers:akModern,stockX:-12.7}),
+ 'ak-sidefold':add('ak-sidefold','Polymer side-folding stock','ak','stock',{receivers:akModern,stockX:-12.7}),
+ 'ak-skeleton':add('ak-skeleton','Metal skeleton folding stock','ak','stock',{receivers:['akcompact'],stockX:-12.7}),
  'ar-grip-classic':add('ar-grip-classic','Classic pistol grip','ar','grip',{receivers:ar}),
  'ar-grip-a2':add('ar-grip-a2','A2 pistol grip','ar','grip',{receivers:ar}),
  'ar-grip-poly':add('ar-grip-poly','Modern polymer grip','ar','grip',{receivers:['ar-flat','ar-retro']}),
@@ -83,11 +84,11 @@ export const FAMILY_PRESETS:readonly WeaponFamilyPreset[]=[
  p('ar-car15','CAR-15','carbine','ar','ar-retro','ar-car','ar-grip-classic','ar-mag20','ar-carbine','ar-145'),
  p('ar-m4a1','M4A1','carbine','ar','ar-flat','ar-car','ar-grip-a2','ar-mag30','ar-carbine','ar-145'),
  p('ar-mk18','Mk 18','carbine','ar','ar-flat','ar-compact','ar-grip-poly','ar-magpoly','ar-compact-rail','ar-103'),
- p('ak-akm','AKM','rifle','ak','akm','ak-wood','ak-grip-wood','ak-mag762','ak-wood-long','ak-long'),
+ p('ak-akm','AKM','rifle','ak','akm','ak-wood','ak-grip-bakelite','ak-mag762','ak-wood-long','ak-long'),
  p('ak-ak74','AK-74','rifle','ak','ak74','ak-wood','ak-grip-bakelite','ak-mag545','ak-wood-long','ak-long'),
  p('ak-ak74m','AK-74M','rifle','ak','ak74m','ak-sidefold','ak-grip-poly','ak-mag545poly','ak-poly-long','ak-long'),
  p('ak-ak103','AK-103','rifle','ak','ak103','ak-sidefold','ak-grip-poly','ak-mag762poly','ak-poly-long','ak-long'),
- p('ak-aks74u','AKS-74U','carbine','ak','akcompact','ak-sidefold','ak-grip-bakelite','ak-mag545','ak-wood-short','ak-short'),
+ p('ak-aks74u','AKS-74U','carbine','ak','akcompact','ak-skeleton','ak-grip-bakelite','ak-mag545','ak-wood-short','ak-short'),
  p('ak-ak105','AK-105','carbine','ak','ak105','ak-sidefold','ak-grip-poly','ak-mag545poly','ak-poly-mid','ak-mid')
 ];
 export function familyPreset(id:string):WeaponFamilyPreset|undefined{
