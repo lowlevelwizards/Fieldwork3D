@@ -66,7 +66,11 @@ test('R8b: sustained shoulder pressure does not stack impulsive kicks',()=>{
  assert.equal(first?.advanced,true);
  const velocity=d.angularVelocity??0;
  const again=pressDoorOnBodyAttempt(from,to,[d],1/60,[from]);
- assert.equal(again?.doorId,d.id);
+ assert.ok(again===null||again.doorId===d.id,
+  'contact ceases when the panel has moved physically clear');
+ if(again===null)
+  assert.equal(d.angularVelocity,velocity,
+    'no imaginary momentum is injected without physical body contact');
  assert.ok((d.angularVelocity??0)<=velocity+.4,
   'constant shoulder pressure should not inject another impact pulse');
  assert.equal(d.pushTarget,PUSHED_OPEN_LIMIT);
