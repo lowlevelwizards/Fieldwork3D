@@ -1,5 +1,7 @@
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import * as THREE from 'three';
+import {createCivilianRig,updateCivilianRig,type CivilianRig}
+ from './breach-civilian-visuals.ts';
 import {graphicsBudget} from './breach-graphics-budget.ts';
 import {PixelTextureLibrary,mapBoxPixelUV,mapPlanePixelUV,type PixelSurface} from './rendering/pixel-materials.ts';
 import {roomPixelSurface,zonePixelSurface,wallPixelSurface,fixturePixelSurface} from './worldgen/pixel-surface-selection.ts';
@@ -166,6 +168,7 @@ export class TacticalScene3D{
   private casingIds:number[]=[];
   private casingMatrix=new THREE.Object3D();
   private rescueFigure:THREE.Group|null=null;
+  private civilianRigs=new Map<string,CivilianRig>();
   private discarded=new Map<number,THREE.Mesh>();
   private thrown=new Map<number,THREE.Mesh>();
   private detonations=new Map<number,THREE.Mesh>();
@@ -1765,6 +1768,25 @@ export class TacticalScene3D{
     for(const [id,object] of this.actors)if(!current.has(id)){
       object.root.visible=false;object.status.visible=false;
       for(const shadow of object.contactShadows)shadow.visible=false;
+    }
+    // Civilian meshes are created only once visibly encountered, then
+    // reused; unrevealed people cannot leak through walls or player fog.
+    const present=new Set(s.civilians.map(c=>c.id));
+    for(const [id,rig] of this.civilianRigs){
+      if(present.has(id))continue;
+      this.scene.remove(rig.root);this.civilianRigs.delete(id);
+    }
+    for(const civil of s.civilians){
+      const visible=omniscient||liveVisibility(s,civil.p);
+      let rig=this.civilianRigs.get(civil.id);
+      if(!visible&&!rig)continue;
+      if(!rig){
+        rig=createCivilianRig(civil);
+        this.civilianRigs.set(civil.id,rig);
+        this.scene.add(rig.root);
+      }
+      updateCivilianRig(rig,civil,s.seconds);
+      rig.root.visible=visible;
     }
     if(s.rescue){
       if(!this.rescueFigure){

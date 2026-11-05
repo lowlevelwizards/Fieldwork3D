@@ -2946,6 +2946,34 @@ function missionMarkers(){
   draw.textAlign='center';
   draw.fillText(state.mission==='secure'?'SECURE':'EXTRACT',p.x,p.y-39);
 }
+function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
+  if(!liveVisibility(state,c.p))return;
+  const coats=['#766e62','#637d75','#82726b','#667985'];
+  const trousers=['#454c4b','#61574d','#4e5664'];
+  const coat=coats[(c.appearanceSeed>>>0)%coats.length];
+  const pants=trousers[(c.appearanceSeed>>>4)%trousers.length];
+  draw.save();draw.translate(c.p.x,c.p.y);draw.rotate(c.heading);
+  const down=c.health<=0||c.state==='incapacitated';
+  if(down){
+    draw.globalAlpha=.83;
+    rect(-10,-6,23,12,coat);rect(7,-5,8,10,'#ba9880');
+  }else{
+    rect(-12,-6,7,5,pants);rect(-12,1,7,5,pants);
+    rect(-7,-8,16,16,coat);
+    rect(7,-4.5,9,9,'#b9997e');
+    if(c.state==='compliant'){
+      rect(2,-16,5,9,'#b9997e');rect(2,7,5,9,'#b9997e');
+    }else if(c.state==='hiding'||c.state==='wounded'){
+      rect(-5,-11,7,3,'#b9997e');rect(-5,8,7,3,'#b9997e');
+    }else{
+      const swing=c.state==='fleeing'?
+        Math.sin(state.seconds*13+c.appearanceSeed)*3:0;
+      rect(-5+swing,-12,8,4,'#b9997e');
+      rect(-5-swing,8,8,4,'#b9997e');
+    }
+  }
+  draw.restore();
+}
 function sprite(a:TeamActor){
   if(a.side==='red'&&!(replaying&&replayOmniscient)){
     const visible=a.health>0?isSeen(state,a):liveVisibility(state,a.p);
@@ -3169,6 +3197,7 @@ function render(){
   terrain();furniture();renderGroundMarks();renderLightingMood2D();renderWeaponLights2D();
   architecture();fog();missionMarkers();
   paths();
+  for(const a of state.civilians)civilianSprite(a);
   for(const a of state.operators)sprite(a);
   for(const a of team(state))drawExecutionProblem(a,false);
   contacts();endMessage();
