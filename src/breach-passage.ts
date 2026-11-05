@@ -1,6 +1,6 @@
 /** Build 147: deterministic narrow-aperture right-of-way. The player's
  * queued orders never change: only execution can temporarily defer. */
-import {doorCenter,doorLeafSegment,pointToSegment,
+import {doorCenter,doorLeafSegment,pointToSegment,OPERATOR_RADIUS,
   type Door,type Pt,type Side} from './breach-core.ts';
 export type PassageActor={id:string;p:Pt;goal:Pt|null;health:number;
   blockedTime:number;active:boolean;side?:Side};
@@ -22,6 +22,17 @@ export function crossingDoor(a:PassageActor,d:Door){
   if(!a.active||a.health<=0||!a.goal)return false;
   // Acquire the lane while approaching, but don't reserve a far-away door.
   if(distance(a.p,doorCenter(d))>66)return false;
+  // Two side-by-side leaves are distinct passage lanes. Geometric
+  // proximity to an adjacent leaf is not enough to reserve its opening.
+  const width=distance(d.a,d.b)||1;
+  const along=(p:Pt)=>((p.x-d.a.x)*(d.b.x-d.a.x)+
+    (p.y-d.a.y)*(d.b.y-d.a.y))/width;
+  const buffer=OPERATOR_RADIUS+4;
+  const insideWidth=(p:Pt)=>{
+    const x=along(p);
+    return x>=-buffer&&x<=width+buffer;
+  };
+  if(!insideWidth(a.p)&&!insideWidth(a.goal))return false;
   const from=side(a.p,d),goal=side(a.goal,d);
   // Both endpoints on the same side are not a doorway crossing.
   // Once actually inside, retain priority until the body has exited.
@@ -75,8 +86,21 @@ function insidePassage(actor:PassageActor,cluster:readonly Door[]):boolean{
  return along>5&&along<len-5&&across<
   Math.min(...cluster.map(d=>distance(d.a,d.b)))/2+9;
 }
-function seeksPassage(actor:PassageActor,cluster:readonly Door[]):boolean{
- return cluster.some(d=>crossingDoor(actor,d))||insidePassage(actor,cluster);
+/** Paired leaves are two genuinely separate lanes. At the center seam a
+ * shoulder can overlap both apertures; consistently assign that actor to
+ * the nearer leaf, not two incompatible leases at once.
+ */
+function seeksPassage(actor:PassageActor,cluster:readonly Door[],
+ all:readonly Door[]=cluster):boolean{
+ return cluster.some(d=>{
+  if(!crossingDoor(actor,d))return false;
+  const partner=d.pairedWith?all.find(o=>o.id===d.pairedWith):undefined;
+  if(!partner||!crossingDoor(actor,partner))return true;
+  const own=distance(actor.p,doorCenter(d));
+  const peer=distance(actor.p,doorCenter(partner));
+  return own<peer-.01||(Math.abs(own-peer)<=.01&&
+    d.id.localeCompare(partner.id)<0);
+ })||insidePassage(actor,cluster);
 }
 /** Body-diameter spacing (16 units) plus a small visual buffer.
  * Followers can enter the throat as soon as the person ahead has advanced,
@@ -155,12 +179,14 @@ export function passageWait(actor:PassageActor,doors:readonly Door[],
     'zone:'+cluster.map(d=>d.id).join('+');
   const key=actor.side?actor.side+':'+passageKey:passageKey;
   if(seen.has(key))continue;seen.add(key);
-  if(!seeksPassage(actor,cluster))continue;
+  if(!seeksPassage(actor,cluster,doors))continue;
   // Opposing sides are handled by combat and solid enemy collision, not
   // the friendly traffic queue. A hostile must not reserve our squad lane.
   const relevant=actors.filter(a=>
     (!actor.side||!a.side||actor.side===a.side)&&
-    seeksPassage(a,cluster)&&a.blockedTime<1.5);
+    seeksPassage(a,cluster,doors)&&
+    (a.blockedTime<1.5||insidePassage(a,cluster)||
+     cluster.some(d=>inDoorway(a,d))));
   if(!relevant.length){
     if(leases)delete leases[key];
     continue;
