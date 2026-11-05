@@ -154,10 +154,16 @@ function tooCloseToLeader(actor:PassageActor,others:readonly PassageActor[],
  * outside the mouth. People already moving out of the aperture must never
  * be frozen in it.
  */
-function atOpposingEntry(actor:PassageActor,cluster:readonly Door[]):boolean{
+function atOpposingEntry(actor:PassageActor,cluster:readonly Door[],
+ intendedStep?:Pt):boolean{
  return cluster.some(door=>{
   const heading=travelSign(actor,door);
   if(!heading)return false;
+  // A WAIT for counterflow must never forbid backing out or stepping
+  // laterally to make room. Defer only attempted forward penetration.
+  if(intendedStep&&
+     (side(intendedStep,door)-side(actor.p,door))*heading<=.025)
+    return false;
   const approach=side(actor.p,door)*heading;
   if(approach>0||approach<-PASSAGE_STACK_DEPTH)return false;
   const dx=door.b.x-door.a.x,dy=door.b.y-door.a.y;
@@ -227,7 +233,7 @@ export function passageWait(actor:PassageActor,doors:readonly Door[],
   if(sameDirection)continue;
   // A counterflow or unaligned claimant gets a short staging queue instead
   // of racing against the existing occupant. Do not stop them far outside.
-  if(atOpposingEntry(actor,cluster))return true;
+  if(atOpposingEntry(actor,cluster,intendedStep))return true;
  }
  return false;
 }
