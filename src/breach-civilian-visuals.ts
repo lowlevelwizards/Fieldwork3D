@@ -9,7 +9,8 @@ const forms={
  head:new THREE.BoxGeometry(9,9,9),
  arm:new THREE.BoxGeometry(4,12,5),
  leg:new THREE.BoxGeometry(6,12,7),
- shoe:new THREE.BoxGeometry(7,4,9)
+ shoe:new THREE.BoxGeometry(7,4,9),
+ apron:new THREE.BoxGeometry(11,13,2)
 };
 const cloth=[0x837c70,0x677b70,0x8c736c,0x87816d,0x637584,0x947e69];
 const pants=[0x474c4e,0x5a544c,0x555c51,0x4b5962];
@@ -38,6 +39,8 @@ export function createCivilianRig(c:CivilianActor):CivilianRig{
  const face=skin[(seed>>>5)%skin.length];
  const outer=c.role==='employee'&&seed%3===0?forms.coat:forms.torso;
  box(outer,torso,0,20,0,root);
+ if(c.role==='employee'&&seed%4===1)
+  box(forms.apron,pants[(seed>>>3)%pants.length],0,20,-5.5,root);
  const head=box(forms.head,face,0,32,0,root);
  const leftArm=box(forms.arm,torso,-10,19,0,root);
  const rightArm=box(forms.arm,torso,10,19,0,root);
@@ -73,9 +76,21 @@ export function updateCivilianRig(r:CivilianRig,
   r.leftArm.rotation.z=-.25;r.rightArm.rotation.z=.25;
  }else if(pose==='hide'||pose==='injured'){
   r.root.scale.y=.73;r.leftArm.rotation.z=-.28;
+ }else if(pose==='carried'){
+  r.root.rotation.z=.72;r.root.position.y=11;
+  r.root.scale.set(.88,.88,.88);
+  r.leftLeg.rotation.x=.50;r.rightLeg.rotation.x=.50;
+ }else if(pose==='dragged'){
+  r.root.rotation.z=Math.PI*.47;r.root.position.y=3;
+  r.root.scale.set(.88,.78,.88);
  }else if(pose==='down'){
   r.root.rotation.z=Math.PI*.48;
   r.root.position.y=3;r.root.scale.set(.88,.88,.88);
+ }else if(pose==='injured-walk'){
+  const step=Math.sin(now*5+c.appearanceSeed*.01)*.17;
+  r.root.scale.y=.82;
+  r.leftLeg.rotation.x=step;r.rightLeg.rotation.x=-step;
+  r.leftArm.rotation.z=-.20;r.rightArm.rotation.x=step*.45;
  }else if(pose==='seated'){
   // Small, blocky and grounded: legs point forward and the upper body
   // is lowered, with no extra joints at phone gameplay scale.

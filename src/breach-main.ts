@@ -2908,8 +2908,8 @@ function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
   const pants=trousers[(c.appearanceSeed>>>4)%trousers.length];
   draw.save();draw.translate(c.p.x,c.p.y);draw.rotate(c.heading);
   const pose=civilianPose(c);
-  if(pose==='down'){
-    draw.globalAlpha=.83;
+  if(pose==='down'||pose==='carried'||pose==='dragged'){
+    draw.globalAlpha=pose==='carried'?.96:.83;
     rect(-10,-6,23,12,coat);rect(7,-5,8,10,'#ba9880');
   }else{
     rect(-12,-6,7,5,pants);rect(-12,1,7,5,pants);
@@ -2922,7 +2922,9 @@ function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
     }else{
       const swing=pose==='run'?
         Math.sin(state.seconds*13+c.appearanceSeed)*3:
-        pose==='walk'?Math.sin(state.seconds*8+c.appearanceSeed)*1.5:0;
+        pose==='walk'?Math.sin(state.seconds*8+c.appearanceSeed)*1.5:
+        pose==='injured-walk'?
+          Math.sin(state.seconds*5+c.appearanceSeed)*.9:0;
       rect(-5+swing,-12,8,4,'#b9997e');
       rect(-5-swing,8,8,4,'#b9997e');
     }
