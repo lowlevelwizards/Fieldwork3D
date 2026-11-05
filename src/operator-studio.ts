@@ -3,6 +3,7 @@
  * uses the same validated roster persistence for previews and direct access.
  */
 import * as THREE from 'three';
+import {POLICE_VISOR_POSITIONS,POLICE_VISOR_TINTS,POLICE_VISOR_FRAMES,policeVisorFit} from './operator-police-visor-policy.ts';
 import {M56_DETAILS,M56_NETS} from './operator-ddr-m56-policy.ts';
 import {ALICE_LC2_LOADS,type AliceLc2Load} from './operator-alice-lc2-policy.ts';
 import {HELMET_COVER_STYLES,HELMET_BANDS,HELMET_NET_STYLES,
@@ -792,6 +793,27 @@ function renderMaterials(){
     chip.style.backgroundColor='#'+info.hex.toString(16).padStart(6,'0');
     b.prepend(chip);grid.append(b);
    }group.append(grid);
+  }
+  if(item==='police-helmet'){
+   const pos=row('POLICE PROTECTIVE VISOR',
+    'Optional head-mounted shield; appearance only, no added ballistic or impact protection.');
+   addSelect(pos,POLICE_VISOR_POSITIONS.map(id=>[id,id.toUpperCase()] as const),
+    w.policeVisorPosition??'none',id=>changeWardrobe({...current(),
+     policeVisorPosition:id as WardrobeOptions['policeVisorPosition']}));
+   if(w.policeVisorPosition&&w.policeVisorPosition!=='none'){
+    const tint=row('VISOR FINISH','Restrained transparent or smoke-tinted face panel.');
+    addSelect(tint,POLICE_VISOR_TINTS.map(id=>[id,id.toUpperCase()] as const),
+     w.policeVisorTint??'clear',id=>changeWardrobe({...current(),
+      policeVisorTint:id as WardrobeOptions['policeVisorTint']}));
+    const frame=row('VISOR FRAME','Standard or heavier reinforced silhouette.');
+    addSelect(frame,POLICE_VISOR_FRAMES.map(id=>[id,id.toUpperCase()] as const),
+     w.policeVisorFrame??'standard',id=>changeWardrobe({...current(),
+      policeVisorFrame:id as WardrobeOptions['policeVisorFrame']}));
+    const fit=policeVisorFit(item,w.styles.facewear??'face-none',
+     w.styles.eyewear??'eyes-none',w.styles.headset??'comms-none');
+    if(!fit.compatible)row('VISOR FIT RESTRICTED',
+     fit.reason+' — your stored selection is preserved, but the visor is hidden.');
+   }
   }
   if(item==='ddr-m56'){
    const details=row('M56 STEEL SHELL','Historical exterior details on the same flared shell.');

@@ -3,6 +3,7 @@
  * equipment-catalog / equipment-loadouts / campaign-state.
  */
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {isPoliceVisorPosition,isPoliceVisorTint,isPoliceVisorFrame,type PoliceVisorOptions} from './operator-police-visor-policy.ts';
 import {isM56Details,isM56Net,type M56Options} from './operator-ddr-m56-policy.ts';
 import {isAliceLc2Load,type AliceLc2Load} from './operator-alice-lc2-policy.ts';
 import {readHelmetCoverConfig,type HelmetCoverConfig} from './operator-helmet-cover-policy.ts';
@@ -163,6 +164,9 @@ export type WardrobeOptions=HelmetCoverConfig&{
  version:1;styles:Partial<Record<WardrobeSlot,string>>;
  /** East German helmet details are appearance-only. */
  m56Details?:M56Options['m56Details'];m56Net?:M56Options['m56Net'];
+ policeVisorPosition?:PoliceVisorOptions['policeVisorPosition'];
+ policeVisorTint?:PoliceVisorOptions['policeVisorTint'];
+ policeVisorFrame?:PoliceVisorOptions['policeVisorFrame'];
  /** Optional explicit identity; missing values retain the historical seeded look. */
  skinTone?:SkinToneId;hairStyle?:HairStyleId;hairTone?:HairToneId;
  /** D2 balaclava topology variant: mouth shown (three-hole) or covered (two-hole). */
@@ -290,6 +294,9 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(v.beretDrape==='left'||v.beretDrape==='right')result.beretDrape=v.beretDrape;
  if(isM56Details(v.m56Details))result.m56Details=v.m56Details;
  if(isM56Net(v.m56Net))result.m56Net=v.m56Net;
+ if(isPoliceVisorPosition(v.policeVisorPosition))result.policeVisorPosition=v.policeVisorPosition;
+ if(isPoliceVisorTint(v.policeVisorTint))result.policeVisorTint=v.policeVisorTint;
+ if(isPoliceVisorFrame(v.policeVisorFrame))result.policeVisorFrame=v.policeVisorFrame;
  if(isAliceLc2Load(v.aliceLoad))result.aliceLoad=v.aliceLoad;
  Object.assign(result,readHelmetCoverConfig(v));
  if(isHeadwearCamoId(v.headwearCamo)&&v.headwearCamo!=='splittertarn-31')result.headwearCamo=v.headwearCamo;

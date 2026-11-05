@@ -3,6 +3,8 @@
  * One group per model family, toggled at pose time and never reallocated.
  */
 import * as THREE from 'three';
+import {createPoliceVisor,updatePoliceVisor,type PoliceVisorLayers} from './operator-police-visor-visuals.ts';
+import {policeVisorFit,type PoliceVisorOptions} from './operator-police-visor-policy.ts';
 import {createM56Extras,updateM56Extras,type M56Extras} from './operator-ddr-m56-visuals.ts';
 import type {M56Options} from './operator-ddr-m56-policy.ts';
 import {createM1HelmetCoverLayers,updateM1HelmetCoverLayers,
@@ -40,6 +42,7 @@ export type WardrobeHeadLayers={
  twoHoleMouthCover?:THREE.Group;
  m1Cover?:M1HelmetCoverLayers;
  m56Extras?:M56Extras;
+ policeVisor?:PoliceVisorLayers;
 };
 const cube=(g:THREE.Group,m:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number)=>{
@@ -59,6 +62,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  let layersRef:WardrobeHeadLayers|null=null;
  let m1Cover:M1HelmetCoverLayers|undefined;
  let m56Extras:M56Extras|undefined;
+ let policeVisor:PoliceVisorLayers|undefined;
  // A dedicated face textile material ensures color edits never recolor helmets,
  // uniform sleeves, straps or unrelated body pieces.
  const faceFabric=cloth instanceof THREE.MeshStandardMaterial?
@@ -126,8 +130,11 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  // silhouette system as the approved ACH and high-cut.
  for(const id of ['boonie','beanie','pasgt','soviet-steel'] as const)
   headModel(id,true,cap=>cap.add(createHeadwearSilhouette(id,detail(id))));
- headModel('police-helmet',true,model=>model.add(
-  createHeadwearSilhouette('police-helmet',detail('police-helmet'))));
+ headModel('police-helmet',true,model=>{
+  model.add(createHeadwearSilhouette('police-helmet',detail('police-helmet')));
+  policeVisor=createPoliceVisor(model);
+  if(layersRef)layersRef.policeVisor=policeVisor;
+ });
  headModel('ddr-m56',true,model=>{
   model.add(createHeadwearSilhouette('ddr-m56',detail('ddr-m56')));
   m56Extras=createM56Extras(model,dark);
@@ -224,14 +231,14 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  const layers:WardrobeHeadLayers={headwear,facewear,eyewear,headset,headwearMaterials,
   faceFabric,faceFabricDefaultHex,eyewearFrame,eyewearLens,
   eyewearStrap,maskRubber,deferredEyewear,deferredHeadwear,
-  deferredFacewear,deferredHeadset,twoHoleMouthCover,m1Cover,m56Extras};
+  deferredFacewear,deferredHeadset,twoHoleMouthCover,m1Cover,m56Extras,policeVisor};
  layersRef=layers;return layers;
 }
 export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  headwear:string,facewear:string,eyewear:string,headset:string,
  d2FaceMode?:string,faceSolid?:D2FaceSolid,d2Eye?:D2AccessoryOptions,
  maskColor?:D2MaskSolid,beretDrape:'left'|'right'='right',
- helmetCover?:HelmetCoverConfig&M56Options,camoIdentity='',coverRoll=0){
+ helmetCover?:HelmetCoverConfig&M56Options&PoliceVisorOptions,camoIdentity='',coverRoll=0){
  // Update the already allocated material; do not recreate meshes or geometry.
  layers.faceFabric.color.setHex(faceSolid?
   D2_FACE_SOLID_COLORS[faceSolid].hex:layers.faceFabricDefaultHex);
@@ -257,6 +264,9 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
   assembly.headwear==='m1-steel'?helmetCover:undefined,camoIdentity,coverRoll);
  if(layers.m56Extras)updateM56Extras(layers.m56Extras,
   assembly.headwear==='ddr-m56'?helmetCover:undefined);
+ if(layers.policeVisor)updatePoliceVisor(layers.policeVisor,
+  helmetCover,assembly.headwear,
+  policeVisorFit(assembly.headwear,facewear,assembly.eyewear,assembly.headset));
  layers.deferredFacewear[facewear]?.();
  layers.deferredHeadset[assembly.headset]?.();
  layers.deferredEyewear[assembly.eyewear]?.();
