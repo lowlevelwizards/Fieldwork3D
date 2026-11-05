@@ -6,6 +6,7 @@
  * accidentally return through an old selector. Category state is UI-only.
  */
 import * as THREE from 'three';
+import {THUMB_LINEAR_TO_SRGB} from './operator-thumbnail-color.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {appearanceThumbnailContext,appearanceThumbnailKey,
  type AppearanceThumbnailContext} from './operator-appearance-thumbnail-context.ts';
@@ -30,7 +31,7 @@ type Entry={item:WardrobeItem;canvas:HTMLCanvasElement;button:HTMLButtonElement;
 type OnSelect=(slot:WardrobeSlot,id:string)=>void;
 const focus=(slot:WardrobeSlot)=>{
  if(slot==='facewear')
-  return {height:43,span:13.3,angle:[21,19,-49] as const};
+  return {height:43,span:13.3,angle:[52,21,-15] as const};
  if(['headwear','eyewear','headset'].includes(slot))
   return {height:43,span:15,angle:[27,25,-43] as const};
  if(['top','armorStyle','rigStyle','beltStyle','gloves','wrist'].includes(slot))
@@ -294,7 +295,17 @@ export class OperatorAppearanceGrid{
     // WebGL framebuffer origin is bottom-left; Canvas is top-left.
     for(let y=0;y<THUMB_SIZE;y++){
      const from=(THUMB_SIZE-1-y)*THUMB_SIZE*4,to=y*THUMB_SIZE*4;
-     image.data.set(this.pixels.subarray(from,from+THUMB_SIZE*4),to);
+     if(item.slot==='facewear'){
+      // Raw WebGLRenderTarget bytes are LINEAR; ImageData expects sRGB.
+      // The missing conversion made black masks and their background vanish.
+      for(let x=0;x<THUMB_SIZE;x++){
+       const src=from+x*4,dst=to+x*4;
+       image.data[dst]=THUMB_LINEAR_TO_SRGB[this.pixels[src]];
+       image.data[dst+1]=THUMB_LINEAR_TO_SRGB[this.pixels[src+1]];
+       image.data[dst+2]=THUMB_LINEAR_TO_SRGB[this.pixels[src+2]];
+       image.data[dst+3]=this.pixels[src+3];
+      }
+     }else image.data.set(this.pixels.subarray(from,from+THUMB_SIZE*4),to);
     }
     context.putImageData(image,0,0);
     // Bounded thumbnail cache: only a couple of active categories retained.

@@ -362,6 +362,7 @@ jobs:
         run: >
           node --experimental-strip-types --test
           tests/operator-d2-r15-minimal-silhouettes.test.mjs
+          tests/operator-d2-r15-thumbnail-color.test.mjs
           tests/operator-d2-r-mask-rebuild.test.mjs
           tests/operator-d2-half-masks-stage-c1.test.mjs
           tests/operator-d2-gas-masks-stage-c2.test.mjs
