@@ -13,16 +13,20 @@ const COVER:Readonly<Record<string,{brow:number;advance:number}>>={
  'bump-helmet':{brow:4.45,advance:-.30}
 };
 export type EyewearFit={y:number;z:number;brow:number;clearance:number};
-export function fittedEyeOffset(headwear:string,top:number):EyewearFit{
+/** Model-aware cap/helmet fit. Executed during wardrobe updates only. */
+export function fittedEyeOffset(
+ headwear:string,top:number,eyewearId:string=''
+):EyewearFit{
  const h=COVER[headwear];
  if(!h||headwear==='bare')return {y:0,z:0,brow:Infinity,clearance:0};
- const clearance=.18;
+ const isBrimmedCap=['patrol-cap','baseball-cap','backwards-cap','field-cap'].includes(headwear);
+ const clearance=eyewearId==='goggles-low'&&isBrimmedCap?.14:.18;
  const needed=Math.max(0,top-(h.brow-clearance));
  // R5 taller field-goggle brow needs a little more downward room than
  // spectacles. Stop before moving the lens entirely below the eyes.
  // When an especially low helmet brow still conflicts, shift the goggle
  // forward a small additional amount, instead of hiding its upper roof.
- const maximumDown=top>5.15?1.16:.92;
+ const maximumDown=eyewearId==='goggles-low'?1.00:top>5.15?1.16:.92;
  const down=Math.min(needed,maximumDown);
  const remaining=Math.max(0,needed-down);
  return {

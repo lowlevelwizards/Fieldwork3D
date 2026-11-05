@@ -214,7 +214,7 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
   child=>child.userData.modelAxes);
  if(selectedEye){
   const fit=fittedEyeOffset(assembly.headwear,
-   Number(selectedEye.userData.d2EyeFitTop)||4.78);
+   Number(selectedEye.userData.d2EyeFitTop)||4.78,assembly.eyewear);
   if(assembly.eyewear.startsWith('goggles-')){
    selectedEye.position.set(0,0,0);
    for(const pose of selectedEye.children){
