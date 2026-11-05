@@ -725,6 +725,16 @@ jobs:
             tests/awareness-communication.test.mjs \
             tests/awareness-integration.test.mjs \
             tests/mission-reactivity-r8b.test.mjs
+      - name: UX R1 mission, squad, navigation and loadout critical contracts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/ux-r1-navigation-squad-mission-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/ux-r1-navigation-squad.test.mjs \
+            tests/ux2-overlay-coordination.test.mjs \
+            tests/ux2-mobile-settings-camera.test.mjs \
+            tests/equipment-19-06-quickplay-editor.test.mjs \
+            tests/operator-wardrobe-quickplay-ui.test.mjs \
+            tests/lw-roster.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
