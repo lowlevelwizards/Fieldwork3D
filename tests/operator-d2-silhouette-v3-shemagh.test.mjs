@@ -32,3 +32,17 @@ test('V3 shemagh face and crown wrap are distinct from a balaclava or gaiter',()
  const size=new THREE.Box3().setFromObject(modes[2]);
  assert.ok(size.max.y>7.3,'crossed head-wrap above skull');
 });
+
+test('R4 head wrap closes the rear skull and side gap while leaving face-wrap identity',()=>{
+ const [,face,head]=createD2FabricWrap('shemagh',cloth).children;
+ assert.ok(!parts(face).some(p=>p.name==='continuous-rear-closure'));
+ const c=parts(head),rear=c.find(p=>p.name==='continuous-rear-closure');
+ assert.ok(rear&&rear.width>=8.4&&rear.depth>=.6);
+ assert.ok(rear.y-rear.height/2<3.15&&rear.y+rear.height/2>4.5,
+   'new rear panel must bridge low facewrap to upper crown');
+ assert.equal(c.filter(p=>p.name==='rear-side-closure').length,2);
+ const crown=c.filter(p=>p.name==='crown-rear-band');
+ assert.equal(crown.length,2);
+ assert.ok(crown[0].x+crown[0].width/2>
+  crown[1].x-crown[1].width/2,'rear crown halves must overlap');
+});

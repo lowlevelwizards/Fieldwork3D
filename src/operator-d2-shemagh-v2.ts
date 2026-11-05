@@ -60,8 +60,15 @@ function crownWindings(p:ClothCuboid[]){
  add(p,'wrapped-brow-ridge',-.17,5.20,-4.58,8.45,.42,.40);
  for(const side of [-1,1]){
   add(p,'crown-side-turn',side*4.23,5.77,.05,.50,2.99,8.53);
-  add(p,'crown-rear-band',side*2.14,5.66,4.24,4.22,2.20,.49);
+  // Slightly overlapping half-bands: no center seam visible from the back.
+  add(p,'crown-rear-band',side*2.14,5.66,4.24,4.42,2.20,.49);
  }
+ // D2-R4C: join the rear crown to the lower facewrap without putting a
+ // balaclava-like shell across the open front eye band. Both side panels
+ // overlap the existing cheek and crown returns; no floating rear window.
+ add(p,'continuous-rear-closure',0,3.89,4.19,8.48,2.80,.64);
+ for(const side of [-1,1])
+  add(p,'rear-side-closure',side*4.20,3.82,1.78,.56,1.92,6.05);
  add(p,'rear-wrap-knot',-3.53,4.77,4.48,1.30,1.32,1.16);
  add(p,'long-rear-head-wrap-tail',-3.60,1.77,4.45,1.35,5.10,.80);
  add(p,'short-rear-head-wrap-tail',-2.54,3.36,4.40,1.01,2.13,.59);
