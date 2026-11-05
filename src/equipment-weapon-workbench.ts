@@ -16,6 +16,7 @@ export class WeaponWorkbenchPreview{
  private renderer:THREE.WebGLRenderer|null=null;
  private readonly scene=new THREE.Scene();
  private readonly camera=new THREE.PerspectiveCamera(37,1,.1,300);
+ private readonly sideCamera=new THREE.OrthographicCamera(-35,35,24,-24,.1,300);
  private readonly model=new THREE.Group();
  private readonly pointerPositions=new Map<number,{x:number;y:number}>();
  private readonly steel=new THREE.MeshStandardMaterial({color:0x707875,roughness:.78,flatShading:true});
@@ -289,10 +290,10 @@ export class WeaponWorkbenchPreview{
   if(this.pointerPositions.size===2){
    const [a,b]=[...this.pointerPositions.values()];
    const d=Math.hypot(a.x-b.x,a.y-b.y);
-   if(this.pinchDistance>0)this.distance=Math.max(49,Math.min(120,
+   if(this.pinchDistance>0)this.distance=Math.max(46,Math.min(120,
     this.distance*this.pinchDistance/d));
    this.pinchDistance=d;this.dragDistance=30;
-  }else if(this.pointerPositions.size===1){
+  }else if(this.pointerPositions.size===1&&!this.in2D){
    this.dragDistance+=Math.hypot(dx,dy);
    this.yaw+=dx*.010;this.pitch=Math.max(-.55,Math.min(.8,this.pitch+dy*.008));
   }
@@ -300,36 +301,48 @@ export class WeaponWorkbenchPreview{
  };
  private up=(e:PointerEvent)=>{
   if(!this.pointerPositions.has(e.pointerId))return;
-  if(this.dragDistance<9&&this.pointerPositions.size===1&&this.renderer){
-   const rect=this.canvasHost.getBoundingClientRect();
-   const mouse=new THREE.Vector2(
-    (e.clientX-rect.left)/Math.max(1,rect.width)*2-1,
-    -((e.clientY-rect.top)/Math.max(1,rect.height)*2-1));
-   this.raycaster.setFromCamera(mouse,this.camera);
-   const hit=this.raycaster.intersectObjects(this.model.children,true)
-    .find(hit=>typeof hit.object.userData.slot==='string');
-   const slot=hit?.object.userData.slot as WorkbenchSocket|undefined;
-   if(slot){this.setActiveSlot(slot);this.onSelect(slot);}
-  }
   this.pointerPositions.delete(e.pointerId);
   if(this.pointerPositions.size<2)this.pinchDistance=0;
   try{this.canvasHost.releasePointerCapture(e.pointerId);}catch{/* optional */}
  };
  private wheel=(e:WheelEvent)=>{
   e.preventDefault();
-  this.distance=Math.max(49,Math.min(120,this.distance+e.deltaY*.08));
+  this.distance=Math.max(46,Math.min(120,this.distance+e.deltaY*.08));
   this.draw();
  };
+ /** Manual 2D does not destroy WebGL; returning to 3D restores the
+  * original orbit view. A real context failure remains in fixed 2D only.
+  */
+ private switchView(){
+  if(!this.renderer){this.enableFallback();return;}
+  this.in2D=!this.in2D;
+  if(this.in2D&&!this.fallbackCanvas){
+   this.fallbackCanvas=document.createElement('canvas');
+   this.fallbackCanvas.style.cssText='display:block;width:100%;height:100%';
+   this.canvasHost.prepend(this.fallbackCanvas);
+  }
+  if(this.fallbackCanvas)this.fallbackCanvas.style.display=this.in2D?'block':'none';
+  this.renderer.domElement.style.display=this.in2D?'none':'block';
+  this.viewToggle.textContent=this.in2D?'3D VIEW':'2D VIEW';
+  this.viewToggle.setAttribute('aria-label',this.in2D?
+   'Return to interactive 3D view':'Switch to fixed 2D side view');
+  this.setActiveSlot(this.active,this.revealed);
+ }
  private enableFallback(){
-  if(this.fallbackCanvas)return;
   const previous=this.renderer;
   this.renderer=null;
   previous?.domElement.remove();
-  try{previous?.dispose();}catch{/* context may already be lost */}
-  const canvas=document.createElement('canvas');
-  canvas.style.cssText='display:block;width:100%;height:100%';
-  this.fallbackCanvas=canvas;
-  this.canvasHost.prepend(canvas);
+  try{previous?.dispose();}catch{/* context already lost */}
+  if(!this.fallbackCanvas){
+   this.fallbackCanvas=document.createElement('canvas');
+   this.fallbackCanvas.style.cssText='display:block;width:100%;height:100%';
+   this.canvasHost.prepend(this.fallbackCanvas);
+  }
+  this.fallbackCanvas.style.display='block';
+  this.in2D=true;
+  this.viewToggle.textContent='2D ONLY';
+  this.viewToggle.disabled=true;
+  this.viewToggle.title='3D graphics unavailable on this device';
  }
  private drawFallback(w:number,h:number){
   const canvas=this.fallbackCanvas,ctx=canvas?.getContext('2d');
@@ -351,7 +364,7 @@ export class WeaponWorkbenchPreview{
    for(const x of [min.x,max.x])for(const y of [min.y,max.y])
     for(const zz of [min.z,max.z]){
      const v=new THREE.Vector3(x,y,zz).applyMatrix4(object.matrixWorld)
-      .project(this.camera);
+      .project(this.sideCamera);
      const sx=(v.x+1)*w/2,sy=(1-v.y)*h/2;
      left=Math.min(left,sx);right=Math.max(right,sx);
      top=Math.min(top,sy);bottom=Math.max(bottom,sy);z+=v.z/8;
@@ -370,29 +383,52 @@ export class WeaponWorkbenchPreview{
  }
  private draw(){
   const w=this.canvasHost.clientWidth,h=this.canvasHost.clientHeight;
-  if(w<2||h<2)return; // Do not size a renderer while an accordion is hidden.
+  if(w<2||h<2)return;
+  this.model.rotation.set(this.in2D?0:this.pitch,this.in2D?0:this.yaw,0);
   this.camera.aspect=w/h;this.camera.updateProjectionMatrix();
-  this.model.rotation.set(this.pitch,this.yaw,0);
   this.camera.position.set(2,16,this.distance);
   this.camera.lookAt(2,0,0);
   this.camera.updateMatrixWorld(true);
+  // An orthographic, level side projection: 2D never tumbles into pseudo-3D.
+  const vertical=this.distance*2*Math.tan(37*Math.PI/360);
+  const horizontal=vertical*w/h;
+  this.sideCamera.left=-horizontal/2;
+  this.sideCamera.right=horizontal/2;
+  this.sideCamera.top=vertical/2;
+  this.sideCamera.bottom=-vertical/2;
+  this.sideCamera.updateProjectionMatrix();
+  this.sideCamera.position.set(2,0,100);
+  this.sideCamera.lookAt(2,0,0);
+  this.sideCamera.updateMatrixWorld(true);
   this.model.updateMatrixWorld(true);
-  if(this.renderer){
-   try{this.renderer.setSize(w,h,false);
+  if(this.renderer&&!this.in2D){
+   try{
+    this.renderer.setSize(w,h,false);
     this.renderer.render(this.scene,this.camera);
    }catch{this.enableFallback();}
   }
-  if(this.fallbackCanvas)this.drawFallback(w,h);
-  // DOM sockets have a reliable 44-ish-pixel touch target on iOS and work in 2D.
-  for(const anchor of workbenchMounts(this.config,this.mode)){
-   const button=this.socketButtons.get(anchor.slot);
+  if(this.in2D)this.drawFallback(w,h);
+  const projection=this.in2D?this.sideCamera:this.camera;
+  let anchorX=0,anchorY=0,hasAnchor=false;
+  for(const mount of workbenchMounts(this.config,this.mode)){
+   const button=this.socketButtons.get(mount.slot);
    if(!button)continue;
-   const v=new THREE.Vector3(anchor.x,anchor.y,anchor.z)
-    .applyMatrix4(this.model.matrixWorld).project(this.camera);
-   button.hidden=v.z>1||v.z< -1;
-   button.style.left=Math.max(10,Math.min(90,(v.x+1)*50))+'%';
-   button.style.top=Math.max(13,Math.min(87,(1-v.y)*50))+'%';
+   const v=new THREE.Vector3(mount.x,mount.y,mount.z)
+    .applyMatrix4(this.model.matrixWorld).project(projection);
+   const rawX=(v.x+1)*w/2,rawY=(1-v.y)*h/2;
+   button.hidden=v.z>1||v.z< -1||rawX<3||rawX>w-3||rawY<3||rawY>h-3;
+   button.style.left=Math.max(22,Math.min(w-22,rawX))+'px';
+   button.style.top=Math.max(22,Math.min(h-22,rawY))+'px';
+   if(mount.slot===this.active&&!button.hidden){
+    hasAnchor=true;anchorX=rawX;anchorY=rawY;
+   }
   }
+  // Only the selected dot gets one thin leader toward the category panel.
+  this.leader.setAttribute('viewBox','0 0 '+w+' '+h);
+  this.leader.style.display=this.revealed&&hasAnchor?'block':'none';
+  if(this.revealed&&hasAnchor)
+   this.leaderPath.setAttribute('d','M '+anchorX.toFixed(1)+' '+
+    anchorY.toFixed(1)+' L '+anchorX.toFixed(1)+' '+h);
  }
  dispose(){
   this.resizeObserver.disconnect();
@@ -404,10 +440,10 @@ export class WeaponWorkbenchPreview{
   this.pointerPositions.clear();
   this.clearMounts();
   clearWeaponSilhouette(this.model);
-  this.steel.dispose();this.dark.dispose();this.selectedMaterial.dispose();
-  this.markerMaterial.dispose();this.markerGeometry.dispose();
+  this.steel.dispose();this.dark.dispose();
   this.renderer?.dispose();this.renderer?.forceContextLoss();
   this.renderer?.domElement.remove();this.renderer=null;
+  this.fallbackCanvas?.remove();this.fallbackCanvas=null;
   this.host.replaceChildren();
  }
 }
