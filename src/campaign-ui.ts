@@ -422,17 +422,19 @@ export class CampaignScreen{
   const appearance=button('APPEARANCE · OPEN STUDIO',()=>this.handlers.openStudio(id));
   rename.disabled=!!c.activeContractId;appearance.disabled=!!c.activeContractId;
   identityActions.append(rename,appearance);summary.append(identityActions);
+  const readiness=node('details','campaign-readiness-details');
+  readiness.append(node('summary','','READINESS DETAILS · ARMOR / AMMO / MOBILITY'));
   const carrying=carryCapacityReport(person.loadout,person.magazines);
   const carryItems=carrying.placements.filter(p=>p.kind!=='magazine');
-  if(carryItems.length)summary.append(node('p','campaign-note',
+  if(carryItems.length)readiness.append(node('p','campaign-note',
    'PHYSICAL CARRY · '+carryItems.map(p=>p.kind.toUpperCase()+' '+
     p.location.toUpperCase()+' / '+p.accessSeconds.toFixed(2)+'s ACCESS').join(' · ')));
-  summary.append(node('p','campaign-note',
+  readiness.append(node('p','campaign-note',
    person.background+' · '+person.trait+' · '+person.missions+' OPERATIONS'));
-  summary.append(node('p','campaign-kit-metrics','MOBILITY · '+
+  readiness.append(node('p','campaign-kit-metrics','MOBILITY · '+
    loadMobilityDescription(person.loadout,person.weaponConfiguration)+' · '+
    Math.round(loadMovementScale(person.loadout,person.weaponConfiguration)*100)+'% MOVEMENT SPEED'));
-  summary.append(node('div','campaign-kit-metrics',
+  readiness.append(node('div','campaign-kit-metrics',
    'PRIMARY · '+person.weapon.toUpperCase()+
    '    /    MAGAZINE · '+person.magazine+
    '    /    RESERVE · '+person.reserve));
@@ -442,51 +444,52 @@ export class CampaignScreen{
    const service=button('SERVICE WEAPON · '+serviceCost+' CR',
     ()=>this.handlers.serviceWeapon(person.id));
    service.disabled=!!c.activeContractId||serviceCost===0||c.funds<serviceCost;
-   summary.append(service);
-   summary.append(node('p','campaign-kit-metrics',
+   readiness.append(service);
+   readiness.append(node('p','campaign-kit-metrics',
     'SERIAL · '+firearm.id+' · CONDITION '+firearm.condition+'% · '+
     firearm.roundsFired+' ROUNDS FIRED'));
    const recent=firearm.history.slice(-3).map(e=>
     'DAY '+e.day+' '+e.kind.toUpperCase()+
     (e.rounds?' · '+e.rounds+' RDS':'')).join(' / ');
-   summary.append(node('p','campaign-note',
+   readiness.append(node('p','campaign-note',
     'WEAPON SERVICE LOG · '+(recent||'NO RECORDED EVENTS')));
   }
   const placed=person.weapon==='shotgun'?[]:
    stageMagazines(person.magazines,person.loadout);
   const magSlots=person.weapon==='shotgun'?null:
    magazinePlacementSummary(person.magazines,person.loadout);
-  if(magSlots)summary.append(node('p','campaign-kit-metrics',
+  if(magSlots)readiness.append(node('p','campaign-kit-metrics',
    'MAGAZINES · CHEST '+magSlots.rig+' · BELT '+magSlots.belt+
    ' · POCKET '+magSlots.pocket+' · PACK '+magSlots.backpack+
    ' · STOWED '+magSlots.overflow));
-  summary.append(node('p','campaign-note',
+  readiness.append(node('p','campaign-note',
    'Spare magazines can be individually placed below. Chest and belt magazines reload faster; backpack and overflow retrievals take longer.'));
   const maximum=initialArmorIntegrity(person.loadout);
   const repairCost=armorRepairCost(person);
-  summary.append(node('p','campaign-kit-metrics',
+  readiness.append(node('p','campaign-kit-metrics',
    'ARMOR · '+person.armorCondition.torso+'/'+maximum.torso+
    '     HELMET · '+person.armorCondition.head+'/'+maximum.head));
   const repair=button('REPAIR PROTECTION · '+repairCost+' CR',
    ()=>this.handlers.repairArmor(person.id));
   repair.disabled=!!c.activeContractId||repairCost===0||c.funds<repairCost;
-  summary.append(repair);
+  readiness.append(repair);
   const capacity=kitMedicalSupplies(person.loadout);
-  summary.append(node('p','campaign-kit-metrics',
+  readiness.append(node('p','campaign-kit-metrics',
    'FIELD MEDICAL · '+medicalSupplyCount(person.medicalSupplies)+' / '+
     medicalSupplyCount(capacity)+' · HQ RESERVE '+c.supplies.medical));
-  summary.append(node('p','campaign-kit-metrics',
+  readiness.append(node('p','campaign-kit-metrics',
    'WEAPON CONFIG · '+Object.values(person.weaponConfiguration.slots)
     .map(v=>v.replace(/^[^-]+-/,'')).join(' / ')));
-  summary.append(node('p','campaign-note',
+  readiness.append(node('p','campaign-note',
    'Equipment is issued as a saved preparation kit. Carried weight now influences movement speed. Coarse armor coverage and durability are now simulated; detailed ballistic hitboxes, retrieval times, tools and attachment handling are still in development.'));
-  summary.append(node('p','campaign-note',
+  readiness.append(node('p','campaign-note',
    'The preview uses the same 3D operator rig as the mission. Some equipment slots are metadata-only until their gameplay systems are implemented.'));
+  summary.append(readiness);
   grid.append(summary);
   const editor=node('section','campaign-section campaign-kit-editor');
   const locked=!!c.activeContractId;
-  const presetTitle=node('h2','','SAVED KIT PRESETS');
-  editor.append(presetTitle);
+  const presets=node('details','campaign-kit-presets');
+  presets.append(node('summary','','SAVED KIT PRESETS · '+c.kitPresets.length));
   const presetActions=node('div','campaign-kit-actions');
   const save=button('SAVE CURRENT KIT',async()=>{
    const name=await promptFieldworkText({
@@ -528,8 +531,9 @@ export class CampaignScreen{
   load.disabled=locked||c.kitPresets.length===0;
   remove.disabled=locked||c.kitPresets.length===0;
   presetActions.append(picker,load,remove);
-  editor.append(presetActions,node('p','campaign-note',
+  presets.append(presetActions,node('p','campaign-note',
    'Presets save a configuration, not copies of purchased equipment. Applying one requires an available primary weapon.'));
+  editor.append(presets);
   editor.append(node('h2','','LOADOUT'));
   if(locked)editor.append(node('p','campaign-note','ACTIVE DEPLOYMENT · KIT CHANGES LOCKED'));
   const grouped=buildQuickLoadoutGroups(editor,this.activeKitGroup,group=>{
@@ -617,15 +621,17 @@ export class CampaignScreen{
     }
     this.handlers.equipAttachment(id,slot,partId,acquire);
    });
-   row.append(title,select);editor.append(row);
+   row.append(title,select);attachments.append(row);
   }
   const gun=resolveWeaponAssembly(person.weaponConfiguration);
-  editor.append(node('p','campaign-kit-metrics',
+  attachments.append(node('p','campaign-kit-metrics',
    'WEAPON MASS · '+gun.massKg.toFixed(2)+' KG · BALANCE '+gun.balanceX.toFixed(1)+
    ' · MUZZLE EXTENSION '+(gun.muzzleX-19.5).toFixed(1)));
+  grouped.field('weapon').append(attachments);
   if(placed.length){
-   editor.append(node('h2','','PHYSICAL MAGAZINE PLACEMENT'));
-   editor.append(node('p','campaign-note',
+   const magazines=node('details','campaign-magazines');
+   magazines.append(node('summary','','MAGAZINE LOCATIONS · '+placed.length));
+   magazines.append(node('p','campaign-note',
     'Each magazine is a real saved item. Change its location; the system will enforce available pouch capacity.'));
    const capacity=magazineSpace(person.loadout);
    const locations:MagazineLocation[]=['rig','belt','pocket','backpack','overflow'];
@@ -645,8 +651,9 @@ export class CampaignScreen{
     picker.disabled=locked;
     picker.addEventListener('change',()=>this.handlers.moveMagazine(
      id,mag.id,picker.value as MagazineLocation));
-    row.append(picker);editor.append(row);
+    row.append(picker);magazines.append(row);
    }
+   grouped.field('carry').append(magazines);
   }
   grid.append(editor);main.append(grid);
   this.root.append(main);
