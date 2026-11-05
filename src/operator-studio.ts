@@ -859,6 +859,12 @@ function selectCategory(slot:WardrobeSlot){
 }
 function renderCategories(){
  categories.replaceChildren();subcategories.replaceChildren();
+ const referenceButton=document.createElement('button');
+ referenceButton.type='button';referenceButton.textContent='REFERENCES';
+ referenceButton.setAttribute('aria-pressed',String(referenceOpen));
+ referenceButton.disabled=saveInFlight;
+ referenceButton.addEventListener('click',()=>openReferenceBrowser());
+ categories.append(referenceButton);
  for(const group of categoryGroups){
   const button=makeButton(group.label,group.slots.includes(activeCategory),()=>
    selectCategory(group.slots[0]));
