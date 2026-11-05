@@ -499,6 +499,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   for(const glove of r.gloveCovers)glove.visible=gear?.hands==='hands-gloves';
   applyOperatorVisualKit(r.visualKit,gear,identity,
     p.magazineCarryLocations,p.faceStyle,p.wardrobe);
+  // D2-R4A: accessory swatches are applied by the reusable visual kit.
+  // Sync its recolorable materials into the authoritative color ledger before
+  // final pose restoration/desaturation (which otherwise erases Studio edits).
+  const headLayers=r.visualKit.wardrobeHead;
+  for(const material of [
+    headLayers.faceFabric,headLayers.maskRubber,
+    headLayers.eyewearFrame,headLayers.eyewearLens
+  ])r.colors.set(material,material.color.clone());
   // Clothing coverage changes materials on existing articulated limbs only.
   // The bones, solved knee/elbow positions and planted feet stay identical.
   const clothing=resolvedWardrobe(p.wardrobe,p.equipment);
