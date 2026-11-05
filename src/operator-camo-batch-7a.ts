@@ -59,8 +59,8 @@ const recipes={
  },
  'spectre-skwo':{
   label:'SPECTRE SKWO',
-  description:'Post-Soviet forest-steppe transitional hybrid: layered earth and green strokes with stepped brown/charcoal interruption',
-  colors:[[146,144,107],[109,129,89],[85,106,72],[119,93,69],[51,69,52]],
+  description:'Fractured Spectre-derived olive/sage corridors, compact stepped dark links and restrained khaki-brown punctuation',
+  colors:[[158,154,121],[112,126,91],[83,105,71],[117,94,70],[46,62,46]],
   targetCoverage:[.26,.28,.23,.16,.07],motifs:[]
  }
  } satisfies Record<Camo7AId,Camo7ARecipe>;

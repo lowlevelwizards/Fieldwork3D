@@ -34,7 +34,7 @@ export const HEADWEAR_CAMO_DENSITY:Readonly<Record<HeadwearCamoId,number>>={
  'atacs-fg':2,'ukrainian-mm14':2,aor2:4,'multicam-tropic':4,
  'atacs-au':2,'ss-leto':2,aor1:4,'multicam-arid':4,
  'multicam-black':4,'multicam-alpine':4,'pencott-greenzone':3.2,'pencott-badlands':3.2,
- 'desert-night':3.2,'kryptek-highlander':3.0,berezka:3.2,'spectre-skwo':3.0
+ 'desert-night':3.2,'kryptek-highlander':3.0,berezka:3.2,'spectre-skwo':3.25
 };
 export const HEADWEAR_CAMO_IDS=[
  'm81-woodland','three-color-desert','tiger-stripe','ucp','multicam',

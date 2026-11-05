@@ -55,26 +55,48 @@ const HIGHLANDER:readonly Shape[]=[
  p(4,19,13,24,11,27,14,25,19,30,22,25,25,20,22,17,26,14,20),
  p(4,46,41,51,38,57,44,54,49,60,52,55,56,50,52,46,55,43,49)
 ];
+/** 7B: Spectre SKWO must read as interlocked fractured forest-steppe,
+ * not as SS-Leto's broad soft oak leaves. Breaks are authored at two scales:
+ * irregular stepped midtone corridors and dark compact linking fragments.
+ * Tan windows and brown are deliberately subordinate to the olives.
+ */
 const SPECTRE:readonly Shape[]=[
- p(1,-5,-4,9,-2,20,3,32,5,41,10,34,16,20,13,12,18,1,15,-5,21),
- p(1,39,-3,50,-1,63,5,70,11,65,21,53,18,48,26,39,20),
- p(1,-6,27,6,23,18,29,26,32,32,39,27,47,13,44,4,52,-5,48),
- p(1,31,43,44,38,55,45,68,43,70,55,60,61,49,59,39,68,30,62),
- p(2,7,4,20,0,30,9,28,17,19,22,13,18,7,26,-4,21),
- p(2,36,3,47,-1,56,8,64,9,61,19,52,23,45,31,37,25),
- p(2,-5,35,9,30,20,38,32,42,26,50,15,48,8,57,-5,54),
- p(2,32,48,44,43,51,46,63,41,69,52,61,56,57,63,47,60,39,67,29,61),
- p(3,16,10,24,7,31,13,27,20,35,24,28,30,19,25,13,28,8,20),
- p(3,44,17,53,12,61,19,66,27,58,32,52,37,42,31,40,25),
- p(3,2,44,12,39,22,45,27,51,20,57,12,56,7,62,0,58),
- p(3,35,55,44,51,54,56,58,64,47,68,41,65,32,68),
- p(0,28,1,36,0,40,6,34,12,30,10,25,13),
- p(0,51,35,58,32,64,37,61,42,53,43,49,48,45,42),
- p(4,8,13,13,11,18,15,17,20,21,22,18,26,12,24,9,28,5,21),
- p(4,40,7,46,5,51,9,49,15,54,17,52,22,44,20,41,15),
- p(4,24,38,29,35,34,40,32,46,38,49,34,54,27,50,23,54,20,47),
- p(4,49,54,55,51,61,56,58,63,51,64,45,59),
- p(0,13,58,20,55,26,60,23,65,15,67)
+ // Connected olive/sage structure, with right-angle forks and short diagonal steps.
+ p(1,-6,3,6,3,6,0,19,0,19,6,26,6,26,12,20,12,20,18,9,18,9,23,-6,23),
+ p(1,29,-5,43,-5,43,2,55,2,55,8,66,8,66,18,58,18,58,23,45,23,45,16,35,16,35,10,29,10),
+ p(1,-6,28,7,28,7,25,17,25,17,32,27,32,27,39,19,39,19,45,8,45,8,51,-6,51),
+ p(1,30,28,41,28,41,25,54,25,54,31,69,31,69,42,61,42,61,49,48,49,48,43,37,43,37,37,30,37),
+ p(1,-6,56,8,56,8,53,21,53,21,60,32,60,32,68,18,68,18,64,5,64,5,69,-6,69),
+ p(1,37,51,49,51,49,48,61,48,61,55,69,55,69,66,60,66,60,63,44,63,44,70,37,70),
+ // Mid olive corridors carry the actual break-up rather than separate leaf blobs.
+ p(2,1,5,11,5,11,8,17,8,17,13,13,13,13,20,7,20,7,25,0,25),
+ p(2,20,0,31,0,31,5,39,5,39,9,33,9,33,15,27,15,27,20,19,20,19,13,15,13,15,6,20,6),
+ p(2,44,2,56,2,56,6,64,6,64,13,59,13,59,20,51,20,51,25,43,25,43,17,47,17,47,11,44,11),
+ p(2,-5,34,8,34,8,31,20,31,20,36,31,36,31,41,23,41,23,48,12,48,12,53,-5,53),
+ p(2,33,31,45,31,45,28,59,28,59,35,69,35,69,41,57,41,57,46,47,46,47,52,37,52,37,43,33,43),
+ p(2,13,51,25,51,25,54,34,54,34,59,27,59,27,65,16,65,16,70,6,70,6,63,13,63),
+ p(2,41,56,52,56,52,53,64,53,69,60,61,60,61,65,50,65,50,70,40,70),
+ // Tiny khaki negative spaces cut through bands: no broad pale sheet.
+ p(0,9,4,15,4,15,7,19,7,19,11,14,11,14,15,9,15),
+ p(0,35,16,41,16,41,19,45,19,45,23,39,23,39,26,35,26),
+ p(0,4,39,12,39,12,42,18,42,18,46,10,46,10,49,4,49),
+ p(0,49,38,56,38,56,41,62,41,62,45,53,45,53,49,49,49),
+ p(0,23,58,29,58,29,61,33,61,33,65,25,65,25,69,21,69),
+ // Sparse brown pockets, never the largest standalone shapes.
+ p(3,16,21,22,20,22,24,27,24,27,28,20,28,20,31,16,31),
+ p(3,52,11,58,11,58,14,62,14,62,18,54,18,54,21,51,21),
+ p(3,7,55,14,55,14,58,19,58,19,62,10,62,10,65,7,65),
+ p(3,32,43,38,43,38,46,43,46,43,50,35,50,35,53,32,53),
+ p(3,60,55,65,55,65,58,69,58,69,62,61,62),
+ // Short dark branchlets connect existing midtone corridors; not random dots.
+ p(4,6,10,12,10,12,13,17,13,17,17,10,17,10,21,6,21,6,17,3,17),
+ p(4,26,6,32,6,32,9,37,9,37,12,34,12,34,17,28,17,28,13,24,13),
+ p(4,46,8,52,8,52,11,57,11,57,15,51,15,51,20,46,20),
+ p(4,9,34,15,34,15,37,20,37,20,41,14,41,14,45,8,45),
+ p(4,37,32,43,32,43,35,49,35,49,39,43,39,43,43,36,43,36,47,33,47),
+ p(4,54,39,60,39,60,42,66,42,66,46,59,46,59,50,53,50),
+ p(4,18,54,24,54,24,57,29,57,29,61,23,61,23,66,17,66),
+ p(4,44,57,50,57,50,60,55,60,55,64,49,64,49,68,42,68)
 ];
 const cache=new Map<Specialty7AId,Uint8Array>();
 export function specialty7AIndices(id:Specialty7AId):Uint8Array{
@@ -86,23 +108,42 @@ export function specialty7AIndices(id:Specialty7AId):Uint8Array{
   for(let y=0;y<64;y++)for(let x=0;x<64;x++)
    out[y*64+x]=dark[y*64+x]===2?2:(x%8===0||y%8===0)?1:0;
  }else if(id==='berezka'){
+  // 7B: KLMK's repeated high-contrast stair-step sun-bunnies remain the
+  // dominant motif, but 8x8 rigid horizontal wallpaper rows are gone.
+  // Each 8px neighborhood gets a staggered / interrupted original leaflet.
   out=new Uint8Array(4096);
   for(let row=0;row<8;row++)for(let col=0;col<8;col++){
-   const cx=(col*8+(row%2)*4+(row*3)%5)&63;
-   const cy=(row*8+(col*5)%5)&63;
-   const tone=(row+col)%5===0?2:1;
+   const variant=(row*13+col*7)%5;
+   const jitter=((row*7+col*11)%5)-2;
+   const cx=(col*8+(row%2)*3+jitter+64)&63;
+   const cy=(row*8+((row*3+col*5)%5)-2+64)&63;
+   const tone=(row*2+col)%5===0?2:1;
    const put=(dx:number,dy:number,ink:number)=>{
-    out[((cy+dy+64)&63)*64+((cx+dx+64)&63)]=ink;
+    const x=(cx+dx+64)&63,y=(cy+dy+64)&63;
+    out[y*64+x]=ink;
    };
-   put(0,0,tone);put(1,0,tone);put(2,0,tone);put(0,1,tone);put(1,1,tone);
-   // Distinct wider forked sunrays: increase motif occupancy without
-   // dissolving the repeating KLMK dash/leaf rhythm into generic woodland.
-   put(-1,0,tone);put(-2,0,tone);put(2,1,tone);put(3,1,tone);
-   put(0,2,tone);put(1,2,tone);put(2,2,tone);put(3,2,tone);put(4,0,tone);
-   if((row+2*col)%3===0){put(-1,1,tone);put(-1,2,tone);}
-   else {put(2,-1,tone);put(3,-1,tone);}
-   if((row+col)%4===0)put(1,-2,2);
-   if((row*3+col)%3===0){put(3,3,3);put(3,4,3);put(4,3,3);}
+   // Angular, varying 3–5px horizontal frond, with a stepped side prong.
+   const width=4+(variant%3);
+   for(let dx=0;dx<width;dx++)put(dx,0,tone);
+   for(let dx=-1;dx<width;dx++)put(dx,1,tone);
+   for(let dx=0;dx<width-1;dx++)put(dx,2,tone);
+   for(let dx=1;dx<width-1;dx++)put(dx,3,tone);
+   if(variant===0||variant===3){
+    put(-1,1,tone);put(-1,2,tone);put(-2,2,tone);
+   }else if(variant===1||variant===4){
+    put(width-1,-1,tone);put(width,-1,tone);
+   }else{
+    put(0,-1,tone);put(1,-1,tone);
+   }
+   // Occasional hairline breaks stop marks joining into an entire row.
+   if((row*5+col*3)%7===0)put(width-1,0,0);
+   if((row+2*col)%4===0)put(width-2,-2,2);
+   // Sparse olive undershadows remain subordinate to light sunrays.
+   if((row+col)%2===0){
+    put(width-1,3,3);put(width,3,3);put(width,4,3);
+    put(width-1,4,3);put(width-2,4,3);
+    put(width,5,3);put(width-1,5,3);
+   }
   }
  }else{
   const base=paint(id==='kryptek-highlander'?HIGHLANDER:SPECTRE,0);
@@ -117,11 +158,16 @@ export function specialty7AIndices(id:Specialty7AId):Uint8Array{
     else if((a===1||b===1)&&r>.78&&ink===2)out[i]=0;
     else if(ink===1&&r>.92)out[i]=2;
    }else{
-    // Spectre SKWO: staggered 2px cell chips attached to layered fields.
-    if(ink===1&&r>.86)out[i]=2;
-    else if(ink===2&&r<.11)out[i]=3;
-    else if(ink===3&&h(x>>2,y>>2,17)>.91)out[i]=4;
-    else if(ink===0&&r>.96)out[i]=1;
+    // Spectre 7B: compact paired 2px cells extend already-authored
+    // fractured corridors. Brown stays sparse; most interruptions are
+    // sage -> olive and olive -> deep charcoal, not random soil blobs.
+    const cell=h(x>>1,y>>1,109);
+    const neighbor=base[y*64+((x+2)&63)];
+    if(ink===1&&cell>.87)out[i]=2;
+    else if(ink===2&&cell>.88&&neighbor===4)out[i]=4;
+    else if(ink===2&&cell<.075)out[i]=1;
+    else if(ink===0&&cell>.90)out[i]=1;
+    else if(ink===3&&cell>.91)out[i]=2;
    }
   }
  }
