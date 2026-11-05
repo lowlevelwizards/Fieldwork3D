@@ -3022,7 +3022,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       if(!a.searchOrigin){
         a.searchOrigin=clone(a.contact);
         a.searchQueue=searchCandidates(a.searchOrigin,
-          belief?.uncertainty??65,s.site?.rooms??[]);
+          belief?.uncertainty??65,s.site?.rooms??[],s.doors,COVER);
       }
       if(a.searchPauseUntil===0)
         a.searchPauseUntil=s.seconds+tempo.inspectSeconds;
