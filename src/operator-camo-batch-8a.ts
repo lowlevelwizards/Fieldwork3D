@@ -330,63 +330,104 @@ function urbanKamysh8C():Uint8Array{
  }
  return tile;
 }
-function jgsdf8C():Uint8Array{
- // Each manual Jieitai parent is small and irregular, surrounded by
- // several related miniature flecks. 8B's lone circular islands read as
- // polka dots; an attached cluster reads as printed woodland again.
+function jgsdf8D():Uint8Array{
+ // 8D: compose each Jieitai color as a *connected family* of differently
+ // sized flecks. The 8C satellites sat too far from their parent and read
+ // as isolated dots; overlapping lobes restore an organic clustered print.
  const motifs:Motif[]=[];
  for(let i=0;i<JGSDF_SPOTS.length;i++){
   const [x,y,rx,ry,ink,phase]=JGSDF_SPOTS[i];
-  const mx=Math.max(3,Math.round(rx*.69));
-  const my=Math.max(2,Math.round(ry*.73));
+  const mx=Math.max(3,Math.round(rx*.59));
+  const my=Math.max(2,Math.round(ry*.69));
   motifs.push(fleck(x,y,mx,my,ink,phase));
-  for(let k=0;k<3;k++){
+  for(let k=0;k<4;k++){
    const a=hash(i,k,303),b=hash(i,k,311);
-   const angle=(k+(i%3)*.21)*Math.PI*2/3;
-   const dx=Math.round(Math.cos(angle)*(mx+1+a*2));
-   const dy=Math.round(Math.sin(angle)*(my+1+b*2));
-   const sx=Math.max(2,Math.min(4,Math.round(mx*.38)));
-   const sy=Math.max(2,Math.min(3,Math.round(my*.52)));
+   const angle=(k+(i%3)*.19)*Math.PI/2;
+   const sx=k%2===0?3:2,sy=k%3===0?3:2;
+   // Half the satellite overlaps the parent rather than floating beyond
+   // its perimeter. This makes broad 4-12px groups with 2-6px offshoots.
+   const dx=Math.round(Math.cos(angle)*(mx+sx*.25+a*.4));
+   const dy=Math.round(Math.sin(angle)*(my+sy*.22+b*.4));
    motifs.push(fleck(x+dx,y+dy,sx,sy,ink,phase+k+1));
+   if(k%2===0){
+    // Sparse third scale, anchored to a satellite (not random background).
+    const side=k===0?1:-1;
+    motifs.push(fleck(x+dx+side*2,y+dy+side*2,2,2,ink,phase+k+2));
+   }
   }
  }
  const tile=paint(motifs,0),original=tile.slice();
- // Dots are related to nearby clusters (not seeded across bare ground).
+ // Keep tight shared-color bridges and a few internal contrast punctures.
+ // All small details are conditional on the authored parent-family tile.
  for(let row=0;row<21;row++)for(let col=0;col<21;col++){
   const r=hash(col,row,317);
-  if(r<.50)continue;
+  if(r<.53)continue;
   const x=(col*3+Math.floor(hash(col,row,319)*3))&63;
   const y=(row*3+Math.floor(hash(col,row,331)*3))&63;
   const ink=indexAt(original,x,y);
-  const neighbors=[
+  const near=[
    indexAt(original,x+2,y),indexAt(original,x-2,y),
    indexAt(original,x,y+2),indexAt(original,x,y-2)
   ].filter(v=>v!==0);
-  if(ink===0&&neighbors.length>=2){
-   const nearest=neighbors[Math.floor(hash(col,row,337)*neighbors.length)];
-   tile[y*64+x]=nearest;
-   if(r>.85&&indexAt(original,x+1,y)===0)
-    tile[y*64+((x+1)&63)]=nearest;
-  } else if(ink===1&&r>.90){
+  if(ink===0&&near.length>=2&&r>.74){
+   const chosen=near[Math.floor(hash(col,row,337)*near.length)];
+   tile[y*64+x]=chosen;
+  }else if(ink===1&&r>.95){
    tile[y*64+x]=4;
-  } else if(ink===2&&r>.91){
+  }else if(ink===2&&r>.95){
    tile[y*64+x]=3;
   }
  }
  return tile;
 }
-function soldier2000_8C():Uint8Array{
- // Keep the broad exposed earth-brown SANDF ground established in 8B.
- // Slightly grow lobes; restore their SMALL contrasting interior spores.
+function soldier2000_8D():Uint8Array{
+ // 8D: keep 8C's exposed Kalahari-brown ground and its authored organic
+ // islands. Sparse attached tips make the green silhouettes branch rather
+ // than resemble a handful of unrelated smooth ovals.
  const source=paint(S2000.map(m=>scaleMotif(m,.725)),0);
  const out=source.slice();
+ const bare=source.reduce((n,ink)=>n+(ink===0?1:0),0);
+ // Art budget: never trade away the recognizable 38% brown background.
+ const growthBudget=Math.min(56,Math.max(0,bare-Math.ceil(4096*.38)));
+ const anchors:[number,number][]=[];
+ let grown=0;
+ const dirs:readonly (readonly [number,number])[]=[[1,0],[0,1],[-1,0],[0,-1]];
+ for(let y=0;y<64&&grown<growthBudget;y++)
+  for(let x=0;x<64&&grown<growthBudget;x++){
+   const ink=indexAt(source,x,y),r=hash(x,y,403);
+   if((ink!==1&&ink!==2)||r<.82||anchors.length>=24)continue;
+   const [dx,dy]=dirs[Math.floor(hash(x,y,409)*4)];
+   if(indexAt(source,x+dx,y+dy)!==0)continue;
+   if(anchors.some(([ax,ay])=>{
+    const sx=Math.abs(ax-x),sy=Math.abs(ay-y);
+    return Math.min(sx,64-sx)**2+Math.min(sy,64-sy)**2<36;
+   }))continue;
+   anchors.push([x,y]);
+   const length=hash(x,y,419)>.38?3:2;
+   for(let step=1;step<=length&&grown<growthBudget;step++){
+    const bx=(x+dx*step+64)&63,by=(y+dy*step+64)&63;
+    if(indexAt(source,bx,by)!==0)break;
+    if(out[by*64+bx]===0){out[by*64+bx]=ink;grown++;}
+    // A small bent end remains attached to the green parent, not a
+    // detached island or an all-over tiny dot cloud.
+    if(step===length&&hash(x,y,431)>.42&&grown<growthBudget){
+     const turn=hash(x,y,433)>.5?1:-1;
+     const tx=(bx-dy*turn+64)&63,ty=(by+dx*turn+64)&63;
+     if(indexAt(source,tx,ty)===0&&out[ty*64+tx]===0){
+      out[ty*64+tx]=ink;grown++;
+     }
+    }
+   }
+  }
+ // Pea-size interior contrasts must land INSIDE established vegetation,
+ // never scatter over bare brown or create independent JGSDF dot clouds.
  for(let row=0;row<21;row++)for(let col=0;col<21;col++){
   const r=hash(col,row,191);
   if(r<.37)continue;
   const x=(col*3+Math.floor(hash(col,row,199)*3))&63;
   const y=(row*3+Math.floor(hash(col,row,211)*3))&63;
   const ink=indexAt(source,x,y);
-  if(ink===0||ink===4)continue; // Never seed across brown bare cloth.
+  if(ink===0||ink===4)continue;
   let same=0;
   for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]])
    if(indexAt(source,x+dx,y+dy)===ink)same++;
@@ -398,6 +439,21 @@ function soldier2000_8C():Uint8Array{
   if(r>.95&&indexAt(source,x,y+1)===ink)
    out[((y+1)&63)*64+x]=spot;
  }
+ // Paired pin-size spots punctuate large interior greens; patches have
+ // significantly more texture than M98 but far less than JGSDF.
+ for(let row=0;row<16;row++)for(let col=0;col<16;col++){
+  const r=hash(col,row,457);
+  if(r<.63)continue;
+  const x=(col*4+Math.floor(hash(col,row,461)*4))&63;
+  const y=(row*4+Math.floor(hash(col,row,463)*4))&63;
+  const ink=indexAt(source,x,y);
+  if(ink!==1&&ink!==2)continue;
+  if(indexAt(source,x+1,y)!==ink||indexAt(source,x,y+1)!==ink)continue;
+  const tint=r>.84?3:4;
+  out[y*64+x]=tint;
+  if(r>.79&&indexAt(source,x+2,y)===ink)
+   out[y*64+((x+2)&63)]=tint;
+ }
  return out;
 }
 
@@ -406,8 +462,8 @@ function ownTile(id:Camo8AId):Uint8Array{
  if(id==='russian-izlom')return izlom8C();
  if(id==='greek-lizard')return greekLizard8C();
  if(id==='urban-kamysh')return urbanKamysh8C();
- if(id==='jgsdf-type2')return jgsdf8C();
- if(id==='south-african-s2000')return soldier2000_8C();
+ if(id==='jgsdf-type2')return jgsdf8D();
+ if(id==='south-african-s2000')return soldier2000_8D();
  if(id==='norwegian-m98'){
   // Minimize hard one-pixel polygon corners while retaining three flat
   // inks and the huge M98 organic blotches. No additional fine texture.
