@@ -23,7 +23,12 @@ async function audit(){
     const source=fs.readFileSync(p,'utf8');
     const refs=[];
     for(const m of source.matchAll(/(?:from\s*|import\s*\(|import\s*|@import\s*)['"]([^'"]+)['"]/g))refs.push(m[1]);
-    if(p.endsWith('.html'))for(const m of source.matchAll(/(?:src|href)=['"]([^'"]+)['"]/g))refs.push(m[1]);
+    if(p.endsWith('.html')){
+      // Navigation links to labs are not loaded in the active game bundle.
+      for(const m of source.matchAll(/<script\b[^>]*\bsrc=['"]([^'"]+)['"][^>]*>/gi))refs.push(m[1]);
+      for(const m of source.matchAll(/<link\b[^>]*\brel=['"]stylesheet['"][^>]*\bhref=['"]([^'"]+)['"][^>]*>/gi))refs.push(m[1]);
+      for(const m of source.matchAll(/<link\b[^>]*\bhref=['"]([^'"]+)['"][^>]*\brel=['"]stylesheet['"][^>]*>/gi))refs.push(m[1]);
+    }
     for(const ref of refs){
       if(!ref.startsWith('.'))continue;
       const base=path.posix.normalize(path.posix.join(path.posix.dirname(p),ref.split('?')[0]));
