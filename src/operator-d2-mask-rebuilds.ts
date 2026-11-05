@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import {
  type MaskMaterials,type MaskPoint,block,plate,extrudedProfile,
- eyePolygon,pairedEyes,lens,rim,strap,sideProfile,canister,outlet
+ eyePolygon,pairedEyes,lens,rim,strap,sideProfile,fittedHoodLoft,canister,outlet
 } from './operator-d2-mask-geometry.ts';
 export type D2MaskId=
  'half-mask'|'respirator-half'|'gas-gp5'|'gas-m17'|'gas-m40'|'gas-m50';
@@ -114,14 +114,8 @@ function industrial(g:THREE.Group,m:MaskMaterials,compact:boolean){
 function hood(g:THREE.Group,m:MaskMaterials){
  const leftRight=pair(1.94,3.76,1.34,1.37);
  // Crown and rear wrap around the 8-unit skull; no regular head harness.
- block(g,m.rubber,'hood-crown',0,7.30,0,8.70,.54,8.72);
- block(g,m.rubber,'hood-back',0,3.03,4.25,8.70,8.34,.45);
+ fittedHoodLoft(g,m.rubber);
  for(const sign of [-1,1] as const){
-  sideProfile(g,m.rubber,'hood-temple',sign,[
-   [-4.37,6.72],[-3.30,7.52],[3.30,7.52],
-   [4.48,6.68],[4.48,-1.68],[3.54,-2.25],
-   [-3.22,-2.25],[-4.56,-.70]
-  ],4.14,.47);
   extrudedProfile(g,m.rubber,'hood-neck-side',[
    [sign*3.30,-.88],[sign*4.03,-.88],
    [sign*3.82,-2.31],[sign*3.10,-2.31]
@@ -143,9 +137,9 @@ function hood(g:THREE.Group,m:MaskMaterials){
  ],-5.20,.47,.20);
  canister(g,m.hardware,'gp5-front-port',0,.15,-5.73,1.39,.68,0,-.30);
  canister(g,m.filters,'gp5-central-canister',
-  0,-1.24,-6.05,1.42,2.55,0,-1.80);
+  0,-1.38,-5.84,1.39,2.55,0,-4.0);
  canister(g,m.hardware,'gp5-filter-base',
-  0,-1.95,-6.29,1.48,.32,0,-1.80);
+  0,-2.19,-6.07,1.46,.32,0,-4.0);
  block(g,m.rubber,'hood-neck-collar',0,-2.19,.20,7.35,.38,7.50);
 }
 function cheekFilter(g:THREE.Group,m:MaskMaterials,sign:-1|1){

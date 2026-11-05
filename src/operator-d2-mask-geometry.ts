@@ -120,6 +120,41 @@ export function sideProfile(g:THREE.Group,mat:THREE.Material,name:string,
  result.position.x=sign>0?sideX:-sideX-thick;
  return result;
 }
+/** Fitted full-head rubber hood: stepped and gently tapered in X/Z at
+ * anatomical heights. Rear and SIDE shells are separate from the eye-aperture
+ * front, preventing the old six-box rectangular helmet enclosure.
+ * Open front so the actual eye holes in gp5-hood-front remain functional.
+ */
+export function fittedHoodLoft(g:THREE.Group,mat:THREE.Material){
+ type Section=readonly [number,number,number,number]; // y, halfX, frontZ, rearZ
+ const sections:readonly Section[]=[
+  [-2.30,3.62,-4.12,4.12],[-1.08,4.25,-4.42,4.42],
+  [2.04,4.47,-4.52,4.49],[5.63,4.48,-4.48,4.46],
+  [6.97,4.33,-4.35,4.36],[7.52,4.20,-4.24,4.23]
+ ];
+ type P3=readonly [number,number,number];
+ const mesh=(name:string,quads:(readonly [P3,P3,P3,P3])[])=>{
+  const coords:number[]=[];
+  for(const q of quads)for(const v of [q[0],q[1],q[2],q[0],q[2],q[3]])
+   coords.push(...v);
+  const geom=new THREE.BufferGeometry();
+  geom.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));
+  geom.computeVertexNormals();attach(g,name,geom,mat);
+ };
+ const right:(readonly [P3,P3,P3,P3])[]=[],left:typeof right=[],
+  back:typeof right=[];
+ for(let i=0;i<sections.length-1;i++){
+  const [y,a,f,r]=sections[i],[Y,A,F,R]=sections[i+1];
+  right.push([[a,y,f],[A,Y,F],[A,Y,R],[a,y,r]]);
+  left.push([[-a,y,f],[-a,y,r],[-A,Y,R],[-A,Y,F]]);
+  back.push([[-a,y,r],[a,y,r],[A,Y,R],[-A,Y,R]]);
+ }
+ mesh('hood-temple',left);mesh('hood-temple',right);
+ mesh('hood-back',back);
+ const [top,w,front,rear]=sections[sections.length-1];
+ mesh('hood-crown',[[[-w,top,front],[-w,top,rear],
+  [w,top,rear],[w,top,front]]]);
+}
 /** Short eight-facet axial cartridge with broad end cap; optional outward cant. */
 export function canister(g:THREE.Group,m:THREE.Material,name:string,
  x:number,y:number,z:number,r:number,length:number,
