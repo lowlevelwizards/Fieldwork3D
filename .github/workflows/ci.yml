@@ -732,6 +732,9 @@ jobs:
             tests/worldgen-encounter-routines-e3a.test.mjs \
             tests/worldgen-encounter-routines.test.mjs \
             tests/awareness-routine-dwell-e3a.test.mjs \
+            tests/awareness-initiative-e3b.test.mjs \
+            tests/awareness-morale-support-e3c.test.mjs \
+            tests/awareness-morale.test.mjs \
             tests/worldgen-encounter-activities.test.mjs \
             tests/worldgen-encounter-integration.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
