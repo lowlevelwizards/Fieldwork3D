@@ -56,7 +56,10 @@ import {HEADWEAR_CAMO_IDS,headwearCamoChoices,resolvedHeadwearCamo,headwearCamoP
  type HeadwearCamoId} from './operator-headwear-camo.ts';
 import {CAMO_ORIGINS,filterCamoCatalog,type CamoFilter,type CamoOrigin}
  from './operator-headwear-camo-catalog.ts';
-import {browseCamos,camoSearchMatches} from './operator-material-browser.ts';
+import {browseCamos,camoBrowseSection,camoSearchMatches,readCamoBrowserPrefs,
+ recordCamoRecent,toggleCamoFavorite} from './operator-material-browser.ts';
+import {appendCamoSectionHeading} from './operator-material-browser-ui.ts';
+import {getCamoPreviewSource} from './operator-camo-preview-cache.ts';
 import {initialWardrobe,readWardrobe,resolvedWardrobe,wardrobeConflicts,
  type WardrobeOptions} from './operator-wardrobe-data.ts';
 
@@ -316,21 +319,13 @@ const camoFavoriteFilter=document.getElementById('camoFavoriteFilter') as HTMLIn
 const camoBrowseSummary=document.getElementById('camoBrowseSummary') as HTMLOutputElement;
 const camoBrowseEmpty=document.getElementById('camoBrowseEmpty') as HTMLElement;
 const camoRecentRow=document.getElementById('camoRecentRow') as HTMLElement;
-const CAMO_BROWSER_STORAGE_KEY='fieldwork.headwear.camo.browser.v1';
 let camoFavorites=new Set<HeadwearCamoId>();
 let camoRecents:HeadwearCamoId[]=[];
-try{
- const parsed=JSON.parse(localStorage.getItem(CAMO_BROWSER_STORAGE_KEY)??'{}');
- if(Array.isArray(parsed.favorites))
-  camoFavorites=new Set(parsed.favorites.filter((id:unknown)=>HEADWEAR_CAMO_IDS.includes(id as HeadwearCamoId)));
- if(Array.isArray(parsed.recents))
-  camoRecents=parsed.recents.filter((id:unknown)=>HEADWEAR_CAMO_IDS.includes(id as HeadwearCamoId)).slice(0,5);
-}catch{ /* Private browsing/storage access can fail: filters still work. */ }
-function storeCamoBrowser(){
- try{localStorage.setItem(CAMO_BROWSER_STORAGE_KEY,JSON.stringify({
-  favorites:[...camoFavorites],recents:camoRecents
- }));}catch{ /* User may have disabled local storage. */ }
+function syncCamoBrowserPreferences(){
+ const prefs=readCamoBrowserPrefs();
+ camoFavorites=new Set(prefs.favorites);camoRecents=prefs.recents;
 }
+syncCamoBrowserPreferences();
 for(const origin of CAMO_ORIGINS){
  const o=document.createElement('option');o.value=origin;o.textContent=origin.toUpperCase();
  camoOriginFilter.append(o);
@@ -372,19 +367,15 @@ camoReroll.addEventListener('click',()=>{
  * No canvas noise, gradients, bilinear resampling or preview-only art.
  */
 function paintHeadwearCamo(canvas:HTMLCanvasElement,id:HeadwearCamoId,repeats:number){
- const tileSize=headwearCamoSize(id),size=tileSize*repeats,ctx=canvas.getContext('2d');
- if(!ctx)return;
- canvas.width=canvas.height=size;
- const pixels=headwearCamoPixels(id),image=ctx.createImageData(size,size);
- for(let y=0;y<size;y++)for(let x=0;x<size;x++){
-  const from=((y%tileSize)*tileSize+(x%tileSize))*4,to=(y*size+x)*4;
-  for(let channel=0;channel<4;channel++)image.data[to+channel]=pixels[from+channel];
- }
- ctx.imageSmoothingEnabled=false;ctx.putImageData(image,0,0);
+ const source=getCamoPreviewSource(id),tileSize=source.width,size=tileSize*repeats;
+ if(canvas.width!==size||canvas.height!==size)canvas.width=canvas.height=size;
+ const ctx=canvas.getContext('2d');if(!ctx)return;
+ ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,size,size);
+ for(let row=0;row<repeats;row++)for(let col=0;col<repeats;col++)
+  ctx.drawImage(source,col*tileSize,row*tileSize);
 }
 function applyHeadwearCamoChoice(id:HeadwearCamoId,selected:HeadwearCamoId|null,model:string){
- checkpointAppearance();camoRecents=[id,...camoRecents.filter(c=>c!==id)].slice(0,5);
- storeCamoBrowser();
+ checkpointAppearance();recordCamoRecent(id);syncCamoBrowserPreferences();
  wardrobeOptions={...wardrobeOptions,headwearCamo:id,
   headwearCamoRoll:selected===id?
    nextHeadwearCamoRoll(wardrobeOptions.headwearCamoRoll):0};
@@ -425,6 +416,7 @@ function renderHeadwearCamoComparison(model:string,selected:HeadwearCamoId|null)
  }
 }
 function renderHeadwearCamoSwatches(model:string){
+ syncCamoBrowserPreferences();
  const choices:readonly HeadwearCamoId[]=headwearCamoChoices(model).filter(id=>id!=='splittertarn-31');
  const compatible=new Set(choices);
  camoChooser.hidden=choices.length===0;camoGrid.replaceChildren();
@@ -455,7 +447,11 @@ function renderHeadwearCamoSwatches(model:string){
   camoRecentRow.append(button);
  }
  camoRecentRow.hidden=camoRecentRow.children.length===0;
+ let section='';
  for(const id of visible){
+  section=appendCamoSectionHeading(camoGrid,camoBrowseSection(id,{
+   state:{sort:'smart'},active:selected,reference:wardrobeOptions.fabricCamo?.top??null,
+   prefs:{favorites:[...camoFavorites],recents:camoRecents}}),section);
   const recipe=HEADWEAR_CAMO_RECIPES[id],canApply=compatible.has(id);
   const wrapper=document.createElement('div');wrapper.className='camo-card';
   const button=document.createElement('button');button.type='button';
@@ -475,8 +471,7 @@ function renderHeadwearCamoSwatches(model:string){
   favorite.setAttribute('aria-label',(camoFavorites.has(id)?'Unfavorite ':'Favorite ')+recipe.label);
   favorite.setAttribute('aria-pressed',String(camoFavorites.has(id)));
   favorite.addEventListener('click',()=>{
-   if(camoFavorites.has(id))camoFavorites.delete(id);else camoFavorites.add(id);
-   storeCamoBrowser();renderHeadwearCamoSwatches(model);
+   toggleCamoFavorite(id);renderHeadwearCamoSwatches(model);
   });
   wrapper.append(button,favorite);camoGrid.append(wrapper);
  }
