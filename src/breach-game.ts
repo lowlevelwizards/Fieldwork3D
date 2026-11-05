@@ -3995,8 +3995,14 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
           a.lastMoraleEventAt=Math.max(a.lastMoraleEventAt,fallen.lastDownAt);
         }
       }
+      // Nearby members of the same encounter group can steady resolve.
+      // Do not pay an extra ally scan every tick for calm defenders.
+      const peerSupport=(a.suppression>.25||a.morale<.65)?
+        enemies(s).filter(other=>other!==a&&other.health>0&&
+          other.encounterGroupId===a.encounterGroupId&&
+          d(other.p,a.p)<130).length:0;
       const resolve=moraleResponse(a.morale,a.suppression,
-        a.injuryStage,a.personality);
+        a.injuryStage,a.personality,{nearbyAllies:peerSupport});
       if(resolve==='withdraw'&&a.alert!=='retreat'){
         const threat=a.contact??a.heard??a.watch;
         if(threat){
