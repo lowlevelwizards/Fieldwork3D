@@ -11,7 +11,10 @@ export function groundView(x:number,y:number,heading:number):GroundView{
 export function groundViewCandidate(view:GroundView,x:number,y:number):boolean{
   const dx=x-view.x,dy=y-view.y,distSquared=dx*dx+dy*dy;
   if(distSquared>=RADIUS_SQUARED)return false;
-  if(distSquared===0)return true;
+  // atan2(0,0) historically points east; keep that rare exact-center
+  // behavior so the optimization never reveals a previously blind tile.
+  if(distSquared===0)return view.forwardX>0&&
+    view.forwardX*view.forwardX>MIN_DOT_SQUARED;
   const dot=dx*view.forwardX+dy*view.forwardY;
   return dot>0&&dot*dot>distSquared*MIN_DOT_SQUARED;
 }
