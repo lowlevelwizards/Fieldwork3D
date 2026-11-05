@@ -720,6 +720,15 @@ jobs:
             tests/awareness-communication.test.mjs \
             tests/awareness-integration.test.mjs \
             tests/mission-reactivity-r8b.test.mjs
+      - name: Enemy AI E3-A contextual routines critical checks
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-enemy-ai-e3-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/worldgen-encounter-routines-e3a.test.mjs \
+            tests/worldgen-encounter-routines.test.mjs \
+            tests/awareness-routine-dwell-e3a.test.mjs \
+            tests/worldgen-encounter-activities.test.mjs \
+            tests/worldgen-encounter-integration.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
