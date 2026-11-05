@@ -10,6 +10,7 @@ import {createD2Balaclava} from './operator-d2-fabric-visuals.ts';
 import {createD2FabricWrap} from './operator-d2-fabric-wraps.ts';
 import {createD2Glasses} from './operator-d2-eyewear-visuals.ts';
 import {createD2Goggles} from './operator-d2-goggle-visuals.ts';
+import {lensFacetMaterial} from './operator-d2-eyewear-shell.ts';
 import {createD2Mask} from './operator-d2-mask-visuals.ts';
 import {D2_FACE_SOLID_COLORS,D2_FRAME_COLORS,D2_LENS_MATERIALS,D2_MASK_COLORS,
  resolveD2HeadAssembly,type D2FaceSolid,type D2AccessoryOptions,type D2MaskSolid} from './operator-head-accessory-catalog.ts';
@@ -49,9 +50,10 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  const faceFabricDefaultHex=faceFabric.color.getHex();
  const eyewearFrame=new THREE.MeshStandardMaterial({color:0x24282b,
   roughness:.68,metalness:.03,flatShading:true});
- const eyewearLens=new THREE.MeshStandardMaterial({color:0xd9eceb,
-  opacity:.19,transparent:true,depthWrite:false,
-  roughness:.20,metalness:.02,side:THREE.DoubleSide});
+ const eyewearLens=new THREE.MeshStandardMaterial({
+  color:D2_LENS_MATERIALS.clear.hex,
+  opacity:D2_LENS_MATERIALS.clear.opacity,transparent:true,depthWrite:false,
+  roughness:.25,metalness:.05,side:THREE.DoubleSide});
  const eyewearStrap=new THREE.MeshStandardMaterial({color:0x323936,
   roughness:.90,flatShading:true});
  const maskRubber=new THREE.MeshStandardMaterial({color:0x23282a,
@@ -182,6 +184,10 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  layers.eyewearFrame.color.setHex(frame.hex);
  layers.eyewearLens.color.setHex(tint.hex);
  layers.eyewearLens.opacity=tint.opacity;
+ // Keep the one broad facet visually quieter on clear glass, and slightly
+ // more legible on dyed/mirrored lenses; shared across preview and in-game.
+ lensFacetMaterial(layers.eyewearLens).opacity=
+  (d2Eye?.eyeTint??'clear')==='clear'?.075:.115;
  const assembly=resolveD2HeadAssembly({facewear,eyewear,headwear,headset,
   options:d2Eye});
  // One-time construction on selection; preserve variant/placement controls.
