@@ -775,6 +775,9 @@ jobs:
             tests/equipment-19-06-quickplay-editor.test.mjs \
             tests/operator-wardrobe-quickplay-ui.test.mjs \
             tests/lw-roster.test.mjs
+      - name: Palette cohesion critical solid-ID and UI role tests
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/palette-cohesion-') }}
+        run: node --experimental-strip-types --test tests/palette-cohesion-critical.test.mjs
       - name: Enemy AI E5 sparse population mission safety
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-enemy-ai-e5-') }}
         run: |

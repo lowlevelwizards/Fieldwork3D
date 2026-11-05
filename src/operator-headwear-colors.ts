@@ -1,3 +1,4 @@
+import {OPERATOR_SOLID_FAMILIES} from './operator-solid-color-families.ts';
 /** Contextual headgear SOLID swatches (no universal operator color wheel).
  * One practical core color token can belong to several headwear families,
  * but each physical piece carries a deliberately restricted option list.
@@ -6,18 +7,18 @@
  */
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 export const HEADWEAR_SOLID_COLORS={
- black:{label:'Black',hex:0x292e2d},
- navy:{label:'Navy Blue',hex:0x354355},
- charcoal:{label:'Charcoal',hex:0x535958},
- 'olive-drab':{label:'Olive Drab',hex:0x686d4e},
- 'ranger-green':{label:'Ranger Green',hex:0x506354},
- 'foliage-green':{label:'Foliage Green',hex:0x909987},
- 'desert-tan':{label:'Desert Tan',hex:0xbda880},
- 'coyote-brown':{label:'Coyote Brown',hex:0x887054},
- 'urban-gray':{label:'Urban Gray',hex:0x7c8787},
- 'winter-white':{label:'Winter White',hex:0xd9d8c9},
- 'soviet-4bo':{label:'Soviet 4BO Green',hex:0x555e3e},
- 'postwar-green':{label:'Postwar Green',hex:0x80864f}
+ black:{label:'Black',hex:OPERATOR_SOLID_FAMILIES.black},
+ navy:{label:'Navy Blue',hex:OPERATOR_SOLID_FAMILIES.navy},
+ charcoal:{label:'Charcoal',hex:OPERATOR_SOLID_FAMILIES.charcoal},
+ 'olive-drab':{label:'Olive Drab',hex:OPERATOR_SOLID_FAMILIES['olive-drab']},
+ 'ranger-green':{label:'Ranger Green',hex:OPERATOR_SOLID_FAMILIES['ranger-green']},
+ 'foliage-green':{label:'Foliage Green',hex:OPERATOR_SOLID_FAMILIES.foliage},
+ 'desert-tan':{label:'Desert Tan',hex:OPERATOR_SOLID_FAMILIES.tan},
+ 'coyote-brown':{label:'Coyote Brown',hex:OPERATOR_SOLID_FAMILIES.coyote},
+ 'urban-gray':{label:'Urban Gray',hex:OPERATOR_SOLID_FAMILIES['urban-gray']},
+ 'winter-white':{label:'Winter White',hex:OPERATOR_SOLID_FAMILIES['winter-white']},
+ 'soviet-4bo':{label:'Soviet 4BO Green',hex:OPERATOR_SOLID_FAMILIES['soviet-4bo']},
+ 'postwar-green':{label:'Postwar Green',hex:OPERATOR_SOLID_FAMILIES['postwar-green']}
 } as const;
 export type HeadwearSolidColorId=keyof typeof HEADWEAR_SOLID_COLORS;
 export const HEADWEAR_ALLOWED_SOLIDS:Readonly<Record<HeadSilhouetteId,readonly HeadwearSolidColorId[]>>={
