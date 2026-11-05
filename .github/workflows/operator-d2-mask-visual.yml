@@ -7,6 +7,7 @@ on:
       - 'src/operator-d2-mask-geometry.ts'
       - 'src/operator-d2-mask-r10-geometry.ts'
       - 'src/operator-d2-mask-simple-geometry.ts'
+      - 'src/operator-d2-mask-r21-geometry.ts'
       - 'src/operator-d2-simple-mask-pilots.ts'
       - 'src/operator-d2-simple-mask-full.ts'
       - 'src/operator-d2-simple-mask-half.ts'

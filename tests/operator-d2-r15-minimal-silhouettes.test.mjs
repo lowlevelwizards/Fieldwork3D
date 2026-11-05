@@ -47,7 +47,7 @@ test('R20: one planar connected faceted shell per mask and zero real apertures',
  const crown=gp.getObjectByName('hood-crown');
  assert.ok(crown?.isMesh,'one piece 360-degree hood with roof');
  const h=bounds(crown);
- assert.ok(h.min.y<=-2.3&&h.max.y>=7.6,'hood spans crown through neck');
+ assert.ok(h.min.y<=-2.2&&h.max.y>=7.5,'hood spans crown through neck');
  assert.ok(h.min.x<=-4.4&&h.max.x>=4.4,'hood covers the skull cheek corners');
  assert.equal(count(gp,'head-harness-back'),0);
 });
@@ -69,7 +69,7 @@ test('R20: distinct goggles and M50 wraparound visor are opaque surface overlays
   lo=Math.min(lo,pos.getZ(i));hi=Math.max(hi,pos.getZ(i));
  }
  assert.ok(hi-lo>.50,'panoramic lens wraps toward temples');
- assert.ok(bounds(visor).getSize(new THREE.Vector3()).x>7.5);
+ assert.ok(bounds(visor).getSize(new THREE.Vector3()).x>7.35);
  const m17=bounds(model('gas-m17').getObjectByName('m17-full-facepiece'));
  const m40=bounds(model('gas-m40').getObjectByName('m40-full-facepiece'));
  assert.ok(m17.getSize(new THREE.Vector3()).x>

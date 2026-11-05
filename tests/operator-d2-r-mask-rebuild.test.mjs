@@ -57,5 +57,5 @@ test('D2-R16 fitted models have finite bounded positions and distinct filter dir
  const m50=createD2Mask('gas-m50',mats);
  const glass=m50.getObjectByName('m50-one-piece-panoramic-visor-lens');
  assert.ok(glass.geometry instanceof THREE.BufferGeometry);
- assert.equal(glass.geometry.getAttribute('position').count,18);
+ assert.equal(glass.geometry.getAttribute('position').count,42);
 });
