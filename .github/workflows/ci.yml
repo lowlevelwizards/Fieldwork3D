@@ -766,6 +766,17 @@ jobs:
             tests/worldgen-encounter-missions.test.mjs \
             tests/worldgen-encounter-integration.test.mjs \
             tests/tactical-mission-quality-operations.test.mjs
+      - name: Living civilians B1–B2 critical integrity checks
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-e5b-civilians-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/civilian-b1-schema.test.mjs \
+            tests/civilian-b2-placement.test.mjs \
+            tests/worldgen-encounter-sparse-e5a.test.mjs \
+            tests/worldgen-encounter-population-contract-e5a.test.mjs \
+            tests/worldgen-encounter-safety.test.mjs \
+            tests/worldgen-encounter-missions.test.mjs \
+            tests/mission-reactivity-r8b.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
