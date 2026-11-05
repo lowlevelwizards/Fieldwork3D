@@ -484,6 +484,10 @@ jobs:
             tests/dnav-r4-capture-recovery.test.mjs \
             tests/dnav-r5-contact-staging.test.mjs \
             tests/dnav-r6-movement-quality.test.mjs \
+            tests/dnav-r7-squad-intelligence.test.mjs \
+            tests/doorway-right-of-way-session.test.mjs \
+            tests/tactical-integration-11-traffic-autonomy.test.mjs \
+            tests/physicality-friendly-traffic.test.mjs \
             tests/physicality-door-aware-routing.test.mjs \
             tests/physicality-08-door-contact.test.mjs \
             tests/physicality-09-recovery.test.mjs \
