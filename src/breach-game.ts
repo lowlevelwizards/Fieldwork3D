@@ -79,6 +79,7 @@ import {canSecureRescuePerson,rescueEscortSeparated,rescueFollowGoal}
   from './breach-civilian-mission.ts';
 import {firstCivilianAlongRay,applyCivilianBulletHit}
   from './breach-civilian-ballistics.ts';
+import {knownCivilianInFireLane} from './breach-civilian-fire-safety.ts';
 import {recordCivilianHarm,attributableCivilianHarm,
   type CivilianHarmEvent} from './breach-civilian-harm.ts';
 import {retreatDoorClosureEligible} from './breach-ai-door-response.ts';
@@ -2457,6 +2458,8 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       if(!person||person.health<=0||
          d(a.p,person.p)>32||
          !sweptBodyClear(a.p,person.p,s.doors,5.5)||
+         (person.rescueTarget&&!canSecureRescuePerson(person,a,
+           (from,to)=>sweptBodyClear(from,to,s.doors,5.5)))||
          !liveVisibility(s,person.p)){
         failCurrentOrder(s,a,n,'CIVILIAN NOT IN PHYSICAL REACH');return;
       }
@@ -3452,6 +3455,24 @@ function shatterStruckWindows(s:Session,paneHits:readonly number[],force:number)
     {x:window.x,y:window.y},'GLASS SHATTERED');
  }
 }
+/** A known civilian can veto a shot without becoming a hidden contact.
+ * Physical impacts are still tested against every real neutral after firing. */
+function observedCivilianFireLane(s:Session,a:TeamActor,from:Pt,
+ muzzleHeight:number,to:Pt,targetHeight:number):CivilianActor|null{
+ if(a.side!=='blue'||!s.civilians.length)return null;
+ const observed=s.civilians.filter(c=>c.health>0&&
+   d(a.p,c.p)<260&&
+   Math.abs(angleDifference(a.heading,angle(a.p,c.p)))<1.2&&
+   liveVisibility(s,c.p)&&unobstructed(a.p,c.p,s,false));
+ return knownCivilianInFireLane(from,muzzleHeight,to,targetHeight,observed);
+}
+function civilianShotWithheld(s:Session,a:TeamActor):void{
+ a.lastFireBlock='friendly';
+ if(s.seconds-a.lastLaneWarnAt>2){
+   notify(s,a.name+' CIVILIAN IN FIRE LANE — SHOT WITHHELD');
+   a.lastLaneWarnAt=s.seconds;
+ }
+}
 /** Suppression is an authored area instruction: deliberate misses consume
  * real ammunition and can unsettle defenders, but never inflict an
  * omniscient hit on an unseen actor. */
@@ -3478,12 +3499,10 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   const yaw=muzzle.yaw;
   const from={x:muzzle.x,y:muzzle.z};
   const far=muzzleEndpoint(from,yaw,Math.max(40,d(from,point)));
-  const friends=[
-    ...team(s).filter(o=>o!==a&&o.health>0).map(o=>o.p),
-    ...s.civilians.filter(c=>c.health>0&&d(a.p,c.p)<200&&
-      Math.abs(angleDifference(a.heading,angle(a.p,c.p)))<.9&&
-      unobstructed(a.p,c.p,s,false)).map(c=>c.p)
-  ];
+  const friends=team(s).filter(o=>o!==a&&o.health>0).map(o=>o.p);
+  if(observedCivilianFireLane(s,a,from,muzzle.y,far,14)){
+    civilianShotWithheld(s,a);return;
+  }
   if(assessFireLane(from,muzzle.y,far,14,COVER,WALLS,s.doors,
     friends).blocker==='friendly')return;
   const impact=strikeSurface(from,far,s,muzzle.y,14,
@@ -3607,6 +3626,10 @@ function fire(s:Session,a:TeamActor,dt:number){
   // Legacy FOCUS saves use ordinary acquisition rather than an
   // inaccessible exclusive lock after FOCUS is removed from the interface.
   const target=selectFireableContact(a.p,visible,a.targetId,candidate=>{
+    if(observedCivilianFireLane(s,a,a.p,a.posture==='crouch'?18:26,
+       candidate.p,aimHeight(candidate.posture==='crouch'))){
+      civilianShotWithheld(s,a);return false;
+    }
     const friends=s.operators.filter(other=>other!==a&&other.health>0&&
       other.side===a.side).map(other=>other.p);
     const lane=assessFireLane(a.p,a.posture==='crouch'?18:26,
@@ -3662,13 +3685,13 @@ function fire(s:Session,a:TeamActor,dt:number){
     return;
   }
   const sightMuzzle=sightClearance.muzzle;
-  const friends=[
-    ...s.operators.filter(o=>o!==a&&o.health>0&&
-      o.side===a.side).map(o=>o.p),
-    ...s.civilians.filter(c=>c.health>0&&d(a.p,c.p)<200&&
-      Math.abs(angleDifference(a.heading,angle(a.p,c.p)))<.9&&
-      unobstructed(a.p,c.p,s,false)).map(c=>c.p)
-  ];
+  const friends=s.operators.filter(o=>o!==a&&o.health>0&&
+    o.side===a.side).map(o=>o.p);
+  if(observedCivilianFireLane(s,a,
+     {x:sightMuzzle.x,y:sightMuzzle.z},sightMuzzle.y,
+     target.p,aimHeight(target.posture==='crouch'))){
+    civilianShotWithheld(s,a);return;
+  }
   const lane=assessFireLane({x:sightMuzzle.x,y:sightMuzzle.z},
     sightMuzzle.y,target.p,aimHeight(target.posture==='crouch'),
     COVER,WALLS,s.doors,friends);
@@ -3707,6 +3730,10 @@ function fire(s:Session,a:TeamActor,dt:number){
   // Spread may put another teammate in the actual bullet corridor.
   const shotTarget=muzzleEndpoint(muzzlePoint,yaw,
     Math.max(1,d(muzzlePoint,target.p)));
+  if(observedCivilianFireLane(s,a,muzzlePoint,muzzle.y,
+     shotTarget,aimHeight(target.posture==='crouch'))){
+    civilianShotWithheld(s,a);return;
+  }
   const shotLane=assessFireLane(muzzlePoint,muzzle.y,
     shotTarget,aimHeight(target.posture==='crouch'),
     COVER,WALLS,s.doors,friends);
@@ -3918,19 +3945,13 @@ function mission(s:Session,dt:number){
     let escort=team(s).find(a=>a.id===prior&&a.health>0)??null;
     if(prior&&rescueEscortSeparated(rescuePerson,escort)){
       s.rescue.following=null;rescuePerson.following=null;
-      rescuePerson.goal=null;rescuePerson.state='frozen';
+      rescuePerson.goal=null;rescuePerson.nav=[];
+      setCivilianState(rescuePerson,'frozen',s.seconds);
       escort=null;notify(s,'ESCORT SEPARATED — RETURN TO PERSON');
     }
-    if(!s.rescue.following){
-      escort=team(s).find(a=>canSecureRescuePerson(rescuePerson,a,
-        (from,to)=>sweptBodyClear(from,to,s.doors,5.5)))??null;
-      if(escort){
-        s.rescue.following=escort.id;
-        rescuePerson.following=escort.id;
-        rescuePerson.state='escorted';rescuePerson.stateSince=s.seconds;
-        notify(s,'PERSON JOINED '+escort.name);
-      }
-    }
+    // A real neutral requires an authored FOLLOW order. Nearness alone
+    // never re-attaches a separated escort. The legacy marker path
+    // below keeps its original auto-join for older missions.
     if(escort&&s.rescue.following===escort.id&&
        s.seconds-rescuePerson.lastEscortRouteAt>=.55){
       // Plan from actual civilian location to just behind the real escort.
@@ -3990,7 +4011,9 @@ function mission(s:Session,dt:number){
     near(a.p,objectivePoint,36)&&
     sweptBodyClear(a.p,objectivePoint,s.doors,4));
   const objectiveReached=atObjective.length>0;
-  if(s.mission==='secure'&&objectiveReached){
+  if(s.mission==='secure'&&objectiveReached&&
+     (s.missionType!=='rescue'||!rescuePerson||
+      rescuePerson.state==='compliant')){
     if(s.missionType==='hold'){
       // A contested position is not secured merely by standing on its
       // marker. Nearby active defenders arrest the actual hold clock.
@@ -4019,13 +4042,17 @@ function mission(s:Session,dt:number){
     }
     s.mission='extract';
     if(s.rescue){
-      const escort=atObjective.sort((a,b)=>
-        d(a.p,s.rescue!.p)-d(b.p,s.rescue!.p))[0];
-      s.rescue={...s.rescue,following:escort?.id??null,
-        trail:escort?[clone(s.rescue.p),clone(escort.p)]:[]};
-      if(rescuePerson&&escort){
-        rescuePerson.following=escort.id;
-        rescuePerson.state='escorted';rescuePerson.stateSince=s.seconds;
+      if(rescuePerson){
+        // SECURE reveals a real person; only a queued FOLLOW command
+        // grants their cooperation for the extraction.
+        s.rescue={...s.rescue,p:clone(rescuePerson.p),
+          following:null,trail:[]};
+        rescuePerson.following=null;
+      }else{
+        const escort=atObjective.sort((a,b)=>
+          d(a.p,s.rescue!.p)-d(b.p,s.rescue!.p))[0];
+        s.rescue={...s.rescue,following:escort?.id??null,
+          trail:escort?[clone(s.rescue.p),clone(escort.p)]:[]};
       }
     }
     const verb=s.missionType==='rescue'?'PERSON FOUND':

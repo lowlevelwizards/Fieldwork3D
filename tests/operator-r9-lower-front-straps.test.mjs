@@ -33,7 +33,7 @@ test('R9 both lower front corner straps reach authored panel anchors across armo
       assert.ok(Math.abs(y-anchor[1])<1e-5,'endpoint on actual vertical panel');
       assert.ok(Math.abs(Math.abs(z)-anchor[2])<1e-5,
        'strap enters authored right/left pane');
-      if(rig!=='field-webbing'&&rig!=='belt-harness')
+      if(!['field-webbing','alice-lc2','belt-harness'].includes(rig))
        assert.ok(x>=anchor[0]+.18,'strap penetrates backing to eliminate air gap');
       assert.ok(Math.abs(Math.sign(z))===1,'strap uses a signed lateral end');
       const uv=o.geometry.getAttribute('uv');

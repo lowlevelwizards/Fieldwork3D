@@ -21,8 +21,8 @@ const armors=WARDROBE_ITEMS.filter(x=>x.slot==='armorStyle'&&x.id!=='armor-bare'
 const outfit=(rig,armor)=>({rigStyle:rig,armorStyle:armor,
  top:'bdu-shirt',trousers:'bdu-trousers',packStyle:'no-pack'});
 
-test('R7 all ten rigs and seven wearable armor cuts define known unique defaults',()=>{
- assert.equal(rigs.length,10);assert.equal(armors.length,8);
+test('R7 all eleven rigs and eight wearable armor cuts define known unique defaults',()=>{
+ assert.equal(rigs.length,11);assert.equal(armors.length,8);
  for(const rig of rigs){
   const policy=RIG_VISUAL_TEXTILES[rig];
   assert.ok(policy,'missing policy: '+rig);
@@ -44,7 +44,7 @@ test('R7 all ten rigs and seven wearable armor cuts define known unique defaults
  assert.equal(RIG_VISUAL_TEXTILES['chicom-rig'].prints.length,0);
  assert.equal(RIG_VISUAL_TEXTILES['sadf-webbing'].prints.length,0);
 });
-test('R7 camouflage choices check 10 rig x 8 armor vs all approved patterns',()=>{
+test('R7 camouflage choices check every rig x every armor vs all approved patterns',()=>{
  for(const rig of rigs)
   for(const armor of armors){
    const o=outfit(rig,armor);

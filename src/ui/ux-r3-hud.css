@@ -1,0 +1,35 @@
+/* UX R3 / 07 — the map and decisions outrank routine card telemetry.
+ * Keep each operator selectable, injury gauge and ammunition readable.
+ * Fourth row appears only for a meaningful motor/order state. */
+.bar .unit{grid-template-rows:14px 5px 12px!important;row-gap:3px;
+  min-height:46px!important;padding-block:6px!important;
+  transition:min-height var(--fw-fast) ease,border-color var(--fw-fast) ease}
+.bar .unit[data-execution-visible="true"]{
+  grid-template-rows:14px 5px 12px 11px!important;min-height:57px!important}
+.bar .unit .unit-execution[hidden]{display:none!important}
+.bar .unit .unit-execution{grid-column:1!important;grid-row:4!important;
+  align-self:center;font:700 10px/11px var(--fw-font-display);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  padding:0 1px;letter-spacing:.02em}
+.bar .unit .unit-execution[data-priority="attention"]{
+  color:var(--fw-brass);font-weight:800}
+.bar .unit .unit-execution[data-kind="blocked"]{
+  color:var(--fw-warning)}
+.bar .unit .unit-execution[data-progress="true"]:after{height:2px}
+.bar .unit strong{line-height:14px!important}
+.bar .unit em{line-height:12px!important}
+.bar .unit:focus-visible,.quick-states button:focus-visible,
+.bar #play:focus-visible{outline:2px solid var(--fw-focus);outline-offset:1px}
+@media(max-width:650px){
+ .bar .unit{min-height:46px!important}
+ .bar .unit[data-execution-visible="true"]{min-height:55px!important}
+ .bar .unit .unit-execution{font-size:9px;line-height:11px}
+}
+@media(max-height:580px){
+ .bar .unit{min-height:42px!important;padding-block:3px!important}
+ .bar .unit[data-execution-visible="true"]{min-height:48px!important}
+ .bar .unit .unit-execution{font-size:9px}
+}
+@media(prefers-reduced-motion:reduce){
+ .bar .unit{transition:none}
+}

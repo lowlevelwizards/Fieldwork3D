@@ -8,7 +8,9 @@ const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function stepCivilianMovement(c:CivilianActor,now:number,dt:number,
   clear:(from:Pt,to:Pt)=>boolean,occupied:(p:Pt,id:string)=>boolean):void{
  c.priorP={...c.p};
- if(civilianCondition(c)!=='healthy'||c.state==='frozen'||
+ if(c.health<=0||
+    (civilianCondition(c)==='injured'&&c.state!=='escorted')||
+    c.state==='frozen'||
     c.state==='compliant'||c.state==='wounded'||c.state==='attentive'||
     c.state==='startled'||(c.state==='hiding'&&!c.goal)){
    c.velocity=0;return;
@@ -28,7 +30,11 @@ export function stepCivilianMovement(c:CivilianActor,now:number,dt:number,
  }
  if(!goal){c.velocity=0;return;}
  const remaining=dist(c.p,goal);
- if(remaining<9){
+ // Advance no farther than one physical tick even near route nodes.
+ const speed=c.state==='fleeing'?66:
+   c.state==='escorted'?(civilianCondition(c)==='injured'?22:43):
+   c.state==='hiding'?37:29;
+ if(remaining<9&&remaining<=Math.max(0,dt)*speed){
   // A route node never teleports the actor across a last closed door.
   if(!clear(c.p,goal)||occupied(goal,c.id)){
    c.velocity=0;c.blockedTime+=dt;return;
@@ -44,8 +50,6 @@ export function stepCivilianMovement(c:CivilianActor,now:number,dt:number,
   }else if(c.state==='hiding')c.dwellUntil=now+3;
   return;
  }
- const speed=c.state==='fleeing'?66:
-   c.state==='escorted'?43:c.state==='hiding'?37:29;
  const step=Math.min(Math.max(0,dt)*speed,remaining);
  if(step<.0001){c.velocity=0;return;}
  const candidate={x:c.p.x+(goal.x-c.p.x)*step/remaining,

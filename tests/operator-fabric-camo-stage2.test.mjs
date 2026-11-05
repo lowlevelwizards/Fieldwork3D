@@ -128,12 +128,14 @@ test('actual operator renders cloth/armor/gear/pack in selected authored maps, n
  assert.ok(rig.clothMaterial.map?.name.includes('m81-woodland'));
  rig.dispose();
 });
-test('Lab and Campaign retain pickers; Quick Play can open canonical Studio',()=>{
- for(const [name,path] of [
-  ['Lab','../src/breach-operator-lab.ts'],['Campaign','../src/campaign-ui.ts']]){
-  const source=readFileSync(new URL(path,import.meta.url),'utf8');
-  assert.match(source,name==='Quick Play'?/createWardrobeFabricCamoPicker|openOperatorStudio/:/createWardrobeFabricCamoPicker/,name);
- }
+test('Lab keeps its picker, Campaign and Quick Play open the canonical Studio',()=>{
+ const lab=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
+ assert.match(lab,/createWardrobeFabricCamoPicker/,'Lab keeps the direct material picker');
+ const campaign=readFileSync(new URL('../src/campaign-ui.ts',import.meta.url),'utf8');
+ assert.match(campaign,/this\.handlers\.openStudio\((?:p\.id|id)\)/,
+  'Campaign appearance actions must launch the canonical Studio');
+ assert.match(campaign,/APPEARANCE · OPEN STUDIO/,
+  'Campaign exposes a visible appearance editor control');
  const quick=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
  const studio=readFileSync(new URL('../src/operator-studio.ts',import.meta.url),'utf8');
  assert.match(quick,/openOperatorStudio\((?:member\.id|selected),'quick'\)/);

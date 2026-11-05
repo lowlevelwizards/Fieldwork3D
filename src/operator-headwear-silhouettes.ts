@@ -13,7 +13,7 @@ import * as THREE from 'three';
 import {unionCuboids,type HeadwearCuboid} from './operator-cuboid-union.ts';
 import {CUBE_HEAD_ANATOMY} from './operator-head-anatomy.ts';
 import {headwearFaceTone,headwearFaceRegion} from './operator-headwear-materials.ts';
-export type HeadSilhouetteId='patrol-cap'|'boonie'|'beanie'|'beret'|'pasgt'|'soviet-steel'|'ach'|'high-cut';
+export type HeadSilhouetteId='patrol-cap'|'boonie'|'beanie'|'beret'|'pasgt'|'soviet-steel'|'m1-steel'|'ach'|'high-cut';
 export type HeadSilhouetteMetrics={
  id:HeadSilhouetteId;frontExtent:number;rearExtent:number;top:number;
  earEdge:number;foreheadEdge:number;billLength:number;
@@ -26,6 +26,8 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
   top:8.255,earEdge:4.54,foreheadEdge:4.54,billLength:0},
  'beanie':{id:'beanie',frontExtent:-5.00,rearExtent:5.00,
   top:8.65,earEdge:3.745,foreheadEdge:3.745,billLength:0},
+ 'm1-steel':{id:'m1-steel',frontExtent:-6.37,rearExtent:6.37,
+  top:8.75,earEdge:4.40,foreheadEdge:4.40,billLength:0},
  'pasgt':{id:'pasgt',frontExtent:-6.34,rearExtent:5.68,
   top:8.78,earEdge:1.71,foreheadEdge:4.055,billLength:0},
  'soviet-steel':{id:'soviet-steel',frontExtent:-5.53,rearExtent:5.53,
@@ -185,6 +187,30 @@ const PASGT_CUBOIDS:readonly HeadwearCuboid[]=[
  * PURPOSEFUL coverage steps, not the former fractional corner artifacts.
  * Reference: original SSh-40 side/front/rear shell photographs.
  */
+/** R5D M1: distinct US double-shell profile. A high broad bowl and one
+ * strong projecting rim, leaving the operator's lower face fully open.
+ * This is never a scaled SSh-40 or a modern PASGT shell.
+ */
+const M1_CUBOIDS:readonly HeadwearCuboid[]=[
+ {name:'m1-integrated-high-dome',x:0,y:7.86,z:0,
+  width:9.80,height:1.77,depth:10.65},
+ {name:'m1-front-bowl',x:0,y:6.17,z:-4.83,
+  width:10.94,height:2.92,depth:1.30},
+ {name:'m1-rear-bowl',x:0,y:6.17,z:4.83,
+  width:10.94,height:2.92,depth:1.30},
+ ...([-1,1] as const).map(sign=>({
+  name:sign<0?'m1-left-bowl':'m1-right-bowl',
+  x:sign*4.85,y:6.17,z:0,width:1.25,height:2.92,depth:10.96
+ })),
+ {name:'m1-front-rolled-rim',x:0,y:4.78,z:-5.44,
+  width:11.80,height:.76,depth:1.85},
+ {name:'m1-rear-rolled-rim',x:0,y:4.78,z:5.44,
+  width:11.80,height:.76,depth:1.85},
+ ...([-1,1] as const).map(sign=>({
+  name:sign<0?'m1-left-rolled-rim':'m1-right-rolled-rim',
+  x:sign*5.44,y:4.78,z:0,width:1.20,height:.76,depth:12.20
+ }))
+];
 const STEEL_CUBOIDS:readonly HeadwearCuboid[]=[
  {name:'ssh40-main-dome',x:0,y:7.73,z:0,
   width:9.15,height:1.75,depth:9.25},
@@ -278,6 +304,7 @@ const HEADGEAR_VOLUMES:Readonly<Record<HeadSilhouetteId,readonly HeadwearCuboid[
  'beanie':BEANIE_CUBOIDS,
  'pasgt':PASGT_CUBOIDS,
  'soviet-steel':STEEL_CUBOIDS,
+ 'm1-steel':M1_CUBOIDS,
  'ach':ACH_CUBOIDS,
  'high-cut':HIGH_CUT_CUBOIDS
 };
@@ -308,7 +335,7 @@ export function createHeadwearSilhouette(
  headwearFromVolumes(group,material,id);
  group.userData.stage=({
   'patrol-cap':'1N','boonie':'1N','beanie':'1N','beret':'R5C',
-  'pasgt':'1N','soviet-steel':'1N',
+  'pasgt':'1N','soviet-steel':'1N','m1-steel':'R5D',
   'ach':'1E','high-cut':'1E'
  } as const)[id];
  group.userData.modelAxes='-Z-forward,+X-right,+Y-up';

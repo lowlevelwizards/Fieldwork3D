@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'src/breach-main.ts'
+      - 'src/campaign-ui.ts'
+      - 'scripts/smoke-ux-r3-campaign.mjs'
       - 'src/ui/tactical-sheet-navigation.ts'
       - 'src/ui/quick-loadout-groups.ts'
       - 'src/ui/ux-r1-sheets.css'
@@ -17,7 +19,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   mobile-navigation:
-    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'feature/ux-r1-navigation-squad-mission-') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'feature/ux-r1-navigation-squad-mission-') || startsWith(github.head_ref, 'feature/ux-r3-hud-campaign-polish-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
@@ -30,3 +32,6 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Phone Mission, Squad and Studio handoff
         run: node scripts/smoke-ux-r1.mjs
+      - name: UX R3 Campaign roster, kit and Studio handoff
+        if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'feature/ux-r3-hud-campaign-polish-') }}
+        run: node scripts/smoke-ux-r3-campaign.mjs
