@@ -69,8 +69,8 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   roughness:.74,flatShading:true});
  const maskFilters=new THREE.MeshStandardMaterial({color:0x52574e,
   roughness:.84,flatShading:true});
- const maskLens=new THREE.MeshStandardMaterial({color:0x344247,
-  transparent:true,opacity:.88,depthWrite:false,roughness:.16,
+ const maskLens=new THREE.MeshStandardMaterial({color:0x465958,
+  transparent:true,opacity:.83,depthWrite:false,roughness:.24,
   side:THREE.DoubleSide});
  const maskMaterials={rubber:maskRubber,hardware:maskHardware,
   filters:maskFilters,lens:maskLens};

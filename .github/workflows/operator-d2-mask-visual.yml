@@ -1,0 +1,32 @@
+name: D2 Masks — Mobile silhouette review
+on:
+  pull_request:
+    paths:
+      - 'src/operator-d2-mask-visuals.ts'
+      - 'src/operator-d2-mask-rebuilds.ts'
+      - 'src/operator-d2-mask-geometry.ts'
+      - 'scripts/capture-operator-d2-masks.mjs'
+      - '.github/workflows/operator-d2-mask-visual.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mask-visual:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: WebGL front-side-back and thumbnail contact captures
+        run: node scripts/capture-operator-d2-masks.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d2-mask-orthographic-captures
+          path: operator-d2-mask-review/
+          if-no-files-found: ignore
