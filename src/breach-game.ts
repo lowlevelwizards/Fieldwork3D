@@ -127,7 +127,8 @@ import {stabilizationSummary} from './breach-casualty-status.ts';
 import {casualtyTrailingPosition,transportIsClear,type TransportMode}
  from './breach-casualty-transport.ts';
 import {civilianTransportEligible,takeCivilianCustody,dropCivilianCustody,
- proposedCivilianTransportStep} from './breach-civilian-transport.ts';
+ proposedCivilianTransportStep,reconcileCivilianTransportFrame}
+ from './breach-civilian-transport.ts';
 import {changeWeaponPlatform,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {weaponHandlingModifiers,sightAcquisitionScale,sightSpreadScale}
  from './equipment-weapon-handling.ts';
@@ -2434,8 +2435,8 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     if(near(a.p,n.p,8)){
       // Keep valid custody until the objective can acknowledge extraction.
       if(civil?.rescueTarget&&s.mission==='extract'&&
-         near(a.p,s.scenario.extract,37)&&
-         near(civil.p,s.scenario.extract,37)){
+         near(a.p,s.scenario.extract,37)){
+        // Keep custody until the physically trailing body enters extraction.
         a.velocity=0;return;
       }
       if(civil)dropCivilianCustody(civil,a);
@@ -4385,7 +4386,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     ];
     const next=proposedCivilianTransportStep(bodyFrom,from,carrier.p,
       carrier.heading,civil.transportMode??carrier.plan[0]?.transportMode??'drag',
-      (from,to)=>sweptBodyClear(from,to,s.doors),others);
+      (from,to)=>sweptBodyClear(from,to,s.doors),others,h*36);
     if(!next){
       carrier.p=clone(from);carrier.velocity=0;carrier.nav=[];
       civil.p=clone(bodyFrom);civil.velocity=0;
@@ -4431,6 +4432,10 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
       a.squeeze?sweptProfileClear(p.from,p.to,s.doors,
         a.squeezeYaw,'squeeze'):sweptBodyClear(p.from,p.to,s.doors);
   });
+  reconcileCivilianTransportFrame(proposals,decisions,
+    s.civilians.filter(c=>!!c.carriedById).map(c=>({
+      carrierId:c.carriedById!,bodyId:c.id
+    })));
   for(const decision of decisions){
     if(!decision.blocked)continue;
     const civil=s.civilians.find(unit=>unit.id===decision.id);
