@@ -25,7 +25,7 @@ const add=(root:THREE.Group,slot:FamilyPartSlot,id:string,shapes:readonly Block[
  steel:THREE.Material,dark:THREE.Material)=>{
  shapes.forEach((shape,i)=>partBox(root,slot,id,i,shape,steel,dark));
 };
-const wood=(id:string)=>/wood|triangle|classic/.test(id)?2:1;
+const wood=(id:string):Finish=>/wood/.test(id)?2:1;
 const receiverShapes=(build:WeaponFamilyBuild):Block[]=>{
  const id=build.parts.receiver;
  if(build.family==='ar'){
