@@ -37,6 +37,10 @@ import {headwearCamoChoices,headwearCamoPixels,headwearCamoSize,
  HEADWEAR_CAMO_RECIPES,
  nextHeadwearCamoRoll,type HeadwearCamoId} from './operator-headwear-camo.ts';
 import {topColorwayChoices,resolvedTopColorway} from './operator-upper-colorways.ts';
+import {browseCamos,sortGarmentSolids,sortHeadwearSolids,
+ readCamoBrowserPrefs,recordCamoRecent} from './operator-material-browser.ts';
+import {createCamoBrowseControls,createCamoFavoriteButton}
+ from './operator-material-browser-ui.ts';
 import {STUDIO_PRESET_STORAGE_KEY,STUDIO_PRESET_LIMIT,
  readStudioPresets,saveStudioPreset,deleteStudioPreset,
  serializeStudioPresets,outfitPresetForKit,
@@ -301,7 +305,7 @@ function makeButton(text:string,active:boolean,action:()=>void){
 function addSolidSwatches(target:HTMLElement,values:readonly GarmentSolidId[],
  active:GarmentSolidId|null,choose:(id:GarmentSolidId)=>void){
  const grid=document.createElement('div');grid.className='solid-swatches';
- for(const id of values){
+ for(const id of sortGarmentSolids(values)){
   const info=GARMENT_SOLID_COLORS[id];
   const b=makeButton(info.label,active===id,()=>choose(id));
   b.className='swatch';b.title=info.label;
@@ -312,30 +316,46 @@ function addSolidSwatches(target:HTMLElement,values:readonly GarmentSolidId[],
  target.append(grid);
 }
 function addCamoSwatches(target:HTMLElement,ids:readonly HeadwearCamoId[],
- active:HeadwearCamoId|null,choose:(id:HeadwearCamoId)=>void){
- const search=document.createElement('input');search.type='search';
- search.placeholder='Search compatible patterns';
- search.setAttribute('aria-label','Search camouflage patterns');target.append(search);
+ active:HeadwearCamoId|null,choose:(id:HeadwearCamoId)=>void,
+ context:string,reference?:HeadwearCamoId|null){
  const grid=document.createElement('div');grid.className='camo-swatches';
+ const cards=new Map<HeadwearCamoId,HTMLDivElement>();
+ const state=createCamoBrowseControls(target,'studio:'+context,()=>paint());
  target.append(grid);
  const paint=()=>{
   grid.replaceChildren();
-  const q=search.value.trim().toLowerCase();
-  for(const id of ids){
-   if(q&&!((HEADWEAR_CAMO_RECIPES[id].label+' '+id).toLowerCase().includes(q)))continue;
-   const b=makeButton(HEADWEAR_CAMO_RECIPES[id].label,active===id,()=>choose(id));
-   b.className='swatch';
-   const canvas=document.createElement('canvas'),size=headwearCamoSize(id);
-   canvas.width=canvas.height=size;
-   const ctx=canvas.getContext('2d');
-   if(ctx){const image=ctx.createImageData(size,size);
-    image.data.set(headwearCamoPixels(id));ctx.putImageData(image,0,0);}
-   b.prepend(canvas);grid.append(b);
+  const prefs=readCamoBrowserPrefs();
+  for(const id of browseCamos(ids,{state,active,reference,prefs})){
+   let wrap=cards.get(id);
+   if(!wrap){
+    wrap=document.createElement('div');wrap.className='fw-camo-choice-wrap';
+    const b=makeButton(HEADWEAR_CAMO_RECIPES[id].label,active===id,()=>{
+     recordCamoRecent(id);choose(id);
+    });
+    b.className='swatch';
+    const canvas=document.createElement('canvas'),size=headwearCamoSize(id);
+    canvas.width=canvas.height=size;
+    const ctx=canvas.getContext('2d');
+    if(ctx){const image=ctx.createImageData(size,size);
+     image.data.set(headwearCamoPixels(id));ctx.putImageData(image,0,0);}
+    b.prepend(canvas);
+    wrap.append(b,createCamoFavoriteButton(id,prefs.favorites.includes(id),
+     ()=>paint(),readOnly||comparingSaved||saveInFlight));
+    cards.set(id,wrap);
+   }
+   const star=wrap.querySelector<HTMLButtonElement>('.fw-material-favorite');
+   if(star){
+    const favored=prefs.favorites.includes(id);
+    star.textContent=favored?'★':'☆';
+    star.setAttribute('aria-pressed',String(favored));
+    star.setAttribute('aria-label',favored?'Remove favorite':'Add favorite');
+   }
+   grid.append(wrap);
   }
   if(!grid.children.length){const small=document.createElement('small');
-   small.textContent='No compatible print matches';grid.append(small);}
+   small.textContent='No compatible print matches these filters';grid.append(small);}
  };
- search.addEventListener('input',paint);paint();
+ paint();
 }
 function renderCuff(host:HTMLElement){
  const w=current(),printed=w.fabricCamo?.top;
@@ -578,7 +598,8 @@ function renderMaterials(){
   group.append(tabs);
   if(pattern&&choices.length){
    addCamoSwatches(group,choices,pattern,id=>
-    changeWardrobe(setWardrobeFabricCamo(current(),channel,id,outfit)));
+    changeWardrobe(setWardrobeFabricCamo(current(),channel,id,outfit)),
+    channel,w.fabricCamo?.top??null);
    const actions=document.createElement('div');actions.className='material-row';
    actions.append(makeButton('↻ REROLL PATTERN',false,()=>
     changeWardrobe(rerollWardrobeFabricCamo(current(),channel,outfit))));
@@ -620,7 +641,7 @@ function renderMaterials(){
   const group=row('HEADGEAR FINISH','Select an appropriate solid shell/fabric or approved cover print.');
   if(solids.length){
    const grid=document.createElement('div');grid.className='solid-swatches';
-   for(const id of solids){
+   for(const id of sortHeadwearSolids(solids,w.headwearColor)){
     const info=HEADWEAR_SOLID_COLORS[id];
     const b=makeButton(info.label,!w.headwearCamo&&
      (w.headwearColor??solids[0])===id,()=>changeWardrobe({
@@ -635,7 +656,8 @@ function renderMaterials(){
    const printRow=row('COMPATIBLE HEADGEAR PRINTS');
    addCamoSwatches(printRow,prints,w.headwearCamo??null,id=>
     changeWardrobe({...current(),headwearCamo:id,headwearCamoRoll:
-      w.headwearCamo===id?nextHeadwearCamoRoll(w.headwearCamoRoll):0}));
+      w.headwearCamo===id?nextHeadwearCamoRoll(w.headwearCamoRoll):0}),
+    'headwear',w.fabricCamo?.top??null);
   }
  }
  if(activeCategory==='rigStyle'&&item!=='no-rig'&&
