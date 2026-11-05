@@ -288,7 +288,7 @@ export const FACTION_REFERENCES:readonly FactionReference[]=[
  kit:{armor:'armor-none'},styles:{armorStyle:'armor-bare',headwear:'patrol-cap'},weaponFamily:'M16 / AK',
  gaps:[patch,weapon('ar-family','M16-family rifle'),gap('red-beret','Distinctive red beret','defining')],
  sourceNotes:'Representative historical camouflaged outfit; the red beret is a major missing identifying item.'},
- {id:'sandu-s2000-2015',name:'South African SANDF · Soldier 2000',country:'South Africa',
+ {id:'sandf-s2000-2015',name:'South African SANDF · Soldier 2000',country:'South Africa',
  organization:'military',environment:'mixed',era:{start:1994,end:2026,label:'1990s–2020s'},
  summary:'Soldier 2000 patterned field uniform with brown textile load carriage.',
  baseRecipeId:'bdu-field',uniformCamo:'south-african-s2000',gearSolid:'nutria-brown',
