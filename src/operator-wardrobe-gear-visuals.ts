@@ -2,6 +2,9 @@
  * armor, rig, belt and pack classes. All cosmetic; no additional capacity.
  */
 import * as THREE from 'three';
+import {createAliceLc2Waist,updateAliceLc2Load,
+ type AliceLc2Waist} from './operator-alice-lc2-webbing.ts';
+import type {AliceLc2Load} from './operator-alice-lc2-policy.ts';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {wardrobeItemsForSlot} from './operator-wardrobe-data.ts';
@@ -18,6 +21,7 @@ export type WardrobeGearLayers={
  strapMaterial:THREE.MeshStandardMaterial;
  /** Battlefield-only factories: styles are constructed on first equip. */
  ensureArmor?:(style:string)=>void;ensureRig?:(style:string)=>void;
+ aliceWaist?:AliceLc2Waist;ensureAliceWaist?:()=>void;
 };
 const box=(g:THREE.Group,m:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number)=>{
@@ -127,12 +131,24 @@ export function createWardrobeGearLayers(
  }
  for(const section of [waistRig,belt,pack])
   for(const g of Object.values(section))consolidateVisualGroup(g);
- return {armor,rig,waistRig,belt,pack,pouchMaterial,strapMaterial,
+ const visual:WardrobeGearLayers={armor,rig,waistRig,belt,pack,pouchMaterial,strapMaterial,
   ensureArmor,ensureRig};
+ visual.ensureAliceWaist=()=>{
+  if(visual.aliceWaist)return;
+  const alice=createAliceLc2Waist(hip,gearFabric,pouchMaterial,strapMaterial,trim);
+  visual.aliceWaist=alice;waistRig['alice-lc2']=alice.root;
+ };
+ if(!lazyVariants)visual.ensureAliceWaist();
+ return visual;
 }
 export function updateWardrobeGearLayers(v:WardrobeGearLayers,
- armor:string,rig:string,belt:string,pack:string,top='combat-shirt'){
+ armor:string,rig:string,belt:string,pack:string,top='combat-shirt',
+ aliceLoad:AliceLc2Load='standard'){
  v.ensureArmor?.(armor);v.ensureRig?.(rig);
+ if(rig==='alice-lc2'){
+  v.ensureAliceWaist?.();
+  if(v.aliceWaist)updateAliceLc2Load(v.aliceWaist,aliceLoad);
+ }
  for(const [target,id] of [
   [v.armor,armor],[v.rig,rig],[v.belt,belt],[v.pack,pack]
  ] as const)
