@@ -303,7 +303,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  updateWardrobeHeadLayers(v.wardrobeHead,
   looks.headwear,looks.facewear,looks.eyewear,looks.headset,
   effectiveFaceMode,wardrobe?.d2FaceSolid,wardrobe?.d2Accessories,
-  wardrobe?.d2MaskColor);
+  wardrobe?.d2MaskColor,wardrobe?.beretDrape);
  // Rig pose color ledger owns final headwear tint (and reversible injury
  // desaturation). Setting it here was overwritten later in poseOperator.
 
