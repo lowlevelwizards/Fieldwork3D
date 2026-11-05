@@ -157,3 +157,33 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
  .studio-workflow button{font-size:13px;min-height:44px;padding:5px 2px}
  .studio-workflow-help{font-size:11px}
 }
+
+/* UX R2 · material library is collapsed until requested. */
+.studio-camo-picker{display:block;min-width:0;border:1px solid #6a8877;
+ border-radius:9px;background:#263e33;overflow:hidden}
+.studio-camo-selected{list-style:none;cursor:pointer;display:flex;align-items:center;
+ min-height:60px;gap:9px;padding:8px 10px;touch-action:manipulation}
+.studio-camo-selected::-webkit-details-marker{display:none}
+.studio-camo-selected canvas{display:block;width:64px;height:40px;flex:0 0 64px;
+ border:1px solid #9caf99;border-radius:4px;object-fit:cover;
+ image-rendering:pixelated;image-rendering:crisp-edges;background:#344b3b}
+.studio-camo-selected canvas.studio-camo-none{background:#52665b}
+.studio-camo-selected span{min-width:0;flex:1;overflow-wrap:anywhere;
+ color:#f1ecda;font:700 14px/1.25 "Work Sans",sans-serif}
+.studio-camo-selected strong{flex:0 0 auto;border:1px solid #a7b8a1;
+ border-radius:6px;padding:8px 10px;color:#ead4a4;
+ font:800 13px "Saira Condensed",sans-serif}
+.studio-camo-picker[open] .studio-camo-selected{border-bottom:1px solid #617f6c;
+ background:#355245}
+.studio-camo-picker[open] .studio-camo-selected strong:after{content:" · CLOSE"}
+.studio-camo-library{display:grid;gap:7px;min-width:0;padding:10px 8px 12px}
+.studio-camo-library .fw-material-browser{margin:0}
+.studio-camo-library .fw-material-search{min-height:44px}
+.studio-camo-library .fw-camo-results{margin-top:2px}
+@media(max-width:390px){
+ .studio-camo-selected{padding:7px;gap:7px}
+ .studio-camo-selected canvas{width:56px;flex-basis:56px}
+ .studio-camo-selected span{font-size:12px}
+ .studio-camo-selected strong{padding:7px 6px;font-size:12px}
+ .studio-camo-picker[open] .studio-camo-selected strong:after{content:""}
+}
