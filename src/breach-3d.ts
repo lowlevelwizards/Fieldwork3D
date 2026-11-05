@@ -2160,7 +2160,8 @@ export class TacticalScene3D{
     // changes make the key; real LOS is still computed by the fog renderer.
     const fogSignature=omniscient?'omniscient':fogFingerprint({
       mode:s.intel.mode,seed:s.site?.seed??null,
-      seenCount:s.seenGround.size,revision:s.objectRevision,
+      seenCount:s.seenGround.size,seenRevision:s.seenGroundRevision,
+      revision:s.objectRevision,
       actors:team(s).filter(a=>a.health>0).map(a=>({
         id:a.id,x:a.p.x,y:a.p.y,heading:a.heading,
         posture:a.posture,health:a.health
