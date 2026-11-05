@@ -1,0 +1,2037 @@
+{
+  "files": 528,
+  "occurrences": 2617,
+  "distinct": 2297,
+  "singletons": 2109,
+  "singleFile": 2222,
+  "reviewable": 948,
+  "system": {
+    "UI / HUD": {
+      "uses": 1068,
+      "unique": 910
+    },
+    "Landscape / other": {
+      "uses": 329,
+      "unique": 302
+    },
+    "Combat / mission": {
+      "uses": 389,
+      "unique": 354
+    },
+    "Operator / equipment": {
+      "uses": 222,
+      "unique": 195
+    },
+    "Camouflage inks": {
+      "uses": 258,
+      "unique": 220
+    },
+    "Skin / hair": {
+      "uses": 18,
+      "unique": 18
+    },
+    "Architecture / props": {
+      "uses": 333,
+      "unique": 331
+    }
+  },
+  "top": [
+    {
+      "hex": "#ffffff",
+      "n": 40,
+      "scope": [
+        "UI / HUD",
+        "Combat / mission",
+        "Operator / equipment",
+        "Landscape / other"
+      ],
+      "examples": [
+        {
+          "file": "operator-armor-rig-lab.html",
+          "line": 20
+        },
+        {
+          "file": "src/breach-3d.ts",
+          "line": 2090
+        }
+      ]
+    },
+    {
+      "hex": "#bbaacc",
+      "n": 11,
+      "scope": [
+        "UI / HUD"
+      ],
+      "examples": [
+        {
+          "file": "src/breach-style.css",
+          "line": 132
+        }
+      ]
+    },
+    {
+      "hex": "#000000",
+      "n": 7,
+      "scope": [
+        "UI / HUD"
+      ],
+      "examples": [
+        {
+          "file": "operator-lab.html",
+          "line": 71
+        },
+        {
+          "file": "src/breach-style.css",
+          "line": 241
+        }
+      ]
+    },
+    {
+      "hex": "#9fccc4",
+      "n": 6,
+      "scope": [
+        "UI / HUD"
+      ],
+      "examples": [
+        {
+          "file": "src/breach-style.css",
+          "line": 5
+        },
+        {
+          "file": "src/ui/fieldwork-design.css",
+          "line": 19
+        }
+      ]
+    },
+    {
+      "hex": "#2e362c",
+      "n": 6,
+      "scope": [
+        "Camouflage inks"
+      ],
+      "examples": [
+        {
+          "file": "src/operator-headwear-camo.ts",
+          "line": 130
+        }
+      ]
+    },
+    {
+      "hex": "#30493f",
+      "n": 6,
+      "scope": [
+        "UI / HUD"
+      ],
+      "examples": [
+        {
+          "file": "src/operator-material-browser.css",
+          "line": 4
+        },
+        {
+          "file": "src/operator-studio.css",
+          "line": 4
+        }
+      ]
+    },
+    {
+      "hex": "#ecf0e2",
+      "n": 6,
+      "scope": [
+        "UI / HUD"
+      ],
+      "examples": [
+        {
+          "file": "src/style.css",
+          "line": 33
+        }
+      ]
+    },
+    {
+      "hex": "#182c27",
+      "n": 5,
+      "scope": [
+        "UI / HUD"
+      ],
+      "examples": [
+        {
+          "file": "operator-lab.html",
+          "line": 119
+        },
+        {
+          "file": "src/breach-style.css",
+          "line": 1131
+        }
+      ]
+    },
+    {
+      "hex": "#a1c0af",
+      "n": 5,
+      "scope": [
+        "Combat / mission"
+      ],
+      "examples": [
+        {
+          "file": "src/breach-main.ts",
+          "line": 2097
+        }
+      ]
+    },
+    {
+      "hex": "#e9a883",
+      "n": 5,
+      "scope": [
+        "Combat / mission"
+      ],
+      "examples": [
+        {
+          "file": "src/breach-main.ts",
+          "line": 2444
+        }
+      ]
+    },
+    {
+      "hex": "#c4c7bd",
+      "n": 5,
+      "scope": [
+        "UI / HUD",
+        "Operator / equipment"
+      ],
+      "examples": [
+        {
+          "file": "src/breach-style.css",
+          "line": 1342
+        },
+        {
+          "file": "src/operator-studio.css",
+          "line": 1
+        }
+      ]
+    },
+    {
+      "hex": "#cebd95",
+      "n": 5,
+      "scope": [
+        "Camouflage inks"
+      ],
+      "examples": [
+        {
+          "file": "src/operator-headwear-camo.ts",
+          "line": 168
+        }
+      ]
+    },
+    {
+      "hex": "#c8ac72",
+      "n": 4,
+      "scope": [
+        "UI / HUD"
+      ],
+      "examples": [
+        {
+          "file": "operator-lab.html",
+          "line": 12
+        }
+      ]
+    },
+    {
+      "hex": "#f3dba7",
+      "n": 4,
+      "scope": [
+        "UI / HUD"
+      ],
+      "examples": [
+        {
+          "file": "operator-lab.html",
+          "line": 189
+        }
+      ]
+    },
+    {
+      "hex": "#d5cb9d",
+      "n": 4,
+      "scope": [
+        "Combat / mission"
+      ],
+      "examples": [
+        {
+          "file": "src/breach-main.ts",
+          "line": 2505
+        }
+      ]
+    },
+    {
+      "hex": "#102020",
+      "n": 4,
+      "scope": [
+        "UI / HUD"
+      ],
+      "examples": [
+        {
+          "file": "src/breach-style.css",
+          "line": 670
+        }
+      ]
+    },
+    {
+      "hex": "#23352e",
+      "n": 4,
+      "scope": [
+        "UI / HUD",
+        "Operator / equipment"
+      ],
+      "examples": [
+        {
+          "file": "src/operator-appearance-grid.css",
+          "line": 27
+        },
+        {
+          "file": "src/operator-appearance-grid.ts",
+          "line": 98
+        }
+      ]
+    },
+    {
+      "hex": "#405342",
+      "n": 4,
+      "scope": [
+        "Camouflage inks"
+      ],
+      "examples": [
+        {
+          "file": "src/operator-headwear-camo.ts",
+          "line": 168
+        }
+      ]
+    },
+    {
+      "hex": "#d0b17e",
+      "n": 4,
+      "scope": [
+        "UI / HUD"
+      ],
+      "examples": [
+        {
+          "file": "src/operator-studio.css",
+          "line": 5
+        }
+      ]
+    },
+    {
+      "hex": "#203938",
+      "n": 4,
+      "scope": [
+        "UI / HUD"
+      ],
+      "examples": [
+        {
+          "file": "world.html",
+          "line": 16
+        }
+      ]
+    },
+    {
+      "hex": "#a8ab96",
+      "n": 3,
+      "scope": [
+        "UI / HUD"
+      ],
+      "examples": [
+        {
+          "file": "asset-lab.html",
+          "line": 22
+        }
+      ]
+    },
+    {
+      "hex": "#172825",
+      "n": 3,
+      "scope": [
+        "UI / HUD"
+      ],
+      "examples": [
+        {
+          "file": "breach-visual-lab.html",
+          "line": 15
+        },
+        {
+          "file": "src/breach-style.css",
+          "line": 567
+        }
+      ]
+    },
+    {
+      "hex": "#b9c0b9",
+      "n": 3,
+      "scope": [
+        "UI / HUD",
+        "Operator / equipment"
+      ],
+      "examples": [
+        {
+          "file": "operator-armor-rig-lab.html",
+          "line": 22
+        },
+        {
+          "file": "src/operator-armor-rig-lab.ts",
+          "line": 58
+        }
+      ]
+    },
+    {
+      "hex": "#202c2b",
+      "n": 3,
+      "scope": [
+        "UI / HUD"
+      ],
+      "examples": [
+        {
+          "file": "operator-lab.html",
+          "line": 10
+        }
+      ]
+    },
+    {
+      "hex": "#718b7e",
+      "n": 3,
+      "scope": [
+        "UI / HUD"
+      ],
+      "examples": [
+        {
+          "file": "operator-lab.html",
+          "line": 14
+        },
+        {
+          "file": "src/breach-style.css",
+          "line": 554
+        }
+      ]
+    },
+    {
+      "hex": "#192b29",
+      "n": 3,
+      "scope": [
+        "UI / HUD"
+      ],
+      "examples": [
+        {
+          "file": "operator-lab.html",
+          "line": 104
+        },
+        {
+          "file": "src/breach-style.css",
+          "line": 554
+        }
+      ]
+    },
+    {
+      "hex": "#182923",
+      "n": 3,
+      "scope": [
+        "UI / HUD"
+      ],
+      "examples": [
+        {
+          "file": "operator-lab.html",
+          "line": 222
+        },
+        {
+          "file": "src/breach-style.css",
+          "line": 1343
+        }
+      ]
+    },
+    {
+      "hex": "#586665",
+      "n": 3,
+      "scope": [
+        "Combat / mission"
+      ],
+      "examples": [
+        {
+          "file": "src/breach-3d.ts",
+          "line": 863
+        }
+      ]
+    },
+    {
+      "hex": "#243530",
+      "n": 3,
+      "scope": [
+        "Combat / mission"
+      ],
+      "examples": [
+        {
+          "file": "src/breach-main.ts",
+          "line": 747
+        }
+      ]
+    },
+    {
+      "hex": "#e5e9d8",
+      "n": 3,
+      "scope": [
+        "Combat / mission"
+      ],
+      "examples": [
+        {
+          "file": "src/breach-main.ts",
+          "line": 747
+        }
+      ]
+    },
+    {
+      "hex": "#899089",
+      "n": 3,
+      "scope": [
+        "Operator / equipment"
+      ],
+      "examples": [
+        {
+          "file": "src/breach-operator-rig.ts",
+          "line": 804
+        },
+        {
+          "file": "src/operator-headwear-materials.ts",
+          "line": 230
+        }
+      ]
+    },
+    {
+      "hex": "#172925",
+      "n": 3,
+      "scope": [
+        "UI / HUD"
+      ],
+      "examples": [
+        {
+          "file": "src/breach-style.css",
+          "line": 715
+        }
+      ]
+    },
+    {
+      "hex": "#294239",
+      "n": 3,
+      "scope": [
+        "UI / HUD"
+      ],
+      "examples": [
+        {
+          "file": "src/breach-style.css",
+          "line": 720
+        }
+      ]
+    },
+    {
+      "hex": "#ddeebb",
+      "n": 3,
+      "scope": [
+        "UI / HUD",
+        "Landscape / other"
+      ],
+      "examples": [
+        {
+          "file": "src/breach-style.css",
+          "line": 959
+        },
+        {
+          "file": "src/river-lab-main.ts",
+          "line": 24
+        }
+      ]
+    },
+    {
+      "hex": "#d7e3d5",
+      "n": 3,
+      "scope": [
+        "UI / HUD"
+      ],
+      "examples": [
+        {
+          "file": "src/campaign-style.css",
+          "line": 78
+        },
+        {
+          "file": "src/style.css",
+          "line": 222
+        }
+      ]
+    }
+  ],
+  "near": [
+    {
+      "hex": "#223b32",
+      "n": 1,
+      "closest": "#213b32",
+      "delta": 0.0012205693170854453,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "operator-lab.html",
+        "line": 28
+      }
+    },
+    {
+      "hex": "#213b32",
+      "n": 1,
+      "closest": "#223b32",
+      "delta": 0.0012205693170854453,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/ui/ux-r1-sheets.css",
+        "line": 47
+      }
+    },
+    {
+      "hex": "#182e2a",
+      "n": 1,
+      "closest": "#192e2a",
+      "delta": 0.0012459279002509378,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "operator-lab.html",
+        "line": 150
+      }
+    },
+    {
+      "hex": "#192e2a",
+      "n": 1,
+      "closest": "#182e2a",
+      "delta": 0.0012459279002509378,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "physicality-lab.html",
+        "line": 18
+      }
+    },
+    {
+      "hex": "#294239",
+      "n": 3,
+      "closest": "#284239",
+      "delta": 0.0012509745964941353,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 720
+      }
+    },
+    {
+      "hex": "#284239",
+      "n": 1,
+      "closest": "#294239",
+      "delta": 0.0012509745964941353,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/ui/ux-r1-sheets.css",
+        "line": 137
+      }
+    },
+    {
+      "hex": "#688779",
+      "n": 1,
+      "closest": "#678779",
+      "delta": 0.0012531385968037598,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 611
+      }
+    },
+    {
+      "hex": "#678779",
+      "n": 1,
+      "closest": "#688779",
+      "delta": 0.0012531385968037598,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/ui/ux-r1-sheets.css",
+        "line": 136
+      }
+    },
+    {
+      "hex": "#688879",
+      "n": 1,
+      "closest": "#698879",
+      "delta": 0.0012538286875072207,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "physicality-lab.html",
+        "line": 7
+      }
+    },
+    {
+      "hex": "#698879",
+      "n": 1,
+      "closest": "#688879",
+      "delta": 0.0012538286875072207,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/ui/ux-r1-sheets.css",
+        "line": 121
+      }
+    },
+    {
+      "hex": "#b8cfbf",
+      "n": 1,
+      "closest": "#b9cfbf",
+      "delta": 0.0012731986637264927,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "operator-armor-rig-lab.html",
+        "line": 18
+      }
+    },
+    {
+      "hex": "#b9cfbf",
+      "n": 1,
+      "closest": "#b8cfbf",
+      "delta": 0.0012731986637264927,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/style.css",
+        "line": 240
+      }
+    },
+    {
+      "hex": "#354e42",
+      "n": 1,
+      "closest": "#344e42",
+      "delta": 0.0012858017719497535,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/operator-headwear-picker.css",
+        "line": 16
+      }
+    },
+    {
+      "hex": "#344e42",
+      "n": 1,
+      "closest": "#354e42",
+      "delta": 0.0012858017719497535,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/ui/ux-r1-sheets.css",
+        "line": 121
+      }
+    },
+    {
+      "hex": "#1b302b",
+      "n": 1,
+      "closest": "#1c302b",
+      "delta": 0.0012911701499796538,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "map-lab.html",
+        "line": 4
+      }
+    },
+    {
+      "hex": "#1c302b",
+      "n": 1,
+      "closest": "#1b302b",
+      "delta": 0.0012911701499796538,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "physicality-lab.html",
+        "line": 3
+      }
+    },
+    {
+      "hex": "#344d44",
+      "n": 2,
+      "closest": "#354d44",
+      "delta": 0.0012977701025879169,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "operator-lab.html",
+        "line": 112
+      }
+    },
+    {
+      "hex": "#354d44",
+      "n": 1,
+      "closest": "#344d44",
+      "delta": 0.0012977701025879169,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "world.html",
+        "line": 43
+      }
+    },
+    {
+      "hex": "#182c27",
+      "n": 5,
+      "closest": "#192c27",
+      "delta": 0.0012987400999854744,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "operator-lab.html",
+        "line": 119
+      }
+    },
+    {
+      "hex": "#192c27",
+      "n": 2,
+      "closest": "#182c27",
+      "delta": 0.0012987400999854744,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "map-lab.html",
+        "line": 43
+      }
+    },
+    {
+      "hex": "#728b7c",
+      "n": 1,
+      "closest": "#718b7c",
+      "delta": 0.0013015055872940874,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "operator-lab.html",
+        "line": 104
+      }
+    },
+    {
+      "hex": "#718b7c",
+      "n": 1,
+      "closest": "#728b7c",
+      "delta": 0.0013015055872940874,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 575
+      }
+    },
+    {
+      "hex": "#b9c9bc",
+      "n": 1,
+      "closest": "#b8c9bc",
+      "delta": 0.0013026536600539704,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/style.css",
+        "line": 140
+      }
+    },
+    {
+      "hex": "#b8c9bc",
+      "n": 1,
+      "closest": "#b9c9bc",
+      "delta": 0.0013026536600539704,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/ui/ux-r1-sheets.css",
+        "line": 82
+      }
+    },
+    {
+      "hex": "#243a34",
+      "n": 1,
+      "closest": "#253a34",
+      "delta": 0.0013093074737241753,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "physicality-lab.html",
+        "line": 7
+      }
+    },
+    {
+      "hex": "#253a34",
+      "n": 1,
+      "closest": "#243a34",
+      "delta": 0.0013093074737241753,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 826
+      }
+    },
+    {
+      "hex": "#fff1d8",
+      "n": 1,
+      "closest": "#fff1d7",
+      "delta": 0.001310053462151854,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "operator-lab.html",
+        "line": 12
+      }
+    },
+    {
+      "hex": "#fff1d7",
+      "n": 1,
+      "closest": "#fff1d8",
+      "delta": 0.001310053462151854,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 495
+      }
+    },
+    {
+      "hex": "#172925",
+      "n": 3,
+      "closest": "#162925",
+      "delta": 0.0013107779306942046,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 715
+      }
+    },
+    {
+      "hex": "#162925",
+      "n": 2,
+      "closest": "#172925",
+      "delta": 0.0013107779306942046,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 611
+      }
+    },
+    {
+      "hex": "#83998b",
+      "n": 2,
+      "closest": "#82998b",
+      "delta": 0.0013132164580878485,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/ui/ux-r1-sheets.css",
+        "line": 21
+      }
+    },
+    {
+      "hex": "#82998b",
+      "n": 1,
+      "closest": "#83998b",
+      "delta": 0.0013132164580878485,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 1116
+      }
+    },
+    {
+      "hex": "#1d302c",
+      "n": 1,
+      "closest": "#1c302c",
+      "delta": 0.0013186798235615277,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "asset-lab.html",
+        "line": 16
+      }
+    },
+    {
+      "hex": "#1c302c",
+      "n": 1,
+      "closest": "#1d302c",
+      "delta": 0.0013186798235615277,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "operator-lab.html",
+        "line": 218
+      }
+    },
+    {
+      "hex": "#84998b",
+      "n": 1,
+      "closest": "#83998b",
+      "delta": 0.0013196417175887244,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/operator-headwear-picker.css",
+        "line": 16
+      }
+    },
+    {
+      "hex": "#f2e8cf",
+      "n": 1,
+      "closest": "#f2e8ce",
+      "delta": 0.001320533970735598,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/style.css",
+        "line": 49
+      }
+    },
+    {
+      "hex": "#f2e8ce",
+      "n": 1,
+      "closest": "#f2e8cf",
+      "delta": 0.001320533970735598,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/style.css",
+        "line": 253
+      }
+    },
+    {
+      "hex": "#f0e6cc",
+      "n": 1,
+      "closest": "#f0e6cd",
+      "delta": 0.0013221978828087762,
+      "scope": [
+        "Landscape / other"
+      ],
+      "example": {
+        "file": "src/rendering/pixel-signage.ts",
+        "line": 12
+      }
+    },
+    {
+      "hex": "#f0e6cd",
+      "n": 1,
+      "closest": "#f0e6cc",
+      "delta": 0.0013221978828087762,
+      "scope": [
+        "Landscape / other"
+      ],
+      "example": {
+        "file": "src/rendering/pixel-signage.ts",
+        "line": 14
+      }
+    },
+    {
+      "hex": "#a8b995",
+      "n": 2,
+      "closest": "#a7b995",
+      "delta": 0.0013227117471124696,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "operator-lab.html",
+        "line": 22
+      }
+    },
+    {
+      "hex": "#a7b995",
+      "n": 1,
+      "closest": "#a8b995",
+      "delta": 0.0013227117471124696,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/ui/fieldwork-design.css",
+        "line": 18
+      }
+    },
+    {
+      "hex": "#e4e7d8",
+      "n": 1,
+      "closest": "#e5e7d8",
+      "delta": 0.0013239390790995907,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 1101
+      }
+    },
+    {
+      "hex": "#e5e7d8",
+      "n": 1,
+      "closest": "#e4e7d8",
+      "delta": 0.0013239390790995907,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/study-style.css",
+        "line": 2
+      }
+    },
+    {
+      "hex": "#f3f0dc",
+      "n": 1,
+      "closest": "#f2f0dc",
+      "delta": 0.0013305622094152774,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "operator-lab.html",
+        "line": 172
+      }
+    },
+    {
+      "hex": "#f2f0dc",
+      "n": 1,
+      "closest": "#f3f0dc",
+      "delta": 0.0013305622094152774,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/ui/ux-r1-sheets.css",
+        "line": 131
+      }
+    },
+    {
+      "hex": "#937b58",
+      "n": 1,
+      "closest": "#937b59",
+      "delta": 0.001330692033060815,
+      "scope": [
+        "Operator / equipment"
+      ],
+      "example": {
+        "file": "src/operator-garment-color-policy.ts",
+        "line": 18
+      }
+    },
+    {
+      "hex": "#937b59",
+      "n": 1,
+      "closest": "#937b58",
+      "delta": 0.001330692033060815,
+      "scope": [
+        "Operator / equipment"
+      ],
+      "example": {
+        "file": "src/operator-head-accessory-catalog.ts",
+        "line": 76
+      }
+    },
+    {
+      "hex": "#263a34",
+      "n": 1,
+      "closest": "#253a34",
+      "delta": 0.0013327433758087812,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "physicality-lab.html",
+        "line": 10
+      }
+    },
+    {
+      "hex": "#142426",
+      "n": 1,
+      "closest": "#132426",
+      "delta": 0.001334848230790636,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 103
+      }
+    },
+    {
+      "hex": "#132426",
+      "n": 1,
+      "closest": "#142426",
+      "delta": 0.001334848230790636,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 137
+      }
+    },
+    {
+      "hex": "#eee9d9",
+      "n": 1,
+      "closest": "#ede9d9",
+      "delta": 0.0013429872314183293,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 105
+      }
+    },
+    {
+      "hex": "#ede9d9",
+      "n": 1,
+      "closest": "#eee9d9",
+      "delta": 0.0013429872314183293,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "world.html",
+        "line": 111
+      }
+    },
+    {
+      "hex": "#fef4df",
+      "n": 1,
+      "closest": "#fff4df",
+      "delta": 0.0013479787186956047,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "operator-lab.html",
+        "line": 29
+      }
+    },
+    {
+      "hex": "#fff4df",
+      "n": 1,
+      "closest": "#fef4df",
+      "delta": 0.0013479787186956047,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/operator-fabric-camo-picker.css",
+        "line": 5
+      }
+    },
+    {
+      "hex": "#e5e7d7",
+      "n": 1,
+      "closest": "#e5e7d8",
+      "delta": 0.0013489483783002115,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/operator-headwear-picker.css",
+        "line": 2
+      }
+    },
+    {
+      "hex": "#e2e8db",
+      "n": 1,
+      "closest": "#e2e8da",
+      "delta": 0.0013539305497009585,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 287
+      }
+    },
+    {
+      "hex": "#e2e8da",
+      "n": 1,
+      "closest": "#e2e8db",
+      "delta": 0.0013539305497009585,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/style.css",
+        "line": 175
+      }
+    },
+    {
+      "hex": "#273a34",
+      "n": 1,
+      "closest": "#263a34",
+      "delta": 0.0013556853694258837,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 1171
+      }
+    },
+    {
+      "hex": "#172824",
+      "n": 2,
+      "closest": "#182824",
+      "delta": 0.0013731870618046743,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "operator-lab.html",
+        "line": 22
+      }
+    },
+    {
+      "hex": "#182824",
+      "n": 1,
+      "closest": "#172824",
+      "delta": 0.0013731870618046743,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "physicality-lab.html",
+        "line": 6
+      }
+    },
+    {
+      "hex": "#c5d1c2",
+      "n": 1,
+      "closest": "#c5d1c3",
+      "delta": 0.0013819914442091956,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 809
+      }
+    },
+    {
+      "hex": "#c5d1c3",
+      "n": 1,
+      "closest": "#c5d1c2",
+      "delta": 0.0013819914442091956,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/campaign-style.css",
+        "line": 15
+      }
+    },
+    {
+      "hex": "#182724",
+      "n": 2,
+      "closest": "#172724",
+      "delta": 0.0014000484791511234,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "world.html",
+        "line": 112
+      }
+    },
+    {
+      "hex": "#172724",
+      "n": 1,
+      "closest": "#182724",
+      "delta": 0.0014000484791511234,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/campaign-style.css",
+        "line": 49
+      }
+    },
+    {
+      "hex": "#e9d6b1",
+      "n": 1,
+      "closest": "#e8d6b1",
+      "delta": 0.001413895728951657,
+      "scope": [
+        "Combat / mission"
+      ],
+      "example": {
+        "file": "src/breach-main.ts",
+        "line": 2697
+      }
+    },
+    {
+      "hex": "#e8d6b1",
+      "n": 1,
+      "closest": "#e9d6b1",
+      "delta": 0.001413895728951657,
+      "scope": [
+        "Combat / mission"
+      ],
+      "example": {
+        "file": "src/breach-main.ts",
+        "line": 2861
+      }
+    },
+    {
+      "hex": "#1b2a24",
+      "n": 1,
+      "closest": "#1a2a24",
+      "delta": 0.001418033720640379,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/study-style.css",
+        "line": 25
+      }
+    },
+    {
+      "hex": "#1a2a24",
+      "n": 1,
+      "closest": "#1b2a24",
+      "delta": 0.001418033720640379,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "src/ui/ux-r1-sheets.css",
+        "line": 53
+      }
+    },
+    {
+      "hex": "#83998c",
+      "n": 1,
+      "closest": "#83998b",
+      "delta": 0.001471603661043135,
+      "scope": [
+        "UI / HUD"
+      ],
+      "example": {
+        "file": "operator-lab.html",
+        "line": 215
+      }
+    },
+    {
+      "hex": "#6b8179",
+      "n": 1,
+      "closest": "#6b8178",
+      "delta": 0.0015306469203451674,
+      "scope": [
+        "Landscape / other"
+      ],
+      "example": {
+        "file": "src/study-world.ts",
+        "line": 351
+      }
+    }
+  ],
+  "rare": [
+    {
+      "hex": "#04110c",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 352
+      }
+    },
+    {
+      "hex": "#04110f",
+      "n": 1,
+      "example": {
+        "file": "src/campaign-style.css",
+        "line": 176
+      }
+    },
+    {
+      "hex": "#041113",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 130
+      }
+    },
+    {
+      "hex": "#041311",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 1052
+      }
+    },
+    {
+      "hex": "#050a0a",
+      "n": 1,
+      "example": {
+        "file": "src/breach-main.ts",
+        "line": 528
+      }
+    },
+    {
+      "hex": "#05100d",
+      "n": 1,
+      "example": {
+        "file": "src/ui/ux-r1-sheets.css",
+        "line": 3
+      }
+    },
+    {
+      "hex": "#051013",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 17
+      }
+    },
+    {
+      "hex": "#051313",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 908
+      }
+    },
+    {
+      "hex": "#060c0b",
+      "n": 1,
+      "example": {
+        "file": "src/breach-main.ts",
+        "line": 538
+      }
+    },
+    {
+      "hex": "#06110f",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 1069
+      }
+    },
+    {
+      "hex": "#061110",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 568
+      }
+    },
+    {
+      "hex": "#06120f",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 1065
+      }
+    },
+    {
+      "hex": "#061215",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 219
+      }
+    },
+    {
+      "hex": "#061314",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 309
+      }
+    },
+    {
+      "hex": "#061413",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 520
+      }
+    },
+    {
+      "hex": "#071008",
+      "n": 1,
+      "example": {
+        "file": "src/study-style.css",
+        "line": 50
+      }
+    },
+    {
+      "hex": "#07120f",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 612
+      }
+    },
+    {
+      "hex": "#071311",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 555
+      }
+    },
+    {
+      "hex": "#071416",
+      "n": 1,
+      "example": {
+        "file": "src/breach-3d.ts",
+        "line": 294
+      }
+    },
+    {
+      "hex": "#071819",
+      "n": 1,
+      "example": {
+        "file": "src/breach-3d.ts",
+        "line": 297
+      }
+    },
+    {
+      "hex": "#080f13",
+      "n": 1,
+      "example": {
+        "file": "src/style.css",
+        "line": 190
+      }
+    },
+    {
+      "hex": "#081212",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 1377
+      }
+    },
+    {
+      "hex": "#081812",
+      "n": 1,
+      "example": {
+        "file": "src/ui/ux-r1-sheets.css",
+        "line": 80
+      }
+    },
+    {
+      "hex": "#090f0a",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 748
+      }
+    },
+    {
+      "hex": "#091110",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 104
+      }
+    },
+    {
+      "hex": "#091617",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 139
+      }
+    },
+    {
+      "hex": "#0a1416",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 1164
+      }
+    },
+    {
+      "hex": "#0b1415",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 23
+      }
+    },
+    {
+      "hex": "#0b1515",
+      "n": 1,
+      "example": {
+        "file": "src/breach-3d.ts",
+        "line": 1592
+      }
+    },
+    {
+      "hex": "#0b181b",
+      "n": 1,
+      "example": {
+        "file": "src/breach-main.ts",
+        "line": 2172
+      }
+    },
+    {
+      "hex": "#0b1911",
+      "n": 1,
+      "example": {
+        "file": "src/study-style.css",
+        "line": 13
+      }
+    },
+    {
+      "hex": "#0b1f16",
+      "n": 1,
+      "example": {
+        "file": "src/operator-studio.css",
+        "line": 106
+      }
+    },
+    {
+      "hex": "#0c1417",
+      "n": 1,
+      "example": {
+        "file": "src/style.css",
+        "line": 37
+      }
+    },
+    {
+      "hex": "#0d1b20",
+      "n": 1,
+      "example": {
+        "file": "src/breach-main.ts",
+        "line": 2873
+      }
+    },
+    {
+      "hex": "#0f1b1c",
+      "n": 1,
+      "example": {
+        "file": "src/breach-main.ts",
+        "line": 2157
+      }
+    },
+    {
+      "hex": "#101c1f",
+      "n": 1,
+      "example": {
+        "file": "src/breach-main.ts",
+        "line": 2976
+      }
+    },
+    {
+      "hex": "#101d1b",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 91
+      }
+    },
+    {
+      "hex": "#102021",
+      "n": 1,
+      "example": {
+        "file": "src/breach-main.ts",
+        "line": 4380
+      }
+    },
+    {
+      "hex": "#111111",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 36
+      }
+    },
+    {
+      "hex": "#111e20",
+      "n": 1,
+      "example": {
+        "file": "src/breach-main.ts",
+        "line": 2414
+      }
+    },
+    {
+      "hex": "#112024",
+      "n": 1,
+      "example": {
+        "file": "src/style.css",
+        "line": 188
+      }
+    },
+    {
+      "hex": "#112321",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 130
+      }
+    },
+    {
+      "hex": "#121713",
+      "n": 1,
+      "example": {
+        "file": "src/study-style.css",
+        "line": 9
+      }
+    },
+    {
+      "hex": "#121a1c",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 3
+      }
+    },
+    {
+      "hex": "#122022",
+      "n": 1,
+      "example": {
+        "file": "src/breach-fog-mask.ts",
+        "line": 36
+      }
+    },
+    {
+      "hex": "#12221a",
+      "n": 1,
+      "example": {
+        "file": "src/study-style.css",
+        "line": 61
+      }
+    },
+    {
+      "hex": "#122521",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 283
+      }
+    },
+    {
+      "hex": "#131f1c",
+      "n": 1,
+      "example": {
+        "file": "breach-visual-lab.html",
+        "line": 14
+      }
+    },
+    {
+      "hex": "#132426",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 137
+      }
+    },
+    {
+      "hex": "#141e20",
+      "n": 1,
+      "example": {
+        "file": "src/breach-main.ts",
+        "line": 3048
+      }
+    },
+    {
+      "hex": "#142025",
+      "n": 1,
+      "example": {
+        "file": "src/style.css",
+        "line": 36
+      }
+    },
+    {
+      "hex": "#142425",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 218
+      }
+    },
+    {
+      "hex": "#142426",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 103
+      }
+    },
+    {
+      "hex": "#14251c",
+      "n": 1,
+      "example": {
+        "file": "src/operator-studio.css",
+        "line": 131
+      }
+    },
+    {
+      "hex": "#14251e",
+      "n": 1,
+      "example": {
+        "file": "world.html",
+        "line": 120
+      }
+    },
+    {
+      "hex": "#142525",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 351
+      }
+    },
+    {
+      "hex": "#142528",
+      "n": 1,
+      "example": {
+        "file": "river-lab.html",
+        "line": 10
+      }
+    },
+    {
+      "hex": "#142723",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 836
+      }
+    },
+    {
+      "hex": "#142829",
+      "n": 1,
+      "example": {
+        "file": "src/breach-main.ts",
+        "line": 2585
+      }
+    },
+    {
+      "hex": "#152019",
+      "n": 1,
+      "example": {
+        "file": "src/study-soldier.ts",
+        "line": 85
+      }
+    },
+    {
+      "hex": "#152123",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 53
+      }
+    },
+    {
+      "hex": "#15231b",
+      "n": 1,
+      "example": {
+        "file": "world.html",
+        "line": 113
+      }
+    },
+    {
+      "hex": "#15251f",
+      "n": 1,
+      "example": {
+        "file": "world.html",
+        "line": 34
+      }
+    },
+    {
+      "hex": "#152623",
+      "n": 1,
+      "example": {
+        "file": "breach-visual-lab.html",
+        "line": 11
+      }
+    },
+    {
+      "hex": "#152a28",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 308
+      }
+    },
+    {
+      "hex": "#152b2c",
+      "n": 1,
+      "example": {
+        "file": "src/operator-figure.ts",
+        "line": 95
+      }
+    },
+    {
+      "hex": "#152c29",
+      "n": 1,
+      "example": {
+        "file": "world.html",
+        "line": 86
+      }
+    },
+    {
+      "hex": "#152d2a",
+      "n": 1,
+      "example": {
+        "file": "world.html",
+        "line": 32
+      }
+    },
+    {
+      "hex": "#16231f",
+      "n": 1,
+      "example": {
+        "file": "operator-lab.html",
+        "line": 66
+      }
+    },
+    {
+      "hex": "#162524",
+      "n": 1,
+      "example": {
+        "file": "src/breach-style.css",
+        "line": 560
+      }
+    }
+  ],
+  "suspectNoncolors": []
+}
