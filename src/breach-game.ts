@@ -4381,11 +4381,14 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
         windows:s.windows,
         canSee:(from,to)=>unobstructed(from,to,s,false),
         canReach:(from,to)=>sweptBodyClear(from,to,s.doors),
-        routeTo:(from,to)=>cachedEnemyRoute(s,from,to,true)
+        routeTo:(from,to)=>cachedEnemyRoute(s,from,to,true),
+        isCrowded:p=>s.operators.some(o=>o.health>0&&d(o.p,p)<22)||
+          s.civilians.some(c=>c.id!==civil.id&&d(c.p,p)<22)
       });
       stepCivilianMovement(civil,s.seconds,h,
         (from,to)=>sweptBodyClear(from,to,s.doors),
-        (p,id)=>nearby.some(a=>a.id!==id&&d(a.p,p)<20));
+        (p,id)=>nearby.some(a=>a.id!==id&&d(a.p,p)<20),
+        (from,to)=>cachedEnemyRoute(s,from,to,true));
     }
   }
   const proposals=[

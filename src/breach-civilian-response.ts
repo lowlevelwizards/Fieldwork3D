@@ -21,6 +21,7 @@ export type CivilianSensoryWorld={
  canSee:(from:Pt,to:Pt)=>boolean;
  canReach:(from:Pt,to:Pt)=>boolean;
  routeTo?:(from:Pt,to:Pt)=>Pt[];
+ isCrowded?:(p:Pt)=>boolean;
 };
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const offAxis=(from:number,to:number)=>

@@ -6,7 +6,8 @@ import {civilianCondition,setCivilianState,type CivilianActor} from './breach-ci
 import {routineDwellSeconds} from './breach-ai-routine-dwell.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function stepCivilianMovement(c:CivilianActor,now:number,dt:number,
-  clear:(from:Pt,to:Pt)=>boolean,occupied:(p:Pt,id:string)=>boolean):void{
+  clear:(from:Pt,to:Pt)=>boolean,occupied:(p:Pt,id:string)=>boolean,
+  routeTo?:(from:Pt,to:Pt)=>Pt[]):void{
  c.priorP={...c.p};
  if(c.health<=0||
     (civilianCondition(c)==='injured'&&c.state!=='escorted')||
@@ -59,7 +60,24 @@ export function stepCivilianMovement(c:CivilianActor,now:number,dt:number,
    if(c.blockedTime>1.25){
     c.retryAt=now+1.2;c.blockedTime=0;
     if(routine)c.routineIndex++;
-    else {c.goal=null;c.nav=[];setCivilianState(c,'frozen',now);}
+    else if(c.state==='escorted'){
+      // A following civilian must remain an escort during a temporary
+      // blockage; the mission planner reauthors the next short route.
+      c.goal=null;c.nav=[];
+    }else{
+      const final=c.goal;
+      const detour=final&&routeTo?routeTo(c.p,final)
+       .filter(p=>dist(p,c.p)>5):[];
+      let prior=c.p;
+      const physicallyValid=detour.length>0&&
+        dist(detour[detour.length-1],final!)<=20&&
+        detour.every(p=>{
+          const ok=clear(prior,p)&&!occupied(p,c.id);
+          prior=p;return ok;
+        });
+      if(physicallyValid)c.nav=detour.map(p=>({...p}));
+      else {c.goal=null;c.nav=[];setCivilianState(c,'frozen',now);}
+    }
    }
    return;
  }

@@ -932,6 +932,9 @@ jobs:
             tests/civilian-r2-rescue-transport.test.mjs \
             tests/civilian-r2-transport-replay.test.mjs \
             tests/civilian-r2-behavior.test.mjs \
+            tests/civilian-r2-navigation.test.mjs \
+            tests/civilian-c2-refuge-navigation.test.mjs \
+            tests/civilian-b3-movement.test.mjs \
             tests/civilian-b4-response.test.mjs \
             tests/civilian-c2a-witnessed-threat.test.mjs \
             tests/civilian-d1-rescue-lifecycle.test.mjs \
