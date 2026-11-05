@@ -25,6 +25,14 @@ export type CivilianSensoryWorld={
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const offAxis=(from:number,to:number)=>
  Math.atan2(Math.sin(to-from),Math.cos(to-from));
+/** Persona differences tune thresholds and time, never hidden information. */
+export function civilianBehaviorProfile(persona:CivilianActor['persona']){
+ return persona==='startled'?
+  {alert:.10,panic:.43,reaction:.35,recovery:12,decay:.016}:
+  persona==='steady'?
+  {alert:.14,panic:.56,reaction:.80,recovery:8,decay:.027}:
+  {alert:.12,panic:.49,reaction:.60,recovery:10,decay:.020};
+}
 function setState(c:CivilianActor,state:CivilianState,now:number){
  setCivilianState(c,state,now);
 }
@@ -48,8 +56,9 @@ export function stepCivilianResponse(c:CivilianActor,now:number,dt:number,
  if(now-c.lastSenseAt<.12)return;
  const elapsed=Math.max(.12,dt,now-c.lastSenseAt);
  c.lastSenseAt=now;
+ const profile=civilianBehaviorProfile(c.persona);
  if(c.lastEvidenceAt>=0&&now-c.lastEvidenceAt>2)
-  c.fear=Math.max(0,c.fear-elapsed*.020);
+  c.fear=Math.max(0,c.fear-elapsed*profile.decay);
  for(const noise of world.noise){
   const id=noise.id??Math.round(noise.time*1000);
   if(id<=c.lastNoiseId)continue;
@@ -101,24 +110,27 @@ export function stepCivilianResponse(c:CivilianActor,now:number,dt:number,
  }
  c.lastVisualId=sighted;
  if(c.state==='compliant'||c.state==='escorted')return;
- if(c.state==='routine'&&c.fear>=.12)setState(c,'attentive',now);
- if((c.state==='routine'||c.state==='attentive')&&c.fear>=.49)
-   setState(c,'startled',now);
- if(c.state==='startled'){
-  const delay=c.persona==='startled'?.35:
-    c.persona==='cautious'?.60:.80;
-  if(now-c.stateSince>=delay){
-   const safe=chooseCivilianRefuge(c,world);
-   if(safe&&c.persona!=='startled'){
+ if(c.state==='routine'&&c.fear>=profile.alert)
+   setState(c,'attentive',now);
+ if((c.state==='routine'||c.state==='attentive')&&
+    c.fear>=profile.panic)setState(c,'startled',now);
+ if(c.state==='startled'&&now-c.stateSince>=profile.reaction){
+   // Seeded one-in-three startled people try a verified refuge;
+   // the others freeze. A choice is made once per state transition.
+   const frozen=c.persona==='startled'&&
+     (c.appearanceSeed>>>3)%3!==0;
+   const safe=frozen?null:chooseCivilianRefuge(c,world);
+   if(safe){
     c.goal={...safe.goal};c.nav=safe.path.map(p=>({...p}));
     c.dwellUntil=now;setState(c,'fleeing',now);
    }else{
     c.goal=null;c.nav=[];setState(c,'frozen',now);
    }
-  }
  }
+ // Hysteresis and minimum dwell prevent chattering after a stale event.
  if(c.fear<.10&&c.lastEvidenceAt>=0&&
-    now-c.lastEvidenceAt>8&&
+    now-c.lastEvidenceAt>profile.recovery&&
+    now-c.stateSince>=1.25&&
     ['attentive','frozen','hiding'].includes(c.state)){
     c.goal=null;c.dwellUntil=now+1;
     setState(c,'routine',now);
