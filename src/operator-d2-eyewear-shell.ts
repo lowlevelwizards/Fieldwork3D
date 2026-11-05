@@ -101,6 +101,17 @@ export function sculptedHousing(parent:THREE.Group,material:THREE.Material,
  if(n<4||[frontInner,rearOuter,rearInner].some(p=>p.length!==n))
   throw new Error(name+': housing loops require equal 4+ vertex counts');
  if(!(rearZ>frontZ))throw new Error(name+': rear must be behind front');
+ // Normalize all corresponding profile loops to counterclockwise XY
+ // so the frontal cap faces the camera (-Z) on boxes and round eyecups.
+ const area=(p:EyePolygon)=>p.reduce((s,[x,y],i)=>{
+  const [nx,ny]=p[(i+1)%p.length];return s+x*ny-nx*y;
+ },0);
+ if(area(frontOuter)<0){
+  frontOuter=[...frontOuter].reverse();
+  frontInner=[...frontInner].reverse();
+  rearOuter=[...rearOuter].reverse();
+  rearInner=[...rearInner].reverse();
+ }
  const positions:number[]=[];
  const face=(a:readonly number[],b:readonly number[],c:readonly number[])=>{
   positions.push(...a,...b,...c);
@@ -142,9 +153,9 @@ export function templeArm(parent:THREE.Group,material:THREE.Material,
  ];
  const vertices=[...station(front),...station(rear)];
  const tris:number[][]=[
-  [0,1,2],[0,2,3],[4,6,5],[4,7,6],
-  [0,4,5],[0,5,1],[1,5,6],[1,6,2],
-  [2,6,7],[2,7,3],[3,7,4],[3,4,0]
+  [0,2,1],[0,3,2],[4,5,6],[4,6,7],
+  [0,1,5],[0,5,4],[1,2,6],[1,6,5],
+  [2,3,7],[2,7,6],[3,0,4],[3,4,7]
  ];
  const positions=tris.flatMap(t=>t.flatMap(i=>vertices[i]));
  const geo=new THREE.BufferGeometry();
