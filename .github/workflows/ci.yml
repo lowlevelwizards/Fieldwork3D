@@ -455,6 +455,7 @@ jobs:
           node --experimental-strip-types --test \
             tests/dnav-door-audit.test.mjs \
             tests/dnav-door-intervening.test.mjs \
+            tests/dnav-door-regression.test.mjs \
             tests/physicality-door-aware-routing.test.mjs \
             tests/physicality-08-door-contact.test.mjs \
             tests/physicality-09-recovery.test.mjs \
@@ -463,7 +464,7 @@ jobs:
             tests/gameplay-g4d-auto-door-contact.test.mjs
       - name: DNav bounded real-simulation collision matrix
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-door-navigation-dnav-') }}
-        run: npm run audit:g4-flow -- --matrix
+        run: npm run audit:g4-flow -- --matrix --door-regression
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}

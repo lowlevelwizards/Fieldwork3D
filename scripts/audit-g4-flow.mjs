@@ -43,7 +43,7 @@ for(let i=0;i<trials;i++){
    const recorder=new MissionRecorder();
    recorder.capture(session,true);
    session.phase='running';session.started=true;
-   let blockedFrames=0,invalidPositions=0;
+   let blockedFrames=0,silentDoorFrames=0,invalidPositions=0;
    const blockedReasons={},blockedMotorPauses={};
    const doorCaseMap=new Map();
    const elapsed=[];
@@ -63,6 +63,9 @@ for(let i=0;i<trials;i++){
       blockedReasons[reason]=(blockedReasons[reason]??0)+1;
       const pause=actor.motorPause??'none';
       blockedMotorPauses[pause]=(blockedMotorPauses[pause]??0)+1;
+      // A locked or held door is an intentional user-visible stop, but a
+      // closed UNRECOGNIZED door silently freezing movement is a regression.
+      if(reason==='door'&&pause==='none')silentDoorFrames++;
       if(tick%6===0&&reason==='door'){
        const sample=sampleDoorBlock(actor,session.doors);
        const key=sample.actorId+'|'+(sample.doorId??'unmatched');
@@ -99,7 +102,8 @@ for(let i=0;i<trials;i++){
     hostileTravel:contact.hostileTravel,
     firstContactAt:contact.firstContactAt,
     firstShotAt:contact.firstShotAt,
-    reason,blockedFrames,blockedReasons,blockedMotorPauses,
+    reason,blockedFrames,silentDoorFrames,
+    blockedReasons,blockedMotorPauses,
     doorCases:[...doorCaseMap.values()].sort((a,b)=>b.samples-a.samples).slice(0,8),
     invalidPositions,
     replayIssues:film.issues,
@@ -119,9 +123,18 @@ console.log(JSON.stringify({method:'actual motor, AI, visibility and replay; no 
   seed:r.seed,mission:r.mission,mode:r.mode,orders:r.orders,
   reason:r.reason,travel:r.friendlyTravel,
   firstContactAt:r.firstContactAt,blockedFrames:r.blockedFrames,
+  silentDoorFrames:r.silentDoorFrames,
   blockedReasons:r.blockedReasons,
   blockedMotorPauses:r.blockedMotorPauses,
   doorCases:r.doorCases,
   p95HostSimMs:r.p95HostSimMs
  }))},null,2));
 if(exceptions.length||summary.invalid)process.exitCode=1;
+// Explicit, bounded regression gate, not an invariant for all mission kinds.
+// The locked SERVICE door must still refuse entry and report the reason.
+if(options.has('--door-regression')&&
+   (mode!=='matrix'||summary.trials!==20||summary.silentDoorFrames>0)){
+ console.error('DNav regression: unrecognized persistent door blockage',
+   {trials:summary.trials,silentDoorFrames:summary.silentDoorFrames});
+ process.exitCode=1;
+}

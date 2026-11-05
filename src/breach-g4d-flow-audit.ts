@@ -4,7 +4,8 @@ export type G4DFlowRow={
  seed:number;mission:string;mode:string;orders:number;
  duration:number;friendlyTravel:number;hostileTravel:number;
  firstContactAt:number|null;firstShotAt:number|null;
- reason:string;blockedFrames:number;blockedReasons?:Record<string,number>;
+ reason:string;blockedFrames:number;silentDoorFrames?:number;
+ blockedReasons?:Record<string,number>;
  blockedMotorPauses?:Record<string,number>;
  invalidPositions:number;
  replayIssues:string[];p95HostSimMs:number;
@@ -32,6 +33,7 @@ export function summarizeG4DFlows(rows:readonly G4DFlowRow[]){
   lowMovement:rows.filter(r=>r.orders>0&&
    r.reason==='movement-stalled').length,
   blockedFrames:rows.reduce((sum,r)=>sum+r.blockedFrames,0),
+  silentDoorFrames:rows.reduce((sum,r)=>sum+(r.silentDoorFrames??0),0),
   noContact:rows.filter(r=>r.firstContactAt===null).length,
   byMission};
 }
