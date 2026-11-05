@@ -3,7 +3,7 @@ import {sweptBodyClear,bodyClear} from './breach-navigation.ts';
 import {doorCenter,route,pointToSegment,
   doorYaw,doorLeafSegment,WALLS,COVER,activeSite,initialDoors,
   pointToSegment as distanceToWall,
-  OPERATOR_RADIUS,type Door,type Pt} from './breach-core.ts';
+  OPERATOR_RADIUS,type Door,type Pt,type Segment,type Obstacle} from './breach-core.ts';
 export {doorYaw,doorLeafSegment};
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export const DOOR_REACH=39;
@@ -204,6 +204,26 @@ export function doorWouldStrikeActors(d:Door,next:number,actors:readonly Pt[],
   return false;
  });
 }
+/** Conservative hinge-centered broad phase for the moving leaf. Its
+ * entire circular sweep lies within the CLOSED door width; never omit a
+ * wall/fixture that any intermediate panel could touch. Dynamic actors
+ * are checked separately each tick and are never culled by this shortcut.
+ * This reduces repeated full-map scans on dense, mobile-generated sites.
+ */
+export function hingeSweepNeighborhood(d:Door,
+ walls:readonly Segment[],cover:readonly Obstacle[]){
+ const hinge=d.hinge==='b'?d.b:d.a;
+ const reach=dist(d.a,d.b)+2;
+ const sq=reach*reach;
+ return {
+  walls:walls.filter(w=>distanceToWall(hinge,w)<=reach),
+  cover:cover.filter(o=>{
+   const dx=Math.max(0,Math.abs(o.x-hinge.x)-o.w/2);
+   const dy=Math.max(0,Math.abs(o.y-hinge.y)-o.h/2);
+   return dx*dx+dy*dy<=sq;
+  })
+ };
+}
 /** Test every segment of the hinge sweep against architecture, not merely
  * the last frame; a leaf may not tunnel through a thin doorstop or fixture. */
 export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[], actorRadius=OPERATOR_RADIUS){
@@ -215,14 +235,15 @@ export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[], act
  if(!registered.some(real=>real.id===d.id))return false;
  const current=d.openFraction??(d.open?1:0);
  const steps=doorSweepSteps(d,next);
+ const nearby=hingeSweepNeighborhood(d,WALLS,COVER);
  for(let step=1;step<=steps;step++){
   const fraction=current+(next-current)*step/steps;
   const leaf=doorLeafSegment({...d,openFraction:fraction});
   for(const t of [.35,.55,.75,.94,.99]){
    const p={x:leaf.a.x+(leaf.b.x-leaf.a.x)*t,
      y:leaf.a.y+(leaf.b.y-leaf.a.y)*t};
-   if(WALLS.some(w=>distanceToWall(p,w)<1.25))return true;
-   if(COVER.some(o=>Math.abs(o.x-p.x)<o.w/2+1.25&&
+   if(nearby.walls.some(w=>distanceToWall(p,w)<1.25))return true;
+   if(nearby.cover.some(o=>Math.abs(o.x-p.x)<o.w/2+1.25&&
      Math.abs(o.y-p.y)<o.h/2+1.25))return true;
   }
  }
