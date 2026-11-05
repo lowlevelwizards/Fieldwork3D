@@ -201,22 +201,49 @@ const S2000:readonly Motif[]=[
  p(4,56,49,63,46,69,54,63,58,65,64,58,67,52,62,48,63),
  p(4,0,58,6,55,10,60,9,65,4,66,-3,64)
 ];
-// Deliberately oversized lobe-only Norwegian 3-ink composition.
-// No fine-grain flecks. Same polygon geometry method, distinct frequency.
-const NORWAY:readonly Motif[]=[
- p(1,-13,-5,2,-6,12,1,24,-4,34,5,30,14,20,19,17,28,8,30,0,22,-13,27),
- p(1,34,-7,50,-7,58,1,70,-4,72,18,64,25,53,20,48,32,38,27,34,16),
- p(1,-11,39,2,31,15,34,23,28,34,38,28,51,19,56,11,51,5,62,-10,66),
- p(1,35,45,48,38,55,44,69,37,74,54,61,61,56,72,43,69,35,61),
- p(2,8,-5,17,-5,25,2,34,-2,41,9,35,19,26,17,20,29,10,22,3,25,-4,15),
- p(2,47,17,58,12,68,15,72,30,64,34,57,30,49,39,39,35,43,25),
- p(2,-8,46,2,40,10,46,18,41,25,50,19,61,11,63,3,72,-8,66),
- p(2,27,53,36,46,45,52,51,49,59,57,65,68,53,70,44,64,35,74,28,65),
- p(1,16,16,23,14,29,20,27,28,20,32,12,29),
- p(2,56,0,63,-3,70,3,65,10,58,14,52,10),
- p(1,56,53,62,48,70,52,68,61,62,65,55,62)
+// Camouflage 8E: new authored Norwegian M98 master. Large rolling
+// rounded three-color fields with deliberately interleaved *medium* lobes.
+// These are independently drawn contours, not reduced flecks or M90 shards.
+// The 64px atlas is cached by camo8AIndices and remains palette-indexed.
+const NORWAY_8E:readonly Motif[]=[
+ // Interlocked main dark-green trunks; long but no whole-panel solid fill.
+ p(1,-13,-6,0,-8,13,-3,22,4,27,11,24,17,17,20,14,28,6,27,-2,34,-14,27),
+ p(1,35,-8,49,-9,58,-2,72,0,75,11,66,19,62,28,52,26,46,31,37,25,34,15),
+ p(1,12,19,23,16,34,20,39,27,36,37,29,43,28,51,18,55,9,48,6,37,11,28),
+ p(1,44,35,53,30,62,32,72,29,76,47,68,56,64,69,55,67,50,59,42,58,39,47),
+ p(1,-11,43,1,39,11,45,18,52,17,63,22,70,9,76,-1,68,-11,72),
+ // Warm tan moving through the trunks, not enormous square islands.
+ p(2,13,-8,28,-8,39,-3,42,5,38,13,32,18,26,15,23,24,17,22,10,14,7,6),
+ p(2,-12,17,-2,12,9,16,17,21,24,25,21,34,13,38,8,46,-3,42,-13,48),
+ p(2,35,14,47,10,57,14,64,18,76,14,77,30,65,35,60,43,49,41,42,46,34,38,30,27),
+ p(2,13,43,27,39,36,43,44,40,52,47,52,56,61,64,51,73,37,69,28,76,17,72,8,61),
+ p(2,-11,56,-1,53,10,58,16,65,12,74,-10,76),
+ // Rounded olive negative-space sweeps; preserve curved junctions.
+ p(0,3,1,11,-1,19,4,21,11,17,16,8,12,5,20,-3,16),
+ p(0,46,0,55,-2,64,4,62,13,54,15,50,20,43,14),
+ p(0,19,28,27,24,35,30,32,37,37,44,29,43,23,49,17,43),
+ p(0,53,22,61,18,70,25,68,34,59,35,56,40,49,37),
+ p(0,-4,45,5,44,12,49,10,57,16,60,7,64,-3,59),
+ // Intermediate organic lobes are large enough to read on trousers.
+ p(1,25,7,30,4,35,7,37,14,33,18,29,15,25,20,21,15),
+ p(1,1,29,8,26,15,30,16,37,11,40,7,45,-1,41),
+ p(1,37,51,43,47,49,51,51,58,47,63,40,61,35,68,32,62),
+ p(2,3,5,10,2,17,6,16,13,10,13,8,20,3,16,-2,18),
+ p(2,23,30,28,27,33,31,33,36,40,40,34,44,26,40,21,44,18,37),
+ p(2,50,41,58,38,64,43,61,50,64,55,56,57,50,53,46,58,44,50),
+ p(0,33,1,38,0,43,4,43,11,40,17,35,17,31,12),
+ p(0,2,54,8,51,13,56,13,62,9,66,3,65,-1,61),
+ // Seven medium dark lobes break the formerly tan-dominated garment crops.
+ p(1,0,12,6,9,13,12,17,18,14,25,9,26,3,32,-3,26),
+ p(1,22,3,29,0,36,3,43,9,42,16,35,21,27,18,21,24,18,15),
+ p(1,36,25,44,19,51,21,57,28,54,35,48,38,44,45,36,42,32,34),
+ p(1,19,47,27,42,35,45,41,51,39,57,33,60,28,67,20,64,17,57),
+ p(1,0,59,8,56,16,59,21,66,18,73,7,76,-1,72),
+ p(1,48,49,56,46,64,50,69,57,64,65,57,67,51,64,45,67,43,59),
+ // A final few olive inlets ensure the dark never becomes a solid mass.
+ p(0,12,34,18,31,24,34,24,40,19,43,17,48,10,44),
+ p(0,45,10,51,7,57,12,55,18,51,21,44,18)
 ];
-
 /** 8B reference pass: reuses 8A index-space polygons/period/wrap while
  * rendering each real print's own motif language. No new catalog IDs.
  * All geometry is baked once into the original cached 64px master.
@@ -465,30 +492,9 @@ function ownTile(id:Camo8AId):Uint8Array{
  if(id==='jgsdf-type2')return jgsdf8D();
  if(id==='south-african-s2000')return soldier2000_8D();
  if(id==='norwegian-m98'){
-  // Minimize hard one-pixel polygon corners while retaining three flat
-  // inks and the huge M98 organic blotches. No additional fine texture.
-  let tile=paint(NORWAY,0);
-  // Three medium lobes interrupt the largest almost-solid garment panels,
-  // but retain huge contiguous 3-ink M98 shapes (no micro texture).
-  for(const motif of [
-   p(0,29,6,35,5,42,9,43,16,38,19,31,16,27,12),
-   p(2,8,29,14,26,20,29,22,36,18,41,11,39,6,35),
-   p(1,43,33,48,28,55,30,58,37,54,43,47,45,41,41)
-  ] as readonly Motif[])paintOnto(tile,motif);
-  for(let pass=0;pass<2;pass++){
-   const next=tile.slice();
-   for(let y=0;y<64;y++)for(let x=0;x<64;x++){
-    const idx=y*64+x,v=tile[idx];
-    const around=[
-     indexAt(tile,x-1,y),indexAt(tile,x+1,y),
-     indexAt(tile,x,y-1),indexAt(tile,x,y+1)
-    ];
-    for(let color=0;color<3;color++)
-     if(color!==v&&around.filter(c=>c===color).length>=3)next[idx]=color;
-   }
-   tile=next;
-  }
-  return tile;
+  // 8E: no random pixel noise or repeated filtering; every lobe is drawn
+  // once into the tile. Artistic edit remains local to this master.
+  return paint(NORWAY_8E,0);
  }
  throw new Error('Only independent 8A pattern masters are authored');
 }
