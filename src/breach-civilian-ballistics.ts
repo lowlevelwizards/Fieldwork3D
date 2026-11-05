@@ -56,7 +56,12 @@ export function applyCivilianBulletHit(actor:CivilianActor,now:number):{
  if(before<=0)return {before,after:before,down:true};
  actor.health=Math.max(0,before-1);
  actor.injuryStage=actor.health<=0?3:1;
- setCivilianState(actor,actor.health<=0?'incapacitated':'wounded',now);
+ // An ambulatory escort keeps following at reduced speed; an ordinary
+ // injured civilian stops until assisted. No automatic rescue or healing.
+ const stillFollowing=actor.health>0&&actor.following!==null;
+ setCivilianState(actor,actor.health<=0?'incapacitated':
+   stillFollowing?'escorted':'wounded',now);
+ if(actor.health<=0)actor.following=null;
  actor.lastHitAt=now;
  return {before,after:actor.health,down:actor.health<=0};
 }
