@@ -18,6 +18,22 @@ const fixtureRoles=new Set(['desk','reception-desk','transaction-counter',
   'dining-table','table','seat','chair','sofa']);
 const workerRoles=new Set(['desk','reception-desk','checkout',
   'workbench','prep-table','counter','tool-chest']);
+const seatingRoles=new Set(['chair','seat','sofa','dining-table','table']);
+/** One fixture determines both persona role and believable resting state. */
+export function civilianStation(
+ archetype:Site['archetype'],fixture:string|undefined,
+ fallback:CivilianSpec['role']
+):{role:CivilianSpec['role'];activity:CivilianSpec['activity']}{
+ const working=workerRoles.has(fixture??'');
+ const seated=seatingRoles.has(fixture??'');
+ const service=['retail','restaurant','garage','clinic'].includes(archetype??'');
+ const role:CivilianSpec['role']=service?
+  working?'employee':archetype==='clinic'?'patient':'customer':fallback;
+ const activity:CivilianSpec['activity']=working?'working':
+  seated?'seated':fixture?'inspecting':
+  role==='patient'||role==='customer'?'waiting':'idle';
+ return {role,activity};
+}
 const visitRole=(site:Site):CivilianSpec['role']=>{
   const type=site.archetype??'house';
   if(['house','townhouse','apartment'].includes(type))return 'resident';
@@ -66,8 +82,12 @@ export function planCivilians(site:Site,
   const usedRoom=new Map<string,number>();
   const neutrals:CivilianSpec[]=[];
   const rooms=site.rooms.filter(r=>r.kind==='room')
-    .map(r=>({room:r,order:rng()}))
-    .sort((a,b)=>a.order-b.order||a.room.id.localeCompare(b.room.id))
+    .map(r=>({
+      room:r,order:rng()*3+
+        Math.min(3,site.cover.filter(c=>fixtureRoles.has(c.fixture??'')&&
+          c.x>=r.x&&c.x<=r.x+r.w&&c.y>=r.y&&c.y<=r.y+r.h).length)
+    }))
+    .sort((a,b)=>b.order-a.order||a.room.id.localeCompare(b.room.id))
     .map(x=>x.room);
   const prior=activeSite();
   activateSite(site);
@@ -82,6 +102,14 @@ export function planCivilians(site:Site,
         c.x>=room.x&&c.x<=room.x+room.w&&
         c.y>=room.y&&c.y<=room.y+room.h)
         .map(c=>({c,order:rng()})).sort((a,b)=>a.order-b.order);
+      // Workplace seating/service areas may hold two people; cramped
+      // domestic rooms generally hold one. Every additional occupant
+      // still passes identical wall, route, door and spacing gates.
+      const sharedRoom=site.archetype==='restaurant'||
+        site.archetype==='retail'||site.archetype==='office'||
+        site.archetype==='clinic';
+      const roomQuota=Math.min(capacity-inRoom,sharedRoom&&
+        fixtures.length>1?2:1);
       const candidates:Pt[]=[];
       for(const {c} of fixtures.slice(0,6)){
         candidates.push({x:c.x-c.w/2-24,y:c.y},
@@ -102,7 +130,10 @@ export function planCivilians(site:Site,
           Math.abs(p.x-c.x)>=c.w/2+15||
           Math.abs(p.y-c.y)>=c.h/2+15)&&
         occupied.every(other=>dist(p,other)>=43);
-      for(const p of candidates){
+      for(let occupant=0;occupant<roomQuota&&
+          neutrals.length<desired;occupant++){
+       let placed=false;
+       for(const p of candidates){
         if(checkedRoutes>=Math.max(8,desired*4))break;
         if(!legal(p))continue;
         checkedRoutes++;
@@ -111,23 +142,25 @@ export function planCivilians(site:Site,
           dist(p,q)<=135&&legal(q)&&localLegClear(p,q,legal))
           .slice(0,2);
         const fixture=fixtures.find(x=>dist(p,{x:x.c.x,y:x.c.y})<85);
-        const isWorking=fixture&&workerRoles.has(fixture.c.fixture??'');
-        const role=visitRole(site);
+        const station=civilianStation(site.archetype,
+          fixture?.c.fixture,visitRole(site));
+        const {role,activity}=station;
         const index=neutrals.length;
-        const activity:CivilianSpec['activity']=isWorking?'working':
-          fixture?'inspecting':
-          role==='patient'||role==='customer'?'waiting':'idle';
         const persona:CivilianSpec['persona']=
           (['cautious','steady','startled'] as const)[
             Math.floor(rng()*3)];
         neutrals.push({id:'civ:'+seed+':'+index,role,persona,
           activity,position:{...p},heading:rng()*Math.PI*2,
           roomId:room.id,zoneId:room.zoneId??room.id,
-          routine:adjacent.length?[{...p},...adjacent]:undefined,
+          routine:activity==='seated'?undefined:
+            adjacent.length?[{...p},...adjacent]:undefined,
           appearanceSeed:Math.floor(rng()*0x7fffffff)});
         occupied.push(p);
         usedRoom.set(room.id,(usedRoom.get(room.id)??0)+1);
+        placed=true;
         break;
+       }
+       if(!placed)break;
       }
     }
   }finally{activateSite(prior);}
