@@ -79,6 +79,8 @@ import {canSecureRescuePerson,rescueEscortSeparated,rescueFollowGoal}
   from './breach-civilian-mission.ts';
 import {firstCivilianAlongRay,applyCivilianBulletHit}
   from './breach-civilian-ballistics.ts';
+import {recordCivilianHarm,attributableCivilianHarm,
+  type CivilianHarmEvent} from './breach-civilian-harm.ts';
 import {retreatDoorClosureEligible} from './breach-ai-door-response.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
 import {contactTactic} from './breach-ai-tactical-response.ts';
@@ -260,6 +262,7 @@ export type SquadPlanTransaction={
 };
 export type Session=Omit<TacticalState,'operators'> & {
   operators:TeamActor[];civilians:CivilianActor[];
+  civilianHarmEvents:CivilianHarmEvent[];
   windows:WindowState[];objectRevision:number;
   coverState:typeof COVER;
   passageLeases:Record<string,PassageLease>;
@@ -474,7 +477,8 @@ export function newSession(index=0,siteSeed?:number,
     (site?.encounter?.neutrals??[]).map(createCivilian):[];
   if(site)for(const person of civilians)
     person.refugePoints=civilianRefugePoints(site,person);
-  const state:Session={...seed,operators,civilians,objectRevision:0,
+  const state:Session={...seed,operators,civilians,
+    civilianHarmEvents:[],objectRevision:0,
     coverState:COVER.map(o=>({...o,material:materialForFixture(o.fixture),
       integrity:MATERIALS[materialForFixture(o.fixture)].integrity})),
     windows:initializeWindows(site?.windows??[]),
@@ -3470,7 +3474,15 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     surface});
   retainImpactMark(s,{id:s.nextEffectId++,p:clone(end),
     surface,height,age:0});
-  if(victim)applyCivilianBulletHit(victim.actor,s.seconds);
+  if(victim){
+    const harm=applyCivilianBulletHit(victim.actor,s.seconds);
+    recordCivilianHarm(s.civilianHarmEvents,{
+      id:shotId,shotId,at:s.seconds,victimId:victim.actor.id,
+      actorId:a.id,sourceSide:a.side,before:harm.before,
+      after:harm.after,severity:harm.down?'incapacitated':'injured',
+      p:clone(victim.actor.p)
+    });
+  }
 
   s.casings.push({id:shotId,at:s.seconds,weapon:a.weapon,side:a.side,
     x:muzzle.x-4*Math.cos(yaw),z:muzzle.z-4*Math.sin(yaw),
@@ -3779,7 +3791,13 @@ function fire(s:Session,a:TeamActor,dt:number){
     notify(s,'UNSEEN GUNFIRE');
   }
   if(civilianHit){
-    applyCivilianBulletHit(civilianHit.actor,s.seconds);
+    const harm=applyCivilianBulletHit(civilianHit.actor,s.seconds);
+    recordCivilianHarm(s.civilianHarmEvents,{
+      id:shotId,shotId,at:s.seconds,victimId:civilianHit.actor.id,
+      actorId:a.id,sourceSide:a.side,before:harm.before,
+      after:harm.after,severity:harm.down?'incapacitated':'injured',
+      p:clone(civilianHit.actor.p)
+    });
     // Casualty is NOT a hostile kill or accuracy bonus, and hidden
     // civilians do not generate a revealing live contact notification.
     if(liveVisibility(s,civilianHit.actor.p))
@@ -4333,6 +4351,7 @@ export function debrief(s:Session){
   const civilianInjured=s.civilians.filter(c=>c.health>0&&
     c.injuryStage>0).length;
   const civilianDown=s.civilians.filter(c=>c.health<=0).length;
+  const attributable=attributableCivilianHarm(s.civilianHarmEvents);
   const assessment=assessOperation({
     outcome:s.phase==='won'?'success':'failure',
     kind:s.missionType as OperationKind,
@@ -4340,6 +4359,8 @@ export function debrief(s:Session){
     shots,hits,objective:s.mission==='done',
     targetSurrendered:target?.surrendered??false,
     civilianInjured,civilianDown,
+    civilianPlayerInjured:attributable.injured,
+    civilianPlayerDown:attributable.down,
     extracted:own.filter(a=>a.health>0&&
       near(a.p,s.scenario.extract,47)).length,
   });
@@ -4348,6 +4369,8 @@ export function debrief(s:Session){
     criticalCasualties:casualtyCare.critical,
     evacuatedCasualties:evacuated,
     shots,hits,civilianInjured,civilianDown,
+    civilianPlayerInjured:attributable.injured,
+    civilianPlayerDown:attributable.down,
     kills:own.reduce((t,a)=>t+a.kills,0),
     pauses:s.timesPaused,variant:s.scenario.name,
     objective:s.mission==='done',
