@@ -344,7 +344,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  updateWardrobeGearLayers(v.wardrobeGear,
   usingWardrobe?looks.armorStyle:'armor-bare',
   usingWardrobe?looks.rigStyle:'no-rig',
-  looks.beltStyle,looks.packStyle,looks.top);
+  looks.beltStyle,looks.packStyle,looks.top,wardrobe?.aliceLoad??'standard');
  updateWardrobeAccessories(v.accessories,
   wardrobe?.accessories??initialWardrobeAccessories());
  updateIdentityVisuals(v.identityVisuals,wardrobe?.markings,
@@ -418,12 +418,19 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  const order=wardrobe?.mounts?.magazineOrder==='right-left'?-1:1;
  v.magazines.rig.forEach((mag,i)=>{
   // Maintain the exact same real magazine instances and carry count.
-  const waist=usingWardrobe&&looks.rigStyle==='field-webbing'?
-   v.wardrobeGear.waistRig['field-webbing']:undefined;
+  const waist=usingWardrobe&&['field-webbing','alice-lc2'].includes(looks.rigStyle)?
+   v.wardrobeGear.waistRig[looks.rigStyle]:undefined;
   if(waist){
    if(mag.parent!==waist)waist.add(mag);
    const tier=Math.floor(i/2),sign=(i%2===0?-1:1)*order;
-   if(i===6){
+   if(looks.rigStyle==='alice-lc2'){
+    // Only real magazines owned by the loadout are displayed. Two genuine
+    // flap-covered magazine cases sit at front hips, not a fictitious bib.
+    const sign=(i%2===0?-1:1)*order,tier=Math.floor(i/2);
+    mag.position.set(tier===0?2.0:tier===1?1.15:.3,
+     .15-tier*.16,sign*7.10);
+    mag.rotation.y=sign*Math.PI/2;
+   }else if(i===6){
     // A seventh carried magazine shares a REAL large utility pouch,
     // not an unsupported imaginary front-of-belt magazine.
     mag.position.set(1.78,.42,order*-7.20);
