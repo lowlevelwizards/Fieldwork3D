@@ -14,6 +14,8 @@ import {FABRIC_CAMO_POLICY,fabricCamoCompatible} from '../src/operator-fabric-ca
 import {CAMO_CATALOG,filterCamoCatalog} from '../src/operator-headwear-camo-catalog.ts';
 import {uniformCutCamoCompatible} from '../src/operator-uniform-cut-eligibility.ts';
 import {initialWardrobe,readWardrobe} from '../src/operator-wardrobe-data.ts';
+import {resolveAutomaticGearColors} from '../src/operator-gear-color-policy.ts';
+import {isGarmentSolidId,CAMO_CUFF_DEFAULTS} from '../src/operator-garment-color-policy.ts';
 
 const newIds=[...CAMO9A_IDS,...CAMO9B_IDS];
 const digest=id=>createHash('sha256').update(headwearCamoPixels(id)).digest('hex');
@@ -123,6 +125,14 @@ test('9A9B conservative garment cuts, headwear and print ownership',()=>{
  assert.equal(headwearCamoChoices('pasgt').includes('british-desert-dpm'),true);
  assert.equal(fabricCamoCompatible('french-cce','pack',outfit),true);
  assert.equal(fabricCamoCompatible('russian-vsr93','pack',outfit),false);
+});
+test('9A9B every new top print maps to valid default armor/gear/pack solids',()=>{
+ for(const id of newIds){
+  assert.ok(isGarmentSolidId(CAMO_CUFF_DEFAULTS[id]),id+' trim color');
+  const resolved=resolveAutomaticGearColors({print:id});
+  for(const slot of ['armor','gear','pack'])
+   assert.ok(isGarmentSolidId(resolved?.[slot]),id+' '+slot+' is a real swatch');
+ }
 });
 test('9A9B freeze approved 8F JGSDF and 8E Soldier 2000 bytes',()=>{
  assert.equal(digest('jgsdf-type2'),
