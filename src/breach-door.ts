@@ -1,4 +1,5 @@
 /** Physical hinges, handles, and deterministic door clearance. */
+import {sweptBodyClear,bodyClear} from './breach-navigation.ts';
 import {doorCenter,passable,route,pointToSegment,
   doorYaw,doorLeafSegment,WALLS,COVER,activeSite,initialDoors,
   pointToSegment as distanceToWall,
@@ -299,7 +300,35 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
   advanceDoor(door,Math.min(Math.max(0,dt),1/60),actors);
   return {doorId:door.id,advanced:(door.openFraction??0)>initial+.0001};
 }
-export const doorClear=(d:Door)=>!!d.open&&(d.openFraction??1)>=.72;
+/** An entry gate is clear only when an actual full-size operator capsule
+ * can traverse the threshold. Angle percentages are not aperture widths:
+ * they vary with hinge end, panel length, sliding direction and frame.
+ * Keep the lift height rule for shutters (vertical collision geometry).
+ */
+export function doorClear(d:Door):boolean{
+ if(!d.open)return false;
+ const fraction=d.openFraction??1;
+ if(d.kind==='shutter')return fraction>=.72;
+ if(fraction<.08)return false;
+ const width=dist(d.a,d.b);
+ if(width<OPERATOR_RADIUS*2+4)return false;
+ const m=doorCenter(d);
+ const tangent={x:(d.b.x-d.a.x)/width,y:(d.b.y-d.a.y)/width};
+ const normal={x:-tangent.y,y:tangent.x};
+ const depth=Math.max(OPERATOR_RADIUS+12,Math.min(28,width*.62));
+ // Probe the center and modest shoulder-safe offsets; do not mistake a
+ // tiny latch-side sliver for a passable body-width opening.
+ for(const lateral of [0,-.17,.17,-.3,.3]){
+  const along=lateral*width;
+  if(Math.abs(along)>width/2-OPERATOR_RADIUS-2)continue;
+  const center={x:m.x+tangent.x*along,y:m.y+tangent.y*along};
+  const from={x:center.x-normal.x*depth,y:center.y-normal.y*depth};
+  const to={x:center.x+normal.x*depth,y:center.y+normal.y*depth};
+  if(bodyClear(from,[d])&&bodyClear(to,[d])&&
+    sweptBodyClear(from,to,[d]))return true;
+ }
+ return false;
+}
 
 
 /** Tiny, strictly physical shoulder-yield when a door FIRST starts opening.
