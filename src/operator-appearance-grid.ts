@@ -29,7 +29,9 @@ type Entry={item:WardrobeItem;canvas:HTMLCanvasElement;button:HTMLButtonElement;
  context:AppearanceThumbnailContext};
 type OnSelect=(slot:WardrobeSlot,id:string)=>void;
 const focus=(slot:WardrobeSlot)=>{
- if(['headwear','facewear','eyewear','headset'].includes(slot))
+ if(slot==='facewear')
+  return {height:43,span:13.3,angle:[21,19,-49] as const};
+ if(['headwear','eyewear','headset'].includes(slot))
   return {height:43,span:15,angle:[27,25,-43] as const};
  if(['top','armorStyle','rigStyle','beltStyle','gloves','wrist'].includes(slot))
   return {height:30,span:24,angle:[43,33,-52] as const};
@@ -249,6 +251,7 @@ export class OperatorAppearanceGrid{
   const oldTarget=this.renderer.getRenderTarget();
   const oldClear=this.renderer.getClearColor(new THREE.Color()).clone();
   const oldAlpha=this.renderer.getClearAlpha();
+  const oldSceneBackground=this.scene.background;
   try{
    poseOperator(rig,{
     x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
@@ -277,7 +280,10 @@ export class OperatorAppearanceGrid{
    this.camera.lookAt(0,view.height,0);
    this.camera.updateProjectionMatrix();
    this.renderer.setRenderTarget(this.target);
-   this.renderer.setClearColor(0x23352e,1);
+   // Pale industrial backdrop specifically for near-black protective masks.
+   // Clothing/armor thumbnails keep their established background and framing.
+   this.scene.background=new THREE.Color(item.slot==='facewear'?0x435448:0x23352e);
+   this.renderer.setClearColor(item.slot==='facewear'?0x435448:0x23352e,1);
    this.renderer.clear(true,true,true);
    this.renderer.render(this.scene,this.camera);
    this.renderer.readRenderTargetPixels(this.target,0,0,THUMB_SIZE,
@@ -305,6 +311,7 @@ export class OperatorAppearanceGrid{
    canvas.dataset.thumbnailReady='false';
   }finally{
    this.scene.remove(rig.root);
+   this.scene.background=oldSceneBackground;
    this.renderer.setRenderTarget(oldTarget);
    this.renderer.setClearColor(oldClear,oldAlpha);
    // Reuse the fully authored geometry and GPU resources for the next
