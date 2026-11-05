@@ -13,6 +13,9 @@ export type CivilianActor={
   health:number;injuryStage:number;state:CivilianState;
   stateSince:number;fear:number;lastEvidenceAt:number;
   lastEvidenceId:string|null;lastHitAt:number;
+  lastNoiseId:number;lastSenseAt:number;
+  lastVisualId:string|null;visualProgress:Record<string,number>;
+  threatEstimate:Pt|null;
   routine:Pt[];routineIndex:number;dwellUntil:number;
   goal:Pt|null;nav:Pt[];blockedTime:number;retryAt:number;
   homeRoomId:string;homeZoneId:string|null;appearanceSeed:number;
@@ -25,6 +28,8 @@ export function createCivilian(spec:CivilianSpec):CivilianActor{
     heading:spec.heading,velocity:0,radius:10,
     health:2,injuryStage:0,state:'routine',stateSince:0,fear:0,
     lastEvidenceAt:-1,lastEvidenceId:null,lastHitAt:-100,
+    lastNoiseId:0,lastSenseAt:0,lastVisualId:null,
+    visualProgress:{},threatEstimate:null,
     routine:(spec.routine??[]).map(p=>({...p})),
     routineIndex:0,dwellUntil:0,goal:null,nav:[],
     blockedTime:0,retryAt:0,homeRoomId:spec.roomId,

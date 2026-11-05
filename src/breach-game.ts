@@ -73,6 +73,7 @@ import {pressureAdvanceOpportunity} from './breach-ai-initiative.ts';
 import {captureTargetMayWithdraw} from './breach-ai-mission-response.ts';
 import {createCivilian,type CivilianActor} from './breach-civilian-types.ts';
 import {stepCivilianMovement} from './breach-civilian-movement.ts';
+import {stepCivilianResponse} from './breach-civilian-response.ts';
 import {retreatDoorClosureEligible} from './breach-ai-door-response.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
 import {contactTactic} from './breach-ai-tactical-response.ts';
@@ -4114,6 +4115,14 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   if(s.civilians.length){
     const nearby=[...s.operators.filter(a=>a.health>0),...s.civilians.filter(c=>c.health>0)];
     for(const civil of s.civilians){
+      stepCivilianResponse(civil,s.seconds,h,{
+        noise:s.noise,people:s.operators,doors:s.doors,walls:WALLS,
+        windows:s.windows,
+        // Perception is physically checked from the CIVILIAN perspective.
+        // This is not player fog and does not share hidden target positions.
+        canSee:(from,to)=>unobstructed(from,to,s,false),
+        canReach:(from,to)=>sweptBodyClear(from,to,s.doors)
+      });
       stepCivilianMovement(civil,s.seconds,h,
         (from,to)=>sweptBodyClear(from,to,s.doors),
         (p,id)=>nearby.some(a=>a.id!==id&&d(a.p,p)<20));
