@@ -23,7 +23,7 @@ test('D2-B2 has three independent goggle silhouettes and four real fit states ea
   }
  }
  const retro=createD2Goggles('goggles-retro',frame,lens,frame);
- assert.equal(retro.children[0].children.filter(x=>x.name==='round-eye-cup-lens').length,2);
+ assert.equal(retro.children[0].children.filter(x=>x.name==='octagonal-eye-cup-lens').length,2);
  const low=createD2Goggles('goggles-low',frame,lens,frame);
  assert.equal(low.children[0].children.filter(x=>x.name?.endsWith('-lens')).length,1);
 });
