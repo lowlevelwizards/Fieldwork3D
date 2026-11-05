@@ -70,37 +70,36 @@ function standard(parent:THREE.Group,frame:THREE.Material,
 }
 function aviator(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
  root.userData.d2EyeFitTop=5.13;
- root.userData.d2EyeDesign='R8-outward-splayed-pilot-bridges';
- // Each left-lens polygon is intentionally fuller toward -X (the outside).
- // The mirrored right lens reverses that bias. Broad flat foot rather than
- // pointed fangs, with the topmost shoulder over the outer cheek.
- // Deliberately retain thirteen meaningful facets per eye.
- // Outboard cheeks have broad flat-bottom fullness; the inner edge
- // tapers gently into the dual pilot bridge instead of ending in a fang.
+ root.userData.d2EyeDesign='R9-rounded-pilot-teardrop';
+ // Classic pilot aviators: broad upper shoulder, full lower cheek and a
+ // softly faceted teardrop rather than an outer bottom corner / spider eye.
+ // R8's global 15-degree shear pulled every lower station outward, making
+ // the lower outer return kink sharply. Author the profile directly instead.
+ // Fifteen deliberate facets per ring; no new mesh parts or lens detailing.
+ //
+ // LEFT lens relative to x=-2.08: travel clockwise from the outer cheek,
+ // across the broad top, down the inner nose edge, around the full foot.
+ // The low shelf stays wide, while the outer cheek returns inward smoothly.
  const out:EyePolygon=[
-  [-1.83,3.72],[-1.90,4.48],[-1.56,4.96],
-  [-.96,5.12],[-.10,5.12],[.75,4.89],
-  [1.38,4.48],[1.53,4.04],[1.22,3.40],
-  [.28,2.71],[-.30,2.39],[-1.33,2.39],[-1.74,2.84]
+  [-1.82,3.72],[-1.90,4.40],[-1.61,4.86],
+  [-1.10,5.08],[-.28,5.12],[.48,5.00],
+  [1.13,4.71],[1.46,4.31],[1.39,3.79],
+  [1.03,3.27],[.38,2.64],[-.14,2.39],
+  [-1.30,2.39],[-1.61,2.62],[-1.82,3.06]
  ];
+ // Reauthored aperture follows the fuller contour with a bold even rim.
+ // It remains strictly inside the outer silhouette on all fifteen facets.
  const hole:EyePolygon=[
-  [-1.43,3.72],[-1.49,4.32],[-1.24,4.65],
-  [-.82,4.82],[-.12,4.82],[.58,4.61],
-  [1.03,4.27],[1.14,4.03],[.86,3.52],
-  [.08,2.98],[-.42,2.78],[-1.13,2.78],[-1.37,3.00]
+  [-1.51,3.73],[-1.57,4.31],[-1.32,4.60],
+  [-.98,4.79],[-.25,4.82],[.41,4.72],
+  [.91,4.46],[1.10,4.17],[1.02,3.85],
+  [.69,3.49],[.16,2.97],[-.37,2.75],
+  [-1.05,2.75],[-1.30,2.87],[-1.50,3.19]
  ];
- // R8: a deliberate 15-degree outward optical splay, as if the two
- // teardrops were rotated away from the nose. Shear their XY contours
- // around eye height rather than rotating 3D objects: the high shoulders,
- // lower foot shelf, lens heights, and both connected bridges survive.
- // Bottom mass moves toward the cheek; the inner fang retreats outward.
- const outwardSplay=(points:EyePolygon):EyePoint[]=>
-  points.map(([x,y])=>[x+Math.tan(Math.PI/12)*(y-4.07),y]);
- const splayedOuter=outwardSplay(out),splayedAperture=outwardSplay(hole);
  for(const side of [-1,1] as const){
   const x=side*2.08;
-  const outline=shifted(side===-1?splayedOuter:mirror(splayedOuter),x);
-  const aperture=shifted(side===-1?splayedAperture:mirror(splayedAperture),x);
+  const outline=shifted(side===-1?out:mirror(out),x);
+  const aperture=shifted(side===-1?hole:mirror(hole),x);
   frameRing(root,frame,'pilot-lens-collar',outline,[aperture],
    -5.01,.38,'pilot');
   lensSurface(root,lens,'pilot-full-teardrop',aperture,-5.06);
