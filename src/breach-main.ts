@@ -85,7 +85,7 @@ import {validateStudioAppearanceEdits,applyStudioRosterEdits,
  applyStudioCampaignEdits} from './operator-studio-batch-save.ts';
 import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
- sameWeaponConfiguration,familyAccessoryAllowed,type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
+ sameWeaponConfiguration,familyAccessoryAllowed} from './equipment-weapon-assemblies.ts';
 import {FAMILY_PRESETS,FAMILY_PART_SLOTS,FAMILY_PARTS,matchingFamilyPreset,compatibleFamilyPart,type FamilyPartSlot} from './equipment-weapon-families.ts';
 import {newCampaign,readCampaign,acceptContract,resolveOperation,
  purchaseAmmo,purchaseMedical,resupplyOperator,resupplyMedicalOperator,treatOperator,
