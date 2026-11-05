@@ -135,14 +135,15 @@ export class WeaponWorkbenchPreview{
    this.renderer.domElement.addEventListener('webglcontextlost',e=>{
     e.preventDefault();this.enableFallback();this.draw();
    });
-   this.canvasHost.addEventListener('pointerdown',this.down);
-   this.canvasHost.addEventListener('pointermove',this.move);
-   this.canvasHost.addEventListener('pointerup',this.up);
-   this.canvasHost.addEventListener('pointercancel',this.up);
-   this.canvasHost.addEventListener('wheel',this.wheel,{passive:false});
   }catch{
    this.enableFallback();
   }
+  // Fixed 2D still supports pinch/wheel zoom when WebGL initialization fails.
+  this.canvasHost.addEventListener('pointerdown',this.down);
+  this.canvasHost.addEventListener('pointermove',this.move);
+  this.canvasHost.addEventListener('pointerup',this.up);
+  this.canvasHost.addEventListener('pointercancel',this.up);
+  this.canvasHost.addEventListener('wheel',this.wheel,{passive:false});
   this.resizeObserver=new ResizeObserver(()=>this.draw());
   this.resizeObserver.observe(this.canvasHost);
   this.setConfiguration(config);
