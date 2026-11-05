@@ -7,7 +7,7 @@ import {
   type Pt,type Operator,type TacticalState,type Door,type Side,
   W,H,WALLS,COVER,OPERATOR_RADIUS,initialDoors,newTacticalState,route,passable,activateSite,
   segmentsCross,doorCenter,doorBlocksSegment,doorLeafSegment,doorBlocksRay,doorBlocksSightRay,
-  pointToSegment,staticWallBlocksRay,someCoverAlongRay,
+  pointToSegment,staticWallBlocksRay,someCoverAlongRay,activeGeometryRevision,
 } from './breach-core.ts';
 import {
   type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,
@@ -59,6 +59,9 @@ import {materialResponse} from './breach-impact-responses.ts';
 import {manipulateWindow,damageWindow,windowPaneSegment} from './breach-windows.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {chooseAiIntent,hasRecentSound,type AIIntent} from './breach-ai-policy.ts';
+import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
+import {TacticalRouteCache} from './breach-tactical-route-cache.ts';
+import {PerceptionPairCache} from './breach-perception-cache.ts';
 import {settledEnemyPosture} from './breach-ai-posture.ts';
 import {searchCandidates} from './breach-ai-search.ts';
 import {investigationTempo} from './breach-ai-investigation.ts';
@@ -258,6 +261,32 @@ export type Session=Omit<TacticalState,'operators'> & {
   rescue:RescueEscort|null;
   captureTarget:string|null;captureSecured:boolean;
   intelCarrierId:string|null;};
+// The elective enemy-planning budget is mission-local and never serialized.
+const aiSchedulers=new WeakMap<Session,AiWorkScheduler>();
+const tacticalRoutes=new WeakMap<Session,TacticalRouteCache>();
+const perceptionBySession=new WeakMap<Session,PerceptionPairCache>();
+/** Exact-authority cache: geometry epoch and precise leaf state fully
+ * invalidate a physical route. No uncertain player intel is reused here. */
+function cachedEnemyRoute(s:Session,from:Pt,to:Pt,physicalDoors=false):Pt[]{
+  let cache=tacticalRoutes.get(s);
+  if(!cache){cache=new TacticalRouteCache();tacticalRoutes.set(s,cache);}
+  const leafSignature=physicalDoors?s.doors.map(door=>[
+    door.id,door.kind,door.open,door.openFraction,
+    door.hinge,door.swing,door.slideDirection
+  ].join(':')).join(';'):'static';
+  return cache.get(from,to,activeGeometryRevision(),
+    Math.round(s.seconds*60),leafSignature,()=>
+      physicalDoors?routeWithSqueezeWorld(from,to,s.doors):route(from,to));
+}
+function electiveAiWork(s:Session,a:TeamActor,kind:string):boolean{
+  let scheduler=aiSchedulers.get(s);
+  if(!scheduler){
+    scheduler=new AiWorkScheduler(2,
+      s.operators.filter(actor=>actor.side==='red').map(actor=>actor.id));
+    aiSchedulers.set(s,scheduler);
+  }
+  return scheduler.allow(a.id,kind,Math.round(s.seconds*60));
+}
 const d=(a:Pt,b:Pt)=>length(a,b);
 const clone=(p:Pt):Pt=>({...p});
 const near=(a:Pt,b:Pt,range:number)=>d(a,b)<=range;
@@ -1479,11 +1508,20 @@ function unobstructed(a:Pt,b:Pt,s:Session,lowBlocks:boolean){
 }
 /** Physical geometry visibility, independently of acquisition time. */
 export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){
+  // Most pairs are outside acquisition distance or facing. Reject them
+  // BEFORE touching the cache or checking any doors. Only genuinely
+  // possible LOS rays are expensive enough to merit memoization.
   if(a.health<=0||b.health<=0||d(a.p,b.p)>240)return false;
   const delta=angleDifference(a.heading,angle(a.p,b.p));
   if(Math.abs(delta)>.94)return false;
-  return !exposure(a.p,b.p,s.doors,
-    b.posture==='crouch',a.posture==='crouch',true).blocked;
+  let cache=perceptionBySession.get(s);
+  if(!cache){cache=new PerceptionPairCache();perceptionBySession.set(s,cache);}
+  // This remains exact through mid-tick door interactions, actor movement,
+  // crouching and cover damage. Neither fog nor awareness is cached.
+  return cache.get(a,b,s.seconds,
+    s.objectRevision+'/'+activeGeometryRevision(),s.doors,()=>
+      !exposure(a.p,b.p,s.doors,
+        b.posture==='crouch',a.posture==='crouch',true).blocked);
 }
 /** Confirmed vision is acquired over simulated time; rendering never grants sight. */
 export function inSight(a:TeamActor,b:TeamActor,s:Session){
@@ -1751,7 +1789,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     }
     if(s.seconds<a.retryRouteAt){a.velocity=0;return false;}
     a.nav=a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
-      routeWithSqueezeWorld(a.p,p,s.doors);
+      cachedEnemyRoute(s,a.p,p,true);
     if(!a.nav.length){
       // A failed route is a stationary brace, not phantom walking speed.
       a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
@@ -2061,7 +2099,8 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       // Once actual collision is observed, repair against real geometry,
       // not only the incomplete player-intel route that may run through
       // an undiscovered door frame. The authored final goal is unchanged.
-      const repaired=routeWithSqueezeWorld(a.p,p,s.doors);
+      const repaired=a.side==='red'?cachedEnemyRoute(s,a.p,p,true):
+        routeWithSqueezeWorld(a.p,p,s.doors);
       if(repaired.length){a.nav=repaired;a.retryRouteAt=0;}
       else if(a.side==='blue'){
         a.nav=routeWithSqueezeIntel(s.intel,a.p,p);
@@ -2863,7 +2902,12 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       a.routinePauseUntil=s.seconds+2+(index%2);a.nav=[];a.velocity=0;
       return;
     }
-    if(!a.nav.length)a.nav=route(a.p,target);
+    if(!a.nav.length){
+      if(!electiveAiWork(s,a,'routine-route')){
+        a.velocity=0;return;
+      }
+      a.nav=cachedEnemyRoute(s,a.p,target);
+    }
     if(!a.nav.length){
       a.routineIndex=(index+1)%a.encounterRoutine.length;
       a.routinePauseUntil=s.seconds+4;a.velocity=0;return;
@@ -2877,12 +2921,18 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.velocity=0;return;
   }
   if(!a.contacted&&!a.contact&&a.alert==='idle'&&a.watch){
-    if(a.defense===null&&s.seconds>=a.defenseUntil){
+    if(a.defense===null&&s.seconds>=a.defenseUntil&&
+       electiveAiWork(s,a,'idle-defense')){
       a.defense=defensivePosition(a,a.watch,s);
       a.defenseUntil=s.seconds+2;
     }
     if(a.defense&&d(a.p,a.defense)>11){
-      if(!a.nav.length)a.nav=route(a.p,a.defense);
+      if(!a.nav.length){
+        if(!electiveAiWork(s,a,'idle-route')){
+          a.velocity=0;rotate(a,angle(a.p,a.watch),dt);return;
+        }
+        a.nav=cachedEnemyRoute(s,a.p,a.defense);
+      }
       if(!a.nav.length){
         a.defense=null;a.defenseUntil=s.seconds+.7;
       }else{
@@ -2919,8 +2969,12 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     if(a.alert==='investigating'&&d(a.p,a.contact)>40){
       // Noise gives a region to investigate, never a magic target.
       if(!a.nav.length){
-        const goal=reachableInvestigation(a.p,a.contact);
-        if(goal)a.nav=route(a.p,goal);
+        if(!electiveAiWork(s,a,'investigation-route')){
+          a.velocity=0;return;
+        }
+        const goal=reachableInvestigation(a.p,a.contact,
+          (from,to)=>cachedEnemyRoute(s,from,to));
+        if(goal)a.nav=cachedEnemyRoute(s,a.p,goal);
         else{a.alert='cover';a.contact=null;a.defense=null;}
       }
       if(a.nav.length&&a.contact)approach(a,a.nav.at(-1)??a.contact,dt,s,
@@ -2943,11 +2997,15 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       if(s.seconds<a.searchPauseUntil){
         a.velocity=0;rotate(a,angle(a.p,a.contact),dt);return;
       }
+      if(!electiveAiWork(s,a,'search-expand')){
+        a.velocity=0;return;
+      }
       let next:Pt|null=null,checks=0;
       while(a.searchQueue.length&&!next&&checks++<2){
         const candidate=a.searchQueue.shift()!;
         if(d(candidate,a.p)<24)continue;
-        next=reachableInvestigation(a.p,candidate);
+        next=reachableInvestigation(a.p,candidate,
+          (from,to)=>cachedEnemyRoute(s,from,to));
       }
       a.nav=[];
       if(next){
@@ -2967,7 +3025,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
   }
   if(a.alert==='cover'&&a.defense&&d(a.p,a.defense)>10){
-    if(!a.nav.length)a.nav=route(a.p,a.defense);
+    if(!a.nav.length)a.nav=cachedEnemyRoute(s,a.p,a.defense);
     if(a.nav.length)approach(a,a.defense,dt,s,.7);
     else{a.defense=null;a.defenseUntil=s.seconds+.8;}
   }
