@@ -21,7 +21,7 @@ export const newSuspicion=():SuspicionMemory=>({
   lastCause:'',recentIds:[],searchExhaustedAt:-1
 });
 const escalation:Record<SuspicionEvidenceKind,number>={
-  orient:.16,investigate:.30,alarm:.73,report:.58,contact:1
+  orient:.18,investigate:.30,alarm:.73,report:.58,contact:1
 };
 const rank:Record<SuspicionStage,number>={
   unaware:0,curious:1,suspicious:2,searching:2,alerted:3
@@ -93,5 +93,18 @@ export function exhaustSuspicionSearch(memory:SuspicionMemory,now:number):void{
   memory.pressure=Math.min(memory.pressure,.47);
   if(memory.stage==='searching'||memory.stage==='alerted'){
     memory.stage='suspicious';memory.lastStageAt=now;
+  }
+}
+
+/** Continuous direct sight remains alert without manufacturing new reports
+ * or repeatedly adding a first-contact impulse each simulation frame. */
+export function maintainVisualContact(memory:SuspicionMemory,now:number):void{
+  if(!Number.isFinite(now))return;
+  memory.pressure=1;
+  memory.lastEvidenceAt=now;
+  memory.lastCause='confirmed-sight';
+  if(memory.stage!=='alerted'){
+    memory.stage='alerted';
+    memory.lastStageAt=now;
   }
 }

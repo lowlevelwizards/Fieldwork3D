@@ -60,7 +60,7 @@ import {manipulateWindow,damageWindow,windowPaneSegment} from './breach-windows.
 import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {chooseAiIntent,hasRecentSound,type AIIntent} from './breach-ai-policy.ts';
 import {newSuspicion,observeSuspicion,advanceSuspicion,
-  exhaustSuspicionSearch,type SuspicionMemory}
+  maintainVisualContact,exhaustSuspicionSearch,type SuspicionMemory}
   from './breach-ai-suspicion.ts';
 import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
 import {TacticalRouteCache} from './breach-tactical-route-cache.ts';
@@ -2708,6 +2708,9 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   }
   advanceSuspicion(a.suspicion,s.seconds,dt,
     a.alert==='investigating'&&!!a.contact);
+  // Sustained *confirmed* sight is fresh information without extra contact
+  // events. Keep alarm current until vision really breaks.
+  if(visualId)maintainVisualContact(a.suspicion,s.seconds);
   if(visible.length&&a.encounterReactionUntil===Number.POSITIVE_INFINITY){
     a.encounterReactionStartedAt=s.seconds;
     a.encounterReactionUntil=s.seconds+encounterReactionDelay(

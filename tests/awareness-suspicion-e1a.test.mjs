@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newSuspicion,observeSuspicion,advanceSuspicion,
-  exhaustSuspicionSearch} from '../src/breach-ai-suspicion.ts';
+  exhaustSuspicionSearch,maintainVisualContact} from '../src/breach-ai-suspicion.ts';
 
 test('E1-A: independent weak cues accumulate but same event cannot stack',()=>{
   const s=newSuspicion();
@@ -47,4 +47,16 @@ test('E1-A: out-of-order evidence and invalid elapsed time cannot corrupt state'
   assert.equal(observeSuspicion(s,{id:'old/1',at:4,kind:'alarm',cause:'gunshot'}),false);
   assert.equal(advanceSuspicion(s,6,Number.NaN),s.stage);
   assert.ok(Number.isFinite(s.pressure));
+});
+
+test('E1-B2: continuing actual vision keeps alert, then decay resumes on loss',()=>{
+ const s=newSuspicion();
+ observeSuspicion(s,{id:'visual/1',at:1,kind:'contact',cause:'confirmed-sight'});
+ for(let t=2;t<40;t++){
+   advanceSuspicion(s,t,1);
+   maintainVisualContact(s,t);
+   assert.equal(s.stage,'alerted');
+ }
+ for(let t=40;t<125;t++)advanceSuspicion(s,t,1);
+ assert.equal(s.stage,'unaware');
 });
