@@ -56,7 +56,10 @@ const AR_FIELDS:readonly (readonly [number,number,number,number,number])[]=[
 ];
 function cadpatAr():Uint8Array{
  const tile=new Uint8Array(SIZE*SIZE);
- AR_FIELDS.forEach(([x,y,w,h,ink],i)=>step(tile,x,y,w,h,ink,i+37));
+ AR_FIELDS.forEach(([x,y,w,h,ink],i)=>
+  step(tile,x,y,
+   Math.round(w*(ink===2?.80:.93)),
+   Math.round(h*(ink===2?.82:.94)),ink,i+37));
  for(let row=0;row<12;row++)for(let col=0;col<12;col++){
   const r=hash(col,row,1751);
   if(r<.71)continue;
