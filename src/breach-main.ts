@@ -823,12 +823,30 @@ function renderOperationsBoard(){
    row.className='fw-equipment-choice';
    row.append(label,select);loadout.field(loadoutGroupForSlot(slot)).append(row);
   }
-  // Appearance is edited exclusively in Operator Studio; no duplicate wardrobe form.
+  // Factory body furniture and rail accessories share one spatial workbench.
   const weaponEditor=document.createElement('details');
+  weaponEditor.className='fw-weapon-editor';
   weaponEditor.open=expandedQuickWeapon===member.id;
-  const mountSelectors=new Map<WeaponAttachmentSlot,HTMLSelectElement>();
+  const socketRows=new Map<WorkbenchSocket,HTMLElement>();
   const workbenchHost=document.createElement('div');
-  workbenchHost.style.cssText='margin:10px 0 14px';
+  workbenchHost.style.cssText='min-width:0;max-width:100%;width:100%;margin:8px 0';
+  const socketPanel=document.createElement('div');
+  socketPanel.className='fw-weapon-socket-panel';
+  const socketHeading=document.createElement('strong');
+  socketHeading.className='fw-weapon-section-label';
+  const socketNote=document.createElement('p');
+  socketNote.className='fw-weapon-helper';
+  socketNote.textContent='Tap a labeled socket on the weapon to change this part.';
+  socketPanel.append(socketHeading,socketNote);
+  const initialSocket:WorkbenchSocket=member.weaponConfiguration.build?'body-receiver':'optic';
+  let selectedSocket:WorkbenchSocket=initialSocket;
+  const showSocket=(slot:WorkbenchSocket)=>{
+   if(!socketRows.has(slot))return;
+   selectedSocket=slot;
+   for(const [id,row] of socketRows)row.hidden=id!==slot;
+   socketHeading.textContent='SELECT PART · '+slot.replace('body-','').toUpperCase();
+   if(quickWorkbenchId===member.id)quickWorkbench?.setActiveSlot(slot);
+  };
   const syncWorkbench=()=>{
    const active=kit.open&&loadout.group.weapon.open&&weaponEditor.open;
    if(!active){if(quickWorkbenchId===member.id){
@@ -839,12 +857,13 @@ function renderOperationsBoard(){
    quickWorkbenchId=member.id;
    quickWorkbench=new WeaponWorkbenchPreview(workbenchHost,
     member.weaponConfiguration,slot=>{
-     const select=mountSelectors.get(slot);
+     showSocket(slot);
+     const select=socketRows.get(slot)?.querySelector('select');
      if(!select)return;
      select.focus({preventScroll:true});
-     select.scrollIntoView({block:'nearest',behavior:'smooth'});
-     try{select.showPicker();}catch{/* native picker unavailable */}
+     try{select.showPicker();}catch{/* mobile browser may require second tap */}
     });
+   quickWorkbench.setActiveSlot(selectedSocket);
   };
   weaponEditor.addEventListener('toggle',()=>{
    if(weaponEditor.open)expandedQuickWeapon=member.id;
@@ -852,26 +871,26 @@ function renderOperationsBoard(){
    syncWorkbench();
   });
   kit.addEventListener('toggle',syncWorkbench);
+  loadout.group.weapon.addEventListener('toggle',syncWorkbench);
   const weaponTitle=document.createElement('summary');
-  weaponTitle.textContent='WEAPON ATTACHMENTS';
-  weaponTitle.style.cssText='min-height:40px;cursor:pointer;padding:12px 0;font-weight:700;font-size:11px';
-  weaponEditor.append(weaponTitle,workbenchHost);
+  weaponTitle.textContent='3D WEAPON WORKBENCH · TAP SOCKETS';
+  weaponEditor.append(weaponTitle,workbenchHost,socketPanel);
   for(const slot of WEAPON_ATTACHMENT_SLOTS){
+   if(member.weaponConfiguration.build&&slot==='stock')continue;
    const row=document.createElement('label');
-   row.style.cssText='display:flex;justify-content:space-between;gap:8px;align-items:center;margin:8px 0';
+   row.className='fw-weapon-socket-row';
    const label=document.createElement('span');label.textContent=slot.toUpperCase();
-   label.style.fontSize='10px';
    const select=document.createElement('select');
    select.setAttribute('aria-label',slot+' attachment for '+member.callsign);
-   select.style.cssText='max-width:65%;min-height:44px;touch-action:manipulation;background:#243530;color:#e5e9d8;border-radius:7px;padding:6px';
-   for(const item of Object.values(WEAPON_ATTACHMENTS)){
-    if(item.slot!==slot||!item.compatible.includes(member.weapon))continue;
+   for(const part of Object.values(WEAPON_ATTACHMENTS)){
+    if(part.slot!==slot||!part.compatible.includes(member.weapon)||
+     (member.weaponConfiguration.build&&
+      !familyAccessoryAllowed(member.weaponConfiguration.build,slot,part.id)))continue;
     const option=document.createElement('option');
-    option.value=item.id;option.textContent=item.name;select.append(option);
+    option.value=part.id;option.textContent=part.name;select.append(option);
    }
    select.value=member.weaponConfiguration.slots[slot];
    select.disabled=state.phase!=='planning'||replaying;
-   mountSelectors.set(slot,select);
    select.addEventListener('focus',()=>quickWorkbenchId===member.id&&
     quickWorkbench?.setActiveSlot(slot));
    select.addEventListener('change',()=>{
@@ -881,8 +900,41 @@ function renderOperationsBoard(){
     expandedQuickKit=member.id;expandedQuickWeapon=member.id;
     expandedQuickLoadoutGroup='weapon';renderOperationsBoard();updateHud();
    });
-   row.append(label,select);weaponEditor.append(row);
+   row.append(label,select);row.hidden=slot!==initialSocket;
+   socketRows.set(slot,row);socketPanel.append(row);
   }
+  const build=member.weaponConfiguration.build;
+  if(build)for(const slot of FAMILY_PART_SLOTS){
+   const socket=('body-'+slot) as WorkbenchSocket;
+   const row=document.createElement('label');
+   row.className='fw-weapon-socket-row';
+   const label=document.createElement('span');label.textContent=slot.toUpperCase();
+   const select=document.createElement('select');
+   select.setAttribute('aria-label',slot+' body part for '+member.callsign);
+   const length=FAMILY_PARTS[build.parts.barrel]?.length;
+   for(const part of Object.values(FAMILY_PARTS)){
+    if(part.slot!==slot||part.family!==build.family)continue;
+    const receiver=slot==='receiver'?part.id:build.parts.receiver;
+    if(!compatibleFamilyPart(receiver,slot,part.id,member.weapon,length))continue;
+    const option=document.createElement('option');
+    option.value=part.id;option.textContent=part.name;select.append(option);
+   }
+   select.value=build.parts[slot];
+   select.disabled=state.phase!=='planning'||replaying;
+   select.addEventListener('focus',()=>quickWorkbenchId===member.id&&
+    quickWorkbench?.setActiveSlot(socket));
+   select.addEventListener('change',()=>{
+    if(state.phase!=='planning'||replaying)return;
+    persistentRoster=configureRosterWeaponBodyPart(persistentRoster,member.id,
+     slot as FamilyPartSlot,select.value);
+    saveRoster();applyRosterIdentity(state,persistentRoster);
+    expandedQuickKit=member.id;expandedQuickWeapon=member.id;
+    expandedQuickLoadoutGroup='weapon';renderOperationsBoard();updateHud();
+   });
+   row.append(label,select);row.hidden=socket!==initialSocket;
+   socketRows.set(socket,row);socketPanel.append(row);
+  }
+  showSocket(initialSocket);
   const measured=resolveWeaponAssembly(member.weaponConfiguration);
   const properties=document.createElement('p');
   properties.style.cssText='font-size:10px;opacity:.75;line-height:1.55';
