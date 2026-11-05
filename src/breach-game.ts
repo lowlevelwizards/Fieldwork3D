@@ -35,7 +35,8 @@ import {selectFireableContact} from './breach-target-selection.ts';
 import {acquisitionSeconds} from './breach-firing-cadence.ts';
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,kickDoor,
-  initialOpeningYieldCandidate,pressDoorOnBodyAttempt} from './breach-door.ts';
+  initialOpeningYieldCandidate,pressDoorOnBodyAttempt,
+  autoDoorAtBodyContact} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool,issuedWedges} from './equipment-entry-tools.ts';
@@ -75,7 +76,7 @@ import type {LightingMode} from './equipment-site-lighting.ts';
 import {passageWait,approachingNarrowThreshold,
   type PassageActor,type PassageLease}
   from './breach-passage.ts';
-import {diagnoseMovement,projectReachableGoal,type Blocker}
+import {diagnoseMovement,blockedStepCause,projectReachableGoal,type Blocker}
   from './breach-nav-diagnostics.ts';
 import {bodyClear,sweptBodyClear,squeezeFacing,
   sweptProfileClear,SQUEEZE_RADIUS,escapeOpenDoorOverlap,
@@ -1846,12 +1847,12 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   // be preempted by this convenience interaction.
   const autoDoor=a.side==='red'||a.plan[0]?.kind==='move'||
     a.plan[0]?.kind==='pie';
-  const doorAhead=autoDoor?s.doors.find(door=>{
+  const doorAhead=autoDoor?(s.doors.find(door=>{
     if(door.open&&(door.openFraction??0)>=.72)return false;
     if(!doorReachable(a.p,door))return false;
     return doorBlocksSegment(door,{a:a.p,b:next})||
       doorBlocksSegment(door,{a:a.p,b:p});
-  }):undefined;
+  })??autoDoorAtBodyContact(a.p,move,s.doors)):undefined;
   if(doorAhead){
     a.motorPause='door-opening';
     const opening=doorInteraction({target:doorAhead,actorId:a.id,
@@ -2026,9 +2027,10 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     }
     a.velocity=Math.max(0,a.velocity-dt*130);
     a.blockedTime+=dt;
-    a.lastBlocker=diagnoseMovement(a.p,desiredMove,s.doors,
-      s.operators.filter(b=>b!==a&&b.side!==a.side&&b.health>0)
-      .map(b=>b.p)).blocker;
+    a.lastBlocker=blockedStepCause(
+      diagnoseMovement(a.p,desiredMove,s.doors,
+        s.operators.filter(b=>b!==a&&b.side!==a.side&&b.health>0)
+        .map(b=>b.p)).blocker,!!blocking,closed);
     if(a.side==='blue'&&a.lastBlocker==='furniture'){
       const newlyKnown=discoverContactCover(s.intel,a.p,13);
       if(newlyKnown.length){

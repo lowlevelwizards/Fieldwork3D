@@ -9,7 +9,7 @@ const near=(a:{x:number;y:number},b:{x:number;y:number})=>
  Math.hypot(a.x-b.x,a.y-b.y);
 export function assignEncounterRoles(site:Site,source:EncounterActorSpec[],
  groups:EncounterGroup[],premise:EncounterPremise,
- mission:OperationKind,seed:number):EncounterActorSpec[]{
+ mission:OperationKind,seed:number,applyObjectiveSecurity=true):EncounterActorSpec[]{
  const rng=encounterRng(seed,8);
  const groupMap=new Map(groups.map(g=>[g.id,g]));
  const assigned=source.map((a,index)=>{
@@ -28,6 +28,17 @@ export function assignEncounterRoles(site:Site,source:EncounterActorSpec[],
    premise==='defensive'?'prepared':'ordinary';
   return {...a,role,weaponProfile};
  });
+ return applyObjectiveSecurity?
+   assignObjectiveSecurity(site,assigned,mission):assigned;
+}
+/** Apply mission objective protection AFTER the final physical placement.
+ * Rehoming and exterior eligibility may have moved a provisional role.
+ * Never relocate, add, or divulge an actor; classify only a real nearby body.
+ */
+export function assignObjectiveSecurity(
+ site:Pick<Site,'objective'>,source:readonly EncounterActorSpec[],
+ mission:OperationKind):EncounterActorSpec[]{
+ const assigned=source.map(a=>({...a}));
  // Mission identity should matter near its actual objective, not imply
  // new hostiles or move anyone into an unsafe/unknown part of the map.
  // The already-validated spawn solver owns all coordinates and capacity.
