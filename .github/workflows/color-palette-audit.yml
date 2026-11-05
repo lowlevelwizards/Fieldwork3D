@@ -1,0 +1,30 @@
+name: Color palette source audit
+on:
+  push:
+    branches: [audit/color-palette-census-2026-11-05]
+    paths:
+      - 'scripts/audit-game-colors.mjs'
+      - '.github/workflows/color-palette-audit.yml'
+permissions:
+  contents: write
+jobs:
+  census:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: audit/color-palette-census-2026-11-05
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Audit all authored production colors
+        run: node scripts/audit-game-colors.mjs
+      - name: Commit documentation without changing game source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/palette-audit-report/
+          if ! git diff --staged --quiet; then
+            git commit -m "docs(audit): publish source color census"
+            git push
+          fi
