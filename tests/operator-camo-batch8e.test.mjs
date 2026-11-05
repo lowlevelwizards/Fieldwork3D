@@ -20,7 +20,7 @@ function edges(tile){
  return count;
 }
 function coarseBlockCoverage(tile,blockSize=16){
- let max=0,min=1;
+ let max=0,min=Infinity;
  for(let sy=0;sy<64;sy+=blockSize)for(let sx=0;sx<64;sx+=blockSize){
   const n=new Array(5).fill(0);
   for(let y=sy;y<sy+blockSize;y++)
