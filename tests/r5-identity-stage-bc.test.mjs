@@ -53,7 +53,7 @@ test('R5C: independent directional beret mass, not a scaled patrol cap',()=>{
  assert.equal(group.userData.silhouette,'beret');
  assert.equal(group.children.length,1);
 });
-test('R5C: reference can preview beret and preserve the user's equipped kit',()=>{
+test('R5C: reference preview preserves the equipped kit',()=>{
  const r=resolveFactionReference('indonesian-kopassus-1990');
  assert.equal(r.wardrobe.styles.headwear,'beret');
  assert.equal(r.wardrobe.headwearColor,'beret-scarlet');
