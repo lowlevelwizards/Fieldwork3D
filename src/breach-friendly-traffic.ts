@@ -8,13 +8,19 @@ const minGap=(p:Pt,peers:readonly Pt[])=>
 export function friendlyPassingStep(from:Pt,desired:Pt,goal:Pt,
  peers:readonly Pt[],sweep:(a:Pt,b:Pt)=>boolean):Pt{
  const step=dist(from,desired);
- if(step<1e-6||!peers.some(p=>dist(p,desired)<21))return desired;
+ // Anticipatory yielding matters while traveling, but the last few
+ // units of an authored destination use the proven tight-gap arrival
+ // policy. Over-steering at arrival can cause neighboring final positions
+ // to compress, despite each route being individually complete.
+ const traveling=dist(from,goal)>26;
+ if(step<1e-6||!peers.some(p=>dist(p,desired)<(traveling?25:21)))
+   return desired;
  const dx=(desired.x-from.x)/step,dy=(desired.y-from.y)/step;
  const gap=minGap(desired,peers);
  const expectedProgress=dist(from,goal)-dist(desired,goal);
  // Try short angled steps. A small per-tick sidestep accumulated over time
  // looks natural; it must not require one enormous impossible jump.
- let best=desired,bestScore=score(desired,goal,peers);
+ let best=desired,bestScore=score(desired,goal,peers,traveling);
  for(const side of [-1,1]){
   for(const strength of [.45,.95,1.55]){
    const len=Math.hypot(1,strength),vx=(dx-dy*side*strength)/len;
@@ -27,7 +33,7 @@ export function friendlyPassingStep(from:Pt,desired:Pt,goal:Pt,
    if(progress<Math.max(0,expectedProgress*.42)-.03)continue;
    const separation=minGap(candidate,peers);
    if(separation<gap+.01)continue;
-   const rating=score(candidate,goal,peers);
+   const rating=score(candidate,goal,peers,traveling);
    // Minor numerical score changes should not create visual oscillation.
    if(rating<bestScore-Math.max(.10,step*.06)){
      best=candidate;bestScore=rating;
@@ -36,10 +42,13 @@ export function friendlyPassingStep(from:Pt,desired:Pt,goal:Pt,
  }
  return best;
 }
-function score(p:Pt,goal:Pt,peers:readonly Pt[]):number{
+function score(p:Pt,goal:Pt,peers:readonly Pt[],traveling=true):number{
  const gap=minGap(p,peers);
  // Contact is a soft aesthetic cost, not a hard collision constraint.
- return dist(p,goal)+Math.max(0,17-gap)*2.2;
+ // Begin yielding before the next movement tick enters the teammate's
+ // personal space. The motor still demands meaningful forward progress,
+ // so this never forces sideward wandering or changes the authored goal.
+ return dist(p,goal)+Math.max(0,(traveling?22:17)-gap)*2.2;
 }
 /** Two teammates should not settle on the same exact spot. Approaching an
  * occupied goal to within one body diameter counts as a practical arrival. */
