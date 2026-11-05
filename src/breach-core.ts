@@ -70,6 +70,9 @@ export const COVER:Obstacle[]=[
 // place. Track all structural array mutators; rebuild lazily on the next query.
 // Non-enumerable own methods preserve array iteration and serialization.
 let geometryDirty=false;
+let geometryRevision=0;
+/** Mutation epoch for site and live-cover route/LOS caches. */
+export const activeGeometryRevision=()=>geometryRevision;
 function watchGeometryMutations<T>(items:T[]){
   for(const method of ['splice','push','pop','shift','unshift','sort',
                        'reverse','copyWithin','fill'] as const){
@@ -78,6 +81,7 @@ function watchGeometryMutations<T>(items:T[]){
       value:(...args:unknown[])=>{
         const result=Reflect.apply(original,items,args);
         geometryDirty=true;
+        geometryRevision++;
         return result;
       }});
   }
