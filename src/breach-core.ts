@@ -66,8 +66,32 @@ export const COVER:Obstacle[]=[
   {x:23,y:573,w:94,h:42,low:true},
   {x:505,y:594,w:82,h:46,low:true},
 ];
-// Static site geometry is indexed once, not once per actor/ray/sweep.
+// Mutable live cover and legacy geometry test fixtures edit these arrays in
+// place. Track all structural array mutators; rebuild lazily on the next query.
+// Non-enumerable own methods preserve array iteration and serialization.
+let geometryDirty=false;
+function watchGeometryMutations<T>(items:T[]){
+  for(const method of ['splice','push','pop','shift','unshift','sort',
+                       'reverse','copyWithin','fill'] as const){
+    const original=Array.prototype[method];
+    Object.defineProperty(items,method,{configurable:true,writable:true,
+      value:(...args:unknown[])=>{
+        const result=Reflect.apply(original,items,args);
+        geometryDirty=true;
+        return result;
+      }});
+  }
+}
+watchGeometryMutations(WALLS);
+watchGeometryMutations(COVER);
 let tacticalGeometry=new TacticalGeometryIndex(WALLS,COVER);
+const indexedGeometry=()=>{
+  if(geometryDirty){
+    tacticalGeometry=new TacticalGeometryIndex(WALLS,COVER);
+    geometryDirty=false;
+  }
+  return tacticalGeometry;
+}
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export const doorCenter=(d:Door):Pt=>({
   x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2});
@@ -80,6 +104,7 @@ export function activateSite(next:Site|null){
   WALLS.splice(0,WALLS.length,...(next?.walls??BASE_WALLS));
   COVER.splice(0,COVER.length,...(next?.cover??BASE_COVER).map(o=>({...o})));
   tacticalGeometry=new TacticalGeometryIndex(WALLS,COVER);
+  geometryDirty=false;
   // Runtime displacements never mutate the seed-derived site data.
 }
 export const activeSite=()=>site;
@@ -107,15 +132,15 @@ export const OPERATOR_RADIUS=8;
 /** Broadphase queries never replace exact geometry or intel checks. */
 export const someWallNearPoint=(p:Pt,r:number,
   matches:(wall:Segment,index:number)=>boolean)=>
-  tacticalGeometry.someWall(pointBounds(p,r),matches);
+  indexedGeometry().someWall(pointBounds(p,r),matches);
 export const someCoverNearPoint=(p:Pt,r:number,
   matches:(o:Obstacle,index:number)=>boolean)=>
-  tacticalGeometry.someCover(pointBounds(p,r),matches);
+  indexedGeometry().someCover(pointBounds(p,r),matches);
 export const someCoverAlongRay=(a:Pt,b:Pt,
   matches:(o:Obstacle,index:number)=>boolean)=>
-  tacticalGeometry.someCover(rayBounds(a,b),matches);
+  indexedGeometry().someCover(rayBounds(a,b),matches);
 export const staticWallBlocksRay=(ray:Segment)=>
-  tacticalGeometry.someWall(rayBounds(ray.a,ray.b),wall=>segmentsCross(ray,wall));
+  indexedGeometry().someWall(rayBounds(ray.a,ray.b),wall=>segmentsCross(ray,wall));
 export function passable(p:Pt,clearance=OPERATOR_RADIUS):boolean{
   const bounds=activeWorldBounds();
   if(p.x<bounds.minX+13||p.y<bounds.minY+20||
