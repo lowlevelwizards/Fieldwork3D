@@ -483,6 +483,7 @@ jobs:
             tests/dnav-r3-paired-traffic.test.mjs \
             tests/dnav-r4-capture-recovery.test.mjs \
             tests/dnav-r5-contact-staging.test.mjs \
+            tests/dnav-r6-movement-quality.test.mjs \
             tests/physicality-door-aware-routing.test.mjs \
             tests/physicality-08-door-contact.test.mjs \
             tests/physicality-09-recovery.test.mjs \
@@ -492,6 +493,9 @@ jobs:
       - name: DNav bounded real-simulation collision matrix
         if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/breach-door-navigation-dnav-') || startsWith(github.head_ref, 'feature/dnav-')) }}
         run: npm run audit:g4-flow -- --matrix --door-regression
+      - name: DNav R6 four-operator hinge and traversal stress
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/dnav-r6-') }}
+        run: node --experimental-strip-types scripts/audit-dnav-r6-four-operator.mjs
       # The comprehensive suite is opt-in, not a gate on each merge.
       - name: Full game tests (manual audit)
         if: ${{ github.event_name == 'workflow_dispatch' }}
