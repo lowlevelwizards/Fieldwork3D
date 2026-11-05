@@ -877,6 +877,11 @@ jobs:
             tests/civilian-c3c-harm-attribution.test.mjs \
             tests/civilian-release-field-smoke.test.mjs \
             tests/mission-escort-physicality.test.mjs
+      - name: UX R3 tactical HUD, squad and campaign critical flows
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/ux-r3-hud-campaign-polish-') }}
+        run: |
+          node --experimental-strip-types --test tests/ux-r3-experience-flow.test.mjs tests/ux-r1-navigation-squad.test.mjs tests/ux2-overlay-coordination.test.mjs
+          node --experimental-strip-types --test tests/lw-roster.test.mjs tests/equipment-19-06-quickplay-editor.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
