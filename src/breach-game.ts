@@ -74,6 +74,8 @@ import {captureTargetMayWithdraw} from './breach-ai-mission-response.ts';
 import {createCivilian,type CivilianActor} from './breach-civilian-types.ts';
 import {stepCivilianMovement} from './breach-civilian-movement.ts';
 import {stepCivilianResponse} from './breach-civilian-response.ts';
+import {firstCivilianAlongRay,applyCivilianBulletHit}
+  from './breach-civilian-ballistics.ts';
 import {retreatDoorClosureEligible} from './breach-ai-door-response.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
 import {contactTactic} from './breach-ai-tactical-response.ts';
@@ -3402,28 +3404,49 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   const yaw=muzzle.yaw;
   const from={x:muzzle.x,y:muzzle.z};
   const far=muzzleEndpoint(from,yaw,Math.max(40,d(from,point)));
-  const friends=team(s).filter(o=>o!==a&&o.health>0).map(o=>o.p);
+  const friends=[
+    ...team(s).filter(o=>o!==a&&o.health>0).map(o=>o.p),
+    ...s.civilians.filter(c=>c.health>0&&d(a.p,c.p)<200&&
+      Math.abs(angleDifference(a.heading,angle(a.p,c.p)))<.9&&
+      unobstructed(a.p,c.p,s,false)).map(c=>c.p)
+  ];
   if(assessFireLane(from,muzzle.y,far,14,COVER,WALLS,s.doors,
     friends).blocker==='friendly')return;
   const impact=strikeSurface(from,far,s,muzzle.y,14,
     WEAPONS[a.weapon].penetration);
-  shatterStruckWindows(s,impact.paneHits,Math.max(1,WEAPONS[a.weapon].damage));
-  shatterStruckDoorGlass(s,impact.glassDoorHits);
-  damageStruckCover(s,impact.coverHits,WEAPONS[a.weapon].damage*.36);
-  emitMaterialEvents(s,from,far,impact.materialHits);
+  const victim=firstCivilianAlongRay(from,yaw,
+    d(from,impact.end),s.civilians);
+  const fraction=victim?Math.min(1,victim.along/Math.max(1,d(from,far))):1;
+  const reachedPanes=impact.paneHits.filter(index=>{
+    const pane=s.windows[index];
+    if(!pane)return false;
+    const at=segmentImpact(from,far,windowPaneSegment(pane));
+    return at!==null&&at<=fraction+.0001;
+  });
+  shatterStruckWindows(s,reachedPanes,Math.max(1,WEAPONS[a.weapon].damage));
+  shatterStruckDoorGlass(s,impact.glassDoorHits,fraction);
+  damageStruckCover(s,impact.coverHits,WEAPONS[a.weapon].damage*.36,fraction);
+  emitMaterialEvents(s,from,far,impact.materialHits,fraction);
   a.fireCd=WEAPONS[a.weapon].interval*1.6;
   a.magazine--;a.shots++;a.lastShotAt=s.seconds;
   a.recoil=Math.min(.9,a.recoil+BALLISTICS[a.weapon].recoilKick*mods.recoilKick);
   a.stability=Math.max(0,a.stability-.13);
   const shotId=s.nextShotId++;
-  const height=impact.surface==='dust'?1:14;
-  s.shots.push({id:shotId,shooterId:a.id,targetId:null,
-    start:from,end:impact.end,age:0,hit:false,side:a.side,
-    shotYaw:yaw,mode:'ads',spread,muzzleHeight:muzzle.y,
+  const hit=!!victim;
+  const end=victim?clone(victim.actor.p):impact.end;
+  const surface=hit?'blood' as const:impact.surface;
+  const height=hit?20:impact.surface==='dust'?1:14;
+  const before=victim?.actor.health??0;
+  const after=hit?Math.max(0,before-1):0;
+  s.shots.push({id:shotId,shooterId:a.id,
+    targetId:victim?.actor.id??null,start:from,end,age:0,hit,
+    side:a.side,shotYaw:yaw,mode:'ads',spread,muzzleHeight:muzzle.y,
     impactHeight:height,firedAt:s.seconds,
-    healthBefore:0,healthAfter:0,down:false,surface:impact.surface});
-  retainImpactMark(s,{id:s.nextEffectId++,p:clone(impact.end),
-    surface:impact.surface,height,age:0});
+    healthBefore:before,healthAfter:after,down:hit&&after<=0,
+    surface});
+  retainImpactMark(s,{id:s.nextEffectId++,p:clone(end),
+    surface,height,age:0});
+  if(victim)applyCivilianBulletHit(victim.actor,s.seconds);
 
   s.casings.push({id:shotId,at:s.seconds,weapon:a.weapon,side:a.side,
     x:muzzle.x-4*Math.cos(yaw),z:muzzle.z-4*Math.sin(yaw),
@@ -3555,8 +3578,13 @@ function fire(s:Session,a:TeamActor,dt:number){
     return;
   }
   const sightMuzzle=sightClearance.muzzle;
-  const friends=s.operators.filter(o=>o!==a&&o.health>0&&
-    o.side===a.side).map(o=>o.p);
+  const friends=[
+    ...s.operators.filter(o=>o!==a&&o.health>0&&
+      o.side===a.side).map(o=>o.p),
+    ...s.civilians.filter(c=>c.health>0&&d(a.p,c.p)<200&&
+      Math.abs(angleDifference(a.heading,angle(a.p,c.p)))<.9&&
+      unobstructed(a.p,c.p,s,false)).map(c=>c.p)
+  ];
   const lane=assessFireLane({x:sightMuzzle.x,y:sightMuzzle.z},
     sightMuzzle.y,target.p,aimHeight(target.posture==='crouch'),
     COVER,WALLS,s.doors,friends);
@@ -3627,23 +3655,32 @@ function fire(s:Session,a:TeamActor,dt:number){
     aimHeight(target.posture==='crouch'),weapon.penetration);
   // Obstruction before the target defeats a perfectly aligned barrel.
   const blockerDist=d(muzzlePoint,strike.end);
-  const hit=candidateHit&&blockerDist>=muzzleRange-hitRadius&&
+  const wouldHitTarget=candidateHit&&blockerDist>=muzzleRange-hitRadius&&
     d(targetTrace.end,target.p)<.5&&targetTrace.remaining>.015;
+  // Only after firing do physical ray/body tests consider a civilian.
+  // This cannot grant pre-shot target acquisition or hidden knowledge.
+  const contact=firstCivilianAlongRay(muzzlePoint,yaw,
+    Math.min(d(muzzlePoint,far),blockerDist),s.civilians);
+  const civilianHit=contact&&(!wouldHitTarget||
+    contact.along+5<muzzleRange)?contact:null;
+  const hit=wouldHitTarget&&!civilianHit;
   const fractionToTarget=d(muzzlePoint,target.p)/
     Math.max(1,d(muzzlePoint,far));
+  const stopFraction=civilianHit?
+    civilianHit.along/Math.max(1,d(muzzlePoint,far)):
+    hit?fractionToTarget:1;
   const actualRay=strike.paneHits.filter(index=>{
     const w=s.windows[index];
     if(!w)return false;
     const t=segmentImpact(muzzlePoint,far,windowPaneSegment(w));
-    return t!==null&&(!hit||t<=fractionToTarget+.0001);
+    return t!==null&&t<=stopFraction+.0001;
   });
   shatterStruckWindows(s,actualRay,Math.max(1,weapon.damage));
-  shatterStruckDoorGlass(s,strike.glassDoorHits,hit?fractionToTarget:1);
-  damageStruckCover(s,strike.coverHits,weapon.damage*.45,
-    hit?fractionToTarget:1);
-  emitMaterialEvents(s,muzzlePoint,far,strike.materialHits,
-    hit?fractionToTarget:1);
-  const end=hit?clone(target.p):strike.end;
+  shatterStruckDoorGlass(s,strike.glassDoorHits,stopFraction);
+  damageStruckCover(s,strike.coverHits,weapon.damage*.45,stopFraction);
+  emitMaterialEvents(s,muzzlePoint,far,strike.materialHits,stopFraction);
+  const end=civilianHit?clone(civilianHit.actor.p):
+    hit?clone(target.p):strike.end;
   a.recoil=Math.min(.9,a.recoil+profile.recoilKick*mods.recoilKick*
     (a.burstCount>2?1.20:1)*
     (2-skillMultiplier(a.skills.recoilControl,.42)));
@@ -3652,7 +3689,7 @@ function fire(s:Session,a:TeamActor,dt:number){
     (2-skillMultiplier(a.skills.composure,.38))-a.recoil*.10);
   const shotId=s.nextShotId++;
   const region=hitRegion(shotId);
-  const healthBefore=target.health;
+  const healthBefore=civilianHit?civilianHit.actor.health:target.health;
   const rawSeverity=hit&&s.site?woundSeverity(weapon,range,
     nearCover(target.p,a.p),random(s)):1;
   const protection=resolveArmorImpact({kit:target.equipment,region,
@@ -3661,15 +3698,17 @@ function fire(s:Session,a:TeamActor,dt:number){
     shotId,torso:target.armorIntegrity,head:target.helmetIntegrity});
   const severity=protection.severity;
   const nextStage=Math.min(3,target.injuryStage+(hit?severity:0));
-  const healthAfter=hit?
-    (s.site?nextStage>=3?0:4-nextStage:Math.max(0,healthBefore-1)):
+  const healthAfter=civilianHit?Math.max(0,healthBefore-1):
+    hit?(s.site?nextStage>=3?0:4-nextStage:Math.max(0,healthBefore-1)):
     healthBefore;
-  const impact=hit?{end,surface:protection.blocked&&severity===0?
-    'metal' as const:'blood' as const}:strike;
+  const impact=civilianHit?{end,surface:'blood' as const}:
+    hit?{end,surface:protection.blocked&&severity===0?
+      'metal' as const:'blood' as const}:strike;
   s.sparks.push({p:clone(a.p),side:a.side,age:0});
   // Immutable shot identity lets 2D/3D attach recoil and damage effects to
   // the correct actors without guessing from proximity or team color.
-  const impactHeight=hit?aimHeight(target.posture==='crouch'):
+  const impactHeight=civilianHit?20:
+    hit?aimHeight(target.posture==='crouch'):
     impact.surface==='dust'?1:14;
   retainImpactMark(s,{id:s.nextEffectId++,p:clone(end),
     surface:impact.surface,height:impactHeight,age:0});
@@ -3686,13 +3725,15 @@ function fire(s:Session,a:TeamActor,dt:number){
   });
   const fall=chooseFall(target.heading,yaw,nearSolid||nearWall);
   s.shots.push({
-    id:shotId,shooterId:a.id,targetId:target.id,
-    start:muzzlePoint,end,age:0,hit,side:a.side,
+    id:shotId,shooterId:a.id,
+    targetId:civilianHit?.actor.id??target.id,
+    start:muzzlePoint,end,age:0,hit:hit||!!civilianHit,side:a.side,
     shotYaw:yaw,mode,spread:cone,
     muzzleHeight:muzzle.y,firedAt:s.seconds,impactHeight,
-    hitRegion:hit?region:undefined,downPose:hit&&healthAfter<=0?
-      fall:undefined,
-    healthBefore,healthAfter,down:hit&&healthAfter<=0,
+    hitRegion:civilianHit?'torso':hit?region:undefined,
+    downPose:hit&&healthAfter<=0?fall:undefined,
+    healthBefore,healthAfter,
+    down:(hit||!!civilianHit)&&healthAfter<=0,
     surface:impact.surface,
   });
   s.casings.push({id:shotId,at:s.seconds,weapon:a.weapon,side:a.side,
@@ -3709,6 +3750,14 @@ function fire(s:Session,a:TeamActor,dt:number){
       x:a.p.x+(random(s)-.5)*58,y:a.p.y+(random(s)-.5)*58,
     },at:s.seconds,status:'heard'});
     notify(s,'UNSEEN GUNFIRE');
+  }
+  if(civilianHit){
+    applyCivilianBulletHit(civilianHit.actor,s.seconds);
+    // Casualty is NOT a hostile kill or accuracy bonus, and hidden
+    // civilians do not generate a revealing live contact notification.
+    if(liveVisibility(s,civilianHit.actor.p))
+      notify(s,'CIVILIAN HIT');
+    return;
   }
   target.suppression=Math.min(1,target.suppression+.31);
   if(target.side==='red')target.morale=Math.max(0,target.morale-.035);
