@@ -606,10 +606,10 @@ jobs:
       - name: Eyewear R11 — sculpted acetate and compact goggle critical gates
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/eyewear-r11-') }}
         run: |
-          node --experimental-strip-types --test \\
-            tests/operator-d2-eyewear-r11.test.mjs \\
-            tests/operator-d2-eyewear-r8.test.mjs \\
-            tests/operator-d2-eyewear-r5.test.mjs \\
+          node --experimental-strip-types --test \
+            tests/operator-d2-eyewear-r11.test.mjs \
+            tests/operator-d2-eyewear-r8.test.mjs \
+            tests/operator-d2-eyewear-r5.test.mjs \
             tests/operator-d2-eyewear-r4.test.mjs
       - name: Quick Play mobile visual allocation and eyewear compatibility
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/quickplay-mobile-lazy-actor-visuals-') }}
