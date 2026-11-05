@@ -111,7 +111,7 @@ import './ui/ux-r1-sheets.css';
 import './ui/ux-r3-hud.css';
 import './ui/fieldwork-action-toast.css';
 import {showFieldworkActionFeedback} from './ui/fieldwork-action-toast.ts';
-import {fieldworkSelectField,confirmFieldworkAction,promptFieldworkText} from './ui/fieldwork-controls.ts';
+import {confirmFieldworkAction,promptFieldworkText} from './ui/fieldwork-controls.ts';
 import {createTacticalSheetNavigation} from './ui/tactical-sheet-navigation.ts';
 import {buildQuickLoadoutGroups,loadoutGroupForSlot,
  type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
