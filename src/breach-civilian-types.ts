@@ -22,6 +22,8 @@ export type CivilianActor={
   goal:Pt|null;nav:Pt[];blockedTime:number;retryAt:number;
   homeRoomId:string;homeZoneId:string|null;appearanceSeed:number;
   rescueTarget:boolean;following:string|null;
+  /** Operator physically carrying/dragging this body; exclusive custody. */
+  carriedById:string|null;
   lastEscortRouteAt:number;
   /** Set only when applying historical film; never queried by live AI. */
   replayVisible?:boolean;
@@ -39,7 +41,7 @@ export function createCivilian(spec:CivilianSpec):CivilianActor{
     refugePoints:[],routineIndex:0,dwellUntil:0,goal:null,nav:[],
     blockedTime:0,retryAt:0,homeRoomId:spec.roomId,
     homeZoneId:spec.zoneId??null,appearanceSeed:spec.appearanceSeed,
-    rescueTarget:!!spec.isRescueTarget,following:null,
+    rescueTarget:!!spec.isRescueTarget,following:null,carriedById:null,
     lastEscortRouteAt:-100
   };
 }
