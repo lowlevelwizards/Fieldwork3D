@@ -4,7 +4,7 @@
  */
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import {setWardrobeFabricSolid} from './operator-wardrobe-data.ts';
-import type {CamoOutfit,FabricCamoChannel} from './operator-fabric-camo-policy.ts';
+import type {CamoOutfit} from './operator-fabric-camo-policy.ts';
 import {resolveAutomaticGearColors} from './operator-gear-color-policy.ts';
 import {ARMOR_VISUAL_TEXTILES,RIG_VISUAL_TEXTILES,
  armorSignature,rigSignature,validArmorSolid,validRigSolid}
