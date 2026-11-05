@@ -3609,8 +3609,14 @@ async function launchQuickPlay(){
     // live RAF updates. Never declare READY before the render has returned.
     quickPlayBusy=false;
     finishQuickPlayClock();
-    setTimeout(()=>{if(id===quickPlayRun&&!quickPlayBusy)
-      quickPlayPanel.hidden=true;},1400);
+    // The prior 1400ms READY hold made an already prepared game look frozen.
+    // Let the resumed gameplay loop paint a frame behind the mask, then
+    // release it on the next paint turn with no artificial countdown.
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      if(id===quickPlayRun&&!quickPlayBusy&&
+         quickPlayPanel.dataset.state==='ready')
+        quickPlayPanel.hidden=true;
+    }));
   }catch(error){
     if(id!==quickPlayRun)return;
     quickPlayWorker?.terminate();quickPlayWorker=null;quickPlayReject=null;
