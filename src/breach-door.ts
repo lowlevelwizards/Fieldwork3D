@@ -308,7 +308,14 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
   if(!contact)return null;
   const door=contact.door;
   const initial=door.openFraction??0;
-  pushDoor(door,2.5);
+  // Pressure at the outer latch edge has more torque than shoulder contact
+  // by the hinge. The leaf still owns its angular motor, walls and bodies.
+  const panel=doorLeafSegment(door);
+  const vx=panel.b.x-panel.a.x,vy=panel.b.y-panel.a.y;
+  const squared=Math.max(1,vx*vx+vy*vy);
+  const leverage=Math.max(0,Math.min(1,((from.x-panel.a.x)*vx+
+    (from.y-panel.a.y)*vy)/squared));
+  pushDoor(door,1.3+2.1*leverage);
   // Door motion gets a small share of this very simulation tick. The main
   // global motor subsequently handles normal animation and swept obstacles.
   advanceDoor(door,Math.min(Math.max(0,dt),1/60),actors);
