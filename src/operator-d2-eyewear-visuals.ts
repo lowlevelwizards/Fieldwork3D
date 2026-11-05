@@ -70,7 +70,7 @@ function standard(parent:THREE.Group,frame:THREE.Material,
 }
 function aviator(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
  root.userData.d2EyeFitTop=5.13;
- root.userData.d2EyeDesign='R7-connected-pilot-double-bridge';
+ root.userData.d2EyeDesign='R8-outward-splayed-pilot-bridges';
  // Each left-lens polygon is intentionally fuller toward -X (the outside).
  // The mirrored right lens reverses that bias. Broad flat foot rather than
  // pointed fangs, with the topmost shoulder over the outer cheek.
@@ -89,10 +89,18 @@ function aviator(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
   [1.03,4.27],[1.14,4.03],[.86,3.52],
   [.08,2.98],[-.42,2.78],[-1.13,2.78],[-1.37,3.00]
  ];
+ // R8: a deliberate 15-degree outward optical splay, as if the two
+ // teardrops were rotated away from the nose. Shear their XY contours
+ // around eye height rather than rotating 3D objects: the high shoulders,
+ // lower foot shelf, lens heights, and both connected bridges survive.
+ // Bottom mass moves toward the cheek; the inner fang retreats outward.
+ const outwardSplay=(points:EyePolygon):EyePoint[]=>
+  points.map(([x,y])=>[x+Math.tan(Math.PI/12)*(y-4.07),y]);
+ const splayedOuter=outwardSplay(out),splayedAperture=outwardSplay(hole);
  for(const side of [-1,1] as const){
   const x=side*2.08;
-  const outline=shifted(side===-1?out:mirror(out),x);
-  const aperture=shifted(side===-1?hole:mirror(hole),x);
+  const outline=shifted(side===-1?splayedOuter:mirror(splayedOuter),x);
+  const aperture=shifted(side===-1?splayedAperture:mirror(splayedAperture),x);
   frameRing(root,frame,'pilot-lens-collar',outline,[aperture],
    -5.01,.38,'pilot');
   lensSurface(root,lens,'pilot-full-teardrop',aperture,-5.06);
@@ -120,7 +128,7 @@ function aviator(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
 }
 function shooting(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
  root.userData.d2EyeFitTop=4.94;
- root.userData.d2EyeDesign='R7-close-fitted-shooting-glasses';
+ root.userData.d2EyeDesign='R8-single-clean-shooting-bow';
  // Approved R5 lens shape is unchanged: the single sweeping pane, open
  // underside and generous nasal relief define the shooting fantasy.
  const pane:EyePolygon=[
@@ -137,19 +145,21 @@ function shooting(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
  // .22-deep band remains .09 ahead of the lens at every X, with no
  // second rear plate or small overlapping brow strips.
  const brow:EyePolygon=[
-  [-4.42,4.26],[-4.19,4.81],[0,4.98],[4.19,4.81],
-  [4.42,4.26],[3.86,4.48],[0,4.70],[-3.86,4.48]
+  [-4.30,4.38],[-4.16,4.79],[0,4.98],[4.16,4.79],
+  [4.30,4.38],[3.90,4.51],[0,4.70],[-3.90,4.51]
  ];
  sweptFrame(root,frame,'integrated-swept-frame',brow,[],-5.25,.22,.78);
  // Roots now occupy the SAME volume as the outer swept brow.
  // They transition once toward the side of the head, not into a
  // parallel, floating horizontal headband.
+ // R8: short rectangular root seated inside the raised outer brow;
+ // one clean shoulder replaces two overlapping triangular wedges.
  outsideTemples(root,frame,'continuous-swept-temple',{
-  frontX:4.20,frontY:4.51,frontZ:-4.34,
-  shoulderX:4.40,shoulderY:4.31,shoulderZ:-3.90,
-  rearX:4.34,rearY:3.91,rearZ:3.37,
-  frontWidth:.68,shoulderWidth:.66,rearWidth:.43,
-  frontHeight:.83,shoulderHeight:.75,rearHeight:.41
+  frontX:4.20,frontY:4.49,frontZ:-4.30,
+  shoulderX:4.34,shoulderY:4.46,shoulderZ:-3.80,
+  rearX:4.31,rearY:4.20,rearZ:3.58,
+  frontWidth:.54,shoulderWidth:.48,rearWidth:.43,
+  frontHeight:.58,shoulderHeight:.54,rearHeight:.43
  });
 }
 function shield(root:THREE.Group,frame:THREE.Material,lens:THREE.Material){
