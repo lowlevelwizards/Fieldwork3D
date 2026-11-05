@@ -39,7 +39,8 @@ add('headwear','bare',[['bare','Uncovered']]);
 // Older placeholder variants remain loadout-safe internally but do not
 // pollute the approved art catalog.
 add('headwear','soft',[
- ['patrol-cap','Patrol cap'],['beanie','Beanie'],['boonie','Boonie hat']
+ ['patrol-cap','Patrol cap'],['beanie','Beanie'],['boonie','Boonie hat'],
+ ['beret','Military beret']
 ]);
 add('headwear','ballistic',[
  ['soviet-steel','Steel helmet'],['pasgt','PASGT-style helmet'],
@@ -165,6 +166,8 @@ export type WardrobeOptions={
  d2Accessories?:D2AccessoryOptions;
  headwearColor?:HeadwearSolidColorId;headwearCamo?:HeadwearCamoId;
  headwearCamoRoll?:number;
+ /** R5C visual drape, not a separate helmet or equipment class. */
+ beretDrape?:'left'|'right';
  /** Approved original prints on verified textile channels. */
  fabricCamo?:Partial<Record<FabricCamoChannel,HeadwearCamoId>>;
  /** Saved individual fabric-cut seeds; never regenerated during animation. */
@@ -274,6 +277,7 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(isGarmentSolidId(v.knitSolid))result.knitSolid=v.knitSolid;
  if(isGarmentSolidId(v.pouchSolid))result.pouchSolid=v.pouchSolid;
  if(isHeadwearSolidColorId(v.headwearColor))result.headwearColor=v.headwearColor;
+ if(v.beretDrape==='left'||v.beretDrape==='right')result.beretDrape=v.beretDrape;
  if(isHeadwearCamoId(v.headwearCamo)&&v.headwearCamo!=='splittertarn-31')result.headwearCamo=v.headwearCamo;
  if(Number.isInteger(v.headwearCamoRoll)&&v.headwearCamoRoll!>=0&&v.headwearCamoRoll!<4096)
   result.headwearCamoRoll=v.headwearCamoRoll;
