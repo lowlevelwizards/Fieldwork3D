@@ -103,8 +103,8 @@ test('live pose swaps camo and solid without animation restoring gray or mutatin
    assert.equal(material.map,headwearCamoTexture(model,id,
     headwearCamoPlacement('rook','headwear:'+model,id,0)));
    assert.equal(material.color.getHex(),0xffffff,model+':'+id);
-   assert.equal(material.vertexColors,false,
-    'camo must not be darkened a second time by construction vertex shading');
+   assert.equal(material.vertexColors,true,
+    'pattern-neutral geometry AO remains enabled on camouflage helmets');
    poseOperator(rig,pose(kit,selection),0);
    assert.equal(material.map,headwearCamoTexture(model,id,
     headwearCamoPlacement('rook','headwear:'+model,id,0)),'repeated pose reuses atlas');
