@@ -136,15 +136,14 @@ function tooCloseToLeader(actor:PassageActor,others:readonly PassageActor[],
    if(other.id===actor.id||!sameQueueLane(actor,other,door)||
       travelSign(other,door)!==heading)continue;
    const ahead=(side(other.p,door)-side(actor.p,door))*heading;
-   if(ahead>.01&&ahead<PASSAGE_FOLLOW_GAP){
-    // Right-of-way never forbids the player from steering laterally or
-    // backing out of a queue. Only an immediate step that actually
-    // advances into a leader's body gap should be deferred.
-    if(intendedStep){
-      const advance=(side(intendedStep,door)-side(actor.p,door))*heading;
-      if(advance<=.025)continue;
-    }
-    return true;
+   if(ahead>.01){
+    // Consider the whole intended tick, not only today's gap. Without
+    // this a follower 21 units back may step 4 units into a 20-unit body
+    // buffer, then oscillate while the leader rounds the doorway.
+    const advance=intendedStep?
+      (side(intendedStep,door)-side(actor.p,door))*heading:0;
+    if(intendedStep&&advance<=.025)continue;
+    if(ahead-Math.max(0,advance)<PASSAGE_FOLLOW_GAP)return true;
    }
   }
  }
