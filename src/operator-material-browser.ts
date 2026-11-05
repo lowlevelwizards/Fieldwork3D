@@ -110,7 +110,7 @@ export function readCamoBrowserPrefs():CamoBrowserPrefs{
   };
   const clean=(values:unknown,limit:number)=>Array.isArray(values)?
    [...new Set(values.filter(validId))].slice(0,limit):[];
-  return {favorites:clean(parsed.favorites,54),recents:clean(parsed.recents,8)};
+  return {favorites:clean(parsed.favorites,62),recents:clean(parsed.recents,8)};
  }catch{return {favorites:[],recents:[]};}
 }
 export function saveCamoBrowserPrefs(prefs:CamoBrowserPrefs){

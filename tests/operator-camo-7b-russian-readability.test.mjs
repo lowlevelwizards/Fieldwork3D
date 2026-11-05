@@ -10,9 +10,9 @@ import {initialWardrobe,readWardrobe} from '../src/operator-wardrobe-data.ts';
 const three=['spectre-skwo','ss-leto','berezka'];
 const diff=(a,b)=>a.reduce((n,v,i)=>n+(v!==b[i]?1:0),0)/a.length;
 
-test('7B Russian prints preserve historical 54-ID registry, texture dimensions and saved looks',()=>{
- assert.equal(HEADWEAR_CAMO_IDS.length,54);
- assert.equal(new Set(HEADWEAR_CAMO_IDS).size,54);
+test('7B Russian prints preserve historical 62-ID registry, texture dimensions and saved looks',()=>{
+ assert.equal(HEADWEAR_CAMO_IDS.length,62);
+ assert.equal(new Set(HEADWEAR_CAMO_IDS).size,62);
  for(const id of three){
   assert.ok(HEADWEAR_CAMO_IDS.includes(id));
   assert.equal(headwearCamoSize(id),64);

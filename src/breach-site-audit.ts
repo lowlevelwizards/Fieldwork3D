@@ -18,6 +18,7 @@ import {assessAccessibilityClearance,type AccessibilityQuality} from './worldgen
 import {inspectHumanJourneys,type JourneyAudit} from './worldgen/human-journeys.ts';
 import {measureRouteFriction,type RouteFriction} from './worldgen/route-friction.ts';
 import {auditEncounter,type EncounterSpatialAudit} from './worldgen/encounter-diagnostics.ts';
+import {hostileMinimumForContract} from './worldgen/encounter-population-contract.ts';
 import {verifiedDeploymentChoices,type DeploymentChoice} from './breach-deployment.ts';
 import {auditTacticalOpportunities,type TacticalOpportunityAudit}
   from './worldgen/tactical-opportunity-audit.ts';
@@ -60,7 +61,11 @@ export function auditSite(site:Site):SiteAudit{
     site.objective,[],()=>false);
   try{
     if(site.spawn.length!==4)errors.push('expected four operator spawns');
-    if(site.enemies.length<2)errors.push('insufficient enemies');
+    const minHostiles=site.encounter?hostileMinimumForContract({
+      mission:site.encounter.mission,premise:site.encounter.premise,
+      risk:site.encounter.risk
+    }):2;
+    if(site.enemies.length<minHostiles)errors.push('insufficient enemies');
     if(site.rooms.length<3)errors.push('site has too few rooms');
     for(const [label,p] of [
       ...site.spawn.map((p,i)=>['operator '+i,p] as const),

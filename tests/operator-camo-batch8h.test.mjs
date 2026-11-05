@@ -46,7 +46,7 @@ test('8H leaves JGSDF and Soldier 2000 bit-for-bit unchanged',()=>{
  assert.equal(digest('south-african-s2000'),S2000_8E_RGBA_SHA);
 });
 test('8H preserves 54 catalog entries and textile phases',()=>{
- assert.equal(HEADWEAR_CAMO_IDS.length,54);
+ assert.equal(HEADWEAR_CAMO_IDS.length,62);
  for(const seed of [0,5,17,73,401]){
   const id='norwegian-m98';
   const cut=headwearCamoPlacement('rook','trousers',id,seed);

@@ -18,9 +18,9 @@ const transitions=(tile,dx,dy)=>{
 };
 const palette=id=>HEADWEAR_CAMO_RECIPES[id].colors;
 
-test('8C preserves all 54 IDs and cosmetic save identifiers',()=>{
- assert.equal(HEADWEAR_CAMO_IDS.length,54);
- assert.deepEqual(HEADWEAR_CAMO_IDS.slice(46),id8);
+test('8C preserves all 62 IDs and cosmetic save identifiers',()=>{
+ assert.equal(HEADWEAR_CAMO_IDS.length,62);
+ assert.deepEqual(HEADWEAR_CAMO_IDS.slice(46,54),id8);
  for(const id of id8){
   assert.equal(readWardrobe({...initialWardrobe(),headwearCamo:id}).headwearCamo,id);
   assert.equal(readWardrobe({...initialWardrobe(),fabricCamo:{trousers:id}}).fabricCamo.trousers,id);

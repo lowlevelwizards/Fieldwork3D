@@ -1,3 +1,4 @@
+import {OPERATOR_SOLID_FAMILIES,tonedOperatorSolid} from './operator-solid-color-families.ts';
 /**
  * D2 operator head accessories: the deliberately limited 19-model first wave.
  * Non-gameplay metadata. Model IDs are silhouettes; color, aperture and wearing
@@ -49,15 +50,18 @@ export const D2_LENS_TINTS=['clear','smoke','dark-smoke','amber','yellow','bronz
 export const D2_GOGGLE_POSITIONS=['eyes','raised','neck'] as const;
 export type D2FaceSolid=typeof D2_FACE_SOLIDS[number];
 /** Deliberately muted and independent of hat, uniform and armor finishes. */
+// Face cloth reads darker beneath headgear than large uniform panels. The
+// shared solid family remains authoritative; these are cloth material tones,
+// not extra selectable color identities or rubber/mask finishes.
 export const D2_FACE_SOLID_COLORS:Record<D2FaceSolid,{label:string;hex:number}>={
- black:{label:'Black',hex:0x222527},
- charcoal:{label:'Charcoal',hex:0x414447},
- olive:{label:'Olive drab',hex:0x525b43},
- foliage:{label:'Foliage green',hex:0x65736a},
- coyote:{label:'Coyote brown',hex:0x8c775c},
- brown:{label:'Field brown',hex:0x665343},
- 'off-white':{label:'Off white',hex:0xb6b3a0},
- 'winter-white':{label:'Winter white',hex:0xcbd0c9}
+ black:{label:'Black',hex:tonedOperatorSolid('black',.85)},
+ charcoal:{label:'Charcoal',hex:tonedOperatorSolid('charcoal',.79)},
+ olive:{label:'Olive drab',hex:tonedOperatorSolid('olive-drab',.85)},
+ foliage:{label:'Foliage green',hex:tonedOperatorSolid('foliage',.78)},
+ coyote:{label:'Coyote brown',hex:tonedOperatorSolid('coyote',.95)},
+ brown:{label:'Field brown',hex:tonedOperatorSolid('brown',1)},
+ 'off-white':{label:'Off white',hex:tonedOperatorSolid('off-white',.85)},
+ 'winter-white':{label:'Winter white',hex:tonedOperatorSolid('winter-white',.94)}
 };
 export const isD2FaceSolid=(v:unknown):v is D2FaceSolid=>
  typeof v==='string'&&(D2_FACE_SOLIDS as readonly string[]).includes(v);
@@ -73,7 +77,7 @@ export type D2FrameSolid=typeof D2_FRAME_SOLIDS[number];
 export type D2LensTint=typeof D2_LENS_TINTS[number];
 export const D2_FRAME_COLORS:Record<D2FrameSolid,{hex:number;label:string}>={
  black:{hex:0x24282b,label:'Black'},gray:{hex:0x5b6062,label:'Gray'},
- olive:{hex:0x596151,label:'Olive'},tan:{hex:0x937b59,label:'Tan'},
+ olive:{hex:0x596151,label:'Olive'},tan:{hex:OPERATOR_SOLID_FAMILIES['nutria-brown'],label:'Tan'},
  silver:{hex:0x9ba2a2,label:'Silver'}
 };
 export const D2_LENS_MATERIALS:Record<D2LensTint,{hex:number;opacity:number;label:string}>={

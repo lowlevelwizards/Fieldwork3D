@@ -87,7 +87,15 @@ export const FABRIC_CAMO_POLICY:Readonly<Record<HeadwearCamoId,FabricCamoPolicy>
  'pencott-metropolis':policy(all,'modern','issued-or-commercial','Commercial PenCott MetroPolis fabrics and selected patterned modular nylon'),
  'south-african-s2000':policy(withPack,'modern','issued','SANDF S2000 issue combat garments and matching textile field packs; Nutria webbing remains solid'),
  'kryptek-typhon':policy(all,'modern','issued-or-commercial','Commercial Kryptek Typhon patterned tactical clothing, packs and some nylon/carrier cuts'),
- 'norwegian-m98':policy(withPack,'modern','issued','Norwegian M98 uniforms, covers and field bags; modern modular armor not universally matching')
+ 'norwegian-m98':policy(withPack,'modern','issued','Norwegian M98 uniforms, covers and field bags; modern modular armor not universally matching'),
+ 'french-cce':policy(withPack,'transition','issued','French Centre-Europe field uniforms and documented compatible printed field bags; not generic MOLLE body armor'),
+ 'russian-vsr93':policy(uniform,'historic','issued','Russian Barvikha VSR-93 issue fatigues; textile gear normally solid OD and later transitional patterns'),
+ 'swiss-taz90':policy(uniform,'transition','issued','Swiss TAZ90 field uniforms; no presumed printed plate bags or generic rig kits'),
+ 'british-desert-dpm':policy(withPack,'transition','issued','UK desert DPM fatigues and compatible field Bergen covers; webbing generally desert/tan'),
+ 'south-korean-granite-b':policy(uniform,'modern','issued','South Korean Granite B digital field clothing; do not assume modern matching armor or packs'),
+ 'indonesian-kopassus-flowing-blood':policy(uniform,'historic','issued','Kopassus distinctive flowing-blood field garments; load-bearing canvas usually solid'),
+ 'cadpat-ar':policy(withPack,'modern','issued','Canadian adopted three-color arid uniform and authorized field covers; no automatically patterned armor or rig'),
+ 'usaf-abu':policy(uniform,'modern','issued','USAF Airman Battle Uniform in digital tiger, with sage-green load carriage rather than a printed plate carrier')
 };
 
 /** Only active garment silhouettes qualify for camouflage prints.
@@ -108,7 +116,7 @@ export function fabricCamoCompatible(id:HeadwearCamoId,
      'polish-pantera','m81-woodland','flecktarn',
      'atacs-fg','atacs-au','multicam-tropic','multicam-arid','aor1','aor2','ukrainian-mm14',
      'multicam-black','multicam-alpine','pencott-greenzone','pencott-badlands','kryptek-highlander','spectre-skwo',
-     'pencott-metropolis','kryptek-typhon'].includes(id);
+     'pencott-metropolis','kryptek-typhon','cadpat-ar'].includes(id);
    if(outfit.top==='smock-jacket')
     return ['woodland-dpm','british-mtp','multicam','m81-woodland',
      'flecktarn','swedish-m90','finnish-m05','desert-tropentarn',
@@ -118,7 +126,8 @@ export function fabricCamoCompatible(id:HeadwearCamoId,
      'multicam-black','multicam-alpine','pencott-greenzone','pencott-badlands',
      'desert-night','kryptek-highlander','berezka','spectre-skwo',
      'russian-izlom','greek-lizard','urban-kamysh','jgsdf-type2','pencott-metropolis',
-     'south-african-s2000','kryptek-typhon','norwegian-m98'].includes(id);
+     'south-african-s2000','kryptek-typhon','norwegian-m98',
+     'french-cce','swiss-taz90','british-desert-dpm','russian-vsr93'].includes(id);
    if(outfit.top==='gorka-jacket')
     return ['russian-flora','russian-emr','multicam','polish-pantera',
       'atacs-fg','atacs-au','ss-leto','berezka','spectre-skwo',

@@ -1,3 +1,4 @@
+@import './fieldwork-design.css';
 /* UX R1 — Single hierarchy for major planning sheets. */
 #tacticalSheetShield{position:fixed;inset:0;z-index:78;
  background:rgba(5,16,13,.69);touch-action:manipulation;backdrop-filter:blur(2px)}
@@ -17,7 +18,7 @@ body[data-tactical-sheet="briefing"] #breachCanvas{pointer-events:none}
  margin:auto;box-sizing:border-box;
  display:flex!important;flex-direction:column;flex-wrap:nowrap!important;
  align-items:stretch;justify-content:flex-start;
- background:#182c27f8;padding:13px;border-radius:13px;
+ background:color-mix(in srgb, var(--fw-panel-deep) 97.3%, transparent);padding:13px;border-radius:13px;
  box-shadow:0 15px 45px #000a;border:1px solid #83998b}
 .site-settings[hidden]{display:none!important}
 .site-settings-heading{flex:none!important;margin-bottom:9px;
@@ -27,7 +28,7 @@ body[data-tactical-sheet="briefing"] #breachCanvas{pointer-events:none}
  gap:6px;flex:none;padding:0 0 10px;border-bottom:1px solid #557062}
 .site-settings-tabs button{min-width:0;min-height:48px!important;
  font:700 13px/1.15 var(--fw-font-display)!important;
- padding:7px 3px;white-space:normal;background:#30483e}
+ padding:7px 3px;white-space:normal;background:var(--fw-interactive)}
 .site-settings-tabs button[aria-pressed=true]{background:#c1cca9;color:#182b24;
  border-color:#e0d5aa}
 .site-settings-content{flex:1;min-height:0;overflow-y:auto;
@@ -44,13 +45,13 @@ body[data-tactical-sheet="briefing"] #breachCanvas{pointer-events:none}
 .site-settings-hint{font:400 13px/1.45 var(--fw-font-narrative);
  color:#b4c5b6;margin:10px 2px 14px}
 .site-settings-content .site-identity{font-size:14px;line-height:1.5;
- padding:12px;margin:0 0 16px;border-color:#6a8c7b;background:#213b32}
-.site-settings-content #briefingToggle{background:#48665a}
+ padding:12px;margin:0 0 16px;border-color:#6a8c7b;background:var(--fw-panel)}
+.site-settings-content #briefingToggle{background:var(--fw-control-active)}
 .site-settings-content #restart{border-color:#937d67;background:#414239}
 .site-settings-view-switch{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
  grid-column:1/-1;gap:5px;border:1px solid #658578;padding:5px;border-radius:9px}
 .site-settings-view-switch>button{min-width:0;min-height:48px}
-.site-settings-view-switch>button[aria-pressed=true]{background:#b8c7aa;color:#1a2a24}
+.site-settings-view-switch>button[aria-pressed=true]{background:#b8c7aa;color:var(--fw-panel-deep)}
 .site-settings-tools{margin-top:17px}
 .site-settings-tools summary{min-height:44px;padding:12px 5px;font-size:13px}
 .fw-squad-sheet{
@@ -61,16 +62,16 @@ body[data-tactical-sheet="briefing"] #breachCanvas{pointer-events:none}
  margin-inline:auto;max-height:none;overflow-y:auto;
  overscroll-behavior:contain;touch-action:pan-y;
  padding:14px 13px;border-radius:13px;border:1px solid #83998b;
- background:#182c27fb;box-shadow:0 15px 45px #000a;
- color:#e8edde;font:400 14px/1.45 var(--fw-font-action)}
+ background:color-mix(in srgb, var(--fw-panel-deep) 98.4%, transparent);box-shadow:0 15px 45px #000a;
+ color:var(--fw-text);font:400 14px/1.45 var(--fw-font-action)}
 .fw-squad-sheet[hidden]{display:none!important}
 .fw-squad-sheet-header{position:sticky;top:-14px;z-index:4;display:flex;
  justify-content:space-between;align-items:center;gap:7px;
- background:#182c27;padding:4px 0 12px;border-bottom:1px solid #607c70}
+ background:var(--fw-panel-deep);padding:4px 0 12px;border-bottom:1px solid var(--fw-panel-border)}
 .fw-squad-sheet-header>strong{font:800 23px/1 var(--fw-font-display);
  letter-spacing:.02em;flex:1}
 .fw-squad-sheet-header>button,.fw-squad-more>summary{min-height:44px;
- border:1px solid #8ca493;border-radius:7px;background:#30473c;
+ border:1px solid #8ca493;border-radius:7px;background:var(--fw-interactive);
  font:700 13px var(--fw-font-display);padding:10px}
 .fw-squad-more{position:relative}
 .fw-squad-more>summary{list-style:none;cursor:pointer;display:flex;align-items:center}
@@ -81,7 +82,7 @@ body[data-tactical-sheet="briefing"] #breachCanvas{pointer-events:none}
 .fw-squad-intro{font:600 12px/1.5 var(--fw-font-narrative);
  color:#b8c9bc;padding:8px 0;margin:0 0 8px}
 #operationsBoard .fw-squad-card{margin:8px 0;border-radius:10px;
- border:1px solid #607a6c;background:#203a30;overflow:hidden}
+ border:1px solid var(--fw-panel-border);background:#203a30;overflow:hidden}
 #operationsBoard .fw-squad-card>summary{display:flex;align-items:center;
  gap:10px;padding:12px;min-height:65px}
 #operationsBoard .fw-squad-card>summary:before{content:"";
@@ -108,7 +109,7 @@ body[data-tactical-sheet="briefing"] #breachCanvas{pointer-events:none}
  border-top:1px solid #718d7f;padding-top:9px}
 #operationsBoard .fw-squad-card>details>summary{cursor:pointer;min-height:45px;
  padding:10px 8px;font:750 15px var(--fw-font-display);color:#e7e0cb}
-.fw-loadout-group{border:1px solid #5f7b6d;border-radius:8px;margin:7px 0;
+.fw-loadout-group{border:1px solid var(--fw-panel-border);border-radius:8px;margin:7px 0;
  background:#1c312b;overflow:hidden}
 .fw-loadout-group>summary{cursor:pointer;display:flex;align-items:center;
  gap:6px;padding:12px;min-height:47px;list-style:none}
@@ -128,13 +129,13 @@ body[data-tactical-sheet="briefing"] #breachCanvas{pointer-events:none}
  color:#d4e0d0;min-width:0}
 .fw-loadout-fields select{max-width:65%;min-height:44px;
  border:1px solid #769a83;border-radius:7px;
- background:#2a4238;color:#f2f0dc;padding:6px 8px;
+ background:var(--fw-control-bg);color:#f2f0dc;padding:6px 8px;
  font:500 14px var(--fw-font-action)}
 .fw-loadout-diagnostics{border-top:1px solid #4c6a5a;padding:9px 3px 0}
 .fw-loadout-diagnostics>summary{font:700 12px var(--fw-font-display);
  padding:8px 4px;min-height:40px;cursor:pointer;color:#d8cdab}
 .fw-squad-resupply{min-height:44px;border:1px solid #678779;
- border-radius:7px;background:#284239;color:#d7e3d5}
+ border-radius:7px;background:var(--fw-control-bg);color:#d7e3d5}
 @media(max-width:390px){
  .site-settings,.fw-squad-sheet{inset-inline:7px;width:calc(100vw - 14px)}
  .site-settings-content .site-settings-row{grid-template-columns:minmax(0,1fr)}

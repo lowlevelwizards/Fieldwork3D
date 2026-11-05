@@ -25,11 +25,22 @@ try{
   const errors=[];
   page.on('pageerror',error=>errors.push(error.message));
   await page.goto(origin+'/operator-studio.html',{waitUntil:'domcontentloaded'});
-  await page.waitForFunction(()=>
-   document.getElementById('studioCanvas')?.dataset.ready==='true'&&
-   Number(document.getElementById('studioCanvas')?.dataset.drawCalls)>0&&
-   !!document.querySelector('[data-appearance-item="combat-shirt"]'),
-   null,{timeout:30000});
+  try{
+   await page.waitForFunction(()=>
+    document.getElementById('studioCanvas')?.dataset.ready==='true'&&
+    Number(document.getElementById('studioCanvas')?.dataset.drawCalls)>0&&
+    !!document.querySelector('[data-appearance-item="combat-shirt"]'),
+    null,{timeout:30000});
+  }catch(error){
+   const state=await page.evaluate(()=>({
+    loaded:document.readyState,
+    canvas:document.getElementById('studioCanvas')?.dataset,
+    items:document.querySelectorAll('[data-appearance-item]').length,
+    headline:document.body?.innerText?.slice(0,350)
+   })).catch(e=>({evaluationError:String(e)}));
+   console.error('Studio startup diagnostics',JSON.stringify({state,pageErrors:errors}));
+   throw error;
+  }
   const stage=page.locator('.studio-stage'),
    editor=page.locator('.studio-sheet');
   const [box,control]=await Promise.all([stage.boundingBox(),editor.boundingBox()]);

@@ -1,8 +1,9 @@
-:root{font-family:"Saira Condensed",sans-serif;color:#e6e9db;background:#c4c7bd}
+@import './ui/fieldwork-design.css';
+:root{font-family:"Saira Condensed",sans-serif;color:var(--fw-text);background:#c4c7bd}
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden}
 button,select,input{font:700 14px "Saira Condensed",sans-serif}
-button{touch-action:manipulation;border:1px solid #789083;border-radius:8px;background:#30493f;color:#e6e9db;padding:10px 13px;min-height:43px;cursor:pointer}
-button[aria-pressed=true],button[aria-selected=true]{background:#d0b17e;border-color:#f1dab0;color:#22332e}
+button{touch-action:manipulation;border:1px solid #789083;border-radius:8px;background:var(--fw-interactive);color:var(--fw-text);padding:10px 13px;min-height:43px;cursor:pointer}
+button[aria-pressed=true],button[aria-selected=true]{background:var(--fw-brass);border-color:#f1dab0;color:#22332e}
 button:disabled{opacity:.48;cursor:default}
 #studioRoot{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 .studio-top{z-index:3;flex-shrink:0;display:flex;align-items:center;gap:8px;
@@ -10,7 +11,7 @@ button:disabled{opacity:.48;cursor:default}
  box-shadow:0 2px 0 #6d897d}
 .studio-top button{white-space:nowrap;min-height:43px}
 .studio-operator-label{flex:1;display:flex;flex-direction:column;min-width:0;
- letter-spacing:.08em;color:#aebcae;font-size:10px;font-weight:700}
+ letter-spacing:.08em;color:var(--fw-text-muted);font-size:10px;font-weight:700}
 .studio-operator-label select{width:100%;border:0;background:transparent;
  color:#f1efe0;font-size:19px;font-weight:800;outline:none}
 .studio-operator-label option{background:#263e35}
@@ -22,14 +23,14 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .studio-stage-actions button{font-size:11px;min-height:35px;padding:6px 10px;
  background:#253a33dd;border-color:#739085;backdrop-filter:blur(6px)}
 .studio-sheet{z-index:2;display:flex;flex-direction:column;gap:8px;flex:0 1 44%;
- min-height:195px;max-height:61%;background:#1e342c;
+ min-height:195px;max-height:61%;background:var(--fw-panel);
  border-top:2px solid #789283;border-radius:13px 13px 0 0;
  padding:4px 12px calc(8px + env(safe-area-inset-bottom));overflow-y:auto;
  overscroll-behavior:contain;touch-action:pan-y}
 .studio-sheet-grip{margin:2px auto 0;width:46px;height:4px;background:#83988a;border-radius:10px}
 .studio-sheet-title{display:flex;justify-content:space-between;align-items:center}
 .studio-sheet-title strong{display:block;font-size:20px;letter-spacing:.02em}
-.studio-sheet-title small{font-size:12px;color:#b2c4b4}
+.studio-sheet-title small{font-size:12px;color:var(--fw-text-muted)}
 .studio-history button{font-size:12px;min-height:35px;padding:5px 9px}
 .studio-categories{display:flex;gap:5px;flex:0 0 auto;overflow-x:auto;scrollbar-width:none;touch-action:pan-x}
 .studio-categories button{white-space:nowrap;flex:0 0 auto;font-size:12px;min-height:40px}
@@ -41,7 +42,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
  min-height:0;scroll-snap-align:start;gap:2px}
 #studioItemBrowser .appearance-item-thumbnail{aspect-ratio:1/1}
 #studioItemBrowser .appearance-item-name{font-size:12px}
-.studio-materials{display:grid;gap:9px;border-top:1px solid #456358;padding-top:9px}
+.studio-materials{display:grid;gap:9px;border-top:1px solid var(--fw-control-active);padding-top:9px}
 .studio-materials h3{margin:0;font-size:16px;line-height:1.15}
 .studio-materials .material-group{display:grid;gap:5px}
 .studio-materials .material-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -58,7 +59,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .studio-materials .camo-swatches canvas{width:100%;height:42px;object-fit:cover;
  image-rendering:pixelated}
 .studio-materials .material-row{display:flex;gap:6px;flex-wrap:wrap}
-.studio-materials select,.studio-materials input[type="search"]{background:#30493f;
+.studio-materials select,.studio-materials input[type="search"]{background:var(--fw-interactive);
  color:#f0eee0;border:1px solid #86998d;border-radius:6px;min-height:40px;
  padding:7px;width:100%}
 .studio-materials .material-row button{flex:1;font-size:12px}
@@ -93,13 +94,13 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .studio-sheet-title>div:first-child{min-width:0;flex:1}
 .studio-history{display:flex;align-items:flex-start;gap:4px}
 .studio-history>button{white-space:nowrap;font-size:11px}
-#studioCompare[aria-pressed="true"]{background:#d0b17e;color:#24332b}
+#studioCompare[aria-pressed="true"]{background:var(--fw-brass);color:#24332b}
 .studio-more{position:relative;z-index:4}
 .studio-more>summary{min-height:35px;padding:9px 10px;
  font:700 12px/1 "Saira Condensed",sans-serif;list-style:none;
- cursor:pointer;background:#30493f;border:1px solid #789083;border-radius:7px}
+ cursor:pointer;background:var(--fw-interactive);border:1px solid #789083;border-radius:7px}
 .studio-more>summary::-webkit-details-marker{display:none}
-.studio-more[open]>summary{background:#d0b17e;color:#21362d}
+.studio-more[open]>summary{background:var(--fw-brass);color:var(--fw-panel)}
 .studio-more-panel{position:absolute;right:0;top:39px;z-index:8;
  display:grid;gap:9px;padding:11px;width:min(320px,83vw);
  background:#243c33;border:1px solid #95a899;border-radius:10px;
@@ -107,7 +108,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .studio-more-panel>button{width:100%;font-size:13px}
 .studio-more-panel small{font:500 11px/1.35 "Work Sans",sans-serif;color:#c1cfc1}
 .studio-preset-picker{display:grid;gap:3px;font:700 11px "Saira Condensed",sans-serif}
-.studio-preset-picker select{background:#30493f;color:#eeeada;
+.studio-preset-picker select{background:var(--fw-interactive);color:#eeeada;
  border:1px solid #8da598;border-radius:7px;min-height:40px;padding:6px}
 .studio-more-actions{display:flex;gap:5px}
 .studio-more-actions button{flex:1;font-size:11px;padding:6px 4px;min-height:38px}
@@ -115,7 +116,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 #studioModeLabel{display:block;font:700 10px/1.1 "Work Sans",sans-serif;
  letter-spacing:.08em;color:#b2c5b5}
 #studioRoot[data-comparing="true"] .studio-stage{
- outline:3px solid #d0b17e;outline-offset:-3px}
+ outline:3px solid var(--fw-brass);outline-offset:-3px}
 #studioRoot[data-comparing="true"] #studioMaterials{
  opacity:.58;pointer-events:none}
 @media(max-width:390px){
@@ -127,7 +128,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 
 /* Keep body-part choices accessible while scrolling the garments and swatches. */
 .studio-pinned-categories{position:sticky;top:-4px;z-index:5;display:grid;gap:5px;
- padding:5px 0 7px;background:#1e342c;border-bottom:1px solid #456358;
+ padding:5px 0 7px;background:var(--fw-panel);border-bottom:1px solid var(--fw-control-active);
  box-shadow:0 5px 9px #14251c33}
 .studio-pinned-categories .studio-categories,.studio-pinned-categories .studio-subcategories{
  min-width:0;flex-shrink:0}

@@ -1,25 +1,26 @@
+import {OPERATOR_SOLID_FAMILIES} from './operator-solid-color-families.ts';
 /** Authored solid fabric and cuff colors. No runtime sampling of printed
  * camouflage pixels: folds are chosen deliberately for each fabric family.
  * Stored material IDs are cosmetic and never alter equipment eligibility. */
 import type {HeadwearCamoId} from './operator-headwear-camo.ts';
 import type {FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 export const GARMENT_SOLID_COLORS={
- 'olive-drab':{label:'OD Green',hex:0x646c49},
- 'ranger-green':{label:'Ranger Green',hex:0x566a57},
- 'forest-green':{label:'Forest Green',hex:0x43563e},
- 'field-green':{label:'Field Green',hex:0x737b59},
- 'sage':{label:'Sage',hex:0x87907d},
- 'foliage':{label:'Foliage Gray',hex:0x8a9388},
- 'khaki':{label:'Khaki',hex:0xaa9978},
- 'sand':{label:'Sand',hex:0xc5b38d},
- 'tan':{label:'Tan',hex:0xb59d77},
- 'coyote':{label:'Coyote Brown',hex:0x927557},
- 'brown':{label:'Earth Brown',hex:0x66513d},
- 'nutria-brown':{label:'Nutria Brown',hex:0x937b58},
- 'slate':{label:'Slate',hex:0x727b7a},
- 'charcoal':{label:'Charcoal',hex:0x383e3b},
- 'black':{label:'Black',hex:0x292f2d},
- 'off-white':{label:'Off-white',hex:0xd6d3bc}
+ 'olive-drab':{label:'OD Green',hex:OPERATOR_SOLID_FAMILIES['olive-drab']},
+ 'ranger-green':{label:'Ranger Green',hex:OPERATOR_SOLID_FAMILIES['ranger-green']},
+ 'forest-green':{label:'Forest Green',hex:OPERATOR_SOLID_FAMILIES['forest-green']},
+ 'field-green':{label:'Field Green',hex:OPERATOR_SOLID_FAMILIES['field-green']},
+ 'sage':{label:'Sage',hex:OPERATOR_SOLID_FAMILIES.sage},
+ 'foliage':{label:'Foliage Gray',hex:OPERATOR_SOLID_FAMILIES.foliage},
+ 'khaki':{label:'Khaki',hex:OPERATOR_SOLID_FAMILIES.khaki},
+ 'sand':{label:'Sand',hex:OPERATOR_SOLID_FAMILIES.sand},
+ 'tan':{label:'Tan',hex:OPERATOR_SOLID_FAMILIES.tan},
+ 'coyote':{label:'Coyote Brown',hex:OPERATOR_SOLID_FAMILIES.coyote},
+ 'brown':{label:'Earth Brown',hex:OPERATOR_SOLID_FAMILIES.brown},
+ 'nutria-brown':{label:'Nutria Brown',hex:OPERATOR_SOLID_FAMILIES['nutria-brown']},
+ 'slate':{label:'Slate',hex:OPERATOR_SOLID_FAMILIES.slate},
+ 'charcoal':{label:'Charcoal',hex:OPERATOR_SOLID_FAMILIES.charcoal},
+ 'black':{label:'Black',hex:OPERATOR_SOLID_FAMILIES.black},
+ 'off-white':{label:'Off-white',hex:OPERATOR_SOLID_FAMILIES['off-white']}
 } as const;
 export type GarmentSolidId=keyof typeof GARMENT_SOLID_COLORS;
 const all:readonly GarmentSolidId[]=[
@@ -85,7 +86,10 @@ export const CAMO_CUFF_DEFAULTS:Readonly<Record<HeadwearCamoId,GarmentSolidId>>=
  berezka:'olive-drab','spectre-skwo':'ranger-green',
  'russian-izlom':'forest-green','greek-lizard':'olive-drab','urban-kamysh':'slate',
  'jgsdf-type2':'field-green','pencott-metropolis':'charcoal',
- 'south-african-s2000':'nutria-brown','kryptek-typhon':'charcoal','norwegian-m98':'olive-drab'
+ 'south-african-s2000':'nutria-brown','kryptek-typhon':'charcoal','norwegian-m98':'olive-drab',
+ 'french-cce':'olive-drab','russian-vsr93':'olive-drab','swiss-taz90':'field-green',
+ 'british-desert-dpm':'khaki','south-korean-granite-b':'ranger-green',
+ 'indonesian-kopassus-flowing-blood':'field-green','cadpat-ar':'coyote','usaf-abu':'sage'
 };
 export function garmentSolidHex(id:GarmentSolidId):number{
  return GARMENT_SOLID_COLORS[id].hex;
