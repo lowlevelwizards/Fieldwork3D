@@ -4,7 +4,8 @@
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addFacetedTube,addProfileFrame,type Outline,type SlotName} from './profile-primitives.ts';
-import {AR_STANAG_METAL,AR_STANAG_RIB,AR_MUTED_FDE} from './weapon-visual-palette.ts';
+import {AR_STANAG_METAL,AR_STANAG_RIB,AR_MUTED_FDE,AR_POLYMER_RIB} from './weapon-visual-palette.ts';
+import {addARFacetedForearm,addARPolymerRibs} from './ar-handguard-profiles.ts';
 import {arMagazineCurve,arMagazineOutline,arMagazineRibOutlines,arMagazinePolyBaseplate,arMagazinePolyLowerFacet} from './ar-magazine-profiles.ts';
 import {addARRailSegments} from './ar-rail-profiles.ts';
 import {AR_BARREL_ART,AR_VISUAL_AXIS_Y} from './ar-barrel-profiles.ts';
@@ -212,26 +213,20 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
    {startX:start+.48,endX:end-.30,count:5,topY:2.87},material[0]);
   gm('pri-vents',(start+end)/2,.27,1.90,end-start-1.7,.77);
  }else if(guard==='ar-triangle'){
-  // Two deliberately angled facets instead of a featureless slab.
-  gh([[start,1.47],[start+.64,1.75],
-   [end-1.05,1.08],[end,.60],[end,-.88],
-   [end-1.05,-1.15],[start,-1.72]],3.62,1);
-  gh([[start,-.73],[end-.82,-.68],[end-1.05,-1.15],
-   [start,-1.72]],3.75,0);
-  // Broad dark upper vents only; no tiny front-face pinholes.
-  gm('a1-vents',(start+end)/2,1.08,1.94,end-start-1.55,1.14);
+  // Genuine angular YZ facets: the old extrusion had a wide FLAT side face.
+  // One pointed crown and large lower plane do more than tiny surface marks.
+  addARFacetedForearm(root,'handguard',guard,index.handguard++,
+   start,end,AR_VISUAL_AXIS_Y,'a1-triangle',material[1]);
+  // Large matte upper vents are symbolic recessed apertures.
+  gm('a1-vents',(start+end)/2,1.15,1.86,end-start-1.65,1.18);
  }else if(guard==='ar-round'||guard==='ar-carbine'||retro){
-  gh(retro?
-   [[start,1.26],[start+.88,1.48],[end-.5,1.45],
-    [end,-.75],[end-.55,-1.46],[start+.35,-1.53]]:
-   [[start,1.42],[start+.75,1.77],[end-.75,1.69],
-    [end,-.78],[end-.65,-1.71],[start+.45,-1.76]],
-   retro?3.15:3.85,1);
-  if(retro)gb(start+.32,.04,0,.53,2.88,3.32,0);
-  // No horizontal highlight seam. Dark transverse ribbing should stand on
-  // its own as polymer texture rather than create a glowing crosshatch.
-  gm(retro?'car-ribs':'poly-ribs',(start+end)/2,.10,
-   retro?1.68:2.03,end-start-1.8,2.24);
+  // Octagonal physical plastic body plus one INSTANCED ring-band mesh,
+  // not a box decorated with thin crosshatching.
+  addARFacetedForearm(root,'handguard',guard,index.handguard++,
+   start,end,AR_VISUAL_AXIS_Y,'ribbed-round',material[1]);
+  if(retro)gb(start+.28,.04,0,.46,2.72,3.15,0);
+  addARPolymerRibs(root,'handguard',guard,index.handguard++,
+   start,end,AR_VISUAL_AXIS_Y,retro,AR_POLYMER_RIB);
  }else{
   const ris=guard==='ar-risii';
   const covered=guard==='ar-compact-rail';
