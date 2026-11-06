@@ -4,6 +4,7 @@
 import {fittedArmorSurfaces} from './operator-uniform-fit-envelope.ts';
 import {ARMOR_PROFILES,RIG_FRONT_PROFILES} from './operator-armor-rig-silhouettes.ts';
 import {rigContactFrame} from './operator-rig-contact-frame.ts';
+import {ARMOR_PROPORTIONS} from './operator-armor-proportions.ts';
 import type {RiflePoint} from './breach-weapon-contact-zones.ts';
 export type PoseBox={label:'torso'|'front-armor'|'side-armor'|'chest-rig';
  min:RiflePoint;max:RiflePoint};
@@ -28,10 +29,17 @@ export function poseClearanceEnvelope(armor:string,rig:string,top:string):
    {x:5,y:fit.frontBagBottom,z:-5},
    {x:front+.24,y:5.3,z:5}));
   const side=Math.max(7.05,fit.side);
-  for(const s of [-1,1]){
+  // A shoulder is allowed to articulate above the CUMMERBUND: earlier we
+  // filled the whole shoulder-to-waist side with an imaginary armor wall,
+  // falsely rejecting every clear support-elbow candidate.
+  const proportions=ARMOR_PROPORTIONS[a];
+  const half=(proportions?.sideHeight??3)*.5;
+  const low=(proportions?.sideY??-1.5)-half-.12;
+  const high=(proportions?.sideY??-1.5)+half+.12;
+  if(half>.1)for(const sign of [-1,1]){
    boxes.push(box('side-armor',
-    {x:-2.6,y:-3.9,z:s<0?-side:5.2},
-    {x:5.6,y:4.1,z:s<0?-5.2:side}));
+    {x:-2.6,y:low,z:sign<0?-side:5.2},
+    {x:5.6,y:high,z:sign<0?-5.2:side}));
   }
  }
  if(r!=='no-rig'){
