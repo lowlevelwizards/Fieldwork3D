@@ -52,6 +52,7 @@ export class ReplayQuickVideo{
     this.onError=onError;
   }
   get active(){return !!this.recorder&&!this.stopping;}
+  get audioTrackCount(){return this.stream?.getAudioTracks().length??0;}
   get pendingEnd(){return this.endOfFilm;}
   start(time:number,viewport:{width:number;height:number},
     audioStream:MediaStream|null=null):boolean{
