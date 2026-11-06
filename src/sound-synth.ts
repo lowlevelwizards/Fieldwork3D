@@ -7,6 +7,7 @@ import {SOUND_BY_ID,readSoundPack,resolvePlayableSoundSettings,
 
 import {renderFocusedSound} from './sound-focus-audio.ts';
 import {renderRefinedSound} from './sound-refine-audio.ts';
+import {renderCompoundSound} from './sound-compound-audio.ts';
 const rate=22050;
 const TAU=Math.PI*2;
 function hash(value:string){
@@ -17,6 +18,8 @@ function hash(value:string){
 export function renderSound(id:string,settings:SoundSettings,
  sampleRate=rate):Float32Array{
  const entry=SOUND_BY_ID.get(id);if(!entry)return new Float32Array(0);
+ if(settings.compound!==undefined&&settings.compound>=0)
+  return renderCompoundSound(id,settings,sampleRate);
  if(settings.refinement!==undefined&&settings.refinement>=0)
   return renderRefinedSound(id,settings,sampleRate);
  if(settings.concept>=0)return renderFocusedSound(id,settings,sampleRate);
