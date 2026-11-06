@@ -55,7 +55,7 @@ export function solveCoupledLowReady(input:CoupledInput):
  if(!contacts)return null;
  const [leftShoulder,rightShoulder]=input.shoulders;
  const pocket=stockPocket('low'),scale=contacts.scale;
- const levers=[.09,contacts.support.preferredFraction,.42,.70,.87];
+ const levers=[0,.08,contacts.support.preferredFraction,.32,.55,.82];
  const yaws=[.18,.30,.42,.54,.66,.77];
  const pitches=[-.12,-.22,-.32];
  // Realistic shoulder translation, not independent grip offsets. Positive
@@ -64,10 +64,12 @@ export function solveCoupledLowReady(input:CoupledInput):
  // Deliberately DOWNWARD elbow hint rather than far-outboard chicken wings.
  const supportPoles:readonly [number,number,number][]=[
   [3.5,-8.7,-8.3],[4.7,-9.4,-9.2],
-  [6.2,-8.0,-10.2],[8.5,-6.5,-11.5]];
+  [6.2,-8.0,-10.2],[8.5,-6.5,-11.5],
+  [9,-6.2,-12],[11.7,-7.7,-13.8]];
  const firingPoles:readonly [number,number,number][]=[
   [3.5,-8.6,8.1],[4.7,-9.1,9.0],
-  [6.5,-8.0,10],[8.5,-6.5,11.5]];
+  [6.5,-8.0,10],[8.5,-6.5,11.5],
+  [9,-6.7,11],[11,-6.2,12.7]];
  let best:CoupledLowReadySolution|null=null,bestCost=Infinity;
  let backup:CoupledLowReadySolution|null=null,backupCost=Infinity;
  let evaluated=0;
@@ -151,6 +153,8 @@ export function solveCoupledLowReady(input:CoupledInput):
      for(const spread of [0,1.35,2.7]){
       const guard=neutral.clone();
       guard.z-=spread;guard.y+=spread*.35;
+      // The hand may rest just behind the side armor, never through it.
+      guard.x-=spread*.65;
       const guardSolution=solveTwoBone(leftShoulder,guard,10,10,
        pole,ARM_LIMITS);
       if(!guardSolution.reached)continue;

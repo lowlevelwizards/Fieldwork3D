@@ -27,13 +27,16 @@ export function riflePoseContacts(
  const start=ar?AR_HANDGUARD_START:akHandguardStart(b.parts.receiver);
  const end=ar?arHandguardEnd(b.parts.handguard):
   (akBarrelArt(b.parts.barrel)??AK_BARREL_ART['ak-long']).handguardFrontX;
- const near=start+(ar?1.12:1.03);
- const far=Math.max(near+.55,end-(ar?1.36:1.17));
+ // The *physical* lower receiver/magwell joint is a supported hold.
+ // Restricting the hand to farther-forward furniture forced near-full
+ // extension and made a comfortably bent elbow impossible.
+ const near=ar?2.02:1.86;
+ const far=Math.max(start+1.4,end-(ar?1.36:1.17));
  const y=ar?AR_VISUAL_AXIS_Y-1.40:-1.40;
  return {family:b.family,scale:a.lengthScale,
   stock:{x:a.stockX,y:0,z:0},primary:{x:a.primaryX,y:a.primaryY,z:1.8},
   support:{near:{x:near,y,z:-1.55},far:{x:far,y,z:-1.55},
-   preferredFraction:ar?.22:.16}};
+   preferredFraction:ar?.14:.09}};
 }
 export function supportContactAt(r:RifleContactRange,t:number):RiflePoint{
  const f=Math.min(1,Math.max(0,t));

@@ -20,6 +20,9 @@ const build=id=>{
 const shoulders=[new THREE.Vector3(1,4,-7),new THREE.Vector3(1,4,7)];
 test('all 17 authored family guns use real physical fore-end intervals',()=>{
  assert.ok(AR_HANDGUARD_START>3);
+ // Receiver-supported magwell holding must be closer than the handguard.
+ assert.ok(1.86<akHandguardStart('akm'));
+ assert.ok(2.02<AR_HANDGUARD_START);
  for(const preset of FAMILY_PRESETS){
   const c=build(preset.id),region=riflePoseContacts(preset.weapon,c.config);
   assert.ok(region,preset.id);
@@ -30,7 +33,7 @@ test('all 17 authored family guns use real physical fore-end intervals',()=>{
    arHandguardEnd(preset.parts.handguard):
    undefined;
   if(front)assert.ok(region.support.far.x<front,preset.id);
-  else assert.ok(region.support.near.x>=akHandguardStart(preset.parts.receiver),preset.id);
+  else assert.ok(region.support.near.x>=1.5,preset.id);
   assert.ok(supportContactAt(region.support,0).x<
     supportContactAt(region.support,1).x,preset.id);
   assert.ok(region.support.near.y> -2.5,preset.id);
