@@ -13,6 +13,8 @@ import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {enableBakedGearAO} from './operator-baked-gear-ao.ts';
 import {bakeCastOnGear} from './operator-baked-gear-cast.ts';
+import {refineStaticReceiver,BASE_TORSO_VERTEX_BUDGET} from './operator-gear-shadow-receivers.ts';
+const STATIC_SHIRT_RECEIVER_BUDGET=3300;
 import {fitRigCoveredPockets} from './operator-rig-pocket-fit.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {effectiveD2FabricMode} from './operator-head-accessory-catalog.ts';
@@ -511,6 +513,10 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  const armor=v.wardrobeGear.armor[looks.armorStyle],
   rig=v.wardrobeGear.rig[looks.rigStyle],
   pack=v.wardrobeGear.pack[looks.packStyle];
+ // Invalidate no pose, IK transform or UV. The stable base fabric mesh is
+ // refined once to let armor/rig edges cast actual local shadows onto it.
+ refineStaticReceiver(v.baseTorso,BASE_TORSO_VERTEX_BUDGET);
+ if(clothTorso)refineStaticReceiver(clothTorso,STATIC_SHIRT_RECEIVER_BUDGET);
  const lightingKey=[looks.top,looks.armorStyle,looks.rigStyle,looks.packStyle,
   wardrobe?.sleeveState??'unrolled'].join('/');
  const packs=[pack,v.fieldPack,v.dayPack]
