@@ -168,7 +168,8 @@ export function evaluateSleeveArmorContact(
   const shoulderWrap=volume.label==='side-armor'&&
    (env.armor==='soft-flak'||env.armor==='plate-legacy'||
     env.armor==='soft-vest');
-  const upperAllowed=shoulderWrap?Math.max(allowed,2.50):allowed;
+  const upperAllowed=shoulderWrap?Math.max(allowed,
+   env.armor==='plate-legacy'?2.72:2.50):allowed;
   if(volume.material==='rigid')hardDepth=Math.max(hardDepth,depth);
   else softDepth=Math.max(softDepth,depth);
   if(upper>upperAllowed+.001||lower>allowed+.001)valid=false;
