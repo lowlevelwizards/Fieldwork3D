@@ -76,7 +76,14 @@ test('R2 HK miniature anatomy stays long, slim and deliberately connected',()=>{
   const guard=g.children.filter(c=>c.name.startsWith('family-handguard-'));
   const forearm=guard.find(c=>c.geometry.type==='BufferGeometry');
   assert.ok(forearm,id+' custom tapered 8-sided fore-end');
-  assert.ok(Math.abs(part(g,'receiver').max.z-1.76)<.04,'G3 receiver matches AR-width miniature language');
+  // The charging handle legitimately projects beyond the receiver sides.
+  // Compare the stamped SHELL only, not its visible side-mounted hardware.
+  const receiverShell=g.children.find(c=>c.name===
+   'family-receiver-'+cfg.build.parts.receiver+'-0');
+  assert.ok(receiverShell,id+' main stamped receiver exists');
+  const shellBox=new THREE.Box3().setFromObject(receiverShell);
+  assert.ok(Math.abs(shellBox.max.z-shellBox.min.z-3.52)<.01,
+   'G3 stamped shell retains the shared miniature thickness language');
   assert.equal(forearm.geometry.getAttribute('position').count,144);
   const sight=g.children.find(c=>c.geometry.type==='TorusGeometry');
   assert.ok(sight,'one open faceted front hood');
