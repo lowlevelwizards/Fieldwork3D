@@ -18,10 +18,10 @@ export function weaponVisualLayout(config:WeaponConfiguration):WeaponVisualLayou
   longitudinalScale:scale,
   // Center the dramatically longer RPK and shorter carbine/compact against
   // their real authored muzzle endpoint, not an obsolete fixed AK position.
-  workbenchCenterX:config.build?.family==='ar'?
-   (assembly.muzzleX-15.2)*.5*scale:
-   config.build?.family==='ak'?
-    (assembly.muzzleX+assembly.stockX)*.5*scale:2*scale,
+  // Both AR and AK frame by their *actual configured endpoints*.
+  // No old fixed AR stock constant that crops the shortened M16 stocks.
+  workbenchCenterX:config.build?
+   (assembly.muzzleX+assembly.stockX)*.5*scale:2*scale,
   stockX:assembly.stockX,
   muzzleX:assembly.muzzleX,
   compact:Boolean(compact)

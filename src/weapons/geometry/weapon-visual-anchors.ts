@@ -15,6 +15,16 @@ export function partVisualBounds(root:THREE.Object3D,slot:FamilyPartSlot):
   if(!(object instanceof THREE.Mesh)||
    !object.name.startsWith('family-'+slot+'-'))return;
   object.updateMatrix();
+  // Instanced rail teeth own their own combined bounds; the unit-cube
+  // geometry bound is not their complete visible footprint.
+  if(object instanceof THREE.InstancedMesh){
+   if(!object.boundingBox)object.computeBoundingBox();
+   if(object.boundingBox){
+    bounds.union(object.boundingBox.clone().applyMatrix4(object.matrix));
+    found=true;
+   }
+   return;
+  }
   if(!object.geometry.boundingBox)object.geometry.computeBoundingBox();
   const box=object.geometry.boundingBox;
   if(!box)return;
