@@ -46,6 +46,19 @@ try{
   await page.waitForFunction(()=>
     document.querySelector('#replayPanel')?.hidden===false,null,
     {timeout:12000});
+  // Software WebGL in headless CI can fall below 2 FPS. Validate the same
+  // real replay recording and compositor using the fast Floor Plan renderer;
+  // hardware-accelerated 3D export still requires a separate device check.
+  await page.evaluate(()=>{
+    const view=document.querySelector('#replayView');
+    if(!(view instanceof HTMLButtonElement))throw Error('Missing replay view');
+    view.click();view.click(); // ISO → TOP → PLAN2D
+    if(!view.textContent?.toLowerCase().includes('plan2d'))
+      throw Error('Could not switch replay to Floor Plan');
+    const sound=document.querySelector('#replaySound');
+    if(!(sound instanceof HTMLButtonElement))throw Error('Missing replay sound');
+    if(sound.textContent?.includes('ON'))sound.click();
+  });
   const support=await page.evaluate(()=>({
     recorder:typeof MediaRecorder!=='undefined',
     stream:typeof HTMLCanvasElement.prototype.captureStream==='function'
