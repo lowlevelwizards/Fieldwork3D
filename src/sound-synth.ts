@@ -18,7 +18,7 @@ export function renderSound(id:string,settings:SoundSettings,
  const family=entry.family,seconds=Math.min(4.6,settings.length+
   settings.tail*.25+settings.room*.3);
  const length=Math.ceil(sampleRate*seconds),out=new Float32Array(length);
- let seed=hash(id),low=0,last=0;
+ let seed=hash(id),low=0;
  const pitch=settings.pitch,base=Math.max(.04,settings.length);
  const isAmbient=family==='ambient';
  const isMetal=family==='metal'||family==='glass';
@@ -67,7 +67,6 @@ export function renderSound(id:string,settings:SoundSettings,
   const raw=signal*envelope;
   // Smooth limiting instead of unchecked peak amplification.
   out[i]=Math.tanh(raw*1.15)*.80;
-  last=out[i];
  }
  // Low-cost early reflections (no reverb node/audio tail allocation).
  if(settings.room>.015){
@@ -145,14 +144,23 @@ export function packageSoundZip(files:{name:string;data:Uint8Array}[]){
 }
 export type PlayOptions={level?:number;pan?:number;
  output?:AudioNode|null;rate?:number};
+const bufferCache=new WeakMap<AudioContext,Map<string,AudioBuffer>>();
 /** No autoplay: caller must unlock AudioContext on a user gesture. */
 export function playDesignedSound(ctx:AudioContext,id:string,
  settings:SoundSettings,options:PlayOptions={}):AudioBufferSourceNode|null{
  if(ctx.state!=='running')return null;
- const pcm=renderSound(id,settings,ctx.sampleRate);
- if(!pcm.length)return null;
- const buffer=ctx.createBuffer(1,pcm.length,ctx.sampleRate);
- buffer.copyToChannel(pcm,0);
+ const key=id+'|'+Object.values(settings).join(',');
+ let cache=bufferCache.get(ctx);
+ if(!cache){cache=new Map();bufferCache.set(ctx,cache);}
+ let buffer=cache.get(key);
+ if(!buffer){
+  const pcm=renderSound(id,settings,ctx.sampleRate);
+  if(!pcm.length)return null;
+  buffer=ctx.createBuffer(1,pcm.length,ctx.sampleRate);
+  buffer.copyToChannel(pcm,0);
+  if(cache.size>=64)cache.delete(cache.keys().next().value!);
+  cache.set(key,buffer);
+ }
  const source=ctx.createBufferSource();source.buffer=buffer;
  source.playbackRate.value=Math.max(.25,Math.min(4,options.rate??1));
  const gain=ctx.createGain();
