@@ -77,6 +77,7 @@ let poseFitRig='no-rig',poseFitTop='bdu-shirt';
 let poseFitOutput:HTMLOutputElement|null=null;
 if(poseFitMode){
  const panel=document.createElement('details');
+ panel.id='poseFitPanel';
  panel.open=true;panel.setAttribute('aria-label','Pose Fit Inspector');
  panel.style.cssText='position:fixed;z-index:9;top:calc(env(safe-area-inset-top) + 65px);'+
   'right:8px;width:min(290px,calc(100vw - 16px));'+
