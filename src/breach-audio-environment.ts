@@ -40,7 +40,7 @@ export function acousticResponseForCue(site:Site|undefined,source:Pt,
  const foot=id.startsWith('movement.');
  const impact=id.startsWith('impacts.');
  const handling=id.startsWith('equipment.');
- const amount=flash?1.08:shot?1:door?.59:impact?.39:handling?.32:foot?.16:.28;
+ const amount=flash?1.08:shot?1:door ? .59 :impact ? .39 :handling ? .32 :foot ? .16 : .28;
  if(!site||!site.rooms.length)return null;
  const room=containingRoom(site,source);
  const isExterior=!room;
@@ -51,16 +51,16 @@ export function acousticResponseForCue(site:Site|undefined,source:Pt,
  const hardnessValue=room?hardness(room,site):.2;
  const openNear=doors.some(d=>d.open&&(d.openFraction??1)>.5&&
    Math.hypot((d.a.x+d.b.x)*.5-source.x,(d.a.y+d.b.y)*.5-source.y)<95);
- const openness=isExterior?1:openNear?.19:0;
+ const openness=isExterior?1:(openNear ? .19 : 0);
  // Early wall returns are rapid in small, hard rooms; warehouse interiors
  // produce longer/looser tails. Outdoors are mostly direct sound.
  const sizeIndex=size==='small'?0:size==='medium'?1:size==='large'?2:3;
- const early=isExterior?.021:clamp(.019+dimension*.00011,.018,.082);
- const wet=(isExterior?.032:(.12+sizeIndex*.055)*hardnessValue*
+ const early=isExterior ? .021 :clamp(.019+dimension*.00011,.018,.082);
+ const wet=(isExterior ? .032 :(.12+sizeIndex*.055)*hardnessValue*
    (1-openness*.45))*amount;
- const tail=isExterior?.075:(.075+.00185*dimension)*
+ const tail=isExterior ? .075 :(.075+.00185*dimension)*
    (.61+hardnessValue*.67)*(1-openness*.4);
- const bass=isExterior?.014:clamp((.045+sizeIndex*.038)*
+ const bass=isExterior ? .014 :clamp((.045+sizeIndex*.038)*
    (.55+hardnessValue*.7)*amount,0,.22);
  let obstruction=0;
  if(listener&&walls.length){
@@ -72,7 +72,7 @@ export function acousticResponseForCue(site:Site|undefined,source:Pt,
   // Same room = not acoustically separated by any opaque partition.
   if(room&&containingRoom(site,listener)?.id===room.id)obstruction=0;
  }
- const damp=isExterior?.7:clamp(1-hardnessValue+.16,0,.9);
+ const damp=isExterior ? .7 :clamp(1-hardnessValue+.16,0,.9);
  // Cache quantized acoustic profiles rather than every tiny position move.
  const q=(x:number,step:number)=>Math.round(x/step)*step;
  const response={
