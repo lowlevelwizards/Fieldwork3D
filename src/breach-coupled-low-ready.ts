@@ -119,7 +119,7 @@ function selectArm(shoulder:THREE.Vector3,wrist:THREE.Vector3,
  return best;
 }
 function offsetSamples(cap:number):number[]{
- const values=[0,-cap*.74,cap*.64,-cap];
+ const values=[0,cap*.64,-cap*.48,cap];
  return cap<.01?[0]:values;
 }
 function hangingGuard(input:CoupledInput):SolvedArm|null{
