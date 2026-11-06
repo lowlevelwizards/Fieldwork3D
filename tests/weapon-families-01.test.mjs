@@ -59,7 +59,12 @@ test('family 01: changing barrel rematches handguard and preserves baseline muzz
  assert.ok(resolveWeaponAssembly(c).lengthScale<resolveWeaponAssembly(original).lengthScale);
  assert.equal(setConfiguredFamilyPart(c,'handguard','ar-round'),c);
  assert.equal(setWeaponAttachment(c,'foregrip','foregrip-vertical').slots.foregrip,'foregrip-vertical');
- assert.equal(setWeaponAttachment(original,'foregrip','foregrip-vertical'),original);
+ const updated=setWeaponAttachment(original,'foregrip','foregrip-vertical');
+ assert.notEqual(updated,original,'M4A1 rail now supports a vertical grip');
+ assert.equal(updated.slots.foregrip,'foregrip-vertical');
+ const retro=selectWeaponFamilyPreset(initialWeaponConfiguration('carbine'),'ar-car15');
+ assert.equal(setWeaponAttachment(retro,'foregrip','foregrip-vertical'),retro,
+  'unrailed retro CAR-15 must continue rejecting vertical grip');
 });
 test('family 01: invalid persisted builds degrade to legacy without corrupting slots',()=>{
  const old=initialWeaponConfiguration('carbine');
