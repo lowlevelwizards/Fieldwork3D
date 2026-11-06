@@ -2257,9 +2257,9 @@ function syncBriefingCard():void{
  });
  ui.briefingSteps.replaceChildren(steps);
  // Full authority remains available under ORDERS, never re-authored by prose.
- ui.briefingBody.textContent=model.objective;
- ui.briefingCondition.textContent=model.condition;
- ui.briefingExtraction.textContent=model.extraction;
+ ui.briefingBody.textContent=brief.objective;
+ ui.briefingCondition.textContent=brief.condition;
+ ui.briefingExtraction.textContent=brief.extraction;
  ui.briefingSite.textContent=model.siteLabel+' · '+model.layout;
  ui.briefingCaseContext.textContent=model.situation+
    (model.caseContext?'\n\n'+model.caseContext:'');
