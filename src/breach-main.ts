@@ -1303,6 +1303,19 @@ function liveEventAudioPosition(event:string):Pt|undefined{
  const actor=state.operators.find(a=>event.startsWith(a.name+' '));
  return actor?.p??uid(selected)?.p;
 }
+/** Playback loudness and stereo position follow the real event origin.
+ * No new AI/detection events and no HUD disclosure of hidden source positions. */
+function playLiveEventCue(id:string,source?:Pt):boolean{
+ const listener=uid(selected)?.p;
+ if(!source||!listener)return playApprovedCue(id,1,0,false,1,source);
+ const radius=id==='combat.flash'?420:
+  id.startsWith('doors.')?265:
+  id.startsWith('equipment.')?145:190;
+ const level=heardIntensity(source,listener,radius,state.doors,WALLS);
+ if(level<.025)return true;
+ return playApprovedCue(id,Math.max(.05,level),clamp(
+  (source.x-listener.x)/210,-1,1),false,1,source);
+}
 function playOrderCue(id:string){
  if(!uiSoundEnabled)return;
  unlockAudio();playApprovedCue(id,.25);
@@ -5242,23 +5255,23 @@ function tick(now:number){
    liveEventAudioPosition(event):undefined;
   if(!replaying&&event!==lastEventAudio&&
       (event.includes('OPENED')||event.includes('CLOSING')))
-    {if(!playApprovedCue(event.includes('CLOSING')?'doors.close':'doors.open',
-      1,0,false,1,eventSource))
+    {if(!playLiveEventCue(event.includes('CLOSING')?'doors.close':'doors.open',
+      eventSource))
       playTone(160,.16);}
   if(!replaying&&event!==lastEventAudio&&event.includes('KICK RESISTED'))
-    {if(!playApprovedCue('doors.kick_resisted',1,0,false,1,eventSource))playTone(115,.15,true);}
+    {if(!playLiveEventCue('doors.kick_resisted',eventSource))playTone(115,.15,true);}
   if(!replaying&&event!==lastEventAudio&&event.includes('FORCED OPEN'))
-    {if(!playApprovedCue('doors.forced_open',1,0,false,1,eventSource))playTone(80,.24,true);}
+    {if(!playLiveEventCue('doors.forced_open',eventSource))playTone(80,.24,true);}
   if(!replaying&&event!==lastEventAudio&&event.includes('KICKED'))
-    {if(!playApprovedCue('doors.kick',1,0,false,1,eventSource))playTone(90,.25,true);}
+    {if(!playLiveEventCue('doors.kick',eventSource))playTone(90,.25,true);}
   if(!replaying&&event!==lastEventAudio&&event.includes('FLASH DETONATED'))
-    {if(!playApprovedCue('combat.flash',1,0,false,1,eventSource))playTone(1350,.65,true);}
+    {if(!playLiveEventCue('combat.flash',eventSource))playTone(1350,.65,true);}
   if(!replaying&&event!==lastEventAudio&&event.includes('RELOADED'))
-    {if(!playApprovedCue('equipment.reload',1,0,false,1,eventSource))playTone(280,.09);}
+    {if(!playLiveEventCue('equipment.reload',eventSource))playTone(280,.09);}
   if(!replaying&&event!==lastEventAudio&&event.includes('FLASH OUT'))
-    {if(!playApprovedCue('equipment.flash_throw',1,0,false,1,eventSource))playTone(420,.07);}
+    {if(!playLiveEventCue('equipment.flash_throw',eventSource))playTone(420,.07);}
   if(!replaying&&event!==lastEventAudio&&event.includes('SURRENDERED'))
-    {if(!playApprovedCue('people.surrender',1,0,false,1,eventSource))playTone(210,.22);}
+    {if(!playLiveEventCue('people.surrender',eventSource))playTone(210,.22);}
   lastEventAudio=event;
   // Execution's full HUD reconciliation is DOM-heavy; explicit commands
   // still call updateHud() immediately, while live status refreshes ~5.5Hz.
