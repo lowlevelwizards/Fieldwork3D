@@ -93,9 +93,7 @@ export function bakeCastOnGear(
  receiver:THREE.Object3D,cas:readonly THREE.Object3D[],
  chest:THREE.Object3D,key:string):GearLightingBake{
  const sources=cas.filter(x=>x!==receiver&&x.visible);
- if(!sources.length)return {key,changed:0,vertices:0};
  const boxes=sources.flatMap(x=>collectCastVolumes(x,chest));
- if(!boxes.length)return {key,changed:0,vertices:0};
  chest.updateWorldMatrix(true,true);
  const inverse=chest.matrixWorld.clone().invert();
  let changed=0,vertices=0;
@@ -146,7 +144,8 @@ export function bakeCastOnGear(
    array[i*3]=value;array[i*3+1]=value;array[i*3+2]=value;
    vertices++;
   }
-  if(affected)attribute.needsUpdate=true;
+  // Reverting stale lightmaps to an unoccluded style must also upload.
+  attribute.needsUpdate=true;
   geometry.userData.fieldworkCrossLightKey=key;
  });
  return {key,changed,vertices};
