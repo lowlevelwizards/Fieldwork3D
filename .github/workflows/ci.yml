@@ -1130,6 +1130,8 @@ jobs:
             tests/replay-r2-ballistics.test.mjs \
             tests/replay-r2-json-report.test.mjs \
             tests/replay-r2-ghosts.test.mjs \
+            tests/replay-r2-audio.test.mjs \
+            tests/replay-r2-video.test.mjs \
             tests/breach-p7-replay-sharing.test.mjs \
             tests/gameplay-g4d-replay-validity.test.mjs \
             tests/civilian-b8-replay.test.mjs
