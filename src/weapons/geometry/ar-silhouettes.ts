@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addFacetedTube,addProfileFrame,type Outline,type SlotName} from './profile-primitives.ts';
 import {AR_STANAG_METAL,AR_STANAG_RIB,AR_MUTED_FDE,AR_POLYMER_RIB} from './weapon-visual-palette.ts';
-import {addARFacetedForearm,addARPolymerRibs} from './ar-handguard-profiles.ts';
+import {addARFacetedForearm,addARPolymerRibs,addARA1SurfaceVents} from './ar-handguard-profiles.ts';
 import {arMagazineCurve,arMagazineOutline,arMagazineRibOutlines,arMagazinePolyBaseplate,addARPolymerMagazineBody} from './ar-magazine-profiles.ts';
 import {addARRailSegments} from './ar-rail-profiles.ts';
 import {AR_BARREL_ART,AR_VISUAL_AXIS_Y} from './ar-barrel-profiles.ts';
@@ -212,8 +212,9 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   // One pointed crown and large lower plane do more than tiny surface marks.
   addARFacetedForearm(root,'handguard',guard,index.handguard++,
    start,end,AR_VISUAL_AXIS_Y,'a1-triangle',material[1]);
-  // Large matte upper vents are symbolic recessed apertures.
-  gm('a1-vents',(start+end)/2,1.15,1.86,end-start-1.65,1.18);
+  // Face-aligned matte recesses, computed from the SAME 3D facet sections.
+  // No side-plane decals floating in space or blue-gray painted squares.
+  addARA1SurfaceVents(root,start,end,AR_VISUAL_AXIS_Y);
  }else if(guard==='ar-round'||guard==='ar-carbine'||retro){
   // Octagonal physical plastic body plus one INSTANCED ring-band mesh,
   // not a box decorated with thin crosshatching.
