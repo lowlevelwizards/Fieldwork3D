@@ -94,3 +94,15 @@ Base: `0cf8a9f1737b1327cbb15c11b4f30e718cd73b98`
 - Preserve identical proximity/contact math, strength and geometry bounds.
 - Focused tests compare the single-box loop against the legacy API across
   hundreds of positions, face normals, and three contact radii.
+
+## R5.2-C experimental UV1 self-lightmap atlas (debug opt-in ONLY)
+- `?operatorLightingAtlas=1` generates one native MeshStandardMaterial AO texture
+  per currently selected merged material bucket when same-part subpieces exist.
+- Exact 16px per-face texel sampling of semantic pouch body/flap volumes,
+  with separate `uv1` and unchanged original camouflage `uv` and byte AO.
+- Native aoMap uses a restrained .25 strength while the older self vertex
+  shading remains present; NOT enabled by default due double-shading risk.
+- One single-channel R8 texture, no new meshes, with 8 MiB studio debug cap
+  and cleanup on material dispose; outfit color/maps synchronize with clones.
+- This is a Studio A/B prototype, not a production-approved replacement;
+  promote only after removing duplicate self AO and mobile performance review.

@@ -5,6 +5,8 @@
 import * as THREE from 'three';
 import {inspectOperatorLighting,formatOperatorLightingReport}
  from './operator-lighting-inspector.ts';
+import {applyStudioSelfShadowAtlases}
+ from './operator-gear-lightmap-atlas.ts';
 import {OperatorStudioLighting} from './operator-studio-lighting.ts';
 import {POLICE_VISOR_POSITIONS,POLICE_VISOR_TINTS,POLICE_VISOR_FRAMES,policeVisorFit} from './operator-police-visor-policy.ts';
 import {M56_DETAILS,M56_NETS} from './operator-ddr-m56-policy.ts';
@@ -349,6 +351,11 @@ function posePreview(){
   unarmedPreview:true,equipment:inspectKit(reference?.kit??p.loadout),
   wardrobe:inspectWardrobe(reference?.wardrobe??previewWardrobe())
  },0);
+ if(params.get('operatorLightingAtlas')==='1'){
+  const atlasResult=applyStudioSelfShadowAtlases(rig.root);
+  canvas.dataset.operatorAtlasBytes=String(atlasResult.bytes);
+  canvas.dataset.operatorAtlasCount=String(atlasResult.atlases);
+ }
  studioLighting.invalidateGeometry();
  renderScene();
 }
