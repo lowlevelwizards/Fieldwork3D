@@ -114,7 +114,7 @@ export function refineStaticReceiver(
  root.traverse(o=>{
   if(!(o instanceof THREE.Mesh)||!o.visible||
    Array.isArray(o.material)||!o.material.userData.fieldworkBakedEquipmentAO||
-   o.isSkinnedMesh||o.userData.ikLimb)return;
+   o instanceof THREE.SkinnedMesh||o.userData.ikLimb)return;
   const old=o.geometry,positions=old.getAttribute('position');
   if(!positions||!positions.count)return;
   before+=positions.count;
