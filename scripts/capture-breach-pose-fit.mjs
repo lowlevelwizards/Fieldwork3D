@@ -31,11 +31,17 @@ try{
   const pickers=page.locator('#poseFitPanel select');
   if(await pickers.count()!==4)throw Error('Pose Fit controls missing');
   await mkdir('breach-pose-fit-captures',{recursive:true});
+  // Eight intentionally difficult but plausible outfits. A one-handed
+  // fallback is a FAILURE here, even if it reports numerical clearance.
   const fixtures=[
-   {id:'ar-m4a1',armor:'plate-jpc',rig:'no-rig',top:'bdu-shirt',required:'clear'},
-   {id:'ar-m16a4',armor:'plate-standard',rig:'full-chest',top:'acu-shirt'},
-   {id:'ak-akm',armor:'plate-standard',rig:'chicom-rig',top:'bdu-shirt'},
-   {id:'ak-aks74u',armor:'plate-jpc',rig:'no-rig',top:'smock-jacket'}
+   {id:'ar-m4a1',armor:'plate-slick',rig:'full-chest',top:'smock-jacket',required:'clear'},
+   {id:'ar-m4a1',armor:'soft-flak',rig:'full-chest',top:'smock-jacket',required:'clear'},
+   {id:'ar-m4a1',armor:'plate-legacy',rig:'full-chest',top:'smock-jacket',required:'clear'},
+   {id:'ar-m4a1',armor:'plate-heavy',rig:'full-chest',top:'smock-jacket',required:'clear'},
+   {id:'ak-aks74u',armor:'plate-slick',rig:'full-chest',top:'smock-jacket',required:'clear'},
+   {id:'ak-aks74u',armor:'soft-flak',rig:'full-chest',top:'smock-jacket',required:'clear'},
+   {id:'ak-rpk74',armor:'soft-flak',rig:'full-chest',top:'smock-jacket',required:'clear'},
+   {id:'ak-akm',armor:'plate-legacy',rig:'full-chest',top:'smock-jacket',required:'clear'}
   ];
   const panel=page.locator('#poseFitPanel');
   for(const f of fixtures){
@@ -51,11 +57,14 @@ try{
      ['clear','guard-fallback'].includes(data?.lowReadyFit??'');
    },f,{timeout:14000});
    const status=await page.locator('#preview').getAttribute('data-low-ready-fit');
+   const mode=await page.locator('#preview').getAttribute('data-low-ready-mode');
+   if(status==='clear'&&mode==='one-hand-guard')
+    throw Error('Incorrect two-hand success status for '+f.id);
    if(f.required&&status!==f.required)
     throw Error('Expected '+f.id+' clear two-hand pose, got '+status);
    // The inspector must not obscure the chest and arms in the screenshot.
    await panel.evaluate(node=>{node.open=false;});
-   for(const view of ['front','side','iso']){
+   for(const view of ['front','side','iso','top']){
     await page.evaluate(v=>{
      const b=document.querySelector('button[data-view="'+v+'"]');
      if(!b)throw Error('No camera '+v);

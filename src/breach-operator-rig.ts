@@ -1249,9 +1249,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       coupledIdleCache.set(r,{key,solution:coupled});
     }
     r.root.userData.lowReadyPoseReport={
-      status:coupled?.status??'unresolved',weapon:p.weapon,
+      status:coupled?.status??'unresolved',
+      mode:coupled?.mode??'unresolved',weapon:p.weapon,
       armor:look.armorStyle,rig:look.rigStyle,top:look.top,
       penetration:coupled?.penetration??null,
+      softContact:coupled?.softContact??null,
+      poseQuality:coupled?.quality??null,
+      elbowLeft:coupled?.arms[0].joint.toArray()??null,
+      elbowRight:coupled?.arms[1].joint.toArray()??null,
       supportFraction:coupled?.supportFraction??null,
       candidates:coupled?.candidates??0};
   }else r.root.userData.lowReadyPoseReport=null;

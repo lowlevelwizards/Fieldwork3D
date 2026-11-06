@@ -1709,17 +1709,23 @@ function draw(){
   canvas.dataset.promotion=gaitReference.value==='candidate'?'lab-only':'none';
   if(poseFitMode&&poseFitOutput){
    const report=rig.root.userData.lowReadyPoseReport as
-    {status:string;penetration:number|null;candidates:number;
-     weapon?:string;armor?:string;rig?:string;top?:string}|null;
+    {status:string;mode?:string;penetration:number|null;
+     softContact?:number|null;poseQuality?:number|null;
+     candidates:number;weapon?:string;armor?:string;
+     rig?:string;top?:string}|null;
    poseFitOutput.textContent=report?
     'STATUS '+report.status.toUpperCase()+
+    '\nPOSE '+(report.mode??'unknown')+
     '\nRENDERED '+(report.weapon??'?')+' / '+(report.armor??'?')+
     ' / '+(report.rig??'?')+
-    '\nPENETRATION '+(report.penetration?.toFixed(3)??'N/A')+
+    '\nRIGID '+(report.penetration?.toFixed(3)??'N/A')+
+    '\nSOFT SHOULDER '+(report.softContact?.toFixed(3)??'N/A')+
+    '\nQUALITY '+(report.poseQuality?.toFixed(2)??'N/A')+
     '\nGRIP '+rig.gripError.toFixed(3)+
     '\nSTOCK '+rig.stockError.toFixed(3)+
     '\nCANDIDATES '+report.candidates:'NO STATIC FAMILY SOLVE';
    canvas.dataset.lowReadyFit=report?.status??'not-applicable';
+   canvas.dataset.lowReadyMode=report?.mode??'unresolved';
    canvas.dataset.poseFitArmor=report?.armor??'';
    canvas.dataset.poseFitRig=report?.rig??'';
    canvas.dataset.poseFitTop=report?.top??'';
