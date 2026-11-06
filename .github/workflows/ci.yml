@@ -31,7 +31,7 @@ jobs:
       - name: Breach low-ready V2 anatomy, material contact and armored fit gates
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-low-ready-pose-v2-') }}
         run: |
-          node --experimental-strip-types --test tests/breach-low-ready-anatomy-v2.test.mjs tests/breach-low-ready-clearance-v2.test.mjs tests/breach-low-ready-v2-matrix.test.mjs tests/breach-coupled-rig-smoke.test.mjs
+          node --experimental-strip-types --test tests/breach-low-ready-anatomy-v2.test.mjs tests/breach-low-ready-clearance-v2.test.mjs tests/breach-low-ready-v2-matrix.test.mjs tests/breach-low-ready-transition-v2.test.mjs tests/breach-low-ready-transition-rig-v2.test.mjs tests/breach-coupled-rig-smoke.test.mjs
       - name: Breach magazine, socket and shared-idle critical gates
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-weapon-sockets-magazines-idle-') }}
         run: |
