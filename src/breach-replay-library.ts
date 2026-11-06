@@ -31,7 +31,7 @@ export function replayLibrarySummary(
     frameCount:archive.frames.length,
     shotCount:archive.shots.length,
     complete:archive.completeness.complete,
-    favorite,bookmarks:[]
+    favorite,bookmarks:archive.bookmarks??[]
   };
 }
 export function sortReplayLibrary(
@@ -103,7 +103,7 @@ export async function saveReplayArchive(archive:ReplayArchiveV1):Promise<void>{
     const prior=await requestValue(index.get(archive.id) as IDBRequest<
       SavedReplaySummary|undefined>);
     index.put({...replayLibrarySummary(archive,prior?.favorite??false),
-      bookmarks:prior?.bookmarks??[]});
+      bookmarks:prior?.bookmarks??archive.bookmarks??[]});
     tx.objectStore(RECORDINGS).put(archive);
     await done;
   }finally{db.close();}
