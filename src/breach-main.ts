@@ -74,6 +74,10 @@ import {acousticResponseForCue} from './breach-audio-environment.ts';
 import {parseOperationHistory,addOperationRecord,
   type OperationRecord} from './breach-operations.ts';
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
+import {captureReplayArchive,restoreReplayArchive} from './breach-replay-archive.ts';
+import {listSavedReplays,saveReplayArchive,loadSavedReplay,
+  deleteSavedReplay,setSavedReplayFavorite,replayLibrarySupported,
+  type SavedReplaySummary} from './breach-replay-library.ts';
 import {stepReplaySample,stepReplayPresentation,formatReplayTime}
   from './breach-replay-transport.ts';
 import {ReplayEventIndex,type ReplayIndexedEvent} from './breach-replay-event-index.ts';
@@ -268,6 +272,14 @@ const ui={
   debriefStats:el<HTMLElement>('debriefStats'),
   retry:el<HTMLButtonElement>('retry'),next:el<HTMLButtonElement>('next'),
   watchReplay:el<HTMLButtonElement>('watchReplay'),
+  saveReplayDebrief:el<HTMLButtonElement>('saveReplayDebrief'),
+  replaySaveArchive:el<HTMLButtonElement>('replaySaveArchive'),
+  openReplayLibrary:el<HTMLButtonElement>('openReplayLibrary'),
+  replayLibraryDialog:el<HTMLElement>('replayLibraryDialog'),
+  replayLibraryBackdrop:el<HTMLElement>('replayLibraryBackdrop'),
+  replayLibraryList:el<HTMLElement>('replayLibraryList'),
+  replayLibraryStatus:el<HTMLOutputElement>('replayLibraryStatus'),
+  closeReplayLibrary:el<HTMLButtonElement>('closeReplayLibrary'),
   favoriteMission:el<HTMLButtonElement>('favoriteMission'),
   favoriteMissionsList:el<HTMLElement>('favoriteMissionsList'),
   replayPanel:el<HTMLElement>('replayPanel'),
@@ -732,6 +744,9 @@ const replayQuickVideo=new ReplayQuickVideo(
     showUiHelp(reason,3600);
   }
 );
+let savedReplayPreviousRecorder:MissionRecorder|null=null;
+let replayLibraryBusy=false;
+let replayLibraryRenderGeneration=0;
 let replayPresentation:ReplayPresentation|null=null;
 let replayOmniscient=true,finishedSession:Session|null=null;
 let replayFollow=false,replayAnalysis=false,replayFollowId='rook';
@@ -2479,6 +2494,7 @@ function updateHud(){
   ui.undo.disabled=!(active?.history.undo.length);
   ui.redo.disabled=!(active?.history.redo.length);
   ui.debrief.hidden=replaying||(state.phase!=='won'&&state.phase!=='lost');
+  ui.saveReplayDebrief.disabled=recorder.frames.length<2||replayLibraryBusy;
   ui.favoriteMission.disabled=!state.site;
   ui.favoriteMission.textContent=activeFavoriteId?
     '★ MISSION FAVORITED':'☆ FAVORITE MISSION';
@@ -4212,8 +4228,10 @@ function enterReplay(){
   unlockAudio();
   showReplayToolTab(null);
   const recordedSite=recorder.manifest?.site;
-  state=newSession(finishedSession.variant,finishedSession.site?.seed,
-    finishedSession.intel.mode,finishedSession.site?.scale??'standard',
+  state=newSession(recorder.manifest?.variant??finishedSession.variant,
+    recorder.manifest?.site?.seed??finishedSession.site?.seed,
+    recorder.manifest?.intelMode??finishedSession.intel.mode,
+    recorder.manifest?.site?.scale??finishedSession.site?.scale??'standard',
     recorder.manifest?.missionType,
     recordedSite?structuredClone(recordedSite):undefined);
   state.lightingMode=recorder.manifest?.lightingMode??finishedSession.lightingMode;
@@ -4243,9 +4261,153 @@ function exitReplay(){
   ui.replayPanel.hidden=true;
   if(finishedSession)state=finishedSession;
   finishedSession=null;fogStamp=-1;
+  if(savedReplayPreviousRecorder){
+    recorder=savedReplayPreviousRecorder;
+    savedReplayPreviousRecorder=null;
+  }
   stage?.applySite(state.site??null);
   updateHud();
 }
+/** Replay Library: load metadata only until a recording is selected.
+ * No campaign result, equipment persistence, or live session is modified.
+ */
+async function renderSavedReplayLibrary():Promise<void>{
+  const generation=++replayLibraryRenderGeneration;
+  if(ui.replayLibraryDialog.hidden)return;
+  ui.replayLibraryStatus.textContent='READING LOCAL RECORDINGS…';
+  try{
+    const entries=await listSavedReplays();
+    if(generation!==replayLibraryRenderGeneration||
+      ui.replayLibraryDialog.hidden)return;
+    const fragment=document.createDocumentFragment();
+    for(const item of entries){
+      const row=document.createElement('div');
+      row.className='replay-library-row';row.setAttribute('role','listitem');
+      const information=document.createElement('div');
+      information.className='replay-library-item-info';
+      const name=document.createElement('strong');
+      name.textContent=item.siteName;
+      const details=document.createElement('span');
+      details.textContent=item.missionType.toUpperCase()+' · '+
+        formatReplayTime(item.duration)+' · '+item.frameCount+' FRAMES'+
+        (item.complete?'':' · PARTIAL');
+      information.append(name,details);
+      const watch=document.createElement('button');watch.type='button';
+      watch.textContent='WATCH';watch.title='Open saved recording';
+      watch.addEventListener('click',()=>{void playSavedReplay(item.id);});
+      const favorite=document.createElement('button');favorite.type='button';
+      favorite.textContent=item.favorite?'★':'☆';
+      favorite.setAttribute('aria-label',item.favorite?'Unfavorite replay':'Favorite replay');
+      favorite.setAttribute('aria-pressed',String(item.favorite));
+      favorite.addEventListener('click',async()=>{
+        if(replayLibraryBusy)return;
+        replayLibraryBusy=true;
+        try{
+          await setSavedReplayFavorite(item.id,!item.favorite);
+          await renderSavedReplayLibrary();
+        }catch(error){replayLibraryFailure(error);}
+        finally{replayLibraryBusy=false;}
+      });
+      const remove=document.createElement('button');remove.type='button';
+      remove.textContent='DELETE';
+      remove.setAttribute('aria-label','Delete replay '+item.siteName);
+      remove.addEventListener('click',async()=>{
+        if(replayLibraryBusy)return;
+        if(remove.dataset.confirm!=='yes'){
+          remove.dataset.confirm='yes';remove.textContent='CONFIRM';
+          return;
+        }
+        replayLibraryBusy=true;
+        try{
+          await deleteSavedReplay(item.id);
+          await renderSavedReplayLibrary();
+        }catch(error){replayLibraryFailure(error);}
+        finally{replayLibraryBusy=false;}
+      });
+      row.append(information,watch,favorite,remove);
+      fragment.append(row);
+    }
+    ui.replayLibraryList.replaceChildren(fragment);
+    ui.replayLibraryStatus.textContent=entries.length?
+      entries.length+' SAVED RECORDING'+(entries.length===1?'':'S')+
+      ' · LOCAL DEVICE ONLY':
+      'NO SAVED REPLAYS YET · SAVE ONE FROM A MISSION DEBRIEF';
+  }catch(error){
+    if(generation!==replayLibraryRenderGeneration)return;
+    replayLibraryFailure(error);
+  }
+}
+function replayLibraryFailure(error:unknown):void{
+  console.warn('[Replay Library]',error);
+  ui.replayLibraryStatus.textContent=error instanceof Error?
+    error.message:'REPLAY STORAGE FAILED';
+  showUiHelp('REPLAY LIBRARY UNAVAILABLE · CHECK DEVICE STORAGE',3400);
+}
+async function saveCurrentReplay():Promise<void>{
+  if(replayLibraryBusy||recorder.frames.length<2)return;
+  replayLibraryBusy=true;
+  ui.saveReplayDebrief.disabled=true;ui.replaySaveArchive.disabled=true;
+  try{
+    const id='replay-'+Date.now().toString(36)+'-'+
+      Math.random().toString(36).slice(2,9);
+    const archive=captureReplayArchive(recorder,id,Date.now());
+    await saveReplayArchive(archive);
+    showUiHelp('FULL REPLAY SAVED TO DEVICE LIBRARY',3400);
+    if(!ui.replayLibraryDialog.hidden)await renderSavedReplayLibrary();
+  }catch(error){replayLibraryFailure(error);}
+  finally{
+    replayLibraryBusy=false;
+    ui.saveReplayDebrief.disabled=false;ui.replaySaveArchive.disabled=false;
+  }
+}
+async function playSavedReplay(id:string):Promise<void>{
+  if(replayLibraryBusy||replaying)return;
+  replayLibraryBusy=true;
+  try{
+    const archived=await loadSavedReplay(id);
+    const stored=restoreReplayArchive(archived);
+    if(stored.frames.length<2)throw Error('Replay recording has no film');
+    // Preserve the current live recorder and return to it on replay exit.
+    savedReplayPreviousRecorder=recorder;
+    recorder=stored;
+    hideSavedReplayLibrary();
+    closeMissionSettings(false);
+    enterReplay();
+    if(!replaying){
+      recorder=savedReplayPreviousRecorder;savedReplayPreviousRecorder=null;
+      throw Error('Could not open saved replay');
+    }
+    showUiHelp('PLAYING SAVED OPERATION · ORIGINAL MISSION UNCHANGED',3800);
+  }catch(error){
+    // A failed import must never leave the current mission's film replaced.
+    if(replaying)exitReplay();
+    if(savedReplayPreviousRecorder){
+      recorder=savedReplayPreviousRecorder;
+      savedReplayPreviousRecorder=null;
+    }
+    replayLibraryFailure(error);
+  }
+  finally{replayLibraryBusy=false;}
+}
+function showSavedReplayLibrary():void{
+  if(replaying)return;
+  closeMissionSettings(false);
+  ui.replayLibraryDialog.hidden=false;
+  ui.replayLibraryBackdrop.hidden=false;
+  ui.replayLibraryList.replaceChildren();
+  void renderSavedReplayLibrary();
+}
+function hideSavedReplayLibrary():void{
+  ui.replayLibraryDialog.hidden=true;
+  ui.replayLibraryBackdrop.hidden=true;
+  replayLibraryRenderGeneration++;
+}
+ui.openReplayLibrary.addEventListener('click',showSavedReplayLibrary);
+ui.closeReplayLibrary.addEventListener('click',hideSavedReplayLibrary);
+ui.replayLibraryBackdrop.addEventListener('click',hideSavedReplayLibrary);
+ui.saveReplayDebrief.addEventListener('click',()=>{void saveCurrentReplay();});
+ui.replaySaveArchive.addEventListener('click',()=>{void saveCurrentReplay();});
+
 ui.watchReplay.addEventListener('click',enterReplay);
 ui.favoriteMission.addEventListener('click',()=>{
   if(!state.site)return;
@@ -4473,6 +4635,8 @@ function reset(next=state.variant,siteSeed?:number,
  encounterRisk?:1|2|3,deferScene=false,
  restartStart?:MissionStartSnapshot){
   replaying=false;replayPlaying=false;finishedSession=null;
+  savedReplayPreviousRecorder=null;
+  hideSavedReplayLibrary();
   activeFavoriteId=null;
   replayEventIndex=null;
   operationsBoard.hidden=true;
