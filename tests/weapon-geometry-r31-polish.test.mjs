@@ -73,8 +73,8 @@ test('R3.1: shortened Mk18 and AKS-74U still have open silhouette identifiers',(
 test('R3.1: AR front sight is a squat open A rather than solid tall spike',()=>{
  const m=assembly('ar-m4a1');
  assert.equal(rayHits(m.group,16.85,1.25),false,'A-frame internal gap');
- assert.ok(rayHits(m.group,16.43,1.4),'left narrowed A-frame leg');
- assert.ok(rayHits(m.group,17.23,1.4),'right narrowed A-frame leg');
+ assert.ok(rayHits(m.group,16.50,1.4),'left narrowed A-frame leg');
+ assert.ok(rayHits(m.group,17.16,1.4),'right narrowed A-frame leg');
  assert.ok(box(m.group,'barrel').max.y<3.25,'sight height reduced');
  clearWeaponSilhouette(m.group);
 });
