@@ -40,23 +40,25 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
 
  // Stock: fixed triangular stock versus open shoulder / sliding-carbine outline.
  if(parts.stock==='ar-fixed'){
-  p('stock',[[-13.5,.7],[-6.1,.85],[-6.05,-1.55],
-   [-8.35,-3.05],[-13.5,-2.35]],3.45,1);
-  b('stock',-13.2,-.65,0,.6,3.85,3.8,0);
+  // One five-sided classic rifle wedge, including its rear plate.
+  p('stock',[[-13.5,.65],[-6.05,.7],[-6.05,-1.7],
+   [-9.0,-3.1],[-13.5,-2.4]],3.8,1);
  }else{
-  b('stock',-8.65,.15,0,5.5,1.2,1.5,0);
   const compact=parts.stock==='ar-compact';
-  p('stock',[[-12.25,.45],[-10.85,.8],[-9.55,.5],[-9.45,-1.85],
-    [-11.6,-2.65],[-12.5,-2.0]],compact?3.5:3.1,1);
-  b('stock',compact?-11.9:-12.55,-.95,0,.85,3.65,3.55,1);
+  const rear=compact?-11.7:-12.3;
+  // Two connected forms: one slim extension and one thick five/six-sided end.
+  b('stock',-8.35,.1,0,5.8,1.25,1.65,0);
+  p('stock',[[rear,.55],[rear+1.0,.8],[rear+2.75,.45],
+   [rear+2.75,-1.55],[rear+.75,-2.85],[rear,-2.05]],
+   compact?3.85:3.45,compact?2:1);
  }
 
  // Pistol grips share the same root, but the modern shape has a fuller heel.
- const modern=parts.grip==='ar-grip-poly',a2=parts.grip==='ar-grip-a2';
- p('grip',modern?[[-2,-1.8],[.5,-1.8],[.6,-5.5],[-.3,-6.25],[-2.65,-5.85]]:
-  [[-2,-1.8],[.2,-1.8],[-.2,-5.95],[-2.15,-5.65]],
-  modern?3.0:2.55,1);
- if(a2)b('grip',-.3,-3.6,1.25,.65,.9,.45,0);
+ const modern=parts.grip==='ar-grip-poly';
+ p('grip',modern?
+  [[-2.2,-1.7],[.6,-1.7],[.45,-5.25],[-.45,-5.85],[-2.7,-5.65]]:
+  [[-2.0,-1.7],[.4,-1.7],[-.2,-5.75],[-2.45,-5.7]],
+  modern?3.25:2.95,1);
 
  // The magazine profile uses one actually tapered/curved outline, not a pile of boxes.
  const mag=parts.magazine;
