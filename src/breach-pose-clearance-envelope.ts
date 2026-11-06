@@ -161,13 +161,23 @@ export function evaluateSleeveArmorContact(
   if(depth<=0)continue;
   const baseline=LOW_READY_CONTACT_LIMITS[volume.material];
   const allowed=volume.material==='rigid'?baseline:baseline*scale;
+  // The outer sleeve is sewn beneath a thick flak/legacy shoulder-wrap.
+  // That proximal UPPER ARM interface is an attachment seam, not an
+  // obstacle spanning all the way through the arm. A forearm crossing
+  // that side wrap is still checked to the original tight budget.
+  const shoulderWrap=volume.label==='side-armor'&&
+   (env.armor==='soft-flak'||env.armor==='plate-legacy'||
+    env.armor==='soft-vest');
+  const upperAllowed=shoulderWrap?Math.max(allowed,2.15):allowed;
   if(volume.material==='rigid')hardDepth=Math.max(hardDepth,depth);
   else softDepth=Math.max(softDepth,depth);
-  if(depth>allowed+.001)valid=false;
-  quality+=Math.max(0,depth-allowed*.18)/
-   Math.max(.1,allowed)*(.5+(volume.material==='rigid'?3:0));
+  if(upper>upperAllowed+.001||lower>allowed+.001)valid=false;
+  const excess=Math.max(0,upper-upperAllowed*.18)/
+   Math.max(.1,upperAllowed)+
+   Math.max(0,lower-allowed*.18)/Math.max(.1,allowed);
+  quality+=excess*(.5+(volume.material==='rigid'?3:0));
   contacts.push({label:volume.label,material:volume.material,
-   depth,allowed});
+   depth,allowed:Math.max(allowed,upperAllowed)});
  }
  return {valid,hardDepth,softDepth,quality,contacts};
 }

@@ -69,7 +69,7 @@ export function relaxedArmShapeCost(
 }
 function selectArm(shoulder:THREE.Vector3,wrist:THREE.Vector3,
  side:-1|1,env:PoseClearanceEnvelope,softScale:number,
- previous?:THREE.Vector3):SolvedArm|null{
+ previous?:THREE.Vector3,stats?:Record<string,number>):SolvedArm|null{
  // Evaluate every anatomically valid candidate when heavy gear is present:
  // culling after the eight prettiest elbow directions falsely made flak
  // wearers incapable of holding a rifle. The search is still pose-cached.
@@ -80,6 +80,7 @@ function selectArm(shoulder:THREE.Vector3,wrist:THREE.Vector3,
   const shape=assessLowReadyArm(shoulder,limb.joint,limb.effector,
    side,limb.angle);
   if(!shape.valid)continue;
+  if(stats)stats.rightAnatomical=(stats.rightAnatomical??0)+1;
   const continuity=previous?
    (1-clamp(limb.bendPlane.dot(previous),-1,1))*.12:0;
   anatomical.push({pose:limb,score:shape.score+continuity});
@@ -89,6 +90,15 @@ function selectArm(shoulder:THREE.Vector3,wrist:THREE.Vector3,
  for(const candidate of anatomical){
   const contact=evaluateSleeveArmorContact(shoulder,
    candidate.pose.joint,candidate.pose.effector,env,softScale);
+  if(stats){
+   stats.minimumRightHard=Math.min(stats.minimumRightHard??Infinity,
+    contact.hardDepth);
+   stats.minimumRightSoft=Math.min(stats.minimumRightSoft??Infinity,
+    contact.softDepth);
+   const worst=contact.contacts.reduce((m,c)=>Math.max(m,
+    c.depth/Math.max(.001,c.allowed)),0);
+   stats.minimumRightRatio=Math.min(stats.minimumRightRatio??Infinity,worst);
+  }
   if(!contact.valid)continue;
   const quality=candidate.score+contact.quality*.09;
   if(quality<bestQuality){
@@ -171,7 +181,7 @@ export function solveCoupledLowReady(input:CoupledInput):
      ptr(receiverB),rigidOnly,1.06,.18);
     if(receiverDepth>.12){rejects.receiverRigid++;continue;}
     const right=selectArm(rightShoulder,primary,1,input.armor,
-     budget.softScale,input.previousBends?.[1]);
+     budget.softScale,input.previousBends?.[1],rejects);
     if(!right){rejects.rightAnatomyOrArmor++;continue;}
     const rightDepth=right.contact.hardDepth;
     for(const fraction of budget.contactFractions){
