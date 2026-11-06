@@ -20,6 +20,7 @@ export default defineConfig({
       physicalityLab: 'physicality-lab.html',
       assetLab: 'asset-lab.html',
       soundLab: 'sound-lab.html',
+      briefingLab: 'briefing-lab.html',
     } },
   },
 });

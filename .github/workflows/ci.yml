@@ -1181,6 +1181,9 @@ jobs:
       - name: Exact mission restart — site, setup and insertion critical gate
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/breach-repeat-mission-') }}
         run: node --experimental-strip-types --test tests/mission-restart-snapshot.test.mjs tests/mission-deployment-r2.test.mjs
+      - name: Briefing Lab — facts, incident eligibility, prose, and worker page gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-briefing-lab-v2-') }}
+        run: node --experimental-strip-types --test tests/briefing-incident.test.mjs tests/briefing-composer.test.mjs tests/briefing-mission-facts.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
