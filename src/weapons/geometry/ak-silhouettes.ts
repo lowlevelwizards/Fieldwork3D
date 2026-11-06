@@ -96,9 +96,11 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   b('stock',-13.5,-1,0,1.05,3.65,2.5,1);
  }else if(stock.startsWith('ak-rpk-clubfoot')){
   // RPK-specific broad butt, tucked wrist, and exaggerated low clubfoot heel.
-  p('stock',[[-15.85,.7],[-10.6,.8],[-6.15,-.42],
-   [-6.3,-1.25],[-10.4,-2.02],[-11.25,-3.6],
-   [-13.4,-4.15],[-15.85,-3.7]],3.35,2);
+  // The comb joins the receiver at the LOWER-receiver roof, not halfway
+  // down its wall. Retain the deep clubfoot behind the narrower stock neck.
+  p('stock',[[-15.85,.72],[-10.6,.86],[-8.1,1.01],[-6.22,1.01],
+   [-6.38,-1.50],[-10.4,-2.06],[-11.32,-3.65],
+   [-13.4,-4.15],[-15.85,-3.70]],3.35,2);
  }else if(stock==='ak-triangle-full'){
   // Standard AKS-74 side-folding TRIANGLE: strong top rail, single lower
   // diagonal, open center, clean skinny butt. It must not read as an AKMS.
@@ -113,17 +115,23 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   line('stock',[-5.48,-1.15],[-9.0,-.72],.66,1.05,0);
   b('stock',-14.58,-1.05,0,1.25,3.90,2.60,1);
  }else if(stock==='ak-underfolder'){
-  // New true two-SIDED underfolder: two distinct rails on opposite Z sides,
-  // a lowered rear hinge and slender bridging butt plate.
+  // AKMS underfolder in side orthographic: ONE nearly straight rod per
+  // receiver side, sloped slightly downward, with a hanging rear buttplate.
+  // The pair is separated along Z, not diagonally in XY like a triangle.
   for(const side of [-1,1]){
-   const z=side*.73;
-   const top=line('stock',[-6.10,-.33],[-14.38,-.24],
-    .68,.82,0);top.position.z=z;
-   const lower=line('stock',[-6.12,-1.44],[-14.36,-2.00],
-    .66,.82,0);lower.position.z=z;
+   const rod=line('stock',[-6.18,-1.00],[-14.31,-1.81],
+    .83,.80,0);
+   rod.position.z=side*1.04;
+   const geo=new THREE.CylinderGeometry(.73,.73,.42,8,1);
+   geo.rotateX(Math.PI/2);
+   const rivet=new THREE.Mesh(geo,material[0]);
+   rivet.name='family-stock-'+stock+'-'+index.stock++;
+   rivet.position.set(-6.18,-1.04,side*1.56);
+   rivet.castShadow=true;rivet.receiveShadow=true;root.add(rivet);
   }
-  b('stock',-14.62,-1.06,0,.86,3.25,2.52,0);
-  b('stock',-6.08,-.97,0,1.15,1.98,2.50,0);
+  // Tall vertical rear plate, upper lip and lower transverse connector.
+  b('stock',-14.57,-1.49,0,.86,3.80,2.65,0);
+  b('stock',-14.52,-2.99,0,.85,.48,3.30,0);
  }else if(stock==='ak-sidefold'||stock==='ak-sidefold-plum'){
   // Reuse the strongest AK-74M polymer cheek/heel profile across 100-series.
   p('stock',[[-14.4,.78],[-9.1,.93],[-6.12,.28],
@@ -132,9 +140,19 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  }else{
   const isWood=stock.startsWith('ak-wood')&&
    !stock.endsWith('-plum');
-  // Classic AK fixed stock: horizontal comb, stepped wrist and full butt.
-  p('stock',[[-15.35,.68],[-10.25,.78],[-6.12,-.48],
-   [-6.4,-1.18],[-11.5,-3.18],[-15.35,-2.92]],3.35,isWood?2:1);
+  if(parts.receiver==='akm'){
+   // Two clear quads: a receiver-height 24-degree descending neck and
+   // a larger broad rear butt. No narrow pointed wedge at the junction.
+   p('stock',[[-6.42,.92],[-10.10,-.56],
+    [-10.25,-3.37],[-6.42,-2.04]],3.35,isWood?2:1);
+   p('stock',[[-10.08,-.58],[-15.45,-.36],
+    [-15.45,-3.83],[-12.65,-3.63],
+    [-10.19,-3.25]],3.35,isWood?2:1);
+  }else{
+   // Fixed 74-pattern stock keeps its lighter, shallower upper comb.
+   p('stock',[[-15.35,.68],[-10.25,.78],[-6.12,-.48],
+    [-6.4,-1.18],[-11.5,-3.18],[-15.35,-2.92]],3.35,isWood?2:1);
+  }
   if(stock.startsWith('ak-wood74'))
    b('stock',-10.7,-1,1.97,2.0,.65,.18,1);
  }
