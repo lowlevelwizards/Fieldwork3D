@@ -404,12 +404,11 @@ function tickArmedPreview(now:number){
  if(now-armedLastDraw>=1000/24){
   const elapsed=Math.max(0,(now-armedStarted)/1000);
   const idle=studioArmedIdleAt(elapsed,member()?.appearanceSeed??0);
-  poseOperator(rig!,{...armedPose!,seconds:elapsed,...idle},
+  // Same presentation layer as gameplay. No second Studio-only bob or
+  // additive transform: avoid double breathing and animation drift.
+  poseOperator(rig!,{...armedPose!,seconds:elapsed,
+    idleLifeSeconds:elapsed,...idle},
    Math.min(.1,(now-armedLastDraw)/1000));
-  // Tiny head glance/breath offset AFTER the reusable combat IK solved.
-  // Both are reset on the next pose, so nothing accumulates.
-  rig!.head.rotation.y+=idle.glance;
-  rig!.chest.position.y+=idle.breathe;
   armedLastDraw=now;
   renderScene();
  }
