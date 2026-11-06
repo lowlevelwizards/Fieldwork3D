@@ -29,9 +29,9 @@ const hits=(model,x,y)=>{
  return ray.intersectObjects(model.group.children,true).length;
 };
 
-test('R2: 51 visual part definitions, 11 original IDs and correct landmark furniture',()=>{
- assert.equal(Object.keys(FAMILY_PARTS).length,51);
- assert.equal(FAMILY_PRESETS.length,11);
+test('R2: 62 visual part definitions, 17 curated IDs and correct landmark furniture',()=>{
+ assert.equal(Object.keys(FAMILY_PARTS).length,62);
+ assert.equal(FAMILY_PRESETS.length,17);
  const byId=Object.fromEntries(FAMILY_PRESETS.map(p=>[p.id,p]));
  assert.equal(byId['ar-m16a4'].parts.handguard,'ar-m5-rail');
  assert.equal(byId['ar-car15'].parts.handguard,'ar-car15-ribbed');
@@ -42,7 +42,7 @@ test('R2: 51 visual part definitions, 11 original IDs and correct landmark furni
   family:'ar',parts:{...byId['ar-mk18'].parts}},'foregrip','foregrip-vertical'),true);
 });
 
-test('R2: all 11 assembled profiles preserve shot tip, finite bounds and mesh budget',()=>{
+test('R2: all 17 assembled profiles preserve shot tip, finite bounds and mesh budget',()=>{
  let profiles=0;
  for(const p of FAMILY_PRESETS){
   const {group,config}=model(p.id);

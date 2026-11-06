@@ -86,7 +86,8 @@ import {validateStudioAppearanceEdits,applyStudioRosterEdits,
 import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
  sameWeaponConfiguration,familyAccessoryAllowed} from './equipment-weapon-assemblies.ts';
-import {FAMILY_PRESETS,FAMILY_PART_SLOTS,FAMILY_PARTS,matchingFamilyPreset,compatibleFamilyPart,type FamilyPartSlot} from './equipment-weapon-families.ts';
+import {FAMILY_PART_SLOTS,FAMILY_PARTS,matchingFamilyPreset,compatibleFamilyPart,familyPreset,type FamilyPartSlot} from './equipment-weapon-families.ts';
+import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
 import {newCampaign,readCampaign,acceptContract,resolveOperation,
  purchaseAmmo,purchaseMedical,resupplyOperator,resupplyMedicalOperator,treatOperator,
  hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
@@ -768,37 +769,31 @@ function renderOperationsBoard(){
    typeChoices.append(button);
   }
   loadout.field('weapon').append(typeHeading,typeChoices);
-  const presets=FAMILY_PRESETS.filter(p=>p.weapon===member.weapon);
-  const presetHeading=document.createElement('strong');
-  presetHeading.className='fw-weapon-section-label';
-  presetHeading.textContent='3D WEAPON MODEL'+(presets.length?' · AR / AK':'');
-  const currentPreset=member.weaponConfiguration.build?
+  const activePreset=member.weaponConfiguration.build?
    matchingFamilyPreset(member.weaponConfiguration.build):undefined;
-  const presetHint=document.createElement('p');
-  presetHint.className='fw-weapon-helper';
-  presetHint.textContent=presets.length?
-   'Choose a model to inspect and customize. Factory body pieces remain compatible with the selected receiver.':
-   'This class currently uses the original 3D model.';
-  const presetGrid=document.createElement('div');
-  presetGrid.className='fw-weapon-preset-grid';
-  for(const preset of presets){
-   const button=document.createElement('button');
-   button.type='button';button.textContent=preset.name;
-   button.title=preset.family.toUpperCase()+' family';
-   button.setAttribute('aria-pressed',String(currentPreset?.id===preset.id));
-   button.disabled=state.phase!=='planning'||replaying;
-   button.addEventListener('click',()=>{
+  const factoryLabel=document.createElement('strong');
+  factoryLabel.className='fw-weapon-section-label';
+  factoryLabel.textContent='3D WEAPON MODEL';
+  const factoryBrowser=createWeaponPresetBrowser({
+   selectedId:activePreset?.id,
+   selectedFamily:member.weaponConfiguration.build?.family,
+   onSelect:presetId=>{
     if(state.phase!=='planning'||replaying)return;
-    persistentRoster=configureRosterWeaponPreset(persistentRoster,member.id,preset.id);
+    const preset=familyPreset(presetId);if(!preset)return;
+    let next=persistentRoster;
+    if(member.weapon!==preset.weapon)next=equipRoster(next,member.id,preset.weapon);
+    next=configureRosterWeaponPreset(next,member.id,presetId);
+    const selected=next.members.find(m=>m.id===member.id);
+    if(!selected?.weaponConfiguration.build)return;
+    persistentRoster=next;
     selectedQuickWeaponSockets.delete(member.id);
     savedQuickWorkbenchViews.delete(member.id);resetQuickWorkbenchViews.add(member.id);
     saveRoster();applyRosterIdentity(state,persistentRoster);
     expandedQuickKit=member.id;expandedQuickWeapon=member.id;
     expandedQuickLoadoutGroup='weapon';renderOperationsBoard();updateHud();
-   });
-   presetGrid.append(button);
-  }
-  loadout.field('weapon').append(presetHeading,presetHint,presetGrid);
+   }
+  });
+  loadout.field('weapon').append(factoryLabel,factoryBrowser);
   const resupply=document.createElement('button');resupply.type='button';
   resupply.className='fw-squad-resupply';resupply.textContent='RESUPPLY';
   resupply.addEventListener('click',()=>{
@@ -3789,9 +3784,19 @@ const campaignScreen=new CampaignScreen({
  equipGear:(id,slot,itemId)=>{if(campaign){
   campaign=equipCampaignGear(campaign,id,slot,itemId);
   saveCampaign();showCampaignHome();}},
- equipWeaponPreset:(id,presetId)=>{if(campaign){
-  campaign=equipCampaignWeaponPreset(campaign,id,presetId);
-  saveCampaign();showCampaignHome();}},
+ equipWeaponPreset:(id,presetId)=>{if(campaign&&!campaign.activeContractId){
+  const preset=familyPreset(presetId);
+  const member=campaign.operators.find(o=>o.id===id);
+  if(!preset||!member)return;
+  let next=campaign;
+  if(member.weapon!==preset.weapon){
+   if((campaign.inventory.weapons[preset.weapon]??0)<1)return;
+   next=equipCampaignWeapon(next,id,preset.weapon);
+   if(next===campaign)return;
+  }
+  next=equipCampaignWeaponPreset(next,id,presetId);
+  if(next===campaign)return;
+  campaign=next;saveCampaign();showCampaignHome();}},
  equipWeaponFamilyPart:(id,slot,partId)=>{if(campaign){
   campaign=equipCampaignWeaponFamilyPart(campaign,id,slot,partId);
   saveCampaign();showCampaignHome();}},
