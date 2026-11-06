@@ -34,6 +34,8 @@ import {equipmentTrainingSite} from './equipment-training-range.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
  rangeTrialLabel,type RangeTrial} from './equipment-training-diagnostics.ts';
 import type {Site} from './breach-site.ts';
+import {captureMissionStart,siteForMissionRestart,
+  type MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {QuickPlayGenerationRequest,QuickPlayGenerationResponse}
  from './quick-play-generation.ts';
 import {equippedEntryMethods,issuedWedges} from './equipment-entry-tools.ts';
@@ -477,6 +479,8 @@ ui.briefingRoster.insertAdjacentElement('afterend',deploymentButton);
 let deploymentState:Session|null=null;
 let deployOptions:ReturnType<typeof availableDeployments>=[];
 let selectedEntry='FRONT';
+let missionStart:MissionStartSnapshot=captureMissionStart(
+ state,requestedSiteScale,selectedEntry);
 function refreshDeployment(){
  if(deploymentState!==state){
   deploymentState=state;selectedEntry='FRONT';
@@ -499,6 +503,7 @@ deploymentButton.addEventListener('click',()=>{
  const next=ids[(ids.indexOf(selectedEntry)+1)%ids.length];
  if(selectDeployment(state,next)){
   selectedEntry=next;
+  missionStart=captureMissionStart(state,requestedSiteScale,selectedEntry);
   recorder=new MissionRecorder();recorder.capture(state,true);
   refreshDeployment();
  }
@@ -3943,7 +3948,8 @@ ui.replayExportJson.addEventListener('click',()=>{
 ui.replayExit.addEventListener('click',exitReplay);
 function reset(next=state.variant,siteSeed?:number,
  missionOverride?:Session['missionType'],prebuiltSite?:Site,
- encounterRisk?:1|2|3,deferScene=false){
+ encounterRisk?:1|2|3,deferScene=false,
+ restartStart?:MissionStartSnapshot){
   replaying=false;replayPlaying=false;finishedSession=null;
   replayEventIndex=null;
   operationsBoard.hidden=true;
@@ -3951,14 +3957,16 @@ function reset(next=state.variant,siteSeed?:number,
   flashMode=false;document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
   state=newSession(next,legacyStudy?undefined:
-    siteSeed??randomSiteSeed(),selectedIntelMode,requestedSiteScale,missionOverride,
+    siteSeed??randomSiteSeed(),restartStart?.intelMode??selectedIntelMode,
+    restartStart?.scale??requestedSiteScale,missionOverride,
     prebuiltSite,{risk:encounterRisk,enableCivilians:civilianPreview});
   executionNoticeFeed.reset();
-  state.lightingMode=selectedLightingMode;
+  state.lightingMode=restartStart?.lightingMode??selectedLightingMode;
   if(campaignMode==='quick')persistentRoster=freshQuickPlayRoster(persistentRoster);
   applyRequestedCondition(state);
   applyRosterIdentity(state,persistentRoster);
   applyCampaignSkills();
+  missionStart=captureMissionStart(state,requestedSiteScale);
   flashDoorId=null;
   if(!deferScene)stage?.applySite(state.site??null);
   selected='rook';looking=false;
@@ -3969,6 +3977,22 @@ function reset(next=state.variant,siteSeed?:number,
   recorder=new MissionRecorder();recorder.capture(state,true);
   tacticalFeedback.clear();
   if(!deferScene){layout();updateHud();}
+}
+/** Repeat the exact resolved site and the same briefing/insertion.
+ * newSession resets living actors, doors, fog, AI, objectives and orders.
+ * It must never regenerate a different layout or use next-site preferences.
+ */
+function restartMission():void{
+ const start=missionStart;
+ reset(start.variant,start.seed,start.missionType,
+   siteForMissionRestart(start),undefined,false,start);
+ if(start.entryId!=='FRONT'){
+  if(selectDeployment(state,start.entryId))selectedEntry=start.entryId;
+  else console.warn('[Restart mission] Original entry no longer valid',start.entryId);
+ }
+ missionStart=start;
+ recorder=new MissionRecorder();recorder.capture(state,true);
+ layout();updateHud();
 }
 /* Quick Play uses Map Lab-style progress checkpoints. Percentages represent
  * completed work, not predicted time; expensive 3D mesh creation remains
@@ -4503,7 +4527,7 @@ ui.intelMode.addEventListener('click',()=>{
   updateHud();
  });
 });
-ui.retry.addEventListener('click',()=>{if(campaignMode!=='mission')reset();});
+ui.retry.addEventListener('click',()=>{if(campaignMode!=='mission')restartMission();});
 ui.next.addEventListener('click',()=>{if(!returnAfterCampaignMission())reset(state.variant+1);});
 ui.play.addEventListener('click',()=>{
   unlockAudio();uiClickTone(state.phase==='running'?'pause':'go');
@@ -4511,7 +4535,10 @@ ui.play.addEventListener('click',()=>{
    if(!returnAfterCampaignMission())reset();
   }else{
     looking=false;
-    if(state.phase==='planning')recorder.capture(state,true);
+    if(state.phase==='planning'){
+      missionStart=captureMissionStart(state,requestedSiteScale,selectedEntry);
+      recorder.capture(state,true);
+    }
     toggling(state);updateHud();
   }
 });
@@ -4523,7 +4550,7 @@ ui.restart.addEventListener('click',async()=>{
       message:'All current orders and discoveries will be discarded.',
       confirmLabel:'RESTART MISSION',danger:true
     }))return;
-  reset();
+  restartMission();
 });
 window.addEventListener('keydown',e=>{
   // Global game shortcuts must never fire while the player edits a name,
@@ -4555,7 +4582,10 @@ window.addEventListener('keydown',e=>{
     if(state.phase==='won'||state.phase==='lost'){
       if(!returnAfterCampaignMission())reset();
     }else{
-      if(state.phase==='planning')recorder.capture(state,true);
+      if(state.phase==='planning'){
+        missionStart=captureMissionStart(state,requestedSiteScale,selectedEntry);
+        recorder.capture(state,true);
+      }
       toggling(state);
     }
     updateHud();
