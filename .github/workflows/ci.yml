@@ -1237,6 +1237,9 @@ jobs:
       - name: HK factory model browser visible and selectable
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/hk-g3-factory-browser-') }}
         run: node --experimental-strip-types --test tests/weapon-hk-browser.test.mjs
+      - name: Briefing V3 — objective-first card, no-scroll layout, navigation and persistence
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-briefing-card-v3-') }}
+        run: node --experimental-strip-types --test tests/briefing-card-v3.test.mjs tests/briefing-ui-v3-layout.test.mjs tests/briefing-default-live.test.mjs tests/briefing-dossier-persistence.test.mjs tests/briefing-shield-layering.test.mjs tests/ux-r1-navigation-squad.test.mjs
       - name: HK G3 R2 — critical geometry and legacy silhouette checks
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-g3-r2-') }}
         run: |

@@ -1653,3 +1653,142 @@ html,body{font-family:var(--fw-font-menu)}
   border:1px solid #617869;background:#283b35;border-radius:5px;
   padding:5px 9px;color:#d6decf;font:600 10px var(--ui-font)}
 .replay-chapter-item[data-kind="bookmark"]{border-color:#b69e74;color:#e7cc98}
+
+/* BRIEFING V3 — one intentional mission card, not a vertically scrolling report.
+   Both modes use this component. Secondary intel can scroll on short viewports;
+   the primary mission and Plan action stay available without scrolling. */
+#briefingPanel.fw-mission-dossier{
+ z-index:95;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
+ display:grid;grid-template-rows:auto minmax(0,1fr) auto;
+ width:min(464px,calc(100vw - 24px));height:auto;
+ max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px);
+ overflow:hidden;overscroll-behavior:contain;padding:16px 17px 14px;
+ border:1px solid #93ae9a;border-radius:12px;background:#182b25;
+ box-shadow:0 22px 60px #020b0cdb;text-align:left;color:#e4e8da;
+ touch-action:manipulation;
+ animation:fw-brief-v3-enter 190ms cubic-bezier(.2,.7,.22,1) both;
+}
+#briefingPanel.fw-mission-dossier[hidden]{display:none!important}
+.fw-brief-v3-header{min-width:0;padding:0 1px 12px}
+.fw-brief-v3-eyebrow{font:700 10px/1.25 var(--fw-font-menu);
+ letter-spacing:.11em;color:#b5c7b5;display:flex;gap:5px;align-items:center}
+.fw-brief-v3-eyebrow>span:first-child{color:#cdb886}
+.fw-brief-v3-edition{margin-left:auto;letter-spacing:.06em;color:#8ca798}
+#briefingPanel.fw-mission-dossier #briefingTitle{display:block;max-width:100%;margin:8px 0 6px;
+ font:800 clamp(23px,6.4vw,29px)/1.02 var(--fw-font-display);letter-spacing:.015em;
+ color:#e9d3a3;overflow-wrap:anywhere}
+.fw-brief-v3-subtitle{display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+ font:700 11px/1.2 var(--fw-font-menu);letter-spacing:.065em;color:#cad7c7}
+.fw-brief-v3-subtitle #briefingType{color:#f0e7c9}
+.fw-brief-v3-dot{width:3px;height:3px;background:#91b7a0;border-radius:50%}
+.fw-brief-v3-overview{min-width:0;min-height:0;display:grid;align-content:start;
+ gap:12px;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;scrollbar-width:thin}
+.fw-brief-v3-objective{padding:14px 14px 12px;border-radius:9px;
+ background:#2a4235;border:1px solid #688b70;min-width:0}
+.fw-brief-v3-kicker,.fw-brief-v3-situation h3,.fw-brief-v3-fact-label,
+.fw-brief-v3-entry-summary span,.fw-brief-v3-detail h3{
+ font:750 11px/1.2 var(--fw-font-menu);color:#d8c296;letter-spacing:.065em}
+#briefingPanel.fw-mission-dossier #briefingPrimary{margin:7px 0 12px;
+ font:650 clamp(16px,4.2vw,19px)/1.25 var(--fw-font-narrative);color:#f0f1e5}
+.fw-brief-v3-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:6px;margin:0}
+.fw-brief-v3-step{min-width:0;border-top:1px solid #65856e;padding-top:8px}
+.fw-brief-v3-step strong{display:block!important;margin:0 0 3px!important;
+ font:700 11px/1.15 var(--fw-font-menu)!important;color:#f0e3c0!important}
+.fw-brief-v3-step small{display:block;font:500 11px/1.25 var(--fw-font-narrative);
+ color:#c4d0be;overflow-wrap:anywhere}
+.fw-brief-v3-situation{padding:0 2px;min-width:0}
+.fw-brief-v3-situation h3{margin:0 0 5px}
+#briefingPanel.fw-mission-dossier #briefingSituation{margin:0;color:#e0e7dd;
+ font:400 14px/1.45 var(--fw-font-narrative);display:-webkit-box;
+ -webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:normal}
+.fw-brief-v3-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;padding:12px 2px 2px;border-top:1px solid #496357}
+.fw-brief-v3-fact{min-width:0}
+.fw-brief-v3-fact-label{display:flex;align-items:center;gap:6px;color:#aebfa9;
+ font-size:10px;margin:0 0 5px}
+.fw-brief-v3-fact-marker{display:block;width:7px;height:7px;
+ border:1px solid #bba578;transform:rotate(45deg)}
+#briefingPanel.fw-mission-dossier .fw-brief-v3-fact strong{
+ display:block;font:650 13px/1.3 var(--fw-font-narrative);letter-spacing:0;
+ color:#e8eddf;overflow-wrap:anywhere}
+.fw-brief-v3-footer{border-top:1px solid #547161;margin-top:10px;
+ padding-top:11px;display:grid;gap:10px;min-width:0}
+.fw-brief-v3-entry{display:flex;align-items:center;justify-content:space-between;
+ min-height:39px;gap:10px}
+.fw-brief-v3-entry-summary{display:grid;gap:3px;min-width:0}
+.fw-brief-v3-entry-summary span{font-size:10px;color:#a6bba8}
+#briefingPanel.fw-mission-dossier #briefingEntryLabel{display:block;
+ font:750 14px/1.15 var(--fw-font-display);letter-spacing:.02em;color:#eff0db}
+.fw-brief-v3-entry-controls{flex:0 1 auto;min-width:0;max-width:64%}
+#briefingPanel.fw-mission-dossier #deploymentChoice{
+ width:auto;max-width:100%;min-height:40px;padding:7px 10px;margin:0;
+ background:#2a3e37;color:#e6e7d7;border:1px solid #738b78;border-radius:7px;
+ font:700 12px/1.15 var(--fw-font-action);text-align:center;white-space:normal}
+.fw-brief-v3-actions{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.35fr);gap:8px}
+#briefingPanel.fw-mission-dossier .fw-brief-v3-actions button{
+ position:static;min-width:0;width:100%;min-height:48px;margin:0;padding:10px 8px;
+ border-radius:8px;font:750 13px/1.15 var(--fw-font-action);
+ transition:transform 110ms ease,background-color 140ms ease,border-color 140ms ease}
+#briefingPanel.fw-mission-dossier #briefingIntelToggle{
+ color:#e1e8d8;background:#30463c;border:1px solid #7e9b80}
+#briefingPanel.fw-mission-dossier #briefingClose{
+ color:#14231e;background:#b9caa7;border:1px solid #c9d7b3}
+#briefingPanel.fw-mission-dossier .fw-brief-v3-actions button:active,
+#briefingPanel.fw-mission-dossier #deploymentChoice:active{transform:scale(.975)}
+#briefingPanel.fw-mission-dossier button:focus-visible{outline:2px solid #e4deb3;outline-offset:2px}
+.fw-brief-v3-intel{min-width:0;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px}
+.fw-brief-v3-intel[hidden],.fw-brief-v3-overview[hidden],
+.fw-brief-v3-detail[hidden]{display:none!important}
+.fw-brief-v3-intel-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+#briefingPanel.fw-mission-dossier .fw-brief-v3-intel-tabs button{
+ border:1px solid #566d5f;background:#20362d;color:#c0cebc;
+ padding:7px 3px;min-height:42px;min-width:0;border-radius:5px;
+ font:700 11px/1.15 var(--fw-font-menu);letter-spacing:.025em}
+#briefingPanel.fw-mission-dossier .fw-brief-v3-intel-tabs button[aria-pressed="true"]{
+ background:#aec3a3;color:#1e3228;border-color:#d3dcb9}
+.fw-brief-v3-intel-details{min-height:0;overflow-y:auto;overscroll-behavior:contain;
+ touch-action:pan-y;padding:2px 3px;scrollbar-width:thin}
+.fw-brief-v3-detail{display:grid;gap:10px;align-content:start}
+.fw-brief-v3-detail h3{margin:5px 0 0}
+#briefingPanel.fw-mission-dossier .fw-brief-v3-detail p,
+#briefingPanel.fw-mission-dossier .fw-brief-v3-detail div{font:400 14px/1.45 var(--fw-font-narrative)}
+#briefingPanel.fw-mission-dossier .fw-brief-v3-detail p{
+ margin:0;color:#dae5d8;white-space:pre-line}
+.fw-brief-v3-report{padding:9px 11px;margin:0 0 8px;border:1px solid #4f6d59;
+ border-radius:7px;background:#20382f}
+.fw-brief-v3-report-meta{display:flex;gap:7px;margin-bottom:5px;
+ font:750 11px/1.2 var(--fw-font-menu);color:#d1bd90;letter-spacing:.055em}
+.fw-brief-v3-report p{margin:0!important}
+.fw-brief-v3-report-empty{font-size:13px;color:#c4cfc1}
+@keyframes fw-brief-v3-enter{
+ from{opacity:0;transform:translate(-50%,-49%) scale(.986)}
+ to{opacity:1;transform:translate(-50%,-50%) scale(1)}
+}
+@media(max-height:740px){
+ #briefingPanel.fw-mission-dossier{padding:11px 13px 10px}
+ .fw-brief-v3-header{padding-bottom:9px}
+ #briefingPanel.fw-mission-dossier #briefingTitle{margin:6px 0 4px;font-size:23px}
+ .fw-brief-v3-overview{gap:9px}
+ .fw-brief-v3-objective{padding:10px 11px}
+ #briefingPanel.fw-mission-dossier #briefingPrimary{margin:5px 0 8px;font-size:16px}
+ #briefingPanel.fw-mission-dossier #briefingSituation{font-size:13px;line-height:1.37}
+ .fw-brief-v3-footer{margin-top:8px;padding-top:8px;gap:7px}
+ .fw-brief-v3-facts{padding-top:8px}
+}
+@media(max-height:560px) and (orientation:landscape){
+ #briefingPanel.fw-mission-dossier{width:min(760px,calc(100vw - 22px));
+  max-height:calc(100dvh - 14px);padding:9px 13px}
+ .fw-brief-v3-header{padding-bottom:7px}
+ #briefingPanel.fw-mission-dossier #briefingTitle{font-size:20px;margin:3px 0}
+ .fw-brief-v3-overview{grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:6px 12px;align-items:start}
+ .fw-brief-v3-objective{grid-row:span 2}
+ .fw-brief-v3-facts{padding-top:6px}
+ .fw-brief-v3-footer{grid-template-columns:1fr 1.3fr;gap:10px;margin-top:5px}
+ .fw-brief-v3-entry{min-width:0}
+}
+@media(prefers-reduced-motion:reduce){
+ #briefingPanel.fw-mission-dossier{animation:none}
+ #briefingPanel.fw-mission-dossier .fw-brief-v3-actions button{transition:none}
+}
