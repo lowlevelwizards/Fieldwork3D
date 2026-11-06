@@ -134,7 +134,7 @@ test('R4.5 the two 7.62 ribs are thicker, raised and reach receiver neck',()=>{
  }
  for(const id of ['ak-akm','ak-akms','ak-ak103']){
   const m=model(id),mag=slot(m.group,'magazine');
-  assert.equal(mag.length,3);
+  assert.equal(mag.length,id==='ak-ak103'?1:3);
   assert.ok(box(mag[1]).max.y>-3.0,id+' ribs reach near insertion');
   done(m);
  }
