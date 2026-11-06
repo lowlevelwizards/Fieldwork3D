@@ -4,7 +4,8 @@
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addFacetedTube,addProfileFrame,type Outline,type SlotName} from './profile-primitives.ts';
-import {AR_STANAG_METAL,AR_MUTED_FDE} from './weapon-visual-palette.ts';
+import {AR_STANAG_METAL,AR_STANAG_RIB,AR_MUTED_FDE} from './weapon-visual-palette.ts';
+import {arMagazineCurve,arMagazineOutline,arMagazineRibOutlines,arMagazinePolyBaseplate} from './ar-magazine-profiles.ts';
 import {AR_BARREL_ART,AR_VISUAL_AXIS_Y} from './ar-barrel-profiles.ts';
 import {AR_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
@@ -111,40 +112,25 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
    m.gripDepthZ,AR_MUTED_FDE);
  else p('grip',gripProfile,m.gripDepthZ,1);
 
- // IMPORTANT: Side ELEVATION uses X/Y. The requested thinness is Z,
- // not an X-squashed stick. Restore broad magazine contour, narrow its depth.
+ // R4.6: derived from the AK's constant-normal-width magazine ribbon.
+ // The metal presses follow exactly the same centerline. No disconnected
+ // underside plate or square polymer panel texture.
  const mag=parts.magazine;
- const magTop=m.magazineTopY;
- const magLeft=m.magwellCenterX-m.magazineWidthX/2;
- const magRight=m.magwellCenterX+m.magazineWidthX/2;
- const mag20=mag==='ar-mag20',magPoly=mag==='ar-magpoly';
- if(mag20)
-  p('magazine',[[magLeft,magTop],[magRight,magTop],
-   [magRight+.14,-6.25],[magLeft+.04,-6.25]],m.magazineDepthZ,3);
- else if(magPoly)
-  p('magazine',[[magLeft,magTop],[magRight,magTop],
-   [magRight+.06,-4.75],[magRight+.66,-7.23],
-   [magLeft+.64,-7.33],[magLeft+.06,-4.72]],
-   m.magazineDepthZ,1);
- else
-  // Two major angular steps describe a curved USGI 30 rather than a slab.
-  // The lower edge slopes in the same direction as the body, no base plate.
-  p('magazine',[[magLeft,magTop],[magRight,magTop],
-   [magRight+.06,-4.73],[magRight+.62,-6.89],
-   [magRight+.71,-7.18],[magRight+.26,-7.42],
-   [magLeft+.47,-7.48],[magLeft+.08,-7.19],
-   [magLeft+.06,-4.73]],m.magazineDepthZ,3);
- if(magPoly){
-  // Polymer/Pmag: substantial tan plate follows the body sweep.
-  const plate=b('magazine',m.magwellCenterX+.38,-7.39,0,
-   m.magazineWidthX+.26,.48,m.magazineDepthZ+.12,2);
-  plate.rotation.z=.10;
+ const magStyle=mag==='ar-mag20'?'20':mag==='ar-magpoly'?'poly':'30';
+ const curve=arMagazineCurve(magStyle,m.magwellCenterX,m.magazineTopY,
+  m.magazineWidthX,m.magazineDepthZ);
+ p('magazine',arMagazineOutline(curve),m.magazineDepthZ,
+  magStyle==='poly'?1:3);
+ for(const outline of arMagazineRibOutlines(curve)){
+  const rib=addOutline(root,'magazine',mag,index.magazine++,
+   outline,m.magazineDepthZ+.075,AR_STANAG_RIB);
+  rib.castShadow=false;rib.receiveShadow=false;
  }
- const marks=addWeaponPixelMarkPair(root,mag20?'ar-mag-stamp20':
-  magPoly?'ar-poly-panel':'ar-mag-stamp30',
-  m.magwellCenterX+(mag20?.05:.22),mag20?-4.38:-5.10,
-  m.magazineDepthZ/2+.095,m.magazineWidthX-.44,mag20?2.70:4.17);
- if(!mag20)for(const mark of marks)mark.rotation.z=.095;
+ if(magStyle==='poly'){
+  // Substantial near-tan bottom cap follows the same tangent and toe angle.
+  addOutline(root,'magazine',mag,index.magazine++,
+   arMagazinePolyBaseplate(curve),m.magazineDepthZ+.12,AR_MUTED_FDE);
+ }
 
  // One elevated axis shared by all AR barrels, guards, and front sight bases.
  // Keep a deliberate squared delta ring where conventional handguards meet
