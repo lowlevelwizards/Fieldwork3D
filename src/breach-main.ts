@@ -223,6 +223,8 @@ const ui={
   replayNextEvent:el<HTMLButtonElement>('replayNextEvent'),
   replayFollow:el<HTMLButtonElement>('replayFollow'),
   replayAnalysis:el<HTMLButtonElement>('replayAnalysis'),
+  replayPlans:el<HTMLButtonElement>('replayPlans'),
+  replayNames:el<HTMLButtonElement>('replayNames'),
   replayEventText:el<HTMLOutputElement>('replayEventText'),
   replayClock:el<HTMLOutputElement>('replayClock'),
   replayFeedToggle:el<HTMLButtonElement>('replayFeedToggle'),
@@ -539,6 +541,8 @@ let replayEventIndex:ReplayEventIndex|null=null;
 let replayPresentation:ReplayPresentation|null=null;
 let replayOmniscient=true,finishedSession:Session|null=null;
 let replayFollow=false,replayAnalysis=false,replayFollowId='rook';
+let replayPlanScope:'all'|'selected'|'none'='selected';
+let replayNameTags=true;
 let stage:TacticalScene3D|null=null;
 let viewMode:ViewMode='iso';
 try{stage=new TacticalScene3D();}
@@ -2545,6 +2549,8 @@ function drawExecutionProblem(a:TeamActor,projected:boolean){
 function paths(){
   for(const a of team(state)){
     if(a.health<=0)continue;
+    if(replaying&&(replayPlanScope==='none'||
+      replayPlanScope==='selected'&&a.id!==selected))continue;
     const c=colorFor(a.id);
     const plan=a.plan;
     const activeTarget=activeWatchTarget(a);
@@ -2743,6 +2749,8 @@ function renderProjectedPlans(){
   draw.clearRect(0,0,cssW,cssH);
   for(const a of team(state)){
     if(a.health<=0)continue;
+    if(replaying&&(replayPlanScope==='none'||
+      replayPlanScope==='selected'&&a.id!==selected))continue;
     const color=colorFor(a.id);
     const activeTarget=activeWatchTarget(a);
     if(activeTarget)drawActiveWatchMarker(
@@ -2898,8 +2906,8 @@ function renderProjectedPlans(){
     ][squadIndex]??{x:0,y:-9}:{x:0,y:-9};
     draw.textAlign='center';draw.font='700 12px "Saira Condensed",sans-serif';
     draw.fillStyle=color;
-    if(a.id===selected||a.injuryStage>0||replayFollow&&
-      replayFollowId===a.id)
+    if(!replaying&&(a.id===selected||a.injuryStage>0||replayFollow&&
+      replayFollowId===a.id))
       draw.fillText(a.name,pawn.x+labelSpread.x,pawn.y+labelSpread.y);
     if(a.id===selected){
       draw.strokeStyle='#e9d6b1';draw.lineWidth=2.1;
@@ -2918,11 +2926,22 @@ function renderProjectedPlans(){
       draw.arc(target.x,target.y,20,0,Math.PI*2);draw.stroke();draw.restore();
     }
   }
+  // Recorded operator labels are independent of route visibility.
+  if(replaying&&replayNameTags)for(const member of team(state)){
+    const pawn=worldToScreen(member.p,32);
+    draw.textAlign='center';draw.font='700 12px "Saira Condensed",sans-serif';
+    draw.fillStyle=colorFor(member.id);
+    draw.fillText(member.name,pawn.x,pawn.y-23);
+  }
   // Screen-space icons stay readable regardless of ortho pitch or zoom.
   for(const hostile of enemies(state)){
     if(replaying?!replayActorVisible(state,hostile,replayOmniscient):
       !liveVisibility(state,hostile.p))continue;
     const ground=worldToScreen(hostile.p,1);
+    if(replaying&&replayNameTags){
+      draw.textAlign='center';draw.font='700 11px "Saira Condensed",sans-serif';
+      draw.fillStyle='#e2a18b';draw.fillText(hostile.name,ground.x,ground.y-23);
+    }
     if(hostile.health<=0){
       // The actual grounded body and restrained blood mark communicate DOWN.
       draw.fillStyle='rgba(125,48,43,.52)';draw.beginPath();
@@ -3144,7 +3163,8 @@ function sprite(a:TeamActor){
   }
   if(friendly){
     draw.textAlign='center';draw.font='700 12px "Saira Condensed",sans-serif';
-    draw.fillStyle=c;draw.fillText(a.name,a.p.x,a.p.y-21);
+    draw.fillStyle=c;
+    if(!replaying||replayNameTags)draw.fillText(a.name,a.p.x,a.p.y-21);
     if(a.aimInstruction?.mode==='track'&&a.pace!=='run'){
       draw.fillStyle='#f0cd96';draw.font='700 11px "Saira Condensed",sans-serif';
       draw.fillText('PIE ACTIVE',a.p.x,a.p.y-33);
@@ -3158,6 +3178,11 @@ function sprite(a:TeamActor){
   }else{
     draw.strokeStyle='#f0c5a4';draw.lineWidth=1.4;
     draw.strokeRect(a.p.x-12,a.p.y-12,24,24);
+    if(replaying&&replayNameTags){
+      draw.textAlign='center';draw.fillStyle='#e2a18b';
+      draw.font='700 11px "Saira Condensed",sans-serif';
+      draw.fillText(a.name,a.p.x,a.p.y-22);
+    }
   }
 }
 function contacts(){
@@ -3482,6 +3507,10 @@ function updateReplayHud(){
   ui.replayView.textContent=viewMode.toUpperCase();
   ui.replayFollow.textContent=replayFollow?'FOLLOW '+replayFollowId.toUpperCase():'FOLLOW';
   ui.replayAnalysis.textContent=replayAnalysis?'ANALYSIS ON':'ANALYSIS';
+  ui.replayPlans.textContent='PLANS '+replayPlanScope.toUpperCase();
+  ui.replayNames.textContent=replayNameTags?'NAMES ON':'NAMES OFF';
+  ui.replayPlans.setAttribute('aria-pressed',String(replayPlanScope!=='none'));
+  ui.replayNames.setAttribute('aria-pressed',String(replayNameTags));
   const event=replayEventIndex?.latest(replayTime+.14);
   ui.replayEventText.textContent=event&&replayTime-event.t<4.5?
     clockText(event.t)+' · '+event.text:'';
@@ -3510,6 +3539,7 @@ function enterReplay(){
   finishedSession=state;replaying=true;replayPlaying=true;replayTime=0;
   replayRate=1;replayOmniscient=false;looking=false;flashMode=false;
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
+  replayPlanScope='selected';replayNameTags=true;
   rebuildReplayEventIndex();
   ui.replayFeed.hidden=true;ui.replayFeedFilter.hidden=true;
   ui.replayFeedInfo.hidden=true;
@@ -3604,6 +3634,14 @@ ui.replayFollow.addEventListener('click',()=>{
 });
 ui.replayAnalysis.addEventListener('click',()=>{
   replayAnalysis=!replayAnalysis;updateReplayHud();
+});
+ui.replayPlans.addEventListener('click',()=>{
+  replayPlanScope=replayPlanScope==='selected'?'all':
+    replayPlanScope==='all'?'none':'selected';
+  updateReplayHud();
+});
+ui.replayNames.addEventListener('click',()=>{
+  replayNameTags=!replayNameTags;updateReplayHud();
 });
 ui.replayExit.addEventListener('click',exitReplay);
 function reset(next=state.variant,siteSeed?:number,
