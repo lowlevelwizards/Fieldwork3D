@@ -439,7 +439,8 @@ export class WeaponWorkbenchPreview{
   // Side-oriented shaded silhouette derived from the same meshes as the 3D rig.
   const rectangles:{x:number;y:number;width:number;height:number;z:number;color:string}[]=[];
   this.model.traverse(object=>{
-   if(!(object instanceof THREE.Mesh)||object.name.startsWith('mount-'))return;
+   if(!(object instanceof THREE.Mesh)||object.name.startsWith('mount-')||
+    object.userData.weaponPixelArt)return;
    const geom=object.geometry;
    if(!geom.boundingBox)geom.computeBoundingBox();
    const box=geom.boundingBox;
