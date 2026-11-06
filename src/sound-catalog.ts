@@ -8,18 +8,23 @@ export type SoundFamily='ui'|'cloth'|'step'|'metal'|'mechanism'|'door'|'impact'|
 import {FOCUS_BY_ID} from './sound-focus.ts';
 import {REFINEMENT_BY_ID,REFINEMENT_DIRECTIONS,
  type RefinementDirection} from './sound-refine.ts';
+import {COMPOUND_BY_ID,COMPOUND_DIRECTIONS,
+ type CompoundDirection} from './sound-compound.ts';
 export type Variant='A'|'B'|'C'|'D'|'E'|'F'|'G'|'H';
 export type SoundEntry={id:string;label:string;group:string;family:SoundFamily;
   status:'live'|'planned';description:string};
 export type SoundSettings={
   gain:number;pitch:number;length:number;noise:number;punch:number;
-  brightness:number;tail:number;room:number;concept:number;refinement?:number;
+  brightness:number;tail:number;room:number;concept:number;refinement?:number;compound?:number;
 };
 export type SoundRefinement={choice?:RefinementDirection;
  shortlist?:RefinementDirection[];approved?:boolean};
+export type SoundCompound={choice?:CompoundDirection;
+ shortlist?:CompoundDirection[];approved?:boolean};
 export type SoundChoice={enabled:boolean;choice:Variant;
   reviewed?:boolean;favorite?:boolean;explored?:boolean;shortlist?:Variant[];
-  edits?:Partial<Record<Variant,SoundSettings>>;refinement?:SoundRefinement};
+  edits?:Partial<Record<Variant,SoundSettings>>;refinement?:SoundRefinement;
+ compound?:SoundCompound};
 export type SoundPack={version:1;master:number;choices:Record<string,SoundChoice>};
 export const SOUND_STORAGE_KEY='fieldwork3d.soundlab.pack.v1';
 export const SOUND_VARIANTS=['A','B','C','D','E','F','G','H'] as const;
@@ -179,6 +184,19 @@ export function normalizeSoundPack(value:unknown):SoundPack{
    targetRef.approved=rf.approved===true&&!!targetRef.choice&&target.explored===true;
    target.refinement=targetRef;
   }
+  const compound=(choice as {compound?:unknown}).compound;
+  if(COMPOUND_BY_ID.has(entry.id)&&compound&&typeof compound==='object'){
+   const obj=compound as Record<string,unknown>;
+   const targetCompound:SoundCompound={};
+   if(COMPOUND_DIRECTIONS.includes(obj.choice as CompoundDirection))
+    targetCompound.choice=obj.choice as CompoundDirection;
+   if(Array.isArray(obj.shortlist))targetCompound.shortlist=[...new Set(obj.shortlist.filter(
+    (v):v is CompoundDirection=>typeof v==='string'&&
+      COMPOUND_DIRECTIONS.includes(v as CompoundDirection)))].slice(0,6);
+   targetCompound.approved=obj.approved===true&&!!targetCompound.choice&&
+    target.refinement?.approved===true&&target.explored===true;
+   target.compound=targetCompound;
+  }
   if(choice.edits&&typeof choice.edits==='object'){
    const edits=choice.edits as Record<string,unknown>;
    target.edits={};
@@ -205,7 +223,12 @@ export function resolvePlayableSoundSettings(pack:SoundPack,id:string){
  const index=c?.refinement?.approved===true&&c.explored===true&&
    REFINEMENT_BY_ID.has(id)?
    REFINEMENT_DIRECTIONS.indexOf(c.refinement.choice as RefinementDirection):-1;
- return index<0?base:{...base,refinement:index};
+ const stageTwo=index<0?base:{...base,refinement:index};
+ const cmp=c?.compound;
+ const compoundIndex=cmp?.approved===true&&index>=0&&
+  COMPOUND_BY_ID.has(id)?
+   COMPOUND_DIRECTIONS.indexOf(cmp.choice as CompoundDirection):-1;
+ return compoundIndex<0?stageTwo:{...stageTwo,compound:compoundIndex};
 }
 export function readSoundPack():SoundPack{
  try{const value=localStorage.getItem(SOUND_STORAGE_KEY);
