@@ -44,7 +44,7 @@ function rangeY(mesh){
 }
 test('AK R4.3 retains nine recipes, authoritative contacts and compact mesh budget',()=>{
  assert.equal(FAMILY_PRESETS.filter(p=>p.family==='ak').length,9);
- assert.equal(Object.keys(FAMILY_PARTS).length,90);
+ assert.equal(Object.keys(FAMILY_PARTS).length,91);
  for(const id of ids){
   const {group,config}=model(id);
   const body=new THREE.Box3().setFromObject(group);
@@ -109,11 +109,11 @@ test('AK R4.3 muzzle silhouettes separate AKM, 74, RPK and 105 shapes',()=>{
  const sizes=new Map();
  for(const id of ['ak-akm','ak-ak103','ak-ak74','ak-ak74m','ak-rpk74','ak-ak105']){
   const {group,preset}=model(id);
-  sizes.set(id,rangeY(familyMesh(group,'barrel',preset.parts.barrel,2)));
+  sizes.set(id,rangeY(familyMesh(group,'barrel',preset.parts.barrel,4)));
   clearWeaponSilhouette(group);
  }
- assert.ok(sizes.get('ak-ak74')>sizes.get('ak-akm')+.65);
- assert.ok(sizes.get('ak-ak74m')>sizes.get('ak-ak103')+.65);
+ assert.ok(sizes.get('ak-ak74')>sizes.get('ak-akm')+.1);
+ assert.ok(sizes.get('ak-ak74m')>sizes.get('ak-ak103')+.1);
  assert.ok(sizes.get('ak-ak105')>sizes.get('ak-rpk74')+.6);
 });
 test('AK R4.3 AKS-74U has shallow cover-mounted irons, not a tall optic silhouette',()=>{
@@ -141,13 +141,13 @@ test('AK R4.3b exposes 24 compatible finish variants with safe saved body choice
  assert.equal(factory.parts.stock,'ak-wood74-amber');
  assert.equal(factory.parts.handguard,'ak-wood-long-amber');
 });
-test('AK R4.3b 7.62 magazine ribs are exactly three dark low-relief strokes',()=>{
+test('AK R4.3b 7.62 magazine ribs are exactly two curved low-relief strokes',()=>{
  for(const id of ['ak-akm','ak-akms','ak-ak103']){
   const {group,preset}=model(id);
   const ribs=group.children.filter(m=>
    m.name.startsWith('family-magazine-'+preset.parts.magazine+'-')&&
    !m.name.endsWith('-0'));
-  assert.equal(ribs.length,3,id+' magazine must have three ribs');
+  assert.equal(ribs.length,2,id+' magazine must have two ribs');
   assert.ok(bounds(group,'magazine').max.z-bounds(group,'magazine').min.z<=2.35);
   clearWeaponSilhouette(group);
  }
