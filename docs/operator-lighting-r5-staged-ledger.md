@@ -126,3 +126,14 @@ Base: `0cf8a9f1737b1327cbb15c11b4f30e718cd73b98`
   tactical lighting completely unchanged.
 - Reject atlas if the required base/composed masks are unavailable; no
   approximate reverse-calculation of already-clamped colors.
+
+## R5.4-B Studio-only directional cel comparison (feature flag)
+- `?operatorLightingToon=2` and `?operatorLightingToon=3` select shared
+  two- or three-band directional gradient textures with nearest sampling.
+- Only AO-enabled cloth/gear materials convert to shared MeshToonMaterial
+  previews. Preserve map/albedo, vertex AO, UVs, alpha and material color.
+- No new meshes or shadow lights; materials are cached by source material.
+- Mutually exclusive with `?operatorLightingAtlas=1` until both look good
+  independently, so there is no unstable double-custom-material combination.
+- Default Studio, tactical gameplay, and all operator looks unchanged.
+- Still requires real mobile screenshot evaluation before visual approval.

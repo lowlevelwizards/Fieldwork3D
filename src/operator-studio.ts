@@ -7,6 +7,8 @@ import {inspectOperatorLighting,formatOperatorLightingReport}
  from './operator-lighting-inspector.ts';
 import {applyStudioSelfShadowAtlases}
  from './operator-gear-lightmap-atlas.ts';
+import {applyOperatorStudioToon,requestedOperatorToonBands}
+ from './operator-studio-toon-lighting.ts';
 import {OperatorStudioLighting} from './operator-studio-lighting.ts';
 import {POLICE_VISOR_POSITIONS,POLICE_VISOR_TINTS,POLICE_VISOR_FRAMES,policeVisorFit} from './operator-police-visor-policy.ts';
 import {M56_DETAILS,M56_NETS} from './operator-ddr-m56-policy.ts';
@@ -352,9 +354,17 @@ function posePreview(){
   wardrobe:inspectWardrobe(reference?.wardrobe??previewWardrobe())
  },0);
  if(params.get('operatorLightingAtlas')==='1'){
+  // Do not combine unapproved material experiments: atlas has priority.
   const atlasResult=applyStudioSelfShadowAtlases(rig.root);
   canvas.dataset.operatorAtlasBytes=String(atlasResult.bytes);
   canvas.dataset.operatorAtlasCount=String(atlasResult.atlases);
+ }else{
+  const toon=requestedOperatorToonBands(location.search);
+  if(toon){
+   const result=applyOperatorStudioToon(rig.root,toon);
+   canvas.dataset.operatorToonBands=String(toon);
+   canvas.dataset.operatorToonMeshes=String(result.meshes);
+  }
  }
  studioLighting.invalidateGeometry();
  renderScene();
