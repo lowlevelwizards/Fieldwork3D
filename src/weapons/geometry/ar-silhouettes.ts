@@ -69,17 +69,19 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   [[-2.0,-1.7],[.4,-1.7],[-.2,-5.75],[-2.45,-5.7]],
   m.gripShiftX),modern?3.25:2.95,1);
 
- // The magazine profile uses one actually tapered/curved outline, not a pile of boxes.
+ // Thin, unmistakable STANAG shapes; an understated bottom kick is the
+ // only change of direction. All variants enter the same receiver magwell.
  const mag=parts.magazine;
+ const magTop=m.magazineTopY;
  if(mag==='ar-mag20')
-  p('magazine',[[2.15,-1.72],[5.45,-1.72],[5.55,-6.3],
-   [2.15,-6.35]],3.0,0);
+  p('magazine',[[.12,magTop],[2.0,magTop],[2.08,-6.22],
+   [.18,-6.22]],2.7,0);
  else if(mag==='ar-magpoly')
-  p('magazine',[[2.15,-1.72],[5.65,-1.72],[5.8,-4.65],
-   [6.4,-7.15],[2.9,-7.4],[2.6,-4.6]],3.45,1);
+  p('magazine',[[.08,magTop],[2.13,magTop],[2.25,-4.65],
+   [2.72,-7.15],[.65,-7.3],[.28,-4.7]],3.15,1);
  else
-  p('magazine',[[2.1,-1.72],[5.55,-1.72],[5.8,-4.9],
-   [6.15,-7.5],[2.85,-7.6],[2.6,-5.0]],3.05,0);
+  p('magazine',[[.1,magTop],[2.05,magTop],[2.17,-4.7],
+   [2.62,-7.35],[.7,-7.45],[.24,-4.72]],2.8,0);
 
  // Four outside envelopes: triangular ribless, rounded, slim retro, heavy rail.
  const guard=parts.handguard;
