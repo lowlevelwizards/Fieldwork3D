@@ -8,10 +8,16 @@ import {AK_WARM_RESIN,AK_WOOD_AMBER,AK_WOOD_RED,
  AK_PLUM_POLYMER,AK_MAG_RIB} from './weapon-visual-palette.ts';
 import {AK_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
-import {addWeaponPixelMark,addWeaponPixelMarkPair} from './weapon-pixel-detail.ts';
+import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
 import {akMagazineCurve,akMagazineOutline,akMagazineRibOutlines}
  from './ak-magazine-profiles.ts';
 import {akBarrelArt,AK_BARREL_ART} from './ak-barrel-profiles.ts';
+
+// Single shared muted-silver finish: three actual cross-top stamped bands,
+// not floating side decals. Material is reused for every preview/build.
+const AK_COVER_STAMP_METAL=new THREE.MeshLambertMaterial({
+ color:0x90978f
+});
 
 export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material){
@@ -92,10 +98,21 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Two small exterior clues: a selector toward the rear and an ejection
  // mark above the magazine. Never confuse these with gameplay anatomy.
  addWeaponPixelMark(root,'ak-selector',-.86,-.39,1.98,3.20,.96);
- // Classic stamped covers carry coarse ribs. 74M/100-series smooth
- // covers and the hinged 74U cover deliberately stay clean.
- if(parts.receiver==='akm'||parts.receiver==='ak74'||rpk)
-  addWeaponPixelMarkPair(root,'ak-cover-ribs',-2.05,1.91,1.79,4.2,.80);
+ // Classic AKM/74/RPK covers: three broad silver bands across the TOP,
+ // set into its surface. Do not apply to modern smooth or hinged 74U roofs.
+ if(parts.receiver==='akm'||parts.receiver==='ak74'||rpk){
+  const ribs=new THREE.InstancedMesh(
+   new THREE.BoxGeometry(.30,.15,3.14),AK_COVER_STAMP_METAL,3);
+  const transform=new THREE.Matrix4();
+  [-3.8,-2.5,-1.2].forEach((x,i)=>{
+   transform.makeTranslation(x,2.38,0);
+   ribs.setMatrixAt(i,transform);
+  });
+  ribs.instanceMatrix.needsUpdate=true;
+  ribs.name='family-art-ak-cover-ribs';
+  ribs.castShadow=false;ribs.receiveShadow=false;
+  root.add(ribs);
+ }
  addWeaponPixelMark(root,'ak-port',m.portX,m.portY,1.98,
   m.portWidthX,m.portHeightY);
  // One open concave U: trigger guard reads as negative space, not hardware.
