@@ -797,7 +797,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
    (clothing.top==='combat-shirt'||clothing.top==='smock-jacket'||
     clothing.top==='gorka-jacket')?
     r.visualKit.newUpper.cuts[clothing.top].torso:null;
-  const collarShadow=collarCastShadowAtlas(clothing.top,
+  const collarShadow=collarCastShadowAtlas(
+   clothing.top+'|'+clothing.armorStyle,
    collarGroup?authoredCollarShadowBoxes(collarGroup,r.chest):[]);
   if(r.neckSkinMaterial.map!==collarShadow){
    r.neckSkinMaterial.map=collarShadow;r.neckSkinMaterial.needsUpdate=true;
