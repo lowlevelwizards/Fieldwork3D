@@ -29,7 +29,9 @@ export function carriedMagazineGeometry(part:string):THREE.BufferGeometry|null{
   arMagazineCurve(part==='ar-mag20'?'20':part==='ar-magpoly'?'poly':'30'):
   akMagazineCurve(part.startsWith('ak-rpk')?'rpk45':
    part.startsWith('ak-mag762')?'762':'545');
- const points=ar?arMagazineOutline(curve):akMagazineOutline(curve);
+ const points=ar?
+  arMagazineOutline(curve as ReturnType<typeof arMagazineCurve>):
+  akMagazineOutline(curve as ReturnType<typeof akMagazineCurve>);
  const shape=new THREE.Shape();
  shape.moveTo(points[0][0],points[0][1]);
  for(const [x,y] of points.slice(1))shape.lineTo(x,y);
