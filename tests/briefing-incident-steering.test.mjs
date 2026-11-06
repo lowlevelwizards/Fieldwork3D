@@ -32,6 +32,8 @@ test('B5: opted-in incident changes plausible encounter weighting',()=>{
  assert.ok(freq(warranted,'prepared')>freq(baseline,'prepared'));
  const opted=Array.from({length:120},(_,seed)=>chooseEncounterPremise({...sample,seed},{
    mission:'capture',enableIncidentIntent:true,incidentId:'warrant-service'}));
- assert.ok(opted.filter(x=>['hideout','guarded'].includes(x)).length>
-   baseline.filter(x=>['hideout','guarded'].includes(x)).length/2);
+ const normal=Array.from({length:120},(_,seed)=>chooseEncounterPremise({...sample,seed},{
+   mission:'capture'}));
+ const favored=(xs)=>xs.filter(x=>['hideout','guarded'].includes(x)).length;
+ assert.ok(favored(opted)>favored(normal),'intent should increase compatible premises');
 });

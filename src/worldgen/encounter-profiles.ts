@@ -41,7 +41,7 @@ export function chooseEncounterProfile(premise:EncounterPremise,
  }else if(incidentId==='evidence-seizure'){
    weights['quiet-approach']+=3;weights.scattered+=1;
  }
- let roll=encounterRng(seed,19)()
+ let roll=encounterRng(seed,19)()*
   profiles.reduce((n,key)=>n+weights[key],0);
  for(const p of profiles){roll-=weights[p];if(roll<=0)return p;}
  return profiles.at(-1)!;
