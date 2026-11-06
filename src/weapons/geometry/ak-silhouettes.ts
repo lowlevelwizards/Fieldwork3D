@@ -38,10 +38,10 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  b('receiver',-4.25,-.05,2.05,2.8,1.15,.5,1);
  // A short angled seating region, not an AR-style external magwell.
  const m=AK_VISUAL_ANATOMY;
- p('receiver',[[m.magwellCenterX-1.2,m.magwellTopY],
-   [m.magwellCenterX+1.2,m.magwellTopY],
-   [m.magwellCenterX+.9,m.magwellBottomY],
-   [m.magwellCenterX-1.05,m.magwellBottomY]],3.3,0);
+ p('receiver',[[m.magwellCenterX-1.75,m.magwellTopY],
+   [m.magwellCenterX+1.70,m.magwellTopY],
+   [m.magwellCenterX+1.50,m.magwellBottomY],
+   [m.magwellCenterX-1.30,m.magwellBottomY]],3.25,0);
  if(compact){
   // Characteristically raised rear/cover area of a compact AK.
   p('receiver',[[-5,2.2],[-4.65,3.55],[-1.6,3.6],[-1,2.28]],2.25,1);
@@ -75,9 +75,10 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Grips are deliberately raked, with one body prism and no modeled stippling.
  const grip=parts.grip,gripWood=grip==='ak-grip-wood',
  resin=grip==='ak-grip-bakelite';
- p('grip',shiftProfile([[-3.4,-1.65],[-.5,-1.65],[-1.0,-5.65],
-  [-2.25,-6.1],[-3.7,-5.7]],m.gripShiftX),
-  grip==='ak-grip-poly'?3.4:2.9,gripWood||resin?2:1);
+ // Rake remains distinct from the AR, but its slimmer root sits at the rear.
+ p('grip',shiftProfile([[-3.35,-1.65],[-.8,-1.65],[-1.1,-5.65],
+  [-2.25,-6.1],[-3.55,-5.7]],m.gripShiftX),
+  m.gripDepthZ,gripWood||resin?2:1);
 
  // A narrow receiver insertion point and broad caricatured lower swing.
  // 7.62 profiles retain a stronger banana bend than 5.45 profiles.
