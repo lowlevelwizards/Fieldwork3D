@@ -1250,7 +1250,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }
     r.root.userData.lowReadyPoseReport={
       status:coupled?.status??'unresolved',weapon:p.weapon,
-      armor:look.armorStyle,rig:look.rigStyle,
+      armor:look.armorStyle,rig:look.rigStyle,top:look.top,
       penetration:coupled?.penetration??null,
       supportFraction:coupled?.supportFraction??null,
       candidates:coupled?.candidates??0};
