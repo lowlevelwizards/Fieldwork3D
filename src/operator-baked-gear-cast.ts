@@ -69,21 +69,24 @@ export function collectCastVolumes(root:THREE.Object3D,
  });
  return boxes;
 }
-function rayHits(p:THREE.Vector3,dir:THREE.Vector3,
- box:THREE.Box3):boolean{
- let near=0,far=2.75;
+/** Fixed-key contact ray depth, evaluated only during the outfit bake.
+ * Crisp directly beneath attachments; no long black carrier-wide shadows.
+ */
+function rayEntryDistance(p:THREE.Vector3,dir:THREE.Vector3,
+ box:THREE.Box3):number|null{
+ let near=0,far=3.25;
  for(const axis of ['x','y','z'] as const){
   const d=dir[axis],o=p[axis];
   if(Math.abs(d)<1e-6){
-   if(o<box.min[axis]||o>box.max[axis])return false;
+   if(o<box.min[axis]||o>box.max[axis])return null;
   }else{
    const t0=(box.min[axis]-o)/d,t1=(box.max[axis]-o)/d;
    near=Math.max(near,Math.min(t0,t1));
    far=Math.min(far,Math.max(t0,t1));
-   if(near>far)return false;
+   if(near>far)return null;
   }
  }
- return near>.035&&far>.045;
+ return near>.045&&far>.055&&near<3.25?near:null;
 }
 export type GearLightingBake={key:string;changed:number;vertices:number};
 /** Bake separately for different receiver groups, using all of their
@@ -125,21 +128,26 @@ export function bakeCastOnGear(
    normal.fromBufferAttribute(normals,i).applyMatrix3(normalMatrix).normalize();
    const rays=normal.x<-.25?rearRays:frontRays;
    origin.copy(position).addScaledVector(normal,.075);
-   let hits=0;
+   let contact=0;
    for(const ray of rays){
     if(normal.dot(ray)<.02)continue;
+    let closest=Infinity;
     for(const box of boxes){
-     if(rayHits(origin,ray,box)){hits++;break;}
+     const t=rayEntryDistance(origin,ray,box);
+     if(t!==null&&t<closest)closest=t;
     }
+    if(closest===Infinity)continue;
+    // High contrast near a real surface; smoothly fades with distance.
+    const q=THREE.MathUtils.clamp((closest-.25)/2.75,0,1);
+    const fade=q*q*(3-2*q);
+    contact+=1-fade;
    }
-   const occlusion=hits/rays.length;
-   // Strong, but avoid chalky whites and completely black kit shadows.
-   // A restrained miniature gradient supports the tiny cast edges; it
-   // must never create broad dark fields across whole chest panels.
+   const occlusion=contact/rays.length;
+   // Keep the separate whole-gear gradient deliberately restrained.
    const lower=THREE.MathUtils.clamp((7-position.y)/18,0,1);
-   const light=(1-.36*occlusion)*(1-.045*lower);
+   const light=(1-.51*occlusion)*(1-.032*lower);
    const before=baseline[i*3]/255;
-   const value=Math.round(255*Math.max(.62,before*light));
+   const value=Math.round(255*Math.max(.60,before*light));
    if(value<array[i*3])changed++;
    array[i*3]=value;array[i*3+1]=value;array[i*3+2]=value;
    vertices++;
