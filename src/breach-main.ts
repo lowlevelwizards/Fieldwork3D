@@ -60,6 +60,8 @@ import {weaponAudioCue,audibleImpact} from './breach-combat-audio.ts';
 import {parseOperationHistory,addOperationRecord,
   type OperationRecord} from './breach-operations.ts';
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
+import {replayActorVisible} from './breach-replay-visibility.ts';
+import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
 
@@ -1923,6 +1925,7 @@ function medicalCandidate(id:string){
  }).sort((x,y)=>distance(a.p,x.p)-distance(a.p,y.p))[0]??null;
 }
 function updateHud(){
+  if(!replaying&&state.phase==='planning')recorder.capturePlanning(state);
   const identity=currentSiteIdentity(state.site,campaignMode==='quick');
   if(siteIdentityOutput.textContent!==identity.text)
     siteIdentityOutput.textContent=identity.text;
@@ -2905,7 +2908,8 @@ function renderProjectedPlans(){
   }
   // Screen-space icons stay readable regardless of ortho pitch or zoom.
   for(const hostile of enemies(state)){
-    if(!liveVisibility(state,hostile.p))continue;
+    if(replaying?!replayActorVisible(state,hostile,replayOmniscient):
+      !liveVisibility(state,hostile.p))continue;
     const ground=worldToScreen(hostile.p,1);
     if(hostile.health<=0){
       // The actual grounded body and restrained blood mark communicate DOWN.
@@ -3058,7 +3062,8 @@ function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
 }
 function sprite(a:TeamActor){
   if(a.side==='red'&&!(replaying&&replayOmniscient)){
-    const visible=a.health>0?isSeen(state,a):liveVisibility(state,a.p);
+    const visible=replaying?replayActorVisible(state,a,false):
+      a.health>0?isSeen(state,a):liveVisibility(state,a.p);
     if(!visible){
       const memory=lastKnown(state,a.id);
       if(memory&&a.health>0&&state.seconds-memory.at<25){
@@ -3231,7 +3236,8 @@ function renderWeaponLights2D(){
  }
  draw.save();draw.fillStyle='rgba(183,240,205,.12)';
  for(const actor of active){
-  if(actor.side==='red'&&!replayOmniscient&&!isSeen(state,actor))continue;
+  if(actor.side==='red'&&!replayActorVisible(state,actor,
+      replaying&&replayOmniscient))continue;
   const previous=beam2DHistory.get(actor.id);
   const yaw=actor.weaponYaw;
   if(!previous||previous.tick!==tick||!sameWeaponConfiguration(previous.config,actor.weaponConfiguration)||
@@ -3388,7 +3394,7 @@ function updateReplayHud(){
   ui.replaySeek.value=String(recorder.duration?
     Math.round(1000*replayTime/recorder.duration):0);
   ui.replayClock.textContent=clockText(replayTime)+' / '+
-    clockText(recorder.duration);
+    clockText(recorder.duration)+(recorder.completeness.complete?'':' · PARTIAL');
   ui.replaySeek.setAttribute('aria-valuetext',
     clockText(replayTime)+' of '+clockText(recorder.duration));
   ui.replayPlay.dataset.caption=replayPlaying?'PAUSE':'PLAY';
@@ -3454,11 +3460,14 @@ function enterReplay(){
   replayRate=1;replayOmniscient=false;looking=false;flashMode=false;
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
   ui.replayExtra.hidden=true;ui.replayMore.setAttribute('aria-expanded','false');
+  const recordedSite=recorder.manifest?.site;
   state=newSession(finishedSession.variant,finishedSession.site?.seed,
-    finishedSession.intel.mode,finishedSession.site?.scale??'standard');
-  state.lightingMode=finishedSession.lightingMode;
+    finishedSession.intel.mode,finishedSession.site?.scale??'standard',
+    undefined,recordedSite?structuredClone(recordedSite):undefined);
+  state.lightingMode=recorder.manifest?.lightingMode??finishedSession.lightingMode;
   applyRequestedCondition(state);
   applyRosterIdentity(state,persistentRoster);
+  applyReplayActorIdentity(state,recorder.manifest);
   stage?.applySite(state.site??null);
   document.body.classList.add('replaying');
   ui.replayPanel.hidden=false;
@@ -4090,7 +4099,11 @@ ui.play.addEventListener('click',()=>{
   unlockAudio();uiClickTone(state.phase==='running'?'pause':'go');
   if(state.phase==='won'||state.phase==='lost'){
    if(!returnAfterCampaignMission())reset();
-  }else{looking=false;toggling(state);updateHud();}
+  }else{
+    looking=false;
+    if(state.phase==='planning')recorder.capture(state,true);
+    toggling(state);updateHud();
+  }
 });
 ui.restart.addEventListener('click',async()=>{
   if(campaignMode==='mission'||replaying)return;
@@ -4123,7 +4136,11 @@ window.addEventListener('keydown',e=>{
     e.preventDefault();unlockAudio();
     if(state.phase==='won'||state.phase==='lost'){
       if(!returnAfterCampaignMission())reset();
-    }else toggling(state);updateHud();
+    }else{
+      if(state.phase==='planning')recorder.capture(state,true);
+      toggling(state);
+    }
+    updateHud();
   }
   if(e.code==='Digit1')selectUnit('rook');
   if(e.code==='Digit2')selectUnit('moss');
