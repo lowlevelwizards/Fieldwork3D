@@ -35,7 +35,7 @@ import {turnHierarchy} from './breach-turn-hierarchy.ts';
 import {contactReaction,type BashRole} from './breach-contact-reactions.ts';
 import {kickMotion} from './breach-door-actions.ts';
 import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
-import {reloadHandKey} from './breach-reload-motion.ts';
+import {reloadHandKey,reloadHandChestTarget} from './breach-reload-motion.ts';
 import {resolvePoseContactOwners} from './breach-pose-v3-contacts.ts';
 import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
 import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
@@ -1426,6 +1426,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const releaseLeft=handOwners.left!=='weapon';
   const releaseRight=handOwners.right!=='weapon';
   let reaching=false;
+  let reloadHandChest:THREE.Vector3|null=null;
   r.medicalItem.visible=treatmentActive;
   let fullDoorContact:THREE.Vector3|null=null;
   if(p.surrender){
@@ -1458,6 +1459,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       data.supportX,data.supportY,data.primaryX,
       sockets.magazinePart?sockets.magazine:undefined);
     leftGrip.set(hand.x,hand.y,hand.z);
+    reloadHandChest=reloadHandChestTarget({
+      fit,lengthScale:data.lengthScale,progress:reloadProgress,
+      mode:reloadMode,supportX:data.supportX,supportY:data.supportY,
+      primaryX:data.primaryX,
+      magazineSocket:sockets.magazinePart?sockets.magazine:undefined
+    });
   }else if(throwActive){
     
     const t=Math.sin(Math.PI*clamp(throwAge/.7,0,1));
@@ -1512,6 +1519,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }else{
       desired=grip.clone().multiply(P(data.lengthScale,1,1))
         .applyEuler(fit.rotation).add(fit.origin);
+      if(i===0&&reloadHandChest)desired.copy(reloadHandChest);
     }
     // The coupled fitting solver already chose BOTH elbows and the exact
     // physical wrist contacts in one collision-checked candidate.
