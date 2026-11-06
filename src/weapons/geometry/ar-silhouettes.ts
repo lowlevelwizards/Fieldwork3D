@@ -8,7 +8,7 @@ import {AR_STANAG_METAL} from './weapon-visual-palette.ts';
 import {AR_BARREL_ART} from './ar-barrel-profiles.ts';
 import {AR_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
-import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
+import {addWeaponPixelMark,addWeaponPixelMarkPair} from './weapon-pixel-detail.ts';
 
 export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material){
@@ -116,8 +116,16 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
    [magLeft+.65,-7.3],[magLeft+.12,-4.72]],m.magazineDepthZ+.12,1);
  else
   p('magazine',[[magLeft,magTop],[magRight,magTop],
-   [magRight+.1,-4.78],[magRight+.48,-7.35],
-   [magLeft+.6,-7.45],[magLeft+.12,-4.72]],m.magazineDepthZ,3);
+   [magRight+.1,-4.78],[magRight+.62,-7.35],
+   [magLeft+.55,-7.45],[magLeft+.12,-4.72]],m.magazineDepthZ,3);
+ // Bold base plate and restrained pressed-metal details, not separate rib meshes.
+ const mag20=mag==='ar-mag20',magPoly=mag==='ar-magpoly';
+ b('magazine',m.magwellCenterX+(mag20?.10:.42),mag20?-6.19:-7.33,0,
+  m.magazineWidthX+(mag20?.12:.28),.23,m.magazineDepthZ+.12,0);
+ addWeaponPixelMarkPair(root,mag20?'ar-mag-stamp20':
+  magPoly?'ar-poly-panel':'ar-mag-stamp30',
+  m.magwellCenterX+(mag20?.07:.22),mag20?-4.43:-5.12,
+  m.magazineDepthZ/2+.10,m.magazineWidthX-.55,mag20?2.85:4.15);
 
  // Four outside envelopes: triangular ribless, rounded, slim retro, heavy rail.
  const guard=parts.handguard;
@@ -126,7 +134,7 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const commando=guard==='ar-733-ribbed';
  const end=guard==='ar-pri-tube'?15.70:long?14.1:
   guard==='ar-car15-ribbed'||commando?11.8:
-  short?15.05:12.2;
+  guard==='ar-risii'?14.2:short?15.05:12.2;
  // A slight deliberate overlap avoids the visible receiver/guard seam.
  const start=3.55;
  if(guard==='ar-pri-tube'){
@@ -137,13 +145,19 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   // The upper rail and rear bridge overlap: no floating join.
   b('handguard',(start+end)/2,2.06,0,end-start,.56,2.8,0);
   b('handguard',2.65,2.06,0,3.85,.52,2.6,0);
-  addWeaponPixelMark(root,'pri-vents',(start+end)/2,.18,1.9,
+  addWeaponPixelMarkPair(root,'pri-vents',(start+end)/2,.18,1.90,
    end-start-1.7,.83);
  }else if(guard==='ar-triangle'){
   // A1: long clean taper with a slimmer front and strongly faceted shoulder.
   p('handguard',[[start,1.45],[start+.55,1.74],
    [end-1.10,1.08],[end,.58],[end,-.9],
    [end-1.0,-1.16],[start,-1.73]],3.65,1);
+  // One strong underside plane, and a compact rear retaining collar.
+  p('handguard',[[start,-.96],[end-.85,-.82],
+   [end-1.0,-1.16],[start,-1.73]],3.76,0);
+  b('handguard',start+.20,-.06,0,.46,3.1,3.84,0);
+  addWeaponPixelMarkPair(root,'a1-vents',(start+end)/2,1.12,
+   1.91,end-start-1.9,.42);
  }else if(guard==='ar-round'||guard==='ar-carbine'||
    guard==='ar-car15-ribbed'||guard==='ar-733-ribbed'){
   const retro=guard==='ar-car15-ribbed'||guard==='ar-733-ribbed';
@@ -157,8 +171,8 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
    // Same retro furniture on 14.5 and 11.5: barrel creates the difference.
    b('handguard',start+.32,.04,0,.53,2.88,3.32,0);
   }
-  addWeaponPixelMark(root,'poly-ribs',(start+end)/2,.1,
-   retro?1.74:2.08,end-start-1.9,1.45);
+  addWeaponPixelMarkPair(root,retro?'car-ribs':'poly-ribs',
+   (start+end)/2,.1,retro?1.67:2.01,end-start-1.9,1.45);
  }else{
   const ris=guard==='ar-risii';
   // Modern rails: one broad body and one joined, continuous upper rail.
@@ -172,8 +186,10 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   b('handguard',(start+end)/2,1.88,0,end-start,.64,
    ris?4.12:3.68,ris?2:0);
   if(['ar-risii','ar-m5-rail','ar-quad'].includes(guard))
-   addWeaponPixelMark(root,'ris-panel',(start+end)/2,.06,
-    ris?2.34:2.08,end-start-1.65,ris?1.10:.90);
+   addWeaponPixelMarkPair(root,guard==='ar-m5-rail'?'m5-panel':
+    guard==='ar-quad'?'ras-panel':'ris-panel',(start+end)/2,.06,
+    ris?2.38:guard==='ar-m5-rail'?2.10:2.10,
+    end-start-1.65,ris?1.10:.90);
  }
 
  // The barrel is the only authority for its own muzzle and front-sight X.
