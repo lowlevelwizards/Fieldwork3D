@@ -126,37 +126,37 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  if(stock==='ak-skeleton'){
   // Preserve the successful open profile, only thicken the connecting bars.
   // Preserve the 74U's successful open skeleton; only extend its rear frame.
-  line('stock',[-5.25,.65],[-13.0,.55],1.0,1.05,0);
-  line('stock',[-5.25,-1.35],[-13.0,-2.5],1.0,1.05,0);
-  line('stock',[-5.25,-1.3],[-9.45,.15],.75,1.05,0);
-  b('stock',-13.5,-1,0,1.05,3.65,2.5,1);
+  line('stock',[-5.25,.65],[-13.0,.55],.91,1.00,0);
+  line('stock',[-5.25,-1.35],[-13.0,-2.5],.90,1.00,0);
+  line('stock',[-5.25,-1.3],[-9.45,.15],.72,1.00,0);
+  b('stock',-13.5,-1,0,.96,3.50,2.30,1);
  }else if(stock.startsWith('ak-rpk-clubfoot')){
   // RPK-specific broad butt, tucked wrist, and exaggerated low clubfoot heel.
   // The comb joins the receiver at the LOWER-receiver roof, not halfway
   // down its wall. Retain the deep clubfoot behind the narrower stock neck.
-  p('stock',[[-15.85,.74],[-10.6,.88],[-6.22,1.01],
-   [-6.38,-1.48],[-9.96,-1.99],[-11.48,-3.55],
-   [-13.75,-4.08],[-15.85,-3.58]],3.35,2);
+  p('stock',[[-15.85,.69],[-10.6,.88],[-6.22,1.01],
+   [-6.38,-1.48],[-9.96,-1.99],[-11.48,-3.43],
+   [-13.75,-3.90],[-15.85,-3.42]],3.06,2);
  }else if(stock==='ak-triangle-full'){
   // Standard AKS-74 side-folding TRIANGLE: strong top rail, single lower
   // diagonal, open center, clean skinny butt. It must not read as an AKMS.
-  line('stock',[-5.90,.62],[-14.15,.52],.89,1.18,0);
-  line('stock',[-5.90,.55],[-14.12,-2.58],.90,1.16,0);
-  b('stock',-14.48,-1.07,0,.86,3.64,2.10,1);
-  b('stock',-5.90,-.15,0,.88,2.18,1.95,0);
+  line('stock',[-5.90,.62],[-14.15,.52],.83,1.12,0);
+  line('stock',[-5.90,.55],[-14.12,-2.58],.84,1.12,0);
+  b('stock',-14.48,-1.07,0,.81,3.47,1.92,1);
+  b('stock',-5.90,-.15,0,.86,2.12,1.90,0);
  }else if(stock==='ak-triangle-padded'){
   // Preserve the prior braced AKS-74 art as a separate custom padded option.
-  line('stock',[-5.42,.62],[-14.1,.62],.92,1.15,0);
-  line('stock',[-5.42,.58],[-14.1,-2.65],.88,1.1,0);
-  line('stock',[-5.48,-1.15],[-9.0,-.72],.66,1.05,0);
-  b('stock',-14.58,-1.05,0,1.25,3.90,2.60,1);
+  line('stock',[-5.42,.62],[-14.1,.62],.85,1.12,0);
+  line('stock',[-5.42,.58],[-14.1,-2.65],.82,1.08,0);
+  line('stock',[-5.48,-1.15],[-9.0,-.72],.62,1.02,0);
+  b('stock',-14.58,-1.05,0,1.17,3.70,2.42,1);
  }else if(stock==='ak-underfolder'){
   // AKMS underfolder in side orthographic: ONE nearly straight rod per
   // receiver side, sloped slightly downward, with a hanging rear buttplate.
   // The pair is separated along Z, not diagonally in XY like a triangle.
   for(const side of [-1,1]){
    const rod=line('stock',[-6.18,-1.00],[-14.31,-1.81],
-    .78,.70,0);
+    .72,.68,0);
    rod.position.z=side*1.14;
    // The rear rail must not cast a striped shadow onto its twin.
    rod.castShadow=false;rod.receiveShadow=false;
@@ -169,13 +169,16 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
    rivet.castShadow=true;rivet.receiveShadow=true;root.add(rivet);
   }
   // Tall vertical rear plate, upper lip and lower transverse connector.
-  b('stock',-14.57,-1.49,0,.86,3.80,2.65,0);
-  b('stock',-14.52,-2.99,0,.85,.48,3.30,0);
+  b('stock',-14.57,-1.49,0,.81,3.60,2.49,0);
+  b('stock',-14.52,-2.99,0,.80,.46,3.12,0);
  }else if(stock==='ak-sidefold'||stock==='ak-sidefold-plum'){
   // Reuse the strongest AK-74M polymer cheek/heel profile across 100-series.
-  p('stock',[[-14.4,.78],[-9.1,.93],[-6.12,.28],
-   [-6.32,-1.42],[-9.75,-2.85],[-14.4,-2.30]],3.35,1);
-  b('stock',-6.29,-.20,0,.68,1.85,2.70,0);
+  // Solid modern folder preserves a hinge/buttpad identity, but adopts
+  // the AKM's clean narrow wrist and controlled drop into the broad butt.
+  p('stock',[[-14.40,.15],[-9.85,-.06],[-6.20,.72],
+   [-6.32,-1.83],[-10.17,-2.88],
+   [-12.75,-3.06],[-14.40,-2.92]],3.07,1);
+  b('stock',-6.29,-.20,0,.64,1.78,2.50,0);
  }else{
   const isWood=stock.startsWith('ak-wood')&&
    !stock.endsWith('-plum');
@@ -184,14 +187,18 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
    // a larger broad rear butt. No narrow pointed wedge at the junction.
    // Smooth the wrist into the butt rather than a sharp dropped elbow.
    p('stock',[[-6.42,.92],[-9.94,-.30],
-    [-10.30,-3.01],[-6.42,-2.04]],3.35,isWood?2:1);
-   p('stock',[[-9.91,-.32],[-15.45,.10],
-    [-15.45,-3.39],[-12.77,-3.48],
-    [-10.24,-2.95]],3.35,isWood?2:1);
+    [-10.30,-3.01],[-6.42,-2.04]],3.07,isWood?2:1);
+   p('stock',[[-9.91,-.32],[-15.45,.00],
+    [-15.45,-3.24],[-12.77,-3.35],
+    [-10.24,-2.95]],3.07,isWood?2:1);
   }else{
-   // Fixed 74-pattern stock keeps its lighter, shallower upper comb.
-   p('stock',[[-15.35,.68],[-10.25,.78],[-6.12,-.48],
-    [-6.4,-1.18],[-11.5,-3.18],[-15.35,-2.92]],3.35,isWood?2:1);
+   // Fixed 74-pattern stock adopts the accepted two-quad AKM contour.
+   // The material and 5.45 front-end, not an awkward wedge, distinguish it.
+   p('stock',[[-6.42,.92],[-9.94,-.30],
+    [-10.30,-3.01],[-6.42,-2.04]],3.07,isWood?2:1);
+   p('stock',[[-9.91,-.32],[-15.45,.00],
+    [-15.45,-3.24],[-12.77,-3.35],
+    [-10.24,-2.95]],3.07,isWood?2:1);
   }
   if(stock.startsWith('ak-wood74'))
    b('stock',-10.7,-1,1.97,2.0,.65,.18,1);
