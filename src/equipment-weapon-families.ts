@@ -117,6 +117,7 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'ar-103':add('ar-103','10.3" CQB barrel','ar','barrel',{receivers:['ar-flat'],length:'short',role:'carbine',nominalInches:AR_BARREL_ART['ar-103'].nominalInches}),
  'ar-733-115':add('ar-733-115','11.5" Colt Commando barrel','ar','barrel',{receivers:['ar-retro'],length:'short',role:'carbine',nominalInches:AR_BARREL_ART['ar-733-115'].nominalInches}),
  'ak-long':add('ak-long','Full-length AK barrel','ak','barrel',{receivers:['akm','ak74','ak74m','ak103'],length:'long',role:'rifle'}),
+ 'ak-103-factory':add('ak-103-factory','AK-103 factory-pattern muzzle · 100-series','ak','barrel',{receivers:['ak103'],length:'long',role:'rifle'}),
  'ak-rpk-long':add('ak-rpk-long','RPK-74 heavy front and folded bipod','ak','barrel',{receivers:['ak-rpk74'],length:'long',role:'rifle'}),
  'ak-mid':add('ak-mid','AK carbine barrel','ak','barrel',{receivers:['ak105'],length:'mid',role:'carbine'}),
  'ak-short':add('ak-short','AKS-74U compact barrel','ak','barrel',{receivers:['akcompact'],length:'short',role:'carbine'})
