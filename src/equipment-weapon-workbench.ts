@@ -188,7 +188,7 @@ export class WeaponWorkbenchPreview{
  restoreViewState(view:WeaponWorkbenchViewState){
   if(!Number.isFinite(view.distance)||view.distance<=0)return;
   this.yaw=view.yaw;this.pitch=view.pitch;
-  this.distance=THREE.MathUtils.clamp(view.distance,27,120);
+  this.distance=THREE.MathUtils.clamp(view.distance,27,170);
   this.autoFitPending=false;
   if(this.renderer&&this.in2D!==view.in2D)this.switchView();
   this.draw();
@@ -365,7 +365,7 @@ export class WeaponWorkbenchPreview{
    const [a,b]=[...this.pointerPositions.values()];
    const d=Math.hypot(a.x-b.x,a.y-b.y);
    if(this.pinchDistance>0&&d>1)
-    this.distance=Math.max(27,Math.min(120,this.distance*this.pinchDistance/d));
+    this.distance=Math.max(27,Math.min(170,this.distance*this.pinchDistance/d));
    this.pinchDistance=d;this.dragDistance=30;
    this.hideDotsDuringInspection();
   }else if(this.pointerPositions.size===1&&!this.in2D){
@@ -391,7 +391,7 @@ export class WeaponWorkbenchPreview{
   e.preventDefault();
   this.hideDotsDuringInspection();
   this.autoFitPending=false;
-  this.distance=Math.max(27,Math.min(120,this.distance+e.deltaY*.08));
+  this.distance=Math.max(27,Math.min(170,this.distance+e.deltaY*.08));
   this.draw();
   this.finishInspection();
  };

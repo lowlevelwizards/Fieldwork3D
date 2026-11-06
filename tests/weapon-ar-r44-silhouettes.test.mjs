@@ -97,5 +97,5 @@ test('R4.4 workbench framing provides a wider view for narrow phone cards',()=>{
  const narrow=workbenchFitDistance(bounds,330,640);
  const wide=workbenchFitDistance(bounds,920,550);
  assert.ok(narrow>wide,'narrower view has more camera distance');
- assert.ok(Number.isFinite(narrow)&&narrow<110);
+ assert.ok(Number.isFinite(narrow)&&narrow<170);
 });

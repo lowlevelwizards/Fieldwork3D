@@ -14,5 +14,5 @@ export function workbenchFitDistance(bounds:THREE.Box3,width:number,height:numbe
  const horizontal=size.x/(2*halfTan*aspect*safeFill);
  const vertical=size.y/(2*halfTan*Math.min(safeFill,.72));
  const depthPad=Math.max(0,size.z*.36);
- return THREE.MathUtils.clamp(Math.max(horizontal,vertical)+depthPad,27,110);
+ return THREE.MathUtils.clamp(Math.max(horizontal,vertical)+depthPad,27,170);
 }
