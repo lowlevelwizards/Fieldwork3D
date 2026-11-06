@@ -3857,6 +3857,8 @@ ui.replayExportVideo.addEventListener('click',()=>{
   }
   replayPlaying=true;
   ui.replayExportVideo.textContent='STOP VIDEO';
+  ui.replayExportVideo.title=replayQuickVideo.audioTrackCount?
+    'Recording replay video with audio':'Recording replay video without audio';
   updateReplayHud();
 });
 ui.replayExportJson.addEventListener('click',()=>{
