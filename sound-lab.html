@@ -16,14 +16,14 @@
   <div class="brand">
    <div class="overline">FIELDWORK <span>/</span> AUDIO SYSTEMS · WORKBENCH 01</div>
    <h1>SOUND LAB <span>///</span></h1>
-   <p>Shape, audition, compare and approve your game's sound identity.</p>
+   <p>Find the sound identity first. Fine-tuning comes later.</p>
   </div>
   <a class="return" href="./index.html">← RETURN TO TACTICAL</a>
  </header>
  <div class="topbar">
   <div class="metrics">
-   <div><strong id="totalCount">0</strong><small>CUE OPPORTUNITIES</small></div>
-   <div><strong id="reviewCount">0</strong><small>REVIEWED</small></div>
+   <div><strong id="totalCount">0</strong><small id="totalLabel">SOUNDS IN THIS ROUND</small></div>
+   <div><strong id="reviewCount">0</strong><small id="reviewLabel">DIRECTIONS CHOSEN</small></div>
    <div><strong id="enabledCount">0</strong><small>ENABLED</small></div>
    <div><strong id="liveCount">0</strong><small>GAMEPLAY HOOKS</small></div>
   </div>
@@ -35,10 +35,11 @@
   </div>
  </div>
  <div class="progress"><div id="progressFill"></div></div>
+ <div class="round-intro"><div><strong id="roundLabel">WAVE 01 / FOUNDATIONAL SOUNDS</strong><p id="roundHelp">16 high-impact sounds. Listen to eight contrasting sketches, shortlist the interesting ones, then choose one direction. Leave the knobs alone for now.</p></div><div class="round-toggle"><button id="focusView" type="button" aria-pressed="true">FIRST 16</button><button id="allView" type="button" aria-pressed="false">FULL LIBRARY</button></div></div>
  <div class="workspace">
   <aside class="catalog" aria-label="Sound catalog">
    <div class="catalog-head">
-    <strong>01 / CUE LIBRARY</strong>
+    <strong id="libraryHeading">01 / FIRST 16 SOUNDS</strong>
     <input id="search" type="search" placeholder="Find a sound…" aria-label="Search sound catalog"/>
    </div>
    <div class="filters">
@@ -66,19 +67,21 @@
     <span id="cueStatus" class="status">CANDIDATE</span>
    </div>
    <div class="audition">
-    <div class="section-heading"><span>02 / A·B·C AUDITION</span><span id="compareHint">TAP TO PLAY · CHOOSE TO APPROVE</span></div>
+    <div class="section-heading"><span id="auditionHeading">02 / EIGHT SOUND IDEAS</span><span id="compareHint">LISTEN · SHORTLIST · CHOOSE</span></div>
     <div id="variantGrid" class="variant-grid"></div>
     <div class="transport">
-     <button type="button" id="compare">▶ PLAY A → B → C</button>
+     <button type="button" id="compare">▶ PLAY SHORTLIST</button>
+     <button type="button" id="compareAll">▶ PLAY ALL 8</button>
      <button type="button" id="stop">■ STOP</button>
      <button type="button" id="next">NEXT UNREVIEWED →</button>
     </div>
    </div>
    <div class="soundscape">
-    <div class="section-heading"><span>03 / SIGNAL CHARACTER</span><span id="editingLabel">EDITING B</span></div>
+    <details class="advanced" id="advancedTune"><summary>03 / OPTIONAL FINE-TUNING <span id="editingLabel">EDITING B</span></summary>
+    <p>These knobs are optional. Choose the direction you like first; subtle adjustments can come later.</p>
     <canvas id="waveform" width="900" height="130" aria-label="Waveform preview" role="img"></canvas>
     <div class="slider-header"><span>PARAMETERS</span><button type="button" id="resetVariant">RESET VARIANT</button></div>
-    <div id="sliders" class="sliders"></div>
+    <div id="sliders" class="sliders"></div></details>
     <div class="editor-actions">
       <label class="switch"><input type="checkbox" id="enabled"/> <span>SOUND ENABLED</span></label>
       <button id="favorite" type="button" aria-pressed="false">☆ FAVORITE</button>
@@ -88,7 +91,7 @@
    </div>
    <div class="lab-footer">
     <strong>BEHAVIOR</strong>
-    <p>Playback uses original locally generated audio. Changes autosave in this browser; currently connected gameplay cues use this pack on the next sound event. Proposed cues are for auditioning until their real gameplay triggers are implemented. Nothing here changes enemy hearing, fog of war, physics or replay evidence.</p>
+    <p>These are intentionally different procedural sound sketches, not finished recorded Foley. Listen on headphones if possible. Picks and shortlists autosave in this browser; currently connected gameplay cues use chosen sounds when the game reads your saved pack. Proposed cues are for auditioning until their real gameplay triggers are implemented. Nothing here changes enemy hearing, fog of war, physics or replay evidence.</p>
     <label for="master">MASTER LEVEL <output id="masterValue">70%</output></label>
     <input id="master" type="range" min="0" max="100" value="70"/>
    </div>

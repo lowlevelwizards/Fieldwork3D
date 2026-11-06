@@ -5,6 +5,7 @@
 import {SOUND_BY_ID,readSoundPack,resolveSoundSettings,
  type SoundSettings,type SoundPack} from './sound-catalog.ts';
 
+import {renderFocusedSound} from './sound-focus-audio.ts';
 const rate=22050;
 const TAU=Math.PI*2;
 function hash(value:string){
@@ -15,6 +16,7 @@ function hash(value:string){
 export function renderSound(id:string,settings:SoundSettings,
  sampleRate=rate):Float32Array{
  const entry=SOUND_BY_ID.get(id);if(!entry)return new Float32Array(0);
+ if(settings.concept>=0)return renderFocusedSound(id,settings,sampleRate);
  const family=entry.family,seconds=Math.min(4.6,settings.length+
   settings.tail*.25+settings.room*.3);
  const length=Math.ceil(sampleRate*seconds),out=new Float32Array(length);
@@ -191,8 +193,12 @@ export function playPackSound(ctx:AudioContext,id:string,
  if(!choice?.enabled||saved.master<=0)return true;
  const settings=resolveSoundSettings(saved,id);
  if(!settings)return true;
- const source=playDesignedSound(ctx,id,{...settings,
-  gain:settings.gain*saved.master},options);
+ // New exploratory sounds stay audition-only until explicitly chosen in Wave 01.
+ // Older v1 packs and first-time visitors keep their established game audio.
+ const approved=saved.choices[id]?.explored===true;
+ const playable=approved?settings:{...settings,concept:-1};
+ const source=playDesignedSound(ctx,id,{...playable,
+  gain:playable.gain*saved.master},options);
  if(source)options.onSource?.(source);
  return true;
 }
