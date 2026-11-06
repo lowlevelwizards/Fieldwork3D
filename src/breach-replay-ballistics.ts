@@ -3,7 +3,10 @@
  * independent of the 20 Hz visual film and the renderer's cosmetic cap.
  */
 import type {Session,ShotEvent} from './breach-game.ts';
-export type RecordedShot=ShotEvent & {recordedAt:number};
+import type {WeaponId} from './breach-combat.ts';
+export type RecordedShot=ShotEvent & {
+  recordedAt:number;weaponAtFire?:WeaponId;suppressedAtFire?:boolean
+};
 const position=(p:{x:number;y:number})=>({x:p.x,y:p.y});
 
 export class ReplayBallisticsRecorder{
@@ -16,8 +19,12 @@ export class ReplayBallisticsRecorder{
     for(const shot of s.shots){
       if(shot.id<=this.lastShotId)continue;
       const recordedAt=shot.firedAt??s.seconds-shot.age;
+      const shooter=s.operators.find(a=>a.id===shot.shooterId);
       this.shots.push({
         ...shot,start:position(shot.start),end:position(shot.end),
+        weaponAtFire:shooter?.weapon,
+        suppressedAtFire:shooter?.weaponConfiguration?.slots.muzzle===
+          'muzzle-suppressor',
         recordedAt:Number.isFinite(recordedAt)?recordedAt:s.seconds
       });
       this.lastShotId=shot.id;
