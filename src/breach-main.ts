@@ -36,8 +36,12 @@ import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
 import type {Site} from './breach-site.ts';
 import {captureMissionStart,siteForMissionRestart,restoreMissionStartingTeam,
   type MissionStartSnapshot} from './breach-mission-restart.ts';
+import {readFavoriteMissions,addFavoriteMission,removeFavoriteMission,
+  writeFavoriteMissions,type FavoriteMission} from './breach-mission-favorites.ts';
 import {compileMissionFacts} from './briefing/mission-facts.ts';
 import {createOperationDossier} from './briefing/briefing-composer.ts';
+import {createBriefingCardModel,type BriefingReport,type BriefingTab}
+ from './briefing/briefing-view-model.ts';
 import {sessionIntelligenceReview} from './briefing/briefing-after-action.ts';
 import {attachCampaignDossierContext} from './briefing/campaign-context.ts';
 import type {QuickPlayGenerationRequest,QuickPlayGenerationResponse}
@@ -73,12 +77,21 @@ import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
 import {stepReplaySample,stepReplayPresentation,formatReplayTime}
   from './breach-replay-transport.ts';
 import {ReplayEventIndex,type ReplayIndexedEvent} from './breach-replay-event-index.ts';
+import {buildReplayDirectorCues,replayCameraTarget,easeReplayCamera,
+  type ReplayCameraMode,type ReplayDirectorCue}
+  from './breach-replay-director.ts';
 import {clusterReplayTimeline} from './breach-replay-timeline-markers.ts';
+import {buildReplayChapters,addReplayBookmark,adjacentReplayChapter,
+  type ReplayChapter,type ReplayBookmark} from './breach-replay-chapters.ts';
 import type {RecordedShot} from './breach-replay-ballistics.ts';
+import {inspectRecordedShot,shotScreenHit,adjacentRecordedShot}
+  from './breach-replay-shot-inspector.ts';
 import {serializeReplayReport} from './breach-replay-export-json.ts';
 import {ReplaySoundTimeline,replayDoorSoundId} from './breach-replay-audio.ts';
 import {ReplayQuickVideo} from './breach-replay-video.ts';
 import {sampleReplayGhosts} from './breach-replay-ghosts.ts';
+import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
+import {makeReplayLoop,advanceReplayLoop} from './breach-replay-loop.ts';
 import {replayActorVisible} from './breach-replay-visibility.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
@@ -187,6 +200,21 @@ const ui={
   briefingIntel:el<HTMLElement>('briefingIntel'),
   briefingRoster:el<HTMLElement>('briefingRoster'),
   briefingClose:el<HTMLButtonElement>('briefingClose'),
+  briefingPrimary:el<HTMLElement>('briefingPrimary'),
+  briefingType:el<HTMLElement>('briefingType'),
+  briefingLocation:el<HTMLElement>('briefingLocation'),
+  briefingThreat:el<HTMLElement>('briefingThreat'),
+  briefingLayout:el<HTMLElement>('briefingLayout'),
+  briefingSteps:el<HTMLElement>('briefingSteps'),
+  briefingOverview:el<HTMLElement>('briefingOverview'),
+  briefingIntelView:el<HTMLElement>('briefingIntelView'),
+  briefingIntelToggle:el<HTMLButtonElement>('briefingIntelToggle'),
+  briefingEntryControls:el<HTMLElement>('briefingEntryControls'),
+  briefingEntryLabel:el<HTMLElement>('briefingEntryLabel'),
+  briefingCaseContext:el<HTMLElement>('briefingCaseContext'),
+  briefingCampaignContext:el<HTMLElement>('briefingCampaignContext'),
+  briefingSiteReports:el<HTMLElement>('briefingSiteReports'),
+  briefingCaseReports:el<HTMLElement>('briefingCaseReports'),
   context:el<HTMLElement>('contextTools'),
   quickStates:el<HTMLElement>('quickStates'),
   quickScope:el<HTMLElement>('quickScope'),
@@ -204,6 +232,17 @@ const ui={
   replayDrawerClose:el<HTMLButtonElement>('replayDrawerClose'),
   replayTabs:el<HTMLElement>('replayTabs'),
   replayFeedPanel:el<HTMLElement>('replayFeedPanel'),
+  replayPrevChapter:el<HTMLButtonElement>('replayPrevChapter'),
+  replayNextChapter:el<HTMLButtonElement>('replayNextChapter'),
+  replayBookmark:el<HTMLButtonElement>('replayBookmark'),
+  replayChapterList:el<HTMLElement>('replayChapterList'),
+  replayShotInspector:el<HTMLElement>('replayShotInspector'),
+  replayShotTitle:el<HTMLElement>('replayShotTitle'),
+  replayShotDetails:el<HTMLOutputElement>('replayShotDetails'),
+  replayShotClose:el<HTMLButtonElement>('replayShotClose'),
+  replayShotPrev:el<HTMLButtonElement>('replayShotPrev'),
+  replayShotNext:el<HTMLButtonElement>('replayShotNext'),
+  replayShotFocus:el<HTMLButtonElement>('replayShotFocus'),
   viewIso:el<HTMLButtonElement>('viewIso'),
   viewTop:el<HTMLButtonElement>('viewTop'),
   view2d:el<HTMLButtonElement>('view2d'),
@@ -229,6 +268,8 @@ const ui={
   debriefStats:el<HTMLElement>('debriefStats'),
   retry:el<HTMLButtonElement>('retry'),next:el<HTMLButtonElement>('next'),
   watchReplay:el<HTMLButtonElement>('watchReplay'),
+  favoriteMission:el<HTMLButtonElement>('favoriteMission'),
+  favoriteMissionsList:el<HTMLElement>('favoriteMissionsList'),
   replayPanel:el<HTMLElement>('replayPanel'),
   replayPlay:el<HTMLButtonElement>('replayPlay'),
   replayBack:el<HTMLButtonElement>('replayBack'),
@@ -239,6 +280,9 @@ const ui={
   replayNextFrame:el<HTMLButtonElement>('replayNextFrame'),
   replayPrevSample:el<HTMLButtonElement>('replayPrevSample'),
   replayNextSample:el<HTMLButtonElement>('replayNextSample'),
+  replayLoopIn:el<HTMLButtonElement>('replayLoopIn'),
+  replayLoopOut:el<HTMLButtonElement>('replayLoopOut'),
+  replayLoopToggle:el<HTMLButtonElement>('replayLoopToggle'),
   replaySeek:el<HTMLInputElement>('replaySeek'),
   replayMarks:el<HTMLElement>('replayMarks'),
   replaySight:el<HTMLButtonElement>('replaySight'),
@@ -247,12 +291,15 @@ const ui={
   replayPrevEvent:el<HTMLButtonElement>('replayPrevEvent'),
   replayNextEvent:el<HTMLButtonElement>('replayNextEvent'),
   replayFollow:el<HTMLButtonElement>('replayFollow'),
+  replaySquad:el<HTMLButtonElement>('replaySquad'),
+  replayDirector:el<HTMLButtonElement>('replayDirector'),
   replayAnalysis:el<HTMLButtonElement>('replayAnalysis'),
   replayPlans:el<HTMLButtonElement>('replayPlans'),
   replayPlanVersion:el<HTMLButtonElement>('replayPlanVersion'),
   replayNames:el<HTMLButtonElement>('replayNames'),
   replayTraces:el<HTMLButtonElement>('replayTraces'),
   replayGhosts:el<HTMLButtonElement>('replayGhosts'),
+  replayTrails:el<HTMLButtonElement>('replayTrails'),
   replayExportJson:el<HTMLButtonElement>('replayExportJson'),
   replayExportVideo:el<HTMLButtonElement>('replayExportVideo'),
   replayEventText:el<HTMLOutputElement>('replayEventText'),
@@ -499,15 +546,81 @@ state.operationDossier=buildPreviewDossier(state);
 let recorder=new MissionRecorder();recorder.capture(state,true);
 const deploymentButton=document.createElement('button');
 deploymentButton.type='button';deploymentButton.id='deploymentChoice';
-deploymentButton.style.cssText='display:block;margin:10px 0;padding:8px 12px;'+
- 'font:inherit;letter-spacing:.06em;background:#222b2b;color:#e5e2ce;'+
- 'border:1px solid #7b8475;border-radius:3px;cursor:pointer';
-ui.briefingRoster.insertAdjacentElement('afterend',deploymentButton);
+deploymentButton.setAttribute('aria-label','Cycle available insertion points');
+ui.briefingEntryControls.append(deploymentButton);
 let deploymentState:Session|null=null;
 let deployOptions:ReturnType<typeof availableDeployments>=[];
 let selectedEntry='FRONT';
 let missionStart:MissionStartSnapshot=captureMissionStart(
  state,requestedSiteScale,selectedEntry);
+const FAVORITE_MISSIONS_STORAGE='fieldwork3d.favorite-missions.v1';
+let activeFavoriteId:string|null=null;
+function favoriteMissions():FavoriteMission[]{
+  try{return readFavoriteMissions(localStorage.getItem(FAVORITE_MISSIONS_STORAGE));}
+  catch{return [];}
+}
+function persistFavoriteMissions(history:FavoriteMission[]):boolean{
+  try{
+    localStorage.setItem(FAVORITE_MISSIONS_STORAGE,writeFavoriteMissions(history));
+    return true;
+  }catch{return false;}
+}
+function restoreFavoriteMission(saved:FavoriteMission):void{
+  if(campaignMode==='mission'){
+    showUiHelp('FAVORITES PLAY AS QUICK PLAY PRACTICE',3400);return;
+  }
+  const start=structuredClone(saved.start);
+  campaignMode='quick';
+  reset(start.variant,start.seed,start.missionType,
+    siteForMissionRestart(start),undefined,false,start);
+  restoreMissionStartingTeam(state,start);
+  selectedEntry='FRONT';
+  if(start.entryId!=='FRONT'){
+    if(selectDeployment(state,start.entryId))selectedEntry=start.entryId;
+    else console.warn('[Favorite mission] Saved entry no longer valid',start.entryId);
+  }
+  missionStart=start;activeFavoriteId=saved.id;
+  recorder=new MissionRecorder();recorder.capture(state,true);
+  closeMissionSettings(false);
+  layout();updateHud();
+  showUiHelp('FAVORITE LOADED · ORIGINAL MISSION SETUP',3800);
+}
+function renderFavoriteMissions():void{
+  const list=ui.favoriteMissionsList;
+  const entries=favoriteMissions().slice().reverse();
+  const fragment=document.createDocumentFragment();
+  if(!entries.length){
+    const empty=document.createElement('p');empty.className='favorite-empty';
+    empty.textContent='Favorite an operation from its debrief to play it again later.';
+    fragment.append(empty);
+  }
+  for(const saved of entries){
+    const row=document.createElement('div');row.className='favorite-mission-entry';
+    row.setAttribute('role','listitem');
+    const info=document.createElement('div');info.className='favorite-mission-name';
+    const title=document.createElement('strong');title.textContent=saved.label;
+    const caption=document.createElement('span');
+    caption.textContent=saved.start.missionType.toUpperCase()+
+      ' · '+(saved.start.site?.scale??'standard').toUpperCase();
+    info.append(title,caption);
+    const play=document.createElement('button');play.type='button';
+    play.textContent='PLAY';play.disabled=campaignMode==='mission';
+    play.title='Start an independent Quick Play rematch';
+    play.addEventListener('click',()=>restoreFavoriteMission(saved));
+    const remove=document.createElement('button');remove.type='button';
+    remove.textContent='×';remove.setAttribute('aria-label',
+      'Delete favorite '+saved.label);
+    remove.addEventListener('click',()=>{
+      if(!persistFavoriteMissions(removeFavoriteMission(favoriteMissions(),saved.id))){
+        showUiHelp('COULD NOT UPDATE FAVORITES',2900);return;
+      }
+      if(activeFavoriteId===saved.id)activeFavoriteId=null;
+      renderFavoriteMissions();updateHud();
+    });
+    row.append(info,play,remove);fragment.append(row);
+  }
+  list.replaceChildren(fragment);
+}
 function refreshDeployment(){
  if(deploymentState!==state){
   deploymentState=state;selectedEntry='FRONT';
@@ -517,9 +630,9 @@ function refreshDeployment(){
   team(state).every(a=>a.plan.length===0);
  deploymentButton.hidden=!state.site||state.started||deployOptions.length===0;
  deploymentButton.disabled=!editable;
- deploymentButton.textContent='ENTRY · '+
-  (selectedEntry==='FRONT'?'FRONT (DEFAULT)':selectedEntry.toUpperCase())+
-  ' · CHANGE';
+ deploymentButton.textContent='CHANGE ENTRY';
+ ui.briefingEntryLabel.textContent=selectedEntry==='FRONT'?
+   'FRONT ENTRANCE':selectedEntry.toUpperCase().replaceAll('-', ' ');
  deploymentButton.title=editable?'Cycle physically verified exterior entry points':
   'Select the insertion before plotting routes or starting GO';
 }
@@ -534,6 +647,10 @@ deploymentButton.addEventListener('click',()=>{
   missionStart=captureMissionStart(state,requestedSiteScale,selectedEntry);
   recorder=new MissionRecorder();recorder.capture(state,true);
   refreshDeployment();
+  if(!reducedMotionMedia.matches)ui.briefingEntryLabel.animate([
+    {opacity:.5,transform:'translateY(2px)'},
+    {opacity:1,transform:'translateY(0)'}
+  ],{duration:180,easing:'ease-out'});
  }
 });
 const OPERATION_HISTORY_KEY='fieldwork3d.operation-history.v1';
@@ -591,6 +708,9 @@ function recordCompletedOperation(){
 let replaying=false,replayPlaying=false,replayTime=0,replayRate=1;
 let replayEventIndex:ReplayEventIndex|null=null;
 let replaySoundTimeline:ReplaySoundTimeline|null=null;
+let replayChapters:ReplayChapter[]=[];
+let replayBookmarks:ReplayBookmark[]=[];
+let replayBookmarkCounter=0;
 let replaySoundEnabled=true;
 const replayQuickVideo=new ReplayQuickVideo(
   (blob,mime)=>{
@@ -615,11 +735,18 @@ const replayQuickVideo=new ReplayQuickVideo(
 let replayPresentation:ReplayPresentation|null=null;
 let replayOmniscient=true,finishedSession:Session|null=null;
 let replayFollow=false,replayAnalysis=false,replayFollowId='rook';
+let replayCameraMode:ReplayCameraMode='free';
+let replayDirectorCues:ReplayDirectorCue[]=[];
 let replayPlanScope:'all'|'selected'|'none'='selected';
 let replayPlanVersion:'active'|'original'='active';
 let replayNameTags=true;
 let replayTraceMode:'off'|'recent'|'selected'='off';
 let replayGhostMode:'off'|'selected'|'squad'='off';
+let replayTrailMode:'off'|'recent'|'full'='off';
+let replayMovementHistory:ReplayMovementHistory|null=null;
+let replayLoopIn:number|null=null,replayLoopOut:number|null=null;
+let replayLoopEnabled=false;
+let selectedReplayShotId:number|null=null;
 let stage:TacticalScene3D|null=null;
 let viewMode:ViewMode='iso';
 try{stage=new TacticalScene3D();}
@@ -842,7 +969,7 @@ function renderOperationsBoard(){
   // Legacy WeaponId remains internal simulation/persistence compatibility.
   const modelHint=document.createElement('small');
   modelHint.className='fw-weapon-section-label';
-  modelHint.textContent='SELECT AN AR / AK VARIANT · FACTORY MODEL + PARTS';
+  modelHint.textContent='SELECT AN AR / AK / HK VARIANT · FACTORY MODEL + PARTS';
   loadout.field('weapon').append(modelHint);
   const activePreset=member.weaponConfiguration.build?
    matchingFamilyPreset(member.weaponConfiguration.build):undefined;
@@ -2089,6 +2216,91 @@ function medicalCandidate(id:string){
   return wound&&treatmentSupplyForWound(wound,a.medicalSupplies);
  }).sort((x,y)=>distance(a.p,x.p)-distance(a.p,y.p))[0]??null;
 }
+/** V3: render only when mission identity or roster changes; never on each frame. */
+let briefingRenderedSession:Session|null=null;
+let briefingRenderedDossier:Session['operationDossier'];
+let briefingRenderedRoster='';
+let briefingRenderedEntry='';
+function renderBriefingReports(root:HTMLElement,reports:readonly BriefingReport[]):void{
+ const fragment=document.createDocumentFragment();
+ if(!reports.length){
+  const message=document.createElement('p');message.className='fw-brief-v3-report-empty';
+  message.textContent='No additional verified reports available.';
+  fragment.append(message);
+ }
+ for(const report of reports){
+  const article=document.createElement('article');article.className='fw-brief-v3-report';
+  const meta=document.createElement('div');meta.className='fw-brief-v3-report-meta';
+  meta.textContent=report.source.toUpperCase()+' · '+report.confidence.toUpperCase();
+  const body=document.createElement('p');body.textContent=report.text;
+  article.append(meta,body);fragment.append(article);
+ }
+ root.replaceChildren(fragment);
+}
+function syncBriefingCard():void{
+ const dossier=briefingPreviewEnabled?state.operationDossier:undefined;
+ const names=team(state).map(actor=>actor.name).join(' · ');
+ if(state===briefingRenderedSession&&dossier===briefingRenderedDossier&&
+    names===briefingRenderedRoster&&selectedEntry===briefingRenderedEntry)return;
+ briefingRenderedSession=state;
+ briefingRenderedDossier=dossier;
+ briefingRenderedRoster=names;
+ briefingRenderedEntry=selectedEntry;
+ const brief=operationBriefing(state);
+ const model=createBriefingCardModel(state.missionType,brief,dossier);
+ ui.briefingTitle.textContent=model.title;
+ ui.briefingType.textContent=model.missionLabel.toUpperCase();
+ ui.briefingLocation.textContent=model.siteLabel;
+ ui.briefingPrimary.textContent=model.primary;
+ ui.briefingSituationBlock.hidden=false;
+ ui.briefingSituation.textContent=model.situation;
+ ui.briefingThreat.textContent=model.threat.value;
+ ui.briefingLayout.textContent=model.layout;
+ const steps=document.createDocumentFragment();
+ model.steps.forEach((step,index)=>{
+  const cell=document.createElement('div');cell.className='fw-brief-v3-step';
+  const head=document.createElement('strong');
+  head.textContent=String(index+1).padStart(2,'0')+' / '+step.action;
+  const subtitle=document.createElement('small');subtitle.textContent=step.detail;
+  cell.append(head,subtitle);steps.append(cell);
+ });
+ ui.briefingSteps.replaceChildren(steps);
+ // Full authority remains available under ORDERS, never re-authored by prose.
+ ui.briefingBody.textContent=brief.objective;
+ ui.briefingCondition.textContent=brief.condition;
+ ui.briefingExtraction.textContent=brief.extraction;
+ ui.briefingSite.textContent=model.siteLabel+' · '+model.layout;
+ ui.briefingCaseContext.textContent=model.situation+
+   (model.caseContext?'\n\n'+model.caseContext:'');
+ const job=campaignMode==='mission'&&campaign?.activeContractId?
+   campaign.contracts.find(c=>c.id===campaign!.activeContractId):undefined;
+ ui.briefingCampaignContext.textContent=[
+   model.campaignLabel??(job?
+     job.region.toUpperCase()+' · RISK '+job.risk+' · '+job.title:''),
+   model.followUp??''
+ ].filter(Boolean).join('\n');
+ ui.briefingRoster.textContent=brief.squad+' OPERATORS · '+names;
+ renderBriefingReports(ui.briefingIntel,model.reports.threat);
+ renderBriefingReports(ui.briefingSiteReports,model.reports.site);
+ renderBriefingReports(ui.briefingCaseReports,model.reports.case);
+}
+function setBriefingIntelTab(tab:BriefingTab):void{
+ for(const control of ui.briefingPanel.querySelectorAll<HTMLButtonElement>(
+   '[data-briefing-tab]'))
+  control.setAttribute('aria-pressed',String(control.dataset.briefingTab===tab));
+ for(const section of ui.briefingPanel.querySelectorAll<HTMLElement>(
+   '[data-briefing-section]'))
+  section.hidden=section.dataset.briefingSection!==tab;
+}
+function setBriefingView(mode:'brief'|'intel'):void{
+ const intel=mode==='intel';
+ ui.briefingOverview.hidden=intel;
+ ui.briefingIntelView.hidden=!intel;
+ ui.briefingIntelToggle.textContent=intel?'BACK TO BRIEF':'VIEW INTEL';
+ ui.briefingIntelToggle.setAttribute('aria-expanded',String(intel));
+ if(intel)setBriefingIntelTab('threat');
+}
+
 function updateHud(){
   if(!replaying&&state.phase==='planning')recorder.capturePlanning(state);
   const identity=currentSiteIdentity(state.site,campaignMode==='quick');
@@ -2141,31 +2353,7 @@ function updateHud(){
   recordCompletedOperation();
   refreshDeployment();
   const brief=operationBriefing(state);
-  const dossier=briefingPreviewEnabled?state.operationDossier:undefined;
-  ui.briefingTitle.textContent=dossier?
-    dossier.identity.title+' / '+brief.name:brief.code+' / '+brief.name;
-  ui.briefingBody.textContent=brief.objective;
-  ui.briefingSituationBlock.hidden=!dossier;
-  const continuity=dossier?.campaign?.followUp;
-  ui.briefingSituation.textContent=dossier?
-    dossier.incident.lead+' '+dossier.incident.context+
-      (continuity?'\n\nCASE CONTINUITY · Follow-up to '+
-        continuity.title+' ('+continuity.outcome.toUpperCase()+
-        ') in '+dossier.campaign!.region+'.':''):'';
-  ui.briefingCondition.textContent=brief.condition;
-  ui.briefingExtraction.textContent=brief.extraction;
-  const contract=campaignMode==='mission'&&campaign?.activeContractId?
-    campaign.contracts.find(c=>c.id===campaign!.activeContractId):undefined;
-  const caseAssignment=dossier?.campaign??contract;
-  ui.briefingSite.textContent=brief.building+' · '+brief.layout+
-    (caseAssignment?'\n'+caseAssignment.region.toUpperCase()+
-      ' · '+['','LOW','MODERATE','HIGH'][caseAssignment.risk]+
-      ' RISK · '+caseAssignment.title.toUpperCase():'');
-  ui.briefingIntel.textContent=dossier?
-    dossier.claims.map(c=>'['+c.source.toUpperCase()+' · '+
-      c.confidence.toUpperCase()+'] '+c.text).join('\n\n'):brief.notes;
-  ui.briefingRoster.textContent=brief.squad+' OPERATORS · '+
-    team(state).map(a=>a.name).join(' · ');
+  syncBriefingCard();
   if(state.phase!=='planning'){
     ui.briefingPanel.hidden=true;operationsBoard.hidden=true;
   }
@@ -2291,6 +2479,9 @@ function updateHud(){
   ui.undo.disabled=!(active?.history.undo.length);
   ui.redo.disabled=!(active?.history.redo.length);
   ui.debrief.hidden=replaying||(state.phase!=='won'&&state.phase!=='lost');
+  ui.favoriteMission.disabled=!state.site;
+  ui.favoriteMission.textContent=activeFavoriteId?
+    '★ MISSION FAVORITED':'☆ FAVORITE MISSION';
   ui.next.textContent=campaignMode==='mission'?'RETURN TO BASE':'NEXT ARRANGEMENT';
   ui.retry.disabled=campaignMode==='mission';
   if(!ui.debrief.hidden){
@@ -2948,9 +3139,37 @@ function renderReplayBallistics(projected:boolean):void{
     draw.beginPath();draw.arc(to.x,to.y,shot.hit?4:2.5,0,Math.PI*2);
     draw.fill();
   }
+  const selectedShot=selectedReplayShotId===null?null:
+    recorder.ballistics.shots.find(s=>s.id===selectedReplayShotId);
+  if(selectedShot&&historicalShotVisible(selectedShot)){
+    const a=projected?worldToScreen(selectedShot.start,selectedShot.muzzleHeight??16):selectedShot.start;
+    const b=projected?worldToScreen(selectedShot.end,selectedShot.impactHeight??7):selectedShot.end;
+    draw.save();draw.globalAlpha=1;draw.strokeStyle='#f5e8b3';draw.lineWidth=3;
+    draw.setLineDash([]);draw.beginPath();draw.moveTo(a.x,a.y);
+    draw.lineTo(b.x,b.y);draw.stroke();
+    draw.fillStyle='#fff0a6';draw.beginPath();draw.arc(b.x,b.y,6,0,Math.PI*2);
+    draw.fill();draw.restore();
+  }
   draw.restore();
 }
 /** Ghost sprites are intentionally abstract and share the operator palette. */
+/** Replay R3: actual recorded route — not authored waypoints. */
+function renderReplayMovementHistory(projected:boolean):void{
+  if(!replaying||replayTrailMode==='off'||!replayMovementHistory)return;
+  draw.save();draw.globalAlpha=.58;draw.lineWidth=2.15;draw.setLineDash([]);
+  for(const a of team(state)){
+    const trail=replayMovementHistory.segment(a.id,replayTime,
+      replayTrailMode==='recent'?15:Infinity,350);
+    if(trail.length<2)continue;
+    draw.strokeStyle=colorFor(a.id);draw.beginPath();
+    for(let i=0;i<trail.length;i++){
+      const p=projected?worldToScreen(trail[i].p,2):trail[i].p;
+      if(i===0)draw.moveTo(p.x,p.y);else draw.lineTo(p.x,p.y);
+    }
+    draw.stroke();
+  }
+  draw.restore();
+}
 function renderReplayGhosts(projected:boolean):void{
   if(!replaying||replayGhostMode==='off')return;
   const ids=new Set(replayGhostMode==='selected'?[selected]:
@@ -3258,6 +3477,7 @@ function renderProjectedPlans(){
     draw.fillStyle='#e8d5a6';draw.font='700 12px "Saira Condensed",sans-serif';
     draw.fillText(state.mission.toUpperCase(),target.x,target.y-23);
   }
+  renderReplayMovementHistory(true);
   renderReplayGhosts(true);
   renderReplayBallistics(true);
   for(const a of team(state))drawExecutionProblem(a,true);
@@ -3555,7 +3775,7 @@ function render(){
   draw.fillStyle='#52655b';draw.fillRect(-9,-9,W+18,H+18);
   terrain();furniture();renderGroundMarks();renderLightingMood2D();renderWeaponLights2D();
   architecture();fog();missionMarkers();
-  paths();
+  paths();renderReplayMovementHistory(false);
   for(const a of state.civilians)civilianSprite(a);
   for(const a of state.operators)sprite(a);
   for(const a of team(state))drawExecutionProblem(a,false);
@@ -3715,7 +3935,7 @@ function seekReplay(t:number){
   if(replayQuickVideo.active)replayQuickVideo.stop();
   stopReplaySounds();
   replayTime=Math.max(0,Math.min(recorder.duration,t));
-  applyReplayFrameAt(replayTime);updateReplayHud();
+  applyReplayFrameAt(replayTime);advanceReplayCamera(0,true);updateReplayHud();
 }
 /** Replay event feed and navigation share the same disclosure boundary. */
 function replayEventKnown(e:ReplayIndexedEvent):boolean{
@@ -3732,9 +3952,102 @@ function replayEventKnown(e:ReplayIndexedEvent):boolean{
     frame.seenGround.includes(
       'fine:'+Math.floor(p.x/20)+','+Math.floor(p.y/20)));
 }
+/** Shot investigation never introduces unrecorded future information. */
+function currentReplayShot():RecordedShot|null{
+  return selectedReplayShotId===null?null:
+    recorder.ballistics.shots.find(s=>s.id===selectedReplayShotId)??null;
+}
+function closeReplayShotInspector():void{
+  selectedReplayShotId=null;
+  ui.replayShotInspector.hidden=true;
+}
+function refreshReplayShotInspector():void{
+  const shot=currentReplayShot();
+  if(!shot||!historicalShotVisible(shot)){
+    closeReplayShotInspector();return;
+  }
+  const knowledge=recorder.at(shot.recordedAt)?.knowledge??null;
+  const detail=inspectRecordedShot(shot,knowledge,replayOmniscient);
+  ui.replayShotInspector.hidden=false;
+  ui.replayShotTitle.textContent='SHOT '+detail.id+' · '+
+    formatReplayTime(detail.time);
+  ui.replayShotDetails.textContent=
+    detail.shooterId.toUpperCase()+' · '+detail.weapon.toUpperCase()+'\n'+
+    (detail.targetId?('TARGET '+detail.targetId.toUpperCase()+' · '+
+      (detail.hit?'HIT':'MISS')+
+      (detail.healthAfter!==null?' · HP '+detail.healthBefore+
+        ' → '+detail.healthAfter:'')):
+      'TARGET DETAILS UNCONFIRMED')+'\n'+
+    'IMPACT '+detail.end.x.toFixed(0)+', '+detail.end.y.toFixed(0)+
+    (detail.surface?' · '+detail.surface.toUpperCase():'');
+  const all=recorder.ballistics.shots;
+  ui.replayShotPrev.disabled=!adjacentRecordedShot(all,shot.id,false,
+    historicalShotVisible);
+  ui.replayShotNext.disabled=!adjacentRecordedShot(all,shot.id,true,
+    historicalShotVisible);
+}
+function selectReplayShot(shot:RecordedShot):void{
+  if(!historicalShotVisible(shot))return;
+  selectedReplayShotId=shot.id;
+  replayTraceMode='recent';
+  replayPlaying=false;seekReplay(shot.recordedAt);
+  showReplayToolTab('events');
+  refreshReplayShotInspector();
+}
+function focusReplayShot():void{
+  const shot=currentReplayShot();
+  if(!shot)return;
+  replayCameraMode='free';replayFollow=false;replayPlaying=false;
+  if(stage&&viewMode!=='plan2d'){
+    stage.view.focus={...shot.end};
+    stage.view.zoom=Math.max(stage.view.zoom,1.7);
+    stage.updateCamera(1);
+  }else{
+    const projected=worldToScreen(shot.end);
+    panX+=cssW/2-projected.x;panY+=cssH/2-projected.y;
+    layout();
+  }
+  updateReplayHud();
+}
+/** Rebuild chapter buttons only on replay entry, intel change or bookmark. */
+function renderReplayChapters():void{
+  const fragment=document.createDocumentFragment();
+  const entries=[
+    ...replayChapters.map(c=>({t:c.t,label:c.label,kind:'chapter'})),
+    ...replayBookmarks.map(b=>({t:b.t,label:b.label,kind:'bookmark'}))
+  ].sort((a,b)=>a.t-b.t);
+  for(const entry of entries){
+    const button=document.createElement('button');
+    button.type='button';button.className='replay-chapter-item';
+    button.dataset.kind=entry.kind;
+    button.textContent=formatReplayTime(entry.t)+' · '+entry.label;
+    button.addEventListener('click',()=>{
+      replayPlaying=false;seekReplay(entry.t);
+    });
+    fragment.append(button);
+  }
+  ui.replayChapterList.replaceChildren(fragment);
+}
 function rebuildReplayEventIndex():void{
   replayEventIndex=new ReplayEventIndex(recorder.events,
     recorder.executionEvents,e=>replayEventKnown(e));
+  // Only disclosed historical events are eligible for the director.
+  replayDirectorCues=buildReplayDirectorCues(replayEventIndex.all);
+  replayChapters=buildReplayChapters(replayEventIndex.all,recorder.duration);
+  renderReplayChapters();
+}
+/** R3 camera changes only presentation state, never the live simulation. */
+function advanceReplayCamera(dt:number,instant=false):void{
+  if(!replaying||!stage||viewMode==='plan2d')return;
+  const actors=state.operators.map(a=>({
+    id:a.id,p:a.p,side:a.side,health:a.health
+  }));
+  const target=replayCameraTarget(replayCameraMode,replayTime,actors,
+    replayFollowId,cssW/Math.max(1,cssH),replayDirectorCues);
+  if(!target)return;
+  const current={focus:stage.view.focus,zoom:stage.view.zoom,kind:target.kind};
+  const next=easeReplayCamera(current,target,dt,instant);
+  stage.view.focus=next.focus;stage.view.zoom=next.zoom;
 }
 const replayFeedKinds:Record<string,readonly string[]>={
   all:[],
@@ -3764,6 +4077,12 @@ function renderReplayEventFeed():void{
       event.kind.toUpperCase()+' · '+event.text;
     button.addEventListener('click',()=>{
       replayPlaying=false;seekReplay(event.t);
+      if(event.kind==='shot'){
+        const shot=recorder.ballistics.shots.find(s=>
+          Math.abs(s.recordedAt-event.t)<.17&&s.shooterId===event.actor&&
+          historicalShotVisible(s));
+        if(shot)selectReplayShot(shot);
+      }
       for(const selected of ui.replayFeed.querySelectorAll('.selected'))
         selected.classList.remove('selected');
       button.classList.add('selected');
@@ -3812,6 +4131,16 @@ function updateReplayHud(){
     ui.replayPlay.title=replayPlaying?'Pause replay':'Play replay';
   }
   ui.replaySpeed.textContent=replayRate+'×';
+  const loop=makeReplayLoop(replayLoopIn,replayLoopOut,recorder.duration);
+  ui.replayLoopIn.textContent=replayLoopIn===null?'SET LOOP IN':
+    'IN '+formatReplayTime(replayLoopIn);
+  ui.replayLoopOut.textContent=replayLoopOut===null?'SET LOOP OUT':
+    'OUT '+formatReplayTime(replayLoopOut);
+  ui.replayLoopToggle.textContent=replayLoopEnabled?'LOOP ON':'LOOP OFF';
+  ui.replayLoopToggle.disabled=!loop||replayQuickVideo.active;
+  ui.replayLoopIn.disabled=replayQuickVideo.active;
+  ui.replayLoopOut.disabled=replayQuickVideo.active;
+  ui.replayLoopToggle.setAttribute('aria-pressed',String(replayLoopEnabled));
   ui.replayExportVideo.textContent=replayQuickVideo.active?'STOP VIDEO':'VIDEO 20S';
   ui.replaySpeed.disabled=replayQuickVideo.active;
   ui.replaySound.textContent=replaySoundEnabled?'SOUND ON':'SOUND OFF';
@@ -3822,12 +4151,19 @@ function updateReplayHud(){
   ui.replaySight.textContent=replayOmniscient?'FULL VIEW':'TEAM SIGHT';
   ui.replayView.textContent=viewMode.toUpperCase();
   ui.replayFollow.textContent=replayFollow?'FOLLOW '+replayFollowId.toUpperCase():'FOLLOW';
+  ui.replaySquad.textContent=replayCameraMode==='squad'?'SQUAD ON':'FOLLOW SQUAD';
+  ui.replayDirector.textContent=replayCameraMode==='director'?'DIRECTOR ON':'DIRECTOR OFF';
+  ui.replaySquad.setAttribute('aria-pressed',String(replayCameraMode==='squad'));
+  ui.replayDirector.setAttribute('aria-pressed',String(replayCameraMode==='director'));
+  ui.replaySquad.disabled=viewMode==='plan2d'||!stage;
+  ui.replayDirector.disabled=viewMode==='plan2d'||!stage;
   ui.replayAnalysis.textContent=replayAnalysis?'ANALYSIS ON':'ANALYSIS';
   ui.replayPlans.textContent='PLANS '+replayPlanScope.toUpperCase();
   ui.replayPlanVersion.textContent='PLAN '+replayPlanVersion.toUpperCase();
   ui.replayNames.textContent=replayNameTags?'NAMES ON':'NAMES OFF';
   ui.replayTraces.textContent='TRACES '+replayTraceMode.toUpperCase();
   ui.replayGhosts.textContent='GHOSTS '+replayGhostMode.toUpperCase();
+  ui.replayTrails.textContent='ACTUAL PATH '+replayTrailMode.toUpperCase();
   ui.replayPlans.setAttribute('aria-pressed',String(replayPlanScope!=='none'));
   ui.replayNames.setAttribute('aria-pressed',String(replayNameTags));
   const event=replayEventIndex?.latest(replayTime+.14);
@@ -3861,9 +4197,16 @@ function enterReplay(){
   finishedSession=state;replaying=true;replayPlaying=true;replayTime=0;
   replayRate=1;replayOmniscient=false;looking=false;flashMode=false;
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
+  replayCameraMode='free';replayDirectorCues=[];
+  replayBookmarks=[];replayBookmarkCounter=0;
   replayPlanScope='selected';replayPlanVersion='active';
   replayNameTags=true;replayTraceMode='off';replayGhostMode='off';
+  replayTrailMode='off';
+  replayLoopIn=null;replayLoopOut=null;replayLoopEnabled=false;
+  closeReplayShotInspector();
   rebuildReplayEventIndex();
+  replayMovementHistory=new ReplayMovementHistory(recorder.frames,
+    team(finishedSession).map(a=>a.id));
   replaySoundTimeline=new ReplaySoundTimeline(recorder.ballistics.shots,
     recorder.events);
   unlockAudio();
@@ -3889,8 +4232,11 @@ function exitReplay(){
   if(!replaying)return;
   if(replayQuickVideo.active)replayQuickVideo.stop();
   replaying=false;replayPlaying=false;replayPresentation=null;
-  replayEventIndex=null;
-  replaySoundTimeline=null;stopReplaySounds();
+  replayEventIndex=null;replayDirectorCues=[];replayCameraMode='free';
+  replayChapters=[];replayBookmarks=[];
+  closeReplayShotInspector();
+  replaySoundTimeline=null;replayMovementHistory=null;stopReplaySounds();
+  replayLoopIn=null;replayLoopOut=null;replayLoopEnabled=false;
   ui.replayFeed.replaceChildren();
   showReplayToolTab(null);
   document.body.classList.remove('replaying');
@@ -3901,6 +4247,27 @@ function exitReplay(){
   updateHud();
 }
 ui.watchReplay.addEventListener('click',enterReplay);
+ui.favoriteMission.addEventListener('click',()=>{
+  if(!state.site)return;
+  const favorites=favoriteMissions();
+  if(activeFavoriteId&&favorites.some(item=>item.id===activeFavoriteId)){
+    showUiHelp('MISSION ALREADY IN FAVORITES',2700);return;
+  }
+  const id='favorite-'+Date.now().toString(36)+'-'+
+    Math.random().toString(36).slice(2,9);
+  const label=state.site.name+' · '+state.missionType.toUpperCase();
+  try{
+    if(!persistFavoriteMissions(addFavoriteMission(
+      favorites,missionStart,id,label,Date.now())))
+      throw Error('Storage unavailable');
+    activeFavoriteId=id;
+    renderFavoriteMissions();updateHud();
+    showUiHelp('MISSION SAVED TO FAVORITES',3200);
+  }catch(error){
+    console.warn('[Favorite mission]',error);
+    showUiHelp('COULD NOT SAVE FAVORITE · CHECK LOCAL STORAGE',3500);
+  }
+});
 ui.replayPlay.addEventListener('click',()=>{
   if(replayTime>=recorder.duration)seekReplay(0);
   replayPlaying=!replayPlaying;
@@ -3919,6 +4286,23 @@ ui.replayPrevFrame.addEventListener('click',()=>stepReplay('frame',-1));
 ui.replayNextFrame.addEventListener('click',()=>stepReplay('frame',1));
 ui.replayPrevSample.addEventListener('click',()=>stepReplay('sample',-1));
 ui.replayNextSample.addEventListener('click',()=>stepReplay('sample',1));
+ui.replayLoopIn.addEventListener('click',()=>{
+  replayLoopIn=replayTime;
+  if(replayLoopOut!==null&&replayLoopOut-replayLoopIn<.35)replayLoopOut=null;
+  replayLoopEnabled=false;updateReplayHud();
+});
+ui.replayLoopOut.addEventListener('click',()=>{
+  if(replayLoopIn===null)replayLoopIn=0;
+  const proposal=makeReplayLoop(replayLoopIn,replayTime,recorder.duration);
+  if(!proposal){
+    showUiHelp('LOOP OUT MUST BE AT LEAST 0.35S AFTER IN',3300);return;
+  }
+  replayLoopOut=proposal.end;replayLoopEnabled=true;updateReplayHud();
+});
+ui.replayLoopToggle.addEventListener('click',()=>{
+  if(!makeReplayLoop(replayLoopIn,replayLoopOut,recorder.duration))return;
+  replayLoopEnabled=!replayLoopEnabled;updateReplayHud();
+});
 ui.replayMore.addEventListener('click',()=>{
   showReplayToolTab(replayToolTab&&replayToolTab!=='events'?
     null:replayLastToolTab);
@@ -3934,6 +4318,35 @@ for(const button of ui.replayTabs.querySelectorAll<HTMLButtonElement>('[data-rep
   });
 }
 ui.replayFeedFilter.addEventListener('change',renderReplayEventFeed);
+ui.replayPrevChapter.addEventListener('click',()=>{
+  const chapter=adjacentReplayChapter(replayChapters,replayTime,false);
+  if(chapter){replayPlaying=false;seekReplay(chapter.t);}
+});
+ui.replayNextChapter.addEventListener('click',()=>{
+  const chapter=adjacentReplayChapter(replayChapters,replayTime,true);
+  if(chapter){replayPlaying=false;seekReplay(chapter.t);}
+});
+ui.replayBookmark.addEventListener('click',()=>{
+  const id='bookmark-'+(++replayBookmarkCounter);
+  replayBookmarks=addReplayBookmark(replayBookmarks,replayTime,recorder.duration,
+    id,'MARK '+String(replayBookmarkCounter).padStart(2,'0'));
+  renderReplayChapters();
+  showUiHelp('BOOKMARK ADDED · THIS REPLAY SESSION',2500);
+});
+ui.replayShotClose.addEventListener('click',closeReplayShotInspector);
+ui.replayShotFocus.addEventListener('click',focusReplayShot);
+ui.replayShotPrev.addEventListener('click',()=>{
+  const s=currentReplayShot();
+  const prev=s&&adjacentRecordedShot(recorder.ballistics.shots,s.id,
+    false,historicalShotVisible);
+  if(prev)selectReplayShot(prev);
+});
+ui.replayShotNext.addEventListener('click',()=>{
+  const s=currentReplayShot();
+  const next=s&&adjacentRecordedShot(recorder.ballistics.shots,s.id,
+    true,historicalShotVisible);
+  if(next)selectReplayShot(next);
+});
 ui.replaySound.addEventListener('click',()=>{
   replaySoundEnabled=!replaySoundEnabled;
   if(!replaySoundEnabled)stopReplaySounds();
@@ -3952,7 +4365,8 @@ ui.replaySeek.addEventListener('input',()=>{
 ui.replaySight.addEventListener('click',()=>{
   replayOmniscient=!replayOmniscient;fogStamp=-1;
   rebuildReplayEventIndex();
-  renderReplayEventMarkers();renderReplayEventFeed();updateReplayHud();
+  renderReplayEventMarkers();renderReplayEventFeed();
+  refreshReplayShotInspector();updateReplayHud();
 });
 ui.replayView.addEventListener('click',()=>{
   cameraMode(viewMode==='iso'?'top':viewMode==='top'?'plan2d':'iso');
@@ -3971,7 +4385,16 @@ ui.replayFollow.addEventListener('click',()=>{
     if(i===squadIds.length-1)replayFollow=false;
     else replayFollowId=squadIds[i+1];
   }else replayFollow=true;
-  updateReplayHud();
+  replayCameraMode=replayFollow?'operator':'free';
+  advanceReplayCamera(0,true);updateReplayHud();
+});
+ui.replaySquad.addEventListener('click',()=>{
+  replayCameraMode=replayCameraMode==='squad'?'free':'squad';
+  replayFollow=false;advanceReplayCamera(0,true);updateReplayHud();
+});
+ui.replayDirector.addEventListener('click',()=>{
+  replayCameraMode=replayCameraMode==='director'?'free':'director';
+  replayFollow=false;advanceReplayCamera(0,true);updateReplayHud();
 });
 ui.replayAnalysis.addEventListener('click',()=>{
   replayAnalysis=!replayAnalysis;updateReplayHud();
@@ -3998,6 +4421,11 @@ ui.replayGhosts.addEventListener('click',()=>{
     replayGhostMode==='selected'?'squad':'off';
   updateReplayHud();
 });
+ui.replayTrails.addEventListener('click',()=>{
+  replayTrailMode=replayTrailMode==='off'?'recent':
+    replayTrailMode==='recent'?'full':'off';
+  updateReplayHud();
+});
 ui.replayExportVideo.addEventListener('click',()=>{
   if(replayQuickVideo.active){
     replayQuickVideo.stop();ui.replayExportVideo.textContent='VIDEO 20S';return;
@@ -4007,6 +4435,7 @@ ui.replayExportVideo.addEventListener('click',()=>{
     audio.createMediaStreamDestination():null;
   if(replayTime>=recorder.duration-.2)seekReplay(0);
   replayRate=1;
+  replayLoopEnabled=false;replayLoopIn=null;replayLoopOut=null;
   const started=replayQuickVideo.start(replayTime,
     {width:cssW,height:cssH},videoAudioDestination?.stream??null);
   if(!started){
@@ -4044,6 +4473,7 @@ function reset(next=state.variant,siteSeed?:number,
  encounterRisk?:1|2|3,deferScene=false,
  restartStart?:MissionStartSnapshot){
   replaying=false;replayPlaying=false;finishedSession=null;
+  activeFavoriteId=null;
   replayEventIndex=null;
   operationsBoard.hidden=true;
   hideWeaponChooser();
@@ -4875,6 +5305,9 @@ canvas.addEventListener('pointermove',e=>{
       {x:pts[1].x,y:pts[1].y});
     const mid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
     if(stage&&viewMode!=='plan2d'){
+      if(replaying&&replayCameraMode!=='free'){
+        replayCameraMode='free';replayFollow=false;updateReplayHud();
+      }
       if(panMid)stage.panBetween(panMid.x,panMid.y,mid.x,mid.y);
       if(pinchDistance>8)stage.zoomAt(gap/pinchDistance,mid.x,mid.y);
       // Two fingers have ONLY pan/pinch behavior: never rotate accidentally.
@@ -4886,6 +5319,9 @@ canvas.addEventListener('pointermove',e=>{
     pinchDistance=gap;panMid=mid;return;
   }
   if(p.mode==='cameraOrbit'&&stage&&viewMode!=='plan2d'){
+    if(replaying&&replayCameraMode!=='free'){
+      replayCameraMode='free';replayFollow=false;updateReplayHud();
+    }
     stage.orbit(dx,dy);
     for(const [mode,button] of [['iso',ui.viewIso],
       ['top',ui.viewTop],['plan2d',ui.view2d]] as const)
@@ -4893,6 +5329,9 @@ canvas.addEventListener('pointermove',e=>{
     return;
   }
   if(p.mode==='cameraPan'){
+    if(replaying&&replayCameraMode!=='free'){
+      replayCameraMode='free';replayFollow=false;updateReplayHud();
+    }
     if(stage&&viewMode!=='plan2d')stage.pan(dx,dy);
     else{panX+=dx;panY+=dy;layout();}
     return;
@@ -4969,6 +5408,15 @@ function releasePointer(e:PointerEvent,cancelled=false){
   const p=activePointers.get(e.pointerId);if(!p)return;
   if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
   const pt=pointerWorld(e);
+  if(!cancelled&&replaying&&replayTraceMode!=='off'&&
+    activePointers.size===1&&!p.moved&&p.mode==='undecided'){
+    const hit=shotScreenHit(recorder.ballistics.between(
+      Math.max(0,replayTime-3),replayTime),replayTime,
+      {x:e.clientX,y:e.clientY},
+      (point,height)=>worldToScreen(point,viewMode==='plan2d'?0:height),
+      historicalShotVisible,e.pointerType==='touch'?30:22);
+    if(hit)selectReplayShot(hit);
+  }
   if(!cancelled&&state.phase==='planning'&&!replaying&&activePointers.size===1){
     if((looking||flashMode||firePlacement||evacMode)&&
        (p.mode==='targetPreview'||p.mode==='undecided')){
@@ -5114,6 +5562,7 @@ function selectMissionSettingsTab(tab:string){
  if(title)title.textContent=tab==='environment'?'ENVIRONMENT':
   tab==='preferences'?'PREFERENCES':'MISSION';
 }
+renderFavoriteMissions();
 for(const button of missionSettingsTabs)button.addEventListener('click',()=>{
  selectMissionSettingsTab(button.dataset.siteTab??'mission');
 });
@@ -5132,7 +5581,8 @@ ui.cameraFit.addEventListener('click',()=>{
 });
 function showMissionBriefing(){
   if(state.phase!=='planning'||replaying||!state.site)return;
-  // Opening from either mode is safe; never reroll the incident on display.
+  // Always open on the five-second overview; details are optional.
+  setBriefingView('brief');
   updateHud();
   collapseTacticalSheets('briefing');
   ui.briefingPanel.hidden=false;
@@ -5141,6 +5591,15 @@ function showMissionBriefing(){
   updateContext();
 }
 ui.briefingToggle.addEventListener('click',showMissionBriefing);
+ui.briefingIntelToggle.addEventListener('click',()=>{
+ const opening=ui.briefingIntelView.hidden;
+ setBriefingView(opening?'intel':'brief');
+});
+for(const button of ui.briefingPanel.querySelectorAll<HTMLButtonElement>(
+ '[data-briefing-tab]')){
+ button.addEventListener('click',()=>setBriefingIntelTab(
+  button.dataset.briefingTab as BriefingTab));
+}
 ui.briefingClose.addEventListener('click',()=>{
   ui.briefingPanel.hidden=true;
   ui.briefingToggle.setAttribute('aria-expanded','false');
@@ -5245,20 +5704,18 @@ function tick(now:number){
       recorder.capture(state,isMissionTerminal(state));
     }
   }else{accum=0;previousRenderActors=null;}
-  if(replaying&&replayFollow&&stage&&viewMode!=='plan2d'){
-    const a=team(state).find(x=>x.id===replayFollowId);
-    if(a){
-      stage.view.focus={...a.p};
-      stage.updateCamera(dt);
-    }
-  }
   if(replaying&&replayPlaying){
     const previousReplayTime=replayTime;
-    replayTime=Math.min(recorder.duration,replayTime+dt*replayRate);
+    const loop=replayLoopEnabled?
+      makeReplayLoop(replayLoopIn,replayLoopOut,recorder.duration):null;
+    const step=advanceReplayLoop(replayTime,dt*replayRate,loop,recorder.duration);
+    replayTime=step.time;
     applyReplayFrameAt(replayTime);
-    playReplayAudioBetween(previousReplayTime,replayTime);
-    if(replayTime>=recorder.duration)replayPlaying=false;
+    if(step.wrapped)stopReplaySounds();
+    else playReplayAudioBetween(previousReplayTime,replayTime);
+    if(!loop&&replayTime>=recorder.duration)replayPlaying=false;
   }
+  if(replaying)advanceReplayCamera(dt);
   // 079: shot IDs are monotonic, unlike the short-lived shot array length.
   // A new shot can arrive on exactly the tick an old shot expires.
   const fresh=state.shots.filter(shot=>shot.id>lastSoundShotId);

@@ -18,18 +18,20 @@ export function createWeaponPresetBrowser(options:{
  heading.style.cssText='cursor:pointer;padding:8px 0;min-height:36px;font-weight:700;color:#e6eada';
  outer.append(heading);
  const hint=document.createElement('p');hint.className='fw-weapon-helper';
- hint.textContent='Browse AR and AK variants. Switching rifle/carbine class follows the current mode’s equipment rules.';
+ hint.textContent='Browse AR, AK and HK variants. Switching rifle/carbine class follows the current mode’s equipment rules.';
  outer.append(hint);
- const tabs=document.createElement('div');tabs.style.cssText='display:flex;gap:7px;margin:9px 0';
+ const tabs=document.createElement('div');tabs.style.cssText='display:flex;flex-wrap:wrap;gap:7px;margin:9px 0';
+ const families=[...new Set(FAMILY_PRESETS.map(p=>p.family))]
+  .sort((a,b)=>a==='ar'?-1:b==='ar'?1:a.localeCompare(b));
  const grid=document.createElement('div');grid.className='fw-weapon-preset-grid';
  grid.style.cssText='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px';
  const draw=()=>{
   tabs.replaceChildren();grid.replaceChildren();
-  for(const f of ['ar','ak'] as const){
+  for(const f of families){
    const tab=document.createElement('button');tab.type='button';
    tab.textContent=f.toUpperCase()+' · '+FAMILY_PRESETS.filter(p=>p.family===f).length;
    tab.setAttribute('aria-pressed',String(f===family));
-   tab.style.cssText='flex:1;min-height:42px;border:1px solid #81998a;border-radius:7px;'+
+   tab.style.cssText='flex:1 1 84px;min-height:42px;border:1px solid #81998a;border-radius:7px;'+
     'background:'+(f===family?'#b1c5aa':'#2c4038')+
     ';color:'+(f===family?'#182820':'#e5e9dd')+';font-weight:700';
    tab.addEventListener('click',()=>{family=f;draw()});tabs.append(tab);

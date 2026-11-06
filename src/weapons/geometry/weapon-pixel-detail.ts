@@ -3,11 +3,12 @@
  * Art-only overlays have no cast shadow and never affect weapon handling.
  */
 import * as THREE from 'three';
-export type WeaponMark='ar-port'|'ak-port'|'ak-selector'|'ak-cover-ribs'|'ak-receiver-stamp'|'ris-panel'|'m5-panel'|'ras-panel'|'pri-vents'|'poly-ribs'|'car-ribs'|'ar-mag-stamp20'|'ar-mag-stamp30'|'ar-poly-panel'|'ar-birdcage'|'rail-cover-stripes'|'ar-spr-ports'|'hk-port'|'hk-selector'|'hk-wood-vents'|'hk-poly-vents';
+export type WeaponMark='ar-port'|'ak-port'|'ak-selector'|'ak-cover-ribs'|'ak-receiver-stamp'|'ris-panel'|'m5-panel'|'ras-panel'|'pri-vents'|'poly-ribs'|'car-ribs'|'ar-mag-stamp20'|'ar-mag-stamp30'|'ar-poly-panel'|'ar-birdcage'|'rail-cover-stripes'|'ar-spr-ports'|'hk-port'|'hk-selector'|'hk-wood-vents'|'hk-poly-vents'|'hk-mag-stamp20';
 const dimensions:Record<WeaponMark,readonly [number,number]>={
  'ar-port':[16,12],'ak-port':[16,12],
  'hk-port':[16,10],'hk-selector':[16,8],
  'hk-wood-vents':[32,8],'hk-poly-vents':[32,8],
+ 'hk-mag-stamp20':[16,24],
  'ak-selector':[16,8],'ak-cover-ribs':[24,8],
  'ak-receiver-stamp':[32,8],'ris-panel':[32,8],'pri-vents':[16,8],
  'poly-ribs':[32,10],'car-ribs':[24,10],
@@ -24,21 +25,28 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
   if(x<0||y<0||x>=w||y>=h)return;
   const n=(y*w+x)*4;
   const rgb=mark==='ak-cover-ribs'?[41,48,39]:
+   mark==='hk-port'?(light?[43,51,45]:strong?[12,17,15]:[26,34,29]):
+   mark==='hk-mag-stamp20'?[40,51,44]:
    mark==='ar-port'?(light?[59,70,61]:strong?[15,22,19]:[31,39,33]):
    strong?[9,13,12]:light?[88,99,88]:[24,31,27];
   data[n]=rgb[0];data[n+1]=rgb[1];data[n+2]=rgb[2];
   data[n+3]=mark==='ak-cover-ribs'?214:strong?255:232;
  };
  if(mark==='hk-port'){
-   for(let y=2;y<=7;y++)for(let x=2;x<=13;x++)pixel(x,y,false,y>2);
-   for(let x=3;x<=12;x++)pixel(x,2,true);
+   // Lower contrast, narrower dark inset with one muted stamped upper rim.
+   for(let y=3;y<=7;y++)for(let x=3;x<=12;x++)
+    pixel(x,y,false,y>3);
+   for(let x=4;x<=11;x++)pixel(x,2,true);
+  }else if(mark==='hk-mag-stamp20'){
+   for(const x of [4,10])
+    for(let y=4;y<=19;y++)pixel(x,y);
   }else if(mark==='hk-selector'){
    for(let y=3;y<=5;y++)for(let x=2;x<=4;x++)pixel(x,y);
    for(let x=4;x<=13;x++)pixel(x,4);
   }else if(mark==='hk-wood-vents'||mark==='hk-poly-vents'){
-   const starts=mark==='hk-wood-vents'?[3,9,15,21,27]:[5,12,19,26];
+   const starts=mark==='hk-wood-vents'?[4,11,18,25]:[5,13,21,28];
    for(const x of starts)
-    for(let y=2;y<=5;y++)for(let dx=0;dx<2;dx++)pixel(x+dx,y,false,true);
+    for(let y=2;y<=5;y++)for(let dx=0;dx<3;dx++)pixel(x+dx,y,false,true);
   }else if(mark==='ar-port'){
   // Dark recessed upper, with only a muted narrow lip. No silver decal.
   for(let y=2;y<=9;y++)for(let x=2;x<=13;x++)pixel(x,y,false,y>3);

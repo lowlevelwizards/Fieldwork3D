@@ -49,6 +49,10 @@
         <button id="restart" type="button">RESTART MISSION</button>
       </div>
       <p class="site-settings-hint">BRIEFING reviews the objective. RESTART returns this mission to the beginning.</p>
+      <div class="saved-missions" aria-label="Favorite missions">
+        <h3>FAVORITE MISSIONS</h3>
+        <div id="favoriteMissionsList" class="favorite-missions-list" role="list"></div>
+      </div>
     </div>
     <div class="site-settings-group" data-site-panel="environment" hidden>
       <h3>NEXT SITE</h3>
@@ -91,22 +95,75 @@
   </div>
 </section>
 <section id="briefingPanel" class="briefing-panel fw-mission-dossier" hidden aria-label="Operation briefing">
-  <div class="fw-dossier-eyebrow">FIELD OPERATIONS / MISSION DOSSIER</div>
-  <strong id="briefingTitle">OPERATION BRIEFING</strong>
-  <div class="fw-dossier-block" id="briefingSituationBlock" hidden>
-    <h3>SITUATION</h3><p id="briefingSituation"></p>
+  <header class="fw-brief-v3-header">
+    <div class="fw-brief-v3-eyebrow">FIELDWORK <span>/</span> OPERATIONS <span class="fw-brief-v3-edition">MISSION BRIEF</span></div>
+    <strong id="briefingTitle">OPERATION BRIEFING</strong>
+    <div class="fw-brief-v3-subtitle">
+      <span id="briefingType">MISSION ASSIGNMENT</span>
+      <span class="fw-brief-v3-dot" aria-hidden="true"></span>
+      <span id="briefingLocation">SITE UNKNOWN</span>
+    </div>
+  </header>
+  <div class="fw-brief-v3-overview" id="briefingOverview">
+    <div class="fw-brief-v3-objective">
+      <div class="fw-brief-v3-kicker">YOUR MISSION</div>
+      <h2 id="briefingPrimary">Secure the objective.</h2>
+      <div class="fw-brief-v3-steps" id="briefingSteps" aria-label="Mission progression"></div>
+    </div>
+    <div class="fw-brief-v3-situation" id="briefingSituationBlock">
+      <h3>SITUATION</h3><p id="briefingSituation"></p>
+    </div>
+    <div class="fw-brief-v3-facts" aria-label="Operational intelligence">
+      <div class="fw-brief-v3-fact">
+        <div class="fw-brief-v3-fact-label"><span class="fw-brief-v3-fact-marker" aria-hidden="true"></span> THREAT</div>
+        <strong id="briefingThreat">UNCONFIRMED</strong>
+      </div>
+      <div class="fw-brief-v3-fact">
+        <div class="fw-brief-v3-fact-label"><span class="fw-brief-v3-fact-marker" aria-hidden="true"></span> SITE KNOWLEDGE</div>
+        <strong id="briefingLayout">INTERIOR UNKNOWN</strong>
+      </div>
+    </div>
   </div>
-  <div class="fw-dossier-block fw-dossier-objective">
-    <h3>OBJECTIVE</h3><p id="briefingBody"></p>
+  <div class="fw-brief-v3-intel" id="briefingIntelView" hidden>
+    <nav class="fw-brief-v3-intel-tabs" aria-label="Intelligence categories">
+      <button type="button" data-briefing-tab="threat" aria-pressed="true">THREATS</button>
+      <button type="button" data-briefing-tab="site" aria-pressed="false">SITE</button>
+      <button type="button" data-briefing-tab="case" aria-pressed="false">CASE</button>
+      <button type="button" data-briefing-tab="contract" aria-pressed="false">ORDERS</button>
+    </nav>
+    <div class="fw-brief-v3-intel-details" id="briefingIntelDetails">
+      <div class="fw-brief-v3-detail" data-briefing-section="threat">
+        <h3>THREAT REPORTS</h3><div id="briefingIntel"></div>
+      </div>
+      <div class="fw-brief-v3-detail" data-briefing-section="site" hidden>
+        <h3>SITE INTELLIGENCE</h3><p id="briefingSite"></p>
+        <div id="briefingSiteReports"></div>
+      </div>
+      <div class="fw-brief-v3-detail" data-briefing-section="case" hidden>
+        <h3>CASE SUMMARY</h3><p id="briefingCaseContext"></p>
+        <div id="briefingCaseReports"></div>
+        <p id="briefingCampaignContext"></p>
+        <h3>ASSIGNED TEAM</h3><p id="briefingRoster"></p>
+      </div>
+      <div class="fw-brief-v3-detail" data-briefing-section="contract" hidden>
+        <h3>PRIMARY OBJECTIVE</h3><p id="briefingBody"></p>
+        <h3>SUCCESS CONDITION</h3><p id="briefingCondition"></p>
+        <h3>EXTRACTION</h3><p id="briefingExtraction"></p>
+      </div>
+    </div>
   </div>
-  <div class="fw-dossier-grid">
-    <div class="fw-dossier-block"><h3>SUCCESS CONDITION</h3><p id="briefingCondition"></p></div>
-    <div class="fw-dossier-block"><h3>EXTRACTION</h3><p id="briefingExtraction"></p></div>
-  </div>
-  <div class="fw-dossier-block"><h3>SITE INTELLIGENCE</h3><p id="briefingSite"></p></div>
-  <div class="fw-dossier-block"><h3>KNOWN INTELLIGENCE</h3><p id="briefingIntel"></p></div>
-  <div class="fw-dossier-block"><h3>ASSIGNED TEAM</h3><p id="briefingRoster"></p></div>
-  <button id="briefingClose" type="button">RETURN TO PLANNING</button>
+  <footer class="fw-brief-v3-footer">
+    <div class="fw-brief-v3-entry">
+      <div class="fw-brief-v3-entry-summary">
+        <span>INSERTION</span><strong id="briefingEntryLabel">FRONT</strong>
+      </div>
+      <div id="briefingEntryControls" class="fw-brief-v3-entry-controls"></div>
+    </div>
+    <div class="fw-brief-v3-actions">
+      <button id="briefingIntelToggle" type="button" aria-expanded="false" aria-controls="briefingIntelView">VIEW INTEL</button>
+      <button id="briefingClose" type="button">PLAN INSERTION</button>
+    </div>
+  </footer>
 </section>
 <div id="contextTools" class="context-tools" role="toolbar" aria-label="Contextual tactical actions" hidden></div>
 <button id="cancelTarget" class="cancel-target" type="button" hidden aria-label="Cancel target selection">CANCEL</button>
@@ -158,6 +215,7 @@
     <p id="debriefStats"></p>
   </details>
   <button id="watchReplay" type="button">WATCH REPLAY</button>
+  <button id="favoriteMission" type="button">☆ FAVORITE MISSION</button>
   <button id="retry" type="button">RETRY MISSION</button>
   <button id="next" type="button">NEXT ARRANGEMENT</button>
 </section>
@@ -207,6 +265,8 @@
           <button id="replayView" type="button">ISO</button>
           <button id="replaySight" type="button">TEAM SIGHT</button>
           <button id="replayFollow" type="button">FOLLOW</button>
+          <button id="replaySquad" type="button" aria-pressed="false">FOLLOW SQUAD</button>
+          <button id="replayDirector" type="button" aria-pressed="false">DIRECTOR OFF</button>
           <button id="replayNames" type="button" aria-label="Replay name tags">NAMES ON</button>
         </div>
       </section>
@@ -218,6 +278,7 @@
           <button id="replayPlanVersion" type="button" aria-label="Original or active historical plan">PLAN ACTIVE</button>
           <button id="replayTraces" type="button" aria-label="Replay bullet trajectory display">TRACES OFF</button>
           <button id="replayGhosts" type="button" aria-label="Replay historical movement ghosts">GHOSTS OFF</button>
+          <button id="replayTrails" type="button" aria-label="Replay actual operator paths">ACTUAL PATH OFF</button>
         </div>
       </section>
       <section class="replay-group" data-replay-group="precision" hidden>
@@ -229,6 +290,9 @@
           <button id="replayNextFrame" type="button" title="Next interpolated 60 FPS frame" aria-label="Next visual frame">+ FRAME</button>
           <button id="replayPrevSample" type="button" title="Previous recorded 20 Hz sample" aria-label="Previous recorded sample">− SAMPLE</button>
           <button id="replayNextSample" type="button" title="Next recorded 20 Hz sample" aria-label="Next recorded sample">+ SAMPLE</button>
+          <button id="replayLoopIn" type="button">SET LOOP IN</button>
+          <button id="replayLoopOut" type="button">SET LOOP OUT</button>
+          <button id="replayLoopToggle" type="button" aria-pressed="false">LOOP OFF</button>
         </div>
         <p class="replay-group-note">FRAME = 60 FPS visual step · SAMPLE = 20 Hz recorded state</p>
       </section>
@@ -242,6 +306,25 @@
       </section>
     </div>
     <section id="replayFeedPanel" class="replay-feed-panel" hidden>
+      <div class="replay-chapter-tools">
+        <button id="replayPrevChapter" type="button">◀ CHAPTER</button>
+        <button id="replayBookmark" type="button">+ BOOKMARK</button>
+        <button id="replayNextChapter" type="button">CHAPTER ▶</button>
+      </div>
+      <div id="replayChapterList" class="replay-chapter-list"
+        aria-label="Replay chapters and bookmarks"></div>
+      <section id="replayShotInspector" class="replay-shot-inspector" hidden aria-label="Shot investigation">
+        <div class="replay-inspector-head">
+          <strong id="replayShotTitle">SHOT INSPECTOR</strong>
+          <button id="replayShotClose" type="button" aria-label="Close shot inspector">×</button>
+        </div>
+        <output id="replayShotDetails" class="replay-inspector-details"></output>
+        <div class="replay-inspector-actions">
+          <button id="replayShotPrev" type="button">PREV SHOT</button>
+          <button id="replayShotFocus" type="button">FOCUS IMPACT</button>
+          <button id="replayShotNext" type="button">NEXT SHOT</button>
+        </div>
+      </section>
       <div class="replay-feed-tools">
         <label for="replayFeedFilter">SHOW</label>
         <select id="replayFeedFilter" aria-label="Filter mission events" hidden>

@@ -1,10 +1,11 @@
-/** Physical support-grip regions use the exact AR/AK furniture extents from
+/** Physical support-grip regions use the exact AR/AK/HK furniture extents from
  * the visible silhouette builders. This never changes shot-time ballistics.
  */
 import type {WeaponId} from './breach-combat.ts';
 import {resolveWeaponAssembly,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {AR_VISUAL_AXIS_Y} from './weapons/geometry/ar-barrel-profiles.ts';
 import {akBarrelArt,AK_BARREL_ART} from './weapons/geometry/ak-barrel-profiles.ts';
+import {hkBarrelArt} from './weapons/geometry/hk-barrel-profiles.ts';
 export type RiflePoint={x:number;y:number;z:number};
 export type RifleContactRange={near:RiflePoint;far:RiflePoint;preferredFraction:number};
 export type RiflePoseContacts={family:'ar'|'ak'|'hk';stock:RiflePoint;
@@ -24,9 +25,14 @@ export function riflePoseContacts(
  const b=config.build;
  if(b.family!=='ar'&&b.family!=='ak'&&b.family!=='hk')return null;
  const a=resolveWeaponAssembly(config),ar=b.family==='ar',hk=b.family==='hk';
- const start=hk?4.05:ar?AR_HANDGUARD_START:akHandguardStart(b.parts.receiver);
- const end=hk?14.05:ar?arHandguardEnd(b.parts.handguard):
-  (akBarrelArt(b.parts.barrel)??AK_BARREL_ART['ak-long']).handguardFrontX;
+ // HK reach targets share the fore-end's authoritative barrel-art landmarks.
+ // Never independently hardcode a number that can silently drift from mesh art.
+ const hkArt=hk?hkBarrelArt(b.parts.barrel):undefined;
+ const start=hkArt?.handguardStartX??
+  (ar?AR_HANDGUARD_START:akHandguardStart(b.parts.receiver));
+ const end=hkArt?.handguardEndX??
+  (ar?arHandguardEnd(b.parts.handguard):
+  (akBarrelArt(b.parts.barrel)??AK_BARREL_ART['ak-long']).handguardFrontX);
  // The *physical* lower receiver/magwell joint is a supported hold.
  // Restricting the hand to farther-forward furniture forced near-full
  // extension and made a comfortably bent elbow impossible.

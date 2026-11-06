@@ -50,10 +50,25 @@ try{
     document.querySelector('#phase')?.textContent==='PLANNING'&&
     !!document.querySelector('#breach3dCanvas'),null,{timeout:60000});
   await page.locator('#play').click();
-  await page.waitForTimeout(700);
-  await page.evaluate(()=>document.querySelector('#watchReplay').click());
-  await page.waitForFunction(()=>
-    document.querySelector('#replayPanel')?.hidden===false,null,{timeout:15000});
+  // Software WebGL in headless CI may execute only a handful of simulation
+  // frames during the first second. The recorder needs >=2 world samples.
+  let opened=false;
+  for(let attempt=0;attempt<6&&!opened;attempt++){
+    await page.waitForTimeout(750);
+    await page.evaluate(()=>document.querySelector('#watchReplay').click());
+    opened=await page.evaluate(()=>
+      document.querySelector('#replayPanel')?.hidden===false);
+  }
+  if(!opened){
+    const diagnostic=await page.evaluate(()=>({
+      phase:document.querySelector('#phase')?.textContent,
+      replayDisabled:document.querySelector('#watchReplay')?.disabled,
+      clock:document.querySelector('#clock')?.textContent,
+      bodyState:document.body.className
+    }));
+    throw Error('Could not enter replay after recording samples: '+
+      JSON.stringify({diagnostic,errors}));
+  }
 
   const compact=await page.evaluate(measure);
   check(compact.drawer.hidden,'Drawer must be closed by default');
@@ -73,6 +88,19 @@ try{
   check(view.drawer.top>=0,'Drawer leaves the viewport');
   check(view.activeTabs.join()==='view','View tab must show selected state');
 
+  // R3: advanced camera controls live exclusively in View, not on the dock.
+  check(await page.locator('#replayDirector').isVisible(),
+    'R3 Director must be accessible under View');
+  check(await page.locator('#replaySquad').isVisible(),
+    'R3 Squad follow must be accessible under View');
+  await page.locator('#replayDirector').click();
+  check((await page.locator('#replayDirector').getAttribute('aria-pressed'))==='true',
+    'Director button did not activate');
+  await page.locator('#replaySquad').click();
+  check((await page.locator('#replayDirector').getAttribute('aria-pressed'))==='false',
+    'Squad mode must disable Director');
+  check((await page.locator('#replaySquad').getAttribute('aria-pressed'))==='true',
+    'Squad camera did not activate');
   await page.locator('[data-replay-tab=layers]').click();
   const layers=await page.evaluate(measure);
   check(layers.visibleGroups.join()==='layers',
@@ -93,6 +121,18 @@ try{
 
   await page.locator('#replayFeedToggle').click();
   const feed=await page.evaluate(measure);
+  check(await page.locator('#replayShotInspector').count()===1,
+    'R3 contextual shot inspector missing from Events drawer');
+  check(await page.locator('#replayShotInspector').isHidden(),
+    'Shot inspector must stay hidden when nothing was selected');
+  check(await page.locator('#replayBookmark').isVisible(),
+    'R3 bookmark action must live inside the Events drawer');
+  check(await page.locator('#replayPrevChapter').isVisible()&&
+    await page.locator('#replayNextChapter').isVisible(),
+    'R3 event-grounded chapter navigation missing');
+  await page.locator('#replayBookmark').click();
+  check((await page.locator('#replayChapterList .replay-chapter-item').count())>=2,
+    'R3 bookmark/chapter list failed to update');
   check(!feed.feedHidden&&feed.visibleGroups.length===0&&
     feed.activeTabs.join()==='events',
     'Events tab must take over the drawer without showing the tool grid');
