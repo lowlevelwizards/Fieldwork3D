@@ -4331,7 +4331,7 @@ fieldLightButton.type='button';fieldLightButton.textContent='WEAPON LIGHT';
 fieldLightButton.setAttribute('aria-label','Toggle selected operator weapon light');
 fieldLightButton.addEventListener('click',()=>{
  if(replaying)return;
- toggleWeaponLight(state,selected);updateHud();
+ toggleWeaponLight(state,selected);playOrderCue('equipment.flashlight_click');updateHud();
 });
 ui.siteSettings.append(fieldLightButton);
 const leaveRangeButton=document.createElement('button');
