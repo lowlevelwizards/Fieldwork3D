@@ -11,6 +11,7 @@ export function idleLifeAt(seconds:number,seed:number,state:IdleLifeState){
  const quiet=clamp01(1-Math.max(0,state.speed)/10)*
   (state.aiming||state.firing||state.reloading||state.down||
    state.surrender||state.interacting?0:1);
+ if(quiet===0)return {breathe:0,glance:0,sway:0,weight:0};
  const t=Math.max(0,Number.isFinite(seconds)?seconds:0);
  const phase=(seed>>>0)*.000193;
  // Micro-motion only. This is independent of the tactical timeline so
