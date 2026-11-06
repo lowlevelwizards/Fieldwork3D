@@ -37,15 +37,24 @@ try{
    {id:'ak-akm',armor:'plate-standard',rig:'chicom-rig',top:'bdu-shirt'},
    {id:'ak-aks74u',armor:'plate-jpc',rig:'no-rig',top:'smock-jacket'}
   ];
+  const panel=page.locator('#poseFitPanel');
   for(const f of fixtures){
+   await panel.evaluate(node=>{node.open=true;});
    for(const [i,value] of [f.id,f.armor,f.rig,f.top].entries())
     await pickers.nth(i).selectOption(value);
-   await page.waitForFunction(()=>['clear','guard-fallback'].includes(
-    document.getElementById('preview')?.dataset.lowReadyFit??''),
-    null,{timeout:14000});
+   // Must verify the ACTUAL normalized model, not just the selection label:
+   // incompatible armor previously downgraded invisibly to a bare kit.
+   await page.waitForFunction(f=>{
+    const data=document.getElementById('preview')?.dataset;
+    return data?.poseFitWeapon===f.id&&data?.poseFitArmor===f.armor&&
+     data?.poseFitRig===f.rig&&data?.poseFitTop===f.top&&
+     ['clear','guard-fallback'].includes(data?.lowReadyFit??'');
+   },f,{timeout:14000});
    const status=await page.locator('#preview').getAttribute('data-low-ready-fit');
    if(f.required&&status!==f.required)
     throw Error('Expected '+f.id+' clear two-hand pose, got '+status);
+   // The inspector must not obscure the chest and arms in the screenshot.
+   await panel.evaluate(node=>{node.open=false;});
    for(const view of ['front','side','iso']){
     await page.evaluate(v=>{
      const b=document.querySelector('button[data-view="'+v+'"]');
@@ -57,7 +66,7 @@ try{
      path:'breach-pose-fit-captures/'+f.id+'-'+f.armor+'-'+view+'.png'
     });
    }
-   console.log('POSE-FIT PHONE',f.id,f.armor,f.rig,status);
+   console.log('POSE-FIT PHONE',f.id,f.armor,f.rig,f.top,status);
   }
   if(errors.length)throw Error(errors.join('; '));
  }finally{await browser.close();}
