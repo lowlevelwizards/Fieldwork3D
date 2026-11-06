@@ -40,6 +40,8 @@ import {readFavoriteMissions,addFavoriteMission,removeFavoriteMission,
   writeFavoriteMissions,type FavoriteMission} from './breach-mission-favorites.ts';
 import {compileMissionFacts} from './briefing/mission-facts.ts';
 import {createOperationDossier} from './briefing/briefing-composer.ts';
+import {createBriefingCardModel,type BriefingReport,type BriefingTab}
+ from './briefing/briefing-view-model.ts';
 import {sessionIntelligenceReview} from './briefing/briefing-after-action.ts';
 import {attachCampaignDossierContext} from './briefing/campaign-context.ts';
 import type {QuickPlayGenerationRequest,QuickPlayGenerationResponse}
@@ -196,6 +198,21 @@ const ui={
   briefingIntel:el<HTMLElement>('briefingIntel'),
   briefingRoster:el<HTMLElement>('briefingRoster'),
   briefingClose:el<HTMLButtonElement>('briefingClose'),
+  briefingPrimary:el<HTMLElement>('briefingPrimary'),
+  briefingType:el<HTMLElement>('briefingType'),
+  briefingLocation:el<HTMLElement>('briefingLocation'),
+  briefingThreat:el<HTMLElement>('briefingThreat'),
+  briefingLayout:el<HTMLElement>('briefingLayout'),
+  briefingSteps:el<HTMLElement>('briefingSteps'),
+  briefingOverview:el<HTMLElement>('briefingOverview'),
+  briefingIntelView:el<HTMLElement>('briefingIntelView'),
+  briefingIntelToggle:el<HTMLButtonElement>('briefingIntelToggle'),
+  briefingEntryControls:el<HTMLElement>('briefingEntryControls'),
+  briefingEntryLabel:el<HTMLElement>('briefingEntryLabel'),
+  briefingCaseContext:el<HTMLElement>('briefingCaseContext'),
+  briefingCampaignContext:el<HTMLElement>('briefingCampaignContext'),
+  briefingSiteReports:el<HTMLElement>('briefingSiteReports'),
+  briefingCaseReports:el<HTMLElement>('briefingCaseReports'),
   context:el<HTMLElement>('contextTools'),
   quickStates:el<HTMLElement>('quickStates'),
   quickScope:el<HTMLElement>('quickScope'),
@@ -523,10 +540,8 @@ state.operationDossier=buildPreviewDossier(state);
 let recorder=new MissionRecorder();recorder.capture(state,true);
 const deploymentButton=document.createElement('button');
 deploymentButton.type='button';deploymentButton.id='deploymentChoice';
-deploymentButton.style.cssText='display:block;margin:10px 0;padding:8px 12px;'+
- 'font:inherit;letter-spacing:.06em;background:#222b2b;color:#e5e2ce;'+
- 'border:1px solid #7b8475;border-radius:3px;cursor:pointer';
-ui.briefingRoster.insertAdjacentElement('afterend',deploymentButton);
+deploymentButton.setAttribute('aria-label','Cycle available insertion points');
+ui.briefingEntryControls.append(deploymentButton);
 let deploymentState:Session|null=null;
 let deployOptions:ReturnType<typeof availableDeployments>=[];
 let selectedEntry='FRONT';
@@ -609,9 +624,9 @@ function refreshDeployment(){
   team(state).every(a=>a.plan.length===0);
  deploymentButton.hidden=!state.site||state.started||deployOptions.length===0;
  deploymentButton.disabled=!editable;
- deploymentButton.textContent='ENTRY · '+
-  (selectedEntry==='FRONT'?'FRONT (DEFAULT)':selectedEntry.toUpperCase())+
-  ' · CHANGE';
+ deploymentButton.textContent='CHANGE ENTRY';
+ ui.briefingEntryLabel.textContent=selectedEntry==='FRONT'?
+   'FRONT ENTRANCE':selectedEntry.toUpperCase().replaceAll('-', ' ');
  deploymentButton.title=editable?'Cycle physically verified exterior entry points':
   'Select the insertion before plotting routes or starting GO';
 }
@@ -626,6 +641,10 @@ deploymentButton.addEventListener('click',()=>{
   missionStart=captureMissionStart(state,requestedSiteScale,selectedEntry);
   recorder=new MissionRecorder();recorder.capture(state,true);
   refreshDeployment();
+  if(!reducedMotionMedia.matches)ui.briefingEntryLabel.animate([
+    {opacity:.5,transform:'translateY(2px)'},
+    {opacity:1,transform:'translateY(0)'}
+  ],{duration:180,easing:'ease-out'});
  }
 });
 const OPERATION_HISTORY_KEY='fieldwork3d.operation-history.v1';
@@ -2188,6 +2207,93 @@ function medicalCandidate(id:string){
   return wound&&treatmentSupplyForWound(wound,a.medicalSupplies);
  }).sort((x,y)=>distance(a.p,x.p)-distance(a.p,y.p))[0]??null;
 }
+/** V3: render only when mission identity or roster changes; never on each frame. */
+let briefingRenderedSession:Session|null=null;
+let briefingRenderedDossier:Session['operationDossier'];
+let briefingRenderedRoster='';
+let briefingRenderedEntry='';
+function renderBriefingReports(root:HTMLElement,reports:readonly BriefingReport[]):void{
+ const fragment=document.createDocumentFragment();
+ if(!reports.length){
+  const message=document.createElement('p');message.className='fw-brief-v3-report-empty';
+  message.textContent='No additional verified reports available.';
+  fragment.append(message);
+ }
+ for(const report of reports){
+  const article=document.createElement('article');article.className='fw-brief-v3-report';
+  const meta=document.createElement('div');meta.className='fw-brief-v3-report-meta';
+  meta.textContent=report.source.toUpperCase()+' · '+report.confidence.toUpperCase();
+  const body=document.createElement('p');body.textContent=report.text;
+  article.append(meta,body);fragment.append(article);
+ }
+ root.replaceChildren(fragment);
+}
+function syncBriefingCard():void{
+ const dossier=briefingPreviewEnabled?state.operationDossier:undefined;
+ const names=team(state).map(actor=>actor.name).join(' · ');
+ if(state===briefingRenderedSession&&dossier===briefingRenderedDossier&&
+    names===briefingRenderedRoster&&selectedEntry===briefingRenderedEntry)return;
+ briefingRenderedSession=state;
+ briefingRenderedDossier=dossier;
+ briefingRenderedRoster=names;
+ briefingRenderedEntry=selectedEntry;
+ const brief=operationBriefing(state);
+ const model=createBriefingCardModel(state.missionType,brief,dossier);
+ ui.briefingTitle.textContent=model.title;
+ ui.briefingType.textContent=model.missionLabel.toUpperCase();
+ ui.briefingLocation.textContent=model.siteLabel;
+ ui.briefingPrimary.textContent=model.primary;
+ ui.briefingSituationBlock.hidden=false;
+ ui.briefingSituation.textContent=model.situation;
+ ui.briefingThreat.textContent=model.threat.value;
+ ui.briefingLayout.textContent=model.layout;
+ const steps=document.createDocumentFragment();
+ model.steps.forEach((step,index)=>{
+  const cell=document.createElement('div');cell.className='fw-brief-v3-step';
+  const head=document.createElement('strong');
+  head.textContent=String(index+1).padStart(2,'0')+' / '+step.action;
+  const subtitle=document.createElement('small');subtitle.textContent=step.detail;
+  cell.append(head,subtitle);steps.append(cell);
+ });
+ ui.briefingSteps.replaceChildren(steps);
+ // Full authority remains available under ORDERS, never re-authored by prose.
+ ui.briefingBody.textContent=model.objective;
+ ui.briefingCondition.textContent=model.condition;
+ ui.briefingExtraction.textContent=model.extraction;
+ ui.briefingSite.textContent=model.siteLabel+' · '+model.layout;
+ ui.briefingCaseContext.textContent=model.situation+
+   (model.caseContext?'\n\n'+model.caseContext:'');
+ const job=campaignMode==='mission'&&campaign?.activeContractId?
+   campaign.contracts.find(c=>c.id===campaign!.activeContractId):undefined;
+ ui.briefingCampaignContext.textContent=[
+   model.campaignLabel??(job?
+     job.region.toUpperCase()+' · RISK '+job.risk+' · '+job.title:''),
+   model.followUp??''
+ ].filter(Boolean).join('\n');
+ ui.briefingRoster.textContent=brief.squad+' OPERATORS · '+names;
+ renderBriefingReports(ui.briefingIntel,model.reports.threat);
+ renderBriefingReports(ui.briefingSiteReports,model.reports.site);
+ renderBriefingReports(ui.briefingCaseReports,model.reports.case);
+}
+let currentBriefingTab:BriefingTab='threat';
+function setBriefingIntelTab(tab:BriefingTab):void{
+ currentBriefingTab=tab;
+ for(const control of ui.briefingPanel.querySelectorAll<HTMLButtonElement>(
+   '[data-briefing-tab]'))
+  control.setAttribute('aria-pressed',String(control.dataset.briefingTab===tab));
+ for(const section of ui.briefingPanel.querySelectorAll<HTMLElement>(
+   '[data-briefing-section]'))
+  section.hidden=section.dataset.briefingSection!==tab;
+}
+function setBriefingView(mode:'brief'|'intel'):void{
+ const intel=mode==='intel';
+ ui.briefingOverview.hidden=intel;
+ ui.briefingIntelView.hidden=!intel;
+ ui.briefingIntelToggle.textContent=intel?'BACK TO BRIEF':'VIEW INTEL';
+ ui.briefingIntelToggle.setAttribute('aria-expanded',String(intel));
+ if(intel)setBriefingIntelTab('threat');
+}
+
 function updateHud(){
   if(!replaying&&state.phase==='planning')recorder.capturePlanning(state);
   const identity=currentSiteIdentity(state.site,campaignMode==='quick');
@@ -2239,32 +2345,7 @@ function updateHud(){
   }
   recordCompletedOperation();
   refreshDeployment();
-  const brief=operationBriefing(state);
-  const dossier=briefingPreviewEnabled?state.operationDossier:undefined;
-  ui.briefingTitle.textContent=dossier?
-    dossier.identity.title+' / '+brief.name:brief.code+' / '+brief.name;
-  ui.briefingBody.textContent=brief.objective;
-  ui.briefingSituationBlock.hidden=!dossier;
-  const continuity=dossier?.campaign?.followUp;
-  ui.briefingSituation.textContent=dossier?
-    dossier.incident.lead+' '+dossier.incident.context+
-      (continuity?'\n\nCASE CONTINUITY · Follow-up to '+
-        continuity.title+' ('+continuity.outcome.toUpperCase()+
-        ') in '+dossier.campaign!.region+'.':''):'';
-  ui.briefingCondition.textContent=brief.condition;
-  ui.briefingExtraction.textContent=brief.extraction;
-  const contract=campaignMode==='mission'&&campaign?.activeContractId?
-    campaign.contracts.find(c=>c.id===campaign!.activeContractId):undefined;
-  const caseAssignment=dossier?.campaign??contract;
-  ui.briefingSite.textContent=brief.building+' · '+brief.layout+
-    (caseAssignment?'\n'+caseAssignment.region.toUpperCase()+
-      ' · '+['','LOW','MODERATE','HIGH'][caseAssignment.risk]+
-      ' RISK · '+caseAssignment.title.toUpperCase():'');
-  ui.briefingIntel.textContent=dossier?
-    dossier.claims.map(c=>'['+c.source.toUpperCase()+' · '+
-      c.confidence.toUpperCase()+'] '+c.text).join('\n\n'):brief.notes;
-  ui.briefingRoster.textContent=brief.squad+' OPERATORS · '+
-    team(state).map(a=>a.name).join(' · ');
+  syncBriefingCard();
   if(state.phase!=='planning'){
     ui.briefingPanel.hidden=true;operationsBoard.hidden=true;
   }
@@ -5454,7 +5535,8 @@ ui.cameraFit.addEventListener('click',()=>{
 });
 function showMissionBriefing(){
   if(state.phase!=='planning'||replaying||!state.site)return;
-  // Opening from either mode is safe; never reroll the incident on display.
+  // Always open on the five-second overview; details are optional.
+  setBriefingView('brief');
   updateHud();
   collapseTacticalSheets('briefing');
   ui.briefingPanel.hidden=false;
@@ -5463,6 +5545,15 @@ function showMissionBriefing(){
   updateContext();
 }
 ui.briefingToggle.addEventListener('click',showMissionBriefing);
+ui.briefingIntelToggle.addEventListener('click',()=>{
+ const opening=ui.briefingIntelView.hidden;
+ setBriefingView(opening?'intel':'brief');
+});
+for(const button of ui.briefingPanel.querySelectorAll<HTMLButtonElement>(
+ '[data-briefing-tab]')){
+ button.addEventListener('click',()=>setBriefingIntelTab(
+  button.dataset.briefingTab as BriefingTab));
+}
 ui.briefingClose.addEventListener('click',()=>{
   ui.briefingPanel.hidden=true;
   ui.briefingToggle.setAttribute('aria-expanded','false');
