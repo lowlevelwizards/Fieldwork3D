@@ -41,7 +41,7 @@ test('R4.5 flatter receiver belly, forward dust-cover nose, and flush furniture 
   assert.ok(hand.min.x<rb.max.x-.3,id+' lower furniture seated');
   assert.ok(cb.max.x>rb.max.x-.2,id+' cover nose reaches furniture');
   const pieces=slot(m.group,'handguard');
-  const lower=box(pieces[0]),upper=box(pieces[1]);
+  const lower=box(pieces[0]),upper=box(pieces[2]);
   assert.ok(upper.min.y>lower.max.y+.15,id+' deliberate upper-lower gap');
   const lowerH=lower.max.y-lower.min.y,upperH=upper.max.y-upper.min.y;
   assert.ok(upperH/lowerH>.48&&upperH/lowerH<.85,

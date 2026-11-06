@@ -13,6 +13,12 @@ import {akMagazineCurve,akMagazineOutline,akMagazineRibOutlines}
  from './ak-magazine-profiles.ts';
 import {akBarrelArt,AK_BARREL_ART} from './ak-barrel-profiles.ts';
 
+// Single shared muted-silver finish: three actual cross-top stamped bands,
+// not floating side decals. Material is reused for every preview/build.
+const AK_COVER_STAMP_METAL=new THREE.MeshLambertMaterial({
+ color:0x90978f
+});
+
 export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material){
  const parts=build.parts,material=[steel,dark,wood] as const;
@@ -47,11 +53,15 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
    [3.7,-2.05]]:
   [[-6.55,-2.05],[-6.45,1.05],[-5.45,1.15],[3.9,1.1],
    [4.15,-2.05]],3.85,0);
+ // Cover is a slightly narrower stamped shell; its shallow rear rake
+ // meets the lower receiver cleanly. Its long front nose seats beneath
+ // the rear-sight block and slightly INTO the rear upper furniture.
  p('receiver',compact?
-  [[-5.45,1.1],[-4.93,2.37],[1.45,2.4],[3.36,1.92],[4.25,1.10]]:
-  [[-6.32,1.1],[-5.62,2.34],[1.95,2.38],[3.45,2.17],
-   [4.93,1.53],[5.10,1.12]],
-  3.5,1);
+  [[-5.48,1.1],[-4.80,2.34],[1.64,2.43],
+   [3.50,2.05],[4.34,1.10]]:
+  [[-6.38,1.10],[-5.56,2.30],[1.94,2.36],
+   [3.36,2.27],[4.98,1.54],[5.28,1.10]],
+  3.12,1);
  // The old rear-side metal slab was read as a second ejection port.
  // Keep the receiver face clean; actual details are authored below.
  // A short angled seating region, not an AR-style external magwell.
@@ -65,72 +75,88 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  p('receiver',[[3.25,-1.06],[4.13,-1.06],
   [4.14,-2.05],[3.25,-2.05]],3.55,0);
  if(compact){
-  // AKS-74U hinged dust cover with a LOW, squat rear-sight hump.
-  // Avoid the previous tall, flat slab that read as a holographic optic.
-  p('receiver',[[-5.12,2.2],[-4.56,2.68],[-1.42,2.77],
-   [-.7,2.28]],2.25,1);
-  p('receiver',[[-4.53,2.64],[-4.24,3.19],[-3.42,3.19],
-   [-3.18,2.72]],1.45,0);
+  // The 74U rear sight belongs to the hinged cover; the two protective
+  // ears must be separate, with actual air between them in side/3D views.
+  // Move their assembly forward; never model one oversized rear hump.
+  p('receiver',[[-4.83,2.26],[-4.32,2.63],[-1.18,2.69],
+   [-.82,2.30]],2.12,1);
+  const ears:readonly Outline[]=[
+   [[-2.75,2.50],[-2.55,3.15],[-2.15,3.15],[-2.00,2.52]],
+   [[-1.92,2.52],[-1.75,3.15],[-1.35,3.15],[-1.20,2.53]]
+  ];
+  for(const [i,outline] of ears.entries()){
+   const ear=p('receiver',outline,.67,0);
+   ear.position.z=i===0?-.94:.94;
+  }
  }else{
-  // True AK sight block belongs at the FORWARD edge of the dust cover.
-  // An intentionally low stepped outline, not a rear-mounted holo-looking box.
-  // The rear sight rests on the forward cover termination and the
-  // lower saddle overlaps the upper handguard's rear quarter.
-  // Shallow, broad rear sight ramp seated directly at the dust-cover nose.
-  p('receiver',[[2.88,2.17],[3.16,2.72],[3.58,2.86],
-   [4.18,2.82],[4.53,2.35],[4.80,2.17]],2.0,0);
+  // Low rear-sight leaf shares the cover silhouette, rather than sitting
+  // on top as a detached cap. Its broad base is buried in the stamped roof.
+  p('receiver',[[2.70,1.86],[2.94,2.58],[3.37,2.68],
+   [3.76,2.59],[4.10,1.86]],2.0,0);
  }
 
  // Two small exterior clues: a selector toward the rear and an ejection
  // mark above the magazine. Never confuse these with gameplay anatomy.
- addWeaponPixelMark(root,'ak-selector',-.86,-.39,1.98,3.20,.96);
- // Classic stamped covers carry coarse ribs. 74M/100-series smooth
- // covers and the hinged 74U cover deliberately stay clean.
- if(parts.receiver==='akm'||parts.receiver==='ak74'||rpk)
-  addWeaponPixelMarkPair(root,'ak-cover-ribs',-2.05,1.91,1.79,4.2,.80);
+ // Slightly rearward, taller selector: one substantial stamped lever.
+ addWeaponPixelMark(root,'ak-selector',-1.40,-.35,1.98,3.36,1.20);
+ // Classic AKM/74/RPK covers: three broad silver bands across the TOP,
+ // set into its surface. Do not apply to modern smooth or hinged 74U roofs.
+ if(parts.receiver==='akm'||parts.receiver==='ak74'||rpk){
+  const ribs=new THREE.InstancedMesh(
+   new THREE.BoxGeometry(.30,.15,3.14),AK_COVER_STAMP_METAL,3);
+  const transform=new THREE.Matrix4();
+  [-3.8,-2.5,-1.2].forEach((x,i)=>{
+   transform.makeTranslation(x,2.38,0);
+   ribs.setMatrixAt(i,transform);
+  });
+  ribs.instanceMatrix.needsUpdate=true;
+  ribs.name='family-art-ak-cover-ribs';
+  ribs.castShadow=false;ribs.receiveShadow=false;
+  root.add(ribs);
+ }
  addWeaponPixelMark(root,'ak-port',m.portX,m.portY,1.98,
   m.portWidthX,m.portHeightY);
- // One open concave U: trigger guard reads as negative space, not hardware.
- p('receiver',[[-2.96,-2.04],[-2.65,-2.04],
-  [-2.65,-2.53],[-1.03,-2.53],[-1.03,-2.04],
-  [-.73,-2.04],[-.73,-2.83],[-2.96,-2.83]],1.65,1);
+ // Quiet lower receiver construction: two rivets and one broad stamped
+ // relief, authored as ONE texture per side. No added trigger guard.
+ addWeaponPixelMarkPair(root,'ak-receiver-stamp',
+  -1.08,-1.55,1.98,8.4,.60);
 
  // Stock types are visually disparate; the skeletal type MUST stay hollow.
  const stock=parts.stock;
  if(stock==='ak-skeleton'){
   // Preserve the successful open profile, only thicken the connecting bars.
   // Preserve the 74U's successful open skeleton; only extend its rear frame.
-  line('stock',[-5.25,.65],[-13.0,.55],1.0,1.05,0);
-  line('stock',[-5.25,-1.35],[-13.0,-2.5],1.0,1.05,0);
-  line('stock',[-5.25,-1.3],[-9.45,.15],.75,1.05,0);
-  b('stock',-13.5,-1,0,1.05,3.65,2.5,1);
+  line('stock',[-5.25,.65],[-13.0,.55],.91,1.00,0);
+  line('stock',[-5.25,-1.35],[-13.0,-2.5],.90,1.00,0);
+  line('stock',[-5.25,-1.3],[-9.45,.15],.72,1.00,0);
+  b('stock',-13.5,-1,0,.96,3.50,2.30,1);
  }else if(stock.startsWith('ak-rpk-clubfoot')){
   // RPK-specific broad butt, tucked wrist, and exaggerated low clubfoot heel.
   // The comb joins the receiver at the LOWER-receiver roof, not halfway
   // down its wall. Retain the deep clubfoot behind the narrower stock neck.
-  p('stock',[[-15.85,.74],[-10.6,.88],[-6.22,1.01],
-   [-6.38,-1.48],[-9.96,-1.99],[-11.48,-3.55],
-   [-13.75,-4.08],[-15.85,-3.58]],3.35,2);
+  p('stock',[[-15.85,.69],[-10.6,.88],[-6.22,1.01],
+   [-6.38,-1.48],[-9.96,-1.99],[-11.48,-3.43],
+   [-13.75,-4.06],[-15.85,-3.42]],3.06,2);
  }else if(stock==='ak-triangle-full'){
   // Standard AKS-74 side-folding TRIANGLE: strong top rail, single lower
   // diagonal, open center, clean skinny butt. It must not read as an AKMS.
-  line('stock',[-5.90,.62],[-14.15,.52],.89,1.18,0);
-  line('stock',[-5.90,.55],[-14.12,-2.58],.90,1.16,0);
-  b('stock',-14.48,-1.07,0,.86,3.64,2.10,1);
-  b('stock',-5.90,-.15,0,.88,2.18,1.95,0);
+  line('stock',[-5.90,.62],[-14.15,.52],.83,1.12,0);
+  line('stock',[-5.90,.55],[-14.12,-2.58],.84,1.12,0);
+  b('stock',-14.48,-1.07,0,.81,3.47,1.92,1);
+  b('stock',-5.90,-.15,0,.86,2.12,1.90,0);
  }else if(stock==='ak-triangle-padded'){
   // Preserve the prior braced AKS-74 art as a separate custom padded option.
-  line('stock',[-5.42,.62],[-14.1,.62],.92,1.15,0);
-  line('stock',[-5.42,.58],[-14.1,-2.65],.88,1.1,0);
-  line('stock',[-5.48,-1.15],[-9.0,-.72],.66,1.05,0);
-  b('stock',-14.58,-1.05,0,1.25,3.90,2.60,1);
+  line('stock',[-5.42,.62],[-14.1,.62],.85,1.12,0);
+  line('stock',[-5.42,.58],[-14.1,-2.65],.82,1.08,0);
+  line('stock',[-5.48,-1.15],[-9.0,-.72],.62,1.02,0);
+  b('stock',-14.58,-1.05,0,1.17,3.70,2.42,1);
  }else if(stock==='ak-underfolder'){
   // AKMS underfolder in side orthographic: ONE nearly straight rod per
   // receiver side, sloped slightly downward, with a hanging rear buttplate.
   // The pair is separated along Z, not diagonally in XY like a triangle.
   for(const side of [-1,1]){
    const rod=line('stock',[-6.18,-1.00],[-14.31,-1.81],
-    .78,.70,0);
+    .72,.68,0);
    rod.position.z=side*1.14;
    // The rear rail must not cast a striped shadow onto its twin.
    rod.castShadow=false;rod.receiveShadow=false;
@@ -143,13 +169,16 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
    rivet.castShadow=true;rivet.receiveShadow=true;root.add(rivet);
   }
   // Tall vertical rear plate, upper lip and lower transverse connector.
-  b('stock',-14.57,-1.49,0,.86,3.80,2.65,0);
-  b('stock',-14.52,-2.99,0,.85,.48,3.30,0);
+  b('stock',-14.57,-1.49,0,.81,3.60,2.49,0);
+  b('stock',-14.52,-2.99,0,.80,.46,3.12,0);
  }else if(stock==='ak-sidefold'||stock==='ak-sidefold-plum'){
   // Reuse the strongest AK-74M polymer cheek/heel profile across 100-series.
-  p('stock',[[-14.4,.78],[-9.1,.93],[-6.12,.28],
-   [-6.32,-1.42],[-9.75,-2.85],[-14.4,-2.30]],3.35,1);
-  b('stock',-6.29,-.20,0,.68,1.85,2.70,0);
+  // Solid modern folder preserves a hinge/buttpad identity, but adopts
+  // the AKM's clean narrow wrist and controlled drop into the broad butt.
+  p('stock',[[-14.40,.15],[-9.85,-.06],[-6.20,.72],
+   [-6.32,-1.83],[-10.17,-2.88],
+   [-12.75,-3.06],[-14.40,-2.92]],3.07,1);
+  b('stock',-6.29,-.20,0,.64,1.78,2.50,0);
  }else{
   const isWood=stock.startsWith('ak-wood')&&
    !stock.endsWith('-plum');
@@ -158,14 +187,18 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
    // a larger broad rear butt. No narrow pointed wedge at the junction.
    // Smooth the wrist into the butt rather than a sharp dropped elbow.
    p('stock',[[-6.42,.92],[-9.94,-.30],
-    [-10.30,-3.01],[-6.42,-2.04]],3.35,isWood?2:1);
-   p('stock',[[-9.91,-.32],[-15.45,.10],
-    [-15.45,-3.39],[-12.77,-3.48],
-    [-10.24,-2.95]],3.35,isWood?2:1);
+    [-10.30,-3.01],[-6.42,-2.04]],3.07,isWood?2:1);
+   p('stock',[[-9.91,-.32],[-15.45,.00],
+    [-15.45,-3.24],[-12.77,-3.35],
+    [-10.24,-2.95]],3.07,isWood?2:1);
   }else{
-   // Fixed 74-pattern stock keeps its lighter, shallower upper comb.
-   p('stock',[[-15.35,.68],[-10.25,.78],[-6.12,-.48],
-    [-6.4,-1.18],[-11.5,-3.18],[-15.35,-2.92]],3.35,isWood?2:1);
+   // Fixed 74-pattern stock adopts the accepted two-quad AKM contour.
+   // The material and 5.45 front-end, not an awkward wedge, distinguish it.
+   p('stock',[[-6.42,.92],[-9.94,-.30],
+    [-10.30,-3.01],[-6.42,-2.04]],3.07,isWood?2:1);
+   p('stock',[[-9.91,-.32],[-15.45,.00],
+    [-15.45,-3.24],[-12.77,-3.35],
+    [-10.24,-2.95]],3.07,isWood?2:1);
   }
   if(stock.startsWith('ak-wood74'))
    b('stock',-10.7,-1,1.97,2.0,.65,.18,1);
@@ -175,8 +208,8 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const grip=parts.grip,gripWood=grip.startsWith('ak-grip-wood'),
  resin=grip==='ak-grip-bakelite';
  // Rake remains distinct from the AR, but its slimmer root sits at the rear.
- p('grip',shiftProfile([[-3.35,-1.65],[-.8,-1.65],[-1.1,-5.65],
-  [-2.25,-6.1],[-3.55,-5.7]],m.gripShiftX),
+ p('grip',shiftProfile([[-3.18,-1.65],[-.96,-1.65],[-1.18,-5.65],
+  [-2.22,-6.10],[-3.39,-5.7]],m.gripShiftX),
   m.gripDepthZ,gripWood||resin?2:1);
 
  // The 3D sides narrow along Z; their side-view curve remains broad.
@@ -217,6 +250,11 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
    [[start,-1.29],[start+.75,.97],[end-.7,.99],
     [end,-.22],[end-.5,-1.46],[start+.45,-1.46]],3.48,
    woodGuard?2:1);
+ // A short rearward lower furniture heel seats into the receiver's
+ // bottom-front cheek. It is a material-matched shape, not a metal spacer.
+ p('handguard',[[start+.40,-1.34],[start+1.33,-1.45],
+  [start+1.28,-1.91],[start+.67,-2.00],
+  [start+.29,-1.80]],3.40,woodGuard?2:1);
  // Two clean lengths of furniture; the receiver encloses the rear joint.
  // The former tall metal collar created a floating grey slab and is REMOVED.
  // Keep the thin horizontal opening between upper and lower wood/polymer.
