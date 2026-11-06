@@ -34,21 +34,31 @@ function panel(group,view,scale){
   const n=idx?idx.count:pos.count;
   const col=o.material===dark?'#7e9185':
    o.material===steel?'#cdd7c9':'#a8ac92';
-  for(let i=0;i+2<n;i+=3){
-   const pts=[];
-   for(let j=0;j<3;j++){
-    const k=idx?idx.getX(i+j):i+j;
-    const v=new THREE.Vector3(pos.getX(k),pos.getY(k),pos.getZ(k));
-    v.applyMatrix4(o.matrixWorld);
-    pts.push(axisPoint(v,view,scale));
+  // An InstancedMesh is drawn several times. Orthographic audit MUST draw
+  // the actual instances, not a single untransformed unit cube at origin.
+  const instances=o instanceof THREE.InstancedMesh?o.count:1;
+  const instMatrix=new THREE.Matrix4(),world=new THREE.Matrix4();
+  for(let inst=0;inst<instances;inst++){
+   if(o instanceof THREE.InstancedMesh){
+    o.getMatrixAt(inst,instMatrix);
+    world.multiplyMatrices(o.matrixWorld,instMatrix);
+   }else world.copy(o.matrixWorld);
+   for(let i=0;i+2<n;i+=3){
+    const pts=[];
+    for(let j=0;j<3;j++){
+     const k=idx?idx.getX(i+j):i+j;
+     const v=new THREE.Vector3(pos.getX(k),pos.getY(k),pos.getZ(k));
+     v.applyMatrix4(world);pts.push(axisPoint(v,view,scale));
+    }
+    const area=Math.abs((pts[1][0]-pts[0][0])*(pts[2][1]-pts[0][1])-
+      (pts[2][0]-pts[0][0])*(pts[1][1]-pts[0][1]));
+    if(area<1e-8)continue;
+    polys.push('<polygon points="'+pts.map(p=>p.map(t).join(',')).join(' ')+
+     '" fill="'+col+'" />');
    }
-   const twiceArea=Math.abs((pts[1][0]-pts[0][0])*(pts[2][1]-pts[0][1])-
-     (pts[2][0]-pts[0][0])*(pts[1][1]-pts[0][1]));
-   if(twiceArea<1e-8)continue;
-   polys.push('<polygon points="'+pts.map(p=>p.map(t).join(',')).join(' ')+
-    '" fill="'+col+'" />');
   }
  });
+
  const wide=view!=='front';
  const vb=wide?'-22 -12 46 24':'-6 -10 12 20';
  return '<div class="panel"><b>'+view.toUpperCase()+'</b><svg '+
@@ -63,11 +73,17 @@ for(const preset of FAMILY_PRESETS){
  const model=buildWeaponSilhouette(preset.weapon,steel,dark,cfg);
  const scale=resolveWeaponAssembly(cfg).lengthScale;
  const box=new THREE.Box3().setFromObject(model);
+ model.updateMatrixWorld(true);
+ const realBox=new THREE.Box3().setFromObject(model);
+ const artWidth=(realBox.max.x-realBox.min.x)*scale;
+ const artHeight=realBox.max.y-realBox.min.y;
+ const artDepth=realBox.max.z-realBox.min.z;
  const meshes=model.children.length;
  const triangles=model.children.reduce((sum,o)=>{
   if(!(o instanceof THREE.Mesh))return sum;
-  return sum+(o.geometry.index?o.geometry.index.count:
-   o.geometry.attributes.position.count)/3;
+  const instances=o instanceof THREE.InstancedMesh?o.count:1;
+  return sum+((o.geometry.index?o.geometry.index.count:
+   o.geometry.attributes.position.count)/3)*instances;
  },0);
  totalMeshes+=meshes;totalTriangles+=triangles;
  body+='<section class="preset"><div class="meta"><strong>'+

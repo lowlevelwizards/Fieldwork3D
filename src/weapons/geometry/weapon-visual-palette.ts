@@ -7,7 +7,9 @@ const finish=(color:number,roughness=.84)=>
 export const AR_BLACK_METAL=finish(0x414a44,.76);
 export const AR_BLACK_POLYMER=finish(0x343e37,.9);
 /** Slightly lightened stamped steel STANAG; PMAG remains black polymer. */
-export const AR_STANAG_METAL=finish(0x687369,.76);
+export const AR_STANAG_METAL=finish(0x687369,.87);
+/** Muted contour rib, light enough to avoid black jagged barcode marks. */
+export const AR_STANAG_RIB=finish(0x49564b,.96);
 export const AR_MUTED_FDE=finish(0x95836b,.94);
 export const AK_BLACK_METAL=finish(0x454b43,.8);
 export const AK_BLACK_POLYMER=finish(0x354038,.89);

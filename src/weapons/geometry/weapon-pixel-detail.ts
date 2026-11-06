@@ -3,14 +3,15 @@
  * Art-only overlays have no cast shadow and never affect weapon handling.
  */
 import * as THREE from 'three';
-export type WeaponMark='ar-port'|'ak-port'|'ak-selector'|'ak-cover-ribs'|'ris-panel'|'m5-panel'|'ras-panel'|'pri-vents'|'poly-ribs'|'car-ribs'|'a1-vents'|'ar-mag-stamp20'|'ar-mag-stamp30'|'ar-poly-panel'|'ar-birdcage';
+export type WeaponMark='ar-port'|'ak-port'|'ak-selector'|'ak-cover-ribs'|'ris-panel'|'m5-panel'|'ras-panel'|'pri-vents'|'poly-ribs'|'car-ribs'|'a1-vents'|'ar-mag-stamp20'|'ar-mag-stamp30'|'ar-poly-panel'|'ar-birdcage'|'rail-cover-stripes';
 const dimensions:Record<WeaponMark,readonly [number,number]>={
  'ar-port':[16,12],'ak-port':[16,12],
  'ak-selector':[16,8],'ak-cover-ribs':[24,8],'ris-panel':[32,8],'pri-vents':[16,8],
  'poly-ribs':[32,10],'car-ribs':[24,10],'a1-vents':[32,10],
  'm5-panel':[32,8],'ras-panel':[32,8],
  'ar-mag-stamp20':[16,16],'ar-mag-stamp30':[16,24],
- 'ar-poly-panel':[16,24],'ar-birdcage':[16,8]
+ 'ar-poly-panel':[16,24],'ar-birdcage':[16,8],
+ 'rail-cover-stripes':[32,8]
 };
 const shared=new Map<WeaponMark,THREE.MeshBasicMaterial>();
 function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
@@ -47,11 +48,12 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
   // long mold seam crosses the middle. These are not holes or rail covers.
   for(const x of ribX)
    for(let y=1;y<h-1;y++)pixel(x,y,false,true);
-  for(let x=2;x<w-2;x++)pixel(x,Math.floor(h/2),false,true);
+  // Low-contrast lengthwise molding seam must not become a crosshatch grid.
+  for(let x=2;x<w-2;x++)pixel(x,Math.floor(h/2),true);
  }else if(mark==='a1-vents'){
-  // The A1 has dark upper ventilation apertures; never light gray dots.
-  for(const x of [3,9,15,21,27])
-   for(let dx=0;dx<3;dx++)for(let y=2;y<=6;y++)
+  // Five large, strongly matte dark vents on the sloping upper A1 face.
+  for(const x of [2,8,14,20,26])
+   for(let dx=0;dx<4;dx++)for(let y=2;y<=7;y++)
     pixel(x+dx,y,false,true);
  }else if(mark==='ar-mag-stamp20'||mark==='ar-mag-stamp30'){
   // Exactly two substantial press lines. On the 30-rounder their x center
@@ -71,10 +73,15 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
   for(let x=3;x<14;x++)for(let dy=0;dy<2;dy++){
    pixel(x,3+dy,false,true);pixel(x,20-dy,false,true);
   }
- }else if(mark==='ar-birdcage'){
-  for(const x of [5,10])
-   for(let dx=0;dx<2;dx++)for(let y=1;y<=6;y++)
+ }else if(mark==='rail-cover-stripes'){
+  for(const x of [4,9,14,19,24,29])
+   for(let y=1;y<7;y++)for(let dx=0;dx<2;dx++)
     pixel(x+dx,y,false,true);
+ }else if(mark==='ar-birdcage'){
+  // Longitudinal side slots, visually parallel to the barrel axis.
+  for(const y of [1,5])
+   for(let dy=0;dy<2;dy++)for(let x=2;x<14;x++)
+    pixel(x,y+dy,false,true);
  }else if(mark==='pri-vents'){
   for(const x of [3,7,11])for(let y=3;y<=5;y++)pixel(x,y);
   for(let x=3;x<=13;x++)pixel(x,2,true);

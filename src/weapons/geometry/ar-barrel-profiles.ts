@@ -5,6 +5,9 @@
  */
 /** One shared elevated visual bore/fore-end line, relative to receiver side. */
 export const AR_VISUAL_AXIS_Y=.52;
+/** Art-only landmarks: actual sights sit BELOW the exaggerated A-frame roof. */
+export const AR_SIGHT_POST_Y=3.35;
+export const AR_FRONT_GUARD_ROOF_Y=4.10;
 export type ARBarrelArt={
  nominalInches:number;
  profile:'pencil'|'service'|'government'|'spr'|'cqb';

@@ -28,7 +28,7 @@ const width=b=>b.max.x-b.min.x,depth=b=>b.max.z-b.min.z;
 const close=(a,b,eps=.0001)=>Math.abs(a-b)<eps;
 
 test('R3.3 axis contract explicitly separates silhouette X and side-wall depth Z',()=>{
- assert.equal(Object.keys(FAMILY_PARTS).length,91);
+ assert.equal(Object.keys(FAMILY_PARTS).length,92);
  assert.equal(FAMILY_PRESETS.length,17);
  for(const anatomy of [AR_VISUAL_ANATOMY,AK_VISUAL_ANATOMY]){
   assert.ok(anatomy.magazineWidthX>=2.9,'restored side-profile width');
@@ -57,7 +57,7 @@ test('R3.3 axis contract explicitly separates silhouette X and side-wall depth Z
 test('R3.3 stock rear extension changes X length without lateral bulk growth',()=>{
  const cases=[
   ['ar-car15',-14.3,3.3],['ar-mk18',-13.7,3.45],
-  ['ar-m16a1',-15.0,3.45],['ak-ak105',-14.2,3.5],
+  ['ar-m16a1',-13.5,3.45],['ak-ak105',-14.2,3.5],
   ['ak-akm',-15.1,3.45],['ak-aks74u',-13.9,2.7]
  ];
  for(const [id,maxRear,maxDepth] of cases){

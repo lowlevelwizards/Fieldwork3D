@@ -4,14 +4,17 @@
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addFacetedTube,addProfileFrame,type Outline,type SlotName} from './profile-primitives.ts';
-import {AR_STANAG_METAL} from './weapon-visual-palette.ts';
+import {AR_STANAG_METAL,AR_STANAG_RIB,AR_MUTED_FDE} from './weapon-visual-palette.ts';
+import {arMagazineCurve,arMagazineOutline,arMagazineRibOutlines,arMagazinePolyBaseplate} from './ar-magazine-profiles.ts';
+import {addARRailSegments} from './ar-rail-profiles.ts';
 import {AR_BARREL_ART,AR_VISUAL_AXIS_Y} from './ar-barrel-profiles.ts';
 import {AR_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
 import {addWeaponPixelMark,addWeaponPixelMarkPair} from './weapon-pixel-detail.ts';
 
 export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
- steel:THREE.Material,dark:THREE.Material,wood:THREE.Material){
+ steel:THREE.Material,dark:THREE.Material,wood:THREE.Material,
+ showFactoryMuzzle=true){
  const parts=build.parts,material=[steel,dark,wood,AR_STANAG_METAL] as const;
  const barrelArt=AR_BARREL_ART[parts.barrel];
  if(!barrelArt)throw new Error('Unknown AR art barrel: '+parts.barrel);
@@ -50,40 +53,50 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   }
  }else{
   // Low flat-top without a permanently molded carry handle.
-  b('receiver',-1.5,2.05,0,8.3,.65,2.65,1);
+  // Same rail elevation and tooth language on all flat-top uppers.
+  b('receiver',-1.5,2.28,0,8.3,.78,2.65,1);
+  addARRailSegments(root,'receiver',parts.receiver,index.receiver++,
+   {startX:-5.3,endX:2.3,count:3,topY:2.84},material[0]);
  }
 
  // A single textured side mark replaces tiny modeled receiver hardware.
  // Receiver-side mark is taller, directly OVER the magazine insertion.
  addWeaponPixelMark(root,'ar-port',m.portX,m.portY,1.82,
   m.portWidthX,m.portHeightY);
- // One heavy but quiet charging-handle bar; no protruding rear block.
- b('receiver',-6.35,1.82,0,1.44,.39,3.95,0);
- // Inset angled forward-assist marker sits BEHIND the ejection port.
- const assist=b('receiver',-1.34,.64,1.83,.47,.78,.18,1);
- assist.rotation.z=-.34;
+ // R4.6: the charging handle is a substantial, seated rear shelf.
+ b('receiver',-5.92,1.59,0,1.68,.80,3.90,0);
+ // Square-ended forward assist: front intersects body while rear projects
+ // back/outboard. Not a tiny inclined slash or a mirrored detail.
+ const assist=b('receiver',-1.93,.53,1.80,2.35,.48,.31,1);
+ assist.rotation.z=-.19;
+ assist.rotation.y=.18;
 
  // Fixed M16 stocks: one long triangular wedge, no rectangular belly.
  if(parts.stock==='ar-fixed'||parts.stock==='ar-fixed-a2'){
   const a2=parts.stock==='ar-fixed-a2';
-  const back=a2?-16.35:-15.65;
-  p('stock',[[back,.93],[-6.12,.78],[-6.02,-.67],
-   [back+.15,a2?-3.55:-3.40]],3.18,1);
-  b('stock',back+.04,-1.28,0,.30,a2?4.48:4.28,3.20,0);
+  // A1/A2 retain their relative stock lengths. Both become shorter,
+  // taller and substantially fuller at the attachment wrist.
+  const back=a2?-14.30:-13.74;
+  p('stock',[[back,a2?1.20:1.14],[-6.12,.98],[-6.02,-1.04],
+   [back+.17,a2?-4.18:-4.04]],3.18,1);
+  b('stock',back+.045,a2?-1.49:-1.45,0,.30,
+   a2?5.46:5.28,3.22,0);
  }else{
   const compact=parts.stock==='ar-compact';
   const m4=parts.stock==='ar-stock-m4';
   const rear=compact?-13.85:m4?-14.25:-14.45;
   const front=compact?-8.4:m4?-8.48:-8.6;
-  b('stock',-7.65,.05,0,4.2,1.45,1.9,0);
+  b('stock',-7.65,.35,0,4.2,1.45,1.9,0);
   p('stock',compact?
    // A thick compact SOPMOD-like cheek shape, without Z inflation.
    [[rear,1.12],[rear+1.12,1.36],[front,.91],
     [front,-1.25],[rear+1.48,-3.68],[rear,-3.54]]:
    m4?
    // Classic M4 stock: high tube, massive wedge under the rear cheek.
-   [[rear,1.20],[rear+1.05,1.32],[front,1.03],
-    [front,-.88],[rear+2.34,-4.76],[rear+.24,-5.03]]:
+   // Simplified M4 shell: full-length FLAT comb, short flat rear
+   // heel and one bold diagonal joining its forward collar.
+   [[rear,1.47],[front,1.47],[front,-.75],
+    [rear+2.0,-4.55],[rear+.28,-4.55],[rear,-4.13]]:
    // Early sliding Fiberlite shape is simpler and visually lighter.
    // Retro CAR: single thick shape; the lower diagonal reads as a shadow.
    [[rear,.72],[front,.67],[front,-1.24],
@@ -92,48 +105,37 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  }
 
  // Pistol grips share the same root, but the modern shape has a fuller heel.
- const modern=parts.grip==='ar-grip-poly';
+ const modern=parts.grip==='ar-grip-poly'||parts.grip==='ar-grip-poly-fde';
  // The grip belongs to the BACK of the lower receiver. Its upper end
  // vanishes into the receiver, and it remains slimmer in both X and Z.
- p('grip',shiftProfile(modern?
-  [[-2.10,-1.63],[.35,-1.65],[-.73,-5.24],[-1.79,-5.85],[-3.36,-5.68]]:
-  [[-1.95,-1.62],[.25,-1.65],[-1.16,-5.71],[-3.25,-5.71]],
-  m.gripShiftX),m.gripDepthZ,1);
+ const gripProfile=shiftProfile(modern?
+  [[-2.10,-1.84],[.35,-1.84],[-.73,-5.24],[-1.79,-5.85],[-3.36,-5.68]]:
+  [[-1.95,-1.84],[.25,-1.84],[-1.16,-5.71],[-3.25,-5.71]],
+  m.gripShiftX,.50);
+ if(parts.grip==='ar-grip-poly-fde')
+  addOutline(root,'grip',parts.grip,index.grip++,gripProfile,
+   m.gripDepthZ,AR_MUTED_FDE);
+ else p('grip',gripProfile,m.gripDepthZ,1);
 
- // IMPORTANT: Side ELEVATION uses X/Y. The requested thinness is Z,
- // not an X-squashed stick. Restore broad magazine contour, narrow its depth.
+ // R4.6: derived from the AK's constant-normal-width magazine ribbon.
+ // The metal presses follow exactly the same centerline. No disconnected
+ // underside plate or square polymer panel texture.
  const mag=parts.magazine;
- const magTop=m.magazineTopY;
- const magLeft=m.magwellCenterX-m.magazineWidthX/2;
- const magRight=m.magwellCenterX+m.magazineWidthX/2;
- const mag20=mag==='ar-mag20',magPoly=mag==='ar-magpoly';
- if(mag20)
-  p('magazine',[[magLeft,magTop],[magRight,magTop],
-   [magRight+.14,-6.25],[magLeft+.04,-6.25]],m.magazineDepthZ,3);
- else if(magPoly)
-  p('magazine',[[magLeft,magTop],[magRight,magTop],
-   [magRight+.06,-4.75],[magRight+.66,-7.23],
-   [magLeft+.64,-7.33],[magLeft+.06,-4.72]],
-   m.magazineDepthZ,1);
- else
-  // Two major angular steps describe a curved USGI 30 rather than a slab.
-  // The lower edge slopes in the same direction as the body, no base plate.
-  p('magazine',[[magLeft,magTop],[magRight,magTop],
-   [magRight+.06,-4.73],[magRight+.62,-6.89],
-   [magRight+.71,-7.18],[magRight+.26,-7.42],
-   [magLeft+.47,-7.48],[magLeft+.08,-7.19],
-   [magLeft+.06,-4.73]],m.magazineDepthZ,3);
- if(magPoly){
-  // Polymer/Pmag: substantial tan plate follows the body sweep.
-  const plate=b('magazine',m.magwellCenterX+.38,-7.39,0,
-   m.magazineWidthX+.26,.48,m.magazineDepthZ+.12,2);
-  plate.rotation.z=.10;
+ const magStyle=mag==='ar-mag20'?'20':mag==='ar-magpoly'?'poly':'30';
+ const curve=arMagazineCurve(magStyle,m.magwellCenterX,m.magazineTopY,
+  m.magazineWidthX,m.magazineDepthZ);
+ p('magazine',arMagazineOutline(curve),m.magazineDepthZ,
+  magStyle==='poly'?1:3);
+ for(const outline of arMagazineRibOutlines(curve)){
+  const rib=addOutline(root,'magazine',mag,index.magazine++,
+   outline,m.magazineDepthZ+.075,AR_STANAG_RIB);
+  rib.castShadow=false;rib.receiveShadow=false;
  }
- const marks=addWeaponPixelMarkPair(root,mag20?'ar-mag-stamp20':
-  magPoly?'ar-poly-panel':'ar-mag-stamp30',
-  m.magwellCenterX+(mag20?.05:.22),mag20?-4.38:-5.10,
-  m.magazineDepthZ/2+.095,m.magazineWidthX-.44,mag20?2.70:4.17);
- if(!mag20)for(const mark of marks)mark.rotation.z=.095;
+ if(magStyle==='poly'){
+  // Substantial near-tan bottom cap follows the same tangent and toe angle.
+  addOutline(root,'magazine',mag,index.magazine++,
+   arMagazinePolyBaseplate(curve),m.magazineDepthZ+.12,AR_MUTED_FDE);
+ }
 
  // One elevated axis shared by all AR barrels, guards, and front sight bases.
  // Keep a deliberate squared delta ring where conventional handguards meet
@@ -153,26 +155,34 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const end=guard==='ar-pri-tube'?15.70:long?14.1:
   retro?11.8:guard==='ar-risii'?14.2:short?15.05:12.2;
  const start=3.55; // deliberate slight overlap with receiver upper
- if(guard!=='ar-pri-tube')
-  gh([[start-.36,1.55],[start+.46,1.37],[start+.46,-1.16],
-   [start-.36,-1.38]],4.06,0);
+ const isFreefloat=guard==='ar-risii'||guard==='ar-compact-rail';
+ if(guard!=='ar-pri-tube'){
+  if(isFreefloat)
+   // Broad squared mounting collar, NOT a spring delta ring on RIS II.
+   gh([[start-.51,1.55],[start+.52,1.48],
+    [start+.52,-1.55],[start-.51,-1.65]],4.10,0);
+  else
+   // Slightly lowered and enlarged conventional delta-ring trapezoid.
+   gh([[start-.48,1.55],[start+.63,1.39],
+    [start+.63,-1.65],[start-.48,-1.76]],4.12,0);
+ }
  if(guard==='ar-pri-tube'){
   const tube=addFacetedTube(root,'handguard',parts.handguard,index.handguard++,
    start,end,1.82,material[1]);
   tube.position.y=AR_VISUAL_AXIS_Y;
   gb(start+.35,0,0,.70,3.25,3.75,0);
-  // Preserve the Mod 0 elevated bridge over the six-sided PRI tube.
+  // Mk12 Mod 0 keeps the six-sided PRI tube and its continuous bridge.
   gb((start+end)/2,2.06,0,end-start,.56,2.8,0);
   gb(2.65,2.06,0,3.85,.52,2.6,0);
   gm('pri-vents',(start+end)/2,.18,1.90,end-start-1.7,.83);
  }else if(guard==='ar-triangle'){
-  gh([[start,1.45],[start+.55,1.74],
-   [end-1.10,1.08],[end,.58],[end,-.9],
-   [end-1.0,-1.16],[start,-1.73]],3.65,1);
-  // Broad lower bevel and dark, physically plausible upper vent marks.
-  gh([[start,-.96],[end-.85,-.82],
-   [end-1.0,-1.16],[start,-1.73]],3.76,0);
-  gm('a1-vents',(start+end)/2,.91,1.91,end-start-1.82,.79);
+  // Two deliberately angled facets instead of a featureless slab.
+  gh([[start,1.47],[start+.64,1.75],
+   [end-1.05,1.08],[end,.60],[end,-.88],
+   [end-1.05,-1.15],[start,-1.72]],3.62,1);
+  gh([[start,-.73],[end-.82,-.68],[end-1.05,-1.15],
+   [start,-1.72]],3.75,0);
+  gm('a1-vents',(start+end)/2,.91,1.93,end-start-1.68,1.02);
  }else if(guard==='ar-round'||guard==='ar-carbine'||retro){
   gh(retro?
    [[start,1.26],[start+.88,1.48],[end-.5,1.45],
@@ -181,38 +191,35 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
     [end,-.78],[end-.65,-1.71],[start+.45,-1.76]],
    retro?3.15:3.85,1);
   if(retro)gb(start+.32,.04,0,.53,2.88,3.32,0);
-  // Rounded stock plastic: full-depth circumferential bands with one long
-  // horizontal mold seam; NOT rail teeth or ventilation windows.
+  // Plastic bands wrap the broad visible face; one subdued seam, not a grid.
   gm(retro?'car-ribs':'poly-ribs',(start+end)/2,.1,
-   retro?1.66:2.00,end-start-1.9,2.28);
+   retro?1.68:2.03,end-start-1.8,2.24);
  }else{
   const ris=guard==='ar-risii';
-  const covered=!ris;
+  const covered=guard==='ar-compact-rail';
   const span=end-start,center=(start+end)/2;
-  // Step the cross section at top, side and bottom instead of a solid box.
+  // Stepped cross-section of authentic quad furniture.
   gh(ris?
    [[start,-1.50],[start,1.28],[start+.45,1.51],
     [end-.70,1.51],[end,.66],[end,-1.16],[end-.63,-1.58]]:
    [[start,-1.55],[start,1.49],
     [end-.60,1.49],[end,.90],[end,-1.48]],
    ris?3.72:3.17,ris?2:1);
-  gb(center,1.87,0,span,.62,ris?3.42:3.12,0);
-  gb(center,-1.83,0,span-.70,.48,ris?2.48:2.27,0);
+  // Underlying rail spines — continuous, but the teeth are one instanced mesh.
+  gb(center,1.87,0,span,.62,3.16,0);
+  gb(center,-1.83,0,span-.70,.48,2.43,0);
   for(const side of [-1,1])
-   gb(center,.07,side*(ris?2.07:1.77),span-1.20,.58,.42,0);
-  if(covered)
-   for(const side of [-1,1])
-    gb(center,.14,side*2.035,span-2.1,1.0,.19,1);
-  // Three or four large physical rail blocks. Any further precision
-  // belongs in the nearest-neighbor texture rather than more triangles.
-  const teeth=guard==='ar-m5-rail'?4:3;
-  for(let i=0;i<teeth;i++){
-   const x=start+1.34+i*(span-2.68)/(teeth-1);
-   gb(x,2.31,0,.59,.31,ris?3.16:2.85,0);
+   gb(center,.07,side*2.05,span-1.2,.58,.42,0);
+  addARRailSegments(root,'handguard',parts.handguard,index.handguard++,
+   {startX:start,endX:end,count:guard==='ar-m5-rail'?5:4,
+    topY:2.84,bottomY:-1.65,sideZ:2.34,sideY:.59,
+    coverSides:covered},material[0]);
+  if(covered){
+   // Cover occupies its own rail section; no side teeth underneath.
+   for(const side of [-1,1])gb(center,.10,side*2.39,
+    span-1.95,1.07,.28,1);
+   gm('rail-cover-stripes',center,.62,2.56,span-2.1,.84);
   }
-  gm(guard==='ar-m5-rail'?'m5-panel':
-   guard==='ar-quad'?'ras-panel':'ris-panel',center,.14,
-   ris?2.31:2.155,span-2.1,ris?.94:.83);
  }
 
  // The barrel is the only authority for its own muzzle and front-sight X.
@@ -222,12 +229,12 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  b('barrel',(barrelStart+tip)/2,AR_VISUAL_AXIS_Y,0,tip-barrelStart,
   barrelArt.barrelHeight,barrelArt.barrelDepth,0);
  if(sight!==null&&(barrelArt.sight==='a1'||barrelArt.sight==='a2')){
-  // R4.5: a right vertical FRONT (towards muzzle), one boldly sloped REAR.
-  // The tower roof aligns with the canonical carry-handle / rear-sight line.
-  frame('barrel',[[sight-1.20,.83],[sight+.83,.83],
-    [sight+.83,4.02],[sight-.34,4.02]],
-   [[sight-.56,1.34],[sight+.02,3.26],
-    [sight+.40,3.26],[sight+.40,1.34]],1.47);
+  // Tall bold A-frame: a perfectly vertical FRONT face and a 56-degree
+  // diagonal rear face. The guard roof is NOT the actual sighting datum.
+  frame('barrel',[[sight-2.45,.70],[sight+1.02,.70],
+    [sight+1.02,4.10],[sight-.18,4.10]],
+   [[sight-1.18,1.27],[sight-.03,3.27],
+    [sight+.54,3.27],[sight+.54,1.27]],1.50);
  }else if(sight!==null){
   // Simplified flip-up Mk12 front sight, on the raised barrel center.
   b('barrel',sight,1.36,0,.92,.54,1.4,1);
@@ -239,27 +246,35 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   if(tip-(sight??tip)>1.2)
    b('barrel',tip-1.05,AR_VISUAL_AXIS_Y,0,1.18,barrelArt.barrelHeight+.18,1.52,0);
  }
- // A few iconic muzzle masses; the muzzle tip X remains authoritative.
- // USGI birdcages get TWO wide black slots, not a fully machined cylinder.
- const birdcage=(length:number,height:number,depth:number)=>{
-  b('barrel',tip-length/2,AR_VISUAL_AXIS_Y,0,length,height,depth,0);
-  addWeaponPixelMarkPair(root,'ar-birdcage',tip-length*.47,AR_VISUAL_AXIS_Y,
-   depth/2+.07,length*.70,height*.62);
- };
- if(barrelArt.profile==='spr'){
-  b('barrel',tip-1.34,AR_VISUAL_AXIS_Y,0,.66,1.91,1.94,1);
-  b('barrel',tip-.46,AR_VISUAL_AXIS_Y,0,.90,1.73,1.82,1);
- }else if(barrelArt.profile==='cqb'){
-  birdcage(1.05,1.92,2.00);
-  b('barrel',tip-.18,AR_VISUAL_AXIS_Y,0,.34,2.02,2.05,0);
- }else if(parts.barrel==='ar-145'){
-  birdcage(1.07,1.35,1.48);
- }else if(parts.barrel==='ar-20'){
-  birdcage(1.02,1.36,1.54);
- }else{
-  // A2-family birdcage on the 733, M4A1, M16A2 and M16A4.
-  birdcage(1.24,1.77,1.87);
-  b('barrel',tip-1.11,AR_VISUAL_AXIS_Y,0,.24,1.92,1.94,1);
+ // Factory silhouette is hidden when an external muzzle device REPLACES it.
+ // Shot/mount X is still the existing configured authoritative tip.
+ if(showFactoryMuzzle){
+  const birdcage=(length:number,height:number,depth:number)=>{
+   b('barrel',tip-length/2,AR_VISUAL_AXIS_Y,0,length,height,depth,0);
+   // Two deliberately long slots parallel to the bore, never vertical dots.
+   addWeaponPixelMarkPair(root,'ar-birdcage',tip-length/2,AR_VISUAL_AXIS_Y,
+    depth/2+.085,length*.77,height*.72);
+  };
+  if(barrelArt.profile==='spr'){
+   // Mk12 Mod 0 specialist brake/collar, not a universal birdcage.
+   b('barrel',tip-1.34,AR_VISUAL_AXIS_Y,0,.66,1.91,1.94,1);
+   b('barrel',tip-.46,AR_VISUAL_AXIS_Y,0,.90,1.73,1.82,1);
+  }else if(barrelArt.profile==='cqb'){
+   // Keep 10.3-inch Mk18's tiny but visible exposed nose OUT of RIS II.
+   birdcage(1.30,1.95,2.02);
+   b('barrel',tip-1.22,AR_VISUAL_AXIS_Y,0,.20,2.08,2.08,1);
+  }else if(parts.barrel==='ar-145'){
+   birdcage(2.04,1.44,1.57);
+  }else if(parts.barrel==='ar-20'){
+   // Lighter pencil-barrel era A1 hider.
+   birdcage(1.94,1.40,1.56);
+  }else if(parts.barrel==='ar-733-115'){
+   birdcage(1.78,1.69,1.80);
+  }else{
+   // Shared enlarged A2-family USGI hider.
+   birdcage(2.30,1.83,1.91);
+   b('barrel',tip-2.17,AR_VISUAL_AXIS_Y,0,.26,1.95,1.96,1);
+  }
  }
 
 }
