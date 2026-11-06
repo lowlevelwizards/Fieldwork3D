@@ -28,7 +28,7 @@ const width=b=>b.max.x-b.min.x,depth=b=>b.max.z-b.min.z;
 const close=(a,b,eps=.0001)=>Math.abs(a-b)<eps;
 
 test('R3.3 axis contract explicitly separates silhouette X and side-wall depth Z',()=>{
- assert.equal(Object.keys(FAMILY_PARTS).length,90);
+ assert.equal(Object.keys(FAMILY_PARTS).length,91);
  assert.equal(FAMILY_PRESETS.length,17);
  for(const anatomy of [AR_VISUAL_ANATOMY,AK_VISUAL_ANATOMY]){
   assert.ok(anatomy.magazineWidthX>=2.9,'restored side-profile width');

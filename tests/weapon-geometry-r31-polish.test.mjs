@@ -33,8 +33,8 @@ const rayHits=(group,x,y)=>{
   new THREE.Vector3(0,0,-1));
  return caster.intersectObjects(group.children,true).length>0;
 };
-test('R3.1: 90 parts and 17 presets retain combat muzzle and geometry budget',()=>{
- assert.equal(Object.keys(FAMILY_PARTS).length,90);
+test('R3.1: 91 parts and 17 presets retain combat muzzle and geometry budget',()=>{
+ assert.equal(Object.keys(FAMILY_PARTS).length,91);
  assert.equal(FAMILY_PRESETS.length,17);
  for(const p of FAMILY_PRESETS){
   const {config,group}=assembly(p.id);

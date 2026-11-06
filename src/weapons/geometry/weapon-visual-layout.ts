@@ -16,9 +16,12 @@ export function weaponVisualLayout(config:WeaponConfiguration):WeaponVisualLayou
  const scale=config.build?assembly.lengthScale:1;
  return {
   longitudinalScale:scale,
-  // Center on the newly variable barrel endpoint; legacy/AK fit unchanged.
+  // Center the dramatically longer RPK and shorter carbine/compact against
+  // their real authored muzzle endpoint, not an obsolete fixed AK position.
   workbenchCenterX:config.build?.family==='ar'?
-   (assembly.muzzleX-15.2)*.5*scale:2*scale,
+   (assembly.muzzleX-15.2)*.5*scale:
+   config.build?.family==='ak'?
+    (assembly.muzzleX+assembly.stockX)*.5*scale:2*scale,
   stockX:assembly.stockX,
   muzzleX:assembly.muzzleX,
   compact:Boolean(compact)
