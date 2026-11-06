@@ -107,7 +107,9 @@ export function restoreOperatorLightingPreview(root:THREE.Object3D|null):number{
  if(!root)return 0;
  const visited=new Set<THREE.BufferGeometry>();
  let restored=0;
- root.traverseVisible(node=>{
+ // Restore even alternate kit parts that became hidden while an inspector
+ // channel was disabled. Otherwise they could reappear with stale tint.
+ root.traverse(node=>{
   if(!(node instanceof THREE.Mesh)||visited.has(node.geometry))return;
   const geometry=node.geometry as THREE.BufferGeometry;
   visited.add(geometry);
