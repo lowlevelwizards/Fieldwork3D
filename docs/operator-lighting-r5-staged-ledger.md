@@ -173,3 +173,12 @@ Base: `0cf8a9f1737b1327cbb15c11b4f30e718cd73b98`
   a JSON visual report; require nonblank captures and different camera views.
 - Browser/mobile emulation is not a substitute for physical iPhone
   calibration; no claim of physical-device approval from automated passes.
+
+## R5.6-C animated cavity visual/renderer accounting
+- Read-only diagnostic flag `?cavityPose=standing|crouch|raised` in
+  Armor/Rig Lab: uses existing operator IK and RGB materials.
+- Three actual WebGL phone captures; assert raising an arm releases
+  armpit shade, crouching deepens inner upper-thigh fold.
+- Built-in renderer texture/geometry counts sampled alongside draw calls
+  in the 36-view Studio comparison manifest; do not label CPU timings GPU.
+- No graphics setting or mission gameplay behavior changed by lab option.

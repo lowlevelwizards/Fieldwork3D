@@ -225,6 +225,9 @@ function renderScene(){
  renderer.setRenderTarget(null);renderer.render(scene,camera);
  canvas.dataset.ready='true';
  canvas.dataset.drawCalls=String(renderer.info.render.calls);
+ // Built-in renderer accounting only: counts, NOT GPU timing estimates.
+ canvas.dataset.rendererGeometries=String(renderer.info.memory.geometries);
+ canvas.dataset.rendererTextures=String(renderer.info.memory.textures);
  canvas.dataset.operatorLighting=studioLighting.mode;
  canvas.dataset.shadowMapSize=String(studioLighting.shadowSize);
  if(lightingInspectorOutput){

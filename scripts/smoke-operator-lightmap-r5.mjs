@@ -159,7 +159,9 @@ try{
        drawCalls:Number(el.dataset.drawCalls),
        atlasCount:Number(el.dataset.operatorAtlasCount||0),
        atlasBytes:Number(el.dataset.operatorAtlasBytes||0),
-       toonMeshes:Number(el.dataset.operatorToonMeshes||0)
+       toonMeshes:Number(el.dataset.operatorToonMeshes||0),
+       rendererGeometries:Number(el.dataset.rendererGeometries||0),
+       rendererTextures:Number(el.dataset.rendererTextures||0)
       }));
       if(metrics.drawCalls<1)throw Error('Missing draw calls '+filename);
       if(mode.id==='atlas'&&metrics.atlasCount<1)
@@ -183,5 +185,49 @@ try{
     captures:records},null,2));
   console.log('R5 36-view mobile WebGL visual matrix passed; '+
    'all 6 outfits and experimental shading modes captured.');
+  // R5.6-C deterministic joint-pose WebGL captures. The same operator,
+  // top, rig, and camera are used. This diagnostic does not change the
+  // game's animator, IK, or production equipment.
+  const cavityCases=[];
+  for(const pose of ['standing','crouch','raised']){
+   const viewer=await browser.newPage({
+    viewport:{width:390,height:844},deviceScaleFactor:1.5,
+    isMobile:true,hasTouch:true
+   });
+   try{
+    const errs=[];
+    viewer.on('pageerror',e=>errs.push(e.message));
+    await viewer.goto(origin+'/operator-armor-rig-lab.html?'+
+     new URLSearchParams({cavityPose:pose,view:'front',zoom:'detail'}),
+     {waitUntil:'domcontentloaded'});
+    await viewer.waitForFunction(()=>
+     document.getElementById('armorCanvas')?.dataset.ready==='true',
+     null,{timeout:25000});
+    const data=await viewer.locator('#armorCanvas').evaluate(el=>({
+     pose:el.dataset.cavityPose,
+     left:Number(el.dataset.cavityArmLeft),
+     right:Number(el.dataset.cavityArmRight),
+     thigh:Number(el.dataset.cavityThigh)
+    }));
+    for(const value of [data.left,data.right,data.thigh])
+     if(!Number.isFinite(value)||value<0||value>1)
+      throw Error('Invalid GPU cavity uniform '+JSON.stringify(data));
+    const png=await viewer.locator('#armorCanvas').screenshot({
+     path:'operator-studio-captures/r5-cavity-'+pose+'.png'
+    });
+    if(png.byteLength<3000)throw Error('Blank cavity image '+pose);
+    if(errs.length)throw Error('Pose WebGL errors: '+errs.join('; '));
+    cavityCases.push(data);
+   }finally{await viewer.close();}
+  }
+  if(cavityCases[1].thigh<=cavityCases[0].thigh)
+   throw Error('Crouch did not strengthen upper-thigh overlap');
+  if(Math.min(cavityCases[2].left,cavityCases[2].right)>=
+     Math.min(cavityCases[0].left,cavityCases[0].right))
+   throw Error('Raised arm did not release local armpit cavity');
+  await writeFile('operator-studio-captures/r5-cavity-poses.json',
+   JSON.stringify(cavityCases,null,2));
+  console.log('R5 joint-pose cavity WebGL checks passed: '+
+   JSON.stringify(cavityCases));
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}
