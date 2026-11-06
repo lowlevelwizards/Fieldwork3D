@@ -66,6 +66,7 @@ import {ReplayEventIndex,type ReplayIndexedEvent} from './breach-replay-event-in
 import type {RecordedShot} from './breach-replay-ballistics.ts';
 import {serializeReplayReport} from './breach-replay-export-json.ts';
 import {ReplaySoundTimeline} from './breach-replay-audio.ts';
+import {ReplayQuickVideo} from './breach-replay-video.ts';
 import {sampleReplayGhosts} from './breach-replay-ghosts.ts';
 import {replayActorVisible} from './breach-replay-visibility.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
@@ -234,6 +235,7 @@ const ui={
   replayTraces:el<HTMLButtonElement>('replayTraces'),
   replayGhosts:el<HTMLButtonElement>('replayGhosts'),
   replayExportJson:el<HTMLButtonElement>('replayExportJson'),
+  replayExportVideo:el<HTMLButtonElement>('replayExportVideo'),
   replayEventText:el<HTMLOutputElement>('replayEventText'),
   replayClock:el<HTMLOutputElement>('replayClock'),
   replayFeedToggle:el<HTMLButtonElement>('replayFeedToggle'),
@@ -549,6 +551,25 @@ let replaying=false,replayPlaying=false,replayTime=0,replayRate=1;
 let replayEventIndex:ReplayEventIndex|null=null;
 let replaySoundTimeline:ReplaySoundTimeline|null=null;
 let replaySoundEnabled=true;
+const replayQuickVideo=new ReplayQuickVideo(
+  (blob,mime)=>{
+    videoAudioDestination=null;
+    const url=URL.createObjectURL(blob);
+    const anchor=document.createElement('a');
+    anchor.href=url;
+    anchor.download='fieldwork-replay-'+(recorder.manifest?.site?.seed??'mission')+
+      '-'+Math.floor(replayTime)+'s.'+(mime.includes('mp4')?'mp4':'webm');
+    document.body.append(anchor);anchor.click();anchor.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),12000);
+    ui.replayExportVideo.textContent='VIDEO 20S';
+    showUiHelp('REPLAY VIDEO EXPORTED',3000);
+  },
+  reason=>{
+    videoAudioDestination=null;
+    ui.replayExportVideo.textContent='VIDEO 20S';
+    showUiHelp(reason,3600);
+  }
+);
 let replayPresentation:ReplayPresentation|null=null;
 let replayOmniscient=true,finishedSession:Session|null=null;
 let replayFollow=false,replayAnalysis=false,replayFollowId='rook';
@@ -1193,6 +1214,7 @@ let fogStamp=-1;
 let fogSession:Session|null=null;
 let fogIntelMode='';let fogSeenRevision=-1;
 let audio:AudioContext|null=null;
+let videoAudioDestination:MediaStreamAudioDestinationNode|null=null;
 const replaySoundNodes=new Set<OscillatorNode>();
 function stopReplaySounds():void{
   for(const node of replaySoundNodes){
@@ -1215,7 +1237,11 @@ const playTone=(frequency:number,decay:number,noise=false,
       const stereo=audio.createStereoPanner();
       stereo.pan.value=Math.max(-1,Math.min(1,pan));
       gain.connect(stereo);stereo.connect(audio.destination);
-    }else gain.connect(audio.destination);
+      if(replayCue&&videoAudioDestination)stereo.connect(videoAudioDestination);
+    }else{
+      gain.connect(audio.destination);
+      if(replayCue&&videoAudioDestination)gain.connect(videoAudioDestination);
+    }
     if(replayCue){
       replaySoundNodes.add(osc);
       osc.onended=()=>replaySoundNodes.delete(osc);
@@ -3555,6 +3581,7 @@ function applyReplayFrameAt(t:number){
   fogStamp=-1;
 }
 function seekReplay(t:number){
+  if(replayQuickVideo.active)replayQuickVideo.stop();
   stopReplaySounds();
   replayTime=Math.max(0,Math.min(recorder.duration,t));
   applyReplayFrameAt(replayTime);updateReplayHud();
@@ -3632,6 +3659,8 @@ function updateReplayHud(){
     ui.replayPlay.title=replayPlaying?'Pause replay':'Play replay';
   }
   ui.replaySpeed.textContent=replayRate+'×';
+  ui.replayExportVideo.textContent=replayQuickVideo.active?'STOP VIDEO':'VIDEO 20S';
+  ui.replaySpeed.disabled=replayQuickVideo.active;
   ui.replaySound.textContent=replaySoundEnabled?'SOUND ON':'SOUND OFF';
   ui.replaySound.setAttribute('aria-pressed',String(replaySoundEnabled));
   ui.replaySpeed.title='Playback speed '+replayRate+'× · Tap to change';
@@ -3702,6 +3731,7 @@ function enterReplay(){
 }
 function exitReplay(){
   if(!replaying)return;
+  if(replayQuickVideo.active)replayQuickVideo.stop();
   replaying=false;replayPlaying=false;replayPresentation=null;
   replayEventIndex=null;
   replaySoundTimeline=null;stopReplaySounds();
@@ -3806,6 +3836,26 @@ ui.replayTraces.addEventListener('click',()=>{
 ui.replayGhosts.addEventListener('click',()=>{
   replayGhostMode=replayGhostMode==='off'?'selected':
     replayGhostMode==='selected'?'squad':'off';
+  updateReplayHud();
+});
+ui.replayExportVideo.addEventListener('click',()=>{
+  if(replayQuickVideo.active){
+    replayQuickVideo.stop();ui.replayExportVideo.textContent='VIDEO 20S';return;
+  }
+  unlockAudio();
+  videoAudioDestination=audio?.state==='running'&&replaySoundEnabled?
+    audio.createMediaStreamDestination():null;
+  if(replayTime>=recorder.duration-.2)seekReplay(0);
+  replayRate=1;
+  const started=replayQuickVideo.start(replayTime,
+    {width:cssW,height:cssH},videoAudioDestination?.stream??null);
+  if(!started){
+    videoAudioDestination=null;
+    showUiHelp('VIDEO CAPTURE NOT SUPPORTED IN THIS BROWSER',4200);
+    return;
+  }
+  replayPlaying=true;
+  ui.replayExportVideo.textContent='STOP VIDEO';
   updateReplayHud();
 });
 ui.replayExportJson.addEventListener('click',()=>{
@@ -5059,6 +5109,11 @@ function tick(now:number){
           state.seconds),state.operators.map(a=>a.id)):null);
   const overlayBegin=perfOverlay?performance.now():0;
   render();
+  if(replaying&&replayQuickVideo.active){
+    replayQuickVideo.drawFrame(
+      stage&&viewMode!=='plan2d'?stage.canvas:null,canvas,replayTime);
+    if(!replayPlaying||replayTime>=recorder.duration)replayQuickVideo.stop();
+  }
   // One local, intelligible pulse per distinct blocked episode.
   for(const actor of team(state)){
     const old=blockedEpisode.get(actor.id);

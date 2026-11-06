@@ -48,16 +48,18 @@ export class ReplayQuickVideo{
       if(audioStream)
         for(const track of audioStream.getAudioTracks())
           stream.addTrack(track);
+      this.stream=stream;
       const recorder=new MediaRecorder(stream,{
         mimeType:mime,videoBitsPerSecond:3_000_000
       });
-      this.canvas=video;this.ctx=ctx;this.stream=stream;
+      this.canvas=video;this.ctx=ctx;
       this.recorder=recorder;this.parts=[];this.stopping=false;
       this.since=time;this.mime=mime;
       recorder.ondataavailable=event=>{
         if(event.data.size)this.parts.push(event.data);
       };
       recorder.onerror=()=>{
+        recorder.onstop=null;
         this.onError('VIDEO ENCODER ERROR');this.cleanup();
       };
       recorder.onstop=()=>{
