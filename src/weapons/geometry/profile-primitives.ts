@@ -63,3 +63,27 @@ export function addFacetedTube(root:THREE.Group,slot:SlotName,id:string,n:number
  mesh.position.set((startX+endX)/2,0,0);
  return mesh;
 }
+
+/** One continuous extruded outline with a genuine negative-space opening.
+ * Used by carry handles and A-frame sights instead of coincident bar seams.
+ * Both contours must have opposite winding; THREE.Shape handles tessellation.
+ */
+export function addProfileFrame(root:THREE.Group,slot:SlotName,id:string,n:number,
+ outer:Outline,inner:Outline,depth:number,material:THREE.Material){
+ if(outer.length<3||inner.length<3||depth<=0)
+  throw new Error('Frame needs two valid contours and positive depth');
+ const shape=new THREE.Shape();
+ shape.moveTo(outer[0][0],outer[0][1]);
+ for(const [x,y] of outer.slice(1))shape.lineTo(x,y);
+ shape.closePath();
+ const opening=new THREE.Path();
+ opening.moveTo(inner[0][0],inner[0][1]);
+ for(const [x,y] of inner.slice(1))opening.lineTo(x,y);
+ opening.closePath();
+ shape.holes.push(opening);
+ const geom=new THREE.ExtrudeGeometry(shape,{
+  depth,steps:1,bevelEnabled:false,curveSegments:1
+ });
+ geom.translate(0,0,-depth/2);
+ return prepare(root,slot,id,n,geom,material);
+}
