@@ -31,7 +31,8 @@ test('indexed seeking agrees with existing MissionRecorder at boundary times',()
   }
 });
 test('reference diagnostics distinguish shared objects without estimating bytes',()=>{
-  const sameDoors=[],firstActors=[],secondActors=[];
+  const sameDoors=[],first={id:'rook'},second={id:'moss'};
+  const firstActors=[first],secondActors=[first,second];
   const f=replaySharingFootprint([
     {actors:firstActors,doors:sameDoors},
     {actors:firstActors,doors:sameDoors},
@@ -41,4 +42,6 @@ test('reference diagnostics distinguish shared objects without estimating bytes'
   assert.equal(f.uniqueActorArrays,2);
   assert.equal(f.uniqueWorldArrays,1);
   assert.equal(f.worldArrayReuse,2);
+  assert.equal(f.uniqueActorRecords,2);
+  assert.equal(f.sharedActorRecords,2);
 });
