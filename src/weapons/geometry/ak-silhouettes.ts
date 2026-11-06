@@ -5,6 +5,9 @@ import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addBar,type Outline,type SlotName} from './profile-primitives.ts';
 import {AK_WARM_RESIN} from './weapon-visual-palette.ts';
+import {AK_VISUAL_ANATOMY,shiftProfile}
+ from './weapon-receiver-anatomy.ts';
+import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
 
 export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material){
@@ -33,13 +36,21 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   [[-5.8,1.1],[-5.2,2.25],[1.6,2.3],[3.0,1.8],[3.25,1.05]],
   3.5,1);
  b('receiver',-4.25,-.05,2.05,2.8,1.15,.5,1);
- b('receiver',1.65,-1.2,0,4.0,1.1,3.25,0);
+ // A short angled seating region, not an AR-style external magwell.
+ const m=AK_VISUAL_ANATOMY;
+ p('receiver',[[m.magwellCenterX-1.2,m.magwellTopY],
+   [m.magwellCenterX+1.2,m.magwellTopY],
+   [m.magwellCenterX+.9,m.magwellBottomY],
+   [m.magwellCenterX-1.05,m.magwellBottomY]],3.3,0);
  if(compact){
   // Characteristically raised rear/cover area of a compact AK.
   p('receiver',[[-5,2.2],[-4.65,3.55],[-1.6,3.6],[-1,2.28]],2.25,1);
  }else{
   b('receiver',-3.9,2.52,0,1.15,.58,2.0,0);
  }
+
+ // One deliberately exaggerated pixel-art selector: no extra 3D levers.
+ addWeaponPixelMark(root,'ak-selector',-1.6,.42,1.98,2.5,1.05);
 
  // Stock types are visually disparate; the skeletal type MUST stay hollow.
  const stock=parts.stock;
@@ -51,12 +62,12 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   b('stock',-12.8,-1,0,1.05,3.65,2.5,1);
  }else if(stock==='ak-sidefold'){
   // One fat five-sided silhouette, not a pointed plank with floating hinge.
-  p('stock',[[-12.25,.7],[-8.3,.95],[-6.0,.35],
-   [-6.25,-1.5],[-9.6,-2.9],[-12.25,-2.15]],4.1,1);
+  p('stock',[[-13.0,.7],[-8.3,.95],[-6.0,.35],
+   [-6.25,-1.5],[-9.6,-2.9],[-13.0,-2.15]],4.1,1);
  }else{
   const isWood=stock==='ak-wood'||stock==='ak-wood74';
-  p('stock',[[-13.5,.65],[-8.9,.95],[-6.25,-.5],
-   [-10.55,-3.35],[-13.5,-2.45]],3.95,isWood?2:1);
+  p('stock',[[-14.1,.65],[-8.9,.95],[-6.25,-.5],
+   [-10.55,-3.35],[-14.1,-2.45]],3.95,isWood?2:1);
   if(stock==='ak-wood74')
    b('stock',-10.7,-1,1.97,2.0,.65,.18,1);
  }
@@ -64,21 +75,22 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Grips are deliberately raked, with one body prism and no modeled stippling.
  const grip=parts.grip,gripWood=grip==='ak-grip-wood',
  resin=grip==='ak-grip-bakelite';
- p('grip',[[-3.4,-1.65],[-.5,-1.65],[-1.0,-5.65],
-  [-2.25,-6.1],[-3.7,-5.7]],grip==='ak-grip-poly'?3.4:2.9,
-  gripWood||resin?2:1);
+ p('grip',shiftProfile([[-3.4,-1.65],[-.5,-1.65],[-1.0,-5.65],
+  [-2.25,-6.1],[-3.7,-5.7]],m.gripShiftX),
+  grip==='ak-grip-poly'?3.4:2.9,gripWood||resin?2:1);
 
- // Recognisable AK magazine curve must be in exterior contour, not block steps.
+ // A narrow receiver insertion point and broad caricatured lower swing.
+ // 7.62 profiles retain a stronger banana bend than 5.45 profiles.
  const mag=parts.magazine,heavy=mag==='ak-mag762'||mag==='ak-mag762poly';
  const resinMag=mag==='ak-mag545';
  const finish:0|1|2=resinMag?2:heavy&&mag==='ak-mag762'?0:1;
- // One thick prism, with only one or two deliberate changes in direction.
+ const top=m.magazineTopY;
  if(heavy)
-  p('magazine',[[2.15,-1.65],[5.9,-1.65],[6.65,-4.5],
-   [8.95,-7.5],[5.65,-8.05],[3.35,-5.15]],3.45,finish);
+  p('magazine',[[.05,top],[2.07,top],[2.44,-4.42],
+   [4.05,-7.45],[2.0,-7.75],[.68,-5.08]],3.05,finish);
  else
-  p('magazine',[[2.15,-1.65],[5.8,-1.65],[5.95,-4.55],
-   [7.15,-7.4],[4.45,-7.6],[3.3,-5.1]],3.5,finish);
+  p('magazine',[[.06,top],[2.04,top],[2.24,-4.62],
+   [2.95,-7.25],[1.0,-7.47],[.45,-4.95]],3.1,finish);
 
  const guard=parts.handguard;
  const short=guard==='ak-wood-short'||guard==='ak-poly-short';
@@ -90,9 +102,11 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  p('handguard',[[start,-1.35],[start+.75,1.05],[end-.7,1.05],
    [end,-.2],[end-.5,-1.75],[start+.45,-1.75]],3.85,
    woodGuard?2:1);
- // The upper and lower material envelopes meet without an empty seam.
- p('handguard',[[start+.8,.98],[start+1.7,2.4],
-   [end-1.35,2.25],[end-.6,.98]],2.9,woodGuard?2:1);
+ // Restore a deliberate narrow gap between upper and lower furniture.
+ // A chunky rear collar keeps the two silhouettes visually connected.
+ p('handguard',[[start+.8,1.3],[start+1.7,2.4],
+   [end-1.35,2.25],[end-.6,1.3]],2.9,woodGuard?2:1);
+ b('handguard',start+.72,.42,0,.58,3.5,3.88,0);
  if(rail)b('handguard',(start+.9+end)/2,2.6,0,
   end-start-1.2,.6,3.0,0);
 
