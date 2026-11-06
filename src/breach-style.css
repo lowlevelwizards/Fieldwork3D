@@ -1422,3 +1422,171 @@ html,body{font-family:var(--fw-font-menu)}
 .replay-feed-item[data-kind="wound"],.replay-feed-item[data-kind="down"]{
   border-left:3px solid #be806f}
 .replay-feed-info{font:10px var(--ui-mono);color:#acb6ac}
+
+
+/* Replay R2 UX3 — battlefield-first transport and bounded tool drawer.
+ * One place owns the final replay layout; older replay rules stay overridden.
+ */
+.replay-panel{
+  width:min(700px,calc(100vw - 16px));max-height:none!important;
+  overflow:visible!important;padding:10px 11px 9px;
+  bottom:calc(8px + env(safe-area-inset-bottom,0px));
+  border:1px solid #799489;border-radius:11px;
+  background:#172927f5;box-shadow:0 10px 36px #061513b8;
+}
+.replay-head{gap:8px;min-height:29px;align-items:center}
+.replay-head strong{font:700 17px/1 var(--ui-display);letter-spacing:.075em}
+.replay-head output{font:500 11px/1.2 var(--ui-mono);letter-spacing:-.025em}
+#replayExit{min-width:35px;min-height:34px;padding:0 6px}
+.replay-timeline{margin-top:5px;height:34px}
+.replay-timeline input[type=range]{
+  display:block;width:100%;height:20px;margin:12px 0 0!important;
+  touch-action:pan-x;accent-color:#c7b18b;
+}
+.replay-marks{top:2px;height:10px;left:7px;right:7px;overflow:visible}
+.replay-mark{
+  position:absolute;top:1px;width:3px;height:9px;min-height:0;
+  padding:0;border:0;border-radius:1px;transform:translateX(-50%);
+  pointer-events:none;box-shadow:none;opacity:.88
+}
+.replay-mark[data-cluster="true"]{width:5px;height:11px;top:0}
+.replay-actions{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+.replay-actions button{
+  flex:none!important;width:100%;min-width:0!important;min-height:49px;
+  padding:4px 1px;border-radius:6px;
+  display:flex!important;flex-direction:column;justify-content:center;gap:2px;
+  font-size:14px;line-height:1.1
+}
+.replay-actions button::after{
+  font:700 9px/1.1 var(--ui-font);white-space:nowrap;letter-spacing:.02em;
+}
+.replay-actions #replayPlay{min-height:49px}
+.replay-actions button .ui-icon,.replay-actions #replayPlay .ui-icon{
+  width:22px;height:22px
+}
+.replay-utility{display:flex;align-items:center;gap:5px;margin-top:7px;min-height:33px}
+.replay-utility .replay-event{
+  flex:1;min-width:0;margin:0;padding:0 5px 0 2px;
+  overflow:hidden;max-height:none;white-space:nowrap;
+  text-overflow:ellipsis;text-align:left;
+  font:500 10px/1.2 var(--ui-font);color:#cbbda1
+}
+.replay-utility .replay-event:empty::before{
+  content:"TACTICAL REPLAY";color:#829b91;letter-spacing:.06em
+}
+.replay-utility #replayFeedToggle,.replay-utility #replayMore{
+  flex:none;display:inline-flex;align-items:center;justify-content:center;
+  gap:5px;min-height:33px!important;width:auto!important;margin:0;
+  border:1px solid #607d70;border-radius:5px;padding:5px 10px;
+  background:#293d37;color:#e2e8da;
+  font:700 10px/1.1 var(--ui-font);letter-spacing:.045em
+}
+.replay-utility #replayMore .ui-icon{
+  width:15px;height:15px;margin:0;flex-shrink:0
+}
+.replay-utility [aria-expanded="true"]{
+  background:#435a4c!important;border-color:#c0b188!important;color:#fff3d4!important
+}
+.replay-drawer{
+  position:absolute;bottom:calc(100% + 7px);left:0;right:0;
+  max-height:min(44dvh,350px,calc(100dvh - 220px));
+  display:flex;flex-direction:column;overflow:hidden;
+  padding:8px;border:1px solid #829b8c;border-radius:10px;
+  background:#1c302cf9;box-shadow:0 12px 32px #071614c9
+}
+.replay-drawer[hidden],.replay-extra[hidden],
+.replay-group[hidden],.replay-feed-panel[hidden],
+.replay-feed-list[hidden],.replay-feed-tools select[hidden],
+.replay-feed-info[hidden]{display:none!important}
+.replay-drawer-head{
+  display:flex;align-items:center;justify-content:space-between;
+  min-height:24px;margin-bottom:7px;padding:0 1px 0 3px
+}
+.replay-drawer-head strong{
+  font:700 12px/1 var(--ui-display);letter-spacing:.09em;color:#d8d0b6
+}
+#replayDrawerClose{
+  min-width:27px;min-height:27px;border:1px solid #587266;
+  border-radius:5px;color:#d8d9cb;background:#293d37;font-size:19px;line-height:1
+}
+.replay-tabs{
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:3px;flex:none;padding-bottom:8px;border-bottom:1px solid #4b6559
+}
+.replay-tabs button{
+  min-width:0;min-height:35px;padding:3px 1px;border:1px solid #557366;
+  border-radius:5px;background:#263d35;color:#bfcfbe;
+  font:700 10px/1 var(--ui-font);letter-spacing:.01em
+}
+.replay-tabs button[aria-selected="true"]{
+  border-color:#cfb889;background:#bfa882;color:#172623
+}
+.replay-extra{
+  min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  display:block!important;flex:1;padding:9px 2px 2px
+}
+.replay-extra[hidden]{display:none!important}
+.replay-group{display:block}
+.replay-group-intro{
+  margin:0 2px 8px;font:600 11px/1.3 var(--ui-font);
+  color:#c4d0c1
+}
+.replay-control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.replay-control-grid button{
+  flex:none;min-width:0;width:100%;min-height:44px;
+  padding:8px 7px;white-space:normal;word-break:normal;
+  border:1px solid #648474;border-radius:6px;
+  background:#2d443c;color:#e6ebdc;text-align:center;
+  font:700 11px/1.25 var(--ui-font)
+}
+.replay-control-grid button[aria-pressed="true"]{
+  border-color:#cbb988;background:#456354;color:#f3ecd6
+}
+.replay-group-note{
+  margin:9px 2px 2px;font:500 10px/1.4 var(--ui-font);
+  color:#9db4a8
+}
+.replay-feed-panel{display:flex;flex-direction:column;flex:1;min-height:0;padding:8px 2px 1px}
+.replay-feed-tools{
+  display:flex;align-items:center;gap:6px;margin:0 0 8px;flex:none
+}
+.replay-feed-tools label{font:700 10px var(--ui-font);color:#bacabd}
+.replay-feed-tools select{flex:1;max-width:150px;min-height:35px}
+.replay-feed-info{flex:1;min-width:0;text-align:right;font-size:9px}
+.replay-feed-list{
+  display:flex;flex-direction:column;gap:4px;
+  max-height:none;min-height:0;flex:1;overflow-y:auto;
+  overscroll-behavior:contain;padding:0 1px 2px
+}
+.replay-feed-item{min-height:42px;text-align:left;font-size:11px}
+.replay-drawer button:focus-visible,.replay-utility button:focus-visible{
+  outline:2px solid #e2c38b;outline-offset:2px
+}
+@media(max-width:450px){
+  .replay-panel{
+    width:calc(100vw - 14px);padding:8px 8px 7px;
+    bottom:calc(5px + env(safe-area-inset-bottom,0px))
+  }
+  .replay-head strong{font-size:16px}
+  .replay-head output{font-size:10px}
+  .replay-head-right{gap:7px}
+  .replay-actions{gap:3px}
+  .replay-actions button{min-height:46px;font-size:13px;padding:3px 1px}
+  .replay-actions button::after{font-size:8px}
+  .replay-utility .replay-event{font-size:9px}
+  .replay-utility #replayFeedToggle,.replay-utility #replayMore{
+    padding:5px 7px;font-size:9px
+  }
+  .replay-drawer{max-height:min(44dvh,310px,calc(100dvh - 210px))}
+  .replay-tabs button{font-size:9px}
+}
+@media(max-height:470px){
+  .replay-panel{padding:5px 8px}
+  .replay-head{min-height:24px}
+  #replayExit{min-height:29px}
+  .replay-timeline{height:27px;margin-top:2px}
+  .replay-actions button,.replay-actions #replayPlay{min-height:40px}
+  .replay-utility{min-height:28px;margin-top:4px}
+  .replay-utility #replayFeedToggle,.replay-utility #replayMore{min-height:29px!important}
+  .replay-drawer{max-height:min(39dvh,210px,calc(100dvh - 155px))}
+}
