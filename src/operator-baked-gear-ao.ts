@@ -133,7 +133,13 @@ export function bakeGearContactAO(group:THREE.Group):number{
   // These independent 8-bit CPU masks are resolved before mesh batching.
   const selfMask=new Uint8Array(positions.count);
   const externalMask=new Uint8Array(positions.count);
+  // Save one neutral byte per receiving vertex, before & after CONTACT.
+  // Texture-atlas experiments need this to REPLACE self AO rather than
+  // multiply self AO twice. It does not affect the default renderer.
+  const contactBase=new Uint8Array(positions.count);
+  const contactComposed=new Uint8Array(positions.count);
   for(let i=0;i<positions.count;i++){
+   contactBase[i]=pixels[i*3];
    p.fromBufferAttribute(positions,i).applyMatrix4(part.local);
    n.fromBufferAttribute(normals,i).applyMatrix3(part.normalMatrix).normalize();
    let selfOcclusion=0,externalOcclusion=0;
@@ -187,16 +193,21 @@ export function bakeGearContactAO(group:THREE.Group):number{
    // Compose once from the strongest independent shadow, rather than
    // multiplying overlapping AO, self and external cast darkness.
    const shadow=Math.max(selfShadow,externalShadow);
-   if(shadow<.012)continue;
+   if(shadow<.012){
+    contactComposed[i]=pixels[i*3];continue;
+   }
    const old=pixels[i*3]/255;
    const gray=Math.round(255*Math.max(GEAR_CONTACT_AO_FLOOR,
     old*(1-shadow)));
+   contactComposed[i]=gray;
    if(gray===pixels[i*3])continue;
    pixels[i*3]=gray;pixels[i*3+1]=gray;pixels[i*3+2]=gray;
    altered=true;
   }
   geo.userData.fieldworkSelfOcclusionMask=selfMask;
   geo.userData.fieldworkExternalOcclusionMask=externalMask;
+  geo.userData.fieldworkContactBaseTone=contactBase;
+  geo.userData.fieldworkContactComposedTone=contactComposed;
   if(altered){attr.needsUpdate=true;touched++;}
   geo.userData.fieldworkContactAO=true;
  }

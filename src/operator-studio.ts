@@ -3,10 +3,14 @@
  * uses the same validated roster persistence for previews and direct access.
  */
 import * as THREE from 'three';
-import {inspectOperatorLighting,formatOperatorLightingReport}
+import {inspectOperatorLighting,formatOperatorLightingReport,
+ previewOperatorLightingLayers,restoreOperatorLightingPreview,
+ DEFAULT_LIGHTING_LAYERS,type LightingDiagnosticLayers}
  from './operator-lighting-inspector.ts';
 import {applyStudioSelfShadowAtlases}
  from './operator-gear-lightmap-atlas.ts';
+import {applyOperatorStudioToon,requestedOperatorToonBands}
+ from './operator-studio-toon-lighting.ts';
 import {OperatorStudioLighting} from './operator-studio-lighting.ts';
 import {POLICE_VISOR_POSITIONS,POLICE_VISOR_TINTS,POLICE_VISOR_FRAMES,policeVisorFit} from './operator-police-visor-policy.ts';
 import {M56_DETAILS,M56_NETS} from './operator-ddr-m56-policy.ts';
@@ -127,6 +131,7 @@ const scene=new THREE.Scene();
 scene.background=new THREE.Color(0xc4c7bd);
 // R5 Studio shadows are isolated from the shared thumbnail scene.
 const studioLighting=new OperatorStudioLighting(scene,renderer,location.search);
+const diagnosticLayers:LightingDiagnosticLayers={...DEFAULT_LIGHTING_LAYERS};
 const lightingInspectorOutput=(()=>{
  if(params.get('operatorLightingDebug')!=='1')return null;
  stage.style.position='relative';
@@ -144,6 +149,38 @@ const lightingInspectorOutput=(()=>{
  toggle.addEventListener('change',()=>{
   studioLighting.setLiveShadows(toggle.checked);renderScene();
  });
+ const filterKeys=[
+  ['self','Self AO'],['external','Other equipment AO'],
+  ['contact','Proximity contact'],['directional','Baked cast'],
+  ['height','Height gradient']
+ ] as const;
+ const layerControls:HTMLInputElement[]=[];
+ const filters=document.createElement('div');
+ filters.style.cssText='display:grid;grid-template-columns:1fr 1fr;'+
+  'gap:3px 7px;margin:6px 0;';
+ for(const [key,name] of filterKeys){
+  const box=document.createElement('input');
+  box.type='checkbox';box.checked=true;
+  box.setAttribute('aria-label',name);
+  box.addEventListener('change',()=>{
+   diagnosticLayers[key]=box.checked;
+   if(rig)previewOperatorLightingLayers(rig.root,diagnosticLayers);
+   renderScene();
+  });
+  const item=document.createElement('label');
+  item.style.cssText='display:flex;gap:4px;align-items:center;';
+  item.append(box,name);filters.append(item);layerControls.push(box);
+ }
+ const reset=document.createElement('button');
+ reset.textContent='Restore all layers';
+ reset.style.cssText='margin:2px 0;padding:4px 7px;'+
+  'background:#385449;color:white;border:1px solid #98aaa0;';
+ reset.addEventListener('click',()=>{
+  Object.assign(diagnosticLayers,DEFAULT_LIGHTING_LAYERS);
+  for(const box of layerControls)box.checked=true;
+  if(rig)restoreOperatorLightingPreview(rig.root);
+  renderScene();
+ });
  const refresh=document.createElement('button');
  refresh.textContent='Rebuild shadow';
  refresh.style.cssText='margin:6px 0;padding:4px 8px;'+
@@ -153,7 +190,7 @@ const lightingInspectorOutput=(()=>{
  });
  const output=document.createElement('pre');
  output.style.cssText='margin:6px 0 0;white-space:pre-wrap;';
- panel.append(label,refresh,output);stage.append(panel);
+ panel.append(label,filters,reset,refresh,output);stage.append(panel);
  return output;
 })();
 const floor=new THREE.GridHelper(160,16,0x9fa69d,0xb1b6ae);
@@ -223,6 +260,9 @@ function renderScene(){
  renderer.setRenderTarget(null);renderer.render(scene,camera);
  canvas.dataset.ready='true';
  canvas.dataset.drawCalls=String(renderer.info.render.calls);
+ // Built-in renderer accounting only: counts, NOT GPU timing estimates.
+ canvas.dataset.rendererGeometries=String(renderer.info.memory.geometries);
+ canvas.dataset.rendererTextures=String(renderer.info.memory.textures);
  canvas.dataset.operatorLighting=studioLighting.mode;
  canvas.dataset.shadowMapSize=String(studioLighting.shadowSize);
  if(lightingInspectorOutput){
@@ -336,6 +376,9 @@ gearToggle.addEventListener('click',()=>{
 syncGearToggle();
 function posePreview(){
  const p=member();if(!p)return;
+ // Restore exact unmodified colors before the wardrobe refresh; otherwise
+ // a previously disabled debug layer would contaminate the next bake.
+ if(lightingInspectorOutput&&rig)restoreOperatorLightingPreview(rig.root);
  const reference=referenceOpen?resolveFactionReference(referenceBrowser.selectedId):null;
  if(!rig||rig.camoIdentity!==p.id){
   if(rig){scene.remove(rig.root);rig.dispose();}
@@ -352,10 +395,20 @@ function posePreview(){
   wardrobe:inspectWardrobe(reference?.wardrobe??previewWardrobe())
  },0);
  if(params.get('operatorLightingAtlas')==='1'){
+  // Do not combine unapproved material experiments: atlas has priority.
   const atlasResult=applyStudioSelfShadowAtlases(rig.root);
   canvas.dataset.operatorAtlasBytes=String(atlasResult.bytes);
   canvas.dataset.operatorAtlasCount=String(atlasResult.atlases);
+ }else{
+  const toon=requestedOperatorToonBands(location.search);
+  if(toon){
+   const result=applyOperatorStudioToon(rig.root,toon);
+   canvas.dataset.operatorToonBands=String(toon);
+   canvas.dataset.operatorToonMeshes=String(result.meshes);
+  }
  }
+ if(lightingInspectorOutput)
+  previewOperatorLightingLayers(rig.root,diagnosticLayers);
  studioLighting.invalidateGeometry();
  renderScene();
 }

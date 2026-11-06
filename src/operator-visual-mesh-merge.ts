@@ -9,7 +9,8 @@ import {rememberUnmergedShadowVolumes} from './operator-baked-gear-cast.ts';
 import {refineStaticReceiver} from './operator-gear-shadow-receivers.ts';
 
 export const OPERATOR_LIGHTING_MASK_KEYS=[
- 'fieldworkSelfOcclusionMask','fieldworkExternalOcclusionMask'
+ 'fieldworkSelfOcclusionMask','fieldworkExternalOcclusionMask',
+ 'fieldworkContactBaseTone','fieldworkContactComposedTone'
 ] as const;
 export type LightingPieceSpan={partId:string;role:string;start:number;count:number};
 /** The renderer merges identical-material geometry into one draw call. UserData

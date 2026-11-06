@@ -21,6 +21,7 @@ const armorSelect=el<HTMLSelectElement>('armorChoice'),
  status=el<HTMLElement>('fitStatus'),
  canvas=el<HTMLCanvasElement>('armorCanvas');
 const params=new URLSearchParams(location.search);
+const cavityPose=params.get('cavityPose')??'standing';
 // Opt-in 8G reference comparison only. The lab is not a player route;
 // each Playwright density shot loads a fresh page with one metric repeat.
 // This never persists into operator looks or modifies the source atlas.
@@ -102,6 +103,10 @@ function updateView(){
  canvas.dataset.top=topSelect.value;
  canvas.dataset.view=view;
  canvas.dataset.camo=previewCamo??'none';
+ canvas.dataset.cavityPose=cavityPose;
+ canvas.dataset.cavityArmLeft=String(operator.poseCavity.torso.value.x);
+ canvas.dataset.cavityArmRight=String(operator.poseCavity.torso.value.y);
+ canvas.dataset.cavityThigh=String(operator.poseCavity.thighs[0].value.x);
  canvas.dataset.camoScale=String(FABRIC_CAMO_DENSITY['norwegian-m98']);
 }
 function refresh(){
@@ -127,9 +132,11 @@ function refresh(){
     {trousers:previewCamo}:{} )};
 
  poseOperator(operator,{
-  x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,posture:'stand',
+  x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
+  posture:cavityPose==='crouch'?'crouch':'stand',
   injury:0,weapon:'carbine',reload:0,reloadDuration:0,
-  lastDoorAt:-100,lastThrowAt:-100,down:false,surrender:false,
+  lastDoorAt:-100,lastThrowAt:-100,down:false,
+  surrender:cavityPose==='raised',downProgress:cavityPose==='raised'?1:0,
   aiming:false,firing:false,turning:0,deterministic:true,
   unarmedPreview:true,equipment:kit,wardrobe
  },0);

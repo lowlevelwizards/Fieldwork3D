@@ -114,3 +114,89 @@ Base: `0cf8a9f1737b1327cbb15c11b4f30e718cd73b98`
 - Screenshot captured to the existing `operator-studio-captures` artifact.
 - Uses the same installed Playwright browser, no new independent workflow.
 - Atlas remains debug-only; visual approval still required before default use.
+
+## R5.2-E atlas self-shadow replacement / double-darkening isolation
+- Preserve grayscale per-vertex base and composed contact values before
+  rigid mesh consolidation, including mixed indexed/non-indexed remapping.
+- In Studio atlas mode ONLY, remove the baked self contribution using the
+  recorded source/output ratio. Preserve external contact, root-height
+  gradient, camouflage UVs and cross-equipment shadow.
+- Native UV1 AO intensity .85 (replaces, does not augment, isolated self).
+- Idempotent correction and explicit restoration API. Default Studio and
+  tactical lighting completely unchanged.
+- Reject atlas if the required base/composed masks are unavailable; no
+  approximate reverse-calculation of already-clamped colors.
+
+## R5.4-B Studio-only directional cel comparison (feature flag)
+- `?operatorLightingToon=2` and `?operatorLightingToon=3` select shared
+  two- or three-band directional gradient textures with nearest sampling.
+- Only AO-enabled cloth/gear materials convert to shared MeshToonMaterial
+  previews. Preserve map/albedo, vertex AO, UVs, alpha and material color.
+- No new meshes or shadow lights; materials are cached by source material.
+- Mutually exclusive with `?operatorLightingAtlas=1` until both look good
+  independently, so there is no unstable double-custom-material combination.
+- Default Studio, tactical gameplay, and all operator looks unchanged.
+- Still requires real mobile screenshot evaluation before visual approval.
+
+## R5.4-C mobile three-band cel proof
+- Extend the existing targeted R5 Studio test with a second independent
+  phone-sized WebGL page using `?operatorLightingToon=3`.
+- Require actual toon-shaded meshes, no WebGL shader console errors, and
+  a nonblank three-band capture in the existing screenshot artifact.
+- Keep UV1 atlas and toon experiments separate, with no new workflow run.
+
+## R5.5-A GPU pose-aware cavity receivers
+- Per-rig shader clones for actual uniform torso and both thigh meshes;
+  no additional mesh, CPU per-frame bake or extra draw calls.
+- Upper-arm quaternion + solved elbow spread fade armpit cavities on raise;
+  crouch/stride modulate a subtle upper-thigh garment overlap.
+- Material map, hue and native vertex AO stay authoritative; no IK changes.
+- LOD scalar supported by the rig for later tactical quality policy.
+
+## R5.5-B mobile tactical shadow quality LOD
+- Use projected character pixels and existing graphics preset, not
+  expensive per-frame world-distance checks, to choose high/medium/distant.
+- Retain the ONE existing scene shadow map and shadow scheduler.
+- Medium/distant omit tiny cast volumes; their precomputed AO stays lit.
+- Track original mesh.castShadow and restore it when zooming closer.
+- Caster traversal only on changed LOD tier or appearance key.
+- Explicitly invalidate paused world shadow map when caster set changes.
+- Drive three pose-cavity material uniforms at appropriate quality strength.
+- No actor-specific lights, meshes, shadow passes or CPU bake work.
+
+## R5.6-B mobile screenshot / draw-call matrix
+- Existing Studio smoke now records six kit references at front, side,
+  back and fit with identical 390x844 viewport; 24 canonical captures.
+- Additional 12 representative light/dark samples of isolated UV1 atlas,
+  two-band and three-band cel shading, with shader error detection.
+- Record per-image draws, UV1 atlas count/bytes and toon mesh count in
+  a JSON visual report; require nonblank captures and different camera views.
+- Browser/mobile emulation is not a substitute for physical iPhone
+  calibration; no claim of physical-device approval from automated passes.
+
+## R5.6-C animated cavity visual/renderer accounting
+- Read-only diagnostic flag `?cavityPose=standing|crouch|raised` in
+  Armor/Rig Lab: uses existing operator IK and RGB materials.
+- Three actual WebGL phone captures; assert raising an arm releases
+  armpit shade, crouching deepens inner upper-thigh fold.
+- Built-in renderer texture/geometry counts sampled alongside draw calls
+  in the 36-view Studio comparison manifest; do not label CPU timings GPU.
+- No graphics setting or mission gameplay behavior changed by lab option.
+
+## R5.2-F stale-atlas and repeated outfit rebake safety
+- Track the 8-bit color attribute version after self-shadow isolation.
+- Reapply isolation only when an independent wardrobe/contact/height
+  bake legitimately overwrites the same geometry's vertex colors.
+- Restore old geometry and clear UV1 when a fitted mesh is replaced.
+- No per-pose shadow correction and no cumulatively brightened clothing.
+- Exact latest-source rollback is covered by focused tests.
+
+## R5.6-D independent Studio lighting layer inspector
+- Debug overlay now independently enables/disables self AO, external gear
+  AO, proximity contact, baked directional casts and height shading.
+- Keep one byte-exact original vertex buffer per visible geometry in a
+  WeakMap; recomposition never multiplies a previous debug result.
+- Restore untouched colors before every appearance re-bake and on Reset.
+- Disabled-channel preview is a visual diagnostic where occlusion passes
+  overlap; the unmodified baked result remains the production authority.
+- No new materials, geometry, GPU attributes or gameplay work.
