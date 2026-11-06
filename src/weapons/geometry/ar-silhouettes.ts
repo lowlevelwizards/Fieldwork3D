@@ -4,15 +4,16 @@
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addBar,type Outline,type SlotName} from './profile-primitives.ts';
+import {AR_STANAG_METAL} from './weapon-visual-palette.ts';
 import {AR_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
 import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
 
 export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material){
- const parts=build.parts,material=[steel,dark,wood] as const;
+ const parts=build.parts,material=[steel,dark,wood,AR_STANAG_METAL] as const;
  const index:Record<SlotName,number>={stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0};
- const p=(slot:SlotName,outline:Outline,depth:number,finish:0|1|2=1)=>
+ const p=(slot:SlotName,outline:Outline,depth:number,finish:0|1|2|3=1)=>
   addOutline(root,slot,parts[slot],index[slot]++,outline,depth,material[finish]);
  const b=(slot:SlotName,x:number,y:number,z:number,w:number,h:number,d:number,
   finish:0|1|2=1)=>addCuboid(root,slot,parts[slot],index[slot]++,
@@ -91,7 +92,7 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const magRight=m.magwellCenterX+m.magazineWidthX/2;
  if(mag==='ar-mag20')
   p('magazine',[[magLeft,magTop],[magRight,magTop],
-   [magRight+.12,-6.22],[magLeft+.12,-6.22]],m.magazineDepthZ,0);
+   [magRight+.12,-6.22],[magLeft+.12,-6.22]],m.magazineDepthZ,3);
  else if(mag==='ar-magpoly')
   p('magazine',[[magLeft,magTop],[magRight,magTop],
    [magRight+.12,-4.75],[magRight+.55,-7.2],
@@ -99,28 +100,38 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  else
   p('magazine',[[magLeft,magTop],[magRight,magTop],
    [magRight+.1,-4.78],[magRight+.48,-7.35],
-   [magLeft+.6,-7.45],[magLeft+.12,-4.72]],m.magazineDepthZ,0);
+   [magLeft+.6,-7.45],[magLeft+.12,-4.72]],m.magazineDepthZ,3);
 
  // Four outside envelopes: triangular ribless, rounded, slim retro, heavy rail.
  const guard=parts.handguard;
- const long=['ar-triangle','ar-round','ar-m5-rail'].includes(guard);
+ const long=['ar-triangle','ar-round','ar-m5-rail','ar-pri-tube'].includes(guard);
  const short=['ar-compact-rail','ar-risii'].includes(guard);
- const end=long?15.25:short?15.95:13.9;
+ const commando=guard==='ar-733-ribbed';
+ const end=guard==='ar-pri-tube'?14.8:long?15.25:short?15.95:commando?12.9:13.9;
  // A slight deliberate overlap avoids the visible receiver/guard seam.
  const start=3.55;
- if(guard==='ar-triangle'){
+ if(guard==='ar-pri-tube'){
+  // Long faceted PRI tube with one continuous rail and a connected rear bridge.
+  p('handguard',[[start,-1.5],[start,1.25],[start+.7,1.62],
+   [end-.8,1.62],[end,1.0],[end,-1.25],[end-.8,-1.65]],3.5,1);
+  b('handguard',(start+end)/2,1.94,0,end-start,.62,2.8,0);
+  b('handguard',2.6,1.91,0,3.6,.48,2.45,0);
+  addWeaponPixelMark(root,'pri-vents',(start+end)/2,.1,1.88,end-start-2.0,.9);
+ }else if(guard==='ar-triangle'){
   // One long block with an iconic triangular taper, no tiny rail strips.
-  p('handguard',[[start,1.65],[end,1.15],[end,-1.15],
-   [start,-1.8]],3.85,1);
+  // A1's thick rear triangular mass narrows to the distinctive long fore-end.
+  p('handguard',[[start,1.55],[start+.9,1.77],[end-.6,1.07],
+   [end,-.8],[end-1.0,-1.18],[start,-1.8]],3.85,1);
  }else if(guard==='ar-round'||guard==='ar-carbine'||
-   guard==='ar-car15-ribbed'){
-  const retro=guard==='ar-car15-ribbed';
+   guard==='ar-car15-ribbed'||guard==='ar-733-ribbed'){
+  const retro=guard==='ar-car15-ribbed'||commando;
   p('handguard',retro?
    [[start,1.25],[start+1.0,1.52],[end-.65,1.37],
     [end,-.75],[end-.55,-1.42],[start+.4,-1.55]]:
    [[start,1.35],[start+.8,1.7],[end-.7,1.6],
     [end,-.9],[end-.6,-1.65],[start+.5,-1.65]],
    retro?3.15:3.85,1);
+  if(commando)b('handguard',start+.55,.08,0,.62,2.9,3.35,0);
  }else{
   const ris=guard==='ar-risii';
   // Single squared shell and its raised rail, rather than stacked strips.
@@ -135,17 +146,23 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
    ris?4.15:3.7,ris?2:0);
   if(ris)addWeaponPixelMark(root,'ris-panel',(start+end)/2,.2,2.34,
    end-start-1.65,1.16);
+  if(guard==='ar-m5-rail')addWeaponPixelMark(root,'ris-panel',
+   (start+end)/2,.15,2.04,end-start-2.3,.84);
  }
 
  // All variants share the authoritative X=19.5 tip: only visual profile varies.
  const barrelEnd=19.5;
- const noseStart=short?15.7:long?15.1:13.7;
+ const noseStart=parts.barrel==='ar-733-115'?12.75:
+  parts.barrel==='ar-spr18'?14.55:short?15.7:long?15.1:13.7;
  b('barrel',(noseStart+barrelEnd)/2,0,0,barrelEnd-noseStart,1.25,1.4,0);
  // Old-style raised front sight, absent on compact modern rail silhouette.
- if(!short){
+ if(!short&&parts.barrel!=='ar-spr18'){
   // Oversized A-frame front sight: genuine open V negative space.
   // Wide squat A-frame silhouette; a visible V gap, not a needle-like spike.
   line('barrel',[16.24,.35],[16.83,2.72],.34,1.8,0);
   line('barrel',[17.42,.35],[16.83,2.72],.34,1.8,0);
+ }else if(parts.barrel==='ar-spr18'){
+  b('barrel',16.25,.92,0,1.2,.5,1.45,1);
+  b('barrel',18.93,0,0,1.14,1.62,1.85,1);
  }else b('barrel',19.06,0,0,.88,1.75,1.9,1);
 }

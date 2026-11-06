@@ -11,6 +11,7 @@ export type WeaponVisualLayout={
 export function weaponVisualLayout(config:WeaponConfiguration):WeaponVisualLayout{
  const assembly=resolveWeaponAssembly(config);
  const compact=config.build?.parts.barrel==='ar-103'||
+  config.build?.parts.barrel==='ar-733-115'||
   config.build?.parts.barrel==='ak-short';
  const scale=config.build?assembly.lengthScale:1;
  return {
