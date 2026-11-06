@@ -16,22 +16,22 @@ export type LowReadyArchetype={
 export const LOW_READY_ARCHETYPES:Readonly<Record<
  LowReadyFamily,LowReadyArchetype>>={
  'ar-carbine':{family:'ar-carbine',yaw:.35,pitch:-.22,
-  supportFraction:.19,stock:{x:0,y:0,z:0},
+  supportFraction:.19,stock:{x:-.20,y:-.72,z:0},
   elbowBias:{firingDrop:5.6,supportDrop:5.2}},
  'ar-rifle':{family:'ar-rifle',yaw:.40,pitch:-.27,
-  supportFraction:.26,stock:{x:.12,y:-.18,z:0},
+  supportFraction:.26,stock:{x:-.10,y:-.88,z:0},
   elbowBias:{firingDrop:5.8,supportDrop:5.2}},
  'ak-carbine':{family:'ak-carbine',yaw:.36,pitch:-.24,
-  supportFraction:.12,stock:{x:.08,y:-.08,z:0},
+  supportFraction:.12,stock:{x:-.18,y:-.76,z:0},
   elbowBias:{firingDrop:5.7,supportDrop:5.4}},
  'ak-rifle':{family:'ak-rifle',yaw:.40,pitch:-.27,
-  supportFraction:.17,stock:{x:.13,y:-.15,z:0},
+  supportFraction:.17,stock:{x:-.10,y:-.85,z:0},
   elbowBias:{firingDrop:5.8,supportDrop:5.2}},
  'rpk-long':{family:'rpk-long',yaw:.44,pitch:-.31,
-  supportFraction:.31,stock:{x:.22,y:-.25,z:0},
+  supportFraction:.31,stock:{x:.04,y:-1.05,z:0},
   elbowBias:{firingDrop:5.9,supportDrop:5.1}},
  'hk-rifle':{family:'hk-rifle',yaw:.41,pitch:-.26,
-  supportFraction:.23,stock:{x:.16,y:-.20,z:0},
+  supportFraction:.23,stock:{x:-.08,y:-.87,z:0},
   elbowBias:{firingDrop:5.7,supportDrop:5.3}}
 };
 export const LOW_READY_PASSES:Readonly<Record<LowReadyPass,{
@@ -45,8 +45,8 @@ export const LOW_READY_PASSES:Readonly<Record<LowReadyPass,{
  compressed:{stockX:.90,stockY:.48,stockZ:.52,
   yaw:.19,pitch:.15,softScale:1.35,
   contactFractions:[0,.12,.26,.43,.65],centerPenalty:1.6},
- deep:{stockX:1.42,stockY:.70,stockZ:.83,
-  yaw:.29,pitch:.22,softScale:1.65,
+ deep:{stockX:2.2,stockY:1.20,stockZ:1.05,
+  yaw:.34,pitch:.26,softScale:1.65,
   contactFractions:[0,.10,.22,.40,.68,.90],centerPenalty:3.0}
 };
 export function lowReadyArchetype(config:WeaponConfiguration):LowReadyArchetype|null{
