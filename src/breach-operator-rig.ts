@@ -12,6 +12,8 @@ import {alignSegment,solveTwoBone,ARM_LIMITS,LEG_LIMITS,
 import {armorArmIntrusion,armorElbowPole}
  from './breach-arm-armor-clearance.ts';
 import {idleLifeAt} from './breach-idle-life.ts';
+import {lowReadyFamilyFit,lowReadyElbowPole}
+ from './breach-low-ready-family-fit.ts';
 import {createOperatorPoseScratch,type OperatorPoseScratch}
   from './breach-operator-pose-scratch.ts';
 import type {WeaponId} from './breach-combat.ts';
@@ -956,6 +958,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // equivalent shot-time balance transform is integrated.
   r.handlingProfile=profile;
   const poseWeight=p.handlingOverride&&!p.down&&!p.surrender?1:0;
+  const familyLow=lowReadyFamilyFit(p.weaponConfiguration);
+  // Smoothly retire the relaxed hold when accelerating, aiming, reloading
+  // or engaging. All combat-facing muzzle fits retain their original data.
+  const relaxedLowReady=familyLow&&handling==='low'&&!p.down&&
+    !p.surrender&&!p.firing&&p.reload<=0&&!p.treatmentActive?
+    clamp((18-physicalSpeed)/18,0,1)*
+    clamp((.18-(p.aimBlend??(p.aiming?1:0)))/.18,0,1):0;
   // A pivot requires the stance to catch up with requested facing.
   // In replay/lab this orientation is reconstructed by time, never dt.
   // The pelvis yaw has exactly ONE final writer, after contact scheduling.
@@ -1045,7 +1054,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.chest.rotation.x=clamp(p.injury===2?.07:p.injury===1?.025:0,0,.09)+
     motion.torsoSide;
   r.chest.rotation.y+=motion.torsoYaw+
-    poseWeight*profile.torsoTurn;
+    poseWeight*profile.torsoTurn+
+    relaxedLowReady*(familyLow?.torsoTurn??0);
   if(p.unarmedPreview&&physicalSpeed<.5&&p.posture==='stand'&&
     !p.down&&!p.surrender){
     // Stable unarmed modeling reference. These transforms belong to
@@ -1191,12 +1201,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   if(r.weaponLightLens)r.weaponLightLens.visible=!!p.weaponLightOn&&
     !p.down&&!p.surrender;
   if(r.droppedLightLens)r.droppedLightLens.visible=false;
-  const data=weaponGrips(p.weapon,p.weaponConfiguration);
+  const data=weaponGrips(p.weapon,p.weaponConfiguration,
+    handling,relaxedLowReady);
   const recoil=p.recoil??(p.firing?1.5:0);
   const fit=fitWeaponPose({weapon:p.weapon,handling,
     configuration:p.weaponConfiguration,
     yaw:-(p.shotHeading??p.heading)-r.legacyYaw-r.chest.rotation.y,
     recoil,clearanceRetraction:p.clearanceRetraction,
+    relaxedLowReady,
     swayYaw:motion.weaponYaw*freeMotion,
     swayPitch:motion.weaponPitch*freeMotion,
     aimBlend:p.handlingOverride?undefined:
@@ -1388,7 +1400,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // The same pose parameters that drive weapon-ready silhouettes now
     // drive each arm independently, including during interrupted blends.
     const corridor=elbowCorridor(handling,sign as -1|1,profile);
+    const curatedSupport=i===0&&!releaseLeft&&relaxedLowReady>.08&&familyLow;
+    const familyPole=curatedSupport?
+      lowReadyElbowPole(shoulder,familyLow,0):null;
     const wanted=neutralArms?neutralMannequinElbowPole(sign as -1|1):
+      familyPole?P(familyPole.x,familyPole.y,familyPole.z):
       P(corridor.x,corridor.y,corridor.z).sub(shoulder);
     let solved=solveTwoBone(shoulder,wrist,10,10,
       wanted,ARM_LIMITS,neutralArms?undefined:arm.bend,scratch.arms[i]);
@@ -1402,7 +1418,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         (intersectsTorso(candidate.joint,.25)?2.5:0);
       let bestScore=score(solved);
       if(bestScore>.04){
-        const pole0=armorElbowPole(shoulder,sign as -1|1,0);
+        // Prefer a relaxed, downward/outboard AK-specific bend before the
+        // generic plate avoidance candidate. Both retain the real wrist grip.
+        const pole0=curatedSupport?
+          lowReadyElbowPole(shoulder,familyLow,1):
+          armorElbowPole(shoulder,sign as -1|1,0);
         const retry=solveTwoBone(shoulder,wrist,10,10,
           P(pole0.x,pole0.y,pole0.z),ARM_LIMITS,arm.bend,
           scratch.armRetry[i]);
@@ -1412,7 +1432,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         const alternate=solveTwoBone(shoulder,wrist,10,10,
           P(pole1.x,pole1.y,pole1.z),ARM_LIMITS,arm.bend,
           scratch.armFallback[i]);
-        if(score(alternate)+.015<bestScore)solved=alternate;
+        const alternateScore=score(alternate);
+        if(alternateScore+.015<bestScore){solved=alternate;bestScore=alternateScore;}
       }
     }
     r.elbowSpread[i]=Math.max(0,
