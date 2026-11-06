@@ -24,11 +24,9 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
   data[n]=rgb[0];data[n+1]=rgb[1];data[n+2]=rgb[2];data[n+3]=strong?255:232;
  };
  if(mark==='ar-port'){
-  // A tall receiver-side rectangle with one illuminated upper seam.
-  // Previously only its hairline highlight was legible on a phone.
-  for(let y=2;y<=9;y++)for(let x=2;x<=13;x++)pixel(x,y);
+  // Dark recessed upper, with only a muted narrow lip. No silver decal.
+  for(let y=2;y<=9;y++)for(let x=2;x<=13;x++)pixel(x,y,false,y>3);
   for(let x=2;x<=13;x++)pixel(x,2,true);
-  // No floating bright lower underline: the dark port reads by contrast.
  }else if(mark==='ak-port'){
   // Taller compact AK receiver opening, above (not behind) the magazine.
   for(let y=3;y<=9;y++)for(let x=3;x<=12;x++)pixel(x,y);
@@ -48,8 +46,8 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
   // long mold seam crosses the middle. These are not holes or rail covers.
   for(const x of ribX)
    for(let y=1;y<h-1;y++)pixel(x,y,false,true);
-  // Low-contrast lengthwise molding seam must not become a crosshatch grid.
-  for(let x=2;x<w-2;x++)pixel(x,Math.floor(h/2),true);
+  // Deliberately NO bright horizontal seam: the physical polymer ribs carry
+  // the identity without a fluorescent-looking middle stripe.
  }else if(mark==='a1-vents'){
   // Five large, strongly matte dark vents on the sloping upper A1 face.
   for(const x of [2,8,14,20,26])
@@ -83,8 +81,9 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
    for(let dy=0;dy<2;dy++)for(let x=2;x<14;x++)
     pixel(x,y+dy,false,true);
  }else if(mark==='pri-vents'){
-  for(const x of [3,7,11])for(let y=3;y<=5;y++)pixel(x,y);
-  for(let x=3;x<=13;x++)pixel(x,2,true);
+  // Quiet discrete vent windows. No full-width illuminated Mk12 side seam.
+  for(const x of [3,7,11])for(let y=2;y<=5;y++)
+   for(let dx=0;dx<2;dx++)pixel(x+dx,y,false,true);
  }else{
   // Large rail cover blocks; do not waste triangles on Picatinny teeth.
   const starts=mark==='m5-panel'?[2,10,18,26]:

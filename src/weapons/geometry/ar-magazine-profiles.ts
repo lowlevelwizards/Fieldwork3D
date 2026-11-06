@@ -13,8 +13,10 @@ export function arMagazineCurve(style:ARMagazineStyle,topX=1,topY=-2.15,
  width=3.38,depth=1.83):ARMagazineCurve{
  const profile={
   '20':{length:4.10,sweep:.10,power:1.48},
-  '30':{length:5.30,sweep:.80,power:1.48},
-  'poly':{length:5.20,sweep:.75,power:1.48}
+  // Keep the upper insertion region straight; concentrate gentle sweep
+  // toward the bottom like the successful AK-derived centerline system.
+  '30':{length:5.30,sweep:.80,power:1.78},
+  'poly':{length:5.20,sweep:.75,power:1.72}
  } as const;
  return {style,topX,topY,width,depth,...profile[style]};
 }
@@ -39,7 +41,7 @@ export function arMagazineOutline(c:ARMagazineCurve):Point2[]{
 /** Two thick contour-following press lines on metal STANAGs only. */
 export function arMagazineRibOutlines(c:ARMagazineCurve):Point2[][]{
  if(c.style==='poly')return [];
- const half=c.style==='20'?.12:.17,starts=[-.18,.18];
+ const half=c.style==='20'?.12:.15,starts=[-.20,.20];
  return starts.map(offset=>{
   const left:Point2[]=[],right:Point2[]=[];
   for(const t of [.06,.32,.62,.94]){
@@ -58,5 +60,18 @@ export function arMagazinePolyBaseplate(c:ARMagazineCurve):Point2[]{
  return [
   [a[0][0]+bias,a[0][1]],[b[0][0]+bias,b[0][1]],
   [b[1][0]+bias,b[1][1]],[a[1][0]+bias,a[1][1]]
+ ];
+}
+
+/** Quiet lower-side molded facet, NOT the abandoned square panel decal.
+ * Built from the same normal-offset geometry as the parent polymer body.
+ */
+export function arMagazinePolyLowerFacet(c:ARMagazineCurve):Point2[]{
+ const a=arMagazineSample(c,.61),b=arMagazineSample(c,.94);
+ return [
+  [a.x+a.nx*c.width*.23,a.y+a.ny*c.width*.23],
+  [b.x+b.nx*c.width*.23,b.y+b.ny*c.width*.23],
+  [b.x+b.nx*c.width*.44,b.y+b.ny*c.width*.44],
+  [a.x+a.nx*c.width*.39,a.y+a.ny*c.width*.39]
  ];
 }

@@ -70,8 +70,9 @@ test('R4.5 receiver loses rear block and trigger-guard bar, gains handle and ass
  assert.ok(boxes.some(x=>close(x.position.x,-5.92)&&
   close(x.position.y,1.59)&&x.geometry.parameters.depth>=3.9),
   'low horizontal rear charging handle');
- assert.ok(boxes.some(x=>close(x.position.x,-1.93)&&
-  close(x.rotation.z,-.19)),'one long angled forward assist behind port');
+ assert.ok(receiver.some(x=>x.userData.arForwardAssist&&
+  x.geometry.type==='ExtrudeGeometry'&&x.position.z>1.8),
+  'single shallow angled forward assist, no dotted box');
  assert.equal(boxes.filter(x=>close(x.position.x,-5.7)&&
   x.geometry.parameters.height>3).length,0,'old tall rear lump removed');
  assert.ok(!receiver.some(x=>x.geometry.type==='ExtrudeGeometry'&&
@@ -87,7 +88,7 @@ test('R4.6 constant-width STANAG art has metal ribs but no PMAG panel',()=>{
   assert.ok(mag.max.x-mag.min.x>=3.3,id+' broad side profile');
   assert.ok(mag.max.z-mag.min.z<=2.18,id+' slim Z');
   const meshes=group.children.filter(x=>x.name.startsWith('family-magazine-'));
-  assert.equal(meshes.length,id==='ar-mk18'?2:3,
+  assert.equal(meshes.length,id==='ar-mk18'?4:3,
    id+' has body plus stamped geometry or molded toe');
   assert.equal(group.children.filter(x=>x.name==='family-art-ar-poly-panel').length,0,
    'no fake side panel on the poly mag');
@@ -117,7 +118,7 @@ test('R4.6 plastic ribs and four-sided instanced rails remain visually distinct'
 });
 test('R4.5 M4 stock has iconic deep rear heel and birdcage markings',()=>{
  const {group}=model('ar-m4a1');
- assert.ok(bounds(group,'stock').min.y<-4.45,'M4 has deep flat heel');
+ assert.ok(bounds(group,'stock').min.y<-4.02,'M4 keeps a flat but slimmer heel');
  assert.ok(has(group,'ar-birdcage'),'simple birdcage slits');
  assert.equal(group.children.filter(x=>x.name==='family-art-ar-birdcage').length,2);
  clearWeaponSilhouette(group);

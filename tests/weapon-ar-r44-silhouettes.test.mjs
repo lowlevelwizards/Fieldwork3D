@@ -87,7 +87,7 @@ test('R4.6 STANAG contour ribs replace mirrored sticker art',()=>{
  for(const id of ['ar-m16a1','ar-colt733','ar-mk18']){
   const {g}=model(id),magazine=g.children.filter(x=>x.name.startsWith('family-magazine-'));
   const decals=g.children.filter(x=>x.userData.weaponPixelArt);
-  assert.equal(magazine.length,id==='ar-mk18'?2:3,
+  assert.equal(magazine.length,id==='ar-mk18'?4:3,
    id+' body plus two metal stamps or polymer toe');
   assert.equal(decals.filter(x=>x.name.startsWith('family-art-ar-mag-')||
    x.name==='family-art-ar-poly-panel').length,0,

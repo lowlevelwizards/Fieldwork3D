@@ -63,14 +63,15 @@ test('R4.6 curved STANAG widths are normal to shared centerline',()=>{
  assert.equal(arMagazinePolyBaseplate(arMagazineCurve('poly')).length,4);
 });
 test('R4.6 metal magazines use two thick actual ribs; polymer no fake side panel',()=>{
- for(const [id,expected] of [['ar-m16a1',3],['ar-m4a1',3],['ar-mk18',2]]){
+ for(const [id,expected] of [['ar-m16a1',3],['ar-m4a1',3],['ar-mk18',4]]){
   const {g}=model(id),mg=meshes(g,'magazine');
   assert.equal(mg.length,expected,id+' low-cost magazine geometry');
   if(id!=='ar-mk18')assert.equal(mg[0].material,AR_STANAG_METAL,
    id+' metal magazine body');
   assert.equal(g.children.filter(x=>x.name==='family-art-ar-poly-panel').length,0);
   if(id==='ar-mk18'){
-   assert.equal(mg[1].material,AR_MUTED_FDE,'heavy tan molded plate');
+   assert.ok(mg.some(x=>x.material===AR_MUTED_FDE),
+    'heavy tan molded toe retained along with two restrained side facets');
   }else{
    assert.ok(mg.slice(1).every(x=>x.material===AR_STANAG_RIB),
     'contour-following matte ribs');
@@ -84,9 +85,9 @@ test('R4.6 receiver controls are seated and both stock and grips present',()=>{
  assert.ok(cubes.some(x=>close(x.position.x,-5.92)&&
   close(x.position.y,1.59)&&close(x.geometry.parameters.height,.80)),
   'charging handle should be a seated substantial bar');
- assert.ok(cubes.some(x=>close(x.position.x,-1.93)&&
-  x.geometry.parameters.width>2.3&&x.rotation.y>.15),
-  'forward assist must be long, canted and one sided');
+ const assist=parts.find(x=>x.userData.arForwardAssist);
+ assert.ok(assist&&assist.geometry.type==='ExtrudeGeometry'&&
+  close(assist.position.z,1.91),'one solid, shallow forward-assist profile');
  const port=g.children.find(x=>x.name==='family-art-ar-port');
  assert.ok(port&&close(port.geometry.parameters.width,3.28),'port larger');
  clearWeaponSilhouette(g);
