@@ -40,6 +40,10 @@ on:
       - 'src/operator-armor-attachment-frame.ts'
       - 'scripts/smoke-armor-r1-ui.mjs'
       - 'scripts/capture-operator-armor-rig.mjs'
+      - 'scripts/capture-breach-pose-fit.mjs'
+      - 'src/breach-coupled-low-ready.ts'
+      - 'src/breach-weapon-contact-zones.ts'
+      - 'src/breach-pose-clearance-envelope.ts'
       - '.github/workflows/operator-armor-rig-visual.yml'
   workflow_dispatch:
 permissions:
@@ -79,6 +83,15 @@ jobs:
           if-no-files-found: ignore
       - name: Phone Operator Lab appearance cards and playback navigation
         run: node scripts/smoke-armor-r1-ui.mjs
+      - name: Coupled AR/AK low-ready mobile Pose Fit screenshots
+        if: ${{ startsWith(github.head_ref, 'feature/breach-coupled-low-ready-pose-') }}
+        run: node scripts/capture-breach-pose-fit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always() && startsWith(github.head_ref, 'feature/breach-coupled-low-ready-pose-')
+        with:
+          name: breach-pose-fit-phone-views
+          path: breach-pose-fit-captures/
+          if-no-files-found: warn
       - name: Gameplay-zoom armor and chest rig silhouette captures
         run: node scripts/capture-operator-armor-rig.mjs
       - name: R4 phone armor/rig/uniform cast-shadow comparisons
