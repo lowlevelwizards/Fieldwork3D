@@ -69,7 +69,8 @@ export function relaxedArmShapeCost(
 }
 function selectArm(shoulder:THREE.Vector3,wrist:THREE.Vector3,
  side:-1|1,env:PoseClearanceEnvelope,softScale:number,
- previous?:THREE.Vector3,stats?:Record<string,number>):SolvedArm|null{
+ previous?:THREE.Vector3,stats?:Record<string,number>,
+ isSupport=false):SolvedArm|null{
  // Evaluate every anatomically valid candidate when heavy gear is present:
  // culling after the eight prettiest elbow directions falsely made flak
  // wearers incapable of holding a rifle. The search is still pose-cached.
@@ -80,7 +81,10 @@ function selectArm(shoulder:THREE.Vector3,wrist:THREE.Vector3,
   const shape=assessLowReadyArm(shoulder,limb.joint,limb.effector,
    side,limb.angle);
   if(!shape.valid)continue;
-  if(stats)stats.rightAnatomical=(stats.rightAnatomical??0)+1;
+  if(stats){
+   const k=isSupport?'leftAnatomical':'rightAnatomical';
+   stats[k]=(stats[k]??0)+1;
+  }
   const continuity=previous?
    (1-clamp(limb.bendPlane.dot(previous),-1,1))*.12:0;
   anatomical.push({pose:limb,score:shape.score+continuity});
@@ -91,13 +95,15 @@ function selectArm(shoulder:THREE.Vector3,wrist:THREE.Vector3,
   const contact=evaluateSleeveArmorContact(shoulder,
    candidate.pose.joint,candidate.pose.effector,env,softScale);
   if(stats){
-   stats.minimumRightHard=Math.min(stats.minimumRightHard??Infinity,
-    contact.hardDepth);
-   stats.minimumRightSoft=Math.min(stats.minimumRightSoft??Infinity,
-    contact.softDepth);
+   const name=isSupport?'Left':'Right';
+   stats['minimum'+name+'Hard']=Math.min(
+    stats['minimum'+name+'Hard']??Infinity,contact.hardDepth);
+   stats['minimum'+name+'Soft']=Math.min(
+    stats['minimum'+name+'Soft']??Infinity,contact.softDepth);
    const worst=contact.contacts.reduce((m,c)=>Math.max(m,
     c.depth/Math.max(.001,c.allowed)),0);
-   stats.minimumRightRatio=Math.min(stats.minimumRightRatio??Infinity,worst);
+   stats['minimum'+name+'Ratio']=Math.min(
+    stats['minimum'+name+'Ratio']??Infinity,worst);
   }
   if(!contact.valid)continue;
   const quality=candidate.score+contact.quality*.09;
@@ -191,7 +197,7 @@ export function solveCoupledLowReady(input:CoupledInput):
       transform(supportContactAt(contacts.support,f)));
      if(support.distanceTo(leftShoulder)>19.55){rejects.leftReach++;continue;}
      const left=selectArm(leftShoulder,support,-1,input.armor,
-      budget.softScale,input.previousBends?.[0]);
+      budget.softScale,input.previousBends?.[0],rejects,true);
      if(!left){rejects.leftAnatomyOrArmor++;continue;}
      const geometry=assessLowReadyPair(
       [leftShoulder,rightShoulder],
