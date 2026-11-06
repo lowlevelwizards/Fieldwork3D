@@ -3,7 +3,7 @@
  * Art-only overlays have no cast shadow and never affect weapon handling.
  */
 import * as THREE from 'three';
-export type WeaponMark='ar-port'|'ak-port'|'ak-selector'|'ak-cover-ribs'|'ris-panel'|'m5-panel'|'ras-panel'|'pri-vents'|'poly-ribs'|'car-ribs'|'a1-vents'|'ar-mag-stamp20'|'ar-mag-stamp30'|'ar-poly-panel'|'ar-birdcage'|'rail-cover-stripes';
+export type WeaponMark='ar-port'|'ak-port'|'ak-selector'|'ak-cover-ribs'|'ris-panel'|'m5-panel'|'ras-panel'|'pri-vents'|'poly-ribs'|'car-ribs'|'a1-vents'|'ar-mag-stamp20'|'ar-mag-stamp30'|'ar-poly-panel'|'ar-birdcage'|'rail-cover-stripes'|'ar-spr-ports';
 const dimensions:Record<WeaponMark,readonly [number,number]>={
  'ar-port':[16,12],'ak-port':[16,12],
  'ak-selector':[16,8],'ak-cover-ribs':[24,8],'ris-panel':[32,8],'pri-vents':[16,8],
@@ -11,7 +11,7 @@ const dimensions:Record<WeaponMark,readonly [number,number]>={
  'm5-panel':[32,8],'ras-panel':[32,8],
  'ar-mag-stamp20':[16,16],'ar-mag-stamp30':[16,24],
  'ar-poly-panel':[16,24],'ar-birdcage':[16,8],
- 'rail-cover-stripes':[32,8]
+ 'rail-cover-stripes':[32,8],'ar-spr-ports':[16,8]
 };
 const shared=new Map<WeaponMark,THREE.MeshBasicMaterial>();
 function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
@@ -84,6 +84,11 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
   for(const y of [1,5])
    for(let dy=0;dy<2;dy++)for(let x=2;x<14;x++)
     pixel(x,y+dy,false,true);
+ }else if(mark==='ar-spr-ports'){
+  // Two simple broad SPR side ports rather than an A2-style birdcage.
+  for(const x of [2,9])
+   for(let dx=0;dx<4;dx++)for(let y=2;y<=5;y++)
+    pixel(x+dx,y,false,true);
  }else if(mark==='pri-vents'){
   // Quiet discrete vent windows. No full-width illuminated Mk12 side seam.
   for(const x of [3,7,11])for(let y=2;y<=5;y++)

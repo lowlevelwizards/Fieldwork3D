@@ -6,7 +6,7 @@ import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addFacetedTube,addProfileFrame,type Outline,type SlotName} from './profile-primitives.ts';
 import {AR_STANAG_METAL,AR_STANAG_RIB,AR_MUTED_FDE,AR_POLYMER_RIB} from './weapon-visual-palette.ts';
 import {addARFacetedForearm,addARPolymerRibs} from './ar-handguard-profiles.ts';
-import {arMagazineCurve,arMagazineOutline,arMagazineRibOutlines,arMagazinePolyBaseplate,arMagazinePolyLowerFacet} from './ar-magazine-profiles.ts';
+import {arMagazineCurve,arMagazineOutline,arMagazineRibOutlines,arMagazinePolyBaseplate,addARPolymerMagazineBody} from './ar-magazine-profiles.ts';
 import {addARRailSegments} from './ar-rail-profiles.ts';
 import {AR_BARREL_ART,AR_VISUAL_AXIS_Y} from './ar-barrel-profiles.ts';
 import {AR_VISUAL_ANATOMY,shiftProfile}
@@ -147,24 +147,17 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const magStyle=mag==='ar-mag20'?'20':mag==='ar-magpoly'?'poly':'30';
  const curve=arMagazineCurve(magStyle,m.magwellCenterX,m.magazineTopY,
   m.magazineWidthX,m.magazineDepthZ);
- p('magazine',arMagazineOutline(curve),m.magazineDepthZ,
-  magStyle==='poly'?1:3);
+ if(magStyle==='poly')
+  addARPolymerMagazineBody(root,'magazine',mag,index.magazine++,
+   curve,material[1]);
+ else p('magazine',arMagazineOutline(curve),m.magazineDepthZ,3);
  for(const outline of arMagazineRibOutlines(curve)){
   const rib=addOutline(root,'magazine',mag,index.magazine++,
    outline,m.magazineDepthZ+.075,AR_STANAG_RIB);
   rib.castShadow=false;rib.receiveShadow=false;
  }
  if(magStyle==='poly'){
-  // One quiet molded lower bevel on EACH side, not a square applied panel.
-  const polyFacet=arMagazinePolyLowerFacet(curve);
-  for(const side of [-1,1]){
-   const bevel=addOutline(root,'magazine',mag,index.magazine++,
-    polyFacet,.13,material[0]);
-   // Keep the shallow facet inside the established slim-Z contract.
-   bevel.position.z=side*(m.magazineDepthZ/2-.015);
-   bevel.castShadow=false;bevel.receiveShadow=false;
-  }
-  // The substantial tan lower plate remains tangent to the curved toe.
+  // The tapered solid and substantial tan toe replace disconnected overlays.
   addOutline(root,'magazine',mag,index.magazine++,
    arMagazinePolyBaseplate(curve),m.magazineDepthZ+.12,AR_MUTED_FDE);
  }
@@ -204,6 +197,8 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
    start,end,1.82,material[1]);
   tube.position.y=AR_VISUAL_AXIS_Y;
   gb(start+.35,0,0,.70,3.25,3.75,0);
+  // Distinct front retaining collar, visible in orthographic and 3/4.
+  gb(end-.29,0,0,.51,3.22,3.68,0);
   // Mk12 Mod 0 keeps the six-sided PRI tube and its continuous bridge.
   gb((start+end)/2,2.06,0,end-start,.56,2.8,0);
   gb(2.65,2.06,0,3.85,.52,2.6,0);
@@ -309,8 +304,10 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   };
   if(barrelArt.profile==='spr'){
    // Distinctive long SPR collar and two-stage precision brake.
-   b('barrel',tip-1.48,AR_VISUAL_AXIS_Y,0,.58,2.02,2.05,1);
-   b('barrel',tip-.57,AR_VISUAL_AXIS_Y,0,1.14,1.70,1.85,0);
+   b('barrel',tip-1.45,AR_VISUAL_AXIS_Y,0,.78,2.05,2.07,1);
+   b('barrel',tip-.70,AR_VISUAL_AXIS_Y,0,1.40,1.72,1.87,0);
+   addWeaponPixelMarkPair(root,'ar-spr-ports',tip-.63,
+    AR_VISUAL_AXIS_Y,1.01,.90,.59);
   }else if(barrelArt.profile==='cqb'){
    // Keep 10.3-inch Mk18's tiny but visible exposed nose OUT of RIS II.
    birdcage(1.30,1.95,2.02);
