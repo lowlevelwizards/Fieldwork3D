@@ -28,8 +28,14 @@ function assertShadedTree(root,label){
   assert.equal(attr.itemSize,3);
   assert.equal(attr.normalized,true);
   assert.ok(attr.array instanceof Uint8Array,label+' should be 8 bit, not Float32');
+  // A finished operator can additionally carry the intentional R5
+  // root-wide height grade (.55 floor) or cross-assembly bake (.60 floor).
+  // The original .62 floor applies only to local pouch contact AO.
+  const minShade=o.geometry.userData.fieldworkHeightBaseline instanceof Uint8Array?
+   .55:o.geometry.userData.fieldworkCrossLightKey!==undefined?
+   .60:GEAR_CONTACT_AO_FLOOR;
   for(let i=0;i<attr.count;i++){
-   assert.ok(attr.getX(i)>=GEAR_CONTACT_AO_FLOOR-.004&&attr.getX(i)<=1);
+   assert.ok(attr.getX(i)>=minShade-.004&&attr.getX(i)<=1);
    assert.equal(attr.getX(i),attr.getY(i));
    assert.equal(attr.getX(i),attr.getZ(i));
   }
