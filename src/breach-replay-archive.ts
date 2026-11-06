@@ -9,6 +9,7 @@ import type {ExecutionEvent} from './breach-execution-events.ts';
 import type {RecordedShot} from './breach-replay-ballistics.ts';
 import type {ReplayPlanRevision} from './breach-replay-plans.ts';
 import type {ReplayMotionArchiveV1} from './breach-replay-motion.ts';
+import type {ReplayBookmark} from './breach-replay-chapters.ts';
 
 export type ReplayArchiveV1={
   format:'fieldwork-breach-replay';
@@ -21,6 +22,7 @@ export type ReplayArchiveV1={
   shots:RecordedShot[];
   planRevisions:ReplayPlanRevision[];
   motion:ReplayMotionArchiveV1;
+  bookmarks?:ReplayBookmark[];
   completeness:{complete:boolean;truncatedAt:number|null;reason:string|null};
 };
 const allowed=(id:string)=>id.length>0&&id.length<=128&&/^[\w-]+$/.test(id);
