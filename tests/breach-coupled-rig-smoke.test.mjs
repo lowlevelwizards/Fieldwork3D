@@ -45,6 +45,9 @@ test('real rig consumes the SAME approved M4 arm solution it rendered',()=>{
  const pose=rigPose(rig,'ar-m4a1','plate-jpc','no-rig','bdu-shirt');
  const report=rig.root.userData.lowReadyPoseReport;
  assert.ok(report,'coupled fitter must be used in a stationary Studio pose');
+ assert.deepEqual(report.fittingShoulders,
+  [[1,4,-7],[1,4,7]],
+  'Modular low-ready uses the shared physical shoulder frame');
  assert.equal(report.status,'clear');
  assert.ok(report.penetration<=.13);
  const envelope=poseClearanceEnvelope('plate-jpc','no-rig','bdu-shirt');

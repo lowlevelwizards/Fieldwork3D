@@ -8,16 +8,14 @@ import {poseClearanceEnvelope} from '../src/breach-pose-clearance-envelope.ts';
 import {solveCoupledLowReady} from '../src/breach-coupled-low-ready.ts';
 import {assessLowReadyPair} from '../src/breach-low-ready-anatomy.ts';
 import {ANATOMY} from '../src/breach-anatomy.ts';
-import {handlingProfile} from '../src/breach-handling-profiles.ts';
 const shoulders=[new THREE.Vector3(1,4,-7),new THREE.Vector3(1,4,7)];
-const profile=handlingProfile('low','carbine');
+// Authored modular low-ready now uses the normal physical shoulder joints
+// across both gameplay and explicit Studio preview (not shifted lab-only).
 const studioShoulders=[
- new THREE.Vector3(ANATOMY.shoulderLeft.x+profile.supportShoulderForward,
-  ANATOMY.shoulderLeft.y+profile.shoulderLift,
-  ANATOMY.shoulderLeft.z+profile.shoulderInward),
- new THREE.Vector3(ANATOMY.shoulderRight.x+profile.firingShoulderForward,
-  ANATOMY.shoulderRight.y+profile.shoulderLift,
-  ANATOMY.shoulderRight.z-profile.shoulderInward)
+ new THREE.Vector3(ANATOMY.shoulderLeft.x,
+  ANATOMY.shoulderLeft.y,ANATOMY.shoulderLeft.z),
+ new THREE.Vector3(ANATOMY.shoulderRight.x,
+  ANATOMY.shoulderRight.y,ANATOMY.shoulderRight.z)
 ];
 const fixtures=[
  ['ar-m4a1','plate-slick','full-chest','smock-jacket'],

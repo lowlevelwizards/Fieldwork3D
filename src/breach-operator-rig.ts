@@ -1231,10 +1231,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const shoulderFor=(i:number)=>{
     const sign=i===0?-1:1;
     const base=i===0?ANATOMY.shoulderLeft:ANATOMY.shoulderRight;
-    return P(base.x+poseWeight*(i===0?
+    // A modular rifle's approved low-ready shoulders are the *actual*
+    // anatomical joints. The explicit Lab pose formerly shifted both
+    // shoulders .42 units downward, invalidating the physical pose that
+    // gameplay already used. Other handling modes retain their profiles.
+    const shoulderWeight=handling==='low'&&
+      !!p.weaponConfiguration?.build?0:poseWeight;
+    return P(base.x+shoulderWeight*(i===0?
       profile.supportShoulderForward:profile.firingShoulderForward),
-      base.y+poseWeight*profile.shoulderLift,
-      base.z-sign*poseWeight*profile.shoulderInward);
+      base.y+shoulderWeight*profile.shoulderLift,
+      base.z-sign*shoulderWeight*profile.shoulderInward);
   };
   // The coupled solution is deliberately restricted to relaxed, stationary,
   // two-handed AR/AK presentation. Combat aim and shot-time geometry remain
