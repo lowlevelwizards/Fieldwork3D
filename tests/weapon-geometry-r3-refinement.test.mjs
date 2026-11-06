@@ -11,7 +11,7 @@ import {weaponVisualLayout}
  from '../src/weapons/geometry/weapon-visual-layout.ts';
 import {partVisualBounds,workbenchVisualAnchors}
  from '../src/weapons/geometry/weapon-visual-anchors.ts';
-import {AR_BLACK_METAL,AR_BLACK_POLYMER,AR_MUTED_FDE,AK_WARM_RESIN}
+import {AR_BLACK_METAL,AR_BLACK_POLYMER,AR_STANAG_METAL,AR_MUTED_FDE,AK_WARM_RESIN}
  from '../src/weapons/geometry/weapon-visual-palette.ts';
 
 const metal=new THREE.MeshBasicMaterial(),polymer=new THREE.MeshBasicMaterial();
@@ -96,8 +96,10 @@ test('R3: non-Mk18 ARs are consistently near-black while Mk18 furniture is FDE',
  for(const id of ['ar-m16a1','ar-m16a4','ar-car15','ar-m4a1']){
   const {group}=model(id);
   assert.ok(group.children.filter(m=>!m.userData.weaponPixelArt).every(m=>
-   [AR_BLACK_METAL,AR_BLACK_POLYMER].includes(m.material)),
-   id+' primary geometry black only');
+   m.name.startsWith('family-magazine-')?
+    [AR_STANAG_METAL,AR_BLACK_POLYMER].includes(m.material):
+    [AR_BLACK_METAL,AR_BLACK_POLYMER].includes(m.material)),
+   id+' black receiver and distinct metal magazine');
   clearWeaponSilhouette(group);
  }
  const {group}=model('ar-mk18');

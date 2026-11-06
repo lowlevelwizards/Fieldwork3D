@@ -4,15 +4,16 @@
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addBar,type Outline,type SlotName} from './profile-primitives.ts';
+import {AR_STANAG_METAL} from './weapon-visual-palette.ts';
 import {AR_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
 import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
 
 export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material){
- const parts=build.parts,material=[steel,dark,wood] as const;
+ const parts=build.parts,material=[steel,dark,wood,AR_STANAG_METAL] as const;
  const index:Record<SlotName,number>={stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0};
- const p=(slot:SlotName,outline:Outline,depth:number,finish:0|1|2=1)=>
+ const p=(slot:SlotName,outline:Outline,depth:number,finish:0|1|2|3=1)=>
   addOutline(root,slot,parts[slot],index[slot]++,outline,depth,material[finish]);
  const b=(slot:SlotName,x:number,y:number,z:number,w:number,h:number,d:number,
   finish:0|1|2=1)=>addCuboid(root,slot,parts[slot],index[slot]++,
@@ -91,7 +92,7 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const magRight=m.magwellCenterX+m.magazineWidthX/2;
  if(mag==='ar-mag20')
   p('magazine',[[magLeft,magTop],[magRight,magTop],
-   [magRight+.12,-6.22],[magLeft+.12,-6.22]],m.magazineDepthZ,0);
+   [magRight+.12,-6.22],[magLeft+.12,-6.22]],m.magazineDepthZ,3);
  else if(mag==='ar-magpoly')
   p('magazine',[[magLeft,magTop],[magRight,magTop],
    [magRight+.12,-4.75],[magRight+.55,-7.2],
@@ -99,7 +100,7 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  else
   p('magazine',[[magLeft,magTop],[magRight,magTop],
    [magRight+.1,-4.78],[magRight+.48,-7.35],
-   [magLeft+.6,-7.45],[magLeft+.12,-4.72]],m.magazineDepthZ,0);
+   [magLeft+.6,-7.45],[magLeft+.12,-4.72]],m.magazineDepthZ,3);
 
  // Four outside envelopes: triangular ribless, rounded, slim retro, heavy rail.
  const guard=parts.handguard;
@@ -110,8 +111,9 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const start=3.55;
  if(guard==='ar-triangle'){
   // One long block with an iconic triangular taper, no tiny rail strips.
-  p('handguard',[[start,1.65],[end,1.15],[end,-1.15],
-   [start,-1.8]],3.85,1);
+  // A1's thick rear triangular mass narrows to the distinctive long fore-end.
+  p('handguard',[[start,1.55],[start+.9,1.77],[end-.6,1.07],
+   [end,-.8],[end-1.0,-1.18],[start,-1.8]],3.85,1);
  }else if(guard==='ar-round'||guard==='ar-carbine'||
    guard==='ar-car15-ribbed'){
   const retro=guard==='ar-car15-ribbed';
@@ -135,6 +137,8 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
    ris?4.15:3.7,ris?2:0);
   if(ris)addWeaponPixelMark(root,'ris-panel',(start+end)/2,.2,2.34,
    end-start-1.65,1.16);
+  if(guard==='ar-m5-rail')addWeaponPixelMark(root,'ris-panel',
+   (start+end)/2,.15,2.04,end-start-2.3,.84);
  }
 
  // All variants share the authoritative X=19.5 tip: only visual profile varies.

@@ -110,8 +110,12 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const start=short?3.55:4.0;
  const woodGuard=guard==='ak-wood-long'||guard==='ak-wood-short';
  const rail=guard==='ak-rail-long';
- p('handguard',[[start,-1.35],[start+.75,1.05],[end-.7,1.05],
-   [end,-.2],[end-.5,-1.75],[start+.45,-1.75]],3.85,
+ // Distinct lower cheek on wooden rifles, straightforward block on polymers.
+ p('handguard',woodGuard?
+   [[start,-1.35],[start+.7,1.02],[end-.9,1.1],
+    [end,-.1],[end-.85,-1.84],[start+1.0,-1.84]]:
+   [[start,-1.35],[start+.75,1.05],[end-.7,1.05],
+    [end,-.2],[end-.5,-1.75],[start+.45,-1.75]],3.85,
    woodGuard?2:1);
  // Restore a deliberate narrow gap between upper and lower furniture.
  // A chunky rear collar keeps the two silhouettes visually connected.
