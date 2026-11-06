@@ -44,7 +44,7 @@ function rangeY(mesh){
 }
 test('AK R4.3 retains nine recipes, authoritative contacts and compact mesh budget',()=>{
  assert.equal(FAMILY_PRESETS.filter(p=>p.family==='ak').length,9);
- assert.equal(Object.keys(FAMILY_PARTS).length,92);
+ assert.equal(Object.keys(FAMILY_PARTS).length,93);
  for(const id of ids){
   const {group,config}=model(id);
   const body=new THREE.Box3().setFromObject(group);
