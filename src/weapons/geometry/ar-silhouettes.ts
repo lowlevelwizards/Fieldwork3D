@@ -81,11 +81,12 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   b('stock',-7.65,.05,0,4.2,1.45,1.9,0);
   p('stock',compact?
    // A thick compact SOPMOD-like cheek shape, without Z inflation.
-   [[rear,.95],[rear+1.12,1.17],[front,.78],
-    [front,-1.58],[rear+1.1,-3.03],[rear,-2.42]]:
+   [[rear,1.12],[rear+1.12,1.36],[front,.91],
+    [front,-1.25],[rear+1.48,-3.68],[rear,-3.54]]:
    m4?
-   [[rear,.82],[rear+1.08,1.02],[front,.60],
-    [front,-1.46],[rear+1.45,-2.85],[rear,-2.35]]:
+   // Classic M4 stock: high tube, massive wedge under the rear cheek.
+   [[rear,1.20],[rear+1.05,1.32],[front,1.03],
+    [front,-.88],[rear+2.34,-4.76],[rear+.24,-5.03]]:
    // Early sliding Fiberlite shape is simpler and visually lighter.
    // Retro CAR: single thick shape; the lower diagonal reads as a shadow.
    [[rear,.72],[front,.67],[front,-1.24],
@@ -108,25 +109,34 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const magTop=m.magazineTopY;
  const magLeft=m.magwellCenterX-m.magazineWidthX/2;
  const magRight=m.magwellCenterX+m.magazineWidthX/2;
- if(mag==='ar-mag20')
-  p('magazine',[[magLeft,magTop],[magRight,magTop],
-   [magRight+.12,-6.22],[magLeft+.12,-6.22]],m.magazineDepthZ,3);
- else if(mag==='ar-magpoly')
-  p('magazine',[[magLeft,magTop],[magRight,magTop],
-   [magRight+.12,-4.75],[magRight+.55,-7.2],
-   [magLeft+.65,-7.3],[magLeft+.12,-4.72]],m.magazineDepthZ+.12,1);
- else
-  p('magazine',[[magLeft,magTop],[magRight,magTop],
-   [magRight+.1,-4.78],[magRight+.62,-7.35],
-   [magLeft+.55,-7.45],[magLeft+.12,-4.72]],m.magazineDepthZ,3);
- // Bold base plate and restrained pressed-metal details, not separate rib meshes.
  const mag20=mag==='ar-mag20',magPoly=mag==='ar-magpoly';
- b('magazine',m.magwellCenterX+(mag20?.10:.42),mag20?-6.19:-7.33,0,
-  m.magazineWidthX+(mag20?.12:.28),.23,m.magazineDepthZ+.12,0);
- addWeaponPixelMarkPair(root,mag20?'ar-mag-stamp20':
+ if(mag20)
+  p('magazine',[[magLeft,magTop],[magRight,magTop],
+   [magRight+.14,-6.25],[magLeft+.04,-6.25]],m.magazineDepthZ,3);
+ else if(magPoly)
+  p('magazine',[[magLeft,magTop],[magRight,magTop],
+   [magRight+.06,-4.75],[magRight+.66,-7.23],
+   [magLeft+.64,-7.33],[magLeft+.06,-4.72]],
+   m.magazineDepthZ,1);
+ else
+  // Two major angular steps describe a curved USGI 30 rather than a slab.
+  // The lower edge slopes in the same direction as the body, no base plate.
+  p('magazine',[[magLeft,magTop],[magRight,magTop],
+   [magRight+.06,-4.73],[magRight+.62,-6.89],
+   [magRight+.71,-7.18],[magRight+.26,-7.42],
+   [magLeft+.47,-7.48],[magLeft+.08,-7.19],
+   [magLeft+.06,-4.73]],m.magazineDepthZ,3);
+ if(magPoly){
+  // Polymer/Pmag: substantial tan plate follows the body sweep.
+  const plate=b('magazine',m.magwellCenterX+.38,-7.39,0,
+   m.magazineWidthX+.26,.48,m.magazineDepthZ+.23,2);
+  plate.rotation.z=.10;
+ }
+ const marks=addWeaponPixelMarkPair(root,mag20?'ar-mag-stamp20':
   magPoly?'ar-poly-panel':'ar-mag-stamp30',
-  m.magwellCenterX+(mag20?.07:.22),mag20?-4.43:-5.12,
-  m.magazineDepthZ/2+.10,m.magazineWidthX-.55,mag20?2.85:4.15);
+  m.magwellCenterX+(mag20?.05:.22),mag20?-4.38:-5.10,
+  m.magazineDepthZ/2+.095,m.magazineWidthX-.44,mag20?2.70:4.17);
+ if(!mag20)for(const mark of marks)mark.rotation.z=.095;
 
  // One elevated axis shared by all AR barrels, guards, and front sight bases.
  // Keep a deliberate squared delta ring where conventional handguards meet
@@ -232,25 +242,27 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   if(tip-(sight??tip)>1.2)
    b('barrel',tip-1.05,AR_VISUAL_AXIS_Y,0,1.18,barrelArt.barrelHeight+.18,1.52,0);
  }
- // Factory muzzle profiles live INSIDE the authoritative barrel-tip envelope.
- // Optional equipment muzzle extensions begin at tip; no fake shot offset.
+ // A few iconic muzzle masses; the muzzle tip X remains authoritative.
+ // USGI birdcages get TWO wide black slots, not a fully machined cylinder.
+ const birdcage=(length:number,height:number,depth:number)=>{
+  b('barrel',tip-length/2,AR_VISUAL_AXIS_Y,0,length,height,depth,0);
+  addWeaponPixelMarkPair(root,'ar-birdcage',tip-length*.47,AR_VISUAL_AXIS_Y,
+   depth/2+.07,length*.70,height*.62);
+ };
  if(barrelArt.profile==='spr'){
-  // Mod 0: long brake + separate heavy collar.
   b('barrel',tip-1.34,AR_VISUAL_AXIS_Y,0,.66,1.91,1.94,1);
   b('barrel',tip-.46,AR_VISUAL_AXIS_Y,0,.90,1.73,1.82,1);
  }else if(barrelArt.profile==='cqb'){
-  // Mk18: short, stout suppressor-compatible muzzle profile.
-  b('barrel',tip-.45,AR_VISUAL_AXIS_Y,0,.86,1.88,2.00,1);
-  b('barrel',tip-.12,AR_VISUAL_AXIS_Y,0,.24,2.02,2.06,0);
+  birdcage(1.05,1.92,2.00);
+  b('barrel',tip-.18,AR_VISUAL_AXIS_Y,0,.34,2.02,2.05,0);
  }else if(parts.barrel==='ar-145'){
-  // CAR-era slim flash hider: lighter and longer than the 733.
-  b('barrel',tip-.45,0,0,.88,1.28,1.47,1);
- }else if(parts.barrel==='ar-733-115'){
-  b('barrel',tip-.35,AR_VISUAL_AXIS_Y,0,.68,1.57,1.70,1);
+  birdcage(1.07,1.35,1.48);
+ }else if(parts.barrel==='ar-20'){
+  birdcage(1.02,1.36,1.54);
  }else{
-  // A1 pencil hider / A2-family compensator. Distinction stays restrained.
-  const a1=parts.barrel==='ar-20';
-  b('barrel',tip-(a1?.34:.40),AR_VISUAL_AXIS_Y,0,a1?.66:.78,
-   a1?1.27:1.66,a1?1.44:1.80,1);
+  // A2-family birdcage on the 733, M4A1, M16A2 and M16A4.
+  birdcage(1.24,1.77,1.87);
+  b('barrel',tip-1.11,AR_VISUAL_AXIS_Y,0,.24,1.92,1.94,1);
  }
+
 }
