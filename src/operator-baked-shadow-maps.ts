@@ -94,9 +94,14 @@ export function bakeReceiverShadowAtlas(
     p.z+=(f===4?1:-1)*size.z/2;
     n.set(0,0,f===4?1:-1);
    }
-   const shade=pointShade(p,n,boxes);
-   const low=1-sv; // lower receiver pixels are slightly darker, by design.
-   // Contact shadows remain distinct from the soft overall depth grade.
+   // A brim shades the brow, not the entire cheek. Thick helmets may
+   // intersect the face from the side, so the ray test alone can still
+   // darken the lower front. Give the front/side receiver a very tight,
+   // geometry-local brow band (roughly three atlas pixels of transition).
+   const browBand=key.startsWith('head:')&&f!==2&&f!==3?
+    THREE.MathUtils.clamp((p.y-2.40)/.42,0,1):1;
+   const shade=1-(1-pointShade(p,n,boxes))*browBand;
+   const low=1-sv; // restrained top-to-bottom support only.
    const value=Math.max(RECEIVER_SHADOW_MIN,
     shade*(1-bodyGradient*low)*(f===3?.94:1));
    const byte=Math.round(value*255);
