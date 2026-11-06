@@ -14,7 +14,7 @@ export function akMagazineCurve(style:AKMagazineStyle,
  const dimensions={
   '762':{length:6.05,sweep:2.65,power:1.50},
   '545':{length:5.55,sweep:1.44,power:1.48},
-  'rpk45':{length:8.25,sweep:2.52,power:1.55}
+  'rpk45':{length:8.25,sweep:2.78,power:1.55}
  } as const;
  return {style,topX,topY,width,depth,...dimensions[style]};
 }

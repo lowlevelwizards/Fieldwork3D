@@ -60,7 +60,7 @@ test('R4.4 7.62 has exactly two curved 8-point ribs following centerline',()=>{
  assert.equal(akMagazineRibOutlines(akMagazineCurve('rpk45')).length,0);
  for(const id of ['ak-akm','ak-akms','ak-ak103']){
   const {group}=model(id);
-  assert.equal(slotMeshes(group,'magazine').length,3);
+  assert.equal(slotMeshes(group,'magazine').length,id==='ak-ak103'?1:3);
   assert.ok(bounds(group,'magazine').max.z-bounds(group,'magazine').min.z<=2.35);
   clearWeaponSilhouette(group);
  }

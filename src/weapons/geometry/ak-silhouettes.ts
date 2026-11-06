@@ -8,7 +8,7 @@ import {AK_WARM_RESIN,AK_WOOD_AMBER,AK_WOOD_RED,
  AK_PLUM_POLYMER,AK_MAG_RIB} from './weapon-visual-palette.ts';
 import {AK_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
-import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
+import {addWeaponPixelMark,addWeaponPixelMarkPair} from './weapon-pixel-detail.ts';
 import {akMagazineCurve,akMagazineOutline,akMagazineRibOutlines}
  from './ak-magazine-profiles.ts';
 import {akBarrelArt,AK_BARREL_ART} from './ak-barrel-profiles.ts';
@@ -52,7 +52,8 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   [[-6.32,1.1],[-5.62,2.34],[1.95,2.38],[3.45,2.17],
    [4.93,1.53],[5.10,1.12]],
   3.5,1);
- b('receiver',-4.25,-.05,2.05,2.8,1.15,.5,1);
+ // The old rear-side metal slab was read as a second ejection port.
+ // Keep the receiver face clean; actual details are authored below.
  // A short angled seating region, not an AR-style external magwell.
  const m=AK_VISUAL_ANATOMY;
  p('receiver',[[m.magwellCenterX-1.75,m.magwellTopY],
@@ -75,19 +76,24 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   // An intentionally low stepped outline, not a rear-mounted holo-looking box.
   // The rear sight rests on the forward cover termination and the
   // lower saddle overlaps the upper handguard's rear quarter.
-  p('receiver',[[2.94,2.17],[3.16,2.93],[3.58,3.10],
-   [4.10,3.04],[4.45,2.37],[4.76,2.17]],2.0,0);
+  // Shallow, broad rear sight ramp seated directly at the dust-cover nose.
+  p('receiver',[[2.88,2.17],[3.16,2.72],[3.58,2.86],
+   [4.18,2.82],[4.53,2.35],[4.80,2.17]],2.0,0);
  }
 
  // Two small exterior clues: a selector toward the rear and an ejection
  // mark above the magazine. Never confuse these with gameplay anatomy.
- addWeaponPixelMark(root,'ak-selector',-.97,-.39,1.98,2.95,.96);
+ addWeaponPixelMark(root,'ak-selector',-.86,-.39,1.98,3.20,.96);
  // Classic stamped covers carry coarse ribs. 74M/100-series smooth
  // covers and the hinged 74U cover deliberately stay clean.
  if(parts.receiver==='akm'||parts.receiver==='ak74'||rpk)
-  addWeaponPixelMark(root,'ak-cover-ribs',-2.05,1.91,1.92,4.2,.80);
+  addWeaponPixelMarkPair(root,'ak-cover-ribs',-2.05,1.91,1.79,4.2,.80);
  addWeaponPixelMark(root,'ak-port',m.portX,m.portY,1.98,
   m.portWidthX,m.portHeightY);
+ // One open concave U: trigger guard reads as negative space, not hardware.
+ p('receiver',[[-2.96,-2.04],[-2.65,-2.04],
+  [-2.65,-2.53],[-1.03,-2.53],[-1.03,-2.04],
+  [-.73,-2.04],[-.73,-2.83],[-2.96,-2.83]],1.65,1);
 
  // Stock types are visually disparate; the skeletal type MUST stay hollow.
  const stock=parts.stock;
@@ -102,9 +108,9 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   // RPK-specific broad butt, tucked wrist, and exaggerated low clubfoot heel.
   // The comb joins the receiver at the LOWER-receiver roof, not halfway
   // down its wall. Retain the deep clubfoot behind the narrower stock neck.
-  p('stock',[[-15.85,.72],[-10.6,.86],[-8.1,1.01],[-6.22,1.01],
-   [-6.38,-1.50],[-10.4,-2.06],[-11.32,-3.65],
-   [-13.4,-4.15],[-15.85,-3.70]],3.35,2);
+  p('stock',[[-15.85,.74],[-10.6,.88],[-6.22,1.01],
+   [-6.38,-1.48],[-9.96,-1.99],[-11.48,-3.55],
+   [-13.75,-4.08],[-15.85,-3.58]],3.35,2);
  }else if(stock==='ak-triangle-full'){
   // Standard AKS-74 side-folding TRIANGLE: strong top rail, single lower
   // diagonal, open center, clean skinny butt. It must not read as an AKMS.
@@ -124,13 +130,16 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   // The pair is separated along Z, not diagonally in XY like a triangle.
   for(const side of [-1,1]){
    const rod=line('stock',[-6.18,-1.00],[-14.31,-1.81],
-    .83,.80,0);
-   rod.position.z=side*1.04;
+    .78,.70,0);
+   rod.position.z=side*1.14;
+   // The rear rail must not cast a striped shadow onto its twin.
+   rod.castShadow=false;rod.receiveShadow=false;
    const geo=new THREE.CylinderGeometry(.73,.73,.42,8,1);
    geo.rotateX(Math.PI/2);
    const rivet=new THREE.Mesh(geo,material[0]);
    rivet.name='family-stock-'+stock+'-'+index.stock++;
-   rivet.position.set(-6.18,-1.04,side*1.56);
+   // Receiver side is at ±1.925: rivet must protrude beyond that face.
+   rivet.position.set(-6.18,-1.04,side*2.14);
    rivet.castShadow=true;rivet.receiveShadow=true;root.add(rivet);
   }
   // Tall vertical rear plate, upper lip and lower transverse connector.
@@ -147,11 +156,12 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   if(parts.receiver==='akm'){
    // Two clear quads: a receiver-height 24-degree descending neck and
    // a larger broad rear butt. No narrow pointed wedge at the junction.
-   p('stock',[[-6.42,.92],[-10.10,-.56],
-    [-10.25,-3.37],[-6.42,-2.04]],3.35,isWood?2:1);
-   p('stock',[[-10.08,-.58],[-15.45,-.36],
-    [-15.45,-3.83],[-12.65,-3.63],
-    [-10.19,-3.25]],3.35,isWood?2:1);
+   // Smooth the wrist into the butt rather than a sharp dropped elbow.
+   p('stock',[[-6.42,.92],[-9.94,-.30],
+    [-10.30,-3.01],[-6.42,-2.04]],3.35,isWood?2:1);
+   p('stock',[[-9.91,-.32],[-15.45,.10],
+    [-15.45,-3.39],[-12.77,-3.48],
+    [-10.24,-2.95]],3.35,isWood?2:1);
   }else{
    // Fixed 74-pattern stock keeps its lighter, shallower upper comb.
    p('stock',[[-15.35,.68],[-10.25,.78],[-6.12,-.48],
@@ -179,7 +189,9 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const curve=akMagazineCurve(style,m.magwellCenterX,m.magazineTopY,
   m.magazineWidthX,m.magazineDepthZ);
  p('magazine',akMagazineOutline(curve),m.magazineDepthZ,finish);
- for(const outline of akMagazineRibOutlines(curve)){
+ // Stamped steel 7.62 alone carries impressed ribs; polymer and resin
+ // styles have their own clean molded surface instead of steel stamp lines.
+ for(const outline of (mag==='ak-mag762'?akMagazineRibOutlines(curve):[])){
   // Two contour-following embossed strokes, no cast shadows or thin z-noise.
   const rib=addOutline(root,'magazine',mag,index.magazine++,
    outline,m.magazineDepthZ+.08,AK_MAG_RIB);
@@ -203,7 +215,7 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
    [[start,-1.27],[start+.7,.97],[end-.9,1.01],
     [end,-.18],[end-.85,-1.48],[start+1.0,-1.48]]:
    [[start,-1.29],[start+.75,.97],[end-.7,.99],
-    [end,-.22],[end-.5,-1.46],[start+.45,-1.46]],3.85,
+    [end,-.22],[end-.5,-1.46],[start+.45,-1.46]],3.48,
    woodGuard?2:1);
  // Two clean lengths of furniture; the receiver encloses the rear joint.
  // The former tall metal collar created a floating grey slab and is REMOVED.
@@ -222,7 +234,8 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const gas=art.gasBlockX;
  // The slant compensator begins farther forward than the long 5.45 brake;
  // position its single sight tower flush against the custom slant body.
- const sight=(parts.receiver==='akm'||parts.receiver==='ak103')?
+ const sight=(parts.receiver==='akm'||
+  (parts.receiver==='ak103'&&parts.barrel!=='ak-103-factory'))?
   tip-2.48:art.frontSightX;
  const metalDepth=rpk?1.86:1.48;
  b('barrel',(front-.24+tip)/2,0,0,tip-front+.24,
@@ -236,9 +249,18 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // One thick oblique descending GAS BLOCK (not a second tall sight).
  // Start above the barrel from the upper handguard's middle height and
  // run downward to connect with the single horizontal main barrel.
- p('barrel',[[gas-.78,1.14],[gas+.02,1.99],
-  [gas+.48,1.55],[gas+1.04,.35],[gas+.71,-.53],
-  [gas+.11,-.53],[gas-.37,.85]],1.82,0);
+ const gasOutline:Outline=compact?
+  // Short guns combine gas block and sight: avoid two towering posts.
+  [[gas-.68,1.12],[gas-.16,1.89],[gas+.30,1.80],
+   [gas+.68,.30],[gas+.58,-.53],[gas+.03,-.53]]: 
+  parts.receiver==='akm'||parts.receiver==='ak103'?
+  // AKM family: recognizably sloped block descending toward barrel.
+  [[gas-.78,1.18],[gas-.18,2.00],[gas+.36,1.87],
+   [gas+1.01,.40],[gas+.66,-.53],[gas+.08,-.53],[gas-.35,.88]]:
+  // 74/100-series/RPK: more upright top, shallower descending face.
+  [[gas-.64,1.14],[gas-.47,2.09],[gas+.19,2.12],
+   [gas+.62,.52],[gas+.60,-.53],[gas-.12,-.53]];
+ p('barrel',gasOutline,1.82,0);
  if(art.muzzleStyle==='booster'){
   // Compact AKS-74U front tower and conspicuous squat muzzle booster.
   p('barrel',[[sight-.47,.34],[sight-.25,2.69],
@@ -257,27 +279,30 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
    // One chunky, straight, folded bipod bar PARALLEL under the long barrel,
    // attached near its front and continuing to the lower furniture lip.
    const rearBipod=front+.42,frontBipod=tip-2.32;
-   b('barrel',(rearBipod+frontBipod)/2,-1.13,0,
-    frontBipod-rearBipod,.85,1.48,0);
-   b('barrel',frontBipod,-.95,0,.72,1.43,1.70,0);
-   b('barrel',rearBipod,-.95,0,.62,1.35,1.58,1);
+   b('barrel',(rearBipod+frontBipod)/2,-1.42,0,
+    frontBipod-rearBipod,.61,1.42,0);
+   // Both ends attach up to the barrel, but leave dark negative space
+   // between the long folded leg and the heavy barrel body.
+   b('barrel',frontBipod,-1.17,0,.72,1.10,1.68,0);
+   b('barrel',rearBipod,-1.17,0,.62,1.10,1.58,1);
   }else if(art.muzzleStyle==='carbine'){
    // Short stout 100-series carbine hider, not an unchanged rifle brake.
    p('barrel',[[tip-1.45,-.98],[tip-.22,-1.09],
     [tip,-.79],[tip,.77],[tip-.22,1.05],
     [tip-1.45,1.00]],2.32,1);
    b('barrel',tip-1.36,0,0,.28,2.20,2.40,0);
-  }else if(parts.receiver==='akm'||parts.receiver==='ak103'){
-   // Oversized game-art slant: a major diagonal TERMINAL face.
-   // AK-103 slant is intentionally a non-factory custom appearance.
-   p('barrel',[[tip-1.80,-.76],[tip,-.76],
-    [tip-1.18,1.16],[tip-1.80,1.03]],2.28,1);
+  }else if(parts.receiver==='akm'||
+   (parts.receiver==='ak103'&&parts.barrel!=='ak-103-factory')){
+   // AKM-style oversized but RECTANGULAR slant device. The terminal
+   // face slopes diagonally; never terminate the full body in one spike.
+   p('barrel',[[tip-1.78,-.83],[tip,-.83],
+    [tip-.69,.88],[tip-1.78,.88]],2.25,1);
   }else{
    // 20% longer AK-74-family cylindrical compensator.
-   p('barrel',[[tip-2.83,-1.08],[tip-.20,-1.08],
-    [tip,-.84],[tip,.86],[tip-.22,1.07],
-    [tip-2.83,1.07]],2.40,1);
-   b('barrel',tip-2.71,0,0,.29,2.30,2.51,0);
+   p('barrel',[[tip-2.83,-.99],[tip-.20,-.99],
+    [tip,-.83],[tip,.84],[tip-.22,.99],
+    [tip-2.83,.99]],2.40,1);
+   b('barrel',tip-2.71,0,0,.29,2.06,2.46,0);
   }
  }
 }

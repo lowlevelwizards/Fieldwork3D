@@ -14,7 +14,7 @@ import {workbenchVisualAnchors}
  from './weapons/geometry/weapon-visual-anchors.ts';
 import {weaponVisualLayout}
  from './weapons/geometry/weapon-visual-layout.ts';
-import {workbenchFitDistance}
+import {workbenchFitDistance,workbenchFitCenter}
  from './weapons/geometry/weapon-workbench-camera-fit.ts';
 export type WeaponWorkbenchViewState={yaw:number;pitch:number;distance:number;in2D:boolean};
 
@@ -53,6 +53,8 @@ export class WeaponWorkbenchPreview{
  private yaw=.15;
  private pitch=.17;
  private distance=51;
+ private previewCenterX=0;
+ private previewCenterY=0;
  private autoFitPending=true;
  private visibleMounts:WorkbenchMount[]=[];
  private dragDistance=0;
@@ -171,6 +173,12 @@ export class WeaponWorkbenchPreview{
   // Match the same longitudinal scale already used by the actual operator rig.
   const layout=weaponVisualLayout(config);
   this.model.scale.x=layout.longitudinalScale;
+  // Actual mesh bounds rather than configured stock-socket assumptions.
+  // Recompute only on weapon swaps; orbiting must not move the focal point.
+  this.model.rotation.set(0,0,0);
+  this.model.updateMatrixWorld(true);
+  [this.previewCenterX,this.previewCenterY]=workbenchFitCenter(
+   new THREE.Box3().setFromObject(this.model));
   this.autoFitPending=true;
   this.mode=config.build?'body':'attachments';
   this.active=config.build?'body-receiver':'optic';
@@ -480,9 +488,9 @@ export class WeaponWorkbenchPreview{
    this.autoFitPending=false;
   }
   this.camera.aspect=w/h;this.camera.updateProjectionMatrix();
-  const centerX=weaponVisualLayout(this.config).workbenchCenterX;
-  this.camera.position.set(centerX,16,this.distance);
-  this.camera.lookAt(centerX,0,0);
+  const centerX=this.previewCenterX,centerY=this.previewCenterY;
+  this.camera.position.set(centerX,centerY+16,this.distance);
+  this.camera.lookAt(centerX,centerY,0);
   this.camera.updateMatrixWorld(true);
   // An orthographic, level side projection: 2D never tumbles into pseudo-3D.
   const vertical=this.distance*2*Math.tan(37*Math.PI/360);
@@ -492,8 +500,8 @@ export class WeaponWorkbenchPreview{
   this.sideCamera.top=vertical/2;
   this.sideCamera.bottom=-vertical/2;
   this.sideCamera.updateProjectionMatrix();
-  this.sideCamera.position.set(centerX,0,100);
-  this.sideCamera.lookAt(centerX,0,0);
+  this.sideCamera.position.set(centerX,centerY,100);
+  this.sideCamera.lookAt(centerX,centerY,0);
   this.sideCamera.updateMatrixWorld(true);
   this.model.updateMatrixWorld(true);
   if(this.renderer&&!this.in2D){

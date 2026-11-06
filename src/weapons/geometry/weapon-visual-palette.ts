@@ -19,5 +19,5 @@ export const AK_WARM_RESIN=finish(0x8d5939,.92);
 export const AK_WOOD_AMBER=finish(0xa07842,.88);
 export const AK_WOOD_RED=finish(0x915038,.88);
 export const AK_PLUM_POLYMER=finish(0x4e3b4c,.92);
-/** Three deliberate side-wall ribs on 7.62 magazine silhouettes. */
-export const AK_MAG_RIB=finish(0x29332d,.93);
+/** Low-contrast curved stamped ribs on classic steel 7.62 magazines. */
+export const AK_MAG_RIB=finish(0x364238,.93);
