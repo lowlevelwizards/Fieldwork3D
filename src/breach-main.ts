@@ -259,6 +259,7 @@ const ui={
   replaySaveArchive:el<HTMLButtonElement>('replaySaveArchive'),
   openReplayLibrary:el<HTMLButtonElement>('openReplayLibrary'),
   replayLibraryDialog:el<HTMLElement>('replayLibraryDialog'),
+  replayLibraryBackdrop:el<HTMLElement>('replayLibraryBackdrop'),
   replayLibraryList:el<HTMLElement>('replayLibraryList'),
   replayLibraryStatus:el<HTMLOutputElement>('replayLibraryStatus'),
   closeReplayLibrary:el<HTMLButtonElement>('closeReplayLibrary'),
@@ -4289,8 +4290,7 @@ async function playSavedReplay(id:string):Promise<void>{
     // Preserve the current live recorder and return to it on replay exit.
     savedReplayPreviousRecorder=recorder;
     recorder=stored;
-    ui.replayLibraryDialog.hidden=true;
-    replayLibraryRenderGeneration++;
+    hideSavedReplayLibrary();
     closeMissionSettings(false);
     enterReplay();
     if(!replaying){
@@ -4298,22 +4298,33 @@ async function playSavedReplay(id:string):Promise<void>{
       throw Error('Could not open saved replay');
     }
     showUiHelp('PLAYING SAVED OPERATION · ORIGINAL MISSION UNCHANGED',3800);
-  }catch(error){replayLibraryFailure(error);}
+  }catch(error){
+    // A failed import must never leave the current mission's film replaced.
+    if(replaying)exitReplay();
+    if(savedReplayPreviousRecorder){
+      recorder=savedReplayPreviousRecorder;
+      savedReplayPreviousRecorder=null;
+    }
+    replayLibraryFailure(error);
+  }
   finally{replayLibraryBusy=false;}
 }
 function showSavedReplayLibrary():void{
   if(replaying)return;
   closeMissionSettings(false);
   ui.replayLibraryDialog.hidden=false;
+  ui.replayLibraryBackdrop.hidden=false;
   ui.replayLibraryList.replaceChildren();
   void renderSavedReplayLibrary();
 }
 function hideSavedReplayLibrary():void{
   ui.replayLibraryDialog.hidden=true;
+  ui.replayLibraryBackdrop.hidden=true;
   replayLibraryRenderGeneration++;
 }
 ui.openReplayLibrary.addEventListener('click',showSavedReplayLibrary);
 ui.closeReplayLibrary.addEventListener('click',hideSavedReplayLibrary);
+ui.replayLibraryBackdrop.addEventListener('click',hideSavedReplayLibrary);
 ui.saveReplayDebrief.addEventListener('click',()=>{void saveCurrentReplay();});
 ui.replaySaveArchive.addEventListener('click',()=>{void saveCurrentReplay();});
 

@@ -1698,3 +1698,6 @@ html,body{font-family:var(--fw-font-menu)}
  .replay-library-row button{font-size:9px}
  .replay-library-dialog{padding:10px}
 }
+
+.replay-library-backdrop{position:fixed;inset:0;z-index:39;background:#06140f9c}
+.replay-library-backdrop[hidden]{display:none!important}
