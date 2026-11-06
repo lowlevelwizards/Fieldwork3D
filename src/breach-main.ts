@@ -79,6 +79,8 @@ import {buildReplayDirectorCues,replayCameraTarget,easeReplayCamera,
   type ReplayCameraMode,type ReplayDirectorCue}
   from './breach-replay-director.ts';
 import {clusterReplayTimeline} from './breach-replay-timeline-markers.ts';
+import {buildReplayChapters,addReplayBookmark,adjacentReplayChapter,
+  type ReplayChapter,type ReplayBookmark} from './breach-replay-chapters.ts';
 import type {RecordedShot} from './breach-replay-ballistics.ts';
 import {inspectRecordedShot,shotScreenHit,adjacentRecordedShot}
   from './breach-replay-shot-inspector.ts';
@@ -213,6 +215,10 @@ const ui={
   replayDrawerClose:el<HTMLButtonElement>('replayDrawerClose'),
   replayTabs:el<HTMLElement>('replayTabs'),
   replayFeedPanel:el<HTMLElement>('replayFeedPanel'),
+  replayPrevChapter:el<HTMLButtonElement>('replayPrevChapter'),
+  replayNextChapter:el<HTMLButtonElement>('replayNextChapter'),
+  replayBookmark:el<HTMLButtonElement>('replayBookmark'),
+  replayChapterList:el<HTMLElement>('replayChapterList'),
   replayShotInspector:el<HTMLElement>('replayShotInspector'),
   replayShotTitle:el<HTMLElement>('replayShotTitle'),
   replayShotDetails:el<HTMLOutputElement>('replayShotDetails'),
@@ -683,6 +689,8 @@ function recordCompletedOperation(){
 let replaying=false,replayPlaying=false,replayTime=0,replayRate=1;
 let replayEventIndex:ReplayEventIndex|null=null;
 let replaySoundTimeline:ReplaySoundTimeline|null=null;
+let replayChapters:ReplayChapter[]=[];
+let replayBookmarks:ReplayBookmark[]=[];
 let replaySoundEnabled=true;
 const replayQuickVideo=new ReplayQuickVideo(
   (blob,mime)=>{
@@ -3920,11 +3928,32 @@ function focusReplayShot():void{
   }
   updateReplayHud();
 }
+/** Rebuild chapter buttons only on replay entry, intel change or bookmark. */
+function renderReplayChapters():void{
+  const fragment=document.createDocumentFragment();
+  const entries=[
+    ...replayChapters.map(c=>({t:c.t,label:c.label,kind:'chapter'})),
+    ...replayBookmarks.map(b=>({t:b.t,label:b.label,kind:'bookmark'}))
+  ].sort((a,b)=>a.t-b.t);
+  for(const entry of entries){
+    const button=document.createElement('button');
+    button.type='button';button.className='replay-chapter-item';
+    button.dataset.kind=entry.kind;
+    button.textContent=formatReplayTime(entry.t)+' · '+entry.label;
+    button.addEventListener('click',()=>{
+      replayPlaying=false;seekReplay(entry.t);
+    });
+    fragment.append(button);
+  }
+  ui.replayChapterList.replaceChildren(fragment);
+}
 function rebuildReplayEventIndex():void{
   replayEventIndex=new ReplayEventIndex(recorder.events,
     recorder.executionEvents,e=>replayEventKnown(e));
   // Only disclosed historical events are eligible for the director.
   replayDirectorCues=buildReplayDirectorCues(replayEventIndex.all);
+  replayChapters=buildReplayChapters(replayEventIndex.all,recorder.duration);
+  renderReplayChapters();
 }
 /** R3 camera changes only presentation state, never the live simulation. */
 function advanceReplayCamera(dt:number,instant=false):void{
@@ -4088,6 +4117,7 @@ function enterReplay(){
   replayRate=1;replayOmniscient=false;looking=false;flashMode=false;
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
   replayCameraMode='free';replayDirectorCues=[];
+  replayBookmarks=[];
   replayPlanScope='selected';replayPlanVersion='active';
   replayNameTags=true;replayTraceMode='off';replayGhostMode='off';
   replayTrailMode='off';
@@ -4122,6 +4152,7 @@ function exitReplay(){
   if(replayQuickVideo.active)replayQuickVideo.stop();
   replaying=false;replayPlaying=false;replayPresentation=null;
   replayEventIndex=null;replayDirectorCues=[];replayCameraMode='free';
+  replayChapters=[];replayBookmarks=[];
   closeReplayShotInspector();
   replaySoundTimeline=null;replayMovementHistory=null;stopReplaySounds();
   replayLoopIn=null;replayLoopOut=null;replayLoopEnabled=false;
@@ -4206,6 +4237,21 @@ for(const button of ui.replayTabs.querySelectorAll<HTMLButtonElement>('[data-rep
   });
 }
 ui.replayFeedFilter.addEventListener('change',renderReplayEventFeed);
+ui.replayPrevChapter.addEventListener('click',()=>{
+  const chapter=adjacentReplayChapter(replayChapters,replayTime,false);
+  if(chapter){replayPlaying=false;seekReplay(chapter.t);}
+});
+ui.replayNextChapter.addEventListener('click',()=>{
+  const chapter=adjacentReplayChapter(replayChapters,replayTime,true);
+  if(chapter){replayPlaying=false;seekReplay(chapter.t);}
+});
+ui.replayBookmark.addEventListener('click',()=>{
+  const id='bookmark-'+(replayBookmarks.length+1);
+  replayBookmarks=addReplayBookmark(replayBookmarks,replayTime,recorder.duration,
+    id,'MARK '+String(replayBookmarks.length+1).padStart(2,'0'));
+  renderReplayChapters();
+  showUiHelp('BOOKMARK ADDED · THIS REPLAY SESSION',2500);
+});
 ui.replayShotClose.addEventListener('click',closeReplayShotInspector);
 ui.replayShotFocus.addEventListener('click',focusReplayShot);
 ui.replayShotPrev.addEventListener('click',()=>{
