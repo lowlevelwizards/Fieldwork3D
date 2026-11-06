@@ -7,6 +7,7 @@ import {addOutline,addCuboid,addBar,type Outline,type SlotName} from './profile-
 import {AK_WARM_RESIN} from './weapon-visual-palette.ts';
 import {AK_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
+import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
 
 export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material){
@@ -47,6 +48,9 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  }else{
   b('receiver',-3.9,2.52,0,1.15,.58,2.0,0);
  }
+
+ // One deliberately exaggerated pixel-art selector: no extra 3D levers.
+ addWeaponPixelMark(root,'ak-selector',-1.6,.42,1.98,2.5,1.05);
 
  // Stock types are visually disparate; the skeletal type MUST stay hollow.
  const stock=parts.stock;
