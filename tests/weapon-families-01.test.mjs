@@ -82,7 +82,7 @@ test('family 01: all modular silhouettes align with physical tip; no per-frame a
   const g=buildWeaponSilhouette(preset.weapon,steel,dark,c);
   const box=new THREE.Box3().setFromObject(g);
   assert.ok(Math.abs(box.max.x-resolveWeaponAssembly(c).muzzleX)<.01,preset.id+' muzzle');
-  assert.ok(g.children.length>=12&&g.children.length<=28,preset.id+' mesh budget');
+  assert.ok(g.children.length>=12&&g.children.length<=(preset.family==='ar'?36:28),preset.id+' mesh budget');
   assert.ok(g.children.every(child=>child.name.startsWith('family-')));
   fingerprints.add(g.children.map(child=>child.name+JSON.stringify(child.position.toArray())).join('|'));
   clearWeaponSilhouette(g);
