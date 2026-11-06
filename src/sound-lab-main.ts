@@ -417,7 +417,7 @@ function renderWave(){
  }
  ctx.stroke();
  ctx.fillStyle='#8ca69f';ctx.font='12px sans-serif';
- ctx.fillText((refineMode?'LAYERED REFINEMENT':'WAVE 01')+' / '+variant,12,19);
+ ctx.fillText((compoundMode?'WAVE 03 COMPOUND':refineMode?'WAVE 02 REFINEMENT':'WAVE 01')+' / '+variant,12,19);
 }
 function scheduleWave(){
  cancelAnimationFrame(waveFrame);waveFrame=requestAnimationFrame(renderWave);
@@ -428,25 +428,39 @@ function renderEditor(){
  ui.name.textContent=entry.label;
  const focus=FOCUS_BY_ID.get(entry.id);
  const refinement=refineMode?REFINEMENT_BY_ID.get(entry.id):null;
- ui.description.textContent=refinement?
-  refinement.intent+(choice.explored?'':' · Choose your Wave 01 reference first.'):
+ const compound=compoundMode?COMPOUND_BY_ID.get(entry.id):null;
+ ui.description.textContent=compound?
+  compound.why+(choice.refinement?.approved?'':' · IMPORT YOUR LATEST PACK TO RESTORE YOUR WAVE 02 CHOICE'):
+  refinement?refinement.intent+(choice.explored?'':' · Choose your Wave 01 reference first.'):
   focus?focus.why+' · Listen broadly; shortlist first, choose later.':entry.description;
- $('auditionHeading').textContent=refineMode?'02 / SIX REFINEMENTS OF YOUR ORIGINAL':
+ $('auditionHeading').textContent=compoundMode?'02 / SIX COMPOUND PHYSICAL STORIES':
+  refineMode?'02 / SIX REFINEMENTS OF YOUR ORIGINAL':
   focus?'02 / EIGHT SOUND IDEAS':'02 / A·B·C AUDITION';
- $('compareHint').textContent=refineMode?'KEEP ORIGINAL · TEST LAYERS · CHOOSE':
+ $('compareHint').textContent=compoundMode?'HEAR WAVE 02 · TEST PHYSICAL LAYERS':
+  refineMode?'KEEP ORIGINAL · TEST LAYERS · CHOOSE':
   focus?'LISTEN · SHORTLIST · CHOOSE':'LISTEN · CHOOSE';
  $('compare').textContent=focus?'▶ PLAY SHORTLIST':'▶ PLAY A → B → C';
  ($<HTMLButtonElement>('compareAll')).hidden=!focus;
- ($<HTMLButtonElement>('compareAll')).textContent=refineMode?'▶ PLAY ALL 6':'▶ PLAY ALL 8';
- ($<HTMLButtonElement>('compareBase')).hidden=!refineMode;
- ($<HTMLElement>('baselinePanel')).hidden=!refineMode;
- ($<HTMLDetailsElement>('advancedTune')).hidden=refineMode;
- $('baselineLabel').textContent=refineMode?
-  'Original '+choice.choice+' · '+(choice.explored?'Your approved Wave 01 pick.':'Not yet approved. Open Wave 01 to choose.')+
-  ' · Every refinement is built from this sound.':'';
+ ($<HTMLButtonElement>('compareAll')).textContent=compoundMode||refineMode?
+  '▶ PLAY ALL 6':'▶ PLAY ALL 8';
+ ($<HTMLButtonElement>('compareBase')).hidden=!refineMode&&!compoundMode;
+ ($<HTMLElement>('baselinePanel')).hidden=!refineMode&&!compoundMode;
+ ($<HTMLButtonElement>('playWaveOne')).hidden=!compoundMode;
+ ($<HTMLButtonElement>('playBaseline')).textContent=compoundMode?
+  '▶ HEAR WAVE 02':'▶ HEAR WAVE 01';
+ $('baselineTitle').textContent=compoundMode?'YOUR WAVE 02 REFERENCE':'YOUR WAVE 01 REFERENCE';
+ ($<HTMLDetailsElement>('advancedTune')).hidden=refineMode||compoundMode;
+ $('baselineLabel').textContent=compoundMode?
+  'Wave 02 '+(choice.refinement?.choice??'not selected')+
+  (choice.refinement?.approved?' · approved and preserved':
+    ' · not approved — import your latest pack')+
+  ' · The new studies are layered over this sound.':
+  refineMode?'Wave 01 '+choice.choice+
+   (choice.explored?' · approved and preserved':' · not approved')+
+   ' · Every refinement is built from this sound.':'';
  ui.cueStatus.textContent=entry.status==='live'?'GAMEPLAY CONNECTED':'PROPOSED / LAB ONLY';
  ui.cueStatus.className='status'+(entry.status==='live'?' live':'');
- ui.editing.textContent='EDITING '+(refineMode?currentChoice().choice:variant);
+ ui.editing.textContent='EDITING '+(refineMode||compoundMode?currentChoice().choice:variant);
  ui.enabled.checked=choice.enabled;
  ui.favorite.setAttribute('aria-pressed',String(!!choice.favorite));
  ui.favorite.textContent=choice.favorite?'★ FAVORITED':'☆ FAVORITE';
@@ -458,10 +472,12 @@ function renderAll(){
  stats();renderGroups();renderList();renderEditor();
 }
 function nextUnreviewed(){
- const candidates=refineMode?REFINEMENT_SOUND_IDS.map(id=>SOUND_BY_ID.get(id)!):
+ const candidates=compoundMode?COMPOUND_SOUND_IDS.map(id=>SOUND_BY_ID.get(id)!):
+  refineMode?REFINEMENT_SOUND_IDS.map(id=>SOUND_BY_ID.get(id)!):
   focusMode?FOCUS_SOUND_IDS.map(id=>SOUND_BY_ID.get(id)!):SOUND_CATALOG;
  const visible=candidates.filter(e=>
-  !(refineMode?pack.choices[e.id].refinement?.approved:
+  !(compoundMode?pack.choices[e.id].compound?.approved:
+   refineMode?pack.choices[e.id].refinement?.approved:
    focusMode?pack.choices[e.id].explored:pack.choices[e.id].reviewed)&&e.id!==selected);
  if(!visible.length){note('ALL CUES REVIEWED · YOUR PACK IS READY TO EXPORT');return;}
  const index=candidates.findIndex(e=>e.id===selected);
@@ -475,6 +491,7 @@ function nextUnreviewed(){
 function updateSetting(key:keyof SoundSettings,value:number){
  const choice=currentChoice();
  if(choice.refinement?.approved)choice.refinement.approved=false;
+ if(choice.compound?.approved)choice.compound.approved=false;
  choice.edits??={};
  choice.edits[variant]={...settings(),[key]:value};
  persist();scheduleWave();
@@ -513,7 +530,8 @@ async function importJson(file:File){
   const raw=JSON.parse(await file.text()) as {version?:unknown};
   if(raw.version!==1)throw Error('Expected a version 1 sound pack');
   stopAudio();pack=normalizeSoundPack(raw);persist();
-  variant=refineMode?(currentChoice().refinement?.choice??'A'):
+  variant=compoundMode?(currentChoice().compound?.choice??'A'):
+   refineMode?(currentChoice().refinement?.choice??'A'):
    currentChoice().choice;renderAll();
   note('PACK IMPORTED · '+file.name+' · LIVE CUES UPDATED');
  }catch(error){note('IMPORT FAILED · '+String(error));}
@@ -537,7 +555,12 @@ ui.variants.addEventListener('click',event=>{
  if(node.dataset.shortlist){const v=node.dataset.shortlist as Variant;
   const c=currentChoice();
   let saved=false;
-  if(refineMode){
+  if(compoundMode){
+   c.compound??={};const list=c.compound.shortlist??[];
+   c.compound.shortlist=list.includes(v as CompoundDirection)?
+    list.filter(x=>x!==v):[...list,v as CompoundDirection];
+   saved=c.compound.shortlist.includes(v as CompoundDirection);
+  }else if(refineMode){
    c.refinement??={};const list=c.refinement.shortlist??[];
    c.refinement.shortlist=list.includes(v as RefinementDirection)?
     list.filter(x=>x!==v):[...list,v as RefinementDirection];
@@ -582,6 +605,7 @@ $('stop').addEventListener('click',()=>{stopAudio();note('STOPPED');});
 $('compare').addEventListener('click',()=>void compare(false));
 $('compareAll').addEventListener('click',()=>void compare(true));
 $('playBaseline').addEventListener('click',()=>void previewOriginal());
+$('playWaveOne').addEventListener('click',()=>void previewWaveOne());
 $('compareBase').addEventListener('click',()=>void compareOriginal());
 $('resetVariant').addEventListener('click',()=>{
  const choice=currentChoice();
@@ -592,7 +616,7 @@ $('exportCue').addEventListener('click',()=>{
  const sound=auditionSettings();
  const pcm=renderSound(selected,sound).map(v=>v*sound.gain*pack.master*.4);
  downloadSound([encodeSoundWav(pcm).buffer as ArrayBuffer],
-  'fieldwork-'+selected+'-'+(refineMode?'wave2-':'')+variant+'.wav','audio/wav');
+  'fieldwork-'+selected+'-'+(compoundMode?'wave3-':refineMode?'wave2-':'')+variant+'.wav','audio/wav');
  note('EXPORTED '+current().label.toUpperCase()+' · '+variant+' WAV');
 });
 $('exportJson').addEventListener('click',downloadJson);
