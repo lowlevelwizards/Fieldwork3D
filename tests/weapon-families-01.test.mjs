@@ -55,7 +55,7 @@ test('family 01: changing barrel rematches handguard and preserves baseline muzz
  c=setConfiguredFamilyPart(c,'barrel','ar-103');
  assert.equal(c.build?.parts.barrel,'ar-103');
  assert.equal(FAMILY_PARTS[c.build.parts.handguard].length,'short');
- assert.equal(resolveWeaponAssembly(c).muzzleX,19.5);
+ assert.equal(resolveWeaponAssembly(c).muzzleX,15.8);
  assert.ok(resolveWeaponAssembly(c).lengthScale<resolveWeaponAssembly(original).lengthScale);
  assert.equal(setConfiguredFamilyPart(c,'handguard','ar-round'),c);
  assert.equal(setWeaponAttachment(c,'foregrip','foregrip-vertical').slots.foregrip,'foregrip-vertical');

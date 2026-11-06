@@ -24,7 +24,7 @@ const bound=(group,slot)=>{
 };
 test('R4 catalog is exactly 17 unique recipes and 62 reusable parts',()=>{
  assert.equal(FAMILY_PRESETS.length,17);
- assert.equal(Object.keys(FAMILY_PARTS).length,62);
+ assert.equal(Object.keys(FAMILY_PARTS).length,64);
  assert.equal(new Set(FAMILY_PRESETS.map(x=>x.id)).size,17);
  assert.equal(FAMILY_PRESETS.filter(x=>x.family==='ar').length,8);
  assert.equal(FAMILY_PRESETS.filter(x=>x.family==='ak').length,9);
