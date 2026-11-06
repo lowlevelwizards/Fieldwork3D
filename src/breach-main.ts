@@ -76,8 +76,8 @@ import {parseOperationHistory,addOperationRecord,
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
 import {captureReplayArchive,restoreReplayArchive} from './breach-replay-archive.ts';
 import {listSavedReplays,saveReplayArchive,loadSavedReplay,
-  deleteSavedReplay,setSavedReplayFavorite,replayLibrarySupported,
-  type SavedReplaySummary} from './breach-replay-library.ts';
+  deleteSavedReplay,setSavedReplayFavorite}
+  from './breach-replay-library.ts';
 import {stepReplaySample,stepReplayPresentation,formatReplayTime}
   from './breach-replay-transport.ts';
 import {ReplayEventIndex,type ReplayIndexedEvent} from './breach-replay-event-index.ts';
