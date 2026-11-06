@@ -13,7 +13,7 @@ import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
 import type {WorkbenchSocket} from './equipment-weapon-workbench-layout.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
  familyAccessoryAllowed,type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
-import {FAMILY_PART_SLOTS,FAMILY_PARTS,FAMILY_PRESETS,
+import {FAMILY_PART_SLOTS,FAMILY_PARTS,
  compatibleFamilyPart,matchingFamilyPreset,type FamilyPartSlot}
  from './equipment-weapon-families.ts';
 import {attachmentPrice} from './equipment-weapon-inventory.ts';
@@ -22,6 +22,7 @@ import {stageMagazines,magazinePlacementSummary,magazineSpace,
 import {kitMedicalSupplies,medicalSupplyCount} from './equipment-medical-supplies.ts';
 import {promptFieldworkText,confirmFieldworkAction,showFieldworkNotice}
  from './ui/fieldwork-controls.ts';
+import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
 import './campaign-style.css';
 import {buildQuickLoadoutGroups,loadoutGroupForSlot,
  type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
@@ -590,27 +591,22 @@ export class CampaignScreen{
   const familySelectors=new Map<FamilyPartSlot,HTMLSelectElement>();
   const familyEditor=node('details','campaign-weapon-attachments');
   const build=person.weaponConfiguration.build;
-  familyEditor.open=!!build;
+  familyEditor.open=true;
   familyEditor.append(node('summary','','WEAPON FAMILY / MODULAR FURNITURE'));
   familyEditor.append(node('p','campaign-note',
    'Visual family prototype: swap compatible receiver, stock, grip, magazine profile, handguard and barrel. The owned carbine/rifle class, actual ammunition and weapon serial remain unchanged.'));
-  const presetRow=node('label','campaign-kit-row');
-  const presetSelect=node('select','campaign-select');
-  presetSelect.setAttribute('aria-label','Choose authored weapon family preset');
   const selectedFamilyPreset=build?matchingFamilyPreset(build):undefined;
-  const placeholder=node('option','',build?'CUSTOM ASSEMBLY':'LEGACY GENERIC MODEL');
-  placeholder.value='';presetSelect.append(placeholder);
-  for(const familyPreset of FAMILY_PRESETS.filter(p=>p.weapon===person.weapon)){
-   const option=node('option','',familyPreset.name+' / '+familyPreset.family.toUpperCase());
-   option.value=familyPreset.id;presetSelect.append(option);
-  }
-  presetSelect.value=selectedFamilyPreset?.id??'';
-  presetSelect.disabled=locked;
-  presetSelect.addEventListener('change',()=>{
-   if(presetSelect.value)this.handlers.equipWeaponPreset(id,presetSelect.value);
+  const factoryBrowser=createWeaponPresetBrowser({
+   selectedId:selectedFamilyPreset?.id,selectedFamily:build?.family,
+   availability:preset=>{
+    if(locked)return 'Deployment locked';
+    if(preset.weapon!==person.weapon&&(c.inventory.weapons[preset.weapon]??0)<1)
+     return 'No '+preset.weapon+' currently owned';
+    return null;
+   },
+   onSelect:presetId=>this.handlers.equipWeaponPreset(id,presetId)
   });
-  presetRow.append(node('span','','PRESET'),presetSelect);
-  familyEditor.append(presetRow);
+  familyEditor.append(factoryBrowser);
   if(build){
    familyEditor.append(node('p','campaign-kit-metrics',
     'FAMILY · '+build.family.toUpperCase()+' · '+
