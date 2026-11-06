@@ -20,6 +20,10 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: AR / AK low-ready shoulder and forearm critical gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-low-ready-ar-ak-armor-fit-') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-low-ready-family-fit.test.mjs tests/breach-weapon-magazine-idle.test.mjs
       - name: Breach magazine, socket and shared-idle critical gates
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-weapon-sockets-magazines-idle-') }}
         run: |
