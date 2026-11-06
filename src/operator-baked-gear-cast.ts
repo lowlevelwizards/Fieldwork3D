@@ -120,7 +120,6 @@ export function bakeCastOnGear(
   object.updateWorldMatrix(true,false);
   const toChest=inverse.clone().multiply(object.matrixWorld);
   const normalMatrix=new THREE.Matrix3().getNormalMatrix(toChest);
-  let affected=false;
   for(let i=0;i<coords.count;i++){
    position.fromBufferAttribute(coords,i).applyMatrix4(toChest);
    normal.fromBufferAttribute(normals,i).applyMatrix3(normalMatrix).normalize();
@@ -140,7 +139,7 @@ export function bakeCastOnGear(
    const light=(1-.52*occlusion)*(1-.12*lower);
    const before=baseline[i*3]/255;
    const value=Math.round(255*Math.max(.54,before*light));
-   if(value<array[i*3]){affected=true;changed++;}
+   if(value<array[i*3])changed++;
    array[i*3]=value;array[i*3+1]=value;array[i*3+2]=value;
    vertices++;
   }
