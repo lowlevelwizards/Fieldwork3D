@@ -1296,6 +1296,13 @@ function playApprovedCue(id:string,level=1,pan=0,replayCue=false,
  },approvedSoundPack);
 }
 /** Human-command sounds are event-driven; no movement tick ever emits them. */
+function liveEventAudioPosition(event:string):Pt|undefined{
+ const door=state.doors.find(d=>event.startsWith(d.id+' '));
+ if(door)return doorCenter(door);
+ if(event.includes('FLASH DETONATED'))return state.flashBursts.at(-1)?.p;
+ const actor=state.operators.find(a=>event.startsWith(a.name+' '));
+ return actor?.p??uid(selected)?.p;
+}
 function playOrderCue(id:string){
  if(!uiSoundEnabled)return;
  unlockAudio();playApprovedCue(id,.25);
@@ -5066,6 +5073,29 @@ ui.briefingClose.addEventListener('click',()=>{
   tacticalSheetNavigation.sync();
   updateContext();
 });
+const liveMixToggle=el<HTMLButtonElement>('liveMixToggle');
+const roomAudioToggle=el<HTMLButtonElement>('roomAudioToggle');
+function updateAudioLabButtons(){
+ liveMixToggle.textContent=liveMixEnabled?'TEST MIX ON':'TEST MIX OFF';
+ liveMixToggle.setAttribute('aria-pressed',String(liveMixEnabled));
+ roomAudioToggle.textContent=roomAudioEnabled?'ROOM ACOUSTICS ON':'ROOM ACOUSTICS OFF';
+ roomAudioToggle.setAttribute('aria-pressed',String(roomAudioEnabled));
+}
+updateAudioLabButtons();
+liveMixToggle.addEventListener('click',()=>{
+ liveMixEnabled=!liveMixEnabled;refreshSoundPack();
+ try{localStorage.setItem(LIVE_MIX_PREF,liveMixEnabled?'on':'off');}
+ catch{/* Optional preference persistence. */}
+ updateAudioLabButtons();
+ showUiHelp(liveMixEnabled?'APPROVED SOUND LAB MIX ACTIVE':'SOUND LAB MIX OFF · YOUR ORIGINAL PACK ACTIVE',2400);
+});
+roomAudioToggle.addEventListener('click',()=>{
+ roomAudioEnabled=!roomAudioEnabled;
+ try{localStorage.setItem(ROOM_AUDIO_PREF,roomAudioEnabled?'on':'off');}
+ catch{/* Optional preference persistence. */}
+ updateAudioLabButtons();
+ showUiHelp(roomAudioEnabled?'ROOM ACOUSTICS ENABLED':'ROOM ACOUSTICS OFF · DRY SOURCE AUDIO',2400);
+});
 ui.uiSoundToggle.textContent=uiSoundEnabled?'UI SOUND ON':'UI SOUND OFF';
 ui.uiSoundToggle.setAttribute('aria-pressed',String(uiSoundEnabled));
 ui.uiSoundToggle.addEventListener('click',()=>{
@@ -5212,22 +5242,23 @@ function tick(now:number){
    liveEventAudioPosition(event):undefined;
   if(!replaying&&event!==lastEventAudio&&
       (event.includes('OPENED')||event.includes('CLOSING')))
-    {if(!playApprovedCue(event.includes('CLOSING')?'doors.close':'doors.open'))
+    {if(!playApprovedCue(event.includes('CLOSING')?'doors.close':'doors.open',
+      1,0,false,1,eventSource))
       playTone(160,.16);}
   if(!replaying&&event!==lastEventAudio&&event.includes('KICK RESISTED'))
-    {if(!playApprovedCue('doors.kick_resisted'))playTone(115,.15,true);}
+    {if(!playApprovedCue('doors.kick_resisted',1,0,false,1,eventSource))playTone(115,.15,true);}
   if(!replaying&&event!==lastEventAudio&&event.includes('FORCED OPEN'))
-    {if(!playApprovedCue('doors.forced_open'))playTone(80,.24,true);}
+    {if(!playApprovedCue('doors.forced_open',1,0,false,1,eventSource))playTone(80,.24,true);}
   if(!replaying&&event!==lastEventAudio&&event.includes('KICKED'))
-    {if(!playApprovedCue('doors.kick'))playTone(90,.25,true);}
+    {if(!playApprovedCue('doors.kick',1,0,false,1,eventSource))playTone(90,.25,true);}
   if(!replaying&&event!==lastEventAudio&&event.includes('FLASH DETONATED'))
-    {if(!playApprovedCue('combat.flash'))playTone(1350,.65,true);}
+    {if(!playApprovedCue('combat.flash',1,0,false,1,eventSource))playTone(1350,.65,true);}
   if(!replaying&&event!==lastEventAudio&&event.includes('RELOADED'))
-    {if(!playApprovedCue('equipment.reload'))playTone(280,.09);}
+    {if(!playApprovedCue('equipment.reload',1,0,false,1,eventSource))playTone(280,.09);}
   if(!replaying&&event!==lastEventAudio&&event.includes('FLASH OUT'))
-    {if(!playApprovedCue('equipment.flash_throw'))playTone(420,.07);}
+    {if(!playApprovedCue('equipment.flash_throw',1,0,false,1,eventSource))playTone(420,.07);}
   if(!replaying&&event!==lastEventAudio&&event.includes('SURRENDERED'))
-    {if(!playApprovedCue('people.surrender'))playTone(210,.22);}
+    {if(!playApprovedCue('people.surrender',1,0,false,1,eventSource))playTone(210,.22);}
   lastEventAudio=event;
   // Execution's full HUD reconciliation is DOM-heavy; explicit commands
   // still call updateHud() immediately, while live status refreshes ~5.5Hz.
