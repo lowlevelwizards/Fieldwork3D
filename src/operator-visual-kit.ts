@@ -509,15 +509,15 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  const armor=v.wardrobeGear.armor[looks.armorStyle],
   rig=v.wardrobeGear.rig[looks.rigStyle],
   pack=v.wardrobeGear.pack[looks.packStyle];
- const key=[looks.top,looks.armorStyle,looks.rigStyle,looks.packStyle,
+ const lightingKey=[looks.top,looks.armorStyle,looks.rigStyle,looks.packStyle,
   wardrobe?.sleeveState??'unrolled'].join('/');
  const packs=[pack,v.fieldPack,v.dayPack]
   .filter((g):g is THREE.Group=>!!g&&g.visible);
- if(armor)bakeCastOnGear(armor,rig?[rig]:[],v.visualChest,'armor:'+key);
- if(rig)bakeCastOnGear(rig,armor?[armor]:[],v.visualChest,'rig:'+key);
+ if(armor)bakeCastOnGear(armor,rig?[rig]:[],v.visualChest,'armor:'+lightingKey);
+ if(rig)bakeCastOnGear(rig,armor?[armor]:[],v.visualChest,'rig:'+lightingKey);
  if(clothTorso)bakeCastOnGear(clothTorso,
   [...(armor?[armor]:[]),...(rig?[rig]:[]),...packs],
-  v.visualChest,'shirt:'+key);
+  v.visualChest,'shirt:'+lightingKey);
  for(const selectedPack of packs)bakeCastOnGear(selectedPack,
-  armor?[armor]:[],v.visualChest,'pack:'+key);
+  armor?[armor]:[],v.visualChest,'pack:'+lightingKey);
 }
