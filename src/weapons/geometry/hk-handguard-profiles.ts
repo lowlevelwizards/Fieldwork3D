@@ -66,7 +66,7 @@ export function addHKHandguardOpenings(root:THREE.Group,
  const xs=[0,1,2,3].map(i=>THREE.MathUtils.lerp(
   start+1.42,end-3.46,i/3));
  const width=early?1.04:1.10;
- const height=early?.86:.73;
+ const height=early?0.86:0.73;
  const result:THREE.Mesh[]=[];
  for(const side of [1,-1]){
   const z=side*(rz+.018),vertices:number[]=[],indices:number[]=[];
