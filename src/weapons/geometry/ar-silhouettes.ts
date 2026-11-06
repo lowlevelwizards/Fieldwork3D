@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addFacetedTube,addProfileFrame,type Outline,type SlotName} from './profile-primitives.ts';
-import {AR_STANAG_METAL} from './weapon-visual-palette.ts';
+import {AR_STANAG_METAL,AR_MUTED_FDE} from './weapon-visual-palette.ts';
 import {AR_BARREL_ART,AR_VISUAL_AXIS_Y} from './ar-barrel-profiles.ts';
 import {AR_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
@@ -57,33 +57,40 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Receiver-side mark is taller, directly OVER the magazine insertion.
  addWeaponPixelMark(root,'ar-port',m.portX,m.portY,1.82,
   m.portWidthX,m.portHeightY);
- // One heavy but quiet charging-handle bar; no protruding rear block.
- b('receiver',-6.35,1.82,0,1.44,.39,3.95,0);
- // Inset angled forward-assist marker sits BEHIND the ejection port.
- const assist=b('receiver',-1.34,.64,1.83,.47,.78,.18,1);
- assist.rotation.z=-.34;
+ // R4.6: the charging handle is a substantial, seated rear shelf.
+ b('receiver',-5.92,1.59,0,1.68,.80,3.90,0);
+ // Square-ended forward assist: front intersects body while rear projects
+ // back/outboard. Not a tiny inclined slash or a mirrored detail.
+ const assist=b('receiver',-1.93,.53,1.80,2.35,.48,.31,1);
+ assist.rotation.z=-.19;
+ assist.rotation.y=.18;
 
  // Fixed M16 stocks: one long triangular wedge, no rectangular belly.
  if(parts.stock==='ar-fixed'||parts.stock==='ar-fixed-a2'){
   const a2=parts.stock==='ar-fixed-a2';
-  const back=a2?-16.35:-15.65;
-  p('stock',[[back,.93],[-6.12,.78],[-6.02,-.67],
-   [back+.15,a2?-3.55:-3.40]],3.18,1);
-  b('stock',back+.04,-1.28,0,.30,a2?4.48:4.28,3.20,0);
+  // A1/A2 retain their relative stock lengths. Both become shorter,
+  // taller and substantially fuller at the attachment wrist.
+  const back=a2?-14.30:-13.74;
+  p('stock',[[back,a2?1.20:1.14],[-6.12,.98],[-6.02,-1.04],
+   [back+.17,a2?-4.18:-4.04]],3.18,1);
+  b('stock',back+.045,a2?-1.49:-1.45,0,.30,
+   a2?5.46:5.28,3.22,0);
  }else{
   const compact=parts.stock==='ar-compact';
   const m4=parts.stock==='ar-stock-m4';
   const rear=compact?-13.85:m4?-14.25:-14.45;
   const front=compact?-8.4:m4?-8.48:-8.6;
-  b('stock',-7.65,.05,0,4.2,1.45,1.9,0);
+  b('stock',-7.65,.35,0,4.2,1.45,1.9,0);
   p('stock',compact?
    // A thick compact SOPMOD-like cheek shape, without Z inflation.
    [[rear,1.12],[rear+1.12,1.36],[front,.91],
     [front,-1.25],[rear+1.48,-3.68],[rear,-3.54]]:
    m4?
    // Classic M4 stock: high tube, massive wedge under the rear cheek.
-   [[rear,1.20],[rear+1.05,1.32],[front,1.03],
-    [front,-.88],[rear+2.34,-4.76],[rear+.24,-5.03]]:
+   // Simplified M4 shell: full-length FLAT comb, short flat rear
+   // heel and one bold diagonal joining its forward collar.
+   [[rear,1.47],[front,1.47],[front,-.75],
+    [rear+2.0,-4.55],[rear+.28,-4.55],[rear,-4.13]]:
    // Early sliding Fiberlite shape is simpler and visually lighter.
    // Retro CAR: single thick shape; the lower diagonal reads as a shadow.
    [[rear,.72],[front,.67],[front,-1.24],
@@ -92,13 +99,17 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  }
 
  // Pistol grips share the same root, but the modern shape has a fuller heel.
- const modern=parts.grip==='ar-grip-poly';
+ const modern=parts.grip==='ar-grip-poly'||parts.grip==='ar-grip-poly-fde';
  // The grip belongs to the BACK of the lower receiver. Its upper end
  // vanishes into the receiver, and it remains slimmer in both X and Z.
- p('grip',shiftProfile(modern?
-  [[-2.10,-1.63],[.35,-1.65],[-.73,-5.24],[-1.79,-5.85],[-3.36,-5.68]]:
-  [[-1.95,-1.62],[.25,-1.65],[-1.16,-5.71],[-3.25,-5.71]],
-  m.gripShiftX),m.gripDepthZ,1);
+ const gripProfile=shiftProfile(modern?
+  [[-2.10,-1.84],[.35,-1.84],[-.73,-5.24],[-1.79,-5.85],[-3.36,-5.68]]:
+  [[-1.95,-1.84],[.25,-1.84],[-1.16,-5.71],[-3.25,-5.71]],
+  m.gripShiftX,.50);
+ if(parts.grip==='ar-grip-poly-fde')
+  addOutline(root,'grip',parts.grip,index.grip++,gripProfile,
+   m.gripDepthZ,AR_MUTED_FDE);
+ else p('grip',gripProfile,m.gripDepthZ,1);
 
  // IMPORTANT: Side ELEVATION uses X/Y. The requested thinness is Z,
  // not an X-squashed stick. Restore broad magazine contour, narrow its depth.
