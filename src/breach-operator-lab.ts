@@ -36,6 +36,9 @@ import './operator-appearance-grid.css';
 import {createWardrobeFabricCamoPicker} from './operator-fabric-camo-picker.ts';
 import {topColorwayChoices,resolvedTopColorway} from './operator-upper-colorways.ts';
 import {sleeveStateOptions} from './operator-wardrobe-data.ts';
+import {FAMILY_PRESETS} from './equipment-weapon-families.ts';
+import {initialWeaponConfiguration,selectWeaponFamilyPreset}
+ from './equipment-weapon-assemblies.ts';
 import {uniformCutCamoChoices,type UniformCompareCut}
  from './operator-uniform-cut-eligibility.ts';
 import {uniformCompareKit,uniformCompareWardrobe,UNIFORM_COMPARE_LABELS,
@@ -67,6 +70,65 @@ import {initialWardrobe,readWardrobe,resolvedWardrobe,wardrobeConflicts,
 let labKit:EquipmentLoadout=bareLabEquipment();
 let labPalette=1;
 let wardrobeOptions:WardrobeOptions=initialWardrobe();
+/** URL opt-in development inspector, not a second character renderer. */
+const poseFitMode=new URLSearchParams(location.search).get('poseFit')==='1';
+let poseFitPreset='ar-m4a1',poseFitArmor='plate-jpc';
+let poseFitRig='no-rig',poseFitTop='bdu-shirt';
+let poseFitOutput:HTMLOutputElement|null=null;
+if(poseFitMode){
+ document.body.classList.add('pose-fit-mode');
+ const panel=document.createElement('details');
+ panel.id='poseFitPanel';
+ panel.open=true;panel.setAttribute('aria-label','Pose Fit Inspector');
+ panel.style.cssText='position:fixed;z-index:9;top:calc(env(safe-area-inset-top) + 65px);'+
+  'right:8px;width:min(290px,calc(100vw - 16px));'+
+  'max-height:42dvh;overflow-y:auto;padding:9px;border:1px solid #c8ac72;'+
+  'border-radius:8px;background:#20352ff0;color:#e8e6da;'+
+  'touch-action:pan-y;font:11px monospace';
+ const heading=document.createElement('summary');
+ heading.textContent='POSE FIT · AR / AK';heading.style.cursor='pointer';
+ panel.append(heading);
+ const picker=(label:string,options:readonly (readonly [string,string])[],
+  current:string,set:(value:string)=>void)=>{
+  const field=document.createElement('label');
+  field.style.cssText='display:grid;gap:3px;margin-top:7px';
+  field.textContent=label;
+  const select=document.createElement('select');select.style.width='100%';
+  for(const [id,title] of options){
+   const opt=document.createElement('option');
+   opt.value=id;opt.textContent=title;select.add(opt);
+  }
+  select.value=current;select.addEventListener('change',()=>{
+   set(select.value);draw();
+  });
+  field.append(select);panel.append(field);
+ };
+ picker('Weapon',FAMILY_PRESETS.map(p=>[p.id,p.name] as const),
+  poseFitPreset,x=>{poseFitPreset=x});
+ picker('Armor',[['armor-bare','Bare'],['plate-slick','Slick'],
+  ['plate-jpc','JPC'],['plate-standard','Standard'],['plate-heavy','Heavy'],
+  ['plate-legacy','Legacy'],['soft-flak','Flak']],poseFitArmor,
+  x=>{poseFitArmor=x});
+ picker('Rig',[['no-rig','None'],['chest-placard','Placard'],
+  ['full-chest','Full Chest'],['chicom-rig','Chicom'],
+  ['sadf-webbing','SADF']],poseFitRig,x=>{poseFitRig=x});
+ picker('Uniform',[['bdu-shirt','BDU'],['acu-shirt','ACU'],
+  ['combat-shirt','Combat'],['smock-jacket','Smock']],
+  poseFitTop,x=>{poseFitTop=x});
+ poseFitOutput=document.createElement('output');
+ poseFitOutput.style.cssText='display:block;margin:8px 0;white-space:pre-wrap';
+ panel.append(poseFitOutput);
+ const copy=document.createElement('button');copy.textContent='COPY POSE REPORT';
+ copy.type='button';copy.addEventListener('click',()=>{
+  const info={preset:poseFitPreset,armor:poseFitArmor,rig:poseFitRig,
+   top:poseFitTop,status:rig?.root.userData.lowReadyPoseReport,
+   leftHand:rig?.arms[0].hand.position.toArray(),
+   rightHand:rig?.arms[1].hand.position.toArray(),
+   stock:rig?.weapon.position.toArray(),camera:camera.position.toArray()};
+  void navigator.clipboard?.writeText(JSON.stringify(info,null,2));
+ });
+ panel.append(copy);document.body.append(panel);
+}
 let appearanceGrid:OperatorAppearanceGrid|null=null;
 /** One-step Lab-only undo: snapshot display choices, never owned inventory. */
 type AppearanceSnapshot={kit:EquipmentLoadout;wardrobe:WardrobeOptions;
@@ -986,7 +1048,8 @@ const cameraHalfHeight=36;
 let projectionZoom=Number.NaN;
 function refreshVisibleWindow(){
  const headerBottom=document.querySelector('header')?.getBoundingClientRect().bottom??90;
- const editorTop=document.querySelector('main')?.getBoundingClientRect().top??
+ const editorTop=poseFitMode?window.innerHeight*.83:
+  document.querySelector('main')?.getBoundingClientRect().top??
   window.innerHeight*.55;
  const overlayBottom=document.getElementById('modelAxisLegend')?.
   getBoundingClientRect().bottom??0;
@@ -1453,19 +1516,42 @@ function draw(){
   const selectedHandling=transition?.to??previewHandling[track];
   doorProp.visible=track==='door'||track==='kick';
   rig.root.position.set(motion.x,0,motion.z);
-  const currentWeapon=(track==='reload-shotgun'?'shotgun':
-    weapon.value==='none'?'carbine':weapon.value) as WeaponId;
+  const selectedPosePreset=poseFitMode?
+   FAMILY_PRESETS.find(p=>p.id===poseFitPreset):undefined;
+  const currentWeapon=(selectedPosePreset?.weapon??
+   (track==='reload-shotgun'?'shotgun':
+    weapon.value==='none'?'carbine':weapon.value)) as WeaponId;
+  const poseWeaponConfig=selectedPosePreset?
+   selectWeaponFamilyPreset(initialWeaponConfiguration(
+    selectedPosePreset.weapon),selectedPosePreset.id):undefined;
+  const poseFitWardrobe:WardrobeOptions=poseFitMode?
+   {...wardrobeOptions,styles:{...wardrobeOptions.styles,
+     armorStyle:poseFitArmor,rigStyle:poseFitRig,top:poseFitTop}}:
+   wardrobeOptions;
   const currentKit=syncPrimaryWeapon(labKit,currentWeapon);
-  const currentCarry=previewCarry(currentKit,currentWeapon);
+  const poseFitArmorSlot=poseFitArmor==='armor-bare'?'armor-none':
+   poseFitArmor.startsWith('soft-')?'armor-soft':'armor-carrier';
+  const poseFitRigSlot=poseFitRig==='no-rig'?'rig-none':
+   ['chest-placard','micro-rig','light-rig','chicom-rig','bandolier']
+    .includes(poseFitRig)?'rig-light':'rig-full';
+  // A Wardrobe look cannot magically override the physically equipped
+  // armor/rig. Pose Fit must install the matching real equipment slots;
+  // otherwise all selected heavy configurations silently normalize away.
+  const poseFitKit=poseFitMode?
+   setEquipmentChoice(setEquipmentChoice(currentKit,'armor',
+     poseFitArmorSlot),'rig',poseFitRigSlot):currentKit;
+  const currentCarry=previewCarry(poseFitKit,currentWeapon);
   if(!comparing)poseOperator(rig,{x:motion.x,z:motion.z,heading:motion.heading,
     travelYaw:motion.travelYaw,seconds:clock,stride:clock*40,
-    velocity:motion.speed,posture:motion.posture,
+    velocity:poseFitMode?0:motion.speed,
+    posture:poseFitMode?'stand':motion.posture,
     gait:track==='run'?'run':track==='pie'?'pie':
       track==='squeeze'?'squeeze':'walk',
     injury:Math.max(motion.injury,Number(injury.value),
       track==='reload-wounded'?2:0),
-    weapon:currentWeapon,unarmedPreview:weapon.value==='none',
-    reload:motion.reload,reloadDuration:1.8,
+    weapon:currentWeapon,weaponConfiguration:poseWeaponConfig,
+    unarmedPreview:!poseFitMode&&weapon.value==='none',
+    reload:poseFitMode?0:motion.reload,reloadDuration:1.8,
     reloadMode:track==='reload-retention'?'retention':
       track==='reload-shotgun'?'shells':'emergency',
     reloadRemoved:track==='reload-interrupt'&&clock>.53,
@@ -1477,14 +1563,15 @@ function draw(){
     doorPoint:track==='door'?{x:25.5,y:8}:undefined,
     lastThrowAt:motion.throwAt,
     down:motion.down||Number(injury.value)===3,
-    surrender:false,aiming:motion.aim>.2,
-    firing:false,turning:motion.turning,aimBlend:motion.aim,
-    handlingOverride:selectedHandling,
-    handlingTransition:transition,
+    surrender:false,aiming:poseFitMode?false:motion.aim>.2,
+    firing:false,turning:poseFitMode?0:motion.turning,
+    aimBlend:poseFitMode?0:motion.aim,
+    handlingOverride:poseFitMode?'low':selectedHandling,
+    handlingTransition:poseFitMode?undefined:transition,
     replayFeet:feet,pelvisYaw:state.pelvisYaw,
     hybridSupport:gaitReference.value==='candidate',
     deterministic:true,shotHeading:motion.heading,
-     equipment:currentKit,appearanceSeed:labPalette,wardrobe:wardrobeOptions,
+     equipment:poseFitKit,appearanceSeed:labPalette,wardrobe:poseFitWardrobe,
      faceStyle:choose<HTMLSelectElement>('faceTreatment').value as
        'blank'|'quiet'|'graphic',
      magazineCarryLocations:currentCarry.filter(p=>p.kind==='magazine')
@@ -1620,6 +1707,24 @@ function draw(){
   canvas.dataset.gait=state.mode;
   canvas.dataset.gaitReference=gaitReference.value;
   canvas.dataset.promotion=gaitReference.value==='candidate'?'lab-only':'none';
+  if(poseFitMode&&poseFitOutput){
+   const report=rig.root.userData.lowReadyPoseReport as
+    {status:string;penetration:number|null;candidates:number;
+     weapon?:string;armor?:string;rig?:string;top?:string}|null;
+   poseFitOutput.textContent=report?
+    'STATUS '+report.status.toUpperCase()+
+    '\nRENDERED '+(report.weapon??'?')+' / '+(report.armor??'?')+
+    ' / '+(report.rig??'?')+
+    '\nPENETRATION '+(report.penetration?.toFixed(3)??'N/A')+
+    '\nGRIP '+rig.gripError.toFixed(3)+
+    '\nSTOCK '+rig.stockError.toFixed(3)+
+    '\nCANDIDATES '+report.candidates:'NO STATIC FAMILY SOLVE';
+   canvas.dataset.lowReadyFit=report?.status??'not-applicable';
+   canvas.dataset.poseFitArmor=report?.armor??'';
+   canvas.dataset.poseFitRig=report?.rig??'';
+   canvas.dataset.poseFitTop=report?.top??'';
+   canvas.dataset.poseFitWeapon=poseFitPreset;
+  }
   canvas.dataset.gripError=rig.gripError.toFixed(4);
   canvas.dataset.eyeError=rig.eyeError.toFixed(3);
   canvas.dataset.ankleGap=Math.max(...rig.legGap).toFixed(3);
@@ -1671,7 +1776,8 @@ function tick(now:number){
   }catch(error){showLabFailure(error);}
 }
 try{
-  build();resize();fit();chooseTrack('idle');
+  build();resize();fit();chooseTrack(poseFitMode?'low-ready':'idle');
+  if(poseFitMode){playing=false;playPause.textContent='PLAY';}
   // Render immediately rather than depending on a delayed first
   // requestAnimationFrame callback on a newly navigated mobile tab.
   draw();requestAnimationFrame(tick);

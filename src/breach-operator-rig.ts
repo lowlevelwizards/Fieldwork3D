@@ -14,6 +14,9 @@ import {armorArmIntrusion,armorElbowPole}
 import {idleLifeAt} from './breach-idle-life.ts';
 import {lowReadyFamilyFit,lowReadyElbowPole}
  from './breach-low-ready-family-fit.ts';
+import {solveCoupledLowReady,type CoupledLowReadySolution}
+ from './breach-coupled-low-ready.ts';
+import {poseClearanceEnvelope} from './breach-pose-clearance-envelope.ts';
 import {createOperatorPoseScratch,type OperatorPoseScratch}
   from './breach-operator-pose-scratch.ts';
 import type {WeaponId} from './breach-combat.ts';
@@ -443,6 +446,10 @@ const DOWNED_TINT=new THREE.Color(0x555c57);
  * every frame. Weak keys release disposed operator preview rigs. */
 const appearanceState=new WeakMap<OperatorRig,{key:string;downed:boolean}>();
 const poseMath=new WeakMap<OperatorRig,OperatorPoseScratch>();
+/** Results are keyed by visible equipment, authored weapon, and the actual
+ * shoulder/yaw frame. No pose candidate search runs on every rendered frame. */
+const coupledIdleCache=new WeakMap<OperatorRig,{
+ key:string;solution:CoupledLowReadySolution|null}>();
 export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   let scratch=poseMath.get(r);
   if(!scratch){scratch=createOperatorPoseScratch();poseMath.set(r,scratch);}
@@ -961,10 +968,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const familyLow=lowReadyFamilyFit(p.weaponConfiguration);
   // Smoothly retire the relaxed hold when accelerating, aiming, reloading
   // or engaging. All combat-facing muzzle fits retain their original data.
-  const relaxedLowReady=familyLow&&handling==='low'&&!p.down&&
-    !p.surrender&&!p.firing&&p.reload<=0&&!p.treatmentActive?
-    clamp((18-physicalSpeed)/18,0,1)*
-    clamp((.18-(p.aimBlend??(p.aiming?1:0)))/.18,0,1):0;
+  // Retire old independent stock/grip/yaw/elbow offsets. Stationary AR/AK
+  // low-ready is handled by ONE coupled physical solution below, while
+  // ADS, reload, moving and all non-family weapons retain their old path.
+  const relaxedLowReady=0;
   // A pivot requires the stance to catch up with requested facing.
   // In replay/lab this orientation is reconstructed by time, never dt.
   // The pelvis yaw has exactly ONE final writer, after contact scheduling.
@@ -1204,9 +1211,53 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const data=weaponGrips(p.weapon,p.weaponConfiguration,
     handling,relaxedLowReady);
   const recoil=p.recoil??(p.firing?1.5:0);
-  const fit=fitWeaponPose({weapon:p.weapon,handling,
+  const relativeYaw=-(p.shotHeading??p.heading)-r.legacyYaw-
+    r.chest.rotation.y;
+  const shoulderFor=(i:number)=>{
+    const sign=i===0?-1:1;
+    const base=i===0?ANATOMY.shoulderLeft:ANATOMY.shoulderRight;
+    return P(base.x+poseWeight*(i===0?
+      profile.supportShoulderForward:profile.firingShoulderForward),
+      base.y+poseWeight*profile.shoulderLift,
+      base.z-sign*poseWeight*profile.shoulderInward);
+  };
+  // The coupled solution is deliberately restricted to relaxed, stationary,
+  // two-handed AR/AK presentation. Combat aim and shot-time geometry remain
+  // on the existing authoritative pose path.
+  const coupledConfig=p.weaponConfiguration?.weapon===p.weapon?
+    p.weaponConfiguration:undefined;
+  const eligible=!!coupledConfig?.build&&handling==='low'&&
+    p.posture==='stand'&&physicalSpeed<.45&&
+    Math.abs(p.turning)<.28&&!p.down&&!p.surrender&&!p.firing&&
+    !p.aiming&&(p.aimBlend??0)<.02&&p.reload<=0&&
+    !p.treatmentActive&&!activeTransition&&
+    p.seconds-p.lastDoorAt>1.2&&p.seconds-p.lastThrowAt>.85&&
+    (p.hitAge===undefined||p.hitAge<0||p.hitAge>1.1);
+  let coupled:CoupledLowReadySolution|null=null;
+  if(eligible&&coupledConfig){
+    const look=resolvedWardrobe(p.wardrobe,p.equipment);
+    const key=JSON.stringify([p.weapon,coupledConfig.build,coupledConfig.slots,
+      look.top,look.armorStyle,look.rigStyle,poseWeight,
+      Math.round(relativeYaw*40)/40]);
+    const cache=coupledIdleCache.get(r);
+    if(cache?.key===key)coupled=cache.solution;
+    else{
+      coupled=solveCoupledLowReady({weapon:p.weapon,configuration:coupledConfig,
+        armor:poseClearanceEnvelope(look.armorStyle,look.rigStyle,look.top),
+        shoulders:[shoulderFor(0),shoulderFor(1)],
+        nominalYaw:relativeYaw});
+      coupledIdleCache.set(r,{key,solution:coupled});
+    }
+    r.root.userData.lowReadyPoseReport={
+      status:coupled?.status??'unresolved',weapon:p.weapon,
+      armor:look.armorStyle,rig:look.rigStyle,top:look.top,
+      penetration:coupled?.penetration??null,
+      supportFraction:coupled?.supportFraction??null,
+      candidates:coupled?.candidates??0};
+  }else r.root.userData.lowReadyPoseReport=null;
+  const fit=coupled?.fit??fitWeaponPose({weapon:p.weapon,handling,
     configuration:p.weaponConfiguration,
-    yaw:-(p.shotHeading??p.heading)-r.legacyYaw-r.chest.rotation.y,
+    yaw:relativeYaw,
     recoil,clearanceRetraction:p.clearanceRetraction,
     relaxedLowReady,
     swayYaw:motion.weaponYaw*freeMotion,
@@ -1357,12 +1408,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
-    const shoulderPosition=i===0?ANATOMY.shoulderLeft:ANATOMY.shoulderRight;
-    const shoulderAdvance=i===0?profile.supportShoulderForward:
-      profile.firingShoulderForward;
-    const shoulder=P(shoulderPosition.x+poseWeight*shoulderAdvance,
-      shoulderPosition.y+poseWeight*profile.shoulderLift,
-      shoulderPosition.z-sign*poseWeight*profile.shoulderInward);
+    const shoulder=shoulderFor(i);
     const grip=i===0?leftGrip:rightGrip;
     let desired:THREE.Vector3;
     if(p.down&&(i===0&&releaseLeft||i===1&&releaseRight)){
@@ -1378,6 +1424,19 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }else{
       desired=grip.clone().multiply(P(data.lengthScale,1,1))
         .applyEuler(fit.rotation).add(fit.origin);
+    }
+    // The coupled fitting solver already chose BOTH elbows and the exact
+    // physical wrist contacts in one collision-checked candidate.
+    // Do not re-run per-arm IK and accidentally undo its armor clearance.
+    if(coupled&&!p.unarmedPreview){
+      const joint=coupled.arms[i];
+      r.elbowSpread[i]=Math.max(0,sign*(joint.joint.z-shoulder.z));
+      arm.bend.copy(joint.bendPlane);arm.outOfReach=false;
+      alignSegment(arm.upper,shoulder,joint.joint,scratch.sides[i]);
+      alignSegment(arm.lower,joint.joint,joint.effector,scratch.sides[i]);
+      arm.hand.position.copy(joint.effector);
+      arm.hand.rotation.set(0,clamp(fit.rotation.y,-1,1),0);
+      continue;
     }
     const neutralArms=!!p.unarmedPreview&&!p.down&&!p.surrender;
     if(neutralArms)

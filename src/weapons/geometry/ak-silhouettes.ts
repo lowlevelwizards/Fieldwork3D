@@ -6,6 +6,7 @@ import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addBar,type Outline,type SlotName} from './profile-primitives.ts';
 import {AK_WARM_RESIN,AK_WOOD_AMBER,AK_WOOD_RED,
  AK_PLUM_POLYMER,AK_MAG_RIB} from './weapon-visual-palette.ts';
+import {akHandguardStart} from '../../breach-weapon-contact-zones.ts';
 import {AK_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
 import {addWeaponPixelMark,addWeaponPixelMarkPair} from './weapon-pixel-detail.ts';
@@ -236,7 +237,7 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const art=akBarrelArt(parts.barrel)??AK_BARREL_ART['ak-long'];
  const end=art.handguardFrontX;
  // Seat the lower and upper furniture 0.55+ units INSIDE the receiver front.
- const start=compact?3.05:3.50;
+ const start=akHandguardStart(parts.receiver);
  const woodGuard=guard.startsWith('ak-wood-long')||
   guard.startsWith('ak-wood-short')||guard.startsWith('ak-rpk-wood');
  const rail=guard==='ak-rail-long';
