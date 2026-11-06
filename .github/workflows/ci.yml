@@ -1174,6 +1174,9 @@ jobs:
       - name: Sound Lab — focused catalog, synthesis, WAV and ZIP validation
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-sound-lab-') }}
         run: node --experimental-strip-types --test tests/sound-lab.test.mjs
+      - name: Exact mission restart — site, setup and insertion critical gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/breach-repeat-mission-') }}
+        run: node --experimental-strip-types --test tests/mission-restart-snapshot.test.mjs tests/mission-deployment-r2.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
