@@ -156,6 +156,27 @@ export function headwearCastShadowAtlas(headwear:string):THREE.DataTexture{
  }
  return bakeReceiverShadowAtlas(key,headCenter,headSize,boxes,.025);
 }
+/** Collect only the real sewn collar pieces, not the entire jacket bounds.
+ * Those pieces are already preserved outside rigid mesh merging for fit tests.
+ * Sampling is finished once when this top family is first selected.
+ */
+export function authoredCollarShadowBoxes(model:THREE.Group,
+ chest:THREE.Group):ShadowBox[]{
+ chest.updateWorldMatrix(true,true);
+ model.updateWorldMatrix(true,true);
+ const inverse=new THREE.Matrix4().copy(chest.matrixWorld).invert();
+ const boxes:ShadowBox[]=[];
+ model.traverse(child=>{
+  if(!(child instanceof THREE.Mesh)||!child.userData.armorCollarPiece)return;
+  const geometry=child.geometry;
+  if(!geometry.boundingBox)geometry.computeBoundingBox();
+  if(!geometry.boundingBox)return;
+  const transform=new THREE.Matrix4().multiplyMatrices(inverse,child.matrixWorld);
+  const b=geometry.boundingBox.clone().applyMatrix4(transform);
+  boxes.push({min:b.min,max:b.max});
+ });
+ return boxes;
+}
 const neckSize=new THREE.Vector3(3.6,4,3.8),neckCenter=new THREE.Vector3(0,7,0);
 export function collarCastShadowAtlas(top:string,collars:readonly ShadowBox[]){
  // Version and garment style, not camo color or operator id, own each bake.
