@@ -29,7 +29,7 @@ test('all forty faction references have one explicit weapon with truthful fideli
   assert.ok(issued.weaponConfiguration.build,r.id);
   assert.ok(['exact','representative','proxy'].includes(issued.fidelity),r.id);
   if(issued.fidelity!=='proxy')
-   assert.ok(issued.preset.family==='ar'||issued.preset.family==='ak',r.id);
+   assert.ok(['ar','ak','hk'].includes(issued.preset.family),r.id);
  }
  assert.equal(referenceWeaponChoice('us-army-m81-1990').preset.name,'M16A2');
  assert.equal(referenceWeaponChoice('russian-flora-2000').preset.name,'AK-74M');

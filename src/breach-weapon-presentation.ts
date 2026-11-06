@@ -4,7 +4,7 @@
 import type {WeaponId} from './breach-combat.ts';
 import {resolveWeaponAssembly,WEAPON_PLATFORMS,
  type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
-import {AR_VISUAL_ANATOMY,AK_VISUAL_ANATOMY}
+import {AR_VISUAL_ANATOMY,AK_VISUAL_ANATOMY,HK_VISUAL_ANATOMY}
  from './weapons/geometry/weapon-receiver-anatomy.ts';
 export type WeaponSocket={x:number;y:number;z:number};
 export type WeaponPresentationSockets={
@@ -18,7 +18,8 @@ export function weaponPresentationSockets(id:WeaponId,
  const a=config?resolveWeaponAssembly(config):WEAPON_PLATFORMS[id];
  const build=config?.build;
  const anatomy=build?.family==='ar'?AR_VISUAL_ANATOMY:
-  build?.family==='ak'?AK_VISUAL_ANATOMY:null;
+  build?.family==='ak'?AK_VISUAL_ANATOMY:
+  build?.family==='hk'?HK_VISUAL_ANATOMY:null;
  return {
   stock:{x:a.stockX,y:0,z:0},
   primary:{x:a.primaryX,y:a.primaryY,z:1.8},

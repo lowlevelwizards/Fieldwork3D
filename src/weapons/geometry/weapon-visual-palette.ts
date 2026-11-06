@@ -23,3 +23,10 @@ export const AK_WOOD_RED=finish(0x915038,.88);
 export const AK_PLUM_POLYMER=finish(0x4e3b4c,.92);
 /** Low-contrast curved stamped ribs on classic steel 7.62 magazines. */
 export const AK_MAG_RIB=finish(0x364238,.93);
+
+/** HK service finishes use the same low-specular Fieldwork art language. */
+export const HK_BLACK_METAL=finish(0x454b43,.8);
+export const HK_DARK_POLYMER=finish(0x343d36,.93);
+export const HK_OLIVE_POLYMER=finish(0x606950,.94);
+export const HK_WOOD=finish(0x95714a,.95);
+export const HK_MAG_METAL=finish(0x5e6960,.88);
