@@ -1,3 +1,5 @@
+import {readFileSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateSite} from '../src/breach-site.ts';
@@ -22,8 +24,6 @@ test('B0/B4: real resolved encounter drives valid briefing facts, not a fictiona
  }finally{activateSite(null);}
 });
 test('B4: lab is its own built page and existing game briefing remains isolated',()=>{
- const {readFileSync}=await import('node:fs');
- const {fileURLToPath}=await import('node:url');
  const path=(p)=>fileURLToPath(new URL('../'+p,import.meta.url));
  assert.match(readFileSync(path('vite.config.ts'),'utf8'),/briefingLab: 'briefing-lab\.html'/);
  assert.match(readFileSync(path('briefing-lab.html'),'utf8'),/BRIEFING LAB/);
