@@ -230,6 +230,17 @@ button{font-family:"Work Sans",system-ui,sans-serif;font-weight:600;letter-spaci
  font-family:"Saira Condensed","Arial Narrow",sans-serif;font-variant-numeric:tabular-nums;
  font-feature-settings:"tnum" 1;
 }
+/* Pose Fit runs in the real operator lab, but keeps the *figure* visible. */
+body.pose-fit-mode main{display:none!important}
+@media(max-width:700px){
+ #poseFitPanel{
+  top:auto!important;bottom:calc(env(safe-area-inset-bottom) + 8px)!important;
+  right:8px!important;left:8px!important;width:auto!important;
+  max-height:37dvh!important
+ }
+ #poseFitPanel:not([open]){max-height:48px!important}
+ body.pose-fit-mode #modelAxisLegend{display:none!important}
+}
 </style></head>
 <body><canvas id="preview"></canvas><div id="compareLabels" hidden></div>
 <div id="uniformCutLabels" hidden aria-hidden="true"><span id="blouseLabelA">A · CLASSIC FIELD</span><span id="blouseLabelB">B · MODERN UTILITY</span></div>
