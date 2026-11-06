@@ -20,6 +20,10 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Breach magazine, socket and shared-idle critical gates
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-weapon-sockets-magazines-idle-') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-weapon-magazine-idle.test.mjs tests/breach-weapon-issue-faction-studio.test.mjs
       - name: AR A1 surface vents — minimal visual-geometry gate
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/weapon-ar-a1-flush-vents-') }}
         run: |
