@@ -72,7 +72,7 @@ test('family 01: invalid persisted builds degrade to legacy without corrupting s
  assert.deepEqual(readWeaponConfiguration({...old,build:{family:'ak',parts:{receiver:'missing'}}},'carbine'),old);
  assert.equal(readWeaponFamilyBuild(null,'carbine'),undefined);
  assert.equal(readWeaponFamilyBuild({family:'ak',parts:{receiver:'akm'}},'carbine'),undefined);
- assert.equal(readWeaponFamilyBuild({family:'ar',parts:{receiver:'ar-flat',stock:'ak-wood'}},'carbine')?.parts.stock,'ar-car');
+ assert.equal(readWeaponFamilyBuild({family:'ar',parts:{receiver:'ar-flat',stock:'ak-wood'}},'carbine')?.parts.stock,'ar-stock-m4');
 });
 test('family 01: all modular silhouettes align with physical tip; no per-frame art objects',()=>{
  const steel=new THREE.MeshBasicMaterial(),dark=new THREE.MeshBasicMaterial();
