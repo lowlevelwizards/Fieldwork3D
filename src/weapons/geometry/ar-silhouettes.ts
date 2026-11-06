@@ -30,8 +30,11 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Upper: flat/retro identities differ chiefly in the visible TOP silhouette.
  p('receiver',[[-6.35,-.9],[-6.35,1.25],[-5.4,1.75],[3.6,1.75],
   [3.85,.55],[3.65,-.9]],3.5,0);
- p('receiver',[[-5.55,-1.1],[-2.1,-2.15],[2.2,-2.15],
-  [3.45,-.85],[-5.55,-.85]],3.0,1);
+ // R4.7: one articulated lower receiver, not an uninterrupted horizontal
+ // slab. The two angled underside changes frame the grip and magwell.
+ p('receiver',[[-5.55,-.98],[-4.68,-1.47],[-3.08,-2.24],
+  [-1.16,-2.24],[-.60,-1.92],[1.82,-2.22],
+  [2.35,-1.98],[3.45,-.84],[-5.55,-.84]],3.0,1);
  // A distinct, tapered LOWER magwell makes the magazine part of the receiver,
  // not an object attached to the back of the fore-end.
  const m=AR_VISUAL_ANATOMY;
@@ -65,11 +68,14 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   m.portWidthX,m.portHeightY);
  // R4.6: the charging handle is a substantial, seated rear shelf.
  b('receiver',-5.92,1.59,0,1.68,.80,3.90,0);
- // Square-ended forward assist: front intersects body while rear projects
- // back/outboard. Not a tiny inclined slash or a mirrored detail.
- const assist=b('receiver',-1.93,.53,1.80,2.35,.48,.31,1);
- assist.rotation.z=-.19;
- assist.rotation.y=.18;
+ // A single square-ended raised oblique FACE. R4.6's rotated cuboid partly
+ // intersected the body and rasterized as dotted fragments. This flat
+ // four-point wedge is deliberately offset beyond the receiver's side face.
+ // Front (+X) stays immediately behind the ejection-port rear edge.
+ const assist=addOutline(root,'receiver',parts.receiver,index.receiver++,
+  [[-3.16,.86],[-.77,.30],[-.86,-.12],[-3.25,.44]],.27,material[1]);
+ assist.position.z=1.91;
+ assist.userData.arForwardAssist=true;
 
  // Fixed M16 stocks: one long triangular wedge, no rectangular belly.
  if(parts.stock==='ar-fixed'||parts.stock==='ar-fixed-a2'){
