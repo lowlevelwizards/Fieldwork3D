@@ -13,6 +13,13 @@ export const AK_BARREL_ART:Readonly<Record<string,AKBarrelArt>>={
   gasTubeBeginX:11.35,gasBlockX:14.55,
   frontSightX:15.90,muzzleX:19.5,muzzleStyle:'standard'
  },
+ // Factory-pattern 100-series long front: same length as rifle,
+ // but uses the cylindrical 74M/100-series brake instead of the custom slant.
+ 'ak-103-factory':{
+  id:'ak-103-factory',lengthScale:.94,handguardFrontX:12.10,
+  gasTubeBeginX:11.35,gasBlockX:14.55,
+  frontSightX:15.90,muzzleX:19.5,muzzleStyle:'standard'
+ },
  'ak-mid':{
   id:'ak-mid',lengthScale:.90,handguardFrontX:11.55,
   gasTubeBeginX:10.75,gasBlockX:12.9,
