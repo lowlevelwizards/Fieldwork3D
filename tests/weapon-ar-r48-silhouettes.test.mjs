@@ -22,7 +22,7 @@ const part=(g,type)=>g.children.filter(x=>x.name.startsWith('family-'+type+'-'))
 const bounds=(g,type)=>{const b=partVisualBounds(g,type);assert.ok(b,type);return b;};
 test('R4.8 eight ARs retain their names, configuration and live muzzle extents',()=>{
  assert.equal(FAMILY_PRESETS.filter(x=>x.family==='ar').length,8);
- assert.equal(Object.keys(FAMILY_PARTS).length,93);
+ assert.equal(Object.values(FAMILY_PARTS).filter(x=>x.family==='ar'||x.family==='ak').length,93);
  for(const p of FAMILY_PRESETS.filter(x=>x.family==='ar')){
   const v=model(p.id);
   assert.ok(v.g.children.length<=36,p.id+' mobile draw-call budget');

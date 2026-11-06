@@ -1193,6 +1193,10 @@ jobs:
       - name: Briefing R4 — incident variety and after-action integrity
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-briefings-variety-debrief-') }}
         run: node --experimental-strip-types --test tests/briefing-content-coverage.test.mjs tests/briefing-incident.test.mjs tests/briefing-composer.test.mjs tests/briefing-default-live.test.mjs tests/briefing-after-action.test.mjs tests/briefing-campaign-continuity.test.mjs tests/briefing-audit.test.mjs
+      - name: HK G3 — focused geometry, sockets, editor and issue checks
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-g3-family-') }}
+        run: |
+          node --experimental-strip-types --test tests/weapon-hk-g3-family.test.mjs tests/weapon-families-01.test.mjs tests/weapon-arsenal-r4.test.mjs tests/weapon-ar-r48-silhouettes.test.mjs tests/breach-weapon-magazine-idle.test.mjs tests/breach-weapon-issue-faction-studio.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

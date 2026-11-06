@@ -97,7 +97,11 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const selector=addWeaponPixelMark(root,'hk-selector',-3.48,-.67,-1.777,2.05,.60);
  selector.rotation.y=Math.PI;
  const vent=parts.handguard==='hk-g3-wood-vented'?'hk-wood-vents':'hk-poly-vents';
- addWeaponPixelMarkPair(root,vent,9.25,-.18,1.424,7.1,.70);
+ // The lower pair of hex facets slopes in Z with Y. The decal tilts with
+ // the actual surface, rather than floating above its center or clipping.
+ const [rightVent,leftVent]=addWeaponPixelMarkPair(root,vent,
+  9.25,-.69,1.333,7.1,.50);
+ rightVent.rotation.x=.55;leftVent.rotation.x=.55;
  // Early flip-up leaf versus distinctive chunky later rotary sight drum.
  b('receiver',-3.68,1.95,0,2.0,.53,2.45);
  if(early){
