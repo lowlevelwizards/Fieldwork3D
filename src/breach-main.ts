@@ -4382,7 +4382,7 @@ async function playSavedReplay(id:string):Promise<void>{
       activeSavedReplayId=id;
       replayBookmarks=savedMarks;
       replayBookmarkCounter=Math.max(savedMarks.length,
-        ...savedMarks.map(mark=>Number(mark.id.match(/bookmark-(\\d+)/)?.[1]??0)));
+        ...savedMarks.map(mark=>Number(mark.id.match(/bookmark-(\d+)/)?.[1]??0)));
       renderReplayChapters();
     }
     if(!replaying){
