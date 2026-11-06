@@ -77,7 +77,8 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const long=['ar-triangle','ar-round','ar-m5-rail'].includes(guard);
  const short=['ar-compact-rail','ar-risii'].includes(guard);
  const end=long?15.25:short?15.95:13.9;
- const start=3.9,top=guard==='ar-triangle'?1.75:1.6;
+ // A slight deliberate overlap avoids the visible receiver/guard seam.
+ const start=3.55;
  if(guard==='ar-triangle'){
   // One long block with an iconic triangular taper, no tiny rail strips.
   p('handguard',[[start,1.65],[end,1.15],[end,-1.15],
