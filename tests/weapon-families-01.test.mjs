@@ -55,7 +55,7 @@ test('family 01: changing barrel rematches handguard and preserves baseline muzz
  c=setConfiguredFamilyPart(c,'barrel','ar-103');
  assert.equal(c.build?.parts.barrel,'ar-103');
  assert.equal(FAMILY_PARTS[c.build.parts.handguard].length,'short');
- assert.equal(resolveWeaponAssembly(c).muzzleX,19.5);
+ assert.equal(resolveWeaponAssembly(c).muzzleX,15.8);
  assert.ok(resolveWeaponAssembly(c).lengthScale<resolveWeaponAssembly(original).lengthScale);
  assert.equal(setConfiguredFamilyPart(c,'handguard','ar-round'),c);
  assert.equal(setWeaponAttachment(c,'foregrip','foregrip-vertical').slots.foregrip,'foregrip-vertical');
@@ -72,7 +72,7 @@ test('family 01: invalid persisted builds degrade to legacy without corrupting s
  assert.deepEqual(readWeaponConfiguration({...old,build:{family:'ak',parts:{receiver:'missing'}}},'carbine'),old);
  assert.equal(readWeaponFamilyBuild(null,'carbine'),undefined);
  assert.equal(readWeaponFamilyBuild({family:'ak',parts:{receiver:'akm'}},'carbine'),undefined);
- assert.equal(readWeaponFamilyBuild({family:'ar',parts:{receiver:'ar-flat',stock:'ak-wood'}},'carbine')?.parts.stock,'ar-car');
+ assert.equal(readWeaponFamilyBuild({family:'ar',parts:{receiver:'ar-flat',stock:'ak-wood'}},'carbine')?.parts.stock,'ar-stock-m4');
 });
 test('family 01: all modular silhouettes align with physical tip; no per-frame art objects',()=>{
  const steel=new THREE.MeshBasicMaterial(),dark=new THREE.MeshBasicMaterial();

@@ -16,7 +16,9 @@ export function weaponVisualLayout(config:WeaponConfiguration):WeaponVisualLayou
  const scale=config.build?assembly.lengthScale:1;
  return {
   longitudinalScale:scale,
-  workbenchCenterX:2*scale,
+  // Center on the newly variable barrel endpoint; legacy/AK fit unchanged.
+  workbenchCenterX:config.build?.family==='ar'?
+   (assembly.muzzleX-15.2)*.5*scale:2*scale,
   stockX:assembly.stockX,
   muzzleX:assembly.muzzleX,
   compact:Boolean(compact)

@@ -3,10 +3,11 @@
  * Art-only overlays have no cast shadow and never affect weapon handling.
  */
 import * as THREE from 'three';
-export type WeaponMark='ar-port'|'ak-port'|'ak-selector'|'ris-panel'|'pri-vents';
+export type WeaponMark='ar-port'|'ak-port'|'ak-selector'|'ris-panel'|'pri-vents'|'poly-ribs';
 const dimensions:Record<WeaponMark,readonly [number,number]>={
  'ar-port':[16,12],'ak-port':[16,12],
- 'ak-selector':[16,8],'ris-panel':[32,8],'pri-vents':[16,8]
+ 'ak-selector':[16,8],'ris-panel':[32,8],'pri-vents':[16,8],
+ 'poly-ribs':[16,8]
 };
 const shared=new Map<WeaponMark,THREE.MeshBasicMaterial>();
 function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
@@ -15,7 +16,7 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
  const pixel=(x:number,y:number,light=false)=>{
   if(x<0||y<0||x>=w||y>=h)return;
   const n=(y*w+x)*4;
-  const rgb=light?[104,109,95]:[29,36,32];
+  const rgb=light?[88,99,88]:[29,36,32];
   data[n]=rgb[0];data[n+1]=rgb[1];data[n+2]=rgb[2];data[n+3]=210;
  };
  if(mark==='ar-port'){
@@ -23,7 +24,7 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
   // Previously only its hairline highlight was legible on a phone.
   for(let y=2;y<=9;y++)for(let x=2;x<=13;x++)pixel(x,y);
   for(let x=2;x<=13;x++)pixel(x,2,true);
-  for(let x=3;x<=12;x++)pixel(x,9,true);
+  // No floating bright lower underline: the dark port reads by contrast.
  }else if(mark==='ak-port'){
   // Taller compact AK receiver opening, above (not behind) the magazine.
   for(let y=3;y<=9;y++)for(let x=3;x<=12;x++)pixel(x,y);
@@ -31,6 +32,9 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
  }else if(mark==='ak-selector'){
   for(let y=2;y<=5;y++)for(let x=2;x<=5;x++)pixel(x,y,true);
   for(let x=6;x<=13;x++)pixel(x,3+Math.floor((x-6)/4));
+ }else if(mark==='poly-ribs'){
+  // Four widely spaced nearly-black bands: no tiny modeled ridges.
+  for(const x of [2,6,10,14])for(let y=2;y<=6;y++)pixel(x,y);
  }else if(mark==='pri-vents'){
   for(const x of [3,7,11])for(let y=3;y<=5;y++)pixel(x,y);
   for(let x=3;x<=13;x++)pixel(x,2,true);

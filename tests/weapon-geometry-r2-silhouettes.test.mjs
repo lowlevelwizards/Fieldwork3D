@@ -29,8 +29,8 @@ const hits=(model,x,y)=>{
  return ray.intersectObjects(model.group.children,true).length;
 };
 
-test('R2: 62 visual part definitions, 17 curated IDs and correct landmark furniture',()=>{
- assert.equal(Object.keys(FAMILY_PARTS).length,62);
+test('R2: 66 visual part definitions, 17 curated IDs and correct landmark furniture',()=>{
+ assert.equal(Object.keys(FAMILY_PARTS).length,66);
  assert.equal(FAMILY_PRESETS.length,17);
  const byId=Object.fromEntries(FAMILY_PRESETS.map(p=>[p.id,p]));
  assert.equal(byId['ar-m16a4'].parts.handguard,'ar-m5-rail');
