@@ -64,6 +64,7 @@ import {stepReplaySample,stepReplayPresentation,formatReplayTime}
   from './breach-replay-transport.ts';
 import {ReplayEventIndex,type ReplayIndexedEvent} from './breach-replay-event-index.ts';
 import type {RecordedShot} from './breach-replay-ballistics.ts';
+import {serializeReplayReport} from './breach-replay-export-json.ts';
 import {replayActorVisible} from './breach-replay-visibility.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
@@ -228,6 +229,7 @@ const ui={
   replayPlanVersion:el<HTMLButtonElement>('replayPlanVersion'),
   replayNames:el<HTMLButtonElement>('replayNames'),
   replayTraces:el<HTMLButtonElement>('replayTraces'),
+  replayExportJson:el<HTMLButtonElement>('replayExportJson'),
   replayEventText:el<HTMLOutputElement>('replayEventText'),
   replayClock:el<HTMLOutputElement>('replayClock'),
   replayFeedToggle:el<HTMLButtonElement>('replayFeedToggle'),
@@ -3702,6 +3704,24 @@ ui.replayTraces.addEventListener('click',()=>{
   replayTraceMode=replayTraceMode==='off'?'recent':
     replayTraceMode==='recent'?'selected':'off';
   updateReplayHud();
+});
+ui.replayExportJson.addEventListener('click',()=>{
+  try{
+    const report=serializeReplayReport(recorder);
+    const blob=new Blob([report],{type:'application/json;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const seed=recorder.manifest?.site?.seed??'mission';
+    a.href=url;a.download='fieldwork-breach-'+seed+'-'+
+      Math.round(recorder.duration)+'s-report.json';
+    document.body.append(a);a.click();a.remove();
+    // iOS WebKit may need the object URL until after navigation begins.
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    showUiHelp('FULL-RECONSTRUCTION JSON REPORT EXPORTED',2500);
+  }catch(error){
+    console.warn('[Replay JSON export]',error);
+    showUiHelp('JSON EXPORT UNAVAILABLE',3500);
+  }
 });
 ui.replayExit.addEventListener('click',exitReplay);
 function reset(next=state.variant,siteSeed?:number,
