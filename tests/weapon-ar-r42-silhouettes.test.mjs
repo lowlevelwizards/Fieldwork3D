@@ -25,7 +25,7 @@ const shots=(g,x,y)=>new THREE.Raycaster(new THREE.Vector3(x,y,25),
 test('R4.2 all eight AR builds keep original saves and canonical barrel labels',()=>{
  assert.equal(ar.length,8);
  assert.equal(FAMILY_PRESETS.length,17);
- assert.equal(Object.keys(FAMILY_PARTS).length,66);
+ assert.equal(Object.keys(FAMILY_PARTS).length,90);
  assert.equal(Object.keys(AR_BARREL_ART).length,7);
  for(const p of ar){
   const {config,group}=model(p.id);
