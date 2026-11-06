@@ -65,6 +65,7 @@ import {stepReplaySample,stepReplayPresentation,formatReplayTime}
 import {ReplayEventIndex,type ReplayIndexedEvent} from './breach-replay-event-index.ts';
 import type {RecordedShot} from './breach-replay-ballistics.ts';
 import {serializeReplayReport} from './breach-replay-export-json.ts';
+import {ReplaySoundTimeline} from './breach-replay-audio.ts';
 import {sampleReplayGhosts} from './breach-replay-ghosts.ts';
 import {replayActorVisible} from './breach-replay-visibility.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
@@ -213,6 +214,7 @@ const ui={
   replayBack:el<HTMLButtonElement>('replayBack'),
   replayForward:el<HTMLButtonElement>('replayForward'),
   replaySpeed:el<HTMLButtonElement>('replaySpeed'),
+  replaySound:el<HTMLButtonElement>('replaySound'),
   replayPrevFrame:el<HTMLButtonElement>('replayPrevFrame'),
   replayNextFrame:el<HTMLButtonElement>('replayNextFrame'),
   replayPrevSample:el<HTMLButtonElement>('replayPrevSample'),
@@ -545,6 +547,8 @@ function recordCompletedOperation(){
 }
 let replaying=false,replayPlaying=false,replayTime=0,replayRate=1;
 let replayEventIndex:ReplayEventIndex|null=null;
+let replaySoundTimeline:ReplaySoundTimeline|null=null;
+let replaySoundEnabled=true;
 let replayPresentation:ReplayPresentation|null=null;
 let replayOmniscient=true,finishedSession:Session|null=null;
 let replayFollow=false,replayAnalysis=false,replayFollowId='rook';
@@ -1189,10 +1193,17 @@ let fogStamp=-1;
 let fogSession:Session|null=null;
 let fogIntelMode='';let fogSeenRevision=-1;
 let audio:AudioContext|null=null;
+const replaySoundNodes=new Set<OscillatorNode>();
+function stopReplaySounds():void{
+  for(const node of replaySoundNodes){
+    try{node.stop();}catch{/* Ended nodes are already silent. */}
+  }
+  replaySoundNodes.clear();
+}
 let lastSoundShotId=0,lastEventAudio='';
 let lastFootstepSoundTime=0;
 const playTone=(frequency:number,decay:number,noise=false,
-  level=1,pan=0)=>{
+  level=1,pan=0,replayCue=false)=>{
   try{
     if(!audio)return;
     const osc=audio.createOscillator(),gain=audio.createGain();
@@ -1205,6 +1216,10 @@ const playTone=(frequency:number,decay:number,noise=false,
       stereo.pan.value=Math.max(-1,Math.min(1,pan));
       gain.connect(stereo);stereo.connect(audio.destination);
     }else gain.connect(audio.destination);
+    if(replayCue){
+      replaySoundNodes.add(osc);
+      osc.onended=()=>replaySoundNodes.delete(osc);
+    }
     osc.start();osc.stop(audio.currentTime+decay+.01);
   }catch{/* Audio must never interrupt control. */}
 };
@@ -3490,6 +3505,47 @@ function clockText(t:number){
   return String(Math.floor(seconds/60)).padStart(2,'0')+':'+
     String(seconds%60).padStart(2,'0');
 }
+/** Only continuous playback crosses sound timestamps; seeks never audition
+ * an accumulated event backlog. All cues use the shared unlocked context. */
+function playReplayAudioBetween(start:number,end:number):void{
+  if(!replaying||!replaySoundEnabled||!replaySoundTimeline||
+    !audio||audio.state!=='running'||end<=start)return;
+  if(replayRate>2)return; // Rapid scan is deliberately quiet.
+  const listener=team(state).find(a=>a.id===selected)?.p;
+  const rateScale=Math.max(.5,Math.min(2,1/replayRate));
+  for(const event of replaySoundTimeline.between(start,end,7)){
+    const p=event.p;
+    const level=p&&listener?heardIntensity(p,listener,
+      event.kind==='gunshot'?WEAPONS[event.weapon??'carbine'].noise:150,
+      state.doors,WALLS):.35;
+    if(level<.025)continue;
+    const pan=p&&listener?(p.x-listener.x)/210:0;
+    if(event.kind==='gunshot'){
+      const cue=weaponAudioCue(event.weapon??'carbine',event.suppressed);
+      playTone(cue.crackHz,cue.crackSeconds*rateScale,true,level,pan,true);
+      playTone(cue.bodyHz,cue.bodySeconds*rateScale,false,
+        level*cue.bodyLevel,pan,true);
+      // Do not play exact-hit confirmation: the team may not have perceived it.
+    }else{
+      const tones={door:[160,.16],flash:[1350,.65],
+        reload:[280,.09],interaction:[210,.12],
+        surrender:[210,.22]} as const;
+      const [hz,length]=tones[event.kind];
+      playTone(hz,length*rateScale,event.kind==='flash',
+        Math.min(level,.7),pan,true);
+    }
+  }
+  // 60 Hz-authored touchdown positions already exist in the motion track.
+  const ids=team(state).map(a=>a.id);
+  const touches=recorder.motion.touchdownsBetween(start,end,ids);
+  for(const touch of touches.slice(-6)){
+    const level=listener?heardIntensity(touch.position,listener,
+      36,state.doors,WALLS):.2;
+    if(level<.025)continue;
+    const pan=listener?(touch.position.x-listener.x)/210:0;
+    playTone(touch.foot===0?62:67,.055*rateScale,true,level*.12,pan,true);
+  }
+}
 function applyReplayFrameAt(t:number){
   const frame=recorder.sample(t);
   if(!frame)return;
@@ -3499,6 +3555,7 @@ function applyReplayFrameAt(t:number){
   fogStamp=-1;
 }
 function seekReplay(t:number){
+  stopReplaySounds();
   replayTime=Math.max(0,Math.min(recorder.duration,t));
   applyReplayFrameAt(replayTime);updateReplayHud();
 }
@@ -3575,6 +3632,8 @@ function updateReplayHud(){
     ui.replayPlay.title=replayPlaying?'Pause replay':'Play replay';
   }
   ui.replaySpeed.textContent=replayRate+'×';
+  ui.replaySound.textContent=replaySoundEnabled?'SOUND ON':'SOUND OFF';
+  ui.replaySound.setAttribute('aria-pressed',String(replaySoundEnabled));
   ui.replaySpeed.title='Playback speed '+replayRate+'× · Tap to change';
   ui.replaySpeed.setAttribute('aria-label',
     'Playback speed '+replayRate+' times. Tap to select next speed');
@@ -3620,6 +3679,9 @@ function enterReplay(){
   replayPlanScope='selected';replayPlanVersion='active';
   replayNameTags=true;replayTraceMode='off';replayGhostMode='off';
   rebuildReplayEventIndex();
+  replaySoundTimeline=new ReplaySoundTimeline(recorder.ballistics.shots,
+    recorder.events);
+  unlockAudio();
   ui.replayFeed.hidden=true;ui.replayFeedFilter.hidden=true;
   ui.replayFeedInfo.hidden=true;
   ui.replayFeedToggle.setAttribute('aria-expanded','false');
@@ -3642,6 +3704,7 @@ function exitReplay(){
   if(!replaying)return;
   replaying=false;replayPlaying=false;replayPresentation=null;
   replayEventIndex=null;
+  replaySoundTimeline=null;stopReplaySounds();
   ui.replayFeed.replaceChildren();ui.replayFeed.hidden=true;
   document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
@@ -3653,7 +3716,9 @@ function exitReplay(){
 ui.watchReplay.addEventListener('click',enterReplay);
 ui.replayPlay.addEventListener('click',()=>{
   if(replayTime>=recorder.duration)seekReplay(0);
-  replayPlaying=!replayPlaying;updateReplayHud();
+  replayPlaying=!replayPlaying;
+  if(replayPlaying)unlockAudio();else stopReplaySounds();
+  updateReplayHud();
 });
 ui.replayBack.addEventListener('click',()=>seekReplay(replayTime-10));
 ui.replayForward.addEventListener('click',()=>seekReplay(replayTime+10));
@@ -3679,7 +3744,14 @@ ui.replayFeedToggle.addEventListener('click',()=>{
   if(open)renderReplayEventFeed();
 });
 ui.replayFeedFilter.addEventListener('change',renderReplayEventFeed);
+ui.replaySound.addEventListener('click',()=>{
+  replaySoundEnabled=!replaySoundEnabled;
+  if(!replaySoundEnabled)stopReplaySounds();
+  else unlockAudio();
+  updateReplayHud();
+});
 ui.replaySpeed.addEventListener('click',()=>{
+  stopReplaySounds();
   replayRate=({0.25:0.5,0.5:0.75,0.75:1,1:1.5,1.5:2,2:4,4:0.25} as Record<number,number>)[replayRate]??1;
   updateReplayHud();
 });
@@ -4901,8 +4973,10 @@ function tick(now:number){
     }
   }
   if(replaying&&replayPlaying){
+    const previousReplayTime=replayTime;
     replayTime=Math.min(recorder.duration,replayTime+dt*replayRate);
     applyReplayFrameAt(replayTime);
+    playReplayAudioBetween(previousReplayTime,replayTime);
     if(replayTime>=recorder.duration)replayPlaying=false;
   }
   // 079: shot IDs are monotonic, unlike the short-lived shot array length.
@@ -4949,21 +5023,22 @@ function tick(now:number){
   }
   lastFootstepSoundTime=state.seconds;
   const event=state.events.at(-1)??'';
-  if(event!==lastEventAudio&&(event.includes('OPENED')||event.includes('CLOSING')))
+  if(!replaying&&event!==lastEventAudio&&
+      (event.includes('OPENED')||event.includes('CLOSING')))
     playTone(160,.16);
-  if(event!==lastEventAudio&&event.includes('KICK RESISTED'))
+  if(!replaying&&event!==lastEventAudio&&event.includes('KICK RESISTED'))
     playTone(115,.15,true);
-  if(event!==lastEventAudio&&event.includes('FORCED OPEN'))
+  if(!replaying&&event!==lastEventAudio&&event.includes('FORCED OPEN'))
     playTone(80,.24,true);
-  if(event!==lastEventAudio&&event.includes('KICKED'))
+  if(!replaying&&event!==lastEventAudio&&event.includes('KICKED'))
     playTone(90,.25,true);
-  if(event!==lastEventAudio&&event.includes('FLASH DETONATED'))
+  if(!replaying&&event!==lastEventAudio&&event.includes('FLASH DETONATED'))
     playTone(1350,.65,true);
-  if(event!==lastEventAudio&&event.includes('RELOADED'))
+  if(!replaying&&event!==lastEventAudio&&event.includes('RELOADED'))
     playTone(280,.09);
-  if(event!==lastEventAudio&&event.includes('FLASH OUT'))
+  if(!replaying&&event!==lastEventAudio&&event.includes('FLASH OUT'))
     playTone(420,.07);
-  if(event!==lastEventAudio&&event.includes('SURRENDERED'))
+  if(!replaying&&event!==lastEventAudio&&event.includes('SURRENDERED'))
     playTone(210,.22);
   lastEventAudio=event;
   // Execution's full HUD reconciliation is DOM-heavy; explicit commands
