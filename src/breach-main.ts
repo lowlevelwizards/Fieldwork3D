@@ -1305,15 +1305,15 @@ function liveEventAudioPosition(event:string):Pt|undefined{
 }
 /** Playback loudness and stereo position follow the real event origin.
  * No new AI/detection events and no HUD disclosure of hidden source positions. */
-function playLiveEventCue(id:string,source?:Pt):boolean{
+function playLiveEventCue(id:string,source?:Pt,scale=1):boolean{
  const listener=uid(selected)?.p;
- if(!source||!listener)return playApprovedCue(id,1,0,false,1,source);
+ if(!source||!listener)return playApprovedCue(id,scale,0,false,1,source);
  const radius=id==='combat.flash'?420:
   id.startsWith('doors.')?265:
   id.startsWith('equipment.')?145:190;
  const level=heardIntensity(source,listener,radius,state.doors,WALLS);
  if(level<.025)return true;
- return playApprovedCue(id,Math.max(.05,level),clamp(
+ return playApprovedCue(id,Math.max(.02,level*scale),clamp(
   (source.x-listener.x)/210,-1,1),false,1,source);
 }
 function playOrderCue(id:string){
@@ -5258,10 +5258,16 @@ function tick(now:number){
     {if(!playLiveEventCue(event.includes('CLOSING')?'doors.close':'doors.open',
       eventSource))
       playTone(160,.16);}
-  if(!replaying&&event!==lastEventAudio&&event.includes('KICK RESISTED'))
-    {if(!playLiveEventCue('doors.kick_resisted',eventSource))playTone(115,.15,true);}
-  if(!replaying&&event!==lastEventAudio&&event.includes('FORCED OPEN'))
-    {if(!playLiveEventCue('doors.forced_open',eventSource))playTone(80,.24,true);}
+  if(!replaying&&event!==lastEventAudio&&event.includes('KICK RESISTED')){
+    // Every real kick should play the approved kick sound, with its own
+    // secondary latch/body outcome at reduced level.
+    if(!playLiveEventCue('doors.kick',eventSource))playTone(90,.25,true);
+    playLiveEventCue('doors.kick_resisted',eventSource,.30);
+  }
+  if(!replaying&&event!==lastEventAudio&&event.includes('FORCED OPEN')){
+    if(!playLiveEventCue('doors.kick',eventSource))playTone(90,.25,true);
+    playLiveEventCue('doors.forced_open',eventSource,.33);
+  }
   if(!replaying&&event!==lastEventAudio&&event.includes('KICKED'))
     {if(!playLiveEventCue('doors.kick',eventSource))playTone(90,.25,true);}
   if(!replaying&&event!==lastEventAudio&&event.includes('FLASH DETONATED'))
