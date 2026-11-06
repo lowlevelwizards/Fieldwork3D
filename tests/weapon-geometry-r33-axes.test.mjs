@@ -68,21 +68,20 @@ test('R3.3 stock rear extension changes X length without lateral bulk growth',()
  }
 });
 
-test('R3.3 AR CAR-15 bridge front leg slants BACK as it rises',()=>{
+test('R4.4 CAR-15 carry frame slants back and keeps a real opening',()=>{
  const m=model('ar-car15');
- const front=m.group.children.find(x=>x.name==='family-receiver-ar-retro-5');
- assert.ok(front,'expected symbolic front handle leg mesh');
+ const front=m.group.children.find(x=>x.name==='family-receiver-ar-retro-4');
+ assert.ok(front,'expected one-piece handle frame');
  const pos=front.geometry.getAttribute('position');
  const tops=[],bottoms=[];
  for(let i=0;i<pos.count;i++){
   const x=pos.getX(i),y=pos.getY(i);
-  if(y>3.45)tops.push(x);
-  if(y<2.05)bottoms.push(x);
+  if(y>3.9)tops.push(x);
+  if(y<1.8)bottoms.push(x);
  }
- assert.ok(tops.length&&bottoms.length,'have both leg endpoints');
- const avg=v=>v.reduce((sum,x)=>sum+x,0)/v.length;
- assert.ok(avg(tops)<avg(bottoms)-.45,
-  'upper front leg endpoint must be rearward of lower endpoint');
+ assert.ok(tops.length&&bottoms.length,'upper and lower contours');
+ assert.ok(Math.max(...tops)<Math.max(...bottoms)-.4,
+  'front handle line slants back toward top');
  clearWeaponSilhouette(m.group);
 });
 

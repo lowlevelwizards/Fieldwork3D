@@ -3,12 +3,12 @@
  */
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
-import {addOutline,addCuboid,addBar,addFacetedTube,type Outline,type SlotName} from './profile-primitives.ts';
+import {addOutline,addCuboid,addBar,addFacetedTube,addProfileFrame,type Outline,type SlotName} from './profile-primitives.ts';
 import {AR_STANAG_METAL} from './weapon-visual-palette.ts';
 import {AR_BARREL_ART} from './ar-barrel-profiles.ts';
 import {AR_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
-import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
+import {addWeaponPixelMark,addWeaponPixelMarkPair} from './weapon-pixel-detail.ts';
 
 export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material){
@@ -24,6 +24,8 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const line=(slot:SlotName,start:readonly [number,number],end:readonly [number,number],
   width:number,depth:number,finish:0|1|2=1)=>
   addBar(root,slot,parts[slot],index[slot]++,start,end,width,depth,material[finish]);
+ const frame=(slot:SlotName,outer:Outline,inner:Outline,depth:number,finish:0|1|2=0)=>
+  addProfileFrame(root,slot,parts[slot],index[slot]++,outer,inner,depth,material[finish]);
 
  // Upper: flat/retro identities differ chiefly in the visible TOP silhouette.
  p('receiver',[[-6.35,-.9],[-6.35,1.25],[-5.4,1.75],[3.6,1.75],
@@ -41,15 +43,10 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const carry=['ar-a1','ar-a2','ar-retro'].includes(parts.receiver);
  if(carry){
   const a2=parts.receiver==='ar-a2';
-  const retro=parts.receiver==='ar-retro';
-  // R4.2: two heavy posts and one flush bridge, all connected. A1/A2 share
-  // their forward angle. The earlier top bar overhung the post by ~0.95 units.
-  line('receiver',[-4.35,1.76],[-4.30,3.7],a2?1.05:.9,2.15,0);
-  // Preserve R3.3 CAR-15 slant direction, with the upper end rearward.
-  if(retro)line('receiver',[2.25,1.8],[1.55,3.7],.86,2.05,0);
-  else line('receiver',[1.80,1.8],[1.55,3.7],.9,2.05,0);
-  // End directly over the front support: never an unsupported forward lip.
-  b('receiver',-1.40,3.74,0,5.95,.76,2.05,0);
+  // R4.4: one connected chunky frame with a true empty trapezoid.
+  // The upper bridge is continuous; no overlapping posts or roof seams.
+  frame('receiver',[[-4.80,1.63],[2.30,1.63],[1.82,4.02],[-4.68,4.02]],
+   [[-3.48,2.15],[-3.45,3.24],[.84,3.24],[1.18,2.15]],2.22);
   if(a2){
    // One meaningful rear sight wedge rather than several knobs.
    p('receiver',[[-5.05,2.04],[-4.96,3.72],
@@ -64,14 +61,16 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Receiver-side mark is taller, directly OVER the magazine insertion.
  addWeaponPixelMark(root,'ar-port',m.portX,m.portY,1.82,
   m.portWidthX,m.portHeightY);
+ // Deliberate trigger-guard lower edge; the space above it stays transparent.
+ line('receiver',[-2.57,-2.64],[-.58,-2.58],.25,1.9,0);
 
  // Fixed M16 stocks: one long triangular wedge, no rectangular belly.
  if(parts.stock==='ar-fixed'||parts.stock==='ar-fixed-a2'){
   const a2=parts.stock==='ar-fixed-a2';
   const back=a2?-16.35:-15.65;
-  p('stock',[[back,.75],[-6.12,.78],[-6.02,-.67],
-   [back+.15,a2?-3.20:-3.05]],3.18,1);
-  b('stock',back+.04,-1.17,0,.24,a2?3.96:3.79,3.20,0);
+  p('stock',[[back,.93],[-6.12,.78],[-6.02,-.67],
+   [back+.15,a2?-3.55:-3.40]],3.18,1);
+  b('stock',back+.04,-1.28,0,.30,a2?4.48:4.28,3.20,0);
  }else{
   const compact=parts.stock==='ar-compact';
   const m4=parts.stock==='ar-stock-m4';
@@ -86,8 +85,9 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
    [[rear,.82],[rear+1.08,1.02],[front,.60],
     [front,-1.46],[rear+1.45,-2.85],[rear,-2.35]]:
    // Early sliding Fiberlite shape is simpler and visually lighter.
-   [[rear,.55],[rear+1.14,.82],[front,.46],
-    [front,-1.54],[rear+1.02,-2.47],[rear,-2.02]],
+   // Retro CAR: single thick shape; the lower diagonal reads as a shadow.
+   [[rear,.72],[front,.67],[front,-1.24],
+    [rear+1.35,-2.40],[rear,-1.98]],
    compact?3.35:m4?3.25:3.0,compact?2:1);
  }
 
@@ -96,8 +96,8 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // The grip belongs to the BACK of the lower receiver. Its upper end
  // vanishes into the receiver, and it remains slimmer in both X and Z.
  p('grip',shiftProfile(modern?
-  [[-2.1,-1.65],[.35,-1.65],[.2,-5.25],[-.5,-5.85],[-2.3,-5.65]]:
-  [[-1.95,-1.65],[.25,-1.65],[-.25,-5.75],[-2.20,-5.7]],
+  [[-2.1,-1.60],[.35,-1.65],[-.38,-5.20],[-1.13,-5.86],[-2.92,-5.65]]:
+  [[-1.95,-1.60],[.25,-1.65],[-.60,-5.66],[-2.92,-5.72]],
   m.gripShiftX),m.gripDepthZ,1);
 
  // IMPORTANT: Side ELEVATION uses X/Y. The requested thinness is Z,
@@ -115,8 +115,16 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
    [magLeft+.65,-7.3],[magLeft+.12,-4.72]],m.magazineDepthZ+.12,1);
  else
   p('magazine',[[magLeft,magTop],[magRight,magTop],
-   [magRight+.1,-4.78],[magRight+.48,-7.35],
-   [magLeft+.6,-7.45],[magLeft+.12,-4.72]],m.magazineDepthZ,3);
+   [magRight+.1,-4.78],[magRight+.62,-7.35],
+   [magLeft+.55,-7.45],[magLeft+.12,-4.72]],m.magazineDepthZ,3);
+ // Bold base plate and restrained pressed-metal details, not separate rib meshes.
+ const mag20=mag==='ar-mag20',magPoly=mag==='ar-magpoly';
+ b('magazine',m.magwellCenterX+(mag20?.10:.42),mag20?-6.19:-7.33,0,
+  m.magazineWidthX+(mag20?.12:.28),.23,m.magazineDepthZ+.12,0);
+ addWeaponPixelMarkPair(root,mag20?'ar-mag-stamp20':
+  magPoly?'ar-poly-panel':'ar-mag-stamp30',
+  m.magwellCenterX+(mag20?.07:.22),mag20?-4.43:-5.12,
+  m.magazineDepthZ/2+.10,m.magazineWidthX-.55,mag20?2.85:4.15);
 
  // Four outside envelopes: triangular ribless, rounded, slim retro, heavy rail.
  const guard=parts.handguard;
@@ -125,7 +133,7 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const commando=guard==='ar-733-ribbed';
  const end=guard==='ar-pri-tube'?15.70:long?14.1:
   guard==='ar-car15-ribbed'||commando?11.8:
-  short?15.05:12.2;
+  guard==='ar-risii'?14.2:short?15.05:12.2;
  // A slight deliberate overlap avoids the visible receiver/guard seam.
  const start=3.55;
  if(guard==='ar-pri-tube'){
@@ -136,13 +144,19 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   // The upper rail and rear bridge overlap: no floating join.
   b('handguard',(start+end)/2,2.06,0,end-start,.56,2.8,0);
   b('handguard',2.65,2.06,0,3.85,.52,2.6,0);
-  addWeaponPixelMark(root,'pri-vents',(start+end)/2,.18,1.9,
+  addWeaponPixelMarkPair(root,'pri-vents',(start+end)/2,.18,1.90,
    end-start-1.7,.83);
  }else if(guard==='ar-triangle'){
   // A1: long clean taper with a slimmer front and strongly faceted shoulder.
   p('handguard',[[start,1.45],[start+.55,1.74],
    [end-1.10,1.08],[end,.58],[end,-.9],
    [end-1.0,-1.16],[start,-1.73]],3.65,1);
+  // One strong underside plane, and a compact rear retaining collar.
+  p('handguard',[[start,-.96],[end-.85,-.82],
+   [end-1.0,-1.16],[start,-1.73]],3.76,0);
+  b('handguard',start+.20,-.06,0,.46,3.1,3.84,0);
+  addWeaponPixelMarkPair(root,'a1-vents',(start+end)/2,1.12,
+   1.91,end-start-1.9,.42);
  }else if(guard==='ar-round'||guard==='ar-carbine'||
    guard==='ar-car15-ribbed'||guard==='ar-733-ribbed'){
   const retro=guard==='ar-car15-ribbed'||guard==='ar-733-ribbed';
@@ -156,8 +170,8 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
    // Same retro furniture on 14.5 and 11.5: barrel creates the difference.
    b('handguard',start+.32,.04,0,.53,2.88,3.32,0);
   }
-  addWeaponPixelMark(root,'poly-ribs',(start+end)/2,.1,
-   retro?1.74:2.08,end-start-1.9,1.45);
+  addWeaponPixelMarkPair(root,retro?'car-ribs':'poly-ribs',
+   (start+end)/2,.1,retro?1.67:2.01,end-start-1.9,1.45);
  }else{
   const ris=guard==='ar-risii';
   // Modern rails: one broad body and one joined, continuous upper rail.
@@ -171,8 +185,10 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   b('handguard',(start+end)/2,1.88,0,end-start,.64,
    ris?4.12:3.68,ris?2:0);
   if(['ar-risii','ar-m5-rail','ar-quad'].includes(guard))
-   addWeaponPixelMark(root,'ris-panel',(start+end)/2,.06,
-    ris?2.34:2.08,end-start-1.65,ris?1.10:.90);
+   addWeaponPixelMarkPair(root,guard==='ar-m5-rail'?'m5-panel':
+    guard==='ar-quad'?'ras-panel':'ris-panel',(start+end)/2,.06,
+    ris?2.38:guard==='ar-m5-rail'?2.10:2.10,
+    end-start-1.65,ris?1.10:.90);
  }
 
  // The barrel is the only authority for its own muzzle and front-sight X.
@@ -182,10 +198,12 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  b('barrel',(barrelStart+tip)/2,0,0,tip-barrelStart,
   barrelArt.barrelHeight,barrelArt.barrelDepth,0);
  if(sight!==null&&(barrelArt.sight==='a1'||barrelArt.sight==='a2')){
-  const width=barrelArt.sight==='a2'?.38:.32;
-  // Deliberately open A frame, not a solid triangular slab.
-  line('barrel',[sight-.58,.36],[sight,2.72],width,1.75,0);
-  line('barrel',[sight+.58,.36],[sight,2.72],width,1.75,0);
+  // Broad near-right-triangle A-frame, one mesh and one clean cavity.
+  const heavy=barrelArt.sight==='a2';
+  frame('barrel',[[sight-.93,.32],[sight+.97,.32],
+    [sight+.17,heavy?2.84:2.72],[sight-.54,heavy?2.84:2.72]],
+   [[sight-.51,.76],[sight-.38,2.10],
+    [sight-.06,2.10],[sight+.42,.76]],heavy?1.92:1.78);
  }else if(sight!==null){
   // One compact folding SPR front sight, resting on the exposed barrel.
   b('barrel',sight,.84,0,.92,.54,1.4,1);
@@ -197,10 +215,25 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   if(tip-(sight??tip)>1.2)
    b('barrel',tip-1.05,0,0,1.18,barrelArt.barrelHeight+.18,1.52,0);
  }
+ // Factory muzzle profiles live INSIDE the authoritative barrel-tip envelope.
+ // Optional equipment muzzle extensions begin at tip; no fake shot offset.
  if(barrelArt.profile==='spr'){
-  b('barrel',tip-.72,0,0,1.40,1.68,1.82,1);
+  // Mod 0: long brake + separate heavy collar.
+  b('barrel',tip-1.34,0,0,.66,1.91,1.94,1);
+  b('barrel',tip-.46,0,0,.90,1.73,1.82,1);
  }else if(barrelArt.profile==='cqb'){
-  // Only a small visible muzzle cap survives past the RIS II.
-  b('barrel',tip-.39,0,0,.78,1.7,1.94,1);
+  // Mk18: short, stout suppressor-compatible muzzle profile.
+  b('barrel',tip-.45,0,0,.86,1.88,2.00,1);
+  b('barrel',tip-.12,0,0,.24,2.02,2.06,0);
+ }else if(parts.barrel==='ar-145'){
+  // CAR-era slim flash hider: lighter and longer than the 733.
+  b('barrel',tip-.45,0,0,.88,1.28,1.47,1);
+ }else if(parts.barrel==='ar-733-115'){
+  b('barrel',tip-.35,0,0,.68,1.57,1.70,1);
+ }else{
+  // A1 pencil hider / A2-family compensator. Distinction stays restrained.
+  const a1=parts.barrel==='ar-20';
+  b('barrel',tip-(a1?.34:.40),0,0,a1?.66:.78,
+   a1?1.27:1.66,a1?1.44:1.80,1);
  }
 }

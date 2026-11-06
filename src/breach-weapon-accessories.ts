@@ -21,10 +21,13 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
   block(g,optic.mountX,5,0,3.3,2.8,.75,steel);
   block(g,optic.mountX+1.3,5,0,.55,2.3,2.9,dark);
  }else if(optic.id==='optic-magnified'){
-  block(g,optic.mountX,5,0,8,2.6,2.6,dark);
-  block(g,optic.mountX+3,5,0,1.1,3.2,3.2,steel);
-  block(g,optic.mountX-3,5,0,1.2,2.7,2.7,steel);
-  block(g,optic.mountX,3.3,0,2,1.1,1.8,steel);
+  // One overscale objective bell, stout tube and two unmistakable mounts.
+  block(g,optic.mountX,5.10,0,7.35,2.40,2.52,dark);
+  block(g,optic.mountX+3.30,5.10,0,1.55,3.48,3.48,steel);
+  block(g,optic.mountX-3.12,5.10,0,1.00,2.75,2.85,steel);
+  block(g,optic.mountX-1.75,3.74,0,1.00,1.36,1.72,steel);
+  block(g,optic.mountX+1.45,3.74,0,1.00,1.36,1.72,steel);
+  block(g,optic.mountX-.42,6.51,0,1.32,.96,1.63,steel);
  }
  const muzzle=parts.muzzle;
  const ext=muzzle.muzzleExtension??0;
