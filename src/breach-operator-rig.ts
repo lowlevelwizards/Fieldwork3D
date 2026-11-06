@@ -452,6 +452,11 @@ const poseMath=new WeakMap<OperatorRig,OperatorPoseScratch>();
  * shoulder/yaw frame. No pose candidate search runs on every rendered frame. */
 const coupledIdleCache=new WeakMap<OperatorRig,{
  key:string;solution:CoupledLowReadySolution|null}>();
+/** Identical equipment and pose frames share a fitted solution. Limit
+ * memory and avoid repeating a large cold search for every enemy/preview.
+ * Solutions are only read/copied by the rig, never mutated in place. */
+const sharedCoupledPoseCache=new Map<string,CoupledLowReadySolution|null>();
+const MAX_SHARED_COUPLED_POSES=80;
 type CarryBlendState={
  lastCoupled:boolean;lastFit:WeaponFit|null;lastWeapon:WeaponId|null;
  from:WeaponFit|null;fromBends:[THREE.Vector3,THREE.Vector3]|null;
@@ -1246,16 +1251,28 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   let coupled:CoupledLowReadySolution|null=null;
   if(eligible&&coupledConfig){
     const look=resolvedWardrobe(p.wardrobe,p.equipment);
+    const shoulders:[THREE.Vector3,THREE.Vector3]=[
+      shoulderFor(0),shoulderFor(1)];
     const key=JSON.stringify([p.weapon,coupledConfig.build,coupledConfig.slots,
       look.top,look.armorStyle,look.rigStyle,poseWeight,
-      Math.round(relativeYaw*40)/40]);
+      Number(relativeYaw.toFixed(4)),
+      shoulders.map(v=>v.toArray().map(n=>Number(n.toFixed(3))))]);
     const cache=coupledIdleCache.get(r);
     if(cache?.key===key)coupled=cache.solution;
     else{
-      coupled=solveCoupledLowReady({weapon:p.weapon,configuration:coupledConfig,
-        armor:poseClearanceEnvelope(look.armorStyle,look.rigStyle,look.top),
-        shoulders:[shoulderFor(0),shoulderFor(1)],
-        nominalYaw:relativeYaw});
+      if(sharedCoupledPoseCache.has(key))
+        coupled=sharedCoupledPoseCache.get(key)??null;
+      else{
+        coupled=solveCoupledLowReady({weapon:p.weapon,
+          configuration:coupledConfig,
+          armor:poseClearanceEnvelope(look.armorStyle,look.rigStyle,look.top),
+          shoulders,nominalYaw:relativeYaw});
+        sharedCoupledPoseCache.set(key,coupled);
+        if(sharedCoupledPoseCache.size>MAX_SHARED_COUPLED_POSES){
+          const oldest=sharedCoupledPoseCache.keys().next().value;
+          if(oldest!==undefined)sharedCoupledPoseCache.delete(oldest);
+        }
+      }
       coupledIdleCache.set(r,{key,solution:coupled});
     }
     r.root.userData.lowReadyPoseReport={

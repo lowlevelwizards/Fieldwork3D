@@ -92,6 +92,10 @@ function selectArm(shoulder:THREE.Vector3,wrist:THREE.Vector3,
  anatomical.sort((a,b)=>a.score-b.score);
  let best:SolvedArm|null=null,bestQuality=Infinity;
  for(const candidate of anatomical){
+  // Anatomy score is sorted ascending and contact quality is nonnegative.
+  // Once no remaining elbow can outrank an approved solution, stop the
+  // otherwise expensive rectangular-sleeve intersection sweep.
+  if(best&&candidate.score>=bestQuality)break;
   const contact=evaluateSleeveArmorContact(shoulder,
    candidate.pose.joint,candidate.pose.effector,env,softScale);
   if(stats){
