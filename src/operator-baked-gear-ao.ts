@@ -103,7 +103,7 @@ export function bakeGearContactAO(group:THREE.Group):number{
   node.geometry.getAttribute('position').count>0);
  if(candidates.length<2||candidates.every(mesh=>
   mesh.geometry.userData.fieldworkContactAO===true||
-  mesh.material.userData[AO_FLAG]!==true))return 0;
+  (mesh.material as THREE.Material).userData[AO_FLAG]!==true))return 0;
  // This happens only during geometry construction / a change of fitted top.
  group.updateWorldMatrix(true,true);
  const inverse=new THREE.Matrix4().copy(group.matrixWorld).invert();
