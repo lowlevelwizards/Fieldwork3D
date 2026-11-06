@@ -6,8 +6,7 @@
  */
 import * as THREE from 'three';
 import {stockPocket} from './breach-anatomy.ts';
-import {neutralMannequinElbowPole,neutralMannequinWrist}
- from './operator-mannequin-pose.ts';
+import {neutralMannequinWrist} from './operator-mannequin-pose.ts';
 import {solveTwoBone,ARM_LIMITS,type LimbSolution} from './breach-ik.ts';
 import {riflePoseContacts,supportContactAt,
  type RiflePoint} from './breach-weapon-contact-zones.ts';
@@ -30,11 +29,27 @@ export type CoupledInput={
  onCandidate?:(sample:{right:number;left:number;receiver:number;depth:number;
   leftJoint:RiflePoint;leftWrist:RiflePoint;stock:RiflePoint})=>void;
 };
-const direction=(from:THREE.Vector3,point:[number,number,number])=>
- new THREE.Vector3(point[0]-from.x,point[1]-from.y,point[2]-from.z);
 const pointer=(v:THREE.Vector3):RiflePoint=>({x:v.x,y:v.y,z:v.z});
 // Sub-pixel allowance for faceted sleeve/strap seam contact.
 const EPS=.13;
+/** Sweep the WHOLE two-bone elbow circle around a real wrist target.
+ * Discrete, deterministic 24-direction search avoids brittle hand-authored
+ * pole guesses. Candidate geometry is evaluated before approval. */
+function elbowPoleCircle(shoulder:THREE.Vector3,wrist:THREE.Vector3){
+ const axis=wrist.clone().sub(shoulder).normalize();
+ const reference=Math.abs(axis.y)<.9?
+  new THREE.Vector3(0,1,0):new THREE.Vector3(0,0,1);
+ const basis=reference.addScaledVector(axis,-reference.dot(axis)).normalize();
+ const perpendicular=new THREE.Vector3().crossVectors(axis,basis).normalize();
+ const result:THREE.Vector3[]=[];
+ for(let i=0;i<24;i++){
+  const angle=2*Math.PI*i/24;
+  result.push(basis.clone().multiplyScalar(Math.cos(angle))
+   .addScaledVector(perpendicular,Math.sin(angle)));
+ }
+ return result;
+}
+
 /** Elbow silhouette: outboard flare, a raised elbow or a near-horizontal
  * upper arm is undesirable even if it technically avoids the plate. */
 export function relaxedArmShapeCost(shoulder:THREE.Vector3,
@@ -62,14 +77,27 @@ export function solveCoupledLowReady(input:CoupledInput):
  // X brings the receiver/trigger clear of a thick front rig.
  const dxs=[-.3,.25,.8,1.35],dzs=[-.12,.45,1.0];
  // Deliberately DOWNWARD elbow hint rather than far-outboard chicken wings.
- const supportPoles:readonly [number,number,number][]=[
-  [3.5,-8.7,-8.3],[4.7,-9.4,-9.2],
-  [6.2,-8.0,-10.2],[8.5,-6.5,-11.5],
-  [9,-6.2,-12],[11.7,-7.7,-13.8]];
- const firingPoles:readonly [number,number,number][]=[
-  [3.5,-8.6,8.1],[4.7,-9.1,9.0],
-  [6.5,-8.0,10],[8.5,-6.5,11.5],
-  [9,-6.7,11],[11,-6.2,12.7]];
+ // Solve the relaxed non-gun hand once per outfit, not per firearm candidate.
+ const hanging=neutralMannequinWrist(-1);
+ let hangingArm:LimbSolution|null=null,hangingCost=Infinity,
+  hangingDepth=Infinity;
+ for(const spread of [0,1.4,2.8,4.2]){
+  for(const back of [0,1.2,2.4]){
+   const wrist=hanging.clone();
+   wrist.z-=spread;wrist.x-=back;wrist.y+=spread*.18;
+   for(const pole of elbowPoleCircle(leftShoulder,wrist)){
+    const arm=solveTwoBone(leftShoulder,wrist,10,10,pole,ARM_LIMITS);
+    if(!arm.reached)continue;
+    const depth=armArmorPenetration(pointer(leftShoulder),
+     pointer(arm.joint),pointer(arm.effector),input.armor);
+    if(depth>EPS)continue;
+    const score=relaxedArmShapeCost(leftShoulder,arm.joint,-1)*.7+
+     spread*.22+back*.15;
+    if(score<hangingCost){hangingCost=score;hangingArm=arm;
+     hangingDepth=depth;}
+   }
+  }
+ }
  let best:CoupledLowReadySolution|null=null,bestCost=Infinity;
  let backup:CoupledLowReadySolution|null=null,backupCost=Infinity;
  let evaluated=0;
@@ -104,9 +132,9 @@ export function solveCoupledLowReady(input:CoupledInput):
     const receiverDepth=segmentArmorPenetration(
      pointer(receiverA),pointer(receiverB),input.armor,1.20,.18);
     let rightBest:LimbSolution|null=null,rightCost=Infinity,rightDepth=Infinity;
-    for(const polePoint of firingPoles){
+    for(const pole of elbowPoleCircle(rightShoulder,primary)){
      const right=solveTwoBone(rightShoulder,primary,10,10,
-      direction(rightShoulder,polePoint),ARM_LIMITS);
+      pole,ARM_LIMITS);
      if(!right.reached)continue;
      const penetration=armArmorPenetration(pointer(rightShoulder),
       pointer(right.joint),pointer(right.effector),input.armor);
@@ -117,9 +145,9 @@ export function solveCoupledLowReady(input:CoupledInput):
     }
     if(!rightBest)continue;
     let leftBest:LimbSolution|null=null,leftCost=Infinity,leftDepth=Infinity;
-    for(const polePoint of supportPoles){
+    for(const pole of elbowPoleCircle(leftShoulder,support)){
      const left=solveTwoBone(leftShoulder,support,10,10,
-      direction(leftShoulder,polePoint),ARM_LIMITS);
+      pole,ARM_LIMITS);
      if(!left.reached)continue;
      const penetration=armArmorPenetration(pointer(leftShoulder),
       pointer(left.joint),pointer(left.effector),input.armor);
@@ -144,31 +172,15 @@ export function solveCoupledLowReady(input:CoupledInput):
      fit,arms:[leftBest,rightBest],penetration:depth,
      supportFraction:f,candidates:evaluated};
     if(depth<=EPS&&style<bestCost){bestCost=style;best=proposed;}
-    if(rightDepth<=EPS&&receiverDepth<=EPS){
-     // If the support hand cannot legally reach the fore-end, let that arm
-     // HANG naturally rather than folding a hooked elbow into the abdomen.
-     // Offer small outward translations only for thick side protection.
-     const neutral=neutralMannequinWrist(-1);
-     const pole=neutralMannequinElbowPole(-1);
-     for(const spread of [0,1.35,2.7]){
-      const guard=neutral.clone();
-      guard.z-=spread;guard.y+=spread*.35;
-      // The hand may rest just behind the side armor, never through it.
-      guard.x-=spread*.65;
-      const guardSolution=solveTwoBone(leftShoulder,guard,10,10,
-       pole,ARM_LIMITS);
-      if(!guardSolution.reached)continue;
-      const guardDepth=armArmorPenetration(pointer(leftShoulder),
-       pointer(guardSolution.joint),pointer(guardSolution.effector),input.armor);
-      if(guardDepth>EPS)continue;
-      const guardNatural=relaxedArmShapeCost(leftShoulder,
-       guardSolution.joint,-1);
-      const cost=rightDepth*100+style+guardNatural*.7+spread*.15;
-      if(cost>=backupCost)continue;
+    if(rightDepth<=EPS&&receiverDepth<=EPS&&hangingArm){
+     // Explicit one-hand guard fallback: non-gun arm hangs naturally,
+     // never a folded triangle through the chest-rig or cummerbund.
+     const cost=rightDepth*100+style+hangingCost;
+     if(cost<backupCost){
       backupCost=cost;
       backup={status:'guard-fallback',fit:{...fit,twoHanded:false,
-        contactError:0},arms:[guardSolution,rightBest],
-       penetration:Math.max(guardDepth,rightDepth,receiverDepth),
+        contactError:0},arms:[hangingArm,rightBest],
+       penetration:Math.max(hangingDepth,rightDepth,receiverDepth),
        supportFraction:f,candidates:evaluated};
      }
     }
