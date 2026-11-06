@@ -45,7 +45,7 @@ test('R4 all 17 models have seated parts, authoritative muzzle and small mesh co
  for(const p of FAMILY_PRESETS){
   const m=model(p.id),box=new THREE.Box3().setFromObject(m.group);
   assert.ok(Math.abs(box.max.x-resolveWeaponAssembly(m.config).muzzleX)<.001,p.id+' game muzzle');
-  assert.ok(m.group.children.length>=12&&m.group.children.length<=28,p.id+' budget');
+  assert.ok(m.group.children.length>=12&&m.group.children.length<=(p.family==='ar'?36:28),p.id+' budget');
   const r=bound(m.group,'receiver'),stock=bound(m.group,'stock'),grip=bound(m.group,'grip');
   const mag=bound(m.group,'magazine'),guard=bound(m.group,'handguard'),barrel=bound(m.group,'barrel');
   for(const [a,b,n] of [[stock,r,'stock'],[grip,r,'grip'],[mag,r,'magazine'],

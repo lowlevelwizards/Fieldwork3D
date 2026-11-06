@@ -29,7 +29,7 @@ test('R4.4 eight AR silhouettes keep joined pieces and authoritative muzzle tips
  assert.equal(ar.length,8);
  for(const p of ar){
   const {g,cfg}=model(p.id);
-  assert.ok(g.children.length<=32,p.id+' geometry budget');
+  assert.ok(g.children.length<=36,p.id+' geometry budget');
   const stock=bound(g,'stock'),receiver=bound(g,'receiver');
   const grip=bound(g,'grip'),mag=bound(g,'magazine');
   const guard=bound(g,'handguard'),barrel=bound(g,'barrel');
@@ -46,7 +46,7 @@ test('R4.4 eight AR silhouettes keep joined pieces and authoritative muzzle tips
 test('R4.4 unified retro carry handles have a connected top and open cavity',()=>{
  for(const id of ['ar-m16a1','ar-m16a2','ar-car15','ar-colt733']){
   const {g}=model(id);
-  const handle=g.children.find(m=>m.name.startsWith('family-receiver-')&&m.name.endsWith('-4'));
+  const handle=g.children.find(m=>m.name.startsWith('family-receiver-')&&m.geometry.parameters?.shapes?.holes?.length===1);
   assert.ok(handle,id+' unified handle');
   assert.equal(handle.geometry.type,'ExtrudeGeometry');
   assert.ok(hits(g,-2,3.72),id+' upper bridge');

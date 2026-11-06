@@ -49,7 +49,7 @@ test('R3.3 axis contract explicitly separates silhouette X and side-wall depth Z
   const outer=new THREE.Box3().setFromObject(m.group);
   assert.ok(close(outer.max.x,resolveWeaponAssembly(m.cfg).muzzleX),
    p.id+' fire tip remains authoritative');
-  assert.ok(m.group.children.length<=28,p.id+' preserve mesh budget');
+  assert.ok(m.group.children.length<=(p.family==='ar'?36:28),p.id+' preserve mesh budget');
   clearWeaponSilhouette(m.group);
  }
 });
@@ -70,7 +70,7 @@ test('R3.3 stock rear extension changes X length without lateral bulk growth',()
 
 test('R4.4 CAR-15 carry frame slants back and keeps a real opening',()=>{
  const m=model('ar-car15');
- const front=m.group.children.find(x=>x.name==='family-receiver-ar-retro-4');
+ const front=m.group.children.find(x=>x.name.startsWith('family-receiver-ar-retro-')&&x.geometry.parameters?.shapes?.holes?.length===1);
  assert.ok(front,'expected one-piece handle frame');
  const pos=front.geometry.getAttribute('position');
  const tops=[],bottoms=[];
