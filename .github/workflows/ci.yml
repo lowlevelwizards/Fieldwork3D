@@ -20,6 +20,11 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: AR A1 surface vents — minimal visual-geometry gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/weapon-ar-a1-flush-vents-') }}
+        run: |
+          node --experimental-strip-types --test tests/weapon-ar-a1-face-vents.test.mjs tests/weapon-ar-r48-silhouettes.test.mjs tests/weapon-ar-r47-silhouettes.test.mjs tests/weapon-ar-r46-silhouettes.test.mjs tests/weapon-geometry-r33-axes.test.mjs
+          node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs /tmp/weapon-ar-a1-vents.html
       - name: AR R4.8 — miniature geometry, compatibility and production gate
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/weapon-ar-r48-') }}
         run: |
