@@ -24,6 +24,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/weapon-ar-r42-') }}
         run: |
           node --experimental-strip-types --test tests/weapon-ar-r42-silhouettes.test.mjs tests/weapon-families-01.test.mjs tests/weapon-geometry-r2-silhouettes.test.mjs tests/weapon-geometry-r3-refinement.test.mjs tests/weapon-geometry-r31-polish.test.mjs tests/weapon-geometry-r32-anatomy.test.mjs tests/weapon-geometry-r33-axes.test.mjs tests/weapon-arsenal-r4.test.mjs tests/equipment-19-01-weapon-assemblies.test.mjs tests/weapon-workbench-mobile-sockets.test.mjs
+      - name: AK R4.3 — nine silhouettes and critical inherited weapon contacts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/weapon-ak-r43-') }}
+        run: |
+          node --experimental-strip-types --test tests/weapon-ak-r43-silhouettes.test.mjs tests/weapon-arsenal-r4.test.mjs tests/weapon-geometry-r33-axes.test.mjs tests/weapon-geometry-r32-anatomy.test.mjs tests/weapon-geometry-r31-polish.test.mjs
       - name: Weapon Arsenal R4 — 17-model shared browser, silhouette and persistence gate
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/weapon-arsenal-r4-') }}
         run: |

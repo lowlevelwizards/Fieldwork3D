@@ -33,8 +33,8 @@ const hits=(group,x,y)=>{
  return ray.intersectObjects(group.children.filter(o=>!o.userData.weaponPixelArt),true)
   .length>0;
 };
-test('R3.2/R4 retains 66 part IDs, all 17 presets and authoritative muzzle',()=>{
- assert.equal(Object.keys(FAMILY_PARTS).length,66);
+test('R3.2/R4 retains 90 part IDs, all 17 presets and authoritative muzzle',()=>{
+ assert.equal(Object.keys(FAMILY_PARTS).length,90);
  assert.equal(FAMILY_PRESETS.length,17);
  for(const p of FAMILY_PRESETS){
   const {config,group}=assembled(p.id);

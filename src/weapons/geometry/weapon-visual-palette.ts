@@ -13,3 +13,9 @@ export const AK_BLACK_METAL=finish(0x454b43,.8);
 export const AK_BLACK_POLYMER=finish(0x354038,.89);
 export const AK_DARK_WOOD=finish(0x79553b,.94);
 export const AK_WARM_RESIN=finish(0x8d5939,.92);
+/** Honey birch laminate, oxblood lacquer and late Soviet dark plum polyamide. */
+export const AK_WOOD_AMBER=finish(0xa07842,.88);
+export const AK_WOOD_RED=finish(0x915038,.88);
+export const AK_PLUM_POLYMER=finish(0x4e3b4c,.92);
+/** Three deliberate side-wall ribs on 7.62 magazine silhouettes. */
+export const AK_MAG_RIB=finish(0x29332d,.93);
