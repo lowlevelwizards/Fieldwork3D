@@ -448,6 +448,11 @@ function posePreview(){
   p.weaponConfiguration??issue.weaponConfiguration;
  const weapon=reference?.weapon.weapon??p.weapon??configuration.weapon;
  const armed=!clothesOnly&&showWeapon;
+ const previewEquipment=inspectKit(reference?.kit??p.loadout);
+ // Studio carries a representative visible spare bank, never phantom ammo
+ // in the live game; preview rig count is capped to actual rig capacity later.
+ const sampleMagazines=armed&&previewEquipment.slots.rig!=='rig-none'?
+  (['rig','rig','rig'] as const):[];
  armedPose={
   x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
   posture:'stand',injury:0,weapon,reload:0,reloadDuration:0,
@@ -456,7 +461,8 @@ function posePreview(){
   handlingOverride:armed?'low':undefined,
   faceStyle:studioUsesVisibleFace(activeCategory)?'quiet':'blank',
   unarmedPreview:!armed,weaponConfiguration:configuration,
-  equipment:inspectKit(reference?.kit??p.loadout),
+  equipment:previewEquipment,
+  magazineCarryLocations:sampleMagazines,
   wardrobe:inspectWardrobe(reference?.wardrobe??previewWardrobe()),
   appearanceSeed:p.appearanceSeed
  };
