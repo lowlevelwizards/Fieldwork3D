@@ -11,6 +11,7 @@ import {alignSegment,solveTwoBone,ARM_LIMITS,LEG_LIMITS,
   intersectsTorso} from './breach-ik.ts';
 import {armorArmIntrusion,armorElbowPole}
  from './breach-arm-armor-clearance.ts';
+import {idleLifeAt} from './breach-idle-life.ts';
 import {createOperatorPoseScratch,type OperatorPoseScratch}
   from './breach-operator-pose-scratch.ts';
 import type {WeaponId} from './breach-combat.ts';
@@ -82,6 +83,8 @@ export type OperatorPose={
   stride:number;posture:'stand'|'crouch';injury:number;weapon:WeaponId;
   /** Authoritative travel direction; optional until motion sampling is wired. */
   travelYaw?:number;
+  /** Presentation-only clock advances during tactical pause, never the motor. */
+  idleLifeSeconds?:number;
   /** Render-only reconstructed feet and pose: no accumulated render state. */
   replayFeet?:ReplayFeet;deterministic?:boolean;pelvisYaw?:number;
   reload:number;reloadDuration:number;reloadMode?:ReloadMode|null;
@@ -972,6 +975,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       p.aiming?7.5:5.8,dt);
   r.head.rotation.y=p.deterministic?turn.headYaw:
     approach(r.head.rotation.y,turn.headYaw,10.0,dt);
+  // Seeded micro-glance does not change weapon yaw or shot-time aim.
+  // Only the head rotates; never add to last frame's already posed value.
+  r.head.rotation.y+=idleLife.glance;
   const motion=bodyFromContacts({velocity:p.down?0:physicalSpeed,
     heading:p.heading,travelYaw,turning:p.turning,
     injury:p.injury,posture:p.posture,feet:targets,gait:p.gait,
@@ -984,6 +990,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     weaponWeight:p.weapon==='shotgun'?1.30:
       p.weapon==='rifle'?1.19:p.weapon==='smg'?.83:1,
     position:{x:p.x,y:p.z}});
+  const idleLife=idleLifeAt(p.idleLifeSeconds??p.seconds,
+    p.appearanceSeed??0,{speed:physicalSpeed,aiming:p.aiming||
+      (p.aimBlend??0)>.16,firing:p.firing,reloading:p.reload>0,
+      down:p.down,surrender:p.surrender,interacting:!!p.treatmentActive||
+      p.traversalProgress!==undefined&&p.traversalProgress>0});
   // Pack follows the torso with restrained inertia, not separate timing.
   const packMotion=packInertia(p.acceleration??0,motion.torsoSide);
   r.pack.position.set(-8.2,0,
@@ -1022,12 +1033,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // same fixed-step weapon solution used by ballistics.
   const freeMotion=p.down||p.surrender||p.firing?0:
     clamp((.32-aimLevel)/.32,0,1);
-  r.chest.position.y=26-crouch+motion.breath+motion.pelvisY*.5+
+  r.chest.position.y=26-crouch+idleLife.breathe+motion.pelvisY*.5+
     motion.chestLift*freeMotion*1.4-
     bash.brace*.4-buckle*7-kneel*12+mannequinLift;
   r.chest.position.z=motion.pelvisSide*.75+
     poseWeight*profile.pelvisShift*.45;
-  r.chest.rotation.z=motion.torsoForward+braking*.018+
+  r.chest.rotation.z=motion.torsoForward+idleLife.sway+braking*.018+
     (kick?.torsoLean??0)+bash.lean-
     poseWeight*profile.torsoLean-
     (p.posture==='crouch'?.075:0);
