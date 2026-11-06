@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#101a1b"/>
+<title>FIELDWORK / BRIEFING LAB</title>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="./src/briefing-lab.css"/>
+</head>
+<body>
+<header class="lab-header">
+  <div><p class="eyebrow">FIELDWORK / DEVELOPMENT LABS</p><h1>BRIEFING LAB <small>V0.1</small></h1></div>
+  <a href="./index.html" class="return-link">BACK TO BREACH</a>
+</header>
+<main class="lab-main">
+<section class="lab-controls" aria-labelledby="controls-title">
+  <h2 id="controls-title">MISSION SOURCE</h2>
+  <p class="muted">New Site builds a real map and encounter. Other controls affect only the briefing.</p>
+  <div class="control-grid">
+    <label>Mission type<select id="missionKind">
+      <option value="capture">CAPTURE</option><option value="intel">INTELLIGENCE</option>
+      <option value="rescue">RESCUE</option><option value="clear">CLEAR</option>
+      <option value="hold">HOLD</option>
+    </select></label>
+    <label>Map size<select id="siteScale"><option value="small">SMALL</option><option value="medium">MEDIUM</option><option value="large">LARGE</option></select></label>
+    <label>Map intelligence<select id="intelMode">
+      <option value="true-blind">TRUE BLIND</option><option value="exterior-known" selected>EXTERIOR KNOWN</option>
+      <option value="floor-plan">FLOOR PLAN</option><option value="full-view">FULL VIEW</option>
+    </select></label>
+    <label>Site seed<input id="siteSeed" type="number" min="1" max="4294967295" value="177" inputmode="numeric"/></label>
+  </div>
+  <button id="generateSite" class="primary" type="button">GENERATE REAL SITE</button>
+  <div class="separator"></div>
+  <h2>BRIEFING VARIABLES</h2>
+  <div class="control-grid">
+    <label>Incident family<select id="incident"></select></label>
+    <label>Report quality<select id="reportQuality">
+      <option value="low">LOW</option><option value="medium" selected>MEDIUM</option><option value="high">HIGH</option>
+    </select></label>
+    <label>Report structure<select id="reportStyle">
+      <option value="dispatch">DISPATCH</option><option value="operations" selected>OPERATIONS</option>
+      <option value="intelligence">INTELLIGENCE</option></select></label>
+    <label>Reading length<select id="reportLength">
+      <option value="brief">BRIEF</option><option value="standard" selected>STANDARD</option><option value="detailed">DETAILED</option>
+    </select></label>
+  </div>
+  <div class="button-row">
+    <button id="rerollIncident" type="button">REROLL INCIDENT</button>
+    <button id="rerollWording" type="button">REROLL WORDING</button>
+  </div>
+  <div class="button-row">
+    <button id="copyText" type="button">COPY BRIEFING</button>
+    <button id="exportDossier" type="button">EXPORT JSON</button>
+  </div>
+  <div id="labStatus" class="lab-status" role="status" aria-live="polite">Preparing example site…</div>
+</section>
+<section class="lab-output" aria-labelledby="output-title">
+  <p class="eyebrow">OPERATIONS / GENERATED DOSSIER</p>
+  <h2 id="output-title">Awaiting mission</h2>
+  <div id="operationMeta" class="meta"></div>
+  <div id="briefText" class="brief-text" aria-live="off"></div>
+  <div class="separator"></div>
+  <h3>WORDING COMPARISON · SAME MISSION</h3>
+  <div class="compare-grid" id="compareCards"></div>
+  <details class="inspector"><summary>MISSION GROUND TRUTH / DEVELOPER ONLY</summary><pre id="groundTruth"></pre></details>
+  <details class="inspector"><summary>VALIDATION &amp; PROVENANCE</summary><pre id="diagnostics"></pre></details>
+</section>
+</main>
+<script type="module" src="./src/briefing-lab-main.ts"></script>
+</body></html>
