@@ -28,10 +28,13 @@ export class ReplayQuickVideo{
   private stopping=false;
   private since=0;
   private mime='';
-  constructor(
-    private readonly onComplete:(file:Blob,mime:string)=>void,
-    private readonly onError:(reason:string)=>void
-  ){}
+  private readonly onComplete:(file:Blob,mime:string)=>void;
+  private readonly onError:(reason:string)=>void;
+  constructor(onComplete:(file:Blob,mime:string)=>void,
+    onError:(reason:string)=>void){
+    this.onComplete=onComplete;
+    this.onError=onError;
+  }
   get active(){return !!this.recorder&&!this.stopping;}
   start(time:number,viewport:{width:number;height:number},
     audioStream:MediaStream|null=null):boolean{
