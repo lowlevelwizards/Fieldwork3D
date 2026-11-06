@@ -33,7 +33,7 @@ const hits=(group,x,y)=>{
  return ray.intersectObjects(group.children.filter(o=>!o.userData.weaponPixelArt),true)
   .length>0;
 };
-test('R3.2 retains 51 part IDs, all 17 presets and authoritative muzzle',()=>{
+test('R3.2/R4 retains 62 part IDs, all 17 presets and authoritative muzzle',()=>{
  assert.equal(Object.keys(FAMILY_PARTS).length,62);
  assert.equal(FAMILY_PRESETS.length,17);
  for(const p of FAMILY_PRESETS){
@@ -56,7 +56,12 @@ test('R3.2 shared visual anatomy makes receiver, grip and magwell a joined cente
   assert.ok(grip.getCenter(new THREE.Vector3()).x<
    magazine.getCenter(new THREE.Vector3()).x,p.id+' grip behind magazine');
   assert.ok(magazine.min.y<-5,p.id+' magazine still visible');
-  assert.ok(guard.min.x>magazine.min.x+2,p.id+' handguard beyond magazine root');
+  // Mk12's upper-rail bridge intentionally reaches back over the receiver.
+  // Test the primary tubular shell rather than its decorative bridge.
+  const guardShell=p.id==='ar-mk12mod0'?
+   new THREE.Box3().setFromObject(group.children.find(
+    mesh=>mesh.name==='family-handguard-ar-pri-tube-0')):guard;
+  assert.ok(guardShell.min.x>magazine.min.x+2,p.id+' handguard beyond magazine root');
   // The deliberately curved AK lower segment can sweep forward; its
   // insertion root stays behind the handguard and remains connected.
   assert.ok(magazine.max.x<6,p.id+' lower magazine remains compact');
