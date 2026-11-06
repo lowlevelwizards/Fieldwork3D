@@ -80,18 +80,24 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   [-2.25,-6.1],[-3.55,-5.7]],m.gripShiftX),
   m.gripDepthZ,gripWood||resin?2:1);
 
- // A narrow receiver insertion point and broad caricatured lower swing.
- // 7.62 profiles retain a stronger banana bend than 5.45 profiles.
+ // The 3D sides narrow along Z; their side-view curve remains broad.
+ // Keep the characteristic 7.62 lower swing larger than the 5.45 curve.
  const mag=parts.magazine,heavy=mag==='ak-mag762'||mag==='ak-mag762poly';
  const resinMag=mag==='ak-mag545';
  const finish:0|1|2=resinMag?2:heavy&&mag==='ak-mag762'?0:1;
  const top=m.magazineTopY;
+ const magLeft=m.magwellCenterX-m.magazineWidthX/2;
+ const magRight=m.magwellCenterX+m.magazineWidthX/2;
  if(heavy)
-  p('magazine',[[.05,top],[2.07,top],[2.44,-4.42],
-   [4.05,-7.45],[2.0,-7.75],[.68,-5.08]],3.05,finish);
+  p('magazine',[[magLeft,top],[magRight,top],
+   [magRight+.42,-4.35],[magRight+2.50,-7.45],
+   [magLeft+2.15,-7.75],[magLeft+.55,-5.05]],
+   m.magazineDepthZ,finish);
  else
-  p('magazine',[[.06,top],[2.04,top],[2.24,-4.62],
-   [2.95,-7.25],[1.0,-7.47],[.45,-4.95]],3.1,finish);
+  p('magazine',[[magLeft,top],[magRight,top],
+   [magRight+.20,-4.6],[magRight+1.40,-7.25],
+   [magLeft+1.45,-7.47],[magLeft+.38,-4.95]],
+   m.magazineDepthZ,finish);
 
  const guard=parts.handguard;
  const short=guard==='ak-wood-short'||guard==='ak-poly-short';
