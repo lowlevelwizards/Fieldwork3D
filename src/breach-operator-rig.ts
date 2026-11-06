@@ -9,6 +9,8 @@ import {neutralMannequinHipRise,neutralMannequinWrist,
  neutralMannequinElbowPole} from './operator-mannequin-pose.ts';
 import {alignSegment,solveTwoBone,ARM_LIMITS,LEG_LIMITS,
   intersectsTorso} from './breach-ik.ts';
+import {armorArmIntrusion,armorElbowPole}
+ from './breach-arm-armor-clearance.ts';
 import {createOperatorPoseScratch,type OperatorPoseScratch}
   from './breach-operator-pose-scratch.ts';
 import type {WeaponId} from './breach-combat.ts';
@@ -997,7 +999,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // This lift is cosmetic to the no-gun preview: grounded feet, gait and
   // normal battle skeleton stay unchanged.
   const mannequinLift=p.unarmedPreview?
-    neutralMannequinHipRise(physicalSpeed,p.posture,p.down,p.surrender):0;
+    neutralMannequinHipRise(physicalSpeed,p.posture,p.down,p.surrender):
+    p.handlingOverride==='low'&&!p.aiming&&!p.firing?
+      neutralMannequinHipRise(physicalSpeed,p.posture,p.down,p.surrender)*.83:0;
+  // Armed Studio low-ready borrows the upright reference's hip/torso lift,
+  // but leaves ALL live gameplay/replay contacts and ballistics unchanged.
   const stanceHip=neutralHip+motion.pelvisY-bash.brace;
   r.hip.position.y=Math.max(
     17.35-crouch-buckle*8-kneel*9,
@@ -1373,17 +1379,28 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       P(corridor.x,corridor.y,corridor.z).sub(shoulder);
     let solved=solveTwoBone(shoulder,wrist,10,10,
       wanted,ARM_LIMITS,neutralArms?undefined:arm.bend,scratch.arms[i]);
-    if(!neutralArms&&intersectsTorso(solved.joint,.3)){
-      // Try a low forward/down elbow before the wide elbow escape route.
-      const compact=P(corridor.x+1.0,corridor.y-1.2,
-        corridor.z+sign*.22).sub(shoulder);
-      const retry=solveTwoBone(shoulder,wrist,10,10,
-        compact,ARM_LIMITS,arm.bend,scratch.armRetry[i]);
-      if(!intersectsTorso(retry.joint,.25))solved=retry;
-      else solved=solveTwoBone(shoulder,wrist,10,10,
-        P(corridor.x+1.5,corridor.y-.5,
-          corridor.z+sign*.7).sub(shoulder),ARM_LIMITS,arm.bend,
-        scratch.armFallback[i]);
+    if(!neutralArms&&!p.down&&!p.surrender){
+      // Front-plate clearance must score BOTH sleeve segments. Avoiding just
+      // the elbow point was letting the forearm pass straight through armor.
+      const front=p.equipment?.slots.armor==='armor-carrier'?9.8:
+        p.equipment?.slots.armor==='armor-soft'?8.8:7.1;
+      const score=(candidate:typeof solved)=>armorArmIntrusion(
+        shoulder,candidate.joint,candidate.effector,front)+
+        (intersectsTorso(candidate.joint,.25)?2.5:0);
+      let bestScore=score(solved);
+      if(bestScore>.04){
+        const pole0=armorElbowPole(shoulder,sign as -1|1,0);
+        const retry=solveTwoBone(shoulder,wrist,10,10,
+          P(pole0.x,pole0.y,pole0.z),ARM_LIMITS,arm.bend,
+          scratch.armRetry[i]);
+        const retryScore=score(retry);
+        if(retryScore+.015<bestScore){solved=retry;bestScore=retryScore;}
+        const pole1=armorElbowPole(shoulder,sign as -1|1,1);
+        const alternate=solveTwoBone(shoulder,wrist,10,10,
+          P(pole1.x,pole1.y,pole1.z),ARM_LIMITS,arm.bend,
+          scratch.armFallback[i]);
+        if(score(alternate)+.015<bestScore)solved=alternate;
+      }
     }
     r.elbowSpread[i]=Math.max(0,
       sign*(solved.joint.z-shoulder.z));
