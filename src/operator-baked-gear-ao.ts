@@ -90,7 +90,7 @@ const KEY_RAYS=[
 ] as const;
 // Narrow seams, not a diffuse two-and-a-half-unit shadow halo.
 export const GEAR_CONTACT_AO_RADIUS=.95;
-export const GEAR_CONTACT_AO_STRENGTH=.36;
+export const GEAR_CONTACT_AO_STRENGTH=.46;
 export const GEAR_CONTACT_AO_FLOOR=.62;
 type ContactPart={
  mesh:THREE.Mesh;local:THREE.Matrix4;normalMatrix:THREE.Matrix3;
@@ -166,7 +166,7 @@ export function bakeGearContactAO(group:THREE.Group):number{
     }
    }
    const cast=castHits/KEY_RAYS.length;
-   const shadow=Math.max(occlusion,.35*cast);
+   const shadow=Math.max(occlusion,.46*cast);
    if(shadow<.012)continue;
    const old=pixels[i*3]/255;
    const gray=Math.round(255*Math.max(GEAR_CONTACT_AO_FLOOR,
