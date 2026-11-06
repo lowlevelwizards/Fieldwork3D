@@ -95,7 +95,7 @@ function addStem(out:Float32Array,sampleRate:number,id:string,index:number,
    case 'air':v=lp*.48+high*.21;break;
   }
   const makeSoft=event.kind==='handle'||event.kind==='scrape'||event.kind==='settle';
-  const level=makeSoft?.60:.92;
+  const level=makeSoft ? .60 : .92;
   out[i]+=v*e*event.level*level;
  }
 }
