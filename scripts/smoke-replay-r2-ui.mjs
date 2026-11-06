@@ -73,6 +73,19 @@ try{
   check(view.drawer.top>=0,'Drawer leaves the viewport');
   check(view.activeTabs.join()==='view','View tab must show selected state');
 
+  // R3: advanced camera controls live exclusively in View, not on the dock.
+  check(await page.locator('#replayDirector').isVisible(),
+    'R3 Director must be accessible under View');
+  check(await page.locator('#replaySquad').isVisible(),
+    'R3 Squad follow must be accessible under View');
+  await page.locator('#replayDirector').click();
+  check((await page.locator('#replayDirector').getAttribute('aria-pressed'))==='true',
+    'Director button did not activate');
+  await page.locator('#replaySquad').click();
+  check((await page.locator('#replayDirector').getAttribute('aria-pressed'))==='false',
+    'Squad mode must disable Director');
+  check((await page.locator('#replaySquad').getAttribute('aria-pressed'))==='true',
+    'Squad camera did not activate');
   await page.locator('[data-replay-tab=layers]').click();
   const layers=await page.evaluate(measure);
   check(layers.visibleGroups.join()==='layers',
@@ -93,6 +106,10 @@ try{
 
   await page.locator('#replayFeedToggle').click();
   const feed=await page.evaluate(measure);
+  check(await page.locator('#replayShotInspector').count()===1,
+    'R3 contextual shot inspector missing from Events drawer');
+  check(await page.locator('#replayShotInspector').isHidden(),
+    'Shot inspector must stay hidden when nothing was selected');
   check(!feed.feedHidden&&feed.visibleGroups.length===0&&
     feed.activeTabs.join()==='events',
     'Events tab must take over the drawer without showing the tool grid');
