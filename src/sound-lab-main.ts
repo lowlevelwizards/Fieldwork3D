@@ -266,20 +266,33 @@ function renderVariants(){
   A:['CLEAN','Tight, deliberate, relatively dry'],
   B:['WEIGHTY','Fuller body and a solid mechanical feel'],
   C:['TEXTURED','Rougher grain, brighter edge, longer tail']};
- const focus=FOCUS_BY_ID.get(selected),frag=document.createDocumentFragment();
+ const focus=FOCUS_BY_ID.get(selected),refine=refineMode?REFINEMENT_BY_ID.get(selected):null;
+ const frag=document.createDocumentFragment();
  for(const [i,v] of availableVariants().entries()){
-  const [name,description]=focus?
-   [focus.names[i],DIRECTION_METHODS[i]]:legacy[v];
+  const [name,description]=refine?[refine.names[i],refine.details[i]]:
+   focus?[focus.names[i],DIRECTION_METHODS[i]]:legacy[v];
   const div=document.createElement('section');
-  const chosen=currentChoice().choice===v&&
-   (focus?!!currentChoice().explored:!!currentChoice().reviewed);
-  const shortlisted=!!currentChoice().shortlist?.includes(v);
+  const chosen=refineMode?
+   (currentChoice().refinement?.choice===v&&!!currentChoice().refinement?.approved):
+   (currentChoice().choice===v&&
+   (focus?!!currentChoice().explored:!!currentChoice().reviewed));
+  const shortlisted=refineMode?
+    !!currentChoice().refinement?.shortlist?.includes(v as RefinementDirection):
+    !!currentChoice().shortlist?.includes(v);
   div.className='variant'+(chosen?' active':'')+(shortlisted?' shortlisted':'');
   const heading=document.createElement('h3');heading.textContent=v;
   const small=document.createElement('small');small.textContent=name;
   heading.append(small);
   const text=document.createElement('p');text.textContent=description;
   const actions=document.createElement('div');actions.className='actions';
+  if(refine){
+   const layer=document.createElement('div');layer.className='layer-tags';
+   for(const stem of REFINEMENT_RECIPES[i].layers){
+    const tag=document.createElement('span');tag.textContent=stem;
+    layer.append(tag);
+   }
+   div.append(heading,text,layer);
+  }else div.append(heading,text);
   const play=document.createElement('button');
   play.type='button';play.dataset.play=v;play.textContent='▶ LISTEN';
   play.setAttribute('aria-label','Listen to '+name+' for '+current().label);
@@ -294,10 +307,13 @@ function renderVariants(){
   const choose=document.createElement('button');choose.className='choose';
   choose.type='button';choose.dataset.choose=v;
   choose.textContent=chosen?'✓ CHOSEN':'CHOOSE '+v;
+  choose.disabled=!!refine&&!currentChoice().explored;
+  choose.title=choose.disabled?'Choose a Wave 01 reference first':name;
   choose.setAttribute('aria-label','Choose '+name);
-  actions.append(choose);div.append(heading,text,actions);frag.append(div);
+  actions.append(choose);div.append(actions);frag.append(div);
  }
  ui.variants.classList.toggle('explore',!!focus);
+ ui.variants.classList.toggle('refinement',refineMode);
  ui.variants.replaceChildren(frag);
 }
 function displayValue(value:number,unit:string){
