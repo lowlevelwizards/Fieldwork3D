@@ -11,14 +11,17 @@ import {FOCUS_SOUND_IDS,FOCUS_BY_ID,FOCUS_DIRECTIONS,
  DIRECTION_METHODS} from './sound-focus.ts';
 import {REFINEMENT_SOUND_IDS,REFINEMENT_BY_ID,REFINEMENT_DIRECTIONS,
  REFINEMENT_RECIPES,type RefinementDirection} from './sound-refine.ts';
+import {COMPOUND_SOUND_IDS,COMPOUND_BY_ID,COMPOUND_DIRECTIONS,
+ COMPOUND_RECIPES,type CompoundDirection} from './sound-compound.ts';
 
 const $=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 let pack=readSoundPack();
-let selected=REFINEMENT_SOUND_IDS[0];
-let focusMode=true,refineMode=true;
-let variant:Variant=pack.choices[selected].refinement?.choice??'A';
+let selected=COMPOUND_SOUND_IDS[0];
+let focusMode=true,refineMode=false,compoundMode=true;
+let variant:Variant=pack.choices[selected].compound?.choice??'A';
 let group='all',status='all',search='';
 function availableVariants(id=selected):readonly Variant[]{
+ if(compoundMode&&COMPOUND_BY_ID.has(id))return COMPOUND_DIRECTIONS;
  if(refineMode&&REFINEMENT_BY_ID.has(id))return REFINEMENT_DIRECTIONS;
  return FOCUS_BY_ID.has(id)?FOCUS_DIRECTIONS:SOUND_VARIANTS.slice(0,3);
 }
@@ -26,7 +29,7 @@ let context:AudioContext|null=null;
 let active:AudioBufferSourceNode|null=null,sequence=0;
 let waveFrame=0;
 const sliderDefs:[
- Exclude<keyof SoundSettings,'refinement'>,string,number,number,number,string
+ Exclude<keyof SoundSettings,'refinement'|'compound'>,string,number,number,number,string
 ][]=[
  ['gain','OUTPUT LEVEL',0,1,.01,'%'],
  ['pitch','PITCH / BODY',45,2400,1,'Hz'],
@@ -58,9 +61,17 @@ function settings(v:Variant=variant){
 function baselineSettings(){
  return resolveSoundSettings(pack,selected,currentChoice().choice)!;
 }
+function waveTwoSettings(){
+ const ref=currentChoice().refinement?.choice??'A';
+ const index=REFINEMENT_DIRECTIONS.indexOf(ref);
+ return {...baselineSettings(),refinement:index<0?0:index};
+}
 function auditionSettings(v:Variant=variant){
- if(!refineMode)return settings(v);
- return {...baselineSettings(),refinement:REFINEMENT_DIRECTIONS.indexOf(v as RefinementDirection)};
+ if(compoundMode)return {...waveTwoSettings(),
+  compound:COMPOUND_DIRECTIONS.indexOf(v as CompoundDirection)};
+ if(refineMode)return {...baselineSettings(),
+  refinement:REFINEMENT_DIRECTIONS.indexOf(v as RefinementDirection)};
+ return settings(v);
 }
 function note(text:string){ui.feedback.textContent=text;}
 function persist(){if(!saveSoundPack(pack))
@@ -82,13 +93,15 @@ async function preview(v:Variant=variant){
  const sound=auditionSettings(v);
  active=playDesignedSound(ctx,selected,{...sound,
   gain:sound.gain*pack.master});
- note('AUDITIONING '+current().label.toUpperCase()+' · '+(refineMode?'REFINEMENT ':'VARIANT ')+v);
+ note('AUDITIONING '+current().label.toUpperCase()+' · '+(compoundMode?'COMPOUND ':refineMode?'REFINEMENT ':'VARIANT ')+v);
 }
 async function compare(all=false){
  stopAudio();const token=sequence;
  const ctx=await audioContext();if(!ctx||sequence!==token)return;
  const soundId=selected;
- const list=refineMode?(all?REFINEMENT_DIRECTIONS:
+ const list=compoundMode?(all?COMPOUND_DIRECTIONS:
+   (currentChoice().compound?.shortlist?.length?currentChoice().compound!.shortlist!:[])):
+  refineMode?(all?REFINEMENT_DIRECTIONS:
    (currentChoice().refinement?.shortlist?.length?currentChoice().refinement!.shortlist!:[])):
   focusMode?(all?FOCUS_DIRECTIONS:
    (currentChoice().shortlist?.length?currentChoice().shortlist!:[])):
@@ -114,18 +127,27 @@ async function compare(all=false){
 async function previewOriginal(){
  stopAudio();const token=sequence;
  const ctx=await audioContext();if(!ctx||token!==sequence)return;
+ const sound=compoundMode?waveTwoSettings():baselineSettings();
+ active=playDesignedSound(ctx,selected,{...sound,gain:sound.gain*pack.master});
+ note('YOUR '+(compoundMode?'WAVE 02':'WAVE 01')+
+  ' REFERENCE · '+current().label.toUpperCase());
+});
+async function previewWaveOne(){
+ if(!compoundMode)return;
+ stopAudio();const token=sequence;
+ const ctx=await audioContext();if(!ctx||token!==sequence)return;
  const sound=baselineSettings();
  active=playDesignedSound(ctx,selected,{...sound,gain:sound.gain*pack.master});
- note('YOUR WAVE 01 REFERENCE · '+current().label.toUpperCase()+' · '+currentChoice().choice);
+ note('WAVE 01 ORIGINAL · '+current().label.toUpperCase()+' · '+currentChoice().choice);
 }
 async function compareOriginal(){
- if(!refineMode)return;
+ if(!refineMode&&!compoundMode)return;
  stopAudio();const token=sequence;
  const ctx=await audioContext();if(!ctx||token!==sequence)return;
  const soundId=selected;
  for(const [label,sound] of [
-   ['ORIGINAL',baselineSettings()],
-   ['REFINED '+variant,auditionSettings()]
+   ['REFERENCE',compoundMode?waveTwoSettings():baselineSettings()],
+   [(compoundMode?'COMPOUND ':'REFINED ')+variant,auditionSettings()]
  ] as const){
   if(token!==sequence||soundId!==selected)return;
   note('A/B LEVEL-MATCHED · '+soundId.toUpperCase()+' · '+label);
@@ -142,15 +164,27 @@ async function compareOriginal(){
 }
 function selectCue(id:string){
  if(!SOUND_BY_ID.has(id))return;
- stopAudio();selected=id;variant=refineMode?
+ stopAudio();selected=id;variant=compoundMode?
+  (currentChoice().compound?.choice??'A'):refineMode?
   (currentChoice().refinement?.choice??'A'):currentChoice().choice;
  renderList();renderEditor();
 }
 function markChoice(v:Variant){
  const s=currentChoice();
+ if(compoundMode){
+  if(!s.refinement?.approved){
+   note('IMPORT YOUR WAVE 02 PACK OR APPROVE A WAVE 02 SOUND FIRST');return;
+  }
+  s.compound??={};s.compound.choice=v as CompoundDirection;
+  s.compound.approved=true;s.enabled=true;
+  variant=v;persist();renderAll();
+  note('WAVE 03 CHOSEN · '+current().label.toUpperCase()+' · '+v+
+   ' · WAVES 01 AND 02 PRESERVED');return;
+ }
  if(refineMode){
   if(!s.explored){note('FIRST CHOOSE A WAVE 01 REFERENCE SOUND FOR THIS CUE');return;}
   s.refinement??={};
+  if(s.refinement.choice!==v&&s.compound?.approved)s.compound.approved=false;
   s.refinement.choice=v as RefinementDirection;
   s.refinement.approved=true;
   s.enabled=true;
@@ -158,7 +192,8 @@ function markChoice(v:Variant){
   note('WAVE 02 APPROVED · '+current().label.toUpperCase()+' · '+v+' · WAVE 01 PRESERVED');
   return;
  }
- if(s.choice!==v&&s.refinement?.approved)s.refinement.approved=false;
+ if(s.choice!==v){if(s.refinement?.approved)s.refinement.approved=false;
+  if(s.compound?.approved)s.compound.approved=false;}
  s.choice=v;s.enabled=true;s.reviewed=true;
  if(FOCUS_BY_ID.has(selected))s.explored=true;
  variant=v;persist();renderAll();
