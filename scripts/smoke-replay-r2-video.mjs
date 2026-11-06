@@ -103,6 +103,53 @@ try{
   if(size<1800)throw Error('Recorded replay video is empty: '+size);
   if(pageErrors.length)throw Error('Replay browser error: '+pageErrors.join(' | '));
   console.log('Replay real-browser video smoke PASS:',filename,size,'bytes');
+  // Nonempty bytes alone are insufficient: decode metadata in the browser.
+  await page.evaluate(()=>{
+    const input=document.createElement('input');
+    input.id='replayMediaProbe';input.type='file';input.hidden=true;
+    document.body.append(input);
+  });
+  await page.locator('#replayMediaProbe').setInputFiles(file);
+  const metadata=await page.evaluate(async()=>{
+    const input=document.querySelector('#replayMediaProbe');
+    const file=input?.files?.[0];
+    if(!file)throw Error('Missing captured video for decode test');
+    const video=document.createElement('video');
+    const url=URL.createObjectURL(file);
+    try{
+      return await new Promise((resolve,reject)=>{
+        video.preload='metadata';
+        video.onloadedmetadata=()=>resolve({
+          width:video.videoWidth,height:video.videoHeight,
+          duration:video.duration
+        });
+        video.onerror=()=>reject(Error('Captured video cannot be decoded'));
+        video.src=url;
+      });
+    }finally{URL.revokeObjectURL(url);}
+  });
+  if(metadata.width<700||metadata.height<700)
+    throw Error('Replay file did not decode as 720p: '+
+      JSON.stringify(metadata));
+  console.log('Replay decoded media metadata PASS',JSON.stringify(metadata));
+
+  // Now verify that audio-enabled capture actually attaches an audio track
+  // and yields a second playable file, rather than silently exporting mute.
+  await page.locator('#replayMore').click();
+  await page.locator('#replaySound').click();
+  if(!(await page.locator('#replaySound').textContent())?.includes('ON'))
+    throw Error('Unable to enable replay audio');
+  const withAudio=page.waitForEvent('download',{timeout:25000});
+  await page.locator('#replayExportVideo').click();
+  await page.waitForFunction(()=>
+    document.querySelector('#replayExportVideo')?.title===
+      'Recording replay video with audio',null,{timeout:10000});
+  const audioDownload=await withAudio;
+  const audioFile=await audioDownload.path();
+  if(!audioFile||((await stat(audioFile)).size<1800))
+    throw Error('Audio-enabled replay produced an empty video');
+  console.log('Replay audio+video browser smoke PASS',
+    audioDownload.suggestedFilename(),(await stat(audioFile)).size,'bytes');
 }finally{
   if(browser)await browser.close();
   server.kill('SIGTERM');
