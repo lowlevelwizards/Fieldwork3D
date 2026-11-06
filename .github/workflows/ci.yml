@@ -1158,6 +1158,10 @@ jobs:
             tests/breach-p7-replay-sharing.test.mjs \
             tests/gameplay-g4d-replay-validity.test.mjs \
             tests/civilian-b8-replay.test.mjs
+      - name: AR/AK issued roles, faction reference and Studio idle critical tests
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-enemy-kits-armed-studio-') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-weapon-issue-faction-studio.test.mjs tests/lw-roster.test.mjs tests/campaign-01.test.mjs tests/faction-reference.test.mjs tests/equipment-09-armor.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

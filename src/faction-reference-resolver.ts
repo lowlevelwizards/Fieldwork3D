@@ -9,9 +9,12 @@ import {fabricCamoCompatible} from './operator-fabric-camo-policy.ts';
 import {headwearCamoChoices} from './operator-headwear-camo.ts';
 import {helmetCoverChoices} from './operator-helmet-cover-policy.ts';
 import {outfitPresetForKit} from './operator-studio-presets.ts';
+import {referenceWeaponChoice} from './faction-reference-weapons.ts';
+import {syncPrimaryWeapon} from './equipment-loadouts.ts';
 
 export type ReferenceResolution={
  reference:FactionReference;kit:EquipmentLoadout;wardrobe:WardrobeOptions;
+ weapon:ReturnType<typeof referenceWeaponChoice>;
  technicalIssues:readonly string[];incompatibleChannels:readonly string[];
 };
 export function resolveFactionReference(input:FactionReference|string):ReferenceResolution{
@@ -20,7 +23,8 @@ export function resolveFactionReference(input:FactionReference|string):Reference
  const base=wardrobeRecipe(reference.baseRecipeId);
  if(!base)throw Error('Unknown reference base recipe: '+reference.baseRecipeId);
  const built=applyWardrobeRecipe(base);
- let kit=built.kit,wardrobe=built.wardrobe;
+ const weapon=referenceWeaponChoice(reference.id);
+ let kit=syncPrimaryWeapon(built.kit,weapon.weapon),wardrobe=built.wardrobe;
  const issues:string[]=[];
  for(const [slot,id] of Object.entries(reference.kit??{})){
   const updated=setEquipmentChoice(kit,slot as LoadoutSlot,id);
@@ -97,7 +101,7 @@ export function resolveFactionReference(input:FactionReference|string):Reference
   ...(reference.sleeveState?{sleeveState:reference.sleeveState}:{}),
   ...(reference.trouserHem?{trouserHem:reference.trouserHem}:{})});
  issues.push(...wardrobeConflicts(wardrobe,kit));
- return {reference,kit,wardrobe,technicalIssues:issues,incompatibleChannels};
+ return {reference,kit,wardrobe,weapon,technicalIssues:issues,incompatibleChannels};
 }
 export function referenceLookForKit(input:FactionReference|string,actualKit:EquipmentLoadout,
  current?:WardrobeOptions){

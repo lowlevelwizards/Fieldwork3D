@@ -114,6 +114,8 @@ import {probeObstacleCrossing,probeWindowCrossing,
   traversalStepClear,type TraverseOpportunity}
   from './breach-mantle.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {issueWeaponPreset,starterWeaponPreset} from './breach-weapon-issue.ts';
+import {enemyKitForEncounter} from './breach-enemy-loadouts.ts';
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import {kitMedicalSupplies,spendMedicalSupply,transferMedicalSupply,
  medicalSupplyCount,type FieldMedicalSupplies}
@@ -400,7 +402,8 @@ export function newSession(index=0,siteSeed?:number,
     }
     const friendly=operators.filter(a=>a.side==='blue');
     friendly.forEach((a,i)=>{
-      a.weapon=(['carbine','smg','rifle','shotgun'] as const)[i];
+      const issue=issueWeaponPreset(starterWeaponPreset(a.id));
+       a.weapon=issue.weapon;a.weaponConfiguration=issue.weaponConfiguration;
       a.magazine=WEAPONS[a.weapon].capacity;
       a.reserve=WEAPONS[a.weapon].reserve;
       a.insertedMagazineId=a.id+'/'+a.weapon+'/loaded';
@@ -443,8 +446,13 @@ export function newSession(index=0,siteSeed?:number,
         a.routineIndex=0;a.routinePauseUntil=1.5+enemyRng()*3;
         a.encounterReactionUntil=Number.POSITIVE_INFINITY;}
       a.health=enemyRng()<.18?3:4;
-      a.weapon=spec?.weaponProfile==='security'?'carbine':
-        enemyRng()<.30?'smg':'carbine';
+      const issued=enemyKitForEncounter(spec,site.seed,i);
+      a.weapon=issued.weapon;
+      a.weaponConfiguration=issued.weaponConfiguration;
+      a.equipment=issued.equipment;a.wardrobe=issued.wardrobe;
+      a.appearanceSeed=issued.appearanceSeed;
+      a.armorIntegrity=issued.armorIntegrity;
+      a.helmetIntegrity=issued.helmetIntegrity;
       a.magazine=WEAPONS[a.weapon].capacity;
       a.reserve=WEAPONS[a.weapon].reserve;
       a.insertedMagazineId=a.id+'/'+a.weapon+'/loaded';
@@ -465,7 +473,14 @@ export function newSession(index=0,siteSeed?:number,
     }
   }else operators.filter(a=>a.side==='red').forEach((a,i)=>{
     const pos=sample.spots[i];a.p={x:pos.x,y:pos.y};a.heading=pos.h;
-    a.health=2;a.magazine=10;a.reserve=30;a.weaponYaw=a.heading;
+    const issued=enemyKitForEncounter(undefined,index,i);
+    a.weapon=issued.weapon;a.weaponConfiguration=issued.weaponConfiguration;
+    a.equipment=issued.equipment;a.wardrobe=issued.wardrobe;
+    a.appearanceSeed=issued.appearanceSeed;
+    a.armorIntegrity=issued.armorIntegrity;
+    a.helmetIntegrity=issued.helmetIntegrity;
+    a.health=2;a.magazine=WEAPONS[a.weapon].capacity;
+    a.reserve=WEAPONS[a.weapon].reserve;a.weaponYaw=a.heading;
     a.spareMagazines=magazineKit(a.id,a.weapon,a.reserve,
       WEAPONS[a.weapon].capacity);
   });

@@ -13,11 +13,12 @@ import {stageMagazines,magazineSpace,type MagazineLocation}
  from './equipment-magazine-placement.ts';
 import {kitMedicalSupplies} from './equipment-medical-supplies.ts';
 import {issuedWedges} from './equipment-entry-tools.ts';
-import {initialWeaponConfiguration,readWeaponConfiguration,changeWeaponPlatform,
+import {readWeaponConfiguration,changeWeaponPlatform,
  setWeaponAttachment,selectWeaponFamilyPreset,setConfiguredFamilyPart,
  type WeaponConfiguration,type WeaponAttachmentSlot}
  from './equipment-weapon-assemblies.ts';
 import type {FamilyPartSlot} from './equipment-weapon-families.ts';
+import {issueWeaponPreset,starterWeaponPreset,resolveIssuedOrLegacy} from './breach-weapon-issue.ts';
 import {equippedFlashCharges,
  initialEquipmentLoadout,readEquipmentLoadout,syncPrimaryWeapon,setEquipmentChoice,
  loadMovementScale,type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
@@ -32,17 +33,20 @@ export type RosterMember={
 export type RosterState={version:1;members:RosterMember[]};
 const names=['rook','moss','ash','vale'] as const;
 const weapons:WeaponId[]=['carbine','smg','rifle','shotgun'];
-const defaultMember=(id:string,i:number):RosterMember=>({
- id,callsign:id.toUpperCase(),missions:0,successful:0,
- injuries:0,recovery:0,weapon:weapons[i],
- magazine:WEAPONS[weapons[i]].capacity,reserve:WEAPONS[weapons[i]].reserve,
- fired:0,appearanceSeed:i+1,wardrobe:initialWardrobe(),
- loadout:initialEquipmentLoadout(weapons[i]),
- weaponConfiguration:initialWeaponConfiguration(weapons[i]),
- magazines:weapons[i]==='shotgun'?[]:
-  magazineKit(id,weapons[i],WEAPONS[weapons[i]].reserve,WEAPONS[weapons[i]].capacity),
- loadedMagazineId:id+'/'+weapons[i]+'/loaded'
-});
+const defaultMember=(id:string,i:number):RosterMember=>{
+ const issue=issueWeaponPreset(starterWeaponPreset(id));
+ return {
+  id,callsign:id.toUpperCase(),missions:0,successful:0,
+  injuries:0,recovery:0,weapon:issue.weapon,
+  magazine:WEAPONS[issue.weapon].capacity,reserve:WEAPONS[issue.weapon].reserve,
+  fired:0,appearanceSeed:i+1,wardrobe:initialWardrobe(),
+  loadout:initialEquipmentLoadout(issue.weapon),
+  weaponConfiguration:issue.weaponConfiguration,
+  magazines:magazineKit(id,issue.weapon,WEAPONS[issue.weapon].reserve,
+    WEAPONS[issue.weapon].capacity),
+  loadedMagazineId:id+'/'+issue.weapon+'/loaded'
+ };
+};
 export function initialRoster():RosterState{
  return {version:1,members:names.map((id,i)=>defaultMember(id,i))};
 }
@@ -72,7 +76,8 @@ export function readRoster(raw:string|null):RosterState{
     appearanceSeed:finite(f.appearanceSeed,0,0xffffffff,base.appearanceSeed),
     loadout:readEquipmentLoadout(f.loadout,weapon),
     wardrobe:readWardrobe(f.wardrobe),
-    weaponConfiguration:readWeaponConfiguration(f.weaponConfiguration,weapon),
+    weaponConfiguration:resolveIssuedOrLegacy(
+      readWeaponConfiguration(f.weaponConfiguration,weapon),weapon,starterWeaponPreset(base.id)),
     magazines,loadedMagazineId:readLoadedMagazineId(base.id,weapon,
      f.loadedMagazineId,magazines),
     missions:finite(f.missions,0,100000,0),
@@ -185,7 +190,9 @@ export function resupplyRoster(roster:RosterState,id?:string):RosterState{
 export function equipRoster(roster:RosterState,id:string,weapon:WeaponId):RosterState{
  return {version:1,members:roster.members.map(m=>m.id===id?{
    ...m,weapon,loadout:syncPrimaryWeapon(m.loadout,weapon),
-    weaponConfiguration:changeWeaponPlatform(m.weaponConfiguration,weapon),
+    weaponConfiguration:resolveIssuedOrLegacy(
+      changeWeaponPlatform(m.weaponConfiguration,weapon),weapon,
+      starterWeaponPreset(m.id)),
    magazine:WEAPONS[weapon].capacity,reserve:WEAPONS[weapon].reserve,
    magazines:weapon==='shotgun'?[]:
     magazineKit(m.id,weapon,WEAPONS[weapon].reserve,WEAPONS[weapon].capacity),

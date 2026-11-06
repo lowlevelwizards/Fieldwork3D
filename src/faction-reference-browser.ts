@@ -3,6 +3,7 @@ import {FACTION_REFERENCES,type FactionReference} from './faction-reference-cata
 import {referenceVisualStatus} from './faction-reference-audit.ts';
 import {unresolvedReferenceGaps} from './faction-reference-asset-registry.ts';
 import {paintCamoPreview} from './operator-camo-preview-cache.ts';
+import {referenceWeaponChoice} from './faction-reference-weapons.ts';
 export type ReferenceCompatibility={substituted:readonly string[];lostPrints:readonly string[]};
 export type ReferenceBrowserHooks={
  onPreview:(id:string)=>void;onApply:(id:string)=>void;onClose:()=>void;
@@ -114,13 +115,18 @@ export class FactionReferenceBrowser{
  private renderDetail(){
   const r=FACTION_REFERENCES.find(x=>x.id===this.chosen) as FactionReference;
   const status=referenceVisualStatus(r);
+   const issued=referenceWeaponChoice(r.id);
   const fit=this.hooks.compatibility(r.id);
   this.detail.replaceChildren();
   this.detail.append(
    el('h3','',r.name),
    el('p','reference-meta',r.country+' · '+r.era.label+' · '+r.organization.replace(/-/g,' ')),
    el('p','',r.summary),
-   el('p','reference-meta','RECOMMENDED WEAPON FAMILY · '+r.weaponFamily),
+   el('p','reference-meta','REFERENCE SERVICE WEAPON · '+r.weaponFamily),
+    el('p','reference-meta','VISIBLE WEAPON · '+issued.preset.name.toUpperCase()+
+     (issued.fidelity==='exact'?' · MATCH':
+      issued.fidelity==='representative'?' · PERIOD/FAMILY APPROXIMATION':
+      ' · TEMPORARY VISUAL PROXY (TRUE FAMILY NOT YET MODELED)')),
    el('p','reference-status',status==='missing-defining-assets'?
     'RECOGNIZABLE APPROXIMATION · DEFINING DETAILS MISSING':'RECOGNIZABLE APPROXIMATION'),
    el('p','reference-sources',r.sourceNotes),
