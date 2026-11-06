@@ -1267,6 +1267,11 @@ function playApprovedCue(id:string,level=1,pan=0,replayCue=false,
   }:undefined
  },approvedSoundPack);
 }
+/** Human-command sounds are event-driven; no movement tick ever emits them. */
+function playOrderCue(id:string){
+ if(!uiSoundEnabled)return;
+ unlockAudio();playApprovedCue(id,.25);
+}
 // Separate, low-volume UI cues reuse the existing unlocked WebAudio context.
 let uiSoundEnabled=true,lastUiCue=0;
 try{uiSoundEnabled=localStorage.getItem('fieldwork3d.ui.sound')!=='off';}
@@ -3470,6 +3475,7 @@ function render(){
 function rejectAt(pt:Pt,reason:string){
   state.events.push(reason);
   tacticalFeedback.emit('error',pt,recoveryAdviceFor(reason)?.marker??'INVALID');
+  uiClickTone('warning');
 }
 function useSelectedGround(pt:Pt){
   if(state.phase!=='planning'||replaying)return;
@@ -3517,7 +3523,7 @@ function useSelectedGround(pt:Pt){
     }
     else{
       tacticalFeedback.emit('command',pt,lookMode==='watch'?'WATCH':'LOOK');
-      uiClickTone('command');
+      playOrderCue(lookMode==='watch'?'orders.watch':'orders.look');
       if(!retargetingActive&&selectedNode===null){
         selectedNode=placedId;selectedActiveWatch=false;
       }
@@ -3539,6 +3545,7 @@ function useSelectedGround(pt:Pt){
     selectedActiveWatch=false;
     selectedNode=uid(selected)?.plan.at(-1)?.id??null;
     tacticalFeedback.emit('route',pt,undefined,beforeRoute);
+    playOrderCue('orders.waypoint');
     teach('waypoint-created',
       'Waypoint added. Drag to move it; choose LOOK / WATCH, or DELETE.',4900);
   }
@@ -4313,12 +4320,12 @@ ui.clear.addEventListener('click',async()=>{
  if(clearPlan(state,targetId)){
    selectedNode=null;
    showUiHelp('ROUTE CLEARED · UNDO TO RESTORE',3000);
-   updateHud();
+   playOrderCue('ui.cancel');updateHud();
  }
 });
-ui.undo.addEventListener('click',()=>{undoPlan(state,selected);selectedNode=null;updateHud();});
-ui.redo.addEventListener('click',()=>{redoPlan(state,selected);selectedNode=null;updateHud();});
-ui.wait.addEventListener('click',()=>{planWait(state,selected,.5);updateHud();});
+ui.undo.addEventListener('click',()=>{undoPlan(state,selected);selectedNode=null;playOrderCue('orders.undo');updateHud();});
+ui.redo.addEventListener('click',()=>{redoPlan(state,selected);selectedNode=null;playOrderCue('orders.redo');updateHud();});
+ui.wait.addEventListener('click',()=>{planWait(state,selected,.5);playOrderCue('orders.wait');updateHud();});
 fieldLightButton=document.createElement('button');
 fieldLightButton.type='button';fieldLightButton.textContent='WEAPON LIGHT';
 fieldLightButton.setAttribute('aria-label','Toggle selected operator weapon light');
@@ -4401,9 +4408,9 @@ ui.flash.addEventListener('click',()=>{
   looking=false;ui.orders.classList.add('compact');
   updateHud();
 });
-ui.sync.addEventListener('click',()=>{planSync(state);updateHud();});
+ui.sync.addEventListener('click',()=>{planSync(state);playOrderCue('orders.sync');updateHud();});
 ui.stance.addEventListener('click',()=>{
-  posture(state,selected);fogStamp=-1;updateHud();
+  posture(state,selected);playOrderCue('orders.stance');fogStamp=-1;updateHud();
 });
 ui.contact.addEventListener('click',()=>{toggleContactRule(state,selected);updateHud();});
 ui.siteLighting.textContent='LIGHTING · '+selectedLightingMode.toUpperCase();
