@@ -8,9 +8,9 @@ import {addOutline,addCuboid,addFacetedTube,addProfileFrame,type Outline,type Sl
 import {HK_OLIVE_POLYMER,HK_MAG_METAL}
  from './weapon-visual-palette.ts';
 import {HK_BARREL_ART} from './hk-barrel-profiles.ts';
-import {addHKFacetedForearm} from './hk-handguard-profiles.ts';
+import {addHKFacetedForearm,addHKHandguardOpenings} from './hk-handguard-profiles.ts';
 import {HK_MAG20_OUTLINE} from './hk-magazine-profiles.ts';
-import {addWeaponPixelMark,addWeaponPixelMarkPair} from './weapon-pixel-detail.ts';
+import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
 
 export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material,
@@ -74,31 +74,34 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  p('magazine',HK_MAG20_OUTLINE,2.08,'mag');
  // Dark integral heel: no disconnected bright bar across the underside.
  b('magazine',1.20,-7.69,0,3.36,.20,2.15,'dark');
- // Two extremely restrained imprinted strokes, flush to the broad steel
- // side faces, not separately casting light or making a ribbed AK magazine.
- addWeaponPixelMarkPair(root,'hk-mag-stamp20',1.27,-5.20,
-  1.052,2.66,3.24);
+ // The simple straight box silhouette beats tiny pale stamped stripes.
 
  // HK slim fore-end: one faceted YZ body. Never an AK upper/lower split.
- const guardMat=parts.handguard==='hk-g3-wood-vented'?wood:HK_OLIVE_POLYMER;
+ const woodGuard=parts.handguard==='hk-g3-wood-vented';
+ const guardMat=woodGuard?wood:HK_OLIVE_POLYMER;
  // A real 8-sided broad-face tube with only a gentle taper at the nose:
  // single mesh, no fragile decorative sleeves or extended tropical furniture.
  addHKFacetedForearm(root,parts.handguard,ids.handguard++,
-  art.handguardStartX,art.handguardEndX,early,guardMat);
+  art.handguardStartX,art.handguardEndX,woodGuard,guardMat);
  b('handguard',4.23,-.15,0,.37,2.76,3.02,'steel');
- // The short end ferrule is physically buried in the fore-end, not a
- // floating full-height collar stacked ahead of its front face.
- p('handguard',[[13.67,-1.36],[13.98,-1.34],
-  [14.08,-1.04],[14.08,1.02],[13.95,1.24],[13.67,1.29]],
-  2.76,'steel');
+ // Four big, face-aligned vents per side instead of a tiny dot strip.
+ // No separate front lip to float beneath the tapered fore-end.
+ addHKHandguardOpenings(root,art.handguardStartX,art.handguardEndX,woodGuard);
 
  // Cocking tube sits above and slightly intersects the handguard roof.
  const tube=addFacetedTube(root,'receiver',parts.receiver,ids.receiver++,
   3.45,14.10,.57,steel);
  tube.position.y=1.58;
- // Enlarged side charging handle: two embedded solids, not a floating tab.
- b('receiver',4.68,1.99,.78,1.35,.55,1.09,'steel');
- b('receiver',4.38,2.08,1.40,.70,.66,.83,'dark');
+ // One oversized side-folded HK cocking handle, carved as a single
+ // low-poly L-shaped silhouette on the LEFT of the tube.
+ // Its foot intersects both the receiver nose and tube; never floats.
+ const handle=p('receiver',[
+  [3.82,1.52],[5.50,1.52],[5.50,2.16],
+  [4.91,2.16],[4.83,2.86],[4.08,2.86],
+  [3.82,2.48]
+ ],.98,'steel');
+ handle.position.z=-1.05;
+ handle.userData.hkCockingHandle=true;
 
  // Six-sided clean exposed nose: miniature roundness rather than the
  // previous square beam, but with the exact existing 22.4 shot-time tip.
@@ -121,37 +124,34 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   [art.frontSightX-.39,1.33],[art.frontSightX-.22,1.47],
   [art.frontSightX+.21,1.47],[art.frontSightX+.51,.10]],
   1.66);
- const hoodGeo=new THREE.TorusGeometry(.89,.25,4,8);
+ // Six broad sides, one thick iconic ring, no fiddly sight hardware.
+ const hoodGeo=new THREE.TorusGeometry(.85,.31,4,6);
  hoodGeo.rotateY(Math.PI/2);
  const hood=new THREE.Mesh(hoodGeo,steel);
  hood.position.set(art.frontSightX,2.34,0);
  hood.name='family-barrel-'+parts.barrel+'-'+ids.barrel++;
  hood.castShadow=true;hood.receiveShadow=true;root.add(hood);
 
- // Low-relief receiver markings are seated on the true exterior side faces.
- addWeaponPixelMark(root,'hk-port',.40,.27,1.775,3.20,1.05);
+ // Widen the EJECTION OPENING and bold bolt-like silver mass in one decal.
+ // Keep it flush on the real right receiver face, not extra floating metal.
+ addWeaponPixelMark(root,'hk-port',.42,.27,1.775,4.35,1.28);
  const selector=addWeaponPixelMark(root,'hk-selector',-3.48,-.67,-1.777,2.05,.60);
  selector.rotation.y=Math.PI;
- const vent=parts.handguard==='hk-g3-wood-vented'?'hk-wood-vents':'hk-poly-vents';
- // The lower pair of hex facets slopes in Z with Y. The decal tilts with
- // the actual surface, rather than floating above its center or clipping.
- // The central broad side facet is flat from x=4.05 to x=11.52.
- // Both vent marks sit just 0.012 units above that exact facet; no
- // tilted long decal traversing the tapered nose.
- addWeaponPixelMarkPair(root,vent,8.75,-.46,
-  early?1.512:1.562,5.10,.48);
- // Early flip-up leaf versus distinctive chunky later rotary sight drum.
- b('receiver',-3.68,1.95,0,2.0,.53,2.45);
+ 
+ // One solid silhouette per rear sight: no separate base/knobs.
+ // Low early folding blade versus a broader, squat G3A3 diopter turret.
  if(early){
-  p('receiver',[[-4.12,2.13],[-4.06,2.86],
-   [-3.87,3.09],[-3.57,3.09],
-   [-3.34,2.84],[-3.12,2.13]],1.26,'steel');
+  const rear=p('receiver',[[-4.34,1.73],[-4.34,2.08],
+   [-4.04,2.08],[-3.89,2.88],[-3.49,2.88],
+   [-3.29,2.11],[-2.96,2.11],[-2.96,1.72]],
+  1.44,'steel');
+  rear.userData.hkRearSight='early-leaf';
  }else{
-  const g=new THREE.CylinderGeometry(.84,.84,1.27,6);
-  g.rotateX(Math.PI/2);
-  const mesh=new THREE.Mesh(g,steel);
-  mesh.position.set(-3.58,2.67,0);
-  mesh.name='family-receiver-'+parts.receiver+'-'+ids.receiver++;
-  mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);
+  const rear=p('receiver',[[-4.48,1.73],[-4.48,2.30],
+   [-4.12,2.32],[-4.06,2.94],
+   [-3.70,3.17],[-3.24,3.17],
+   [-2.92,2.87],[-2.90,1.73]],
+  1.82,'steel');
+  rear.userData.hkRearSight='diopter-drum';
  }
 }

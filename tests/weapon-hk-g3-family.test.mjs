@@ -48,7 +48,7 @@ test('G3 silhouettes retain authored muzzle, seated furniture and miniature budg
   assert.ok(Math.abs(world.max.x-22.4)<.002,id+' art tip');
   assert.ok(Math.abs(a.muzzleX-world.max.x)<.002,id+' game tip');
   assert.ok(world.min.x<-15.10,id+' long fixed stock');
-  assert.ok(g.children.length<=28,id+' mobile mesh budget');
+  assert.ok(g.children.length<=24,id+' lean miniature mesh budget');
   assert.ok(g.children.length>=16,id+' clear silhouette');
   for(const [sa,sb] of [
    ['receiver','stock'],['receiver','grip'],['receiver','magazine'],
@@ -59,7 +59,9 @@ test('G3 silhouettes retain authored muzzle, seated furniture and miniature budg
   const [rear,front]=[
    g.children.filter(x=>x.name.startsWith('family-receiver-')),
    g.children.filter(x=>x.name.startsWith('family-barrel-'))];
-  assert.ok(rear.length>=8&&front.length>=3,id+' sights attached');
+  assert.ok(rear.length>=7&&front.length>=3,id+' seated HK landmarks');
+  assert.equal(g.children.filter(x=>x.userData.hkRearSight).length,1,
+   id+' exactly one simple rear sight');
   clearWeaponSilhouette(g);
  }
 });
@@ -88,17 +90,39 @@ test('R2 HK miniature anatomy stays long, slim and deliberately connected',()=>{
   const sight=g.children.find(c=>c.geometry.type==='TorusGeometry');
   assert.ok(sight,'one open faceted front hood');
   assert.equal(g.children.filter(c=>c.geometry.type==='TorusGeometry').length,1);
-  const sideMarks=g.children.filter(c=>c.name==='family-art-hk-mag-stamp20');
-  assert.equal(sideMarks.length,2,'two face-seated stamp decals');
-  for(const mark of sideMarks)assert.ok(Math.abs(Math.abs(mark.position.z)-1.052)<.001);
-  const vents=g.children.filter(c=>c.name.includes('hk-wood-vents')||
-   c.name.includes('hk-poly-vents'));
-  assert.equal(vents.length,2,'one vent mark per central flat');
-  const expectedZ=id==='hk-g3'?1.512:1.562;
+  assert.equal(g.children.filter(c=>c.name==='family-art-hk-mag-stamp20').length,
+   0,'remove two unnecessary pale magazine stripes');
+  const vents=g.children.filter(c=>c.name==='family-art-hk-handguard-openings');
+  assert.equal(vents.length,2,'one batched opening mesh per side');
+  const expectedZ=id==='hk-g3'?1.518:1.568;
   for(const vent of vents){
-   assert.ok(Math.abs(Math.abs(vent.position.z)-expectedZ)<.001);
-   assert.equal(vent.rotation.x,0,'side mark stays on flat face');
+   assert.equal(vent.userData.hkVentCount,4,'four large openings per side');
+   assert.equal(vent.userData.hkFaceAligned,true);
+   assert.equal(vent.geometry.index.count,24,'eight triangles, one mesh');
+   const a=vent.geometry.getAttribute('position');
+   for(let k=0;k<a.count;k++){
+    assert.ok(Math.abs(Math.abs(a.getZ(k))-expectedZ)<.001,
+     'every opening sits directly on the true flat handguard face');
+   }
   }
+  const handle=g.children.filter(c=>c.userData.hkCockingHandle);
+  assert.equal(handle.length,1,'single overbuilt side-folded HK cocking handle');
+  assert.ok(handle[0].position.z<-.9,'HK handle sits on the left side');
+  const rear=g.children.filter(c=>c.userData.hkRearSight);
+  assert.deepEqual(rear.map(c=>c.userData.hkRearSight),
+   [id==='hk-g3'?'early-leaf':'diopter-drum']);
+  assert.equal(sight.geometry.parameters.tubularSegments,6,
+   'six strong sides rather than a fiddly circular ring');
+  const port=g.children.find(c=>c.name==='family-art-hk-port');
+  assert.ok(port);
+  assert.equal(port.geometry.parameters.width,4.35,'wider HK ejection opening');
+  assert.equal(port.material.map.image.width,24);
+  const pixels=port.material.map.image.data;
+  const boltPixels=[];
+  for(let p=0;p<pixels.length/4;p++){
+   if(pixels[p*4]>85)boltPixels.push(p);
+  }
+  assert.ok(boltPixels.length>=40,'one broad visible light bolt inset');
   const contacts=riflePoseContacts('rifle',cfg);
   assert.ok(contacts.support.far.x<=art.handguardEndX);
   assert.ok(contacts.support.near.x<art.handguardStartX);
