@@ -1856,8 +1856,10 @@ export class TacticalScene3D{
       const flashCue=muzzleFlashCue(actor.weapon,
         firing?.age??Infinity,muzzleAttachment);
       object.flash.visible=flashCue.active&&actor.health>0;
-      object.flash.position.x=actor.weaponConfiguration?
-       resolveWeaponAssembly(actor.weaponConfiguration).muzzleX:19.5;
+      const gunTip=actor.weaponConfiguration?
+       resolveWeaponAssembly(actor.weaponConfiguration):null;
+      object.flash.position.x=gunTip?.muzzleX??19.5;
+      object.flash.position.y=gunTip?.muzzleY??0;
       if(flashCue.active)object.flash.scale.setScalar(flashCue.scale);
       const plannedDoor=actor.plan[0]?.kind==='door'?
         s.doors.find(d=>d.id===actor.plan[0].doorId):undefined;

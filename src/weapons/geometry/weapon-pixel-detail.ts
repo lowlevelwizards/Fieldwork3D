@@ -3,24 +3,24 @@
  * Art-only overlays have no cast shadow and never affect weapon handling.
  */
 import * as THREE from 'three';
-export type WeaponMark='ar-port'|'ak-port'|'ak-selector'|'ris-panel'|'m5-panel'|'ras-panel'|'pri-vents'|'poly-ribs'|'car-ribs'|'a1-vents'|'ar-mag-stamp20'|'ar-mag-stamp30'|'ar-poly-panel';
+export type WeaponMark='ar-port'|'ak-port'|'ak-selector'|'ris-panel'|'m5-panel'|'ras-panel'|'pri-vents'|'poly-ribs'|'car-ribs'|'a1-vents'|'ar-mag-stamp20'|'ar-mag-stamp30'|'ar-poly-panel'|'ar-birdcage';
 const dimensions:Record<WeaponMark,readonly [number,number]>={
  'ar-port':[16,12],'ak-port':[16,12],
  'ak-selector':[16,8],'ris-panel':[32,8],'pri-vents':[16,8],
- 'poly-ribs':[32,8],'car-ribs':[24,8],'a1-vents':[24,8],
+ 'poly-ribs':[32,10],'car-ribs':[24,10],'a1-vents':[32,10],
  'm5-panel':[32,8],'ras-panel':[32,8],
  'ar-mag-stamp20':[16,16],'ar-mag-stamp30':[16,24],
- 'ar-poly-panel':[16,24]
+ 'ar-poly-panel':[16,24],'ar-birdcage':[16,8]
 };
 const shared=new Map<WeaponMark,THREE.MeshBasicMaterial>();
 function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
  const cached=shared.get(mark);if(cached)return cached;
  const [w,h]=dimensions[mark],data=new Uint8Array(w*h*4);
- const pixel=(x:number,y:number,light=false)=>{
+ const pixel=(x:number,y:number,light=false,strong=false)=>{
   if(x<0||y<0||x>=w||y>=h)return;
   const n=(y*w+x)*4;
-  const rgb=light?[88,99,88]:[29,36,32];
-  data[n]=rgb[0];data[n+1]=rgb[1];data[n+2]=rgb[2];data[n+3]=210;
+  const rgb=strong?[9,13,12]:light?[88,99,88]:[24,31,27];
+  data[n]=rgb[0];data[n+1]=rgb[1];data[n+2]=rgb[2];data[n+3]=strong?255:232;
  };
  if(mark==='ar-port'){
   // A tall receiver-side rectangle with one illuminated upper seam.
@@ -36,18 +36,40 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
   for(let y=2;y<=5;y++)for(let x=2;x<=5;x++)pixel(x,y,true);
   for(let x=6;x<=13;x++)pixel(x,3+Math.floor((x-6)/4));
  }else if(mark==='poly-ribs'||mark==='car-ribs'){
-  // Seven generous A2 ribs or five compact retro ribs: no modeled teeth.
-  for(const x of (mark==='poly-ribs'?[3,7,11,15,19,23,27]:[3,7,11,15,19]))
-   for(let y=1;y<=6;y++){pixel(x,y);pixel(x+1,y);}
+  const ribX=mark==='poly-ribs'?[3,7,11,15,19,23,27]:
+   [3,7,11,15,19];
+  // Strong dark bands run the full visible height, and one continuous
+  // long mold seam crosses the middle. These are not holes or rail covers.
+  for(const x of ribX)
+   for(let y=1;y<h-1;y++)pixel(x,y,false,true);
+  for(let x=2;x<w-2;x++)pixel(x,Math.floor(h/2),false,true);
  }else if(mark==='a1-vents'){
-  // Upper-edge vent hints only. Preserve the large uninterrupted triangle.
-  for(const x of [3,7,11,15,19])for(let y=2;y<=3;y++)pixel(x,y);
+  // The A1 has dark upper ventilation apertures; never light gray dots.
+  for(const x of [3,9,15,21,27])
+   for(let dx=0;dx<3;dx++)for(let y=2;y<=6;y++)
+    pixel(x+dx,y,false,true);
  }else if(mark==='ar-mag-stamp20'||mark==='ar-mag-stamp30'){
-  // One texture holds three restrained full-height pressed STANAG ribs.
-  for(const x of [3,8,13])for(let y=2;y<h-2;y++)pixel(x,y);
+  // Exactly two substantial press lines. On the 30-rounder their x center
+  // curves with the contour toward the lower/front edge.
+  for(let y=2;y<h-2;y++){
+   const drift=mark==='ar-mag-stamp30'?Math.floor((y-2)/8):0;
+   for(const x of [3,10])for(let dx=0;dx<2;dx++)
+    pixel(x+drift+dx,y,false,true);
+  }
  }else if(mark==='ar-poly-panel'){
-  for(let x=3;x<13;x++){pixel(x,3);pixel(x,h-4);}
-  for(let y=3;y<h-3;y++){pixel(3,y);pixel(12,y);}
+  // Thick four-sided patch, canted to track the magazine's bend.
+  for(let y=3;y<h-3;y++){
+   const shift=Math.floor((y-3)/9);
+   for(const x of [3+shift,4+shift,12+shift,13+shift])
+    pixel(x,y,false,true);
+  }
+  for(let x=3;x<14;x++)for(let dy=0;dy<2;dy++){
+   pixel(x,3+dy,false,true);pixel(x,20-dy,false,true);
+  }
+ }else if(mark==='ar-birdcage'){
+  for(const x of [5,10])
+   for(let dx=0;dx<2;dx++)for(let y=1;y<=6;y++)
+    pixel(x+dx,y,false,true);
  }else if(mark==='pri-vents'){
   for(const x of [3,7,11])for(let y=3;y<=5;y++)pixel(x,y);
   for(let x=3;x<=13;x++)pixel(x,2,true);

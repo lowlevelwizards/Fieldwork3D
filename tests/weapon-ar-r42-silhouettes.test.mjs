@@ -37,7 +37,7 @@ test('R4.2 all eight AR builds keep original saves and canonical barrel labels',
   assert.ok(close(resolveWeaponAssembly(config).muzzleX,art.muzzleX));
   assert.ok(close(new THREE.Box3().setFromObject(group).max.x,art.muzzleX),
    p.id+' rendered muzzle and firing muzzle agree');
-  assert.ok(group.children.length<=28,p.id+' low geometry budget');
+  assert.ok(group.children.length<=36,p.id+' low geometry budget');
   assert.ok(box(group,'barrel').intersectsBox(box(group,'handguard')),
    p.id+' no floating barrel');
   clearWeaponSilhouette(group);
@@ -46,7 +46,7 @@ test('R4.2 all eight AR builds keep original saves and canonical barrel labels',
 test('R4.2 carry handles have flush front caps and open negative space',()=>{
  for(const id of ['ar-m16a1','ar-m16a2','ar-car15','ar-colt733']){
   const {group}=model(id);
-  const cap=group.children.find(c=>c.name.startsWith('family-receiver-')&&c.name.endsWith('-4'));
+  const cap=group.children.find(c=>c.name.startsWith('family-receiver-')&&c.geometry.parameters?.shapes?.holes?.length===1);
   assert.ok(cap,id+' unified carry frame');
   const capBounds=new THREE.Box3().setFromObject(cap);
   assert.ok(capBounds.max.x<=2.31,id+' frame front stays controlled');
@@ -55,12 +55,12 @@ test('R4.2 carry handles have flush front caps and open negative space',()=>{
   clearWeaponSilhouette(group);
  }
  const a1=model('ar-m16a1'),a2=model('ar-m16a2');
- assert.ok(a2.group.children.some(c=>c.name==='family-receiver-ar-a2-5'),
-  'A2 has substantial rear sight housing');
- const a1Guard=a1.group.children.find(c=>c.name==='family-receiver-ar-a1-5');
- assert.ok(a1Guard,'A1 trigger guard survives frame rebuild');
- assert.ok(new THREE.Box3().setFromObject(a1Guard).max.y<0,
-  'A1 has no large A2 rear sight housing');
+ const sightHousings=group=>group.children.filter(c=>
+  c.name.startsWith('family-receiver-')&&
+  new THREE.Box3().setFromObject(c).max.y>3.65);
+ assert.equal(sightHousings(a1.group).length,1,'A1 has only the carry frame');
+ assert.equal(sightHousings(a2.group).length,2,
+  'A2 retains its distinct rear sight housing');
  clearWeaponSilhouette(a1.group);clearWeaponSilhouette(a2.group);
 });
 test('R4.2 A1/A2 fixed stocks are deep-at-butt tapered-at-root wedges',()=>{

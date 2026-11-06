@@ -22,8 +22,8 @@ export type VisualAnatomy={
  portHeightY:number;
 };
 export const AR_VISUAL_ANATOMY:Readonly<VisualAnatomy>={
- gripShiftX:-2.18,gripDepthZ:2.45,
- magwellCenterX:1.0,magazineWidthX:3.05,magazineDepthZ:2.15,
+ gripShiftX:-2.74,gripDepthZ:2.08,
+ magwellCenterX:1.0,magazineWidthX:3.38,magazineDepthZ:1.83,
  magazineTopY:-2.15,magwellTopY:-1.1,magwellBottomY:-2.8,
  portX:1.0,portY:.72,portWidthX:2.85,portHeightY:1.38
 };
