@@ -4,7 +4,7 @@ import {newSession} from '../src/breach-game.ts';
 import {MissionRecorder} from '../src/breach-replay.ts';
 import {captureReplayArchive} from '../src/breach-replay-archive.ts';
 import {replayLibrarySummary,sortReplayLibrary,replayLibrarySupported,
-  REPLAY_LIBRARY_LIMIT,saveReplayArchive}
+  REPLAY_LIBRARY_LIMIT,saveReplayArchive,normalizeReplayBookmarks}
   from '../src/breach-replay-library.ts';
 test('library metadata stays small and never embeds the film',()=>{
   const s=newSession(0,417),r=new MissionRecorder();
@@ -32,4 +32,22 @@ test('favorite-first library order is deterministic and non-mutating',()=>{
 test('unavailable IndexedDB fails explicitly and cannot pretend to save',async()=>{
   assert.equal(replayLibrarySupported(),false);
   await assert.rejects(saveReplayArchive({}),/invalid or incompatible/);
+});
+
+test('lightweight bookmarks validate, sort, dedupe and never contain film',()=>{
+  const marks=[
+    {id:'bookmark-3',t:5,label:'BREACH'},
+    {id:'bookmark-1',t:2,label:'CONTACT'},
+    {id:'bookmark-1',t:4,label:'DUPLICATE'},
+    {id:'bad',t:99,label:'FUTURE'},
+    {id:'bad2',t:-4,label:'NEGATIVE'}
+  ];
+  assert.deepEqual(normalizeReplayBookmarks(marks,10),[
+    {id:'bookmark-1',t:2,label:'CONTACT'},
+    {id:'bookmark-3',t:5,label:'BREACH'}
+  ]);
+  assert.equal(normalizeReplayBookmarks([],0).length,0);
+  assert.equal(normalizeReplayBookmarks(Array.from({length:80},(_,i)=>({
+    id:'b'+i,t:i/10,label:'MARK'
+  })),20).length,30);
 });

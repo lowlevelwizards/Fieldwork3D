@@ -232,6 +232,11 @@
     <button id="closeReplayLibrary" type="button" aria-label="Close replay library">✕ CLOSE</button>
   </div>
   <p class="replay-library-hint">Full recordings saved on this device. Watch, favorite, or delete without changing mission progress.</p>
+  <div class="replay-library-import">
+    <button id="replayImportButton" type="button">IMPORT REPLAY FILE</button>
+    <input id="replayImportInput" type="file" accept=".gz,application/gzip" hidden
+      aria-label="Import a compressed Fieldwork replay file"/>
+  </div>
   <output id="replayLibraryStatus" class="replay-library-status" aria-live="polite"></output>
   <div id="replayLibraryList" class="replay-library-list" role="list"></div>
 </section>

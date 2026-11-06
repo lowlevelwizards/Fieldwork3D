@@ -5,6 +5,7 @@ on:
       - 'src/breach-replay-archive.ts'
       - 'src/breach-replay-motion.ts'
       - 'src/breach-replay-library.ts'
+      - 'src/breach-replay-portable.ts'
       - 'src/breach-main.ts'
       - 'index.html'
       - 'scripts/smoke-replay-r3-library.mjs'
@@ -16,7 +17,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   library-smoke:
-    if: ${{ startsWith(github.head_ref, 'feature/replay-r3-library-') }}
+    if: ${{ startsWith(github.head_ref, 'feature/replay-r3-library-') || startsWith(github.head_ref, 'feature/replay-r3-portable-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 11
     steps:

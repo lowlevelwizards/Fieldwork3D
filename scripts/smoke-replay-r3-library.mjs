@@ -87,6 +87,12 @@ try{
   await page.locator('.replay-library-row button').first().click();
   await page.waitForFunction(()=>
     document.querySelector('#replayPanel')?.hidden===false,null,{timeout:15000});
+  await page.evaluate(()=>document.querySelector('#replayFeedToggle').click());
+  await page.evaluate(()=>document.querySelector('#replayBookmark').click());
+  await page.waitForFunction(async()=>{
+    const {getSavedReplayBookmarks}=await import('/src/breach-replay-library.ts');
+    return (await getSavedReplayBookmarks('replay-browser-001')).length===1;
+  },null,{timeout:12000});
   await page.evaluate(()=>document.querySelector('#replayExit').click());
   check(await page.evaluate(()=>document.querySelector('#replayPanel').hidden),
     'Exiting imported replay should restore the previous live mission');
@@ -94,17 +100,44 @@ try{
   await page.waitForFunction(()=>
     document.querySelectorAll('.replay-library-row').length===1,
     null,{timeout:12000});
-  await page.locator('.replay-library-row button[aria-label^="Delete replay"]').click();
+  // Full portable archive transfer must keep the same site, film and mark.
+  const downloadPromise=page.waitForEvent('download',{timeout:20000});
+  await page.locator('.replay-library-row button').filter({hasText:'EXPORT'}).click();
+  const download=await downloadPromise;
+  check(download.suggestedFilename().endsWith('.fieldwork-replay.json.gz'),
+    'Portable export must use the versioned replay extension');
+  const portableFile=await download.path();
+  check(!!portableFile,'No portable replay file downloaded');
+  await page.locator('#replayImportInput').setInputFiles(portableFile);
+  await page.waitForFunction(()=>
+    document.querySelectorAll('.replay-library-row').length===2,null,
+    {timeout:15000});
+  const transferred=await page.evaluate(async()=>{
+    const {listSavedReplays,getSavedReplayBookmarks,loadSavedReplay}
+      =await import('/src/breach-replay-library.ts');
+    const recordings=await listSavedReplays();
+    const imported=recordings.find(x=>x.id.startsWith('replay-import-'));
+    if(!imported)return null;
+    return {site:(await loadSavedReplay(imported.id)).manifest.site?.seed,
+      marks:(await getSavedReplayBookmarks(imported.id)).length,
+      duration:imported.duration};
+  });
+  check(transferred?.site===3948&&transferred.marks===1&&
+    transferred.duration===.1,
+    'Portable replay import lost site, film duration or bookmarks: '+
+    JSON.stringify(transferred));
+  await page.locator('.replay-library-row button[aria-label^="Delete replay"]')
+    .first().click();
   check((await page.locator('.replay-library-row button[data-confirm="yes"]')
     .count())===1,'Delete must require a second confirmation');
   await page.locator('.replay-library-row button[data-confirm="yes"]').click();
   await page.waitForFunction(()=>
-    document.querySelectorAll('.replay-library-row').length===0,null,
+    document.querySelectorAll('.replay-library-row').length===1,null,
     {timeout:12000});
   check(errors.length===0,'Browser errors: '+errors.join(' | '));
   console.log('Replay R3 library smoke PASS',
     JSON.stringify({duration:loaded.duration,site:loaded.site,
-      filmFrames:first.index[0].frameCount,dialog}));
+      filmFrames:first.index[0].frameCount,dialog,imported:transferred}));
 }finally{
   if(browser)await browser.close();
   server.kill('SIGTERM');

@@ -6,6 +6,7 @@
 import {
   replayArchiveIsValid,type ReplayArchiveV1
 } from './breach-replay-archive.ts';
+import type {ReplayBookmark} from './breach-replay-chapters.ts';
 
 export const REPLAY_LIBRARY_LIMIT=24;
 const DB_NAME='fieldwork-breach-replay-library';
@@ -17,6 +18,7 @@ export type SavedReplaySummary={
   missionType:string;duration:number;
   frameCount:number;shotCount:number;
   complete:boolean;favorite:boolean;
+  bookmarks?:ReplayBookmark[];
 };
 export function replayLibrarySummary(
   archive:ReplayArchiveV1,favorite=false
@@ -29,7 +31,7 @@ export function replayLibrarySummary(
     frameCount:archive.frames.length,
     shotCount:archive.shots.length,
     complete:archive.completeness.complete,
-    favorite
+    favorite,bookmarks:archive.bookmarks??[]
   };
 }
 export function sortReplayLibrary(
@@ -100,7 +102,8 @@ export async function saveReplayArchive(archive:ReplayArchiveV1):Promise<void>{
     }
     const prior=await requestValue(index.get(archive.id) as IDBRequest<
       SavedReplaySummary|undefined>);
-    index.put(replayLibrarySummary(archive,prior?.favorite??false));
+    index.put({...replayLibrarySummary(archive,prior?.favorite??false),
+      bookmarks:prior?.bookmarks??archive.bookmarks??[]});
     tx.objectStore(RECORDINGS).put(archive);
     await done;
   }finally{db.close();}
@@ -140,6 +143,56 @@ export async function deleteSavedReplay(id:string):Promise<void>{
     const done=transactionDone(tx);
     tx.objectStore(INDEX).delete(id);
     tx.objectStore(RECORDINGS).delete(id);
+    await done;
+  }finally{db.close();}
+}
+
+/** Small metadata-only bookmark updates; never reserialize the heavy film. */
+export function normalizeReplayBookmarks(
+  bookmarks:readonly ReplayBookmark[],duration:number
+):ReplayBookmark[]{
+  const seen=new Set<string>(),out:ReplayBookmark[]=[];
+  for(const mark of bookmarks){
+    if(!mark||typeof mark.id!=='string'||mark.id.length>100||
+      !mark.id||typeof mark.label!=='string'||mark.label.length>55||
+      !Number.isFinite(mark.t)||mark.t<0||mark.t>duration||
+      seen.has(mark.id))continue;
+    seen.add(mark.id);
+    out.push({id:mark.id,t:mark.t,label:mark.label});
+    if(out.length>=30)break;
+  }
+  return out.sort((a,b)=>a.t-b.t);
+}
+export async function getSavedReplayBookmarks(id:string):Promise<ReplayBookmark[]>{
+  const db=await openLibrary();
+  try{
+    const tx=db.transaction(INDEX,'readonly'),done=transactionDone(tx);
+    const meta=await requestValue(tx.objectStore(INDEX).get(id) as
+      IDBRequest<SavedReplaySummary|undefined>);
+    await done;
+    if(!meta)throw Error('Saved replay not found');
+    return normalizeReplayBookmarks(meta.bookmarks??[],meta.duration);
+  }finally{db.close();}
+}
+export async function saveReplayBookmarks(
+  id:string,bookmarks:readonly ReplayBookmark[]
+):Promise<void>{
+  const db=await openLibrary();
+  try{
+    const tx=db.transaction(INDEX,'readwrite'),done=transactionDone(tx);
+    const index=tx.objectStore(INDEX);
+    const meta=await requestValue(index.get(id) as
+      IDBRequest<SavedReplaySummary|undefined>);
+    if(!meta){
+      tx.abort();try{await done;}catch{}
+      throw Error('Saved replay not found');
+    }
+    const safe=normalizeReplayBookmarks(bookmarks,meta.duration);
+    if(safe.length!==bookmarks.length){
+      tx.abort();try{await done;}catch{}
+      throw Error('Replay bookmarks are invalid or exceed the limit');
+    }
+    index.put({...meta,bookmarks:safe});
     await done;
   }finally{db.close();}
 }
