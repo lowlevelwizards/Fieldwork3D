@@ -91,9 +91,16 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const tube=addFacetedTube(root,'receiver',parts.receiver,ids.receiver++,
   3.45,14.10,.57,steel);
  tube.position.y=1.58;
- // Enlarged side charging handle: two embedded solids, not a floating tab.
- b('receiver',4.68,1.99,.78,1.35,.55,1.09,'steel');
- b('receiver',4.38,2.08,1.40,.70,.66,.83,'dark');
+ // One oversized side-folded HK cocking handle, carved as a single
+ // low-poly L-shaped silhouette on the LEFT of the tube.
+ // Its foot intersects both the receiver nose and tube; never floats.
+ const handle=p('receiver',[
+  [3.82,1.52],[5.50,1.52],[5.50,2.16],
+  [4.91,2.16],[4.83,2.86],[4.08,2.86],
+  [3.82,2.48]
+ ],.98,'steel');
+ handle.position.z=-1.05;
+ handle.userData.hkCockingHandle=true;
 
  // Six-sided clean exposed nose: miniature roundness rather than the
  // previous square beam, but with the exact existing 22.4 shot-time tip.
@@ -116,30 +123,32 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   [art.frontSightX-.39,1.33],[art.frontSightX-.22,1.47],
   [art.frontSightX+.21,1.47],[art.frontSightX+.51,.10]],
   1.66);
- const hoodGeo=new THREE.TorusGeometry(.89,.25,4,8);
+ // Six broad sides, one thick iconic ring, no fiddly sight hardware.
+ const hoodGeo=new THREE.TorusGeometry(.85,.31,4,6);
  hoodGeo.rotateY(Math.PI/2);
  const hood=new THREE.Mesh(hoodGeo,steel);
  hood.position.set(art.frontSightX,2.34,0);
  hood.name='family-barrel-'+parts.barrel+'-'+ids.barrel++;
  hood.castShadow=true;hood.receiveShadow=true;root.add(hood);
 
- // Low-relief receiver markings are seated on the true exterior side faces.
- addWeaponPixelMark(root,'hk-port',.40,.27,1.775,3.20,1.05);
+ // Widen the EJECTION OPENING and bold bolt-like silver mass in one decal.
+ // Keep it flush on the real right receiver face, not extra floating metal.
+ addWeaponPixelMark(root,'hk-port',.42,.27,1.775,4.35,1.28);
  const selector=addWeaponPixelMark(root,'hk-selector',-3.48,-.67,-1.777,2.05,.60);
  selector.rotation.y=Math.PI;
  
- // Early flip-up leaf versus distinctive chunky later rotary sight drum.
- b('receiver',-3.68,1.95,0,2.0,.53,2.45);
+ // One solid silhouette per rear sight: no separate base/knobs.
+ // Low early folding blade versus a broader, squat G3A3 diopter turret.
  if(early){
-  p('receiver',[[-4.12,2.13],[-4.06,2.86],
-   [-3.87,3.09],[-3.57,3.09],
-   [-3.34,2.84],[-3.12,2.13]],1.26,'steel');
+  p('receiver',[[-4.34,1.73],[-4.34,2.08],
+   [-4.04,2.08],[-3.89,2.88],[-3.49,2.88],
+   [-3.29,2.11],[-2.96,2.11],[-2.96,1.72]],
+  1.44,'steel');
  }else{
-  const g=new THREE.CylinderGeometry(.84,.84,1.27,6);
-  g.rotateX(Math.PI/2);
-  const mesh=new THREE.Mesh(g,steel);
-  mesh.position.set(-3.58,2.67,0);
-  mesh.name='family-receiver-'+parts.receiver+'-'+ids.receiver++;
-  mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);
+  p('receiver',[[-4.48,1.73],[-4.48,2.30],
+   [-4.12,2.32],[-4.06,2.94],
+   [-3.70,3.17],[-3.24,3.17],
+   [-2.92,2.87],[-2.90,1.73]],
+  1.82,'steel');
  }
 }
