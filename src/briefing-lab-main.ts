@@ -7,6 +7,7 @@ import {eligibleIncidents} from './briefing/incident-catalog.ts';
 import {selectIncident} from './briefing/incident-director.ts';
 import {createOperationDossier,presentOperationDossier} from './briefing/briefing-composer.ts';
 import {validateOperationDossier} from './briefing/briefing-validation.ts';
+import {auditBriefingVariations} from './briefing/briefing-audit.ts';
 import type {LabGenerationRequest,LabGenerationResponse} from './briefing-lab-worker.ts';
 
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
@@ -24,6 +25,8 @@ const ui={
   rerollWording:el<HTMLButtonElement>('rerollWording'),
   copy:el<HTMLButtonElement>('copyText'),
   export:el<HTMLButtonElement>('exportDossier'),
+  audit:el<HTMLButtonElement>('audit24'),
+  auditOutput:el<HTMLElement>('auditOutput'),
   status:el<HTMLElement>('labStatus'),title:el<HTMLElement>('output-title'),
   meta:el<HTMLElement>('operationMeta'),text:el<HTMLElement>('briefText'),
   comparison:el<HTMLElement>('compareCards'),
@@ -121,6 +124,22 @@ function generateSite(){
   worker.postMessage(message);
 }
 ui.generate.addEventListener('click',generateSite);
+ui.audit.addEventListener('click',()=>{
+  if(!truth)return;
+  const results=auditBriefingVariations(truth,24);
+  ui.auditOutput.textContent=[
+    results.samples+' BRIEFINGS · '+results.uniqueFamilies+' INCIDENT FAMILIES',
+    results.uniqueLeads+' DISTINCT OPENINGS · '+results.uniqueTitles+' OPERATION TITLES',
+    'REPEATED LEADS: '+results.repeatedLeads+
+      ' · VALIDATION ISSUES: '+results.validationErrors.length,
+    ...results.validationErrors.slice(0,3),
+    '',
+    ...results.previews.slice(0,12).map((p,i)=>
+      String(i+1).padStart(2,'0')+'  '+p.incident.toUpperCase()+
+        ' / '+p.quality.toUpperCase()+' / '+p.style.toUpperCase()+
+        '\n    '+p.excerpt)
+  ].join('\n');
+});
 ui.steer.addEventListener('change',()=>{
   ui.status.textContent=ui.steer.checked?
     'STEERING ENABLED FOR NEXT SITE GENERATION · current mission unchanged':
