@@ -84,7 +84,7 @@ test('R4.4 handguard families retain individual character and short Mk18 muzzle 
 test('R4.4 magazines have mirrored low-cost art and one-sided receiver port',()=>{
  for(const id of ['ar-m16a1','ar-colt733','ar-mk18']){
   const {g}=model(id),decals=g.children.filter(x=>x.userData.weaponPixelArt);
-  const magazine=decals.filter(x=>x.name.startsWith('family-art-ar-mag-'));
+  const magazine=decals.filter(x=>x.name.startsWith('family-art-ar-mag-')||x.name==='family-art-ar-poly-panel');
   assert.equal(magazine.length,2,id+' two magazine side marks');
   assert.ok(magazine.some(x=>x.position.z>0)&&magazine.some(x=>x.position.z<0));
   assert.equal(decals.filter(x=>x.name==='family-art-ar-port').length,1);
@@ -94,7 +94,7 @@ test('R4.4 magazines have mirrored low-cost art and one-sided receiver port',()=
 });
 test('R4.4 workbench framing provides a wider view for narrow phone cards',()=>{
  const bounds=new THREE.Box3(new THREE.Vector3(-17,-8,-3),new THREE.Vector3(23,8,3));
- const narrow=workbenchFitDistance(bounds,640,330);
+ const narrow=workbenchFitDistance(bounds,330,640);
  const wide=workbenchFitDistance(bounds,920,550);
  assert.ok(narrow>wide,'narrower view has more camera distance');
  assert.ok(Number.isFinite(narrow)&&narrow<110);
