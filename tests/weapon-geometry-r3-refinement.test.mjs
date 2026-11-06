@@ -95,8 +95,9 @@ test('R3: body socket labels project over real mesh envelopes, not floating cons
 test('R3: non-Mk18 ARs are consistently near-black while Mk18 furniture is FDE',()=>{
  for(const id of ['ar-m16a1','ar-m16a4','ar-car15','ar-m4a1']){
   const {group}=model(id);
-  assert.ok(group.children.every(m=>[AR_BLACK_METAL,AR_BLACK_POLYMER]
-   .includes(m.material)),id+' black only');
+  assert.ok(group.children.filter(m=>!m.userData.weaponPixelArt).every(m=>
+   [AR_BLACK_METAL,AR_BLACK_POLYMER].includes(m.material)),
+   id+' primary geometry black only');
   clearWeaponSilhouette(group);
  }
  const {group}=model('ar-mk18');
