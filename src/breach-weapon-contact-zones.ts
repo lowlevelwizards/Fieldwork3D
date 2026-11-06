@@ -1,0 +1,43 @@
+/** Physical support-grip regions use the exact AR/AK furniture extents from
+ * the visible silhouette builders. This never changes shot-time ballistics.
+ */
+import type {WeaponId} from './breach-combat.ts';
+import {resolveWeaponAssembly,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
+import {AR_VISUAL_AXIS_Y} from './weapons/geometry/ar-barrel-profiles.ts';
+import {akBarrelArt,AK_BARREL_ART} from './weapons/geometry/ak-barrel-profiles.ts';
+export type RiflePoint={x:number;y:number;z:number};
+export type RifleContactRange={near:RiflePoint;far:RiflePoint;preferredFraction:number};
+export type RiflePoseContacts={family:'ar'|'ak';stock:RiflePoint;
+ primary:RiflePoint;support:RifleContactRange;scale:number};
+export const AR_HANDGUARD_START=3.55;
+export function arHandguardEnd(id:string):number{
+ const long=['ar-triangle','ar-round','ar-m5-rail','ar-pri-tube'].includes(id);
+ const short=['ar-compact-rail','ar-risii'].includes(id);
+ const retro=id==='ar-car15-ribbed'||id==='ar-733-ribbed';
+ return id==='ar-pri-tube'?15.70:id==='ar-risii'?13.38:
+ id==='ar-733-ribbed'?11.05:long?14.1:retro?11.8:short?15.05:12.2;
+}
+export const akHandguardStart=(receiver:string)=>receiver==='akcompact'?3.05:3.50;
+export function riflePoseContacts(
+ id:WeaponId,config?:WeaponConfiguration):RiflePoseContacts|null{
+ if(!config||config.weapon!==id||!config.build)return null;
+ const b=config.build;
+ if(b.family!=='ar'&&b.family!=='ak')return null;
+ const a=resolveWeaponAssembly(config),ar=b.family==='ar';
+ const start=ar?AR_HANDGUARD_START:akHandguardStart(b.parts.receiver);
+ const end=ar?arHandguardEnd(b.parts.handguard):
+  (akBarrelArt(b.parts.barrel)??AK_BARREL_ART['ak-long']).handguardFrontX;
+ const near=start+(ar?1.12:1.03);
+ const far=Math.max(near+.55,end-(ar?1.36:1.17));
+ const y=ar?AR_VISUAL_AXIS_Y-1.40:-1.40;
+ return {family:b.family,scale:a.lengthScale,
+  stock:{x:a.stockX,y:0,z:0},primary:{x:a.primaryX,y:a.primaryY,z:1.8},
+  support:{near:{x:near,y,z:-1.55},far:{x:far,y,z:-1.55},
+   preferredFraction:ar?.22:.16}};
+}
+export function supportContactAt(r:RifleContactRange,t:number):RiflePoint{
+ const f=Math.min(1,Math.max(0,t));
+ return {x:r.near.x+(r.far.x-r.near.x)*f,
+  y:r.near.y+(r.far.y-r.near.y)*f,
+  z:r.near.z+(r.far.z-r.near.z)*f};
+}

@@ -9,6 +9,7 @@ import {addARFacetedForearm,addARPolymerRibs,addARA1SurfaceVents} from './ar-han
 import {arMagazineCurve,arMagazineOutline,arMagazineRibOutlines,arMagazinePolyBaseplate,addARPolymerMagazineBody} from './ar-magazine-profiles.ts';
 import {addARRailSegments} from './ar-rail-profiles.ts';
 import {AR_BARREL_ART,AR_VISUAL_AXIS_Y} from './ar-barrel-profiles.ts';
+import {arHandguardEnd,AR_HANDGUARD_START} from '../../breach-weapon-contact-zones.ts';
 import {AR_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
 import {addWeaponPixelMark,addWeaponPixelMarkPair} from './weapon-pixel-detail.ts';
@@ -177,10 +178,8 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const long=['ar-triangle','ar-round','ar-m5-rail','ar-pri-tube'].includes(guard);
  const short=['ar-compact-rail','ar-risii'].includes(guard);
  const retro=guard==='ar-car15-ribbed'||guard==='ar-733-ribbed';
- const end=guard==='ar-pri-tube'?15.70:
-  guard==='ar-risii'?13.38:guard==='ar-733-ribbed'?11.05:long?14.1:
-  retro?11.8:short?15.05:12.2;
- const start=3.55; // deliberate slight overlap with receiver upper
+ const end=arHandguardEnd(guard);
+ const start=AR_HANDGUARD_START; // shared with actual grip envelope
  const isFreefloat=guard==='ar-risii'||guard==='ar-compact-rail';
  if(guard!=='ar-pri-tube'){
   if(isFreefloat)
