@@ -106,7 +106,7 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Old-style raised front sight, absent on compact modern rail silhouette.
  if(!short){
   // Oversized A-frame front sight: genuine open V negative space.
-  line('barrel',[16.35,.35],[16.8,3.45],.78,1.75,0);
-  line('barrel',[17.35,.35],[16.8,3.45],.78,1.75,0);
+  line('barrel',[15.95,.35],[16.85,3.45],.68,1.75,0);
+  line('barrel',[17.75,.35],[16.85,3.45],.68,1.75,0);
  }else b('barrel',19.06,0,0,.88,1.75,1.9,1);
 }
