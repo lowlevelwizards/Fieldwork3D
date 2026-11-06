@@ -24,8 +24,13 @@ try{
     viewport:{width:390,height:844},deviceScaleFactor:1,
     hasTouch:true,isMobile:true,acceptDownloads:true
   });
-  const pageErrors=[];
+  const pageErrors=[],browserLogs=[];
   page.on('pageerror',e=>pageErrors.push(e.message));
+  page.on('console',message=>{
+    if(message.type()==='error'||message.type()==='warning'||
+      message.text().includes('Replay Video'))
+      browserLogs.push(message.type()+': '+message.text().slice(0,350));
+  });
   await page.goto(url,{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>
     document.querySelector('#phase')?.textContent==='PLANNING'&&
@@ -66,7 +71,22 @@ try{
     if(!(trigger instanceof HTMLButtonElement))throw Error('Missing stop button');
     trigger.click();
   });
-  const download=await downloadPromise;
+  let download;
+  try{download=await downloadPromise;}
+  catch(error){
+    const status=await page.evaluate(()=>({
+      button:document.querySelector('#replayExportVideo')?.textContent,
+      replayPanel:document.querySelector('#replayPanel')?.hidden,
+      clock:document.querySelector('#replayClock')?.textContent,
+      bodyTail:document.body.innerText.slice(-900),
+      webgl:(document.querySelector('#breach3dCanvas') instanceof HTMLCanvasElement),
+      mimeMP4:MediaRecorder.isTypeSupported('video/mp4'),
+      mimeWebM:MediaRecorder.isTypeSupported('video/webm')
+    }));
+    console.error('REPLAY VIDEO DIAGNOSTIC',
+      JSON.stringify({status,pageErrors,browserLogs},null,2));
+    throw error;
+  }
   const filename=download.suggestedFilename();
   if(!/\.(webm|mp4)$/.test(filename))
     throw Error('Unexpected replay video extension: '+filename);
