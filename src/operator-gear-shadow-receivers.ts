@@ -32,6 +32,11 @@ export function refineStaticShadowGeometry(
  const indices=geometry.index?.array;
  const triangles=(indices?indices.length:pos.count)/3;
  const plans:number[]=[];
+ // Reuse scratch rather than creating three vectors and two cross products
+ // for each face of every first-use outfit. Geometry and density unchanged.
+ const p0=new THREE.Vector3(),p1=new THREE.Vector3(),
+  p2=new THREE.Vector3(),edgeA=new THREE.Vector3(),
+  edgeB=new THREE.Vector3();
  // Reserve ALL original triangles before adding any lighting samples.
  // A late unrefined triangle is not allowed to exceed the vertex cap.
  let count=triangles*3,changed=false;
@@ -40,11 +45,13 @@ export function refineStaticShadowGeometry(
   const ia=indices?indices[t*3]:t*3,
    ib=indices?indices[t*3+1]:t*3+1,
    ic=indices?indices[t*3+2]:t*3+2;
-  const pts=[ia,ib,ic].map(i=>new THREE.Vector3().fromBufferAttribute(pos,i));
-  const ab=pts[1].distanceTo(pts[0]),ac=pts[2].distanceTo(pts[0]),
-   bc=pts[2].distanceTo(pts[1]);
-  const area=pts[1].clone().sub(pts[0]).cross(
-   pts[2].clone().sub(pts[0])).length()*.5;
+  p0.fromBufferAttribute(pos,ia);
+  p1.fromBufferAttribute(pos,ib);
+  p2.fromBufferAttribute(pos,ic);
+  const ab=p1.distanceTo(p0),ac=p2.distanceTo(p0),
+   bc=p2.distanceTo(p1);
+  const area=edgeA.copy(p1).sub(p0).cross(
+   edgeB.copy(p2).sub(p0)).length()*.5;
   const nx=(normal.getX(ia)+normal.getX(ib)+normal.getX(ic))/3,
    ny=(normal.getY(ia)+normal.getY(ib)+normal.getY(ic))/3;
   // Large exposed static receiving panels only; don't inflate thin straps,
@@ -60,20 +67,11 @@ export function refineStaticShadowGeometry(
  if(!changed)return geometry;
  const data=new Map<string,number[]>();
  for(const [k] of attrs)data.set(k,[]);
- const tmp=new Map<string,number[][]>();
- for(const [name,attr] of attrs){
-  const raw:number[][]=[];
-  for(let i=0;i<attr.count;i++){
-   const row:number[]=[];
-   for(let c=0;c<attr.itemSize;c++){
-    const v=c===0?attr.getX(i):c===1?attr.getY(i):
-     c===2?attr.getZ(i):attr.getW(i);
-    row.push(v);
-   }
-   raw.push(row);
-  }
-  tmp.set(name,raw);
- }
+ // Read source attributes directly instead of materializing an array of
+ // boxed JS numbers for every source vertex and channel. This shrinks
+ // temporary allocations at load/wardrobe-change time on mobile.
+ const read=(a:THREE.BufferAttribute,i:number,c:number)=>
+  c===0?a.getX(i):c===1?a.getY(i):c===2?a.getZ(i):a.getW(i);
  for(let t=0;t<triangles;t++){
   const n=plans[t],ix=[
    indices?indices[t*3]:t*3,
@@ -83,17 +81,23 @@ export function refineStaticShadowGeometry(
   const vertex=(i:number,j:number)=>{
    const a=(n-i-j)/n,b=i/n,c=j/n;
    for(const [key,attr] of attrs){
-    const source=tmp.get(key)!;
     const target=data.get(key)!;
+    // Normalization is invariant per generated vertex, not per component.
+    let nx=0,ny=0,nz=0,length=1;
+    if(key==='normal'){
+     nx=a*read(attr,ix[0],0)+b*read(attr,ix[1],0)+
+      c*read(attr,ix[2],0);
+     ny=a*read(attr,ix[0],1)+b*read(attr,ix[1],1)+
+      c*read(attr,ix[2],1);
+     nz=a*read(attr,ix[0],2)+b*read(attr,ix[1],2)+
+      c*read(attr,ix[2],2);
+     length=Math.hypot(nx,ny,nz)||1;
+    }
     for(let d=0;d<attr.itemSize;d++){
-     let value=a*source[ix[0]][d]+b*source[ix[1]][d]+
-      c*source[ix[2]][d];
-     if(key==='normal'){
-      // Inputs are faceted, but normalize for fitted non-box triangles.
-      const vec=[0,1,2].map(k=>
-       a*source[ix[0]][k]+b*source[ix[1]][k]+c*source[ix[2]][k]);
-      value=vec[d]/(Math.hypot(...vec)||1);
-     }
+     const value=key==='normal'&&d<3?
+      (d===0?nx:d===1?ny:nz)/length:
+      a*read(attr,ix[0],d)+b*read(attr,ix[1],d)+
+       c*read(attr,ix[2],d);
      target.push(value);
     }
    }
