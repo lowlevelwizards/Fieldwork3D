@@ -24,6 +24,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-low-ready-ar-ak-armor-fit-') }}
         run: |
           node --experimental-strip-types --test tests/breach-low-ready-family-fit.test.mjs tests/breach-weapon-magazine-idle.test.mjs
+      - name: Breach coupled low-ready arm / armor critical gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-coupled-low-ready-pose-') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-coupled-low-ready.test.mjs tests/breach-weapon-magazine-idle.test.mjs
       - name: Breach magazine, socket and shared-idle critical gates
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-weapon-sockets-magazines-idle-') }}
         run: |
