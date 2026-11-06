@@ -50,10 +50,25 @@ try{
     document.querySelector('#phase')?.textContent==='PLANNING'&&
     !!document.querySelector('#breach3dCanvas'),null,{timeout:60000});
   await page.locator('#play').click();
-  await page.waitForTimeout(700);
-  await page.evaluate(()=>document.querySelector('#watchReplay').click());
-  await page.waitForFunction(()=>
-    document.querySelector('#replayPanel')?.hidden===false,null,{timeout:15000});
+  // Software WebGL in headless CI may execute only a handful of simulation
+  // frames during the first second. The recorder needs >=2 world samples.
+  let opened=false;
+  for(let attempt=0;attempt<6&&!opened;attempt++){
+    await page.waitForTimeout(750);
+    await page.evaluate(()=>document.querySelector('#watchReplay').click());
+    opened=await page.evaluate(()=>
+      document.querySelector('#replayPanel')?.hidden===false);
+  }
+  if(!opened){
+    const diagnostic=await page.evaluate(()=>({
+      phase:document.querySelector('#phase')?.textContent,
+      replayDisabled:document.querySelector('#watchReplay')?.disabled,
+      clock:document.querySelector('#clock')?.textContent,
+      bodyState:document.body.className
+    }));
+    throw Error('Could not enter replay after recording samples: '+
+      JSON.stringify({diagnostic,errors}));
+  }
 
   const compact=await page.evaluate(measure);
   check(compact.drawer.hidden,'Drawer must be closed by default');
