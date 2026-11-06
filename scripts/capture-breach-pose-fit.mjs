@@ -44,6 +44,7 @@ try{
    {id:'ak-akm',armor:'plate-legacy',rig:'full-chest',top:'smock-jacket',required:'clear'}
   ];
   const panel=page.locator('#poseFitPanel');
+  const errorsInFits=[];
   for(const f of fixtures){
    await panel.evaluate(node=>{node.open=true;});
    for(const [i,value] of [f.id,f.armor,f.rig,f.top].entries())
@@ -61,7 +62,7 @@ try{
    if(status==='clear'&&mode==='one-hand-guard')
     throw Error('Incorrect two-hand success status for '+f.id);
    if(f.required&&status!==f.required)
-    throw Error('Expected '+f.id+' clear two-hand pose, got '+status);
+    errorsInFits.push(f.id+'/'+f.armor+': '+status);
    // The inspector must not obscure the chest and arms in the screenshot.
    await panel.evaluate(node=>{node.open=false;});
    for(const view of ['front','side','iso','top']){
@@ -78,5 +79,7 @@ try{
    console.log('POSE-FIT PHONE',f.id,f.armor,f.rig,f.top,status);
   }
   if(errors.length)throw Error(errors.join('; '));
+  if(errorsInFits.length)throw Error(
+   'Full eight-kit mobile two-hand gate: '+errorsInFits.join('; '));
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}

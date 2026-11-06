@@ -7,7 +7,18 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset}
 import {poseClearanceEnvelope} from '../src/breach-pose-clearance-envelope.ts';
 import {solveCoupledLowReady} from '../src/breach-coupled-low-ready.ts';
 import {assessLowReadyPair} from '../src/breach-low-ready-anatomy.ts';
+import {ANATOMY} from '../src/breach-anatomy.ts';
+import {handlingProfile} from '../src/breach-handling-profiles.ts';
 const shoulders=[new THREE.Vector3(1,4,-7),new THREE.Vector3(1,4,7)];
+const profile=handlingProfile('low','carbine');
+const studioShoulders=[
+ new THREE.Vector3(ANATOMY.shoulderLeft.x+profile.supportShoulderForward,
+  ANATOMY.shoulderLeft.y+profile.shoulderLift,
+  ANATOMY.shoulderLeft.z+profile.shoulderInward),
+ new THREE.Vector3(ANATOMY.shoulderRight.x+profile.firingShoulderForward,
+  ANATOMY.shoulderRight.y+profile.shoulderLift,
+  ANATOMY.shoulderRight.z-profile.shoulderInward)
+];
 const fixtures=[
  ['ar-m4a1','plate-slick','full-chest','smock-jacket'],
  ['ar-m4a1','soft-flak','full-chest','smock-jacket'],
@@ -49,4 +60,20 @@ test('eight difficult loadouts prefer valid physical two-handed ready',()=>{
  }
  assert.equal(twoHanded,8,
   'All eight common armored kits must hold the rifle: '+failed.join('; '));
+});
+
+test('studio shoulder frame also passes all eight kits',()=>{
+ let passed=0;const failed=[];
+ for(const [id,armor,rig,top] of fixtures){
+  const preset=FAMILY_PRESETS.find(p=>p.id===id);
+  const cfg=selectWeaponFamilyPreset(
+   initialWeaponConfiguration(preset.weapon),id);
+  const s=solveCoupledLowReady({weapon:preset.weapon,configuration:cfg,
+   shoulders:studioShoulders,
+   armor:poseClearanceEnvelope(armor,rig,top),nominalYaw:0});
+  console.log('POSE-V2-STUDIO',id,armor,s?.mode??'unresolved');
+  if(s?.status==='clear'&&s.fit.twoHanded)passed++;
+  else failed.push(id+'/'+armor+' '+(s?.mode??'unresolved'));
+ }
+ assert.equal(passed,8,'Real Studio shoulder profile: '+failed.join('; '));
 });
