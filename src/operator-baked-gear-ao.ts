@@ -41,9 +41,9 @@ export function bakeGearGeometryAO(
   const lower=1-THREE.MathUtils.clamp(
    (positions.getY(i)-bounds.min.y)/height,0,1);
   const shade=THREE.MathUtils.clamp(
-   .955+.045*Math.max(0,ny)-.165*Math.max(0,-ny)
-   -.040*Math.abs(nz)-.030*Math.max(0,-nx)
-   -.052*lower,BAKED_GEAR_AO_MIN,1);
+   .985+.015*Math.max(0,ny)-.155*Math.max(0,-ny)
+   -.036*Math.abs(nz)-.022*Math.max(0,-nx)
+   -.135*lower,BAKED_GEAR_AO_MIN,1);
   const byte=Math.round(shade*255);
   bytes[i*3]=byte;bytes[i*3+1]=byte;bytes[i*3+2]=byte;
  }
@@ -62,6 +62,32 @@ export function bakeGearGeometryAO(
  * regenerated fitted connectors. Once a geometry has been processed it
  * carries a stable stamp so later wardrobe selections don't double-darken.
  */
+/** A ray toward the studio key from a receiver point. Real directional
+ * projection onto the receiving surface, independent of material/camo.
+ * Unlike nearest-volume AO, this detects the actual shadow ray crossing
+ * the occluder's 3D bounding slab.
+ */
+function castRayBox(p:THREE.Vector3,dir:THREE.Vector3,
+ box:THREE.Box3,maxDist=12):boolean{
+ let near=0,far=maxDist;
+ for(const axis of ['x','y','z'] as const){
+  const d=dir[axis],o=p[axis];
+  if(Math.abs(d)<1e-7){
+   if(o<box.min[axis]||o>box.max[axis])return false;
+   continue;
+  }
+  const low=(box.min[axis]-o)/d,high=(box.max[axis]-o)/d;
+  near=Math.max(near,Math.min(low,high));
+  far=Math.min(far,Math.max(low,high));
+  if(near>far)return false;
+ }
+ return far>.045;
+}
+const KEY_RAYS=[
+ new THREE.Vector3(.57,.80,.16).normalize(),
+ new THREE.Vector3(.47,.86,-.12).normalize(),
+ new THREE.Vector3(.66,.74,.04).normalize()
+] as const;
 export const GEAR_CONTACT_AO_RADIUS=2.40;
 export const GEAR_CONTACT_AO_STRENGTH=.38;
 export const GEAR_CONTACT_AO_FLOOR=.54;
@@ -126,10 +152,24 @@ export function bakeGearContactAO(group:THREE.Group):number{
      (.32+.68*facing);
     if(strength>occlusion)occlusion=strength;
    }
-   if(occlusion<.012)continue;
+   // Bake cast shadows ON the base panel under projecting pockets and
+   // straps. Three rays create a cheap fixed-light soft penumbra; never
+   // sample this from a light or raycaster during gameplay.
+   const rayOrigin=p.clone().addScaledVector(n,.075);
+   let castHits=0;
+   for(const light of KEY_RAYS){
+    if(n.dot(light)<.035)continue;
+    for(const neighbor of parts){
+     if(neighbor===part)continue;
+     if(castRayBox(rayOrigin,light,neighbor.box)){castHits++;break;}
+    }
+   }
+   const cast=castHits/KEY_RAYS.length;
+   const shadow=Math.max(occlusion,.55*cast);
+   if(shadow<.012)continue;
    const old=pixels[i*3]/255;
    const gray=Math.round(255*Math.max(GEAR_CONTACT_AO_FLOOR,
-    old*(1-occlusion)));
+    old*(1-shadow)));
    if(gray===pixels[i*3])continue;
    pixels[i*3]=gray;pixels[i*3+1]=gray;pixels[i*3+2]=gray;
    altered=true;
