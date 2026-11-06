@@ -7,12 +7,17 @@ import type {WeaponFamilyBuild} from './equipment-weapon-families.ts';
 import {addARFamily} from './weapons/geometry/ar-silhouettes.ts';
 import {addAKFamily} from './weapons/geometry/ak-silhouettes.ts';
 
-const WOOD=new THREE.MeshStandardMaterial({color:0x755039,roughness:.93,
- flatShading:true});
+import {AR_BLACK_METAL,AR_BLACK_POLYMER,AR_MUTED_FDE,
+ AK_BLACK_METAL,AK_BLACK_POLYMER,AK_DARK_WOOD}
+ from './weapons/geometry/weapon-visual-palette.ts';
 export function buildModularWeaponSilhouette(build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material):THREE.Group{
+ // Visual finishes are consistent across Quick Play, Campaign and the
+ // operator rig, regardless of their legacy material argument palette.
+ void steel;void dark;
  const root=new THREE.Group();
- if(build.family==='ar')addARFamily(root,build,steel,dark,WOOD);
- else addAKFamily(root,build,steel,dark,WOOD);
+ if(build.family==='ar')
+  addARFamily(root,build,AR_BLACK_METAL,AR_BLACK_POLYMER,AR_MUTED_FDE);
+ else addAKFamily(root,build,AK_BLACK_METAL,AK_BLACK_POLYMER,AK_DARK_WOOD);
  return root;
 }
