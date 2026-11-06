@@ -6,16 +6,20 @@
 export type SoundFamily='ui'|'cloth'|'step'|'metal'|'mechanism'|'door'|'impact'|
   'shot'|'blast'|'voice'|'ambient'|'glass'|'wood'|'water'|'electronic';
 import {FOCUS_BY_ID} from './sound-focus.ts';
+import {REFINEMENT_BY_ID,REFINEMENT_DIRECTIONS,
+ type RefinementDirection} from './sound-refine.ts';
 export type Variant='A'|'B'|'C'|'D'|'E'|'F'|'G'|'H';
 export type SoundEntry={id:string;label:string;group:string;family:SoundFamily;
   status:'live'|'planned';description:string};
 export type SoundSettings={
   gain:number;pitch:number;length:number;noise:number;punch:number;
-  brightness:number;tail:number;room:number;concept:number;
+  brightness:number;tail:number;room:number;concept:number;refinement?:number;
 };
+export type SoundRefinement={choice?:RefinementDirection;
+ shortlist?:RefinementDirection[];approved?:boolean};
 export type SoundChoice={enabled:boolean;choice:Variant;
   reviewed?:boolean;favorite?:boolean;explored?:boolean;shortlist?:Variant[];
-  edits?:Partial<Record<Variant,SoundSettings>>};
+  edits?:Partial<Record<Variant,SoundSettings>>;refinement?:SoundRefinement};
 export type SoundPack={version:1;master:number;choices:Record<string,SoundChoice>};
 export const SOUND_STORAGE_KEY='fieldwork3d.soundlab.pack.v1';
 export const SOUND_VARIANTS=['A','B','C','D','E','F','G','H'] as const;
@@ -127,7 +131,7 @@ export function defaultSoundPack():SoundPack{
 }
 export function clampSoundSettings(input:unknown,base:SoundSettings):SoundSettings{
  const obj=input&&typeof input==='object'?input as Record<string,unknown>:{};
- const field=(key:keyof SoundSettings,min:number,max:number)=>{
+ const field=(key:Exclude<keyof SoundSettings,'refinement'>,min:number,max:number)=>{
   const v=obj[key];return typeof v==='number'&&Number.isFinite(v)?
    Math.max(min,Math.min(max,v)):base[key];
  };
@@ -163,6 +167,18 @@ export function normalizeSoundPack(value:unknown):SoundPack{
   const shortlisted=(choice as {shortlist?:unknown}).shortlist;
   if(Array.isArray(shortlisted))target.shortlist=[...new Set(shortlisted.filter(
    (v):v is Variant=>typeof v==='string'&&variants.includes(v as Variant)))].slice(0,8);
+  const refinement=(choice as {refinement?:unknown}).refinement;
+  if(REFINEMENT_BY_ID.has(entry.id)&&refinement&&typeof refinement==='object'){
+   const rf=refinement as Record<string,unknown>;
+   const targetRef:SoundRefinement={};
+   if(REFINEMENT_DIRECTIONS.includes(rf.choice as RefinementDirection))
+    targetRef.choice=rf.choice as RefinementDirection;
+   if(Array.isArray(rf.shortlist))targetRef.shortlist=[...new Set(rf.shortlist.filter(
+    (v):v is RefinementDirection=>typeof v==='string'&&
+      REFINEMENT_DIRECTIONS.includes(v as RefinementDirection)))].slice(0,6);
+   targetRef.approved=rf.approved===true&&!!targetRef.choice&&target.explored===true;
+   target.refinement=targetRef;
+  }
   if(choice.edits&&typeof choice.edits==='object'){
    const edits=choice.edits as Record<string,unknown>;
    target.edits={};
@@ -178,6 +194,18 @@ export function resolveSoundSettings(pack:SoundPack,id:string,variant?:Variant){
  const selected=variant??pack.choices[id]?.choice??'B';
  return {...defaultSoundSettings(entry,selected),
   ...(pack.choices[id]?.edits?.[selected]??{})};
+}
+/** Only actually approved Wave 02 variants may change the live game.
+ * Wave 01 is always the fallback, including imported older JSON packs.
+ */
+export function resolvePlayableSoundSettings(pack:SoundPack,id:string){
+ const base=resolveSoundSettings(pack,id);
+ if(!base)return null;
+ const c=pack.choices[id];
+ const index=c?.refinement?.approved===true&&c.explored===true&&
+   REFINEMENT_BY_ID.has(id)?
+   REFINEMENT_DIRECTIONS.indexOf(c.refinement.choice as RefinementDirection):-1;
+ return index<0?base:{...base,refinement:index};
 }
 export function readSoundPack():SoundPack{
  try{const value=localStorage.getItem(SOUND_STORAGE_KEY);

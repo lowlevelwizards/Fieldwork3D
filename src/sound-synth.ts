@@ -2,10 +2,11 @@
  * No external assets, no timers, no gameplay simulation / hidden-intel reads.
  * The same PCM renderer drives audition, playback, WAV and ZIP export.
  */
-import {SOUND_BY_ID,readSoundPack,resolveSoundSettings,
+import {SOUND_BY_ID,readSoundPack,resolvePlayableSoundSettings,
  type SoundSettings,type SoundPack} from './sound-catalog.ts';
 
 import {renderFocusedSound} from './sound-focus-audio.ts';
+import {renderRefinedSound} from './sound-refine-audio.ts';
 const rate=22050;
 const TAU=Math.PI*2;
 function hash(value:string){
@@ -16,6 +17,8 @@ function hash(value:string){
 export function renderSound(id:string,settings:SoundSettings,
  sampleRate=rate):Float32Array{
  const entry=SOUND_BY_ID.get(id);if(!entry)return new Float32Array(0);
+ if(settings.refinement!==undefined&&settings.refinement>=0)
+  return renderRefinedSound(id,settings,sampleRate);
  if(settings.concept>=0)return renderFocusedSound(id,settings,sampleRate);
  const family=entry.family,seconds=Math.min(4.6,settings.length+
   settings.tail*.25+settings.room*.3);
@@ -191,7 +194,7 @@ export function playPackSound(ctx:AudioContext,id:string,
  const saved=pack??readSoundPack();
  const choice=saved.choices[id];
  if(!choice?.enabled||saved.master<=0)return true;
- const settings=resolveSoundSettings(saved,id);
+ const settings=resolvePlayableSoundSettings(saved,id);
  if(!settings)return true;
  // New exploratory sounds stay audition-only until explicitly chosen in Wave 01.
  // Older v1 packs and first-time visitors keep their established game audio.
