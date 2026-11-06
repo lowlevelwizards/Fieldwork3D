@@ -6,8 +6,14 @@ import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {bakeGearGeometryAO,bakeGearContactAO} from './operator-baked-gear-ao.ts';
 import {rememberUnmergedShadowVolumes} from './operator-baked-gear-cast.ts';
+import {refineStaticReceiver} from './operator-gear-shadow-receivers.ts';
 
 export function consolidateVisualGroup(group:THREE.Group):void{
+ // Only the large, STATIC armor/rig receiver families need extra sampling.
+ // Never subdivide animated garment limbs or unsupported accessories.
+ if(group.name.startsWith('authored-rig-')||
+   group.parent?.name.startsWith('authored-armor-'))
+  refineStaticReceiver(group);
  // Bake actual neighboring-volume contact before authored panels and pouch
  // flaps are merged. One-time CPU work only; no per-frame AO traversal.
  bakeGearContactAO(group);
