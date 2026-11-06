@@ -522,18 +522,23 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   wardrobe?.sleeveState??'unrolled'].join('/');
  const packs=[pack,v.fieldPack,v.dayPack]
   .filter((g):g is THREE.Group=>!!g&&g.visible);
- if(armor)bakeCastOnGear(armor,rig?[rig]:[],v.visualChest,'armor:'+lightingKey);
- if(rig)bakeCastOnGear(rig,armor?[armor]:[],v.visualChest,'rig:'+lightingKey);
- // Previously only decorative collar/pocket groups received the shadows,
- // while the real uniform shell remained completely flat.
- const clothCasters=[...(armor?.visible?[armor]:[]),
-  ...(rig?.visible?[rig]:[]),...packs];
+ // R5.3-B: declare real caster/receiver relationships instead of
+ // permitting every neighboring box to shade every surface.
+ const armorCasters=armor?.visible?[{root:armor,role:'armor' as const}]:[];
+ const rigCasters=rig?.visible?[{root:rig,role:'rig' as const}]:[];
+ const packCasters=packs.map(root=>({root,role:'pack' as const}));
+ if(armor)bakeCastOnGear(armor,[...rigCasters,...packCasters],
+  v.visualChest,'armor:'+lightingKey,'armor');
+ if(rig)bakeCastOnGear(rig,armorCasters,
+  v.visualChest,'rig:'+lightingKey,'rig');
+ // Include the actual base uniform, not just decorative pocket objects.
+ const clothCasters=[...armorCasters,...rigCasters,...packCasters];
  bakeCastOnGear(v.baseTorso,clothCasters,
-  v.visualChest,'base-uniform:'+lightingKey);
+  v.visualChest,'base-uniform:'+lightingKey,'uniform');
  if(clothTorso)bakeCastOnGear(clothTorso,clothCasters,
-  v.visualChest,'blouse-details:'+lightingKey);
+  v.visualChest,'blouse-details:'+lightingKey,'shirt');
  for(const selectedPack of packs)bakeCastOnGear(selectedPack,
-  armor?[armor]:[],v.visualChest,'pack:'+lightingKey);
+  armorCasters,v.visualChest,'pack:'+lightingKey,'pack');
  // All visible garments/armor/arms/legs share one continuous top-to-bottom
  // gradient. The complete root is above the legacy frame containing chest.
  const root=v.visualChest.parent?.parent;

@@ -10,6 +10,8 @@
  */
 import * as THREE from 'three';
 import {bakeGearGeometryAO} from './operator-baked-gear-ao.ts';
+import {shadowContactRule,type ShadowAssemblyRole,type ShadowContactRule}
+ from './operator-gear-shadow-relationships.ts';
 type BoxRecord={min:[number,number,number];max:[number,number,number];
  partId?:string;role?:string};
 const frontRays=[
@@ -32,7 +34,7 @@ export function rememberUnmergedShadowVolumes(group:THREE.Group):void{
  if(group.userData.fieldworkShadowVolumes)return;
  const boxes:BoxRecord[]=[];
  for(const mesh of group.children){
-  if(!(mesh instanceof THREE.Mesh)||
+  if(!(mesh instanceof THREE.Mesh)||!mesh.visible||
     !mesh.geometry.getAttribute('position')||
     mesh.geometry.getAttribute('position').count===0)continue;
   if(!mesh.geometry.boundingBox)mesh.geometry.computeBoundingBox();
@@ -50,22 +52,25 @@ export function rememberUnmergedShadowVolumes(group:THREE.Group):void{
  }
  if(boxes.length)group.userData.fieldworkShadowVolumes=boxes;
 }
-/** Convert saved source geometry boxes into the chest's common local frame.
- * Preserve small individual pouches even if the source now draws as one mesh.
+/** Preserve per-part IDs after display meshes have been merged into
+ * shared materials. Original UV and geometry are never modified here.
  */
-export function collectCastVolumes(root:THREE.Object3D,
- chest:THREE.Object3D):THREE.Box3[]{
+export type ShadowVolume={box:THREE.Box3;partId?:string;partRole?:string};
+export function collectCastVolumeRecords(root:THREE.Object3D,
+ chest:THREE.Object3D):ShadowVolume[]{
  root.updateWorldMatrix(true,true);
  chest.updateWorldMatrix(true,true);
  const inverse=chest.matrixWorld.clone().invert();
- const boxes:THREE.Box3[]=[];
- root.traverse(node=>{
-  if(!node.visible)return;
+ const records:ShadowVolume[]=[];
+ root.traverseVisible(node=>{
   if(node instanceof THREE.Group){
    const stored=node.userData.fieldworkShadowVolumes as BoxRecord[]|undefined;
    if(stored){
     const transform=inverse.clone().multiply(node.matrixWorld);
-    for(const b of stored)boxes.push(fromRecord(b).applyMatrix4(transform));
+    for(const b of stored)records.push({
+     box:fromRecord(b).applyMatrix4(transform),
+     partId:b.partId,partRole:b.role
+    });
    }
   }
   if(!(node instanceof THREE.Mesh)||!node.geometry.getAttribute('position')||
@@ -74,16 +79,25 @@ export function collectCastVolumes(root:THREE.Object3D,
   if(!node.geometry.boundingBox)node.geometry.computeBoundingBox();
   if(!node.geometry.boundingBox)return;
   const transform=inverse.clone().multiply(node.matrixWorld);
-  boxes.push(node.geometry.boundingBox.clone().applyMatrix4(transform));
+  records.push({
+   box:node.geometry.boundingBox.clone().applyMatrix4(transform),
+   partId:node.userData.fieldworkShadowPartId,
+   partRole:node.userData.fieldworkShadowRole
+  });
  });
- return boxes;
+ return records;
+}
+/** Historical API: tests and older consumers need plain AABBs. */
+export function collectCastVolumes(root:THREE.Object3D,
+ chest:THREE.Object3D):THREE.Box3[]{
+ return collectCastVolumeRecords(root,chest).map(record=>record.box);
 }
 /** Fixed-key contact ray depth, evaluated only during the outfit bake.
  * Crisp directly beneath attachments; no long black carrier-wide shadows.
  */
 function rayEntryDistance(p:THREE.Vector3,dir:THREE.Vector3,
- box:THREE.Box3):number|null{
- let near=0,far=3.25;
+ box:THREE.Box3,maxDist=3.25):number|null{
+ let near=0,far=maxDist;
  for(const axis of ['x','y','z'] as const){
   const d=dir[axis],o=p[axis];
   if(Math.abs(d)<1e-6){
@@ -95,7 +109,7 @@ function rayEntryDistance(p:THREE.Vector3,dir:THREE.Vector3,
    if(near>far)return null;
   }
  }
- return near>.045&&far>.055&&near<3.25?near:null;
+ return near>.045&&far>.055&&near<maxDist?near:null;
 }
 /** Analytic near-surface contact, independent of light direction.
  * Brings pack/jacket, carrier/shirt and lower strap attachments together
@@ -105,7 +119,8 @@ function rayEntryDistance(p:THREE.Vector3,dir:THREE.Vector3,
 export const CROSS_CONTACT_RADIUS=1.15;
 export const CROSS_CONTACT_STRENGTH=.42;
 export function crossEquipmentContact(
- point:THREE.Vector3,normal:THREE.Vector3,boxes:readonly THREE.Box3[]
+ point:THREE.Vector3,normal:THREE.Vector3,boxes:readonly THREE.Box3[],
+ radius=CROSS_CONTACT_RADIUS
 ):number{
  let strongest=0;
  for(const box of boxes){
@@ -113,7 +128,7 @@ export function crossEquipmentContact(
   const dy=Math.max(box.min.y-point.y,0,point.y-box.max.y);
   const dz=Math.max(box.min.z-point.z,0,point.z-box.max.z);
   const d2=dx*dx+dy*dy+dz*dz;
-  if(d2>=CROSS_CONTACT_RADIUS*CROSS_CONTACT_RADIUS)continue;
+  if(d2>=radius*radius)continue;
   const cx=(box.min.x+box.max.x)*.5-point.x;
   const cy=(box.min.y+box.max.y)*.5-point.y;
   const cz=(box.min.z+box.max.z)*.5-point.z;
@@ -124,21 +139,34 @@ export function crossEquipmentContact(
   if(facing<.15)continue;
   const distance=Math.sqrt(d2);
   const q=THREE.MathUtils.clamp((distance-.15)/
-   (CROSS_CONTACT_RADIUS-.15),0,1);
+   Math.max(.001,radius-.15),0,1);
   const falloff=1-q*q*(3-2*q);
   strongest=Math.max(strongest,falloff*(.38+.62*facing));
  }
  return strongest;
 }
 export type GearLightingBake={key:string;changed:number;vertices:number};
-/** Bake separately for different receiver groups, using all of their
- * true light casters. The key includes GEOMETRY choices only, never colors.
+export type ShadowCaster={root:THREE.Object3D;role:ShadowAssemblyRole};
+type EligibleVolume=ShadowVolume&{rule:Readonly<ShadowContactRule>};
+/** Bake separately for different receiver groups, using explicit attachment
+ * roles. A legacy Object3D source stays geometry-only for old callers.
  */
 export function bakeCastOnGear(
- receiver:THREE.Object3D,cas:readonly THREE.Object3D[],
- chest:THREE.Object3D,key:string):GearLightingBake{
- const sources=cas.filter(x=>x!==receiver&&x.visible);
- const boxes=sources.flatMap(x=>collectCastVolumes(x,chest));
+ receiver:THREE.Object3D,
+ cas:readonly (THREE.Object3D|ShadowCaster)[],
+ chest:THREE.Object3D,key:string,
+ receiverRole:ShadowAssemblyRole='generic'):GearLightingBake{
+ const sources=cas.map(input=>input instanceof THREE.Object3D?
+  {root:input,role:'generic' as const}:input)
+  .filter(x=>x.root!==receiver&&x.root.visible);
+ const boxes:EligibleVolume[]=sources.flatMap(source=>{
+  const rule=shadowContactRule(receiverRole,source.role);
+  if(!rule)return [];
+  return collectCastVolumeRecords(source.root,chest)
+   .map(volume=>({...volume,rule}));
+ });
+ const bakeKey=key+'|'+receiverRole+'|'+
+  sources.map(x=>x.role).join(',');
  chest.updateWorldMatrix(true,true);
  const inverse=chest.matrixWorld.clone().invert();
  let changed=0,vertices=0;
@@ -155,7 +183,7 @@ export function bakeCastOnGear(
   bakeGearGeometryAO(geometry,object.material);
   const attribute=geometry.getAttribute('color');
   if(!attribute||!(attribute.array instanceof Uint8Array))return;
-  if(geometry.userData.fieldworkCrossLightKey===key)return;
+  if(geometry.userData.fieldworkCrossLightKey===bakeKey)return;
   const array=attribute.array as Uint8Array;
   let baseline=geometry.userData.fieldworkCrossLightBase as Uint8Array|undefined;
   if(!baseline||baseline.length!==array.length){
@@ -172,30 +200,38 @@ export function bakeCastOnGear(
    normal.fromBufferAttribute(normals,i).applyMatrix3(normalMatrix).normalize();
    const rays=frontRays;
    origin.copy(position).addScaledVector(normal,.075);
-   let contact=0;
+   let castTotal=0;
    for(const ray of rays){
     if(normal.dot(ray)<.02)continue;
-    let closest=Infinity;
-    for(const box of boxes){
-     const t=rayEntryDistance(origin,ray,box);
-     if(t!==null&&t<closest)closest=t;
+    let strongest=0;
+    for(const volume of boxes){
+     const t=rayEntryDistance(origin,ray,volume.box,
+      volume.rule.castReach);
+     if(t===null)continue;
+     const q=THREE.MathUtils.clamp((t-.25)/
+      Math.max(.01,volume.rule.castReach-.50),0,1);
+     const fade=q*q*(3-2*q);
+     strongest=Math.max(strongest,
+      volume.rule.castStrength*(1-fade));
     }
-    if(closest===Infinity)continue;
-    // High contrast near a real surface; smoothly fades with distance.
-    const q=THREE.MathUtils.clamp((closest-.25)/2.75,0,1);
-    const fade=q*q*(3-2*q);
-    contact+=1-fade;
+    castTotal+=strongest;
    }
-   const occlusion=contact/rays.length;
-   const nearContact=crossEquipmentContact(position,normal,boxes);
-   contactMask[i]=Math.round(255*nearContact);
-   castMask[i]=Math.round(255*occlusion);
-   // Both channels describe overlapping darkness on the same receiver.
-   // The stronger one wins; never multiply them into muddy camouflage.
-   const lower=THREE.MathUtils.clamp((7-position.y)/18,0,1);
-   const shadow=Math.max(.51*occlusion,
-    CROSS_CONTACT_STRENGTH*nearContact);
-   const light=(1-shadow)*(1-.032*lower);
+   const directionalShadow=castTotal/rays.length;
+   let nearContact=0;
+   for(const volume of boxes){
+    const raw=crossEquipmentContact(position,normal,[volume.box],
+     volume.rule.contactRadius);
+    nearContact=Math.max(nearContact,
+     volume.rule.contactStrength*raw);
+   }
+   contactMask[i]=Math.round(255*THREE.MathUtils.clamp(
+    nearContact,0,1));
+   castMask[i]=Math.round(255*THREE.MathUtils.clamp(
+    directionalShadow,0,1));
+   // One independent occlusion composition. The root-wide height gradient
+   // is owned only by operator-height-lighting, never repeated per gear.
+   const shadow=Math.max(directionalShadow,nearContact);
+   const light=1-shadow;
    const before=baseline[i*3]/255;
    const value=Math.round(255*Math.max(.60,before*light));
    if(value<array[i*3])changed++;
@@ -206,7 +242,7 @@ export function bakeCastOnGear(
   attribute.needsUpdate=true;
   geometry.userData.fieldworkInterContactMask=contactMask;
   geometry.userData.fieldworkDirectionalCastMask=castMask;
-  geometry.userData.fieldworkCrossLightKey=key;
+  geometry.userData.fieldworkCrossLightKey=bakeKey;
  });
  return {key,changed,vertices};
 }

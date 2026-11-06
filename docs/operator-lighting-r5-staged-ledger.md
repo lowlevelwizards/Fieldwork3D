@@ -57,3 +57,14 @@ Base: `0cf8a9f1737b1327cbb15c11b4f30e718cd73b98`
 ## Still pending
 - Full attachment-zone relationship graph, arm/armpit and thigh dynamic
   receiving policies, high-resolution UV atlas proof and device screenshots.
+
+## R5.3-B semantic inter-assembly shadow graph (2026-11-06)
+- Assign explicit receiver roles for armor, rig, uniform, shirt, backpack.
+- Distinguish caster types for each overlapping outfit; reject invalid pairs.
+- Preserve unmerged per-part roles, and exclude invisible caster alternatives.
+- Each physical pairing has tuned proximity radius, contact/cast strength and reach.
+- Preserve legacy untyped callers and R4 bake tests; colors/UV remain untouched.
+- Remove the remaining per-mesh vertical darkening inside directional cast,
+  leaving operator-height-lighting solely responsible for the lower gradient.
+- Test invalid receiver rejection, rear-pack contact, restored baseline,
+  hidden alternate geometry and unchanged camouflage swatches.
