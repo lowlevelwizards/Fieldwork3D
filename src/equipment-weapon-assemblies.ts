@@ -7,6 +7,7 @@
 import type {WeaponId} from './breach-combat.ts';
 import {arBarrelArt,AR_VISUAL_AXIS_Y} from './weapons/geometry/ar-barrel-profiles.ts';
 import {akBarrelArt} from './weapons/geometry/ak-barrel-profiles.ts';
+import {hkBarrelArt} from './weapons/geometry/hk-barrel-profiles.ts';
 import {EQUIPMENT_CATALOG} from './equipment-catalog.ts';
 import {FAMILY_PARTS,FAMILY_PART_SLOTS,familyPreset,initialWeaponFamilyBuild,
  readWeaponFamilyBuild,setWeaponFamilyPart as changeFamilyPart,
@@ -199,7 +200,8 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
  const p=WEAPON_PLATFORMS[config.weapon];
  const build=config.build;
  const art=build?.family==='ar'?arBarrelArt(build.parts.barrel):
-  build?.family==='ak'?akBarrelArt(build.parts.barrel):undefined;
+  build?.family==='ak'?akBarrelArt(build.parts.barrel):
+  build?.family==='hk'?hkBarrelArt(build.parts.barrel):undefined;
  const mounted={} as Record<WeaponAttachmentSlot,WeaponAttachment>;
  let mass=p.baseMassKg,weighted=p.baseMassKg*p.baseBalanceX;
  let inertia=p.baseMassKg*(18*18/12+p.baseBalanceX*p.baseBalanceX);
@@ -223,9 +225,12 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
  const stockX=build?(FAMILY_PARTS[build.parts.stock].stockX??p.stockX):p.stockX;
  // Actual family pistol-grip silhouettes sit behind the receiver midpoint.
  // Earlier AK settings targeted empty space, putting the wrist in the plate.
- const primaryX=build?(build.family==='ar'?-4.80:-4.65):p.primaryX;
- const primaryY=build?(build.family==='ar'?-4.00:-4.10):p.primaryY;
- const supportX=build?(familyHandguard?.length==='long'?9.10:
+ const primaryX=build?(build.family==='hk'?-4.20:
+  build.family==='ar'?-4.80:-4.65):p.primaryX;
+ const primaryY=build?(build.family==='hk'?-4.00:
+  build.family==='ar'?-4.00:-4.10):p.primaryY;
+ const supportX=build?.family==='hk'?7.75:
+  build?(familyHandguard?.length==='long'?9.10:
   familyHandguard?.length==='mid'?7.70:6.50):p.supportX;
  const resolved:ResolvedWeaponAssembly={weapon:config.weapon,configuration:config,lengthScale,
   massKg:mass,balanceX:balance,rotationalInertia:Math.max(1,inertia),
@@ -236,7 +241,8 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   supportX:supportX+(mounted.foregrip.supportShift??0),
   supportY:(mounted.foregrip.id==='foregrip-vertical'?-3.65:
    mounted.foregrip.id==='foregrip-handstop'?-2.3:
-   build?-1.65:p.supportY)+(build?.family==='ar'?AR_VISUAL_AXIS_Y:0),
+   build?.family==='hk'?-1.35:build?-1.65:p.supportY)+
+   (build?.family==='ar'?AR_VISUAL_AXIS_Y:0),
   sightHeight:mounted.optic.sightHeight??2.6,
   mounted};
  resolutionCache.set(raw,resolved);

@@ -8,9 +8,9 @@ import {AR_BARREL_ART} from './weapons/geometry/ar-barrel-profiles.ts';
 export const FAMILY_PART_SLOTS=['stock','receiver','grip','magazine',
  'handguard','barrel'] as const;
 export type FamilyPartSlot=typeof FAMILY_PART_SLOTS[number];
-export type WeaponFamily='ar'|'ak';
+export type WeaponFamily='ar'|'ak'|'hk';
 export type FamilyLength='long'|'mid'|'short';
-type Feed='stanag'|'ak762'|'ak545';
+type Feed='stanag'|'ak762'|'ak545'|'hk762';
 export type WeaponFamilyPart={
  id:string;name:string;family:WeaponFamily;slot:FamilyPartSlot;
  receivers?:readonly string[];feed?:Feed;length?:FamilyLength;
@@ -39,6 +39,8 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'ak105':add('ak105','AK-105 carbine receiver','ak','receiver',{feed:'ak545',role:'carbine'}),
  'ak-rpk74':add('ak-rpk74','RPK-74 support receiver','ak','receiver',{feed:'ak545',role:'rifle'}),
  'akcompact':add('akcompact','AKS-74U compact receiver','ak','receiver',{feed:'ak545',role:'carbine'}),
+ 'hk-g3-early':add('hk-g3-early','Early G3 flip-sight stamped receiver','hk','receiver',{feed:'hk762',role:'rifle'}),
+ 'hk-g3-drum':add('hk-g3-drum','G3 rotary diopter stamped receiver','hk','receiver',{feed:'hk762',role:'rifle'}),
  'ar-fixed':add('ar-fixed','A1 triangular fixed stock','ar','stock',{receivers:['ar-a1','ar-a2','ar-flat'],stockX:-13.74}),
  'ar-fixed-a2':add('ar-fixed-a2','Long A2 triangular fixed stock','ar','stock',{receivers:['ar-a2','ar-flat'],stockX:-14.30}),
  'ar-car':add('ar-car','Retro collapsible carbine stock','ar','stock',{receivers:['ar-retro','ar-flat'],stockX:-14.45}),
@@ -61,6 +63,8 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'ak-sidefold-plum':add('ak-sidefold-plum','Polymer sidefolder · plum (custom)','ak','stock',{receivers:akModern,stockX:-12.7}),
  'ak-rpk-clubfoot-amber':add('ak-rpk-clubfoot-amber','RPK clubfoot · honey laminate','ak','stock',{receivers:['ak-rpk74'],stockX:-15.6}),
  'ak-rpk-clubfoot-red':add('ak-rpk-clubfoot-red','RPK clubfoot · red lacquer laminate','ak','stock',{receivers:['ak-rpk74'],stockX:-15.6}),
+ 'hk-g3-wood-stock':add('hk-g3-wood-stock','Early G3 fixed wooden stock','hk','stock',{stockX:-15.15}),
+ 'hk-g3-poly-stock':add('hk-g3-poly-stock','G3A3 fixed polymer stock','hk','stock',{stockX:-15.30}),
  'ar-grip-classic':add('ar-grip-classic','Classic pistol grip','ar','grip',{receivers:ar}),
  'ar-grip-a2':add('ar-grip-a2','A2 pistol grip','ar','grip',{receivers:ar}),
  'ar-grip-poly':add('ar-grip-poly','Modern polymer grip','ar','grip',{receivers:['ar-flat','ar-retro']}),
@@ -71,6 +75,7 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'ak-grip-wood-amber':add('ak-grip-wood-amber','Wood grip · honey birch','ak','grip',{receivers:[...akClassic,'ak-rpk74']}),
  'ak-grip-wood-red':add('ak-grip-wood-red','Wood grip · red lacquer','ak','grip',{receivers:[...akClassic,'ak-rpk74']}),
  'ak-grip-poly-plum':add('ak-grip-poly-plum','Pistol grip · Soviet plum polymer','ak','grip',{receivers:[...akClassic,...akModern,'akcompact','ak-rpk74']}),
+ 'hk-g3-grip':add('hk-g3-grip','Classic HK contoured pistol grip','hk','grip'),
  'ar-mag20':add('ar-mag20','Straight 20-round profile','ar','magazine',{feed:'stanag'}),
  'ar-mag30':add('ar-mag30','Curved 30-round profile','ar','magazine',{feed:'stanag'}),
  'ar-magpoly':add('ar-magpoly','Modern polymer magazine','ar','magazine',{feed:'stanag'}),
@@ -83,6 +88,7 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'ak-mag762poly-plum':add('ak-mag762poly-plum','7.62 polymer magazine · plum (custom)','ak','magazine',{feed:'ak762'}),
  'ak-mag545-plum':add('ak-mag545-plum','5.45 magazine · Soviet plum polymer','ak','magazine',{feed:'ak545'}),
  'ak-rpk-mag45-plum':add('ak-rpk-mag45-plum','RPK-74 45-round magazine · plum polymer','ak','magazine',{feed:'ak545'}),
+ 'hk-g3-mag20':add('hk-g3-mag20','G3 straight 20-round magazine','hk','magazine',{feed:'hk762'}),
  'ar-triangle':add('ar-triangle','Triangular rifle handguard','ar','handguard',{receivers:['ar-a1'],length:'long'}),
  'ar-round':add('ar-round','Round rifle handguard','ar','handguard',{receivers:['ar-a2','ar-flat'],length:'long'}),
  'ar-carbine':add('ar-carbine','Carbine polymer handguard','ar','handguard',{receivers:['ar-retro','ar-flat'],length:'mid'}),
@@ -109,6 +115,8 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'ak-poly-plum-long':add('ak-poly-plum-long','Rifle handguard · plum polymer','ak','handguard',{receivers:['ak74','ak74m'],length:'long'}),
  'ak-poly-plum-mid':add('ak-poly-plum-mid','Carbine handguard · plum (custom)','ak','handguard',{receivers:['ak105'],length:'mid'}),
  'ak-poly-plum-short':add('ak-poly-plum-short','Compact handguard · plum (custom)','ak','handguard',{receivers:['akcompact'],length:'short'}),
+ 'hk-g3-wood-vented':add('hk-g3-wood-vented','Early wood G3 ventilated fore-end','hk','handguard',{length:'long'}),
+ 'hk-g3-poly-slim':add('hk-g3-poly-slim','Slim G3A3 polymer fore-end','hk','handguard',{length:'long'}),
  'ar-20':add('ar-20','20\" A1 pencil barrel','ar','barrel',{receivers:['ar-a1','ar-a2','ar-flat'],length:'long',role:'rifle',nominalInches:AR_BARREL_ART['ar-20'].nominalInches}),
  'ar-20-service':add('ar-20-service','20\" A2/A4 service barrel','ar','barrel',{receivers:['ar-a2','ar-flat'],length:'long',role:'rifle',nominalInches:AR_BARREL_ART['ar-20-service'].nominalInches}),
  'ar-spr18':add('ar-spr18','18" Mk 12 precision barrel','ar','barrel',{receivers:['ar-flat'],length:'long',role:'rifle',nominalInches:AR_BARREL_ART['ar-spr18'].nominalInches}),
@@ -116,6 +124,7 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'ar-145-gov':add('ar-145-gov','14.5\" M4 government barrel','ar','barrel',{receivers:['ar-flat'],length:'mid',role:'carbine',nominalInches:AR_BARREL_ART['ar-145-gov'].nominalInches}),
  'ar-103':add('ar-103','10.3" CQB barrel','ar','barrel',{receivers:['ar-flat'],length:'short',role:'carbine',nominalInches:AR_BARREL_ART['ar-103'].nominalInches}),
  'ar-733-115':add('ar-733-115','11.5" Colt Commando barrel','ar','barrel',{receivers:['ar-retro'],length:'short',role:'carbine',nominalInches:AR_BARREL_ART['ar-733-115'].nominalInches}),
+ 'hk-g3-service':add('hk-g3-service','Full-length 7.62 G3 barrel','hk','barrel',{length:'long',role:'rifle',nominalInches:17.7}),
  'ak-long':add('ak-long','Full-length AK barrel','ak','barrel',{receivers:['akm','ak74','ak74m','ak103'],length:'long',role:'rifle'}),
  'ak-103-factory':add('ak-103-factory','AK-103 factory-pattern muzzle · 100-series','ak','barrel',{receivers:['ak103'],length:'long',role:'rifle'}),
  'ak-rpk-long':add('ak-rpk-long','RPK-74 heavy front and folded bipod','ak','barrel',{receivers:['ak-rpk74'],length:'long',role:'rifle'}),
@@ -128,6 +137,8 @@ const p=(id:string,name:string,weapon:'carbine'|'rifle',family:WeaponFamily,
  id,name,weapon,family,parts:{receiver,stock,grip,magazine,handguard,barrel}
 });
 export const FAMILY_PRESETS:readonly WeaponFamilyPreset[]=[
+ p('hk-g3','G3 · Early','rifle','hk','hk-g3-early','hk-g3-wood-stock','hk-g3-grip','hk-g3-mag20','hk-g3-wood-vented','hk-g3-service'),
+ p('hk-g3a3','G3A3','rifle','hk','hk-g3-drum','hk-g3-poly-stock','hk-g3-grip','hk-g3-mag20','hk-g3-poly-slim','hk-g3-service'),
  p('ar-m16a1','M16A1','rifle','ar','ar-a1','ar-fixed','ar-grip-classic','ar-mag20','ar-triangle','ar-20'),
  p('ar-m16a2','M16A2','rifle','ar','ar-a2','ar-fixed-a2','ar-grip-a2','ar-mag30','ar-round','ar-20-service'),
  p('ar-m16a4','M16A4','rifle','ar','ar-flat','ar-fixed-a2','ar-grip-a2','ar-mag30','ar-m5-rail','ar-20-service'),

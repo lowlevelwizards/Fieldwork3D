@@ -6,9 +6,11 @@ import * as THREE from 'three';
 import type {WeaponFamilyBuild} from './equipment-weapon-families.ts';
 import {addARFamily} from './weapons/geometry/ar-silhouettes.ts';
 import {addAKFamily} from './weapons/geometry/ak-silhouettes.ts';
+import {addHKFamily} from './weapons/geometry/hk-silhouettes.ts';
 
 import {AR_BLACK_METAL,AR_BLACK_POLYMER,AR_MUTED_FDE,
- AK_BLACK_METAL,AK_BLACK_POLYMER,AK_DARK_WOOD}
+ AK_BLACK_METAL,AK_BLACK_POLYMER,AK_DARK_WOOD,
+ HK_BLACK_METAL,HK_DARK_POLYMER,HK_WOOD}
  from './weapons/geometry/weapon-visual-palette.ts';
 export function buildModularWeaponSilhouette(build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,
@@ -20,6 +22,9 @@ export function buildModularWeaponSilhouette(build:WeaponFamilyBuild,
  if(build.family==='ar')
   addARFamily(root,build,AR_BLACK_METAL,AR_BLACK_POLYMER,
    AR_MUTED_FDE,showFactoryMuzzle);
- else addAKFamily(root,build,AK_BLACK_METAL,AK_BLACK_POLYMER,AK_DARK_WOOD);
+ else if(build.family==='ak')
+  addAKFamily(root,build,AK_BLACK_METAL,AK_BLACK_POLYMER,AK_DARK_WOOD);
+ else addHKFamily(root,build,HK_BLACK_METAL,HK_DARK_POLYMER,
+  HK_WOOD,showFactoryMuzzle);
  return root;
 }
