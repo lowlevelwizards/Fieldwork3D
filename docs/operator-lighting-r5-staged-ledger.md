@@ -32,3 +32,15 @@ Base: `0cf8a9f1737b1327cbb15c11b4f30e718cd73b98`
 ## Deferred from this stage
 - Gradual cel shader variants and standalone texture atlases are separate
   review gates; do not imply the current vertex solution is a UV lightmap.
+
+## R5.2-A independent self / external occlusion channels (implemented)
+- Rig pouch bodies, flaps and retainers share one stable logical part ID.
+- Intra-pouch self occlusion and external gear occlusion are computed as
+  distinct normalized 8-bit CPU masks during the existing pre-merge bake.
+- The visible result takes the stronger legitimate occlusion (no double
+  multiplication); no new GPU attributes, shaders, draw calls or materials.
+- Pre-merge shadow volumes now retain their part ID and semantic role for
+  future attachment-graph passes.
+- Focused tests check self-only, external-only, idempotence, and metadata.
+- **Remaining R5.2:** atlas-backed high-resolution per-part shadow maps
+  and all-gear semantic tagging; this foundation is not that complete feature.

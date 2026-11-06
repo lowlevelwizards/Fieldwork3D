@@ -10,7 +10,8 @@
  */
 import * as THREE from 'three';
 import {bakeGearGeometryAO} from './operator-baked-gear-ao.ts';
-type BoxRecord={min:[number,number,number];max:[number,number,number]};
+type BoxRecord={min:[number,number,number];max:[number,number,number];
+ partId?:string;role?:string};
 const frontRays=[
  new THREE.Vector3(.46,.88,.07).normalize(),
  new THREE.Vector3(.43,.90,.03).normalize(),
@@ -37,7 +38,14 @@ export function rememberUnmergedShadowVolumes(group:THREE.Group):void{
   if(!mesh.geometry.boundingBox)continue;
   mesh.updateMatrix();
   const b=mesh.geometry.boundingBox.clone().applyMatrix4(mesh.matrix);
-  if(!b.isEmpty())boxes.push(toRecord(b));
+  if(!b.isEmpty()){
+   const record=toRecord(b);
+   if(mesh.userData.fieldworkShadowPartId)
+    record.partId=String(mesh.userData.fieldworkShadowPartId);
+   if(mesh.userData.fieldworkShadowRole)
+    record.role=String(mesh.userData.fieldworkShadowRole);
+   boxes.push(record);
+  }
  }
  if(boxes.length)group.userData.fieldworkShadowVolumes=boxes;
 }

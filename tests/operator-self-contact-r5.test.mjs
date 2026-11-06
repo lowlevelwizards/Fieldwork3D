@@ -1,0 +1,43 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import {enableBakedGearAO,bakeGearContactAO} from '../src/operator-baked-gear-ao.ts';
+import {rememberUnmergedShadowVolumes} from '../src/operator-baked-gear-cast.ts';
+const mat=()=>{const m=new THREE.MeshStandardMaterial({color:0xffffff});
+ enableBakedGearAO(m);return m;};
+const piece=(m,x,id,role)=>{
+ const mesh=new THREE.Mesh(new THREE.BoxGeometry(2,6,6,2,2,2),m);
+ mesh.position.x=x;mesh.userData.fieldworkShadowPartId=id;
+ mesh.userData.fieldworkShadowRole=role;
+ return mesh;
+};
+test('R5 self and external shadow channels are distinguishable and neutral',()=>{
+ const m=mat(),g=new THREE.Group();
+ const receiver=piece(m,0,'pouch-1','body');
+ const flap=piece(m,1.3,'pouch-1','flap');
+ g.add(receiver,flap);
+ const n=bakeGearContactAO(g);
+ assert.ok(n>0);
+ const own=receiver.geometry.userData.fieldworkSelfOcclusionMask;
+ const external=receiver.geometry.userData.fieldworkExternalOcclusionMask;
+ assert.ok(own instanceof Uint8Array&&external instanceof Uint8Array);
+ assert.ok(own.some(v=>v>0),'flap shades its own pouch');
+ assert.ok(external.every(v=>v===0),'no unrelated external caster');
+ const once=Array.from(receiver.geometry.getAttribute('color').array);
+ assert.equal(bakeGearContactAO(g),0,'idempotent');
+ assert.deepEqual(Array.from(receiver.geometry.getAttribute('color').array),once);
+});
+test('R5 separate part is treated as external, not self',()=>{
+ const m=mat(),g=new THREE.Group();
+ const receiver=piece(m,0,'pouch-1','body');
+ g.add(receiver,piece(m,1.3,'pouch-2','body'));
+ bakeGearContactAO(g);
+ const own=receiver.geometry.userData.fieldworkSelfOcclusionMask;
+ const external=receiver.geometry.userData.fieldworkExternalOcclusionMask;
+ assert.ok(own.every(v=>v===0));
+ assert.ok(external.some(v=>v>0));
+ rememberUnmergedShadowVolumes(g);
+ const saved=g.userData.fieldworkShadowVolumes;
+ assert.ok(saved.some(p=>p.partId==='pouch-1'&&p.role==='body'));
+ assert.ok(saved.some(p=>p.partId==='pouch-2'));
+});
