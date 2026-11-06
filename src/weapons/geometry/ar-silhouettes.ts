@@ -30,10 +30,10 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // A distinct, tapered LOWER magwell makes the magazine part of the receiver,
  // not an object attached to the back of the fore-end.
  const m=AR_VISUAL_ANATOMY;
- p('receiver',[[m.magwellCenterX-1.2,m.magwellTopY],
-   [m.magwellCenterX+1.25,m.magwellTopY],
-   [m.magwellCenterX+1.0,m.magwellBottomY],
-   [m.magwellCenterX-1.0,m.magwellBottomY]],3.2,1);
+ p('receiver',[[m.magwellCenterX-1.86,m.magwellTopY],
+   [m.magwellCenterX+1.86,m.magwellTopY],
+   [m.magwellCenterX+1.68,m.magwellBottomY],
+   [m.magwellCenterX-1.60,m.magwellBottomY]],3.25,1);
  const carry=['ar-a1','ar-a2','ar-retro'].includes(parts.receiver);
  if(carry){
   const heavy=parts.receiver==='ar-a2';
@@ -69,10 +69,12 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
 
  // Pistol grips share the same root, but the modern shape has a fuller heel.
  const modern=parts.grip==='ar-grip-poly';
+ // The grip belongs to the BACK of the lower receiver. Its upper end
+ // vanishes into the receiver, and it remains slimmer in both X and Z.
  p('grip',shiftProfile(modern?
-  [[-2.2,-1.7],[.6,-1.7],[.45,-5.25],[-.45,-5.85],[-2.7,-5.65]]:
-  [[-2.0,-1.7],[.4,-1.7],[-.2,-5.75],[-2.45,-5.7]],
-  m.gripShiftX),modern?3.25:2.95,1);
+  [[-2.1,-1.65],[.35,-1.65],[.2,-5.25],[-.5,-5.85],[-2.3,-5.65]]:
+  [[-1.95,-1.65],[.25,-1.65],[-.25,-5.75],[-2.20,-5.7]],
+  m.gripShiftX),m.gripDepthZ,1);
 
  // Thin, unmistakable STANAG shapes; an understated bottom kick is the
  // only change of direction. All variants enter the same receiver magwell.
