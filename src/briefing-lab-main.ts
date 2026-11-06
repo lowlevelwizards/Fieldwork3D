@@ -4,6 +4,7 @@ import type {IntelMode} from './breach-intel.ts';
 import type {SiteScale} from './breach-site.ts';
 import type {OperationKind} from './breach-operations.ts';
 import {eligibleIncidents} from './briefing/incident-catalog.ts';
+import {selectIncident} from './briefing/incident-director.ts';
 import {createOperationDossier,presentOperationDossier} from './briefing/briefing-composer.ts';
 import {validateOperationDossier} from './briefing/briefing-validation.ts';
 import type {LabGenerationRequest,LabGenerationResponse} from './briefing-lab-worker.ts';
@@ -16,6 +17,8 @@ const ui={
   style:el<HTMLSelectElement>('reportStyle'),
   length:el<HTMLSelectElement>('reportLength'),
   incident:el<HTMLSelectElement>('incident'),
+  steer:el<HTMLInputElement>('steerEncounter'),
+  rebuild:el<HTMLButtonElement>('rebuildEncounter'),
   generate:el<HTMLButtonElement>('generateSite'),
   rerollIncident:el<HTMLButtonElement>('rerollIncident'),
   rerollWording:el<HTMLButtonElement>('rerollWording'),
@@ -41,6 +44,9 @@ function rebuildIncidentChoices(){
     option.value=def.id;option.textContent=def.name.toUpperCase();
     return option;
   }));
+  const preferred=truth.encounterIncidentId??selectIncident(truth).id;
+  ui.incident.value=choices.some(c=>c.id===preferred)?preferred:
+    selectIncident(truth).id;
 }
 function renderDossier(){
   if(!truth)return;
@@ -55,7 +61,8 @@ function renderDossier(){
       truth.missionKind.toUpperCase(),
       truth.subtype?.replaceAll('-', ' ').toUpperCase()??truth.building.toUpperCase(),
       'REPORT '+quality.toUpperCase(),
-      'SEED '+truth.seed].join(' · ');
+      'SEED '+truth.seed,
+      truth.encounterIncidentId?'STEERED EXPERIMENT':'READ-ONLY'].join(' · ');
     ui.text.textContent=presentOperationDossier(dossier,ui.length.value as BriefingLength);
     ui.comparison.replaceChildren(...(['dispatch','operations','intelligence'] as const).map(name=>{
       const compared=createOperationDossier(truth!,{...opts,style:name});
@@ -69,7 +76,9 @@ function renderDossier(){
     }));
     const problems=validateOperationDossier(truth,dossier);
     ui.diagnostics.textContent=
-      (problems.length?problems.join('\n'):'NO VALIDATION ERRORS')+'\n\n'+
+      (problems.length?problems.join('\n'):'NO VALIDATION ERRORS')+'\n'+
+      (truth.encounterIncidentId?'INTENT: '+truth.encounterIncidentId+
+        ' / COMPOSED: '+dossier.identity.incidentId+'\n':'NO ENCOUNTER STEERING\n')+'\n'+
       dossier.claims.map(c=>c.id+' / '+c.source+' / '+c.confidence+
         '\n  '+c.text+'\n  provenance: '+c.provenance).join('\n\n');
     ui.status.textContent='VALID DOSSIER · '+dossier.incident.name.toUpperCase()+
@@ -105,11 +114,22 @@ function generateSite(){
   const message:LabGenerationRequest={
     id,seed,scale:ui.scale.value as SiteScale,
     mission:ui.mission.value as OperationKind,
-    intel:ui.intel.value as IntelMode
+    intel:ui.intel.value as IntelMode,
+    useIncidentIntent:ui.steer.checked,
+    requestedIncidentId:ui.steer.checked?ui.incident.value||undefined:undefined
   };
   worker.postMessage(message);
 }
 ui.generate.addEventListener('click',generateSite);
+ui.steer.addEventListener('change',()=>{
+  ui.status.textContent=ui.steer.checked?
+    'STEERING ENABLED FOR NEXT SITE GENERATION · current mission unchanged':
+    'STEERING DISABLED · current mission unchanged';
+});
+ui.rebuild.addEventListener('click',()=>{
+  // Explicitly opt in. This may regenerate encounter and (if needed) geometry.
+  ui.steer.checked=true;generateSite();
+});
 ui.incident.addEventListener('change',renderDossier);
 ui.quality.addEventListener('change',renderDossier);
 ui.style.addEventListener('change',renderDossier);
