@@ -11,4 +11,5 @@ test('quick video chooses bounded landscape or portrait 720p',()=>{
   assert.deepEqual(replayVideoSize(1920,1080),{width:1280,height:720});
   assert.deepEqual(replayVideoSize(390,844),{width:720,height:1280});
   assert.equal(QUICK_VIDEO_SECONDS,20);
+  assert.ok(MIN_VIDEO_WALL_MS>=1000&&MIN_VIDEO_WALL_MS<=5000);
 });
