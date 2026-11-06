@@ -7,3 +7,9 @@
 .steering-toggle{margin:.45rem 0 .7rem;color:#c8d0c6;display:flex;align-items:center;gap:.5rem;line-height:1.4}
 .steering-toggle input{width:18px;min-height:18px;height:18px;accent-color:#b0bda9}
 #rebuildEncounter{width:100%;margin:.55rem 0 .3rem;background:#2b3e38}
+
+.audit-header{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.audit-header h3{margin:.3rem 0}
+.audit-output{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 'Work Sans',sans-serif;
+ color:#cad4c7;max-height:340px;overflow:auto;border:1px solid #425e51;padding:.75rem;
+ background:#101a1b}

@@ -38,6 +38,8 @@ import {captureMissionStart,siteForMissionRestart,restoreMissionStartingTeam,
   type MissionStartSnapshot} from './breach-mission-restart.ts';
 import {compileMissionFacts} from './briefing/mission-facts.ts';
 import {createOperationDossier} from './briefing/briefing-composer.ts';
+import {sessionIntelligenceReview} from './briefing/briefing-after-action.ts';
+import {attachCampaignDossierContext} from './briefing/campaign-context.ts';
 import type {QuickPlayGenerationRequest,QuickPlayGenerationResponse}
  from './quick-play-generation.ts';
 import {equippedEntryMethods,issuedWedges} from './equipment-entry-tools.ts';
@@ -218,6 +220,8 @@ const ui={
   contact:el<HTMLButtonElement>('contact'),
   debrief:el<HTMLElement>('debrief'),
   debriefTitle:el<HTMLElement>('debriefTitle'),
+  debriefIntelBlock:el<HTMLElement>('debriefIntelBlock'),
+  debriefIntelText:el<HTMLElement>('debriefIntelText'),
   debriefGrade:el<HTMLElement>('debriefGrade'),
   debriefSurvivors:el<HTMLElement>('debriefSurvivors'),
   debriefAccuracy:el<HTMLElement>('debriefAccuracy'),
@@ -286,7 +290,11 @@ const startupParams=new URLSearchParams(location.search);
 const briefingPreviewEnabled=startupParams.get('briefingV2')!=='0';
 function buildPreviewDossier(session:Session,risk?:1|2|3){
   if(!briefingPreviewEnabled||!session.site)return undefined;
-  try{return createOperationDossier(compileMissionFacts(session,{contractRisk:risk}));}
+  try{
+    const dossier=createOperationDossier(compileMissionFacts(session,{contractRisk:risk}));
+    return campaignMode==='mission'?
+      attachCampaignDossierContext(dossier,campaign):dossier;
+  }
   catch(error){
     // Narrative validation must never prevent a valid tactical mission loading.
     console.warn('[Briefing] Safe static contract fallback',error);
@@ -2138,16 +2146,21 @@ function updateHud(){
     dossier.identity.title+' / '+brief.name:brief.code+' / '+brief.name;
   ui.briefingBody.textContent=brief.objective;
   ui.briefingSituationBlock.hidden=!dossier;
+  const continuity=dossier?.campaign?.followUp;
   ui.briefingSituation.textContent=dossier?
-    dossier.incident.lead+' '+dossier.incident.context:'';
+    dossier.incident.lead+' '+dossier.incident.context+
+      (continuity?'\n\nCASE CONTINUITY · Follow-up to '+
+        continuity.title+' ('+continuity.outcome.toUpperCase()+
+        ') in '+dossier.campaign!.region+'.':''):'';
   ui.briefingCondition.textContent=brief.condition;
   ui.briefingExtraction.textContent=brief.extraction;
   const contract=campaignMode==='mission'&&campaign?.activeContractId?
     campaign.contracts.find(c=>c.id===campaign!.activeContractId):undefined;
+  const caseAssignment=dossier?.campaign??contract;
   ui.briefingSite.textContent=brief.building+' · '+brief.layout+
-    (contract?'\n'+contract.region.toUpperCase()+
-      ' · '+['','LOW','MODERATE','HIGH'][contract.risk]+
-      ' RISK · '+contract.title.toUpperCase():'');
+    (caseAssignment?'\n'+caseAssignment.region.toUpperCase()+
+      ' · '+['','LOW','MODERATE','HIGH'][caseAssignment.risk]+
+      ' RISK · '+caseAssignment.title.toUpperCase():'');
   ui.briefingIntel.textContent=dossier?
     dossier.claims.map(c=>'['+c.source.toUpperCase()+' · '+
       c.confidence.toUpperCase()+'] '+c.text).join('\n\n'):brief.notes;
@@ -2281,6 +2294,9 @@ function updateHud(){
   ui.next.textContent=campaignMode==='mission'?'RETURN TO BASE':'NEXT ARRANGEMENT';
   ui.retry.disabled=campaignMode==='mission';
   if(!ui.debrief.hidden){
+    ui.debriefIntelBlock.hidden=!state.operationDossier;
+    ui.debriefIntelText.textContent=state.operationDossier?
+      sessionIntelligenceReview(state):'';
     const stats=debrief(state);
     ui.debriefTitle.textContent=state.phase==='won'?'OPERATION COMPLETE':'MISSION FAILED';
     ui.debriefGrade.textContent=stats.grade+' · '+stats.score;

@@ -1594,3 +1594,9 @@ html,body{font-family:var(--fw-font-menu)}
 /* Briefing R3: confidence-tagged intelligence stays legible on phone. */
 .fw-mission-dossier #briefingIntel{white-space:pre-line;line-height:1.55}
 .fw-mission-dossier #briefingSituation{line-height:1.6}
+
+/* R4: readable intelligence reconciliation beneath the after-action scorecard. */
+.fw-after-action-detail #debriefIntelText{white-space:pre-line;line-height:1.65}
+
+/* Allow factual Campaign continuity to read as a separate Situation paragraph. */
+.fw-mission-dossier #briefingSituation{white-space:pre-line}

@@ -42,7 +42,12 @@ export function createOperationDossier(
 ):OperationDossierV1{
   const incident=selectIncident(truth,{...opts,
     forceIncidentId:opts.forceIncidentId??truth.encounterIncidentId??undefined});
-  const narrativeSeed=mixBriefingSeed(truth.seed,(opts.narrativeSalt??0)^0x4b54a129);
+  // R4: incident identity also influences title and wording. Same site seed,
+  // different case family => a genuinely different stable narrative identity.
+  const incidentHash=[...incident.id].reduce((n,ch)=>
+    (Math.imul(n,33)+ch.charCodeAt(0))>>>0,5381);
+  const narrativeSeed=mixBriefingSeed(truth.seed,
+    (opts.narrativeSalt??0)^0x4b54a129^incidentHash);
   const rand=briefingRng(narrativeSeed);
   const lead=incident.leads[Math.floor(rand()*incident.leads.length)];
   const context=incident.contexts[Math.floor(rand()*incident.contexts.length)];
