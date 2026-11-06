@@ -8,8 +8,12 @@ import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geome
 import {buildWeaponAccessories} from './breach-weapon-accessories.ts';
 import {resolveWeaponAssembly,type WeaponConfiguration}
  from './equipment-weapon-assemblies.ts';
-import {workbenchMounts,type WorkbenchMode,type WorkbenchSocket}
+import {type WorkbenchMode,type WorkbenchMount,type WorkbenchSocket}
  from './equipment-weapon-workbench-layout.ts';
+import {workbenchVisualAnchors}
+ from './weapons/geometry/weapon-visual-anchors.ts';
+import {weaponVisualLayout}
+ from './weapons/geometry/weapon-visual-layout.ts';
 
 export class WeaponWorkbenchPreview{
  private renderer:THREE.WebGLRenderer|null=null;
@@ -40,7 +44,8 @@ export class WeaponWorkbenchPreview{
  private readonly resizeObserver:ResizeObserver;
  private yaw=.15;
  private pitch=.17;
- private distance=62;
+ private distance=51;
+ private visibleMounts:WorkbenchMount[]=[];
  private dragDistance=0;
  private pinchDistance=0;
  private active:WorkbenchSocket='optic';
@@ -153,6 +158,9 @@ export class WeaponWorkbenchPreview{
   const body=buildWeaponSilhouette(config.weapon,this.steel,this.dark,config);
   const accessories=buildWeaponAccessories(config,this.steel,this.dark);
   this.model.add(body,accessories);
+  // Match the same longitudinal scale already used by the actual operator rig.
+  const layout=weaponVisualLayout(config);
+  this.model.scale.x=layout.longitudinalScale;
   this.mode=config.build?'body':'attachments';
   this.active=config.build?'body-receiver':'optic';
   this.rebuildMounts();
@@ -178,7 +186,8 @@ export class WeaponWorkbenchPreview{
  }
  private rebuildMounts(){
   this.clearMounts();
-  for(const anchor of workbenchMounts(this.config,this.mode)){
+  this.visibleMounts=workbenchVisualAnchors(this.config,this.model,this.mode);
+  for(const anchor of this.visibleMounts){
    const button=document.createElement('button');
    button.type='button';
    button.className='weapon-workbench-socket';
@@ -356,7 +365,7 @@ export class WeaponWorkbenchPreview{
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.fillStyle='#162723';ctx.fillRect(0,0,w,h);
   // Side-oriented shaded silhouette derived from the same meshes as the 3D rig.
-  const rectangles:{x:number;y:number;width:number;height:number;z:number;dark:boolean}[]=[];
+  const rectangles:{x:number;y:number;width:number;height:number;z:number;color:string}[]=[];
   this.model.traverse(object=>{
    if(!(object instanceof THREE.Mesh)||object.name.startsWith('mount-'))return;
    const geom=object.geometry;
@@ -375,11 +384,12 @@ export class WeaponWorkbenchPreview{
     }
    if(Number.isFinite(left)&&right-left>.2&&bottom-top>.2)
     rectangles.push({x:left,y:top,width:right-left,height:bottom-top,z,
-     dark:object.material===this.dark});
+     color:object.material instanceof THREE.MeshStandardMaterial?
+      '#'+object.material.color.getHexString():'#96a49a'});
   });
   rectangles.sort((a,b)=>b.z-a.z);
   for(const shape of rectangles){
-   ctx.fillStyle=shape.dark?'#34423d':'#96a49a';
+   ctx.fillStyle=shape.color;
    ctx.fillRect(shape.x,shape.y,shape.width,shape.height);
    ctx.strokeStyle='#142520';ctx.lineWidth=.7;
    ctx.strokeRect(shape.x,shape.y,shape.width,shape.height);
@@ -390,8 +400,9 @@ export class WeaponWorkbenchPreview{
   if(w<2||h<2)return;
   this.model.rotation.set(this.in2D?0:this.pitch,this.in2D?0:this.yaw,0);
   this.camera.aspect=w/h;this.camera.updateProjectionMatrix();
-  this.camera.position.set(2,16,this.distance);
-  this.camera.lookAt(2,0,0);
+  const centerX=weaponVisualLayout(this.config).workbenchCenterX;
+  this.camera.position.set(centerX,16,this.distance);
+  this.camera.lookAt(centerX,0,0);
   this.camera.updateMatrixWorld(true);
   // An orthographic, level side projection: 2D never tumbles into pseudo-3D.
   const vertical=this.distance*2*Math.tan(37*Math.PI/360);
@@ -401,8 +412,8 @@ export class WeaponWorkbenchPreview{
   this.sideCamera.top=vertical/2;
   this.sideCamera.bottom=-vertical/2;
   this.sideCamera.updateProjectionMatrix();
-  this.sideCamera.position.set(2,0,100);
-  this.sideCamera.lookAt(2,0,0);
+  this.sideCamera.position.set(centerX,0,100);
+  this.sideCamera.lookAt(centerX,0,0);
   this.sideCamera.updateMatrixWorld(true);
   this.model.updateMatrixWorld(true);
   if(this.renderer&&!this.in2D){
@@ -414,7 +425,7 @@ export class WeaponWorkbenchPreview{
   if(this.in2D)this.drawFallback(w,h);
   const projection=this.in2D?this.sideCamera:this.camera;
   let anchorX=0,anchorY=0,hasAnchor=false;
-  for(const mount of workbenchMounts(this.config,this.mode)){
+  for(const mount of this.visibleMounts){
    const button=this.socketButtons.get(mount.slot);
    if(!button)continue;
    const v=new THREE.Vector3(mount.x,mount.y,mount.z)

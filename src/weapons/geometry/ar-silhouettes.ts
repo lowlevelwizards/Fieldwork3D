@@ -40,65 +40,63 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
 
  // Stock: fixed triangular stock versus open shoulder / sliding-carbine outline.
  if(parts.stock==='ar-fixed'){
-  p('stock',[[-13.5,.7],[-6.1,.85],[-6.05,-1.55],
-   [-8.35,-3.05],[-13.5,-2.35]],3.45,1);
-  b('stock',-13.2,-.65,0,.6,3.85,3.8,0);
+  // One five-sided classic rifle wedge, including its rear plate.
+  p('stock',[[-13.5,.65],[-6.05,.7],[-6.05,-1.7],
+   [-9.0,-3.1],[-13.5,-2.4]],3.8,1);
  }else{
-  b('stock',-8.65,.15,0,5.5,1.2,1.5,0);
   const compact=parts.stock==='ar-compact';
-  p('stock',[[-12.25,.45],[-10.85,.8],[-9.55,.5],[-9.45,-1.85],
-    [-11.6,-2.65],[-12.5,-2.0]],compact?3.5:3.1,1);
-  b('stock',compact?-11.9:-12.55,-.95,0,.85,3.65,3.55,1);
+  const rear=compact?-11.7:-12.3;
+  // Two connected forms: one slim extension and one thick five/six-sided end.
+  b('stock',-8.35,.1,0,5.8,1.25,1.65,0);
+  p('stock',[[rear,.55],[rear+1.0,.8],[rear+2.75,.45],
+   [rear+2.75,-1.55],[rear+.75,-2.85],[rear,-2.05]],
+   compact?3.85:3.45,compact?2:1);
  }
 
  // Pistol grips share the same root, but the modern shape has a fuller heel.
- const modern=parts.grip==='ar-grip-poly',a2=parts.grip==='ar-grip-a2';
- p('grip',modern?[[-2,-1.8],[.5,-1.8],[.6,-5.5],[-.3,-6.25],[-2.65,-5.85]]:
-  [[-2,-1.8],[.2,-1.8],[-.2,-5.95],[-2.15,-5.65]],
-  modern?3.0:2.55,1);
- if(a2)b('grip',-.3,-3.6,1.25,.65,.9,.45,0);
+ const modern=parts.grip==='ar-grip-poly';
+ p('grip',modern?
+  [[-2.2,-1.7],[.6,-1.7],[.45,-5.25],[-.45,-5.85],[-2.7,-5.65]]:
+  [[-2.0,-1.7],[.4,-1.7],[-.2,-5.75],[-2.45,-5.7]],
+  modern?3.25:2.95,1);
 
  // The magazine profile uses one actually tapered/curved outline, not a pile of boxes.
  const mag=parts.magazine;
  if(mag==='ar-mag20')
-  p('magazine',[[2.3,-1.75],[5.2,-1.75],[5.25,-6.2],
-    [2.6,-6.25]],2.55,0);
+  p('magazine',[[2.15,-1.72],[5.45,-1.72],[5.55,-6.3],
+   [2.15,-6.35]],3.0,0);
  else if(mag==='ar-magpoly')
-  p('magazine',[[2.25,-1.75],[5.5,-1.75],[5.75,-5.35],
-    [6.2,-7.8],[3.1,-8.1],[2.55,-5.4]],2.9,1);
+  p('magazine',[[2.15,-1.72],[5.65,-1.72],[5.8,-4.65],
+   [6.4,-7.15],[2.9,-7.4],[2.6,-4.6]],3.45,1);
  else
-  p('magazine',[[2.3,-1.75],[5.35,-1.75],[5.5,-5.2],
-    [5.85,-7.8],[3.3,-7.9],[2.7,-5.2]],2.7,0);
- b('magazine',mag==='ar-mag20'?3.9:4.45,mag==='ar-mag20'?-6.3:-7.95,
-  0,mag==='ar-mag20'?2.9:3.25,.52,3.0,1);
+  p('magazine',[[2.1,-1.72],[5.55,-1.72],[5.8,-4.9],
+   [6.15,-7.5],[2.85,-7.6],[2.6,-5.0]],3.05,0);
 
  // Four outside envelopes: triangular ribless, rounded, slim retro, heavy rail.
  const guard=parts.handguard;
  const long=['ar-triangle','ar-round','ar-m5-rail'].includes(guard);
  const short=['ar-compact-rail','ar-risii'].includes(guard);
  const end=long?15.25:short?15.95:13.9;
- const start=3.9,top=guard==='ar-triangle'?1.75:1.6;
+ // A slight deliberate overlap avoids the visible receiver/guard seam.
+ const start=3.55;
  if(guard==='ar-triangle'){
-  p('handguard',[[start,1.45],[end,1.05],[end,-1.0],
-   [start,-1.7]],3.65,1);
-  b('handguard',8.9,1.45,0,9.45,.44,2.5,0);
+  // One long block with an iconic triangular taper, no tiny rail strips.
+  p('handguard',[[start,1.65],[end,1.15],[end,-1.15],
+   [start,-1.8]],3.85,1);
  }else if(guard==='ar-round'||guard==='ar-carbine'||
    guard==='ar-car15-ribbed'){
   const retro=guard==='ar-car15-ribbed';
-  p('handguard',[[start,1.4],[start+.7,top+(.25)], [end-.65,top],
-   [end,-.85],[end-.6,-1.5],[start+.5,-1.65]],retro?2.85:3.45,1);
-  b('handguard',(start+end)/2,-1.35,0,end-start-.9,.42,
-   retro?2.6:3.2,0);
-  if(guard==='ar-round')b('handguard',(start+end)/2,1.64,0,end-start-.8,.3,3.2,0);
+  p('handguard',[[start,1.35],[start+.8,1.7],[end-.7,1.6],
+   [end,-.9],[end-.6,-1.65],[start+.5,-1.65]],
+   retro?3.15:3.85,1);
  }else{
-  // Flat long top and blocky rail case: visually massive but few actual solids.
-  const ris=guard==='ar-risii',m5=guard==='ar-m5-rail';
-  p('handguard',[[start,-1.45],[start,1.45],
-   [end-.65,1.45],[end,1.05],[end,-1.3]],ris?4.2:3.75,1);
-  b('handguard',(start+end)/2,1.8,0,end-start,.55,3.55,0);
-  b('handguard',(start+end)/2,-1.6,0,end-start-.5,.32,3.55,0);
-  if(ris||m5||guard==='ar-quad')
-   b('handguard',(start+end)/2,-.25,2.1,end-start-.7,.55,.5,0);
+  const ris=guard==='ar-risii';
+  // Single squared shell and its raised rail, rather than stacked strips.
+  p('handguard',[[start,-1.65],[start,1.55],
+   [end-.55,1.55],[end,1.05],[end,-1.4]],
+   ris?4.6:4.0,ris?2:1);
+  b('handguard',(start+end)/2,1.86,0,end-start,.64,
+   ris?4.15:3.7,ris?2:0);
  }
 
  // All variants share the authoritative X=19.5 tip: only visual profile varies.
@@ -107,7 +105,8 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  b('barrel',(noseStart+barrelEnd)/2,0,0,barrelEnd-noseStart,1.25,1.4,0);
  // Old-style raised front sight, absent on compact modern rail silhouette.
  if(!short){
-  p('barrel',[[16.5,.35],[17.15,.35],[17.15,3.55],
-   [16.8,3.15],[16.35,2.9]],1.7,0);
+  // Oversized A-frame front sight: genuine open V negative space.
+  line('barrel',[15.95,.35],[16.85,3.45],.68,1.75,0);
+  line('barrel',[17.75,.35],[16.85,3.45],.68,1.75,0);
  }else b('barrel',19.06,0,0,.88,1.75,1.9,1);
 }
