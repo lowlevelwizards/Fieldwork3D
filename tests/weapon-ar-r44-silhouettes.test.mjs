@@ -67,9 +67,11 @@ test('R4.4 front sights have thick outer silhouette but hollow middle',()=>{
 test('R4.4 handguard families retain individual character and short Mk18 muzzle clearance',()=>{
  for(const [id,mark] of [['ar-m16a1','a1-vents'],
   ['ar-m16a2','poly-ribs'],['ar-mk12mod0','pri-vents'],
-  ['ar-m4a1','ras-panel'],['ar-mk18','ris-panel']]){
+  ['ar-m4a1','rail-teeth'],['ar-mk18','rail-teeth']]){
   const {g}=model(id);
-  assert.ok(g.children.some(x=>x.name==='family-art-'+mark),id+' distinct art');
+  assert.ok(mark==='rail-teeth'?
+   g.children.some(x=>x.userData.arRailTeeth&&x.name.startsWith('family-handguard-')):
+   g.children.some(x=>x.name==='family-art-'+mark),id+' distinct art');
   if(id==='ar-mk12mod0')
    assert.ok(g.children.some(x=>x.geometry.type==='CylinderGeometry'&&
     x.geometry.parameters.radialSegments===6),'Mk12 Mod 0 PRI tube');
@@ -81,12 +83,15 @@ test('R4.4 handguard families retain individual character and short Mk18 muzzle 
   clearWeaponSilhouette(g);
  }
 });
-test('R4.4 magazines have mirrored low-cost art and one-sided receiver port',()=>{
+test('R4.6 STANAG contour ribs replace mirrored sticker art',()=>{
  for(const id of ['ar-m16a1','ar-colt733','ar-mk18']){
-  const {g}=model(id),decals=g.children.filter(x=>x.userData.weaponPixelArt);
-  const magazine=decals.filter(x=>x.name.startsWith('family-art-ar-mag-')||x.name==='family-art-ar-poly-panel');
-  assert.equal(magazine.length,2,id+' two magazine side marks');
-  assert.ok(magazine.some(x=>x.position.z>0)&&magazine.some(x=>x.position.z<0));
+  const {g}=model(id),magazine=g.children.filter(x=>x.name.startsWith('family-magazine-'));
+  const decals=g.children.filter(x=>x.userData.weaponPixelArt);
+  assert.equal(magazine.length,id==='ar-mk18'?2:3,
+   id+' body plus two metal stamps or polymer toe');
+  assert.equal(decals.filter(x=>x.name.startsWith('family-art-ar-mag-')||
+   x.name==='family-art-ar-poly-panel').length,0,
+   'no old square or jagged magazine sticker marks');
   assert.equal(decals.filter(x=>x.name==='family-art-ar-port').length,1);
   assert.ok(decals.every(x=>!x.castShadow&&!x.receiveShadow));
   clearWeaponSilhouette(g);

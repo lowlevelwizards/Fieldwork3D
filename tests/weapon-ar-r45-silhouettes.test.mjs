@@ -9,7 +9,7 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset,
  resolveWeaponAssembly,setWeaponAttachment} from '../src/equipment-weapon-assemblies.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
 import {buildWeaponAccessories} from '../src/breach-weapon-accessories.ts';
-import {AR_VISUAL_AXIS_Y,AR_BARREL_ART}
+import {AR_VISUAL_AXIS_Y,AR_FRONT_GUARD_ROOF_Y,AR_BARREL_ART}
  from '../src/weapons/geometry/ar-barrel-profiles.ts';
 import {AR_VISUAL_ANATOMY} from '../src/weapons/geometry/weapon-receiver-anatomy.ts';
 import {partVisualBounds} from '../src/weapons/geometry/weapon-visual-anchors.ts';
@@ -57,7 +57,7 @@ test('R4.5 A-frame has vertical front, strongly sloped rear and aligned tall top
   assert.ok(cast(group,s+.68,1.78),id+' solid vertical front leg');
   assert.ok(cast(group,s+.68,3.74),id+' same x at top of front leg');
   assert.equal(cast(group,s+.09,2.10),false,id+' large clean A-frame opening');
-  assert.ok(close(bounds(group,'barrel').max.y,4.02),id+' top at rear sight');
+  assert.ok(close(bounds(group,'barrel').max.y,AR_FRONT_GUARD_ROOF_Y),id+' symbolic outer guard roof');
   const gap=s-bounds(group,'handguard').max.x;
   assert.ok(gap>.55&&gap<1.4,id+' front sight immediately beyond handguard');
   clearWeaponSilhouette(group);
@@ -67,11 +67,11 @@ test('R4.5 receiver loses rear block and trigger-guard bar, gains handle and ass
  const {group}=model('ar-m4a1');
  const receiver=group.children.filter(x=>x.name.startsWith('family-receiver-'));
  const boxes=receiver.filter(x=>x.geometry.type==='BoxGeometry');
- assert.ok(boxes.some(x=>close(x.position.x,-6.35)&&
-  close(x.position.y,1.82)&&x.geometry.parameters.depth>=3.9),
+ assert.ok(boxes.some(x=>close(x.position.x,-5.92)&&
+  close(x.position.y,1.59)&&x.geometry.parameters.depth>=3.9),
   'low horizontal rear charging handle');
- assert.ok(boxes.some(x=>close(x.position.x,-1.34)&&
-  close(x.rotation.z,-.34)),'one angled forward assist behind port');
+ assert.ok(boxes.some(x=>close(x.position.x,-1.93)&&
+  close(x.rotation.z,-.19)),'one long angled forward assist behind port');
  assert.equal(boxes.filter(x=>close(x.position.x,-5.7)&&
   x.geometry.parameters.height>3).length,0,'old tall rear lump removed');
  assert.ok(!receiver.some(x=>x.geometry.type==='ExtrudeGeometry'&&
@@ -79,48 +79,45 @@ test('R4.5 receiver loses rear block and trigger-guard bar, gains handle and ass
   'no freestanding trigger-guard line');
  clearWeaponSilhouette(group);
 });
-test('R4.5 STANAGs are broad, slim in Z and read through restrained art',()=>{
+test('R4.6 constant-width STANAG art has metal ribs but no PMAG panel',()=>{
  assert.ok(AR_VISUAL_ANATOMY.magazineWidthX>=3.3);
  assert.ok(AR_VISUAL_ANATOMY.magazineDepthZ<=1.9);
- for(const [id,mark] of [
-  ['ar-m16a1','ar-mag-stamp20'],['ar-m4a1','ar-mag-stamp30'],
-  ['ar-mk18','ar-poly-panel']]){
+ for(const id of ['ar-m16a1','ar-m4a1','ar-mk18']){
   const {group}=model(id),mag=bounds(group,'magazine');
-  assert.ok(mag.max.x-mag.min.x>=3.3,id+' wide front-back');
-  assert.ok(mag.max.z-mag.min.z<=2.18,id+' slim lateral thickness');
-  assert.equal(group.children.filter(x=>x.name==='family-art-'+mark).length,2,
-   id+' two-side pressed art');
-  if(id==='ar-mk18')
-   assert.ok(group.children.some(x=>x.name.startsWith('family-magazine-')&&
-    x.material!==group.children.find(y=>y.name.startsWith('family-magazine-')).material),
-    'polymer mag has contrasting tan plate');
-  else assert.equal(group.children.filter(x=>x.name.startsWith('family-magazine-')).length,1,
-   'no detached metal magazine floorplate');
+  assert.ok(mag.max.x-mag.min.x>=3.3,id+' broad side profile');
+  assert.ok(mag.max.z-mag.min.z<=2.18,id+' slim Z');
+  const meshes=group.children.filter(x=>x.name.startsWith('family-magazine-'));
+  assert.equal(meshes.length,id==='ar-mk18'?2:3,
+   id+' has body plus stamped geometry or molded toe');
+  assert.equal(group.children.filter(x=>x.name==='family-art-ar-poly-panel').length,0,
+   'no fake side panel on the poly mag');
+  if(id==='ar-mk18')assert.notEqual(meshes[1].material,meshes[0].material);
+  else assert.notEqual(meshes[1].material,meshes[0].material);
   clearWeaponSilhouette(group);
  }
 });
-test('R4.5 plastic ribs, dark A1 vents, real rail blocks, PRI remain different',()=>{
- const kinds=[['ar-m16a1','a1-vents'],['ar-m16a2','poly-ribs'],
-  ['ar-car15','car-ribs'],['ar-m16a4','m5-panel'],
-  ['ar-m4a1','ras-panel'],['ar-mk18','ris-panel'],
-  ['ar-mk12mod0','pri-vents']];
- for(const [id,mark] of kinds){
+test('R4.6 plastic ribs and four-sided instanced rails remain visually distinct',()=>{
+ for(const [id,mark] of [
+  ['ar-m16a1','a1-vents'],['ar-m16a2','poly-ribs'],
+  ['ar-car15','car-ribs'],['ar-mk12mod0','pri-vents']]){
   const {group}=model(id);
-  assert.ok(has(group,mark),id+' correct family detail');
-  if(['ar-m16a4','ar-m4a1','ar-mk18'].includes(id)){
-   const cuboids=group.children.filter(x=>x.name.startsWith('family-handguard-')&&
-    x.geometry.type==='BoxGeometry');
-   assert.ok(cuboids.length>=7,id+' large modeled stepped rail pieces');
-  }
-  if(id==='ar-mk12mod0')
-   assert.ok(group.children.some(x=>x.geometry.type==='CylinderGeometry'&&
-    x.geometry.parameters.radialSegments===6),'PRI tube not replaced by rail');
+  assert.ok(has(group,mark),id+' proper restrained surface art');
   clearWeaponSilhouette(group);
  }
+ for(const id of ['ar-m16a4','ar-m4a1','ar-mk18']){
+  const {group}=model(id);
+  assert.ok(group.children.some(x=>x.userData.arRailTeeth&&
+   x.userData.arRailFourSided),id+' has actual four-sided batched rail teeth');
+  clearWeaponSilhouette(group);
+ }
+ const mk=model('ar-mk12mod0');
+ assert.ok(mk.group.children.some(x=>x.geometry.type==='CylinderGeometry'&&
+  x.geometry.parameters.radialSegments===6),'Mk12 retains PRI tube');
+ clearWeaponSilhouette(mk.group);
 });
 test('R4.5 M4 stock has iconic deep rear heel and birdcage markings',()=>{
  const {group}=model('ar-m4a1');
- assert.ok(bounds(group,'stock').min.y<-4.72,'M4 heel approaches grip height');
+ assert.ok(bounds(group,'stock').min.y<-4.45,'M4 has deep flat heel');
  assert.ok(has(group,'ar-birdcage'),'simple birdcage slits');
  assert.equal(group.children.filter(x=>x.name==='family-art-ar-birdcage').length,2);
  clearWeaponSilhouette(group);

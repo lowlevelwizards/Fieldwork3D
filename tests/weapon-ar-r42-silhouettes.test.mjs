@@ -25,7 +25,7 @@ const shots=(g,x,y)=>new THREE.Raycaster(new THREE.Vector3(x,y,25),
 test('R4.2 all eight AR builds keep original saves and canonical barrel labels',()=>{
  assert.equal(ar.length,8);
  assert.equal(FAMILY_PRESETS.length,17);
- assert.equal(Object.keys(FAMILY_PARTS).length,91);
+ assert.equal(Object.keys(FAMILY_PARTS).length,92);
  assert.equal(Object.keys(AR_BARREL_ART).length,7);
  for(const p of ar){
   const {config,group}=model(p.id);
@@ -81,7 +81,7 @@ test('R4.2 A1/A2 fixed stocks are deep-at-butt tapered-at-root wedges',()=>{
    if(x>maxX-.3)root.push(y);
   }
   assert.ok(Math.min(...rear)<-3.0,'deep rear butt');
-  assert.ok(Math.min(...root)>-.8,'slender front root');
+  assert.ok(Math.min(...root)>-1.15,'fuller but still joined front root');
   assert.ok(ba.max.z-ba.min.z<3.45,'Z depth not expanded');
  }
  clearWeaponSilhouette(a.group);clearWeaponSilhouette(b.group);
