@@ -102,14 +102,21 @@ export function mapGarmentBoxUV(geometry:THREE.BoxGeometry,
 }
 export function garmentBoxUV(geometry:THREE.BoxGeometry,w:number,h:number,d:number,
  material:THREE.Material,x=0,y=0,z=0):THREE.BoxGeometry{
- // Two in-face segments on gear only give contact shadow gradients a
- // center sample without adding any silhouettes, draw calls or textures.
- // Garments and non-AO assets retain their exact original topology.
+ // UV dimensions may be ARTIFICIALLY LENGTHENED to compensate for
+ // animated limb scaling: metricSegmentGeometry passes a unit-height mesh
+ // but a 10/11.25-unit world-space UV height. NEVER use those UV dimensions
+ // to reconstruct physical geometry. Doing so lengthened IK limbs twice and
+ // produced giant spikes in the live Tops -> Material -> Clothes Only view.
+ //
+ // Subdivide the ORIGINAL mesh for low-cost baked shadow gradients, then
+ // independently map its UVs using the requested WORLD-METRIC lengths.
+ const physical=geometry.parameters;
  const segmented=material.userData?.fieldworkBakedEquipmentAO===true&&
-  (w>1.4||h>1.4||d>1.4);
+  (physical.width>1.4||physical.height>1.4||physical.depth>1.4);
  if(segmented){
+  const {width,height,depth}=physical;
   geometry.dispose();
-  geometry=new THREE.BoxGeometry(w,h,d,2,2,2);
+  geometry=new THREE.BoxGeometry(width,height,depth,2,2,2);
  }
  const mapped=material.userData?.fieldworkFabric===true?
   mapGarmentBoxUV(geometry,w,h,d,x,y,z):mapBoxPixelUV(geometry,w,h,d);
