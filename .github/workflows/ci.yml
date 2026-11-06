@@ -1170,6 +1170,15 @@ jobs:
             tests/replay-r3-loop.test.mjs \
             tests/replay-r2-recording.test.mjs \
             tests/gameplay-g4d-replay-validity.test.mjs
+      - name: Replay R3 — chapters, bookmarks, intel and checkpoint preflight
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r3-chapters-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/replay-r3-chapters.test.mjs \
+            tests/replay-r3-checkpoint-preflight.test.mjs \
+            tests/replay-r2-event-index.test.mjs \
+            tests/mission-restart-snapshot.test.mjs \
+            tests/replay-r2-recording.test.mjs
       - name: Replay R3 — camera, forensic shot selection and retained tactical events
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r3-') }}
         run: |
