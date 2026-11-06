@@ -1240,6 +1240,20 @@ jobs:
       - name: Briefing V3 — objective-first card, no-scroll layout, navigation and persistence
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-briefing-card-v3-') }}
         run: node --experimental-strip-types --test tests/briefing-card-v3.test.mjs tests/briefing-ui-v3-layout.test.mjs tests/briefing-default-live.test.mjs tests/briefing-dossier-persistence.test.mjs tests/briefing-shield-layering.test.mjs tests/ux-r1-navigation-squad.test.mjs
+      - name: HK G3 R2 — critical geometry and legacy silhouette checks
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-g3-r2-') }}
+        run: |
+          node --experimental-strip-types --test tests/weapon-hk-g3-family.test.mjs tests/weapon-families-01.test.mjs tests/weapon-arsenal-r4.test.mjs tests/weapon-ar-r48-silhouettes.test.mjs tests/weapon-ak-r47-final-polish.test.mjs tests/breach-low-ready-family-fit.test.mjs
+      - name: HK G3 R2 — render actual-mesh orthographic lineup
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-g3-r2-') }}
+        run: node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs reports/hk-g3-r2-ortho.html
+      - name: HK G3 R2 — upload visual review
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-g3-r2-') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hk-g3-r2-orthographic-review
+          path: reports/hk-g3-r2-ortho.html
+          retention-days: 7
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
