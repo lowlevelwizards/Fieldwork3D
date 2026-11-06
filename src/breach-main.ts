@@ -76,7 +76,8 @@ import {parseOperationHistory,addOperationRecord,
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
 import {captureReplayArchive,restoreReplayArchive} from './breach-replay-archive.ts';
 import {listSavedReplays,saveReplayArchive,loadSavedReplay,
-  deleteSavedReplay,setSavedReplayFavorite}
+  deleteSavedReplay,setSavedReplayFavorite,
+  getSavedReplayBookmarks,saveReplayBookmarks}
   from './breach-replay-library.ts';
 import {stepReplaySample,stepReplayPresentation,formatReplayTime}
   from './breach-replay-transport.ts';
@@ -745,6 +746,7 @@ const replayQuickVideo=new ReplayQuickVideo(
   }
 );
 let savedReplayPreviousRecorder:MissionRecorder|null=null;
+let activeSavedReplayId:string|null=null;
 let replayLibraryBusy=false;
 let replayLibraryRenderGeneration=0;
 let replayPresentation:ReplayPresentation|null=null;
@@ -4265,6 +4267,7 @@ function exitReplay(){
     recorder=savedReplayPreviousRecorder;
     savedReplayPreviousRecorder=null;
   }
+  activeSavedReplayId=null;
   stage?.applySite(state.site??null);
   updateHud();
 }
@@ -4352,6 +4355,7 @@ async function saveCurrentReplay():Promise<void>{
       Math.random().toString(36).slice(2,9);
     const archive=captureReplayArchive(recorder,id,Date.now());
     await saveReplayArchive(archive);
+    if(replayBookmarks.length)await saveReplayBookmarks(id,replayBookmarks);
     showUiHelp('FULL REPLAY SAVED TO DEVICE LIBRARY',3400);
     if(!ui.replayLibraryDialog.hidden)await renderSavedReplayLibrary();
   }catch(error){replayLibraryFailure(error);}
@@ -4367,18 +4371,27 @@ async function playSavedReplay(id:string):Promise<void>{
     const archived=await loadSavedReplay(id);
     const stored=restoreReplayArchive(archived);
     if(stored.frames.length<2)throw Error('Replay recording has no film');
+    const savedMarks=await getSavedReplayBookmarks(id);
     // Preserve the current live recorder and return to it on replay exit.
     savedReplayPreviousRecorder=recorder;
     recorder=stored;
     hideSavedReplayLibrary();
     closeMissionSettings(false);
     enterReplay();
+    if(replaying){
+      activeSavedReplayId=id;
+      replayBookmarks=savedMarks;
+      replayBookmarkCounter=Math.max(savedMarks.length,
+        ...savedMarks.map(mark=>Number(mark.id.match(/bookmark-(\\d+)/)?.[1]??0)));
+      renderReplayChapters();
+    }
     if(!replaying){
       recorder=savedReplayPreviousRecorder;savedReplayPreviousRecorder=null;
       throw Error('Could not open saved replay');
     }
     showUiHelp('PLAYING SAVED OPERATION · ORIGINAL MISSION UNCHANGED',3800);
   }catch(error){
+    activeSavedReplayId=null;
     // A failed import must never leave the current mission's film replaced.
     if(replaying)exitReplay();
     if(savedReplayPreviousRecorder){
@@ -4493,7 +4506,13 @@ ui.replayBookmark.addEventListener('click',()=>{
   replayBookmarks=addReplayBookmark(replayBookmarks,replayTime,recorder.duration,
     id,'MARK '+String(replayBookmarkCounter).padStart(2,'0'));
   renderReplayChapters();
-  showUiHelp('BOOKMARK ADDED · THIS REPLAY SESSION',2500);
+  if(activeSavedReplayId){
+    const replayId=activeSavedReplayId;
+    void saveReplayBookmarks(replayId,replayBookmarks).then(()=>{
+      if(activeSavedReplayId===replayId)
+        showUiHelp('BOOKMARK SAVED TO REPLAY LIBRARY',2400);
+    }).catch(error=>replayLibraryFailure(error));
+  }else showUiHelp('BOOKMARK ADDED · SAVE REPLAY TO PRESERVE',2800);
 });
 ui.replayShotClose.addEventListener('click',closeReplayShotInspector);
 ui.replayShotFocus.addEventListener('click',focusReplayShot);
