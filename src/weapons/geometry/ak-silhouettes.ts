@@ -24,12 +24,12 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const compact=parts.receiver==='akcompact';
  // Sloping stamped-look receiver and stepped roof. Core shared when authentic.
  p('receiver',compact?
-  [[-5.85,-1.25],[-5.75,1.05],[-4.95,1.15],[3.65,1.1],
-   [3.9,-1.05],[-3.05,-2.05]]:
+  [[-5.5,-1.25],[-5.45,1.05],[-4.9,1.15],[3.45,1.1],
+   [3.7,-1.05],[-3.05,-2.05]]:
   [[-6.55,-1.25],[-6.45,1.05],[-5.45,1.15],[3.9,1.1],
    [4.15,-1.05],[-3.15,-2.05]],3.85,0);
  p('receiver',compact?
-  [[-5.35,1.1],[-4.9,2.35],[1.5,2.4],[2.85,1.75],[3.05,1.05]]:
+  [[-5.2,1.1],[-4.65,2.35],[1.3,2.4],[2.7,1.75],[2.9,1.05]]:
   [[-5.8,1.1],[-5.2,2.25],[1.6,2.3],[3.0,1.8],[3.25,1.05]],
   3.5,1);
  b('receiver',-4.25,-.05,2.05,2.8,1.15,.5,1);
@@ -45,14 +45,14 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const stock=parts.stock;
  if(stock==='ak-skeleton'){
   // Preserve the successful open profile, only thicken the connecting bars.
-  line('stock',[-5.65,.65],[-12.3,.55],.95,1.05,0);
-  line('stock',[-5.65,-1.35],[-12.3,-2.5],.95,1.05,0);
-  line('stock',[-5.75,-1.3],[-9.45,.15],.72,1.05,0);
+  line('stock',[-5.25,.65],[-12.3,.55],1.0,1.05,0);
+  line('stock',[-5.25,-1.35],[-12.3,-2.5],1.0,1.05,0);
+  line('stock',[-5.25,-1.3],[-9.45,.15],.75,1.05,0);
   b('stock',-12.8,-1,0,1.05,3.65,2.5,1);
  }else if(stock==='ak-sidefold'){
   // One fat five-sided silhouette, not a pointed plank with floating hinge.
-  p('stock',[[-12.7,.55],[-8.65,.8],[-6.15,.45],
-   [-6.25,-1.6],[-10.15,-2.85],[-12.7,-2.35]],3.75,1);
+  p('stock',[[-12.25,.7],[-8.3,.95],[-6.0,.35],
+   [-6.25,-1.5],[-9.6,-2.9],[-12.25,-2.15]],4.1,1);
  }else{
   const isWood=stock==='ak-wood'||stock==='ak-wood74';
   p('stock',[[-13.5,.65],[-8.9,.95],[-6.25,-.5],
@@ -64,10 +64,9 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Grips are deliberately raked, with one body prism and no modeled stippling.
  const grip=parts.grip,gripWood=grip==='ak-grip-wood',
  resin=grip==='ak-grip-bakelite';
- p('grip',[[-3.35,-1.7],[-.55,-1.7],[-.95,-5.85],
-  [-2.2,-6.25],[-3.65,-5.8]],grip==='ak-grip-poly'?3.15:2.7,
+ p('grip',[[-3.4,-1.65],[-.5,-1.65],[-1.0,-5.65],
+  [-2.25,-6.1],[-3.7,-5.7]],grip==='ak-grip-poly'?3.4:2.9,
   gripWood||resin?2:1);
- if(grip==='ak-grip-poly')b('grip',-2.25,-5.95,0,2.7,.45,3.1,1);
 
  // Recognisable AK magazine curve must be in exterior contour, not block steps.
  const mag=parts.magazine,heavy=mag==='ak-mag762'||mag==='ak-mag762poly';
@@ -78,8 +77,8 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   p('magazine',[[2.15,-1.65],[5.9,-1.65],[6.65,-4.5],
    [8.95,-7.5],[5.65,-8.05],[3.35,-5.15]],3.45,finish);
  else
-  p('magazine',[[2.15,-1.65],[5.6,-1.65],[5.9,-4.7],
-   [7.25,-7.55],[4.5,-7.9],[3.35,-5.2]],3.25,finish);
+  p('magazine',[[2.15,-1.65],[5.8,-1.65],[5.95,-4.55],
+   [7.15,-7.4],[4.45,-7.6],[3.3,-5.1]],3.5,finish);
 
  const guard=parts.handguard;
  const short=guard==='ak-wood-short'||guard==='ak-poly-short';
@@ -88,12 +87,12 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const start=short?3.55:4.0;
  const woodGuard=guard==='ak-wood-long'||guard==='ak-wood-short';
  const rail=guard==='ak-rail-long';
- p('handguard',[[start,-1.35],[start+.75,.95],[end-.7,.85],
+ p('handguard',[[start,-1.35],[start+.75,1.05],[end-.7,1.05],
    [end,-.2],[end-.5,-1.75],[start+.45,-1.75]],3.85,
    woodGuard?2:1);
- // One large top silhouette, deliberately separated but not disconnected.
- p('handguard',[[start+.8,1.2],[start+1.7,2.4],
-   [end-1.35,2.25],[end-.6,1.15]],2.9,woodGuard?2:1);
+ // The upper and lower material envelopes meet without an empty seam.
+ p('handguard',[[start+.8,.98],[start+1.7,2.4],
+   [end-1.35,2.25],[end-.6,.98]],2.9,woodGuard?2:1);
  if(rail)b('handguard',(start+.9+end)/2,2.6,0,
   end-start-1.2,.6,3.0,0);
 
@@ -103,8 +102,8 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  b('barrel',(barrelStart+tip)/2,0,0,tip-barrelStart,1.23,1.5,0);
  if(short){
   // A much denser compact nose; no long pencil barrel sticking out.
-  p('barrel',[[14.8,-1.1],[18.85,-1.5],[19.5,-1.05],
-   [19.5,1.35],[18.85,1.55],[14.8,1.15]],2.9,1);
+  p('barrel',[[14.8,-.98],[18.85,-1.3],[19.5,-1.0],
+   [19.5,1.18],[18.85,1.37],[14.8,1.05]],2.85,1);
   p('barrel',[[12.05,.25],[12.95,2.85],[13.85,2.85],
    [14.1,.25]],1.75,0);
  }else{

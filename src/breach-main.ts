@@ -41,7 +41,7 @@ import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter}
  from './equipment-weapon-light-beam.ts';
-import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
+import {WeaponWorkbenchPreview,type WeaponWorkbenchViewState} from './equipment-weapon-workbench.ts';
 import type {WorkbenchSocket} from './equipment-weapon-workbench-layout.ts';
 import {carryCapacityReport} from './equipment-carry-placement.ts';
 import {mostUrgentWound} from './breach-medical-wounds.ts';
@@ -632,8 +632,17 @@ let expandedQuickWeapon:string|null=null;
 let quickWorkbench:WeaponWorkbenchPreview|null=null;
 let quickWorkbenchId:string|null=null;
 const selectedQuickWeaponSockets=new Map<string,WorkbenchSocket>();
+const savedQuickWorkbenchViews=new Map<string,WeaponWorkbenchViewState>();
+const resetQuickWorkbenchViews=new Set<string>();
+function rememberQuickWorkbenchView(){
+ if(!quickWorkbench||!quickWorkbenchId||
+  resetQuickWorkbenchViews.has(quickWorkbenchId))return;
+ const pose=quickWorkbench.getViewState();
+ if(pose)savedQuickWorkbenchViews.set(quickWorkbenchId,pose);
+}
 function renderOperationsBoard(){
  const priorScroll=operationsBoard.scrollTop;
+ rememberQuickWorkbenchView();
  quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
  operationsBoard.replaceChildren();
  const heading=document.createElement('div');
@@ -750,6 +759,7 @@ function renderOperationsBoard(){
     if(id===member.weapon||state.phase!=='planning'||replaying)return;
     persistentRoster=equipRoster(persistentRoster,member.id,id);
     selectedQuickWeaponSockets.delete(member.id);
+    savedQuickWorkbenchViews.delete(member.id);resetQuickWorkbenchViews.add(member.id);
     const saved=saveRoster();applyRosterIdentity(state,persistentRoster);
     if(saved)showFieldworkActionFeedback(member.callsign+' · '+label+' EQUIPPED');
     expandedQuickKit=member.id;expandedQuickWeapon=member.id;
@@ -781,6 +791,7 @@ function renderOperationsBoard(){
     if(state.phase!=='planning'||replaying)return;
     persistentRoster=configureRosterWeaponPreset(persistentRoster,member.id,preset.id);
     selectedQuickWeaponSockets.delete(member.id);
+    savedQuickWorkbenchViews.delete(member.id);resetQuickWorkbenchViews.add(member.id);
     saveRoster();applyRosterIdentity(state,persistentRoster);
     expandedQuickKit=member.id;expandedQuickWeapon=member.id;
     expandedQuickLoadoutGroup='weapon';renderOperationsBoard();updateHud();
@@ -855,13 +866,19 @@ function renderOperationsBoard(){
   const syncWorkbench=()=>{
    const active=kit.open&&loadout.group.weapon.open&&weaponEditor.open;
    if(!active){if(quickWorkbenchId===member.id){
+    rememberQuickWorkbenchView();
     quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
    }return;}
    if(quickWorkbenchId===member.id)return;
+   rememberQuickWorkbenchView();
    quickWorkbench?.dispose();quickWorkbench=null;
    quickWorkbenchId=member.id;
    quickWorkbench=new WeaponWorkbenchPreview(workbenchHost,
     member.weaponConfiguration,slot=>showSocket(slot));
+   const view=resetQuickWorkbenchViews.has(member.id)?
+    null:savedQuickWorkbenchViews.get(member.id);
+   if(view)quickWorkbench.restoreViewState(view);
+   resetQuickWorkbenchViews.delete(member.id);
    const saved=selectedQuickWeaponSockets.get(member.id);
    if(saved&&socketRows.has(saved))showSocket(saved);
    else quickWorkbench.setActiveSlot(initialSocket,false);

@@ -33,9 +33,8 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   b('receiver',-1.6,3.7,0,6.1,.82,2.05,0);
   if(heavy)b('receiver',-4.35,2.4,0,1.6,.95,2.4,1);
  }else{
+  // One continuous low top plane; the extra rear nub did not read at game scale.
   b('receiver',-1.5,2.05,0,8.3,.65,2.65,1);
-  if(parts.receiver==='ar-flat')
-   b('receiver',-4.15,2.5,0,1.5,.55,2.6,0);
  }
 
  // Stock: fixed triangular stock versus open shoulder / sliding-carbine outline.
@@ -46,11 +45,12 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  }else{
   const compact=parts.stock==='ar-compact';
   const rear=compact?-11.7:-12.3;
-  // Two connected forms: one slim extension and one thick five/six-sided end.
-  b('stock',-8.35,.1,0,5.8,1.25,1.65,0);
-  p('stock',[[rear,.55],[rear+1.0,.8],[rear+2.75,.45],
-   [rear+2.75,-1.55],[rear+.75,-2.85],[rear,-2.05]],
-   compact?3.85:3.45,compact?2:1);
+  // The stock body, not the telescoping connector, owns the silhouette.
+  // Keep a short, visibly embedded bridge with intentional overlap at both ends.
+  b('stock',-7.25,.05,0,3.6,1.45,1.9,0);
+  p('stock',[[rear,.65],[rear+1.25,.95],[rear+3.7,.55],
+   [rear+3.7,-1.7],[rear+1.0,-2.9],[rear,-2.15]],
+   compact?4.0:3.75,compact?2:1);
  }
 
  // Pistol grips share the same root, but the modern shape has a fuller heel.
@@ -86,14 +86,20 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  }else if(guard==='ar-round'||guard==='ar-carbine'||
    guard==='ar-car15-ribbed'){
   const retro=guard==='ar-car15-ribbed';
-  p('handguard',[[start,1.35],[start+.8,1.7],[end-.7,1.6],
-   [end,-.9],[end-.6,-1.65],[start+.5,-1.65]],
+  p('handguard',retro?
+   [[start,1.25],[start+1.0,1.52],[end-.65,1.37],
+    [end,-.75],[end-.55,-1.42],[start+.4,-1.55]]:
+   [[start,1.35],[start+.8,1.7],[end-.7,1.6],
+    [end,-.9],[end-.6,-1.65],[start+.5,-1.65]],
    retro?3.15:3.85,1);
  }else{
   const ris=guard==='ar-risii';
   // Single squared shell and its raised rail, rather than stacked strips.
-  p('handguard',[[start,-1.65],[start,1.55],
-   [end-.55,1.55],[end,1.05],[end,-1.4]],
+  p('handguard',ris?
+   [[start,-1.65],[start,1.45],[start+.65,1.68],
+    [end-.6,1.68],[end,1.08],[end,-1.43]]:
+   [[start,-1.65],[start,1.55],
+    [end-.55,1.55],[end,1.05],[end,-1.4]],
    ris?4.6:4.0,ris?2:1);
   b('handguard',(start+end)/2,1.86,0,end-start,.64,
    ris?4.15:3.7,ris?2:0);
@@ -106,7 +112,8 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Old-style raised front sight, absent on compact modern rail silhouette.
  if(!short){
   // Oversized A-frame front sight: genuine open V negative space.
-  line('barrel',[15.95,.35],[16.85,3.45],.68,1.75,0);
-  line('barrel',[17.75,.35],[16.85,3.45],.68,1.75,0);
+  // Wide squat A-frame silhouette; a visible V gap, not a needle-like spike.
+  line('barrel',[15.55,.35],[16.85,2.72],.57,1.8,0);
+  line('barrel',[18.15,.35],[16.85,2.72],.57,1.8,0);
  }else b('barrel',19.06,0,0,.88,1.75,1.9,1);
 }
