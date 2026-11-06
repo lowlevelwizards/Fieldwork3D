@@ -169,8 +169,9 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const long=['ar-triangle','ar-round','ar-m5-rail','ar-pri-tube'].includes(guard);
  const short=['ar-compact-rail','ar-risii'].includes(guard);
  const retro=guard==='ar-car15-ribbed'||guard==='ar-733-ribbed';
- const end=guard==='ar-pri-tube'?15.70:long?14.1:
-  retro?11.8:guard==='ar-risii'?14.2:short?15.05:12.2;
+ const end=guard==='ar-pri-tube'?15.70:
+  guard==='ar-risii'?13.38:long?14.1:
+  retro?11.8:short?15.05:12.2;
  const start=3.55; // deliberate slight overlap with receiver upper
  const isFreefloat=guard==='ar-risii'||guard==='ar-compact-rail';
  if(guard!=='ar-pri-tube'){
@@ -257,6 +258,8 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  b('barrel',(barrelStart+tip)/2,AR_VISUAL_AXIS_Y,0,tip-barrelStart,
   barrelArt.barrelHeight,barrelArt.barrelDepth,0);
  if(sight!==null&&(barrelArt.sight==='a1'||barrelArt.sight==='a2')){
+  // One chunky mounting foot visually joins the A-frame to the bore.
+  b('barrel',sight-.20,.78,0,2.10,.47,1.78,1);
   // Tall bold A-frame: a perfectly vertical FRONT face and a 56-degree
   // diagonal rear face. The guard roof is NOT the actual sighting datum.
   frame('barrel',[[sight-2.45,.70],[sight+1.02,.70],
@@ -266,8 +269,9 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  }else if(sight!==null){
   // Simplified flip-up Mk12 front sight, on the raised barrel center.
   b('barrel',sight,1.36,0,.92,.54,1.4,1);
-  p('barrel',[[sight-.27,1.62],[sight+.35,1.62],
-   [sight+.24,2.37],[sight-.12,2.37]],1.4,0);
+  p('barrel',[[sight-.36,1.62],[sight+.37,1.62],
+   [sight+.30,2.53],[sight-.18,2.53]],1.4,0);
+  b('barrel',sight+.02,2.54,0,.94,.28,1.45,0);
  }
  if(barrelArt.profile==='government'||barrelArt.profile==='service'){
   // One oversized government step, not small machining details.
@@ -278,15 +282,24 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Shot/mount X is still the existing configured authoritative tip.
  if(showFactoryMuzzle){
   const birdcage=(length:number,height:number,depth:number)=>{
-   b('barrel',tip-length/2,AR_VISUAL_AXIS_Y,0,length,height,depth,0);
-   // Two deliberately long slots parallel to the bore, never vertical dots.
+   // One six-sided low-poly body instead of a square muzzle block.
+   // Axial extent still terminates EXACTLY at the authoritative muzzle X.
+   const geometry=new THREE.CylinderGeometry(height/2,height/2,length,6,1);
+   geometry.rotateZ(-Math.PI/2);
+   geometry.scale(1,1,depth/height);
+   const device=new THREE.Mesh(geometry,material[0]);
+   device.name='family-barrel-'+parts.barrel+'-'+index.barrel++;
+   device.position.set(tip-length/2,AR_VISUAL_AXIS_Y,0);
+   device.castShadow=true;device.receiveShadow=true;
+   root.add(device);
+   // Two simple longitudinal matte slots on the large exterior side face.
    addWeaponPixelMarkPair(root,'ar-birdcage',tip-length/2,AR_VISUAL_AXIS_Y,
-    depth/2+.085,length*.77,height*.72);
+    depth*.47,length*.78,height*.67);
   };
   if(barrelArt.profile==='spr'){
-   // Mk12 Mod 0 specialist brake/collar, not a universal birdcage.
-   b('barrel',tip-1.34,AR_VISUAL_AXIS_Y,0,.66,1.91,1.94,1);
-   b('barrel',tip-.46,AR_VISUAL_AXIS_Y,0,.90,1.73,1.82,1);
+   // Distinctive long SPR collar and two-stage precision brake.
+   b('barrel',tip-1.48,AR_VISUAL_AXIS_Y,0,.58,2.02,2.05,1);
+   b('barrel',tip-.57,AR_VISUAL_AXIS_Y,0,1.14,1.70,1.85,0);
   }else if(barrelArt.profile==='cqb'){
    // Keep 10.3-inch Mk18's tiny but visible exposed nose OUT of RIS II.
    birdcage(1.30,1.95,2.02);
