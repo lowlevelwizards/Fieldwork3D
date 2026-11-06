@@ -58,6 +58,9 @@ try{
      ['clear','guard-fallback'].includes(data?.lowReadyFit??'');
    },f,{timeout:14000});
    const status=await page.locator('#preview').getAttribute('data-low-ready-fit');
+   const yaw=Number(await page.locator('#preview').getAttribute('data-pose-fit-yaw'));
+   if(!Number.isFinite(yaw)||Math.abs(yaw)>.04)
+    throw Error('Pose Fit inspection frame must be canonical, yaw='+yaw);
    const mode=await page.locator('#preview').getAttribute('data-low-ready-mode');
    if(status==='clear'&&mode==='one-hand-guard')
     throw Error('Incorrect two-hand success status for '+f.id);

@@ -1515,7 +1515,7 @@ function draw(){
   if(labSwitch&&alpha>=1)labSwitch=null;
   const selectedHandling=transition?.to??previewHandling[track];
   doorProp.visible=track==='door'||track==='kick';
-  rig.root.position.set(motion.x,0,motion.z);
+  rig.root.position.set(poseFitMode?0:motion.x,0,poseFitMode?0:motion.z);
   const selectedPosePreset=poseFitMode?
    FAMILY_PRESETS.find(p=>p.id===poseFitPreset):undefined;
   const currentWeapon=(selectedPosePreset?.weapon??
@@ -1541,8 +1541,11 @@ function draw(){
    setEquipmentChoice(setEquipmentChoice(currentKit,'armor',
      poseFitArmorSlot),'rig',poseFitRigSlot):currentKit;
   const currentCarry=previewCarry(poseFitKit,currentWeapon);
-  if(!comparing)poseOperator(rig,{x:motion.x,z:motion.z,heading:motion.heading,
-    travelYaw:motion.travelYaw,seconds:clock,stride:clock*40,
+  if(!comparing)poseOperator(rig,{
+    x:poseFitMode?0:motion.x,z:poseFitMode?0:motion.z,
+    heading:poseFitMode?0:motion.heading,
+    travelYaw:poseFitMode?0:motion.travelYaw,
+    seconds:clock,stride:poseFitMode?0:clock*40,
     velocity:poseFitMode?0:motion.speed,
     posture:poseFitMode?'stand':motion.posture,
     gait:track==='run'?'run':track==='pie'?'pie':
@@ -1556,21 +1559,22 @@ function draw(){
       track==='reload-shotgun'?'shells':'emergency',
     reloadRemoved:track==='reload-interrupt'&&clock>.53,
     reloadInserted:false,
-    lastDoorAt:motion.doorAt,
+    lastDoorAt:poseFitMode?-100:motion.doorAt,
     lastBashAt:track==='bash'?.75:-100,
     bashRole:track==='bash'?'push':null,
     doorMethod:track==='kick'?'kick':'open',
     doorPoint:track==='door'?{x:25.5,y:8}:undefined,
-    lastThrowAt:motion.throwAt,
-    down:motion.down||Number(injury.value)===3,
+    lastThrowAt:poseFitMode?-100:motion.throwAt,
+    down:!poseFitMode&&(motion.down||Number(injury.value)===3),
     surrender:false,aiming:poseFitMode?false:motion.aim>.2,
     firing:false,turning:poseFitMode?0:motion.turning,
     aimBlend:poseFitMode?0:motion.aim,
     handlingOverride:poseFitMode?'low':selectedHandling,
     handlingTransition:poseFitMode?undefined:transition,
-    replayFeet:feet,pelvisYaw:state.pelvisYaw,
+    replayFeet:poseFitMode?undefined:feet,
+    pelvisYaw:poseFitMode?0:state.pelvisYaw,
     hybridSupport:gaitReference.value==='candidate',
-    deterministic:true,shotHeading:motion.heading,
+    deterministic:true,shotHeading:poseFitMode?0:motion.heading,
      equipment:poseFitKit,appearanceSeed:labPalette,wardrobe:poseFitWardrobe,
      faceStyle:choose<HTMLSelectElement>('faceTreatment').value as
        'blank'|'quiet'|'graphic',
@@ -1679,8 +1683,10 @@ function draw(){
       });
     }
   }else for(const body of comparisonRigs)body.root.visible=false;
-  const dx=comparing||kitComparing||variantComparing?0:motion.x-cameraFollow.x,
-    dz=comparing||kitComparing||variantComparing?0:motion.z-cameraFollow.z;
+  const dx=poseFitMode||comparing||kitComparing||variantComparing?
+      0:motion.x-cameraFollow.x,
+    dz=poseFitMode||comparing||kitComparing||variantComparing?
+      0:motion.z-cameraFollow.z;
   camera.position.x+=dx;camera.position.z+=dz;
   control.target.x+=dx;control.target.z+=dz;
   cameraFollow={x:motion.x,z:motion.z};
@@ -1711,6 +1717,7 @@ function draw(){
    const report=rig.root.userData.lowReadyPoseReport as
     {status:string;mode?:string;penetration:number|null;
      softContact?:number|null;poseQuality?:number|null;
+     fittingYaw?:number;
      candidates:number;weapon?:string;armor?:string;
      rig?:string;top?:string}|null;
    poseFitOutput.textContent=report?
@@ -1726,6 +1733,7 @@ function draw(){
     '\nCANDIDATES '+report.candidates:'NO STATIC FAMILY SOLVE';
    canvas.dataset.lowReadyFit=report?.status??'not-applicable';
    canvas.dataset.lowReadyMode=report?.mode??'unresolved';
+   canvas.dataset.poseFitYaw=String(report?.fittingYaw??'');
    canvas.dataset.poseFitArmor=report?.armor??'';
    canvas.dataset.poseFitRig=report?.rig??'';
    canvas.dataset.poseFitTop=report?.top??'';
