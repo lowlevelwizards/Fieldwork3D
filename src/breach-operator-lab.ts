@@ -72,6 +72,7 @@ let labPalette=1;
 let wardrobeOptions:WardrobeOptions=initialWardrobe();
 /** URL opt-in development inspector, not a second character renderer. */
 const poseFitMode=new URLSearchParams(location.search).get('poseFit')==='1';
+const poseV3Preview=new URLSearchParams(location.search).get('poseV3')==='1';
 let poseFitPreset='ar-m4a1',poseFitArmor='plate-jpc';
 let poseFitRig='no-rig',poseFitTop='bdu-shirt';
 let poseFitOutput:HTMLOutputElement|null=null;
@@ -1570,6 +1571,7 @@ function draw(){
     firing:false,turning:poseFitMode?0:motion.turning,
     aimBlend:poseFitMode?0:motion.aim,
     handlingOverride:poseFitMode?'low':selectedHandling,
+    poseV3Preview,
     handlingTransition:poseFitMode?undefined:transition,
     replayFeet:poseFitMode?undefined:feet,
     pelvisYaw:poseFitMode?0:state.pelvisYaw,

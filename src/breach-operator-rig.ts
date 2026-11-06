@@ -37,6 +37,7 @@ import {kickMotion} from './breach-door-actions.ts';
 import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
 import {reloadHandKey,reloadHandChestTarget} from './breach-reload-motion.ts';
 import {resolvePoseContactOwners} from './breach-pose-v3-contacts.ts';
+import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
 import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
 import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
 import {blendedHandlingProfile,smoothHandling,type HandlingTransition}
@@ -87,6 +88,8 @@ type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
 type Arm={upper:THREE.Mesh;lower:THREE.Mesh;hand:THREE.Mesh;
   bend:THREE.Vector3;outOfReach:boolean};
 export type OperatorPose={
+  /** Opt-in LAB-only V3 torso fit audition; never set by gameplay. */
+  poseV3Preview?:boolean;
   x:number;z:number;heading:number;velocity:number;seconds:number;
   stride:number;posture:'stand'|'crouch';injury:number;weapon:WeaponId;
   /** Authoritative travel direction; optional until motion sampling is wired. */
@@ -1260,33 +1263,47 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const look=resolvedWardrobe(p.wardrobe,p.equipment);
     const shoulders:[THREE.Vector3,THREE.Vector3]=[
       shoulderFor(0),shoulderFor(1)];
-    const key=JSON.stringify([p.weapon,coupledConfig.build,coupledConfig.slots,
-      look.top,look.armorStyle,look.rigStyle,poseWeight,
-      Number(relativeYaw.toFixed(4)),
-      shoulders.map(v=>v.toArray().map(n=>Number(n.toFixed(3))))]);
-    const cache=coupledIdleCache.get(r);
-    if(cache?.key===key)coupled=cache.solution;
-    else{
+    const solveAtTorsoYaw=(assistYaw:number)=>{
+      // Offset chest yaw and subtract it from chest-local weapon yaw:
+      // the physical shoulder axes and weapon/hand contacts stay coherent.
+      const localYaw=relativeYaw-assistYaw;
+      const key=JSON.stringify([p.weapon,coupledConfig.build,
+        coupledConfig.slots,look.top,look.armorStyle,look.rigStyle,
+        poseWeight,Number(localYaw.toFixed(4)),
+        shoulders.map(v=>v.toArray().map(n=>Number(n.toFixed(3))))]);
+      const cache=coupledIdleCache.get(r);
+      if(cache?.key===key)return cache.solution;
+      let result:CoupledLowReadySolution|null;
       if(sharedCoupledPoseCache.has(key))
-        coupled=sharedCoupledPoseCache.get(key)??null;
+        result=sharedCoupledPoseCache.get(key)??null;
       else{
-        coupled=solveCoupledLowReady({weapon:p.weapon,
+        result=solveCoupledLowReady({weapon:p.weapon,
           configuration:coupledConfig,
-          armor:poseClearanceEnvelope(look.armorStyle,look.rigStyle,look.top),
-          shoulders,nominalYaw:relativeYaw});
-        sharedCoupledPoseCache.set(key,coupled);
+          armor:poseClearanceEnvelope(
+            look.armorStyle,look.rigStyle,look.top),
+          shoulders,nominalYaw:localYaw});
+        sharedCoupledPoseCache.set(key,result);
         if(sharedCoupledPoseCache.size>MAX_SHARED_COUPLED_POSES){
           const oldest=sharedCoupledPoseCache.keys().next().value;
           if(oldest!==undefined)sharedCoupledPoseCache.delete(oldest);
         }
       }
-      coupledIdleCache.set(r,{key,solution:coupled});
-    }
+      if(assistYaw===0)coupledIdleCache.set(r,{key,solution:result});
+      return result;
+    };
+    // Only the explicit Lab query may audition body/weapon coupling.
+    // Normal gameplay, replay and authoritative aim retain original yaw.
+    const previewAssist=p.poseV3Preview===true&&
+      p.handlingOverride==='low';
+    const selected=chooseTorsoAssist(solveAtTorsoYaw,previewAssist);
+    coupled=selected?.solution??null;
+    const torsoAssistYaw=selected?.yaw??0;
+    if(previewAssist)r.chest.rotation.y+=torsoAssistYaw;
     r.root.userData.lowReadyPoseReport={
       status:coupled?.status??'unresolved',
       mode:coupled?.mode??'unresolved',weapon:p.weapon,
-      fittingYaw:relativeYaw,
-      fittingShoulders:[shoulderFor(0).toArray(),shoulderFor(1).toArray()],
+      fittingYaw:relativeYaw-torsoAssistYaw,torsoAssistYaw,
+      fittingShoulders:shoulders.map(v=>v.toArray()),
       armor:look.armorStyle,rig:look.rigStyle,top:look.top,
       penetration:coupled?.penetration??null,
       softContact:coupled?.softContact??null,

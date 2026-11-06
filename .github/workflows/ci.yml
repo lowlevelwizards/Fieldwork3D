@@ -35,7 +35,7 @@ jobs:
       - name: Unified Pose V3 — baseline, contact and transition critical gates
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-unified-pose-v3-') }}
         run: |
-          node --experimental-strip-types --test tests/breach-pose-v3-baseline.test.mjs tests/breach-pose-v3-contacts.test.mjs tests/breach-pose-v3-constraints.test.mjs tests/breach-pose-v3-reload.test.mjs tests/breach-low-ready-transition-rig-v2.test.mjs tests/breach-low-ready-v2-matrix.test.mjs
+          node --experimental-strip-types --test tests/breach-pose-v3-baseline.test.mjs tests/breach-pose-v3-contacts.test.mjs tests/breach-pose-v3-constraints.test.mjs tests/breach-pose-v3-reload.test.mjs tests/breach-pose-v3-body-assist.test.mjs tests/breach-low-ready-transition-rig-v2.test.mjs tests/breach-low-ready-v2-matrix.test.mjs
       - name: Breach magazine, socket and shared-idle critical gates
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-weapon-sockets-magazines-idle-') }}
         run: |
