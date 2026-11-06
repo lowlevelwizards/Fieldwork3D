@@ -262,7 +262,7 @@ function renderAll(){
  stats();renderGroups();renderList();renderEditor();
 }
 function nextUnreviewed(){
- const visible=SOUND_CATALOG.filter(e=>!pack.choices[e.id].reviewed);
+ const visible=SOUND_CATALOG.filter(e=>!pack.choices[e.id].reviewed&&e.id!==selected);
  if(!visible.length){note('ALL CUES REVIEWED · YOUR PACK IS READY TO EXPORT');return;}
  const index=SOUND_CATALOG.findIndex(e=>e.id===selected);
  const next=[...visible].sort((a,b)=>
