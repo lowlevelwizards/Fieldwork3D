@@ -148,53 +148,100 @@
   <button id="next" type="button">NEXT ARRANGEMENT</button>
 </section>
 <section id="replayPanel" class="replay-panel" hidden aria-label="Mission replay controls">
-  <div class="replay-head"><strong>REPLAY</strong>
-    <div class="replay-head-right"><output id="replayClock">00:00 / 00:00</output>
-      <button id="replayExit" type="button" aria-label="Exit replay" title="Exit replay">×</button></div>
+  <div class="replay-head">
+    <strong>REPLAY</strong>
+    <div class="replay-head-right">
+      <output id="replayClock">00:00.000 / 00:00.000</output>
+      <button id="replayExit" type="button" aria-label="Exit replay" title="Exit replay">×</button>
+    </div>
   </div>
   <div class="replay-timeline">
-    <div id="replayMarks" class="replay-marks" aria-label="Mission event markers"></div>
-    <input id="replaySeek" type="range" min="0" max="1" step="1" value="0" aria-label="Seek through mission by visual frame"/>
+    <div id="replayMarks" class="replay-marks" aria-hidden="true"></div>
+    <input id="replaySeek" type="range" min="0" max="1" step="1" value="0"
+      aria-label="Seek through mission by visual frame"/>
   </div>
-  <div class="replay-actions">
+  <div class="replay-actions" aria-label="Replay transport">
     <button id="replayPrevEvent" type="button" title="Previous significant event" aria-label="Previous significant event" data-caption="EVENT −">|◀</button>
     <button id="replayBack" type="button" aria-label="Rewind ten seconds" data-caption="−10 SEC">◀◀</button>
     <button id="replayPlay" type="button" aria-label="Play replay" title="Play replay" data-caption="PLAY">▶</button>
     <button id="replayForward" type="button" aria-label="Advance ten seconds" data-caption="+10 SEC">▶▶</button>
     <button id="replayNextEvent" type="button" title="Next significant event" aria-label="Next significant event" data-caption="EVENT +">▶|</button>
-  </div><div id="replayExtra" class="replay-extra" hidden>
-    <button id="replaySpeed" type="button">1×</button>
-    <button id="replaySound" type="button" aria-pressed="true" aria-label="Toggle replay sound">SOUND ON</button>
-    <button id="replayPrevFrame" type="button" title="Previous interpolated 60 FPS frame" aria-label="Previous visual frame">− FRAME</button>
-    <button id="replayNextFrame" type="button" title="Next interpolated 60 FPS frame" aria-label="Next visual frame">+ FRAME</button>
-    <button id="replayPrevSample" type="button" title="Previous recorded 20 Hz sample" aria-label="Previous recorded sample">− SAMPLE</button>
-    <button id="replayNextSample" type="button" title="Next recorded 20 Hz sample" aria-label="Next recorded sample">+ SAMPLE</button>
-    <button id="replaySight" type="button">FULL VIEW</button>
-    <button id="replayView" type="button">ISO</button>
-    <button id="replayFollow" type="button">FOLLOW</button>
-    <button id="replayAnalysis" type="button">ANALYSIS</button>
-    <button id="replayPlans" type="button" aria-label="Replay plan line visibility">PLANS SELECTED</button>
-    <button id="replayPlanVersion" type="button" aria-label="Original or active historical plan">PLAN ACTIVE</button>
-    <button id="replayNames" type="button" aria-label="Replay name tags">NAMES ON</button>
-    <button id="replayTraces" type="button" aria-label="Replay bullet trajectory display">TRACES OFF</button>
-    <button id="replayGhosts" type="button" aria-label="Replay historical movement ghosts">GHOSTS OFF</button>
-    <button id="replayExportJson" type="button" title="Export full-reconstruction mission logs as JSON">EXPORT JSON</button>
-    <button id="replayExportVideo" type="button" title="Record a 20-second replay clip using browser-supported video encoding">VIDEO 20S</button>
   </div>
-  <button id="replayMore" type="button" aria-label="Replay options" aria-expanded="false" title="Replay options">OPTIONS</button>
-  <div class="replay-feed-tools">
-    <button id="replayFeedToggle" type="button" aria-expanded="false" aria-controls="replayFeed">EVENT FEED</button>
-    <select id="replayFeedFilter" aria-label="Filter mission events" hidden>
-      <option value="all">ALL EVENTS</option>
-      <option value="combat">COMBAT</option>
-      <option value="orders">ORDERS</option>
-      <option value="contacts">CONTACTS</option>
-      <option value="objectives">OBJECTIVES</option>
-    </select>
+  <div class="replay-utility">
+    <output id="replayEventText" class="replay-event" aria-live="off"></output>
+    <button id="replayFeedToggle" type="button" aria-expanded="false"
+      aria-controls="replayDrawer">EVENTS</button>
+    <button id="replayMore" type="button" aria-label="Replay tools"
+      aria-expanded="false" aria-controls="replayDrawer" title="Replay tools">TOOLS</button>
   </div>
-  <output id="replayFeedInfo" class="replay-feed-info" hidden></output>
-  <div id="replayFeed" class="replay-feed-list" role="list" hidden></div>
-  <output id="replayEventText" class="replay-event" aria-live="off">Mission events</output>
+  <section id="replayDrawer" class="replay-drawer" hidden aria-label="Replay tools">
+    <div class="replay-drawer-head">
+      <strong>REPLAY TOOLS</strong>
+      <button id="replayDrawerClose" type="button" aria-label="Close replay tools">×</button>
+    </div>
+    <nav id="replayTabs" class="replay-tabs" role="tablist" aria-label="Replay tool categories">
+      <button type="button" role="tab" data-replay-tab="view" aria-selected="false">VIEW</button>
+      <button type="button" role="tab" data-replay-tab="layers" aria-selected="false">LAYERS</button>
+      <button type="button" role="tab" data-replay-tab="precision" aria-selected="false">TIMING</button>
+      <button type="button" role="tab" data-replay-tab="export" aria-selected="false">EXPORT</button>
+      <button type="button" role="tab" data-replay-tab="events" aria-selected="false">EVENTS</button>
+    </nav>
+    <div id="replayExtra" class="replay-extra" hidden>
+      <section class="replay-group" data-replay-group="view" hidden>
+        <p class="replay-group-intro">Perspective and visibility</p>
+        <div class="replay-control-grid">
+          <button id="replayView" type="button">ISO</button>
+          <button id="replaySight" type="button">TEAM SIGHT</button>
+          <button id="replayFollow" type="button">FOLLOW</button>
+          <button id="replayNames" type="button" aria-label="Replay name tags">NAMES ON</button>
+        </div>
+      </section>
+      <section class="replay-group" data-replay-group="layers" hidden>
+        <p class="replay-group-intro">Tactical overlays</p>
+        <div class="replay-control-grid">
+          <button id="replayAnalysis" type="button">ANALYSIS</button>
+          <button id="replayPlans" type="button" aria-label="Replay plan line visibility">PLANS SELECTED</button>
+          <button id="replayPlanVersion" type="button" aria-label="Original or active historical plan">PLAN ACTIVE</button>
+          <button id="replayTraces" type="button" aria-label="Replay bullet trajectory display">TRACES OFF</button>
+          <button id="replayGhosts" type="button" aria-label="Replay historical movement ghosts">GHOSTS OFF</button>
+        </div>
+      </section>
+      <section class="replay-group" data-replay-group="precision" hidden>
+        <p class="replay-group-intro">Playback speed and single-step</p>
+        <div class="replay-control-grid">
+          <button id="replaySpeed" type="button">1×</button>
+          <button id="replaySound" type="button" aria-pressed="true" aria-label="Toggle replay sound">SOUND ON</button>
+          <button id="replayPrevFrame" type="button" title="Previous interpolated 60 FPS frame" aria-label="Previous visual frame">− FRAME</button>
+          <button id="replayNextFrame" type="button" title="Next interpolated 60 FPS frame" aria-label="Next visual frame">+ FRAME</button>
+          <button id="replayPrevSample" type="button" title="Previous recorded 20 Hz sample" aria-label="Previous recorded sample">− SAMPLE</button>
+          <button id="replayNextSample" type="button" title="Next recorded 20 Hz sample" aria-label="Next recorded sample">+ SAMPLE</button>
+        </div>
+        <p class="replay-group-note">FRAME = 60 FPS visual step · SAMPLE = 20 Hz recorded state</p>
+      </section>
+      <section class="replay-group" data-replay-group="export" hidden>
+        <p class="replay-group-intro">Save and share a replay</p>
+        <div class="replay-control-grid">
+          <button id="replayExportJson" type="button" title="Export full-reconstruction mission logs as JSON">EXPORT JSON</button>
+          <button id="replayExportVideo" type="button" title="Record a 20-second replay clip using browser-supported video encoding">VIDEO 20S</button>
+        </div>
+        <p class="replay-group-note">JSON contains full mission details. Video formats depend on your browser.</p>
+      </section>
+    </div>
+    <section id="replayFeedPanel" class="replay-feed-panel" hidden>
+      <div class="replay-feed-tools">
+        <label for="replayFeedFilter">SHOW</label>
+        <select id="replayFeedFilter" aria-label="Filter mission events" hidden>
+          <option value="all">ALL EVENTS</option>
+          <option value="combat">COMBAT</option>
+          <option value="orders">ORDERS</option>
+          <option value="contacts">CONTACTS</option>
+          <option value="objectives">OBJECTIVES</option>
+        </select>
+        <output id="replayFeedInfo" class="replay-feed-info" hidden></output>
+      </div>
+      <div id="replayFeed" class="replay-feed-list" role="list" hidden></div>
+    </section>
+  </section>
 </section>
 <div class="foot"><span id="mission">CONTACTS UNKNOWN • SECURE THE STATION</span><span class="shortcut">TAP TO ORDER · DRAG TO ORBIT · 2 FINGERS PAN/PINCH</span></div>
 <section id="quickPlayProgress" class="quick-play-progress" role="status"
