@@ -3,7 +3,7 @@
  */
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
-import {addOutline,addCuboid,addBar,addFacetedTube,addProfileFrame,type Outline,type SlotName} from './profile-primitives.ts';
+import {addOutline,addCuboid,addFacetedTube,addProfileFrame,type Outline,type SlotName} from './profile-primitives.ts';
 import {AR_STANAG_METAL} from './weapon-visual-palette.ts';
 import {AR_BARREL_ART,AR_VISUAL_AXIS_Y} from './ar-barrel-profiles.ts';
 import {AR_VISUAL_ANATOMY,shiftProfile}
@@ -21,9 +21,6 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const b=(slot:SlotName,x:number,y:number,z:number,w:number,h:number,d:number,
   finish:0|1|2=1)=>addCuboid(root,slot,parts[slot],index[slot]++,
    x,y,z,w,h,d,material[finish]);
- const line=(slot:SlotName,start:readonly [number,number],end:readonly [number,number],
-  width:number,depth:number,finish:0|1|2=1)=>
-  addBar(root,slot,parts[slot],index[slot]++,start,end,width,depth,material[finish]);
  const frame=(slot:SlotName,outer:Outline,inner:Outline,depth:number,finish:0|1|2=0)=>
   addProfileFrame(root,slot,parts[slot],index[slot]++,outer,inner,depth,material[finish]);
 
