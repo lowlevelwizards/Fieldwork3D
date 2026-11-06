@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {enableBakedGearAO} from '../src/operator-baked-gear-ao.ts';
 import {consolidateVisualGroup} from '../src/operator-visual-mesh-merge.ts';
-import {applyStudioSelfShadowAtlases,studioAtlasResidentBytes}
+import {applyStudioSelfShadowAtlases,studioAtlasResidentBytes,
+ restoreStudioSelfShadow}
  from '../src/operator-gear-lightmap-atlas.ts';
 
 function sample(){
@@ -39,7 +40,11 @@ test('R5.2-C atlas uses native UV1 and never overwrites camouflage or creates dr
  assert.equal(group.children.length,1);
  assert.ok(g.getAttribute('uv1'),'secondary UV exists');
  assert.deepEqual(Array.from(g.getAttribute('uv').array),uv0);
- assert.deepEqual(Array.from(g.getAttribute('color').array),color);
+ const selfReplaced=Array.from(g.getAttribute('color').array);
+ assert.ok(selfReplaced.every((v,i)=>v>=color[i]),
+  'replacing baked self-shadow never adds extra darkness');
+ assert.ok(selfReplaced.some((v,i)=>v>color[i]),
+  'same-part self-shadow is lifted before the texture replaces it');
  assert.deepEqual(Array.from(g.getAttribute('position').array),position);
  const map=mesh.material.aoMap;
  assert.ok(map instanceof THREE.DataTexture);
@@ -56,6 +61,9 @@ test('R5.2-C atlas uses native UV1 and never overwrites camouflage or creates dr
  applyStudioSelfShadowAtlases(root);
  assert.ok(mesh.material.color.equals(material.color),
   'swatch recoloring still follows authoritative material');
+ assert.equal(restoreStudioSelfShadow(g),true);
+ assert.deepEqual(Array.from(g.getAttribute('color').array),color,
+  'debug preview restores byte-exact pre-atlas lighting');
  mesh.material.dispose();g.dispose();material.dispose();
  assert.equal(studioAtlasResidentBytes(),initialResident);
 });
