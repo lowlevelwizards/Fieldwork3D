@@ -772,32 +772,12 @@ function renderOperationsBoard(){
   const loadout=buildQuickLoadoutGroups(kit,expandedQuickLoadoutGroup,group=>{
    expandedQuickLoadoutGroup=group;
   });
-  // Visible buttons replace hard-to-read native selectors on iOS.
-  const typeHeading=document.createElement('strong');
-  typeHeading.className='fw-weapon-section-label';
-  typeHeading.textContent='PRIMARY WEAPON CLASS';
-  const typeChoices=document.createElement('div');
-  typeChoices.className='fw-weapon-tile-grid';
-  for(const [id,label] of [
-   ['carbine','CARBINE'],['rifle','RIFLE'],['smg','SMG'],['shotgun','SHOTGUN']
-  ] as const){
-   const button=document.createElement('button');
-   button.type='button';button.textContent=label;
-   button.setAttribute('aria-pressed',String(id===member.weapon));
-   button.disabled=state.phase!=='planning'||replaying;
-   button.addEventListener('click',()=>{
-    if(id===member.weapon||state.phase!=='planning'||replaying)return;
-    persistentRoster=equipRoster(persistentRoster,member.id,id);
-    selectedQuickWeaponSockets.delete(member.id);
-    savedQuickWorkbenchViews.delete(member.id);resetQuickWorkbenchViews.add(member.id);
-    const saved=saveRoster();applyRosterIdentity(state,persistentRoster);
-    if(saved)showFieldworkActionFeedback(member.callsign+' · '+label+' EQUIPPED');
-    expandedQuickKit=member.id;expandedQuickWeapon=member.id;
-    expandedQuickLoadoutGroup='weapon';renderOperationsBoard();updateHud();
-   });
-   typeChoices.append(button);
-  }
-  loadout.field('weapon').append(typeHeading,typeChoices);
+  // The modular factory chooser below is the actual weapon selection UI.
+  // Legacy WeaponId remains internal simulation/persistence compatibility.
+  const modelHint=document.createElement('small');
+  modelHint.className='fw-weapon-section-label';
+  modelHint.textContent='SELECT AN AR / AK VARIANT · FACTORY MODEL + PARTS';
+  loadout.field('weapon').append(modelHint);
   const activePreset=member.weaponConfiguration.build?
    matchingFamilyPreset(member.weaponConfiguration.build):undefined;
   const factoryLabel=document.createElement('strong');
