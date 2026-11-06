@@ -24,6 +24,17 @@ type ActorTrack={
   travelYawEvents:{at:number;yaw:number}[];
   pelvisYawEvents:{at:number;yaw:number}[];
 };
+/** Persist pose and sound contact facts, not mutable live gait internals. */
+export type ReplayMotionArchiveV1={
+  schemaVersion:1;
+  actors:{
+    id:string;feet:[FootEvent[],FootEvent[]];
+    travelYaw:number;travelYawEvents:{at:number;yaw:number}[];
+    pelvisYawEvents:{at:number;yaw:number}[];
+    accelEvents:{at:number;acceleration:number}[];
+  }[];
+  doors:{id:string;events:{at:number;fraction:number}[]}[];
+};
 export type ReplayPresentation={
   feet:Record<string,ReplayFeet>;
   travelYaw:Record<string,number>;
@@ -240,6 +251,54 @@ export class ReplayMotionRecorder{
       doors[id]=a.fraction+(b.fraction-a.fraction)*alpha;
     }
     return {feet,travelYaw,pelvisYaw,acceleration,doors};
+  }
+  /** Export exactly the evidence required by presentation and footsteps.
+   * No active live-gait state or simulation scheduler is serialized.
+   */
+  toArchive():ReplayMotionArchiveV1{
+    return {
+      schemaVersion:1,
+      actors:[...this.actors].map(([id,track])=>({
+        id,feet:structuredClone(track.events),
+        travelYaw:track.travelYaw,
+        travelYawEvents:structuredClone(track.travelYawEvents),
+        pelvisYawEvents:structuredClone(track.pelvisYawEvents),
+        accelEvents:structuredClone(track.accelEvents)
+      })),
+      doors:[...this.doors].map(([id,events])=>({
+        id,events:structuredClone(events)
+      }))
+    };
+  }
+  /** Safe for playback only. Never use a restored film to continue a mission. */
+  loadArchive(data:ReplayMotionArchiveV1):void{
+    if(data.schemaVersion!==1||!Array.isArray(data.actors)||
+      !Array.isArray(data.doors))throw Error('Unsupported replay motion archive');
+    this.actors.clear();this.doors.clear();
+    for(const actor of data.actors){
+      if(!actor?.id||!Array.isArray(actor.feet)||
+        actor.feet.length!==2||!actor.feet.every(Array.isArray)||
+        !Number.isFinite(actor.travelYaw)||
+        !Array.isArray(actor.travelYawEvents)||
+        !Array.isArray(actor.pelvisYawEvents)||
+        !Array.isArray(actor.accelEvents))throw Error('Corrupt replay actor motion');
+      const feet=structuredClone(actor.feet);
+      const lastFoot=feet[0].at(-1);
+      this.actors.set(actor.id,{
+        gait:createLiveGait(),lastVelocity:0,
+        events:feet,
+        last:{x:lastFoot?.to.x??0,y:lastFoot?.to.y??0,t:0},
+        travelYaw:actor.travelYaw,lastStepAt:-100,
+        travelYawEvents:structuredClone(actor.travelYawEvents),
+        pelvisYawEvents:structuredClone(actor.pelvisYawEvents),
+        accelEvents:structuredClone(actor.accelEvents)
+      });
+    }
+    for(const d of data.doors){
+      if(!d?.id||!Array.isArray(d.events))
+        throw Error('Corrupt replay door motion');
+      this.doors.set(d.id,structuredClone(d.events));
+    }
   }
   /** Approximate memory accounting for perf diagnostics, not a byte profiler. */
   get stepEventCount(){
