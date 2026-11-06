@@ -3,9 +3,10 @@
  * Art-only overlays have no cast shadow and never affect weapon handling.
  */
 import * as THREE from 'three';
-export type WeaponMark='ar-port'|'ak-selector'|'ris-panel';
+export type WeaponMark='ar-port'|'ak-port'|'ak-selector'|'ris-panel';
 const dimensions:Record<WeaponMark,readonly [number,number]>={
- 'ar-port':[16,12],'ak-selector':[16,8],'ris-panel':[32,8]
+ 'ar-port':[16,12],'ak-port':[16,12],
+ 'ak-selector':[16,8],'ris-panel':[32,8]
 };
 const shared=new Map<WeaponMark,THREE.MeshBasicMaterial>();
 function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
@@ -23,6 +24,10 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
   for(let y=2;y<=9;y++)for(let x=2;x<=13;x++)pixel(x,y);
   for(let x=2;x<=13;x++)pixel(x,2,true);
   for(let x=3;x<=12;x++)pixel(x,9,true);
+ }else if(mark==='ak-port'){
+  // Taller compact AK receiver opening, above (not behind) the magazine.
+  for(let y=3;y<=9;y++)for(let x=3;x<=12;x++)pixel(x,y);
+  for(let x=3;x<=12;x++)pixel(x,3,true);
  }else if(mark==='ak-selector'){
   for(let y=2;y<=5;y++)for(let x=2;x<=5;x++)pixel(x,y,true);
   for(let x=6;x<=13;x++)pixel(x,3+Math.floor((x-6)/4));
