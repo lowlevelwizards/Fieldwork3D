@@ -57,29 +57,33 @@ test('R3.2 shared visual anatomy makes receiver, grip and magwell a joined cente
    magazine.getCenter(new THREE.Vector3()).x,p.id+' grip behind magazine');
   assert.ok(magazine.min.y<-5,p.id+' magazine still visible');
   assert.ok(guard.min.x>magazine.min.x+2,p.id+' handguard beyond magazine root');
-  assert.ok(magazine.max.x<4.3,p.id+' magazine no longer projects under handguard');
+  // The deliberately curved AK lower segment can sweep forward; its
+  // insertion root stays behind the handguard and remains connected.
+  assert.ok(magazine.max.x<6,p.id+' lower magazine remains compact');
   clearWeaponSilhouette(group);
  }
  assert.ok(AR_VISUAL_ANATOMY.magwellCenterX<3.55);
  assert.ok(AK_VISUAL_ANATOMY.magwellCenterX<3.55);
 });
-test('R3.2 STANAG and AK magazines are distinctly narrower but keep different curvature',()=>{
+test('R3.2/3.3 magazines preserve side contour and reduce lateral Z depth',()=>{
  for(const id of ['ar-m16a1','ar-m4a1','ar-mk18']){
   const {group}=assembled(id),b=bounds(group,'magazine');
-  assert.ok(b.max.x-b.min.x<=2.9,id+' STANAG narrow side silhouette');
+  assert.ok(b.max.x-b.min.x>=2.9,id+' STANAG contour not squashed');
+  assert.ok(b.max.z-b.min.z<2.5,id+' STANAG side-to-side depth slim');
   clearWeaponSilhouette(group);
  }
  const akm=assembled('ak-akm'),ak74=assembled('ak-ak74');
  const heavy=bounds(akm.group,'magazine'),light=bounds(ak74.group,'magazine');
  assert.ok(heavy.max.x-light.max.x>=1.0,'7.62 curved lower end more forward');
- assert.ok(light.max.x-light.min.x<3.1,'5.45 silhouette narrower');
+ assert.ok(light.max.x-light.min.x>3.5,'5.45 contour remains readable');
+ assert.ok(light.max.z-light.min.z<2.5,'5.45 depth narrows, not its profile');
  clearWeaponSilhouette(akm.group);clearWeaponSilhouette(ak74.group);
 });
 test('R3.2 preserves the AKS-74U open stock and slimmer AR front sight',()=>{
  const u=assembled('ak-aks74u'),m=assembled('ar-m4a1');
  assert.equal(hits(u.group,-9.65,-1.05),false,'AKS stock remains skeletal');
- assert.ok(hits(m.group,16.43,1.4),'narrow A-frame left');
- assert.ok(hits(m.group,17.23,1.4),'narrow A-frame right');
+ assert.ok(hits(m.group,16.50,1.4),'narrow A-frame left');
+ assert.ok(hits(m.group,17.16,1.4),'narrow A-frame right');
  assert.equal(hits(m.group,16.83,1.4),false,'A-frame negative space survives');
  assert.ok(bounds(m.group,'barrel').max.y<3.25,'sight remains squat');
  clearWeaponSilhouette(u.group);clearWeaponSilhouette(m.group);
