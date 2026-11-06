@@ -25,6 +25,7 @@ export type CoupledInput={
  weapon:WeaponId;configuration:WeaponConfiguration;
  shoulders:[THREE.Vector3,THREE.Vector3];
  armor:PoseClearanceEnvelope;nominalYaw:number;
+ onCandidate?:(sample:{right:number;left:number;receiver:number;depth:number})=>void;
 };
 const direction=(from:THREE.Vector3,point:[number,number,number])=>
  new THREE.Vector3(point[0]-from.x,point[1]-from.y,point[2]-from.z);
@@ -39,10 +40,12 @@ export function solveCoupledLowReady(input:CoupledInput):
  if(!contacts)return null;
  const [leftShoulder,rightShoulder]=input.shoulders;
  const pocket=stockPocket('low'),scale=contacts.scale;
- const levers=[.12,contacts.support.preferredFraction,.48,.75];
- const yaws=[.18,.30,.42,.54,.66];
- const pitches=[-.18,-.27,-.35];
- const dxs=[-.45,0,.45],dzs=[-.18,.14];
+ const levers=[.09,contacts.support.preferredFraction,.42,.70,.87];
+ const yaws=[.18,.30,.42,.54,.66,.77];
+ const pitches=[-.12,-.22,-.32];
+ // Realistic shoulder translation, not independent grip offsets. Positive
+ // X brings the receiver/trigger clear of a thick front rig.
+ const dxs=[-.3,.25,.8,1.35],dzs=[-.12,.45,1.0];
  const supportPoles:readonly [number,number,number][]=[
   [9,-6.2,-12],[11.7,-7.7,-13.8],[7.5,-9.0,-10.5]];
  const firingPoles:readonly [number,number,number][]=[
@@ -57,6 +60,7 @@ export function solveCoupledLowReady(input:CoupledInput):
   const stockLocal=rotate(contacts.stock);
   const rightLocal=rotate(contacts.primary);
   for(const dx of dxs)for(const dz of dzs){
+   if(Math.hypot(dx,dz)>1.7)continue;
    const stock=new THREE.Vector3(pocket.x+dx,pocket.y,pocket.z+dz);
    const origin=stock.clone().sub(stockLocal);
    const primary=origin.clone().add(rightLocal);
@@ -102,6 +106,8 @@ export function solveCoupledLowReady(input:CoupledInput):
     }
     if(!leftBest)continue;
     const depth=Math.max(rightCost/100,leftCost/100,receiverDepth);
+    input.onCandidate?.({right:rightCost/100,left:leftCost/100,
+     receiver:receiverDepth,depth});
     // Stock and hands are constrained by the same *rigid* transform.
     // Only naturalness differentiates admissible candidates.
     const style=Math.abs(yawOffset-.42)*1.6+Math.abs(pitch+.27)*1.1+
