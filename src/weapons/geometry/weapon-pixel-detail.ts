@@ -21,7 +21,7 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
   if(x<0||y<0||x>=w||y>=h)return;
   const n=(y*w+x)*4;
   const rgb=mark==='ak-cover-ribs'?[41,48,39]:
-   strong?[9,13,12]:light?[74,85,77]:[24,31,27];
+   strong?[9,13,12]:light?[88,99,88]:[24,31,27];
   data[n]=rgb[0];data[n+1]=rgb[1];data[n+2]=rgb[2];
   data[n+3]=mark==='ak-cover-ribs'?214:strong?255:232;
  };
