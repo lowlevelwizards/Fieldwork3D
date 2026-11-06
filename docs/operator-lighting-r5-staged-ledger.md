@@ -137,3 +137,10 @@ Base: `0cf8a9f1737b1327cbb15c11b4f30e718cd73b98`
   independently, so there is no unstable double-custom-material combination.
 - Default Studio, tactical gameplay, and all operator looks unchanged.
 - Still requires real mobile screenshot evaluation before visual approval.
+
+## R5.4-C mobile three-band cel proof
+- Extend the existing targeted R5 Studio test with a second independent
+  phone-sized WebGL page using `?operatorLightingToon=3`.
+- Require actual toon-shaded meshes, no WebGL shader console errors, and
+  a nonblank three-band capture in the existing screenshot artifact.
+- Keep UV1 atlas and toon experiments separate, with no new workflow run.

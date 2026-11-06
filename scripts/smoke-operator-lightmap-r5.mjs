@@ -67,5 +67,38 @@ try{
   if(png.byteLength<3000)throw Error('Blank atlas WebGL screenshot');
   if(errors.length)throw Error('R5 atlas WebGL errors: '+errors.join('; '));
   console.log('R5 UV1 atlas phone proof passed: '+JSON.stringify(state));
+  // R5.4-C: reuse the SAME mobile browser/port for a separate cel-shading
+  // diagnostic. Do not combine unapproved toon/atlas material paths.
+  const toon=await browser.newPage({
+   viewport:{width:390,height:844},deviceScaleFactor:1.5,
+   isMobile:true,hasTouch:true
+  });
+  try{
+   const toonErrors=[];
+   toon.on('pageerror',e=>toonErrors.push(e.message));
+   toon.on('console',message=>{
+    if(message.type()==='error'&&
+       /WebGLProgram|shader error|INVALID_OPERATION/i.test(message.text()))
+     toonErrors.push('WebGL: '+message.text());
+   });
+   await toon.goto(origin+
+    '/operator-studio.html?operatorLightingToon=3&operatorLightingDebug=1',
+    {waitUntil:'domcontentloaded'});
+   await toon.waitForFunction(()=>{
+    const c=document.getElementById('studioCanvas');
+    return c?.dataset.ready==='true'&&
+     c.dataset.operatorToonBands==='3'&&
+     Number(c.dataset.operatorToonMeshes)>0&&
+     Number(c.dataset.drawCalls)>0;
+   },null,{timeout:30000});
+   const png=await toon.locator('#studioCanvas').screenshot({
+    path:'operator-studio-captures/r5-three-band-toon-phone.png'
+   });
+   if(png.byteLength<3000)
+    throw Error('Blank three-band toon WebGL screenshot');
+   if(toonErrors.length)throw Error('R5 toon WebGL errors: '+
+    toonErrors.join('; '));
+   console.log('R5 three-band toon phone proof passed');
+  }finally{await toon.close();}
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}
