@@ -98,9 +98,11 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  p('handguard',[[start,-1.35],[start+.75,1.05],[end-.7,1.05],
    [end,-.2],[end-.5,-1.75],[start+.45,-1.75]],3.85,
    woodGuard?2:1);
- // The upper and lower material envelopes meet without an empty seam.
- p('handguard',[[start+.8,.98],[start+1.7,2.4],
-   [end-1.35,2.25],[end-.6,.98]],2.9,woodGuard?2:1);
+ // Restore a deliberate narrow gap between upper and lower furniture.
+ // A chunky rear collar keeps the two silhouettes visually connected.
+ p('handguard',[[start+.8,1.3],[start+1.7,2.4],
+   [end-1.35,2.25],[end-.6,1.3]],2.9,woodGuard?2:1);
+ b('handguard',start+.72,.42,0,.58,3.5,3.88,0);
  if(rail)b('handguard',(start+.9+end)/2,2.6,0,
   end-start-1.2,.6,3.0,0);
 
