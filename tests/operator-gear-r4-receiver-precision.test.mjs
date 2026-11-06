@@ -9,7 +9,7 @@ import {refineStaticShadowGeometry,refineStaticReceiver,
 import {bakeCastOnGear} from '../src/operator-baked-gear-cast.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
 import {initialWardrobe} from '../src/operator-wardrobe-data.ts';
-import {initialEquipmentLoadout} from '../src/equipment-loadouts.ts';
+import {initialEquipmentLoadout,setEquipmentChoice} from '../src/equipment-loadouts.ts';
 
 const aMat=()=>{
  const m=new THREE.MeshStandardMaterial({color:0xffffff});
@@ -93,7 +93,9 @@ test('real operator base uniform receives shadow bake and IK limb bounds remain 
   assert.equal(body.name,'fieldwork-contact-base-torso');
   const initial=bounds(body.geometry);
   const w=initialWardrobe();
-  const kit=initialEquipmentLoadout();
+  let kit=initialEquipmentLoadout();
+  kit=setEquipmentChoice(kit,'armor','armor-carrier');
+  kit=setEquipmentChoice(kit,'rig','rig-full');
   poseOperator(rig,{x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
    posture:'stand',injury:0,weapon:'carbine',reload:0,reloadDuration:0,
    lastDoorAt:-100,lastThrowAt:-100,down:false,surrender:false,
@@ -116,6 +118,7 @@ test('real operator base uniform receives shadow bake and IK limb bounds remain 
   assert.ok(torsoShaded>2,'equipped vest must actually cast onto uniform');
   const carrier=rig.visualKit.wardrobeGear.armor['plate-standard'];
   let carrierShaded=0;
+  assert.ok(carrier,'equipped plate-standard carrier must exist');
   carrier.traverse(o=>{
    if(!(o instanceof THREE.Mesh))return;
    const b=o.geometry.userData.fieldworkCrossLightBase,
