@@ -106,7 +106,8 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const guard=parts.handguard;
  const long=['ar-triangle','ar-round','ar-m5-rail'].includes(guard);
  const short=['ar-compact-rail','ar-risii'].includes(guard);
- const end=long?15.25:short?15.95:13.9;
+ const commando=guard==='ar-733-ribbed';
+ const end=long?15.25:short?15.95:commando?12.9:13.9;
  // A slight deliberate overlap avoids the visible receiver/guard seam.
  const start=3.55;
  if(guard==='ar-triangle'){
@@ -115,14 +116,15 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   p('handguard',[[start,1.55],[start+.9,1.77],[end-.6,1.07],
    [end,-.8],[end-1.0,-1.18],[start,-1.8]],3.85,1);
  }else if(guard==='ar-round'||guard==='ar-carbine'||
-   guard==='ar-car15-ribbed'){
-  const retro=guard==='ar-car15-ribbed';
+   guard==='ar-car15-ribbed'||guard==='ar-733-ribbed'){
+  const retro=guard==='ar-car15-ribbed'||commando;
   p('handguard',retro?
    [[start,1.25],[start+1.0,1.52],[end-.65,1.37],
     [end,-.75],[end-.55,-1.42],[start+.4,-1.55]]:
    [[start,1.35],[start+.8,1.7],[end-.7,1.6],
     [end,-.9],[end-.6,-1.65],[start+.5,-1.65]],
    retro?3.15:3.85,1);
+  if(commando)b('handguard',start+.55,.08,0,.62,2.9,3.35,0);
  }else{
   const ris=guard==='ar-risii';
   // Single squared shell and its raised rail, rather than stacked strips.
@@ -143,7 +145,8 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
 
  // All variants share the authoritative X=19.5 tip: only visual profile varies.
  const barrelEnd=19.5;
- const noseStart=short?15.7:long?15.1:13.7;
+ const noseStart=parts.barrel==='ar-733-115'?12.75:
+  short?15.7:long?15.1:13.7;
  b('barrel',(noseStart+barrelEnd)/2,0,0,barrelEnd-noseStart,1.25,1.4,0);
  // Old-style raised front sight, absent on compact modern rail silhouette.
  if(!short){

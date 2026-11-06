@@ -64,6 +64,18 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   line('stock',[-5.25,-1.35],[-13.0,-2.5],1.0,1.05,0);
   line('stock',[-5.25,-1.3],[-9.45,.15],.75,1.05,0);
   b('stock',-13.5,-1,0,1.05,3.65,2.5,1);
+ }else if(stock==='ak-triangle-full'){
+  // Full-length AKS-74: deliberately larger open triangle than the krink.
+  line('stock',[-5.4,.65],[-14.3,.6],.95,1.2,0);
+  line('stock',[-5.3,-1.38],[-14.3,-2.55],.92,1.2,0);
+  line('stock',[-5.3,-1.38],[-10.4,.1],.72,1.1,0);
+  b('stock',-14.65,-1,0,1.05,3.65,2.25,1);
+ }else if(stock==='ak-underfolder'){
+  // Two clean parallel rails, NOT the triangular AKS stock.
+  line('stock',[-5.6,.38],[-14.15,.6],.77,1.18,0);
+  line('stock',[-5.6,-1.35],[-14.15,-1.58],.77,1.18,0);
+  b('stock',-14.55,-.55,0,.85,3.1,1.85,0);
+  b('stock',-5.65,-.4,0,1.0,2.25,1.65,1);
  }else if(stock==='ak-sidefold'){
   // One fat five-sided silhouette, not a pointed plank with floating hinge.
   p('stock',[[-14.35,.7],[-8.3,.95],[-6.0,.35],
