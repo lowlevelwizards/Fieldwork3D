@@ -94,7 +94,7 @@ export const GEAR_CONTACT_AO_STRENGTH=.46;
 export const GEAR_CONTACT_AO_FLOOR=.62;
 type ContactPart={
  mesh:THREE.Mesh;local:THREE.Matrix4;normalMatrix:THREE.Matrix3;
- box:THREE.Box3;center:THREE.Vector3;
+ box:THREE.Box3;center:THREE.Vector3;partId:string;
 };
 export function bakeGearContactAO(group:THREE.Group):number{
  const candidates=group.children.filter((node):node is THREE.Mesh=>
@@ -109,8 +109,9 @@ export function bakeGearContactAO(group:THREE.Group):number{
   if(!mesh.geometry.boundingBox)mesh.geometry.computeBoundingBox();
   const local=new THREE.Matrix4().multiplyMatrices(inverse,mesh.matrixWorld);
   const box=mesh.geometry.boundingBox!.clone().applyMatrix4(local);
+  const partId=String(mesh.userData.fieldworkShadowPartId??mesh.uuid);
   return {mesh,local,normalMatrix:new THREE.Matrix3().getNormalMatrix(local),
-   box,center:box.getCenter(new THREE.Vector3())};
+   box,center:box.getCenter(new THREE.Vector3()),partId};
  });
  const p=new THREE.Vector3(),n=new THREE.Vector3();
  let touched=0;
@@ -127,10 +128,14 @@ export function bakeGearContactAO(group:THREE.Group):number{
   const pixels=attr.array;
   if(!(pixels instanceof Uint8Array))continue;
   let altered=false;
+  // R5.2-A: never confound a pouch's OWN folds with unrelated gear.
+  // These independent 8-bit CPU masks are resolved before mesh batching.
+  const selfMask=new Uint8Array(positions.count);
+  const externalMask=new Uint8Array(positions.count);
   for(let i=0;i<positions.count;i++){
    p.fromBufferAttribute(positions,i).applyMatrix4(part.local);
    n.fromBufferAttribute(normals,i).applyMatrix3(part.normalMatrix).normalize();
-   let occlusion=0;
+   let selfOcclusion=0,externalOcclusion=0;
    for(const neighbor of parts){
     if(neighbor===part)continue;
     const box=neighbor.box;
@@ -151,22 +156,36 @@ export function bakeGearContactAO(group:THREE.Group):number{
     const proximity=1-Math.sqrt(sq)/GEAR_CONTACT_AO_RADIUS;
     const strength=GEAR_CONTACT_AO_STRENGTH*proximity*
      (.32+.68*facing);
-    if(strength>occlusion)occlusion=strength;
+    if(neighbor.partId===part.partId)
+     selfOcclusion=Math.max(selfOcclusion,strength);
+    else externalOcclusion=Math.max(externalOcclusion,strength);
    }
    // Bake cast shadows ON the base panel under projecting pockets and
    // straps. Three rays create a cheap fixed-light soft penumbra; never
    // sample this from a light or raycaster during gameplay.
    const rayOrigin=p.clone().addScaledVector(n,.05);
-   let castHits=0;
+   let ownHits=0,externalHits=0;
    for(const light of KEY_RAYS){
     if(n.dot(light)<.035)continue;
+    let own=false,external=false;
     for(const neighbor of parts){
-     if(neighbor===part)continue;
-     if(castRayBox(rayOrigin,light,neighbor.box)){castHits++;break;}
+     if(neighbor===part||!castRayBox(rayOrigin,light,neighbor.box))
+      continue;
+     if(neighbor.partId===part.partId)own=true;
+     else external=true;
+     if(own&&external)break;
     }
+    if(own)ownHits++;
+    if(external)externalHits++;
    }
-   const cast=castHits/KEY_RAYS.length;
-   const shadow=Math.max(occlusion,.46*cast);
+   const selfShadow=Math.max(selfOcclusion,.46*ownHits/KEY_RAYS.length);
+   const externalShadow=Math.max(externalOcclusion,
+    .46*externalHits/KEY_RAYS.length);
+   selfMask[i]=Math.round(255*THREE.MathUtils.clamp(selfShadow,0,1));
+   externalMask[i]=Math.round(255*THREE.MathUtils.clamp(externalShadow,0,1));
+   // Compose once from the strongest independent shadow, rather than
+   // multiplying overlapping AO, self and external cast darkness.
+   const shadow=Math.max(selfShadow,externalShadow);
    if(shadow<.012)continue;
    const old=pixels[i*3]/255;
    const gray=Math.round(255*Math.max(GEAR_CONTACT_AO_FLOOR,
@@ -175,6 +194,8 @@ export function bakeGearContactAO(group:THREE.Group):number{
    pixels[i*3]=gray;pixels[i*3+1]=gray;pixels[i*3+2]=gray;
    altered=true;
   }
+  geo.userData.fieldworkSelfOcclusionMask=selfMask;
+  geo.userData.fieldworkExternalOcclusionMask=externalMask;
   if(altered){attr.needsUpdate=true;touched++;}
   geo.userData.fieldworkContactAO=true;
  }

@@ -95,31 +95,40 @@ const pouch=(g:THREE.Group,m:THREE.Material,fold:THREE.Material,
  const extra=rigVisualBudget(style).projection;
  const span=d+(d>=2.3?.17:.11);
  const front=x+depth*.5+extra;
- box(g,m,x+extra*.5,y,z,depth+extra,h,span);
+ // Body and its flap are ONE logical self-shadowing pouch, even though
+ // each cuboid is a separate pre-merge geometric primitive.
+ const partId=style+'/pouch/'+[x,y,z].map(v=>v.toFixed(2)).join('/');
+ const label=(mesh:THREE.Mesh,role:string)=>{
+  mesh.userData.fieldworkShadowPartId=partId;
+  mesh.userData.fieldworkShadowRole=role;
+  return mesh;
+ };
+ label(box(g,m,x+extra*.5,y,z,depth+extra,h,span),'body');
  const lip=(cy:number,height:number,thickness:number,width=span+.14)=>
-  box(g,fold,front+.08+thickness*.50,cy,z,thickness,height,width);
+  label(box(g,fold,front+.08+thickness*.50,cy,z,
+   thickness,height,width),'flap');
  if(construction==='open-elastic'){
   lip(y+h*.46,.19,.23);
  }else if(construction==='bungee'){
   lip(y+h*.42,.24,.28);
-  box(g,fold,front+.19,y+.20,z,.33,h*.48,.40);
+  label(box(g,fold,front+.19,y+.20,z,.33,h*.48,.40),'retainer');
  }else if(construction==='canvas-toggle'){
   lip(y+h*.28,h*.34,.37);
  }else if(construction==='flap-snap'){
   lip(y+h*.29,h*.35,.39);
-  box(g,fold,front+.38,y+h*.07,z,.22,h*.17,.57);
+  label(box(g,fold,front+.38,y+h*.07,z,.22,h*.17,.57),'retainer');
  }else if(construction==='utility-buckle'){
   lip(y+h*.36,h*.21,.34);
-  box(g,fold,front+.32,y+.12,z,.25,h*.25,.54);
+  label(box(g,fold,front+.32,y+.12,z,.25,h*.25,.54),'retainer');
  }else if(construction==='double-stack'){
   lip(y+h*.33,h*.23,.35);
-  box(g,m,front+.17,y-h*.16,z,.30,h*.29,span-.20);
+  label(box(g,m,front+.17,y-h*.16,z,.30,h*.29,span-.20),'body');
   lip(y-h*.04,.36,.29);
  }else if(construction==='diagonal'){
   lip(y+h*.39,.32,.24);
  }else{
   lip(y+h*.31,h*.34,.45,span+.28);
-  box(g,fold,front+.39,y+.02,z,.23,h*.30,.58);
+  label(box(g,fold,front+.39,y+.02,z,.23,h*.30,.58),'retainer');
  }
 };
 /** One dark, thick magazine mouth per real physical pouch, NOT one

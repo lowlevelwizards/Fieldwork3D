@@ -10,13 +10,15 @@
  */
 import * as THREE from 'three';
 import {bakeGearGeometryAO} from './operator-baked-gear-ao.ts';
-type BoxRecord={min:[number,number,number];max:[number,number,number]};
+type BoxRecord={min:[number,number,number];max:[number,number,number];
+ partId?:string;role?:string};
 const frontRays=[
  new THREE.Vector3(.46,.88,.07).normalize(),
  new THREE.Vector3(.43,.90,.03).normalize(),
  new THREE.Vector3(.47,.88,.04).normalize()
 ] as const;
-const rearRays=frontRays.map(r=>new THREE.Vector3(-r.x,r.y,r.z));
+// All receivers share one real overhead key direction. Back-of-operator
+// contacts come from short-range proximity, NOT a mirrored fake rear sun.
 const toRecord=(box:THREE.Box3):BoxRecord=>({
  min:[box.min.x,box.min.y,box.min.z],
  max:[box.max.x,box.max.y,box.max.z]
@@ -37,7 +39,14 @@ export function rememberUnmergedShadowVolumes(group:THREE.Group):void{
   if(!mesh.geometry.boundingBox)continue;
   mesh.updateMatrix();
   const b=mesh.geometry.boundingBox.clone().applyMatrix4(mesh.matrix);
-  if(!b.isEmpty())boxes.push(toRecord(b));
+  if(!b.isEmpty()){
+   const record=toRecord(b);
+   if(mesh.userData.fieldworkShadowPartId)
+    record.partId=String(mesh.userData.fieldworkShadowPartId);
+   if(mesh.userData.fieldworkShadowRole)
+    record.role=String(mesh.userData.fieldworkShadowRole);
+   boxes.push(record);
+  }
  }
  if(boxes.length)group.userData.fieldworkShadowVolumes=boxes;
 }
@@ -88,6 +97,39 @@ function rayEntryDistance(p:THREE.Vector3,dir:THREE.Vector3,
  }
  return near>.045&&far>.055&&near<3.25?near:null;
 }
+/** Analytic near-surface contact, independent of light direction.
+ * Brings pack/jacket, carrier/shirt and lower strap attachments together
+ * even where a front-biased studio key cannot project a rearward ray.
+ * Bounding boxes are pre-merge INDIVIDUAL parts, not entire rig envelopes.
+ */
+export const CROSS_CONTACT_RADIUS=1.15;
+export const CROSS_CONTACT_STRENGTH=.42;
+export function crossEquipmentContact(
+ point:THREE.Vector3,normal:THREE.Vector3,boxes:readonly THREE.Box3[]
+):number{
+ let strongest=0;
+ for(const box of boxes){
+  const dx=Math.max(box.min.x-point.x,0,point.x-box.max.x);
+  const dy=Math.max(box.min.y-point.y,0,point.y-box.max.y);
+  const dz=Math.max(box.min.z-point.z,0,point.z-box.max.z);
+  const d2=dx*dx+dy*dy+dz*dz;
+  if(d2>=CROSS_CONTACT_RADIUS*CROSS_CONTACT_RADIUS)continue;
+  const cx=(box.min.x+box.max.x)*.5-point.x;
+  const cy=(box.min.y+box.max.y)*.5-point.y;
+  const cz=(box.min.z+box.max.z)*.5-point.z;
+  const toward=normal.x*cx+normal.y*cy+normal.z*cz;
+  if(toward<=.025)continue;
+  const length=Math.hypot(cx,cy,cz);
+  const facing=length>.001?toward/length:0;
+  if(facing<.15)continue;
+  const distance=Math.sqrt(d2);
+  const q=THREE.MathUtils.clamp((distance-.15)/
+   (CROSS_CONTACT_RADIUS-.15),0,1);
+  const falloff=1-q*q*(3-2*q);
+  strongest=Math.max(strongest,falloff*(.38+.62*facing));
+ }
+ return strongest;
+}
 export type GearLightingBake={key:string;changed:number;vertices:number};
 /** Bake separately for different receiver groups, using all of their
  * true light casters. The key includes GEOMETRY choices only, never colors.
@@ -120,13 +162,15 @@ export function bakeCastOnGear(
    baseline=new Uint8Array(array);geometry.userData.fieldworkCrossLightBase=baseline;
   }
   array.set(baseline);
+  const contactMask=new Uint8Array(coords.count);
+  const castMask=new Uint8Array(coords.count);
   object.updateWorldMatrix(true,false);
   const toChest=inverse.clone().multiply(object.matrixWorld);
   const normalMatrix=new THREE.Matrix3().getNormalMatrix(toChest);
   for(let i=0;i<coords.count;i++){
    position.fromBufferAttribute(coords,i).applyMatrix4(toChest);
    normal.fromBufferAttribute(normals,i).applyMatrix3(normalMatrix).normalize();
-   const rays=normal.x<-.25?rearRays:frontRays;
+   const rays=frontRays;
    origin.copy(position).addScaledVector(normal,.075);
    let contact=0;
    for(const ray of rays){
@@ -143,9 +187,15 @@ export function bakeCastOnGear(
     contact+=1-fade;
    }
    const occlusion=contact/rays.length;
-   // Keep the separate whole-gear gradient deliberately restrained.
+   const nearContact=crossEquipmentContact(position,normal,boxes);
+   contactMask[i]=Math.round(255*nearContact);
+   castMask[i]=Math.round(255*occlusion);
+   // Both channels describe overlapping darkness on the same receiver.
+   // The stronger one wins; never multiply them into muddy camouflage.
    const lower=THREE.MathUtils.clamp((7-position.y)/18,0,1);
-   const light=(1-.51*occlusion)*(1-.032*lower);
+   const shadow=Math.max(.51*occlusion,
+    CROSS_CONTACT_STRENGTH*nearContact);
+   const light=(1-shadow)*(1-.032*lower);
    const before=baseline[i*3]/255;
    const value=Math.round(255*Math.max(.60,before*light));
    if(value<array[i*3])changed++;
@@ -154,6 +204,8 @@ export function bakeCastOnGear(
   }
   // Reverting stale lightmaps to an unoccluded style must also upload.
   attribute.needsUpdate=true;
+  geometry.userData.fieldworkInterContactMask=contactMask;
+  geometry.userData.fieldworkDirectionalCastMask=castMask;
   geometry.userData.fieldworkCrossLightKey=key;
  });
  return {key,changed,vertices};
