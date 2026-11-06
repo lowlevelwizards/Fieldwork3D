@@ -51,3 +51,15 @@ export function addBar(root:THREE.Group,slot:SlotName,id:string,n:number,
   [end[0]-nx,end[1]-ny],[start[0]-nx,start[1]-ny]
  ],depth,material);
 }
+
+/** Six-sided PRI-style tube: true 3D faceted cross-section with one extrusion.
+ * Low-polygon exterior only; matches the regular family slot naming/lighting.
+ */
+export function addFacetedTube(root:THREE.Group,slot:SlotName,id:string,n:number,
+ startX:number,endX:number,radius:number,material:THREE.Material){
+ const geometry=new THREE.CylinderGeometry(radius,radius,endX-startX,6,1);
+ geometry.rotateZ(-Math.PI/2);
+ const mesh=prepare(root,slot,id,n,geometry,material);
+ mesh.position.set((startX+endX)/2,0,0);
+ return mesh;
+}

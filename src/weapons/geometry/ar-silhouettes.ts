@@ -3,7 +3,7 @@
  */
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
-import {addOutline,addCuboid,addBar,type Outline,type SlotName} from './profile-primitives.ts';
+import {addOutline,addCuboid,addBar,addFacetedTube,type Outline,type SlotName} from './profile-primitives.ts';
 import {AR_STANAG_METAL} from './weapon-visual-palette.ts';
 import {AR_BARREL_ART} from './ar-barrel-profiles.ts';
 import {AR_VISUAL_ANATOMY,shiftProfile}
@@ -124,43 +124,50 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // A slight deliberate overlap avoids the visible receiver/guard seam.
  const start=3.55;
  if(guard==='ar-pri-tube'){
-  // Long faceted PRI tube with one continuous rail and a connected rear bridge.
-  p('handguard',[[start,-1.5],[start,1.25],[start+.7,1.62],
-   [end-.8,1.62],[end,1.0],[end,-1.25],[end-.8,-1.65]],3.5,1);
-  b('handguard',(start+end)/2,1.94,0,end-start,.62,2.8,0);
-  b('handguard',2.6,1.91,0,3.6,.48,2.45,0);
-  addWeaponPixelMark(root,'pri-vents',(start+end)/2,.1,1.88,end-start-2.0,.9);
+  // A genuinely faceted cross-section, not a 3D cuboid that just says PRI.
+  addFacetedTube(root,'handguard',parts.handguard,index.handguard++,
+   start,end,1.82,material[1]);
+  b('handguard',start+.35,0,0,.70,3.25,3.75,0);
+  // The upper rail and rear bridge overlap: no floating join.
+  b('handguard',(start+end)/2,2.06,0,end-start,.56,2.8,0);
+  b('handguard',2.65,2.06,0,3.85,.52,2.6,0);
+  addWeaponPixelMark(root,'pri-vents',(start+end)/2,.18,1.9,
+   end-start-1.7,.83);
  }else if(guard==='ar-triangle'){
-  // One long block with an iconic triangular taper, no tiny rail strips.
-  // A1's thick rear triangular mass narrows to the distinctive long fore-end.
-  p('handguard',[[start,1.55],[start+.9,1.77],[end-.6,1.07],
-   [end,-.8],[end-1.0,-1.18],[start,-1.8]],3.85,1);
+  // A1: long clean taper with a slimmer front and strongly faceted shoulder.
+  p('handguard',[[start,1.45],[start+.55,1.74],
+   [end-1.10,1.08],[end,.58],[end,-.9],
+   [end-1.0,-1.16],[start,-1.73]],3.65,1);
  }else if(guard==='ar-round'||guard==='ar-carbine'||
    guard==='ar-car15-ribbed'||guard==='ar-733-ribbed'){
-  const retro=guard==='ar-car15-ribbed'||commando;
+  const retro=guard==='ar-car15-ribbed'||guard==='ar-733-ribbed';
   p('handguard',retro?
-   [[start,1.25],[start+1.0,1.52],[end-.65,1.37],
-    [end,-.75],[end-.55,-1.42],[start+.4,-1.55]]:
-   [[start,1.35],[start+.8,1.7],[end-.7,1.6],
-    [end,-.9],[end-.6,-1.65],[start+.5,-1.65]],
+   [[start,1.26],[start+.88,1.48],[end-.5,1.45],
+    [end,-.75],[end-.55,-1.46],[start+.35,-1.53]]:
+   [[start,1.42],[start+.75,1.77],[end-.75,1.69],
+    [end,-.78],[end-.65,-1.71],[start+.45,-1.76]],
    retro?3.15:3.85,1);
-  if(commando)b('handguard',start+.55,.08,0,.62,2.9,3.35,0);
+  if(retro){
+   // Same retro furniture on 14.5 and 11.5: barrel creates the difference.
+   b('handguard',start+.32,.04,0,.53,2.88,3.32,0);
+  }
+  addWeaponPixelMark(root,'poly-ribs',(start+end)/2,.1,
+   retro?1.74:2.08,end-start-1.9,1.45);
  }else{
   const ris=guard==='ar-risii';
-  // Single squared shell and its raised rail, rather than stacked strips.
+  // Modern rails: one broad body and one joined, continuous upper rail.
   p('handguard',ris?
-   [[start,-1.54],[start,1.28],[start+.5,1.46],
-    [start+.9,1.62],[end-1.35,1.62],[end-.8,1.25],
-    [end,.92],[end,-1.28],[end-1.0,-1.64]]:
-   [[start,-1.65],[start,1.55],
-    [end-.55,1.55],[end,1.05],[end,-1.4]],
+   [[start,-1.55],[start,1.32],[start+.45,1.53],
+    [end-1.30,1.53],[end-.63,1.17],[end,.74],
+    [end,-1.24],[end-.95,-1.66]]:
+   [[start,-1.62],[start,1.55],
+    [end-.57,1.55],[end,1.0],[end,-1.45]],
    ris?4.6:4.0,ris?2:1);
-  b('handguard',(start+end)/2,1.86,0,end-start,.64,
-   ris?4.15:3.7,ris?2:0);
-  if(ris)addWeaponPixelMark(root,'ris-panel',(start+end)/2,.2,2.34,
-   end-start-1.65,1.16);
-  if(guard==='ar-m5-rail')addWeaponPixelMark(root,'ris-panel',
-   (start+end)/2,.15,2.04,end-start-2.3,.84);
+  b('handguard',(start+end)/2,1.88,0,end-start,.64,
+   ris?4.12:3.68,ris?2:0);
+  if(['ar-risii','ar-m5-rail','ar-quad'].includes(guard))
+   addWeaponPixelMark(root,'ris-panel',(start+end)/2,.06,
+    ris?2.34:2.08,end-start-1.65,ris?1.10:.90);
  }
 
  // The barrel is the only authority for its own muzzle and front-sight X.
