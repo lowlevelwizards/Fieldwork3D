@@ -62,7 +62,6 @@ function facePoint(box:THREE.Box3,face:number,u:number,v:number,
  target:THREE.Vector3):THREE.Vector3{
  const x=THREE.MathUtils.lerp(box.min.x,box.max.x,u);
  const y=THREE.MathUtils.lerp(box.min.y,box.max.y,v);
- const z=THREE.MathUtils.lerp(box.min.z,box.max.z,u);
  if(face<2)return target.set(face===0?box.max.x:box.min.x,y,
   THREE.MathUtils.lerp(box.min.z,box.max.z,u));
  if(face<4)return target.set(x,face===2?box.max.y:box.min.y,
