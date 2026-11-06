@@ -116,7 +116,7 @@ export function familyAccessoryAllowed(build:WeaponFamilyBuild,
    build.parts.handguard==='ak-rail-long');
  }
  if(slot==='foregrip'&&id!=='foregrip-none')
-  return ['ar-quad','ar-compact-rail','ak-rail-long']
+  return ['ar-quad','ar-compact-rail','ar-m5-rail','ar-risii','ak-rail-long']
    .includes(build.parts.handguard);
  return true;
 }
