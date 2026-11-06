@@ -43,7 +43,6 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const carry=['ar-a1','ar-a2','ar-retro'].includes(parts.receiver);
  if(carry){
   const a2=parts.receiver==='ar-a2';
-  const retro=parts.receiver==='ar-retro';
   // R4.4: one connected chunky frame with a true empty trapezoid.
   // The upper bridge is continuous; no overlapping posts or roof seams.
   frame('receiver',[[-4.80,1.63],[2.30,1.63],[1.82,4.02],[-4.68,4.02]],
