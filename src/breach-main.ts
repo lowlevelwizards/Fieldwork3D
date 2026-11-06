@@ -2149,7 +2149,8 @@ function updateHud(){
         o.injury?'WOUNDED':'ACTIVE':'DOWN')+' · '+o.fired+' RDS').join('\n')+
       '\nOPERATIONS LOGGED: '+operationHistory().length+
       '\n\nMISSION PACING\n'+formatMissionPacing(recorder.events)+
-      '\n\nCOMBAT REVIEW\n'+formatCombatReview(recorder.frames,recorder.events)+
+      '\n\nCOMBAT REVIEW\n'+formatCombatReview(recorder.frames,recorder.events,
+      recorder.ballistics.shots)+
       '\n\nTACTICAL TIMELINE\n'+formatAfterAction(recorder.events,10);
     if(stats.rescueStatus!=='none')
       ui.debriefStats.textContent+='\nCIVILIAN RESCUE: '+

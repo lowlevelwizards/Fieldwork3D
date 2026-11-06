@@ -15,8 +15,9 @@ export type CombatReview={
 };
 const rounded=(n:number)=>Math.round(n*10)/10;
 export function summarizeCombatReview(frames:readonly ReplayFrame[],
- events:readonly BattleEvent[]):CombatReview{
+ events:readonly BattleEvent[],completeShots:readonly ShotEvent[]=[]):CombatReview{
  const shots=new Map<number,ShotEvent>();
+ for(const shot of completeShots)shots.set(shot.id,shot);
  let peakSuppression=0;
  for(const frame of frames){
   for(const shot of frame.shots)shots.set(shot.id,shot);
@@ -49,8 +50,8 @@ export function summarizeCombatReview(frames:readonly ReplayFrame[],
   aimedShots:all.filter(s=>s.mode==='ads').length};
 }
 export function formatCombatReview(frames:readonly ReplayFrame[],
- events:readonly BattleEvent[]):string{
- const r=summarizeCombatReview(frames,events);
+ events:readonly BattleEvent[],completeShots:readonly ShotEvent[]=[]):string{
+ const r=summarizeCombatReview(frames,events,completeShots);
  const hasContact=summarizeMissionPacing(events).firstContactAt!==null;
  const delay=!hasContact?'NO CONFIRMED CONTACT':
    r.contactToFireSeconds===null?'NO RECORDED POST-CONTACT SHOT':

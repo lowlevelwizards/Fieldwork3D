@@ -11,6 +11,7 @@ import {copyMedicalCondition,newMedicalCondition} from './breach-medical-wounds.
 import {normalizedMedicalSupplies,kitMedicalSupplies} from './equipment-medical-supplies.ts';
 import {ReplayMotionRecorder,type ReplayPresentation} from './breach-replay-motion.ts';
 import {ReplayPlanRecorder} from './breach-replay-plans.ts';
+import {ReplayBallisticsRecorder} from './breach-replay-ballistics.ts';
 import {captureReplayManifest,type ReplayManifest} from './breach-replay-manifest.ts';
 import {copyNodes,type PlanNode} from './breach-plan.ts';
 import {captureReplayKnowledge,applyReplayKnowledge,type ReplayKnowledge}
@@ -175,6 +176,7 @@ export class MissionRecorder{
   private readonly discoveredBodies=new Set<string>();
   readonly motion=new ReplayMotionRecorder();
   readonly plans=new ReplayPlanRecorder();
+  readonly ballistics=new ReplayBallisticsRecorder();
   manifest:ReplayManifest|null=null;
   private manifestLocked=false;
   readonly completeness:{
@@ -188,6 +190,7 @@ export class MissionRecorder{
   };
   capture(s:Session,force=false):void{
     this.plans.capture(s);
+    this.ballistics.capture(s);
     // The mission may receive new appearance/kit settings before first GO.
     // Finalize the one-time manifest on the first executed simulation tick.
     if(!this.manifest||(!this.manifestLocked&&s.started))
