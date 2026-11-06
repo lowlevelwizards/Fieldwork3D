@@ -72,7 +72,7 @@ test('R4.4 all nine guns seat their fore-ends, use forward real iron sights and 
   assert.ok(guard.min.x<receiver.max.x-.5,id+' fore-end tucked into receiver');
   assert.ok(receiver.intersectsBox(guard),id+' no handguard gap');
   assert.equal(slotMeshes(group,'handguard').length,
-   preset.parts.handguard==='ak-rail-long'?3:2,id+' no metal collar');
+   preset.parts.handguard==='ak-rail-long'?4:3,id+' lower heel plus clean two-part fore-end');
   const barrel=slotMeshes(group,'barrel');
   assert.ok(barrel.length>=5,id+' has barrel, gas tube, block, sight and tip');
   const tube=new THREE.Box3().setFromObject(barrel[1]);
