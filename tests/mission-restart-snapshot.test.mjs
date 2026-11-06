@@ -25,7 +25,8 @@ test('RESTART preserves resolved site, enemy setup, rules and deployment',()=>{
   const expectedFriendly=team(original).map(a=>({...a.p}));
   // Simulate a mission played after planning: the live state is disposable.
   original.site.rooms[0].w+=37;
-  original.site.enemies[0].x+=51;
+  if(original.site.enemies.length)original.site.enemies[0].x+=51;
+  else original.site.objective.x+=51; // sparse missions are valid
   original.doors[0].open=true;
   original.operators[0].health=0;
   team(original)[0].magazine=0;
