@@ -202,6 +202,8 @@ export class TacticalScene3D{
   private ray=new THREE.Raycaster();
   private width=1;private height=1;private fogAt=-1;
   private terminalPoseSeconds=0;private terminalSessionStamp=-1;
+  /** Presentation clock alone runs on pause; simulation/replay stay frozen. */
+  private idleLifeSeconds=0;private idleLifeSession:Session|null=null;
   private sun:THREE.DirectionalLight;
   private mats:THREE.Material[]=[];
   // Shared render resources persist between sites; repeated site rebuilds
@@ -1657,6 +1659,16 @@ export class TacticalScene3D{
       this.terminalPoseSeconds+Math.max(0,dt));
     const poseSeconds=s.seconds+(terminal?this.terminalPoseSeconds:0)-
       (renderFrame&&!terminal?(1-renderFrame.alpha)/60:0);
+    if(this.idleLifeSession!==s){
+      this.idleLifeSession=s;this.idleLifeSeconds=poseSeconds;
+    }
+    if(s.phase==='planning'&&!replay)
+      this.idleLifeSeconds+=Math.max(0,dt);
+    else this.idleLifeSeconds=poseSeconds;
+    // Unlike the tactical clock, this render-only value moves while paused.
+    // Replay seeks always use the recorded timeline for deterministic results.
+    const actorIdleSeconds=s.phase==='planning'&&!replay?
+      this.idleLifeSeconds:poseSeconds;
     // The shadow map follows the active encounter to retain contact detail.
     const shadowPoint=team(s).find(a=>a.id===selected)?.p??this.view.focus;
     this.sun.position.set(shadowPoint.x-145,250,shadowPoint.y+175);
@@ -1926,7 +1938,8 @@ export class TacticalScene3D{
       poseOperator(object.physical,{
         x:drawActor.x,z:drawActor.z,heading:drawActor.heading,
         velocity:actor.traversal?0:actor.velocity,
-        seconds:poseSeconds,stride:actor.traversal?0:actor.stride,
+        seconds:poseSeconds,idleLifeSeconds:actorIdleSeconds,
+        stride:actor.traversal?0:actor.stride,
         traversalProgress:actor.traversal?
           actor.traversalElapsed/Math.max(.001,actor.traversal.duration):0,
         appearanceSeed:actor.appearanceSeed,

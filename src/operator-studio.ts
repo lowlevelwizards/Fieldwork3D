@@ -404,12 +404,11 @@ function tickArmedPreview(now:number){
  if(now-armedLastDraw>=1000/24){
   const elapsed=Math.max(0,(now-armedStarted)/1000);
   const idle=studioArmedIdleAt(elapsed,member()?.appearanceSeed??0);
-  poseOperator(rig!,{...armedPose!,seconds:elapsed,...idle},
+  // Same presentation layer as gameplay. No second Studio-only bob or
+  // additive transform: avoid double breathing and animation drift.
+  poseOperator(rig!,{...armedPose!,seconds:elapsed,
+    idleLifeSeconds:elapsed,...idle},
    Math.min(.1,(now-armedLastDraw)/1000));
-  // Tiny head glance/breath offset AFTER the reusable combat IK solved.
-  // Both are reset on the next pose, so nothing accumulates.
-  rig!.head.rotation.y+=idle.glance;
-  rig!.chest.position.y+=idle.breathe;
   armedLastDraw=now;
   renderScene();
  }
@@ -448,6 +447,11 @@ function posePreview(){
   p.weaponConfiguration??issue.weaponConfiguration;
  const weapon=reference?.weapon.weapon??p.weapon??configuration.weapon;
  const armed=!clothesOnly&&showWeapon;
+ const previewEquipment=inspectKit(reference?.kit??p.loadout);
+ // Studio carries a representative visible spare bank, never phantom ammo
+ // in the live game; preview rig count is capped to actual rig capacity later.
+ const sampleMagazines=armed&&previewEquipment.slots.rig!=='rig-none'?
+  (['rig','rig','rig'] as const):[];
  armedPose={
   x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
   posture:'stand',injury:0,weapon,reload:0,reloadDuration:0,
@@ -456,7 +460,8 @@ function posePreview(){
   handlingOverride:armed?'low':undefined,
   faceStyle:studioUsesVisibleFace(activeCategory)?'quiet':'blank',
   unarmedPreview:!armed,weaponConfiguration:configuration,
-  equipment:inspectKit(reference?.kit??p.loadout),
+  equipment:previewEquipment,
+  magazineCarryLocations:sampleMagazines,
   wardrobe:inspectWardrobe(reference?.wardrobe??previewWardrobe()),
   appearanceSeed:p.appearanceSeed
  };

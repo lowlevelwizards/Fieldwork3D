@@ -34,6 +34,9 @@ import {createWardrobeGearLayers,updateWardrobeGearLayers,
  type WardrobeGearLayers} from './operator-wardrobe-gear-visuals.ts';
 import {armorMountedMagazineSocket}
  from './operator-armor-attachment-frame.ts';
+import {carriedMagazineGeometry,carriedMagazineProfile}
+ from './operator-carried-magazines.ts';
+import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {createWardrobeAccessoryVisuals,updateWardrobeAccessories,
  initialWardrobeAccessories,type WardrobeAccessoryVisuals}
  from './operator-wardrobe-accessories.ts';
@@ -70,6 +73,9 @@ export type OperatorVisualKit={
  eyeMarks:THREE.Mesh[];hairMaterial:Material;patchMaterial:Material;patches:THREE.Mesh[];
  magazines:Record<'rig'|'belt'|'pocket',THREE.Mesh[]>;
  rigMagazineHome:THREE.Group;
+ carriedMagazineMaterial:THREE.MeshStandardMaterial;
+ legacyMagazineMaterial:THREE.Material;
+ carriedMagazinePart:string|null;
 };
 const part=(parent:THREE.Object3D,m:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number)=>{
@@ -250,6 +256,8 @@ export function createOperatorVisualKit(
   // Sleeve cuff and exposed forearm are now physical blouse-state meshes;
   // no duplicate generic overlay geometry is allocated.
  }
+ const carriedMagazineMaterial=new THREE.MeshStandardMaterial({
+  color:0x687369,roughness:.88,metalness:.05,flatShading:true});
  const magazines:{rig:THREE.Mesh[];belt:THREE.Mesh[];pocket:THREE.Mesh[]}={
   rig:[],belt:[],pocket:[]};
  for(let i=0;i<7;i++){
@@ -284,7 +292,8 @@ export function createOperatorVisualKit(
   fieldToeCaps,lightInstepPanels,sleeveCuffs,
   rolledForearms,rolledCuffs,kneePanels,eyeMarks,hairMaterial,magazines,
   haircuts,graphicMarks,patchMaterial,patches,
-  rigMagazineHome:chest};
+  rigMagazineHome:chest,carriedMagazineMaterial,
+  legacyMagazineMaterial:dark,carriedMagazinePart:null};
 }
 const DEFAULT:Slots={
  primary:'primary-carbine',head:'head-helmet',armor:'armor-soft',
@@ -295,8 +304,23 @@ const DEFAULT:Slots={
 export function applyOperatorVisualKit(v:OperatorVisualKit,
  slots:Slots|undefined,seed:number,magazineLocations:readonly CarryLocation[]=[],
  faceStyle:'blank'|'quiet'|'graphic'='blank',
- wardrobe?:WardrobeOptions){
+ wardrobe?:WardrobeOptions,weaponConfiguration?:WeaponConfiguration){
  const s=slots??DEFAULT;
+ const magazinePart=weaponConfiguration?.build?.parts.magazine??null;
+ if(magazinePart!==v.carriedMagazinePart){
+  const geometry=magazinePart?carriedMagazineGeometry(magazinePart):null;
+  const next=geometry??new THREE.BoxGeometry(2,4.1,2.05);
+  const old=new Set<THREE.BufferGeometry>();
+  for(const mag of [...v.magazines.rig,...v.magazines.belt,...v.magazines.pocket]){
+   old.add(mag.geometry);mag.geometry=next;
+   mag.material=geometry?v.carriedMagazineMaterial:v.legacyMagazineMaterial;
+   for(const detail of mag.children)detail.visible=!geometry;
+  }
+  for(const g of old)if(g!==next)g.dispose();
+  const profile=carriedMagazineProfile(magazinePart);
+  if(profile)v.carriedMagazineMaterial.color.setHex(profile.material);
+  v.carriedMagazinePart=magazinePart;
+ }
  const looks=resolvedWardrobe(wardrobe,slots?{version:1,slots:s}:undefined);
  // Single source of truth: the actual equipped head item resolves its
  // visible model. Never draw a legacy generic shell under headwear.
@@ -482,7 +506,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   if(loc==='belt'&&s.belt==='belt-light')count=Math.min(1,count);
   v.magazines[loc].forEach((m,i)=>{
    m.visible=i<count;
-   m.scale.set(magShape.x,magShape.y,magShape.z);
+   m.scale.set(magazinePart?1:magShape.x,
+    magazinePart?1:magShape.y,magazinePart?1:magShape.z);
   });
  }
  // Apply garment occlusion AFTER all armor, rig and magazine visibility
