@@ -42,6 +42,8 @@ import {headwearCamoTexture,headwearDetailTexture} from './operator-headwear-mat
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import {garmentBoxUV,wardrobeFabricCamoTexture} from './operator-fabric-camo-materials.ts';
 import {enableBakedGearAO} from './operator-baked-gear-ao.ts';
+import {createOperatorPoseCavity,updateOperatorPoseCavity,
+ type OperatorPoseCavity} from './operator-pose-cavity-lighting.ts';
 import {mapSkinReceiverAtlas,headwearCastShadowAtlas,collarCastShadowAtlas,
  authoredCollarShadowBoxes} from './operator-baked-shadow-maps.ts';
 import {resolveAutomaticGearColors} from './operator-gear-color-policy.ts';
@@ -143,6 +145,7 @@ export type OperatorRig={
   medicalPouch:THREE.Mesh;radioUnit:THREE.Mesh;
   flashCanister:THREE.Mesh;utilityTool:THREE.Mesh;
   gloveCovers:THREE.Mesh[];visualKit:OperatorVisualKit;
+  poseCavity:OperatorPoseCavity;
   /** No-render/zero-collider attachment references for future garments. */
   garmentFitAnchors:GarmentFitAnchors;
   equipmentDetails:OperatorEquipmentDetails;
@@ -367,6 +370,8 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   // Stage 3A reference nodes only: attached after existing geometry is built.
   // They add no triangles, affect no merging, and change no IK/weapon sockets.
   const garmentFitAnchors=createGarmentFitAnchors({chest,hip,arms,legs:feet});
+  const poseCavity=createOperatorPoseCavity(baseTorso,
+   [feet[0].upper,feet[1].upper],cloth,trousers);
   // Include costume, face and accessory materials as well as the core skin,
   // cloth and steel. This keeps silhouette inspection and downed desaturation
   // honest instead of leaving floating colored eye marks and gear details.
@@ -381,7 +386,7 @@ export function createOperatorRig(id:string,side:'blue'|'red',
     hip,chest,head,weapon,droppedGun,feet,arms,pack,
     helmetShell,armorPanels,capBill,rigPouches,beltPouch,
     medicalPouch,radioUnit,flashCanister,utilityTool,gloveCovers,
-    visualKit,equipmentDetails,colors,garmentFitAnchors,
+    visualKit,equipmentDetails,colors,garmentFitAnchors,poseCavity,
     clothMaterial:cloth,vestMaterial:vest,trouserMaterial:trousers,
     packMaterial:packFabric,gearMaterial:gearFabric,
     headClothMaterial:headCloth,headArmorMaterial:headArmor,
@@ -1449,5 +1454,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.magazineHand.visible=false;r.magazineInserted.visible=false;
     for(const sling of r.slingStraps)sling.visible=false;
   }
+  // Shader uniforms follow the existing IK without CPU ray tracing.
+  updateOperatorPoseCavity(r.poseCavity,r.arms,r.elbowSpread,
+   p.posture,p.stride,p.down,
+   Number(r.root.userData.fieldworkCavityQuality??1));
   r.lastPose={...p};r.lastTime=p.seconds;
 }

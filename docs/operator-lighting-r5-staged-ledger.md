@@ -144,3 +144,11 @@ Base: `0cf8a9f1737b1327cbb15c11b4f30e718cd73b98`
 - Require actual toon-shaded meshes, no WebGL shader console errors, and
   a nonblank three-band capture in the existing screenshot artifact.
 - Keep UV1 atlas and toon experiments separate, with no new workflow run.
+
+## R5.5-A GPU pose-aware cavity receivers
+- Per-rig shader clones for actual uniform torso and both thigh meshes;
+  no additional mesh, CPU per-frame bake or extra draw calls.
+- Upper-arm quaternion + solved elbow spread fade armpit cavities on raise;
+  crouch/stride modulate a subtle upper-thigh garment overlap.
+- Material map, hue and native vertex AO stay authoritative; no IK changes.
+- LOD scalar supported by the rig for later tactical quality policy.
