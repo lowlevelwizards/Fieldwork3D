@@ -38,6 +38,7 @@ import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
 import {reloadHandKey,reloadHandChestTarget} from './breach-reload-motion.ts';
 import {resolvePoseContactOwners} from './breach-pose-v3-contacts.ts';
 import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
+import {solveV3DynamicArm} from './breach-pose-v3-dynamic-arm.ts';
 import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
 import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
 import {blendedHandlingProfile,smoothHandling,type HandlingTransition}
@@ -1518,6 +1519,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     fullDoorContact=local.sub(P(r.chest.position.x,0,0)).clone();
     leftGrip.copy(fit.support).lerp(fullDoorContact,reach);
   }
+  // Preview-only evaluation; production continues to use the proven path.
+  const dynamicLook=p.poseV3Preview?
+    resolvedWardrobe(p.wardrobe,p.equipment):null;
+  const dynamicEnvelope=dynamicLook?poseClearanceEnvelope(
+    dynamicLook.armorStyle,dynamicLook.rigStyle,dynamicLook.top):null;
+  const v3DynamicReports:Array<{
+    side:string;status:string;reason:string;
+    candidates:number;elbowDrop:number;outwardFlare:number;
+    hardDepth:number;quality:number;
+  }>=[];
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
     const shoulder=shoulderFor(i);
@@ -1585,7 +1596,27 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }
     let solved=solveTwoBone(shoulder,wrist,10,10,
       wanted,ARM_LIMITS,neutralArms?undefined:arm.bend,scratch.arms[i]);
-    if(!neutralArms&&!p.down&&!p.surrender){
+    let dynamicAccepted=false;
+    if(dynamicEnvelope&&!neutralArms&&!p.down&&!p.surrender&&
+       !p.firing){
+      const mode=reloadActive?'reload':p.aiming||handling==='ads'?
+        'aim':reaching||throwActive?'interaction':'carry';
+      const dynamic=solveV3DynamicArm({
+        shoulder,wrist:desired,side:sign as -1|1,mode,
+        envelope:dynamicEnvelope,preferredPole:wanted
+      });
+      v3DynamicReports.push({side:i===0?'support':'firing',
+        status:dynamic.status,reason:dynamic.reason,
+        candidates:dynamic.candidates,
+        elbowDrop:dynamic.report.elbowDrop,
+        outwardFlare:dynamic.report.outwardFlare,
+        hardDepth:dynamic.report.hardDepth,
+        quality:dynamic.report.quality});
+      if(dynamic.solution){
+        solved=dynamic.solution;dynamicAccepted=true;
+      }
+    }
+    if(!dynamicAccepted&&!neutralArms&&!p.down&&!p.surrender){
       // Front-plate clearance must score BOTH sleeve segments. Avoiding just
       // the elbow point was letting the forearm pass straight through armor.
       const front=p.equipment?.slots.armor==='armor-carrier'?9.8:
@@ -1628,6 +1659,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     arm.hand.rotation.set(0,p.unarmedPreview||p.surrender?0:
       clamp(fit.rotation.y,-1,1),0);
   }
+  r.root.userData.poseV3DynamicReport=p.poseV3Preview?
+    v3DynamicReports:null;
   if(r.magazineHand.visible){
     // Magazine visual follows the *solved* support wrist. The original
     // magazine is hidden from the gun while it is in hand.
