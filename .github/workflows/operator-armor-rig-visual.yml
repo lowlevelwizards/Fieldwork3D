@@ -68,6 +68,15 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Existing mobile Operator Studio smoke
         run: node scripts/smoke-operator-studio.mjs
+      - name: Phone Tops Material Clothes Only — no geometry spikes
+        if: ${{ startsWith(github.head_ref, 'fix/operator-lightmaps-metric-') }}
+        run: node scripts/smoke-lightmap-clothes-only.mjs
+      - uses: actions/upload-artifact@v4
+        if: always() && startsWith(github.head_ref, 'fix/operator-lightmaps-metric-')
+        with:
+          name: lightmap-clothes-only-phone-screenshots
+          path: operator-lightmap-clothes-only/
+          if-no-files-found: ignore
       - name: Phone Operator Lab appearance cards and playback navigation
         run: node scripts/smoke-armor-r1-ui.mjs
       - name: Gameplay-zoom armor and chest rig silhouette captures
