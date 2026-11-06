@@ -5113,7 +5113,8 @@ function tick(now:number){
   if(replaying&&replayQuickVideo.active){
     replayQuickVideo.drawFrame(
       stage&&viewMode!=='plan2d'?stage.canvas:null,canvas,replayTime);
-    if(!replayPlaying||replayTime>=recorder.duration)replayQuickVideo.stop();
+    if(replayTime>=recorder.duration)replayQuickVideo.finishAtEnd();
+    else if(!replayPlaying)replayQuickVideo.stop();
   }
   // One local, intelligible pulse per distinct blocked episode.
   for(const actor of team(state)){
