@@ -73,39 +73,40 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const mag=parts.magazine,heavy=mag==='ak-mag762'||mag==='ak-mag762poly';
  const resinMag=mag==='ak-mag545';
  const finish:0|1|2=resinMag?2:heavy&&mag==='ak-mag762'?0:1;
+ // One thick prism, with only one or two deliberate changes in direction.
  if(heavy)
-  p('magazine',[[2.3,-1.65],[5.6,-1.65],[6.5,-4.4],
-   [8.2,-6.7],[10.0,-8.05],[7.35,-8.6],
-   [4.9,-7.0],[3.35,-4.8]],2.65,finish);
+  p('magazine',[[2.15,-1.65],[5.9,-1.65],[6.65,-4.5],
+   [8.95,-7.5],[5.65,-8.05],[3.35,-5.15]],3.45,finish);
  else
-  p('magazine',[[2.3,-1.65],[5.4,-1.65],[5.65,-4.6],
-   [6.7,-7.2],[7.45,-8.05],[4.75,-8.25],
-   [3.7,-5.7]],2.65,finish);
- b('magazine',heavy?8.6:6.0,heavy?-8.3:-8.08,
-  0,heavy?3.15:2.9,.55,2.85,finish);
+  p('magazine',[[2.15,-1.65],[5.6,-1.65],[5.9,-4.7],
+   [7.25,-7.55],[4.5,-7.9],[3.35,-5.2]],3.25,finish);
 
  const guard=parts.handguard;
  const short=guard==='ak-wood-short'||guard==='ak-poly-short';
  const mid=guard==='ak-poly-mid';
  const end=short?11.45:mid?13.5:15.1;
+ const start=short?3.55:4.0;
  const woodGuard=guard==='ak-wood-long'||guard==='ak-wood-short';
  const rail=guard==='ak-rail-long';
- p('handguard',[[4.0,-1.25],[4.7,.9],[end-.8,.8],
-   [end,-.15],[end-.6,-1.65],[4.5,-1.65]],3.4,woodGuard?2:1);
- // Separated upper tube: preserving a dark negative-space break is iconic.
- p('handguard',[[5.0,1.4],[6.3,2.5],[end-1.7,2.25],
-   [end-.75,1.35]],2.5,woodGuard?2:1);
- b('handguard',end-.35,-.45,0,.75,2.8,3.4,0);
- if(rail)b('handguard',(4.9+end)/2,2.6,0,end-5.3,.52,2.7,0);
+ p('handguard',[[start,-1.35],[start+.75,.95],[end-.7,.85],
+   [end,-.2],[end-.5,-1.75],[start+.45,-1.75]],3.85,
+   woodGuard?2:1);
+ // One large top silhouette, deliberately separated but not disconnected.
+ p('handguard',[[start+.8,1.2],[start+1.7,2.4],
+   [end-1.35,2.25],[end-.6,1.15]],2.9,woodGuard?2:1);
+ if(rail)b('handguard',(start+.9+end)/2,2.6,0,
+  end-start-1.2,.6,3.0,0);
 
  // Distinct high front sight and the compact's visually large final device.
  const tip=19.5;
  const barrelStart=short?11.2:mid?13.35:14.9;
  b('barrel',(barrelStart+tip)/2,0,0,tip-barrelStart,1.23,1.5,0);
  if(short){
-  p('barrel',[[15.15,-.9],[18.85,-1.3],[19.5,-.95],
-   [19.5,1.15],[18.85,1.35],[15.15,.95]],2.55,1);
-  p('barrel',[[12.0,.25],[13,2.7],[13.8,2.7],[14.25,.25]],1.5,0);
+  // A much denser compact nose; no long pencil barrel sticking out.
+  p('barrel',[[14.8,-1.1],[18.85,-1.5],[19.5,-1.05],
+   [19.5,1.35],[18.85,1.55],[14.8,1.15]],2.9,1);
+  p('barrel',[[12.05,.25],[12.95,2.85],[13.85,2.85],
+   [14.1,.25]],1.75,0);
  }else{
   p('barrel',[[16.5,.2],[16.75,3.35],[17.5,3.45],
    [17.6,.2]],1.9,0);
