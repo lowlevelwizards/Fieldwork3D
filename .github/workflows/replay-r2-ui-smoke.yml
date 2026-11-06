@@ -1,0 +1,29 @@
+name: Replay R2 — Mobile UI Compact Smoke
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'src/breach-style.css'
+      - 'src/breach-main.ts'
+      - 'scripts/smoke-replay-r2-ui.mjs'
+      - '.github/workflows/replay-r2-ui-smoke.yml'
+permissions:
+  contents: read
+concurrency:
+  group: replay-r2-ui-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  replay-ui:
+    if: ${{ startsWith(github.head_ref, 'feature/replay-r2-mobile-ui-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install chromium
+      - name: Verify compact dock and exclusive mobile tool tabs
+        run: node scripts/smoke-replay-r2-ui.mjs
