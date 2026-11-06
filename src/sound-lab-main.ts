@@ -320,54 +320,58 @@ function renderVariants(){
   A:['CLEAN','Tight, deliberate, relatively dry'],
   B:['WEIGHTY','Fuller body and a solid mechanical feel'],
   C:['TEXTURED','Rougher grain, brighter edge, longer tail']};
- const focus=FOCUS_BY_ID.get(selected),refine=refineMode?REFINEMENT_BY_ID.get(selected):null;
+ const focus=FOCUS_BY_ID.get(selected);
+ const refine=refineMode?REFINEMENT_BY_ID.get(selected):null;
+ const compound=compoundMode?COMPOUND_BY_ID.get(selected):null;
  const frag=document.createDocumentFragment();
  for(const [i,v] of availableVariants().entries()){
-  const [name,description]=refine?[refine.names[i],refine.details[i]]:
-   focus?[focus.names[i],DIRECTION_METHODS[i]]:legacy[v];
+  const [name,description]=compound?[compound.names[i],compound.details[i]]:
+   refine?[refine.names[i],refine.details[i]]:
+    focus?[focus.names[i],DIRECTION_METHODS[i]]:legacy[v];
   const div=document.createElement('section');
-  const chosen=refineMode?
-   (currentChoice().refinement?.choice===v&&!!currentChoice().refinement?.approved):
-   (currentChoice().choice===v&&
-   (focus?!!currentChoice().explored:!!currentChoice().reviewed));
-  const shortlisted=refineMode?
-    !!currentChoice().refinement?.shortlist?.includes(v as RefinementDirection):
-    !!currentChoice().shortlist?.includes(v);
+  const chosen=compoundMode?
+   (currentChoice().compound?.choice===v&&!!currentChoice().compound?.approved):
+   refineMode?(currentChoice().refinement?.choice===v&&!!currentChoice().refinement?.approved):
+    currentChoice().choice===v&&(focus?!!currentChoice().explored:!!currentChoice().reviewed);
+  const shortlisted=compoundMode?
+   !!currentChoice().compound?.shortlist?.includes(v as CompoundDirection):
+   refineMode?!!currentChoice().refinement?.shortlist?.includes(v as RefinementDirection):
+   !!currentChoice().shortlist?.includes(v);
   div.className='variant'+(chosen?' active':'')+(shortlisted?' shortlisted':'');
   const heading=document.createElement('h3');heading.textContent=v;
-  const small=document.createElement('small');small.textContent=name;
-  heading.append(small);
-  const text=document.createElement('p');text.textContent=description;
-  const actions=document.createElement('div');actions.className='actions';
-  if(refine){
+  const small=document.createElement('small');small.textContent=name;heading.append(small);
+  const descriptionText=document.createElement('p');descriptionText.textContent=description;
+  div.append(heading,descriptionText);
+  const recipe=compound?COMPOUND_RECIPES[i]:refine?REFINEMENT_RECIPES[i]:null;
+  if(recipe){
    const layer=document.createElement('div');layer.className='layer-tags';
-   for(const stem of REFINEMENT_RECIPES[i].layers){
-    const tag=document.createElement('span');tag.textContent=stem;
-    layer.append(tag);
+   for(const stem of recipe.layers){
+    const tag=document.createElement('span');tag.textContent=stem;layer.append(tag);
    }
-   div.append(heading,text,layer);
-  }else div.append(heading,text);
-  const play=document.createElement('button');
-  play.type='button';play.dataset.play=v;play.textContent='▶ LISTEN';
-  play.setAttribute('aria-label','Listen to '+name+' for '+current().label);
+   div.append(layer);
+  }
+  const actions=document.createElement('div');actions.className='actions';
+  const play=document.createElement('button');play.type='button';play.dataset.play=v;
+  play.textContent='▶ LISTEN';play.setAttribute('aria-label','Listen to '+name);
   actions.append(play);
   if(focus){
-   const shortlist=document.createElement('button');
-   shortlist.type='button';shortlist.className='shortlist';
-   shortlist.dataset.shortlist=v;shortlist.setAttribute('aria-pressed',String(shortlisted));
-   shortlist.textContent=shortlisted?'★ SAVED':'☆ SHORTLIST';
-   actions.append(shortlist);
+   const shortlist=document.createElement('button');shortlist.type='button';
+   shortlist.className='shortlist';shortlist.dataset.shortlist=v;
+   shortlist.setAttribute('aria-pressed',String(shortlisted));
+   shortlist.textContent=shortlisted?'★ SAVED':'☆ SHORTLIST';actions.append(shortlist);
   }
   const choose=document.createElement('button');choose.className='choose';
   choose.type='button';choose.dataset.choose=v;
   choose.textContent=chosen?'✓ CHOSEN':'CHOOSE '+v;
-  choose.disabled=!!refine&&!currentChoice().explored;
-  choose.title=choose.disabled?'Choose a Wave 01 reference first':name;
+  choose.disabled=(!!compound&&!currentChoice().refinement?.approved)||
+   (!!refine&&!currentChoice().explored);
+  choose.title=choose.disabled?'Import or approve the previous listening round first':name;
   choose.setAttribute('aria-label','Choose '+name);
   actions.append(choose);div.append(actions);frag.append(div);
  }
  ui.variants.classList.toggle('explore',!!focus);
  ui.variants.classList.toggle('refinement',refineMode);
+ ui.variants.classList.toggle('compound',compoundMode);
  ui.variants.replaceChildren(frag);
 }
 function displayValue(value:number,unit:string){
