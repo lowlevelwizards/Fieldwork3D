@@ -44,6 +44,17 @@ export function acousticResponseForCue(site:Site|undefined,source:Pt,
  if(!site||!site.rooms.length)return null;
  const room=containingRoom(site,source);
  const isExterior=!room;
+ // Outside is not one acoustic preset: an enclosed courtyard has more
+ // nearby surfaces than an open yard. Cheap point-to-segment distances are
+ // evaluated only for real sound events, never during simulation updates.
+ const nearbyWalls=isExterior?walls.reduce((count,w)=>{
+  const dx=w.b.x-w.a.x,dy=w.b.y-w.a.y;
+  const t=clamp(((source.x-w.a.x)*dx+(source.y-w.a.y)*dy)/
+   Math.max(1,dx*dx+dy*dy),0,1);
+  const distance=Math.hypot(source.x-(w.a.x+t*dx),source.y-(w.a.y+t*dy));
+  return count+(distance<150?1:0);
+ },0):0;
+ const exteriorEnclosure=clamp(nearbyWalls/4,0,1);
  const area=room?Math.max(1,room.w*room.h):0;
  const dimension=Math.sqrt(area);
  const size=isExterior?'exterior':
@@ -55,12 +66,12 @@ export function acousticResponseForCue(site:Site|undefined,source:Pt,
  // Early wall returns are rapid in small, hard rooms; warehouse interiors
  // produce longer/looser tails. Outdoors are mostly direct sound.
  const sizeIndex=size==='small'?0:size==='medium'?1:size==='large'?2:3;
- const early=isExterior ? .021 :clamp(.019+dimension*.00011,.018,.082);
- const wet=(isExterior ? .032 :(.12+sizeIndex*.055)*hardnessValue*
+ const early=isExterior ? .024+exteriorEnclosure*.035 :clamp(.019+dimension*.00011,.018,.082);
+ const wet=(isExterior ? .024+exteriorEnclosure*.155 :(.12+sizeIndex*.055)*hardnessValue*
    (1-openness*.45))*amount;
- const tail=isExterior ? .075 :(.075+.00185*dimension)*
+ const tail=isExterior ? .055+exteriorEnclosure*.18 :(.075+.00185*dimension)*
    (.61+hardnessValue*.67)*(1-openness*.4);
- const bass=isExterior ? .014 :clamp((.045+sizeIndex*.038)*
+ const bass=isExterior ? .014+exteriorEnclosure*.025 :clamp((.045+sizeIndex*.038)*
    (.55+hardnessValue*.7)*amount,0,.22);
  let obstruction=0;
  if(listener&&walls.length){
