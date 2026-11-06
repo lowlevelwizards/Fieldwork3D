@@ -42,19 +42,19 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
   }
  }
  if(parts.foregrip.id==='foregrip-handstop')
-  block(g,assembly.supportX,-2.35,0,2.3,1.9,3.2,dark);
+  block(g,assembly.supportX,-2.35+muzzleY,0,2.3,1.9,3.2,dark);
  if(parts.foregrip.id==='foregrip-vertical'){
-  block(g,assembly.supportX,-3.5,0,2.5,5.2,2.5,dark);
-  block(g,assembly.supportX,-1.2,0,4,1,3.4,steel);
+  block(g,assembly.supportX,-3.5+muzzleY,0,2.5,5.2,2.5,dark);
+  block(g,assembly.supportX,-1.2+muzzleY,0,4,1,3.4,steel);
  }
  if(parts.light.id==='light-compact'){
   const light=parts.light;
-  block(g,light.mountX,light.mountY,light.mountZ,4.6,2.2,2.6,dark);
-  block(g,light.mountX+2.25,light.mountY,light.mountZ,1,2.6,3,steel);
-  const lens=block(g,light.mountX+2.85,light.mountY,light.mountZ,
+  block(g,light.mountX,light.mountY+muzzleY,light.mountZ,4.6,2.2,2.6,dark);
+  block(g,light.mountX+2.25,light.mountY+muzzleY,light.mountZ,1,2.6,3,steel);
+  const lens=block(g,light.mountX+2.85,light.mountY+muzzleY,light.mountZ,
    .25,1.5,2.1,lensMaterial);
   lens.name='weapon-light-lens';lens.visible=false;
-  block(g,light.mountX-2,light.mountY+.9,light.mountZ,2,.8,2.5,steel);
+  block(g,light.mountX-2,light.mountY+.9+muzzleY,light.mountZ,2,.8,2.5,steel);
  }
  if(parts.sling.id==='sling-two-point'){
   // Rigid sling mounting hardware stays on the gun. The actual fabric

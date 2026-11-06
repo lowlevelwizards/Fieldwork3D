@@ -5,7 +5,7 @@
  * This module does not depend on Three.js, rendering or DOM state.
  */
 import type {WeaponId} from './breach-combat.ts';
-import {arBarrelArt} from './weapons/geometry/ar-barrel-profiles.ts';
+import {arBarrelArt,AR_VISUAL_AXIS_Y} from './weapons/geometry/ar-barrel-profiles.ts';
 import {akBarrelArt} from './weapons/geometry/ak-barrel-profiles.ts';
 import {EQUIPMENT_CATALOG} from './equipment-catalog.ts';
 import {FAMILY_PARTS,FAMILY_PART_SLOTS,familyPreset,initialWeaponFamilyBuild,
@@ -186,7 +186,7 @@ export function sameWeaponConfiguration(a?:WeaponConfiguration,b?:WeaponConfigur
 export type ResolvedWeaponAssembly={
  weapon:WeaponId;configuration:WeaponConfiguration;
  lengthScale:number;massKg:number;balanceX:number;rotationalInertia:number;
- muzzleX:number;stockX:number;primaryX:number;primaryY:number;
+ muzzleX:number;muzzleY:number;stockX:number;primaryX:number;primaryY:number;
  supportX:number;supportY:number;sightHeight:number;
  mounted:Record<WeaponAttachmentSlot,WeaponAttachment>;
 };
@@ -228,12 +228,13 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
  const resolved:ResolvedWeaponAssembly={weapon:config.weapon,configuration:config,lengthScale,
   massKg:mass,balanceX:balance,rotationalInertia:Math.max(1,inertia),
   muzzleX:(art?.muzzleX??p.muzzleX)+(mounted.muzzle.muzzleExtension??0),
+  muzzleY:build?.family==='ar'?AR_VISUAL_AXIS_Y:0,
   stockX:stockX+(build?0:(mounted.stock.stockShift??0)),
   primaryX,primaryY,
   supportX:supportX+(mounted.foregrip.supportShift??0),
-  supportY:mounted.foregrip.id==='foregrip-vertical'?-3.65:
+  supportY:(mounted.foregrip.id==='foregrip-vertical'?-3.65:
    mounted.foregrip.id==='foregrip-handstop'?-2.3:
-   build?-1.65:p.supportY,
+   build?-1.65:p.supportY)+(build?.family==='ar'?AR_VISUAL_AXIS_Y:0),
   sightHeight:mounted.optic.sightHeight??2.6,
   mounted};
  resolutionCache.set(raw,resolved);

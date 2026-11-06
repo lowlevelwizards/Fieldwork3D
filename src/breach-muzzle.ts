@@ -24,8 +24,9 @@ export function muzzleAtShot(p:MuzzleInput):MuzzleSample{
     yaw:-p.weaponYaw+p.heading,recoil:p.recoil*6,
     aimBlend:p.aim,clearanceRetraction:p.clearanceRetraction});
   const grip=weaponGrips(p.weapon,configuration);
-  const tip=configuration?resolveWeaponAssembly(configuration).muzzleX:MUZZLE_TIP;
-  const local=new THREE.Vector3(tip*grip.lengthScale,0,0)
+  const assembly=configuration?resolveWeaponAssembly(configuration):null;
+  const tip=assembly?.muzzleX??MUZZLE_TIP;
+  const local=new THREE.Vector3(tip*grip.lengthScale,assembly?.muzzleY??0,0)
     .applyEuler(fit.rotation).add(fit.origin);
   const worldUp=new THREE.Vector3(0,1,0);
   const axis=new THREE.Vector3(1,0,0).applyEuler(fit.rotation)
