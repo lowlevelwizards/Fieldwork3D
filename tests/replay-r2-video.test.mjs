@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {replayVideoMime,replayVideoSize,QUICK_VIDEO_SECONDS}
+import {replayVideoMime,replayVideoSize,QUICK_VIDEO_SECONDS,MIN_VIDEO_WALL_MS}
   from '../src/breach-replay-video.ts';
 test('video export selects only browser-declared supported MIME types',()=>{
   assert.equal(replayVideoMime(type=>type==='video/webm'),'video/webm');
