@@ -49,8 +49,11 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   b('receiver',-3.9,2.52,0,1.15,.58,2.0,0);
  }
 
- // One deliberately exaggerated pixel-art selector: no extra 3D levers.
- addWeaponPixelMark(root,'ak-selector',-1.6,.42,1.98,2.5,1.05);
+ // Two small exterior clues: a selector toward the rear and an ejection
+ // mark above the magazine. Never confuse these with gameplay anatomy.
+ addWeaponPixelMark(root,'ak-selector',-1.9,.45,1.98,2.35,1.05);
+ addWeaponPixelMark(root,'ak-port',m.portX,m.portY,1.98,
+  m.portWidthX,m.portHeightY);
 
  // Stock types are visually disparate; the skeletal type MUST stay hollow.
  const stock=parts.stock;
