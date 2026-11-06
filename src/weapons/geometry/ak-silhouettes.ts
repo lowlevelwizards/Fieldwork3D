@@ -11,6 +11,7 @@ import {AK_VISUAL_ANATOMY,shiftProfile}
 import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
 import {akMagazineCurve,akMagazineOutline,akMagazineRibOutlines}
  from './ak-magazine-profiles.ts';
+import {akBarrelArt,AK_BARREL_ART} from './ak-barrel-profiles.ts';
 
 export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material){
@@ -148,7 +149,8 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   guard==='ak-poly-short'||guard==='ak-poly-plum-short';
  const mid=guard==='ak-poly-mid'||guard==='ak-poly-plum-mid';
  // On full rifles the fore-end stops well before the forward sight/gas tube.
- const end=short?11.45:mid?12.3:rpk?13.35:12.45;
+ const art=akBarrelArt(parts.barrel)??AK_BARREL_ART['ak-long'];
+ const end=art.handguardFrontX;
  // Seat the lower and upper furniture 0.55+ units INSIDE the receiver front.
  const start=compact?3.30:3.50;
  const woodGuard=guard.startsWith('ak-wood-long')||
@@ -172,45 +174,61 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  if(rail)b('handguard',(start+.9+end)/2,2.6,0,
   end-start-1.2,.6,3.0,0);
 
- // The muzzle contact stays fixed at 19.5 for every existing gameplay build.
- // Different exposed barrel lengths come from furniture and sight landmarks.
- const tip=19.5;
- const barrelStart=short?11.2:mid?12.1:rpk?13.08:12.2;
- const barrelEnd=short?tip:18.5;
- b('barrel',(barrelStart+barrelEnd)/2,0,0,barrelEnd-barrelStart,
-  rpk?1.43:1.15,rpk?1.8:1.5,0);
- if(short){
-  // Keep the AKS-74U's large, recognizable booster and compact front sight.
-  p('barrel',[[14.8,-.98],[18.85,-1.3],[tip,-1.0],
-   [tip,1.18],[18.85,1.37],[14.8,1.05]],2.85,1);
-  p('barrel',[[12.05,.25],[12.95,2.85],[13.85,2.85],
-   [14.1,.25]],1.75,0);
+ // The front end is authored by barrel ID, not by receiver or a randomly
+ // selected compatible furniture finish. All metal joints stay contiguous.
+ const tip=art.muzzleX,front=art.handguardFrontX;
+ const gas=art.gasBlockX,sight=art.frontSightX;
+ const metalDepth=rpk?1.86:1.48;
+ b('barrel',(front-.24+tip)/2,0,0,tip-front+.24,
+  rpk?1.42:1.12,metalDepth,0);
+ // Exposed upper gas-tube silhouette: one strong parallel line above barrel.
+ const tubeBegin=Math.max(front-.45,art.gasTubeBeginX);
+ const tubeEnd=gas+.20;
+ if(tubeEnd>tubeBegin)
+  b('barrel',(tubeBegin+tubeEnd)/2,1.07,0,
+   tubeEnd-tubeBegin,.66,1.45,0);
+ // The gas block connects upper tube DOWN into the main barrel.
+ // On the RPK the real gas system is still above, and the extra visible
+ // underside is a barrel/bipod support rather than a false reversed gas tube.
+ p('barrel',[[gas-.54,.52],[gas-.46,1.98],
+  [gas+.20,2.08],[gas+.57,1.35],[gas+.57,-.52],
+  [gas-.41,-.52]],1.88,0);
+ if(art.muzzleStyle==='booster'){
+  // Compact AKS-74U front tower and conspicuous squat muzzle booster.
+  p('barrel',[[sight-.47,.34],[sight-.25,2.69],
+   [sight+.35,2.82],[sight+.63,.28]],1.76,0);
+  p('barrel',[[tip-1.48,-.91],[tip-.32,-1.20],[tip,-1.03],
+   [tip,1.04],[tip-.34,1.25],[tip-1.48,.93]],2.8,1);
  }else{
-  const sight=rpk?17.35:16.0;
-  p('barrel',[[sight,.28],[sight+.22,2.94],
-   [sight+1.03,2.98],[sight+1.18,.28]],1.85,0);
-  if(parts.receiver==='akm'||parts.receiver==='ak103'){
-   // Short, diagonal AKM-type tip; AK-103 is a requested custom visual.
-   p('barrel',[[18.3,-.6],[tip,-.6],[19.25,.28],
-    [18.9,.75],[18.3,.67]],2.08,1);
-  }else if(rpk){
-   // The RPK-74 gets a slender, long-barrel nose instead of a giant brake.
-   p('barrel',[[18.3,-.53],[tip,-.53],[tip,.53],
-    [18.3,.53]],1.65,1);
-   // Folded bipod is a silhouette landmark, not a working mechanism.
-   line('barrel',[14.2,-.65],[17.45,-1.77],.54,1.25,0);
-   line('barrel',[15.0,-.55],[17.8,-1.42],.43,1.25,0);
-   b('barrel',17.76,-1.65,0,.72,.45,1.45,1);
-  }else if(parts.receiver==='ak105'){
-   // AK-105 short 100-series brake: 74-family outline, less front length.
-   p('barrel',[[17.76,-.95],[19.2,-.95],[tip,-.73],
-    [tip,.75],[19.2,.95],[17.76,.95]],2.28,1);
-   b('barrel',17.78,0,0,.25,2.14,2.36,0);
+  // One thick sight tower near the correct length-specific muzzle region.
+  p('barrel',[[sight-.50,.38],[sight-.30,2.73],
+   [sight+.50,2.94],[sight+.72,.38]],1.84,0);
+  if(rpk){
+   // RPK's unusually long exposed nose and iconic folded bipod silhouette.
+   // The gas block above stays anatomically recognizable.
+   p('barrel',[[tip-1.00,-.56],[tip,-.56],
+    [tip,.56],[tip-1.00,.56]],1.60,1);
+   b('barrel',18.55,-.78,0,4.7,.38,1.35,0);
+   line('barrel',[17.1,-.65],[20.25,-1.82],.51,1.17,0);
+   b('barrel',20.37,-1.75,0,.66,.42,1.37,1);
+  }else if(art.muzzleStyle==='carbine'){
+   // Short stout 100-series carbine hider, not an unchanged rifle brake.
+   p('barrel',[[tip-1.45,-.98],[tip-.22,-1.09],
+    [tip,-.79],[tip,.77],[tip-.22,1.05],
+    [tip-1.45,1.00]],2.32,1);
+   b('barrel',tip-1.36,0,0,.28,2.20,2.40,0);
+  }else if(parts.receiver==='akm'||parts.receiver==='ak103'){
+   // Oversized game-art slant: a major diagonal TERMINAL face.
+   // AK-103 slant is intentionally a non-factory custom appearance.
+   p('barrel',[[tip-1.75,-.68],[tip-.55,-.78],
+    [tip,.05],[tip-.35,1.14],
+    [tip-1.75,.94]],2.20,1);
   }else{
-   // AK-74 and AK-74M signature long, thick cylindrical brake.
-   p('barrel',[[17.18,-1.08],[19.26,-1.08],[tip,-.88],
-    [tip,.9],[19.26,1.08],[17.18,1.08]],2.45,1);
-   b('barrel',17.19,0,0,.32,2.28,2.5,0);
+   // 20% longer AK-74-family cylindrical compensator.
+   p('barrel',[[tip-2.83,-1.08],[tip-.20,-1.08],
+    [tip,-.84],[tip,.86],[tip-.22,1.07],
+    [tip-2.83,1.07]],2.40,1);
+   b('barrel',tip-2.71,0,0,.29,2.30,2.51,0);
   }
  }
 }
