@@ -61,6 +61,8 @@ import {heardIntensity} from './breach-acoustics.ts';
 import {weaponAudioCue,audibleImpact} from './breach-combat-audio.ts';
 import {readSoundPack,SOUND_STORAGE_KEY} from './sound-catalog.ts';
 import {playPackSound} from './sound-synth.ts';
+import {withFieldworkLiveMix} from './breach-live-sound-pack.ts';
+import {acousticResponseForCue} from './breach-audio-environment.ts';
 import {parseOperationHistory,addOperationRecord,
   type OperationRecord} from './breach-operations.ts';
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
@@ -1209,9 +1211,24 @@ let fogSession:Session|null=null;
 let fogIntelMode='';let fogSeenRevision=-1;
 let audio:AudioContext|null=null;
 let videoAudioDestination:MediaStreamAudioDestinationNode|null=null;
-let approvedSoundPack=readSoundPack();
+const LIVE_MIX_PREF='fieldwork3d.sound.live-mix';
+const ROOM_AUDIO_PREF='fieldwork3d.sound.room-acoustics';
+let liveMixEnabled=true,roomAudioEnabled=true;
+try{
+ liveMixEnabled=localStorage.getItem(LIVE_MIX_PREF)!=='off';
+ roomAudioEnabled=localStorage.getItem(ROOM_AUDIO_PREF)!=='off';
+}catch{/* Private browsing still auditions the mix with safe defaults. */}
+let approvedSoundPack=liveMixEnabled?
+  withFieldworkLiveMix(readSoundPack()):readSoundPack();
+function refreshSoundPack(){
+ const base=readSoundPack();
+ approvedSoundPack=liveMixEnabled?withFieldworkLiveMix(base):base;
+}
 window.addEventListener('storage',event=>{
-  if(event.key===SOUND_STORAGE_KEY)approvedSoundPack=readSoundPack();
+ if(event.key===LIVE_MIX_PREF){
+  liveMixEnabled=event.newValue!=='off';refreshSoundPack();
+ }else if(event.key===ROOM_AUDIO_PREF)roomAudioEnabled=event.newValue!=='off';
+ else if(event.key===SOUND_STORAGE_KEY)refreshSoundPack();
 });
 const replaySoundNodes=new Set<OscillatorNode>();
 const replaySoundBuffers=new Set<AudioBufferSourceNode>();
@@ -1258,10 +1275,16 @@ const playTone=(frequency:number,decay:number,noise=false,
  * Replay sources remain cancellable on pause / seek / export.
  */
 function playApprovedCue(id:string,level=1,pan=0,replayCue=false,
- rate=1):boolean{
+ rate=1,sourcePosition?:Pt):boolean{
  if(!audio)return false;
+ // Pure room presentation. Source geometry is read once per emitted event.
+ // AI hearing and replay evidence are deliberately unaffected.
+ const listener=uid(selected)?.p;
+ const acoustics=roomAudioEnabled&&sourcePosition?
+  acousticResponseForCue(state.site??undefined,sourcePosition,id,
+   listener,state.doors,WALLS):null;
  return playPackSound(audio,id,{
-  level,pan,rate,output:replayCue?videoAudioDestination:null,
+  level,pan,rate,acoustics,output:replayCue?videoAudioDestination:null,
   onSource:replayCue?(source)=>{
     replaySoundBuffers.add(source);
     const previous=source.onended;
