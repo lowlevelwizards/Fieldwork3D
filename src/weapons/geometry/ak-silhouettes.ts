@@ -63,7 +63,10 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   p('receiver',[[-4.53,2.64],[-4.24,3.19],[-3.42,3.19],
    [-3.18,2.72]],1.45,0);
  }else{
-  b('receiver',-3.9,2.52,0,1.15,.58,2.0,0);
+  // True AK sight block belongs at the FORWARD edge of the dust cover.
+  // An intentionally low stepped outline, not a rear-mounted holo-looking box.
+  p('receiver',[[2.45,2.12],[2.7,2.92],[3.14,3.04],
+   [3.72,2.98],[4.06,2.32],[4.22,2.12]],2.0,0);
  }
 
  // Two small exterior clues: a selector toward the rear and an ejection
@@ -166,7 +169,8 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const mid=guard==='ak-poly-mid'||guard==='ak-poly-plum-mid';
  // On full rifles the fore-end stops well before the forward sight/gas tube.
  const end=short?11.45:mid?12.3:rpk?13.35:12.45;
- const start=short?3.55:4.0;
+ // Seat the lower and upper furniture 0.55+ units INSIDE the receiver front.
+ const start=compact?3.30:3.50;
  const woodGuard=guard.startsWith('ak-wood-long')||
   guard.startsWith('ak-wood-short')||guard.startsWith('ak-rpk-wood');
  const rail=guard==='ak-rail-long';
@@ -180,11 +184,11 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
    [[start,-1.35],[start+.75,1.05],[end-.7,1.05],
     [end,-.2],[end-.5,-1.75],[start+.45,-1.75]],3.85,
    woodGuard?2:1);
- // Restore a deliberate narrow gap between upper and lower furniture.
- // A chunky rear collar keeps the two silhouettes visually connected.
- p('handguard',[[start+.8,1.3],[start+1.7,2.4],
-   [end-1.35,2.25],[end-.6,1.3]],2.9,woodGuard?2:1);
- b('handguard',start+.72,.42,0,.58,3.5,3.88,0);
+ // Two clean lengths of furniture; the receiver encloses the rear joint.
+ // The former tall metal collar created a floating grey slab and is REMOVED.
+ // Keep the thin horizontal opening between upper and lower wood/polymer.
+ p('handguard',[[start,1.33],[start+.65,2.28],
+   [end-1.35,2.25],[end-.6,1.33]],2.9,woodGuard?2:1);
  if(rail)b('handguard',(start+.9+end)/2,2.6,0,
   end-start-1.2,.6,3.0,0);
 
